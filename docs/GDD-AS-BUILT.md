@@ -121,7 +121,7 @@ Each land has four named **stages** (one look per twenty levels: Frost Ridge's t
 
 **The safe ground** is one circle of 2,937 px round the Town Hall: no monster targets, chases or hits anyone on it, except a monster that player **provoked** (hurt it this life and dealt damage to anything in the last 10 s), which follows them onto the grass and out to 1,800 px from its home. An unprovoked chase ends 720 px from home. Monsters know nothing of water or walls on the server side: they follow you into rivers and through props.
 
-**No man's land** (the PvP rings, Part 10) begins at each land's Lv 6–10 ring (ring 1) and counts up to 15 at Lv 76–80; the hub and the Lv 1–5 ring are never PvP. The rings are plain radii from the centre so phone and server agree.
+**No man's land** (the PvP rings, Part 10) begins at the safe ground's edge, each land's Lv 1–5 ring being ring 1, and counts up to 16 at Lv 76–80 (since v2.3.3690; it began at the Lv 6–10 ring before); the hub and the safe ground are never PvP. The rings are plain radii from the centre so phone and server agree.
 
 ### 2.2 BroTown
 
@@ -987,7 +987,7 @@ Twenty-two quests for seven givers who are not in the world (a trader, an enchan
 
 Fighting other players is off everywhere except No man's land, duels and the arena (and the owner's sparring clones). The master switch for open PvP has been off since the owner's "remove the option to kill other players for now"; No man's land is the one place its rule allows a fight.
 
-**Where**: each land's Lv 6–10 ring is No man's land 1, the next ring 2, out to 15 at Lv 76–80 (so 1–8 in the populated world). The hub, the commons and each land's first ring are never PvP; dungeons never.
+**Where**: from the safe ground's edge, each land's Lv 1–5 ring is No man's land 1, the next ring 2, out to 16 at Lv 76–80 (so 1–8 in the populated world; since v2.3.3690, before which it began at the Lv 6–10 ring). The hub and the commons (the safe ground) are never PvP; dungeons never.
 
 **Who may fight whom**: both standing in No man's land, both alive; their **character levels** at most N apart, where N is the **lower** of their two ring numbers (a ring-3 player cannot reach into ring 1 at someone 3 levels apart); not in one party.
 

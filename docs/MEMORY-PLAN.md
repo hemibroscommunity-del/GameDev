@@ -114,6 +114,7 @@ Memory spent on nothing:
 | A rebuild left its shadow system in shadows.js's module list (its pools, filter and old world container), one more per black screen | one system after two rebuilds, not three (`mp-sceneleak`) | v2.3.3152 |
 | A freed picture still bound in Pixi's pooled mask filter (found on the way: after a cut monster's death, leaving the land made Pixi destroy the pooled filter's bind group, and the next sprite mask threw inside app.render -- a frame not drawn per poisoned filter; TRAPS §143) | no render throw (`mp-sceneleak`'s mask check; `bindGroupFix.js`) | v2.3.3152 |
 | Pixi's TexturePool gives back what it is not using (the scratch textures of every filter pass -- shadows, the armour's shine, sprite masks -- and the texture every canvas Text is drawn on, handed out by size and kept on the GPU for good: the pool held the most of each size ever in use at once, ~30 name plates' worth after a cave wave).  A texture handed back and not taken again for 30 s is destroyed, and a zone change lets go of them all (`texturePoolTrim.js`; only with `bindGroupFix.js` on, as the filter system's own bind group keeps its last input) | render textures at home after a Great Cave trip 2.2 -> 8 MB, kept; with the trim 2.2 MB again ~20 s after you are home (247 textures, 21 MB let go over the trip); `mp-sceneleak` | v2.3.3152 |
+| The farm trip lets go of the Wheel it left (found converting mp-wheelmap: every way onto the farm -- the Feed & Seed, the old Farm window, the Land Office -- sets the farm straight in with no zone change, so the Wheel's lands' banner strips, the signposts' icons, the buildings' pictures and every monster look near you stayed for the whole visit; `rememberFarmTrip` notes the zone left and `holdFarmUntilReady` releases it as a dungeon's way in does, `releaseLeftZoneArt`) | on the farm after a trip from the Flame Fields' first monsters: GPU 81.4 -> 75.2 MB, cached 106.7 -> 92.8 (16 + 8 icons and the fire goblin's 16 sheets let go), and the four banner strips' 15 MB of decoded images, which neither reading counts; back in the world all of it loaded again behind its loading screen (`mp-farmfree`) | v2.3.3705 (docs/specs/farm-trip-free.md) |
 
 **Phase 2 -- stop paying for what nobody sees or hears.**
 
@@ -129,7 +130,7 @@ Memory spent on nothing:
 
 | Item | Saves | Status |
 |---|---|---|
-| Canvas art made purgeable (compressed images the iPhone can drop and re-decode) | up to ~70 MB | |
+| Canvas art made purgeable (compressed images the iPhone can drop and re-decode) | up to ~70 MB | the head pieces v2.3.3606; every strip gearSheets.js packs (the walking armour, belt and shirt sheets, the body sheets, the effect and townsfolk strips) v2.3.3702: canvases at the budget's fight 90.2-93.2 -> 48.1-49.7 MB, arriving in BroTown 68 -> 26 MB, the chip the same, every picture byte for byte (`mp-packedimages`; docs/specs/packed-as-images.md) |
 | Character art kept on the GPU only, re-baked after a black screen's rebuild (measured 2026-10-06: of 540 canvases, 127 are copies of a texture already uploaded -- 45.6 MB, mostly the gear sheets, the damage font's pages and the skill poses, all module caches a rebuilt renderer re-uploads FROM the canvas; the effects renderer's own big strips are not on the GPU until first drawn).  Pixel-identical by construction (the same bakes run again), but it changes the black-screen recovery path, so it is planned with the owner first.  Named by a probe (unminified main, arrival in the Wheel: 46.8 MB in 139 canvases): the walking gear sheets 18.1 MB (gearSheets packTrimmed), the combat poses' gear strips 13.9 MB (effectsRenderer _gearStrip), the damage font's pages 11 MB, the rest under 4 MB | 25 MB of page memory: the combat strips and the font (`mp-gpuonly`, 118.0 -> 93.1 MB of canvases on arrival) | #824, v2.3.3088 (the owner's yes, a slightly slower recovery after a black screen: the font is installed afresh for a rebuilt renderer, in the face the first install drew).  The walking gear sheets stay: the masked-body bakes read them back (drawGearFrame).  Found on the way: pixi 8.17's GPU collector unloads a texture marked autoGarbageCollect (the font's pages are) after 60 s undrawn and uploads it again from its canvas -- an emptied canvas draws blank -- so a picture kept on the chip only is taken out of the collection |
 | The gathering figures kept on the GPU only (the lumberjack, the cook and the fire-lighter, made the first time each can be wanted since #822, and then held twice for the rest of the visit: the canvas each strip was baked on and its copy on the GPU).  The owner's report of 2026-10-11 ("after completing all the quests up until the point where you need to visit the 3 buildings the games framerate dropped significantly") is the path that makes all three: life_1's axe and rod, its log, its fire and its cook.  The same trade as #824's: only ever drawn, and made again by a rebuilt renderer (`setStandInMaker`).  Not the lumberjack's two source crops (4.8 MB), which every re-bake reads | playing tut_1 to mayor_1's offer on a phone at 3x: 2D canvases after the gathering 102.4 -> 80.4 MB (-22 MB); the GPU +8 MB, as every strip is uploaded when made rather than when first drawn (the legless twins and the raw figure other players' lumberjacks are drawn from included), so -14 MB in all.  What the GPU draws for every strip is the same byte for byte (`mp-gpuonly`), and after a rebuild and a minute undrawn (`mp-gatherposes`, `mp-gpuonly`) | v2.3.3150 |
 | Skill figures baked for what you wear only, the other in the background | 16-19 MB | |
@@ -138,6 +139,8 @@ Memory spent on nothing:
 | The unused depth buffer off: the screen asks for its stencil (the masks) alone | ~11 MB of GPU memory on a 3x iPhone (~20 if Metal pads the packed buffer to 8 bytes a pixel); none on Chrome, which allocates a packed buffer whatever is asked.  Per WebKit's `WebGLDefaultFramebuffer` (depth + stencil: `DEPTH24_STENCIL8`, on Metal 32-bit float + 8; stencil alone: `STENCIL_INDEX8`).  DEPTH_TEST is never turned on, so not a pixel changes (`mp-nodepth`) | #814, v2.3.3072 |
 | The Wheel built in blocks round you, its objects and overview baked: the ground worker no longer builds and holds the whole map's blueprint, swatch map and walls on the way in -- the 128 x 128-cell blocks round you, the 48 nearest kept (`core/worldblocks.js`); where the objects stand and the overview read from `public/world/placed/` (step 1 of the owner's "Rebuild for 5x": five times longer, the whole map would be ~600 MB) | the ground worker over the budget's trip at most 28.7 -> 24.8 MB (heap 2.1 -> 5.3, buffers 26.6 -> 19.5); on arrival 20.6 -> 15.7 MB | v2.3.3298 (docs/specs/wheel-in-blocks.md) |
 | The Wheel five times longer, kept inside the budget: the Wheel's minimap marks only the monsters and bros in its box (it marked every live monster every frame, and its pool kept a sprite for each: 1,920 on the long Wheel); what each placed object is drawn as kept once a picture, each object holding the picture's number, and the objects' index in 16-bit numbers (`wheelObjects.js` `pk`) | on the long Wheel the page's heap ~3 MB and its buffers ~1.8 MB less; the budget's trip at most heap 30.3 / 32, buffers 22.6 / 24, no line raised | v2.3.3315 (docs/specs/wheel-5x.md) |
+| The game's script built all ASCII: the reading of the page's buffers counts its scripts' text too, and the main script's 1,589 characters past Latin-1 ("—", "·", "→", emoji) kept all 3.8 million at two bytes each (and make Safari decode a second copy); esbuild's `charset: 'ascii'` writes them as escapes, and the build escapes what it leaves (a regular expression's own characters) | buffers home again 23.5-24.0 -> 20.0-20.4 MB, arriving 21.9 -> 18.2 (Chrome; more on an iPhone); `buffers` line 24 -> 22 | v2.3.3703, docs/specs/ascii-script.md |
+| A stereo sound whose two sides are one kept as one channel: six of the stereo files carry one signal on both sides (coin-pickup, flip-lose, footstep-v2, pan-sizzle, quest-complete, fish-reel), and after each decode such a buffer is kept as the mean of its sides, which Web Audio plays out of both speakers (`soundFold.js`); read through small windows (`copyFromChannel`), never `getChannelData`, which hands the page a sound's own samples (they then count as its buffers: 24 -> 42 MB on the check's line, the first cut) | decoded sound at most 30.1 -> 27.0 MB on the budget's trip, 3.2 MB (`mp-soundfold`: 29.9 -> 26.8 in BroTown); the same sound, -66 to -89 dB apart; the `sound` line 32 -> 29 | v2.3.3706 (docs/specs/sound-fold.md) |
 
 **Phase 4 -- the owner's call** (each trades something a player might notice;
 none is done without a yes).  Asked on 2026-10-06, the owner said *"Yes do all
@@ -305,6 +308,62 @@ Chromium -- the crash feed's memory snapshot is the field's figure); the
 places its trip does not go (dungeons, the farm, the other seven lands -- the
 tour covers the lands); and a screen of a feature's own that the trip never
 opens.
+
+## In a battle, and toward a quarter (v2.3.3698)
+
+The owner, 2026-10-28: *"The game definitely crashed because it ran out of
+memory for me during intense battles (lots of weapon switching, props
+destroyed, etc.) I want to try to cut the current memory draw to a quarter of
+what it is now."*  `mp-battlemem` (docs/specs/battle-memory.md) plays that
+battle on the QA phone: the three weapons swapped by their keys, each with its
+special, at the Flame Fields' fight, every prop round it broken, round after
+round, and a ledger that counts every picture once, the page's copy and the
+chip's.
+
+**What a battle holds** (a round's end, before v2.3.3698): pictures 145.6 MB in
+the page and 95.9 MB on the chip, each counted once; beside them sound ~30 MB,
+the JavaScript heap ~34, the page's buffers ~28 and the ground's worker ~30 --
+about 365 MB in all on this ruler.  It settles after the second round (the GPU
+within a few MB, the canvases flat, the heap under 1 MB a round): a battle is
+a peak, not a leak -- everything a fight can draw, at once, most of it twice.
+
+On an iPhone the CANVASES are the hard part: a picture decoded from a file can
+be dropped by Safari under pressure and decoded again, a canvas cannot.  The
+page's canvases at the fight's peak: 101 MB.
+
+| what | page | chip | can it go? |
+|---|---|---|---|
+| broken props' pieces (24) | 8.6 | 8.6 | **done, v2.3.3698**: on the chip only, and a tighter cap (below) |
+| the sword's and bow's bodies, torsos and jog legs (21) | 11.5 | 1.3, more as each facing is drawn | **done, v2.3.3698**: only ever drawn -- each lets go of its canvas once it has been drawn (gpuOnly.js `emptyOnceDrawn`); another player's too |
+| the monsters' strips (13 at the Flame Fields) | 18.6 | 14.6 | **the page's half done, v2.3.3699**: once drawn, a strip on 256 colours or fewer is held as its colour numbers, a quarter of its canvas, the canvas emptied; the hit chips and the arrows stuck in a monster read the numbers, and a rebuilt renderer gets the canvas back from them (heldNumbers.js, docs/specs/monster-numbers.md). The chip's half -- drawing them as colour numbers too, as the Wheel's objects are (v2.3.3190) -- would need the whirlwind's fill and the death cuts' masks to read colour numbers |
+| the walking gear sheets (64) | 18.1 | 18.1 | the page's copy is what a masked body is baked from when gear changes (drawGearFrame); it could be read from the file again then, a gear change showing the old look for a moment -- the owner's call |
+| the walking body sheets (25) | 8.8 | 0.9 | the same, for the body |
+| canvas text: name plates, labels, messages (71) | 2.7 | 13.7 | drawn at 2x, not 3x: ~8 MB less, a touch softer on a 3x phone -- the owner's call |
+| the combat poses' gear strips (33) | 0 | 13.9 | on the chip only already (v2.3.3088) |
+| the ground's pieces (56) | 0 | 8.7 | on the chip only already (v2.3.3076), as colour numbers (v2.3.3190) |
+
+Outside the pictures: every sound one-shot decoded at 24 kHz as the voices and
+loops are (~10 MB, a duller top end on hits -- the owner's ear), the screen
+drawn at 2x instead of 3x (`?res=2`: ~15 MB of the chip with the stencil and
+the compositor's copy, the pixel art a little softer -- the owner's eye).
+
+**Where that leaves a quarter.**  Everything in the table that changes nothing
+you see or hear -- the props and the weapon bodies (both done) and the monsters
+as colour numbers -- is about 45 MB less at a fight.  With the owner's calls
+above as well (gear and body sheets read again, text and screen at 2x, sounds
+at 24 kHz), about 100 MB less: ~365 -> ~265 MB on this ruler, about 70%.  A
+quarter (~90 MB) is not in that list.  It would take drawing every character
+from ONE shared picture coloured on the chip as it is drawn (a shader), instead
+of a baked copy of the body, the clothes, the armour and each weapon's poses
+per look -- the character pipeline, rebuilt, every look bug fixed since
+v2.3.1700 fixed again -- and compressed textures for the art from files.
+
+**Each other player on your screen** (`mp-peermem`, the owner's question of
+whether townsfolk could walk about): about 2.5 MB each on the QA phone (three
+others in looks of their own walking round it; the first other player drawn
+can cost several MB more, as pictures every player shares are drawn for the
+first time).  A phone draws at most the 50 nearest in full (the crowd cap,
+v2.3.3241).
 
 ## How we know it worked
 

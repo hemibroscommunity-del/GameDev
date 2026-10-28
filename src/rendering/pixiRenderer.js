@@ -12,8 +12,9 @@ import { ArenaWorld } from './arenaWorld.js';   /* v2.3.3566: a dungeon's arena,
 import { ZONES } from '../data/zones.js';   /* v2.3.3566: a zone's arena pictures (arenaArt) */
 import { isWheelTrialZone } from '../game/worldTrial.js';
 import { townSkippedOnTheWay } from '../game/wheelHome.js';   /* v2.3.3037: today's town is a stop on the way to the Wheel */
-import { wheelObjectsOn } from '../game/wheelTrial.js';
-import { EntityRenderer, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
+import { wheelObjectsOn, wheelRendererSaid } from '../game/wheelTrial.js';   /* v2.3.3709: + the renderer's word, which a ground worker started before it waits for */
+import { MonsterSilhouettes, warmSilhouettes, setSilhouettes, monsterBodyBox } from './monsterSilhouette.js'; /* v2.3.3707: a monster hidden behind a thing, seen as its silhouette */
+import { EntityRenderer, monsterDisplayMap, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
 import { EffectsRenderer, prewarmDmgFontPipe, dmgFontNeedsRebuild, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
 import { landAurasReady } from './landAuras.js';   /* v2.3.3402: for the lands' specks' probe */
 import { WorldFx } from './worldFx.js';               /* v2.3.2712 */
@@ -264,7 +265,19 @@ if (typeof window !== 'undefined') {
   window.__btCamSnap = () => ({ ..._camProbe });
 }
 
+/* v2.3.3709: QA (mp-groundwait): `?pixidelay=ms` makes the renderer that much
+   later, as a slow phone's first graphics context is -- the Wheel's ground
+   worker must wait for its word (game/wheelTrial.js).  Nothing else reads it. */
+function qaPixiDelay() {
+  try {
+    const m = typeof location !== 'undefined' && /[?&]pixidelay=(\d+)/.exec(location.search || '');
+    return m ? Math.min(20000, +m[1]) : 0;
+  } catch (e) { return 0; }
+}
+
 export async function initPixiRenderer(canvas) {
+  const qaDelay = qaPixiDelay();
+  if (qaDelay) await new Promise((r) => setTimeout(r, qaDelay));
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
   _appRef = app;
   /* v2.3.3017: QA (mp-glrestore): the picture blanked to the canvas's own
@@ -315,10 +328,17 @@ export async function initPixiRenderer(canvas) {
      a pixel, coloured on the GPU -- its programs built here, behind the
      loading screen (rendering/paletteTex.js) */
   try { setPaletteRenderer(app.renderer); } catch (e) { /* colours, as before */ }
+  /* v2.3.3709: both answers the Wheel's ground worker is told as it starts
+     (moving water, above; colour numbers, here) are said: a worker the trip
+     started before this was waiting for them (game/wheelTrial.js) */
+  wheelRendererSaid();
   /* v2.3.3447: one drawing program for every sprite, built here after the
      palette's (whose own prewarm must reach the palette program); the three
      programs, as before, if it does not link (rendering/paletteTex.js) */
   try { setOneBatchRenderer(app.renderer); } catch (e) { /* the three programs */ }
+  /* v2.3.3707: the silhouettes' two stencil programs, built here behind the
+     loading screen, not the first time a monster hides (monsterSilhouette.js) */
+  try { warmSilhouettes(app.renderer); } catch (e) { /* none drawn until they build */ }
   /* v2.3.2710: shadows cast by each map's own sun, and metal that catches the
      light (rendering/lightfx).  Off unless the switch is on -- see lightFx.js. */
   const lightFx = new LightFx(layers, worldContainer, app.renderer);   /* v2.3.3458: + the renderer, for the shadows' pre-pass */
@@ -399,6 +419,44 @@ export async function initPixiRenderer(canvas) {
   let currentMap = null;
   /* v2.3.2975: the Wheel's objects, while you are in it (wheelObjects.js) */
   let wheelObjects = null;
+  /* v2.3.3707: the silhouettes of monsters hidden behind the Wheel's things
+     and its resources' trees and rocks (monsterSilhouette.js) */
+  const silhouettes = new MonsterSilhouettes();
+  let _silS = null;   /* the frame's S, for the one walker below (no closure a frame) */
+  const _silThings = (add) => {
+    if (wheelObjects) wheelObjects.forEachDrawn(add);
+    const nodes = _silS && _silS.gatherNodes;
+    if (!nodes) return;
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i], s = n && n._pixiSprite;
+      if (!s || s.destroyed || !s.visible || !s.parent || (n.nodeType !== 'tree' && n.nodeType !== 'oreVein')) continue;
+      const fr = s.texture && (s.texture.orig || s.texture.frame);
+      if (!fr) continue;
+      const w = fr.width * Math.abs(s.scale.x), h = fr.height * Math.abs(s.scale.y);
+      const x0 = s.x - s.anchor.x * w, y0 = s.y - s.anchor.y * h;
+      add(s, s, s.y + (s._groundDy || 0), x0, y0, x0 + w, y0 + h);
+    }
+  };
+  if (typeof window !== 'undefined') {
+    /* QA (mp-silhouette): what the last frame drew; each one held, the layer
+       it rides in and whether it is drawn after its thing; on or off, live;
+       and where a monster is drawn */
+    window.__btSilhouettes = () => {
+      const riding = [];
+      for (const [id, r] of silhouettes.recs) {
+        const p = r.root.parent, same = !!p && !!r.host && p === r.host.parent;
+        riding.push({ id, visible: r.root.visible, layer: p ? p.label : null, sameParent: same,
+          after: same ? p.children.indexOf(r.root) > p.children.indexOf(r.host) : null });
+      }
+      return { on: MonsterSilhouettes.on(), ...silhouettes.stats, held: silhouettes.recs.size, drawn: silhouettes.last.slice(), riding };
+    };
+    window.__btSilhouettes.set = (on) => setSilhouettes(on);
+    window.__btSilhouettes.monster = (id) => {
+      const m = monsterDisplayMap(), d = m && m.get(id);
+      if (!d || d.destroyed) return null;
+      return { x: d.x, y: d.y, gy: d.y + (d._groundDy || 0), drawn: !!d.visible && d.renderable !== false && !!d.parent, box: monsterBodyBox(d) };
+    };
+  }
   /* v2.3.3136: your farm, while you are on it (farmWorld.js) */
   let farmWorld = null;
   /* QA (mp-farmwalk): what the farm draws, read-only */
@@ -416,6 +474,7 @@ export async function initPixiRenderer(canvas) {
     tileRenderer.rebuild(app, map, zoneId);
     /* v2.3.2975: made on the way into the Wheel, destroyed -- every page let
        go -- on the way out (the ZONE-ASSET rule) */
+    try { silhouettes.clear(); } catch (e) { /* ignore */ }   /* v2.3.3707: each rides on a thing of the zone left */
     if (wheelObjects && !isWheelTrialZone(zoneId)) { try { wheelObjects.destroy(); } catch (e) { /* ignore */ } wheelObjects = null; }
     if (!wheelObjects && isWheelTrialZone(zoneId) && wheelObjectsOn()) wheelObjects = new WheelObjects(layers.entities, app.renderer);
     /* v2.3.3136: made on the way onto your farm, after the Wheel's has gone
@@ -659,6 +718,15 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.2762: after the effects, in the camera's world rect. */
     try { ambientFx.update(S, cx, cy, viewW, viewH, now, canvas); }
     catch (e) { if (!update._ambientErr) { update._ambientErr = true; console.error('[pixi-render] ambientFx threw', e && e.message, e && e.stack); } }
+    /* ═══ v2.3.3707: A MONSTER HIDDEN BEHIND A THING, SEEN AS ITS SILHOUETTE ═══
+       After everything has moved and swayed, before the depth pass, which
+       sorts each silhouette a quarter step after the thing it rides on
+       (monsterSilhouette.js). */
+    if (wheelObjects) {
+      _silS = S;
+      try { silhouettes.update(monsterDisplayMap(), null, _silThings, S.player ? S.player.x : 0, S.player ? S.player.y : 0, now); }
+      catch (e) { if (!update._silErr) { update._silErr = true; console.error('[pixi-render] silhouettes threw', e && e.message, e && e.stack); } }
+    } else if (silhouettes.recs.size) silhouettes.clear();
     const _t3 = performance.now();
     update._lastStages.effectsMs = _t3 - _t2;
     /* ═══ v2.3.2635: DEPTH, AFTER EVERYTHING HAS MOVED ═══
@@ -809,6 +877,7 @@ export async function initPixiRenderer(canvas) {
   }
 
   function destroy() {
+    try { silhouettes.destroy(); } catch (e) { /* ignore */ }   /* v2.3.3707 */
     if (wheelObjects) { try { wheelObjects.destroy(); } catch (e) { /* ignore */ } wheelObjects = null; }
     if (farmWorld) { try { farmWorld.destroy(); } catch (e) { /* ignore */ } farmWorld = null; }   /* v2.3.3136 */
     if (arenaWorld) { try { arenaWorld.destroy(); } catch (e) { /* ignore */ } arenaWorld = null; }   /* v2.3.3566 */

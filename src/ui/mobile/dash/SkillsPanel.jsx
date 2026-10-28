@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { deskWideActive } from '../../deskWide.js';   /* v2.3.3687 */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { COL, panelStyle, getState } from './common.js';
 import { skillXpRequired } from '../../../data/items.js';
@@ -171,13 +172,18 @@ export const SkillsPanel = () => {
      across, scrolling, as that column has height to spare and no width.
      `data-skill` stays on each button: the scenarios tap skills by it. */
   const sideways = panelVw() < 260;
+  /* v2.3.3687: on a computer playing wide the column is the window's height
+     (deskWide.js): three across, bigger tiles, the rows spread down it --
+     the owner, "Every menu needs to look like it fits the space" */
+  const desk = deskWideActive();
+  const tilePx = desk ? 92 : SKILL_TILE_PX;
   const tile = (sd) => {
     const sk = ls[sd.key] || { level: 0, xp: 0 };
     const lvl = sk.level || 1;   /* v2.3.3041: a skill is never level 0 */
     const need = Math.max(1, skillXpRequired(lvl));   /* v2.3.3041: the worker's price */
     const pct = Math.min(100, ((sk.xp || 0) / need) * 100);
     const acc = sd.accent || '#8B9695';
-    const iconPx = Math.min(44, Math.round(38 * (sd.iconScale || 1)));
+    const iconPx = desk ? Math.min(76, Math.round(66 * (sd.iconScale || 1))) : Math.min(44, Math.round(38 * (sd.iconScale || 1)));
     return (
       <button key={sd.key} data-skill={sd.key} className="bt-skill-app"
         aria-label={`${sd.name}, level ${lvl}`}
@@ -194,7 +200,7 @@ export const SkillsPanel = () => {
         }}>
         <span className="bt-skill-app-tile" data-skill-tile={sd.key} style={{
           position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          width: SKILL_TILE_PX, height: SKILL_TILE_PX, borderRadius: '22%', boxSizing: 'border-box',
+          width: tilePx, height: tilePx, borderRadius: '22%', boxSizing: 'border-box',
           /* the skill's accent, laid thin over the dark slate: a tint, never a
              bright fill (Lantern Slate: content colour ~10%) */
           background: `linear-gradient(160deg, ${hexA(acc, 0.42)} 0%, ${hexA(acc, 0.16)} 55%, rgba(0,0,0,0) 100%), #182227`,
@@ -244,10 +250,11 @@ export const SkillsPanel = () => {
 
   return (
     <div style={{ ...panelStyle, overflowY: 'auto', WebkitMaskImage: 'none', maskImage: 'none' }}>
-      <div data-skill-grid={sideways ? 'side' : 'home'} style={{
+      <div data-skill-grid={desk ? 'desk' : sideways ? 'side' : 'home'} style={{
         display: 'grid',
-        gridTemplateColumns: sideways ? 'repeat(3, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))',
+        gridTemplateColumns: sideways || desk ? 'repeat(3, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))',
         columnGap: 4, rowGap: 8,
+        ...(desk ? { height: '100%', alignContent: 'space-evenly', boxSizing: 'border-box' } : null),
         /* room above the first row for the level chips and the dots, which
            hang a few px outside their tiles */
         padding: '6px 2px 4px',

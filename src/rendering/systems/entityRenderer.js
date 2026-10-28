@@ -99,13 +99,15 @@ import { BLOCK_ARM_ENABLED, BLOCK_ARM_FACING, BLOCK_ARM_CUT, blockArmTexture, bl
 import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js'; /* v2.3.1757: material recolor; v2.3.2872: + owned pieces -> art */
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
+import { wornSigOf, pickEvictKey } from '../maskedEvict.js';   /* v2.3.3704: the armour you wear is the last to go */
 import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel); v2.3.3343: + under another player's boots */
 import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's footsteps and pick, heard */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
-import { jumpActive, jumpFrame, jumpPhase } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase */
+import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase; v2.3.3682: a flip, the roll's tumble */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
+import { TRAIT_LOAD_TIMEOUT_MS } from '../traits/traitImg.js';   /* v2.3.3689: a stalled head piece is asked for again */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { activePet } from '../../game/petBook.js'; /* v2.3.3120: the pet out with you is the record's */
 import { petFrames, petSideFaces, petArtHeight } from '../petSprites.js'; /* v2.3.3120: the pet sheet */
@@ -1024,10 +1026,14 @@ function _fetchTraitMeta(e, category, id, attempt, round) {
     if (attempt < 2) setTimeout(() => _fetchTraitMeta(e, category, id, attempt + 1, round), [2000, 6000][attempt]);
     else { e.metaGaveUp = true; _traitGaveUp(e); }   /* v2.3.3606 */
   };
-  fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}${bust}`)
+  /* v2.3.3689: a meta.json that never answers is a failure after 15 s, into
+     the same retries (the picture's own TRAIT_LOAD_TIMEOUT_MS rule) */
+  let ac = null, timer = 0;
+  try { ac = new AbortController(); timer = setTimeout(() => { try { ac.abort(); } catch (er) { /* gone */ } }, 15000); } catch (er) { ac = null; }
+  fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}${bust}`, ac ? { signal: ac.signal } : undefined)
     .then(r => r.ok ? r.json() : null)
-    .then(j => { if (j) { e.meta = j; return; } again(); })
-    .catch(again);
+    .then(j => { if (timer) clearTimeout(timer); if (j) { e.meta = j; return; } again(); })
+    .catch(() => { if (timer) clearTimeout(timer); again(); });
 }
 /* v2.3.1305: per-direction trait load with bounded retry.  Owner
    two-player report: "lots of layers are missing depending on the
@@ -1047,6 +1053,9 @@ function _fetchTraitMeta(e, category, id, attempt, round) {
    the old catch comment said "expected for directions that don't
    exist yet"). */
 const _TRAIT_RETRY_MS = [2000, 6000];
+/* v2.3.3689: TRAIT_LOAD_TIMEOUT_MS (traitImg.js): the longest a head piece's
+   picture may take before it is asked for again (loadCroppedStrip's
+   timeoutMs), shared with the colour catalogs' own copies */
 function _loadTraitDir(e, category, id, dir, attempt, round = 0) {
   /* v2.3.3606: `round`, a later round's number (_ensureTraitLoaded), in the
      bust too */
@@ -1065,9 +1074,15 @@ function _loadTraitDir(e, category, id, dir, attempt, round = 0) {
   /* ...and it RETURNS the load (retries chained in), so preloadTraits can hold
      the loading screen on exactly this -- it used to Assets.load every trait
      URL itself, which now would park the whole frames in the Assets cache. */
-  return loadCroppedStrip(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}${bust}`, 1)
+  /* v2.3.3689: and a picture that neither comes nor fails in
+     TRAIT_LOAD_TIMEOUT_MS is a failure, into the same retries -- one that never
+     settled left its facing bald for the page (TRAPS §257).  `inflight` says
+     since when each facing has been asked for (__btTraitCache). */
+  (e.inflight || (e.inflight = Object.create(null)))[dir] = Date.now();
+  return loadCroppedStrip(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}${bust}`, 1, { timeoutMs: TRAIT_LOAD_TIMEOUT_MS })
     .then(frames => {
       const t = frames[0];
+      if (e.inflight) delete e.inflight[dir];
       e.tex[dir] = t;
       if (t && t.source) {
         /* match body's linear scaleMode + mipmaps so Lanczos
@@ -1080,6 +1095,7 @@ function _loadTraitDir(e, category, id, dir, attempt, round = 0) {
       }
     })
     .catch(() => {
+      if (e.inflight) delete e.inflight[dir];
       /* v2.3.1306: meta.anchors is the authoritative list of directions
          a trait SHIPS (e.g. facialhair/beard has no north.png and no
          north anchor — by design, verified on disk; v2.3.1530 added
@@ -1115,6 +1131,98 @@ function _ensureEyewearLoaded(id) { return _ensureTraitLoaded('eyewear', id); } 
 function _ensureEyeStyleLoaded(id) { return _ensureTraitLoaded('eyestyle', id); }   /* v2.3.2643 */
 function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
 
+/* ═══ v2.3.3689: THE HEAD-PIECE WATCH ═══
+   The owner, on a computer: "I logged in as another character and traits were
+   missing when jogging in certain directions", then "Nevermind there's still
+   issues with the disappearing traits I still see it."  The test machine shows
+   none of it (mp-traitswitch: a picked character's every piece in every facing
+   from the first frame), and the owner's own sessions are where it happens, so
+   the game now watches its own bro: a head piece you wear, hidden in a facing
+   its picture ships for HEAD_WATCH_MS while you stand or move in it, is
+     - asked for again at once when its picture is the missing part (not after
+       the later round's 5-60 s: _traitKick), and
+     - written to the crash log once a page, with why (_placeTrait's
+       `_btHide`: 'tex' its picture, 'meta' its placement, 'top'/'body' the
+       body's placement data, 'frame' a bad meta) and what its loader holds --
+       so the next report says what it was.
+   A facing the piece does not ship ('design': a beard from behind) and a roll
+   are not watched.  `window.__btTraitCache()` is the same, on demand. */
+const HEAD_WATCH_MS = 2500;
+const _headWatch = { since: Object.create(null), told: new Set(), kicks: 0, hidden: [] };
+function _traitState(e, dir) {
+  if (!e) return 'none';
+  const now = Date.now();
+  const f = e.inflight && e.inflight[dir];
+  return [e.tex && e.tex[dir] ? 'tex' : 'no-tex', f ? `asked ${Math.round((now - f) / 1000)}s` : '',
+    e.gaveUp && e.gaveUp[dir] ? 'gave-up' : '', e.retryAt ? `retry in ${Math.max(0, Math.round((e.retryAt - now) / 1000))}s` : '',
+    e.retries ? `round ${e.retries}` : '', e.meta ? '' : (e.metaGaveUp ? 'meta gave up' : 'no meta')].filter(Boolean).join(', ');
+}
+/* ask for a facing's picture again now: unless it is already being asked for
+   (and not past its time), a fresh round, past any cache */
+function _traitKick(e, category, id, dir) {
+  if (!e || (e.tex && e.tex[dir])) return false;
+  const now = Date.now();
+  const f = e.inflight && e.inflight[dir];
+  if (f && now - f < TRAIT_LOAD_TIMEOUT_MS) return false;
+  e.retries = (e.retries || 0) + 1;
+  if (e.gaveUp) delete e.gaveUp[dir];
+  _loadTraitDir(e, category, id, dir, 0, e.retries);
+  if (!e.meta && e.metaGaveUp) { e.metaGaveUp = false; _fetchTraitMeta(e, category, id, 0, e.retries); }
+  _headWatch.kicks++;
+  return true;
+}
+function _watchOwnHead(display, pose, dir, mirror) {
+  if (!display) return;
+  const now = Date.now();
+  const face = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;   /* the facing on screen, for the log */
+  const worn = [
+    ['headwear', getHeadwear(), display._headwearSprite],
+    ['hair', getHair(), display._hairSprite],
+    ['facialhair', getFacialHair(), display._facialHairSprite],
+    ['eyewear', getEyewear(), display._eyewearSprite],
+    ['eyestyle', getEyeStyle(), display._eyeStyleSprite],
+  ];
+  for (const [cat, id, sp] of worn) {
+    const why = (!id || id === 'none' || !sp || sp.visible) ? null : sp._btHide;
+    if (!why || why === 'design' || why === 'dodge') { delete _headWatch.since[cat]; continue; }
+    const key = `${cat}/${id}/${face} ${why}`;
+    const w = _headWatch.since[cat];
+    if (!w || w.key !== key) { _headWatch.since[cat] = { key, t: now, first: now }; continue; }
+    if (now - w.t < HEAD_WATCH_MS) continue;
+    w.t = now;   /* acts at most every HEAD_WATCH_MS */
+    const e = _traitCache[cat + '/' + id];
+    let kicked = false;
+    if (why === 'tex') kicked = _traitKick(e, cat, id, dir);
+    else if (why === 'meta' && e && !e.meta && e.metaGaveUp) {
+      e.metaGaveUp = false; e.retries = (e.retries || 0) + 1;
+      _fetchTraitMeta(e, cat, id, 0, e.retries);
+      kicked = true; _headWatch.kicks++;
+    }
+    if (!_headWatch.told.has(key)) {
+      _headWatch.told.add(key);
+      const line = `${key} ${pose} ${Math.round((now - w.first) / 1000)}s [${_traitState(e, dir)}]${kicked ? ' asked again' : ''}`;
+      _headWatch.hidden.push(line);
+      if (_headWatch.hidden.length > 20) _headWatch.hidden.shift();
+      try { recordCrash('trait-hidden', line); } catch (er) { /* telemetry */ }
+    }
+  }
+}
+/* QA and a player's console: each worn piece's loader, and what the watch saw */
+if (typeof window !== 'undefined') {
+  window.__btTraitCache = function () {
+    const out = { watch: { kicks: _headWatch.kicks, hidden: _headWatch.hidden.slice() }, body: { anchors: !!_bodyAnchors, tops: !!_bodyTops, rounds: _bodyDataRounds }, worn: {} };
+    const worn = { headwear: getHeadwear(), hair: getHair(), facialhair: getFacialHair(), eyewear: getEyewear(), eyestyle: getEyeStyle() };
+    for (const [cat, id] of Object.entries(worn)) {
+      if (!id || id === 'none') continue;
+      const e = _traitCache[cat + '/' + id];
+      const dirs = {};
+      for (const d of ['east', 'northeast', 'north', 'south', 'southwest']) dirs[d] = _traitState(e, d);
+      out.worn[cat] = { id, meta: !!(e && e.meta), ships: e && e.meta && e.meta.anchors ? Object.keys(e.meta.anchors) : null, dirs };
+    }
+    return out;
+  };
+}
+
 /* Body anchor schemas, loaded once and shared by every player + hat.
    body-tops.json: per-(pose,dir,frame) topmost opaque pixel [x,y] of the
    body sprite -- the head pin point for trait stickers (derived raw by
@@ -1122,6 +1230,7 @@ function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
 let _bodyAnchors = null;
 let _bodyTops = null;
 let _bodyDataPromise = null;
+let _bodyDataRounds = 0;   /* v2.3.3689: rounds asked (the later ones busted) */
 function _ensureBodyData() {
   if (_bodyDataPromise) return _bodyDataPromise;
   /* v2.3.1382: bounded retry (v2.3.1305 pattern) — these anchors place every
@@ -1145,10 +1254,23 @@ function _ensureBodyData() {
             .then(() => _fetchJson(url, apply, attempt + 1));
         }
       });
-  _bodyDataPromise = Promise.allSettled([
-    _fetchJson(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`, (j) => { _bodyAnchors = j; }),
-    _fetchJson(`/sprites/player/body-tops.json?v=${TRAIT_VER}`, (j) => { _bodyTops = j; }),
-  ]);
+  /* v2.3.3689: and not the end of it.  The promise was kept for the page, so
+     three failed tries hid every head piece in every facing until a reload;
+     now a round that leaves either missing lets the next ask, 20 s on, start
+     another (`&g=`, past any cache), as a head piece's own later rounds do
+     (v2.3.3606) */
+  const round = _bodyDataRounds++;
+  const g = round > 0 ? `&g=${round}` : '';
+  const p = _bodyDataPromise = Promise.allSettled([
+    _bodyAnchors ? null : _fetchJson(`/sprites/player/body-anchors.json?v=${TRAIT_VER}${g}`, (j) => { _bodyAnchors = j; }),
+    _bodyTops ? null : _fetchJson(`/sprites/player/body-tops.json?v=${TRAIT_VER}${g}`, (j) => { _bodyTops = j; }),
+  ]).then((r) => {
+    if (!_bodyAnchors || !_bodyTops) {
+      try { recordCrash('sheet', `body data missing after round ${round} (anchors ${!!_bodyAnchors}, tops ${!!_bodyTops})`); } catch (e) { /* telemetry */ }
+      setTimeout(() => { if (_bodyDataPromise === p) _bodyDataPromise = null; }, 20000);
+    }
+    return r;
+  });
   return _bodyDataPromise;
 }
 
@@ -1636,7 +1758,7 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      pose would place hats on feet.  Re-enabling traits needs a real per-frame
      head anchor (the head IS separable — it is the bare skin blob left in the
      armoured art, which is how the seal below finds it), not a bodyTop. */
-  if (pose === 'dodge') { sprite.visible = false; return; }
+  if (pose === 'dodge') { sprite.visible = false; sprite._btHide = 'dodge'; return; }
   _ensureBodyData();
   /* v2.3.1305: fallbackTex = the NATIVE-color textures behind a recolored
      set.  The color catalogs cache a build as complete even when one
@@ -1652,8 +1774,14 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
   if (!(headwearTex && meta && meta.fullFrame && spriteBody && bodyTop && anchorPx)) {
     sprite.visible = false;
+    /* v2.3.3689: WHY, for the head-piece watch (_watchOwnHead) and the probe:
+       'design' is a facing the piece does not ship (a beard from behind) */
+    sprite._btHide = !entry ? 'entry' : !meta ? 'meta'
+      : !anchorPx ? ((meta.anchors && !meta.anchors[dir]) ? 'design' : 'anchor')
+      : !headwearTex ? 'tex' : !meta.fullFrame ? 'frame' : !spriteBody ? 'body' : 'top';
     return;
   }
+  sprite._btHide = null;
   const headwear = sprite;
   /* screenDir lets meta override a mirrored side independently (e.g.
      crownNudge.west tweaks only the west view, not east).  Falls back
@@ -2761,6 +2889,12 @@ function _placeSouthBlockLegs(display, sb, o) {
    and cached per (body-frame, loadout) -- cheap, recomputed only on a cache
    miss.  Falls back to the raw body texture if pixel access fails. */
 const _maskedBodyCache = new Map();
+/* v2.3.3704: the most frames it holds (v2.3.2872's 900); the armour you WEAR
+   is the last to go when it is full (maskedEvict.js, the why) */
+const MASKED_CAP = 900;
+const _localWornSig = () => wornSigOf(getEquip('chest'), getEquip('legs'));
+const _maskedEvictKey = () => pickEvictKey(_maskedBodyCache.keys(), _localWornSig());
+let _spareSkipped = 0;   /* spare-set frames not baked for want of room (QA: __btLocalMisses) */
 /* ═══ v2.3.2871: THE BAKE, FASTER AND BYTE-FOR-BYTE THE SAME ═══
    Owner: "whenever I put on a piece of armor like legs or torso the game
    would noticeably stutter".  Measured (4x CPU throttle, equip then run): 99
@@ -3215,7 +3349,11 @@ if (typeof window !== 'undefined') {
   window.__btLocalMisses = () => {
     const uids = Object.create(null);
     for (const k of _maskedBodyCache.keys()) { const u = String(k).split('|')[0]; uids[u] = (uids[u] || 0) + 1; }
-    return { misses: _localMisses.slice(), cachedUids: uids };
+    /* v2.3.3704: + the worn set's frames held, and the spare bakes skipped */
+    const sig = _localWornSig();
+    let worn = 0;
+    for (const k of _maskedBodyCache.keys()) { const t = String(k); if (t.slice(t.indexOf('|') + 1, t.lastIndexOf('|')) === sig) worn++; }
+    return { misses: _localMisses.slice(), cachedUids: uids, size: _maskedBodyCache.size, cap: MASKED_CAP, worn, spareSkipped: _spareSkipped };
   };
   /* v2.3.3577: QA (mp-armourflash) -- of every frame your bro can be drawn
      in under what you wear (each prewarmed pose, all EIGHT facings, the three
@@ -3448,8 +3586,23 @@ function _storeBake(key, dc, _beltPending, _bt0, _bs, cell) {
      prebake needs the room: the worn set plus up to two sets one equip away
      is up to ~660 frames, and a cap below that would evict the start of its
      own work -- the v2.3.704 lesson again. */
-  while (_maskedBodyCache.size > 900) {
-    const k0 = _maskedBodyCache.keys().next().value;
+  /* v2.3.3704: and the room runs out again: v2.3.2873 added a third set one
+     equip away (a new piece for each slot) and v2.3.3577 the flipped facings
+     to every set (their own pictures under a pattern or a drawing), so such a
+     player owning pieces of two metals asks for more than 900 -- the bake
+     went on into play, every insert evicting the least
+     recently DRAWN frame, and the frames of the armour you WEAR in a facing
+     you had not faced lately (north-east, north-west, a stand) went first.
+     Jogging that way then drew the plain body under the plate, a frame here
+     and a frame there, while each was baked again: mp-wornbake (checked
+     trousers, the kit's pieces) read 177 of 177 of the worn set baked, then
+     137 once the cache filled, and 20 of 26 looks jogging north-east and
+     north-west the plain body.  So what is
+     let go of is the least recently drawn frame of any OTHER armour
+     (_maskedEvictKey), and the sets one equip away are baked only into room
+     the cache has (prewarmAltWornSets). */
+  while (_maskedBodyCache.size > MASKED_CAP) {
+    const k0 = _maskedEvictKey();
     const old = _maskedBodyCache.get(k0); _maskedBodyCache.delete(k0);
     /* v2.3.780: destroy DEFERRED, not immediate.  destroy(true) nuked the
        TextureSource the moment an entry was evicted -- and a REMOTE
@@ -3940,8 +4093,11 @@ export async function prewarmAltWornSets(opts) {
   const DIRS = _dirsFacingFirst();   /* v2.3.2904: the way you face first */
   let sinceYield = 0;
   const pending = [];   /* v2.3.2904: `fast` keeps the worker fed, as prewarmMaskedBodyFrames does */
+  const wornSig = _localWornSig();   /* v2.3.3704 */
   for (const set of SETS) {
     const sT = null, sK = 'none';   /* v2.3.756: shirtless always */
+    /* v2.3.3704: a set one equip away, not the one you wear */
+    const spare = set.worn.map((w) => w[0] + ':' + w[1]).join(',') !== wornSig;
     for (const pose of PREWARM_POSES) {
       for (const dir of prewarmDirs(pose, DIRS)) {
         const fc = playerFrameCount(pose, dir) || 1;
@@ -3965,6 +4121,12 @@ export async function prewarmAltWornSets(opts) {
           /* v2.3.1399: skip the full-steel family's figure-covered jog
              bakes here too (see _fullsetCoversBake). */
           if (_fullsetCoversBake(worn, pose, dir)) continue;
+          /* v2.3.3704: ONLY INTO ROOM THE CACHE HAS.  Baked into a full
+             cache, a spare set's frame pushed out another -- one of the worn
+             set's, before _maskedEvictKey, and now another spare's, a bake
+             thrown away for a bake.  A spare frame not baked is baked when
+             that piece goes on, as before v2.3.2873. */
+          if (spare && _maskedBodyCache.size >= MASKED_CAP && !_maskedBodyCache.has(_maskedKey(tex, worn, 6))) { _spareSkipped++; continue; }
           /* ═══ v2.3.2904: THE PACES WERE SET FOR A BAKE ON THIS THREAD ═══
              The trickle's gaps (v2.3.699: two bakes per idle slice, 90 ms
              apart; v2.3.2873's `soon`: one per two frames) were measured
@@ -4925,6 +5087,10 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
    sprite the monster is drawn with.  Read-only: nothing outside this file
    may move or restyle it. */
 let _monsterDisplaysRef = null;
+/** v2.3.3707: every monster's display, for the silhouettes of the ones hidden
+ *  behind a thing (monsterSilhouette.js) -- read only */
+export function monsterDisplayMap() { return _monsterDisplaysRef; }
+
 export function monsterBodySprite(mid) {
   const d = _monsterDisplaysRef && _monsterDisplaysRef.get(mid);
   const sb = d && d._spriteBody;
@@ -5270,6 +5436,16 @@ function _ensureTraitTextures() {
    evict itself); their base art is covered here. */
 export function preloadTraits() {
   const urls = [];
+  /* v2.3.3689: YOUR pieces first.  The loop below asks for every piece in
+     every catalog at once (~280 pictures), in catalog order, so on a slow
+     connection your own hat could be among the last in -- and the loading
+     screen lifts at its 20 s cap whatever has come.  Asked for first, they
+     are at the head of the queue. */
+  try {
+    for (const [cat, id] of [['headwear', getHeadwear()], ['hair', getHair()], ['facialhair', getFacialHair()], ['eyewear', getEyewear()], ['eyestyle', getEyeStyle()]]) {
+      if (id && id !== 'none') _ensureTraitLoaded(cat, id);
+    }
+  } catch (e) { /* the loop below asks for them anyway */ }
   const cats = [
     ['headwear', HEADWEAR_CATALOG],
     ['hair', HAIR_CATALOG],
@@ -6012,6 +6188,26 @@ export function standShadeSpan(feetY, zoneScale, sy) {
   const rows = bodyRows('stand', 'south');
   const s = bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT * (zoneScale || 1) * (sy || 1);
   return [feetY - rows.feet * s, feetY + (BODY_CELL_MID * 2 - rows.feet) * s];
+}
+/* ═══ v2.3.3697: ...FITTED TO A FIGURE THAT IS NOT STANDING ═══
+   The owner, 2026-10-28: "As part of the farming animations I think either the
+   watering, planting, or fertilizing the armor styles didn't match (different
+   shades of gray for iron armor) possibly wrong shades for copper armor too".
+   The span above is laid at the world's heights, so a farmer KNEELING (plant,
+   compost, harvest) had his plate where a standing figure's thighs are and
+   took their cooler, darker shade: bluer than the walking plate (mp-farmiron:
+   the plate's saturation 0.15-0.18 against the walker's 0.13).  This is the
+   same frame stretched so that a figure's own crown and boots land where the
+   standing figure's do in it: for a figure of the standing height exactly
+   standShadeSpan, and for a kneeling one each piece the shade that piece has
+   on the walking figure. */
+export function fittedShadeSpan(crownY, feetY) {
+  const rows = bodyRows('stand', 'south');
+  const H = BODY_CELL_MID * 2;
+  const tC = rows.crown / H, tF = rows.feet / H;
+  const h = (feetY - crownY) / Math.max(1e-6, tF - tC);
+  const top = crownY - tC * h;
+  return [top, top + h];
 }
 export function nominalStandFigure(dir) {
   const d = dir || 'south';
@@ -11878,10 +12074,12 @@ export class EntityRenderer {
          rolling past reads as a roll and not a slide.  The broadcast carries
          no duration (the roller's window is elastic), so this plays at the
          cycleMs default. */
-      const _rDodge = other._dodgeRoll || null;
       /* v2.3.3017: their jump (the `player_jump` relay, game events), drawn as
          yours is: the leaping frame of the jog, held, lifted by jumpFx.js */
       const _rJump = other._jump && jumpActive(other._jump, now) ? other._jump : null;
+      /* v2.3.3682: ...and their flip, the roll's somersault, as yours is */
+      const _rFlip = _rJump && _rJump.flip ? { angle: _rJump.ang || 0, startTime: _rJump.t0, durMs: _rJump.dur, kind: 'flip' } : null;
+      const _rDodge = other._dodgeRoll || _rFlip || null;
       const pose = _rexBodyPose
         ? _rexBodyPose
         : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'))));
@@ -12003,7 +12201,11 @@ export class EntityRenderer {
              (player_dodge `dur`), exactly as the local branch plays across
              durMs; the cycleMs default only for an older client. */
           const fc = playerFrameCount('dodge', dir) || 9;
-          if (_rDodge.kind === 'sworddash') {
+          if (_rDodge.kind === 'flip') {
+            /* v2.3.3682: their flip, by its phase (game/jump.js FLIP_FRAMES) */
+            frameIdx = flipFrame(fc, (now - _rDodge.startTime) / (_rDodge.durMs || 1));
+            display._flipFrameIdx = frameIdx;   /* QA (__btJumpFx().peerFlips) */
+          } else if (_rDodge.kind === 'sworddash') {
             /* v2.3.2916: a SWORD DASH loops the tumble, as yours does (the
                _dashRoll branch in _updatePlayer, v2.3.2463): anchored to the
                dash's start, the authored per-frame dwell, and never the last
@@ -13404,7 +13606,16 @@ export class EntityRenderer {
        asked for the sword's move; `kind` is on the record precisely so the
        two can differ. */
     const _dashRoll = (S._bashDash && S._bashDash.kind === 'sworddash') ? S._bashDash : null;
-    const _rollSrc = S._dodgeRoll || _dashRoll;
+    /* ═══ v2.3.3682: THE DOUBLE JUMP'S FLIP IS THE ROLL'S SOMERSAULT ═══
+       The owner: "See if you can use the roll or part of the roll for the
+       double jump effect".  A flip (game/jump.js startFlip) borrows the
+       roll's pose, sheet and facing here, as the sword's dash does -- the
+       look only: S._dodgeRoll is never written, so no i-frames -- and plays
+       the tumble's frames by the flip's phase (FLIP_FRAMES), lifted by
+       jumpFx as any jump is. */
+    const _flipJ = (S._jump && S._jump.flip && jumpActive(S._jump, now)) ? S._jump : null;
+    const _flipRoll = _flipJ ? { angle: _flipJ.ang || 0, startTime: _flipJ.t0, durMs: _flipJ.dur, kind: 'flip' } : null;
+    const _rollSrc = S._dodgeRoll || _dashRoll || _flipRoll;
     const dodging = !!_rollSrc;
     let facing;
     /* ═══ v2.3.1837: A TURN IS A FACING, NOT JUST A POSE ═══
@@ -13786,7 +13997,11 @@ export class EntityRenderer {
            actually used; DODGE_DURATION_MS covers the first frame before
            it has been published. */
         const fc = playerFrameCount('dodge', dir) || 9;
-        if (_dashRoll && !S._dodgeRoll) {
+        if (_flipRoll && !S._dodgeRoll && !_dashRoll) {
+          /* v2.3.3682: the flip -- the tumble's frames by its phase */
+          frameIdx = flipFrame(fc, jumpPhase(_flipJ, now));
+          display._jumpFrameIdx = frameIdx;   /* QA (__btJumpFx) */
+        } else if (_dashRoll && !S._dodgeRoll) {
           /* ═══ v2.3.2463: A DASH LOOPS WHERE A DODGE CLAMPS ═══
              The clamp above is right for a dodge: one tumble, one window, and
              freezing the last frame is how a roll settles.  A dash has no
@@ -14103,6 +14318,7 @@ export class EntityRenderer {
         _placeEyewear(display, getEyewear(), getEyewearColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2361; v2.3.2424 + colour */
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
+        _watchOwnHead(display, pose, dir, mirror);   /* v2.3.3689: a piece hidden where it ships, asked for again and logged */
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */

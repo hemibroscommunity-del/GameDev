@@ -12,6 +12,40 @@ This replaces v2.3.3616's columns (docs/specs/drop-columns.md: a picture, the
 amount under it and the rarity's word under that), which replaced the dice
 roll over the monster.
 
+## v2.3.3692: the picture first, then the name, then "x5"
+
+The owner, 2026-10-28:
+
+> It might also be good to include the icon image next to the name of the
+> dropped items when's monsters die (floating popup) I also think the (x5) or
+> whatever number format with the "x" quantity preceding the number looks
+> better. So maybe the icon first then the name then the quantity in the
+> message popup
+
+    [coin]  Coins x5
+    [goo]   Slime Remains x1
+
+- The amount reads "x5", after the name (`dropLineText`); a single drop
+  "x1".
+- Each line is a row centred on the spot: the drop's picture (1.15 of the
+  font's size, square), a small gap, then the words. The picture is the
+  codex's own for that drop (data/codexDrops.js `icon`): the coin, each
+  monster's remains, the land's shard, the gem, the iron pieces, the nugget,
+  at the addresses the bag and the codex load them from.
+- The pictures come from the dropped items' cache (rendering/dropIcons.js:
+  shrunk once to 128 px, held while a line shows it, let go after, at most 24
+  kept that nobody holds). Not preloaded on the loading screen, on purpose:
+  the drops a kill can show are dozens of small pictures across the lands,
+  and holding them all for a visit is memory spent on pictures most kills
+  never show (the owner's memory goal). The words never wait for one: the
+  line shows at once, the picture is usually in the browser's cache already
+  (the bag and the codex show it), and until it is decoded its room is kept,
+  so the words never move when it appears. A drop with no picture (a remains
+  with no art yet) is its words alone.
+- Tests: the `drop-lines` suite (the "x" form, each line's picture, the row's
+  layout and the cache's hold and release), `mp-droplines` (each line's
+  picture shown before its words on a real kill, as tall as the words).
+
 ## What a player sees
 
 A kill whose pile is yours to pick up shows one line for each thing it

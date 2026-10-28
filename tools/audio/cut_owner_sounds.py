@@ -237,13 +237,27 @@ ONE_SHOTS += [
     # (502553__kneeling__goblin-fall): a body going down and over, -22 dB at
     # 0.12 s, its loudest 0.2-0.5 s, down 30 dB by 0.9 s; 65% of it under 100 Hz,
     # so its own overtones laid over it, as the fire's are (a phone hears those)
-    ('roll-tumble', NEW_SRC + '502553__kneeling__goblin-fall.mp3', 0.10, 0.80, 0.004, 0.25, 'low', 0.55, 'player'),
+    # v2.3.3686: it is the JUMP'S LANDING, not the roll -- the owner: "goblin fall
+    # is just the label of the file I want to use for when the character's jump
+    # lands".  The same window, renamed roll-tumble -> jump-land.
+    ('jump-land', NEW_SRC + '502553__kneeling__goblin-fall.mp3', 0.10, 0.80, 0.004, 0.25, 'low', 0.55, 'player'),
+    # v2.3.3682: the double jump's flip -- "I just uploaded the second jump
+    # (flip) sound effect" (563530__catthulu__sfx-jump-flip): a whoosh, -26 dB
+    # at its loudest 0.15 s in, a quiet airy tail to its end (0.56 s); 2% of it
+    # under 100 Hz, so nothing laid over it
+    ('jump-flip', NEW_SRC + '563530__catthulu__sfx-jump-flip.wav', 0.10, 0.45, 0.004, 0.15, 'low', 0.5, 'player'),
+    # v2.3.3708: the jump -- the owner: "File with 'hup' is the jump" (uploaded
+    # 2026-10-28, 613568__mrdeadh__hup): one short "hup!", its onset at 0.03 s,
+    # loudest 0.05-0.07 s (-20 dB), under -43 dB by 0.13 and room noise by
+    # 0.21 (the file decodes to 0.22 s); a voice, 55% of it under 400 Hz but
+    # none under 100, nothing above 12 kHz, so 24 kHz and nothing laid over it
+    ('jump-hup', NEW_SRC + '613568__mrdeadh__hup.mp3', 0.025, 0.19, 0.004, 0.08, 'low', 0.45, 'player'),
 ]
 PROCESS.update({
     'bag-close': {'hp': 150},
     'fire-light': {'harm': 0.6},
     'farm-water': {'hp': 150},
-    'roll-tumble': {'harm': 0.5},
+    'jump-land': {'harm': 0.5},
 })
 # name, source, [(start, length)], fade in, fade out, rate, level, group, process
 PART_SETS = [

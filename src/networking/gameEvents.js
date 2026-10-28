@@ -2396,12 +2396,10 @@ export function processGameEvent(type, payload, S, deps) {
                 try {
                   var _dgO = S.others[payload.id];
                   var _dgk = peerShare(S, typeof _dgO.renderX === 'number' ? _dgO.renderX : _dgO.x, typeof _dgO.renderY === 'number' ? _dgO.renderY : _dgO.y);
-                  /* v2.3.3680: a roll (a dodge or a retreat shot) is the owner's own
-                     roll; a dash or lunge keeps the rush, quicker */
-                  if (_dgk > 0) {
-                    if (payload.kind === 'dodge' || payload.kind === 'retreat_shot') cue('rollTumble', _dgk);
-                    else cue('dodgeRoll', _dgk, 1.2);
-                  }
+                  /* v2.3.3686: a roll (a dodge or a retreat shot) the rush; a dash
+                     or lunge the rush, quicker (v2.3.3680's "goblin fall" is the
+                     jump's landing now) */
+                  if (_dgk > 0) cue('dodgeRoll', _dgk, payload.kind === 'dodge' || payload.kind === 'retreat_shot' ? 1 : 1.2);
                 } catch (e) { /* sound only */ }
               }
               break;
@@ -2425,7 +2423,8 @@ export function processGameEvent(type, payload, S, deps) {
                   var _jpO = S.others[payload.id];
                   var _jpPos = function () { return [typeof _jpO.renderX === 'number' ? _jpO.renderX : _jpO.x, typeof _jpO.renderY === 'number' ? _jpO.renderY : _jpO.y]; };
                   var _jpA = _jpPos();
-                  cuePeer(S, 'jumpUp', _jpA[0], _jpA[1]);
+                  /* v2.3.3682: their flip is the owner's flip sound */
+                  cuePeer(S, payload.flip ? 'jumpFlip' : 'jumpUp', _jpA[0], _jpA[1]);
                   var _jpMs = Math.max(150, Math.min(2000, (_jpO._jump && _jpO._jump.dur) || Number(payload.dur) || 560));
                   setTimeout(function () { try { var _jpB = _jpPos(); cuePeer(S, 'jumpLand', _jpB[0], _jpB[1]); } catch (e) { /* sound only */ } }, _jpMs);
                 } catch (e) { /* sound only */ }

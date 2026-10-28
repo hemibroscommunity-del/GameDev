@@ -111,7 +111,7 @@ export function ExchangePanel(props) {
       paddingRight: 24
     }
   }, /*#__PURE__*/React.createElement("img", {
-    src: "/icons/ui/bldg-exchange.webp",
+    src: "/icons/ui/panel-shop.webp",   /* v2.3.3688: the market stall, the store's picture everywhere (was the scales: the owner, "When I see scales I think of law instead of a store") */
     alt: "",
     draggable: false,
     style: {

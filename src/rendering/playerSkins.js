@@ -1449,12 +1449,14 @@ function _standInBake(img, skinT, targetH, opts, apart) {
   /* v2.3.3146: and your trousers and boots (_standInClothes) */
   const pantsT = o.pantsT || null, shoesT = o.shoesT || null;
   const clothesFW = o.frameW || (o.regions && o.regions.fw) || 0;
-  if (!skinT && !ink && !pantsT && !shoesT) return { cv, ink: null };
+  /* v2.3.3684: `legless` (the fire-lighter under greaves, _standInLegless)
+     takes his legs out whatever the colours, so it always bakes */
+  if (!skinT && !ink && !pantsT && !shoesT && !o.legless) return { cv, ink: null };
   const w = cv.width, h = cv.height;
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
   /* v2.3.3146: found on the art as painted, before the skin is retinted */
-  const clothes = (pantsT || shoesT) && clothesFW ? _standInClothes(d, w, h, clothesFW, !!o.pantsWide) : null;
+  const clothes = (pantsT || shoesT || o.legless) && clothesFW ? _standInClothes(d, w, h, clothesFW, !!o.pantsWide) : null;
   /* pass 1: classify, with the SAME test the body pipeline uses (plus the
      caller's optional ratio window) */
   const skin = new Uint8Array(w * h);
@@ -1502,6 +1504,15 @@ function _standInBake(img, skinT, targetH, opts, apart) {
       inBox.push(!!box && bl >= box[0] && br <= box[1] && bt >= box[2] && bb <= box[3]);
     }
   }
+  /* v2.3.3684: which pieces of skin are the figure's (pass 3's own rule), for
+     the glow's trousers and the legless bake below */
+  const keptId = (clothes && (o.glowLegs || o.legless)) ? new Uint8Array(size.length) : null;
+  if (keptId) {
+    for (let id = 1; id < size.length; id++) {
+      if (size[id] >= minBlob || (leftX && leftX[id] < keepX) || (inBox && inBox[id])) keptId[id] = 1;
+    }
+    if (o.glowLegs) _standInGlowLegs(d, w, h, clothesFW, clothes.legs, label, keptId);
+  }
   /* pass 3: retint the CHARACTER's skin; leave the small islands (props) */
   const body = ink ? new Uint8Array(w * h) : null;   /* v2.3.2855: the same pixels, for the stamp */
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
@@ -1535,6 +1546,11 @@ function _standInBake(img, skinT, targetH, opts, apart) {
      it lands on, exactly as the body's stamp is) and confined to the pixels the
      retint just called the character's skin. */
   if (ink && !apart) _stampStandInInk(d, w, h, body, ink, o.regions);
+  /* v2.3.3684: under greaves, his own legs go (_standInLegless) */
+  if (clothes && o.legless) {
+    const n = _standInLegless(d, w, h, clothes.legs, clothes.boots, label, keptId);
+    try { cv.__btLegless = n; } catch (e) { /* a frozen canvas: no probe, no harm */ }
+  }
   ctx.putImageData(imgData, 0, 0);
   if (!ink || !apart) return { cv, ink: null };
   /* v2.3.2856: apart -- stamp a copy of the finished figure, then keep only the
@@ -1556,6 +1572,157 @@ function _standInBake(img, skinT, targetH, opts, apart) {
   if (!changed) { ic.width = 0; ic.height = 0; return { cv, ink: null }; }
   ictx.putImageData(inkData, 0, 0);
   return { cv, ink: ic };
+}
+
+/* ═══ v2.3.3684: THE FIRE-LIGHTER'S LEGS: THE FIRE'S GLOW, AND NONE UNDER GREAVES ═══
+   The owner, 2026-10-27: "also remove pants (olive green) those should not be
+   showing frame 6 is particularly bad - armor legs need to shift leftward".
+   Two faults of the fire-lighter's strip, each an option of the bake above
+   (_bakeFireSplit passes them; no other figure does):
+   - `glowLegs`: frames 6 and 7 are painted lit by the fire (its flame is the
+     game's own since v2.3.3666, the glow on him stayed), and the trousers on
+     the lit side are orange-olive.  Neither test takes them -- not the
+     trousers' (too warm, even `pantsWide`'s), not the skin's (a piece too
+     small to be his) -- so they kept the art's colours in any trousers: the
+     olive patch at his hip on frame 6 (1,133 art px) and down his left leg on
+     frame 7 (2,644).  Every warm pixel the skin rule leaves (a piece of skin
+     colour that is not the figure's) lying within GLOW_LEG_REACH of the
+     trousers is trousers.
+   - `legless`: the greaves are a picture of their own, drawn over the body at
+     FIRE_GEAR_REG's places, and his body kneels its own way, so the trousers
+     and boots showed beside them on every kneeling frame (frame 2's thigh
+     between the plate and the greaves, 1,214 art px; the hip on frame 6; the
+     back boot on frames 4 and 5).  Under greaves the body is baked without
+     them, as the cook and the lumberjack have legless strips drawn: the
+     greaves are his legs.  The trousers and boots go; then their outline, up
+     to LEGLESS_RINGS rings of the dark or soft pixels round what went (never
+     his skin's own edge, nor the log's: its key padded by LEGLESS_LOG_PAD);
+     then any speck of LEGLESS_ISLAND px or less those leave behind.
+   Measured on the eight frames (tools: a copy of these rules over the strip):
+   nothing of the trousers or boots is left, his hands on the log and the log
+   whole.  Returns how many pixels went. */
+const GLOW_LEG_REACH = 3;
+const LEGLESS_RINGS = 8, LEGLESS_DARK = 90, LEGLESS_SOFT = 200, LEGLESS_LOG_PAD = 6;
+const LEGLESS_ISLAND = 40, LEGLESS_ISLAND_REACH = 4;
+/* a 0/1 mask grown by `r` px every way (a square), in two passes */
+function _maskGrow(src, w, h, r) {
+  const tmp = new Uint8Array(w * h), out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    let c = 0;
+    for (let x = 0; x < Math.min(w, r); x++) c += src[row + x];
+    for (let x = 0; x < w; x++) {
+      if (x + r < w) c += src[row + x + r];
+      if (x - r - 1 >= 0) c -= src[row + x - r - 1];
+      tmp[row + x] = c > 0 ? 1 : 0;
+    }
+  }
+  for (let x = 0; x < w; x++) {
+    let c = 0;
+    for (let y = 0; y < Math.min(h, r); y++) c += tmp[y * w + x];
+    for (let y = 0; y < h; y++) {
+      if (y + r < h) c += tmp[(y + r) * w + x];
+      if (y - r - 1 >= 0) c -= tmp[(y - r - 1) * w + x];
+      out[y * w + x] = c > 0 ? 1 : 0;
+    }
+  }
+  return out;
+}
+function _standInGlowLegs(d, w, h, fw, legs, label, keptId) {
+  const n = w * h;
+  const orphan = new Uint8Array(n);
+  let any = 0;
+  for (let p = 0, i = 0; p < n; p++, i += 4) {
+    if (legs[p] || !_isSkin(d[i], d[i + 1], d[i + 2], d[i + 3])) continue;
+    const id = label[p];
+    if (id && keptId[id]) continue;
+    orphan[p] = 1; any++;
+  }
+  if (!any) return 0;
+  const near = _maskGrow(legs, w, h, GLOW_LEG_REACH);
+  const seen = new Uint8Array(n), stack = new Int32Array(n);
+  let added = 0;
+  for (let p0 = 0; p0 < n; p0++) {
+    if (!orphan[p0] || seen[p0]) continue;
+    const x0 = Math.floor((p0 % w) / fw) * fw, x1 = Math.min(w, x0 + fw);
+    let sp = 0, k = 0, hit = false;
+    stack[sp++] = p0; seen[p0] = 1;
+    while (k < sp) {
+      const q = stack[k++];
+      if (near[q]) hit = true;
+      const qx = q % w, qy = (q - qx) / w;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = qx + dx, ny = qy + dy;
+          if ((!dx && !dy) || nx < x0 || nx >= x1 || ny < 0 || ny >= h) continue;
+          const nq = ny * w + nx;
+          if (orphan[nq] && !seen[nq]) { seen[nq] = 1; stack[sp++] = nq; }
+        }
+      }
+    }
+    if (hit) { for (let j = 0; j < sp; j++) legs[stack[j]] = 1; added += sp; }
+  }
+  return added;
+}
+function _standInLegless(d, w, h, legs, boots, label, keptId) {
+  const n = w * h;
+  const went = new Uint8Array(n);
+  let gone = 0, top = h, bot = -1;
+  for (let p = 0; p < n; p++) {
+    if (!(legs[p] || boots[p]) || !d[p * 4 + 3]) continue;
+    d[p * 4 + 3] = 0; went[p] = 1; gone++;
+    const y = (p / w) | 0;
+    if (y < top) top = y;
+    if (y > bot) bot = y;
+  }
+  if (!gone) return 0;
+  const kept = new Uint8Array(n), key = new Uint8Array(n);
+  for (let p = 0, i = 0; p < n; p++, i += 4) {
+    const id = label[p];
+    if (id && keptId[id]) kept[p] = 1;
+    if (d[i + 3] > 100 && d[i] > 150 && d[i + 1] < 90 && d[i + 2] > 40 && d[i] - d[i + 1] > 120) key[p] = 1;   /* the log's magenta key */
+  }
+  const nearSkin = _maskGrow(kept, w, h, 1), log = _maskGrow(key, w, h, LEGLESS_LOG_PAD);
+  /* the outline: a ring at a time, a dark or soft pixel beside one that went */
+  const y0 = Math.max(1, top - LEGLESS_RINGS), y1 = Math.min(h - 2, bot + LEGLESS_RINGS);
+  for (let ring = 0; ring < LEGLESS_RINGS; ring++) {
+    const now = [];
+    for (let y = y0; y <= y1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const p = y * w + x, i = p * 4;
+        if (went[p] || !d[i + 3] || kept[p] || nearSkin[p] || log[p]) continue;
+        if (!(went[p - 1] || went[p + 1] || went[p - w] || went[p + w])) continue;
+        if (d[i + 3] < LEGLESS_SOFT || 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2] < LEGLESS_DARK) now.push(p);
+      }
+    }
+    if (!now.length) break;
+    for (const p of now) { d[p * 4 + 3] = 0; went[p] = 1; gone++; }
+  }
+  /* the specks they leave: a piece of LEGLESS_ISLAND px or less near what
+     went, with none of his skin in it */
+  const reach = _maskGrow(went, w, h, LEGLESS_ISLAND_REACH);
+  const seen = new Uint8Array(n), stack = new Int32Array(n);
+  for (let p0 = 0; p0 < n; p0++) {
+    if (!reach[p0] || seen[p0] || went[p0] || !d[p0 * 4 + 3]) continue;
+    let sp = 0, k = 0, skin = false;
+    stack[sp++] = p0; seen[p0] = 1;
+    while (k < sp) {
+      const q = stack[k++];
+      if (kept[q]) skin = true;
+      const qx = q % w, qy = (q - qx) / w;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = qx + dx, ny = qy + dy;
+          if ((!dx && !dy) || nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+          const nq = ny * w + nx;
+          if (!seen[nq] && !went[nq] && d[nq * 4 + 3]) { seen[nq] = 1; stack[sp++] = nq; }
+        }
+      }
+    }
+    if (skin || sp > LEGLESS_ISLAND) continue;
+    for (let j = 0; j < sp; j++) { d[stack[j] * 4 + 3] = 0; went[stack[j]] = 1; gone++; }
+  }
+  return gone;
 }
 
 /* ═══ v2.3.3146: A STAND-IN WEARS YOUR TROUSERS AND BOOTS ═══

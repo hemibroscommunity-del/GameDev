@@ -377,7 +377,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null, host = 'localhost', device = null }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null, host = 'localhost', device = null, wide = false }) {
   /* ═══ v2.3.3552: THE OLD MAP IS RETIRED -- NEVER PLAYED BY ACCIDENT ═══
      The owner: "Hold on you're in the old map (this was retired).  You keep
      making that mistake so flag it in a way you won't accidentally do that
@@ -506,7 +506,17 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      program on this box's software renderer, which keeps the three
      (paletteTex.js oneBatchChoice, TRAPS §225) */
   const _env = String(process.env.BT_QA_QUERY || '').replace(/^[?&]+/, '');
-  const _q = [guest ? 'guest=1' : '', query, _env, _world].filter(Boolean).join('&');
+  /* ═══ v2.3.3687: A COMPUTER'S PAGE IS THE UPRIGHT COLUMN UNLESS ASKED ═══
+     A computer plays the sideways layout now (src/ui/deskWide.js): the pages
+     a column at one edge, the controls at the other, the world between.  The
+     suite's computer pages -- every page with no `touch`, the 1000 x 780
+     default included -- were written for the upright column, so they keep it
+     (`narrow`, the game's own switch back) and test what they were written
+     for; `wide: true` plays the layout players get (mp-deskwide).  A NEW
+     scenario on a computer passes `wide: true` unless it is about the
+     column. */
+  const _narrow = (!touch && !wide && !/(?:^|&)(?:narrow|deskwide=)/.test(query) && !/(?:^|&)(?:narrow|deskwide=)/.test(_env)) ? 'narrow' : '';
+  const _q = [guest ? 'guest=1' : '', query, _env, _world, _narrow].filter(Boolean).join('&');
   /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a
      page somewhere else (mp-originlock: a copy of the game on another site,
      its browser launched to find that name at 127.0.0.1) */

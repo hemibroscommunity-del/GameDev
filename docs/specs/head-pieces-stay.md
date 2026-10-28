@@ -89,6 +89,33 @@ read drew nothing, after the rebuild all 46, and the hat never came back.
 
 TRAPS §253.
 
+## The long session (v2.3.3700)
+
+The owner, 2026-10-28: "Keep running tests through the night on memory
+fixes/improvements and testing for disappearing traits."  mp-headkeep and
+mp-traitswitch each test one cause once; **`mp-traitsoak`** plays a session
+instead and keeps looking at the head:
+
+- a phone (390 x 844 at 3x) in a full look -- wavy hair, the red bandana, a
+  beard, the golden glasses -- in the copper torso and greaves, with the
+  worker's sword, bow and staff;
+- `BT_TS_LAPS` laps (2) round the lands: BroTown, the Flame Fields, the Wind
+  Dunes, Frost Ridge and the Verdant Wilds, each land's art loaded on arrival
+  and let go of on leaving;
+- at each stop a fight (the three weapons swapped by their keys, a roll, a
+  jump), then all eight facings jogging and standing, each head piece read
+  back off the graphics chip;
+- once a lap a black screen's rebuild, and the eight facings again;
+- the page's memory each lap, for the trend.
+
+`BT_TS_VIEW=desk` plays it in a computer's window (1366 x 768 at 1x).
+
+Its first run, on main with every open pull request merged in (the night of
+2026-10-28): two laps, 22 minutes, two rebuilds, every head piece drawn in
+every facing at every stop, no page error. The memory between the laps: the
+graphics chip 60.4 -> 58.2 MB, the page's canvases 79.4 -> 84.9, the art held
+130.2 -> 137, the heap 38.7 -> 40.9.
+
 ## Not done
 
 - The other pictures the game makes on canvases (the body sheets, the armour

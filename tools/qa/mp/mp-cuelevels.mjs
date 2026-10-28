@@ -41,7 +41,7 @@ import { EVENT_SOUNDS } from '../../../src/data/eventSounds.js';
 /* the levels the table's comments promise (data/eventSounds.js) */
 const PROMISED = {
   shieldBlock: 1.4, shieldBall: 0.6, shieldUp: 0.55, shieldDown: 0.35, dodged: 0.5, dodgeRoll: 0.6,
-  crit: 0.65, bowLoose: 0.4 /* v2.3.3523: was bowDraw 0.5, the squeak */, discovery: 0.8, jumpUp: 0.4, jumpLand: 0.4, statusEnd: 0.2,
+  crit: 0.65, bowLoose: 0.4 /* v2.3.3523: was bowDraw 0.5, the squeak */, discovery: 0.8, jumpUp: 0.45 /* v2.3.3708: the owner's "hup" (was the rush of air, 0.4) */, jumpLand: 0.55 /* v2.3.3686: the owner's "goblin fall" (Freesound 502553); was the thud, 0.4 */, statusEnd: 0.2,
   throwSnow: 0.5, lootDrop: 0.25, dungeonClear: 2.5,
   /* v2.3.3434: the second round ("Look for more too") */
   betIn: 0.6, betWon: 1.5, betLost: 1.0, jackpotWin: 1.7, guildQuest: 2.4,
@@ -71,9 +71,8 @@ const PROMISED = {
      door was 0.65, the harvest 0.6, the anvil 0.5 and the bag 0.25 before) */
   door: 0.7, caveMouth: 0.65, campfire: 0.8, farmHarvest: 0.7, anvil: 0.6, bagIn: 0.4, coinsPickup: 0.75, lilBroHmm: 0.5,
   forge: 0.6, armourForge: 0.6, smelt: 0.6, woodwork: 0.5, hardWood: 0.5, trapsMade: 0.8,
-  /* v2.3.3680: the roll is the owner's "goblin fall" (Freesound 502553), a
-     tumble under the swish */
-  rollTumble: 0.55,
+  /* v2.3.3682: the double jump's flip, the owner's "sfx jump flip" */
+  jumpFlip: 0.5,
 };
 
 /* v2.3.3434: cues kept quieter than 0.08 of a hit on purpose, and why -- each
@@ -192,11 +191,12 @@ try {
   const ticks = ['revealTick', 'spinTick'].filter((n) => !(res.out[n].plain <= res.click.plain * 1.15));
   ok(ticks.length === 0 && res.out.statusEnd.plain < 0.5,
     `4. the quiet ones stay quiet: the reveal's and spin's ticks at or under the menu click (${f2(res.out.revealTick.plain)}, ${f2(res.out.spinTick.plain)} vs ${f2(res.click.plain)}), a status wearing off under half a blow (${f2(res.out.statusEnd.plain)})`);
-  const AIRY = ['dodged', 'dodgeRoll', 'jumpUp', 'sprintOutBreath', 'unwrap'];
+  /* v2.3.3708: the jump is the owner's "hup", a voice: with the grunts (6) */
+  const AIRY = ['dodged', 'dodgeRoll', 'sprintOutBreath', 'unwrap'];
   const thump = AIRY.filter((n) => !(res.out[n].low <= 0.6 * res.fleshyLow));
   ok(thump.length === 0, `5. a rush of air is air: ${AIRY.map((n) => n + ' ' + Math.round(res.out[n].low * 100) + '%').join(', ')} of its energy under 400 Hz (the old "fleshy" push-off ${Math.round(res.fleshyLow * 100)}%; at most 0.6 of it)`);
   /* v2.3.3523: the grunts -- a voice, whose strain is under 400 Hz, but no thump */
-  const VOICES = ['sprintOut', 'hurtA', 'hurtB'];
+  const VOICES = ['sprintOut', 'hurtA', 'hurtB', 'jumpUp'];
   const thud = VOICES.filter((n) => !(res.out[n].low150 <= 0.6 * res.fleshyLow150));
   ok(thud.length === 0, `6. a grunt is a voice, not a thump: ${VOICES.map((n) => n + ' ' + Math.round(res.out[n].low150 * 100) + '%').join(', ')} of its energy under 150 Hz (the old "fleshy" push-off ${Math.round(res.fleshyLow150 * 100)}%; at most 0.6 of it)`);
   ok(errs.length === 0, `no page errors (${errs.slice(0, 2).join(' | ')})`);

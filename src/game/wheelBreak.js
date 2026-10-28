@@ -306,5 +306,8 @@ if (typeof window !== 'undefined') {
     damage: (oi) => { const d = _dmg.get(oi); return d ? d.d : 0; },
     healMs: HEAL_MS,   /* v2.3.3230 */
     kind: (oi) => wheelObjectKind(oi),
+    /* v2.3.3698: a blast at (x, y) of radius r, as a slime's (mp-battlemem
+       breaks the props round a fight with it) */
+    blast: (x, y, r) => blastWheelObjects(window._gameState && window._gameState.current, x, y, r),
   };
 }

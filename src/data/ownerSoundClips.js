@@ -163,11 +163,25 @@ export const OWNER_SOUNDS = {
     "dur": 0.36,
     "low": true
   },
-  "roll-tumble": {
-    "url": "/sfx/player/roll-tumble.mp3",
+  "jump-land": {
+    "url": "/sfx/player/jump-land.mp3",
     "vol": 0.21,
     "level": 0.55,
     "dur": 0.8,
+    "low": true
+  },
+  "jump-flip": {
+    "url": "/sfx/player/jump-flip.mp3",
+    "vol": 0.218,
+    "level": 0.5,
+    "dur": 0.45,
+    "low": true
+  },
+  "jump-hup": {
+    "url": "/sfx/player/jump-hup.mp3",
+    "vol": 0.148,
+    "level": 0.45,
+    "dur": 0.19,
     "low": true
   },
   "npc-voices": {

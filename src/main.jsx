@@ -6,6 +6,7 @@ import { installPerfHud } from './debug/perfHud.js';
 import { installCrashTrap } from './debug/crashTrap.js';
 import { installUiSfxDelegate } from './ui/uiSfxDelegate.js';
 import { applyWorldTrial } from './game/worldTrial.js';
+import { applyDeskWide } from './ui/deskWide.js';
 import './styles/game.css';
 
 /* Debug console intercept is handled by debugBus.initFromUrl() alone now.
@@ -43,5 +44,10 @@ installUiSfxDelegate();
    rewrites the World View's shared tables (size, exits, arrival), and nothing
    may read them first.  Does nothing without the switch. */
 applyWorldTrial();
+
+/* v2.3.3687: a computer plays the sideways layout (src/ui/deskWide.js; `?narrow`
+   is the upright column).  BEFORE the render: the first layout reads #root's
+   shape. */
+applyDeskWide();
 
 createRoot(document.getElementById('root')).render(<GameApp />);

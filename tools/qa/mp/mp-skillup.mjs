@@ -34,9 +34,13 @@ import * as H from './harness.mjs';
 const burst = (P) => P.page.evaluate(() => {
   const cap = document.querySelector('[data-levelup-caption]');
   const icon = document.querySelector('[data-levelup-icon]');
+  /* v2.3.3693: the level is in the medallion (its numerals' value), the icon
+     on the plate beside the words */
+  const num = document.querySelector('[data-levelup-num]');
   if (!cap && !icon) return null;
   return {
     text: ((cap && cap.textContent) || '').replace(/\s+/g, ' ').trim().slice(0, 160),
+    num: num ? num.getAttribute('data-value') : null,
     icon: icon ? (icon.getAttribute('src') || '').split('/').pop().split('?')[0] : null,
     /* `complete && naturalWidth` is the difference between "an <img> is there"
        and "a picture is there" — a 404 renders a broken-image glyph inside
@@ -48,6 +52,7 @@ const burst = (P) => P.page.evaluate(() => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
     name: 'Logger', wsPort, webPort, touch: true, viewport: { width: 390, height: 844 },
+    world: 'wheel',   /* v2.3.3693: in the world (written for the retired map) */
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2500);
@@ -76,8 +81,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...without claiming it refilled the pools (it does not)',
     !!one && !/refilled/i.test(one.text), one);
   /* v2.3.2591: the icon, and that it actually DREW. */
-  rec.ok('...with the woodcutting icon seated in the medallion, and drawn',
+  rec.ok('...with the woodcutting icon on its plate, and drawn',
     !!one && one.icon === 'skill-woodcutting.webp' && one.iconDrawn, one);
+  /* v2.3.3693: the level in the medallion */
+  rec.ok('...and the level, 4, in the medallion', !!one && one.num === '4', one);
 
   /* TWO levels at once — the owner's actual case. */
   await P.page.waitForTimeout(3200);
@@ -88,7 +95,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const two = await burst(P);
   console.log('    two levels: ' + JSON.stringify(two));
   rec.ok('a TWO-level jump says so, rather than only showing the new level',
-    !!two && /\+2/.test(two.text), two);
+    !!two && /\+2/.test(two.text) && two.num === '7', two);
 
   /* And a character level still reads as one — the two must stay distinct. */
   await P.page.waitForTimeout(3200);
@@ -100,8 +107,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   console.log('    combat: ' + JSON.stringify(combat));
   rec.ok('a COMBAT level does NOT call itself a skill level',
     !!combat && !/Skill Level/i.test(combat.text), combat);
-  rec.ok('...and seats the combat skill\'s own icon, not the life skill\'s',
-    !!combat && combat.icon === 'combat-bow.webp' && combat.iconDrawn, combat);
+  rec.ok('...and shows the combat skill\'s own icon, not the life skill\'s, and its skill level',
+    !!combat && combat.icon === 'combat-bow.webp' && combat.iconDrawn && combat.num === '5', combat);
 
   /* ═══ AND A LEVEL NOBODY CAN ATTRIBUTE STILL GETS AN ICON ═══
      combat_credit, the legacy client loop and a Build-sheet point spend all
@@ -115,8 +122,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(800);
   const bare = await burst(P);
   console.log('    unattributed: ' + JSON.stringify(bare));
-  rec.ok('an unattributed character level still fills the circle (fallback icon)',
-    !!bare && !!bare.icon && bare.iconDrawn, bare);
+  rec.ok('an unattributed character level still has its icon (the fallback) and its level in the circle',
+    !!bare && !!bare.icon && bare.iconDrawn && bare.num === '13', bare);
 
   await P.ctx.close().catch(() => {});
 }

@@ -38,9 +38,10 @@ import { StatDemo, STAT_DEMO_KEYS } from './StatDemo.jsx';                      
 import { useScrollTap } from './scrollTap.js';                                  /* v2.3.2326: a tap the scroller confiscated is still a tap */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
-import { POINTS_ART_DIR, POINTS_ART_V, POINTS_DIGIT_H, POINTS_DIGIT_W, POINTS_FRAMES } from '../../../data/pointsHeadArt.js'; /* v2.3.3559: the owner's Points-tab art (GENERATED) */
+import { POINTS_ART_DIR, POINTS_ART_V, POINTS_DIGIT_H, POINTS_DIGIT_W } from '../../../data/pointsHeadArt.js'; /* v2.3.3559: the owner's Points-tab art (GENERATED); v2.3.3691: not its frames */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 import { playIsLandscape, panelVw } from '../playViewport.js';                    /* v2.3.2171: the sideways pane stacks; panelVw v2.3.2382 */
+import { deskWideActive } from '../../deskWide.js';                               /* v2.3.3687: a computer's taller column */
 import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
 import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS, pointsResetOn } from '../../../game/pointsReset.js'; /* v2.3.3541: the free points reset */
 import { firstSpendHint } from '../../../game/pointsTips.js'; /* v2.3.3551: after a first spend, the free reset named */
@@ -294,6 +295,16 @@ export const HeroExpanded = () => {
   const R = (S && S.rpg) || {};
   const d = deriveHeroStats(R);
   const cs = R._compStats || {};
+  /* ═══ v2.3.3687: ON A COMPUTER THE COLUMN IS TALL ═══
+     The owner: "Every menu needs to look like it fits the space."  A computer
+     plays the sideways layout now (deskWide.js), its page column 390 px wide
+     and the window's height tall -- three or four times the phone's sheet.
+     So there the Equipment tab's figure and gear are drawn bigger (EQ_W), its
+     pills taller and their type a step up (PF), and an open stat family opens
+     where its pill is instead of covering the figure (the phone's 191 px had
+     no room for both), and the Points tab is a list (statGrid below). */
+  const deskCol = deskWideActive();
+  const PF = deskCol ? 1.18 : 1;
 
   const labeledBar = (kind, label, cur, max) => (
     <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0' }}>
@@ -448,7 +459,7 @@ export const HeroExpanded = () => {
      The rows come from heroStatPills.js, which reads each stat through the
      reader the Points tab prints it with.  Every pill can be asked about
      (v2.3.2131): a tap opens its explainer with your own value. */
-  const PILL_H = 22;
+  const PILL_H = deskCol ? 30 : 22;
   const statPill = (p, tone) => {
     const info = statInfo(p.info);
     return (
@@ -473,15 +484,15 @@ export const HeroExpanded = () => {
           touchAction: info ? 'manipulation' : undefined,
         }}>
         <img src={p.icon} alt="" draggable={false}
-          style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+          style={{ width: Math.round(15 * PF), height: Math.round(15 * PF), objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
         <span style={{
           flex: 1, minWidth: 0,
-          fontSize: 11.5, fontWeight: 600, color: COL.text2, lineHeight: 1,
+          fontSize: 11.5 * PF, fontWeight: 600, color: COL.text2, lineHeight: 1,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{p.label}</span>
         <span style={{
           flex: 'none',
-          fontSize: 12.5, fontWeight: 800, color: COL.text, lineHeight: 1,
+          fontSize: 12.5 * PF, fontWeight: 800, color: COL.text, lineHeight: 1,
           fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
         }}>{p.value}</span>
       </div>
@@ -510,29 +521,34 @@ export const HeroExpanded = () => {
      a tap on one still its explainer -- and shuts any other.  OFFENSE's column
      holds Damage and Defense, PLAYER's Health and Energy. */
   const families = heroStatFamilies(R, d);
-  const famPill = (f, wide) => {
+  /* v2.3.3687: `shown` -- on a computer Damage and Defense are always open
+     (the column has the room the phone's accordion was saving), their heads
+     a heading, not a switch */
+  const famPill = (f, wide, shown) => {
     const tone = HERO_PILL_TONE[f.tone];
-    const open = famOpen === f.key;
+    const open = !!shown || famOpen === f.key;
     return (
       <div key={f.key} data-family={f.key} data-open={open ? '1' : '0'}
         style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
         <button type="button" data-family-head={f.key}
           aria-expanded={open}
-          onClick={(e) => { e.stopPropagation(); setFamOpen(open ? null : f.key); }}
+          disabled={!!shown}
+          onClick={(e) => { e.stopPropagation(); if (!shown) setFamOpen(open ? null : f.key); }}
           style={{
             display: 'flex', alignItems: 'center', gap: 6, height: PILL_H, boxSizing: 'border-box',
             minWidth: 0, flex: 'none', padding: '0 8px 0 5px', borderRadius: 999,
             border: `1.5px solid ${tone.edge}`, background: open ? 'rgba(255,255,255,.07)' : COL.well,
-            color: COL.text, cursor: 'pointer', touchAction: 'manipulation', font: 'inherit', textAlign: 'left',
+            color: COL.text, cursor: shown ? 'default' : 'pointer', touchAction: 'manipulation', font: 'inherit', textAlign: 'left',
+            opacity: 1,
           }}>
           <img src={f.icon} alt="" draggable={false}
-            style={{ width: 16, height: 16, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-          <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 800, letterSpacing: '.1em',
+            style={{ width: Math.round(16 * PF), height: Math.round(16 * PF), objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+          <span style={{ flex: 1, minWidth: 0, fontSize: 11 * PF, fontWeight: 800, letterSpacing: '.1em',
             textTransform: 'uppercase', color: tone.head, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.label}</span>
-          <span style={{ flex: 'none', fontSize: 12.5, fontWeight: 800, color: COL.text, lineHeight: 1,
+          <span style={{ flex: 'none', fontSize: 12.5 * PF, fontWeight: 800, color: COL.text, lineHeight: 1,
             fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{f.head}</span>
-          <span aria-hidden="true" style={{ flex: 'none', fontSize: 10, color: tone.head, width: 10, textAlign: 'center',
-            transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>▶</span>
+          {shown ? null : <span aria-hidden="true" style={{ flex: 'none', fontSize: 10, color: tone.head, width: 10, textAlign: 'center',
+            transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>▶</span>}
         </button>
         {open && (
           <div data-family-rows={f.key} style={wide
@@ -549,8 +565,9 @@ export const HeroExpanded = () => {
      and there an open family takes the column alone (the bars and the others
      step aside) so its rows fit; sideways under the figure row, all in view. */
   const offenseBlock = () => (
-    <div data-pillgroup="offense" style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
-      {!famOpen && families.filter((f) => f.key === 'damage' || f.key === 'defense').map((f) => famPill(f, false))}
+    <div data-pillgroup="offense" style={{ display: 'flex', flexDirection: 'column', gap: deskCol ? 6 : 3, minWidth: 0 }}>
+      {/* v2.3.3687: on a computer both stay, the open one open where it is */}
+      {(deskCol || !famOpen) && families.filter((f) => f.key === 'damage' || f.key === 'defense').map((f) => famPill(f, deskCol, deskCol))}
     </div>
   );
   const playerBlock = () => null;
@@ -577,10 +594,10 @@ export const HeroExpanded = () => {
             textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.7)',
           }}>
             <img src={VITAL_ICONS[kind]} alt="" draggable={false}
-              style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-            <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: '.06em' }}>{VITAL_LABEL[kind]}</span>
+              style={{ width: Math.round(15 * PF), height: Math.round(15 * PF), objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+            <span style={{ fontSize: 11.5 * PF, fontWeight: 800, letterSpacing: '.06em' }}>{VITAL_LABEL[kind]}</span>
             <span style={{ flex: 1 }} />
-            <span style={{ fontSize: 12.5, fontWeight: 800, fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'center' }}>
+            <span style={{ fontSize: 12.5 * PF, fontWeight: 800, fontVariantNumeric: 'tabular-nums', display: 'flex', alignItems: 'center' }}>
               {Math.ceil(cur)}
               <span style={{ padding: '0 3px', opacity: 0.7, fontWeight: 700 }}>/</span>
               {Math.ceil(max)}
@@ -591,7 +608,7 @@ export const HeroExpanded = () => {
     </div>
   );
   const vitalPills = () => (
-    <div data-pillgroup="vitals" style={{ display: 'flex', flexDirection: 'column', gap: 3, flex: 'none' }}>
+    <div data-pillgroup="vitals" style={{ display: 'flex', flexDirection: 'column', gap: deskCol ? 6 : 3, flex: 'none' }}>
       {/* v2.3.2520: HP is scaled (§5.8 D2); EN and MP are NOT. */}
       {vitalPill('hp', toDisplayHp(R.hp || 0), toDisplayHp(R.maxHp || 100))}
       {vitalPill('stamina', R.stamina || 0, R.maxStamina || 100)}
@@ -772,7 +789,7 @@ export const HeroExpanded = () => {
      keep 2x3 was 32px slots, which is the size this whole pass exists to
      move away from.  Three across keeps the cells big and the group still
      reads as one block on the left; it is simply a wider block. */
-  const EQ_W = 46;
+  const EQ_W = deskCol ? 88 : 46;   /* v2.3.3687: a computer's column has the room */
   const eqCell = (slotName) => {
     const sl = equipped.find(e => e.slot === slotName);
     if (!sl) return <div key={slotName} style={{ width: EQ_W, height: EQ_W }} />;
@@ -1056,8 +1073,8 @@ export const HeroExpanded = () => {
               and sideways (upright the tab is ~191 px: seven rows would not fit
               in one column), its rows two to a line; its header shuts it and
               the row comes back */}
-          {famOpen && families.filter((f) => f.key === famOpen).map((f) => famPill(f, true))}
-          <div style={{ display: famOpen ? 'none' : 'flex', alignItems: 'flex-start', gap: landPane ? 6 : 8, flexWrap: landPane ? 'wrap' : undefined, rowGap: landPane ? 8 : undefined }}>
+          {famOpen && !deskCol && families.filter((f) => f.key === famOpen).map((f) => famPill(f, true))}
+          <div style={{ display: famOpen && !deskCol ? 'none' : 'flex', alignItems: 'flex-start', justifyContent: deskCol ? 'center' : undefined, gap: landPane ? (deskCol ? 10 : 6) : 8, flexWrap: landPane ? 'wrap' : undefined, rowGap: landPane ? (deskCol ? 12 : 8) : undefined }}>
             {/* ═══ v2.3.3053: TWO COLUMNS THAT RUN ON DOWN ═══
                 Upright, the character and the gear head a LEFT column with
                 PLAYER's pills under them, and the vitals head a RIGHT column
@@ -1384,7 +1401,11 @@ export const HeroExpanded = () => {
                    under the figure (PLAYER). */
                 /* v2.3.3605: and while a stat family is open upright, its rows take
                    the bars' place (famOpen; the header shuts it again) */
-                vitalPills()
+                <>
+                  {vitalPills()}
+                  {/* v2.3.3687: on a computer the bars' family opens under them */}
+                  {deskCol && (famOpen === 'health' || famOpen === 'energy') && families.filter((f) => f.key === famOpen).map((f) => famPill(f, true))}
+                </>
               )}
               {!landPane && offenseBlock()}
             </div>
@@ -2533,18 +2554,24 @@ export const HeroExpanded = () => {
                most; the bust takes the height that leaves. */
             const PC_DIG = Math.max(PH_DIG, Math.round(Math.min(PH_CH * 0.32, PH_DIG * 1.4, (PH_CW + 1) / 1.48)));
             const PC_ICON = Math.max(10, Math.floor(Math.min(PH_CW, PH_CH - PC_DIG - 1)));
-            /* The frame: the slice drawn so its gold is PH_S px on screen
-               (the art's stroke is POINTS_FRAMES[k].stroke of its slice) */
-            const frameStyle = (kind) => {
-              const f = POINTS_FRAMES[kind];
-              const bw = (PH_S * f.slice / f.stroke).toFixed(2);
-              return {
-                boxSizing: 'border-box', width: '100%', height: '100%',
-                borderStyle: 'solid', borderColor: 'transparent', borderWidth: PH_S,
-                borderImage: `url(${POINTS_ART_DIR}${f.file}?v=${POINTS_ART_V}) ${f.slice} / ${bw}px stretch`,
-                padding: PH_PAD, pointerEvents: 'none',
-              };
-            };
+            /* ═══ v2.3.3691: NO FRAME ROUND THE HEADS ═══
+               The owner, 2026-10-28: "in the points menu the 3 primary combat
+               skills and the character icon shouldn't have the bronze frame
+               around it because it's not self-contained it's supposed to
+               represent the whole row of different skills you can apply points
+               in".  The gold frame (v2.3.3559, the sheet's brackets as a
+               border-image) said each head was a box of its own; it is its
+               row's label, sitting in the row's own tray (bandStyle).  So no
+               frame: the frame's room is kept, a transparent border PH_S wide,
+               so nothing in the head moves or changes size, and the carved
+               seams between the three weapons stay.  The frame pictures are
+               no longer asked for (POINTS_FRAMES, kept in the generated data
+               for the art tool). */
+            const frameStyle = () => ({
+              boxSizing: 'border-box', width: '100%', height: '100%',
+              borderStyle: 'solid', borderColor: 'transparent', borderWidth: PH_S,
+              padding: PH_PAD, pointerEvents: 'none',
+            });
             /* One pool's count in the sheet's numerals, `h` tall, shrunk to
                `maxW` if the run is wider.  The numerals' dark rims overlap a
                little, as the badge numerals did (-1 px), so a "63" reads as
@@ -2708,7 +2735,123 @@ export const HeroExpanded = () => {
               borderRadius: 12,
             });
 
-            const statGrid = () => (
+            /* ═══ v2.3.3687: ON A COMPUTER THE GRID IS A LIST ═══
+               The owner: "Every menu needs to look like it fits the space."
+               The grid is two rows of narrow cells, sized from the column's
+               WIDTH for a phone's 191 px sheet; on a computer the column is
+               the window's height tall and the grid filled its top fifth.  So
+               there each stat is a ROW down the column -- its picture, its
+               whole name, what it gives you now, its points -- under two
+               headings: the three weapons (each a button showing its six, as
+               the gold frame's rows are: v2.3.3665) over the weapon's six, and
+               the character over the seven shared.  No frame round a heading:
+               it names the rows under it (the owner, of the phone's frames: "it's
+               not self-contained it's supposed to represent the whole row").
+               Every row is the cell's own button: the same handles, the same
+               window on a click. */
+            const DESK_NUM_H = 20;
+            const deskName = (st) => (st.key === 'aspd' ? 'Attack Speed' : (st.infoKey || st.label));
+            const statRowDesk = (st, cat) => {
+              const pts = st.atk ? prog3AtkPts(R, cat, st.key) : prog3Pts(R, st.key);
+              const cap = prog3StatCap(R, st.key);
+              const lk = (st.atk ? cat + ':' : 'shared:') + st.key;
+              const avail = st.atk ? laneAvail(cat) : sharedAvail;
+              const canSpend = avail > 0 && pts < cap;
+              return (
+                <div key={lk}
+                  data-prog3-row={lk}
+                  data-prog3-plus={lk}
+                  data-stat-info={st.key}
+                  role="button"
+                  aria-label={`${st.label}${st.atk ? ' for ' + cat : ''}, ${ptsOf(pts, cap, false)}. ${st.perText}${st.curve ? '' : ' per point'}.`}
+                  aria-disabled={!canSpend}
+                  title={`${st.label} — ${ptsOf(pts, cap, true)} — now ${statValueText(st, cat)} — ${st.perText}${st.curve ? '' : ' per point'}`}
+                  {...scrollTap(() => openStatInfo(st, cat, spendFor(st, cat)))}
+                  style={{
+                    flex: '1 0 36px', maxHeight: 54, minWidth: 0, boxSizing: 'border-box',
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '0 10px 0 8px',
+                    border: `1px solid ${st.edge || st.tint || COL.tileBor}`, borderRadius: 9,
+                    background: canSpend ? COL.accentFill : COL.wellSoft,
+                    cursor: 'pointer', touchAction: 'manipulation', overflow: 'hidden',
+                  }}>
+                  <img src={st.iconSrc} alt="" draggable={false} style={{
+                    width: 26, height: 26, flex: 'none', objectFit: 'contain', pointerEvents: 'none',
+                  }} />
+                  <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2, pointerEvents: 'none' }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '.03em', textTransform: 'uppercase', color: COL.text,
+                      whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1 }}>{deskName(st)}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 600, color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.1 }}>
+                      Now {statValueText(st, cat)}
+                    </span>
+                  </span>
+                  <span data-cell-num data-pts={pts} aria-hidden="true" style={{
+                    display: 'flex', alignItems: 'center', height: DESK_NUM_H, flex: 'none',
+                    opacity: pts > 0 ? 1 : 0.55, pointerEvents: 'none',
+                  }}>
+                    {String(Math.max(0, pts | 0)).split('').map((ch, i) => (
+                      <img key={i} alt="" draggable={false} src={`${BADGE}w${ch}.png${BADGE_V}`}
+                        style={{ height: DESK_NUM_H, width: 'auto', marginLeft: i ? -1 : 0, display: 'block', pointerEvents: 'none' }} />
+                    ))}
+                  </span>
+                </div>
+              );
+            };
+            const deskHead = (kids, isLane) => (
+              <div data-prog3-lane={isLane ? buildCat : 'shared'}
+                style={{ flex: 'none', display: 'flex', alignItems: 'stretch', gap: 6, minWidth: 0,
+                  padding: '2px 0 4px', borderBottom: `1px solid ${isLane ? COL.edgeWarm : COL.border}` }}>
+                {kids}
+              </div>
+            );
+            const statListDesk = () => (
+              <div data-prog3-grid="desk" style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, flex: '1 0 auto', padding: '0 2px' }}>
+                <div data-prog3-band="lane" style={{ flex: '7 0 auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {deskHead(POINT_LANES.filter((c) => !c.shared).map((c) => {
+                    const on = c.key === buildCat;
+                    return (
+                      <button key={c.key} type="button" data-points-row={c.key}
+                        {...(c.key === heldCat ? { 'data-prog3-held': c.key } : null)}
+                        {...(on ? { 'data-points-shown': c.key } : null)}
+                        aria-pressed={on}
+                        aria-label={`Show ${c.label}'s points`}
+                        onClick={(e) => { e.stopPropagation(); setBuildCat(c.key); }}
+                        style={{
+                          flex: '1 1 0', minWidth: 0, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          borderRadius: 8, padding: '0 6px', boxSizing: 'border-box',
+                          background: on ? 'rgba(216,170,88,.22)' : 'transparent',
+                          boxShadow: on ? 'inset 0 0 0 1.5px rgba(216,170,88,.9)' : 'inset 0 0 0 1px rgba(229,237,233,.10)',
+                          appearance: 'none', WebkitAppearance: 'none', border: 0, margin: 0,
+                          font: 'inherit', color: on ? COL.text : COL.text2, cursor: 'pointer', touchAction: 'manipulation',
+                        }}>
+                        <img src={POINTS_ICONS[c.key] || c.iconSrc} alt="" draggable={false} style={{
+                          width: 24, height: 24, flex: 'none', objectFit: 'contain', display: 'block', pointerEvents: 'none',
+                        }} />
+                        <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', pointerEvents: 'none',
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{c.label}</span>
+                        {headCount(laneAvail(c.key), c.key, 18, 30)}
+                      </button>
+                    );
+                  }), true)}
+                  {prog3AtkMeta().map((st) => statRowDesk({ ...st, atk: true }, buildCat))}
+                </div>
+                <div data-prog3-band="shared" style={{ flex: '8 0 auto', display: 'flex', flexDirection: 'column', gap: 5 }}>
+                  {deskHead([
+                    <div key="who" data-points-frame="character" style={{ flex: 1, minWidth: 0, height: 40, display: 'flex', alignItems: 'center', gap: 8, padding: '0 6px' }}>
+                      <img src={POINTS_ICONS.shared} alt="" draggable={false} style={{
+                        width: 26, height: 26, flex: 'none', objectFit: 'contain', display: 'block', pointerEvents: 'none',
+                      }} />
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, letterSpacing: '.06em', textTransform: 'uppercase', color: COL.text2 }}>
+                        Character · every weapon
+                      </span>
+                      {headCount(sharedAvail, 'shared', 18, 30)}
+                    </div>,
+                  ], false)}
+                  {prog3BodyMeta().map((st) => statRowDesk({ ...st, atk: false }, null))}
+                </div>
+              </div>
+            );
+
+            const statGrid = () => deskCol ? statListDesk() : (
               /* 2px of side padding so the outermost cell's border is not
                  flush against the panel edge -- at 0 the Element and Resist
                  cells lost their right border to the clip. */
@@ -3235,7 +3378,7 @@ export const HeroExpanded = () => {
                   problem in a ~220px landscape pane, so the split is gone and
                   both orientations render this.  That deletes the landscape
                   branch, statRow, and the lane-header accordion with it. */}
-              <div data-prog3-points style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <div data-prog3-points style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: deskCol ? '1 0 auto' : undefined }}>
                 {/* ═══ v2.3.2683: ONE SCREEN, NO CAPTION ═══
                     The instruction line said "Tap a category, then spend its
                     points here" -- it existed to explain the TWO-STEP shape,

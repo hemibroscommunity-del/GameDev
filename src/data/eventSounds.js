@@ -84,12 +84,6 @@ export const EVENT_SOUNDS = {
      reads quieter on the plain measure than the swipe's thump did: both
      these keep the swipe's loudness BY EAR, its A-weighted level.) */
   dodgeRoll: [['arrow-fly', 0.03, 0.26, 4.15, 0.82, 0, 0.07]],
-  /* v2.3.3680: THE ROLL ITSELF -- the owner's recording ("kneeling goblin",
-     502553__kneeling__goblin-fall: a body going down and over), ~0.55, its own
-     overtones laid over its thump so a phone hears it.  The dodge roll and a
-     retreat shot's roll (yours and another player's); the sword's dash and
-     lunge keep the rush above, dodgeRoll. */
-  rollTumble: [['roll-tumble', 0, 0, own('roll-tumble'), 1]],
 
   /* ── your blows ────────────────────────────────────────────────────── */
   /* A critical hit: the grand slam's own sample (sword-hit, kept for it)
@@ -132,14 +126,24 @@ export const EVENT_SOUNDS = {
   swapStaff: [['ui-equip', 0.095, 0.3, 1.4, 1.05], ['magic-cast', 0, 0.4, 0.3, 1.3, 0.04, 0.1]],
 
   /* ── moving ────────────────────────────────────────────────────────── */
-  /* A jump's push-off, over the footstep it already plays, ~0.4 (the
-     arrow's flight, quick: see `dodged`)...  v2.3.3523: the bow's shot is
-     this slice now (`bowLoose`, the owner's ask), so the jump's is the same
-     rush a touch lower and slower, to tell the two apart. */
-  jumpUp: [['arrow-fly', 0.03, 0.22, 2.6, 0.85, 0, 0.05]],
-  /* ...and the landing's weight: the bare thud slowed to a low thump, ~0.4,
-     under the landing's footstep. */
-  jumpLand: [['monster-hit', 0.01, 0.2, 0.8, 0.62]],
+  /* A jump's push-off, over the footstep it already plays.  v2.3.3708: the
+     owner's own "hup" (613568__mrdeadh__hup), ~0.45 -- the owner: "File with
+     'hup' is the jump" -- yours, and another player's at their share
+     (gameEvents.js player_jump).  It was a rush of air (the arrow's flight a
+     touch lower and slower than the bow's shot, v2.3.3523), ~0.4. */
+  jumpUp: [['jump-hup', 0, 0, own('jump-hup'), 1]],
+  /* ...and the landing's weight.  v2.3.3686: the owner's own landing, their
+     "goblin fall" (502553__kneeling__goblin-fall: a body coming down), ~0.55,
+     its own overtones laid over its thump so a phone hears it -- the owner:
+     "goblin fall is just the label of the file I want to use for when the
+     character's jump lands".  v2.3.3680 had put it on the roll, which keeps
+     its rush of air again (dodgeRoll); it was the bare thud slowed to a low
+     thump, ~0.4. */
+  jumpLand: [['jump-land', 0, 0, own('jump-land'), 1]],
+  /* v2.3.3682: the double jump's flip -- the owner's recording ("I just
+     uploaded the second jump (flip) sound effect", 563530 "sfx jump flip"),
+     ~0.5: a whoosh as you tuck and go over; yours and another player's */
+  jumpFlip: [['jump-flip', 0, 0, own('jump-flip'), 1]],
   /* A sprint running out of stamina mid-run.  v2.3.3455: the owner's grunt
      (BT_AUDIO.SPRINT_PUSH's, a sprint's start), whole at its own level but a
      touch lower and slower -- worn out -- where it was the arrow's flight

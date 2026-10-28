@@ -45,6 +45,7 @@
  *   r               the circle's radius, in strip pixels
  *   ms              how long the frame is held (see the timing note below)
  */
+import { POINTS_ART_DIR, POINTS_ART_V } from './pointsHeadArt.js'; /* v2.3.3693: the gold numerals */
 
 export const LEVELUP_STRIP_SRC = '/sprites/fx/levelup-burst-v1.webp?v=2.3.2591';
 export const LEVELUP_STRIP_W = 2172;
@@ -96,13 +97,28 @@ export const LEVELUP_MAX_H = 645;
  * crop 17px off the truth the first time it was tuned — which it did, once.
  * One definition, imported by both. */
 export const LEVELUP_PIN_Y_FRAC = 0.40;   /* circle centre, as a fraction of viewport height */
-export const LEVELUP_CAPTION_BOX_H = 74;  /* the big number and its label plus the plate's padding (v2.3.3676: was 58, two plain lines) */
+export const LEVELUP_CAPTION_BOX_H = 44;  /* one row, the icon and the words, plus the plate's padding (v2.3.3693: the number is in the medallion; v2.3.3676's 74 held the big number too) */
 export const LEVELUP_CAPTION_GAP = 6;     /* art to caption */
 
 /* How much of the circle the icon fills.  0.78 rather than 1.0: the measured
    radius is the cream void's edge, and an icon drawn out to it would touch the
    blue enamel ring on every side. */
 export const LEVELUP_ICON_FILL = 0.78;
+
+/* ═══ v2.3.3693: THE LEVEL IN THE MEDALLION ═══
+   The owner, 2026-10-28: "on the level up badge the number just needs to be
+   inside that big paper colored center space.  You can use numbers from
+   sprite sheets I've given you to make it look better than just code drawn".
+   The level is drawn in the cream void in the Points sheet's gold numerals
+   (data/pointsHeadArt.js: the owner's, gold with a dark edge, made to read on
+   paper), LEVELUP_NUM_H x the icon's radius tall -- a quarter of the void's
+   width either side of its middle -- and never wider than LEVELUP_NUM_W x it
+   (a run that would be is drawn smaller, never cut): "100", the widest
+   level, still clears the ring at its corners.  The digits are warmed with
+   the strip on the loading screen (rendering/levelUpBurstPreload.js). */
+export const LEVELUP_NUM_H = 1.25;
+export const LEVELUP_NUM_W = 1.75;
+export const LEVELUP_NUM_URLS = Object.freeze(Array.from({ length: 10 }, (_, d) => `${POINTS_ART_DIR}gold-${d}.png?v=${POINTS_ART_V}`));
 
 /* Frame index at a given elapsed time; clamps to the last frame, which holds. */
 export function levelUpFrameAt(ms) {

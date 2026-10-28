@@ -39,6 +39,8 @@ import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the H
 import { cue, cueAt, cuePeer, peerOwn, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
 import { noteKillCredit } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
+import { noteProg3Xp } from '@/game/xpBar.js'; /* v2.3.3695: the XP bar, from the worker's skill XP */
+import { prog3XpRequired } from '@/data/prog3.js'; /* v2.3.3695: the XP to each next level, for the bar */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
@@ -180,6 +182,16 @@ import { applyShardCrackResult, applyGemCombineResult } from '@/game/shardCrack.
 import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
+/* v2.3.3689: what your head wears and its colours, as one string -- the
+   state_sync record apply tells BroTown when it changed (the 'bt-own-look'
+   event: the new pieces prepared, the veil waiting for them) */
+function _ownHeadLook() {
+  try {
+    return [getHeadwear(), getHatColor(), getHair(), getHairColor(), getFacialHair(), getFacialHairColor(),
+      getEyewear(), getEyewearColor(), getEyeStyle(), getSpecies(), getSkin()].join('|');
+  } catch (e) { return ''; }
+}
+
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
  * performance.now() values, capped at ~5 minutes of history.  Bytes-per-tick
@@ -1554,8 +1566,18 @@ export function setupWebSocket(ctx) {
                  would hand an existing player a blank bro. */
               try {
                 if (hasStoredCharacter(S._serverCaps.charLock, msg.char)) {
+                  /* v2.3.3689: and when it CHANGES what your head wears (a new
+                     device's first join of a Login Key, a picker row with no
+                     look yet), BroTown prepares the new pieces and their
+                     colours, and the straight-in road's veil waits for them
+                     (avatarHold holdForAvatarAlso) -- the veil's own preload
+                     made the look this device had */
+                  var _lookWas = _ownHeadLook();
                   applyCharacterRecord(msg.char, S);
                   publishCharRecord(msg.char);
+                  if (_ownHeadLook() !== _lookWas) {
+                    try { window.dispatchEvent(new CustomEvent('bt-own-look')); } catch (e2) { /* no window */ }
+                  }
                 }
               } catch (e) { /* never let a cosmetic restore break the sync */ }
               /* v2.3.1576: the server's verified Hemi Bro for THIS player,
@@ -2845,7 +2867,12 @@ export function setupWebSocket(ctx) {
                  IS the state: trained levels/xp, the seven-stat
                  alloc, and the point pool all land here and the
                  recalc below re-derives level + pools from them. */
-              if (msg.payload.prog3 && typeof msg.payload.prog3 === 'object') { S.rpg.prog3 = msg.payload.prog3; recalcDerived(S.rpg); }
+              if (msg.payload.prog3 && typeof msg.payload.prog3 === 'object') {
+                /* v2.3.3695: the XP bar (game/xpBar.js) -- the skill this blob
+                   gained in, from the one it replaces; display only */
+                try { noteProg3Xp(S, S.rpg.prog3, msg.payload.prog3, prog3XpRequired, Date.now()); } catch (_xb) { /* the bar only */ }
+                S.rpg.prog3 = msg.payload.prog3; recalcDerived(S.rpg);
+              }
               /* ═══ v2.3.2615: BASELINE THE CELEBRATION HIGH-WATER AGAINST THE
                  SERVER, NOT AGAINST localStorage ═══
 

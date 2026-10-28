@@ -24,6 +24,7 @@ import { MONSTER_NOISE_CLIPS } from './monsterNoiseClips.js';   /* v2.3.3340: th
 import { SPRINT_GRUNT } from './sprintGrunt.js';   /* v2.3.3455: the owner's sprint grunt */
 import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
 import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3462: the owner's recordings for the sounds still needed */
+import { foldToMono } from './soundFold.js';   /* v2.3.3706: a stereo sound whose two sides are one is kept as one */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
@@ -3322,9 +3323,12 @@ BT_AUDIO.SFX_MANIFEST = {
   'farm-water': '/sfx/farm/farm-water.mp3',
   'farm-hoe': '/sfx/farm/farm-hoe.mp3',
   'farm-mould': '/sfx/farm/farm-mould.mp3',
-  /* v2.3.3680: the dodge roll, the owner's "kneeling goblin" (goblin fall),
-     0.8 s at 24 kHz, ~77 KB decoded */
-  'roll-tumble': '/sfx/player/roll-tumble.mp3',
+  /* v2.3.3680: the owner's "kneeling goblin" (goblin fall), 0.8 s at 24 kHz,
+     ~77 KB decoded; v2.3.3686: the JUMP'S LANDING (it was the roll) */
+  'jump-land': '/sfx/player/jump-land.mp3',
+  'jump-flip': '/sfx/player/jump-flip.mp3',   /* v2.3.3682: the double jump's flip (ownerSoundClips.js) */
+  /* v2.3.3708: the jump, the owner's "hup" (0.19 s at 24 kHz, ~18 KB decoded) */
+  'jump-hup': '/sfx/player/jump-hup.mp3',
 };
 
 /* ═══ v2.3.3462: SOME SOUNDS ARE DECODED AT 24 kHz ═══
@@ -4228,7 +4232,7 @@ BT_AUDIO.loadSample = function (key, url) {
           else BT_AUDIO.ctx.decodeAudioData(buf, resolve, reject);
         });
       })
-      .then(function (b) { delete self._tagLoads[tag]; return b; },
+      .then(function (b) { delete self._tagLoads[tag]; return self._fold(b, key); },
         function () { delete self._tagLoads[tag]; return null; });
   }
   return p.then(function (audioBuf) {
@@ -4236,6 +4240,33 @@ BT_AUDIO.loadSample = function (key, url) {
     delete self._sampleLoading[key];
   });
 };
+/* ═══ v2.3.3706: A STEREO SOUND WHOSE TWO SIDES ARE ONE IS KEPT AS ONE ═══
+   The owner: "Memory seems to be the persistent bottleneck ... Getting that
+   to run as low as possible without sacrificing performance is the goal."
+   Six of the stereo files carry one signal on both sides (coin-pickup,
+   flip-lose, footstep-v2, pan-sizzle, quest-complete, fish-reel: 3.2 MB of
+   the sound held decoded); each is kept as one channel after its decode, and
+   Web Audio plays it out of both speakers, the same sound (data/soundFold.js).
+   `?stereosfx` keeps them stereo; `_folded` names the ones kept as one (the
+   QA's window.__btSoundFold). */
+BT_AUDIO._folded = [];
+BT_AUDIO._fold = function (b, key) {
+  if (!b || this._stereoSfx) return b;
+  var ctx = this.ctx;
+  var out = foldToMono(b, function (c, n, r) { return ctx.createBuffer(c, n, r); });
+  if (out !== b) this._folded.push({ key: key, savedBytes: b.length * 4 });
+  return out;
+};
+try {
+  if (typeof location !== 'undefined' && /[?&]stereosfx\b/.test(location.search || '')) BT_AUDIO._stereoSfx = true;
+} catch (e) { /* folded */ }
+if (typeof window !== 'undefined') {
+  window.__btSoundFold = function () {
+    var n = 0;
+    for (var i = 0; i < BT_AUDIO._folded.length; i++) n += BT_AUDIO._folded[i].savedBytes;
+    return { on: !BT_AUDIO._stereoSfx, folded: BT_AUDIO._folded.map(function (f) { return f.key; }), savedMB: +(n / 1048576).toFixed(2) };
+  };
+}
 /* LOW_RATE's decoder (above): one OfflineAudioContext, never rendered, made
    on first use; the real context's own decode when there is none, or when it
    refuses a file. */

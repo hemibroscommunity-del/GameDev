@@ -22,7 +22,9 @@
  *      never squashed or tilted; a little dust kicks up at the take-off;
  *   2b. (v2.3.3499) a running jump leans into the run, east forward, west the
  *      other way, by how fast it goes across, and kicks its dust back;
- *   3. in the air a second press, a roll and an attack all wait;
+ *   3. in the air a second press, a roll and an attack all wait (v2.3.3682:
+ *      a second press straight after take-off is too soon for the double
+ *      jump's flip, "flip-early"; mp-doublejump has the flip);
  *   4. another player sees it: the relay lands and their copy of you is
  *      lifted;
  *   5. walking into a fence stops you; jumping it carries you over, and you
@@ -344,7 +346,10 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
   await P.page.waitForTimeout(300);
   const later = await P.page.evaluate(() => ({ roll: !!window._gameState.current._dodgeRoll, swing: window._gameState.current.swingTimer || 0, air: window.__btJumpBtn().air }));
   rec.ok('in the air a second press, a roll and an attack all wait',
-    waited.midAir.air && waited.air && waited.count === waited.midAir.count && waited.why === 'airborne' && !waited.roll && !later.roll
+    /* v2.3.3682: a second press in the air is the double jump's flip now,
+       and this one, straight after take-off, is too soon for it ('flip-early'):
+       the jump waits as before (mp-doublejump has the flip) */
+    waited.midAir.air && waited.air && waited.count === waited.midAir.count && (waited.why === 'airborne' || waited.why === 'flip-early') && !waited.roll && !later.roll
       && waited.swing === waited.midAir.swing && (later.swing === waited.midAir.swing || !later.air),
     { waited, later });
   await H.waitFor(P, () => window.__btJumpBtn().air, (v) => v === false, { timeout: AIR_MS + 3000, label: 'down again' }).catch(() => null);

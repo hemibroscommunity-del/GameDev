@@ -104,7 +104,7 @@ export function chestBox(data, W, H, x0, fw) {
  *        240x220, 213x220, 384x512 ...); omitted, frames are square as before
  * @returns {HTMLCanvasElement} a NEW canvas; the input is never mutated
  */
-export function stampShirtArt(sheet, art, frameH, mirror, clip, report, frameW) {
+export function stampShirtArt(sheet, art, frameH, mirror, clip, report, frameW, anchors) {
   const W = sheet.naturalWidth || sheet.width;
   const H = sheet.naturalHeight || sheet.height;
   const cv = document.createElement('canvas');
@@ -149,15 +149,32 @@ export function stampShirtArt(sheet, art, frameH, mirror, clip, report, frameW) 
     } catch (e) { clipA = null; }
   }
 
+  /* v2.3.3696: on a stand-in's strip (torsoAnchors) ONE print size for every
+     frame, the median of what each frame's chest box would give */
+  let stripW = 0, stripH = 0;
+  if (anchors) {
+    const ws = [], hs = [];
+    for (let f = 0; f < frames; f++) {
+      const b = chestBox(src, W, H, f * fw, fw);
+      if (!b) continue;
+      ws.push(Math.max(ART_W, Math.round((b.x1 - b.x0 + 1) * FILL_W)));
+      hs.push(Math.max(ART_H, Math.round((b.bot - b.top + 1) * FILL_H)));
+    }
+    ws.sort((a, b) => a - b); hs.sort((a, b) => a - b);
+    if (ws.length) { stripW = ws[(ws.length - 1) >> 1]; stripH = hs[(hs.length - 1) >> 1]; }
+  }
   for (let f = 0; f < frames; f++) {
     const box = chestBox(src, W, H, f * fw, fw);
     if (!box) continue;
     const bw = box.x1 - box.x0 + 1;
     const bh = box.bot - box.top + 1;
-    const dw = Math.max(ART_W, Math.round(bw * FILL_W));
-    const dh = Math.max(ART_H, Math.round(bh * FILL_H));
-    const cx = (box.x0 + box.x1 + 1) / 2;
-    const cy = box.top + bh * CHEST_Y;
+    const A = stripW && anchors.frames ? anchors.frames[f] : null;
+    const dw = A ? stripW : Math.max(ART_W, Math.round(bw * FILL_W));
+    const dh = A ? stripH : Math.max(ART_H, Math.round(bh * FILL_H));
+    /* v2.3.3696: the hem and the torso's middle (where the body is), with the
+       strip's one height, else the frame's own chest box as before */
+    const cx = A ? f * fw + A.cx + 0.5 : (box.x0 + box.x1 + 1) / 2;   /* the sheet's x (chestBox's are too) */
+    const cy = A ? A.bot + 1 - anchors.bh * (1 - CHEST_Y) : box.top + bh * CHEST_Y;
     const ox = Math.round(cx - dw / 2);
     const oy = Math.round(cy - dh / 2);
     const cw = dw / ART_W, ch = dh / ART_H;
@@ -1290,7 +1307,63 @@ export function regionFromFeet(d, mask, w, h, frameW, maxUp) {
  * against a 12px repeat a 1px anchor wobble is invisible, and a float phase
  * would quantise differently on adjacent frames for no gain.
  */
-export function stampPattern(d, w, h, frameW, mask, pat, mirror) {
+/* ═══ v2.3.3696: ON THE MINER (AND A STAND-IN), THE CHEST STAYS WHERE THE BODY IS ═══
+ * The owner: "Also the shirt while mining still moves around a lot. It would
+ * be better to have it move less."  The miner's sheet (gearSheets.js
+ * STABLE_PRINT_POSES) and the gathering and combat stand-ins (the strips whose
+ * frames are not square) raise their arms over the head; composeShirt's
+ * `frameW` turns this on for them.  Each frame's print was placed from that
+ * frame's chest box (its widest upper row, its top and its bottom) and its
+ * pattern from the garment's centroid, and the raised sleeves move both: over
+ * the tee's 14 mining frames the print's middle moved 4.6 px against the hem
+ * (10 px on the frame) and its size by 7 x 7 px, and the pattern's anchor 5 x
+ * 7 px, on a 128 px frame, while the body under them moved only with the
+ * swing's crouch and sway.
+ *
+ * So on these strips each frame is anchored where the body is: the HEM (the
+ * shirt's lowest row: it drops with the real crouch, 69 -> 75 there) and the
+ * middle of the TORSO across (the centre of the garment's pixels in a band a
+ * quarter to a half of the shirt's height above the hem, where no sleeve
+ * reaches: it follows the body's own 3.5 px sway), with ONE height for the strip
+ * (the median of its frames).  The walking sheets keep their own anchors.
+ *
+ * `isOn(p)` says whether pixel p is the garment.  Returns
+ * { frames: [{ bot, cx } | null], bh } in each frame's own space, or null. */
+export function torsoAnchors(isOn, W, H, fw) {
+  const frames = Math.max(1, Math.round(W / fw));
+  const out = new Array(frames).fill(null);
+  const hs = [];
+  for (let f = 0; f < frames; f++) {
+    const x0 = f * fw, x1 = Math.min(W, x0 + fw);
+    let top = -1, bot = -1;
+    for (let y = 0; y < H; y++) {
+      for (let x = x0; x < x1; x++) {
+        if (isOn(y * W + x)) { if (top < 0) top = y; bot = y; break; }
+      }
+    }
+    if (top < 0) continue;
+    out[f] = { top, bot, cx: (x1 - x0) / 2 };
+    hs.push(bot - top + 1);
+  }
+  if (!hs.length) return null;
+  hs.sort((a, b) => a - b);
+  const bh = hs[(hs.length - 1) >> 1];
+  for (let f = 0; f < frames; f++) {
+    const a = out[f];
+    if (!a) continue;
+    const x0 = f * fw, x1 = Math.min(W, x0 + fw);
+    const y0 = Math.max(0, Math.round(a.bot - bh * 0.5));
+    const y1 = Math.max(y0, Math.round(a.bot - bh * 0.25));
+    let sx = 0, n = 0;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x < x1; x++) if (isOn(y * W + x)) { sx += x - x0; n++; }
+    }
+    if (n) a.cx = sx / n;
+  }
+  return { frames: out, bh };
+}
+
+export function stampPattern(d, w, h, frameW, mask, pat, mirror, anchors) {
   if (!pat) return 0;
   const tile = pat.tile;
   const R = parseInt(pat.color.slice(1, 3), 16);
@@ -1315,6 +1388,11 @@ export function stampPattern(d, w, h, frameW, mask, pat, mirror) {
     if (!n) continue;
     ax[f] = Math.round(sx / n);
     ay[f] = Math.round(sy / n);
+    /* v2.3.3696: a stand-in's strip, or the miner's sheet: the hem and the
+       torso's middle, not the centroid the raised sleeves drag about
+       (torsoAnchors) */
+    const A = anchors && anchors.frames && anchors.frames[f];
+    if (A) { ax[f] = Math.round(A.cx); ay[f] = Math.round(A.bot + 1 - anchors.bh / 2); }
   }
   let painted = 0;
   for (let y = 0; y < h; y++) {
@@ -1391,9 +1469,15 @@ export function composeShirt(sheet, frameH, opts) {
 
   /* v2.3.3146: `o.frameW` for a strip whose frames are not square (the
      stand-ins' shirt strips); omitted, a frame is frameH wide as before */
+  /* v2.3.3696: a stand-in's strip (its own `frameW`) anchors its print and
+     pattern on the hem and the torso's middle (torsoAnchors); `o.stable:
+     false` is the old per-frame placement */
+  const anchors = (o.frameW && o.stable !== false && (o.pattern || (o.art && artHasInk(o.art))))
+    ? torsoAnchors((p) => alpha[p] === 1, W, H, o.frameW) : null;
+
   if (o.pattern) {
     const id = ctx.getImageData(0, 0, W, H);
-    stampPattern(id.data, W, H, o.frameW || frameH || H, lit, o.pattern, !!o.mirror);
+    stampPattern(id.data, W, H, o.frameW || frameH || H, lit, o.pattern, !!o.mirror, anchors);
     ctx.putImageData(id, 0, 0);
   }
 
@@ -1402,7 +1486,7 @@ export function composeShirt(sheet, frameH, opts) {
        and at the seam lines rather than erasing them.
        v2.3.2430: `o.report` takes the same path with no ink, so the designer
        gets the grid it needs to place a FIRST mark -- see stampShirtArt. */
-    return stampShirtArt(cv, o.art, frameH, !!o.mirror, _maskCanvas(lit, W, H), o.report, o.frameW);
+    return stampShirtArt(cv, o.art, frameH, !!o.mirror, _maskCanvas(lit, W, H), o.report, o.frameW, anchors);
   }
   return cv;
 }

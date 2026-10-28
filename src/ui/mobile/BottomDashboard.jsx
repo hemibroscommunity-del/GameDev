@@ -22,7 +22,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
+import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -43,6 +43,8 @@ import { COMBAT_SKILLS, unspentPointsTotal } from './sheet/heroModel.js'; /* v2.
    src/ either -- that predates this change -- so the file is now reference
    material rather than live code, and it says so at its top. */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
+import { deskWideActive, DESK_SHEET_W } from '../deskWide.js';  /* v2.3.3687: a computer plays the sideways layout */
+import { DeskKeysList } from '../panels/KeyboardHintsPanel.jsx';   /* v2.3.3687: the controls at the screen's far edge */
 import { InventoryPanel }              from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
@@ -503,12 +505,18 @@ const PANELS = {
      combat pills stacked below in the vertical space, scrolling as one
      column. */
   dashboard:    { title: 'Dashboard',   Component: function LandDash() {
+    /* v2.3.3687: on a computer playing wide the column is an upright phone's
+       width (deskWide.js DESK_SHEET_W), so the dashboard is the upright band's
+       own row -- the bag and the combat skills side by side, at that width --
+       not the 2-wide stack a sideways phone's narrow column needs */
+    var desk = deskWideActive();
     return React.createElement('div', {
-      style: { flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' },
+      style: desk ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : { flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' },
     }, React.createElement(DashColumns, {
       R: (window._gameState && window._gameState.current && window._gameState.current.rpg) || null,
-      stacked: true,
-      vwBasis: Math.min(playVw(), playVh()),
+      stacked: !desk,
+      desk: desk,
+      vwBasis: desk ? DESK_SHEET_W : Math.min(playVw(), playVh()),
     }));
   } },
 };
@@ -519,6 +527,9 @@ const PANELS = {
    v2.3.1288 (PR B): every destination has a compact view now — the
    `compact:false` promotion flag and the compactless registration are
    gone (the bus keeps the mechanism, registered empty). */
+/* v2.3.3687: the computer's column opened once a page load (BottomDashboard) */
+let _deskOpened = false;
+
 const DESTINATIONS = [
   { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
   { id: 'hero',   label: 'Character', icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
@@ -962,6 +973,16 @@ export const BottomDashboard = () => {
      panel left open across the flip would be laid out for a surface that
      no longer exists.  toBar() keeps the root, so the next tap resumes the
      same destination; the world is what greets the rotation. */
+  /* ═══ v2.3.3687: A COMPUTER OPENS WITH THE DASHBOARD BESIDE THE WORLD ═══
+     Playing wide (deskWide.js) the column has the width the pages were drawn
+     for, and a computer has the width to spare, so it starts open, once a
+     page load: the fold chip still folds it, and it stays as the player left
+     it after that. */
+  useEffect(() => {
+    if (_deskOpened || !land || !deskWideActive()) return;
+    _deskOpened = true;
+    if (dashboardPanelBus.state.mode === 'bar') dashboardPanelBus.open('dashboard');
+  }, [land]);
   const _landRef = useRef(land);
   useEffect(() => {
     if (_landRef.current !== land) {
@@ -1021,6 +1042,9 @@ export const BottomDashboard = () => {
      retired with its anchor). */
 
   const Active = active?.Component;
+  const deskKeys = land && deskWideActive();   /* v2.3.3687: a computer playing wide (deskWide.js) */
+  /* v2.3.3687: and its column folded: the chip's strip (sheetGeometry deskFoldStripW) */
+  const deskStripW = land && !active ? deskFoldStripW() : 0;
   const Head = active?.Head || null;   /* v2.3.3527: a page's own words on its drilled header row */
   /* v2.3.1649: the top row shares the columns row's tracks — see the grid
      below.  One call, so the two rows can never disagree about where a
@@ -1101,7 +1125,10 @@ export const BottomDashboard = () => {
             display: 'flex',
             flexDirection: 'column',
             touchAction: 'none',
-            paddingTop: 'env(safe-area-inset-top, 0px)',
+            /* v2.3.3687: on a computer the nav dock is the column's top row
+               (landDockFootprint's reserveTop), so the drill header and the
+               page start under it */
+            paddingTop: landDock.reserveTop ? (landDock.reserveTop + 'px') : 'env(safe-area-inset-top, 0px)',
           }}
         >
           {/* ═══ v2.3.2168: THE DRILL HEADER LIVES IN THE SHEET NOW ═══
@@ -1141,6 +1168,32 @@ export const BottomDashboard = () => {
             {Active && <Active />}
           </div>
         </div>
+      ) : null}
+      {/* ═══ v2.3.3687: THE CONTROLS AT THE SCREEN'S FAR EDGE ═══
+          The owner: "find a good place to keep a list of all the controls",
+          then "If you split the keyboard shortcuts on its own strip to the
+          right and kept the inventory on the left it might look better", and
+          "I meant the right side of the screen consists of the black strip
+          with the shortcuts.  Not just on the right side of the left black
+          strip."  On a computer playing wide (deskWide.js) the list is a
+          column of its own at the edge the panel does not take, the screen's
+          height, open or folded to its ⌨ whether the pages are up or not; the
+          world is between the two (bandFootprint's keysW, --world-x). */}
+      {deskKeys ? <DeskKeysList side={side === 'left' ? 'right' : 'left'} /> : null}
+      {/* v2.3.3687: the folded column on a computer: a strip in the column's
+          slate, the chip at its top (the dock below), the world after it */}
+      {deskStripW ? (
+        <div
+          className="bt-desk-foldstrip bt-noselect"
+          data-desk-foldstrip=""
+          aria-hidden="true"
+          onPointerDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed', top: 0, bottom: 0, width: deskStripW, zIndex: 29,
+            ...(side === 'left' ? { left: 0, borderRight: '1px solid rgba(229,237,233,.20)' } : { right: 0, borderLeft: '1px solid rgba(229,237,233,.20)' }),
+            boxSizing: 'border-box', background: 'rgba(13,22,27,.96)',
+          }}
+        />
       ) : null}
 
       {/* ═══ v2.3.2168: GOLD, AS A CHIP ═══
@@ -1194,7 +1247,8 @@ export const BottomDashboard = () => {
                old anchor lifted the dock 21px into the panel and it covered
                the combat cards; in a browser tab the inset is 0 and none of
                this moves, which is exactly why the bug never showed here. */
-            bottom: landDock.bottom,
+            /* v2.3.3687: on a computer the column's TOP row (landDockFootprint) */
+            ...(landDock.top != null ? { top: landDock.top } : { bottom: landDock.bottom }),
             /* v2.3.2168: its OWN height — --dash-h is only the inset now
                that the bar is gone, so the dock states the row height the
                band used to lend it. */
@@ -1250,9 +1304,19 @@ export const BottomDashboard = () => {
                15px arrow rattling in 32px of it reads as a mis-sized button
                rather than a bigger one.  18 keeps the same optical weight
                inside the frame that 15 had at 34. */
-            style={{ ...chipStyle, flex: 'none', fontSize: 18,
-              width: LAND_FOLD_CHIP_W, height: LAND_FOLD_CHIP_W }}
-          >{mode === 'expanded' ? '▾' : '▴'}</button>
+            /* ═══ v2.3.3687: ON A COMPUTER, A WORD ═══
+               The owner: "Instead of the down arrow chip I think you should
+               just have a "close" button that says close for hiding the
+               display menus" -- CLOSE while the pages are open, OPEN while
+               they are folded, the upright phone's chip (v2.3.2266) in the
+               computer's sizes (sheetGeometry DESK_FOLD_CHIP_W: why a phone
+               on its side keeps the arrows). */
+            style={deskKeys
+              ? { ...chipStyle, flex: 'none', width: DESK_FOLD_CHIP_W, height: DESK_NAV_BTN_H,
+                  padding: 0, fontSize: 12, fontWeight: 800, letterSpacing: '.08em' }
+              : { ...chipStyle, flex: 'none', fontSize: 18,
+                  width: LAND_FOLD_CHIP_W, height: LAND_FOLD_CHIP_W }}
+          >{deskKeys ? (mode === 'expanded' ? 'CLOSE' : 'OPEN') : (mode === 'expanded' ? '▾' : '▴')}</button>
           {/* ═══ v2.3.2176: MINIMIZED MEANS MINIMIZED ═══
               Owner: the nav buttons "should've been hidden inside the main
               dashboard screen when it's minimized."  So sideways they are
@@ -1271,6 +1335,8 @@ export const BottomDashboard = () => {
                 vh={typeof window !== 'undefined' ? window.innerHeight : 844}
                 dots={dots}
                 btnW={LAND_NAV_BTN_W}
+                btnH={deskKeys ? DESK_NAV_BTN_H : undefined}
+                iconPx={deskKeys ? DESK_NAV_ICON : undefined}
                 fill
                 landLit
                 profilePortrait={profilePortrait} />

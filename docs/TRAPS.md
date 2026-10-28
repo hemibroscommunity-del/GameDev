@@ -8354,6 +8354,18 @@ canvas behind a texture emptied as Safari empties them, shown again): the game
 reloads straight back in, 0 px from where it was parked, and the body is whole
 in all eight facings; with `?canvascheck=0` it comes back blank in all eight.
 
+**And a black screen (v2.3.3701).** A rebuilt renderer uploads every picture
+again FROM its canvas, so a rebuild after a purge draws blanks -- and the
+memory pressure that resets the graphics chip is the same pressure that
+empties canvases.  BroTown's `_rebuildRenderer` asks the witnesses first and
+reloads through the same door instead.  Any NEW way of bringing the graphics
+back (a restore in place, a second renderer) asks them too.  The owner's
+"Northwest jog has trouble loading reloading textures after recovering from
+black screen": in a matched set of armour the jog's northeast and its mirror
+northwest are the only facings drawn from canvases (the body baked under the
+armour); every other facing is the knight figure, from its file.  Receipt:
+`mp-rebuildjog` step 3.
+
 ## 251. "The loading screen baked every frame the bro is drawn in" (v2.3.3577)
 
 **The plausible move.** A frame of the body under armour has to be baked
@@ -8529,3 +8541,68 @@ colour: a head sheet takes no trousers or boots, a torso strip no boots.
 
 **Receipt:** `mp-garmentspecks`, `tools/qa/garment-confine.mjs` (every sheet,
 nothing left unpainted in a figure's bottom fifth), docs/specs/garment-specks.md.
+
+## 257. "A picture that does not come fails, and a failure is tried again" (v2.3.3689)
+
+**The move.** A picture the game needs is loaded with its retries chained onto
+the failure: `img.onerror` (or the loader's rejection) waits a moment and asks
+again past the cache, two or three times, then gives up and says so. The head
+pieces had that since v2.3.1305, a later round every few minutes since
+v2.3.3606, and the body's placement tables the same since v2.3.1382.
+
+**Why it is wrong.** A request can STALL: no answer and no error, for as long
+as the page lives. A flaky Wi-Fi, a phone changing networks, a proxy that drops
+a connection without closing it leave one behind. Nothing ever rejects, so no
+retry ever runs, and the later rounds wait for a give-up that never comes. One
+head piece's picture is one facing (`hat/north.png`), so a stalled request is a
+hat that is there facing south and gone facing north, for the session -- the
+owner's "traits were missing when jogging in certain directions". And the
+loading screen, which waits for every head piece, sat at its 20 s cap first:
+"I think the disappearing traits are just from the game not fully loaded yet".
+The colour picks downloaded each piece a second time with a bare `new Image()`
+and no retry at all, and a colour is made from all five facings at once, so a
+stall there left the piece in its native colour in every facing.
+
+**The rule.** Every load the game waits on has a TIME LIMIT that counts as a
+failure, into the same retries: the head pieces' pictures (loadCroppedStrip's
+`timeoutMs`, and the colour catalogs' `loadTraitImg`, both
+`TRAIT_LOAD_TIMEOUT_MS` in src/rendering/traits/traitImg.js), their meta.json
+(an AbortController), and the body's placement tables and the gathering
+figures' crowns, which now start another round later instead of giving up for
+the page. A new loader takes a timeout too, or says why a stall cannot happen.
+And what the player sees is WATCHED: a worn piece hidden for 2.5 s facing a way
+its picture ships is asked for again and written to the crash log once
+(entityRenderer `_watchOwnHead`, `window.__btTraitCache()`).
+
+**Receipt:** `mp-traitswitch` step 6 (every first ask for the hat's north
+picture left hanging: drawn, red, facing north from the first frame; on the
+build before, never asked again -- not drawn facing north, and brown, not red,
+in the other four), docs/specs/head-pieces-ask-again.md.
+
+## 258. "A dash in the code costs a dash" (v2.3.3703)
+
+**The move.** Write the game's words as they read, "Lv 1–40", "Brotown ·
+safe", "→", an emoji, straight into the source: a character is a character.
+
+**Why it is wrong.** A browser keeps a page's script as text for as long as the
+page lives (a function is compiled from it the first time it runs), and the
+text's width is set by its widest character. One character past Latin-1
+anywhere in a script makes Chrome keep ALL of it at two bytes a character, and
+Safari, which shares an all-ASCII script's bytes with its text, decode a second
+copy. The game's main script is 3.8 million characters; its 1,589 such ("—",
+"·", "→", the emoji) cost about 3.7 MB of the page in Chrome (the memory
+check's `buffers` line, 21.9 -> 18.2 MB arriving in BroTown) and more on an
+iPhone. Vite asks esbuild for `utf8` output, so every one of them went through
+as written.
+
+**The rule.** The build writes the script in ASCII: vite.config.js sets
+esbuild's `charset: 'ascii'` (every string, template and name escaped,
+`—`, the same string at run time). esbuild leaves a REGULAR EXPRESSION's
+characters as written, so the build's `ascii-only-bundle` escapes whatever is
+left and says so in the build log -- but write a regex's character past ASCII
+as `\uXXXX` in the source (`/Lv \d+[–-]\d+/`), which the `ascii-only`
+suite §5d holds src/ to.
+
+**Receipt:** `ascii-only` suite (an emoji in a regex class with and without
+`u`, a range, a name, a comment, an identity escape, each run before and after
+escaping), mp-membudget's `buffers` line (24 -> 22), docs/specs/ascii-script.md.

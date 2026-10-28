@@ -178,6 +178,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    NOT the greeting video above — see welcomeBanner.js for why those are
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
+import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3701: a black screen's rebuild asks first whether Safari emptied the pictures */
 import { markWorldIn, skipTutorial, worldInMs } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
@@ -295,7 +296,8 @@ import { t1StatsPayload } from '@/game/t1Sync.js'; /* v2.3.1633: shared T1 repor
 import * as DATA from '@/data/index.js';
 import { syncRpgToServer, wsrvUrl, btRpc, getBtPlayerId, getBtPassphrase, generatePassphrase, passphraseToId, idForKey } from '@/networking/index.js';
 /* v2.3.1923: the device's character roster — see src/networking/charRoster.js */
-import { rememberChar, ensureChar, activateChar, inRoster, adoptSharedPhrase } from '@/networking/charRoster.js';
+import { rememberChar, ensureChar, activateChar, inRoster, adoptSharedPhrase, readRoster } from '@/networking/charRoster.js';   /* v2.3.3689: + readRoster, the picked row's look */
+import { applyCharacterRecord } from '@/game/characterRecord.js';   /* v2.3.3689: the picked row's look into the stores before the reload */
 import { HEADWEAR_CATALOG, getHeadwear, setHeadwear } from '@/rendering/traits/headwearCatalog.js';
 import { FACIALHAIR_CATALOG, getFacialHair, setFacialHair } from '@/rendering/traits/facialHairCatalog.js';
 import { EYEWEAR_CATALOG, getEyewear, setEyewear } from '@/rendering/traits/eyewearCatalog.js';   /* v2.3.2361 */
@@ -360,7 +362,7 @@ import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
-import { holdForAvatar } from '@/game/avatarHold.js'; /* v2.3.3520: the straight-in road waits for your bro's pictures behind a veil */
+import { holdForAvatar, holdForAvatarAlso } from '@/game/avatarHold.js'; /* v2.3.3520: the straight-in road waits for your bro's pictures behind a veil; v2.3.3689: + the server's look's */
 /* v2.3.789: desktop keyboard handlers extracted behavior-frozen (REBUILD-PLAN Phase 7). */
 import { setupDesktopControls } from '@/game/desktopControls.js';
 import { actionBus } from './mobile/actionBus.js'; /* v2.3.1562: quick-bar weapon swap */
@@ -393,7 +395,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
 import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
-import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
+import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
 import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3528: about the one who attacked you too */
@@ -510,7 +512,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
+import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W, deskFoldStripW } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
 import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.2177: which edge the landscape dashboard takes, and the player's pin */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
@@ -527,7 +529,7 @@ import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
-import { playerGroundDy } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are */
+import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
@@ -1605,9 +1607,18 @@ export var BroTown = function BroTown(_ref0) {
     setKbHintsOff(function (v) {
       var next = !v;
       try { localStorage.setItem('bt_kb_hints_off', next ? '1' : '0'); } catch (e2) { /* private mode */ }
+      /* v2.3.3687: the side column's list (KeyboardHintsPanel DeskKeysList)
+         follows the same choice */
+      try { setTimeout(function () { window.dispatchEvent(new Event('bt-kb-hints')); window.dispatchEvent(new Event('resize')); }, 0); } catch (e3) { /* no list */ }
       return next;
     });
   }, []);
+  /* v2.3.3687: ...and its own header toggles it, as the ⌨ does */
+  useEffect(function () {
+    var on = function () { toggleKbHints(); };
+    window.addEventListener('bt-kb-hints-toggle', on);
+    return function () { window.removeEventListener('bt-kb-hints-toggle', on); };
+  }, [toggleKbHints]);
   /* v2.3.1714: the top-left quest reminder collapses to its title on tap.
      Owner: "some users might prefer that view to save screen space."
      Read from storage in the INITIALISER, not in an effect — an effect would
@@ -3751,8 +3762,16 @@ export var BroTown = function BroTown(_ref0) {
          owner chose to keep the art full-bleed under it ("keep it
          full-bleed") with the CONTROLS held clear.  game.css spends these
          on the edge clusters only. */
+      /* v2.3.3687: on a computer the controls' strip stands at the edge the
+         panel does not take (deskWide.js), so with the panel on the right
+         the world begins after the strip; --keys-w is its width (0 elsewhere) */
       document.documentElement.style.setProperty('--world-x',
-        (_dashSide === 'left' ? _fp.sheetW : 0) + 'px');
+        (_dashSide === 'left' ? _fp.sheetW : (_fp.keysW || 0)) + 'px');
+      document.documentElement.style.setProperty('--keys-w', (_fp.keysW || 0) + 'px');
+      /* ...and where the world ENDS, from the right: what the panel or the
+         strip takes there (0 on a phone with the panel on the left) */
+      document.documentElement.style.setProperty('--world-r',
+        (_dashSide === 'left' ? (_fp.keysW || 0) : _fp.sheetW) + 'px');
       /* ═══ v2.3.2178: THE HOME-INDICATOR INSET, AS A STAMP ═══
          resize() has measured this since v2.3.2163 (the probe exists
          because JS cannot read env()), but the band, the landscape dock and
@@ -3789,8 +3808,10 @@ export var BroTown = function BroTown(_ref0) {
          whenever the chip is NOT on the world's left edge -- portrait,
          any open sheet, and every rotation that puts the dashboard on the
          right -- which keeps those layouts byte-identical. */
+      /* v2.3.3687: not on a computer playing wide, where the folded column
+         is a strip of its own beside the world (deskFoldStripW), the chip in it */
       document.documentElement.style.setProperty('--land-fold-w',
-        (playIsLandscape() && !_sheetOpen && _dashSide === 'left'
+        (playIsLandscape() && !_sheetOpen && _dashSide === 'left' && !deskFoldStripW()
           ? 2 * DASH_GAP + LAND_FOLD_CHIP_W + 8 : 0) + 'px');
       try {
         document.documentElement.setAttribute('data-dash-side', _dashSide);
@@ -4082,6 +4103,37 @@ export var BroTown = function BroTown(_ref0) {
     window._rebuildRenderer = function (reason) {
       var _now = Date.now();
       if (window.__btLastGlRebuild && _now - window.__btLastGlRebuild < 5000) return;
+      /* ═══ v2.3.3701: A REBUILD CANNOT GIVE BACK A PICTURE SAFARI EMPTIED ═══
+         The owner: "Northwest jog has trouble loading reloading textures after
+         recovering from black screen".  A black screen is the graphics chip
+         reset, on an iPhone from memory pressure -- when Safari may also empty
+         the canvases the game draws its pictures on (TRAPS §250).  A rebuild
+         sends every picture to the new chip again FROM those canvases, so
+         after such a purge it draws blanks: in a matched set of armour the
+         jog's northeast and its mirror northwest (the only two facings drawn
+         from the body baked under the armour on canvases; every other facing
+         is the knight figure, from its file), the head over the armour, the
+         Wheel's ground.  The return's check (wsClient _resumeRecover,
+         canvasWitness.js) runs only when the page comes back or thaws, and a
+         black screen in play is neither.  mp-rebuildjog: with the canvases
+         emptied and the context lost, the rebuild went ahead, and only a
+         freeze of this box's own during it (a 'thaw') or the black-screen
+         watchdog's strikes reloaded the page.  So the rebuild asks the same
+         question first: two or more pictures read back empty and it is the
+         recovery reload instead, on the same spot of the Wheel (one door,
+         one cap: two in five minutes).  `?canvascheck=0` is the old way. */
+      if (!CANVAS_CHECK_OFF) {
+        try {
+          var _cw = checkWitnesses();
+          if (_cw.emptied >= EMPTIED_NEED) {
+            var _cwWhy = 'rebuild (' + (reason || 'manual') + '): ' + _cw.emptied + ' of ' + _cw.checked + ' pictures read back empty (' + _cw.ms + ' ms)';
+            import('../debug/crashTrap.js').then(function (ct) { ct.recordCrash('canvas-purge', _cwWhy); }).catch(function () {});
+            var _cwGo = typeof window.__btRecoveryReload === 'function' && window.__btRecoveryReload('pictures emptied at a black screen -- ' + _cwWhy, { spot: true });
+            noteCheckActed(_cwGo ? 'reload' : 'no-reload');
+            if (_cwGo) { window.__btLastGlRebuild = _now; return; }
+          }
+        } catch (eCw) { /* a check must never stop the rebuild */ }
+      }
       window.__btLastGlRebuild = _now;
       /* v2.3.773: let the fresh renderer record its own first error --
          otherwise a rebuild that didn't cure the throw leaves no trace. */
@@ -5430,6 +5482,10 @@ export var BroTown = function BroTown(_ref0) {
             && Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
           dx = S._jump.dx || 0; dy = S._jump.dy || 0;
         }
+        /* v2.3.3682: a flip in the air carries you faster across the ground,
+           the better its timing the more (game/jump.js flipBoost; the owner's
+           "time it right to get maximum horizontal distance") */
+        finalSpd *= flipBoost(S._jump, Date.now());
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
         var ny = P.y + dy * _step;
@@ -10289,6 +10345,28 @@ export var BroTown = function BroTown(_ref0) {
     });
     return closest;
   };
+  /* ═══ v2.3.3694: A COMPUTER'S SWORD PRESS, AS THE PHONE'S ═══
+     onMouseDown's lunge (its note says why): the monster under the cursor
+     locked as a tap, else the game's own lock promoted to one -- the phone's
+     handleRBtnPress, `near` and all -- then maybeSwordDash, which keeps every
+     rule of its own (the sword, the shield down, its cooldown, a living target
+     within reach).  True when the lunge took the press.  The lock this press
+     took or kept is noted for its click (onClick). */
+  var _deskLungePress = function (S, cssX, cssY) {
+    var slot = S.rpg && S.rpg.activeSlot;
+    if (!S.rpg || slot === 'ranged' || slot === 'staff' || S._shieldUp) return false;
+    var hit = monsterAtCss(cssX, cssY);
+    var lt = S.lockedTarget;
+    if (hit) {
+      if (!lt || lt.ref !== hit) S.lockedTarget = { type: 'monster', id: hit.id, ref: hit, src: 'tap' };
+      else if (lt.src !== 'tap') S.lockedTarget = { type: 'monster', id: lt.id, ref: lt.ref, src: 'tap', near: true };
+    } else if (lt && lt.ref && lt.type === 'monster' && lt.src !== 'tap') {
+      S.lockedTarget = { type: 'monster', id: lt.id, ref: lt.ref, src: 'tap', near: true };
+    }
+    var now = S.lockedTarget;
+    if (now && now.type === 'monster' && now.ref) S._deskPressLock = now.ref;
+    try { return maybeSwordDash(S) === true; } catch (_e) { return false; }
+  };
   /* another player within the click's 25 px (onClick's own loop: the first
      one found, as it acts on) -- their id, or null */
   var otherPlayerAtCss = function (cssX, cssY) {
@@ -11927,6 +12005,28 @@ export var BroTown = function BroTown(_ref0) {
     setTimeout(_clearSpin, 20000);
   }, []); /* mount-only by design: resumes happen once per page load */
 
+  /* ═══ v2.3.3689: THE SERVER'S LOOK, PREPARED BEFORE THE WORLD SHOWS ═══
+     state_sync puts the character's stored look on (wsClient), and when that
+     changes what your head wears -- a Login Key's first join on a new device,
+     a row picked with no look on it yet -- the loading preload had made the
+     look this device held.  preloadTraits again: every piece's art is in or
+     coming already (cached), so what it adds is the NEW look's colours and its
+     hat's clip shapes; and while the straight-in road's veil is up it waits
+     for them (holdForAvatarAlso).  `window.__btOwnLookWarm` for QA. */
+  useEffect(function () {
+    var onLook = function () {
+      var p = null;
+      try { p = preloadTraits(); } catch (e) { p = null; }
+      var held = false;
+      try { held = holdForAvatarAlso(stateRef.current, p); } catch (e) { held = false; }
+      var rec = { at: Date.now(), held: held, done: 0 };
+      try { window.__btOwnLookWarm = rec; } catch (e) { /* no window */ }
+      Promise.resolve(p).catch(function () {}).then(function () { rec.done = Date.now(); });
+    };
+    window.addEventListener('bt-own-look', onLook);
+    return function () { window.removeEventListener('bt-own-look', onLook); };
+  }, []);
+
   /* Name / avatar selection modal.
      v2.3.710: redesigned to two side-by-side panes at EVERY width (iPhone
      Safari portrait is the primary platform): big live preview + name +
@@ -11982,6 +12082,21 @@ export var BroTown = function BroTown(_ref0) {
            (characterRecord.js), which now treats the record as the whole
            look.  The design SLOTS are untouched (clearAllArt's note). */
         try { clearAllArt(); clearPatterns(); } catch (e) { /* the record apply still clears them on join */ }
+        /* ═══ v2.3.3689: AND THE LOOK BELONGS TO THE CHARACTER BEING PLAYED ═══
+           The owner: "I logged in as another character and traits were missing
+           when jogging in certain directions".  The reload's veil waits for
+           your bro's pictures (avatarHold.js) -- made from the look in this
+           device's stores, which still hold the character being LEFT until
+           the worker's state_sync puts the new one's in, after the veil's
+           preload has run.  The row keeps that character's look (the picker
+           draws its portrait from it, v2.3.2193), so it goes into the stores
+           now, and the veil prepares the bro the world will draw.  A row with
+           no look yet changes nothing: state_sync's record still applies, and
+           the veil waits for it too (wsClient 'bt-own-look'). */
+        try {
+          var _row = readRoster().find(function (r) { return r && r.phrase === phrase; });
+          if (_row && _row.look) applyCharacterRecord({ look: _row.look });
+        } catch (e) { /* the record on state_sync is the truth either way */ }
         try {
           /* Plain '/' deliberately: this door is most often reached BY
              LOGGING OUT, which navigates to '/?noresume=1&login=1'
@@ -12510,11 +12625,30 @@ export var BroTown = function BroTown(_ref0) {
         var _pr = e.currentTarget.getBoundingClientRect();
         var _pk = _deskPressTarget(e.clientX - _pr.left, e.clientY - _pr.top);
         if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: _pk || 'attack', ts: Date.now() };
+        S._deskPressLock = null;   /* v2.3.3694: this press's lock, for its own click (below) */
         if (_pk) return;
         if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
         S.autoAttack = true;
         setAutoAttack(true);
         S._aiming = true;
+        /* ═══ v2.3.3694: A SWORD'S PRESS LUNGES ON A COMPUTER TOO ═══
+           The owner, on the desktop version: "The melee needs the "zoom to
+           attack monster" behavior that exists on phones when you get close
+           enough."  A phone's attack press (handleRBtnPress) makes the game's
+           own lock a deliberate one and asks maybeSwordDash, which dashes to
+           it and strikes on arrival in place of the swing; this click only
+           swung.  It asks the same now, after _deskPressTarget (a click on a
+           townsperson, a resource or a bed is still theirs):
+           - a monster under the cursor is the one the click means, so it is
+             locked as a tap there and then (the click below would have);
+           - else the game's own lock (the nearest within the sword's ring) is
+             promoted, the phone's rule;
+           - the lunge's own rules are unchanged: the sword only, the shield
+             down, off its 2.5 s cooldown, a living target within its reach.
+           The press's lock is noted (`_deskPressLock`) so the click that ends
+           this press does not undo it: a click on the locked monster toggled
+           it off, and on empty ground let it go. */
+        if (_deskLungePress(S, e.clientX - _pr.left, e.clientY - _pr.top)) return;
         doSwing();
       }
     },
@@ -12554,6 +12688,14 @@ export var BroTown = function BroTown(_ref0) {
       var cssX = e.clientX - rect.left;
       var cssY = e.clientY - rect.top;
       var S = stateRef.current;
+      /* v2.3.3694: the click that ends a sword's press on a computer is that
+         press's (onMouseDown, _deskLungePress): it took a monster's lock, or
+         lunged at the one the game had, so this click neither toggles that
+         lock off nor lets it go as a click on empty ground.  A phone never
+         sets it (its press is the disc's). */
+      var _dpl = S._deskPressLock;
+      S._deskPressLock = null;
+      if (_dpl && S.lockedTarget && S.lockedTarget.ref === _dpl) return;
       var cx = S.camera.x,
         cy = S.camera.y;
       /* Both render paths use uniform scaling (Canvas 2D: setTransform

@@ -81,6 +81,7 @@ import { recolorHairToCanvas } from '../characterPortrait.js';
 import { EYE_COLOR_CATALOG, eyeColorTarget } from './eyeColorCatalog.js';
 import { recolorEnabled } from './recolorOptions.js';
 import { segmentMaterials, materialIndex, mainMaterial } from './traitMaterials.js';
+import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
 
 /* The Eyes tab's own palette, re-exported rather than copied -- see the
    header.  Named so a reader of the picker does not have to know that the two
@@ -145,14 +146,9 @@ const TRAIT_VER = '2.3.3590';   /* the EIGHTH copy of this key; all move togethe
 
 const _cache = {};
 
-function loadImg(url) {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im);
-    im.onerror = rej;
-    im.src = url;
-  });
-}
+/* v2.3.3689: a stalled request is given up on and asked again (traitImg.js),
+   so a recolour is never left in the native colour for one facing */
+const loadImg = (url) => loadTraitImg(url);
 
 /* One shared profile across a style's facings, pooled for the reason the hat
    (v2.3.1109) and the glasses (v2.3.2424) are: keyed per facing, the chosen

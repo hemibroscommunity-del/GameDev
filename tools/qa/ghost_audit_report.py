@@ -33,6 +33,7 @@ COVERED = {                            # the colours each outfit hides
     'full': ('tee', 'trousers', 'boots'),
     'plate': ('tee',),
     'greaves': ('trousers', 'boots'),
+    'bare': (),                        # v2.3.3685: nothing hidden; read its sheets for holes
 }
 PAINT = {'skin': (0, 255, 0), 'tee': (255, 255, 0), 'trousers': (255, 0, 255), 'boots': (0, 255, 255)}
 

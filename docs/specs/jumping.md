@@ -518,3 +518,89 @@ sword, a Pine Shield and a fight on:
 
 `mp-tapjump`'s first check now expects the button; its tap still jumps, 8 of
 8.
+
+## v2.3.3682: the double jump, a flip
+
+The owner, 2026-10-27:
+
+> Now I'm wondering about the feasibility of a double jump feature. You press
+> jump then press jump again to do a little flip for a little more of a bounce.
+> You have to time it right to get maximum horizontal distance and the jump
+> effect will be greater if you're sprinting into the jump. See if you can use
+> the roll or part of the roll for the double jump effect
+
+and "I just uploaded the second jump (flip) sound effect to GitHub".
+
+**What it is.** A second press while you are in the air (the jump button, X,
+or a tap on the stick) is a FLIP, once a jump. It is a smaller push up from
+where you are: `FLIP_PUSH` 0.6 of the jump's own, under the jump's own
+gravity, so `?jumpms=` stretches it too. The record that replaces `S._jump`
+is a jump of its own (`flip: true`), so everything that reads a jump reads it
+unchanged: the lift, the low things cleared, the landing and its squash, the
+peers' copy.
+
+**It is drawn with the roll.** The dodge sheets' somersault (frames 2-6:
+over, the tuck going round, coming out), by the flip's phase
+(`FLIP_FRAMES`, `FLIP_FRAME_AT`), lifted by jumpFx as a jump is. The roll's
+pose is borrowed the way the sword's dash borrows it (entityRenderer
+`_flipRoll`): the look only, so no i-frames. As on the roll, the hair, hats
+and glasses are not drawn during it.
+
+**Timing is distance.** For the flip's time in the air you go faster across
+the ground, from `FLIP_BOOST_MIN` 0.10 to `FLIP_BOOST_MAX` 0.45 by its grade
+(`flipGrade`):
+
+- 0 at `FLIP_FROM` (15% of the jump; a press before it is refused, "early");
+- 1 at `FLIP_SWEET` (80%: coming down, about 0.12 s before the feet would
+  touch);
+- easing to 0.5 at `FLIP_TO` (96%), where it is too late ("late").
+
+A later flip gives more time in the air, but past the sweet spot the boost
+falls faster than the air grows. So the most ground is covered at the sweet
+spot. Ground covered, in plain jumps (test-world-core works it out from the
+rules):
+
+| Flip pressed at | Ground covered |
+|---|---|
+| no flip | 1.0x |
+| 20% (right after take-off) | about 1.1x |
+| 50% (the top) | about 1.6x |
+| 80% (the sweet spot) | about 2.0x |
+| 95% (nearly down) | about 1.8x |
+
+A grade of `FLIP_PERFECT` 0.8 or better says "Perfect!" over you, in gold.
+
+**Sprinting into it** (a jump that took off in a sprint, or a sprint on at the
+flip) makes the flip bigger: the push x1.25 and the boost x1.35. At the sweet
+spot that is about 2.3x a plain jump's ground, on top of the sprint's own
+1.33x pace.
+
+**The worker** hears a walk, as for a jump. No server change. At its best a
+flip is 1.45x the walk for about half a second (2.1x with the sprint's own
+1.33). That is under the move budget's 500 px a second refill at the base
+walk, and inside its three seconds of burst with every speed stat
+(server/src/movement.js `MOVE_BUDGET`). mp-doublejump checks that a second
+phone agrees where the flipper landed.
+
+**Other players** see it. The relay is the jump's own `player_jump`, carrying
+`flip: 1`, its height, push and pull, and which way it faces; a forged one is
+clamped (`peerFlip`) and falls back to a plain hop. An older screen reads it as
+a second hop of the flip's length and height.
+
+**The sound** is the owner's recording, "sfx jump flip" (Freesound 563530),
+cut by tools/audio/cut_owner_sounds.py: the cue `jumpFlip`, yours and another
+player's at their share.
+
+**Checked:**
+
+- test-world-core "jumping": every rule above exactly: the grade, when a
+  flip may start, the arc, where the most ground is, sprinting, "Perfect!",
+  the boost only in the air, low things cleared while high enough, the roll's
+  frames, a peer's flip clamped.
+- `mp-doublejump` (two phones, in the world): the second press flips and is
+  drawn with the roll's somersault, lifted; near the sweet spot it carries him
+  1.5x+ a plain jump with "Perfect!"; a third press does nothing; too soon is
+  refused and a later press still flips; an early flip covers less ground;
+  sprinting makes it bigger; the watching phone sees the flip drawn and
+  agrees where he landed. This box draws a few frames a second, so a timed
+  press is made again (up to five times) until it lands in its window.

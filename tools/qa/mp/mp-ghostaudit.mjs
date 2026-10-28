@@ -40,7 +40,8 @@
  *
  *   node tools/qa/mp/run.mjs ghostaudit
  *   BT_GHOST_ONLY=stand,jog   only those families
- *   BT_GHOST_OUTFITS=full     only that outfit (full, plate, greaves)
+ *   BT_GHOST_OUTFITS=full     only that outfit (full, plate, greaves; bare, no armour, only when named)
+ *   BT_GHOST_SHIRT=print      v2.3.3696: the tee striped and printed
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -65,6 +66,15 @@ const LOOK = `try {
   localStorage.setItem('bt-shirtcolor', 'yellow');
   localStorage.setItem('bt-hair', 'none');
   localStorage.setItem('bt-headwear', 'none');
+  /* v2.3.3696: BT_GHOST_SHIRT=print -- the tee striped (ART_PALETTE 5) with
+     a block printed on the chest (ART_PALETTE 10, mp-gatherlook's), to see
+     where a print and a pattern sit on every frame */
+  if (${JSON.stringify(process.env.BT_GHOST_SHIRT || '')} === 'print') {
+    localStorage.setItem('bt-shirtpat', 'stripe-v:5');
+    let art = '';
+    for (let i = 0; i < 256; i++) { const x = i % 16, y = (i / 16) | 0; art += (x >= 5 && x <= 10 && y >= 4 && y <= 9) ? 'a' : '0'; }
+    localStorage.setItem('bt-shirtart', art);
+  }
 } catch (e) {}`;
 
 /* the eight facings: the keys that walk that way, and the way as an angle */
@@ -78,6 +88,12 @@ const OUTFITS = {
   full: { chest: 'ironplate', legs: 'irongreaves' },
   plate: { chest: 'ironplate', legs: 'none' },
   greaves: { chest: 'none', legs: 'irongreaves' },
+  /* v2.3.3685: no armour -- every colour drawn, nothing to hide; for a hole
+     in the figure (the background seen through it), only when asked:
+     BT_GHOST_OUTFITS=bare */
+  /* v2.3.3696: no armour, the tee seen whole (BT_GHOST_OUTFITS=bare; not in
+     the default run) -- the mining shirt's print and pattern */
+  bare: { chest: 'none', legs: 'none' },
 };
 
 /* installed once in the page: the clock that can be held, the isolation
@@ -160,7 +176,9 @@ const PAGE_TOOLS = () => {
       for (const c of layer.children) {
         if (c === me || !c.visible || G.foreign.has(c)) continue;
         const label = c.label || c.constructor.name;
-        if (/^(monster_|npc_|wheelObject|peer_|player_)/.test(label)) continue;
+        /* v2.3.3684: and the campfire a light leaves: since v2.3.3666 the light's
+           fire IS the campfire (campfireFx adopts it), the point of lighting one */
+        if (/^(monster_|npc_|wheelObject|peer_|player_|campfire$)/.test(label)) continue;
         let b = null;
         try { b = c.getBounds(); } catch (e) { /* none */ }
         if (!b || b.width < 2 || b.x > px + 120 || b.x + b.width < px - 120 || b.y > py + 90 || b.y + b.height < py - 170) continue;
@@ -203,8 +221,12 @@ const PAGE_TOOLS = () => {
     const S = window._gameState.current;
     const me = R.playerDisplayRaw();
     const fig = (k) => { try { const f = window[k] ? window[k]() : null; return f && f.visible ? { x: f.x, y: f.y } : null; } catch (e) { return null; } };
+    /* v2.3.3684: the fire-lighter's own frame (its probe, __btFireFigure().fi),
+       so the report names its frames 0-7 and not the hidden body's */
+    let fireK = null;
+    try { const f = window.__btFireFigure ? window.__btFireFigure() : null; if (f && f.visible && typeof f.fi === 'number') fireK = f.fi; } catch (e) { /* none */ }
     return {
-      t: G.held, pose: me ? me._animPose || null : null, frame: me ? me._animFrame : null,
+      t: G.held, pose: fireK != null ? 'fire' : (me ? me._animPose || null : null), frame: fireK != null ? fireK : (me ? me._animFrame : null),
       facing: S._renderFacing || S._facing || null, bodyVisible: !!(me && me.visible),
       bodySprite: !!(me && me._spriteBody && me._spriteBody.visible),
       standInBody: S._standInBody === true, swing: !!S._swordSwinging, bow: !!S.autoAttack,
@@ -628,8 +650,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
                hidden while the light is photographed, on a build with the
                switch, so its yellows are never read as the tee */
             await page.evaluate(() => (window.__btCampfireHide ? window.__btCampfireHide(true) : null)).catch(() => {});
-            const t0 = await page.evaluate(() => Date.now());
-            await sweep(outfit, 'fire', 'south', t0, 1800, 60);
+            /* v2.3.3684: from the light's own start (its frames are 67 ms each,
+               the light over in about half a second: a sweep from "now" began
+               part way through and photographed three of its eight frames) */
+            const t0 = await page.evaluate(() => { const fm = window._gameState.current._firemaking; return (fm && fm.startedAt) || Date.now(); });
+            await sweep(outfit, 'fire', 'south', t0, 1800, 30);
             await page.evaluate(() => (window.__btCampfireHide ? window.__btCampfireHide(false) : null)).catch(() => {});
           }
           await end(outfit, 'fire');

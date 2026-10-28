@@ -15,6 +15,7 @@ import { recolorHairToCanvas } from '../characterPortrait.js';
 import { headwearIsSolid } from './headwearCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from './recolorOptions.js';
 import { segmentMaterials, mainMaterial } from './traitMaterials.js'; /* v2.3.1926 */
+import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
 
 export const HAT_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#7c6cff', target: null },
@@ -124,14 +125,9 @@ const TRAIT_VER = '2.3.3590';   /* v2.3.2174: de-fringe sweep across the trait s
 /* `${hatId}/${colorId}` -> { east:Texture, ... } | 'loading' */
 const _cache = {};
 
-function loadImg(url) {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im);
-    im.onerror = rej;
-    im.src = url;
-  });
-}
+/* v2.3.3689: a stalled request is given up on and asked again (traitImg.js),
+   so a recolour is never left in the native colour for one facing */
+const loadImg = (url) => loadTraitImg(url);
 
 /* Mean luminance of opaque pixels across SEVERAL images (×1.15), so all of a
    hat's facings share ONE recolour reference. Keying every direction off the

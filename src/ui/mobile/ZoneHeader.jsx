@@ -10,6 +10,8 @@ import { achvLive, achvApTotal } from '../../game/achievements.js';   /* v2.3.35
 import { ACHV_MEDAL_SRC } from '../../data/achievements.js';         /* v2.3.3553: the owner's medal */
 import { apRise, apWords, apGainWords } from '../../game/apChip.js';  /* v2.3.3553 */
 import { dashboardPanelBus } from './dashboardPanelBus.js';            /* v2.3.3553: the AP opens its page */
+import { onXpBar, xpBarShown, xpGainWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
+import { XP_BAR_ICONS, XP_BAR_LABELS } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
 
 /* ═══ v2.3.2892: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
    Owner: "Add a time of day icon next to current map name."  The hour is
@@ -66,7 +68,7 @@ const TOD_ICON = {
   ),
 };
 
-function TodIcon({ S }) {
+function TodIcon({ S, faded }) {
   const tod = lightingAt(dayPhase(Date.now())).name;
   const sky = zoneHasSky(S.currentZone, S);
   return (
@@ -78,7 +80,9 @@ function TodIcon({ S }) {
       width="16"
       height="16"
       aria-hidden="true"
-      style={{ opacity: sky ? 1 : 0.45 }}
+      /* v2.3.3695: `faded` under the XP bar (its opacity is set here, so the
+         stylesheet's fade cannot reach it) */
+      style={{ opacity: faded ? 0 : (sky ? 1 : 0.45), transition: 'opacity 220ms linear' }}
     >{TOD_ICON[tod] || TOD_ICON.day}</svg>
   );
 }
@@ -185,6 +189,9 @@ export const ZoneHeader = ({ onExit }) => {
     if (holdRef.current) { clearTimeout(holdRef.current); holdRef.current = null; }
   };
   useEffect(() => holdEnd, []);
+  /* v2.3.3695: the XP bar shows the moment XP lands (game/xpBar.js tells
+     us), not on the next 500 ms beat below */
+  useEffect(() => onXpBar(() => force((v) => v + 1)), []);
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 500);
     return () => clearInterval(id);
@@ -228,6 +235,9 @@ export const ZoneHeader = ({ onExit }) => {
     apSeen.current = ap;
   }
   const apBump = apRises.current;
+  /* v2.3.3695: the XP bar -- the skill that last earned, while it is up */
+  const xb = S._xpBar || null;
+  const xpOn = xpBarShown(xb, Date.now());
   const openAchievements = (e) => {
     if (e) e.stopPropagation();
     /* no focus ring left on it once the page is open (a key pressed next
@@ -293,8 +303,8 @@ export const ZoneHeader = ({ onExit }) => {
           </button>
         )}
         </div>
-        <div className="bt-zone-header__mid">
-        <TodIcon S={S} />
+        <div className={'bt-zone-header__mid' + (xpOn ? ' bt-zone-header__mid--xp' : '')}>
+        <TodIcon S={S} faded={xpOn} />
         <div
           className="bt-zone-header__title"
           /* v2.3.2596: the zone-entry banner's DOCK TARGET.  A data hook rather
@@ -323,6 +333,31 @@ export const ZoneHeader = ({ onExit }) => {
           <span className="bt-zone-header__test" data-test-mode-tag="1"
             aria-label="Test mode: the anti-cheat is off for this character">TEST MODE</span>
         )}
+        {/* ═══ v2.3.3695: THE XP BAR, IN THE TITLE'S PLACE WHILE YOU EARN ═══
+            The owner: "an XP Popup and an Xp bar to appear with the icon of
+            whatever primary combat skill you're earning Xp in ... Then
+            disappears again."  The skill's picture, its level, a bar filled to
+            the next level, and the gain popping over the bar -- the worker's
+            numbers (game/xpBar.js), here for XP_BAR_SHOW_MS after the last
+            gain.  OVER the title, which stays in the page under it (the zone
+            banner's dock target, read exactly; the long press to the test
+            panel still reaches it), only faded.  Transform and opacity only:
+            this rail is over the WebGL canvas (TRAPS section 42). */}
+        {xb ? (
+          <div className={'bt-xp-bar' + (xpOn ? ' is-on' : '') + (xb.up ? ' is-up' : '')} data-xp-bar={xb.cat}
+            data-xp-level={xb.level} data-xp-frac={xb.frac.toFixed(3)} data-xp-shown={xpOn ? '1' : '0'}
+            role="img" aria-hidden={xpOn ? undefined : true}
+            aria-label={`${XP_BAR_LABELS[xb.cat] || 'Skill'} level ${xb.level}, ${Math.round(xb.frac * 100)}% to the next`}>
+            <img className="bt-xp-bar__icon" src={XP_BAR_ICONS[xb.cat]} alt="" draggable={false} />
+            <span className="bt-xp-bar__lv">Lv {xb.level}</span>
+            <span className="bt-xp-bar__track">
+              <span className="bt-xp-bar__fill" style={{ transform: `scaleX(${xb.frac})` }} />
+              {xpOn && xb.gain > 0 ? (
+                <span key={'g' + xb.seq} className="bt-xp-gain" data-xp-gain={xb.gain}>{xpGainWords(xb.gain)}</span>
+              ) : null}
+            </span>
+          </div>
+        ) : null}
         </div>
         {/* ═══ v2.3.2320: THE PURSE LIVES HERE NOW ═══
             Owner: "Move gold amount display to very top right on the top bar

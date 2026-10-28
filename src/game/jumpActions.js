@@ -13,7 +13,9 @@
  * client ignores it and sees you glide a step. */
 import { BT_AUDIO } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a jump's push-off and landing */
-import { jumpRefusal, startJump, endJump, jumpActive, JUMP_MS, JUMP_PEAK } from '@/game/jump.js';
+import { jumpRefusal, startJump, endJump, jumpActive, JUMP_MS, JUMP_PEAK, startFlip, flipRefusal } from '@/game/jump.js';   /* v2.3.3682: + the flip */
+import { isSprinting } from '@/game/sprint.js';   /* v2.3.3682: a jump sprinted into flips bigger */
+import { pushDmgPopup, heroPopupY } from '@/game/combatHelpers.js';   /* v2.3.3682: "Perfect!" over you */
 import { dropShield } from '@/game/shieldToggle.js';
 import { isStuck, isDazed } from '@/game/elemHits.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
@@ -58,11 +60,14 @@ function heldDirection(S) {
 export function triggerJump(S) {
   if (!S) return false;
   var now = Date.now();
-  var why = jumpRefusal(S, now, {
+  var extra = {
     stunned: !!(S._playerStunUntil && now < S._playerStunUntil),
     stuck: isStuck(S, now),
     dazed: isDazed(S, now),
-  });
+  };
+  var why = jumpRefusal(S, now, extra);
+  /* v2.3.3682: a second press in the air is the flip (triggerFlip) */
+  if (why === 'airborne') return triggerFlip(S, now, extra);
   S._jumpWhy = why;
   if (why) return false;
   /* a raised shield goes down, as it does for a roll (dodge.js) */
@@ -71,6 +76,13 @@ export function triggerJump(S) {
   var j = startJump(S, now, d.dx, d.dy);
   j.zone = S.currentZone;   /* a zone left mid-air ends it (tickJump) */
   if (jumpMsOverride()) j.dur = jumpMsOverride();
+  /* v2.3.3682: what a flip needs to know of its jump -- sprinted into, and
+     the way it went (the somersault faces it) */
+  j.sprint = isSprinting(S);
+  j.ang = flipAngle(S, d);
+  /* where the jump left the ground, for its landing's record (S._lastJumpRun) */
+  if (S.player) { j.x0 = S.player.x; j.y0 = S.player.y; }
+  j.air0 = now;
   S._jumpCount = (S._jumpCount || 0) + 1;
   /* the push-off: a step on the ground you are standing on */
   try { if (BT_AUDIO.footstep) BT_AUDIO.footstep(isWearingArmor(), footstepSurface(S)); } catch (e) { /* audio is best-effort */ }
@@ -79,6 +91,59 @@ export function triggerJump(S) {
     try {
       S.channel.send({ type: 'broadcast', event: 'player_jump',
         payload: { id: S.myId, ts: now, dur: j.dur || JUMP_MS, peak: j.peak || JUMP_PEAK } });
+    } catch (e) { /* a lost relay costs a peer the picture, nothing else */ }
+  }
+  return true;
+}
+
+/* v2.3.3682: the way a flip's somersault faces -- the stick if held, else
+   the way the jump went, else the way you face */
+function flipAngle(S, d) {
+  if (d && (Math.abs(d.dx) > 0.1 || Math.abs(d.dy) > 0.1)) return Math.atan2(d.dy, d.dx);
+  var j = S._jump;
+  if (j && (Math.abs(j.dx || 0) > 0.1 || Math.abs(j.dy || 0) > 0.1)) return Math.atan2(j.dy, j.dx);
+  return typeof S._facingAngle === 'number' ? S._facingAngle : Math.PI / 2;
+}
+
+/* "Perfect!" in the gold of a good find, the message size (effectsRenderer) */
+export var FLIP_PERFECT_COLOR = '#FFD45E';
+
+/**
+ * ═══ v2.3.3682: THE DOUBLE JUMP -- A FLIP ═══
+ * The second press in the air (game/jump.js startFlip has the rules): once a
+ * jump, between FLIP_FROM and FLIP_TO of it, not stunned, held or dazed.
+ * Refused quietly as a jump is, the reason kept as `flip-<why>`.  The relay
+ * is the jump's own, `player_jump`, carrying the flip (`flip: 1`, its height,
+ * push and pull, the way it faces): an older screen reads it as a second hop
+ * of `dur` and `peak`, nearly the same picture.
+ */
+export function triggerFlip(S, now, extra) {
+  if (!S || !S._jump) return false;
+  if (extra && (extra.stunned || extra.stuck || extra.dazed)) {
+    S._jumpWhy = 'flip-' + (extra.stunned ? 'stunned' : extra.stuck ? 'stuck' : 'dazed');
+    return false;
+  }
+  var j = S._jump;
+  var no = flipRefusal(j, now);
+  if (no) { S._jumpWhy = 'flip-' + no; return false; }
+  var d = heldDirection(S);
+  var f = startFlip(j, now, { sprint: isSprinting(S), dx: d.dx, dy: d.dy, ang: flipAngle(S, d) });
+  if (!f) { S._jumpWhy = 'flip-none'; return false; }
+  f.zone = j.zone || S.currentZone;
+  f.x0 = j.x0; f.y0 = j.y0; f.air0 = j.air0 || j.t0;
+  S._jump = f;
+  S._jumpWhy = null;
+  S._flipCount = (S._flipCount || 0) + 1;
+  S._lastFlip = { at: now, grade: f.grade, boost: f.boost, perfect: f.perfect, sprint: f.sprint, phase: f.at, dur: f.dur, peak: f.peak, h0: f.h0 };
+  cue('jumpFlip');
+  if (f.perfect && S.player) {
+    try { pushDmgPopup(S, S.player.x, heroPopupY(S), 'Perfect!', FLIP_PERFECT_COLOR, { ts: now + 1 }); } catch (e) { /* a word only */ }
+  }
+  if (S.channel) {
+    try {
+      S.channel.send({ type: 'broadcast', event: 'player_jump',
+        payload: { id: S.myId, ts: now, dur: f.dur, peak: f.peak, flip: 1,
+          h0: +f.h0.toFixed(2), v: +f.v.toFixed(5), g: +f.g.toFixed(7), ang: +f.ang.toFixed(3) } });
     } catch (e) { /* a lost relay costs a peer the picture, nothing else */ }
   }
   return true;
@@ -98,8 +163,16 @@ export function tickJump(S, now, dead) {
   endJump(S, now);
   /* v2.3.3499: a jump that came down on its own lands with a squash that
      springs back (rendering/jumpFx.js, game/jump.js jumpLook), timed off the
-     jump's own end and length; one cut short (a death, a zone left) does not */
-  S._jumpLandFx = { at: j.t0 + j.dur, dur: j.dur };
+     jump's own end and length; one cut short (a death, a zone left) does not.
+     v2.3.3682: a flip's squash is its jump's (baseDur: the length `?jumpms=`
+     set), from the flip's own end */
+  S._jumpLandFx = { at: j.t0 + j.dur, dur: j.baseDur || j.dur };
+  /* v2.3.3682: how far this jump carried you and how long it was in the air,
+     flip or not (QA reads it: mp-doublejump) */
+  if (S.player && Number.isFinite(j.x0)) {
+    S._lastJumpRun = { dist: Math.hypot(S.player.x - j.x0, S.player.y - j.y0), airMs: now - (j.air0 || j.t0),
+      flip: !!j.flip, grade: j.flip ? j.grade : null, boost: j.flip ? j.boost : null };
+  }
   return true;
 }
 
@@ -109,5 +182,5 @@ export function tickJump(S, now, dead) {
 export function landJump(S) {
   if (!S || isWheelSwimming(S)) return;
   try { if (BT_AUDIO.footstep) BT_AUDIO.footstep(isWearingArmor(), footstepSurface(S)); } catch (e) { /* audio is best-effort */ }
-  cue('jumpLand');   /* v2.3.3343: ...with the landing's weight under the step */
+  cue('jumpLand');   /* v2.3.3343: ...with the landing's weight under the step; v2.3.3686: the owner's "goblin fall" */
 }

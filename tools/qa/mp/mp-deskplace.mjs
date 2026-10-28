@@ -73,7 +73,8 @@ async function burstAt(P) {
       /* the caption's plate: the box that holds the words */
       const cap = document.querySelector('[data-levelup-caption]');
       const plate = cap && cap.firstElementChild ? cap.firstElementChild.getBoundingClientRect() : null;
-      return { icon: box('[data-levelup-icon]'), art: box('[data-levelup-art]'), cap: box('[data-levelup-caption]'),
+      /* v2.3.3693: the medallion's middle is its level's numerals (the icon is on the plate) */
+      return { icon: box('[data-levelup-num]'), art: box('[data-levelup-art]'), cap: box('[data-levelup-caption]'),
         plate: plate && plate.width > 0 ? { l: plate.left, t: plate.top, r: plate.right, b: plate.bottom, w: plate.width, h: plate.height } : null };
     });
     if (b && b.icon && b.art && b.cap) break;

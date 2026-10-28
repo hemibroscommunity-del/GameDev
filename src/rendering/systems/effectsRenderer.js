@@ -7,8 +7,10 @@ import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SM
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
 import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard */
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
+import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
-import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only */
+import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
+import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
 
 /* v2.3.1358 (owner directive: ALL animations ready before first use —
@@ -191,6 +193,7 @@ function _probeStandInSkin(key, cv, opts) {
    garment of the player's to sit on. */
 const CHOP_INK_KEYS = ['tattooFace', 'tattoo', 'tattooArm'];
 const PEER_CHOP_IDLE_MS = 15000;    /* released this long after the last frame that drew one */
+const GPU_WAIT_MS = 500;            /* v2.3.3698: how often the weapon bodies waiting to be drawn are looked at (emptyOnceDrawn) */
 /** Would the pre-flipped bake differ from the plain one?  Only when a drawing
  *  that gets stamped is not its own mirror image -- see _bakeChopStrips. */
 function _chopArtAsymmetric(art) {
@@ -300,7 +303,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, standShadeSpan /* v2.3.3636 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, standShadeSpan /* v2.3.3636 */, fittedShadeSpan /* v2.3.3697 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { clipBoxOrSelf } from '../hairClip.js';   /* v2.3.3459: a stand-in's hair silhouette travels in its stencil box */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
@@ -503,6 +506,40 @@ const FARM_GEAR = [['shirt', 'tshirt'], ['chest', 'steelplate'], ['legs', 'steel
 /* v2.3.3439: another player's farmer's sprites, in their layer order
    (_drawPeerFarmer): body, greaves, shirt, plate, tool */
 const FARM_PEER_LAYERS = ['body', 'legs', 'shirt', 'chest', 'prop'];
+/* v2.3.3697: a move's crown, the middle of its frames' (FARM_ANIMS `crowns`,
+   frame px): the farmer's shade and shine are fitted to it, not to a head that
+   bobs with the swing (_updateFarmWork, FITTED TO HIM) */
+const _farmCrownMid = new Map();
+function farmCrownMed(A) {
+  let v = _farmCrownMid.get(A);
+  if (v == null) {
+    const ys = (A.crowns || []).map((c) => c[1]).sort((a, b) => a - b);
+    v = ys.length ? ys[(ys.length - 1) >> 1] : 0;
+    _farmCrownMid.set(A, v);
+  }
+  return v;
+}
+/* v2.3.3697: the box the farmer's shine is laid across (glint.js `uFig`), on
+   a sprite that is never drawn: a walking body's frame where his boots are, as
+   wide as a standing figure's frame and fitted, as his shade is, to his own
+   crown and boots (`fit`, fittedShadeSpan; `stand`, standShadeSpan) */
+function placeFarmFigProxy(px, x, fit, stand, bl) {
+  if (!px) return;
+  const k = Math.abs((bl && bl.sx) || 1) / Math.abs((bl && bl.sy) || 1);
+  px.x = x;
+  px.y = fit[1];
+  px.scale.set((stand[1] - stand[0]) * k, fit[1] - fit[0]);
+  px.visible = true;
+}
+function makeFarmFigProxy(layer, label) {
+  const px = new Sprite(Texture.WHITE);
+  px.anchor.set(0.5, 1);
+  px.renderable = false;   /* never drawn: only its box is read */
+  px.visible = false;
+  px.label = label;
+  layer.addChild(px);
+  return px;
+}
 
 /* The pan hangs to the cook's RIGHT and has to stay over the flames, so its
  * offset tracks the figure's height.  Held as a FRACTION of that height rather
@@ -666,7 +703,7 @@ import { jogWaistRow } from '../jogWaist.js';
 import { bowTorsoCutRow } from '../bowTorsoCut.js';
 import { swordTorsoCutRow } from '../swordTorsoCut.js';
 import { GEARLAYER_VER } from '../gearVersion.js';   // shared cache-bust string (see gearVersion.js)
-import { recolorToolKeyCanvas, recolorToolKey, toolKeyMask, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask; v2.3.3660: + recolorToolKey, the fire-lighter's log band */
+import { recolorToolKeyCanvas, recolorToolKey, toolKeyMask, isLitToolKey, TOOL_SPECS } from '../toolRecolor.js'; /* v2.3.3684: + isLitToolKey, the log's end in the fire's glow */ /* v2.3.2761: the magenta tool key becomes copper / pine / bark; v2.3.2855: + the file's key mask; v2.3.3660: + recolorToolKey, the fire-lighter's log band */
 import { setStandInMaker, ensureStandIn, standInStarted, standInReady, standInMaking, setPeerStandInCheck, forgetStandIn, farmFigureReady } from '../standIns.js';   /* v2.3.3077: the gathering poses, made when first wanted; v2.3.3314: + a peer's, in their colours */
 import { CHOP_INK_REGIONS, CHOP_MIN_BLOB, COOK_INK_REGIONS, COOK_KEEP_X, FIRE_INK_REGIONS, FIRE_KEEP_BOXES } from '../standInInk.js'; /* v2.3.2855: where the drawings go on the lumberjack; v2.3.2856: and on the cook; v2.3.2858: and on the fire-lighter */
 import { LOOT_ICONS, weaponIconKey, armorIconKey, lootBeamTexture } from '../lootIcons.js'; /* v2.3.2771: the rare drop's icon and its shine */
@@ -799,9 +836,48 @@ function _fireFrameShift(fi, sx, sy) {
    keeps the magenta, for a test's before; `window.__btFireLog()` says how many
    pixels the last bake made wood. */
 const FIRE_LOG_BAND = [340, 480];
+/* ═══ v2.3.3684: UNDER GREAVES, THE FIRE-LIGHTER HAS NO LEGS OF HIS OWN ═══
+   The owner: "remove pants (olive green) those should not be showing frame 6
+   is particularly bad - armor legs need to shift leftward".  His body kneels
+   its own way and the greaves are a picture of their own, so his trousers
+   and boots showed beside them on every kneeling frame (frame 2's thigh
+   between the plate and the greaves, frame 6's hip, the back boot on frames
+   4 and 5).  Under greaves he is baked without them (playerSkins
+   _standInLegless): the greaves are his legs, as the cook's and the
+   lumberjack's legless strips were drawn.  Your figure is baked the one way
+   you need (_fireWantLegless), again as greaves go on or come off; another
+   player's by theirs (_peerFigure).  And frame 6's greaves moved 20 art px
+   left and 4 up (FIRE_GEAR_REG), under the plate, where his hip is.
+   `?firelegless=0` keeps his legs under the greaves, the game as it was;
+   `window.__btFireLegless()` says which way your figure was baked and how
+   many pixels went. */
+const FIRE_LEGLESS_OFF = (() => { try { return /[?&]firelegless=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 const FIRE_LOG_OFF = (() => { try { return /[?&]firelog=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 let _fireLogWood = -1;
 if (typeof window !== 'undefined') window.__btFireLog = () => ({ on: !FIRE_LOG_OFF, wood: _fireLogWood });
+/* v2.3.3684: the lit key pixels within FIRE_LOG_LIT_REACH of the key itself;
+   `?firelit=0` leaves them pink, the game as it was */
+const FIRE_LOG_LIT_REACH = 4;
+const FIRE_LOG_LIT_OFF = (() => { try { return /[?&]firelit=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+function _litLogKey(fd, w, h, key) {
+  const lit = new Uint8Array(w * h);
+  let any = 0;
+  for (let i = 0, o = 0; i < lit.length; i++, o += 4) {
+    if (!key[i] && isLitToolKey(fd[o], fd[o + 1], fd[o + 2], fd[o + 3])) { lit[i] = 1; any++; }
+  }
+  if (!any) return null;
+  const R = FIRE_LOG_LIT_REACH;
+  for (let i = 0; i < lit.length; i++) {
+    if (!lit[i]) continue;
+    const x = i % w, y = (i - x) / w;
+    let near = false;
+    for (let yy = Math.max(0, y - R); yy <= Math.min(h - 1, y + R) && !near; yy++) {
+      for (let xx = Math.max(0, x - R); xx <= Math.min(w - 1, x + R); xx++) if (key[yy * w + xx]) { near = true; break; }
+    }
+    if (!near) lit[i] = 0;
+  }
+  return lit;
+}
 function _fireLogToBark(img, cv) {
   const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
   if (!cv || !cv.width || !iw || !ih) return 0;
@@ -814,11 +890,15 @@ function _fireLogToBark(img, cv) {
   const sg = src.getContext('2d', { willReadFrequently: true });
   sg.imageSmoothingEnabled = false;
   sg.drawImage(img, 0, y0 / k, iw, bh / k, 0, 0, w, bh);
-  const fileKey = toolKeyMask(sg.getImageData(0, 0, w, bh).data, w, bh);
+  const fd = sg.getImageData(0, 0, w, bh).data;
+  const fileKey = toolKeyMask(fd, w, bh);
   src.width = 0; src.height = 0;
+  /* v2.3.3684: + the log's end in the fire's glow (frames 4-7), beside the key
+     (toolRecolor isLitToolKey) */
+  const lit = FIRE_LOG_LIT_OFF ? null : _litLogKey(fd, w, bh, fileKey);
   const g = cv.getContext('2d', { willReadFrequently: true });
   const band = g.getImageData(0, y0, w, bh);
-  const n = recolorToolKey(band.data, w, bh, TOOL_SPECS.log, k, fileKey);
+  const n = recolorToolKey(band.data, w, bh, TOOL_SPECS.log, k, fileKey, lit);
   if (n) g.putImageData(band, 0, y0);
   _fireLogWood = n;
   return n;
@@ -830,8 +910,12 @@ function _bakeFireSplit(img, skinT, art, clothes, opts) {
   /* v2.3.3146: + `clothes` ({ pantsT, shoesT }): your trousers and boots --
      `pantsWide` for the trousers the fire's glow warms (playerSkins
      _standInClothes) */
+  /* v2.3.3684: + `glowLegs`, the trousers on the glow's side of frames 6-7
+     (playerSkins _standInGlowLegs), and `clothes.legless`, the body under
+     greaves (_standInLegless; FIRE_LEGLESS) */
   const out = recolorStandInSkinSplit(img, skinT, FIRE_FH, { ...FIRE_SKIN_OPTS, frameW: FIRE_FW,
-    keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS, ...(clothes ? { ...clothes, pantsWide: true } : {}) });
+    keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS, glowLegs: true,
+    ...(clothes ? { ...clothes, pantsWide: true, legless: !!clothes.legless && !FIRE_LEGLESS_OFF } : {}) });
   if (opts && opts.beforeWood) opts.beforeWood(out.cv);
   if (!FIRE_LOG_OFF && !(opts && opts.noWood)) _fireLogToBark(img, out.cv);   /* v2.3.3660 */
   return out;
@@ -1207,7 +1291,7 @@ const FIRE_GEAR_REG = {
      ALIGNED" in the header above */
   legs: {
     scale: 0.90,
-    off: [[28, -7], [23, 8], [89, 48], [43, 4], [54, 15], [51, 13], [55, 12], [43, 6]],
+    off: [[28, -7], [23, 8], [89, 48], [43, 4], [54, 15], [51, 13], [35, 8], [43, 6]],   /* v2.3.3684: frame 6 under the plate, 20 left and 4 up (FIRE_LEGLESS_OFF's header) */
   },
 };
 
@@ -3102,17 +3186,30 @@ export class EffectsRenderer {
     this._offs = [];
     this._destroyed = false;
     this._layers = layers;   /* v2.3.3074: walked by _letGo, so no sprite keeps a released source */
+    /* v2.3.3698: the weapon bodies (yours and other players'), each waiting to
+       be drawn once, when its canvas goes (gpuOnly.js emptyOnceDrawn; looked
+       at every GPU_WAIT_MS by update()) */
+    this._gpuWaiting = new Set();
+    this._gpuWaitAt = 0;
     /* v2.3.3074 QA (mp-bakeleak): how many bakes this renderer owns, and
        whether any strip it DRAWS from points at a released source -- what a
        release of the wrong (new) array would look like (TRAPS §49).  Set once
-       per renderer, not per frame; a rebuild's new one replaces it. */
+       per renderer, not per frame; a rebuild's new one replaces it.
+       v2.3.3698: and the weapon bodies' canvases -- `onChip` drawn and let go
+       of, `kept` still in the page (never drawn), `waiting` to be looked at
+       (mp-battlemem) */
     if (typeof window !== 'undefined') {
       window.__btFxBakes = () => {
-        let strips = 0, deadInUse = 0;
-        const look = (a) => { const src = a && a[0] && a[0].source; if (!src) return; strips++; if (src.destroyed) deadInUse++; };
+        let strips = 0, deadInUse = 0, onChip = 0, kept = 0, keptMb = 0;
+        const look = (a) => {
+          const src = a && a[0] && a[0].source; if (!src) return; strips++; if (src.destroyed) { deadInUse++; return; }
+          const cv = src.resource;
+          if (cv && cv.width > 0) { kept++; keptMb += cv.width * cv.height * 4 / 1048576; } else onChip++;
+        };
         for (const rec of this._bodyStrips || []) { if (rec.target) { look(rec.target[rec.dir]); look(rec.target[rec.dir + '|m']); } }
         for (const k of ['_chopSkinFrames', '_chopLeglessSkinFrames', '_cookFrames', '_cookLeglessFrames', '_fireFrames']) look(this[k]);
-        return { owned: this._bakes.size, strips, deadInUse, destroyed: this._destroyed };
+        return { owned: this._bakes.size, strips, deadInUse, destroyed: this._destroyed,
+          onChip, kept, keptMb: +keptMb.toFixed(2), waiting: this._gpuWaiting.size };
       };
     }
     this.particleLayer = layers.particles;
@@ -3699,6 +3796,8 @@ export class EffectsRenderer {
       sp.label = label;
       this.gestureLayer.addChild(sp);
     }
+    /* v2.3.3697: the walking frame his shine is laid across (placeFarmFigProxy) */
+    this.farmFigProxy = makeFarmFigProxy(this.gestureLayer, 'farmFig');
     this._farmFrames = null;   /* anim -> [Texture], in your colours (_bakeFarmBodies) */
     this._farmUnder = false;   /* v2.3.3439: whether those are the body worn under greaves */
     this._farmProps = null;    /* anim -> [Texture], the hoe and the can as drawn */
@@ -4146,6 +4245,12 @@ export class EffectsRenderer {
          as the figure it is composited onto — one skin change, one rebake,
          both stay in step. */
       if (rec.target === this._bowBodyFrames) registerBowBodyFrames(rec.dir, arr);
+      /* v2.3.3698: measured and handed over -- from here this strip and its
+         twin are only drawn (blockArm cuts a view of the same texels, a
+         re-bake starts from the sheet's own image), so each lets go of its
+         canvas once it has been drawn (gpuOnly.js emptyOnceDrawn) */
+      this._gpuOnceDrawn(arr);
+      this._gpuOnceDrawn(rec.target[rec.dir + '|m']);
       return _was;
     };
     /* Which base directions this family ever draws flipped -- read off the
@@ -4458,10 +4563,20 @@ export class EffectsRenderer {
        every hat onto crown[7]. */
     /* v2.3.3439: + the farmer's three, whose crowns travel with their strips
        (src/data/farmAnims.js, made with them by tools/make_farm_anims.py) */
-    fetch('/sprites/skills/crowns.json?v=2.3.1715').then((r) => r.json()).then((j) => {
-      for (const a of Object.keys(FARM_ANIMS)) j[FARM_ANIMS[a].pose] = FARM_ANIMS[a];
-      this._skillCrowns = j;
-    }).catch(() => {});
+    /* v2.3.3689: asked for again when it fails (2 s, 6 s, then every 20 s
+       while nothing has come, `&g=` past any cache): it was asked for once,
+       and a failure left every head piece off every stand-in -- the sword's
+       swing, the bow's shot, the chop, the cook, the fire, the farm -- for the
+       page (_placeSkillTraitsOn hides them all without crowns) */
+    const _crowns = (n) => fetch('/sprites/skills/crowns.json?v=2.3.1715' + (n ? `&g=${n}` : ''))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('status ' + r.status)))).then((j) => {
+        for (const a of Object.keys(FARM_ANIMS)) j[FARM_ANIMS[a].pose] = FARM_ANIMS[a];
+        this._skillCrowns = j;
+      }).catch(() => {
+        try { if (!n) recordCrash('sheet', 'crowns.json failed'); } catch (e) { /* telemetry */ }
+        setTimeout(() => { if (!this._skillCrowns && !this._destroyed) _crowns(n + 1); }, [2000, 6000][n] || 20000);
+      });
+    _crowns(0);
 
     /* v2.3.1713: warm the fire-lighter's SHIRT sheet onto the intro gate.
        _gearStripFrame loads through _fxLoad, so touching it once here registers
@@ -5104,7 +5219,10 @@ export class EffectsRenderer {
     pending[kind] = true;
     _loadStandInImg(spec.url(legless), PEER_FIG_LOAD_MS).then((img) => {
       if (this._destroyed) return;
-      const { cv } = spec.bake(img, c.skinT, art ? { ...art, mirror: false } : null, { pantsT: c.pantsT, shoesT: c.shoesT });
+      /* v2.3.3684: the fire-lighter's `legless` is a bake of the one strip
+         (the cook's is a strip of its own, spec.url) */
+      const { cv } = spec.bake(img, c.skinT, art ? { ...art, mirror: false } : null,
+        { pantsT: c.pantsT, shoesT: c.shoesT, ...(kind === 'fire' && legless ? { legless: true } : {}) });
       const n = Math.max(1, Math.round(cv.width / spec.fw));
       const arr = this._own(_sliceStandIn(cv, spec.fw, spec.fh, n, null, false));
       cache.set(key, { arr, used: Date.now(), bytes: _figBytes(arr) });
@@ -5242,23 +5360,35 @@ export class EffectsRenderer {
     }
     if (kind !== 'cook' && kind !== 'fire') return null;
     let wantL = false, greavesComing = false;
-    if (kind === 'cook') {
-      const legsTex = this._gearStripFrame('legs', eq.legs, 'cook', 'south', COOK_FW, 0);
-      greavesComing = !legsTex && this._gearStripPending('legs', eq.legs, 'cook', 'south', now);
+    /* v2.3.3684: the fire-lighter too: under greaves his figure is the one
+       baked without legs (FIRE_LEGLESS_OFF's header) */
+    if (kind === 'cook' || !FIRE_LEGLESS_OFF) {
+      const fw = kind === 'cook' ? COOK_FW : FIRE_FW;
+      const legsTex = this._gearStripFrame('legs', eq.legs, kind, 'south', fw, 0);
+      greavesComing = !legsTex && this._gearStripPending('legs', eq.legs, kind, 'south', now);
       wantL = !!legsTex;
     }
     if (standInReady(kind) && c.key === (kind === 'cook' ? this._cookLook : this._fireLook)) {
-      const body = kind === 'cook' ? this._cookFrames : this._fireFrames;
-      const ll = kind === 'cook' ? this._cookLeglessFrames : null;
-      const useL = wantL && !!ll && ll.length === body.length;
-      const arr = useL ? ll : body;
-      if (arr && arr.length) return { arr, legless: useL, ink: false, shared: true };
+      if (kind === 'fire') {
+        /* yours is one figure, with legs or without as your greaves are:
+           theirs must be the same */
+        const body = this._fireFrames;
+        if (body && body.length && !!this._fireLegless === wantL) return { arr: body, legless: wantL, ink: false, shared: true };
+      } else {
+        const body = this._cookFrames;
+        const ll = this._cookLeglessFrames;
+        const useL = wantL && !!ll && ll.length === body.length;
+        const arr = useL ? ll : body;
+        if (arr && arr.length) return { arr, legless: useL, ink: false, shared: true };
+      }
     }
     /* yours is on its way, in these very colours: wait for it rather than
        bake its twin -- one already baked still draws.  (Yours is never made
        FOR them: theirs is one strip, let go of after they stop; yours is
-       two, kept.) */
-    const _yoursComing = standInMaking(kind) && c.key === _localStandInColourKey();
+       two, kept.)  v2.3.3684: the fire-lighter's only when it is coming the
+       way theirs is drawn, with legs or without. */
+    const _yoursComing = standInMaking(kind) && c.key === _localStandInColourKey()
+      && (kind !== 'fire' || wantL === this._fireWantLegless());
     let arr = this._peerFigFrames(kind, c, wantL, now, peek || _yoursComing || greavesComing);
     if (arr) return { arr, legless: wantL, ink: false, shared: false };
     if (wantL) {
@@ -5317,6 +5447,16 @@ export class EffectsRenderer {
     this._offs.push(onSkinChange(() => { this._fetchAndBakeFire(); }));   /* v2.3.3074: kept for destroy() */
     /* v2.3.3146: and the trousers and boots, which it wears now */
     this._offs.push(onPantsChange(() => { this._fetchAndBakeFire(); }), onShoesChange(() => { this._fetchAndBakeFire(); }));
+    /* v2.3.3684: and the greaves, put on or taken off -- under them he is
+       baked without legs (FIRE_LEGLESS_OFF's header).  The store tells a
+       change only, and a change of metal keeps the bake. */
+    this._offs.push(onEquipChange('legs', () => {
+      if (this._fireFrames.length && this._fireWantLegless() !== !!this._fireLegless) this._fetchAndBakeFire();
+    }));
+    if (typeof window !== 'undefined') {
+      window.__btFireLegless = () => ({ on: !FIRE_LEGLESS_OFF, want: this._fireWantLegless(),
+        legless: !!this._fireLegless, gone: this._fireLeglessGone | 0, frames: this._fireFrames.length });
+    }
     /* v2.3.2858: and the drawings' layer, once the strokes stop -- the cook's
        rule (_loadCookStrips); only the layer is rebuilt. */
     let _fireArtT = 0;
@@ -5332,6 +5472,15 @@ export class EffectsRenderer {
      to ~4.1MB of RGBA, and iPhone Safari's OOM history is written up in
      spriteScale.js).  A rebake re-fetches from the HTTP cache and only ever
      happens behind the character menu, never mid-play. */
+  /* v2.3.3684: your fire-lighter is baked legless while greaves are drawn
+     over him: a legs item with art (gearArtSafe: every metal is the steel
+     greaves' picture, tinted), never for a slot whose greaves would not draw */
+  _fireWantLegless() {
+    if (FIRE_LEGLESS_OFF) return false;
+    const it = getEquip('legs');
+    return !!it && it !== 'none' && !!gearArtSafe('legs', it);
+  }
+
   _fetchAndBakeFire(inkOnly) {
     /* v2.3.3077: the cook's rule (_fetchAndBakeCook) */
     if (!standInStarted('fire')) return Promise.resolve();
@@ -5354,11 +5503,13 @@ export class EffectsRenderer {
       const _art = _base ? artForFacing(_base, 'south') : null;
       /* v2.3.3146: and your trousers and boots (the cook's, above) */
       const _pantsT = pantsTarget(getPants()), _shoesT = shoesTarget(getShoes());
+      /* v2.3.3684: legless under greaves (FIRE_LEGLESS_OFF's header) */
+      const _legless = !inkOnly && this._fireWantLegless();
       /* v2.3.3660: the skin probe reads the figure before its log is wood (the
          bark's middle tones pass the skin window); a drawings-only rebake
          throws the figure away and leaves its log */
       const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
-        { pantsT: _pantsT, shoesT: _shoesT, probe: 'fire' },
+        { pantsT: _pantsT, shoesT: _shoesT, probe: 'fire', legless: _legless },
         inkOnly ? { noWood: true } : { beforeWood: (c) => _probeStandInSkin('/sprites/skills/firemaking-strip.webp', c, FIRE_SKIN_OPTS) });
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
       const _old = [];
@@ -5369,6 +5520,9 @@ export class EffectsRenderer {
         /* v2.3.3314: the colours it wears -- a peer in the same ones is drawn
            from it (_peerFigure), as the cook's _cookLook */
         this._fireLook = _standInColourKey(skinT, _pantsT, _shoesT);
+        /* v2.3.3684: and whether it has legs (a peer's greaves must match) */
+        this._fireLegless = _legless;
+        this._fireLeglessGone = _legless ? (cv.__btLegless | 0) : 0;
         /* v2.3.2500: the skin probe, measured through the bake's own window
            (_probeStandInSkin) -- since v2.3.3660 run inside the bake, before
            the log turns to wood */
@@ -5473,6 +5627,19 @@ export class EffectsRenderer {
        mp-deathstrip, which asks the SCREEN what is on the corpse rather than
        checking a list. */
     this._selfCorpse = selfCorpseUp(S);
+    /* v2.3.3698: the weapon bodies drawn since the last look let go of their
+       canvases (gpuOnly.js emptyOnceDrawn) -- a look at a handful of sources
+       every GPU_WAIT_MS, nothing at all once every one has gone */
+    /* v2.3.3699: and the monsters' strips drawn since, read into their colour
+       numbers first (heldNumbers.js: a few ms at most a look) */
+    {
+      const _t = typeof now === 'number' ? now : performance.now();
+      if (_t >= this._gpuWaitAt) {
+        this._gpuWaitAt = _t + GPU_WAIT_MS;
+        if (this._gpuWaiting.size) emptyOnceDrawn(this._captureRenderer, this._gpuWaiting);
+        emptyHeldOnceDrawn(this._captureRenderer);
+      }
+    }
     /* v2.3.2841: the staff cast's sprite pools refill from zero each frame;
        open them before anything this frame draws into them (the crash rings
        in _updateParticles, the bolts in _updateProjectiles). */
@@ -11097,6 +11264,8 @@ export class EffectsRenderer {
       const _selfD = this;
       window.__btDebris = function () { return _selfD._hitFx ? _selfD._hitFx.report(Date.now()) : []; };
       window.__btHitFx = function () { return _selfD._hitFx ? _selfD._hitFx.probe() : null; };
+      /* v2.3.3699: the chips a hit would cut from a monster now (mp-monsternumbers) */
+      window.__btHitFxChips = function (mid, fx) { return _selfD._hitFx ? _selfD._hitFx.chipsProbe(mid, fx) : null; };
     }
     /* v2.3.2995: a hit on one of the Wheel's objects is handed the object's
        picture, where it landed (or, for a tree's crown, where its leaves
@@ -13533,6 +13702,7 @@ export class EffectsRenderer {
       /* v2.3.3439: and a peer's farmer, which has its own (_drawPeerFarmer) */
       if (ent.farm) {
         for (const k of FARM_PEER_LAYERS) ent.farm[k].visible = false;
+        if (ent.farm.fig) ent.farm.fig.visible = false;   /* v2.3.3697 */
         hideSkillTraits(ent.farm.traits);
       }
     }
@@ -14507,7 +14677,7 @@ export class EffectsRenderer {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
         null, cfg.fh, null, null, _pa.art, cfg.fw, undefined, undefined, undefined, _lu);   /* v2.3.2863: see _peerStandInArt; v2.3.3640: + under greaves */
       const n = Math.max(1, Math.round(cv.width / cfg.fw));
-      arr = this._own(_sliceStandIn(cv, cfg.fw, cfg.fh, n, null));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned */
+      arr = this._gpuOnceDrawn(this._own(_sliceStandIn(cv, cfg.fw, cfg.fh, n, null)));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned; v2.3.3698: its canvas let go of once drawn */
       this._remoteBodyCache.set(key, arr);
       _trimBakeCache(this._remoteBodyCache, this._bakes);
       return arr;
@@ -14538,7 +14708,7 @@ export class EffectsRenderer {
       const cv = recolorBodyToCanvas(img, skinTarget(o.skin) || DEFAULT_SKIN_TARGET, pantsTarget(o.pants), shoesTarget(o.shoes),
         null, _fh, null, null, _pa.art, _fw, undefined, undefined, undefined, undefined, !!torso);   /* v2.3.2863; v2.3.3658: + a torso strip's waist (TORSO_WAIST_UP) */
       const n = Math.max(1, Math.round(cv.width / _fw));
-      arr = this._own(_sliceStandIn(cv, _fw, _fh, n, null));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned */
+      arr = this._gpuOnceDrawn(this._own(_sliceStandIn(cv, _fw, _fh, n, null)));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned; v2.3.3698: its canvas let go of once drawn (the cut rows are tables: bowTorsoCut.js) */
       this._remoteSheetCache.set(key, arr);
       _trimBakeCache(this._remoteSheetCache, this._bakes);
       return arr;
@@ -16621,6 +16791,7 @@ export class EffectsRenderer {
       const F = {};
       for (const k of FARM_PEER_LAYERS) { F[k] = mk(); F[k].anchor.set(0.5, 1); }
       F.traits = { hair: mk(), beard: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk() };
+      F.fig = makeFarmFigProxy(this.gestureLayer, 'peerFarmFig');   /* v2.3.3697: their shine's frame */
       ent.farm = F;
     }
     const F = ent.farm;
@@ -16657,9 +16828,14 @@ export class EffectsRenderer {
     const pf = this._farmProps && this._farmProps[fx.anim];
     place(F.prop, pf ? pf[Math.min(fi, pf.length - 1)] : null);
     /* v2.3.3636: lit as THEIR walking figure is (see _updateFarmWork's LIT AS
-       HIS WALKING FIGURE IS) -- the span at their boots, at their build */
-    const fsp = F.shade = spanSpec(SHADE.figure, standShadeSpan(feetY, pscale, bl.sy), body.y - A.fh * body.scale.y, body.y, F.shade);
+       HIS WALKING FIGURE IS) -- the span at their boots, at their build;
+       v2.3.3697: fitted to their crown and boots, their shine across their
+       own walking frame (_updateFarmWork's FITTED TO HIM) */
+    const pFoot = body.y + (A.foot[1] - A.fh) * body.scale.y;
+    const pFit = fittedShadeSpan(body.y + (farmCrownMed(A) - A.fh) * body.scale.y, pFoot);
+    const fsp = F.shade = spanSpec(SHADE.figure, pFit, body.y - A.fh * body.scale.y, body.y, F.shade);
     for (const sp of [body, F.legs, F.shirt, F.chest, F.prop]) if (sp) sp._vShade = fsp;
+    placeFarmFigProxy(F.fig, ox, pFit, standShadeSpan(feetY, pscale, bl.sy), bl);
     const looks = {
       hair: o.hair, hairColor: o.hairColor,
       facialhair: o.facialhair, facialHairColor: o.facialHairColor,
@@ -16691,6 +16867,7 @@ export class EffectsRenderer {
     if (!F) return;
     for (const k of FARM_PEER_LAYERS) if (F[k] && !F[k].destroyed) F[k].destroy();
     for (const k in F.traits) if (F.traits[k] && !F.traits[k].destroyed) F.traits[k].destroy();
+    if (F.fig && !F.fig.destroyed) F.fig.destroy();   /* v2.3.3697 (its texture is Texture.WHITE: kept) */
     ent.farm = null;
   }
 
@@ -16730,6 +16907,7 @@ export class EffectsRenderer {
     if (!body) return;
     body.visible = false;
     for (const sp of [legs, shirt, chest, prop]) if (sp) sp.visible = false;
+    if (this.farmFigProxy) this.farmFigProxy.visible = false;   /* v2.3.3697 */
     /* v2.3.3439: greaves put on or taken off on the farm: the other body,
        baked now.  Asked here rather than by a listener, so a change made while
        a bake was on its way is caught too. */
@@ -16792,9 +16970,33 @@ export class EffectsRenderer {
        the standing figure's span where you stand (standShadeSpan), laid on
        the quad (spanSpec).  A spec of its own, not SHADE.figure itself, which
        sharpPixels takes for a pixel-art figure and would resample him. */
-    const fsp = this._farmShadeSpec = spanSpec(SHADE.figure, standShadeSpan(feetY, pscale, bl.sy),
+    /* ═══ v2.3.3697: ...FITTED TO HIM, AND HIS SHINE TOO ═══
+       The owner, 2026-10-28: "As part of the farming animations I think either
+       the watering, planting, or fertilizing the armor styles didn't match
+       (different shades of gray for iron armor) possibly wrong shades for
+       copper armor too".  Measured piece by piece (mp-farmiron), two things
+       still parted him from the walking figure:
+         - the span was laid at the world's heights, so KNEELING (plant,
+           compost, harvest) his plate took the shade of a standing figure's
+           thighs, cooler and darker: bluer than the walking plate.  It is
+           fitted to his own crown and boots now (fittedShadeSpan, the move's
+           middle crown, so the shade does not pulse as his head bobs) -- for
+           the hoe and the can, which stand at your height, what it was;
+         - the metal's shine lays its sun side and sweep across a figure's
+           frame (glint.js `uFig`), and with your walking body hidden his
+           pieces fell back to their own frames, two to three times the
+           figure, the hoe's and can's plates catching more of the light than
+           the walking plate and the kneel's less (the brightest tenth 137-155
+           and 116-123 against 134).  `farmFigProxy`, never drawn, stands
+           where a walking body's frame would, fitted the same way, and the
+           shine lays its light across it (glint.js). */
+    const footYw = body.y + (A.foot[1] - A.fh) * body.scale.y;
+    const crownYw = body.y + (farmCrownMed(A) - A.fh) * body.scale.y;
+    const fit = fittedShadeSpan(crownYw, footYw);
+    const fsp = this._farmShadeSpec = spanSpec(SHADE.figure, fit,
       body.y - A.fh * body.scale.y, body.y, this._farmShadeSpec);
     for (const sp of [body, legs, shirt, chest, prop]) if (sp) sp._vShade = fsp;
+    placeFarmFigProxy(this.farmFigProxy, P.x, fit, standShadeSpan(feetY, pscale, bl.sy), bl);
     this._placeSkillTraitsOn(A.pose, body, fi, 'south', false);
     /* where the work lands -- the blade striking, the water reaching the soil,
        the hands in it: what you dig, pour or plant flies from there
@@ -16822,7 +17024,10 @@ export class EffectsRenderer {
           shirt: { visible: !!(shirt && shirt.visible), tint: shirt ? shirt.tint : null },
           prop: { visible: !!(prop && prop.visible), want: !!A.prop },
           /* v2.3.3636: his shade read at his boots and his crown, and the
-             walking figure's at the same heights (mp-farmiron) */
+             walking figure's at its own (mp-farmiron) -- v2.3.3697: his crown
+             the move's middle one, the span's fitted to (fittedShadeSpan), and
+             the walking figure's boots and crown where a standing figure has
+             them, not at his heights: kneeling, his are lower */
           shade: (() => {
             const sp = chest && chest._vShade;
             if (!sp || !sp.top) return null;
@@ -16831,9 +17036,13 @@ export class EffectsRenderer {
             const mine = (y) => lerp(sp.top, sp.bot, (y - qT) / (qB - qT));
             const span = standShadeSpan(feetY, pscale, bl.sy);
             const walk = (y) => lerp(SHADE.figure.top, SHADE.figure.bot, (y - span[0]) / (span[1] - span[0]));
-            const footY = body.y + (A.foot[1] - A.fh) * body.scale.y, crownY = body.y + (cr[1] - A.fh) * body.scale.y;
-            return { boots: mine(footY), crown: mine(crownY), walkBoots: walk(footY), walkCrown: walk(crownY),
-              all: [body, legs, shirt, chest, prop].every((q) => !q || q._vShade === sp) };
+            const fig = nominalStandFigure('south');
+            const wFeet = feetY, wCrown = feetY - fig.bodyH * pscale * (bl.sy || 1);
+            return { boots: mine(footYw), crown: mine(crownYw), walkBoots: walk(wFeet), walkCrown: walk(wCrown),
+              all: [body, legs, shirt, chest, prop].every((q) => !q || q._vShade === sp),
+              /* the box his shine is laid across (glint.js), world px */
+              figBox: this.farmFigProxy && this.farmFigProxy.visible
+                ? { x: this.farmFigProxy.x, bottom: this.farmFigProxy.y, w: this.farmFigProxy.scale.x, h: this.farmFigProxy.scale.y } : null };
           })(),
           /* v2.3.3439: the armour, each with the frame of its strip it is on
              (-1: not one of that strip's), and which body is under it */
@@ -16898,9 +17107,18 @@ export class EffectsRenderer {
     keepOnGpuOnly(this._captureRenderer, src);
     return arr;
   }
+  /* v2.3.3698: the same, but not before it is first drawn (gpuOnly.js
+     emptyOnceDrawn): for the weapon bodies, a strip a facing, many never drawn
+     in a visit -- uploading each as it is made would put them all on the chip */
+  _gpuOnceDrawn(arr) {
+    const src = arr && arr[0] && arr[0].source;
+    if (src && !this._destroyed) this._gpuWaiting.add(src);
+    return arr;
+  }
   _release(src) {
     if (!src) return;
     this._bakes.delete(src);
+    this._gpuWaiting.delete(src);   /* v2.3.3698 */
     unregisterGearSource(src);
     releaseCanvasSource(src);
   }
@@ -16949,6 +17167,7 @@ export class EffectsRenderer {
     try { this.clear(); } catch (e) { /* a half-built renderer */ }
     for (const src of this._bakes) { unregisterGearSource(src); releaseCanvasSource(src); }
     this._bakes.clear();
+    this._gpuWaiting.clear();   /* v2.3.3698: released with the rest just above */
     for (const k in (this._chopSrc || {})) {
       const c = this._chopSrc[k];
       try { if (c && c.getContext) { c.width = 0; c.height = 0; } } catch (e) { /* gone */ }

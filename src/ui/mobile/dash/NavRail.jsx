@@ -34,7 +34,7 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
    and it is how you switch destinations or get out.  A rail that hid with
    the rest of the band would leave an open panel with no navigation. */
 
-export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW, fill, landLit }) => {
+export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW, fill, landLit, btnH, iconPx }) => {
   /* v2.3.2166: `btnW` narrows the buttons for the landscape dock — the
      five of them must fit inside the side container's width (owner: the
      dashboard buttons "should all be included in that container on that
@@ -48,7 +48,10 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
      btnW becomes the floor the geometry planned for, not the ceiling the
      render stops at. */
   const base = navButtonSize(vw, vh);
-  const size = btnW ? { w: btnW, h: base.h } : base;
+  /* v2.3.3687: a computer's buttons are taller, their pictures nearly twice a
+     phone's (`btnH`, `iconPx`: sheetGeometry DESK_NAV_BTN_H / DESK_NAV_ICON) */
+  const size = btnW ? { w: btnW, h: btnH || base.h } : base;
+  const icon = iconPx || 24;
   return (
     <div className="bt-navrail" style={{
       /* v2.3.1642: a ROW at the band's top-left, in its own bordered
@@ -233,13 +236,13 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
             {d.id === 'hero' && profilePortrait ? (
               <img src={profilePortrait} alt="" draggable={false}
                 style={{
-                  width: 24, height: 24, objectFit: 'cover',
+                  width: icon, height: icon, objectFit: 'cover',
                   imageRendering: 'pixelated', borderRadius: 5, pointerEvents: 'none',
                 }} />
             ) : (
               <img src={d.icon} alt="" draggable={false}
                 style={{
-                  width: 24, height: 24, objectFit: 'contain',
+                  width: icon, height: icon, objectFit: 'contain',
                   opacity: on ? 1 : 0.82, pointerEvents: 'none',
                 }} />
             )}

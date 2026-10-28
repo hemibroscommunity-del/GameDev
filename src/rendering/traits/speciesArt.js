@@ -145,7 +145,14 @@ function _capBuilds() {
   }, 30000);
 }
 
+/* v2.3.3689: a facing whose picture never came (its load given up) has no
+   canvas; Texture.from(null) threw "Could not find a source type" in every
+   frame the piece was drawn, which skipped the rest of the bro's update (his
+   eyes, glasses and hair kept the frame before) and, past 90, rebuilt the
+   renderer.  No canvas, no texture: that facing hides, as any head piece's
+   does while its picture is out */
 function _texFrom(cv) {
+  if (!cv) return null;
   const t = Texture.from(cv);
   if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source, Cache); }   /* match the other traits (_loadTraitDir); v2.3.3606: kept as an image of itself (keepAsImage.js) */
   return t;

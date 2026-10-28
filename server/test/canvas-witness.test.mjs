@@ -19,7 +19,11 @@
  *   7. the wiring: packTrimmed witnesses its picture; wsClient's return checks
  *      before the socket and reloads through BroTown's door with `spot`;
  *      BroTown keeps the spot and the straight-in road lands there; the door
- *      opens only in the world. */
+ *      opens only in the world;
+ *   8. (v2.3.3701) a black screen's rebuild asks the same question FIRST, and
+ *      reloads through the same door instead of rebuilding when the pictures
+ *      were emptied (the owner: "Northwest jog has trouble loading reloading
+ *      textures after recovering from black screen"; mp-rebuildjog). */
 import { readFileSync } from 'fs';
 
 let failures = 0;
@@ -115,6 +119,17 @@ check('7: the recovery reload keeps the Wheel spot when asked (bt_resume_spot), 
   && /sessionStorage\.removeItem\('bt_resume_spot'\)/.test(bt) && /setWheelArrival\(\{ x: _spot\.x, y: _spot\.y \}\)/.test(bt));
 check('7: the door opens only in the world, and is put away with its effect',
   /if \(worldInMs\(\) < 0\) return false;/.test(bt) && /window\.__btRecoveryReload = _rrOpen;/.test(bt) && /if \(window\.__btRecoveryReload === _rrOpen\) window\.__btRecoveryReload = null;/.test(bt));
+
+/* ── 8: the black screen's rebuild asks first (v2.3.3701) ── */
+const rb = bt.slice(bt.indexOf('window._rebuildRenderer = function (reason)'), bt.indexOf('window._rebuildRenderer = function (reason)') + 4000);
+const iDebounce = rb.indexOf('_now - window.__btLastGlRebuild < 5000'), iAsk = rb.indexOf('checkWitnesses()'), iEpoch = rb.indexOf('setGlEpoch(');
+check('8: a rebuild reads the witnesses after its debounce and before it remounts the canvas',
+  iDebounce > 0 && iAsk > iDebounce && iEpoch > iAsk, { iDebounce, iAsk, iEpoch });
+check('8: ...two or more empty is the recovery reload on the same spot, through the one door, and the rebuild stops there',
+  /_cw\.emptied >= EMPTIED_NEED/.test(rb) && /__btRecoveryReload\([^)]*\{ spot: true \}\)/.test(rb) && /if \(_cwGo\) \{ window\.__btLastGlRebuild = _now; return; \}/.test(rb)
+  && /recordCrash\('canvas-purge'/.test(rb) && /if \(!CANVAS_CHECK_OFF\)/.test(rb));
+check('8: ...and BroTown imports the check from canvasWitness.js',
+  /import \{ checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF \} from '@\/rendering\/canvasWitness\.js'/.test(bt));
 
 if (failures) { console.log(`\n${failures} FAILED`); process.exit(1); }
 console.log('\nall canvas-witness checks passed');

@@ -55,6 +55,7 @@ import { recolorHairToCanvas } from '../characterPortrait.js';
 import { HAT_COLOR_CATALOG } from './hatColorCatalog.js';
 import { recolorEnabled } from './recolorOptions.js';
 import { segmentMaterials, mainMaterial } from './traitMaterials.js';
+import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
 
 /* ONE palette, shared with hats on purpose.  A second copy of the same twelve
    swatches would drift the first time either is retuned, and "the blue on my
@@ -150,14 +151,9 @@ const TRAIT_VER = '2.3.3590';   /* the SIXTH copy of this key; all move together
 
 const _cache = {};
 
-function loadImg(url) {
-  return new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im);
-    im.onerror = rej;
-    im.src = url;
-  });
-}
+/* v2.3.3689: a stalled request is given up on and asked again (traitImg.js),
+   so a recolour is never left in the native colour for one facing */
+const loadImg = (url) => loadTraitImg(url);
 
 /* One shared recolour reference across a pair's facings, for the same reason
    the hat one is pooled (v2.3.1109): keyed per facing, the chosen colour lands

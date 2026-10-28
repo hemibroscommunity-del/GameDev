@@ -16,16 +16,40 @@ stays off everywhere except No man's land. Duels work as before.
 
 ## Where it is
 
-Each land's rings of five levels, from Lv 6–10 outward:
+> v2.3.3690, the owner, 2026-10-28: *"Also what happened to the skull for the
+> no man's land? No man's land should begin just outside of town where you
+> can fight the lvl 1 monsters"*
 
-| Ring (monster levels) | No man's land |
-|---|---|
-| the commons and Brotown | never |
-| Lv 1–5 | no |
-| Lv 6–10 | **1** |
-| Lv 11–15 | **2** |
-| … | … |
-| Lv 76–80 (the last ring before the gates) | **15** |
+Each land's rings of five levels, from the safe ground's edge outward (since
+v2.3.3690; from v2.3.3058 it started at the Lv 6–10 ring, and the old column
+is what an older worker, or the `nmlnear: false` switch, still plays):
+
+| Ring (monster levels) | No man's land | Before v2.3.3690 |
+|---|---|---|
+| the commons and Brotown (the safe ground, 2,937 px round the centre) | never | never |
+| Lv 1–5 | **1** | no |
+| Lv 6–10 | **2** | **1** |
+| Lv 11–15 | **3** | **2** |
+| … | … | … |
+| Lv 76–80 (the last ring before the gates) | **16** | **15** |
+
+- The first ring begins at 2,765 px, a little inside the safe ground's
+  2,937 px, so No man's land 1 starts at the safe ground's edge: nobody on the
+  safe ground is ever under the rule (`NML.SAFE_R`, the bake's
+  `WHEEL_SAFE_R`, held equal by the nomansland suite).
+- "What happened to the skull": it showed only from the Lv 6–10 ring, so a
+  player fighting the Lv 1 monsters never saw it. Now it shows the moment you
+  step off the safe ground.
+- What it means for a new player: the Mayor's first quest sends them to the
+  Lv 1–5 monsters, which are in No man's land 1 now. Another player within 1
+  level can choose to attack them there (the window always asks first), and a
+  death to a player there takes everything they carry.
+- The phone counts the rings from the first tier only against a worker that
+  says `caps.nmlnear`; against an older one it counts from the Lv 6–10 ring as
+  before, so it never shows a badge or offers an Attack the worker refuses
+  (`nmlFirst`, src/game/noMansLand.js).
+- Kill switch: `nmlnear: false` in the live flags puts the old start back on
+  the worker and takes `caps.nmlnear` away from the phones.
 
 - The rings are the plan's own: the hub is 2.7 zones of 1,024 px, then a ring
   every 1,024 px (`public/tools/world/plan.js`).

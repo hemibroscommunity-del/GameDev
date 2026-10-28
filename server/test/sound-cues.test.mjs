@@ -816,30 +816,89 @@ for (const p of files) {
   check('14l each recording credited in the studio and in CREDITS.md (its Freesound number), its license marked to confirm', uncredited.length === 0 && /CONFIRM/.test(src('CREDITS.md')), uncredited);
 }
 
-/* ── 15. v2.3.3680: the roll is the owner's "kneeling goblin" ──
-   "If it's easy try to put Headwear items on the rolling (dodging character).
-   I'll just uploaded a sound effect to use for that included in the label is
-   'kneeling goblin'" (502553__kneeling__goblin-fall). */
+/* ── 15. v2.3.3686: the jump lands on the owner's "goblin fall" ──
+   v2.3.3680 put it on the roll ("I'll just uploaded a sound effect to use for
+   that included in the label is 'kneeling goblin'"); the owner, 2026-10-28:
+   "goblin fall is just the label of the file I want to use for when the
+   character's jump lands" (502553__kneeling__goblin-fall).  The roll is its
+   rush of air again. */
 {
   const { OWNER_SOUNDS } = await import('../../src/data/ownerSoundClips.js');
   const SS = await import('../../src/data/soundStudio.js');
   const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
   const L0 = (n) => (EVENT_SOUNDS[n] || []).map((L) => L[0]);
   const DG = strip(src('src/game/dodge.js'));
-  check('15a the roll is cut by the owner\'s cutter from the recording as supplied, at 24 kHz with its overtones (its thump is under 100 Hz)',
-    has(OWNER_SOUNDS, 'roll-tumble') && OWNER_SOUNDS['roll-tumble'].low === true && OWNER_SOUNDS['roll-tumble'].url === '/sfx/player/roll-tumble.mp3'
+  const GE = strip(src('src/networking/gameEvents.js'));
+  const CUT = src('tools/audio/cut_owner_sounds.py');
+  check('15a the landing is cut by the owner\'s cutter from the recording as supplied, at 24 kHz with its overtones (its thump is under 100 Hz)',
+    has(OWNER_SOUNDS, 'jump-land') && OWNER_SOUNDS['jump-land'].low === true && OWNER_SOUNDS['jump-land'].url === '/sfx/player/jump-land.mp3'
       && existsSync(new URL('assets/sfx-source/2026-10-27/502553__kneeling__goblin-fall.mp3', root))
-      && /'roll-tumble', NEW_SRC \+ '502553__kneeling__goblin-fall\.mp3'/.test(src('tools/audio/cut_owner_sounds.py'))
-      && /'roll-tumble': \{'harm'/.test(src('tools/audio/cut_owner_sounds.py')));
-  check('15b your roll and a retreat shot\'s roll play it; the sword\'s dash and lunge keep the rush',
-    L0('rollTumble').join() === 'roll-tumble' && L0('dodgeRoll').join() === 'arrow-fly'
-      && (DG.match(/cue\('rollTumble'\)/g) || []).length === 2 && /cue\('dodgeRoll', 0\.9, 1\.2\)/.test(DG)
-      && /cue\('dodgeRoll', 0\.9, 1\.25\)/.test(src('src/game/abilities.js')));
-  check('15c another player\'s roll plays it too, at their share; their dash the rush',
-    /payload\.kind === 'dodge' \|\| payload\.kind === 'retreat_shot'\) cue\('rollTumble', _dgk\);\s*else cue\('dodgeRoll', _dgk, 1\.2\);/.test(strip(src('src/networking/gameEvents.js'))));
+      && existsSync(new URL('public/sfx/player/jump-land.mp3', root)) && !existsSync(new URL('public/sfx/player/roll-tumble.mp3', root))
+      && /'jump-land', NEW_SRC \+ '502553__kneeling__goblin-fall\.mp3'/.test(CUT) && /'jump-land': \{'harm'/.test(CUT)
+      && !/roll-tumble/.test(strip(CUT.replace(/#.*$/gm, ''))));
+  check('15b your jump\'s landing plays it, and another player\'s at their share where they land',
+    L0('jumpLand').join() === 'jump-land' && !has(EVENT_SOUNDS, 'rollTumble')
+      && /cue\('jumpLand'\)/.test(strip(src('src/game/jumpActions.js')))
+      && /cuePeer\(S, 'jumpLand', _jpB\[0\], _jpB\[1\]\)/.test(GE));
+  check('15c the roll is its rush of air again: yours, a retreat shot\'s, another player\'s (a dash or lunge quicker)',
+    L0('dodgeRoll').join() === 'arrow-fly' && !/rollTumble/.test(DG) && !/rollTumble/.test(GE)
+      && (DG.match(/cue\('dodgeRoll'\)/g) || []).length === 2 && /cue\('dodgeRoll', 0\.9, 1\.2\)/.test(DG)
+      && /cue\('dodgeRoll', 0\.9, 1\.25\)/.test(src('src/game/abilities.js'))
+      && /cue\('dodgeRoll', _dgk, payload\.kind === 'dodge' \|\| payload\.kind === 'retreat_shot' \? 1 : 1\.2\)/.test(GE));
   check('15d labelled in the studio, its recording credited (and in CREDITS.md, its license to confirm)',
-    /rollTumble: \['fight'/.test(src('src/data/soundStudio.js'))
-      && has(SS.SAMPLE_SOURCES, 'roll-tumble') && /502553/.test(src('CREDITS.md')));
+    /jumpLand: \['move', "Landing from a jump: your \\"goblin fall\\"/.test(src('src/data/soundStudio.js'))
+      && !/rollTumble/.test(src('src/data/soundStudio.js'))
+      && has(SS.SAMPLE_SOURCES, 'jump-land') && !has(SS.SAMPLE_SOURCES, 'roll-tumble')
+      && /jump-land\.mp3` \| "goblin fall" by \*\*kneeling\*\*, Freesound 502553 \| \*\*CONFIRM\*\*/.test(src('CREDITS.md')));
+}
+
+/* ── 16. v2.3.3682: the double jump's flip is the owner's "sfx jump flip" ──
+   "I just uploaded the second jump (flip) sound effect to GitHub"
+   (563530__catthulu__sfx-jump-flip). */
+{
+  const { OWNER_SOUNDS } = await import('../../src/data/ownerSoundClips.js');
+  const SS = await import('../../src/data/soundStudio.js');
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+  const L0 = (n) => (EVENT_SOUNDS[n] || []).map((L) => L[0]);
+  check('16a the flip is cut by the owner\'s cutter from the recording as supplied, at 24 kHz',
+    has(OWNER_SOUNDS, 'jump-flip') && OWNER_SOUNDS['jump-flip'].low === true && OWNER_SOUNDS['jump-flip'].url === '/sfx/player/jump-flip.mp3'
+      && existsSync(new URL('assets/sfx-source/2026-10-27/563530__catthulu__sfx-jump-flip.wav', root))
+      && /'jump-flip', NEW_SRC \+ '563530__catthulu__sfx-jump-flip\.wav'/.test(src('tools/audio/cut_owner_sounds.py')));
+  check('16b your flip plays it (the second press in the air), and another player\'s flip at their share; a plain jump keeps its push-off',
+    L0('jumpFlip').join() === 'jump-flip' && L0('jumpUp').join() === 'jump-hup'
+      && /cue\('jumpFlip'\)/.test(strip(src('src/game/jumpActions.js')))
+      && /cuePeer\(S, payload\.flip \? 'jumpFlip' : 'jumpUp'/.test(strip(src('src/networking/gameEvents.js'))));
+  check('16c loaded with the game\'s sounds, labelled in the studio, its recording credited (its license to confirm)',
+    /'jump-flip': '\/sfx\/player\/jump-flip\.mp3'/.test(src('src/data/gameDisplay.js'))
+      && /jumpFlip: \['move'/.test(src('src/data/soundStudio.js'))
+      && has(SS.SAMPLE_SOURCES, 'jump-flip') && /563530/.test(src('CREDITS.md')));
+}
+
+/* ── 17. v2.3.3708: the jump is the owner's "hup" ──
+   "File with 'hup' is the jump" (613568__mrdeadh__hup, uploaded 2026-10-28):
+   one short voice, the jump's push-off for you and, at their share, for
+   anyone who sees you jump. */
+{
+  const { OWNER_SOUNDS } = await import('../../src/data/ownerSoundClips.js');
+  const SS = await import('../../src/data/soundStudio.js');
+  const strip = (t) => t.replace(/\/\*[\s\S]*?\*\//g, '');
+  const L0 = (n) => (EVENT_SOUNDS[n] || []).map((L) => L[0]);
+  const CUT = src('tools/audio/cut_owner_sounds.py');
+  check('17a the hup is cut by the owner\'s cutter from the recording as supplied, at 24 kHz (a voice, nothing laid over it)',
+    has(OWNER_SOUNDS, 'jump-hup') && OWNER_SOUNDS['jump-hup'].low === true && OWNER_SOUNDS['jump-hup'].url === '/sfx/player/jump-hup.mp3'
+      && OWNER_SOUNDS['jump-hup'].level === 0.45 && OWNER_SOUNDS['jump-hup'].dur > 0.1 && OWNER_SOUNDS['jump-hup'].dur < 0.25
+      && existsSync(new URL('assets/sfx-source/2026-10-27/613568__mrdeadh__hup.mp3', root))
+      && existsSync(new URL('public/sfx/player/jump-hup.mp3', root))
+      && /'jump-hup', NEW_SRC \+ '613568__mrdeadh__hup\.mp3'/.test(CUT) && !/'jump-hup': \{/.test(CUT));
+  check('17b your jump plays it (the cue, at the recording\'s level), and another player\'s jump at their share',
+    L0('jumpUp').join() === 'jump-hup' && EVENT_SOUNDS.jumpUp.length === 1 && EVENT_SOUNDS.jumpUp[0][3] === OWNER_SOUNDS['jump-hup'].vol
+      && /cue\('jumpUp'\)/.test(strip(src('src/game/jumpActions.js')))
+      && /cuePeer\(S, [^)]*'jumpUp'/.test(strip(src('src/networking/gameEvents.js'))));
+  check('17c loaded with the game\'s sounds, labelled in the studio, its recording credited (and in CREDITS.md, its license to confirm)',
+    /'jump-hup': '\/sfx\/player\/jump-hup\.mp3'/.test(src('src/data/gameDisplay.js'))
+      && /jumpUp: \['move', 'Your jump: your "hup"/.test(src('src/data/soundStudio.js'))
+      && has(SS.SAMPLE_SOURCES, 'jump-hup')
+      && /jump-hup\.mp3` \| "hup" by \*\*mrdeadh\*\*, Freesound 613568 \| \*\*CONFIRM\*\*/.test(src('CREDITS.md')));
 }
 
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);

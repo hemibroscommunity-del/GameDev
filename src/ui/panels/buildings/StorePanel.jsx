@@ -65,7 +65,9 @@ const GEAR_GLYPH = { Chest: '\u{1F9BA}', Legs: '\u{1F456}', Shield: '\u{1F6E1}',
 function header(gold) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 40px 12px 16px', background: LS.strip, borderBottom: '1px solid ' + LS.border }}>
-      <img src="/icons/ui/bldg-exchange.webp" alt="" draggable={false}
+      {/* v2.3.3688: the Auction House's gavel, as its door and window wear (was the
+          scales: the owner, "When I see scales I think of law instead of a store") */}
+      <img src="/icons/ui/bldg-auction-gavel.webp?v=2.3.3526" alt="" draggable={false}
         style={{ width: 26, height: 26, objectFit: 'contain', flexShrink: 0 }}
         onError={(e) => { e.currentTarget.style.display = 'none'; }} />
       <div style={{ minWidth: 0, flex: 1 }}>

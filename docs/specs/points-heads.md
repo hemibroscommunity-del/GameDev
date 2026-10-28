@@ -16,6 +16,26 @@ weapons alone, thick-outlined (kept as
 > Actually swap out just the icons for these slightly thicker ones I think
 > these will look better at that tiny scale for sword, staff, and bow
 
+## v2.3.3691: no frame round the heads
+
+The owner, 2026-10-28:
+
+> Also in the points menu the 3 primary combat skills and the character icon
+> shouldn't have the bronze frame around it because it's not self-contained
+> it's supposed to represent the whole row of different skills you can apply
+> points in
+
+- The two gold frames are no longer drawn (HeroExpanded `frameStyle`: no
+  border-image). Each head is its row's label, inside the row's own tray.
+- Nothing else in a head moves: the frame's room is kept as a transparent
+  border, so the icons, the counts, the carved seams between the weapons, the
+  lit row and every handle (`data-points-frame`, `data-points-row`,
+  `data-prog3-lane`) are where they were.
+- The frame pictures stay in `public/icons/ui/points/` and the generated data
+  (the art tool still cuts them); the page no longer asks for them.
+- Tests: `points-heads` §4c2 (no border-image or frame picture in the code),
+  `mp-catgrid` (both heads there with no frame drawn).
+
 ## What changed
 
 | Where | Was | Now |

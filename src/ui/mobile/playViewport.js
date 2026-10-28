@@ -25,6 +25,8 @@
    but window.innerWidth > window.innerHeight reports landscape and swings the
    whole control layout to the wrong one. */
 
+import { deskWideActive, DESK_SHEET_W } from '../deskWide.js';   /* v2.3.3687 */
+
 const PHONE_FALLBACK_W = 390;
 const PHONE_FALLBACK_H = 844;
 
@@ -88,6 +90,9 @@ export function playIsLandscape() {
  * an older boot) falls through to playVw() -- the primary platform cannot
  * be changed by this function existing. */
 export function panelVw() {
+  /* v2.3.3687: on a computer playing wide the panel is the page column and
+     the controls' strip; a page has the column (deskWide.js) */
+  if (deskWideActive()) return DESK_SHEET_W;
   if (playIsLandscape()) {
     try {
       const v = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sheet-w'), 10);
