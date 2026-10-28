@@ -128,6 +128,13 @@ spec. Add a line here only for a new RULE every session must follow.
   with "The job was not started because ... spending limit" are billing: tell
   the owner (Settings, Billing). Until then nothing merges and the worker
   cannot deploy.
+- **A sprite PNG brings a bot commit.** A push that changes
+  `public/sprites/player/**` or `public/sprites/gear/**` gets a
+  `github-actions[bot]` commit with each PNG's lossless `.webp` twin
+  (`optimize-assets.yml`; never commit a `.webp` there by hand: precheck
+  `sprite-webp`). The checks on the bot's commit wait for an approval
+  (`action_required`), so the PR's head has no `test` until a push of yours
+  lands on top: pull the bot's commit, then push your next change.
 - A worker deploy briefly disconnects players (they reconnect): prefer quiet
   hours. Rollback: the Cloudflare dashboard, Workers & Pages, brotown-server,
   Deployments. Player data survives deploys.
