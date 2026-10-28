@@ -197,6 +197,10 @@ export const ElementBurstButton = () => {
          click over a fight is wrong. */
       data-uisfx="off"
       aria-label="Element Burst"
+      /* v2.3.3711: on a computer it wears its key, F (was G: the owner's
+         layout, desktopControls.js; drawn by game.css [data-key] only under a
+         mouse) */
+      data-key="F"
       data-ready={ready ? '1' : '0'}
       style={{
         position: 'fixed',

@@ -11,21 +11,43 @@
  * v2.3.1733), so R Whirl sat there with a bow in hand, where it does nothing.
  * Now a key with a requirement is listed only while it is met, by the same
  * rules its touch button follows:
- *   - `shield`  Q raises a shield only with one (shieldToggle.js: no shield
- *               item, no block);
- *   - `bash`    Q+E, the shield bash: a shield, and the bash unlocked
- *               (abilityStatus's needsHeldShield, the touch button's rule);
+ *   - `shield`  the right mouse button held raises a shield only with one
+ *               (shieldToggle.js: no shield item, no block) -- Q until
+ *               v2.3.3711;
+ *   - `bash`    a left click with the shield up, the shield bash: a shield,
+ *               and the bash unlocked (abilityStatus's needsHeldShield, the
+ *               touch button's rule) -- Q+E until v2.3.3711, and E with the
+ *               guard up still bashes, unlisted;
  *   - `whirl`   R: the sword (or greatsword) in hand and the whirlwind
  *               unlocked (abilityStatus's needsMeleeActive, v2.3.2327);
- *   - `burst`   G: a weapon the Element Burst can fire from, at its level
+ *   - `burst`   F: a weapon the Element Burst can fire from, at its level
  *               (burstRefusal, the touch button's rule: only short of mana
- *               it stays);
+ *               it stays) -- G until v2.3.3711, and G still fires it,
+ *               unlisted;
  *   - `trap`    T: a box trap in the bag on a worker that traps (the TRAP
  *               pop-up's own rule since v2.3.3626, without the target: the
  *               key stays listed between monsters);
  *   - `food`    V: cooked food in the bag (quickEatChoices);
  *   - `sprint`  Shift: a worker that settles a sprint (caps.sprint).
  * The rest work for everyone, every weapon.
+ *
+ * ═══ v2.3.3711: THE OWNER'S LAYOUT, AND ITS COMBOS ═══
+ * The owner: "Do your recommended keyboard layout. I still think there are
+ * better layouts if you consider more creative combos (like keyboard presses
+ * while a click is held down, double clicking, etc)."  The left hand on WASD,
+ * the right on the mouse (docs/specs/desktop-keys.md "v2.3.3711"):
+ *   - Q the weapon's special (was F, and the right click), F the Element
+ *     Burst (was G), the right mouse button HELD the shield (was Q), a left
+ *     click while it is up the bash (was Q+E), the wheel the next or last
+ *     weapon (Tab and 1-3 stay);
+ *   - `2×WASD` a direction key tapped twice rolls that way (Space still
+ *     rolls), `2×Click` a double click on a monster locks on to it (with the
+ *     sword, the opening lunge) -- game/deskCombos.js;
+ *   - `+Click` is listed right under `R-Click`, so the pair reads as the
+ *     combo it is: the right button held, then a click.
+ * A key's words fit the column (74 px of 15 px bold beside a 58 px key cap:
+ * mp-deskwide checks none is cut short), so the shield's row says "Shield"
+ * and the press-and-hold is the right button's own way.
  *
  * GROUPS.  The column is the panel's height, so the list is in four groups
  * with a heading each -- moving, fighting, the rest, and the menus' letters
@@ -48,16 +70,18 @@ export const DESK_KEY_ROWS = [
   ['WASD', 'Move', null, 'move'],
   ['Shift', 'Sprint', 'sprint', 'move'],
   ['Space', 'Dodge', null, 'move'],
+  ['2\u00d7WASD', 'Dodge', null, 'move'],   /* v2.3.3711: a direction tapped twice */
   ['X', 'Jump', null, 'move'],
   ['Click', 'Attack', null, 'fight'],
-  ['F', 'Special', null, 'fight'],
-  ['R-Click', 'Special', null, 'fight'],
-  ['Q', 'Shield', 'shield', 'fight'],
-  ['Q+E', 'Bash', 'bash', 'fight'],
+  ['2\u00d7Click', 'Lock on', null, 'fight'],   /* v2.3.3711: a double click on a monster */
+  ['Q', 'Special', null, 'fight'],   /* v2.3.3711: was F and the right click */
+  ['R-Click', 'Shield', 'shield', 'fight'],   /* v2.3.3711: held; was Q */
+  ['+Click', 'Bash', 'bash', 'fight'],   /* v2.3.3711: a click with it held; was Q+E */
   ['R', 'Whirl', 'whirl', 'fight'],
-  ['G', 'Burst', 'burst', 'fight'],
+  ['F', 'Burst', 'burst', 'fight'],   /* v2.3.3711: was G */
   ['T', 'Trap', 'trap', 'fight'],
   ['V', 'Eat', 'food', 'fight'],
+  ['Wheel', 'Swap', null, 'fight'],   /* v2.3.3711: the mouse wheel */
   ['Tab', 'Swap', null, 'fight'],
   ['1-3', 'Weapon', null, 'fight'],
   ['E', 'Interact', null, 'other'],
