@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { BT_AUDIO } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the wheel's ticks */
@@ -413,7 +414,7 @@ export function DailySpin() {
           {potOpen && (
             <div data-spin-pot={sp.pot} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.12em', color: LS.txt3 }}>Pot</span>
-              <img src="/icons/ui/cur-gold.webp" alt="" draggable={false} style={{ width: 18, height: 18, objectFit: 'contain' }} />
+              <img src={coinArtFor(sp.pot) /* v2.3.3734: the pot, its pile */} alt="" draggable={false} style={{ width: 18, height: 18, objectFit: 'contain' }} />
               <span style={{ fontSize: 22, fontWeight: 800, color: LS.brass, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{fmt(sp.pot)}</span>
             </div>
           )}

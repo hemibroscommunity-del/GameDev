@@ -62,6 +62,7 @@ import { preloadXpBar } from './xpBarPreload.js';   /* v2.3.3695: the XP bar's s
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
+import { preloadCoinPiles } from './coinPileArt.js'; /* v2.3.3734: the owner's coin piles, one an amount */
 import { preloadQuestArt } from './questArtPreload.js'; /* v2.3.3030: the quest windows' painted art (the owner's sheets) */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 import { bannerStripFor } from '../data/zoneBanner.js';   /* v2.3.3024: which of the Wheel's lands have banner art (again since v2.3.3609) */
@@ -484,6 +485,10 @@ export async function preloadWorldAnimations() {
     /* v2.3.2771: the rare-drop icons on a monster's loot pile (lootIcons.js)
        -- a rare drop is the moment a blank first frame would be seen */
     lootIcons: preloadLootIcons(),
+    /* v2.3.3734: the owner's fourteen coin piles (coinPileArt.js) -- the
+       coins on the ground and the "+5 G" mark in the world, and the same
+       files the purse, the bag and the rewards show in the DOM */
+    coinPiles: preloadCoinPiles(),
     /* v2.3.3619: the one picture every monster's element wind-up is cut from
        (elemWindup.js), drawn in code -- made here, never at the first blow */
     elemWindup: Promise.resolve(warmElemWindup()),

@@ -4,6 +4,7 @@ import { BT_API_BASE } from '../../networking/index.js';
 import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
+import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
 
 /* v2.3.3525: the tour's steps, in order, for "Tour: jump to" (the worker's
    /dev/tour checks each is one) */
@@ -214,7 +215,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
-  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3732: the message diet's path */, 'pathall' /* v2.3.3732: ...for every phone */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
+  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3732: the message diet's path */, 'pathall' /* v2.3.3732: ...for every phone */, 'clientoff' /* v2.3.3755: the memory savers turned off (a list) */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'partykeep' /* v2.3.3284: a party that lasts (party.js) */, 'alliance' /* v2.3.3313: a party of 20 active members (alliance.js) */, 'clanparty' /* v2.3.3321: clans are parties now (clanparty.js) */, 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
@@ -237,6 +238,7 @@ const CAP_GATES = [
   'wheeldungeons' /* v2.3.3016: lower case, a kill switch */,
   'pointsreset' /* v2.3.3541: the free points reset -- lower case, a kill switch */,
   'dungeonLands' /* v2.3.3540: how many of the Wheel's dungeons the worker opens -- a number, never a switch */,
+  'heapburn' /* v2.3.3748: a fallen building's burning heap sets you on fire (server heapburn.js) -- lower case, a kill switch */,
   'partydungeon' /* v2.3.3573: the Goo Grotto is level 16 whoever comes in, its boss sized for three (server wheeldungeon.js WHEEL_DUNGEON.PARTY) -- lower case, a kill switch */,
   'nomansland' /* v2.3.3058: No man's land -- lower case, a kill switch */,
   'nmlgroup' /* v2.3.3530: a group attacks you, one window -- every attacker yours to hit back, joining a fight you chose (nmlAsk.js nmlJoinFight) -- lower case, a kill switch */,
@@ -307,7 +309,9 @@ const CAP_GATES = [
    Still in CAP_GATES (precheck's cap-registry).  `pathall` is the message
    diet for every phone (server movepath.js); `movepath` stays in the alarm:
    false there means the kill switch really is thrown. */
-const CAP_OPT_IN = new Set(['pathall']);
+/* v2.3.3755: and `clientoff`, the list of memory savers turned off -- empty
+   (the default) is every saver on */
+const CAP_OPT_IN = new Set(['pathall', 'clientoff']);
 
 /* Plain language for the ones whose absence the owner has actually reported
    as a bug.  Deliberately NOT a full glossary: a made-up description is
@@ -531,6 +535,28 @@ export const DevPanel = ({ onClose }) => {
       if (j) setMsg('Message diet OFF for every phone, ?diet=1 too. Every phone switched back at once.');
     }
     if (j) setFlags(j.flags || {});
+  }, [call]);
+
+  /* ═══ v2.3.3755: THE MEMORY SAVERS, ONE BY ONE ═══
+     The owner turned every memory saver on by default ("I can always revert
+     the change if I don't like it"); undoing one was a PR and a deploy, and a
+     judge cannot type `?x=0`.  Here each is turned off (`off_<id>: true`) or
+     on (the flag cleared) for every phone, or all at once; the worker tells
+     every phone straight away (server clientoff.js, game/clientOff.js).  A
+     saver marked "next load" takes effect when each phone next loads. */
+  const [saverMsg, setSaverMsg] = useState('');
+  const setSaver = useCallback(async (ids, off) => {
+    let j = null;
+    for (const id of ids) {
+      j = off ? await call('/flags', { name: 'off_' + id, value: true })
+        : await call('/flags?name=' + encodeURIComponent('off_' + id), null, 'DELETE');
+      if (!j) return;
+    }
+    if (j) {
+      setFlags(j.flags || {});
+      setSaverMsg(ids.length > 1 ? (off ? 'Every memory saver OFF for every phone.' : 'Every memory saver ON for every phone.')
+        : ((CLIENT_SAVERS.find((c) => c.id === ids[0]) || {}).words || ids[0]) + (off ? ': OFF for every phone.' : ': ON for every phone.'));
+    }
   }, [call]);
 
   /* ═══ v2.3.3323: BOT FLAGS, WHERE THE OWNER CAN SEE THEM ═══
@@ -1153,6 +1179,35 @@ export const DevPanel = ({ onClose }) => {
                 that is the case that silently breaks a system and it is
                 indistinguishable from a bug unless something names it. */}
             {/* v2.3.3732: the message diet (setDiet above) */}
+            {/* v2.3.3755: the memory savers (setSaver above) */}
+            <div style={label}>Memory savers</div>
+            <div style={{ color: COL.text2, fontSize: 12, marginBottom: 6, lineHeight: 1.4 }}>
+              If something looks wrong, tap All off. Every phone is told at once; the ones marked
+              "next load" change when each phone next loads the game.
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+              <button type="button" style={btn(false)} disabled={busy} onClick={() => setSaver(CLIENT_SAVERS.map((c) => c.id), true)}>All off</button>
+              <button type="button" style={btn(false)} disabled={busy} onClick={() => setSaver(CLIENT_SAVERS.map((c) => c.id), false)}>All on</button>
+            </div>
+            {(() => {
+              /* the flags this panel last loaded or set, else what the phone heard */
+              const offNow = clientOffNow();
+              const offSet = new Set(offNow || String((S && S._serverCaps && S._serverCaps.clientoff) || '').split(',').filter(Boolean));
+              return CLIENT_SAVERS.map((c) => {
+                const isOff = flags ? flags['off_' + c.id] === true : offSet.has(c.id);
+                return (
+                  <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <div style={{ flex: 1, fontSize: 12.5, color: COL.text }}>
+                      {c.words} <span style={{ color: COL.text2 }}>({isOff ? 'off' : (c.optIn ? 'allowed, only with ?' + c.id : 'on')}{c.live ? '' : ', next load'})</span>
+                    </div>
+                    <button type="button" style={btn(false)} disabled={busy}
+                      onClick={() => setSaver([c.id], !isOff)}>{isOff ? 'Turn on' : 'Turn off'}</button>
+                  </div>
+                );
+              });
+            })()}
+            {saverMsg && <div style={{ color: COL.text2, fontSize: 12, marginBottom: 10 }}>{saverMsg}</div>}
+
             <div style={label}>Message diet (fewer movement messages)</div>
             <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
               Now: {!(S && S._serverCaps && S._serverCaps.movepath) ? 'off for every phone (kill switch)'

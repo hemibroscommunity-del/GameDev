@@ -15,7 +15,8 @@ import { installQuietClear } from './quietClear.js'; /* v2.3.3449: wiping an emp
 import { setDrawListRoot } from './drawLists.js'; /* v2.3.3449: a live switch's flip rebuilds every draw list */
 import { installLayerUniforms } from './layerUniforms.js'; /* v2.3.3449: a layer draws with the world's own camera numbers */
 import { SHADE } from './formShade.js';
-import { installPicsOnceUpload, startPicsOnce, restoreAllPictures, picsOnceOn } from './picsOnce.js'; /* v2.3.3715: a picture from a file held once (?onecopy) */
+import { installP256Upload, startP256Pack } from './p256.js'; /* v2.3.3728: the effects' colour numbers packed once on the chip */
+import { installPicsOnceUpload, startPicsOnce, restoreAllPictures } from './picsOnce.js'; /* v2.3.3715: a picture from a file held once (?onecopy) */
 import { Application, Cache, Container, GlTextureSystem, TextureSource } from 'pixi.js';
 
 /* ═══ v2.3.3069: A DESTROYED TEXTURE LETS GO OF ITS PIXELS ═══
@@ -714,10 +715,13 @@ export async function createPixiApp(canvas) {
   try { installLayerUniforms(); } catch (e) { /* every render group pushed as Pixi does */ }
   try { installHeldRefill(GlTextureSystem); } catch (e) { /* every monster strip keeps its canvas (heldNumbers.js) */ }
   try { installPicsOnceUpload(GlTextureSystem); } catch (e) { /* every picture keeps its page copy (picsOnce.js) */ }
+  try { installP256Upload(GlTextureSystem); } catch (e) { /* the effects keep their numbers whole (p256.js) */ }
   /* v2.3.3715: a rebuilt renderer draws every picture from a file whose page
      copy was let go of (?onecopy): each is loaded again from its file first
      (picsOnce.js; the browser's cache has them), behind the rebuild's veil */
-  if (picsOnceOn()) { try { await restoreAllPictures(); } catch (e) { /* sent empty, loaded behind */ } }
+  /* v2.3.3728: and the effects' colour numbers kept packed (p256.js), whatever
+     ?onecopy says */
+  try { await restoreAllPictures(); } catch (e) { /* sent empty, loaded behind */ }
   try {
     const app = new Application();
     const putBack = withoutDepthBuffer(canvas);   /* v2.3.3072 */
@@ -732,6 +736,8 @@ export async function createPixiApp(canvas) {
     /* v2.3.3715: ?onecopy -- what this renderer has on its chip lets go of its
        page copy (picsOnce.js) */
     try { startPicsOnce(app.renderer, canvas); } catch (e) { /* every copy kept */ }
+    /* v2.3.3728: the effects' colour numbers packed once on this chip (p256.js) */
+    try { startP256Pack(app.renderer, canvas); } catch (e) { /* kept as they are */ }
     /* v2.3.2770: crisp character pixels without spending texture memory */
     try { installSharpPixels(app, SHADE.figure); } catch (e) { /* the default look */ }
     /* v2.3.3577: the silhouette batcher, its program built here (fillBatch.js) */
