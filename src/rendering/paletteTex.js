@@ -963,3 +963,96 @@ if (typeof window !== 'undefined') {
       rowsUsed: _atlas ? _atlas.used : 0, rowsMax: ATLAS_ROWS };
   };
 }
+
+/* ═══ v2.3.3715: A ROW OF COLOURS SHARED BY MANY PICTURES ═══
+   picsNumbers.js (`?picnumbers`, docs/specs/pictures-once.md): a monster's
+   strips -- every pose, every facing -- are drawn on one set of colours, so
+   they share one row of the atlas instead of a row each (a row each would
+   fill the 256 rows with the fire goblin alone).  A shared row is taken,
+   written as its pictures arrive (new colours after the old: a number once
+   given never changes), and given back by its owner when the last of them
+   goes -- a picture made on one never gives it back itself. */
+export function paletteRowTake() {
+  const A = atlas();
+  const row = A.free.length ? A.free.pop() : (A.next < ATLAS_ROWS ? A.next++ : -1);
+  if (row < 0) { _stats.rowsFull++; return -1; }
+  A.data.fill(0, row * ATLAS_W * 4, (row + 1) * ATLAS_W * 4);
+  A.used++;
+  A.source.update();
+  return row;
+}
+/** The row's colours (`rgba`, 4 bytes each, premultiplied) written again. */
+export function paletteRowWrite(row, rgba) {
+  if (!_atlas || row < 0) return;
+  const o = row * ATLAS_W * 4;
+  _atlas.data.set(rgba.subarray(0, Math.min(rgba.length, ATLAS_W * 4)), o);
+  _atlas.source.update();
+}
+export function paletteRowGive(row) { giveRow(row); }
+
+/** makePaletteSource's source on a row its caller owns (paletteRowTake):
+ *  `rgba` is that row's colours, as the CPU readers read them (paletteDraw). */
+export function makePaletteSourceOnRow({ idx, w, h, stride, row, rgba, alphaMode, label, autoGarbageCollect = false }) {
+  if (row < 0) return null;
+  const st = stride || paletteStride(w);
+  const src = new BufferImageSource({
+    resource: idx, width: st, height: h,
+    format: 'r8unorm', scaleMode: 'linear', alphaMode: alphaMode || 'premultiplied-alpha',
+    label: label || 'bt-palette', autoGarbageCollect,
+  });
+  src._btPal = { row, w, h, stride: st, rgba };
+  _live.add(src);
+  _stats.made++;
+  src.once('destroy', () => {
+    _live.delete(src);
+    _stats.freed++;
+    if (src.options) src.options.resource = null;
+    src._btPal = null;
+  });
+  return src;
+}
+
+/* ═══ v2.3.3715: A PICTURE OF COLOUR NUMBERS IN ONE COLOUR ═══
+   fillBatch.js paints a monster in one colour, its light kept (the
+   whirlwind's catch), reading its picture's colours; a monster's strip kept
+   as colour numbers (picsNumbers.js) is read by this program instead: the
+   colour-numbers program with fillBatch's own lines after the lookup. */
+export const PAL_FILL_BATCHER = 'bt-palette-fill';
+const FILL_LINES = `    {
+      float btA = outColor.a;
+      vec3 btC = btA > 0.0 ? outColor.rgb / btA : vec3(0.0);
+      float btL = clamp(0.5 + 0.8 * dot(btC, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
+      outColor = vec4(vec3(btL * btA), btA);
+    }
+`;
+const FRAG_FILL = FRAG.replace('    finalColor = outColor * vColor;', FILL_LINES + '    finalColor = outColor * vColor;');
+let _fillBatchShader = null;
+function fillBatchShader() {
+  if (_fillBatchShader) return _fillBatchShader;
+  const units = new Int32Array(SLOTS);
+  for (let i = 0; i < SLOTS; i++) units[i] = i;
+  _fillBatchShader = new Shader({
+    glProgram: GlProgram.from({ vertex: VERT, fragment: FRAG_FILL, name: 'bt-palette-fill' }),
+    resources: {
+      paletteSamplers: new UniformGroup({
+        uTextures: { value: units, type: 'i32', size: SLOTS },
+        uPalAtlas: { value: SLOTS, type: 'i32' },
+      }, { isStatic: true }),
+    },
+  });
+  return _fillBatchShader;
+}
+class PaletteFillBatcher extends PaletteBatcher {
+  constructor() {
+    super();
+    this.name = PAL_FILL_BATCHER;
+    this.shader = fillBatchShader();
+  }
+}
+PaletteFillBatcher.extension = { type: [ExtensionType.Batcher], name: PAL_FILL_BATCHER };
+extensions.add(PaletteFillBatcher);
+/** v2.3.3715: the one-colour program for colour numbers (did it link? its
+ *  prewarm, picsNumbers.js) */
+export function paletteFillProgram() { return fillBatchShader().glProgram; }
+export function paletteFillMade() { return FRAG_FILL !== FRAG; }
+export function paletteProgramLinked(r, program) { return programLinked(r, program); }

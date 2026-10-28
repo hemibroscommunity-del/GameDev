@@ -35,6 +35,9 @@ import {
   getBatchSamplersUniformGroup, getMaxTexturesPerBatch,
 } from 'pixi.js';
 
+import { PAL_FILL_BATCHER } from './paletteTex.js';   /* v2.3.3715 */
+import { isPaletteSource } from './paletteDraw.js';
+
 export const FILL_BATCHER = 'fill';
 
 let _on = false;
@@ -113,7 +116,14 @@ export function installFillBatch(app) {
         const was = obj.batcherName;
         Object.defineProperty(obj, 'batcherName', {
           configurable: true, enumerable: true,
-          get() { return (this.renderable && this.renderable._btFill) ? FILL_BATCHER : this._btBatcher; },
+          /* v2.3.3715: a picture of colour numbers (a monster's strip under
+             ?picnumbers, picsNumbers.js) by the colour-numbers program with
+             these same lines (paletteTex.js PAL_FILL_BATCHER) */
+          get() {
+            const r = this.renderable;
+            if (!(r && r._btFill)) return this._btBatcher;
+            return isPaletteSource(r.texture && r.texture.source) ? PAL_FILL_BATCHER : FILL_BATCHER;
+          },
           set(v) { this._btBatcher = v; },
         });
         obj._btBatcher = was;
