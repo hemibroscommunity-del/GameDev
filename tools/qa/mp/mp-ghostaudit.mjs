@@ -40,6 +40,7 @@
  *
  *   node tools/qa/mp/run.mjs ghostaudit
  *   BT_GHOST_ONLY=stand,jog   only those families
+ *   BT_GHOST_DIRS=east,south  only those facings (a sample)
  *   BT_GHOST_OUTFITS=full     only that outfit (full, plate, greaves; bare, no armour, only when named)
  *   BT_GHOST_SHIRT=print      v2.3.3696: the tee striped and printed
  */
@@ -82,7 +83,7 @@ const FACINGS = [
   ['east', ['d'], 0], ['southeast', ['s', 'd'], Math.PI / 4], ['south', ['s'], Math.PI / 2],
   ['southwest', ['s', 'a'], 3 * Math.PI / 4], ['west', ['a'], Math.PI], ['northwest', ['w', 'a'], -3 * Math.PI / 4],
   ['north', ['w'], -Math.PI / 2], ['northeast', ['w', 'd'], -Math.PI / 4],
-];
+].filter(([d]) => !process.env.BT_GHOST_DIRS || process.env.BT_GHOST_DIRS.split(',').indexOf(d) >= 0);   /* v2.3.3753: BT_GHOST_DIRS=east,north,southwest, a sample */
 
 const OUTFITS = {
   full: { chest: 'ironplate', legs: 'irongreaves' },
