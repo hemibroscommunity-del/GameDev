@@ -26,6 +26,7 @@ import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature i
 import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3462: the owner's recordings for the sounds still needed */
 import { foldToMono } from './soundFold.js';   /* v2.3.3706: a stereo sound whose two sides are one is kept as one */
 import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (`?sfxcache`) */
+import { makeVoiceCap, parseVoiceCap, exempt as voiceExempt } from './voiceCap.js';   /* v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
@@ -5573,6 +5574,67 @@ BT_AUDIO.uiClick = function (vol, since) {
   this._uiClickPending = schedule(fire, this.UI_CLICK_DEFER_MS);
 };
 
+/* ═══ v2.3.3727: A CROWD OF ONE SOUND STARTS AS A FEW (`?voicecap`) ═══
+   The rule and why: data/voiceCap.js.  The gate play() asks before a copy
+   starts: false holds it back.  A copy that will not start (its recording not
+   in, the sound cache off) is not a start.  On a test page (window.__btProbe)
+   or with the switch on, every start is counted for window.__btVoiceCap: the
+   most starting in any W ms (all recordings, and one recording), the most
+   sounding at once, and what was held back. */
+BT_AUDIO.VOICE_CAP = null;
+try {
+  if (typeof location !== 'undefined') BT_AUDIO.VOICE_CAP = parseVoiceCap(location.search || '');
+} catch (e) { /* off */ }
+BT_AUDIO._voiceRule = null;
+BT_AUDIO._voiceStats = null;
+BT_AUDIO._voiceGate = function (key, buf, opts) {
+  if (!buf && !this.SFX_CACHE) return true;   /* nothing will start */
+  var cap = this.VOICE_CAP;
+  var count = cap || (typeof window !== 'undefined' && window.__btProbe);
+  if (!cap && !count) return true;
+  var now = this._sfxNow();
+  var t = now + ((opts && opts.delay > 0) ? Math.min(2, opts.delay) * 1000 : 0);
+  var vs = this._voiceStats || (this._voiceStats = { live: [], maxWindow: 0, maxWindowKey: 0, maxWindowKeyName: null, maxPlaying: 0, starts: 0, held: 0, heldBy: Object.create(null) });
+  if (cap && !voiceExempt(key)) {
+    if (!this._voiceRule) this._voiceRule = makeVoiceCap(cap.n, cap.w);
+    if (!this._voiceRule.allow(key, t, now)) {
+      vs.held++;
+      vs.heldBy[key] = (vs.heldBy[key] || 0) + 1;
+      return false;
+    }
+  }
+  /* the count: this start and what is around it */
+  var w = cap ? cap.w : 50;
+  var rate = (opts && opts.rate) || 1;
+  var len = (opts && opts.duration != null) ? opts.duration : (buf ? Math.max(0, (buf.duration || 0) - ((opts && opts.offset) || 0)) : 0.5);
+  var end = t + (len / (rate || 1)) * 1000;
+  var keep = now - 4000, live = [], inWin = 1, inKey = 1, playing = 1;
+  for (var i = 0; i < vs.live.length; i++) {
+    var v = vs.live[i];
+    if (v.end < keep && v.t < keep) continue;
+    live.push(v);
+    if (Math.abs(v.t - t) < w) { inWin++; if (v.key === key) inKey++; }
+    if (v.t <= t && v.end > t) playing++;
+  }
+  live.push({ key: key, t: t, end: end });
+  if (live.length > 400) live.splice(0, live.length - 400);
+  vs.live = live;
+  vs.starts++;
+  if (inWin > vs.maxWindow) vs.maxWindow = inWin;
+  if (inKey > vs.maxWindowKey) { vs.maxWindowKey = inKey; vs.maxWindowKeyName = key; }
+  if (playing > vs.maxPlaying) vs.maxPlaying = playing;
+  return true;
+};
+if (typeof window !== 'undefined') {
+  window.__btVoiceCap = function (reset) {
+    var A = BT_AUDIO, vs = A._voiceStats;
+    var out = { on: !!A.VOICE_CAP, n: A.VOICE_CAP ? A.VOICE_CAP.n : null, w: A.VOICE_CAP ? A.VOICE_CAP.w : 50,
+      starts: vs ? vs.starts : 0, maxWindow: vs ? vs.maxWindow : 0, maxWindowKey: vs ? vs.maxWindowKey : 0, maxWindowKeyName: vs ? vs.maxWindowKeyName : null,
+      maxPlaying: vs ? vs.maxPlaying : 0, held: vs ? vs.held : 0, heldBy: vs ? Object.assign({}, vs.heldBy) : {} };
+    if (reset) { A._voiceStats = null; if (A._voiceRule) A._voiceRule.clear(); }
+    return out;
+  };
+}
 BT_AUDIO.play = function (key, opts) {
   if (this.muted || !this.ctx) return null;
   /* v2.3.130: iOS Safari suspends the AudioContext on tab-switch,
@@ -5607,6 +5669,9 @@ BT_AUDIO.play = function (key, opts) {
     this._ensureAudible();
   }
   var buf = this._samples[key];
+  /* v2.3.3727: at most N copies of one recording start within W ms
+     (data/voiceCap.js, `?voicecap`; off, only counted on a test page) */
+  if (!this._voiceGate(key, buf, opts)) return null;
   /* v2.3.3714: what played, for the sound cache's pinned list (mp-sfxcache),
      and the rest of its family decoded ahead when the cache is on */
   if (this.SFX_CACHE) {

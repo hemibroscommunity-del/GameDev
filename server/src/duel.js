@@ -222,7 +222,10 @@ export const duelMethods = {
     duel.status = 'resolved';
     this._duels.delete(duel.id);
     if (this._pvpConsent) this._pvpConsent.delete(this._pvpPairKey(duel.a, duel.b));
-    this.eventBuffer.push({ type: 'duel_end', payload: { winner: winnerId, loser: loserId, wager: duel.wager, how } });
+    /* v2.3.3713: `arena` -- an arena match's end, which the phone leaves to
+       arena_match_result's words (a phone that missed the match's start
+       read "Duel lost" over "Eliminated from the arena") */
+    this.eventBuffer.push({ type: 'duel_end', payload: { winner: winnerId, loser: loserId, wager: duel.wager, how, ...(duel.arenaMatch ? { arena: true } : null) } });
     // v2.3.1126: arena matches ride the duel machine -- notify the
     // bracket so kills, forfeits, and shot-clock timeouts all advance
     // it through the same server-observed path.
