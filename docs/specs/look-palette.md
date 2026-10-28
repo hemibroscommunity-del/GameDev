@@ -353,8 +353,9 @@ Each its own pull request (on by default, as this one: the owner's rule for the 
    armour's own art).
 4. **Shirts and their prints.** The shirt is its own sprite (a white-base sheet
    times a tint, `gearSheets.composeShirt`): a tint is already free; a print or
-   pattern stamped per player is a copy per player. Needs: the print as its own
-   small texture drawn over the shirt's numbers.
+   pattern stamped per player is a copy per player. **Done (v2.3.3751,
+   `docs/specs/look-shirts.md`)**: the tee's stand and jog kept once as
+   numbers, its tint, tile and drawing painted from the look's row.
 5. **Head pieces** (hats, hair, beards, eyewear, eye styles): each colour a
    recoloured copy today (`traits/*ColorCatalog.js`). The same bake per piece
    (their roles are simpler: the piece's own shades and its outline), one row a

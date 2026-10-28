@@ -4,9 +4,9 @@
  * frame of them in a look -- its tint, pattern and print in the look's row.
  * gearSheets.getShirtLookFrame's copy per player is what this replaces; the
  * caller (entityRenderer _placeGear) falls back to it, and to the plain sheet,
- * whenever this answers null.  docs/specs/look-palette.md, "Shirts". */
-import { registerLookSheets, getLookPartFrame, lookHas, lookPaletteWanted } from './lookPalette.js';
-import { shirtRowEntries } from './lookShirt.js';
+ * whenever this answers null.  docs/specs/look-shirts.md. */
+import { registerLookSheets, registerLookKind, getLookPartFrame, lookHas, lookPaletteWanted } from './lookPalette.js';
+import { shirtRowEntries, SHIRT_GLSL } from './lookShirt.js';
 import { artHash, sideForDir } from './traits/playerArt.js';
 import { getGearFrame, getShirtLookFrame, gearSheetLoad } from './gearSheets.js';
 import { parsePattern } from './traits/patternCatalog.js';
@@ -14,6 +14,7 @@ import { installShirtProbe } from './lookShirtProbe.js';
 
 /* behind the loading screen with the body's sheets (preloadLookSheets) */
 registerLookSheets('shirt', '/sprites/look/shirt/roles.json');
+registerLookKind('shirt', SHIRT_GLSL);   /* the print, the tile and the tint, per texel */
 
 /* a dressing's entries of the row, kept by its own short key: a printed tee is
    ~55 entries, and the look's key is made from them every frame otherwise */

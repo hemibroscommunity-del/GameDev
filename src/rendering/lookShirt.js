@@ -117,13 +117,12 @@ export function cellOf(x, o, w) {
   return g;
 }
 
-/* ═══ THE SHADER'S SHIRT (lookPalette.js's one program dispatches a sheet of
-   kind 'shirt' here, per display texel) ═══
-   shirtTexel above, line for line.  Uses the program's own readers: num (the
-   texel's 16-bit number), fetchT / tpos (the sheet's table), rowT (the look's
-   row, 0..255), sE (the role ends: sE[0] the fabric the pattern and print never
-   touch ends, sE[1] the colours end and the frames' numbers begin) and the
-   draw's mirror flag.  GLSL's % is undefined on a negative operand, so the
+/* ═══ THE SHADER'S SHIRT (lookPalette.js's per-kind hook: registerLookKind
+   ('shirt', SHIRT_GLSL), given each texel's 16-bit number and its place) ═══
+   shirtTexel above, line for line.  Uses the program's own readers: fetchT /
+   tpos (the sheet's table), rowT (the look's row, 0..255), sE (the role ends:
+   sE[0] the fabric the pattern and print never touch ends, sE[1] the colours
+   end and the frames' numbers begin) and sMirror (the draw's mirror bit).  GLSL's % is undefined on a negative operand, so the
    tile's phase is floored by hand. */
 export const SHIRT_GLSL = `
 highp int shirtF(highp int f, highp int k)
@@ -151,9 +150,9 @@ highp int shirtMod(highp int m, highp int t)
 {
     return m - t * int(floor(float(m) / float(t)));
 }
-highp vec4 shirtTexel(highp ivec2 q, bool mirror)
+highp vec4 lookKind_shirt(highp int v, highp ivec2 q)
 {
-    highp int v = num(q);
+    bool mirror = sMirror;
     highp int n = v % 256;
     highp int fr = v / 256;
     if (n == 0) return vec4(0.0);
