@@ -108,6 +108,48 @@ records that a fresh boot "has worked 100% of the time".
 `?canvascheck=0` is the game as it was. `window.__btCanvasWitness()` shows the
 witnesses and the last check.
 
+## A black screen's rebuild asks too (v2.3.3701)
+
+The owner, 2026-10-27: "Northwest jog has trouble loading reloading textures
+after recovering from black screen."
+
+**Why northwest.** In a matched set of armour (a copper torso with copper
+greaves, an iron torso with iron greaves) the jog is the painted knight
+figure, loaded from its file, in every facing but one: northeast, and its
+mirror northwest, have no figure (`_fullsetFrame`), so they are drawn as the
+body baked under the armour on canvases, with the plate and greaves over it.
+Those two facings are the only ones whose jog depends on canvases.
+
+**What happened.** A black screen is the graphics chip reset; the game
+rebuilds its renderer 2.5 s later (crashTrap `watchContextLoss`, BroTown
+`_rebuildRenderer`) and sends every picture to the new chip again from where
+the page keeps it. On an iPhone that reset comes from memory pressure, the
+same pressure that can make Safari empty the page's canvases (TRAPS §250). A
+rebuild after such a purge uploads the emptied canvases: blank. The check
+above ran only when the page came back to the tab or thawed from a freeze, and
+a black screen during play is neither.
+
+`mp-rebuildjog` made it happen on a test phone (the canvases emptied as Safari
+empties them, then the context lost). On main the rebuild went ahead and drew
+blanks; a reload was asked for 8.5 s after the black screen and the new page
+was up at about 15 s, and only because this test machine froze for 6 s during
+the rebuild (a "thaw"), with the black-screen watchdog counting dark samples
+behind it. A phone that does not freeze would have stayed
+on the blanks: whatever the watchdog does not see as dark, such as the body in
+two facings.
+
+**What it does now.** `_rebuildRenderer` reads the witnesses first, after its
+debounce and before it remounts the canvas. Two or more read empty and it is
+the recovery reload instead, on the same spot of the Wheel, through the same
+door and under the same cap (two reloads in five minutes); otherwise the
+rebuild goes ahead as before. `canvas-purge` in the crash log says
+`rebuild (...)`. `?canvascheck=0` is the old way.
+
+Measured with the fix: the reload 3.7 s after the black screen ("48 of 48
+pictures read back empty", 1 ms), and every layer drawn in all eight facings
+once back. A black screen with the pictures intact rebuilds as before, and
+every layer is drawn in all eight facings after it.
+
 ## Tests
 
 - `mp-tabwipe` (7 checks, a phone in the world):
@@ -123,10 +165,19 @@ witnesses and the last check.
   With `BT_QA_QUERY=canvascheck=0 QA_TW_EXPECT=blank` it shows the game as it
   was: no reload, and blank in all eight facings. `QA_TW_SHOTS=1` saves each
   facing; `QA_TW_CENSUS=1` with `QA_DIST=dist-prof` names each canvas's maker.
-- `canvas-witness` server suite (13 checks): the sample, the answer of two,
+- `canvas-witness` server suite (16 checks): the sample, the answer of two,
   one empty reading everything, freed canvases skipped, the switch, and the
-  wiring in packTrimmed, wsClient and BroTown. Five deliberate breakages are
-  all caught.
+  wiring in packTrimmed, wsClient and BroTown -- since v2.3.3701 the black
+  screen's rebuild asking first and stopping at the reload. Five deliberate
+  breakages are all caught, and a rebuild that reloads and rebuilds anyway.
+- `mp-rebuildjog` (8 checks, a phone in the world in a trouser pattern, hair,
+  a hat, glasses and the copper torso and greaves): every layer of the figure
+  -- body, shirt, plate, greaves, hair, hat, glasses, head -- read back off
+  the graphics chip in all eight facings, jogging: before; after a black
+  screen (the context lost, the game's own rebuild), twice; and with the
+  canvases emptied and the context lost, the rebuild reloading instead
+  (within 15 s, caught at the rebuild, not after it), back on the same spot
+  and every layer drawn.
 - TRAPS §250.
 
 ## Not done

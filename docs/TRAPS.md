@@ -8354,6 +8354,18 @@ canvas behind a texture emptied as Safari empties them, shown again): the game
 reloads straight back in, 0 px from where it was parked, and the body is whole
 in all eight facings; with `?canvascheck=0` it comes back blank in all eight.
 
+**And a black screen (v2.3.3701).** A rebuilt renderer uploads every picture
+again FROM its canvas, so a rebuild after a purge draws blanks -- and the
+memory pressure that resets the graphics chip is the same pressure that
+empties canvases.  BroTown's `_rebuildRenderer` asks the witnesses first and
+reloads through the same door instead.  Any NEW way of bringing the graphics
+back (a restore in place, a second renderer) asks them too.  The owner's
+"Northwest jog has trouble loading reloading textures after recovering from
+black screen": in a matched set of armour the jog's northeast and its mirror
+northwest are the only facings drawn from canvases (the body baked under the
+armour); every other facing is the knight figure, from its file.  Receipt:
+`mp-rebuildjog` step 3.
+
 ## 251. "The loading screen baked every frame the bro is drawn in" (v2.3.3577)
 
 **The plausible move.** A frame of the body under armour has to be baked
