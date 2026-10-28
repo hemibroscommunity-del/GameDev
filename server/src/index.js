@@ -150,6 +150,7 @@ import { gridMethods } from './grids.js';
 // v2.3.1171 (P4 decomposition): the move handler (anti-teleport + zone streaming) -- see movement.js.
 import { movementMethods, ROLL } from './movement.js';   /* v2.3.3292: + the paid roll's window */
 import { movePathMethods } from './movepath.js';   /* v2.3.3732: the message diet's glide */
+import { clientOffMethods } from './clientoff.js';   /* v2.3.3755: each memory saver off from the Test panel */
 // v2.3.1172 (P4 decomposition): rpg-blob load/save + player_state emit -- see persistence.js.
 import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
@@ -714,6 +715,9 @@ export const PRIVILEGED_EVENTS = new Set([
   // _movePathFlagChanged) -- forged, it would put a phone on the path with
   // no glide behind it, or take one off
   'move_path',
+  // v2.3.3755: the memory savers turned off for every phone (clientoff.js) --
+  // forged, it would switch a phone's savers off or on
+  'client_off',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
   // v2.3.1185: party roster echoes (server-truth HUD renderer) + the
@@ -6563,6 +6567,7 @@ Object.assign(GameRoom.prototype, gridMethods);
 // v2.3.1171 (P4 decomposition): movement -- see movement.js.
 Object.assign(GameRoom.prototype, movementMethods);
 Object.assign(GameRoom.prototype, movePathMethods);   /* v2.3.3732 */
+Object.assign(GameRoom.prototype, clientOffMethods);   /* v2.3.3755 */
 // v2.3.1172 (P4 decomposition): persistence core -- see persistence.js.
 Object.assign(GameRoom.prototype, persistenceMethods);
 // v2.3.1178: HTTP economy-endpoint session tokens -- see httpauth.js.

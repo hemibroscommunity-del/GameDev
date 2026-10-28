@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { BT_AUDIO, FURNITURE_RECIPES, addLifeSkillXp } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
@@ -99,7 +100,7 @@ export function FurniturePanel(props) {
         color: '#D8A85F'
       }
     }, /*#__PURE__*/React.createElement("img", {
-      src: "/icons/popups/gold.webp",
+      src: coinArtFor(R.coins), /* v2.3.3734: the pile for the amount */
       alt: "",
       draggable: false,
       style: {

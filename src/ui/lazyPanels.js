@@ -1,22 +1,27 @@
 /* v2.3.3717: the windows a player opens now and then, each its own small
-   script, loaded the first time it is opened with `?codelazy` (and with the
-   page, as before, without it) -- lazyPanel.js says how and why.  Only
+   script, loaded the first time it is opened (v2.3.3736: the default; with
+   the page, as before, under `?codelazy=0`) -- lazyPanel.js says how and why.  Only
    windows no fight uses; each module here is imported by nothing else that
-   is in the main script, or vite would keep it there. */
+   is in the main script, or vite would keep it there.
+   v2.3.3736: the old windows name their own close (the third argument), for
+   the "Couldn't open this" card when a window's script cannot come
+   (lazyPanel.js): closed, the game is no longer "busy" behind it.  The
+   buildings' windows sit in BroTown's card, whose backdrop closes it, and the
+   dashboard's pages under its own back; neither needs one. */
 import { lazyPanel } from './lazyPanel.js';
 
 /* the old windows, BroTown.jsx */
-export const LeaderboardPanel = lazyPanel(() => import('./panels/LeaderboardPanel.jsx'), 'LeaderboardPanel');
-export const FeedbackPanel = lazyPanel(() => import('./panels/FeedbackPanel.jsx'), 'FeedbackPanel');
-export const ClanPanel = lazyPanel(() => import('./panels/ClanPanel.jsx'), 'ClanPanel');
-export const PetHousePanel = lazyPanel(() => import('./panels/PetHousePanel.jsx'), 'PetHousePanel');
-export const FurniturePanel = lazyPanel(() => import('./panels/FurniturePanel.jsx'), 'FurniturePanel');
-export const DungeonCreatorPanel = lazyPanel(() => import('./panels/DungeonCreatorPanel.jsx'), 'DungeonCreatorPanel');
-export const EncyclopediaPanel = lazyPanel(() => import('./panels/EncyclopediaPanel.jsx'), 'EncyclopediaPanel');
-export const StatScreenPanel = lazyPanel(() => import('./panels/StatScreenPanel.jsx'), 'StatScreenPanel');
-export const TradeWindowPanel = lazyPanel(() => import('./panels/TradeWindowPanel.jsx'), 'TradeWindowPanel');
+export const LeaderboardPanel = lazyPanel(() => import('./panels/LeaderboardPanel.jsx'), 'LeaderboardPanel', (p) => p.setShowLeaderboard(false));
+export const FeedbackPanel = lazyPanel(() => import('./panels/FeedbackPanel.jsx'), 'FeedbackPanel', (p) => p.setShowFeedback(false));
+export const ClanPanel = lazyPanel(() => import('./panels/ClanPanel.jsx'), 'ClanPanel', (p) => p.setShowClanPanel(false));
+export const PetHousePanel = lazyPanel(() => import('./panels/PetHousePanel.jsx'), 'PetHousePanel', (p) => p.setShowPetHouse(false));
+export const FurniturePanel = lazyPanel(() => import('./panels/FurniturePanel.jsx'), 'FurniturePanel', (p) => p.setShowFurniture(false));
+export const DungeonCreatorPanel = lazyPanel(() => import('./panels/DungeonCreatorPanel.jsx'), 'DungeonCreatorPanel', (p) => p.setShowDungeonCreator(false));
+export const EncyclopediaPanel = lazyPanel(() => import('./panels/EncyclopediaPanel.jsx'), 'EncyclopediaPanel', (p) => p.setShowEncyclopedia(false));
+export const StatScreenPanel = lazyPanel(() => import('./panels/StatScreenPanel.jsx'), 'StatScreenPanel', (p) => p.setShowStatScreen(false));
+export const TradeWindowPanel = lazyPanel(() => import('./panels/TradeWindowPanel.jsx'), 'TradeWindowPanel', (p) => p.setTrade2(null));
 /* a player's card and profile (PlayerProfilePanel.jsx comes with it) */
-export const InspectPlayerPanel = lazyPanel(() => import('./panels/InspectPlayerPanel.jsx'), 'InspectPlayerPanel');
+export const InspectPlayerPanel = lazyPanel(() => import('./panels/InspectPlayerPanel.jsx'), 'InspectPlayerPanel', (p) => p.setInspectPlayer(null));
 /* the buildings' windows: the exchange, the gambling den (DailySpin.jsx with
    it), the arena's */
 export const ExchangePanel = lazyPanel(() => import('./panels/buildings/ExchangePanel.jsx'), 'ExchangePanel');
@@ -41,7 +46,7 @@ export const LandOfficePanel = lazyPanel(() => import('./panels/buildings/LandOf
    its stage, CodexStage.jsx, with it), achievements, ranks, the clan,
    feedback, settings */
 export const DashAchievementsPanel = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'AchievementsPanel');
-export const DashAchievementsHead = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'AchievementsHead');
+export const DashAchievementsHead = lazyPanel(() => import('./mobile/dash/AchievementsPanel.jsx'), 'AchievementsHead', null, true);   /* v2.3.3736: quiet: its page says it */
 export const DashEncyclopediaPanel = lazyPanel(() => import('./mobile/dash/EncyclopediaPanel.jsx'), 'EncyclopediaPanel');
 export const DashLeaderboardPanel = lazyPanel(() => import('./mobile/dash/LeaderboardPanel.jsx'), 'LeaderboardPanel');
 export const DashClanPanel = lazyPanel(() => import('./mobile/dash/ClanPanel.jsx'), 'ClanPanel');

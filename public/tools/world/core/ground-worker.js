@@ -283,8 +283,12 @@ const post = (msg, transfer) => self.postMessage(msg, transfer || []);
    (up to 10 pictures each) thawed 58 times and came 5 ms slower each, with
    8 they thawed 16 times (5 ms each) and came as fast as today -- 58.4 ms a
    piece against 58.6, the worker 21.4 MB against 26.5.
-   A browser without CompressionStream lets a picture go as before.  Without
-   the switch nothing changes.  docs/specs/worker-code-diet.md. */
+   A browser without CompressionStream lets a picture go as before.
+   v2.3.3736: ON for everyone -- the owner, 2026-10-28: "I think including
+   the new memory change work by default would be better. I can always
+   revert the change if I don't like it or it doesn't work well."
+   `?groundlean=0` turns it off for one phone, as before.
+   docs/specs/worker-code-diet.md. */
 const LEAN = { decodedKeep: 8, coldKeep: 24, filesKeep: 8, blocksKeep: 16, latticeKeep: 8192 };
 let lean = false;
 /* `?groundsum` (QA): every piece sent with a checksum of what it shows -- its
@@ -467,8 +471,9 @@ async function init(m) {
   /* v2.3.3022: the standard plan, or the one `?bigtown` asks for (plan.js planFor)
      -- v2.3.3315: of the size the room plays (caps.wheelsize, worldTrial.js) */
   PLAN = planFor(search, (m && m.size) | 0 || 1);
-  /* v2.3.3717: `?groundlean`, the smaller caches (LEAN) */
-  lean = /(^|[?&])groundlean(=|&|$)/.test(search);
+  /* v2.3.3717: `?groundlean`, the smaller caches (LEAN) -- v2.3.3736: ON
+     unless the address says `groundlean=0` (the owner, 2026-10-28) */
+  lean = !/(^|[?&])groundlean=(0|off|false)(&|$)/.test(search);
   sums = /(^|[?&])groundsum(=|&|$)/.test(search);
   if (lean) { DECODED_KEEP = LEAN.decodedKeep; FILES_KEEP = LEAN.filesKeep; latticeKeep(LEAN.latticeKeep); }
   const g = gridInfo(PLAN);

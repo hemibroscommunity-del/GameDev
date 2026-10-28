@@ -1,3 +1,4 @@
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { BT_AUDIO, GAMBLE_MIN_BET, GAMBLE_WIN_CHANCE, JACKPOT_MIN_DEPOSIT, createDefaultCompStats } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
@@ -60,11 +61,13 @@ function lsHeader(icon, emoji, title, subtitle) {
     React.createElement("div", { style: { fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 } }, title),
     subtitle ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 1 } }, subtitle) : null));
 }
-function lsGold(amount, size) {
+/* v2.3.3734: `have` -- a balance (what you have) shows the owner's pile for
+   it; without it the amount is a price and shows the one coin */
+function lsGold(amount, size, have) {
   return React.createElement("span", {
     style: { display: 'inline-flex', alignItems: 'center', gap: 4, color: LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: size || 14 }
   }, React.createElement("img", {
-    src: '/icons/popups/gold.webp', alt: '', draggable: false,
+    src: have != null ? coinArtFor(have) : COIN_ONE, alt: '', draggable: false,
     style: { width: 16, height: 16, objectFit: 'contain' },
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
   }), amount);
@@ -110,7 +113,7 @@ export function GamblePanel(props) {
            ("Your gold: 75G"), never a bare unexplained number. */
         style: { display: 'inline-flex', alignItems: 'center', gap: 6 }
       }, React.createElement("span", { style: { fontSize: 12, color: LS.txt2 } }, "Your gold:"),
-      lsGold(Number(rpgState.coins || 0).toLocaleString() + 'G', 16) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular; v2.3.3481: with its thousands separator, "2,550G", as the top bar and every other window (the 2026-10-19 UI review) */),
+      lsGold(Number(rpgState.coins || 0).toLocaleString() + 'G', 16, rpgState.coins) /* v2.3.1235: batch-3 rollout — key numbers are 16-18/700 tabular; v2.3.3481: with its thousands separator, "2,550G", as the top bar and every other window (the 2026-10-19 UI review) */),
       React.createElement("span", { style: { fontSize: 12, color: LS.txt2, fontVariantNumeric: 'tabular-nums' } },
         rpgState.achievementPoints || 0, " AP") /* v2.3.1235: batch-3 rollout — ⭐ dropped, no emoji in chrome */),
       /* v2.3.3481: the 2026-10-19 UI review -- the free spin above has its
