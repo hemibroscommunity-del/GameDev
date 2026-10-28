@@ -5,8 +5,9 @@
  * tools/qa/mp/memory-budget.mjs means what the tour's numbers mean.
  *
  *   MEM_INIT          an init script (H.newPlayer's `init`): every 2D canvas
- *                     the page makes and every AudioBuffer it decodes, by weak
- *                     reference, and `window.__memLedger()` to count them --
+ *                     the page makes and every AudioBuffer it decodes or makes
+ *                     (v2.3.3706), by weak reference, and `window.__memLedger()`
+ *                     to count them --
  *                     so a reading is what is still REACHABLE, never what was
  *                     ever made.  A canvas with a WebGL context is the
  *                     screen, counted by the GPU's own figure, not here.
@@ -43,6 +44,19 @@ export const MEM_INIT = () => {
       const note = (ab) => { try { bufs.push(new WeakRef(ab)); } catch (e) { /* ignore */ } return ab; };
       const p = dad.call(this, buf, ok ? (ab) => { note(ab); ok(ab); } : undefined, bad);
       return p && p.then ? p.then((ab) => { if (!ok) note(ab); return ab; }) : p;
+    };
+  }
+  /* v2.3.3706: and every buffer the page MAKES -- a stereo sound whose sides
+     are one is kept as a one-channel buffer of the context's createBuffer
+     (data/soundFold.js), which the decode hook above never saw: counting
+     decodes alone, the fold's six went missing from the line (6.3 MB less
+     sound where 3.2 MB were saved) */
+  if (B && B.prototype.createBuffer) {
+    const cb = B.prototype.createBuffer;
+    B.prototype.createBuffer = function () {
+      const ab = cb.apply(this, arguments);
+      try { bufs.push(new WeakRef(ab)); } catch (e) { /* ignore */ }
+      return ab;
     };
   }
   window.__memLedger = () => {

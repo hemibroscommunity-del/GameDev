@@ -96,6 +96,14 @@
  * byte each: home again 23.5-24.0 -> 20.0-20.4 MB, arriving 21.9 -> 18.2, with
  * every open pull request in.  Main itself had read 23.9-24.2 at its line of
  * 24, so every pull request's check passed or failed by luck.
+ *
+ * v2.3.3706, a stereo sound whose two sides are one kept as one channel
+ * (data/soundFold.js): `sound` 32 -> 29 -- LOWERED, to keep the saving.  Six
+ * of the stereo files carry one signal on both sides, 3.2 MB of the sound
+ * held decoded; the check read at most 27.0 MB where main reads 30.1, the
+ * other lines where main's are.  (memprobe.mjs now counts the buffers the
+ * page makes as well as the ones it decodes: counting decodes alone, the
+ * six one-channel copies went missing and the line read 23.8.)
  */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 112, measured: 102.2,   /* v2.3.3702: 156 -> 112, see the header */
@@ -104,7 +112,7 @@ export const MEMORY_BUDGET = {
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
   canvases: { name: 'pictures the game draws itself', mb: 56, measured: 49.7,   /* v2.3.3699: 96 -> 88; v2.3.3702: 88 -> 56, see the header */
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
-  sound: { name: 'decoded sound', mb: 32, measured: 26.0,   /* v2.3.3664: 30 -> 32, see the header */
+  sound: { name: 'decoded sound', mb: 29, measured: 27.0,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 34, measured: 33.3,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34, see the header */
     what: 'the page\'s JavaScript objects' },
