@@ -212,15 +212,17 @@ async function pageBake({ set, sheet, bits, probeAt, bar }) {
      off on a few texels a sheet -- an eye's highlight, a buckle -- which breaks
      the promise behind the owner's yes.  Now the bar is the WORST texel: every
      colour within CUT_BAR levels a channel of itself, in every look.
-       - A colour's error is what a look can show of it: its straight RGBA
-         (a look that leaves the role as drawn, and every kept pixel), and for a
-         retinted role its luminance as the retint magnifies it (target x lum /
+       - A colour's error is what a look can show of it, PREMULTIPLIED as the
+         screen shows it (an edge's colour counts for its alpha): its RGBA (a
+         look that leaves the role as drawn, and every kept pixel), and for a
+         retinted role the retint's output at a white target (target x lum /
          ref: up to 255 / ref a level -- the boots' ref 75 makes one level of
          luminance 3.4 of white boots).
        - All 255 entries are one pool: each step splits the box, of ANY role,
          whose worst colour is furthest from its entry, at the middle of the
          axis that error lies on; an entry is the middle of its box (the
-         minimax point), not the mean.
+         minimax point), not the mean.  `meanMoved` is the straight RGB a
+         pixel moved, on average; `worstMoved` the bar's measure.
      A sheet whose worst is still over the bar with every entry spent is
      reported (`over`); role-bake.mjs keeps such a sheet 16-bit (its caller's
      choice: --bits 16 for that sheet). */
@@ -231,25 +233,35 @@ async function pageBake({ set, sheet, bits, probeAt, bar }) {
     const total = keys.size;
     /* the axes a colour is measured on: r, g, b, a, and (retinted roles) its
        luminance scaled by what the retint makes of it */
-    const lumScale = (r) => { const ro = r ? roles[r - 1] : null; return ro && ro.ref ? 255 / (ro.ref / RS) : 0; };
-    const axes = (k, s) => {
-      const r = ch(k, 0), g = ch(k, 1), b = ch(k, 2);
-      return [r, g, b, ch(k, 3), s ? (0.299 * r + 0.587 * g + 0.114 * b) * s : 0];
+    const lumScale = (r) => {
+      const ro = r ? roles[r - 1] : null;
+      const lead = ro && !ro.ref && ro.under ? roles[ro.under - 1] : ro;   /* an iris with no eye picked is its under role's retint */
+      return lead && lead.ref ? 255 / (lead.ref / RS) : 0;
     };
+    /* every axis PREMULTIPLIED, as the screen shows it (a see-through edge's
+       colour counts for its alpha): r, g, b, a, and the retint's luminance
+       u = lum / ref on a scale where one step is the most ANY target can show
+       of it: 255 u up to 1, then 255 (1 + ln u) -- min(255, T u) moves at
+       most 255 |u - v| below the clamp and 255 (1 - v / u) past it, and the
+       logarithm's step is never smaller.  (Measured first at a white target
+       only, the clamp hid the error: a skin entry 16 levels off at T 255 was
+       34 at a darker target.) */
+    const h = (u) => (u <= 1 ? u : 1 + Math.log(u));
+    const axesOf = (r, g, b, a, s) => [r * a / 255, g * a / 255, b * a / 255, a,
+      s ? 255 * h((0.299 * r + 0.587 * g + 0.114 * b) * s / 255) * a / 255 : 0];
+    const axes = (k, s) => axesOf(ch(k, 0), ch(k, 1), ch(k, 2), ch(k, 3), s);
     const mkBox = (role, list) => {
       const s = lumScale(role);
       const pts = list.map(([k, n]) => [k, n, axes(k, s)]);
       const lo = [Infinity, Infinity, Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity, -Infinity, -Infinity];
       for (const [, , a] of pts) for (let q = 0; q < 5; q++) { if (a[q] < lo[q]) lo[q] = a[q]; if (a[q] > hi[q]) hi[q] = a[q]; }
-      /* the minimax entry: the middle of r, g, b, a -- and its error, the
-         worst colour's distance on any axis (luminance included) */
-      const rep = [0, 1, 2, 3].map((q) => Math.round((lo[q] + hi[q]) / 2));
-      const repLum = s ? (0.299 * rep[0] + 0.587 * rep[1] + 0.114 * rep[2]) * s : 0;
+      /* the minimax entry: the middle of the premultiplied box, made straight
+         again -- and its error, the worst colour's distance on any axis */
+      const am = Math.max(1, Math.round((lo[3] + hi[3]) / 2));
+      const rep = [0, 1, 2].map((q) => Math.min(255, Math.round(((lo[q] + hi[q]) / 2) * 255 / am))).concat([am]);
+      const ra = axesOf(rep[0], rep[1], rep[2], rep[3], s);
       let err = 0, axis = 0;
-      for (const [, , a] of pts) {
-        for (let q = 0; q < 4; q++) { const e = Math.abs(a[q] - rep[q]); if (e > err) { err = e; axis = q; } }
-        if (s) { const e = Math.abs(a[4] - repLum); if (e > err) { err = e; axis = 4; } }
-      }
+      for (const [, , a] of pts) for (let q = 0; q < (s ? 5 : 4); q++) { const e = Math.abs(a[q] - ra[q]); if (e > err) { err = e; axis = q; } }
       return { role, pts, lo, hi, rep, err, axis };
     };
     const byRole = new Map();
@@ -271,6 +283,21 @@ async function pageBake({ set, sheet, bits, probeAt, bar }) {
       if (!A.length || !B.length) break;
       boxes.splice(bi, 1, mkBox(bx.role, A), mkBox(bx.role, B));
     }
+    /* then each entry moved to its pixels' weighted mean wherever that keeps
+       the box's worst colour under the bar: the bar is the worst, the mean is
+       what most of the figure shows (measured: jog-east 7.1 -> see the spec) */
+    for (const bx of boxes) {
+      if (bx.pts.length < 2) continue;
+      const s = lumScale(bx.role);
+      let n = 0; const m = [0, 0, 0, 0];
+      for (const [, c, a] of bx.pts) { n += c; for (let q = 0; q < 4; q++) m[q] += a[q] * c; }
+      const am = Math.max(1, Math.round(m[3] / n));
+      const rep = [0, 1, 2].map((q) => Math.min(255, Math.round((m[q] / n) * 255 / am))).concat([am]);
+      const ra = axesOf(rep[0], rep[1], rep[2], rep[3], s);
+      let err = 0;
+      for (const [, , a] of bx.pts) for (let q = 0; q < (s ? 5 : 4); q++) err = Math.max(err, Math.abs(a[q] - ra[q]));
+      if (err <= Math.max(CUT_BAR - 1.5, bx.err)) { bx.rep = rep; bx.err = err; }   /* 1.5 short of the bar: the canvas rounds */
+    }
     const remap = new Map();
     let moved = 0, pix = 0, worst = 0;
     for (const bx of boxes) {
@@ -278,7 +305,7 @@ async function pageBake({ set, sheet, bits, probeAt, bar }) {
       for (const [k, n] of bx.pts) remap.set(k, key);
       if (bx.err > worst) worst = bx.err;
       for (const [k, n, a] of bx.pts) {
-        let e = 0; for (let q = 0; q < 4; q++) e = Math.max(e, Math.abs(a[q] - bx.rep[q]));
+        let e = 0; for (let q = 0; q < 3; q++) e = Math.max(e, Math.abs(ch(k, q) - bx.rep[q]));
         moved += e * n; pix += n;
       }
     }
@@ -375,8 +402,9 @@ async function pageBake({ set, sheet, bits, probeAt, bar }) {
       for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(got[k] - want[k]));
       /* v2.3.3750: a pixel the set says the old bake colours by more than its
          role (`fickle`: the fish's rod key, re-tested after the retint) is
-         counted apart, not held to the old path */
-      if (fickle && m > 1.5 && fickle[ds === 1 ? (2 * y + oy) * W + 2 * x + ox : (2 * y) * W + 2 * x]) { check.fickle = (check.fickle || 0) + 1; continue; }
+         counted apart, not held to the old path (an 8-bit sheet's: only past
+         the cut's bar, which the cut itself is held to on every pixel) */
+      if (fickle && m > (quant ? CUT_BAR : 1.5) && fickle[ds === 1 ? (2 * y + oy) * W + 2 * x + ox : (2 * y) * W + 2 * x]) { check.fickle = (check.fickle || 0) + 1; continue; }
       check.texels++;
       check.sum += m;
       if (m > check.max) check.max = +m.toFixed(2);
@@ -471,8 +499,10 @@ async function main() {
          (its own `bits` in the manifest; lookPalette.js reads a sheet's
          over the set's) */
       let sheetBits = bits;
-      if (bits === 8 && r.quant && r.quant.over) {
-        console.log(`  ${name}: the 8-bit cut's worst colour is ${r.quant.worstMoved} levels (over ${CUT_BAR}): kept 16-bit`);
+      /* ...or whose self-check (three real looks against the old path's own
+         canvases) shows a texel over the bar */
+      if (bits === 8 && r.quant && (r.quant.over || r.check.max > CUT_BAR)) {
+        console.log(`  ${name}: the 8-bit cut's worst colour is ${r.quant.worstMoved} levels, ${r.check.max} in the self-check (the bar ${CUT_BAR}): kept 16-bit`);
         r = await page.evaluate(pageBake, { set, sheet: name, bits: 16, probeAt: PROBE_AT, bar: CUT_BAR });
         sheetBits = 16;
       }
