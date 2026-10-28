@@ -251,6 +251,12 @@ export function SoundStudio({ onClose, tab: tab0 }) {
     && (!sample || r.samples.indexOf(sample) >= 0)
     && (!needle || (r.label + ' ' + r.what + ' ' + r.samples.join(' ')).toLowerCase().indexOf(needle) >= 0));
   const secTitle = Object.fromEntries(STUDIO_SECTIONS.map((s) => [s[0], s[1]]));
+  /* v2.3.3714: the recordings of what is listed decoded ahead, while the
+     sound cache has room (`?sfxcache`; off, every sound is decoded anyway) */
+  const shownKeys = shown.map((r) => r.samples.join(' ')).join(' ');
+  useEffect(() => {
+    try { if (A.SFX_CACHE && A.sfxPrefetch) A.sfxPrefetch(shownKeys.split(' ').filter(Boolean), true); } catch (e) { /* sound only */ }
+  }, [shownKeys]);
 
   const recordingChips = (r) => r.samples.map((k) => (
     <span key={k} role="button" tabIndex={0} style={recChip} data-studio-sample={k}
