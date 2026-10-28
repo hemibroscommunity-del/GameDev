@@ -74,13 +74,14 @@ const PROBE_AT = process.env.ROLE_BAKE_PROBE ? ((m) => [m[1], [Number(m[2]), Num
 /* ── in the page: the set's module, and through it the game's own code ── */
 async function pageMeta({ set }) {
   const S = (await import(`/rendering/lookSets/${set}.js`)).default;
-  return { kind: S.kind, bits: S.bits, fw: S.fw || 128, fh: S.fh || 128, out: S.out || null, roleDefs: S.roleDefs,
+  return { kind: S.kind, bits: S.bits, refScale: S.refScale || 1, fw: S.fw || 128, fh: S.fh || 128, out: S.out || null, roleDefs: S.roleDefs,
     sheets: S.sheets, code: S.code || [], art: Object.fromEntries(S.sheets.map((k) => [k, S.art(k)])) };
 }
 async function pageBake({ set, sheet, bits, probeAt }) {
   const S = (await import(`/rendering/lookSets/${set}.js`)).default;
   const GS = await import('/rendering/gearSheets.js');
   const FW = S.fw || 128, FH = S.fh || 128;
+  const RS = S.refScale || 1;   /* v2.3.3737: a role's ref in 1/RS's (P4's fractional refs) */
   const roles = S.roleDefs;   /* role r (1..R) is roles[r - 1] */
   const R = roles.length;
   const src = await S.source(sheet);
@@ -104,7 +105,7 @@ async function pageBake({ set, sheet, bits, probeAt }) {
   const f1 = read(run(P1)), f2 = read(run(P2)), f3 = read(run(P3));
   const recol = (i, T, ref) => {
     if (!ref) return T;
-    const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref;
+    const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / (ref / RS);
     return [Math.min(255, Math.round(T[0] * k)), Math.min(255, Math.round(T[1] * k)), Math.min(255, Math.round(T[2] * k))];
   };
   /* what role r makes of pixel i in look L -- lookPalette.js's entry(), in JS */
@@ -312,7 +313,7 @@ async function pageBake({ set, sheet, bits, probeAt }) {
       const ro = roles[rr - 1], T = L[ro.entry];
       if (T) {
         if (!ro.ref) return T;
-        const k = (0.299 * c0[0] + 0.587 * c0[1] + 0.114 * c0[2]) / ro.ref;
+        const k = (0.299 * c0[0] + 0.587 * c0[1] + 0.114 * c0[2]) / (ro.ref / RS);
         return [0, 1, 2].map((q) => Math.min(255, Math.round(T[q] * k)));
       }
       return ro.under ? one(ro.under) : c0;
@@ -424,7 +425,7 @@ async function main() {
     const jsonFile = path.join(outDir, 'roles.json');
     /* a bake of some sheets keeps the manifest's others */
     const prev = fs.existsSync(jsonFile) ? JSON.parse(fs.readFileSync(jsonFile, 'utf8')) : null;
-    out = { v: 2, version: 'v2.3.3737', set, kind: meta.kind, bits, fw: meta.fw, fh: meta.fh,
+    out = { v: 2, version: 'v2.3.3737', set, kind: meta.kind, bits, refScale: meta.refScale, fw: meta.fw, fh: meta.fh,
       roles: ['keep', ...meta.roleDefs.map((ro) => ro.name)], roleDefs: meta.roleDefs.map(({ name, entry, ref, under }) => ({ name, entry, ref: ref || 0, under: under || 0 })),
       code: hashFiles(codeFiles), codeFiles, sheets: (prev && argOf('--sheets') && prev.bits === bits) ? prev.sheets : {} };
     if (!CHECK) fs.mkdirSync(outDir, { recursive: true });

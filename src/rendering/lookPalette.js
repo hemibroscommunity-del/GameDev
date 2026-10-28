@@ -104,9 +104,16 @@ const BODY_ROLES = Object.freeze([
 ]);
 /* THE ROW IS LAW (look-palette.md): which entries of a look's row each kind
    of part may use, so the parts of one player can share one row later */
-export const LOOK_ROW_RANGES = Object.freeze({ body: [0, 7], shirt: [8, 31], armour: [32, 63], head: [64, 127], spare: [128, 255] });
+export const LOOK_ROW_RANGES = Object.freeze({ body: [0, 7], shirt: [8, 31], armour: [32, 63], head: [64, 127], 'shirt-drawing': [128, 159], spare: [160, 255] });
+/* a kind's number in the header (the shader's per-kind hook, registerLookKind) */
+export const LOOK_KIND_IDS = Object.freeze({ body: 0, shirt: 1, armour: 2, head: 3, 'shirt-drawing': 4 });
 const MAX_ROLES = 15;
-const HEAD_VALUES = 5 + 16 + 3 * MAX_ROLES;   /* the header's 16-bit values */
+/* the header's 16-bit values: 0 scale (| 128 for 8 bits), 1 number rows, 2
+   the table's first row, 3 bits, 4 roles, 5-20 each role's end, 21-65 each
+   role's entry / ref / under, 66 the refs' scale (ref / refScale, P4's
+   fractional refs), 67 the kind (LOOK_KIND_IDS), 68-69 the sheet's offset in
+   a book (P3's masks, setLookSheetBook), low and high */
+const HEAD_VALUES = 5 + 16 + 3 * MAX_ROLES + 4;
 
 function webgl2(r) { return !!(r && r.gl && r.context && r.context.webGLVersion === 2); }
 /** Drawn from the numbers here: wanted, the sheets in, WebGL2, the program not refused. */
@@ -150,11 +157,14 @@ function buildSheet(set, name, m, img, roles) {
   head[0] = m.ds | (bits === 8 ? 128 : 0); head[1] = n; head[2] = n; head[3] = bits; head[4] = roles.length;
   const ends = m.ends || [];
   for (let r = 0; r < 16; r++) head[5 + r] = ends[Math.min(r, ends.length - 1)] != null ? ends[Math.min(r, ends.length - 1)] : E;
-  roles.forEach((ro, i) => { head[21 + 3 * i] = ro.entry; head[22 + 3 * i] = ro.ref || 0; head[23 + 3 * i] = ro.under || 0; });
+  roles.forEach((ro, i) => { head[21 + 3 * i] = ro.entry; head[22 + 3 * i] = Math.round(ro.ref || 0); head[23 + 3 * i] = ro.under || 0; });
+  head[66] = Math.max(1, Math.round(m.refScale || 1));
+  head[67] = LOOK_KIND_IDS[m.kind] || 0;
   /* the PNG is opaque, so it decodes exactly: a number in red (and green, 16
      bits), the table two pixels an entry, (r, g) then (b, a) -- made again
      from the <img> whenever the chip needs them (the bytes are let go of
      once uploaded) */
+  const holder = { sheet: null };
   const make = () => {
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = n + T;
@@ -176,6 +186,8 @@ function buildSheet(set, name, m, img, roles) {
         else { out[(y * W + x) * 2] = v & 255; out[(y * W + x) * 2 + 1] = (v >> 8) & 255; }
       }
     };
+    const book = (holder.sheet && holder.sheet.book) || 0;
+    head[68] = book & 65535; head[69] = Math.floor(book / 65536) & 65535;
     head.forEach((v, i) => put(i, v));
     return out;
   };
@@ -194,7 +206,9 @@ function buildSheet(set, name, m, img, roles) {
     else { r.frame = new Rectangle(ax, ay, w, h); r.orig = new Rectangle(0, 0, m.fw || 128, m.fh || 128); r.trim = new Rectangle(tx, ty, w, h); }
     return r;
   });
-  _sheets[set + '/' + name] = { src, frames, ds: m.ds, bits };
+  const sheetRec = { src, frames, ds: m.ds, bits, book: 0, uploaded: false };
+  holder.sheet = sheetRec;
+  _sheets[set + '/' + name] = sheetRec;
   _stats.sheets++;
   _stats.sheetBytes += data.length;
 }
@@ -214,11 +228,12 @@ async function loadSet(name) {
       await Promise.all(Object.keys(m.sheets).map(async (sheet) => {
         const e = m.sheets[sheet];
         const img = await loadPng(s.base + sheet + '.png?v=' + v + '.' + (e.art || ''));
-        buildSheet(name, sheet, { bits: m.bits, fw: m.fw, fh: m.fh, ...e }, img, e.roleDefs || roles);
+        buildSheet(name, sheet, { bits: m.bits, fw: m.fw, fh: m.fh, refScale: m.refScale, kind: m.kind, ...e }, img, e.roleDefs || roles);
       }));
       s.manifest = m;
       _stats.sets++;
       prewarmProgram();
+      uploadSheets();
       return true;
     } catch (e) {
       _stats.loadError = String((e && e.message) || e);
@@ -232,6 +247,32 @@ async function loadSet(name) {
     }
   })();
   return s.loading;
+}
+/** v2.3.3737 (P3): a sheet's offset in its book of masks, in the header
+ *  (68-69) for the shader -- uploaded again with it. */
+export function setLookSheetBook(set, sheet, offset) {
+  const sh = _sheets[set + '/' + sheet];
+  if (!sh || sh.book === offset) return !!sh;
+  sh.book = offset >>> 0;
+  try { sh.src.update(); } catch (e) { /* uploaded with it when next drawn */ }
+  return true;
+}
+/* every sheet on the chip, and its bytes let go of (the upload): a sheet
+   first drawn only when someone wears a look held its bytes in the page
+   until then -- measured, the memory check's phone (the default look) read
+   23.0 MB of buffers at home against 20.3 with `?lookpalette=0`.  As the
+   Wheel's ground does (wheelGround.js _toGpu); a context that is lost
+   uploads as it is first drawn instead. */
+function uploadSheets() {
+  const r = paletteRendererOf();
+  if (!r || !webgl2(r) || !r.texture || typeof r.texture.initSource !== 'function') return;
+  const gl = r.gl;
+  if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
+  for (const k of Object.keys(_sheets)) {
+    const sh = _sheets[k];
+    if (sh.uploaded) continue;
+    try { r.texture.initSource(sh.src); sh.uploaded = true; } catch (e) { /* drawn the usual way */ }
+  }
 }
 /**
  * v2.3.3737: a set of colour-number sheets, by its manifest's address
@@ -257,10 +298,12 @@ export function preloadLookSheets() {
 
 /* ═══ THE LOOKS ═══ */
 const _looks = new Map();          /* key -> look */
-const tkey = (t) => (t ? t[0] + ',' + t[1] + ',' + t[2] : '-');
+const tkey = (t) => (t ? t[0] + ',' + t[1] + ',' + t[2] + (t.length > 3 ? ',' + t[3] : '') : '-');   /* v2.3.3737: + an RGBA entry's fourth byte */
 function lookRow(look) {
   const rgba = new Uint8Array(256 * 4);
-  for (const [e, t] of look.entries) if (t) rgba.set([t[0], t[1], t[2], 255], e * 4);
+  /* v2.3.3737 (P2): a four-byte value is an RGBA entry verbatim (a shirt's
+     ink bits, a drawing's cells); three bytes are a colour, alpha 255 */
+  for (const [e, t] of look.entries) if (t) rgba.set(t.length > 3 ? [t[0], t[1], t[2], t[3]] : [t[0], t[1], t[2], 255], e * 4);
   return rgba;
 }
 let _sweepAt = 0;
@@ -290,13 +333,18 @@ function sweep(now) {
  * caller draws the old way).  `entries`: [[rowEntry, [r, g, b] | null], ...]
  * in the set's own range of the row (LOOK_ROW_RANGES).
  */
-export function getLookPartFrame(set, sheet, frameIdx, entries) {
+export function getLookPartFrame(set, sheet, frameIdx, entries, opts) {
   if (!lookPaletteOn()) return null;
   if (_ok === null) prewarmProgram();   /* not built behind the loading screen (no renderer then): now */
   if (!entries.some((e) => e[1])) return null;
   const sh = _sheets[set + '/' + sheet];
   if (!sh) return null;
-  const key = entries.map((e) => e[0] + ':' + tkey(e[1])).join('/');
+  /* v2.3.3737 (P2): `opts.key` -- the caller's own key for these entries
+     (a printed shirt's ~55, not joined every frame); `opts.mirror` -- the
+     flipped facings' frames, a texture list of their own, the flag to the
+     shader (a print pre-flipped there, as the old path's 'm' bake) */
+  const key = (opts && opts.key) || entries.map((e) => e[0] + ':' + tkey(e[1])).join('/');
+  const mirror = !!(opts && opts.mirror);
   const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
   let look = _looks.get(key);
   if (!look) {
@@ -309,12 +357,13 @@ export function getLookPartFrame(set, sheet, frameIdx, entries) {
   }
   look.used = now;
   sweep(now);
-  const name = set + '/' + sheet;
+  const name = set + '/' + sheet + (mirror ? '#m' : '');
   let list = look.tex[name];
   if (!list) {
     list = look.tex[name] = sh.frames.map((f) => {
       const t = new Texture({ source: sh.src, frame: f.frame, orig: f.orig, trim: f.trim });
       t._btLook = look;
+      t._btLookMirror = mirror;
       t.__btIx = f.i; t.__btN = f.n;
       return t;
     });
@@ -341,6 +390,7 @@ out vec2 vUV;
 flat out float vTextureId;
 flat out float vLook;
 flat out float vSharp;
+flat out float vMirror;
 uniform mat3 uProjectionMatrix;
 uniform mat3 uWorldTransformMatrix;
 uniform vec4 uWorldColorAlpha;
@@ -360,12 +410,15 @@ void main(void){
     vec2 uv = aUV;
     vColor = vec4(1.);
     vColor *= vec4(aColor.rgb * aColor.a, aColor.a);
-    /* v2.3.3716: slot + 16 x (2 x look + sharp), look = the row + 1 (0: as drawn) */
+    /* v2.3.3716: the slot and the look (the row + 1; 0: as drawn) */
     float tid = aTextureIdAndRound.y;
     float code = floor(tid / 16.0 + 0.001);
     vTextureId = tid - code * 16.0;
-    vLook = floor(code / 2.0 + 0.001);
-    vSharp = code - vLook * 2.0;
+    /* v2.3.3737: slot + 16 x (4 x look + 2 x mirror + sharp) */
+    vLook = floor(code / 4.0 + 0.001);
+    highp float low = code - vLook * 4.0;
+    vMirror = floor(low / 2.0 + 0.001);
+    vSharp = low - vMirror * 2.0;
     vUV = uv;
     mat3 modelViewProjectionMatrix = uProjectionMatrix * worldTransformMatrix * modelMatrix;
     gl_Position = vec4((modelViewProjectionMatrix * vec3(position, 1.0)).xy, 0.0, 1.0);
@@ -392,12 +445,41 @@ function fetchChain(fn) {
   }
   return out.join('\n');
 }
-const FRAG = `#version 300 es
+/* ═══ v2.3.3737: THE PER-KIND HOOK ═══
+   A part whose texel is not simply "its entry, recoloured" (a shirt's print,
+   P2; an armour's mask, P3; a head piece, P4) registers its own function of
+   the texel, by its kind, from its own module -- before the program is built
+   (behind the loading screen), so nothing here is edited:
+
+     registerLookKind('shirt', `highp vec4 lookKind_shirt(highp int k, highp ivec2 p) { ... }`)
+
+   It is given the texel's number `k` and its position `p` in the sheet's
+   texture, and returns the premultiplied 0-255 colour (entry(k)'s contract).
+   It may read: entry(k) (the default), tableRGBA(k) (the entry's own colour,
+   straight), num(p), fetchT(p) (the texture, the ONE fetch chain -- never a
+   second), rowT(e) (the look's row entry e, 0-255), recol(c, T, ref), and
+   sMirror, sBook, sKind, sW, sN, sDs, sBits.  Nothing else in the program
+   changes; a kind with no function is drawn by entry(k). */
+const _kinds = new Map();   /* kind name -> GLSL */
+let _built = false;
+export function registerLookKind(kind, glsl) {
+  if (LOOK_KIND_IDS[kind] == null) throw new Error('registerLookKind: no kind ' + kind);
+  if (_built) { _stats.lateKinds = (_stats.lateKinds || 0) + 1; return false; }
+  _kinds.set(kind, glsl);
+  return true;
+}
+function kindDispatch() {
+  const out = [];
+  for (const [k] of _kinds) out.push(`    if (sKind == ${LOOK_KIND_IDS[k]}) return lookKind_${k.replace(/[^A-Za-z0-9]/g, '_')}(k, p);`);
+  return out.join('\n');
+}
+const fragSource = () => `#version 300 es
 in vec4 vColor;
 in vec2 vUV;
 flat in float vTextureId;
 flat in float vLook;
 flat in float vSharp;
+flat in float vMirror;
 out vec4 finalColor;
 uniform highp sampler2D uTextures[${SLOTS}];
 uniform highp sampler2D uPalAtlas;
@@ -411,7 +493,8 @@ ${fetchChain((t) => `textureSize(uTextures[${t}], 0)`)}
 }
 /* the sheet's header, read once a pixel (lookPalette.js buildSheet): its
    scale, rows, table, bits, and each role's entry of the row, ref and under */
-highp int sDs, sN, sW, sT0, sBits, sR;
+highp int sDs, sN, sW, sT0, sBits, sR, sRefScale, sKind, sBook;
+bool sMirror;
 highp int sE[16];
 highp int sRoE[16], sRoF[16], sRoU[16];
 highp ivec2 sDisp;
@@ -450,6 +533,9 @@ void readSheet()
         sRoF[r + 1] = hdr(22 + 3 * r, sz);
         sRoU[r + 1] = hdr(23 + 3 * r, sz);
     }
+    sRefScale = max(1, hdr(66, sz));
+    sKind = hdr(67, sz);
+    sBook = hdr(68, sz) + 65536 * hdr(69, sz);
     sW = sz.x;
     sDisp = ivec2(sz.x / sDs, sN / sDs);
 }
@@ -462,17 +548,16 @@ highp vec4 rowT(highp int e)
 highp vec3 recol(highp vec4 c, highp vec4 T, highp int ref)
 {
     if (ref <= 0) return T.rgb;
-    highp float lum = (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / float(ref);
+    highp float lum = (0.299 * c.r + 0.587 * c.g + 0.114 * c.b) / (float(ref) / float(sRefScale));   /* v2.3.3737: ref in 1/refScale's (P4's fractional refs; the body's scale is 1) */
     return min(vec3(255.0), floor(T.rgb * lum + 0.5));
 }
 highp ivec2 tpos(highp int t)
 {
     return ivec2(t % sW, sT0 + t / sW);
 }
-/* entry k's colour in this look, premultiplied, 0..255 as the canvas kept it */
-highp vec4 entry(highp int k)
+/* entry k's own colour, straight, 0..255 */
+highp vec4 tableRGBA(highp int k)
 {
-    if (k == 0) return vec4(0.0);
     highp vec4 c;
     if (sBits == 8) {
         highp int t = 4 * k;
@@ -482,6 +567,13 @@ highp vec4 entry(highp int k)
         highp ivec2 p = tpos(t);
         c = floor(vec4(fetchT(p).rg, fetchT(p + ivec2(1, 0)).rg) * 255.0 + 0.5);
     }
+    return c;
+}
+/* entry k's colour in this look, premultiplied, 0..255 as the canvas kept it */
+highp vec4 entry(highp int k)
+{
+    if (k == 0) return vec4(0.0);
+    highp vec4 c = tableRGBA(k);
     highp int role = 0;
     for (int r = 0; r < 15; r++) if (k >= sE[r]) role = r + 1;
     if (role > 0 && role <= sR) {
@@ -497,24 +589,32 @@ highp vec4 entry(highp int k)
     }
     return vec4(floor(c.rgb * c.a / 255.0 + 0.5), c.a);
 }
+${Array.from(_kinds.values()).join('\n')}
+/* a texel's colour: its kind's function (registerLookKind), else its entry */
+highp vec4 colourAt(highp int k, highp ivec2 p)
+{
+${kindDispatch()}
+    return entry(k);
+}
 /* a display texel: level 0 of the old texture (the stand's: its 2x2 box) */
 highp vec4 dispTexel(highp ivec2 q)
 {
     q = clamp(q, ivec2(0), sDisp - 1);
-    if (sDs == 1) return entry(num(q));
+    if (sDs == 1) return colourAt(num(q), q);
     highp ivec2 o = q * 2;
     highp int k0 = num(o);
     highp vec4 sum = vec4(0.0);
     bool same = true;
     for (int i = 1; i < 4; i++) {
-        highp int k = num(o + ivec2(i & 1, i >> 1));
+        highp ivec2 pi = o + ivec2(i & 1, i >> 1);
+        highp int k = num(pi);
         if (k != k0) same = false;
-        sum += entry(k);
+        sum += colourAt(k, pi);
     }
-    if (same) return entry(k0);
+    if (same && sKind == 0) return entry(k0);
     /* the canvas's 'high' halving: the box of the premultiplied bytes,
        truncated (measured in Chromium) */
-    return floor((sum + entry(k0)) / 4.0);
+    return floor((sum + colourAt(k0, o)) / 4.0);
 }
 /* a texel of the mip chain's first level: a 2x2 box of display texels */
 highp vec4 mipTexel(highp ivec2 q)
@@ -535,9 +635,10 @@ highp vec4 bilinear(highp vec2 P, bool level1)
         /* the four numbers first: one colour where they are one (most of a
            figure's quad is see-through round it) */
         highp int k[4];
-        for (int i = 0; i < 4; i++) k[i] = num(clamp(a + ivec2(i & 1, i >> 1), ivec2(0), sDisp - 1));
-        if (k[0] == k[1] && k[0] == k[2] && k[0] == k[3]) return entry(k[0]);
-        for (int i = 0; i < 4; i++) c[i] = entry(k[i]);
+        highp ivec2 pp[4];
+        for (int i = 0; i < 4; i++) { pp[i] = clamp(a + ivec2(i & 1, i >> 1), ivec2(0), sDisp - 1); k[i] = num(pp[i]); }
+        if (sKind == 0 && k[0] == k[1] && k[0] == k[2] && k[0] == k[3]) return entry(k[0]);
+        for (int i = 0; i < 4; i++) c[i] = colourAt(k[i], pp[i]);
     } else {
         for (int i = 0; i < 4; i++) c[i] = level1 ? mipTexel(a + ivec2(i & 1, i >> 1)) : dispTexel(a + ivec2(i & 1, i >> 1));
     }
@@ -547,6 +648,7 @@ void main(void) {
     highp vec2 dx = dFdx(vUV);
     highp vec2 dy = dFdy(vUV);
     sRow = int(vLook + 0.5) - 1;
+    sMirror = vMirror > 0.5;
     readSheet();
     /* the body as the chip drew it: sharpPixels.js's sharpSample (or Pixi's
        plain read) on a mipmapped texture, done by hand on the coloured texels */
@@ -571,10 +673,11 @@ void main(void) {
 let _shader = null;
 function lookShader() {
   if (_shader) return _shader;
+  _built = true;   /* v2.3.3737: the kinds registered by now are the program's */
   const units = new Int32Array(SLOTS);
   for (let i = 0; i < SLOTS; i++) units[i] = i;
   _shader = new Shader({
-    glProgram: GlProgram.from({ vertex: VERT, fragment: FRAG, name: 'bt-look-batch' }),
+    glProgram: GlProgram.from({ vertex: VERT, fragment: fragSource(), name: 'bt-look-batch' }),
     resources: {
       lookSamplers: new UniformGroup({
         uTextures: { value: units, type: 'i32', size: SLOTS },
@@ -589,7 +692,8 @@ function packedId(el, slot) {
   const t = el.texture;
   const look = t && t._btLook;
   const lk = look && look.row >= 0 ? look.row + 1 : 0;
-  return (((slot + 16 * (lk * 2 + (el._btLookSharp ? 1 : 0))) << 16) | (el.roundPixels & 65535)) >>> 0;
+  const mi = t && t._btLookMirror ? 1 : 0;
+  return (((slot + 16 * (lk * 4 + mi * 2 + (el._btLookSharp ? 1 : 0))) << 16) | (el.roundPixels & 65535)) >>> 0;
 }
 class LookBatcher extends DefaultBatcher {
   constructor() {
@@ -708,18 +812,7 @@ function prewarmProgram() {
   if (!_wanted || !r || _prewarmedFor === r || !_stats.sheets) return;
   if (!webgl2(r)) { _ok = false; return; }
   _prewarmedFor = r;
-  /* every sheet on the chip now, behind the loading screen, and its bytes let
-     go of (the upload, below): a sheet first drawn only when someone wears a
-     look held its 2.6 MB in the page until then -- measured, the memory
-     check's phone (the default look) read 23.0 MB of buffers at home against
-     20.3 with `?lookpalette=0`.  As the Wheel's ground does (wheelGround.js
-     _toGpu); a context that is lost uploads as it is first drawn instead. */
-  try {
-    const gl = r.gl;
-    if (!(gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) && r.texture && typeof r.texture.initSource === 'function') {
-      for (const k of Object.keys(_sheets)) { try { r.texture.initSource(_sheets[k].src); } catch (e) { /* drawn the usual way */ } }
-    }
-  } catch (e) { /* drawn the usual way */ }
+  uploadSheets();
   let box = null;
   try {
     const name = Object.keys(_sheets)[0];

@@ -9,6 +9,8 @@
  * THE CONTRACT
  *   kind, bits, fw, fh   the row range it may use (LOOK_ROW_RANGES), 8 or 16
  *                        bits a number, the display frame's size
+ *   refScale             a role's `ref` is in 1/refScale's (default 1; a
+ *                        fractional ref 53.265 at refScale 64 is 3409)
  *   out                  where it is written (default public/sprites/look/<set>/)
  *   roleDefs             [{ name, entry, ref, under }] (lookPalette.js reads
  *                        the same): what each role does with which entry of a

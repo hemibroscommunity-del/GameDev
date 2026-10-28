@@ -269,8 +269,25 @@ so five lanes can add theirs without editing one shared line.
    - `under`: the role used when this one's entry is unset (the iris over the
      skin); 0, the art's own colour.
 5. **Sharing a texture**: a sheet is one RG8 (16 bits) or R8 (8 bits) texture;
-   its header (the last row) says which, its scale and its roles. The shader,
-   the sampling and the batcher are the body's: nothing to add.
+   its header (the last row) says which, its scale, its roles, its refs' scale
+   (`refScale`: a role's `ref` in 1/refScale's, for fractional refs), its KIND
+   and its book offset. The sampling and the batcher are the body's.
+6. **A kind's own texel** (P2's prints, P3's masks, P4's heads):
+   `registerLookKind('<kind>', glsl)` from the part's own module, before the
+   program is built (behind the loading screen; a late one is counted,
+   `lateKinds`, and ignored). The GLSL defines `highp vec4
+   lookKind_<kind>(highp int k, highp ivec2 p)`: the texel's number and its
+   position in the sheet's texture, returning the premultiplied 0-255 colour.
+   It may call `entry(k)` (the default), `tableRGBA(k)`, `num(p)`, `fetchT(p)`
+   (the ONE fetch chain -- never a second), `rowT(e)`, `recol(c, T, ref)`, and
+   read `sMirror`, `sBook`, `sKind`, `sW`, `sN`, `sDs`, `sBits`.
+7. **The frame's options**: `getLookPartFrame(set, sheet, f, entries, { key,
+   mirror })`: an entry's value of four bytes is RGBA verbatim (three: a
+   colour, alpha 255); `key` is the caller's own key for the entries (not
+   joined every frame); `mirror` gives the flipped facings their own frames and
+   the shader its `sMirror` (vertex id: slot + 16 x (4 x look + 2 x mirror +
+   sharp)). `setLookSheetBook(set, sheet, offset)` writes a sheet's book offset
+   into its header (uploaded again).
 
 ### The row is law
 
@@ -282,9 +299,10 @@ set loads (a role outside its kind's range fails the set, `rangeErrors`):
 |---|---|
 | 0-7 | body: 1 skin, 2 trousers, 3 boots, 4 eye |
 | 8-31 | shirt and prints |
-| 32-63 | armour |
+| 32-63 | armour (P3: entry 32 a mask book's address) |
 | 64-127 | head pieces |
-| 128-255 | spare |
+| 128-159 | shirt drawings (P2: 256 cells x 4 bits) |
+| 160-255 | spare |
 
 The orchestrator owns the row map and the atlas budget (256 rows, shared with
 the Wheel's pictures): every phase 2 test reports `rowsFull` 0.
