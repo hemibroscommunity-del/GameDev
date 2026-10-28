@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "40320e9759e4d07b0572a1be533a47efd19a5960",
+  "tree": "08945725b140dbf88cfb98509b662d283e71a9d2",
+  "committedAt": "2026-10-28T15:39:10-07:00",
+  "subject": "Your memory rules written down: savers on by default, 256 colours at most, tests sampled (v2.3.3761) (#1229)",
+  "files": 6816,
+  "bytes": 795358032,
+  "listingSha256": "579d3b45cfea17d3598927df9a62dde79e43f3893af50d255d1e489b502850a6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
