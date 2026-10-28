@@ -152,7 +152,8 @@ export const p256LoadParser = {
       cv.width = w; cv.height = h;
       cv.getContext('2d', { willReadFrequently: true }).drawImage(img, 0, 0);
       src = stripAsNumbers('p256:' + pathOf(url), cv, String(url));
-      cv.width = 0; cv.height = 0;
+      /* (kept only for QA's comparison: picsNumbers.js __btPicNumVerify) */
+      if (!(src && src.__btOrigCanvas === cv)) { cv.width = 0; cv.height = 0; }
     } catch (e) { src = null; }
     if (typeof performance !== 'undefined') _stats.readMs += Math.round(performance.now() - t0);
     if (!src) {
