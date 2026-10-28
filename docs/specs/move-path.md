@@ -110,23 +110,36 @@ player and a dead one are not glided; off by default; `movepath: true`
 advertises it; an old phone is sent and moved exactly as today; taking the
 switch away stops every glide on the next tick.
 
-### The load test (`tools/qa/load/load.mjs --steps 50,100 --diet [--path]`)
+### The load test (`tools/qa/load/load.mjs --diet [--path]`)
 
-The real runtime, phone-shaped bots, 30% fighting:
+The real runtime, phone-shaped bots, 30% fighting. Three runs each way (the
+first two at 50 and 100 players, the third at 100 with `--tick-parts`); this
+box's numbers wander from run to run, so all of them are here:
 
-| Players | Messages in a second | Room thread busy | Ticks a second | Tick delay p95 | Download a player (unzipped) | On the wire |
+| Players | Messages in a second | Room thread busy | Ticks a second | Tick delay p95 | Download a player (unzipped) | One probe's wire |
 |---|---|---|---|---|---|---|
 | 50, today | 483 | 49.5% | 41.8 | 14 ms | 60.5 KB/s | 6.3 KB/s |
-| 50, path | **199** | **44.8%** | 41.8 | 8 ms | 63.5 KB/s | 6.5 KB/s |
-| 100, today | 891 | 85.7% | 39.9 | 16 ms | 88.5 KB/s | 10.8 KB/s |
-| 100, path | **405** | **80.8%** | 40.0 | 15 ms | 114.1 KB/s* | 11.1 KB/s |
+| 50, path (run 1 / run 2) | **199 / 208** | **44.8% / 42.3%** | 41.8 / 41.8 | 8 / 8 ms | 63.5 / 70.8 KB/s | 6.5 / 7.5 KB/s |
+| 100, today (run 1 / run 3) | 891 / 971 | 85.7% / 80.8% | 39.9 / 40.9 | 16 / 19 ms | 88.5 / 105 KB/s | 10.8 / 8.3 KB/s |
+| 100, path (run 1 / 2 / 3) | **405 / 429 / 399** | **80.8% / 84.6% / 73.5%** | 40.0 / 40.0 / 41.4 | 15 / 11 / 10 ms | 114 / 143 / 97 KB/s | 11.1 / 12.4 / 11.3 KB/s |
 
-*Measured before the glide's places were rounded to a tenth of a pixel (a long
-fraction on every glided place); the wire, compressed, was about the same.
-The load test's "others' moves seen" column matches a place a bot SENT with a
-place it is SHOWN, which a glided place never is, so it says nothing about the
-path; the watcher's view is measured in the server test and on the phone
-instead.
+- **Messages in are cut by more than half** (the bots' walkers stay on the
+  safe ground, where today's diet already halved them; the fighters send
+  every 200 ms instead of 33).
+- **The room's thread is a little less busy and the ticks hold** at 50 and
+  100.
+- **What each phone downloads is about the same to a third more.** With
+  `--tick-parts` (run 3), a tick's players shrank (1.83 to 1.27 KB) and its
+  monsters grew (0.31 to 0.44 KB): a monster chasing a player now moves every
+  tick, smoothly, where today it ran, arrived and waited -- the rubber-banding
+  of v2.3.1767 gone, paid for in monster updates. Glided places also compress
+  less well than repeated ones. The wire figure is one probe's view and
+  wanders (8.3 and 10.8 KB/s on two runs of today). Downloads are not what the
+  bill counts (messages in are); a phone's data use is.
+- The load test's "others' moves seen" column matches a place a bot SENT with
+  a place it is SHOWN, which a glided place never is, so it says nothing about
+  the path; the watcher's view is measured in the server test and on the
+  phone instead.
 
 ### The cost audit (`tools/qa/load/cost-audit.mjs [--path]`, 20 game minutes)
 
@@ -143,7 +156,32 @@ same rows a kill.
 
 ### On a phone (`tools/qa/mp/mp-movepath.mjs`)
 
-See the PR for the run's numbers.
+A real page and a bare peer socket, run with the switch off and then on (10
+checks, all passing). The box draws the game in software, so during a walk
+the game draws a frame a second and the walk is the game's own move broadcast
+written from a page timer (as `mp-movediet`); the worker's copy is read 20
+times a second off `/api/admin/player`.
+
+| | Today | With the path |
+|---|---|---|
+| Moves a second on the wire, a straight walk | 9.7 (this box's timers) | 4.3 |
+| ...the zig-zag | 11.6 | 6.2 |
+| The peer is sent the walker, a second | 9 | 15.3 |
+| BroTown zig-zag: the copy from the phone, average / 95% | 7.2 / 17.3 px | 5.1 / 22.6 px |
+| ...in the 150 ms after a change, average / 95% | 8.6 / 32 px | 3.8 / 8.2 px |
+| The peer draws the walker off by, average / 95% | 29.8 / 66.9 px | 22 / 44.2 px |
+| Among the Flame Fields' monsters: the copy from the phone, average / 95% | 7.6 / 28.9 px | 7.0 / 34.8 px |
+| ...after a change, average | 7.9 px | 5.1 px |
+| Blows on the walker in 38 s / within 150 ms of a change | 5 / 0 | 3 / 1 |
+| The copy from the phone at a blow, average | 5.2 px | 1.4 px |
+
+After a change (a turn, a roll, a stop) the copy is much closer than today,
+and the watcher draws the walker closer. The worse 95% overall comes from this
+box's page timers, which run a few times a second: a change waits for the
+page's batch, and in the meantime today's copy stands still while the path's
+walks on the old way. A phone's timers run on time (the server test above
+runs a phone's on its own clock). The blows are too few in either run to say
+more than that the copy was where the phone was when they landed.
 
 ## Switches and caps
 

@@ -299,6 +299,7 @@ let on0Tick = 22;
       offStep: copySteps(off, off.room.TICK_RATE), onStep: copySteps(on, on.room.TICK_RATE),
       offSent: off.phoneSent.length, onSent: on.phoneSent.length,
       offDraw: drawn(off.got, off.truth), onDraw: drawn(on.got, on.truth),
+      offGot: off.got.length, onGot: on.got.length,
     };
   }
   for (const k of ['seen', 'alone']) {
@@ -309,6 +310,7 @@ let on0Tick = 22;
     console.log(`      ${k}: the copy's biggest step in a tick, today ${r1(z.offStep.worst)} px, with the path ${r1(z.onStep.worst)} px; `
       + `ticks it jumped (${JUMP_PX}+ px past the walk's own step), today ${z.offStep.jumps} of ${z.offStep.ticks}, with the path ${z.onStep.jumps}; moves sent ${z.offSent} -> ${z.onSent}`);
     console.log(`      ${k}: the watcher draws the walker off by, today: mean ${r1(z.offDraw.mean)} px, 95% ${r1(z.offDraw.p95)}; with the path: mean ${r1(z.onDraw.mean)}, 95% ${r1(z.onDraw.p95)}`);
+    console.log(`      ${k}: the watcher was sent the walker ${z.offGot} times today, ${z.onGot} with the path`);
   }
   for (const k of ['seen', 'alone']) {
     const z = zig[k];
