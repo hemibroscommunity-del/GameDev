@@ -670,3 +670,56 @@ there?)".
   east, never the old aim south); `mp-jumpbtn` 23 of 23 (+ a real tap on the
   right stick beside the button does not jump); `mp-doublejump` + 3b, a tap
   on the right stick at the sweet spot does not flip.
+
+## v2.3.3721: a larger JUMP button, a smaller attack disc, a plain jump mark
+
+The owner, 2026-10-28: "I'm thinking maybe the contextual button should
+shrink in size a bit and the jump button made larger. I also think a more
+generic jump button icon on the button would be more appropriate because the
+icon now for jump looks like a special ability".
+
+| | before | after |
+|---|---|---|
+| attack disc (the right stick), upright / sideways | 96 / 108 px | 84 / 94 px (12.5% / 13% smaller) |
+| its bottom edge over the dashboard band | 70 px | 80 px |
+| its top edge over the band (Sprint and the right cluster hang from it) | 166 / 178 px | 164 / 174 px |
+| JUMP button, upright / sideways | 48 / 54 px | 60 / 64 px |
+| JUMP over the dashboard band, upright / sideways | 18 / 12 px | 16 / 12 px |
+| air between JUMP and Block beside it | 28 / 31 px | 24 / 24 px |
+
+- **Where** (`ShieldButton.jsx`: `RBTN`, `JUMP_SIZE`, `JUMP_BLOCK_AIR`,
+  `jumpAnchor`): the disc's bottom edge rose 10 px so the larger button
+  under it still clears the dashboard by 12 px or more; its top edge came
+  down, so nothing hung above it moves up (the health-bar ceiling and the
+  coach's band, `combatBandTopPx`, are computed from the same numbers).
+  Centred, the larger button would come within 16 px of Block (the disc's
+  half-width kept them apart, and the disc is narrower), so it stands
+  `JUMP_BLOCK_AIR` (24 px, half a 48 px button) clear of Block: 8 px
+  (upright) or 5 px (sideways) toward the screen's edge of the disc's centre.
+  The disc's weapon picture keeps its share of the face (`rIcon`, 0.6).
+- **The mark** (`controlSkin.jsx` `JumpGlyph`): a parchment upward arrow
+  over a short gold ground line, each with a dark edge, on the skin's slate
+  face and gold ring (Sprint's and Block's rest look), the warm face while
+  you are in the air. Drawn in SVG: no file to load or free. The owner's
+  card 11 picture (`abil-jump.webp`) is no longer warmed on the loading
+  screen, and nor is the stick's old JUMP arrow (`jump-glyph.webp`, unused
+  since v2.3.3712). Four marks were drawn for the owner to choose from (a
+  chevron, the first default; an arrow; a double chevron, the second
+  press's flip; a hop's arc), and the owner chose the arrow: "I like option
+  B for jump better" (2026-10-28). The phone shots in docs/specs/jump-button/
+  were taken before, with the chevron; `?jumpicon=chevron|double|hop` wears
+  another for a tab
+  (`docs/specs/jump-button/icons-choices.png`).
+
+**Block stays where it was** (`BLOCK_BAND_BOTTOM`, 70, the disc's old bottom
+edge): rising with the disc it came within 22 px of Shield Bash above it,
+under the 24 px floor `mp-btnlayout` and `mp-abilslot` hold that pair to.
+Where it was it has 32 (Bash hangs from the disc's centre, which rose 4).
+
+**Checked:** `mp-jumpbtn` (the disc 84/94 and the button 60/64, measured on
+an upright 390, a small 360 and a sideways 844 phone; 24 px from Block;
+under the disc; clear of every control and the dashboard), `mp-jump`,
+`mp-btnskin`, `mp-btnlayout`, `mp-abilslot` (its disc numbers updated),
+`mp-tapact`, `mp-tapstance`, `mp-doublejump`, `mp-questline`, and the UI
+review's control screens. `mp-rbutton` and `mp-joyfade` expected the stick's
+JUMP face at rest, gone since v2.3.3712: they now expect the weapon.

@@ -45,7 +45,15 @@ const SHIELD_CD_MS = 2000;
 
 /* The disc's geometry, shared with TouchControls (right:50, bottom:+70,
    96/108 wide since v2.3.2242). */
-export const RBTN = { right: 50, bottom: 70, w: 96, wLand: 108 };
+/* ═══ v2.3.3721: THE DISC A LITTLE SMALLER, AND A HAIR HIGHER ═══
+ * The owner: "I'm thinking maybe the contextual button should shrink in size
+ * a bit and the jump button made larger."  96/108 -> 84/94 (12.5% and 13%
+ * smaller), and its bottom edge 70 -> 80 so the larger JUMP button under it
+ * (jumpAnchor) keeps 12 px or more above the dashboard band.  The disc's TOP
+ * edge comes down (166 -> 164 upright, 178 -> 174 sideways), so Sprint and the
+ * right cluster over it, the health-bar ceiling and the coach's band
+ * (combatBandTopPx) all move down a few px, never up. */
+export const RBTN = { right: 50, bottom: 80, w: 84, wLand: 94 };
 
 /* v2.3.2472: and the LEFT disc's, for the Special button that now orbits it
    (SpecialButton.jsx).  Same numbers TouchControls has always rendered the
@@ -226,9 +234,15 @@ export function blockAnchor(isLandscape) {
        by construction: RBTN.bottom is 70 and the button is at most 54 wide, so
        the result is positive at every width -- asserted in mp-btnlayout, which
        measures the real painted band rather than trusting that arithmetic. */
-    bottomPx: RBTN.bottom - col.size - CTL_GAP,
+    /* v2.3.3721: from BLOCK_BAND_BOTTOM, the disc's old bottom edge, not
+       RBTN.bottom: the disc rose 10 px for the larger JUMP button beside
+       Block, and Block rising with it left 22 px of air under Shield Bash,
+       under the 24 px floor mp-btnlayout holds that pair to.  Where it was,
+       it has 32 (Bash hangs from the disc's centre, which rose 4). */
+    bottomPx: BLOCK_BAND_BOTTOM - col.size - CTL_GAP,
   };
 }
+export const BLOCK_BAND_BOTTOM = 70;
 
 /* ═══ v2.3.2562: THE LEFT CLUSTER -- WHIRLWIND AND SPECIAL ═══
  *
@@ -385,12 +399,27 @@ export function sprintAnchor(isLandscape) {
  * Special.  It stays above the dashboard band by construction (RBTN.bottom 70,
  * a button at most 54, the gap 4: 12 px to spare at the least), and mp-jump
  * measures the real boxes rather than trusting this arithmetic. */
+/* ═══ v2.3.3721: ...AND LARGER -- 48/54 -> 60/64 ═══
+ * The owner: "the jump button made larger" (with the disc above it shrunk).
+ * Still under the disc, one CTL_GAP below its bottom edge, 16 px over the
+ * dashboard band upright and 12 sideways (RBTN.bottom 80).  Centred, it would
+ * come within 16 px of Block beside it (the disc's half-width is what kept
+ * them apart, and the disc is narrower now), so it stands JUMP_BLOCK_AIR
+ * clear of Block instead -- half a 48 px button, the standard mp-abilslot
+ * holds the other pairs to -- which leaves it 8 px (upright) or 5 px
+ * (sideways) toward the screen's edge of centred: still under the disc, the
+ * thumb's slide straight down off it. */
+export const JUMP_SIZE = { up: 60, land: 64 };
+export const JUMP_BLOCK_AIR = 24;
 export function jumpAnchor(isLandscape) {
-  var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
+  var size = Math.max(CTL_MIN_SIZE, isLandscape ? JUMP_SIZE.land : JUMP_SIZE.up);
   var discW = isLandscape ? RBTN.wLand : RBTN.w;
+  /* Block's right edge, from the screen's right (ctlColumn: the disc's left
+     edge plus CTL_GAP) -- the same at every width */
+  var blockRight = RBTN.right + discW + CTL_GAP;
   return {
     size: size,
-    right: RBTN.right + Math.round((discW - size) / 2),
+    right: Math.max(RBTN.right, Math.min(RBTN.right + Math.round((discW - size) / 2), blockRight - size - JUMP_BLOCK_AIR)),
     bottomPx: RBTN.bottom - size - CTL_GAP,
   };
 }

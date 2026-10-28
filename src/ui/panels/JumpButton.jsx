@@ -4,7 +4,7 @@ import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
-import { Skin, AbilityFace, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
+import { Skin, JumpGlyph, jumpGlyphKind, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3721: a plain jump mark */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
  *
@@ -128,6 +128,9 @@ export function JumpButton(props) {
   };
 
   var air = view.air;
+  /* v2.3.3721: no longer the mockup's blue arrow: the Lantern Slate rest look
+     of Sprint and Block (slate face, gold ring) with a plain jump mark, lit
+     warm in the air as before */
   /* ═══ v2.3.3018: THE MOCKUP'S JUMP ═══
      The owner's mockup draws this button as a bold blue arrow on a gold-ringed
      button, and no word (controlSkin, as every control): Normal on the ground,
@@ -158,6 +161,9 @@ export function JumpButton(props) {
     },
   },
   React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal' },
-    /* v2.3.3526: the owner's round jump (card 11), the button's face */
-    React.createElement(AbilityFace, { size: size, name: 'jump' })));
+    /* v2.3.3526: the owner's round jump (card 11), the button's face.
+       v2.3.3721: a plain arrow over the ground instead (the owner's pick of
+       four: "I like option B for jump better") -- the owner: "the
+       icon now for jump looks like a special ability" (controlSkin JumpGlyph) */
+    React.createElement(JumpGlyph, { size: Math.round(size * 0.68), kind: jumpGlyphKind() })));
 }

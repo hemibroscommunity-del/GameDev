@@ -70,6 +70,7 @@ const layout = (P) => P.page.evaluate(() => {
   return {
     vw: window.innerWidth, vh: window.innerHeight,
     jump: jb, disc: disc && shown(disc) ? box(disc) : null, dash, over,
+    block: (() => { const q = document.querySelector('[data-shield]'); return shown(q) ? box(q) : null; })(),   /* v2.3.3721 */
     shield: shown(document.querySelector('[data-shield]')), bash: shown(document.querySelector('[data-ability="bash"]')),
     special: shown(document.querySelector('[data-special]')), sprint: shown(document.querySelector('[data-sprint]')),
     probe: window.__btJumpBtn ? window.__btJumpBtn() : null,
@@ -125,8 +126,22 @@ async function onePhone({ browser, wsPort, webPort, rec, errors, OUT }, ph) {
     if (!a.jump || !a.disc) return;
     const jcx = (a.jump.l + a.jump.r) / 2, dcx = (a.disc.l + a.disc.r) / 2;
     const clearOfDash = !a.dash || a.jump.b <= a.dash.t || a.jump.r <= a.dash.l || a.jump.l >= a.dash.r;
-    rec.ok(`${tag}: 2. under the attack disc (its top ${a.jump.t}, the disc's bottom ${a.disc.b}), centred on it (${jcx} vs ${dcx}), clear of the dashboard (${JSON.stringify(a.dash)}) and on the screen (${JSON.stringify(a.jump)} in ${a.vw} x ${a.vh})`,
-      a.jump.t >= a.disc.b - 1 && Math.abs(jcx - dcx) <= 2 && clearOfDash && a.jump.l >= 0 && a.jump.r <= a.vw && a.jump.t >= 0 && a.jump.b <= a.vh, a);
+    /* v2.3.3721: no longer exactly centred -- it stands half a button clear of
+       Block, a few px toward the screen's edge (jumpAnchor) -- but its centre
+       is under the disc, within a quarter of the disc's width of its centre */
+    const dw = a.disc.r - a.disc.l;
+    rec.ok(`${tag}: 2. under the attack disc (its top ${a.jump.t}, the disc's bottom ${a.disc.b}), its centre under the disc's (${jcx} vs ${dcx}), clear of the dashboard (${JSON.stringify(a.dash)}) and on the screen (${JSON.stringify(a.jump)} in ${a.vw} x ${a.vh})`,
+      a.jump.t >= a.disc.b - 1 && Math.abs(jcx - dcx) <= dw / 4 && clearOfDash && a.jump.l >= 0 && a.jump.r <= a.vw && a.jump.t >= 0 && a.jump.b <= a.vh, a);
+    /* v2.3.3721: the owner, "the contextual button should shrink in size a bit
+       and the jump button made larger": the disc 84 (94 sideways), was 96
+       (108); the button 60 (64), was 48 (54); and half a button of air
+       between it and Block beside it */
+    const jw = a.jump.r - a.jump.l, land = a.vw > a.vh;
+    const blk = a.block;
+    const air = blk ? a.jump.l - blk.r : null;
+    console.log(`    ${tag}: disc ${dw} px, jump ${jw} px, jump <-> Block ${air} px of air, jump ${a.dash ? a.dash.t - a.jump.b : '?'} px over the dashboard`);
+    rec.ok(`${tag}: 2b. the disc is smaller (${dw} px) and the button larger (${jw} px), half a button of air from Block (${air} px)`,
+      dw === (land ? 94 : 84) && jw === (land ? 64 : 60) && air != null && air >= 22, { dw, jw, air, block: blk });
     rec.ok(`${tag}: 3. it covers no other control, the guard down (Block ${a.shield}, Special ${a.special}, Sprint ${a.sprint}): ${a.over.length ? a.over.join(', ') : 'none'}`,
       a.over.length === 0 && a.shield, a);
 

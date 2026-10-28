@@ -43,7 +43,7 @@
  * the DOM when the measurement is taken -- the first cut of this file asserted
  * against whichever disc it happened to find (the movement one, on the far
  * left) and against a null zone edge, and reported two failures on a correct
- * build.  RBTN is right:50 bottom:70 w:96/108 anchored to the dashboard top,
+ * build.  RBTN is right:50 bottom:80 w:84/94 (v2.3.3721; it was bottom:70 w:96/108) anchored to the dashboard top,
  * and the zone split is exactly 50vw.  Both are exact.
  */
 import * as H from './harness.mjs';
@@ -367,13 +367,13 @@ async function oneView({ browser, wsPort, webPort, rec }, V) {
 
   /* The attack disc is DERIVED, not queried: both joysticks fade after 2s of no
      input, so neither is reliably in the DOM when the shot is taken.  RBTN is
-     right:50 bottom:70 w:96/108, anchored to the dashboard's top. */
-  const discW = land ? 108 : 96;
+     right:50 bottom:80 w:84/94 (v2.3.3721: was bottom:70 w:96/108), anchored to the dashboard's top. */
+  const discW = land ? 94 : 84;
   /* Prefer the disc the browser actually painted; fall back to the arithmetic
      only in portrait, where the dashboard band it hangs from exists. */
   const disc = g.attack
     || (!land && g.dashTop > 0
-      ? { x: w - 50 - discW, r2: w - 50, y: g.dashTop - 70 - discW, b2: g.dashTop - 70 }
+      ? { x: w - 50 - discW, r2: w - 50, y: g.dashTop - 80 - discW, b2: g.dashTop - 80 }
       : null);
   /* Sideways the dashboard band is the safe-area inset alone (v2.3.2168), so
      `.bt-dashboard` reports top 0 and "clears the band" has nothing to clear.

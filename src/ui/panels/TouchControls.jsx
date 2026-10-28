@@ -149,7 +149,7 @@ export function TouchControls(props) {
   var discW = isLandscape ? RBTN.wLand : RBTN.w;
   /* v2.3.3018: the picture on the attack disc -- about two thirds of the face
      inside the ring, the mockup's sword. */
-  var rIcon = isLandscape ? 64 : 58;
+  var rIcon = Math.round(discW * 0.6);   /* v2.3.3721: 58/64 on the 96/108 disc; 50/56 on the 84/94 one, the same share */
   return /*#__PURE__*/React.createElement(React.Fragment, null, React.createElement("div", {
     ref: lZoneRef,
     className: "bt-desktop-hide",

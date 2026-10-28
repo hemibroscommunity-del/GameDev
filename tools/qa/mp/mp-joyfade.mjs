@@ -30,6 +30,9 @@
  * a read of the browser's interpolation, not of the resolver's decision.
  */
 import * as H from './harness.mjs';
+/* v2.3.3721: the right stick's face with nothing to do: the weapon in hand
+   (an empty slot's plain picture, or w-*) -- the JUMP face went in v2.3.3712 */
+const weaponFace = (ic) => typeof ic === 'string' && (/^w-/.test(ic) || ic === 'melee' || ic === 'ranged' || ic === 'staff');
 
 const PHONE = { width: 390, height: 844 };
 const FADE_MS = 2000;
@@ -137,8 +140,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
        shown whenever a tap would jump -- which with no input and no context is
        now.  Painted, never lit, never pressable (the next row): it is a
        picture of what the stick's zone does, not a button that takes the tap. */
-    rec.ok(`${slot}: with no input and no context the movement stick is off screen and the right one shows only its JUMP face (guard)`,
-      idle.L && idle.R && !idle.L.painted && idle.R.painted && idle.R.icon === 'jump' && !idle.R.lit, idle);
+    /* v2.3.3721: since v2.3.3712 a free tap ATTACKS, so the face at rest is
+       the weapon in hand (weaponFace), never the jump */
+    rec.ok(`${slot}: with no input and no context the movement stick is off screen and the right one shows only its weapon face (guard)`,
+      idle.L && idle.R && !idle.L.painted && idle.R.painted && weaponFace(idle.R.icon) && !idle.R.lit, idle);
     /* The bug this replaces, stated as its own assertion: the right disc used
        to be pinned live for ranged on every frame, so it was painted here AND
        taking touches -- which is what swallowed the aim. */
@@ -175,8 +180,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       console.log(`    ${slot} ${side} after ${FADE_MS}ms: ${JSON.stringify(gone)}`);
       /* v2.3.3105: the right one "fades" back to its JUMP face, not to nothing */
       if (side === 'R') {
-        rec.ok(`${slot}: ...and by ${FADE_MS}ms of no input it is back to its JUMP face (${gone && gone.icon}), unlit`,
-          gone && gone.painted && gone.icon === 'jump' && !gone.lit && gone.pressable === false, gone);
+        rec.ok(`${slot}: ...and by ${FADE_MS}ms of no input it is back to its weapon face (${gone && gone.icon}), unlit`,
+          gone && gone.painted && weaponFace(gone.icon) && !gone.lit && gone.pressable === false, gone);
       } else {
         rec.ok(`${slot}: ...and it has faded out by ${FADE_MS}ms of no input (${gone && gone.opacity})`,
           gone && !gone.painted, gone);

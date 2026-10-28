@@ -192,13 +192,15 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
     const picOff = L.label ? Math.hypot((L.label.l + L.label.r) / 2 - cx, (L.label.t + L.label.b) / 2 - (L.btn.t + L.btn.b) / 2) : null;
     const inside = !!L.label && L.label.w <= face + 0.5 && L.label.h <= face + 0.5 && picOff <= 1;
     return {
-      ok: L.btn.w >= 44 && L.btn.h >= 44 && Math.abs(cx - dcx) <= 2 && L.btn.t >= L.disc.b + 2 && L.btn.b <= bandTop - 8 && hits.length === 0 && inside,
+      /* v2.3.3721: its centre under the disc's within a quarter of the disc --
+         it stands half a button clear of Block, a few px off centre (jumpAnchor) */
+      ok: L.btn.w >= 44 && L.btn.h >= 44 && Math.abs(cx - dcx) <= (L.disc.r - L.disc.l) / 4 && L.btn.t >= L.disc.b + 2 && L.btn.b <= bandTop - 8 && hits.length === 0 && inside,
       size: Math.round(L.btn.w), centreOff: +(cx - dcx).toFixed(1), belowDisc: Math.round(L.btn.t - L.disc.b), aboveBand: Math.round(bandTop - L.btn.b),
       hits, inside, pic: L.label ? { w: Math.round(L.label.w), face: Math.round(face), off: +picOff.toFixed(1) } : null,
     };
   };
   const l1 = lay(L1);
-  rec.ok(`upright, JUMP is centred under the attack disc (${l1.centreOff} px), ${l1.belowDisc} px below it and ${l1.aboveBand} px above the dashboard, ${l1.size} px, on no other control, its arrow inside the ring`, l1.ok, l1);
+  rec.ok(`upright, JUMP is under the attack disc's centre (${l1.centreOff} px off), ${l1.belowDisc} px below it and ${l1.aboveBand} px above the dashboard, ${l1.size} px, on no other control, its arrow inside the ring`, l1.ok, l1);
   if (L1.btn) await shot(P, 'layout', { x: Math.max(0, L1.btn.l - 120), y: Math.max(0, L1.disc ? L1.disc.t - 20 : L1.btn.t - 160), width: 250, height: Math.min(380, L1.vh - Math.max(0, L1.disc ? L1.disc.t - 20 : L1.btn.t - 160)) });
 
   /* ── 2. a jump, where both players arrived ──

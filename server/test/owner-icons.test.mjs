@@ -315,9 +315,12 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     && !/<circle cx="9" cy="10" r="1\.2"/.test(chat) && existsSync(pub('/icons/ui/tab-forge.webp')) && existsSync(pub('/icons/ui/chat-emotes.webp')));
 
   const cs = src('src/ui/panels/controlSkin.jsx'), sb = src('src/ui/panels/SpecialButton.jsx'), jb = src('src/ui/panels/JumpButton.jsx');
-  check('7e Jump and the generic Special are round pictures drawn as the button\'s face (AbilityFace), at a new address, their greys beside them',
+  /* v2.3.3721: the Jump button no longer wears its round picture -- the owner,
+     "the icon now for jump looks like a special ability" -- but a plain mark
+     drawn in SVG (controlSkin JumpGlyph); the file stays on disk */
+  check('7e the generic Special is a round picture drawn as the button\'s face (AbilityFace), at a new address, its grey beside it; Jump wears its plain mark (v2.3.3721)',
     /export function AbilityFace\(props\)/.test(cs) && /AbilityFace, \{ size: size, name: 'special', grey: grey \}/.test(sb)
-    && /AbilityFace, \{ size: size, name: 'jump' \}/.test(jb) && /const ABILITY_ART_V = '2\.3\.3526'/.test(cs)
+    && /React\.createElement\(JumpGlyph, \{/.test(jb) && !/AbilityFace/.test(jb) && /const ABILITY_ART_V = '2\.3\.3526'/.test(cs)
     && /const SPECIAL_ART_V = '2\.3\.3526'/.test(cs) && !/JumpIcon|StarburstIcon/.test(cs + sb + jb)
     && ['jump', 'special', 'burst', 'special-sword', 'special-bow'].every((n) => existsSync(pub('/ui/controls/abil-' + n + '-grey.webp'))));
   const cut = src('tools/ui/cut-owner-icons.py');

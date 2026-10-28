@@ -145,7 +145,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── the surface ── */
   const disc = await P.page.evaluate(() => window.__centre('.bt-rjoy-base'));
   rec.ok('the right button is on screen at the old disc anchor (.bt-rjoy-base)', !!disc, disc);
-  rec.ok('...and it is "slightly larger" than the 75px stick was', !!disc && disc.w >= 90, disc && { w: disc.w });
+  /* v2.3.3721: the owner, "the contextual button should shrink in size a bit":
+     84 px upright (it was 96), still larger than the 75 px stick was */
+  rec.ok('...and it is "slightly larger" than the 75px stick was (84 since v2.3.3721, a little smaller than its 96)', !!disc && disc.w > 75 && Math.round(disc.w) === 84, disc && { w: disc.w });
   const label = await P.page.evaluate(() => (document.querySelector('.bt-rjoy-base') || {}).textContent || '');
   rec.ok('...and it says Attack', /attack/i.test(label), label);
   /* ═══ v2.3.2258: THE KNOB IS BACK, SO THIS PIN INVERTS ═══
@@ -199,8 +201,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const vis0L = await discVis(P, 'L');
   /* v2.3.3105: with nothing to do a tap on the right stick JUMPS, and the
      stick wears the owner's JUMP button to say so -- the only thing painted */
-  rec.ok('with the coach retired, nothing in range and nothing in reach, the right button shows only its JUMP face',
-    !!vis0R && vis0R.shown === true && vis0R.icon === 'jump', { vis0R, why: await P.page.evaluate(() => window.__btDiscVis()) });
+  /* v2.3.3721: since v2.3.3712 such a tap ATTACKS once, so the face is the
+     weapon in hand (an empty slot's plain picture, or w-*), never the jump */
+  const weaponFace = (ic) => typeof ic === 'string' && (/^w-/.test(ic) || ic === 'melee' || ic === 'ranged' || ic === 'staff');
+  rec.ok('with the coach retired, nothing in range and nothing in reach, the right button shows only its weapon face (no JUMP since v2.3.3712)',
+    !!vis0R && vis0R.shown === true && weaponFace(vis0R.icon), { vis0R, why: await P.page.evaluate(() => window.__btDiscVis()) });
   rec.ok('...and it declines the tap, so one falls through to the lock-on zone beneath',
     !!vis0R && vis0R.pe === 'none', vis0R);
   rec.ok('...and with no thumb on it the left joystick is not painted either',
