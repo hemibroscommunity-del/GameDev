@@ -1,4 +1,4 @@
-import { COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useCallback, useEffect, useState } from 'react';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { CATEGORIES } from '@/ui/mobile/dash/bagFilterBus.js';
@@ -76,7 +76,7 @@ function header(gold) {
         <div style={{ fontSize: 11, color: LS.txt3, marginTop: 1 }}>What everyone is selling</div>
       </div>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>
-        <img src={COIN_ONE /* v2.3.3734 */} alt="" draggable={false} style={{ width: 15, height: 15, objectFit: 'contain' }}
+        <img src={coinArtFor(gold) /* v2.3.3734: your gold, its pile */} alt="" draggable={false} style={{ width: 15, height: 15, objectFit: 'contain' }}
           onError={(e) => { e.currentTarget.style.display = 'none'; }} />
         {gold}
       </span>

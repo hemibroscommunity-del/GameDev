@@ -1,4 +1,4 @@
-import { COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { ARCHETYPES, BT_AUDIO, DUNGEON_MONSTER_PACKS, DUNGEON_TERRAIN_PACKS, ELEMENTS, TILE, createMonster, getDungeonCreatorUnlocks, validateCustomDungeon } from '@/data/index.js';
 import { _defineProperty, _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHelpers.js';
@@ -668,7 +668,7 @@ export function DungeonCreatorPanel(props) {
         color: '#96A2A0',
         marginBottom: 10
       }
-    }, lsIcon(COIN_ONE /* v2.3.3734 */, '💰', 16), /*#__PURE__*/React.createElement("span", {
+    }, lsIcon(coinArtFor(rpgState.coins) /* v2.3.3734: your gold, its pile */, '💰', 16), /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 14,
         fontWeight: 700,

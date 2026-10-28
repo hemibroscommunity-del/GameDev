@@ -1,4 +1,4 @@
-import { COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 
 /* === BankPanel — buildingPanel === 'bank' sub-panel === */
@@ -41,11 +41,13 @@ function lsHeader(icon, emoji, title, subtitle) {
     React.createElement("div", { style: { fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 } }, title),
     subtitle ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 1 } }, subtitle) : null));
 }
-function lsGold(amount, size) {
+/* v2.3.3734: `have` -- a balance (what you have) shows the owner's pile for
+   it; without it the amount is a price and shows the one coin */
+function lsGold(amount, size, have) {
   return React.createElement("span", {
     style: { display: 'inline-flex', alignItems: 'center', gap: 4, color: LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: size || 14 }
   }, React.createElement("img", {
-    src: COIN_ONE, /* v2.3.3734: the one coin, a unit beside a price */ alt: '', draggable: false,
+    src: have != null ? coinArtFor(have) : COIN_ONE, alt: '', draggable: false,
     style: { width: 16, height: 16, objectFit: 'contain' },
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
   }), amount);
@@ -93,7 +95,7 @@ export function BankPanel(props) {
           background: LS.wellSoft, border: '1px solid ' + LS.wellBorder, marginBottom: 4
         }
       }, React.createElement("span", { style: { fontSize: 13 /* v2.3.1235: batch-3 rollout — body 13, no half-sizes */, color: LS.txt2 } }, "Gold"),
-      lsGold(rpgState.coins, 18)),
+      lsGold(rpgState.coins, 18, rpgState.coins)),
       /* v2.3.2343: the worker owns coins and charges no death penalty, so
          the "10% is lost on death" line promised a loss that never happened
          (the client used to subtract it locally and the echo put it back). */

@@ -1,4 +1,4 @@
-import { COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
 /* v2.3.2618: BT_AUDIO, _objectSpread and pushDmgPopup went with the
@@ -48,11 +48,13 @@ function lsHeader(icon, emoji, title, subtitle) {
     React.createElement("div", { style: { fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.10em', color: LS.txt1 } }, title),
     subtitle ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 1 } }, subtitle) : null));
 }
-function lsGold(amount, size) {
+/* v2.3.3734: `have` -- a balance (what you have) shows the owner's pile for
+   it; without it the amount is a price and shows the one coin */
+function lsGold(amount, size, have) {
   return React.createElement("span", {
     style: { display: 'inline-flex', alignItems: 'center', gap: 4, color: LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: size || 14 }
   }, React.createElement("img", {
-    src: COIN_ONE, /* v2.3.3734: the one coin, a unit beside a price */ alt: '', draggable: false,
+    src: have != null ? coinArtFor(have) : COIN_ONE, alt: '', draggable: false,
     style: { width: 16, height: 16, objectFit: 'contain' },
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
   }), amount);
@@ -104,7 +106,7 @@ export function VendorPanel(props) {
       React.createElement("div", {
         style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12 }
       }, React.createElement("span", { style: { fontSize: 12, color: LS.txt2 } }, "Your gold"),
-      lsGold(rpgState.coins, 16)),
+      lsGold(rpgState.coins, 16, rpgState.coins)),
       /* The one tile, in the mockup's own words. Gated on the store cap and
          read through storeEnabled() so it cannot appear against a worker
          with no store to open -- if that ever happens the panel says so

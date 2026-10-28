@@ -39,7 +39,13 @@ partly see-through, which `paletteTex.js`'s colour numbers do not keep.
 | a trade (both windows, an incoming offer), a duel's wager | the pile for the amount |
 | the auction house: your wallet and each listing's price | the pile; the price you type the one coin |
 | the party board (your gold) | the pile for your gold |
-| shops, vendors, the bank, the gamble hall, Ace's flip, the daily spin, the benches, the farm's seeds, the dungeon creator, the codex | the one coin (a unit beside a price) |
+| a BALANCE beside prices: the bank, a vendor, the gamble hall, Ace's flip (your bag; a win or loss), the daily spin's pot, the store's header, the Feed & Seed (your coins; an order's reward), the dungeon creator | the pile for the amount |
+| a PRICE or fee: shop and vendor prices, Ace's stakes, the benches' costs, the seeds' price, the dungeon creator's packs, the codex | the one coin (a unit beside a price) |
+
+The rule (orchestrator, on the owner's "an amount of coins shows its pile"):
+what you HAVE, win or are paid is an amount and shows its pile; only what
+something COSTS keeps the one coin.  `lsGold` (bank, vendor, gamble) and Ace's
+`gold` take a third/fourth argument, the balance, for that.
 
 The old pictures (`/icons/popups/gold.webp`, `/icons/ui/cur-gold.webp`) stay
 on file, drawn nowhere in the game now.
