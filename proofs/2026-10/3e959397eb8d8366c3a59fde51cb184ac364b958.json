@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3e959397eb8d8366c3a59fde51cb184ac364b958",
+  "tree": "d58097c1913a0b76de6c646dd465ea2fbafac17a",
+  "committedAt": "2026-10-28T16:07:27-07:00",
+  "subject": "Players' bodies kept once and coloured as they are drawn, on by default (v2.3.3716) (#1212)",
+  "files": 6866,
+  "bytes": 797501726,
+  "listingSha256": "0b086faca21034ce796d98f4e1142ed13f99cf1c4c392419645554ecdf89e193",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
