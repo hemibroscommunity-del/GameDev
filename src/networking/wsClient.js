@@ -3128,7 +3128,8 @@ export function setupWebSocket(ctx) {
                   S._camPunch = { dx: Math.cos(_dAng) * 16, dy: Math.sin(_dAng) * 16, ts: Date.now() };
                 }
               } catch (e) { /* a camera kick never breaks the death */ }
-              pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
+              /* v2.3.3748: a burning heap's (server heapburn.js) says how */
+              pushDmgPopup(S, S.player.x, S.player.y - 40, (msg.payload && msg.payload.cause === 'monster:heap') ? 'BURNED TO DEATH' : 'YOU DIED', '#ff5e6c');
               /* v2.3.3556: the worker kept your bag (a dungeon: the owner's
                  "Keep your bag in dungeons"; a duel) and says so -- only then,
                  so an older worker's death promises nothing */
@@ -5527,6 +5528,13 @@ export function setupWebSocket(ctx) {
            -> rest.js.  TRAPS #18: without this line Rest would send nothing
            at all. */
         if (msg.type === 'rest_request') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3748: standing in a burning heap (game/heapBurn.js) ->
+           heapburn.js.  TRAPS #18: without this line the worker never hears
+           and nobody burns. */
+        if (msg.type === 'heap_burn') {
           wsOut(msg);
           return;
         }

@@ -517,6 +517,8 @@ import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
+import { heapBurnStep } from '@/game/heapBurn.js'; /* v2.3.3748: a burning heap sets you on fire */
+import { burningAt } from '@/rendering/buildingFire.js'; /* v2.3.3748: ...where its pieces burn */
 import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
@@ -5677,6 +5679,17 @@ export var BroTown = function BroTown(_ref0) {
             var gx = P.x + _gs.x, gy = P.y + _gs.y;
             if (!isSolid(gx - hs, P.y - hs) && !isSolid(gx + hs, P.y + hs) && !_monBlock(P.x, P.y, gx, P.y) && !_nodeBlock(P.x, P.y, gx, P.y) && !propFeetBlocked(P.x, P.y, gx, P.y, hs)) P.x = gx;
             if (!isSolid(P.x - hs, gy - hs) && !isSolid(P.x + hs, gy + hs) && !_monBlock(P.x, P.y, P.x, gy) && !_nodeBlock(P.x, P.y, P.x, gy) && !propFeetBlocked(P.x, P.y, P.x, gy, hs)) P.y = gy;
+          }
+        }
+        /* ═══ v2.3.3748: A BURNING HEAP SETS YOU ON FIRE ═══
+           Your boots in a burning piece of a fallen building's heap, on this
+           screen: the flames on you, and `heap_burn` to the worker, which
+           burns you at its own rate (game/heapBurn.js, server heapburn.js) */
+        if (S.currentZone === 'wheel' && !_playerDead && S._serverCaps && S._serverCaps.heapburn) {
+          var _hbY = P.y + playerGroundDy(S.currentZone, P.x, P.y);
+          var _hbNow = Date.now();
+          if (heapBurnStep(S, burningAt(P.x, _hbY) >= 0, true, _hbNow) && S.channel) {
+            try { S.channel.send({ type: 'heap_burn' }); } catch (e) { /* the next frame asks again */ }
           }
         }
         /* v2.3.1110: PUSH-OUT -- _monBlock only stops the player moving
