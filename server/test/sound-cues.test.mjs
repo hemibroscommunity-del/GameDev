@@ -952,5 +952,41 @@ for (const p of files) {
       && /if \(url && this\.SFX_CACHE\) \{ try \{ return this\._playCold\(key, url, opts\); \}/.test(G));
 }
 
+/* ── 19. v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) ──
+   The owner wants many copies of the same sound starting at nearly the same
+   moment grouped into one or a few.  data/voiceCap.js: at most N copies of
+   one recording start within W ms; the first always plays; different
+   recordings never hold each other back; the menu's ticks, the loops and the
+   music never pass it; off by default. */
+{
+  const VC = await import('../../src/data/voiceCap.js');
+  const C = VC.makeVoiceCap(VC.VOICE_N, VC.VOICE_W_MS);
+  const burst = [];
+  for (let i = 0; i < 10; i++) burst.push(C.allow('monster-hit', 1000 + i));
+  check(`19a ten copies of one recording in one instant: ${VC.VOICE_N} start, the rest held back`,
+    VC.VOICE_N >= 2 && VC.VOICE_N <= 4 && VC.VOICE_W_MS === 50 && burst.filter(Boolean).length === VC.VOICE_N && burst[0] === true, burst);
+  const D = VC.makeVoiceCap(3, 50);
+  const first = D.allow('sword-hit3', 0);
+  const rot = ['sword-swing-1', 'sword-swing-2', 'sword-swing-3'].map((k) => D.allow(k, 1));
+  check('19b the first copy always plays, and different recordings never hold each other back (the swing rotation layers)', first && rot.every(Boolean), rot);
+  const E = VC.makeVoiceCap(3, 50);
+  const flurry = [];
+  for (let i = 0; i < 8; i++) flurry.push(E.allow('sword-hit2', i * 250));   /* a fast flurry: four swings a second */
+  const later = [E.allow('monster-hit', 0), E.allow('monster-hit', 0), E.allow('monster-hit', 0), E.allow('monster-hit', 0), E.allow('monster-hit', 60)];
+  check('19c a flurry of swings (one each 250 ms) is untouched, and a held recording starts again once its window has passed', flurry.every(Boolean) && later.join() === 'true,true,true,false,true', { flurry, later });
+  const F = VC.makeVoiceCap(1, 50);
+  check('19d the menu\'s sounds never pass it (uiTick has its own rule)', F.allow('ui-click', 0) && F.allow('ui-click', 0) && F.allow('ui-equip', 0) && F.allow('ui-equip', 0));
+  check('19e `?voicecap` on at N, W; `?voicecap=4:60` other values; nothing else turns it on',
+    VC.parseVoiceCap('?voicecap').n === VC.VOICE_N && VC.parseVoiceCap('?a=1&voicecap=4:60').w === 60 && VC.parseVoiceCap('?voicecap=4').n === 4
+      && VC.parseVoiceCap('') === null && VC.parseVoiceCap('?voicecapx') === null && VC.parseVoiceCap('?novoicecap') === null);
+  const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
+  const loopFn = G.slice(G.indexOf('BT_AUDIO.startSfxLoop = function'), G.indexOf('BT_AUDIO.stopSfxLoop = function'));
+  const playFn = G.slice(G.indexOf('BT_AUDIO.play = function'), G.indexOf('BT_AUDIO._startOn = function'));
+  check('19f every one-shot play() start asks the gate before it starts (cold or warm), off by default; the loops do not',
+    /BT_AUDIO\.VOICE_CAP = null;/.test(G) && /BT_AUDIO\.VOICE_CAP = parseVoiceCap\(location\.search/.test(G)
+      && /var buf = this\._samples\[key\];\s*if \(!this\._voiceGate\(key, buf, opts\)\) return null;/.test(playFn)
+      && loopFn.length > 100 && !/_voiceGate/.test(loopFn));
+}
+
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
