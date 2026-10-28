@@ -18,7 +18,7 @@ import { metalIconPath, weaponMaterial } from '../../rendering/traits/materialTi
  *
  * So the look lives HERE, once, and every button wears it: SprintButton,
  * SpecialButton, AbilityButtons, ShieldButton, ElementBurstButton,
- * WeaponSwapButton, JumpButton (v2.3.3017's, AbilityFace below) and the attack
+ * WeaponSwapButton, JumpButton (v2.3.3017's; v2.3.3721: JumpGlyph below) and the attack
  * disc in TouchControls.  Seven files each drawing their own ring is how they
  * came to look like seven different kits (four slate radial gradients, one
  * sprite, one rounded square, one emoji glyph) -- the same reason
@@ -324,7 +324,8 @@ export const RDISC_ICONS = [
      (public/ui/controls/jump-glyph.webp) and laid over the disc as it is --
      the owner: the whole button on the stick was "way too intense ... it
      should just be a semi transparent overlay on the existing disc" */
-  ['jump', '/ui/controls/jump-glyph.webp?v=2.3.3105'],
+  /* v2.3.3721: gone -- since v2.3.3712 a tap never jumps, so the stick never
+     wears it; its picture was still put in the DOM and warmed for nothing */
   /* v2.3.3105: and what a tap does instead beside a character, at a door or
      at the farm's bed (desktopControls interactKind) -- the owner: "chat
      bubble for speaking [to NPCs], door for entering door"; drawn in the
@@ -427,6 +428,57 @@ export function SpecialFace(props) {
 export function AbilityFace(props) {
   return faceArt(props.size, abilityArtUrl(props.name, !!props.grey), { 'data-icon': props.name, 'data-ability-face': props.name });
 }
+/* ═══ v2.3.3721: A PLAIN JUMP, NOT AN ABILITY ═══
+ * The owner: "a more generic jump button icon on the button would be more
+ * appropriate because the icon now for jump looks like a special ability".
+ * The card 11 picture (v2.3.3526's AbilityFace 'jump': a blue arrow on its own
+ * gold ring) read as one of the specials beside it.  The button is now the
+ * Lantern Slate rest look of Sprint and Block -- the skin's slate face and
+ * gold ring -- with a plain mark drawn here in SVG (no file, so nothing to
+ * preload or free): a parchment upward chevron over a short gold ground line,
+ * each with a dark edge so it reads over the slate and the warm air face
+ * alike.  `kind` picks the mark; the alternatives were drawn for the owner to
+ * choose from (`?jumpicon=arrow|double|hop` wears one for a tab:
+ * jumpGlyphKind).  `data-icon="jump"` as before, for the probes. */
+export const JUMP_GLYPHS = ['chevron', 'arrow', 'double', 'hop'];
+const JUMP_INK = '#F4E4BC', JUMP_GROUND = '#E6AE52', JUMP_EDGE = '#1B1712';
+const JUMP_MARKS = {
+  /* the default: one bold chevron over the ground */
+  chevron: { ink: ['M27 60 L50 36 L73 60'], ground: 'M31 78 L69 78' },
+  /* an arrow, shaft and head, off the ground */
+  arrow: { ink: ['M50 72 L50 28', 'M32 45 L50 27 L68 45'], ground: 'M31 82 L69 82' },
+  /* two chevrons, the second for the second press (the flip) */
+  double: { ink: ['M29 50 L50 30 L71 50', 'M29 68 L50 48 L71 68'], ground: 'M31 83 L69 83' },
+  /* a hop's arc from the ground and back down */
+  hop: { ink: ['M24 70 Q50 6 74 62', 'M62 60 L75 64 L79 50'], ground: 'M18 80 L82 80' },
+};
+export function jumpGlyphKind(search) {
+  try {
+    var q = search != null ? search : ((typeof window !== 'undefined' && window.location && window.location.search) || '');
+    var m = /(?:^|[?&])jumpicon=([a-z]+)/.exec(q);
+    return m && JUMP_MARKS[m[1]] ? m[1] : 'chevron';
+  } catch (e) {
+    return 'chevron';
+  }
+}
+export function JumpGlyph(props) {
+  var s = props.size || 36;
+  var mk = JUMP_MARKS[props.kind] || JUMP_MARKS.chevron;
+  var kids = [];
+  var line = function (d, col, w, k) {
+    return React.createElement('path', { key: k, d: d, fill: 'none', stroke: col, strokeWidth: w, strokeLinecap: 'round', strokeLinejoin: 'round' });
+  };
+  /* the dark edges first, then the marks over them */
+  kids.push(line(mk.ground, JUMP_EDGE, 11, 'ge'));
+  mk.ink.forEach(function (d, i) { kids.push(line(d, JUMP_EDGE, 17, 'ie' + i)); });
+  kids.push(line(mk.ground, JUMP_GROUND, 6, 'g'));
+  mk.ink.forEach(function (d, i) { kids.push(line(d, JUMP_INK, 11, 'i' + i)); });
+  return React.createElement('svg', {
+    className: 'bt-skin-svg', viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
+    'data-icon': 'jump', 'data-jump-glyph': props.kind || 'chevron',
+    style: { display: 'block', pointerEvents: 'none' },
+  }, kids);
+}
 /* ═══ v2.3.3522: THE BLOCK BUTTON WEARS THE OWNER'S SHIELD ═══
  * The owner, playtesting: "Block button needs a new icon."  It drew the 64 px
  * wood shield the WORLD hangs on your arm (/sprites/shields/wood-shield-front
@@ -453,7 +505,8 @@ export function blockArtUrl(grey) {
 export function BlockFace(props) {
   return faceArt(props.size, blockArtUrl(!!props.grey), { 'data-icon': 'block' });
 }
-export const ABILITY_ART_URLS = ['whirl', 'special', 'bash', 'jump', 'burst']
+/* v2.3.3721: no 'jump' -- the button wears JumpGlyph, drawn in SVG */
+export const ABILITY_ART_URLS = ['whirl', 'special', 'bash', 'burst']
   .reduce(function (a, n) { a.push(abilityArtUrl(n, false), abilityArtUrl(n, true)); return a; }, [])
   /* v2.3.3336: and the three special attacks, warmed with them */
   .concat(['sword', 'bow', 'staff'].reduce(function (a, k) { a.push(specialArtUrl(k, false), specialArtUrl(k, true)); return a; }, []))
