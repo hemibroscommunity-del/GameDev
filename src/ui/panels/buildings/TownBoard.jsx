@@ -1,7 +1,7 @@
 import React from 'react';
 import { deskWords } from '@/game/deskWords.js';
-import { GROUPS, boardEntry, boardPinnable } from '@/data/townBoard.js';
-import { boardRows } from '@/game/mapPinPlaces.js';
+import { GROUPS, boardEntry, boardPinnable, boardWords, boardName } from '@/data/townBoard.js';
+import { boardRows, boardLandNames } from '@/game/mapPinPlaces.js';
 import { loadPins, pinsOn, togglePin, PIN_CSS, PIN_KEYS } from '@/game/mapPins.js';
 
 /* ═══ v2.3.3766: THE TOWN HALL'S BOARD ═══
@@ -32,10 +32,12 @@ const LS = {
 const MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3, margin: '4px 0 0' };
 const TAP = { touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', font: 'inherit', cursor: 'pointer' };
 
-function Icon({ src, emoji, size }) {
+/* v2.3.3779: `aspect`, a picture wider than tall (a land's scene, the
+   Arena's gate) drawn at the tile's height and its own width */
+function Icon({ src, emoji, size, aspect }) {
   return (
     <img src={src} alt="" draggable={false}
-      style={{ width: size, height: size, objectFit: 'contain', flexShrink: 0 }}
+      style={{ width: Math.round(size * (aspect || 1)), height: size, objectFit: 'contain', flexShrink: 0, borderRadius: 6 }}
       onError={function (e) { e.currentTarget.replaceWith(document.createTextNode(emoji)); }} />
   );
 }
@@ -59,6 +61,7 @@ export function TownBoard(props) {
   loadPins(S, null, boardPinnable);
   const rows = boardRows(S);
   const e = page ? boardEntry(page) : null;
+  const names = boardLandNames();   /* v2.3.3779: a land's name is the world's */
 
   if (e) {
     const on = pinsOn(S, e.id);
@@ -69,15 +72,15 @@ export function TownBoard(props) {
           ‹ All things to do
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Icon src={e.icon} emoji={e.emoji} size={44} />
-          <div style={{ fontSize: 19, fontWeight: 800, color: LS.txt1, lineHeight: 1.2 }}>{e.name}</div>
+          <Icon src={e.icon} emoji={e.emoji} size={44} aspect={e.iconAspect} />
+          <div style={{ fontSize: 19, fontWeight: 800, color: LS.txt1, lineHeight: 1.2 }}>{boardName(e, names)}</div>
         </div>
         <div style={{ background: LS.well, border: '1px solid ' + LS.border, borderRadius: 10, padding: '10px 12px', display: 'grid', gap: 6 }}>
           {e.page.map(function (line, i) {
-            return <div key={i} style={{ fontSize: 13.5, color: LS.txt1, lineHeight: 1.45 }}>{line}</div>;
+            return <div key={i} style={{ fontSize: 13.5, color: LS.txt1, lineHeight: 1.45 }}>{boardWords(line, names)}</div>;
           })}
           <div data-board-where="" style={{ fontSize: 12.5, color: LS.txt2, lineHeight: 1.4, marginTop: 2 }}>
-            <span style={{ color: LS.brass, fontWeight: 700 }}>Where: </span>{e.where}
+            <span style={{ color: LS.brass, fontWeight: 700 }}>Where: </span>{boardWords(e.where, names)}
           </div>
         </div>
         {/* v2.3.3766: a place that is nowhere in particular (No man's land) has no pins */}
@@ -122,8 +125,8 @@ export function TownBoard(props) {
                     onClick={function () { setPage(r.id); }}
                     style={Object.assign({}, TAP, { position: 'relative', minHeight: 78, padding: '10px 6px 8px', borderRadius: 10, background: LS.raised, color: LS.txt1,
                       border: '1px solid ' + (on.length ? PIN_CSS[on[0]] : LS.borderStrong), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 })}>
-                    <Icon src={r.icon} emoji={r.emoji} size={30} />
-                    <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2, textAlign: 'center' }}>{r.name}</span>
+                    <Icon src={r.icon} emoji={r.emoji} size={30} aspect={r.iconAspect} />
+                    <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2, textAlign: 'center' }}>{boardName(r, names)}</span>
                     <PinDots on={on} />
                   </button>
                 );
