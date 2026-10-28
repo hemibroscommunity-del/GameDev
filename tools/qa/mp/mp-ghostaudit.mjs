@@ -40,7 +40,8 @@
  *
  *   node tools/qa/mp/run.mjs ghostaudit
  *   BT_GHOST_ONLY=stand,jog   only those families
- *   BT_GHOST_OUTFITS=full     only that outfit (full, plate, greaves)
+ *   BT_GHOST_OUTFITS=full     only that outfit (full, plate, greaves; bare, no armour, only when named)
+ *   BT_GHOST_SHIRT=print      v2.3.3696: the tee striped and printed
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -65,6 +66,15 @@ const LOOK = `try {
   localStorage.setItem('bt-shirtcolor', 'yellow');
   localStorage.setItem('bt-hair', 'none');
   localStorage.setItem('bt-headwear', 'none');
+  /* v2.3.3696: BT_GHOST_SHIRT=print -- the tee striped (ART_PALETTE 5) with
+     a block printed on the chest (ART_PALETTE 10, mp-gatherlook's), to see
+     where a print and a pattern sit on every frame */
+  if (${JSON.stringify(process.env.BT_GHOST_SHIRT || '')} === 'print') {
+    localStorage.setItem('bt-shirtpat', 'stripe-v:5');
+    let art = '';
+    for (let i = 0; i < 256; i++) { const x = i % 16, y = (i / 16) | 0; art += (x >= 5 && x <= 10 && y >= 4 && y <= 9) ? 'a' : '0'; }
+    localStorage.setItem('bt-shirtart', art);
+  }
 } catch (e) {}`;
 
 /* the eight facings: the keys that walk that way, and the way as an angle */
@@ -78,6 +88,9 @@ const OUTFITS = {
   full: { chest: 'ironplate', legs: 'irongreaves' },
   plate: { chest: 'ironplate', legs: 'none' },
   greaves: { chest: 'none', legs: 'irongreaves' },
+  /* v2.3.3696: no armour, the tee seen whole (BT_GHOST_OUTFITS=bare; not in
+     the default run) -- the mining shirt's print and pattern */
+  bare: { chest: 'none', legs: 'none' },
 };
 
 /* installed once in the page: the clock that can be held, the isolation
