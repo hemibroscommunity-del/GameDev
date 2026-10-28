@@ -53,10 +53,12 @@ const WHITE = '#FFFFFF';
     texts(c).join(' | ') === 'Coins x5 | Slime Remains x1' && c.every((l) => l.color === WHITE), c);
   check('1: the text is the name, then x and the amount (v2.3.3692; it was in brackets)', dropLineText('Coins', 5) === 'Coins x5' && dropLineText('Rare Gem', 0) === 'Rare Gem x1');
   /* v2.3.3692: "maybe the icon first then the name then the quantity" */
-  check('1: each line carries its drop\'s picture, the codex\'s own (the coin, the slime\'s remains)',
-    /\/icons\/ui\/cur-gold\.webp/.test(c[0].icon || '') && /\/icons\/items\/remnants-slime\.webp/.test(c[1].icon || ''), c.map((l) => l.icon));
+  /* v2.3.3734: the coins' picture is the owner's pile for the amount (5: the 5 pile) */
+  check('1: each line carries its drop\'s picture (the owner\'s 5-coin pile, the slime\'s remains)',
+    c[0].icon === '/icons/coins/coin-5.png' && /\/icons\/items\/remnants-slime\.webp/.test(c[1].icon || ''), c.map((l) => l.icon));
   const snow = { lootId: 'mk-wm-frost-3-17', recipients: ['me'], coins: 12, skull: 'snowman' };
   check('1: the remains are named by the pile\'s own key ("Snowman Remains")', texts(linesFor('snowling', snow, null)).join(' | ') === 'Coins x12 | Snowman Remains x1');
+  check('1: 12 coins show the owner\'s 10 pile (v2.3.3734)', linesFor('snowling', snow, null)[0].icon === '/icons/coins/coin-10.png');
   const all = linesFor('snowling', Object.assign({}, snow, { shard: 'shard_frost', gem: 'rare_gem',
     armor: [{ slot: 'armor', name: 'Iron Torso', mystery: true }], hasWeapon: true, weaponMystery: false }), 'nugget');
   check('1: everything a kill can drop, every kill\'s first and the rarest last',

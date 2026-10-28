@@ -210,6 +210,12 @@ spec. Add a line here only for a new RULE every session must follow.
 - A phone test red on `main` is a question about the TEST first (TRAPS §177).
   This box draws a few frames a second: time a check by the renderer's clock,
   never a 60 fps window (TRAPS §200; `BT_QA_CPU_THROTTLE` plays a slow phone).
+- **Sample, and offer the choice** (owner, 2026-10-28: *"let me know about the
+  pragmatic choice when given the option to wait for extensive testing vs
+  doing it sooner"*). A check that would hold the work up for more than about
+  30 minutes (the ghost audit over every animation, a soak) runs a sample:
+  each direction, pose or look family once. Tell the owner the choice up front:
+  the sample now, or the full run (v2.3.3761).
 - **Ghost audit** (`mp-ghostaudit`): a new animation, stand-in or armour piece
   goes through it. **UI review** (`tools/qa/ui-review/capture.mjs`): a new
   screen goes in `states.mjs` AND gets a section in `docs/UI-DESIGN-NOTES.md`
@@ -236,6 +242,12 @@ spec. Add a line here only for a new RULE every session must follow.
   Safari running out of memory (about 250 MB). In any change that adds art,
   sound, or anything it makes, build it in its slot's form
   (`docs/MEMORY-MAP.md`; no slot fits: add one there), and:
+  - new art is 256 colours a picture at most (owner, 2026-10-28: *"I won't
+    notice at all from anything at 256"*; *"everything converted using this
+    more efficient method as standard protocol"*; v2.3.3761);
+  - a memory saver lands ON by default, with a `?name=0` off-ramp for one
+    phone (owner, 2026-10-28: *"including the new memory change work by
+    default would be better. I can always revert"*; v2.3.3761);
   - art is freed where you leave it; anything made per zone, land, fight,
     dungeon or rebuild is destroyed when it goes; a cache has a cap; a pool
     gives back what a spike made;

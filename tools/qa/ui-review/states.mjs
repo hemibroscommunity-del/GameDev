@@ -527,6 +527,28 @@ export const STATES = [
     },
   },
   dash('more', 'More', 'The More page: tiles for everything else (settings, pets, ranks, friends, login key, about...).'),
+  /* v2.3.3736: a rare window whose script cannot come (src/ui/lazyPanel.js):
+     a tab left open across a deploy is answered with the page itself.  The
+     Settings page's script answered so here; its own state, next, opens it
+     with the script back (a fresh try) */
+  {
+    id: 'lazy-cantopen', group: 'Dashboard: More', title: 'A window that could not open',
+    about: '"Couldn\'t open this": a window whose code could not be loaded (a game left open across an update), with Reload and Close, over the game, which plays on.',
+    run: async ({ P }) => {
+      await P.page.route(/\/assets\/SettingsPanel-[^/]+\.js/, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html></html>' }));
+      const e = await bus(P, 'open', 'more');
+      if (e) return e;
+      await wait(P, 300);
+      await bus(P, 'push', 'settings');
+      const up = await P.page.waitForSelector('[data-lazy-cantopen]', { timeout: 10000 }).then(() => true).catch(() => false);
+      if (!up) return 'no "Couldn\'t open this" card (was the Settings page\'s script already loaded?)';
+    },
+    after: async ({ P }) => {
+      await P.page.unroute(/\/assets\/SettingsPanel-[^/]+\.js/).catch(() => {});
+      await evalIn(P, () => { const b = document.querySelector('[data-lazy-cantopen] button[data-esc]'); if (b) b.click(); });
+      await wait(P, 300);
+    },
+  },
   more('settings', 'Settings', 'Settings: sound, graphics, controls and the rest.'),
   more('pets', 'Pets', 'Your pets: the ones you caught, the one out with you, the journal of kinds.'),
   more('leaderboard', 'Ranks (leaderboard)', 'The leaderboard.'),

@@ -1,3 +1,4 @@
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { BLACKSMITH_TIERS, ELEMENTS, MKT_CATEGORIES, MKT_TIERS, MKT_WOOD_TIERS, WEAPON_TYPES, WOODWORKING_TIERS, estimateMktPrice } from '@/data/index.js';
 import { BT_API_BASE } from '@/networking/index.js';
@@ -166,7 +167,7 @@ export function ExchangePanel(props) {
       marginBottom: 10
     }
   }, /*#__PURE__*/React.createElement("img", {
-    src: "/icons/popups/gold.webp",
+    src: coinArtFor(rpgState.coins), /* v2.3.3734: the pile for the amount */
     alt: "",
     draggable: false,
     style: {
@@ -543,7 +544,7 @@ export function ExchangePanel(props) {
       caretColor: '#EAC675'
     }
   }), /*#__PURE__*/React.createElement("img", {
-    src: "/icons/popups/gold.webp",
+    src: COIN_ONE, /* v2.3.3734: the one coin, a unit beside a price */
     alt: "gold",
     draggable: false,
     style: {
@@ -887,7 +888,7 @@ export function ExchangePanel(props) {
           fontVariantNumeric: 'tabular-nums'
         }
       }, /*#__PURE__*/React.createElement("img", {
-        src: "/icons/popups/gold.webp",
+        src: coinArtFor(o.price), /* v2.3.3734: the pile for the amount */
         alt: "",
         draggable: false,
         style: {
@@ -953,7 +954,7 @@ export function ExchangePanel(props) {
           fontVariantNumeric: 'tabular-nums'
         }
       }, /*#__PURE__*/React.createElement("img", {
-        src: "/icons/popups/gold.webp",
+        src: coinArtFor(o.price), /* v2.3.3734: the pile for the amount */
         alt: "",
         draggable: false,
         style: {
@@ -1097,7 +1098,7 @@ export function ExchangePanel(props) {
           color: '#D8AA58' /* v2.3.1235: batch-3 rollout — brass token */
         }
       }, /*#__PURE__*/React.createElement("img", {
-        src: "/icons/popups/gold.webp",
+        src: coinArtFor(o.price), /* v2.3.3734: the pile for the amount */
         alt: "",
         draggable: false,
         style: {
