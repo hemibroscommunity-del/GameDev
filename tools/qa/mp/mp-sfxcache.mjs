@@ -9,7 +9,7 @@
  * first.
  *
  * Two phones in the world's BroTown, one `?sfxcache=0` (the game as it was)
- * and one as the game is (v2.3.3760: the cache on by default):
+ * and one as the game is (v2.3.3735: the cache on by default):
  *   1. the sounds loaded on both: every one decoded on the first; every
  *      pinned one decoded on the second, and every other file's bytes held
  *      (guard);
@@ -72,7 +72,7 @@ const settle = (P, cache) => P.page.evaluate(async (cache) => {
 }, cache);
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'Allheld', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'sfxcache=0' });   /* v2.3.3760: the off-ramp (on is the default) */
+  const A = await H.newPlayer(browser, { name: 'Allheld', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'sfxcache=0' });   /* v2.3.3735: the off-ramp (on is the default) */
   const B = await H.newPlayer(browser, { name: 'Cacheear', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });   /* the default: on */
   const errs = [];
   for (const P of [A, B]) P.page.on('pageerror', (e) => errs.push(String(e && e.message || e).slice(0, 200)));

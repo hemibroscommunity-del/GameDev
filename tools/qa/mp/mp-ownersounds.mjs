@@ -64,7 +64,7 @@ function shore() {
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const P = await H.newPlayer(browser, { name: 'Hearer', wsPort, webPort, viewport: VIEW, touch: true, world: 'wheel', query: 'sfxcache=0' });   /* v2.3.3760: every sound decoded, the sound cache off (on by default): this reads decoded buffers of sounds it does not pin */
+  const P = await H.newPlayer(browser, { name: 'Hearer', wsPort, webPort, viewport: VIEW, touch: true, world: 'wheel', query: 'sfxcache=0' });   /* v2.3.3735: every sound decoded, the sound cache off (on by default): this reads decoded buffers of sounds it does not pin */
   const errs = [];
   P.page.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
   await H.enterWorld(P);

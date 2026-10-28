@@ -946,9 +946,9 @@ for (const p of files) {
   check('18e the cache lets go of the least recently played first, and never of the one just decoded', out.join() === 'b' && L.bytes === 80 && L.has('a') && L.has('c') && big.length === 0, { out, bytes: L.bytes });
   /* the switch: off by default, `?sfxcache` on; play() decodes a cold sound and plays it when ready */
   const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
-  /* v2.3.3760: on by default (the owner: "including the new memory change work by default"); `?sfxcache=0` the off-ramp */
+  /* v2.3.3735: on by default (the owner: "including the new memory change work by default"); `?sfxcache=0` the off-ramp */
   const P = SC.parseSfxCache;
-  check('18f ON by default (v2.3.3760); `?sfxcache=0` (or off) turns it off for one phone, `?sfxcache=8` another budget; with it on the manifest decodes only the pinned, a cold play() is decoded and played when ready',
+  check('18f ON by default (v2.3.3735); `?sfxcache=0` (or off) turns it off for one phone, `?sfxcache=8` another budget; with it on the manifest decodes only the pinned, a cold play() is decoded and played when ready',
     P('').on === true && P('?sfxcache').on === true && P('?sfxcache=0').on === false && P('?a=1&sfxcache=0&b=2').on === false && P('?sfxcache=off').on === false
       && P('?sfxcache=8').on === true && P('?sfxcache=8').mb === 8 && P('').mb === SC.BUDGET_MB
       && /BT_AUDIO\.SFX_CACHE = true;/.test(G) && /parseSfxCache\(typeof location/.test(G)
@@ -985,7 +985,7 @@ for (const p of files) {
   check('19c a flurry of swings (one each 250 ms) is untouched, and a held recording starts again once its window has passed', flurry.every(Boolean) && later.join() === 'true,true,true,false,true', { flurry, later });
   const F = VC.makeVoiceCap(1, 50);
   check('19d the menu\'s sounds never pass it (uiTick has its own rule)', F.allow('ui-click', 0) && F.allow('ui-click', 0) && F.allow('ui-equip', 0) && F.allow('ui-equip', 0));
-  check('19e ON by default at N, W (v2.3.3760); `?voicecap=0` (or off) turns it off for one phone; `?voicecap=4:60` other values',
+  check('19e ON by default at N, W (v2.3.3735); `?voicecap=0` (or off) turns it off for one phone; `?voicecap=4:60` other values',
     VC.parseVoiceCap('').n === VC.VOICE_N && VC.parseVoiceCap('?voicecap').n === VC.VOICE_N && VC.parseVoiceCap('?a=1&voicecap=4:60').w === 60 && VC.parseVoiceCap('?voicecap=4').n === 4
       && VC.parseVoiceCap('?voicecap=0') === null && VC.parseVoiceCap('?x&voicecap=off') === null && VC.parseVoiceCap('?novoicecap=0').n === VC.VOICE_N);
   const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');

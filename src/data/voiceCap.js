@@ -24,7 +24,7 @@
  * The kept copies are not made louder: no level change here without a
  * listen (the owner's call).
  *
- * v2.3.3760: ON BY DEFAULT, at N, W below (the owner: "I think including
+ * v2.3.3735: ON BY DEFAULT, at N, W below (the owner: "I think including
  * the new memory change work by default would be better.  I can always
  * revert the change if I don't like it or it doesn't work well.").
  * `?voicecap=0` turns it off for one phone (the game as it was);

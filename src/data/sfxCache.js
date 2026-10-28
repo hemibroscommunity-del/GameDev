@@ -26,7 +26,7 @@
  *     sound (the river under a cast warms the reel's clicks).
  * No sample rate is lowered (the owner has not approved duller sounds).
  *
- * v2.3.3760: ON BY DEFAULT.  The owner: "I think including the new memory
+ * v2.3.3735: ON BY DEFAULT.  The owner: "I think including the new memory
  * change work by default would be better.  I can always revert the change if
  * I don't like it or it doesn't work well."  `?sfxcache=0` turns it off for
  * one phone (every sound decoded on the loading screen and held, as before);

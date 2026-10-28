@@ -15,7 +15,7 @@ burst that can clip.
 
 ## What the switch does
 
-**On by default since v2.3.3760.** The owner: *"I think including the new memory change work by default would be better. I can always revert the change if I don't like it or it doesn't work well."*
+**On by default since v2.3.3735.** The owner: *"I think including the new memory change work by default would be better. I can always revert the change if I don't like it or it doesn't work well."*
 
 `?voicecap=0` turns it off for one phone (the game as it was);
 `?voicecap=4:60` tries other values.
