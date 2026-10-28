@@ -223,6 +223,44 @@ let _palette = false;
 export function setWheelPalette(on) { _palette = !!on; }
 export function wheelPaletteAsked() { return _palette; }
 
+/* ═══ v2.3.3709: THE WORKER WAITS FOR THE RENDERER'S WORD ═══
+   Both answers above are the renderer's, said as it is made
+   (pixiRenderer.js initPixiRenderer), and the worker is told them ONCE, as it
+   starts: it lays every piece of the visit by them.  On a phone the renderer
+   is made about 3 s before the trip into the Wheel starts the worker, but it
+   is made asynchronously and the trip is not held for it: on a busy page (two
+   phones on the QA box, mp-palette) the worker started first, was told
+   "colours, still water", and kept that for the visit -- every ground piece
+   four bytes a pixel where one would do (the GPU ~26 MB fuller at the
+   arrival), and the water still.  So the worker's start waits until the
+   renderer has said (`wheelRendererSaid`, after both setters), at most
+   RENDERER_WAIT_MS (a renderer that never comes: the worker as before).  In
+   Node or a tool nothing will say, and nothing waits. */
+const RENDERER_WAIT_MS = 15000;
+/* `?groundwait=0` starts it at once, as before (mp-groundwait's comparison) */
+let _waitOn = true;
+try { if (typeof location !== 'undefined' && /[?&]groundwait=0(&|$)/.test(location.search || '')) _waitOn = false; } catch (e) { /* waits */ }
+let _said = false;
+let _sayWaiters = [];
+export function wheelRendererSaid() {
+  if (_said) return;
+  _said = true;
+  const w = _sayWaiters;
+  _sayWaiters = [];
+  for (let i = 0; i < w.length; i++) w[i]();
+}
+/* QA and the suite: how long the last start waited, and whether the word
+   came (window.__btGroundWait) */
+export const wheelSayStats = { waited: null };
+if (typeof window !== 'undefined') window.__btGroundWait = () => ({ on: _waitOn, said: _said, waited: wheelSayStats.waited });
+function rendererSaid(ms) {
+  if (_said || !_waitOn || typeof window === 'undefined') return Promise.resolve();
+  return new Promise((resolve) => {
+    _sayWaiters.push(resolve);
+    setTimeout(resolve, ms);
+  });
+}
+
 /* Start the worker (once) and build the plan.  Resolves with its 'ready'
    message; rejects, and leaves the trial on flat sea, if this browser cannot
    run it. */
@@ -252,9 +290,15 @@ export function wheelStart() {
        (ground.js CALM WATER; setWheelWaterMoves, from wheelWater.js) */
     /* v2.3.3315: and which Wheel the room plays (caps.wheelsize): the long
        one five times the short one's every tier (plan.js wheelSized) */
-    const size = wheelLong();
-    noteWheelBuilt(size);
-    w.postMessage({ type: 'init', search, moving: _waterMoves, palette: _palette, size });
+    /* v2.3.3709: once the renderer has said what it draws (above) */
+    const t0 = Date.now();
+    rendererSaid(RENDERER_WAIT_MS).then(() => {
+      if (_w !== w) return;   /* stopped while it waited */
+      wheelSayStats.waited = Date.now() - t0;
+      const size = wheelLong();
+      noteWheelBuilt(size);
+      w.postMessage({ type: 'init', search, moving: _waterMoves, palette: _palette, size });
+    });
   });
   _initP.catch((e) => { wheelStats.error = String((e && e.message) || e); });
   return _initP;
