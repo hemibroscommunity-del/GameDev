@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "caade5434a444a44a34ae609a4920c86041ab07d",
+  "tree": "c3e6a334ee2dc5e7e0448ba1e89d7fc2203793e4",
+  "committedAt": "2026-10-28T16:07:42-07:00",
+  "subject": "Pictures at 256 colours: the reducer, the art law's step and the effects' twins, behind ?p256 (off) (v2.3.3728) (#1234)",
+  "files": 6891,
+  "bytes": 800108059,
+  "listingSha256": "44fef92f05b262c9912958727068564c0d92b7b5d87fedb7576fe6de85118cf0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
