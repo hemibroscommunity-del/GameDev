@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "84e405e280248ebbc987ceaaf174dc3d4375174f",
+  "tree": "2912c4b973a9044e19fa58e579013df8c3aad9d0",
+  "committedAt": "2026-10-28T14:24:35-07:00",
+  "subject": "The arena's art: your four ChatGPT pictures cut into game art (v2.3.3730) (#1208)",
+  "files": 6780,
+  "bytes": 787867638,
+  "listingSha256": "ca0aec008b77983d1f5312b66daee1eccd21ee90551d074268b877d3606ac755",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
