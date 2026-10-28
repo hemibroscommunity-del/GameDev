@@ -39,6 +39,8 @@ import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the H
 import { cue, cueAt, cuePeer, peerOwn, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
 import { noteKillCredit } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
+import { noteProg3Xp } from '@/game/xpBar.js'; /* v2.3.3695: the XP bar, from the worker's skill XP */
+import { prog3XpRequired } from '@/data/prog3.js'; /* v2.3.3695: the XP to each next level, for the bar */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
@@ -2845,7 +2847,12 @@ export function setupWebSocket(ctx) {
                  IS the state: trained levels/xp, the seven-stat
                  alloc, and the point pool all land here and the
                  recalc below re-derives level + pools from them. */
-              if (msg.payload.prog3 && typeof msg.payload.prog3 === 'object') { S.rpg.prog3 = msg.payload.prog3; recalcDerived(S.rpg); }
+              if (msg.payload.prog3 && typeof msg.payload.prog3 === 'object') {
+                /* v2.3.3695: the XP bar (game/xpBar.js) -- the skill this blob
+                   gained in, from the one it replaces; display only */
+                try { noteProg3Xp(S, S.rpg.prog3, msg.payload.prog3, prog3XpRequired, Date.now()); } catch (_xb) { /* the bar only */ }
+                S.rpg.prog3 = msg.payload.prog3; recalcDerived(S.rpg);
+              }
               /* ═══ v2.3.2615: BASELINE THE CELEBRATION HIGH-WATER AGAINST THE
                  SERVER, NOT AGAINST localStorage ═══
 
