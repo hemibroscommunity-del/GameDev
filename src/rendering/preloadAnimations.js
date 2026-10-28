@@ -58,6 +58,7 @@ import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monst
 import { loadFootprints, freeFootprints } from './footprintSprites.js'; /* v2.3.2654: per-zone ground reaction */
 import { loadNpcSprites, loadZoneDecor, freeZoneDecor, loadTownScenery } from './npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2651: + per-zone decor props */
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
+import { preloadXpBar } from './xpBarPreload.js';   /* v2.3.3695: the XP bar's skill icons */
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
@@ -446,6 +447,10 @@ export async function preloadWorldAnimations() {
        the LAW exists to stop, landing on the most dramatic moment the game
        has.  See levelUpBurstPreload.js. */
     levelUpBurst: preloadLevelUpBurst(),
+    /* ═══ v2.3.3695: the XP bar's three skill icons (the owner's Points
+       icons), DOM pictures on the top bar from the first hit of any fight:
+       GLOBAL for the level-up's reason.  See xpBarPreload.js. */
+    xpBar: preloadXpBar(),
     /* ═══ v2.3.2616: the stat explainer's scenes ═══
        DOM assets again, and GLOBAL: the Build sheet opens from anywhere, so
        there is no zone to scope them to.  Most of what a scene draws is
