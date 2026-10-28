@@ -26,6 +26,13 @@ import { startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed on you
 import { emotesLive } from '@/game/emotes.js';   /* v2.3.3391: B opens the emotes */
 import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL, ENTER_SEL, MAP_KEY } from '@/game/deskKeys.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
 import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
+import { dblTapRoll, tapDir } from '@/game/deskCombos.js';   /* v2.3.3711: a direction key tapped twice rolls */
+
+/* v2.3.3711: `?dbltap=0` -- the double tap's roll off, for a tab (the owner's
+   to keep or not: a quick double nudge of W rolls now) */
+function dblTapOn() {
+  try { return !(typeof location !== 'undefined' && /[?&]dbltap=0(?:&|$)/.test(location.search)); } catch (_e) { return true; }
+}
 
 /**
  * v2.3.3105: what runInteract would do here, for the right stick's picture
@@ -74,7 +81,6 @@ export function setupDesktopControls(S, deps) {
     _desktopOpenWorkshop = deps._desktopOpenWorkshop,
     _desktopGather = deps._desktopGather,
     _desktopNpcQuest = deps._desktopNpcQuest,
-    _desktopShieldOn = deps._desktopShieldOn,
     _desktopShieldOff = deps._desktopShieldOff,
     _desktopCycleWeapon = deps._desktopCycleWeapon,
     _desktopSelectSlot = deps._desktopSelectSlot,
@@ -201,6 +207,35 @@ export function setupDesktopControls(S, deps) {
       S.keys[e.key] = true;
       S._isDesktop = true; /* any keyboard input confirms desktop */
 
+      /* ═══ v2.3.3711: A DIRECTION KEY TAPPED TWICE ROLLS THAT WAY ═══
+         The owner: "I still think there are better layouts if you consider
+         more creative combos".  W, A, S or D (or an arrow) pressed twice
+         within 250 ms is a dodge roll that way, the move a PC action game's
+         player reaches for without leaving the keys they walk with; Space
+         still rolls.  The rule is game/deskCombos.js (node-tested): only
+         presses count (a held key's repeats never), only the same key pairs,
+         the other axis from the keys held across it (W held, D tapped twice:
+         up and right, as Space there).  The press still walks -- nothing
+         returns here -- and the roll is Space's own call, so a lock still
+         turns it into the sword's lunge or the bow's retreat shot
+         (dodge.js resolveDodgeContext).  `?dbltap=0` turns it off. */
+      if (!e.repeat && !browserChord(e) && tapDir(e.key) && dblTapOn()) {
+        var _K = S.keys;
+        var _held = {
+          up: !!(_K['w'] || _K['W'] || _K['ArrowUp']), down: !!(_K['s'] || _K['S'] || _K['ArrowDown']),
+          left: !!(_K['a'] || _K['A'] || _K['ArrowLeft']), right: !!(_K['d'] || _K['D'] || _K['ArrowRight']),
+        };
+        /* the tap's own time (e.timeStamp: when the key went down), never
+           when this handler got to it -- on a slow frame two quick taps wait
+           and run together, or the second waits a frame and reads late */
+        var _tapAt = (typeof e.timeStamp === 'number' && e.timeStamp > 0) ? e.timeStamp : Date.now();
+        var _rollAng = dblTapRoll(S._dblTap || (S._dblTap = { key: null, at: 0 }), e.key, _tapAt, _held);
+        if (_rollAng != null && S.rpg && !S._dodgeRoll) {
+          S._dblTapRolls = (S._dblTapRolls || 0) + 1;   /* QA: mp-deskkeys counts them */
+          triggerContextualDodge(S, S.rpg, _rollAng);
+        }
+      }
+
       /* Space — dodge roll in movement or facing direction (§5.8 contextual). */
       if (e.code === 'Space') {
         e.preventDefault();
@@ -281,6 +316,9 @@ export function setupDesktopControls(S, deps) {
            branch (rather than appending to the bottom of the chain) means
            blocking next to an NPC bashes rather than opening dialogue,
            which is the reading that matches the finger already on Q. */
+        /* v2.3.3711: the bash is a left click with the shield up now (the
+           right mouse button holds it: BroTown onMouseDown); E with the guard
+           up still bashes, quietly, for a hand that learned Q+E */
         if (S._shieldUp && _desktopShieldBash) {
           _desktopShieldBash();
           return;
@@ -329,28 +367,21 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
-      /* Q — toggle shield */
-      /* v2.3.2242: the touch shield is a toggle too now (ShieldButton), and
-         both sides go through shieldToggle.js -- the desktop wrappers
-         _desktopShieldOn/Off are what BroTown binds to that module. */
+      /* ═══ v2.3.3711: Q — THE WEAPON'S SPECIAL ═══
+         The owner: "Do your recommended keyboard layout."  The special is the
+         fighting move you reach for most after the swing, so it takes the key
+         under the left hand's first finger beside W -- Q, where the shield
+         was.  The shield is the right mouse button HELD now (BroTown's
+         canvas onMouseDown, released by onMouseUp below): a guard you hold
+         with the hand that aims it.  Aimed at the mouse, as F and the right
+         click were (both gave it up: F is the Element Burst, the right button
+         the shield).  Q+E's bash is a left click with the shield up.
+         v2.3.1726's note on the old Q (the mouse-steered shield) lives on in
+         BroTown's rAF loop, which _shieldKb still drives. */
       if (e.code === 'KeyQ' && !e.repeat) {
         e.preventDefault();
-        if (S._shieldUp) {
-          S._shieldKb = false;
-          _desktopShieldOff();
-        } else {
-          /* v2.3.1726: aim the shield at the mouse.  Blocking is directional
-             (±BLOCK_ARC_HALF) and on mobile the block ring steers
-             S._shieldAngle every frame — but this path never set it, so a
-             desktop shield pointed wherever the player last WALKED
-             (wsClient falls back to _facingAngle) and directional blocking
-             felt random on a keyboard.  Seed from the mouse-aim angle here;
-             the rAF loop in BroTown keeps it tracking the cursor while
-             _shieldKb holds (mirroring the ring's every-frame writes). */
-          if (typeof S._mouseAimAngle === 'number') S._shieldAngle = S._mouseAimAngle;
-          S._shieldKb = true;
-          _desktopShieldOn();
-        }
+        if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
+        _desktopSpecialAttack();
         return;
       }
 
@@ -375,21 +406,15 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
-      /* F — special attack toward mouse aim */
-      if (e.code === 'KeyF' && !e.repeat) {
-        e.preventDefault();
-        if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
-        _desktopSpecialAttack();
-        return;
-      }
-
-      /* v2.3.1734: G — Element Burst (COMBAT-OVERHAUL-PLAN PR 6).  G
-         rather than a modifier on F: the burst is a different ability
-         with a different resource curve, not a stronger special, and
-         every other combat verb here is its own single key.  Unlike the
-         touch button (which hides when ineligible) the key is always
-         live, so elementBurst floats the reason it refused. */
-      if (e.code === 'KeyG' && !e.repeat) {
+      /* ═══ v2.3.3711: F — THE ELEMENT BURST (G STILL WORKS) ═══
+         The special moved to Q, and F, the left hand's other near key, is the
+         burst's now -- G was a stretch off WASD.  G keeps working, quietly
+         (unlisted), for a hand that learned it.
+         v2.3.1734's note: the burst is its own ability with its own resource
+         curve, not a stronger special, so it is its own key; unlike the touch
+         button (which hides when ineligible) the key is always live, and
+         elementBurst floats the reason it refused. */
+      if ((e.code === 'KeyF' || e.code === 'KeyG') && !e.repeat) {
         e.preventDefault();
         _desktopElementBurst();
         return;
@@ -511,11 +536,8 @@ export function setupDesktopControls(S, deps) {
         S.keys[e.key.toLowerCase()] = false;
         S.keys[e.key.toUpperCase()] = false;
       }
-      /* Release Q → drop shield */
-      if (e.code === 'KeyQ' && S._shieldUp) {
-        S._shieldKb = false; /* v2.3.1726: stop the rAF mouse-steer too */
-        _desktopShieldOff();
-      }
+      /* v2.3.3711: Q is the special now, so its release lowers nothing (the
+         right mouse button's does: onMouseUp below) */
       /* v2.3.3407: let go of E, and the harvest's gesture stops being worked */
       if (e.code === 'KeyE' && S._harvestKeys) S._harvestKeys.up();
     };
@@ -525,13 +547,44 @@ export function setupDesktopControls(S, deps) {
     var onBlur = function onBlur() {
       for (var k in S.keys) S.keys[k] = false;
       if (S._harvestKeys) S._harvestKeys.up();   /* v2.3.3407: ...E's work too */
+      /* v2.3.3711: ...and a shield held on the right mouse button: its
+         release would come to another window */
+      if (S._shieldMouse) { S._shieldMouse = false; _desktopShieldOff(); }
+    };
+    /* ═══ v2.3.3711: LET GO OF THE RIGHT MOUSE BUTTON, AND THE SHIELD COMES DOWN ═══
+       The canvas's press raises it (BroTown onMouseDown, `_shieldMouse`); the
+       release is heard on the window, so a guard dragged off the world -- onto
+       the pages, the controls or out of the page -- still comes down. */
+    var onMouseUp = function onMouseUp(e) {
+      if (e && e.button === 2 && S._shieldMouse) {
+        S._shieldMouse = false;
+        _desktopShieldOff();
+      }
+    };
+    /* ═══ v2.3.3711: NO BROWSER MENU OVER THE GAME ═══
+       The right button is the shield, so its click must never open the
+       browser's menu: the canvas refused it already, but a guard let go over
+       the pages or a button opened it there (Windows opens it on the release,
+       where the pointer is then).  Anywhere in the page on a computer, except
+       where the menu is the point: a text field (paste) and a link. */
+    var onContextMenu = function onContextMenu(e) {
+      try {
+        if (!(window.matchMedia && window.matchMedia('(pointer:fine)').matches)) return;   /* phones unchanged */
+        var t = e.target;
+        if (t && t.closest && t.closest('input, textarea, select, [contenteditable="true"], a[href]')) return;
+        e.preventDefault();
+      } catch (_e) { /* the browser's menu, then */ }
     };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
+    window.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('contextmenu', onContextMenu);
   return function teardownDesktopControls() {
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
     window.removeEventListener('blur', onBlur);
+    window.removeEventListener('mouseup', onMouseUp);
+    document.removeEventListener('contextmenu', onContextMenu);
   };
 }

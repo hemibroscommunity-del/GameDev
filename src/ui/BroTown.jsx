@@ -322,6 +322,9 @@ import { wireTorchCrackle, wireThemeMusic } from '@/game/splashAudio.js';
 import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/game/characterCreatorEffects.js';
 import { wireTownMusic } from '@/game/townMusic.js';
 import { nextWeaponSlot } from '@/game/weaponSlots.js'; /* v2.3.1845: one weapon-cycle rotation */
+import { prevWeaponSlot } from '@/game/weaponSlots.js'; /* v2.3.3711: the mouse wheel turned up, one weapon back */
+import { wheelStep } from '@/game/deskCombos.js'; /* v2.3.3711: the mouse wheel steps through your weapons */
+import { isAbilitiesEnabled } from '@/data/abilities.js'; /* v2.3.3711: a click with the shield up bashes only where the worker casts abilities */
 import { wireSpriteSheets } from '@/game/spriteSheets.js';
 import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
@@ -9617,7 +9620,10 @@ export var BroTown = function BroTown(_ref0) {
   var _desktopShieldOff = useCallback(function () {
     dropShield(stateRef.current, 'key');   /* v2.3.2242: shared drop path */
   }, []);
-  var _desktopCycleWeapon = useCallback(function () {
+  /* v2.3.3711: `dir` -1 steps BACK round the cycle (the mouse wheel turned up,
+     the canvas's onWheel); anything else -- the Tab key, the swap button, the
+     action bus, none of which pass -1 -- steps on, as it always did */
+  var _desktopCycleWeapon = useCallback(function (dir) {
     var _S2$rpg$weapon, _S2$rpg$rangedWeapon;
     var S2 = stateRef.current;
     if (!S2.rpg) return;
@@ -9628,7 +9634,7 @@ export var BroTown = function BroTown(_ref0) {
        only have sword (no bow or staff) it still shows bow icon when you
        double tap to switch weapons."  A slot you cannot fill is not a weapon
        to switch to. */
-    var nextSlot = nextWeaponSlot(S2.rpg);
+    var nextSlot = dir === -1 ? prevWeaponSlot(S2.rpg) : nextWeaponSlot(S2.rpg);
     /* Nowhere to go — one weapon, one slot.  Returning early keeps the beep
        and the name popup for a swap that did not happen off the screen. */
     if (nextSlot === (S2.rpg.activeSlot || 'melee')) return;
@@ -10390,6 +10396,56 @@ export var BroTown = function BroTown(_ref0) {
     var _bed = _farmBedAtCss(cssX, cssY);
     if (_bed && (_bed.best >= 0 || _bed.far >= 0)) return 'farm';
     return null;
+  };
+  /* ═══ v2.3.3711: THE RIGHT MOUSE BUTTON HELD IS THE SHIELD ═══
+     The owner: "Do your recommended keyboard layout. I still think there are
+     better layouts if you consider more creative combos (like keyboard
+     presses while a click is held down, double clicking, etc)."  The left
+     hand walks on WASD, so a guard held on Q took a finger off them; the
+     right hand aims, so the guard is held there: the right button down raises
+     it, facing the pointer every frame while held (the rAF loop's v2.3.1726
+     steer, `_shieldKb`), and its release lowers it (desktopControls.js
+     onMouseUp, heard on the window).  Everything raiseShieldToggle refuses it
+     still refuses (no shield, the cooldown after a stamina break, the water,
+     a daze, mid-jump), and everything that lowers a guard still does (an
+     attack, a roll, a jump, the stamina running out) -- pressed again, it
+     comes back up.
+     WITH NO SHIELD ON YOUR ARM the right click keeps its old use, the
+     weapon's special (v2.3.1715's "R-Click Special"): a fresh character has
+     no shield, and a right click that did nothing would read as broken.
+     Returns what the press did, for the probe. */
+  var _deskRightPress = function (S) {
+    if (!S || !S.rpg) return null;
+    if (S.rpg.shield) {
+      if (typeof S._mouseAimAngle === 'number') S._shieldAngle = S._mouseAimAngle;
+      S._shieldKb = true;
+      S._shieldMouse = true;
+      _desktopShieldOn();
+      if (!S._shieldUp) { S._shieldKb = false; S._shieldMouse = false; return 'refused'; }
+      return 'shield';
+    }
+    if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
+    doSpecialAttack();
+    return 'special';
+  };
+  /* ═══ v2.3.3711: A LEFT CLICK WITH THE SHIELD UP IS THE SHIELD BASH ═══
+     The combo the owner asked for ("keyboard presses while a click is held
+     down"), the mouse's own: hold the guard on the right button, click the
+     left to shove with it -- the bash was Q+E, two keys on the hand that
+     walks.  The bash's own rules are abilityStatus's (a shield, raised); where
+     it cannot be cast at all (a worker without abilities) the click is the
+     attack it always was, which lowers the guard (v2.3.2248).  On its
+     cooldown the click is still the bash's, refused quietly, so a quick second
+     click never drops the guard for a swing.  The click that ends the press
+     is the bash's too (onClick: no lock taken or let go). */
+  var _deskBashPress = function (S) {
+    var st = null;
+    try { st = abilityStatus(S, 'bash'); } catch (_e) { st = null; }
+    if (!st || !st.visible) return false;
+    try { if (!isAbilitiesEnabled()) return false; } catch (_e) { return false; }
+    S._deskPressBash = true;
+    doShieldBash();
+    return true;
   };
   useEffect(function () {
     /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
@@ -12616,16 +12672,32 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.3470: ...nor while you work a bed of your farm: kneeling, a
          press is the farm's (its click goes to the bed) */
       if (stateRef.current._farmWork) return;
+      /* v2.3.3711: the right button held is the shield (_deskRightPress; its
+         release is desktopControls.js's onMouseUp) -- or, with no shield on
+         your arm, the special the right click always was */
+      if (e.button === 2) {
+        var _rk = _deskRightPress(stateRef.current);
+        if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: _rk || 'none', button: 2, ts: Date.now() };
+        return;
+      }
       if (e.button === 0) {
         /* Left click — attack toward mouse */
         var S = stateRef.current;
+        S._deskPressLock = null;   /* v2.3.3694: this press's lock, for its own click (below) */
+        S._deskPressBash = false;   /* v2.3.3711: this press's bash, for its own click */
+        /* v2.3.3711: with the shield up the click is the shield bash
+           (_deskBashPress), whatever is under the pointer -- you cannot talk,
+           harvest or dig with your guard raised, as E said (v2.3.1733) */
+        if (S._shieldUp && _deskBashPress(S)) {
+          if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: 'bash', ts: Date.now() };
+          return;
+        }
         /* v2.3.3470: ...unless it is on something the click will use -- a
            townsperson, a resource, a bed (_deskPressTarget): no aim, no
            swing, no arrow, no sound; the click that follows does its job */
         var _pr = e.currentTarget.getBoundingClientRect();
         var _pk = _deskPressTarget(e.clientX - _pr.left, e.clientY - _pr.top);
         if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: _pk || 'attack', ts: Date.now() };
-        S._deskPressLock = null;   /* v2.3.3694: this press's lock, for its own click (below) */
         if (_pk) return;
         if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
         S.autoAttack = true;
@@ -12661,12 +12733,53 @@ export var BroTown = function BroTown(_ref0) {
       }
     },
     onContextMenu: function onContextMenu(e) {
+      /* v2.3.3711: the browser's menu never opens over the world.  The right
+         click's special moved to its PRESS (onMouseDown, _deskRightPress):
+         the button held is the shield now, and this event comes on the press
+         on a Mac and Linux but on the RELEASE on Windows -- where a held
+         guard's let-go would have fired a special.  desktopControls.js
+         refuses the menu over the rest of the page. */
       e.preventDefault();
-      if (!stateRef.current._isDesktop) return;
-      /* Right click — special attack toward mouse */
+    },
+    /* ═══ v2.3.3711: A DOUBLE CLICK ON A MONSTER LOCKS ON TO IT ═══
+       The owner's "double clicking".  A single click on a monster toggles its
+       lock (onClick: a second click on the locked one lets it go), so two
+       quick clicks with a bow or staff locked and then let go: the one gesture
+       a player tries for "THAT one" undid itself.  A double click now always
+       ends locked on the monster under the pointer (its second click keeps the
+       lock: onClick's e.detail), as a deliberate pick (`src: 'tap'`, which a
+       bow and a staff need to keep it, v2.3.2258); with the sword it asks for
+       the opening lunge, as a phone's press on a locked monster does
+       (maybeSwordDash, v2.3.3694's desk-lunge path: the sword, the shield
+       down, off its cooldown, a living target in reach) -- the first click's
+       press has usually lunged already, and then this one swings.  Nothing on
+       empty ground, nor with the shield up (that is two bashes). */
+    onDoubleClick: function onDoubleClick(e) {
       var S = stateRef.current;
-      if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
-      doSpecialAttack();
+      if (!S._isDesktop || S._extraction || S._farmWork || S._shieldUp) return;
+      if (e.button !== 0) return;
+      var rect = e.currentTarget.getBoundingClientRect();
+      var m = monsterAtCss(e.clientX - rect.left, e.clientY - rect.top);
+      if (!m) return;
+      S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
+      var dashed = false;
+      try { dashed = maybeSwordDash(S) === true; } catch (_e) { dashed = false; }
+      if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskDbl = { id: String(m.id), dashed: dashed, ts: Date.now() };
+    },
+    /* ═══ v2.3.3711: THE MOUSE WHEEL STEPS THROUGH YOUR WEAPONS ═══
+       Down the next, up the one before (game/deskCombos.js wheelStep: a
+       notch, or a small flick of a trackpad, one weapon), the swap Tab and the
+       swap button make (_desktopCycleWeapon), only weapons you carry.  Over
+       the world only: a window or a page scrolls under the wheel as before,
+       and with a window up over the world it swaps nothing.  Ctrl with the
+       wheel (and a trackpad's pinch) is the browser's zoom, left to it. */
+    onWheel: function onWheel(e) {
+      var S = stateRef.current;
+      if (!S._isDesktop || e.ctrlKey || e.metaKey || !S.rpg) return;
+      var step = wheelStep(S._wheelMem || (S._wheelMem = { acc: 0 }), e.deltaY, e.deltaMode, Date.now());
+      if (!step) return;
+      if (typeof document !== 'undefined' && document.querySelector('.bt-inspect, .bt-npcdlg-scrim')) return;
+      _desktopCycleWeapon(step < 0 ? -1 : 1);
     },
     onClick: function onClick(e) {
       /* Mobile dispatches a synthesized click event ~50-300 ms after
@@ -12696,6 +12809,9 @@ export var BroTown = function BroTown(_ref0) {
       var _dpl = S._deskPressLock;
       S._deskPressLock = null;
       if (_dpl && S.lockedTarget && S.lockedTarget.ref === _dpl) return;
+      /* v2.3.3711: the click that ends a shield bash's press is the bash's
+         (onMouseDown, _deskBashPress): no lock taken, none let go */
+      if (S._deskPressBash) { S._deskPressBash = false; return; }
       var cx = S.camera.x,
         cy = S.camera.y;
       /* Both render paths use uniform scaling (Canvas 2D: setTransform
@@ -12734,6 +12850,10 @@ export var BroTown = function BroTown(_ref0) {
         if (closest) {
           /* Toggle lock: tap same = unlock, tap new = lock */
           if (S.lockedTarget && S.lockedTarget.ref === closest) {
+            /* v2.3.3711: ...but the SECOND click of a double click is the
+               double click's, which locks (onDoubleClick): two quick clicks
+               on a monster end locked on it, never let go */
+            if (e.detail >= 2) return;
             S.lockedTarget = null;
           } else {
             /* ═══ v2.3.2258: THIS IS THE TAP, SO IT HAS TO SAY SO ═══
