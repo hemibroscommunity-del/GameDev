@@ -15,10 +15,11 @@
  *      (an upright phone's width, the width they were drawn for), the controls
  *      at the RIGHT edge, 156 px, and the world between them; down the pages,
  *      the owner's order ("the dashboard buttons need to be at the top of that
- *      black bar section ... [the three combat skills] should all be in the
- *      top row beneath the graph dashboard button.  Then beneath that the
- *      filters for the inventory/bag"): the buttons, the weapons, the
- *      filters, the bag;
+ *      black bar section", and "change the 3 primary combat level row back
+ *      to the bottom"): the buttons, the filters, the bag, the weapons; the
+ *      buttons' pictures nearly twice a phone's 24 px ("almost twice as large
+ *      as they are now"), and the chip that folds the pages says CLOSE
+ *      ("just have a "close" button that says close");
  *   2. the controls in four groups -- Move, Fight, Other, Menus -- every row on
  *      the screen, each group's rows PACKED with a gap between the groups
  *      ("in chunks without spaces within chunks but space between chunks"),
@@ -29,7 +30,7 @@
  *      brings them back;
  *   4. I and P open and close the pages, and with the pages folded the world
  *      starts after a strip just wide enough for the fold chip, the chip at
- *      its top;
+ *      its top, saying OPEN;
  *   5. the chat bar lies over the world, not over either column;
  *   6. the Points tab is a list down the column: thirteen rows, every one on
  *      the screen, and a click on one opens its window;
@@ -44,7 +45,8 @@ import { join } from 'node:path';
 const DESK = { width: 1440, height: 900 };
 const LAPTOP = { width: 1366, height: 768 };
 const SHEET_W = 390, KEYS_W = 156, FOLDED_W = 40;   /* src/ui/deskWide.js */
-const FOLD_STRIP_W = 60;   /* src/ui/mobile/sheet/sheetGeometry.js DESK_FOLD_STRIP_W */
+const FOLD_STRIP_W = 80;   /* src/ui/mobile/sheet/sheetGeometry.js DESK_FOLD_STRIP_W (the chip's 64 + 4 gaps) */
+const NAV_ICON = 42;       /* ...DESK_NAV_ICON: a phone's 24, nearly twice */
 
 const box = (P, sel) => P.page.evaluate((s) => {
   const n = document.querySelector(s);
@@ -142,11 +144,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return c.length ? { n: c.length, t: Math.round(Math.min(...c.map((r) => r.top))), b: Math.round(Math.max(...c.map((r) => r.bottom))) } : null;
     });
     const bag = await box(P, '[data-dash-desk-bag]');
-    rec.ok('down the pages: the dashboard\'s buttons the top row, then the three weapons, then the bag\'s filters, then the bag',
+    rec.ok('down the pages: the dashboard\'s buttons the top row, then the bag\'s filters, then the bag, and the three weapons at the foot',
       !!dock && !!combat && !!filters && !!bag && dock.t <= 8 && dock.l <= 8
-        && combat.t >= dock.b - 1 && filters.t >= combat.b - 1 && bag.t >= filters.b - 1
-        && combat.t - dock.b <= 16 && filters.n === 5,
+        && filters.t >= dock.b - 1 && filters.t - dock.b <= 16 && bag.t >= filters.b - 1 && combat.t >= bag.b - 1
+        && combat.b <= DESK.height && DESK.height - combat.b <= 16 && filters.n === 5,
       { dock, combat, filters, bag });
+    /* the buttons' pictures, and the chip's word */
+    const nav = await P.page.evaluate(() => {
+      const imgs = [...document.querySelectorAll('.bt-land-navdock .bt-navrail img')].map((n) => n.getBoundingClientRect());
+      const btns = [...document.querySelectorAll('.bt-land-navdock .bt-navrail > *')].map((n) => n.getBoundingClientRect());
+      const chip = document.querySelector('[data-land-fold]');
+      const cr = chip && chip.getBoundingClientRect();
+      return { icons: imgs.map((r) => Math.round(r.width)), n: btns.length,
+        inside: btns.every((r) => r.left >= 0 && r.right <= 392),
+        chip: chip ? { text: chip.textContent.trim(), w: Math.round(cr.width), h: Math.round(cr.height), cut: chip.scrollWidth > chip.clientWidth + 1 } : null };
+    });
+    rec.ok(`the buttons' pictures nearly twice a phone's 24 px (${nav.icons.join(', ')}), all six buttons in the column`,
+      nav.icons.length === 6 && nav.icons.every((w) => w >= NAV_ICON - 1) && nav.n === 6 && nav.inside, nav);
+    rec.ok(`...and the chip that folds the pages says CLOSE ("${nav.chip && nav.chip.text}"), not an arrow, its word whole`,
+      !!nav.chip && nav.chip.text === 'CLOSE' && !nav.chip.cut && nav.chip.h >= 44, nav.chip);
 
     /* ── 2. THE GROUPS, AND ONLY WHAT WORKS ── */
     rec.ok('the controls in four groups under their headings: Move, Fight, Other, Menus',
@@ -208,12 +224,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const pagesI = await box(P, '.bt-land-sheet');
     const stripI = await box(P, '[data-desk-foldstrip]');
     const chipI = await box(P, '[data-land-fold]');
+    const chipWord = await P.page.evaluate(() => { const c = document.querySelector('[data-land-fold]'); return c ? c.textContent.trim() : null; });
     await shot(P, '4-folded');
-    rec.ok('I with the bag open folds the pages away: the world starts after the fold chip\'s strip, the chip at its top, the controls stay',
+    rec.ok('I with the bag open folds the pages away: the world starts after the fold chip\'s strip, the chip at its top saying OPEN, the controls stay',
       !!sI && sI.mode === 'bar' && !pagesI && !!cvI && !!stripI && !!chipI
         && stripI.l <= 1 && Math.abs(stripI.w - FOLD_STRIP_W) <= 2 && stripI.t <= 1 && stripI.b >= DESK.height - 1
         && Math.abs(cvI.l - FOLD_STRIP_W) <= 2 && chipI.l >= stripI.l && chipI.r <= stripI.r && chipI.t <= 10
-        && !!(await box(P, '.bt-desk-keys')), { sI, cvI, stripI, chipI });
+        && chipWord === 'OPEN' && !!(await box(P, '.bt-desk-keys')), { sI, cvI, stripI, chipI, chipWord });
     await key(P, 'p', 900);
     const sP = await sheet(P);
     const pagesP = await box(P, '.bt-land-sheet');

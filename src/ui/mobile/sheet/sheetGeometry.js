@@ -341,6 +341,8 @@ export function landDockFootprint(vw, vh) {
      panel keeps that row clear at its top instead (`reserveTop`); a phone
      on its side keeps it in the bottom corner its thumb knows. */
   if (deskWideActive()) {
+    /* and its buttons a computer's size (DESK_NAV_BTN_H, below) */
+    h = DESK_NAV_BTN_H + 2 * DASH_GAP;
     return { h: h, bottom: null, top: DASH_GAP, reserve: DASH_GAP + 'px', reserveTop: h + DASH_GAP };
   }
   var bottom = 'max(0px, var(--sab, 0px) - ' + LAND_DOCK_SINK + 'px)';
@@ -379,7 +381,26 @@ export const LAND_FOLD_CHIP_W = 44;
    controls' column folds to its ⌨ the same way (DESK_KEYS_FOLDED_W) -- and
    the world starts after it (bandFootprint's sheetW, --world-x): the chip at
    the strip's top, one place, open or folded.  0 everywhere else. */
-export const DESK_FOLD_STRIP_W = LAND_FOLD_CHIP_W + 4 * DASH_GAP;
+/* ═══ v2.3.3687: A WORD ON THE CHIP, AND ICONS A COMPUTER'S SIZE ═══
+   The owner, of the third cut: "The dashboard button thumbnail icons can be
+   almost twice as large as they are now", and "Instead of the down arrow chip
+   I think you should just have a "close" button that says close for hiding
+   the display menus" -- what the upright phone's chip has said since
+   v2.3.2266 (OPEN / CLOSE, "the down arrow to hide the entire dashboard is a
+   little too subtle").  On a computer playing wide:
+     - the buttons are DESK_NAV_BTN_H tall and their pictures DESK_NAV_ICON,
+       up from a phone's 24 -- the column is an upright phone's 390 px, so six
+       buttons and the chip still share one row, ~48 px each;
+     - the chip reads CLOSE while the pages are open and OPEN while they are
+       folded, DESK_FOLD_CHIP_W wide, as tall as the buttons, in the same
+       place both ways (v2.3.1637b: a control holds its screen position).
+   A phone on its side keeps the arrows: its column is 238 px, and six 26 px
+   buttons and a 44 px chip are the whole row (v2.3.3215) -- a word that does
+   not fit in 44 px would push a button off it. */
+export const DESK_NAV_BTN_H = 56;
+export const DESK_NAV_ICON = 42;
+export const DESK_FOLD_CHIP_W = 64;
+export const DESK_FOLD_STRIP_W = DESK_FOLD_CHIP_W + 4 * DASH_GAP;
 export function deskFoldStripW() {
   return deskWideActive() ? DESK_FOLD_STRIP_W : 0;
 }

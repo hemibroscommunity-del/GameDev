@@ -32,6 +32,15 @@ and, of the second cut:
 > filters for the inventory/bag. The labels for the controls needs to be more
 > readable too.
 
+and, of the third:
+
+> The dashboard button thumbnail icons can be almost twice as large as they
+> are now. Also I think you should change the 3 primary combat level row back
+> to the bottom.
+
+> Instead of the down arrow chip I think you should just have a "close" button
+> that says close for hiding the display menus
+
 ## What it was
 
 Since v2.3.1768b a computer drew the upright phone blown up to the window's
@@ -64,10 +73,21 @@ Three columns, each the window's height:
   showing, once a page load.
   - **Down the column, as on a phone:** the dashboard's buttons are its TOP
     row (sheetGeometry `landDockFootprint`: `top`, and the page keeps that
-    row clear at its own top, `reserveTop`), then the three weapons, then the
-    bag's filters, then the bag (DashColumns `desk`). A phone on its side
-    keeps the buttons in the bottom corner its thumb knows.
-  - **Folded,** the column is a 60 px strip with the fold chip at its top
+    row clear at its own top, `reserveTop`), then the bag's filters, the bag,
+    and the three weapons at its foot (DashColumns `desk`). The weapons were
+    under the buttons for one cut, then back at the foot at the owner's word.
+    A phone on its side keeps the buttons in the bottom corner its thumb
+    knows.
+  - **The buttons** are 56 px tall and their pictures 42 px, a phone's 24
+    nearly twice (`DESK_NAV_BTN_H`, `DESK_NAV_ICON`). Six and the chip still
+    share the column's one row, ~48 px a button.
+  - **The chip says CLOSE** while the pages are open and **OPEN** while they
+    are folded, 64 px wide, as tall as the buttons, in the same place both
+    ways (`DESK_FOLD_CHIP_W`): the upright phone's chip since v2.3.2266. A
+    phone on its side keeps its arrows: its column is 238 px, six 26 px
+    buttons and a 44 px chip are the whole row, and a word does not fit in
+    44 px.
+  - **Folded,** the column is an 80 px strip with the chip at its top
     (`DESK_FOLD_STRIP_W`, the controls' column folds to its ⌨ the same way),
     and the world starts after it. With the buttons at the top, the chip
     alone would otherwise have sat on the world's corner, over the top bar's
@@ -118,7 +138,7 @@ a player reads them all.
 
 | Page | Upright phone | Computer |
 |---|---|---|
-| Bag | the band's row | the three weapons, the filters, then five tiles across, ten rows (DashColumns `desk`) |
+| Bag | the band's row | the filters, five tiles across down the column, the three weapons at the foot (DashColumns `desk`) |
 | Character, Equipment | the figure 146 px, one stat family open at a time, covering the figure | the figure and gear 88 px a slot, bigger pills, Damage and Defense always open under the bars, Health or Energy opening under the bars |
 | Character, Points | a grid of two rows, sized from the column's width | a list: each stat a row (picture, whole name, what it gives now, points), under the three weapons and the character |
 | Skills | 50 px tiles | 92 px tiles, three across, the rows spread down |
@@ -135,17 +155,20 @@ a player reads them all.
 
 ## Tests
 
-- **`mp-deskwide`** (26 checks, a computer as players get it, and a 1366 x 768
+- **`mp-deskwide`** (28 checks, a computer as players get it, and a 1366 x 768
   laptop; it saves a picture of each layout, `tools/qa/mp/out/deskwide-*.png`):
   - the three columns;
-  - down the pages: the buttons the top row, then the weapons, the filters
-    and the bag;
+  - down the pages: the buttons the top row, then the filters, the bag, and
+    the weapons at the foot;
+  - the buttons' pictures 42 px, all six in the column, and the chip saying
+    CLOSE, its word whole;
   - the four groups, every row on the screen, each group's rows packed with a
     gap between groups, every row 21-28 px, the words 15 px or more and none
     cut short;
   - no Q or R until they work, and Q once a shield is worn;
   - H folding the controls, and the world growing;
-  - I and P, and folded, the world after the fold chip's strip;
+  - I and P, and folded, the world after the fold chip's strip, the chip
+    saying OPEN;
   - the chat bar over the world;
   - the Points list: thirteen rows on the screen, and a click opening its
     window.

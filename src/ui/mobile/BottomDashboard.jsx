@@ -22,7 +22,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
+import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -1304,9 +1304,19 @@ export const BottomDashboard = () => {
                15px arrow rattling in 32px of it reads as a mis-sized button
                rather than a bigger one.  18 keeps the same optical weight
                inside the frame that 15 had at 34. */
-            style={{ ...chipStyle, flex: 'none', fontSize: 18,
-              width: LAND_FOLD_CHIP_W, height: LAND_FOLD_CHIP_W }}
-          >{mode === 'expanded' ? '▾' : '▴'}</button>
+            /* ═══ v2.3.3687: ON A COMPUTER, A WORD ═══
+               The owner: "Instead of the down arrow chip I think you should
+               just have a "close" button that says close for hiding the
+               display menus" -- CLOSE while the pages are open, OPEN while
+               they are folded, the upright phone's chip (v2.3.2266) in the
+               computer's sizes (sheetGeometry DESK_FOLD_CHIP_W: why a phone
+               on its side keeps the arrows). */
+            style={deskKeys
+              ? { ...chipStyle, flex: 'none', width: DESK_FOLD_CHIP_W, height: DESK_NAV_BTN_H,
+                  padding: 0, fontSize: 12, fontWeight: 800, letterSpacing: '.08em' }
+              : { ...chipStyle, flex: 'none', fontSize: 18,
+                  width: LAND_FOLD_CHIP_W, height: LAND_FOLD_CHIP_W }}
+          >{deskKeys ? (mode === 'expanded' ? 'CLOSE' : 'OPEN') : (mode === 'expanded' ? '▾' : '▴')}</button>
           {/* ═══ v2.3.2176: MINIMIZED MEANS MINIMIZED ═══
               Owner: the nav buttons "should've been hidden inside the main
               dashboard screen when it's minimized."  So sideways they are
@@ -1325,6 +1335,8 @@ export const BottomDashboard = () => {
                 vh={typeof window !== 'undefined' ? window.innerHeight : 844}
                 dots={dots}
                 btnW={LAND_NAV_BTN_W}
+                btnH={deskKeys ? DESK_NAV_BTN_H : undefined}
+                iconPx={deskKeys ? DESK_NAV_ICON : undefined}
                 fill
                 landLit
                 profilePortrait={profilePortrait} />
