@@ -199,23 +199,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
        the walk, its plain body frames counted */
     const ready = await P.page.evaluate(async () => {
       const t0 = performance.now();
-      let jog = null, all = null;
+      let jog = null, all = null, last = null;
       while (performance.now() - t0 < 90000 && all == null) {
         const c = window.__btMaskedCoverage ? window.__btMaskedCoverage() : null;
         if (c && c.want > 0) {
+          last = c;
           const t = Math.round(performance.now() - t0);
           if (jog == null && c.missing.length < 24 && !c.missing.some((m) => /^jog\//.test(m))) jog = t;
           if (c.have === c.want) { all = t; if (jog == null) jog = t; }
         }
         await new Promise((r) => setTimeout(r, 100));
       }
-      return { jog, all };
+      return { jog, all, have: last && last.have, want: last && last.want, missing: last ? last.missing.slice(0, 12) : null };
     });
     await startWatch(P);
     await walkAll(P, 1000);
     const w0 = await stopWatch(P);
     await report(P, 'the walk after putting the armour on', w0);
-    console.log(`    after putting the armour on: every jog frame baked in ${ready.jog} ms, the whole set in ${ready.all} ms`);
+    console.log(`    after putting the armour on: every jog frame baked in ${ready.jog} ms, the whole set in ${ready.all} ms (held ${ready.have} of ${ready.want}${ready.missing && ready.missing.length ? '; missing ' + ready.missing.join(', ') : ''})`);
     rec.ok(`(measure) after putting the armour on: the jog baked in ${ready.jog} ms, the set in ${ready.all} ms; the walk after, ${w0.plain} plain body frames`, true);
     const look = await P.page.evaluate(() => { const r = window.__btCharRecord ? window.__btCharRecord() : null; return r && r.look ? JSON.stringify(r.look).slice(0, 300) : null; });
     console.log('    the character\'s record: ' + look);
