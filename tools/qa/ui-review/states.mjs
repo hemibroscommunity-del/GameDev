@@ -459,7 +459,8 @@ export const STATES = [
   },
 
   /* ═══ THE DASHBOARD ═══ */
-  dash('hero', 'Character', 'Your character page: equipment slots, the figure, your stats as pills (offense, player, vitals).'),
+  /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page) */
+  dash('hero', 'Character', 'Your character page, two tabs (Equipment and Points): equipment slots, the figure, your stats as pills (offense, player, vitals).'),
   {
     id: 'dash-hero-points', group: 'Dashboard', title: 'Character: Points',
     about: 'The Character page on its Points tab: spending points on each weapon skill and on the character.',
@@ -576,7 +577,8 @@ export const STATES = [
       await P.page.waitForSelector('[data-achv-title-current="first_blood"]', { timeout: 6000 }).catch(() => {});
     },
   }),
-  more('journey', 'Journey', 'Your journey so far.'),
+  /* v2.3.3773: Journey is its own page under More, the Character page's old records tab moved here */
+  more('journey', 'Journey', 'Your journey: kills, deaths, lifetime gold and XP, duels won and the deepest zone (the Character page\'s old third tab).'),
   more('account', 'Login Key', 'Your Login Key: how to carry this character to another device.'),
   more('about', 'About & privacy', 'About the game, privacy, rules and credits.'),
   more('feedback', 'Feedback', 'Sending feedback to the developer.'),
