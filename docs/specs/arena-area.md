@@ -235,8 +235,23 @@ area does:
 - **A townsperson** (`src/data/wheelBuildingDoors.js` `WHEEL_TOWNSFOLK`), a
   tap to talk (tests reach him with `H.approachNpc`), behind the cap
   `arenaarea` (an older worker: he does not stand there).
-- **His look**: the character creator's ids plus armour, baked by
-  `tools/qa/npc-looks.mjs` and `tools/qa/npc_looks_bake.py`, never by hand.
+- **His look** (the owner: *"put armor on the bro (iron) and spartan
+  helm"*): the full **IRON** armour set and the **Spartan Helmet** (headwear
+  id `spartan-helmet`, `src/rendering/traits/headwearCatalog.js`), over the
+  character creator's ids, baked by `tools/qa/npc-looks.mjs` and
+  `tools/qa/npc_looks_bake.py`, never by hand.
+  - **Townsfolk looks cannot carry armour today**: the bake takes each one's
+    photograph with the gear slots set to none (`npc-looks.mjs` sets `chest`,
+    `legs` and `shoulders` to `'none'` through `__btGearSet`). So part 1
+    adds an armour field to a townsperson's look (each slot's piece, and its
+    tier), sets it through the same `__btGearSet` before the photograph, and
+    keeps every other townsperson's photograph the same (a re-bake of all of
+    them that changes none is the check). The helmet is a creator headwear
+    id, which the bake already sets.
+  - **Standing in the car**: lane E's chariot art gives where his feet go
+    and the line of the front rail (`ARENA_ART.chariot.stand` / `rail`,
+    `src/data/arenaArt.js`, PR #1222): his photograph is drawn with its feet
+    at `stand`, between the chariot's back half and its rail.
 - **The chariot** is NEW art: the owner is making it in ChatGPT (from the
   orchestrator's prompt: a two-wheeled war chariot with one armoured horse,
   the car empty, side-on facing left, on magenta, 320 px wide, group
@@ -387,7 +402,7 @@ part sits behind its switch, the owner's preference), in this order:
 
 | # | Part | What it is | Size |
 |---|---|---|---|
-| 1 | The charioteer | the townsperson by the Sheriff's Office (his baked look, the chariot as a stand-in until the owner's picture, then its two halves); his dialogue: sign up (the window's arena flow moved into it), and the Sheriff's row pointing to him | **Medium**: 1 lane |
+| 1 | The charioteer | the townsperson by the Sheriff's Office (his baked look in iron armour and the Spartan Helmet, with the bake taught to carry armour; the chariot in its two halves, a stand-in until the owner's picture); his dialogue: sign up (the window's arena flow moved into it), and the Sheriff's row pointing to him | **Medium**: 1 lane |
 | 2 | The zone, in and out | `arena:<n>`, `arena_enter` / `arena_leave`, the cap and kill switch `arenaarea`, "Ride to the arena" and its loading screen, the gate out, open between tournaments; a phone test riding in and walking out | **Medium**: 1 lane, mostly the dungeons' path |
 | 3 | The owner's art in it | the Ring and the Field side by side (the Field's single posts cut by lane E's tool, ropes in code), each fence a footprint on the phone and an oval on the worker, the gate, the stands and the props, the floor; loading and freeing; the UI review's state; `mp-membudget` | **Medium**: 1 lane (the art exists) |
 | 4 | Fighters into a ring and out | the worker places them at a match's start and end, in its ring; a ring refuses spectators; "Your match is starting: go to the arena"; mp-arena moved into the area | **Medium to large**: 1-2 lanes |
