@@ -117,6 +117,9 @@ export function PartyPanel(props) {
      v2.3.3481). */
   var achvCaps = stateRef.current && stateRef.current._serverCaps ? stateRef.current._serverCaps.achievements : undefined;
   return React.createElement("div", {
+    /* v2.3.3713: where this player stands, the worker's word (gladiator.js
+       _arenaStatusFor) -- what mp-arena reads */
+    "data-arena-state": arenaStatus && arenaStatus.status || 'none',
     /* v2.3.1232: LS shared buildings kit -- full-bleed panel surface;
        -20px margin counters the legacy .bt-inspect-card padding */
     style: {
@@ -316,7 +319,8 @@ export function PartyPanel(props) {
               ok: true,
               status: 'queued',
               position: data.queuePosition || 1,
-              queueSize: data.queueSize || 1
+              queueSize: data.queueSize || 1,
+              startsAt: data.startsAt || 0   /* v2.3.3713 */
             });
             if (data.started && data.tournament) setArenaTournament(data.tournament);
             pushDmgPopup(S, S.player.x, S.player.y - 30, 'Entered arena queue!', '#D95C54');
@@ -403,7 +407,11 @@ export function PartyPanel(props) {
       fontSize: 11,
       color: '#8D9B98'
     }
-  }, "Position: ", arenaStatus.position, "/", arenaStatus.queueSize, " \xB7 Waiting for ", arenaStatus.queueSize < 4 ? '4' : '16', " players..."), /*#__PURE__*/React.createElement("div", {
+  }, "Position: ", arenaStatus.position, "/", arenaStatus.queueSize, " \xB7 ",
+  /* v2.3.3713: the worker sends when the bracket starts (`startsAt`: a
+     minute after the first entry, with 2 or more); "Waiting for 4/16
+     players" was the old Arena DO's rule, never this worker's */
+  arenaStatus.startsAt ? 'Bracket starts in ' + Math.max(0, Math.ceil((arenaStatus.startsAt - Date.now()) / 1000)) + 's' : 'Waiting for ' + (arenaStatus.queueSize < 4 ? '4' : '16') + ' players...'), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#8D9B98',
@@ -562,13 +570,13 @@ export function PartyPanel(props) {
       color: '#8D9B98',
       marginTop: 6
     }
-  }, "Find and defeat your opponent! PvP in any zone counts."), /*#__PURE__*/React.createElement("div", {
+  }, "Find and defeat your opponent!" /* v2.3.3713: a match counts wherever you meet */), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       color: '#667875',
       marginTop: 4
     }
-  }, "If opponent doesn't show within 2 min, win is auto-awarded.")), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'eliminated' && /*#__PURE__*/React.createElement("div", {
+  }, "3 minutes on the clock: then the one with more health left wins." /* v2.3.3713: the worker's rule (gladiator.js MATCH_MS, _arenaTiebreak); "2 min ... auto-awarded" was the old Arena DO's */)), (arenaStatus === null || arenaStatus === void 0 ? void 0 : arenaStatus.status) === 'eliminated' && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 10,
       borderRadius: 8,
@@ -1447,6 +1455,7 @@ export function PartyPanel(props) {
       return b.round === arenaTournament.round;
     });
     return /*#__PURE__*/React.createElement("div", {
+      "data-arena-bet": "1" /* v2.3.3713: mp-arena's handles on the real bet */,
       style: {
         marginTop: 6,
         padding: 10,
@@ -1487,6 +1496,7 @@ export function PartyPanel(props) {
     }, remaining.map(function (p) {
       return /*#__PURE__*/React.createElement("button", {
         key: p.id,
+        "data-arena-bet-target": p.id,
         onClick: function onClick() {
           return setArenaBetTarget(arenaBetTarget === p.id ? null : p.id);
         },
@@ -1516,6 +1526,7 @@ export function PartyPanel(props) {
         color: '#D8AA58'
       }
     }, "Bet:"), /*#__PURE__*/React.createElement("input", {
+      "data-arena-bet-amount": "1",
       type: "number",
       min: ARENA_BET_MIN,
       max: Math.min(ARENA_BET_MAX, rpgState.coins),
@@ -1543,6 +1554,7 @@ export function PartyPanel(props) {
         color: '#8D9B98'
       }
     }, "G (max ", Math.min(ARENA_BET_MAX, rpgState.coins), ")")), /*#__PURE__*/React.createElement("button", {
+      "data-arena-bet-place": "1",
       disabled: !arenaBetTarget || rpgState.coins < arenaBetAmount,
       onClick: function onClick() {
         var _remaining$find2;

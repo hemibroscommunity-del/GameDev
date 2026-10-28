@@ -4726,7 +4726,17 @@ export function processGameEvent(type, payload, S, deps) {
                    the duel's own popup and sound on top read "DUEL WON!" over
                    "Arena win!".  So for a match this phone knows as the arena's
                    (arena_match_start's `arena`), the state is cleared quietly. */
-                var _arenaDuel = !!((S._inDuel && S._inDuel.arena) || (S._activeDuel && S._activeDuel.arena));
+                var _arenaDuel = !!(payload.arena || (S._inDuel && S._inDuel.arena) || (S._activeDuel && S._activeDuel.arena));   /* v2.3.3713: + the worker's word (duel.js) */
+                /* v2.3.3713: ...and the end of an EARLIER match never clears the
+                   next one.  When a round's last match ends the worker starts
+                   the next round inside the same call and sends its
+                   arena_match_start at once, while this duel_end waits for the
+                   event buffer's flush: the winner's phone heard "fight
+                   Retiarius!" and then lost the final's duel to the old one's
+                   end (mp-arena).  So an arena duel is cleared only by an end
+                   naming its own opponent. */
+                var _endFoe = _won ? payload.loser : payload.winner;
+                if (S._inDuel && S._inDuel.arena && String(S._inDuel.opponent) !== String(_endFoe)) break;
                 S._activeDuel = null;
                 S._inDuel = null;
                 /* v2.3.2242 (post-review): the duel took the lock and may have

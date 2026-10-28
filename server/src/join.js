@@ -1859,6 +1859,9 @@ export const joinMethods = {
         }));
       } catch (e) {}
     }
+    /* v2.3.3713: an arena match this player is in, said again (gladiator.js
+       _arenaOnRejoin) -- after state_sync, as the respawn above */
+    try { if (this._arenaOnRejoin) this._arenaOnRejoin(msg.id, ws); } catch (e) { /* the window's poll still shows the match */ }
     // v2.3.1185: party roster re-send -- MUST stay after the state_sync
     // send above: clients clear their party HUD on every state_sync
     // (deploys wipe the in-memory roster; stale HUDs must not survive a
