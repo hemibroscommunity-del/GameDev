@@ -653,8 +653,14 @@ export class GlintSystem {
         if (fx) for (const k of SELF_LEGS_STAND_INS) pushVisible(s, fx[k]);
         this._slot(out, 'self:l', s, lm, seenGrade(rpg.legsArmor), 'l');
       }
-      /* v2.3.3321: the figure every piece lays the sun side across */
-      for (let i = n0; i < out.length; i++) out[i].fig = pd._spriteBody || null;
+      /* v2.3.3321: the figure every piece lays the sun side across --
+         v2.3.3697: while you farm, a walking body's frame where you work
+         (effectsRenderer farmFigProxy, never drawn): with your body hidden
+         the farmer's pieces fell back to their own frames, two to three times
+         the figure, and caught more or less of the light than your walking
+         armour (mp-farmiron) */
+      const ffig = fx && fx.farmFigProxy && fx.farmFigProxy.visible ? fx.farmFigProxy : null;
+      for (let i = n0; i < out.length; i++) out[i].fig = ffig || pd._spriteBody || null;
     }
     const others = (S && S.others) || null;
     if (er && er.otherPlayerDisplays && others) {
@@ -707,7 +713,9 @@ export class GlintSystem {
           if (fa) pushVisible(s, fa.legs);   /* v2.3.3472 */
           this._slot(out, id + ':l', s, lm, peerGrade(o._eqg, 1), 'l');
         }
-        for (let i = n1; i < out.length; i++) out[i].fig = d._spriteBody || null;   /* v2.3.3321 */
+        /* v2.3.3321; v2.3.3697: a farming peer's own walking frame (effectsRenderer _drawPeerFarmer) */
+        const pfig = fa && fa.fig && fa.fig.visible ? fa.fig : null;
+        for (let i = n1; i < out.length; i++) out[i].fig = pfig || d._spriteBody || null;
       }
     }
     return out;

@@ -301,7 +301,7 @@ import { MONSTER_VARIANTS, ZONE_VARIANT_MAP, hitMaterialOf, hitFxTintOf /* v2.3.
 import { drawArrowWound, drawArrowWoundLip, StuckArrowBaker } from '../arrowWound.js';
 import { pinnedArrow, arrowPinStats, arrowPinOnArt } from '../arrowPin.js';   /* v2.3.2930: stuck arrows pinned to the art, carried with the animation */   /* v2.3.2923: the puncture round a stuck shaft */
 import { ZONE_SHARDS } from '../../data/shards.js';
-import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, standShadeSpan /* v2.3.3636 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
+import { placeSkillTraits, placeSkillTraitsFor, hideSkillTraits, placeStandInCape, selfCorpseUp, SWORD_SWING_MS, BOW_SHOT_MS, BOW_RELEASE_MS, standFootDy, playerGroundDy /* v2.3.2996: where a status sits */, nominalStandFigure /* v2.3.2991 */, standShadeSpan /* v2.3.3636 */, fittedShadeSpan /* v2.3.3697 */, MONSTER_SIZE_MULT /* v2.3.2991: the slime's true size, for the stat scene's films */, remoteBodyArt, monsterBodySprite, drawNodeHpBar /* v2.3.2956: a node's HP bar while your hits land */, bandScale, HPBAR_BIG_H /* v2.3.3035: that bar at your HP bar's size, over the resource */ /* v2.3.2923b */ } from './entityRenderer.js'; /* v2.3.2190: the cape on an attack stand-in; v2.3.2281: is the corpse up; v2.3.2846: where a character's boots are */
 import { clipBoxOrSelf } from '../hairClip.js';   /* v2.3.3459: a stand-in's hair silhouette travels in its stencil box */
 import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape, for the attack stand-ins */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
@@ -504,6 +504,40 @@ const FARM_GEAR = [['shirt', 'tshirt'], ['chest', 'steelplate'], ['legs', 'steel
 /* v2.3.3439: another player's farmer's sprites, in their layer order
    (_drawPeerFarmer): body, greaves, shirt, plate, tool */
 const FARM_PEER_LAYERS = ['body', 'legs', 'shirt', 'chest', 'prop'];
+/* v2.3.3697: a move's crown, the middle of its frames' (FARM_ANIMS `crowns`,
+   frame px): the farmer's shade and shine are fitted to it, not to a head that
+   bobs with the swing (_updateFarmWork, FITTED TO HIM) */
+const _farmCrownMid = new Map();
+function farmCrownMed(A) {
+  let v = _farmCrownMid.get(A);
+  if (v == null) {
+    const ys = (A.crowns || []).map((c) => c[1]).sort((a, b) => a - b);
+    v = ys.length ? ys[(ys.length - 1) >> 1] : 0;
+    _farmCrownMid.set(A, v);
+  }
+  return v;
+}
+/* v2.3.3697: the box the farmer's shine is laid across (glint.js `uFig`), on
+   a sprite that is never drawn: a walking body's frame where his boots are, as
+   wide as a standing figure's frame and fitted, as his shade is, to his own
+   crown and boots (`fit`, fittedShadeSpan; `stand`, standShadeSpan) */
+function placeFarmFigProxy(px, x, fit, stand, bl) {
+  if (!px) return;
+  const k = Math.abs((bl && bl.sx) || 1) / Math.abs((bl && bl.sy) || 1);
+  px.x = x;
+  px.y = fit[1];
+  px.scale.set((stand[1] - stand[0]) * k, fit[1] - fit[0]);
+  px.visible = true;
+}
+function makeFarmFigProxy(layer, label) {
+  const px = new Sprite(Texture.WHITE);
+  px.anchor.set(0.5, 1);
+  px.renderable = false;   /* never drawn: only its box is read */
+  px.visible = false;
+  px.label = label;
+  layer.addChild(px);
+  return px;
+}
 
 /* The pan hangs to the cook's RIGHT and has to stay over the flames, so its
  * offset tracks the figure's height.  Held as a FRACTION of that height rather
@@ -3747,6 +3781,8 @@ export class EffectsRenderer {
       sp.label = label;
       this.gestureLayer.addChild(sp);
     }
+    /* v2.3.3697: the walking frame his shine is laid across (placeFarmFigProxy) */
+    this.farmFigProxy = makeFarmFigProxy(this.gestureLayer, 'farmFig');
     this._farmFrames = null;   /* anim -> [Texture], in your colours (_bakeFarmBodies) */
     this._farmUnder = false;   /* v2.3.3439: whether those are the body worn under greaves */
     this._farmProps = null;    /* anim -> [Texture], the hoe and the can as drawn */
@@ -13630,6 +13666,7 @@ export class EffectsRenderer {
       /* v2.3.3439: and a peer's farmer, which has its own (_drawPeerFarmer) */
       if (ent.farm) {
         for (const k of FARM_PEER_LAYERS) ent.farm[k].visible = false;
+        if (ent.farm.fig) ent.farm.fig.visible = false;   /* v2.3.3697 */
         hideSkillTraits(ent.farm.traits);
       }
     }
@@ -16718,6 +16755,7 @@ export class EffectsRenderer {
       const F = {};
       for (const k of FARM_PEER_LAYERS) { F[k] = mk(); F[k].anchor.set(0.5, 1); }
       F.traits = { hair: mk(), beard: mk(), species: mk(), eyestyle: mk(), eyewear: mk(), hat: mk() };
+      F.fig = makeFarmFigProxy(this.gestureLayer, 'peerFarmFig');   /* v2.3.3697: their shine's frame */
       ent.farm = F;
     }
     const F = ent.farm;
@@ -16754,9 +16792,14 @@ export class EffectsRenderer {
     const pf = this._farmProps && this._farmProps[fx.anim];
     place(F.prop, pf ? pf[Math.min(fi, pf.length - 1)] : null);
     /* v2.3.3636: lit as THEIR walking figure is (see _updateFarmWork's LIT AS
-       HIS WALKING FIGURE IS) -- the span at their boots, at their build */
-    const fsp = F.shade = spanSpec(SHADE.figure, standShadeSpan(feetY, pscale, bl.sy), body.y - A.fh * body.scale.y, body.y, F.shade);
+       HIS WALKING FIGURE IS) -- the span at their boots, at their build;
+       v2.3.3697: fitted to their crown and boots, their shine across their
+       own walking frame (_updateFarmWork's FITTED TO HIM) */
+    const pFoot = body.y + (A.foot[1] - A.fh) * body.scale.y;
+    const pFit = fittedShadeSpan(body.y + (farmCrownMed(A) - A.fh) * body.scale.y, pFoot);
+    const fsp = F.shade = spanSpec(SHADE.figure, pFit, body.y - A.fh * body.scale.y, body.y, F.shade);
     for (const sp of [body, F.legs, F.shirt, F.chest, F.prop]) if (sp) sp._vShade = fsp;
+    placeFarmFigProxy(F.fig, ox, pFit, standShadeSpan(feetY, pscale, bl.sy), bl);
     const looks = {
       hair: o.hair, hairColor: o.hairColor,
       facialhair: o.facialhair, facialHairColor: o.facialHairColor,
@@ -16788,6 +16831,7 @@ export class EffectsRenderer {
     if (!F) return;
     for (const k of FARM_PEER_LAYERS) if (F[k] && !F[k].destroyed) F[k].destroy();
     for (const k in F.traits) if (F.traits[k] && !F.traits[k].destroyed) F.traits[k].destroy();
+    if (F.fig && !F.fig.destroyed) F.fig.destroy();   /* v2.3.3697 (its texture is Texture.WHITE: kept) */
     ent.farm = null;
   }
 
@@ -16827,6 +16871,7 @@ export class EffectsRenderer {
     if (!body) return;
     body.visible = false;
     for (const sp of [legs, shirt, chest, prop]) if (sp) sp.visible = false;
+    if (this.farmFigProxy) this.farmFigProxy.visible = false;   /* v2.3.3697 */
     /* v2.3.3439: greaves put on or taken off on the farm: the other body,
        baked now.  Asked here rather than by a listener, so a change made while
        a bake was on its way is caught too. */
@@ -16889,9 +16934,33 @@ export class EffectsRenderer {
        the standing figure's span where you stand (standShadeSpan), laid on
        the quad (spanSpec).  A spec of its own, not SHADE.figure itself, which
        sharpPixels takes for a pixel-art figure and would resample him. */
-    const fsp = this._farmShadeSpec = spanSpec(SHADE.figure, standShadeSpan(feetY, pscale, bl.sy),
+    /* ═══ v2.3.3697: ...FITTED TO HIM, AND HIS SHINE TOO ═══
+       The owner, 2026-10-28: "As part of the farming animations I think either
+       the watering, planting, or fertilizing the armor styles didn't match
+       (different shades of gray for iron armor) possibly wrong shades for
+       copper armor too".  Measured piece by piece (mp-farmiron), two things
+       still parted him from the walking figure:
+         - the span was laid at the world's heights, so KNEELING (plant,
+           compost, harvest) his plate took the shade of a standing figure's
+           thighs, cooler and darker: bluer than the walking plate.  It is
+           fitted to his own crown and boots now (fittedShadeSpan, the move's
+           middle crown, so the shade does not pulse as his head bobs) -- for
+           the hoe and the can, which stand at your height, what it was;
+         - the metal's shine lays its sun side and sweep across a figure's
+           frame (glint.js `uFig`), and with your walking body hidden his
+           pieces fell back to their own frames, two to three times the
+           figure, the hoe's and can's plates catching more of the light than
+           the walking plate and the kneel's less (the brightest tenth 137-155
+           and 116-123 against 134).  `farmFigProxy`, never drawn, stands
+           where a walking body's frame would, fitted the same way, and the
+           shine lays its light across it (glint.js). */
+    const footYw = body.y + (A.foot[1] - A.fh) * body.scale.y;
+    const crownYw = body.y + (farmCrownMed(A) - A.fh) * body.scale.y;
+    const fit = fittedShadeSpan(crownYw, footYw);
+    const fsp = this._farmShadeSpec = spanSpec(SHADE.figure, fit,
       body.y - A.fh * body.scale.y, body.y, this._farmShadeSpec);
     for (const sp of [body, legs, shirt, chest, prop]) if (sp) sp._vShade = fsp;
+    placeFarmFigProxy(this.farmFigProxy, P.x, fit, standShadeSpan(feetY, pscale, bl.sy), bl);
     this._placeSkillTraitsOn(A.pose, body, fi, 'south', false);
     /* where the work lands -- the blade striking, the water reaching the soil,
        the hands in it: what you dig, pour or plant flies from there
@@ -16919,7 +16988,10 @@ export class EffectsRenderer {
           shirt: { visible: !!(shirt && shirt.visible), tint: shirt ? shirt.tint : null },
           prop: { visible: !!(prop && prop.visible), want: !!A.prop },
           /* v2.3.3636: his shade read at his boots and his crown, and the
-             walking figure's at the same heights (mp-farmiron) */
+             walking figure's at its own (mp-farmiron) -- v2.3.3697: his crown
+             the move's middle one, the span's fitted to (fittedShadeSpan), and
+             the walking figure's boots and crown where a standing figure has
+             them, not at his heights: kneeling, his are lower */
           shade: (() => {
             const sp = chest && chest._vShade;
             if (!sp || !sp.top) return null;
@@ -16928,9 +17000,13 @@ export class EffectsRenderer {
             const mine = (y) => lerp(sp.top, sp.bot, (y - qT) / (qB - qT));
             const span = standShadeSpan(feetY, pscale, bl.sy);
             const walk = (y) => lerp(SHADE.figure.top, SHADE.figure.bot, (y - span[0]) / (span[1] - span[0]));
-            const footY = body.y + (A.foot[1] - A.fh) * body.scale.y, crownY = body.y + (cr[1] - A.fh) * body.scale.y;
-            return { boots: mine(footY), crown: mine(crownY), walkBoots: walk(footY), walkCrown: walk(crownY),
-              all: [body, legs, shirt, chest, prop].every((q) => !q || q._vShade === sp) };
+            const fig = nominalStandFigure('south');
+            const wFeet = feetY, wCrown = feetY - fig.bodyH * pscale * (bl.sy || 1);
+            return { boots: mine(footYw), crown: mine(crownYw), walkBoots: walk(wFeet), walkCrown: walk(wCrown),
+              all: [body, legs, shirt, chest, prop].every((q) => !q || q._vShade === sp),
+              /* the box his shine is laid across (glint.js), world px */
+              figBox: this.farmFigProxy && this.farmFigProxy.visible
+                ? { x: this.farmFigProxy.x, bottom: this.farmFigProxy.y, w: this.farmFigProxy.scale.x, h: this.farmFigProxy.scale.y } : null };
           })(),
           /* v2.3.3439: the armour, each with the frame of its strip it is on
              (-1: not one of that strip's), and which body is under it */

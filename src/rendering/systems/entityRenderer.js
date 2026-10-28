@@ -6150,6 +6150,26 @@ export function standShadeSpan(feetY, zoneScale, sy) {
   const s = bodyDirScale('stand', 'south') * LOCAL_BODY_SCALE * PLAYER_SIZE_MULT * (zoneScale || 1) * (sy || 1);
   return [feetY - rows.feet * s, feetY + (BODY_CELL_MID * 2 - rows.feet) * s];
 }
+/* ═══ v2.3.3697: ...FITTED TO A FIGURE THAT IS NOT STANDING ═══
+   The owner, 2026-10-28: "As part of the farming animations I think either the
+   watering, planting, or fertilizing the armor styles didn't match (different
+   shades of gray for iron armor) possibly wrong shades for copper armor too".
+   The span above is laid at the world's heights, so a farmer KNEELING (plant,
+   compost, harvest) had his plate where a standing figure's thighs are and
+   took their cooler, darker shade: bluer than the walking plate (mp-farmiron:
+   the plate's saturation 0.15-0.18 against the walker's 0.13).  This is the
+   same frame stretched so that a figure's own crown and boots land where the
+   standing figure's do in it: for a figure of the standing height exactly
+   standShadeSpan, and for a kneeling one each piece the shade that piece has
+   on the walking figure. */
+export function fittedShadeSpan(crownY, feetY) {
+  const rows = bodyRows('stand', 'south');
+  const H = BODY_CELL_MID * 2;
+  const tC = rows.crown / H, tF = rows.feet / H;
+  const h = (feetY - crownY) / Math.max(1e-6, tF - tC);
+  const top = crownY - tC * h;
+  return [top, top + h];
+}
 export function nominalStandFigure(dir) {
   const d = dir || 'south';
   const rows = bodyRows('stand', d);

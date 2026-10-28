@@ -2,34 +2,36 @@
  *
  * The owner's list of 2026-10-26: "The armor while performing farming
  * gestures is noticeably different color (iron). Try to make it match more
- * exactly."
+ * exactly."  Then, 2026-10-28: "As part of the farming animations I think
+ * either the watering, planting, or fertilizing the armor styles didn't match
+ * (different shades of gray for iron armor) possibly wrong shades for copper
+ * armor too".
  *
  * v2.3.3472 graded the farmer's plate and greaves to the walking sheets' greys
- * and gave them the same metal tint and shine.  What was left is the LIGHT: the
- * walking figure is form-shaded (formShade.js, v2.3.2767) -- one gradient over
- * the whole figure, as painted at the head and a cool shade at the boots (x0.72
- * red, x0.75 green, x0.90 blue) -- and the farmer, drawn as stand-in sprites in
- * the gesture layer, was not shaded at all: iron a quarter brighter and warmer
- * at the boots than the same iron a moment before.
+ * and gave them the same metal tint and shine; v2.3.3636 lit them with the
+ * walking figure's form shade at the world's heights.  v2.3.3697 fits that
+ * shade to his own crown and boots (kneeling, his plate took a standing
+ * figure's thighs' cooler shade), and lays the metal's shine across a walking
+ * body's frame where he works (it fell back to the farm frames, two to three
+ * times the figure).
  *
- * Measured as a player sees it, on a phone, on the farm, in a full iron set:
- * every world layer's other children hidden so the figure stands on the
- * canvas's own colour, a picture of the bro standing by bed 0, then one of him
- * at the same spot holding the hoe (the dig's rest frame, held).  In each, the
- * armour's pixels (grey and bluish: not the skin, hair, cap or tool) in three
- * bands from the boots up; each band's median colour, farmer over walker:
- *   - each channel within FIT of the walker's from the boots to the chest
- *     (before this version the boots' red and green were 15% and 13% over: no
- *     form shade, and steel graded to the jog's darker greaves); the head and
- *     shoulders within FIT_TOP (his arms cross his chest there);
- *   - the farmer's armour carries the walking figure's own shade at its height
- *     (the probe: his sprites' gradient, read at his boots and his crown,
- *     against the walking figure's at the same heights).
+ * Measured as a player sees it, on a phone, on the farm, in each OUTFIT (a
+ * full iron set, a full copper set): the walking figure standing by bed 0,
+ * then the farmer at the same spot in each MOVE -- the hoe, the can, the
+ * kneel that plants, composts and harvests -- at FRAMES of it, each held.
+ * Every piece is pictured ALONE (every other piece of the figure and the
+ * world not rendered), the plate and then the greaves, and its pixels (not
+ * the canvas's colour, not its darkest outline) read: the median colour,
+ * farmer over walker, every channel within FIT_PIECE; and the farmer carries
+ * the walking figure's own shade at his boots and crown (the probe).
  *
  *   node tools/qa/mp/run.mjs farmiron
- *   BT_FARMIRON_SHADE=0  runs it with ?shade=0 (no form shading anywhere): the
- *                        two figures must match then too
- *   BT_FARMIRON_QUERY=x  adds x to the address (sheen=0: the metal's shine off)
+ *   BT_FARMIRON_SHADE=0     ?shade=0 (no form shading anywhere)
+ *   BT_FARMIRON_QUERY=x     adds x to the address (sheen=0: the metal's shine off)
+ *   BT_FARMIRON_OUTFITS=iron,copper  BT_FARMIRON_MOVES=dig,water,plant
+ *   BT_FARMIRON_FRAMES=0,2,4,6
+ * Pictures: tools/qa/mp/out/farmiron-<outfit>-<step>-<frame>-<piece>.png and
+ * farmiron-walk-<outfit>-<piece>.png; numbers in farmiron.json.
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
@@ -39,9 +41,28 @@ import { FARM_STEP_ANIM, FARM_ANIM_TURN, FARM_WORK_MS } from '../../../src/game/
 
 const PHONE = { width: 390, height: 844 };
 const FOOT_DY = 52;   /* a body's middle to its boots on the farm (mp-farmanim) */
-const FIT = 0.08;     /* the boots' and middle bands' channels within 8% of the walker's (two poses: the hoe's rest frame against the standing figure; the code before this version: boots 15%, the chest 9% over) */
-const FIT_TOP = 0.14; /* the head and shoulders': his arms cross his chest there (the art's own top third 11% darker) */
-const WALK_H = 105.7; /* the walking figure, top of the head to the boots, world px (mp-farmanim) */
+/* v2.3.3697: what is pictured -- each outfit, each move, these frames of it */
+const OUTFITS = [
+  { id: 'iron', chest: 'ironplate', legs: 'irongreaves' },
+  { id: 'copper', chest: 'copperplate', legs: 'coppergreaves' },
+].filter((o) => !process.env.BT_FARMIRON_OUTFITS || process.env.BT_FARMIRON_OUTFITS.split(',').includes(o.id));
+const MOVES = [
+  { step: 'dig', what: 'with the hoe' },
+  { step: 'water', what: 'with the can' },
+  { step: 'plant', what: 'kneeling (plant, compost, harvest)' },
+].filter((m) => !process.env.BT_FARMIRON_MOVES || process.env.BT_FARMIRON_MOVES.split(',').includes(m.step));
+const FRAMES = (process.env.BT_FARMIRON_FRAMES || '0,2,4,6').split(',').map(Number);
+/* each piece's median colour, farmer over walker, every channel, within
+   FIT_PIECE; a piece of fewer than SMALL_PX pixels within FIT_SMALL (the
+   kneel's frame 2 shows only the greaves' knee tips, ~240 px, in the shade
+   the art draws under him) */
+const FIT_PIECE = 0.10, FIT_SMALL = 0.25, SMALL_PX = 300;
+/* the plate's brightest tenth (its metal's light), farmer over walker, at
+   least BRIGHT_MIN in every move: kneeling it was 0.86-0.92 in both metals
+   before v2.3.3697 (main's build fails here) -- the standing figure's
+   thighs' shade on his plate -- and is 0.905-0.996 now; the hoe and the can
+   raise his arms into the light, so it may be brighter */
+const BRIGHT_MIN = 0.90;
 
 const LOOK = `try {
   const l = ['openDash', 'move', 'equip', 'dashAfterTurnIn', 'equipAll', 'cycle',
@@ -65,38 +86,6 @@ function frameMid(step, frame, total) {
   return (at + turn[frame] / 2) / k;
 }
 
-/* the armour's pixels in a picture: in the figure's own box (`box`: its
-   boots' row, its crown's row and its middle, in the picture's px), not the
-   canvas's own colour, grey or bluish (saturation under 0.22), neither the
-   outline nor the whites of the eyes -- in three bands from the boots up to
-   the crown; each band's median r, g, b */
-function bands(png, box) {
-  const W = png.width, Hh = png.height, ch = png.channels, d = png.data;
-  const half = (box.feet - box.crown) * 0.38;
-  const out = [];
-  let n = 0;
-  for (let k = 0; k < 3; k++) {
-    /* band 0 the boots' third, band 2 the head and shoulders' */
-    const lo = box.feet - (box.feet - box.crown) * (k + 1) / 3, hi = box.feet - (box.feet - box.crown) * k / 3;
-    const ps = [];
-    for (let y = Math.max(0, Math.ceil(lo)); y <= Math.min(Hh - 1, Math.floor(hi)); y++) {
-      for (let x = Math.max(0, Math.round(box.mid - half)); x <= Math.min(W - 1, Math.round(box.mid + half)); x++) {
-        const i = (y * W + x) * ch;
-        const r = d[i], g = d[i + 1], b = d[i + 2];
-        if (Math.abs(r - 13) + Math.abs(g - 11) + Math.abs(b - 24) < 18) continue;   /* CANVAS_BG */
-        const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-        const L = 0.299 * r + 0.587 * g + 0.114 * b;
-        if (L < 40 || L > 215 || (mx - mn) / Math.max(1, mx) > 0.22 || b < r - 8) continue;
-        ps.push([r, g, b]);
-      }
-    }
-    n += ps.length;
-    const med = (j) => { const v = ps.map((p) => p[j]).sort((a, b) => a - b); return v.length ? v[v.length >> 1] : null; };
-    out.push({ n: ps.length, rgb: [med(0), med(1), med(2)] });
-  }
-  return { n, box, bands: out.every((b) => b.n >= 20) ? out : null };
-}
-
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
@@ -117,34 +106,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (let t0 = Date.now(); Date.now() - t0 < ms;) { v = await fn(); if (pred(v)) return v; await P.page.waitForTimeout(150); }
     return v;
   };
-  /* every world layer's children hidden but `keep`'s: the figure on the
-     canvas's own colour; `null` puts them all back */
-  const isolate = (which) => P.page.evaluate((which) => {
-    const R = window._pixiRenderer;
-    const world = R && R.app && R.app.stage.children.find((c) => c.label === 'world');
-    if (!world) return false;
-    if (!which) {
-      for (const [c, v] of (window.__isoWas || [])) c.visible = v;
-      window.__isoWas = null;
-      return true;
-    }
-    const me = R.playerDisplayRaw();
-    /* the farmer without his hoe (its blade is grey too) */
-    const FARM = new Set(['farmBody', 'farmLegs', 'farmShirt', 'farmChest']);
-    const keep = (c) => (which === 'walk' ? c === me : (FARM.has(c.label)));
-    const was = [];
-    for (const layer of world.children) {
-      for (const c of layer.children || []) {
-        if (keep(c)) continue;
-        was.push([c, c.visible]);
-        c.visible = false;
-      }
-    }
-    /* ...and the walker without his name plate */
-    if (which === 'walk' && me && me._uiLayer) { was.push([me._uiLayer, me._uiLayer.visible]); me._uiLayer.visible = false; }
-    window.__isoWas = was;
-    return true;
-  }, which);
   /* a picture round the boots, 120 x 150 CSS px over them */
   const shot = async (name, feet) => {
     const c = await P.page.evaluate((f) => {
@@ -158,9 +119,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.screenshot({ path: file, clip });
     return { file, clip, at: c };
   };
-  /* a figure's box in its picture's px (dpr 2): its boots' row, its crown's
-     row (world y), its middle */
-  const boxIn = (sh, feetY, crownY, k) => ({ feet: (sh.at.y - sh.clip.y) * 2, crown: (sh.at.y - sh.clip.y - (feetY - crownY) * k) * 2, mid: (sh.at.x - sh.clip.x) * 2 });
   const report = {};
   try {
     await H.enterWorld(P);
@@ -187,74 +145,211 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await until(() => P.page.evaluate(() => (window.__btFarmWalk() || {}).near), (n) => n && n.i === 0 && n.step === 'dig', 6000);
     await P.page.waitForTimeout(1500);
 
-    /* ── 1. the walking figure, standing by the bed ── */
-    const walk = await P.page.evaluate(() => {
+    /* ── v2.3.3697: every move, in iron and in copper, piece by piece ──
+       The owner, 2026-10-28: "As part of the farming animations I think either
+       the watering, planting, or fertilizing the armor styles didn't match
+       (different shades of gray for iron armor) possibly wrong shades for
+       copper armor too".  v2.3.3636 measured the hoe's rest frame alone, the
+       whole figure in three bands (the skin and the cap kept out by their
+       colour, which copper shares).  Now each outfit's walking plate and
+       greaves are pictured ALONE (every other piece of the figure hidden),
+       then the farmer's at the same spot in each move -- the hoe, the can, the
+       kneel that plants, composts and harvests -- at FRAMES of it, held; each
+       piece's median colour, and its upper and lower halves', farmer over
+       walker. */
+    /* every world layer's children hidden but one armour piece: the walker's
+       `part` (its own sprite in the figure, every other piece of the figure
+       hidden) or the farmer's; `null` puts them all back */
+    const isolatePiece = (which, part) => P.page.evaluate(({ which, part }) => {
+      const R = window._pixiRenderer;
+      const world = R && R.app && R.app.stage.children.find((c) => c.label === 'world');
+      if (!world) return false;
+      if (!which) {
+        for (const c of (window.__isoWas || [])) c.renderable = true;
+        window.__isoWas = null;
+        return true;
+      }
+      const me = R.playerDisplayRaw();
+      const was = window.__isoWas || [];
+      /* `renderable`, never `visible`: the renderers set each figure's
+         sprites visible every frame, and nothing in the game sets renderable.
+         Called again just before the picture is taken, it hides what was
+         added since (a planting's seeds and soil fly from his hands on its
+         beat): each hidden once, so the restore puts every one back */
+      const hide = (c) => { if (c.renderable === false) return; was.push(c); c.renderable = false; };
+      let keep = null;
+      if (which === 'walk') {
+        keep = me && (part === 'chest' ? me._gearChest : me._gearLegs);
+      } else {
+        const label = part === 'chest' ? 'farmChest' : 'farmLegs';
+        for (const layer of world.children) for (const c of layer.children || []) if (c.label === label) keep = c;
+      }
+      const up = new Set();
+      for (let n = keep; n; n = n.parent) up.add(n);
+      /* every other layer whole, so nothing added to it shows; in the kept
+         piece's own layer and figure, everything but its line */
+      for (const layer of world.children) if (!up.has(layer)) hide(layer);
+      const down = (n) => { for (const ch of n.children || []) { if (ch === keep) continue; if (up.has(ch)) down(ch); else hide(ch); } };
+      for (const layer of world.children) if (up.has(layer)) down(layer);
+      window.__isoWas = was;
+      return !!(keep && keep.visible);
+    }, { which, part });
+    /* a piece's pixels in its picture: not the canvas's own colour, not its
+       darkest outline; their median r, g, b, and its upper and lower halves'
+       (by the piece's own height in the picture) */
+    const pieceStats = (png) => {
+      const W = png.width, Hh = png.height, ch = png.channels, d = png.data;
+      const px = [];
+      let top = Hh, bot = -1;
+      for (let y = 0; y < Hh; y++) {
+        for (let x = 0; x < W; x++) {
+          const i = (y * W + x) * ch;
+          const r = d[i], g = d[i + 1], b = d[i + 2];
+          if (Math.abs(r - 13) + Math.abs(g - 11) + Math.abs(b - 24) < 18) continue;   /* CANVAS_BG */
+          if (0.299 * r + 0.587 * g + 0.114 * b < 30) continue;                         /* the outline */
+          px.push([y, r, g, b]);
+          if (y < top) top = y;
+          if (y > bot) bot = y;
+        }
+      }
+      const med = (list, j) => { const v = list.map((p) => p[j]).sort((a, b) => a - b); return v.length ? v[v.length >> 1] : null; };
+      const rgb = (list) => (list.length >= 20 ? [med(list, 1), med(list, 2), med(list, 3)] : null);
+      const midY = (top + bot) / 2;
+      const lum = px.map((p) => 0.299 * p[1] + 0.587 * p[2] + 0.114 * p[3]).sort((a, b) => a - b);
+      const hi = lum.length >= 20 ? +lum[Math.floor(lum.length * 0.9)].toFixed(1) : null;
+      return { n: px.length, all: rgb(px), upper: rgb(px.filter((p) => p[0] < midY)), lower: rgb(px.filter((p) => p[0] >= midY)), hi };
+    };
+    const shotPiece = async (name, which, part, feet) => {
+      const ok = await isolatePiece(which, part);
+      await P.page.waitForTimeout(450);
+      await isolatePiece(which, part);   /* and what was added meanwhile */
+      await P.page.waitForTimeout(120);
+      const sh = await shot(`${name}-${part}`, feet);
+      await isolatePiece(null);
+      return { ok, ...pieceStats(H.decodePng(readFileSync(sh.file))) };
+    };
+    const ratio3 = (a, b) => (a && b ? [0, 1, 2].map((j) => +(b[j] / a[j]).toFixed(3)) : null);
+    const within = (q, k) => !!q && q.every((x) => Math.abs(x - 1) <= k);
+    const walkerAt = () => P.page.evaluate(() => {
       const S = window._gameState.current, d = window._pixiRenderer.playerDisplayRaw();
       const t = window.__btGearTints ? window.__btGearTints() : null;
       const of = (slot) => { const r = t && t.slots.find((x) => x.slot === slot); return r && r.visible ? r.tint : null; };
-      return { pose: d && d._animPose, x: S.player.x, feetY: S.player.y + 52, chest: of('chest'), legs: of('legs'), k: S._worldScaleY || 1 };
+      return { pose: d && d._animPose, x: S.player.x, feetY: S.player.y + 52, chest: of('chest'), legs: of('legs') };
     });
-    await isolate('walk');
-    await P.page.waitForTimeout(500);
-    const shW = await shot('walk', { x: walk.x, y: walk.feetY });
-    await isolate(null);
-    /* his height: the walking figure's, crown to boots (mp-farmanim's WALK_H)
-       -- not bodyFigureProbe's, which reads the body's picture, and under
-       armour that is mostly erased (the masked bake) */
-    const bw = bands(H.decodePng(readFileSync(shW.file)), boxIn(shW, walk.feetY, walk.feetY - WALK_H, walk.k));
-    report.walk = { ...walk, bands: bw };
-    rec.ok(`the walking figure stands by the bed in iron (pose ${walk.pose}; plate ${walk.chest}, greaves ${walk.legs}; ${bw.n} armour px)`,
-      walk.pose === 'stand' && walk.chest != null && walk.chest !== 0xffffff && !!bw.bands, report.walk);
 
-    /* ── 2. the farmer at the same spot, the hoe's rest frame held ── */
-    const step = 'dig', T = FARM_WORK_MS[step];
-    await P.page.evaluate(({ mid, T }) => {
-      window.__btFarmHoldFrame = 0;
+    /* the work, held: its step's frame `frame` for as long as it is pictured,
+       and never finished (no step is sent) */
+    await P.page.evaluate(() => {
       const S0 = window._gameState.current;
       let cur = S0._farmWork;
-      const pin = () => { const w = cur; if (!w || w.step !== 'dig') return; const n = Date.now(); w.startedAt = n - mid; w.doneAt = w.startedAt + T * 100; };
+      window.__farmPin = null;
+      const pin = () => { const w = cur, p = window.__farmPin; if (!w || !p || w.step !== p.step) return; const n = Date.now(); w.startedAt = n - p.mid; w.doneAt = w.startedAt + p.T * 100; };
       Object.defineProperty(S0, '_farmWork', { configurable: true, enumerable: true, get() { return cur; }, set(v) { cur = v; pin(); } });
       window.__pinT = setInterval(pin, 10);
-    }, { mid: frameMid(step, 0, T), T });
-    await P.page.keyboard.press('e');
-    const F = await until(() => P.page.evaluate(() => (window.__btFarmFigure ? window.__btFarmFigure() : null)), (v) => v && v.visible && v.frame === 0, 5000);
-    rec.ok('the farmer works the bed with the hoe, its rest frame held (guard)', !!F && F.visible && F.frame === 0, F && { frame: F.frame, anim: F.anim });
-    if (!F || !F.visible) return;
-    await P.page.waitForTimeout(400);
-    const fShade = F.shade || null;
-    await isolate('farm');
-    await P.page.waitForTimeout(500);
-    const shF = await shot('farm', F.foot);
-    await isolate(null);
-    const bf = bands(H.decodePng(readFileSync(shF.file)), boxIn(shF, F.foot.y, F.crown.y, walk.k));
-    report.farm = { foot: F.foot, tints: F.tints || null, shade: fShade, bands: bf };
-    await P.page.evaluate(() => { clearInterval(window.__pinT); window.__btFarmHoldFrame = null; const w = window._gameState.current._farmWork; if (w) { w.startedAt = Date.now() - 50; w.doneAt = Date.now() + 120; } });
+    });
+    const holdWork = (step, frame) => P.page.evaluate(({ step, frame, mid, T }) => {
+      const S = window._gameState.current, Pl = S.player;
+      window.__farmPin = { step, mid, T };
+      window.__btFarmHoldFrame = frame;
+      const n = Date.now();
+      S._farmWork = { bed: 0, step, crop: 'carrot', startedAt: n - mid, doneAt: n - mid + T * 100, x: Pl.x, y: Pl.y, n: 1 };
+    }, { step, frame, mid: frameMid(step, frame, FARM_WORK_MS[step]), T: FARM_WORK_MS[step] });
+    const letGo = () => P.page.evaluate(() => {
+      window.__farmPin = null;
+      window.__btFarmHoldFrame = null;
+      window._gameState.current._farmWork = null;
+    });
 
-    /* ── 3. the iron, band by band ── */
-    const ratio = [];
-    let ok = !!bw.bands && !!bf.bands, okTop = ok;
-    if (ok) {
-      for (let k = 0; k < 3; k++) {
-        const a = bw.bands[k].rgb, b = bf.bands[k].rgb;
-        const q = [0, 1, 2].map((j) => (a[j] && b[j] ? +(b[j] / a[j]).toFixed(3) : null));
-        ratio.push(q);
-        const bad = q.some((x) => x == null || Math.abs(x - 1) > (k < 2 ? FIT : FIT_TOP));
-        if (bad) { if (k < 2) ok = false; else okTop = false; }
+    /* the bed's first step, pressed for real: it puts you at the bed's back
+       (startFarmStep), where every move below is pictured */
+    await P.page.keyboard.press('e');
+    const F0 = await until(() => P.page.evaluate(() => (window.__btFarmFigure ? window.__btFarmFigure() : null)), (v) => v && v.visible, 5000);
+    rec.ok('the farmer works the bed (guard)', !!F0 && F0.visible, F0 && { frame: F0.frame, anim: F0.anim });
+    if (!F0 || !F0.visible) return;
+    await letGo();
+    await P.page.waitForTimeout(600);
+
+    /* the metal's passing sweep held off everywhere: a picture would catch it
+       on one figure and not the other (the steady shine stays) */
+    await P.page.evaluate(() => { if (window.__btLightFx && window.__btLightFx.glint) window.__btLightFx.glint(-1); });
+    report.outfits = {};
+    for (const O of OUTFITS) {
+      await P.page.evaluate((o) => { window.__btGearSet('chest', o.chest); window.__btGearSet('legs', o.legs); }, O);
+      await P.page.waitForTimeout(2500);
+      const walk = await walkerAt();
+      const wChest = await shotPiece(`walk-${O.id}`, 'walk', 'chest', { x: walk.x, y: walk.feetY });
+      const wLegs = await shotPiece(`walk-${O.id}`, 'walk', 'legs', { x: walk.x, y: walk.feetY });
+      rec.ok(`${O.id}: the walking figure stands by the bed, its plate and greaves pictured alone (pose ${walk.pose}; plate ${walk.chest} ${wChest.n} px, greaves ${walk.legs} ${wLegs.n} px)`,
+        walk.pose === 'stand' && walk.chest != null && wChest.ok && wLegs.ok && !!wChest.all && !!wLegs.all, { walk, wChest, wLegs });
+      const rows = [];
+      for (const M of MOVES) {
+        for (const frame of FRAMES) {
+          await holdWork(M.step, frame);
+          const F = await until(() => P.page.evaluate(() => (window.__btFarmFigure ? window.__btFarmFigure() : null)),
+            (v) => v && v.visible && v.frame === frame && v.step === M.step, 5000);
+          if (!F || !F.visible || F.frame !== frame) { rows.push({ step: M.step, frame, err: 'not drawn' }); continue; }
+          await P.page.waitForTimeout(250);
+          /* a piece's picture is kept only when the farmer was still on the
+             frame asked for after it was taken: at a move's first frame a
+             slow page's next draw could still show the last move's, and a
+             picture of it (more pixels, another pose) is taken again */
+          const held = () => P.page.evaluate(({ step, frame }) => {
+            const f = window.__btFarmFigure ? window.__btFarmFigure() : null;
+            return !!(f && f.visible && f.frame === frame && f.step === step);
+          }, { step: M.step, frame });
+          const steadyShot = async (part) => {
+            let got = null;
+            for (let k = 0; k < 3; k++) {
+              got = await shotPiece(`${O.id}-${M.step}-${frame}`, 'farm', part, F.foot);
+              if (await held()) { got.tries = k + 1; return got; }
+              await P.page.waitForTimeout(300);
+            }
+            got.tries = 3;
+            got.unsteady = true;
+            return got;
+          };
+          const fChest = await steadyShot('chest');
+          const fLegs = await steadyShot('legs');
+          rows.push({
+            step: M.step, anim: F.anim, frame,
+            chest: { all: ratio3(wChest.all, fChest.all), upper: ratio3(wChest.upper, fChest.upper), lower: ratio3(wChest.lower, fChest.lower), n: fChest.n,
+              hi: wChest.hi && fChest.hi ? +(fChest.hi / wChest.hi).toFixed(3) : null },
+            legs: { all: ratio3(wLegs.all, fLegs.all), upper: ratio3(wLegs.upper, fLegs.upper), lower: ratio3(wLegs.lower, fLegs.lower), n: fLegs.n },
+            tints: { chest: F.chest && F.chest.tint, legs: F.legs && F.legs.tint },
+            tries: [fChest.tries, fLegs.tries], unsteady: !!(fChest.unsteady || fLegs.unsteady),
+            shade: F.shade || null,
+            /* to 0.01 at the boots; to 0.025 at the crown: a sprite's shade is
+               two colours at its quad's top and bottom (formShade), and a
+               colour cannot go over 1, so where his frame reaches above the
+               walking frame's top (the hoe raised, a kneel's short span) the
+               red channel stops at 1 there and the slope below it is a little
+               shallower -- his crown up to 2% darker than the walker's */
+            shadeFits: !!(F.shade && F.shade.boots && [0, 1, 2].every((j) => Math.abs(F.shade.boots[j] - F.shade.walkBoots[j]) < 0.01 && Math.abs(F.shade.crown[j] - F.shade.walkCrown[j]) < 0.025)),
+          });
+        }
+        await letGo();
+        await P.page.waitForTimeout(300);
+      }
+      report.outfits[O.id] = { walk, wChest, wLegs, rows };
+      const fits = (part) => within(part.all, part.n < SMALL_PX ? FIT_SMALL : FIT_PIECE);
+      for (const M of MOVES) {
+        const mine = rows.filter((r) => r.step === M.step);
+        const bad = mine.filter((r) => r.err || !fits(r.chest) || !fits(r.legs));
+        const fmt = (q) => (q ? q.join('/') : '-');
+        const show = mine.map((r) => (r.err ? `f${r.frame} ${r.err}` : `f${r.frame} plate ${fmt(r.chest.all)} greaves ${fmt(r.legs.all)}${r.legs.n < SMALL_PX ? ` (${r.legs.n} px)` : ''}`)).join('; ');
+        rec.ok(`${O.id}: the farmer's plate and greaves ${M.what} are the walking ones' colour (farmer over walker, r/g/b, within ${Math.round(FIT_PIECE * 100)}%, a piece under ${SMALL_PX} px ${Math.round(FIT_SMALL * 100)}%): ${show}`,
+          mine.length === FRAMES.length && bad.length === 0, mine);
+        const dim = mine.filter((r) => r.err || !(r.chest.hi >= BRIGHT_MIN));
+        rec.ok(`${O.id}: ...and the plate's metal ${M.what} is lit as the walker's: its brightest tenth at least ${BRIGHT_MIN} of his (${mine.map((r) => (r.err ? '-' : r.chest.hi)).join(', ')})`,
+          mine.length === FRAMES.length && dim.length === 0, mine.map((r) => [r.frame, r.chest && r.chest.hi]));
+      }
+      if (!shadeOff) {
+        const sh = rows.filter((r) => !r.err);
+        rec.ok(`${O.id}: ...and the farmer carries the walking figure's own shade at his height in every move (${sh.filter((r) => r.shadeFits).length}/${sh.length})`,
+          sh.length > 0 && sh.every((r) => r.shadeFits), sh.map((r) => [r.step, r.frame, r.shadeFits]));
       }
     }
-    report.ratio = ratio;
-    const names = ['boots', 'middle', 'head and shoulders'];
-    rec.ok(`the farmer's iron is the walking iron from his boots to his chest (farmer over walker, r/g/b: ${ratio.slice(0, 2).map((q, k) => names[k] + ' ' + q.join('/')).join(', ')}; within ${Math.round(FIT * 100)}%; before this version boots 1.15/1.13/1.00)${shadeOff ? ' [shade=0]' : ''}`,
-      ok, { walk: bw, farm: bf, ratio });
-    rec.ok(`...and up to his head (${ratio[2] ? ratio[2].join('/') : '?'}; within ${Math.round(FIT_TOP * 100)}%: his steel forearms cross his chest holding the hoe, drawn darker than the standing figure's pauldrons -- the art's own top third is 11% darker whatever it is graded to)`,
-      okTop, ratio[2]);
-    if (!shadeOff) {
-      /* the probe: his sprites carry the walking figure's shade at his height */
-      const fit = fShade && fShade.boots && fShade.walkBoots
-        && [0, 1, 2].every((j) => Math.abs(fShade.boots[j] - fShade.walkBoots[j]) < 0.01 && Math.abs(fShade.crown[j] - fShade.walkCrown[j]) < 0.01);
-      rec.ok(`...and he carries the walking figure's own shade at his height: at his boots ${fShade && JSON.stringify(fShade.boots)}, at his crown ${fShade && JSON.stringify(fShade.crown)} (the walker's ${fShade && JSON.stringify(fShade.walkBoots)}, ${fShade && JSON.stringify(fShade.walkCrown)})`,
-        !!fit, fShade);
-    }
+    await P.page.evaluate(() => { clearInterval(window.__pinT); window.__btFarmHoldFrame = null; window.__farmPin = null; });
     rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {
     stopAlive = true;
