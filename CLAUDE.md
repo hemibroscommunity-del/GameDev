@@ -6003,6 +6003,19 @@ Two protocol versions coexist; both must keep working:
     canvas filled again from them first (`installHeldRefill`, Pixi's
     onSourceUpdate). `?held=0`, `window.__btHeld()`; `held-numbers` suite,
     `mp-monsternumbers` (a rebuild included): docs/specs/monster-numbers.md.
+  - A picture made ONCE that something does read back (by `drawImage` or
+    `createImageBitmap`, never `getImageData` on it) is KEPT AS AN IMAGE OF
+    ITSELF instead: `keepAsImage(source, Cache, { quiet: true })`
+    (src/rendering/keepAsImage.js), a PNG of its pixels in an `<img>`, the
+    canvas let go of. The page then holds the PNG for certain and the decoded
+    pixels only while the browser chooses to; a parked tab's purge cannot
+    blank it. Kept that way: the head pieces (v2.3.3606) and, since
+    v2.3.3702, every strip gearSheets.js packs -- the walking armour, belt and
+    shirt sheets, the body sheets, the effect and townsfolk strips (~39 MB of
+    canvases at a fight; docs/specs/packed-as-images.md, `mp-packedimages`).
+    Never one the game draws into again. A test that reads such a sheet's
+    canvas sets `__btTrimVerify` (it stays a canvas), and names a sheet by
+    `source.label`, never its resource's URL (a `blob:`).
   - MUSIC, and any sound longer than a few seconds, plays through the music
     deck (BT_AUDIO's zone and global music, streamed from its file since
     v2.3.3073) -- never SFX_MANIFEST, which decodes the whole file into memory

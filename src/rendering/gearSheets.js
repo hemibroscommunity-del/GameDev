@@ -13,7 +13,7 @@
  * See gear-layer-spec.md.
  */
 
-import { Rectangle, Texture } from 'pixi.js';
+import { Cache, Rectangle, Texture } from 'pixi.js';
 import { composeShirt } from './playerDecal.js';   /* v2.3.1938 drawn shirts; v2.3.1941 colour + pattern + print, in one place */
 import { artHash } from './traits/playerArt.js';   /* v2.3.1940: shared drawing key */
 import { GEAR_SLOTS, GEAR_CATALOG } from './gearCatalog.js';
@@ -22,6 +22,40 @@ import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless We
 import { gearArt, gearArtSafe } from './gearVariants.js'; /* v2.3.1757: recoloured sets share their donor's sheets */
 import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 */
 import { witnessCanvas } from './canvasWitness.js';   /* v2.3.3574: a picture Safari threw away is noticed */
+import { keepAsImage } from './keepAsImage.js';   /* v2.3.3702: every strip packed here, kept as an image of itself */
+import { KEEP_GPU_COPIES } from './gpuOnly.js';
+
+/* ═══ v2.3.3702: A STRIP PACKED HERE IS KEPT AS AN IMAGE OF ITSELF ═══
+ * The owner, 2026-10-28: "Memory seems to be the persistent bottleneck in
+ * terms of performance in this game.  Getting that to run as low as possible
+ * without sacrificing performance is the goal", and that night: "Keep running
+ * tests through the night on memory fixes/improvements".
+ *
+ * Every picture this module packs is a canvas the page held whole for the
+ * visit: the walking armour, belt and shirt sheets (_buildSheet), the body
+ * sheets (sliceCropped: playerSprites' and playerSkins') and the effect,
+ * townsfolk and head-piece strips (loadCroppedStrip).  Read back only by
+ * drawImage (drawGearFrame, the masked bakes' createImageBitmap) and uploaded
+ * from by Pixi.  At a Flame Fields fight that was 39 MB of the page's 81 MB of
+ * canvases (mp-battlemem's census, a readable build), the armour sheets alone
+ * 18 MB, every one of them held a second time on the graphics chip.
+ *
+ * So each is kept as an image of itself (keepAsImage.js, v2.3.3606's head
+ * pieces): a PNG of its own pixels in an <img>, its canvas let go of.  The page
+ * then holds the PNG's bytes for certain and the decoded pixels only while the
+ * browser chooses to (it drops them under memory pressure and decodes again at
+ * the next upload), where a canvas is held whole until the page closes; and
+ * Safari's purge of a parked tab's canvases (TRAPS §250) can no longer blank
+ * one.  drawImage takes an <img> as it takes a canvas, so no reader changes.
+ * `quiet`: a sheet already on the chip is not sent to it again (the copy there
+ * is these pixels).  Kept as canvases for the QA scenarios that compare packed
+ * canvases byte for byte (`?gpucopies`, __btTrimVerify); `?keepimage=0` is the
+ * game as it was. */
+function keepPackedAsImage(src) {
+  if (!src || KEEP_GPU_COPIES) return;
+  try { if (typeof window !== 'undefined' && window.__btTrimVerify === true) return; } catch (e) { /* kept */ }
+  keepAsImage(src, Cache, { quiet: true });
+}
 
 const FRAME_W = 256;
 const FRAME_H = 256;
@@ -377,6 +411,9 @@ export function loadCroppedStrip(url, n, opts) {
       _fxTrimStats.push({ url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 });
       _fxTrimFrames.set(url, { frames, fw, fh: H });
     }
+    /* v2.3.3702: the packed strip (or the kept cells' copy) as an image of
+       itself; a strip left as the file's own Image is one already */
+    keepPackedAsImage(src);
     return frames;
   });
 }
@@ -448,6 +485,9 @@ export function sliceCropped(cv, fw, fh, n) {
     _bodyTrimStats.fullBytes += cv.width * cv.height * 4;
     _bodyTrimStats.packedBytes += packed.canvas.width * packed.canvas.height * 4;
     if (verify) _bodyTrimFrames.push({ frames: out, full: verify, fw, fh });
+    /* v2.3.3702: as an image of itself -- only the packed canvas, which is
+       this module's; a sheet the packer declined is the caller's canvas */
+    keepPackedAsImage(src);
   }
   return out;
 }
@@ -642,6 +682,10 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
       out.push(new Texture({ source: src, frame: new Rectangle(i * fw, 0, fw, fh) }));
     }
     _sheets[key] = out;
+    /* v2.3.3702: the packed sheet (or the upscale / dressed-shirt canvas made
+       for this sheet alone) as an image of itself; the file's own Image, for a
+       sheet sliced raw and not packed, is one already */
+    keepPackedAsImage(src);
   }).catch(() => {
     if (attempt < _GEAR_RETRY_MS.length) {
       /* v2.3.1398: retry CHAINS into the returned promise so the intro

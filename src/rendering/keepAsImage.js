@@ -47,21 +47,38 @@ const _stats = { asked: 0, kept: 0, failed: 0, pending: 0 };
 
 /** Keep `source`'s canvas as an image of itself (the header).  `cache` is
  *  Pixi's Cache (the caller's import), or nothing.  Returns a promise of true
- *  once the source draws from the image, false when it keeps its canvas. */
-export function keepAsImage(source, cache) {
+ *  once the source draws from the image, false when it keeps its canvas.
+ *  v2.3.3702: `opts.quiet` -- a source already on the chip is NOT sent again:
+ *  its copy there is these very pixels, and the image is only for the next
+ *  upload (a black screen's rebuild).  For the sheets made by the dozen
+ *  behind the loading screen (gearSheets.js), where sending every one again
+ *  as its PNG comes back was a decode and an upload each in the first seconds
+ *  of play. */
+export function keepAsImage(source, cache, opts) {
+  /* v2.3.3702: asked again for one source while it is being kept, or once it
+     is (a head piece is cut by loadCroppedStrip, which keeps every strip it
+     packs now, and its loader asks again), the answer is the first ask's: one
+     PNG, not two.  One that failed may be asked again. */
+  if (source && source.__btKeep) return source.__btKeep;
   const cv = source && source.resource;
   if (!_on || !cv || source.destroyed || typeof cv.toBlob !== 'function' || !(cv.width > 0) || !(cv.height > 0)) {
     return Promise.resolve(false);
   }
   _stats.asked++;
   _stats.pending++;
-  return new Promise((resolve) => {
+  /* the answer is the source's before any work starts, so a failure that comes
+     at once (a toBlob that throws) takes it back off again */
+  let resolve = null;
+  const answer = new Promise((r) => { resolve = r; });
+  try { source.__btKeep = answer; } catch (e) { /* asked again: encoded again */ }
+  {
     let done = false;
     const end = (ok) => {
       if (done) return;
       done = true;
       _stats.pending--;
       if (ok) _stats.kept++; else _stats.failed++;
+      if (!ok) { try { if (source.__btKeep === answer) source.__btKeep = null; } catch (e) { /* gone */ } }
       resolve(ok);
     };
     try {
@@ -79,7 +96,7 @@ export function keepAsImage(source, cache) {
           source.resource = img;
           /* on the chip already: sent again from the image (the same pixels);
              not yet: it goes up from the image the first time it is drawn */
-          try { source.update(); } catch (e) { /* drawn from the image next time */ }
+          if (!(opts && opts.quiet)) { try { source.update(); } catch (e) { /* drawn from the image next time */ } }
           /* the bytes behind the image live as long as the picture does */
           try { source.once('destroy', () => { try { URL.revokeObjectURL(url); } catch (e) { /* gone */ } }); } catch (e) { /* kept */ }
           try { if (cache && cache.has(cv)) cache.remove(cv); } catch (e) { /* older pixi */ }
@@ -90,7 +107,8 @@ export function keepAsImage(source, cache) {
         img.src = url;
       }, 'image/png');
     } catch (e) { end(false); }
-  });
+  }
+  return answer;
 }
 
 /** Off with `?keepimage=0`. */
