@@ -199,9 +199,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
        the walk, its plain body frames counted */
     const ready = await P.page.evaluate(async () => {
       const t0 = performance.now();
-      let jog = null, all = null, last = null;
-      while (performance.now() - t0 < 90000 && all == null) {
+      let jog = null, all = null, last = null, nextS = 0;
+      const samples = [];   /* every 10 s: the worker's answered jobs, the set's frames held */
+      while (performance.now() - t0 < 150000 && all == null) {
         const c = window.__btMaskedCoverage ? window.__btMaskedCoverage() : null;
+        if (performance.now() - t0 >= nextS) {
+          nextS += 10000;
+          const b = window.__btBakeWorker ? window.__btBakeWorker() : null;
+          samples.push([Math.round((performance.now() - t0) / 1000), b ? b.worker : null, c ? c.have : null, b ? b.stuck : null]);
+        }
         if (c && c.want > 0) {
           last = c;
           const t = Math.round(performance.now() - t0);
@@ -212,7 +218,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const bw = window.__btBakeWorker ? window.__btBakeWorker() : null;
       const lm = window.__btLocalMisses ? window.__btLocalMisses() : null;
-      return { jog, all, have: last && last.have, want: last && last.want, missing: last ? last.missing.slice(0, 12) : null,
+      return { samples, jog, all, have: last && last.have, want: last && last.want, missing: last ? last.missing.slice(0, 12) : null,
         worker: bw && { stuck: bw.stuck, busy: bw.busy, queued: bw.queued, pending: bw.pending, worker: bw.worker, inline: bw.inline, failed: bw.failed, raw: bw.raw, skipped: bw.skipped, beltPending: bw.beltPending, dead: bw.dead },
         cache: lm && { size: lm.size, cap: lm.cap, worn: lm.worn, uids: lm.cachedUids } };
     });
@@ -220,6 +226,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await walkAll(P, 1000);
     const w0 = await stopWatch(P);
     await report(P, 'the walk after putting the armour on', w0);
+    console.log('    every 10 s [s, worker answers, frames held, stuck]: ' + JSON.stringify(ready.samples));
     console.log('    the bake worker then: ' + JSON.stringify(ready.worker) + '; the cache: ' + JSON.stringify(ready.cache));
     console.log(`    after putting the armour on: every jog frame baked in ${ready.jog} ms, the whole set in ${ready.all} ms (held ${ready.have} of ${ready.want}${ready.missing && ready.missing.length ? '; missing ' + ready.missing.join(', ') : ''})`);
     rec.ok(`(measure) after putting the armour on: the jog baked in ${ready.jog} ms, the set in ${ready.all} ms; the walk after, ${w0.plain} plain body frames`, true);
