@@ -495,10 +495,15 @@ export function NameModal(props) {
     /* v2.3.3589: Species, its own tab (owner: "Yes make species it's own
        button"), FIRST and `wide`: one button across the top of the grid, so
        the nine below it stand exactly where they did (game.css
-       .bt-cc-tab--wide).  Its icon is the Skin tab's bald head made an alien
-       (cc-tab-species.png, tools/ui/make_species_tab_icon.py: the same 17 x 18
-       grid at 8 px a pixel). */
-    { t: 'species', label: 'Bro type', img: _TAB_ICON('species'), wide: true },   /* v2.3.3772: "Change species to bro type" */
+       .bt-cc-tab--wide).  Its icon was the Skin tab's bald head made an alien
+       (cc-tab-species.png, tools/ui/make_species_tab_icon.py) until v2.3.3772. */
+    /* v2.3.3772: "Change species to bro type", and "for bro type just include
+       3 small heads of each type instead of just the weird shaped alien one":
+       its icon is the three bro types' heads side by side, Human, Monkey and
+       Alien, as its strip offers them (cc-tab-brotype.png,
+       tools/ui/make_brotype_tab_icon.py: their picker tiles' own heads), drawn
+       at the tabs' icon height with its own width (`trio`, game.css). */
+    { t: 'species', label: 'Bro type', img: _TAB_ICON('brotype'), wide: true, trio: true },
     { t: 'hair', label: 'Hair', img: _TAB_ICON('hair') },
     { t: 'hat', label: 'Hats', img: _TAB_ICON('hat') },
     { t: 'skin', label: 'Skin', img: _TAB_ICON('skin') },
@@ -1768,7 +1773,7 @@ export function NameModal(props) {
       /* v2.3.1308: the owner's painted category art.
          v2.3.1931: one sheet for all eight, and no per-tab pixel flag — the
          catalog-thumb tabs that needed `pixelated` are gone (see _TABS). */
-      className: "bt-cc-tab-icon",
+      className: "bt-cc-tab-icon" + (x.trio ? " bt-cc-tab-icon--trio" : ""),   /* v2.3.3772 */
       src: x.img, alt: '', draggable: false, decoding: 'async'
     }) : null,
     /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, x.label));
