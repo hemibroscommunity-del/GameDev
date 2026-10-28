@@ -23,7 +23,7 @@ sheets of ONE look:
 | | on the graphics chip | decoded images beside them (in no line of the check) |
 |---|---|---|
 | a look, the old way | 5.3 MB | about 4 MB |
-| twenty looks, the old way | RESULT_OLD20 | RESULT_IMG20 |
+| twenty looks, the old way | 105.6 MB | 70.6 MB |
 
 ## What it does now
 
@@ -145,14 +145,44 @@ for good.
 stand and jog frame drawn once, the body's own textures counted texture by
 texture:
 
-RESULT_TABLE
+| looks on screen | the old way: on the chip | + decoded images | the new way: on the chip | saved on the chip |
+|---|---|---|---|---|
+| 1 | 5.3 MB | (still a canvas) | 2.6 MB | 2.7 MB |
+| 5 | 26.4 MB | 10.9 MB | 2.6 MB | 23.8 MB |
+| 20 | 105.6 MB | 70.6 MB | 2.6 MB | 103.0 MB |
+
+The page's GPU line moved the same way: +5.3 / +26.4 / +104.8 MB the old way,
++2.5 MB flat the new. The canvases and the asset cache did not move either way
+(the old path's copies are images of themselves since v2.3.3702; the decoded
+images are the browser's to drop and in no line). The page's buffers: +2.6 MB
+with the switch (the numbers, kept to upload again).
 
 `mp-membudget` (its phone wears the default look, which the old path never
 recolours: no copies to save there): RESULT_MEMBUDGET
 
 ## How it was proven
 
-RESULT_PROOF
+All on this box's phone (390 x 844, dpr 3, the QA Chromium, its canvas in
+software as every QA phone's is):
+
+- **The oracle, `mp-lookpalette`** -- 24 looks (skin green / alabaster / ebony
+  / default x trousers pink / red / default x boots blue / white, the ghost
+  audit's green / pink / blue among them, every other one with blue eyes):
+  every stand and jog frame in all eight facings, 4,824 frames, 10.8 million
+  pixels drawn both ways through the sharp read the body is drawn with:
+  **0 pixels more than 1 level of 255 apart** (the largest difference 1).
+  At a phone's 2.6 screen pixels a texel: 1.58 million pixels, none more than
+  1 apart. At a computer's 0.8 (minified, the mip chain): 3 levels at most, on
+  2.5% of the pixels (below). The local player, given a look, drawn from the
+  numbers; without the switch nothing is.
+- **`mp-ghostaudit`, sampled at the owner's request** ("Can we save time by
+  just sampling that part"): with the switch on, the two families this changes
+  (stand, jog), all eight facings, bare and in the full iron set: 18 of 18
+  (333 frames photographed; the walking body never drawn with a stand-in,
+  nothing left after).
+- **`mp-traitsoak`** with the switch on: 5 of 5. **`mp-questline`** (the
+  "playable" check) with the switch on: 187 of 187.
+- `tools/art/role-bake.mjs` checks its own bake (above) and `precheck` passes.
 
 ## Where it is not exact, and why
 
