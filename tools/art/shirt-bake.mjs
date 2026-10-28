@@ -71,10 +71,14 @@ export function sheetHash(pose, dir) {
   }
   return h.digest('hex').slice(0, 16);
 }
+/* the code that decides the numbers (role-bake.mjs --hashes reads the list
+   from the manifest, `codeFiles`, and checks every set's) */
+const CODE_FILES = ['src/rendering/playerDecal.js', 'src/rendering/traits/patternCatalog.js', 'src/rendering/traits/playerArt.js',
+  'src/rendering/gearSheets.js', 'src/rendering/lookShirt.js'];
+const artFiles = (pose, dir) => ['png', 'webp'].map((x) => `public/sprites/gear/shirt/${ITEM}/${pose}-${dir}.${x}`);
 export function codeHash() {
   const h = crypto.createHash('sha1');
-  for (const f of ['src/rendering/playerDecal.js', 'src/rendering/traits/patternCatalog.js', 'src/rendering/traits/playerArt.js',
-    'src/rendering/gearSheets.js', 'src/rendering/lookShirt.js']) h.update(fs.readFileSync(path.join(REPO, f)));
+  for (const f of CODE_FILES) h.update(fs.readFileSync(path.join(REPO, f)));
   return h.digest('hex').slice(0, 16);
 }
 
@@ -245,7 +249,7 @@ async function main() {
   const browser = await chromium.launch(opts);
   /* P0's manifest (lookPalette.js loadSet): 16-bit numbers (the colour in the
      low byte, the frame + 1 in the high), the shirt's entries of the row */
-  const out = { v: 1, version: 'v2.3.3751', kind: 'shirt', bits: 16, fw: 128, fh: 128, item: ITEM, code: codeHash(),
+  const out = { v: 1, version: 'v2.3.3751', set: 'shirt', kind: 'shirt', codeFiles: CODE_FILES, bits: 16, fw: 128, fh: 128, item: ITEM, code: codeHash(),
     roles: ['fabric', 'lit'], roleDefs: [{ name: 'fabric', entry: 8, ref: 0, under: 0 }, { name: 'lit', entry: 8, ref: 0, under: 1 }],
     frameNums: FRAME_NUMS, sheets: {} };
   let bad = 0;
@@ -267,7 +271,7 @@ async function main() {
           + `  check ${r.check.looks} looks, ${r.check.texels} texels (${r.check.dressed} dressed), ${r.check.over1} over 1, max ${r.check.max}  (${Date.now() - t0} ms)`);
         if (!ok) console.log('  worst: ' + JSON.stringify(r.check.worst));
         out.sheets[name] = { ds: 1, frames: r.frames, w: r.w, h: r.h, tableRows, entries: r.entries, colours: r.colours, ends: r.ends,
-          cells: r.cells, art: sheetHash(pose, dir), bytes: png.length };
+          cells: r.cells, art: sheetHash(pose, dir), artFiles: artFiles(pose, dir), bytes: png.length };
         const file = path.join(OUT, name + '.png');
         if (CHECK) {
           const on = fs.existsSync(file) ? decode(fs.readFileSync(file)) : null;

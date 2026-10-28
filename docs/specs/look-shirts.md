@@ -71,6 +71,23 @@ ONCE, as numbers, and the chip paints the look as it draws:
   at most, on 7.1% of the pixels (the body's 2.5%: the same chip rounding, and
   the tee is mostly edge). The palette atlas: rowsFull 0 throughout.
 
+## What it saved
+
+`mp-lookshirts`, 1, 5 and 20 different dressed tees put on the chip, both ways
+(each look's every stand and jog frame drawn once; the tee's own textures,
+counted texture by texture):
+
+| dressed tees on screen | the old way | the new way |
+|---|---|---|
+| 1 | 2.4 MB | 0.6 MB |
+| 5 | 11.1 MB | 0.6 MB |
+| 20 | 11.9 MB (the old cache keeps 8 drawings) | 0.6 MB |
+
+The new way's 0.6 MB is the ten sheets of numbers, held once whatever the
+looks; a look is a row of the palette atlas (1 KB), freed 30 s after its last
+draw. On a phone where no one wears a pattern or a print this is 0.6 MB MORE
+than before (the sheets are loaded behind the loading screen either way).
+
 ## Where it is not exact
 
 Minified (a computer), as the body: the chip rounds its own level of detail

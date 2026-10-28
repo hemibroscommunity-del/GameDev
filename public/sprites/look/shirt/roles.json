@@ -1,7 +1,15 @@
 {
  "v": 1,
  "version": "v2.3.3751",
+ "set": "shirt",
  "kind": "shirt",
+ "codeFiles": [
+  "src/rendering/playerDecal.js",
+  "src/rendering/traits/patternCatalog.js",
+  "src/rendering/traits/playerArt.js",
+  "src/rendering/gearSheets.js",
+  "src/rendering/lookShirt.js"
+ ],
  "bits": 16,
  "fw": 128,
  "fh": 128,
@@ -51,6 +59,10 @@
     ]
    ],
    "art": "a2578f1ebd790c42",
+   "artFiles": [
+    "public/sprites/gear/shirt/tshirt/stand-east.png",
+    "public/sprites/gear/shirt/tshirt/stand-east.webp"
+   ],
    "bytes": 593
   },
   "stand-north": {
@@ -77,6 +89,10 @@
     ]
    ],
    "art": "5265d3b03926c18b",
+   "artFiles": [
+    "public/sprites/gear/shirt/tshirt/stand-north.png",
+    "public/sprites/gear/shirt/tshirt/stand-north.webp"
+   ],
    "bytes": 904
   },
   "stand-northeast": {
@@ -103,6 +119,10 @@
     ]
    ],
    "art": "ad60ac59766b5e21",
+   "artFiles": [
+    "public/sprites/gear/shirt/tshirt/stand-northeast.png",
+    "public/sprites/gear/shirt/tshirt/stand-northeast.webp"
+   ],
    "bytes": 965
   },
   "stand-south": {
@@ -129,6 +149,10 @@
     ]
    ],
    "art": "5e5445dfe546c95b",
+   "artFiles": [
+    "public/sprites/gear/shirt/tshirt/stand-south.png",
+    "public/sprites/gear/shirt/tshirt/stand-south.webp"
+   ],
    "bytes": 849
   },
   "stand-southwest": {
@@ -155,6 +179,10 @@
     ]
    ],
    "art": "f0795c31444209ea",
+   "artFiles": [
+    "public/sprites/gear/shirt/tshirt/stand-southwest.png",
+    "public/sprites/gear/shirt/tshirt/stand-southwest.webp"
+   ],
    "bytes": 929
   },
   "jog-east": {
@@ -424,6 +452,10 @@
     ]
    ],
    "art": "40de767169be8e5d",
+   "artFiles": [
+    "public/sprites/gear/shirt/tshirt/jog-east.png",
+    "public/sprites/gear/shirt/tshirt/jog-east.webp"
+   ],
    "bytes": 8494
   },
   "jog-north": {
@@ -648,6 +680,10 @@
     ]
    ],
    "art": "9ec2d9a840ea5881",
+   "artFiles": [
+    "public/sprites/gear/shirt/tshirt/jog-north.png",
+    "public/sprites/gear/shirt/tshirt/jog-north.webp"
+   ],
    "bytes": 20245
   },
   "jog-northeast": {
@@ -881,6 +917,10 @@
     ]
    ],
    "art": "a2a876ac69b67d5c",
+   "artFiles": [
+    "public/sprites/gear/shirt/tshirt/jog-northeast.png",
+    "public/sprites/gear/shirt/tshirt/jog-northeast.webp"
+   ],
    "bytes": 15307
   },
   "jog-south": {
@@ -1132,6 +1172,10 @@
     ]
    ],
    "art": "87baae228c6f542f",
+   "artFiles": [
+    "public/sprites/gear/shirt/tshirt/jog-south.png",
+    "public/sprites/gear/shirt/tshirt/jog-south.webp"
+   ],
    "bytes": 25538
   },
   "jog-southwest": {
@@ -1329,6 +1373,10 @@
     ]
    ],
    "art": "2c9586335933d0b7",
+   "artFiles": [
+    "public/sprites/gear/shirt/tshirt/jog-southwest.png",
+    "public/sprites/gear/shirt/tshirt/jog-southwest.webp"
+   ],
    "bytes": 16272
   }
  }

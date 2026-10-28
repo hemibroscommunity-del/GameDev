@@ -83,6 +83,12 @@ const FACINGS = [
   ['southwest', ['s', 'a'], 3 * Math.PI / 4], ['west', ['a'], Math.PI], ['northwest', ['w', 'a'], -3 * Math.PI / 4],
   ['north', ['w'], -Math.PI / 2], ['northeast', ['w', 'd'], -Math.PI / 4],
 ];
+/* v2.3.3751: BT_GHOST_DIRS=south,east,northwest -- a sample of the facings
+   (the owner: "By sampling etc"), as BT_GHOST_ONLY samples the families */
+if (process.env.BT_GHOST_DIRS) {
+  const keep = new Set(process.env.BT_GHOST_DIRS.split(','));
+  FACINGS.splice(0, FACINGS.length, ...FACINGS.filter((f) => keep.has(f[0])));
+}
 
 const OUTFITS = {
   full: { chest: 'ironplate', legs: 'irongreaves' },
