@@ -277,8 +277,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const band = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-h')) || 0;
         return {
           lvl: S._nmlLevel || 0,
-          banner: zb && zb.shownAt ? zb.shownAt('nml-1') : 0,
-          chat: (S.chatLog || []).filter((l) => /No man's land 1/.test(l.text || '')).map((l) => l.text),
+          /* v2.3.3767: the number is the step (Lv 1-5 on the first ring), not 1 */
+          banner: zb && zb.shownAt && S._nmlLevel ? zb.shownAt('nml-' + S._nmlLevel) : 0,
+          chat: (S.chatLog || []).filter((l) => /No man's land \d/.test(l.text || '')).map((l) => l.text),
           bar: sub ? sub.textContent : null,
           /* v2.3.3629: the minimap's box and its name plate, beside which the badge stands */
           mini: window.__btWheelMini ? { l: window.__btWheelMini.left, t: window.__btWheelMini.top } : null,
@@ -293,7 +294,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
             gap: Math.round((innerHeight - band) - r.bottom), h: Math.round(r.height), w: Math.round(r.width) } : null,
         };
       });
-      if (t.lvl === 1 && t.banner > 0 && t.chat.length && t.badge) break;
+      if (t.lvl >= 1 && t.lvl <= 5 && t.banner > 0 && t.chat.length && t.badge) break;
       await P.page.waitForTimeout(400);
     }
     return t;
@@ -301,7 +302,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const tA = await told(A), tB = await told(B);
   for (const [who, t] of [['the raider', tA], ['the wanderer', tB]]) {
     rec.ok(`1. ${who} is told: the banner, the chat ("${t && t.chat[0]}") and the badge (skull ${t && t.badge && t.badge.text}, ${t && t.badge && t.badge.w} px wide)`,
-      !!t && t.lvl === 1 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && !!t.badge && t.badge.n === '1' && /^\s*1\s*$/.test(t.badge.text) && t.badge.w <= 90, t);
+      !!t && t.lvl >= 1 && t.lvl <= 5 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && !!t.badge && t.badge.n === String(t.lvl) && t.badge.text.trim() === String(t.lvl) && t.badge.w <= 90, t);
     /* v2.3.3268: just LEFT of the middle -- centred, it sat on the shield
        button (the shield's left edge is the middle, ShieldButton.jsx
        ctlColumn) and a tap on the shield's middle opened the badge; it stops
@@ -405,7 +406,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, own);
   rec.ok(`3b. the raider's badge wears their red skull (${info && info.own})`, !!info && info.own === 'red', info);
   rec.ok(`3b. a tap on it says what No man's land means ("${info && info.title}"), with the skull's minutes ("${info && info.note}")`,
-    !!info && /No man's land 1/.test(info.title || '') && /attack/.test(info.body || '') && /red skull/.test(info.body || '') && /red skull: \d+ min/.test(info.note || ''), info);
+    !!info && /No man's land [1-5] · Lv [1-5] monsters/.test(info.title || '') && /attack/.test(info.body || '') && /red skull/.test(info.body || '') && /red skull: \d+ min/.test(info.note || ''), info);
 
   /* ── 4. the killing blow ── */
   const vit = await H.devOp(wsPort, 'vitals', idB, { heal: true, hp: 1 });

@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { WHEEL_HALLS } from '@/data/wheelBuildingDoors.js';
@@ -6,6 +7,7 @@ import { ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3481
 import { AlliancePart } from './AlliancePart.jsx';   /* v2.3.3313: the alliance, at the top of the Saloon */
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3321: clans are parties now */
 import { wellRestedLeft, restLeftWords, REST_MS, REST_XP_PCT } from '@/game/rest.js';   /* v2.3.3539: the Hotel's rest, paid by the worker */
+import { TownBoard } from './TownBoard.jsx';   /* v2.3.3766: the Town Hall's board of everything to do */
 
 /* ═══ v2.3.3066: THE WHEEL'S HALLS — the Guild Hall, the Post Office, the Sheriff's Office ═══
  *
@@ -115,7 +117,7 @@ function postOffice(props) {
         var what = m.key && ITEM_NAMES[m.key] ? m.n + '× ' + ITEM_NAMES[m.key] : m.what;
         return (
           <div key={i} data-mail-line="" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderTop: i ? '1px solid ' + LS.border : 'none' }}>
-            {m.kind === 'gold' ? icon('/icons/popups/gold.webp', '🪙', 18) : icon('/icons/ui/evt-mail.webp', '📫', 18)}
+            {m.kind === 'gold' ? icon(coinArtFor(m.amount), '🪙', 18) /* v2.3.3734: the pile for the gold */ : icon('/icons/ui/evt-mail.webp', '📫', 18)}
             <span style={{ flex: 1, minWidth: 0 }}>
               <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: m.kind === 'gold' ? LS.brass : LS.txt1, fontVariantNumeric: 'tabular-nums' }}>{what}</span>
               {m.note ? <span style={{ display: 'block', fontSize: 11.5, color: LS.txt2, overflowWrap: 'anywhere' }}>{m.note}</span> : null}
@@ -137,12 +139,12 @@ function postOffice(props) {
    with the two things its picture shows: the trophy case is the leaderboard (a
    ranking for every combat and life skill, the dashboard's Ranks page) and the
    painted map on the wall is the Wheel's world map. */
+/* v2.3.3766: ...and since the owner's "at the town hall it was just a big menu
+   board of all the things to do ... When you "enter it" it brings up the
+   board", the board (TownBoard.jsx), the two rows kept at its foot as two
+   small buttons (still data-hall-row "leaderboard" and "map") */
 function townHall(props) {
-  return [
-    row('leaderboard', '/icons/ui/panel-leaderboard.webp', '🏆', 'Leaderboard', 'A ranking for every combat and life skill, and where you stand', props.onLeaderboard),
-    /* v2.3.3552: "world", never "Wheel" -- a player never hears the map's shape named */
-    row('map', '/icons/ui/nav-map.webp', '🗺', 'World map', 'The whole world: its lands and levels, camps, passes and gates, and where you are', props.onMap),
-  ];
+  return [<TownBoard key="board" stateRef={props.stateRef} onLeaderboard={props.onLeaderboard} onMap={props.onMap} />];
 }
 
 /* ═══ v2.3.3539: THE HOTEL -- A BED FOR THE NIGHT ═══

@@ -79,7 +79,8 @@ import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the sp
 import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame */
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
+import { lookPaletteWanted } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
@@ -104,6 +105,7 @@ import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.
 import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's footsteps and pick, heard */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
+import { flipHeadAt } from '../flipHead.js';   /* v2.3.3738: the head pieces ride the tumble's head */
 import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase; v2.3.3682: a flip, the roll's tumble */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
@@ -1758,7 +1760,31 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      pose would place hats on feet.  Re-enabling traits needs a real per-frame
      head anchor (the head IS separable — it is the bare skin blob left in the
      armoured art, which is how the seal below finds it), not a bodyTop. */
-  if (pose === 'dodge') { sprite.visible = false; sprite._btHide = 'dodge'; return; }
+  /* ═══ v2.3.3738: ...AND THAT ANCHOR NOW EXISTS, FOR THE FLIP ═══
+     The owner: "needs at least the hat rotated to match the head during the
+     flip".  flipHead.js has the head's centre and turn on every roll frame.
+     While a flip draws the roll (display._flipHead, set by the two callers),
+     the piece is placed as it sits standing on that facing, then carried with
+     the head: moved from the standing head's centre to the tumble's and
+     turned by the head's turn about it -- the hat, the hair, the beard, the
+     glasses, the eyes and the hat's hair mask alike, as all of them come
+     through here.  The ground roll keeps them hidden, as it always has. */
+  if (pose === 'dodge') {
+    const fh = display && display._flipHead ? flipHeadAt(dir, frameIdx) : null;
+    if (!fh) { sprite.visible = false; sprite._btHide = 'dodge'; return; }
+    _placeTrait(sprite, entry, display, 'stand', dir, mirror, 0, bodyScale, tune);
+    if (!sprite.visible) return;
+    const sb = display._spriteBody, ab = Math.abs(bodyScale), m = mirror ? -1 : 1;
+    const hsx = sb.x + (fh.sx - 128) * ab * m, hsy = sb.y + (fh.sy - 128) * ab;
+    const hdx = sb.x + (fh.x - 128) * ab * m, hdy = sb.y + (fh.y - 128) * ab;
+    const th = fh.turn * m, c = Math.cos(th), sn = Math.sin(th);
+    const vx = sprite.x - hsx, vy = sprite.y - hsy;
+    sprite.x = hdx + vx * c - vy * sn;
+    sprite.y = hdy + vx * sn + vy * c;
+    sprite.rotation = th;
+    return;
+  }
+  if (sprite.rotation !== 0) sprite.rotation = 0;   /* v2.3.3738: a flip turned it */
   _ensureBodyData();
   /* v2.3.1305: fallbackTex = the NATIVE-color textures behind a recolored
      set.  The color catalogs cache a build as complete even when one
@@ -2762,6 +2788,10 @@ function _bodyRegionTex(bodyTex, region) {
   }
   return m[region];
 }
+
+/* v2.3.3716: an armour slot worn with nothing in it (the look-palette body
+   is drawn only where no armour masks it) */
+const _bareOf = (it) => !it || it === 'none';
 
 /* ═══ v2.3.1872: AN ARBITRARY ROW BAND OF A BODY/GEAR FRAME ═══
  * _bodyRegionTex above crops the three NAMED bands (head/torso/legs) and
@@ -12201,6 +12231,7 @@ export class EntityRenderer {
              (player_dodge `dur`), exactly as the local branch plays across
              durMs; the cycleMs default only for an older client. */
           const fc = playerFrameCount('dodge', dir) || 9;
+          display._flipHead = _rDodge.kind === 'flip';   /* v2.3.3738: their head pieces ride their head (_placeTrait) */
           if (_rDodge.kind === 'flip') {
             /* v2.3.3682: their flip, by its phase (game/jump.js FLIP_FRAMES) */
             frameIdx = flipFrame(fc, (now - _rDodge.startTime) / (_rDodge.durMs || 1));
@@ -12277,9 +12308,16 @@ export class EntityRenderer {
            fishes in their own colours: baked the first time they cast, as
            every pose of a peer's is (their look is the preload law's named
            exception), the painted frame shown until it lands. */
-        let tex = pose === 'fish'
+        /* v2.3.3716: the look palette (on; `?lookpalette=0` off) -- THEIR stand and jog from the shared
+           colour numbers and a row of their colours (lookPalette.js), when
+           they wear no chest or leg armour (masked from the body's own
+           pixels, below); null otherwise, and always with `?lookpalette=0` */
+        /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels) */
+        const _lookTex = (lookPaletteWanted() && _bareOf(_oEq.chest) && _bareOf(_oEq.legs) && (pose !== 'fish' || _bareOf(_oShirtEquip)))
+          ? getLookBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle) : null;
+        let tex = _lookTex || (pose === 'fish'
           ? getFishFrame(_oBodyArt, frameIdx, other.skin, other.pants, other.shoes)
-          : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643: THEIR style */
+          : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle));   /* v2.3.2643: THEIR style */
         if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643 */
         if (tex) {
           /* Reassign texture whenever it differs — same self-heal as
@@ -14035,9 +14073,11 @@ export class EntityRenderer {
            actually used; DODGE_DURATION_MS covers the first frame before
            it has been published. */
         const fc = playerFrameCount('dodge', dir) || 9;
+        display._flipHead = false;   /* v2.3.3738 */
         if (_flipRoll && !S._dodgeRoll && !_dashRoll) {
           /* v2.3.3682: the flip -- the tumble's frames by its phase */
           frameIdx = flipFrame(fc, jumpPhase(_flipJ, now));
+          display._flipHead = true;   /* v2.3.3738: the head pieces ride the head (_placeTrait) */
           display._jumpFrameIdx = frameIdx;   /* QA (__btJumpFx) */
         } else if (_dashRoll && !S._dodgeRoll) {
           /* ═══ v2.3.2463: A DASH LOOPS WHERE A DODGE CLAMPS ═══
@@ -14128,9 +14168,17 @@ export class EntityRenderer {
       /* v2.3.2854: fishing keeps the drawings -- getFishFrame stamps them onto
          the raw sheet without the recolour above (playerSkins), baked behind
          the loading screen by preloadBodyAll. */
-      let tex = pose === 'fish'
+      /* v2.3.3716: the look palette (on; `?lookpalette=0` off) -- the stand and jog frames from the shared
+         colour numbers and this look's row (lookPalette.js), where the frame is
+         drawn as it is: not under chest or leg armour (masked from the body's
+         own pixels) and not in the south block (cut into bands).  Null
+         otherwise, and always with `?lookpalette=0`: the old path below. */
+      /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels) */
+      const _lookTex = (lookPaletteWanted() && !_southBlock && _bareOf(getEquip('chest')) && _bareOf(getEquip('legs')) && (pose !== 'fish' || _bareOf(getEquip('shirt'))))
+        ? getLookBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, getEyeColor(), _bodyArt, getEyeStyle()) : null;
+      let tex = _lookTex || (pose === 'fish'
         ? getFishFrame(_bodyArt, frameIdx, getSkin(), getPants(), getShoes())   /* v2.3.3146: your colours */
-        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
+        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle()));   /* v2.3.2643 */
       if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
          to the NORMAL character body as a rigid assembly.  Trait + body

@@ -19,7 +19,7 @@
  */
 
 import { Rectangle, Texture } from 'pixi.js';
-import { getFrame, SPRITE_VERSION, stripDetachedComponents } from './playerSprites.js';
+import { getFrame, SPRITE_VERSION, stripDetachedComponents, frameCount as playerFrameCount } from './playerSprites.js';   /* v2.3.3716: + frameCount, the look probe's */
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { packTrimmed, sliceCropped } from './gearSheets.js';   /* v2.3.2775: the head sheets are cropped; v2.3.2791: + the body sheets */
@@ -38,6 +38,8 @@ import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine; v2.3.2854: + the file's key mask */
 import { garmentBands, inGarmentBand, judgeGarments, GC_PANTS, GC_BOOT, GC_SKIN, GC_DARK } from './garmentConfine.js';   /* v2.3.3658: trousers and boots painted where they are */
 import { toolWoodMask } from './toolWood.js';   /* v2.3.3671: the pickaxe keeps its wood */
+import { lookPaletteWanted, lookPose, getLookFrame, preloadLookSheets } from './lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
+import { installLookProbe } from './lookPaletteProbe.js';   /* v2.3.3716: QA, `?lookpalette=1` / `?lookprobe` only */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -2212,6 +2214,29 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
+/* ═══ v2.3.3716: THE STAND AND JOG FRAMES FROM THE NUMBERS (on; `?lookpalette=0` off) ═══
+   The same look getBodyFrame bakes a copy of, drawn instead from one shared
+   sheet of colour numbers and a row of this look's colours (lookPalette.js;
+   docs/specs/look-palette.md).  Null whenever the old path is the one that
+   draws it: the switch off, a pose without numbers, the art's own look (the
+   shipped sheet, as getBodyFrame gives it), or anything the numbers do not
+   carry yet -- a baked shirt, a drawing, an eye style (its erase samples the
+   face round each eye), no atlas row free.  The caller then asks getBodyFrame,
+   exactly as before.  Only for a body drawn as it is: a frame that is masked
+   under armour or cut into bands reads its pixels, and those are numbers. */
+export function getLookBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, eyeId, art, eyeStyleId) {
+  /* v2.3.3750: every pose the body's manifest has (lookPose).  Fishing asks
+     as getFishFrame does: no shirt, eye or eye style on that sheet, its
+     drawings unmirrored */
+  if (pose === 'fish') { shirtT = null; eyeId = undefined; eyeStyleId = undefined; art = _fishArt(art); }
+  if (!lookPaletteWanted() || !lookPose(pose) || shirtT) return null;
+  if (eyeBlankFor(pose, dir, eyeStyleId)) return null;
+  if (bodyArtSeg(artForFacing(art, dir))) return null;
+  const eye = eyeFor(pose, dir, eyeId);
+  return getLookFrame(pose, dir, frameIdx, poseSkinTarget(skinTarget(skinId), pose), pantsTarget(pantsId),
+    shoesTarget(shoesId), eye ? eye.t : null);
+}
+
 /* ═══ v2.3.2854: FISHING KEEPS YOUR DRAWINGS ═══
    Owner: "yes make tattoos stay on while harvesting resources."
    Fishing draws the RAW fish sheet, on purpose (entityRenderer v2.3.2304):
@@ -2625,6 +2650,11 @@ export function preloadBodyAll() {
   const _hArt = artForFacing(localBodyArt(false), 'south');
   const headKey = _headSheetKey(skinId, pantsId, shoesId, 'pickup', 'south', _hBlank, _hArt);
   if (!plain && _pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT, _hBlank && _hBlank.rects, _hArt));   /* v2.3.2861: !plain -- the default combo never reached here before */
+  /* v2.3.3716: the stand and jog sheets as colour numbers, behind the same
+     loading screen (not with `?lookpalette=0`).
+     The bakes above are kept as they were: the armour's masked frames and the
+     south block read the body's own pixels (getLookBodyFrame) */
+  if (lookPaletteWanted()) tasks.push(preloadLookSheets());
   return Promise.all(tasks);
 }
 
@@ -2768,3 +2798,13 @@ onArtChange(_onArtChanged);
 onPatternChange(_onArtChanged);   /* v2.3.1941: a trouser pattern is part of the same bake */
 
 _prewarmCurrent();
+
+/* v2.3.3716: the look-palette oracle's probe (mp-lookpalette), on a page that
+   asks for it only */
+try {
+  if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(window.location.search || '')) {
+    installLookProbe({ getBodyFrame, getLookBodyFrame, getFrame, playerFrameCount,
+      /* v2.3.3750: poseSkinTarget -- hit, roll, mine and fish always recolour the skin */
+      touches: (L, pose, dir) => !!(poseSkinTarget(skinTarget(L[0]), pose) || pantsTarget(L[1]) || shoesTarget(L[2]) || eyeFor(pose, dir, L[3])) });
+  }
+} catch (e) { /* QA only */ }

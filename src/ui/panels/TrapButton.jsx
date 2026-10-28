@@ -55,7 +55,11 @@ const GHOST_MS = 700;
    it says -- your traps and the true odds, or why it is grey -- in a small tag
    beside it, toward the middle, that takes no touch.  Sideways nothing lies
    there (the Block button is far right) and a computer shows no Block button,
-   so both keep the pop-up where it was. */
+   so both keep the pop-up where it was.
+   v2.3.3740: still in that column, which stands on the JUMP button now (Jump
+   moved to the disc's left, the owner's "Move the jump button more to the
+   left"), and one slot UNDER Shield Bash: its tag stays level with Element
+   Burst, not on Quick eat (ShieldButton ctlColumn). */
 export function TrapButton({ stateRef, isLandscape }) {
   const [, setTick] = React.useState(0);
   const keyRef = React.useRef('');

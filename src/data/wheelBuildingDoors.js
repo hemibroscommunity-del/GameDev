@@ -107,7 +107,9 @@ export const WHEEL_HALLS = {
      108 px south of the door's foot, and the button comes up 140 px from your
      BOOTS (a body's middle is ~52 px above them), so a new character does not
      start with it showing -- it comes as you walk up to the Mayor. */
-  townhall: { title: 'Town Hall', sub: 'Rankings and the world map', icon: '/icons/ui/bldg-townhall.webp', emoji: '🏛' },
+  /* v2.3.3766: the board of everything to do (ui/panels/buildings/TownBoard.jsx),
+     the leaderboard and the world map at its foot */
+  townhall: { title: 'Town Hall', sub: 'Everything to do, and where', icon: '/icons/ui/bldg-townhall.webp', emoji: '🏛' },
   /* v2.3.3539: the Hotel, a rest the worker pays (WHEEL_HALL_CAPS above); its
      picture the owner's bed, the right stick's sleep picture at its address
      (ui/panels/controlSkin.jsx), so the browser holds one copy */
