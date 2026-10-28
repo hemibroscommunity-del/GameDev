@@ -52,7 +52,7 @@
  * Probe: window.__btLookPalette().
  */
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource } from 'pixi.js';
-import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf } from './paletteTex.js';
+import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf, ONE_BATCHER, setOneBatchLook } from './paletteTex.js';   /* v2.3.3762: + the one program's seam */
 
 export const LOOK_BATCHER = 'bt-look';
 const SLOTS = 4;                  /* sheets a batch (a figure draws one); the atlas is the unit after */
@@ -449,10 +449,10 @@ void main(void){
    chain, as Pixi's own batch shader does its one read: fifteen inlined copies
    of it, and the software chip this box draws with spent minutes building the
    program behind the loading screen.) */
-function fetchChain(fn) {
+function fetchChain(fn, slots = SLOTS) {
   const out = [];
-  for (let t = 0; t < SLOTS; t++) {
-    if (t < SLOTS - 1) out.push(`    ${t > 0 ? 'else ' : ''}if (vTextureId < ${t}.5) return ${fn(t)};`);
+  for (let t = 0; t < slots; t++) {
+    if (t < slots - 1) out.push(`    ${t > 0 ? 'else ' : ''}if (vTextureId < ${t}.5) return ${fn(t)};`);
     else out.push(`    return ${fn(t)};`);
   }
   return out.join('\n');
@@ -485,23 +485,16 @@ function kindDispatch() {
   for (const [k] of _kinds) out.push(`    if (sKind == ${LOOK_KIND_IDS[k]}) return lookKind_${k.replace(/[^A-Za-z0-9]/g, '_')}(k, p);`);
   return out.join('\n');
 }
-const fragSource = () => `#version 300 es
-in vec4 vColor;
-in vec2 vUV;
-flat in float vTextureId;
-flat in float vLook;
-flat in float vSharp;
-flat in float vMirror;
-out vec4 finalColor;
-uniform highp sampler2D uTextures[${SLOTS}];
-uniform highp sampler2D uPalAtlas;
-highp vec4 fetchT(highp ivec2 p)
+/* the reading itself, for a program whose sampler array (uTextures, `slots`
+   of them), atlas (uPalAtlas) and slot (vTextureId) are declared: this one's,
+   and ONE_BATCHER's (paletteTex.js, v2.3.3762) */
+const lookLib = (slots) => `highp vec4 fetchT(highp ivec2 p)
 {
-${fetchChain((t) => `texelFetch(uTextures[${t}], p, 0)`)}
+${fetchChain((t) => `texelFetch(uTextures[${t}], p, 0)`, slots)}
 }
 highp ivec2 sizeT()
 {
-${fetchChain((t) => `textureSize(uTextures[${t}], 0)`)}
+${fetchChain((t) => `textureSize(uTextures[${t}], 0)`, slots)}
 }
 /* the sheet's header, read once a pixel (lookPalette.js buildSheet): its
    scale, rows, table, bits, and each role's entry of the row, ref and under */
@@ -656,18 +649,21 @@ highp vec4 bilinear(highp vec2 P, bool level1)
     }
     return mix(mix(c[0], c[1], f.x), mix(c[2], c[3], f.x), f.y);
 }
-void main(void) {
-    highp vec2 dx = dFdx(vUV);
-    highp vec2 dy = dFdy(vUV);
-    sRow = int(vLook + 0.5) - 1;
-    sMirror = vMirror > 0.5;
+/* a look texel's colour at uv: the body as the chip drew it -- sharpPixels.js's
+   sharpSample (or Pixi's plain read) on a mipmapped texture, done by hand on
+   the coloured texels.  dx, dy: uv's derivatives, taken by the caller
+   outside any branch (ONE_BATCHER's program calls this inside one) */
+highp vec4 lookDraw(highp vec2 uv, highp vec2 dx, highp vec2 dy, highp int row, bool mirror, bool sharp)
+{
+    sRow = row;
+    sMirror = mirror;
     readSheet();
     /* the body as the chip drew it: sharpPixels.js's sharpSample (or Pixi's
        plain read) on a mipmapped texture, done by hand on the coloured texels */
     highp vec2 ts = vec2(sizeT()) / float(sDs);   /* in display texels */
-    highp vec2 px = vUV * ts;
+    highp vec2 px = uv * ts;
     highp vec2 P = px;
-    if (vSharp > 0.5) {
+    if (sharp) {
         highp vec2 tpp = vec2(length(vec2(dx.x, dy.x)), length(vec2(dx.y, dy.y))) * ts;
         highp vec2 scale = 1.0 / max(tpp, vec2(1e-4));
         highp vec2 base = floor(px - 0.5) + 0.5;
@@ -678,7 +674,22 @@ void main(void) {
     highp float lod = log2(max(rho, 1e-6));
     highp vec4 c = bilinear(P, false);
     if (lod > 0.0) c = mix(c, bilinear(P, true), min(lod, 1.0));
-    finalColor = (c / 255.0) * vColor;
+    return c / 255.0;
+}
+`;
+const fragSource = () => `#version 300 es
+in vec4 vColor;
+in vec2 vUV;
+flat in float vTextureId;
+flat in float vLook;
+flat in float vSharp;
+flat in float vMirror;
+out vec4 finalColor;
+uniform highp sampler2D uTextures[${SLOTS}];
+uniform highp sampler2D uPalAtlas;
+${lookLib(SLOTS)}
+void main(void) {
+    finalColor = lookDraw(vUV, dFdx(vUV), dFdy(vUV), int(vLook + 0.5) - 1, vMirror > 0.5, vSharp > 0.5) * vColor;
 }
 `;
 
@@ -700,6 +711,15 @@ function lookShader() {
   return _shader;
 }
 
+/* v2.3.3762: a look sprite's code -- 4 x (the row + 1) + 2 x mirror + sharp,
+   or -1 for any other sprite (the one program's, paletteTex.js) */
+function lookCode(el) {
+  const t = el.texture;
+  if (!lookTex(t)) return -1;
+  const look = t._btLook;
+  const lk = look && look.row >= 0 ? look.row + 1 : 0;
+  return lk * 4 + (t._btLookMirror ? 2 : 0) + (el._btLookSharp ? 1 : 0);
+}
 function packedId(el, slot) {
   const t = el.texture;
   const look = t && t._btLook;
@@ -768,7 +788,8 @@ function patchPipes() {
     const valid = P.validateRenderable;
     P.validateRenderable = function (sprite) {
       const b = this._getGpuSprite(sprite);
-      if ((b.batcherName === LOOK_BATCHER) !== lookTex(sprite._texture)) return true;
+      /* (the one program draws both kinds: no line to cross, v2.3.3762) */
+      if (b.batcherName !== ONE_BATCHER && (b.batcherName === LOOK_BATCHER) !== lookTex(sprite._texture)) return true;
       return valid.call(this, sprite);
     };
   }
@@ -806,6 +827,23 @@ function patchPipes() {
 
 /* at load, so this hook is inside sharpPixels' (installed at app.init) */
 if (_wanted) patchPipes();
+/* ═══ v2.3.3762: THE ONE PROGRAM DRAWS LOOKS TOO ═══
+   With the look palette on by default, every bare player's body broke its
+   figure's batch: a program of its own (LOOK_BATCHER), measured with 15 bare
+   players walking on screen at 166 draw calls a frame against 94 with
+   `?lookpalette=0` -- about 5 a player.  Where paletteTex.js's ONE_BATCHER
+   draws (a phone's graphics chip), the look reading is its fourth kind
+   instead: the same lines (lookLib), chosen by a code in the vertex's
+   texture id, so a body draws in its figure's batch.  Where the one program
+   is not used (a software renderer, `?onebatch=0`), LOOK_BATCHER draws as
+   before.  The kinds registered by then are the one program's too. */
+if (_wanted) {
+  setOneBatchLook({
+    batcher: LOOK_BATCHER,
+    glsl: (slots) => { _built = true; return lookLib(slots); },
+    code: lookCode,
+  });
+}
 
 function programLinked(r, program) {
   try {

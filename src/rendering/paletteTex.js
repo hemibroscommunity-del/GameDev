@@ -424,7 +424,17 @@ export function paletteClipMade() { return FRAG_CLIP !== FRAG; }
    names itself software keeps the three programs (oneBatchChoice), and
    `?onebatch=1` draws with the one anyway (mp-onebatch). */
 export const ONE_BATCHER = 'bt-one';
-const ONE_ID_K = 64;   /* the texture id: slot + 64 x code (Pixi's is 16 bits) */
+/* the texture id: slot + 16 x code (Pixi's is 16 bits).  v2.3.3762: 64 ->
+   16 (a batch has at most 15 slots), for the look palette's codes: 258 + 4 x
+   (row + 1) + 2 x mirror + sharp, up to 1289 */
+const ONE_ID_K = 16;
+/* ═══ v2.3.3762: THE LOOK PALETTE'S SEAM ═══
+   lookPalette.js (`?lookpalette`, on by default) hands the one program its
+   reading as GLSL and says which sprites it draws -- a seam, as it imports
+   this file (no cycle).  Null: no look sprites, the program as before. */
+let _oneLook = null;
+export function setOneBatchLook(x) { _oneLook = x || null; }
+const LOOK_CODE0 = 258;
 const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|software|basic render|\bwarp\b/i;
 /** v2.3.3447: one program or three, from the address (`onebatch=0|1` wins)
  *  and the renderer's name -- {on, why}.  Pure, so the QA probe asks it
@@ -528,7 +538,7 @@ function oneChain(read) {
   }
   return out.join('\n');
 }
-const ONE_FRAG = `#version 300 es
+const oneFrag = () => `#version 300 es
 in vec4 vColor;
 in vec2 vUV;
 flat in float vTextureId;
@@ -541,6 +551,7 @@ highp vec4 colourOf(highp float n, highp int row)
     return texelFetch(uPalAtlas, ivec2(int(n * 255.0 + 0.5), row), 0);
 }
 ${SHARP_SAMPLE_GLSL.replace('vec4 sharpSample(sampler2D tex', 'vec4 sharpSample(highp sampler2D tex')}
+${_oneLook ? _oneLook.glsl(SLOTS) : ''}
 void main(void) {
     vec2 uvDx = dFdx(vUV);
     vec2 uvDy = dFdy(vUV);
@@ -549,7 +560,14 @@ void main(void) {
 ${oneChain((t) => `{\n    outColor = texture(uTextures[${t}], vUV);\n}`)}
     } else if (vCode < 1.5) {
 ${oneChain((t) => `{\n    outColor = sharpSample(uTextures[${t}], vUV, uvDx, uvDy);\n}`)}
-    } else {
+    }${_oneLook ? ` else if (vCode > ${LOOK_CODE0 - 0.5}) {
+    /* v2.3.3762: a look sprite (lookPalette.js) */
+    highp float lc = vCode - ${LOOK_CODE0}.0;
+    highp float lk = floor(lc / 4.0 + 0.001);
+    highp float low = lc - lk * 4.0;
+    highp float mi = floor(low / 2.0 + 0.001);
+    outColor = lookDraw(vUV, uvDx, uvDy, int(lk + 0.5) - 1, mi > 0.5, low - mi * 2.0 > 0.5);
+    }` : ''} else {
     highp vec2 uv = vUV;
     highp vec2 f = vec2(0.0);
     highp float n00 = 0.0, n10 = 0.0, n01 = 0.0, n11 = 0.0;
@@ -568,7 +586,7 @@ function oneShader() {
   const units = new Int32Array(SLOTS);
   for (let i = 0; i < SLOTS; i++) units[i] = i;
   _oneShader = new Shader({
-    glProgram: GlProgram.from({ vertex: ONE_VERT, fragment: ONE_FRAG, name: 'bt-one-batch' }),
+    glProgram: GlProgram.from({ vertex: ONE_VERT, fragment: oneFrag(), name: 'bt-one-batch' }),
     resources: {
       oneSamplers: new UniformGroup({
         uTextures: { value: units, type: 'i32', size: SLOTS },
@@ -582,7 +600,8 @@ function oneShader() {
 /* the slot and the kind, in the vertex's 16-bit texture id */
 function oneId(el, slot) {
   const src = el.texture && el.texture._source;
-  const code = (src && src._btPal && !src.destroyed) ? 2 + src._btPal.row : (el._btSharp ? 1 : 0);
+  const lc = _oneLook ? _oneLook.code(el) : -1;   /* v2.3.3762 */
+  const code = lc >= 0 ? LOOK_CODE0 + lc : ((src && src._btPal && !src.destroyed) ? 2 + src._btPal.row : (el._btSharp ? 1 : 0));
   return (((slot + ONE_ID_K * code) << 16) | (el.roundPixels & 65535)) >>> 0;
 }
 
@@ -663,6 +682,7 @@ function patchPipes() {
         const n = obj.batcherName;
         if (_oneRoute) {
           if (n === 'default' || n === 'sharp' || n === PAL_BATCHER) { obj._btSharp = n === 'sharp'; obj.batcherName = ONE_BATCHER; }
+          else if (_oneLook && n === _oneLook.batcher) obj.batcherName = ONE_BATCHER;   /* v2.3.3762: a look sprite (its sharp flag is its own) */
         } else if (n === ONE_BATCHER) {
           obj.batcherName = obj._btSharp ? 'sharp' : (palTex(obj.texture) ? PAL_BATCHER : 'default');
         }
