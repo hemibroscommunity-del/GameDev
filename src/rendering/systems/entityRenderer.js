@@ -12112,7 +12112,7 @@ export class EntityRenderer {
       const _rDodge = other._dodgeRoll || _rFlip || null;
       const pose = _rexBodyPose
         ? _rexBodyPose
-        : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'))));
+        : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : ((isMoving && !other._brd) ? 'jog' : 'stand'))));   /* v2.3.3776: on a board (tick `brd`) they glide in the stand pose (rideFx.js) */
       const spritesAvailable = hasPose(pose) || hasPose('stand');
       let useSprite = false;
       if (!_rexStandIn && spritesAvailable) {
@@ -12571,7 +12571,7 @@ export class EntityRenderer {
              flying off into space. */
           let bodyScale = 0.6; /* v2.3.741: 0.5 -> 0.6, tracking the +20% body bump */
           const isHitNow = other._hitFlash && (now - other._hitFlash) < 250;
-          const poseNow = isHitNow ? 'hit' : (isMoving ? 'jog' : 'stand');
+          const poseNow = isHitNow ? 'hit' : ((isMoving && !other._brd) ? 'jog' : 'stand');   /* v2.3.3776: a rider glides */
           if (dir === 'east' && poseNow === 'hit') bodyScale = 0.88 * 0.6;
           else if (dir === 'northeast' && poseNow !== 'hit') bodyScale = 1.03 * 0.6;
           const animFrame = display._animFrame || 0;
@@ -13806,7 +13806,7 @@ export class EntityRenderer {
                       ? 'jog'
                       : (isHit
                           ? 'hit'
-                          : ((isMoving && !_blockPlanted) ? 'jog' : 'stand'))))));
+                          : ((isMoving && !_blockPlanted && !(S._ride && S._ride.on)) ? 'jog' : 'stand'))))));   /* v2.3.3776: on the board you glide in the stand pose, facing your way (rideFx.js) */
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet

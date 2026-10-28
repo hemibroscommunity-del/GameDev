@@ -65,8 +65,13 @@ const ROOT = join(HERE, '..', '..');
 
 /* Node 22 refuses `import X from './y.json'` without `with { type: 'json' }`;
    vite adds it for us in the app build, so the source cannot carry it. */
+/* v2.3.3776: ...and vite's `@/` (src/), which the renderer's own modules
+   import since v2.3.3755 (picsNumbers.js, picsOnce.js): mapped here as vite
+   maps it, so a change to entityRenderer is checked rather than crashing */
+const SRC_URL = pathToFileURL(join(ROOT, 'src') + '/').href;
 register('data:text/javascript,' + encodeURIComponent(
   'export async function resolve(s, c, next) {\n'
+  + '  if (s.startsWith("@/")) s = ' + JSON.stringify(SRC_URL) + ' + s.slice(2);\n'
   + '  const r = await next(s, c);\n'
   + '  if (/\\.json(\\?|$)/.test(r.url)) return { ...r, importAttributes: { type: "json" } };\n'
   + '  return r;\n'

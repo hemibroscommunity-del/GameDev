@@ -24,6 +24,7 @@ import { setWheelWaterRenderer } from './wheelWater.js'; /* v2.3.3019: the Wheel
 import { setPaletteRenderer, setOneBatchRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers; v2.3.3447: one program for every sprite */
 import './paletteLoad.js';                                 /* v2.3.3464: the farm's too, read so by Pixi's own loader */
 import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
+import { RideFx } from './rideFx.js';                 /* v2.3.3776: a rider is drawn on the board */
 import { EmoteFx } from './emoteFx.js';               /* v2.3.3392: a bro who emotes moves */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
@@ -307,6 +308,7 @@ export async function initPixiRenderer(canvas) {
   const worldLife = new WorldLife(layers);
   const swimFx = new SwimFx(layers);   /* v2.3.3003 */
   const jumpFx = new JumpFx();          /* v2.3.3017 */
+  const rideFx = new RideFx();          /* v2.3.3776 */
   const emoteFx = new EmoteFx();        /* v2.3.3392 */
   worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
@@ -768,6 +770,10 @@ export async function initPixiRenderer(canvas) {
        lights, which cast their shadows on the ground under them. */
     try { jumpFx.update(S, entityRenderer); }
     catch (e) { if (!update._jumpErr) { update._jumpErr = true; console.error('[pixi-render] jumpFx threw', e && e.message, e && e.stack); } }
+    /* v2.3.3776: the skateboard under a rider's boots, after the jump so it
+       rides up with the feet (rideFx.js) */
+    try { rideFx.update(S, entityRenderer); }
+    catch (e) { if (!update._rideErr) { update._rideErr = true; console.error('[pixi-render] rideFx threw', e && e.message, e && e.stack); } }
     /* ═══ v2.3.3392: EMOTES, AFTER THE JUMPERS ═══
        A wave, a dance, a sit: sorted where they stand, then drawn moving
        about their feet (emoteFx.js), the name plate held still -- before the
