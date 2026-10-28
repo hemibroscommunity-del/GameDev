@@ -80,9 +80,9 @@ chariot in ChatGPT from the orchestrator's prompt (Object Studio entry `arena`
 `docs/art/ARENA-ART-PROMPTS.md`): a horse in a red-and-gold blanket with a
 bronze face plate and a red plume, facing left, a long pole, and an empty
 two-wheeled car on the right. Kept as `assets/prop-source/arena/chariot.png`
-(1536 x 1024, on magenta); the horse's neigh that came with it is kept as a
-source only (`assets/sfx-source/2026-10-28/`, its licence CONFIRM in
-`CREDITS.md`).
+(1536 x 1024, on magenta). The horse's neigh uploaded with it (Freesound
+418428) is CC BY-NC 4.0, and NonCommercial can't be used in this game, so it
+was taken out; its replacement is the orchestrator's (#1219).
 
 ![chariot](arena-art/chariot.png)
 
