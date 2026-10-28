@@ -139,7 +139,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const C = window.__btCues;
     C.reset();
     const bad = [];
-    for (const n of C.names()) if (!C.play(n, 0.05)) bad.push(n);
+    /* v2.3.3735: each cue on its own -- 164 cues in one instant share their
+       recordings, and the voice cap (on by default, data/voiceCap.js) would
+       rightly hold the fourth copy of each back */
+    for (const n of C.names()) { if (window.__btVoiceCap) window.__btVoiceCap(true); if (!C.play(n, 0.05)) bad.push(n); }
+    if (window.__btVoiceCap) window.__btVoiceCap(true);
     return { n: C.names().length, bad };
   });
   rec.ok(`1. every one of the ${all.n} cues starts a sound when asked (its samples are in)`, all.bad.length === 0, all.bad);
@@ -175,14 +179,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S.channel.send({ type: 'shield_wear', payload: { gid } });
       window.__btCues.reset();
     }, pine.gid);
-    /* on a keyboard Q is HELD: down raises it, up lowers it (desktopControls) */
-    await P.page.keyboard.down('q');
+    /* v2.3.3735: on a computer the shield is the RIGHT MOUSE BUTTON held over
+       the world (v2.3.3711, desktopControls: Q is the special now): down
+       raises it, up lowers it */
+    const at = await P.page.evaluate(() => {
+      const c = Array.from(document.querySelectorAll('canvas')).map((e) => e.getBoundingClientRect()).sort((a, b) => b.width * b.height - a.width * a.height)[0];
+      return c ? { x: Math.round(c.left + c.width / 2 + 60), y: Math.round(c.top + c.height / 2 + 40) } : { x: 400, y: 300 };
+    });
+    await P.page.mouse.move(at.x, at.y);
+    await P.page.mouse.down({ button: 'right' });
     await P.page.waitForTimeout(500);
     const up = await P.page.evaluate(() => ({ on: !!window._gameState.current._shieldUp, n: window.__btCues.stats.played.shieldUp || 0, d: window.__btCues.stats.played.shieldDown || 0 }));
-    await P.page.keyboard.up('q');
+    await P.page.mouse.up({ button: 'right' });
     await P.page.waitForTimeout(500);
     const down = await P.page.evaluate(() => ({ on: !!window._gameState.current._shieldUp, n: window.__btCues.stats.played.shieldDown || 0 }));
-    rec.ok('2c. the shield held up (Q) and let down: the buckle each way, once each', up.on && up.n === 1 && up.d === 0 && !down.on && down.n === 1, { up, down });
+    rec.ok('2c. the shield held up (the right mouse button) and let down: the buckle each way, once each', up.on && up.n === 1 && up.d === 0 && !down.on && down.n === 1, { up, down, at });
   } else {
     rec.ok('2c. the admin panel\'s shield reached the bag (guard)', false, null);
   }
