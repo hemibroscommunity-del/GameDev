@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "78a2178bb719041f81510c78249919d35d0041e5",
+  "tree": "eddf603ccca13626375d40ce1c440b64dfdd8204",
+  "committedAt": "2026-10-27T16:15:04-07:00",
+  "subject": "A slime's blast breaks the trees and props near it and leaves soot on the ground for a while (v2.3.3679) (#1164)",
+  "files": 6673,
+  "bytes": 775018125,
+  "listingSha256": "40c22b4943b997cbb0628b1d565550d50e4e5cf0575332d54caa6753176564eb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

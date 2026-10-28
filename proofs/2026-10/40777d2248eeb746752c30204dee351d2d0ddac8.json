@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "40777d2248eeb746752c30204dee351d2d0ddac8",
+  "tree": "49c42c99822168c90444b45ca68cb82d85cfd597",
+  "committedAt": "2026-10-28T10:59:08-07:00",
+  "subject": "Merge train: all 28 open PRs (#1167-#1194) in order, tested together, plus a lean CLAUDE.md (v2.3.3682-v2.3.3710) (#1195)",
+  "files": 6736,
+  "bytes": 775912425,
+  "listingSha256": "b525bcb03e01f122aa4670b0eeead7abb8c20d9a80b2cb5a85171bc5a5d978a1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

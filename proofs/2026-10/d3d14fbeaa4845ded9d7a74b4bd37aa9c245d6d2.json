@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d3d14fbeaa4845ded9d7a74b4bd37aa9c245d6d2",
+  "tree": "cb850bcb363bad67ee002c410d15453f8dc40834",
+  "committedAt": "2026-10-27T16:16:17-07:00",
+  "subject": "The jump button is back for everyone, under the attack disc (v2.3.3681) (#1166)",
+  "files": 6675,
+  "bytes": 775047073,
+  "listingSha256": "57ad58c41f3191c8f510cd947ff30462bad8c149e5769a96ce82d53b8053c48e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
