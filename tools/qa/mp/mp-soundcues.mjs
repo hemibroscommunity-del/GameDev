@@ -139,7 +139,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const C = window.__btCues;
     C.reset();
     const bad = [];
-    /* v2.3.3735: each cue on its own -- 164 cues in one instant share their
+    /* v2.3.3760: each cue on its own -- 164 cues in one instant share their
        recordings, and the voice cap (on by default, data/voiceCap.js) would
        rightly hold the fourth copy of each back */
     for (const n of C.names()) { if (window.__btVoiceCap) window.__btVoiceCap(true); if (!C.play(n, 0.05)) bad.push(n); }
@@ -179,7 +179,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S.channel.send({ type: 'shield_wear', payload: { gid } });
       window.__btCues.reset();
     }, pine.gid);
-    /* v2.3.3735: on a computer the shield is the RIGHT MOUSE BUTTON held over
+    /* v2.3.3760: on a computer the shield is the RIGHT MOUSE BUTTON held over
        the world (v2.3.3711, desktopControls: Q is the special now): down
        raises it, up lowers it */
     const at = await P.page.evaluate(() => {

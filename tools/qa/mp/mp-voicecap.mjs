@@ -6,7 +6,7 @@
  * different recordings never hold each other back.
  *
  * Two phones in the world's BroTown, one `?voicecap=0` (the game as it was)
- * and one as the game is (v2.3.3735: the cap on by default),
+ * and one as the game is (v2.3.3760: the cap on by default),
  * each playing through the game's own BT_AUDIO:
  *   1. the sounds in on both (guard);
  *   2. A WHIRLWIND INTO A PACK: ten monsters hit at once (materialHit, the
@@ -78,7 +78,7 @@ const flurry = async (A) => {
 };
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'Allvoices', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'voicecap=0' });   /* v2.3.3735: the off-ramp (on is the default) */
+  const A = await H.newPlayer(browser, { name: 'Allvoices', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'voicecap=0' });   /* v2.3.3760: the off-ramp (on is the default) */
   const B = await H.newPlayer(browser, { name: 'Fewvoices', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });   /* the default: on */
   const errs = [];
   for (const P of [A, B]) P.page.on('pageerror', (e) => errs.push(String(e && e.message || e).slice(0, 200)));

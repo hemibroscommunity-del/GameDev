@@ -47,7 +47,7 @@ const waitSounds = (P) => P.page.evaluate(async (keys) => {
 }, FOLD);
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  const A = await H.newPlayer(browser, { name: 'Foldear', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'sfxcache=0' });   /* v2.3.3735: every sound decoded, the sound cache off (on by default): this reads decoded buffers of sounds it does not pin */
+  const A = await H.newPlayer(browser, { name: 'Foldear', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'sfxcache=0' });   /* v2.3.3760: every sound decoded, the sound cache off (on by default): this reads decoded buffers of sounds it does not pin */
   const B = await H.newPlayer(browser, { name: 'Stereoear', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel', query: 'stereosfx&sfxcache=0' });
   const errs = [];
   for (const P of [A, B]) P.page.on('pageerror', (e) => errs.push(String(e && e.message || e).slice(0, 200)));
