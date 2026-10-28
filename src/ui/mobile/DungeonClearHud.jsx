@@ -21,6 +21,7 @@
  * (CHEST_OPEN_MS there) -- it was the old daily chest's strip.  Its picture
  * (src/data/dungeonArt.js BOSS_CHEST_ART) is warmed with the row's others.
  */
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';
@@ -48,17 +49,16 @@ const BTN = {
 
 /* v2.3.3565: the chest's lines' pictures -- its gold, an item's bag picture,
    a weapon's skill */
-const GOLD_ICON = '/icons/ui/cur-gold.webp';
 const SKILL_ICON = { sword: '/icons/ui/combat-melee.webp', bow: '/icons/ui/combat-bow.webp', staff: '/icons/ui/combat-magic.webp' };
 const nameOf = (k) => (k === 'rare_gem' ? 'Rare Gem' : ((shardByKey(k) || {}).label || null));
-const iconOf = (l) => (l.skill ? SKILL_ICON[l.skill] : (l.key === 'gold' ? GOLD_ICON : thumbFor(l.key)));
+const iconOf = (l) => (l.skill ? SKILL_ICON[l.skill] : (l.key === 'gold' ? coinArtFor(l.n) : thumbFor(l.key))   /* v2.3.3734: the pile for the gold */);
 /* Warm (and hold) the few small pictures the chest's row may show, so the row
    never waits on one: the gold, the three weapons, the Rare Gem and the
    lands' shards.  The chest's own strip is on the loading screen already. */
 const _held = [];
 try {
   if (typeof Image !== 'undefined') {
-    const urls = [GOLD_ICON, ...Object.values(SKILL_ICON), thumbFor('rare_gem'), ...Object.values(ZONE_SHARDS).map((z) => thumbFor(z.key))];
+    const urls = [...Object.values(SKILL_ICON), thumbFor('rare_gem'), ...Object.values(ZONE_SHARDS).map((z) => thumbFor(z.key))];
     if (BOSS_CHEST_ART) urls.push(dungeonArtUrl(BOSS_CHEST_ART.url));   /* v2.3.3566 */
     for (const u of urls) { if (!u) continue; const img = new Image(); img.decoding = 'async'; img.src = u; _held.push(img); }
   }

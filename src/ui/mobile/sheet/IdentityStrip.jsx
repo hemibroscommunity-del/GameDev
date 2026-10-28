@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useState } from 'react';
 import { COL, getState } from '../dash/common.js';
 import { combatLevelProgress, unspentPointsTotal } from './heroModel.js';
@@ -330,8 +331,9 @@ export const IdentityStrip = ({ band = false, gutter = 0, trackW = null }) => {
         paddingRight: 6,
         color: COL.gold, fontSize: 13, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
       }}>
-        <img src="/icons/popups/gold.webp" alt=""
-          style={{ width: 13, height: 13, imageRendering: 'pixelated', display: 'block' }} />
+        {/* v2.3.3734: the pile for your gold, drawn smooth */}
+        <img src={coinArtFor(gold)} alt=""
+          style={{ width: 13, height: 13, objectFit: 'contain', display: 'block' }} />
         <span className="bt-coin-glimmer">{Number(gold).toLocaleString()}</span>
       </span>
     </div>
