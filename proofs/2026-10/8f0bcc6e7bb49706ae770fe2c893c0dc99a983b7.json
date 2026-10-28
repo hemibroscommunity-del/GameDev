@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8f0bcc6e7bb49706ae770fe2c893c0dc99a983b7",
+  "tree": "a8f27050a256559d475f8b438835420b88fbb5d1",
+  "committedAt": "2026-10-28T16:09:33-07:00",
+  "subject": "Upright: the attack disc a little down and right, JUMP to its left; Shield Bash shows only with the shield up (v2.3.3740) (#1232)",
+  "files": 6896,
+  "bytes": 801585290,
+  "listingSha256": "826063a0ebd7d61c0be339dc3a803f2f5bfc8631cc0bd78c9401f46481510dfe",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
