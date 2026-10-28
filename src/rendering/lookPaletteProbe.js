@@ -91,7 +91,7 @@ export function installLookProbe(dep) {
     rt.destroy(true);
     return { data: px.pixels, w: px.width, h: px.height };
   }
-  async function compare({ looks, scale = 1, frames = 0, cols = 16, poses } = {}) {
+  async function compare({ looks, scale = 1, frames = 0, cols = 16, poses, bar = 16 } = {}) {
     usePoses(poses);
     const out = [];
     for (const L of looks) {
@@ -102,34 +102,37 @@ export function installLookProbe(dep) {
       const b = render(cells, (c) => c.nt, scale, cell, cols);
       const hist = {};
       let drawn = 0, differ = 0, worst = 0, sameTex = 0, worstAt = null;
+      /* v2.3.3750: an 8-bit sheet is a cut of the art (the owner's 256): held
+         to the cut's bar, not to 1 level -- its own tally */
+      const q8 = { drawn: 0, over: 0, worst: 0, sum: 0, worstAt: null };
       const bad = [];
+      const cellAt = (p) => { const q = p >> 2, x = q % a.w, y = Math.floor(q / a.w); return [cells[Math.floor(y / cell) * cols + Math.floor(x / cell)], x % cell, y % cell]; };
+      const tag = (c, x, y) => (c ? `${c.pose}-${c.dir}#${c.f}${c.mirror ? 'm' : ''} at ${x},${y}` : '?');
       for (const c of cells) if (c.ot === getFrame(c.pose, c.dir, c.f)) sameTex++;
       for (let p = 0; p < a.data.length; p += 4) {
         if (!a.data[p + 3] && !b.data[p + 3]) continue;
-        drawn++;
         let m = 0;
         for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(a.data[p + k] - b.data[p + k]));
+        const [c, cx, cy] = cellAt(p);
+        const src = c && c.nt && c.nt.source;
+        if (src && src._btLook && src._btLook.bits === 8) {
+          q8.drawn++; q8.sum += m;
+          if (m > bar) q8.over++;
+          if (m > q8.worst) { q8.worst = m; q8.worstAt = tag(c, cx, cy); }
+          continue;
+        }
+        drawn++;
         if (!m) continue;
         hist[m] = (hist[m] || 0) + 1;
         if (m > 1) {
           differ++;
-          if (bad.length < 6) {
-            const q = p >> 2, x = q % a.w, y = Math.floor(q / a.w);
-            const ci = Math.floor(y / cell) * cols + Math.floor(x / cell);
-            const c = cells[ci];
-            bad.push({ at: [x % cell, y % cell], cell: c ? `${c.pose}-${c.dir}#${c.f}${c.mirror ? 'm' : ''}` : '?',
-              old: Array.from(a.data.slice(p, p + 4)), now: Array.from(b.data.slice(p, p + 4)) });
-          }
+          if (bad.length < 6) bad.push({ at: [cx, cy], cell: tag(c, cx, cy), old: Array.from(a.data.slice(p, p + 4)), now: Array.from(b.data.slice(p, p + 4)) });
         }
-        if (m > worst) {
-          worst = m;
-          /* v2.3.3750: where the worst one is */
-          const q = p >> 2, x = q % a.w, y = Math.floor(q / a.w);
-          const c = cells[Math.floor(y / cell) * cols + Math.floor(x / cell)];
-          worstAt = c ? `${c.pose}-${c.dir}#${c.f}${c.mirror ? 'm' : ''} at ${x % cell},${y % cell}` : '?';
-        }
+        if (m > worst) { worst = m; worstAt = tag(c, cx, cy); }
       }
-      out.push({ look: L.join('/'), baked: ok, frames: cells.length, oldIsShipped: sameTex, drawn, differ, worst, worstAt, hist, bad });
+      q8.mean = +(q8.sum / Math.max(1, q8.drawn)).toFixed(3);
+      delete q8.sum;
+      out.push({ look: L.join('/'), baked: ok, frames: cells.length, oldIsShipped: sameTex, drawn, differ, worst, worstAt, hist, bad, q8 });
     }
     return out;
   }

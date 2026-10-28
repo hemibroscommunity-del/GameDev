@@ -40,6 +40,9 @@ const OUT = join(process.cwd(), 'tools/qa/mp/out');
    the roll and the flip the dodge, the hit taken hit), and their sheets */
 const POSES = ['stand', 'jog', 'hit', 'dodge', 'mine', 'fish', 'pickup'];
 const BODY_SHEETS = 20;
+/* v2.3.3750: an 8-bit sheet is a cut of the art (the owner's "anything at
+   256"), held to the cut's bar (role-bake.mjs CUT_BAR) instead of 1 level */
+const CUT_BAR = 16;
 const PHONE = { width: 390, height: 844 };
 
 /* the oracle's 24: skin x trousers x boots, an eye colour on every other one */
@@ -138,17 +141,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const res = [];
     /* v2.3.3750: LP_ZOOM_ONLY=1 skips the 1:1 pass (seven minutes) to look at the zooms alone */
     for (let i = 0; i < (process.env.LP_ZOOM_ONLY ? 0 : ORACLE.length); i += 4) {
-      res.push(...await B.page.evaluate(([looks, poses]) => window.__btLookOracle.compare({ looks, scale: 1, poses }), [ORACLE.slice(i, i + 4), POSES]));
+      res.push(...await B.page.evaluate(([looks, poses, bar]) => window.__btLookOracle.compare({ looks, scale: 1, poses, bar }), [ORACLE.slice(i, i + 4), POSES, CUT_BAR]));
     }
     report.oracle = res;
     let frames = 0, worst = 0, differ = 0, drawn = 0;
+    const q8 = { drawn: 0, over: 0, worst: 0, sum: 0, worstAt: null };
     for (const r of res) {
       frames += r.frames; drawn += r.drawn; differ += r.differ; worst = Math.max(worst, r.worst);
+      if (r.q8) {
+        q8.drawn += r.q8.drawn; q8.over += r.q8.over; q8.sum += r.q8.mean * r.q8.drawn;
+        if (r.q8.worst > q8.worst) { q8.worst = r.q8.worst; q8.worstAt = r.look + ' ' + r.q8.worstAt; }
+      }
       console.log(`    ${r.look.padEnd(32)} ${r.frames} frames${r.baked ? '' : ' (NOT ALL BAKED)'}, ${r.drawn} px drawn, ${r.differ} over 1, worst ${r.worst} ${JSON.stringify(r.hist)}${r.bad.length ? ' e.g. ' + JSON.stringify(r.bad.slice(0, 2)) : ''}`);
     }
-    rec.ok(`THE ORACLE: 24 looks, ${frames} frames of every body pose (${POSES.join(', ')}) in every facing drawn, ${drawn} px drawn both ways: ${differ} px more than 1 level apart (worst ${worst})`,
+    rec.ok(`THE ORACLE, 16-bit sheets: 24 looks, ${frames} frames of every body pose (${POSES.join(', ')}) in every facing drawn, ${drawn} px of 16-bit sheets drawn both ways: ${differ} px more than 1 level apart (worst ${worst})`,
       (process.env.LP_ZOOM_ONLY ? true : res.length === 24) && res.every((r) => r.baked && r.frames >= 150) && differ === 0, { frames, drawn, differ, worst });
     console.log(`    (the oracle took ${Math.round((Date.now() - t0) / 1000)} s)`);
+    if (!process.env.LP_ZOOM_ONLY) {
+      const mean8 = +(q8.sum / Math.max(1, q8.drawn)).toFixed(2);
+      console.log(`    the 8-bit sheets: ${q8.drawn} px, mean ${mean8} levels from the old path, worst ${q8.worst} (${q8.worstAt}), ${q8.over} over ${CUT_BAR}`);
+      rec.ok(`THE ORACLE, 8-bit sheets: ${q8.drawn} px drawn both ways, worst ${q8.worst} levels (the bar ${CUT_BAR}), mean ${mean8}`,
+        q8.over === 0, { ...q8, mean8 });
+    }
     /* v2.3.3750: the palette atlas's rows are shared (the orchestrator's): how many the looks took, and none refused */
     const ra = await B.page.evaluate(() => window.__btLookPalette());
     console.log(`    the atlas: ${ra.rows} rows held by ${ra.looks} looks, ${ra.looksMade} made, ${ra.looksFreed} freed, rowsFull ${ra.rowsFull}`);
@@ -174,8 +188,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     report.wide = {};
     for (const scale of [2.6, 0.8]) {
       await B.page.evaluate((s) => { window.__lpScale = s; }, scale);
-      const r = await B.page.evaluate(([looks, poses]) => window.__btLookOracle.compare({ looks, scale: window.__lpScale, frames: 2, cols: 12, poses }),
-        [[ORACLE[0], ORACLE[7], ORACLE[13], ORACLE[22]], POSES]);
+      const r = await B.page.evaluate(([looks, poses, bar]) => window.__btLookOracle.compare({ looks, scale: window.__lpScale, frames: 2, cols: 12, poses, bar }),
+        [[ORACLE[0], ORACLE[7], ORACLE[13], ORACLE[22]], POSES, scale > 1 ? CUT_BAR : CUT_BAR + 4]);
       report.wide[scale] = r;
       const d = r.reduce((a, x) => a + x.differ, 0), px = r.reduce((a, x) => a + x.drawn, 0), w = Math.max(...r.map((x) => x.worst));
       const hist = {};
@@ -185,11 +199,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
          shader: 1 level, as 1:1.  Minified (a computer) the mip chain and the
          blend between its levels, whose LOD and weights the chip rounds its
          own way: held to 4 levels on under 5% of the pixels */
-      rec.ok(`at ${scale} screen pixels a texel (the sharp read${scale < 1 ? ', the mip chain' : ''}): ${d} of ${px} px more than 1 level apart, worst ${w}`,
+      const z8 = r.reduce((a, x) => ({ px: a.px + x.q8.drawn, over: a.over + x.q8.over, worst: Math.max(a.worst, x.q8.worst) }), { px: 0, over: 0, worst: 0 });
+      console.log(`    at ${scale}x, the 8-bit sheets: ${z8.px} px, worst ${z8.worst}, ${z8.over} over ${scale > 1 ? CUT_BAR : CUT_BAR + 4}`);
+      rec.ok(`at ${scale} screen pixels a texel (the sharp read${scale < 1 ? ', the mip chain' : ''}): 16-bit sheets ${d} of ${px} px more than 1 level apart, worst ${w}; 8-bit sheets worst ${z8.worst}`,
         /* v2.3.3750: 4 at worst minified -- with every pose in the grid one
            texel of jog-east #1 (M3's stand and jog, not a new pose) lands on
            a blend the chip rounds the other way: 1 of 414,220 */
-        scale > 1 ? w <= 1 : (w <= 4 && d < 0.05 * px), { d, px, w, hist });
+        (scale > 1 ? w <= 1 : (w <= 4 && d < 0.05 * px)) && z8.over === 0, { d, px, w, hist, z8 });
     }
 
     /* 3. the local player's own body, given a look */
