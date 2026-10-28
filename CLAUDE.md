@@ -6004,6 +6004,17 @@ Two protocol versions coexist; both must keep working:
       one level apart, drawn by the one program too; the frame 16-46% longer
       on the QA box's software chip; `mp-farmpalette`:
       docs/specs/palette-textures.md "The farm".
+  - THE GAME'S SCRIPT IS ALL ASCII (v2.3.3703, docs/specs/ascii-script.md): a
+    browser keeps a page's script as text while the page lives, and ONE
+    character past Latin-1 in it makes Chrome keep all of it two bytes a
+    character and Safari decode a second copy -- the main script's 3.8 million
+    characters held 1,589 ("—", "·", "→", emoji): 3.6 MB of the check's
+    `buffers` line, which counts script text too (more on an iPhone).
+    vite.config.js asks esbuild for `charset: 'ascii'` (every string the same
+    string, escaped) and its `ascii-only-bundle` escapes what esbuild leaves,
+    a regular expression's own characters, saying so in the build log: write
+    such a character in a regex as `\uXXXX` (the `ascii-only` suite holds src/
+    to it; TRAPS §258).
   - THE CHECK: `mp-membudget` runs on every PR (`.github/workflows/memory.yml`,
     the `memory-budget` check): a phone in BroTown, at a Flame Fields fight and
     home again, three times. Each kind of memory's highest reading must stay

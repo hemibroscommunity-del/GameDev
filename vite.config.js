@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { execSync } from 'child_process';
 import { readFileSync, readdirSync } from 'fs';
+import { asciiOnly } from './tools/dev/ascii-only.mjs';
 
 const safeExec = (cmd) => {
   try { return execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); }
@@ -105,7 +106,35 @@ export default defineConfig({
         });
       },
     },
+    {
+      /* v2.3.3703: THE NET UNDER `charset: 'ascii'` (below).  esbuild leaves a
+         regular expression's characters as written, and ONE character past
+         ASCII anywhere in a script makes the browser keep all of it two bytes
+         a character (and Safari a second copy): ~4 MB of the page, ~8 on an
+         iPhone.  So whatever is left is escaped here, after the minifier, and
+         the build says where (tools/dev/ascii-only.mjs, its rules). */
+      name: 'ascii-only-bundle',
+      apply: 'build',
+      generateBundle(_, bundle) {
+        for (const f of Object.values(bundle)) {
+          if (f.type !== 'chunk') continue;
+          const r = asciiOnly(f.code);
+          if (!r.n) continue;
+          f.code = r.code;
+          this.warn(`${f.fileName}: ${r.n} character(s) past ASCII escaped after the minifier (write them as \\uXXXX in the source)`);
+        }
+      },
+    },
   ],
+  /* v2.3.3703: THE GAME'S SCRIPT IS ALL ASCII.  Vite asks esbuild for utf8
+     output; the game's words carry 1,589 characters past Latin-1 ("—", "·",
+     "→", emoji), so the browser held its 3.8 million characters at two bytes
+     each, 7.6 MB, where an all-ASCII script is one byte each -- and Safari
+     shares an all-ASCII script's bytes with its text instead of decoding a
+     second copy.  Escaped (`—`), every string is the same string.
+     Measured: the memory check's `buffers` 21.9 -> 18.2 MB arriving in BroTown
+     (docs/specs/ascii-script.md). */
+  esbuild: { charset: 'ascii' },
   define: {
     /* The set loadWebpOrPng() consults instead of probing. See scanWebpTwins. */
     __WEBP_TWINS__: JSON.stringify(WEBP_TWINS),
