@@ -103,10 +103,13 @@ export function wheelTownDoorAt(S) {
     (zoneTransitions.js, the return branch) -- today's town is no longer a
     place you walk to (v2.3.3025), so the gate must not leave you in it.  Set
     on every trip to the farm (null from anywhere that is not the Wheel), so
-    a trip never inherits the last one's. */
+    a trip never inherits the last one's.
+    v2.3.3705: and the zone the trip leaves (`_farmLeaving`), so the farm's
+    hold lets that zone's pictures go (game/farmTrip.js holdFarmUntilReady). */
 export function rememberFarmTrip(S) {
   if (!S || !S.player) return;
   S._farmBack = isWheelTrialZone(S.currentZone) ? { x: S.player.x, y: S.player.y } : null;
+  S._farmLeaving = S.currentZone || null;
 }
 
 /* QA (mp-wheeldoors): the doors as this client knows them, and which one you

@@ -17,7 +17,7 @@
  */
 import { ZONES } from '@/data/zones.js';
 import { BT_AUDIO } from '@/data/index.js';
-import { showZoneLoadingOverlay, hideZoneLoadingOverlay } from '@/game/zoneTransitions.js';
+import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js';
 import { farmArtReady } from '@/rendering/farmWorld.js';
 import { isZoneMapResident } from '@/rendering/tiledMaps.js';
 import { farmFigureReady } from '@/rendering/standIns.js';
@@ -44,6 +44,24 @@ export function holdFarmUntilReady(S) {
      Morning"; a no-op when it already plays. */
   if (S.currentZone === 'farm_home') {
     try { BT_AUDIO.startZoneAmbient('farm_home'); } catch (e) { /* sound only */ }
+  }
+  /* ═══ v2.3.3705: AND THE TRIP LETS GO OF WHERE IT LEFT ═══
+     For the same reason: no way onto the farm passes through a zone change,
+     so none of them let the zone they left go.  A walk out of the Wheel does
+     (zoneTransitions, freeZoneAssets), and so does a dungeon's way in
+     (gameEvents' dungeon_started, releaseLeftZoneArt), but from the Feed &
+     Seed, the old Farm window or the Land Office the Wheel's own pictures
+     stayed for the whole visit: its lands' banner strips (15 MB of decoded
+     images), the signposts' icons, the buildings' pictures and every monster
+     look loaded near you.  rememberFarmTrip (wheelTownDoors.js) names the zone
+     each of those three leaves; the Workshop's dungeons on their way home
+     name none.  Released as a dungeon's way in releases it, a beat late (the
+     renderer has not yet seen the flip); the way back into the Wheel loads
+     it all again behind its own loading screen, as after a dungeon. */
+  const left = S._farmLeaving;
+  S._farmLeaving = null;
+  if (left && left !== 'farm_home' && S.currentZone === 'farm_home') {
+    try { releaseLeftZoneArt(left, 'farm_home'); } catch (e) { /* a leak, not a crash */ }
   }
   const seq = ++_seq;
   const load = import('@/rendering/preloadAnimations.js').then((m) => m.preloadZoneAssets('farm_home'));

@@ -3803,7 +3803,11 @@ remnant to migrate server-side, not a mode to preserve.
       - every way onto the farm waits under its loading screen for all of it
         (`holdFarmUntilReady`, `src/game/farmTrip.js`), let go on leaving
         (`freeFarmArt`); the map decodes to 22 MB (the cave's 6), held on the
-        farm only;
+        farm only; since v2.3.3705 the way in lets go of the Wheel it left (its
+        lands' banner strips, the signposts' and buildings' icons, the monster
+        looks near you: `rememberFarmTrip`'s `_farmLeaving`, then
+        `releaseLeftZoneArt` as a dungeon's way in; `mp-farmfree`,
+        docs/specs/farm-trip-free.md);
       - `farmwalk` suite, `mp-farmwalk`, `mp-farmanim`, `mp-farm`:
         docs/specs/farm-walk.md.
   - Since v2.3.3120 PET TRAPPING -- the owner: "your trapping level governs
