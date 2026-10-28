@@ -202,5 +202,70 @@ export function installLookProbe(dep) {
     for (let i = 0; i < u8.length; i += 32768) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
     return { w: pic.w, h: pic.h, cell, b64: btoa(bin) };
   }
-  window.__btLookOracle = { compare, draw, held, picture, baked: (L) => baked(L) };
+  /* ═══ v2.3.3757: THE STAND-INS -- every frame of every stand-in sheet in a
+     look, the old way (the stand-ins' own bake: recolorBodyToCanvas at the
+     sheet's size, cropped by packTrimmed as _sliceStandIn does, a linear
+     canvas texture) against the numbers (getLookPartFrames('standin')),
+     through the sharp read the stand-ins are drawn with ═══ */
+  async function compareStandIns({ looks, scale = 1, frames = 0, cols = 8, bar = 16 } = {}) {
+    const PS = await import('./playerSkins.js');
+    const GS = await import('./gearSheets.js');
+    const WI = await import('./webpImage.js');
+    const LP = await import('./lookPalette.js');
+    const { Texture, Rectangle } = await import('pixi.js');
+    const man = await (await fetch('/sprites/look/standin/roles.json?v=probe')).json();
+    const out = [];
+    /* one sheet at a time (a picture of every frame of all 21 at once is
+       hundreds of MB: it took the box's browser down) */
+    const imgs = Object.create(null);
+    for (const L of looks) {
+      const sT = PS.skinTarget(L[0]) || PS.DEFAULT_SKIN_TARGET, pT = PS.pantsTarget(L[1]), bT = PS.shoesTarget(L[2]);
+      let nFrames = 0, drawn = 0, over = 0, worst = 0, sum = 0, worstAt = null;
+      for (const [sheet, e] of Object.entries(man.sheets)) {
+        const fw = e.fw || man.fw, fh = e.fh || man.fh;
+        const img = imgs[sheet] || (imgs[sheet] = await WI.loadWebpOrPng(`/sprites/player/${sheet}.png`));
+        const cv = PS.recolorBodyToCanvas(img, sT, pT, bT, null, fh, null, null, null, fw, undefined, undefined, undefined, null, /-torso$/.test(sheet));
+        const n = Math.max(1, Math.round(cv.width / fw));
+        const packed = GS.packTrimmed(cv, fw, fh, n);
+        const src = Texture.from(packed ? packed.canvas : cv).source;
+        src.scaleMode = 'linear';
+        const nt = LP.getLookPartFrames('standin', sheet, [[1, sT], [2, pT], [3, bT]]);
+        const cells = [];
+        if (nt) {
+          for (let f = 0; f < n && f < (frames || n); f++) {
+            const c = packed ? packed.cells[f] : null;
+            const ot = c ? new Texture({ source: src, frame: new Rectangle(c.ax, c.ay, c.w, c.h), orig: new Rectangle(0, 0, fw, fh), trim: new Rectangle(c.tx, c.ty, c.w, c.h) })
+              : new Texture({ source: src, frame: new Rectangle(f * fw, 0, fw, fh) });
+            cells.push({ pose: sheet, dir: '', f, mirror: false, ot, nt: nt[f] });
+          }
+        }
+        if (cells.length) {
+          const cell = Math.ceil(Math.max(fw, fh) * scale) + 4;
+          const a = render(cells, (c) => c.ot, scale, cell, cols);
+          const b = render(cells, (c) => c.nt, scale, cell, cols);
+          nFrames += cells.length;
+          for (let p = 0; p < a.data.length; p += 4) {
+            if (!a.data[p + 3] && !b.data[p + 3]) continue;
+            let m = 0;
+            for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(a.data[p + k] - b.data[p + k]));
+            drawn++; sum += m;
+            if (m > bar) over++;
+            if (m > worst) {
+              worst = m;
+              const q = p >> 2, x = q % a.w, y = Math.floor(q / a.w);
+              const c = cells[Math.floor(y / cell) * cols + Math.floor(x / cell)];
+              worstAt = c ? `${c.pose}#${c.f} at ${x % cell},${y % cell}` : '?';
+            }
+          }
+        }
+        for (const c of cells) { try { c.ot.destroy(false); } catch (er) { /* gone */ } }
+        try { src.destroy(); } catch (er) { /* gone */ }
+        if (packed) { packed.canvas.width = 0; packed.canvas.height = 0; }
+        cv.width = 0; cv.height = 0;
+      }
+      out.push({ look: L.join('/'), frames: nFrames, drawn, over, worst, worstAt, mean: +(sum / Math.max(1, drawn)).toFixed(3) });
+    }
+    return out;
+  }
+  window.__btLookOracle = { compare, draw, held, picture, compareStandIns, baked: (L) => baked(L) };
 }

@@ -92,6 +92,24 @@ if (typeof window !== 'undefined') {
   window.__btStandInTrim = () => _standInTrimStats.slice();
   window.__btStandInFrames = (key) => _standInTrimFrames.get(key) || null;
 }
+/* ═══ v2.3.3757: THE STAND-INS FROM THE NUMBERS (on; `?lookpalette=0` off) ═══
+   The swing's and the bow's body, torso and the jog's legs kept ONCE as colour
+   numbers (lookSets/standin.js, public/sprites/look/standin/), a look a row of
+   the palette atlas, instead of a recoloured copy for you and for every other
+   player seen swinging (docs/specs/look-palette.md, "The stand-ins").  Loaded
+   behind the loading screen with the body.  The strip for a sheet in a look
+   (skin, trousers, boots as the bakes pass them: the skin always), or null --
+   the switch off, the set not in, no atlas row: the caller bakes as before.
+   Never for a drawing (stamped per player) or under greaves (the legs are cut
+   by their shape). */
+registerLookSheets('standin', '/sprites/look/standin/roles.json');
+const _standInSheet = (url) => String(url || '').replace(/^.*\//, '').replace(/\.png.*$/, '');
+function _standInLook(url, skin, pants, shoes) {
+  if (!lookPaletteWanted()) return null;
+  return getLookPartFrames('standin', _standInSheet(url),
+    [[1, skinTarget(skin) || DEFAULT_SKIN_TARGET], [2, pantsTarget(pants)], [3, shoesTarget(shoes)]]);
+}
+
 function _sliceStandIn(cv, fw, fh, n, statKey, keepCanvas) {
   /* QA only (mp-geartrim sets it before the game loads): keep the whole bake
      next to its crops so the scenario can prove them byte-identical.  Never
@@ -326,6 +344,7 @@ import { upscaleToFrameHeight } from '../spriteScale.js'; /* v2.3.1112: restore 
 import { AIM_CARET, AIM_CARET_EDGE } from '../aimCaret.js'; /* v2.3.1799 */
 import { rangedAimAngle, bowGripPoint, orbCrashFx /* v2.3.2991: the staff's crash, filmed for the stat scene */, isPlayerDead /* v2.3.2996 */ } from '@/game/combatHelpers.js'; /* v2.3.2320: the bow sight line uses the SAME ladder the arrow does; v2.3.2543: ...from the same ORIGIN, too */
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX } from '../backShield.js'; /* v2.3.1784 */
+import { registerLookSheets, getLookPartFrames, lookPaletteWanted, lookPaletteOn, lookHas, preloadLookSheets } from '../lookPalette.js';   /* v2.3.3757: the stand-ins from the numbers */
 import { registerBowBodyFrames, BLOCK_STANDIN_HAND, BLOCK_OFFHAND, BLOCK_OFFHAND_PX, BLOCK_OFFHAND_ENABLED, BLOCK_OFFHAND_ART_ANG, BLOCK_ARM_FACING, blockArmTextureFrom } from '../blockArm.js'; /* v2.3.1785; v2.3.1833 the away-facing hand; v2.3.1864 the off-hand weapon; v2.3.2920 a peer's arm */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js'; /* v2.3.1864; weaponFitH v2.3.2910 */
 import { getWeaponHandle } from '../playerAnchors.js';             /* v2.3.1864 */
@@ -4041,7 +4060,12 @@ export class EffectsRenderer {
        there is one, the plain bake otherwise.  A function rather than the
        lookup written out at each of the seven draw sites, because "or the plain
        one" is the half that would get forgotten at the eighth. */
-    this._standInStrip = (map, dir, mirror) => (mirror && map && map[dir + '|m']) || (map && map[dir]);
+    this._standInStrip = (map, dir, mirror) => {
+      const a = (mirror && map && map[dir + '|m']) || (map && map[dir]);
+      /* v2.3.3757: a strip kept as numbers is asked for in your look each
+         time it is drawn (a look no one asks for in 30 s gives its frames back) */
+      return (a && a._btLookUrl) ? _standInLook(a._btLookUrl, getSkin(), getPants(), getShoes()) : a;
+    };
     /* Would the pre-flipped bake of this sheet differ from the plain one?  Asked
        of the art AFTER artForFacing, because that is what actually gets stamped:
        a north sheet stamps the BACK canvases, so the front ones' symmetry is not
@@ -4122,6 +4146,16 @@ export class EffectsRenderer {
          exits it always did. */
       const _art = localBodyArt(false);
       const _legsUnder = this._legsUnderFor(rec);   /* v2.3.3640 */
+      /* v2.3.3757: no drawing, no greaves, the numbers in: no bake -- the strip
+         is a marker _standInStrip reads in your look as it is drawn */
+      if (!_art && !_legsUnder && lookPaletteOn() && lookHas('standin', _standInSheet(rec.url))) {
+        const mk = [];
+        mk._btLookUrl = rec.url;
+        rec.target[rec.dir] = mk;
+        rec.target[rec.dir + '|m'] = null;
+        if (rec.target === this._bowBodyFrames) registerBowBodyFrames(rec.dir, () => this._standInStrip(this._bowBodyFrames, rec.dir, false));
+        return _was;
+      }
       const _bake = (mirror) => {
         /* artForFacing per SHEET direction, exactly as getBodyFrame does: the
            north and northwest stand-ins are back views, so they must take the
@@ -4285,6 +4319,9 @@ export class EffectsRenderer {
       this._letGo(was);
     };
     this._offs.push(onSkinChange(this._rebakeBodies), onPantsChange(this._rebakeBodies), onShoesChange(this._rebakeBodies));
+    /* v2.3.3757: and once the stand-ins' numbers are in (behind the loading
+       screen): a strip baked before them becomes a marker, its bake let go */
+    preloadLookSheets().then(() => { if (lookPaletteOn() && lookHas('standin', 'bow-south-body')) this._rebakeBodies(); });
     /* v2.3.2429: and when a DRAWING or a pattern changes, for the same reason
        the three above exist -- these strips are baked once and sampled for the
        rest of the session, so without this a tattoo drawn mid-session appears
@@ -14680,6 +14717,8 @@ export class EffectsRenderer {
        is in (the key's |L: before it, the plain bake) */
     const _peq = o.equip || {};
     const _lu = (_peq.legs && _peq.legs !== 'none') ? this._greavesUnder(cfg.gearPose || 'swing', cfgKey) : null;
+    /* v2.3.3757: no drawing, no greaves: their look's strip from the numbers */
+    if (!_pa.seg && !_lu) { const lk = _standInLook(cfg.bodyUrl, o.skin, o.pants, o.shoes); if (lk) return lk; }
     const key = cfg.bodyUrl + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg + (_lu ? '|L' : '');   /* v2.3.2863: the SHEET, not the facing */
     let arr = this._remoteBodyCache.get(key);
     /* Re-insert on hit so the LRU order is "least recently SEEN", not
@@ -14706,6 +14745,8 @@ export class EffectsRenderer {
   _remoteSheetFramesFor(o, url, fw, fh, dir, mirror, torso) {
     if (!this._remoteSheetCache) this._remoteSheetCache = new Map();
     const _pa = this._peerStandInArt(o, dir, mirror);   /* v2.3.2863: see _peerStandInArt */
+    /* v2.3.3757: no drawing: their look's strip from the numbers */
+    if (!_pa.seg) { const lk = _standInLook(url, o.skin, o.pants, o.shoes); if (lk) return lk; }
     const key = url + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;
     let arr = this._remoteSheetCache.get(key);
     if (arr) { this._remoteSheetCache.delete(key); this._remoteSheetCache.set(key, arr); return arr; }
