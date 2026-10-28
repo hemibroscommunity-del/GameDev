@@ -310,6 +310,7 @@ import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape,
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { CampfireFx, fireLightSpot } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art; v2.3.3666: + where a peer's light catches */
+import { PersonFire } from '../buildingFire.js'; /* v2.3.3748: on fire in a burning heap, the building's own flames */
 import { FIRE_STRIP_V, FIRE_FRAME_OFF, FIRE_FIGURE_X, FIRE_STRIKE_FRAME } from '../../data/fireStrip.js'; /* v2.3.3666: the fire-lighter's strip, measured (tools/build_fire_clean.py) */
 import { getEquip, onEquipChange } from '../gearCatalog.js';   /* v2.3.3640: + the greaves' change (_rebakeLegBodies) */
 import { getShirt, onShirtChange } from '../traits/shirtCatalog.js';   /* v2.3.3146: + the change, for the dressed stand-in shirts */
@@ -3439,6 +3440,9 @@ export class EffectsRenderer {
     this.telegraphLayer.addChild(this.elemGfx);
     this.elemFrontGfx = new Graphics();
     this.overlayLayer.addChild(this.elemFrontGfx);
+    /* v2.3.3748: on fire in a burning heap -- the building's own flames on
+       you (buildingFire.js PersonFire), made the first time you burn */
+    this.personFire = new PersonFire(this.overlayLayer);
     this.fireTrailSprites = [];
 
     this.overlayGfx = new Graphics();
@@ -13175,6 +13179,13 @@ export class EffectsRenderer {
       }
     };
     if (!isPlayerDead(S)) draw(S, S.player.x, S.player.y);
+    /* v2.3.3748: standing in a burning heap (game/heapBurn.js) */
+    if (this.personFire) {
+      const px = S.player.x, py = S.player.y;
+      const on = !isPlayerDead(S) && S._heapBurnUntil > now;
+      this.personFire.step(on, px, py + playerGroundDy(zone, px, py), zonePlayerScale(zone, px, py, TILE) || 1, now);
+      if (typeof window !== 'undefined' && window.__btProbe) window.__btPersonFire = this.personFire.probe();
+    }
     const others = S.others;
     if (others) {
       for (const id of Object.keys(others)) {
@@ -17179,6 +17190,8 @@ export class EffectsRenderer {
     clearTimeout(this._dressT);   /* v2.3.3146: a pending re-warm of the dressed shirts */
     if (this._dressed) this._dressed.clear();   /* ...whose sources _bakes lets go of below */
     try { this.clear(); } catch (e) { /* a half-built renderer */ }
+    try { if (this.personFire) this.personFire.destroy(); } catch (e) { /* v2.3.3748: gone with its layer */ }
+    this.personFire = null;
     for (const src of this._bakes) { unregisterGearSource(src); releaseCanvasSource(src); }
     this._bakes.clear();
     this._gpuWaiting.clear();   /* v2.3.3698: released with the rest just above */
