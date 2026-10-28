@@ -306,6 +306,62 @@ places its trip does not go (dungeons, the farm, the other seven lands -- the
 tour covers the lands); and a screen of a feature's own that the trip never
 opens.
 
+## In a battle, and toward a quarter (v2.3.3698)
+
+The owner, 2026-10-28: *"The game definitely crashed because it ran out of
+memory for me during intense battles (lots of weapon switching, props
+destroyed, etc.) I want to try to cut the current memory draw to a quarter of
+what it is now."*  `mp-battlemem` (docs/specs/battle-memory.md) plays that
+battle on the QA phone: the three weapons swapped by their keys, each with its
+special, at the Flame Fields' fight, every prop round it broken, round after
+round, and a ledger that counts every picture once, the page's copy and the
+chip's.
+
+**What a battle holds** (a round's end, before v2.3.3698): pictures 145.6 MB in
+the page and 95.9 MB on the chip, each counted once; beside them sound ~30 MB,
+the JavaScript heap ~34, the page's buffers ~28 and the ground's worker ~30 --
+about 365 MB in all on this ruler.  It settles after the second round (the GPU
+within a few MB, the canvases flat, the heap under 1 MB a round): a battle is
+a peak, not a leak -- everything a fight can draw, at once, most of it twice.
+
+On an iPhone the CANVASES are the hard part: a picture decoded from a file can
+be dropped by Safari under pressure and decoded again, a canvas cannot.  The
+page's canvases at the fight's peak: 101 MB.
+
+| what | page | chip | can it go? |
+|---|---|---|---|
+| broken props' pieces (24) | 8.6 | 8.6 | **done, v2.3.3698**: on the chip only, and a tighter cap (below) |
+| the sword's and bow's bodies, torsos and jog legs (21) | 11.5 | 1.3, more as each facing is drawn | **done, v2.3.3698**: only ever drawn -- each lets go of its canvas once it has been drawn (gpuOnly.js `emptyOnceDrawn`); another player's too |
+| the monsters' strips (13 at the Flame Fields) | 18.6 | 14.6 | as colour numbers, about a quarter of each: 110 of the 122 MB of monster sheets are 256 colours or fewer already; the hit chips, the arrows stuck in a monster and the hot arrow read them through `drawSourceRect`, as the Wheel's objects are read (v2.3.3190) |
+| the walking gear sheets (64) | 18.1 | 18.1 | the page's copy is what a masked body is baked from when gear changes (drawGearFrame); it could be read from the file again then, a gear change showing the old look for a moment -- the owner's call |
+| the walking body sheets (25) | 8.8 | 0.9 | the same, for the body |
+| canvas text: name plates, labels, messages (71) | 2.7 | 13.7 | drawn at 2x, not 3x: ~8 MB less, a touch softer on a 3x phone -- the owner's call |
+| the combat poses' gear strips (33) | 0 | 13.9 | on the chip only already (v2.3.3088) |
+| the ground's pieces (56) | 0 | 8.7 | on the chip only already (v2.3.3076), as colour numbers (v2.3.3190) |
+
+Outside the pictures: every sound one-shot decoded at 24 kHz as the voices and
+loops are (~10 MB, a duller top end on hits -- the owner's ear), the screen
+drawn at 2x instead of 3x (`?res=2`: ~15 MB of the chip with the stencil and
+the compositor's copy, the pixel art a little softer -- the owner's eye).
+
+**Where that leaves a quarter.**  Everything in the table that changes nothing
+you see or hear -- the props and the weapon bodies (both done) and the monsters
+as colour numbers -- is about 45 MB less at a fight.  With the owner's calls
+above as well (gear and body sheets read again, text and screen at 2x, sounds
+at 24 kHz), about 100 MB less: ~365 -> ~265 MB on this ruler, about 70%.  A
+quarter (~90 MB) is not in that list.  It would take drawing every character
+from ONE shared picture coloured on the chip as it is drawn (a shader), instead
+of a baked copy of the body, the clothes, the armour and each weapon's poses
+per look -- the character pipeline, rebuilt, every look bug fixed since
+v2.3.1700 fixed again -- and compressed textures for the art from files.
+
+**Each other player on your screen** (`mp-peermem`, the owner's question of
+whether townsfolk could walk about): about 2.5 MB each on the QA phone (three
+others in looks of their own walking round it; the first other player drawn
+can cost several MB more, as pictures every player shares are drawn for the
+first time).  A phone draws at most the 50 nearest in full (the crowd cap,
+v2.3.3241).
+
 ## How we know it worked
 
 Per PR: the numbers above, before and after, and its scenario.  In the field:

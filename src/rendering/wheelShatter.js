@@ -30,12 +30,27 @@
  * Memory: one canvas a break, as big as the shards' boxes (about 1.3x the
  * picture); all of them together are held under HEAP_PX pixels, the oldest
  * heap fading early past that.  Everything goes on leaving the Wheel.
+ *
+ * ═══ v2.3.3698: ON THE GRAPHICS CHIP ONLY, AND A TIGHTER CAP ═══
+ * The owner, 2026-10-28: "The game definitely crashed because it ran out of
+ * memory for me during intense battles (lots of weapon switching, props
+ * destroyed, etc.)".  Measured in a fight at the Flame Fields (mp-battlemem,
+ * every picture counted once): 24 broken props held 8.6 MB of canvases in the
+ * page AND the same 8.6 MB on the chip.  A heap's canvas is only ever drawn
+ * (nothing reads its pixels back), and a black screen's rebuild throws the
+ * heaps away with the rest of the Wheel's objects, so once its pieces are on
+ * the chip the canvas is emptied (gpuOnly.js keepOnGpuOnly, as the combat
+ * poses' gear and the damage font are) -- half the memory a break costs.
+ * And HEAP_PX 6e6 -> 4e6: at its cap the heaps now hold at most 16 MB of the
+ * chip (24 before, and 24 more in the page), the oldest heap fading early
+ * past it, as before.  `?gpucopies` keeps the canvases.
  */
 import { Container, Sprite, Texture, Rectangle, CanvasSource } from 'pixi.js';
 import { drawSourceRect } from './paletteDraw.js';   /* v2.3.3190 */
+import { keepOnGpuOnly } from './gpuOnly.js';   /* v2.3.3698 */
 
 const G = 0.42;              /* gravity, world px per frame^2 at 60 Hz */
-const HEAP_PX = 6e6;         /* every heap's canvases together, pixels */
+const HEAP_PX = 4e6;         /* every heap's canvases together, pixels (v2.3.3698: 6e6 -> 4e6) */
 const FADE_MS = 1200;        /* a heap fading at its mending */
 const PAD = 2;               /* px between shards in the canvas */
 const DEPTH = 0.55;          /* ground-plane foreshortening, as hitMaterialFx */
@@ -203,10 +218,23 @@ function cutPicture(tex, n, hu, hv) {
  * The heaps, one per broken object.  `layer` is the sorted entity layer.
  */
 export class WheelShatter {
-  constructor(layer) {
+  constructor(layer, renderer) {
     this.layer = layer;
+    this.renderer = renderer || null;   /* v2.3.3698: the chip each heap's canvas goes to */
     this.heaps = new Map();      /* object index -> heap */
-    this.stats = { breaks: 0, shards: 0, px: 0, cutMs: 0, live: 0 };
+    this.stats = { breaks: 0, shards: 0, px: 0, cutMs: 0, live: 0, gpuOnly: 0 };
+  }
+
+  /* v2.3.3698: the heap's pieces to the chip now and its canvas emptied (see
+     the header) -- not on a lost context, where an upload would not count */
+  _toGpu(source) {
+    const r = this.renderer;
+    if (!r) return;
+    try {
+      const gl = r.gl;
+      if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
+    } catch (e) { return; }
+    if (keepOnGpuOnly(r, source)) this.stats.gpuOnly++;
   }
 
   /**
@@ -238,6 +266,7 @@ export class WheelShatter {
     const px = cut.canvas.width * cut.canvas.height;
     this._makeRoom(px);
     const source = new CanvasSource({ resource: cut.canvas, width: cut.canvas.width, height: cut.canvas.height, resolution: 1, scaleMode: 'linear' });
+    this._toGpu(source);   /* v2.3.3698 */
     const heap = { oi, source, px, t0: performance.now(), fadeAt: 0, shards: [], dust: [], x: o.x, y: o.y };
     const D = Math.max(6, o.depth || 12);
     const dir = Number.isFinite(o.ang) ? o.ang : -Math.PI / 2;
@@ -413,6 +442,29 @@ export class WheelShatter {
         x: h.x, y: h.y, spanX: [Math.round(minX), Math.round(maxX)], spanY: [Math.round(minY), Math.round(maxY)], layers: [...layers] });
     }
     return out;
+  }
+
+  /* v2.3.3698 (QA): one shard of the newest heap drawn by the renderer on its
+     own and read back -- its solid pixels come from the chip's copy -- and the
+     heap's canvas, 0 x 0 once its pieces are on the chip only */
+  probeDraw() {
+    let h = null;
+    for (const x of this.heaps.values()) h = x;
+    if (!h || !h.shards.length || !this.renderer || !this.renderer.extract) return null;
+    let solid = -1;
+    /* a sprite of its own, outside the scene: a shard is a child of a layer
+       drawn as one render group (v2.3.3449), which extract cannot draw a
+       child of by itself (it read blank with the canvas kept, too) */
+    const one = new Sprite(h.shards[0].spr.texture);
+    try {
+      const out = this.renderer.extract.pixels(one);
+      const px = out && (out.pixels || out);
+      solid = 0;
+      for (let i = 3; i < px.length; i += 4) if (px[i] > 16) solid++;
+    } catch (e) { solid = -1; }
+    try { one.destroy(); } catch (e) { /* gone */ }
+    const cv = h.source && h.source.resource;
+    return { solid, canvas: cv ? [cv.width | 0, cv.height | 0] : null, gpuOnly: this.stats.gpuOnly, heaps: this.heaps.size };
   }
 
   clear() {
