@@ -21,10 +21,21 @@
  *
  * WORDS ARE TEXT, made with the group and destroyed with it (CLAUDE.md: a Text
  * gone for good is destroyed, never only hidden): a line a drop, two or three
- * a kill.  No pictures: v2.3.3616's columns loaded every drop's picture on the
- * loading screen, and those are gone. */
-import { Container, Text, TextStyle } from 'pixi.js';
+ * a kill.
+ *
+ * v2.3.3692: AND THE DROP'S PICTURE BEFORE ITS NAME -- the owner: "maybe the
+ * icon first then the name then the quantity in the message popup".  A line is
+ * a row: the picture (ICON_K of the font's size, square), a gap, then "Coins
+ * x5", the row centred on the group's spot.  The picture comes from the
+ * dropped items' own cache (rendering/dropIcons.js: the bag's picture shrunk
+ * once to 128 px, held while a line shows it and let go after, at most a few
+ * kept) -- NOT PRELOADED, the exception that cache states: which drop a kill
+ * will show cannot be known at load time, the picture is usually in the
+ * browser's cache already (the bag and the codex show it), and until it is
+ * decoded its room is kept, so the words never move when it appears. */
+import { Container, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { DROP_LINES, dropGroupMs } from '@/game/dropLines.js';
+import { acquireDropIcon, releaseDropIcon, dropIconTexture } from './dropIcons.js';
 
 export const DROP_LINE_LOOK = Object.freeze({
   PITCH: 1.06,     /* line to line, x the font size */
@@ -32,6 +43,8 @@ export const DROP_LINE_LOOK = Object.freeze({
   POP_S: 0.16,     /* a line's pop in */
   FADE_S: 0.5,     /* a line's fade out, at the end of its life */
   EDGE: 12,        /* popup px kept clear of the screen's sides (effectsRenderer MSG_EDGE_PX) */
+  ICON_K: 1.15,    /* v2.3.3692: the picture's size, x the font size (the words' height with their outline) */
+  GAP_K: 0.22,     /* v2.3.3692: picture to name, x the font size */
 });
 
 const LINE_STYLE = new TextStyle({
@@ -53,8 +66,13 @@ export class DropLinesFx {
         monsterId: v.g.monsterId, over: v.g.over, x: Math.round(v.box.x), y: Math.round(v.box.y),
         lines: v.lines.map((l) => ({
           id: l.id, text: l.t.text, color: typeof l.t.style.fill === 'string' ? l.t.style.fill : null,
-          y: Math.round(v.box.y + l.t.y), alpha: Math.round(l.t.alpha * 100) / 100, fontPx: Math.round(l.t.style.fontSize * 10) / 10,
+          y: Math.round(v.box.y + l.row.y), alpha: Math.round(l.row.alpha * 100) / 100, fontPx: Math.round(l.t.style.fontSize * 10) / 10,
           w: Math.round(l.t.width),
+          /* v2.3.3692: its picture -- the address, shown yet, its size and
+             where it stands against the words (world px, the row's own) */
+          icon: l.url || null, iconShown: !!(l.ic && l.ic.visible),
+          iconPx: l.ic ? Math.round(l.ic.height * 10) / 10 : 0,
+          iconRight: l.ic ? Math.round((l.ic.x + l.ic.width) * 10) / 10 : null, textLeft: Math.round(l.t.x * 10) / 10,
         })),
       }));
     }
@@ -67,24 +85,43 @@ export class DropLinesFx {
     const pitch = fs * DROP_LINE_LOOK.PITCH;
     const n = g.lines.length;
     let half = 0;
+    const iconPx = fs * DROP_LINE_LOOK.ICON_K, gap = fs * DROP_LINE_LOOK.GAP_K;
     const lines = g.lines.map((l, i) => {
       const st = LINE_STYLE.clone();
       st.fontSize = fs;
       st.fill = l.color || '#FFFFFF';
       st.stroke = { color: '#000000', width: this.strokePx * Z };
+      /* v2.3.3692: a row -- the picture, then the words -- centred on the spot */
+      const row = new Container();
       const t = new Text({ text: l.text, style: st });
-      t.anchor.set(0.5, 0.5);
-      t.y = g.over === 'you' ? -(n - 1 - i) * pitch : i * pitch;
-      t.alpha = 0;
-      box.addChild(t);
-      half = Math.max(half, t.width / 2);
-      return { id: l.id, t, i };
+      t.anchor.set(0, 0.5);
+      let ic = null;
+      const url = typeof l.icon === 'string' && l.icon ? l.icon : null;
+      if (url) {
+        acquireDropIcon(url);
+        ic = new Sprite(Texture.EMPTY);
+        ic.anchor.set(0, 0.5);
+        ic.visible = false;   /* until its picture is decoded (update) */
+        row.addChild(ic);
+      }
+      row.addChild(t);
+      const whole = (ic ? iconPx + gap : 0) + t.width;
+      if (ic) ic.x = -whole / 2;
+      t.x = -whole / 2 + (ic ? iconPx + gap : 0);
+      row.y = g.over === 'you' ? -(n - 1 - i) * pitch : i * pitch;
+      row.alpha = 0;
+      box.addChild(row);
+      half = Math.max(half, whole / 2);
+      return { id: l.id, row, t, ic, url, iconPx, i };
     });
     this.layer.addChild(box);
     return { g, box, lines, half };
   }
 
   _destroy(v) {
+    /* v2.3.3692: let go of the pictures (the cache keeps or frees them; a
+       destroy with children never takes a texture with it) */
+    for (const l of v.lines) if (l.url) { try { releaseDropIcon(l.url); } catch (e) { /* the cache is gone */ } l.url = null; }
     if (v.box && !v.box.destroyed) v.box.destroy({ children: true });   /* the Texts with it */
   }
 
@@ -124,11 +161,16 @@ export class DropLinesFx {
       v.box.x = x;
       v.box.y = v.g.y - rise;
       for (const l of v.lines) {
+        /* v2.3.3692: its picture, the frame it is decoded (its room was kept) */
+        if (l.ic && !l.ic.visible && l.url) {
+          const tex = dropIconTexture(l.url);
+          if (tex) { l.ic.texture = tex; l.ic.width = l.iconPx; l.ic.height = l.iconPx; l.ic.visible = true; }
+        }
         const la = t - l.i * stag;   /* this line's own age */
-        if (la <= 0) { l.t.alpha = 0; continue; }
+        if (la <= 0) { l.row.alpha = 0; continue; }
         const pop = la < L.POP_S ? 0.7 + 0.3 * (1 - Math.pow(1 - la / L.POP_S, 3)) : 1;
-        l.t.scale.set(pop);
-        l.t.alpha = la > ttl - L.FADE_S ? Math.max(0, (ttl - la) / L.FADE_S) : Math.min(1, la / 0.08);
+        l.row.scale.set(pop);
+        l.row.alpha = la > ttl - L.FADE_S ? Math.max(0, (ttl - la) / L.FADE_S) : Math.min(1, la / 0.08);
       }
     }
   }

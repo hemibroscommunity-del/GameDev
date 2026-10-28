@@ -1,6 +1,9 @@
 /* EACH DROP A LINE OF WORDS, RISING OVER THE MONSTER -- v2.3.3627
  * (src/game/dropLines.js, src/rendering/dropLines.js).
  *
+ * v2.3.3692: "Coins x5", each with its picture first (the owner: "maybe the
+ * icon first then the name then the quantity in the message popup").
+ *
  * The owner, 2026-10-27: "I just want the name of the item to float upwards
  * with quantity in parenthesis and the color of the font indicating rarity.
  * So normal would just be white. So coins (5) rising and disappearing in
@@ -44,17 +47,27 @@ const WHITE = '#FFFFFF';
 {
   const slime = { lootId: 'mk-wm-verdant-3-17', recipients: ['me'], coins: 5, skull: 'slime-remnants', x: 100, y: 200 };
   const c = linesFor('dewdrop', slime, null);
-  check('1: the owner\'s example -- "Coins (5)" over "Slime Remains (1)", both white',
-    texts(c).join(' | ') === 'Coins (5) | Slime Remains (1)' && c.every((l) => l.color === WHITE), c);
-  check('1: the text is the name and the amount in brackets', dropLineText('Coins', 5) === 'Coins (5)' && dropLineText('Rare Gem', 0) === 'Rare Gem (1)');
+  /* v2.3.3692: the owner: "the (x5) or whatever number format with the "x"
+     quantity preceding the number looks better" */
+  check('1: the owner\'s example -- "Coins x5" over "Slime Remains x1", both white',
+    texts(c).join(' | ') === 'Coins x5 | Slime Remains x1' && c.every((l) => l.color === WHITE), c);
+  check('1: the text is the name, then x and the amount (v2.3.3692; it was in brackets)', dropLineText('Coins', 5) === 'Coins x5' && dropLineText('Rare Gem', 0) === 'Rare Gem x1');
+  /* v2.3.3692: "maybe the icon first then the name then the quantity" */
+  check('1: each line carries its drop\'s picture, the codex\'s own (the coin, the slime\'s remains)',
+    /\/icons\/ui\/cur-gold\.webp/.test(c[0].icon || '') && /\/icons\/items\/remnants-slime\.webp/.test(c[1].icon || ''), c.map((l) => l.icon));
   const snow = { lootId: 'mk-wm-frost-3-17', recipients: ['me'], coins: 12, skull: 'snowman' };
-  check('1: the remains are named by the pile\'s own key ("Snowman Remains")', texts(linesFor('snowling', snow, null)).join(' | ') === 'Coins (12) | Snowman Remains (1)');
+  check('1: the remains are named by the pile\'s own key ("Snowman Remains")', texts(linesFor('snowling', snow, null)).join(' | ') === 'Coins x12 | Snowman Remains x1');
   const all = linesFor('snowling', Object.assign({}, snow, { shard: 'shard_frost', gem: 'rare_gem',
     armor: [{ slot: 'armor', name: 'Iron Torso', mystery: true }], hasWeapon: true, weaponMystery: false }), 'nugget');
   check('1: everything a kill can drop, every kill\'s first and the rarest last',
     ids(all).join() === 'gold,remnant,shard,raregem,irontorso,irongreatsword,nugget', ids(all));
   check('1: ...each by its name: the shard by its key, the rest by the codex',
-    texts(all).join(' | ') === 'Coins (12) | Snowman Remains (1) | Frost Shard (1) | Rare Gem (1) | Iron Torso (1) | Iron Great Sword (1) | Gold Nugget (1)', texts(all));
+    texts(all).join(' | ') === 'Coins x12 | Snowman Remains x1 | Frost Shard x1 | Rare Gem x1 | Iron Torso x1 | Iron Great Sword x1 | Gold Nugget x1', texts(all));
+  check('1: ...and each its own picture: the shard its land\'s, the gem, the torso, the greatsword, the nugget',
+    all.every((l) => typeof l.icon === 'string' && l.icon.startsWith('/icons/'))
+      && /shard_frost\.webp/.test(row(all, 'shard').icon) && /cur-gem\.webp/.test(row(all, 'raregem').icon)
+      && /chest-plate-iron\.webp/.test(row(all, 'irontorso').icon) && /great-sword-iron\.webp/.test(row(all, 'irongreatsword').icon)
+      && /cur-nugget\.webp/.test(row(all, 'nugget').icon), all.map((l) => [l.id, l.icon]));
   check('1: no coins line when the share is 0, no remains without a key',
     ids(linesFor('snowling', { coins: 0, skull: null, shard: 'shard_frost' }, null)).join() === 'shard');
   check('1: a monster with no codex page shows nothing (never a wrong name)', linesFor('nope', snow, null).length === 0);
@@ -74,7 +87,7 @@ const WHITE = '#FFFFFF';
       && rarityOf(by('irongreatsword'), true).color === '#D9A6FF');
   check('2: four tiers, each its own colour', RARITY_TIERS.length === 4 && new Set(RARITY_TIERS.map((t) => t.color)).size === 4);
   const w = linesFor('snowling', { hasWeapon: true, weaponMystery: true, armor: [{ slot: 'legsArmor', name: 'Iron Greaves', mystery: false }] }, null);
-  check('2: the weapon\'s and each armour piece\'s own bit', row(w, 'irongreatsword').color === '#D9A6FF' && row(w, 'irongreaves').color === WHITE && row(w, 'irongreaves').text === 'Iron Greaves (1)', w);
+  check('2: the weapon\'s and each armour piece\'s own bit', row(w, 'irongreatsword').color === '#D9A6FF' && row(w, 'irongreaves').color === WHITE && row(w, 'irongreaves').text === 'Iron Greaves x1', w);
 }
 
 /* ── 3. the two messages ── */
@@ -114,7 +127,12 @@ const WHITE = '#FFFFFF';
     dropGroupMs(1) === DROP_LINES.TTL_MS && dropGroupMs(3) === DROP_LINES.TTL_MS + 2 * DROP_LINES.STAGGER_MS);
   const R = readFileSync(new URL('../../src/rendering/dropLines.js', import.meta.url), 'utf8');
   check('4: the renderer lays each line under the one before (over you, over the spot), staggered, and keeps a group inside the screen\'s sides',
-    /t\.y = g\.over === 'you' \? -\(n - 1 - i\) \* pitch : i \* pitch/.test(R) && /const la = t - l\.i \* stag/.test(R) && /Math\.min\(cam\.x \+ vw - pad, Math\.max\(cam\.x \+ pad, x\)\)/.test(R));
+    /row\.y = g\.over === 'you' \? -\(n - 1 - i\) \* pitch : i \* pitch/.test(R) && /const la = t - l\.i \* stag/.test(R) && /Math\.min\(cam\.x \+ vw - pad, Math\.max\(cam\.x \+ pad, x\)\)/.test(R));
+  /* v2.3.3692: the picture before the words, from the dropped items' own
+     cache, held while shown and let go after, its room kept until decoded */
+  check('4: a line is its picture then its words, the row centred; the picture from the drop cache, held and let go',
+    /acquireDropIcon\(url\)/.test(R) && /releaseDropIcon\(l\.url\)/.test(R) && /dropIconTexture\(l\.url\)/.test(R)
+      && /t\.x = -whole \/ 2 \+ \(ic \? iconPx \+ gap : 0\)/.test(R) && /if \(ic\) ic\.x = -whole \/ 2;/.test(R));
 }
 
 /* ── 5. the wiring ── */
