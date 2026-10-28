@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4446817ede039bf0680c6c4a8b99b2cf32f219cf",
+  "tree": "68e6187a1d666354665f837f44c84c06e71d9cf9",
+  "committedAt": "2026-10-28T15:34:56-07:00",
+  "subject": "The memory savers are on for everyone, and a window that can't load says so (v2.3.3736) (#1216)",
+  "files": 6803,
+  "bytes": 794766297,
+  "listingSha256": "3eb97e15482164c6e33ef2b36e002077dfdcab7fa6fb4859292edb1a6ece9bb3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
