@@ -1196,7 +1196,7 @@ export const DevPanel = ({ onClose }) => {
                 return (
                   <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                     <div style={{ flex: 1, fontSize: 12.5, color: COL.text }}>
-                      {c.words} <span style={{ color: COL.text2 }}>({isOff ? 'off' : 'on'}{c.live ? '' : ', next load'})</span>
+                      {c.words} <span style={{ color: COL.text2 }}>({isOff ? 'off' : (c.optIn ? 'allowed, only with ?' + c.id : 'on')}{c.live ? '' : ', next load'})</span>
                     </div>
                     <button type="button" style={btn(false)} disabled={busy}
                       onClick={() => setSaver([c.id], !isOff)}>{isOff ? 'Turn on' : 'Turn off'}</button>

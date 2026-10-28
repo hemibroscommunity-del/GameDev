@@ -19,15 +19,17 @@
 
 /* every saver the panel can switch, in its order: `id` is the flag's name
    after `off_` and the saver's own `?id=0`; `live` says whether turning it
-   off takes effect at once (else from the next load) */
+   off takes effect at once (else from the next load); `optIn` that the saver
+   is on only when a phone's address asks for it (`?id`), so "not turned off"
+   is not "on" */
 export const CLIENT_SAVERS = Object.freeze([
   Object.freeze({ id: 'sfxcache', words: 'Sound held only while needed', live: false }),
   Object.freeze({ id: 'voicecap', words: 'A crowd of one sound plays as a few', live: true }),
   Object.freeze({ id: 'onecopy', words: 'Pictures held once', live: false }),
   Object.freeze({ id: 'picnumbers', words: 'Monster strips as colour numbers', live: false }),
-  Object.freeze({ id: 'codelazy', words: 'Windows load when opened', live: false }),
-  Object.freeze({ id: 'groundlean', words: 'Lean ground builder', live: false }),
-  Object.freeze({ id: 'heaplean', words: 'Map leftover let go', live: false }),
+  Object.freeze({ id: 'codelazy', words: 'Windows load when opened', live: false, optIn: true }),
+  Object.freeze({ id: 'groundlean', words: 'Lean ground builder', live: false, optIn: true }),
+  Object.freeze({ id: 'heaplean', words: 'Map leftover let go', live: false, optIn: true }),
   Object.freeze({ id: 'lookpalette', words: 'Characters coloured on the chip', live: true }),
 ]);
 

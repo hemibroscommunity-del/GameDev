@@ -25,9 +25,12 @@
  * fight).  docs/specs/worker-code-diet.md.
  */
 import React from 'react';
+import { clientOffAtLoad } from '../game/clientOff.js';   /* v2.3.3755 */
 
+/* v2.3.3755: ...unless the Test panel's Memory savers row turned it off, from
+   the next load (game/clientOff.js) */
 export const CODE_LAZY = (() => {
-  try { return /(^|[?&])codelazy(=|&|$)/.test(window.location.search || ''); } catch (e) { return false; }
+  try { return /(^|[?&])codelazy(=|&|$)/.test(window.location.search || '') && !clientOffAtLoad('codelazy'); } catch (e) { return false; }
 })();
 
 const _loaded = [];        /* the names of the windows whose code has come */

@@ -37,15 +37,16 @@ for each client saver, from the Test panel, live, as the message diet has
 | `voicecap` | A crowd of one sound plays as a few | `clientOffApply.js` (BT_AUDIO.VOICE_CAP) | at once |
 | `onecopy` | Pictures held once | `src/rendering/picsOnce.js` | next load |
 | `picnumbers` | Monster strips as colour numbers | `src/rendering/picsNumbers.js` | next load |
-| `codelazy` | Windows load when opened | its own PR (`src/ui/lazyPanel.js`): one line | next load |
-| `groundlean` | Lean ground builder | its own PR: one line | next load |
-| `heaplean` | Map leftover let go | its own PR (`src/game/wheelTrial.js`): one line | next load |
+| `codelazy` | Windows load when opened | `src/ui/lazyPanel.js` (CODE_LAZY; opt-in on main: `?codelazy`) | next load |
+| `groundlean` | Lean ground builder | `src/game/wheelTrial.js` (the ground worker's `search`; opt-in on main: `?groundlean`) | next load |
+| `heaplean` | Map leftover let go | `src/game/wheelTrial.js` (_heapLean; opt-in on main: `?heaplean`) | next load |
 | `lookpalette` | Characters coloured on the chip | its own PR (`src/rendering/lookPalette.js`): one line | at once |
 
-The four not yet on main when this shipped each take one line in their own
-PR: `import { clientOff, clientOffAtLoad } from '@/game/clientOff.js'` and
-`&& !clientOffAtLoad('<id>')` in the saver's load-time ON check (or
-`&& !clientOff('<id>')` in one asked every frame, as the look palette's is).
+The look palette, not yet on main when this shipped, takes one line in its
+own PR (#1212): `import { clientOff } from '@/game/clientOff.js'` and
+`&& !clientOff('lookpalette')` in `lookPaletteOn()` (asked every frame, so it
+follows live). The three opt-ins (`optIn` in CLIENT_SAVERS) read on the panel
+as "allowed, only with ?id" until one of them is made a default.
 
 ## Tests
 
