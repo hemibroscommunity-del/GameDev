@@ -28,6 +28,12 @@
  *      the game's column, with "Drag <-> or hold E" over it; and the fallback
  *      anchor (the button hidden) lies on the figure, inside the column --
  *      not in the margin;
+ * v2.3.3725 (the harvest's raw gesture, gesturefp.js): against a worker that
+ * says caps.gesturepts, the held E is the SLOWER harvest (about 3 s of work
+ * from the window, the drawn gesture's 1.5 s doubled) and its strike carries
+ * the presses (`k`), no points and no summary; the mouse's drawn gesture
+ * carries its own points (`g`) and no summary, and the worker judged them
+ * (its anti-bot record counts a fingerprint, none missing);
  * and on a phone held SIDEWAYS (844 x 390, touch), unchanged:
  *   5. a tree started by a real tap on the HARVEST button; at the window the
  *      computer's line is not shown; a finger pressed on the world (not the
@@ -145,6 +151,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopAlive = H.keepAlive(P, 15000);
+  /* v2.3.3725: every node_strike this page sends, as it went on the wire */
+  const strikes = [];
+  P.page.on('websocket', (ws) => ws.on('framesent', (f) => {
+    if (typeof f.payload !== 'string' || f.payload.indexOf('node_strike') < 0) return;
+    try { const m = JSON.parse(f.payload); for (const x of (Array.isArray(m) ? m : [m])) if (x && x.type === 'node_strike') strikes.push(x.payload); } catch (e) { /* not ours */ }
+  }));
+  const botstat = async (id) => (await (await fetch(`http://127.0.0.1:${wsPort}/api/botstat?id=${encodeURIComponent(id)}`, { headers: { Authorization: 'Bearer ' + H.ADMIN_KEY } })).json()).botstat;
   const used = [];
   try {
     const { myId, inW } = await arrive(P, wsPort);
@@ -172,16 +185,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (let i = 0; i < 1200; i++) {
           const ex = S._extraction;
           if (!ex) return false;
-          if (ex.status === 'ready') return true;
+          if (ex.status === 'ready') { window.__dhReadyAt = performance.now(); return true; }
           await new Promise((res) => setTimeout(res, 50));
         }
         return false;
       });
+      const n0 = strikes.length;
       const done = await H.waitFor(P, (S) => (S._extraction ? S._extraction.status : 'gone'), (v) => v === 'gone',
         { timeout: 40000, label: 'held E finishes it' }).catch(() => 'timeout');
+      const workMs = await P.page.evaluate(() => Math.round(performance.now() - (window.__dhReadyAt || performance.now())));
       await P.page.keyboard.up('e');
       const got = await paidSince(P, wsPort, myId, RES.tree, before);
       rec.ok(`1. the held E waits through the wind-up, works the gesture to the end and the worker pays the log (+${got})`, sawReady && done === 'gone' && got === 1, { sawReady, done, got });
+      /* v2.3.3725: the slower harvest, and what its strike carries */
+      const sp = strikes[n0] || null;
+      const caps = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.gesturepts));
+      console.log('    E: ' + workMs + ' ms of work from the window; strike ' + JSON.stringify(sp));
+      rec.ok(`1. against a worker that reads the gesture, E is the slower harvest: ${workMs} ms of holding (the drawn gesture's 1.5 s, doubled)`,
+        caps && workMs >= 2600, { caps, workMs });
+      rec.ok('1. ...its strike carries E\'s presses (k), no points and no summary (a key draws nothing)',
+        !!sp && Array.isArray(sp.k) && sp.k.length >= 1 && !sp.g && !sp.swipeFp && sp.accuracy !== 'perfect', sp);
     }
 
     /* ── 2. a copper vein, by the mouse on the world ── */
@@ -213,6 +236,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const afterUp = await H.readState(P, (S) => ({ ex: S._extraction ? S._extraction.status : null, auto: !!S.autoAttack,
         lock: !!(S.lockedTarget && S.lockedTarget.ref), handled: S._touchHandledAt ? Date.now() - S._touchHandledAt : null }));
       const got = await paidSince(P, wsPort, myId, RES.oreVein, before);
+      /* v2.3.3725: the drawn gesture's own points went, and the worker judged them */
+      const sp2 = strikes[strikes.length - 1] || null;
+      const bs = await botstat(myId).catch(() => null);
+      const live = bs && (bs.live || bs);
+      console.log('    mouse strike: ' + JSON.stringify(sp2 && { accuracy: sp2.accuracy, g: sp2.g && sp2.g.b.length + ' chars', swipeFp: !!sp2.swipeFp }) + '; botstat counters ' + JSON.stringify(live && live.counters));
+      rec.ok('2. the mouse\'s gesture went as its own points (g, a few hundred characters), no summary',
+        !!sp2 && sp2.g && sp2.g.v === 1 && typeof sp2.g.b === 'string' && sp2.g.b.length > 40 && sp2.g.b.length < 900 && !sp2.swipeFp, sp2 && { g: sp2.g, swipeFp: sp2.swipeFp });
+      rec.ok('2. ...and the worker read them: no strike of this computer\'s went unfingerprinted but E\'s', !!live && live.counters
+        && (live.counters.noFpStrikes || 0) <= 1, live && live.counters);
       rec.ok(`2. a real mouse press on the world (it lands on ${at.top}) takes the gesture as a mouse's, anywhere`,
         /^CANVAS/.test(at.top || '') && !!h0 && h0.pressed && h0.free === true, { at, h0 });
       rec.ok(`2. dragged up and down it finishes the mining and the worker pays the ore (+${got})`, g.after === 'gone' && got >= 1, { g, got });
