@@ -42,12 +42,16 @@ tint that path gives the plate, the chain's paint reads the same `gearTint`.
 
 ## The checks
 
-- `mp-copperwaist`: a bro in pink trousers wears copper, then iron, then black
-  steel, and jogs in place in every direction, his clock held and stepped. In
-  copper north-east and north-west, every frame of the stride: grey pixels
-  (no warmth, not dark) per frame went from 290-530 to about 10 (an
-  antialiased edge), and no trousers show at the waist in any metal or way.
-  The other directions take a few frames each (`BT_CW_ALL=1` for every frame).
+- `mp-copperwaist`: a bro in pink trousers wears copper, then iron (the kit's
+  pieces, worn the real way), and jogs in place in every direction, his clock
+  held and stepped. In copper north-east and north-west, every frame of the
+  stride: grey pixels at the waist went from up to 256 a frame to 0-1, and no
+  trousers show at the waist in either metal, any way (the other ways a few
+  frames each; `BT_CW_ALL=1` for every frame). Black steel is not in it: the
+  kit has no black steel piece, and drawing the worn iron as black steel on
+  the phone alone does not hold (the game puts the worn piece's look back).
+  The suite below covers it: black steel's plate takes black steel's tint,
+  and the chain takes the plate's.
 - `server/test/copper-waist.test.mjs`: each plate's tint is its metal's, the
   bake tints the chain by the chest's metal before painting it, and the bake's
   key holds the worn ids.

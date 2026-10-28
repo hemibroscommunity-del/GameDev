@@ -11,7 +11,7 @@
  * the chain was copied in as drawn: steel grey in every metal.  It takes the
  * chest's tint now (docs/specs/copper-waist.md).
  *
- * A bro in pink trousers wears each metal's plate and greaves and jogs in
+ * A bro in pink trousers wears copper, then iron, and jogs in
  * place; his clock is held and stepped through the stride, and each step is
  * photographed alone (the figure's layers only):
  *   1. copper, north-east and north-west: at most GREY_MAX px of grey (no
@@ -48,7 +48,12 @@ const DIRS = {
   south: [['s'], Math.PI / 2], southeast: [['s', 'd'], Math.PI / 4],
 };
 const KEYED = ['northeast', 'northwest'];
-const METALS = (process.env.BT_CW_METALS || 'copper,iron,blacksteel').split(',');
+/* copper and iron, each worn for real.  Black steel is left to the copper-waist
+   suite (its plate's tint is black steel's, and the chain takes the plate's
+   tint): the kit has no black steel piece, and drawing the worn iron as black
+   steel on this phone alone does not hold -- the game puts the worn piece's
+   own look back within moments (BT_CW_METALS=blacksteel tries it anyway) */
+const METALS = (process.env.BT_CW_METALS || 'copper,iron').split(',');
 const PICK_DIRS = process.env.BT_CW_DIRS ? process.env.BT_CW_DIRS.split(',') : Object.keys(DIRS);
 /* the whole stride for the two ways the bug is in (or every way with BT_CW_ALL);
    a short sweep -- a few frames -- elsewhere */
