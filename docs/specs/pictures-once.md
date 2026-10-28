@@ -4,16 +4,18 @@ The owner, 2026-10-28: *"The game needs to be extremely memory efficient."*
 iPhone Safari closes the tab at about 250 MB; a big fight holds about 335 MB on
 the memory check's measure.
 
-Two switches, both **off by default** (with them off the game is exactly as
-before):
+Two switches, both **on by default**. The owner, 2026-10-28: *"I think
+including the new memory change work by default would be better. I can always
+revert the change if I don't like it or it doesn't work well."* `?onecopy=0`
+and `?picnumbers=0` in the address turn each off for one phone (the game
+exactly as before):
 
 | switch | what it does | file |
 |---|---|---|
 | `?onecopy` | a picture from a file that is on the graphics chip lets go of its copy in the page; an ImageBitmap never drawn becomes an `<img>` | `src/rendering/picsOnce.js` |
 | `?picnumbers` | a monster's strips are read into colour numbers as they are packed and sent to the chip as them (a byte a pixel, their colours a row of the shared atlas) | `src/rendering/picsNumbers.js` |
 
-`?onecopy=0`, `?picnumbers=0`, `?gpucopies` and QA's `__btTrimVerify` keep
-everything as it was. Probes: `window.__btPicsOnce()`, `window.__btPicNumbers()`.
+`?gpucopies` and QA's `__btTrimVerify` also keep everything as it was. Probes: `window.__btPicsOnce()`, `window.__btPicNumbers()`.
 
 ## 1. The census: what the page and the chip hold at a fight
 
@@ -85,7 +87,7 @@ the maps (`MapPanel.jsx`, the minimap), the townsfolk (`npcSprites.js`) and the
 QA probes on the bro's body (`pixiRenderer.js`). A monster's strip is read
 through `heldNumbers.js` `readSourceRect` (the hit chips, a stuck arrow).
 
-## 2. One copy (`?onecopy`)
+## 2. One copy (`?onecopy`, on by default)
 
 `picsOnce.js`. Every second a sweep looks at the asset cache:
 
@@ -110,7 +112,12 @@ through `heldNumbers.js` `readSourceRect` (the hit chips, a stuck arrow).
 
 `keepPageCopy(source)` is the door for a new reader.
 
-## 3. Colour numbers on the chip (`?picnumbers`)
+## 3. Colour numbers on the chip (`?picnumbers`, on by default)
+
+**No picture's colours are reduced**: only a strip already drawn on 256
+colours or fewer is kept this way, every pixel its own colour (the
+orchestrator's census with PIL: 48 of the 66 monster strips are; the snowman
+and a few others run to 24,000-112,000 colours and keep their canvases).
 
 `picsNumbers.js`, called by `zoneTextures.js` `loadTrackedStrip`. A monster's
 strip is read into its colour numbers the moment it is packed (behind its
@@ -144,12 +151,76 @@ canvas holds. This changes the reading, not the game.
 
 ## 5. Measured
 
-MEASURED_TABLE
+`mp-membudget` (a phone in BroTown, a Flame Fields fight and home, three
+times), one build, `QA_MB_QUERY` for each way. MB, the fight's average over
+the three trips (the line's highest in brackets). **main** is the build before
+this change; **neither** is this change with `onecopy=0&picnumbers=0` (the
+probe fixed, nothing else):
+
+| line | main | neither | `?onecopy` alone | `?picnumbers` alone | both (the default) |
+|---|--:|--:|--:|--:|--:|
+| artCache (art loaded from files) | 102.2 (102.2) | 78.9 (79.4) | 78.6 (79.1) | 66.1 (66.1) | 65.8 (65.8) |
+| gpu (the graphics chip) | 84.6 (85.4) | 83.8 (85.3) | 84.9 (87.5) | 75.6 (80.6) | 75.2 (82.5) |
+| canvases | 38.8 (39.4) | 39.8 (42.2) | 39.4 (40.2) | 26.5 (27.5) | 26.7 (27.5) |
+| buffers | 16.3 (20.6) | 16.8 (20.6) | 16.2 (20.6) | 19.4 (20.4) | 19.6 (20.6) |
+| heap | 32.2 (33.1) | 32.1 (33.4) | 32.2 (33.2) | 32.2 (33.4) | 32.5 (33.2) |
+| sound, workers | 27, 28.5 | the same | the same | the same | the same |
+
+Every run passed every line and the third trip ended where the second did.
+The chip's highest reading moves by 2-3 MB run to run on this box (it is
+taken anywhere on the trip); the fight's average is the steadier figure.
+
+What each part saves, at the fight:
+
+- **the probe** (not memory): 21.6-23.3 MB of canvases already emptied no
+  longer counted;
+- **`?picnumbers`**: the fire goblin's 14 strips, 22.2 MB of canvases as 5.5 MB
+  of numbers -- the page 13 MB fewer canvases and 2.6 MB more buffers, the
+  chip 8-9 MB less. At home the goblins' art is let go of either way, so home
+  reads the same;
+- **`?onecopy`**: 1.1 MB of `<img>`s on the chip let go of, and 17.7 MB of
+  ImageBitmaps made `<img>`s. The line counts an `<img>` at its decoded size
+  as it did the ImageBitmap, so it shows nothing; what changes is that an
+  `<img>` is decoded when it is drawn (never, for most of these at the fight)
+  where an ImageBitmap is decoded at once and held, and survives the memory
+  purge v2.3.778 was about.
+
+The shared atlas of colours (`__btPalette()`): at the fight with
+`?picnumbers`, 16 and 60 of 256 rows used on two runs (the goblin's strips
+14 of them, the rest the Wheel's object pages loaded at that moment); 0
+pictures went without one on any run (`mp-picsonce` fails if one does).
+
+On the default build (both on, no query) `mp-membudget` read at most: artCache
+65.8, gpu 84.2, canvases 27.5, sound 27, heap 33.2, **buffers 21.0 (its line
+22: the strips' numbers live there)**, workers 28.6 -- 11 / 11.
 
 ## 6. Tests
 
-TESTS_TABLE
+On this box (4 cores, a software graphics chip), one scenario at a time, both
+switches on unless said:
+
+| test | result |
+|---|---|
+| `mp-picsonce` (census; one copy let go of, read back never, Pixi's collector's unloads restored, a rebuild draws nothing blank; every strip's every cell drawn as numbers against its packed canvas at 3 scales) | 9 / 9 (17.4 million pixels, the most 0 levels apart) |
+| `mp-membudget`, each way above | 11 / 11 each |
+| `mp-glrestore` (the graphics lost and rebuilt) | 7 / 7 |
+| `mp-renderheal` | 7 / 7 |
+| `mp-questline` (the "playable" check) | 187 / 187 |
+| `mp-tabwipe` | 6 / 7 -- its guard "the masked bakes are made (20)" fails the same way with both switches off: not this change |
+| `mp-rebuildjog` | 7 / 8 -- its guard "every jog frame baked" fails the same way with both switches off: not this change |
+| `mp-ghostaudit` | 111 / 133 on an 89-minute run: the "nothing of it is left" lines name a pine tree and a copper rock (gathering nodes) standing near the bro, and later families photographed no frames; see the PR for the run with both off |
+| `node tools/dev/precheck.mjs` | passes |
 
 ## 7. For the owner
 
-OWNER_QUESTIONS
+- **The `artCache` line**: with the probe fixed main reads ~79 MB at the fight
+  against a line of 112. Lowering it locks the saving in; that is for after
+  the showing.
+- **The ImageBitmaps**: 51 pictures (trees, rocks, icons, shards, popups) are
+  loaded as ImageBitmaps because their modules ask before pixiRenderer.js
+  says "use `<img>`". `?onecopy` turns them into `<img>`s after the fact; the
+  cause (the order the modules load in) is worth its own small change.
+- **More of `ONLY_DRAWN`**: one copy lets go of only the families whose
+  readers were checked (effects, the HUD's pictures). The rest are mostly not
+  on the chip at a fight, so the gain is small; each family added needs its
+  readers checked.

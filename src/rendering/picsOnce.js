@@ -36,12 +36,16 @@
  *
  * COLOUR NUMBERS ON THE CHIP (`?picnumbers`): picsNumbers.js.
  *
- * Off by default (the owner turns it on once it passes on their phone);
- * `?onecopy=0` or `?gpucopies` keep every copy.  QA: window.__btPicsOnce(). */
+ * On by default (the owner's word, below); `?onecopy=0` or `?gpucopies` keep
+ * every copy.  QA: window.__btPicsOnce(). */
 import { Cache, Texture } from 'pixi.js';
 
 const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
-const ON = /[?&]onecopy(=1|&|$)/.test(_q) && !/[?&]gpucopies\b/.test(_q);
+/* v2.3.3715: on by default (the owner, 2026-10-28: "I think including the new
+   memory change work by default would be better. I can always revert the
+   change if I don't like it or it doesn't work well."); `?onecopy=0` is the
+   game as it was */
+const ON = !/[?&]onecopy=0\b/.test(_q) && !/[?&]gpucopies\b/.test(_q);
 export function picsOnceOn() { return ON && !(typeof window !== 'undefined' && window.__btTrimVerify === true); }
 
 const SWEEP_MS = 1000;

@@ -9,8 +9,8 @@
  * it back on the CPU (a 2D canvas's drawImage / createPattern of its <img>,
  * caught by an init script, with the reader's place in the code).
  *
- * The census is the spec's table; the same run checks the two switches
- * (BT_QA_QUERY=onecopy / picnumbers / both): with them on, the page's copies
+ * The census is the spec's table; the same run checks the two switches, on by
+ * default (BT_QA_QUERY=onecopy=0 / picnumbers=0 turns either off): with them on, the page's copies
  * let go of and the chip's copies kept, every picture still drawn, nothing
  * read back after its copy went, and no page errors.
  *
@@ -259,7 +259,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   /* with ?picnumbers, the strips' packed canvases kept to compare against */
-  const init = /(^|&)picnumbers(=1)?(&|$)/.test(process.env.BT_QA_QUERY || '')
+  const init = !/(^|&)picnumbers=0(&|$)/.test(process.env.BT_QA_QUERY || '')
     ? { content: `(${READS_INIT.toString()})(); window.__btPicNumVerify = true;` } : READS_INIT;
   const P = await H.newPlayer(browser, { name: 'picsonce', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', init });
   const out = { query: process.env.BT_QA_QUERY || '', stops: {} };
@@ -316,7 +316,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const readOnce = () => P.page.evaluate(() => ({ once: window.__btPicsOnce ? window.__btPicsOnce() : null,
       released: window.__poReleasedReads || 0, num: window.__btPicNumbers ? window.__btPicNumbers() : null,
       gl: (() => { try { return !window._pixiRenderer.app.renderer.gl.isContextLost(); } catch (e) { return null; } })() }));
-    if (/(^|&)onecopy(=1)?(&|$)/.test(Q)) {
+    /* v2.3.3715: both are on by default; `onecopy=0` / `picnumbers=0` turn them off */
+    if (!/(^|&)onecopy=0(&|$)/.test(Q)) {
       const a = await readOnce();
       console.log(`    one copy at the fight: ${JSON.stringify(a.once)}`);
       rec.ok(`?onecopy: pictures on the chip let go of their page copies (${a.once && a.once.released} released, ${a.once && a.once.releasedNowMB} MB now; `
@@ -340,7 +341,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!rebuilt && c.once.blankUploads === 0 && c.once.restoreFailed === 0 && c.released === 0, { before, after: c.once });
       out.once = { a, b, c };
     }
-    if (/(^|&)picnumbers(=1)?(&|$)/.test(Q)) {
+    if (!/(^|&)picnumbers=0(&|$)/.test(Q)) {
       const n = await readOnce();
       console.log(`    colour numbers: ${JSON.stringify(n.num)}`);
       rec.ok(`?picnumbers: the monsters' strips are colour numbers on the chip (${n.num && n.num.strips} strips, ${n.num && n.num.canvasMB} MB of canvases -> ${n.num && n.num.numbersMB} MB; `

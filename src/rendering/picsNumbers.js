@@ -1,6 +1,7 @@
 /* ═══ v2.3.3715: A MONSTER'S STRIPS AS COLOUR NUMBERS ON THE CHIP ═══
  *
- * docs/specs/pictures-once.md, the second switch, `?picnumbers`.
+ * docs/specs/pictures-once.md, the second switch: on by default, `?picnumbers=0`
+ * the game as it was.
  *
  * A monster's strips (zoneTextures.js loadTrackedStrip: every pose of the fire
  * goblin, the mummy, the skeleton, the snowman...) are cropped and packed onto
@@ -38,7 +39,9 @@ import { Sprite, Texture } from 'pixi.js';
 import { paletteOn, paletteStride, paletteRowTake, paletteRowWrite, paletteRowGive, makePaletteSourceOnRow, paletteFillProgram, paletteProgramLinked } from './paletteTex.js';
 
 const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
-const WANTED = /[?&]picnumbers(=1|&|$)/.test(_q) && !/[?&]picnumbers=0\b/.test(_q);
+/* on by default (the owner, 2026-10-28, picsOnce.js); `?picnumbers=0` is the
+   game as it was */
+const WANTED = !/[?&]picnumbers=0\b/.test(_q);
 export function picNumbersWanted() { return WANTED; }
 /* (never while QA compares the cropped strips' canvases: __btTrimVerify,
    mp-monstertrim -- heldNumbers.js keeps them for it too) */
