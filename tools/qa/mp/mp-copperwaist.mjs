@@ -220,9 +220,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const t = put('armorStash', 'armor'), l = put('legsStash', 'legsArmor');
         if (window.__btSyncArmorLayers) window.__btSyncArmorLayers(R);
         S.channel.send({ type: 'stats_update', payload: { armorRef: t, legsArmorRef: l } });
-        if (m === 'blacksteel') { window.__btSetGear('chest', 'blacksteelplate'); window.__btSetGear('legs', 'blacksteelgreaves'); }
       }, metal);
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(1500);   /* the server's answer, which puts the worn pieces' own look back */
+      if (metal === 'blacksteel') {
+        await page.evaluate(() => { window.__btSetGear('chest', 'blacksteelplate'); window.__btSetGear('legs', 'blacksteelgreaves'); });
+        await page.waitForTimeout(500);
+      }
       const gearNow = () => page.evaluate(() => [window.__btGetGear('chest'), window.__btGetGear('legs')]);
       const gear = await gearNow();
       rec.ok(`${metal}: the plate and greaves drawn in ${metal} (guard)`, gear[0] === metal + 'plate' && gear[1] === metal + 'greaves', gear);
