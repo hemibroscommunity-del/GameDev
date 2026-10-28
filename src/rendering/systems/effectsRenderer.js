@@ -2946,6 +2946,22 @@ function cssToHex(css) {
  * strangers can no longer accumulate. */
 const REMOTE_BAKE_CACHE_MAX = 24;
 
+/* ═══ v2.3.3754: NEVER FREE A BAKE A SPRITE WAS GIVEN THIS FRAME OR THE LAST ═══
+   24 keys is NOT "more peers than can swing at once": a peer's swing takes
+   up to three (the body, the torso strip, the jog legs), and a crowd's looks
+   are all different.  mp-crowdfight (a phone among 30 bots fighting, each in
+   its own look): a dozen peers swinging in one frame, and the bake for the
+   thirteenth evicted the first one's frames -- already on its sprite, earlier
+   in the SAME frame.  app.render threw ("addressModeU" of null) every frame
+   the crowd kept swinging: a dark world, and after 90 frames a renderer
+   rebuild, in exactly the big battles the owner's black screens come from.
+   Now every bake handed out is stamped with the frame (`_btFrame`), and the
+   trim stops at the oldest one given out this frame or the last (a swing
+   still going is drawn from last frame's until its peer's turn re-stamps it,
+   and must not be re-baked every frame): the cache may run over its cap while
+   a crowd swings, and update() trims it back once they stop. */
+let _bakeFrame = 0;
+
 /* Would the pre-flipped bake of this sheet differ from the plain one?  Asked
    of the art AFTER artForFacing, because that is what actually gets stamped:
    a north sheet stamps the BACK canvases, so the front ones' symmetry is not
@@ -2962,6 +2978,7 @@ function _trimBakeCache(cache, owner) {
   while (cache.size > REMOTE_BAKE_CACHE_MAX) {
     const k0 = cache.keys().next().value;
     const old = cache.get(k0);
+    if (old && old._btFrame >= _bakeFrame - 1) break;   /* v2.3.3754: on a sprite this frame or the last (above) */
     cache.delete(k0);
     /* Frames first WITHOUT their source, then the source once: every frame in
        the array is a window onto the same TextureSource, so destroying it
@@ -5600,6 +5617,11 @@ export class EffectsRenderer {
    * Updates all effects for the current frame.
    */
   update(S, viewW, viewH, now) {
+    /* v2.3.3754: a new frame -- the stand-in bakes a crowd ran over the cap
+       with last frame go back to it now (_trimBakeCache) */
+    _bakeFrame++;
+    if (this._remoteBodyCache && this._remoteBodyCache.size > REMOTE_BAKE_CACHE_MAX) _trimBakeCache(this._remoteBodyCache, this._bakes);
+    if (this._remoteSheetCache && this._remoteSheetCache.size > REMOTE_BAKE_CACHE_MAX) _trimBakeCache(this._remoteSheetCache, this._bakes);
     /* v2.3.867: hide the skill-stand-in traits up front; whichever stand-in is
        active this frame (firemaking / chopper / cook) re-shows + places them. */
     hideSkillTraits(this.skillTraits);
@@ -14670,7 +14692,7 @@ export class EffectsRenderer {
     let arr = this._remoteBodyCache.get(key);
     /* Re-insert on hit so the LRU order is "least recently SEEN", not
        "least recently baked" (entityRenderer.js:2043's idiom). */
-    if (arr) { this._remoteBodyCache.delete(key); this._remoteBodyCache.set(key, arr); return arr; }
+    if (arr) { arr._btFrame = _bakeFrame; this._remoteBodyCache.delete(key); this._remoteBodyCache.set(key, arr); return arr; }
     const img = this._bodyImgCache[cfg.bodyUrl];   // loaded by the local bake
     if (!img) return null;
     try {
@@ -14678,6 +14700,7 @@ export class EffectsRenderer {
         null, cfg.fh, null, null, _pa.art, cfg.fw, undefined, undefined, undefined, _lu);   /* v2.3.2863: see _peerStandInArt; v2.3.3640: + under greaves */
       const n = Math.max(1, Math.round(cv.width / cfg.fw));
       arr = this._gpuOnceDrawn(this._own(_sliceStandIn(cv, cfg.fw, cfg.fh, n, null)));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned; v2.3.3698: its canvas let go of once drawn */
+      arr._btFrame = _bakeFrame;   /* v2.3.3754 */
       this._remoteBodyCache.set(key, arr);
       _trimBakeCache(this._remoteBodyCache, this._bakes);
       return arr;
@@ -14694,7 +14717,7 @@ export class EffectsRenderer {
     const _pa = this._peerStandInArt(o, dir, mirror);   /* v2.3.2863: see _peerStandInArt */
     const key = url + '|' + o.skin + '|' + o.pants + '|' + o.shoes + _pa.seg;
     let arr = this._remoteSheetCache.get(key);
-    if (arr) { this._remoteSheetCache.delete(key); this._remoteSheetCache.set(key, arr); return arr; }
+    if (arr) { arr._btFrame = _bakeFrame; this._remoteSheetCache.delete(key); this._remoteSheetCache.set(key, arr); return arr; }
     const img = this._bodyImgCache[url];
     if (!img) return null;
     try {
@@ -14709,6 +14732,7 @@ export class EffectsRenderer {
         null, _fh, null, null, _pa.art, _fw, undefined, undefined, undefined, undefined, !!torso);   /* v2.3.2863; v2.3.3658: + a torso strip's waist (TORSO_WAIST_UP) */
       const n = Math.max(1, Math.round(cv.width / _fw));
       arr = this._gpuOnceDrawn(this._own(_sliceStandIn(cv, _fw, _fh, n, null)));   /* v2.3.2775: cropped, one per peer combo; v2.3.3074: owned; v2.3.3698: its canvas let go of once drawn (the cut rows are tables: bowTorsoCut.js) */
+      arr._btFrame = _bakeFrame;   /* v2.3.3754 */
       this._remoteSheetCache.set(key, arr);
       _trimBakeCache(this._remoteSheetCache, this._bakes);
       return arr;
