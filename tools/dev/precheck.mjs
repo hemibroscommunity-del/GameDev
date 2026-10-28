@@ -84,6 +84,10 @@
  *                      look-palette numbers (public/sprites/look/) were not
  *                      re-baked from it; WARN if only the recolour code
  *                      changed (tools/art/role-bake.mjs --hashes, v2.3.3716).
+ *   9e. look-heads    — FAIL: a recolourable head piece's art changed without a
+ *                      re-bake of public/sprites/look/heads/; WARN if only the
+ *                      recolour code or a catalog changed (tools/art/head-bake.mjs
+ *                      --hashes, v2.3.3753).
  *  10. hairmask-rule  — FAIL: if the headwear art, a hair-clip mask or
  *                      tools/make_hairmask.py changed, every committed
  *                      hairmask/<dir>.png must still be the v2.3.1957
@@ -912,6 +916,25 @@ if (changedServer.length || changedClient.length) {
     else if (r.status === 2) add('WARN', 'look-roles', said + ' -- node tools/art/role-bake.mjs --check (a browser, ~15 s) says whether the roles moved; re-bake if they did');
     else add('FAIL', 'look-roles', said + ' -- re-bake: node tools/art/role-bake.mjs');
   } else add('PASS', 'look-roles', 'no stand or jog sheet or recolour change -- check skipped');
+}
+
+/* ---- 9e. look-heads ----------------------------------------------------
+   v2.3.3753.  The head pieces in a colour are drawn from colour numbers baked
+   offline by the game's own recolour (tools/art/head-bake.mjs,
+   public/sprites/look/heads/).  A piece's art changed without a re-bake: FAIL.
+   The recolour code or a catalog changed: WARN (`head-bake.mjs --check`). */
+{
+  const touched = changed.filter((f) => /^public\/sprites\/traits\/(hair|headwear|facialhair|eyewear|eyestyle)\/[^/]+\/[a-z]+\.png$/.test(f)
+    || /^src\/rendering\/traits\/(hairColor|hatColor|facialHairColor|eyewearColor|eyeStyleColor|hair|headwear|facialHair|eyewear|eyeStyle)Catalog\.js$/.test(f)
+    || /^src\/rendering\/(characterPortrait|traits\/traitMaterials|traits\/recolorOptions|traits\/pendingTraits)\.js$/.test(f)
+    || /^public\/sprites\/look\/heads\//.test(f));
+  if (touched.length) {
+    const r = spawnSync('node', ['tools/art/head-bake.mjs', '--hashes'], { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
+    const said = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-3).join(' ');
+    if (r.status === 0) add('PASS', 'look-heads', said);
+    else if (r.status === 2) add('WARN', 'look-heads', said);
+    else add('FAIL', 'look-heads', said + ' -- re-bake: node tools/art/head-bake.mjs');
+  } else add('PASS', 'look-heads', 'no head piece art or recolour change -- check skipped');
 }
 
 /* ---- 9c. town-rim ----------------------------------------------------
