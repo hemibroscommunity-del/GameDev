@@ -729,7 +729,7 @@ async function nmlFight(a, b, ctx) {
   const an = ctx.WHEEL_SPAWNS[land].anchor;
   const L = Math.hypot(an[0] - ctx.WHEEL_CENTRE[0], an[1] - ctx.WHEEL_CENTRE[1]);
   const ux = (an[0] - ctx.WHEEL_CENTRE[0]) / L, uy = (an[1] - ctx.WHEEL_CENTRE[1]) / L;
-  const r = NML.HUB + T * 1.5;
+  const r = NML.HUB + T * (NML.FIRST_TIER - 0.5);   /* v2.3.3690: the middle of No man's land 1's ring (the Lv 1-5 tier; it was the Lv 6-10 one) */
   const x = Math.round(ctx.WHEEL_CENTRE[0] + ux * r), y = Math.round(ctx.WHEEL_CENTRE[1] + uy * r);
   await Promise.all([H.hopTo(a.P, x, y, { tries: 500 }), H.hopTo(b.P, x + 50, y, { tries: 500 })]);
   await a.P.page.waitForTimeout(2500);

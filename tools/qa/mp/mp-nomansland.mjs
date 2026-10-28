@@ -8,7 +8,10 @@
  * head for 20 minutes ... Players who get attacked have a white skull above
  * their head. ..."
  *
- * Two real players against a real worker, out on a land's Lv 6-10 ring:
+ * Two real players against a real worker, out on a land's No man's land 1
+ * ring (v2.3.3690: the Lv 1-5 ring just outside the safe ground -- the
+ * owner: "No man's land should begin just outside of town where you can
+ * fight the lvl 1 monsters"; it was the Lv 6-10 ring):
  *   1. each is told: the banner ("No man's land 1"), a line in the chat, and
  *      (v2.3.3107) the skull badge centred just above the dashboard, and
  *      (v2.3.3108) the minimap's name plate showing the level band, the badge
@@ -212,15 +215,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const p of WHEEL_SPAWNS[k].points) monsterPts.push(p);
     for (const d of Object.values(WHEEL_SPAWNS[k].deeper || {})) for (const p of d.points) monsterPts.push(p);
   }
-  /* places on the Lv 6-10 ring (No man's land 1: 3,789 to 4,813 px out on the
-     short Wheel, 7,885 to 13,005 on the long one), inside a spoke, furthest
-     from any monster's place first */
+  /* places on No man's land 1's ring (v2.3.3690: the Lv 1-5 tier, from the
+     safe ground's edge at 2,937 px out to 3,789 on the short Wheel and 7,885
+     on the long one; it was the Lv 6-10 tier), inside a spoke, furthest from
+     any monster's place first */
+  const R0 = Math.max(NML.SAFE_R || 0, NML.HUB + (NML.FIRST_TIER - 1) * T) + 160, R1 = NML.HUB + NML.FIRST_TIER * T - 160;
+  const BAND = `Lv ${5 * NML.FIRST_TIER - 4}–${5 * NML.FIRST_TIER}`;
   const cands = [];
   for (const land of Object.keys(WHEEL_SPAWNS)) {
     const a = WHEEL_SPAWNS[land].anchor;
     const L = Math.hypot(a[0] - WHEEL_CENTRE[0], a[1] - WHEEL_CENTRE[1]);
     const ux = (a[0] - WHEEL_CENTRE[0]) / L, uy = (a[1] - WHEEL_CENTRE[1]) / L;
-    for (let r = NML.HUB + T + 160; r <= NML.HUB + 2 * T - 160; r += 50 * LONG) {
+    for (let r = R0; r <= R1; r += 50 * LONG) {
       for (let lat = -600; lat <= 600; lat += 50) {
         const x = WHEEL_CENTRE[0] + ux * r - uy * lat, y = WHEEL_CENTRE[1] + uy * r + ux * lat;
         let md = Infinity;
@@ -251,7 +257,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (ok.dry && ok.near === 0) { spot = c; break; }
     console.log('    spot refused: ' + JSON.stringify({ c, ok }));
   }
-  rec.ok(`setup: a dry, quiet spot on a Lv 6-10 ring (${spot ? `${spot.land} ${spot.x},${spot.y}, ${spot.md} px from any monster's place` : 'none'})`, !!spot, spot);
+  rec.ok(`setup: a dry, quiet spot on No man's land 1's ring, ${BAND} (${spot ? `${spot.land} ${spot.x},${spot.y}, ${spot.md} px from any monster's place` : 'none'})`, !!spot, spot);
   if (!spot) { stopAlive = true; await A.ctx.close().catch(() => {}); await B.ctx.close().catch(() => {}); return; }
   await H.hopTo(B, spot.x + 50, spot.y, { tries: 90 });
   await B.page.waitForTimeout(2500);
@@ -314,7 +320,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`1. ...the badge just left of the minimap (${t && t.mini && tb ? t.mini.l - tb.r : '?'} px from its box), level with its name plate (middle ${mid} in ${t && t.plateBox ? t.plateBox.t + '-' + t.plateBox.b : '?'}), a ${tb && tb.h} px target`,
       !!tb && !!t.mini && !!t.plateBox && tb.r <= t.mini.l - 2 && t.mini.l - tb.r <= 10 && mid >= t.plateBox.t && mid <= t.plateBox.b
         && tb.h >= 44 && tb.l >= 0, { tb, mini: t && t.mini, plate: t && t.plateBox });
-    rec.ok(`1. ...and the minimap's name plate shows the level band, the badge saying No man's land ("${t && t.bar}")`, !!t && t.bar === 'Lv 6–10', t && t.bar);
+    rec.ok(`1. ...and the minimap's name plate shows the level band, the badge saying No man's land ("${t && t.bar}")`, !!t && t.bar === BAND, t && t.bar);
   }
   await shot(A, '1-told');
 

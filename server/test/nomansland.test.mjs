@@ -43,7 +43,8 @@
 import { GameRoom } from '../src/index.js';
 import { NML, nmlTierAt, nmlLevelAt, NML_KEY } from '../src/nomansland.js';
 import { WHEEL_ZONE } from '../src/wheelzone.js';
-import { WHEEL_CENTRE, WHEEL_LONG } from '../src/wheelspawns.js';   /* v2.3.3315: the live Wheel, WHEEL_LONG times longer */
+import { WHEEL_CENTRE, WHEEL_LONG, WHEEL_SAFE_R } from '../src/wheelspawns.js';   /* v2.3.3315: the live Wheel, WHEEL_LONG times longer; v2.3.3690: + its safe ground */
+import { WHEEL_SAFE_R as WHEEL_SAFE_R_1 } from '../src/wheelspawns1.js';   /* v2.3.3690: the short Wheel's safe ground */
 import { PLAN, PLAN5 } from '../../public/tools/world/plan.js';
 
 function makeState() {
@@ -87,6 +88,11 @@ async function join(ws, id, name, data) {
 const at = (r, dy = 0) => ({ x: WHEEL_CENTRE[0] + r, y: WHEEL_CENTRE[1] + dy });
 const TIER = NML.TIER * WHEEL_LONG;   /* v2.3.3315: the live Wheel's tier */
 const RING = (t) => NML.HUB + (t - 0.5) * TIER;   /* the middle of tier t */
+/* v2.3.3690: the middle of No man's land n (its tier n + FIRST_TIER - 1: the
+   Lv 1-5 tier is 1 now), and a spot on the safe ground just inside its edge,
+   whose tier is 1 but which is never under the rule */
+const NMLR = (n) => RING(n + NML.FIRST_TIER - 1);
+const SAFE_IN = NML.SAFE_R - 60;
 const place = (ps, p, level) => {
   ps.z = WHEEL_ZONE; ps.x = p.x; ps.y = p.y; ps.dead = false; ps.dying = false; ps.disconnected = false;
   ps.hp = ps.maxHp = 1000; ps._zoneEntryGraceUntil = 0;
@@ -109,32 +115,62 @@ const ps = (k) => room.playerState[ids[k]];
   /* v2.3.3315: the live Wheel's tiers are WHEEL_LONG times as long (plan.js PLAN5) */
   check('...and the live Wheel\'s: its tiers WHEEL_LONG times as long, the hub the same', WHEEL_LONG === W5.tierZones && TIER === W5.tierZones * W5.zonePx
     && NML.HUB === W5.hub * W5.zonePx, { WHEEL_LONG, TIER, plan: W5 });
-  check('the commons and the Lv 1-5 tier are not No man\'s land; Lv 6-10 is 1, Lv 11-15 is 2',
-    nmlLevelAt(WHEEL_ZONE, WHEEL_CENTRE[0], WHEEL_CENTRE[1], WHEEL_LONG) === 0 && nmlLevelAt(WHEEL_ZONE, at(RING(1)).x, at(RING(1)).y, WHEEL_LONG) === 0
-    && nmlLevelAt(WHEEL_ZONE, at(RING(2)).x, at(RING(2)).y, WHEEL_LONG) === 1 && nmlLevelAt(WHEEL_ZONE, at(RING(3)).x, at(RING(3)).y, WHEEL_LONG) === 2,
+  /* v2.3.3690: the owner, 2026-10-28: "No man's land should begin just
+     outside of town where you can fight the lvl 1 monsters" */
+  check('the commons are not No man\'s land; the Lv 1-5 tier is 1, Lv 6-10 is 2, Lv 11-15 is 3',
+    NML.FIRST_TIER === 1 && nmlLevelAt(WHEEL_ZONE, WHEEL_CENTRE[0], WHEEL_CENTRE[1], WHEEL_LONG) === 0
+    && nmlLevelAt(WHEEL_ZONE, at(RING(1)).x, at(RING(1)).y, WHEEL_LONG) === 1
+    && nmlLevelAt(WHEEL_ZONE, at(RING(2)).x, at(RING(2)).y, WHEEL_LONG) === 2 && nmlLevelAt(WHEEL_ZONE, at(RING(3)).x, at(RING(3)).y, WHEEL_LONG) === 3,
     [0, 1, 2, 3].map((t) => (t ? nmlLevelAt(WHEEL_ZONE, at(RING(t)).x, at(RING(t)).y, WHEEL_LONG) : 0)));
-  check('...out to 15 at the last tier, and only in the Wheel', nmlLevelAt(WHEEL_ZONE, at(RING(16)).x, at(RING(16)).y, WHEEL_LONG) === 15
+  check('...out to 16 at the last tier, and only in the Wheel', nmlLevelAt(WHEEL_ZONE, at(RING(16)).x, at(RING(16)).y, WHEEL_LONG) === 16
     && nmlLevelAt('frost', at(RING(3)).x, at(RING(3)).y, WHEEL_LONG) === 0 && nmlTierAt(NaN, 0, WHEEL_LONG) === 0);
-  check('...the line where it starts is exact (the end of tier 1)', nmlLevelAt(WHEEL_ZONE, at(NML.HUB + TIER - 1).x, WHEEL_CENTRE[1], WHEEL_LONG) === 0
-    && nmlLevelAt(WHEEL_ZONE, at(NML.HUB + TIER + 1).x, WHEEL_CENTRE[1], WHEEL_LONG) === 1);
+  /* the first tier begins at HUB, a little inside the safe ground: the safe
+     ground's edge is where it starts, on both Wheels */
+  check('...the safe ground\'s radius is the bake\'s, on both Wheels', NML.SAFE_R === WHEEL_SAFE_R && NML.SAFE_R === WHEEL_SAFE_R_1 && NML.SAFE_R > NML.HUB,
+    { SAFE_R: NML.SAFE_R, WHEEL_SAFE_R, WHEEL_SAFE_R_1, HUB: NML.HUB });
+  check('...the line where it starts is the safe ground\'s edge, exact: tier 1 on the safe ground is not No man\'s land',
+    nmlTierAt(at(SAFE_IN).x, WHEEL_CENTRE[1], WHEEL_LONG) === 1 && nmlLevelAt(WHEEL_ZONE, at(NML.SAFE_R - 1).x, WHEEL_CENTRE[1], WHEEL_LONG) === 0
+    && nmlLevelAt(WHEEL_ZONE, at(NML.SAFE_R + 1).x, WHEEL_CENTRE[1], WHEEL_LONG) === 1
+    && nmlLevelAt(WHEEL_ZONE, WHEEL_CENTRE[0], WHEEL_CENTRE[1] - (NML.SAFE_R - 1), WHEEL_LONG) === 0
+    && nmlLevelAt(WHEEL_ZONE, WHEEL_CENTRE[0], WHEEL_CENTRE[1] - (NML.SAFE_R + 1), WHEEL_LONG) === 1);
+  check('...and the safe ground agrees: the spot just outside it is no longer sheltered, just inside it is',
+    room._wheelSafeAt(at(NML.SAFE_R - 1).x, WHEEL_CENTRE[1]) === true && room._wheelSafeAt(at(NML.SAFE_R + 1).x, WHEEL_CENTRE[1]) === false);
+  check('...from the first tier to the second, one level on: the line between them exact',
+    nmlLevelAt(WHEEL_ZONE, at(NML.HUB + TIER - 1).x, WHEEL_CENTRE[1], WHEEL_LONG) === 1
+    && nmlLevelAt(WHEEL_ZONE, at(NML.HUB + TIER + 1).x, WHEEL_CENTRE[1], WHEEL_LONG) === 2);
+  /* the old rule, the kill switch's (and an older worker's): from the Lv 6-10 tier */
+  check('`first` 2 (the rule as it was): the Lv 1-5 tier not, Lv 6-10 is 1, out to 15',
+    nmlLevelAt(WHEEL_ZONE, at(RING(1)).x, at(RING(1)).y, WHEEL_LONG, NML.WAS_FIRST_TIER) === 0
+    && nmlLevelAt(WHEEL_ZONE, at(RING(2)).x, at(RING(2)).y, WHEEL_LONG, NML.WAS_FIRST_TIER) === 1
+    && nmlLevelAt(WHEEL_ZONE, at(RING(16)).x, at(RING(16)).y, WHEEL_LONG, NML.WAS_FIRST_TIER) === 15);
+  const keepF = room._liveFlags;
+  place(ps('a'), at(RING(1)), 3);
+  const nowLvl = room._nmlLevelOf(ps('a'));
+  room._liveFlags = { ...(keepF || {}), nmlnear: false };
+  const offLvl = room._nmlLevelOf(ps('a'));
+  place(ps('a'), at(RING(2)), 3);
+  const offLvl2 = room._nmlLevelOf(ps('a'));
+  room._liveFlags = keepF;
+  check('`nmlnear: false` in the live flags: the worker\'s own rule from the Lv 6-10 tier again',
+    nowLvl === 1 && offLvl === 0 && offLvl2 === 1 && room._nmlLevelOf(ps('a')) === 2, { nowLvl, offLvl, offLvl2 });
 }
 
 // ── 2. who may hit whom ──────────────────────────────────────────────────────
 {
-  place(ps('a'), at(RING(2)), 6); place(ps('b'), at(RING(2), 60), 7);
+  place(ps('a'), at(NMLR(1)), 6); place(ps('b'), at(NMLR(1), 60), 7);
   check('both in No man\'s land 1, levels 6 and 7: allowed', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === true && room._pvpAllowed(ids.b, ids.a, WHEEL_ZONE) === true);
   ps('b').level = 8;
   check('...levels 6 and 8 in No man\'s land 1: refused', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === false);
-  place(ps('a'), at(RING(3)), 6); place(ps('b'), at(RING(3), 60), 8);
+  place(ps('a'), at(NMLR(2)), 6); place(ps('b'), at(NMLR(2), 60), 8);
   check('...both in No man\'s land 2, levels 6 and 8: allowed', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === true);
-  place(ps('b'), at(RING(2), 60), 8);
+  place(ps('b'), at(NMLR(1), 60), 8);
   check('...one in 2 and the other in 1, two levels apart: refused (the lower of the two rules)', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === false);
-  place(ps('a'), at(RING(1)), 7); place(ps('b'), at(RING(2), 60), 7);
-  check('...one still in the Lv 1-5 tier: refused', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === false);
+  place(ps('a'), at(SAFE_IN), 7); place(ps('b'), at(NMLR(1), 60), 7);
+  check('...one still on the safe ground: refused', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === false);
   check('the master switch stays off everywhere else (town, an old lawless zone)', room.OPEN_PVP === false
     && room._pvpAllowed(ids.a, ids.b, 'town') === false && room._pvpAllowed(ids.a, ids.b, 'frost') === false);
   /* one party */
-  place(ps('a'), at(RING(2)), 7);
+  place(ps('a'), at(NMLR(1)), 7);
   const keepParty = room._partyOf;
   room._partyOf = (id) => (id === ids.a || id === ids.b ? { id: 'p1' } : null);
   check('...one party: refused', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === false);
@@ -144,7 +180,7 @@ const ps = (k) => room.playerState[ids[k]];
 // ── 3. a landed hit: the skulls ──────────────────────────────────────────────
 {
   const A = ps('a'), B = ps('b');
-  place(A, at(RING(2)), 7); place(B, at(RING(2) + 60), 7);
+  place(A, at(NMLR(1)), 7); place(B, at(NMLR(1) + 60), 7);
   ws.a.sent.length = 0; ws.b.sent.length = 0; room.eventBuffer.length = 0;
   await attack(ws.a, A, ids.b, B);
   const hit = room.eventBuffer.find((e) => e.type === 'pvp_hit');
@@ -224,7 +260,7 @@ const ps = (k) => room.playerState[ids[k]];
 // ── 5. a death under the rule ────────────────────────────────────────────────
 {
   const A = ps('a'), B = ps('b');
-  place(A, at(RING(2)), 7); place(B, at(RING(2) + 60), 7);
+  place(A, at(NMLR(1)), 7); place(B, at(NMLR(1) + 60), 7);
   B._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
   /* v2.3.3316: every carve-out the death had -- a tool, a quest's remains
      (snowman), an ore and a cooked fish (life_1/life_2's objective families) */
@@ -298,7 +334,7 @@ const ps = (k) => room.playerState[ids[k]];
 {
   const A = ps('a'), C = ps('c');
   /* C attacks A (C red), then A kills C */
-  place(A, at(RING(2)), 7); place(C, at(RING(2) + 60), 7);
+  place(A, at(NMLR(1)), 7); place(C, at(NMLR(1) + 60), 7);
   A._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
   C._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
   room._pvpHitLanes && room._pvpHitLanes.clear();
@@ -344,7 +380,7 @@ const ps = (k) => room.playerState[ids[k]];
      they just lose everything except their equipped items" -- what it WEARS
      kept */
   const D = ps('d');
-  place(D, at(RING(2) + 300), 7);
+  place(D, at(NMLR(1) + 300), 7);
   room._nmlState(D).red = 60000;
   D.coins = 90;
   D.weapon = { type: 'greatsword', gearBase: 'copper', tierMult: 1.12, quality: 'normal', name: 'Copper Greatsword' };
@@ -374,7 +410,7 @@ const ps = (k) => room.playerState[ids[k]];
     && lossD.payload.gear.length === 1 && lossD.payload.gear[0].gid === spareD.gid, lossD && lossD.payload);
   /* an ordinary death (no skull, a monster) is unchanged */
   const B = ps('b');
-  place(B, at(RING(2) + 400), 7);
+  place(B, at(NMLR(1) + 400), 7);
   B._nml = { red: 0, white: 0, whiteBy: null, forfeit: B._nml ? B._nml.forfeit : [], savedAt: 0 };
   B.weaponStash = [{ type: 'bow', gearBase: 'wood', tierMult: 1, quality: 'normal', name: 'Pine Bow' }];
   B.coins = 70;
@@ -390,7 +426,7 @@ const ps = (k) => room.playerState[ids[k]];
 // ── 8. the kill switch, and the caps ─────────────────────────────────────────
 {
   const A = ps('a'), C = ps('c');
-  place(A, at(RING(2)), 7); place(C, at(RING(2) + 60), 7);
+  place(A, at(NMLR(1)), 7); place(C, at(NMLR(1) + 60), 7);
   A._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
   const keep = room._liveFlags;
   room._liveFlags = { ...(keep || {}), nomansland: false };
@@ -458,7 +494,7 @@ const ps = (k) => room.playerState[ids[k]];
   const A = ps('a');
   setUp();
   room._handleShieldWear(sF, { gid: P.gid });
-  place(A, at(RING(2)), 7); place(F, at(RING(2) + 60), 7);
+  place(A, at(NMLR(1)), 7); place(F, at(NMLR(1) + 60), 7);
   F._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
   A._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 };
   F.inventory = {};
@@ -529,7 +565,7 @@ const ps = (k) => room.playerState[ids[k]];
   await farmCmd({ op: 'plant', crop: 'carrot', beds: [1] });
   if (room._farmRate) room._farmRate.delete(idH);
   check('setup: two beds dug and one planted before the fight (a seed spent: 3 left)', H.inventory.seed_carrot === 3, H.inventory);
-  place(H, at(RING(2)), 7); place(I, at(RING(2) + 60), 7);
+  place(H, at(NMLR(1)), 7); place(I, at(NMLR(1) + 60), 7);
   room._pvpHitLanes && room._pvpHitLanes.clear();
   await attack(wsI, I, idH, H);
   check('setup: a hit between players in No man\'s land (I hits H)', !!room.eventBuffer.find((e) => e.type === 'pvp_hit' && e.payload.target === idH) && locked() === true, locked());
@@ -560,7 +596,7 @@ const ps = (k) => room.playerState[ids[k]];
   check('...the farm plants no seed and spreads no compost', farmErrs.filter((e) => e === 'fight').length === 2 && H.inventory.seed_carrot === 3 && H.inventory.compost === 3, { farmErrs, inv: H.inventory });
   // a trade with a friend (J, not in the fight)
   const cmd = (w, type, payload) => room.webSocketMessage(w, JSON.stringify({ type, payload: payload || {} }));
-  place(J, at(RING(2) + 30), 7);
+  place(J, at(NMLR(1) + 30), 7);
   await cmd(wsH, 'trade2_open', { target: idJ });
   await cmd(wsJ, 'trade2_open', { target: idH });
   await cmd(wsH, 'trade2_set', { offer: { crop_carrot: 10 } });
@@ -603,7 +639,7 @@ const ps = (k) => room.playerState[ids[k]];
   const K = room.playerState[idK], L = room.playerState[idL];
   const fresh = (P) => { P._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 }; P.dying = false; P.dead = false; };
   /* the spare amulets go to the killer; the one worn stays */
-  place(K, at(RING(2)), 7); place(L, at(RING(2) + 60), 7);
+  place(K, at(NMLR(1)), 7); place(L, at(NMLR(1) + 60), 7);
   fresh(K); fresh(L);
   L.amulet = room._gearProvRecord(idL, 'amulet', { name: 'Simple Amulet', tier: 'simple', gem: null }, 'test');
   const spareAm = room._gearProvRecord(idL, 'amulet', { name: 'Ornate Amulet', tier: 'ornate', gem: 'frost' }, 'test');
@@ -626,7 +662,7 @@ const ps = (k) => room.playerState[ids[k]];
   check('...and the respawn five seconds later gives nothing back (no carve-out reappears)', !L.dying && Object.keys(L.inventory || {}).length === 0, L.inventory);
 
   /* a status's tick kills after the blow's 5 s: still the setter's kill */
-  place(K, at(RING(2)), 7); place(L, at(RING(2) + 60), 7);
+  place(K, at(NMLR(1)), 7); place(L, at(NMLR(1) + 60), 7);
   fresh(K); fresh(L);
   L.inventory = { ore_iron: 3, woodcutting_axe: 1 };
   L.coins = 40;
@@ -648,7 +684,7 @@ const ps = (k) => room.playerState[ids[k]];
      and the one worn stays; the arm unknown, every shield stays (which is
      worn cannot be told) */
   for (const known of [true, false]) {
-    place(L, at(RING(2) + 200), 7);
+    place(L, at(NMLR(1) + 200), 7);
     fresh(L);
     room._nmlState(L).red = 60000;
     L.inventory = {};
@@ -684,7 +720,7 @@ const ps = (k) => room.playerState[ids[k]];
   const fresh = (P) => { P._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 }; P.dying = false; P.dead = false; };
   const hit = async (wsFrom, from, toId, to) => { room._pvpHitLanes && room._pvpHitLanes.clear(); await attack(wsFrom, from, toId, to); };
   const setup = () => {
-    place(V, at(RING(2)), 7); place(G, at(RING(2) + 60), 7); place(H, at(RING(2), 60), 7); place(I, at(RING(2), -60), 7);
+    place(V, at(NMLR(1)), 7); place(G, at(NMLR(1) + 60), 7); place(H, at(NMLR(1), 60), 7); place(I, at(NMLR(1), -60), 7);
     fresh(V); fresh(G); fresh(H); fresh(I);
   };
   setup();
@@ -755,7 +791,7 @@ const ps = (k) => room.playerState[ids[k]];
   const wsV3 = fakeWs('gv3');
   await join(wsV3, idV, 'NmlV');
   const V3 = room.playerState[idV];
-  place(V3, at(RING(2)), 7); V3.dying = false;
+  place(V3, at(NMLR(1)), 7); V3.dying = false;
   await hit(wsV3, V3, idG, G);
   check('a record from before it (whiteBy, no from) loads, and its giver is still yours to hit back', room._nmlSkullOf(V3) === 'w' && !(V3._nml.red > 0), V3._nml);
 
@@ -795,7 +831,7 @@ const ps = (k) => room.playerState[ids[k]];
   const V = room.playerState[idV], G = room.playerState[idG], I = room.playerState[idI];
   const fresh = (P) => { P._nml = { red: 0, white: 0, whiteBy: null, forfeit: [], savedAt: 0 }; P.dying = false; P.dead = false; P._nmlChoiceAt = 0; P._nmlLastHitBy = null; P._nmlLastHitAt = 0; };
   const setup = () => {
-    place(V, at(RING(2)), 7); place(G, at(RING(2) + 60), 7); place(I, at(RING(2), 60), 7);
+    place(V, at(NMLR(1)), 7); place(G, at(NMLR(1) + 60), 7); place(I, at(NMLR(1), 60), 7);
     fresh(V); fresh(G); fresh(I);
     room._pvpEngage = new Map(); room._pvpNmlStruck = new Map();
   };
@@ -847,9 +883,9 @@ const ps = (k) => room.playerState[ids[k]];
   await refusedCase('at yourself', null, idG);
   await refusedCase('at nobody (an unknown id)', null, 'bp_nobody');
   await refusedCase('at "__proto__"', null, '__proto__');
-  await refusedCase('when the one chosen is out of No man\'s land (the Lv 1-5 tier)', () => place(V, at(RING(1)), 7), idV);
+  await refusedCase('when the one chosen is out of No man\'s land (the safe ground)', () => place(V, at(SAFE_IN), 7), idV);
   await refusedCase('when the levels are too far apart for its rule', () => { V.level = 9; }, idV);
-  await refusedCase('past CHOOSE_R', () => place(V, at(RING(2) + NML.CHOOSE_R + 200), 7), idV);
+  await refusedCase('past CHOOSE_R', () => place(V, at(NMLR(1) + NML.CHOOSE_R + 200), 7), idV);
   await refusedCase('for a duel or arena pair (their consent rules)', () => {
     if (!room._pvpConsent) room._pvpConsent = new Map();
     room._pvpConsent.set(room._pvpPairKey(idG, idV), Date.now() + 60000);

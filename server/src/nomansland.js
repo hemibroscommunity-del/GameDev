@@ -13,7 +13,15 @@
  *
  * WHERE.  The Wheel's lands, from their second tier of five levels outward:
  * the ring the Lv 6-10 monsters stand in is No man's land 1, the next 2, and
- * so on out to 15 at the keystone gates.  Measured from the Wheel's centre on
+ * so on out to 15 at the keystone gates.
+ *   v2.3.3690: FROM THE FIRST TIER -- the owner, 2026-10-28: "No man's land
+ *   should begin just outside of town where you can fight the lvl 1
+ *   monsters".  The ring of the Lv 1-5 monsters is No man's land 1, the
+ *   Lv 6-10 ring 2, out to 16, starting at the safe ground's edge
+ *   (WHEEL_SAFE_R, `SAFE_R`): the first tier begins a little inside it, and
+ *   nobody on the safe ground is ever under the rule.  `nmlnear: false` in
+ *   the live flags is the rule as it was (FIRST_TIER 2, the phone told by
+ *   caps.nmlnear).  Measured from the Wheel's centre on
  * the plan's own rings (hub 2.7 zones of 1,024 px, a tier every 1,024 px --
  * public/tools/world/plan.js; nomansland.test.mjs checks the numbers against
  * it), with no wobble, so the server and the game (src/game/noMansLand.js,
@@ -115,8 +123,16 @@ export const NML = Object.freeze({
   TIER: 1024,
   TIERS: 16,
   LEVELS_PER_TIER: 5,
-  /* tier 2 is Lv 6-10: "zones with lvl 6+ monsters" -- No man's land 1 */
-  FIRST_TIER: 2,
+  /* v2.3.3690: tier 1, Lv 1-5, is No man's land 1 (the owner: "just
+     outside of town where you can fight the lvl 1 monsters"); it was tier 2,
+     "zones with lvl 6+ monsters" (v2.3.3058), which `nmlnear: false` puts
+     back (WAS_FIRST_TIER, _nmlFirstTier) */
+  FIRST_TIER: 1,
+  WAS_FIRST_TIER: 2,
+  /* v2.3.3690: the safe ground's radius, game px (the bake's WHEEL_SAFE_R,
+     the same on both Wheels; nomansland.test holds them equal): no No man's
+     land on it, though the first tier begins at HUB, a little inside it */
+  SAFE_R: 2937,
   SKULL_MS: 20 * 60 * 1000,
   /* how often a running skull's time left is written down */
   SAVE_EVERY_MS: 30000,
@@ -149,12 +165,17 @@ export function nmlTierAt(x, y, long = 1) {
   return Math.max(1, Math.min(NML.TIERS, Math.ceil((r - NML.HUB) / tier)));
 }
 
-/* No man's land's level at a spot: 0 outside it, 1 from the Lv 6-10 tier --
-   in the Wheel `long` times longer (v2.3.3315: the room's, _wheelLongNow) */
-export function nmlLevelAt(zone, x, y, long = 1) {
+/* No man's land's level at a spot: 0 outside it, 1 from the tier `first`
+   (v2.3.3690: the Lv 1-5 tier, FIRST_TIER; it was the Lv 6-10 tier) -- in
+   the Wheel `long` times longer (v2.3.3315: the room's, _wheelLongNow).
+   Never on the safe ground (SAFE_R round the Wheel's centre). */
+export function nmlLevelAt(zone, x, y, long = 1, first = NML.FIRST_TIER) {
   if (zone !== WHEEL_ZONE) return 0;
   const t = nmlTierAt(x, y, long);
-  return t >= NML.FIRST_TIER ? t - NML.FIRST_TIER + 1 : 0;
+  if (t < first) return 0;
+  const C = wheelTable(long).WHEEL_CENTRE;
+  if (Math.hypot(x - C[0], y - C[1]) < NML.SAFE_R) return 0;
+  return t - first + 1;
 }
 
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
@@ -196,7 +217,15 @@ export const noMansLandMethods = {
     /* v2.3.3315: a phone that does not draw this room's Wheel stands somewhere
        else on its own map: no rule holds for it (wheeltables.js _wheelInStep) */
     if (this._wheelInStep && !this._wheelInStep(ps)) return 0;
-    return nmlLevelAt(ps.z, ps.x, ps.y, this._wheelLongNow());
+    return nmlLevelAt(ps.z, ps.x, ps.y, this._wheelLongNow(), this._nmlFirstTier());
+  },
+
+  /* v2.3.3690: the tier No man's land starts at: the Lv 1-5 one, or with
+     `nmlnear: false` in the live flags the Lv 6-10 one as before (the phone
+     reads caps.nmlnear, which the same flag takes away) */
+  _nmlFirstTier() {
+    const f = this._liveFlags;
+    return (f && typeof f === 'object' && own(f, 'nmlnear') && !f.nmlnear) ? NML.WAS_FIRST_TIER : NML.FIRST_TIER;
   },
 
   /* May `attackerId` hit `targetId` under No man's land's rule? */

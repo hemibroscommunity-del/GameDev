@@ -54,10 +54,18 @@ export function nmlLive(S) {
   return !!(S && S._serverCaps && S._serverCaps.nomansland === true);
 }
 
+/* v2.3.3690: the tier No man's land starts at on the worker you play: the
+   Lv 1-5 one against a worker that says caps.nmlnear, the Lv 6-10 one
+   against an older worker (or under its `nmlnear: false` kill switch), so the
+   badge and the window never promise a fight the worker refuses */
+export function nmlFirst(S) {
+  return (S && S._serverCaps && S._serverCaps.nmlnear === true) ? NML.FIRST_TIER : NML.WAS_FIRST_TIER;
+}
+
 /** Your No man's land level right now (0: not in it, or not live). */
 export function nmlHere(S) {
   if (!nmlLive(S) || !S.player || S.currentZone !== WHEEL) return 0;
-  return nmlLevelAt(WHEEL, S.player.x, S.player.y, wheelLong());
+  return nmlLevelAt(WHEEL, S.player.x, S.player.y, wheelLong(), nmlFirst(S));
 }
 
 /* your level as the worker has it (player_state's `level`, wsClient) -- the
@@ -74,8 +82,9 @@ export function nmlCanAttack(S, otherId) {
   if (!nmlLive(S) || !S.player || S.currentZone !== WHEEL || !S.others) return false;
   const o = S.others[otherId];
   if (!o || (o.zone || o.z) !== WHEEL) return false;
-  const la = nmlLevelAt(WHEEL, S.player.x, S.player.y, wheelLong());
-  const lt = nmlLevelAt(WHEEL, typeof o.x === 'number' ? o.x : o.renderX, typeof o.y === 'number' ? o.y : o.renderY, wheelLong());
+  const first = nmlFirst(S);   /* v2.3.3690 */
+  const la = nmlLevelAt(WHEEL, S.player.x, S.player.y, wheelLong(), first);
+  const lt = nmlLevelAt(WHEEL, typeof o.x === 'number' ? o.x : o.renderX, typeof o.y === 'number' ? o.y : o.renderY, wheelLong(), first);
   if (la < 1 || lt < 1) return false;
   const theirs = Number(o.rpgLv) || 1;
   if (Math.abs(myLevel(S) - theirs) > Math.min(la, lt)) return false;

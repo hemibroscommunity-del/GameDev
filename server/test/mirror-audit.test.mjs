@@ -2126,7 +2126,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 // game's; every hit is the worker's -- one ring apart, and a player standing
 // on the line would be told they are safe while they are being hit.
 {
-  const keys = ['HUB', 'TIER', 'TIERS', 'LEVELS_PER_TIER', 'FIRST_TIER', 'SKULL_MS'];
+  const keys = ['HUB', 'TIER', 'TIERS', 'LEVELS_PER_TIER', 'FIRST_TIER', 'WAS_FIRST_TIER', 'SAFE_R', 'SKULL_MS'];   /* v2.3.3690: + where it started, and the safe ground */
   const bad = keys.filter((k) => SRV_NML[k] !== CLIENT_NML[k]);
   check('no man\'s land: the same rings and skull time on both sides', bad.length === 0, bad);
   /* v2.3.3315: for every Wheel a room may play (wheeltables.js), its own centre
@@ -2134,12 +2134,20 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   for (const long of SRV_WHEEL_SIZES) {
     const C = srvWheelTable(long).WHEEL_CENTRE, cli = CLIENT_NML_CENTRES[long];
     check(`no man's land: the same centre for the Wheel ${long} times longer (WHEEL_CENTRE)`, !!cli && cli[0] === C[0] && cli[1] === C[1], { cli, srv: C });
-    const off = [];
-    for (let r = 0; r < 20000 * long; r += 97 * long) {
-      const x = C[0] + r, y = C[1] + r * 0.3;
-      if (srvNmlLevelAt('wheel', x, y, long) !== clientNmlLevelAt('wheel', x, y, long)) off.push({ r, srv: srvNmlLevelAt('wheel', x, y, long), cli: clientNmlLevelAt('wheel', x, y, long) });
+    /* v2.3.3690: from either first tier (the Lv 1-5 one, and the Lv 6-10 one
+       an older worker or the `nmlnear: false` switch plays), and every spot
+       across the safe ground's edge, where it now starts */
+    for (const first of [SRV_NML.FIRST_TIER, SRV_NML.WAS_FIRST_TIER]) {
+      const off = [];
+      for (let r = 0; r < 20000 * long; r += 97 * long) {
+        const x = C[0] + r, y = C[1] + r * 0.3;
+        if (srvNmlLevelAt('wheel', x, y, long, first) !== clientNmlLevelAt('wheel', x, y, long, first)) off.push({ r, srv: srvNmlLevelAt('wheel', x, y, long, first), cli: clientNmlLevelAt('wheel', x, y, long, first) });
+      }
+      for (let r = SRV_NML.SAFE_R - 40; r <= SRV_NML.SAFE_R + 40; r++) {
+        if (srvNmlLevelAt('wheel', C[0], C[1] + r, long, first) !== clientNmlLevelAt('wheel', C[0], C[1] + r, long, first)) off.push({ r, edge: 1 });
+      }
+      check(`no man's land: the same level at every spot out to the gates (${long}x, from tier ${first})`, off.length === 0, off.slice(0, 4));
     }
-    check(`no man's land: the same level at every spot out to the gates (${long}x)`, off.length === 0, off.slice(0, 4));
   }
 }
 
