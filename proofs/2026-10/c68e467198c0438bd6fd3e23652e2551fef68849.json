@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c68e467198c0438bd6fd3e23652e2551fef68849",
+  "tree": "49e7424cf096066de83c94614e143003211d29eb",
+  "committedAt": "2026-10-28T12:21:48-07:00",
+  "subject": "A tap on the right stick attacks; only the JUMP button jumps (v2.3.3712) (#1200)",
+  "files": 6739,
+  "bytes": 776023084,
+  "listingSha256": "9716c989e1528f16006f17549b01d0442324cfb28dbe4aeb1c9758ec296ca745",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
