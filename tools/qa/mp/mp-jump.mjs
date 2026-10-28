@@ -7,7 +7,8 @@
  * game/jump.js's rules are pinned in node (tools/world/test-world-core.mjs
  * "jumping").  This is the half only a real client can show, in the Wheel, on
  * a phone-sized TOUCH page against a real worker:
- *   1. the JUMP button is centred under the attack disc, 44 px or more, clear
+ *   1. the JUMP button is left of the attack disc upright (v2.3.3740; centred
+ *      under it sideways), 44 px or more, clear
  *      of the disc, the dashboard and every other control, its word inside --
  *      upright and sideways (v2.3.3018: its arrow inside the gold ring, the
  *      word gone for the owner's mockup);
@@ -180,7 +181,7 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
 
   /* ── 1. where the button is ── */
   const L1 = await LAYOUT(P);
-  const lay = (L) => {
+  const lay = (L, upright) => {
     if (!L.btn || !L.disc) return { ok: false, why: 'no button or disc', L };
     const cx = (L.btn.l + L.btn.r) / 2, dcx = (L.disc.l + L.disc.r) / 2;
     const hits = L.others.filter((o) => overlap(L.btn, o));
@@ -194,13 +195,19 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
     return {
       /* v2.3.3721: its centre under the disc's within a quarter of the disc --
          it stands half a button clear of Block, a few px off centre (jumpAnchor) */
-      ok: L.btn.w >= 44 && L.btn.h >= 44 && Math.abs(cx - dcx) <= (L.disc.r - L.disc.l) / 4 && L.btn.t >= L.disc.b + 2 && L.btn.b <= bandTop - 8 && hits.length === 0 && inside,
-      size: Math.round(L.btn.w), centreOff: +(cx - dcx).toFixed(1), belowDisc: Math.round(L.btn.t - L.disc.b), aboveBand: Math.round(bandTop - L.btn.b),
+      /* v2.3.3740: upright, LEFT of the disc instead, 16 px of air or more,
+         its foot level with the disc's (the owner: "move the contextual
+         button slightly down and to the right more.  Move the jump button
+         more to the left"; ShieldButton jumpAnchor) */
+      ok: L.btn.w >= 44 && L.btn.h >= 44 && (upright
+        ? L.disc.l - L.btn.r >= 16 && Math.abs(L.btn.b - L.disc.b) <= 4
+        : Math.abs(cx - dcx) <= (L.disc.r - L.disc.l) / 4 && L.btn.t >= L.disc.b + 2) && L.btn.b <= bandTop - 8 && hits.length === 0 && inside,
+      size: Math.round(L.btn.w), centreOff: +(cx - dcx).toFixed(1), belowDisc: Math.round(L.btn.t - L.disc.b), leftOfDisc: Math.round(L.disc.l - L.btn.r), aboveBand: Math.round(bandTop - L.btn.b),
       hits, inside, pic: L.label ? { w: Math.round(L.label.w), face: Math.round(face), off: +picOff.toFixed(1) } : null,
     };
   };
-  const l1 = lay(L1);
-  rec.ok(`upright, JUMP is under the attack disc's centre (${l1.centreOff} px off), ${l1.belowDisc} px below it and ${l1.aboveBand} px above the dashboard, ${l1.size} px, on no other control, its arrow inside the ring`, l1.ok, l1);
+  const l1 = lay(L1, true);
+  rec.ok(`upright, JUMP is left of the attack disc (${l1.leftOfDisc} px of air), its foot level with the disc's, ${l1.aboveBand} px above the dashboard, ${l1.size} px, on no other control, its arrow inside the ring`, l1.ok, l1);
   if (L1.btn) await shot(P, 'layout', { x: Math.max(0, L1.btn.l - 120), y: Math.max(0, L1.disc ? L1.disc.t - 20 : L1.btn.t - 160), width: 250, height: Math.min(380, L1.vh - Math.max(0, L1.disc ? L1.disc.t - 20 : L1.btn.t - 160)) });
 
   /* ── 2. a jump, where both players arrived ──
@@ -467,7 +474,7 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
   /* ── 1b. sideways ── */
   await P.page.setViewportSize(SIDEWAYS);
   await P.page.waitForTimeout(1500);
-  const l2 = lay(await LAYOUT(P));
+  const l2 = lay(await LAYOUT(P), false);
   rec.ok(`sideways too: centred under the disc (${l2.centreOff} px), ${l2.belowDisc} px below it, ${l2.aboveBand} px above the dashboard, ${l2.size} px, on nothing`, l2.ok, l2);
   await P.page.setViewportSize(PHONE);
 

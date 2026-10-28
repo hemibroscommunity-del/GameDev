@@ -772,3 +772,55 @@ BT_GHOST_DIRS=east,south,north) bare and in the full set, bare-headed and in a
 top hat: no body colour through the armour (one bare-headed frame shows a
 straight 14 px row under the figure, not the body's shape; none in the hat
 run).  Before/after: `docs/specs/flip-polish/`.
+
+## v2.3.3740: upright, the disc down and right, JUMP to its left
+
+The owner, 2026-10-28, on an iPhone the night before the judges: "Also I
+think you should move the contextual button slightly down and to the right
+more. Move the jump button more to the left. The way the thumb rests on the
+screen it will result in less accidental taps between jump and the
+contextual button. Just make sure the change doesn't overlap any buttons
+there though (some appear only during combat). This is portrait on mobile".
+
+**Upright phones only.** Sideways and on a computer nothing moves.
+
+| upright (px over the dashboard band, px in from the right edge) | before | after |
+|---|---|---|
+| attack disc, in from the right / its foot | 50 / 80 | 36 / 72 (14 right, 8 down) |
+| JUMP | under the disc, 4 px of air to it | LEFT of the disc, 18 px of air, its foot level with the disc's |
+| JUMP's centre to the disc's | 76 | 90 |
+| TRAP | over Shield Bash, beside the disc | 8 px over JUMP, beside the disc's top |
+| Shield Bash | beside the disc's middle | 8 px over TRAP, up and left of the disc, beside Sprint |
+| Block | diagonal below-left of the disc | still diagonal below-left: under JUMP's left part, 10 px below it |
+| Sprint | over the disc | the same, 14 px right and 8 px down with it |
+| Special, Whirlwind | over Sprint | the same, but 4 px further over Sprint: Shield Bash, beside Sprint now, keeps the half button of air `mp-abilslot` holds it to (Whirlwind's top 316 px over the band, 320 before) |
+
+- **Why JUMP went beside the disc and not along the bottom.** The strip at
+  the band's foot (23-63 px over it, from about 120 px in from the right on a
+  360 px phone) is the doors' "Enter" button's: "in the free stretch between
+  the bell and the jump button" (v2.3.3032), and `mp-wheeldoors` fails it on
+  any button. The old JUMP was already at its right end: it could not move
+  left at that height at all. So JUMP stands just over that strip (9 px), and
+  the disc, coming down, stops 9 px over it too.
+- **What made room.** The column left of the disc (Shield Bash, TRAP) stands on
+  JUMP now (`ctlColumn`), still 4 px off the disc's edge. TRAP takes the lower
+  place: its words stand LEFT of it, and there they lie level with Element
+  Burst (the room v2.3.3635 measured them against); one place up they would lie
+  on Quick Eat. Block stays the diagonal below-left the owner chose
+  ("diagonal bottom left of that right joystick", v2.3.2562), now of JUMP too;
+  it cannot step clear of JUMP to the left because the notification bell is
+  there on a 360 px phone. It lies in the doors' strip as it always has (a
+  fight's button; the Enter button is drawn over it).
+- **Not overlapping, measured** (`node tools/qa/mp/run.mjs thumbbtn`, every
+  combat button up at once on 360x640, 375x667, 390x844 and 430x932, and
+  out of a fight at a door): no two touch boxes closer than 8 px except the
+  ones the specs set closer on purpose (the column 4 px off the disc,
+  Whirlwind and Special's rings, the weapon chip and the bell). JUMP's left
+  edge is 18 px into the movement half on a 360 px phone (Block's was 2).
+- **Where** (`ShieldButton.jsx`): `RBTN.rightUp` / `bottomUp`, read through
+  `discRight` / `discBottom`; `JUMP_DISC_AIR`, `JUMP_FOOT_UP`, `jumpAnchor`;
+  `ctlColumn`; `blockAnchor`, `BLOCK_JUMP_DROP`.
+
+**Checked:** `mp-jumpbtn`, `mp-jump`, `mp-abilslot` (their upright places
+re-pointed), `mp-rbutton`, `mp-btnskin`, `mp-joyfade`, `mp-btnlayout`,
+`mp-wheeldoors`, `mp-questline`. Pictures: docs/specs/jump-button/thumb-*.png.

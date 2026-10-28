@@ -1,5 +1,5 @@
 import React from 'react';
-import { RBTN, LBTN } from './ShieldButton.jsx'; /* v2.3.2472: LBTN -- the left disc's geometry, shared with SpecialButton */
+import { RBTN, LBTN, discRight, discBottom } from './ShieldButton.jsx'; /* v2.3.2472: LBTN -- the left disc's geometry, shared with SpecialButton */
 import { SprintButton } from './SprintButton.jsx'; /* v2.3.3006 */
 import { QuickEatButton } from './QuickEatButton.jsx'; /* v2.3.3260 */
 import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
@@ -320,8 +320,8 @@ export function TouchControls(props) {
          a tap on empty screen should do. */
       opacity: 0,
       position: 'fixed',
-      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + RBTN.bottom + 'px)', /* v2.3.1307: disc rides above the open sheet */
-      right: RBTN.right,
+      bottom: 'calc(var(--sheet-h, var(--dash-h)) + ' + discBottom(isLandscape) + 'px)', /* v2.3.1307: disc rides above the open sheet; v2.3.3740: lower and righter upright (ShieldButton RBTN) */
+      right: discRight(isLandscape),
       zIndex: 30,
       /* v2.3.2242: the container is still pass-through; the DISC inside it
          is the touch target (see rJoyRef below). */
