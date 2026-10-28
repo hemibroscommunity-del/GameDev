@@ -5718,7 +5718,15 @@ export var BroTown = function BroTown(_ref0) {
            player off that edge cannot strand a portal.  A top-edge entry SPAWN
            lands above the clamp and is nudged down on its first frame, which is
            what the bottom edge already does. */
-        var _RAIL_CSS = 46;
+        /* v2.3.3765: the rail grew per layout (game.css --bt-bar-k: 34 px
+           of row x k); read once a second, never a style read every frame. */
+        var _rNow = Date.now();
+        if (!S._railCssAt || _rNow - S._railCssAt > 1000) {
+          S._railCssAt = _rNow;
+          var _bk = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bt-bar-k'));
+          S._railCss = 46 + 34 * ((_bk > 0 ? _bk : 1) - 1);
+        }
+        var _RAIL_CSS = S._railCss || 46;
         var _HEAD_MARGIN = 57 + Math.round(_RAIL_CSS / Math.max(0.2, S._worldScaleY || 1));
         P.x = Math.max(hs, Math.min(ZONE_W - hs, P.x));
         P.y = Math.max(hs + _HEAD_MARGIN, Math.min(ZONE_H - _FOOT_MARGIN, P.y));
