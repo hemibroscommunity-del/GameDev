@@ -24,7 +24,8 @@
  *         where the pick strikes between his legs, keeps its blade's grey, and
  *         the pickaxe's handle keeps every pixel of its wood;
  *      1d phones fetch the new sheet: the player sprites' VERSION is 102 or
- *         later, and the stale .webp twin is gone (CI mints it).
+ *         later, and the stale .webp twin is gone (CI mints a fresh one from
+ *         the new sheet: any twin but the stale one's bytes passes).
  * 2. THE PRINT (playerDecal.js torsoAnchors, gearSheets.js STABLE_PRINT_POSES).
  *    The print and the pattern were placed by each frame's own chest box (its
  *    widest upper row, its top and bottom), and the mining swing raises the
@@ -39,6 +40,7 @@
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -147,8 +149,15 @@ const KEY = [150, 158, 172], TOL = 24;
     otherChanged === 0 && woodChanged === 0 && eyes.every((n) => n >= 4) && blade >= 30, { otherChanged, woodChanged, eyes, blade, firstBad });
   const ps = readFileSync(new URL('src/rendering/playerSprites.js', root), 'utf8');
   const v = Number((ps.match(/const VERSION = (\d+);/) || [])[1]);
-  check(`1d phones fetch the new sheet (VERSION ${v}) and the stale .webp twin is gone`,
-    v >= 102 && !existsSync(new URL('public/sprites/player/mine-south.webp', root)), { v });
+  /* v2.3.3710: "gone" meant "no twin at all", and CI's optimize-assets.yml
+     then minted a fresh, lossless twin from the new sheet -- as it is meant
+     to -- and this check failed on the merge train.  The stale twin is the one
+     whose bytes these are; any other is the bot's copy of the new sheet. */
+  const twin = new URL('public/sprites/player/mine-south.webp', root);
+  const STALE_TWIN = '59c640ffa49eab70a73c13118d78a7ce81619faca66e956a64ac8093df4fb0db';
+  const twinHash = existsSync(twin) ? createHash('sha256').update(readFileSync(twin)).digest('hex') : null;
+  check(`1d phones fetch the new sheet (VERSION ${v}) and the stale .webp twin is gone (${twinHash ? 'the bot\'s fresh twin' : 'no twin'})`,
+    v >= 102 && twinHash !== STALE_TWIN, { v, twinHash });
 }
 
 /* ── 2. the print ── */
