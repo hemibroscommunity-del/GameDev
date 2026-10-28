@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6da3ee0aa2db4d0ccfb52add6fd2ee7708e81c6b",
+  "tree": "00fef381ae9c6dd53b5108a14ecec03ec6944fd3",
+  "committedAt": "2026-10-28T15:50:52-07:00",
+  "subject": "Each memory saver can be turned off for every phone from the Test panel, live (v2.3.3755) (#1228)",
+  "files": 6822,
+  "bytes": 795388372,
+  "listingSha256": "89d41f7f735828b839a6da0752fb8a2987c99d1f57be2f4fbe2476283f25c3f3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

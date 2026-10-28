@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1d4efc43b818f84307fca8cc4dac1cc78cc7ffb7",
+  "tree": "51de28b5157987c6a0031daa73ed0892d0e2ef27",
+  "committedAt": "2026-10-28T15:51:01-07:00",
+  "subject": "The double jump's flip: a solid head in your skin colour, the hat turns with it, bigger, no \"Perfect!\", a softer landing (v2.3.3738) (#1223)",
+  "files": 6827,
+  "bytes": 795827001,
+  "listingSha256": "f4bae5b703d4897c9a2cf8f62e83d3bbf098acf4f75a61b2a65dad40f83bcead",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
