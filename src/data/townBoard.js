@@ -26,6 +26,7 @@
  *            { npc }    a townsperson, by name (where he stands);
  *            { mouth }  a dungeon's way in, by its land (wheelDungeonDoors);
  *            { land }   a land, its first stretch (the world map's `lands`);
+ *            null       nowhere in particular (`nopin`: its page has no pins);
  *   cap    a worker cap it waits for (the tile is not shown without it);
  *   mouth  a dungeon the worker must open (game/wheelDungeons.js).
  * No imports: a node suite reads it (server/test/town-board.test.mjs). */
@@ -64,6 +65,14 @@ export const BOARD = Object.freeze([
       'Each match is a 3-minute duel with no healing. The champion wins 250 gold for every fighter in the bracket.',
       'Not fighting? Back a fighter with gold and share the losing side’s stakes.'],
     where: 'Sign up at the Sheriff’s Office, in BroTown.', at: { door: 'sheriff' } }),
+  /* v2.3.3766: No man's land is everywhere past the safe ground, not one
+     place, so its page has no pins (`nopin`); its level words stay general
+     (lane H is changing how its levels step) */
+  E({ id: 'nomansland', group: 'fight', name: 'No man\u2019s land', icon: '/icons/ui/threat-skull.webp', emoji: '☠️',
+    page: ['Outside BroTown\u2019s safe ground, players may fight each other. The further out you go, the higher the levels of the players you can meet there.',
+      'Attacking is a choice you are asked first. The attacker wears a red skull, the one attacked a white one.',
+      'Killed by a player there, you lose everything you carry; what you wear you keep, unless you wear the red skull.'],
+    where: 'Everywhere outside BroTown\u2019s safe ground.', at: null, nopin: true }),
   E({ id: 'duel', group: 'fight', name: 'Duels', icon: '/icons/ui/soc-duel.webp', emoji: '⚔️',
     page: ['Challenge another player to a friendly fight. Nobody loses anything: no items, no gold.',
       'Pick a player from the list at the Sheriff’s Office, or from their card.'],
@@ -167,6 +176,12 @@ export const BOARD = Object.freeze([
     page: ['Race Lil Bro once round the Town Hall’s square. He runs a little faster than you walk, so sprint.'],
     where: 'Lil Bro, on the square west of the Town Hall.', at: { npc: 'Lil Bro' }, cap: 'race' }),
 ]);
+
+/** Can a pin go on row `id` (a row with a place)? */
+export function boardPinnable(id) {
+  const e = boardEntry(id);
+  return !!e && !e.nopin && !!e.at;
+}
 
 /** The row for `id`, or null. */
 export function boardEntry(id) {

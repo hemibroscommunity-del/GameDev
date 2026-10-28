@@ -42,6 +42,7 @@ const W = await import('../../src/data/wheelDungeons.js');
   const plots = new Set(Object.keys(D.WHEEL_BUILDING_ICONS));
   const folk = new Set(D.WHEEL_TOWNSFOLK.map((t) => t.name));
   const bad = B.BOARD.filter((e) => {
+    if (e.nopin) return e.at !== null;   /* v2.3.3766: No man's land, nowhere in particular */
     const a = e.at || {};
     const keys = Object.keys(a);
     if (keys.length !== 1) return true;
@@ -58,6 +59,9 @@ const W = await import('../../src/data/wheelDungeons.js');
   const words = B.BOARD.filter((e) => /\bwheel\b|\btap\b|\btapping\b/i.test([e.name, e.where, ...e.page].join(' '))).map((e) => e.id);
   check('1g no row says "Wheel" (players read "the world") or "tap" (deskWords\' word)', words.length === 0, words);
   check('1h boardEntry finds a row, and nothing for a hostile id', B.boardEntry('arena') && B.boardEntry('arena').name === 'The Arena' && B.boardEntry('__proto__') === null && B.boardEntry(5) === null);
+  check('1j No man\'s land is on the board under Fight with no place and no pins, its level words general (no numbers)',
+    !!B.boardEntry('nomansland') && B.boardEntry('nomansland').group === 'fight' && B.boardEntry('nomansland').at === null
+      && !B.boardPinnable('nomansland') && B.boardPinnable('arena') && !/\d/.test(B.boardEntry('nomansland').page.join(' ')));
   check('1i the four dungeons, the arena, the forge and the Gambling Den are on the board', ['goo-grotto', 'great-cave', 'foundry-dome', 'buried-city', 'arena', 'forge', 'gambling', 'woodworker'].every((id) => !!B.boardEntry(id)));
 }
 
@@ -88,6 +92,10 @@ const W = await import('../../src/data/wheelDungeons.js');
   store.set('bt_pins:bp_c', JSON.stringify({ red: 'not-on-board', blue: '__proto__' }));
   const S4 = { myId: 'bp_c' };
   P.loadPins(S4, store, isPlace);
+  store.set('bt_pins:bp_e', JSON.stringify({ red: 'nomansland', blue: 'arena' }));
+  const S6 = { myId: 'bp_e' };
+  P.loadPins(S6, store, B.boardPinnable);
+  check('2k a pin stored on a place with no pins (No man\'s land) is dropped; one on a pinnable place kept', P.pinsOf(S6).red === null && P.pinsOf(S6).blue === 'arena', P.pinsOf(S6));
   check('2h a stored id no longer on the board, or a hostile one, is dropped', P.pinsOf(S4).red === null && P.pinsOf(S4).blue === null);
   check('2i a bad colour or id changes nothing', P.togglePin(S, 'green', 'arena', store) === null && P.togglePin(S, 'red', '<x>', store) === 'gambling' && P.pinsOf(S).red === 'gambling');
   store.set('bt_pins:bp_d', '{not json');

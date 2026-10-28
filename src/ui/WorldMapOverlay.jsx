@@ -60,7 +60,7 @@ import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525:
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
 import { loadPins, pinsOf, PIN_KEYS, PIN_CSS } from '../game/mapPins.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
 import { boardPlaceAt } from '../game/mapPinPlaces.js';
-import { boardEntry } from '../data/townBoard.js';
+import { boardPinnable } from '../data/townBoard.js';
 import { wheelDungeonOpen, wheelDungeonLevelsLine } from '../game/wheelDungeons.js';                  /* v2.3.3540: which landmarks are dungeons this worker opens; v2.3.3573: + a party dungeon's level and players */
 
 /* ═══ v2.3.3525: THE QUEST PINS' PICTURES ═══
@@ -705,7 +705,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
      way to go.  Drawn over the road and the star: they are where you chose to
      go. */
   if (S) {
-    loadPins(S, null, (id) => !!boardEntry(id));
+    loadPins(S, null, boardPinnable);
     const pins = pinsOf(S);
     for (const kk of PIN_KEYS) {
       const id = pins[kk];

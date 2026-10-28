@@ -82,7 +82,7 @@ import { questPinsOf, MAP_PIN } from '@/game/questPins.js';   /* v2.3.3525: the 
 import { QUEST_PIN } from '@/data/ownerIcons.js';              /* v2.3.3525: ...in the owner's own pictures */
 import { loadPins, pinsOf, PIN_KEYS, PIN_COLORS } from '@/game/mapPins.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
 import { boardPlaceAt } from '@/game/mapPinPlaces.js';
-import { boardEntry } from '@/data/townBoard.js';
+import { boardPinnable } from '@/data/townBoard.js';
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
 import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and its music */
@@ -787,7 +787,7 @@ export class WheelMinimap {
        pin is a sprite's texture, tint and place, never a Graphics change. */
     const mapPins = [];
     {
-      loadPins(S, null, (id) => !!boardEntry(id));
+      loadPins(S, null, boardPinnable);
       const pins = pinsOf(S);
       const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
       const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE, hiY = MAP_BOT - (QUEST_EDGE - FRAME);

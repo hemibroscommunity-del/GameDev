@@ -54,6 +54,7 @@ Client only: nothing on the server changes.
 
 ## Not on the board
 
-No man's land (every land past its safe ground, not one place); the Dungeon
+No man's land IS on the board (under Fight) but without pins: it is every
+land past the safe ground, not one place (`at: null`, `nopin`). The Dungeon
 Workshop's paid packs (dormant). A pin is lifted from the board, not yet from
 the map.

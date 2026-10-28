@@ -151,7 +151,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(A, '1-board');
     const ids = b1 ? b1.tiles.map((t) => t.id) : [];
     rec.ok(`1. at the Town Hall's door, "${o1.btn}" opens the board: ${ids.length} tiles under ${b1 ? b1.groups.length : 0} headings, the Leaderboard and World map at its foot`,
-      o1.open && !!b1 && ids.length >= 20 && ['goo-grotto', 'arena', 'forge', 'gambling', 'woodworker', 'land-verdant'].every((id) => ids.includes(id))
+      o1.open && !!b1 && ids.length >= 20 && ['goo-grotto', 'arena', 'nomansland', 'forge', 'gambling', 'woodworker', 'land-verdant'].every((id) => ids.includes(id))
         && b1.groups.join() === 'fight,lands,make,money,people' && b1.foot.join() === 'leaderboard,map',
       { btn: o1.btn, open: o1.open, n: ids.length, groups: b1 && b1.groups, foot: b1 && b1.foot });
 
@@ -162,6 +162,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(A, '2-page');
     rec.ok('2. the arena\'s tile opens its page: what it is (100 gold, up to 8 fighters), where (the Sheriff\'s Office), Red pin and Blue pin',
       !!p2 && /100 gold/.test(p2.text) && /Sheriff/.test(p2.text) && p2.btns.map((b) => b.k + ':' + b.on).join() === 'red:0,blue:0', p2);
+    await press(A, '[data-board-back]', false);
+    await waitSel(A, '[data-town-board]');
+    /* v2.3.3766: No man's land is everywhere past the safe ground: a page, no pins */
+    await press(A, '[data-board-tile="nomansland"]', false);
+    await waitSel(A, '[data-board-page="nomansland"]');
+    const p2b = await pageOf(A);
+    rec.ok('...and No man\'s land, under Fight, has a page (fights between players, the skulls, what you lose) and no pins',
+      !!p2b && /red skull/.test(p2b.text) && /safe ground/.test(p2b.text) && p2b.btns.length === 0, p2b && { text: p2b.text.slice(0, 200), btns: p2b.btns });
     await press(A, '[data-board-back]', false);
     await waitSel(A, '[data-town-board]');
 

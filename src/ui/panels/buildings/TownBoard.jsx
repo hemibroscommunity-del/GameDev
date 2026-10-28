@@ -1,6 +1,6 @@
 import React from 'react';
 import { deskWords } from '@/game/deskWords.js';
-import { GROUPS, boardEntry } from '@/data/townBoard.js';
+import { GROUPS, boardEntry, boardPinnable } from '@/data/townBoard.js';
 import { boardRows } from '@/game/mapPinPlaces.js';
 import { loadPins, pinsOn, togglePin, PIN_CSS, PIN_KEYS } from '@/game/mapPins.js';
 
@@ -56,7 +56,7 @@ export function TownBoard(props) {
   const S = (props.stateRef && props.stateRef.current) || {};
   const [page, setPage] = React.useState(null);
   const [, bump] = React.useState(0);
-  loadPins(S, null, function (id) { return !!boardEntry(id); });
+  loadPins(S, null, boardPinnable);
   const rows = boardRows(S);
   const e = page ? boardEntry(page) : null;
 
@@ -80,7 +80,8 @@ export function TownBoard(props) {
             <span style={{ color: LS.brass, fontWeight: 700 }}>Where: </span>{e.where}
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        {/* v2.3.3766: a place that is nowhere in particular (No man's land) has no pins */}
+        {boardPinnable(e.id) ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {PIN_KEYS.map(function (k) {
             const here = on.indexOf(k) >= 0;
             const name = k === 'red' ? 'Red pin' : 'Blue pin';
@@ -94,10 +95,10 @@ export function TownBoard(props) {
               </button>
             );
           })}
-        </div>
-        <div style={{ fontSize: 11.5, color: LS.txt3, lineHeight: 1.4 }}>
+        </div> : null}
+        {boardPinnable(e.id) ? <div style={{ fontSize: 11.5, color: LS.txt3, lineHeight: 1.4 }}>
           A pin shows on your minimap and the world map, and stays until you lift it.
-        </div>
+        </div> : null}
       </div>
     );
   }

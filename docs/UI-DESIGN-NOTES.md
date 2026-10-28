@@ -904,6 +904,7 @@ Screens: building-townhall, building-townhall-page
 - **Two pins, red and blue, both up at once**: pressing one puts it on this place, moving it from wherever it was; pressing it again here lifts it ("Lift red pin"). A tile wears its pins in its corner and in its border's colour. They stay until lifted, per character, on the device (the orchestrator's recommendation; the owner can change it).
 - **The pins on the maps**: on the minimap, the pin's point on the place, or (off the box) a smaller pin riding its edge on the line to the place, as your party does, so the minimap always says which way. On the world map, at every zoom, over the gold road, and at the screen's edge when off it.
 - **Places are found where they stand**, never written down: a building's door, a townsperson, a dungeon's way in, a land's first stretch. A pin keeps the board's name for the place, so it can never point at a stale spot.
+- **No man's land is a tile without pins** (the orchestrator's call): it is every land past the safe ground, not one place, so its page says what it is (fights between players, the skulls, what you lose) and "Where: everywhere outside BroTown's safe ground", with no pin buttons. Its level words stay general while its levels are being changed.
 - **The Leaderboard and the World map stay**, as two small buttons at the board's foot: the trophy case and the painted map were the owner's earlier choice (v2.3.3258).
 - On a computer the words say "click" and the board flows into more columns in the wide layout.
 
@@ -912,7 +913,6 @@ Screens: building-townhall, building-townhall-page
 - A third pin colour, or pins that clear themselves, without the owner.
 
 **Still open:**
-- No man's land is not a tile: it is every land past its safe ground rather than one place to pin.
 - A pin cannot yet be lifted from the map itself, only from the board.
 
 Sources: src/data/townBoard.js, src/game/mapPins.js, src/game/mapPinPlaces.js, src/ui/panels/buildings/TownBoard.jsx, src/rendering/systems/wheelMinimap.js, src/ui/WorldMapOverlay.jsx, tools/qa/mp/mp-townboard.mjs
