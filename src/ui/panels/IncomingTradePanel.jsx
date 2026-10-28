@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
 import { BT_AUDIO } from '@/data/index.js';
@@ -160,7 +161,7 @@ export function IncomingTradePanel(props) {
       color: '#D8AA58' /* v2.3.1235: brass token */
     }
   }, /*#__PURE__*/React.createElement("img", {
-    src: "/icons/popups/gold.webp",
+    src: coinArtFor(incomingTrade.offer._gold), /* v2.3.3734: the pile for the amount */
     alt: "",
     draggable: false,
     style: {

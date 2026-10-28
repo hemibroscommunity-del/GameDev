@@ -39,12 +39,15 @@
  * fight).  docs/specs/worker-code-diet.md.
  */
 import React from 'react';
+import { clientOffAtLoad } from '../game/clientOff.js';   /* v2.3.3755 */
 import { createPortal } from 'react-dom';
 import { fixedBox } from './fixedBox.js';
 import { swallowTapClick } from './swallowTapClick.js';
 
+/* v2.3.3755: ...unless the Test panel's Memory savers row turned it off, from
+   the next load (game/clientOff.js) */
 export const CODE_LAZY = (() => {
-  try { return !/(^|[?&])codelazy=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  try { return !/(^|[?&])codelazy=(0|off|false)(&|$)/.test(window.location.search || '') && !clientOffAtLoad('codelazy'); } catch (e) { return true; }
 })();
 const LAZY_RETRY_MS = 1500;
 

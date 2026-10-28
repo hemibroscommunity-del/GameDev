@@ -1,3 +1,4 @@
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, COLLISION_TABLE, ELEMENTS, MAX_PET_SLOTS, NUGGETS_PER_BAR, PET_LOOT_RADIUS, RARITY_TIERS, WEAPON_STASH_MAX, WEAPON_TYPES, calcDisplayDmgRange, calcDisplayDps, calcDisplayHeal, canEquipItem, discoveredCollisions, getAmuletBonus, getEquipReqLabel, getShieldBonus, toDisplayDamage } from '@/data/index.js'; /* v2.3.2520: the display damage scale */
@@ -120,7 +121,7 @@ export function InventoryPanel(props) {
       marginBottom: 8
     }
   }, "Active: ", rpgState.activeSlot === 'ranged' ? 'Ranged' : 'Melee', " \xB7 ", /*#__PURE__*/React.createElement("img", {
-    src: "/icons/popups/gold.webp",
+    src: coinArtFor(rpgState.coins), /* v2.3.3734: the pile for the amount */
     alt: "",
     draggable: false,
     style: {
@@ -1021,7 +1022,7 @@ export function InventoryPanel(props) {
       }
     }, /*#__PURE__*/React.createElement("img", {
       /* v2.3.1232: gold value icon (emoji fallback) */
-      src: "/icons/popups/gold.webp",
+      src: COIN_ONE, /* v2.3.3734: the one coin, a unit beside a price */
       alt: "",
       draggable: false,
       style: {

@@ -29,8 +29,9 @@
 import { readFileSync } from 'node:fs';
 import {
   linesFor, rarityOf, dropLineText, monsterIdOfLoot, noteKillCredit, noteLootDrop,
-  RARITY_TIERS, GRADE_WORDS, DROP_LINES, dropLinesLive, dropGroupMs,
+  RARITY_TIERS, GRADE_WORDS, DROP_LINES, dropLinesLive, dropGroupMs, pileShine, notePileShine,
 } from '../../src/game/dropLines.js';
+import { QUALITY_COLOR } from '../../src/ui/mobile/dash/common.js';
 import { codexDropsFor, CODEX_DROP_RATES } from '../../src/data/codexDrops.js';
 
 let failures = 0;
@@ -53,10 +54,12 @@ const WHITE = '#FFFFFF';
     texts(c).join(' | ') === 'Coins x5 | Slime Remains x1' && c.every((l) => l.color === WHITE), c);
   check('1: the text is the name, then x and the amount (v2.3.3692; it was in brackets)', dropLineText('Coins', 5) === 'Coins x5' && dropLineText('Rare Gem', 0) === 'Rare Gem x1');
   /* v2.3.3692: "maybe the icon first then the name then the quantity" */
-  check('1: each line carries its drop\'s picture, the codex\'s own (the coin, the slime\'s remains)',
-    /\/icons\/ui\/cur-gold\.webp/.test(c[0].icon || '') && /\/icons\/items\/remnants-slime\.webp/.test(c[1].icon || ''), c.map((l) => l.icon));
+  /* v2.3.3734: the coins' picture is the owner's pile for the amount (5: the 5 pile) */
+  check('1: each line carries its drop\'s picture (the owner\'s 5-coin pile, the slime\'s remains)',
+    c[0].icon === '/icons/coins/coin-5.png' && /\/icons\/items\/remnants-slime\.webp/.test(c[1].icon || ''), c.map((l) => l.icon));
   const snow = { lootId: 'mk-wm-frost-3-17', recipients: ['me'], coins: 12, skull: 'snowman' };
   check('1: the remains are named by the pile\'s own key ("Snowman Remains")', texts(linesFor('snowling', snow, null)).join(' | ') === 'Coins x12 | Snowman Remains x1');
+  check('1: 12 coins show the owner\'s 10 pile (v2.3.3734)', linesFor('snowling', snow, null)[0].icon === '/icons/coins/coin-10.png');
   const all = linesFor('snowling', Object.assign({}, snow, { shard: 'shard_frost', gem: 'rare_gem',
     armor: [{ slot: 'armor', name: 'Iron Torso', mystery: true }], hasWeapon: true, weaponMystery: false }), 'nugget');
   check('1: everything a kill can drop, every kill\'s first and the rarest last',
@@ -82,12 +85,26 @@ const WHITE = '#FFFFFF';
   check(`2: the shard (${CODEX_DROP_RATES.shard}) green, "Uncommon"`, rarityOf(by('shard')).label === 'Uncommon' && rarityOf(by('shard')).color === '#7EE0A8', rarityOf(by('shard')));
   check(`2: the rare gem (${CODEX_DROP_RATES.rareGem}) blue, "Rare"`, rarityOf(by('raregem')).label === 'Rare' && rarityOf(by('raregem')).color === '#7FB2FF', rarityOf(by('raregem')));
   check('2: the gold nugget (1 in 10,000) orange, "Very rare"', rarityOf(by('nugget')).label === 'Very rare' && rarityOf(by('nugget')).color === '#FFB25A', rarityOf(by('nugget')));
-  check('2: gear is its grade: purple when its grade is worth a reveal, else white',
-    rarityOf(by('irontorso'), true).color === '#D9A6FF' && rarityOf(by('irontorso'), false).color === WHITE
-      && rarityOf(by('irongreatsword'), true).color === '#D9A6FF');
+  check('2: gear is its grade: rare blue (the armour\'s own, v2.3.3746) when its grade is worth a reveal, else white',
+    rarityOf(by('irontorso'), true).color === '#5B99DE' && rarityOf(by('irontorso'), false).color === WHITE
+      && rarityOf(by('irongreatsword'), true).color === '#5B99DE');
   check('2: four tiers, each its own colour', RARITY_TIERS.length === 4 && new Set(RARITY_TIERS.map((t) => t.color)).size === 4);
   const w = linesFor('snowling', { hasWeapon: true, weaponMystery: true, armor: [{ slot: 'legsArmor', name: 'Iron Greaves', mystery: false }] }, null);
-  check('2: the weapon\'s and each armour piece\'s own bit', row(w, 'irongreatsword').color === '#D9A6FF' && row(w, 'irongreaves').color === WHITE && row(w, 'irongreaves').text === 'Iron Greaves x1', w);
+  check('2: the weapon\'s and each armour piece\'s own bit', row(w, 'irongreatsword').color === '#5B99DE' && row(w, 'irongreaves').color === WHITE && row(w, 'irongreaves').text === 'Iron Greaves x1', w);
+  /* v2.3.3746: the pile's shine is its best line's colour */
+  check('2: a mystery is the armour\'s own rare blue (QUALITY_COLOR.rare)', GRADE_WORDS.mystery.color === QUALITY_COLOR.rare && GRADE_WORDS.mystery.label === 'Rare');
+  const lines = (pile) => linesFor('snowling', pile, null);
+  check('2: shine -- coins and remains: white', pileShine(lines({ coins: 6, skull: 'snowman' })).color === WHITE);
+  check('2: shine -- + a shard: its green', pileShine(lines({ coins: 6, skull: 'snowman', shard: 'shard_frost' })).color === '#7EE0A8');
+  check('2: shine -- + a mystery piece: the rare blue', pileShine(lines({ coins: 6, shard: 'shard_frost', armor: [{ slot: 'armor', name: 'Iron Torso', mystery: true }] })).color === QUALITY_COLOR.rare);
+  check('2: shine -- a normal piece stays white', pileShine(lines({ coins: 6, armor: [{ slot: 'armor', name: 'Iron Torso', mystery: false }] })).color === WHITE);
+  check('2: shine -- the killing blow\'s nugget is not on the pile', pileShine(linesFor('snowling', { coins: 6 }, 'nugget')).color === WHITE);
+  check('2: shine -- nothing at all: white', pileShine([]).color === WHITE);
+  const S9 = { monsters: [{ id: 'm9', kind: 'snowling' }] };
+  const mineP = { lootId: 'mk-m9-1', recipients: ['me'], coins: 6, shard: 'shard_frost' };
+  const theirs = { lootId: 'mk-m9-2', recipients: ['bob'], coins: 6 };
+  notePileShine(S9, mineP, 'me', 1234); notePileShine(S9, theirs, 'me', 1234);
+  check('2: notePileShine marks your pile (its colour and when), never another\'s', !!mineP._shine && mineP._shine.at === 1234 && !theirs._shine, mineP._shine);
 }
 
 /* ── 3. the two messages ── */

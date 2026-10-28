@@ -22,6 +22,7 @@ import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless We
 import { gearArt, gearArtSafe } from './gearVariants.js'; /* v2.3.1757: recoloured sets share their donor's sheets */
 import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 */
 import { witnessCanvas } from './canvasWitness.js';   /* v2.3.3574: a picture Safari threw away is noticed */
+import { p256Address, packedTwinAsNumbers } from './p256.js';   /* v2.3.3728: the effects from their 256-colour twins */
 import { keepAsImage } from './keepAsImage.js';   /* v2.3.3702: every strip packed here, kept as an image of itself */
 import { KEEP_GPU_COPIES } from './gpuOnly.js';
 
@@ -355,7 +356,10 @@ if (typeof window !== 'undefined') {
    cell they stand on, not the eight of their jog: the rest are never cut,
    packed or uploaded.  Without it, every cell, as before. */
 export function loadCroppedStrip(url, n, opts) {
-  return new Promise((res, rej) => {
+  /* v2.3.3728: an effect with a 256-colour twin is packed from the twin, and
+     kept as colour numbers (p256.js); every other strip as before */
+  let addr = url;
+  return p256Address(url).then((a) => { addr = a; return new Promise((res, rej) => {
     const im = new Image();
     /* v2.3.3689: `opts.timeoutMs` -- a picture that neither loads nor fails
        in that time is given up as failed, so the caller's retry asks again:
@@ -372,8 +376,8 @@ export function loadCroppedStrip(url, n, opts) {
         finish(rej, new Error('timeout'));
       }, opts.timeoutMs);
     }
-    im.src = url;
-  }).then((img) => {
+    im.src = addr;
+  }); }).then((img) => {
     const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
     const fw = Math.floor(W / n);
     const only = opts && Array.isArray(opts.only)
@@ -393,7 +397,9 @@ export function loadCroppedStrip(url, n, opts) {
     /* a pack declined keeps the plain cells of what it was given (the kept
        cells' copy then IS the source, and stays) */
     if (packed && cut) { cut.width = 0; cut.height = 0; }
-    const src = Texture.from(packed ? packed.canvas : from).source;
+    const packedBytes = packed ? packed.canvas.width * packed.canvas.height * 4 : 0;
+    const numSrc = packed && addr !== url ? packedTwinAsNumbers(url, packed.canvas) : null;
+    const src = numSrc || Texture.from(packed ? packed.canvas : from).source;
     src.scaleMode = 'linear';
     const frames = [];
     for (let i = 0; i < k; i++) {
@@ -408,12 +414,12 @@ export function loadCroppedStrip(url, n, opts) {
     /* (a strip cut to `only` is not listed: mp-geartrim checks frame i of
        each listed URL against cell i of its file) */
     if (packed && !cut) {
-      _fxTrimStats.push({ url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 });
+      _fxTrimStats.push({ url, fullBytes: W * H * 4, packedBytes, numbers: !!numSrc });
       _fxTrimFrames.set(url, { frames, fw, fh: H });
     }
     /* v2.3.3702: the packed strip (or the kept cells' copy) as an image of
        itself; a strip left as the file's own Image is one already */
-    keepPackedAsImage(src);
+    if (!numSrc) keepPackedAsImage(src);
     return frames;
   });
 }
