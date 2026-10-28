@@ -129,6 +129,26 @@ aren't listed:
   iPhones is broken.
 - The fix is one line: its dark tint stays, the blur goes.
 
+### 1g. Big screens draw no more pixels than they need (v2.3.3720)
+
+- **Today.** The game draws at the screen's full pixel ratio, with no ceiling
+  (`src/game/renderRes.js`: only `?res=` and the speed test lower it). Its
+  cost grows with the screen. A phone (390 x 844 at 3x) draws about 3
+  million pixels a frame, a big iPad Pro (2732 x 2048) about 5.6 million, and
+  a 4K monitor full screen about 8.3 million.
+- **The cost of a pixel.** Every pixel costs drawing time in every pass, and
+  memory for the screen's own pictures: the drawing buffer, its stencil and
+  the browser's copy. That is about 10 bytes a pixel (MEMORY-PLAN: the phone's
+  3x to 2x is ~15 MB). So the screen alone is about 30 MB on a phone, about 55
+  MB on a big iPad and about 85 MB on a 4K monitor, outside the memory check's
+  lines.
+- **The idea.** Cap the drawing at about a phone's pixel count and stretch it
+  to the screen, at a whole-number scale where it can be (2x on a 4K monitor
+  keeps every art pixel square and crisp; renderRes.js explains why an uneven
+  stretch looks gritty).
+- **The result.** A tablet or a big monitor then costs what a phone does, in
+  memory and in drawing time.
+
 ## 2. Ideas of our own
 
 The armour fix (v2.3.2871-2874, `src/rendering/maskedBake.js`) answered the
@@ -328,6 +348,55 @@ So 256 is the ceiling for every picture at no memory cost. The world's 64 is
 the art law's style, not a memory need. The orchestrator sent this to the characters lane (M3) on 2026-10-28;
 its spec, `docs/specs/look-palette.md`, records what it built and why.
 
+## 3b. What a device needs, once everything here is done (v2.3.3720)
+
+The owner, 2026-10-28: *"if the game is built as efficiently as possible,
+with sacrificing the least amount of quality, what do you think the total
+usage would be? I'm thinking of what I might list as the minimum requirements
+to run BroTown on a phone ... I obviously want it to run well on android
+phones, tablets, and computers too."*
+
+A ballpark, to be replaced by 1b's measurements from real devices.
+
+| | today | everything here done, no visible loss | with the owner's visible trade-offs too |
+|---|---|---|---|
+| the memory check's seven lines, a phone at a big fight | ~350 MB (each line's highest; not all at once) | ~130-150 MB | ~100-120 MB (screen and words at 2x, sound at 24 kHz, non-combat animations loaded when wanted) |
+
+On top of those lines comes what no line here sees:
+
+- the screen's own pictures (1g): about 30 MB on a phone;
+- the browser's own share of any page: its engine, the page's layout, fonts,
+  decoded images it keeps. That is tens of MB, and it differs by browser and
+  device.
+
+So a phone's whole tab would be very roughly 200-250 MB in a big fight,
+against well over double the seven lines' share today.
+
+**Suggested minimum requirements, once this is done (to confirm with 1b):**
+
+- **iPhone.** iPhone XR or newer (3 GB of memory or more) on iOS 18 or later.
+  The game needs WebGL 2 (Safari has it since iOS 15) for the colour-numbers
+  drawing.
+- **iPad.** iPad (7th generation, 2019) or newer, iPad Air 3, iPad mini 5 or
+  newer.
+- **Android.** Android 10 or later, 4 GB of memory (3 GB in the lighter mode,
+  1a), a current Chrome, and a mid-range chip from about 2020 on.
+  - Android's Chrome is the same engine as every test here (Chromium), so on
+    Android the open question is a cheap chip's speed, not the engine.
+- **Computer.** Any computer from about 2017 on, with 8 GB of memory and a
+  current Chrome, Edge, Firefox or Safari. Built-in graphics are fine once 1g
+  caps a big screen.
+
+**Smaller is not the whole of "runs well everywhere."** A smaller footprint is
+what keeps a 3-4 GB phone from shutting the tab, and that is the biggest
+part. Two more things decide how smooth it feels:
+
+- **Speed per frame.** A budget Android's chip is slower than an iPhone's.
+  1a's lighter mode steps down on slow frames, and 2c, 2d and 2f take work
+  out of the frames that matter.
+- **Screen size.** Tablets and monitors draw two to three times a phone's
+  pixels until 1g caps them.
+
 ## 4. The order, after the showing
 
 1. **1b first**: measure real phones before changing them.
@@ -337,4 +406,5 @@ its spec, `docs/specs/look-palette.md`, records what it built and why.
 4. **1d**: invisible, and a faster loading screen for every returning player.
 5. **1c**: with the arena's growth (lane C's plan).
 6. **1e**: when the owner says so (a `.github/` change).
-7. **2a and 2e** ride on the memory lanes. **2f** and **1f** are small.
+7. **2a and 2e** ride on the memory lanes. **2f**, **1f** and **1g** are small
+   (1g first of those: it makes tablets and computers cost what a phone does).
