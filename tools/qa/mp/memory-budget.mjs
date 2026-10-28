@@ -87,6 +87,15 @@
  * from a canvas in the cache this line reads, keyed by the canvas -- the
  * canvases were counted twice.  What the browser keeps of those images' decoded
  * pixels is its to drop under memory pressure, and is in no line.
+ *
+ * v2.3.3703, the game's script built all ASCII (docs/specs/ascii-script.md):
+ * `buffers` 24 -> 22 -- LOWERED, to lock the saving in.  The reading counts the
+ * text of the page's scripts as well as its buffers, and the main script held
+ * 1,589 characters past Latin-1 ("—", "·", "→", emoji), so all 3.8 million of
+ * its characters were kept at two bytes each.  Written in ASCII they are one
+ * byte each: home again 23.5-24.0 -> 20.0-20.4 MB, arriving 21.9 -> 18.2, with
+ * every open pull request in.  Main itself had read 23.9-24.2 at its line of
+ * 24, so every pull request's check passed or failed by luck.
  */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 112, measured: 102.2,   /* v2.3.3702: 156 -> 112, see the header */
@@ -99,8 +108,8 @@ export const MEMORY_BUDGET = {
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
   heap: { name: 'the page\'s JavaScript objects', mb: 34, measured: 33.3,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34, see the header */
     what: 'the page\'s JavaScript objects' },
-  buffers: { name: 'the page\'s raw data buffers', mb: 24, measured: 20.0,
-    what: 'the page\'s raw data buffers (ArrayBuffers)' },
+  buffers: { name: 'the page\'s raw data buffers', mb: 22, measured: 20.4,   /* v2.3.3703: 24 -> 22, see the header */
+    what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
   workers: { name: 'the background workers', mb: 36, measured: 30.5,
     what: 'the background workers (the ground builder): their objects and buffers' },
 };

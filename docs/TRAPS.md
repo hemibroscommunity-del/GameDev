@@ -8578,3 +8578,31 @@ its picture ships is asked for again and written to the crash log once
 picture left hanging: drawn, red, facing north from the first frame; on the
 build before, never asked again -- not drawn facing north, and brown, not red,
 in the other four), docs/specs/head-pieces-ask-again.md.
+
+## 258. "A dash in the code costs a dash" (v2.3.3703)
+
+**The move.** Write the game's words as they read, "Lv 1–40", "Brotown ·
+safe", "→", an emoji, straight into the source: a character is a character.
+
+**Why it is wrong.** A browser keeps a page's script as text for as long as the
+page lives (a function is compiled from it the first time it runs), and the
+text's width is set by its widest character. One character past Latin-1
+anywhere in a script makes Chrome keep ALL of it at two bytes a character, and
+Safari, which shares an all-ASCII script's bytes with its text, decode a second
+copy. The game's main script is 3.8 million characters; its 1,589 such ("—",
+"·", "→", the emoji) cost about 3.7 MB of the page in Chrome (the memory
+check's `buffers` line, 21.9 -> 18.2 MB arriving in BroTown) and more on an
+iPhone. Vite asks esbuild for `utf8` output, so every one of them went through
+as written.
+
+**The rule.** The build writes the script in ASCII: vite.config.js sets
+esbuild's `charset: 'ascii'` (every string, template and name escaped,
+`—`, the same string at run time). esbuild leaves a REGULAR EXPRESSION's
+characters as written, so the build's `ascii-only-bundle` escapes whatever is
+left and says so in the build log -- but write a regex's character past ASCII
+as `\uXXXX` in the source (`/Lv \d+[–-]\d+/`), which the `ascii-only`
+suite §5d holds src/ to.
+
+**Receipt:** `ascii-only` suite (an emoji in a regex class with and without
+`u`, a range, a name, a comment, an identity escape, each run before and after
+escaping), mp-membudget's `buffers` line (24 -> 22), docs/specs/ascii-script.md.

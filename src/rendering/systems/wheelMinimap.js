@@ -362,7 +362,10 @@ export class WheelMinimap {
     /* the level band alone: the stage's name before it did not fit (the
        header's note); "safe" and "safe, no monsters" at home as they were */
     let sub = at ? at.sub : '';
-    const lv = /Lv \d+[–-]\d+/.exec(sub);
+    /* v2.3.3703: the en dash written as an escape -- esbuild leaves a regular
+       expression's characters as written, and one past ASCII keeps the whole
+       script two bytes a character (vite.config.js, docs/specs/ascii-script.md) */
+    const lv = /Lv \d+[\u2013-]\d+/.exec(sub);
     if (lv) sub = lv[0];
     const key = at ? `${at.title}|${sub}|${at.region}|${icon ? 1 : 0}` : '';
     if (key === this._plateKey) return this._plateOut;
