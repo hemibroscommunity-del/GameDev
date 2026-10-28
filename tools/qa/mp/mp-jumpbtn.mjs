@@ -13,8 +13,9 @@
  * in hand, a Pine Shield worn and a fight on (so Block, Special and, with the
  * guard up, Shield Bash are all drawn):
  *   1. the button is drawn, with nothing in the address;
- *   2. it sits under the attack disc, centred on it, clear of the dashboard
- *      and on the screen;
+ *   2. it sits under the attack disc, centred on it (v2.3.3740: upright, LEFT
+ *      of it, its foot level with the disc's), clear of the dashboard and on
+ *      the screen;
  *   3. it covers no other control (every button drawn, both discs), with the
  *      guard down and up;
  *   4. a real tap on it jumps -- in the air, one jump more -- and swings
@@ -130,18 +131,27 @@ async function onePhone({ browser, wsPort, webPort, rec, errors, OUT }, ph) {
        Block, a few px toward the screen's edge (jumpAnchor) -- but its centre
        is under the disc, within a quarter of the disc's width of its centre */
     const dw = a.disc.r - a.disc.l;
-    rec.ok(`${tag}: 2. under the attack disc (its top ${a.jump.t}, the disc's bottom ${a.disc.b}), its centre under the disc's (${jcx} vs ${dcx}), clear of the dashboard (${JSON.stringify(a.dash)}) and on the screen (${JSON.stringify(a.jump)} in ${a.vw} x ${a.vh})`,
-      a.jump.t >= a.disc.b - 1 && Math.abs(jcx - dcx) <= dw / 4 && clearOfDash && a.jump.l >= 0 && a.jump.r <= a.vw && a.jump.t >= 0 && a.jump.b <= a.vh, a);
+    if (a.vw > a.vh) {
+      rec.ok(`${tag}: 2. under the attack disc (its top ${a.jump.t}, the disc's bottom ${a.disc.b}), its centre under the disc's (${jcx} vs ${dcx}), clear of the dashboard (${JSON.stringify(a.dash)}) and on the screen (${JSON.stringify(a.jump)} in ${a.vw} x ${a.vh})`,
+        a.jump.t >= a.disc.b - 1 && Math.abs(jcx - dcx) <= dw / 4 && clearOfDash && a.jump.l >= 0 && a.jump.r <= a.vw && a.jump.t >= 0 && a.jump.b <= a.vh, a);
+    } else {
+      /* v2.3.3740: upright, LEFT of the disc, its foot level with the disc's
+         (the owner: "move the contextual button slightly down and to the
+         right more.  Move the jump button more to the left") */
+      rec.ok(`${tag}: 2. left of the attack disc (${a.disc.l - a.jump.r} px of air), its foot level with the disc's (${a.jump.b} vs ${a.disc.b}), clear of the dashboard (${JSON.stringify(a.dash)}) and on the screen (${JSON.stringify(a.jump)} in ${a.vw} x ${a.vh})`,
+        a.disc.l - a.jump.r >= 16 && Math.abs(a.jump.b - a.disc.b) <= 4 && clearOfDash && a.jump.l >= 0 && a.jump.r <= a.vw && a.jump.t >= 0 && a.jump.b <= a.vh, a);
+    }
     /* v2.3.3721: the owner, "the contextual button should shrink in size a bit
        and the jump button made larger": the disc 84 (94 sideways), was 96
        (108); the button 60 (64), was 48 (54); and half a button of air
        between it and Block beside it */
     const jw = a.jump.r - a.jump.l, land = a.vw > a.vh;
     const blk = a.block;
-    const air = blk ? a.jump.l - blk.r : null;
+    /* v2.3.3740: upright Block is diagonal BELOW Jump, so the air is up and down */
+    const air = blk ? (land ? a.jump.l - blk.r : blk.t - a.jump.b) : null;
     console.log(`    ${tag}: disc ${dw} px, jump ${jw} px, jump <-> Block ${air} px of air, jump ${a.dash ? a.dash.t - a.jump.b : '?'} px over the dashboard`);
-    rec.ok(`${tag}: 2b. the disc is smaller (${dw} px) and the button larger (${jw} px), half a button of air from Block (${air} px)`,
-      dw === (land ? 94 : 84) && jw === (land ? 64 : 60) && air != null && air >= 22, { dw, jw, air, block: blk });
+    rec.ok(`${tag}: 2b. the disc is smaller (${dw} px) and the button larger (${jw} px), ${land ? 'half a button' : '8 px or more'} of air from Block (${air} px)`,
+      dw === (land ? 94 : 84) && jw === (land ? 64 : 60) && air != null && air >= (land ? 22 : 8), { dw, jw, air, block: blk });
     rec.ok(`${tag}: 3. it covers no other control, the guard down (Block ${a.shield}, Special ${a.special}, Sprint ${a.sprint}): ${a.over.length ? a.over.join(', ') : 'none'}`,
       a.over.length === 0 && a.shield, a);
 
