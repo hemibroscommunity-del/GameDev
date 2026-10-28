@@ -53,6 +53,7 @@
  */
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource } from 'pixi.js';
 import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf } from './paletteTex.js';
+import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
 
 export const LOOK_BATCHER = 'bt-look';
 const SLOTS = 4;                  /* sheets a batch (a figure draws one); the atlas is the unit after */
@@ -118,7 +119,10 @@ const HEAD_VALUES = 5 + 16 + 3 * MAX_ROLES + 4;
 function webgl2(r) { return !!(r && r.gl && r.context && r.context.webGLVersion === 2); }
 /** Drawn from the numbers here: wanted, the sheets in, WebGL2, the program not refused. */
 export function lookPaletteOn() {
-  return _wanted && _ok !== false && _stats.sheets > 0 && webgl2(paletteRendererOf());
+  /* clientOff: "Characters coloured on the chip" off for every phone, live,
+     from the Test panel -- the body is then drawn the old way (a copy baked
+     for each look on first sight, as before) */
+  return _wanted && _ok !== false && _stats.sheets > 0 && webgl2(paletteRendererOf()) && !clientOff('lookpalette');
 }
 /** This set has this sheet in numbers (loaded). */
 export function lookHas(set, sheet) { return !!_sheets[set + '/' + sheet]; }

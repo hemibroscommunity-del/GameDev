@@ -2024,31 +2024,59 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
 .bt-xp-bar__lv{flex:none;color:#EAC675;font:800 13px/1 'Source Sans 3',sans-serif;
   white-space:nowrap;font-variant-numeric:tabular-nums;
   text-shadow:0 1px 2px rgba(0,0,0,.78)}
-/* the track: dark, a thin gold line round it; the fill the AP's gold, grown
-   from the left by a scale (never a width: no layout every gain) */
-.bt-xp-bar__track{position:relative;flex:0 1 110px;min-width:36px;height:9px;
-  border-radius:5px;background:#121A1E;box-shadow:inset 0 0 0 1px rgba(234,198,117,.55)}
-.bt-xp-bar__fill{position:absolute;left:1px;right:1px;top:1px;bottom:1px;border-radius:4px;
-  background:#E5B45C;transform-origin:0 50%;transition:transform 300ms cubic-bezier(.2,.8,.2,1)}
-/* a level just gained: the bar starts again from the new level's share at
-   once, never seen running backwards */
-.bt-xp-bar.is-up .bt-xp-bar__fill{transition:none}
-/* "+3 XP" pops over the bar's middle, rises a little and goes (one pop for a
-   flurry of hits: game/xpBar.js XP_GAIN_MS) */
-.bt-xp-gain{position:absolute;left:50%;top:50%;pointer-events:none;white-space:nowrap;
+/* the track: dark, a thin gold line round it; the fills grown from the left
+   by a scale (never a width: no layout every gain).  v2.3.3739: 14 px tall
+   (was 9) to carry "45 / 120"; never narrower than that number. */
+.bt-xp-bar__track{position:relative;flex:0 1 120px;min-width:66px;height:14px;
+  border-radius:6px;background:#121A1E;box-shadow:inset 0 0 0 1px rgba(234,198,117,.55)}
+.bt-xp-bar__fill,.bt-xp-bar__white{position:absolute;left:1px;right:1px;top:1px;bottom:1px;
+  border-radius:5px;transform-origin:0 50%}
+.bt-xp-bar__fill{background:#E5B45C}
+/* v2.3.3739: the white bar -- the XP just earned, shown at once; the gold
+   (ui/mobile/XpTrack.jsx, its transition inline from game/xpBar.js's
+   numbers) grows up to it and covers it.  It never moves by transition. */
+.bt-xp-bar__white{background:#F4F5F3}
+/* v2.3.3739: "45 / 120", the worker's XP into the level over what the next
+   needs, centred on the bar.  Cream with a dark outline, legible over the
+   dark track, the gold and the white alike (the Lantern Slate's ink). */
+.bt-xp-bar__num{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;
+  align-items:center;justify-content:center;white-space:nowrap;
+  color:#FFF8E6;font:800 10px/1 'Source Sans 3',sans-serif;letter-spacing:.02em;
+  font-variant-numeric:tabular-nums;
+  text-shadow:-1px 0 0 #10171B,1px 0 0 #10171B,0 -1px 0 #10171B,0 1px 0 #10171B,0 1px 2px rgba(0,0,0,.6)}
+/* v2.3.3739: "+3 XP" pops LEFT of the skill's picture, in a slot of its own,
+   never over the bar (the owner: "put the plus xp to the left of the weapon
+   icon so you can still see the bar").  The slot is always there while the
+   bar is, so the row never shifts as a pop comes and goes; a big number
+   widens it.  It rises a little and goes (one pop for a flurry of hits:
+   game/xpBar.js XP_GAIN_MS). */
+.bt-xp-bar__gainslot{flex:none;min-width:46px;height:20px;display:flex;
+  align-items:center;justify-content:flex-end}
+.bt-xp-gain{pointer-events:none;white-space:nowrap;
   padding:1px 5px;border-radius:5px;background:#1A2328;color:#F2D58C;
   font:800 12px/1.1 'Source Sans 3',sans-serif;box-shadow:0 0 0 1px rgba(234,198,117,.65);
   opacity:0;animation:bt-xp-gain 1200ms cubic-bezier(.2,.8,.2,1) 1 forwards}
 @keyframes bt-xp-gain{
-  0%{opacity:0;transform:translate(-50%,-30%) scale(.9)}
-  15%{opacity:1;transform:translate(-50%,-50%) scale(1.08)}
-  75%{opacity:1;transform:translate(-50%,-58%) scale(1)}
-  100%{opacity:0;transform:translate(-50%,-80%) scale(.95)}}
-/* calm motion: the number still said, standing still, for as long as the bar */
-html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:translate(-50%,-50%)}
+  0%{opacity:0;transform:translateY(25%) scale(.9)}
+  15%{opacity:1;transform:translateY(0) scale(1.08)}
+  75%{opacity:1;transform:translateY(-8%) scale(1)}
+  100%{opacity:0;transform:translateY(-30%) scale(.95)}}
+/* a phone 320 px across (an iPhone SE upright): the gap and the words give,
+   never the bar */
+@media (max-width:359px){
+  .bt-xp-bar{gap:3px}
+  .bt-xp-bar__gainslot{min-width:36px}
+  .bt-xp-gain{padding:1px 3px;font-size:10.5px}
+  .bt-xp-bar__icon{width:19px;height:19px}
+  .bt-xp-bar__lv{font-size:11.5px}
+}
+/* calm motion: the number still said, standing still, for as long as the bar
+   (the gold still grows: one short slide a gain, which reduced motion below
+   stops) */
+html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
 @media (prefers-reduced-motion: reduce){
-  .bt-xp-gain{animation:none;opacity:1;transform:translate(-50%,-50%)}
-  .bt-xp-bar__fill{transition:none}
+  .bt-xp-gain{animation:none;opacity:1;transform:none}
+  .bt-xp-bar__fill{transition:none !important}
 }
 /* v2.3.3024: an elemental land's icon before its name (the name in the land's
    own colour, ZoneHeader.jsx landTint) -- no filters over the canvas (TRAPS §42) */

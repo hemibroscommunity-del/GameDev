@@ -101,7 +101,7 @@ const sample = (P) => P.page.evaluate(() => {
   const top = Object.entries(groups).sort((a, b) => b[1] - a[1]).slice(0, 12);
   return { zone: S.currentZone, x: Math.round(S.player.x), y: Math.round(S.player.y), cache: t ? t.mb : null, gpu: g,
     canvas: cv ? [cv.width, cv.height] : null, mons: (S.monsters || []).length, looks: art ? Object.keys(art.looks || {}) : null, top,
-    /* v2.3.3717: the ground's pieces and what the walk asked of its worker (ground-worker.js DIET; `BT_QA_QUERY=groundlean` walks it lean) */
+    /* v2.3.3717: the ground's pieces and what the walk asked of its worker (ground-worker.js DIET; lean by default since v2.3.3736, `BT_QA_QUERY=groundlean=0` walks the old ground) */
     ground: (() => { const w = window.__btWorldTrial && window.__btWorldTrial.stats; return w ? { loads: w.loads, avgMs: w.loads ? Math.round(w.sumMs / w.loads) : null, maxMs: w.maxMs, popIns: w.popIns, partial: w.partial, diet: w.diet } : null; })() };
 });
 

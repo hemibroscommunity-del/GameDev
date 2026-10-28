@@ -251,6 +251,12 @@ export const monsterStatusMethods = {
     return own(ELEM_HITS, e) ? e : null;
   },
 
+  /* v2.3.3747: does this monster's own hit shove you (the wind's gust)? */
+  _elemGusts(m) {
+    const elem = this._elemHitOf(m);
+    return !!elem && ELEM_HITS[elem] === 'gust' && this._elemHitsOn();
+  },
+
   _elemHitsOn() {
     const f = this._liveFlags;
     return !(f && typeof f === 'object' && own(f, 'elemhits') && !f.elemhits);
@@ -310,10 +316,7 @@ export const monsterStatusMethods = {
         /* what is left of an earlier gust still counts, up to ALLOW_MAX --
            v2.3.3621: or the shove itself and a quarter, a roar's being
            longer than two swings' (telegraph.js ELEM_KITS.wind) */
-        const len = Math.hypot(kb[0], kb[1]);
-        const live = (t < (ps._gustUntil || 0) && ps._gustLeft > 0) ? ps._gustLeft : 0;
-        ps._gustLeft = Math.min(Math.max(GUST.ALLOW_MAX, Math.ceil(len * 1.25)), live + len);
-        ps._gustUntil = t + GUST.ALLOW_MS;
+        this._grantShove(ps, kb, t);
         out.st = st; out.stMs = (m && m._gustMs > 0) ? m._gustMs : GUST.MS; out.kb = kb;
       }
     } else if (st === 'stuck') {
@@ -432,6 +435,18 @@ export const monsterStatusMethods = {
        blow) is longer than a swing's */
     const len = ((m && m._gustPx > 0) ? m._gustPx : GUST.PX) * (k > 0 ? k : 1) * wk;
     return [Math.round(dx / d * len), Math.round(dy / d * len)];
+  },
+
+  /* The room a shove `kb` needs, granted to `ps`: what is left of an earlier
+     gust still counts, up to ALLOW_MAX -- v2.3.3621: or the shove itself and
+     a quarter, a roar's being longer than two swings' (telegraph.js
+     ELEM_KITS.wind).  v2.3.3747: its own method, the slime blast's blowback
+     granting the same way (telegraph.js _blastShove). */
+  _grantShove(ps, kb, t) {
+    const len = Math.hypot(kb[0], kb[1]);
+    const live = (t < (ps._gustUntil || 0) && ps._gustLeft > 0) ? ps._gustLeft : 0;
+    ps._gustLeft = Math.min(Math.max(GUST.ALLOW_MAX, Math.ceil(len * 1.25)), live + len);
+    ps._gustUntil = t + GUST.ALLOW_MS;
   },
 
   /* movement.js: how much further than walking this player may move in one

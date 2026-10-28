@@ -1,3 +1,4 @@
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useState, useEffect, useRef } from 'react';
 import { tradeBagBus } from '../mobile/tradeBagBus.js'; /* v2.3.2149 */
 import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
@@ -137,8 +138,9 @@ const ItemThumb = ({ itemKey, size = 24, fallback }) => {
   );
 };
 
-const GoldIcon = () => (
-  <img src="/icons/popups/gold.webp" alt="" draggable={false}
+/* v2.3.3734: the pile for `amount` (none given: the one coin) */
+const GoldIcon = ({ amount }) => (
+  <img src={amount == null ? COIN_ONE : coinArtFor(amount)} alt="" draggable={false}
     style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }}
     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('💰')); }} />
 );
@@ -503,7 +505,7 @@ function OfferRows({ offer, weapons, pets, empty, onRemoveItem, onRemoveWeapon, 
           well without an edge. */}
       {gold > 0 && (
         <div className="bt-t2-row" data-trade-row="_gold" style={{ minHeight: 36 }}>
-          <div className="bt-t2-plate"><GoldIcon /></div>
+          <div className="bt-t2-plate"><GoldIcon amount={gold} /></div>
           <div style={{ flex: 1, fontSize: 12, color: ink.name }}>Gold</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}{goldSuffix || ''}</div>
         </div>
@@ -1031,7 +1033,7 @@ export function TradeWindowPanel(props) {
               are bold" is true on one screen and not the other. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <span style={{ ...laneHeader, marginBottom: 0, fontWeight: 800, color: '#B6C1BE' }}>Balance</span>
-            <GoldIcon />
+            <GoldIcon amount={liveCoins} />
             <span style={{ fontSize: 15, fontWeight: 800, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>{liveCoins}G</span>
           </div>
       </TradeDrawer>
@@ -1308,7 +1310,7 @@ export function TradeWindowPanel(props) {
              so a find-and-replace on the other hex misses this line and leaves
              1.40:1 gold on the one screen whose job is to be read. */
           <div className="bt-t2-row" style={{ minHeight: 30, gap: 6, fontSize: 13, color: WELL_INK.gold, fontWeight: 700, lineHeight: 1.5 }}>
-            {chip(<GoldIcon />)}<span>{gold} gold</span>
+            {chip(<GoldIcon amount={gold} />)}<span>{gold} gold</span>
           </div>
         )}
         </div>
@@ -1337,7 +1339,7 @@ export function TradeWindowPanel(props) {
             Weight without contrast is not emphasis; it is the same grey, thicker. */}
         <div data-trade-subtotal="" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 800, color: ink.name, marginTop: 7, paddingTop: 0 }}>
           <span>{ls.length} item{ls.length === 1 ? '' : 's'}</span>
-          {gold > 0 && (<><span style={{ color: ink.muted, fontWeight: 700 }}>·</span><GoldIcon /><span style={{ color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}</span></>)}
+          {gold > 0 && (<><span style={{ color: ink.muted, fontWeight: 700 }}>·</span><GoldIcon amount={gold} /><span style={{ color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}</span></>)}
         </div>
       </div>
     );
@@ -1622,7 +1624,7 @@ export function TradeWindowPanel(props) {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <GoldIcon />
+          <GoldIcon amount={stage._gold || 0} />
           {/* v2.3.1235: batch-4 rollout — section-header ramp 11/700 .14em
               muted. */}
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#8D9B98' }}>Gold</span>
