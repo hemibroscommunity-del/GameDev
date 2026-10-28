@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c4979c028afd72b5929c5dd525919e7b3773ef8d",
+  "tree": "f4607988e9cf0b9a79f5693b2b1a9b03ca648aa8",
+  "committedAt": "2026-10-28T13:08:16-07:00",
+  "subject": "Sound effects take less memory: only decoded while needed, behind a switch (v2.3.3714) (#1203)",
+  "files": 6747,
+  "bytes": 776106010,
+  "listingSha256": "4ec1bd0673abc8c5a182bc70791b3e15cb5dee4f4eee3393306fcae1af99a965",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
