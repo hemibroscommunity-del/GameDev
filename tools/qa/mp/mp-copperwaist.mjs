@@ -121,7 +121,7 @@ const KIT = () => {
 };
 
 /* the trousers' pink, and grey (no warmth, not dark: the steel chain; copper is
-   red over blue) in the waist band -- 35-75% down the coloured figure, below
+   red over blue) in the waist band -- 35-75% down the figure, below
    the head (the back of the head carries a grey sliver of its own on frame 23,
    the same before and after) -- counted in the page.  The aim's reticle is kept
    out of the photo by aiming far off. */
@@ -134,8 +134,7 @@ async function countsOf(page, buf) {
     const d = cx.getImageData(0, 0, W, Hh).data;
     let top = Hh, bot = -1;
     for (let i = 0; i < d.length; i += 4) {
-      const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]);
-      if (mx > 60 && mx - mn > 45) { const y = (i / 4 / W) | 0; if (y < top) top = y; bot = y; }
+      if (Math.abs(d[i] - 13) + Math.abs(d[i + 1] - 11) + Math.abs(d[i + 2] - 24) >= 30) { const y = (i / 4 / W) | 0; if (y < top) top = y; bot = y; }
     }
     const h = bot - top + 1, w0 = top + h * 0.35, w1 = top + h * 0.75;
     let pink = 0, any = 0, grey = 0;
