@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "41e49466f00f8d0f07514efb19f434faad453328",
+  "tree": "b06b77355a10ed4f9bbf21cf5c2682675ab79878",
+  "committedAt": "2026-10-28T11:25:16-07:00",
+  "subject": "The memory map: where every kind of thing goes, in what form, and its memory budget (v2.3.3718) (#1196)",
+  "files": 6737,
+  "bytes": 775923620,
+  "listingSha256": "c422bdd53ab5419f4c5bcfa62f719a91041d12559b132a8688901ff66b83c8a3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
