@@ -42,6 +42,7 @@
  *   BT_GHOST_ONLY=stand,jog   only those families
  *   BT_GHOST_OUTFITS=full     only that outfit (full, plate, greaves; bare, no armour, only when named)
  *   BT_GHOST_SHIRT=print      v2.3.3696: the tee striped and printed
+ *   BT_GHOST_DIRS=east,south  v2.3.3750: only those facings, every family (a sample)
  *   v2.3.3738, the double jump's flip (family `flip`, not in the default run):
  *   BT_GHOST_ONLY=flip BT_GHOST_DIRS=east,south,north BT_GHOST_HAT=top-hat
  *   BT_GHOST_HAIR=wavy BT_GHOST_LOOK=plain (the game's own colours)
@@ -96,7 +97,7 @@ const FACINGS = [
   ['east', ['d'], 0], ['southeast', ['s', 'd'], Math.PI / 4], ['south', ['s'], Math.PI / 2],
   ['southwest', ['s', 'a'], 3 * Math.PI / 4], ['west', ['a'], Math.PI], ['northwest', ['w', 'a'], -3 * Math.PI / 4],
   ['north', ['w'], -Math.PI / 2], ['northeast', ['w', 'd'], -Math.PI / 4],
-];
+].filter(([d]) => !process.env.BT_GHOST_DIRS || process.env.BT_GHOST_DIRS.split(',').includes(d));   /* v2.3.3750: BT_GHOST_DIRS=east,south,... samples the facings */
 
 const OUTFITS = {
   full: { chest: 'ironplate', legs: 'irongreaves' },
