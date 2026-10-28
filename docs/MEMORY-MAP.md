@@ -64,7 +64,7 @@ it back on the CPU, as colour numbers in the page. Never both as full colour.
 |---|---|---|---|---|
 | ground or object art in the world | colour numbers (one byte a pixel) plus one palette row; 64 colours a swatch or object (the art law) | `paletteTex.js`, `paletteLoad.js` | w x h bytes on the chip | `gpu` |
 | monster | its strips as files on 256 colours or fewer; loaded as you walk in the Wheel, freed when none of its kind is near; CPU readers (hit chips, stuck arrows) read the numbers | `wheelMonsterArt.js`, `heldNumbers.js`; M2's `picnumbers` puts the chip's copy on numbers too | today 4 x w x h on the chip plus w x h in the page; after M2, w x h on the chip | `gpu`, `buffers` |
-| effect strip, icon drawn in the world, townsperson's strip | a file on 256 colours or fewer; after M2, colour numbers on the chip, the page's copy let go once uploaded | M2's `onecopy` and `picnumbers` | after M2, w x h bytes | `gpu` |
+| effect strip, icon drawn in the world, townsperson's strip | a file; after M2, held once on the chip, the page's copy let go once uploaded (`onecopy`); colour numbers only where the file is already on 256 colours or fewer, never reduced to fit (v2.3.3719: the effect strips measure 21,936-106,377 colours, the townsfolk 6,677-209,759, so most stay at their own colours, held once) | M2's `onecopy` and `picnumbers` | after M2, 4 x w x h bytes once (w x h where it is colour numbers) | `gpu` |
 | picture the game draws on a canvas | nothing reads it back: `keepOnGpuOnly`; read but never drawn into again: `keepAsImage`; a monster strip: colour numbers | `gpuOnly.js`, `keepAsImage.js`, `heldNumbers.js` | its size once | `gpu` or `canvases` |
 | UI icon (a window, a button) | a file in the page (DOM), small; freed with its window if it is big | | its decoded size while shown | outside the seven: keep each under ~50 KB decoded |
 | zone, dungeon, land or **the arena's area** | its art loads behind its overlay (`preloadZoneAssets`) and is freed on exit, the textures dropped, not just hidden; while you are there, the town's art is let go (the farm's way, v2.3.3705) | `preloadAnimations.js`, `farmTrip.js` | what it loads, minus what it lets go | every line: the zone fits in what it frees |
@@ -87,23 +87,34 @@ the 50 nearest in full (the crowd cap, `crowdCap.js`).
 
 The plan (M3, v2.3.3716, then its phase 2):
 
-- **The sheets.** Each sheet is stored once, as colour numbers whose palette
-  is ROLES: skin shades, trouser shades, boots, outline, tool wood. Each
-  pixel's role is decided offline (`tools/art/role-bake.mjs`), exactly as
+- **The sheets.** Each sheet is kept once, as drawn, shared by every look.
+  Beside it is a one-byte ROLE map: which part each pixel is (skin, trousers,
+  boots, tool wood, or kept as drawn). The map is decided offline
+  (`tools/art/role-bake.mjs`) by the game's own classification, exactly as
   today's recolour decides it.
-- **The looks.** A look is one palette row (`lookPalette.js`). Its row is
-  taken when someone on screen wears it and given back when no one does.
-- **The cost.** A character then costs its row (1 KB) and its sprites, not a
-  copy of every sheet. The sheets cost once, whoever wears them.
+- **The looks.** A look is its handful of colours (`lookPalette.js`). The
+  graphics chip colours each role pixel as it draws, keeping the pixel's own
+  brightness: today's `_retint` arithmetic (`playerSkins.js`), done there.
+- **The cost.** A character then costs its few colours and its sprites, not a
+  copy of every sheet. The sheets cost once (4 bytes a pixel, plus 1 for the
+  map), whoever wears them.
+- **Why not a 256-colour row (v2.3.3719).** The character art is not 256-colour
+  art. Measured 2026-10-28: a body sheet has about 8,000 distinct colours
+  (median; 39,367 at most), clothes and armour about 1,650 (62,799 at most).
+  The recolour keeps every pixel's own brightness, so a 256-entry row could
+  only hold them by reducing colours. The role map is exact instead, and no
+  picture's colours are reduced without the owner's yes
+  (`docs/PERFORMANCE-IDEAS.md`, part 3). M3's spec, `docs/specs/look-palette.md`,
+  records the design it built.
 
 | a new... | form, once the character lane's phase covering it lands | until then |
 |---|---|---|
-| body pose (an animation) | its sheets baked once to role numbers by `role-bake.mjs`, loaded behind the loading screen (the preloading law) | today's bake, `preloadWorldAnimations` |
-| shirt or print | its own role numbers, coloured by the look's row; a print is numbers too | `gearSheets.js`, `keepAsImage` |
-| armour piece | its own numbers and colours, drawn over the body's numbers | today's gear sheets |
-| head piece (trait) | numbers on the head's roles | today's trait sheets |
-| townsperson | creator ids, as a player's (the Mayor's suspenders are the shirt pattern `stripe-v:2`, `tools/qa/npc-looks.mjs`); so a townsperson costs what a player costs: once looks are rows, one row | the looks bake (`npc-looks.mjs`, `npc_looks_bake.py`) |
-| player on screen | one row a look; the crowd cap holds the count | ~2.5 MB each |
+| body pose (an animation) | its sheets, as drawn, plus their role maps from `role-bake.mjs`, loaded behind the loading screen (the preloading law) | today's bake, `preloadWorldAnimations` |
+| shirt or print | its own role map, coloured by the look's colours; a print rides on the map too | `gearSheets.js`, `keepAsImage` |
+| armour piece | its own sheet, once, drawn over the body's | today's gear sheets |
+| head piece (trait) | its own sheet, once; a recoloured one through its role map | today's trait sheets |
+| townsperson | creator ids, as a player's (the Mayor's suspenders are the shirt pattern `stripe-v:2`, `tools/qa/npc-looks.mjs`); so a townsperson costs what a player costs: once looks are colours, a few bytes | the looks bake (`npc-looks.mjs`, `npc_looks_bake.py`) |
+| player on screen | a look's few colours; the crowd cap holds the count | ~2.5 MB each |
 
 ### Sound
 
@@ -153,6 +164,17 @@ tests pass on their phone.
    - loading animations on first use instead of behind the loading screen.
      That one conflicts with the preloading law (CLAUDE.md §7), so only the
      owner can change it.
+4. **The owner's standing decisions (2026-10-28, v2.3.3719):**
+   - *"I definitely don't want combat to feel slow"*: every swing, dodge, jump,
+     block, special, hit taken, death, walk and run, and everything another
+     player does, stays loaded behind the loading screen. None of it is ever
+     loaded when first wanted.
+   - Loading the other animations (fishing, mining, crafting, emotes, weapons
+     not in your three slots) when first wanted is held off: *"I'll wait to
+     see how the memory work goes."* Revisit after phase 2, measured.
+   - The ideas for after the showing (an automatic lighter mode, the game
+     counting its own memory, preparing what's coming, and more):
+     `docs/PERFORMANCE-IDEAS.md`.
 
 ## How a session uses this map
 

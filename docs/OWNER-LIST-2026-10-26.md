@@ -49,6 +49,7 @@ passes its checks, so a finished item is in the game the same day.
 | New land names (once you pick them) | M |
 | Harder monsters (after the element changes, measured) | M |
 | A monster hidden behind a tree shows as a silhouette (from your earlier list) | M |
+| Performance, from Oct 28 (v2.3.3719): an automatic lighter mode, smoothness reports from real phones, the game counting its own memory, preparing what's coming, faster loading for returning players, and more: `docs/PERFORMANCE-IDEAS.md`, its order in part 4 | S-L each |
 
 ---
 
