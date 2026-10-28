@@ -57,6 +57,7 @@ import { monsterHitSfx } from '@/game/hitSounds.js'; /* v2.3.3001: a hit sounds 
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
+import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
@@ -1601,7 +1602,12 @@ export function updateMonsterCombat(S, deps) {
              the water (game/wheelSwim.js; BroTown lets go of a held attack).
              v2.3.3014: nor dazed (game/elemHits.js): this loop fires the
              bow's and the staff's shots itself, past swingAttack's gate */
-          if ((S.autoAttack || _engSwing) && !_flickWait && !S._shieldUp && !isWheelSwimming(S) && !isDazed(S, Date.now()) && !jumpAirborne(S) /* v2.3.3017: a held attack waits for the landing */ && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
+          /* ═══ v2.3.3712: ...AND A TAP ON THE RIGHT STICK ASKS FOR ONE ═══
+             A tap with no job there attacks once, the way you face
+             (game/tapJump.js requestTapAttack): taken here like a held thumb,
+             through every gate below, and marked done by what leaves. */
+          var _tapAtkNow = tapAttackWaiting(S, Date.now());
+          if ((S.autoAttack || _engSwing || _tapAtkNow) && !_flickWait && !S._shieldUp && !isWheelSwimming(S) && !isDazed(S, Date.now()) && !jumpAirborne(S) /* v2.3.3017: a held attack waits for the landing */ && S.rpg && _eqWpn && Date.now() - S.swingTimer >= effectiveSwingCd + _staffCdExtra) {
             /* Loot pickup freeze suppresses auto-swing — keeps the
                0.5s pickup animation clean instead of mid-swing. */
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
@@ -1759,6 +1765,10 @@ export function updateMonsterCombat(S, deps) {
                   } else if (!_sightOn) {
                     _mayLoose = false;         /* no line, no arrow, and no spent cadence */
                   }
+                  /* v2.3.3712: a tap's one attack is had either way -- the
+                     special that went, or a line on nothing (the bow looses
+                     only at something, a press of the disc no differently) */
+                  if (_tapAtkNow && !_mayLoose) tapAttackDone(S, Date.now(), _sightOn ? 'special' : 'empty');
                 }
                 if (_mayLoose) {
                 if (!S.arrows) S.arrows = [];
@@ -1869,6 +1879,7 @@ export function updateMonsterCombat(S, deps) {
                   pc: (!isStaff && bowPierceCount(S.rpg) > 0) ? 1 : undefined,
                 }});
                 S.swingTimer = Date.now(); /* Staff cooldown penalty applied at the gate above, not here */
+                if (_tapAtkNow) tapAttackDone(S, S.swingTimer, isStaff ? 'bolt' : 'arrow');   /* v2.3.3712 */
                 if (isStaff) {
                   BT_AUDIO.play('magic-cast', { vol: 0.55 });
                   /* v2.3.2841: drive the staff cast (src/rendering/staffCastFx.js),
@@ -1913,6 +1924,7 @@ export function updateMonsterCombat(S, deps) {
                    sweep below fires this flag as soon as it sees it. */
                 S._swingSfxKey = meleeSwingSfx(S.rpg);
                 S._swingSfxPending = true;
+                if (_tapAtkNow) tapAttackDone(S, S.swingTimer, 'swing', S.swingTimer);   /* v2.3.3712 */
               }
             }
           }
@@ -1935,6 +1947,8 @@ export function updateMonsterCombat(S, deps) {
               baseAngle = Math.atan2(ty - P.y, tx - P.x);
             } else if (S._aiming && S._aimAngle != null) {
               baseAngle = S._aimAngle;
+            } else if (tapSwingAim(S) != null) {
+              baseAngle = tapSwingAim(S);   /* v2.3.3712: the tap's swing, the way the body faces */
             } else {
               var swDir = S._facing || 'down';
               baseAngle = swDir === 'right' ? 0 : swDir === 'up' ? -Math.PI / 2 : swDir === 'left' ? Math.PI : Math.PI / 2;

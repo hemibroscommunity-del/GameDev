@@ -10,28 +10,20 @@ import { ExtractionSwipeLayer } from './ExtractionSwipeLayer.jsx';
 /* v2.3.855: first UI-panel extraction — the info/online-count popup. */
 import { InfoPanel } from './panels/InfoPanel.jsx';
 /* v2.3.856: leaderboard panel extraction. */
-import { LeaderboardPanel } from './panels/LeaderboardPanel.jsx';
 /* v2.3.857: guild panel extraction. */
 import { GuildPanel } from './panels/GuildPanel.jsx';
 /* v2.3.858: feedback panel extraction. */
-import { FeedbackPanel } from './panels/FeedbackPanel.jsx';
 /* v2.3.859: clan panel extraction. */
-import { ClanPanel } from './panels/ClanPanel.jsx';
 /* v2.3.860: social panel extraction. */
 import { SocialPanel } from './panels/SocialPanel.jsx';
 /* v2.3.861: pet house panel extraction. */
-import { PetHousePanel } from './panels/PetHousePanel.jsx';
 /* v2.3.862: furniture panel extraction. */
-import { FurniturePanel } from './panels/FurniturePanel.jsx';
 /* v2.3.863: dungeon creator panel extraction. */
-import { DungeonCreatorPanel } from './panels/DungeonCreatorPanel.jsx';
 /* v2.3.864: encyclopedia panel extraction. */
-import { EncyclopediaPanel } from './panels/EncyclopediaPanel.jsx';
 /* v2.3.865: skills panel extraction. */
 import { SkillsPanel } from './panels/SkillsPanel.jsx';
 /* v2.3.866: shop panel extraction. */
 /* v2.3.869: stat screen panel extraction. */
-import { StatScreenPanel } from './panels/StatScreenPanel.jsx';
 /* v2.3.870: quest panel extraction (logic already in @/game/quests.js). */
 import { QuestPanel } from './panels/QuestPanel.jsx';
 import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3525: Lil Bro's race on the screen */
@@ -43,12 +35,14 @@ import { TOUR_MEET } from '@/game/tour.js'; /* v2.3.3525 */
 import { QuestBannerLayer } from './panels/QuestBannerLayer.jsx'; /* v2.3.3030: the quest banners in the owner's art */
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
 import { TradePanel } from './panels/TradePanel.jsx';
-import { TradeWindowPanel } from './panels/TradeWindowPanel.jsx';
 import { PartyHUD } from './panels/PartyHUD.jsx';
 import { IncomingTradePanel } from './panels/IncomingTradePanel.jsx';
 import { PlayerListPanel } from './panels/PlayerListPanel.jsx';
 import { EmotePanel } from './panels/EmotePanel.jsx';
-import { InspectPlayerPanel } from './panels/InspectPlayerPanel.jsx';
+/* v2.3.3717: the windows opened now and then, each its own script, loaded when first opened with `?codelazy` (lazyPanels.js) */
+import { LeaderboardPanel, FeedbackPanel, ClanPanel, PetHousePanel, FurniturePanel, DungeonCreatorPanel, EncyclopediaPanel, StatScreenPanel, TradeWindowPanel, InspectPlayerPanel, ExchangePanel, GamblePanel, PartyPanel,
+  /* the buildings' windows: v2.3.2826 the Blacksmith; v2.3.3259 the Gem Cutter and the Enchanter, one window (GemcutPanel, EnchantPanel); v2.3.3258 the Land Office's, in the card like the others; v2.3.2476 the auction house */
+  SmithyPanel, WoodworkPanel, GemWorksPanel, FarmPanel, BankPanel, CookPanel, VendorPanel, LandOfficePanel, StorePanel } from './lazyPanels.js';
 import { nmlCanAttack, nmlHere } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
 import { sparCanAttack, sparAim } from '../game/spar.js'; /* v2.3.3265: aim at your sparring clones */
 import { isLiveFoe } from '../game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is aimed at by a tap, no second window */
@@ -135,23 +129,11 @@ import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
 import { MenuBar } from './panels/MenuBar.jsx';
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
-import { SmithyPanel } from './panels/buildings/SmithyPanel.jsx'; /* v2.3.2826: the Blacksmith, rebuilt (ForgePanel deleted) */
-import { WoodworkPanel } from './panels/buildings/WoodworkPanel.jsx';
-import { GemWorksPanel } from './panels/buildings/GemWorksPanel.jsx';   /* v2.3.3259: the Gem Cutter and the Enchanter are one building, one window, two tabs (it draws GemcutPanel and EnchantPanel) */
-import { ExchangePanel } from './panels/buildings/ExchangePanel.jsx';
-import { FarmPanel } from './panels/buildings/FarmPanel.jsx';
-import { BankPanel } from './panels/buildings/BankPanel.jsx';
-import { CookPanel } from './panels/buildings/CookPanel.jsx';
-import { GamblePanel } from './panels/buildings/GamblePanel.jsx';
-import { PartyPanel } from './panels/buildings/PartyPanel.jsx';
-import { VendorPanel } from './panels/buildings/VendorPanel.jsx';
 import { WheelHallPanel, SaloonPanel } from './panels/buildings/WheelHallPanel.jsx';   /* v2.3.3066: the Wheel's halls; v2.3.3258: + the Saloon's own window (parties) */
-import { LandOfficePanel } from './panels/buildings/LandOfficePanel.jsx';   /* v2.3.3258: the Land Office's window, in the card like the others */
 import { BuildingRoom } from './panels/buildings/BuildingRoom.jsx';   /* v2.3.3258: the inside of each building, behind its window's menu */
 import { warmRoom } from '@/game/buildingRooms.js';   /* v2.3.3258 */
 import { roomIdFor } from '@/data/buildingRooms.js';   /* v2.3.3258 */
 import { ClanInviteCard } from './panels/ClanInviteCard.jsx';            /* v2.3.3066: a clan invite you can take up */
-import { StorePanel } from './panels/buildings/StorePanel.jsx';   /* v2.3.2476: the auction house */
 import { StoreToast } from './mobile/StoreToast.jsx';   /* v2.3.2476: "your thing sold" */
 import { WorldMapOverlay, openWorldMap } from './WorldMapOverlay.jsx';  /* v2.3.2966: the Wheel's labelled world map */
 import { MINE_SPOT_R, WORLD_ZOOM, FARM_BED_TILE } from '@/data/constants.js';
@@ -238,7 +220,8 @@ export var QUEST_MSG_WELCOME_MS = 9000;
 /* v2.3.3105: the right stick's picture -- and the tap's act -- when it has no
    fight or harvest to do: a speech bubble beside a character, a door at a
    building's steps, the moon at the farm's bed, else the jump (tapJump.js
-   tapActIcon; desktopControls interactKind, the character before the door) */
+   tapActIcon; desktopControls interactKind, the character before the door).
+   v2.3.3712: ...else null: the tap attacks, and the stick wears the weapon */
 function _tapActIcon(S) { return tapActIcon(interactKind(S, { npcFirst: true })); }
 
 function _npcQuestReady(S, npcQ) {
@@ -322,6 +305,9 @@ import { wireTorchCrackle, wireThemeMusic } from '@/game/splashAudio.js';
 import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/game/characterCreatorEffects.js';
 import { wireTownMusic } from '@/game/townMusic.js';
 import { nextWeaponSlot } from '@/game/weaponSlots.js'; /* v2.3.1845: one weapon-cycle rotation */
+import { prevWeaponSlot } from '@/game/weaponSlots.js'; /* v2.3.3711: the mouse wheel turned up, one weapon back */
+import { wheelStep } from '@/game/deskCombos.js'; /* v2.3.3711: the mouse wheel steps through your weapons */
+import { isAbilitiesEnabled } from '@/data/abilities.js'; /* v2.3.3711: a click with the shield up bashes only where the worker casts abilities */
 import { wireSpriteSheets } from '@/game/spriteSheets.js';
 import { wireSlimeAudio } from '@/game/slimeAudio.js';
 import { wireOrientationSync } from '@/game/orientationSync.js';
@@ -392,8 +378,8 @@ import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: th
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
-import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
-import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
+import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
+import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
@@ -5998,7 +5984,9 @@ export var BroTown = function BroTown(_ref0) {
              jump is always there to be had, as v2.3.3017's button always was --
              painted only, never pressable, so a thumb on it still reaches the
              stick's own zone, which is what jumps. */
-          var _tapJumps = !_ex && !_harvestCtx && !rightTapBusy(S, Date.now()) && !(S._wheelSwim && S._wheelSwim.on)
+          /* v2.3.3712: the same test now says the tap is FREE -- it attacks
+             once (or does its act), and never jumps; the JUMP button jumps */
+          var _tapFree = !_ex && !_harvestCtx && !rightTapBusy(S, Date.now()) && !(S._wheelSwim && S._wheelSwim.on)
             && !!(S.rpg && !(typeof S.rpg.hp === 'number' && S.rpg.hp <= 0))
             /* the coach's ATTACK lesson holds the disc up as the button it
                teaches (and a press on a held disc swings): the weapon, then */
@@ -6021,7 +6009,7 @@ export var BroTown = function BroTown(_ref0) {
                mini tool is the picture and the word (WAIT, CHOP ...) is what
                to do.  Attribute writes, compared against the DOM like every
                stamp here, so a re-render heals on the next frame. */
-            var _icWant;
+            var _icWant, _icAct;
             if (_ex) _icWant = 'none';
             else if (_harvestCtx) _icWant = (S._nearNode === S._campfire) ? 'cooking' : gatherSkillForNodeType(S._nearNode.nodeType);
             /* v2.3.3105: the owner's JUMP button while a tap would jump (the
@@ -6031,7 +6019,10 @@ export var BroTown = function BroTown(_ref0) {
                dungeon's mouth), the moon at the farm's bed -- the owner's
                "an icon that represents the action" (desktopControls
                interactKind, the E key's own chain) */
-            else if (_tapJumps) _icWant = _tapActIcon(S);
+            /* v2.3.3712: ...and with no act here, no JUMP arrow any more: the
+               tap attacks, so the stick wears the weapon in your hand below
+               (the owner: "maybe just an attack in its place") */
+            else if (_tapFree && (_icAct = _tapActIcon(S))) _icWant = _icAct;
             else {
               /* v2.3.3105: the weapon in that slot, its bag picture -- the
                  owner: "when attacking it should show the weapon type
@@ -6258,7 +6249,7 @@ export var BroTown = function BroTown(_ref0) {
           var _rCtx = (S._rBtnLiveUntil || 0) > _now2;
           var _rPressCtx = (S._rBtnPressUntil || 0) > _now2;
           var _rRecent = (S._rJoyLiveUntil || 0) > _now2;
-          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R') || _tapJumps;   /* v2.3.3105: the tap's picture (JUMP, talk, a door) at rest */
+          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R') || _tapFree;   /* v2.3.3105: the tap's picture (JUMP, talk, a door) at rest; v2.3.3712: the weapon for the JUMP */
           var _rPressable = _rPressCtx || discHeld('R');
           var _rLitCtx = _rCtx || discHeld('R');
           /* Two facts, ANDed, because either one alone can get stuck: the
@@ -9617,7 +9608,10 @@ export var BroTown = function BroTown(_ref0) {
   var _desktopShieldOff = useCallback(function () {
     dropShield(stateRef.current, 'key');   /* v2.3.2242: shared drop path */
   }, []);
-  var _desktopCycleWeapon = useCallback(function () {
+  /* v2.3.3711: `dir` -1 steps BACK round the cycle (the mouse wheel turned up,
+     the canvas's onWheel); anything else -- the Tab key, the swap button, the
+     action bus, none of which pass -1 -- steps on, as it always did */
+  var _desktopCycleWeapon = useCallback(function (dir) {
     var _S2$rpg$weapon, _S2$rpg$rangedWeapon;
     var S2 = stateRef.current;
     if (!S2.rpg) return;
@@ -9628,7 +9622,7 @@ export var BroTown = function BroTown(_ref0) {
        only have sword (no bow or staff) it still shows bow icon when you
        double tap to switch weapons."  A slot you cannot fill is not a weapon
        to switch to. */
-    var nextSlot = nextWeaponSlot(S2.rpg);
+    var nextSlot = dir === -1 ? prevWeaponSlot(S2.rpg) : nextWeaponSlot(S2.rpg);
     /* Nowhere to go — one weapon, one slot.  Returning early keeps the beep
        and the name popup for a swap that did not happen off the screen. */
     if (nextSlot === (S2.rpg.activeSlot || 'melee')) return;
@@ -10391,6 +10385,56 @@ export var BroTown = function BroTown(_ref0) {
     if (_bed && (_bed.best >= 0 || _bed.far >= 0)) return 'farm';
     return null;
   };
+  /* ═══ v2.3.3711: THE RIGHT MOUSE BUTTON HELD IS THE SHIELD ═══
+     The owner: "Do your recommended keyboard layout. I still think there are
+     better layouts if you consider more creative combos (like keyboard
+     presses while a click is held down, double clicking, etc)."  The left
+     hand walks on WASD, so a guard held on Q took a finger off them; the
+     right hand aims, so the guard is held there: the right button down raises
+     it, facing the pointer every frame while held (the rAF loop's v2.3.1726
+     steer, `_shieldKb`), and its release lowers it (desktopControls.js
+     onMouseUp, heard on the window).  Everything raiseShieldToggle refuses it
+     still refuses (no shield, the cooldown after a stamina break, the water,
+     a daze, mid-jump), and everything that lowers a guard still does (an
+     attack, a roll, a jump, the stamina running out) -- pressed again, it
+     comes back up.
+     WITH NO SHIELD ON YOUR ARM the right click keeps its old use, the
+     weapon's special (v2.3.1715's "R-Click Special"): a fresh character has
+     no shield, and a right click that did nothing would read as broken.
+     Returns what the press did, for the probe. */
+  var _deskRightPress = function (S) {
+    if (!S || !S.rpg) return null;
+    if (S.rpg.shield) {
+      if (typeof S._mouseAimAngle === 'number') S._shieldAngle = S._mouseAimAngle;
+      S._shieldKb = true;
+      S._shieldMouse = true;
+      _desktopShieldOn();
+      if (!S._shieldUp) { S._shieldKb = false; S._shieldMouse = false; return 'refused'; }
+      return 'shield';
+    }
+    if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
+    doSpecialAttack();
+    return 'special';
+  };
+  /* ═══ v2.3.3711: A LEFT CLICK WITH THE SHIELD UP IS THE SHIELD BASH ═══
+     The combo the owner asked for ("keyboard presses while a click is held
+     down"), the mouse's own: hold the guard on the right button, click the
+     left to shove with it -- the bash was Q+E, two keys on the hand that
+     walks.  The bash's own rules are abilityStatus's (a shield, raised); where
+     it cannot be cast at all (a worker without abilities) the click is the
+     attack it always was, which lowers the guard (v2.3.2248).  On its
+     cooldown the click is still the bash's, refused quietly, so a quick second
+     click never drops the guard for a swing.  The click that ends the press
+     is the bash's too (onClick: no lock taken or let go). */
+  var _deskBashPress = function (S) {
+    var st = null;
+    try { st = abilityStatus(S, 'bash'); } catch (_e) { st = null; }
+    if (!st || !st.visible) return false;
+    try { if (!isAbilitiesEnabled()) return false; } catch (_e) { return false; }
+    S._deskPressBash = true;
+    doShieldBash();
+    return true;
+  };
   useEffect(function () {
     /* v2.3.1869: bootPhase — the login door (v2.3.1814) is a third pre-game
        screen this guard never knew about, and the refs below only exist once
@@ -10852,7 +10896,7 @@ export var BroTown = function BroTown(_ref0) {
          swung and chopped it.  With no job on this side the first swing waits
          TAP_JUMP_MAX_MS: a release inside it is a tap (a jump), a hold past it
          or a drag (rM lets go of the wait) attacks as before. */
-      if (!rts.busy && stateRef.current) stateRef.current._atkHoldUntil = rts.startAt + tapJumpMaxMs();
+      if (!rts.busy && stateRef.current) stateRef.current._atkHoldUntil = rts.startAt + tapFreeMaxMs();   /* v2.3.3712: a tap is one attack now, the window the same */
       /* Same press the disc makes -- auto-attack on, and the automatic target
          promoted to a deliberate one (v2.3.2252's "first tap commits").  For a
          bow or staff the promotion is a no-op by construction: autoAcquires is
@@ -10991,9 +11035,9 @@ export var BroTown = function BroTown(_ref0) {
          no pair to recognise (see handleRBtnPress) no press is ever eaten, so
          EVERY short tap forwards again, which is what it did before v2.3.2269
          and is what tap-to-lock wants. */
-      /* v2.3.3105: with no job on this side a tap may last TAP_JUMP_MAX_MS
+      /* v2.3.3105: with no job on this side a tap may last TAP_JUMP_MAX_MS (v2.3.3712: TAP_FREE_MAX_MS)
          (a relaxed thumb's), the first swing waiting as long (rS) */
-      if (!rts3.moved && (endT - rts3.startAt) < (rts3.busy ? TAP_MAX_DURATION_MS : tapJumpMaxMs())) {
+      if (!rts3.moved && (endT - rts3.startAt) < (rts3.busy ? TAP_MAX_DURATION_MS : tapFreeMaxMs())) {
         /* v2.3.3105: whether a jump may have this tap (game/tapJump.js) is
            read BEFORE the forward -- the forward's empty-space branch drops
            the lock, and a tap that let go of a lock has had its use. */
@@ -11017,7 +11061,8 @@ export var BroTown = function BroTown(_ref0) {
            character, another player or a resource under the thumb has
            already taken the tap, as have the harvest / NPC / self-chat
            branches above, which return before this.  triggerJump keeps its
-           own refusals (swimming, rolling, in the air...). */
+           own refusals (swimming, rolling, in the air...).
+           v2.3.3712: an ATTACK now, never the jump (below). */
         if (_tjFree && _tjS && (_tjS._tapEmptySeq || 0) > _tjSeq) {
           /* ═══ v2.3.3105: ...UNLESS THERE IS A DOOR OR A CHARACTER RIGHT HERE ═══
              The owner: "an icon that represents the action ... chat bubble for
@@ -11026,10 +11071,17 @@ export var BroTown = function BroTown(_ref0) {
              (desktopControls runInteract) -- a building, a hall, a dungeon's
              mouth, the farm's bed, then the character beside you. */
           var _tjAct = _tapActIcon(_tjS);
-          if (_tjAct !== 'jump' && typeof _tjS._interactNow === 'function') {
+          if (_tjAct && typeof _tjS._interactNow === 'function') {
             try { if (_tjS._interactNow({ npcFirst: true })) _tjS._tapActs = (_tjS._tapActs || 0) + 1; } catch (err) { /* the door's own refusals speak */ }
-          } else {
-            try { if (triggerJump(_tjS)) _tjS._tapJumps = (_tjS._tapJumps || 0) + 1; } catch (err) { /* a jump is never worth a broken tap */ }
+          } else if (!_tjAct) {
+            /* ═══ v2.3.3712: ...AND OTHERWISE IT ATTACKS ONCE -- IT NEVER JUMPS ═══
+               The owner: "the contextual jump button gives the jumps only to
+               the jump button and what to replace it with (maybe just an
+               attack in its place if nothing else is there?)".  One swing, one
+               arrow or one bolt the way you face, taken by the auto-attack
+               loop as a press of the disc is (game/tapJump.js
+               requestTapAttack); the JUMP button and X jump. */
+            try { requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }
           }
         }
       }
@@ -12616,16 +12668,32 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.3470: ...nor while you work a bed of your farm: kneeling, a
          press is the farm's (its click goes to the bed) */
       if (stateRef.current._farmWork) return;
+      /* v2.3.3711: the right button held is the shield (_deskRightPress; its
+         release is desktopControls.js's onMouseUp) -- or, with no shield on
+         your arm, the special the right click always was */
+      if (e.button === 2) {
+        var _rk = _deskRightPress(stateRef.current);
+        if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: _rk || 'none', button: 2, ts: Date.now() };
+        return;
+      }
       if (e.button === 0) {
         /* Left click — attack toward mouse */
         var S = stateRef.current;
+        S._deskPressLock = null;   /* v2.3.3694: this press's lock, for its own click (below) */
+        S._deskPressBash = false;   /* v2.3.3711: this press's bash, for its own click */
+        /* v2.3.3711: with the shield up the click is the shield bash
+           (_deskBashPress), whatever is under the pointer -- you cannot talk,
+           harvest or dig with your guard raised, as E said (v2.3.1733) */
+        if (S._shieldUp && _deskBashPress(S)) {
+          if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: 'bash', ts: Date.now() };
+          return;
+        }
         /* v2.3.3470: ...unless it is on something the click will use -- a
            townsperson, a resource, a bed (_deskPressTarget): no aim, no
            swing, no arrow, no sound; the click that follows does its job */
         var _pr = e.currentTarget.getBoundingClientRect();
         var _pk = _deskPressTarget(e.clientX - _pr.left, e.clientY - _pr.top);
         if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: _pk || 'attack', ts: Date.now() };
-        S._deskPressLock = null;   /* v2.3.3694: this press's lock, for its own click (below) */
         if (_pk) return;
         if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
         S.autoAttack = true;
@@ -12661,12 +12729,53 @@ export var BroTown = function BroTown(_ref0) {
       }
     },
     onContextMenu: function onContextMenu(e) {
+      /* v2.3.3711: the browser's menu never opens over the world.  The right
+         click's special moved to its PRESS (onMouseDown, _deskRightPress):
+         the button held is the shield now, and this event comes on the press
+         on a Mac and Linux but on the RELEASE on Windows -- where a held
+         guard's let-go would have fired a special.  desktopControls.js
+         refuses the menu over the rest of the page. */
       e.preventDefault();
-      if (!stateRef.current._isDesktop) return;
-      /* Right click — special attack toward mouse */
+    },
+    /* ═══ v2.3.3711: A DOUBLE CLICK ON A MONSTER LOCKS ON TO IT ═══
+       The owner's "double clicking".  A single click on a monster toggles its
+       lock (onClick: a second click on the locked one lets it go), so two
+       quick clicks with a bow or staff locked and then let go: the one gesture
+       a player tries for "THAT one" undid itself.  A double click now always
+       ends locked on the monster under the pointer (its second click keeps the
+       lock: onClick's e.detail), as a deliberate pick (`src: 'tap'`, which a
+       bow and a staff need to keep it, v2.3.2258); with the sword it asks for
+       the opening lunge, as a phone's press on a locked monster does
+       (maybeSwordDash, v2.3.3694's desk-lunge path: the sword, the shield
+       down, off its cooldown, a living target in reach) -- the first click's
+       press has usually lunged already, and then this one swings.  Nothing on
+       empty ground, nor with the shield up (that is two bashes). */
+    onDoubleClick: function onDoubleClick(e) {
       var S = stateRef.current;
-      if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
-      doSpecialAttack();
+      if (!S._isDesktop || S._extraction || S._farmWork || S._shieldUp) return;
+      if (e.button !== 0) return;
+      var rect = e.currentTarget.getBoundingClientRect();
+      var m = monsterAtCss(e.clientX - rect.left, e.clientY - rect.top);
+      if (!m) return;
+      S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };
+      var dashed = false;
+      try { dashed = maybeSwordDash(S) === true; } catch (_e) { dashed = false; }
+      if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskDbl = { id: String(m.id), dashed: dashed, ts: Date.now() };
+    },
+    /* ═══ v2.3.3711: THE MOUSE WHEEL STEPS THROUGH YOUR WEAPONS ═══
+       Down the next, up the one before (game/deskCombos.js wheelStep: a
+       notch, or a small flick of a trackpad, one weapon), the swap Tab and the
+       swap button make (_desktopCycleWeapon), only weapons you carry.  Over
+       the world only: a window or a page scrolls under the wheel as before,
+       and with a window up over the world it swaps nothing.  Ctrl with the
+       wheel (and a trackpad's pinch) is the browser's zoom, left to it. */
+    onWheel: function onWheel(e) {
+      var S = stateRef.current;
+      if (!S._isDesktop || e.ctrlKey || e.metaKey || !S.rpg) return;
+      var step = wheelStep(S._wheelMem || (S._wheelMem = { acc: 0 }), e.deltaY, e.deltaMode, Date.now());
+      if (!step) return;
+      if (typeof document !== 'undefined' && document.querySelector('.bt-inspect, .bt-npcdlg-scrim')) return;
+      _desktopCycleWeapon(step < 0 ? -1 : 1);
     },
     onClick: function onClick(e) {
       /* Mobile dispatches a synthesized click event ~50-300 ms after
@@ -12696,6 +12805,9 @@ export var BroTown = function BroTown(_ref0) {
       var _dpl = S._deskPressLock;
       S._deskPressLock = null;
       if (_dpl && S.lockedTarget && S.lockedTarget.ref === _dpl) return;
+      /* v2.3.3711: the click that ends a shield bash's press is the bash's
+         (onMouseDown, _deskBashPress): no lock taken, none let go */
+      if (S._deskPressBash) { S._deskPressBash = false; return; }
       var cx = S.camera.x,
         cy = S.camera.y;
       /* Both render paths use uniform scaling (Canvas 2D: setTransform
@@ -12734,6 +12846,10 @@ export var BroTown = function BroTown(_ref0) {
         if (closest) {
           /* Toggle lock: tap same = unlock, tap new = lock */
           if (S.lockedTarget && S.lockedTarget.ref === closest) {
+            /* v2.3.3711: ...but the SECOND click of a double click is the
+               double click's, which locks (onDoubleClick): two quick clicks
+               on a monster end locked on it, never let go */
+            if (e.detail >= 2) return;
             S.lockedTarget = null;
           } else {
             /* ═══ v2.3.2258: THIS IS THE TAP, SO IT HAS TO SAY SO ═══

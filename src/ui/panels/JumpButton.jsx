@@ -4,7 +4,7 @@ import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
-import { Skin, AbilityFace, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
+import { Skin, JumpGlyph, jumpGlyphKind, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3721: a plain jump mark */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
  *
@@ -43,7 +43,9 @@ import { Skin, AbilityFace, pressOn, pressOff } from './controlSkin.jsx'; /* v2.
  * button for jumping".  Drawn where v2.3.3017 put it, centred under the attack
  * disc (jumpAnchor; combatBandTopPx has counted its slot all along), unless
  * the address says `?jumpbtn=0`.  A tap on the stick still jumps as well, when
- * it has no other job. */
+ * it has no other job.
+ * v2.3.3712: no longer -- this button (and X) is the only jump; a free tap on
+ * the stick attacks once (game/tapJump.js requestTapAttack). */
 
 /* How often the view is read (re-rendered only when it changes). */
 const POLL_MS = 80;
@@ -88,7 +90,7 @@ export function JumpButton(props) {
       var s2 = stateRef && stateRef.current;
       var v = jumpButtonView(s2);
       var j = s2 && s2._jump;
-      return { shown: !!v && jumpButtonWanted(), button: jumpButtonWanted(), air: !!(v && v.air), count: (s2 && s2._jumpCount) || 0, tapJumps: (s2 && s2._tapJumps) || 0 /* v2.3.3105 */, why: s2 ? s2._jumpWhy || null : null,
+      return { shown: !!v && jumpButtonWanted(), button: jumpButtonWanted(), air: !!(v && v.air), count: (s2 && s2._jumpCount) || 0, tapAttacks: (s2 && s2._tapAttacks) || 0 /* v2.3.3712: was tapJumps (v2.3.3105), the stick's taps that jumped */, why: s2 ? s2._jumpWhy || null : null,
         jump: j ? { t0: j.t0, dur: j.dur, peak: j.peak, dx: j.dx, dy: j.dy } : null, landAt: (s2 && s2._jumpLandAt) || 0 };
     };
   }
@@ -126,6 +128,9 @@ export function JumpButton(props) {
   };
 
   var air = view.air;
+  /* v2.3.3721: no longer the mockup's blue arrow: the Lantern Slate rest look
+     of Sprint and Block (slate face, gold ring) with a plain jump mark, lit
+     warm in the air as before */
   /* ═══ v2.3.3018: THE MOCKUP'S JUMP ═══
      The owner's mockup draws this button as a bold blue arrow on a gold-ringed
      button, and no word (controlSkin, as every control): Normal on the ground,
@@ -156,6 +161,9 @@ export function JumpButton(props) {
     },
   },
   React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal' },
-    /* v2.3.3526: the owner's round jump (card 11), the button's face */
-    React.createElement(AbilityFace, { size: size, name: 'jump' })));
+    /* v2.3.3526: the owner's round jump (card 11), the button's face.
+       v2.3.3721: a plain arrow over the ground instead (the owner's pick of
+       four: "I like option B for jump better") -- the owner: "the
+       icon now for jump looks like a special ability" (controlSkin JumpGlyph) */
+    React.createElement(JumpGlyph, { size: Math.round(size * 0.68), kind: jumpGlyphKind() })));
 }

@@ -1,4 +1,4 @@
-/* ═══ A TAP-JUMP SHOWS NOTHING OF THE ATTACK (v2.3.3145) ═══
+/* ═══ A TAP SHOWS NOTHING OF THE HELD ATTACK (v2.3.3145; v2.3.3712) ═══
  *
  * The owner: "When you tap jump with bow equipped it shows you and your line
  * of sight facing southward for a brief instant.  Fix.  Same for staff and
@@ -26,7 +26,16 @@
  *      drawn), and its release does not jump;
  *   5. a tap mid-sprint jumps and the sprint runs on (an attack ends a sprint);
  *   6. no page errors.
- * ?tapms=6000 stretches the tap's window (tapJump.js tapJumpMaxMs): this box
+ *
+ * v2.3.3712: the tap no longer jumps -- the JUMP button does -- and attacks
+ * ONCE instead, the way you face (game/tapJump.js requestTapAttack).  So
+ * every "jumps" above reads "is a tap" (it asked for its one attack, and
+ * nothing jumped), and step 2 changes: the tap WRITES its aim, east, the way
+ * the body faces -- never the old aim south.  After the release: the bow at
+ * empty ground looses nothing and draws no line; the staff looses one bolt
+ * east; the greatsword swings once.  The stance stays clean through it all:
+ * the held attack is never switched on, the body never turns south.
+ * ?tapms=6000 stretches the tap's window (tapJump.js tapFreeMaxMs): this box
  * draws a frame every few hundred ms, and the press must be a tap however
  * slowly the page gets round to its release.  (Up to v2.3.3282 the game
  * capped it at 3000, silently: the picture's 4 s press became the attack.)
@@ -66,7 +75,7 @@ const PRESS = (P, o) => P.page.evaluate(async (o) => {
   requestAnimationFrame(samp);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   await wait(120);
-  const j0 = S._tapJumps || 0;
+  const a0 = S._tapAttacks || 0, j0 = S._jumpCount || 0, n0 = (S.arrows || []).length;
   phase = 'press';
   z.dispatchEvent(mk('touchstart', x, y));
   let ry = y;
@@ -81,11 +90,15 @@ const PRESS = (P, o) => P.page.evaluate(async (o) => {
   const atRelease = { aa: !!S.autoAttack, beam: beam(), f: S._renderFacing || null };
   z.dispatchEvent(mk('touchend', x, ry));
   phase = 'after';
-  const jumped = (S._tapJumps || 0) > j0;
+  const tapped = (S._tapAttacks || 0) > a0;   /* v2.3.3712: it asked for its one attack */
   await wait(o.after || 500);
   on = false;
+  const jumped = (S._jumpCount || 0) > j0;
   const press = frames.filter((r) => r.phase === 'press');
-  return { ok: true, jumped, atRelease, frames: frames.length, press: press.length,
+  const shots = (S.arrows || []).slice(n0).filter((a) => a && typeof a.ang === 'number');
+  return { ok: true, tapped, jumped, how: S._tapAtk ? S._tapAtk.how : null, shots: shots.length, shotAng: shots.length ? +shots[0].ang.toFixed(2) : null,
+    atRelease, frames: frames.length, press: press.length,
+    fall: [...new Set(frames.map((r) => r.f))], attackAll: frames.some((r) => r.aa), beamAll: frames.some((r) => r.beam),
     faced: [...new Set(press.map((r) => r.f))], attack: press.some((r) => r.aa), beam: press.some((r) => r.beam),
     swung: frames.some((r) => r.sw), pending: press.some((r) => r.pend),
     sprintAll: frames.every((r) => r.spr), sprintWhy: S._sprint ? S._sprint.why : null,
@@ -122,18 +135,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const down = () => H.waitFor(P, (S) => !!S._jump, (v) => v === false, { timeout: AIR_MS + 4000, label: 'down again' }).catch(() => null);
 
     /* an empty spot on the right stick: one a tap reaches "empty space" from
-       (mp-tapjump's search) */
+       (mp-tapattack's search) */
     let spot = null;
     for (const [fx, fy] of [[0.5, 0.35], [0.7, 0.25], [0.3, 0.2], [0.8, 0.45], [0.6, 0.15]]) {
       const a = await PRESS(P, { id: 80, fx, fy, hold: 60, after: 200 });
       await down();
-      if (a.jumped) { spot = { fx, fy }; break; }
+      if (a.tapped) { spot = { fx, fy }; break; }
       await P.page.waitForTimeout(300);
     }
-    rec.ok(`an empty spot on the right stick, where a tap jumps (${JSON.stringify(spot)}) (guard)`, !!spot, spot);
+    rec.ok(`an empty spot on the right stick, where a tap is free (it attacks) (${JSON.stringify(spot)}) (guard)`, !!spot, spot);
     if (!spot) return;
 
-    /* ── 1-2. bow, staff and greatsword: a tap jumps and shows nothing of the attack ── */
+    /* ── 1-2. bow, staff and greatsword: a tap shows nothing of the held attack ── */
     let id = 90;
     for (const [type, slot, active] of [['bow', 'rangedWeapon', 'ranged'], ['staff', 'staffWeapon', 'staff'], ['greatsword', 'weapon', 'melee']]) {
       const eq = await H.equipWeapon(P, type, slot, active);
@@ -148,11 +161,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const face0 = await H.readState(P, (S) => S._renderFacing);
       const r = await PRESS(P, { id: id++, ...spot, hold: 300, after: 600 });
       await down();
-      rec.ok(`${type}: a tap on the right stick jumps (guard: facing ${face0}, an old aim south ${JSON.stringify(seeded)})`, r.jumped && face0 === 'east', { face0, r: { jumped: r.jumped, why: r.why } });
+      rec.ok(`${type}: a tap on the right stick is a tap -- it asks for one attack and never jumps (guard: facing ${face0}, an old aim south ${JSON.stringify(seeded)})`, r.tapped && !r.jumped && face0 === 'east', { face0, r: { tapped: r.tapped, jumped: r.jumped, how: r.how } });
       rec.ok(`${type}: through the press the body faces east -- never south -- and the attack is never on (${r.press} frames: ${r.faced.join(',')})`,
         r.press > 0 && r.faced.every((f) => f === 'east') && !r.faced.some((f) => SOUTHISH.has(f)) && !r.attack && !r.atRelease.aa && r.pending, r);
-      rec.ok(`${type}: no sight line or swing preview is drawn, and nothing swings`, r.beam === false && r.atRelease.beam === false && !r.swung, r);
-      rec.ok(`${type}: the old aim is left as it was (the tap aimed nothing)`, r.aim === 1.571 && r.last === 1.571 && !r.aiming, { aim: r.aim, last: r.last, aiming: r.aiming });
+      rec.ok(`${type}: through the press no sight line or swing preview is drawn`, r.beam === false && r.atRelease.beam === false, r);
+      /* v2.3.3712: the tap's one attack, after the release -- the stance still clean */
+      const one = type === 'bow' ? (r.how === 'empty' && r.shots === 0 && !r.beamAll && !r.swung)
+        : type === 'staff' ? (r.how === 'bolt' && r.shots === 1 && Math.abs(r.shotAng) < 0.5)
+        : (r.how === 'swing' && r.swung && r.shots === 0);
+      rec.ok(`${type}: after the release, its one attack (${r.how}, ${r.shots} shot${r.shotAng != null ? ' at ' + r.shotAng : ''}${r.swung ? ', a swing' : ''}) -- the held attack never on, the body never south (${r.fall.join(',')})`,
+        one && !r.attackAll && !r.fall.some((f) => SOUTHISH.has(f)), r);
+      rec.ok(`${type}: the tap's aim is the way the body faces -- east, never the old aim south (aim ${r.aim}, last ${r.last})`,
+        r.aim != null && Math.abs(r.aim) < 0.3 && r.last != null && Math.abs(r.last) < 0.3 && !r.aiming, { aim: r.aim, last: r.last, aiming: r.aiming });
       await P.page.waitForTimeout(400);
     }
 
@@ -196,20 +216,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await seedAim(P, 0, 'stick');
     const roll = await PRESS(P, { id: id++, ...spot, hold: 300, roll: 9, after: 600 });
     await down();
-    rec.ok(`a thumb that rolls 9 px down on its tap still jumps, and aims nothing -- not south (aim ${roll.aim}, last ${roll.last}, ${roll.faced.join(',')})`,
-      roll.jumped && roll.aim === 0 && roll.last === 0 && !roll.aiming && !roll.attack && roll.faced.every((f) => f === 'east'), roll);
+    rec.ok(`a thumb that rolls 9 px down on its tap is still a tap, and aims nothing -- not south (aim ${roll.aim}, last ${roll.last}, ${roll.faced.join(',')})`,
+      roll.tapped && !roll.jumped && Math.abs(roll.aim) < 0.3 && Math.abs(roll.last) < 0.3 && !roll.aiming && !roll.attack && roll.faced.every((f) => f === 'east'), roll);
 
     /* ── 4. a hold IS the attack ── */
     await P.page.waitForTimeout(400);
     const hold = await PRESS(P, { id: id++, ...spot, hold: TAP_MS + 900, after: 400 });
-    rec.ok('a press held past the tap\'s window is the attack -- on, the bow\'s sight line drawn -- and its release does not jump',
-      hold.atRelease.aa === true && hold.atRelease.beam === true && !hold.jumped, { atRelease: hold.atRelease, jumped: hold.jumped, pending: hold.pending });
+    rec.ok('a press held past the tap\'s window is the attack -- on, the bow\'s sight line drawn -- and its release is no tap (no jump, no tap attack)',
+      hold.atRelease.aa === true && hold.atRelease.beam === true && !hold.jumped && !hold.tapped, { atRelease: hold.atRelease, jumped: hold.jumped, tapped: hold.tapped, pending: hold.pending });
     await P.page.waitForTimeout(600);
 
     /* ── 5. a tap mid-sprint ── */
     const spr = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.sprint));
     if (!spr) {
-      rec.skip('a tap mid-sprint jumps and the sprint runs on', 'the worker does not advertise caps.sprint');
+      rec.skip('a tap mid-sprint is a tap and the sprint runs on', 'the worker does not advertise caps.sprint');
     } else {
       await P.page.keyboard.down('Shift');
       await P.page.keyboard.down('a');
@@ -218,8 +238,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.keyboard.up('a');
       await P.page.keyboard.up('Shift');
       await down();
-      rec.ok('a tap mid-sprint jumps, and the sprint runs on through the press (an attack would end it)',
-        on && run.jumped && run.sprintAll && !run.attack, { on, jumped: run.jumped, sprintAll: run.sprintAll, why: run.sprintWhy, attack: run.attack });
+      /* v2.3.3712: with the bow at empty ground the tap looses nothing, so
+         nothing ends the sprint (a swing or a shot would, as any attack) */
+      rec.ok('a tap mid-sprint (the bow, at empty ground) is a tap, and the sprint runs on through the press (the held attack would end it)',
+        on && run.tapped && !run.jumped && run.sprintAll && !run.attack, { on, tapped: run.tapped, jumped: run.jumped, sprintAll: run.sprintAll, why: run.sprintWhy, attack: run.attack });
     }
 
     rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));

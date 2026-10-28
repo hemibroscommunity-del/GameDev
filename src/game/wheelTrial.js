@@ -73,6 +73,7 @@ export const wheelStats = {
   pieceBytes: 0,       /* the colours of one piece */
   unpacked: 0,         /* swatch pictures unpacked in the worker now */
   calm: null,          /* v2.3.3021: { n, ms }, water pictures calmed (ground.js CALM WATER) */
+  diet: null,          /* v2.3.3717: decodes, redecodes, keepMax... (ground-worker.js DIET, `?groundlean`) */
   unreadable: 0,       /* swatch pictures this browser could not unpack (drawn in plan colour) */
   /* v2.3.2959: the downloads (ground-worker.js, DOWNLOADS THAT CANNOT STOP THE
      GROUND) -- pictures on their way now, tries that failed and will be made
@@ -240,6 +241,10 @@ const RENDERER_WAIT_MS = 15000;
 /* `?groundwait=0` starts it at once, as before (mp-groundwait's comparison) */
 let _waitOn = true;
 try { if (typeof location !== 'undefined' && /[?&]groundwait=0(&|$)/.test(location.search || '')) _waitOn = false; } catch (e) { /* waits */ }
+/* v2.3.3717: `?heaplean`, the page's own leftovers let go (the overview's
+   pixels, above): docs/specs/worker-code-diet.md */
+let _heapLean = false;
+try { if (typeof location !== 'undefined' && /[?&]heaplean(=|&|$)/.test(location.search || '')) _heapLean = true; } catch (e) { /* kept */ }
 let _said = false;
 let _sayWaiters = [];
 export function wheelRendererSaid() {
@@ -325,6 +330,14 @@ function onMessage(m, resolveInit, rejectInit) {
     _grid = lazyGrid(m.walk.cols, m.walk.rows, m.walk.block, wheelSwimOn());
     _overview = overviewCanvas(m.overview);
     _overviewLands = landsCanvas(m.overview, m.overviewLands);
+    /* v2.3.3717: `?heaplean` -- the overview's pixels let go once both
+       canvases are made from them (each copies them): nothing reads them
+       after (the land ids are kept: wheelLocalLands).  ~1 MB of the page's
+       buffers in the Wheel, held twice until now. */
+    if (_heapLean) {
+      m.overview = null;
+      if (m.overviewLands) m.overviewLands = { w: m.overviewLands.w, h: m.overviewLands.h, ids: m.overviewLands.ids };
+    }
     wheelStats.planMs = m.planMs;
     wheelStats.swatchMs = m.swatchMs;
     /* v2.3.3190: one byte a pixel when the worker sends colour numbers
@@ -393,6 +406,11 @@ export function wheelChunk(i, j, relay) {
     wheelStats.dlFails = m.dlFails || 0;
     /* v2.3.3021: the water pictures calmed so far (ground.js CALM WATER) */
     if (m.calm) wheelStats.calm = m.calm;
+    /* v2.3.3717: what the walk asked of the worker (ground-worker.js DIET) */
+    if (m.diet) wheelStats.diet = m.diet;
+    /* ...and with `?groundsum` (QA), each piece's checksum, whole pieces only:
+       the lean ground's proof (mp-groundlean) */
+    if (m.sum != null && !m.partial) (wheelStats.sums || (wheelStats.sums = Object.create(null)))[i + ',' + j] = m.sum;
     return m;
   }, (e) => {
     /* 'stopped' is the worker being let go on the way out, not a failure */

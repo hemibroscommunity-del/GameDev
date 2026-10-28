@@ -27,6 +27,9 @@
  *   7. the Watcher sees the flip: their copy of him is drawn in the roll's
  *      somersault, lifted; and after it the two agree where he is (the
  *      worker took the faster steps);
+ *   3b. v2.3.3712: a TAP ON THE RIGHT STICK at the sweet spot does not flip
+ *      and is no jump: the double jump is the JUMP button's alone (the owner:
+ *      "the contextual jump button gives the jumps only to the jump button");
  *   8. no page errors.
  * Picture: tools/qa/mp/out/doublejump-flip.png (mid-flip).
  */
@@ -39,11 +42,19 @@ const PHONE = { width: 390, height: 844 };
 const AIR_MS = 3000;   /* ?jumpms= (mp-jump's: a few frames a second here) */
 
 /* one jump from the button, pressed again at each of `flips` (phases of the
-   first jump), sampled until it lands; returns what the game recorded */
+   first jump), sampled until it lands; returns what the game recorded.
+   v2.3.3712: a `{ stick: phase }` taps the right stick there instead */
 const jumpRun = (P, flips) => P.page.evaluate(async ({ flips }) => {
   const S = window._gameState.current;
   const btn = document.querySelector('[data-jump]');
   if (!btn) return { ok: false, why: 'no button' };
+  const tapStick = () => {
+    const z = document.querySelector('[data-joyzone="R"]');
+    const r = z.getBoundingClientRect();
+    const t = new Touch({ identifier: 72, target: z, clientX: r.left + r.width * 0.6, clientY: r.top + r.height * 0.3 });
+    z.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, touches: [t], changedTouches: [t] }));
+    z.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, touches: [], changedTouches: [t] }));
+  };
   const press = () => {
     const r = btn.getBoundingClientRect();
     const t = new Touch({ identifier: 71, target: btn, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 });
@@ -66,7 +77,8 @@ const jumpRun = (P, flips) => P.page.evaluate(async ({ flips }) => {
     /* a frame DRAWN as the flip (the probe is the last frame's) */
     if (fx && fx.flip) { poses.push({ pose: fx.pose, frame: fx.frame, lift: fx.lift }); if (!flipSeenAt) flipSeenAt = Date.now(); }
   };
-  for (const ph of flips) {
+  for (const f of flips) {
+    const ph = typeof f === 'number' ? f : f.stick;
     for (;;) {
       const wait = t0 + ph * dur - Date.now();
       if (wait <= 0) break;
@@ -74,8 +86,10 @@ const jumpRun = (P, flips) => P.page.evaluate(async ({ flips }) => {
       await new Promise((r) => setTimeout(r, Math.min(60, wait)));
     }
     at.push(+((Date.now() - t0) / dur).toFixed(3));
-    press();
-    why.push(S._jumpWhy || 'ok');
+    if (typeof f === 'number') { press(); why.push(S._jumpWhy || 'ok'); continue; }
+    const c0 = S._jumpCount || 0;
+    tapStick();
+    why.push('stick:' + ((S._jumpCount || 0) - c0) + ':' + (S._tapAtkWhy || '-'));
   }
   const perfect = (S.dmgNumbers || []).slice(pops0).some((p) => p && p.text === 'Perfect!');
   const lastFlip = S._lastFlip ? { ...S._lastFlip } : null;
@@ -195,6 +209,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* 3. a third press: nothing */
       const r3 = await runFrom([0.6, 0.75]);
       rec.ok(`3. a third press in the air does nothing (${r3.why.join(', ')})`, r3.ok && r3.why[0] === 'ok' && r3.why[1] === 'flip-flipped' && r3.flips === 1, r3.why);
+
+      /* 3b. v2.3.3712: the right stick's tap at the sweet spot: no flip */
+      const r3b = await runFrom([{ stick: 0.72 }], { tag: 'stick' });
+      rec.ok(`3b. a tap on the right stick at the sweet spot (${r3b.at.join(',')}) does not flip and is no jump: the double jump is the button's (${r3b.why.join(', ')})`,
+        r3b.ok && r3b.flips === 0 && /^stick:0:/.test(r3b.why[0] || '') && !!r3b.run && !r3b.run.flip, { why: r3b.why, at: r3b.at, flips: r3b.flips, run: r3b.run });
 
       /* 4. too soon, then in time */
       const r4 = await runFrom([0, 0.5]);   /* the second press straight after the first (a timer here can be late by a whole slow frame) */
