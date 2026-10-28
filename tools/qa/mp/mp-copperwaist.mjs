@@ -15,7 +15,7 @@
  * place; his clock is held and stepped through the stride, and each step is
  * photographed alone (the figure's layers only):
  *   1. copper, north-east and north-west: at most GREY_MAX px of grey (no
- *      warmth, not dark) on any frame -- the copper plate,
+ *      warmth, not dark) at the waist on any frame -- the copper plate,
  *      greaves and chain all carry the copper hue;
  *   2. no trousers at the waist in any metal or way (mp-ironwaist's pink);
  *   3. every frame of the stride was seen where the whole stride is swept;
@@ -121,22 +121,31 @@ const KIT = () => {
 };
 
 /* the trousers' pink, and grey (no warmth, not dark: the steel chain; copper is
-   red over blue), counted in the page.  The aim's reticle is kept out of the
-   photo by aiming far off. */
+   red over blue) in the waist band -- 35-75% down the coloured figure, below
+   the head (the back of the head carries a grey sliver of its own on frame 23,
+   the same before and after) -- counted in the page.  The aim's reticle is kept
+   out of the photo by aiming far off. */
 async function countsOf(page, buf) {
   return page.evaluate(async (b64) => {
     const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode();
-    const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+    const W = img.width, Hh = img.height;
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = Hh;
     const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
-    const d = cx.getImageData(0, 0, cv.width, cv.height).data;
+    const d = cx.getImageData(0, 0, W, Hh).data;
+    let top = Hh, bot = -1;
+    for (let i = 0; i < d.length; i += 4) {
+      const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]);
+      if (mx > 60 && mx - mn > 45) { const y = (i / 4 / W) | 0; if (y < top) top = y; bot = y; }
+    }
+    const h = bot - top + 1, w0 = top + h * 0.35, w1 = top + h * 0.75;
     let pink = 0, any = 0, grey = 0;
     for (let i = 0; i < d.length; i += 4) {
       const r = d[i], g = d[i + 1], b = d[i + 2];
       if (Math.abs(r - 13) + Math.abs(g - 11) + Math.abs(b - 24) < 18) continue;
       any++;
       if (r > 110 && b > 70 && r > b && g < r * 0.72 && b > g * 1.15) pink++;
-      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-      if (mx >= 80 && mx - mn <= 40 && r <= b + 20) grey++;
+      const y = (i / 4 / W) | 0, mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      if (y >= w0 && y <= w1 && mx >= 80 && mx - mn <= 40 && r <= b + 20) grey++;
     }
     return { pink, any, grey };
   }, buf.toString('base64'));
