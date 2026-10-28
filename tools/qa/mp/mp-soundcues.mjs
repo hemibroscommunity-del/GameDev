@@ -112,10 +112,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!A.ctx) { try { A.unlock(); } catch (e) { /* reported below */ } }
     if (A.ctx && A.ctx.state !== 'running') { try { await A.ctx.resume(); } catch (e) { /* reported below */ } }
     const keys = C.keys();
+    /* v2.3.3714: with the sound cache on (`?sfxcache`) a sound not pinned is
+       its file's bytes until it plays (data/sfxCache.js): in, for a cue */
+    const isIn = (k) => !!(A._samples && A._samples[k]) || !!(A.SFX_CACHE && !A._sfxPinned[k] && A._sfxBytes[A.SFX_MANIFEST[k]]);
     const t0 = Date.now();
-    while (Date.now() - t0 < 25000 && !keys.every((k) => A._samples && A._samples[k])) await new Promise((r) => setTimeout(r, 250));
+    while (Date.now() - t0 < 25000 && !keys.every(isIn)) await new Promise((r) => setTimeout(r, 250));
     return { probe: true, ctx: !!A.ctx, state: A.ctx && A.ctx.state, muted: !!A.muted, names: C.names().length, keys: keys.length,
-      missing: keys.filter((k) => !(A._samples && A._samples[k])), water: !!window.__btWater };
+      missing: keys.filter((k) => !isIn(k)), water: !!window.__btWater, cache: !!A.SFX_CACHE };
   });
   rec.ok(`setup: in the Wheel (${zone}), the probes, the sound up (${audio.state}), and all ${audio.keys} samples the ${audio.names} cues play decoded`,
     zone === 'wheel' && audio.probe && audio.water && audio.ctx && !audio.muted && audio.names >= 100 && (audio.missing || []).length === 0, audio);
