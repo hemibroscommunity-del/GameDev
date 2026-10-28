@@ -46,8 +46,9 @@ import { jumpAirborne } from './jump.js';   /* v2.3.3712: a tap in the air attac
  * player, then the forwarded tap (a monster locks, a player's card, a lock let
  * go), then the E key's act here (a door, the bed, a character, a farm step).
  *
- * `?jumpbtn=0` is the game of v2.3.3105-3680 whole: no button, and a free tap
- * jumps (`tapJumpsWanted`) -- with no button there must be a way to jump.
+ * The tap's old timing stays, for the same reason it was made: a press with
+ * no job waits TAP_FREE_MAX_MS as PENDING (settleTapPress), so a tap shows no
+ * attack stance before its one attack and a hold past it is the held attack.
  */
 
 /* ═══ v2.3.3105: A RELAXED THUMB'S TAP ═══
@@ -172,7 +173,7 @@ export function attackingNow(S, held, now) {
  * is not one of these.
  * v2.3.3712: ...else NULL: no act here, so the tap attacks and the stick
  * wears the weapon in your hand (BroTown's resolver, controlSkin
- * weaponDiscIcon) -- or, under `?jumpbtn=0`, the JUMP arrow.
+ * weaponDiscIcon).
  */
 export function tapActIcon(kind) {
   /* v2.3.3136: and a bed's step on your farm (desktopControls interactKind) */
@@ -187,7 +188,8 @@ export function tapActIcon(kind) {
  * while I'm thinking of it: I want a dedicated button for jumping".  It is
  * drawn unless the address says `?jumpbtn=0` (the game of v2.3.3105-3680, a
  * tap on the stick the only jump); a tap on the stick still jumps beside it.
- * v2.3.3712: no longer -- the button is the only jump (tapJumpsWanted).
+ * v2.3.3712: no longer -- the button is the only jump, and a tap attacks
+ * (`?jumpbtn=0` leaves a phone no jump at all: a QA switch, no player's).
  */
 export function jumpButtonWanted(search) {
   try {
@@ -197,15 +199,6 @@ export function jumpButtonWanted(search) {
   } catch (e) {
     return true;
   }
-}
-
-/* ═══ v2.3.3712: WHO JUMPS ON A TAP -- NOBODY, UNLESS THERE IS NO BUTTON ═══
- * With the button drawn (everyone, since v2.3.3681) a tap never jumps.
- * `?jumpbtn=0` puts the button away, and then the tap is the only jump a
- * phone has, so it jumps as v2.3.3105-3680 did (the JUMP arrow on the stick
- * with it): the old game kept whole behind its old switch. */
-export function tapJumpsWanted(search) {
-  return !jumpButtonWanted(search);
 }
 
 /* ═══ v2.3.3712: THE TAP'S ONE ATTACK ═══

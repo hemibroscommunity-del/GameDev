@@ -4,6 +4,9 @@
  * button for jumping".  v2.3.3017's button (JumpButton.jsx), centred under the
  * attack disc, is drawn with no address switch now (`?jumpbtn=0` puts it
  * away); a tap on the stick still jumps beside it.
+ * v2.3.3712: no longer -- this button (and X) is the only jump; a tap on the
+ * stick attacks once (mp-tapattack), so step 4 below adds that a tap on the
+ * stick, beside the button, does not jump.
  *
  * In the world's BroTown, against a real worker, on an upright phone (390 x
  * 844), a small one (360 x 640) and a sideways one (844 x 390), with a sword
@@ -154,6 +157,15 @@ async function onePhone({ browser, wsPort, webPort, rec, errors, OUT }, ph) {
     rec.ok(`${tag}: 4. a real tap on it jumps (${after && after.count - before.count} jump, in the air ${after && after.air}) and swings nothing`,
       !!after && after.count === before.count + 1 && after.air === true && !after.swinging && after.swing === before.swing && !after.aiming && !after.auto, { before, after });
     await H.waitFor(P, () => window.__btJumpBtn().air, (v) => v === false, { timeout: AIR_MS + 4000, label: 'down again' }).catch(() => null);
+
+    /* 4b. v2.3.3712: ...and a real tap on the right stick does not jump: the
+       jump is this button's alone now (a tap on the stick attacks once) */
+    const sb = await P.page.evaluate(() => window.__btJumpBtn().count);
+    const zr = await P.page.evaluate(() => { const r = document.querySelector('[data-joyzone="R"]').getBoundingClientRect(); return { x: r.left + r.width * 0.6, y: r.top + r.height * 0.3 }; });
+    await P.page.touchscreen.tap(zr.x, zr.y);
+    await P.page.waitForTimeout(1200);
+    const sa = await P.page.evaluate(() => ({ count: window.__btJumpBtn().count, air: window.__btJumpBtn().air }));
+    rec.ok(`${tag}: 4b. a real tap on the right stick does not jump (${sa.count - sb} jumps): the button is the jump`, sa.count === sb && !sa.air, { sb, sa });
   } finally {
     await P.ctx.close().catch(() => {});
   }

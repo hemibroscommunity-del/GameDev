@@ -238,7 +238,8 @@ export var QUEST_MSG_WELCOME_MS = 9000;
 /* v2.3.3105: the right stick's picture -- and the tap's act -- when it has no
    fight or harvest to do: a speech bubble beside a character, a door at a
    building's steps, the moon at the farm's bed, else the jump (tapJump.js
-   tapActIcon; desktopControls interactKind, the character before the door) */
+   tapActIcon; desktopControls interactKind, the character before the door).
+   v2.3.3712: ...else null: the tap attacks, and the stick wears the weapon */
 function _tapActIcon(S) { return tapActIcon(interactKind(S, { npcFirst: true })); }
 
 function _npcQuestReady(S, npcQ) {
@@ -392,8 +393,8 @@ import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: th
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
-import { tickJump, landJump, triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick) */
-import { rightTapBusy, tapJumpMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one */
+import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
+import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
@@ -5998,7 +5999,9 @@ export var BroTown = function BroTown(_ref0) {
              jump is always there to be had, as v2.3.3017's button always was --
              painted only, never pressable, so a thumb on it still reaches the
              stick's own zone, which is what jumps. */
-          var _tapJumps = !_ex && !_harvestCtx && !rightTapBusy(S, Date.now()) && !(S._wheelSwim && S._wheelSwim.on)
+          /* v2.3.3712: the same test now says the tap is FREE -- it attacks
+             once (or does its act), and never jumps; the JUMP button jumps */
+          var _tapFree = !_ex && !_harvestCtx && !rightTapBusy(S, Date.now()) && !(S._wheelSwim && S._wheelSwim.on)
             && !!(S.rpg && !(typeof S.rpg.hp === 'number' && S.rpg.hp <= 0))
             /* the coach's ATTACK lesson holds the disc up as the button it
                teaches (and a press on a held disc swings): the weapon, then */
@@ -6021,7 +6024,7 @@ export var BroTown = function BroTown(_ref0) {
                mini tool is the picture and the word (WAIT, CHOP ...) is what
                to do.  Attribute writes, compared against the DOM like every
                stamp here, so a re-render heals on the next frame. */
-            var _icWant;
+            var _icWant, _icAct;
             if (_ex) _icWant = 'none';
             else if (_harvestCtx) _icWant = (S._nearNode === S._campfire) ? 'cooking' : gatherSkillForNodeType(S._nearNode.nodeType);
             /* v2.3.3105: the owner's JUMP button while a tap would jump (the
@@ -6031,7 +6034,10 @@ export var BroTown = function BroTown(_ref0) {
                dungeon's mouth), the moon at the farm's bed -- the owner's
                "an icon that represents the action" (desktopControls
                interactKind, the E key's own chain) */
-            else if (_tapJumps) _icWant = _tapActIcon(S);
+            /* v2.3.3712: ...and with no act here, no JUMP arrow any more: the
+               tap attacks, so the stick wears the weapon in your hand below
+               (the owner: "maybe just an attack in its place") */
+            else if (_tapFree && (_icAct = _tapActIcon(S))) _icWant = _icAct;
             else {
               /* v2.3.3105: the weapon in that slot, its bag picture -- the
                  owner: "when attacking it should show the weapon type
@@ -6258,7 +6264,7 @@ export var BroTown = function BroTown(_ref0) {
           var _rCtx = (S._rBtnLiveUntil || 0) > _now2;
           var _rPressCtx = (S._rBtnPressUntil || 0) > _now2;
           var _rRecent = (S._rJoyLiveUntil || 0) > _now2;
-          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R') || _tapJumps;   /* v2.3.3105: the tap's picture (JUMP, talk, a door) at rest */
+          var _rOn = _rCtx || _rHeld || _rRecent || discHeld('R') || _tapFree;   /* v2.3.3105: the tap's picture (JUMP, talk, a door) at rest; v2.3.3712: the weapon for the JUMP */
           var _rPressable = _rPressCtx || discHeld('R');
           var _rLitCtx = _rCtx || discHeld('R');
           /* Two facts, ANDed, because either one alone can get stuck: the
@@ -10852,7 +10858,7 @@ export var BroTown = function BroTown(_ref0) {
          swung and chopped it.  With no job on this side the first swing waits
          TAP_JUMP_MAX_MS: a release inside it is a tap (a jump), a hold past it
          or a drag (rM lets go of the wait) attacks as before. */
-      if (!rts.busy && stateRef.current) stateRef.current._atkHoldUntil = rts.startAt + tapJumpMaxMs();
+      if (!rts.busy && stateRef.current) stateRef.current._atkHoldUntil = rts.startAt + tapFreeMaxMs();   /* v2.3.3712: a tap is one attack now, the window the same */
       /* Same press the disc makes -- auto-attack on, and the automatic target
          promoted to a deliberate one (v2.3.2252's "first tap commits").  For a
          bow or staff the promotion is a no-op by construction: autoAcquires is
@@ -10993,7 +10999,7 @@ export var BroTown = function BroTown(_ref0) {
          and is what tap-to-lock wants. */
       /* v2.3.3105: with no job on this side a tap may last TAP_JUMP_MAX_MS
          (a relaxed thumb's), the first swing waiting as long (rS) */
-      if (!rts3.moved && (endT - rts3.startAt) < (rts3.busy ? TAP_MAX_DURATION_MS : tapJumpMaxMs())) {
+      if (!rts3.moved && (endT - rts3.startAt) < (rts3.busy ? TAP_MAX_DURATION_MS : tapFreeMaxMs())) {
         /* v2.3.3105: whether a jump may have this tap (game/tapJump.js) is
            read BEFORE the forward -- the forward's empty-space branch drops
            the lock, and a tap that let go of a lock has had its use. */
@@ -11017,7 +11023,8 @@ export var BroTown = function BroTown(_ref0) {
            character, another player or a resource under the thumb has
            already taken the tap, as have the harvest / NPC / self-chat
            branches above, which return before this.  triggerJump keeps its
-           own refusals (swimming, rolling, in the air...). */
+           own refusals (swimming, rolling, in the air...).
+           v2.3.3712: an ATTACK now, never the jump (below). */
         if (_tjFree && _tjS && (_tjS._tapEmptySeq || 0) > _tjSeq) {
           /* ═══ v2.3.3105: ...UNLESS THERE IS A DOOR OR A CHARACTER RIGHT HERE ═══
              The owner: "an icon that represents the action ... chat bubble for
@@ -11026,10 +11033,17 @@ export var BroTown = function BroTown(_ref0) {
              (desktopControls runInteract) -- a building, a hall, a dungeon's
              mouth, the farm's bed, then the character beside you. */
           var _tjAct = _tapActIcon(_tjS);
-          if (_tjAct !== 'jump' && typeof _tjS._interactNow === 'function') {
+          if (_tjAct && typeof _tjS._interactNow === 'function') {
             try { if (_tjS._interactNow({ npcFirst: true })) _tjS._tapActs = (_tjS._tapActs || 0) + 1; } catch (err) { /* the door's own refusals speak */ }
-          } else {
-            try { if (triggerJump(_tjS)) _tjS._tapJumps = (_tjS._tapJumps || 0) + 1; } catch (err) { /* a jump is never worth a broken tap */ }
+          } else if (!_tjAct) {
+            /* ═══ v2.3.3712: ...AND OTHERWISE IT ATTACKS ONCE -- IT NEVER JUMPS ═══
+               The owner: "the contextual jump button gives the jumps only to
+               the jump button and what to replace it with (maybe just an
+               attack in its place if nothing else is there?)".  One swing, one
+               arrow or one bolt the way you face, taken by the auto-attack
+               loop as a press of the disc is (game/tapJump.js
+               requestTapAttack); the JUMP button and X jump. */
+            try { requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }
           }
         }
       }
