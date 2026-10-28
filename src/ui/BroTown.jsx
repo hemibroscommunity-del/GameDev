@@ -11053,7 +11053,7 @@ export var BroTown = function BroTown(_ref0) {
          no pair to recognise (see handleRBtnPress) no press is ever eaten, so
          EVERY short tap forwards again, which is what it did before v2.3.2269
          and is what tap-to-lock wants. */
-      /* v2.3.3105: with no job on this side a tap may last TAP_JUMP_MAX_MS
+      /* v2.3.3105: with no job on this side a tap may last TAP_JUMP_MAX_MS (v2.3.3712: TAP_FREE_MAX_MS)
          (a relaxed thumb's), the first swing waiting as long (rS) */
       if (!rts3.moved && (endT - rts3.startAt) < (rts3.busy ? TAP_MAX_DURATION_MS : tapFreeMaxMs())) {
         /* v2.3.3105: whether a jump may have this tap (game/tapJump.js) is
