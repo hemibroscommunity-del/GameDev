@@ -67,7 +67,8 @@ spec. Add a line here only for a new RULE every session must follow.
   - UI: `docs/UI-BIBLE.md`, `docs/LANTERN-SLATE-SPEC.md` (the visual system;
     supersedes UI-BIBLE part 2), `docs/UI-DESIGN-NOTES.md` (why each screen is
     as it is: read the section before changing a screen);
-  - plans: `docs/MEMORY-PLAN.md`, `docs/GEM-PLAN.md`,
+  - plans: `docs/MEMORY-MAP.md` (the memory slot every kind of thing goes
+    in), `docs/MEMORY-PLAN.md`, `docs/GEM-PLAN.md`,
     `docs/FUN-SOCIAL-PLAN.md`, `docs/specs/SPECIES-PLAN.md`,
     `docs/BALANCE-PLAN.md`, `docs/OPTIMIZATION-ROADMAP.md`,
     `docs/REBUILD-PLAN.md`;
@@ -233,7 +234,8 @@ spec. Add a line here only for a new RULE every session must follow.
   owner's call.
 - **MEMORY IS BUDGETED** (owner, 2026-10-06). The black screens are iPhone
   Safari running out of memory (about 250 MB). In any change that adds art,
-  sound, or anything it makes:
+  sound, or anything it makes, build it in its slot's form
+  (`docs/MEMORY-MAP.md`; no slot fits: add one there), and:
   - art is freed where you leave it; anything made per zone, land, fight,
     dungeon or rebuild is destroyed when it goes; a cache has a cap; a pool
     gives back what a spike made;
