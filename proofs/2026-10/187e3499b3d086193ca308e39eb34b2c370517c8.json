@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "187e3499b3d086193ca308e39eb34b2c370517c8",
+  "tree": "784a8b453a0e8da55e48881cf5e3540dddd88034",
+  "committedAt": "2026-10-28T16:17:45-07:00",
+  "subject": "Standing in a burning building's rubble sets you on fire (v2.3.3748) (#1233)",
+  "files": 6903,
+  "bytes": 802392344,
+  "listingSha256": "3dd1e58a84a2865e1efbdde4fe061379e967629e9d507a0ea4df0af410e56efb",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
