@@ -4212,6 +4212,17 @@ remnant to migrate server-side, not a mode to preserve.
       alone (`_chestFrameOf` carries the greaves either way); `?fishgriptrousers=1`,
       `window.__btFishGripTrousers(on)`; `mp-fisharmour` (pink trousers: none
       laid over the greaves in b, c, e): docs/specs/fish-armour-hands.md.
+    - since v2.3.3685 THE REEL HAND CROSSES IN FRONT OF THE T-SHIRT -- the
+      owner: "the hand for fishing should be in front of the t shirt. Right now
+      it looks like it's going into his waistband": the tee's fishing strip is
+      frame 12's picture moved a pixel or two a frame, cut along frame 12's
+      forearm, and on 20 of the 32 frames the forearm crosses higher and the
+      shirt was drawn over it. tools/gear/fish-forearm-front.mjs cuts the shirt
+      along each frame's own forearm (found on the body's art: its skin walled
+      by the outline, from the reel hand 40 steps along it; never the sleeve;
+      2,674 px), and closes the body's 24 pale slits between outline pixels,
+      the "flickering grey" dots at the waist; GEAR_VERSION 2.3.3685, the body
+      sheets' VERSION 102; `fish-forearm` suite: docs/specs/fish-forearm.md.
   - Since v2.3.3146 THE TOWN'S BUILDINGS ARE ON THE MINIMAP -- the owner:
     "Also all the buildings in town should show on the minimap": each
     standing building's footprint where it stands (wheelMinimap.js

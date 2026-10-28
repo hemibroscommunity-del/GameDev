@@ -78,6 +78,10 @@ const OUTFITS = {
   full: { chest: 'ironplate', legs: 'irongreaves' },
   plate: { chest: 'ironplate', legs: 'none' },
   greaves: { chest: 'none', legs: 'irongreaves' },
+  /* v2.3.3685: no armour -- every colour drawn, nothing to hide; for a hole
+     in the figure (the background seen through it), only when asked:
+     BT_GHOST_OUTFITS=bare */
+  bare: { chest: 'none', legs: 'none' },
 };
 
 /* installed once in the page: the clock that can be held, the isolation
