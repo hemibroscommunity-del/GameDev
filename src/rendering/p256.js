@@ -31,6 +31,7 @@ import { P256_FILES } from '../data/p256Files.js';
 import { picNumbersOn, stripAsNumbers } from './picsNumbers.js';
 import { isPaletteSource } from './paletteDraw.js';
 import { paletteDecided } from './paletteTex.js';
+import { addPictureRestorer } from './picsOnce.js';
 
 const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
 const WANTED = !/[?&]p256=0\b/.test(_q);
@@ -107,7 +108,7 @@ export function p256Twin(url) {
  *  its own row, or null (the canvas stays, as before). */
 export function packedTwinAsNumbers(url, canvas) {
   const src = stripAsNumbers('p256:' + pathOf(url), canvas, String(url));
-  if (src) _stats.strips++;
+  if (src) { _stats.strips++; _toPack.add(src); }
   else _stats.asOriginal++;
   return src;
 }
@@ -161,6 +162,7 @@ export const p256LoadParser = {
       return loadTextures.load(url, asset, loader);
     }
     _stats.pictures++;
+    _toPack.add(src);
     return textureOf(src, loader, String(url), w, h);
   },
   unload(texture, asset, loader) {
@@ -170,6 +172,125 @@ export const p256LoadParser = {
 };
 extensions.add(p256LoadParser);
 
+/* ═══ THE NUMBERS PACKED ONCE THEY ARE ON THE CHIP ═══
+   An effect kept as colour numbers holds them twice: in the page (a byte a
+   pixel: what a rebuilt renderer is sent) and on the chip.  Nothing reads an
+   effect's picture back on the CPU (the census, pictures-once.md), and its
+   numbers are mostly see-through -- so once this renderer has them, the page
+   keeps them DEFLATED (CompressionStream: a tenth to a fiftieth of the bytes)
+   and lets the plain ones go.  Before any chip is sent them again they are
+   unpacked: a black screen's rebuild waits for every one (picsOnce.js
+   restoreAllPictures, in createPixiApp), and a chip that asks for one still
+   packed gets its space empty and the numbers the moment they are out
+   (`blankUploads`: QA reads 0).  Pixi's collector never takes these off the
+   chip (made with autoGarbageCollect false).  One not drawn yet is sent to the
+   chip first: there it is a byte a pixel, where its plain numbers waiting in
+   the page were the same and its picture before this was four. */
+const _toPack = new Set();
+const _packed = new Set();
+const _pk = { sent: 0, packed: 0, packedMB: 0, packedKB: 0, unpacked: 0, blankUploads: 0, failed: 0 };
+const EMPTY = new Uint8Array(0);
+async function deflate(u8) {
+  const stream = new Blob([u8]).stream().pipeThrough(new CompressionStream('deflate'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function inflate(u8) {
+  const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+const isPacked = (src) => !!(src && src.__btPack && src.__btPack.z);
+async function pack(src, renderer) {
+  const idx = src.resource;
+  if (!idx || !idx.length || src.__btPack) return;
+  src.__btPack = { z: null, n: idx.length, busy: true };
+  let z = null;
+  try { z = await deflate(idx); } catch (e) { z = null; }
+  const P = src.__btPack;
+  P.busy = false;
+  /* given up: nothing to pack it with, the source gone, or it changed or left
+     this chip meanwhile */
+  if (!z || src.destroyed || src.resource !== idx || !(src._gpuData && src._gpuData[renderer.uid])) { src.__btPack = null; if (!z) _pk.failed++; return; }
+  P.z = z;
+  src.resource = EMPTY;
+  if (src._btNumbers) src._btNumbers = null;
+  try { if (src.options) src.options.resource = null; } catch (e) { /* frozen */ }
+  _packed.add(src);
+  src.once('destroy', () => _packed.delete(src));
+  _pk.packed++;
+  _pk.packedMB = +(_pk.packedMB + idx.length / 1048576).toFixed(2);
+  _pk.packedKB += Math.round(z.length / 1024);
+}
+export function unpack(src) {
+  if (!isPacked(src)) return Promise.resolve(true);
+  const P = src.__btPack;
+  if (P.out) return P.out;
+  P.out = inflate(P.z).then((idx) => {
+    if (src.destroyed) return false;
+    if (idx.length !== P.n) { _pk.failed++; return false; }
+    src.resource = idx;
+    src.__btPack = null;
+    _packed.delete(src);
+    _pk.unpacked++;
+    /* packed again once a chip has it */
+    _toPack.add(src);
+    if (P.blank) { try { src.update(); } catch (e) { /* sent when next drawn */ } }
+    return true;
+  }).catch(() => { _pk.failed++; P.out = null; return false; });
+  return P.out;
+}
+addPictureRestorer(() => Promise.all([..._packed].map((s) => unpack(s))));
+
+let _upInstalled = false;
+export function installP256Upload(GlTextureSystem) {
+  if (_upInstalled || !WANTED || !GlTextureSystem || !GlTextureSystem.prototype) return;
+  _upInstalled = true;
+  const P = GlTextureSystem.prototype;
+  const upd = P.onSourceUpdate;
+  P.onSourceUpdate = function (source) {
+    if (isPacked(source)) {
+      _pk.blankUploads++;
+      source.__btPack.blank = true;
+      const glTexture = this.getGlSource(source);
+      this._gl.bindTexture(glTexture.target, glTexture.texture);
+      this._boundTextures[this._activeTextureLocation] = source;
+      this._initEmptyTexture2D(glTexture, source);
+      glTexture.width = source.pixelWidth;
+      glTexture.height = source.pixelHeight;
+      unpack(source);
+      return;
+    }
+    return upd.call(this, source);
+  };
+}
+
+let _timer = 0;
+export function startP256Pack(renderer, canvas) {
+  if (!WANTED || typeof CompressionStream === 'undefined') return;
+  if (_timer) clearInterval(_timer);
+  _timer = setInterval(() => {
+    try {
+      const gl = renderer.gl;
+      if (!gl || gl.isContextLost()) return;
+      /* not on this chip yet: sent now (an effect is loaded behind the
+         loading screen to be drawn; at a byte a pixel on the chip it costs
+         less than its numbers held in the page until its first draw) */
+      for (const src of _toPack) {
+        if (src.destroyed) { _toPack.delete(src); continue; }
+        if (!(src._gpuData && src._gpuData[renderer.uid])) {
+          try { renderer.texture.initSource(src); } catch (e) { continue; }
+          if (!(src._gpuData && src._gpuData[renderer.uid])) continue;
+          _pk.sent++;
+        }
+        _toPack.delete(src);
+        pack(src, renderer);
+      }
+    } catch (e) { /* next time */ }
+  }, 1000);
+  /* the graphics lost: every packed picture unpacked at once */
+  try { canvas.addEventListener('webglcontextlost', () => { for (const s of [..._packed]) unpack(s); }); } catch (e) { /* the rebuild still waits */ }
+}
+
 if (typeof window !== 'undefined') {
-  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), twins: Object.keys(P256_FILES).length, ..._stats });
+  window.__btP256 = () => ({ wanted: WANTED, on: p256On(), twins: Object.keys(P256_FILES).length, ..._stats,
+    pack: { ..._pk, packedNow: _packed.size, waiting: _toPack.size } });
 }

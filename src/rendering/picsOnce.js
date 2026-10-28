@@ -200,11 +200,16 @@ export function restore(src) {
 /** Every page copy back (the graphics lost; a rebuilt renderer waits on
  *  this before its first frame).  At most `ms` (a file that will not come is
  *  then sent empty and loaded behind: the blank upload's way). */
+/* v2.3.3728: others that let go of a picture's page copy (p256.js) bring
+   theirs back here too */
+const _restorers = [];
+export function addPictureRestorer(fn) { if (typeof fn === 'function') _restorers.push(fn); }
 export function restoreAllPictures(ms = 8000) {
-  if (!_released.size) return Promise.resolve(0);
+  const more = _restorers.map((fn) => { try { return Promise.resolve(fn()); } catch (e) { return Promise.resolve(0); } });
+  if (!_released.size && !more.length) return Promise.resolve(0);
   const list = [..._released];
   _stats.lostRestores += list.filter((s) => !_loading.has(s)).length;
-  const all = list.map((s) => restore(s));
+  const all = list.map((s) => restore(s)).concat(more);
   return Promise.race([Promise.all(all).then(() => all.length), new Promise((r) => setTimeout(() => r(-1), ms))]);
 }
 
