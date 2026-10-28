@@ -515,6 +515,7 @@ export const PRIVILEGED_EVENTS = new Set([
      innocent player's own screen and the other would make a game clear its
      bag of things the worker never took. */
   'nml_skull', 'nml_loss',
+  'nml_lock', 'nml_lock_ask',   /* v2.3.3770: the lock after a red skull's death (nomansland.js) */
   /* v2.3.3316: and what a kill there took, told to the killer.  Forged, it
      would point a player at a pile that is not theirs. */
   'nml_take',
@@ -5555,6 +5556,18 @@ export class GameRoom {
            chose to attack you, you are white.  Its own case, so it is never
            rebroadcast by the default branch. */
         if (session.id) this._handleNmlAttack(session, msg.payload || msg);
+        break;
+
+      /* v2.3.3770: the lock after a red skull's death (nomansland.js
+         _handleNmlLockAsk, _handleNmlLockAllow): the locked player's "?"
+         over their head, to the one who beat them alone, once a minute; and
+         that player letting them at them again.  Their own cases, never
+         rebroadcast. */
+      case 'nml_lock_ask':
+        if (session.id) this._handleNmlLockAsk(session, msg.payload || msg);
+        break;
+      case 'nml_lock_allow':
+        if (session.id) this._handleNmlLockAllow(session, msg.payload || msg);
         break;
 
       case 'shield_wear':

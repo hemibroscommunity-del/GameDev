@@ -181,7 +181,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 }
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
-import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
+import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull, applyNmlLock, nmlLockAskShow } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
 import { nmlJoinFromBys } from '@/game/nmlAsk.js'; /* v2.3.3530: one who chose to attack you joins a fight you chose */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
@@ -1881,6 +1881,19 @@ export function setupWebSocket(ctx) {
           case 'nml_loss':
             {
               if (msg.payload) applyNmlLoss(S, msg.payload, saveRpgSoon);
+              break;
+            }
+          /* v2.3.3770: the lock after a red skull's death (nomansland.js
+             _nmlLockSet): who you may not attack and who may not attack you,
+             and the "?" over the head of one asking you for a rematch */
+          case 'nml_lock':
+            {
+              if (msg.payload) applyNmlLock(S, msg.payload);
+              break;
+            }
+          case 'nml_lock_ask':
+            {
+              if (msg.payload) nmlLockAskShow(S, msg.payload);
               break;
             }
           /* v2.3.3316: and what a kill of yours there took (the pile, the gold) */
