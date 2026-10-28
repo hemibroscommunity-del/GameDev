@@ -400,19 +400,19 @@ let on0Tick = 22;
     const ss = p.ws.sent.map((s) => JSON.parse(s)).find((m) => m.type === 'state_sync');
     return ss && ss.caps;
   };
-  const c0 = await capsOf({}), c1 = await capsOf({ pathall: true }), c2 = await capsOf({ movepath: false }), c3 = await capsOf({ movepath: false, pathall: true });
-  check('6a. by default the worker understands the path (caps.movepath) and no phone is put on it (caps.pathall false)',
-    !!c0 && c0.movepath === true && c0.pathall === false, c0 && { movepath: c0.movepath, pathall: c0.pathall });
-  check('6b. `pathall: true` puts every phone on it; the kill switch `movepath: false` takes both away, pathall or not',
-    c1.movepath === true && c1.pathall === true && c2.movepath === false && c2.pathall === false && c3.movepath === false && c3.pathall === false,
+  const c0 = await capsOf({}), c1 = await capsOf({ pathall: false }), c2 = await capsOf({ movepath: false }), c3 = await capsOf({ movepath: false, pathall: true });
+  check('6a. by default (v2.3.3744) the worker understands the path (caps.movepath) and every phone is on it (caps.pathall)',
+    !!c0 && c0.movepath === true && c0.pathall === true, c0 && { movepath: c0.movepath, pathall: c0.pathall });
+  check('6b. `pathall: false` leaves only ?diet=1 phones on it; the kill switch `movepath: false` takes both away, pathall or not',
+    c1.movepath === true && c1.pathall === false && c2.movepath === false && c2.pathall === false && c3.movepath === false && c3.pathall === false,
     { c1: [c1.movepath, c1.pathall], c2: [c2.movepath, c2.pathall], c3: [c3.movepath, c3.pathall] });
-  /* a phone that marks nothing (no ?diet=1, no pathall: every phone by
-     default) is sent and moved exactly as with no path at all */
+  /* a phone that marks nothing (an old phone, `?diet=0`, or `pathall:
+     false`) is sent and moved exactly as with no path at all */
   const legs = [{ ms: 800, dir: E }, { ms: 300, dir: N }];
   const plain = await walk(legs, { path: false, flags: { movepath: false } });
   const def = await walk(legs, { path: false });
   const same = plain.copy.length === def.copy.length && plain.copy.every((c, i) => c[1] === def.copy[i][1] && c[2] === def.copy[i][2]);
-  check('6c. by default (no phone marks a move) the worker moves nobody between moves: the copy exactly as with the kill switch',
+  check('6c. a phone that marks no move is moved by nobody between moves: the copy exactly as with the kill switch',
     same && !(def.room._mpGliding && def.room._mpGliding.size) && plain.phoneSent.length === def.phoneSent.length);
   /* the kill switch thrown mid-walk: the glide stops on the next tick */
   const { room, tickFn } = await makeRoom({});
@@ -429,19 +429,20 @@ let on0Tick = 22;
   NOW += room.TICK_RATE; tickFn();
   check('6e. the kill switch stops every glide from the next tick', moved && room.playerState.py.x === xs, { moved, x: room.playerState.py.x, xs });
   /* ...and every phone is told at once, through the admin route */
+  room._liveFlags = {};   /* the default again, after 6e's kill switch */
   const told = [];
   room.broadcastAll = (m) => told.push(m);
   room._adminLog = async () => {};
   const post = (name, value) => room._liveopsRoutes(new Request('http://x/flags', { method: 'POST', body: JSON.stringify({ name, value }) }), new URL('http://x/flags'), '/flags', (o) => o);
   const del = (name) => room._liveopsRoutes(new Request('http://x/flags?name=' + name, { method: 'DELETE' }), new URL('http://x/flags?name=' + name), '/flags', (o) => o);
-  await del('movepath');
-  await post('pathall', true);
+  await post('pathall', false);
+  await del('pathall');
   await post('movepath', false);
   await del('movepath');
-  await del('pathall');
+  await post('pathall', true);
   const said = told.filter((m) => m.type === 'move_path').map((m) => [m.on, m.all]);
-  check('6f. every change of either switch is told to every phone at once (move_path): cleared, on for all, killed, back, only ?diet=1',
-    JSON.stringify(said) === JSON.stringify([[true, false], [true, true], [false, false], [true, true], [true, false]]), said);
+  check('6f. every change of either switch is told to every phone at once (move_path): only ?diet=1, back to all, killed, back, all',
+    JSON.stringify(said) === JSON.stringify([[true, false], [true, true], [false, false], [true, true], [true, true]]), said);
   check('6g. move_path is a privileged type (a phone cannot forge it)', (await import('../src/index.js')).PRIVILEGED_EVENTS
     ? (await import('../src/index.js')).PRIVILEGED_EVENTS.has('move_path') : true);
 }

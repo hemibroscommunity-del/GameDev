@@ -5,21 +5,23 @@
 > diet slow down the game? Like introduce more lag than otherwise?"* and being
 > told it must not.
 
-**Off for players by default, with three switches** (the owner, 2026-10-28:
-*"I would want to play it with it on before tomorrow to see if there's any
-noticeable difference. If not, I'd rather just leave it on."*):
+**On for every phone by default since v2.3.3744** (the owner, 2026-10-28:
+*"Just turn the message diet on now I'll turn it off if I do not like"*;
+before that, v2.3.3732 shipped it off for players: *"I would want to play it
+with it on before tomorrow to see if there's any noticeable difference. If
+not, I'd rather just leave it on."*). Three switches, all in the Test panel's
+**Message diet** row, each reaching every phone at once (`move_path`), with
+no reload and no deploy:
 
-- **The worker always understands it**: it glides any move a phone marks
-  `pd: 1`. No phone marks its moves unless asked, so with nothing set every
-  phone sends exactly as today.
-- **One phone**: open the game with `?diet=1` at the end of its address (for
-  example `https://<the game's address>/?diet=1`). That tab keeps it through
-  reloads; `?diet=0` takes it off again.
-- **Every phone**: the Test panel, **Message diet**, **On for everyone** (the
-  live flag `pathall: true`). **Only ?diet=1 phones** goes back to the
-  default; **Off for everyone** is the kill switch (`movepath: false`), which
-  stops it on every phone, `?diet=1` ones too. Each tap reaches every phone at
-  once (`move_path`); nobody needs to reload, and no deploy is needed.
+- **On for everyone**: the default (both live flags cleared).
+- **Only ?diet=1 phones**: the live flag `pathall: false`. Only a phone
+  opened with `?diet=1` at the end of its address stays on it (that tab keeps
+  it through reloads).
+- **Off for everyone**: the kill switch, `movepath: false`. No phone diets,
+  `?diet=1` ones included, and the worker stops gliding on the next tick.
+
+One phone can always keep itself off with `?diet=0` in its address. The
+worker glides any move a phone marks `pd: 1`; an old phone never marks one.
 
 ## Why
 
@@ -208,8 +210,9 @@ more than that the copy was where the phone was when they landed.
 - `caps.movepath` (join.js): the worker glides `pd` moves. On by default;
   `movepath: false` in the live flags (the kill switch) takes it away and
   stops every glide from the next tick.
-- `caps.pathall`: every phone is on the path. Only with `pathall: true` in the
-  live flags, and never with the kill switch thrown.
+- `caps.pathall`: every phone is on the path. On by default since v2.3.3744;
+  off with `pathall: false` in the live flags, and never with the kill switch
+  thrown.
 - A change to either flag (`POST` or `DELETE /api/admin/flags`) sends every
   phone `move_path {on, all}` (a privileged type), and each phone's next batch
   follows it.
