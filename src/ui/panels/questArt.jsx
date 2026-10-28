@@ -1,3 +1,4 @@
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { QUALITY_LABEL, qualityInk } from '../mobile/dash/common.js';
 
@@ -56,7 +57,8 @@ export const QUEST_ART_URLS = Object.keys(QUEST_ART).map(function (k) { return Q
 
 /* The game's own coin and XP pictures (the HUD's), so "+25 Gold" here is the
    same coin that counts up in the corner when it lands. */
-export const QUEST_COIN = '/icons/ui/cur-gold.webp';
+/* v2.3.3734: the owner's one coin; a reward shows the pile for its amount (QuestPay) */
+export const QUEST_COIN = COIN_ONE;
 export const QUEST_XP = '/icons/ui/cur-xp.webp';
 
 var h = React.createElement;
@@ -107,7 +109,7 @@ export function QuestPay(props) {
   var gold = props.gold || 0, xp = props.xp || 0;
   if (!gold && !xp) return null;
   return h('div', { className: 'bt-qw-pay' + (props.small ? ' bt-qw-pay--small' : '') + (props.className ? ' ' + props.className : ''), 'data-qw-pay': '1' },
-    gold ? h('span', { className: 'bt-qw-gold', 'data-qw-gold': gold }, art(QUEST_COIN, 'bt-qw-payicon'), '+' + gold + ' Gold') : null,
+    gold ? h('span', { className: 'bt-qw-gold', 'data-qw-gold': gold }, art(coinArtFor(gold), 'bt-qw-payicon'), '+' + gold + ' Gold') : null,
     /* spaces between the figures and after them: the page's TEXT must read
        "+25 Gold +30 XP ", not "+25 Gold+30 XPFor finishing" -- the quest
        scenarios find "30 XP" as a whole word */

@@ -1,3 +1,4 @@
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { BT_AUDIO, LIFE_SKILL_XP, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
 import { FARM, FARM_CROP_ORDER, FARM_LOOK, farmGrowMs, farmYieldShown, farmTimeLeft,
@@ -47,7 +48,7 @@ const C = {
   text: '#F4F0E7', sub: '#B6C1BE', mute: '#8D9B98', faint: '#667875',
   brass: '#D8AA58', good: '#55B98A', bad: '#D8635D', water: '#7CC8EA', line: 'rgba(229,237,233,.11)',
 };
-const COIN = '/icons/ui/cur-gold.webp';
+const COIN = COIN_ONE;   /* v2.3.3734: the owner's one coin, a unit beside a price */
 const XP = '/icons/ui/cur-xp.webp';
 
 const Icon = ({ src, size = 16 }) => (
@@ -269,7 +270,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
               <span data-farm-key="1" style={{ fontSize: 11, color: C.sub, display: 'inline-flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
                 {'⏱ grow · ' + FARM_LOOK.water + ' watered · ' + FARM_LOOK.harvest + ' harvest ·'}<Icon src={FARM_COMPOST_ICON} size={13} />{'with compost'}
               </span>
-              <Chip icon={COIN} color={C.brass}>{coins}</Chip>
+              <Chip icon={coinArtFor(coins)} color={C.brass}>{coins}</Chip>
             </div>
             {crops.filter(unlocked).map((id) => {
               const c = FARM.CROPS[id];
@@ -339,7 +340,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
               <>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: C.sub }}>Today's orders</span>
-                  <Chip icon={COIN} color={C.brass}>{coins}</Chip>
+                  <Chip icon={coinArtFor(coins)} color={C.brass}>{coins}</Chip>
                 </div>
                 {board.list.map((o, i) => {
                   if (o.gone) {
@@ -361,7 +362,7 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
                         </div>
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
                           <Chip color={have >= o.n ? C.good : C.sub}>{'You have ' + have}</Chip>
-                          <Chip icon={COIN} color={C.brass}>{'+' + o.gold}</Chip>
+                          <Chip icon={coinArtFor(o.gold)} color={C.brass}>{'+' + o.gold}</Chip>
                           <Chip icon={XP} color="#9FD3F0">{'+' + o.xp}</Chip>
                         </div>
                       </div>

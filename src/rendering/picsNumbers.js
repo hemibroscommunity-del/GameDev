@@ -34,6 +34,7 @@
  * WebGL2, `?nopalette`) packs its canvas exactly as before.
  *
  * QA: window.__btPicNumbers(). */
+import { clientOffAtLoad } from '@/game/clientOff.js';   /* v2.3.3755 */
 import { numbersOf } from './heldNumbers.js';
 import { Sprite, Texture } from 'pixi.js';
 import { paletteOn, paletteStride, paletteRowTake, paletteRowWrite, paletteRowGive, makePaletteSourceOnRow, paletteFillProgram, paletteProgramLinked } from './paletteTex.js';
@@ -41,7 +42,8 @@ import { paletteOn, paletteStride, paletteRowTake, paletteRowWrite, paletteRowGi
 const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
 /* on by default (the owner, 2026-10-28, picsOnce.js); `?picnumbers=0` is the
    game as it was */
-const WANTED = !/[?&]picnumbers=0\b/.test(_q);
+/* v2.3.3755: ...or the Test panel's Memory savers row, from the next load (game/clientOff.js) */
+const WANTED = !/[?&]picnumbers=0\b/.test(_q) && !clientOffAtLoad('picnumbers');
 export function picNumbersWanted() { return WANTED; }
 /* (never while QA compares the cropped strips' canvases: __btTrimVerify,
    mp-monstertrim -- heldNumbers.js keeps them for it too) */

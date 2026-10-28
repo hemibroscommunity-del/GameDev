@@ -50,6 +50,7 @@ import { codexDropsFor } from '../data/codexDrops.js';
 import { petKindOfMonster } from '../data/trapping.js';
 import { remainsName } from '../data/remains.js';
 import { shardByKey } from '../data/shards.js';
+import { coinArtFor } from './coinArt.js';   /* v2.3.3734 */
 
 const OFF = (() => {
   try { return typeof location !== 'undefined' && /[?&]droplines=0\b/.test(location.search || ''); }
@@ -123,7 +124,8 @@ export function linesFor(kind, pile, rh) {
     const nm = name || row.name || id;
     /* v2.3.3692: its picture, the codex row's (null for a drop with none: the
        line is its words alone) */
-    const icon = row.icon || null;
+    /* v2.3.3734: coins show the owner's pile for the amount */
+    const icon = id === 'gold' ? coinArtFor(q) : (row.icon || null);
     lines.push({ id, name: nm, qty: q, text: dropLineText(nm, q), label: r.label, color: r.color, icon });
   };
   if (pile) {

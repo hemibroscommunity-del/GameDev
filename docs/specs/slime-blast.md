@@ -67,3 +67,36 @@ tree and building, not a circle saying where it could hurt.
 4. No page errors.
 
 Pictures: `tools/qa/mp/out/slimeblast-town-after.png`, `slimeblast-after.png`.
+
+## v2.3.3747: the blast blows you back
+
+The owner, 2026-10-28: "if you take damage from a slime explosion I want the
+character to be blown back a bit (moved back)".
+
+- **What a player sees.** A blast that hurts you throws you 90 px straight
+  away from where it went off, over 0.3 s, with the wind's streaks round you.
+  "A bit": between a mummy's swing (48 px) and its roar (130). The blue
+  slime's death burst and the Goo Grotto's giant slime splitting both do it
+  (they are the same blast, `kind: 'burst'`).
+- **No shove when nothing landed**: a shield facing it (blocked), a roll
+  through it, the safe ground, a blast that took no HP, or one that killed you.
+- **How.** The worker decides it (telegraph.js `_telegraphHitPlayer` ->
+  `_blastShove`): the shove's length is the gust's own (`_gustShove`, with the
+  monster's `_gustPx` 90 for that one blow, as the roar sets its 130), the room
+  granted the gust's way (monsterstatus.js `_grantShove`), so the move check
+  never snaps you back. The hit's `monster_attack` carries `kb` (the shove)
+  and `kbMs` (300) with no gust `st`; the phone carries it out as a blow's
+  shove (elemHits.js `applyHitShove`) and draws the gust's streaks. A wind
+  slime's own gust already shoves, so its blast's gust is simply the 90 px
+  one, never two shoves.
+- **Deploy order.** A phone from before this ignores a `kb` without a gust's
+  `st` on a monster's hit: it is not shoved, and the worker's granted room
+  simply goes unused. A new phone on an old worker gets no `kb`. No cap needed.
+- **Kill switch**: `slimeshove: false` in the live flags: the blast hurts as
+  before and shoves no one.
+- **Checked**: `slime-shove` suite (16: the length and direction, north and
+  east, the room granted, one outside nothing, a shield blocks it, a wind
+  slime once, the boss's split, a slam shoves nothing, the switch);
+  `mp-slimeshove` on a phone in the Verdant Wilds: a real blue slime killed
+  beside you, its blast's hit says 90 px away from it, your place moved 90 px
+  that way, and the worker agrees where you landed (0 px apart).

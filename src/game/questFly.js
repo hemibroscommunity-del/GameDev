@@ -153,7 +153,7 @@ export function flyQuestRewards(spec) {
   if (s.gold > 0 && s.goldFrom) {
     var coins = s.gold >= 100 ? 5 : s.gold >= 40 ? 4 : 3;
     for (var i = 0; i < coins; i++) {
-      if (flyPicture(s.goldSrc || '/icons/ui/cur-gold.webp', s.goldFrom, 'gold',
+      if (flyPicture(s.goldSrc || '/icons/coins/coin-1.png' /* v2.3.3734: the owner's one coin */, s.goldFrom, 'gold',
         { delay: (s.delay || 0) + i * 85, size: 26, drift: (i - (coins - 1) / 2) * 14, lift: 60 + i * 6 })) n++;
     }
   }

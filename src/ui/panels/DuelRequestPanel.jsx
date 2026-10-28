@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { lockOntoDuelOpponent } from '@/game/duelLock.js'; /* v2.3.2145 */
 import { createPortal } from 'react-dom';
@@ -140,7 +141,7 @@ export function DuelRequestPanel(props) {
       marginBottom: 8
     }
   }, /*#__PURE__*/React.createElement("img", {
-    src: "/icons/popups/gold.webp",
+    src: coinArtFor(duelRequest.wager), /* v2.3.3734: the pile for the amount */
     alt: "",
     draggable: false,
     style: {
