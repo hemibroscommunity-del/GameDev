@@ -234,9 +234,15 @@ export function blockAnchor(isLandscape) {
        by construction: RBTN.bottom is 70 and the button is at most 54 wide, so
        the result is positive at every width -- asserted in mp-btnlayout, which
        measures the real painted band rather than trusting that arithmetic. */
-    bottomPx: RBTN.bottom - col.size - CTL_GAP,
+    /* v2.3.3721: from BLOCK_BAND_BOTTOM, the disc's old bottom edge, not
+       RBTN.bottom: the disc rose 10 px for the larger JUMP button beside
+       Block, and Block rising with it left 22 px of air under Shield Bash,
+       under the 24 px floor mp-btnlayout holds that pair to.  Where it was,
+       it has 32 (Bash hangs from the disc's centre, which rose 4). */
+    bottomPx: BLOCK_BAND_BOTTOM - col.size - CTL_GAP,
   };
 }
+export const BLOCK_BAND_BOTTOM = 70;
 
 /* ═══ v2.3.2562: THE LEFT CLUSTER -- WHIRLWIND AND SPECIAL ═══
  *
