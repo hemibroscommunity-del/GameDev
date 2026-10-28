@@ -59,6 +59,14 @@
  * Whether the page's heap should grow over a long session at all is the
  * soak's question (docs/specs/long-play-soak.md: 7-14 MB an hour of play).
  *
+ * v2.3.3699, the monsters' strips held as their colour numbers once drawn
+ * (rendering/heldNumbers.js): `canvases` 96 -> 88 -- LOWERED, the saving
+ * locked in.  Two runs each way on one build (`QA_MB_QUERY=held=0` the game
+ * before): at the Flame Fields' fight the canvases 90.2-91.7 MB -> 79.9-82.2,
+ * the buffers 17.0-17.7 -> 19.5-21.2 (the goblins' numbers, a byte a pixel;
+ * their highest is still at home, 23.8 either way, as the numbers go with the
+ * land's art), the chip and everything else the same.
+ *
  * v2.3.3664, the owner's recordings of 2026-10-27 (the farm's hoe, can, clay
  * and harvest, the forge's hammer, the Woodworker's knife, a door, a fire
  * lit, coins, the bag, Lil Bro's voice): `sound` 30 -> 32 -- RAISED.  They
@@ -74,7 +82,7 @@ export const MEMORY_BUDGET = {
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
   gpu: { name: 'textures on the graphics chip', mb: 105, measured: 95.0,
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
-  canvases: { name: 'pictures the game draws itself', mb: 96, measured: 89.9,
+  canvases: { name: 'pictures the game draws itself', mb: 88, measured: 82.2,   /* v2.3.3699: 96 -> 88, see the header */
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 32, measured: 26.0,   /* v2.3.3664: 30 -> 32, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },

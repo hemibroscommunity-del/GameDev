@@ -46,6 +46,7 @@
  */
 import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
 import { packTrimmed } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped */
+import { holdOnceDrawn, forgetHeld } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
 
 /* bundle name -> the set of URLs loaded under it.  A Set, so a re-entered zone
    re-registering the same sheet costs one entry rather than a growing list. */
@@ -101,6 +102,9 @@ export function loadTrackedStrip(bundle, url, fw, fh) {
     const n = Math.max(1, Math.floor(W / fw));
     const packed = packTrimmed(img, fw, fh, n);
     const src = Texture.from(packed ? packed.canvas : img).source;
+    /* v2.3.3699: once drawn, the packed canvas is read into its colour numbers
+       and emptied -- the picture stays on the graphics chip (heldNumbers.js) */
+    if (packed) holdOnceDrawn(src);
     let set = _crops.get(bundle);
     if (!set) { set = new Set(); _crops.set(bundle, set); }
     set.add(src);
@@ -139,6 +143,7 @@ function _releaseCrops(bundle) {
   let n = 0;
   for (const src of set) {
     const res = src.resource;
+    forgetHeld(src);   /* v2.3.3699 */
     try { if (!src.destroyed) src.destroy(); n++; } catch (e) { /* gone */ }
     /* Texture.from parked a Texture under the canvas (or image) in Cache; it
        only leaves when THAT texture is destroyed, which nothing holds. */

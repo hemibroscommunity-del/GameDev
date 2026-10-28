@@ -111,7 +111,8 @@ check('3: your sword\'s and bow\'s bodies wait to be drawn, after the bake\'s la
 check('3: another player\'s bodies and sheets wait too', (fx.match(/arr = this\._gpuOnceDrawn\(this\._own\(_sliceStandIn\(cv, /g) || []).length === 2);
 check('3: the effects renderer looks every GPU_WAIT_MS, and lets go of the waiting with its bakes',
   /const GPU_WAIT_MS = 500;/.test(fx)
-  && /if \(this\._gpuWaiting\.size\) \{[\s\S]{0,260}emptyOnceDrawn\(this\._captureRenderer, this\._gpuWaiting\);/.test(fx)
+  /* v2.3.3699: one look for the weapon bodies and the monsters' held strips */
+  && /if \(this\._gpuWaiting\.size\) emptyOnceDrawn\(this\._captureRenderer, this\._gpuWaiting\);/.test(fx)
   && /this\._gpuWaiting\.delete\(src\);/.test(fx) && /this\._gpuWaiting\.clear\(\);/.test(fx));
 
 if (failures) { console.log(`\n${failures} FAILED`); process.exit(1); }

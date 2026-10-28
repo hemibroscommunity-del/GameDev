@@ -49,6 +49,7 @@
  * instance; nothing here imports a renderer. */
 import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
 import { drawSourceRect } from './paletteDraw.js';   /* v2.3.3190 */
+import { readSourceRect } from './heldNumbers.js';   /* v2.3.3699: a monster's strip may be held as colour numbers */
 import { zonePlayerScale } from '@/data/zones.js';
 import { TILE } from '@/data/constants.js';
 
@@ -338,14 +339,15 @@ function chipShape(fx, r) {
 }
 /* Cut a set of chips for `fx` from the frame `tex` is showing. */
 function bakeChips(tex, fx) {
-  const src = tex && tex.source && tex.source.resource;
   const fr = tex && tex.frame;
-  if (!src || !fr || fr.width < 8 || fr.height < 8 || typeof document === 'undefined') return null;
+  /* v2.3.3699: a monster's strip may be held as its colour numbers once drawn
+     (heldNumbers.js): read through readSourceRect, the same pixels either way */
+  if (!tex || !tex.source || !fr || fr.width < 8 || fr.height < 8 || typeof document === 'undefined') return null;
   const fw = Math.round(fr.width), fh = Math.round(fr.height);
   const cv = document.createElement('canvas'); cv.width = fw; cv.height = fh;
   const g = cv.getContext('2d', { willReadFrequently: true });
   const free = () => { try { cv.width = 0; cv.height = 0; } catch (e) { /* gone */ } };   /* v2.3.3046: iPhone Safari's canvas budget */
-  try { g.drawImage(src, Math.round(fr.x), Math.round(fr.y), fw, fh, 0, 0, fw, fh); } catch (e) { free(); return null; }
+  try { if (!readSourceRect(g, tex.source, fr.x, fr.y, fw, fh, 0, 0, 'chips')) { free(); return null; } } catch (e) { free(); return null; }
   /* bone is thin: a splinter the size of a slime blob was a third of a leg */
   const sizeK = fx === 'bone' ? 0.5 : 1;
   const out = bakeChipsFrom(cv, g, fw, fh, fx, CHIP_SIZES.map((k) => Math.max(2, fh * k * sizeK)), 0.78);
@@ -1700,6 +1702,19 @@ export class HitMaterialFx {
       });
     }
     return out;
+  }
+
+  /* v2.3.3699 (QA, mp-monsternumbers): the chips a hit of `fx` would cut
+     from monster `mid`'s picture as it is drawn now -- the very chipsFor a
+     burst calls -- and how many; null when it is not on screen */
+  chipsProbe(mid, fx) {
+    let sb = null;
+    try { sb = this._artOf ? this._artOf(mid) : null; } catch (e) { sb = null; }
+    if (!sb) return null;
+    const ch = chipsFor(sb, fx);
+    let n = 0;
+    if (ch) for (const row of ch) n += row ? row.length : 0;
+    return { chips: n, held: !!(sb.texture && sb.texture.source && sb.texture.source._btNumbers) };
   }
 
   probe() {

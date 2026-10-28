@@ -30,6 +30,7 @@
  */
 import { Matrix } from 'pixi.js';
 import { relMatrix } from './arrowWound.js';
+import { readSourceRect } from './heldNumbers.js';   /* v2.3.3699: a monster's strip may be held as colour numbers */
 
 const FRAME_CACHE = 160;
 /* v2.3.3046: and at most this many bytes (2 per texel, alpha + brightness): a
@@ -45,8 +46,8 @@ function frameData(tex) {
   const key = tex.uid;
   let fd = _frames.get(key);
   if (fd) { _frames.delete(key); _frames.set(key, fd); return fd; }   /* LRU touch */
-  const src = tex.source.resource, fr = tex.frame;
-  if (!src || !fr || typeof document === 'undefined') return null;
+  const fr = tex.frame;
+  if (!fr || typeof document === 'undefined') return null;
   const w = Math.round(fr.width), h = Math.round(fr.height);
   if (w < 2 || h < 2) return null;
   let px;
@@ -54,8 +55,9 @@ function frameData(tex) {
   try {
     c = document.createElement('canvas'); c.width = w; c.height = h;
     const g = c.getContext('2d', { willReadFrequently: true });
-    g.drawImage(src, Math.round(fr.x), Math.round(fr.y), w, h, 0, 0, w, h);
-    px = g.getImageData(0, 0, w, h).data;
+    /* v2.3.3699: from the canvas, or its colour numbers once it has gone
+       (heldNumbers.js) -- the same pixels */
+    px = readSourceRect(g, tex.source, fr.x, fr.y, w, h, 0, 0, 'pin') ? g.getImageData(0, 0, w, h).data : null;
   } catch (e) { px = null; }
   /* v2.3.3046: the scratch canvas's pixels go now, not when the collector
      gets to it (iPhone Safari's canvas budget; wheelShatter freeCanvas) */
