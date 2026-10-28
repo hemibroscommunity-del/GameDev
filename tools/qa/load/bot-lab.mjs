@@ -38,7 +38,7 @@
  * held by sockets that never join), `flood` (the room's time a message).
  *
  *   node tools/qa/load/bot-lab.mjs [minutes, default 60] [--only=a,b] [--seed=N] [--census]
- *                                  [--flags=movebudget:false,...]
+ *                                  [--flags=movebudget:false,...] [--pd[=boost]]
  *
  * --flags sets the room's live flags (v2.3.3325): a kill switch thrown, so a
  * fix can be measured against the rule it replaced on one checkout.
@@ -130,9 +130,15 @@ function humanFp() {
 const COPY_FP = { len: 820, n: 96, dur: 1500, ent: 0.15, tv: 12, vc: 0.3, h: 2779098405 };
 
 /* ── a player ────────────────────────────────────────────────────────── */
+/* v2.3.3726: --pd marks every move for the message diet's glide (server
+   movepath.js; with --flags=movepath:true); --pd=boost also claims ten times
+   the speed it walks, the script that hopes the worker glides it faster */
+const PD = FLAG('pd', null);
 function moveMsg(x, y, vx, vy) {
+  const k = PD === 'boost' ? 10 : 1;
   return { type: 'move', x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, d: 'down', f: 'south', eqc: 'none', eql: 'none', eqs: 'none',
-    ex: null, z: 'wheel', vx: Math.round(vx * 100), vy: Math.round(vy * 100), dodging: false, blocking: false, ba: null, dead: false };
+    ex: null, z: 'wheel', vx: Math.round(vx * 100 * k), vy: Math.round(vy * 100 * k), dodging: false, blocking: false, ba: null, dead: false,
+    ...(PD ? { pd: 1 } : {}) };
 }
 
 async function addPlayer(world, cfg, i) {

@@ -159,7 +159,8 @@ function truthAt(truth, t) {
 /* The walk: legs {ms, ang (radians) | null, roll?}; the game's own move
    broadcast every 16 ms from a page timer.  Returns the page's record of
    where it was (Date.now, x, y), when each leg began, and the wire count. */
-const walkOn = (A, legs, start) => A.page.evaluate(({ legs, speed, roll, start }) => new Promise((resolve) => {
+const walkOn = (A, legs, start) => Promise.race([new Promise((_, rej) => setTimeout(() => rej(new Error('the walk did not finish in 90 s')), 90000)), walkOnPage(A, legs, start)]);
+const walkOnPage = (A, legs, start) => A.page.evaluate(({ legs, speed, roll, start }) => new Promise((resolve) => {
   const S = window._gameState.current;
   const ch = S.channel;
   if (!ch.__qaWrapped) {
@@ -257,6 +258,9 @@ async function oneRun(browser, wsPort, webPort, rec, on) {
   const tag = on ? 'path on' : 'today';
   await H.liveFlag(wsPort, 'movepath', on ? true : null);
   const A = await H.newPlayer(browser, { name: on ? 'PathOn' : 'PathOff', wsPort, webPort, world: 'wheel', wide: true, viewport: VIEW, init: instrument });
+  const conLog = [];
+  A.page.on('console', (m) => { conLog.push(m.type() + ' ' + m.text()); if (conLog.length > 60) conLog.shift(); });
+  A.page.on('framenavigated', (f) => { if (f === A.page.mainFrame()) { console.log(`      ${tag}: the page navigated to ${f.url()}`); console.log(conLog.slice(-40).map((l) => '        | ' + String(l).slice(0, 220)).join('\n')); } });
   await H.enterWorld(A);
   let inWheel = false;
   for (let i = 0; i < 120 && !inWheel; i++) {
@@ -264,9 +268,19 @@ async function oneRun(browser, wsPort, webPort, rec, on) {
     if (!inWheel) await A.page.waitForTimeout(500);
   }
   const stopKeep = H.keepAlive(A, 15000);
+  let P = null;
+  try {
+    return await oneRunIn(A, P = peer(wsPort), wsPort, rec, on, tag, inWheel);
+  } finally {
+    stopKeep();
+    if (P) P.close();
+    await A.ctx.close().catch(() => {});
+  }
+}
+
+async function oneRunIn(A, P, wsPort, rec, on, tag, inWheel) {
   await A.page.waitForTimeout(2000);
   const a0 = await H.readState(A, (S) => ({ x: S.player.x, y: S.player.y, id: S.myId, caps: !!(S._serverCaps && S._serverCaps.movepath) }));
-  const P = peer(wsPort);
   await P.open();
   P.x = a0.x - 150; P.y = a0.y;
   await P.place(P.x, P.y);
@@ -277,6 +291,7 @@ async function oneRun(browser, wsPort, webPort, rec, on) {
   const out = { tag };
 
   /* ── 1. a straight walk ── */
+  console.log(`      ${tag}: 1 straight (url ${A.page.url()})`);
   P.watch = a0.id; P.got = [];
   const st = await walkOn(A, [{ ms: 3000, ang: 0 }]);
   out.rate = st.wire.length / 3;
@@ -286,6 +301,7 @@ async function oneRun(browser, wsPort, webPort, rec, on) {
   await A.page.waitForTimeout(1200);
 
   /* ── 2. the zig-zag in BroTown ── */
+  console.log(`      ${tag}: 2 zigzag (url ${A.page.url()})`);
   P.got = [];
   const rd = readCopy(wsPort, a0.id);
   const zz = await walkOn(A, zig(Math.PI));
@@ -297,13 +313,16 @@ async function oneRun(browser, wsPort, webPort, rec, on) {
   await A.page.waitForTimeout(1200);
 
   /* ── 3. among a land's monsters ── */
+  console.log(`      ${tag}: 3 land (url ${A.page.url()})`);
   await H.devOp(wsPort, 'testmode', a0.id, { on: true });
   await H.devOp(wsPort, 'vitals', a0.id, { god: true, godMinutes: 8 });
   /* to the Flame Fields' first goblins (mp-monsternumbers' way there) */
   await H.openLands(A, wsPort).catch(() => null);
   const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
   const spot = WHEEL_SPAWNS.ember.points[0];
+  console.log(`      ${tag}: lands open, gliding to the Flame Fields`);
   await H.glideTo(A, spot[0], spot[1] + 40, { timeoutMs: 90000 });
+  console.log(`      ${tag}: there (url ${A.page.url()})`);
   await A.page.waitForTimeout(3000);
   const mon = await A.page.evaluate(() => {
     const S = window._gameState.current;
@@ -362,11 +381,8 @@ async function oneRun(browser, wsPort, webPort, rec, on) {
     + `the copy from the phone at a blow mean ${r1(out.hits.atHit.mean)} px, 95% ${r1(out.hits.atHit.p95)} (after a change: mean ${r1(out.hits.atHitAfter.mean)}); `
     + `over the walk mean ${r1(out.land.mean)}, 95% ${r1(out.land.p95)}, after a change mean ${r1(out.land.afterMean)}, 95% ${r1(out.land.afterP95)}`);
   else console.log(`      ${tag}: no monster in the page's list to walk among`);
-  P.close();
-  stopKeep && stopKeep();
   const errs = A.logs.filter((l) => /pageerror/.test(l));
   rec.ok(`${tag}: no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));
-  await A.ctx.close().catch(() => {});
   return out;
 }
 

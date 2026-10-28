@@ -162,7 +162,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | Type | Purpose | Server case |
 |---|---|---|
 | `join` | Session start; negotiates `protocolVersion` | ~3418 |
-| `move` | Position/zone update (batched client-side, 33 ms). v2.3.3006: `sp: 1` marks a sprint step, judged at 1.33x the walking bound and paid for in stamina (server/src/sprint.js; an old worker ignores it) | ~3672 |
+| `move` | Position/zone update (batched client-side, 33 ms). v2.3.3006: `sp: 1` marks a sprint step, judged at 1.33x the walking bound and paid for in stamina (server/src/sprint.js; an old worker ignores it). v2.3.3726: `pd: 1` asks to be moved along `vx`/`vy` until the next move (caps.movepath, off by default; server/src/movepath.js) | ~3672 |
 | `pong` | Heartbeat reply | ~3811 |
 | `track` | **Cosmetics/appearance only** (2 s cadence) — allowlisted, see below | ~3819 |
 | `player_attack` | Attack swing (also relayed to peers — see Quirks) | ~3828 |
@@ -289,6 +289,22 @@ turn, stop, start or any other change goes on the next 33 ms batch. The worker
 passes such a move on at its next tick (`STEADY.SPACED_MS`). Same message, sent
 less often; an old worker gets every move, an old client sends every move. Kill
 switch: `movediet: false` (un-advertises the cap). `docs/specs/move-diet.md`.
+
+**v2.3.3726: the message diet -- a steady walk is sent as a path (OFF by
+default).** Against a worker advertising `caps.movepath` (only with
+`movepath: true` in the live flags), a client in the Wheel, not in a duel or an
+arena match, marks every `move` with `pd: 1` ("move me along my speed until my
+next one"). A steady move (every other field as sent, the same speed within ~2
+degrees, on its line, as far along it as the speed says, under 500 px/s)
+waits until 200 ms after the last one sent; a change (a turn, start, stop,
+sprint, roll, any field) goes on the next 33 ms batch; a move only off its
+line at the same speed (a wall, a shove) keeps the old rate
+(`src/game/moveDiet.js` pathMayWait / pathTurned). The worker moves its copy
+of a `pd` player along the speed between moves, at most the walk bound and 300
+ms past the last move, judging each new move from the last move's place
+(`server/src/movepath.js`), and sends a glider to the other phones every 66
+ms. Without `pd` (an old client, or the switch off) nothing changes; an old
+worker never advertises the cap. `docs/specs/move-path.md`.
 
 **v2.3.3254: the quiet phone -- several messages in one frame, and fewer.**
 - **A bundle.** Against a worker advertising `caps.bundle`, a frame may be a

@@ -30,6 +30,7 @@
  */
 import { GameRoom } from '../../../server/src/index.js';
 import { WHEEL_SPAWNS, WHEEL_CENTRE } from '../../../server/src/wheelspawns.js';
+import { MOVE_PATH, pathMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3726: --path */
 
 const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const FLAG = (name, d) => { const a = process.argv.find((x) => x.startsWith('--' + name + '=')); return a ? a.split('=')[1] : d; };
@@ -130,6 +131,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 
 /* ── the room and its players ────────────────────────────────────────── */
 const room = new GameRoom(mockState(), mockEnv);
+if (process.argv.includes('--path')) room._liveFlags = { movepath: true };   /* v2.3.3726 */
 let tickFn = null;
 {
   const realSetInterval = globalThis.setInterval;
@@ -158,7 +160,17 @@ const players = [];
 const pidOf = new Map();   /* id -> persona */
 tag = (k) => { for (const id of pidOf.keys()) if (k.indexOf(id) >= 0) return id; return null; };
 const msgIn = { frames: 0, byType: new Map() };
+/* v2.3.3726: --path, the message diet (src/game/moveDiet.js, server
+   movepath.js): the room switched on, every move marked, a steady one kept
+   back until 200 ms after the last sent, as a phone does */
+const PATH = process.argv.includes('--path');
 async function send(p, msg) {
+  if (PATH && msg.type === 'move') {
+    msg.pd = 1;
+    const now = Date.now();
+    if (p.lastMove && now - p.lastMoveAt < MOVE_PATH.GAP_MS && pathMayWait(true, msg, now, p.lastMove, p.lastMoveAt)) { msgIn.pathHeld = (msgIn.pathHeld || 0) + 1; return; }
+    p.lastMove = msg; p.lastMoveAt = now;
+  }
   msgIn.frames++;
   msgIn.byType.set(p.kind + ':' + msg.type, (msgIn.byType.get(p.kind + ':' + msg.type) || 0) + 1);
   p.sent++;
