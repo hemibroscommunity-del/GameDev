@@ -738,6 +738,11 @@ timed jump. The flipped body is too small (looks about 40% too small)."
   The bake now gives the head back on a roll frame, from the body as drawn, in
   a circle round where that frame's head is (`flipHead.js`).  Bare-chested it
   was never see-through; the head pieces were missing (below).
+  The head given back is the body's own recoloured pixels (the bake runs on
+  the character's tinted body), so it wears the character's skin -- the
+  owner: "The head skin (that's transparent during the flip) will need to be
+  recolored to whatever color the character is".  Checked on the purple
+  alien, ebony and alabaster (`docs/specs/flip-polish/flip-skins-before-after.png`).
 - **The head pieces turn with the head**: they were hidden for the whole roll
   (`_placeTrait`: the roll sheets record no head, and the topmost pixel is a
   boot).  `flipHead.js` has the head's centre and turn on every roll frame
