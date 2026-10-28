@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "04d4a81f9534bdf040e2f63fcedd11d97dc9d4d2",
+  "tree": "f92d84575fd5104985fc98a578781844678555b8",
+  "committedAt": "2026-10-28T15:26:41-07:00",
+  "subject": "The arena's chariot: your picture cut so the charioteer can stand in it (v2.3.3743) (#1222)",
+  "files": 6801,
+  "bytes": 794709037,
+  "listingSha256": "d1c82263627b8ea8440f9111431bbaf706533582566d71ab601e2f0811557f29",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

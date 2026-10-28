@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "087efb5b80ecbe570168100dbafeccf1b2019960",
+  "tree": "d5ab8e3173f730408d0a59f9fb3291836b79b205",
+  "committedAt": "2026-10-28T15:26:33-07:00",
+  "subject": "The message diet on for every phone by default (v2.3.3744) (#1220)",
+  "files": 6798,
+  "bytes": 794463025,
+  "listingSha256": "bf20cf25d3c914962309a77b6da9e893c81d6ef77d8f2822dd5b8ef5ac2fb30d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
