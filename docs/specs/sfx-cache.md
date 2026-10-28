@@ -14,7 +14,10 @@ townsfolk's hums and the snore are all held while you fight.
 
 ## What the switch does
 
-`?sfxcache` (off by default: with it off the game is exactly as before).
+**On by default since v2.3.3735.** The owner: *"I think including the new memory change work by default would be better. I can always revert the change if I don't like it or it doesn't work well."*
+
+`?sfxcache=0` turns it off for one phone: every sound decoded on the loading
+screen and held, as before.
 
 - **Pinned** (`PINNED` in `src/data/sfxCache.js`): every sound a fight, a
   walk or a tap can play quickly and often is decoded up front, as today, and
@@ -42,7 +45,7 @@ townsfolk's hums and the snore are all held while you fight.
   its work; the Sound Studio decodes what it lists while the cache has room.
 - No sample rate is lowered.
 
-`?sfxcache=8` tries another budget (in MB, 1-32).
+`?sfxcache=8` tries another budget (in MB, 1-32); `?sfxcache=0` is off.
 
 ## How long a cold sound waits
 

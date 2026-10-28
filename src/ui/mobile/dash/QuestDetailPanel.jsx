@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { QUEST_CHAINS, questSteps, questCountText } from '../../../data/gameSystems.js';   /* v2.3.2820: + questSteps; v2.3.3481: + questCountText */
@@ -237,8 +238,9 @@ export const QuestDetailPanel = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '2px 2px 4px', flexWrap: 'wrap' }}>
             {gold > 0 && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 14, fontWeight: 700, color: COL.gold, fontVariantNumeric: 'tabular-nums' }}>
-                <img src="/icons/popups/gold.webp" alt="gold"
-                  style={{ width: 15, height: 15, imageRendering: 'pixelated', display: 'block' }} />
+                {/* v2.3.3734: the reward's pile, drawn smooth (the owner's art is not pixel art) */}
+                <img src={coinArtFor(gold)} alt="gold"
+                  style={{ width: 15, height: 15, objectFit: 'contain', display: 'block' }} />
                 {gold}
               </span>
             )}

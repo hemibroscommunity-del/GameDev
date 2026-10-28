@@ -55,12 +55,13 @@
  * before tomorrow to see if there's any noticeable difference.  If not, I'd
  * rather just leave it on."):
  *   - this worker always UNDERSTANDS the path: it advertises caps.movepath and
- *     glides any move marked `pd: 1`.  A phone marks its moves only when it is
- *     asked to, so with nothing else set every phone sends exactly as today;
- *   - one phone tries it with `?diet=1` in its address (wsClient.js
+ *     glides any move marked `pd: 1`;
+ *   - v2.3.3744: EVERY PHONE IS ON IT BY DEFAULT (caps.pathall), the owner,
+ *     2026-10-28: "Just turn the message diet on now I'll turn it off if I do
+ *     not like".  `pathall: false` in the live flags (the Test panel's "Only
+ *     ?diet=1 phones") puts only a phone that asks back on it:
+ *   - one phone asks with `?diet=1` in its address (wsClient.js
  *     movePathOn; `?diet=0` keeps one phone out);
- *   - `pathall: true` in the live flags (OFF by default; the Test panel's
- *     Message diet buttons) turns it on for every phone;
  *   - `movepath: false` is the kill switch: no cap, no glide from the next
  *     tick, and every phone told at once (`move_path`, _movePathFlagChanged)
  *     to send every move again.
@@ -97,11 +98,11 @@ export const movePathMethods = {
     return !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'movepath') && !f.movepath);
   },
 
-  /* every phone on the path: `pathall: true` in the live flags, OFF by
-     default, and never while the kill switch is thrown */
+  /* every phone on the path: v2.3.3744, ON by default, off with `pathall:
+     false` in the live flags, and never while the kill switch is thrown */
   _movePathAll() {
     const f = this._liveFlags;
-    return this._movePathOn() && !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'pathall') && f.pathall === true);
+    return this._movePathOn() && !(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'pathall') && !f.pathall);
   },
 
   /* liveops.js, when `movepath` or `pathall` is set or cleared: every phone

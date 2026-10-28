@@ -1,3 +1,4 @@
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';
 import { ACE_FLIP_MIN_STAKE, ACE_FLIP_RISK_MULT, ACE_FLIP_WIN_CHANCE, aceFlipMaxStake, BT_AUDIO } from '@/data/index.js';
@@ -119,11 +120,13 @@ function itemTally(r) {
   return keys.map(function (k) { return sign + m[k] + ' ' + labelFor(k); }).join(', ');
 }
 
-function gold(amount, size, color) {
+/* v2.3.3734: `have` -- an amount had or won shows the owner's pile for it;
+   without it the amount is a stake or a price and shows the one coin */
+function gold(amount, size, color, have) {
   return React.createElement('span', {
     style: { display: 'inline-flex', alignItems: 'center', gap: 4, color: color || LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: size || 14 },
   }, React.createElement('img', {
-    src: '/icons/popups/gold.webp', alt: '', draggable: false,
+    src: have != null ? coinArtFor(have) : COIN_ONE, alt: '', draggable: false,
     style: { width: 15, height: 15, objectFit: 'contain' },
     onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); },
   }), amount);
@@ -372,7 +375,7 @@ export function AceFlipPanel() {
         ? React.createElement('img', { src: face, alt: '', draggable: false, style: { width: 30, height: 30, borderRadius: 7, objectFit: 'cover', background: LS.well, flexShrink: 0 } })
         : React.createElement('div', { style: { width: 30, height: 30, borderRadius: 7, background: LS.well, color: LS.txt3, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, flexShrink: 0 } }, String((r && r.name) || '?').slice(0, 1).toUpperCase()),
       React.createElement('div', { style: { flex: 1, minWidth: 0, fontSize: 14.5, color: LS.txt1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, (r && r.name) || 'Bro'),
-      gold((isWin ? '+' : '-') + ((r && r.amount) || 0), 14.5, isWin ? LS.win : LS.lose));
+      gold((isWin ? '+' : '-') + ((r && r.amount) || 0), 14.5, isWin ? LS.win : LS.lose, (r && r.amount) || 0));
   };
 
   var boardList = function (rows, isWin, title) {
@@ -527,7 +530,7 @@ export function AceFlipPanel() {
         /* v2.3.3481: the 2026-10-19 UI review -- "Bag 2550" beside the top
            bar's "2,550": the balance takes the HUD's own call (ZoneHeader.jsx).
            The stake chips and "Flip for 90g" are amounts, not the balance. */
-        React.createElement('span', { style: { fontSize: 12.5, color: LS.txt3 } }, 'Bag ', gold(Number(coins).toLocaleString(), 13))),
+        React.createElement('span', { style: { fontSize: 12.5, color: LS.txt3 } }, 'Bag ', gold(Number(coins).toLocaleString(), 13, undefined, coins))),
       /* THE LADDER IS BUILT, NOT LISTED.  A fixed Min / quarter / half / Max
          row reads as broken on a small bag: at 105 gold the max stake is 35,
          so the quarter is 8 -- BELOW the 10 minimum -- and the row rendered

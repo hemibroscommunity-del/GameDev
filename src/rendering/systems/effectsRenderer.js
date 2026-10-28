@@ -3,6 +3,7 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
+import { coinPileTexture } from '../coinPileArt.js';   /* v2.3.3734: the owner's coin piles, one an amount */
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
 import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard */
@@ -1523,7 +1524,9 @@ const POPUP_ICONS = {};
 /* v2.3.3209: + the dice a kill's roll wears in front of it (game/killRoll.js):
    the Gambling Den's two, cut to their own edge (/icons/popups/dice.webp) */
 /* v2.3.3279: + the owner's shield, in front of "Defense Lv N" (it wore 🛡️) */
-const POPUP_ICON_KEYS = ['xp', 'gold', 'sword', 'arrow', 'spell', 'heart', 'crit', 'dice', DEFENSE_POPUP_KEY].concat(Object.keys(ELEM_ICON_SRC));
+/* v2.3.3734: 'gold' left this list -- the "+5 G" mark is the owner's pile for
+   the amount now (coinPileArt.js), and nothing else drew gold.webp */
+const POPUP_ICON_KEYS = ['xp', 'sword', 'arrow', 'spell', 'heart', 'crit', 'dice', DEFENSE_POPUP_KEY].concat(Object.keys(ELEM_ICON_SRC));
 /* v2.3.2211: 'crit' is the one key whose art does not live in /icons/popups.
    Reusing the Hero screen's own crit icon rather than copying it to a second
    path -- one asset, one meaning, and no chance of the two drifting apart
@@ -6331,11 +6334,14 @@ export class EffectsRenderer {
            gold from text pattern. Damage popups need an explicit iconKey
            because the text alone doesn't tell us the weapon type. */
         let iconKey = dmg.iconKey;
+        /* v2.3.3734: "+5 G" wears the owner's pile for its amount */
+        let coinTex = null;
         if (!iconKey) {
-          if (/^\+\d+\s*G$/.test(t)) iconKey = 'gold';
+          const _g = /^\+(\d+)\s*G$/.exec(t);
+          if (_g && (coinTex = coinPileTexture(+_g[1]))) iconKey = 'gold';
         }
-        if (iconKey && POPUP_ICONS[iconKey]) {
-          const tex = POPUP_ICONS[iconKey];
+        if (iconKey && (coinTex || POPUP_ICONS[iconKey])) {
+          const tex = coinTex || POPUP_ICONS[iconKey];
           const icon = new Sprite(tex);
           icon.anchor.set(0, 0.5);
           /* v2.3.2212 (owner: "make the crit icon much larger (I can barely
@@ -9878,7 +9884,9 @@ export class EffectsRenderer {
        gray + lower alpha and skip the "+Xg" label since the watcher
        doesn't know the recipient's per-share value. */
     const owned = ownsThis !== false;
-    const goldTex = POPUP_ICONS.gold;
+    /* v2.3.3734: the owner's pile for the amount (one coin for a watcher, who
+       does not know the share) */
+    const goldTex = coinPileTexture(owned ? l.coins : 1);
     if (goldTex) {
       if (!l._pixiCoinSprite || l._pixiCoinSprite.destroyed) {
         const sp = new Sprite(goldTex);
@@ -9891,7 +9899,10 @@ export class EffectsRenderer {
       l._pixiCoinSprite.y = anchorY;
       l._pixiCoinSprite.alpha = (owned ? 1 : 0.4) * alpha;
       l._pixiCoinSprite.tint = owned ? 0xffffff : 0x555555;
-      l._pixiCoinSprite.scale.set((12 * LOOT_SCALE) / (l._pixiCoinSprite.texture.width || 12));
+      if (l._pixiCoinSprite.texture !== goldTex) l._pixiCoinSprite.texture = goldTex;
+      /* v2.3.3734: fitted by its longer side (a pile is wider than tall, the
+         one coin taller than wide; gold.webp was square) */
+      l._pixiCoinSprite.scale.set((12 * LOOT_SCALE) / (Math.max(goldTex.width, goldTex.height) || 12));
       applySquash(l._pixiCoinSprite, sq, rot);   /* v2.3.2771; v2.3.2772 tilt */
       l._pixiCoinSprite.visible = true;
     }
@@ -10516,7 +10527,9 @@ export class EffectsRenderer {
         gfx.fill({ color: glowColor, alpha: glowAlpha });
         /* Coin icon sprite (matches HUD/popup gold icon).  Falls back
            to the procedural multi-circle stack while the PNG is loading. */
-        const goldTex = POPUP_ICONS.gold;
+        /* v2.3.3734: the owner's pile for the amount; a watcher, who does
+           not know the share, sees the one coin */
+        const goldTex = coinPileTexture(ownsThis ? l.coins : 1);
         if (goldTex) {
           if (!l._pixiSprite || l._pixiSprite.destroyed) {
             const sp = new Sprite(goldTex);
@@ -10529,7 +10542,8 @@ export class EffectsRenderer {
           l._pixiSprite.zIndex = LOOT_Z.coin;
           l._pixiSprite.alpha = (ownsThis ? 1 : 0.5) * alpha;
           l._pixiSprite.tint = ownsThis ? 0xffffff : 0x555555;
-          l._pixiSprite.scale.set((14 * LOOT_SCALE) / (l._pixiSprite.texture.width || 14));
+          if (l._pixiSprite.texture !== goldTex) l._pixiSprite.texture = goldTex;
+          l._pixiSprite.scale.set((14 * LOOT_SCALE) / (Math.max(goldTex.width, goldTex.height) || 14));
           applySquash(l._pixiSprite, hC.sq, hC.rot);
           l._pixiSprite.visible = true;
         } else {

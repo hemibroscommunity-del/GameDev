@@ -19,6 +19,8 @@
  * frame had no pixels yet (spawn) or the bake failed: draw the raw body.
  * Byte-identity with the inline version is pinned by tools/qa/qa-bake-ident.mjs. */
 import { jogWaistRow } from './jogWaist.js';
+import { gearTint } from './gearVariants.js';
+import { flipHeadAt } from './flipHead.js';   /* v2.3.3738: the tumble's head, kept */
 
 function _histMedian(h, n) {
   const want = n >> 1;
@@ -713,6 +715,24 @@ export function bakeMaskedCanvas(inp) {
               bctx.imageSmoothingEnabled = false;
               bt(bctx, 0, 0, 256, 256);   /* v2.3.2750: cropped frames */
               const bd = bctx.getImageData(0, 0, 256, 256).data;
+              /* v2.3.3733 (owner: "Northeast and northwest jog while wearing
+                 full copper armor the midsection with the belt is either gray
+                 (matching iron)..."): the plate and greaves are the steel art
+                 with the metal's tint (materialTints.js, a multiply on their
+                 sprites), but the chain is copied INTO the body, which is drawn
+                 untinted -- so it stayed steel grey in every metal.  It takes
+                 the chest's tint here, the same multiply: copper chain under a
+                 copper plate, and steel (white) a no-op.  The bake's key holds
+                 the worn ids (chest:copperplate), so each metal bakes its own. */
+              const _cw = worn.find((w) => w.k && w.k.indexOf('chest:') === 0);
+              const _ct = _cw ? gearTint(_cw.k.slice(6)) : 0xFFFFFF;
+              if (_ct !== 0xFFFFFF) {
+                const tr = (_ct >> 16) & 255, tg = (_ct >> 8) & 255, tb = _ct & 255;
+                for (let o = 0; o < bd.length; o += 4) {
+                  if (bd[o + 3] <= 40) continue;
+                  bd[o] = (bd[o] * tr + 127) / 255 | 0; bd[o + 1] = (bd[o + 1] * tg + 127) / 255 | 0; bd[o + 2] = (bd[o + 2] * tb + 127) / 255 | 0;
+                }
+              }
               const _score = (R, G, B, T) => { const nn = T[0] * T[0] + T[1] * T[1] + T[2] * T[2] || 1; const dt = R * T[0] + G * T[1] + B * T[2]; return dt * dt / nn; };
               const { skinRef, pantsRef, shoesRef } = _bakeRefs;
               /* v2.3.1349: paint over the belt sheet's FULL extent, not just
@@ -850,6 +870,31 @@ export function bakeMaskedCanvas(inp) {
         if (dirty2) ctx.putImageData(img2, 0, 0);
       }
     } catch (e) { /* silhouette confinement is best-effort */ }
+    /* ═══ v2.3.3738: THE TUMBLE'S HEAD IS KEPT ═══
+       The owner: "The double jump head is transparent".  Everything above
+       keeps the head as the top third of the figure (neckY) -- and on the
+       roll's handstand and tuck the head is at the BOTTOM, upside down, so the
+       dilated erase and the silhouette confinement took it with the body under
+       the plate, and the ground showed through where it was.  On a roll frame
+       the head is given back from the body as drawn, in a circle round where
+       the head is on that frame (flipHead.js, measured); the plates are drawn
+       over the body, so what they cover stays covered. */
+    if (origBody && poseInfo && poseInfo.pose === 'dodge') {
+      const h = flipHeadAt(poseInfo.dir, poseInfo.frameIdx);
+      if (h && h.r > 0) {
+        const R = Math.ceil(h.r * 1.35), x0 = Math.max(0, Math.floor(h.x - R)), x1 = Math.min(255, Math.ceil(h.x + R));
+        const y0 = Math.max(0, Math.floor(h.y - R)), y1 = Math.min(255, Math.ceil(h.y + R));
+        const img3 = ctx.getImageData(0, 0, 256, 256), d3 = img3.data;
+        for (let y = y0; y <= y1; y++) {
+          for (let x = x0; x <= x1; x++) {
+            if ((x - h.x) * (x - h.x) + (y - h.y) * (y - h.y) > R * R) continue;
+            const o = (y * 256 + x) * 4;
+            if (origBody[o + 3] > d3[o + 3]) { d3[o] = origBody[o]; d3[o + 1] = origBody[o + 1]; d3[o + 2] = origBody[o + 2]; d3[o + 3] = origBody[o + 3]; }
+          }
+        }
+        ctx.putImageData(img3, 0, 0);
+      }
+    }
   } catch (e) { return null; }
   return { cv, beltPending: _beltPending };
 }

@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { BT_AUDIO, calcBlockReduction, calcCritChance, calcCritMult, calcDisplayDmgRange, calcMoveSpeed, getActiveWeapon, getDefenseBlockBonus, getWeaponCritDmgStat, getWeaponCritStat, weaponXpRequired, xpRequired, toDisplayHp } from '@/data/index.js'; /* v2.3.2520: the display damage scale */
 import { prog3HasSkills, prog3SkillLevel, prog3XpRequired, prog3Pts, PROG3 } from '@/data/prog3.js'; /* v2.3.1901, v2.3.1902 */
@@ -208,7 +209,7 @@ export function StatScreenPanel(props) {
       marginBottom: 10
     }
   }, "XP: ", rpgState.xp, "/", xpRequired(rpgState.level), " \xB7 ", /*#__PURE__*/React.createElement("img", {
-    src: "/icons/popups/gold.webp",
+    src: coinArtFor(rpgState.coins), /* v2.3.3734: the pile for the amount */
     alt: "",
     draggable: false,
     style: {
