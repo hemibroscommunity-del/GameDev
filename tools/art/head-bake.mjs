@@ -47,11 +47,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { encode, decode } from '../png.mjs';
+import { cutPerRole } from './lookCut.mjs';
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const OUT = path.join(REPO, 'public/sprites/look/heads');
 const PORT = Number(process.env.HEAD_BAKE_PORT || 5198);
 const CHECK = process.argv.includes('--check');
+/* --bits 8: each piece cut to 255 colours per role (lookCut.mjs, the owner's
+   "anything at 256"), held to BAR8 levels of the old path on every texel, or
+   kept at 16 bits (exact) where it cannot be */
+const BITS = (() => { const i = process.argv.indexOf('--bits'); return i > 0 && Number(process.argv[i + 1]) === 8 ? 8 : 16; })();
+const BAR8 = 16;
 const VERSION = 'v2.3.3753';
 /* the row's entry for each category (LOOK_ROW_RANGES.head is 64-127) */
 export const HEAD_ENTRY = Object.freeze({ hair: 64, headwear: 65, facialhair: 66, eyewear: 67, eyestyle: 68 });
@@ -108,7 +114,7 @@ async function pageList() {
 }
 
 /* ── in the page: one piece ── */
-async function pageBake({ cat, id, dirs, refScale }) {
+async function pageBake({ cat, id, dirs, refScale, bits, cutSrc }) {
   const CP = await import('/rendering/characterPortrait.js');
   const TI = await import('/rendering/traits/traitImg.js');
   const HC = await import('/rendering/traits/hatColorCatalog.js');
@@ -176,7 +182,8 @@ async function pageBake({ cat, id, dirs, refScale }) {
       if (r < 0) { unexplained++; continue; }
       F.role[p] = r;
       counts[r ? 1 : 0]++;
-      keys.set(keyOf(r, d, i), 0);
+      const k = keyOf(r, d, i);
+      keys.set(k, (keys.get(k) || 0) + 1);
     }
     /* the crop: even, with two see-through texels round the art */
     if (x1 < 0) { F.crop = null; return; }
@@ -184,6 +191,16 @@ async function pageBake({ cat, id, dirs, refScale }) {
     const cx1 = Math.min(W, x1 + 3), cy1 = Math.min(H, y1 + 3);
     F.crop = [cx0, cy0, cx1 - cx0, cy1 - cy0];
   });
+  /* 8 bits: the colours cut to 255, per role (lookCut.mjs) */
+  let remap = null, quant = null;
+  if (bits === 8) {
+    const cut = (new Function('return ' + cutSrc))()(keys, 255);
+    if (cut) {
+      remap = cut.remap; quant = cut.quant;
+      keys.clear();
+      for (const [k, n] of cut.keys) keys.set(k, n);
+    }
+  }
   const sorted = [...keys.keys()].sort((a, b) => a - b);
   if (sorted.length + 1 > 65535) throw new Error(cat + '/' + id + ': ' + sorted.length + ' colours, over 16 bits');
   const table = new Uint8Array((sorted.length + 1) * 4);
@@ -215,7 +232,8 @@ async function pageBake({ cat, id, dirs, refScale }) {
     for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
       const p = (cy + y) * F.W + cx + x;
       if (!F.d[p * 4 + 3]) continue;
-      nums[(F.ay + y) * PW + F.ax + x] = keys.get(keyOf(F.role[p], F.d, p * 4));
+      const k = keyOf(F.role[p], F.d, p * 4);
+      nums[(F.ay + y) * PW + F.ax + x] = keys.get(remap ? remap.get(k) : k);
     }
     cells.push([F.ax, F.ay, cx, cy, w, h, 0]);
     cellDirs.push(F.dir);
@@ -257,7 +275,7 @@ async function pageBake({ cat, id, dirs, refScale }) {
   }
   const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
   return {
-    w: PW, h: PH, entries: sorted.length + 1, ends, cells, dirs: cellDirs, roleDefs, counts, unexplained, ambiguous, check, flat,
+    bits, quant, w: PW, h: PH, entries: sorted.length + 1, ends, cells, dirs: cellDirs, roleDefs, counts, unexplained, ambiguous, check, flat,
     nums: b64(new Uint8Array(nums.buffer, nums.byteOffset, nums.byteLength)), table: b64(table),
   };
 }
@@ -292,8 +310,9 @@ async function main() {
   const pinned = process.env.BT_CHROMIUM || '/opt/pw-browsers/chromium';
   if (fs.existsSync(pinned)) opts.executablePath = pinned;
   const browser = await chromium.launch(opts);
-  const out = { v: 1, version: VERSION, kind: 'head', bits: 16, fw: 128, fh: 128, refScale: REF_SCALE, entry: HEAD_ENTRY, code: codeHash(), sheets: {} };
-  let bad = 0, bytes = 0, texels = 0;
+  const out = { v: 1, version: VERSION, kind: 'head', bits: BITS, fw: 128, fh: 128, refScale: REF_SCALE, entry: HEAD_ENTRY, code: codeHash(), sheets: {} };
+  let bad = 0, bytes = 0, texels = 0, texBytes = 0, worst = 0;
+  const nBits = { 8: 0, 16: 0 };
   try {
     const page = await browser.newPage();
     page.on('pageerror', (e) => console.error('page error:', e.message));
@@ -305,16 +324,23 @@ async function main() {
       for (const f of fs.readdirSync(OUT)) if (f.endsWith('.png')) fs.unlinkSync(path.join(OUT, f));
     }
     for (const { cat, id } of list) {
-      const r = await page.evaluate(pageBake, { cat, id, dirs: CAT_DIRS[cat], refScale: REF_SCALE });
+      const args = { cat, id, dirs: CAT_DIRS[cat], refScale: REF_SCALE, bits: BITS, cutSrc: cutPerRole.toString() };
+      let r = await page.evaluate(pageBake, args);
+      /* a cut that misses the bar: this piece stays exact */
+      if (r.bits === 8 && r.check.max > BAR8) r = await page.evaluate(pageBake, { ...args, bits: 16 });
       const { png, tableRows } = sheetPng(r);
       const name = `${cat}-${id}`;
-      const ok = !r.unexplained && !r.check.over1 && r.cells.length;
+      const ok = !r.unexplained && (r.quant ? r.check.max <= BAR8 : !r.check.over1) && r.cells.length;
       if (!ok) bad++;
       bytes += png.length; texels += r.w * (r.h + tableRows);
       console.log(`${ok ? 'ok  ' : 'BAD '} ${name.padEnd(28)} ${String(r.w).padStart(4)}x${r.h}+${tableRows}  ${String(r.entries).padStart(5)} colours  roles ${r.roleDefs.map((ro) => ro.name + '@' + (ro.ref64 / REF_SCALE).toFixed(2)).join(',')}`
-        + `  keep/paint ${r.counts.join('/')}  unexplained ${r.unexplained}  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}`);
+        + `  keep/paint ${r.counts.join('/')}  unexplained ${r.unexplained}  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}`
+        + `  ${r.bits} bits${r.quant ? ` (cut from ${r.quant.from}: a pixel moved ${r.quant.meanMoved} on average, ${r.quant.worstMoved} at most)` : ''}`);
+      worst = Math.max(worst, r.check.max);
+      texBytes += r.w * (r.h + tableRows) * (r.bits === 8 ? 1 : 2);
+      nBits[r.bits]++;
       const entry = HEAD_ENTRY[cat];
-      out.sheets[name] = { ds: 1, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends, cells: r.cells, dirs: r.dirs,
+      out.sheets[name] = { ds: 1, bits: r.bits, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends, cells: r.cells, dirs: r.dirs,
         roleDefs: r.roleDefs.map((ro) => ({ name: ro.name, entry, ref: ro.ref64, under: 0 })), art: artHash(cat, id), bytes: png.length };
       const file = path.join(OUT, name + '.png');
       if (CHECK) {
@@ -331,7 +357,8 @@ async function main() {
     await server.close();
   }
   if (!CHECK) fs.writeFileSync(path.join(OUT, 'roles.json'), JSON.stringify(out) + '\n');
-  console.log(`${Object.keys(out.sheets).length} pieces, ${(bytes / 1024).toFixed(0)} KB of PNG, ${(texels * 2 / 1048576).toFixed(2)} MB on the chip (16 bits a texel)`);
+  void texels;
+  console.log(`${Object.keys(out.sheets).length} pieces (${nBits[8]} at 8 bits, ${nBits[16]} at 16), ${(bytes / 1024).toFixed(0)} KB of PNG, ${(texBytes / 1048576).toFixed(2)} MB on the chip, worst texel against the old path ${worst}`);
   console.log(bad ? `${bad} sheet(s) failed` : (CHECK ? 'the numbers on disk are a fresh bake' : `wrote ${path.relative(REPO, OUT)}/`));
   process.exit(bad ? 1 : 0);
 }
