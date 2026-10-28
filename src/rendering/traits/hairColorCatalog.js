@@ -16,6 +16,7 @@ import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606 */
 import { recolorHairToCanvas } from '../characterPortrait.js';
 import { recolorEnabled } from './recolorOptions.js';
 import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
+import { headLookTextures, headLookReady } from './headLook.js';   /* v2.3.3753: drawn from the shared numbers */
 
 export const HAIR_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#5a3a22', target: null },
@@ -166,9 +167,12 @@ function build(hairId, colorId) {
  *  made -- at once when there is none to make (the native colour, long hair)
  *  or it is already made.  Kicks the build if nothing has asked yet. */
 export function coloredHairReady(hairId, colorId) {
-  getColoredHairTextures(hairId, colorId);
-  const p = _building[hairId + '/' + colorId];
-  return p ? p.catch(() => {}) : Promise.resolve();
+  /* v2.3.3753: the numbers first, so yours is drawn from them, not copied */
+  return headLookReady().then(() => {
+    getColoredHairTextures(hairId, colorId);
+    const p = _building[hairId + '/' + colorId];
+    return p ? p.catch(() => {}) : undefined;
+  });
 }
 
 /** Recolored hair texture map for (hairId, colorId), or null for the default
@@ -180,6 +184,9 @@ export function getColoredHairTextures(hairId, colorId) {
      native -- its picker only offers a single black swatch (see BroTown). */
   if (hairId === 'long') return null;
   if (!hairId || hairId === 'none' || !colorId || colorId === 'default' || !hairColorTarget(colorId)) return null;
+  /* v2.3.3753: from the shared numbers when they can draw it (headLook.js) */
+  const look = headLookTextures('hair', hairId, hairColorTarget(colorId));
+  if (look) return look;
   const key = hairId + '/' + colorId;
   const e = _cache[key];
   if (e === undefined) { build(hairId, colorId); return null; }

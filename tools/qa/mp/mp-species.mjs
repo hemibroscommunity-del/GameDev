@@ -253,7 +253,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!P) return null;
     P.textures('alien', 'green');                   /* kicks the bake */
     for (let i = 0; i < 40 && !P.textures('alien', 'green'); i++) await new Promise((r) => setTimeout(r, 150));
-    const px = P.pixels('alien', 'green');
+    /* v2.3.3753: drawn from the shared numbers, the probe's answer is made on the first ask */
+    let px = P.pixels('alien', 'green');
+    for (let i = 0; i < 40 && !px; i++) { await new Promise((r) => setTimeout(r, 150)); px = P.pixels('alien', 'green'); }
     if (!px) return null;
     const out = {};
     for (const dir of Object.keys(px)) {
