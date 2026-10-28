@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6e451ae73ef79389cdea9988ceb999b25e8f429b",
+  "tree": "1cf6e46a0e7696b9d7ad529bf46039e60cc32897",
+  "committedAt": "2026-10-28T14:52:01-07:00",
+  "subject": "Fewer movement messages: a steady walk sent about 5 times a second; try it with ?diet=1 or turn it on for everyone from the Test panel (v2.3.3732) (#1210)",
+  "files": 6788,
+  "bytes": 792208594,
+  "listingSha256": "6ab571033e6632b866edb904b6bdc9a0cfecc5aa588370be0b4e7bcb59327b3e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
