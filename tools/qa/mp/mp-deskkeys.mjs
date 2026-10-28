@@ -569,8 +569,10 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     /* the sword: the double click's lunge (the first press's, or its own) */
     await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
     await P.page.waitForTimeout(800);
-    await H.waitFor(P, () => (window.__btAbilityStatus ? window.__btAbilityStatus('sworddash') : null),
-      (st) => !!st && st.visible && st.equipped && st.afford && st.cdLeft === 0, { timeout: 15000, label: 'the lunge ready' }).catch(() => null);
+    /* the bash and the rolls spent stamina: topped up, and the lunge ready */
+    await H.devOp(wsPort, 'vitals', me, { heal: true }).catch(() => {});
+    const ready = await H.waitFor(P, () => (window.__btAbilityStatus ? window.__btAbilityStatus('sworddash') : null),
+      (st) => !!st && st.visible && st.equipped && st.afford && st.cdLeft === 0, { timeout: 30000, label: 'the lunge ready' }).catch(() => null);
     /* a snowman at a lunge's distance (one at your feet is struck where it
        stands, no dash): step back from them first if they crowd you */
     ms = await snowmen(P);
@@ -594,7 +596,7 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     const s1 = await look(P);
     const dash = await P.page.evaluate(() => { const w = window.__dkDash; window.__dkDash = null; return w ? w.dash : null; });
     rec.ok(`8f. the sword in hand, a double click on a snowman (${mm && mm.id}, ${mm && mm.d} px) lunges at it (the dash left for ${dash}) and ends locked on it: ${JSON.stringify(s1.lock)}`,
-      !!pm && pm.canvas && dash === mm.id && !!s1.lock && s1.lock.id === mm.id, { dash, lock: s1.lock, dbl: s1.dbl, pm });
+      !!pm && pm.canvas && dash === mm.id && !!s1.lock && s1.lock.id === mm.id, { dash, lock: s1.lock, dbl: s1.dbl, press: s1.press, pm, ready });
 
     rec.ok('8g. no page errors', errors.length === 0, errors.slice(0, 3));
   } finally {
