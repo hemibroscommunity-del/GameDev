@@ -98,6 +98,64 @@ the emotes' own button, the chat box's smiley, wears the B.
   or a computer window under 1000 px wide (no column) keeps it in the corner
   of the game as above (`data-kb-place="column"`).
 
+## v2.3.3711: the owner's layout, and its combos
+
+The owner, 2026-10-28: "Do your recommended keyboard layout. I still think
+there are better layouts if you consider more creative combos (like keyboard
+presses while a click is held down, double clicking, etc)."  The judges play
+on computers.  The left hand stays on WASD, the right on the mouse:
+
+| Does | Now | Before |
+|---|---|---|
+| Shield up (faces the pointer) | right mouse button HELD; let go lowers it | Q held |
+| Shield bash | a left click while the right button is held | Q+E (E with the guard up still bashes, unlisted) |
+| The weapon's special | Q | F, or a right click |
+| Element Burst | F | G (G still works, unlisted) |
+| Next / last weapon | the mouse wheel (down the next, up the one before) | Tab, 1-3 (both stay) |
+| Dodge roll | a direction key tapped twice within 250 ms, that way | Space (stays) |
+| Lock on | a double click on a monster (with the sword, the lunge) | a click (toggled: two clicks let it go again) |
+
+Unchanged: Space, Shift, X, R, E, V, T, C, B, the page keys, Esc, Enter, the
+left click's attack.  Phones are unchanged.
+
+What gives way, and what keeps its old use:
+- **A right click with no shield on the arm is still the special** (a new bro
+  has no shield, and a right click that did nothing would read as broken).
+  The special now fires on the right button's PRESS, not on the browser's
+  `contextmenu` (which Windows sends on the release, where a held guard's
+  let-go would have fired one).
+- **The browser's right-click menu** never opens over the game on a computer
+  (`desktopControls.js` refuses it on the whole page, `(pointer:fine)` only);
+  a text field and a link keep their menu (paste, open in a new tab).
+- With the shield up, a left click is the bash wherever it lands: you cannot
+  talk, harvest or dig with your guard raised (as E said since v2.3.1733).
+  Where the worker casts no abilities, the click is the swing it always was.
+- The shield comes down when the right button is let go anywhere on the page
+  (heard on the window), and when the window loses focus.
+- The double tap counts presses only (a held key's repeats never), only the
+  same key twice, and a roll forgets the pair, so a third quick tap starts the
+  next pair. Its other axis is the keys held across it (W held, D tapped
+  twice: up and right). `?dbltap=0` turns it off for a tab.
+- The wheel adds a notch's or a trackpad flick's small deltas up to one step
+  (50 px), then lets the rest of that flick go for 220 ms: one notch, one
+  weapon. Over the world only: over a page or a window it scrolls as before.
+  Ctrl with the wheel is the browser's zoom.
+- A double click on a monster always ends locked on it (`src: 'tap'`): its
+  second click no longer lets the first click's lock go.
+
+Built in `src/game/deskCombos.js` (the double tap and the wheel, no imports,
+node-tested), `desktopControls.js` (Q, F/G, the double tap, the right button's
+release, the menu), `BroTown.jsx`'s canvas (`_deskRightPress`,
+`_deskBashPress`, `onDoubleClick`, `onWheel`), `weaponSlots.js`
+(`prevWeaponSlot`). Every place a player reads a key says the new one: the
+controls column (`deskKeyList.js`: R-Click, +Click right under it, 2×WASD,
+2×Click, Wheel), the Element Burst button's key cap (F), the shield's item
+card ("Hold right-click to block").
+
+Owner's calls, open: whether to keep the double tap's roll (a quick double
+nudge of W rolls now; `?dbltap=0` is the off switch for a tab), and whether
+the wheel's direction (down = next) reads right on their mouse.
+
 ## Adding a key
 
 1. Bind it in `desktopControls.js`; if it opens a dashboard page or the map,
@@ -122,4 +180,13 @@ browser; typing in chat opens nothing; M and Esc on the world map; Esc on the
 bank, Diego, Ace, the daily rewards, and on the rewards over the bank one at
 a time; Enter as Mayor Bro's Next and as Accept Quest (the worker's record
 says the quest is active), Esc as Not now; a phone wears no letter and has
-no strip.
+no strip.  v2.3.3711, a second computer (the wide layout) at Frost Ridge with
+a greatsword and a bow, Playwright's real mouse and keys: the wheel down and up
+over the world (and nothing over the controls column), Q the special (no
+shield), F and G the burst (F no special), the right button held raising the
+shield toward the pointer with no browser menu, a left click with it the bash
+(sent to the worker, no swing), the release lowering it, the right button
+without a shield the special, D tapped twice rolling (once more, or A twice
+slowly, not), a double click on a snowman locking on with the bow and lunging
+with the sword.  `server/test/desk-keys.test.mjs` §7-9 hold the table, the
+combos' rules and the weapon cycle backwards.

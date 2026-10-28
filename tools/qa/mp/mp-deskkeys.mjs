@@ -22,6 +22,25 @@
  *      (back a step, then shut);
  *   6. Enter is Mayor Bro's Next and the quest's Accept, Esc its "Not now";
  *   7. a phone shows none of the letters.
+ *
+ * v2.3.3711, THE OWNER'S LAYOUT ("Do your recommended keyboard layout. I
+ * still think there are better layouts if you consider more creative combos
+ * (like keyboard presses while a click is held down, double clicking, etc)").
+ * A second computer (1280 x 800, the wide layout players get), in the world at
+ * Frost Ridge, a greatsword and a bow, every binding driven by Playwright's
+ * real mouse and keyboard:
+ *   8a. the mouse wheel over the world: down the next weapon, up the one
+ *       before; over the controls column it swaps nothing;
+ *   8b. Q is the weapon's special (it raises no shield); F the Element Burst,
+ *       G too, and F no longer the special;
+ *   8c. the right button HELD raises the shield, facing the pointer, no
+ *       browser menu; a left click while it is held is the shield bash (sent
+ *       to the worker), not a swing; letting go lowers it;
+ *   8d. with no shield on the arm, the right button is the special, as it was;
+ *   8e. D tapped twice quickly rolls; once, or twice slowly, does not;
+ *   8f. a double click on a snowman, the bow in hand, ends locked on it (two
+ *       single clicks used to lock and let go); with the sword it lunges at it;
+ *   8g. no page errors.
  */
 import * as H from './harness.mjs';
 
@@ -48,7 +67,12 @@ const sheet = (P) => P.page.evaluate(() => {
 const mapOpen = (P) => P.page.evaluate(() => !!(window.__btWorldMap && window.__btWorldMap.open) && !!document.querySelector('[data-world-map]'));
 const key = async (P, k, ms = 450) => { await P.page.keyboard.press(k); await P.page.waitForTimeout(ms); };
 
-export async function run({ browser, wsPort, webPort, rec }) {
+export async function run(ctx) {
+  await runKeys(ctx);
+  await runLayout(ctx);
+}
+
+async function runKeys({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Deskkeys', wsPort, webPort, viewport: DESK, world: 'wheel' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
@@ -341,5 +365,239 @@ export async function run({ browser, wsPort, webPort, rec }) {
       phone.coarse && (phone.nav === 'none' || phone.nav === 'normal') && (phone.map === 'none' || phone.map === 'normal' || phone.map === 'absent') && !phone.strip, phone);
   } finally {
     await Q.ctx.close().catch(() => {});
+  }
+}
+
+/* ═══ 8. v2.3.3711: THE OWNER'S LAYOUT, BY THE REAL MOUSE AND KEYBOARD ═══ */
+const WIDE = { width: 1280, height: 800 };
+/* a world point on the page, and whether the world is what is there */
+const pagePoint = (P, wx, wy) => P.page.evaluate(([x, y]) => {
+  const S = window._gameState.current;
+  const cv = document.querySelector('canvas.brotown-canvas').getBoundingClientRect();
+  const px = cv.left + (x - S.camera.x) * S._worldScaleX, py = cv.top + (y - S.camera.y) * S._worldScaleY;
+  const top = document.elementFromPoint(px, py);
+  return { x: Math.round(px), y: Math.round(py), canvas: !!(top && top.classList && top.classList.contains('brotown-canvas')) };
+}, [wx, wy]);
+const snowmen = (P) => P.page.evaluate(() => {
+  const S = window._gameState.current, p = S.player;
+  return (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp == null || m.curHp > 0) && m.home === 'frost')
+    .map((m) => ({ id: String(m.id), x: Math.round(m.x), y: Math.round(m.y), d: Math.round(Math.hypot(m.x - p.x, m.y - p.y)) }))
+    .sort((a, b) => a.d - b.d);
+});
+/* what the game holds now, for a before and after */
+const look = (P) => P.page.evaluate(() => {
+  const S = window._gameState.current, R = S.rpg || {}, lt = S.lockedTarget;
+  return { slot: R.activeSlot || 'melee', swipe: S._lastSwipe || 0, burst: Math.max(S._lastBurstAt || 0, S._burstMsgAt || 0),
+    up: !!S._shieldUp, mouse: !!S._shieldMouse, ang: typeof S._shieldAngle === 'number' ? S._shieldAngle : null,
+    aim: typeof S._mouseAimAngle === 'number' ? S._mouseAimAngle : null, swing: S.swingTimer || 0,
+    roll: !!S._dodgeRoll, rolls: S._dblTapRolls || 0, press: window.__btDeskPress || null, dbl: window.__btDeskDbl || null,
+    lock: lt ? { id: lt.id != null ? String(lt.id) : null, src: lt.src || null } : null,
+    sent: (window.__dkSent || []).slice(), menus: (window.__dkMenus || []).slice() };
+});
+const angGap = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+
+async function runLayout({ browser, wsPort, webPort, rec }) {
+  const P = await H.newPlayer(browser, { name: 'Desklayout', wsPort, webPort, viewport: WIDE, world: 'wheel', wide: true });
+  const errors = [];
+  P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
+  try {
+    await H.enterWorld(P);
+    const inW = await H.waitFor(P, (S) => ({ z: S.currentZone, l: !!S._zoneLoading, desk: !!S._isDesktop }),
+      (v) => v.z === 'wheel' && !v.l, { timeout: 150000, label: 'into the world' }).catch(() => null);
+    rec.ok('8. a computer in the world, the wide layout (guard)', !!inW && inW.desk && !!(await P.page.$('.bt-desk-keys')), inW);
+    if (!inW || !inW.desk) return;
+    await H.closeNpcDialogue(P).catch(() => {});
+    const me = await H.readState(P, (S) => S.myId);
+    await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
+    await H.devOp(wsPort, 'quests', me, {}).catch(() => {});
+    const armed = await H.armWorker(P, wsPort, me, ['bow']).catch(() => []);
+    await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
+    await P.page.waitForTimeout(1200);
+    await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
+    /* what the page sends, and every browser menu asked for (and whether the
+       game refused it) -- heard after the game's own listeners */
+    await P.page.evaluate(() => {
+      window.__btProbe = true;
+      const S = window._gameState.current;
+      window.__dkSent = [];
+      const send = S.channel.send.bind(S.channel);
+      S.channel.send = (m) => { try { window.__dkSent.push(m && m.type === 'ability' ? 'ability:' + (m.payload && m.payload.kind) : m && m.type); } catch (e) { /* the probe only */ } return send(m); };
+      window.__dkMenus = [];
+      document.addEventListener('contextmenu', (e) => window.__dkMenus.push(e.defaultPrevented));
+    });
+    const kit = await H.readState(P, (S) => ({ melee: !!(S.rpg && S.rpg.weapon), ranged: !!(S.rpg && S.rpg.rangedWeapon), slot: S.rpg && S.rpg.activeSlot }));
+    rec.ok(`8. a greatsword and a bow (guard): ${JSON.stringify({ kit, armed })}`, kit.melee && kit.ranged && kit.slot === 'melee', { kit, armed });
+
+    const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
+    const at = WHEEL_SPAWNS.frost && WHEEL_SPAWNS.frost.points[0];
+    await H.hopTo(P, at[0] + 150, at[1] + 220, { tries: 260 });   /* mp-desklunge's spot: dry land (+420 is the water, where nothing fights) */
+    await P.page.waitForTimeout(1500);
+    const here = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+    /* the pointer on the world, a little right of the bro */
+    const aimPt = await pagePoint(P, here.x + 140, here.y + 10);
+    await P.page.mouse.move(aimPt.x, aimPt.y);
+    await P.page.waitForTimeout(400);
+
+    /* ── 8a. THE WHEEL ── */
+    const w0 = await look(P);
+    await P.page.mouse.wheel(0, 100);
+    await P.page.waitForTimeout(700);
+    const w1 = await look(P);
+    await P.page.mouse.wheel(0, -100);
+    await P.page.waitForTimeout(700);
+    const w2 = await look(P);
+    rec.ok(`8a. the wheel over the world (${aimPt.canvas ? 'the canvas' : 'NOT the canvas'}): down the next weapon, up the one before (${w0.slot} -> ${w1.slot} -> ${w2.slot})`,
+      aimPt.canvas && w0.slot === 'melee' && w1.slot === 'ranged' && w2.slot === 'melee', { w0: w0.slot, w1: w1.slot, w2: w2.slot, aimPt });
+    const colBox = await P.page.evaluate(() => { const c = document.querySelector('.bt-desk-keys'); if (!c) return null; const r = c.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; });
+    if (colBox) { await P.page.mouse.move(colBox.x, colBox.y); await P.page.mouse.wheel(0, 100); await P.page.waitForTimeout(700); }
+    const w3 = await look(P);
+    rec.ok(`8a. ...over the controls column it swaps nothing (${w3.slot})`, !!colBox && w3.slot === 'melee', { colBox, slot: w3.slot });
+    await P.page.mouse.move(aimPt.x, aimPt.y);
+    await P.page.waitForTimeout(400);
+
+    /* ── 8b. Q, F, G ── */
+    await P.page.evaluate(() => { const R = window._gameState.current.rpg; R.mana = Math.max(R.mana || 0, 500); });
+    const q0 = await look(P);
+    await P.page.keyboard.press('q');
+    await P.page.waitForTimeout(600);
+    const q1 = await look(P);
+    rec.ok('8b. Q is the weapon\'s special (it fired, and was sent), and raises no shield',
+      q1.swipe > q0.swipe && q1.sent.slice(q0.sent.length).includes('ability_use') && !q1.up, { q0: q0.swipe, q1: q1.swipe, sent: q1.sent.slice(q0.sent.length), up: q1.up });
+    await P.page.waitForTimeout(1700);   /* the special's 1.5 s cooldown */
+    const f0 = await look(P);
+    await P.page.keyboard.press('f');
+    await P.page.waitForTimeout(600);
+    const f1 = await look(P);
+    await P.page.waitForTimeout(900);   /* the burst's refusal speaks once in 700 ms */
+    await P.page.keyboard.press('g');
+    await P.page.waitForTimeout(600);
+    const g1 = await look(P);
+    rec.ok('8b. F is the Element Burst (it was asked: cast or refused), and no longer the special; G still the burst',
+      f1.burst > f0.burst && f1.swipe === f0.swipe && g1.burst > f1.burst, { f0, f1: [f1.burst, f1.swipe], g1: g1.burst });
+
+    /* ── 8c. THE RIGHT BUTTON HELD, AND A CLICK WITH IT ── */
+    const shieldOn = await P.page.evaluate(() => {
+      const R = window._gameState.current.rpg;
+      if (!R.shield) R.shield = (R.shieldStash || []).length ? R.shieldStash[0] : { name: 'Pine Shield', type: 'shield', gearBase: 'wood', tierMult: 1, def: 1 };
+      return !!R.shield;
+    });
+    await P.page.waitForTimeout(400);
+    const upPt = await pagePoint(P, here.x - 10, here.y - 160);   /* the pointer above the bro */
+    await P.page.mouse.move(upPt.x, upPt.y);
+    await P.page.waitForTimeout(500);
+    const r0 = await look(P);
+    await P.page.mouse.down({ button: 'right' });
+    await P.page.waitForTimeout(700);
+    const r1 = await look(P);
+    rec.ok(`8c. the right button held raises the shield (press: ${r1.press && r1.press.kind}), facing the pointer (shield ${r1.ang && r1.ang.toFixed(2)}, aim ${r1.aim && r1.aim.toFixed(2)})`,
+      shieldOn && r1.up && r1.mouse && r1.press && r1.press.kind === 'shield' && r1.ang != null && r1.aim != null && angGap(r1.ang, r1.aim) < 0.35 && r1.aim < 0, r1);
+    rec.ok(`8c. ...and no browser menu: every one asked for was refused (${JSON.stringify(r1.menus)})`, r1.menus.every((p) => p === true), r1.menus);
+    await P.page.mouse.down({ button: 'left' });
+    await P.page.waitForTimeout(150);
+    await P.page.mouse.up({ button: 'left' });
+    await P.page.waitForTimeout(600);
+    const r2 = await look(P);
+    const bashSent = r2.sent.slice(r1.sent.length);
+    /* the press was the bash's (kind 'bash' is set before the swing's path,
+       which it returns ahead of); the bash's own pose moves swingTimer, so
+       that clock says nothing here */
+    rec.ok(`8c. a left click while it is held is the shield bash (press: ${r2.press && r2.press.kind}; sent ${JSON.stringify(bashSent)}), not a swing`,
+      r2.press && r2.press.kind === 'bash' && bashSent.includes('ability:bash'), { press: r2.press, bashSent });
+    await P.page.mouse.up({ button: 'right' });
+    await P.page.waitForTimeout(600);
+    const r3 = await look(P);
+    rec.ok('8c. letting the right button go lowers the shield', !r3.up && !r3.mouse, r3);
+
+    /* ── 8d. NO SHIELD: THE RIGHT BUTTON IS THE SPECIAL, AS IT WAS ── */
+    await P.page.evaluate(() => { const S = window._gameState.current; S.rpg.shield = null; S.rpg.mana = Math.max(S.rpg.mana || 0, 500); S._lastSwipe = 0; });
+    await P.page.waitForTimeout(400);
+    const n0 = await look(P);
+    await P.page.mouse.down({ button: 'right' });
+    await P.page.waitForTimeout(150);
+    await P.page.mouse.up({ button: 'right' });
+    await P.page.waitForTimeout(600);
+    const n1 = await look(P);
+    rec.ok(`8d. with no shield the right button keeps its old use, the special (press: ${n1.press && n1.press.kind})`,
+      n1.press && n1.press.kind === 'special' && n1.swipe > n0.swipe && !n1.up, { n0: n0.swipe, n1 });
+
+    /* ── 8e. A DIRECTION TAPPED TWICE ── */
+    await P.page.waitForTimeout(1200);
+    const d0 = await look(P);
+    /* two taps as quick as a player's (this box's round trips are slow: no
+       waits between them), each key's own time read off its event */
+    await P.page.evaluate(() => {
+      window.__dkTaps = [];
+      window.addEventListener('keydown', (e) => { if (!e.repeat) window.__dkTaps.push([e.key, Math.round(e.timeStamp)]); }, true);
+    });
+    await P.page.keyboard.down('d'); await P.page.keyboard.up('d');
+    await P.page.keyboard.down('d'); await P.page.keyboard.up('d');
+    await P.page.waitForTimeout(60);
+    const d1 = await look(P);
+    await P.page.waitForTimeout(1500);
+    await P.page.keyboard.press('d', { delay: 40 });
+    await P.page.waitForTimeout(500);
+    const d2 = await look(P);
+    await P.page.keyboard.press('a', { delay: 40 });
+    await P.page.waitForTimeout(420);
+    await P.page.keyboard.press('a', { delay: 40 });
+    await P.page.waitForTimeout(400);
+    const d3 = await look(P);
+    rec.ok(`8e. D tapped twice quickly rolls (rolls ${d0.rolls} -> ${d1.rolls}); one more tap, or A twice slowly, does not (${d2.rolls}, ${d3.rolls})`,
+      d1.rolls === d0.rolls + 1 && d2.rolls === d1.rolls && d3.rolls === d1.rolls, { d0: d0.rolls, d1: [d1.rolls, d1.roll], d2: d2.rolls, d3: d3.rolls,
+        taps: await P.page.evaluate(() => window.__dkTaps || []) });
+
+    /* ── 8f. A DOUBLE CLICK ON A SNOWMAN ── */
+    await H.equipWeapon(P, 'bow', 'rangedWeapon', 'ranged').catch(() => null);
+    await P.page.waitForTimeout(800);
+    await P.page.evaluate(() => { window._gameState.current.lockedTarget = null; });
+    let ms = await snowmen(P);
+    const onMonster = async (m) => {
+      const p = await P.page.evaluate((mid) => {
+        const S = window._gameState.current;
+        const q = (S.monsters || []).find((z) => z && String(z.id) === mid);
+        return q ? { x: q.x, y: q.y - 28 } : null;
+      }, m.id);
+      return p ? pagePoint(P, p.x, p.y) : null;
+    };
+    const mb = ms.find((m) => m.d < 520) || ms[0];
+    const pb = mb ? await onMonster(mb) : null;
+    if (pb) await P.page.mouse.dblclick(pb.x, pb.y, { delay: 40 });
+    await P.page.waitForTimeout(800);
+    const b1 = await look(P);
+    rec.ok(`8f. the bow in hand, a double click on a snowman (${mb && mb.id}, ${mb && mb.d} px) ends locked on it: ${JSON.stringify(b1.lock)}`,
+      !!pb && pb.canvas && !!b1.lock && b1.lock.id === mb.id && b1.lock.src === 'tap' && !!b1.dbl && b1.dbl.id === mb.id, { b1: b1.lock, dbl: b1.dbl, pb });
+    /* the sword: the double click's lunge (the first press's, or its own) */
+    await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
+    await P.page.waitForTimeout(800);
+    await H.waitFor(P, () => (window.__btAbilityStatus ? window.__btAbilityStatus('sworddash') : null),
+      (st) => !!st && st.visible && st.equipped && st.afford && st.cdLeft === 0, { timeout: 15000, label: 'the lunge ready' }).catch(() => null);
+    /* a snowman at a lunge's distance (one at your feet is struck where it
+       stands, no dash): step back from them first if they crowd you */
+    ms = await snowmen(P);
+    if (!ms.some((m) => m.d >= 110 && m.d < 400) && ms[0]) {
+      const me2 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+      const k = 230 / Math.max(1, ms[0].d);
+      await H.hopTo(P, ms[0].x + (me2.x - ms[0].x) * k, ms[0].y + (me2.y - ms[0].y) * k, { tries: 20 });
+      await P.page.waitForTimeout(600);
+      ms = await snowmen(P);
+    }
+    const mm = ms.find((m) => m.d >= 110 && m.d < 400) || ms[0];
+    const pm = mm ? await onMonster(mm) : null;
+    await P.page.evaluate(() => {
+      const S = window._gameState.current, w = { dash: null };
+      window.__dkDash = w;
+      const tick = () => { if (window.__dkDash !== w) return; if (S._bashDash && !w.dash) w.dash = String(S._bashDash.targetId); requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+    });
+    if (pm) await P.page.mouse.dblclick(pm.x, pm.y, { delay: 40 });
+    await P.page.waitForTimeout(900);
+    const s1 = await look(P);
+    const dash = await P.page.evaluate(() => { const w = window.__dkDash; window.__dkDash = null; return w ? w.dash : null; });
+    rec.ok(`8f. the sword in hand, a double click on a snowman (${mm && mm.id}, ${mm && mm.d} px) lunges at it (the dash left for ${dash}) and ends locked on it: ${JSON.stringify(s1.lock)}`,
+      !!pm && pm.canvas && dash === mm.id && !!s1.lock && s1.lock.id === mm.id, { dash, lock: s1.lock, dbl: s1.dbl, pm });
+
+    rec.ok('8g. no page errors', errors.length === 0, errors.slice(0, 3));
+  } finally {
+    await P.ctx.close().catch(() => {});
   }
 }

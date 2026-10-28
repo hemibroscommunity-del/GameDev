@@ -324,7 +324,7 @@ Every touch button follows the owner's mockup: a gold ring, a picture, no words;
 
 Chat opens by tapping your own bro; the emote picker is the chat box's smiley; the TRAP button appears in the door prompt's slot over a targeted monster.
 
-**Keyboard** (one table, each key worn by its button on a computer): WASD walk, Space roll, X jump, Shift sprint, E interact (held works a harvest), Q shield, F special toward the mouse, G burst, R whirlwind, T trap, V quick eat, Tab or 1–3 weapons, C chat, B emotes, I bag, P character, J quests, L life skills, K codex, O more, M map, H the keys strip, Enter a dialogue's front button, Esc the front window's ✕. Left click attacks (a click on a townsperson, a resource in reach or a farm bed is that thing's, never a swing); right click fires the special.
+**Keyboard** (one table, each key worn by its button on a computer): WASD walk, Space roll, X jump, Shift sprint, E interact (held works a harvest), Q the special toward the mouse, F burst (G too), R whirlwind, T trap, V quick eat, Tab or 1–3 weapons, C chat, B emotes, I bag, P character, J quests, L life skills, K codex, O more, M map, H the keys strip, Enter a dialogue's front button, Esc the front window's ✕. Left click attacks (a click on a townsperson, a resource in reach or a farm bed is that thing's, never a swing); the right button HELD raises the shield toward the pointer and a left click with it up bashes (with no shield a right click fires the special); the mouse wheel steps through the weapons; a direction key tapped twice rolls that way; a double click on a monster locks on to it (v2.3.3711, docs/specs/desktop-keys.md).
 
 ### 4.3 The screen at rest
 

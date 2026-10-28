@@ -225,7 +225,11 @@ export function setupDesktopControls(S, deps) {
           up: !!(_K['w'] || _K['W'] || _K['ArrowUp']), down: !!(_K['s'] || _K['S'] || _K['ArrowDown']),
           left: !!(_K['a'] || _K['A'] || _K['ArrowLeft']), right: !!(_K['d'] || _K['D'] || _K['ArrowRight']),
         };
-        var _rollAng = dblTapRoll(S._dblTap || (S._dblTap = { key: null, at: 0 }), e.key, Date.now(), _held);
+        /* the tap's own time (e.timeStamp: when the key went down), never
+           when this handler got to it -- on a slow frame two quick taps wait
+           and run together, or the second waits a frame and reads late */
+        var _tapAt = (typeof e.timeStamp === 'number' && e.timeStamp > 0) ? e.timeStamp : Date.now();
+        var _rollAng = dblTapRoll(S._dblTap || (S._dblTap = { key: null, at: 0 }), e.key, _tapAt, _held);
         if (_rollAng != null && S.rpg && !S._dodgeRoll) {
           S._dblTapRolls = (S._dblTapRolls || 0) + 1;   /* QA: mp-deskkeys counts them */
           triggerContextualDodge(S, S.rpg, _rollAng);
