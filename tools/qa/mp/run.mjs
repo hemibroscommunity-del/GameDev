@@ -743,7 +743,7 @@ process.on('uncaughtException', (e) => { console.error(e); cleanup(); process.ex
 console.log(`up in ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
 
 const all = [];
-const _botsigSeen = new Set();   /* v2.3.3724: each flag reported once */
+const _botsigSeen = new Set();   /* v2.3.3731: each flag reported once */
 for (const name of names) {
   const rec = H.recorder(name);
   const started = Date.now();
@@ -772,7 +772,7 @@ for (const name of names) {
      passed early.  Scenarios are isolated by their own fresh contexts, so
      none can need another's page afterwards. */
   for (const c of browser.contexts()) await c.close().catch(() => {});
-  /* v2.3.3724: did the server's own bot signals (botsig.js) flag anyone this
+  /* v2.3.3731: did the server's own bot signals (botsig.js) flag anyone this
      scenario played?  A report line, never a failure: the harness moves
      players by script (teleports, exact steps), so a flag here is a question
      about the scenario before it is one about the detector.  The close just

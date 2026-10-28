@@ -677,7 +677,7 @@ export const joinMethods = {
         out: _keyOut,
       });
       if (_authOk === 'verify') { this._verifyRefuse(ws); return; }
-      /* v2.3.3724: a player the server's bot signals flagged passes the
+      /* v2.3.3731: a player the server's bot signals flagged passes the
          account check again, once -- only with `botsig_reverify` thrown and
          the check configured (botsig.js _sigReverifyOk); OFF by default */
       if (_authOk === true && !(await this._sigReverifyOk(msg.id, msg.verify, session.ip))) { this._verifyRefuse(ws); return; }
@@ -894,7 +894,7 @@ export const joinMethods = {
     // reconnect-cycling resets neither the hour caps nor the replay
     // ring.  Await is input-gate-safe (rule 9).
     await this._botfpOnJoin(session, msg);
-    this._sigOnJoin(session);   /* v2.3.3724: the network, and a first judgement (botsig.js) */
+    this._sigOnJoin(session);   /* v2.3.3731: the network, and a first judgement (botsig.js) */
     /* Load (or bootstrap) the player's server-authoritative
        coins + inventory.  Stored entry wins; if there's no
        record yet, the character is NEW and starts from the

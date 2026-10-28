@@ -482,7 +482,7 @@ export const telegraphMethods = {
     m._tgUntil = now + kit.windupMs;
     m._tgAim = aim;
     m._tgTarget = nearest.id;                     /* the cast owns its target */
-    if (typeof this._sigOnWindup === 'function') this._sigOnWindup(nearest.id, m, now);   /* v2.3.3724: the reflex clock starts (botsig.js) */
+    if (typeof this._sigOnWindup === 'function') this._sigOnWindup(nearest.id, m, now);   /* v2.3.3731: the reflex clock starts (botsig.js) */
     m._tgRadius = kit.radius * _dk;               /* v2.3.2790 */
     m._attackingUntil = Math.max(m._attackingUntil || 0, now + 100);
     this._monsterAbilityEvent(zoneId, m, kit.kind, 'telegraph', {
@@ -574,7 +574,7 @@ export const telegraphMethods = {
     m._bwUntil = now + ms;
     m._bwTarget = targetId;
     m._bwKind = kind;
-    if (typeof this._sigOnWindup === 'function') this._sigOnWindup(targetId, m, now);   /* v2.3.3724: the reflex clock starts (botsig.js) */
+    if (typeof this._sigOnWindup === 'function') this._sigOnWindup(targetId, m, now);   /* v2.3.3731: the reflex clock starts (botsig.js) */
     /* Inside the cycle, not added to it — see the header. */
     m.atkCd = now + cdMs;
     /* Plant him for the tell AND the follow-through, the way the kits do.

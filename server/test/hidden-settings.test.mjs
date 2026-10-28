@@ -98,7 +98,7 @@ const synthFp = (i) => ({ len: 400, n: 60, dur: 1200, ent: 0.001, tv: 0, vc: 0.0
 // ── 1. the table ──
 {
   const names = Object.keys(HIDDEN_SPEC);
-  /* v2.3.3724: and BOTSIG's, the server's own bot signals (botsig.js) */
+  /* v2.3.3731: and BOTSIG's, the server's own bot signals (botsig.js) */
   const home = (n) => (n in BOTFP ? BOTFP : BOTSIG);
   const same = (a, b) => (Array.isArray(a) ? JSON.stringify(a) === JSON.stringify(b) : a === b);
   check('1. every hidden setting is a BOTFP or BOTSIG name, its placeholder today\'s value', names.length >= 24
@@ -262,7 +262,7 @@ const synthFp = (i) => ({ len: 400, n: 60, dur: 1200, ent: 0.001, tv: 0, vc: 0.0
   }
   /* small enough that the bot below crosses them */
   const s = { ...markers, FLAG_AT: 3.917243, SCORE_SYNTH: 2.718281 };
-  if (HIDDEN_SPEC.CLOUD_ASNS) s.CLOUD_ASNS = [4199999917];   /* v2.3.3724: a list setting's marker */
+  if (HIDDEN_SPEC.CLOUD_ASNS) s.CLOUD_ASNS = [4199999917];   /* v2.3.3731: a list setting's marker */
   const state = makeState({ [HIDDEN.KEY]: { v: 1, s } });
   const room = new GameRoom(state, envWith(KEY));
   await room._hiddenEnsure();

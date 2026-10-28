@@ -48,7 +48,7 @@
  */
 import { GameRoom } from '../../../server/src/index.js';
 import { BOTFP } from '../../../server/src/botfp.js';
-import { BOTSIG } from '../../../server/src/botsig.js';   /* v2.3.3724: the server's own bot signals */
+import { BOTSIG } from '../../../server/src/botsig.js';   /* v2.3.3731: the server's own bot signals */
 import { GATHER_HITS, HONEST_CYCLE, gatherReqLvl } from '../../../server/src/gathering.js';
 import { WHEEL_SPAWNS, WHEEL_CENTRE } from '../../../server/src/wheelspawns.js';
 
@@ -211,7 +211,7 @@ async function travel(world, p, tx, ty, reach) {
     }
     if (out.length) { p.moves += out.length; await send(world, p, out); }
   } else if (mode === 'walk' && p.cfg.human) {
-    /* v2.3.3724: A THUMB ON THE STICK, the synthetic person the server's
+    /* v2.3.3731: A THUMB ON THE STICK, the synthetic person the server's
        signals must leave alone (botsig.js): aims roughly (anywhere within
        45 px of the node), the heading wanders a little each frame and steers
        back, and the thumb sometimes rests still for a few frames (the same
@@ -394,7 +394,7 @@ async function stepFighter(world, p) {
     if (now - (p.jiggleAt || 0) > 20000) { p.jiggleAt = now; p.jig = -(p.jig || 1); await send(world, p, moveMsg(ps.x + p.jig, ps.y, 0, 0)); }
     return;
   }
-  /* v2.3.3724: an answer to a monster's wind-up on this player, read off the
+  /* v2.3.3731: an answer to a monster's wind-up on this player, read off the
      room the way a script reads the messages: `reflex` says how long after
      it (ms) the player dodges -- a script at once, a person a few hundred ms
      and not every time */
@@ -476,8 +476,8 @@ const gap = () => u(150, 900);
 const SCENARIOS = [
   { name: 'honest-pine', note: 'a quick, honest hand on the commons pines (Woodcutting 1)',
     players: [{ type: 'tree', tier: 1, start: true, fp: 'human', acc: 'mix', move: 'walk', human: true, speed: 220, after: () => u(250, 700) }] },
-  /* v2.3.3724: the honest messages with a SCRIPT's walk: straight through
-     each tree's centre (the lab's honest walker before v2.3.3724) */
+  /* v2.3.3731: the honest messages with a SCRIPT's walk: straight through
+     each tree's centre (the lab's honest walker before v2.3.3731) */
   { name: 'straight-pine', note: 'the honest messages, but walked dead straight to each tree\'s centre (a script\'s path)',
     players: [{ type: 'tree', tier: 1, start: true, fp: 'human', acc: 'mix', move: 'walk', speed: 220, after: () => u(250, 700) }] },
   { name: 'edge-pine', note: 'the real messages, struck the moment the worker takes it, at the speed bound',
@@ -500,7 +500,7 @@ const SCENARIOS = [
     players: [0, 1, 2, 3].map(() => ({ type: 'tree', tier: 1, start: false, fp: 'human', acc: 'perfect', move: 'burst', think, after: gap, device: (i) => 'labdev' + i + hash32() })) },
   { name: 'honest-fighter', note: 'a sword, one Frost Ridge monster (levels 1-5) at a time, a swing every 650 ms',
     players: [{ fight: true, move: 'walk', human: true, speed: 220, startAt: () => landAnchor('frost') }] },
-  /* v2.3.3724: the wind-up's answer -- a person's, and a script's */
+  /* v2.3.3731: the wind-up's answer -- a person's, and a script's */
   { name: 'honest-dodger', note: 'the honest sword, dodging most wind-ups 280-700 ms after they start (a person)',
     players: [{ fight: true, move: 'walk', human: true, speed: 220, startAt: () => landAnchor('frost'), reflex: () => (Math.random() < 0.7 ? u(280, 700) : null) }] },
   { name: 'reflex-fighter', note: 'the honest sword, dodging every wind-up 60 ms after it starts (a script reading the wind-up)',
@@ -555,7 +555,7 @@ async function runScenario(sc) {
     if (!world.room.playerState[p.id]) p.why.set('LOGGED OUT (the room closed the socket)', 1);
     const rec = world.room._botfp && world.room._botfp.get(p.id);
     if (rec) world.room._botfpDecay(rec, Date.now());
-    /* v2.3.3724: the server's own signals, judged as the close would */
+    /* v2.3.3731: the server's own signals, judged as the close would */
     const sigJ = rec && rec.sig ? world.room._sigEval(p.id, rec, Date.now()) : null;
     const gained = {};
     for (const [k, v] of Object.entries(ps.inventory || {})) { const d = v - (p.inv0[k] || 0); if (d) gained[k] = d; }

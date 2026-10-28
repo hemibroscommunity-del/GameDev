@@ -214,7 +214,7 @@ What each flag means:
   and this flag means someone is trying (v2.3.3322).
 - **Plays like a script (measured by the server):** the server's own
   measures, which a script cannot fake by sending different numbers
-  (v2.3.3724). The reasons follow the flag:
+  (v2.3.3731). The reasons follow the flag:
   - *walks dead straight through the centre of every node*;
   - *dodges monster attacks faster than a person can*;
   - *hundreds of hits without moving a step*;

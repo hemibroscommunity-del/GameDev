@@ -63,7 +63,7 @@ act". Acting on one is the review's points 10-13, the owner's call.
 | `variance-collapse` | Every harvest gesture nearly the same | 48+ gestures with almost no variation |
 | `device-fleet` | Many accounts harvesting on one device | 4+ accounts on a device, harvesting hard in one hour |
 | `strikes-without-start` | Harvests sent without starting them | 20 strikes refused for want of a start (v2.3.3322, harvest-proof.md) |
-| `server-signals` | Plays like a script (measured by the server): *its reasons in words* | the server's own signals reaching `SIG_FLAG_AT` (v2.3.3724, server-botsig.md); the detail carries `reasons` |
+| `server-signals` | Plays like a script (measured by the server): *its reasons in words* | the server's own signals reaching `SIG_FLAG_AT` (v2.3.3731, server-botsig.md); the detail carries `reasons` |
 | `test` | A test flag, planted from this panel (not evidence) | `/dev/botflag` |
 
 ## Tests

@@ -1,4 +1,4 @@
-/* THE SERVER'S OWN BOT SIGNALS (v2.3.3724, docs/specs/server-botsig.md).
+/* THE SERVER'S OWN BOT SIGNALS (v2.3.3731, docs/specs/server-botsig.md).
  *
  * botsig.js judges only what the worker sees for itself.  What this suite pins:
  *   1. the robust statistics (botstats.js): spread and peak read by quantile,
@@ -510,6 +510,42 @@ const sigOf = (room, id) => room._botfp.get(id).sig;
   state.store.delete('testmode:' + id);
   const src = (await import('node:fs')).readFileSync(new URL('../src/join.js', import.meta.url), 'utf8');
   check('12. the join asks it after the key is accepted, and refuses the way the account check does', /_authOk === true && !\(await this\._sigReverifyOk\(msg\.id, msg\.verify, session\.ip\)\)\) \{ this\._verifyRefuse\(ws\); return; \}/.test(src));
+}
+
+// ── 13. a signal that throws never breaks the game ──
+{
+  const room = new GameRoom(makeState(), env());
+  const P = await join(room, 'bp_sig_throw');
+  const send = (type, payload) => room.webSocketMessage(P.ws, JSON.stringify(Object.assign({ type }, payload)));
+  P.ps.z = 'meadow';
+  const n = room._ensureZoneNodes('meadow')[0];
+  P.ps.x = n.x - 100; P.ps.y = n.y; P.ps.lastMoveAt = undefined;
+  /* every measure's inside throws */
+  room._sigActive = () => { throw new Error('boom'); };
+  room._sigOf = () => { throw new Error('boom'); };
+  let escaped = null;
+  try {
+    for (let i = 0; i < 5; i++) { NOW += 66; await send('move', { x: n.x - 100 + i * 9, y: n.y, z: 'meadow', vx: 300, vy: 0, d: 'right', f: 'east' }); }
+    await send('monster_damage', { payload: { monsterId: 'x', zone: 'meadow', slot: 'melee' } });
+    await send('ability_use', { payload: { type: 'dodge' } });
+    await send('cook_request', { payload: { fishKey: 'fish_minnow', kind: 'cooked' } });
+    room._sigOnWindup('bp_sig_throw', null, NOW);
+    room._sigWU = { get() { throw new Error('boom'); }, has() { throw new Error('boom'); }, set() { throw new Error('boom'); } };
+    await send('move', { x: n.x - 50, y: n.y, z: 'meadow', vx: 300, vy: 0, d: 'right', f: 'east' });
+  } catch (e) { escaped = e; }
+  check('13. a throw inside every signal never escapes a move, a hit, a dodge or a cook', escaped === null, String(escaped));
+  check('13. ...the moves were taken as ever (the worker has the player where the phone put them)', Math.abs(P.ps.x - (n.x - 50)) < 1, { x: P.ps.x, want: n.x - 50 });
+  check('13. ...and the throws were counted', (room._sigErrors || 0) >= 5, room._sigErrors);
+  /* and with the switch thrown, not one line of a hook runs past its first */
+  const r2 = new GameRoom(makeState(), env());
+  r2._liveFlags = { disable_botsig: true };
+  const Q = await join(r2, 'bp_sig_off2');
+  r2._sigOf = () => { throw new Error('reached'); };
+  r2._sigWU = null;
+  r2._sigOnMove(Q.session, { vx: 1, vy: 0 });
+  r2._sigOnHit(Q.session, { monsterId: 'm' });
+  r2._sigOnWindup('bp_sig_off2', { x: 0, y: 0 }, NOW);
+  check('13. `disable_botsig`: every hook returns at its first line (nothing measured, nothing to throw)', !(r2._sigErrors) && !Q.session._sigPath && !r2._sigWU);
 }
 
 // ── the reasons' words are where the owner reads them ──

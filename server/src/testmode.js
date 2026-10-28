@@ -26,7 +26,7 @@
  *     the 45 perfect harvests a minute (_ratedHarvestAccuracy), the 45 cooks a
  *     minute and the 900 ms between cooks (cooking.js), and the bot scoring
  *     with its 2,400-an-hour caps (botfp.js _botfpOnStrike, _botfpOnCook) --
- *     nothing is scored or flagged; and the server's own bot signals (v2.3.3724,
+ *     nothing is scored or flagged; and the server's own bot signals (v2.3.3731,
  *     botsig.js _sigSkip, _sigOnWindup, _sigReverifyOk): nothing measured,
  *     flagged or re-checked;
  *   - the limits on how fast and how far a hit on a MONSTER lands: the

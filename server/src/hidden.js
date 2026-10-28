@@ -41,7 +41,7 @@
  * a caller that may run on a bare object (a test's stub) reads hiddenOf(this).
  */
 import { BOTFP } from './botfp.js';
-import { BOTSIG } from './botsig.js';   /* v2.3.3724: the server's own bot signals */
+import { BOTSIG } from './botsig.js';   /* v2.3.3731: the server's own bot signals */
 import { HONEST_CYCLE_MIN_MS } from './gathering.js';
 
 export const HIDDEN = {
@@ -61,7 +61,7 @@ const HOUR = 3600000, DAY = 86400000;
 function row(group, dflt, lo, hi, int, words) {
   return Object.freeze({ group, dflt, lo, hi, int: !!int, words });
 }
-/* v2.3.3724: a LIST of whole numbers (the cloud networks' AS numbers), each
+/* v2.3.3731: a LIST of whole numbers (the cloud networks' AS numbers), each
    in [lo, hi], at most `max` of them */
 function listRow(group, dflt, lo, hi, max, words) {
   return Object.freeze({ group, dflt: Object.freeze(dflt.slice()), lo, hi, int: true, list: true, max, words });
@@ -97,7 +97,7 @@ export const HIDDEN_SPEC = Object.freeze({
   // ── the economic hour caps: floors are the honest bound (header) ──
   HARVEST_HOUR_CAP: row('caps', BOTFP.HARVEST_HOUR_CAP, HONEST_PER_HOUR, 100000, true, 'Harvests a skill an hour before grants are withheld'),
   COOK_HOUR_CAP: row('caps', BOTFP.COOK_HOUR_CAP, HONEST_PER_HOUR, 100000, true, 'Cooks an hour before grants are withheld'),
-  // ── v2.3.3724: the server's own bot signals (botsig.js) ──
+  // ── v2.3.3731: the server's own bot signals (botsig.js) ──
   AIM_CHORD_PX: row('botsig', BOTSIG.AIM_CHORD_PX, 10, 400, false, 'Aimed walk: the run judged back this far (px)'),
   AIM_STRAIGHT_PX: row('botsig', BOTSIG.AIM_STRAIGHT_PX, 0, 10, false, 'Aimed walk: every step within this of a straight line (px)'),
   AIM_MISS_PX: row('botsig', BOTSIG.AIM_MISS_PX, 0, 20, false, 'Aimed walk: the line passes this close to the node\'s centre (px)'),
@@ -141,7 +141,7 @@ export const HIDDEN_PLACEHOLDERS = Object.freeze(Object.fromEntries(
 export function hiddenRefusal(name, value) {
   if (typeof name !== 'string' || !Object.prototype.hasOwnProperty.call(HIDDEN_SPEC, name)) return 'unknown setting';
   const s = HIDDEN_SPEC[name];
-  /* v2.3.3724: a list, each entry a whole number in range, no repeats */
+  /* v2.3.3731: a list, each entry a whole number in range, no repeats */
   if (s.list) {
     if (!Array.isArray(value)) return 'must be a list of numbers';
     if (value.length > s.max) return 'at most ' + s.max + ' numbers';

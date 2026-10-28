@@ -1,4 +1,4 @@
-/* ═══ v2.3.3724: BOT SIGNALS MEASURED BY THE SERVER (spec: docs/specs/server-botsig.md;
+/* ═══ v2.3.3731: BOT SIGNALS MEASURED BY THE SERVER (spec: docs/specs/server-botsig.md;
  * the plan: docs/HIDDEN-SERVER-PLAN.md, "The anti-bot plan" 1, 4 and 5) ═══
  *
  * botfp.js judges numbers the PHONE writes (the gesture's fingerprint), so a
@@ -495,3 +495,23 @@ export const botsigMethods = {
     return true;
   },
 };
+
+/* ═══ v2.3.3731: NO SIGNAL EVER BREAKS A MOVE, A HIT OR A MONSTER'S TICK ═══
+   The hooks above run on the room's hottest paths (every move, every hit,
+   every monster's wind-up).  Two walls keep a player's game safe from them:
+   `disable_botsig` returns at the first line of every hook (_sigSkip, and
+   _sigOnWindup's own check) before anything else runs; and every hook is
+   wrapped here, so a throw inside one is counted (`_sigErrors`, the first few
+   logged) and swallowed -- the move, strike or tick that called it carries
+   on as if the signals were not there (botsig.test §13). */
+for (const name of ['_sigOnJoin', '_sigOnMove', '_sigOnAbility', '_sigOnWindup', '_sigOnStart', '_sigOnStrike', '_sigOnCook', '_sigOnHit']) {
+  const fn = botsigMethods[name];
+  botsigMethods[name] = function guarded(a, b, c) {
+    try { return fn.call(this, a, b, c); }
+    catch (e) {
+      this._sigErrors = (this._sigErrors || 0) + 1;
+      if (this._sigErrors <= 5) { try { console.error('[botsig] ' + name + ' threw:', e && e.message); } catch (e2) { /* nothing */ } }
+      return undefined;
+    }
+  };
+}

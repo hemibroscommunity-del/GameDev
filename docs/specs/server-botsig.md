@@ -1,4 +1,4 @@
-# Bot signals measured by the server (v2.3.3724)
+# Bot signals measured by the server (v2.3.3731)
 
 The plan is `docs/HIDDEN-SERVER-PLAN.md`, "The anti-bot plan" 1, 4 and 5. The
 anti-bot review (`antibot-review.md` §2) found that botfp.js judges numbers the
@@ -63,6 +63,11 @@ so old evidence fades and the stored record stays small. No raw event is kept.
 
 ## Switches
 
+- **No signal can break the game.** `disable_botsig` returns at the first line
+  of every hook, before anything else runs. Every hook is also wrapped
+  (`_sigErrors`): a throw inside a signal is counted and swallowed, and the
+  move, hit, strike or monster tick that called it carries on unchanged
+  (`botsig.test` §13).
 - `disable_botsig` (live flag): nothing is measured.
 - `botsig_reverify` (live flag, **OFF**): a player flagged `server-signals`
   must pass Turnstile again at their next join (`verify.js`). This only

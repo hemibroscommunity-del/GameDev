@@ -142,7 +142,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const capNow = (await admin('GET', '/dev/hidden')).settings.find((s) => s.name === 'HARVEST_HOUR_CAP');
   rec.ok('2. a value under its range is refused with the reason, nothing changed', !!said && /must be from/.test(said[0]) && capNow.stored === null, { said, capNow });
 
-  /* v2.3.3724: a LIST setting (the cloud networks' AS numbers), typed with commas */
+  /* v2.3.3731: a LIST setting (the cloud networks' AS numbers), typed with commas */
   const hasList = view.settings.some((s) => s.name === 'CLOUD_ASNS');
   if (hasList) {
     await typeInRow(O, 'CLOUD_ASNS', '16509, 8075');

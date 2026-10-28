@@ -1,4 +1,4 @@
-/* ═══ v2.3.3724: ROBUST RUNNING STATISTICS FOR THE SERVER'S BOT SIGNALS ═══
+/* ═══ v2.3.3731: ROBUST RUNNING STATISTICS FOR THE SERVER'S BOT SIGNALS ═══
  *
  * botsig.js measures what a script must send anyway (message timing, path
  * shapes, reaction times, where it stands) over HUNDREDS of events, because a

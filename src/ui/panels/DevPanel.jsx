@@ -139,9 +139,9 @@ const BOT_FLAG_WORDS = {
   'device-fleet': 'Many accounts harvesting on one device',
   'strikes-without-start': 'Harvests sent without starting them',
   test: 'A test flag, planted from this panel (not evidence)',
-  'server-signals': 'Plays like a script (measured by the server)',   /* v2.3.3724: botsig.js */
+  'server-signals': 'Plays like a script (measured by the server)',   /* v2.3.3731: botsig.js */
 };
-/* v2.3.3724: what the server itself saw (botsig.js SIG_REASONS), in words */
+/* v2.3.3731: what the server itself saw (botsig.js SIG_REASONS), in words */
 const SIG_REASON_WORDS = {
   aimed: 'walks dead straight through the centre of every node',
   reflex: 'dodges monster attacks faster than a person can',
@@ -545,7 +545,7 @@ export const DevPanel = ({ onClose }) => {
     /* NaN goes over the wire as null, which is the RESET: a typo must not
        quietly put the placeholder back */
     if (value !== null && !Array.isArray(value) && !Number.isFinite(value)) { setMsg(name + ': that is not a number.'); return; }
-    /* v2.3.3724: a list (the cloud networks): every entry a number */
+    /* v2.3.3731: a list (the cloud networks): every entry a number */
     if (Array.isArray(value) && value.some((v) => !Number.isFinite(v))) { setMsg(name + ': every entry must be a number, separated by commas.'); return; }
     const j = await call('/dev/hidden', { name, value });
     if (j) {
