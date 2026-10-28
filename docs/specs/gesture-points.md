@@ -79,8 +79,10 @@ testmode.js).
 - `tools/qa/load/bot-lab.mjs`: `points-pine`, a script sending a timer's drag
   as points.
 
-## Owner's choices
+## The owner's answers (2026-10-28, "Do your recommended with the bot stuff")
 
-- E's pace: half speed (`KEY_WORK.slow`).
-- Whether, once old phones are gone, to refuse a strike that carries only a
-  summary.
+1. E at half pace (`KEY_WORK.slow` 0.5: about 3 s, never perfect) stays.
+2. Refusing a strike that carries only the old summary is **not now**. It is
+   a later step, weeks out, after a client-version cutoff when nearly every
+   phone sends points, and only with the owner's go-ahead then. Until then
+   the summary keeps working for old phones.
