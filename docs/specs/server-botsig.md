@@ -98,8 +98,11 @@ The Test panel's **Bot flags**: kind `server-signals`, "Plays like a script
   anyone the scenario played was flagged (a report, never a failure: the
   harness moves players by script).
 
-## Owner's choices
+## The owner's answers (2026-10-28, "Do your recommended with the bot stuff")
 
-The placeholder lines and weights, whether to turn on the re-check, and
-whether to add networks to the cloud list (VPN providers are left off: many
-real players use one).
+1. The placeholder lines and weights stay as shipped. The owner tunes them
+   privately later, in the Test panel's Hidden settings, if bots adapt.
+2. The Turnstile re-check (`botsig_reverify`) ships OFF. It is to be turned
+   on once a week of real flags looks clean.
+3. No VPN providers on the cloud list: honest players use VPNs, so the list
+   holds cloud hosts only.
