@@ -18,7 +18,8 @@
  *      the spend window's lane tabs wear the sheet's icons, nothing of the
  *      old heads is drawn (the blue badges, the diagonal, the portrait), and
  *      the weapons are parted by the carved seam the owner picked, with no
- *      diamond on it;
+ *      diamond on it; and (v2.3.3691) no frame round either head: they are
+ *      their rows' labels, not boxes of their own;
  *   5. a count with points to spend breathes by transform and opacity only,
  *      never a filter (the iOS grain rule), and is still with reduced motion;
  *      SLOWLY, the owner's "slowly grow then shrink": a 3.2 s breath.
@@ -102,6 +103,13 @@ const DIGITS = ['gold', 'grey'].flatMap((t) => [...Array(10).keys()].map((d) => 
   check('4c the heads are the two frames (data-points-frame) and the numerals gold or grey',
     hx.includes('data-points-frame="weapons"') && hx.includes('data-points-frame="character"')
       && hx.includes("const tone = v > 0 ? 'gold' : 'grey';"));
+  /* v2.3.3691: the owner: "the 3 primary combat skills and the character
+     icon shouldn't have the bronze frame around it because it's not
+     self-contained it's supposed to represent the whole row" -- the heads
+     keep their room and their handles, and no frame is drawn round them */
+  const codeNoComments = hx.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  check('4c2 no frame is drawn round either head (no border-image, no frame picture asked for)',
+    !/borderImage|border-image/.test(codeNoComments) && !/\bPOINTS_FRAMES\b/.test(codeNoComments) && !/frame-(weapons|character)\.png/.test(codeNoComments));
   check('4d the spend window\'s lane tabs wear them too',
     hx.includes('icon: POINTS_ICONS[c.key] || c.iconSrc') && hx.includes("icon: POINTS_ICONS.shared"));
   /* the old heads: the blue badges' art and the diagonal's sizes -- in the

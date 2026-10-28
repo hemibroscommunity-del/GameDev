@@ -38,7 +38,7 @@ import { StatDemo, STAT_DEMO_KEYS } from './StatDemo.jsx';                      
 import { useScrollTap } from './scrollTap.js';                                  /* v2.3.2326: a tap the scroller confiscated is still a tap */
 import { itemDetailBus } from '../dash/itemDetailBus.js';                        /* v2.3.1653 */
 import { heroSectionBus } from './heroSectionBus.js';                            /* v2.3.1668 */
-import { POINTS_ART_DIR, POINTS_ART_V, POINTS_DIGIT_H, POINTS_DIGIT_W, POINTS_FRAMES } from '../../../data/pointsHeadArt.js'; /* v2.3.3559: the owner's Points-tab art (GENERATED) */
+import { POINTS_ART_DIR, POINTS_ART_V, POINTS_DIGIT_H, POINTS_DIGIT_W } from '../../../data/pointsHeadArt.js'; /* v2.3.3559: the owner's Points-tab art (GENERATED); v2.3.3691: not its frames */
 import { DASH_GAP, HERO_TAB_H } from './sheetGeometry.js';                      /* v2.3.1653; v2.3.1657 tabs */
 import { playIsLandscape, panelVw } from '../playViewport.js';                    /* v2.3.2171: the sideways pane stacks; panelVw v2.3.2382 */
 import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
@@ -2533,18 +2533,24 @@ export const HeroExpanded = () => {
                most; the bust takes the height that leaves. */
             const PC_DIG = Math.max(PH_DIG, Math.round(Math.min(PH_CH * 0.32, PH_DIG * 1.4, (PH_CW + 1) / 1.48)));
             const PC_ICON = Math.max(10, Math.floor(Math.min(PH_CW, PH_CH - PC_DIG - 1)));
-            /* The frame: the slice drawn so its gold is PH_S px on screen
-               (the art's stroke is POINTS_FRAMES[k].stroke of its slice) */
-            const frameStyle = (kind) => {
-              const f = POINTS_FRAMES[kind];
-              const bw = (PH_S * f.slice / f.stroke).toFixed(2);
-              return {
-                boxSizing: 'border-box', width: '100%', height: '100%',
-                borderStyle: 'solid', borderColor: 'transparent', borderWidth: PH_S,
-                borderImage: `url(${POINTS_ART_DIR}${f.file}?v=${POINTS_ART_V}) ${f.slice} / ${bw}px stretch`,
-                padding: PH_PAD, pointerEvents: 'none',
-              };
-            };
+            /* ═══ v2.3.3691: NO FRAME ROUND THE HEADS ═══
+               The owner, 2026-10-28: "in the points menu the 3 primary combat
+               skills and the character icon shouldn't have the bronze frame
+               around it because it's not self-contained it's supposed to
+               represent the whole row of different skills you can apply points
+               in".  The gold frame (v2.3.3559, the sheet's brackets as a
+               border-image) said each head was a box of its own; it is its
+               row's label, sitting in the row's own tray (bandStyle).  So no
+               frame: the frame's room is kept, a transparent border PH_S wide,
+               so nothing in the head moves or changes size, and the carved
+               seams between the three weapons stay.  The frame pictures are
+               no longer asked for (POINTS_FRAMES, kept in the generated data
+               for the art tool). */
+            const frameStyle = () => ({
+              boxSizing: 'border-box', width: '100%', height: '100%',
+              borderStyle: 'solid', borderColor: 'transparent', borderWidth: PH_S,
+              padding: PH_PAD, pointerEvents: 'none',
+            });
             /* One pool's count in the sheet's numerals, `h` tall, shrunk to
                `maxW` if the run is wider.  The numerals' dark rims overlap a
                little, as the badge numerals did (-1 px), so a "63" reads as
