@@ -5,8 +5,8 @@
  * in the world (the hit bursts, the whirlwind, the stun stars, the fire
  * trail, the portal's beam, the arrow blast...) and the gathering tools'
  * strips have a twin beside them on 256 colours (tools/art/reduce256.mjs,
- * listed in src/data/p256Files.js).  With `?p256` on -- the default;
- * `?p256=0` is the game as it was -- the game reads the twin, and a picture on
+ * listed in src/data/p256Files.js).  With `?p256=1` (off by default, the
+ * measurement below) the game reads the twin, and a picture on
  * 256 colours is kept as colour numbers: one byte a pixel in the page and on
  * the graphics chip, where it was four on the chip (picsNumbers.js, the
  * monsters' way; paletteTex.js draws them).  One row of the atlas's colours
@@ -34,7 +34,12 @@ import { paletteDecided } from './paletteTex.js';
 import { addPictureRestorer } from './picsOnce.js';
 
 const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
-const WANTED = !/[?&]p256=0\b/.test(_q);
+/* OFF by default (v2.3.3728, measured): at the memory check's Flame Fields
+   fight the chip held 2.3 MB less and the page's buffers 0.8 MB more, and on
+   arrival the chip 2.8 MB more (every effect sent up front) -- a picture this
+   small at play is not worth its colours yet.  `?p256=1` turns it on to try;
+   the docs/specs/pictures-256.md numbers. */
+const WANTED = /[?&]p256(=1)?(&|$)/.test(_q);
 /* (never while QA compares cropped strips against their files: __btTrimVerify) */
 export function p256On() { return WANTED && picNumbersOn(); }
 

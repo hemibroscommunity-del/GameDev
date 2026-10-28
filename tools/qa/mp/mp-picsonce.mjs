@@ -355,8 +355,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         + `${cmp.over1} more than 1 level of 255 apart, the most ${cmp.maxDiff}; against the packed canvas itself: ${cmp.originals || 0})`, cmp.strips > 0 && cmp.cells > 0 && cmp.over1 === 0 && cmp.originals === cmp.strips && !cmp.error && !cmp.sizeMismatch, cmp);
       out.numbers = { n, cmp };
     }
-    /* v2.3.3728: the effects from their 256-colour twins (p256.js, on by default) */
-    if (!/(^|&)p256=0(&|$)/.test(Q) && !/(^|&)picnumbers=0(&|$)/.test(Q)) {
+    /* v2.3.3728: the effects from their 256-colour twins (p256.js, off by default: BT_QA_QUERY=p256=1) */
+    if (/(^|&)p256(=1)?(&|$)/.test(Q) && !/(^|&)picnumbers=0(&|$)/.test(Q)) {
       const p = await P.page.evaluate(() => (window.__btP256 ? window.__btP256() : null));
       console.log(`    256 colours: ${JSON.stringify(p)}`);
       rec.ok(`?p256: the effects are read from their twins as colour numbers (${p && p.strips} strips, ${p && p.pictures} whole pictures, `

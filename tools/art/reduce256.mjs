@@ -16,9 +16,8 @@
  * colours by public/tools/style/quant256.js (OKLab, solid kept solid and soft
  * kept soft, no dithering), and written BESIDE the original as a palette PNG
  * with each colour's own alpha: `name.webp` -> `name.p256.png`.  The original
- * stays: the game reads the twin only with `?p256` on (the default) and goes
- * back to the original with `?p256=0` -- the originals go once the owner has
- * tried it.  Every twin is read back (ffmpeg again) and must give exactly the
+ * stays: the game reads the twin only with `?p256=1` (off by default, measured
+ * in the spec) -- the originals go once the owner has tried it.  Every twin is read back (ffmpeg again) and must give exactly the
  * colours written, or the run stops.
  *
  * src/data/p256Files.js (GENERATED: never by hand) lists every twin: the
