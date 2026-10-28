@@ -72,6 +72,19 @@ manifest's `refScale`, the last header value; the body's is 1).
 - The loading screen's colour waits (`coloredHairReady`, ...) wait for the
   numbers first, so your own colours are drawn from them and never copied.
 
+![The same two looks, the old way (left) and now (right)](look-heads-side-by-side.png)
+
+The same two looks on two phones, `?lookpalette=0` on the left and the
+default on the right (`LH_PICTURE=1 node tools/qa/mp/run.mjs lookheads`).
+
+**A wait it removes.** Taking that picture showed the old way's white beard
+still brown 5 s after the colour was picked. The old copy is stored only once
+every facing has loaded or failed, and the beard has no north or northeast
+picture, so each of those is retried after 2 s and 6 s (`traitImg.js`) before
+it gives up. A coloured beard therefore showed brown for about 8 s after any
+change, and for anyone who walked into view. The numbers need no copy, so
+the colour shows at once.
+
 ## How it was proven
 
 (`mp-lookheads`, a phone at 390 x 844, dpr 3, in the Wheel's BroTown.)
