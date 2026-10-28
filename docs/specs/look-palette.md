@@ -73,6 +73,19 @@ the graphics chip does the recolour as it draws.
   FAILS; a change to the recolour code WARNS (`role-bake.mjs --check` says
   whether the roles moved).
 
+- **No colour is reduced.** Every pixel keeps its own colour exactly (the
+  table holds the art's colour; the recolour is computed from it), so this is
+  not a 256-colour quantization and needs no owner's yes on quality.
+- **Why numbers + a table, not the shipped sheet + a role map.** The other
+  exact design -- draw from the shipped RGBA sheet the game already holds and
+  add a one-byte role map -- needs TWO textures a sprite (the sheet and its
+  roles) in one batch, and the shipped stand sheets are already halved to the
+  display (the box above mixes roles, so a role a display texel is not exact
+  there). One RG8 texture a sheet keeps one texture a sprite and the stand's
+  four source pixels a texel, at 2 bytes a texel plus the table (2.6 MB for all
+  ten) against the shipped sheets' 4 bytes (+ mips). The shipped sheets stay
+  loaded for the default look and the other poses; dropping them is a later step.
+
 ### The look (`src/rendering/lookPalette.js`)
 
 - A look's row, in `paletteTex.js`'s atlas (256 x 256, shared with the Wheel's
