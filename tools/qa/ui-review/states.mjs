@@ -295,7 +295,7 @@ export const STATES = [
   },
   {
     id: 'creator', group: 'Before the game', pre: true, title: 'Character creator',
-    about: 'Making a new character: the bro on the left, the Trait Picker on the right (a wide Species button over tabs for hair, hats, skin, eyes, eyewear, beard, clothes), the name field and ENTER BRO TOWN.',
+    about: 'Making a new character: the bro on the left, the Trait Picker on the right (a wide Bro type button over tabs for hair, hats, skin, eyes, eyewear, beard, clothes), the name field and ENTER BRO TOWN.',
     run: async ({ P }) => {
       if (await has(P, '[data-tut="login-create"]')) {
         await H.uncoverDoor(P.page);

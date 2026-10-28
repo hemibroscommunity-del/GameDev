@@ -338,7 +338,9 @@ export function NameModal(props) {
          - the EYES go to the species' own (the Alien Eyes) when the bro
            has his own eyes, and back to his own when he leaves a species whose
            eyes he still wears; a style the player picked stays. */
-    species: { label: 'Species', kind: 'thumb', spriteCat: 'species', catalog: SPECIES_CATALOG, sel: speciesSel,
+    /* v2.3.3772: the owner, 2026-10-28: "Change species to bro type" -- the
+       word a player reads; the code still says species */
+    species: { label: 'Bro type', kind: 'thumb', spriteCat: 'species', catalog: SPECIES_CATALOG, sel: speciesSel,
       set: function (id) {
         var was = speciesSel;
         setSpecies(id); setSpeciesSel(id);
@@ -496,7 +498,7 @@ export function NameModal(props) {
        .bt-cc-tab--wide).  Its icon is the Skin tab's bald head made an alien
        (cc-tab-species.png, tools/ui/make_species_tab_icon.py: the same 17 x 18
        grid at 8 px a pixel). */
-    { t: 'species', label: 'Species', img: _TAB_ICON('species'), wide: true },
+    { t: 'species', label: 'Bro type', img: _TAB_ICON('species'), wide: true },   /* v2.3.3772: "Change species to bro type" */
     { t: 'hair', label: 'Hair', img: _TAB_ICON('hair') },
     { t: 'hat', label: 'Hats', img: _TAB_ICON('hat') },
     { t: 'skin', label: 'Skin', img: _TAB_ICON('skin') },
