@@ -5584,6 +5584,16 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
      !important because the wrap's size is an inline style (BroTown.jsx). */
   .bt-name-modal { height:100%; }
   .brotown-wrap { width:100%!important; height:100%!important; }
+  /* ═══ v2.3.3769: THE TRAIT PICKER AS TALL AS WHAT IT HOLDS ═══
+     The owner: "As you find improvements you can make to the empty space on
+     the desktop version go ahead and make your changes to better it" (the
+     judges play on computers).  The picker ran to the screen's foot whatever
+     its tab held: on Species, three tiles and some 60% of the pane an empty
+     navy box.  On a computer it is as tall as its tab now, the creator's
+     painted backdrop showing below a short one; a long tab (Hair, Shirt)
+     still meets the foot and scrolls inside, as before.  Phones keep the
+     full-height pane: this block is pointer:fine only. */
+  .bt-cc-cols>.bt-cc-panel { align-self:flex-start; max-height:100%; }
   #root {
     /* v2.3.1715: 50% -> 25% (owner: "force shrink the game area another 50%
        ... including the dashboard").  480px at 1920, which lands close to the
