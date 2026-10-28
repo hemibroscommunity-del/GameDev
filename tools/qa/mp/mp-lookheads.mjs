@@ -105,6 +105,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
         r.every((x) => x.look && x.old) && (scale > 1 ? w <= 1 : (w <= 3 && d < 0.05 * px)), { d, px, w, hist });
     }
 
+    /* for the record (no line): through the old copy's whole 128 frame, the
+       quads' corners land on other fractions of a pixel, and the rasterizer's
+       sub-pixel snap moves an edge's one-pixel blend (geometry, not colour:
+       look-heads.md "Where it is not exact") */
+    {
+      const r = await P.page.evaluate((its) => window.__btHeadOracle.compare({ items: its, scale: 2.6, cols: 6, sameQuad: false }), sample.slice(0, 3));
+      report.wholeFrame = r;
+      console.log(`    (for the record) at 2.6x through the whole 128 frame: ${r.reduce((a, x) => a + x.differ, 0)} of ${r.reduce((a, x) => a + x.drawn, 0)} px more than 1 apart, worst ${Math.max(...r.map((x) => x.worst))}`);
+    }
+
     /* 4. the local player */
     await P.page.evaluate(() => {
       window.__btSetHair('afro'); window.__btSetHairColor('pink');
