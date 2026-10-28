@@ -3325,6 +3325,8 @@ BT_AUDIO.SFX_MANIFEST = {
   /* v2.3.3680: the dodge roll, the owner's "kneeling goblin" (goblin fall),
      0.8 s at 24 kHz, ~77 KB decoded */
   'roll-tumble': '/sfx/player/roll-tumble.mp3',
+  /* v2.3.3708: the jump, the owner's "hup" (0.19 s at 24 kHz, ~18 KB decoded) */
+  'jump-hup': '/sfx/player/jump-hup.mp3',
 };
 
 /* ═══ v2.3.3462: SOME SOUNDS ARE DECODED AT 24 kHz ═══

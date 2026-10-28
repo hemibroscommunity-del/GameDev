@@ -170,6 +170,13 @@ export const OWNER_SOUNDS = {
     "dur": 0.8,
     "low": true
   },
+  "jump-hup": {
+    "url": "/sfx/player/jump-hup.mp3",
+    "vol": 0.148,
+    "level": 0.45,
+    "dur": 0.19,
+    "low": true
+  },
   "npc-voices": {
     "url": "/sfx/npc/voices.mp3",
     "level": 0.5,

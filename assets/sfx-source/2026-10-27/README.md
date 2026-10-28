@@ -32,3 +32,4 @@ Each name is Freesound's: the sound's number, its maker, then its title.
 | `872487__heyheytheree__harvest-cozy-game-sfx-free.wav` | 872487 | heyheytheree | a harvest |
 | `502553__kneeling__goblin-fall.mp3` | 502553 | kneeling | a goblin falling (not in the game yet) |
 | `563530__catthulu__sfx-jump-flip.wav` | 563530 | catthulu | a jump with a flip (not in the game yet) |
+| `613568__mrdeadh__hup.mp3` | 613568 | mrdeadh | "hup": the jump (uploaded 2026-10-28; in the game since v2.3.3708) |

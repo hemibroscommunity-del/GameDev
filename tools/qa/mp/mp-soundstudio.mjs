@@ -151,8 +151,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.fill('[data-studio-search]', '');
     await P.page.waitForTimeout(300);
 
-    /* ── 5. a recording's chip: every place it is used ── */
-    await tap(P, '[data-studio-row="cue:jumpUp"] [data-studio-sample="arrow-fly"]');
+    /* ── 5. a recording's chip: every place it is used ──
+       v2.3.3708: from the bow's shot, as the jump is the owner's "hup" now
+       (its row's chip is jump-hup) */
+    await tap(P, '[data-studio-row="cue:bowLoose"] [data-studio-sample="arrow-fly"]');
     await P.page.waitForTimeout(400);
     const rec5 = await P.page.evaluate(() => {
       const f = document.querySelector('[data-studio-filter]');
@@ -162,7 +164,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/soundstudio-recording.png` }).catch(() => {});
     rec.ok(`5. the arrow's flight's chip shows every place that recording plays: ${rec5.ids.join(', ')}`,
-      rec5.filter === 'arrow-fly' && rec5.off.length === 0 && ['cue:bowLoose', 'cue:jumpUp', 'cue:dodged', 'cue:dodgeRoll'].every((i) => rec5.ids.includes(i)), rec5);
+      rec5.filter === 'arrow-fly' && rec5.off.length === 0 && ['cue:bowLoose', 'cue:dodged', 'cue:dodgeRoll'].every((i) => rec5.ids.includes(i))
+        && !rec5.ids.includes('cue:jumpUp'), rec5);
 
     /* ── 7. it fits the phone ── */
     const fit = await P.page.evaluate(() => {

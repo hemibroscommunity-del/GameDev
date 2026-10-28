@@ -238,6 +238,12 @@ ONE_SHOTS += [
     # 0.12 s, its loudest 0.2-0.5 s, down 30 dB by 0.9 s; 65% of it under 100 Hz,
     # so its own overtones laid over it, as the fire's are (a phone hears those)
     ('roll-tumble', NEW_SRC + '502553__kneeling__goblin-fall.mp3', 0.10, 0.80, 0.004, 0.25, 'low', 0.55, 'player'),
+    # v2.3.3708: the jump -- the owner: "File with 'hup' is the jump" (uploaded
+    # 2026-10-28, 613568__mrdeadh__hup): one short "hup!", its onset at 0.03 s,
+    # loudest 0.05-0.07 s (-20 dB), under -43 dB by 0.13 and room noise by
+    # 0.21 (the file decodes to 0.22 s); a voice, 55% of it under 400 Hz but
+    # none under 100, nothing above 12 kHz, so 24 kHz and nothing laid over it
+    ('jump-hup', NEW_SRC + '613568__mrdeadh__hup.mp3', 0.025, 0.19, 0.004, 0.08, 'low', 0.45, 'player'),
 ]
 PROCESS.update({
     'bag-close': {'hp': 150},

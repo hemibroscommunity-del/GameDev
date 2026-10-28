@@ -65,7 +65,7 @@ export const CUE_PLACES = {
   swapBow: ['fight', 'Switching to your bow'],
   swapStaff: ['fight', 'Switching to your staff'],
 
-  jumpUp: ['move', 'Your jump: the push-off'],
+  jumpUp: ['move', 'Your jump: your "hup" (another player\'s too, quieter)'],   /* v2.3.3708 */
   jumpLand: ['move', 'Landing from a jump'],
   sprintOut: ['move', 'Your sprint running out of stamina (one time the grunt, worn out...)'],
   sprintOutBreath: ['move', '...the next time the tired breath'],
@@ -406,6 +406,7 @@ export const SAMPLE_SOURCES = {
   'farm-hoe': '"hoe work" (16hpanskadvorakova_aneta, Freesound 497987)',
   'farm-mould': '"molding" (manuelaurreaf, Freesound 490099)',
   'roll-tumble': '"goblin fall" (kneeling, Freesound 502553)',   /* v2.3.3680 */
+  'jump-hup': '"hup" (mrdeadh, Freesound 613568)',   /* v2.3.3708 */
 };
 
 /* ═══ v2.3.3610: THE MUSIC, AND WHERE EACH TRACK PLAYS ═══

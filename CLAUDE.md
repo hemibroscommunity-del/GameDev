@@ -1037,6 +1037,9 @@ remnant to migrate server-side, not a mode to preserve.
       - since v2.3.3680 the roll is their "goblin fall" (`rollTumble`: your
         roll, a retreat shot's, another player's; the dash and lunge keep the
         rush), `sound-cues` §15;
+      - since v2.3.3708 the jump is their "hup" (613568, uploaded 2026-10-28:
+        "File with 'hup' is the jump"; `jumpUp`, yours and another player's,
+        0.45 of a hit, a voice in mp-cuelevels' check 6), `sound-cues` §17;
       - cut and levelled by tools/audio/cut_owner_sounds.py, whose re-run
         gives every older file byte for byte; 0.94 MB decoded, the memory
         check's sound line 30 -> 32 (main's own reading had reached 30.0);
