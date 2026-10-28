@@ -257,7 +257,7 @@ export const botsigMethods = {
 
   /* ── join: the network, from the socket's opening (index.js fetch) ── */
   _sigOnJoin(session) {
-    if (!session || !session.id) return;
+    if (this._sigSkip(session)) return;   /* a test-mode character: no network signal either */
     const now = Date.now();
     const rec = this._sigOf(session.id, now);
     if (!rec) return;
@@ -481,6 +481,8 @@ export const botsigMethods = {
   async _sigReverifyOk(id, token, ip) {
     if (!(typeof this._flagOn === 'function' && this._flagOn('botsig_reverify'))) return true;
     if (!(typeof this._verifyConfigured === 'function' && this._verifyConfigured())) return true;
+    /* the owner's test mode (testmode.js) supersedes the anti-bot: never re-checked */
+    if (typeof this._testModeRead === 'function' && (await this._testModeRead(id))) return true;
     let stored = null;
     try { stored = await this.state.storage.get('botstat:' + id); } catch (e) { return true; }
     if (!stored || !stored.sig || stored.sig.reverify !== true) return true;

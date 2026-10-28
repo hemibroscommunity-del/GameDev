@@ -392,6 +392,23 @@ const sigOf = (room, id) => room._botfp.get(id).sig;
   tm.ps.x = 1; tm.ps.y = 1;
   for (let i = 0; i < 700; i++) room._sigOnHit(tm.session, { monsterId: 'm' + (i % 4) });
   room._sigOnWindup('bp_sig_tm', { x: 0, y: 0 }, NOW);
+  /* ...nor scored for anything else: every signal's door at once */
+  tm.ps.x = 100; tm.ps.y = 100;
+  tm.session.asn = 16509;
+  room._sigOnJoin(tm.session);
+  for (let i = 0; i < 80; i++) {
+    room._sigOnCook(tm.session);
+    room.extractions['bp_sig_tm'] = { nodeId: 'x', zone: 'meadow', startedAt: NOW - 2000, openDelayBase: 0 };
+    room._sigOnStrike(tm.session, { id: 'x', swipeFp: { ent: 0.1 } });
+    room._sigOnStart(tm.session, { nodeId: 'x', zone: 'meadow' });
+    room._sigOnMove(tm.session, { vx: 1, vy: 0, dodging: true });
+    room._sigOnAbility(tm.session, { type: 'dodge' });
+    NOW += 1334;
+  }
+  const tsig = room._botfp.get('bp_sig_tm') && room._botfp.get('bp_sig_tm').sig;
+  check('9. a test-mode character sails through every signal: network, cook, gesture, walk, reflex -- nothing measured, nothing flagged',
+    (!tsig || (tsig.net.asn === null && histTotal(tsig.cook) === 0 && histTotal(tsig.gest) === 0 && tsig.aim.n === 0 && tsig.react.n === 0 && tsig.loop.n === 0))
+    && !(room._botfp.get('bp_sig_tm') && room._botfp.get('bp_sig_tm').flags.some((f) => f.kind === 'server-signals')) && !tm.session._sigPath, tsig);
   check('9. a test-mode character is never measured', !(sigOf(room, 'bp_sig_tm') && sigOf(room, 'bp_sig_tm').root.max) && !(room._sigWU && room._sigWU.has('bp_sig_tm')));
   void cl;
 }
@@ -488,6 +505,9 @@ const sigOf = (room, id) => room._botfp.get(id).sig;
   unconf._liveFlags = { botsig_reverify: true };
   state.store.get('botstat:' + id).sig.reverify = true;
   check('12. on, but the account check not configured: never asked', (await unconf._sigReverifyOk(id, null, '1.2.3.4')) === true);
+  state.store.set('testmode:' + id, { v: 1, on: true, at: NOW, name: 'Rv' });
+  check('12. a character in test mode is never re-checked (the owner\'s mode supersedes the anti-bot)', (await fresh._sigReverifyOk(id, null, '1.2.3.4')) === true);
+  state.store.delete('testmode:' + id);
   const src = (await import('node:fs')).readFileSync(new URL('../src/join.js', import.meta.url), 'utf8');
   check('12. the join asks it after the key is accepted, and refuses the way the account check does', /_authOk === true && !\(await this\._sigReverifyOk\(msg\.id, msg\.verify, session\.ip\)\)\) \{ this\._verifyRefuse\(ws\); return; \}/.test(src));
 }

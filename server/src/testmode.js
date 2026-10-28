@@ -27,7 +27,8 @@
  *     minute and the 900 ms between cooks (cooking.js), and the bot scoring
  *     with its 2,400-an-hour caps (botfp.js _botfpOnStrike, _botfpOnCook) --
  *     nothing is scored or flagged; and the server's own bot signals (v2.3.3724,
- *     botsig.js _sigSkip, _sigOnWindup): nothing measured;
+ *     botsig.js _sigSkip, _sigOnWindup, _sigReverifyOk): nothing measured,
+ *     flagged or re-checked;
  *   - the limits on how fast and how far a hit on a MONSTER lands: the
  *     weapon slot, reach and rate and the paid special's window (hitproof.js,
  *     combat.js _handleMonsterDamage), the per-monster lanes (210 ms, three

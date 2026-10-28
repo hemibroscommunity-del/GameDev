@@ -1308,7 +1308,7 @@ export const DevPanel = ({ onClose }) => {
                 <div style={{ color: COL.muted, fontSize: 12, marginBottom: 6, lineHeight: 1.4 }}>
                   Kept in the server, never in the public code and never sent to a phone.
                   A change is live at once. The placeholder is the public value, used when
-                  nothing is set.
+                  nothing is set. A character in test mode is exempt from all of these.
                 </div>
                 {hidden.off && (
                   <div data-hidden-off="1" style={{ background: COL.accentFill, border: '1px solid ' + COL.accent, color: COL.accent,
