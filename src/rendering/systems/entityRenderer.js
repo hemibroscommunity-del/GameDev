@@ -106,6 +106,7 @@ import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's sp
 import { jumpActive, jumpFrame, jumpPhase } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
+import { TRAIT_LOAD_TIMEOUT_MS } from '../traits/traitImg.js';   /* v2.3.3689: a stalled head piece is asked for again */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { activePet } from '../../game/petBook.js'; /* v2.3.3120: the pet out with you is the record's */
 import { petFrames, petSideFaces, petArtHeight } from '../petSprites.js'; /* v2.3.3120: the pet sheet */
@@ -1024,10 +1025,14 @@ function _fetchTraitMeta(e, category, id, attempt, round) {
     if (attempt < 2) setTimeout(() => _fetchTraitMeta(e, category, id, attempt + 1, round), [2000, 6000][attempt]);
     else { e.metaGaveUp = true; _traitGaveUp(e); }   /* v2.3.3606 */
   };
-  fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}${bust}`)
+  /* v2.3.3689: a meta.json that never answers is a failure after 15 s, into
+     the same retries (the picture's own TRAIT_LOAD_TIMEOUT_MS rule) */
+  let ac = null, timer = 0;
+  try { ac = new AbortController(); timer = setTimeout(() => { try { ac.abort(); } catch (er) { /* gone */ } }, 15000); } catch (er) { ac = null; }
+  fetch(`/sprites/traits/${category}/${id}/meta.json?v=${TRAIT_VER}${bust}`, ac ? { signal: ac.signal } : undefined)
     .then(r => r.ok ? r.json() : null)
-    .then(j => { if (j) { e.meta = j; return; } again(); })
-    .catch(again);
+    .then(j => { if (timer) clearTimeout(timer); if (j) { e.meta = j; return; } again(); })
+    .catch(() => { if (timer) clearTimeout(timer); again(); });
 }
 /* v2.3.1305: per-direction trait load with bounded retry.  Owner
    two-player report: "lots of layers are missing depending on the
@@ -1047,6 +1052,9 @@ function _fetchTraitMeta(e, category, id, attempt, round) {
    the old catch comment said "expected for directions that don't
    exist yet"). */
 const _TRAIT_RETRY_MS = [2000, 6000];
+/* v2.3.3689: TRAIT_LOAD_TIMEOUT_MS (traitImg.js): the longest a head piece's
+   picture may take before it is asked for again (loadCroppedStrip's
+   timeoutMs), shared with the colour catalogs' own copies */
 function _loadTraitDir(e, category, id, dir, attempt, round = 0) {
   /* v2.3.3606: `round`, a later round's number (_ensureTraitLoaded), in the
      bust too */
@@ -1065,9 +1073,15 @@ function _loadTraitDir(e, category, id, dir, attempt, round = 0) {
   /* ...and it RETURNS the load (retries chained in), so preloadTraits can hold
      the loading screen on exactly this -- it used to Assets.load every trait
      URL itself, which now would park the whole frames in the Assets cache. */
-  return loadCroppedStrip(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}${bust}`, 1)
+  /* v2.3.3689: and a picture that neither comes nor fails in
+     TRAIT_LOAD_TIMEOUT_MS is a failure, into the same retries -- one that never
+     settled left its facing bald for the page (TRAPS §257).  `inflight` says
+     since when each facing has been asked for (__btTraitCache). */
+  (e.inflight || (e.inflight = Object.create(null)))[dir] = Date.now();
+  return loadCroppedStrip(`/sprites/traits/${category}/${id}/${dir}.png?v=${TRAIT_VER}${bust}`, 1, { timeoutMs: TRAIT_LOAD_TIMEOUT_MS })
     .then(frames => {
       const t = frames[0];
+      if (e.inflight) delete e.inflight[dir];
       e.tex[dir] = t;
       if (t && t.source) {
         /* match body's linear scaleMode + mipmaps so Lanczos
@@ -1080,6 +1094,7 @@ function _loadTraitDir(e, category, id, dir, attempt, round = 0) {
       }
     })
     .catch(() => {
+      if (e.inflight) delete e.inflight[dir];
       /* v2.3.1306: meta.anchors is the authoritative list of directions
          a trait SHIPS (e.g. facialhair/beard has no north.png and no
          north anchor — by design, verified on disk; v2.3.1530 added
@@ -1115,6 +1130,98 @@ function _ensureEyewearLoaded(id) { return _ensureTraitLoaded('eyewear', id); } 
 function _ensureEyeStyleLoaded(id) { return _ensureTraitLoaded('eyestyle', id); }   /* v2.3.2643 */
 function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
 
+/* ═══ v2.3.3689: THE HEAD-PIECE WATCH ═══
+   The owner, on a computer: "I logged in as another character and traits were
+   missing when jogging in certain directions", then "Nevermind there's still
+   issues with the disappearing traits I still see it."  The test machine shows
+   none of it (mp-traitswitch: a picked character's every piece in every facing
+   from the first frame), and the owner's own sessions are where it happens, so
+   the game now watches its own bro: a head piece you wear, hidden in a facing
+   its picture ships for HEAD_WATCH_MS while you stand or move in it, is
+     - asked for again at once when its picture is the missing part (not after
+       the later round's 5-60 s: _traitKick), and
+     - written to the crash log once a page, with why (_placeTrait's
+       `_btHide`: 'tex' its picture, 'meta' its placement, 'top'/'body' the
+       body's placement data, 'frame' a bad meta) and what its loader holds --
+       so the next report says what it was.
+   A facing the piece does not ship ('design': a beard from behind) and a roll
+   are not watched.  `window.__btTraitCache()` is the same, on demand. */
+const HEAD_WATCH_MS = 2500;
+const _headWatch = { since: Object.create(null), told: new Set(), kicks: 0, hidden: [] };
+function _traitState(e, dir) {
+  if (!e) return 'none';
+  const now = Date.now();
+  const f = e.inflight && e.inflight[dir];
+  return [e.tex && e.tex[dir] ? 'tex' : 'no-tex', f ? `asked ${Math.round((now - f) / 1000)}s` : '',
+    e.gaveUp && e.gaveUp[dir] ? 'gave-up' : '', e.retryAt ? `retry in ${Math.max(0, Math.round((e.retryAt - now) / 1000))}s` : '',
+    e.retries ? `round ${e.retries}` : '', e.meta ? '' : (e.metaGaveUp ? 'meta gave up' : 'no meta')].filter(Boolean).join(', ');
+}
+/* ask for a facing's picture again now: unless it is already being asked for
+   (and not past its time), a fresh round, past any cache */
+function _traitKick(e, category, id, dir) {
+  if (!e || (e.tex && e.tex[dir])) return false;
+  const now = Date.now();
+  const f = e.inflight && e.inflight[dir];
+  if (f && now - f < TRAIT_LOAD_TIMEOUT_MS) return false;
+  e.retries = (e.retries || 0) + 1;
+  if (e.gaveUp) delete e.gaveUp[dir];
+  _loadTraitDir(e, category, id, dir, 0, e.retries);
+  if (!e.meta && e.metaGaveUp) { e.metaGaveUp = false; _fetchTraitMeta(e, category, id, 0, e.retries); }
+  _headWatch.kicks++;
+  return true;
+}
+function _watchOwnHead(display, pose, dir, mirror) {
+  if (!display) return;
+  const now = Date.now();
+  const face = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;   /* the facing on screen, for the log */
+  const worn = [
+    ['headwear', getHeadwear(), display._headwearSprite],
+    ['hair', getHair(), display._hairSprite],
+    ['facialhair', getFacialHair(), display._facialHairSprite],
+    ['eyewear', getEyewear(), display._eyewearSprite],
+    ['eyestyle', getEyeStyle(), display._eyeStyleSprite],
+  ];
+  for (const [cat, id, sp] of worn) {
+    const why = (!id || id === 'none' || !sp || sp.visible) ? null : sp._btHide;
+    if (!why || why === 'design' || why === 'dodge') { delete _headWatch.since[cat]; continue; }
+    const key = `${cat}/${id}/${face} ${why}`;
+    const w = _headWatch.since[cat];
+    if (!w || w.key !== key) { _headWatch.since[cat] = { key, t: now, first: now }; continue; }
+    if (now - w.t < HEAD_WATCH_MS) continue;
+    w.t = now;   /* acts at most every HEAD_WATCH_MS */
+    const e = _traitCache[cat + '/' + id];
+    let kicked = false;
+    if (why === 'tex') kicked = _traitKick(e, cat, id, dir);
+    else if (why === 'meta' && e && !e.meta && e.metaGaveUp) {
+      e.metaGaveUp = false; e.retries = (e.retries || 0) + 1;
+      _fetchTraitMeta(e, cat, id, 0, e.retries);
+      kicked = true; _headWatch.kicks++;
+    }
+    if (!_headWatch.told.has(key)) {
+      _headWatch.told.add(key);
+      const line = `${key} ${pose} ${Math.round((now - w.first) / 1000)}s [${_traitState(e, dir)}]${kicked ? ' asked again' : ''}`;
+      _headWatch.hidden.push(line);
+      if (_headWatch.hidden.length > 20) _headWatch.hidden.shift();
+      try { recordCrash('trait-hidden', line); } catch (er) { /* telemetry */ }
+    }
+  }
+}
+/* QA and a player's console: each worn piece's loader, and what the watch saw */
+if (typeof window !== 'undefined') {
+  window.__btTraitCache = function () {
+    const out = { watch: { kicks: _headWatch.kicks, hidden: _headWatch.hidden.slice() }, body: { anchors: !!_bodyAnchors, tops: !!_bodyTops, rounds: _bodyDataRounds }, worn: {} };
+    const worn = { headwear: getHeadwear(), hair: getHair(), facialhair: getFacialHair(), eyewear: getEyewear(), eyestyle: getEyeStyle() };
+    for (const [cat, id] of Object.entries(worn)) {
+      if (!id || id === 'none') continue;
+      const e = _traitCache[cat + '/' + id];
+      const dirs = {};
+      for (const d of ['east', 'northeast', 'north', 'south', 'southwest']) dirs[d] = _traitState(e, d);
+      out.worn[cat] = { id, meta: !!(e && e.meta), ships: e && e.meta && e.meta.anchors ? Object.keys(e.meta.anchors) : null, dirs };
+    }
+    return out;
+  };
+}
+
 /* Body anchor schemas, loaded once and shared by every player + hat.
    body-tops.json: per-(pose,dir,frame) topmost opaque pixel [x,y] of the
    body sprite -- the head pin point for trait stickers (derived raw by
@@ -1122,6 +1229,7 @@ function _ensureHairLoaded(id) { return _ensureTraitLoaded('hair', id); }
 let _bodyAnchors = null;
 let _bodyTops = null;
 let _bodyDataPromise = null;
+let _bodyDataRounds = 0;   /* v2.3.3689: rounds asked (the later ones busted) */
 function _ensureBodyData() {
   if (_bodyDataPromise) return _bodyDataPromise;
   /* v2.3.1382: bounded retry (v2.3.1305 pattern) — these anchors place every
@@ -1145,10 +1253,23 @@ function _ensureBodyData() {
             .then(() => _fetchJson(url, apply, attempt + 1));
         }
       });
-  _bodyDataPromise = Promise.allSettled([
-    _fetchJson(`/sprites/player/body-anchors.json?v=${TRAIT_VER}`, (j) => { _bodyAnchors = j; }),
-    _fetchJson(`/sprites/player/body-tops.json?v=${TRAIT_VER}`, (j) => { _bodyTops = j; }),
-  ]);
+  /* v2.3.3689: and not the end of it.  The promise was kept for the page, so
+     three failed tries hid every head piece in every facing until a reload;
+     now a round that leaves either missing lets the next ask, 20 s on, start
+     another (`&g=`, past any cache), as a head piece's own later rounds do
+     (v2.3.3606) */
+  const round = _bodyDataRounds++;
+  const g = round > 0 ? `&g=${round}` : '';
+  const p = _bodyDataPromise = Promise.allSettled([
+    _bodyAnchors ? null : _fetchJson(`/sprites/player/body-anchors.json?v=${TRAIT_VER}${g}`, (j) => { _bodyAnchors = j; }),
+    _bodyTops ? null : _fetchJson(`/sprites/player/body-tops.json?v=${TRAIT_VER}${g}`, (j) => { _bodyTops = j; }),
+  ]).then((r) => {
+    if (!_bodyAnchors || !_bodyTops) {
+      try { recordCrash('sheet', `body data missing after round ${round} (anchors ${!!_bodyAnchors}, tops ${!!_bodyTops})`); } catch (e) { /* telemetry */ }
+      setTimeout(() => { if (_bodyDataPromise === p) _bodyDataPromise = null; }, 20000);
+    }
+    return r;
+  });
   return _bodyDataPromise;
 }
 
@@ -1636,7 +1757,7 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      pose would place hats on feet.  Re-enabling traits needs a real per-frame
      head anchor (the head IS separable — it is the bare skin blob left in the
      armoured art, which is how the seal below finds it), not a bodyTop. */
-  if (pose === 'dodge') { sprite.visible = false; return; }
+  if (pose === 'dodge') { sprite.visible = false; sprite._btHide = 'dodge'; return; }
   _ensureBodyData();
   /* v2.3.1305: fallbackTex = the NATIVE-color textures behind a recolored
      set.  The color catalogs cache a build as complete even when one
@@ -1652,8 +1773,14 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
   if (!(headwearTex && meta && meta.fullFrame && spriteBody && bodyTop && anchorPx)) {
     sprite.visible = false;
+    /* v2.3.3689: WHY, for the head-piece watch (_watchOwnHead) and the probe:
+       'design' is a facing the piece does not ship (a beard from behind) */
+    sprite._btHide = !entry ? 'entry' : !meta ? 'meta'
+      : !anchorPx ? ((meta.anchors && !meta.anchors[dir]) ? 'design' : 'anchor')
+      : !headwearTex ? 'tex' : !meta.fullFrame ? 'frame' : !spriteBody ? 'body' : 'top';
     return;
   }
+  sprite._btHide = null;
   const headwear = sprite;
   /* screenDir lets meta override a mirrored side independently (e.g.
      crownNudge.west tweaks only the west view, not east).  Falls back
@@ -5270,6 +5397,16 @@ function _ensureTraitTextures() {
    evict itself); their base art is covered here. */
 export function preloadTraits() {
   const urls = [];
+  /* v2.3.3689: YOUR pieces first.  The loop below asks for every piece in
+     every catalog at once (~280 pictures), in catalog order, so on a slow
+     connection your own hat could be among the last in -- and the loading
+     screen lifts at its 20 s cap whatever has come.  Asked for first, they
+     are at the head of the queue. */
+  try {
+    for (const [cat, id] of [['headwear', getHeadwear()], ['hair', getHair()], ['facialhair', getFacialHair()], ['eyewear', getEyewear()], ['eyestyle', getEyeStyle()]]) {
+      if (id && id !== 'none') _ensureTraitLoaded(cat, id);
+    }
+  } catch (e) { /* the loop below asks for them anyway */ }
   const cats = [
     ['headwear', HEADWEAR_CATALOG],
     ['hair', HAIR_CATALOG],
@@ -14103,6 +14240,7 @@ export class EntityRenderer {
         _placeEyewear(display, getEyewear(), getEyewearColor(), pose, dir, mirror, frameIdx, bodyScale);   /* v2.3.2361; v2.3.2424 + colour */
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
+        _watchOwnHead(display, pose, dir, mirror);   /* v2.3.3689: a piece hidden where it ships, asked for again and logged */
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */

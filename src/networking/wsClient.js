@@ -180,6 +180,16 @@ import { applyShardCrackResult, applyGemCombineResult } from '@/game/shardCrack.
 import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
+/* v2.3.3689: what your head wears and its colours, as one string -- the
+   state_sync record apply tells BroTown when it changed (the 'bt-own-look'
+   event: the new pieces prepared, the veil waiting for them) */
+function _ownHeadLook() {
+  try {
+    return [getHeadwear(), getHatColor(), getHair(), getHairColor(), getFacialHair(), getFacialHairColor(),
+      getEyewear(), getEyewearColor(), getEyeStyle(), getSpecies(), getSkin()].join('|');
+  } catch (e) { return ''; }
+}
+
 /* Tick arrival timestamps — module-level so the buffer survives
  * WebSocket reconnects and can be sampled by the FPS/NET overlay.
  * performance.now() values, capped at ~5 minutes of history.  Bytes-per-tick
@@ -1554,8 +1564,18 @@ export function setupWebSocket(ctx) {
                  would hand an existing player a blank bro. */
               try {
                 if (hasStoredCharacter(S._serverCaps.charLock, msg.char)) {
+                  /* v2.3.3689: and when it CHANGES what your head wears (a new
+                     device's first join of a Login Key, a picker row with no
+                     look yet), BroTown prepares the new pieces and their
+                     colours, and the straight-in road's veil waits for them
+                     (avatarHold holdForAvatarAlso) -- the veil's own preload
+                     made the look this device had */
+                  var _lookWas = _ownHeadLook();
                   applyCharacterRecord(msg.char, S);
                   publishCharRecord(msg.char);
+                  if (_ownHeadLook() !== _lookWas) {
+                    try { window.dispatchEvent(new CustomEvent('bt-own-look')); } catch (e2) { /* no window */ }
+                  }
                 }
               } catch (e) { /* never let a cosmetic restore break the sync */ }
               /* v2.3.1576: the server's verified Hemi Bro for THIS player,

@@ -8529,3 +8529,40 @@ colour: a head sheet takes no trousers or boots, a torso strip no boots.
 
 **Receipt:** `mp-garmentspecks`, `tools/qa/garment-confine.mjs` (every sheet,
 nothing left unpainted in a figure's bottom fifth), docs/specs/garment-specks.md.
+
+## 257. "A picture that does not come fails, and a failure is tried again" (v2.3.3689)
+
+**The move.** A picture the game needs is loaded with its retries chained onto
+the failure: `img.onerror` (or the loader's rejection) waits a moment and asks
+again past the cache, two or three times, then gives up and says so. The head
+pieces had that since v2.3.1305, a later round every few minutes since
+v2.3.3606, and the body's placement tables the same since v2.3.1382.
+
+**Why it is wrong.** A request can STALL: no answer and no error, for as long
+as the page lives. A flaky Wi-Fi, a phone changing networks, a proxy that drops
+a connection without closing it leave one behind. Nothing ever rejects, so no
+retry ever runs, and the later rounds wait for a give-up that never comes. One
+head piece's picture is one facing (`hat/north.png`), so a stalled request is a
+hat that is there facing south and gone facing north, for the session -- the
+owner's "traits were missing when jogging in certain directions". And the
+loading screen, which waits for every head piece, sat at its 20 s cap first:
+"I think the disappearing traits are just from the game not fully loaded yet".
+The colour picks downloaded each piece a second time with a bare `new Image()`
+and no retry at all, and a colour is made from all five facings at once, so a
+stall there left the piece in its native colour in every facing.
+
+**The rule.** Every load the game waits on has a TIME LIMIT that counts as a
+failure, into the same retries: the head pieces' pictures (loadCroppedStrip's
+`timeoutMs`, and the colour catalogs' `loadTraitImg`, both
+`TRAIT_LOAD_TIMEOUT_MS` in src/rendering/traits/traitImg.js), their meta.json
+(an AbortController), and the body's placement tables and the gathering
+figures' crowns, which now start another round later instead of giving up for
+the page. A new loader takes a timeout too, or says why a stall cannot happen.
+And what the player sees is WATCHED: a worn piece hidden for 2.5 s facing a way
+its picture ships is asked for again and written to the crash log once
+(entityRenderer `_watchOwnHead`, `window.__btTraitCache()`).
+
+**Receipt:** `mp-traitswitch` step 6 (every first ask for the hat's north
+picture left hanging: drawn, red, facing north from the first frame; on the
+build before, never asked again -- not drawn facing north, and brown, not red,
+in the other four), docs/specs/head-pieces-ask-again.md.

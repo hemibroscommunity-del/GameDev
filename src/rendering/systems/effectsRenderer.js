@@ -7,6 +7,7 @@ import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SM
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
 import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard */
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
+import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
 import { keepOnGpuOnly } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
@@ -4458,10 +4459,20 @@ export class EffectsRenderer {
        every hat onto crown[7]. */
     /* v2.3.3439: + the farmer's three, whose crowns travel with their strips
        (src/data/farmAnims.js, made with them by tools/make_farm_anims.py) */
-    fetch('/sprites/skills/crowns.json?v=2.3.1715').then((r) => r.json()).then((j) => {
-      for (const a of Object.keys(FARM_ANIMS)) j[FARM_ANIMS[a].pose] = FARM_ANIMS[a];
-      this._skillCrowns = j;
-    }).catch(() => {});
+    /* v2.3.3689: asked for again when it fails (2 s, 6 s, then every 20 s
+       while nothing has come, `&g=` past any cache): it was asked for once,
+       and a failure left every head piece off every stand-in -- the sword's
+       swing, the bow's shot, the chop, the cook, the fire, the farm -- for the
+       page (_placeSkillTraitsOn hides them all without crowns) */
+    const _crowns = (n) => fetch('/sprites/skills/crowns.json?v=2.3.1715' + (n ? `&g=${n}` : ''))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('status ' + r.status)))).then((j) => {
+        for (const a of Object.keys(FARM_ANIMS)) j[FARM_ANIMS[a].pose] = FARM_ANIMS[a];
+        this._skillCrowns = j;
+      }).catch(() => {
+        try { if (!n) recordCrash('sheet', 'crowns.json failed'); } catch (e) { /* telemetry */ }
+        setTimeout(() => { if (!this._skillCrowns && !this._destroyed) _crowns(n + 1); }, [2000, 6000][n] || 20000);
+      });
+    _crowns(0);
 
     /* v2.3.1713: warm the fire-lighter's SHIRT sheet onto the intro gate.
        _gearStripFrame loads through _fxLoad, so touching it once here registers
