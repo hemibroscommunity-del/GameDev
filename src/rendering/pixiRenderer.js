@@ -12,7 +12,7 @@ import { ArenaWorld } from './arenaWorld.js';   /* v2.3.3566: a dungeon's arena,
 import { ZONES } from '../data/zones.js';   /* v2.3.3566: a zone's arena pictures (arenaArt) */
 import { isWheelTrialZone } from '../game/worldTrial.js';
 import { townSkippedOnTheWay } from '../game/wheelHome.js';   /* v2.3.3037: today's town is a stop on the way to the Wheel */
-import { wheelObjectsOn } from '../game/wheelTrial.js';
+import { wheelObjectsOn, wheelRendererSaid } from '../game/wheelTrial.js';   /* v2.3.3709: + the renderer's word, which a ground worker started before it waits for */
 import { MonsterSilhouettes, warmSilhouettes, setSilhouettes, monsterBodyBox } from './monsterSilhouette.js'; /* v2.3.3707: a monster hidden behind a thing, seen as its silhouette */
 import { EntityRenderer, monsterDisplayMap, prewarmMaskedBodyFrames, prewarmAltWornSets, planPrewarmProgress, uploadBakedTextures, uploadGearTextures, registerPrewarmRenderer, setPlateZoom, figureFeetY, playerGroundDy } from './systems/entityRenderer.js'; /* v2.3.2262: setPlateZoom keeps in-world text readable when the world zooms out; v2.3.2748: + the player's feet for the depth pass */
 import { EffectsRenderer, prewarmDmgFontPipe, dmgFontNeedsRebuild, FIRE_FRAME_MS } from './systems/effectsRenderer.js';
@@ -265,7 +265,19 @@ if (typeof window !== 'undefined') {
   window.__btCamSnap = () => ({ ..._camProbe });
 }
 
+/* v2.3.3709: QA (mp-groundwait): `?pixidelay=ms` makes the renderer that much
+   later, as a slow phone's first graphics context is -- the Wheel's ground
+   worker must wait for its word (game/wheelTrial.js).  Nothing else reads it. */
+function qaPixiDelay() {
+  try {
+    const m = typeof location !== 'undefined' && /[?&]pixidelay=(\d+)/.exec(location.search || '');
+    return m ? Math.min(20000, +m[1]) : 0;
+  } catch (e) { return 0; }
+}
+
 export async function initPixiRenderer(canvas) {
+  const qaDelay = qaPixiDelay();
+  if (qaDelay) await new Promise((r) => setTimeout(r, qaDelay));
   const { app, layers, worldContainer, screenContainer } = await createPixiApp(canvas);
   _appRef = app;
   /* v2.3.3017: QA (mp-glrestore): the picture blanked to the canvas's own
@@ -316,6 +328,10 @@ export async function initPixiRenderer(canvas) {
      a pixel, coloured on the GPU -- its programs built here, behind the
      loading screen (rendering/paletteTex.js) */
   try { setPaletteRenderer(app.renderer); } catch (e) { /* colours, as before */ }
+  /* v2.3.3709: both answers the Wheel's ground worker is told as it starts
+     (moving water, above; colour numbers, here) are said: a worker the trip
+     started before this was waiting for them (game/wheelTrial.js) */
+  wheelRendererSaid();
   /* v2.3.3447: one drawing program for every sprite, built here after the
      palette's (whose own prewarm must reach the palette program); the three
      programs, as before, if it does not link (rendering/paletteTex.js) */

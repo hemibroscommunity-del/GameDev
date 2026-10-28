@@ -6106,6 +6106,16 @@ Two protocol versions coexist; both must keep working:
       box's software chip a frame 20-27% longer in BroTown and 14-21% among
       trees and water -- not measured on a phone:
       docs/specs/palette-textures.md.
+    - since v2.3.3709 THE GROUND WORKER WAITS FOR THE RENDERER'S WORD: it is
+      told colour numbers and moving water ONCE, as it starts, and the trip
+      into the world did not wait for the renderer that decides them -- a
+      renderer late by a few seconds (mp-palette's busy phone; any slow
+      phone) had the visit's ground laid in colours and its water still,
+      62.8 MB on the graphics chip against 36.7 (`mp-groundwait`, the
+      renderer held back by `?pixidelay=ms`); `wheelStart` waits for
+      `wheelRendererSaid` (initPixiRenderer, after both setters), 15 s at
+      most, never in Node; `?groundwait=0` as before, `__btGroundWait()`;
+      `ground-waits` suite: docs/specs/ground-waits.md.
     - since v2.3.3447 ONE DRAWING PROGRAM FOR EVERY SPRITE -- the owner:
       "iterate on what best improves framerate without loss of quality":
       `ONE_BATCHER` (paletteTex.js) draws what the default, sharp and
