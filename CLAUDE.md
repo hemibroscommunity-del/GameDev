@@ -1047,8 +1047,10 @@ remnant to migrate server-side, not a mode to preserve.
         `public/sfx/player/jump-land.mp3`: yours, and another player's where
         they land) -- the owner: "goblin fall is just the label of the file I
         want to use for when the character's jump lands"; v2.3.3680 had put
-        it on the roll, which is its rush of air again (`dodgeRoll`); the
-        "hup" for the jump is not uploaded yet, `sound-cues` §15;
+        it on the roll, which is its rush of air again (`dodgeRoll`); `sound-cues` §15;
+      - since v2.3.3708 the jump is their "hup" (613568, uploaded 2026-10-28:
+        "File with 'hup' is the jump"; `jumpUp`, yours and another player's,
+        0.45 of a hit, a voice in mp-cuelevels' check 6), `sound-cues` §17;
       - cut and levelled by tools/audio/cut_owner_sounds.py, whose re-run
         gives every older file byte for byte; 0.94 MB decoded, the memory
         check's sound line 30 -> 32 (main's own reading had reached 30.0);

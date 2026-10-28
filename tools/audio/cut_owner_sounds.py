@@ -246,6 +246,12 @@ ONE_SHOTS += [
     # at its loudest 0.15 s in, a quiet airy tail to its end (0.56 s); 2% of it
     # under 100 Hz, so nothing laid over it
     ('jump-flip', NEW_SRC + '563530__catthulu__sfx-jump-flip.wav', 0.10, 0.45, 0.004, 0.15, 'low', 0.5, 'player'),
+    # v2.3.3708: the jump -- the owner: "File with 'hup' is the jump" (uploaded
+    # 2026-10-28, 613568__mrdeadh__hup): one short "hup!", its onset at 0.03 s,
+    # loudest 0.05-0.07 s (-20 dB), under -43 dB by 0.13 and room noise by
+    # 0.21 (the file decodes to 0.22 s); a voice, 55% of it under 400 Hz but
+    # none under 100, nothing above 12 kHz, so 24 kHz and nothing laid over it
+    ('jump-hup', NEW_SRC + '613568__mrdeadh__hup.mp3', 0.025, 0.19, 0.004, 0.08, 'low', 0.45, 'player'),
 ]
 PROCESS.update({
     'bag-close': {'hp': 150},

@@ -196,3 +196,33 @@ double jump." v2.3.3680 had read "for that" as the roll.
 - `sound-cues` §15 (four checks) pins the clip and its source, the landing
   (yours and another player's), the roll's rush in all three places, and the
   studio's and CREDITS.md's lines.
+
+## v2.3.3708: the jump is their "hup"
+
+The owner, 2026-10-28: "File with 'hup' is the jump, goblin fall is just the
+label of the file I want to use for when the character's jump lands, and the
+jump flip noise is the sound I want to play when and if you activate the
+double jump." The landing and the flip came first (#1170, #1167); the hup was
+not in that upload. It came later the same day:
+`assets/sfx-source/2026-10-27/613568__mrdeadh__hup.mp3`, kept as supplied.
+
+- **Cut** by `tools/audio/cut_owner_sounds.py` like the others: the `jump-hup`
+  row, 0.19 s from 0.025 s (the file decodes to 0.22 s: the voice's onset at
+  0.03, its loudest 0.05-0.07 s, under -43 dB by 0.13). A voice: 55% of it
+  under 400 Hz but none under 100, so nothing is laid over it, and nothing
+  above 12 kHz, so 24 kHz. That gives `public/sfx/player/jump-hup.mp3` (2 KB)
+  and its row in the GENERATED `src/data/ownerSoundClips.js`, levelled to 0.45
+  of a hit. Every other file the tool writes came out byte for byte.
+- **Where it plays** (the cue `jumpUp`, `src/data/eventSounds.js`): your jump's
+  push-off, over the footstep it already plays (`src/game/jumpActions.js`), and
+  another player's jump at their share (`src/networking/gameEvents.js`,
+  `player_jump`). It was a rush of air, the arrow's flight a touch lower and
+  slower than the bow's shot (v2.3.3523).
+- **Measured** by `mp-cuelevels`, as the game plays it (its PROMISED 0.45). The
+  jump moved from check 5's "rush of air" list to check 6's voices: a voice is
+  low but not a thump.
+- The Sound Studio's line says "Your jump: your "hup"", with its recording's
+  chip. CREDITS.md has its row, its license still to **CONFIRM**.
+- `sound-cues` §17 (three checks) pins the clip, the cue and its two places,
+  and the labels.
+

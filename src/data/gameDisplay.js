@@ -3327,6 +3327,8 @@ BT_AUDIO.SFX_MANIFEST = {
      ~77 KB decoded; v2.3.3686: the JUMP'S LANDING (it was the roll) */
   'jump-land': '/sfx/player/jump-land.mp3',
   'jump-flip': '/sfx/player/jump-flip.mp3',   /* v2.3.3682: the double jump's flip (ownerSoundClips.js) */
+  /* v2.3.3708: the jump, the owner's "hup" (0.19 s at 24 kHz, ~18 KB decoded) */
+  'jump-hup': '/sfx/player/jump-hup.mp3',
 };
 
 /* ═══ v2.3.3462: SOME SOUNDS ARE DECODED AT 24 kHz ═══

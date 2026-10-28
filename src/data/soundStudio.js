@@ -64,7 +64,7 @@ export const CUE_PLACES = {
   swapBow: ['fight', 'Switching to your bow'],
   swapStaff: ['fight', 'Switching to your staff'],
 
-  jumpUp: ['move', 'Your jump: the push-off'],
+  jumpUp: ['move', 'Your jump: your "hup" (another player\'s too, quieter)'],   /* v2.3.3708 */
   jumpLand: ['move', "Landing from a jump: your \"goblin fall\" (another player's too, quieter)"],   /* v2.3.3686 */
   jumpFlip: ['move', 'Your double jump: the flip, a second press in the air (another player\'s too, quieter)'],   /* v2.3.3682 */
   sprintOut: ['move', 'Your sprint running out of stamina (one time the grunt, worn out...)'],
@@ -407,6 +407,7 @@ export const SAMPLE_SOURCES = {
   'farm-mould': '"molding" (manuelaurreaf, Freesound 490099)',
   'jump-land': '"goblin fall" (kneeling, Freesound 502553)',   /* v2.3.3680; the jump's landing since v2.3.3686 */
   'jump-flip': '"sfx jump flip" (catthulu, Freesound 563530)',   /* v2.3.3682 */
+  'jump-hup': '"hup" (mrdeadh, Freesound 613568)',   /* v2.3.3708 */
 };
 
 /* ═══ v2.3.3610: THE MUSIC, AND WHERE EACH TRACK PLAYS ═══

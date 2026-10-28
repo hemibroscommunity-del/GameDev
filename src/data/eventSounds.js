@@ -126,11 +126,12 @@ export const EVENT_SOUNDS = {
   swapStaff: [['ui-equip', 0.095, 0.3, 1.4, 1.05], ['magic-cast', 0, 0.4, 0.3, 1.3, 0.04, 0.1]],
 
   /* ── moving ────────────────────────────────────────────────────────── */
-  /* A jump's push-off, over the footstep it already plays, ~0.4 (the
-     arrow's flight, quick: see `dodged`)...  v2.3.3523: the bow's shot is
-     this slice now (`bowLoose`, the owner's ask), so the jump's is the same
-     rush a touch lower and slower, to tell the two apart. */
-  jumpUp: [['arrow-fly', 0.03, 0.22, 2.6, 0.85, 0, 0.05]],
+  /* A jump's push-off, over the footstep it already plays.  v2.3.3708: the
+     owner's own "hup" (613568__mrdeadh__hup), ~0.45 -- the owner: "File with
+     'hup' is the jump" -- yours, and another player's at their share
+     (gameEvents.js player_jump).  It was a rush of air (the arrow's flight a
+     touch lower and slower than the bow's shot, v2.3.3523), ~0.4. */
+  jumpUp: [['jump-hup', 0, 0, own('jump-hup'), 1]],
   /* ...and the landing's weight.  v2.3.3686: the owner's own landing, their
      "goblin fall" (502553__kneeling__goblin-fall: a body coming down), ~0.55,
      its own overtones laid over its thump so a phone hears it -- the owner:
