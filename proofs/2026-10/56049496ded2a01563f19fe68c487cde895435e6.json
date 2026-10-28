@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "56049496ded2a01563f19fe68c487cde895435e6",
+  "tree": "1fce7a8673e83fafd88eff5ce8e090cec5659689",
+  "committedAt": "2026-10-28T16:46:18-07:00",
+  "subject": "Your loot pile shines as it lands, then glows until you pick it up (v2.3.3746) (#1243)",
+  "files": 6932,
+  "bytes": 804198531,
+  "listingSha256": "ff0530672f31af67543ae2791fca3e0468ac7aec2330eb3a74c61a88037933ff",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
