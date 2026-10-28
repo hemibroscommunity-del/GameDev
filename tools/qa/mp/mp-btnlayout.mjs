@@ -257,10 +257,24 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   if (r.jump && r.jump.shown) {
     const clearOf = (o) => !o || !o.shown || r.jump.right <= o.left || r.jump.left >= o.right || r.jump.bottom <= o.top || r.jump.top >= o.bottom;
     if (r.dashTop != null) rec.ok(`${tag}: the jump button sits clear of the dashboard (bottom ${r.jump.bottom} vs dash top ${r.dashTop})`, r.jump.bottom <= r.dashTop, { jump: r.jump, dashTop: r.dashTop });
-    if (r.attack && r.attack.shown) rec.ok(`${tag}: ...and under the attack disc, not on it (top ${r.jump.top} vs disc bottom ${r.attack.bottom})`, r.jump.top >= r.attack.bottom, { jump: r.jump, attack: r.attack });
+    /* ═══ v2.3.3740: UPRIGHT, LEFT OF THE DISC, BLOCK UNDER IT ═══
+       The owner: "move the contextual button slightly down and to the right
+       more.  Move the jump button more to the left" (ShieldButton jumpAnchor):
+       16 px of air or more to the disc's left edge, and Block diagonal below
+       and left of it, 8 px or more under its foot. */
+    const upright = phone.width < phone.height;
+    if (r.attack && r.attack.shown) {
+      if (upright) rec.ok(`${tag}: ...and LEFT of the attack disc, ${r.attack.left - r.jump.right}px of air from it (16 or more)`, r.attack.left - r.jump.right >= 16, { jump: r.jump, attack: r.attack });
+      else rec.ok(`${tag}: ...and under the attack disc, not on it (top ${r.jump.top} vs disc bottom ${r.attack.bottom})`, r.jump.top >= r.attack.bottom, { jump: r.jump, attack: r.attack });
+    }
     if (r.shield && r.shield.shown) {
-      const gap = r.shield.right <= r.jump.left ? r.jump.left - r.shield.right : null;
-      rec.ok(`${tag}: ...with ${gap}px of clear air from Block to its left, so a thumb on one is not on the other`, gap != null && gap >= 20, { jump: r.jump, shield: r.shield });
+      if (upright) {
+        const gap = r.shield.top - r.jump.bottom;
+        rec.ok(`${tag}: ...with ${gap}px of clear air down to Block, below and left of it, so a thumb on one is not on the other`, gap >= 8 && r.shield.left < r.jump.left, { jump: r.jump, shield: r.shield });
+      } else {
+        const gap = r.shield.right <= r.jump.left ? r.jump.left - r.shield.right : null;
+        rec.ok(`${tag}: ...with ${gap}px of clear air from Block to its left, so a thumb on one is not on the other`, gap != null && gap >= 20, { jump: r.jump, shield: r.shield });
+      }
     }
     rec.ok(`${tag}: ...and overlapping neither Bash nor Special`, clearOf(r.bash) && clearOf(r.special), { jump: r.jump, bash: r.bash, special: r.special });
   }
@@ -415,8 +429,12 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   if (r.bash && r.bash.shown && r.attack && r.attack.shown) {
     const size = r.bash.bottom - r.bash.top;
     const discMidY = (r.attack.top + r.attack.bottom) / 2;
-    const wantBottom = discMidY + size / 2;                /* slot 0: centred on the disc's midline */
-    rec.ok(`${tag}: Shield Bash is in column slot 0, level with the disc's centre `
+    /* v2.3.3740: upright the column stands on JUMP (TRAP 8 px over it, Bash
+       8 px over TRAP): pinned to Jump's top instead of the disc's middle */
+    const onJump = phone.width < phone.height && r.jump && r.jump.shown;
+    const wantBottom = onJump ? r.jump.top - 8 - size - 8 : discMidY + size / 2;   /* slot 0: centred on the disc's midline */
+    rec.ok(onJump ? `${tag}: Shield Bash stands on the column over Jump, over TRAP's place (bottom ${r.bash.bottom}, expected ~${Math.round(wantBottom)})`
+      : `${tag}: Shield Bash is in column slot 0, level with the disc's centre `
       + `(bottom ${r.bash.bottom}, expected ~${Math.round(wantBottom)})`,
       Math.abs(r.bash.bottom - wantBottom) <= 2, { bash: r.bash, attack: r.attack, wantBottom });
     rec.ok(`${tag}: ...and still hugs the disc's left edge, 4px clear (bash right ${r.bash.right}, disc left ${r.attack.left})`,
