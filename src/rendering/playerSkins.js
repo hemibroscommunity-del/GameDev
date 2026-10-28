@@ -2225,6 +2225,10 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
    exactly as before.  Only for a body drawn as it is: a frame that is masked
    under armour or cut into bands reads its pixels, and those are numbers. */
 export function getLookBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, eyeId, art, eyeStyleId) {
+  /* v2.3.3750: every pose the body's manifest has (lookPose).  Fishing asks
+     as getFishFrame does: no shirt, eye or eye style on that sheet, its
+     drawings unmirrored */
+  if (pose === 'fish') { shirtT = null; eyeId = undefined; eyeStyleId = undefined; art = _fishArt(art); }
   if (!lookPaletteWanted() || !lookPose(pose) || shirtT) return null;
   if (eyeBlankFor(pose, dir, eyeStyleId)) return null;
   if (bodyArtSeg(artForFacing(art, dir))) return null;
@@ -2813,6 +2817,7 @@ _prewarmCurrent();
 try {
   if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(window.location.search || '')) {
     installLookProbe({ getBodyFrame, getLookBodyFrame, getFrame, playerFrameCount,
-      touches: (L, pose, dir) => !!(skinTarget(L[0]) || pantsTarget(L[1]) || shoesTarget(L[2]) || eyeFor(pose, dir, L[3])) });
+      /* v2.3.3750: poseSkinTarget -- hit, roll, mine and fish always recolour the skin */
+      touches: (L, pose, dir) => !!(poseSkinTarget(skinTarget(L[0]), pose) || pantsTarget(L[1]) || shoesTarget(L[2]) || eyeFor(pose, dir, L[3])) });
   }
 } catch (e) { /* QA only */ }

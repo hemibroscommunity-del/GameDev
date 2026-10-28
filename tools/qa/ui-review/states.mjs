@@ -309,13 +309,16 @@ export const STATES = [
      owner's "Go recommended"), so the opening shot no longer shows Hair.
      v2.3.3589: and 'species', a tab of its own (the owner: "Yes make species
      it's own button"); the creator opens on it, and Skin is the skin tones. */
+  /* v2.3.3777: the 'species' tab reads "Bro type" (v2.3.3772, the owner:
+     "Change species to bro type"); its id stays, as UI-DESIGN-NOTES and the
+     review's packets key on it, and the tab is found by either word */
   ...['species', 'hair', 'hat', 'skin', 'eyes', 'eyewear', 'beard', 'shirt', 'pants', 'shoes'].map((t) => ({
-    id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + t + ' tab',
-    about: 'The character creator with the "' + t + '" tab of the Trait Picker open.',
+    id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + (t === 'species' ? 'Bro type' : t) + ' tab',
+    about: 'The character creator with the "' + (t === 'species' ? 'Bro type' : t) + '" tab of the Trait Picker open.',
     run: async ({ P }) => {
       const r = await evalIn(P, (tt) => {
         const tabs = Array.from(document.querySelectorAll('button.bt-cc-tab'));
-        const want = { species: /^species/i, hair: /^hair/i, hat: /hat/i, skin: /^skin/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
+        const want = { species: /^(bro type|species)/i, hair: /^hair/i, hat: /hat/i, skin: /^skin/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
         const b = tabs.find((x) => want.test((x.innerText || x.getAttribute('aria-label') || '').trim()));
         if (!b) return 'no tab ' + tt + ' (have: ' + tabs.map((x) => (x.innerText || '').trim()).join(', ') + ')';
         b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -658,7 +661,20 @@ export const STATES = [
   building('post', 'Post Office', 'The Post Office: your mail and friends\' messages.'),
   building('sheriff', "Sheriff's Office", "The Sheriff's Office: the player list (duels start from a player's card) and the arena sign-up."),
   building('guildhall', 'Guild Hall', 'The Guild Hall: a row saying clans are parties now (made in the Saloon), and the skill guilds.'),
-  building('townhall', 'Town Hall', 'The Town Hall: the leaderboard and the world map.'),
+  building('townhall', 'Town Hall', 'The Town Hall (v2.3.3766): the board of everything to do in the world, under five headings, the leaderboard and the world map at its foot.'),
+  /* v2.3.3766: a page of the board -- the arena's, with its two pins */
+  building('townhall', 'Town Hall: a page', 'A page of the Town Hall\'s board (v2.3.3766): what the arena is, where it is, and the Red pin and Blue pin buttons.', {
+    id: 'building-townhall-page',
+    run: async ({ P }) => {
+      const ok = await evalIn(P, (p) => { if (!window.__btBuildingWindow) return false; window.__btBuildingWindow.open(p); return true; }, 'townhall');
+      if (!ok) return 'no building-window probe';
+      for (let i = 0; i < 30; i++) {
+        const hit = await evalIn(P, () => { const t = document.querySelector('[data-board-tile="arena"]'); if (t) { t.click(); return true; } return false; });
+        if (hit) break;
+        await wait(P, 200);
+      }
+    },
+  }),
   building('hotel', 'Hotel', 'The Hotel (v2.3.3539): a free rest -- full health, stamina and mana, and Well Rested, +10% combat XP for 30 minutes -- paid by the server.'),
   building('arena', 'Gladiator Arena', 'The arena window (from the Sheriff\'s Office).'),
   {

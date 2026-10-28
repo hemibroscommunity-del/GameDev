@@ -1750,7 +1750,8 @@ export function NameModal(props) {
     var on = x.t === _activeType;
     return /*#__PURE__*/React.createElement("button", {
       key: x.t, type: 'button', role: 'tab', "aria-selected": on ? 'true' : 'false',
-      className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : '') + (x.wide ? ' bt-cc-tab--wide' : ''),   /* v2.3.3589 */
+      className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : '') + (x.wide ? ' bt-cc-tab--wide' : '')   /* v2.3.3589 */
+        + (x.trio ? ' bt-cc-tab--trio' : ''),   /* v2.3.3777: the three heads over the words (game.css) */
       onClick: function () { setActiveCat(x.t); }
     }, x.glyph === 'build' ? /*#__PURE__*/React.createElement("svg", {
       /* v2.3.1953: two figures, one short and one tall, which is the whole

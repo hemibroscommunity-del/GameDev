@@ -58,6 +58,9 @@ import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.331
 import { questPinsOf, MAP_PIN } from '../game/questPins.js';       /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525: ...in the owner's own pictures */
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
+import { loadPins, pinsOf, PIN_KEYS, PIN_CSS } from '../game/mapPins.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
+import { boardPlaceAt } from '../game/mapPinPlaces.js';
+import { boardPinnable } from '../data/townBoard.js';
 import { wheelDungeonOpen, wheelDungeonLevelsLine } from '../game/wheelDungeons.js';                  /* v2.3.3540: which landmarks are dungeons this worker opens; v2.3.3573: + a party dungeon's level and players */
 
 /* ═══ v2.3.3525: THE QUEST PINS' PICTURES ═══
@@ -584,6 +587,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   /* ── v2.3.3057: the details, under every label ── */
   const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, buildingIcons: 0, buildingsAt: 0, bridges: 0, ponds: 0, tierLabels: 0, party: 0, partyNames: 0,
     questPins: 0, questPinNames: 0, pins: [],   /* v2.3.3525: the townsfolk's quest pins */
+    mapPins: [],   /* v2.3.3766: the board's red and blue pins */
     dungeons: 0,   /* v2.3.3540: the dungeons' mouths named with their levels */
     dungeonLines: [],   /* v2.3.3573: ...and what each says (the probe's; a party dungeon says its players) */
     detail: detailN };   /* v2.3.3319: the lands' tiles drawn up close (null: none to draw) */
@@ -693,6 +697,42 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 3; g.strokeStyle = C_STAR; g.setLineDash([9, 6]); g.stroke(); g.setLineDash([]);
     starAt(g, qx, qy, 9);
     more.quest = { x: Math.round(quest.x), y: Math.round(quest.y), qid: quest.qid || null, way: quest.way || null };   /* v2.3.3522: + whose road */
+  }
+  /* ═══ v2.3.3766: THE BOARD'S PINS (game/mapPins.js) ═══
+     The red and blue pins from the Town Hall's board, at every zoom, the
+     pin's point on the place (found where it stands: game/mapPinPlaces.js).
+     Off the screen, at its edge on the line from the middle, smaller -- the
+     way to go.  Drawn over the road and the star: they are where you chose to
+     go. */
+  if (S) {
+    loadPins(S, null, boardPinnable);
+    const pins = pinsOf(S);
+    for (const kk of PIN_KEYS) {
+      const id = pins[kk];
+      if (!id) continue;
+      let at = null;
+      try { at = boardPlaceAt(S, id); } catch (e) { at = null; }
+      if (!at) continue;
+      let x = X(at.x), y = Y(at.y), edge = false;
+      const m = 18;
+      if (x < m || y < m + 18 || x > w - m || y > h - m) {
+        const cx = w / 2, cy = h / 2, dx = x - cx, dy = y - cy;
+        let t = 1;
+        if (dx > 0) t = Math.min(t, (w - m - cx) / dx); else if (dx < 0) t = Math.min(t, (m - cx) / dx);
+        if (dy > 0) t = Math.min(t, (h - m - cy) / dy); else if (dy < 0) t = Math.min(t, (m + 18 - cy) / dy);
+        x = cx + dx * t; y = cy + dy * t; edge = true;
+      }
+      const sc = edge ? 0.8 : 1.15;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x - 7 * sc, y - 13 * sc);
+      g.arc(x, y - 16 * sc, 8 * sc, Math.PI * 0.82, Math.PI * 0.18, false);
+      g.closePath();
+      g.fillStyle = PIN_CSS[kk]; g.fill();
+      g.lineWidth = 1.8; g.strokeStyle = HALO; g.stroke();
+      g.beginPath(); g.arc(x, y - 16 * sc, 3 * sc, 0, Math.PI * 2); g.fillStyle = '#0B161B'; g.fill();
+      more.mapPins.push({ color: kk, id, edge, x: Math.round(x), y: Math.round(y) });
+    }
   }
   /* ═══ v2.3.3525: THE QUEST PINS (src/game/questPins.js) ═══
      Every townsperson with a quest for you, in the pin over his head -- the

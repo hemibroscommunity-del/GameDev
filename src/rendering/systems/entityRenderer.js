@@ -3540,7 +3540,7 @@ try {
       maskedFrame: (t, w, d, p) => _maskedBodyFrame(t, w, d, p), fullsetCovers: (w, p, d) => _fullsetCoversBake(w, p, d),
       loadGear: async (sets) => {
         const jobs = [preloadBeltSheets()];
-        for (const [c, l] of sets) for (const pose of ['stand', 'jog']) for (const dir of ['east', 'north', 'northeast', 'south', 'southwest']) {
+        for (const [c, l] of sets) for (const pose of ['stand', 'jog', 'hit', 'dodge', 'mine']) for (const dir of ['east', 'north', 'northeast', 'south', 'southwest']) {
           if (c) jobs.push(gearSheetLoad('chest', c, pose, dir));
           if (l) jobs.push(gearSheetLoad('legs', l, pose, dir));
         }
@@ -12566,8 +12566,9 @@ export class EntityRenderer {
            colour numbers and a row of their colours (lookPalette.js), when
            they wear no chest or leg armour (masked from the body's own
            pixels, below); null otherwise, and always with `?lookpalette=0` */
-        /* v2.3.3752: under their armour too (lookArmour.js), not fishing */
-        const _lookTex = (lookPaletteWanted() && ((_bareOf(_oEq.chest) && _bareOf(_oEq.legs)) || (lookArmourOn() && pose !== 'fish')))
+        /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels).
+           v2.3.3752: under their armour too (lookArmour.js), not fishing */
+        const _lookTex = (lookPaletteWanted() && ((_bareOf(_oEq.chest) && _bareOf(_oEq.legs) && (pose !== 'fish' || _bareOf(_oShirtEquip))) || (lookArmourOn() && pose !== 'fish')))
           ? getLookBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle) : null;
         let tex = _lookTex || (pose === 'fish'
           ? getFishFrame(_oBodyArt, frameIdx, other.skin, other.pants, other.shoes)
@@ -14403,10 +14404,11 @@ export class EntityRenderer {
          drawn as it is: not under chest or leg armour (masked from the body's
          own pixels) and not in the south block (cut into bands).  Null
          otherwise, and always with `?lookpalette=0`: the old path below. */
-      /* v2.3.3752: under chest or leg armour too, where the armour's masks
+      /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels).
+         v2.3.3752: under chest or leg armour too, where the armour's masks
          are drawn from the numbers (lookArmour.js) -- not fishing (its head
          overlay reads the body's pixels) */
-      const _lookTex = (lookPaletteWanted() && !_southBlock && ((_bareOf(getEquip('chest')) && _bareOf(getEquip('legs'))) || (lookArmourOn() && pose !== 'fish')))
+      const _lookTex = (lookPaletteWanted() && !_southBlock && ((_bareOf(getEquip('chest')) && _bareOf(getEquip('legs')) && (pose !== 'fish' || _bareOf(getEquip('shirt')))) || (lookArmourOn() && pose !== 'fish')))
         ? getLookBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, getEyeColor(), _bodyArt, getEyeStyle()) : null;
       let tex = _lookTex || (pose === 'fish'
         ? getFishFrame(_bodyArt, frameIdx, getSkin(), getPants(), getShoes())   /* v2.3.3146: your colours */

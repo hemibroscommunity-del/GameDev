@@ -256,9 +256,10 @@ so five lanes can add theirs without editing one shared line.
    few pixels use) -- the oracle for an 8-bit set is the quantized art
    recoloured the old way, and its look is for the owner's eye.
    **The quality bar** (the orchestrator, on the owner's "I won't notice"): a
-   sheet's worst texel stays within 16 levels a channel of the art; the cut
-   this tool ships is the first cut (P1 makes it error-bounded), and a sheet
-   that cannot meet the bar stays 16 bits, named here.
+   sheet's worst texel stays within 16 levels a channel of the art, and a
+   sheet that cannot meet the bar stays 16 bits, named here. Since v2.3.3750
+   the cut is `tools/art/lookCut.mjs`, one for every bake, error-bounded (the
+   body's section below says how and what it measured).
 3. **The game**: `registerLookSheets('<set>', '/sprites/look/<set>/roles.json')`
    (a promise: loaded behind the loading screen with the body, or at once if
    later), then `getLookPartFrame('<set>', sheetName, frameIdx, [[entry, rgb |
@@ -330,11 +331,97 @@ the Wheel's pictures): every phase 2 test reports `rowsFull` 0.
   program): measured with 15 bare peers on screen, about 5 draw calls more a
   peer (166 against 94 a frame). The plan's item 8 (one program) is the fix.
 
+## Every pose (v2.3.3750, phase 2 lane P1)
+
+The body set (`public/sprites/look/roles.json` and its sheets) now carries every
+pose the body draws through `getBodyFrame`, not only the stand and the jog:
+
+| what the player does | the sheets |
+|---|---|
+| stand; walk, sprint and the jump's held frame | `stand-*`, `jog-*` (five facings each) |
+| the hit taken | `hit-*` (five) |
+| the roll, and the double jump's flip (`_rFlip` draws the roll) | `dodge-east`, `dodge-south` |
+| mining; fishing; picking up | `mine-south`, `fish-south`, `pickup-south` |
+
+20 sheets. A pose is live because the manifest has it (`lookPose`); nothing in
+`lookPalette.js` lists them.
+
+- **The bake runs `buildBodySheet`'s own call for each pose**: the jog's
+  steadied drawing, the fish's boots under its legs (`bootsUnderLegs`), the
+  pickaxe's wood (`toolWood`), and then the rod's pine
+  (`recolorToolKeyCanvas`, only where the FILE has the key).
+- **A kept entry's colour is the bake's, not the art's**: the default look's
+  output. The rod is pine whatever the look, so its pixels are role 0 with the
+  pine colour in the table. For every other kept pixel the two are the same
+  (the stand and jog sheets re-baked byte for byte the same).
+- **The skin floor** (`poseSkinTarget`: hit, roll, mine and fish always take the
+  walking tan) was already in `getLookBodyFrame`.
+- **Fishing asks as `getFishFrame` does**: no shirt, eye colour or eye style
+  on that sheet, its drawings unmirrored.
+- **Not from the numbers**: a cast in a shirt (`_placeFishHead` lifts the
+  hand from the body's own pixels), and, as before, anything under chest or leg
+  armour, the south block, a drawing, an eye style. The stand-ins (the swings,
+  the bow and the shield block, chop, cook, fire, the farm) are their own path
+  and their own pull request. Death needs nothing: `death-v1` is one bald body
+  for everyone, and the crumble photographs the figure as drawn.
+
+**Known difference (not copied):** the old fish bake tests the rod's hue again
+AFTER the retint, so a boot pixel inside the file's key turns to pine for a look
+whose boots land in that hue -- 2 texels of fish-south's 1.57 million, a tan
+boot. The bake counts them apart (`rod flips`) and keeps them boots, as the file
+draws them.
+
+### At 8 bits: the cut held to its worst colour (`tools/art/lookCut.mjs`)
+
+P0's first cut (median cut by pixel count, each box its mean) left the common
+colours 1-3 levels off and merged the rare ones 40-146 off. The cut now:
+
+- **measures a colour as the screen shows it**: premultiplied (an edge's colour
+  counts for its alpha), and for a retinted role the retint's output at ANY
+  target -- `min(255, T x lum / ref)` moves at most 255 |u - v| below the clamp
+  and 255 (1 - v / u) past it (u = lum / ref), so luminance is measured on
+  255 u up to 1 and 255 (1 + ln u) above. (Measured first at a white target
+  only, the clamp hid the error: an entry 16 levels off at white was 34 at a
+  darker target.)
+- **spends all 255 entries as one pool**: each step splits the box, of any
+  role, whose worst colour is furthest from its entry, at the middle of the
+  axis that error lies on; an entry is its box's middle, then its pixels' mean
+  where that stays 1.5 levels under the bar.
+- **keeps a sheet exact (16 bits) when its worst is past the bar** (16), or its
+  self-check (three looks against the old path's canvases) shows a texel past
+  it. The manifest says so per sheet (`bits: 16`).
+
+| sheet | bits | colours cut from | worst (levels) |
+|---|---|---|---|
+| stand x5 | 8 | 2,117-2,762 | 6-10 |
+| jog-east, -north, -south | 8 | 13,636-22,773 | 15-15.5 |
+| **jog-northeast, jog-southwest** | **16** | (17, 18 at 8 bits) | exact |
+| hit x5 | 8 | 7,854-9,583 | 14.2-14.5 |
+| dodge-east, -south | 8 | 19,249-20,568 | 14 |
+| **mine-south** | **16** | (19 at 8 bits) | exact |
+| fish-south | 8 | 31,256 | 15.4 |
+| pickup-south | 8 | 21,802 | 15 |
+
+The body's 20 sheets: **3.3 MB on the chip** (17 at 8 bits, 2.1 MB; 3 at 16,
+1.2 MB), against 6.1 MB all at 16 bits and 2.6 MB for stand and jog alone
+before. On screen (two looks, seven poses, drawn in JS from both bakes): about
+1 level on average on the stand, 2 on the roll, 4-7 on the jog, hit, fish and
+pickup, almost all of it on the outline and the see-through edge.
+
+**The oracle** (`mp-lookpalette`, 16-bit numbers, before the cut): 24 looks x every pose x
+every facing it is drawn in (the flipped ones flipped), 8,424 frames, 20.7
+million pixels drawn both ways: **0 pixels more than 1 level apart** (worst 1).
+At a phone's 2.6x: 0 of 3.7 million over 1. At a computer's 0.8x: 2.6% over 1,
+worst 4 on one texel of jog-east (the chip's rounding of the mip blend; the
+check's line is 4 now, under 5% of the pixels). The atlas: 20 rows at the most,
+none refused. `tools/qa/mp/out/lookpalette-poses.png` is the side-by-side: six
+poses in two looks, the old way above the new.
+
 ## The plan for the rest
 
 Each its own pull request (on by default, as this one: the owner's rule for the phase).
 
-1. **Every pose.** The same bake for hit, dodge, pickup, mine and fish (the
+1. **Every pose** (done, v2.3.3750: above). The same bake for hit, dodge, pickup, mine and fish (the
    mining sheet's pickaxe keeps its wood, `toolWood.js`; the fish sheet's boots
    are under the legs, `bootsUnderLegs`; both are rules inside the recolour, so
    the bake carries them as it does the garment bands). Needs: the pose list in

@@ -18,6 +18,7 @@
 import { Container, Sprite, RenderTexture } from 'pixi.js';
 import { paletteRendererOf } from './paletteTex.js';
 import { lookArmourFrame, lookArmourPrewarm } from './lookArmour.js';
+import { lookHas } from './lookPalette.js';
 import { gearTint } from './gearVariants.js';
 
 const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
@@ -30,11 +31,12 @@ export function installArmourProbe(dep) {
   const entriesOf = (L, pose, dir) => getLookBodyEntries(L[0], L[1], L[2], pose, dir, null, L[3], null, undefined);
   /* the old path's body bake for this look, waited for (getBodyFrame hands
      out the shipped frame while one runs) */
-  async function baked(L, timeoutMs = 120000) {
+  async function baked(L, timeoutMs = 120000, poses = ['stand', 'jog']) {
     const t0 = Date.now();
     for (;;) {
       let pending = 0;
-      for (const pose of ['stand', 'jog']) for (const dir of DIRS) {
+      for (const pose of poses) for (const dir of DIRS) {
+        if (!lookHas('body', pose + '-' + dir)) continue;
         const t = oldBody(L, pose, dir, 0);
         const plain = L.slice(0, 3).every((x) => !x || x === 'default') && (!L[3] || L[3] === 'default');
         if (!plain && t === getFrame(pose, dir, 0)) pending++;
@@ -72,16 +74,20 @@ export function installArmourProbe(dep) {
     rt.destroy(true);
     return { data: px.pixels, w: px.width, h: px.height };
   }
-  async function compare({ looks, sets, scale = 1, frames = 0, cols = 16, poses = ['stand', 'jog'] } = {}) {
+  /* v2.3.3752: every pose the body has numbers for and the bake masks
+     (P1's hit, roll and mining; the pickup draws the plain body under a full
+     set and fishing is drawn the old way under armour) */
+  async function compare({ looks, sets, scale = 1, frames = 0, cols = 16, poses = ['stand', 'jog', 'hit', 'dodge', 'mine'] } = {}) {
     await loadGear(sets);
     const out = [];
     for (const L of looks) {
-      const ok = await baked(L);
+      const ok = await baked(L, 120000, poses);
       for (const set of sets) {
         const cells = [];
         let notDecided = 0, oldPlain = 0, tOld = 0, tNew = 0;
         for (const pose of poses) {
           for (const dir of DIRS) {
+            if (!lookHas('body', pose + '-' + dir)) continue;
             const ents = entriesOf(L, pose, dir);
             if (!ents) continue;
             const n = Math.max(1, playerFrameCount(pose, dir) || 1);

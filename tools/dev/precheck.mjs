@@ -902,8 +902,9 @@ if (changedServer.length || changedClient.length) {
    art's roles over the new art: FAIL.  The recolour code changed: WARN --
    most edits leave the roles as they were; `role-bake.mjs --check` says. */
 {
-  const touched = changed.filter((f) => /^public\/sprites\/player\/(stand|jog)-(east|north|northeast|south|southwest)\.(png|webp)$/.test(f)
-    || /^src\/rendering\/(playerSkins|garmentConfine|spriteScale|playerDecal)\.js$/.test(f) || f === 'src/rendering/eyeMask.json'
+  /* v2.3.3750: every body pose with numbers, and the rod's and pickaxe's recolours */
+  const touched = changed.filter((f) => /^public\/sprites\/player\/(stand|jog|hit|dodge|mine|fish|pickup)-(east|north|northeast|south|southwest)\.(png|webp)$/.test(f)
+    || /^src\/rendering\/(playerSkins|garmentConfine|spriteScale|playerDecal|toolRecolor|toolWood)\.js$/.test(f) || f === 'src/rendering/eyeMask.json'
     || /^public\/sprites\/look\//.test(f) || /^src\/rendering\/lookSets\//.test(f));   /* v2.3.3737: + a set's module */
   if (touched.length) {
     const r = spawnSync('node', ['tools/art/role-bake.mjs', '--hashes'], { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
@@ -911,7 +912,7 @@ if (changedServer.length || changedClient.length) {
     if (r.status === 0) add('PASS', 'look-roles', said);
     else if (r.status === 2) add('WARN', 'look-roles', said + ' -- node tools/art/role-bake.mjs --check (a browser, ~15 s) says whether the roles moved; re-bake if they did');
     else add('FAIL', 'look-roles', said + ' -- re-bake: node tools/art/role-bake.mjs');
-  } else add('PASS', 'look-roles', 'no stand or jog sheet or recolour change -- check skipped');
+  } else add('PASS', 'look-roles', 'no body sheet with numbers or recolour change -- check skipped');
 }
 
 /* ---- 9c. town-rim ----------------------------------------------------
