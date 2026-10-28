@@ -330,11 +330,60 @@ the Wheel's pictures): every phase 2 test reports `rowsFull` 0.
   program): measured with 15 bare peers on screen, about 5 draw calls more a
   peer (166 against 94 a frame). The plan's item 8 (one program) is the fix.
 
+## Every pose (v2.3.3750, phase 2 lane P1)
+
+The body set (`public/sprites/look/roles.json` and its sheets) now carries every
+pose the body draws through `getBodyFrame`, not only the stand and the jog:
+
+| what the player does | the sheets |
+|---|---|
+| stand; walk, sprint and the jump's held frame | `stand-*`, `jog-*` (five facings each) |
+| the hit taken | `hit-*` (five) |
+| the roll, and the double jump's flip (`_rFlip` draws the roll) | `dodge-east`, `dodge-south` |
+| mining; fishing; picking up | `mine-south`, `fish-south`, `pickup-south` |
+
+20 sheets. A pose is live because the manifest has it (`lookPose`); nothing in
+`lookPalette.js` lists them.
+
+- **The bake runs `buildBodySheet`'s own call for each pose**: the jog's
+  steadied drawing, the fish's boots under its legs (`bootsUnderLegs`), the
+  pickaxe's wood (`toolWood`), and then the rod's pine
+  (`recolorToolKeyCanvas`, only where the FILE has the key).
+- **A kept entry's colour is the bake's, not the art's**: the default look's
+  output. The rod is pine whatever the look, so its pixels are role 0 with the
+  pine colour in the table. For every other kept pixel the two are the same
+  (the stand and jog sheets re-baked byte for byte the same).
+- **The skin floor** (`poseSkinTarget`: hit, roll, mine and fish always take the
+  walking tan) was already in `getLookBodyFrame`.
+- **Fishing asks as `getFishFrame` does**: no shirt, eye colour or eye style
+  on that sheet, its drawings unmirrored.
+- **Not from the numbers**: a cast in a shirt (`_placeFishHead` lifts the
+  hand from the body's own pixels), and, as before, anything under chest or leg
+  armour, the south block, a drawing, an eye style. The stand-ins (the swings,
+  the bow and the shield block, chop, cook, fire, the farm) are their own path
+  and their own pull request. Death needs nothing: `death-v1` is one bald body
+  for everyone, and the crumble photographs the figure as drawn.
+
+**Known difference (not copied):** the old fish bake tests the rod's hue again
+AFTER the retint, so a boot pixel inside the file's key turns to pine for a look
+whose boots land in that hue -- 2 texels of fish-south's 1.57 million, a tan
+boot. The bake counts them apart (`rod flips`) and keeps them boots, as the file
+draws them.
+
+**The oracle** (`mp-lookpalette`, 16-bit numbers): 24 looks x every pose x
+every facing it is drawn in (the flipped ones flipped), 8,424 frames, 20.7
+million pixels drawn both ways: **0 pixels more than 1 level apart** (worst 1).
+At a phone's 2.6x: 0 of 3.7 million over 1. At a computer's 0.8x: 2.6% over 1,
+worst 4 on one texel of jog-east (the chip's rounding of the mip blend; the
+check's line is 4 now, under 5% of the pixels). The atlas: 20 rows at the most,
+none refused. `tools/qa/mp/out/lookpalette-poses.png` is the side-by-side: six
+poses in two looks, the old way above the new.
+
 ## The plan for the rest
 
 Each its own pull request (on by default, as this one: the owner's rule for the phase).
 
-1. **Every pose.** The same bake for hit, dodge, pickup, mine and fish (the
+1. **Every pose** (done, v2.3.3750: above). The same bake for hit, dodge, pickup, mine and fish (the
    mining sheet's pickaxe keeps its wood, `toolWood.js`; the fish sheet's boots
    are under the legs, `bootsUnderLegs`; both are rules inside the recolour, so
    the bake carries them as it does the garment bands). Needs: the pose list in

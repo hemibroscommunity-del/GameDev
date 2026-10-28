@@ -22,15 +22,23 @@ import { paletteRendererOf } from './paletteTex.js';
 
 const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const MIRRORED = ['east', 'northeast', 'southwest'];
+/* v2.3.3750: every body pose with numbers, in the facings it is authored in
+   (playerSprites.js POSE_DIRS; mine, fish and pickup are drawn south only,
+   unflipped; the roll's two facings flip as the walk's do) */
+const POSE_DIRS = { stand: DIRS, jog: DIRS, hit: DIRS, dodge: ['east', 'south'], mine: ['south'], fish: ['south'], pickup: ['south'] };
+const UNFLIPPED = { mine: true, fish: true, pickup: true };
 
 export function installLookProbe(dep) {
   if (typeof window === 'undefined') return;
   const { getBodyFrame, getLookBodyFrame, getFrame, playerFrameCount, touches } = dep;
+  let _poses = ['stand', 'jog'];
   const sheets = () => {
     const out = [];
-    for (const pose of ['stand', 'jog']) for (const dir of DIRS) out.push([pose, dir, Math.max(1, playerFrameCount(pose, dir) || 1)]);
+    for (const pose of _poses) for (const dir of POSE_DIRS[pose]) out.push([pose, dir, Math.max(1, playerFrameCount(pose, dir) || 1)]);
     return out;
   };
+  /* v2.3.3750: which poses a call measures (`poses`, default stand and jog as before) */
+  const usePoses = (poses) => { _poses = (poses && poses.length) ? poses.filter((p) => POSE_DIRS[p]) : ['stand', 'jog']; };
   const oldFrame = (L, pose, dir, f) => getBodyFrame(L[0], L[1], L[2], pose, dir, f, null, 'none', L[3], null, undefined);
   const newFrame = (L, pose, dir, f) => getLookBodyFrame(L[0], L[1], L[2], pose, dir, f, null, L[3], null, undefined);
   /* the old path's bakes for a look, waited for (getBodyFrame hands out the
@@ -52,7 +60,7 @@ export function installLookProbe(dep) {
   function cellsFor(L, limit) {
     const cells = [];
     for (const [pose, dir, n] of sheets()) {
-      const flips = MIRRORED.indexOf(dir) >= 0 ? [false, true] : [false];
+      const flips = (MIRRORED.indexOf(dir) >= 0 && !UNFLIPPED[pose]) ? [false, true] : [false];
       for (const mirror of flips) {
         for (let f = 0; f < n && f < (limit || n); f++) {
           const nt = newFrame(L, pose, dir, f);
@@ -83,7 +91,8 @@ export function installLookProbe(dep) {
     rt.destroy(true);
     return { data: px.pixels, w: px.width, h: px.height };
   }
-  async function compare({ looks, scale = 1, frames = 0, cols = 16 } = {}) {
+  async function compare({ looks, scale = 1, frames = 0, cols = 16, poses } = {}) {
+    usePoses(poses);
     const out = [];
     for (const L of looks) {
       const ok = await baked(L);
@@ -92,7 +101,7 @@ export function installLookProbe(dep) {
       const a = render(cells, (c) => c.ot, scale, cell, cols);
       const b = render(cells, (c) => c.nt, scale, cell, cols);
       const hist = {};
-      let drawn = 0, differ = 0, worst = 0, sameTex = 0;
+      let drawn = 0, differ = 0, worst = 0, sameTex = 0, worstAt = null;
       const bad = [];
       for (const c of cells) if (c.ot === getFrame(c.pose, c.dir, c.f)) sameTex++;
       for (let p = 0; p < a.data.length; p += 4) {
@@ -112,14 +121,21 @@ export function installLookProbe(dep) {
               old: Array.from(a.data.slice(p, p + 4)), now: Array.from(b.data.slice(p, p + 4)) });
           }
         }
-        if (m > worst) worst = m;
+        if (m > worst) {
+          worst = m;
+          /* v2.3.3750: where the worst one is */
+          const q = p >> 2, x = q % a.w, y = Math.floor(q / a.w);
+          const c = cells[Math.floor(y / cell) * cols + Math.floor(x / cell)];
+          worstAt = c ? `${c.pose}-${c.dir}#${c.f}${c.mirror ? 'm' : ''} at ${x % cell},${y % cell}` : '?';
+        }
       }
-      out.push({ look: L.join('/'), baked: ok, frames: cells.length, oldIsShipped: sameTex, drawn, differ, worst, hist, bad });
+      out.push({ look: L.join('/'), baked: ok, frames: cells.length, oldIsShipped: sameTex, drawn, differ, worst, worstAt, hist, bad });
     }
     return out;
   }
   /* every frame of each look on the chip once, the old way or the new */
-  async function draw({ looks, way }) {
+  async function draw({ looks, way, poses }) {
+    usePoses(poses);
     const done = [];
     for (const L of looks) {
       if (way === 'old') await baked(L);
@@ -161,5 +177,27 @@ export function installLookProbe(dep) {
     }
     return { textures: n, shipped, gpuMB: +(gpu / 1048576).toFixed(2), imagesMB: +(img / 1048576).toFixed(2) };
   }
-  window.__btLookOracle = { compare, draw, held, baked: (L) => baked(L) };
+  /* v2.3.3750: a picture for the owner's eye -- per look, a row the old way
+     and a row the new, one cell a (pose, dir, frame) pick, on a plain ground */
+  async function picture({ looks, picks, scale = 2 }) {
+    const cells = [];
+    const cols = picks.length;
+    usePoses([...new Set(picks.map((k) => k[0]))]);
+    for (const L of looks) {
+      await baked(L);
+      for (const way of ['old', 'new']) {
+        for (const [pose, dir, f, mirror] of picks) {
+          const t = way === 'old' ? oldFrame(L, pose, dir, f) : (newFrame(L, pose, dir, f) || oldFrame(L, pose, dir, f));
+          cells.push({ pose, dir, f, mirror: !!mirror, t });
+        }
+      }
+    }
+    const cell = Math.ceil(128 * scale) + 4;
+    const pic = render(cells, (c) => c.t, scale, cell, cols);
+    let bin = '';
+    const u8 = new Uint8Array(pic.data.buffer, pic.data.byteOffset, pic.data.byteLength);
+    for (let i = 0; i < u8.length; i += 32768) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 32768));
+    return { w: pic.w, h: pic.h, cell, b64: btoa(bin) };
+  }
+  window.__btLookOracle = { compare, draw, held, picture, baked: (L) => baked(L) };
 }

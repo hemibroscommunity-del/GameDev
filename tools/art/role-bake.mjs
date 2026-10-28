@@ -108,6 +108,11 @@ async function pageBake({ set, sheet, bits, probeAt, bar }) {
   const fallsBack = new Set(roles.filter((ro) => ro.under).map((ro) => ro.entry));
   for (const e of used) if (!fallsBack.has(e)) P3[e] = P1[e];
   const f1 = read(run(P1)), f2 = read(run(P2)), f3 = read(run(P3));
+  /* v2.3.3750: `keepFromDefault` (a set module's option) -- a KEPT pixel is
+     what the bake leaves whatever the look, the default look's output: the
+     art's own colour, or something the bake paints over it for everyone (the
+     fishing rod's pine).  Without it, the art's colour, as before. */
+  const kd = S.keepFromDefault ? read(run({})) : d;
   const recol = (i, T, ref) => {
     if (!ref) return T;
     const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / (ref / RS);
@@ -115,7 +120,7 @@ async function pageBake({ set, sheet, bits, probeAt, bar }) {
   };
   /* what role r makes of pixel i in look L -- lookPalette.js's entry(), in JS */
   const out = (i, r, L) => {
-    if (!r) return [d[i], d[i + 1], d[i + 2]];
+    if (!r) return [kd[i], kd[i + 1], kd[i + 2]];
     const ro = roles[r - 1], T = L[ro.entry];
     if (T) return recol(i, T, ro.ref);
     return ro.under ? out(i, ro.under, L) : [d[i], d[i + 1], d[i + 2]];
@@ -160,7 +165,10 @@ async function pageBake({ set, sheet, bits, probeAt, bar }) {
     }
   }
   /* the table: one entry per (role, colour), sorted by role; entry 0 is see-through */
-  const keyOf = (p) => role[p] * 4294967296 + ((d[p * 4] << 24) >>> 0) + (d[p * 4 + 1] << 16) + (d[p * 4 + 2] << 8) + d[p * 4 + 3];
+  const keyOf = (p) => {
+    const c = role[p] ? d : kd;   /* v2.3.3750: a kept entry's colour is the bake's (keepFromDefault) */
+    return role[p] * 4294967296 + ((c[p * 4] << 24) >>> 0) + (c[p * 4 + 1] << 16) + (c[p * 4 + 2] << 8) + d[p * 4 + 3];
+  };
   const keys = new Map();   /* key -> pixels */
   const nw = ds === 1 ? DW : W, nh = ds === 1 ? DH : H;
   const srcOf = new Int32Array(nw * nh).fill(-1);
@@ -344,6 +352,7 @@ async function pageBake({ set, sheet, bits, probeAt, bar }) {
     return [Math.round(c[0] * a / 255), Math.round(c[1] * a / 255), Math.round(c[2] * a / 255), a];
   };
   const check = { looks: LOOKS.length, texels: 0, over1: 0, max: 0, sum: 0 };
+  const fickle = S.fickle ? S.fickle(src, sheet) : null;   /* v2.3.3750: full-size pixels, or null */
   for (const L of LOOKS) {
     const od = read(disp(run(L)));
     for (let y = 0; y < DH; y++) for (let x = 0; x < DW; x++) {
@@ -364,6 +373,10 @@ async function pageBake({ set, sheet, bits, probeAt, bar }) {
       const got = [od[j] * a / 255, od[j + 1] * a / 255, od[j + 2] * a / 255, a];
       let m = 0;
       for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(got[k] - want[k]));
+      /* v2.3.3750: a pixel the set says the old bake colours by more than its
+         role (`fickle`: the fish's rod key, re-tested after the retint) is
+         counted apart, not held to the old path */
+      if (fickle && m > 1.5 && fickle[ds === 1 ? (2 * y + oy) * W + 2 * x + ox : (2 * y) * W + 2 * x]) { check.fickle = (check.fickle || 0) + 1; continue; }
       check.texels++;
       check.sum += m;
       if (m > check.max) check.max = +m.toFixed(2);
@@ -472,7 +485,7 @@ async function main() {
       console.log(`${ok ? 'ok  ' : 'BAD '} ${name.padEnd(15)} ds ${r.ds}  ${String(r.w).padStart(4)}x${r.h}+${tableRows}  ${String(r.entries).padStart(5)} colours`
         + (r.quant ? ` (cut from ${r.quant.from}: a pixel moved ${r.quant.meanMoved} on average, ${r.quant.worstMoved} at most)` : '')
         + `  roles ${r.counts.join('/')}  unexplained ${r.unexplained}  ambiguous ${r.ambiguous}  pick ${r.pick}, ${r.split} split`
-        + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}, mean ${r.check.mean}  (${Date.now() - t0} ms)`);
+        + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}, mean ${r.check.mean}${r.check.fickle ? ', ' + r.check.fickle + ' fickle' : ''}  (${Date.now() - t0} ms)`);
       const artFiles = meta.art[name] || [];
       out.sheets[name] = { ...(sheetBits !== bits ? { bits: sheetBits } : {}), ds: r.ds, frames: r.frames, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
         cells: r.cells, split: r.split, quant: r.quant || undefined, artFiles, art: hashFiles(artFiles), bytes: png.length };

@@ -12286,7 +12286,8 @@ export class EntityRenderer {
            colour numbers and a row of their colours (lookPalette.js), when
            they wear no chest or leg armour (masked from the body's own
            pixels, below); null otherwise, and always with `?lookpalette=0` */
-        const _lookTex = (lookPaletteWanted() && _bareOf(_oEq.chest) && _bareOf(_oEq.legs))
+        /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels) */
+        const _lookTex = (lookPaletteWanted() && _bareOf(_oEq.chest) && _bareOf(_oEq.legs) && (pose !== 'fish' || _bareOf(_oShirtEquip)))
           ? getLookBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle) : null;
         let tex = _lookTex || (pose === 'fish'
           ? getFishFrame(_oBodyArt, frameIdx, other.skin, other.pants, other.shoes)
@@ -14106,7 +14107,8 @@ export class EntityRenderer {
          drawn as it is: not under chest or leg armour (masked from the body's
          own pixels) and not in the south block (cut into bands).  Null
          otherwise, and always with `?lookpalette=0`: the old path below. */
-      const _lookTex = (lookPaletteWanted() && !_southBlock && _bareOf(getEquip('chest')) && _bareOf(getEquip('legs')))
+      /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels) */
+      const _lookTex = (lookPaletteWanted() && !_southBlock && _bareOf(getEquip('chest')) && _bareOf(getEquip('legs')) && (pose !== 'fish' || _bareOf(getEquip('shirt'))))
         ? getLookBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, getEyeColor(), _bodyArt, getEyeStyle()) : null;
       let tex = _lookTex || (pose === 'fish'
         ? getFishFrame(_bodyArt, frameIdx, getSkin(), getPants(), getShoes())   /* v2.3.3146: your colours */
