@@ -43,7 +43,9 @@ import { Skin, AbilityFace, pressOn, pressOff } from './controlSkin.jsx'; /* v2.
  * button for jumping".  Drawn where v2.3.3017 put it, centred under the attack
  * disc (jumpAnchor; combatBandTopPx has counted its slot all along), unless
  * the address says `?jumpbtn=0`.  A tap on the stick still jumps as well, when
- * it has no other job. */
+ * it has no other job.
+ * v2.3.3712: no longer -- this button (and X) is the only jump; a free tap on
+ * the stick attacks once (game/tapJump.js requestTapAttack). */
 
 /* How often the view is read (re-rendered only when it changes). */
 const POLL_MS = 80;
@@ -88,7 +90,7 @@ export function JumpButton(props) {
       var s2 = stateRef && stateRef.current;
       var v = jumpButtonView(s2);
       var j = s2 && s2._jump;
-      return { shown: !!v && jumpButtonWanted(), button: jumpButtonWanted(), air: !!(v && v.air), count: (s2 && s2._jumpCount) || 0, tapJumps: (s2 && s2._tapJumps) || 0 /* v2.3.3105 */, why: s2 ? s2._jumpWhy || null : null,
+      return { shown: !!v && jumpButtonWanted(), button: jumpButtonWanted(), air: !!(v && v.air), count: (s2 && s2._jumpCount) || 0, tapAttacks: (s2 && s2._tapAttacks) || 0 /* v2.3.3712: was tapJumps (v2.3.3105), the stick's taps that jumped */, why: s2 ? s2._jumpWhy || null : null,
         jump: j ? { t0: j.t0, dur: j.dur, peak: j.peak, dx: j.dx, dy: j.dy } : null, landAt: (s2 && s2._jumpLandAt) || 0 };
     };
   }

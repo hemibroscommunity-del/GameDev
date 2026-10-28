@@ -1,4 +1,4 @@
-/* ═══ BESIDE A PROP, A TAP JUMPS AND A HOLD ATTACKS (v2.3.3105) ═══
+/* ═══ BESIDE A PROP, A TAP SWINGS ONCE AND A HOLD ATTACKS (v2.3.3105; v2.3.3712) ═══
  *
  * The owner, on #821: "it needs priority near props instead of attack. If
  * players want to attack props they can still hold the right joystick
@@ -8,14 +8,23 @@
  * square in front of a barrel (or a crate, a bench ...) within a swing of it:
  *   1. a quick tap on the right stick's zone jumps -- no swing, no blow on the
  *      barrel -- and so does a slower one, past the 200 ms the first swing used
- *      to wait (with `?tapms=` stretching the window for this slow page);
+ *      to wait (with `?tapms=` stretching the window for this slow page)
+ *      (v2.3.3712: each SWINGS ONCE, below);
  *   2. a tap on the right stick's DISC (the button over it) jumps too;
  *   3. a tap ON the barrel jumps (a prop is not a thing a tap picks);
  *   4. holding the stick toward the barrel swings at it and lands blows;
  *   5. the stick shows the owner's JUMP arrow, see-through over the disc, while
  *      a tap would jump, and the weapon while one would attack;
  *   6. no page errors.
- * Pictures: tools/qa/mp/out/tapprop-{stick,air}.png.
+ *
+ * v2.3.3712: a tap on the stick NEVER jumps now -- the JUMP button jumps (the
+ * owner: "the contextual jump button gives the jumps only to the jump button
+ * and what to replace it with (maybe just an attack in its place if nothing
+ * else is there?)").  So beside the barrel each tap above SWINGS ONCE (one
+ * swing, never the held attack's stream) and jumps never; the stick wears the
+ * sword, see-through at the disc's rest, where it wore the JUMP arrow.  A
+ * swing the way you face can land on the barrel: that is the tap's attack.
+ * Pictures: tools/qa/mp/out/tapprop-{stick,swing}.png.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -50,7 +59,9 @@ const targets = (P, ids, r = 1600) => P.page.evaluate(({ ids, r }) => {
 const state = (P) => P.page.evaluate(() => {
   const S = window._gameState.current, j = window.__btJumpBtn ? window.__btJumpBtn() : {};
   const d = document.querySelector('.bt-rjoy-base');
-  return { jumps: j.count || 0, tapJumps: j.tapJumps || 0, air: !!j.air, swing: S.swingTimer || 0,
+  return { jumps: j.count || 0, air: !!j.air, swing: S.swingTimer || 0,
+    /* v2.3.3712: the taps that asked for their one attack, and the swing that was it */
+    asked: S._tapAttacks || 0, how: S._tapAtk ? S._tapAtk.how : null, tapSw: S._tapAtk ? S._tapAtk.swingAt : 0, aa: !!S.autoAttack,
     hits: window.__btWheelBreak ? window.__btWheelBreak.stats.hits : 0,
     icon: d ? d.getAttribute('data-ricon') : null, disc: d ? d.style.pointerEvents : null };
 });
@@ -114,68 +125,67 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S.lockedTarget = null; S._facing = 'up';
     });
     await P.page.waitForTimeout(1200);
-    const down = () => H.waitFor(P, () => window.__btJumpBtn().air, (v) => v === false, { timeout: AIR_MS + 4000, label: 'down' }).catch(() => null);
 
-    /* ── 5a. the picture while a tap would jump ── */
+    /* ── 5a. the picture while a tap would attack (v2.3.3712: it was the
+          JUMP arrow while a tap would jump) ── */
+    await H.waitFor(P, () => document.querySelector('.bt-rjoy-base').getAttribute('data-ricon'), (v) => v === 'w-sword-copper', { timeout: 6000, label: 'the sword' }).catch(() => null);
     const s0 = await state(P);
-    /* the owner's arrow over the disc as it is ("a semi transparent overlay on
+    /* the picture over the disc as it is ("a semi transparent overlay on
        the existing disc"): the disc's skin still drawn, at its 0.5 rest, the
-       arrow see-through over it */
+       sword see-through over it */
     const paint = await P.page.evaluate(() => {
       const d = document.querySelector('.bt-rjoy-base');
-      const j = d && d.querySelector('.bt-rjoy-icon[data-ricon-img="jump"]');
+      const j = d && d.querySelector('.bt-rjoy-icon[data-ricon-img="w-sword-copper"]');
       const skin = d && d.querySelector('.bt-skin');
       let op = 1; for (let e = d; e; e = e.parentElement) op *= +getComputedStyle(e).opacity;
       return { op: +op.toFixed(2), jump: j ? getComputedStyle(j).display : null, jumpOp: j ? +getComputedStyle(j).opacity : null,
         skin: skin ? getComputedStyle(skin).visibility : null, pe: d ? d.style.pointerEvents : null };
     });
-    rec.ok(`the stick shows the JUMP arrow while a tap would jump (data-ricon ${s0.icon}), see-through over the disc as it is (disc ${paint.op}, arrow ${paint.jumpOp}, skin ${paint.skin}), not taking touches itself (${paint.pe})`,
-      s0.icon === 'jump' && paint.jump === 'block' && paint.skin === 'visible' && paint.op > 0.4 && paint.op < 0.9
-        && paint.jumpOp > 0.4 && paint.jumpOp < 1 && paint.pe === 'none', { s0, paint });
+    rec.ok(`the stick shows the sword in hand -- no JUMP arrow -- while a tap would attack (data-ricon ${s0.icon}), see-through over the disc as it is (disc ${paint.op}, skin ${paint.skin}), not taking touches itself (${paint.pe})`,
+      s0.icon === 'w-sword-copper' && paint.jump !== null && paint.jump !== 'none' && paint.skin === 'visible' && paint.op > 0.4 && paint.op < 0.9
+        && paint.pe === 'none', { s0, paint });
     const disc = await P.page.evaluate(() => { const b = document.querySelector('.bt-rjoy-base').getBoundingClientRect(); return { x: b.left, y: Math.max(0, b.top - 40), width: b.width, height: b.height + 80 }; });
     await P.page.screenshot({ path: join(OUT, 'tapprop-stick.png'), clip: { x: Math.max(0, disc.x - 30), y: disc.y, width: Math.min(PHONE.width - Math.max(0, disc.x - 30), disc.width + 60), height: disc.height } }).catch(() => {});
 
     /* ── 1. a tap on the zone, beside the barrel ── */
     const zone = await P.page.evaluate(() => { const b = document.querySelector('[data-joyzone="R"]').getBoundingClientRect(); return { x: b.left + b.width * 0.6, y: b.top + b.height * 0.35 }; });
+    /* v2.3.3712: ONE swing, the tap's (tapSw is its start: a later swing, the
+       held attack's stream, would move swingTimer past it), and no jump */
+    const once = (x0, x2) => x2.asked === x0.asked + 1 && x2.how === 'swing' && x2.swing > x0.swing && x2.tapSw === x2.swing && !x2.aa;
     const a0 = await state(P);
     await touch(P, { sel: '[data-joyzone="R"]', id: 71, x: zone.x, y: zone.y });
-    const a1 = await state(P);
-    await P.page.waitForTimeout(700);
+    await P.page.waitForTimeout(250);
+    await P.page.screenshot({ path: join(OUT, 'tapprop-swing.png'), clip: { x: 95, y: 220, width: 200, height: 360 } }).catch(() => {});
+    await P.page.waitForTimeout(1200);
     const a2 = await state(P);
-    rec.ok(`beside the ${t.id}, a tap on the right stick jumps (jumps ${a0.jumps} -> ${a1.jumps})`, a1.jumps === a0.jumps + 1 && a1.air, { a0, a1 });
-    rec.ok('...and does not swing or hit it', a2.swing === a0.swing && a2.hits === a0.hits, { a0, a2 });
-    await P.page.screenshot({ path: join(OUT, 'tapprop-air.png'), clip: { x: 95, y: 220, width: 200, height: 360 } }).catch(() => {});
-    await down();
+    rec.ok(`beside the ${t.id}, a tap on the right stick swings ONCE and never jumps (jumps ${a0.jumps} -> ${a2.jumps}, ${a2.hits - a0.hits} blow on it)`,
+      once(a0, a2) && a2.jumps === a0.jumps && !a2.air, { a0, a2 });
     await P.page.waitForTimeout(400);
 
     /* ── 1b. a relaxed thumb's tap, 260 ms: longer than the 200 ms the first
           swing used to wait, so before v2.3.3105 it chopped the prop ── */
     /* one wait, not a stream of moves: this page's timers run late, and a
-       press that really lasts past TAP_JUMP_MAX_MS is a hold (it swings) */
+       press that really lasts past TAP_FREE_MAX_MS is a hold (it swings on) */
     let r0, r1, r2, held = null;
     for (let tries = 0; tries < 4; tries++) {
       r0 = await state(P);
       held = await touch(P, { sel: '[data-joyzone="R"]', id: 75 + tries * 10, x: zone.x, y: zone.y, hold: 320, steps: 2 });
       r1 = await state(P);
-      await P.page.waitForTimeout(700);
+      await P.page.waitForTimeout(1400);
       r2 = await state(P);
       if (held.ms > 260 && held.ms < TAP_MS - 150) break;
-      await down(); await P.page.waitForTimeout(400);
+      await P.page.waitForTimeout(400);
     }
-    rec.ok(`a slower tap (${held.ms} ms, past the old 200, inside the tap window) jumps too (jumps ${r0.jumps} -> ${r1.jumps}), no swing, no blow`,
-      held.ms > 260 && held.ms < TAP_MS - 150 && r1.jumps === r0.jumps + 1 && r2.swing === r0.swing && r2.hits === r0.hits, { r0, r1, r2, held });
-    await down();
+    rec.ok(`a slower tap (${held.ms} ms, past the old 200, inside the tap window) is a tap too: it swings ONCE -- not the held attack -- and never jumps (jumps ${r0.jumps} -> ${r2.jumps})`,
+      held.ms > 260 && held.ms < TAP_MS - 150 && once(r0, r2) && r2.jumps === r0.jumps, { r0, r1, r2, held });
     await P.page.waitForTimeout(400);
 
     /* ── 2. a tap on the disc ── */
     const b0 = await state(P);
     await touch(P, { sel: '.bt-rjoy-base', id: 72 });
-    const b1 = await state(P);
-    await P.page.waitForTimeout(700);
+    await P.page.waitForTimeout(1400);
     const b2 = await state(P);
-    rec.ok(`a tap on the stick's disc jumps too (jumps ${b0.jumps} -> ${b1.jumps})`, b1.jumps === b0.jumps + 1, { b0, b1 });
-    rec.ok('...and does not swing or hit it', b2.swing === b0.swing && b2.hits === b0.hits, { b0, b2 });
-    await down();
+    rec.ok(`a tap on the stick's disc swings once too, and never jumps (jumps ${b0.jumps} -> ${b2.jumps})`, once(b0, b2) && b2.jumps === b0.jumps, { b0, b2 });
     await P.page.waitForTimeout(400);
 
     /* ── 3. a tap on the barrel itself, from a step back: right against it a
@@ -189,11 +199,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, t);
     const c0 = await state(P);
     await touch(P, { sel: '[data-joyzone="R"]', id: 73, x: Math.max(at.x, PHONE.width / 2 + 4), y: at.y });
-    const c1 = await state(P);
-    await P.page.waitForTimeout(700);
+    await P.page.waitForTimeout(1400);
     const c2 = await state(P);
-    rec.ok(`a tap on the ${t.id} itself jumps (jumps ${c0.jumps} -> ${c1.jumps})`, c1.jumps === c0.jumps + 1 && c2.hits === c0.hits && c2.swing === c0.swing, { c0, c1, c2, at });
-    await down();
+    /* a swing the way you face may land on it (the walk back faced it): the
+       tap's attack, so the blows are reported, not judged */
+    rec.ok(`a tap on the ${t.id} itself is a free tap (a prop is not a thing a tap picks): one swing (${c2.hits - c0.hits} blow), never a jump (jumps ${c0.jumps} -> ${c2.jumps})`,
+      once(c0, c2) && c2.jumps === c0.jumps, { c0, c2, at });
     await P.page.waitForTimeout(400);
 
     /* ── 4. a hold toward it attacks it, from right against it again ── */

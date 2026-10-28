@@ -604,3 +604,69 @@ player's at their share.
   sprinting makes it bigger; the watching phone sees the flip drawn and
   agrees where he landed. This box draws a few frames a second, so a timed
   press is made again (up to five times) until it lands in its window.
+
+## v2.3.3712: a tap on the right stick attacks; only the JUMP button jumps
+
+The owner, 2026-10-28: "I need to figure out how to make it so that the
+contextual jump button gives the jumps only to the jump button and what to
+replace it with (maybe just an attack in its place if nothing else is
+there?)".
+
+- **The jump is the button's.** A tap on the right stick never jumps any
+  more. The JUMP button under the attack disc jumps (X on a keyboard), and
+  a second press in the air flips, as since v2.3.3681-3682. `?jumpbtn=0`
+  still hides the button, and then a phone has no jump at all: it is a QA
+  switch, no player's.
+- **A free tap attacks once.** Where the tap used to jump (nothing else
+  wanted it: no harvest, no monster or resource in reach, no lock to let
+  go of, no door, bed, farm step or character, the forwarded tap reached
+  "empty space"), it now attacks ONCE with the weapon in hand, the way you
+  face: one swing, one staff bolt, or one arrow. It is the same one attack
+  a press of the attack disc gives, taken by the auto-attack loop through
+  the held attack's own gate (`monsterCombat`): the bow still looses only
+  when its line is on something (at empty ground it looses nothing), and
+  nothing fires in the water, dazed, behind the shield or in the air. A tap
+  during the swing's cooldown waits for it, up to `TAP_ATTACK_WAIT_MS`
+  (600 ms), so a quick second tap is the next swing, not a lost one.
+  (`game/tapJump.js` `requestTapAttack`, `tapAttackWaiting`,
+  `tapAttackDone`, `tapSwingAim`; BroTown's `rE`.)
+- **The way you face.** The tap's aim is the body's heading
+  (`tapFacingAngle`: the renderer's target facing, else the slewing one,
+  else the four-way facing), written into the aim as a drag of the stick
+  writes it, so the shot, the bow's gate and the swing all agree, and never
+  the stale aim a long-gone drag or a dead monster left behind. With a
+  monster to fight the thumb is on the disc, which attacks it as before.
+- **The picture.** Where the stick showed the see-through JUMP arrow, it
+  shows the weapon in hand (controlSkin `weaponDiscIcon`, the picture it
+  already wore while attacking). The bubble, the door, the moon and the
+  farm's steps are unchanged.
+- **The timing stays.** A press with no job still waits `TAP_FREE_MAX_MS`
+  (320 ms; it was `TAP_JUMP_MAX_MS`) as PENDING (v2.3.3145): a release
+  inside it is a tap (its one attack), a hold past it or a drag is the held
+  attack. So a tap still shows nothing of the held attack: no sight line,
+  no turn toward an old aim. What went is what served only the jump: the
+  tap's `triggerJump` call, its `_tapJumps` count (the button's probe now
+  counts `tapAttacks`) and the JUMP arrow on the stick.
+- **Beside a prop** (v2.3.3105's "a tap should jump") a tap now swings once,
+  and a swing the way you face can land on the barrel. Holding the stick
+  toward it attacks it as before.
+
+**Checked:**
+
+- test-world-core "the tap on the right stick": the tap's ask, its wait
+  and its one "done", the facing ladder, the loop's gate and its four
+  "done"s, the stick's picture with no act (none: the weapon), and no
+  `triggerJump` left in BroTown.
+- `mp-tapattack` (was `mp-tapjump`), 15 of 15: the button is drawn; with
+  the greatsword an empty tap swings once and never jumps, the attack never
+  switched on; the staff looses one bolt east; the bow looses nothing at
+  empty ground and draws no line; a lock, a busy disc, a drag and a tap on
+  yourself do not attack.
+- `mp-tapact` 23 of 23 (the weapon where the JUMP arrow was, a tap swings
+  once; the door and the bubble unchanged); `mp-tapprop` 10 of 10 (beside a
+  bench each tap, quick, slow, on the disc or on the bench, swings once and
+  never jumps; the hold lands blows); `mp-tapstance` 26 of 26 (bow, staff,
+  greatsword: the press shows nothing of the held attack, the tap's aim is
+  east, never the old aim south); `mp-jumpbtn` 23 of 23 (+ a real tap on the
+  right stick beside the button does not jump); `mp-doublejump` + 3b, a tap
+  on the right stick at the sweet spot does not flip.
