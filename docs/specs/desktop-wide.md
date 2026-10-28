@@ -21,6 +21,17 @@ and, seeing the first cut:
 
 > Every menu needs to look like it fits the space.
 
+and, of the second cut:
+
+> It's getting better but the dashboard buttons need to be at the top of that
+> black bar section, not at the bottom. It's more logical arrangement that way
+> and matches with the way it's set up for mobile. also don't space out the
+> controls evenly make them in chunks without spaces within chunks but space
+> between chunks. Same with primary 3 combat skills. Those should all be in
+> the top row beneath the graph dashboard button. Then beneath that the
+> filters for the inventory/bag. The labels for the controls needs to be more
+> readable too.
+
 ## What it was
 
 Since v2.3.1768b a computer drew the upright phone blown up to the window's
@@ -51,6 +62,16 @@ Three columns, each the window's height:
 - **The pages** are 390 px wide, the width they were drawn for (sheetGeometry
   `landscapeSheetW`, playViewport `panelVw`). A computer opens with the bag
   showing, once a page load.
+  - **Down the column, as on a phone:** the dashboard's buttons are its TOP
+    row (sheetGeometry `landDockFootprint`: `top`, and the page keeps that
+    row clear at its own top, `reserveTop`), then the three weapons, then the
+    bag's filters, then the bag (DashColumns `desk`). A phone on its side
+    keeps the buttons in the bottom corner its thumb knows.
+  - **Folded,** the column is a 60 px strip with the fold chip at its top
+    (`DESK_FOLD_STRIP_W`, the controls' column folds to its ⌨ the same way),
+    and the world starts after it. With the buttons at the top, the chip
+    alone would otherwise have sat on the world's corner, over the top bar's
+    door.
 - **The controls** stand at the edge the pages do not take.
   - `bandFootprint` takes their width off the world as `keysW`.
   - resize() stamps `--keys-w` and `--world-r`, and `--world-x` when the
@@ -62,7 +83,19 @@ Three columns, each the window's height:
 ## The controls list
 
 `src/game/deskKeyList.js` is the table. It has four groups with a heading each
-(Move, Fight, Other, Menus), and the rows share the column's height.
+(Move, Fight, Other, Menus).
+
+- **In chunks.** A group's rows are packed, one height each, and the groups
+  are parted by a gap (game.css `.bt-desk-keys-list`, `--kg`). The second
+  cut shared the column's height out among the rows, so the list filled a
+  tall window evenly; the owner wanted chunks. The rows' height is what the
+  list's own height gives them (the list is a size container, `100cqh`, told
+  its row and group counts as `--kn` and `--kgn`), between 21 and 28 px: on
+  a tall window the groups sit under the head with the rest of the column
+  empty below them, and every key still fits a 768 px laptop.
+- **Readable.** The words are 15 px bold in the panel's white (they were
+  12.5 px in a grey), the key caps 12.5 px, the group heads the panel's
+  brass.
 
 A key with a requirement is listed only while it works, by the rule its touch
 button follows (KeyboardHintsPanel.jsx `deskKeyHave`, read once a second):
@@ -85,7 +118,7 @@ a player reads them all.
 
 | Page | Upright phone | Computer |
 |---|---|---|
-| Bag | the band's row | five tiles across, ten rows, the combat skills under it (DashColumns `desk`) |
+| Bag | the band's row | the three weapons, the filters, then five tiles across, ten rows (DashColumns `desk`) |
 | Character, Equipment | the figure 146 px, one stat family open at a time, covering the figure | the figure and gear 88 px a slot, bigger pills, Damage and Defense always open under the bars, Health or Energy opening under the bars |
 | Character, Points | a grid of two rows, sized from the column's width | a list: each stat a row (picture, whole name, what it gives now, points), under the three weapons and the character |
 | Skills | 50 px tiles | 92 px tiles, three across, the rows spread down |
@@ -102,13 +135,17 @@ a player reads them all.
 
 ## Tests
 
-- **`mp-deskwide`** (24 checks, a computer as players get it, and a 1366 x 768
-  laptop):
+- **`mp-deskwide`** (26 checks, a computer as players get it, and a 1366 x 768
+  laptop; it saves a picture of each layout, `tools/qa/mp/out/deskwide-*.png`):
   - the three columns;
-  - the four groups, every row on the screen, the list filling its column;
+  - down the pages: the buttons the top row, then the weapons, the filters
+    and the bag;
+  - the four groups, every row on the screen, each group's rows packed with a
+    gap between groups, every row 21-28 px, the words 15 px or more and none
+    cut short;
   - no Q or R until they work, and Q once a shield is worn;
   - H folding the controls, and the world growing;
-  - I and P;
+  - I and P, and folded, the world after the fold chip's strip;
   - the chat bar over the world;
   - the Points list: thirteen rows on the screen, and a click opening its
     window.

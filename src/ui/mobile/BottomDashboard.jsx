@@ -22,7 +22,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
+import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
@@ -1043,6 +1043,8 @@ export const BottomDashboard = () => {
 
   const Active = active?.Component;
   const deskKeys = land && deskWideActive();   /* v2.3.3687: a computer playing wide (deskWide.js) */
+  /* v2.3.3687: and its column folded: the chip's strip (sheetGeometry deskFoldStripW) */
+  const deskStripW = land && !active ? deskFoldStripW() : 0;
   const Head = active?.Head || null;   /* v2.3.3527: a page's own words on its drilled header row */
   /* v2.3.1649: the top row shares the columns row's tracks — see the grid
      below.  One call, so the two rows can never disagree about where a
@@ -1123,7 +1125,10 @@ export const BottomDashboard = () => {
             display: 'flex',
             flexDirection: 'column',
             touchAction: 'none',
-            paddingTop: 'env(safe-area-inset-top, 0px)',
+            /* v2.3.3687: on a computer the nav dock is the column's top row
+               (landDockFootprint's reserveTop), so the drill header and the
+               page start under it */
+            paddingTop: landDock.reserveTop ? (landDock.reserveTop + 'px') : 'env(safe-area-inset-top, 0px)',
           }}
         >
           {/* ═══ v2.3.2168: THE DRILL HEADER LIVES IN THE SHEET NOW ═══
@@ -1175,6 +1180,21 @@ export const BottomDashboard = () => {
           height, open or folded to its ⌨ whether the pages are up or not; the
           world is between the two (bandFootprint's keysW, --world-x). */}
       {deskKeys ? <DeskKeysList side={side === 'left' ? 'right' : 'left'} /> : null}
+      {/* v2.3.3687: the folded column on a computer: a strip in the column's
+          slate, the chip at its top (the dock below), the world after it */}
+      {deskStripW ? (
+        <div
+          className="bt-desk-foldstrip bt-noselect"
+          data-desk-foldstrip=""
+          aria-hidden="true"
+          onPointerDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'fixed', top: 0, bottom: 0, width: deskStripW, zIndex: 29,
+            ...(side === 'left' ? { left: 0, borderRight: '1px solid rgba(229,237,233,.20)' } : { right: 0, borderLeft: '1px solid rgba(229,237,233,.20)' }),
+            boxSizing: 'border-box', background: 'rgba(13,22,27,.96)',
+          }}
+        />
+      ) : null}
 
       {/* ═══ v2.3.2168: GOLD, AS A CHIP ═══
           Owner: "Coins can go someplace else (they don't need an entire
@@ -1227,7 +1247,8 @@ export const BottomDashboard = () => {
                old anchor lifted the dock 21px into the panel and it covered
                the combat cards; in a browser tab the inset is 0 and none of
                this moves, which is exactly why the bug never showed here. */
-            bottom: landDock.bottom,
+            /* v2.3.3687: on a computer the column's TOP row (landDockFootprint) */
+            ...(landDock.top != null ? { top: landDock.top } : { bottom: landDock.bottom }),
             /* v2.3.2168: its OWN height — --dash-h is only the inset now
                that the bar is gone, so the dock states the row height the
                band used to lend it. */

@@ -13,15 +13,23 @@
  * real page, by real key presses, as players get it (`wide: true`):
  *   1. three columns, the window's height: the pages at the left edge, 390 px
  *      (an upright phone's width, the width they were drawn for), the controls
- *      at the RIGHT edge, 156 px, and the world between them;
+ *      at the RIGHT edge, 156 px, and the world between them; down the pages,
+ *      the owner's order ("the dashboard buttons need to be at the top of that
+ *      black bar section ... [the three combat skills] should all be in the
+ *      top row beneath the graph dashboard button.  Then beneath that the
+ *      filters for the inventory/bag"): the buttons, the weapons, the
+ *      filters, the bag;
  *   2. the controls in four groups -- Move, Fight, Other, Menus -- every row on
- *      the screen, the list filling its column, and a key only while it works:
- *      no Q (Shield) without a shield, Q once one is worn; no R (Whirl) without
- *      a sword in hand;
+ *      the screen, each group's rows PACKED with a gap between the groups
+ *      ("in chunks without spaces within chunks but space between chunks"),
+ *      the words 15 px or more ("more readable"), and a key only while it
+ *      works: no Q (Shield) without a shield, Q once one is worn; no R (Whirl)
+ *      without a sword in hand;
  *   3. H folds the controls to the ⌨ and the world grows into the room; H again
  *      brings them back;
  *   4. I and P open and close the pages, and with the pages folded the world
- *      starts at the screen's edge;
+ *      starts after a strip just wide enough for the fold chip, the chip at
+ *      its top;
  *   5. the chat bar lies over the world, not over either column;
  *   6. the Points tab is a list down the column: thirteen rows, every one on
  *      the screen, and a click on one opens its window;
@@ -30,10 +38,13 @@
  *   8. no page errors.
  */
 import * as H from './harness.mjs';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 const DESK = { width: 1440, height: 900 };
 const LAPTOP = { width: 1366, height: 768 };
 const SHEET_W = 390, KEYS_W = 156, FOLDED_W = 40;   /* src/ui/deskWide.js */
+const FOLD_STRIP_W = 60;   /* src/ui/mobile/sheet/sheetGeometry.js DESK_FOLD_STRIP_W */
 
 const box = (P, sel) => P.page.evaluate((s) => {
   const n = document.querySelector(s);
@@ -50,7 +61,9 @@ const keysCol = (P) => P.page.evaluate(() => {
     head: ((g.querySelector('.bt-desk-keys-group-head') || {}).textContent || '').trim(),
     rows: [...g.querySelectorAll('.bt-desk-key')].map((r) => {
       const rr = r.getBoundingClientRect();
-      return { k: (r.querySelector('kbd') || {}).textContent, w: (r.querySelector('span') || {}).textContent, t: Math.round(rr.top), b: Math.round(rr.bottom) };
+      const sp = r.querySelector('span');
+      return { k: (r.querySelector('kbd') || {}).textContent, w: (sp || {}).textContent, t: Math.round(rr.top), b: Math.round(rr.bottom),
+        fs: sp ? parseFloat(getComputedStyle(sp).fontSize) : 0, cut: sp ? sp.scrollWidth > sp.clientWidth + 1 : true };
     }),
   }));
   return { state: s.getAttribute('data-desk-keys'), side: s.getAttribute('data-desk-keys-side'),
@@ -63,6 +76,9 @@ const sheet = (P) => P.page.evaluate(() => {
 });
 const key = async (P, k, ms = 650) => { await P.page.keyboard.press(k); await P.page.waitForTimeout(ms); };
 const onScreen = (rows, top, bottom) => rows.every((r) => r.t >= top - 1 && r.b <= bottom + 1);
+/* pictures of each layout, for the PR (tools/qa/mp/out/deskwide-*.png) */
+const OUT = join(H.REPO, 'tools/qa/mp/out');
+const shot = async (P, name) => { try { mkdirSync(OUT, { recursive: true }); await P.page.screenshot({ path: join(OUT, `deskwide-${name}.png`) }); } catch (e) { /* a picture only */ } };
 
 async function intoWorld(browser, wsPort, webPort, name, viewport) {
   const P = await H.newPlayer(browser, { name, wsPort, webPort, viewport, world: 'wheel', wide: true });
@@ -110,6 +126,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const pages = await box(P, '.bt-land-sheet');
     let col = await keysCol(P);
     const cv = await box(P, 'canvas');
+    await shot(P, '1-home');
     rec.ok('the pages at the left edge, an upright phone wide (390 px), the window\'s height',
       !!pages && pages.l <= 1 && Math.abs(pages.w - SHEET_W) <= 2 && pages.t <= 1 && pages.b >= DESK.height - 1, { pages, s0 });
     rec.ok('...the controls at the RIGHT edge of the screen, 156 px, the window\'s height',
@@ -117,6 +134,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && col.box.t <= 1 && col.box.b >= DESK.height - 1, col && { side: col.side, state: col.state, box: col.box });
     rec.ok('...and the world between them',
       !!cv && !!pages && !!col && cv.l >= pages.r - 2 && cv.r <= col.box.l + 2 && cv.w >= DESK.width - SHEET_W - KEYS_W - 4, { cv, pages: pages && pages.r, keys: col && col.box.l });
+    /* the column's order, top to bottom */
+    const dock = await box(P, '.bt-land-navdock');
+    const combat = await box(P, '[data-dash-desk-combat]');
+    const filters = await P.page.evaluate(() => {
+      const c = [...document.querySelectorAll('[data-dash-desk] .bt-bagchip')].map((n) => n.getBoundingClientRect());
+      return c.length ? { n: c.length, t: Math.round(Math.min(...c.map((r) => r.top))), b: Math.round(Math.max(...c.map((r) => r.bottom))) } : null;
+    });
+    const bag = await box(P, '[data-dash-desk-bag]');
+    rec.ok('down the pages: the dashboard\'s buttons the top row, then the three weapons, then the bag\'s filters, then the bag',
+      !!dock && !!combat && !!filters && !!bag && dock.t <= 8 && dock.l <= 8
+        && combat.t >= dock.b - 1 && filters.t >= combat.b - 1 && bag.t >= filters.b - 1
+        && combat.t - dock.b <= 16 && filters.n === 5,
+      { dock, combat, filters, bag });
 
     /* ── 2. THE GROUPS, AND ONLY WHAT WORKS ── */
     rec.ok('the controls in four groups under their headings: Move, Fight, Other, Menus',
@@ -127,8 +157,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...every key that always works listed, the menus\' letters too', want.every((k) => keysOf(col).includes(k)), keysOf(col));
     rec.ok('...every row on the screen, inside the column', !!col && onScreen(allRows, col.box.t, Math.min(col.box.b, DESK.height)),
       allRows.filter((r) => r.b > DESK.height || r.t < 0));
-    const lastB = allRows.length ? Math.max(...allRows.map((r) => r.b)) : 0;
-    rec.ok('...and the list fills its column: the last key within 60 px of the screen\'s foot', !!col && lastB >= DESK.height - 60, { lastB });
+    /* the owner: "don't space out the controls evenly make them in chunks
+       without spaces within chunks but space between chunks" */
+    const chunks = col ? col.groups.map((g) => ({
+      id: g.id,
+      within: g.rows.slice(1).map((r, i) => r.t - g.rows[i].b),
+      h: g.rows.map((r) => r.b - r.t),
+      top: g.rows.length ? g.rows[0].t : 0, bot: g.rows.length ? g.rows[g.rows.length - 1].b : 0,
+    })) : [];
+    const between = chunks.slice(1).map((c, i) => c.top - chunks[i].bot);
+    rec.ok('...each group\'s rows packed (no gap within a group), a clear gap between groups, every row 21-28 px',
+      chunks.length === 4 && chunks.every((c) => c.within.every((d) => Math.abs(d) <= 1) && c.h.every((h) => h >= 20 && h <= 29))
+        && between.every((d) => d >= 24), { chunks, between });
+    const fs = allRows.map((r) => r.fs);
+    rec.ok('...the words 15 px or more, none cut short', allRows.length > 0 && fs.every((f) => f >= 15) && allRows.every((r) => !r.cut),
+      { fs: [...new Set(fs)], cut: allRows.filter((r) => r.cut).map((r) => r.w) });
     let dk = await P.page.evaluate(() => (window.__btDeskKeys ? window.__btDeskKeys() : null));
     rec.ok('no shield worn: no Q (Shield, Bash); no sword in hand: no R (Whirl)',
       !!dk && !dk.have.shield && !dk.have.whirl && !keysOf(col).includes('Q') && !keysOf(col).includes('Q+E') && !keysOf(col).includes('R'), { dk, keys: keysOf(col) });
@@ -163,8 +206,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const sI = await sheet(P);
     const cvI = await box(P, 'canvas');
     const pagesI = await box(P, '.bt-land-sheet');
-    rec.ok('I with the bag open folds the pages away: the world starts at the screen\'s edge, the controls stay',
-      !!sI && sI.mode === 'bar' && !pagesI && !!cvI && cvI.l <= 1 && !!(await box(P, '.bt-desk-keys')), { sI, cvI });
+    const stripI = await box(P, '[data-desk-foldstrip]');
+    const chipI = await box(P, '[data-land-fold]');
+    await shot(P, '4-folded');
+    rec.ok('I with the bag open folds the pages away: the world starts after the fold chip\'s strip, the chip at its top, the controls stay',
+      !!sI && sI.mode === 'bar' && !pagesI && !!cvI && !!stripI && !!chipI
+        && stripI.l <= 1 && Math.abs(stripI.w - FOLD_STRIP_W) <= 2 && stripI.t <= 1 && stripI.b >= DESK.height - 1
+        && Math.abs(cvI.l - FOLD_STRIP_W) <= 2 && chipI.l >= stripI.l && chipI.r <= stripI.r && chipI.t <= 10
+        && !!(await box(P, '.bt-desk-keys')), { sI, cvI, stripI, chipI });
     await key(P, 'p', 900);
     const sP = await sheet(P);
     const pagesP = await box(P, '.bt-land-sheet');
@@ -195,6 +244,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 6. THE POINTS LIST ── */
     const pts = await pointsRows(P);
     const pagesPts = await box(P, '.bt-land-sheet');
+    await shot(P, '6-points');
     rec.ok('the Points tab is a list down the column: thirteen rows, under the three weapons',
       pts.list && pts.rows.length === 13 && pts.heads === 3, { list: pts.list, n: pts.rows.length, heads: pts.heads });
     rec.ok('...every row on the screen, inside the column', pts.rows.length > 0 && !!pagesPts
@@ -223,6 +273,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const s = await sheet(L);
     if (!s || s.mode !== 'expanded') await key(L, 'i', 900);
     const col = await keysCol(L);
+    await shot(L, '7-laptop');
     const rows = col ? col.groups.flatMap((g) => g.rows) : [];
     rec.ok('a 1366 x 768 laptop: the controls at the right edge, every key on the screen',
       !!col && col.box.r >= LAPTOP.width - 1 && rows.length >= 20 && onScreen(rows, 0, LAPTOP.height), { box: col && col.box, n: rows.length, off: rows.filter((r) => r.b > LAPTOP.height) });

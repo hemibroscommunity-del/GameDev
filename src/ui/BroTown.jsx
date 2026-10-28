@@ -510,7 +510,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
+import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W, deskFoldStripW } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
 import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.2177: which edge the landscape dashboard takes, and the player's pin */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
@@ -3806,8 +3806,10 @@ export var BroTown = function BroTown(_ref0) {
          whenever the chip is NOT on the world's left edge -- portrait,
          any open sheet, and every rotation that puts the dashboard on the
          right -- which keeps those layouts byte-identical. */
+      /* v2.3.3687: not on a computer playing wide, where the folded column
+         is a strip of its own beside the world (deskFoldStripW), the chip in it */
       document.documentElement.style.setProperty('--land-fold-w',
-        (playIsLandscape() && !_sheetOpen && _dashSide === 'left'
+        (playIsLandscape() && !_sheetOpen && _dashSide === 'left' && !deskFoldStripW()
           ? 2 * DASH_GAP + LAND_FOLD_CHIP_W + 8 : 0) + 'px');
       try {
         document.documentElement.setAttribute('data-dash-side', _dashSide);

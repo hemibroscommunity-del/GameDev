@@ -5595,23 +5595,34 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
   .bt-desk-keys[data-desk-keys="folded"]{padding:8px 4px}
   .bt-desk-keys-head{display:flex;align-items:center;gap:6px;width:100%;min-height:32px;padding:0 4px;background:transparent;border:0;
     border-bottom:1px solid rgba(229,237,233,.11);margin-bottom:8px;
-    color:#B6C1BE;font:700 11px/1 'Source Sans 3',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+    color:#D9DFDD;font:800 12px/1 'Source Sans 3',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
   .bt-desk-keys-head:hover{color:#F4F0E7}
   .bt-desk-keys[data-desk-keys="folded"] .bt-desk-keys-head{justify-content:center;padding:0;border-bottom:0}
   .bt-desk-keys-icon{font-size:15px;letter-spacing:0}
   .bt-desk-keys-chev{margin-left:auto;font-size:15px;letter-spacing:0}
-  /* four groups, each under its heading, the rows sharing the column's
-     height: a row grows from 23 px to at most 40 (its key cap centred in
-     it), so the list fills a tall window evenly and still fits a 768 px
-     laptop's; a window shorter still scrolls the list from its top */
-  .bt-desk-keys-list{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:none}
+  /* four groups, each under its heading.  The owner, of the rows spread down
+     the column to fill it: "don't space out the controls evenly make them in
+     chunks without spaces within chunks but space between chunks ... The
+     labels for the controls needs to be more readable too."  So a group's
+     rows are PACKED, one height each, and the groups are parted by a gap
+     (--kg); the rows' height is what the list's own height gives them (it is
+     a size container: 100cqh), between 21 and 28 px -- packed under the head
+     in a tall window, the rest of the column left empty below the last
+     group, and still every key on a 768 px laptop's.  The list says how many
+     rows (--kn) and groups (--kgn) it has (DeskKeysList).  A window shorter
+     still scrolls the list from its top.  The words: 15 px, bold, the
+     panel's own white; the heads its brass. */
+  .bt-desk-keys-list{--kg:14px;--kh:20px;flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:none;container-type:size}
   .bt-desk-keys-list::-webkit-scrollbar{display:none}
-  .bt-desk-keys-group{flex:none;display:flex;flex-direction:column;flex-grow:var(--rows,1)}
-  .bt-desk-keys-group + .bt-desk-keys-group{margin-top:8px}
-  .bt-desk-keys-group-head{flex:none;padding:0 2px 3px;font:800 10px/1.1 'Source Sans 3',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#8E9A97}
-  .bt-desk-key{flex:1 1 23px;min-height:23px;max-height:40px;display:flex;align-items:center;gap:8px;min-width:0;font:600 12.5px/1.2 'Source Sans 3',sans-serif;color:#D9DFDD}
-  .bt-desk-key kbd{flex:none;width:58px;box-sizing:border-box;padding:2px 4px;text-align:center;background:rgba(255,255,255,.10);
-    border:1px solid rgba(229,237,233,.18);border-bottom-width:2px;border-radius:4px;font:700 11px/1.2 'Source Sans 3',sans-serif;color:#F4F0E7}
+  .bt-desk-keys-group{flex:none;display:flex;flex-direction:column}
+  .bt-desk-keys-group + .bt-desk-keys-group{margin-top:var(--kg)}
+  .bt-desk-keys-group-head{flex:none;height:var(--kh);box-sizing:border-box;display:flex;align-items:flex-start;padding:0 2px;
+    font:800 12px/1 'Source Sans 3',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#D8AA58}
+  .bt-desk-key{flex:none;height:24px;
+    height:clamp(21px, calc((100cqh - var(--kgn,4) * var(--kh) - (var(--kgn,4) - 1) * var(--kg)) / var(--kn,27)), 28px);
+    display:flex;align-items:center;gap:8px;min-width:0;font:700 15px/1.2 'Source Sans 3',sans-serif;color:#F4F0E7}
+  .bt-desk-key kbd{flex:none;width:58px;box-sizing:border-box;padding:1px 4px;text-align:center;background:rgba(255,255,255,.14);
+    border:1px solid rgba(229,237,233,.26);border-bottom-width:2px;border-radius:4px;font:800 12.5px/15px 'Source Sans 3',sans-serif;color:#FFFFFF}
   .bt-desk-key > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 }

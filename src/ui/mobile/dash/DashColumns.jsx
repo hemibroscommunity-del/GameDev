@@ -116,9 +116,14 @@ const tileRow = { display: 'flex', gap: DASH_GAP, justifyContent: 'center' };
    fits the space."  `desk` (BottomDashboard's LandDash, deskWide.js) is a
    column an upright phone wide and the window tall, so the bag takes its
    height -- DESK_BAG_COLS across, as many rows as the column shows, the
-   filter chips one a slot over it -- and the three weapons sit in a row at
-   its foot, each card a third of the bag's width.  The upright band's
-   two side-by-side panels left the weapons' panel tall and nearly empty. */
+   filter chips one a slot over it -- and the three weapons sit in a row
+   over them, each card a third of the bag's width.  The upright band's
+   two side-by-side panels left the weapons' panel tall and nearly empty.
+   And the order down the column, the owner's: "Those [the three combat
+   skills] should all be in the top row beneath the graph dashboard button.
+   Then beneath that the filters for the inventory/bag" -- the dashboard's
+   buttons at the column's top (landDockFootprint), the weapons, the
+   filters, the bag. */
 export const DESK_BAG_COLS = 5;
 const DESK_BAG_ROWS = 10;   /* the floor: more than any computer window shows, so the slots run to the fade */
 
@@ -647,8 +652,11 @@ export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         gap: DASH_GAP, height: '100%', minHeight: 0, boxSizing: 'border-box', padding: DASH_GAP,
       }}>
+        <div data-dash-desk-combat="" style={{ display: 'flex', gap: DASH_GAP, width: gridW, flex: 'none' }}>
+          {COMBAT_SKILLS.slice(0, 3).map(combatPill)}
+        </div>
         <BagFilterChips width={gridW} height={BAG_HEADER_H} />
-        <div style={{
+        <div data-dash-desk-bag="" style={{
           width: gridW, flex: 1, minHeight: 0,
           overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch',
           WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 12px), transparent)',
@@ -663,9 +671,6 @@ export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
                   }} />
             ))}
           </div>
-        </div>
-        <div data-dash-desk-combat="" style={{ display: 'flex', gap: DASH_GAP, width: gridW, flex: 'none' }}>
-          {COMBAT_SKILLS.slice(0, 3).map(combatPill)}
         </div>
       </div>
     );

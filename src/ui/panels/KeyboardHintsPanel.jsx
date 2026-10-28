@@ -141,8 +141,11 @@ export function DeskKeysList({ side = 'right' } = {}) {
   }, React.createElement('span', { className: 'bt-desk-keys-icon', 'aria-hidden': 'true' }, '⌨'),
     hidden ? null : React.createElement('span', { className: 'bt-desk-keys-title' }, 'Controls'),
     hidden ? null : React.createElement('span', { className: 'bt-desk-keys-chev', 'aria-hidden': 'true' }, '‹')),
-  hidden ? null : React.createElement('div', { className: 'bt-desk-keys-list' },
-    groups.map((g) => React.createElement('div', { className: 'bt-desk-keys-group', key: g.id, 'data-desk-keys-group': g.id, style: { '--rows': g.rows.length } },
+  /* v2.3.3687: how many rows and groups, so each row's height is the list's
+     height shared out (game.css .bt-desk-key), the groups packed */
+  hidden ? null : React.createElement('div', { className: 'bt-desk-keys-list',
+    style: { '--kn': groups.reduce((n, g) => n + g.rows.length, 0) || 1, '--kgn': groups.length || 1 } },
+    groups.map((g) => React.createElement('div', { className: 'bt-desk-keys-group', key: g.id, 'data-desk-keys-group': g.id },
       React.createElement('div', { className: 'bt-desk-keys-group-head' }, g.label),
       g.rows.map(([k, label]) => React.createElement('div', { className: 'bt-desk-key', key: k },
         React.createElement('kbd', null, k), React.createElement('span', null, label)))))));
