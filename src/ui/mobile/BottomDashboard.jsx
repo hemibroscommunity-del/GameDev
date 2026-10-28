@@ -43,6 +43,8 @@ import { COMBAT_SKILLS, unspentPointsTotal } from './sheet/heroModel.js'; /* v2.
    src/ either -- that predates this change -- so the file is now reference
    material rather than live code, and it says so at its top. */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
+import { deskWideActive, DESK_SHEET_W } from '../deskWide.js';  /* v2.3.3687: a computer plays the sideways layout */
+import { DeskKeysList } from '../panels/KeyboardHintsPanel.jsx';   /* v2.3.3687: the controls at the screen's far edge */
 import { InventoryPanel }              from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
@@ -503,12 +505,18 @@ const PANELS = {
      combat pills stacked below in the vertical space, scrolling as one
      column. */
   dashboard:    { title: 'Dashboard',   Component: function LandDash() {
+    /* v2.3.3687: on a computer playing wide the column is an upright phone's
+       width (deskWide.js DESK_SHEET_W), so the dashboard is the upright band's
+       own row -- the bag and the combat skills side by side, at that width --
+       not the 2-wide stack a sideways phone's narrow column needs */
+    var desk = deskWideActive();
     return React.createElement('div', {
-      style: { flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' },
+      style: desk ? { flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' } : { flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch' },
     }, React.createElement(DashColumns, {
       R: (window._gameState && window._gameState.current && window._gameState.current.rpg) || null,
-      stacked: true,
-      vwBasis: Math.min(playVw(), playVh()),
+      stacked: !desk,
+      desk: desk,
+      vwBasis: desk ? DESK_SHEET_W : Math.min(playVw(), playVh()),
     }));
   } },
 };
@@ -519,6 +527,9 @@ const PANELS = {
    v2.3.1288 (PR B): every destination has a compact view now — the
    `compact:false` promotion flag and the compactless registration are
    gone (the bus keeps the mechanism, registered empty). */
+/* v2.3.3687: the computer's column opened once a page load (BottomDashboard) */
+let _deskOpened = false;
+
 const DESTINATIONS = [
   { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
   { id: 'hero',   label: 'Character', icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
@@ -962,6 +973,16 @@ export const BottomDashboard = () => {
      panel left open across the flip would be laid out for a surface that
      no longer exists.  toBar() keeps the root, so the next tap resumes the
      same destination; the world is what greets the rotation. */
+  /* ═══ v2.3.3687: A COMPUTER OPENS WITH THE DASHBOARD BESIDE THE WORLD ═══
+     Playing wide (deskWide.js) the column has the width the pages were drawn
+     for, and a computer has the width to spare, so it starts open, once a
+     page load: the fold chip still folds it, and it stays as the player left
+     it after that. */
+  useEffect(() => {
+    if (_deskOpened || !land || !deskWideActive()) return;
+    _deskOpened = true;
+    if (dashboardPanelBus.state.mode === 'bar') dashboardPanelBus.open('dashboard');
+  }, [land]);
   const _landRef = useRef(land);
   useEffect(() => {
     if (_landRef.current !== land) {
@@ -1021,6 +1042,7 @@ export const BottomDashboard = () => {
      retired with its anchor). */
 
   const Active = active?.Component;
+  const deskKeys = land && deskWideActive();   /* v2.3.3687: a computer playing wide (deskWide.js) */
   const Head = active?.Head || null;   /* v2.3.3527: a page's own words on its drilled header row */
   /* v2.3.1649: the top row shares the columns row's tracks — see the grid
      below.  One call, so the two rows can never disagree about where a
@@ -1142,6 +1164,17 @@ export const BottomDashboard = () => {
           </div>
         </div>
       ) : null}
+      {/* ═══ v2.3.3687: THE CONTROLS AT THE SCREEN'S FAR EDGE ═══
+          The owner: "find a good place to keep a list of all the controls",
+          then "If you split the keyboard shortcuts on its own strip to the
+          right and kept the inventory on the left it might look better", and
+          "I meant the right side of the screen consists of the black strip
+          with the shortcuts.  Not just on the right side of the left black
+          strip."  On a computer playing wide (deskWide.js) the list is a
+          column of its own at the edge the panel does not take, the screen's
+          height, open or folded to its ⌨ whether the pages are up or not; the
+          world is between the two (bandFootprint's keysW, --world-x). */}
+      {deskKeys ? <DeskKeysList side={side === 'left' ? 'right' : 'left'} /> : null}
 
       {/* ═══ v2.3.2168: GOLD, AS A CHIP ═══
           Owner: "Coins can go someplace else (they don't need an entire

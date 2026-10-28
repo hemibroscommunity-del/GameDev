@@ -44,6 +44,8 @@
    through v2.3.1635 and is --cols-h from here — renamed rather than
    reused so a stale stylesheet cannot silently size the new row with the
    old row's number. */
+import { deskWideActive, deskKeysW, DESK_SHEET_W } from '../../deskWide.js';   /* v2.3.3687 */
+
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
    compact bag grid's slot algebra instead of the old fixed 72, giving
@@ -715,6 +717,16 @@ export function landscapeSheetW(vw, vh, kind) {
      changes the answer; the canvas math cares only about the number.
      +2*DASH_GAP for DashColumns' side pads and +16 for the sheet
      wrapper's — the column track must fit INSIDE both or it clips. */
+  /* ═══ v2.3.3687: ON A COMPUTER, AN UPRIGHT PHONE'S WIDTH ═══
+     The owner: "Yes base desktop off the landscape mode but fix the menu
+     sizes."  A computer plays the sideways layout now (src/ui/deskWide.js),
+     and this column, sized for a phone 390 px tall, put every page in ~230
+     px with most of a computer's height black.  There the column is the
+     width the pages were drawn for (DESK_SHEET_W, 390), every destination
+     alike, as the rule above says.  The controls' strip stands at the
+     screen's OTHER edge (deskKeysW, bandFootprint below): the canvas takes
+     what is between. */
+  if (deskWideActive()) return DESK_SHEET_W;
   return landscapeDashColW(vw, vh) + 2 * DASH_GAP + 16;
 }
 
@@ -755,8 +767,11 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
        a browser tab and every headless run.  `overlap` goes to 0 with the
        band — the 2156 note above ("a footprint with no bottom band earns
        no overlap") stops being hypothetical here. */
+    /* v2.3.3687: on a computer the controls' strip takes the screen's far
+       edge, the pages open or not (deskWide.js); 0 everywhere else */
+    var keysW = deskKeysW();
     return { dashH: (bottomInset || 0), colsH: 0, overlap: 0,
-             playW: Math.max(320, vw - sheetW), sheetW: sheetW };
+             playW: Math.max(320, vw - sheetW - keysW), sheetW: sheetW, keysW: keysW };
   }
   var dashH = barHeight(vw, vh);
   var colsH = columnsRowHeight(vw);

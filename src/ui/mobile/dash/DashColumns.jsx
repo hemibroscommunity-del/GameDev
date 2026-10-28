@@ -111,7 +111,18 @@ const Column = ({ children, onTap, label, stretch }) => (
    different grids. */
 const tileRow = { display: 'flex', gap: DASH_GAP, justifyContent: 'center' };
 
-export const DashColumns = ({ R, stacked, vwBasis }) => {
+/* ═══ v2.3.3687: ON A COMPUTER, THE COLUMN'S OWN SHAPE ═══
+   The owner, of the computer's side column: "Every menu needs to look like it
+   fits the space."  `desk` (BottomDashboard's LandDash, deskWide.js) is a
+   column an upright phone wide and the window tall, so the bag takes its
+   height -- DESK_BAG_COLS across, as many rows as the column shows, the
+   filter chips one a slot over it -- and the three weapons sit in a row at
+   its foot, each card a third of the bag's width.  The upright band's
+   two side-by-side panels left the weapons' panel tall and nearly empty. */
+export const DESK_BAG_COLS = 5;
+const DESK_BAG_ROWS = 10;   /* the floor: more than any computer window shows, so the slots run to the fade */
+
+export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
   /* v2.3.2163 (owner: "I can see 8 slots playing in [portrait] view (plus
      space for combat skills) so this should translate to 8 slots of space
      viewable in landscape (plus space for combat skills). Panes ... can be
@@ -127,7 +138,10 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      to scroll for (see landscapeDashTileSize).  `vwBasis` is the device's
      short side, which sideways IS its height, so one basis serves both
      axes of the rule. */
-  const t = stacked ? landscapeDashTileSize(vw, vw) : dashTileSize(vw);
+  /* v2.3.3687: on a computer the tile is what DESK_BAG_COLS across the column
+     leaves (the column less the sheet's 8 px pads and this grid's own) */
+  const t = desk ? Math.floor((vw - 16 - 2 * DASH_GAP - (DESK_BAG_COLS - 1) * DASH_GAP) / DESK_BAG_COLS)
+    : stacked ? landscapeDashTileSize(vw, vw) : dashTileSize(vw);
   const panelW = dashPanelWidths(vw);
   const rpg = R || {};
   const [bagFilter, setBagFilter] = React.useState(bagFilterBus.get());
@@ -205,14 +219,14 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      the width; everything the rotation saves is world.  The scroll floor
      keeps the same "+3 rows past visible" rule so the peek-and-fade cue
      still has half a row to sit on. */
-  const bagCols = stacked ? 2 : BAG_VIEW_COLS;
-  const bagVisRows = stacked ? 4 : DASH_ROWS;
+  const bagCols = desk ? DESK_BAG_COLS : stacked ? 2 : BAG_VIEW_COLS;
+  const bagVisRows = desk ? DESK_BAG_ROWS : stacked ? 4 : DASH_ROWS;
   /* v2.3.2166: stacked fits its EIGHT slots exactly (the container must
      hold the combat row and the nav below them with nothing to scroll
      for), so its floor is the visible grid itself; more items than eight
      still grow the grid and scroll behind the fade.  Portrait keeps the
      +3 scroll-proof floor and its peek. */
-  const bagRows = Math.max(stacked ? bagVisRows : bagVisRows + 3, Math.ceil(entries.length / bagCols));
+  const bagRows = Math.max(stacked || desk ? bagVisRows : bagVisRows + 3, Math.ceil(entries.length / bagCols));
   const bagCellCount = bagRows * bagCols;
   const gridW = bagCols * t + (bagCols - 1) * DASH_GAP;
 
@@ -274,10 +288,11 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
      container's inner width three ways — compact upright cards (icon over
      level over bar) instead of the wide lying pills, because ~48px of
      width holds no horizontal layout. */
-  const pillW = stacked
+  const pillW = desk ? Math.floor((gridW - 2 * DASH_GAP) / 3)   /* v2.3.3687: a third of the bag's width */
+    : stacked
     ? Math.floor((landscapeDashColW(vw, vw) - 10 - 2 * DASH_GAP) / 3)
     : combatPillWidth(vw);
-  const pillH = stacked ? LAND_PILL_H : combatPillHeight(vw);
+  const pillH = desk ? Math.max(combatPillHeight(vw), 56) : stacked ? LAND_PILL_H : combatPillHeight(vw);
   /* v2.3.1853: the pill now carries THREE things across, so the icon stops
      taking the pill's whole height.  MEASURED against the narrowest phone
      the layout supports: at 360 the pill is 80px wide and 68 of that is
@@ -625,6 +640,36 @@ export const DashColumns = ({ R, stacked, vwBasis }) => {
     );
   };
 
+  if (desk) {
+    /* v2.3.3687: the computer's column -- see DESK_BAG_COLS above */
+    return (
+      <div className="bt-dashcols" data-dash-desk="" style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        gap: DASH_GAP, height: '100%', minHeight: 0, boxSizing: 'border-box', padding: DASH_GAP,
+      }}>
+        <BagFilterChips width={gridW} height={BAG_HEADER_H} />
+        <div style={{
+          width: gridW, flex: 1, minHeight: 0,
+          overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch',
+          WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 12px), transparent)',
+          maskImage: 'linear-gradient(180deg, #000 calc(100% - 12px), transparent)',
+        }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${bagCols}, ${t}px)`, gridAutoRows: `${t}px`, gap: DASH_GAP }}>
+            {Array.from({ length: bagCellCount }, (_, i) => (
+              entries[i]
+                ? <BagTile key={`bag-${i}`} entry={entries[i]} style={{ aspectRatio: 'auto', height: '100%' }} />
+                : <div key={`bag-${i}`} aria-hidden="true" style={{
+                    background: COL.well, border: `1px solid ${COL.tileBor}`, borderRadius: 6,
+                  }} />
+            ))}
+          </div>
+        </div>
+        <div data-dash-desk-combat="" style={{ display: 'flex', gap: DASH_GAP, width: gridW, flex: 'none' }}>
+          {COMBAT_SKILLS.slice(0, 3).map(combatPill)}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="bt-dashcols" style={{
       display: 'grid',

@@ -1605,9 +1605,18 @@ export var BroTown = function BroTown(_ref0) {
     setKbHintsOff(function (v) {
       var next = !v;
       try { localStorage.setItem('bt_kb_hints_off', next ? '1' : '0'); } catch (e2) { /* private mode */ }
+      /* v2.3.3687: the side column's list (KeyboardHintsPanel DeskKeysList)
+         follows the same choice */
+      try { setTimeout(function () { window.dispatchEvent(new Event('bt-kb-hints')); window.dispatchEvent(new Event('resize')); }, 0); } catch (e3) { /* no list */ }
       return next;
     });
   }, []);
+  /* v2.3.3687: ...and its own header toggles it, as the ⌨ does */
+  useEffect(function () {
+    var on = function () { toggleKbHints(); };
+    window.addEventListener('bt-kb-hints-toggle', on);
+    return function () { window.removeEventListener('bt-kb-hints-toggle', on); };
+  }, [toggleKbHints]);
   /* v2.3.1714: the top-left quest reminder collapses to its title on tap.
      Owner: "some users might prefer that view to save screen space."
      Read from storage in the INITIALISER, not in an effect — an effect would
@@ -3751,8 +3760,16 @@ export var BroTown = function BroTown(_ref0) {
          owner chose to keep the art full-bleed under it ("keep it
          full-bleed") with the CONTROLS held clear.  game.css spends these
          on the edge clusters only. */
+      /* v2.3.3687: on a computer the controls' strip stands at the edge the
+         panel does not take (deskWide.js), so with the panel on the right
+         the world begins after the strip; --keys-w is its width (0 elsewhere) */
       document.documentElement.style.setProperty('--world-x',
-        (_dashSide === 'left' ? _fp.sheetW : 0) + 'px');
+        (_dashSide === 'left' ? _fp.sheetW : (_fp.keysW || 0)) + 'px');
+      document.documentElement.style.setProperty('--keys-w', (_fp.keysW || 0) + 'px');
+      /* ...and where the world ENDS, from the right: what the panel or the
+         strip takes there (0 on a phone with the panel on the left) */
+      document.documentElement.style.setProperty('--world-r',
+        (_dashSide === 'left' ? (_fp.keysW || 0) : _fp.sheetW) + 'px');
       /* ═══ v2.3.2178: THE HOME-INDICATOR INSET, AS A STAMP ═══
          resize() has measured this since v2.3.2163 (the probe exists
          because JS cannot read env()), but the band, the landscape dock and

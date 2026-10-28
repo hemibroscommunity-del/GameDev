@@ -1,5 +1,13 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { deskKeyRows, deskKeyGroups, deskKeyStamp } from '@/game/deskKeyList.js';   /* v2.3.3687: the keys that work now */
+import { deskWideActive, DESK_KEYS_W, DESK_KEYS_FOLDED_W } from '@/ui/deskWide.js';   /* v2.3.3687: a computer playing wide */
+import { abilityUnlocked, isAbilitiesEnabled } from '@/data/abilities.js';
+import { prog3CharLevel, prog3ActiveCat, burstRefusal, burstWeapon } from '@/data/prog3.js';
+import { quickEatChoices } from '@/game/quickEat.js';
+import { calcDisplayHeal } from '@/data/gameSystems.js';
+import { sprintSupported } from '@/game/sprint.js';
+import { trappingOn, trapsHeld } from '@/game/trapping.js';
 
 /* === KeyboardHintsPanel — the desktop keyboard-hints overlay === */
 /* v2.3.889: extracted verbatim from the bt-kb-hints JSX subtree in
@@ -28,30 +36,117 @@ import { createPortal } from 'react-dom';
    of the controls a desktop player has — an unlisted key is an unfindable
    ability.  They are listed unconditionally, unlocked or not: the label
    teaches the key, and pressing it before level 4/8 floats the reason. */
-const KEYS = [
-  /* v2.3.3006: Shift, held -- the sprint (game/sprint.js); listed beside the
-     move it speeds up.  The touch button's twin, so it is listed on the
-     same terms as the rest: always, and the worker decides the rest. */
-  ['WASD', 'Move'], ['Shift', 'Sprint'], ['Click', 'Attack'], ['R-Click', 'Special'], ['Space', 'Dodge'], ['X', 'Jump'] /* v2.3.3017 */,
-  ['E', 'Interact'], ['Q', 'Shield'], ['Q+E', 'Bash'], ['R', 'Whirl'],
-  /* v2.3.3407: 1 2 3 -- each weapon straight to hand (desktopControls), keys
-     with no button on a computer's screen to wear them (the weapon chip is a
-     touch control).  The dashboard's keys (I P J L K O), M's map, Enter and
-     Esc are worn by their own buttons (game/deskKeys.js), so they are not
-     repeated here. */
-  ['Tab', 'Swap'], ['1-3', 'Weapon'], ['F', 'Special'],
-  /* v2.3.1734: G — Element Burst.  Listed on the same terms v2.3.1733 set
-     for Bash and Whirl one line above: unconditionally, unlocked or not.
-     The label teaches the key, and pressing it before level 6 (or without
-     an enchanted weapon) floats the reason — a key that only appears once
-     you already own the ability is a key nobody discovers. */
-  ['G', 'Burst'],
-  /* v2.3.3260: V -- quick eat (game/quickEat.js), the touch button's twin */
-  ['V', 'Eat'],
-  /* v2.3.3391: B -- the emotes (game/emotes.js), the chat box's smiley's twin */
-  ['B', 'Emotes'],
-  ['C', 'Chat'], ['H', 'Hide'], ['Esc', 'Close'],
-];
+/* v2.3.3687: the table moved to src/game/deskKeyList.js (DESK_KEY_ROWS), and a
+   key with a requirement is listed only while it is met -- the owner: "Keyboard
+   instructions need to be dynamic since "whirl" doesn't work if you don't have
+   your sword equipped".  The notes above are its history. */
+
+/* What you have, by the rules each key's touch button follows (deskKeyList.js
+   says which). */
+export function deskKeyHave(S) {
+  const R = S && S.rpg;
+  if (!R) return {};
+  let level = 0;
+  try { level = prog3CharLevel(R) || 0; } catch (_e) { /* no level: nothing unlocked */ }
+  const on = (kind) => { try { return isAbilitiesEnabled() && abilityUnlocked(level, kind); } catch (_e) { return false; } };
+  let burst = false;
+  try { const why = burstRefusal(R, burstWeapon(R), 0); burst = !why || why === 'mana'; } catch (_e) { /* no burst */ }
+  let food = false;
+  try { food = quickEatChoices(S, calcDisplayHeal, Date.now()).length > 0; } catch (_e) { /* no food */ }
+  let sword = false;
+  try { sword = prog3ActiveCat(R) === 'sword' && !!R.weapon; } catch (_e) { /* no sword */ }
+  let trap = false;
+  try { trap = trappingOn(S) && trapsHeld(S) > 0; } catch (_e) { /* no traps */ }
+  return {
+    sprint: sprintSupported(S),
+    shield: !!R.shield,
+    bash: !!R.shield && on('bash'),
+    whirl: sword && on('whirl'),
+    burst: burst,
+    trap: trap,
+    food: food,
+  };
+}
+
+/* QA: what the rules say you have now, and the keys that lists (mp-deskwide) */
+if (typeof window !== 'undefined') {
+  window.__btDeskKeys = function () {
+    const S = window._gameState ? window._gameState.current : null;
+    const have = deskKeyHave(S);
+    return { have, keys: deskKeyRows(have).map((r) => r[0]) };
+  };
+}
+
+/* The rows, re-read once a second (a weapon swap, a shield equipped, food
+   eaten): re-rendered only when what is listed changes. */
+function useDeskHave() {
+  const read = () => { const S = (typeof window !== 'undefined' && window._gameState) ? window._gameState.current : null; return deskKeyHave(S); };
+  const [have, setHave] = React.useState(read);
+  React.useEffect(() => {
+    const t = setInterval(() => {
+      const now = read();
+      setHave((was) => (deskKeyStamp(was) === deskKeyStamp(now) ? was : now));
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+  return have;
+}
+/* the floating strip's rows: the menus' letters are on their own buttons, and
+   only the column has the height for them too */
+function useDeskKeys() {
+  return deskKeyRows(useDeskHave()).filter((r) => r[3] !== 'menus');
+}
+
+/* ═══ v2.3.3687: ON A COMPUTER PLAYING WIDE, THE CONTROLS HAVE THEIR OWN COLUMN ═══
+   The owner: "find a good place to keep a list of all the controls", then,
+   seeing it under the bag, "If you split the keyboard shortcuts on its own
+   strip to the right and kept the inventory on the left it might look
+   better. You need to modify the containers to fit that shape better", and
+   "I meant the right side of the screen consists of the black strip with the
+   shortcuts.  Not just on the right side of the left black strip."  On a
+   computer the game plays the sideways layout now (deskWide.js): the pages a
+   column at one edge, and this list a column at the OTHER, the screen's
+   height, its keys in groups spread down it (game.css .bt-desk-keys), with
+   the world between them.  Hidden (H, or its ⌨) it folds to the ⌨ alone,
+   DESK_KEYS_FOLDED_W wide, and the world takes the rest (sheetGeometry's
+   bandFootprint reads the same choice).  `hidden` is the choice the ⌨ and H
+   make (bt_kb_hints_off), told to the column by the 'bt-kb-hints' event the
+   toggle sends.  It stands there whether the pages are open or folded away,
+   so the floating strip below never shows on such a computer. */
+function readHidden() {
+  try { return localStorage.getItem('bt_kb_hints_off') === '1'; } catch (_e) { return false; }
+}
+export function DeskKeysList({ side = 'right' } = {}) {
+  const groups = deskKeyGroups(useDeskHave());
+  const [hidden, setHidden] = React.useState(readHidden);
+  React.useEffect(() => {
+    const on = () => setHidden(readHidden());
+    window.addEventListener('bt-kb-hints', on);
+    return () => window.removeEventListener('bt-kb-hints', on);
+  }, []);
+  const toggle = (e) => {
+    e.stopPropagation();
+    try { window.dispatchEvent(new CustomEvent('bt-kb-hints-toggle')); } catch (_e) { /* old browser: H still works */ }
+  };
+  return React.createElement('div', {
+    className: 'bt-desk-keys bt-noselect', 'data-desk-keys': hidden ? 'folded' : 'open', 'data-desk-keys-side': side,
+    style: { width: hidden ? DESK_KEYS_FOLDED_W : DESK_KEYS_W, [side === 'left' ? 'left' : 'right']: 0 },
+    onPointerDown: (e) => e.stopPropagation(),
+  },
+  React.createElement('button', {
+    type: 'button', className: 'bt-desk-keys-head', onClick: toggle,
+    'aria-expanded': hidden ? 'false' : 'true',
+    'aria-label': hidden ? 'Show the keyboard controls' : 'Hide the keyboard controls',
+    title: hidden ? 'Show the keyboard controls (H)' : 'Hide the keyboard controls (H)',
+  }, React.createElement('span', { className: 'bt-desk-keys-icon', 'aria-hidden': 'true' }, '⌨'),
+    hidden ? null : React.createElement('span', { className: 'bt-desk-keys-title' }, 'Controls'),
+    hidden ? null : React.createElement('span', { className: 'bt-desk-keys-chev', 'aria-hidden': 'true' }, '‹')),
+  hidden ? null : React.createElement('div', { className: 'bt-desk-keys-list' },
+    groups.map((g) => React.createElement('div', { className: 'bt-desk-keys-group', key: g.id, 'data-desk-keys-group': g.id, style: { '--rows': g.rows.length } },
+      React.createElement('div', { className: 'bt-desk-keys-group-head' }, g.label),
+      g.rows.map(([k, label]) => React.createElement('div', { className: 'bt-desk-key', key: k },
+        React.createElement('kbd', null, k), React.createElement('span', null, label)))))));
+}
 
 /* ═══ v2.3.3526: IN THE BLACK MARGIN, BESIDE THE GAME ═══
    The owner, of the 2026-10-19 review's "move the keyboard keys strip into the
@@ -115,6 +210,18 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
   const toggle = (e) => { e.stopPropagation(); if (onToggle) onToggle(); };
   const room = useSideRoom();
   const place = room ? 'side' : 'column';
+  const rows = useDeskKeys();   /* v2.3.3687: the keys that work now */
+  /* v2.3.3687: on a computer playing wide the list is a column of its own at
+     the screen's far edge (DeskKeysList, BottomDashboard), with its own ⌨:
+     neither the strip nor the chip here */
+  const [desk, setDesk] = React.useState(deskWideActive);
+  React.useEffect(() => {
+    const read = () => setDesk(deskWideActive());
+    window.addEventListener('resize', read);
+    read();
+    return () => window.removeEventListener('resize', read);
+  }, []);
+  if (desk) return null;
 
   /* ═══ v2.3.3470: THE ⌨ STAYS, BESIDE THE STRIP ═══
      The owner: "The computer keyboard icon is a nice touch for showing and
@@ -148,7 +255,7 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     title: 'Hide these (H)',
     role: 'button',
     'aria-label': 'Hide keyboard controls',
-  }, KEYS.map(([k, label]) => React.createElement('span', {
+  }, rows.map(([k, label]) => React.createElement('span', {
     className: 'bt-kb-key', key: k,
   }, React.createElement('kbd', null, k), ' ' + label)));
 
