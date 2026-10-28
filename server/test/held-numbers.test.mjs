@@ -184,7 +184,10 @@ const N = await import('../../src/rendering/heldNumbers.js');
 /* ── 5 ── */
 {
   const zt = readFileSync(new URL('../../src/rendering/zoneTextures.js', import.meta.url), 'utf8');
-  check('5: the monster strips are held once drawn (zoneTextures loadTrackedStrip)', /if \(packed\) holdOnceDrawn\(src\)/.test(zt));
+  /* v2.3.3715: unless they went to the chip as colour numbers at once
+     (picsNumbers.js, on by default; `?picnumbers=0` holds them this way) */
+  check('5: the monster strips are held once drawn (zoneTextures loadTrackedStrip)', /if \(packed && !numSrc\) holdOnceDrawn\(src\)/.test(zt)
+    && /const numSrc = packed \? stripAsNumbers\(bundle, packed\.canvas, url\) : null;/.test(zt));
   check('5: ...and forgotten when their zone lets go (_releaseCrops)', /forgetHeld\(src\)/.test(zt));
   const fx = readFileSync(new URL('../../src/rendering/systems/effectsRenderer.js', import.meta.url), 'utf8');
   check('5: the effects renderer looks every GPU_WAIT_MS', /emptyHeldOnceDrawn\(this\._captureRenderer\)/.test(fx));
