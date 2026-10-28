@@ -195,6 +195,51 @@ Gladiator achievement's, once a character:
 - The window names the Gladiator achievement against `caps.achievements`, and
   "for your first win" against a v2.3.3488 worker.
 
+## v2.3.3713: the arena in the world, played end to end
+
+The first whole tournament played on phones in the world's BroTown
+(`tools/qa/mp/mp-arena.mjs`, off the old map's frozen list) found four
+things wrong, each fixed with a test:
+
+- **A match could never end by a fight in BroTown.** `arena_match_start`
+  only showed a popup; the phone never knew it was in the match's duel, and
+  BroTown is safe ground, so it sent no attack at a player at all. Every
+  match ran to its 3-minute clock and the health tiebreak. Now the start
+  puts the phone in the duel (`S._inDuel`, `arena` naming the match) and
+  locks it onto the opponent, as a duel's accept does
+  (`src/networking/gameEvents.js`).
+- **The end said two things** ("DUEL WON!" over "Arena win!"): the duel's
+  own popup and sound now stand down for an arena match.
+- **The final's duel was cleared by the semifinal's end.** The worker starts
+  the next round inside the call that ends the last match, and sends its
+  `arena_match_start` at once, while that match's `duel_end` waits for the
+  event buffer: a finalist's phone heard "fight Retiarius!" and then left
+  the duel. An arena duel is now cleared only by an end naming its own
+  opponent.
+- **A fighter who walked out of sight and back could not land a blow.** The
+  duel's lock kept the opponent's picture of the moment it was taken; coming
+  back into view made a new one, so every swing measured its reach to where
+  the opponent had stood and sent nothing (the opponent's blows landed). A
+  player lock now follows its opponent by id each frame, and an arena match
+  locks on the moment the opponent is drawn (`src/game/duelLock.js`
+  `keepDuelLock`, run from `targeting.js`; `duel-lock.test`).
+- **A phone that missed its match's start never knew** (its socket was down
+  at that moment: a dropped connection, an iPhone tab put away). The worker
+  now says the match again when that player rejoins (`_arenaOnRejoin`, after
+  the state_sync, `rejoin: true`), and an arena match's `duel_end` carries
+  `arena: true`, so such a phone never reads "Duel lost" over "Eliminated
+  from the arena". `arena.test` §17.
+- **The window forgot you had paid**, and never drew the fight card or
+  "Eliminated": the settled `/status` sent no `status`. It now says where
+  the asking player stands (`_arenaStatusFor`: `queued` with `position` and
+  `startsAt`, `fighting` with `currentMatch`, `eliminated`, `waiting` (won,
+  the round still going), `none`); the queued box says when the bracket
+  starts. The tournament's `currentMatches` carry both names (the "vs" card
+  was empty) and `recentMatches` say `how` each ended. `arena.test` §16.
+
+The arena's OWN AREA (a zone with a ring and stands, not the town square) is
+planned in [arena-area.md](arena-area.md), waiting on the owner.
+
 ## Tests
 
 `server/test/arena.test.mjs` (23+ assertions, in `npm test`): entry
