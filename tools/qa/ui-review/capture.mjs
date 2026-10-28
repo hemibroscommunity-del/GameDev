@@ -228,6 +228,9 @@ async function runView(browser, ports, view) {
   const P = await H.newPlayer(browser, {
     name: 'Reviewer', wsPort: ports.ws, webPort: ports.web, viewport: view.viewport,
     touch: !!view.touch, dpr: view.dpr, world: 'wheel',
+    /* v2.3.3687: a computer's screens as players get them -- the sideways
+       layout (src/ui/deskWide.js), never the phone tests' upright column */
+    wide: true,
     /* v2.3.3481: the 2026-10-19 UI review found GEAR UP's coach card in screen
        after screen of a review that "skipped the tutorial": the welcome's
        after() pressed Skip tutorial only after its two pictures, by when the

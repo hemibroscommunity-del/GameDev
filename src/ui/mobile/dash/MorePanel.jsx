@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { deskWideActive } from '../../deskWide.js';   /* v2.3.3687 */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { COL, panelStyle, getState } from './common.js';
 import { bestGuildRank } from './GuildPanel.jsx';   /* v2.3.3066: the guild line from the real ranks */
@@ -245,6 +246,13 @@ export const MorePanel = () => {
      a tile, ~290 px for all six rows); the same eleven tiles, order and
      words, and upright is untouched (six across, rows that fill the band). */
   const narrow = panelVw() < 260;
+  /* v2.3.3687: on a computer playing wide (deskWide.js) the column is an
+     upright phone wide and the window tall: six across in rows that stretch
+     to fill it (1fr) made two rows of tiles a third of the screen tall each.
+     There it is two across, the rows sharing the column's height -- tiles
+     about as wide as they are tall, the owner's "Every menu needs to look
+     like it fits the space" */
+  const desk = deskWideActive();
 
   return (
     <div style={{ ...panelStyle, overflowY: 'auto' }}>
@@ -285,9 +293,9 @@ export const MorePanel = () => {
            keeps its five-across one-screen grid (v2.3.1648). */
         /* v2.3.3120: six across -- Pets made eleven, and a third row of one
            would have shrunk every tile to fit it (the rows stretch, 1fr) */
-        gridTemplateColumns: narrow ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)',
+        gridTemplateColumns: narrow || desk ? 'repeat(2, 1fr)' : 'repeat(6, 1fr)',
         gridAutoRows: narrow ? undefined : '1fr',
-        gap: 4,
+        gap: desk ? 6 : 4,
         height: narrow ? undefined : '100%', boxSizing: 'border-box',
       }}>
         {/* v2.3.3527: Journey's place is Achievements against a worker that
@@ -308,19 +316,27 @@ export const MorePanel = () => {
               title={`${labelFor(t, S)} — ${statusFor(id, S)}`}
               style={{
                 ...cardBase,
-                flexDirection: 'column', gap: 2, padding: narrow ? '2px 2px' : '4px 2px',
+                flexDirection: 'column', gap: desk ? 6 : 2, padding: narrow ? '2px 2px' : (desk ? '8px 8px' : '4px 2px'),
                 justifyContent: 'center',
                 minWidth: 0,
               }}>
-              <Icon t={t} px={narrow ? 24 : 30} />
+              <Icon t={t} px={narrow ? 24 : (desk ? 52 : 30)} />
               <span style={{
-                fontSize: 11, fontWeight: 700, color: COL.text,
+                fontSize: desk ? 14 : 11, fontWeight: 700, color: COL.text,
                 lineHeight: 1.1, textAlign: 'center',
                 maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 /* v2.3.3527: a label with a soft hyphen breaks there, onto a
                    second line, rather than lose its end to an ellipsis */
-                ...(t.soft ? { whiteSpace: 'normal', textOverflow: 'clip' } : null),
-              }}>{t.soft || labelFor(t, S)}</span>
+                ...(t.soft && !desk ? { whiteSpace: 'normal', textOverflow: 'clip' } : null),
+              }}>{(!desk && t.soft) || labelFor(t, S)}</span>
+              {/* v2.3.3687: a computer's tile has the room for the line the
+                  tile's title carries (statusFor) */}
+              {desk ? (
+                <span data-more-status={id} style={{
+                  fontSize: 11.5, fontWeight: 600, color: COL.text2, lineHeight: 1.25, textAlign: 'center',
+                  maxWidth: '100%', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                }}>{statusFor(id, S)}</span>
+              ) : null}
             </button>
           );
         })}

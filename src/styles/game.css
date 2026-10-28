@@ -5560,6 +5560,73 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
   }
 }
 
+/* ═══ v2.3.3687: A COMPUTER PLAYS THE SIDEWAYS LAYOUT ═══
+   The owner: "Yes base desktop off the landscape mode but fix the menu
+   sizes."  The lock above made a computer an upright phone blown up; with
+   `html.bt-desk-wide` (src/ui/deskWide.js, on unless `?narrow`) the shell
+   takes the window, so the play area is wider than tall and the game lays
+   itself out as a phone on its side does (playIsLandscape): the dashboard a
+   column at the side, the world the rest.  The world's slice stays fair by
+   the sideways rule (worldViewport.js: 960 world px of HEIGHT, the width the
+   shape gives), so the shell is held to 2.2:1 at most -- a sideways phone's
+   own shape with its band -- and an ultra-wide monitor gets bars at the
+   sides, never more world. */
+@media (pointer:fine) and (min-width:1000px) {
+  html.bt-desk-wide #root {
+    aspect-ratio:auto;
+    width:100%;
+    height:100%;
+    max-width:min(100%, calc(100vh * 2.2));
+    min-width:0;
+  }
+  /* THE CREATOR keeps the column it had, centred (its sizes read --cc-colw,
+     that very column, below): its trait picker otherwise ran the window's
+     whole width with one row of tiles in it.  The backdrop fills the window. */
+  html.bt-desk-wide .bt-name-modal > *{max-width:min(100%, calc(100vh * 390 / 715));margin-left:auto;margin-right:auto}
+  /* THE CONTROLS' COLUMN at the screen's far edge (KeyboardHintsPanel.jsx
+     DeskKeysList, from BottomDashboard): the screen's height, its keys in
+     groups; folded, the ⌨ alone.  Its width and its edge are set inline from
+     deskWide.js, which the canvas's arithmetic reads too (--keys-w); the
+     side panel's own slate and seam, mirrored. */
+  .bt-desk-keys{position:fixed;top:0;bottom:0;z-index:30;display:flex;flex-direction:column;min-height:0;box-sizing:border-box;
+    padding:8px 8px 10px;background:rgba(13,22,27,.96);font-family:'Source Sans 3',sans-serif}
+  .bt-desk-keys[data-desk-keys-side="right"]{border-left:1px solid rgba(229,237,233,.20)}
+  .bt-desk-keys[data-desk-keys-side="left"]{border-right:1px solid rgba(229,237,233,.20)}
+  .bt-desk-keys[data-desk-keys="folded"]{padding:8px 4px}
+  .bt-desk-keys-head{display:flex;align-items:center;gap:6px;width:100%;min-height:32px;padding:0 4px;background:transparent;border:0;
+    border-bottom:1px solid rgba(229,237,233,.11);margin-bottom:8px;
+    color:#D9DFDD;font:800 12px/1 'Source Sans 3',sans-serif;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+  .bt-desk-keys-head:hover{color:#F4F0E7}
+  .bt-desk-keys[data-desk-keys="folded"] .bt-desk-keys-head{justify-content:center;padding:0;border-bottom:0}
+  .bt-desk-keys-icon{font-size:15px;letter-spacing:0}
+  .bt-desk-keys-chev{margin-left:auto;font-size:15px;letter-spacing:0}
+  /* four groups, each under its heading.  The owner, of the rows spread down
+     the column to fill it: "don't space out the controls evenly make them in
+     chunks without spaces within chunks but space between chunks ... The
+     labels for the controls needs to be more readable too."  So a group's
+     rows are PACKED, one height each, and the groups are parted by a gap
+     (--kg); the rows' height is what the list's own height gives them (it is
+     a size container: 100cqh), between 21 and 28 px -- packed under the head
+     in a tall window, the rest of the column left empty below the last
+     group, and still every key on a 768 px laptop's.  The list says how many
+     rows (--kn) and groups (--kgn) it has (DeskKeysList).  A window shorter
+     still scrolls the list from its top.  The words: 15 px, bold, the
+     panel's own white; the heads its brass. */
+  .bt-desk-keys-list{--kg:14px;--kh:20px;flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:none;container-type:size}
+  .bt-desk-keys-list::-webkit-scrollbar{display:none}
+  .bt-desk-keys-group{flex:none;display:flex;flex-direction:column}
+  .bt-desk-keys-group + .bt-desk-keys-group{margin-top:var(--kg)}
+  .bt-desk-keys-group-head{flex:none;height:var(--kh);box-sizing:border-box;display:flex;align-items:flex-start;padding:0 2px;
+    font:800 12px/1 'Source Sans 3',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#D8AA58}
+  .bt-desk-key{flex:none;height:24px;
+    height:clamp(21px, calc((100cqh - var(--kgn,4) * var(--kh) - (var(--kgn,4) - 1) * var(--kg)) / var(--kn,27)), 28px);
+    display:flex;align-items:center;gap:8px;min-width:0;font:700 15px/1.2 'Source Sans 3',sans-serif;color:#F4F0E7}
+  .bt-desk-key kbd{flex:none;width:58px;box-sizing:border-box;padding:1px 4px;text-align:center;background:rgba(255,255,255,.14);
+    border:1px solid rgba(229,237,233,.26);border-bottom-width:2px;border-radius:4px;font:800 12.5px/15px 'Source Sans 3',sans-serif;color:#FFFFFF}
+  .bt-desk-key > span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+}
+
 /* ═══ v2.3.3407: THE CREATOR SIZES ITSELF FROM THE COLUMN, NOT THE WINDOW ═══
    Owner: "Make sure all actions/buttons can be completed ... on the
    computer."  On a 1366x768 laptop a new player could not make a character:

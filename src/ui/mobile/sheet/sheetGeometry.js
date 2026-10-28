@@ -44,6 +44,8 @@
    through v2.3.1635 and is --cols-h from here — renamed rather than
    reused so a stale stylesheet cannot silently size the new row with the
    old row's number. */
+import { deskWideActive, deskKeysW, DESK_SHEET_W } from '../../deskWide.js';   /* v2.3.3687 */
+
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
    compact bag grid's slot algebra instead of the old fixed 72, giving
@@ -331,9 +333,19 @@ export const LAND_DOCK_SINK = 12;
    arithmetic that agree until someone edits one of them. */
 export function landDockFootprint(vw, vh) {
   var h = navButtonSize(vw, vh).h + 2 * DASH_GAP;   /* the buttons and their own padding */
+  /* ═══ v2.3.3687: ON A COMPUTER, AT THE COLUMN'S TOP ═══
+     The owner, of the computer's wide layout: "the dashboard buttons need to
+     be at the top of that black bar section, not at the bottom.  It's more
+     logical arrangement that way and matches with the way it's set up for
+     mobile."  There the dock is the column's FIRST row (`top`), and the
+     panel keeps that row clear at its top instead (`reserveTop`); a phone
+     on its side keeps it in the bottom corner its thumb knows. */
+  if (deskWideActive()) {
+    return { h: h, bottom: null, top: DASH_GAP, reserve: DASH_GAP + 'px', reserveTop: h + DASH_GAP };
+  }
   var bottom = 'max(0px, var(--sab, 0px) - ' + LAND_DOCK_SINK + 'px)';
   /* What a panel must keep clear: the dock's own box plus a hairline gap. */
-  return { h: h, bottom: bottom, reserve: 'calc(' + (h + DASH_GAP) + 'px + ' + bottom + ')' };
+  return { h: h, bottom: bottom, top: null, reserve: 'calc(' + (h + DASH_GAP) + 'px + ' + bottom + ')', reserveTop: 0 };
 }
 
 /* v2.3.2176b: the landscape FOLD CHIP's width, stated where geometry is
@@ -358,6 +370,19 @@ export function landDockFootprint(vw, vh) {
    --land-fold-w, so the chat feed and the notification bell step around the
    new size without a second number to keep in sync. */
 export const LAND_FOLD_CHIP_W = 44;
+
+/* ═══ v2.3.3687: ON A COMPUTER, THE FOLDED COLUMN IS A STRIP ═══
+   With the dock at the column's top (landDockFootprint), the chip that folds
+   the column would have sat on the world's top-left corner, over the top
+   bar's door, once the pages are folded away.  So on a computer playing wide
+   the folded column stays a strip just wide enough for the chip -- the
+   controls' column folds to its ⌨ the same way (DESK_KEYS_FOLDED_W) -- and
+   the world starts after it (bandFootprint's sheetW, --world-x): the chip at
+   the strip's top, one place, open or folded.  0 everywhere else. */
+export const DESK_FOLD_STRIP_W = LAND_FOLD_CHIP_W + 4 * DASH_GAP;
+export function deskFoldStripW() {
+  return deskWideActive() ? DESK_FOLD_STRIP_W : 0;
+}
 
 export function identityRowHeight(vw, vh) {
   return 40 + (vh && vh <= 720 ? 8 : 12);
@@ -715,6 +740,16 @@ export function landscapeSheetW(vw, vh, kind) {
      changes the answer; the canvas math cares only about the number.
      +2*DASH_GAP for DashColumns' side pads and +16 for the sheet
      wrapper's — the column track must fit INSIDE both or it clips. */
+  /* ═══ v2.3.3687: ON A COMPUTER, AN UPRIGHT PHONE'S WIDTH ═══
+     The owner: "Yes base desktop off the landscape mode but fix the menu
+     sizes."  A computer plays the sideways layout now (src/ui/deskWide.js),
+     and this column, sized for a phone 390 px tall, put every page in ~230
+     px with most of a computer's height black.  There the column is the
+     width the pages were drawn for (DESK_SHEET_W, 390), every destination
+     alike, as the rule above says.  The controls' strip stands at the
+     screen's OTHER edge (deskKeysW, bandFootprint below): the canvas takes
+     what is between. */
+  if (deskWideActive()) return DESK_SHEET_W;
   return landscapeDashColW(vw, vh) + 2 * DASH_GAP + 16;
 }
 
@@ -740,7 +775,8 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
     /* v2.3.2165: `sheetOpen` carries the KIND now — false, 'dashboard', or
        'panel' — because the dashboard column and a pane column earn
        different widths (see landscapeSheetW). */
-    var sheetW = sheetOpen ? landscapeSheetW(vw, vh, sheetOpen === 'dashboard' ? 'dashboard' : 'panel') : 0;
+    /* v2.3.3687: on a computer the folded column is the chip's strip (deskFoldStripW) */
+    var sheetW = sheetOpen ? landscapeSheetW(vw, vh, sheetOpen === 'dashboard' ? 'dashboard' : 'panel') : deskFoldStripW();
     /* ═══ v2.3.2168: THE BAR IS GONE ═══
        Owner: "You can actually remove that whole bottom length bar now.
        Coins can go someplace else (they don't need an entire screen
@@ -755,8 +791,11 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
        a browser tab and every headless run.  `overlap` goes to 0 with the
        band — the 2156 note above ("a footprint with no bottom band earns
        no overlap") stops being hypothetical here. */
+    /* v2.3.3687: on a computer the controls' strip takes the screen's far
+       edge, the pages open or not (deskWide.js); 0 everywhere else */
+    var keysW = deskKeysW();
     return { dashH: (bottomInset || 0), colsH: 0, overlap: 0,
-             playW: Math.max(320, vw - sheetW), sheetW: sheetW };
+             playW: Math.max(320, vw - sheetW - keysW), sheetW: sheetW, keysW: keysW };
   }
   var dashH = barHeight(vw, vh);
   var colsH = columnsRowHeight(vw);

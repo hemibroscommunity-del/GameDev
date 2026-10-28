@@ -266,7 +266,9 @@ const spend = (room, id, stat, cat, n = 1) => {
   const hero = read('../../src/ui/mobile/sheet/HeroExpanded.jsx');
   check('7f. the Points labels say "N points" with no cap (ptsOf), never "N of 999"',
     /function ptsOf\(pts, cap, unit\)/.test(hero) && !/\$\{pts\} of \$\{cap\}\. \$\{st\.perText\}/.test(hero)
-      && (hero.match(/ptsOf\(pts, cap, (true|false)\)/g) || []).length === 5);
+      /* v2.3.3687: 7 -- the computer's Points list (statRowDesk) labels its
+         rows the same way, its aria-label and its title */
+      && (hero.match(/ptsOf\(pts, cap, (true|false)\)/g) || []).length === 7);
 }
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }

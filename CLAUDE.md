@@ -5214,6 +5214,15 @@ Two protocol versions coexist; both must keep working:
   every element is `manipulation` by default (game.css `*`, the weakest
   rule there is); anything that must be `none` or `pan-y` says so itself,
   and nothing is ever set `auto`; `mp-nozoom`, TRAPS §229.
+  And a COMPUTER PLAYS SIDEWAYS (v2.3.3687, the owner: "base desktop off the
+  landscape mode"): the pages a 390 px column at one edge, the controls a
+  column of their own at the OTHER edge (four groups, a key only while it
+  works: src/game/deskKeyList.js), the world between, fair by its height
+  (src/ui/deskWide.js; docs/specs/desktop-wide.md); `?narrow` is the old
+  upright column. A phone test's computer page (no `touch`, the 1000 x 780
+  default included) is that old column unless it passes `wide: true`
+  (harness newPlayer); a NEW computer test passes `wide: true`; `mp-deskwide`,
+  `desk-keys` suite.
   Two phone scenarios DO run on every PR, each an owner call: `playable`
   (mp-questline, v2.3.1729, client-ci.yml) and `memory-budget`
   (mp-membudget, v2.3.3101, memory.yml -- Conventions, "Memory is

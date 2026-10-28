@@ -12,6 +12,7 @@ import { CodexStage } from './CodexStage.jsx';
 import { codexDropsFor, codexGrades, codexGradePercent, codexRollText, codexRollFreeFrom, CODEX_ROLL_SIDES } from '@/data/codexDrops.js';
 import { killRollLive } from '@/game/killRoll.js';   /* v2.3.3209: does the worker roll once a kill (caps.killroll) */
 import { panelVw } from '../playViewport.js';   /* v2.3.3215: the sheet's own width (sideways it is the side column) */
+import { deskWideActive } from '../../deskWide.js';   /* v2.3.3687: a computer's tall column */
 
 /* ═══ v2.3.3209: THE CODEX'S MONSTERS ═══
  *
@@ -169,12 +170,39 @@ function Pill({ children, attr }) {
    once.  Nothing it said is gone.  `wrap`: in a narrow sheet (sideways, the
    ~220 px side column) its lines take two rows rather than lose their ends
    ("N..." for "Not met yet"). */
-function Card({ kind, n, fresh, onOpen, wrap }) {
+function Card({ kind, n, fresh, onOpen, wrap, big }) {
   const e = CODEX_ENTRIES[kind];
   const known = n >= CODEX_OPEN_AT;
   const look = landLook(e.home);
   const line = wrap ? { lineHeight: 1.15, overflowWrap: 'anywhere' }
     : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.15 };
+  /* ═══ v2.3.3687: ON A COMPUTER, A CARD THE COLUMN'S HEIGHT CAN HOLD ═══
+     The owner: "Every menu needs to look like it fits the space."  The nine
+     cards were sized for a phone's 191 px sheet, three to a 44 px row, and on
+     a computer's column (the window's height) they filled its top fifth: the
+     picture on top at 72 px, the words under it, three cards to a fifth of
+     the window's height. */
+  if (big) {
+    return (
+      <button onClick={() => onOpen(kind)} data-cx-card={kind} data-cx-known={known ? 1 : 0} data-cx-fresh={fresh ? 1 : 0}
+        style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+          background: known ? COL.slot : COL.well, border: '1px solid ' + COL.border,
+          borderTop: '3px solid ' + ((look && look.color) || COL.border), borderRadius: 10, padding: '10px 6px 8px',
+          textAlign: 'center', minWidth: 0, minHeight: 'clamp(150px, 22vh, 210px)', fontFamily: 'inherit', color: COL.text, cursor: 'pointer', touchAction: 'manipulation' }}>
+        <span style={{ position: 'relative', flex: 'none', width: 72, height: 72, display: 'grid', placeItems: 'center' }}>
+          <PetPortrait pet={{ kind, stage: 1 }} size={72} shadow={!known} />
+          {fresh ? <span style={{ position: 'absolute', top: -4, left: -8, padding: '0 4px', borderRadius: 999, background: '#2E7D6F', color: '#E9FFF8', fontSize: 9.5, fontWeight: 900, letterSpacing: '.05em', lineHeight: '13px' }}>NEW</span> : null}
+        </span>
+        <span style={{ minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span data-cx-card-name style={{ ...line, fontSize: 14, fontWeight: 800, color: known ? COL.text : COL.text2 }}>{known ? e.name : '???'}</span>
+          <span style={{ ...line, fontSize: 11.5, color: COL.muted }}>{landName(e.home)}</span>
+          <span style={{ ...line, fontSize: 12, fontWeight: 800, color: known ? '#7EE0A8' : COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+            {known ? n + ' defeated' : 'Not met yet'}
+          </span>
+        </span>
+      </button>
+    );
+  }
   return (
     <button onClick={() => onOpen(kind)} data-cx-card={kind} data-cx-known={known ? 1 : 0} data-cx-fresh={fresh ? 1 : 0}
       style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 5, background: known ? COL.slot : COL.well, border: '1px solid ' + COL.border,
@@ -730,8 +758,9 @@ export function MonsterCodex({ open = null, setOpen = () => {} } = {}) {
   const rows = CODEX_KINDS.map((k) => ({ k, counts: codexCounts(S, k), fresh: codexFresh(S, k).length > 0 }));
   const met = rows.filter((r) => r.counts[0] >= CODEX_OPEN_AT).length;
   const narrow = panelVw() < 300;
+  const big = deskWideActive();   /* v2.3.3687: a computer's column (Card's note) */
   return (
-    <div ref={grid} data-cx-grid={met} data-cx-narrow={narrow ? 1 : 0}>
+    <div ref={grid} data-cx-grid={met} data-cx-narrow={narrow ? 1 : 0} data-cx-big={big ? 1 : 0}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: '1px 2px 4px' }}>
         <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted }}>Monsters of the world</div>{/* v2.3.3552: never "Wheel" to a player */}
         <div style={{ fontSize: 11, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>{met} of {CODEX_KINDS.length} met</div>
@@ -744,10 +773,10 @@ export function MonsterCodex({ open = null, setOpen = () => {} } = {}) {
       ) : null}
       {/* v2.3.3215: three across, all nine on a phone's sheet at once; two
          across in a narrow one, their words wrapping (sideways) */}
-      <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gap: 4 }}>
-        {rows.map((r) => <Card key={r.k} kind={r.k} n={r.counts[0]} fresh={r.fresh} onOpen={setOpen} wrap={narrow} />)}
+      <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))', gap: big ? 8 : 4 }}>
+        {rows.map((r) => <Card key={r.k} kind={r.k} n={r.counts[0]} fresh={r.fresh} onOpen={setOpen} wrap={narrow} big={big} />)}
       </div>
-      <div style={{ fontSize: 11, color: COL.muted, lineHeight: 1.4, marginTop: 8 }}>
+      <div style={{ fontSize: big ? 12.5 : 11, color: COL.muted, lineHeight: 1.4, marginTop: big ? 12 : 8 }}>
         Defeat one of a kind to open its whole page: everything it drops, what it does, its story and where it lives. Kills in a party count for everyone in it.
       </div>
     </div>
