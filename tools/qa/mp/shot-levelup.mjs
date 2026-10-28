@@ -150,16 +150,24 @@ async function foldDash(page) {
 /* Is the burst actually on screen, and where is its icon?  Measured off the
    live DOM rather than trusted: a screenshot of a notification that silently
    failed to mount looks exactly like a screenshot of the world. */
+/* v2.3.3693: the medallion's middle is the LEVEL now, the owner's gold
+   numerals (`data-levelup-num`), and the icon is on the plate beside the
+   words -- so the anchoring and the growing are read off the number (numCx,
+   numCy, numW), the icon is still read for being there and decoded */
 const probe = (page) => page.evaluate(() => {
   const img = document.querySelector('[data-levelup-icon]');
   const art = document.querySelector('[data-levelup-art]');
-  if (!img || !art) return { mounted: false };
+  const num = document.querySelector('[data-levelup-num]');
+  if (!img || !art || !num) return { mounted: false };
   const ir = img.getBoundingClientRect();
+  const nr = num.getBoundingClientRect();
   return {
     mounted: true,
     iconSrc: img.getAttribute('src'),
-    iconComplete: img.complete && img.naturalWidth > 0,
+    iconComplete: img.complete && img.naturalWidth > 0
+      && [...num.querySelectorAll('img')].every((d) => d.complete && d.naturalWidth > 0),
     iconCx: ir.left + ir.width / 2, iconCy: ir.top + ir.height / 2, iconW: ir.width,
+    numCx: nr.left + nr.width / 2, numCy: nr.top + nr.height / 2, numW: nr.width, numValue: num.getAttribute('data-value'),
     caption: (document.querySelector('[data-levelup-caption]') || {}).textContent || '',
   };
 });
@@ -175,8 +183,10 @@ const probeAll = (page) => page.evaluate(() => {
     const img = root.querySelector('[data-levelup-icon]');
     const art = root.querySelector('[data-levelup-art]');
     const cap = root.querySelector('[data-levelup-caption] > div');
+    const num = root.querySelector('[data-levelup-num]');
     if (!img || !art) continue;
     const ir = img.getBoundingClientRect();
+    const nr = num ? num.getBoundingClientRect() : null;   /* v2.3.3693: the medallion's level */
     const ar = art.getBoundingClientRect();
     const cr = cap ? cap.getBoundingClientRect() : null;
     out.push({
@@ -189,6 +199,7 @@ const probeAll = (page) => page.evaluate(() => {
         ? 'portrait(data-url)' : (img.getAttribute('src') || '').split('/').pop(),
       iconComplete: img.complete && img.naturalWidth > 0,
       iconCx: ir.left + ir.width / 2, iconCy: ir.top + ir.height / 2, iconW: ir.width,
+      numW: nr ? nr.width : 0,
       /* The painted extents that matter for crowding: the art's box and the
          caption plate's box.  Both, because they are different widths and
          either one can be the pair that touches. */
@@ -412,8 +423,8 @@ async function main() {
         await page.screenshot({ path: `${OUT}/filmstrip/f${i}.png`, clip: box });
         findings.push({ shot: `filmstrip-f${i}`, atMs: mid, ...got });
         console.log(`  frame ${i} @${String(mid).padStart(3)}ms  ` +
-          `iconCentre=(${got.iconCx ? got.iconCx.toFixed(1) : '-'}, ${got.iconCy ? got.iconCy.toFixed(1) : '-'}) ` +
-          `iconW=${got.iconW ? got.iconW.toFixed(1) : '-'}`);
+          `numberCentre=(${got.numCx ? got.numCx.toFixed(1) : '-'}, ${got.numCy ? got.numCy.toFixed(1) : '-'}) ` +
+          `numberW=${got.numW ? got.numW.toFixed(1) : '-'}`);
         t += FRAME_MS[i];
       }
       await page.evaluate(() => { delete window.__btLevelUpFreeze; });
@@ -560,7 +571,7 @@ async function main() {
       const widths = { combat: new Set(), char: new Set() };
       for (let i = 0; i < 10; i++) {
         const bs = await probeAll(page);
-        for (const b of bs) if (widths[b.kind]) widths[b.kind].add(Math.round(b.iconW * 10) / 10);
+        for (const b of bs) if (widths[b.kind]) widths[b.kind].add(Math.round(b.numW * 10) / 10);   /* v2.3.3693: the medallion's level grows with it */
         await page.waitForTimeout(90);
       }
       const distinct = { combat: widths.combat.size, char: widths.char.size };
@@ -828,13 +839,15 @@ async function main() {
        within a pixel.  This is the whole feature stated as a number: the
        owner asked for the icon "anchored in the middle circle", and an icon
        that wanders is the failure they would notice first. */
+    /* v2.3.3693: the number is what sits in the circle now (the icon is on
+       the plate), so the anchoring is the number's */
     const strip = findings.filter((f) => f.shot.startsWith('filmstrip-') && f.mounted);
-    const xs = strip.map((f) => f.iconCx), ys = strip.map((f) => f.iconCy);
+    const xs = strip.map((f) => f.numCx), ys = strip.map((f) => f.numCy);
     const dx = Math.max(...xs) - Math.min(...xs), dy = Math.max(...ys) - Math.min(...ys);
-    const ws = strip.map((f) => f.iconW);
+    const ws = strip.map((f) => f.numW);
     console.log(`\n  ${strip.length}/8 frames mounted`);
-    console.log(`  icon centre drift across the run: dx=${dx.toFixed(2)}px dy=${dy.toFixed(2)}px  (must be ~0)`);
-    console.log(`  icon width, frame 0 -> 7: ${ws.map((w) => w.toFixed(1)).join(' -> ')}  (scales WITH the medallion)`);
+    console.log(`  the level's centre drift across the run: dx=${dx.toFixed(2)}px dy=${dy.toFixed(2)}px  (must be ~0)`);
+    console.log(`  the level's width, frame 0 -> 7: ${ws.map((w) => w.toFixed(1)).join(' -> ')}  (scales WITH the medallion)`);
     /* ═══ v2.3.2659: THE ONE-NOTIFICATION ASSERTIONS ═══
        Owner: "just show the skill level up."  Every row below used to read the
        other way; see the pass header for why it is inverted rather than
@@ -893,7 +906,7 @@ async function main() {
       && pre.report === 'fulfilled' && pre.audioDecoded === true
       && pre.portraitPresent === true && pre.portraitWarm === true
       && !!(pre.mute && pre.mute.whileMuted && pre.mute.whileOn);
-    console.log(ok ? '\nPASS — icon locked to the circle, every hero shot mounted, ONE notification per prog3_level at every '
+    console.log(ok ? '\nPASS — the level locked to the circle, every hero shot mounted, ONE notification per prog3_level at every '
                      + 'framing (the skill one; no character burst anywhere) with nothing off-screen, it animates, the '
                      + 'character high-water is still stamped so the suppressed announcement cannot return by another '
                      + 'door, the T1 tick is silent under prog3 and named under legacy, no celebration is pending for a '

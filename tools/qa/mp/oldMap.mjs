@@ -84,7 +84,7 @@ export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'scalesheet', 'seacover', 'sellcue', 'sellericon', 'sellsheet',
   'shapelayer', 'sharppixels', 'sheen', 'sheenall', 'sheenbatch',
   'shieldbonk', 'shirtarm', 'shirtjog', 'shirtkeyline',
-  'shotland', 'sightrock', 'skeleton', 'skillapps', 'skillup', 'skinink',
+  'shotland', 'sightrock', 'skeleton', 'skillapps', 'skinink',
   'skinworld', 'slimebase', 'slimeburst', 'slimeorb', 'slimewave', 'smelt',
   'smithy', 'snowburrow', 'snowman', 'soak', 'social', 'socialgrief',
   'solorate', 'solospecial', 'southshirt', 'southsword', 'spawnfx',
