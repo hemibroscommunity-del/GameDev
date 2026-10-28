@@ -3934,6 +3934,28 @@ export async function uploadGearTextures(renderer) {
 let _prewarmRenderer = null;
 export function registerPrewarmRenderer(renderer) { _prewarmRenderer = renderer; }
 
+/* ═══ v2.3.3742: AFTER AN EQUIP, THE SET YOU WEAR BEFORE THE SPARES ═══
+   Owner's showing, 2026-10-28: right after the armour goes on, the first jog
+   one way could show the plain body under it for a frame or two -- the
+   trousers at the waist -- because the frame was not baked yet and the local
+   player draws the plain body while the worker bakes it (_localMaskedFrame,
+   v2.3.2904).  An equip re-kicks BOTH prewarms: this one, the set you now
+   wear (stands, then the jog, then the rest), and the spare sets' trickle
+   (prewarmAltWornSets, `soon`, since what you own changed too).  Their jobs
+   went to the worker at the same rank, turn about, so the worn jog took about
+   twice as long.  Now the spares wait while the worn set is baking
+   (_wornBakeGate): the same bakes, in another order, no memory and no frame
+   more.  It narrows the window; a jog started the moment the armour goes on
+   can still meet a frame or two (holding the last frame instead is the
+   owner's call: docs/specs/worn-first.md). */
+let _wornBakeGate = null;   /* a promise while the worn set's prewarm runs */
+function _holdSpareBakes() {
+  let open;
+  const p = new Promise((r) => { open = r; });
+  _wornBakeGate = p;
+  return () => { open(); if (_wornBakeGate === p) _wornBakeGate = null; };
+}
+
 export async function prewarmMaskedBodyFrames(opts) {
   /* v2.3.2874: start the bake worker behind the loading screen even with no
      armour on, so the first equip does not pay its start-up */
@@ -3959,6 +3981,8 @@ export async function prewarmMaskedBodyFrames(opts) {
   let sinceYield = 0;
   let chunkT0 = (typeof performance !== 'undefined') ? performance.now() : 0;
   const pending = [];   /* v2.3.2904: this pass's jobs out at the worker */
+  const gate = _holdSpareBakes();   /* v2.3.3742: the spares wait for this pass */
+  try {
   for (const pose of PREWARM_POSES) {
     for (const dir of prewarmDirs(pose, DIRS)) {
       const fc = playerFrameCount(pose, dir) || 1;
@@ -4015,6 +4039,7 @@ export async function prewarmMaskedBodyFrames(opts) {
     }
   }
   await Promise.all(pending);
+  } finally { gate(); }
 }
 
 /* v2.3.698: pre-bake the ALTERNATE worn states in the background so taking
@@ -4127,6 +4152,8 @@ export async function prewarmAltWornSets(opts) {
              thrown away for a bake.  A spare frame not baked is baked when
              that piece goes on, as before v2.3.2873. */
           if (spare && _maskedBodyCache.size >= MASKED_CAP && !_maskedBodyCache.has(_maskedKey(tex, worn, 6))) { _spareSkipped++; continue; }
+          /* v2.3.3742: a spare set waits while the set you wear bakes */
+          if (spare && !fast) while (_wornBakeGate) { await _wornBakeGate; if (seq !== _altPrewarmSeq) return; }
           /* ═══ v2.3.2904: THE PACES WERE SET FOR A BAKE ON THIS THREAD ═══
              The trickle's gaps (v2.3.699: two bakes per idle slice, 90 ms
              apart; v2.3.2873's `soon`: one per two frames) were measured

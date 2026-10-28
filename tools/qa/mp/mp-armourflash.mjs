@@ -11,7 +11,9 @@
  *     (picture A, B, then A again within 400 ms);
  *   - the body's PLAIN frames: drawn with the plain body under the armour
  *     because its masked bake was not ready (window.__btBakeWorker().local);
- *   - which pose and facing each plain frame was, and its body picture.
+ *   - which pose and facing each plain frame was, and its body picture;
+ *   - v2.3.3742: and before all that, straight after putting the set on: how
+ *     long until its jog, and all of it, is baked (measured, not a line).
  *
  *   node tools/qa/mp/run.mjs armourflash
  */
@@ -188,6 +190,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       chest: window.__btGetGear ? window.__btGetGear('chest') : null, legs: window.__btGetGear ? window.__btGetGear('legs') : null,
     }), (v) => v && v.chest === 'copperplate' && v.legs === 'coppergreaves', { timeout: 15000, label: 'the armour worn' }).catch((e) => ({ err: String(e.message || e).slice(0, 160) }));
     rec.ok('setup: the copper torso and copper greaves are worn (guard)', !!worn && !worn.err, worn);
+    /* v2.3.3742: straight after putting it on -- a judge handed the set,
+       wearing it and running off.  Measured, not held to a line (this box
+       draws a few frames a second, so a plain frame is rare here at any
+       pace): how long, standing still, until every jog frame of the set you
+       wear is baked, and until all of it is (window.__btMaskedCoverage;
+       `missing` lists the first 24 not baked, in the prewarm's order); then
+       the walk, its plain body frames counted */
+    const ready = await P.page.evaluate(async () => {
+      const t0 = performance.now();
+      let jog = null, all = null;
+      while (performance.now() - t0 < 90000 && all == null) {
+        const c = window.__btMaskedCoverage ? window.__btMaskedCoverage() : null;
+        if (c && c.want > 0) {
+          const t = Math.round(performance.now() - t0);
+          if (jog == null && c.missing.length < 24 && !c.missing.some((m) => /^jog\//.test(m))) jog = t;
+          if (c.have === c.want) { all = t; if (jog == null) jog = t; }
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      return { jog, all };
+    });
+    await startWatch(P);
+    await walkAll(P, 1000);
+    const w0 = await stopWatch(P);
+    await report(P, 'the walk after putting the armour on', w0);
+    console.log(`    after putting the armour on: every jog frame baked in ${ready.jog} ms, the whole set in ${ready.all} ms`);
+    rec.ok(`(measure) after putting the armour on: the jog baked in ${ready.jog} ms, the set in ${ready.all} ms; the walk after, ${w0.plain} plain body frames`, true);
     const look = await P.page.evaluate(() => { const r = window.__btCharRecord ? window.__btCharRecord() : null; return r && r.look ? JSON.stringify(r.look).slice(0, 300) : null; });
     console.log('    the character\'s record: ' + look);
     await P.page.waitForTimeout(4000);
