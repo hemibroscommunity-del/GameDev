@@ -1321,6 +1321,13 @@ remnant to migrate server-side, not a mode to preserve.
       GEAR_VERSION 2.3.3645, the PNG only (CI mints the .webp);
     - `mp-ironwaist` (at most 6 px of pink a frame both ways; 56/51/24/42/47
       on the old build), `iron-waist` suite: docs/specs/iron-waist.md.
+    - since v2.3.3733 THE CHAIN IN THE ARMOUR'S OWN METAL -- the owner:
+      "Northeast and northwest jog while wearing full copper armor the
+      midsection with the belt is either gray (matching iron) or leaves gaps":
+      the chain the bake paints into the (untinted) body was steel grey in
+      every metal; it takes the chest's tint (`gearTint`) now, the plate's own
+      multiply; `mp-copperwaist`, `copper-waist` suite:
+      docs/specs/copper-waist.md.
   - Since v2.3.3011 the view is ANOTHER 25% further out -- the owner: "If it
     is already zoom it out another 25%" -- `VIEW_OUT` 0.64 (0.8 x 0.8) in
     worldViewport.js, the bro ~54 CSS px on the QA phone with the dashboard

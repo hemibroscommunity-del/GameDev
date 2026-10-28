@@ -25,7 +25,7 @@ import { SPRINT_GRUNT } from './sprintGrunt.js';   /* v2.3.3455: the owner's spr
 import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
 import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3462: the owner's recordings for the sounds still needed */
 import { foldToMono } from './soundFold.js';   /* v2.3.3706: a stereo sound whose two sides are one is kept as one */
-import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (`?sfxcache`) */
+import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru, parseSfxCache } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (on by default since v2.3.3735; `?sfxcache=0` off) */
 import { makeVoiceCap, parseVoiceCap, exempt as voiceExempt } from './voiceCap.js';   /* v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
@@ -4335,19 +4335,20 @@ BT_AUDIO.loadSfxManifest = function () {
 };
 /* ═══ v2.3.3714: DECODED SOUND HELD ONLY WHILE IT IS NEEDED (`?sfxcache`) ═══
    The why, the pinned list and the numbers: data/sfxCache.js and
-   docs/specs/sfx-cache.md.  Off (the default) none of this runs: every sound
-   in SFX_MANIFEST is decoded on the loading screen and held, as before. */
-BT_AUDIO.SFX_CACHE = false;
+   docs/specs/sfx-cache.md.
+   v2.3.3735: ON BY DEFAULT (the owner: "I think including the new memory
+   change work by default would be better.  I can always revert the change
+   if I don't like it or it doesn't work well.").  `?sfxcache=0` is the
+   off-ramp for one phone: every sound in SFX_MANIFEST decoded on the loading
+   screen and held, as before; `?sfxcache=8` another budget (parseSfxCache). */
+BT_AUDIO.SFX_CACHE = true;
 BT_AUDIO.SFX_CACHE_MB = SFX_BUDGET_MB;
 BT_AUDIO.SFX_LATE_MS = SFX_LATE_MS;   /* a test on a slow box raises it (mp-sfxcache) */
 try {
-  var _sc = typeof location !== 'undefined' && /[?&]sfxcache(?:=([0-9.]+))?(?:&|$)/.exec(location.search || '');
-  if (_sc) {
-    BT_AUDIO.SFX_CACHE = true;
-    /* `?sfxcache=8`: another budget, in MB, to try one (1-32) */
-    if (_sc[1]) BT_AUDIO.SFX_CACHE_MB = Math.max(1, Math.min(32, parseFloat(_sc[1]) || SFX_BUDGET_MB));
-  }
-} catch (e) { /* off */ }
+  var _sc = parseSfxCache(typeof location !== 'undefined' ? location.search || '' : '');
+  BT_AUDIO.SFX_CACHE = _sc.on;
+  BT_AUDIO.SFX_CACHE_MB = _sc.mb;
+} catch (e) { /* on, at the budget */ }
 BT_AUDIO._sfxPinned = Object.create(null);
 for (var _sp = 0; _sp < SFX_PINNED.length; _sp++) BT_AUDIO._sfxPinned[SFX_PINNED[_sp]] = true;
 BT_AUDIO._sfxLru = null;   /* made on first use: tag -> decoded bytes */
@@ -5580,11 +5581,13 @@ BT_AUDIO.uiClick = function (vol, since) {
    in, the sound cache off) is not a start.  On a test page (window.__btProbe)
    or with the switch on, every start is counted for window.__btVoiceCap: the
    most starting in any W ms (all recordings, and one recording), the most
-   sounding at once, and what was held back. */
-BT_AUDIO.VOICE_CAP = null;
+   sounding at once, and what was held back.
+   v2.3.3735: ON BY DEFAULT (the owner's "including the new memory change work
+   by default"); `?voicecap=0` is the off-ramp for one phone (parseVoiceCap). */
+BT_AUDIO.VOICE_CAP = parseVoiceCap('');
 try {
   if (typeof location !== 'undefined') BT_AUDIO.VOICE_CAP = parseVoiceCap(location.search || '');
-} catch (e) { /* off */ }
+} catch (e) { /* on, at N and W */ }
 BT_AUDIO._voiceRule = null;
 BT_AUDIO._voiceStats = null;
 BT_AUDIO._voiceGate = function (key, buf, opts) {
