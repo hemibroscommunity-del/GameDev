@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c05646064f89ace82429121bb508ff53d110abee",
+  "tree": "7d953f7918f2d341370a3d073832eb574d176b1b",
+  "committedAt": "2026-10-28T15:57:53-07:00",
+  "subject": "The armour bake's speed measured after an equip: a slow worker on a busy box, not a stall (v2.3.3742) (#1231)",
+  "files": 6850,
+  "bytes": 796481959,
+  "listingSha256": "8bb6f53ac56689f40f7da485d4b9d608e10ae6d25dcb9e274d722ac702c093b9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
