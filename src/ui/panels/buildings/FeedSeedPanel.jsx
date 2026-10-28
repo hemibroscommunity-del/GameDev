@@ -1,3 +1,4 @@
+import { COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { BT_AUDIO, LIFE_SKILL_XP, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
 import { FARM, FARM_CROP_ORDER, FARM_LOOK, farmGrowMs, farmYieldShown, farmTimeLeft,
@@ -47,7 +48,7 @@ const C = {
   text: '#F4F0E7', sub: '#B6C1BE', mute: '#8D9B98', faint: '#667875',
   brass: '#D8AA58', good: '#55B98A', bad: '#D8635D', water: '#7CC8EA', line: 'rgba(229,237,233,.11)',
 };
-const COIN = '/icons/ui/cur-gold.webp';
+const COIN = COIN_ONE;   /* v2.3.3734: the owner's one coin, a unit beside a price */
 const XP = '/icons/ui/cur-xp.webp';
 
 const Icon = ({ src, size = 16 }) => (

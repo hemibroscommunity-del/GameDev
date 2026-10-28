@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { ARENA_BET_MAX, ARENA_BET_MIN, ARENA_CHAMPION_REWARD, ARENA_ENTRY_FEE, ARENA_POLL_INTERVAL, BT_AUDIO } from '@/data/index.js';
 import { BT_API_BASE } from '@/networking/index.js';
@@ -176,7 +177,7 @@ export function PartyPanel(props) {
       flexWrap: 'wrap',
       gap: 4
     }
-  }, /* v2.3.1235: state-correction: the bare balance beside a 100G fee was mistakable for the fee; label it. */ "Your gold: ", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } },
+  }, /* v2.3.1235: state-correction: the bare balance beside a 100G fee was mistakable for the fee; label it. */ "Your gold: ", /*#__PURE__*/React.createElement("img", { src: coinArtFor(rpgState.coins) /* v2.3.3734: your gold, its pile */, alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } },
   /* v2.3.3481: the 2026-10-19 UI review -- "2550G" beside the top bar's
      "2,550": the HUD's own call (ZoneHeader.jsx), and no trailing G, as the
      coin already says what the number is (Diego's balance, v2.3.2060).  The
@@ -898,7 +899,7 @@ export function PartyPanel(props) {
       fontSize: 11,
       color: '#8D9B98'
     }
-  }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3481: the thousands separator (UI review) */, "G"), ")")), /*#__PURE__*/React.createElement("button", {
+  }, "G (", /*#__PURE__*/React.createElement("img", { src: coinArtFor(rpgState.coins) /* v2.3.3734: your gold, its pile */, alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3481: the thousands separator (UI review) */, "G"), ")")), /*#__PURE__*/React.createElement("button", {
     disabled: !arenaBetTarget || rpgState.coins < arenaBetAmount,
     onClick: function onClick() {
       var _arenaTournament$play3;
@@ -1086,7 +1087,7 @@ export function PartyPanel(props) {
       color: '#667875',
       marginLeft: 'auto'
     }
-  }, /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3481: the thousands separator (UI review) */, "G"))), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("img", { src: coinArtFor(rpgState.coins) /* v2.3.3734: your gold, its pile */, alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3481: the thousands separator (UI review) */, "G"))), /*#__PURE__*/React.createElement("button", {
     disabled: !arenaBetTarget || rpgState.coins < arenaBetAmount,
     onClick: function onClick() {
       var _arenaTournament$play4;
@@ -1317,7 +1318,7 @@ export function PartyPanel(props) {
       fontSize: 11 /* v2.3.1235: batch-3 rollout — 11px text floor */,
       color: '#8D9B98'
     }
-  }, "G (", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3481: the thousands separator (UI review) */, "G"), ")")), /*#__PURE__*/React.createElement("button", {
+  }, "G (", /*#__PURE__*/React.createElement("img", { src: coinArtFor(rpgState.coins) /* v2.3.3734: your gold, its pile */, alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3481: the thousands separator (UI review) */, "G"), ")")), /*#__PURE__*/React.createElement("button", {
     onClick: function onClick() {
       var _arenaTournament$play6;
       var S = stateRef.current,
@@ -1740,7 +1741,7 @@ export function PartyPanel(props) {
         color: '#8D9B98',
         marginBottom: 6
       }
-    }, "Blind bet on who wins the tournament. Payout: pot \xF7 winners. ", /*#__PURE__*/React.createElement("img", { src: "/icons/popups/gold.webp", alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3481: the thousands separator (UI review) */, "G")), /*#__PURE__*/React.createElement("div", {
+    }, "Blind bet on who wins the tournament. Payout: pot \xF7 winners. ", /*#__PURE__*/React.createElement("img", { src: coinArtFor(rpgState.coins) /* v2.3.3734: your gold, its pile */, alt: "", draggable: false, style: { width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }, onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('\uD83D\uDCB0')); } }), /*#__PURE__*/React.createElement("span", { style: { fontSize: 16 /* v2.3.1235: batch-3 rollout — key-number size */, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#D8AA58' } }, Number(rpgState.coins || 0).toLocaleString() /* v2.3.3481: the thousands separator (UI review) */, "G")), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         fontWeight: 700,

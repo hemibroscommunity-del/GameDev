@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
@@ -190,7 +191,7 @@ export function TradePanel(props) {
     }
   }, /* v2.3.1232: gold icon + label replaces the 💰 emoji label */
   /*#__PURE__*/React.createElement("img", {
-    src: "/icons/popups/gold.webp",
+    src: coinArtFor(tradeOffer._gold), /* v2.3.3734: the pile for the amount */
     alt: "",
     draggable: false,
     style: {

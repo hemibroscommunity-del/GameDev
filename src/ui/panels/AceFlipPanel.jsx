@@ -1,3 +1,4 @@
+import { COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';
 import { ACE_FLIP_MIN_STAKE, ACE_FLIP_RISK_MULT, ACE_FLIP_WIN_CHANCE, aceFlipMaxStake, BT_AUDIO } from '@/data/index.js';
@@ -123,7 +124,7 @@ function gold(amount, size, color) {
   return React.createElement('span', {
     style: { display: 'inline-flex', alignItems: 'center', gap: 4, color: color || LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: size || 14 },
   }, React.createElement('img', {
-    src: '/icons/popups/gold.webp', alt: '', draggable: false,
+    src: COIN_ONE, /* v2.3.3734: the one coin, a unit beside a price */ alt: '', draggable: false,
     style: { width: 15, height: 15, objectFit: 'contain' },
     onError: function (e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); },
   }), amount);

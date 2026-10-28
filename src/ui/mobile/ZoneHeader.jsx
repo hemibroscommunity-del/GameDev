@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, getState } from './dash/common.js';
 import { rosterCount } from '../../networking/charRoster.js'; /* v2.3.2421 */
@@ -399,7 +400,7 @@ export const ZoneHeader = ({ onExit }) => {
         <div className="bt-zone-header__balance" data-purse="1"
           aria-label={`${gold} gold`}>
           <img key={'c' + flip} className={flip ? 'bt-purse-flip' : undefined}
-            src="/icons/popups/gold.webp" alt="" draggable={false} />
+            src={coinArtFor(gold)} alt="" draggable={false} />{/* v2.3.3734: the owner's pile for your gold */}
           <span key={'n' + flip} className={flip ? 'bt-purse-bump' : undefined}>{Number(gold).toLocaleString()}</span>
         </div>
       </header>

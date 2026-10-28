@@ -1,3 +1,4 @@
+import { COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
 /* v2.3.2618: BT_AUDIO, _objectSpread and pushDmgPopup went with the
@@ -51,7 +52,7 @@ function lsGold(amount, size) {
   return React.createElement("span", {
     style: { display: 'inline-flex', alignItems: 'center', gap: 4, color: LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: size || 14 }
   }, React.createElement("img", {
-    src: '/icons/popups/gold.webp', alt: '', draggable: false,
+    src: COIN_ONE, /* v2.3.3734: the one coin, a unit beside a price */ alt: '', draggable: false,
     style: { width: 16, height: 16, objectFit: 'contain' },
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
   }), amount);

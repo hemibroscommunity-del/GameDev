@@ -1,3 +1,4 @@
+import { COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { BT_AUDIO, GAMBLE_MIN_BET, GAMBLE_WIN_CHANCE, JACKPOT_MIN_DEPOSIT, createDefaultCompStats } from '@/data/index.js';
 import { _objectSpread } from '@/lib/babelHelpers.js';
@@ -64,7 +65,7 @@ function lsGold(amount, size) {
   return React.createElement("span", {
     style: { display: 'inline-flex', alignItems: 'center', gap: 4, color: LS.brass, fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: size || 14 }
   }, React.createElement("img", {
-    src: '/icons/popups/gold.webp', alt: '', draggable: false,
+    src: COIN_ONE, /* v2.3.3734: the one coin, a unit beside a price */ alt: '', draggable: false,
     style: { width: 16, height: 16, objectFit: 'contain' },
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
   }), amount);
