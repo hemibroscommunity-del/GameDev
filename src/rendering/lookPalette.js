@@ -53,7 +53,7 @@
  */
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource } from 'pixi.js';
 import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf } from './paletteTex.js';
-import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D, v2.3.3755) */
+import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
 
 export const LOOK_BATCHER = 'bt-look';
 const SLOTS = 4;                  /* sheets a batch (a figure draws one); the atlas is the unit after */
