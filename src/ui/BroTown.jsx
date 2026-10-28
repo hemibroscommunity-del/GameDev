@@ -178,6 +178,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    NOT the greeting video above — see welcomeBanner.js for why those are
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
+import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3701: a black screen's rebuild asks first whether Safari emptied the pictures */
 import { markWorldIn, skipTutorial, worldInMs } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
@@ -4102,6 +4103,37 @@ export var BroTown = function BroTown(_ref0) {
     window._rebuildRenderer = function (reason) {
       var _now = Date.now();
       if (window.__btLastGlRebuild && _now - window.__btLastGlRebuild < 5000) return;
+      /* ═══ v2.3.3701: A REBUILD CANNOT GIVE BACK A PICTURE SAFARI EMPTIED ═══
+         The owner: "Northwest jog has trouble loading reloading textures after
+         recovering from black screen".  A black screen is the graphics chip
+         reset, on an iPhone from memory pressure -- when Safari may also empty
+         the canvases the game draws its pictures on (TRAPS §250).  A rebuild
+         sends every picture to the new chip again FROM those canvases, so
+         after such a purge it draws blanks: in a matched set of armour the
+         jog's northeast and its mirror northwest (the only two facings drawn
+         from the body baked under the armour on canvases; every other facing
+         is the knight figure, from its file), the head over the armour, the
+         Wheel's ground.  The return's check (wsClient _resumeRecover,
+         canvasWitness.js) runs only when the page comes back or thaws, and a
+         black screen in play is neither.  mp-rebuildjog: with the canvases
+         emptied and the context lost, the rebuild went ahead, and only a
+         freeze of this box's own during it (a 'thaw') or the black-screen
+         watchdog's strikes reloaded the page.  So the rebuild asks the same
+         question first: two or more pictures read back empty and it is the
+         recovery reload instead, on the same spot of the Wheel (one door,
+         one cap: two in five minutes).  `?canvascheck=0` is the old way. */
+      if (!CANVAS_CHECK_OFF) {
+        try {
+          var _cw = checkWitnesses();
+          if (_cw.emptied >= EMPTIED_NEED) {
+            var _cwWhy = 'rebuild (' + (reason || 'manual') + '): ' + _cw.emptied + ' of ' + _cw.checked + ' pictures read back empty (' + _cw.ms + ' ms)';
+            import('../debug/crashTrap.js').then(function (ct) { ct.recordCrash('canvas-purge', _cwWhy); }).catch(function () {});
+            var _cwGo = typeof window.__btRecoveryReload === 'function' && window.__btRecoveryReload('pictures emptied at a black screen -- ' + _cwWhy, { spot: true });
+            noteCheckActed(_cwGo ? 'reload' : 'no-reload');
+            if (_cwGo) { window.__btLastGlRebuild = _now; return; }
+          }
+        } catch (eCw) { /* a check must never stop the rebuild */ }
+      }
       window.__btLastGlRebuild = _now;
       /* v2.3.773: let the fresh renderer record its own first error --
          otherwise a rebuild that didn't cure the throw leaves no trace. */
