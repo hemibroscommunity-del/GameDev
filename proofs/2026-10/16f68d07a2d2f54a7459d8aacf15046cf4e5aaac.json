@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "16f68d07a2d2f54a7459d8aacf15046cf4e5aaac",
+  "tree": "7784938c1d41162823484e449a8f029867e707b9",
+  "committedAt": "2026-10-28T16:17:57-07:00",
+  "subject": "Notes only: the next memory steps for the zone banners and the level-up burst (v2.3.3771) (#1236)",
+  "files": 6905,
+  "bytes": 802405416,
+  "listingSha256": "ad848f7c8cbb469c89337cd8935f7f1aecfabf50db8ad3b21438a3c9d4beb767",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
