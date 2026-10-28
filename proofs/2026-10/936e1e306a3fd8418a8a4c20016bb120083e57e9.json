@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "936e1e306a3fd8418a8a4c20016bb120083e57e9",
+  "tree": "7e416c598cd6280293e0bf2095b249b366f87ab5",
+  "committedAt": "2026-10-28T15:29:26-07:00",
+  "subject": "The plan for sealed gear: rare-or-better pieces stay a \"?\" until you open them (v2.3.3749) (#1226)",
+  "files": 6802,
+  "bytes": 794745594,
+  "listingSha256": "af34a510a66f6692cf1bf2c59cc472c440972b605a9e0403fdb48d4a04150a9d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
