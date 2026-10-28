@@ -34,7 +34,7 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
    and it is how you switch destinations or get out.  A rail that hid with
    the rest of the band would leave an open panel with no navigation. */
 
-export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW, fill, landLit, btnH, iconPx }) => {
+export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW, fill, landLit, btnH, iconPx, vertical }) => {
   /* v2.3.2166: `btnW` narrows the buttons for the landscape dock — the
      five of them must fit inside the side container's width (owner: the
      dashboard buttons "should all be included in that container on that
@@ -83,9 +83,11 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
          This is the same failure v2.3.1307b pinned the old ribbon to fix
          ("toolbar bounces ~20-30px after closing"); bottom-anchoring puts
          each button at the SAME screen position in both modes. */
-      display: 'flex', flexDirection: 'row',
+      /* v2.3.3769: `vertical` -- the computer's folded column stacks them
+         (BottomDashboard's bt-desk-foldrail) */
+      display: 'flex', flexDirection: vertical ? 'column' : 'row',
       alignItems: 'center', justifyContent: 'center',
-      gap: 4, padding: 4,
+      gap: 4, padding: vertical ? 0 : 4,
     }}>
       {items.map((d) => {
         /* v2.3.2176: `landLit` is the sideways rule.  In portrait the chart

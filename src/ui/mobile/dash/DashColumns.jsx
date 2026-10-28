@@ -128,6 +128,53 @@ const tileRow = { display: 'flex', gap: DASH_GAP, justifyContent: 'center' };
 export const DESK_BAG_COLS = 5;
 const DESK_BAG_ROWS = 10;   /* the floor: more than any computer window shows, so the slots run to the fade */
 
+/* v2.3.1922's rule, in one place since v2.3.3769: a combat skill's level reads
+   the prog3 blob when its skills are in it (never the cap, which is absent for
+   a moment on every load), else the legacy level.  The card below and the
+   computer's folded rail (DeskRailWeapons) both read it, so they cannot
+   disagree. */
+export function combatSkillLevel(rpg, s) {
+  const cat = STAT_TO_WEAPON_CAT[s.key];
+  const p3cat = cat ? prog3CatFor(cat) : null;
+  return (prog3HasSkills(rpg) && p3cat) ? prog3SkillLevel(rpg, p3cat) : skillLevel(rpg, s.key);
+}
+
+/* ═══ v2.3.3769: THE WEAPONS ON THE COMPUTER'S FOLDED RAIL ═══
+   The owner: "As you find improvements you can make to the empty space on the
+   desktop version go ahead".  With the dashboard closed on a computer, its
+   column folds to a strip at the screen's edge (BottomDashboard's
+   bt-desk-foldrail); at the strip's foot, the three weapons the open column
+   shows at its bottom, compact: the picture and its level.  A click opens the
+   dashboard, where the full card is (its XP, its points, its explainer). */
+export const DeskRailWeapons = ({ R, w }) => {
+  const rpg = R || {};
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+      {COMBAT_SKILLS.slice(0, 3).map((s) => {
+        const lvl = combatSkillLevel(rpg, s);
+        return (
+          <div key={s.key}
+            role="button"
+            data-rail-weapon={s.key}
+            aria-label={`${s.label} level ${lvl}`}
+            title={`${s.label} — Lv ${lvl}`}
+            onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.open('dashboard'); }}
+            style={{
+              width: w, height: 52, boxSizing: 'border-box',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
+              background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 11,
+              cursor: 'pointer', touchAction: 'manipulation',
+            }}>
+            <img src={s.iconSrc} alt="" draggable={false}
+              style={{ width: 28, height: 28, objectFit: 'contain', pointerEvents: 'none' }} />
+            <span style={{ fontSize: 11, fontWeight: 800, color: COL.text, lineHeight: 1, letterSpacing: '.04em', pointerEvents: 'none' }}>LV {lvl}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
   /* v2.3.2163 (owner: "I can see 8 slots playing in [portrait] view (plus
      space for combat skills) so this should translate to 8 slots of space
@@ -393,8 +440,7 @@ export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
        prog3HasSkills asks the only question a READOUT has — is the level
        in the blob — and has no timing hole.  Same correction as v2.3.1902
        made to the stat screen; this card was missed then. */
-    const p3Read = prog3HasSkills(rpg);
-    const lvl = (p3Read && p3cat) ? prog3SkillLevel(rpg, p3cat) : skillLevel(rpg, s.key);
+    const lvl = combatSkillLevel(rpg, s);   /* v2.3.3769: the rule below, shared with the folded rail's chips */
     /* ═══ v2.3.1687: THE +1 BELONGS TO THE SKILL THAT EARNED IT ═══
        Owner: "When I level up it shows melee, bow, and magic as +1
        simultaneously. This is not correct. Only the combat skill that
