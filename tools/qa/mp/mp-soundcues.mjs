@@ -139,7 +139,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const C = window.__btCues;
     C.reset();
     const bad = [];
-    for (const n of C.names()) if (!C.play(n, 0.05)) bad.push(n);
+    /* v2.3.3735: each cue on its own -- 164 cues in one instant share their
+       recordings, and the voice cap (on by default, data/voiceCap.js) would
+       rightly hold the fourth copy of each back */
+    for (const n of C.names()) { if (window.__btVoiceCap) window.__btVoiceCap(true); if (!C.play(n, 0.05)) bad.push(n); }
+    if (window.__btVoiceCap) window.__btVoiceCap(true);
     return { n: C.names().length, bad };
   });
   rec.ok(`1. every one of the ${all.n} cues starts a sound when asked (its samples are in)`, all.bad.length === 0, all.bad);
