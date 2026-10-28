@@ -108,7 +108,11 @@ const sameFrame = (P) => P.page.evaluate(async (COUNT) => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const P = await H.newPlayer(browser, { name: 'onebatch', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'onebatch=1' });
+  /* v2.3.3707: the monsters' silhouettes off (`nosilhouette`): each is a
+     stencil mask with a program of its own, in either way of drawing, so up
+     to 8 more switches in both counts -- mp-silhouette weighs them, and this
+     weighs the one program against the three, as before */
+  const P = await H.newPlayer(browser, { name: 'onebatch', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'onebatch=1&nosilhouette' });
   /* (the default page only says which programs draw: at 1x, so the two
      pages are not both drawing a 3x screen in software on the way in) */
   const Q = await H.newPlayer(browser, { name: 'threebatch', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel' });

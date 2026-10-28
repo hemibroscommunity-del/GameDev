@@ -5087,6 +5087,10 @@ function _clipStandInHair(sprites, hatId, dir, mirror, cwx, cwy, scaleVal, fit) 
    sprite the monster is drawn with.  Read-only: nothing outside this file
    may move or restyle it. */
 let _monsterDisplaysRef = null;
+/** v2.3.3707: every monster's display, for the silhouettes of the ones hidden
+ *  behind a thing (monsterSilhouette.js) -- read only */
+export function monsterDisplayMap() { return _monsterDisplaysRef; }
+
 export function monsterBodySprite(mid) {
   const d = _monsterDisplaysRef && _monsterDisplaysRef.get(mid);
   const sb = d && d._spriteBody;
