@@ -43,8 +43,12 @@ import {
   globalUniformsBitGl, colorBitGl, colorBit, roundPixelsBitGl, roundPixelsBit,
   generateTextureBatchBitGl, generateTextureBatchBit, getBatchSamplersUniformGroup, getMaxTexturesPerBatch,
 } from 'pixi.js';
+import { PAL_CLIP_BATCHER } from './paletteTex.js';   /* v2.3.3707: a colour-numbers picture's stencil shape */
+import { isPaletteSource } from './paletteDraw.js';
 
 export const CLIP_BATCHER = 'bt-clip';
+/* v2.3.3707: a coloured picture's shape, for the monsters' silhouettes */
+export const ALPHA_CLIP_BATCHER = 'bt-clip-alpha';
 
 let _alpha = false;     /* `?alphaclip`: the alpha mask, as it was */
 try { if (typeof location !== 'undefined' && /[?&]alphaclip\b/.test(location.search || '')) _alpha = true; } catch (e) { /* stencil */ }
@@ -97,6 +101,49 @@ class ClipBatcher extends DefaultBatcher {
 }
 ClipBatcher.extension = { type: [ExtensionType.Batcher], name: CLIP_BATCHER };
 
+/* ═══ v2.3.3707: A COLOURED PICTURE'S SHAPE, FOR THE MONSTERS' SILHOUETTES ═══
+   The hat's silhouette above is white, so its test reads alpha x red.  A
+   monster behind one of the Wheel's things is shown over it as a silhouette
+   clipped to the thing's own picture (monsterSilhouette.js), and that picture
+   is in its own colours: its texels count where they are at least half there,
+   whatever their colour.  Pixi's own batch program with that discard; the
+   Wheel's colour-numbers pictures take paletteTex.js's twin. */
+const alphaDiscardBitGl = {
+  name: 'clip-discard-alpha',
+  fragment: {
+    main: `
+                if (outColor.a < 0.5) discard;
+            `,
+  },
+};
+let _alphaShader = null;
+function alphaClipShader(maxTextures) {
+  if (_alphaShader) return _alphaShader;
+  const src = compileHighShaderGl({
+    template: { vertex: vertexGlTemplate, fragment: fragmentGlTemplate },
+    bits: [globalUniformsBitGl, colorBitGl, generateTextureBatchBitGl(maxTextures), alphaDiscardBitGl, roundPixelsBitGl],
+  });
+  const glProgram = new GlProgram({ name: 'batch-clip-alpha', ...src });
+  const gpuProgram = compileHighShaderGpuProgram({
+    name: 'batch-clip-alpha',
+    bits: [colorBit, generateTextureBatchBit(maxTextures), roundPixelsBit],
+  });
+  _alphaShader = new Shader({ glProgram, gpuProgram, resources: { batchSamplers: getBatchSamplersUniformGroup(maxTextures) } });
+  _alphaShader.maxTextures = maxTextures;
+  return _alphaShader;
+}
+class AlphaClipBatcher extends DefaultBatcher {
+  constructor(options) {
+    const maxTextures = (options && options.maxTextures) || _maxTex || getMaxTexturesPerBatch();
+    super({ ...(options || {}), maxTextures });
+    this.name = ALPHA_CLIP_BATCHER;
+    this.shader = alphaClipShader(maxTextures);
+  }
+}
+AlphaClipBatcher.extension = { type: [ExtensionType.Batcher], name: ALPHA_CLIP_BATCHER };
+/** v2.3.3707: the alpha clip program (did it link? the silhouettes' prewarm) */
+export function alphaClipProgram() { return _alphaShader ? _alphaShader.glProgram : null; }
+
 /* ═══ WHICH BATCHER DRAWS A SILHOUETTE: ITS SPRITE'S OWN ANSWER ═══
    Three routings already decide a sprite's batcher where it meets the batch
    pipe (BatcherPipe.addToBatch): the colour numbers' (paletteTex.js, at module
@@ -115,7 +162,14 @@ ClipBatcher.extension = { type: [ExtensionType.Batcher], name: CLIP_BATCHER };
       configurable: true,
       get() {
         const r = this.renderable;
-        return (r && r._btClipMask && _installed && !_alpha) ? CLIP_BATCHER : this._btBatcher;
+        if (r && _installed && !_alpha) {
+          if (r._btClipMask) return CLIP_BATCHER;
+          /* v2.3.3707: a thing's picture as a silhouette's stencil shape
+             (monsterSilhouette.js): its own colours' program, or its colour
+             numbers' */
+          if (r._btClipAlpha) return isPaletteSource(r.texture && r.texture.source) ? PAL_CLIP_BATCHER : ALPHA_CLIP_BATCHER;
+        }
+        return this._btBatcher;
       },
       set(v) { this._btBatcher = v; },
     });
@@ -131,6 +185,10 @@ export function installHairClip(app) {
     _maxTex = (r.limits && r.limits.maxBatchableTextures) || getMaxTexturesPerBatch();
     clipShader(_maxTex);
     extensions.add(ClipBatcher);
+    /* v2.3.3707: and the coloured pictures' twin, for the monsters'
+       silhouettes (paletteTex.js registers the colour numbers' at load) */
+    alphaClipShader(_maxTex);
+    extensions.add(AlphaClipBatcher);
     _installed = true;
     return true;
   } catch (e) {

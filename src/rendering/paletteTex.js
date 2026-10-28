@@ -343,6 +343,46 @@ class PaletteBatcher extends DefaultBatcher {
 PaletteBatcher.extension = { type: [ExtensionType.Batcher], name: PAL_BATCHER };
 extensions.add(PaletteBatcher);
 
+/* ═══ v2.3.3707: A PICTURE OF COLOUR NUMBERS AS A STENCIL'S SHAPE ═══
+   A monster behind one of the Wheel's things is drawn over it as a silhouette,
+   clipped to the thing's own shape through the stencil (monsterSilhouette.js):
+   the thing's picture drawn into the stencil only, its see-through texels
+   thrown away.  Pixi's own program cannot read these pictures (one byte a
+   texel, a colour's number: every texel would count), so this is the program
+   above with a discard, as hairClip.js's clip program is Pixi's own with one.
+   Routed by the sprite itself (hairClip.js, `_btClipAlpha`). */
+export const PAL_CLIP_BATCHER = 'bt-palette-clip';
+const FRAG_CLIP = FRAG.replace('    finalColor = outColor * vColor;', '    if (outColor.a < 0.5) discard;\n    finalColor = outColor * vColor;');
+let _clipBatchShader = null;
+function clipBatchShader() {
+  if (_clipBatchShader) return _clipBatchShader;
+  const units = new Int32Array(SLOTS);
+  for (let i = 0; i < SLOTS; i++) units[i] = i;
+  _clipBatchShader = new Shader({
+    glProgram: GlProgram.from({ vertex: VERT, fragment: FRAG_CLIP, name: 'bt-palette-clip' }),
+    resources: {
+      paletteSamplers: new UniformGroup({
+        uTextures: { value: units, type: 'i32', size: SLOTS },
+        uPalAtlas: { value: SLOTS, type: 'i32' },
+      }, { isStatic: true }),
+    },
+  });
+  return _clipBatchShader;
+}
+class PaletteClipBatcher extends PaletteBatcher {
+  constructor() {
+    super();
+    this.name = PAL_CLIP_BATCHER;
+    this.shader = clipBatchShader();
+  }
+}
+PaletteClipBatcher.extension = { type: [ExtensionType.Batcher], name: PAL_CLIP_BATCHER };
+extensions.add(PaletteClipBatcher);
+/** v2.3.3707: the clip program (did it link? the silhouettes' prewarm) */
+export function paletteClipProgram() { return clipBatchShader().glProgram; }
+/** v2.3.3707: the discard is in it (the line it rides on was found) */
+export function paletteClipMade() { return FRAG_CLIP !== FRAG; }
+
 /* ═══ v2.3.3447: ONE DRAWING PROGRAM FOR EVERY SPRITE ═══
    The owner: "iterate on what best improves framerate without loss of quality
    (or negligible loss) for phone gameplay (iPhone, android)".  Three batchers

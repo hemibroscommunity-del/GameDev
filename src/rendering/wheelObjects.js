@@ -712,6 +712,19 @@ export class WheelObjects {
     this.shatter.update(dt);
   }
 
+  /** v2.3.3707: each object drawn now, for the monsters' silhouettes
+   *  (monsterSilhouette.js): add(sprite, its picture, its foot's y, and its
+   *  picture's box in the world -- x0, y0, x1, y1). */
+  forEachDrawn(add) {
+    const ix = _idx;
+    if (!ix || this.dead) return;
+    for (const [i, s] of this.sprites) {
+      if (!s || s.destroyed || !s.visible) continue;
+      const x = ix.o.x[i], y = ix.o.y[i], hw = ix.reach[ix.pk[i]], h = ix.h[ix.pk[i]];
+      add(s, s._pic || s, y, x - hw, y - h, x + hw, y);
+    }
+  }
+
   _seeThrough(ix, S, now) {
     /* off (no `?placing=2` or `?fade`): nothing to do, every frame */
     if (!CANOPY_FADE) return;

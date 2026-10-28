@@ -6302,6 +6302,16 @@ Two protocol versions coexist; both must keep working:
   Container, never a Sprite, unless the soft edge is the point (the one left:
   monsterDeathFx's wounds, for the second a death lasts). `?alphaclip` is the
   alpha mask, as it was; `window.__btHairClip()`; `mp-hairstencil`.
+  Since v2.3.3707 A MONSTER HIDDEN BEHIND A THING IS SEEN AS ITS SILHOUETTE
+  through the same stencil -- the owner: "have a monster shadows silhouette
+  appear behind props if they're hiding behind them": its own frame, near
+  black at half strength, riding on the building, tree or rock that hides it
+  (depthSort `_ridesOn`) and clipped to that thing's picture, a copy of it
+  drawn into the stencil (`_btClipAlpha`: hairClip.js's ALPHA_CLIP_BATCHER, or
+  paletteTex.js's PAL_CLIP_BATCHER for colour numbers); the 4 nearest, each
+  at least a third hidden (a batch and a program switch each), nothing
+  loaded or made (src/rendering/monsterSilhouette.js); `?nosilhouette`,
+  `window.__btSilhouettes()`; `mp-silhouette`: docs/specs/monster-silhouette.md.
 - **EVERY KILL SWITCH CAN BE THROWN (v2.3.3295, TRAPS §117).** A live flag's
   name is lower case (liveops.js `FLAG_NAME_RE`), so the five camelCase caps
   whose comments promised a `false` switch -- `storeGear`, `dailyChest`,
