@@ -101,7 +101,7 @@ export function installLookProbe(dep) {
       const a = render(cells, (c) => c.ot, scale, cell, cols);
       const b = render(cells, (c) => c.nt, scale, cell, cols);
       const hist = {};
-      let drawn = 0, differ = 0, worst = 0, sameTex = 0;
+      let drawn = 0, differ = 0, worst = 0, sameTex = 0, worstAt = null;
       const bad = [];
       for (const c of cells) if (c.ot === getFrame(c.pose, c.dir, c.f)) sameTex++;
       for (let p = 0; p < a.data.length; p += 4) {
@@ -121,9 +121,15 @@ export function installLookProbe(dep) {
               old: Array.from(a.data.slice(p, p + 4)), now: Array.from(b.data.slice(p, p + 4)) });
           }
         }
-        if (m > worst) worst = m;
+        if (m > worst) {
+          worst = m;
+          /* v2.3.3750: where the worst one is */
+          const q = p >> 2, x = q % a.w, y = Math.floor(q / a.w);
+          const c = cells[Math.floor(y / cell) * cols + Math.floor(x / cell)];
+          worstAt = c ? `${c.pose}-${c.dir}#${c.f}${c.mirror ? 'm' : ''} at ${x % cell},${y % cell}` : '?';
+        }
       }
-      out.push({ look: L.join('/'), baked: ok, frames: cells.length, oldIsShipped: sameTex, drawn, differ, worst, hist, bad });
+      out.push({ look: L.join('/'), baked: ok, frames: cells.length, oldIsShipped: sameTex, drawn, differ, worst, worstAt, hist, bad });
     }
     return out;
   }
