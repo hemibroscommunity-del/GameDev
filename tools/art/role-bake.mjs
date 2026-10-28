@@ -63,78 +63,68 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { encode, decode } from '../png.mjs';
+import { cutPerRole } from './lookCut.mjs';   /* v2.3.3750: the one 8-bit cut (P4's module, error-bounded) */
 
 const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../..');
 const OUT = path.join(REPO, 'public/sprites/look');
-const POSES = ['stand', 'jog'];
-const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const PORT = Number(process.env.ROLE_BAKE_PORT || 5197);
 const CHECK = process.argv.includes('--check');
+/* v2.3.3750: the 8-bit cut's bar -- the worst colour of a sheet within this
+   many levels a channel of the 16-bit truth, in any look (the orchestrator's
+   line for the owner's "I won't notice at all from anything at 256") */
+const CUT_BAR = Number(process.env.ROLE_BAKE_BAR || 16);
 /* ROLE_BAKE_PROBE=jog-east:948,53 -- one display texel's story, for debugging a bake */
 const PROBE_AT = process.env.ROLE_BAKE_PROBE ? ((m) => [m[1], [Number(m[2]), Number(m[3])]])(/^([a-z-]+):(\d+),(\d+)$/.exec(process.env.ROLE_BAKE_PROBE)) : null;
-export const ROLE_NAMES = ['keep', 'skin', 'pants', 'boots', 'iris', 'iris-skin', 'iris-pants', 'iris-boots'];
 
-/* the source sheets' bytes (the .png and the .webp twin the game reads), so
-   a stale bake is caught */
-export function sheetHash(pose, dir) {
-  const h = crypto.createHash('sha1');
-  for (const ext of ['png', 'webp']) {
-    const f = path.join(REPO, 'public/sprites/player', `${pose}-${dir}.${ext}`);
-    if (fs.existsSync(f)) h.update(fs.readFileSync(f));
-  }
-  return h.digest('hex').slice(0, 16);
+/* ── in the page: the set's module, and through it the game's own code ── */
+async function pageMeta({ set }) {
+  const S = (await import(`/rendering/lookSets/${set}.js`)).default;
+  return { kind: S.kind, bits: S.bits, refScale: S.refScale || 1, fw: S.fw || 128, fh: S.fh || 128, out: S.out || null, roleDefs: S.roleDefs,
+    sheets: S.sheets, code: S.code || [], art: Object.fromEntries(S.sheets.map((k) => [k, S.art(k)])) };
 }
-/* ...and of the code that decides the roles */
-export function codeHash() {
-  const h = crypto.createHash('sha1');
-  for (const f of ['src/rendering/playerSkins.js', 'src/rendering/garmentConfine.js', 'src/rendering/spriteScale.js',
-    'src/rendering/eyeMask.json', 'src/rendering/playerDecal.js']) h.update(fs.readFileSync(path.join(REPO, f)));
-  return h.digest('hex').slice(0, 16);
-}
-
-/* ── in the page: the game's own modules ── */
-async function pageBake({ pose, dir, probeAt }) {
-  const PS = await import('/rendering/playerSkins.js');
-  const SS = await import('/rendering/spriteScale.js');
-  const SP = await import('/rendering/playerSprites.js');
+async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
+  const CUT_BAR = bar;   /* v2.3.3750: the 8-bit cut's worst colour, in levels */
+  const S = (await import(`/rendering/lookSets/${set}.js`)).default;
   const GS = await import('/rendering/gearSheets.js');
-  const WI = await import('/rendering/webpImage.js');
-  const EYE_MASK = (await import('/rendering/eyeMask.json')).default;
-  if (SS.DISPLAY_DS !== 2) throw new Error('role-bake knows DISPLAY_DS 2 only (it is ' + SS.DISPLAY_DS + ')');
-  const sheet = `${pose}-${dir}`;
-  /* the sheet as the GAME reads it: its lossless .webp twin where there is
-     one (webpImage.js), which a browser decodes a shade differently from the
-     .png where a pixel is see-through (measured: 4,510 such pixels in
-     jog-east) -- a bake from the .png put a few of them in the wrong role */
-  const img = await WI.loadWebpOrPng(`/sprites/player/${sheet}.png?v=${SP.SPRITE_VERSION}`);
-  const srcH = img.naturalHeight;
-  const up = SS.upscaleToFrameHeight(img, 256);
-  const W = up.width, H = up.height;
-  const frames = Math.max(1, Math.floor(W / 256));
+  const FW = S.fw || 128, FH = S.fh || 128;
+  const RS = S.refScale || 1;   /* v2.3.3737: a role's ref in 1/RS's (P4's fractional refs) */
+  const roles = S.roleDefs;   /* role r (1..R) is roles[r - 1] */
+  const R = roles.length;
+  const src = await S.source(sheet);
+  const { d, W, H, frames } = src;
   const read = (cv) => {
     const c = cv.getContext ? cv : (() => { const k = document.createElement('canvas'); k.width = cv.width; k.height = cv.height; k.getContext('2d').drawImage(cv, 0, 0); return k; })();
     return c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
   };
-  /* the art as the recolour reads it (it upscales and draws the same way) */
-  const c0 = document.createElement('canvas'); c0.width = W; c0.height = H;
-  c0.getContext('2d').drawImage(up, 0, 0);
-  const d = c0.getContext('2d').getImageData(0, 0, W, H).data;
-  /* buildBodySheet's own call, argument for argument */
-  const run = (L) => PS.recolorBodyToCanvas(img, L.s || null, L.p || null, L.b || null, null, 256,
-    L.e || null, EYE_MASK[sheet], null, undefined, pose === 'jog', null, false, null, false, false);
-  const disp = (full) => {
-    let c = SS.bakeDisplayCanvas(full, srcH);
-    if (pose === 'jog' && dir === 'northeast') c = SP.stripDetachedComponents(c, frames);
-    return c;
-  };
-  const P1 = { s: [214, 48, 40], p: [40, 196, 52], b: [44, 64, 210], e: [251, 3, 247] };
-  const P2 = { s: [60, 190, 200], p: [205, 70, 190], b: [200, 200, 40], e: [5, 249, 9] };
-  const P3 = { s: P1.s, p: P1.p, b: P1.b };
+  const run = (T) => S.run(src, sheet, T);
+  const disp = (full) => S.display(src, sheet, full);
+  /* the probes: every entry a role uses, in colours no art pixel has; the
+     third leaves out the entries of roles that fall back (`under`), so the
+     role under them shows */
+  const P1C = [[214, 48, 40], [40, 196, 52], [44, 64, 210], [251, 3, 247], [236, 200, 20], [20, 220, 230], [160, 30, 200], [250, 130, 10]];
+  const P2C = [[60, 190, 200], [205, 70, 190], [200, 200, 40], [5, 249, 9], [30, 60, 120], [210, 40, 90], [90, 230, 120], [10, 120, 250]];
+  const used = [...new Set(roles.map((ro) => ro.entry))];
+  const P1 = {}, P2 = {}, P3 = {};
+  used.forEach((e, i) => { P1[e] = P1C[i % P1C.length].map((v) => (v + 7 * Math.floor(i / P1C.length)) % 256); P2[e] = P2C[i % P2C.length].map((v) => (v + 11 * Math.floor(i / P2C.length)) % 256); });
+  const fallsBack = new Set(roles.filter((ro) => ro.under).map((ro) => ro.entry));
+  for (const e of used) if (!fallsBack.has(e)) P3[e] = P1[e];
   const f1 = read(run(P1)), f2 = read(run(P2)), f3 = read(run(P3));
-  const REF = [0, 149, 112, 75];
-  const retint = (i, T, ref) => {
-    const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / ref;
+  /* v2.3.3750: `keepFromDefault` (a set module's option) -- a KEPT pixel is
+     what the bake leaves whatever the look, the default look's output: the
+     art's own colour, or something the bake paints over it for everyone (the
+     fishing rod's pine).  Without it, the art's colour, as before. */
+  const kd = S.keepFromDefault ? read(run({})) : d;
+  const recol = (i, T, ref) => {
+    if (!ref) return T;
+    const k = (0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]) / (ref / RS);
     return [Math.min(255, Math.round(T[0] * k)), Math.min(255, Math.round(T[1] * k)), Math.min(255, Math.round(T[2] * k))];
+  };
+  /* what role r makes of pixel i in look L -- lookPalette.js's entry(), in JS */
+  const out = (i, r, L) => {
+    if (!r) return [kd[i], kd[i + 1], kd[i + 2]];
+    const ro = roles[r - 1], T = L[ro.entry];
+    if (T) return recol(i, T, ro.ref);
+    return ro.under ? out(i, ro.under, L) : [d[i], d[i + 1], d[i + 2]];
   };
   /* premultiplied, as the canvas keeps it: a see-through pixel's colour is
      only as exact as its alpha lets it be */
@@ -143,29 +133,24 @@ async function pageBake({ pose, dir, probeAt }) {
     for (let k = 0; k < 3; k++) if (Math.abs(o[i + k] * a / 255 - rgb[k] * a / 255) > 1.01) return false;
     return true;
   };
-  const keepRGB = (i) => [d[i], d[i + 1], d[i + 2]];
-  const roleOut = (i, r, L) => (r === 0 ? keepRGB(i) : retint(i, r === 1 ? L.s : r === 2 ? L.p : L.b, REF[r]));
   const role = new Uint8Array(W * H);
   let unexplained = 0, ambiguous = 0;
   for (let p = 0; p < W * H; p++) {
     const i = p * 4;
     if (d[i + 3] === 0) continue;
-    const iris = near(f1, i, P1.e) && near(f2, i, P2.e);
     const cand = [];
-    for (let r = 0; r < 4; r++) {
-      if (iris) { if (near(f3, i, roleOut(i, r, P3))) cand.push(r); }
-      else if (near(f1, i, roleOut(i, r, P1)) && near(f2, i, roleOut(i, r, P2)) && near(f3, i, roleOut(i, r, P3))) cand.push(r);
+    for (let r = 0; r <= R; r++) {
+      if (near(f1, i, out(i, r, P1)) && near(f2, i, out(i, r, P2)) && near(f3, i, out(i, r, P3))) cand.push(r);
     }
     if (!cand.length) { unexplained++; continue; }
     if (cand.length > 1 && cand[0] !== 0) ambiguous++;
-    role[p] = cand[0] + (iris ? 4 : 0);
+    role[p] = cand[0];
   }
   /* the display: which pixels it shows, and (ds 1) which source pixel each is */
-  const defFull = run({});
-  const defDisp = disp(defFull);
+  const defDisp = disp(run({}));
   const dd = read(defDisp);
   const DW = defDisp.width, DH = defDisp.height;
-  const ds = (srcH === Math.round(H / 2)) ? 1 : 2;   /* bakeDisplayCanvas: nearest, or the 2x2 box */
+  const ds = S.ds(src);
   let ox = 1, oy = 1;
   if (ds === 1) {
     /* the nearest pick's offset in its 2x2 block, read off a probe look */
@@ -181,8 +166,11 @@ async function pageBake({ pose, dir, probeAt }) {
     }
   }
   /* the table: one entry per (role, colour), sorted by role; entry 0 is see-through */
-  const keyOf = (p) => role[p] * 4294967296 + ((d[p * 4] << 24) >>> 0) + (d[p * 4 + 1] << 16) + (d[p * 4 + 2] << 8) + d[p * 4 + 3];
-  const keys = new Map();
+  const keyOf = (p) => {
+    const c = role[p] ? d : kd;   /* v2.3.3750: a kept entry's colour is the bake's (keepFromDefault) */
+    return role[p] * 4294967296 + ((c[p * 4] << 24) >>> 0) + (c[p * 4 + 1] << 16) + (c[p * 4 + 2] << 8) + d[p * 4 + 3];
+  };
+  const keys = new Map();   /* key -> pixels */
   const nw = ds === 1 ? DW : W, nh = ds === 1 ? DH : H;
   const srcOf = new Int32Array(nw * nh).fill(-1);
   for (let y = 0; y < nh; y++) for (let x = 0; x < nw; x++) {
@@ -193,7 +181,8 @@ async function pageBake({ pose, dir, probeAt }) {
     } else p = y * W + x;
     if (!d[p * 4 + 3]) continue;
     srcOf[y * nw + x] = p;
-    keys.set(keyOf(p), 0);
+    const k = keyOf(p);
+    keys.set(k, (keys.get(k) || 0) + 1);
   }
   /* ═══ THE HALVING'S PICK ═══
      A jog sheet is drawn at twice its size (nearest), recoloured, and halved
@@ -214,26 +203,47 @@ async function pageBake({ pose, dir, probeAt }) {
       if (keyOf((2 * y) * W + 2 * x + 1) !== k0 || keyOf((2 * y + 1) * W + 2 * x) !== k0 || keyOf((2 * y + 1) * W + 2 * x + 1) !== k0) split++;
     }
   }
+  /* ═══ v2.3.3737: 8 BITS -- AT MOST 255 COLOURS, CHOSEN PER ROLE ═══
+     The owner: "You can go ahead and reduce it. I won't notice at all from
+     anything at 256."  v2.3.3750: the cut is tools/art/lookCut.mjs (one for
+     every bake), bounded by its WORST colour, CUT_BAR levels as the screen
+     shows it; a sheet it cannot hold to the bar stays 16-bit (below). */
+  let mapKey = (k) => k;
+  let quant = null;
+  if (bits === 8) {
+    /* tools/art/lookCut.mjs, the one cut every bake uses (passed in as source) */
+    const cutPerRole = new Function('return ' + cutSrc)();
+    const cut = cutPerRole(keys, 255, { roles, refScale: RS, bar: CUT_BAR });
+    if (cut) {
+      mapKey = (k) => cut.remap.get(k);
+      keys.clear();
+      for (const [k, n] of cut.keys) keys.set(k, n);
+      quant = cut.quant;
+    }
+  }
+
   const sorted = [...keys.keys()].sort((a, b) => a - b);
-  if (sorted.length + 1 > 65535) throw new Error(sheet + ': ' + sorted.length + ' colours, over 16 bits');
+  const cap = bits === 8 ? 256 : 65536;   /* numbers 0..255 (0 see-through) or 0..65535 */
+  if (sorted.length + 1 > cap) throw new Error(sheet + ': ' + sorted.length + ' colours, over ' + bits + ' bits');
+  const index = new Map();
   const table = new Uint8Array((sorted.length + 1) * 4);
-  const count = new Array(8).fill(0);
+  const count = new Array(16).fill(0);
   sorted.forEach((k, n) => {
-    keys.set(k, n + 1);
+    index.set(k, n + 1);
     const r = Math.floor(k / 4294967296), v = k - r * 4294967296;
     table.set([(v >>> 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255], (n + 1) * 4);
     count[r]++;
   });
   /* one past each role's last entry (entry 0, see-through, counts as keep) */
   const ends = [];
-  for (let r = 0, e = 1; r < 8; r++) { e += count[r]; ends.push(e); }
+  for (let r = 0, e = 1; r <= R; r++) { e += count[r]; ends.push(e); }
   const strip = new Uint16Array(nw * nh);
-  for (let q = 0; q < nw * nh; q++) if (srcOf[q] >= 0) strip[q] = keys.get(keyOf(srcOf[q]));
+  for (let q = 0; q < nw * nh; q++) if (srcOf[q] >= 0) strip[q] = index.get(mapKey(keyOf(srcOf[q])));
   /* the layout: the old path's packed sheet, cell for cell -- its crops are
      the display's (ds 2: each display texel's four numbers, at twice the
      crop), so every frame's quad is the old path's own */
   let cells, PW, PH, nums;
-  const packed = GS.packTrimmed(defDisp, 128, 128, frames);
+  const packed = GS.packTrimmed(defDisp, FW, FH, frames);
   if (packed) {
     cells = packed.cells.map((c) => [c.ax, c.ay, c.tx, c.ty, c.w, c.h, c.blank ? 1 : 0]);
     PW = packed.canvas.width * ds; PH = packed.canvas.height * ds;
@@ -242,33 +252,38 @@ async function pageBake({ pose, dir, probeAt }) {
     packed.cells.forEach((c, f) => {
       if (c.blank) return;
       for (let y = 0; y < c.h * ds; y++) for (let x = 0; x < c.w * ds; x++) {
-        nums[(c.ay * ds + y) * PW + c.ax * ds + x] = strip[(c.ty * ds + y) * nw + (f * 128 + c.tx) * ds + x];
+        nums[(c.ay * ds + y) * PW + c.ax * ds + x] = strip[(c.ty * ds + y) * nw + (f * FW + c.tx) * ds + x];
       }
     });
   } else {
-    cells = Array.from({ length: frames }, (_, f) => [f * 128, 0, -1, -1, 128, 128, 0]);   /* tx -1: no trim */
+    cells = Array.from({ length: frames }, (_, f) => [f * FW, 0, -1, -1, FW, FH, 0]);   /* tx -1: no trim */
     PW = nw; PH = nh; nums = strip;
   }
-  /* ── the self-check: real looks, drawn from the numbers as the chip will ── */
-  const LOOKS = [
-    { s: [61, 40, 28], p: [185, 58, 46], b: [222, 222, 228], e: [60, 110, 220] },
-    { s: [249, 236, 226], p: [214, 112, 168], b: [190, 160, 110] },
-    { p: [46, 56, 120], e: [40, 160, 70] },
-  ];
+  /* ── the self-check: real looks, drawn from the numbers as the chip will,
+     against the old path's own display canvases (an 8-bit sheet: how far its
+     cut moved them, reported, not failed) ── */
+  const LOOKC = [[61, 40, 28], [185, 58, 46], [222, 222, 228], [60, 110, 220], [249, 236, 226], [214, 112, 168], [190, 160, 110], [46, 56, 120], [40, 160, 70]];
+  const LOOKS = [0, 1, 2].map((j) => { const L = {}; used.forEach((e, i) => { if ((i + j) % 3 !== 2) L[e] = LOOKC[(i * 2 + j) % LOOKC.length]; }); return L; });
   const colour = (n, L) => {
     if (!n) return [0, 0, 0, 0];
-    let r = 0; while (r < 7 && n >= ends[r]) r++;
+    let r = 0; while (r < R && n >= ends[r]) r++;
     const o = n * 4, a = table[o + 3];
-    let c = [table[o], table[o + 1], table[o + 2]];
-    const base = r >= 4 ? r - 4 : r;
-    if (r >= 4 && L.e) c = L.e;
-    else if (base > 0) {
-      const T = base === 1 ? L.s : base === 2 ? L.p : L.b;
-      if (T) { const k = (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / REF[base]; c = [0, 1, 2].map((q) => Math.min(255, Math.round(T[q] * k))); }
-    }
+    const c0 = [table[o], table[o + 1], table[o + 2]];
+    const one = (rr) => {
+      if (!rr) return c0;
+      const ro = roles[rr - 1], T = L[ro.entry];
+      if (T) {
+        if (!ro.ref) return T;
+        const k = (0.299 * c0[0] + 0.587 * c0[1] + 0.114 * c0[2]) / (ro.ref / RS);
+        return [0, 1, 2].map((q) => Math.min(255, Math.round(T[q] * k)));
+      }
+      return ro.under ? one(ro.under) : c0;
+    };
+    const c = one(r);
     return [Math.round(c[0] * a / 255), Math.round(c[1] * a / 255), Math.round(c[2] * a / 255), a];
   };
-  const check = { looks: LOOKS.length, texels: 0, over1: 0, max: 0 };
+  const check = { looks: LOOKS.length, texels: 0, over1: 0, max: 0, sum: 0 };
+  const fickle = S.fickle ? S.fickle(src, sheet) : null;   /* v2.3.3750: full-size pixels, or null */
   for (const L of LOOKS) {
     const od = read(disp(run(L)));
     for (let y = 0; y < DH; y++) for (let x = 0; x < DW; x++) {
@@ -289,26 +304,34 @@ async function pageBake({ pose, dir, probeAt }) {
       const got = [od[j] * a / 255, od[j + 1] * a / 255, od[j + 2] * a / 255, a];
       let m = 0;
       for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(got[k] - want[k]));
+      /* v2.3.3750: a pixel the set says the old bake colours by more than its
+         role (`fickle`: the fish's rod key, re-tested after the retint) is
+         counted apart, not held to the old path (an 8-bit sheet's: only past
+         the cut's bar, which the cut itself is held to on every pixel) */
+      if (fickle && m > (quant ? CUT_BAR : 1.5) && fickle[ds === 1 ? (2 * y + oy) * W + 2 * x + ox : (2 * y) * W + 2 * x]) { check.fickle = (check.fickle || 0) + 1; continue; }
       check.texels++;
+      check.sum += m;
       if (m > check.max) check.max = +m.toFixed(2);
       if (m > 1.5) check.over1++;
     }
   }
+  check.mean = +(check.sum / Math.max(1, check.texels)).toFixed(3);
+  delete check.sum;
   let probe = null;
   if (probeAt && probeAt[0] === sheet) {
     const [x, y] = probeAt[1];
     const blk = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => { const p = (2 * y + b) * W + 2 * x + a; return { a, b, d: Array.from(d.slice(p * 4, p * 4 + 4)), f1: Array.from(f1.slice(p * 4, p * 4 + 4)), role: role[p] }; });
-    const L0 = read(disp(run(LOOKS[0])));
-    probe = { pick: [ox, oy], n: strip[y * nw + x], blk, dispDef: Array.from(dd.slice((y * DW + x) * 4, (y * DW + x) * 4 + 4)), dispL0: Array.from(L0.slice((y * DW + x) * 4, (y * DW + x) * 4 + 4)) };
+    probe = { pick: [ox, oy], n: strip[y * nw + x], blk, dispDef: Array.from(dd.slice((y * DW + x) * 4, (y * DW + x) * 4 + 4)) };
   }
+  const roleCount = new Array(R + 1).fill(0);
+  for (let p = 0; p < role.length; p++) if (d[p * 4 + 3]) roleCount[role[p]]++;
   const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
   return {
     sheet, ds, frames, w: PW, h: PH, entries: sorted.length + 1, ends, cells,
-    unexplained, ambiguous, pick: [ox, oy], split, check, probe,
-    counts: ROLE_COUNT(role),
+    unexplained, ambiguous, pick: [ox, oy], split, check, probe, quant,
+    counts: roleCount,
     nums: b64(new Uint8Array(nums.buffer, nums.byteOffset, nums.byteLength)), table: b64(table),
   };
-  function ROLE_COUNT(rr) { const c = new Array(8).fill(0); for (let p = 0; p < rr.length; p++) if (d[p * 4 + 3]) c[rr[p]]++; return c; }
 }
 
 /* the PNG: numbers on top, the table under them, every pixel opaque */
@@ -332,7 +355,21 @@ function sheetPng(r) {
   return { png: encode({ width: r.w, height: H, data: Buffer.from(px.buffer) }), tableRows };
 }
 
+function argOf(name) {
+  const i = process.argv.indexOf(name);
+  return i >= 0 ? process.argv[i + 1] : null;
+}
+function hashFiles(files) {
+  const h = crypto.createHash('sha1');
+  for (const f of files) {
+    const full = path.join(REPO, f);
+    if (fs.existsSync(full)) h.update(fs.readFileSync(full));
+  }
+  return h.digest('hex').slice(0, 16);
+}
+
 async function main() {
+  const set = argOf('--set') || 'body';
   const { createServer } = await import('vite');
   const { chromium } = await import('playwright');
   const server = await createServer({ configFile: path.join(REPO, 'vite.config.js'), logLevel: 'error', server: { port: PORT, strictPort: true, hmr: false, open: false } });
@@ -341,63 +378,93 @@ async function main() {
   const pinned = process.env.BT_CHROMIUM || '/opt/pw-browsers/chromium';
   if (fs.existsSync(pinned)) opts.executablePath = pinned;
   const browser = await chromium.launch(opts);
-  const out = { v: 1, version: 'v2.3.3716', roles: ROLE_NAMES, refs: [0, 149, 112, 75], code: codeHash(), sheets: {} };
-  let bad = 0;
+  let bad = 0, outDir = null, out = null;
   try {
     const page = await browser.newPage();
     page.on('pageerror', (e) => console.error('page error:', e.message));
     await page.route('**/__rolebake', (r) => r.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body></body></html>' }));
     await page.goto(`http://localhost:${PORT}/__rolebake`);
-    if (!CHECK) fs.mkdirSync(OUT, { recursive: true });
-    for (const pose of POSES) {
-      for (const dir of DIRS) {
-        const t0 = Date.now();
-        const r = await page.evaluate(pageBake, { pose, dir, probeAt: PROBE_AT });
-        if (r.probe) console.log(JSON.stringify(r.probe));
-        const { png, tableRows } = sheetPng(r);
-        const name = `${pose}-${dir}`;
-        const ok = !r.unexplained && !r.check.over1;
-        if (!ok) bad++;
-        console.log(`${ok ? 'ok  ' : 'BAD '} ${name.padEnd(15)} ds ${r.ds}  ${String(r.w).padStart(4)}x${r.h}+${tableRows}  ${String(r.entries).padStart(5)} colours`
-          + `  roles ${r.counts.join('/')}  unexplained ${r.unexplained}  ambiguous ${r.ambiguous}  pick ${r.pick}, ${r.split} split`
-          + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}  (${Date.now() - t0} ms)`);
-        out.sheets[name] = { ds: r.ds, frames: r.frames, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
-          cells: r.cells, split: r.split, art: sheetHash(pose, dir), bytes: png.length };
-        const file = path.join(OUT, name + '.png');
-        if (CHECK) {
-          const on = fs.existsSync(file) ? decode(fs.readFileSync(file)) : null;
-          const now = decode(png);
-          if (!on || on.width !== now.width || on.height !== now.height || Buffer.compare(Buffer.from(on.data), Buffer.from(now.data))) {
-            console.log(`  STALE: ${path.relative(REPO, file)} differs from a fresh bake`);
-            bad++;
-          }
-        } else fs.writeFileSync(file, png);
+    const meta = await page.evaluate(pageMeta, { set });
+    const bits = Number(argOf('--bits') || meta.bits || 8) === 16 ? 16 : 8;   /* v2.3.3737: a new set is 8 bits unless it says */
+    const sheets = argOf('--sheets') ? argOf('--sheets').split(',').map((x) => x.trim()).filter(Boolean) : meta.sheets;
+    outDir = argOf('--out') ? path.resolve(argOf('--out')) : path.join(REPO, meta.out || `public/sprites/look/${set}`);   /* --out: a trial bake elsewhere */
+    const codeFiles = [...meta.code, `src/rendering/lookSets/${set}.js`];
+    const jsonFile = path.join(outDir, 'roles.json');
+    /* a bake of some sheets keeps the manifest's others */
+    const prev = fs.existsSync(jsonFile) ? JSON.parse(fs.readFileSync(jsonFile, 'utf8')) : null;
+    out = { v: 2, version: 'v2.3.3737', set, kind: meta.kind, bits, refScale: meta.refScale, fw: meta.fw, fh: meta.fh,
+      roles: ['keep', ...meta.roleDefs.map((ro) => ro.name)], roleDefs: meta.roleDefs.map(({ name, entry, ref, under }) => ({ name, entry, ref: ref || 0, under: under || 0 })),
+      code: hashFiles(codeFiles), codeFiles, sheets: (prev && argOf('--sheets') && prev.bits === bits) ? prev.sheets : {} };
+    if (!CHECK) fs.mkdirSync(outDir, { recursive: true });
+    for (const name of sheets) {
+      const t0 = Date.now();
+      let r = await page.evaluate(pageBake, { set, sheet: name, bits, probeAt: PROBE_AT, bar: CUT_BAR, cutSrc: cutPerRole.toString() });
+      /* v2.3.3750: a sheet the 8-bit cut cannot hold to the bar stays 16-bit
+         (its own `bits` in the manifest; lookPalette.js reads a sheet's
+         over the set's) */
+      let sheetBits = bits;
+      /* ...or whose self-check (three real looks against the old path's own
+         canvases) shows a texel over the bar */
+      if (bits === 8 && r.quant && (r.quant.over || r.check.max > CUT_BAR)) {
+        console.log(`  ${name}: the 8-bit cut's worst colour is ${r.quant.worstMoved} levels, ${r.check.max} in the self-check (the bar ${CUT_BAR}): kept 16-bit`);
+        r = await page.evaluate(pageBake, { set, sheet: name, bits: 16, probeAt: PROBE_AT, bar: CUT_BAR, cutSrc: cutPerRole.toString() });
+        sheetBits = 16;
       }
+      if (r.probe) console.log(JSON.stringify(r.probe));
+      const { png, tableRows } = sheetPng(r);
+      /* an 8-bit sheet is a cut of the art (the owner's "anything at 256"):
+         its self-check says how far, it does not fail it */
+      const ok = !r.unexplained && (sheetBits === 8 || !r.check.over1);
+      if (!ok) bad++;
+      console.log(`${ok ? 'ok  ' : 'BAD '} ${name.padEnd(15)} ds ${r.ds}  ${String(r.w).padStart(4)}x${r.h}+${tableRows}  ${String(r.entries).padStart(5)} colours`
+        + (r.quant ? ` (cut from ${r.quant.from}: a pixel moved ${r.quant.meanMoved} on average, ${r.quant.worstMoved} at most)` : '')
+        + `  roles ${r.counts.join('/')}  unexplained ${r.unexplained}  ambiguous ${r.ambiguous}  pick ${r.pick}, ${r.split} split`
+        + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}, mean ${r.check.mean}${r.check.fickle ? ', ' + r.check.fickle + ' fickle' : ''}  (${Date.now() - t0} ms)`);
+      const artFiles = meta.art[name] || [];
+      out.sheets[name] = { ...(sheetBits !== bits ? { bits: sheetBits } : {}), ds: r.ds, frames: r.frames, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
+        cells: r.cells, split: r.split, quant: r.quant || undefined, artFiles, art: hashFiles(artFiles), bytes: png.length };
+      const file = path.join(outDir, name + '.png');
+      if (CHECK) {
+        const on = fs.existsSync(file) ? decode(fs.readFileSync(file)) : null;
+        const now = decode(png);
+        if (!on || on.width !== now.width || on.height !== now.height || Buffer.compare(Buffer.from(on.data), Buffer.from(now.data))) {
+          console.log(`  STALE: ${path.relative(REPO, file)} differs from a fresh bake`);
+          bad++;
+        }
+      } else fs.writeFileSync(file, png);
     }
+    if (!CHECK) fs.writeFileSync(jsonFile, JSON.stringify(out, null, 1) + '\n');
   } finally {
     await browser.close();
     await server.close();
   }
-  const jsonFile = path.join(OUT, 'roles.json');
-  if (!CHECK) fs.writeFileSync(jsonFile, JSON.stringify(out, null, 1) + '\n');
-  console.log(bad ? `${bad} sheet(s) failed` : (CHECK ? 'the numbers on disk are a fresh bake' : `wrote ${path.relative(REPO, OUT)}/`));
+  console.log(bad ? `${bad} sheet(s) failed` : (CHECK ? 'the numbers on disk are a fresh bake' : `wrote ${path.relative(REPO, outDir)}/`));
   process.exit(bad ? 1 : 0);
 }
 
-/* --hashes: 0 fresh, 1 a sheet changed since the bake, 2 only the code */
+/* --hashes: every set's manifest (public/sprites/look/roles.json, the body,
+   and public/sprites/look/<set>/roles.json): 0 fresh, 1 a sheet's art
+   changed since its bake, 2 only the code that decides the roles */
+const LEGACY_CODE = ['src/rendering/playerSkins.js', 'src/rendering/garmentConfine.js', 'src/rendering/spriteScale.js',
+  'src/rendering/eyeMask.json', 'src/rendering/playerDecal.js'];
 function hashes() {
-  const file = path.join(OUT, 'roles.json');
-  if (!fs.existsSync(file)) { console.log('no ' + path.relative(REPO, file)); return 1; }
-  const m = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const stale = [];
-  for (const pose of POSES) for (const dir of DIRS) {
-    const e = m.sheets[`${pose}-${dir}`];
-    if (!e || e.art !== sheetHash(pose, dir)) stale.push(`${pose}-${dir}`);
+  const files = [path.join(OUT, 'roles.json')];
+  if (fs.existsSync(OUT)) for (const e of fs.readdirSync(OUT, { withFileTypes: true })) if (e.isDirectory() && fs.existsSync(path.join(OUT, e.name, 'roles.json'))) files.push(path.join(OUT, e.name, 'roles.json'));
+  let worst = 0;
+  for (const file of files) {
+    if (!fs.existsSync(file)) { console.log('no ' + path.relative(REPO, file)); worst = 1; continue; }
+    const m = JSON.parse(fs.readFileSync(file, 'utf8'));
+    const label = m.set || 'body';
+    const stale = [];
+    for (const [name, e] of Object.entries(m.sheets)) {
+      const art = e.artFiles || [`public/sprites/player/${name}.png`, `public/sprites/player/${name}.webp`];
+      if (e.art !== hashFiles(art)) stale.push(name);
+    }
+    if (stale.length) { console.log(`${label}: baked from other art: ${stale.join(', ')}`); worst = 1; continue; }
+    if (m.code !== hashFiles(m.codeFiles || LEGACY_CODE)) { console.log(`${label}: the code that decides its roles changed since the bake (${(m.codeFiles || LEGACY_CODE).join(', ')})`); worst = Math.max(worst, 2); continue; }
+    console.log(`${label}: the numbers are a bake of these sheets and this code`);
   }
-  if (stale.length) { console.log('baked from other art: ' + stale.join(', ')); return 1; }
-  if (m.code !== codeHash()) { console.log('the recolour code changed since the bake (playerSkins.js, garmentConfine.js, spriteScale.js, eyeMask.json or playerDecal.js)'); return 2; }
-  console.log('the numbers are a bake of these sheets and this code');
-  return 0;
+  return worst;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
