@@ -51,8 +51,7 @@ export const CUE_PLACES = {
   shieldUp: ['fight', 'Raising your shield'],
   shieldDown: ['fight', 'Lowering your shield'],
   dodged: ['fight', "A monster's blow that misses you: you dodged it"],
-  dodgeRoll: ['fight', "The sword's dash and lunge (a rush of air)"],
-  rollTumble: ['fight', 'Your dodge roll, and a retreat shot\'s roll (yours and other players\')'],   /* v2.3.3680 */
+  dodgeRoll: ['fight', "Your dodge roll, a retreat shot's roll, the sword's dash and lunge (a rush of air; other players' too)"],   /* v2.3.3686 */
   crit: ['fight', 'A critical hit (over the hit\'s own sound)'],
   parry: ['fight', 'Parrying a blow with your shield'],
   bowLoose: ['fight', 'Your bow shot: each arrow as it leaves the bow (another player\'s, quieter)'],
@@ -66,7 +65,7 @@ export const CUE_PLACES = {
   swapStaff: ['fight', 'Switching to your staff'],
 
   jumpUp: ['move', 'Your jump: the push-off'],
-  jumpLand: ['move', 'Landing from a jump'],
+  jumpLand: ['move', "Landing from a jump: your \"goblin fall\" (another player's too, quieter)"],   /* v2.3.3686 */
   jumpFlip: ['move', 'Your double jump: the flip, a second press in the air (another player\'s too, quieter)'],   /* v2.3.3682 */
   sprintOut: ['move', 'Your sprint running out of stamina (one time the grunt, worn out...)'],
   sprintOutBreath: ['move', '...the next time the tired breath'],
@@ -406,7 +405,7 @@ export const SAMPLE_SOURCES = {
   'farm-water': '"Grab & Can Watering" (wyronroberth, Freesound 516257)',
   'farm-hoe': '"hoe work" (16hpanskadvorakova_aneta, Freesound 497987)',
   'farm-mould': '"molding" (manuelaurreaf, Freesound 490099)',
-  'roll-tumble': '"goblin fall" (kneeling, Freesound 502553)',   /* v2.3.3680 */
+  'jump-land': '"goblin fall" (kneeling, Freesound 502553)',   /* v2.3.3680; the jump's landing since v2.3.3686 */
   'jump-flip': '"sfx jump flip" (catthulu, Freesound 563530)',   /* v2.3.3682 */
 };
 

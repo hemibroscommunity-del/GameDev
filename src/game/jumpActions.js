@@ -182,5 +182,5 @@ export function tickJump(S, now, dead) {
 export function landJump(S) {
   if (!S || isWheelSwimming(S)) return;
   try { if (BT_AUDIO.footstep) BT_AUDIO.footstep(isWearingArmor(), footstepSurface(S)); } catch (e) { /* audio is best-effort */ }
-  cue('jumpLand');   /* v2.3.3343: ...with the landing's weight under the step */
+  cue('jumpLand');   /* v2.3.3343: ...with the landing's weight under the step; v2.3.3686: the owner's "goblin fall" */
 }

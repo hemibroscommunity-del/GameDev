@@ -163,8 +163,8 @@ export const OWNER_SOUNDS = {
     "dur": 0.36,
     "low": true
   },
-  "roll-tumble": {
-    "url": "/sfx/player/roll-tumble.mp3",
+  "jump-land": {
+    "url": "/sfx/player/jump-land.mp3",
     "vol": 0.21,
     "level": 0.55,
     "dur": 0.8,

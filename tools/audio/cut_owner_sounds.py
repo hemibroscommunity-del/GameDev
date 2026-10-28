@@ -237,7 +237,10 @@ ONE_SHOTS += [
     # (502553__kneeling__goblin-fall): a body going down and over, -22 dB at
     # 0.12 s, its loudest 0.2-0.5 s, down 30 dB by 0.9 s; 65% of it under 100 Hz,
     # so its own overtones laid over it, as the fire's are (a phone hears those)
-    ('roll-tumble', NEW_SRC + '502553__kneeling__goblin-fall.mp3', 0.10, 0.80, 0.004, 0.25, 'low', 0.55, 'player'),
+    # v2.3.3686: it is the JUMP'S LANDING, not the roll -- the owner: "goblin fall
+    # is just the label of the file I want to use for when the character's jump
+    # lands".  The same window, renamed roll-tumble -> jump-land.
+    ('jump-land', NEW_SRC + '502553__kneeling__goblin-fall.mp3', 0.10, 0.80, 0.004, 0.25, 'low', 0.55, 'player'),
     # v2.3.3682: the double jump's flip -- "I just uploaded the second jump
     # (flip) sound effect" (563530__catthulu__sfx-jump-flip): a whoosh, -26 dB
     # at its loudest 0.15 s in, a quiet airy tail to its end (0.56 s); 2% of it
@@ -248,7 +251,7 @@ PROCESS.update({
     'bag-close': {'hp': 150},
     'fire-light': {'harm': 0.6},
     'farm-water': {'hp': 150},
-    'roll-tumble': {'harm': 0.5},
+    'jump-land': {'harm': 0.5},
 })
 # name, source, [(start, length)], fade in, fade out, rate, level, group, process
 PART_SETS = [

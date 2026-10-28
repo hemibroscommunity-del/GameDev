@@ -1034,9 +1034,12 @@ remnant to migrate server-side, not a mode to preserve.
         talk opens, a quest is taken or a keeper opens his building, never as
         a line pops up over them (npcChatter gone: in town one came every few
         seconds);
-      - since v2.3.3680 the roll is their "goblin fall" (`rollTumble`: your
-        roll, a retreat shot's, another player's; the dash and lunge keep the
-        rush), `sound-cues` §15;
+      - their "goblin fall" is the JUMP'S LANDING since v2.3.3686 (`jumpLand`,
+        `public/sfx/player/jump-land.mp3`: yours, and another player's where
+        they land) -- the owner: "goblin fall is just the label of the file I
+        want to use for when the character's jump lands"; v2.3.3680 had put
+        it on the roll, which is its rush of air again (`dodgeRoll`); the
+        "hup" for the jump is not uploaded yet, `sound-cues` §15;
       - cut and levelled by tools/audio/cut_owner_sounds.py, whose re-run
         gives every older file byte for byte; 0.94 MB decoded, the memory
         check's sound line 30 -> 32 (main's own reading had reached 30.0);

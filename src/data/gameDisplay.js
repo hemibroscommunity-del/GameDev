@@ -3322,9 +3322,9 @@ BT_AUDIO.SFX_MANIFEST = {
   'farm-water': '/sfx/farm/farm-water.mp3',
   'farm-hoe': '/sfx/farm/farm-hoe.mp3',
   'farm-mould': '/sfx/farm/farm-mould.mp3',
-  /* v2.3.3680: the dodge roll, the owner's "kneeling goblin" (goblin fall),
-     0.8 s at 24 kHz, ~77 KB decoded */
-  'roll-tumble': '/sfx/player/roll-tumble.mp3',
+  /* v2.3.3680: the owner's "kneeling goblin" (goblin fall), 0.8 s at 24 kHz,
+     ~77 KB decoded; v2.3.3686: the JUMP'S LANDING (it was the roll) */
+  'jump-land': '/sfx/player/jump-land.mp3',
   'jump-flip': '/sfx/player/jump-flip.mp3',   /* v2.3.3682: the double jump's flip (ownerSoundClips.js) */
 };
 
