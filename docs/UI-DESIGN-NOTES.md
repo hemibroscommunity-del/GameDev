@@ -1388,7 +1388,7 @@ Screens: player-list, player-card, inspect-self, trade-request, duel-request
 - **The receipt** shows both piles, folds away what you sent, then flies what you got into your bag (the owner's idea, v2.3.2297). No trade can be confirmed while either of you is fighting a player (v2.3.3183).
 - **A trade request** arrives as the drawer "<name> wants to trade" with Open trade / Decline. It has no ✕: Decline is the answer, and it tells the other player (v2.3.2280). Its title leads with the owner's handshake (their icon pick 3, v2.3.3481), as the duel challenge card leads with its swords, so both request cards say what they are before you read them; the trade's other drawers have no picture. Sideways the dashboard's ▴ steps aside while it is up, as it lay on the left end of Open trade (UI review, v2.3.3481); in a live trade the ▴ stays, as it opens the bag. An older one-way "gift" card is kept only so an older server still works; today's game never sends that kind of request.
 - **Duel challenge:** a small centred card. "Duels are consensual. No wager, no item loss, no reputation penalty." (the server made those promises true, v2.3.1121); with a stake it reads "Duels are consensual. No reputation penalty. The loser pays the wager. No item loss." (UI review, v2.3.3481: it used to speak of a wager on every challenge, "Loser pays wager (if any)"). Tapping the dark backdrop does NOTHING (v2.3.2289): it is nearly the whole phone, a mis-tap must not throw away a duel and its wager, and the challenger always hears Accept or Decline. A challenge sent from a player's card has no stake, so the card's wager line ("winner takes all") shows only when there is one, which today is never.
-- **Party invite:** a small card at the top centre, above the dashboard so Join can always be tapped (v2.3.1966). It goes away when the invite runs out. Leaving a party takes two taps, since parties now last until you leave (v2.3.3284).
+- **Party invite:** a small card at the top centre, above the dashboard so Join can always be tapped (v2.3.1966). It goes away when the invite runs out. Leaving a party takes two taps, since parties now last until you leave (v2.3.3284). In a party, the roster is a small chip that a tap opens (v2.3.3768: "Your party on the screen", below).
 - **No man's land: attacking is a choice** (owner: "I want attacking other players to be intentional", v2.3.3253). A tap on a player you could fight, or one of your shots or swings passing through them, raises a SMALL window: "Attack <name>?", their level, the red skull with a tiny (i), and Attack / Party / Ignore (the owner's words). Until you choose Attack, your blows never hurt them. It sits at the TOP, under or beside the minimap, with no dark backdrop (it can come up mid-fight). Attack then lasts: they are your foe until a minute passes with no blow either way (v2.3.3268). Hitting back the player who attacked you goes through the same window (owner: "keep the behavior of needing to confirm the "attack" button that pops up in the window first before any damage is registered to either player", v2.3.3528): your swing, shot, bow line or tap at them asks "Hit back <name>?" with the WHITE skull you carry instead of the red one (hitting back gives no red skull), and after Attack your blows land on them with or without a lock. Their attack asks again even if you once pressed Ignore on them, once per bout of fighting. A group that attacks you needs ONE window (owner: "If the 2nd, 3rd, etc people already approved "attack" at you you can immediately hit back at each of them after that", v2.3.3530): once you have pressed Attack on any window, everyone who is attacking you joins that fight with no window of their own, and hitting back any of them gives no red skull. And you are white the moment someone chooses to attack you, before any blow, whether you fight back or not (owner: "Whenever someone attacks you in no man's land you always get a white skull above your head ... Doesn't matter if you attack back or not", v2.3.3530): the window's Attack is the attack, starting both skulls at once, and the badge's explainer says so.
 
 **Tried before, and changed:**
@@ -1416,6 +1416,32 @@ Screens: player-list, player-card, inspect-self, trade-request, duel-request
 - The owner's painted frame for the trade drawer is in the repo but was backed out; it needs a layout change first (v2.3.2290).
 
 Sources: docs/specs/trading.md, docs/specs/duels.md, docs/specs/owner-icons.md, docs/specs/friends.md, docs/specs/party.md, docs/specs/no-mans-land.md, docs/specs/hemi-bro-count.md, docs/specs/alliance.md, docs/specs/wheel-halls.md, docs/LANTERN-SLATE-SPEC.md, docs/TRAPS.md, CLAUDE.md, src/ui/panels/TradeWindowPanel.jsx, src/ui/panels/InspectPlayerPanel.jsx, src/ui/panels/PlayerProfilePanel.jsx, src/ui/panels/playerProfile.js, src/ui/panels/PlayerListPanel.jsx, src/ui/panels/DuelRequestPanel.jsx, src/ui/panels/IncomingTradePanel.jsx, src/ui/panels/PartyHUD.jsx, src/ui/mobile/NmlAskCard.jsx, src/game/nmlAsk.js, src/ui/BroTown.jsx, src/styles/game.css
+
+## Your party on the screen: the chip and its list
+Screens: party-hud, party-hud-open
+
+**What it is for:** Knowing your party is there and well without it taking the screen, and seeing who is in it, or acting on them, when you want to.
+
+**Decisions, and why:**
+- **Folded to a chip by default** (owner: "Also is partying unobtrusive right now? Just wanting to make sure the screen isn't cluttered with party stuff", v2.3.3768). The chip sits where the list was (top left, under the status readout and the quest card, clear of the thumb controls): the party mark, "3/4", and a small pip for each friend coloured as their health bar is (green over half, amber, red under a quarter; red-ringed when down; grey when offline). An alliance's or a former clan's tag shows on it too. It is 32 px tall where the open list of four was about 150 px, 40% of a sideways phone's height.
+- **A tap opens the list, a tap on its head (▴) folds it,** and the phone remembers which you chose. The list is the one it always was: names, levels, health bars, where a friend is when not with you, the leader's crown, ✖ to leave.
+- **It opens by itself when something needs you,** for four seconds, then folds again (unless you had opened it yourself): a friend joins or leaves, goes down, or drops under a quarter of their health. Only on the change, so a friend who stays low opens it once; never for your own health (your own bar says it), and never on the roster you joined with.
+- **The leader's kick is two taps,** as leaving is (v2.3.3284): the first turns ✕ into "Kick?", the second kicks. It is only in the opened list, so a stray tap on the chip never kicks a friend.
+- Unchanged: the invite card (a decision, so it stays a card above the dashboard), your party's blue marks on the minimap and the world map, the party badge on name plates, and the Party chat lane.
+
+**Tried before, and changed:**
+- The list stood open the whole time you were in a party and could not be put away (v2.3.1185 to v2.3.3768).
+- The kick was one tap on a 24 px ✕ beside each friend's name.
+
+**Please don't suggest:**
+- Opening the list by default again, or keeping it open after something needed you.
+- Putting the kick or the leave on the chip.
+- Moving the chip near the thumbs, or into the top bar beside the gold.
+
+**Still open:**
+- Whether a member walking far off (another land) should open the list too: it does not today.
+
+Sources: docs/specs/party.md, CLAUDE.md, src/ui/panels/PartyHUD.jsx, src/game/partyChip.js, src/game/partyRows.js, tools/qa/mp/mp-partychip.mjs, server/test/party-chip.test.mjs
 
 ## Harvesting (woodcutting, mining, fishing)
 Screens: harvest-near, harvest-windup, harvest-ready

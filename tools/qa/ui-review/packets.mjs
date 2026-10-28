@@ -43,7 +43,7 @@ export const PACKETS = [
   { slug: 'townsfolk-and-halls', title: 'Diego, Ace and the halls',
     screens: ['shop-diego', 'ace-flip', 'building-party', 'building-post', 'building-sheriff', 'building-guildhall', 'building-townhall', 'building-hotel', 'building-arena'] },
   { slug: 'maps-chat-players', title: 'The maps, chat and other players',
-    screens: ['world-map', 'chat', 'player-list', 'player-card', 'inspect-self', 'trade-request', 'duel-request'] },
+    screens: ['world-map', 'chat', 'player-list', 'player-card', 'party-hud', 'party-hud-open', 'inspect-self', 'trade-request', 'duel-request'] },
   { slug: 'harvesting-and-fighting', title: 'Harvesting and fighting',
     screens: ['harvest-near', 'harvest-windup', 'harvest-ready', 'spar-fight'] },
 ];

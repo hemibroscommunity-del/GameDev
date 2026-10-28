@@ -5,6 +5,8 @@ import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';   /* v2.3.1966 */
 import { SMALL_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's party pictures */
 import { partyRows, memberOffline, seenAgo } from '../../game/partyRows.js';   /* v2.3.3284: a party that lasts shows six */
 import { allyTagShown } from '@/game/alliance.js';   /* v2.3.3313: an alliance's tag in the strip's head */
+import { LIST_KEY, ATTN_MS, KICK_ARM_MS, PIP_COLOR, pipOf, partyAttention, listOpen } from '../../game/partyChip.js';   /* v2.3.3768: the strip folds to a chip */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3768: "tap" reads "click" on a computer */
 /* v2.3.3279: the window's marks were emoji (🎟️ 👑 💀 📍), drawn differently on
    every phone; the owner drew them (tools/ui/cut-small-icons.py). */
 function partyMark(src, size, title) {
@@ -44,6 +46,14 @@ function partyMark(src, size, title) {
 /* v2.3.3284: how long the first tap on ✖ waits for the second */
 var LEAVE_ARM_MS = 3000;
 
+/* v2.3.3768: did you open the list yourself (kept on the device) */
+function readPinned() {
+  try { return localStorage.getItem(LIST_KEY) === 'open'; } catch (_e) { return false; }
+}
+function writePinned(on) {
+  try { if (on) localStorage.setItem(LIST_KEY, 'open'); else localStorage.removeItem(LIST_KEY); } catch (_e) { /* private mode: this visit only */ }
+}
+
 var _btnBase = {
   border: 'none', borderRadius: 6, fontWeight: 800, cursor: 'pointer',
   fontFamily: 'inherit'
@@ -63,6 +73,54 @@ export function PartyHUD(props) {
     var t = setTimeout(function () { setLeaveArmedAt(0); }, LEAVE_ARM_MS);
     return function () { clearTimeout(t); };
   }, [leaveArmedAt]);
+  /* ═══ v2.3.3768: FOLDED TO A CHIP UNLESS YOU OPEN IT, OR SOMETHING NEEDS YOU ═══
+     The owner: "Also is partying unobtrusive right now? Just wanting to make
+     sure the screen isn't cluttered with party stuff".  The strip stood open
+     the whole time you were in a party -- about 150 px of a four's roster
+     over the world's top left, 40% of a sideways phone's height -- and could
+     not be put away.  Now (game/partyChip.js):
+     - `pinned`: you opened the list (a tap on the chip), kept on the device
+       until you fold it (a tap on its head);
+     - `attnUntil`: it opened BY ITSELF, for ATTN_MS, because a member joined
+       or left, went down, or dropped under a quarter of their health
+       (partyAttention, from the roster before), and folds again after;
+     - `kickArmed`: the leader's kick is two taps, as the ✖ Leave is
+       (v2.3.3284): a stray tap never kicks a friend. */
+  var _pin = React.useState(readPinned);
+  var pinned = _pin[0], setPinned = _pin[1];
+  var _attn = React.useState(0);
+  var attnUntil = _attn[0], setAttnUntil = _attn[1];
+  var _kick = React.useState(null);
+  var kickArmed = _kick[0], setKickArmed = _kick[1];
+  var seenRef = React.useRef(null);
+  var _members = party && !party.invite && Array.isArray(party.members) ? party.members : null;
+  var _myId = S ? S.myId : null;
+  React.useEffect(function () {
+    if (!_members || !_members.length) { seenRef.current = null; return; }
+    var r = partyAttention(seenRef.current, _members, _myId);
+    seenRef.current = r.seen;
+    if (r.why) {
+      setAttnUntil(Date.now() + ATTN_MS);
+      if (typeof window !== 'undefined' && window.__btProbe) window.__btPartyAttn = { why: r.why, ts: Date.now() };
+    }
+  }, [_members, _myId]);
+  React.useEffect(function () {
+    if (!attnUntil) return undefined;
+    var t = setTimeout(function () { setAttnUntil(0); }, Math.max(0, attnUntil - Date.now()) + 30);
+    return function () { clearTimeout(t); };
+  }, [attnUntil]);
+  React.useEffect(function () {
+    if (!kickArmed) return undefined;
+    var t = setTimeout(function () { setKickArmed(null); }, KICK_ARM_MS);
+    return function () { clearTimeout(t); };
+  }, [kickArmed]);
+  /* another tab of this device, or a test (H.openPartyList), says it changed */
+  React.useEffect(function () {
+    var on = function () { setPinned(readPinned()); };
+    window.addEventListener('bt-party-list', on);
+    window.addEventListener('storage', on);
+    return function () { window.removeEventListener('bt-party-list', on); window.removeEventListener('storage', on); };
+  }, []);
   if (!party || !S) return null;
   function send(event, payload) {
     try {
@@ -168,11 +226,56 @@ export function PartyHUD(props) {
   var _allyA = party.ally && (party.ally.on || (party.ally.clan && allyTagShown(party.ally.tag))) ? party.ally : null;
   var _allyHead = _allyA ? (allyTagShown(_allyA.tag) ? '[' + allyTagShown(_allyA.tag) + ']' : 'ALLIANCE') : null;
 
+  var _head = _allyHead ? (_allyA.on ? 'alliance' : 'clan') : 'party';
+  var open = listOpen(pinned, attnUntil, Date.now());
+  var fold = function (e) {
+    if (e) e.stopPropagation();
+    writePinned(false); setPinned(false); setAttnUntil(0); setKickArmed(null); setLeaveArmedAt(0);
+  };
+
+  /* ── v2.3.3768: the chip ── */
+  /* top 92, as the strip was: under the status-effect readout (top 44) and
+     the quest tracker (top 56), clear of the bottom's thumb controls -- and
+     now 32 px tall rather than a roster's 150 */
+  if (!open) {
+    return /*#__PURE__*/React.createElement("button", {
+      type: 'button',
+      'data-party-chip': 'folded',
+      'aria-expanded': 'false',
+      'aria-label': deskWords('Party, ' + party.members.length + ' of ' + maxN + ': tap to see who'),
+      title: deskWords('Tap to see your party'),
+      onClick: function (e) { e.stopPropagation(); writePinned(true); setPinned(true); },
+      style: Object.assign({}, _btnBase, {
+        position: 'absolute', top: 92, left: 8, zIndex: 16, height: 32, padding: '0 9px 0 7px',
+        display: 'flex', alignItems: 'center', gap: 5, touchAction: 'manipulation',
+        background: 'linear-gradient(180deg, rgba(35,48,57,.94), rgba(17,25,29,.94))',
+        border: '1px solid rgba(238,242,235,.24)', borderRadius: 16,
+        boxShadow: '0 8px 18px rgba(4,7,9,.32)',
+        fontSize: 12, fontWeight: 700, color: '#D8A85F', fontVariantNumeric: 'tabular-nums'
+      })
+    }, partyMark(SMALL_ICON.partyMember, 16, 'party'),
+    /* the tag of an alliance or a former clan; nothing for a plain party
+       (the mark says party) -- data-party-head as the list's head says it */
+    React.createElement("span", { 'data-party-head': _head, style: _allyHead ? null : { display: 'none' } }, _allyHead || 'PARTY'),
+    React.createElement("span", null, party.members.length, "/", maxN),
+    React.createElement("span", { style: { display: 'flex', gap: 3, marginLeft: 1 } }, view.rows.map(function (m) {
+      var k = m.id === myId ? null : pipOf(m);
+      if (!k) return null;
+      return React.createElement("span", {
+        key: m.id, 'data-party-pip': k,
+        style: { width: 7, height: 7, borderRadius: 999, background: PIP_COLOR[k],
+          boxShadow: k === 'down' ? '0 0 0 1.5px #20170D, 0 0 0 2.5px #D95C54' : 'inset 0 1px 1px rgba(255,255,255,.25)' }
+      });
+    })));
+  }
+
   /* ── roster strip ── */
   /* top 92: the left column already stacks the status-effect readout
      (top 44) and the quest tracker (top 56, ~34px tall) — this slots
      under both and stays clear of the bottom-anchored touch controls. */
   return /*#__PURE__*/React.createElement("div", {
+    'data-party-chip': 'open',
+    'data-party-open': pinned ? 'you' : 'attention',
     style: {
       position: 'absolute', top: 92, left: 8, zIndex: 16, width: 164,
       /* v2.3.1232: world card; blur removed */
@@ -186,12 +289,23 @@ export function PartyHUD(props) {
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       marginBottom: 3
     }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: { fontSize: 11, fontWeight: 600, letterSpacing: '.12em', color: '#D8A85F', fontVariantNumeric: 'tabular-nums' }
-  }, partyMark(SMALL_ICON.partyMember, 16, 'party'), /*#__PURE__*/React.createElement("span", { 'data-party-head': _allyHead ? (_allyA.on ? 'alliance' : 'clan') : 'party' }, _allyHead || "PARTY", " "), party.members.length, "/", maxN), /*#__PURE__*/React.createElement("button", {
+  }, /* v2.3.3768: the head folds the list back to its chip */ /*#__PURE__*/React.createElement("button", {
+    type: 'button',
+    'data-party-fold': '',
+    'aria-expanded': 'true',
+    'aria-label': 'Fold the party list',
+    onClick: fold,
+    style: Object.assign({}, _btnBase, {
+      /* 32 px to tap, drawn in the 24 px row (the margins give it back) */
+      background: 'none', padding: '0 8px 0 0', minHeight: 32, margin: '-4px 0', display: 'flex', alignItems: 'center', touchAction: 'manipulation',
+      fontSize: 11, fontWeight: 600, letterSpacing: '.12em', color: '#D8A85F', fontVariantNumeric: 'tabular-nums'
+    })
+  }, partyMark(SMALL_ICON.partyMember, 16, 'party'), /*#__PURE__*/React.createElement("span", { 'data-party-head': _head, style: { marginRight: 5 } }, _allyHead || "PARTY", " "), party.members.length, "/", maxN,
+    React.createElement("span", { 'aria-hidden': 'true', style: { marginLeft: 5, fontSize: 10, letterSpacing: 0, color: '#96A2A0' } }, "\u25B4")), /*#__PURE__*/React.createElement("button", {
     title: "Leave party",
     'data-party-leave': leaveArmedAt ? 'armed' : '',
     style: Object.assign({}, _btnBase, {
+      touchAction: 'manipulation',
       width: leaveArmedAt ? 'auto' : 24, height: 24, fontSize: 11, lineHeight: '24px', padding: leaveArmedAt ? '0 8px' : 0,
       borderRadius: 8,
       background: leaveArmedAt ? '#D95C54' : 'rgba(217,92,84,.12)', color: leaveArmedAt ? '#20170D' : '#D95C54'
@@ -210,6 +324,7 @@ export function PartyHUD(props) {
     return /*#__PURE__*/React.createElement("div", {
       key: m.id,
       'data-party-row': offline ? 'off' : 'on',
+      'data-party-id': m.id,   /* v2.3.3768: which member (mp-partychip kicks one) */
       style: { padding: '2px 0', opacity: offline ? 0.45 : 1 }
     }, /*#__PURE__*/React.createElement("div", {
       style: { display: 'flex', alignItems: 'center', gap: 3 }
@@ -221,16 +336,25 @@ export function PartyHUD(props) {
     }, m.id === party.leader ? partyMark(SMALL_ICON.partyLeader, 15, 'leader') : null,
       m.dead ? partyMark(SMALL_ICON.partyDown, 15, 'down') : null, m.name), /*#__PURE__*/React.createElement("span", {
       style: { fontSize: 11, color: '#96A2A0', fontVariantNumeric: 'tabular-nums' }
-    }, "Lv", m.level), iAmLeader && m.id !== myId && /*#__PURE__*/React.createElement("button", {
-      title: "Kick",
-      style: Object.assign({}, _btnBase, {
-        width: 24, height: 24, fontSize: 11, lineHeight: '24px', padding: 0, // v2.3.1239: 10px font floor (was 9)
-        borderRadius: 8,
-        background: '#2B3940', color: '#96A2A0',
-        border: '1px solid rgba(238,242,235,.14)'
-      }),
-      onClick: function onClick() { send('party_kick', { target: m.id }); }
-    }, "✕")), /* v2.3.3284: an offline member has no health to show */ !m.off && /*#__PURE__*/React.createElement("div", {
+    }, "Lv", m.level), iAmLeader && m.id !== myId && (function () {
+      /* v2.3.3768: two taps, as the ✖ Leave: the first says "Kick?" */
+      var armed = !!kickArmed && kickArmed === m.id;
+      return /*#__PURE__*/React.createElement("button", {
+        title: "Kick",
+        'data-party-kick': armed ? 'armed' : '',
+        style: Object.assign({}, _btnBase, {
+          touchAction: 'manipulation',
+          width: armed ? 'auto' : 24, height: 24, fontSize: 11, lineHeight: '24px', padding: armed ? '0 7px' : 0, // v2.3.1239: 10px font floor (was 9)
+          borderRadius: 8,
+          background: armed ? '#D95C54' : '#2B3940', color: armed ? '#20170D' : '#96A2A0',
+          border: '1px solid rgba(238,242,235,.14)'
+        }),
+        onClick: function onClick() {
+          if (armed) { setKickArmed(null); send('party_kick', { target: m.id }); return; }
+          setKickArmed(m.id);
+        }
+      }, armed ? "Kick?" : "✕");
+    })()), /* v2.3.3284: an offline member has no health to show */ !m.off && /*#__PURE__*/React.createElement("div", {
       style: {
         /* v2.3.1232: spec bar track */
         height: 4, borderRadius: 999, background: '#0B1216',
