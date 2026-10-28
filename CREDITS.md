@@ -130,6 +130,7 @@ which the supporter pass is, so a row that turns out to be NC must come out.**
 | The jump's landing (v2.3.3686; the dodge roll in v2.3.3680) | `public/sfx/player/jump-land.mp3` | "goblin fall" by **kneeling**, Freesound 502553 | **CONFIRM** |
 | The double jump's flip (v2.3.3682) | `public/sfx/player/jump-flip.mp3` | "sfx jump flip" by **catthulu**, Freesound 563530 | **CONFIRM** |
 | The jump (v2.3.3708) | `public/sfx/player/jump-hup.mp3` | "hup" by **mrdeadh**, Freesound 613568 | **CONFIRM** |
+| Not in the game yet: the charioteer's horse (v2.3.3743, kept as a source for the arena's charioteer) | none yet; source `assets/sfx-source/2026-10-28/418428__soundslikewillem__neighing-horse.wav` | "Neighing horse" by **soundslikewillem**, Freesound 418428 | **CONFIRM** -- the owner is asked which licence its page shows (CC0 or CC BY; NonCommercial cannot be used) |
 
 > **Note on the Pixabay license.** It permits commercial use and modification
 > without attribution, but it does *not* permit redistributing the audio "as a
