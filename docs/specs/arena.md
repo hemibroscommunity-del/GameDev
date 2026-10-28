@@ -238,7 +238,7 @@ things wrong, each fixed with a test:
   was empty) and `recentMatches` say `how` each ended. `arena.test` §16.
 
 The arena's OWN AREA (a zone with a ring and stands, not the town square) is
-planned in [arena-area.md](arena-area.md), waiting on the owner.
+planned in [arena-area.md](arena-area.md) (v2.3.3741, with the owner's answers).
 
 ## Tests
 
