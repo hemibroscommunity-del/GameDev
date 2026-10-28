@@ -17,7 +17,14 @@
              `walk` the open span between them [x0, x1].
      stands  `long` and `short`, at one scale; `line` the foot line
              [x0, x1, y].
-     props   `horn`, `rack`, `brazier`, `pennant`, at one scale. */
+     props   `horn`, `rack`, `brazier`, `pennant`, at one scale.
+   v2.3.3743:
+     chariot the charioteer's chariot in two layers, `back` (the horse, the
+             pole, the car's floor, far side and far wheel) and `front` (the
+             front rail, the near side and the near wheel, drawn over the
+             charioteer's legs), each placed at `at` in the whole; `stand`
+             where a standing charioteer's feet go, `rail` the near side
+             rail's top line, left to right. */
 export const ARENA_ART_V = "2.3.3730";
 export const ARENA_ART = {
   ring: {
@@ -53,5 +60,13 @@ export const ARENA_ART = {
     rack: { url: '/world/arena/prop-rack.png?v=2.3.3730', px: [117, 144], w: 58.5, h: 72, foot: [45.5, 72] },
     brazier: { url: '/world/arena/prop-brazier.png?v=2.3.3730', px: [74, 99], w: 37, h: 49.5, foot: [18, 49.5] },
     pennant: { url: '/world/arena/prop-pennant.png?v=2.3.3730', px: [72, 239], w: 36, h: 119.5, foot: [12.5, 119.5] },
+  },
+  chariot: {
+    /* v2.3.3743: the whole chariot, 320 x 146, `foot` its middle on the ground */
+    w: 320, h: 146, foot: [170, 146],
+    back: { url: '/world/arena/chariot-back.png?v=2.3.3743', px: [622, 292], w: 311, h: 146, foot: [83.5, 146], at: [0, 0] },
+    front: { url: '/world/arena/chariot-front.png?v=2.3.3743', px: [240, 254], w: 120, h: 127, foot: [86, 127], at: [200, 17] },
+    stand: [267.5, 95.5],
+    rail: [[243.5, 75.5], [253, 76.5], [264, 79.5], [286.5, 81], [310.5, 81.5]],
   },
 };

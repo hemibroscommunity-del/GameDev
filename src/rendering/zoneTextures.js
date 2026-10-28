@@ -47,6 +47,7 @@
 import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
 import { packTrimmed } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped */
 import { holdOnceDrawn, forgetHeld } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
+import { stripAsNumbers, releaseBundleNumbers } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip */
 
 /* bundle name -> the set of URLs loaded under it.  A Set, so a re-entered zone
    re-registering the same sheet costs one entry rather than a growing list. */
@@ -101,15 +102,20 @@ export function loadTrackedStrip(bundle, url, fw, fh) {
     const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
     const n = Math.max(1, Math.floor(W / fw));
     const packed = packTrimmed(img, fw, fh, n);
-    const src = Texture.from(packed ? packed.canvas : img).source;
+    /* v2.3.3715: ?picnumbers -- the packed strip read into its colour numbers
+       now and uploaded as them, its canvas let go of (picsNumbers.js); a strip
+       that cannot be is the canvas, as before */
+    const packedBytes = packed ? packed.canvas.width * packed.canvas.height * 4 : W * H * 4;
+    const numSrc = packed ? stripAsNumbers(bundle, packed.canvas, url) : null;
+    const src = numSrc || Texture.from(packed ? packed.canvas : img).source;
     /* v2.3.3699: once drawn, the packed canvas is read into its colour numbers
        and emptied -- the picture stays on the graphics chip (heldNumbers.js) */
-    if (packed) holdOnceDrawn(src);
+    if (packed && !numSrc) holdOnceDrawn(src);
     let set = _crops.get(bundle);
     if (!set) { set = new Set(); _crops.set(bundle, set); }
     set.add(src);
     _stripStats.push({ bundle, url, fullBytes: W * H * 4,
-      packedBytes: packed ? packed.canvas.width * packed.canvas.height * 4 : W * H * 4 });
+      packedBytes, numbers: !!numSrc });
     const frames = [];
     for (let i = 0; i < n; i++) {
       let t;
@@ -143,7 +149,7 @@ function _releaseCrops(bundle) {
   let n = 0;
   for (const src of set) {
     const res = src.resource;
-    forgetHeld(src);   /* v2.3.3699 */
+    if (!src._btPicNum) forgetHeld(src);   /* v2.3.3699 (v2.3.3715: a strip of colour numbers was never held) */
     try { if (!src.destroyed) src.destroy(); n++; } catch (e) { /* gone */ }
     /* Texture.from parked a Texture under the canvas (or image) in Cache; it
        only leaves when THAT texture is destroyed, which nothing holds. */
@@ -160,6 +166,7 @@ function _releaseCrops(bundle) {
 export async function unloadBundle(bundle) {
   _gen.set(bundle, (_gen.get(bundle) || 0) + 1);   /* v2.3.2870: strips in flight are dropped on arrival */
   let n = _releaseCrops(bundle);                    /* v2.3.2870: the cropped strips */
+  releaseBundleNumbers(bundle);                     /* v2.3.3715: their rows of colours (?picnumbers) */
   const set = _bundles.get(bundle);
   if (!set || set.size === 0) return n;
   _bundles.delete(bundle);

@@ -15,6 +15,7 @@ import { installQuietClear } from './quietClear.js'; /* v2.3.3449: wiping an emp
 import { setDrawListRoot } from './drawLists.js'; /* v2.3.3449: a live switch's flip rebuilds every draw list */
 import { installLayerUniforms } from './layerUniforms.js'; /* v2.3.3449: a layer draws with the world's own camera numbers */
 import { SHADE } from './formShade.js';
+import { installPicsOnceUpload, startPicsOnce, restoreAllPictures, picsOnceOn } from './picsOnce.js'; /* v2.3.3715: a picture from a file held once (?onecopy) */
 import { Application, Cache, Container, GlTextureSystem, TextureSource } from 'pixi.js';
 
 /* ═══ v2.3.3069: A DESTROYED TEXTURE LETS GO OF ITS PIXELS ═══
@@ -384,7 +385,7 @@ function buildScene(app) {
         const map = Cache && (Cache._cache || Cache.cache);
         if (!map || typeof map.forEach !== 'function') return null;
         const seen = new Set();
-        let bytes = 0, sources = 0;
+        let bytes = 0, sources = 0, released = 0;
         const take = (src) => {
           if (!src || typeof src.uid === 'undefined' || seen.has(src.uid)) return;
           /* A DESTROYED source is not resident, whatever the cache still says.
@@ -396,8 +397,17 @@ function buildScene(app) {
           if (src.destroyed) return;
           seen.add(src.uid);
           sources++;
-          const w = src.pixelWidth || src.width || 0;
-          const h = src.pixelHeight || src.height || 0;
+          /* v2.3.3715: a picture whose page copy was let go of (?onecopy,
+             picsOnce.js) holds nothing here: its only copy is on the chip */
+          if (src.resource && src.resource.__btReleased) { released++; return; }
+          let w = src.pixelWidth || src.width || 0;
+          let h = src.pixelHeight || src.height || 0;
+          /* v2.3.3715: a canvas counts what it holds -- one emptied once its
+             copy is on the chip (gpuOnly.js keepOnGpuOnly, heldNumbers.js)
+             holds nothing, and was counted at its full size (22.8 MB of the
+             line at mp-picsonce's fight; docs/specs/pictures-once.md) */
+          const res = src.resource;
+          if (res && typeof res.getContext === 'function') { w = res.width | 0; h = res.height | 0; }
           bytes += w * h * 4;
         };
         map.forEach((v) => {
@@ -411,18 +421,20 @@ function buildScene(app) {
         /* `list` is opt-in because the answer is hundreds of URLs: __btTex()
            for the totals, __btTex(true) when a residue has to be NAMED.
            Sorted by size so the first rows are the ones worth reading. */
-        const out = { sources, mb: +(bytes / 1048576).toFixed(1), keys: map.size || null };
+        const out = { sources, mb: +(bytes / 1048576).toFixed(1), keys: map.size || null, released };
         if (want) {
           const rows = [];
           const rseen = new Set();
           map.forEach((v, k) => {
             const src = v && (v.source || (v.uid && v.resource !== undefined ? v : null));
-            if (!src || src.destroyed || rseen.has(src.uid)) return;
+            if (!src || src.destroyed || rseen.has(src.uid) || (src.resource && src.resource.__btReleased)) return;
             /* Deduped by uid like the total above -- without this a sheet
                sliced into forty frame Textures prints forty rows of its full
                size and the list reads as a catastrophe that is not there. */
             rseen.add(src.uid);
-            const w = src.pixelWidth || src.width || 0, h = src.pixelHeight || src.height || 0;
+            let w = src.pixelWidth || src.width || 0, h = src.pixelHeight || src.height || 0;
+            const res = src.resource;
+            if (res && typeof res.getContext === 'function') { w = res.width | 0; h = res.height | 0; }   /* v2.3.3715: as the total */
             rows.push({ k: String(k), mb: +((w * h * 4) / 1048576).toFixed(2) });
           });
           rows.sort((a, b) => b.mb - a.mb);
@@ -457,6 +469,21 @@ function buildScene(app) {
       } catch (e) { /* none */ }
       return out;
     };
+    /* v2.3.3715: the asset cache's sources alone, once each (mp-picsonce's
+       census, docs/specs/pictures-once.md) */
+    window.__btCacheSources = function () {
+      const out = [];
+      const seen = new Set();
+      try {
+        const map = Cache && (Cache._cache || Cache.cache);
+        if (map && typeof map.forEach === 'function') map.forEach((v) => {
+          const srcs = v && v.textures && !v.source ? Object.values(v.textures).map((t) => t && t.source)
+            : [v && (v.source || (v.uid && v.resource !== undefined ? v : null))];
+          for (const src of srcs) if (src && !seen.has(src)) { seen.add(src); out.push(src); }
+        });
+      } catch (e) { /* none */ }
+      return out;
+    };
     window.__btGpuTex = function (top) {
       try {
         const r = app.renderer;
@@ -467,6 +494,8 @@ function buildScene(app) {
           /* v2.3.3076: a buffer that let go of its colours once uploaded (the
              Wheel's ground, wheelGround.js _toGpu) is still a buffer */
           if (!res) return s.uploadMethodId === 'buffer' ? 'buffer' : 'render';
+          /* v2.3.3715: a picture from a file whose page copy went (picsOnce.js) */
+          if (res.__btReleased) return 'file';
           if (typeof ImageBitmap !== 'undefined' && res instanceof ImageBitmap) return 'file';
           if (typeof HTMLImageElement !== 'undefined' && res instanceof HTMLImageElement) return 'file';
           if (typeof HTMLCanvasElement !== 'undefined' && res instanceof HTMLCanvasElement) return 'canvas';
@@ -510,7 +539,7 @@ function buildScene(app) {
           const seen = new Set();
           if (map && typeof map.forEach === 'function') map.forEach((v) => {
             const src = v && (v.source || (v.uid && v.resource !== undefined ? v : null));
-            if (!src || src.destroyed || seen.has(src.uid) || onGpu.has(src)) return;
+            if (!src || src.destroyed || seen.has(src.uid) || onGpu.has(src) || (src.resource && src.resource.__btReleased)) return;
             seen.add(src.uid);
             const b = (src.pixelWidth || 0) * (src.pixelHeight || 0) * 4;
             idleBytes += b;
@@ -684,6 +713,11 @@ export async function createPixiApp(canvas) {
   try { installQuietClear(); } catch (e) { /* Pixi's clear as it ships */ }
   try { installLayerUniforms(); } catch (e) { /* every render group pushed as Pixi does */ }
   try { installHeldRefill(GlTextureSystem); } catch (e) { /* every monster strip keeps its canvas (heldNumbers.js) */ }
+  try { installPicsOnceUpload(GlTextureSystem); } catch (e) { /* every picture keeps its page copy (picsOnce.js) */ }
+  /* v2.3.3715: a rebuilt renderer draws every picture from a file whose page
+     copy was let go of (?onecopy): each is loaded again from its file first
+     (picsOnce.js; the browser's cache has them), behind the rebuild's veil */
+  if (picsOnceOn()) { try { await restoreAllPictures(); } catch (e) { /* sent empty, loaded behind */ } }
   try {
     const app = new Application();
     const putBack = withoutDepthBuffer(canvas);   /* v2.3.3072 */
@@ -695,6 +729,9 @@ export async function createPixiApp(canvas) {
     /* v2.3.763: record WebGL context loss -- prime suspect for the reported
        mid-fight black canvas on iPhone. */
     watchContextLoss(canvas);
+    /* v2.3.3715: ?onecopy -- what this renderer has on its chip lets go of its
+       page copy (picsOnce.js) */
+    try { startPicsOnce(app.renderer, canvas); } catch (e) { /* every copy kept */ }
     /* v2.3.2770: crisp character pixels without spending texture memory */
     try { installSharpPixels(app, SHADE.figure); } catch (e) { /* the default look */ }
     /* v2.3.3577: the silhouette batcher, its program built here (fillBatch.js) */

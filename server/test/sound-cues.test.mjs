@@ -946,10 +946,19 @@ for (const p of files) {
   check('18e the cache lets go of the least recently played first, and never of the one just decoded', out.join() === 'b' && L.bytes === 80 && L.has('a') && L.has('c') && big.length === 0, { out, bytes: L.bytes });
   /* the switch: off by default, `?sfxcache` on; play() decodes a cold sound and plays it when ready */
   const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
-  check('18f off by default (the game as it was); `?sfxcache` turns it on; with it on the manifest decodes only the pinned, a cold play() is decoded and played when ready',
-    /BT_AUDIO\.SFX_CACHE = false;/.test(G) && /\[\?&\]sfxcache\(\?:=/.test(G)
+  /* v2.3.3735: on by default (the owner: "including the new memory change work by default"); `?sfxcache=0` the off-ramp */
+  const P = SC.parseSfxCache;
+  check('18f ON by default (v2.3.3735); `?sfxcache=0` (or off) turns it off for one phone, `?sfxcache=8` another budget; with it on the manifest decodes only the pinned, a cold play() is decoded and played when ready',
+    P('').on === true && P('?sfxcache').on === true && P('?sfxcache=0').on === false && P('?a=1&sfxcache=0&b=2').on === false && P('?sfxcache=off').on === false
+      && P('?sfxcache=8').on === true && P('?sfxcache=8').mb === 8 && P('').mb === SC.BUDGET_MB
+      && /BT_AUDIO\.SFX_CACHE = true;/.test(G) && /parseSfxCache\(typeof location/.test(G)
       && /if \(this\.SFX_CACHE && !this\._sfxPinned\[k\] && !pinUrl\[m\[k\]\]\) this\._sfxHold\(m\[k\]\);/.test(G)
       && /if \(url && this\.SFX_CACHE\) \{ try \{ return this\._playCold\(key, url, opts\); \}/.test(G));
+  /* the owner: "I definitely don't want combat to feel slow" -- the jump's, the roll's and the swings' sounds pinned by name too */
+  const moves = ['jumpUp', 'jumpFlip', 'jumpLand', 'dodgeRoll', 'shieldBlock', 'shieldUp', 'shieldDown'].flatMap((n) => (EVENT_SOUNDS[n] || []).map((L) => L[0]));
+  const named = moves.concat(['sword-swing-1', 'sword-swing-2', 'sword-swing-3', 'sword-hit2', 'sword-hit3', 'monster-hit', 'footstep-v2', 'footstep-v3', 'shield-block']);
+  check(`18g the jump (its hup, flip and landing), the roll, the shield, the swings, the hits and the steps are pinned (${new Set(named).size} recordings)`,
+    moves.length >= 7 && named.every((k) => PIN.has(k)), named.filter((k) => !PIN.has(k)));
 }
 
 /* ── 19. v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) ──
@@ -976,14 +985,14 @@ for (const p of files) {
   check('19c a flurry of swings (one each 250 ms) is untouched, and a held recording starts again once its window has passed', flurry.every(Boolean) && later.join() === 'true,true,true,false,true', { flurry, later });
   const F = VC.makeVoiceCap(1, 50);
   check('19d the menu\'s sounds never pass it (uiTick has its own rule)', F.allow('ui-click', 0) && F.allow('ui-click', 0) && F.allow('ui-equip', 0) && F.allow('ui-equip', 0));
-  check('19e `?voicecap` on at N, W; `?voicecap=4:60` other values; nothing else turns it on',
-    VC.parseVoiceCap('?voicecap').n === VC.VOICE_N && VC.parseVoiceCap('?a=1&voicecap=4:60').w === 60 && VC.parseVoiceCap('?voicecap=4').n === 4
-      && VC.parseVoiceCap('') === null && VC.parseVoiceCap('?voicecapx') === null && VC.parseVoiceCap('?novoicecap') === null);
+  check('19e ON by default at N, W (v2.3.3735); `?voicecap=0` (or off) turns it off for one phone; `?voicecap=4:60` other values',
+    VC.parseVoiceCap('').n === VC.VOICE_N && VC.parseVoiceCap('?voicecap').n === VC.VOICE_N && VC.parseVoiceCap('?a=1&voicecap=4:60').w === 60 && VC.parseVoiceCap('?voicecap=4').n === 4
+      && VC.parseVoiceCap('?voicecap=0') === null && VC.parseVoiceCap('?x&voicecap=off') === null && VC.parseVoiceCap('?novoicecap=0').n === VC.VOICE_N);
   const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
   const loopFn = G.slice(G.indexOf('BT_AUDIO.startSfxLoop = function'), G.indexOf('BT_AUDIO.stopSfxLoop = function'));
   const playFn = G.slice(G.indexOf('BT_AUDIO.play = function'), G.indexOf('BT_AUDIO._startOn = function'));
-  check('19f every one-shot play() start asks the gate before it starts (cold or warm), off by default; the loops do not',
-    /BT_AUDIO\.VOICE_CAP = null;/.test(G) && /BT_AUDIO\.VOICE_CAP = parseVoiceCap\(location\.search/.test(G)
+  check('19f every one-shot play() start asks the gate before it starts (cold or warm), on by default; the loops do not',
+    /BT_AUDIO\.VOICE_CAP = parseVoiceCap\(''\);/.test(G) && /BT_AUDIO\.VOICE_CAP = parseVoiceCap\(location\.search/.test(G)
       && /var buf = this\._samples\[key\];\s*if \(!this\._voiceGate\(key, buf, opts\)\) return null;/.test(playFn)
       && loopFn.length > 100 && !/_voiceGate/.test(loopFn));
 }
