@@ -174,7 +174,7 @@ export const MONSTER_HITS = Object.freeze({
   /* v2.3.3748: a burning heap you stand in (heapburn.js _handleHeapBurn).
      Asked for by your own phone, on BroTown's safe ground on purpose (the
      owner wants it there), so no shelter; nothing to block, roll or hide
-     behind; flame; never the last point (the caller holds it under) */
+     behind; flame; no rail: "let the fire finish you off" (the owner) */
   heap: row({ shield: 'tick', shelter: 'tick', elemental: true }),
   /* a storm monster's arc to a player near the one it struck
      (monsterstatus.js _shockArcs) */

@@ -9,8 +9,9 @@
  *      a monster_attack on you tagged `heapburn`, flame, at your own place;
  *      nobody else is touched.
  *   2. THE RATE: asked again within EVERY_MS, nothing; after it, a tick.
- *   3. NEVER THE LAST POINT: at low HP the tick is held under what you have
- *      less 1, and at 1 HP (or 2) nothing; no death.
+ *   3. IT CAN FINISH YOU OFF (the owner: "Yeah let the fire finish you
+ *      off"): standing in it from low HP, the death, `monster:heap`, through
+ *      the death path; no burning a corpse.
  *   4. REFUSED: dead, off BroTown's ground (out on a spoke), outside the
  *      world.
  *   5. THE SWITCH: `heapburn: false` burns nobody and caps.heapburn says so
@@ -86,20 +87,21 @@ check('0: the `heap` row: no shelter at the door (the owner wants it in town), f
   check('2: thirty asks over three seconds: three ticks', n === 3, n);
 }
 
-/* ── 3. never the last point ── */
+/* ── 3. it can finish you off ── */
 {
+  const deaths = [];
+  const real = room._handlePlayerDeath.bind(room);
+  room._handlePlayerDeath = (ps, pid, cause) => { deaths.push({ pid, cause }); return real(ps, pid, cause); };
   stage();
-  P('p1').hp = 10;
-  let t0 = Date.now();
-  const got = [];
-  for (let i = 0; i < 30; i++) got.push(room._handleHeapBurn(sess('p1'), t0 + i * HEAP_BURN.EVERY_MS));
-  check('3: standing in it from 10 HP: it burns you down but never past 1', P('p1').hp >= 1 && P('p1').hp < 10 && !P('p1').dead && !P('p1').dying, { hp: P('p1').hp, got });
-  stage();
-  P('p1').hp = 2;
-  check('3: at 2 HP nothing', room._handleHeapBurn(sess('p1'), Date.now()) === 0 && P('p1').hp === 2);
-  stage();
-  P('p1').hp = 1;
-  check('3: at 1 HP nothing', room._handleHeapBurn(sess('p1'), Date.now()) === 0 && P('p1').hp === 1);
+  P('p1').hp = 70;
+  const t0 = Date.now();
+  for (let i = 0; i < 6; i++) room._handleHeapBurn(sess('p1'), t0 + i * HEAP_BURN.EVERY_MS);
+  check('3: standing in it from 70 HP: it burns you to death', P('p1').hp <= 0 && P('p1').dying && deaths.length === 1 && deaths[0].pid === 'p1', { hp: P('p1').hp, deaths });
+  check('3: ...put down to the heap (`monster:heap`: the phone reads BURNED TO DEATH)', deaths[0] && deaths[0].cause === 'monster:heap', deaths);
+  const sent = socks.p1.sent.filter((m) => m.type === 'player_died').pop();
+  check('3: ...and the phone is told, as any death', !!sent && sent.payload.cause === 'monster:heap', sent);
+  check('3: no burning a corpse', room._handleHeapBurn(sess('p1'), t0 + 10 * HEAP_BURN.EVERY_MS) === 0 && deaths.length === 1);
+  room._handlePlayerDeath = real;
 }
 
 /* ── 4. refused ── */

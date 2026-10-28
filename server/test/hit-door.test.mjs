@@ -577,8 +577,8 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
 // ── 11. v2.3.3748: a burning heap you stand in (heapburn.js) ──
 /* Asked for by your own phone; through the door's `heap` row.  Unlike every
    monster's blow it lands on the safe ground (the owner wants it in BroTown),
-   no shield, roll or rock stops it, it leaves a harvester alone, and it never
-   takes the last point.  The heap-burn suite has the rest (the rate, the
+   no shield, roll or rock stops it, it leaves a harvester alone, and it can
+   finish you off ("Yeah let the fire finish you off", the owner).  The heap-burn suite has the rest (the rate, the
    switch). */
 {
   const at = place('safe');
@@ -594,9 +594,9 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
   check('11. heap: leaves a harvester alone', room._handleHeapBurn(sess, Date.now()) === 0 && P.hp === MAX_HP);
   freshPlayer(P, at.zone, at.px, at.py);
   deaths.length = 0;
-  P.hp = 3; P._heapBurnAt = 0;
-  for (let i = 0; i < 10; i++) room._handleHeapBurn(sess, Date.now() + i * 2000);
-  check('11. heap: never the last point -- no death', P.hp >= 1 && deaths.length === 0 && !P.dying, { hp: P.hp, deaths });
+  P.hp = 1; P._heapBurnAt = 0;
+  room._handleHeapBurn(sess, Date.now());
+  check('11. heap: a tick at 1 HP is the death path, put down to the heap', P.dying && deaths.length === 1 && deaths[0].cause === 'monster:heap', { hp: P.hp, deaths });
   freshPlayer(P, at.zone, at.px, at.py);
 }
 

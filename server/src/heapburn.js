@@ -16,8 +16,16 @@
  *   - at most one tick every HEAP_BURN.EVERY_MS, however often it is asked;
  *   - HEAP_BURN.PCT of your max HP a tick (at least 1), flame damage (Elem
  *     Resist reads it), through the one door (hits.js, the `heap` row);
- *   - NEVER the last point: a tick takes at most your HP less 1, and none at
- *     1, so BroTown keeps no deaths and nothing is lost to a heap.
+ *   - and it CAN finish you off.  The owner: "Yeah let the fire finish you
+ *     off".  The death is the door's, as any monster's: cause `monster:heap`
+ *     (the phone reads "BURNED TO DEATH"), the respawn in BroTown, and the
+ *     death's ordinary rules for the world: the Remains (your bag, never your
+ *     gold or what you wear) where you fell, yours alone for a minute, then
+ *     anyone's -- as a death to a monster you provoked onto the safe ground
+ *     always was.  No killer: no kill credit, no XP, no war, bounty or No
+ *     man's land kill (a red skull loses what a monster would take of it).
+ *     Nothing new to trade or farm: a friend can already be handed a bag
+ *     (a trade, a drop), and the fire is on YOUR screen, under YOUR boots.
  * A phone that lies can only hurt itself: it names no one else, and a tick
  * pays no XP, no kill credit and no loot.  A phone that never says so spares
  * only itself.  So no test-mode exception (no honesty check).
@@ -55,18 +63,14 @@ export const heapBurnMethods = {
     if (!ps || !this._heapBurnOn()) return 0;
     const t = typeof now === 'number' ? now : Date.now();
     if (ps.z !== 'wheel' || ps.dead || ps.dying || ps.disconnected || ps._spar) return 0;
-    if (!(ps.hp > 1)) return 0;
+    if (!(ps.hp > 0)) return 0;
     if (ps._arenaMatch || (this._duelFor && this._duelFor(pid))) return 0;
     if (!this._wheelSafeAt(ps.x, ps.y)) return 0;
     /* a harvester takes no damage, as from every monster (hits.js rule 3) */
     if (this._extractionShielded && this._extractionShielded(pid, t)) return 0;
     if (t - (ps._heapBurnAt || 0) < HEAP_BURN.EVERY_MS) return 0;
     ps._heapBurnAt = t;
-    /* never the last point: held under what you have less 1, with room for
-       anything that makes a blow land harder after it (a fracture's +6% a
-       stack, five at most) */
-    const raw = Math.min(Math.max(1, Math.ceil((ps.maxHp || 100) * HEAP_BURN.PCT)), Math.floor((ps.hp - 1) / 1.5));
-    if (!(raw > 0)) return 0;
+    const raw = Math.max(1, Math.ceil((ps.maxHp || 100) * HEAP_BURN.PCT));
     return this._monsterHit({
       src: 'heap', zoneId: 'wheel', pid, m: null,
       mid: 'heap', lvl: 1, raw, now: t,
