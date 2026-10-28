@@ -84,14 +84,21 @@ export function codeHash() {
   for (const f of CODE_FILES) h.update(fs.readFileSync(path.join(REPO, f)));
   return h.digest('hex').slice(0, 16);
 }
-export function artHash(cat, id) {
+/* the files a piece is made from, and their hash -- role-bake.mjs's own
+   (`hashFiles`, `artFiles`), so its --hashes (precheck look-roles), which
+   walks every set's manifest, reads this one as it reads its own */
+export function artFiles(cat, id) {
+  return CAT_DIRS[cat].map((dir) => `public/sprites/traits/${cat}/${id}/${dir}.png`);
+}
+function hashFiles(files) {
   const h = crypto.createHash('sha1');
-  for (const dir of CAT_DIRS[cat]) {
-    const f = path.join(REPO, 'public/sprites/traits', cat, id, dir + '.png');
-    if (fs.existsSync(f)) h.update(dir).update(fs.readFileSync(f));
+  for (const f of files) {
+    const full = path.join(REPO, f);
+    if (fs.existsSync(full)) h.update(fs.readFileSync(full));
   }
   return h.digest('hex').slice(0, 16);
 }
+export function artHash(cat, id) { return hashFiles(artFiles(cat, id)); }
 
 /* ── in the page: the pieces the catalogs recolour ── */
 async function pageList() {
@@ -313,7 +320,7 @@ async function main() {
   const pinned = process.env.BT_CHROMIUM || '/opt/pw-browsers/chromium';
   if (fs.existsSync(pinned)) opts.executablePath = pinned;
   const browser = await chromium.launch(opts);
-  const out = { v: 1, version: VERSION, kind: 'head', bits: BITS, fw: 128, fh: 128, refScale: REF_SCALE, entry: HEAD_ENTRY, code: codeHash(), sheets: {} };
+  const out = { v: 1, version: VERSION, set: 'heads', codeFiles: CODE_FILES, kind: 'head', bits: BITS, fw: 128, fh: 128, refScale: REF_SCALE, entry: HEAD_ENTRY, code: codeHash(), sheets: {} };
   let bad = 0, bytes = 0, texels = 0, texBytes = 0, worst = 0;
   const nBits = { 8: 0, 16: 0 };
   try {
@@ -345,7 +352,7 @@ async function main() {
       nBits[r.bits]++;
       const entry = HEAD_ENTRY[cat];
       out.sheets[name] = { ds: 1, bits: r.bits, cut: r.quant || undefined, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends, cells: r.cells, dirs: r.dirs,
-        roleDefs: r.roleDefs.map((ro) => ({ name: ro.name, entry, ref: ro.ref64, under: 0 })), art: artHash(cat, id), bytes: png.length };
+        roleDefs: r.roleDefs.map((ro) => ({ name: ro.name, entry, ref: ro.ref64, under: 0 })), artFiles: artFiles(cat, id), art: artHash(cat, id), bytes: png.length };
       const file = path.join(OUT, name + '.png');
       if (CHECK) {
         const on = fs.existsSync(file) ? decode(fs.readFileSync(file)) : null;
