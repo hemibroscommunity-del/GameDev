@@ -1,4 +1,4 @@
-# Pictures on 256 colours, kept as colour numbers (v2.3.3728)
+# Pictures on 256 colours, kept as colour numbers (v2.3.3728; next: v2.3.3771)
 
 The owner, 2026-10-28: *"You can go ahead and reduce it. I won't notice at all
 from anything at 256"*, and as a standing rule: *"everything converted using
@@ -209,3 +209,39 @@ fight, none full.
 | `mp-membudget`, `p256=1` | 10 / 11 (buffers 22.8 / 22) |
 | `mp-glrestore`, `mp-renderheal` (with it on) | 7 / 7, 7 / 7 |
 | `node tools/dev/precheck.mjs` | clean but the accepted version-tag line |
+
+## 7. Next (after the showing)
+
+v2.3.3771, measured and not built (the orchestrator, 2026-10-28: "not tonight").
+These are the page's own pictures, drawn by the browser (`<img>` / CSS). A
+browser holds every picture at four bytes a pixel whatever its colours, so 256
+colours does nothing for them, and none is drawn smaller than its file on a 3x
+phone.
+
+**The zone banners.** Their drawn size, worked out from `game.css`
+(`--zb-w: min(98vw, 430px)`; on the sideways and computer layouts
+`min(64% of the play width, 360px)`; one ornament cell is 0.26 of that,
+against a cell of 227-252 px in the file):
+
+| layout | ornament cell drawn | against the file |
+|---|--:|--:|
+| upright phone, 390 x 844 at 3x | 298 device px | 1.19x |
+| sideways phone at 3x | 281 device px | 1.12x |
+| computer, 1440 wide at 1x / 2x | 94 / 187 device px | 0.37x / 0.75x |
+
+All four themes are held decoded for the session (`zoneBannerPreload.js`
+`_held`, by theme): about 14 MB. **The owner's decision** (it changes what the
+loading screen holds, the preload law): hold only the banner of the land you
+are in or walking toward, loading the next behind the per-land
+loading/overlay path. That is about 10 MB less held.
+
+**The level-up burst.** 2172 x 724, 6.0 MB decoded, drawn up to 0.93 x the
+strip in CSS px, which is 2.8x the file on a 3x phone. It is held for the
+session (`levelUpBurstPreload.js` `_held`). **A rendering change of its own**:
+draw it in the game's renderer as colour numbers (on 256 colours, the
+owner's yes). That is about 6 MB decoded in the page becoming about 1.5 MB on
+the graphics chip.
+
+**The character sheets** (phase 2): at the fight the chip holds 18.1 MB of
+walking armour and body sheets as images, and 24.9 MB of emptied pose and
+weapon canvases. At a byte a pixel that is about 32 MB less.
