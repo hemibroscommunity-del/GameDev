@@ -4,7 +4,8 @@
  * bakes a recoloured copy of the body's sheets for every look on screen
  * (playerSkins.js recolorBodyToCanvas); `?lookpalette` draws the stand and jog
  * frames from ONE sheet of colour numbers per facing and a row of the look's
- * colours instead (rendering/lookPalette.js, docs/specs/look-palette.md).
+ * colours instead (rendering/lookPalette.js, docs/specs/look-palette.md) --
+ * on by default (the owner's word), `?lookpalette=0` the old way.
  *
  * THE ORACLE -- the switch must change nothing anyone can see:
  *   1. 24 looks (skin x trousers x boots, the ghost audit's green / pink / blue
@@ -17,11 +18,13 @@
  *      at a computer's 0.8 (the chip's mip chain and its blend, emulated: 3
  *      levels on under 5% of the pixels -- the chip rounds its LOD and
  *      weights its own way), on four looks.
- *   3. the switch is on where asked and nowhere else; the local player's own
+ *   3. on by default and off with `?lookpalette=0`; the local player's own
  *      body is drawn from the numbers once given a look.
+ *   4. a phone with nothing in its address: on, and a body in the alien's
+ *      purple under a top hat drawn from the numbers, the hat on it.
  * THE MEMORY -- 1, 5 and 20 different looks put on the chip, both ways, on two
- * phones (one `?lookprobe`, the old path with the same probe; one
- * `?lookpalette`): the GPU's textures, the 2D canvases, the asset cache, the
+ * phones (one `?lookpalette=0&lookprobe`, the old path with the same probe; one
+ * `?lookpalette=1`, the default with the probe): the GPU's textures, the 2D canvases, the asset cache, the
  * page's buffers and heap, each look's every stand and jog frame drawn once.
  *
  *   node tools/qa/mp/run.mjs lookpalette        (after npm run build)
@@ -82,13 +85,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── the old way's memory (the same probe, no switch) ── */
   if (process.env.LP_NEW_ONLY) report.memory.old = null;
   else {
-  const A = await H.newPlayer(browser, { name: 'oldlooks', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'lookprobe', init: MEM_INIT });
+  const A = await H.newPlayer(browser, { name: 'oldlooks', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'lookpalette=0&lookprobe', init: MEM_INIT });
   try {
     const oa = await inWheel(A);
     rec.ok('the old-way phone is in the Wheel (guard)', !!oa, oa);
     if (!oa) return;
     const st = await A.page.evaluate(() => (window.__btLookPalette ? window.__btLookPalette() : null));
-    rec.ok(`without the switch nothing is drawn from the numbers: ${JSON.stringify(st && { wanted: st.wanted, on: st.on, sheets: st.sheets })}`,
+    rec.ok(`with ?lookpalette=0 nothing is drawn from the numbers: ${JSON.stringify(st && { wanted: st.wanted, on: st.on, sheets: st.sheets })}`,
       !!st && st.wanted === false && st.on === false && st.sheets === 0, st);
     report.memory.old = await memoryTrip(A, browser, 'old', rec);
   } finally {
@@ -97,7 +100,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── the new way: its memory, then the oracle ── */
-  const B = await H.newPlayer(browser, { name: 'looks', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'lookpalette', init: MEM_INIT });
+  const B = await H.newPlayer(browser, { name: 'looks', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: 'lookpalette=1', init: MEM_INIT });
   const loads = [];
   B.page.on('console', (m) => { const t = m.text(); if (m.type() === 'error' || /bt-crash|lookpal/i.test(t)) loads.push(t.slice(0, 300)); });
   B.page.on('framenavigated', (f) => { if (f === B.page.mainFrame()) loads.push('navigated ' + f.url().slice(-80)); });
@@ -107,7 +110,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!ob) return;
     const st = await B.page.evaluate(() => window.__btLookPalette());
     console.log(`    the switch: ${JSON.stringify(st)}`);
-    rec.ok(`with ?lookpalette the 10 stand and jog sheets are colour numbers (${st.sheetMB} MB) and the program built: on ${st.on}, ok ${st.ok}`,
+    rec.ok(`by default the 10 stand and jog sheets are colour numbers (${st.sheetMB} MB) and the program built: on ${st.on}, ok ${st.ok}`,
       st.on === true && st.ok === true && st.sheets === 10 && !st.loadError && !st.linkError, st);
     report.memory.new = await memoryTrip(B, browser, 'new', rec);
     const o = report.memory.old, n = report.memory.new;
@@ -172,5 +175,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (loads.length) console.log('    page B said: ' + loads.slice(0, 20).join('\n      '));
     writeFileSync(join(OUT, 'lookpalette.json'), JSON.stringify(report, null, 1));
     await B.ctx.close().catch(() => {});
+  }
+
+  /* ── 4. the DEFAULT page (no address switch at all): on, and a body in the
+     alien's purple under a top hat drawn from the numbers, the hat on it ── */
+  const C = await H.newPlayer(browser, { name: 'deflook', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel' });
+  try {
+    const oc = await inWheel(C);
+    rec.ok('the default phone is in the Wheel (guard)', !!oc, oc);
+    if (!oc) return;
+    const st = await C.page.evaluate(() => window.__btLookPalette());
+    rec.ok(`with nothing in the address the look palette is on: on ${st.on}, ok ${st.ok}, ${st.sheets} sheets`, st.on === true && st.ok === true && st.sheets === 10, st);
+    await C.page.evaluate(() => { window.__btSetSkin('purple'); window.__btSetHeadwear('top-hat'); });
+    await C.page.waitForTimeout(4000);
+    const self = await C.page.evaluate(() => window.__btSelfSprites() || []);
+    const body = self.filter((x) => /^bt-look:/.test(x.url));
+    const hat = self.filter((x) => /top-hat|headwear/i.test(x.url + ' ' + x.name));
+    console.log(`    the default page, purple under a top hat: body ${JSON.stringify(body)}; hat ${JSON.stringify(hat)}`);
+    rec.ok(`the default page: the purple body is drawn from the numbers (${body.length}) and the top hat is on it (${hat.length})`, body.length >= 1 && hat.length >= 1, { self });
+    await C.page.screenshot({ path: join(OUT, 'lookpalette-default-purple-hat.png') });
+  } finally {
+    await C.ctx.close().catch(() => {});
   }
 }

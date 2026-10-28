@@ -4,10 +4,12 @@ The owner: *"The game needs to be extremely memory efficient."* iPhone Safari
 kills the tab at about 250 MB, and a big fight holds about 335 MB on the memory
 check's measure.
 
-**Behind a switch, off by default: `?lookpalette`.** Without it nothing here
-runs and the game is exactly as before. This is the first step of a plan (the
-end of this file); it proves the method on the player's body, standing and
-walking.
+**On by default.** The owner, 2026-10-28: *"I think including the new memory
+change work by default would be better. I can always revert the change if I
+don't like it or it doesn't work well."* `?lookpalette=0` in the address is the
+old path, exactly as before, for that page (the tests measure both ways with
+it). This is the first step of a plan (the end of this file); it proves the
+method on the player's body, standing and walking.
 
 ## What the page held
 
@@ -154,8 +156,8 @@ texture:
 The page's GPU line moved the same way: +5.3 / +26.4 / +104.8 MB the old way,
 +2.5 MB flat the new. The canvases and the asset cache did not move either way
 (the old path's copies are images of themselves since v2.3.3702; the decoded
-images are the browser's to drop and in no line). The page's buffers: +2.6 MB
-with the switch (the numbers, kept to upload again).
+images are the browser's to drop and in no line). The page's buffers: none
+kept -- the numbers are let go of once on the chip (below).
 
 `mp-membudget` (its phone wears the default look, which the old path never
 recolours: no copies to save there), three trips each, highest reading:
@@ -217,17 +219,21 @@ software as every QA phone's is):
 
 ## What it costs
 
-- 2.6 MB of numbers on the chip and the same in the page's buffers (kept to
-  upload again after a black screen), always, with the switch on: on a phone
+- 2.6 MB of numbers on the chip, always: on a phone
   where no one wears a recoloured look this is MORE than before.
-- About 1 MB to download (`public/sprites/look/`), only with the switch on.
+- About 1 MB to download (`public/sprites/look/`), behind the loading screen.
+- The numbers' bytes are let go of once on the chip (first measured with them
+  kept: the buffers line 20.7 -> 23.0 MB, over its 22), as the Wheel's ground
+  lets go of its colours; a rebuilt renderer after a black screen makes them
+  again from the sheets' `<img>`s, whose decoded pixels are the browser's to
+  drop.
 - Each body pixel reads its numbers and its table (4 to 16 texel reads, twice
   that minified) where the chip did one filtered read; a batch ends at each
   body (its own program).
 
 ## The plan for the rest
 
-Each its own pull request, each behind the switch until the owner turns it on.
+Each its own pull request (on by default, as this one: the owner's rule for the phase).
 
 1. **Every pose.** The same bake for hit, dodge, pickup, mine and fish (the
    mining sheet's pickaxe keeps its wood, `toolWood.js`; the fish sheet's boots
@@ -262,13 +268,14 @@ Each its own pull request, each behind the switch until the owner turns it on.
 8. **One program.** Fold the look read into `paletteTex.js`'s `ONE_BATCHER` as
    a fourth kind, so a figure no longer breaks the batch (the pictures lane's
    file: a joint change).
-9. **The switch on by default**, and the old copies' code removed, once the
-   owner has played with it on a phone.
+9. **The old copies' code removed**, once every part draws from numbers and
+   the owner has played with it on a phone.
 
 ## Questions for the owner
 
-- Turn `?lookpalette` on for everyone (after a session on your iPhone with it in
-  the address)? Until then it costs nothing and saves nothing.
+- It is on for everyone: if anything looks wrong on your iPhone, `?lookpalette=0`
+  in the address shows the old way to compare, and reverting this pull request
+  takes it out.
 - The plan's order: the measured win grows with the number of players on screen
   wearing different looks; the head pieces (5) and the local player (2) are the
   next biggest.

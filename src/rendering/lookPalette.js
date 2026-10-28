@@ -9,8 +9,8 @@
  * as it is drawn: a look is one ROW of role colours (1 KB) in paletteTex.js's
  * atlas, freed when no one has worn it for a while.
  *
- * Behind `?lookpalette` (off by default: without it nothing here runs and the
- * game is exactly as before).  The plan for the rest -- every pose, the shirts,
+ * ON by default since the owner's word (below); `?lookpalette=0` in the
+ * address is the old path, exactly as before, for that page.  The plan for the rest -- every pose, the shirts,
  * the armour and the body under it, the head pieces -- is
  * docs/specs/look-palette.md.
  *
@@ -61,11 +61,15 @@ const IDLE_MS = 30000;            /* a look no one drew for this long gives its 
 const SWEEP_MS = 5000;
 
 /* ── the switch ── */
+/* v2.3.3716: ON by default -- the owner, 2026-10-28: "I think including the
+   new memory change work by default would be better. I can always revert the
+   change if I don't like it or it doesn't work well."  `?lookpalette=0` is the
+   old path, for one page. */
 function wantedByAddress() {
-  try { return /(^|[?&])lookpalette(=1)?(&|$)/.test(window.location.search || ''); } catch (e) { return false; }
+  try { return !/(^|[?&])lookpalette=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
 }
 const _wanted = wantedByAddress();
-/** `?lookpalette` in the address: the body's stand and jog drawn from the numbers. */
+/** The body's stand and jog drawn from the numbers (`?lookpalette=0`: not). */
 export function lookPaletteWanted() { return _wanted; }
 
 let _manifest = null;             /* roles.json */
@@ -94,28 +98,34 @@ function loadPng(url) {
 function buildSheet(name, m, img) {
   const W = m.w, n = m.h, T = m.tableRows;
   if (img.naturalWidth !== W || img.naturalHeight !== n + T) throw new Error(name + ': ' + img.naturalWidth + 'x' + img.naturalHeight);
-  const cv = document.createElement('canvas');
-  cv.width = W; cv.height = n + T;
-  const g = cv.getContext('2d', { willReadFrequently: true });
-  g.drawImage(img, 0, 0);
-  const px = g.getImageData(0, 0, W, n + T).data;
-  cv.width = 0; cv.height = 0;   /* Safari: hand the backing store back now */
-  /* every pixel's red and green are a texel's two bytes (the PNG is opaque,
-     so they decode exactly); the header goes in the last row, and the stand's
-     texture (resolution 2) is an even number of rows */
+  /* the header goes in the last row, and the stand's texture (resolution 2)
+     is an even number of rows */
   let rows = n + T + 1;
   if (m.ds === 2 && (rows & 1)) rows++;
-  const data = new Uint8Array(W * rows * 2);
-  for (let q = 0, o = 0; q < W * (n + T); q++, o += 2) { data[o] = px[q * 4]; data[o + 1] = px[q * 4 + 1]; }
-  const head = [m.ds, n, n, ...m.ends];
-  const h0 = (rows - 1) * W * 2;
-  head.forEach((v, i) => { data[h0 + i * 2] = v & 255; data[h0 + i * 2 + 1] = (v >> 8) & 255; });
+  /* every pixel's red and green are a texel's two bytes (the PNG is opaque,
+     so they decode exactly) -- made again from the <img> whenever the chip
+     needs them (lookUpload: the bytes are let go of once uploaded) */
+  const make = () => {
+    const cv = document.createElement('canvas');
+    cv.width = W; cv.height = n + T;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0);
+    const px = g.getImageData(0, 0, W, n + T).data;
+    cv.width = 0; cv.height = 0;   /* Safari: hand the backing store back now */
+    const out = new Uint8Array(W * rows * 2);
+    for (let q = 0, o = 0; q < W * (n + T); q++, o += 2) { out[o] = px[q * 4]; out[o + 1] = px[q * 4 + 1]; }
+    const head = [m.ds, n, n, ...m.ends];
+    const h0 = (rows - 1) * W * 2;
+    head.forEach((v, i) => { out[h0 + i * 2] = v & 255; out[h0 + i * 2 + 1] = (v >> 8) & 255; });
+    return out;
+  };
+  const data = make();
   const src = new BufferImageSource({
     resource: data, width: W / m.ds, height: rows / m.ds, resolution: m.ds,
     format: 'rg8unorm', scaleMode: 'nearest', alphaMode: 'premultiplied-alpha',
     autoGenerateMipmaps: false, autoGarbageCollect: false, label: 'bt-look:' + name,
   });
-  src._btLook = { ds: m.ds, w: W, rows };
+  src._btLook = { ds: m.ds, w: W, rows, make };
   const frames = m.cells.map(([ax, ay, tx, ty, w, h], i) => {
     const r = { i, n: m.cells.length };
     /* in display texels, which are the source's points (a ds 2 sheet is
@@ -475,7 +485,7 @@ class LookBatcher extends DefaultBatcher {
 }
 LookBatcher.extension = { type: [ExtensionType.Batcher], name: LOOK_BATCHER };
 
-/* ═══ WHICH BATCHER: BY THE TEXTURE (`?lookpalette` only) ═══
+/* ═══ WHICH BATCHER: BY THE TEXTURE (not with `?lookpalette=0`) ═══
    Inside sharpPixels' hook (installed at app.init, after this) and outside
    paletteTex's: sharp decides 'sharp' or 'default' first, this sends a look's
    texture here (keeping which read sharp chose), and paletteTex's routing
@@ -517,15 +527,25 @@ function patchPipes() {
       if (!source || !source._btLook) return up.call(this, source, glTexture, gl, webGLVersion, targetOverride, forceAllocation);
       const target = targetOverride || glTexture.target;
       const w = source.pixelWidth, h = source.pixelHeight;
+      /* v2.3.3716 (the owner put this on by default): the bytes are let go of
+         once on the chip, as the Wheel's ground lets go of its colours
+         (wheelGround.js _toGpu) -- 2.6 MB the page would keep for good, over
+         the memory check's buffers line -- and made again from the sheet's
+         <img> for the rare second upload (a rebuilt renderer after a black
+         screen).  The decoded <img> is the browser's to drop and decode
+         again. */
+      const res = source.resource || source._btLook.make();
       gl.pixelStorei(gl.UNPACK_ALIGNMENT, 2);
       if (!forceAllocation && glTexture.width === w && glTexture.height === h) {
-        gl.texSubImage2D(target, 0, 0, 0, w, h, glTexture.format, glTexture.type, source.resource);
+        gl.texSubImage2D(target, 0, 0, 0, w, h, glTexture.format, glTexture.type, res);
       } else {
-        gl.texImage2D(target, 0, glTexture.internalFormat, w, h, 0, glTexture.format, glTexture.type, source.resource);
+        gl.texImage2D(target, 0, glTexture.internalFormat, w, h, 0, glTexture.format, glTexture.type, res);
       }
       gl.pixelStorei(gl.UNPACK_ALIGNMENT, 4);
       glTexture.width = w;
       glTexture.height = h;
+      source.resource = null;
+      if (source.options) source.options.resource = null;
     };
   }
 }

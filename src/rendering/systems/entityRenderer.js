@@ -80,7 +80,7 @@ import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
-import { lookPaletteWanted } from '../lookPalette.js';   /* v2.3.3716: `?lookpalette` */
+import { lookPaletteWanted } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
@@ -12282,10 +12282,10 @@ export class EntityRenderer {
            fishes in their own colours: baked the first time they cast, as
            every pose of a peer's is (their look is the preload law's named
            exception), the painted frame shown until it lands. */
-        /* v2.3.3716: `?lookpalette` -- THEIR stand and jog from the shared
+        /* v2.3.3716: the look palette (on; `?lookpalette=0` off) -- THEIR stand and jog from the shared
            colour numbers and a row of their colours (lookPalette.js), when
            they wear no chest or leg armour (masked from the body's own
-           pixels, below); null otherwise, and always without the switch */
+           pixels, below); null otherwise, and always with `?lookpalette=0` */
         const _lookTex = (lookPaletteWanted() && _bareOf(_oEq.chest) && _bareOf(_oEq.legs))
           ? getLookBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle) : null;
         let tex = _lookTex || (pose === 'fish'
@@ -14101,11 +14101,11 @@ export class EntityRenderer {
       /* v2.3.2854: fishing keeps the drawings -- getFishFrame stamps them onto
          the raw sheet without the recolour above (playerSkins), baked behind
          the loading screen by preloadBodyAll. */
-      /* v2.3.3716: `?lookpalette` -- the stand and jog frames from the shared
+      /* v2.3.3716: the look palette (on; `?lookpalette=0` off) -- the stand and jog frames from the shared
          colour numbers and this look's row (lookPalette.js), where the frame is
          drawn as it is: not under chest or leg armour (masked from the body's
          own pixels) and not in the south block (cut into bands).  Null
-         otherwise, and always without the switch: the old path below. */
+         otherwise, and always with `?lookpalette=0`: the old path below. */
       const _lookTex = (lookPaletteWanted() && !_southBlock && _bareOf(getEquip('chest')) && _bareOf(getEquip('legs')))
         ? getLookBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, getEyeColor(), _bodyArt, getEyeStyle()) : null;
       let tex = _lookTex || (pose === 'fish'
