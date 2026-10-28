@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e07df55472640e38b0f15e2306902f8d2519e800",
+  "tree": "979511a7129d8f6023c52f765fcc9f895a90b6d5",
+  "committedAt": "2026-10-28T11:57:41-07:00",
+  "subject": "The computer's new keyboard and mouse layout, with combos (v2.3.3711) (#1197)",
+  "files": 6739,
+  "bytes": 775991854,
+  "listingSha256": "5ac37c0640384b5dda369bd71ee8572be102a2d0d9de25fb6d507c46191e174d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
