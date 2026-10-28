@@ -3223,11 +3223,12 @@ function _getBakeWorker() {
     w.onmessage = (e) => {
       const d = e.data || {};
       const job = _bakeJobs.get(d.id);
-      if (!job) return;
+      if (!job) return;   /* v2.3.3742: incl. a job already failed by the stuck timeout -- never placed twice */
       _bakeJobs.delete(d.id);
       job(d);
     };
     w.onerror = () => {
+      if (_bakeWorker !== w) return;   /* v2.3.3742: a worker already retired (_retireStuckWorker) speaks for nobody */
       _bakeWorkerDead = true;
       for (const [, job] of _bakeJobs) job({ err: 'worker error' });
       _bakeJobs.clear();
