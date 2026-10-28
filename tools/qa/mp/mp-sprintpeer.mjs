@@ -94,7 +94,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3455: every sample either page asks for from here on, and whether it
      played (BT_AUDIO.play hands back a source only for a decoded sample) */
   const logPlays = () => {
-    /* v2.3.3726: no townsperson's idle move (townsfolkReact.js): an idle cheer's
+    /* v2.3.3732: no townsperson's idle move (townsfolkReact.js): an idle cheer's
        cheerPop plays arrow-fly, which the checks below read as a shot */
     try { window._gameState.current.__btNoIdleMoves = true; } catch (e) { /* the checks say */ }
     const A0 = window.BT_AUDIO;

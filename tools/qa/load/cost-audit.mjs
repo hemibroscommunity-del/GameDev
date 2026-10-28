@@ -30,7 +30,7 @@
  */
 import { GameRoom } from '../../../server/src/index.js';
 import { WHEEL_SPAWNS, WHEEL_CENTRE } from '../../../server/src/wheelspawns.js';
-import { MOVE_PATH, pathMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3726: --path */
+import { MOVE_PATH, pathMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3732: --path */
 
 const ARGS = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const FLAG = (name, d) => { const a = process.argv.find((x) => x.startsWith('--' + name + '=')); return a ? a.split('=')[1] : d; };
@@ -131,7 +131,7 @@ const rand = (a, b) => a + Math.random() * (b - a);
 
 /* ── the room and its players ────────────────────────────────────────── */
 const room = new GameRoom(mockState(), mockEnv);
-if (process.argv.includes('--path')) room._liveFlags = { movepath: true };   /* v2.3.3726 */
+if (process.argv.includes('--path')) room._liveFlags = { movepath: true };   /* v2.3.3732 */
 let tickFn = null;
 {
   const realSetInterval = globalThis.setInterval;
@@ -160,7 +160,7 @@ const players = [];
 const pidOf = new Map();   /* id -> persona */
 tag = (k) => { for (const id of pidOf.keys()) if (k.indexOf(id) >= 0) return id; return null; };
 const msgIn = { frames: 0, byType: new Map() };
-/* v2.3.3726: --path, the message diet (src/game/moveDiet.js, server
+/* v2.3.3732: --path, the message diet (src/game/moveDiet.js, server
    movepath.js): the room switched on, every move marked, a steady one kept
    back until 200 ms after the last sent, as a phone does */
 const PATH = process.argv.includes('--path');

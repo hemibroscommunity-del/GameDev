@@ -130,7 +130,7 @@ function humanFp() {
 const COPY_FP = { len: 820, n: 96, dur: 1500, ent: 0.15, tv: 12, vc: 0.3, h: 2779098405 };
 
 /* ── a player ────────────────────────────────────────────────────────── */
-/* v2.3.3726: --pd marks every move for the message diet's glide (server
+/* v2.3.3732: --pd marks every move for the message diet's glide (server
    movepath.js; with --flags=movepath:true); --pd=boost also claims ten times
    the speed it walks, the script that hopes the worker glides it faster */
 const PD = FLAG('pd', null);

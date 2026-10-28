@@ -81,7 +81,7 @@ const OPT = {
   noDeflate: process.argv.includes('--no-deflate'),
   moveMs: +arg('move-ms', 0),             /* v2.3.3199: a walker's move every N ms (0: the phone's 33) */
   townMoveMs: +arg('town-move-ms', 0),     /* v2.3.3203: the town walkers' (not the fighters') move every N ms */
-  path: process.argv.includes('--path'),     /* v2.3.3726: the message diet -- every bot marks its moves `pd: 1` and sends a steady walk every 200 ms (src/game/moveDiet.js pathMayWait), and the room is switched on (`movepath: true`) */
+  path: process.argv.includes('--path'),     /* v2.3.3732: the message diet -- every bot marks its moves `pd: 1` and sends a steady walk every 200 ms (src/game/moveDiet.js pathMayWait), and the room is switched on (`movepath: true`) */
   diet: process.argv.includes('--diet'),     /* v2.3.3204: the walkers keep a steady walk's moves back as a phone on the safe ground does (src/game/moveDiet.js) */
   track: process.argv.includes('--track'),   /* v2.3.3240: every bot sends a phone's 2 s look (bots.mjs TRACK_MS), relayed by the worker to everyone */
   relays: process.argv.includes('--relays'), /* v2.3.3245: the fighters send a phone's swing / arrow relay with each blow (bots.mjs) */
@@ -454,7 +454,7 @@ async function main() {
     worker = await startWorker(copy.dir, port);
     url = `ws://127.0.0.1:${port}/ws?room=${encodeURIComponent(OPT.room)}&rf=1`;
     pids = await groupPids(worker.proc.pid);
-    /* v2.3.3726: --path switches the room's glide on (liveops.js flags) */
+    /* v2.3.3732: --path switches the room's glide on (liveops.js flags) */
     if (OPT.path) {
       const fr = await fetch(`http://127.0.0.1:${port}/api/admin/flags?room=${encodeURIComponent(OPT.room)}`, {
         method: 'POST', headers: { Authorization: 'Bearer load-test-' + process.pid, 'Content-Type': 'application/json' },

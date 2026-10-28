@@ -1,4 +1,4 @@
-# The message diet: a steady walk is sent as a path (v2.3.3726)
+# The message diet: a steady walk is sent as a path (v2.3.3732)
 
 > Owner, 2026-10-28: *"Before when you mentioned using less server messages for
 > movement, can that be started now?"* -- after asking *"Wouldn't the message

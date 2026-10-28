@@ -1,4 +1,4 @@
-/* ═══ v2.3.3726: THE MESSAGE DIET -- A STEADY WALK IS A PATH, NOT A STREAM ═══
+/* ═══ v2.3.3732: THE MESSAGE DIET -- A STEADY WALK IS A PATH, NOT A STREAM ═══
  *
  * A phone on the path (`?diet=1` in its address, or every phone with
  * `pathall: true` in the live flags) in the Wheel sends a steady walk about 5 times a second with its speed and

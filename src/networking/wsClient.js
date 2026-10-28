@@ -46,8 +46,8 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
 import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3255: the Hemi Bro check, theirs and yours */
-import { MOVE_DIET, dietMayWait, steadyMove, MOVE_PATH, pathMayWait, pathTurned } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often; v2.3.3726: + the message diet's path */
-/* v2.3.3726: `?diet=1` (or `?diet=0`) in the address, read as the page loads
+import { MOVE_DIET, dietMayWait, steadyMove, MOVE_PATH, pathMayWait, pathTurned } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often; v2.3.3732: + the message diet's path */
+/* v2.3.3732: `?diet=1` (or `?diet=0`) in the address, read as the page loads
    -- before anything tidies the address -- and kept for the tab's reloads
    (sessionStorage), so the owner's own phone stays on the path it asked for */
 const DIET_ASK = (function () {
@@ -1860,7 +1860,7 @@ export function setupWebSocket(ctx) {
               if (msg.payload) _applyLootCredit(msg.payload, S);
               break;
             }
-          /* v2.3.3726: the message diet's switches, changed live (server
+          /* v2.3.3732: the message diet's switches, changed live (server
              movepath.js _movePathFlagChanged): the phone's next batch follows */
           case 'move_path':
             {
@@ -5162,10 +5162,12 @@ export function setupWebSocket(ctx) {
         return false;
       }
     }
-    /* ═══ v2.3.3726: THE MESSAGE DIET -- A STEADY WALK IS A PATH ═══
+    /* ═══ v2.3.3732: THE MESSAGE DIET -- A STEADY WALK IS A PATH ═══
        Against a worker that advertises caps.movepath (server movepath.js:
-       OFF unless the live flags say `movepath: true`), which moves its copy
-       of you along your speed between your moves, a steady move anywhere in
+       it always does, unless the kill switch `movepath: false` is thrown),
+       which moves its copy of you along your speed between your moves, and
+       only on a phone that asked (?diet=1, or caps.pathall for every phone:
+       movePathOn below), a steady move anywhere in
        the Wheel waits until MOVE_PATH.GAP_MS (200) after the last one sent,
        a turn, a start, a stop or any other change goes on the very next
        batch, and a move off its line at the same speed (a wall, a shove)
@@ -5174,7 +5176,7 @@ export function setupWebSocket(ctx) {
        arena match, which are judged blow by blow against where the worker
        has you.  Your own walk never waits: these are reports. */
     var _pathStats = { waited: 0, turned: 0 };
-    /* v2.3.3726: who is on the path -- this phone with `?diet=1` in its
+    /* v2.3.3732: who is on the path -- this phone with `?diet=1` in its
        address, or every phone with caps.pathall (the Test panel's Message
        diet buttons); `?diet=0` keeps this one out.  Both need caps.movepath
        (the worker glides; `movepath: false` is the kill switch), and either
@@ -5191,7 +5193,7 @@ export function setupWebSocket(ctx) {
         return false;
       }
     }
-    /* QA: what the diet did (mp-movediet; v2.3.3726: + the path, mp-movepath) */
+    /* QA: what the diet did (mp-movediet; v2.3.3732: + the path, mp-movepath) */
     try { if (typeof window !== 'undefined') window.__btMoveDiet = function () { return { on: moveDietOn(), sent: _dietStats.sent, waited: _dietStats.waited, path: movePathOn(), pathWaited: _pathStats.waited, pathTurned: _pathStats.turned }; }; } catch (e) { /* QA only */ }
     /* ═══ v2.3.3254: THE QUIET PHONE -- ONE FRAME A MOMENT, AND RIDERS ═══
        game/quietPhone.js has the whole story.  wsOut is every game message's
@@ -5309,7 +5311,7 @@ export function setupWebSocket(ctx) {
       if (_pendingMove) {
         var _nowMv = Date.now();
         var _gapMv = moveGapMs();
-        /* v2.3.3726: the path (movePathOn above): a steady move waits to
+        /* v2.3.3732: the path (movePathOn above): a steady move waits to
            GAP_MS, a change goes now, the rest keep the rate */
         if (_pendingMove.pd === 1 && _moveSent && _moveSent.pd === 1) {
           if (pathMayWait(movePathOn(), _pendingMove, _pendingMoveAt, _moveSent, _moveSentMadeAt)) {
@@ -5890,7 +5892,7 @@ export function setupWebSocket(ctx) {
                  counts there, and only against a worker that advertised
                  caps.sprint does the client sprint at all (game/sprint.js). */
               sp: sprintStepFlag(_S4) ? 1 : undefined,
-              /* v2.3.3726: "move me along my speed until my next one" -- only
+              /* v2.3.3732: "move me along my speed until my next one" -- only
                  against a worker that glides (movePathOn); absent otherwise,
                  so the move is byte for byte what it was */
               pd: movePathOn() ? 1 : undefined

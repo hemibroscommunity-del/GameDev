@@ -424,7 +424,7 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   }
   check('8e. the lower-case rule is unchanged', flagNameOk('disable_dungeons') && flagNameOk('xp_mult') && flagNameOk('bowvolley') && !flagNameOk(null) && !flagNameOk(7));
   check('8e. the list is frozen', Object.isFrozen(LIVEOPS.CAMEL_SWITCHES));
-  // 8h. v2.3.3726: the message diet's two lower-case switches (movepath.js):
+  // 8h. v2.3.3732: the message diet's two lower-case switches (movepath.js):
   //     `pathall: true` puts every phone on it, `movepath: false` kills it,
   //     each through the operator's route, and a join is told
   {

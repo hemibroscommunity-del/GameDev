@@ -148,7 +148,7 @@ import { gearProvMethods } from './gearprov.js'; /* v2.3.2534 */
 import { gridMethods } from './grids.js';
 // v2.3.1171 (P4 decomposition): the move handler (anti-teleport + zone streaming) -- see movement.js.
 import { movementMethods, ROLL } from './movement.js';   /* v2.3.3292: + the paid roll's window */
-import { movePathMethods } from './movepath.js';   /* v2.3.3726: the message diet's glide */
+import { movePathMethods } from './movepath.js';   /* v2.3.3732: the message diet's glide */
 // v2.3.1172 (P4 decomposition): rpg-blob load/save + player_state emit -- see persistence.js.
 import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
@@ -709,7 +709,7 @@ export const PRIVILEGED_EVENTS = new Set([
   // un-privileged 'chat' relay (any client could impersonate the
   // server there); this type is forgeable only by the worker.
   'server_announce',
-  // v2.3.3726: the message diet's switches, live (movepath.js
+  // v2.3.3732: the message diet's switches, live (movepath.js
   // _movePathFlagChanged) -- forged, it would put a phone on the path with
   // no glide behind it, or take one off
   'move_path',
@@ -6557,7 +6557,7 @@ Object.assign(GameRoom.prototype, gearProvMethods); /* v2.3.2534 */
 Object.assign(GameRoom.prototype, gridMethods);
 // v2.3.1171 (P4 decomposition): movement -- see movement.js.
 Object.assign(GameRoom.prototype, movementMethods);
-Object.assign(GameRoom.prototype, movePathMethods);   /* v2.3.3726 */
+Object.assign(GameRoom.prototype, movePathMethods);   /* v2.3.3732 */
 // v2.3.1172 (P4 decomposition): persistence core -- see persistence.js.
 Object.assign(GameRoom.prototype, persistenceMethods);
 // v2.3.1178: HTTP economy-endpoint session tokens -- see httpauth.js.

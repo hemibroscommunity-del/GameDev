@@ -1,4 +1,4 @@
-/* ═══ v2.3.3726: THE MESSAGE DIET -- A STEADY WALK IS A PATH, NOT A STREAM ═══
+/* ═══ v2.3.3732: THE MESSAGE DIET -- A STEADY WALK IS A PATH, NOT A STREAM ═══
  *
  * The phone (src/game/moveDiet.js pathMayWait / pathTurned, wsClient.js
  * movePathOn) sends a steady walk in the Wheel every 200 ms with its speed,

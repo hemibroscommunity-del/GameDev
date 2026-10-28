@@ -1,4 +1,4 @@
-/* ═══ v2.3.3726: THE MESSAGE DIET -- A STEADY WALK IS A PATH, NOT A STREAM ═══
+/* ═══ v2.3.3732: THE MESSAGE DIET -- A STEADY WALK IS A PATH, NOT A STREAM ═══
  *
  * Owner, 2026-10-28: "Before when you mentioned using less server messages
  * for movement, can that be started now?" -- after asking "Wouldn't the

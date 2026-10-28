@@ -36,7 +36,7 @@
  */
 import { performance, monitorEventLoopDelay } from 'node:perf_hooks';
 import { PlainWS } from './plainws.mjs';
-import { MOVE_DIET, dietMayWait, MOVE_PATH, pathMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule; v2.3.3726: --path */
+import { MOVE_DIET, dietMayWait, MOVE_PATH, pathMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule; v2.3.3732: --path */
 import { readFileSync } from 'node:fs';
 /* v2.3.3315: the Wheel the server plays -- the live spawn table's (five times
    longer since v2.3.3315; wheelspawns1.js the short one) */
@@ -403,7 +403,7 @@ function sendMove(bot, entering, vx = 0, vy = 0) {
     type: 'move', x, y, d, f, eqc: 'none', eql: 'none', eqs: 'none', ex: null, z: 'wheel',
     vx: Math.round(vx * perFrame * 100), vy: Math.round(vy * perFrame * 100),
     dodging: false, blocking: false, ba: null, dead: false,
-    ...(CFG.path ? { pd: 1 } : {}),   /* v2.3.3726: the message diet (wsClient.js movePathOn) */
+    ...(CFG.path ? { pd: 1 } : {}),   /* v2.3.3732: the message diet (wsClient.js movePathOn) */
   };
   /* v2.3.3204: --diet, as a phone on the Wheel's safe ground does it
      (src/game/moveDiet.js, wsClient.js moveDietOn): a move on the line the
@@ -412,7 +412,7 @@ function sendMove(bot, entering, vx = 0, vy = 0) {
   const now = performance.now();
   if (CFG.diet && !entering && now - bot.lastSent < MOVE_DIET.GAP_MS
       && dietMayWait(!bot.fighter, m, now, bot.lastMove, bot.lastMoveAt, DIET_CENTRE, DIET_SAFE_R)) { M.dieted = (M.dieted || 0) + 1; return; }
-  /* v2.3.3726: --path, as a phone against a worker with caps.movepath does
+  /* v2.3.3732: --path, as a phone against a worker with caps.movepath does
      it (wsClient.js flushInputBuffer): a steady move waits to MOVE_PATH.GAP_MS;
      a change goes now; the rest keep the bot's own rate */
   if (CFG.path && !entering && bot.lastMove && now - bot.lastSent < MOVE_PATH.GAP_MS

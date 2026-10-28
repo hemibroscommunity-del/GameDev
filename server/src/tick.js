@@ -248,7 +248,7 @@ export const tickMethods = {
          synchronous handler and keeps no reference, so reusing one a tick
          later cannot change what it saw.  playerState is null-prototype
          (index.js), so for...in walks exactly its own ids. */
-      /* v2.3.3726: a player whose phone sends a steady walk as a path is
+      /* v2.3.3732: a player whose phone sends a steady walk as a path is
          moved along it first (movepath.js), so the history below, the
          monsters' chase and every hit read where they are now */
       try { this._tickMovePath(Date.now()); } catch (e) {
@@ -589,7 +589,7 @@ export const tickMethods = {
         const ps = this.playerState[id];
         if (!ps) continue;
         if (rosterMoved) rosterMoved.add(id);
-        if (steady && ps.z === WHEEL_ZONE && this._steadyHold(id, playerWire(ps), ts, this._movePathAt(ps))   /* v2.3.3726: a glide's own time (movepath.js) */) {
+        if (steady && ps.z === WHEEL_ZONE && this._steadyHold(id, playerWire(ps), ts, this._movePathAt(ps))   /* v2.3.3732: a glide's own time (movepath.js) */) {
           (held || (held = [])).push(id);
           continue;
         }

@@ -214,7 +214,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
-  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3726: the message diet's path */, 'pathall' /* v2.3.3726: ...for every phone */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
+  'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3732: the message diet's path */, 'pathall' /* v2.3.3732: ...for every phone */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'partykeep' /* v2.3.3284: a party that lasts (party.js) */, 'alliance' /* v2.3.3313: a party of 20 active members (alliance.js) */, 'clanparty' /* v2.3.3321: clans are parties now (clanparty.js) */, 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
@@ -302,6 +302,12 @@ const CAP_GATES = [
   'achievements' /* v2.3.3527: the worker grants achievements and pays their AP (server/src/achievements.js): the Achievements page in More, a big one's banner, the arena's 500 AP on the first win, the AP board -- lower case, a kill switch */,
   'nostatcap' /* v2.3.3578: no cap on how many points a stat holds (server/src/statcap.js): the Points window's [+] stops greying at your level -- lower case, a kill switch */,
 ];
+/* v2.3.3732: caps that are OFF by default on purpose -- an opt-in, not a job
+   the worker claims -- so "This worker" does not warn the owner about them.
+   Still in CAP_GATES (precheck's cap-registry).  `pathall` is the message
+   diet for every phone (server movepath.js); `movepath` stays in the alarm:
+   false there means the kill switch really is thrown. */
+const CAP_OPT_IN = new Set(['pathall']);
 
 /* Plain language for the ones whose absence the owner has actually reported
    as a bug.  Deliberately NOT a full glossary: a made-up description is
@@ -500,7 +506,7 @@ export const DevPanel = ({ onClose }) => {
     if (j) { setFlags(j.flags || {}); setMsg('Cleared "' + name + '". Reload the game to pick it up.'); }
   }, [call]);
 
-  /* ═══ v2.3.3726: THE MESSAGE DIET, FROM THE PHONE ═══
+  /* ═══ v2.3.3732: THE MESSAGE DIET, FROM THE PHONE ═══
      The owner, 2026-10-28: "I would want to play it with it on before
      tomorrow to see if there's any noticeable difference.  If not, I'd rather
      just leave it on."  Three taps over the live flags (server movepath.js
@@ -697,7 +703,7 @@ export const DevPanel = ({ onClose }) => {
               </div>
             );
           }
-          const off = CAP_GATES.filter((c) => !caps[c]);
+          const off = CAP_GATES.filter((c) => !caps[c] && !CAP_OPT_IN.has(c));   /* v2.3.3732: not the opt-ins */
           if (!off.length) {
             return (
               <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }} data-caps-ok="1">
@@ -1119,7 +1125,7 @@ export const DevPanel = ({ onClose }) => {
                 LOUD when a flag is overriding a server capability, because
                 that is the case that silently breaks a system and it is
                 indistinguishable from a bug unless something names it. */}
-            {/* v2.3.3726: the message diet (setDiet above) */}
+            {/* v2.3.3732: the message diet (setDiet above) */}
             <div style={label}>Message diet (fewer movement messages)</div>
             <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
               Now: {!(S && S._serverCaps && S._serverCaps.movepath) ? 'off for every phone (kill switch)'

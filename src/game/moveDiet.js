@@ -105,7 +105,7 @@ export function dietMayWait(on, pending, pendingAt, sent, sentAt, centre, safeR)
   return steadyMove(sent, pending, sentAt, pendingAt);
 }
 
-/* ═══ v2.3.3726: THE MESSAGE DIET -- A STEADY WALK IS A PATH, NOT A STREAM ═══
+/* ═══ v2.3.3732: THE MESSAGE DIET -- A STEADY WALK IS A PATH, NOT A STREAM ═══
  *
  * Owner, 2026-10-28: "Before when you mentioned using less server messages
  * for movement, can that be started now?" (docs/specs/move-path.md).  Against
