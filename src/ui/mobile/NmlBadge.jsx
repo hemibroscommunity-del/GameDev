@@ -64,7 +64,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { nmlHere, NML_RED } from '@/game/noMansLand.js';
+import { nmlHere, nmlFirst, NML_RED } from '@/game/noMansLand.js';   /* v2.3.3690: + nmlFirst, where it starts */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
 
@@ -133,10 +133,13 @@ export function NmlSkull({ size = 18, color = NML_RED }) {
   );
 }
 
-/* the monsters' levels of No man's land n: the ring n + 1 of each land's
-   fives (src/data/noMansLandRings.js -- 1 is Lv 6-10) */
-export function nmlLevels(n) {
-  return `Lv ${5 * n + 1}–${5 * n + 5}`;
+/* the monsters' levels of No man's land n: each land's ring of five levels
+   n + first - 1 (src/data/noMansLandRings.js).  v2.3.3690: 1 is Lv 1-5
+   against a worker that starts it at the first tier (first 1), Lv 6-10 as it
+   was against an older one (first 2) */
+export function nmlLevels(n, first = 1) {
+  const tier = n + (first || 1) - 1;
+  return `Lv ${5 * tier - 4}–${5 * tier}`;
 }
 
 /* your own skull, minutes of play left (applyNmlSkull keeps {red, white, at}:
@@ -161,7 +164,7 @@ export function openNmlInfo(S, lvl) {
   const n = lvl;
   const lv = (k) => `${k} level${k === 1 ? '' : 's'}`;
   infoPopupBus.open({
-    title: `No man's land ${n} · ${nmlLevels(n)}`,
+    title: `No man's land ${n} · ${nmlLevels(n, nmlFirst(S))}`,
     body: (
       <div data-nml-info={n}>
         <div style={{ marginBottom: 8 }}>

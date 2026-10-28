@@ -142,7 +142,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const a = WHEEL_SPAWNS[land].anchor;
     const L = Math.hypot(a[0] - WHEEL_CENTRE[0], a[1] - WHEEL_CENTRE[1]);
     const ux = (a[0] - WHEEL_CENTRE[0]) / L, uy = (a[1] - WHEEL_CENTRE[1]) / L;
-    for (let r = NML.HUB + T + 160; r <= NML.HUB + 2 * T - 160; r += 50 * LONG) {
+    for (let r = Math.max(NML.SAFE_R || 0, NML.HUB + (NML.FIRST_TIER - 1) * T) + 160; r <= NML.HUB + NML.FIRST_TIER * T - 160; r += 50 * LONG) {   /* v2.3.3690: No man's land 1's ring, from the safe ground's edge (the Lv 1-5 tier; it was the Lv 6-10 one) */
       for (let lat = -600; lat <= 600; lat += 50) {
         const x = WHEEL_CENTRE[0] + ux * r - uy * lat, y = WHEEL_CENTRE[1] + uy * r + ux * lat;
         let md = Infinity;
@@ -166,7 +166,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }, c);
     if (ok.dry && ok.near === 0) { spot = c; break; }
   }
-  rec.ok(`setup: a dry, quiet spot on a Lv 6-10 ring (${spot ? spot.land : 'none'})`, !!spot, spot);
+  rec.ok(`setup: a dry, quiet spot on No man's land 1's ring (${spot ? spot.land : 'none'})`, !!spot, spot);
   if (!spot) { stopAlive = true; await A.ctx.close().catch(() => {}); await B.ctx.close().catch(() => {}); return; }
   await H.hopTo(B, spot.x + 50, spot.y, { tries: 90 });
   await B.page.waitForTimeout(2500);

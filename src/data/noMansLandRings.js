@@ -10,7 +10,12 @@
  * wheelspawns.js (5) and wheelspawns1.js (1) WHEEL_CENTRE.  A caller passes the
  * size the room plays (src/game/wheelSize.js, caps.wheelsize); none is 1. */
 export const NML = Object.freeze({
-  HUB: 2764.8, TIER: 1024, TIERS: 16, LEVELS_PER_TIER: 5, FIRST_TIER: 2,
+  /* v2.3.3690: FIRST_TIER 1, the Lv 1-5 tier (the owner: "No man's land
+     should begin just outside of town where you can fight the lvl 1
+     monsters"); WAS_FIRST_TIER the Lv 6-10 one it was, which a worker without
+     caps.nmlnear still plays (noMansLand.js nmlFirst); SAFE_R the safe
+     ground's radius (the bake's WHEEL_SAFE_R), never in it */
+  HUB: 2764.8, TIER: 1024, TIERS: 16, LEVELS_PER_TIER: 5, FIRST_TIER: 1, WAS_FIRST_TIER: 2, SAFE_R: 2937,
   SKULL_MS: 20 * 60 * 1000,
 });
 /* each Wheel's centre, game px, by how many times longer than one zone a
@@ -27,9 +32,13 @@ export function nmlTierAt(x, y, long = 1) {
   return Math.max(1, Math.min(NML.TIERS, Math.ceil((r - NML.HUB) / tier)));
 }
 /* No man's land's level at a spot: 0 outside it (and outside the Wheel), 1
-   from the Lv 6-10 tier outward */
-export function nmlLevelAt(zone, x, y, long = 1) {
+   from the tier `first` outward (v2.3.3690: the Lv 1-5 tier; it was the Lv
+   6-10 one), never on the safe ground (SAFE_R round the centre) */
+export function nmlLevelAt(zone, x, y, long = 1, first = NML.FIRST_TIER) {
   if (zone !== 'wheel') return 0;
   const t = nmlTierAt(x, y, long);
-  return t >= NML.FIRST_TIER ? t - NML.FIRST_TIER + 1 : 0;
+  if (t < first) return 0;
+  const C = NML_CENTRES[long] || NML_CENTRES[1];
+  if (Math.hypot(x - C[0], y - C[1]) < NML.SAFE_R) return 0;
+  return t - first + 1;
 }

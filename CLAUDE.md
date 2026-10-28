@@ -2113,7 +2113,12 @@ remnant to migrate server-side, not a mode to preserve.
     you ..." (docs/specs/no-mans-land.md):
     - each land's Lv 6-10 ring is No man's land 1, the next 2, out to 15
       (`server/src/nomansland.js`, `src/data/noMansLandRings.js`,
-      mirror-audit); the banner, a chat line, and (since v2.3.3107, the
+      mirror-audit) -- since v2.3.3690 FROM THE SAFE GROUND'S EDGE, the
+      owner: "No man's land should begin just outside of town where you can
+      fight the lvl 1 monsters": the Lv 1-5 ring is 1, out to 16
+      (`NML.FIRST_TIER` 1, `SAFE_R` 2,937 = WHEEL_SAFE_R), the phone counting
+      so only against `caps.nmlnear` (noMansLand.js `nmlFirst`), kill switch
+      `nmlnear: false` (the Lv 6-10 start again); the banner, a chat line, and (since v2.3.3107, the
       owner: "above the center of the dashboard ... instead of the top bar")
       a red skull and the number centred just over the band, riding
       `--sheet-h`, whose tap opens the rules in InfoPopup with your own

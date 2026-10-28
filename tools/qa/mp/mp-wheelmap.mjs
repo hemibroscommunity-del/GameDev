@@ -406,7 +406,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(400);
   }
   let fb = null;
-  /* v2.3.3058: the Lv 6-10 ring is No man's land 1, and there the bar's
+  /* v2.3.3058: the Lv 6-10 ring is No man's land 1 (since v2.3.3690 it is 2:
+     it starts at the Lv 1-5 ring), and there the bar's
      second line says so, in red, in the stage name's place: "☠ No man's land
      1 · Lv 6–10" (ZoneHeader.jsx; src/game/noMansLand.js).  The words under
      it (wheelHere) still name the stage. */
