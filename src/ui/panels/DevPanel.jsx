@@ -513,19 +513,20 @@ export const DevPanel = ({ onClose }) => {
      The owner, 2026-10-28: "I would want to play it with it on before
      tomorrow to see if there's any noticeable difference.  If not, I'd rather
      just leave it on."  Three taps over the live flags (server movepath.js
-     THE SWITCHES): on for every phone (`pathall: true`, the kill switch
-     cleared), back to only a phone with ?diet=1 in its address (`pathall`
-     cleared), and the kill switch (`movepath: false`: off for every phone,
+     THE SWITCHES): on for every phone (v2.3.3744: the default, both flags
+     cleared), only a phone with ?diet=1 in its address (`pathall: false`),
+     and the kill switch (`movepath: false`: off for every phone,
      ?diet=1 too).  Every phone is told at once; none needs to reload. */
   const setDiet = useCallback(async (mode) => {
     let j = null;
     if (mode === 'all') {
+      /* v2.3.3744: on for every phone is the default now -- both flags cleared */
       j = await call('/flags?name=movepath', null, 'DELETE');
-      if (j) j = await call('/flags', { name: 'pathall', value: true });
+      if (j) j = await call('/flags?name=pathall', null, 'DELETE');
       if (j) setMsg('Message diet ON for every phone. Every phone switched over at once.');
     } else if (mode === 'one') {
       j = await call('/flags?name=movepath', null, 'DELETE');
-      if (j) j = await call('/flags?name=pathall', null, 'DELETE');
+      if (j) j = await call('/flags', { name: 'pathall', value: false });
       if (j) setMsg('Message diet only on a phone with ?diet=1 in its address. Everyone else is as before.');
     } else if (mode === 'kill') {
       j = await call('/flags?name=pathall', null, 'DELETE');

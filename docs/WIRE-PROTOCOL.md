@@ -164,7 +164,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | Type | Purpose | Server case |
 |---|---|---|
 | `join` | Session start; negotiates `protocolVersion` | ~3418 |
-| `move` | Position/zone update (batched client-side, 33 ms). v2.3.3006: `sp: 1` marks a sprint step, judged at 1.33x the walking bound and paid for in stamina (server/src/sprint.js; an old worker ignores it). v2.3.3732: `pd: 1` asks to be moved along `vx`/`vy` until the next move (caps.movepath; sent only with `?diet=1` or caps.pathall; server/src/movepath.js) | ~3672 |
+| `move` | Position/zone update (batched client-side, 33 ms). v2.3.3006: `sp: 1` marks a sprint step, judged at 1.33x the walking bound and paid for in stamina (server/src/sprint.js; an old worker ignores it). v2.3.3732: `pd: 1` asks to be moved along `vx`/`vy` until the next move (caps.movepath; sent with caps.pathall, on by default since v2.3.3744, or `?diet=1`; server/src/movepath.js) | ~3672 |
 | `pong` | Heartbeat reply | ~3811 |
 | `track` | **Cosmetics/appearance only** (2 s cadence) — allowlisted, see below | ~3819 |
 | `player_attack` | Attack swing (also relayed to peers — see Quirks) | ~3828 |
@@ -292,12 +292,14 @@ passes such a move on at its next tick (`STEADY.SPACED_MS`). Same message, sent
 less often; an old worker gets every move, an old client sends every move. Kill
 switch: `movediet: false` (un-advertises the cap). `docs/specs/move-diet.md`.
 
-**v2.3.3732: the message diet -- a steady walk is sent as a path (off for
-players by default).** Against a worker advertising `caps.movepath` (on unless
-the kill switch `movepath: false`), a client in the Wheel, not in a duel or an
-arena match, that was opened with `?diet=1` or is told `caps.pathall` (the live
-flag `pathall: true`; changes to either flag reach every client at once as the
-privileged `move_path {on, all}`), marks every `move` with `pd: 1` ("move me along my speed until my
+**v2.3.3732: the message diet -- a steady walk is sent as a path (v2.3.3744:
+on for every phone by default; the owner: "Just turn the message diet on now
+I'll turn it off if I do not like").** Against a worker advertising
+`caps.movepath` (on unless the kill switch `movepath: false`), a client in the
+Wheel, not in a duel or an arena match, that is told `caps.pathall` (on unless
+the live flag `pathall: false`) and was not opened with `?diet=0`, or was
+opened with `?diet=1` (changes to either flag reach every client at once as
+the privileged `move_path {on, all}`), marks every `move` with `pd: 1` ("move me along my speed until my
 next one"). A steady move (every other field as sent, the same speed within ~2
 degrees, on its line, as far along it as the speed says, under 500 px/s)
 waits until 200 ms after the last one sent; a change (a turn, start, stop,
