@@ -245,11 +245,19 @@ async function runDoors({ browser, wsPort, webPort, rec }) {
     !!dg.npc && Math.abs(dg.npc.x - (store.x + sk.dx)) < 1 && Math.abs(dg.npc.y - (store.y + sk.dy)) < 1 && dg.npc.r === 0
       && !!dg.drawn && dg.drawn.h > 100 && dg.drawn.h < 220 && dg.names.length === 1 + WHEEL_TOWNSFOLK.length && !dg.shop,
     dg);
+  /* v2.3.3683: a townsperson talks on a TAP only since v2.3.3583 (the owner:
+     "tap only instead of proximity based. I keep opening dialog by
+     accident") -- walking up to him opens nothing, and a tap opens his shop
+     (H.talkToNpc, the stick's tap).  This check still expected v2.3.1701's
+     walk-up window and failed on main from then on. */
   await standAt(store.x + sk.dx + 30, store.y + sk.dy + 10);
+  await P.page.waitForTimeout(1500);
+  const byWalk = await P.page.evaluate(() => !!document.querySelector('[data-shop-panel]'));
+  const tapped = await H.talkToNpc(P, 'shopkeeper_bro');
   let shopOpen = false;
   for (let i = 0; i < 12 && !shopOpen; i++) { await P.page.waitForTimeout(300); shopOpen = await P.page.evaluate(() => !!document.querySelector('[data-shop-panel]')); }
   await shot(P, 'diego-shop');
-  rec.ok('...and walking up to him opens it, as in the old town', shopOpen, {});
+  rec.ok(`...walking up to him opens nothing (${byWalk ? 'it opened' : 'shut'}), and a tap on him opens it (${tapped ? 'tapped' : 'no tap'}, ${shopOpen ? 'open' : 'shut'})`, !byWalk && tapped && shopOpen, { byWalk, tapped, shopOpen });
   await P.page.evaluate(() => { const b = document.querySelector('[data-shop-close]'); if (b) b.click(); });
   await P.page.waitForTimeout(500);
 
