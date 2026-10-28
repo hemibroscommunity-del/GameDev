@@ -15,7 +15,6 @@ import { BT_AUDIO } from '@/data/index.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a jump's push-off and landing */
 import { jumpRefusal, startJump, endJump, jumpActive, JUMP_MS, JUMP_PEAK, startFlip, flipRefusal } from '@/game/jump.js';   /* v2.3.3682: + the flip */
 import { isSprinting } from '@/game/sprint.js';   /* v2.3.3682: a jump sprinted into flips bigger */
-import { pushDmgPopup, heroPopupY } from '@/game/combatHelpers.js';   /* v2.3.3682: "Perfect!" over you */
 import { dropShield } from '@/game/shieldToggle.js';
 import { isStuck, isDazed } from '@/game/elemHits.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
@@ -105,9 +104,6 @@ function flipAngle(S, d) {
   return typeof S._facingAngle === 'number' ? S._facingAngle : Math.PI / 2;
 }
 
-/* "Perfect!" in the gold of a good find, the message size (effectsRenderer) */
-export var FLIP_PERFECT_COLOR = '#FFD45E';
-
 /**
  * ═══ v2.3.3682: THE DOUBLE JUMP -- A FLIP ═══
  * The second press in the air (game/jump.js startFlip has the rules): once a
@@ -136,9 +132,9 @@ export function triggerFlip(S, now, extra) {
   S._flipCount = (S._flipCount || 0) + 1;
   S._lastFlip = { at: now, grade: f.grade, boost: f.boost, perfect: f.perfect, sprint: f.sprint, phase: f.at, dur: f.dur, peak: f.peak, h0: f.h0 };
   cue('jumpFlip');
-  if (f.perfect && S.player) {
-    try { pushDmgPopup(S, S.player.x, heroPopupY(S), 'Perfect!', FLIP_PERFECT_COLOR, { ts: now + 1 }); } catch (e) { /* a word only */ }
-  }
+  /* v2.3.3738: no "Perfect!" over you any more -- the owner: "You can remove
+     the 'perfect!' after a well timed jump."  The well-timed flip still
+     carries you further (its grade and boost); only the words went. */
   if (S.channel) {
     try {
       S.channel.send({ type: 'broadcast', event: 'player_jump',

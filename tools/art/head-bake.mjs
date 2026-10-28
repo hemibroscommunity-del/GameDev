@@ -114,7 +114,7 @@ async function pageList() {
 }
 
 /* ── in the page: one piece ── */
-async function pageBake({ cat, id, dirs, refScale, bits, cutSrc }) {
+async function pageBake({ cat, id, dirs, refScale, bits, cutSrc, bar }) {
   const CP = await import('/rendering/characterPortrait.js');
   const TI = await import('/rendering/traits/traitImg.js');
   const HC = await import('/rendering/traits/hatColorCatalog.js');
@@ -194,7 +194,10 @@ async function pageBake({ cat, id, dirs, refScale, bits, cutSrc }) {
   /* 8 bits: the colours cut to 255, per role (lookCut.mjs) */
   let remap = null, quant = null;
   if (bits === 8) {
-    const cut = (new Function('return ' + cutSrc))()(keys, 255);
+    /* the roles as the cut measures them: a painted role at its ref (in
+       refScale-ths), a flat one (ref 0) by its alpha and its own colour */
+    const cut = (new Function('return ' + cutSrc))()(keys, 255, { roles: roleDefs.map((ro) => ({ ref: ro.ref64, under: 0 })), refScale, bar });
+    if (cut && cut.quant && cut.quant.over) return { over: true, quant: cut.quant };
     if (cut) {
       remap = cut.remap; quant = cut.quant;
       keys.clear();
@@ -324,10 +327,11 @@ async function main() {
       for (const f of fs.readdirSync(OUT)) if (f.endsWith('.png')) fs.unlinkSync(path.join(OUT, f));
     }
     for (const { cat, id } of list) {
-      const args = { cat, id, dirs: CAT_DIRS[cat], refScale: REF_SCALE, bits: BITS, cutSrc: cutPerRole.toString() };
+      const args = { cat, id, dirs: CAT_DIRS[cat], refScale: REF_SCALE, bits: BITS, cutSrc: cutPerRole.toString(), bar: BAR8 };
       let r = await page.evaluate(pageBake, args);
-      /* a cut that misses the bar: this piece stays exact */
-      if (r.bits === 8 && r.check.max > BAR8) r = await page.evaluate(pageBake, { ...args, bits: 16 });
+      /* a cut that misses the bar (the cut says so, or the check finds it):
+         this piece stays exact */
+      if (r.over || (r.bits === 8 && r.check.max > BAR8)) r = await page.evaluate(pageBake, { ...args, bits: 16 });
       const { png, tableRows } = sheetPng(r);
       const name = `${cat}-${id}`;
       const ok = !r.unexplained && (r.quant ? r.check.max <= BAR8 : !r.check.over1) && r.cells.length;

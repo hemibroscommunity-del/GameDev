@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { COL } from './dash/common.js';
 import { thumbFor } from './dash/InventoryPanel.jsx';
@@ -66,7 +67,7 @@ function grantIcon(g, size) {
   const s = size || 20;
   const img = (src) => <img src={src} alt="" draggable={false} style={{ width: s, height: s, objectFit: 'contain', flex: 'none' }} />;
   if (!g) return null;
-  if (g.kind === 'coins') return img('/icons/ui/cur-gold.webp');
+  if (g.kind === 'coins') return img(coinArtFor(g.n));   /* v2.3.3734: the pile for the reward */
   if (g.kind === 'spin') return <SpinGlyph size={s} />;
   if (g.kind === 'freeze') return img('/icons/ui/elem-frost.webp');
   if (g.kind === 'item') { const u = thumbFor(g.key); return u ? img(u) : null; }
@@ -127,7 +128,7 @@ function QuestRow({ q, i, canReroll }) {
         </span>
         <span style={{ display: 'block', marginTop: 5 }}><Meter n={q.n} g={q.g} color={done ? COL.xp : COL.accent} /></span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11.5, color: COL.text2, fontVariantNumeric: 'tabular-nums' }}>
-          <img src="/icons/ui/cur-gold.webp" alt="" draggable={false} style={{ width: 13, height: 13, objectFit: 'contain' }} />
+          <img src={coinArtFor(q.c)} alt="" draggable={false} style={{ width: 13, height: 13, objectFit: 'contain' }} />
           {q.c} coins · <Star size={12} /> 1
         </span>
       </span>

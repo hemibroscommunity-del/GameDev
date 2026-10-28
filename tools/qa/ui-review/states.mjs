@@ -295,7 +295,7 @@ export const STATES = [
   },
   {
     id: 'creator', group: 'Before the game', pre: true, title: 'Character creator',
-    about: 'Making a new character: the bro on the left, the Trait Picker on the right (a wide Species button over tabs for hair, hats, skin, eyes, eyewear, beard, clothes), the name field and ENTER BRO TOWN.',
+    about: 'Making a new character: the bro on the left, the Trait Picker on the right (a wide Bro type button over tabs for hair, hats, skin, eyes, eyewear, beard, clothes), the name field and ENTER BRO TOWN.',
     run: async ({ P }) => {
       if (await has(P, '[data-tut="login-create"]')) {
         await H.uncoverDoor(P.page);
@@ -309,13 +309,16 @@ export const STATES = [
      owner's "Go recommended"), so the opening shot no longer shows Hair.
      v2.3.3589: and 'species', a tab of its own (the owner: "Yes make species
      it's own button"); the creator opens on it, and Skin is the skin tones. */
+  /* v2.3.3777: the 'species' tab reads "Bro type" (v2.3.3772, the owner:
+     "Change species to bro type"); its id stays, as UI-DESIGN-NOTES and the
+     review's packets key on it, and the tab is found by either word */
   ...['species', 'hair', 'hat', 'skin', 'eyes', 'eyewear', 'beard', 'shirt', 'pants', 'shoes'].map((t) => ({
-    id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + t + ' tab',
-    about: 'The character creator with the "' + t + '" tab of the Trait Picker open.',
+    id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + (t === 'species' ? 'Bro type' : t) + ' tab',
+    about: 'The character creator with the "' + (t === 'species' ? 'Bro type' : t) + '" tab of the Trait Picker open.',
     run: async ({ P }) => {
       const r = await evalIn(P, (tt) => {
         const tabs = Array.from(document.querySelectorAll('button.bt-cc-tab'));
-        const want = { species: /^species/i, hair: /^hair/i, hat: /hat/i, skin: /^skin/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
+        const want = { species: /^(bro type|species)/i, hair: /^hair/i, hat: /hat/i, skin: /^skin/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
         const b = tabs.find((x) => want.test((x.innerText || x.getAttribute('aria-label') || '').trim()));
         if (!b) return 'no tab ' + tt + ' (have: ' + tabs.map((x) => (x.innerText || '').trim()).join(', ') + ')';
         b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -527,6 +530,28 @@ export const STATES = [
     },
   },
   dash('more', 'More', 'The More page: tiles for everything else (settings, pets, ranks, friends, login key, about...).'),
+  /* v2.3.3736: a rare window whose script cannot come (src/ui/lazyPanel.js):
+     a tab left open across a deploy is answered with the page itself.  The
+     Settings page's script answered so here; its own state, next, opens it
+     with the script back (a fresh try) */
+  {
+    id: 'lazy-cantopen', group: 'Dashboard: More', title: 'A window that could not open',
+    about: '"Couldn\'t open this": a window whose code could not be loaded (a game left open across an update), with Reload and Close, over the game, which plays on.',
+    run: async ({ P }) => {
+      await P.page.route(/\/assets\/SettingsPanel-[^/]+\.js/, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html></html>' }));
+      const e = await bus(P, 'open', 'more');
+      if (e) return e;
+      await wait(P, 300);
+      await bus(P, 'push', 'settings');
+      const up = await P.page.waitForSelector('[data-lazy-cantopen]', { timeout: 10000 }).then(() => true).catch(() => false);
+      if (!up) return 'no "Couldn\'t open this" card (was the Settings page\'s script already loaded?)';
+    },
+    after: async ({ P }) => {
+      await P.page.unroute(/\/assets\/SettingsPanel-[^/]+\.js/).catch(() => {});
+      await evalIn(P, () => { const b = document.querySelector('[data-lazy-cantopen] button[data-esc]'); if (b) b.click(); });
+      await wait(P, 300);
+    },
+  },
   more('settings', 'Settings', 'Settings: sound, graphics, controls and the rest.'),
   more('pets', 'Pets', 'Your pets: the ones you caught, the one out with you, the journal of kinds.'),
   more('leaderboard', 'Ranks (leaderboard)', 'The leaderboard.'),
@@ -636,7 +661,20 @@ export const STATES = [
   building('post', 'Post Office', 'The Post Office: your mail and friends\' messages.'),
   building('sheriff', "Sheriff's Office", "The Sheriff's Office: the player list (duels start from a player's card) and the arena sign-up."),
   building('guildhall', 'Guild Hall', 'The Guild Hall: a row saying clans are parties now (made in the Saloon), and the skill guilds.'),
-  building('townhall', 'Town Hall', 'The Town Hall: the leaderboard and the world map.'),
+  building('townhall', 'Town Hall', 'The Town Hall (v2.3.3766): the board of everything to do in the world, under five headings, the leaderboard and the world map at its foot.'),
+  /* v2.3.3766: a page of the board -- the arena's, with its two pins */
+  building('townhall', 'Town Hall: a page', 'A page of the Town Hall\'s board (v2.3.3766): what the arena is, where it is, and the Red pin and Blue pin buttons.', {
+    id: 'building-townhall-page',
+    run: async ({ P }) => {
+      const ok = await evalIn(P, (p) => { if (!window.__btBuildingWindow) return false; window.__btBuildingWindow.open(p); return true; }, 'townhall');
+      if (!ok) return 'no building-window probe';
+      for (let i = 0; i < 30; i++) {
+        const hit = await evalIn(P, () => { const t = document.querySelector('[data-board-tile="arena"]'); if (t) { t.click(); return true; } return false; });
+        if (hit) break;
+        await wait(P, 200);
+      }
+    },
+  }),
   building('hotel', 'Hotel', 'The Hotel (v2.3.3539): a free rest -- full health, stamina and mana, and Well Rested, +10% combat XP for 30 minutes -- paid by the server.'),
   building('arena', 'Gladiator Arena', 'The arena window (from the Sheriff\'s Office).'),
   {
