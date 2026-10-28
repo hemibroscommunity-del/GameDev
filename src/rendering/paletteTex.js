@@ -1064,3 +1064,8 @@ extensions.add(PaletteFillBatcher);
 export function paletteFillProgram() { return fillBatchShader().glProgram; }
 export function paletteFillMade() { return FRAG_FILL !== FRAG; }
 export function paletteProgramLinked(r, program) { return programLinked(r, program); }
+
+/** v2.3.3728: has the renderer said yet whether pictures are drawn as colour
+ *  numbers here (setPaletteRenderer ran)?  p256.js waits on it: the effects
+ *  load as their modules are read, before the renderer is made. */
+export function paletteDecided() { return _ok !== null; }

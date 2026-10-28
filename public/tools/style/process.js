@@ -21,6 +21,8 @@
  * Plain DOM canvases rather than OffscreenCanvas: the target is iPhone Safari.
  */
 
+import { reduce256, toRgba } from './quant256.js';   /* v2.3.3728: reduceColours */
+
 export function mk(w, h) {
   const c = document.createElement('canvas');
   c.width = Math.max(1, Math.round(w));
@@ -857,10 +859,32 @@ export function snap(src, worldW, worldH, render, pal, maxDensity = 2.5) {
   if (render.snap > 0) {
     const c = resize(src, worldW / render.snap, worldH / render.snap, true);
     hardenAndMap(c, render.palette ? pal : null);
-    return c;
+    return reduceColours(c);
   }
   const k = Math.min(1, (worldW * maxDensity) / src.width);
-  return k < 1 ? resize(src, src.width * k, src.height * k, true) : src;
+  /* v2.3.3728: every picture the studio makes comes out on 256 colours or
+     fewer (reduceColours) */
+  return reduceColours(k < 1 ? resize(src, src.width * k, src.height * k, true) : src);
+}
+
+/* ═══ v2.3.3728: EVERY PICTURE ON 256 COLOURS OR FEWER ═══
+   The owner, 2026-10-28: "You can go ahead and reduce it. I won't notice at all
+   from anything at 256", and "everything converted using this more efficient
+   method as standard protocol".  A picture on 256 colours or fewer is drawn by
+   the game as colour numbers, a byte a pixel where it was four
+   (docs/specs/pictures-256.md).  quant256.js: OKLab, solid kept solid and soft
+   kept soft, no dithering; a picture already on 256 or fewer is returned as
+   it is (the same canvas).  A picture with more comes back as a new canvas,
+   the one given untouched.  tools/art/reduce256.mjs did the same, once, to the
+   pictures already in the game. */
+export function reduceColours(c, max = 256) {
+  if (!c || !(c.width > 0) || !(c.height > 0)) return c;
+  const d = ctx2d(c).getImageData(0, 0, c.width, c.height).data;
+  const r = reduce256(d, c.width, c.height, { max });
+  if (r.exact) return c;
+  const out = mk(c.width, c.height);
+  out.getContext('2d').putImageData(new ImageData(toRgba(r.idx, r.pal), c.width, c.height), 0, 0);
+  return out;
 }
 
 export function countColours(c) {
