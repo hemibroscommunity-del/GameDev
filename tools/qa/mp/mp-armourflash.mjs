@@ -210,12 +210,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         await new Promise((r) => setTimeout(r, 100));
       }
-      return { jog, all, have: last && last.have, want: last && last.want, missing: last ? last.missing.slice(0, 12) : null };
+      const bw = window.__btBakeWorker ? window.__btBakeWorker() : null;
+      const lm = window.__btLocalMisses ? window.__btLocalMisses() : null;
+      return { jog, all, have: last && last.have, want: last && last.want, missing: last ? last.missing.slice(0, 12) : null,
+        worker: bw && { busy: bw.busy, queued: bw.queued, pending: bw.pending, worker: bw.worker, inline: bw.inline, failed: bw.failed, raw: bw.raw, skipped: bw.skipped, beltPending: bw.beltPending, dead: bw.dead },
+        cache: lm && { size: lm.size, cap: lm.cap, worn: lm.worn, uids: lm.cachedUids } };
     });
     await startWatch(P);
     await walkAll(P, 1000);
     const w0 = await stopWatch(P);
     await report(P, 'the walk after putting the armour on', w0);
+    console.log('    the bake worker then: ' + JSON.stringify(ready.worker) + '; the cache: ' + JSON.stringify(ready.cache));
     console.log(`    after putting the armour on: every jog frame baked in ${ready.jog} ms, the whole set in ${ready.all} ms (held ${ready.have} of ${ready.want}${ready.missing && ready.missing.length ? '; missing ' + ready.missing.join(', ') : ''})`);
     rec.ok(`(measure) after putting the armour on: the jog baked in ${ready.jog} ms, the set in ${ready.all} ms; the walk after, ${w0.plain} plain body frames`, true);
     const look = await P.page.evaluate(() => { const r = window.__btCharRecord ? window.__btCharRecord() : null; return r && r.look ? JSON.stringify(r.look).slice(0, 300) : null; });
