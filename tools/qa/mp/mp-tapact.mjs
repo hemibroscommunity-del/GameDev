@@ -10,10 +10,13 @@
  *      the stick's zone opens the bank -- no jump;
  *   2. beside Ace it shows a speech BUBBLE, and a tap opens his coin flip --
  *      no jump;
- *   3. out on the commons with nothing about, it shows the JUMP arrow and a
- *      tap jumps;
- *   3b. holding the stick to attack the air, it wears the weapon (sword, then
- *      bow) -- never the jump -- and the jump comes back a beat after;
+ *   3. out on the commons with nothing about, it shows the weapon in hand
+ *      (v2.3.3712: it showed the JUMP arrow), and a tap swings it once and
+ *      never jumps -- the JUMP button jumps (the owner: "the contextual jump
+ *      button gives the jumps only to the jump button ... maybe just an
+ *      attack in its place");
+ *   3b. at rest, holding the stick to attack the air, and a beat after, it
+ *      wears the weapon (sword, then bow) -- never the jump;
  *   4. while the tap would ATTACK, it wears the weapon in the active slot,
  *      its bag picture -- an iron greatsword, a copper sword, the bow, the
  *      staff, the plain sword picture for an empty melee slot -- and lit, in
@@ -31,6 +34,8 @@ const PHONE = { width: 390, height: 844 };
 
 const icon = (P) => P.page.evaluate(() => { const d = document.querySelector('.bt-rjoy-base'); return d ? d.getAttribute('data-ricon') : null; });
 const jumps = (P) => P.page.evaluate(() => (window.__btJumpBtn ? window.__btJumpBtn().count : 0));
+/* v2.3.3712: the taps that asked for their one attack (game/tapJump.js) */
+const tapAtks = (P) => P.page.evaluate(() => (window._gameState.current._tapAttacks || 0));
 /* a real finger's tap on the right stick's zone, where it lands */
 /* the Mayor's quest offer pops up when you pass him (v2.3.1701) and its scrim
    takes every tap: shut whatever dialog is up, as a player would */
@@ -130,21 +135,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(400);
     }
 
-    /* ── 3. nothing about: the jump ── */
+    /* ── 3. nothing about: the weapon, and a tap swings it once (v2.3.3712:
+       it showed the JUMP arrow and jumped) ── */
     const open = await P.page.evaluate(() => { const S = window._gameState.current; return { x: S.player.x, y: S.player.y + 420 }; });
     await H.hopTo(P, open.x, open.y, { step: 100, gap: 260, tries: 90 });
+    await P.page.evaluate(() => { const S = window._gameState.current; S.rpg.weapon = { type: 'sword', name: 'Copper Sword', gearBase: 'copper', dmg: 3 }; S.rpg.activeSlot = 'melee'; S.lockedTarget = null; });
     const free = await H.waitFor(P, (S) => ({ nb: S.nearBuilding, n: S._nearNpc ? S._nearNpc.name : null, ic: document.querySelector('.bt-rjoy-base').getAttribute('data-ricon') }),
-      (v) => v.ic === 'jump', { timeout: 8000, label: 'the jump arrow' }).catch(() => null);
-    rec.ok(`with no door and nobody beside you it shows the JUMP arrow (${free ? free.ic : await icon(P)})`, !!free, free);
+      (v) => v.ic === 'w-sword-copper', { timeout: 8000, label: 'the weapon' }).catch(() => null);
+    rec.ok(`with no door and nobody beside you it shows the weapon in hand, not the JUMP arrow (${free ? free.ic : await icon(P)})`, !!free, free);
     await closeDialogs(P);
-    const j0 = await jumps(P);
+    const j0 = await jumps(P), a0 = await tapAtks(P);
+    const sw0 = await H.readState(P, (S) => S.swingTimer || 0);
     await tapStick(P, 83);
-    const j1 = await jumps(P);
-    rec.ok(`...and a tap jumps (${j0} -> ${j1})`, j1 === j0 + 1, { j0, j1 });
+    const took = await H.waitFor(P, (S) => ({ how: S._tapAtk ? S._tapAtk.how : null, sw: S.swingTimer || 0 }),
+      (v) => v.how === 'swing' && v.sw > sw0, { timeout: 4000, label: 'the tap\'s swing' }).catch(() => null);
+    const j1 = await jumps(P), a1 = await tapAtks(P);
+    rec.ok(`...and a tap swings it once, and never jumps (jumps ${j0} -> ${j1}, attacks asked ${a0} -> ${a1}, ${took ? took.how : 'no swing'})`,
+      j1 === j0 && a1 === a0 + 1 && !!took, { j0, j1, a0, a1, took });
 
     /* ── 3b. the owner, on the preview: "it just showed the new jump ... even
        when attacking".  Hold the stick at nothing, as a swing at the air is:
-       the weapon while you attack, the jump again a beat after ── */
+       the weapon while you attack, the jump again a beat after.
+       v2.3.3712: no jump picture at all now -- the weapon before, during and
+       after ── */
     const holdStick = (id, ms) => P.page.evaluate(async ({ id, ms }) => {
       const z = document.querySelector('[data-joyzone="R"]');
       const b = z.getBoundingClientRect();
@@ -166,24 +179,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
       ['ranged', { type: 'bow', name: 'Pine Bow', gearBase: 'pine', dmg: 3 }, 'w-bow'],
     ]) {
       await P.page.evaluate(({ slot, w }) => { const S = window._gameState.current; if (slot === 'melee') S.rpg.weapon = w; else S.rpg.rangedWeapon = w; S.rpg.activeSlot = slot; S.lockedTarget = null; }, { slot, w });
-      const ready = await H.waitFor(P, () => document.querySelector('.bt-rjoy-base').getAttribute('data-ricon'), (v) => v === 'jump', { timeout: 6000, label: 'the arrow first' }).catch(() => null);
+      const ready = await H.waitFor(P, () => document.querySelector('.bt-rjoy-base').getAttribute('data-ricon'), (v) => v === want, { timeout: 6000, label: 'the weapon at rest' }).catch(() => null);
       const h = await holdStick(84, 1400);
-      rec.ok(`holding the stick to attack with the ${w.type}, it wears ${want}, not the jump (${h.end})`, ready === 'jump' && h.end === want, { ready, ...h });
-      const back = await H.waitFor(P, () => document.querySelector('.bt-rjoy-base').getAttribute('data-ricon'), (v) => v === 'jump', { timeout: 6000, label: 'the arrow back' }).catch(() => null);
-      rec.ok('...and a beat after you stop, the JUMP arrow is back', back === 'jump', back);
+      rec.ok(`at rest and holding the stick to attack with the ${w.type}, it wears ${want}, never the jump (${ready} / ${h.end})`, ready === want && h.end === want && !h.seen.includes('jump'), { ready, ...h });
+      await P.page.waitForTimeout(2000);   /* past ATTACK_FACE_MS, where the arrow came back */
+      const back = await icon(P);
+      rec.ok(`...and a beat after you stop, still the weapon -- no JUMP arrow (${back})`, back === want, back);
       await P.page.evaluate(() => { const S = window._gameState.current; S.autoAttack = false; S._aiming = false; });
     }
 
     /* ── 4. an attack wears the weapon ── */
     await P.page.waitForTimeout(800);
-    const wear = async (slot, w) => {
+    const wear = async (slot, w, want) => {
       await P.page.evaluate(({ slot, w }) => {
         const S = window._gameState.current;
         if (slot === 'melee') S.rpg.weapon = w; else if (slot === 'ranged') S.rpg.rangedWeapon = w; else S.rpg.staffWeapon = w;
         S.rpg.activeSlot = slot;
         S._rBtnPressUntil = Date.now() + 3000;   /* the disc has a job: the tap attacks */
       }, { slot, w });
-      return H.waitFor(P, () => document.querySelector('.bt-rjoy-base').getAttribute('data-ricon'), (v) => v && v !== 'jump', { timeout: 3000, label: 'the attack face' })
+      /* v2.3.3712: the weapon is worn at rest too now, so wait for THIS one */
+      return H.waitFor(P, () => document.querySelector('.bt-rjoy-base').getAttribute('data-ricon'), (v) => v === want, { timeout: 3000, label: 'the attack face' })
         .then(async (ic) => ({ ic, shown: await P.page.evaluate((ic) => { const im = document.querySelector(`.bt-rjoy-icon[data-ricon-img="${ic}"]`); return !!im && getComputedStyle(im).display !== 'none' && im.complete && im.naturalWidth > 0; }, ic) }))
         .catch(() => ({ ic: null, shown: false }));
     };
@@ -196,7 +211,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       ['melee', null, 'melee', 'nothing in the melee slot (the plain sword picture)'],
     ];
     for (const [slot, w, want, words] of cases) {
-      const got = await wear(slot, w);
+      const got = await wear(slot, w, want);
       rec.ok(`attacking with ${words}, the stick wears ${want} (${got.ic})`, got.ic === want && got.shown, got);
     }
     await P.page.evaluate(() => { window._gameState.current._rBtnPressUntil = 0; });

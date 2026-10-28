@@ -24,8 +24,9 @@
  *      the screen, each group's rows PACKED with a gap between the groups
  *      ("in chunks without spaces within chunks but space between chunks"),
  *      the words 15 px or more ("more readable"), and a key only while it
- *      works: no Q (Shield) without a shield, Q once one is worn; no R (Whirl)
- *      without a sword in hand;
+ *      works: no R-Click (Shield) without a shield, R-Click once one is worn
+ *      (Q until v2.3.3711, the owner's layout); no R (Whirl) without a sword
+ *      in hand;
  *   3. H folds the controls to the ⌨ and the world grows into the room; H again
  *      brings them back;
  *   4. I and P open and close the pages, and with the pages folded the world
@@ -65,7 +66,9 @@ const keysCol = (P) => P.page.evaluate(() => {
       const rr = r.getBoundingClientRect();
       const sp = r.querySelector('span');
       return { k: (r.querySelector('kbd') || {}).textContent, w: (sp || {}).textContent, t: Math.round(rr.top), b: Math.round(rr.bottom),
-        fs: sp ? parseFloat(getComputedStyle(sp).fontSize) : 0, cut: sp ? sp.scrollWidth > sp.clientWidth + 1 : true };
+        fs: sp ? parseFloat(getComputedStyle(sp).fontSize) : 0, cut: sp ? sp.scrollWidth > sp.clientWidth + 1 : true,
+        /* v2.3.3711: the key cap's own words fit it too (2\u00d7WASD, R-Click) */
+        kcut: (() => { const kb = r.querySelector('kbd'); return !kb || kb.scrollWidth > kb.clientWidth + 1; })() };
     }),
   }));
   return { state: s.getAttribute('data-desk-keys'), side: s.getAttribute('data-desk-keys-side'),
@@ -169,7 +172,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!col && col.groups.map((g) => g.id).join() === 'move,fight,other,menus'
         && col.groups.map((g) => g.head.toLowerCase()).join() === 'move,fight,other,menus', col && col.groups.map((g) => [g.id, g.head]));
     const allRows = col ? col.groups.flatMap((g) => g.rows) : [];
-    const want = ['WASD', 'Space', 'X', 'Click', 'F', 'Tab', '1-3', 'E', 'B', 'C', 'H', 'Esc', 'I', 'P', 'J', 'L', 'K', 'O', 'M'];
+    /* v2.3.3711: the owner's layout -- Q the special, the combos, the wheel */
+    const want = ['WASD', 'Space', '2\u00d7WASD', 'X', 'Click', '2\u00d7Click', 'Q', 'Wheel', 'Tab', '1-3', 'E', 'B', 'C', 'H', 'Esc', 'I', 'P', 'J', 'L', 'K', 'O', 'M'];
     rec.ok('...every key that always works listed, the menus\' letters too', want.every((k) => keysOf(col).includes(k)), keysOf(col));
     rec.ok('...every row on the screen, inside the column', !!col && onScreen(allRows, col.box.t, Math.min(col.box.b, DESK.height)),
       allRows.filter((r) => r.b > DESK.height || r.t < 0));
@@ -188,9 +192,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const fs = allRows.map((r) => r.fs);
     rec.ok('...the words 15 px or more, none cut short', allRows.length > 0 && fs.every((f) => f >= 15) && allRows.every((r) => !r.cut),
       { fs: [...new Set(fs)], cut: allRows.filter((r) => r.cut).map((r) => r.w) });
+    rec.ok('...and every key cap\'s words fit their cap (v2.3.3711: 2\u00d7WASD, 2\u00d7Click, R-Click, +Click, Wheel)', allRows.length > 0 && allRows.every((r) => !r.kcut),
+      allRows.filter((r) => r.kcut).map((r) => r.k));
     let dk = await P.page.evaluate(() => (window.__btDeskKeys ? window.__btDeskKeys() : null));
-    rec.ok('no shield worn: no Q (Shield, Bash); no sword in hand: no R (Whirl)',
-      !!dk && !dk.have.shield && !dk.have.whirl && !keysOf(col).includes('Q') && !keysOf(col).includes('Q+E') && !keysOf(col).includes('R'), { dk, keys: keysOf(col) });
+    rec.ok('no shield worn: no R-Click (Shield) nor +Click (Bash); no sword in hand: no R (Whirl)',
+      !!dk && !dk.have.shield && !dk.have.whirl && !keysOf(col).includes('R-Click') && !keysOf(col).includes('+Click') && !keysOf(col).includes('R'), { dk, keys: keysOf(col) });
     /* the list reads the page's own copy (R.shield), as the shield's touch
        button does: a shield on the arm there is what is asked about */
     await P.page.evaluate(() => {
@@ -200,8 +206,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1600);
     col = await keysCol(P);
     dk = await P.page.evaluate(() => (window.__btDeskKeys ? window.__btDeskKeys() : null));
-    rec.ok('a shield worn: Q (Shield) listed under Fight, within a second or two', !!dk && dk.have.shield
-      && !!col && (col.groups.find((g) => g.id === 'fight') || { rows: [] }).rows.some((r) => r.k === 'Q' && /shield/i.test(r.w)), { dk, keys: keysOf(col) });
+    rec.ok('a shield worn: R-Click (Shield) listed under Fight, within a second or two', !!dk && dk.have.shield
+      && !!col && (col.groups.find((g) => g.id === 'fight') || { rows: [] }).rows.some((r) => r.k === 'R-Click' && /shield/i.test(r.w)), { dk, keys: keysOf(col) });
 
     /* ── 3. H FOLDS THE CONTROLS, AND THE WORLD TAKES THE ROOM ── */
     const cv0 = await box(P, 'canvas');

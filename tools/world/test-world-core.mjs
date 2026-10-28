@@ -3159,24 +3159,25 @@ console.log('jumping (v2.3.3017)');
 /* ── v2.3.3105: a tap on the right stick jumps, last (src/game/tapJump.js) ──
    Owner: "Try moving jump as tap on right joystick but prioritize other
    contextual uses for the tap instead of jump first if any apply." */
-console.log('the tap that jumps (v2.3.3105)');
+console.log('the tap on the right stick (v2.3.3105 jumped; v2.3.3712 attacks)');
 {
   const fs = await import('node:fs');
   const TJ = await import('../../src/game/tapJump.js');
   const now = 100000;
-  ok('a tap with nothing to do on the right side may jump', TJ.rightTapBusy({}, now) === false);
+  ok('a tap with nothing to do on the right side is free (v2.3.3712: it attacks once; it jumped)', TJ.rightTapBusy({}, now) === false);
   ok('...not while a harvest owns the side, the disc has a job, or a lock waits for an empty tap to let it go',
     TJ.rightTapBusy({ _extraction: {} }, now) && TJ.rightTapBusy({ _rBtnPressUntil: now + 1 }, now)
       && TJ.rightTapBusy({ lockedTarget: { type: 'monster' } }, now) && !TJ.rightTapBusy({ _rBtnPressUntil: now }, now)
       && TJ.rightTapBusy(null, now));
-  ok('with no job on the right side a tap may last TAP_JUMP_MAX_MS (320, past the old 200), and the first swing waits as long',
-    TJ.TAP_JUMP_MAX_MS === 320 && TJ.tapJumpMaxMs() === 320
+  ok('with no job on the right side a tap may last TAP_FREE_MAX_MS (320, past the old 200; v2.3.3712: was TAP_JUMP_MAX_MS), and the first swing waits as long',
+    TJ.TAP_FREE_MAX_MS === 320 && TJ.tapFreeMaxMs() === 320 && TJ.TAP_JUMP_MAX_MS === undefined
       && /if \(S\._atkHoldUntil && Date\.now\(\) < S\._atkHoldUntil\) _flickWait = true;/.test(fs.readFileSync(new URL('../../src/game/monsterCombat.js', import.meta.url), 'utf8')));
   ok('a swing meets a prop at the swinger\'s boots (playerGroundDy), not the chest',
     /py = py \+ playerGroundDy\(S\.currentZone, px, py\);\s*var c = propSwingContact/.test(fs.readFileSync(new URL('../../src/game/combatHelpers.js', import.meta.url), 'utf8')));
-  ok('the stick\'s picture names the tap\'s act: a door, the bed, a character, else the jump (a resource is the stick\'s own harvest)',
+  ok('the stick\'s picture names the tap\'s act: a door, the bed, a character, else none -- the weapon, v2.3.3712 (a resource is the stick\'s own harvest)',
     TJ.tapActIcon('door') === 'door' && TJ.tapActIcon('talk') === 'talk' && TJ.tapActIcon('sleep') === 'sleep'
-      && TJ.tapActIcon('gather') === 'jump' && TJ.tapActIcon(null) === 'jump');
+      && TJ.tapActIcon('farm-plant') === 'farm-plant'
+      && TJ.tapActIcon('gather') === null && TJ.tapActIcon(null) === null);
   {
     const dc = fs.readFileSync(new URL('../../src/game/desktopControls.js', import.meta.url), 'utf8');
     ok('...from the E key\'s own chain, the character first for the stick (a door has its own Enter button), and the tap runs that chain',
@@ -3203,10 +3204,15 @@ console.log('the tap that jumps (v2.3.3105)');
   const rE = bt.slice(bt.indexOf('var rE = function rE(e)'), bt.indexOf('THE BUTTON.  Press = engage'));
   const at = (re) => { const m = re.exec(rE); return m ? m.index : -1; };
   const flick = at(/doSpecialAttack\(\); return;/), res = at(/tapResourceAtClient\(t\.clientX/), npc = at(/tapNpcAtClient\(t\.clientX/),
-    self = at(/openSelfChat\(\)/), fwd = at(/dispatchEvent\(new MouseEvent\('click'/), jump = at(/triggerJump\(_tjS\)/);
-  ok(`the right stick's release tries the flick, a resource, a character, yourself and the forwarded tap BEFORE the jump (${[flick, res, npc, self, fwd, jump].join(' < ')})`,
-    [flick, res, npc, self, fwd, jump].every((v, k, a) => v > 0 && (k === 0 || v > a[k - 1])));
-  ok('...the jump only when the forwarded tap reached "empty space", read before it could drop the lock',
+    self = at(/openSelfChat\(\)/), fwd = at(/dispatchEvent\(new MouseEvent\('click'/), atk = at(/requestTapAttack\(_tjS, endT\)/);
+  ok(`the right stick's release tries the flick, a resource, a character, yourself and the forwarded tap BEFORE its one attack (${[flick, res, npc, self, fwd, atk].join(' < ')})`,
+    [flick, res, npc, self, fwd, atk].every((v, k, a) => v > 0 && (k === 0 || v > a[k - 1])));
+  /* v2.3.3712: the owner, "the contextual jump button gives the jumps only to
+     the jump button ... (maybe just an attack in its place if nothing else is
+     there?)" */
+  ok('v2.3.3712: a tap on the right stick NEVER jumps (no triggerJump in BroTown: the JUMP button and X are the jump)',
+    !/triggerJump\(/.test(bt) && !/_tapJumps/.test(bt));
+  ok('...the attack only when the forwarded tap reached "empty space", read before it could drop the lock',
     /rightTapBusy\(_tjS, endT\)[\s\S]*_tjSeq = [\s\S]*dispatchEvent[\s\S]*_tapEmptySeq \|\| 0\) > _tjSeq/.test(rE)
       && /S\._tapEmptySeq = \(S\._tapEmptySeq \|\| 0\) \+ 1;\s*\/\* Tap on empty space = unlock \*\/\s*S\.lockedTarget = null;/.test(bt)
       && /rts\.busy = rightTapBusy\(/.test(bt));
@@ -3234,6 +3240,30 @@ console.log('the tap that jumps (v2.3.3105)');
         && /S\.autoAttack = false;\s*S\._atkPending = false;/.test(bt));
     ok('...and a pending tap\'s thumb, inside the tap\'s 10 px, moves the knob and aims nothing (the aim\'s dead zone is 8)',
       /if \(!rts2\.moved && tapPending\(stateRef\.current, Date\.now\(\)\)\) rKnobFollow\(/.test(rM));
+  }
+  /* v2.3.3712: the tap's one attack (tapJump.js requestTapAttack), taken by
+     the auto-attack loop like a held thumb and marked done by what leaves */
+  {
+    const S = { rpg: {}, _targetFacingAngle: 0.5, _lastAimAngle: -2, swingTimer: 0 };
+    const asked = TJ.requestTapAttack(S, now);
+    const waiting = TJ.tapAttackWaiting(S, now) && !TJ.tapAttackWaiting(S, now + TJ.TAP_ATTACK_WAIT_MS);
+    S.swingTimer = now + 10;
+    TJ.tapAttackDone(S, now + 10, 'swing', now + 10);
+    TJ.tapAttackDone(S, now + 20, 'arrow');
+    ok('a free tap asks for ONE attack the way the body faces (the aim and the bow\'s last aim written so every reader agrees), waits at most TAP_ATTACK_WAIT_MS, and is done once',
+      asked && waiting && S._aimAngle === 0.5 && S._lastAimAngle === 0.5 && S._tapAttacks === 1
+        && !TJ.tapAttackWaiting(S, now + 11) && S._tapAtk.how === 'swing' && TJ.tapSwingAim(S) === 0.5);
+    S.swingTimer = now + 900;
+    ok('...its swing\'s aim is the tap\'s only for that swing; the facing ladder falls back to the four-way facing; no character, no ask',
+      TJ.tapSwingAim(S) === null && TJ.tapFacingAngle({ _facing: 'left' }) === Math.PI && TJ.tapFacingAngle({ _facingAngle: 1 }) === 1
+        && !TJ.requestTapAttack({}, now) && !TJ.requestTapAttack(null, now));
+    const mc = fs.readFileSync(new URL('../../src/game/monsterCombat.js', import.meta.url), 'utf8');
+    ok('...the loop takes it through the held attack\'s own gate, and marks it done by the arrow or bolt, the swing, a special, or a bow line on nothing',
+      /var _tapAtkNow = tapAttackWaiting\(S, Date\.now\(\)\);\s*if \(\(S\.autoAttack \|\| _engSwing \|\| _tapAtkNow\) && !_flickWait/.test(mc)
+        && /if \(_tapAtkNow\) tapAttackDone\(S, S\.swingTimer, isStaff \? 'bolt' : 'arrow'\);/.test(mc)
+        && /if \(_tapAtkNow\) tapAttackDone\(S, S\.swingTimer, 'swing', S\.swingTimer\);/.test(mc)
+        && /if \(_tapAtkNow && !_mayLoose\) tapAttackDone\(/.test(mc)
+        && /else if \(tapSwingAim\(S\) != null\) \{\s*baseAngle = tapSwingAim\(S\);/.test(mc));
   }
 }
 

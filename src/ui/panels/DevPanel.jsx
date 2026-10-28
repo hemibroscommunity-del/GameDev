@@ -513,6 +513,32 @@ export const DevPanel = ({ onClose }) => {
     if (j) { setBotFlags(Array.isArray(j.flagged) ? j.flagged : []); setMsg(''); }
   }, [call]);
 
+  /* ═══ v2.3.3723: THE HIDDEN SETTINGS (server/src/hidden.js) ═══
+     The anti-bot's thresholds, weights and flag score, the fleet limits and
+     the two hour caps, kept in the worker's own storage instead of the public
+     code (docs/specs/hidden-settings.md).  Each row: what it does, the value
+     in force, the public placeholder, and a box to change it -- live at
+     once, no deploy.  The worker refuses a value outside the row's range and
+     says why.  On demand, like the flags: these are never on a phone that
+     has not asked with the key. */
+  const [hidden, setHidden] = useState(null);
+  const [hidDraft, setHidDraft] = useState({});
+  const loadHidden = useCallback(async () => {
+    const j = await call('/dev/hidden');
+    if (j) { setHidden(j); setMsg(''); }
+  }, [call]);
+  const saveHidden = useCallback(async (name, value) => {
+    /* NaN goes over the wire as null, which is the RESET: a typo must not
+       quietly put the placeholder back */
+    if (value !== null && !Number.isFinite(value)) { setMsg(name + ': that is not a number.'); return; }
+    const j = await call('/dev/hidden', { name, value });
+    if (j) {
+      setHidden(j);
+      setHidDraft((d) => { const n = { ...d }; delete n[name]; return n; });
+      setMsg(value === null ? name + ' is back to its placeholder.' : name + ' saved. It is in force now.');
+    }
+  }, [call]);
+
   /* ═══ v2.3.3398: CHAT REPORTS, WHERE THE OWNER CAN ACT ON THEM ═══
      Players have filed reports since v2.3.1981 (a player's card, Report), each
      stored with the server's own copy of what the reported player said
@@ -1252,6 +1278,59 @@ export const DevPanel = ({ onClose }) => {
                     </div>
                   </div>
                 ))}
+              </>
+            )}
+
+            {/* ═══ v2.3.3723: HIDDEN SETTINGS ═══  See the note by loadHidden. */}
+            <div style={label}>Hidden settings</div>
+            <button type="button" style={btn(false)} disabled={busy} data-hidden-load="1"
+              onClick={loadHidden}>
+              {hidden ? 'Reload hidden settings' : 'Show hidden settings'}
+            </button>
+            {hidden && (
+              <>
+                <div style={{ color: COL.muted, fontSize: 12, marginBottom: 6, lineHeight: 1.4 }}>
+                  Kept in the server, never in the public code and never sent to a phone.
+                  A change is live at once. The placeholder is the public value, used when
+                  nothing is set.
+                </div>
+                {hidden.off && (
+                  <div data-hidden-off="1" style={{ background: COL.accentFill, border: '1px solid ' + COL.accent, color: COL.accent,
+                    borderRadius: 9, padding: '10px 11px', fontSize: 12.5, lineHeight: 1.4, marginBottom: 8 }}>
+                    The live flag <b>hidden_off</b> is on: every setting is its placeholder until you clear it.
+                  </div>
+                )}
+                {hidden.newer && (
+                  <div style={{ color: COL.accent, fontSize: 12.5, marginBottom: 8 }}>
+                    A newer server wrote these. This one will not change them.
+                  </div>
+                )}
+                {(hidden.settings || []).map((h) => {
+                  const draft = hidDraft[h.name];
+                  return (
+                    <div key={h.name} data-hidden-row={h.name} style={{ marginBottom: 6, background: COL.raised, borderRadius: 8,
+                      padding: '8px 9px', border: '1px solid ' + (h.stored !== null ? COL.accent : COL.border) }}>
+                      <div style={{ fontSize: 12.5, lineHeight: 1.35 }}>{h.words}</div>
+                      <div style={{ fontSize: 11.5, color: COL.muted, marginTop: 2 }}>
+                        {h.name} · now <b style={{ color: COL.text }}>{String(h.value)}</b>
+                        {h.stored !== null ? ' (yours)' : ' (placeholder)'} · placeholder {String(h.placeholder)} · {h.lo} to {h.hi}{h.int ? ', whole' : ''}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                        <input inputMode="decimal" value={draft === undefined ? '' : draft}
+                          onChange={(e) => { const v = e.target.value; setHidDraft((d) => ({ ...d, [h.name]: v })); }}
+                          placeholder="new value" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                          style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', background: COL.well, color: COL.text,
+                            border: '1px solid ' + COL.border, borderRadius: 8, padding: '8px 9px', minHeight: 40 }} />
+                        <button type="button" style={chip} disabled={busy || draft === undefined || draft === ''}
+                          onClick={() => saveHidden(h.name, Number(draft))}>Save</button>
+                        {h.stored !== null && (
+                          <button type="button" style={chip} disabled={busy}
+                            onClick={() => saveHidden(h.name, null)}>Reset</button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </>
             )}
 

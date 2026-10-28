@@ -64,7 +64,8 @@ export const BLOCK = 128;
 /* cells round a block its walls need: swimBits measures the shore up to
    SHORE_CAP + 1 cells away, and walkBits blurs two cells either way */
 export const WALL_MARGIN = SHORE_CAP + 3;
-/* blocks kept built (~50 KB each); the ones furthest from the last asked go */
+/* blocks kept built (~50 KB each); the ones furthest from the last asked go
+   (v2.3.3717: `opts.keep` another number -- the ground worker's `?groundlean`) */
 const KEEP = 48;
 
 /* cells round a piece of ground its window needs (composeGround's blur and
@@ -81,6 +82,7 @@ export function wheelBlocks(plan, opts = {}) {
   /* the ground's seed (composeGround's, which swimBits shares) */
   const seed = (plan.seed | 0) + 900;
   const built = new Map();     /* J * cols + I -> block */
+  const keepN = opts.keep > 0 ? opts.keep : KEEP;
   /* the material map's catalog, ids and the rest -- the same for every
      rectangle, so from a blueprint of one cell */
   let catalogOf = null;
@@ -136,10 +138,10 @@ export function wheelBlocks(plan, opts = {}) {
   /* let the blocks furthest from where you are (near) go -- never the one
      just built, which is wanted now */
   function trim(fresh) {
-    if (built.size <= KEEP) return;
+    if (built.size <= keepN) return;
     const dist = (b) => Math.max(Math.abs(b.I - lastI), Math.abs(b.J - lastJ));
     const far = [...built.values()].filter((b) => b !== fresh).sort((a, b) => dist(b) - dist(a));
-    for (const b of far.slice(0, built.size - KEEP)) built.delete(key(b.I, b.J));
+    for (const b of far.slice(0, built.size - keepN)) built.delete(key(b.I, b.J));
   }
 
   /* The swatch map of any rectangle of cells (`x`, `y`, `w`, `h` from the

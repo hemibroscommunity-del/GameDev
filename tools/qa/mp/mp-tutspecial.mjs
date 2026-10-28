@@ -82,7 +82,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* FIRE A REAL ONE — same entry point mp-questcoach uses. */
     await P.page.evaluate(() => { window.__shots = []; });
-    await P.page.keyboard.press('f');
+    await P.page.keyboard.press('q');   /* v2.3.3711: the special's key is Q (F is the Element Burst) */
 
     /* Sample the whole swing window, not one moment: the shield could be
        right at the start and wrong two frames later. */
@@ -107,7 +107,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* Fire a second one and photograph it mid-swing, clipped to the player.
          The state assertions above say the shield is slung; a picture is what
          the owner can actually compare against what they saw. */
-      await P.page.keyboard.press('f');
+      await P.page.keyboard.press('q');   /* v2.3.3711: the special's key is Q (F is the Element Burst) */
       await P.page.waitForTimeout(140);
       try {
         const clip = await P.page.evaluate(() => {

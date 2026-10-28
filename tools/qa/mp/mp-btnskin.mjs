@@ -252,7 +252,7 @@ async function body(P, rec) {
   rec.ok('...and no orbit is drawn round it', A.disc && !A.disc.orbit, A.disc);
   rec.ok('Spec, Whirl, Block, Sprint, Jump are Normal when ready', ['special', 'whirl', 'block', 'sprint', 'jump'].every((k) => A[k] && A[k].state === 'normal'),
     ['special', 'whirl', 'block', 'sprint', 'jump'].map((k) => A[k] && A[k].state));
-  rec.ok('Jump\'s picture is the mockup\'s blue arrow', A.jump && A.jump.svgs.join() === 'jump', A.jump && A.jump.svgs);
+  rec.ok('Jump\'s picture is its plain jump mark (v2.3.3721: was the mockup\'s blue arrow)', A.jump && A.jump.svgs.join() === 'jump', A.jump && A.jump.svgs);
 
   /* ── 5: the mockup's other states ── */
   const flags = () => P.page.evaluate(() => {

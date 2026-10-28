@@ -123,10 +123,10 @@ button follows (KeyboardHintsPanel.jsx `deskKeyHave`, read once a second):
 | Key | Listed only with |
 |---|---|
 | Shift (Sprint) | a worker that settles a sprint |
-| Q (Shield) | a shield |
-| Q+E (Bash) | a shield, and the bash unlocked |
+| R-Click (Shield; Q until v2.3.3711) | a shield |
+| +Click (Bash; Q+E until v2.3.3711) | a shield, and the bash unlocked |
 | R (Whirl) | the sword in hand, and the whirlwind unlocked |
-| G (Burst) | a weapon the Element Burst fires from, at its level |
+| F (Burst; G until v2.3.3711) | a weapon the Element Burst fires from, at its level |
 | T (Trap) | a box trap in the bag |
 | V (Eat) | cooked food in the bag |
 
@@ -165,7 +165,7 @@ a player reads them all.
   - the four groups, every row on the screen, each group's rows packed with a
     gap between groups, every row 21-28 px, the words 15 px or more and none
     cut short;
-  - no Q or R until they work, and Q once a shield is worn;
+  - no R-Click (Q until v2.3.3711) or R until they work, and R-Click once a shield is worn;
   - H folding the controls, and the world growing;
   - I and P, and folded, the world after the fold chip's strip, the chip
     saying OPEN;

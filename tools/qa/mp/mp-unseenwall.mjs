@@ -193,7 +193,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`with the pickaxe the vein is drawn, and the same walk stops at it (at ${stopped.x}, the vein at ${Math.round(vein.x)})`,
       d1.drawn && stopped.x < vein.x - 20 && stopped.x > vein.x - RUN + 20, { d1, stopped, objs });
 
-    /* ── 4. out of reach, the thumb on the vein: the tap jumps ── */
+    /* ── 4. out of reach, the thumb on the vein: the tap is free (v2.3.3712:
+       it attacks once where it jumped -- mp-tapattack) ── */
     await travel(P, wsPort, myId, vein.x - 260, vein.by);
     await P.page.evaluate(() => { window._gameState.current.lockedTarget = null; });
     await P.page.waitForTimeout(1500);
@@ -211,21 +212,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const mk = (t) => new TouchEvent(t, { bubbles: true, cancelable: true,
         touches: t === 'touchend' ? [] : [new Touch({ identifier: 71, target: z, clientX: x, clientY: y })],
         changedTouches: [new Touch({ identifier: 71, target: z, clientX: x, clientY: y })] });
-      const j0 = S._tapJumps || 0;
+      const a0 = S._tapAttacks || 0;
       const p0 = (S.dmgNumbers || []).length;
       /* nothing else wants the tap here: no resource in reach (the disc
-         pressable), no lock -- else it rightly would not jump (mp-tapjump) */
+         pressable), no lock -- else it rightly would not attack (mp-tapattack) */
       const busy = (S._rBtnPressUntil || 0) > Date.now() || !!S.lockedTarget || !!S._nearNode;
       z.dispatchEvent(mk('touchstart'));
       await new Promise((r) => setTimeout(r, 120));
       z.dispatchEvent(mk('touchend'));
       const pops = (S.dmgNumbers || []).slice(p0).map((d) => d && d.text).filter((t) => typeof t === 'string');
-      return { ok: true, inZone, busy, x: Math.round(x), y: Math.round(y), jumped: (S._tapJumps || 0) > j0, why: S._jumpWhy || null,
+      return { ok: true, inZone, busy, x: Math.round(x), y: Math.round(y), attacked: (S._tapAttacks || 0) > a0, why: S._tapAtkWhy || null,
         pops, far: pops.indexOf('Too far away!') >= 0, harvest: !!S._extraction, drawn: !!(n._pixiSprite && !n._pixiSprite.destroyed) };
     }, vein.id);
     rec.ok('...standing out of its reach, the thumb on the vein\'s rock in the right stick\'s half, nothing else wanting the tap (guard)', tap.ok && tap.inZone && tap.drawn && !tap.busy, tap);
-    rec.ok(`out of reach, a tap on the right stick with the thumb on the drawn vein jumps -- no "Too far away!", no harvest (${JSON.stringify(tap.pops || [])})`,
-      tap.ok && tap.jumped && !tap.far && !tap.harvest, tap);
+    rec.ok(`out of reach, a tap on the right stick with the thumb on the drawn vein is free (it attacks, v2.3.3712) -- no "Too far away!", no harvest (${JSON.stringify(tap.pops || [])})`,
+      tap.ok && tap.attacked && !tap.far && !tap.harvest, tap);
 
     rec.ok(`no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {

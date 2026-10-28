@@ -69,7 +69,7 @@
  *   anything that fails          -> { type: 'error', id, message }
  */
 import { PLAN as BASE_PLAN, planFor } from '../plan.js';
-import { buildBlueprint, planFeatures } from './layout.js';
+import { buildBlueprint, planFeatures, latticeKeep } from './layout.js';
 import { gridInfo } from './grid.js';
 /* v2.3.3298: the Wheel a block at a time (worldblocks.js), and what is baked */
 import { wheelBlocks, BLOCK, PIECE_MARGIN, overviewCells, planFingerprint } from './worldblocks.js';
@@ -97,7 +97,8 @@ const APRON = 3;            /* art px laid past each edge, so smooth scaling rea
                                the apron: with 1 (1.5 game px) it would read past the picture's edge.
                                6% more ground laid and kept a piece. */
 const UNDER = 2;            /* v2.3.2967: art px (3 game px) a byte of a piece's `under` -- 4 KB a piece */
-const DECODED_KEEP = 16;    /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too; v2.3.2951: and blends -- the town's busiest piece needs about 13) */
+let DECODED_KEEP = 16;      /* swatch pictures kept unpacked, 1 MB each (v2.3.2947: edge pieces too; v2.3.2951: and blends -- the town's busiest piece needs about 13).
+                               v2.3.3717: `let`, as `?groundlean` sets it (LEAN below) */
 const GAME_BASE = '/world/ground/';
 const PLACED_BASE = '/world/';            /* v2.3.3298: tools/world/bake-wheel-world.mjs (v2.3.3315: + each set's dir) */
 const OBJECTS_BASE = '/world/objects/';   /* v2.3.2975: the Object Studio's "Download for the game", repacked */
@@ -148,7 +149,7 @@ const PIECE_WAIT_MS = 4000;
 const PREFETCH = 2;
 /* downloaded pictures kept as their files (about 0.25 MB each) -- the phone's
    own cache holds the rest, and this many cover a walk's next few screens */
-const FILES_KEEP = 32;
+let FILES_KEEP = 32;        /* v2.3.3717: `let`, as `?groundlean` sets it (LEAN below) */
 const files = new Map();              /* 'id|ver' -> Blob, the picture as downloaded */
 const dlJobs = new Map();             /* 'id|ver' -> { k, p, resolve, urgentAt } waiting or downloading */
 const dlLine = [];                    /* the waiting ones, most wanted first */
@@ -193,6 +194,7 @@ function pump() {
       dlJobs.delete(job.k);
       if (blob) {
         dlRetry.delete(job.k);
+        if (everFetched.has(job.k)) diet.refetches++; else everFetched.add(job.k);
         files.set(job.k, blob);
         while (files.size > FILES_KEEP) files.delete(files.keys().next().value);
         if (owed.delete(job.k)) post({ type: 'got', k: job.k });
@@ -238,11 +240,144 @@ function prefetchRound(i, j) {
   for (const id of swatchesUnder(bp, mm, rect)) {
     const s = swatches[id];
     if (!s) continue;
-    for (const v of ['A', 'B', 'E']) if (s.vers[v] && !decoded.has(`${id}|${v}`)) want(`${id}|${v}`, false);
+    for (const v of ['A', 'B', 'E']) if (s.vers[v] && !decoded.has(`${id}|${v}`) && !isCold(`${id}|${v}`)) want(`${id}|${v}`, false);
   }
 }
 
 const post = (msg, transfer) => self.postMessage(msg, transfer || []);
+
+/* ═══ v2.3.3717: THE LEAN GROUND (`?groundlean`) ═══
+   The owner, 2026-10-28: "The game needs to be extremely memory efficient."
+   This worker held ~29 MB at the memory check's fight (its `workers` line):
+   DECODED_KEEP's 16 swatch pictures unpacked at 1 MB each, the calmed water
+   pictures, the blocks and the plan.  DIET counts what a walk really asks of
+   it -- every piece's pictures (`keepMax`, the most one piece needed), each
+   picture unpacked (`decodes`), unpacked AGAIN after it was let go
+   (`redecodes`), what unpacking cost (`decodeMs`), and each file fetched
+   again after FILES_KEEP let it go (`refetches`) -- sent with every piece
+   (`diet`, wheelStats.diet: tools/qa/mp's wheelmem and membudget read it).
+   Measured on the memory check's trip (three times BroTown -> the Flame
+   Fields' fight -> home): only 12 pictures are ever unpacked, none twice,
+   at most 10 for one piece (in town) and 2 at the fight -- so the cap of 16
+   never bites, and the worker holds every picture the trip has seen, 12 MB.
+   And unpacking is SLOW: ~800 ms a picture on the test box (the picture
+   read back and put on its colours), so a smaller cap alone would unpack
+   them again on every trip, and the ground would come late.
+   So with `?groundlean` in the page's address:
+     - only LEAN.decodedKeep pictures stay unpacked (and always every one the
+       piece being laid needs);
+     - one let go is SQUEEZED -- its colour numbers deflated by the browser's
+       own CompressionStream, ~1 MB to a few hundred KB -- and kept COLD
+       (LEAN.coldKeep at most); asked for again it THAWS in a few ms, never
+       unpacked again from its file (`thaws`, `thawMs`, `coldMB`);
+     - the downloaded files kept, LEAN.filesKeep (the phone's own cache has
+       them at their keepable ?v= address), and the blocks, LEAN.blocksKeep
+       (the 3 x 3 round you that are built while the worker is idle, and
+       room);
+     - the plan's lattice values remembered, LEAN.latticeKeep a field
+       (layout.js latticeKeep: they had no cap, ~3.3 MB in BroTown);
+     - the calmed water pictures are not kept apart (`calmed`): a calm one
+       let go is squeezed as it is, calm.
+   Measured with mp-groundlean (the trip out and back twice, `?groundsum`):
+   every piece the same byte for byte; with 6 kept unpacked town's pieces
+   (up to 10 pictures each) thawed 58 times and came 5 ms slower each, with
+   8 they thawed 16 times (5 ms each) and came as fast as today -- 58.4 ms a
+   piece against 58.6, the worker 21.4 MB against 26.5.
+   A browser without CompressionStream lets a picture go as before.  Without
+   the switch nothing changes.  docs/specs/worker-code-diet.md. */
+const LEAN = { decodedKeep: 8, coldKeep: 24, filesKeep: 8, blocksKeep: 16, latticeKeep: 8192 };
+let lean = false;
+/* `?groundsum` (QA): every piece sent with a checksum of what it shows -- its
+   colour numbers and colours, or its colours -- so a test can prove the lean
+   ground lays every piece exactly as the standard one (mp-groundlean) */
+let sums = false;
+function sumOf(...arrs) {
+  let h = 0x811c9dc5;
+  for (const a of arrs) {
+    if (!a) continue;
+    const b = a instanceof Uint8Array || a instanceof Uint8ClampedArray ? a : new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+    for (let i = 0; i < b.length; i++) h = Math.imul(h ^ b[i], 16777619);
+  }
+  return h >>> 0;
+}
+const diet = { decodes: 0, redecodes: 0, decodeMs: 0, keepMax: 0, keepLast: 0, refetches: 0, thaws: 0, thawMs: 0, squeezed: 0 };
+const SQUEEZE = typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+const cold = new Map();               /* 'id|ver' -> { w, h, pal, z } a picture let go, its numbers deflated (lean only) */
+const squeezing = new Map();          /* 'id|ver' -> the tile, let go and waiting to be squeezed, or being squeezed */
+const squeezingNow = new Set();       /* ...the one being squeezed now */
+let coldBytes = 0;
+/* bytes through the browser's own deflate (CompressionStream) or inflate */
+async function flate(bytes, Stream) {
+  const cs = new Stream('deflate'), w = cs.writable.getWriter();
+  w.write(bytes).catch(() => {});
+  w.close().catch(() => {});
+  const r = cs.readable.getReader(), parts = [];
+  let n = 0;
+  for (;;) {
+    const { value, done } = await r.read();
+    if (done) break;
+    parts.push(value);
+    n += value.length;
+  }
+  const out = new Uint8Array(n);
+  for (let i = 0, o = 0; i < parts.length; o += parts[i].length, i++) out.set(parts[i], o);
+  return out;
+}
+/* a picture let go (lean): squeezed and kept cold, the oldest cold ones let
+   go.  Squeezing a picture is ~20-50 ms of the worker's own time, so it waits
+   until nothing is asked of the worker (idleBlock), never in a piece's way:
+   squeezed in a piece's time, the pieces came ~7 ms slower each. */
+function toCold(k, tile) {
+  if (!SQUEEZE || !tile || !tile.idx || squeezing.has(k)) return;
+  squeezing.set(k, tile);
+  idleSoon();
+}
+/* one picture squeezed, when the worker is idle (idleBlock); false when none waits */
+function squeezeNext() {
+  let k = null;
+  for (const k2 of squeezing.keys()) if (!squeezingNow.has(k2)) { k = k2; break; }
+  if (k == null) return false;
+  const tile = squeezing.get(k);
+  squeezingNow.add(k);
+  flate(tile.idx, CompressionStream).then((z) => {
+    squeezingNow.delete(k);
+    if (squeezing.get(k) !== tile) return;      /* thawed back by tileOf meanwhile */
+    squeezing.delete(k);
+    if (decoded.has(k)) return;
+    const was = cold.get(k);
+    if (was) coldBytes -= was.z.length;
+    cold.set(k, { w: tile.w, h: tile.h, pal: tile.pal, z });
+    coldBytes += z.length;
+    diet.squeezed++;
+    while (cold.size > LEAN.coldKeep) {
+      const k0 = cold.keys().next().value;
+      coldBytes -= cold.get(k0).z.length;
+      cold.delete(k0);
+    }
+  }, () => { squeezingNow.delete(k); squeezing.delete(k); }).then(idleSoon);
+  return true;
+}
+/* kept cold (lean): no download wanted for it */
+const isCold = (k) => cold.has(k) || squeezing.has(k);
+/* the picture back from cold (lean), or null */
+async function thaw(k) {
+  const sq = squeezing.get(k);
+  if (sq) { squeezing.delete(k); return sq; }
+  const c = cold.get(k);
+  if (!c) return null;
+  cold.delete(k);
+  coldBytes -= c.z.length;
+  const t0 = performance.now();
+  try {
+    const idx = await flate(c.z, DecompressionStream);
+    if (idx.length !== c.w * c.h) return null;
+    diet.thaws++;
+    diet.thawMs += performance.now() - t0;
+    return { w: c.w, h: c.h, idx, pal: c.pal };
+  } catch (e) { return null; }
+}
+const everDecoded = new Set();        /* 'id|ver' unpacked at least once (a short key a picture: a few hundred bytes) */
+const everFetched = new Set();        /* 'id|ver' downloaded at least once */
 /* v2.3.3021: the water pictures calmed so far, and the time it took; and
    the calm pictures themselves, kept apart from `decoded` (which lets
    pictures go as you walk), so none is worked out twice: four at most, the
@@ -273,6 +408,10 @@ function idleSoon() {
 function idleBlock() {
   idleTimer = 0;
   if (busy || !W) return;
+  /* v2.3.3717: a picture let go squeezed first (lean: toCold) -- it calls
+     idleSoon again when it is done */
+  if (squeezingNow.size) return;
+  if (lean && squeezeNext()) return;
   const next = W.blocks.missingNear(1);
   if (!next) return;
   W.blocks.ground(next[0], next[1]);
@@ -328,9 +467,13 @@ async function init(m) {
   /* v2.3.3022: the standard plan, or the one `?bigtown` asks for (plan.js planFor)
      -- v2.3.3315: of the size the room plays (caps.wheelsize, worldTrial.js) */
   PLAN = planFor(search, (m && m.size) | 0 || 1);
+  /* v2.3.3717: `?groundlean`, the smaller caches (LEAN) */
+  lean = /(^|[?&])groundlean(=|&|$)/.test(search);
+  sums = /(^|[?&])groundsum(=|&|$)/.test(search);
+  if (lean) { DECODED_KEEP = LEAN.decodedKeep; FILES_KEEP = LEAN.filesKeep; latticeKeep(LEAN.latticeKeep); }
   const g = gridInfo(PLAN);
   const F = planFeatures(PLAN);
-  const blocks = wheelBlocks(PLAN, { onBuilt: postBlock });
+  const blocks = wheelBlocks(PLAN, { onBuilt: postBlock, keep: lean ? LEAN.blocksKeep : 0 });
   const mm = blocks.catalog();
   /* the whole blueprint's outline, without its cells: what the map, the
      doors, Mayor Bro and the rivers read */
@@ -669,6 +812,11 @@ async function tileOf(id, ver, wait) {
   if (failed.has(k)) return null;
   const s = swatches[id], src = s && s.vers[ver];
   if (!src) return null;
+  /* v2.3.3717: let go and squeezed (lean): back in a few ms, not unpacked again */
+  if (lean) {
+    const t = await thaw(k);
+    if (t) { decoded.set(k, t); return t; }
+  }
   let blob = files.get(k) || src.blob || null;     /* the studio's are on the phone already */
   if (!blob) {
     const p = want(k, true), job = dlJobs.get(k);
@@ -695,6 +843,7 @@ async function tileOf(id, ver, wait) {
   const wasCalmed = calmed.get(k);
   if (wasCalmed && wasCalmed.blob === blob) { decoded.set(k, wasCalmed.tile); return wasCalmed.tile; }
   let tile = null;
+  const td = performance.now();
   try {
     const bm = await createImageBitmap(blob);
     const c = new OffscreenCanvas(TILE, TILE);
@@ -718,19 +867,25 @@ async function tileOf(id, ver, wait) {
       tile = calmWater(tile);
       calmStats.n++;
       calmStats.ms += Math.round(performance.now() - tc);
-      calmed.set(k, { blob, tile });
+      if (!lean) calmed.set(k, { blob, tile });   /* v2.3.3717: lean, a calm one let go is squeezed calm */
     }
   } catch (e) {
     failed.add(k);               /* this browser cannot unpack it: plan colour, and the readout says so */
     return null;
   }
   decoded.set(k, tile);
+  diet.decodes++;
+  diet.decodeMs += performance.now() - td;
+  if (everDecoded.has(k)) diet.redecodes++; else everDecoded.add(k);
   return tile;
 }
 function trim(keep) {
   for (const k of decoded.keys()) {
     if (decoded.size <= DECODED_KEEP) break;
-    if (!keep.has(k)) decoded.delete(k);
+    if (keep.has(k)) continue;
+    /* v2.3.3717: lean, kept cold, squeezed (LEAN) */
+    if (lean) toCold(k, decoded.get(k));
+    decoded.delete(k);
   }
 }
 
@@ -780,7 +935,7 @@ async function chunk(m) {
      DL_PARALLEL at a time), then those for the pieces round it */
   for (const id of ids) {
     const s = swatches[id];
-    if (s) for (const v of ['A', 'B', 'E']) if (s.vers[v] && !decoded.has(`${id}|${v}`) && !failed.has(`${id}|${v}`)) want(`${id}|${v}`, true);
+    if (s) for (const v of ['A', 'B', 'E']) if (s.vers[v] && !decoded.has(`${id}|${v}`) && !failed.has(`${id}|${v}`) && !isCold(`${id}|${v}`)) want(`${id}|${v}`, true);
   }
   prefetchRound(m.i, m.j);
   /* a piece laid again (`relay`, it went back partial) waits for nothing:
@@ -807,11 +962,17 @@ async function chunk(m) {
   /* v2.3.3019: and the piece's water field, for the water's motion */
   const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, blends, waterField: W.waves ? { rivers: W.rivers } : null });
   const under = underOf(out.mat, out.w);
+  /* v2.3.3717: how many pictures this piece kept (DIET) */
+  let kept = 0;
+  for (const k of keep) if (decoded.has(k)) kept++;
+  diet.keepLast = kept;
+  if (kept > diet.keepMax) diet.keepMax = kept;
   trim(keep);
   const wf = out.waterField || null;
   /* v2.3.3190: as colour numbers, where the game draws them so and the piece
      has 256 colours or fewer (every one measured has far fewer) */
   const np = W.palette ? piecePalette(out.data, out.w, out.h) : null;
+  const sum = sums ? (np ? sumOf(np.idx, np.pal, under) : sumOf(out.data, under)) : null;   /* v2.3.3717: `?groundsum` */
   const moved = np ? [np.idx.buffer, np.pal.buffer, under.buffer] : [out.data.buffer, under.buffer];
   if (wf && wf.data) moved.push(wf.data.buffer);
   post({ type: 'chunk', id: m.id, i: m.i, j: m.j, w: out.w, h: out.h, under, wf,
@@ -821,7 +982,11 @@ async function chunk(m) {
        how the downloads stand */
     partial: lacking.size > 0, lacking: [...lacking], downloading: dlJobs.size, dlFails,
     /* v2.3.3021: the water pictures calmed (ground.js CALM WATER) */
-    calm: W.calm ? { n: calmStats.n, ms: calmStats.ms } : null }, moved);
+    calm: W.calm ? { n: calmStats.n, ms: calmStats.ms } : null,
+    /* v2.3.3717: what the walk has asked of the worker (DIET) */
+    sum,
+    diet: { ...diet, decodeMs: Math.round(diet.decodeMs), thawMs: Math.round(diet.thawMs), lean, files: files.size, calmed: calmed.size, blocks: W.blocks.size(),
+      cold: cold.size, coldMB: +(coldBytes / 1048576).toFixed(2) } }, moved);
 }
 
 /* v2.3.2967: the swatch DRAWN under the piece's own square (not its apron),

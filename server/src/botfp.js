@@ -29,6 +29,13 @@
  * types (rule 13 untouched); the admin surface is HTTP, invisible (404)
  * unless env.ADMIN_KEY is configured AND presented. */
 
+/* v2.3.3723: every threshold, weight, flag score, fleet limit and hour cap in
+   this table is a PUBLIC PLACEHOLDER now (docs/specs/hidden-settings.md).  The
+   room reads them through its hidden settings (hidden.js HIDDEN_SPEC lists
+   which), where the owner keeps the live values privately; these are what a
+   room with no stored value, a broken one or `hidden_off` thrown reads, and
+   what every test runs on.  The plumbing below them (rings, map caps, the put
+   pace) stays public: it is memory and cost, not a line a bot could aim at. */
 export const BOTFP = {
   // ── per-strike floors ──
   // ENT_FLOOR mirrors the client's own 'perfect' gate (ExtractionSwipeLayer
@@ -175,6 +182,14 @@ export const BOTFP = {
 };
 
 const now_ = () => Date.now();
+/* v2.3.3723: the thresholds, weights, flag scores, fleet limits and hour caps
+   in force: the room's hidden settings merged over BOTFP above, which keeps
+   them only as PUBLIC PLACEHOLDERS (hidden.js, docs/specs/hidden-settings.md).
+   Read through the room so the owner's private values never sit in this file;
+   anything that is not a room (a test's stub) reads the placeholders.  A local
+   helper, not an import: hidden.js imports BOTFP, and a cycle would run it
+   before BOTFP exists. */
+const hid = (room) => (room && typeof room._hid === 'function' ? room._hid() : BOTFP);
 const cleanTok = (s, max) => String(s || '').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, max);
 
 function freshRecord(now) {
@@ -286,9 +301,10 @@ export const botfpMethods = {
   },
 
   _botfpDecay(rec, now) {
+    const T = hid(this);
     if (rec.score > 0) {
       const dt = now - rec.lastDecayAt;
-      if (dt > 0) rec.score *= Math.pow(0.5, dt / BOTFP.SCORE_HALF_LIFE_MS);
+      if (dt > 0) rec.score *= Math.pow(0.5, dt / T.SCORE_HALF_LIFE_MS);
       if (rec.score < 0.01) rec.score = 0;
     }
     rec.lastDecayAt = now;
@@ -308,6 +324,7 @@ export const botfpMethods = {
   // ── the gathering hook: called from _handleNodeStrike after the timing
   // gates, before rewards.  Returns { accuracy, grant }. ──
   _botfpOnStrike(session, ps, ctx) {
+    const T = hid(this);
     /* v2.3.3430: a test-mode character is not scored, flagged or capped
        (testmode.js) -- its strike is granted as the phone graded it */
     if (typeof this._testMode === 'function' && this._testMode(ps)) return { accuracy: ctx.accuracy, grant: true };
@@ -317,7 +334,7 @@ export const botfpMethods = {
     let accuracy = ctx.accuracy;
 
     // Economic cap first — behavior-independent backstop (§6).
-    if (!this._botfpHourOk(rec, ctx.skill, BOTFP.HARVEST_HOUR_CAP, now)) {
+    if (!this._botfpHourOk(rec, ctx.skill, T.HARVEST_HOUR_CAP, now)) {
       rec.counters.capClamps++;
       this._botfpMaybePut(session.id, rec, rec.counters.capClamps === 1);
       return { accuracy, grant: false };
@@ -326,7 +343,7 @@ export const botfpMethods = {
     // Inter-strike interval evidence (short gaps only — long gaps are walks).
     if (rec.lastStrikeAt) {
       const gap = now - rec.lastStrikeAt;
-      if (gap <= BOTFP.INTERVAL_MAX_MS) {
+      if (gap <= T.INTERVAL_MAX_MS) {
         rec.intervals.push(gap);
         if (rec.intervals.length > BOTFP.INTERVALS) rec.intervals.shift();
       }
@@ -361,26 +378,26 @@ export const botfpMethods = {
     // Forgery guard (NOT behavioral): the client itself refuses 'perfect'
     // below the entropy floor, so an under-floor perfect claim is a forged
     // packet.  Cap it to 'ok'.
-    if (accuracy === 'perfect' && ent < BOTFP.ENT_FLOOR) {
+    if (accuracy === 'perfect' && ent < T.ENT_FLOOR) {
       accuracy = 'ok';
       rec.counters.entFloorHits++;
     }
 
     // Synthetic-input floors — require >= 2 independently-tripped floors.
     let floors = 0;
-    if (ent < BOTFP.ENT_FLOOR) floors++;
-    if (tv <= BOTFP.TV_FLOOR) floors++;
-    if (vc <= BOTFP.VC_FLOOR) floors++;
-    if (floors >= BOTFP.SYNTH_MIN_FLOORS) {
+    if (ent < T.ENT_FLOOR) floors++;
+    if (tv <= T.TV_FLOOR) floors++;
+    if (vc <= T.VC_FLOOR) floors++;
+    if (floors >= T.SYNTH_MIN_FLOORS) {
       rec.counters.syntheticStrikes++;
-      rec.score += BOTFP.SCORE_SYNTH;
+      rec.score += T.SCORE_SYNTH;
     }
 
     // Replay ring — bit-identical path hash reuse.
     if (h) {
       if (rec.hRing.includes(h)) {
         rec.counters.replayHits++;
-        rec.score += BOTFP.SCORE_REPLAY;
+        rec.score += T.SCORE_REPLAY;
       }
       rec.hRing.push(h);
       if (rec.hRing.length > BOTFP.H_RING) rec.hRing.shift();
@@ -396,8 +413,8 @@ export const botfpMethods = {
     let d = ent - w.entMean; w.entMean += d / w.n; w.entM2 += d * (ent - w.entMean);
     d = vc - w.vcMean; w.vcMean += d / w.n; w.vcM2 += d * (vc - w.vcMean);
 
-    if (rec.strikeCount % BOTFP.EVAL_EVERY === 0) this._botfpEval(session.id, rec, now);
-    if (rec.score >= BOTFP.FLAG_AT) this._botfpFlag(session.id, rec, 'suspicion-threshold', { score: Math.round(rec.score * 10) / 10 }, now);
+    if (rec.strikeCount % T.EVAL_EVERY === 0) this._botfpEval(session.id, rec, now);
+    if (rec.score >= T.FLAG_AT) this._botfpFlag(session.id, rec, 'suspicion-threshold', { score: Math.round(rec.score * 10) / 10 }, now);
 
     this._botfpMaybePut(session.id, rec, false);
     return { accuracy, grant: true };
@@ -405,33 +422,34 @@ export const botfpMethods = {
 
   // Accumulator checks — every EVAL_EVERY strikes, cheap array math.
   _botfpEval(id, rec, now) {
+    const T = hid(this);
     // Variance collapse: humans drift attempt-to-attempt; replay-with-noise
     // bots converge.
-    if (rec.ring.length >= BOTFP.COLLAPSE_MIN_N) {
+    if (rec.ring.length >= T.COLLAPSE_MIN_N) {
       const entVar = ringVariance(rec.ring, 'ent');
       const vcVar = ringVariance(rec.ring, 'vc');
-      if (entVar < BOTFP.ENT_VAR_FLOOR || vcVar < BOTFP.VC_VAR_FLOOR) {
-        rec.score += BOTFP.SCORE_COLLAPSE;
+      if (entVar < T.ENT_VAR_FLOOR || vcVar < T.VC_VAR_FLOOR) {
+        rec.score += T.SCORE_COLLAPSE;
         this._botfpFlag(id, rec, 'variance-collapse',
           { entVar: Number(entVar.toFixed(6)), vcVar: Number(vcVar.toFixed(6)), n: rec.ring.length }, now);
       }
     }
     // Inter-strike regularity: evidence-grade only (a respawn-camping human
     // can be regular) — adds score, never flags alone.
-    if (rec.intervals.length >= BOTFP.INTERVAL_MIN_N) {
+    if (rec.intervals.length >= T.INTERVAL_MIN_N) {
       let mean = 0;
       for (const g of rec.intervals) mean += g;
       mean /= rec.intervals.length;
       let m2 = 0;
       for (const g of rec.intervals) { const dd = g - mean; m2 += dd * dd; }
       const cv = mean > 0 ? Math.sqrt(m2 / rec.intervals.length) / mean : 1;
-      if (cv < BOTFP.INTERVAL_CV_FLOOR) rec.score += BOTFP.SCORE_INTERVAL;
+      if (cv < T.INTERVAL_CV_FLOOR) rec.score += T.SCORE_INTERVAL;
     }
     // Fleet signal: many identities on one device nonce harvesting heavily
     // in the same hour — the anchor against passphrase cycling.
     if (rec.deviceId && this._deviceIndex) {
       const ids = this._deviceIndex.get(rec.deviceId);
-      if (ids && ids.size >= BOTFP.FLEET_MIN_IDS) {
+      if (ids && ids.size >= T.FLEET_MIN_IDS) {
         let active = 0;
         const list = [];
         for (const oid of ids) {
@@ -439,12 +457,12 @@ export const botfpMethods = {
           if (!orec) continue;
           let total = 0;
           for (const v of Object.values(orec.hour.bySkill)) total += v;
-          if (total >= BOTFP.FLEET_ACTIVE_STRIKES && now - orec.hour.hourStart < 3600000) {
+          if (total >= T.FLEET_ACTIVE_STRIKES && now - orec.hour.hourStart < 3600000) {
             active++;
             list.push(oid);
           }
         }
-        if (active >= BOTFP.FLEET_ACTIVE_MIN) {
+        if (active >= T.FLEET_ACTIVE_MIN) {
           this._botfpFlag(id, rec, 'device-fleet', { deviceId: rec.deviceId, activeIds: list }, now);
         }
       }
@@ -460,12 +478,13 @@ export const botfpMethods = {
      refused.  The write is _botfpMaybePut's own pace, a flag's at most one an
      hour (FLAG_MIN_GAP_MS). */
   _botfpOnStartless(session, why, now) {
+    const T = hid(this);
     const t = now || now_();
     const rec = this._botfpRecord(session.id, t);
     this._botfpDecay(rec, t);
     rec.counters.startless = (rec.counters.startless || 0) + 1;
     rec.dirty = true;
-    if (rec.counters.startless >= BOTFP.STARTLESS_FLAG_AT) {
+    if (rec.counters.startless >= T.STARTLESS_FLAG_AT) {
       this._botfpFlag(session.id, rec, 'strikes-without-start', { why, count: rec.counters.startless }, t);
     }
     this._botfpMaybePut(session.id, rec, false);
@@ -474,7 +493,8 @@ export const botfpMethods = {
   // Shadow flag: persisted evidence for owner review.  Rate-limited so a
   // stuck bot doesn't fill the flag ring with duplicates.
   _botfpFlag(id, rec, kind, detail, now) {
-    if (now - rec.lastFlagAt < BOTFP.FLAG_MIN_GAP_MS) return;
+    const T = hid(this);
+    if (now - rec.lastFlagAt < T.FLAG_MIN_GAP_MS) return;
     rec.lastFlagAt = now;
     rec.flags.push({ at: now, kind, detail, counters: { ...rec.counters } });
     if (rec.flags.length > BOTFP.FLAG_CAP) rec.flags.shift();
@@ -485,12 +505,13 @@ export const botfpMethods = {
   // ── the cooking hook: hourly cap + replay + presence bookkeeping.
   // Returns { drop }. ──
   _botfpOnCook(session, ps, payload) {
+    const T = hid(this);
     /* v2.3.3430: ...nor a test-mode character's cook (testmode.js) */
     if (typeof this._testMode === 'function' && this._testMode(ps)) return { drop: false };
     const now = now_();
     const rec = this._botfpRecord(session.id, now);
     this._botfpDecay(rec, now);
-    if (!this._botfpHourOk(rec, 'cooking', BOTFP.COOK_HOUR_CAP, now)) {
+    if (!this._botfpHourOk(rec, 'cooking', T.COOK_HOUR_CAP, now)) {
       rec.counters.capClamps++;
       this._botfpMaybePut(session.id, rec, rec.counters.capClamps === 1);
       return { drop: true };
@@ -502,8 +523,8 @@ export const botfpMethods = {
       if (h) {
         if (rec.hRing.includes(h)) {
           rec.counters.replayHits++;
-          rec.score += BOTFP.SCORE_REPLAY;
-          if (rec.score >= BOTFP.FLAG_AT) this._botfpFlag(session.id, rec, 'suspicion-threshold', { score: Math.round(rec.score * 10) / 10, via: 'cook' }, now);
+          rec.score += T.SCORE_REPLAY;
+          if (rec.score >= T.FLAG_AT) this._botfpFlag(session.id, rec, 'suspicion-threshold', { score: Math.round(rec.score * 10) / 10, via: 'cook' }, now);
         }
         rec.hRing.push(h);
         if (rec.hRing.length > BOTFP.H_RING) rec.hRing.shift();

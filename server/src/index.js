@@ -127,6 +127,7 @@ import { trade2Methods } from './trade2.js';
 import { accountMethods } from './account.js';
 // v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.
 import { botfpMethods } from './botfp.js';
+import { hiddenMethods } from './hidden.js'; /* v2.3.3723: the hidden settings (docs/specs/hidden-settings.md) */
 // v2.3.1162 (P4 decomposition): quest accept/credit/turn-in -- see quests.js.
 import { questMethods } from './quests.js';
 // v2.3.1164 (P4 decomposition): server-settled Gamble Hall roll -- see gamble.js.
@@ -4836,6 +4837,9 @@ export class GameRoom {
        (`?rf=1`) gets the upgraded socket + `room_full`; everything else
        still gets the byte-identical 503 it got before. */
     await this._liveFlagsEnsure();
+    /* v2.3.3723: the hidden settings, read once a worker's life before its
+       first socket, so the first harvest already reads the owner's values */
+    await this._hiddenEnsure();
     if (this.sessions.size >= this._roomCap()) {
       return this._roomFullRefusal(url);
     }
@@ -6527,6 +6531,7 @@ Object.assign(GameRoom.prototype, trade2Methods);
 Object.assign(GameRoom.prototype, accountMethods);
 // v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.
 Object.assign(GameRoom.prototype, botfpMethods);
+Object.assign(GameRoom.prototype, hiddenMethods);   /* v2.3.3723 */
 // v2.3.1148: operator toolkit -- see admin.js.
 Object.assign(GameRoom.prototype, adminMethods);
 // v2.3.1149: time-cadence framework (daily reward + jackpot) -- see cadence.js.

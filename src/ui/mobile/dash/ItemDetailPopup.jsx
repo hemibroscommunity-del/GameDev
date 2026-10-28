@@ -175,9 +175,11 @@ function shieldThumb(shield) {
    (desktopControls.js: down raises, up lowers).  Asked by the same
    (pointer:fine) test that hides the button, so the card names the control
    that is really there. */
+/* v2.3.3711: on a computer the guard is the RIGHT MOUSE BUTTON held now (the
+   owner's layout: BroTown onMouseDown; Q is the special), so the card says so */
 function shieldBlockHint() {
   const fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
-  return fine ? 'Hold Q to block' : 'Tap Block in a fight to raise it';
+  return fine ? 'Hold right-click to block' : 'Tap Block in a fight to raise it';
 }
 
 /* Which weapon slot does a `type` belong in. */
