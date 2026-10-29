@@ -34,17 +34,23 @@ export const tradeBagBus = {
   staged: Object.create(null),   /* CLAUDE.md rule 4: keyed by inventory ids */
   /* (invKey) => void, installed by the panel. */
   add: null,
+  /* v2.3.3849: (stashIdx, weapon) => bool, installed by the panel too: a
+     weapon tile stages into the weapon lane.  False when the worker has no
+     weapon lane (caps.trade2Weapons), and the tile opens its card as before. */
+  weapon: null,
 
   /** The panel takes the bag while its window is live. */
-  attach(addFn) {
+  attach(addFn, weaponFn) {
     this.open = true;
     this.add = typeof addFn === 'function' ? addFn : null;
+    this.weapon = typeof weaponFn === 'function' ? weaponFn : null;
     emit();
   },
   /** ...and gives it back. Called from the panel's unmount cleanup. */
   detach() {
     this.open = false;
     this.add = null;
+    this.weapon = null;
     this.staged = Object.create(null);
     emit();
   },
@@ -61,6 +67,18 @@ export const tradeBagBus = {
     if (!this.open || !this.add) return false;
     try { this.add(key); } catch (e) { /* the panel owns the failure path */ }
     return true;
+  },
+  /* ═══ v2.3.3849: ...AND A WEAPON TILE STAGES THE WEAPON ═══
+     The owner, on a laptop with an older character: "I wasn't able to just
+     click items on my inventory during an active trade to put items up."
+     The bag's weapons are StashTiles (dash/InventoryPanel), which never asked
+     this bus: a click opened the weapon's card mid-trade, and the only way to
+     offer it was the drawer's own weapon chips.  Same message those chips send
+     (trade2_stage_weapon), so nothing new reaches the worker.  Armour and
+     shields have no trade lane, so their tiles still open their cards. */
+  tapWeapon(index, obj) {
+    if (!this.open || !this.weapon) return false;
+    try { return !!this.weapon(index, obj); } catch (e) { return false; }
   },
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 };

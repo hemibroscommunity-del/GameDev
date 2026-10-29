@@ -113,8 +113,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.2291: the flat kit's fills, sampled from the owner's own mockup. */
   const MY_WELL = 'rgb(18, 33, 43)';        /* #12212B */
   const THEIR_WELL = 'rgb(223, 220, 208)';  /* #DFDCD0 */
+  /* v2.3.3856: the owner's side by side -- "your trade window on left and
+     other person trade window on right" -- where the drawer is wide enough
+     (TradeWindowPanel .bt-t2-lanes); stacked, theirs above yours as before.
+     `top` is THEIR lane and `bottom` YOURS whichever way they stand. */
+  const ordered = (g) => !!(g && g.top && g.bottom)
+    && (g.top.top < g.bottom.top - 4 || (Math.abs(g.top.top - g.bottom.top) <= 4 && g.bottom.left < g.top.left));
   const laneOk = (g) => !!(g && g.top && g.bottom)
-    && g.top.top < g.bottom.top
+    && ordered(g)
     && g.top.bg === THEIR_WELL && g.bottom.bg === MY_WELL;
   /* ═══ v2.3.2294: AND THE SAME QUESTION ONE LEVEL DOWN ═══
      Everything above reads `.bt-t2-lane`, and the constants are even NAMED
@@ -486,6 +492,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && Math.abs(goldRowNarrow.clearDrop) < 20, goldRowNarrow);
   rec.ok('...without Clear being pushed off the edge of the drawer to do it',
     !!goldRowNarrow && goldRowNarrow.spillPx <= 0, goldRowNarrow);
+  /* v2.3.3856: an upright phone's drawer is too narrow for the owner's side
+     by side (a lane would be 180 px): the lanes stack there, theirs on top,
+     as before -- and the picture shows it */
+  const phoneLanes = await A.page.evaluate(() => {
+    const d = document.querySelector('[data-trade-drawer]');
+    const pick = (rx) => {
+      const h = [...(d ? d.querySelectorAll('.bt-t2-lane-hdr') : [])].find((x) => rx.test(((x.querySelector('.bt-t2-lane-name') || {}).textContent || '').trim()));
+      const l = h && h.closest('.bt-t2-lane'); if (!l) return null;
+      const r = l.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width) };
+    };
+    return { theirs: pick(/offers$/i), mine: pick(/^You offer$/i), drawerW: d ? Math.round(d.getBoundingClientRect().width) : 0 };
+  });
+  await shot(A, 'phone-upright-lanes');
+  rec.ok(`on a 375px iPhone (drawer ${phoneLanes.drawerW} px) the two offers stack, theirs on top, each the drawer's width (v2.3.3856)`,
+    !!(phoneLanes.theirs && phoneLanes.mine) && phoneLanes.theirs.top < phoneLanes.mine.top && phoneLanes.mine.w > 300, phoneLanes);
   await A.page.setViewportSize({ width: 1000, height: 780 });
   await A.page.waitForTimeout(500);
 
@@ -610,14 +631,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const r = well.getBoundingClientRect();
       const cs = getComputedStyle(well);
       const items = well.querySelector('.bt-t2-items');
-      return { top: Math.round(r.top), bg: cs.backgroundColor, shadow: cs.boxShadow,
+      return { top: Math.round(r.top), left: Math.round(r.left), bg: cs.backgroundColor, shadow: cs.boxShadow,
         well: items ? getComputedStyle(items).backgroundColor : null };
     };
     return { top: pick(/offers$/i), bottom: pick(/^You offer$/i) };
   });
-  rec.ok('live drawer: their offer is above yours (the screen the other two '
-    + 'were made to match)', !!(liveGeom.top && liveGeom.bottom)
-    && liveGeom.top.top < liveGeom.bottom.top, liveGeom);
+  rec.ok('live drawer: their offer is above yours, or (side by side, v2.3.3856) '
+    + 'yours on the left', ordered(liveGeom), liveGeom);
   rec.ok('...and YOUR lane carries the your-side shading here too',
     laneOk(liveGeom), liveGeom);
   rec.ok('...and the offered-items wells inside them carry the two tints the '
@@ -1133,7 +1153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const r = cand.getBoundingClientRect();
       const cs = getComputedStyle(cand);
       const items = cand.querySelector('.bt-t2-items');
-      return { top: Math.round(r.top), bg: cs.backgroundColor, shadow: cs.boxShadow,
+      return { top: Math.round(r.top), left: Math.round(r.left), bg: cs.backgroundColor, shadow: cs.boxShadow,
         well: items ? getComputedStyle(items).backgroundColor : null };
     };
     return { top: find(tRe), bottom: find(bRe) };
@@ -1141,9 +1161,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
 
   const revGeom = await laneGeom(A, 'YOU RECEIVE', 'YOU GIVE');
-  rec.ok('Confirm screen: YOU RECEIVE is above YOU GIVE, so your own pile is '
-    + 'the bottom one', !!(revGeom.top && revGeom.bottom)
-    && revGeom.top.top < revGeom.bottom.top, revGeom);
+  rec.ok('Confirm screen: YOU RECEIVE is above YOU GIVE, or (side by side, '
+    + 'v2.3.3856) YOU GIVE on the left', ordered(revGeom), revGeom);
   rec.ok('...and YOUR lane carries the your-side shading, not just a different one',
     laneOk(revGeom), revGeom);
 

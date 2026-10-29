@@ -80,9 +80,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { nmlHere, nmlFirst, nmlSteps, NML_RED } from '@/game/noMansLand.js';   /* v2.3.3690: + nmlFirst, where it starts */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
-import { nmlLive } from '@/game/noMansLand.js';   /* v2.3.3825: the explainer once, near the line */
-import { wheelLong } from '@/game/wheelSize.js';
-import { nmlExplainDue, nmlExplainHit, nmlMarkTold, _nmlForget } from '@/game/nmlExplainOnce.js';
+import { nmlExplainHit, _nmlForget } from '@/game/nmlExplainOnce.js';
 
 /* a skull, drawn rather than the emoji (every phone draws 💀 its own way) */
 export function NmlSkull({ size = 18, color = NML_RED }) {
@@ -250,16 +248,11 @@ export default function NmlBadge({ stateRef }) {
           if (openHp == null) openHp = hp;
           else if (nmlExplainHit(openHp, hp)) { infoPopupBus.close(); openHp = null; }
         } else openHp = null;
-        /* QA pages hold it back (window.__btNoNmlOnce, the harness's
-           nmlOnce: false), as the daily chest's window */
-        const heldBack = typeof window !== 'undefined' && window.__btNoNmlOnce;
-        if (!heldBack && S && S.player && nmlExplainDue({
-          live: nmlLive(S), inWheel: S.currentZone === 'wheel' && !S._zoneLoading, dying: !!S._dying,
-          open: infoPopupBus.isOpen(), x: S.player.x, y: S.player.y, long: wheelLong(), first: nmlFirst(S), id: S.myId,
-        })) {
-          nmlMarkTold(S.myId);
-          openNmlInfo(S, 1, { lead: "Just ahead is No man's land. Read this here, on safe ground: out there, players can fight you." });
-        }
+        /* ═══ v2.3.3853: IT NO LONGER COMES UP BY ITSELF ═══
+           The owner, before the showing: "just get rid of the no man's land
+           gigantic warning message. I'd rather not have anything".  The
+           explainer opened by itself near the line (v2.3.3825); now it opens
+           only from the skull pill, and a hit still closes it. */
       } catch (e) { /* the badge's rules are a tap away */ }
     }, 250);
     return () => clearInterval(id);
