@@ -56,6 +56,7 @@ import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import TimedBanner from './TimedBanner.jsx';   /* v2.3.3839: the warning / stat banner's own clock */
+import SwapHint from './SwapHint.jsx';   /* v2.3.3877: how to swap weapons, said once */
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { trackedFirst, onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track */
@@ -227,6 +228,17 @@ export var QUEST_MSG_WELCOME_MS = 9000;
    v2.3.3712: ...else null: the tap attacks, and the stick wears the weapon */
 function _tapActIcon(S) { return tapActIcon(interactKind(S, { npcFirst: true })); }
 
+/* ═══ v2.3.3871: HIS HAND-IN LINE IS SAID ONCE, IN THE WINDOW THAT PAYS ═══
+   The owner, before the showing: "don't make your character click on mayor
+   bro again to claim the reward from turning in the first quest.  It's a
+   strange series where he says that message.  Then you click on him again to
+   claim the reward".  A giver walking with you said his quest's `complete`
+   line in his speech bubble the moment it was done -- the reward speech, with
+   nothing to claim on it -- and the claim came on the click after.  While a
+   quest is ready his bubble says this cue instead (a computer reads "Click
+   me!"), and his hand-in line comes with its Claim reward, on the click. */
+const NPC_READY_CUE = 'All done? Tap me!';
+
 function _npcQuestReady(S, npcQ) {
   if (!npcQ || npcQ.status !== 'active') return false;
   /* v2.3.1914: the shared implementation, so the opener and the panel it
@@ -385,7 +397,7 @@ import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: t
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
+import { interactKind, talkBeforeDoor } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.3868: + a townsperson in range before a door */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
 import DeathCard from '@/ui/mobile/DeathCard.jsx';   /* v2.3.3817: "You died", what killed you, back in BroTown in N */
@@ -1638,6 +1650,13 @@ export var BroTown = function BroTown(_ref0) {
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],
     setNearBuilding = _useState6[1];
+  /* v2.3.3868: on a computer, E would talk (a townsperson in range,
+     desktopControls.js talkBeforeDoor): the townsperson's name, and the
+     door's Enter prompt says "Talk to <name>" meanwhile, so it never says one
+     thing while E does another */
+  var _useDeskTalkPick = useState(null),
+    deskTalkPick = _useDeskTalkPick[0],
+    setDeskTalkPick = _useDeskTalkPick[1];
   var _useState7 = useState(false),
     _useState8 = _slicedToArray(_useState7, 2),
     showPlayerList = _useState8[0],
@@ -7289,7 +7308,8 @@ export var BroTown = function BroTown(_ref0) {
               if (npc.chatTimer <= 0) {
                 var quest = npcQuest.quest;
                 var isComplete = quest.check(S.rpg, S);
-                var phrase = isComplete ? quest.dialogue.complete : quest.dialogue.progress;
+                /* v2.3.3871: never his hand-in line over his head (NPC_READY_CUE) */
+                var phrase = isComplete ? deskWords(NPC_READY_CUE) : quest.dialogue.progress;
                 npc.chatBubble = {
                   text: phrase,
                   ts: Date.now(),
@@ -7334,6 +7354,14 @@ export var BroTown = function BroTown(_ref0) {
                 if (npcQuest && npcQuest.status === 'available' && distToPlayer < 100) {
                   npc.chatBubble = {
                     text: deskWords('I have a task for you! Tap me.'),   /* v2.3.3615: "Click me." on a computer */
+                    ts: Date.now(),
+                    isQuest: true
+                  };
+                } else if (distToPlayer < 100 && _npcQuestReady(S, npcQuest)) {
+                  /* v2.3.3871: his quest is ready to hand in: the cue, the
+                     same as the offer's hint above */
+                  npc.chatBubble = {
+                    text: deskWords(NPC_READY_CUE),
                     ts: Date.now(),
                     isQuest: true
                   };
@@ -8842,6 +8870,12 @@ export var BroTown = function BroTown(_ref0) {
       var nb = S.nearBuilding;
       setNearBuilding(function (prev) {
         return prev === nb ? prev : nb;
+      });
+      /* v2.3.3868: a computer's door button follows E (talkBeforeDoor) */
+      var dtp = S._isDesktop && (nb !== null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) && talkBeforeDoor(S)
+        ? (S._nearNpc.name || 'them') : null;
+      setDeskTalkPick(function (prev) {
+        return prev === dtp ? prev : dtp;
       });
       /* v2.3.3032: and the Wheel's building door you stand at (game/wheelTownDoors.js) */
       var nwb = S._nearWheelBuilding || null;
@@ -13678,6 +13712,8 @@ export var BroTown = function BroTown(_ref0) {
      kind filter moves inside pushLevelUpBurst, where 'warning' and the bare
      T1 stat kinds are rejected and fall through to the banner below. */
   /*#__PURE__*/React.createElement(LevelUpBurstStack, { msg: levelUpMsg }),
+  /* v2.3.3877: "Swap weapons", said once, the first time you hold two (SwapHint.jsx) */
+  /*#__PURE__*/React.createElement(SwapHint, { stateRef: stateRef }),
   /* v2.3.2615: 'char' joins 'combat' and 'life' as a kind the STACK owns — it
      is the character-level notification, and it wears the character's portrait
      in the medallion (levelUpIcons.levelUpMedallionSrc). */
@@ -14965,7 +15001,26 @@ export var BroTown = function BroTown(_ref0) {
        tapped, so it stops rendering. Walking away and back re-arms it
        normally -- nearBuilding is untouched, which keeps the desktop E key
        (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
-    buildingPanel === null && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
+    /* ═══ v2.3.3868: AT A DOOR WITH A TOWNSPERSON IN RANGE, THE PROMPT SAYS TALK ═══
+       The owner, on a computer: "When you're next to mayor bro ... you would
+       actually open the door to the building right next to him."  E talks to
+       him now (desktopControls.js talkBeforeDoor), and the prompt says so --
+       "E  Talk to Mayor Bro" -- in the door prompt's place; a click on it
+       talks, as E does.  A step out of his range and the door's prompt is
+       back.  A phone never shows it: there the door's button stays as it was
+       and a tap on a person talks. */
+    buildingPanel === null && deskTalkPick && (nearBuilding !== null || nearHall) && /*#__PURE__*/React.createElement("button", {
+      className: "bt-interact-prompt",
+      "data-talk-prompt": deskTalkPick,
+      onClick: function onClick(e) {
+        e.preventDefault();
+        var S2 = stateRef.current;
+        if (S2 && S2._interactNow) S2._interactNow();
+      }
+    }, /*#__PURE__*/React.createElement("kbd", {
+      style: { background: 'rgba(255,255,255,.2)', padding: '1px 5px', borderRadius: 3, fontSize: 11, marginRight: 4 }
+    }, "E"), "Talk to ", deskTalkPick),
+    buildingPanel === null && !deskTalkPick /* v2.3.3868 */ && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
        Sheriff's Office): the same button, its own picture and name */

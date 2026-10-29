@@ -99,6 +99,14 @@ dungeon (v2.3.3573):
 The other six taps are word for word as the satire pass wrote them. Where and
 why: docs/specs/grotto-party.md "v2.3.3579".
 
+**Removed in v2.3.3869.** The owner, playtesting on the morning of the
+showing: "remove mayor bro reference to 'the goo grotto is for level 10 and
+up...' after turning in the first quest. It has nothing to do with anything and
+it's confusing. Just remove that sentence." The hand-in is the plain line again,
+whether or not the worker plays the Grotto for a party; `grottoPartyAside` and
+its row are kept, unused, for the owner to bring back. Tests: `mayor-grotto`
+§2b and §4b, `mp-mayorgrotto` §2.
+
 ## v2.3.3583: Lil Bro, once he has beaten you
 
 The owner: "lil bro should also have dialog change to acknowledge the race has

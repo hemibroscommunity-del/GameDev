@@ -797,6 +797,17 @@ for (const p of files) {
   check('14e a campfire catching is the owner\'s fire lit (the flint strikes still start it)', L0('campfire').join() === 'fire-light' && L0('fireStrike').every((k) => k === 'mine-strike'));
   check('14f blacksmithing is the owner\'s hammer on the flat hoe: a bar smelted, a blade or armour forged, the forge at work in town',
     ['smelt', 'forge', 'armourForge', 'anvil'].every((n) => L0(n).includes('forge-strike')) && !L0('anvil').includes('mine-strike') && !L0('smelt').includes('mine-strike'));
+  /* v2.3.3874: the owner: forging made "the fleshy sound for hurting monsters"
+     -- the smithing swing's own blow and a hardening that worked were the
+     sword's hit (sword-hit2); both are the owner's hammer now */
+  {
+    const ER = src('src/rendering/systems/effectsRenderer.js');
+    const at = ER.indexOf('  _updateSmithing(S, now) {');   /* the method, not its call */
+    const sw = at >= 0 ? ER.slice(at, ER.indexOf('\n  }\n', at) + 4) : '';
+    check('14f2 the smithing swing lands the owner\'s hammer (smithStrike, one forge-strike blow), never the sword\'s hit; a hardening that worked rings it too',
+      L0('smithStrike').join() === 'forge-strike' && L0('hardenOk').includes('forge-strike') && !L0('hardenOk').includes('sword-hit2')
+        && /cue\('smithStrike'\)/.test(sw) && !/sword-hit2/.test(sw.replace(/\/\*[\s\S]*?\*\//g, '')), { strike: L0('smithStrike'), harden: L0('hardenOk') });
+  }
   check('14g woodworking is the owner\'s knife carving: a bow or staff made, hardened wood, traps (more than one stroke each)',
     ['woodwork', 'hardWood', 'trapsMade'].every((n) => L0(n).filter((k) => k === 'wood-carve').length >= 2) && !L0('woodwork').includes('axe-chop'));
   check('14h a crop harvested is the owner\'s harvest (with the soil giving)', L0('farmHarvest').includes('farm-harvest') && !L0('farmHarvest').includes('lure-drop'));

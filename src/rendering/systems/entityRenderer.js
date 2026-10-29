@@ -116,6 +116,7 @@ import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3343
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
 import { flipHeadAt } from '../flipHead.js';   /* v2.3.3738: the head pieces ride the tumble's head */
+import { headCrown } from '../headCrowns.js';   /* v2.3.3880: the flinch's crown on the head, not the fist */
 import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase; v2.3.3682: a flip, the roll's tumble */
 import { rideLook } from '@/game/ride.js';   /* v2.3.3776: a rider stands sideways, and pushes now and then */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
@@ -5744,7 +5745,8 @@ function _lookupStandHeadBox(dir) {
    actual top of the body silhouette for this frame. */
 function _lookupBodyTop(pose, dir, frame) {
   if (!_bodyTops) return null;
-  return _bodyTops[`${pose}-${dir}-${frame}`] || _bodyTops[`stand-${dir}-0`] || null;
+  /* v2.3.3880: the head's own crown where the topmost pixel is a fist (headCrowns.js, TRAPS §100) */
+  return headCrown(_bodyTops, pose, dir, frame);
 }
 const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 /* v2.3.264: faceless mannequin textures used as the stand-pose body
