@@ -104,5 +104,5 @@ playing; the server code itself stays public.
 
 A new server-only number a copier would value starts life as a row in
 `HIDDEN_SPEC` with a public placeholder (CLAUDE.md §8). The plan's next rows:
-the server-side bot signals (v2.3.3724), spawn and respawn timing and
+the server-side bot signals (botsig.js, server-botsig.md), spawn and respawn timing and
 population scaling (`spawnscale.js`).
