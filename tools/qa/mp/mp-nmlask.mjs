@@ -43,7 +43,9 @@
  *   8. a window left alone goes by itself (the QA handle's setMs), and one
  *      whose player walks out of No man's land goes at once;
  *   9. held SIDEWAYS (844 x 390) the window sits beside the minimap, inside
- *      the world's own window, clear of the thumbs' controls and of you;
+ *      the world's own window, clear of the thumbs' controls and of you,
+ *      with 12 px to spare for the camera's lead (v2.3.3830: it came 2 px
+ *      into the space over you once the top bar grew);
  *  10. no page errors.
  *   0. (v2.3.3316, first) the owner: "Attacks without locking on target did
  *      not pop up the window for attack ignore etc."  A SWORD swing at the
@@ -767,8 +769,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`9. held sideways (${orient}) a tap asks, the window beside the minimap (${a9 && a9.at}), inside the world's window, nothing over it`,
     orient === 'landscape' && !!d9 && a9.at === 'beside' && !!m9 && d9.r <= m9.l && !!geo9.wrap && d9.l >= geo9.wrap.l && d9.r <= geo9.wrap.r
       && !!tops9 && tops9.every((t) => t.ok), { orient, d9, at: a9 && a9.at, m9, wrap: geo9.wrap, tops9 });
-  rec.ok(`9. ...clear of the thumbs' controls (${a9 && a9.controls.map((q) => q.sel).join(', ')}) and of you`,
-    !!a9 && a9.controls.length >= 1 && a9.controls.every((q) => !hit9(q)) && !!geo9.me && !hit9({ l: geo9.me.x - 15, r: geo9.me.x + 15, t: geo9.me.y - 50, b: geo9.me.y + 10 }),
+  /* v2.3.3830: how far clear of you, in words (H's run found it 2 px INTO the
+     space over you: the window slides left of you now when it would come
+     that low, NmlAskCard.jsx clearOfYou) */
+  const clr9 = d9 && geo9.me ? `${Math.round((geo9.me.y - 50) - d9.b)} px above your head, ${Math.round((geo9.me.x - 15) - d9.r)} px left of you` : 'not measured';
+  rec.ok(`9. ...clear of the thumbs' controls (${a9 && a9.controls.map((q) => q.sel).join(', ')}) and of you (${clr9})`,
+    !!a9 && a9.controls.length >= 1 && a9.controls.every((q) => !hit9(q)) && !!geo9.me && !hit9({ l: geo9.me.x - 27, r: geo9.me.x + 27, t: geo9.me.y - 62, b: geo9.me.y + 10 }),   /* v2.3.3830: + the camera's lead, 12 px each way */
     a9 && { d9, controls: a9.controls, me: geo9.me });
   if (a9 && a9.dom) await tapAsk(A, 'ignore');
 

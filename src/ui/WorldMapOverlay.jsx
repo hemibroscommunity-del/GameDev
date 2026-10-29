@@ -57,6 +57,7 @@ import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277:
 import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.3319: the long Wheel's lands up close */
 import { questPinsOf, MAP_PIN } from '../game/questPins.js';       /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525: ...in the owner's own pictures */
+import { deskWideActive } from './deskWide.js';                    /* v2.3.3830: the key sized from the column on a computer */
 import { GLYPHS, drawGlyph, glyphDetailColor } from './mapGlyphs.js';   /* v2.3.3780: each mark a little picture of what it is, the key the same */
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
 import { loadPins, pinsOf, PIN_KEYS, PIN_CSS } from '../game/mapPins.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
@@ -274,7 +275,10 @@ function WorldMap({ stateRef, onClose }) {
       if (!dirty.current && pk === lastP && t - last < 120) return;
       lastP = pk; last = t; dirty.current = false;
       const { w, h, dpr } = size();
-      setCvBox((o) => (o && o.w === w && o.h === h ? o : { w, h }));
+      /* v2.3.3830: + the map's whole box (#root's on a computer), for the key's size */
+      const ob = cv.closest('[data-world-map]');
+      const ow = ob ? ob.clientWidth : w, oh = ob ? ob.clientHeight : h;
+      setCvBox((o) => (o && o.w === w && o.h === h && o.ow === ow && o.oh === oh ? o : { w, h, ow, oh }));
       const out = draw(cv.getContext('2d'), w, h, dpr, map, V, P, S && S._renderFacing, t, S);
       const here = P ? wheelHere(P.x, P.y) : null;
       const words = here && here.words ? `${here.words.title}${here.words.sub ? ` · ${here.words.sub}` : ''}` : '';
@@ -384,9 +388,24 @@ function WorldMap({ stateRef, onClose }) {
      the key sat on top of it.  On a canvas wider than tall the key keeps to
      the empty margin left of the Wheel (8 px clear of it, never under 150 px)
      and wraps into rows there; upright it is as it was. */
+  /* ═══ v2.3.3830: ON A COMPUTER, THE KEY SIZED FROM THE PLAY COLUMN ═══
+     The judges' pass (1440 x 900): the key, drawn at the phone's 11 px, was
+     small on a big computer window, where the map takes the whole window.
+     Its size comes from the play COLUMN, never the window (TRAPS §214): the
+     column a computer gives the phone's layout, min(the width, 390/715 of
+     the height) -- game.css's --cc-colw, the creator's own -- over the
+     phone's 390.  1.26x at 1440 x 900, 1.51x at 1920 x 1080, as it was at
+     1280 x 720 (the column is a phone's there), never past 2x.  `zoom`, so
+     the words, the little pictures and the rows grow together and its
+     layout is the size it is drawn; its widths are divided by it to stay
+     where they were (the margin left of the Wheel sideways).  Phones never:
+     the computer's wide layout only (deskWide.js). */
+  const keyK = deskWideActive() && cvBox && cvBox.oh
+    ? Math.max(1, Math.min(2, Math.min(cvBox.ow, cvBox.oh * 390 / 715) / 390))
+    : 1;
   const keyMaxW = cvBox && cvBox.w > cvBox.h
-    ? Math.max(150, Math.floor((cvBox.w - 0.96 * cvBox.h) / 2) - 18)
-    : 'calc(100% - 90px)';
+    ? Math.max(150, Math.floor((cvBox.w - 0.96 * cvBox.h) / 2) - 18) / keyK
+    : (keyK > 1 ? `calc((100% - 90px) / ${keyK.toFixed(3)})` : 'calc(100% - 90px)');
   const btn = { appearance: 'none', width: 46, height: 46, borderRadius: 10, border: '1px solid rgba(216,170,88,0.55)', background: 'rgba(17,30,35,0.92)',
     color: INK, fontSize: 22, fontWeight: 700, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', touchAction: 'manipulation' };
   return (
@@ -426,7 +445,8 @@ function WorldMap({ stateRef, onClose }) {
           <button type="button" aria-label="Back to you" data-world-map-me="" onClick={centreOnMe} style={{ ...btn, fontSize: 18 }}>◎</button>
         </div>
         <div data-world-map-legend="" style={{ position: 'absolute', left: 10, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', maxWidth: keyMaxW,
-          padding: '6px 9px', borderRadius: 8, background: 'rgba(17,30,35,0.85)', color: INK, fontSize: 11 }}>
+          padding: '6px 9px', borderRadius: 8, background: 'rgba(17,30,35,0.85)', color: INK, fontSize: 11,
+          ...(keyK > 1 ? { zoom: +keyK.toFixed(3) } : null) }}>
           {/* v2.3.3780: the map's own glyphs (mapGlyphs.js), not dots */}
           <Key glyph="town">town</Key>
           <Key glyph="camp">camp</Key>

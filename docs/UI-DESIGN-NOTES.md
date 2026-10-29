@@ -467,6 +467,7 @@ Screens: world-map
 - Far from you, zoomed in, the land is drawn as sharply as round you, with finer pieces loaded only while shown (v2.3.3319).
 - Dungeons and the farm still use the older 52 px box, sized by an earlier owner ask, "shrink the minimap size by 50% but increase the size of the icons on it", and "Make it 20% transparent." (v2.3.2247).
 - On a computer M opens and closes the world map; the minimap wears the M beside its tap-me mark (v2.3.3407).
+- On a computer the key is sized from the play column, not drawn at the phone's 11 px in a window-sized map (v2.3.3830, the judges' pass found it small at 1440 x 900): the column a computer gives the phone's layout over the phone's 390, so 1.26 times at 1440 x 900, 1.5 at 1920 x 1080, as before at 1280 x 720, never past twice; its words and pictures grow together. Phones never change (docs/specs/layout-nits.md).
 
 **Tried before, and changed:**
 - Where you are was printed under the box (v2.3.2966), then on the top bar (v2.3.3009), then on the plate under the box (v2.3.3108).
@@ -1433,6 +1434,7 @@ Screens: player-list, player-card, inspect-self, trade-request, duel-request
 - A bag inside the trade window, and every small explainer line ("remove all the tiny info disclaimers and explainers", v2.3.2293), are gone.
 - The card's TP button is gone (owner: "remove it", v2.3.1744); so is Threat, the non-consensual fight (owner: "remove the option to kill other players for now", v2.3.1917). Trade used to be the one gold button; the mockup gives all four tiles one weight.
 - The Attack window first sat just above the No man's land badge: there, Attack lay where a left thumb steers and Ignore over the attack button.
+- Held sideways, the Attack window was centred in the strip left of the minimap, which put it right over you, its foot a few px above your head, and 2 px INTO the space over you once the top bar grew (v2.3.3765). Since v2.3.3830 it slides left, off the middle where you stand, when it would come down that low; it cannot go higher (the top bar) or shorter (its buttons are already under 44 px) (docs/specs/layout-nits.md).
 - Hitting back was one tap with no window (v2.3.3253 to v2.3.3528), and a swing or shot at your attacker did nothing at all; the owner found they "can't attack back unless they lock on target" and asked for the window's Attack before any damage from either player.
 
 **Please don't suggest:**
