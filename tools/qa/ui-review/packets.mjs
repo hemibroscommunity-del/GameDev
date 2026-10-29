@@ -43,7 +43,7 @@ export const PACKETS = [
   { slug: 'townsfolk-and-halls', title: 'Diego, Ace and the halls',
     screens: ['shop-diego', 'ace-flip', 'building-party', 'building-post', 'building-sheriff', 'building-guildhall', 'building-townhall', 'building-hotel', 'building-arena'] },
   { slug: 'maps-chat-players', title: 'The maps, chat and other players',
-    screens: ['world-map', 'world-map-pin', 'building-townhall-page', 'building-townhall-action', 'chat', 'player-list', 'player-card', 'inspect-self', 'trade-request', 'duel-request'] },
+    screens: ['world-map', 'building-townhall-page', 'building-townhall-action', 'chat', 'player-list', 'player-card', 'inspect-self', 'trade-request', 'duel-request'] },
   /* v2.3.3768: the party chip's two screens here, as the Town Hall's page
      (v2.3.3766) filled the maps packet to MAX_PICTURES */
   { slug: 'harvesting-and-fighting', title: 'Your party, harvesting and fighting',
