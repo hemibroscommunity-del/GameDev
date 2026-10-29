@@ -57,6 +57,7 @@ import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277:
 import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.3319: the long Wheel's lands up close */
 import { questPinsOf, MAP_PIN } from '../game/questPins.js';       /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525: ...in the owner's own pictures */
+import { GLYPHS, drawGlyph, glyphDetailColor } from './mapGlyphs.js';   /* v2.3.3780: each mark a little picture of what it is, the key the same */
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
 import { loadPins, pinsOf, PIN_KEYS, PIN_CSS } from '../game/mapPins.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
 import { boardPlaceAt } from '../game/mapPinPlaces.js';
@@ -110,17 +111,15 @@ const AT = { landSub: 1.5, stage: 2.2, commons: 1.8, gateName: 1.6, camp: 3, pas
 const NODE_TINT = {   /* v2.3.3094: + 16, 21, the second stage's */
   oreVein: { 1: '#E08A45', 6: '#C65F45', 11: '#8E9AB8', 16: '#C8D0DC', 21: '#7A55B5' },
   tree: { 1: '#58B85A', 6: '#C6DC6C', 11: '#A08C52', 16: '#C0786A', 21: '#F09A40' },
-  fishSpot: { 1: '#D6E8F5', 6: '#FF8A3A', 11: '#C4B46A', 16: '#F09080', 21: '#8AAA50' },
+  /* v2.3.3780: the first tier's fish a water blue, not near-white (the
+     owner: "fish is white dot"); the rest as the minimap tints them */
+  fishSpot: { 1: '#79C4F2', 6: '#FF8A3A', 11: '#C4B46A', 16: '#F09080', 21: '#8AAA50' },
 };
-const C_STAR = '#F5CE3C', C_OTHER = '#58B97B', C_MONSTER = '#E35D5B';
+/* v2.3.3780: which glyph a resource wears (mapGlyphs.js) */
+const NODE_GLYPH = { oreVein: 'ore', tree: 'tree', fishSpot: 'fish' };
+const C_STAR = '#F5CE3C';   /* v2.3.3780: the bros' and monsters' colours are their glyphs' (mapGlyphs.js) */
 const INK = '#F4F0E7', BRASS = '#EAC675', HALO = 'rgba(11,22,27,0.92)';
-const KIND = {
-  camp: { color: '#EAC675', label: 'camp' },
-  pass: { color: '#F4F0E7', label: 'pass' },
-  gate: { color: '#C58CFF', label: 'gate' },
-  landmark: { color: '#9FE0C0', label: 'landmark' },
-  site: { color: '#9FE0C0', label: 'place' },
-};
+/* v2.3.3780: the places' marks and colours are mapGlyphs.js's GLYPHS now */
 
 /* v2.3.3258: the Town Hall's "World map" row opens the map from outside the
    minimap's button (BroTown.jsx onMap).  The overlay hands its opener to this
@@ -426,23 +425,24 @@ function WorldMap({ stateRef, onClose }) {
           <button type="button" aria-label="Zoom out" data-world-map-zoom-out="" onClick={() => zoomBtn(1 / 1.6)} style={btn}>−</button>
           <button type="button" aria-label="Back to you" data-world-map-me="" onClick={centreOnMe} style={{ ...btn, fontSize: 18 }}>◎</button>
         </div>
-        <div style={{ position: 'absolute', left: 10, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', maxWidth: keyMaxW,
+        <div data-world-map-legend="" style={{ position: 'absolute', left: 10, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', maxWidth: keyMaxW,
           padding: '6px 9px', borderRadius: 8, background: 'rgba(17,30,35,0.85)', color: INK, fontSize: 11 }}>
-          <Key shape="square" color={INK}>town</Key>
-          <Key shape="tri" color={KIND.camp.color}>camp</Key>
-          <Key shape="diamond" color={KIND.pass.color}>pass</Key>
-          <Key shape="dot" color={KIND.gate.color}>gate</Key>
-          <Key shape="dot" color={KIND.landmark.color}>landmark</Key>
+          {/* v2.3.3780: the map's own glyphs (mapGlyphs.js), not dots */}
+          <Key glyph="town">town</Key>
+          <Key glyph="camp">camp</Key>
+          <Key glyph="pass">pass</Key>
+          <Key glyph="gate">gate</Key>
+          <Key glyph="landmark">landmark</Key>
           <Key shape="line" color="#F2E4C2">road</Key>
           <Key shape="line" color="#5AAEE8">river</Key>
           <Key shape="star" color={C_STAR}>quest</Key>
           {pinsShown ? <Key shape="pin">has a quest</Key> : null}
           {partyShown ? <Key shape="dot" color={PARTY_MARK.CSS}>party</Key> : null}
-          {zoomShown[0] >= AT.others ? <Key shape="dot" color={C_OTHER}>bro</Key> : null}
-          {zoomShown[1] >= AT.monster ? <Key shape="dot" color={C_MONSTER}>monster</Key> : null}
-          {zoomShown[1] >= AT.node ? <Key shape="dot" color="#E08A45">ore</Key> : null}
-          {zoomShown[1] >= AT.node ? <Key shape="dot" color="#58B85A">tree</Key> : null}
-          {zoomShown[1] >= AT.node ? <Key shape="dot" color="#D6E8F5">fish</Key> : null}
+          {zoomShown[0] >= AT.others ? <Key glyph="bro">bro</Key> : null}
+          {zoomShown[1] >= AT.monster ? <Key glyph="monster">monster</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key glyph="ore">ore</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key glyph="tree">tree</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key glyph="fish">fish</Key> : null}
           {zoomShown[0] < AT.camp ? <span style={{ color: '#B6C1BE' }}>Zoom in for more</span> : null}
         </div>
       </div>
@@ -450,7 +450,16 @@ function WorldMap({ stateRef, onClose }) {
   );
 }
 
-function Key({ shape, color, children }) {
+function Key({ shape, color, glyph, children }) {
+  /* v2.3.3780: a glyph, drawn from the very paths the map draws (mapGlyphs.js) */
+  if (glyph && GLYPHS[glyph]) {
+    const G = GLYPHS[glyph];
+    return <span data-world-map-key={glyph} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
+      <svg viewBox="-1 -1 18 18" width="15" height="15" aria-hidden="true" style={{ marginRight: 4, flex: '0 0 auto' }}>
+        <path d={G.body} fill={G.color} stroke="rgba(11,22,27,0.92)" strokeWidth="2.2" strokeLinejoin="round" style={{ paintOrder: 'stroke' }} />
+        {G.detail ? <path d={G.detail} fill={glyphDetailColor(glyph)} /> : null}
+      </svg>{children}</span>;
+  }
   const s = { display: 'inline-block', width: 9, height: 9, marginRight: 4, verticalAlign: -1, background: color };
   if (shape === 'dot') Object.assign(s, { borderRadius: 9 });
   if (shape === 'diamond') Object.assign(s, { transform: 'rotate(45deg) scale(.8)' });
@@ -589,6 +598,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     questPins: 0, questPinNames: 0, pins: [],   /* v2.3.3525: the townsfolk's quest pins */
     mapPins: [],   /* v2.3.3766: the board's red and blue pins */
     dungeons: 0,   /* v2.3.3540: the dungeons' mouths named with their levels */
+    glyphs: { town: 0, camp: 0, pass: 0, gate: 0, landmark: 0, monster: 0, fish: 0, tree: 0, ore: 0, bro: 0 },   /* v2.3.3780: each glyph drawn (the probe's) */
     dungeonLines: [],   /* v2.3.3573: ...and what each says (the probe's; a party dungeon says its players) */
     detail: detailN };   /* v2.3.3319: the lands' tiles drawn up close (null: none to draw) */
   const onScreen = (x, y, pad = 30) => x > -pad && y > -pad && x < w + pad && y < h + pad;
@@ -609,7 +619,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   }
   /* the resources, where they grow: tinted by tier, faint without the tool */
   if (zr >= AT.node && S && Array.isArray(S.gatherNodes)) {
-    const r = Math.max(3, Math.min(7, 2 + zr * 0.25));
+    const r = Math.max(4.2, Math.min(7, 2 + zr * 0.25));   /* v2.3.3780: 11 px across at least, a glyph to read */
     for (const n of S.gatherNodes) {
       if (!n || !n.alive || !NODE_TINT[n.nodeType]) continue;
       const x = X(n.x), y = Y(n.y);
@@ -618,14 +628,14 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       let tool = true;
       try { tool = hasGatherTool(S.rpg || null, n.nodeType); } catch (e) { tool = true; }
       g.globalAlpha = tool ? 1 : 0.45;
-      g.beginPath();
-      if (n.nodeType === 'oreVein') { g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); }
-      else if (n.nodeType === 'fishSpot') g.ellipse(x, y, r * 1.2, r * 0.75, 0, 0, Math.PI * 2);
-      else g.arc(x, y, r, 0, Math.PI * 2);
-      g.fillStyle = NODE_TINT[n.nodeType][tier]; g.fill();
-      g.lineWidth = 1.2; g.strokeStyle = HALO; g.stroke();
+      /* v2.3.3780: a rock with its metal's fleck, a tree, a fish -- tinted by
+         tier (the ore's fleck), as the dots were */
+      const kind = NODE_GLYPH[n.nodeType], tint = NODE_TINT[n.nodeType][tier];
+      if (kind === 'ore') drawGlyph(g, 'ore', x, y, r * 2.6, null, tint);
+      else drawGlyph(g, kind, x, y, r * 2.6, tint);
       g.globalAlpha = 1;
       more.nodes++;
+      more.glyphs[kind]++;
     }
   }
   /* the monsters near you (the only ones you are told about), then the bros */
@@ -634,9 +644,9 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       if (!m || m.alive === false || m.dead || (m.hp != null && m.hp <= 0)) continue;
       const x = X(m.x), y = Y(m.y);
       if (!onScreen(x, y)) continue;
-      g.beginPath(); g.arc(x, y, 3.5, 0, Math.PI * 2);
-      g.fillStyle = C_MONSTER; g.fill(); g.lineWidth = 1; g.strokeStyle = HALO; g.stroke();
+      drawGlyph(g, 'monster', x, y, 12);   /* v2.3.3780: a horned head, not a red dot */
       more.monsters++;
+      more.glyphs.monster++;
     }
   }
   const othersAt = [];
@@ -657,8 +667,8 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       peerDotAt(o, now, at);
       const x = X(at.x), y = Y(at.y);
       if (!onScreen(x, y)) continue;
-      g.beginPath(); g.arc(x, y, 4.5, 0, Math.PI * 2);
-      g.fillStyle = C_OTHER; g.fill(); g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
+      drawGlyph(g, 'bro', x, y, 13);   /* v2.3.3780: a little person, not a green dot */
+      more.glyphs.bro++;
       othersAt.push({ x, y, name: o.name || '' });
       more.others++;
     }
@@ -784,14 +794,13 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     }
     return true;
   };
+  /* v2.3.3780: a tent, two peaks and their gap, an arch, a flag (mapGlyphs.js);
+     a place of note wears the landmark's flag */
   const icon = (kind, x, y, s = 1) => {
-    const c = (KIND[kind] && KIND[kind].color) || INK;
-    g.beginPath();
-    if (kind === 'camp') { g.moveTo(x, y - 6 * s); g.lineTo(x + 6 * s, y + 5 * s); g.lineTo(x - 6 * s, y + 5 * s); g.closePath(); }
-    else if (kind === 'pass') { g.moveTo(x, y - 5 * s); g.lineTo(x + 5 * s, y); g.lineTo(x, y + 5 * s); g.lineTo(x - 5 * s, y); g.closePath(); }
-    else g.arc(x, y, (kind === 'gate' ? 6 : 4.5) * s, 0, Math.PI * 2);
-    g.fillStyle = c; g.fill();
-    g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
+    const gk = kind === 'site' ? 'landmark' : kind;
+    if (!GLYPHS[gk]) return;
+    drawGlyph(g, gk, x, y, (gk === 'gate' ? 16 : 14) * s);
+    more.glyphs[gk]++;
   };
 
   /* v2.3.3525: the quest pins, drawn once the buildings' pictures are -- a
@@ -915,8 +924,8 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
      as the minimap has it; its name where it clears theirs) */
   const T = map.hub.town;
   if (!more.buildingsAt) {
-    g.fillStyle = INK; g.fillRect(X(T.x) - 5, Y(T.y) - 5, 10, 10);
-    g.lineWidth = 1.5; g.strokeStyle = HALO; g.strokeRect(X(T.x) - 5, Y(T.y) - 5, 10, 10);
+    drawGlyph(g, 'town', X(T.x), Y(T.y), 16);   /* v2.3.3780: a house, not a square */
+    more.glyphs.town++;
   }
   label(X(T.x), Y(T.y) + 8, [T.name], { size: 13, below: true, color: INK });
   /* the lands, until their stages take over: one line while the whole
