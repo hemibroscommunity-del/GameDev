@@ -24,9 +24,11 @@
  *                        (20 s) from the page's start, as a wifi blip or a deploy does, then
  *                        let it through (LH_INITHAT=hat: worn from the start, so it loads then)
  *   LH_CTX=n             then the graphics lost and given back n times (WEBGL_lose_context:
- *                        the black-screen recovery, a rebuilt renderer 2.5 s on), and after
- *                        each, every hat in every facing read again against before: the hat
- *                        drawn, the hair's pixels, the whole bro's pixels; with n >= 2 the
+ *                        the black-screen recovery, a rebuilt renderer 2.5 s on): each round
+ *                        every hat in every facing read just before the loss and again after
+ *                        it, from the same spot with the same moves: the hat drawn, the
+ *                        hair's own pixels and the whole bro's (each drawn without, and the
+ *                        pixels that differ counted: the ground behind counts for neither); with n >= 2 the
  *                        chip's textures counted after each round (v2.3.3883: nothing piles up)
  *   LH_CTXWATCH=s        and second by second for s seconds after the (first) loss, what the
  *                        hair, hat and mask hold
@@ -184,10 +186,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (let step = 0; step < 80; step++) {
           const at = await where();
           const dx = to.x - at.x, dy = to.y - at.y;
-          if (Math.abs(dx) < 12 && Math.abs(dy) < 12) break;
+          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) break;
           const keys = [];
-          if (dx > 6) keys.push('d'); else if (dx < -6) keys.push('a');
-          if (dy > 6) keys.push('s'); else if (dy < -6) keys.push('w');
+          if (dx > 4) keys.push('d'); else if (dx < -4) keys.push('a');
+          if (dy > 4) keys.push('s'); else if (dy < -4) keys.push('w');
           for (const k of keys) await P.page.keyboard.down(k);
           await P.page.waitForTimeout(Math.min(400, 40 + Math.max(Math.abs(dx), Math.abs(dy)) * 2));
           for (const k of keys) await P.page.keyboard.up(k);
@@ -201,7 +203,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (const hat of ['none', ...HATS]) {
         await P.page.evaluate((h) => window.__btSetHeadwear(h), hat);
         await P.page.waitForTimeout(1500);
-        table[hat] = { at: CTX_ROUNDS ? await where() : null };
+        table[hat] = {};
         for (const [face, keys] of Object.entries(FACINGS)) {
           for (const k of keys) await P.page.keyboard.down(k);
           await P.page.waitForTimeout(700);
@@ -219,7 +221,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* v2.3.3883: LH_CTX=2, twice -- and the chip's textures counted at the
          end of each round, in the same state (nothing may pile up per loss) */
       const texCounts = [];
+      /* v2.3.3883: a round's readings, each hat from the same spot: before
+         the loss and after it, back to back, the same moves from the same
+         place (the table above, taken minutes earlier, is not: the jogs drift
+         the bro, and what is behind him changes) */
+      const readRound = async (spot, tag) => {
+        const t = {};
+        for (const hat of HATS) {
+          await P.page.evaluate((h) => window.__btSetHeadwear(h), hat);
+          await walkTo(spot);
+          await P.page.waitForTimeout(1100);
+          t[hat] = {};
+          for (const face of Object.keys(FACINGS)) {
+            const keys = FACINGS[face];
+            for (const k of keys) await P.page.keyboard.down(k);
+            await P.page.waitForTimeout(700);
+            const jog = await readMin(P);
+            if (face === 'north') await shot(`${hat}-${face}-jog-${tag}`);
+            for (const k of keys) await P.page.keyboard.up(k);
+            await P.page.waitForTimeout(600);
+            t[hat][face] = { jog, stand: await readMin(P) };
+          }
+        }
+        return t;
+      };
       for (let round = 1; round <= CTX_ROUNDS; round++) {
+        const spot = await where();
+        const pre = await readRound(spot, `before-loss${round}`);
+        await walkTo(spot);
         const wasAt = await where();
         const lost = await P.page.evaluate(() => {
           const c = document.querySelector('canvas');
@@ -270,25 +299,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (hc) for (const l of (hc.goneLog || []).slice(0, 4)) console.log('      gone: ' + JSON.stringify(l));
         console.log('      look palette: ' + JSON.stringify(diag && diag.pal).slice(0, 400));
         console.log(`      the bro before the loss ${JSON.stringify(wasAt)}, after ${JSON.stringify(await where())}`);
+        const post = await readRound(spot, `after-loss${round}`);
         const after = [];
         for (const hat of HATS) {
-          await P.page.evaluate((h) => window.__btSetHeadwear(h), hat);
-          await walkTo(table[hat].at);
-          await P.page.waitForTimeout(1100);
           for (const face of Object.keys(FACINGS)) {
-            const keys = FACINGS[face];
-            for (const k of keys) await P.page.keyboard.down(k);
-            await P.page.waitForTimeout(700);
-            const jog = await readMin(P);
-            if (face === 'north') await shot(`${hat}-${face}-jog-after-loss${round}`);
-            for (const k of keys) await P.page.keyboard.up(k);
-            await P.page.waitForTimeout(600);
-            const stand = await readMin(P);
-            for (const [pose, r] of [['jog', jog], ['stand', stand]]) {
-              const was = table[hat][face][pose];
-              const share = was && was.vis && was.n ? ((r && r.vis ? r.n : 0) / was.n) : null;
+            for (const pose of ['jog', 'stand']) {
+              const was = pre[hat][face][pose], r = post[hat][face][pose];
+              /* the hair's own pixels (nd), where it shows at all */
+              const share = was && was.vis && was.nd > 40 ? ((r && r.vis ? r.nd : 0) / was.nd) : null;
               const broShare = was && was.bro ? ((r && r.bro) || 0) / was.bro : null;
-              after.push({ hat, face, pose, before: was && was.vis ? was.n : 'hidden', after: r && r.vis ? r.n : 'hidden:' + (r && r.why), clip: r && r.mask, share, hatShown: r && r.hat,
+              after.push({ hat, face, pose, before: was && was.vis ? was.nd : 'hidden', after: r && r.vis ? r.nd : 'hidden:' + (r && r.why), clip: r && r.mask, share, hatShown: r && r.hat,
                 bro: `${was && was.bro} -> ${r && r.bro}`, broShare });
             }
           }
@@ -297,9 +317,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
           + after.map((a) => `${a.hat} ${a.face} ${a.pose}: hair ${a.before} -> ${a.after}${a.clip ? ', clipped' : ', NOT CLIPPED'}${a.share != null ? ` (${Math.round(a.share * 100)}%)` : ''}, the hat ${a.hatShown}, the bro ${a.bro}`).join('\n      '));
         /* the hair where it shows bare-headed (from the front a short fringe
            reads a few pixels either way) */
-        const lostHair = after.filter((a) => a.share != null && a.share < 0.5 && table.none[a.face][a.pose] && table.none[a.face][a.pose].n > 20);
+        const lostHair = after.filter((a) => a.share != null && a.share < 0.5);
         const lostHat = after.filter((a) => a.hatShown !== 'drawn');
         const lostBro = after.filter((a) => a.broShare == null || a.broShare < 0.7);
+        /* (the hair and the bro as drawn before the loss and after it, from
+           the same spot with the same moves: a figure the restore left
+           undrawn reads near nothing, the ground behind him counts for
+           neither) */
         rec.ok(`${vname}: round ${round}: after the graphics were lost and given back, each hat is drawn in every facing (${lostHat.length} not)`, !!lost && lostHat.length === 0, lostHat.slice(0, 8));
         rec.ok(`${vname}: round ${round}: after the graphics were lost and given back, the long hair under each hat keeps at least half its pixels in every facing (${lostHair.length} short)`,
           !!lost && lostHair.length === 0, lostHair.slice(0, 8));
