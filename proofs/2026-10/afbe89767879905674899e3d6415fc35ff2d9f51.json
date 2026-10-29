@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "afbe89767879905674899e3d6415fc35ff2d9f51",
+  "tree": "7cc15c942ed9a6c3bfaf24bf038ec5e0ecc3303a",
+  "committedAt": "2026-10-29T04:24:35-07:00",
+  "subject": "Merge pull request #1322 from hemibroscommunity-del/claude/bag-broken-shard",
+  "files": 7266,
+  "bytes": 835802634,
+  "listingSha256": "b5272878371cb7b137747a38bc24be4b284db421d02df86f3027506a2fdf53a0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
