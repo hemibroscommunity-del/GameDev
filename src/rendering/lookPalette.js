@@ -435,13 +435,23 @@ export function getLookFrame(pose, dir, frameIdx, skinT, pantsT, shoesT, eyeT) {
 }
 
 /* ═══ THE SHADER ═══ */
+/* v2.3.3859: the texture's place, vUV, is HIGHP on both sides.  Pixi gives a
+   fragment shader `precision mediump float` unless asked (ensurePrecision), and
+   every variable here but that one varying was already highp -- on an iPhone,
+   whose chip keeps mediump at 16 bits, the sheet's place came in rounded to
+   1/2048 of the sheet (a texel and more on the wide ones) and its slopes (the
+   sharp read's scale, the mip level) from that.  The owner, 2026-10-29: the
+   body vanished on their phone facing N, NW, W and SW.  Not reproduced on this
+   box (its software chip runs mediump at 32 bits), so this is the cheap
+   robustness half, not a proven cause: WebGL2 guarantees highp in a fragment
+   shader, and where the chip already ran 32 bits nothing changes. */
 const VERT = `#version 300 es
 in vec2 aPosition;
 in vec2 aUV;
 in vec4 aColor;
 in vec2 aTextureIdAndRound;
 out vec4 vColor;
-out vec2 vUV;
+out highp vec2 vUV;
 flat out float vTextureId;
 flat out float vLook;
 flat out float vSharp;
@@ -530,7 +540,7 @@ function kindDispatch() {
 }
 const fragSource = () => `#version 300 es
 in vec4 vColor;
-in vec2 vUV;
+in highp vec2 vUV;
 flat in float vTextureId;
 flat in float vLook;
 flat in float vSharp;
