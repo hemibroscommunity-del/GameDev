@@ -231,6 +231,51 @@ software as every QA phone's is):
   that minified) where the chip did one filtered read; a batch ends at each
   body (its own program).
 
+## Not on Windows (v2.3.3838)
+
+The owner, 2026-10-29, on a Windows laptop in Chrome and in Firefox: the
+loading screen *"stalls at the 75%, I wait what seems like 5-10 minutes,
+loading bar goes to full"*, then the "I'm back" card (the worker had logged the
+character out for idling while the page stood frozen). The judges play on
+computers.
+
+**Why.** On Windows both browsers draw WebGL through ANGLE's Direct3D, whose
+shader compiler (FXC) inlines every function call. This program reads a
+sheet's header, then runs its bilinear read twice, the second through a mip
+level of 2x2 boxes: about eighty `colourAt()`s once inlined, each carrying
+every registered kind (the shirt's, the head's, the stand-ins') and each read
+through the slot chain. That is thousands of texture reads in one flat
+program. The prewarm behind the loading screen asks whether the program linked
+(`prewarmProgram`), and that question waits for the compile, so the page (the
+beach clip with it) stood still for minutes. The head (#1230) and stand-in
+(#1253) kinds landed an hour before the first report. A phone compiles it in
+well under a second (iPhone: Metal; Android: GLES), and so does the QA box
+(SwiftShader), so no test here could see it.
+
+**What.** `src/game/lookPaletteChoice.js` decides once, at load, in this order:
+
+1. the address, which always wins: `?lookpalette=0` turns it off and
+   `?lookpalette=1` builds it anyway, Windows too (to measure the compile);
+2. Windows (the user agent, or Chromium's `userAgentData.platform`): off;
+3. otherwise on.
+
+Off is the old path exactly as `?lookpalette=0` always was: no program, no
+batcher, no sheets, and each look's copy baked on first sight. That is the
+same pixels with more memory, which a computer has to spare (this is a
+phone's memory saver). `window.__btLookPalette().why` says which rule decided:
+`'address'`, `'windows'` or `'default'`.
+
+**Receipt.** `server/test/look-palette-choice.test.mjs` covers Windows Chrome,
+Edge and Firefox and Chromium's platform off; iPhone, iPad, Android, Mac and
+Linux on; the address winning both ways; and the wiring. `mp-lookwin` runs a
+Windows computer to the world (twice, with a reload) with the program never
+built, and an iPhone with it built and on.
+
+**Before turning it back on for Windows:** measure the compile on a Windows
+machine (`?lookpalette=1`, the loading screen's time to the world). The cure
+is a smaller program, e.g. one bilinear read with no mip pass, or the kinds
+selected per batch rather than all inlined (TRAPS §259).
+
 ## Phase 2: adding a set (v2.3.3737, P0)
 
 Each part kept as numbers is a **set**: its own module, folder and manifest,
