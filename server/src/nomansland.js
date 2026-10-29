@@ -155,6 +155,13 @@ export const NML = Object.freeze({
      and one choice a player this often */
   CHOOSE_R: 2400,
   CHOOSE_GAP_MS: 300,
+  /* v2.3.3770: the lock after a red skull's death (_nmlLockSet): how long the
+     one who killed them is safe from them (wall clock, stored), how many such
+     locks a player carries, and how often a locked player may ask (the "?"
+     over their head, _handleNmlLockAsk) */
+  LOCK_MS: 30 * 60 * 1000,
+  LOCK_CAP: 16,
+  LOCK_ASK_MS: 60 * 1000,
 });
 
 export const NML_KEY = (pid) => 'nml_state:' + pid;
@@ -283,6 +290,8 @@ export const noMansLandMethods = {
     /* v2.3.3265: a sparring clone is never under the rule -- no skull, no
        loss, either way (spar.js) */
     if (a._spar || t._spar) return false;
+    /* v2.3.3770: beaten by them, not again for half an hour (_nmlLockSet) */
+    if (this._nmlLockedFrom(a, targetId, Date.now())) return false;
     const la = this._nmlLevelOf(a), lt = this._nmlLevelOf(t);
     if (la < 1 || lt < 1) return false;
     const ca = Number(a.level) || 1, ct = Number(t.level) || 1;
@@ -440,6 +449,9 @@ export const noMansLandMethods = {
     const a = this.playerState[attackerId], t = this.playerState[targetId];
     if (!a || !t) return;
     const sa = this._nmlState(a), st = this._nmlState(t);
+    /* v2.3.3770: the one who beat them starts a new fight: the lock lifts,
+       and they may fight back */
+    if (this._nmlLockedFrom(t, attackerId, now)) this._nmlLockLift(targetId, t, attackerId);
     /* hitting back: you hold a white skull BY this player and no red of
        your own -- the one who started it keeps resetting theirs.
        v2.3.3530: by ANY player whose right still runs, not only the last
@@ -529,8 +541,12 @@ export const noMansLandMethods = {
        older worker ignores the field and keeps whiteBy) */
     const from = this._nmlBys(s);
     if (from) rec.from = from;
+    /* v2.3.3770: the locks, [[id, until], ...] (an older worker ignores the
+       field, and a save of its own drops it: the locks lapse, nothing worse) */
+    const lock = this._nmlLockList(s, Date.now());
+    if (lock) rec.lock = lock;
     try {
-      const p = (!rec.red && !rec.white && !rec.forfeit.length)
+      const p = (!rec.red && !rec.white && !rec.forfeit.length && !rec.lock)
         ? this.state.storage.delete(NML_KEY(id))
         : this.state.storage.put(NML_KEY(id), rec);
       if (p && typeof p.catch === 'function') p.catch(() => {});
@@ -559,6 +575,16 @@ export const noMansLandMethods = {
       }
     }
     s.forfeit = Array.isArray(rec.forfeit) ? rec.forfeit.filter((g) => typeof g === 'string' && g.length <= 64).slice(-NML.FORFEIT_CAP) : [];
+    /* v2.3.3770: the locks still running, as stored */
+    s.lock = new Map();
+    if (Array.isArray(rec.lock)) {
+      const now = Date.now();
+      for (const e of rec.lock.slice(0, NML.LOCK_CAP)) {
+        if (!Array.isArray(e) || typeof e[0] !== 'string' || !e[0] || e[0].length > 64) continue;
+        const until = Math.min(Number(e[1]) || 0, now + NML.LOCK_MS);
+        if (until > now) s.lock.set(e[0], until);
+      }
+    }
     s.savedAt = Date.now();
     if (this._nmlSkullOf(ps)) this.dirtyPlayers.add(id);
   },
@@ -653,6 +679,11 @@ export const noMansLandMethods = {
        man's land's rule, its points saved there */
     if (nmlKill && killerId !== playerId) {
       try { if (this._achvOnNmlKill) this._achvOnNmlKill(killerId); } catch (e) { /* never break a death */ }
+    }
+    /* v2.3.3770: a red skull killed under the rule by the player they
+       attacked is locked out from them (_nmlLockSet) */
+    if (nmlKill && red && to && to !== playerId) {
+      try { this._nmlLockSet(playerId, ps, to, now); } catch (e) { /* never break a death */ }
     }
     /* v2.3.3316: what is WORN goes only with a red skull a player killed */
     const takeWorn = red && nmlKill;
@@ -780,6 +811,15 @@ export const noMansLandMethods = {
         } }));
       } catch (e) { /* the echo still carries the worker's own state */ }
     }
+    /* v2.3.3770: the owner -- "A red skull disappears after dying": it goes
+       with the death (any death this hook takes), sent and saved at once */
+    if (red && this._nmlLockOn()) {
+      const s = this._nmlState(ps);
+      s.red = 0;
+      this.dirtyPlayers.add(playerId);
+      this._nmlSend(playerId, ps);
+      this._nmlSave(playerId, ps);
+    }
     return {
       to,
       lost,
@@ -787,6 +827,169 @@ export const noMansLandMethods = {
         ? { recipients: [to], ownerName: (killerSession && killerSession.name) || 'Player', all: true }
         : { recipients: [], ownerOnlyUntil: now, all: true },   /* the pile wears the dead player's name */
     };
+  },
+
+  /* ═══ v2.3.3770: BEATEN BY THEM, NOT AGAIN FOR HALF AN HOUR ═══
+     The owner, 2026-10-28: "I think another rule I want is that a player
+     attacks you (and gets red skulled) but you kill him, he can't attack you
+     for at least 30 minutes unless you approve of letting him have another
+     attack. A red skull disappears after dying but the game should remember
+     if the red skull player was killed by you. This prevents griefing where
+     the player keeps coming back with cheap weapons to attack you over and
+     over again".  And then: "...they can only pop up with a sword clash icon
+     and question mark above their head (once per minute)".
+       WHEN: A dies under the rule (_nmlOnDeath's own attribution: the killing
+     blow, or a status it set, in the last KILL_BLOW_MS) to V, carrying a red
+     skull, having attacked V (A is V's white skull's giver: `whiteBy`, or a
+     right still running in `from`).  The red skull goes at the death.
+       THEN, for LOCK_MS (half an hour, wall clock): No man's land's rule from
+     A toward V is false (_nmlAllowed), so A's every blow and stray shot at V
+     is refused; V toward A is untouched.  Per pair: V's party is not covered.
+     Stored in A's own record (`nml_state:<A>` `lock`, [[V, until]], at most
+     LOCK_CAP, the soonest to end giving way), so a restart or A's rejoin
+     keeps it.
+       ENDS: at its time; when V attacks A (V started a new fight:
+     _nmlSkulls); or when V lets A at them again -- V's No man's land window
+     on A, while the lock runs, says "Let <A> attack you again"
+     (`nml_lock_allow`, _handleNmlLockAllow).
+       A CANNOT REACH V: no card, no line, no sound.  A's window on V says why
+     ("<V> beat you...") and its one button pops a sword clash with a "?"
+     over A's own head for V alone (`nml_lock_ask` both ways,
+     _handleNmlLockAsk), once a LOCK_ASK_MS a pair, refused faster.
+       Both players are told the locks they are in (`nml_lock`, _nmlLockSend):
+     `out` the players this one may not attack, `in` those locked out from
+     this one, each with its ms left.  Never asks test mode: it protects
+     another player.  Kill switch `nmllock: false`: no lock is set, none is
+     enforced, no ask is passed on, the red skull stays at a death as before,
+     and caps.nmllock is false at each phone's next join. */
+  _nmlLockOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'nmllock') && !f.nmllock);
+  },
+
+  /* Is the holder of `ps` locked out from attacking `targetId` now? */
+  _nmlLockedFrom(ps, targetId, now) {
+    if (!this._nmlLockOn()) return false;
+    const s = ps && ps._nml;
+    if (!s || !(s.lock instanceof Map) || !s.lock.size || typeof targetId !== 'string') return false;
+    const until = s.lock.get(targetId) || 0;
+    if (until > now) return true;
+    if (until) s.lock.delete(targetId);
+    return false;
+  },
+
+  /* [[id, until], ...] still running, soonest to end last -- or null */
+  _nmlLockList(s, now) {
+    if (!s || !(s.lock instanceof Map) || !s.lock.size) return null;
+    const out = [];
+    for (const [k, v] of s.lock) if (v > now) out.push([k, Math.round(v)]);
+    if (!out.length) return null;
+    out.sort((a, b) => b[1] - a[1]);
+    return out.slice(0, NML.LOCK_CAP);
+  },
+
+  _nmlLockSet(aid, a, vid, now) {
+    if (!this._nmlLockOn() || !a || typeof vid !== 'string') return false;
+    const v = this.playerState[vid];
+    const sv = v && v._nml;
+    const attacked = !!(sv && (sv.whiteBy === aid || (sv.from instanceof Map && sv.from.has(aid))));
+    if (!attacked) return false;
+    const s = this._nmlState(a);
+    if (!(s.lock instanceof Map)) s.lock = new Map();
+    s.lock.delete(vid);
+    if (s.lock.size >= NML.LOCK_CAP) {
+      let low = null, lowAt = Infinity;
+      for (const [k, t] of s.lock) if (t < lowAt) { low = k; lowAt = t; }
+      if (low != null) s.lock.delete(low);
+    }
+    s.lock.set(vid, now + NML.LOCK_MS);
+    this._nmlSave(aid, a);
+    this._nmlLockSend(aid);
+    this._nmlLockSend(vid);
+    return true;
+  },
+
+  _nmlLockLift(aid, a, vid) {
+    const s = a && a._nml;
+    if (!s || !(s.lock instanceof Map) || !s.lock.delete(vid)) return false;
+    this._nmlSave(aid, a);
+    this._nmlLockSend(aid);
+    this._nmlLockSend(vid);
+    return true;
+  },
+
+  /* `nml_lock` {out, in}: the locks one player is in, ms left each.
+     `quietIfNone`: not sent when there is none (a join's: a message a join
+     costs nothing for the many players never locked) */
+  _nmlLockSend(id, quietIfNone) {
+    if (!this._nmlLockOn() || typeof id !== 'string') return;
+    const ws = this._wsBySessionId && this._wsBySessionId(id);
+    if (!ws) return;
+    const now = Date.now();
+    const me = this.playerState[id];
+    const out = [];
+    const mine = me && this._nmlLockList(me._nml, now);
+    if (mine) for (const [k, t] of mine) out.push([k, t - now]);
+    const inn = [];
+    for (const oid of Object.keys(this.playerState)) {
+      if (oid === id) continue;
+      const o = this.playerState[oid];
+      const t = o && o._nml && o._nml.lock instanceof Map ? (o._nml.lock.get(id) || 0) : 0;
+      if (t > now) inn.push([oid, t - now]);
+      if (inn.length >= NML.LOCK_CAP) break;
+    }
+    if (quietIfNone && !out.length && !inn.length) return;
+    try { ws.send(JSON.stringify({ type: 'nml_lock', payload: { out, in: inn } })); } catch (e) { /* the next change carries it */ }
+  },
+
+  /* At a join (join.js, after the record is read): this player's locks, if
+     any; and each player online they are locked out from hears they are
+     back (that player's `in`) */
+  _nmlLockOnJoin(id) {
+    if (!this._nmlLockOn()) return;
+    this._nmlLockSend(id, true);
+    const me = this.playerState[id];
+    const mine = me && this._nmlLockList(me._nml, Date.now());
+    if (mine) for (const [vid] of mine) if (own(this.playerState, vid)) this._nmlLockSend(vid);
+  },
+
+  /* `nml_lock_ask {target}`, from the locked player: the sword clash and "?"
+     over their head, sent to the one they are locked out from ALONE, once a
+     LOCK_ASK_MS a pair.  True when it went. */
+  _handleNmlLockAsk(session, payload) {
+    if (this._nmlOff() || !this._nmlLockOn()) return false;
+    const aid = session && session.id;
+    if (typeof aid !== 'string' || !own(this.playerState, aid)) return false;
+    const a = this.playerState[aid];
+    const vid = payload && typeof payload.target === 'string' ? payload.target : null;
+    if (!a || a.dead || a.disconnected || !vid || vid === aid || vid.length > 64 || !own(this.playerState, vid)) return false;
+    const now = Date.now();
+    if (!this._nmlLockedFrom(a, vid, now)) return false;
+    if (!(a._nmlLockAskAt instanceof Map)) a._nmlLockAskAt = new Map();
+    if (now - (a._nmlLockAskAt.get(vid) || 0) < NML.LOCK_ASK_MS) return false;
+    if (a._nmlLockAskAt.size >= NML.LOCK_CAP) a._nmlLockAskAt.clear();
+    a._nmlLockAskAt.set(vid, now);
+    const ws = this._wsBySessionId && this._wsBySessionId(vid);
+    if (!ws) return false;
+    try { ws.send(JSON.stringify({ type: 'nml_lock_ask', payload: { from: aid } })); } catch (e) { return false; }
+    return true;
+  },
+
+  /* `nml_lock_allow {target}`, from the one who beat them: the lock on
+     `target` lifts.  True when it did. */
+  _handleNmlLockAllow(session, payload) {
+    if (this._nmlOff() || !this._nmlLockOn()) return false;
+    const vid = session && session.id;
+    if (typeof vid !== 'string' || !own(this.playerState, vid)) return false;
+    const v = this.playerState[vid];
+    const aid = payload && typeof payload.target === 'string' ? payload.target : null;
+    if (!v || !aid || aid === vid || aid.length > 64 || !own(this.playerState, aid)) return false;
+    const now = Date.now();
+    if (now - (v._nmlAllowAt || 0) < NML.CHOOSE_GAP_MS) return false;
+    v._nmlAllowAt = now;
+    const a = this.playerState[aid];
+    if (!this._nmlLockedFrom(a, vid, now)) return false;
+    return this._nmlLockLift(aid, a, vid);
   },
 
   /* ═══ v2.3.3316: A STATUS'S TICK KEEPS THE KILL ITS SETTER'S ═══

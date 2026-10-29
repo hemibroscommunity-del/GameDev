@@ -34,6 +34,7 @@ import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } fr
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
+import { onBankState } from '@/game/bank.js'; /* v2.3.3785: the Bank's vault (server/src/bank.js) */
 import { rideApply, clearRide } from '@/game/ride.js'; /* v2.3.3776: the skateboard (server/src/ride.js) */
 import { onRestResult, restMapsBuffs } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
 import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the Hotel opens against a worker that rests */
@@ -184,7 +185,7 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 }
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
-import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
+import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull, applyNmlLock, nmlLockAskShow } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
 import { nmlJoinFromBys } from '@/game/nmlAsk.js'; /* v2.3.3530: one who chose to attack you joins a fight you chose */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
@@ -1903,6 +1904,19 @@ export function setupWebSocket(ctx) {
               if (msg.payload) applyNmlLoss(S, msg.payload, saveRpgSoon);
               break;
             }
+          /* v2.3.3770: the lock after a red skull's death (nomansland.js
+             _nmlLockSet): who you may not attack and who may not attack you,
+             and the "?" over the head of one asking you for a rematch */
+          case 'nml_lock':
+            {
+              if (msg.payload) applyNmlLock(S, msg.payload);
+              break;
+            }
+          case 'nml_lock_ask':
+            {
+              if (msg.payload) nmlLockAskShow(S, msg.payload);
+              break;
+            }
           /* v2.3.3316: and what a kill of yours there took (the pile, the gold) */
           case 'nml_take':
             {
@@ -2094,6 +2108,16 @@ export function setupWebSocket(ctx) {
             { if (!msg.from) { try { onRaceCheckpoint(S, msg.payload); } catch (_re) { /* display only */ } } break; }
           case 'race_end':
             { if (!msg.from) { try { onRaceEnd(S, msg.payload); } catch (_re) { /* display only */ } } break; }
+          case 'bank_state':
+            {
+              /* v2.3.3785: the Bank's vault as the worker holds it (bank.js),
+                 after each move and on opening; the bag and the purse ride the
+                 player_state that follows a move */
+              if (!msg.from) {
+                try { onBankState(S, msg.payload); } catch (_bk) { /* display only */ }
+              }
+              break;
+            }
           /* v2.3.3539: a rest's answer (server/src/rest.js) -- here, in the
              direct switch, for the race's reason: a worker from before the
              Hotel opened would relay a forged one to everyone */
@@ -5531,6 +5555,12 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
+        /* v2.3.3785: the Bank's vault (game/bank.js) -> bank.js.  TRAPS #18:
+           without these the window would send nothing at all. */
+        if (msg.type === 'bank_open' || msg.type === 'bank_deposit' || msg.type === 'bank_withdraw') {
+          wsOut(msg);
+          return;
+        }
         /* v2.3.3748: standing in a burning heap (game/heapBurn.js) ->
            heapburn.js.  TRAPS #18: without this line the worker never hears
            and nobody burns. */
@@ -5623,6 +5653,15 @@ export function setupWebSocket(ctx) {
            once.  TRAPS #18: without this line the choice never leaves the
            browser. */
         if (msg.type === 'nml_attack') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3770: the lock after a red skull's death (game/noMansLand.js
+           nmlLockAsk, nmlLockAllow) -> nomansland.js _handleNmlLockAsk,
+           _handleNmlLockAllow.  TRAPS #18: mp-nmllock's first run found the
+           rematch's "?" and "Let them attack you again" never left the
+           browser without this line. */
+        if (msg.type === 'nml_lock_ask' || msg.type === 'nml_lock_allow') {
           wsOut(msg);
           return;
         }

@@ -19,7 +19,7 @@ import { wheelTownDoors } from './wheelTownDoors.js';
 import { wheelDungeonDoors, wheelDungeonOpen, wheelDungeonBoardLine } from './wheelDungeons.js';
 import { wheelMapInfo } from './wheelTrial.js';
 import { WHEEL_TOWNSFOLK, WHEEL_KEEPERS } from '@/data/wheelBuildingDoors.js';
-import { BOARD, boardEntry } from '@/data/townBoard.js';
+import { BOARD, boardEntry, landSub, boardLand, boardLandElement } from '@/data/townBoard.js';
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -44,13 +44,38 @@ export function boardDungeonLine(S, e) {
   return wheelDungeonBoardLine(S, e.mouth, lm ? lm.levels : null);
 }
 
+/* v2.3.3801: does this worker have cap `cap`? */
+function hasCap(S, cap) {
+  const caps = S && S._serverCaps;
+  return !!(caps && own(caps, cap) && caps[cap]);
+}
+
+/** v2.3.3801: the line under row `e`'s name: a dungeon's levels, a land's
+    compass and element (the world map's `lands`, from the plan), the words
+    of a worker with its `ifCap`, else the row's own `sub`; null for none. */
+export function boardSub(S, e) {
+  if (!e) return null;
+  if (e.mouth) return boardDungeonLine(S, e);
+  const land = boardLand(e);
+  if (land) {
+    const map = wheelMapInfo();
+    const L = map && Array.isArray(map.lands) ? map.lands.find((l) => l && l.id === land) : null;
+    return landSub(L ? L.dir : null, L && L.element ? L.element : boardLandElement(land));
+  }
+  if (e.ifCap && hasCap(S, e.ifCap.cap) && e.ifCap.sub) return e.ifCap.sub;
+  return e.sub || null;
+}
+
+/** v2.3.3801: row `e`'s page words (its `ifCap` words with that cap). */
+export function boardPage(S, e) {
+  if (!e) return [];
+  return e.ifCap && hasCap(S, e.ifCap.cap) && Array.isArray(e.ifCap.page) ? e.ifCap.page : e.page;
+}
+
 /** Is board row `e` there to do with this worker? */
 export function boardRowOpen(S, e) {
   if (!e) return false;
-  if (e.cap) {
-    const caps = S && S._serverCaps;
-    if (!(caps && own(caps, e.cap) && caps[e.cap])) return false;
-  }
+  if (e.cap && !hasCap(S, e.cap)) return false;
   if (e.mouth && !wheelDungeonOpen(S, e.mouth)) return false;
   return true;
 }
