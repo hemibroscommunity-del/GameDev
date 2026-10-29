@@ -74,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (const x of r) {
         report.push(x);
         frames += x.frames; differ += x.differ; drawn += x.drawn; worst = Math.max(worst, x.worst);
-        console.log(`    ${x.look} in ${x.set}: ${x.frames} frames (${x.residues} with a residue), ${x.drawn} px; against the bake over the same body: ${x.exact.over} px over 2 (worst ${x.exact.worst})${x.exact.over ? ' ' + JSON.stringify(x.exact.cells) + ' ' + JSON.stringify(x.exact.bad.slice(0, 2)) : ''}; against the old picture: shape ${x.alphaOver} px over 2 (worst ${x.worstAlpha}); colour: ${x.colourOver} px over ${18} (worst ${x.worstColour})`
+        console.log(`    ${x.look} in ${x.set}: ${x.frames} frames (${x.residues} with a residue), ${x.drawn} px; against the bake over the same body: ${x.exact.over} px over 2 (worst ${x.exact.worst})${x.exact.over ? ' ' + JSON.stringify(x.exact.cells) + ' ' + JSON.stringify(x.exact.bad.slice(0, 2)) : ''}; seen with the armour on, against the old way: ${x.seen.over18} of ${x.seen.drawn} px over 18 (worst ${x.seen.worst}) ${JSON.stringify(x.seen.cells)}; against the old picture: shape ${x.alphaOver} px over 2 (worst ${x.worstAlpha}); colour: ${x.colourOver} px over ${18} (worst ${x.worstColour})`
           + `, ms old ${x.tOld} new ${x.tNew}, on the chip old ${x.oldKB} KB / residues ${x.residueKB} KB` + (x.notDecided ? `, ${x.notDecided} not decided` : '') + (x.oldPlain ? `, old plain ${x.oldPlain}` : '')
           + (x.differ ? ` ${JSON.stringify(x.badCells)} ${JSON.stringify(x.bad.slice(0, 2))}` : ''));
       }

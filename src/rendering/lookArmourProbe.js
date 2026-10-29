@@ -55,15 +55,18 @@ export function installArmourProbe(dep) {
     if (set[1]) { const t = getGearFrame('legs', set[1], pose, dir, f); if (t) worn.push({ k: 'legs:' + set[1], tex: t }); }
     return worn;
   }
-  function render(cells, pick, scale, cell, cols) {
+  function render(cells, pick, scale, cell, cols, withGear) {
     const r = paletteRendererOf();
     const rows = Math.ceil(cells.length / cols);
     const rt = RenderTexture.create({ width: cols * cell, height: Math.max(1, rows) * cell, resolution: 1 });
     const box = new Container();
     cells.forEach((c, i) => {
-      for (const t of pick(c)) {
+      const list = pick(c).slice();
+      if (withGear) for (const w of c.worn) list.push({ tex: w.tex, tint: gearTint(w.k.slice(w.k.indexOf(':') + 1)) });
+      for (const t of list) {
         if (!t) continue;
-        const s = new Sprite(t);
+        const s = new Sprite(t.tex || t);
+        if (t.tint != null) s.tint = t.tint;
         s._sharp = true;   /* drawn as the body is (sharpPixels.js) */
         s.anchor.set(0.5);
         s.scale.set((c.mirror ? -1 : 1) * scale, scale);
@@ -114,7 +117,7 @@ export function installArmourProbe(dep) {
               const rf = await reference(lookJob(ents, worn, pi));
               if (rf) refs.push(rf);
               for (const mirror of MIRRORED.indexOf(dir) >= 0 ? [false, true] : [false]) {
-                cells.push({ pose, dir, f, mirror, ot, rf, nt: nw.tex, res: nw.residue });
+                cells.push({ pose, dir, f, mirror, ot, rf, nt: nw.tex, res: nw.residue, worn });
               }
             }
           }
@@ -123,6 +126,29 @@ export function installArmourProbe(dep) {
         const a = render(cells, (c) => [c.ot], scale, cell, cols);
         const b = render(cells, (c) => [c.nt, c.res], scale, cell, cols);
         const rr = render(cells, (c) => [c.rf], scale, cell, cols);
+        /* what a player sees: the armour drawn over each way, the old picture
+           against the new (P1's colours and the bake's decisions on them
+           included) -- information */
+        const seen = { drawn: 0, over18: 0, worst: 0, cells: Object.create(null) };
+        {
+          const ga = render(cells, (c) => [c.ot], scale, cell, cols, true);
+          const gb = render(cells, (c) => [c.nt, c.res], scale, cell, cols, true);
+          for (let p = 0; p < ga.data.length; p += 4) {
+            if (!ga.data[p + 3] && !gb.data[p + 3]) continue;
+            seen.drawn++;
+            let m = 0;
+            for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(ga.data[p + k] - gb.data[p + k]));
+            if (m > seen.worst) seen.worst = m;
+            if (m > 18) {
+              seen.over18++;
+              const q = p >> 2, x = q % ga.w, y = Math.floor(q / ga.w);
+              const c = cells[Math.floor(y / cell) * cols + Math.floor(x / cell)];
+              const name = c ? `${c.pose}-${c.dir}#${c.f}${c.mirror ? 'm' : ''}` : '?';
+              seen.cells[name] = (seen.cells[name] || 0) + 1;
+            }
+          }
+          seen.cells = Object.entries(seen.cells).sort((x, y) => y[1] - x[1]).slice(0, 6);
+        }
         for (const t of refs) { try { t.destroy(true); } catch (e) { /* gone */ } }
         /* the verdict: the new way against the bake's own picture over the
            same body, every channel; and how far the new way is from the old
@@ -189,7 +215,7 @@ export function installArmourProbe(dep) {
           }
           if (m > worst) worst = m;
         }
-        out.push({ look: L.join('/'), set: set.join('+'), baked: ok, tOld: Math.round(tOld), tNew: Math.round(tNew), oldKB: Math.round(oldBytes / 1024), residueKB: Math.round(resBytes / 1024), frames: cells.length, residues, notDecided, oldPlain, drawn, differ, worst, hist, bad, exact, alphaOver, worstAlpha, colourOver, worstColour,
+        out.push({ look: L.join('/'), set: set.join('+'), baked: ok, tOld: Math.round(tOld), tNew: Math.round(tNew), oldKB: Math.round(oldBytes / 1024), residueKB: Math.round(resBytes / 1024), frames: cells.length, residues, notDecided, oldPlain, drawn, differ, worst, hist, bad, exact, seen, alphaOver, worstAlpha, colourOver, worstColour,
           badCells: Object.entries(badCells).sort((x, y) => y[1] - x[1]).slice(0, 8) });
       }
     }
