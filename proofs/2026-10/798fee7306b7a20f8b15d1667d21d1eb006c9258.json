@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "798fee7306b7a20f8b15d1667d21d1eb006c9258",
+  "tree": "fcfd88b7242114e40bf81b3e91b815dbcd74d832",
+  "committedAt": "2026-10-29T08:56:05-07:00",
+  "subject": "Merge pull request #1335 from hemibroscommunity-del/claude/tool-solid",
+  "files": 7301,
+  "bytes": 840642560,
+  "listingSha256": "7b65b2f2b7356859d2b8ff994c80741a651c4e89f6782fc710b056cbfdaf0c62",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
