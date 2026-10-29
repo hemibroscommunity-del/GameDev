@@ -4038,8 +4038,10 @@ console.log("the buildings' insides (v2.3.3258)");
        stage below is the PHONE's (62% there).  On a computer the same 148.8 px
        is about 47% of a 470 x 313 room: more of the room under the menu than
        the 62% design, nothing cut -- a deskWide --room-stage is lane F's to
-       judge with pictures (the orchestrator, 2026-10-29) */
-    && /width: deskWideActive\(\) \? 'min\(470px, calc\(100% - 32px\)\)' : 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
+       judge with pictures (the orchestrator, 2026-10-29).  v2.3.3835: and the
+       Town Hall's board its own wider window first (v2.3.3802, #1277) -- every
+       other building's card as before */
+    && /width: (?:buildingPanel === 'townhall' \? 'min\(800px, calc\(100% - 24px\)\)' : )?deskWideActive\(\) \? 'min\(470px, calc\(100% - 32px\)\)' : 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
     && Math.abs(360 * (2 / 3) * 0.62 - 148.8) < 0.1 && Math.abs(24 * 0.4133 - 9.92) < 0.01
     && R.BAND_ROOMS.length === 1 && R.roomIdFor(R.BAND_ROOMS[0]) === 'blacksmith' && R.isBandRoom('forge');
   ok('...its stage is 62% of the room\'s height at the phone card\'s own width (148.8 px of 240 at 360 wide, 41.33vw - 9.92 px below it, at most 22vh; a computer\'s 470 px card keeps the same stage, ~47%), the forge\'s band a quarter of the width -- keyed on the forge\'s room, the one band', stageOk, {});
