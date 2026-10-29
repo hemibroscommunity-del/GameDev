@@ -75,6 +75,7 @@ import { Container, Graphics, Sprite, Texture, CanvasSource, Text, Assets } from
 import { wheelOverviewLands, wheelMapInfo, wheelHere, wheelObjectsInfo, wheelLocalLands } from '@/game/wheelTrial.js';
 import { wheelTownDoors } from '@/game/wheelTownDoors.js';   /* v2.3.3146: the town's buildings */
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
+import { starCue } from '@/ui/starCue.js';                 /* v2.3.3872: a new star, shown */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 import { peerDotAt } from '@/game/peerDot.js';             /* v2.3.3243: a player's dot where they are now */
 import { PARTY_MARK, partyIdsOf, clampToBox } from '@/game/partyMarks.js';   /* v2.3.3277: your party, blue, and on the box's edge when off it */
@@ -845,7 +846,8 @@ export class WheelMinimap {
         road = { len: Math.round(L - ROAD_FROM), x0: Math.round(x0 + this.pan.x), y0: Math.round(y0 + this.pan.y), x1: Math.round(x1 + this.pan.x), y1: Math.round(y1 + this.pan.y) };
       }
       this._mark((pbx + dx * t - this.pan.x) / SCALE, (pby + dy * t - this.pan.y) / SCALE, 'star', C_QUEST_STAR, QUEST_STAR_PX);
-    }
+      this._starAt = { x: pbx + dx * t, y: pby + dy * t };   /* v2.3.3872: its place in the box, for the cue below */
+    } else this._starAt = null;
     if (!roadSig && this._roadSig) { this.road.clear(); this._roadSig = ''; }   /* v2.3.3339: no road now */
     for (let i = this.used; i < this.pool.length; i++) this.pool[i].visible = false;
     /* v2.3.3023: the way home -- when the town's centre is off the box, its
@@ -918,6 +920,9 @@ export class WheelMinimap {
       }
       window.__btWheelMini = this._rect;
       window.__btWheelPlate = this._plateRect;
+      /* v2.3.3872: a NEW quest star is shown with a big star shrinking onto it
+         (ui/starCue.js: once a target, the DOM's own animation) */
+      if (!S._zoneLoading && !S._spawnToWheel) starCue(quest, this._starAt ? { x: this._rect.left + this._starAt.x, y: this._rect.top + this._starAt.y } : null, this._rect);
       /* QA probe (tools/qa/mp/mp-wheelmap.mjs) */
       window.__btMinimap = {
         wheel: true, visible: true, zone: S.currentZone, box: WHEEL_BOX, window: WHEEL_WINDOW,
@@ -932,6 +937,7 @@ export class WheelMinimap {
         /* v2.3.3108: the map's window ends here, and the plate's two lines */
         h: WHEEL_H, mapBottom: MAP_BOT, plate: plate ? { ...plate, rect: this._plateRect || null } : null,
         /* v2.3.3522: + whose road it is and where it leads (game/questWays.js) */
+        star: this._starAt ? { x: Math.round(this._starAt.x), y: Math.round(this._starAt.y) } : null,   /* v2.3.3872: the star in the box (mp-starcue) */
         quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road,
           qid: quest.qid || null, way: quest.way || null, door: quest.door || null } : null,
         /* v2.3.3023: the way home: whether town is off the box, whether its

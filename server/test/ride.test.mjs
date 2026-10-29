@@ -295,6 +295,28 @@ async function step(dx, gapMs, extra) {
   C.rideApply(S, { on: false, why: 'edge' });
   check('6. the worker says off at the edge: on foot, and a line to say why', !C.isRiding(S) && C.rideMult(S) === 1 && /BroTown/.test(C.rideOffLine('edge') || ''), C.rideOffLine('edge'));
   check('6. players never read "Wheel" in a line', RIDE.WHY.every((w) => !/wheel/i.test(C.rideOffLine(w) || '')));
+  /* v2.3.3875: the owner: "the message 'off the board to fight' appeared when
+     I pressed E near fish to just fish" -- the line names what you were doing */
+  {
+    const T = 1000000;
+    const ex = (skill) => ({ _extraction: { skill, startedAt: T - 200 } });
+    check('6b. off the board for a harvest names it: fish, chop, mine, cook',
+      C.rideOffLine('fight', C.rideActVerb(ex('fishing'), T)) === 'Off the board to fish.'
+      && C.rideOffLine('fight', C.rideActVerb(ex('woodcutting'), T)) === 'Off the board to chop.'
+      && C.rideOffLine('fight', C.rideActVerb(ex('mining'), T)) === 'Off the board to mine.'
+      && C.rideOffLine('fight', C.rideActVerb(ex('cooking'), T)) === 'Off the board to cook.',
+      ['fishing', 'woodcutting', 'mining', 'cooking'].map((k) => C.rideOffLine('fight', C.rideActVerb(ex(k), T))));
+    check('6b. ...a pose and a trap name theirs; a swing, or a harvest long over, is still "to fight"',
+      C.rideOffLine('fight', C.rideActVerb({ _pose: { at: T - 100 } }, T)) === 'Off the board to strike a pose.'
+      && C.rideOffLine('fight', C.rideActVerb({ _trap: { pending: { at: T - 100 } } }, T)) === 'Off the board to set a trap.'
+      && C.rideOffLine('fight', C.rideActVerb({}, T)) === 'Off the board to fight.'
+      && C.rideOffLine('fight', C.rideActVerb({ _extraction: { skill: 'fishing', startedAt: T - 60000 } }, T)) === 'Off the board to fight.'
+      && C.rideOffLine('fight') === 'Off the board to fight.');
+    const S6 = { _extraction: { skill: 'fishing', startedAt: T - 50 }, _ride: null };
+    C.rideApply(S6, { on: true }, T - 1000);
+    C.rideApply(S6, { on: false, why: 'fight' }, T);
+    check('6b. ...and the worker\'s "fight" while a harvest is under way reads "Off the board to fish."', S6._ride && S6._ride.line === 'Off the board to fish.', S6._ride && S6._ride.line);
+  }
   /* the stance: sideways in the stand pose, a push facing forward on setting
      off and every PUSH_EVERY_MS (game/ride.js rideLook) */
   const st = {};
