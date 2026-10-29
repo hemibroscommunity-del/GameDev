@@ -21,7 +21,7 @@
  *   6. E beside him opens it too (it said "has nothing for you");
  *   7. a tap on Lil Bro answers ("has nothing for you right now"), so he is a
  *      man in the street and not a picture;
- *   7b. (v2.3.3820) the new cast: all thirteen in 1, 2 and 4 (read off the
+ *   7b. (v2.3.3833) the new cast: all thirteen in 1, 2 and 4 (read off the
  *      table); a tap on Sterling opens the Bank, a tap on Bean answers;
  *   8. no page errors.
  * Pictures: tools/qa/mp/out/wheelfolk-*.png.
@@ -260,7 +260,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('a tap on Lil Bro answers ("has nothing for you right now"): a man in the street, not a picture',
       !!lilTap && lilTap.npc === 'Lil Bro' && lilTap.result === 'nothing', lilTap);
 
-    /* ── 7b. v2.3.3820: the new cast -- a tap on a keeper opens his building
+    /* ── 7b. v2.3.3833: the new cast -- a tap on a keeper opens his building
        (Sterling the Bank), a tap on a local answers (Bean) ── */
     const tapOn = async (name) => {
       let prev = null;
@@ -284,13 +284,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const bankOpen = await H.waitFor(P, () => { const c = document.querySelector('.bt-inspect-card'); return c ? c.getAttribute('data-building-panel') : null; },
       (v) => v === 'bank', { timeout: 4000, label: 'the bank open' }).catch(() => null);
     await shot('sterling-bank');
-    rec.ok('7b. a tap on Sterling, the new cast\'s banker, opens the Bank, as the Blacksmith opens the forge (v2.3.3820)',
+    rec.ok('7b. a tap on Sterling, the new cast\'s banker, opens the Bank, as the Blacksmith opens the forge (v2.3.3833)',
       !!sterTap && sterTap.npc === 'Sterling' && sterTap.result === 'opens' && bankOpen === 'bank', { sterTap, bankOpen });
     await P.page.evaluate(() => { const b = document.querySelector('.bt-inspect-close'); if (b) b.click(); if (window.__btBuildingWindow) window.__btBuildingWindow.open(null); });
     await P.page.waitForTimeout(500);
     await standNear('Bean', 30, 24);
     const beanTap = await tapOn('Bean');
-    rec.ok('...and a tap on Bean, a local, answers (no quest, no window): talking is a tap (v2.3.3820)',
+    rec.ok('...and a tap on Bean, a local, answers (no quest, no window): talking is a tap (v2.3.3833)',
       !!beanTap && beanTap.npc === 'Bean' && beanTap.result === 'nothing', beanTap);
 
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 6));

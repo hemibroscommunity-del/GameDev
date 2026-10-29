@@ -112,7 +112,7 @@ export const NPC_LOOKS = {
     patterns: { shirt: 'diamond:5' },
     walk: 'cardsharp-bro-walk-',
   },
-  /* ═══ v2.3.3820: THE NEW CAST (docs/specs/npc-cast-draft.md) ═══
+  /* ═══ v2.3.3833: THE NEW CAST (docs/specs/npc-cast-draft.md) ═══
      The owner, of the draft: "Keep all as you have them for now (NPCs)".  A
      keeper at each of the ten buildings that had nobody at the door, and three
      locals.  Each stands still facing the street, so one picture each

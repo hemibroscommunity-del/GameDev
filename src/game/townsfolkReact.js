@@ -182,7 +182,7 @@ export const IDLE_MOVES = Object.freeze({
   'Beastmaster Bro': Object.freeze(['shrug', 'wave']),
   'Woodworker Bro': Object.freeze(['facepalm', 'shrug']),
   'Farmer Bro': Object.freeze(['wave', 'shrug']),
-  /* v2.3.3820: the new cast (docs/specs/npc-cast.md), in character */
+  /* v2.3.3833: the new cast (docs/specs/npc-cast.md), in character */
   Sterling: Object.freeze(['flex', 'shrug']),             /* gains */
   Slim: Object.freeze(['shrug', 'wave']),
   'Chef Blaze': Object.freeze(['facepalm', 'cheer', 'facepalm']),   /* WHO SEASONED THIS */

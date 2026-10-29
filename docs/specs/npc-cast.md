@@ -1,4 +1,4 @@
-# BroTown's new cast (v2.3.3820)
+# BroTown's new cast (v2.3.3833)
 
 The owner asked for more townsfolk in BroTown. The draft (v2.3.3811,
 `docs/specs/npc-cast-draft.md`: who, why, their looks and portraits) was

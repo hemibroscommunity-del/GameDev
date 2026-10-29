@@ -1,4 +1,4 @@
-/* BroTown's new cast -- v2.3.3820 (docs/specs/npc-cast.md).
+/* BroTown's new cast -- v2.3.3833 (docs/specs/npc-cast.md).
  *
  * The owner, of the thirteen drafted: "Keep all as you have them for now
  * (NPCs)".  Ten keepers at the doors that had nobody, three locals; chatter

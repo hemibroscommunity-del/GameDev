@@ -6519,7 +6519,7 @@ export const NPC_DATA = [{
   _questMarker: null,
   _hitThisSwing: false,
 }, {
-  /* v2.3.3820: THE NEW CAST (docs/specs/npc-cast.md; the owner: "Keep all as
+  /* v2.3.3833: THE NEW CAST (docs/specs/npc-cast.md; the owner: "Keep all as
      you have them for now (NPCs)").  Ten keepers at the doors that had nobody,
      three locals; chatter only, in the satire voice (docs/specs/npc-dialogue-v2.md).
      Their looks are NPC_LOOKS rows (tools/qa/npc-looks.mjs), baked standing. */

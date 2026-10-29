@@ -546,7 +546,7 @@ ORDER_SLOTS = ['Clothes', 'Eyes', 'Eyewear', 'Headwear', 'Mouth Items']
 # own orange, which the collection's every Bro wears
 SKIN = {'fair': (230, 194, 155), 'tan': (200, 140, 80), 'brown': (155, 105, 65), 'sand': (217, 177, 132),
         'pale': (240, 205, 170), 'olive': (178, 138, 94), 'honey': (201, 162, 113), 'rosy': (242, 201, 184),
-        # v2.3.3820: the new cast's five more
+        # v2.3.3833: the new cast's five more
         'ivory': (242, 218, 188), 'porcelain': (245, 221, 205), 'alabaster': (249, 236, 226), 'deep': (112, 76, 50),
         'ebony': (82, 56, 39)}
 SKIN_REF = (233, 153, 73)
@@ -556,8 +556,8 @@ GREY = ((96, 96, 104), (206, 206, 212))
 DARK = ((42, 38, 44), (92, 86, 90))
 HAT_BLACK = ((34, 32, 38), (84, 82, 92))
 HAIR_BLACK = ((14, 15, 17), (52, 52, 58))   # v2.3.3585: Diego's, the slick-back's grey shine taken out
-BLONDE = ((150, 104, 36), (250, 222, 128))  # v2.3.3820: Chef Blaze's flat-top
-PINK = ((160, 60, 110), (250, 170, 210))     # v2.3.3820: Bean's hair and cat ears
+BLONDE = ((150, 104, 36), (250, 222, 128))  # v2.3.3833: Chef Blaze's flat-top
+PINK = ((160, 60, 110), (250, 170, 210))     # v2.3.3833: Bean's hair and cat ears
 OUTLINE = (31, 13, 27)      # the collection's one outline colour, in every layer
 # The hats.  The collection wears hair OR a hat (one Headwear each): a bro in
 # a hat is bald under it, his ear showing below the brim.  So is a
@@ -606,7 +606,7 @@ PORTRAITS = {
     # the bookie: a black derby, yellow diamonds on green felt
     'cardsharp-bro-head': dict(look='ace', skin='rosy', bg='Middle Green', headwear='derbyhat',
                                recolour={'headwear': HAT_BLACK}, tee=dict(cell=1, ox=7, oy=27)),
-    # ═══ v2.3.3820: THE NEW CAST (docs/specs/npc-cast.md) ═══
+    # ═══ v2.3.3833: THE NEW CAST (docs/specs/npc-cast.md) ═══
     # Each from the traits the approved draft named; past them, as above, his
     # shirt, beard and eyes as the world wears them (so the draft's Suit or
     # Raincoat is his tee and its pattern, as every bust's clothes are).

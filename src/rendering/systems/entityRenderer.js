@@ -422,7 +422,7 @@ const NPC_SCALE_MULT = Object.assign(Object.create(null), {
   '/sprites/npc/farmer-bro.webp': NPC_BRO_MULT,
   '/sprites/npc/beastmaster-bro.webp': NPC_BRO_MULT,
   '/sprites/npc/lil-bro-walk-south.webp': NPC_BRO_MULT,
-  /* v2.3.3820: the new cast (docs/specs/npc-cast.md), each a bro's scale; Bean
+  /* v2.3.3833: the new cast (docs/specs/npc-cast.md), each a bro's scale; Bean
      a child, photographed at 0.8 as Lil Bro is */
   '/sprites/npc/sterling.webp': NPC_BRO_MULT,
   '/sprites/npc/slim.webp': NPC_BRO_MULT,

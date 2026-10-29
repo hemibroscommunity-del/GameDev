@@ -188,7 +188,7 @@ export const WHEEL_TOWNSFOLK = [
      a player at the door is ~119 px from each, past the 90 a quest opens at
      by itself.  test-world-core checks each spot's ground. */
   { name: 'Woodworker Bro', door: 'woodworker', dx: -130, dy: 80, cap: 'tour' },
-  { name: 'Farmer Bro', door: 'feedseed', dx: -105, dy: 34, cap: 'tour' },  /* ═══ v2.3.3820: THE NEW CAST (docs/specs/npc-cast.md) ═══
+  { name: 'Farmer Bro', door: 'feedseed', dx: -105, dy: 34, cap: 'tour' },  /* ═══ v2.3.3833: THE NEW CAST (docs/specs/npc-cast.md) ═══
      The owner: "Keep all as you have them for now (NPCs)".  A keeper at each
      of the ten doors that had nobody, WEST of its steps as Diego and Ace
      stand (-105; the Post Office's and the Guild Hall's porches reach further
@@ -237,7 +237,7 @@ export const WHEEL_KEEPERS = {
   'Blacksmith Bro': 'blacksmith',   /* the forge, at whose steps he stands */
   'Mayor Bro': 'townhall',          /* the Town Hall: its leaderboard and the world map */
   'Woodworker Bro': 'woodworker',   /* v2.3.3525: the bench (bows, staffs, traps, hardened wood) */
-  'Farmer Bro': 'feedseed',         /* v2.3.3525: the Feed & Seed (seeds, your farm, the orders) */  /* v2.3.3820: the new cast's ten keepers (docs/specs/npc-cast.md) */
+  'Farmer Bro': 'feedseed',         /* v2.3.3525: the Feed & Seed (seeds, your farm, the orders) */  /* v2.3.3833: the new cast's ten keepers (docs/specs/npc-cast.md) */
   'Sterling': 'bank',
   'Slim': 'saloon',
   'Chef Blaze': 'cookhouse',

@@ -42,7 +42,7 @@ export const VOICE_OF = Object.freeze({
   'Beastmaster Bro': [2, 0.94],
   'Woodworker Bro': [1, 0.92],   /* v2.3.3525: the tour's two new townsfolk */
   'Farmer Bro': [3, 0.88],
-  /* v2.3.3820: the new cast (docs/specs/npc-cast.md): each his own hum and
+  /* v2.3.3833: the new cast (docs/specs/npc-cast.md): each his own hum and
      pitch, the old men low, Bean a kid's high hum */
   'Sterling': [0, 1.0],
   'Slim': [1, 0.86],
