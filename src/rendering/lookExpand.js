@@ -25,7 +25,7 @@ export function lookSheetParse(bytes, w, rows, bits) {
     const p = i * 2, q = p + 1;
     return byteAt(p % w, rows - 1 - Math.floor(p / w)) + 256 * byteAt(q % w, rows - 1 - Math.floor(q / w));
   };
-  const ds = b0 >= 128 ? b0 - 128 : b0;
+  const ds = b0 & 63;   /* | 64 no mip chain (#1253), | 128 eight bits */
   const s = { bytes, w, rows, bits, bpt, ds, n: hdr(1), t0: hdr(2), nr: hdr(4), ends: [], roE: [0], roF: [0], roU: [0], num };
   for (let r = 0; r < 16; r++) s.ends.push(hdr(5 + r));
   for (let r = 0; r < MAX_ROLES; r++) { s.roE.push(hdr(21 + 3 * r)); s.roF.push(hdr(22 + 3 * r)); s.roU.push(hdr(23 + 3 * r)); }
