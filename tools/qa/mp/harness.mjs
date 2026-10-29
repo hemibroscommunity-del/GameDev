@@ -1997,8 +1997,12 @@ export async function advanceNpcDialogue(P, { max = 12, onChunk = null } = {}) {
  * quest.  There is no claim panel, so advanceNpcDialogue would walk on into
  * the NEXT quest's lines; this walks to that button and taps it ONCE, a real
  * click (see confirmQuestOffer for why).  Returns true when it was tapped --
- * or, with `press: false`, when it was reached and left unpressed. */
-export async function claimOnLastLine(P, { max = 12, timeout = 6000, press = true } = {}) {
+ * or, with `press: false`, when it was reached and left unpressed.
+ *
+ * v2.3.3848: 15 s, not 6, for the same reason as confirmQuestOffer's (CI's
+ * slower frames since the townsfolk are drawn live): with the Accept fixed,
+ * #1315's run failed here instead, on tut_1 and race_1. */
+export async function claimOnLastLine(P, { max = 12, timeout = 15000, press = true } = {}) {
   await waitClaimedDone(P);
   for (let i = 0; i < max; i++) {
     const label = await P.page.evaluate(() => {
