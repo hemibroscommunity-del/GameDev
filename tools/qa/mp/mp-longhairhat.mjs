@@ -94,7 +94,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const vname of views) {
     const V = VIEWS[vname];
     const P = await H.newPlayer(browser, {
-      name: 'Longhair' + vname, wsPort, webPort, world: 'wheel', guest: true, ...V,
+      name: 'Longhair' + vname, wsPort, webPort, world: 'wheel', guest: true, ...V, query: 'headframes',
       init: `try { localStorage.setItem('bt-hair', 'long'); localStorage.setItem('bt-headwear', 'none'); localStorage.setItem('bt-facialhair', 'none'); localStorage.setItem('bt-eyewear', 'none');`
         + (process.env.LH_HATCOLOR ? ` localStorage.setItem('bt-hatcolor', ${JSON.stringify(process.env.LH_HATCOLOR)});` : '')
         + (process.env.LH_CAPE ? ` localStorage.setItem('bt_cape', ${JSON.stringify(process.env.LH_CAPE)});` : '') + ' } catch (e) {}',
@@ -108,6 +108,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${vname}: in the world (guard)`, !!ok, ok);
       if (!ok) continue;
       await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
+      /* the head-frame count (src/rendering/headFrames.js) reads the hair back
+         every frame too: a frame it drops is logged with its clip's state */
+      await P.page.evaluate((t) => { window.__btHeadTargets = { hair: t }; }, HAIR_T);
       await P.page.waitForTimeout(2500);
       const shot = async (name) => {
         const pos = await P.page.evaluate(() => {
@@ -149,6 +152,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
       }
       console.log(`    [${vname}] the long hair's pixels under each hat, against bare-headed:\n      ` + rows.join('\n      '));
+      const px = await P.page.evaluate(() => (window.__btHeadCountPixels ? window.__btHeadCountPixels() : null)).catch(() => null);
+      if (px) {
+        console.log(`    [${vname}] every frame: ${px.looked} hair-frames read back, ${px.drops} dropped`);
+        for (const l of px.log.slice(-12)) console.log('      ' + JSON.stringify(l));
+        for (const sh of px.shots || []) {
+          const { writeFileSync } = await import('node:fs');
+          const f = join(OUT, `longhairhat-${vname}-drop-f${sh.f}.png`);
+          writeFileSync(f, Buffer.from(sh.url.split(',')[1], 'base64'));
+          console.log('      picture: ' + f.replace(H.REPO + '/', ''));
+        }
+      }
       rec.ok(`${vname}: the long hair shows under the Brown Cowboy Hat, the Sheriff Hat and the Army Helmet in every facing, standing and jogging (at least ${LH_MIN * 100}% of its bare-headed pixels; ${bad.length} short)`,
         bad.length === 0, bad.slice(0, 12));
       rec.ok(`${vname}: no page errors`, errors.length === 0, errors.slice(0, 6));
