@@ -35,7 +35,8 @@ export const NAV_KEYS = Object.freeze({
 /** The world map (WorldMapOverlay.jsx), from the Wheel's minimap. */
 export const MAP_KEY = 'M';
 /** v2.3.3776: the skateboard (ui/panels/RideButton.jsx): on and off, in
-    BroTown's safe ground.  Z, free on the bottom row beside X (the jump). */
+    BroTown's safe ground.  Z, free on the bottom row beside X (the jump;
+    the roll since v2.3.3844). */
 export const RIDE_KEY = 'Z';
 
 const NAV_BY_CODE = Object.create(null);

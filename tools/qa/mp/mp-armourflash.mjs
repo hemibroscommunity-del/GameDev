@@ -274,7 +274,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.keyboard.up('d'); await P.page.keyboard.down('a');
     await P.page.waitForTimeout(2000);
     await P.page.keyboard.up('a'); await P.page.keyboard.up('Shift');
-    for (let i = 0; i < 3; i++) { await P.page.keyboard.press('x'); await P.page.waitForTimeout(900); }
+    for (let i = 0; i < 3; i++) { await P.page.keyboard.press('Space'); await P.page.waitForTimeout(900);   /* v2.3.3844: the jump (was X) */ }
     const w1 = await stopWatch(P);
     await report(P, 'first walk after logging in', w1);
 

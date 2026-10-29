@@ -3,7 +3,8 @@
  * Owner, 2026-10-03: "start working on real jumping.  Might be able to just
  * use the jog directions instead of a custom jump animation".  And of where
  * its button goes: beneath the right joystick (the attack disc), with Space
- * already the dodge roll on a keyboard -- so X jumps there.
+ * already the dodge roll on a keyboard -- so X jumps there.  v2.3.3844 (the
+ * owner: "spacebar I think should be jump"): Space jumps, X rolls.
  *
  * WHAT A JUMP IS.  Your POSITION never leaves the ground: the server checks
  * only how far you moved (movement.js, 500 px a second), the walk test, the

@@ -898,3 +898,9 @@ button."*
   clear of the move stick, the disc, Burst, Sprint, the board and Jump, and
   back down in its strip when Jump is gone. Before and after
   pictures: `tools/qa/mp/out/thumbbtn-<before|after>-<size>-*.png`.
+
+## v2.3.3844: Space jumps on a keyboard
+
+The owner: *"Also spacebar I think should be jump."* Space is the jump now and
+X the dodge roll (the swap is in `docs/specs/desktop-keys.md`, "v2.3.3844").
+The "X on a keyboard" lines above are history: read Space there.

@@ -337,7 +337,7 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
 
   /* ── 3. in the air, the rest waits ──
      take off, and in the SAME turn of the page (its frames are ~200 ms
-     apart here) press again, roll (Space) and tap the attack zone */
+     apart here) press again, roll (X; Space until v2.3.3844) and tap the attack zone */
   await P.page.waitForTimeout(400);
   const waited = await P.page.evaluate(() => {
     const S = window._gameState.current;
@@ -352,8 +352,9 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
     tap(btn, 41, 0.5, 0.5);
     const midAir = { air: window.__btJumpBtn().air, count: window.__btJumpBtn().count, swing: S.swingTimer || 0 };
     tap(btn, 42, 0.5, 0.5);
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true }));
-    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ', bubbles: true }));
+    /* v2.3.3844: the roll is X now (Space jumps) */
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyX', key: 'x', bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyX', key: 'x', bubbles: true }));
     const z = document.querySelector('[data-joyzone="R"]');
     if (z) tap(z, 52, 0.5, 0.4);
     return { midAir, air: window.__btJumpBtn().air, count: window.__btJumpBtn().count, why: window.__btJumpBtn().why, roll: !!S._dodgeRoll, swing: S.swingTimer || 0 };
@@ -460,20 +461,20 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
     const sw = await H.waitFor(P, (S) => !!(S._wheelSwim && S._wheelSwim.on), (v) => v === true, { timeout: 6000, label: 'swimming' }).catch(() => false);
     await P.page.waitForTimeout(400);
     const c0 = await P.page.evaluate(() => window.__btJumpBtn().count);
-    await P.page.keyboard.press('x');
+    await P.page.keyboard.press('Space');   /* v2.3.3844: Space jumps (was X) */
     await P.page.waitForTimeout(200);
     const inWater = await P.page.evaluate(() => ({ btn: window.__btJumpBtn(), shown: !!document.querySelector('[data-jump]') }));
-    rec.ok('in the water there is no JUMP button, and X does nothing ("swimming")', sw === true && !inWater.shown && !inWater.btn.shown && inWater.btn.count === c0 && inWater.btn.why === 'swimming', { sw, inWater });
+    rec.ok('in the water there is no JUMP button, and Space does nothing ("swimming")', sw === true && !inWater.shown && !inWater.btn.shown && inWater.btn.count === c0 && inWater.btn.why === 'swimming', { sw, inWater });
   }
 
-  /* ── X on a keyboard, on dry ground ── */
+  /* ── Space on a keyboard, on dry ground (v2.3.3844: was X) ── */
   {
     const c0 = await P.page.evaluate(() => window.__btJumpBtn().count);
     await travel(P, wsPort, myId, before.x, before.y);
     await P.page.waitForTimeout(800);
-    await P.page.keyboard.press('x');
-    const kx = await H.waitFor(P, () => window.__btJumpBtn(), (v) => v.air === true, { timeout: 3000, label: 'X' }).catch(() => null);
-    rec.ok('X on a keyboard jumps too', !!kx && kx.count === c0 + 1, kx);
+    await P.page.keyboard.press('Space');
+    const kx = await H.waitFor(P, () => window.__btJumpBtn(), (v) => v.air === true, { timeout: 3000, label: 'Space' }).catch(() => null);
+    rec.ok('Space on a keyboard jumps too', !!kx && kx.count === c0 + 1, kx);
     await H.waitFor(P, () => window.__btJumpBtn().air, (v) => v === false, { timeout: AIR_MS + 3000, label: 'down' }).catch(() => null);
   }
 
