@@ -40,12 +40,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* the card and the chat, watched by the page itself every 150 ms: the
          loop below looks only between hops, seconds apart on this box */
       await P.page.evaluate(() => {
-        const W = window.__qaCard = { seen: [], gone: null, dyingAt: null, line: null };
+        const W = window.__qaCard = { seen: [], gone: null, dyingAt: null, line: null, minHp: null };
         clearInterval(window.__qaCardTimer);
         window.__qaCardTimer = setInterval(() => {
           const S = window._gameState && window._gameState.current;
           if (!S) return;
           if (S._dying && W.dyingAt == null) W.dyingAt = Date.now();
+          const hp = S.rpg && typeof S.rpg.hp === 'number' ? S.rpg.hp : null;
+          if (hp != null && (W.minHp == null || hp < W.minHp)) W.minHp = hp;
           const v = window.__btDeathCard ? window.__btDeathCard() : null;
           if (v && (!W.seen.length || W.seen[W.seen.length - 1].secs !== v.secs)) W.seen.push({ ...v, t: Date.now() });
           if (W.seen.length && !v && W.gone == null) W.gone = { t: Date.now(), dying: !!S._dying };
@@ -55,6 +57,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }
         }, 150);
       });
+      /* as mp-gpuaudit's death: the first quest taken, or the Wheel's goblins
+         leave a brand-new player be */
+      await P.page.evaluate(() => { const R = window._gameState.current.rpg; R._quests = R._quests || {}; R._quests.tut_1 = true; });
       const gob = WHEEL_SPAWNS.ember.points[0];
       await H.hopTo(P, gob[0], gob[1] + 40, { tries: 120 });
       let shot = false, mid = null, lowAt = 0;
@@ -83,7 +88,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       await P.page.waitForTimeout(1500);
       const W = await P.page.evaluate(() => { clearInterval(window.__qaCardTimer); return window.__qaCard; });
-      console.log(`    ${cfg.key}: ` + JSON.stringify({ seen: W.seen.map((v) => [v.by, v.back]), gone: W.gone, line: W.line, mid }));
+      console.log(`    ${cfg.key}: ` + JSON.stringify({ dyingAt: W.dyingAt, minHp: W.minHp, seen: W.seen.map((v) => [v.by, v.back]), gone: W.gone, line: W.line, mid }));
       const first = W.seen[0];
       rec.ok(`1. ${cfg.key}: the card comes -- "${first && first.title}", "${first && first.by}"`,
         !!first && first.title === 'You died' && /^Killed by .+/.test(first.by || '') && !/a monster$/.test(first.by || ''), first);
