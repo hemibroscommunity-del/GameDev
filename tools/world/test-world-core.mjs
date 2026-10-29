@@ -3975,9 +3975,17 @@ console.log("the buildings' insides (v2.3.3258)");
     const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
     const th = WHEEL_HALLS.townhall;
     const hallSrc = read('../../src/ui/panels/buildings/WheelHallPanel.jsx');
+    const boardSrc = read('../../src/ui/panels/buildings/TownBoard.jsx');   /* v2.3.3804 */
     ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
       !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
-        && /row\('leaderboard', '\/icons\/ui\/panel-leaderboard\.webp'/.test(hallSrc) && /row\('map', '\/icons\/ui\/nav-map\.webp'/.test(hallSrc)
+        /* v2.3.3804: since v2.3.3766 the two rows are two buttons at the foot of
+           the Town Hall's board (TownBoard.jsx), still data-hall-row
+           "leaderboard" and "map" on the same icons and the same openers; the
+           hall's window draws the board.  The check read WheelHallPanel's old
+           rows (a stale check, the game unchanged) */
+        && /<TownBoard key="board" stateRef=\{props\.stateRef\} onLeaderboard=\{props\.onLeaderboard\} onMap=\{props\.onMap\} \/>/.test(hallSrc)
+        && /data-hall-row="leaderboard" onClick=\{props\.onLeaderboard\}[\s\S]{0,400}src="\/icons\/ui\/panel-leaderboard\.webp"/.test(boardSrc)
+        && /data-hall-row="map" onClick=\{props\.onMap\}[\s\S]{0,400}src="\/icons\/ui\/nav-map\.webp"/.test(boardSrc)
         && fs.existsSync(new URL('../../public/icons/ui/panel-leaderboard.webp', import.meta.url)) && fs.existsSync(new URL('../../public/icons/ui/nav-map.webp', import.meta.url))
         && /leaderboard:\s+\{ title: 'Ranks',\s+Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))   /* v2.3.3546: headed 'Ranks' since v2.3.3481, the More tile's word; the Town Hall's row keeps "Leaderboard" (BottomDashboard's note) */
         && /export function openWorldMap\(\)/.test(read('../../src/ui/WorldMapOverlay.jsx'))
