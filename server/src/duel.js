@@ -78,6 +78,14 @@ export const duelMethods = {
    * so the arena's shorter MATCH_MS clock is untouched. */
   _makeDuel(fields) {
     const d = Object.assign({ status: 'active', away: Object.create(null) }, fields);
+    /* v2.3.3776: a duel (or the arena's) starting puts both off the board
+       (ride.js) */
+    if (typeof this._rideEnd === 'function' && this.playerState) {
+      for (const id of [d.a, d.b]) {
+        const ps = typeof id === 'string' ? this.playerState[id] : null;
+        if (ps && ps._ride) this._rideEnd(ps, 'duel', id);
+      }
+    }
     if (!d.expiresAt) d.expiresAt = (d.startedAt || Date.now()) + DUEL.CONSENT_MS;
     return d;
   },
