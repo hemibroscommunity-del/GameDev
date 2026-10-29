@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2f82dd20cdf97b1844d1bf79cfc1098d4494a786",
+  "tree": "059dd12e335f836b572b7bf804e1f8e3ead7a113",
+  "committedAt": "2026-10-28T21:29:32-07:00",
+  "subject": "Merge pull request #1301 from hemibroscommunity-del/claude/look-townsfolk",
+  "files": 7250,
+  "bytes": 833117677,
+  "listingSha256": "ea8a7bec9e2b86a7865ae3959e8fe2c6cda424ec1dcc4d6d806118f6d942831c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
