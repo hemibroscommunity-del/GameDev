@@ -101,3 +101,47 @@ worker checks, so it waits.
 Tests: `mp-mayordoor` (the door's prompt and E, a computer; also the board's
 button in and out of town, and a click on another player beside you in No
 man's land); `mp-questprox` step 6 (both sides, a phone's keyboard).
+
+## v2.3.3868: E talks to the townsperson beside you, before a door
+
+The owner, playtesting on a computer: *"One thing that could be confusing is
+that the instructions say 'E' is interact. When you're next to mayor bro
+(intending to accept the first quest by 'interacting') you would actually open
+the door to the building right next to him (town hall)."*
+
+v2.3.3834 gave E to the door wherever the door's prompt was up, and Mayor Bro
+stands on the Town Hall's steps, so beside him E opened the hall.
+
+- **A townsperson in talk range (90 px) comes before a door** (`talkBeforeDoor`
+  in `src/game/desktopControls.js`): any townsperson, quest or not. E is the
+  computer's tap, and a tap on a person talks (the owner's standing rule).
+- **The prompt agrees with the key:** on a computer, while a townsperson is in
+  range at a door, the prompt reads "E  Talk to Mayor Bro" in the door
+  prompt's place (BroTown `deskTalkPick`, `data-talk-prompt`), and a click on
+  it talks, as E does. It never says "Enter Town Hall" while E talks
+  (v2.3.3834's judge-pass complaint). A phone's button is unchanged, and a tap
+  or click on a person always talks.
+- **The owner's words outrank v2.3.3834's choice:** #1298 gave E to the door
+  from a judge pass. The owner, playing, asked for the person, so the person
+  comes first and the prompt follows E.
+- **The door is still reachable:** a door's reach (140 px, `WHEEL_DOOR_REACH`)
+  is wider than a townsperson's, so every door has doorstep out of everyone's
+  range. A step aside from the Mayor and the Town Hall's button is back, and E
+  opens it.
+- **Why not "the nearer of the two":** tried first. The Mayor stands in the
+  hall's doorway, nearer than the door's foot from anywhere on the doorstep,
+  so the nearer rule came to the same answer by a rule a player cannot see.
+- **No door's prompt:** as before, a townsperson with a quest for you comes
+  first (v2.3.3583), and one without waits behind a bed, a dungeon's mouth or a
+  resource.
+
+Test: `mp-mayordoor` step 1:
+- next to the Mayor, inside the Town Hall door's reach: the prompt reads "Talk
+  to Mayor Bro", and E opens his dialogue, not the door;
+- at the hall's door out of anyone's range: the button, and E opens the Town
+  Hall;
+- every open door: a spot out of everyone's range shows its Enter button, and
+  beside each townsperson near it the prompt says Talk, never Enter.
+
+`mp-questprox` step 6: beside the Mayor in the door's reach, the prompt says
+"Talk to Mayor Bro" and E talks to him.

@@ -18,7 +18,10 @@
  *      questWaits) -- v2.3.3834: except where the door's prompt is up, where E
  *      does what that prompt says (the judge pass: "E ENTER TOWN HALL" talked
  *      to the Mayor); so 6 finds a spot beside him with no door prompt (E
- *      talks) and, where there is one, a spot with it up (E opens the door);
+ *      talks) and, where there is one, a spot with it up.  v2.3.3868 (the
+ *      owner: "When you're next to mayor bro ... you would actually open the
+ *      door"): a townsperson in talk range comes before a door, so there E
+ *      talks too, and the prompt says "Talk to Mayor Bro", not "Enter";
  *   7. beside Diego no shop opens, and a tap on him opens it;
  *   8. a READY quest: beside him nothing opens, and a tap opens the turn-in;
  *   9. with `?npcprox` walking up opens him again (the switch works);
@@ -201,13 +204,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.keyboard.press('e');
     await P.page.waitForTimeout(1200);
     const b6 = await P.page.evaluate(() => ({ building: !!document.querySelector('[data-building-panel]'), dialogue: !!document.querySelector('.bt-npcdlg-name') }));
-    rec.ok(`6: ...and beside him with the door's prompt up ("${prompt6}"), E does what it says: the door opens, not his window`,
-      b6.building && !b6.dialogue, { doorAt, prompt6, b6 });
+    /* v2.3.3868: the owner's "When you're next to mayor bro ... you would
+       actually open the door": a townsperson in range comes before a door,
+       and the prompt says so */
+    rec.ok(`6: ...and beside him in the door's reach, the prompt reads "${prompt6}" and E talks to him, not the door (v2.3.3868)`,
+      !!prompt6 && /talk to mayor/i.test(prompt6) && b6.dialogue && !b6.building, { doorAt, prompt6, b6 });
+    await close();
     /* the Town Hall's window shut again, wholly, before Diego's taps */
     await P.page.evaluate(() => { if (window._uiPanels && window._uiPanels.building) window._uiPanels.building(null); });
     await P.page.waitForTimeout(800);
     const shut6 = await P.page.evaluate(() => !document.querySelector('[data-building-panel]'));
-    rec.ok('6: ...and the Town Hall shut again (guard)', shut6, shut6);
+    rec.ok('6: ...and no Town Hall window left open (guard)', shut6, shut6);
   } else {
     rec.ok('6: (no spot beside him puts the door\'s prompt up: nothing to choose between)', true, { tried: SPOTS });
   }
