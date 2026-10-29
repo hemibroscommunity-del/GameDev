@@ -14,8 +14,10 @@
  *      a quiet spot of No man's land's first ring, a real click on the other
  *      bro's BODY and on his HEAD each raises "Attack <name>?" and takes no
  *      monster as the click's pick (a player was found only within 25 px of
- *      his feet); and with a monster beside him, the pointer on the monster
- *      locks the monster, no "Attack?";
+ *      his feet); with a third bro a step (about 30 px) from him, a click on
+ *      the third's body asks about the third (the nearest, as the press asks);
+ *      and with a monster beside him, the pointer on the monster locks the
+ *      monster, no "Attack?";
  *   4. no page errors.
  * Pictures: tools/qa/mp/out/mayordoor-*.png.
  */
@@ -221,6 +223,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
         rec.ok(`3. a real click on the other bro's ${part} raises "${r.ask}" (Attack?) and takes no monster as the click's pick (${JSON.stringify(r.lock)})`,
           !!r.ask && /doorphone/i.test(r.ask) && !(r.lock && r.lock.type === 'monster' && r.lock.src === 'tap'), r);
         await ignore();
+      }
+      /* two bros a step apart (about 30 px): a click on the far one's body
+         picks the far one -- the nearest to the pointer, not the first one
+         the page knows (v2.3.3837; the press and the click name the same) */
+      const D = await into(browser, wsPort, webPort, 'Doorfar', { viewport: { width: 900, height: 700 }, wide: true });
+      try {
+        const dId = await H.readState(D, (S) => S.myId);
+        await D.page.evaluate(() => { const S = window._gameState.current; if (S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } }); });
+        await H.waitFor(D, (S) => (S.rpg && S.rpg._quests && S.rpg._quests.tut_1) || null, (v) => !!v, { timeout: 10000, label: 'the third takes tut_1' }).catch(() => null);
+        await H.devOp(wsPort, 'vitals', dId, { heal: true, god: true, godMinutes: 20 }).catch(() => {});
+        await H.hopTo(D, pt[0] + 200, pt[1] + 150, { tries: 260 });
+        const cAt = await B.page.evaluate(() => { const p = window._gameState.current.player; return [p.x, p.y]; });
+        await H.hopTo(D, cAt[0] + 30, cAt[1], { tries: 260 });
+        for (let i = 0; i < 2; i++) { await D.page.keyboard.down('d'); await D.page.waitForTimeout(60); await D.page.keyboard.up('d'); }
+        let two = null;
+        for (let i = 0; i < 40 && !(two != null && two < 60); i++) {
+          two = await A.page.evaluate((ids) => {
+            const S = window._gameState.current, o1 = (S.others || {})[ids[0]], o2 = (S.others || {})[ids[1]];
+            return o1 && o2 ? Math.round(Math.hypot(o1.x - o2.x, o1.y - o2.y)) : null;
+          }, [bId, dId]);
+          if (!(two != null && two < 60)) await A.page.waitForTimeout(500);
+        }
+        const dAt = await A.page.evaluate(([cid, did]) => {
+          const S = window._gameState.current, oc = (S.others || {})[cid], od = (S.others || {})[did];
+          if (!oc || !od) return null;
+          const cv = document.querySelector('canvas.brotown-canvas').getBoundingClientRect();
+          return { far: od.renderX >= oc.renderX ? did : cid, gap: Math.round(Math.hypot(oc.renderX - od.renderX, oc.renderY - od.renderY)),
+            d: { x: cv.left + (od.renderX - S.camera.x) * S._worldScaleX, y: cv.top + (od.renderY - 30 - S.camera.y) * S._worldScaleY } };
+        }, [bId, dId]);
+        const rD = dAt ? await clickRead(dAt.d) : { ask: null };
+        await shot(A, '3-click-near-pair');
+        rec.ok(`3. two bros ${dAt && dAt.gap} px apart: a click on Doorfar's body picks Doorfar, not Doorphone ("${rD.ask}")`,
+          !!dAt && dAt.gap < 60 && !!rD.ask && /doorfar/i.test(rD.ask), { dAt, rD, two });
+        await ignore();
+        if (D.errors.length) rec.ok('3. ...no page errors on the third bro\'s page', false, D.errors.slice(0, 3));
+      } finally {
+        await D.ctx.close().catch(() => {});
       }
       /* a monster standing beside a player: the pointer ON the monster takes the monster */
       const mon = await A.page.evaluate(() => {

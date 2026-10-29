@@ -12970,12 +12970,17 @@ export var BroTown = function BroTown(_ref0) {
          answering a tap, nothing needs to write that lock. */
       if (tapNpcAtCss(cssX, cssY)) return;
       /* Check other players for lock-on OR inspect */
+      /* v2.3.3837: the player is otherPlayerAtCss's pick -- the NEAREST within
+         reach of the body and head, not the first in S.others order: with the
+         reach up from 25 px to 44, two bros a step apart are both in reach,
+         and the press's question (_deskPressTarget) and this click must name
+         the same one */
+      var _pickedPeer = otherPlayerAtCss(cssX, cssY);
       for (var _i43 = 0, _Object$entries7 = Object.entries(S.others); _i43 < _Object$entries7.length; _i43++) {
         var _Object$entries7$_i = _slicedToArray(_Object$entries7[_i43], 2),
           id = _Object$entries7$_i[0],
           o = _Object$entries7$_i[1];
-        /* v2.3.3837: the body and head, not just the feet (otherPlayerAtCss's distance) */
-        if (o && otherPlayerDistCss(S, o, cssX, cssY) < PLAYER_TAP_R) {
+        if (o && _pickedPeer !== null && id === _pickedPeer) {
           /* ═══ v2.3.1742: NEVER COMBAT-LOCK A PARTY MEMBER ═══
              Owner: "it auto targeted my teammate".  A tap within 25px of
              another player combat-locks them, and in a lawless zone (which
