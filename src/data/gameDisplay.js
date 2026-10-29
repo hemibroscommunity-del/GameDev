@@ -4125,6 +4125,32 @@ BT_AUDIO.swimStroke = function () {
   this._noteSwim('stroke', L[0], h);
 };
 /** Into the water ('in') or out of it ('out'). */
+/* ═══ v2.3.3791: THE SKATEBOARD ROLLING, FOR THE SOUND STUDIO ═══
+   The roll itself is game/rideSound.js's own loop (the music bus, never
+   SFX_MANIFEST); this is the studio's play button: three seconds of the same
+   file at the same level, decoded as the ride decodes it (an `amb-` key, 24 kHz
+   mono) and let go with the ride's rule.  `vol` is rideSound.rollVol(). */
+BT_AUDIO.skateRollDemo = function (vol) {
+  if (!this.ctx || this.muted) return;
+  var self = this, key = 'amb-skate-roll';
+  Promise.resolve(this.loadSample(key, OWNER_LOOPS['skate-roll'].url)).then(function () {
+    var buf = self._samples && self._samples[key];
+    if (!buf || !self.ctx) return;
+    try {
+      var src = self.ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      var g = self.ctx.createGain();
+      g.gain.value = typeof vol === 'number' ? vol : 0.25;
+      src.connect(g);
+      g.connect(self._out('music'));
+      var at = self.ctx.currentTime;
+      src.start(at);
+      g.gain.setTargetAtTime(0, at + 2.6, 0.1);
+      src.stop(at + 3.2);
+    } catch (e) { /* a preview only */ }
+  });
+};
 BT_AUDIO.swimSplash = function (how) {
   if (!this.ctx || this.muted) return;
   var w = how === 'out' ? 'out' : 'in';
@@ -6014,7 +6040,7 @@ export const NPC_DATA = [{
   phrases: [
     "Betcha can't catch me!",
     "Bet you can't beat me round the square!",
-    "My bro says the Verdant Wilds are full of exploding slimes! He also said my face would freeze like this, so.",
+    "My bro says the Earth Forest is full of exploding slimes! He also said my face would freeze like this, so.",
     "One day I'm gonna have a sword bigger than my whole body! Then nobody can make me go to bed!",
     "Did you see Bro Pond? It's got monster fish. Probably! I've never actually been.",
   ],

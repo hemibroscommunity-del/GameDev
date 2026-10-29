@@ -15,12 +15,23 @@ Client only: nothing on the server changes.
 
 Every tile (v2.3.3779): ![every tile](town-board/every-tile.jpg)
 
+v2.3.3788, Quests and the dungeons' levels: [320 px upright](town-board/board-320.jpg), [sideways](town-board/board-sideways.jpg), [computer](town-board/board-computer.jpg).
+
 ## What it does
 
 - **Entering the Town Hall opens the board**: a tile a thing to do, under
-  six headings: Fight, Dungeons, Explore the lands, Make, Money and trade,
-  People (v2.3.3779, the owner: "it should be classified by 'dungeon' not by
-  'fight'").
+  eight headings: Quests, Fight, Dungeons, Explore the lands, Make, Money
+  and trade, Gambling, People (v2.3.3779, the owner: "it should be
+  classified by 'dungeon' not by 'fight'"; v2.3.3788: "'Gambling' should be
+  another category ... (quests should've be another one)"). Quests: the
+  Mayor's story (an `npc` pin on Mayor Bro, found at the hall he keeps until
+  he is spawned), the townsfolk's quests (no pin), the Guild Hall, Lil Bro's
+  race; their numbers are the worker's (town-board.test 1t).
+- **A dungeon's levels on its tile** (v2.3.3788): "Lv 10+ · party of 2–3",
+  "Lv 26+", "Lv 41+" -- `data/wheelDungeons.js` `dungeonBoardLine` (the
+  party row and the level it is for, else the lowest of the place's levels:
+  the world map's landmark, the plan's tier), through
+  `mapPinPlaces.js` `boardDungeonLine`.
   Only what is built and reachable, and only what this worker opens (a row
   with `cap` waits for it; a dungeon for `wheelDungeonOpen`).
 - **A page a tile**: 1-4 short sentences (what, what you do, what you get,

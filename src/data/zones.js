@@ -242,7 +242,7 @@ export const ZONES = {
     enemyEmoji: { fodder: '🍄', brute: '🌿', swarm: '🪲', hexer: '🧪', sentinel: '🪵' }
   },
   verdant: {
-    id: 'verdant', name: 'Verdant Wilds', w: 32, h: 32,
+    id: 'verdant', name: 'Earth Forest',   /* v2.3.3778: the owner, "Rename verdant wilds to something like earth forest" */ w: 32, h: 32,
     /* v2.3.856: new Flora spoke (band 2). element:null for now -- a real
        Flora element + sprite-backed monsters are a follow-up; reachable and
        walkable as a zone today.
