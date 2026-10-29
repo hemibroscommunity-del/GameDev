@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9a26635477fbadabc2f9392d42ea3184361e5c68",
+  "tree": "b57743a47f6f3f965c4f7e6cff4bb1ceb121ac91",
+  "committedAt": "2026-10-28T18:06:26-07:00",
+  "subject": "Printed shirts: a live off switch in the Test panel, plain tees back on the shared picture (v2.3.3790) (#1264)",
+  "files": 7026,
+  "bytes": 814839598,
+  "listingSha256": "d0f2f9e0030dbc22e19ba29b8770c5b27017875632d4b2d3dbf0ef948d0995b6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

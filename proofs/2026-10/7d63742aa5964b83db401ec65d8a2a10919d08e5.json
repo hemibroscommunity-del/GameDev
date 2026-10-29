@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7d63742aa5964b83db401ec65d8a2a10919d08e5",
+  "tree": "f3d63dfe8bb61fbeea42c180488fb552214efb2f",
+  "committedAt": "2026-10-28T18:05:46-07:00",
+  "subject": "Memory check: the heap line 34 -> 36 MB, main's own code at the line again (v2.3.3807) (#1266)",
+  "files": 7026,
+  "bytes": 814834798,
+  "listingSha256": "6ccfd7dca414eca73b00058584316bd45593d745a42b030f35414b75d9ec328b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

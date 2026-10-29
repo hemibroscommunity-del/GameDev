@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9c7683c513b392720d464c3dbecff13fab967bec",
+  "tree": "659c3ed1f19c4efb43fdb18b977c33530604ac0c",
+  "committedAt": "2026-10-28T18:06:31-07:00",
+  "subject": "Test fix: the No man's land test reads the banner from when you walked in (v2.3.3797) (#1265)",
+  "files": 7026,
+  "bytes": 814839985,
+  "listingSha256": "f49ef7010cdc110414be49cb93ec9c6a48f5459a98e9f0c8b48fb70e6b9e06c1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
