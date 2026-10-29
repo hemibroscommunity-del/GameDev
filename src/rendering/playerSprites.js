@@ -18,6 +18,7 @@
  * walk loop matches the original source-video cadence.
  */
 
+import { laterRounds } from './retryLooks.js';   /* v2.3.3882 */
 import { Assets, Rectangle, Texture } from 'pixi.js';
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: upscale downscaled-on-disk sheets back to the 256px logical frame; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { sliceCropped } from './gearSheets.js';   /* v2.3.2791: the body sheets are cropped */
@@ -274,8 +275,18 @@ export function stripDetachedComponents(src, nFrames) {
    (pose,dir).  The retry URL appends &r=N to bypass a poisoned cache entry;
    south-only poses 404 by design and stop retrying via the same cap. */
 const _SHEET_RETRY_MS = [2000, 6000];
-async function loadSheet(pose, dir, attempt = 0) {
-  const url = spriteUrl(pose, dir) + (attempt > 0 ? `&r=${attempt}` : '');
+/* ═══ v2.3.3882: ...AND THEN ASKED FOR AGAIN, LATER ═══
+   The bounded retry above was still the end of it: a base body sheet that
+   failed three times (8 s: a wifi blip, a deploy mid-visit) stayed missing for
+   the visit, and the old path's body (a computer's: the look palette is off on
+   Windows and Mac) drew nothing in that facing until a reload -- the owner's
+   reports of a body that vanishes in some facings.  Now it is asked for again
+   while drawn, the head pieces' and gear sheets' later rounds
+   (retryLooks.js, docs/specs/retry-looks.md); `?bodyretry=0` or
+   `?retrylooks=0` is the game as it was. */
+const _later = laterRounds('bodyretry');
+async function loadSheet(pose, dir, attempt = 0, round = 0) {
+  const url = spriteUrl(pose, dir) + (attempt > 0 ? `&r=${attempt}` : '') + (round > 0 ? `&g=${round}` : '');   /* v2.3.3882: + the later round */
   try {
     /* v2.3.1108: load via Image (not Assets.load) so the sheet can be
        nearest-upscaled back to the 256px logical frame when it's stored
@@ -338,11 +349,16 @@ async function loadSheet(pose, dir, attempt = 0) {
          holds the loading screen until the sheet is really in — a flaked
          BASE body sheet passing the gate = invisible player mid-play. */
       await new Promise((res) => setTimeout(res, _SHEET_RETRY_MS[attempt]));
-      return loadSheet(pose, dir, attempt + 1);
+      return loadSheet(pose, dir, attempt + 1, round);
     } else {
       /* v2.3.1384: final failure of a BASE body sheet = invisible player.
-         Evidence for the crash ring (stand/jog exist for every dir). */
-      try { import('../debug/crashTrap.js').then(ct => ct.recordCrash('body-sheet-failed', pose + '-' + dir)).catch(() => {}); } catch (e) { /* ignore */ }
+         Evidence for the crash ring (stand/jog exist for every dir).
+         v2.3.3882: on the first give-up only, not each later round */
+      const key = pose + '-' + dir;
+      if (!_later.round(key)) {
+        try { import('../debug/crashTrap.js').then(ct => ct.recordCrash('body-sheet-failed', key)).catch(() => {}); } catch (e) { /* ignore */ }
+      }
+      _later.gaveUp(key, (g) => loadSheet(pose, dir, 0, g));   /* v2.3.3882 */
     }
   }
 }
@@ -399,7 +415,7 @@ export function resolveDirection(facing) {
  *  rendering for that frame. */
 export function getFrame(pose, dir, frameIdx) {
   const set = manifest[pose] && manifest[pose][dir];
-  if (!set || set.length === 0) return null;
+  if (!set || set.length === 0) { _later.due(pose + '-' + dir); return null; }   /* v2.3.3882: given up on, asked again */
   const safeIdx = ((frameIdx % set.length) + set.length) % set.length;
   return set[safeIdx];
 }

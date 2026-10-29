@@ -75,7 +75,12 @@ const TOOLS = () => {
     const sb = me && me._spriteBody;
     let was = null;
     if (T.hideBody && sb) { was = sb.renderable; sb.renderable = false; }
-    T.renders++;
+    /* v2.3.3882: only the screen's own frames count (the stage): other
+       renders run inside one frame (off-screen bakes: fillBatch, the palette's
+       warm-ups, the water, render textures), and two of those can pass before
+       the held-back state is ever shown -- M4's finding, the "first-frame miss"
+       that was never one */
+    if (a[0] === app.stage || (a[0] && a[0].container === app.stage)) T.renders++;
     try { return orig(...a); } finally { if (was != null) sb.renderable = was; }
   };
   T.body = () => {
