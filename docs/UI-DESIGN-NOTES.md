@@ -915,6 +915,13 @@ Screens: building-townhall, building-townhall-page
 - **No man's land is a tile without pins** (the orchestrator's call): it is every land past the safe ground, not one place, so its page says what it is (fights between players, the skulls, what you lose) and "Where: everywhere outside BroTown's safe ground", with no pin buttons. Its level words stay general while its levels are being changed.
 - **The Leaderboard and the World map stay**, as two small buttons at the board's foot: the trophy case and the painted map were the owner's earlier choice (v2.3.3258).
 - On a computer the words say "click" and the board flows into more columns in the wide layout.
+- **The layout pass (v2.3.3802)**: the owner ran the board past ChatGPT, and we took its LAYOUT advice (lane C did the words).
+  - **A nav strip** sits under the header: one row of chips, one per heading, in the board's order. It stays at the top of the window while the board scrolls. A tap scrolls to that heading, and the heading in view wears the gold.
+  - **A compact header**: the Town Hall's picture cropped to the sign and the map (100-124 px upright), so Quests and the first tiles show without scrolling. A sideways phone has no room picture, as every window.
+  - **A wider window** on a computer and a sideways phone: up to 800 px, never wider than the play column, up to 85% tall on a computer.
+  - **Columns by the board's own width**: 3, then 4 from 540 px, then 5 from 720 px. An upright phone keeps 3.
+  - **Even tiles**: every tile in a section is one height, its line (a dungeon's levels, or a tile's subtitle) at its foot, 11 px and muted.
+  - **One 52 px art box**: each picture is scaled by what it draws, so a townsperson's head and a land's scene look the same size, neither stretched.
 
 **Please don't suggest:**
 - Pins written as map coordinates, or a pin per townsperson's quest (the quest pins already do that).

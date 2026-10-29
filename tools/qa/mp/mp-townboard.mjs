@@ -24,6 +24,13 @@
  *      the world map; blue still lifted;
  *   7. the computer: the board opens, a page pins, the minimap shows it;
  *   8. no page errors.
+ *   9. v2.3.3802, the layout pass (the owner ran the board past ChatGPT):
+ *      the columns follow the board's own width (3, 4 from 540 px, 5 from
+ *      720), upright at 390 and 320, sideways, and on a computer at 1280 and
+ *      1440 wide (the window wider there, never past the play column); every
+ *      tile in a section one height; nothing cut; the nav strip stays at the
+ *      top as the board scrolls, and a chip scrolls the board to its heading
+ *      and wears the gold.
  * Pictures: tools/qa/mp/out/townboard-*.png.
  */
 import * as H from './harness.mjs';
@@ -120,6 +127,49 @@ export async function run({ browser, wsPort, webPort, rec }) {
       foot: Array.from(b.querySelectorAll('[data-hall-row]')).map((x) => x.getAttribute('data-hall-row')),
     };
   });
+  /* v2.3.3802: the board's layout as drawn: its width, its columns, each
+     section's tile heights, and anything cut */
+  const layout = (P) => P.page.evaluate(() => {
+    const b = document.querySelector('[data-town-board]'), card = b && b.closest('.bt-inspect-card');
+    if (!b || !card) return null;
+    const br = b.getBoundingClientRect(), cr = card.getBoundingClientRect();
+    const groups = Array.from(b.querySelectorAll('[data-board-group]')).map((g) => {
+      const tiles = Array.from(g.querySelectorAll('[data-board-tile]')).map((t) => t.getBoundingClientRect());
+      const hs = tiles.map((r) => Math.round(r.height));
+      return { id: g.getAttribute('data-board-group'), cols: getComputedStyle(g).gridTemplateColumns.split(' ').filter(Boolean).length,
+        equal: hs.length ? Math.max(...hs) - Math.min(...hs) <= 1 : true, hs,
+        cut: tiles.some((r) => r.left < br.left - 0.5 || r.right > br.right + 0.5) };
+    });
+    const names = Array.from(b.querySelectorAll('[data-board-tile]')).some((t) => t.scrollWidth > t.clientWidth + 1);
+    return { boardW: Math.round(br.width), cardW: Math.round(cr.width), playW: Math.round((document.querySelector('.bt-inspect') || document.body).getBoundingClientRect().width),
+      groups, overflow: card.scrollWidth > card.clientWidth + 1 || names };
+  });
+  const colsFor = (w) => (w >= 720 ? 5 : w >= 540 ? 4 : 3);
+  const layoutOk = (L) => !!L && !L.overflow && L.groups.length > 3 && L.groups.every((g) => g.cols === colsFor(L.boardW) && g.equal && !g.cut);
+  /* the strip: sticky as the window scrolls, and a chip to its heading */
+  const navCheck = async (P, wide) => {
+    const r = {};
+    await P.page.evaluate(() => { const c = document.querySelector('.bt-inspect-card'); if (c) c.scrollTop = c.scrollHeight; });
+    await P.page.waitForTimeout(400);
+    r.sticky = await P.page.evaluate(() => {
+      const n = document.querySelector('[data-board-nav]'), c = document.querySelector('.bt-inspect-card');
+      if (!n || !c) return null;
+      return { navTop: Math.round(n.getBoundingClientRect().top), cardTop: Math.round(c.getBoundingClientRect().top), scrolled: c.scrollTop };
+    });
+    await P.page.evaluate(() => { const c = document.querySelector('.bt-inspect-card'); if (c) c.scrollTop = 0; });
+    await P.page.waitForTimeout(300);
+    /* a real tap on the Dungeons chip (not scrollIntoView'd: it is on screen) */
+    const at = await P.page.evaluate(() => { const e = document.querySelector('[data-board-chip="dungeons"]'); if (!e) return null; const q = e.getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; });
+    if (at) { if (wide) await P.page.mouse.click(at.x, at.y); else await P.page.touchscreen.tap(at.x, at.y); }
+    await P.page.waitForTimeout(2500);   /* a smooth scroll, on this box's few frames a second */
+    r.jump = await P.page.evaluate(() => {
+      const h = document.querySelector('[data-board-heading="dungeons"]'), n = document.querySelector('[data-board-nav]'), on = document.querySelector('[data-board-chip][data-chip-on="1"]');
+      if (!h || !n) return null;
+      return { gap: Math.round(h.getBoundingClientRect().top - n.getBoundingClientRect().bottom), on: on && on.getAttribute('data-board-chip') };
+    });
+    r.ok = !!r.sticky && r.sticky.scrolled > 100 && Math.abs(r.sticky.navTop - r.sticky.cardTop) <= 2 && !!r.jump && r.jump.gap >= -2 && r.jump.gap <= 40 && r.jump.on === 'dungeons';
+    return r;
+  };
   const pageOf = (P) => P.page.evaluate(() => {
     const p = document.querySelector('[data-board-page]');
     if (!p) return null;
@@ -191,8 +241,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return lvOf(b);
     };
     const lv390 = lvOf(b1);
+    const L390 = await layout(A);
+    const nav390 = await navCheck(A, false);
+    await shot(A, '9-board-390-nav');
     const lv320 = await fitAt({ width: 320, height: 700 }, '1-board-320');
+    const L320 = await layout(A);
     const lvSide = await fitAt({ width: 844, height: 390 }, '1-board-sideways');
+    const LSide = await layout(A);
     await A.page.setViewportSize(PHONE);
     await A.page.waitForTimeout(600);
     const want = { 'goo-grotto': /^Lv 10\+ · party of 2–3$/, 'great-cave': /^Lv 26\+$/, 'foundry-dome': /^Lv 26\+$/, 'buried-city': /^Lv 41\+$/ };
@@ -200,6 +255,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...each dungeon\'s tile says its levels under its name (Goo Grotto "Lv 10+ · party of 2–3", Great Cave and Foundry Dome "Lv 26+", Buried City "Lv 41+"), inside the tile upright at 390 and 320 px and sideways',
       lvOk(lv390) && lvOk(lv320) && lvOk(lvSide), { lv390, lv320, lvSide });
     const inG = (g) => b1 ? b1.tiles.filter((t) => ['mayor', 'townquests', 'guildhall', 'race', 'gambling', 'ace'].includes(t.id)).map((t) => t.id) : [];
+    rec.ok(`9. the columns follow the board's own width -- ${L390 && L390.groups[0].cols} at 390 (${L390 && L390.boardW} px), ${L320 && L320.groups[0].cols} at 320, ${LSide && LSide.groups[0].cols} sideways (${LSide && LSide.boardW} px); every tile in a section one height; nothing cut`,
+      layoutOk(L390) && layoutOk(L320) && layoutOk(LSide) && L390.groups[0].cols === 3 && L320.groups[0].cols === 3, { L390, L320, LSide });
+    rec.ok('9. ...the nav strip stays at the top of the window as the board scrolls, and its Dungeons chip scrolls the board there and wears the gold', nav390.ok, nav390);
     rec.ok('...Quests heads the board (the Mayor\'s story, the townsfolk\'s quests, the Guild Hall), and Gambling has the Gambling Den and Ace',
       ['mayor', 'townquests', 'guildhall', 'gambling', 'ace'].every((id) => inG().includes(id)) && b1.groups[0] === 'quests', { tiles: inG() });
 
@@ -306,6 +364,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && !!m7 && m7.some((m) => m.color === 'blue' && m.id === 'woodworker'), { open: o7.open, n: b7 && b7.tiles.length, m7, hint });
     const lvDesk = lvOf(b7);
     rec.ok('...and on the computer\'s wide layout each dungeon\'s level line fits its tile', lvOk(lvDesk), lvDesk);
+    /* v2.3.3802: a computer's window, wider, never past the play column */
+    const deskAt = async (vp, tag) => {
+      await C.page.setViewportSize(vp);
+      await C.page.waitForTimeout(800);
+      const o = await openBoard(C, cth, true);
+      const L = o.open ? await layout(C) : null;
+      await shot(C, tag);
+      return L;
+    };
+    const L1280 = cth ? await deskAt({ width: 1280, height: 800 }, '9-desk-1280') : null;
+    const nav1280 = L1280 ? await navCheck(C, true) : null;
+    const L1440 = cth ? await deskAt({ width: 1440, height: 900 }, '9-desk-1440') : null;
+    const wideOk = (L) => layoutOk(L) && L.cardW >= 640 && L.cardW <= 820 && L.cardW <= L.playW;
+    rec.ok(`9. on a computer the window is wider (${L1280 && L1280.cardW} px at 1280, ${L1440 && L1440.cardW} at 1440, never past the play column) with ${L1440 && L1440.groups[0].cols} columns, tiles even, nothing cut; the strip sticks and jumps there too`,
+      wideOk(L1280) && wideOk(L1440) && !!nav1280 && nav1280.ok, { L1280, L1440, nav1280 });
 
     rec.ok(`8. no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {
