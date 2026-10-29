@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "55ff160dbab9e7445b2a12fe389f6458ed0df1d6",
+  "tree": "a13a206168ce9a8a857c9aabe526b037f935e8c0",
+  "committedAt": "2026-10-28T20:37:55-07:00",
+  "subject": "Merge pull request #1280 from hemibroscommunity-del/claude/pet-fetch",
+  "files": 7234,
+  "bytes": 831802256,
+  "listingSha256": "dd46fc82f1cb6d2fb37da89dfc6e064fd864a2b2d82b076899bbcb40e61c0ada",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
