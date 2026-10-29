@@ -108,11 +108,20 @@ function growTo(rows) {
   if (_rows < rows) _free.push([_rows, rows - _rows]);
   merge();
   _rows = rows;
-  const old = _src;
-  _src = makeSource(rows);
+  /* ONE source for the page's life, grown in place (M3's review): the atlas
+     is no sprite's texture -- LookBatcher._finishBatch binds it when a batch
+     is BUILT, and a layer whose draw list is not rebuilt (a figure standing
+     or walking, TRAPS §218) keeps binding the source it was built with.  A
+     new source with the old one destroyed left such a figure reading a dead
+     texture: its body gone under its armour until the layer rebuilt.  The
+     upload re-sends every book when the size changes. */
+  if (!_src) _src = makeSource(rows);
+  else { _src.resize(MASK_W, rows, 1); }
   for (const b of _books) { b.dirty = true; b.lo = 0; b.hi = b.rows; }
-  if (old) setTimeout(() => { try { old.destroy(); } catch (e) { /* gone */ } }, 0);
+  if (_src.resource !== null) _src.resource = null;
+  _src.update();
   _stats.atlasRows = rows;
+  _stats.atlasGrows = (_stats.atlasGrows || 0) + 1;
   return true;
 }
 function merge() {
@@ -149,11 +158,12 @@ function dropBook(b) {
   giveRows(b.start, b.rows);
   b.bytes = null;
   _stats.books = _books.size;
-  /* no armoured look left: the atlas goes too (made again for the next) */
-  if (!_books.size && _src) {
-    const old = _src;
-    _src = null; _rows = 0; _free.length = 0; _stats.atlasRows = 0;
-    setTimeout(() => { try { old.destroy(); } catch (e) { /* gone */ } }, 0);
+  /* no armoured look left: the atlas shrinks to one row (the same source,
+     for the batches already built with it -- see growTo), its rows free */
+  if (!_books.size && _src && _rows > 1) {
+    _rows = 0; _free.length = 0; _stats.atlasRows = 0;
+    _src.resize(MASK_W, 1, 1);
+    _src.update();
   }
 }
 /* uploaded by hand: the whole atlas when the chip has none of it (or its size

@@ -268,5 +268,56 @@ export function installArmourProbe(dep) {
     rt.destroy(true);
     return url;
   }
-  window.__btArmourOracle = { compare, picture };
+  /* v2.3.3752 (M3's review): an armoured figure drawn, the mask atlas made to
+     grow under it (more masked looks), the SAME container drawn again with no
+     change to it (its draw list not rebuilt, as a standing figure's is not):
+     the two pictures must be the same */
+  async function growth({ look, set, pose = 'stand', dir = 'south', others = [] } = {}) {
+    await loadGear([set]);
+    const r = paletteRendererOf();
+    const pi = { pose, dir, frameIdx: 0 };
+    const ents = entriesOf(look, pose, dir);
+    const worn = wornOf(set, pose, dir, 0);
+    await lookArmourPrewarm(ents, worn, pi);
+    const nw = lookArmourFrame(ents, worn, pi, 0);
+    if (!nw) return { error: 'not decided' };
+    /* a render group keeps its draw list between renders, as the world's
+       layers do: the case a rebuild would hide */
+    const box = new Container({ isRenderGroup: true });
+    for (const t of [nw.tex, nw.residue]) {
+      if (!t) continue;
+      const sp = new Sprite(t);
+      sp._sharp = true; sp.anchor.set(0.5); sp.position.set(70, 70);
+      box.addChild(sp);
+    }
+    const rt = RenderTexture.create({ width: 140, height: 140, resolution: 1 });
+    const shot = () => { r.render({ container: box, target: rt, clear: true, clearColor: [0, 0, 0, 0] }); return r.extract.pixels(rt).pixels.slice(); };
+    const a = shot();
+    const g0 = (window.__btLookArmour().atlasGrows || 0), rows0 = window.__btLookArmour().atlasRows;
+    /* other looks, every jog frame, until the atlas has grown; A is drawn
+       between them so it stays in use (not swept) */
+    let grew = false;
+    for (const L of others) {
+      for (const d of DIRS) {
+        if (!lookHas('body', 'jog-' + d)) continue;
+        const e2 = entriesOf(L, 'jog', d);
+        const n = Math.max(1, playerFrameCount('jog', d) || 1);
+        for (let f = 0; f < n; f += 8) await lookArmourPrewarm(e2, wornOf(set, 'jog', d, f), { pose: 'jog', dir: d, frameIdx: f });
+        lookArmourFrame(ents, worn, pi, 0);
+        if ((window.__btLookArmour().atlasGrows || 0) > g0) { grew = true; break; }
+      }
+      if (grew) break;
+    }
+    const b = shot();
+    let differ = 0, drawn = 0;
+    for (let p = 0; p < a.length; p += 4) {
+      if (!a[p + 3] && !b[p + 3]) continue;
+      drawn++;
+      if (Math.abs(a[p + 3] - b[p + 3]) > 1 || Math.abs(a[p] - b[p]) > 1) differ++;
+    }
+    box.destroy({ children: true });
+    rt.destroy(true);
+    return { grew, rowsBefore: rows0, rowsAfter: window.__btLookArmour().atlasRows, drawn, differ };
+  }
+  window.__btArmourOracle = { compare, picture, growth };
 }

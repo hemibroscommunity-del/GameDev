@@ -128,6 +128,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       frames > 0 && exactOver === 0 && report.every((x) => !x.notDecided), { frames, exactDrawn, exactOver, wE, shape, colour, wA, wC });
     rec.ok(`no palette row or mask book refused (rows ${la.rows}, books ${la.books}, atlas ${la.atlasMB} MB): rowsFull ${la.rowsFull}, booksFull ${la.booksFull}`,
       la.rowsFull === 0 && la.booksFull === 0, la);
+    /* v2.3.3752 (M3's review): the mask atlas grows under a figure already
+       drawn, and that figure, drawn again untouched, is the same */
+    {
+      const g = await P.page.evaluate(([look, set, others]) => window.__btArmourOracle.growth({ look, set, others }),
+        [LOOKS[0], EXTRA.chest, [['honey', 'navy', 'tan', 'default'], ['olive', 'teal', 'black', 'default'], ['rosy', 'yellow', 'tan', 'default'], ['snow', 'red', 'black', 'default'], ['deep', 'white', 'tan', 'default'], ['purple', 'navy', 'black', 'default']]]);
+      rec.ok(`a figure drawn before the mask atlas grew (${g.rowsBefore} -> ${g.rowsAfter} rows) draws the same after, its draw list untouched: ${g.differ} of ${g.drawn} px differ`,
+        g.grew === true && g.drawn > 0 && g.differ === 0, g);
+    }
     /* v2.3.3752: its own switch, live (the Test panel's Memory savers row
        "Bodies under armour coloured on the chip"): off, the armour's look path
        answers no (the old masked bake draws); cleared, it is back */
