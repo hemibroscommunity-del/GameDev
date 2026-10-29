@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "142337fe02c58b27f0c6245c7a0812a1660d3143",
+  "tree": "83a53de7f28efcf10ab158e49c6d457d9bc0b891",
+  "committedAt": "2026-10-29T08:17:20-07:00",
+  "subject": "Merge pull request #1326 from hemibroscommunity-del/claude/forge-sound",
+  "files": 7273,
+  "bytes": 836130385,
+  "listingSha256": "b925f0434091646db811291e94cb9c06dea329b051844f24ab2304d97523b82b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
