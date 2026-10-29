@@ -1395,8 +1395,13 @@ export function QuestCoach(props) {
      card: crossing it, it steps right of it while the world has the room (a
      style written here; React writes `left` again only when its own value
      changes, and this runs again after).  Two rects a draw, only while a
-     card is up; upright the two never meet, so nothing there moves. */
+     card is up and only on a computer playing wide (deskWideActive): a phone
+     never meets the case and does no layout work for it. */
   React.useLayoutEffect(function () {
+    /* a computer playing wide only: a phone never meets the case, so it
+       does no layout work for it (the coach draws up to ~12 times a second
+       while a world-anchored lesson's ring follows you) */
+    if (!deskWideActive()) return;
     const el = document.querySelector('[data-coach-card]');
     const qh = document.querySelector('[data-quest-hud]');
     if (!el || !qh) return;
