@@ -4131,7 +4131,12 @@ export var BroTown = function BroTown(_ref0) {
     window.__btGlLostAt = 0;
     window._rebuildRenderer = function (reason) {
       var _now = Date.now();
+      /* v2.3.3886: QA (mp-doubleloss) -- each call, and what came of it */
+      var _rbLog = window.__btGlRebuildLog || (window.__btGlRebuildLog = []);
+      if (_rbLog.length > 20) _rbLog.shift();
+      _rbLog.push({ at: _now, age: window.__btLastGlRebuild ? _now - window.__btLastGlRebuild : null, reason: String(reason || 'manual').slice(0, 80) });
       if (window.__btLastGlRebuild && _now - window.__btLastGlRebuild < 5000) {
+        _rbLog[_rbLog.length - 1].inWindow = OWED_REBUILD_OFF ? 'dropped' : (window.__btGlRebuildOwed ? 'already owed' : 'owed');
         /* ═══ v2.3.3886: A SECOND LOSS INSIDE THE WINDOW IS OWED A REBUILD ═══
            The window is there for ONE death that two callers both conclude
            is a rebuild (the loss's own timer and the resume probe).  But a

@@ -14,7 +14,11 @@
  * palette off: ?lookpalette=0), each in the Wheel:
  *   1. one loss (lost, given back 0.8 s on): ONE rebuild, none owed, and the
  *      combat strips, the font's pages and a damage number draw after it;
- *   2. two losses: the second 1.5 s after the first one's rebuild: TWO
+ *   2. two losses: the second about 1.5 s after the first rebuild began (as
+ *      on a phone, which brings a rebuilt renderer up in a second or two;
+ *      this box takes 10-15 s and its timers run late, so the first rebuild's
+ *      start is set back and crashTrap's own call for the second loss is run
+ *      at once): TWO
  *      rebuilds (the second owed), and after them every combat strip draws
  *      what it drew before (byte for byte, off the GPU), every font page holds
  *      what its canvas held, and a damage number draws;
@@ -146,18 +150,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
           && d1.font.every((p) => p.same && p.lit > 0) && d1.number.white > 500, { s0, s1, differ: sameStrips(d1.strips, base.strips).slice(0, 4), font: d1.font });
       }
 
-      /* 2: two losses, the second 1.5 s after the first one's rebuild */
+      /* 2: two losses, the second about 1.5 s after the first rebuild began */
       const s2a = await state(P);
       await lose(P);
       const mid = await newRenderer(P, s2a.uid);
-      await P.page.waitForTimeout(1500);
+      /* inside the window: the second loss's own rebuild call (crashTrap's,
+         2.5 s on) must fall within 5 s of the first rebuild.  On this box a
+         rebuilt renderer takes 10-15 s to come up (a phone: a second or two),
+         and its timers then run seconds late, so the call always landed
+         outside the window and rebuilt the old way.  As on a phone: the first
+         rebuild's start set back to 1.5 s ago, and crashTrap's own 2.5 s
+         callback for the second loss held as the loss is made and run at
+         once -- the same call, on a phone's clock */
+      const age = await P.page.evaluate(() => {
+        const a = Date.now() - (window.__btLastGlRebuild || 0);
+        window.__btLastGlRebuild = Date.now() - 1500;
+        const st = window.setTimeout;
+        window.__qaHeld = [];
+        window.setTimeout = function (fn, ms) { if (ms === 2500 && typeof fn === 'function') { window.__qaHeld.push(fn); return 0; } return st.apply(this, arguments); };
+        window.__qaUnhold = () => { window.setTimeout = st; };
+        return a;
+      });
       const lost2 = await lose(P);
+      await P.page.waitForTimeout(300);
+      const held = await P.page.evaluate(() => { window.__qaUnhold(); const n = window.__qaHeld.length; for (const fn of window.__qaHeld) { try { fn(); } catch (e) { /* its own */ } } return n; });
+      rec.ok(`${name}: the second loss's rebuild call is crashTrap's own, held and run inside the window (guard: ${held} held)`, held >= 1, held);
       await P.page.waitForTimeout(10000);
       const s2 = await state(P);
+      console.log(`    [${name}] the rebuild calls: ${JSON.stringify(await P.page.evaluate(() => window.__btGlRebuildLog || []))}`);
       const d2 = await drawn(P, keys);
       const differ = sameStrips(d2.strips, base.strips);
       const fontOk = d2.font.every((p) => p.same && p.lit > 0);
-      console.log(`    [${name}] two losses: ${JSON.stringify({ s2a, mid, s2 })}; strips lit ${litStrips(d2.strips)} of ${keys}, ${differ.length} differ; font pages same ${d2.font.filter((p) => p.same).length} of ${d2.font.length}; number ${d2.number.white} px`);
+      console.log(`    [${name}] two losses (the new renderer up ${age} ms after the first rebuild began; the second loss as if 1.5 s): ${JSON.stringify({ s2a, mid, s2 })}; strips lit ${litStrips(d2.strips)} of ${keys}, ${differ.length} differ; font pages same ${d2.font.filter((p) => p.same).length} of ${d2.font.length}; number ${d2.number.white} px`);
       if (!control) {
         rec.ok(`${name}: two losses seconds apart: two rebuilds, the second owed (${s2.rebuilds - s2a.rebuilds} rebuilt, ${s2.owed - s2a.owed} owed)`,
           !!lost2 && mid != null && s2.rebuilds - s2a.rebuilds === 2 && s2.owed - s2a.owed === 1, { s2a, mid, s2 });
