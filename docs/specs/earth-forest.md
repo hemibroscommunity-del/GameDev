@@ -16,7 +16,7 @@ The owner, 2026-10-28: "Rename verdant wilds to something like earth forest
 - A townsperson's line, the Blue Slime's codex story, the daily rewards' land
   names, the Sound Studio's label, the old map's gate label, the Test panel's
   button and the objects studio's heading.
-- The Town Hall board (v2.3.3779) reads the land's name from the world's plan,
+- The Town Hall board (lane C's, this same night) reads the land's name from the world's plan,
   so its Earth Forest tile and the Goo Grotto's page say it with no change of
   their own (`mp-townboard`, upright and wide):
 
