@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7c5b7cfa9f0d077f3cf5a7feb15a56f96b296ef5",
+  "tree": "892ee70fab8655bcc8b2c94e12f48f8aed870c2d",
+  "committedAt": "2026-10-28T17:07:08-07:00",
+  "subject": "No man's land's number climbs one step per monster level (v2.3.3767) (#1241)",
+  "files": 6940,
+  "bytes": 805492173,
+  "listingSha256": "724d38b65d1f34f86403ef8f1da0546a5de15a05d34136c422aef842cc3a969c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
