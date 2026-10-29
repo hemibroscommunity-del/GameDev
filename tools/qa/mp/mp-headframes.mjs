@@ -124,6 +124,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (c && c.missed) for (const l of c.log.slice(-8)) console.log('      ' + JSON.stringify(l));
     if (px) console.log(`      pixels: ${px.looked} piece-frames read back, ${px.drops} dropped${px.drops ? ' ' + JSON.stringify(px.byCat) : ''}`);
     if (px && px.drops) for (const l of px.log.slice(-8)) console.log('      ' + JSON.stringify(l));
+    if (px && px.shots) {
+      const { writeFileSync, mkdirSync } = await import('node:fs');
+      mkdirSync(H.REPO + '/tools/qa/mp/out', { recursive: true });
+      for (const sh of px.shots) {
+        const f = `${H.REPO}/tools/qa/mp/out/headframes-${name.split(':')[0].replace(/\W+/g, '-')}-f${sh.f}-${sh.cat.replace(/\W+/g, '-')}.png`;
+        writeFileSync(f, Buffer.from(sh.url.split(',')[1], 'base64'));
+        console.log('      picture: ' + f.replace(H.REPO + '/', ''));
+      }
+      delete px.shots;
+    }
     return c;
   };
   try {

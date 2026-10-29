@@ -108,7 +108,7 @@ if (HEAD_FRAMES_ON && typeof window !== 'undefined') {
  * count falls under a quarter of that piece's usual count in the same pose
  * and facing (its running middle value) is a frame it did not reach the
  * screen: counted in `pixelDrops`, the last 40 kept. */
-const _px = { frames: 0, looked: 0, drops: 0, byCat: Object.create(null), log: [], base: Object.create(null) };
+const _px = { frames: 0, looked: 0, drops: 0, byCat: Object.create(null), log: [], base: Object.create(null), shots: [] };
 function inColour(r, g, b, t) {
   const tm = Math.max(t[0], t[1], t[2]);
   if (tm < 70) return Math.max(r, g, b) < 80;   /* a dark colour: dark */
@@ -134,7 +134,7 @@ function overlapping(stage, d, sp, box) {
   const walk = (c) => {
     if (!c || !c.visible || c.renderable === false || c.alpha <= 0 || out.length >= 8) return;
     if (c === sp) { seenSp = true; return; }
-    if (c !== d && c.texture && c.texture.source && c !== stage) {
+    if (c !== d && c !== stage && ((c.texture && c.texture.source) || (c.context && !(c.children && c.children.length)))) {
       let mine = false;
       for (let p = c.parent; p; p = p.parent) if (p === d) { mine = true; break; }
       if (!mine) {
@@ -186,8 +186,23 @@ export function headPixelsTick(entityRenderer, effectsRenderer, renderer) {
       _px.drops++;
       _px.byCat[who + cat] = (_px.byCat[who + cat] || 0) + 1;
       _px.log.push({ f: _px.frames, cat: who + cat, n, usual: mid, pose: at.pose, dir: at.dir, mirror: at.mirror, frame: at.frameIdx, box: [x0, y0, w, h], t: Math.round(performance.now()),
-        over: overlapping(stage, d, sp, [x0 / res, y0 / res, x1 / res, y1 / res]) });
+        over: overlapping(stage, d, sp, [x0 / res, y0 / res, x1 / res, y1 / res]),
+        /* a tint (a hit's flash) turns the piece's colour, not its presence */
+        tint: (sp.groupColorAlpha >>> 0).toString(16), figureTint: (d.groupColorAlpha >>> 0).toString(16) });
       if (_px.log.length > 40) _px.log.shift();
+      /* the first few: a picture of the head and round it, as drawn */
+      if (_px.shots.length < 4) {
+        const cx = (x0 + x1) >> 1, cy = (y0 + y1) >> 1, R = 120;
+        const sx = Math.max(0, cx - R), sy = Math.max(0, cy - R), sw = Math.min(W, cx + R) - sx, sh = Math.min(H, cy + R) - sy;
+        const big = new Uint8Array(sw * sh * 4);
+        gl.readPixels(sx, H - (sy + sh), sw, sh, gl.RGBA, gl.UNSIGNED_BYTE, big);
+        const cv = document.createElement('canvas');
+        cv.width = sw; cv.height = sh;
+        const g = cv.getContext('2d'), im = g.createImageData(sw, sh);
+        for (let yy = 0; yy < sh; yy++) im.data.set(big.subarray((sh - 1 - yy) * sw * 4, (sh - yy) * sw * 4), yy * sw * 4);
+        g.putImageData(im, 0, 0);
+        _px.shots.push({ f: _px.frames, cat: who + cat, url: cv.toDataURL('image/png') });
+      }
     } else {
       hist.push(n);
       if (hist.length > 15) hist.shift();
@@ -196,8 +211,8 @@ export function headPixelsTick(entityRenderer, effectsRenderer, renderer) {
 }
 if (HEAD_FRAMES_ON && typeof window !== 'undefined') {
   window.__btHeadPixels = (reset) => {
-    const out = { frames: _px.frames, looked: _px.looked, drops: _px.drops, byCat: { ..._px.byCat }, log: _px.log.slice() };
-    if (reset) { _px.frames = 0; _px.looked = 0; _px.drops = 0; _px.byCat = Object.create(null); _px.log = []; }
+    const out = { frames: _px.frames, looked: _px.looked, drops: _px.drops, byCat: { ..._px.byCat }, log: _px.log.slice(), shots: _px.shots.slice() };
+    if (reset) { _px.frames = 0; _px.looked = 0; _px.drops = 0; _px.byCat = Object.create(null); _px.log = []; _px.shots = []; }
     return out;
   };
 }
