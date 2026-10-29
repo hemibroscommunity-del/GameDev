@@ -6,6 +6,8 @@ The owner, 2026-10-29:
 > from them. I like the fire effect you drew from taking damage from the
 > burning buildings.
 
+![Burning on a phone: you, another player on your screen, and ?burnfire=0's old shapes](../shots/burnfire-goblin.webp)
+
 ## What a player sees
 
 A fire goblin's blow sets you burning for a few seconds (the burn's ticks,
