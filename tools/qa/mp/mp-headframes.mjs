@@ -204,6 +204,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
        phone's memory purge does: every piece counted through the restore,
        standing and jogging the eight facings after it */
     if (!ONLY || ONLY === 'ctx') {
+      /* each piece's usual pixels learnt first, in every facing, before the
+         loss (the pixel count compares with them): a piece that came back
+         blank must not become its own yardstick */
+      if (ONLY) { await P.page.waitForTimeout(2000); for (const keys of Object.values(FACINGS)) { await hold(P, keys, 900); await P.page.waitForTimeout(400); } }
       const lost = await P.page.evaluate(() => {
         const c = document.querySelector('canvas');
         const gl = c && (c.getContext('webgl2') || c.getContext('webgl'));
@@ -219,6 +223,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (const keys of Object.values(FACINGS)) await hold(P, keys, 900);
         await P.page.waitForTimeout(1500);
       });
+      await P.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/headframes-after-restore.png' }).catch(() => {});
       rec.ok(`the graphics were lost and given back (guard: ${lost ? 'lost' : 'NOT LOST'}, ${back ? back.frames : 0} frames drawn after)`, !!lost && !!back && back.frames > 8, { lost });
     }
 
