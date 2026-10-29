@@ -8,7 +8,7 @@
  *      worker's own _prog3AwardXp, the path a kill takes -- lights the
  *      Character tab, and its light actually flashes (the opacity moves).
  *   3. The Character tab still opens the sheet with a real finger on it; the
- *      Points tab glows there, the Equipment and Journey tabs do not.
+ *      Points tab glows there, the Equipment tab does not (v2.3.3773: Journey is More's page).
  *   4. Sideways, the dashboard's Character tab glows too.
  *   5. Reduced motion: the lit state, held still.
  *   6. Spending every point -- real prog3_allocate spends, the UI's own wire

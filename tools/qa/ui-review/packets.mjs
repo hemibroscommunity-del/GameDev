@@ -44,8 +44,10 @@ export const PACKETS = [
     screens: ['shop-diego', 'ace-flip', 'building-party', 'building-post', 'building-sheriff', 'building-guildhall', 'building-townhall', 'building-hotel', 'building-arena'] },
   { slug: 'maps-chat-players', title: 'The maps, chat and other players',
     screens: ['world-map', 'building-townhall-page', 'chat', 'player-list', 'player-card', 'inspect-self', 'trade-request', 'duel-request'] },
-  { slug: 'harvesting-and-fighting', title: 'Harvesting and fighting',
-    screens: ['harvest-near', 'harvest-windup', 'harvest-ready', 'spar-fight'] },
+  /* v2.3.3768: the party chip's two screens here, as the Town Hall's page
+     (v2.3.3766) filled the maps packet to MAX_PICTURES */
+  { slug: 'harvesting-and-fighting', title: 'Your party, harvesting and fighting',
+    screens: ['party-hud', 'party-hud-open', 'harvest-near', 'harvest-windup', 'harvest-ready', 'spar-fight'] },
 ];
 
 /* the views as the briefs name them, in the order a picture shows them */

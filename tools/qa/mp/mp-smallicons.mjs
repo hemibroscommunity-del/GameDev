@@ -63,6 +63,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const A = await H.newPlayer(browser, { name: 'Smally', wsPort, webPort, world: 'wheel', viewport: VIEW, query: 'room=' + ROOM,
     init: "try{localStorage.setItem('bt_worldchat_shut','0')}catch(e){}" });
   await H.enterWorld(A);
+  await H.openPartyList(A);   /* v2.3.3768: the strip is a chip until opened; this reads the list */
   let inWheel = false;
   for (let i = 0; i < 120 && !inWheel; i++) {
     inWheel = (await H.readState(A, (S) => (S._zoneLoading ? null : S.currentZone))) === 'wheel';
