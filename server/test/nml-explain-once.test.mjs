@@ -99,6 +99,9 @@ check('5c no number: not', !E.nmlExplainHit(null, 10) && !E.nmlExplainHit(10, un
   check('6b ...and closes it on a hit', /nmlExplainHit\(openHp, hp\)\) \{ infoPopupBus\.close\(\)/.test(b));
   check('6c every explainer is marked nml, and the lead shows over the rules', /nml: true,/.test(b) && /data-nml-lead=""/.test(b));
   check('6d the rule module reads the rings by a relative path (node runs it)', /from '\.\.\/data\/noMansLandRings\.js'/.test(src('src/game/nmlExplainOnce.js')));
+  check('6e QA pages hold it back unless a scenario asks (the harness\'s nmlOnce, as the chest\'s window); mp-nmlonce asks',
+    /window\.__btNoNmlOnce/.test(b) && /if \(!nmlOnce\) await page\.addInitScript\(\(\) => \{ window\.__btNoNmlOnce = true; \}\)/.test(src('tools/qa/mp/harness.mjs'))
+      && /nmlOnce: true/.test(src('tools/qa/mp/mp-nmlonce.mjs')));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

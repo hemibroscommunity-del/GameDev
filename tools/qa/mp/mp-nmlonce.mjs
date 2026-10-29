@@ -25,7 +25,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const { WHEEL_SPAWNS } = await import(H.REPO + (long === 1 ? '/server/src/wheelspawns1.js' : '/server/src/wheelspawns.js'));
   const { NML_CENTRES } = await import(H.REPO + '/src/data/noMansLandRings.js');
   const { nmlLineR } = await import(H.REPO + '/src/game/nmlExplainOnce.js');
-  const P = await H.newPlayer(browser, { name: 'Reader', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
+  const P = await H.newPlayer(browser, { name: 'Reader', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, nmlOnce: true });   /* the harness holds it back elsewhere */
   let stopAlive = () => {};
   try {
     await H.enterWorld(P);
