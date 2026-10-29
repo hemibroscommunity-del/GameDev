@@ -433,7 +433,7 @@ export const MUSIC_PLACES = [
   ['hollows', 'The Stone Hollows', 'Rock level'],
   ['tidal', 'The Water Caves', 'Water lvl'],
   ['mist', 'The Poison Forest', 'Murky Loop'],
-  ['verdant', 'The Verdant Wilds', 'Forest Loop'],
+  ['verdant', 'The Earth Forest', 'Forest Loop'],   /* v2.3.3778: was the Verdant Wilds */
   ['dungeon', 'Inside a dungeon: the Goo Grotto and the others', 'Swift Skirmish Clash'],
   ['minigame', "Lil Bro's race, from the countdown to the finish", 'Minigame'],
   /* v2.3.3672: the owner's farm track (assets/music-source/2026-10-27/) */

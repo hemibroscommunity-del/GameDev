@@ -6014,7 +6014,7 @@ export const NPC_DATA = [{
   phrases: [
     "Betcha can't catch me!",
     "Bet you can't beat me round the square!",
-    "My bro says the Verdant Wilds are full of exploding slimes! He also said my face would freeze like this, so.",
+    "My bro says the Earth Forest is full of exploding slimes! He also said my face would freeze like this, so.",
     "One day I'm gonna have a sword bigger than my whole body! Then nobody can make me go to bed!",
     "Did you see Bro Pond? It's got monster fish. Probably! I've never actually been.",
   ],

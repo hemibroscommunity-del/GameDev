@@ -24,7 +24,7 @@ const DEV_PET_LANDS = [
   { home: 'frost', label: 'Frost' }, { home: 'ember', label: 'Flame' },
   { home: 'sky', label: 'Dunes' }, { home: 'hollows', label: 'Hollows' },
   { home: 'thunder', label: 'Foundry' }, { home: 'tidal', label: 'Water' },
-  { home: 'mist', label: 'Poison' }, { home: 'verdant', label: 'Verdant' },
+  { home: 'mist', label: 'Poison' }, { home: 'verdant', label: 'Earth' },
 ];
 
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══

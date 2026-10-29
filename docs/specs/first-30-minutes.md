@@ -13,7 +13,7 @@ At a steady pace, following the gold road, a new player finishes the whole
 | Time | Where a reviewer is |
 |---|---|
 | 0:00–2:30 | Making a character, then the loading screen |
-| ~4 | Armed by the Mayor, walking to the Verdant Wilds |
+| ~4 | Armed by the Mayor, walking to the Earth Forest |
 | ~6 | Back with 4 Slime Remains (~7:30 if a slime's blast killed them, which is likely: below) |
 | ~10 | At the forge: copper mined, their first piece forged |
 | ~12 | Diego's fish caught and cooked |
@@ -60,7 +60,7 @@ long world the server plays.
    - About 30 s for his welcome, then 30–45 s to equip the sword and shield he
      hands you (the band and its tiles flash to show where).
 3. **The first slimes (to ~6:15).**
-   - The Verdant Wilds' first level-1 slimes are 3,233 px away: about 26 s on
+   - The Earth Forest's first level-1 slimes are 3,233 px away: about 26 s on
      foot.
    - Each slime takes about 3 s of swings, with about 500 px between them, so
      four take about 45 s.
