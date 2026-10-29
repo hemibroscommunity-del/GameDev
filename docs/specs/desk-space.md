@@ -45,11 +45,15 @@ the Available tab's own rows (a click opens the quest). `QuestsPanel.jsx`.
 
 ## 4. Skills
 
-The ten tiles were spread down the column (v2.3.3687, the owner's "Every menu
-needs to look like it fits the space"), which on a tall window stood the rows
-~180 px apart with wide empty bands between them. They are packed at the top
-now, each with its XP to the next level in numbers (the worker's price, as the
-skill's own page shows it). `SkillsPanel.jsx`.
+Each tile carries its XP to the next level in numbers now (the worker's price,
+as the skill's own page shows it). The tiles keep their spread down the column
+(v2.3.3687, the owner's "Every menu needs to look like it fits the space"):
+packed at the top was tried, as the desktop review found the gaps between the
+spread rows wide, and it left a third of the column empty below, which is
+worse by the owner's own rule. The weapons row (5) now takes the column's foot.
+Both pictures are in the PR. `SkillsPanel.jsx`.
+
+![Skills: before, packed (tried), spread with the XP (kept)](desk-space/skills-three-ways.png)
 
 ## 5. The weapons at the foot of every page
 

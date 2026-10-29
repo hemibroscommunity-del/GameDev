@@ -262,16 +262,14 @@ export const SkillsPanel = () => {
         display: 'grid',
         gridTemplateColumns: sideways || desk ? 'repeat(3, minmax(0, 1fr))' : 'repeat(5, minmax(0, 1fr))',
         columnGap: 4, rowGap: 8,
-        /* v2.3.3769: packed at the top, not spread down the column.  Spread
-           (v2.3.3687, the owner's "Every menu needs to look like it fits the
-           space"), the four rows of a tall window stood ~180 px apart with
-           wide empty bands between them, which read as gaps, not as fit
-           (the 2026-10-28 desktop review; the owner: "As you find
-           improvements you can make to the empty space on the desktop
-           version go ahead").  Each tile carries its XP to the next level
-           in numbers now, and the column ends in the weapons row
-           (BottomDashboard's DeskFoot). */
-        ...(desk ? { alignContent: 'start', rowGap: 16, boxSizing: 'border-box' } : null),
+        /* v2.3.3769: still spread (v2.3.3687, the owner's "Every menu needs to
+           look like it fits the space").  Packed at the top was tried -- the
+           2026-10-28 desktop review found the gaps between the spread rows
+           wide -- and left a third of the column empty below, which is worse
+           by the owner's own rule; each tile carries its XP in numbers now
+           and the column ends in the weapons (BottomDashboard's
+           data-desk-foot), which takes some of that height. */
+        ...(desk ? { height: '100%', alignContent: 'space-evenly', boxSizing: 'border-box' } : null),
         /* room above the first row for the level chips and the dots, which
            hang a few px outside their tiles */
         padding: '6px 2px 4px',
