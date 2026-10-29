@@ -24,26 +24,27 @@
  * No piece waits on a bake any more: the numbers are in before the loading
  * screen lifts (headLookReady), so a colour shows at once for everyone.
  */
-import { registerLookSheets, preloadLookSheets, lookPaletteWanted, lookHas, getLookPartFrames } from '../lookPalette.js';
+import { registerLookSheets, preloadLookSheets, lookManifest as setManifest, lookHas, getLookPartFrames } from '../lookPalette.js';
 
 const SET = 'heads';
 const URL = '/sprites/look/heads/roles.json';
-/* the manifest, for each sheet's facings and each category's entry: the same
-   file lookPalette.js loads (the browser's cache answers the second ask) */
 registerLookSheets(SET, URL);
-let _manifest = null, _manifestP = null;
-function manifestReady() {
-  if (!_manifestP) {
-    _manifestP = !lookPaletteWanted() ? Promise.resolve(false)
-      : fetch(URL + '?v=v2.3.3737').then((r) => (r.ok ? r.json() : null)).then((m) => { _manifest = m; return !!m; })
-        .catch(() => { _manifestP = null; return false; });   /* asked again next time */
-  }
-  return _manifestP;
-}
-const lookManifest = () => { if (!_manifest) manifestReady(); return _manifest; };
+/* v2.3.3753 (M3's review): each sheet's facings and each category's entry from
+   lookPalette.js's own copy of the manifest -- one fetch, not a second one
+   here with its own cache key */
+const lookManifest = () => setManifest(SET);
 
 /* `${sheet}|r,g,b` -> { dir: Texture }, the same object every frame (filled
-   again on each ask: getLookPartFrames is what keeps the look's row alive) */
+   again on each ask: getLookPartFrames is what keeps the look's row alive).
+   v2.3.3753: CAPPED (CLAUDE.md §7, a cache has a cap).  Its bound is the
+   catalogs' -- 59 pieces x their colours (12 hats, 13 hair, ...), ~700 small
+   objects at the very most.  A crowd needs what it shows at once: 40 players
+   each in five coloured pieces is 200 at worst, so MAPS_CAP is 256 (under it
+   nothing is let go in a crowd and asked again every frame), the least
+   recently asked going first.  A map holds no texture of its own
+   (lookPalette.js owns and frees those), so one let go is made again on its
+   next ask, at the cost of one small object. */
+const MAPS_CAP = 256;
 const _maps = new Map();
 const _stats = { asked: 0, served: 0, fellBack: 0 };
 
@@ -64,7 +65,12 @@ export function headLookTextures(cat, id, target) {
   _stats.asked++;
   const key = sheet + '|' + target[0] + ',' + target[1] + ',' + target[2];
   let map = _maps.get(key);
-  if (!map) { map = Object.create(null); _maps.set(key, map); }
+  if (map) _maps.delete(key);   /* re-inserted below: the newest */
+  else {
+    map = Object.create(null);
+    if (_maps.size >= MAPS_CAP) _maps.delete(_maps.keys().next().value);
+  }
+  _maps.set(key, map);
   const list = getLookPartFrames(SET, sheet, [[entry, target]]);
   /* no row free (rowsFull): the old copy, whole -- never a piece drawn half
      one way and half the other */
@@ -78,7 +84,7 @@ export function headLookTextures(cat, id, target) {
  *  screen's colour waits (coloredHairReady...) ask this first, so the local
  *  player's colours are drawn from the numbers, never baked as copies. */
 export function headLookReady() {
-  return Promise.all([preloadLookSheets(), manifestReady()]).catch(() => false);
+  return preloadLookSheets().catch(() => false);
 }
 
 /* the oracle (mp-lookheads), only when the address asks for it: `?lookprobe` */
