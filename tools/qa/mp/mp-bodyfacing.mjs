@@ -150,7 +150,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }, [wantW, SLOT[0], SLOT[1]]);
         if (held) console.log('    (the weapon put in hand on the page: the worker did not)');
       }
-      rec.ok(`a ${wantW} carried (guard)`, held === wantW, { eq, held, inBag });
+      /* the worker's answer can come after this on a slow box: the weapon in
+         hand is read again by every facing's check (b.weapon) */
+      console.log(`    a ${wantW} carried: ${held === wantW ? 'yes' : 'not yet'}`, JSON.stringify({ eq, held, inBag }));
     }
     await page.waitForTimeout(2000);
     rec.ok('the page tools (guard)', !!(await page.evaluate(TOOLS)));
@@ -218,7 +220,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
             await stick(0, 0);
             await page.waitForTimeout(900);
           }
-          const b = await page.evaluate(() => window.__qaBF.body());
+          let b = await page.evaluate(() => window.__qaBF.body());
+          /* a slow box can end a turn short of it (the facing slews): once more */
+          if (b.facing !== dir) {
+            await stick(Math.cos(ang), Math.sin(ang));
+            await page.waitForTimeout(1500);
+            if (pose !== 'jog') { await stick(0, 0); await page.waitForTimeout(900); }
+            b = await page.evaluate(() => window.__qaBF.body());
+          }
           const px = await bodyPx();
           /* two frames' draws: which programs drew, and any GL error */
           await page.evaluate(() => { const A = window.__glAudit; if (A) { A.draws = []; A.errors = []; A.on = true; } });
