@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e67b3a257de099131ca374bacf2b0265e4ea4887",
+  "tree": "6f502963456529a072ab8b39aaaf03a1c1b669bd",
+  "committedAt": "2026-10-29T03:51:17-07:00",
+  "subject": "Merge pull request #1318 from hemibroscommunity-del/claude/nml-no-warning",
+  "files": 7256,
+  "bytes": 833415764,
+  "listingSha256": "81cbd3d12960d53d5d8c181940d4599ae9d95fdacd6a9ef06a03c99ac918e8d3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
