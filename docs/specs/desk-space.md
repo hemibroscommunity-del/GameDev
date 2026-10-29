@@ -71,6 +71,16 @@ Every building's window is one card (BroTown's `bt-inspect-card`; each panel's
 it is 470 px wide and up to 82% of the world's height. The Blacksmith keeps its
 low place and height (the smith is seen working above it) and gains the width.
 
+## 7. Nothing to click under a strip (v2.3.3793)
+
+With Diego's shop strip or a trade's drawer across the world's foot, the
+world's own buttons in that corner (a door's "E Enter ..." prompt, the
+skateboard) were drawn under the strip, and a click on them landed on the
+strip. While one is up, on a computer, they step aside; E and Z still work.
+`game.css`, the computer's block.
+
+![Diego's shop, before and after](desk-space/shop-strip-before-after.png)
+
 ## Checks
 
 - `mp-deskwide`: the strip's grey, its arrow at the middle, I on it, a click

@@ -5756,6 +5756,16 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
      that very column, below): its trait picker otherwise ran the window's
      whole width with one row of tiles in it.  The backdrop fills the window. */
   html.bt-desk-wide .bt-name-modal > *{max-width:min(100%, calc(100vh * 390 / 715));margin-left:auto;margin-right:auto}
+  /* ═══ v2.3.3793: NOTHING TO CLICK UNDER A STRIP ═══
+     The 2026-10-28 desktop review: with Diego's shop strip or a trade's
+     drawer across the world's foot, the world's own buttons in that corner
+     (the door's "E Enter ..." prompt, the skateboard) were drawn under the
+     strip, a click on them landing on the strip (the UI review's "covered by
+     div[data-shop-shelf]").  While one is up, on a computer, they step aside;
+     their keys (E, Z) still work, read by the keyboard, not by these buttons.
+     Phones unchanged. */
+  html.bt-desk-wide:has([data-shop-shelf], [data-trade-drawer]) .bt-interact-prompt,
+  html.bt-desk-wide:has([data-shop-shelf], [data-trade-drawer]) .bt-ride-btn{visibility:hidden;pointer-events:none}
   /* ═══ v2.3.3769: THE TRAIT PICKER, PROPORTIONALLY LARGER ═══
      The owner: "For the trait picker desktop only you can make the trait
      picker area and buttons proportionally larger".  The creator takes 1.4
