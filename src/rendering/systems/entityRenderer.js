@@ -14766,6 +14766,7 @@ export class EntityRenderer {
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
         _watchOwnHead(display, pose, dir, mirror);   /* v2.3.3689: a piece hidden where it ships, asked for again and logged */
+        display._btHeadAt = { pose, dir, mirror, frameIdx };   /* v2.3.3852: the head-frame count's context (headFrames.js) */
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
