@@ -186,7 +186,7 @@ export function makePaletteSource({ idx, w, h, stride, rgba, alphaMode, label, a
 
 /* ═══ THE BATCHER ═══ */
 
-/* v2.3.3859: vUV highp on both sides, in all three of this file's programs
+/* v2.3.3864: vUV highp on both sides, in all three of this file's programs
    (this one, ONE_BATCHER's and the meshes'), as in lookPalette.js's (its note
    says why: Pixi's default fragment precision is mediump, 16 bits on an
    iPhone) */

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3859: THE BODY IN EVERY FACING, ON A PHONE ═══
+/* ═══ v2.3.3864: THE BODY IN EVERY FACING, ON A PHONE ═══
  *
  * The owner, 2026-10-29, on their phone: "Disappearing body on mobile.
  * Northeast, east, southeast, and south are fine. The rest disappear."
@@ -90,7 +90,7 @@ const TOOLS = () => {
       facing: S._renderFacing, src: S._facingSrc, pose: me._animPose || null,
       displayVisible: !!me.visible, visible: !!sb.visible, renderable: sb.renderable !== false,
       alpha: +sb.alpha.toFixed(2), worldAlpha: +wa.toFixed(2),
-      empty: !t || t === window.__btTextureEmpty || !src || (t.frame && (t.frame.width < 2 || t.frame.height < 2)),
+      empty: !t || t.label === 'EMPTY' || !src || (t.frame && (t.frame.width < 2 || t.frame.height < 2)),
       destroyed: !!(t && t.destroyed) || !!(src && src.destroyed),
       frame: t && t.frame ? [Math.round(t.frame.width), Math.round(t.frame.height)] : null,
       scale: [+sb.scale.x.toFixed(3), +sb.scale.y.toFixed(3)],

@@ -435,7 +435,7 @@ export function getLookFrame(pose, dir, frameIdx, skinT, pantsT, shoesT, eyeT) {
 }
 
 /* ═══ THE SHADER ═══ */
-/* v2.3.3859: the texture's place, vUV, is HIGHP on both sides.  Pixi gives a
+/* v2.3.3864: the texture's place, vUV, is HIGHP on both sides.  Pixi gives a
    fragment shader `precision mediump float` unless asked (ensurePrecision), and
    every variable here but that one varying was already highp -- on an iPhone,
    whose chip keeps mediump at 16 bits, the sheet's place came in rounded to
