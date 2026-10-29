@@ -133,6 +133,7 @@ export const CUE_PLACES = {
   forge: ['craft', 'A weapon forged at the Blacksmith'],
   forgeFail: ['craft', 'The Blacksmith refusing a forge (not enough bars, gold or level)'],
   armourForge: ['craft', 'Armour forged at the Blacksmith (a torso or greaves)'],
+  smithStrike: ['craft', 'Your own hammer on the anvil while you forge (each blow of the smithing swing)'],   /* v2.3.3874 */
   hardenOk: ['craft', 'A hardening that worked'],
   hardenFail: ['craft', 'A hardening that failed'],
   woodwork: ['craft', 'A bow or a staff made at the Woodworker'],
