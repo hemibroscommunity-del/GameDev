@@ -615,6 +615,9 @@ const npcFigureHeight = (src, npc) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - 
  * rather than flickering between south and southeast on sub-pixel jitter. */
 const NPC_DIRS_8 = ['east', 'southeast', 'south', 'southwest',
                     'west', 'northwest', 'north', 'northeast'];
+/* v2.3.3809: a townsperson drawn live has no figure this far past the view
+   (world px beyond its half-diagonal: _updateNPCs) */
+const FOLK_FAR_MARGIN = 300;
 /* v2.3.3809: a townsperson drawn live -- his body's size on the screen, world
    px (the probe's; mp-wheelfolk sizes him against a player) */
 function _folkBodyPx(folk, k) {
@@ -17241,7 +17244,26 @@ export class EntityRenderer {
         const _folkOn = lookFolkOn();
         if (!_folkOn && zoneHomes(S.currentZone) && !wheelNpcPhotosHeld()) loadWheelNpcArt(true);
         const _photoMissing = !hasNpcWalk(npc.id) && !getNpcTexture(npc.sprite);
-        if (_folkOn || (_photoMissing && lookPaletteOn())) _folkLive = this._drawFolk(S, now, npc, display);
+        if (_folkOn || (_photoMissing && lookPaletteOn())) {
+          /* ═══ ...BUILT ONLY WHILE HE IS NEAR THE SCREEN ═══
+             A player's figure is some 45 display objects; 21 townsfolk each
+             holding one wherever they stood put the memory check's heap
+             line 1.3 MB over (CI, v2.3.3833's cast).  So, as for a player
+             far off (PEER_FAR_MARGIN), a townsperson past the view's
+             half-diagonal + FOLK_FAR_MARGIN has no figure: it is destroyed,
+             and made again when he comes near -- a few are on a screen. */
+          const _cam = S.camera, _vw = S._viewW, _vh = S._viewH;
+          const _far = !!(_cam && _vw > 0 && _vh > 0)
+            && Math.hypot(npc.x - (_cam.x + _vw / 2), npc.y - (_cam.y + _vh / 2)) > Math.hypot(_vw, _vh) / 2 + FOLK_FAR_MARGIN;
+          if (_far) {
+            if (display._folk) {
+              display.removeChild(display._folk);
+              display._folk.destroy({ children: true });
+              display._folk = null;
+            }
+            _folkLive = true;   /* live, and nothing of him to draw out there */
+          } else _folkLive = this._drawFolk(S, now, npc, display);
+        }
       }
       display._folkLive = _folkLive;
       if (!_folkLive && display._folk && display._folk.visible) display._folk.visible = false;
