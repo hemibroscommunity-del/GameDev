@@ -49,7 +49,7 @@ import { MEM_INIT, memSampler } from './memprobe.mjs';
 
 const ROOM = 'crowdfight';
 const PHONE = { width: 390, height: 844 };
-const STEPS = (process.env.BT_CF_STEPS || '10,20,30').split(',').map(Number).filter((n) => n > 0);
+const STEPS = (process.env.BT_CF_STEPS || '10,20,30').split(',').map(Number).filter((n) => n >= 0);
 const PLACES = (process.env.BT_CF_PLACES || 'town,fight').split(',').filter((p) => p === 'town' || p === 'fight');
 const SAMPLE_MS = +(process.env.BT_CF_SAMPLE_MS || 6000);
 const QUERY = process.env.BT_CF_QUERY || '';
@@ -356,10 +356,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       console.log('    RENDER THREW:', threw[0].slice(0, 2500));
       console.log('    dead sprites now:', JSON.stringify(out.deadSprites));
     }
-    const rows = out.rows.filter((r) => r.bots > 0);
-    console.log('\n  place | bots | known | on screen | hidden far/cap | GPU MB (settled) | cache | canvases | heap | draws/frame | GL calls/frame | voices max playing / in 50 ms | palette rows (full)');
+    const rows = out.rows.filter((r) => r.gl);   /* the steps (a 0 step too), not the alone readings */
+    console.log('\n  place | bots | known | on screen | hidden far/cap | GPU MB (settled) | cache | canvases | heap | draws/frame | programs/frame | binds/frame | GL calls/frame | work ms p50 | voices max playing / in 50 ms | palette rows (full)');
     for (const r of rows) {
-      console.log(`  ${r.place.padEnd(5)} | ${String(r.bots).padStart(4)} | ${String(r.known).padStart(5)} | ${String(r.onScreen).padStart(9)} | ${String(r.farHidden).padStart(5)}/${String(r.crowdHidden).padEnd(4)} | ${String(r.gpu).padStart(6)} (${r.gpuSettled}) | ${r.cache} | ${r.canvasMB} | ${r.heapMB} | ${r.gl.draws} | ${r.gl.calls} | ${r.voices ? `${r.voices.maxPlaying} / ${r.voices.maxWindow}` : '-'} | ${r.palette ? `${r.palette.rows} (${r.palette.rowsFull})` : 'no palette'}`);
+      console.log(`  ${r.place.padEnd(5)} | ${String(r.bots).padStart(4)} | ${String(r.known).padStart(5)} | ${String(r.onScreen).padStart(9)} | ${String(r.farHidden).padStart(5)}/${String(r.crowdHidden).padEnd(4)} | ${String(r.gpu).padStart(6)} (${r.gpuSettled}) | ${r.cache} | ${r.canvasMB} | ${r.heapMB} | ${r.gl.draws} | ${r.gl.useProgram} | ${r.gl.bindTexture} | ${r.gl.calls} | ${r.workP50} | ${r.voices ? `${r.voices.maxPlaying} / ${r.voices.maxWindow}` : '-'} | ${r.palette ? `${r.palette.rows} (${r.palette.rowsFull})` : 'no palette'}`);
     }
     const last = rows[rows.length - 1];
     rec.ok('the phone knew (nearly) every bot at each step', rows.every((r) => r.known >= Math.floor(r.bots * 0.9)), rows.map((r) => [r.place, r.bots, r.known]));
