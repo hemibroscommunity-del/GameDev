@@ -15,6 +15,9 @@
  *      picture (each drawn), a land's name the world's own;
  *      v2.3.3788: Quests first and Gambling after Money and trade; each
  *      dungeon's level line on its tile, inside it at 390, 320 and sideways;
+ *      v2.3.3801: the owner's review's order, every tile's line (fitting),
+ *      and on the computer: one action on a page with no place (Open Quests,
+ *      Ride now, none for No man's land) and the foot's Codex and Journey;
  *   2. a tile opens its PAGE: its words, where it is, Red pin and Blue pin;
  *   3. RED on the arena, BLUE on the forge: the board's tiles wear them, and
  *      both are on the minimap (the forge's in the box, near the Town Hall);
@@ -24,7 +27,7 @@
  *      the world map; blue still lifted;
  *   7. the computer: the board opens, a page pins, the minimap shows it;
  *   8. no page errors.
- *   9. v2.3.3802, the layout pass (the owner ran the board past ChatGPT):
+ *  12. v2.3.3802, the layout pass (the owner ran the board past ChatGPT):
  *      the columns follow the board's own width (3, 4 from 540 px, 5 from
  *      720), upright at 390 and 320, sideways, and on a computer at 1280 and
  *      1440 wide (the window wider there, never past the play column); every
@@ -116,9 +119,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       tiles: Array.from(b.querySelectorAll('[data-board-tile]')).map((t) => {
         const img = t.querySelector('img');
         /* v2.3.3779: each tile's name and its picture, drawn (not the emoji a broken one falls back to) */
-        return { id: t.getAttribute('data-board-tile'), pins: t.getAttribute('data-board-pins'), name: (t.textContent || '').trim(),
+        return { id: t.getAttribute('data-board-tile'), pins: t.getAttribute('data-board-pins'), name: (() => { const n = t.querySelector(':scope > span:not([data-board-sub])'); return ((n || t).textContent || '').trim(); })(),   /* v2.3.3801: the name alone, not its line */
           pic: img ? img.getAttribute('src') : null, drawn: !!img && img.complete && img.naturalWidth > 0,
           /* v2.3.3788: a dungeon's level line, and whether it fits inside its tile */
+          /* v2.3.3801: every tile's line under its name, and whether it fits */
+          sub: (() => { const l = t.querySelector('[data-board-sub]'); if (!l) return null;
+            const lr = l.getBoundingClientRect(), tr = t.getBoundingClientRect();
+            return { text: (l.textContent || '').trim(), fits: lr.left >= tr.left - 0.5 && lr.right <= tr.right + 0.5 && lr.bottom <= tr.bottom + 0.5 && l.scrollWidth <= l.clientWidth + 1 }; })(),
           level: (() => { const l = t.querySelector('[data-board-level]'); if (!l) return null;
             const lr = l.getBoundingClientRect(), tr = t.getBoundingClientRect();
             return { text: (l.textContent || '').trim(), fits: lr.left >= tr.left - 0.5 && lr.right <= tr.right + 0.5 && lr.bottom <= tr.bottom + 0.5 && l.scrollWidth <= l.clientWidth + 1 }; })() };
@@ -215,9 +222,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const b1 = await board(A);
     await shot(A, '1-board');
     const ids = b1 ? b1.tiles.map((t) => t.id) : [];
-    rec.ok(`1. at the Town Hall's door, "${o1.btn}" opens the board: ${ids.length} tiles under ${b1 ? b1.groups.length : 0} headings, the Leaderboard and World map at its foot`,
+    rec.ok(`1. at the Town Hall's door, "${o1.btn}" opens the board: ${ids.length} tiles under ${b1 ? b1.groups.length : 0} headings, the Leaderboard, World map, Codex and Journey at its foot`,
       o1.open && !!b1 && ids.length >= 20 && ['goo-grotto', 'arena', 'nomansland', 'forge', 'gambling', 'woodworker', 'land-verdant'].every((id) => ids.includes(id))
-        && b1.groups.join() === 'quests,fight,dungeons,lands,make,money,gambling,people' && b1.foot.join() === 'leaderboard,map',
+        && b1.groups.join() === 'quests,lands,dungeons,fight,make,money,gambling,people' && b1.foot.join() === 'leaderboard,map,codex,journey',
       { btn: o1.btn, open: o1.open, n: ids.length, groups: b1 && b1.groups, foot: b1 && b1.foot });
     /* v2.3.3779, the owner: "classified by 'dungeon' not by 'fight' ... Also use better icons for each one" */
     const pics = b1 ? b1.tiles.map((t) => t.pic) : [];
@@ -231,10 +238,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
        10+ for goo grotto)" -- on the tile, fitting upright at 390 and 320 and
        sideways; and the Quests and Gambling headings */
     const lvOf = (b) => Object.fromEntries((b ? b.tiles : []).filter((t) => t.level).map((t) => [t.id, t.level]));
+    /* v2.3.3801: every tile's line, present and inside its tile */
+    const subsBad = (b) => (b ? b.tiles : []).filter((t) => !t.sub || !t.sub.text || !t.sub.fits).map((t) => t.id + ':' + (t.sub ? t.sub.text : '-'));
+    const subBad = { w390: subsBad(b1) };
     const fitAt = async (vp, tag) => {
       await A.page.setViewportSize(vp);
       await A.page.waitForTimeout(600);
       const b = await board(A);
+      subBad[tag] = subsBad(b);
       await A.page.evaluate(() => { const t = document.querySelector('[data-board-group="dungeons"]'); if (t) t.scrollIntoView({ block: 'center' }); });
       await A.page.waitForTimeout(300);
       await shot(A, tag);
@@ -254,10 +265,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const lvOk = (m) => Object.keys(want).every((id) => m[id] && want[id].test(m[id].text) && m[id].fits) && Object.keys(m).length === 4;
     rec.ok('...each dungeon\'s tile says its levels under its name (Goo Grotto "Lv 10+ · party of 2–3", Great Cave and Foundry Dome "Lv 26+", Buried City "Lv 41+"), inside the tile upright at 390 and 320 px and sideways',
       lvOk(lv390) && lvOk(lv320) && lvOk(lvSide), { lv390, lv320, lvSide });
+    const lands = b1 ? b1.tiles.filter((t) => /^land-/.test(t.id)).map((t) => t.sub && t.sub.text) : [];
+    rec.ok('...every tile has its one line under its name, inside the tile at 390, 320 and sideways (a land its compass and element, e.g. "West \u00b7 Flora")',
+      Object.values(subBad).every((x) => x.length === 0) && lands.includes('West \u00b7 Flora') && lands.includes('SW \u00b7 Venom'), { subBad, lands });
     const inG = (g) => b1 ? b1.tiles.filter((t) => ['mayor', 'townquests', 'guildhall', 'race', 'gambling', 'ace'].includes(t.id)).map((t) => t.id) : [];
-    rec.ok(`9. the columns follow the board's own width -- ${L390 && L390.groups[0].cols} at 390 (${L390 && L390.boardW} px), ${L320 && L320.groups[0].cols} at 320, ${LSide && LSide.groups[0].cols} sideways (${LSide && LSide.boardW} px); every tile in a section one height; nothing cut`,
+    rec.ok(`12. the columns follow the board's own width -- ${L390 && L390.groups[0].cols} at 390 (${L390 && L390.boardW} px), ${L320 && L320.groups[0].cols} at 320, ${LSide && LSide.groups[0].cols} sideways (${LSide && LSide.boardW} px); every tile in a section one height; nothing cut`,
       layoutOk(L390) && layoutOk(L320) && layoutOk(LSide) && L390.groups[0].cols === 3 && L320.groups[0].cols === 3, { L390, L320, LSide });
-    rec.ok('9. ...the nav strip stays at the top of the window as the board scrolls, and its Dungeons chip scrolls the board there and wears the gold', nav390.ok, nav390);
+    rec.ok('12. ...the nav strip stays at the top of the window as the board scrolls, and its Dungeons chip scrolls the board there and wears the gold', nav390.ok, nav390);
     rec.ok('...Quests heads the board (the Mayor\'s story, the townsfolk\'s quests, the Guild Hall), and Gambling has the Gambling Den and Ace',
       ['mayor', 'townquests', 'guildhall', 'gambling', 'ace'].every((id) => inG().includes(id)) && b1.groups[0] === 'quests', { tiles: inG() });
 
@@ -385,7 +399,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       o7.open && !!b7 && b7.tiles.length === b1.tiles.length && hint && !!r7 && r7.after && r7.after.btns[1].on === '1'
         && !!m7 && m7.some((m) => m.color === 'blue' && m.id === 'woodworker'), { open: o7.open, n: b7 && b7.tiles.length, m7, hint });
     const lvDesk = lvOf(b7);
-    rec.ok('...and on the computer\'s wide layout each dungeon\'s level line fits its tile', lvOk(lvDesk), lvDesk);
+    rec.ok('...and on the computer\'s wide layout each dungeon\'s level line, and every tile\'s line, fits its tile', lvOk(lvDesk) && subsBad(b7).length === 0, { lvDesk, bad: subsBad(b7) });
     /* v2.3.3802: a computer's window, wider, never past the play column */
     const deskAt = async (vp, tag) => {
       await C.page.setViewportSize(vp);
@@ -399,8 +413,63 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const nav1280 = L1280 ? await navCheck(C, true) : null;
     const L1440 = cth ? await deskAt({ width: 1440, height: 900 }, '9-desk-1440') : null;
     const wideOk = (L) => layoutOk(L) && L.cardW >= 640 && L.cardW <= 820 && L.cardW <= L.playW;
-    rec.ok(`9. on a computer the window is wider (${L1280 && L1280.cardW} px at 1280, ${L1440 && L1440.cardW} at 1440, never past the play column) with ${L1440 && L1440.groups[0].cols} columns, tiles even, nothing cut; the strip sticks and jumps there too`,
+    rec.ok(`12. on a computer the window is wider (${L1280 && L1280.cardW} px at 1280, ${L1440 && L1440.cardW} at 1440, never past the play column) with ${L1440 && L1440.groups[0].cols} columns, tiles even, nothing cut; the strip sticks and jumps there too`,
       wideOk(L1280) && wideOk(L1440) && !!nav1280 && nav1280.ok, { L1280, L1440, nav1280 });
+
+    /* v2.3.3801: a page with no place has ONE action; the foot's shortcuts */
+    const dash = (P) => P.page.evaluate(() => { const b = window.__broDashPanelBus; return b ? { root: b.root(), mode: b.state.mode, top: b.current() } : null; });
+    const toBar = (P) => P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b) b.toBar(); });
+    const hallOpen = (P) => P.page.evaluate(() => !!document.querySelector('[data-town-board], [data-board-page]'));
+    const actPage = async (P, tile) => {
+      await press(P, `[data-board-tile="${tile}"]`, true);
+      await waitSel(P, `[data-board-page="${tile}"]`);
+      return P.page.evaluate(() => Array.from(document.querySelectorAll('[data-board-action]')).map((b) => b.getAttribute('data-board-action') + ':' + (b.textContent || '').trim()).concat(document.querySelectorAll('[data-pin-btn]').length ? ['pins'] : []));
+    };
+    await closeCard(C);
+    const o8 = cth ? await openBoard(C, cth, true) : { open: false };
+    const tq = o8.open ? await actPage(C, 'townquests') : null;
+    await shot(C, '9-townquests-page');
+    if (tq && tq.length) await press(C, '[data-board-action="quests"]', true);
+    await C.page.waitForTimeout(700);
+    const d8 = await dash(C);
+    const shut8 = !(await hallOpen(C));
+    rec.ok('9. Town Quests\' page has one button, "Open Quests" (no pins), and it opens your Quests page, the board put away',
+      !!tq && tq.join() === 'quests:Open Quests' && !!d8 && d8.root === 'quests' && d8.mode === 'expanded' && shut8, { tq, d8, shut8 });
+    await toBar(C);
+    const o9 = cth ? await openBoard(C, cth, true) : { open: false };
+    const nml = o9.open ? await actPage(C, 'nomansland') : null;
+    await press(C, '[data-board-back]', true);
+    await waitSel(C, '[data-town-board]');
+    const rideOk = await C.page.evaluate(() => { const S = window._gameState.current; return !!(S && S._serverCaps && S._serverCaps.ride === true); });
+    const sk = rideOk ? await actPage(C, 'skate') : null;
+    await shot(C, '10-skate-page');
+    if (sk && sk.length) await press(C, '[data-board-action="ride"]', true);
+    let riding = false;
+    for (let i = 0; i < 20 && rideOk && !riding; i++) {
+      await C.page.waitForTimeout(250);
+      riding = await C.page.evaluate(() => { const f = window.__btRideBtn; return !!(f && f().on); });
+    }
+    const shut9 = !(await hallOpen(C));
+    rec.ok('10. No man\'s land\'s page has no button; the Skateboard\'s (in town, the worker carrying boards) "Ride now" puts you on the board, the board put away',
+      !!nml && nml.length === 0 && rideOk && !!sk && sk.join() === 'ride:Ride now' && riding && shut9, { nml, rideOk, sk, riding, shut9 });
+    /* get off again, then the foot's Codex and Journey */
+    await C.page.evaluate(() => { const S = window._gameState.current; if (S && S.channel) S.channel.send({ type: 'ride', payload: { on: 0 } }); });
+    await C.page.waitForTimeout(800);
+    const o10 = cth ? await openBoard(C, cth, true) : { open: false };
+    await C.page.evaluate(() => { const f = document.querySelector('[data-hall-row="codex"]'); if (f) f.scrollIntoView({ block: 'end' }); });
+    await C.page.waitForTimeout(300);
+    await shot(C, '11-foot');
+    if (o10.open) await press(C, '[data-hall-row="codex"]', true);
+    await C.page.waitForTimeout(700);
+    const dCodex = await dash(C);
+    await toBar(C);
+    const o11 = cth ? await openBoard(C, cth, true) : { open: false };
+    if (o11.open) await press(C, '[data-hall-row="journey"]', true);
+    await C.page.waitForTimeout(700);
+    const dJourney = await dash(C);
+    await toBar(C);
+    rec.ok('11. the board\'s foot: Codex opens the Codex, Journey opens More \u2192 Journey',
+      !!dCodex && dCodex.root === 'encyclopedia' && dCodex.mode === 'expanded' && !!dJourney && dJourney.root === 'more' && dJourney.top === 'journey', { dCodex, dJourney });
 
     rec.ok(`8. no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {
