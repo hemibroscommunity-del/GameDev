@@ -79,6 +79,7 @@ import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the sp
 import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
+import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the tee from the look palette */
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
 import { lookPaletteWanted } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
@@ -2684,7 +2685,20 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
        print would be multiplied by it).  `_shirtBaked` carries that decision
        the few lines down to where the tint is set. */
     let _shirtBaked = false;
-    if (tex && _slotName === 'shirt' && display._shirtLook) {
+    /* v2.3.3751: the look palette's tee (on; `?lookpalette=0` off): its stand
+       and jog from the shared numbers, the tint, pattern and print painted
+       from the look's row as it is drawn (lookShirtFrame.js) -- a patterned
+       or printed tee no longer a copy per player.  A plain one too when the
+       body beside it is drawn from the numbers (one batch).  Null: as before. */
+    if (tex && _slotName === 'shirt') {
+      const _L = display._shirtLook;
+      const _lt = getLookShirtFrame(item, _gPose, dir, _gFrame, {
+        art: _L && _L.art ? _L.art[sideForDir(dir)] : null, pattern: _L ? _L.pattern : null,
+        tint: (equip && equip.shirtTint) || null, mirror: display._shirtArtMirror,
+      }, !!(sb.texture && sb.texture._btLook));
+      if (_lt) { tex = _lt; _shirtBaked = true; }
+    }
+    if (tex && !_shirtBaked && _slotName === 'shirt' && display._shirtLook) {
       /* Mirroring never changes WHICH side shows: every mirror pair stays in
          the same hemisphere (east/west and southwest/southeast are both front,
          northeast/northwest both back), so the base dir decides the side and
