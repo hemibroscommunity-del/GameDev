@@ -34,7 +34,7 @@
  * The before value is kept in the log: on the built client the old point was
  * ~50 screen px below the plate's top.
  *
- * ── v2.3.3854: OVER THE HEAD, ON THE NAME'S PLACE, WHITE ──
+ * ── v2.3.3858: OVER THE HEAD, ON THE NAME'S PLACE, WHITE ──
  * The owner: "for character messages I'd rather have chat bubbles right above
  * character head and just cover nameplate during chat.  Make chat bubble
  * background white and the chat font black".  The point now comes down to
@@ -55,7 +55,7 @@ const bubbleOn = (P, key, peer) => P.page.evaluate(({ key, peer }) => {
   const m = window.__btChatBubbles;
   const b = m && m.get(key);
   if (!S || !b) return null;
-  /* v2.3.3854: the point's place over the head (the band's bottom), and the
+  /* v2.3.3858: the point's place over the head (the band's bottom), and the
      band's top it now sits below, covering the plate */
   const o = peer ? ((S.others || {})[key] || {}) : null;
   const band = peer ? o._chatTipY : S._selfChatTipY;
@@ -124,7 +124,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('a word longer than the line breaks onto the next one',
     !!own && own.breakWords === true && own.lineW + 16 <= own.boxW + 0.5, own);
 
-  /* ── 4. THE POINT IS OVER THE HEAD, ON THE NAME'S PLACE (v2.3.3854) ── */
+  /* ── 4. THE POINT IS OVER THE HEAD, ON THE NAME'S PLACE (v2.3.3858) ── */
   await A.page.evaluate(() => { window.__btProbe = true; });
   await A.page.waitForTimeout(300);
   own = (await bubbleOn(A, aId, false)) || own;
@@ -162,7 +162,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...white with black words there too', !!peer && peer.skin === 'plain', peer);
   await B.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/chatbubble-peer.png` });
 
-  /* v2.3.3854: the bubble gone (5 s), the plate is back */
+  /* v2.3.3858: the bubble gone (5 s), the plate is back */
   let back = null;
   for (let i = 0; i < 30; i++) {
     await A.page.waitForTimeout(250);
@@ -197,7 +197,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the NPC’s bubble points down at the top of his head, not at his knees',
     !!nb && typeof nb.head === 'number' && nb.gapPx >= 1 && nb.gapPx <= 12 && nb.tipY < nb.feet - 60, nb);
 
-  /* ── 6. v2.3.3854: PICTURES -- upright, sideways, a computer playing wide ──
+  /* ── 6. v2.3.3858: PICTURES -- upright, sideways, a computer playing wide ──
      A line kept fresh on the speaker's own screen while the picture is taken
      (a screenshot on this box outlasts the bubble's 5 s).  Each shot is the
      band round the speaker: tools/qa/mp/out/chatbubble-<view>.png */

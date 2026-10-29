@@ -66,7 +66,7 @@ check('4b ...a held dance the worker keeps any day', seasonal.every((id) => EMOT
   const { BUBBLE_SKINS, bubbleSkinFor } = await import('../../src/game/bubbleSkins.js');
   check('5a a townsperson\'s bubble is white, in Halloween week and out of it',
     bubbleSkinFor('npc:mayor_bro', true) === 'plain' && bubbleSkinFor('npc:diego', false) === 'plain');
-  check('5b v2.3.3854: a player\'s is white too ("Make chat bubble background white and the chat font black"), in Halloween week and out of it',
+  check('5b v2.3.3858: a player\'s is white too ("Make chat bubble background white and the chat font black"), in Halloween week and out of it',
     bubbleSkinFor('bp_abc123', true) === 'plain' && bubbleSkinFor('bp_abc123', false) === 'plain'
       && bubbleSkinFor('guest_9', false) === 'plain');
   check('5c any key at all is the white bubble', bubbleSkinFor('xnpc:1', true) === 'plain' && bubbleSkinFor('', false) === 'plain'

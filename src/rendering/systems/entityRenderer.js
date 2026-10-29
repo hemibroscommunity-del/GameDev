@@ -217,7 +217,7 @@ const HPBAR_IN_X = 0.05, HPBAR_IN_W = 0.90, HPBAR_IN_Y = 0.21, HPBAR_IN_H = 0.58
    does not strobe between exchanges — long enough to cover a missed swing
    or a dodge, short enough that a peer who walked away loses it. */
 const PEER_HPBAR_Y = -48;
-/* ═══ v2.3.3854: WHILE A PLAYER TALKS, THE BUBBLE HAS THE NAME'S PLACE ═══
+/* ═══ v2.3.3858: WHILE A PLAYER TALKS, THE BUBBLE HAS THE NAME'S PLACE ═══
    The owner: "for character messages I'd rather have chat bubbles right
    above character head and just cover nameplate during chat".  Is a chat
    bubble up over this speaker (effectsRenderer _updateChatBubbles draws a
@@ -13278,7 +13278,7 @@ export class EntityRenderer {
       /* v2.3.3313: "[TAG] Name" while they are in an alliance -- the worker's
          allyTag (alliance.js), on their snapshot and every change */
       _updateNamePill(display, plateNameWithTag(nextName, other.allyTag), other.rpgLv || 1,
-        !other._isDead && !display._peerBarUp && !_chatBubbleUp(S, id, now), broBadgeOf(other.bro, other.brn), false, 'gold', !!_inParty);   /* v2.3.3854: + the bubble has its place */   /* v2.3.3255: + a wallet's count; v2.3.3279: + the party badge */
+        !other._isDead && !display._peerBarUp && !_chatBubbleUp(S, id, now), broBadgeOf(other.bro, other.brn), false, 'gold', !!_inParty);   /* v2.3.3858: + the bubble has its place */   /* v2.3.3255: + a wallet's count; v2.3.3279: + the party badge */
       if (_inParty && display._partyBadge && display._partyBadge.visible) _bindSmallTex(display._partyBadge, 'partyMember');
       if (display._namePill) {
         const _pH = (display._pillCss || 14) * PLATE_H_RATIO;
@@ -13301,7 +13301,7 @@ export class EntityRenderer {
         const _bandTop = Math.min(PEER_HPBAR_Y - _bandHalf, display._peerBarUp ? PEER_BAR_Y - PEER_BAR_H / 2 : Infinity);
         other._bandTopY = display.visible
           ? display.y + _bandTop * Math.abs(display.scale.y || 1) : null;
-        /* v2.3.3854: where a chat bubble's point goes -- the band's bottom,
+        /* v2.3.3858: where a chat bubble's point goes -- the band's bottom,
            over the head, the plate's place (it steps aside while the bubble
            is up); with the HP bar up, the band's top as before */
         other._chatTipY = display.visible
@@ -16478,7 +16478,7 @@ export class EntityRenderer {
        positions from — a real risk to buy an invisible one. */
     /* v2.3.3313: your alliance's tag, from your party's roster */
     _updateNamePill(display, plateNameWithTag(S.myName || 'Anon', myAllyTag(S)), (S.rpg && S.rpg.level) || 1,
-      !S._dying && !_chatBubbleUp(S, S.myId, now), !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2); v2.3.3854: the bubble has its place */
+      !S._dying && !_chatBubbleUp(S, S.myId, now), !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2); v2.3.3858: the bubble has its place */
     /* v2.3.3313: QA probe (mp-alliance) -- your plate's words as drawn */
     if (window.__btProbe && display._pillName) window.__btSelfPlate = display._pillName.text;
     if (display._namePill) {
@@ -16533,7 +16533,7 @@ export class EntityRenderer {
       S._selfBandBotY = display.visible
         ? display.y + (PLAYER_BAND_Y + _bandHalf) * Math.abs(display.scale.y || 1) : null;
       S._selfBandHalfW = display.visible ? Math.max(_plateHalf, _barHalf) * _bsx : 0;
-      /* v2.3.3854: your chat bubble's point, as a peer's (_chatTipY above) */
+      /* v2.3.3858: your chat bubble's point, as a peer's (_chatTipY above) */
       S._selfChatTipY = display.visible
         ? (_barHalf > 0 ? S._selfBandTopY : S._selfBandBotY) : null;
       /* v2.3.3027 published the band's centre here too (S._selfBand), for the
