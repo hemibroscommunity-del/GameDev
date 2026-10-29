@@ -126,6 +126,7 @@ import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
 /* v2.3.1205: named z-index registry — see src/ui/zLayers.js for the
    observed ladder + the tutorial-banner-under-dashboard incident. */
 import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
+import { deskWideActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size */
 import { MenuBar } from './panels/MenuBar.jsx';
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
@@ -13188,12 +13189,24 @@ export var BroTown = function BroTown(_ref0) {
          .bt-inspect content box, which now reserves BOTH the band
          (padding-bottom) and the HUD chip strip (padding-top — the chip
          paints over in-wrap modals, see game.css). */
-      width: 'min(360px, calc(100vw - 24px))',
+      /* ═══ v2.3.3769: ON A COMPUTER, A COMPUTER'S WINDOW ═══
+         The owner: "As you find improvements you can make to the empty space
+         on the desktop version go ahead" (the judges play on computers).  The
+         building windows were a phone's 360 px card in a ~1170 px world,
+         their lists scrolling after two rows with empty world all round.  On
+         a computer playing wide (deskWide.js) the card is 470 px and up to
+         82% of the world's height, its room picture and rows growing with it,
+         so a list shows more before it scrolls.  This card is every
+         building's window (each panel's LS_WRAP bleeds to it), the Town
+         Hall's board included.  The Blacksmith keeps its height rule below
+         (the smith is seen working above it) and takes the width only.
+         Phones unchanged. */
+      width: deskWideActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
       /* v2.3.2826: the Blacksmith card's TOP stays below the player's feet --
          the camera centres the player, so the card ends at the band and is
          (50vh - 72px - band) tall, i.e. its top sits at 50vh + 60px.  230px
          floor so a short phone still gets the header, the tabs and a row. */
-      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : '100%',
+      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : deskWideActive() ? '82%' : '100%',
       overflowY: 'auto',
       /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
          as the destination sheets/leaderboard): at 390 the Woodworker's
