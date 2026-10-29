@@ -58,6 +58,8 @@
  * unknown `ride` (deny by default) and judge the faster moves at the walk.
  */
 
+import { MOVE_BUDGET } from './movement.js';
+
 export const RIDE = {
   /* the walk on the board: faster than a sprint (SPRINT.MULT 1.33) --
      MIRROR: src/game/ride.js RIDE_MULT (mirror-audit.test.mjs pins the pair) */
@@ -144,6 +146,13 @@ export const rideMethods = {
     ps._ride = false;
     ps._ridePid = undefined;
     ps._mp = undefined;   /* a glide noted at the board's pace stops here (movepath.js; lane D) */
+    /* ...and a follow made on the board goes on at the WALK's pace (lane D:
+       _mvFollow.rate is fixed when it is made, and a far target would be
+       followed at the board's speed long after the ride ended) */
+    if (ps._mvFollow && typeof this._moveSpeedK === 'function') {
+      const { spdCap, moveMult } = this._moveSpeedK(ps);
+      ps._mvFollow.rate = MOVE_BUDGET.SPEED_PX * spdCap * moveMult;
+    }
     if (id && this.dirtyPlayers) this.dirtyPlayers.add(id);
     this._rideSend(id, { on: false, why: why || 'asked' });
     return false;

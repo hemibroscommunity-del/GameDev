@@ -174,6 +174,32 @@ async function step(dx, gapMs, extra) {
   await step(100, 200);
   check('4. a move past the safe ground\'s edge: off the board, told `edge`', ps._ride === false && rideMsgs() === n0 + 1 && lastRide().why === 'edge', { ride: ps._ride, last: lastRide(), x: ps.x });
 
+  /* lane D's probe (a): the move that leaves town is judged at the WALK --
+     a rider with a full board budget sends one move 50,000 px out */
+  await fresh(CX + SAFE_R - 40, CY);
+  await ride(true);
+  ps._mvBudget = 500 * RIDE.MULT * 3 + 80; ps._mvBudgetAt = T; ps.lastMoveAt = T;   /* a full board's budget */
+  const x0 = ps.x;
+  wait(50);
+  await move(ps.x + 50000, ps.y);
+  const went = ps.x - x0;
+  check(`4. (D a) a rider's one move out of town goes at most the walk's burst (${Math.round(went)} px <= ${500 * 3 + 80 + 25})`, ps._ride === false && went <= 500 * 3 + 80 + 25, { went, ride: ps._ride, last: lastRide() });
+
+  /* lane D's probe (b): a follow begun on the board goes on at the walk
+     once the ride ends (a hit, here) */
+  await fresh();
+  ps.hp = 500; ps.maxHp = 500;
+  await ride(true);
+  ps._mvBudget = 0; ps._mvBudgetAt = T; ps.lastMoveAt = T;
+  wait(50);
+  await move(ps.x + 2500, ps.y);   /* far, inside the safe ground: followed */
+  const followed = !!ps._mvFollow;
+  room._applyDamage(ps, 10, false, {});
+  const fx0 = ps.x;
+  for (let i = 0; i < 10; i++) { wait(100); room._tickMoveFollow(T); }
+  const fwent = ps.x - fx0;
+  check(`4. (D b) a follow made on the board goes on at the walk after the ride ends (${Math.round(fwent)} px in 1 s <= 500)`, followed && ps._ride === false && fwent <= 500 + 1, { followed, fwent, ride: ps._ride });
+
   /* a zone change */
   await fresh();
   await ride(true);

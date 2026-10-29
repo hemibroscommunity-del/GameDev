@@ -541,6 +541,14 @@ export const movementMethods = {
     /* v2.3.3006: is this move a sprint step the worker pays for (sprint.js)?
        Asked of every move, so a zone change or a first move never leaves an
        earlier step's mark to be billed. */
+    /* v2.3.3776: a move that leaves the safe ground or the Wheel ends a ride
+       BEFORE it is judged, so it is judged at the walk -- not with the
+       board's doubled budget (lane D's probe: 3,080 px out of town in one
+       move, then a follow at the board's 1,000 px/s) */
+    if (ps._ride && typeof this._rideEnd === 'function'
+      && (newZone !== WHEEL_ZONE || typeof msg.x !== 'number' || typeof msg.y !== 'number' || !this._wheelSafeAt(msg.x, msg.y))) {
+      this._rideEnd(ps, 'edge', session.id);
+    }
     const _sprintK = typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1;
     /* v2.3.3325: where this move is judged from -- the worker's own place in
        this zone, or, coming back into the Wheel, where the player left it
