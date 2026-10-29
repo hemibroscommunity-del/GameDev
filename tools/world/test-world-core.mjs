@@ -3976,6 +3976,9 @@ console.log("the buildings' insides (v2.3.3258)");
     const th = WHEEL_HALLS.townhall;
     const hallSrc = read('../../src/ui/panels/buildings/WheelHallPanel.jsx');
     const boardSrc = read('../../src/ui/panels/buildings/TownBoard.jsx');   /* v2.3.3804 */
+    /* v2.3.3829: the board's foot (and a page) are TownBoardPage.jsx (v2.3.3801), the
+       board hands them its openers (and the hall two more: onDash, onClose) */
+    const footSrc = read('../../src/ui/panels/buildings/TownBoardPage.jsx');
     ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
       !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
         /* v2.3.3804: since v2.3.3766 the two rows are two buttons at the foot of
@@ -3983,9 +3986,10 @@ console.log("the buildings' insides (v2.3.3258)");
            "leaderboard" and "map" on the same icons and the same openers; the
            hall's window draws the board.  The check read WheelHallPanel's old
            rows (a stale check, the game unchanged) */
-        && /<TownBoard key="board" stateRef=\{props\.stateRef\} onLeaderboard=\{props\.onLeaderboard\} onMap=\{props\.onMap\} \/>/.test(hallSrc)
-        && /data-hall-row="leaderboard" onClick=\{props\.onLeaderboard\}[\s\S]{0,400}src="\/icons\/ui\/panel-leaderboard\.webp"/.test(boardSrc)
-        && /data-hall-row="map" onClick=\{props\.onMap\}[\s\S]{0,400}src="\/icons\/ui\/nav-map\.webp"/.test(boardSrc)
+        && /<TownBoard key="board" stateRef=\{props\.stateRef\} onLeaderboard=\{props\.onLeaderboard\} onMap=\{props\.onMap\}[^>]*\/>/.test(hallSrc)
+        && /<BoardFoot onLeaderboard=\{props\.onLeaderboard\} onMap=\{props\.onMap\}/.test(boardSrc)
+        && /data-hall-row="leaderboard" onClick=\{props\.onLeaderboard\}[\s\S]{0,400}src="\/icons\/ui\/panel-leaderboard\.webp"/.test(footSrc)
+        && /data-hall-row="map" onClick=\{props\.onMap\}[\s\S]{0,400}src="\/icons\/ui\/nav-map\.webp"/.test(footSrc)
         && fs.existsSync(new URL('../../public/icons/ui/panel-leaderboard.webp', import.meta.url)) && fs.existsSync(new URL('../../public/icons/ui/nav-map.webp', import.meta.url))
         && /leaderboard:\s+\{ title: 'Ranks',\s+Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))   /* v2.3.3546: headed 'Ranks' since v2.3.3481, the More tile's word; the Town Hall's row keeps "Leaderboard" (BottomDashboard's note) */
         && /export function openWorldMap\(\)/.test(read('../../src/ui/WorldMapOverlay.jsx'))
