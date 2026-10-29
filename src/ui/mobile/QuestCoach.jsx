@@ -22,6 +22,7 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { playIsLandscape } from './playViewport.js';
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 import { deskWords } from '@/game/deskWords.js'; /* v2.3.3615: "tap" reads "click" on a computer */
+import { deskWideActive } from '@/ui/deskWide.js'; /* v2.3.3687; v2.3.3793: no OPEN chip now, but the coach card's clear-of-the-quest-HUD layout (main) asks it */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
