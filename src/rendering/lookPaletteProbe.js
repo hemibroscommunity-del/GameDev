@@ -267,5 +267,22 @@ export function installLookProbe(dep) {
     }
     return out;
   }
-  window.__btLookOracle = { compare, draw, held, picture, compareStandIns, baked: (L) => baked(L) };
+  /* v2.3.3757: the palette atlas filled to its last row (a crowd fight's
+     worst case: its rows are shared with the monsters' pictures), and given
+     back -- so a test can see what a refused look draws */
+  let _filled = [];
+  async function fillAtlas() {
+    const PT = await import('./paletteTex.js');
+    const row = new Uint8Array(256 * 4);
+    for (let r; (r = PT.takePaletteRow(row)) >= 0;) _filled.push(r);
+    return _filled.length;
+  }
+  async function freeAtlas() {
+    const PT = await import('./paletteTex.js');
+    const n = _filled.length;
+    for (const r of _filled) PT.givePaletteRow(r);
+    _filled = [];
+    return n;
+  }
+  window.__btLookOracle = { compare, draw, held, picture, compareStandIns, fillAtlas, freeAtlas, baked: (L) => baked(L) };
 }

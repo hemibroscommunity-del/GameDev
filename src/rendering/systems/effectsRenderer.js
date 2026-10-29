@@ -4121,8 +4121,34 @@ export class EffectsRenderer {
       const a = (mirror && map && map[dir + '|m']) || (map && map[dir]);
       /* v2.3.3757: a strip kept as numbers is asked for in your look each
          time it is drawn (a look no one asks for in 30 s gives its frames back) */
-      return (a && a._btLookUrl) ? _standInLook(a._btLookUrl, getSkin(), getPants(), getShoes()) : a;
+      if (!a || !a._btLookUrl) return a;
+      const lk = _standInLook(a._btLookUrl, getSkin(), getPants(), getShoes());
+      if (lk) return lk;
+      /* ...and refused (the palette atlas full: its rows are shared with the
+         monsters' pictures, and a crowd fight is when it fills): the old bake
+         for this strip, ONCE, as before the numbers were in -- never a swing
+         with no body (M3's review).  Tried again at the next look change. */
+      const rec = a._btRec;
+      if (!rec || rec._btNoLook) return null;
+      rec._btNoLook = true;
+      this._standInFallbacks = (this._standInFallbacks || 0) + 1;
+      const was = this._bakeBodyStrip(rec);
+      if (was) this._letGo(was);
+      const b = (mirror && map[dir + '|m']) || map[dir];
+      return (b && !b._btLookUrl) ? b : null;
     };
+    /* QA (mp-lookstandins): each of your stand-in strips as a draw site gets
+       it -- from the numbers, the old bake, or nothing -- and the fallbacks */
+    if (typeof window !== 'undefined') {
+      window.__btStandInStrips = () => {
+        const out = [];
+        for (const rec of this._bodyStrips || []) {
+          const t = this._standInStrip(rec.target, rec.dir, false);
+          out.push({ url: rec.url.replace(/^.*\//, ''), drawn: !!(t && t.length), look: !!(t && t[0] && t[0]._btLook), frames: t ? t.length : 0 });
+        }
+        return { strips: out, fallbacks: this._standInFallbacks || 0 };
+      };
+    }
     /* Would the pre-flipped bake of this sheet differ from the plain one?  Asked
        of the art AFTER artForFacing, because that is what actually gets stamped:
        a north sheet stamps the BACK canvases, so the front ones' symmetry is not
@@ -4205,9 +4231,10 @@ export class EffectsRenderer {
       const _legsUnder = this._legsUnderFor(rec);   /* v2.3.3640 */
       /* v2.3.3757: no drawing, no greaves, the numbers in: no bake -- the strip
          is a marker _standInStrip reads in your look as it is drawn */
-      if (!_art && !_legsUnder && lookPaletteOn() && lookHas('standin', _standInSheet(rec.url))) {
+      if (!_art && !_legsUnder && !rec._btNoLook && lookPaletteOn() && lookHas('standin', _standInSheet(rec.url))) {
         const mk = [];
         mk._btLookUrl = rec.url;
+        mk._btRec = rec;   /* the record to bake the old way if the look is refused (_standInStrip) */
         rec.target[rec.dir] = mk;
         rec.target[rec.dir + '|m'] = null;
         if (rec.target === this._bowBodyFrames) registerBowBodyFrames(rec.dir, () => this._standInStrip(this._bowBodyFrames, rec.dir, false));
@@ -4372,7 +4399,11 @@ export class EffectsRenderer {
     this._rebakeBodies = () => {
       if (this._destroyed) return;
       const was = [];
-      for (const rec of this._bodyStrips) { const w = this._bakeBodyStrip(rec); if (w) was.push(...w); }
+      for (const rec of this._bodyStrips) {
+        rec._btNoLook = false;   /* v2.3.3757: a new look asks the numbers again */
+        const w = this._bakeBodyStrip(rec);
+        if (w) was.push(...w);
+      }
       this._letGo(was);
     };
     this._offs.push(onSkinChange(this._rebakeBodies), onPantsChange(this._rebakeBodies), onShoesChange(this._rebakeBodies));
