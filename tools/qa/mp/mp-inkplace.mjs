@@ -141,7 +141,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await key('d', 900);                                   /* jog east   */
   await key('s', 700);                                   /* jog south  */
   await key('w', 500);                                   /* jog north  */
-  await P.page.keyboard.press('Space').catch(() => {});  /* dodge roll */
+  await P.page.keyboard.press('x').catch(() => {});      /* dodge roll (v2.3.3844: X, was Space) */
   await P.page.waitForTimeout(700);
   /* A swing needs something to swing at; the pose bakes either way, because
      the attack animation plays on an empty click too. */

@@ -156,11 +156,11 @@ async function fight(P, key, slot, ms) {
 }
 
 async function moves(P) {
-  await P.page.keyboard.press('Space');   /* a roll */
+  await P.page.keyboard.press('x');       /* a roll (v2.3.3844: X, was Space) */
   await P.page.waitForTimeout(700);
-  await P.page.keyboard.press('x');       /* a jump... */
+  await P.page.keyboard.press('Space');   /* a jump... (v2.3.3844: Space, was X) */
   await P.page.waitForTimeout(300);
-  await P.page.keyboard.press('x');       /* ...and the flip */
+  await P.page.keyboard.press('Space');   /* ...and the flip */
   await P.page.waitForTimeout(900);
 }
 

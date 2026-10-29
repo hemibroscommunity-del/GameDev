@@ -55,6 +55,7 @@ import { LoginScreen } from './panels/LoginScreen.jsx';
 import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
+import TimedBanner from './TimedBanner.jsx';   /* v2.3.3839: the warning / stat banner's own clock */
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { trackedFirst, onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track */
@@ -11257,7 +11258,7 @@ export var BroTown = function BroTown(_ref0) {
                attack in its place if nothing else is there?)".  One swing, one
                arrow or one bolt the way you face, taken by the auto-attack
                loop as a press of the disc is (game/tapJump.js
-               requestTapAttack); the JUMP button and X jump. */
+               requestTapAttack); the JUMP button and Space jump (X until v2.3.3844). */
             try { requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }
           }
         }
@@ -13680,7 +13681,10 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.2615: 'char' joins 'combat' and 'life' as a kind the STACK owns — it
      is the character-level notification, and it wears the character's portrait
      in the medallion (levelUpIcons.levelUpMedallionSrc). */
-  levelUpMsg && levelUpMsg.kind !== 'combat' && levelUpMsg.kind !== 'life' && levelUpMsg.kind !== 'char' && Date.now() - levelUpMsg.ts < 4000 && /*#__PURE__*/React.createElement("div", {
+  /* v2.3.3839: the banner keeps its own clock (TimedBanner.jsx): drawn once
+     a message, its fade froze at its first frame -- the Mayor gate's "Speak
+     to Mayor Bro first" all but invisible on a quick computer */
+  levelUpMsg && levelUpMsg.kind !== 'combat' && levelUpMsg.kind !== 'life' && levelUpMsg.kind !== 'char' && /*#__PURE__*/React.createElement(TimedBanner, { msg: levelUpMsg, ms: 4000, render: function () { return /*#__PURE__*/React.createElement("div", {
     /* v2.3.2615: an autotest handle, same posture as data-levelup-art on the
        burst.  A banner that did NOT appear photographs exactly like the world
        behind it, and "a prog3 character is never shown this" is a claim about
@@ -13723,7 +13727,14 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       textAlign: 'center',
       transform: "translateY(".concat(Math.max(0, 30 - (Date.now() - levelUpMsg.ts) / 1000 * 40), "px) scale(").concat(Math.min(1.1, 0.8 + (Date.now() - levelUpMsg.ts) / 3000), ")"),
-      opacity: Date.now() - levelUpMsg.ts < 3500 ? Math.min(1, (Date.now() - levelUpMsg.ts) / 400) * Math.max(0, 1 - (Date.now() - levelUpMsg.ts) / 3500) : 0
+      /* v2.3.3839: a warning HOLDS -- in in a quarter second, full until its
+         last 0.7 s: "Speak to Mayor Bro first" faded from the moment it came,
+         and was faint for most of its life; the gate says it again every
+         2.5 s you lean on it, so it stays up while you do */
+      opacity: Date.now() - levelUpMsg.ts >= 3500 ? 0
+        : levelUpMsg.kind === 'warning'
+          ? Math.min(1, (Date.now() - levelUpMsg.ts) / 250) * Math.min(1, (3500 - (Date.now() - levelUpMsg.ts)) / 700)
+          : Math.min(1, (Date.now() - levelUpMsg.ts) / 400) * Math.max(0, 1 - (Date.now() - levelUpMsg.ts) / 3500)
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -13795,7 +13806,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.2615: nor does a legacy T1 stat tick refill anything — it is a
        training crossing, not a level, and it must not inherit the pools line. */
     : levelUpMsg.label ? "Training \u2014 keep using this style"
-      : (levelUpMsg.gains || "You got stronger! HP \xB7 Stamina \xB7 Mana refilled")))),
+      : (levelUpMsg.gains || "You got stronger! HP \xB7 Stamina \xB7 Mana refilled")))); } }),
   /* ═══ v2.3.1745: QUEST ACCEPTED! / QUEST COMPLETED! ═══
      Owner: "...that appear over the quest modal menu the moment you accept
      or turn in the quest."

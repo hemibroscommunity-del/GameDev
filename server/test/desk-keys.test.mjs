@@ -179,6 +179,17 @@ check('9a with all three: next melee -> ranged, the one before melee -> staff',
   && prevWeaponSlot({ ...kit, activeSlot: 'ranged' }) === 'melee', [prevWeaponSlot({ ...kit, activeSlot: 'melee' })]);
 check('9b ...one weapon: nowhere to go, both ways', prevWeaponSlot({ weapon: { type: 'sword' }, activeSlot: 'melee' }) === 'melee');
 
+/* ── 10. v2.3.3844: Space jumps, X rolls (the owner: "spacebar I think should be jump") ── */
+const spaceBlock = (/if \(e\.code === 'Space'\) \{([\s\S]*?)\n {6}\}/.exec(ctl) || [])[1] || '';
+const xBlock = (/if \(e\.code === 'KeyX'\) \{([\s\S]*?)\n {6}\}/.exec(ctl) || [])[1] || '';
+check('10a the list says Space Jump and X Dodge', words('Space') === 'Jump' && words('X') === 'Dodge', [words('Space'), words('X')]);
+check('10b Space jumps once a press (a repeat jumps nothing), and rolls nothing; its default refused (no scroll)',
+  /e\.preventDefault\(\);\s*if \(!e\.repeat\) triggerJump\(S\);/.test(spaceBlock) && !/triggerContextualDodge/.test(spaceBlock), spaceBlock.slice(0, 200));
+check('10c X rolls (the contextual dodge) and jumps nothing', /triggerContextualDodge\(S, _R1, ang\)/.test(xBlock) && !/triggerJump/.test(xBlock), xBlock.slice(0, 200));
+check('10d Space\'s release presses no focused button (its keyup refused, outside a field)',
+  /onKeyUp = function onKeyUp\(e\) \{[\s\S]{0,700}e\.code === 'Space'[\s\S]{0,300}e\.preventDefault\(\)/.test(ctl));
+check('10e Space and X come before the 2\u00d7WASD row; the double tap still rolls', DESK_KEY_ROWS.findIndex((r) => r[0] === 'X') === DESK_KEY_ROWS.findIndex((r) => r[0] === 'Space') + 1
+  && /dblTapRoll\(/.test(ctl));
 /* ── 11. v2.3.3845: the right button toggles the guard; with nothing near it follows the pointer ── */
 const { deskPointerAngle, shieldFollowsPointerAlways } = await import('../../src/game/deskShield.js');
 const S10 = { player: { x: 1000, y: 1000 }, camera: { x: 800, y: 900 }, _worldScaleX: 0.8, _worldScaleY: 0.8, _mouseScreen: { x: 320, y: 80 } };

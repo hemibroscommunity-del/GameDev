@@ -41,8 +41,9 @@
  *     v2.3.3845 a toggle, pressed up and pressed down), a left click while
  *     it is up the bash (was Q+E), the wheel the next or last
  *     weapon (Tab and 1-3 stay);
- *   - `2×WASD` a direction key tapped twice rolls that way (Space still
- *     rolls), `2×Click` a double click on a monster locks on to it (with the
+ *   - `2×WASD` a direction key tapped twice rolls that way (X still
+ *     rolls: Space until v2.3.3844, when Space became the jump),
+ *     `2×Click` a double click on a monster locks on to it (with the
  *     sword, the opening lunge) -- game/deskCombos.js;
  *   - `+Click` is listed right under `R-Click`, so the pair reads as the
  *     combo it is: the right button held, then a click.
@@ -70,9 +71,9 @@ export const DESK_KEY_GROUPS = [
 export const DESK_KEY_ROWS = [
   ['WASD', 'Move', null, 'move'],
   ['Shift', 'Sprint', 'sprint', 'move'],
-  ['Space', 'Dodge', null, 'move'],
+  ['Space', 'Jump', null, 'move'],   /* v2.3.3844: was X ("spacebar I think should be jump") */
+  ['X', 'Dodge', null, 'move'],   /* v2.3.3844: was Space */
   ['2\u00d7WASD', 'Dodge', null, 'move'],   /* v2.3.3711: a direction tapped twice */
-  ['X', 'Jump', null, 'move'],
   ['Z', 'Board', 'ride', 'move'],   /* v2.3.3776: the skateboard, in BroTown */
   ['Click', 'Attack', null, 'fight'],
   ['2\u00d7Click', 'Lock on', null, 'fight'],   /* v2.3.3711: a double click on a monster */

@@ -174,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && col.groups.map((g) => g.head.toLowerCase()).join() === 'move,fight,other,menus', col && col.groups.map((g) => [g.id, g.head]));
     const allRows = col ? col.groups.flatMap((g) => g.rows) : [];
     /* v2.3.3711: the owner's layout -- Q the special, the combos, the wheel */
-    const want = ['WASD', 'Space', '2\u00d7WASD', 'X', 'Click', '2\u00d7Click', 'Q', 'Wheel', 'Tab', '1', '2', '3', 'E', 'B', 'C', 'H', 'Esc', 'I', 'P', 'J', 'L', 'K', 'O', 'M'];
+    const want = ['WASD', 'Space', 'X', '2\u00d7WASD', 'Click', '2\u00d7Click', 'Q', 'Wheel', 'Tab', '1', '2', '3', 'E', 'B', 'C', 'H', 'Esc', 'I', 'P', 'J', 'L', 'K', 'O', 'M'];
     rec.ok('...every key that always works listed, the menus\' letters too', want.every((k) => keysOf(col).includes(k)), keysOf(col));
     rec.ok('...every row on the screen, inside the column', !!col && onScreen(allRows, col.box.t, Math.min(col.box.b, DESK.height)),
       allRows.filter((r) => r.b > DESK.height || r.t < 0));

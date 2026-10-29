@@ -582,13 +582,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await face(keys, ang);
           await begin();
           await keysDown(keys);
-          /* v2.3.3798: Space from inside the page, and the clock held the
+          /* v2.3.3798: the roll key from inside the page, and the clock held the
              moment the roll starts: a roll is 250-500 ms, and polled from
              outside on this box it was over before it was seen (no roll
              frame swept, on main too) */
           const r = await page.evaluate(async () => {
             const S = window._gameState.current;
-            const sp = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'Space', key: ' ', bubbles: true }));
+            const sp = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'KeyX', key: 'x', bubbles: true }));   /* v2.3.3844: X rolls (was Space) */
             sp('keydown'); sp('keyup');
             for (let i = 0; i < 600; i++) {
               const d = S._dodgeRoll;
@@ -642,7 +642,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (const [dir, keys, ang] of FACINGS) {
           await face(keys, ang);
           await begin();
-          await page.keyboard.press('x');
+          await page.keyboard.press('Space');   /* v2.3.3844: Space jumps (was X) */
           const j = await H.waitFor(P, (S) => (S._jump ? (S._jump.startedAt || S._jump.t0 || S._jump.start || null) : null), (v) => !!v, { timeout: 3000, label: 'a jump' }).catch(() => null);
           const t0 = j || await page.evaluate(() => Date.now());
           await sweep(outfit, 'jump', dir, t0, 600, 40);
@@ -650,7 +650,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
       }
       /* ── v2.3.3738: the double jump's flip, the roll's tumble in the air:
-         only when named (BT_GHOST_ONLY=flip).  A jump (X), then X again half
+         only when named (BT_GHOST_ONLY=flip).  A jump (Space; X until v2.3.3844), then Space again half
          way through it; the flip is swept on its own clock.  BT_GHOST_DIRS
          limits the facings (the owner: three are enough to look at) ── */
       if (only && only.has('flip')) {
@@ -667,7 +667,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           for (let k = 0; k < 3 && !f; k++) {
             f = await page.evaluate(async () => {
               const S = window._gameState.current;
-              const key = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'KeyX', key: 'x', bubbles: true }));
+              const key = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'Space', key: ' ', bubbles: true }));   /* v2.3.3844: Space jumps (was X) */
               key('keydown'); key('keyup');
               for (let i = 0; i < 300; i++) {
                 const j = S._jump;
@@ -781,6 +781,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     writeFileSync(join(OUT, 'index.json'), JSON.stringify({ index, summary }, null, 1));
 
+    /* v2.3.3846: no knight figure asked for where none ships (north-east,
+       and north-west its mirror): the old path's request for it 404'd into the
+       crash ring as gear-sheet-failed (E's judge pass) */
+    if (outfits.includes('full')) {
+      const sheets = await page.evaluate(() => (window.__btGearSheets ? window.__btGearSheets() : []));
+      const asked = sheets.filter((k) => /^fullset\/[^/]+\/jog\/northeast$/.test(k));
+      rec.ok(`no knight figure asked for north-east (${asked.length ? asked.join(', ') : 'none'}; ${sheets.filter((k) => /^fullset\//.test(k)).length} figure sheets asked)`, asked.length === 0, asked);
+    }
     /* the checks a number can make here; the colours are counted by the report */
     for (const [k, s] of Object.entries(summary)) {
       rec.ok(`${k}: ${s.frames} frames photographed (guard)`, s.frames > 0, s.equip || null);

@@ -101,8 +101,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       r2a.up && r2b.up && angGap(r2a.ang, r2a.ptr) < 0.2 && angGap(r2b.ang, r2b.ptr) < 0.2 && angGap(r2a.ang, r2b.ang) > 2.2, { r2a, r2b });
 
     /* ── 3. walking with the mouse still ── */
+    /* walk until the bro has moved (this box walks a few frames a second:
+       a fixed 900 ms went 11 px once) */
     await P.page.keyboard.down('s');
-    await P.page.waitForTimeout(900);
+    await H.waitFor(P, (S) => S.player.y, (y) => y - r2b.y > 40, { timeout: 6000, label: 'walked' }).catch(() => null);
     await P.page.keyboard.up('s');
     await P.page.waitForTimeout(400);
     const r3 = await look(P, leftPt.x, leftPt.y);

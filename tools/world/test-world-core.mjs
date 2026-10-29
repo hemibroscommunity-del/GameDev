@@ -3792,8 +3792,9 @@ console.log("the buildings' doors (v2.3.3032)");
       { beanToArrive, bean: !!bean, reel: !!reel, terry: !!terry });
     const spriteSrc = fs.readFileSync(new URL('../../src/rendering/npcSprites.js', import.meta.url), 'utf8');
     ok('...and the Wheel loads each one\'s picture behind its loading screen, read off the same table (npcSprites.js _wheelCast)',
-      /WHEEL_TOWNSFOLK\.map\(\(f\) => f\.name\)/.test(spriteSrc) && /export function wheelNpcSources\(\) \{\s*return _wheelCast\(\)/.test(spriteSrc)
-        && /export function wheelWalkSources\(\) \{\s*return _wheelCast\(\)/.test(spriteSrc), {});
+      /* v2.3.3809: `live` leaves out those drawn live from a look (lookFolk.js) */
+      /WHEEL_TOWNSFOLK\.map\(\(f\) => f\.name\)/.test(spriteSrc) && /export function wheelNpcSources\((live)?\) \{\s*return _wheelCast\((live)?\)/.test(spriteSrc)
+        && /export function wheelWalkSources\((live)?\) \{\s*return _wheelCast\((live)?\)/.test(spriteSrc), {});
   }
   /* the worker ships them, the game reads them, the scan uses them */
   const readSrc = (u) => fs.readFileSync(new URL(u, import.meta.url), 'utf8');

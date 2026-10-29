@@ -92,7 +92,7 @@ const row = (n) => NPC_DATA.find((r) => r.name === n);
   check('4d the three locals keep nothing', localKeep.length === 0, localKeep);
   const capped = CAST.filter((n) => folk[n] && folk[n].cap);
   check('4e none waits on a worker\'s cap (client only: they stand against any worker)', capped.length === 0, capped);
-  const looks = read('../../tools/qa/npc-looks.mjs');
+  const looks = read('../../src/data/npcLooks.js');   /* v2.3.3809: the table moved there (the game draws them live) */
   const noLook = CAST.filter((n) => !new RegExp('\\n  ' + LOOK[n] + ': \\{\\s*\\n\\s*name: \'' + n + '\'').test(looks));
   check('4f each look is an NPC_LOOKS row named for him (the rows P5\'s live drawing takes over)', noLook.length === 0, noLook);
   const still = CAST.filter((n) => {

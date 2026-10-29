@@ -191,6 +191,28 @@ slowly, not), a double click on a snowman locking on with the bow and lunging
 with the sword.  `server/test/desk-keys.test.mjs` §7-9 hold the table, the
 combos' rules and the weapon cycle backwards.
 
+## v2.3.3844: Space jumps, X rolls
+
+The owner, 2026-10-29: *"Also spacebar I think should be jump."* Space was the
+dodge roll and X the jump (v2.3.3017, when Space was taken); they swap
+(`src/game/desktopControls.js`):
+
+- **Space jumps**: one press, one jump. A held Space jumps once (its repeats
+  do nothing more); a second press in the air is the double jump's flip, as
+  X's was. Space never scrolls the page, and never presses a button a click
+  left focused: its keydown and its keyup both refuse the browser's default
+  (except in a text field, where Space types a space).
+- **X rolls**, exactly as Space rolled: the way WASD points, else toward the
+  mouse, else the way you face, and a lock still turns it into the sword's
+  lunge or the bow's retreat shot. A direction tapped twice still rolls.
+- The controls list reads `Space Jump`, `X Dodge`, `2×WASD Dodge`.
+
+Tests: `mp-spacejump` (a computer, the wide layout, real keys; fails on main:
+there Space rolls and X jumps), `server/test/desk-keys.test.mjs` §10, and the
+scenarios that pressed the old keys (`mp-jump`, `mp-ghostaudit`,
+`mp-soundcues`, `mp-soundstudio`, `mp-armourflash`, `mp-garmentspecks`,
+`mp-inkplace`, `mp-traitsoak`, `mp-deskwide`) press the new ones.
+
 ## v2.3.3845: the right button toggles the shield
 
 The owner, 2026-10-29: *"Also I think right click should just hold up shield

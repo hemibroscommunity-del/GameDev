@@ -397,7 +397,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       await P.page.keyboard.down('d');
       await P.page.waitForTimeout(200);
-      await P.page.keyboard.press('Space');
+      await P.page.keyboard.press('x');   /* v2.3.3844: X rolls (was Space) */
       const r = await H.waitFor(P, () => window.__gsRoll, (v) => !!v, { timeout: 3000, label: 'a roll' }).catch(() => null);
       await P.page.keyboard.up('d');
       /* the game's own field back, the roll still in it */
