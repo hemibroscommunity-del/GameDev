@@ -715,7 +715,7 @@ export const STATES = [
   /* ═══ OVERLAYS ═══ */
   {
     id: 'world-map', group: 'Maps and chat', title: 'World map',
-    about: 'The world map (a tap on the minimap): the Wheel, its eight lands, where you are, the quest\'s road, zoom buttons and the compass.',
+    about: 'The world map (a tap on the minimap): the Wheel, its eight lands, where you are, the quest\'s road, zoom buttons and the compass, and the key bottom left -- its marks little pictures of what they mark (a house, a tent, two peaks, an arch, a flag; zoomed in a horned head for a monster, a fish, a tree, a rock with metal, a person), drawn the same on the map.',
     settle: 1600,
     run: async ({ P }) => {
       const ok = await evalIn(P, () => { if (!window.__btWorldMapOpen) return false; window.__btWorldMapOpen(true); return true; });
