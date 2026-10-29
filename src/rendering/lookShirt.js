@@ -26,10 +26,10 @@
 import { ART_PALETTE, ART_W, ART_H, isValidArt, artHasInk } from './traits/playerArt.js';
 
 export const SHIRT_E = Object.freeze({ TINT: 8, PAT: 9, TILE: 10, INK: 11, PRINT: 13, PAL: 16, ART: 128 });
-/* the tee's frame width, the mirror's axis (the bake refuses a sheet of any
+/* v2.3.3790 (M3's review): the tee's frame width, the mirror's axis (the bake refuses a sheet of any
    other, so a resized sheet fails loudly rather than mirroring off-centre) */
 export const SHIRT_FW = 128;
-/* a tile's ink is two entries, 64 bits: a bigger tile is drawn the old way */
+/* v2.3.3790: a tile's ink is two entries, 64 bits: a bigger tile is drawn the old way */
 export const SHIRT_TILE_MAX = 64;
 const HEX = '0123456789abcdef';
 const rgbOf = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];

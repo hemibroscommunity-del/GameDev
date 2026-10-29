@@ -16,6 +16,8 @@
  *   2. a phone's 2.6 device pixels a texel (1 level) and a computer's 0.8 (the
  *      mip chain: 3 levels on under 5% of the pixels), on four looks.
  *   3. the local player in a printed, patterned tee: drawn from the numbers.
+ *   4. v2.3.3790: `off_lookshirt` (the Test panel's Memory savers row) takes
+ *      that tee off the numbers live, and back.
  * THE MEMORY -- 1, 5 and 20 dressed tees on the chip, both ways.
  * Every check reports the palette atlas's rows used and rowsFull (0).
  *
@@ -151,6 +153,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`the local player's printed, patterned tee is drawn from the numbers beside the body: ${JSON.stringify(self)}; rows ${after.rows}, rowsFull ${after.rowsFull}`,
       self.some((s) => /bt-look:shirt\//.test(s)) && self.some((s) => /bt-look:(stand|jog)-/.test(s)) && after.rowsFull === 0, { self, after });
     await B.page.screenshot({ path: join(OUT, 'lookshirts-local.png') });
+
+    /* 4. v2.3.3790: the Test panel's Memory savers switch, live -- off_lookshirt
+       set, the same tee leaves the numbers (the old dressed bake), no reload;
+       cleared, it is back */
+    const teeUrl = () => B.page.evaluate(() => ((window.__btSelfSprites() || []).find((s) => s.name === '_gearShirt') || {}).url || '');
+    const waitTee = async (want) => { for (let i = 0; i < 40; i++) { const u = await teeUrl(); if (want(u)) return u; await B.page.waitForTimeout(250); } return teeUrl(); };
+    await H.liveFlag(wsPort, 'off_lookshirt', true);
+    const offUrl = await waitTee((u) => !/bt-look:shirt\//.test(u));
+    await H.liveFlag(wsPort, 'off_lookshirt', null);
+    const onUrl = await waitTee((u) => /bt-look:shirt\//.test(u));
+    rec.ok(`the Memory savers switch "Printed shirts coloured on the chip", live: off -> the tee is ${offUrl.slice(-40)}; on again -> ${onUrl.slice(-40)}`,
+      !/bt-look:shirt\//.test(offUrl) && /bt-look:shirt\//.test(onUrl), { offUrl, onUrl });
   } finally {
     if (said.length) console.log('    page said: ' + said.slice(0, 12).join('\n      '));
     writeFileSync(join(OUT, 'lookshirts.json'), JSON.stringify(report, null, 1));

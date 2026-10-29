@@ -104,8 +104,15 @@ drawn from the numbers both ways, the shirt part alone switched by
 About five more draws and program switches a dressed figure: the tee on its
 own program breaks the batch round it (it does not sit next to the body in
 the draw order, and four sheets fill a batch). This is the cost the look
-program's fold into the one batcher (`claude/look-palette-fold`) is for. `?lookshirt=0` draws
-the tee the old way, the rest of the look palette as it is.
+program's fold into the one batcher (`claude/look-palette-fold`) is for.
+
+**v2.3.3790, the follow-up** (the orchestrator's decision, M3's review): a
+plain tee is never drawn from the numbers (it saved nothing and broke the
+batch); the dressed tee stays ON by default (the owner's rule for memory
+savers) with two off switches, the rest of the look palette as it is:
+`?lookshirt=0` for one phone, and **"Printed shirts coloured on the chip"** in
+the Test panel's Memory savers row (`off_lookshirt`, `docs/specs/client-off.md`)
+for every phone, at once.
 
 ## Where it is not exact
 

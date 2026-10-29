@@ -10,10 +10,15 @@ import { shirtRowEntries, SHIRT_GLSL, SHIRT_TILE_MAX } from './lookShirt.js';
 import { artHash, sideForDir } from './traits/playerArt.js';
 import { getGearFrame, getShirtLookFrame, gearSheetLoad } from './gearSheets.js';
 import { parsePattern } from './traits/patternCatalog.js';
+import { clientOff } from '../game/clientOff.js';   /* v2.3.3790: the Test panel's live off switch */
 import { installShirtProbe } from './lookShirtProbe.js';
 
-/* `?lookshirt=0`: the tee the old way, the rest of the look palette as it is
-   (for comparing the shirt part alone) */
+/* v2.3.3790: the dressed tee's own off switches (the rest of the look palette
+   as it is): `?lookshirt=0` for one phone, and the Test panel's Memory savers
+   row for every phone, live (game/clientOff.js `lookshirt`) -- drawn from the
+   numbers it costs ~5 draw calls a dressed figure until the look program joins
+   the one batcher, so the owner can turn it off at the showing if frames
+   suffer (still ON by default: "I can always revert") */
 const _wanted = (() => { try { return !/(^|[?&])lookshirt=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
 
 /* behind the loading screen with the body's sheets (preloadLookSheets) */
@@ -24,7 +29,7 @@ registerLookKind('shirt', SHIRT_GLSL);   /* the print, the tile and the tint, pe
    ~55 entries, and the look's key is made from them every frame otherwise */
 const _dress = new Map();
 const DRESS_CAP = 64;
-/* a drawing's hash by the drawing (the same string every frame: a Map hit,
+/* v2.3.3790: a drawing's hash by the drawing (the same string every frame: a Map hit,
    not a 256-character hash a player a frame) */
 const _hashes = new Map();
 function hashOf(art) {
@@ -56,15 +61,15 @@ function dressOf(tint, pattern, art) {
  * The tee's frame from the numbers, dressed, or null (the old path draws it).
  * `look` is _placeGear's: { art (this side's drawing or null), pattern
  * (parsePattern's), tint ([r, g, b] or null), mirror }.  A plain tee (no
- * pattern, no print) answers null: it is one shared sheet and a sprite tint
+ * pattern, no print) answers null (v2.3.3790): it is one shared sheet and a sprite tint
  * the old way, so the numbers save it nothing, and drawn from them it broke
  * the batch round every figure in a tee (M3's review of #1247: mp-crowdbots,
  * +5 draws a figure).  Drawn UNTINTED: the tint is in the row.
  */
 export function getLookShirtFrame(item, pose, dir, frameIdx, look) {
-  if (!_wanted || !lookPaletteWanted() || item !== 'tshirt' || !look) return null;
+  if (!_wanted || !lookPaletteWanted() || item !== 'tshirt' || !look || clientOff('lookshirt')) return null;
   const dressed = !!(look.art || look.pattern);
-  if (look.pattern && look.pattern.tile && look.pattern.tile.w * look.pattern.tile.h > SHIRT_TILE_MAX) return null;   /* its ink does not fit the row */
+  if (look.pattern && look.pattern.tile && look.pattern.tile.w * look.pattern.tile.h > SHIRT_TILE_MAX) return null;   /* its ink does not fit the row (v2.3.3790) */
   if (!dressed) return null;   /* plain: the shared sheet and its sprite tint, as it always was */
   const sheet = pose + '-' + dir;
   if (!lookHas('shirt', sheet)) return null;
