@@ -3078,6 +3078,50 @@ function makeShineTexture() {
   g.fillRect(0, 0, N, N);
   return Texture.from(cv);   /* its canvas let go once drawn: _renderPileShine */
 }
+/* ═══ v2.3.3805: AND A BEAM COMES DOWN INTO IT ═══
+   The owner: "for the loot drop add a vertical shine that starts at its peak
+   and climbs downward to just end at the normal glow".  The moment YOUR pile
+   lands, a narrow column of light stands on it, the shine's colour, BEAM_PEAK_PX
+   tall; its top comes down to the pile over the shine's own SHINE_SETTLE_S,
+   eased in and out, so it is gone just as the shine settles into the glow.  Then it is destroyed: nothing of it is left but the glow.  A pile that
+   was already lying when it reached this phone (a zone's list on the way in)
+   has none: only a pile seen landing (its loot_drop) beams.
+   Drawn in code like the shine: ONE soft column picture per renderer
+   (makeBeamTexture), kept on the graphics chip only; a sprite of it per
+   landing pile, anchored at its foot, each frame only its alpha and its
+   height (TRAPS §218).  `?lootbeam=0`: none, for one phone. */
+const BEAM_PEAK_PX = 230;      /* its height the moment it lands, world px (a pile is ~60 tall) */
+const BEAM_W_PX = 40;          /* its width: a narrow column, the pile wider than it */
+const BEAM_A = 0.95;           /* its alpha at the peak, easing a little as it comes down */
+const BEAM_TEX_W = 32, BEAM_TEX_H = 128;
+const BEAM_ON = (() => { try { return new URLSearchParams(window.location.search).get('lootbeam') !== '0'; } catch (e) { return true; } })();
+/* a soft column: a bright core, soft sides, fading out toward its top */
+function makeBeamTexture() {
+  if (typeof document === 'undefined') return null;
+  const W = BEAM_TEX_W, H = BEAM_TEX_H;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d');
+  const across = g.createLinearGradient(0, 0, W, 0);
+  across.addColorStop(0, 'rgba(255,255,255,0)');
+  across.addColorStop(0.25, 'rgba(255,255,255,0.3)');
+  across.addColorStop(0.42, 'rgba(255,255,255,0.9)');
+  across.addColorStop(0.5, 'rgba(255,255,255,1)');
+  across.addColorStop(0.58, 'rgba(255,255,255,0.9)');
+  across.addColorStop(0.75, 'rgba(255,255,255,0.3)');
+  across.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = across;
+  g.fillRect(0, 0, W, H);
+  /* ...faded toward the top: the column's light thinning into the air */
+  g.globalCompositeOperation = 'destination-in';
+  const up = g.createLinearGradient(0, 0, 0, H);
+  up.addColorStop(0, 'rgba(255,255,255,0)');
+  up.addColorStop(0.3, 'rgba(255,255,255,0.7)');
+  up.addColorStop(1, 'rgba(255,255,255,1)');
+  g.fillStyle = up;
+  g.fillRect(0, 0, W, H);
+  return Texture.from(cv);   /* its canvas let go once drawn, as the shine's */
+}
 const _hexTint = (h) => { const n = parseInt(String(h || '').replace('#', ''), 16); return Number.isFinite(n) ? n : 0xffffff; };
 const DROP_ICON_WORLD = 40 * DROP_GROW;
 /* ...and its count, in the owner label's type (_renderOwnerLabel), a size up */
@@ -9804,6 +9848,46 @@ export class EffectsRenderer {
     const qaOff = typeof window !== 'undefined' && window.__btShineOff === true;
     sp.alpha = mine && !qaOff ? (SHINE_PEAK_A + (SHINE_GLOW_A - SHINE_PEAK_A) * e) * alpha : 0;
     sp.scale.set((SHINE_PEAK_PX + (SHINE_GLOW_PX - SHINE_PEAK_PX) * e) / SHINE_TEX_PX);
+    /* v2.3.3805: the beam, on the shine's clock and easing */
+    if (BEAM_ON && !l._beamDone && !l._shine.late) this._renderPileBeam(l, k, bob, mine && !qaOff ? alpha : 0);
+  }
+
+  /* v2.3.3805: the beam (BEAM_* above), `k` the shine's own time (0..1).  Made with a landing pile; its top comes down to the pile; when
+     the shine has settled it is destroyed, once, and never made again. */
+  _renderPileBeam(l, k, bob, alpha) {
+    if (k >= 1) {
+      if (l._pixiBeam && !l._pixiBeam.destroyed) { l._pixiBeam.parent && l._pixiBeam.parent.removeChild(l._pixiBeam); l._pixiBeam.destroy(); }
+      l._pixiBeam = null;
+      l._beamDone = true;
+      return;
+    }
+    if (!this._beamTex || this._beamTex.destroyed) {
+      this._beamTex = makeBeamTexture();
+      if (this._beamTex && this._gpuWaiting) this._gpuWaiting.add(this._beamTex.source);
+    }
+    const tex = this._beamTex;
+    if (!tex) return;
+    if (!l._pixiBeam || l._pixiBeam.destroyed) {
+      const b = new Sprite(tex);
+      b.anchor.set(0.5, 1);   /* its foot on the pile: the top is what comes down */
+      b.zIndex = LOOT_Z.remnant + 1;
+      b.tint = _hexTint(l._shine.color);
+      b.blendMode = 'add';   /* light, as the shine (set once, never a frame) */
+      b.alpha = 0;
+      b.scale.set(BEAM_W_PX / BEAM_TEX_W, BEAM_PEAK_PX / BEAM_TEX_H);
+      this.lootLayer.addChild(b);
+      l._pixiBeam = b;
+    }
+    const b = l._pixiBeam;
+    b.x = l.x;
+    b.y = l.y + bob + 8;
+    /* down on a smooth start and finish (not the shine's quick fall off its
+       peak, which took three quarters of the column in its first half
+       second): the top visibly comes down the whole second, landing on the
+       pile as the shine settles */
+    const d = k * k * (3 - 2 * k);
+    b.scale.y = (BEAM_PEAK_PX * (1 - d)) / BEAM_TEX_H;
+    b.alpha = BEAM_A * (1 - 0.45 * k * k) * alpha;
   }
 
   _disposeLoot(l) {
@@ -9828,6 +9912,7 @@ export class EffectsRenderer {
     kill(l._pixiOwnerLabel);
     kill(l._pixiWpnLabel);
     kill(l._pixiShine); l._pixiShine = null;   /* v2.3.3746: its shine goes with it */
+    kill(l._pixiBeam); l._pixiBeam = null;     /* v2.3.3805: ...and its beam, if it is still coming down */
     /* v2.3.2771: the rare icons, their shines, and the RARE DROP! call */
     if (l._pixiRare) { for (const r of l._pixiRare) { kill(r.icon); kill(r.beam); } l._pixiRare = null; }
     kill(l._pixiRareDrop); l._pixiRareDrop = null;
@@ -10180,6 +10265,9 @@ export class EffectsRenderer {
           out.push({ lootId: e.lootId || null, color: e._shine ? e._shine.color : null, ageMs: e._shine ? t - e._shine.at : null,
             alpha: sp ? +sp.alpha.toFixed(3) : 0, px: sp ? Math.round(sp.texture.width * sp.scale.x) : 0,
             tint: sp ? '#' + (sp.tint >>> 0).toString(16).padStart(6, '0').toUpperCase() : null,
+            /* v2.3.3805: its beam, while it comes down: height (world px) and alpha */
+            beam: e._pixiBeam && !e._pixiBeam.destroyed ? { h: Math.round(e._pixiBeam.texture.height * e._pixiBeam.scale.y), a: +e._pixiBeam.alpha.toFixed(3) } : null,
+            beamDone: !!e._beamDone, late: !!(e._shine && e._shine.late),
             box: sp ? (() => { const b = sp.getBounds(); return { x: b.x, y: b.y, w: b.width, h: b.height }; })() : null });
         }
         return out;
@@ -10341,7 +10429,11 @@ export class EffectsRenderer {
          the moment it is first drawn */
       if (!l._shine && !l._shineAsked && !l.dropped && !l.isDeathDrop) {
         l._shineAsked = true;
-        try { notePileShine(S, l, S.myId, now); } catch (e) { /* display only */ }
+        try {
+          notePileShine(S, l, S.myId, now);
+          /* v2.3.3805: already lying when it reached us: the glow, no beam */
+          if (l._shine) l._shine.late = true;
+        } catch (e) { /* display only */ }
       }
       if (l._shine && !l.dropped && !l.isDeathDrop) this._renderPileShine(S, l, now, bob, alpha);
 
@@ -17346,6 +17438,8 @@ export class EffectsRenderer {
     this._captureRenderer = null;
     if (this._shineTex && !this._shineTex.destroyed) this._shineTex.destroy(true);   /* v2.3.3746 */
     this._shineTex = null;
+    if (this._beamTex && !this._beamTex.destroyed) this._beamTex.destroy(true);   /* v2.3.3805 */
+    this._beamTex = null;
     this._layers = null;
   }
 
