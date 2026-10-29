@@ -1410,7 +1410,7 @@ body:has(.bt-plist) [data-coach]{display:none}
   .bt-inspect-card[data-room="townhall"] .bt-room-scene{margin-top:-7.33%}
 }
 .bt-tb{display:grid;gap:8px;container-type:inline-size}
-.bt-tb-lede{font-size:12.5px;color:#B6C1BE;line-height:1.4}
+.bt-tb-lede{font-size:12.5px;color:#B6C1BE;line-height:1.4;padding-bottom:20px}   /* the strip's -20 px at rest lies over this, not the words */
 /* stuck at the very top of the window: into the card's 20 px padding (top
    -20), its own padding covering that band so nothing shows above it, the
    same 20 px taken back from its place at rest */
