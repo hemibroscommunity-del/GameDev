@@ -56,6 +56,7 @@ import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import TimedBanner from './TimedBanner.jsx';   /* v2.3.3839: the warning / stat banner's own clock */
+import SwapHint from './SwapHint.jsx';   /* v2.3.3877: how to swap weapons, said once */
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { trackedFirst, onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track */
@@ -13678,6 +13679,8 @@ export var BroTown = function BroTown(_ref0) {
      kind filter moves inside pushLevelUpBurst, where 'warning' and the bare
      T1 stat kinds are rejected and fall through to the banner below. */
   /*#__PURE__*/React.createElement(LevelUpBurstStack, { msg: levelUpMsg }),
+  /* v2.3.3877: "Swap weapons", said once, the first time you hold two (SwapHint.jsx) */
+  /*#__PURE__*/React.createElement(SwapHint, { stateRef: stateRef }),
   /* v2.3.2615: 'char' joins 'combat' and 'life' as a kind the STACK owns — it
      is the character-level notification, and it wears the character's portrait
      in the medallion (levelUpIcons.levelUpMedallionSrc). */

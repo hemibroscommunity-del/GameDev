@@ -316,6 +316,8 @@ Screens: hud, hud-band, hud-folded, hud-controls
 - At a building's steps a small "Enter" over the sign's name appears, placed so it covers no other control (v2.3.3032). New players get one coach card at a time pointing at the control the questline just gave them; it never blocks and moved off the combat buttons ("Coach card move off the combat band", v2.3.2564). It never covers the pinned quest card either: sideways (v2.3.3481) and on a computer playing wide (v2.3.3782, the QA play-through of the judges' path: GEAR UP lay across "Into the Blue"'s body line) a card that would cross it steps right of it.
 - Computer: WASD and the mouse, a keys strip in the black margin beside the game (v2.3.3526; in the lower left right of the bell when the window has no room beside it; a tap or H shrinks it to a chip), and each button wears its key letter ("just put the letter next to the icon or action in a tasteful way", v2.3.3407). Phones never show the letters.
 
+- **Swapping weapons is said once** (v2.3.3877, the owner: "nothing said anything to me about swapping weapons"): the first time you hold two weapons a gold callout over the weapon buttons says "Swap weapons: 1 Melee, 2 Bow, 3 Staff" on a computer, "Tap a weapon to swap" on a phone, until your first swap or 8 s, then never again (docs/specs/swap-hint.md).
+
 **Tried before, and changed:**
 - The right stick became a plain button (v2.3.2242), then a stick and a button again (v2.3.2258).
 - The shield was a hidden double-tap-and-hold gesture, then a button that dropped after one block (v2.3.2242), then held (v2.3.2248). Bow and staff lost the button for a gesture (v2.3.2446) and got it back (v2.3.2472).
