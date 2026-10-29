@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "39aad2094201313d956fa504e0d2321236ebe054",
+  "tree": "0234cb4beda4313f3bb3aa5348a3c0947d33ac35",
+  "committedAt": "2026-10-28T18:19:57-07:00",
+  "subject": "On a computer, GEAR UP stands clear of the pinned quest card (v2.3.3782) (#1261)",
+  "files": 7095,
+  "bytes": 816204869,
+  "listingSha256": "ffdae116126f3d1217e84c463681c7e088704c63747ed3135e7532ddf9dc5471",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
