@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a221db3b8f3c77dbfb0e59685d6ff5a5ce0bae3a",
+  "tree": "e984ccfeea4268c7f2bd172b0509af0eecebe1cb",
+  "committedAt": "2026-10-28T18:33:11-07:00",
+  "subject": "No man's land: a red skull you killed can't attack you for 30 minutes unless you let them (v2.3.3770) (#1271)",
+  "files": 7124,
+  "bytes": 817561148,
+  "listingSha256": "55063066d253e71a2ec031333c91a15ca45057d3f9d9cac0dac0c40a38679481",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
