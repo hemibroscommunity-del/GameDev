@@ -2752,6 +2752,17 @@ export var BroTown = function BroTown(_ref0) {
          about the eyes (measured where the four thumbs differ: 38% across,
          36-40% down) and clipped to the tile's panel; pixelated, so the scale
          stays crisp.  The frame and every other strip are untouched. */
+      /* v2.3.3814: lane A's judge pass, "only the first bro type is labelled
+         (Human)": the Human was captioned because it is the strip's 'none'
+         (every 'none' tile is), and the Monkey and the Alien were pictures
+         alone.  Every bro type now wears its name, above its picture as the
+         Human's does (clear of the check painted in the tile's corner). */
+      : cat === 'species'
+        ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', justifyContent: 'center' } },
+            /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async', draggable: false,
+              onError: function (e) { _thumbFallback(e, cat, opt.id); },
+              style: { width: '68%', height: '68%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+            /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, opt.name))
       : cat === 'eyestyle'
         ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 } },
             /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',

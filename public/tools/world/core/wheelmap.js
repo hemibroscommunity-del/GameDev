@@ -74,7 +74,7 @@ export function wheelMap(plan, bp) {
   const [tx, ty] = game(g.cx, g.cy);
   const [cx, cy] = fromSq([0, W.hub * 0.72]);
   const hub = {
-    town: { id: 'town', name: (plan.regions.town && plan.regions.town.name) || 'Brotown', x: tx, y: ty },
+    town: { id: 'town', name: (plan.regions.town && plan.regions.town.name) || 'BroTown', x: tx, y: ty },
     commons: { id: 'commons', name: (plan.regions.commons && plan.regions.commons.name) || 'the commons', x: cx, y: cy },
   };
   /* the places, by kind: camps (a waystation at the end of every stage),

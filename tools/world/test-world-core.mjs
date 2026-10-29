@@ -278,7 +278,7 @@ console.log('prompt');
   ok('says which edges are finished', /along the right edge is finished neighbouring squares/.test(mill.text));
   ok('the river flows in by one edge and out by another', /The Sweetwater River flows in from the top edge and out by the bottom edge/.test(mill.text), mill.summary);
   ok('the bridge, the mill plot and the fork', /The Mill Bridge \(bright yellow\) carries the West Road over the river/.test(mill.text) && /kept for the Old Mill/.test(mill.text) && /The Bog Trail branches off the West Road here/.test(mill.text));
-  ok('the commons meets a spoke through its designed edge', /Where Brotown Commons meets Earth Forest, the commons grass grows lush/.test(mill.text), mill.summary);
+  ok('the commons meets a spoke through its designed edge', /Where BroTown Commons meets Earth Forest, the commons grass grows lush/.test(mill.text), mill.summary);
   const src = P(sqAt(PLAN.rivers[0].pts[0]));
   ok('the river rises under the glacier', /rises here, pouring as meltwater from under the glacier/.test(src.text) && /Frost Ridge — the glacier/.test(src.text), src.summary);
   const fl = P(sqAt(PLAN.rivers[0].falls[0].at));
@@ -1319,7 +1319,7 @@ console.log('wheel map');
   const inside = (x, y) => x >= 0 && y >= 0 && x <= m.worldW && y <= m.worldH;
   const c = m.worldW / 2;
   ok(`the map names the eight lands, each out along its own spoke from the town (${m.lands.map((l) => l.name).join(', ')})`,
-    m.lands.length === 8 && m.lands.every((l) => { const dx = l.x - c, dy = l.y - c, d = Math.hypot(dx, dy); return d > 5000 && (dx * l.ux + dy * l.uy) / d > 0.99; }) && m.hub.town.name === 'Brotown' && Math.abs(m.hub.town.x - c) < 2,
+    m.lands.length === 8 && m.lands.every((l) => { const dx = l.x - c, dy = l.y - c, d = Math.hypot(dx, dy); return d > 5000 && (dx * l.ux + dy * l.uy) / d > 0.99; }) && m.hub.town.name === 'BroTown' && Math.abs(m.hub.town.x - c) < 2,
     m.lands.map((l) => [l.id, l.x, l.y]));
   ok('...and each land\'s four stages with their levels, in order outward (32)',
     m.stages.length === 32 && m.lands.every((l) => { const st = m.stages.filter((s) => s.region === l.id); return st.length === 4 && st.every((s, k) => s.k === k && s.levels[0] === k * 20 + 1 && s.levels[1] === (k + 1) * 20 && (k === 0 || Math.hypot(s.x - c, s.y - c) > Math.hypot(st[k - 1].x - c, st[k - 1].y - c))); }));
@@ -1339,7 +1339,7 @@ console.log('wheel map');
     { before, after });
   ok('"where am I" in words: the land, its stage and the levels there; the town and the commons safe',
     JSON.stringify(whereWords(m, 'frost', 2)) === JSON.stringify({ title: 'Frost Ridge', sub: 'the thaw line · Lv 6–10' }) &&
-    whereWords(m, 'ember', 16).sub === 'the volcano flanks · Lv 76–80' && whereWords(m, 'town', 0).title === 'Brotown' && /safe/.test(whereWords(m, 'commons', 0).sub),
+    whereWords(m, 'ember', 16).sub === 'the volcano flanks · Lv 76–80' && whereWords(m, 'town', 0).title === 'BroTown' && /safe/.test(whereWords(m, 'commons', 0).sub),
     [whereWords(m, 'frost', 2), whereWords(m, 'ember', 16)]);
   /* v2.3.3057: the world map's level bands and Bro Pond */
   ok(`...each land's level bands: a tick where every tier of five levels begins, from the commons' edge outward (${m.lands[0].ticks.length / 2} a land), the spoke ${m.spokeHalf * 2} px wide; and Bro Pond named`,
