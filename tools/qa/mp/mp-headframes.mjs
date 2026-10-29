@@ -17,6 +17,8 @@
  *   4b. a peer in sight, in pieces of their own colours, jogging the eight
  *      facings and rolling: every other bro's and townsperson's pieces are
  *      counted too, in every phase (headFrames.js othersFrameTick);
+ *   4c. the graphics lost and given back (WEBGL_lose_context, a phone's
+ *      memory purge), the pieces counted through the restore;
  *   5. a fight in the Flame Fields: the greatsword's swings and the bow's
  *      shots on the nearest monster (the stand-ins take over the figure);
  *   6. no page errors.
@@ -25,7 +27,7 @@
  *
  *   node tools/qa/mp/run.mjs headframes
  *   BT_HF_QUERY=x   another URL switch on the page (e.g. lookpalette=0)
- *   BT_HF_ONLY=fight  the fight alone (and BT_HF_ROUNDS=n rounds, 3)
+ *   BT_HF_ONLY=fight|peer|ctx  that phase alone (BT_HF_ROUNDS=n the fight's rounds, 3)
  */
 import * as H from './harness.mjs';
 
@@ -128,7 +130,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (c) { c.px = px; c.ot = ot; }
     phases.push({ name, c });
     const top = c ? Object.entries(c.byWhy).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k} x${v}`).join(', ') : '?';
-    console.log(`    [${name}] ${c ? c.frames : '?'} frames, ${c ? c.missed : '?'} piece-frames missing${c && c.missed ? ': ' + top : ''}`);
+    console.log(`    [${name}] ${c ? c.frames : '?'} frames, ${c ? c.missed : '?'} piece-frames missing${c && c.missed ? ': ' + top : ''}${c && c.bodyGone ? `; ${c.bodyGone} frames with no bro drawn ${JSON.stringify(c.goneBy)}` : ''}`);
+    if (c && c.bodyGone) for (const l of c.goneLog.slice(0, 6)) console.log('      gone: ' + JSON.stringify(l));
     if (c && c.missed) for (const l of c.log.slice(-8)) console.log('      ' + JSON.stringify(l));
     if (ot) console.log(`      others (${ot.figures} peers and townsfolk): ${ot.counted} piece-frames, ${ot.missed} missing${ot.missed ? ' ' + JSON.stringify(ot.byWhy) : ''}`);
     if (ot && ot.missed) for (const l of ot.log.slice(-8)) console.log('      ' + JSON.stringify(l));
@@ -197,10 +200,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     }
 
+    /* the graphics lost and given back mid-play (WEBGL_lose_context), as a
+       phone's memory purge does: every piece counted through the restore,
+       standing and jogging the eight facings after it */
+    if (!ONLY || ONLY === 'ctx') {
+      const lost = await P.page.evaluate(() => {
+        const c = document.querySelector('canvas');
+        const gl = c && (c.getContext('webgl2') || c.getContext('webgl'));
+        const ext = gl && gl.getExtension('WEBGL_lose_context');
+        if (!ext) return false;
+        window.__hfCtx = ext;
+        ext.loseContext();
+        setTimeout(() => { try { ext.restoreContext(); } catch (e) { /* gone */ } }, 800);
+        return true;
+      }).catch(() => false);
+      const back = await phase('graphics lost and given back', async () => {
+        await P.page.waitForTimeout(6000);
+        for (const keys of Object.values(FACINGS)) await hold(P, keys, 900);
+        await P.page.waitForTimeout(1500);
+      });
+      rec.ok(`the graphics were lost and given back (guard: ${lost ? 'lost' : 'NOT LOST'}, ${back ? back.frames : 0} frames drawn after)`, !!lost && !!back && back.frames > 8, { lost });
+    }
+
     /* a peer in sight, in pieces of their own colours (each facing its own
        picture, not the look palette's numbers): jogging round you through
        the eight facings, rolling and turning */
-    {
+    if (!ONLY || ONLY === 'peer') {
       const Q = await H.newPlayer(browser, {
         name: 'Headpeer', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel',
         init: `(${INIT.toString()})(${JSON.stringify(PEER_LOOK)});`,
@@ -230,26 +255,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
 
-    /* armed, then to the Flame Fields' monsters */
-    const armed = await H.armWorker(P, wsPort, me, ['bow']).catch(() => []);
-    const swordHeld = () => H.readState(P, (S) => !!(S.rpg.weapon && S.rpg.weapon.type === 'greatsword'));
-    for (let t = 0; t < 3 && !(await swordHeld()); t++) {
-      await P.page.evaluate(() => { const R = window._gameState.current.rpg; if (R && !(R.weapon && R.weapon.type === 'greatsword')) R.weapon = null; });
-      await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
-      for (let i = 0; i < 40 && !(await swordHeld()); i++) await P.page.waitForTimeout(250);
-    }
-    const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
-    const at = WHEEL_SPAWNS.ember && WHEEL_SPAWNS.ember.points[0];
-    if (at) await H.glideTo(P, at[0], at[1] + 40).catch(() => null);
-    await P.page.waitForTimeout(2500);
-    let hits = 0;
-    const fc = await phase('a fight: sword swings and bow shots', async () => {
-      for (let r = 0; r < ROUNDS; r++) {
-        hits += await fight(P, 'Digit1', 'melee', 2500).catch(() => 0);
-        hits += await fight(P, 'Digit2', 'ranged', 2500).catch(() => 0);
+    if (!ONLY || ONLY === 'fight') {
+      /* armed, then to the Flame Fields' monsters */
+      const armed = await H.armWorker(P, wsPort, me, ['bow']).catch(() => []);
+      const swordHeld = () => H.readState(P, (S) => !!(S.rpg.weapon && S.rpg.weapon.type === 'greatsword'));
+      for (let t = 0; t < 3 && !(await swordHeld()); t++) {
+        await P.page.evaluate(() => { const R = window._gameState.current.rpg; if (R && !(R.weapon && R.weapon.type === 'greatsword')) R.weapon = null; });
+        await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
+        for (let i = 0; i < 40 && !(await swordHeld()); i++) await P.page.waitForTimeout(250);
       }
-    });
-    rec.ok(`the fight happened (guard: ${hits} rounds swung or shot, ${armed.join(', ') || 'no bow'}${(await swordHeld()) ? ', greatsword' : ''})`, hits > 0, { hits, armed });
+      const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
+      const at = WHEEL_SPAWNS.ember && WHEEL_SPAWNS.ember.points[0];
+      if (at) await H.glideTo(P, at[0], at[1] + 40).catch(() => null);
+      await P.page.waitForTimeout(2500);
+      let hits = 0;
+      await phase('a fight: sword swings and bow shots', async () => {
+        for (let r = 0; r < ROUNDS; r++) {
+          hits += await fight(P, 'Digit1', 'melee', 2500).catch(() => 0);
+          hits += await fight(P, 'Digit2', 'ranged', 2500).catch(() => 0);
+        }
+      });
+      rec.ok(`the fight happened (guard: ${hits} rounds swung or shot, ${armed.join(', ') || 'no bow'}${(await swordHeld()) ? ', greatsword' : ''})`, hits > 0, { hits, armed });
+
+    }
 
     for (const { name, c } of phases) {
       rec.ok(`${name}: every worn head piece drawn in every frame (${c ? c.frames : '?'} frames, ${c ? c.counted : '?'} piece-frames, ${c ? c.missed : '?'} missing${c && c.bodyGone ? `, ${c.bodyGone} with no bro drawn` : ''})`,
@@ -259,7 +287,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${name}: and on the screen, every frame (${c && c.px ? c.px.looked : '?'} piece-frames read back, ${c && c.px ? c.px.drops : '?'} under a quarter of the piece's usual pixels)`,
         !!c && !!c.px && c.px.looked > 8 && c.px.drops === 0, c && c.px ? { byCat: c.px.byCat, log: c.px.log.slice(-10) } : null);
     }
-    void fc;
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 6));
   } finally {
     stop = true;

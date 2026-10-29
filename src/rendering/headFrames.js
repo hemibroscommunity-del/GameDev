@@ -32,7 +32,7 @@ const PIECES = [
   ['eyewear', '_eyewearSprite', 'eyewear'],
   ['eyestyle', '_eyeStyleSprite', 'eyestyle'],
 ];
-const _hf = { frames: 0, counted: 0, missed: 0, byWhy: Object.create(null), log: [], bodyGone: 0 };
+const _hf = { frames: 0, counted: 0, missed: 0, byWhy: Object.create(null), log: [], bodyGone: 0, goneBy: Object.create(null), goneLog: [] };
 
 /* why `sp` draws nothing this frame, or null when it draws */
 function whyNotDrawn(sp, stage) {
@@ -68,7 +68,14 @@ export function headFrameTick(entityRenderer, effectsRenderer, stage, worn) {
   const standIn = effectsRenderer && effectsRenderer.skillTraits;
   /* the bro himself drawn? a walking body, or a stand-in carrying his pieces */
   const standInOn = !!standIn && PIECES.some(([, , k]) => standIn[k] && standIn[k].visible);
-  if (!(body && body.visible && !whyNotDrawn(body, stage)) && !standInOn) { _hf.bodyGone++; return; }
+  if (!(body && body.visible && !whyNotDrawn(body, stage)) && !standInOn) {
+    /* the whole bro not drawn: by facing (P1's report: gone facing N/NW/W/SW) */
+    _hf.bodyGone++;
+    const face = (at.mirror ? 'm-' : '') + at.dir;
+    _hf.goneBy[face] = (_hf.goneBy[face] || 0) + 1;
+    if (_hf.goneLog.length < 20) _hf.goneLog.push({ f: _hf.frames, pose: at.pose, dir: at.dir, mirror: at.mirror, frame: at.frameIdx, body: body ? whyNotDrawn(body, stage) : 'none' });
+    return;
+  }
   for (const [cat, field, sk] of PIECES) {
     const id = worn[cat];
     if (!id || id === 'none') continue;
@@ -134,8 +141,8 @@ if (HEAD_FRAMES_ON && typeof window !== 'undefined') {
     return out;
   };
   window.__btHeadFrames = (reset) => {
-    const out = { on: true, frames: _hf.frames, counted: _hf.counted, missed: _hf.missed, bodyGone: _hf.bodyGone, byWhy: { ..._hf.byWhy }, log: _hf.log.slice() };
-    if (reset) { _hf.frames = 0; _hf.counted = 0; _hf.missed = 0; _hf.bodyGone = 0; _hf.byWhy = Object.create(null); _hf.log = []; }
+    const out = { on: true, frames: _hf.frames, counted: _hf.counted, missed: _hf.missed, bodyGone: _hf.bodyGone, goneBy: { ..._hf.goneBy }, goneLog: _hf.goneLog.slice(), byWhy: { ..._hf.byWhy }, log: _hf.log.slice() };
+    if (reset) { _hf.frames = 0; _hf.counted = 0; _hf.missed = 0; _hf.bodyGone = 0; _hf.goneBy = Object.create(null); _hf.goneLog = []; _hf.byWhy = Object.create(null); _hf.log = []; }
     return out;
   };
 }
