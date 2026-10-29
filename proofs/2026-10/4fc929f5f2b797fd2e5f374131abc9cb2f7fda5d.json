@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4fc929f5f2b797fd2e5f374131abc9cb2f7fda5d",
+  "tree": "0a37a93966f07485c83428b79b6497f4fc38b357",
+  "committedAt": "2026-10-28T18:33:25-07:00",
+  "subject": "Loot drop: a beam of light comes down into the glow as your pile lands (v2.3.3805) (#1270)",
+  "files": 7126,
+  "bytes": 817800846,
+  "listingSha256": "3acd5a3a3fd5fbc522abb16121a2d94de840e75cafaec451f085682e1b097ea8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
