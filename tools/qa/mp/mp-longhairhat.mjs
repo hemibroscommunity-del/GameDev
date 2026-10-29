@@ -191,6 +191,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const CTX_ROUNDS = process.env.LH_CTX ? Math.max(1, Math.min(4, +process.env.LH_CTX || 1)) : 0;
       const texCounts = [];
       for (let round = 1; round <= CTX_ROUNDS; round++) {
+        /* where the bro stands and how his body is drawn, before the loss and
+           after it (a re-join that moved him would leave the pictures' crop
+           on the empty spot: the pixel count of the whole bro says which) */
+        const where = () => P.page.evaluate(() => {
+          const S = window._gameState.current, R = window._pixiRenderer, d = R && R.playerDisplayRaw && R.playerDisplayRaw();
+          const b = d && d._body, bb = b && b.getBounds();
+          return { x: Math.round(S.player.x), y: Math.round(S.player.y), zone: S.currentZone, shown: !!(d && d.visible && b && b.visible),
+            tex: b && b.texture ? [b.texture.width, b.texture.height, !!b.texture.source.destroyed] : null, box: bb ? [Math.round(bb.minX), Math.round(bb.minY), Math.round(bb.width), Math.round(bb.height)] : null };
+        }).catch((e) => ({ err: String(e) }));
+        const wasAt = await where();
         const lost = await P.page.evaluate(() => {
           const c = document.querySelector('canvas');
           const gl = c && (c.getContext('webgl2') || c.getContext('webgl'));
@@ -239,6 +249,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (hc) for (const l of hc.log.slice(-6)) console.log('      miss: ' + JSON.stringify(l));
         if (hc) for (const l of (hc.goneLog || []).slice(0, 4)) console.log('      gone: ' + JSON.stringify(l));
         console.log('      look palette: ' + JSON.stringify(diag && diag.pal).slice(0, 400));
+        console.log(`      the bro before the loss ${JSON.stringify(wasAt)}, after ${JSON.stringify(await where())}`);
         const after = [];
         for (const hat of HATS) {
           await P.page.evaluate((h) => window.__btSetHeadwear(h), hat);
