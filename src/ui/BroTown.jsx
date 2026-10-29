@@ -10394,6 +10394,17 @@ export var BroTown = function BroTown(_ref0) {
     var slot = S.rpg && S.rpg.activeSlot;
     if (!S.rpg || slot === 'ranged' || slot === 'staff' || S._shieldUp) return false;
     var hit = monsterAtCss(cssX, cssY);
+    /* ═══ v2.3.3763: A CLICK ON A PLAYER MEANS THE PLAYER ═══
+       With no monster under the pointer this promoted the game's own monster
+       lock and noted it as the press's lock, and the click that ends the
+       press returns early on that (onClick, `_deskPressLock`) -- before its
+       player check.  So a computer clicking another player in No man's land
+       with a monster near lunged at the monster and never got the "Attack?"
+       window (the soak's mp-longplay, 0 of 2), and outside it never opened
+       their card.  A player under the pointer, and no monster: no lunge, no
+       lock taken; the press swings as before v2.3.3694 and the click asks
+       about them (mp-nomansland). */
+    if (!hit && otherPlayerAtCss(cssX, cssY)) return false;
     var lt = S.lockedTarget;
     if (hit) {
       if (!lt || lt.ref !== hit) S.lockedTarget = { type: 'monster', id: hit.id, ref: hit, src: 'tap' };
