@@ -47,7 +47,7 @@ function dblTapOn() {
 export function interactKind(S, opts) {
   if (!S) return null;
   if (opts && opts.npcFirst && S._nearNpc) return 'talk';   /* the right stick's order (runInteract) */
-  if (questWaits(S) && !doorPromptUp(S)) return 'talk';   /* v2.3.3583: E's order too (runInteract); v2.3.3834: not over the door's prompt */
+  if (talkBeforeDoor(S)) return 'talk';   /* v2.3.3583: E's order too (runInteract); v2.3.3834: not over the door's prompt; v2.3.3868: any townsperson in range, over a door */
   if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) return 'door';
   if (S._nearHouse) return 'sleep';
   if (S._nearWorkshop || S._nearWheelDoor || S._nearPetHouse) return 'door';
@@ -87,6 +87,31 @@ function questWaits(S) {
    always talks.  The right stick's `npcFirst` order on a phone is unchanged. */
 function doorPromptUp(S) {
   return !!(S && (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)));
+}
+
+/* ═══ v2.3.3868: E TALKS TO THE TOWNSPERSON BESIDE YOU ═══
+   The owner, playtesting on a computer: "the instructions say 'E' is
+   interact. When you're next to mayor bro (intending to accept the first
+   quest by 'interacting') you would actually open the door to the building
+   right next to him (town hall)."  v2.3.3834 gave the door E wherever its
+   prompt was up, and Mayor Bro stands on the Town Hall's steps, so beside
+   him E opened the hall.  Now a townsperson in talk range (90 px; any of
+   them, a quest or not: E is the computer's tap, and a tap on a person
+   talks) comes before a door's prompt, and on a computer the door's Enter
+   button stands aside meanwhile (BroTown deskTalkPick), so the button never
+   says one thing while E does another (v2.3.3834's judge-pass complaint).
+   The door is E's only with nobody in talk range: a door's reach (140 px,
+   WHEEL_DOOR_REACH) is wider than a townsperson's, so every door has
+   doorstep out of everyone's range -- a step aside from the Mayor, and
+   the Town Hall's button is back.  Not "the nearer of the two": the Mayor
+   stands in the hall's doorway, nearer than its foot from anywhere on the
+   doorstep, so the nearer rule came to the same thing with a rule a player
+   cannot see.  No door's prompt: as before, a townsperson with a quest for
+   you comes first (questWaits, v2.3.3583), and one without waits behind a
+   bed, a dungeon's mouth or a resource. */
+export function talkBeforeDoor(S) {
+  if (!S || !S._nearNpc) return false;
+  return doorPromptUp(S) ? true : questWaits(S);
 }
 
 export function setupDesktopControls(S, deps) {
@@ -166,9 +191,10 @@ export function setupDesktopControls(S, deps) {
          has its own Enter button, and Ace and Diego stand by theirs, so door
          first would never let the stick's tap reach them */
       if (opts && opts.npcFirst && S._nearNpc && runTalk()) return true;
-      /* v2.3.3583: and E for a townsperson with a quest for you (questWaits) */
-      /* v2.3.3834: ...unless the door's prompt is up: then E is the door, as it says */
-      if (questWaits(S) && !doorPromptUp(S) && runTalk()) return true;
+      /* v2.3.3583: and E for a townsperson with a quest for you (questWaits);
+         v2.3.3834: ...unless the door's prompt is up; v2.3.3868: any
+         townsperson in range first, then the door (talkBeforeDoor) */
+      if (talkBeforeDoor(S) && runTalk()) return true;   /* v2.3.3868: a townsperson in range before a door */
       /* 1. Building (v2.3.3066: or a Wheel hall's door) */
       if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) {
         _desktopEnterBuilding();

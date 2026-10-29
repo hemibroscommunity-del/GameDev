@@ -33,7 +33,8 @@ A dizzy swirl turns over your head and the HUD shows a Wobbly chip.
 
 **The burn.** The same ticks (three, a second apart, 20% of the hit each). The
 flames at your feet are half again as tall, a glow runs up your body, and
-flames lick up your front.
+flames lick up your front. (v2.3.3878: those drawn flames are now the burning
+building's own fire on you, the owner's ask: docs/specs/burn-fire.md.)
 
 ## Who decides what
 

@@ -61,7 +61,7 @@
    "under": 3
   }
  ],
- "code": "03bfa17eb7ff1636",
+ "code": "7cde4234f0f2c21e",
  "codeFiles": [
   "src/rendering/playerSkins.js",
   "src/rendering/garmentConfine.js",
@@ -2211,17 +2211,17 @@
    "frames": 14,
    "w": 1104,
    "h": 128,
-   "tableRows": 31,
-   "entries": 17105,
+   "tableRows": 30,
+   "entries": 16307,
    "ends": [
-    6138,
-    13037,
-    15561,
-    17105,
-    17105,
-    17105,
-    17105,
-    17105
+    5340,
+    12239,
+    14763,
+    16307,
+    16307,
+    16307,
+    16307,
+    16307
    ],
    "cells": [
     [
@@ -2351,13 +2351,13 @@
      0
     ]
    ],
-   "split": 2,
+   "split": 1210,
    "artFiles": [
     "public/sprites/player/mine-south.png",
     "public/sprites/player/mine-south.webp"
    ],
    "art": "1ba2c5054f757d17",
-   "bytes": 139876
+   "bytes": 132327
   },
   "fish-south": {
    "ds": 1,

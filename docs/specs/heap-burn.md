@@ -64,7 +64,9 @@ worker knows nothing of it), but damage is the worker's. So the phone says so:
   your feet, sized with you, in the effects' overlay layer. Made the first time
   you burn and kept; its sprites are pooled, all from the campfire's atlas
   (nothing loaded or made); shown and hidden by `visible` only as you step in
-  or out.
+  or out. v2.3.3878: a fire goblin's burn lights it too, another player
+  burning gets their own, and its sparks and smoke trail behind a runner
+  (docs/specs/burn-fire.md).
 - **The worker** (`server/src/heapburn.js` `_handleHeapBurn`): it burns the
   SENDER only, through the one door (`hits.js` row `heap`: flame, nothing to
   block, roll or hide behind, no shelter), and only:
