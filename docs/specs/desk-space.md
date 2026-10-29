@@ -90,6 +90,19 @@ strip. While one is up, on a computer, they step aside; E and Z still work.
 
 ![a trade request, before and after: the skateboard button on its edge](desk-space/strip-before-after.png)
 
+## 8. The room picture behind a building's menu (v2.3.3793)
+
+The menu starts 62% down the room picture, `--room-stage` in `game.css`, which
+was written for the phone's 360 px card. On a computer the card is 470 px, so
+the stage is 194.3 px there (41.33% of 470), still at most 22vh on a short
+window; at 148.8 px the menu began 47% down the room and covered its sign. The
+Blacksmith keeps its slim band. Every building window checked at 1440 x 900 and
+1280 x 720: nothing clipped, nothing over the top bar or the minimap, the ✕ in
+its corner.
+
+![the Bank, before and after](desk-space/room-stage-bank.png)
+![the Cookhouse, before and after](desk-space/room-stage-cook.png)
+
 ## Checks
 
 - `mp-deskwide`: the strip's grey, its arrow at the middle, I on it, a click
