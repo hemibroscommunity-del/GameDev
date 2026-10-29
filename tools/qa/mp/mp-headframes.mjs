@@ -240,7 +240,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
        the eight facings, rolling and turning */
     if (!ONLY || ONLY === 'peer') {
       const Q = await H.newPlayer(browser, {
-        name: 'Headpeer', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel',
+        /* guest: its own identity (two tabs share one by design, mp-crowd) */
+        name: 'Headpeer', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel', guest: true,
         init: `(${INIT.toString()})(${JSON.stringify(PEER_LOOK)});`,
       });
       const qAsked = [];
