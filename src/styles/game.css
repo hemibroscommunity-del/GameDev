@@ -5822,6 +5822,36 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
      scrolling inside as before. */
   html.bt-desk-wide .bt-name-modal > .bt-cc-shell{max-width:min(100%, calc(100vh * 390 / 715 * 1.4))}
   html.bt-desk-wide .bt-cc-cols>.bt-cc-panel{zoom:1.3;max-height:100%}
+  /* ═══ v2.3.3836: THE SPLASH AND THE LOADING SCREEN, SIDEWAYS ═══
+     The owner, 2026-10-29: "The loading screen (ocean scene) and the splash
+     page both look like they have effects that only suit the portrait mode."
+     Both pictures are upright (the splash 720 x 1096, the beach 400 x 736).
+     THE SPLASH (and the creator, the same backdrop): the rule above held its
+     <video> to the column too, so the column showed the whole painting small
+     while the window behind it (.bt-name-modal's own bg.webp, cover) showed
+     it again twice the size -- two hard seams and two of every castle.  The
+     painting is ONE picture across the window now, the dark castle left, the
+     golden right, the river under the buttons, and the gold motes drift
+     across all of it; the logo, the buttons and the creator keep the column.
+     THE LOADING SCREEN: the beach keeps its whole frame (its LOADING bar is
+     painted into it, so `contain` stays: v2.3.2199), over a blurred, dimmed
+     copy of its own first frame instead of black bars, standing clear of the
+     window's foot so the server's words (.bt-intro-status) sit under it
+     rather than across the painted bar.  A phone, upright or sideways, keeps
+     both screens as they were (this block is a computer's). */
+  html.bt-desk-wide .bt-name-modal > .bt-cc-bgvideo,
+  html.bt-desk-wide .bt-name-modal > .bt-login-motes{max-width:none;margin-left:0;margin-right:0}
+  /* ...and the haze behind the logo (.bt-login-title::before) reaches clear
+     to its own box's edge: drawn to the box's far corners it was still ~7%
+     dark at its left and right sides, two faint vertical lines either side of
+     the logo that a phone never shows (its sides are off the screen).  The
+     same falloff, ending at the box's sides. */
+  html.bt-desk-wide .bt-login-title::before{background:radial-gradient(ellipse closest-side at center,
+    rgba(6,10,20,.60) 0%,rgba(6,10,20,.40) 44%,rgba(6,10,20,.15) 80%,transparent 100%)}
+  html.bt-desk-wide .bt-intro::before{content:"";position:absolute;top:-48px;left:-48px;right:-48px;bottom:-48px;pointer-events:none;
+    background:url('/intro/loading-ashore-poster.webp') center/cover no-repeat;filter:blur(22px) brightness(.45) saturate(1.1)}
+  html.bt-desk-wide .bt-intro video{background:transparent;height:calc(100% - 52px)}   /* a height, not `bottom`: the base rule's height:100% would win over it */
+  html.bt-desk-wide .bt-intro .bt-intro-status{bottom:15px}
   /* THE CONTROLS' COLUMN at the screen's far edge (KeyboardHintsPanel.jsx
      DeskKeysList, from BottomDashboard): the screen's height, its keys in
      groups; folded, the ⌨ alone.  Its width and its edge are set inline from
