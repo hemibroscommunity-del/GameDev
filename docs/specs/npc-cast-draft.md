@@ -123,6 +123,17 @@ are the nearest; say if any is too near:
 2. The three locals (Old Man Reel, Bean, Tourist Terry): keep all three?
 3. Should any of them give quests later, or is chatter enough for now?
 
-Nothing is built until you say. Once you pick, the looks are baked with
-`tools/qa/npc-looks.mjs --bake` and the portraits with
-`tools/qa/nft_portraits.py`, and P5 puts them on their spots with their moves.
+Nothing is built until you say. Once you pick, what each one needs depends on
+whether P5's live townsfolk (v2.3.3809) has landed:
+
+- **With it** (townsfolk drawn live through the look palette from their
+  `NPC_LOOKS` row): **no baked sheets at all**. Each newcomer is a row in
+  `NPC_LOOKS`, his portrait (`tools/qa/nft_portraits.py`), his spot by his door,
+  and his lines. No new pictures load, and his colours cost a palette row, as a
+  player's do.
+- **Without it**: his standing picture (or a walker's strips) is baked with
+  `tools/qa/npc-looks.mjs --bake` into `public/sprites/npc/`, plus the same
+  portrait, spot and lines.
+
+The photographs above are `npc-looks.mjs` previews (nothing written to
+`public/`).
