@@ -52,9 +52,21 @@ start, and the beds come up on their next look. Measured: the town's music at
 **The same after a reconnect:** the veil closes the gate (3 s after a real
 drop) and the reveal opens it.
 
-**The off-ramp:** `?soundgate=0` turns it off for one phone (the game as it
-was). `window.__btSoundGate()` is the QA's view: open or not, why, when,
-and how many sounds it dropped.
+**The off-ramps:**
+
+- `?soundgate=0` turns it off for one phone (the game as it was).
+- The Test panel's Memory savers row, **"Sound waits for the world"**
+  (`off_soundgate`, `game/clientOff.js`), turns it off for every phone, live,
+  with no deploy or reload. A closed gate opens at once.
+
+**The failsafe:** a gate shut for the loading screen's reasons (the class or
+the bro's veil) for more than 60 s opens anyway and is counted
+(`__btSoundGate().failsafe`). A loading screen stuck by a fault must not mean
+a silent game. A reconnect's veil is never cut short: silence while the
+server is away is right.
+
+`window.__btSoundGate()` is the QA's view: open or not, why, when, how many
+sounds it dropped, and how often the failsafe fired.
 
 ## Not covered
 
@@ -71,4 +83,7 @@ and how many sounds it dropped.
   - the town's sound within 2 s of the reveal;
   - a real reconnect (the socket refused for six seconds): none under the
     veil, and the town's music back after.
-- `sound-cues` §21 (the gate's wiring).
+  - the Test panel's switch opens a closed gate live;
+  - the failsafe fires on a stuck loading class.
+- `sound-cues` §21 (the gate's wiring, the switch, the failsafe);
+  `client-off` 3a-3b (the row).

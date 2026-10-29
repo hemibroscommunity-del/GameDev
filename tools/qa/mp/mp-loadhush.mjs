@@ -21,7 +21,11 @@
  *   4. A RECONNECT: the socket dropped and back (the world veiled while it
  *      is away): no world sound starts while the veil is up, and the town's
  *      sound is there after;
- *   5. no page errors.
+ *   5. the Test panel's live switch ("Sound waits for the world",
+ *      off_soundgate): off opens a closed gate at once, on again closes it;
+ *   6. the failsafe: a loading class stuck past GATE_FAILSAFE_MS (3 s here)
+ *      opens the gate anyway, counted;
+ *   7. no page errors.
  *
  *   node tools/qa/mp/run.mjs loadhush
  */
@@ -153,7 +157,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`4. a reconnect: the gate closed under the veil (${shut ? ((closedAt - t0) / 1000).toFixed(1) + ' s after the drop' : 'never'}), ${during.length} sound start(s) under it, open again ${back ? ((openAt - closedAt) / 1000).toFixed(1) + ' s later' : 'never'}, the town's sound back (${backSound[0] ? backSound[0].key || backSound[0].kind : 'none'})`,
       !!shut && !!back && openAt > closedAt && during.length === 0 && backSound.length > 0, { during: during.slice(0, 6), gate: r2.gate, backSound: backSound.slice(0, 4) });
 
-    rec.ok(`5. no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));
+    /* 5. the Test panel's live switch (off_soundgate, game/clientOff.js): a
+       closed gate opens at once, and on again it closes */
+    await P.page.evaluate(() => document.body.classList.add('bt-intro-up'));
+    const shut5 = await H.waitFor(P, () => window.__btSoundGate(), (v) => !v.open && v.why === 'loading', { timeout: 8000, label: 'the gate shut by a loading class' }).catch(() => null);
+    await H.liveFlag(wsPort, 'off_soundgate', true);
+    const opened5 = await H.waitFor(P, () => window.__btSoundGate(), (v) => v.open && !v.on, { timeout: 15000, label: 'the switch opening it' }).catch(() => null);
+    await H.liveFlag(wsPort, 'off_soundgate', null);
+    const again5 = await H.waitFor(P, () => window.__btSoundGate(), (v) => v.on && !v.open, { timeout: 15000, label: 'on again: shut again' }).catch(() => null);
+    await P.page.evaluate(() => document.body.classList.remove('bt-intro-up'));
+    rec.ok(`5. the Test panel's "Sound waits for the world" off: a closed gate opens at once (${opened5 ? 'yes' : 'no'}); on again, it closes again (${again5 ? 'yes' : 'no'})`,
+      !!shut5 && !!opened5 && !!again5, { shut5, opened5, again5 });
+
+    /* 6. the failsafe: a loading class left behind (the wait shortened to 3 s
+       for the test) opens the gate anyway, counted */
+    await H.waitFor(P, () => window.__btSoundGate(), (v) => v.open, { timeout: 8000, label: 'open before the failsafe' }).catch(() => null);
+    const f0 = await P.page.evaluate(() => { window.BT_AUDIO.GATE_FAILSAFE_MS = 3000; document.body.classList.add('bt-intro-up'); return window.__btSoundGate().failsafe; });
+    const fired = await H.waitFor(P, () => window.__btSoundGate(), (v) => v.open && v.failsafe > f0, { timeout: 15000, label: 'the failsafe' }).catch(() => null);
+    const after6 = await P.page.evaluate(() => { document.body.classList.remove('bt-intro-up'); window.BT_AUDIO.GATE_FAILSAFE_MS = 60000; return window.__btSoundGate(); });
+    rec.ok(`6. the failsafe: a loading class stuck past its wait opens the gate anyway and is counted (failsafe ${fired ? fired.failsafe : f0})`,
+      !!fired && after6.open, { fired, after6 });
+
+    rec.ok(`7. no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));
   } finally {
     await P.ctx.close().catch(() => {});
   }

@@ -4660,14 +4660,23 @@ BT_AUDIO._noteStep = function (asked, played, key, i) {
        waterAmbience.js); the watchdog does not fight the silence.
    It opens two frames after the last veil goes -- the first world frame
    painted -- and then the music and the waiting loops start, with their own
-   fades.  `?soundgate=0` turns it off for one phone (the game as before).
-   window.__btSoundGate is the QA's view. */
+   fades.  `?soundgate=0` turns it off for one phone (the game as before);
+   the Test panel's Memory savers row ("Sound waits for the world",
+   game/clientOff.js `soundgate`) turns it off for every phone, live, and a
+   closed gate opens at once.
+   A FAILSAFE: a gate shut for the loading screen's reasons longer than
+   GATE_FAILSAFE_MS (a class or a veil left behind by a fault) opens anyway
+   and is counted (`failsafe`); the loading reasons are then not heard again
+   until they have gone.  A reconnect's veil is not cut short: silence while
+   the server is away is right.  window.__btSoundGate is the QA's view. */
 BT_AUDIO.SOUND_GATE = true;
 try {
   if (typeof location !== 'undefined' && /[?&]soundgate=(0|off|false|no)(?:&|$)/i.test(location.search || '')) BT_AUDIO.SOUND_GATE = false;
 } catch (e) { /* on */ }
 BT_AUDIO.GATE_TAP_MS = 1500;
-BT_AUDIO._soundGate = { closed: false, why: null, closedAt: 0, openAt: 0, closes: 0, opens: 0, dropped: 0, pending: false };
+BT_AUDIO.GATE_FAILSAFE_MS = 60000;
+BT_AUDIO._soundGate = { closed: false, why: null, closedAt: 0, openAt: 0, closes: 0, opens: 0, dropped: 0, pending: false,
+  failsafe: 0, loadingSince: 0, loadingForced: false, failTimer: null };
 BT_AUDIO._gateLoops = Object.create(null);
 BT_AUDIO._gateTapAt = 0;
 BT_AUDIO.soundGateClosed = function () {
@@ -4681,18 +4690,46 @@ BT_AUDIO._gatePasses = function (key) {
 /* why the world is hidden, or null */
 BT_AUDIO._gateWhy = function () {
   if (!this.SOUND_GATE || typeof document === 'undefined' || !document.body) return null;
-  var b = document.body;
-  if (b.classList && b.classList.contains('bt-intro-up')) return 'loading';
+  var b = document.body, loading = !!(b.classList && b.classList.contains('bt-intro-up')), net = false;
   for (var c = b.firstElementChild; c; c = c.nextElementSibling) {
     var cl = c.classList;
     if (!cl) continue;
-    if (cl.contains('bt-connect-veil')) return 'reconnecting';
-    if (cl.contains('bt-avatar-hold')) return 'loading';
+    if (cl.contains('bt-connect-veil')) net = true;
+    if (cl.contains('bt-avatar-hold')) loading = true;
   }
+  var g = this._soundGate;
+  /* the failsafe (above): once fired, the loading reasons are not heard
+     until they have gone */
+  if (!loading) g.loadingForced = false;
+  if (net) return 'reconnecting';
+  if (loading && !g.loadingForced) return 'loading';
   return null;
+};
+/* the failsafe's watch: the loading reasons' first sight, and a check when
+   GATE_FAILSAFE_MS has passed */
+BT_AUDIO._gateFailsafe = function (why) {
+  var g = this._soundGate, self = this;
+  if (why !== 'loading') {
+    g.loadingSince = 0;
+    if (g.failTimer) { clearTimeout(g.failTimer); g.failTimer = null; }
+    return;
+  }
+  if (!g.loadingSince) g.loadingSince = Date.now();
+  if (g.failTimer) return;
+  g.failTimer = setTimeout(function () {
+    g.failTimer = null;
+    if (!g.closed || g.why !== 'loading' || !g.loadingSince) return;
+    if (Date.now() - g.loadingSince < self.GATE_FAILSAFE_MS) { self._gateFailsafe('loading'); return; }
+    g.loadingForced = true;
+    g.loadingSince = 0;
+    g.failsafe++;
+    try { if (typeof window !== 'undefined' && window.debug && window.debug.pushLog) window.debug.pushLog('warn', ['BT_AUDIO sound gate shut for the loading screen over ' + self.GATE_FAILSAFE_MS + ' ms: opened anyway']); } catch (e) { /* log only */ }
+    self._gateEval();
+  }, Math.max(50, this.GATE_FAILSAFE_MS - (Date.now() - g.loadingSince)));
 };
 BT_AUDIO._gateEval = function () {
   var g = this._soundGate, why = this._gateWhy(), self = this;
+  this._gateFailsafe(why);
   if (why) {
     g.pending = false;
     g.why = why;
@@ -4752,7 +4789,7 @@ if (typeof window !== 'undefined') {
   window.__btSoundGate = function () {
     var g = BT_AUDIO._soundGate;
     return { on: !!BT_AUDIO.SOUND_GATE, open: !g.closed, why: g.why, closedAt: g.closedAt, openAt: g.openAt,
-      closes: g.closes, opens: g.opens, dropped: g.dropped, loopsWaiting: Object.keys(BT_AUDIO._gateLoops) };
+      closes: g.closes, opens: g.opens, dropped: g.dropped, failsafe: g.failsafe, loopsWaiting: Object.keys(BT_AUDIO._gateLoops) };
   };
 }
 /* v2.3.1422: managed looping SFX (sizzle while cooking, reel while
