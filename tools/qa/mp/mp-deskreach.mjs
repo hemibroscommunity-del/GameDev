@@ -224,7 +224,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         .then(() => true).catch(() => false);
       rec.ok('...and a mouse click on Done closes it', edClosed);
     }
-    await tab('Species');   /* back to the tab ENTER was measured on (v2.3.3526: the creator opened on Skin; v2.3.3589: on Species) */
+    await tab('Bro type');   /* back to the tab ENTER was measured on (v2.3.3526: the creator opened on Skin; v2.3.3589: on Species; v2.3.3772: its words are "Bro type") */
     await L.page.waitForTimeout(500);
 
     await L.page.fill('input.bt-cc-name', 'Laptop');

@@ -339,6 +339,10 @@ export const liveopsMethods = {
       /* v2.3.3260: the one formula's switch re-sizes every bar and every live
          monster's hit at once (oneformula.js _oneFormulaFlagChanged) */
       if ((name === 'oneformula' || name === 'onelevel' /* v2.3.3538: the level, so the bar, changes */) && typeof this._oneFormulaFlagChanged === 'function') this._oneFormulaFlagChanged();
+      /* v2.3.3732: the message diet's two switches reach every phone at once (movepath.js) */
+      if ((name === 'movepath' || name === 'pathall') && typeof this._movePathFlagChanged === 'function') this._movePathFlagChanged();
+      /* v2.3.3755: a memory saver turned off or on for every phone (clientoff.js) */
+      if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();
       return json({ ok: true, flags });
     }
     if (request.method === 'DELETE' && path === '/flags') {
@@ -349,6 +353,8 @@ export const liveopsMethods = {
         await this.state.storage.put('liveflags', flags);
         await this._adminLog({ op: 'flag_clear', name });
         if ((name === 'oneformula' || name === 'onelevel') && typeof this._oneFormulaFlagChanged === 'function') this._oneFormulaFlagChanged();   /* v2.3.3260; v2.3.3538: + onelevel */
+        if ((name === 'movepath' || name === 'pathall') && typeof this._movePathFlagChanged === 'function') this._movePathFlagChanged();   /* v2.3.3732 */
+        if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();   /* v2.3.3755 */
       }
       return json({ ok: true, flags });
     }

@@ -30,7 +30,7 @@
 /* the scenarios (run.mjs keys) written for the old map, frozen 2026-10-21 */
 export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'a2hs', 'ability', 'abilslot', 'afk', 'ahshot', 'aimpath', 'ambient',
-  'animparity', 'arena', 'armcapsule', 'armorforge', 'armorgrade',
+  'animparity', 'armcapsule', 'armorforge', 'armorgrade',
   'armorloss', 'arrowblast', 'arrowdt', 'arrowhead', 'arrowshot',
   'arrowsnap', 'arrowwound', 'arules', 'authority', 'backprev', 'backshield',
   'bandsummary', 'basicwindup', 'bigtown', 'blacksmith', 'bladesoft',
@@ -41,7 +41,7 @@ export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'capeattack', 'capehair', 'capekill', 'cardreach', 'ccbuttons',
   'ccfeet', 'ccjoin', 'cckb', 'ccload',
   'ccshades', 'ccspin', 'ccstand', 'charlock', 'chat',
-  'chatbubble', 'chatcompose', 'chatfeed', 'chatfont', 'chatjoy',
+  'chatcompose', 'chatfeed', 'chatfont', 'chatjoy',
   'chatlanes', 'chatlayer', 'chatpicker', 'chopink', 'chopyield', 'clan',
   'coachearly', 'codexfit', 'contblack', 'cookink', 'cookpeer', 'cooktap',
   'copperfeet', 'coppergear', 'cosmpose', 'cosmrelay', 'critpreview',

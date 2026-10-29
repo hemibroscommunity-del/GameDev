@@ -140,6 +140,14 @@ function giveRow(row) {
   _atlas.used--;
 }
 
+/* v2.3.3716: a row of the atlas for colours that are not one picture's --
+   a look's role colours (lookPalette.js, `?lookpalette`): -1 when it is full */
+export function takePaletteRow(rgba) { return takeRow(rgba); }
+export function givePaletteRow(row) { giveRow(row); }
+/* v2.3.3716: the renderer the programs were built for (lookPalette.js builds
+   its own behind the same loading screen) */
+export function paletteRendererOf() { return _renderer; }
+
 /* the 4-byte row a picture's width needs (WebGL unpacks rows 4-aligned) */
 export function paletteStride(w) { return (w + 3) & ~3; }
 
@@ -178,13 +186,17 @@ export function makePaletteSource({ idx, w, h, stride, rgba, alphaMode, label, a
 
 /* ═══ THE BATCHER ═══ */
 
+/* v2.3.3864: vUV highp on both sides, in all three of this file's programs
+   (this one, ONE_BATCHER's and the meshes'), as in lookPalette.js's (its note
+   says why: Pixi's default fragment precision is mediump, 16 bits on an
+   iPhone) */
 const VERT = `#version 300 es
 in vec2 aPosition;
 in vec2 aUV;
 in vec4 aColor;
 in vec2 aTextureIdAndRound;
 out vec4 vColor;
-out vec2 vUV;
+out highp vec2 vUV;
 flat out float vTextureId;
 flat out float vPalRow;
 uniform mat3 uProjectionMatrix;
@@ -261,7 +273,7 @@ const BLEND = `    highp vec4 c;
    the arithmetic after it is highp, as the chip's own filtering is exact) */
 const FRAG = `#version 300 es
 in vec4 vColor;
-in vec2 vUV;
+in highp vec2 vUV;
 flat in float vTextureId;
 flat in float vPalRow;
 out vec4 finalColor;
@@ -473,7 +485,7 @@ in vec2 aUV;
 in vec4 aColor;
 in vec2 aTextureIdAndRound;
 out vec4 vColor;
-out vec2 vUV;
+out highp vec2 vUV;
 flat out float vTextureId;
 flat out float vCode;
 uniform mat3 uProjectionMatrix;
@@ -522,7 +534,7 @@ function oneChain(read) {
 }
 const ONE_FRAG = `#version 300 es
 in vec4 vColor;
-in vec2 vUV;
+in highp vec2 vUV;
 flat in float vTextureId;
 flat in float vCode;
 out vec4 finalColor;
@@ -726,7 +738,7 @@ const MESH_VERT = `#version 300 es
 in vec2 aPosition;
 in vec2 aUV;
 out vec4 vColor;
-out vec2 vUV;
+out highp vec2 vUV;
 uniform mat3 uProjectionMatrix;
 uniform mat3 uWorldTransformMatrix;
 uniform vec4 uWorldColorAlpha;
@@ -764,7 +776,7 @@ void main(void){
 `;
 const MESH_FRAG = `#version 300 es
 in vec4 vColor;
-in vec2 vUV;
+in highp vec2 vUV;
 out vec4 finalColor;
 uniform highp sampler2D uTexture;
 uniform highp sampler2D uPalAtlas;
@@ -963,3 +975,101 @@ if (typeof window !== 'undefined') {
       rowsUsed: _atlas ? _atlas.used : 0, rowsMax: ATLAS_ROWS };
   };
 }
+
+/* ═══ v2.3.3715: A ROW OF COLOURS SHARED BY MANY PICTURES ═══
+   picsNumbers.js (`?picnumbers`, docs/specs/pictures-once.md): a monster's
+   strips -- every pose, every facing -- are drawn on one set of colours, so
+   they share one row of the atlas instead of a row each (a row each would
+   fill the 256 rows with the fire goblin alone).  A shared row is taken,
+   written as its pictures arrive (new colours after the old: a number once
+   given never changes), and given back by its owner when the last of them
+   goes -- a picture made on one never gives it back itself. */
+export function paletteRowTake() {
+  const A = atlas();
+  const row = A.free.length ? A.free.pop() : (A.next < ATLAS_ROWS ? A.next++ : -1);
+  if (row < 0) { _stats.rowsFull++; return -1; }
+  A.data.fill(0, row * ATLAS_W * 4, (row + 1) * ATLAS_W * 4);
+  A.used++;
+  A.source.update();
+  return row;
+}
+/** The row's colours (`rgba`, 4 bytes each, premultiplied) written again. */
+export function paletteRowWrite(row, rgba) {
+  if (!_atlas || row < 0) return;
+  const o = row * ATLAS_W * 4;
+  _atlas.data.set(rgba.subarray(0, Math.min(rgba.length, ATLAS_W * 4)), o);
+  _atlas.source.update();
+}
+export function paletteRowGive(row) { giveRow(row); }
+
+/** makePaletteSource's source on a row its caller owns (paletteRowTake):
+ *  `rgba` is that row's colours, as the CPU readers read them (paletteDraw). */
+export function makePaletteSourceOnRow({ idx, w, h, stride, row, rgba, alphaMode, label, autoGarbageCollect = false }) {
+  if (row < 0) return null;
+  const st = stride || paletteStride(w);
+  const src = new BufferImageSource({
+    resource: idx, width: st, height: h,
+    format: 'r8unorm', scaleMode: 'linear', alphaMode: alphaMode || 'premultiplied-alpha',
+    label: label || 'bt-palette', autoGarbageCollect,
+  });
+  src._btPal = { row, w, h, stride: st, rgba };
+  _live.add(src);
+  _stats.made++;
+  src.once('destroy', () => {
+    _live.delete(src);
+    _stats.freed++;
+    if (src.options) src.options.resource = null;
+    src._btPal = null;
+  });
+  return src;
+}
+
+/* ═══ v2.3.3715: A PICTURE OF COLOUR NUMBERS IN ONE COLOUR ═══
+   fillBatch.js paints a monster in one colour, its light kept (the
+   whirlwind's catch), reading its picture's colours; a monster's strip kept
+   as colour numbers (picsNumbers.js) is read by this program instead: the
+   colour-numbers program with fillBatch's own lines after the lookup. */
+export const PAL_FILL_BATCHER = 'bt-palette-fill';
+const FILL_LINES = `    {
+      float btA = outColor.a;
+      vec3 btC = btA > 0.0 ? outColor.rgb / btA : vec3(0.0);
+      float btL = clamp(0.5 + 0.8 * dot(btC, vec3(0.299, 0.587, 0.114)), 0.0, 1.0);
+      outColor = vec4(vec3(btL * btA), btA);
+    }
+`;
+const FRAG_FILL = FRAG.replace('    finalColor = outColor * vColor;', FILL_LINES + '    finalColor = outColor * vColor;');
+let _fillBatchShader = null;
+function fillBatchShader() {
+  if (_fillBatchShader) return _fillBatchShader;
+  const units = new Int32Array(SLOTS);
+  for (let i = 0; i < SLOTS; i++) units[i] = i;
+  _fillBatchShader = new Shader({
+    glProgram: GlProgram.from({ vertex: VERT, fragment: FRAG_FILL, name: 'bt-palette-fill' }),
+    resources: {
+      paletteSamplers: new UniformGroup({
+        uTextures: { value: units, type: 'i32', size: SLOTS },
+        uPalAtlas: { value: SLOTS, type: 'i32' },
+      }, { isStatic: true }),
+    },
+  });
+  return _fillBatchShader;
+}
+class PaletteFillBatcher extends PaletteBatcher {
+  constructor() {
+    super();
+    this.name = PAL_FILL_BATCHER;
+    this.shader = fillBatchShader();
+  }
+}
+PaletteFillBatcher.extension = { type: [ExtensionType.Batcher], name: PAL_FILL_BATCHER };
+extensions.add(PaletteFillBatcher);
+/** v2.3.3715: the one-colour program for colour numbers (did it link? its
+ *  prewarm, picsNumbers.js) */
+export function paletteFillProgram() { return fillBatchShader().glProgram; }
+export function paletteFillMade() { return FRAG_FILL !== FRAG; }
+export function paletteProgramLinked(r, program) { return programLinked(r, program); }
+
+/** v2.3.3728: has the renderer said yet whether pictures are drawn as colour
+ *  numbers here (setPaletteRenderer ran)?  p256.js waits on it: the effects
+ *  load as their modules are read, before the renderer is made. */
+export function paletteDecided() { return _ok !== null; }

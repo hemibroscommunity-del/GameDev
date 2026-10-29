@@ -57,7 +57,14 @@ import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277:
 import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.3319: the long Wheel's lands up close */
 import { questPinsOf, MAP_PIN } from '../game/questPins.js';       /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525: ...in the owner's own pictures */
+import { deskWideActive } from './deskWide.js';                    /* v2.3.3830: the key sized from the column on a computer */
+import { GLYPHS, drawGlyph, glyphDetailColor } from './mapGlyphs.js';   /* v2.3.3780: each mark a little picture of what it is, the key the same */
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
+import { loadPins, pinsOf, PIN_KEYS, PIN_CSS } from '../game/mapPins.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
+import { DROP_PIN, dropPinAt, dropPinOn, setDropPin, clearDropPin, isMapTap } from '../game/dropPin.js';   /* v2.3.3879: your own pin, dropped with a tap */
+import { deskWords } from '../game/deskWords.js';   /* v2.3.3879: the pin hint says "Click" on a computer */
+import { boardPlaceAt } from '../game/mapPinPlaces.js';
+import { boardPinnable } from '../data/townBoard.js';
 import { wheelDungeonOpen, wheelDungeonLevelsLine } from '../game/wheelDungeons.js';                  /* v2.3.3540: which landmarks are dungeons this worker opens; v2.3.3573: + a party dungeon's level and players */
 
 /* ═══ v2.3.3525: THE QUEST PINS' PICTURES ═══
@@ -107,17 +114,15 @@ const AT = { landSub: 1.5, stage: 2.2, commons: 1.8, gateName: 1.6, camp: 3, pas
 const NODE_TINT = {   /* v2.3.3094: + 16, 21, the second stage's */
   oreVein: { 1: '#E08A45', 6: '#C65F45', 11: '#8E9AB8', 16: '#C8D0DC', 21: '#7A55B5' },
   tree: { 1: '#58B85A', 6: '#C6DC6C', 11: '#A08C52', 16: '#C0786A', 21: '#F09A40' },
-  fishSpot: { 1: '#D6E8F5', 6: '#FF8A3A', 11: '#C4B46A', 16: '#F09080', 21: '#8AAA50' },
+  /* v2.3.3780: the first tier's fish a water blue, not near-white (the
+     owner: "fish is white dot"); the rest as the minimap tints them */
+  fishSpot: { 1: '#79C4F2', 6: '#FF8A3A', 11: '#C4B46A', 16: '#F09080', 21: '#8AAA50' },
 };
-const C_STAR = '#F5CE3C', C_OTHER = '#58B97B', C_MONSTER = '#E35D5B';
+/* v2.3.3780: which glyph a resource wears (mapGlyphs.js) */
+const NODE_GLYPH = { oreVein: 'ore', tree: 'tree', fishSpot: 'fish' };
+const C_STAR = '#F5CE3C';   /* v2.3.3780: the bros' and monsters' colours are their glyphs' (mapGlyphs.js) */
 const INK = '#F4F0E7', BRASS = '#EAC675', HALO = 'rgba(11,22,27,0.92)';
-const KIND = {
-  camp: { color: '#EAC675', label: 'camp' },
-  pass: { color: '#F4F0E7', label: 'pass' },
-  gate: { color: '#C58CFF', label: 'gate' },
-  landmark: { color: '#9FE0C0', label: 'landmark' },
-  site: { color: '#9FE0C0', label: 'place' },
-};
+/* v2.3.3780: the places' marks and colours are mapGlyphs.js's GLYPHS now */
 
 /* v2.3.3258: the Town Hall's "World map" row opens the map from outside the
    minimap's button (BroTown.jsx onMap).  The overlay hands its opener to this
@@ -214,6 +219,9 @@ function WorldMap({ stateRef, onClose }) {
   const [partyShown, setPartyShown] = useState(false);
   /* v2.3.3525: ...and "has a quest" while a townsperson's pin is */
   const [pinsShown, setPinsShown] = useState(false);
+  /* v2.3.3879: your own pin (game/dropPin.js): set or not, for the chip */
+  const [pinSet, setPinSet] = useState(() => !!dropPinAt(stateRef && stateRef.current));
+  const press = useRef(null);
   /* v2.3.3481: the canvas's size in CSS px, for the key's width (below);
      set by the draw loop, so a turn of the phone moves the key too */
   const [cvBox, setCvBox] = useState(null);
@@ -272,7 +280,10 @@ function WorldMap({ stateRef, onClose }) {
       if (!dirty.current && pk === lastP && t - last < 120) return;
       lastP = pk; last = t; dirty.current = false;
       const { w, h, dpr } = size();
-      setCvBox((o) => (o && o.w === w && o.h === h ? o : { w, h }));
+      /* v2.3.3830: + the map's whole box (#root's on a computer), for the key's size */
+      const ob = cv.closest('[data-world-map]');
+      const ow = ob ? ob.clientWidth : w, oh = ob ? ob.clientHeight : h;
+      setCvBox((o) => (o && o.w === w && o.h === h && o.ow === ow && o.oh === oh ? o : { w, h, ow, oh }));
       const out = draw(cv.getContext('2d'), w, h, dpr, map, V, P, S && S._renderFacing, t, S);
       const here = P ? wheelHere(P.x, P.y) : null;
       const words = here && here.words ? `${here.words.title}${here.words.sub ? ` · ${here.words.sub}` : ''}` : '';
@@ -329,7 +340,15 @@ function WorldMap({ stateRef, onClose }) {
   const onDown = (e) => {
     e.stopPropagation();
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+    /* v2.3.3879: a PRIMARY press means no other finger is down: a lift the map
+       never heard (a finger let go off it) must not make this one a pinch --
+       on a phone every other tap was read as a second finger and dropped
+       nothing (mp-mappin) */
+    if (e.isPrimary) { ptrs.current.clear(); pinch.current = null; }
     ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    /* v2.3.3879: a press that may be a tap (one finger, the main button) */
+    press.current = ptrs.current.size === 1 && (e.button === undefined || e.button === 0)
+      ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp } : null;
     if (ptrs.current.size === 2) {
       const [a, b] = [...ptrs.current.values()];
       pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
@@ -355,7 +374,45 @@ function WorldMap({ stateRef, onClose }) {
       pinch.current.d = d;
     }
   };
-  const onUp = (e) => { ptrs.current.delete(e.pointerId); if (ptrs.current.size < 2) pinch.current = null; };
+  const onUp = (e) => {
+    ptrs.current.delete(e.pointerId);
+    if (ptrs.current.size < 2) pinch.current = null;
+    /* ═══ v2.3.3879: A TAP DROPS YOUR PIN; A TAP ON IT LIFTS IT ═══
+       The map did nothing on a tap before (a drag looks round, two fingers
+       or the wheel zoom), so a tap is free: one finger that hardly moved, not
+       long held (game/dropPin.js isMapTap).  A drag, a pinch or a long press
+       drops nothing. */
+    const pr = press.current;
+    press.current = null;
+    if (!pr || pr.id !== e.pointerId || ptrs.current.size > 0 || !dropPinOn()) return;
+    /* how long the finger was down, by the events' own clocks: a heavy map
+       frame between the two handlers is not the player holding (mp-mappin:
+       on a slow phone a quick tap read as a long press and dropped nothing) */
+    if (!isMapTap(pr.x, pr.y, e.clientX, e.clientY, e.timeStamp - pr.t)) return;
+    const cv = cvRef.current, map = wheelMapInfo(), S = stateRef && stateRef.current;
+    if (!cv || !map || !S) return;
+    const r = cv.getBoundingClientRect(), V = view.current;
+    const k = baseScale(cv.clientWidth, cv.clientHeight, map) * V.zoom;
+    const sx = e.clientX - r.left, sy = e.clientY - r.top;
+    const at = dropPinAt(S);
+    if (at) {
+      const px = (at.x - V.cx) * k + cv.clientWidth / 2, py = (at.y - V.cy) * k + cv.clientHeight / 2;
+      /* the pin's head stands above its point */
+      if (Math.hypot(sx - px, sy - (py - 16)) <= DROP_PIN.HIT_PX) { clearDropPin(S); setPinSet(false); dirty.current = true; return; }
+    }
+    const wx = V.cx + (sx - cv.clientWidth / 2) / k, wy = V.cy + (sy - cv.clientHeight / 2) / k;
+    if (wx < 0 || wy < 0 || wx > map.worldW || wy > map.worldH) return;
+    if (setDropPin(S, wx, wy)) { setPinSet(true); dirty.current = true; }
+  };
+  const onCancel = (e) => { press.current = null; onUp({ pointerId: e.pointerId, clientX: NaN, clientY: NaN }); };
+  /* "Remove pin": a click, on its own element, not the map's -- the map never
+     sees the press, and it closes nothing */
+  const removePin = (e) => {
+    if (e) e.stopPropagation();
+    const S = stateRef && stateRef.current;
+    if (S && clearDropPin(S)) dirty.current = true;
+    setPinSet(false);
+  };
   const onWheel = (e) => { const r = cvRef.current.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top); };
   const centreOnMe = () => {
     const S = stateRef.current, map = wheelMapInfo();
@@ -382,9 +439,25 @@ function WorldMap({ stateRef, onClose }) {
      the key sat on top of it.  On a canvas wider than tall the key keeps to
      the empty margin left of the Wheel (8 px clear of it, never under 150 px)
      and wraps into rows there; upright it is as it was. */
+  /* ═══ v2.3.3830: ON A COMPUTER, THE KEY SIZED FROM THE PLAY COLUMN ═══
+     The judges' pass (1440 x 900): the key, drawn at the phone's 11 px, was
+     small on a big computer window, where the map takes the whole window.
+     Its size comes from the play COLUMN, never the window (TRAPS §214): the
+     column a computer gives the phone's layout, min(the width, 390/715 of
+     the height) -- game.css's --cc-colw, the creator's own -- over the
+     phone's 390.  1.26x at 1440 x 900, 1.51x at 1920 x 1080, as it was at
+     1280 x 720 (the column is a phone's there), never past 2x.  `zoom`, so
+     the words, the little pictures and the rows grow together and its
+     layout is the size it is drawn; its widths are divided by it to stay
+     where they were (the margin left of the Wheel sideways).  Phones never:
+     the computer's wide layout only (deskWide.js). */
+  let keyK = deskWideActive() && cvBox && cvBox.oh
+    ? Math.max(1, Math.min(2, Math.min(cvBox.ow, cvBox.oh * 390 / 715) / 390))
+    : 1;
+  if (keyK < 1.05) keyK = 1;   /* a step too small to see only blurs the words */
   const keyMaxW = cvBox && cvBox.w > cvBox.h
-    ? Math.max(150, Math.floor((cvBox.w - 0.96 * cvBox.h) / 2) - 18)
-    : 'calc(100% - 90px)';
+    ? Math.max(150, Math.floor((cvBox.w - 0.96 * cvBox.h) / 2) - 18) / keyK
+    : (keyK > 1 ? `calc((100% - 90px) / ${keyK.toFixed(3)})` : 'calc(100% - 90px)');
   const btn = { appearance: 'none', width: 46, height: 46, borderRadius: 10, border: '1px solid rgba(216,170,88,0.55)', background: 'rgba(17,30,35,0.92)',
     color: INK, fontSize: 22, fontWeight: 700, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', touchAction: 'manipulation' };
   return (
@@ -407,7 +480,7 @@ function WorldMap({ stateRef, onClose }) {
         <canvas
           ref={cvRef}
           data-world-map-canvas=""
-          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onWheel={onWheel}
+          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel} onWheel={onWheel}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', touchAction: 'none' }}
         />
         {/* v2.3.3065: north, as on the minimap's frame -- the map never turns */}
@@ -423,23 +496,41 @@ function WorldMap({ stateRef, onClose }) {
           <button type="button" aria-label="Zoom out" data-world-map-zoom-out="" onClick={() => zoomBtn(1 / 1.6)} style={btn}>−</button>
           <button type="button" aria-label="Back to you" data-world-map-me="" onClick={centreOnMe} style={{ ...btn, fontSize: 18 }}>◎</button>
         </div>
-        <div style={{ position: 'absolute', left: 10, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', maxWidth: keyMaxW,
-          padding: '6px 9px', borderRadius: 8, background: 'rgba(17,30,35,0.85)', color: INK, fontSize: 11 }}>
-          <Key shape="square" color={INK}>town</Key>
-          <Key shape="tri" color={KIND.camp.color}>camp</Key>
-          <Key shape="diamond" color={KIND.pass.color}>pass</Key>
-          <Key shape="dot" color={KIND.gate.color}>gate</Key>
-          <Key shape="dot" color={KIND.landmark.color}>landmark</Key>
+        {/* ═══ v2.3.3879: YOUR PIN -- how to drop one, and how to lift it ═══ */}
+        {dropPinOn() ? (pinSet ? (
+          <button type="button" data-world-map-unpin="" onClick={removePin} onPointerDown={(e) => e.stopPropagation()}
+            style={{ position: 'absolute', left: '50%', top: 10, transform: 'translateX(-50%)', appearance: 'none', minHeight: 40, padding: '0 14px',
+              borderRadius: 20, border: `2px solid ${DROP_PIN.CSS}`, background: 'rgba(17,30,35,0.94)', color: INK, fontSize: 14, fontWeight: 800,
+              display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', touchAction: 'manipulation', whiteSpace: 'nowrap' }}>
+            <PinGlyph />Remove pin
+          </button>
+        ) : (
+          <div data-world-map-pinhint="" style={{ position: 'absolute', left: '50%', top: 12, transform: 'translateX(-50%)', pointerEvents: 'none',
+            padding: '6px 12px', borderRadius: 16, background: 'rgba(17,30,35,0.85)', color: INK, fontSize: 12.5, fontWeight: 700,
+            display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            <PinGlyph />{deskWords('Tap the map to drop a pin')}
+          </div>
+        )) : null}
+        <div data-world-map-legend="" style={{ position: 'absolute', left: 10, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', maxWidth: keyMaxW,
+          padding: '6px 9px', borderRadius: 8, background: 'rgba(17,30,35,0.85)', color: INK, fontSize: 11,
+          ...(keyK > 1 ? { zoom: +keyK.toFixed(3) } : null) }}>
+          {/* v2.3.3780: the map's own glyphs (mapGlyphs.js), not dots */}
+          <Key glyph="town">town</Key>
+          <Key glyph="camp">camp</Key>
+          <Key glyph="pass">pass</Key>
+          <Key glyph="gate">gate</Key>
+          <Key glyph="landmark">landmark</Key>
           <Key shape="line" color="#F2E4C2">road</Key>
           <Key shape="line" color="#5AAEE8">river</Key>
           <Key shape="star" color={C_STAR}>quest</Key>
           {pinsShown ? <Key shape="pin">has a quest</Key> : null}
+          {pinSet && dropPinOn() ? <span data-world-map-key="droppin" style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}><PinGlyph size={12} />your pin</span> : null}
           {partyShown ? <Key shape="dot" color={PARTY_MARK.CSS}>party</Key> : null}
-          {zoomShown[0] >= AT.others ? <Key shape="dot" color={C_OTHER}>bro</Key> : null}
-          {zoomShown[1] >= AT.monster ? <Key shape="dot" color={C_MONSTER}>monster</Key> : null}
-          {zoomShown[1] >= AT.node ? <Key shape="dot" color="#E08A45">ore</Key> : null}
-          {zoomShown[1] >= AT.node ? <Key shape="dot" color="#58B85A">tree</Key> : null}
-          {zoomShown[1] >= AT.node ? <Key shape="dot" color="#D6E8F5">fish</Key> : null}
+          {zoomShown[0] >= AT.others ? <Key glyph="bro">bro</Key> : null}
+          {zoomShown[1] >= AT.monster ? <Key glyph="monster">monster</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key glyph="ore">ore</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key glyph="tree">tree</Key> : null}
+          {zoomShown[1] >= AT.node ? <Key glyph="fish">fish</Key> : null}
           {zoomShown[0] < AT.camp ? <span style={{ color: '#B6C1BE' }}>Zoom in for more</span> : null}
         </div>
       </div>
@@ -447,7 +538,26 @@ function WorldMap({ stateRef, onClose }) {
   );
 }
 
-function Key({ shape, color, children }) {
+/* v2.3.3879: your pin, as the map draws it (DROP_PIN.CSS), for the key and the chip */
+function PinGlyph({ size = 14 }) {
+  return (
+    <svg viewBox="-9 -26 18 27" width={size} height={Math.round(size * 1.5)} aria-hidden="true" style={{ flex: '0 0 auto', marginRight: 4 }}>
+      <path d="M0 0 L-7 -13 A8 8 0 1 1 7 -13 Z" fill={DROP_PIN.CSS} stroke="rgba(11,22,27,0.92)" strokeWidth="1.6" />
+      <circle cx="0" cy="-16" r="3.2" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+function Key({ shape, color, glyph, children }) {
+  /* v2.3.3780: a glyph, drawn from the very paths the map draws (mapGlyphs.js) */
+  if (glyph && GLYPHS[glyph]) {
+    const G = GLYPHS[glyph];
+    return <span data-world-map-key={glyph} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}>
+      <svg viewBox="-1 -1 18 18" width="15" height="15" aria-hidden="true" style={{ marginRight: 4, flex: '0 0 auto' }}>
+        <path d={G.body} fill={G.color} stroke="rgba(11,22,27,0.92)" strokeWidth="2.2" strokeLinejoin="round" style={{ paintOrder: 'stroke' }} />
+        {G.detail ? <path d={G.detail} fill={glyphDetailColor(glyph)} /> : null}
+      </svg>{children}</span>;
+  }
   const s = { display: 'inline-block', width: 9, height: 9, marginRight: 4, verticalAlign: -1, background: color };
   if (shape === 'dot') Object.assign(s, { borderRadius: 9 });
   if (shape === 'diamond') Object.assign(s, { transform: 'rotate(45deg) scale(.8)' });
@@ -584,7 +694,10 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   /* ── v2.3.3057: the details, under every label ── */
   const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, buildingIcons: 0, buildingsAt: 0, bridges: 0, ponds: 0, tierLabels: 0, party: 0, partyNames: 0,
     questPins: 0, questPinNames: 0, pins: [],   /* v2.3.3525: the townsfolk's quest pins */
+    mapPins: [],   /* v2.3.3766: the board's red and blue pins */
+    dropPin: null,   /* v2.3.3879: your own pin, where drawn */
     dungeons: 0,   /* v2.3.3540: the dungeons' mouths named with their levels */
+    glyphs: { town: 0, camp: 0, pass: 0, gate: 0, landmark: 0, monster: 0, fish: 0, tree: 0, ore: 0, bro: 0 },   /* v2.3.3780: each glyph drawn (the probe's) */
     dungeonLines: [],   /* v2.3.3573: ...and what each says (the probe's; a party dungeon says its players) */
     detail: detailN };   /* v2.3.3319: the lands' tiles drawn up close (null: none to draw) */
   const onScreen = (x, y, pad = 30) => x > -pad && y > -pad && x < w + pad && y < h + pad;
@@ -605,7 +718,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   }
   /* the resources, where they grow: tinted by tier, faint without the tool */
   if (zr >= AT.node && S && Array.isArray(S.gatherNodes)) {
-    const r = Math.max(3, Math.min(7, 2 + zr * 0.25));
+    const r = Math.max(4.2, Math.min(7, 2 + zr * 0.25));   /* v2.3.3780: 11 px across at least, a glyph to read */
     for (const n of S.gatherNodes) {
       if (!n || !n.alive || !NODE_TINT[n.nodeType]) continue;
       const x = X(n.x), y = Y(n.y);
@@ -614,14 +727,14 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       let tool = true;
       try { tool = hasGatherTool(S.rpg || null, n.nodeType); } catch (e) { tool = true; }
       g.globalAlpha = tool ? 1 : 0.45;
-      g.beginPath();
-      if (n.nodeType === 'oreVein') { g.moveTo(x, y - r); g.lineTo(x + r, y); g.lineTo(x, y + r); g.lineTo(x - r, y); g.closePath(); }
-      else if (n.nodeType === 'fishSpot') g.ellipse(x, y, r * 1.2, r * 0.75, 0, 0, Math.PI * 2);
-      else g.arc(x, y, r, 0, Math.PI * 2);
-      g.fillStyle = NODE_TINT[n.nodeType][tier]; g.fill();
-      g.lineWidth = 1.2; g.strokeStyle = HALO; g.stroke();
+      /* v2.3.3780: a rock with its metal's fleck, a tree, a fish -- tinted by
+         tier (the ore's fleck), as the dots were */
+      const kind = NODE_GLYPH[n.nodeType], tint = NODE_TINT[n.nodeType][tier];
+      if (kind === 'ore') drawGlyph(g, 'ore', x, y, r * 2.6, null, tint);
+      else drawGlyph(g, kind, x, y, r * 2.6, tint);
       g.globalAlpha = 1;
       more.nodes++;
+      more.glyphs[kind]++;
     }
   }
   /* the monsters near you (the only ones you are told about), then the bros */
@@ -630,9 +743,9 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       if (!m || m.alive === false || m.dead || (m.hp != null && m.hp <= 0)) continue;
       const x = X(m.x), y = Y(m.y);
       if (!onScreen(x, y)) continue;
-      g.beginPath(); g.arc(x, y, 3.5, 0, Math.PI * 2);
-      g.fillStyle = C_MONSTER; g.fill(); g.lineWidth = 1; g.strokeStyle = HALO; g.stroke();
+      drawGlyph(g, 'monster', x, y, 12);   /* v2.3.3780: a horned head, not a red dot */
       more.monsters++;
+      more.glyphs.monster++;
     }
   }
   const othersAt = [];
@@ -653,8 +766,8 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       peerDotAt(o, now, at);
       const x = X(at.x), y = Y(at.y);
       if (!onScreen(x, y)) continue;
-      g.beginPath(); g.arc(x, y, 4.5, 0, Math.PI * 2);
-      g.fillStyle = C_OTHER; g.fill(); g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
+      drawGlyph(g, 'bro', x, y, 13);   /* v2.3.3780: a little person, not a green dot */
+      more.glyphs.bro++;
       othersAt.push({ x, y, name: o.name || '' });
       more.others++;
     }
@@ -693,6 +806,69 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     g.lineWidth = 3; g.strokeStyle = C_STAR; g.setLineDash([9, 6]); g.stroke(); g.setLineDash([]);
     starAt(g, qx, qy, 9);
     more.quest = { x: Math.round(quest.x), y: Math.round(quest.y), qid: quest.qid || null, way: quest.way || null };   /* v2.3.3522: + whose road */
+  }
+  /* ═══ v2.3.3766: THE BOARD'S PINS (game/mapPins.js) ═══
+     The red and blue pins from the Town Hall's board, at every zoom, the
+     pin's point on the place (found where it stands: game/mapPinPlaces.js).
+     Off the screen, at its edge on the line from the middle, smaller -- the
+     way to go.  Drawn over the road and the star: they are where you chose to
+     go. */
+  if (S) {
+    loadPins(S, null, boardPinnable);
+    const pins = pinsOf(S);
+    for (const kk of PIN_KEYS) {
+      const id = pins[kk];
+      if (!id) continue;
+      let at = null;
+      try { at = boardPlaceAt(S, id); } catch (e) { at = null; }
+      if (!at) continue;
+      let x = X(at.x), y = Y(at.y), edge = false;
+      const m = 18;
+      if (x < m || y < m + 18 || x > w - m || y > h - m) {
+        const cx = w / 2, cy = h / 2, dx = x - cx, dy = y - cy;
+        let t = 1;
+        if (dx > 0) t = Math.min(t, (w - m - cx) / dx); else if (dx < 0) t = Math.min(t, (m - cx) / dx);
+        if (dy > 0) t = Math.min(t, (h - m - cy) / dy); else if (dy < 0) t = Math.min(t, (m + 18 - cy) / dy);
+        x = cx + dx * t; y = cy + dy * t; edge = true;
+      }
+      const sc = edge ? 0.8 : 1.15;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x - 7 * sc, y - 13 * sc);
+      g.arc(x, y - 16 * sc, 8 * sc, Math.PI * 0.82, Math.PI * 0.18, false);
+      g.closePath();
+      g.fillStyle = PIN_CSS[kk]; g.fill();
+      g.lineWidth = 1.8; g.strokeStyle = HALO; g.stroke();
+      g.beginPath(); g.arc(x, y - 16 * sc, 3 * sc, 0, Math.PI * 2); g.fillStyle = '#0B161B'; g.fill();
+      more.mapPins.push({ color: kk, id, edge, x: Math.round(x), y: Math.round(y) });
+    }
+  }
+  /* ═══ v2.3.3879: YOUR OWN PIN (game/dropPin.js) ═══
+     The board's pin shape in purple, bigger, at every zoom; off the screen at
+     its edge on the line from the middle, as the board's pins. */
+  if (S && dropPinOn()) {
+    const at = dropPinAt(S);
+    if (at) {
+      let x = X(at.x), y = Y(at.y), edge = false;
+      const m = 20;
+      if (x < m || y < m + 22 || x > w - m || y > h - m) {
+        const cx = w / 2, cy = h / 2, dx = x - cx, dy = y - cy;
+        let t = 1;
+        if (dx > 0) t = Math.min(t, (w - m - cx) / dx); else if (dx < 0) t = Math.min(t, (m - cx) / dx);
+        if (dy > 0) t = Math.min(t, (h - m - cy) / dy); else if (dy < 0) t = Math.min(t, (m + 22 - cy) / dy);
+        x = cx + dx * t; y = cy + dy * t; edge = true;
+      }
+      const sc = edge ? 0.9 : 1.4;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x - 7 * sc, y - 13 * sc);
+      g.arc(x, y - 16 * sc, 8 * sc, Math.PI * 0.82, Math.PI * 0.18, false);
+      g.closePath();
+      g.fillStyle = DROP_PIN.CSS; g.fill();
+      g.lineWidth = 2; g.strokeStyle = HALO; g.stroke();
+      g.beginPath(); g.arc(x, y - 16 * sc, 3.2 * sc, 0, Math.PI * 2); g.fillStyle = '#FFFFFF'; g.fill();
+      more.dropPin = { x: Math.round(x), y: Math.round(y), edge, at };
+    }
   }
   /* ═══ v2.3.3525: THE QUEST PINS (src/game/questPins.js) ═══
      Every townsperson with a quest for you, in the pin over his head -- the
@@ -744,14 +920,13 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
     }
     return true;
   };
+  /* v2.3.3780: a tent, two peaks and their gap, an arch, a flag (mapGlyphs.js);
+     a place of note wears the landmark's flag */
   const icon = (kind, x, y, s = 1) => {
-    const c = (KIND[kind] && KIND[kind].color) || INK;
-    g.beginPath();
-    if (kind === 'camp') { g.moveTo(x, y - 6 * s); g.lineTo(x + 6 * s, y + 5 * s); g.lineTo(x - 6 * s, y + 5 * s); g.closePath(); }
-    else if (kind === 'pass') { g.moveTo(x, y - 5 * s); g.lineTo(x + 5 * s, y); g.lineTo(x, y + 5 * s); g.lineTo(x - 5 * s, y); g.closePath(); }
-    else g.arc(x, y, (kind === 'gate' ? 6 : 4.5) * s, 0, Math.PI * 2);
-    g.fillStyle = c; g.fill();
-    g.lineWidth = 1.5; g.strokeStyle = HALO; g.stroke();
+    const gk = kind === 'site' ? 'landmark' : kind;
+    if (!GLYPHS[gk]) return;
+    drawGlyph(g, gk, x, y, (gk === 'gate' ? 16 : 14) * s);
+    more.glyphs[gk]++;
   };
 
   /* v2.3.3525: the quest pins, drawn once the buildings' pictures are -- a
@@ -836,7 +1011,29 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
         ok = label(b.x, b.top - 3 - bh / 2, lines, Object.assign({}, opt, { same }));
         if (ok) more.buildingsOver = (more.buildingsOver || 0) + 1;
       }
+      /* v2.3.3814: and if neither had room (lane A's judge pass: "names
+         every building except the Town Hall" -- your mark, kept first, is
+         just south of its door, and its neighbours' names took the rest):
+         under your mark, then beside the picture, left or right; and at the
+         last its name goes under its picture all the same.  Every building
+         on the screen keeps its name, as v2.3.3522 meant (a picture just past
+         the screen's edge, with no room on it for a name, is no building
+         left unnamed). */
+      if (!ok) {
+        const lines = tries[0][0];
+        g.font = `${opt.weight} ${opt.size}px system-ui, -apple-system, sans-serif`;
+        const half = Math.max(...lines.map((ln) => g.measureText(ln).width)) / 2 + 4;
+        const side = TOWN_ICON_PX / 2 + half + 6;   /* clear of its own picture's box */
+        const mid = b.top + 8;   /* level with its picture's upper half: clear of your mark below the door */
+        ok = label(b.x, b.y + 22, lines, Object.assign({}, opt, { below: true }))
+          || label(b.x - side, mid, lines, opt)
+          || label(b.x + side, mid, lines, opt);
+        if (!ok && b.y - 2 >= 0 && b.top <= h) { label(b.x, b.y, lines, Object.assign({}, opt, { below: true, force: true })); ok = true; }
+        more.buildingsMoved = (more.buildingsMoved || 0) + 1;
+      }
       if (ok) more.buildings++;
+      /* v2.3.3814: which were named, and which found no room on the screen (QA) */
+      (ok ? (more.named || (more.named = [])) : (b.y - 2 >= 0 && b.top <= h) ? (more.unnamed || (more.unnamed = [])) : (more.offEdge || (more.offEdge = []))).push(d.id);
     }
   }
   drawPins();   /* v2.3.3525: farther out, where the buildings are not drawn */
@@ -875,8 +1072,8 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
      as the minimap has it; its name where it clears theirs) */
   const T = map.hub.town;
   if (!more.buildingsAt) {
-    g.fillStyle = INK; g.fillRect(X(T.x) - 5, Y(T.y) - 5, 10, 10);
-    g.lineWidth = 1.5; g.strokeStyle = HALO; g.strokeRect(X(T.x) - 5, Y(T.y) - 5, 10, 10);
+    drawGlyph(g, 'town', X(T.x), Y(T.y), 16);   /* v2.3.3780: a house, not a square */
+    more.glyphs.town++;
   }
   label(X(T.x), Y(T.y) + 8, [T.name], { size: 13, below: true, color: INK });
   /* the lands, until their stages take over: one line while the whole

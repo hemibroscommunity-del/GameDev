@@ -13,8 +13,10 @@
  * in hand, a Pine Shield worn and a fight on (so Block, Special and, with the
  * guard up, Shield Bash are all drawn):
  *   1. the button is drawn, with nothing in the address;
- *   2. it sits under the attack disc, centred on it, clear of the dashboard
- *      and on the screen;
+ *   2. it sits under the attack disc, centred on it (v2.3.3740: upright, LEFT
+ *      of it, its foot level with the disc's; v2.3.3799: on the disc's ring,
+ *      south-west of it, both ways up), clear of the dashboard and on
+ *      the screen;
  *   3. it covers no other control (every button drawn, both discs), with the
  *      guard down and up;
  *   4. a real tap on it jumps -- in the air, one jump more -- and swings
@@ -61,6 +63,13 @@ const layout = (P) => P.page.evaluate(() => {
     for (const q of all) {
       if (q === jump || jump.contains(q) || q.contains(jump) || !shown(q)) continue;
       const c = box(q);
+      /* v2.3.3799: a round control is touched by its circle (Jump and the
+         disc both are, and Jump stands on the disc's ring now): two round
+         ones overlap when their circles do */
+      const round = (el, k) => Math.abs((k.r - k.l) - (k.b - k.t)) <= 2 && (parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0) >= (k.r - k.l) / 2 - 1;
+      if (round(jump, jb) && round(q, c)) {
+        if (Math.hypot((jb.l + jb.r - c.l - c.r) / 2, (jb.t + jb.b - c.t - c.b) / 2) >= (jb.r - jb.l + c.r - c.l) / 2 - 1) continue;
+      }
       if (Math.min(jb.r, c.r) - Math.max(jb.l, c.l) > 1 && Math.min(jb.b, c.b) - Math.max(jb.t, c.t) > 1) {
         over.push((q.getAttribute('data-ability') && 'ability:' + q.getAttribute('data-ability')) || (q.hasAttribute('data-shield') && 'shield') || (q.hasAttribute('data-special') && 'special')
           || (typeof q.className === 'string' && q.className.slice(0, 40)) || q.tagName);
@@ -70,6 +79,7 @@ const layout = (P) => P.page.evaluate(() => {
   return {
     vw: window.innerWidth, vh: window.innerHeight,
     jump: jb, disc: disc && shown(disc) ? box(disc) : null, dash, over,
+    block: (() => { const q = document.querySelector('[data-shield]'); return shown(q) ? box(q) : null; })(),   /* v2.3.3721 */
     shield: shown(document.querySelector('[data-shield]')), bash: shown(document.querySelector('[data-ability="bash"]')),
     special: shown(document.querySelector('[data-special]')), sprint: shown(document.querySelector('[data-sprint]')),
     probe: window.__btJumpBtn ? window.__btJumpBtn() : null,
@@ -125,8 +135,28 @@ async function onePhone({ browser, wsPort, webPort, rec, errors, OUT }, ph) {
     if (!a.jump || !a.disc) return;
     const jcx = (a.jump.l + a.jump.r) / 2, dcx = (a.disc.l + a.disc.r) / 2;
     const clearOfDash = !a.dash || a.jump.b <= a.dash.t || a.jump.r <= a.dash.l || a.jump.l >= a.dash.r;
-    rec.ok(`${tag}: 2. under the attack disc (its top ${a.jump.t}, the disc's bottom ${a.disc.b}), centred on it (${jcx} vs ${dcx}), clear of the dashboard (${JSON.stringify(a.dash)}) and on the screen (${JSON.stringify(a.jump)} in ${a.vw} x ${a.vh})`,
-      a.jump.t >= a.disc.b - 1 && Math.abs(jcx - dcx) <= 2 && clearOfDash && a.jump.l >= 0 && a.jump.r <= a.vw && a.jump.t >= 0 && a.jump.b <= a.vh, a);
+    const dw = a.disc.r - a.disc.l;
+    /* v2.3.3799: on the disc's ring, SOUTH-WEST of it, upright and sideways
+       (the owner: "It should be positioned orbiting southwest of the large
+       contextual button"; ShieldButton jumpAnchor) */
+    const jcy = (a.jump.t + a.jump.b) / 2, dcy = (a.disc.t + a.disc.b) / 2;
+    const ang = Math.round(Math.atan2(jcy - dcy, dcx - jcx) * 180 / Math.PI);
+    const ring = Math.round(Math.hypot(jcx - dcx, jcy - dcy) - (a.jump.r - a.jump.l) / 2 - dw / 2);
+    const sw = a.vw > a.vh ? ang > 0 && ang < 90 : ang >= 25 && ang <= 65;
+    rec.ok(`${tag}: 2. on the attack disc's ring, south-west (${ang} deg below west, ${ring} px off the disc's circle), clear of the dashboard (${JSON.stringify(a.dash)}) and on the screen (${JSON.stringify(a.jump)} in ${a.vw} x ${a.vh})`,
+      sw && ring >= 8 && ring <= 14 && clearOfDash && a.jump.l >= 0 && a.jump.r <= a.vw && a.jump.t >= 0 && a.jump.b <= a.vh, a);
+    /* v2.3.3721: the owner, "the contextual button should shrink in size a bit
+       and the jump button made larger": the disc 84 (94 sideways), was 96
+       (108); the button 60 (64), was 48 (54); and half a button of air
+       between it and Block beside it */
+    const jw = a.jump.r - a.jump.l, land = a.vw > a.vh;
+    const blk = a.block;
+    /* v2.3.3740: upright Block is diagonal BELOW Jump, so the air is up and down.
+       v2.3.3799: side by side now, Block left of Jump both ways up */
+    const air = blk ? a.jump.l - blk.r : null;
+    console.log(`    ${tag}: disc ${dw} px, jump ${jw} px, jump <-> Block ${air} px of air, jump ${a.dash ? a.dash.t - a.jump.b : '?'} px over the dashboard`);
+    rec.ok(`${tag}: 2b. the disc is smaller (${dw} px) and the button larger (${jw} px), 8 px or more of air from Block (${air} px)`,
+      dw === (land ? 94 : 84) && jw === (land ? 64 : 60) && air != null && air >= 8, { dw, jw, air, block: blk });
     rec.ok(`${tag}: 3. it covers no other control, the guard down (Block ${a.shield}, Special ${a.special}, Sprint ${a.sprint}): ${a.over.length ? a.over.join(', ') : 'none'}`,
       a.over.length === 0 && a.shield, a);
 

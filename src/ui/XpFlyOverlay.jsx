@@ -495,7 +495,8 @@ const HudPopup = ({ pop, stackIdx }) => {
            rather than off a chip.  Anchored in env() like the rail itself
            (game.css .bt-zone-header) so both clear the notch together. */
         right: 10,
-        top: 'calc(env(safe-area-inset-top, 0px) + 52px + '
+        /* v2.3.3765: + --bt-bar-grow, the bar grew (game.css --bt-bar-k) */
+        top: 'calc(env(safe-area-inset-top, 0px) + 52px + var(--bt-bar-grow, 0px) + '
           + (stackIdx * STACK_SPACING_PX) + 'px)',
         textAlign: 'right',
         transform: 'translateY(' + (phase === 1 ? -14 : 0) + 'px)',

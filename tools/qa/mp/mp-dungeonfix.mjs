@@ -199,7 +199,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(150);
   }
   await shot('boss');
-  rec.ok(`3: then the boss, said on the wire (boss ${boss && boss.boss}), Lv ${boss && boss.level} with ${boss && boss.maxHp} HP (the Verdant Wilds' own)`,
+  rec.ok(`3: then the boss, said on the wire (boss ${boss && boss.boss}), Lv ${boss && boss.level} with ${boss && boss.maxHp} HP (the Earth Forest's own)`,
     !!boss && boss.boss === 1 && boss.level === want && boss.home === 'verdant' && boss.maxHp > 0, { boss, seen });
   const ratio = bossScale / waveScale;
   rec.ok(`3: ...drawn huge, about twice your height (scale ${bossScale.toFixed(3)} against a wave slime's ${waveScale.toFixed(3)}: x${ratio.toFixed(2)})`,

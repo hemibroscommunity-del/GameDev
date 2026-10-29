@@ -11,7 +11,7 @@
  *   0. the sound is up, and every sample a cue plays was decoded on the
  *      loading screen (nothing is fetched on first use);
  *   1. every cue in the table starts when asked;
- *   2. your own, through the keys: a jump's push-off and landing (X), a weapon
+ *   2. your own, through the keys: a jump's push-off and landing (Space; X until v2.3.3844), a weapon
  *      change (2, 1), the shield up and down (Q), a door (the bank's Enter);
  *   3. monsters, through the real handlers (window.__btDispatch): a snowball's,
  *      a fireball's and a glob's throw beside you and none 2,000 px off; a
@@ -139,17 +139,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const C = window.__btCues;
     C.reset();
     const bad = [];
-    for (const n of C.names()) if (!C.play(n, 0.05)) bad.push(n);
+    /* v2.3.3735: each cue on its own -- 164 cues in one instant share their
+       recordings, and the voice cap (on by default, data/voiceCap.js) would
+       rightly hold the fourth copy of each back */
+    for (const n of C.names()) { if (window.__btVoiceCap) window.__btVoiceCap(true); if (!C.play(n, 0.05)) bad.push(n); }
+    if (window.__btVoiceCap) window.__btVoiceCap(true);
     return { n: C.names().length, bad };
   });
   rec.ok(`1. every one of the ${all.n} cues starts a sound when asked (its samples are in)`, all.bad.length === 0, all.bad);
 
   /* ── 2. your own ── */
   await P.page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); window.__btCues.reset(); });
-  await P.page.keyboard.press('x');
+  await P.page.keyboard.press('Space');   /* v2.3.3844: Space jumps (was X) */
   const jump = await H.waitFor(P, () => ({ up: window.__btCues.stats.played.jumpUp || 0, land: window.__btCues.stats.played.jumpLand || 0 }),
     (v) => v.up >= 1 && v.land >= 1, { timeout: 8000, label: 'the jump heard' }).catch(() => null);
-  rec.ok('2a. a jump (X): its push-off, then its landing', !!jump && jump.up === 1 && jump.land === 1, jump);
+  rec.ok('2a. a jump (Space): its push-off, then its landing', !!jump && jump.up === 1 && jump.land === 1, jump);
 
   await P.page.evaluate(() => window.__btCues.reset());
   const slot0 = await H.readState(P, (S) => S.rpg && S.rpg.activeSlot);
@@ -175,14 +179,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S.channel.send({ type: 'shield_wear', payload: { gid } });
       window.__btCues.reset();
     }, pine.gid);
-    /* on a keyboard Q is HELD: down raises it, up lowers it (desktopControls) */
-    await P.page.keyboard.down('q');
+    /* v2.3.3735: on a computer the shield is the RIGHT MOUSE BUTTON held over
+       the world (v2.3.3711, desktopControls: Q is the special now): down
+       raises it, up lowers it */
+    const at = await P.page.evaluate(() => {
+      const c = Array.from(document.querySelectorAll('canvas')).map((e) => e.getBoundingClientRect()).sort((a, b) => b.width * b.height - a.width * a.height)[0];
+      return c ? { x: Math.round(c.left + c.width / 2 + 60), y: Math.round(c.top + c.height / 2 + 40) } : { x: 400, y: 300 };
+    });
+    await P.page.mouse.move(at.x, at.y);
+    await P.page.mouse.down({ button: 'right' });
     await P.page.waitForTimeout(500);
     const up = await P.page.evaluate(() => ({ on: !!window._gameState.current._shieldUp, n: window.__btCues.stats.played.shieldUp || 0, d: window.__btCues.stats.played.shieldDown || 0 }));
-    await P.page.keyboard.up('q');
+    await P.page.mouse.up({ button: 'right' });
     await P.page.waitForTimeout(500);
     const down = await P.page.evaluate(() => ({ on: !!window._gameState.current._shieldUp, n: window.__btCues.stats.played.shieldDown || 0 }));
-    rec.ok('2c. the shield held up (Q) and let down: the buckle each way, once each', up.on && up.n === 1 && up.d === 0 && !down.on && down.n === 1, { up, down });
+    rec.ok('2c. the shield held up (the right mouse button) and let down: the buckle each way, once each', up.on && up.n === 1 && up.d === 0 && !down.on && down.n === 1, { up, down, at });
   } else {
     rec.ok('2c. the admin panel\'s shield reached the bag (guard)', false, null);
   }

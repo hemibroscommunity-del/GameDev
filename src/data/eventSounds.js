@@ -138,8 +138,13 @@ export const EVENT_SOUNDS = {
      "goblin fall is just the label of the file I want to use for when the
      character's jump lands".  v2.3.3680 had put it on the roll, which keeps
      its rush of air again (dodgeRoll); it was the bare thud slowed to a low
-     thump, ~0.4. */
-  jumpLand: [['jump-land', 0, 0, own('jump-land'), 1]],
+     thump, ~0.4.
+     v2.3.3738: SOFTER -- the owner: "The landing sound effect after a jump is
+     too harsh."  The same recording at 0.6 of its level (-4.4 dB, ~0.33 on
+     the scale above) and played at 0.85 of its speed: 2.8 semitones down, so
+     the overtones the cutter laid over the thump (its bright top) sit lower
+     and darker, and the thump is a touch longer and rounder.  No new file. */
+  jumpLand: [['jump-land', 0, 0, own('jump-land', 0.6), 0.85]],
   /* v2.3.3682: the double jump's flip -- the owner's recording ("I just
      uploaded the second jump (flip) sound effect", 563530 "sfx jump flip"),
      ~0.5: a whoosh as you tuck and go over; yours and another player's */
@@ -298,7 +303,17 @@ export const EVENT_SOUNDS = {
   forge: [part('forge-strike', 0, 1, 1), part('forge-strike', 2, 0.9, 1.04, 0.32)],   /* v2.3.3524: the owner: "Forging sword makes flesh hit sound wrong sound" -- the slowed pickaxe layer (mine-strike 0.58 at 0.9: 48% of it under 250 Hz, a thud) is a metal clang now, the metal props' own (7%) */
   forgeFail: [['flip-lose', 0, 0.7, 0.45, 1]],
   armourForge: [part('forge-strike', 1, 1, 0.94), ['ui-equip', 0.095, 0.3, 2.4, 1, 0.3]],
-  hardenOk: [['sword-hit2', 0, 0, 0.5, 1.25], ['quest-complete-v2', 0.05, 0.7, 0.5, 1, 0.08, 0.2]],
+  /* v2.3.3874: YOUR OWN HAMMER, each blow of the smithing swing (effects-
+     Renderer _updateSmithing, on the swing's contact frame, every 650 ms
+     while you forge).  It was the sword's hit (sword-hit2), which the owner,
+     playtesting on the morning of the showing, heard as "the fleshy sound
+     for hurting monsters. It needs to be the same tinkering sound (or similar
+     sound) as the blacksmith has playing automatically" -- that is the
+     anvil's (below): the owner's hammer on the flat hoe, one blow of it. */
+  smithStrike: [part('forge-strike', 1, 0.7, 1.04)],
+  /* v2.3.3874: a hardening that worked rings the same hammer, not the
+     sword's hit (the owner's "fleshy sound", above) */
+  hardenOk: [part('forge-strike', 2, 0.9, 1.1), ['quest-complete-v2', 0.05, 0.7, 0.5, 1, 0.08, 0.2]],
   hardenFail: [['mine-strike', 0.06, 0.35, 0.45, 0.6], ['flip-lose', 0, 0.7, 0.45, 1, 0.08]],
   /* ═══ v2.3.3664: THE WOODWORKER'S KNIFE IS THE OWNER'S ═══
      "a sound for wood carving (making bows, staffs, etc)": three strokes of

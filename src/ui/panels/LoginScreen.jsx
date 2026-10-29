@@ -253,7 +253,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
           <span className="bt-login-logowrap">
             <img
               src={art('logo-full')}
-              alt="Hemi Bros — Bro Town, multiplayer AARPG"
+              alt="Hemi Bros — BroTown, multiplayer AARPG"
               draggable={false}
               className="bt-login-logo"
             />

@@ -47,7 +47,7 @@ const WANT = QUEST_REWARDS.tut_1.objective;   /* {collect, invKey:'slime-remnant
    was Frost Ridge's snowmen).  Everything below follows the table: the land
    walked to, and the monsters hunted first -- the ones whose remains it asks
    for (index.js _invKeyForSkull: every slime and wisp drops slime remains). */
-const LAND_NAME = { verdant: 'the Verdant Wilds', frost: 'Frost Ridge', sky: 'the Wind Dunes', ember: 'the Flame Fields' }[WANT.zone] || WANT.zone;
+const LAND_NAME = { verdant: 'the Earth Forest', frost: 'Frost Ridge', sky: 'the Wind Dunes', ember: 'the Flame Fields' }[WANT.zone] || WANT.zone;
 const PREY = { 'slime-remnants': 'slime|fodder|wisp', snowman: 'snow', 'skeleton-remnants': 'mummy|skeleton', 'fire-goblin-remnants': 'goblin' }[WANT.invKey] || '.';
 
 export async function run({ browser, wsPort, webPort, rec }) {

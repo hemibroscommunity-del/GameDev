@@ -62,6 +62,7 @@ import { preloadXpBar } from './xpBarPreload.js';   /* v2.3.3695: the XP bar's s
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
 import { preloadControls } from './controlsPreload.js'; /* v2.3.3018: the touch controls' pictures (the owner's mockup) */
+import { preloadCoinPiles } from './coinPileArt.js'; /* v2.3.3734: the owner's coin piles, one an amount */
 import { preloadQuestArt } from './questArtPreload.js'; /* v2.3.3030: the quest windows' painted art (the owner's sheets) */
 import { preloadZoneBanner, freeZoneBanner } from './zoneBannerPreload.js'; /* v2.3.2596: the zone-entry banner strips are PER-ZONE */
 import { bannerStripFor } from '../data/zoneBanner.js';   /* v2.3.3024: which of the Wheel's lands have banner art (again since v2.3.3609) */
@@ -72,6 +73,7 @@ import { preloadFarmArt, freeFarmArt } from './farmWorld.js';   /* v2.3.3136: yo
 import { ensureStandIn } from './standIns.js';   /* v2.3.3136: the farmer kneels in the cook's figure */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
 import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buildings' swinging and waving pieces */
+import { preloadRideArt } from './rideFx.js';             /* v2.3.3776: the skateboard */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -451,6 +453,11 @@ export async function preloadWorldAnimations() {
        icons), DOM pictures on the top bar from the first hit of any fight:
        GLOBAL for the level-up's reason.  See xpBarPreload.js. */
     xpBar: preloadXpBar(),
+    /* ═══ v2.3.3776: the skateboard's three views (the owner's picture, cut
+       by tools/art/cut-skateboard.mjs), drawn under any rider in BroTown and
+       worn by the board button.  GLOBAL: another rider can roll up to you
+       on the first frame you are in town; three ~1 KB pictures. */
+    rideArt: preloadRideArt(),
     /* ═══ v2.3.2616: the stat explainer's scenes ═══
        DOM assets again, and GLOBAL: the Build sheet opens from anywhere, so
        there is no zone to scope them to.  Most of what a scene draws is
@@ -484,6 +491,10 @@ export async function preloadWorldAnimations() {
     /* v2.3.2771: the rare-drop icons on a monster's loot pile (lootIcons.js)
        -- a rare drop is the moment a blank first frame would be seen */
     lootIcons: preloadLootIcons(),
+    /* v2.3.3734: the owner's fourteen coin piles (coinPileArt.js) -- the
+       coins on the ground and the "+5 G" mark in the world, and the same
+       files the purse, the bag and the rewards show in the DOM */
+    coinPiles: preloadCoinPiles(),
     /* v2.3.3619: the one picture every monster's element wind-up is cut from
        (elemWindup.js), drawn in code -- made here, never at the first blow */
     elemWindup: Promise.resolve(warmElemWindup()),

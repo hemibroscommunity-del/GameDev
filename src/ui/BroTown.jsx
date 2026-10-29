@@ -43,7 +43,7 @@ import { EmotePanel } from './panels/EmotePanel.jsx';
 import { LeaderboardPanel, FeedbackPanel, ClanPanel, PetHousePanel, FurniturePanel, DungeonCreatorPanel, EncyclopediaPanel, StatScreenPanel, TradeWindowPanel, InspectPlayerPanel, ExchangePanel, GamblePanel, PartyPanel,
   /* the buildings' windows: v2.3.2826 the Blacksmith; v2.3.3259 the Gem Cutter and the Enchanter, one window (GemcutPanel, EnchantPanel); v2.3.3258 the Land Office's, in the card like the others; v2.3.2476 the auction house */
   SmithyPanel, WoodworkPanel, GemWorksPanel, FarmPanel, BankPanel, CookPanel, VendorPanel, LandOfficePanel, StorePanel } from './lazyPanels.js';
-import { nmlCanAttack, nmlHere } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
+import { nmlCanAttack, nmlHere, nmlLockedOut } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
 import { sparCanAttack, sparAim } from '../game/spar.js'; /* v2.3.3265: aim at your sparring clones */
 import { isLiveFoe } from '../game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is aimed at by a tap, no second window */
 import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
@@ -55,6 +55,8 @@ import { LoginScreen } from './panels/LoginScreen.jsx';
 import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
+import TimedBanner from './TimedBanner.jsx';   /* v2.3.3839: the warning / stat banner's own clock */
+import SwapHint from './SwapHint.jsx';   /* v2.3.3877: how to swap weapons, said once */
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { trackedFirst, onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track */
@@ -118,7 +120,8 @@ export const JOY_FADE_MS = 2000;
  * _desktopCycleWeapon), untouched since v2.3.97, which is what the onboarding
  * teaches and what mp-bowshield drives. */
 export const GHOST_PAD = 18;
-import { raiseShieldToggle, dropShield, shieldAimAngle } from '@/game/shieldToggle.js'; /* v2.3.2242 */
+import { raiseShieldToggle, dropShield, shieldAimAngle, shieldTargetAngle /* v2.3.3847 */ } from '@/game/shieldToggle.js'; /* v2.3.2242 */
+import { deskPointerAngle, shieldFollowsPointerAlways } from '@/game/deskShield.js'; /* v2.3.3847: the toggled guard follows the pointer */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
 import { ChatPanel } from './panels/ChatPanel.jsx';
@@ -126,6 +129,7 @@ import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
 /* v2.3.1205: named z-index registry — see src/ui/zLayers.js for the
    observed ladder + the tutorial-banner-under-dashboard incident. */
 import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
+import { deskWideActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size */
 import { MenuBar } from './panels/MenuBar.jsx';
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
@@ -223,6 +227,17 @@ export var QUEST_MSG_WELCOME_MS = 9000;
    tapActIcon; desktopControls interactKind, the character before the door).
    v2.3.3712: ...else null: the tap attacks, and the stick wears the weapon */
 function _tapActIcon(S) { return tapActIcon(interactKind(S, { npcFirst: true })); }
+
+/* ═══ v2.3.3871: HIS HAND-IN LINE IS SAID ONCE, IN THE WINDOW THAT PAYS ═══
+   The owner, before the showing: "don't make your character click on mayor
+   bro again to claim the reward from turning in the first quest.  It's a
+   strange series where he says that message.  Then you click on him again to
+   claim the reward".  A giver walking with you said his quest's `complete`
+   line in his speech bubble the moment it was done -- the reward speech, with
+   nothing to claim on it -- and the claim came on the click after.  While a
+   quest is ready his bubble says this cue instead (a computer reads "Click
+   me!"), and his hand-in line comes with its Claim reward, on the click. */
+const NPC_READY_CUE = 'All done? Tap me!';
 
 function _npcQuestReady(S, npcQ) {
   if (!npcQ || npcQ.status !== 'active') return false;
@@ -375,14 +390,17 @@ import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2
 import { elemMoveMult, gustStep, wobbleTurn } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
-import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
+import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn, stopSprint } from '@/game/sprint.js';
+import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js) */
+import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
+import { interactKind, talkBeforeDoor } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.3868: + a townsperson in range before a door */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
+import DeathCard from '@/ui/mobile/DeathCard.jsx';   /* v2.3.3817: "You died", what killed you, back in BroTown in N */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
 import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3528: about the one who attacked you too */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
@@ -410,6 +428,7 @@ import { tickMoveSounds, tickDanceMusic } from '@/game/moveSounds.js';   /* v2.3
 import { tickHeartbeat } from '@/game/ownSounds.js';   /* v2.3.3462: the owner's heartbeat under a quarter of your health */
 import { npcSpeaks } from '@/game/npcVoices.js';   /* v2.3.3462: the townsfolk's voices (v2.3.3664: a talk and a quest taken only) */
 import { tickAmbientBeds } from '@/game/ambientBeds.js';   /* v2.3.3462: the sea, BroTown's crowd and a fire's crackle */
+import { tickRideSound } from '@/game/rideSound.js';   /* v2.3.3791: the skateboard rolling */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -507,7 +526,8 @@ import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
 import { isWheelTrialZone, footstepSurface, setWheelArrival } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown; v2.3.3574: + the spot a recovery reload puts you back on */
 import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
-import { wheelObjectsInfo } from '@/game/wheelTrial.js';
+import { wheelObjectsInfo, wheelWaterAt } from '@/game/wheelTrial.js';
+import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch */
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
@@ -515,6 +535,8 @@ import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
+import { heapBurnStep } from '@/game/heapBurn.js'; /* v2.3.3748: a burning heap sets you on fire */
+import { burningAt } from '@/rendering/buildingFire.js'; /* v2.3.3748: ...where its pieces burn */
 import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
@@ -1628,6 +1650,13 @@ export var BroTown = function BroTown(_ref0) {
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],
     setNearBuilding = _useState6[1];
+  /* v2.3.3868: on a computer, E would talk (a townsperson in range,
+     desktopControls.js talkBeforeDoor): the townsperson's name, and the
+     door's Enter prompt says "Talk to <name>" meanwhile, so it never says one
+     thing while E does another */
+  var _useDeskTalkPick = useState(null),
+    deskTalkPick = _useDeskTalkPick[0],
+    setDeskTalkPick = _useDeskTalkPick[1];
   var _useState7 = useState(false),
     _useState8 = _slicedToArray(_useState7, 2),
     showPlayerList = _useState8[0],
@@ -2746,6 +2775,17 @@ export var BroTown = function BroTown(_ref0) {
          about the eyes (measured where the four thumbs differ: 38% across,
          36-40% down) and clipped to the tile's panel; pixelated, so the scale
          stays crisp.  The frame and every other strip are untouched. */
+      /* v2.3.3814: lane A's judge pass, "only the first bro type is labelled
+         (Human)": the Human was captioned because it is the strip's 'none'
+         (every 'none' tile is), and the Monkey and the Alien were pictures
+         alone.  Every bro type now wears its name, above its picture as the
+         Human's does (clear of the check painted in the tile's corner). */
+      : cat === 'species'
+        ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', justifyContent: 'center' } },
+            /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async', draggable: false,
+              onError: function (e) { _thumbFallback(e, cat, opt.id); },
+              style: { width: '68%', height: '68%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+            /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, opt.name))
       : cat === 'eyestyle'
         ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 } },
             /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
@@ -4694,6 +4734,34 @@ export var BroTown = function BroTown(_ref0) {
       return false;
     };
     if (typeof window !== 'undefined') window.__btPropFeetBlocked = (cx, cy, px, py) => propFeetBlocked(cx, cy, px, py, 10);
+    /* v2.3.3806: where a fetching pet may not step (game/petFetch.js): the
+       walk's own walls (isSolid: the zone's edge, the walk grid, townsfolk),
+       the Wheel's water, and an object's footprint (a building, a rock, a
+       tree, a bush), read at one point, the pet's feet: it is small.  It goes
+       round these; it never sets off across the water (_petWaterAt). */
+    var _petWaterAt = function (x, y) { return S.currentZone === 'wheel' && wheelWaterAt(x, y) === true; };
+    var _petBlockWhy = null;   /* QA: which rule stopped the last point */
+    var _petBlockedAt = function (x, y) {
+      /* isSolid reads a feet grid playerGroundDy below a BODY's middle; the
+         pet's y is already its feet */
+      var _wg = S._tiledWalkable && S._tiledWalkable[S.currentZone];
+      if (isSolid(x, (_wg && _wg.atFeet) ? y - playerGroundDy(S.currentZone, x, y) : y)) return (_petBlockWhy = 'solid'), true;
+      if (S.currentZone === 'wheel' && wheelWaterAt(x, y) === true) return (_petBlockWhy = 'water'), true;
+      var bx = zoneBlockers(S.currentZone);
+      for (var i = 0; bx && i < bx.length; i++) {
+        var b = bx[i];
+        if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return (_petBlockWhy = 'object ' + (b.id || b.kind || i)), true;
+      }
+      return false;
+    };
+    /* v2.3.3806: where a fetching pet may not run, for mp-petfetch */
+    if (typeof window !== 'undefined') window.__btPetBlockedAt = (x, y) => (_petBlockedAt(x, y) ? _petBlockWhy || true : false);
+    /* v2.3.3806: the fetch's state for mp-petfetch (read only) */
+    if (typeof window !== 'undefined') window.__btPetFetch = () => {
+      var F = S._petFetch;
+      return { phase: F ? F.phase : null, lootId: F ? F.lootId : null, runs: F ? F.runs : 0, got: F ? F.got : 0, credited: F && F.credited ? F.credited.slice() : [], closest: F && F.closest < 1e9 ? F.closest : null, goSteps: F ? F.goSteps || 0 : 0, pace: F ? F.pace || 0 : 0, skip: F ? Array.from(F.skip.keys()) : [], why: F ? F.why : null, on: !!(S._serverCaps && S._serverCaps.petfetch && S._serverCaps.petLoot), dt: S._dtScale || 1,
+        x: S._petX, y: S._petY, px: S.player ? S.player.x : null, py: S.player ? S.player.y : null };
+    };
     var _gameLoop = function gameLoop() {
       frameRef.current = requestAnimationFrame(_gameLoop);
       try {
@@ -5205,6 +5273,7 @@ export var BroTown = function BroTown(_ref0) {
         tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
         tickTownAmbience(S, _jNow);   /* v2.3.3434: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         tickAmbientBeds(S, _jNow);   /* v2.3.3462: the sea from its shore, BroTown's crowd, a fire's crackle (game/ambientBeds.js) */
+        tickRideSound(S, _jNow);   /* v2.3.3791: your skateboard's wheels while you ride (game/rideSound.js) */
         tickHeartbeat(S, _jNow);   /* v2.3.3462: under a quarter of your health (game/ownSounds.js) */
         tickDanceMusic(S);   /* v2.3.3462: your dance takes the music deck (game/moveSounds.js) */
         var _inAir = !!S._jump;
@@ -5238,6 +5307,23 @@ export var BroTown = function BroTown(_ref0) {
            and a frame that cannot move must not spend the predicted
            stamina.  An attack, the shield or the water ends a sprint. */
         var _sprNow = Date.now();
+        /* ═══ v2.3.3776: THE SKATEBOARD ═══
+           Off the board at the safe ground's edge, out of the Wheel, in the
+           water, dead or fighting -- the phone's own step, ahead of the
+           worker's word (game/ride.js; server/src/ride.js), with its one
+           line.  On the board there is no sprint: the board is the faster. */
+        try {
+          if (isRiding(S)) {
+            var _rg = rideGround(S);
+            _rg.fighting = !!(S._shieldUp || S.autoAttack || S.isSwinging || S._bashDash || S._dodgeRoll);
+            rideCheck(S, _sprNow, _rg);
+            if (isRiding(S) && S._sprint && S._sprint.on) stopSprint(S, 'ride', _sprNow);
+          }
+          if (S._ride && S._ride.line && S.player) {
+            pushDmgPopup(S, S.player.x, S.player.y - 70, S._ride.line, '#F4E7C8');
+            S._ride.line = null;
+          }
+        } catch (e) { /* on foot */ }
         var _sprEv = updateSprint(S, _sprNow, {
           moving: (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1)
             && !S._dodgeRoll && !S._sled && !S._zoneLoading && !S._netHold && !S._townArtHold && !S._farmArtHold
@@ -5376,6 +5462,7 @@ export var BroTown = function BroTown(_ref0) {
         if (_dsc != null) vistaSpeedMult = Math.max(0.2, _dsc / ((_vz.depth && _vz.depth.near) || 1));
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
         finalSpd *= wheelSwimMult(S);   /* v2.3.3003: the Wheel's water, in strokes (1 on land) */
+        finalSpd *= rideMult(S);   /* v2.3.3776: RIDE_MULT on the skateboard; the worker judges the moves at the same (server/src/ride.js) */
         finalSpd *= sprintMult(S);   /* v2.3.3006: SPRINT_MULT while you sprint; the worker widens its bound by the same for the moves it paid for (server/src/sprint.js) */
         /* v2.3.1405: per-zone loading gate — while a zone's assets warm
            behind the loading overlay (zoneTransitions.js), freeze the
@@ -5659,6 +5746,17 @@ export var BroTown = function BroTown(_ref0) {
             if (!isSolid(P.x - hs, gy - hs) && !isSolid(P.x + hs, gy + hs) && !_monBlock(P.x, P.y, P.x, gy) && !_nodeBlock(P.x, P.y, P.x, gy) && !propFeetBlocked(P.x, P.y, P.x, gy, hs)) P.y = gy;
           }
         }
+        /* ═══ v2.3.3748: A BURNING HEAP SETS YOU ON FIRE ═══
+           Your boots in a burning piece of a fallen building's heap, on this
+           screen: the flames on you, and `heap_burn` to the worker, which
+           burns you at its own rate (game/heapBurn.js, server heapburn.js) */
+        if (S.currentZone === 'wheel' && !_playerDead && S._serverCaps && S._serverCaps.heapburn) {
+          var _hbY = P.y + playerGroundDy(S.currentZone, P.x, P.y);
+          var _hbNow = Date.now();
+          if (heapBurnStep(S, burningAt(P.x, _hbY) >= 0, true, _hbNow) && S.channel) {
+            try { S.channel.send({ type: 'heap_burn' }); } catch (e) { /* the next frame asks again */ }
+          }
+        }
         /* v2.3.1110: PUSH-OUT -- _monBlock only stops the player moving
            deeper; a server-driven monster can still walk INTO the player
            (its movement is worker-side and has no player collision).  When
@@ -5718,7 +5816,15 @@ export var BroTown = function BroTown(_ref0) {
            player off that edge cannot strand a portal.  A top-edge entry SPAWN
            lands above the clamp and is nudged down on its first frame, which is
            what the bottom edge already does. */
-        var _RAIL_CSS = 46;
+        /* v2.3.3765: the rail grew per layout (game.css --bt-bar-k: 34 px
+           of row x k); read once a second, never a style read every frame. */
+        var _rNow = Date.now();
+        if (!S._railCssAt || _rNow - S._railCssAt > 1000) {
+          S._railCssAt = _rNow;
+          var _bk = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bt-bar-k'));
+          S._railCss = 46 + 34 * ((_bk > 0 ? _bk : 1) - 1);
+        }
+        var _RAIL_CSS = S._railCss || 46;
         var _HEAD_MARGIN = 57 + Math.round(_RAIL_CSS / Math.max(0.2, S._worldScaleY || 1));
         P.x = Math.max(hs, Math.min(ZONE_W - hs, P.x));
         P.y = Math.max(hs + _HEAD_MARGIN, Math.min(ZONE_H - _FOOT_MARGIN, P.y));
@@ -6939,9 +7045,40 @@ export var BroTown = function BroTown(_ref0) {
                every screen, and slows with the walk only where the game itself
                does (under 20 fps, the scale's x3 clamp). */
             var _petDt = S._dtScale || 1;
+            /* ═══ v2.3.3806: THE FETCH (game/petFetch.js) ═══
+               The owner: "make pets run towards loot drops and pick them up
+               for you".  A monster pile of yours within PET_FETCH.RADIUS: the
+               pet leaves the follow and runs to it at 1.5x your run (your
+               measured step, never under the base walk), the vacuum below
+               asks for it once it is there, and it runs back.  Only against a
+               worker that reaches that far (caps.petfetch, and the vacuum's
+               own caps.petLoot); alive, and not while the zone loads. */
+            if (!S._petFetch) S._petFetch = petFetchState();
+            var _pfRunPx = 0;
+            if (typeof S._petPrevPX === 'number' && _petDt > 0) {
+              _pfRunPx = Math.sqrt(Math.pow(P.x - S._petPrevPX, 2) + Math.pow(P.y - S._petPrevPY, 2)) / _petDt;
+            }
+            S._petPrevPX = P.x; S._petPrevPY = P.y;
+            /* a walk is ~2.5-6 px a frame; a bigger jump is a teleport, not a run */
+            var _pfRun = Math.max(SPEED, _pfRunPx < 12 ? _pfRunPx : 0);
+            var _pfOn = !!(S._serverCaps && S._serverCaps.petfetch && S._serverCaps.petLoot) &&
+              !S._dying && !(S.rpg && S.rpg.hp <= 0) && !S._zoneLoading && !!S.myId;
+            var _pf = null;
+            if (_pfOn) {
+              _pf = petFetchStep(S._petFetch, {
+                now: now, zone: S.currentZone, me: S.myId, piles: S.groundLoot,
+                px: P.x, py: P.y, petX: S._petX, petY: S._petY,
+                stepPx: _pfRun * PET_FETCH.SPEED_K * _petDt, pace: _pfRun * PET_FETCH.SPEED_K, blockedAt: _petBlockedAt, waterAt: _petWaterAt
+              });
+            } else if (S._petFetch.phase) {
+              S._petFetch.phase = null; S._petFetch.lootId = null;
+            }
+            if (_pf) { S._petX = _pf.x; S._petY = _pf.y; }
             var petDistToP = Math.sqrt(Math.pow(S._petX - P.x, 2) + Math.pow(S._petY - P.y, 2));
             var petTargetDist = 35;
-            if (petDistToP > petTargetDist + 15) {
+            if (_pf) {
+              /* running: the fetch has it this frame */
+            } else if (petDistToP > petTargetDist + 15) {
               var pDx = P.x - S._petX,
                 pDy = P.y - S._petY;
               var pDist = Math.sqrt(pDx * pDx + pDy * pDy) || 1;
@@ -6956,14 +7093,16 @@ export var BroTown = function BroTown(_ref0) {
               S._petY += by / bd * 0.5 * _petDt;
             }
             /* Personality idle movement */
-            if (pet.personality === 'playful') {
+            if (_pf) {
+              /* no idle wander on a run */
+            } else if (pet.personality === 'playful') {
               S._petX += Math.sin(now / 300) * 0.3 * _petDt;
               S._petY += Math.cos(now / 400) * 0.2 * _petDt;
             }
-            if (pet.personality === 'curious') {
+            if (!_pf && pet.personality === 'curious') {
               S._petX += Math.sin(now / 500 + 1) * 0.5 * _petDt;
             }
-            if (pet.personality === 'anxious') {
+            if (!_pf && pet.personality === 'anxious') {
               S._petX += (Math.random() - 0.5) * 0.4 * _petDt;
               S._petY += (Math.random() - 0.5) * 0.4 * _petDt;
             }
@@ -6996,6 +7135,14 @@ export var BroTown = function BroTown(_ref0) {
                        put it down; the pet at your heels would hand it straight
                        back.  Walking onto it still takes it back. */
                     if (loot.dropped && loot.dropBy === S.myId) return true;
+                    /* v2.3.3806: a running pet passes piles far from you; a
+                       death drop (or a dropped item) is still the worker's
+                       240 from YOU (pets.js), so it is not asked for there */
+                    if (loot.isDeathDrop && Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(P.y - loot.y, 2)) > 230) return true;
+                    /* v2.3.3806: the pile a pet is running to is asked for when
+                       it gets there, not from the vacuum's 80 px on its way in
+                       (game/petFetch.js waits at the pile for this ask) */
+                    if (petFetchHolds(S._petFetch, loot.lootId)) return true;
                     /* v2.3.2490: THE PET'S IN-FLIGHT FLAG IS ITS OWN.
                        This used to share `_pickupPending` with the manual
                        walk-over path in groundLoot.js, reasoning that pet +
@@ -7161,7 +7308,8 @@ export var BroTown = function BroTown(_ref0) {
               if (npc.chatTimer <= 0) {
                 var quest = npcQuest.quest;
                 var isComplete = quest.check(S.rpg, S);
-                var phrase = isComplete ? quest.dialogue.complete : quest.dialogue.progress;
+                /* v2.3.3871: never his hand-in line over his head (NPC_READY_CUE) */
+                var phrase = isComplete ? deskWords(NPC_READY_CUE) : quest.dialogue.progress;
                 npc.chatBubble = {
                   text: phrase,
                   ts: Date.now(),
@@ -7206,6 +7354,14 @@ export var BroTown = function BroTown(_ref0) {
                 if (npcQuest && npcQuest.status === 'available' && distToPlayer < 100) {
                   npc.chatBubble = {
                     text: deskWords('I have a task for you! Tap me.'),   /* v2.3.3615: "Click me." on a computer */
+                    ts: Date.now(),
+                    isQuest: true
+                  };
+                } else if (distToPlayer < 100 && _npcQuestReady(S, npcQuest)) {
+                  /* v2.3.3871: his quest is ready to hand in: the cue, the
+                     same as the offer's hint above */
+                  npc.chatBubble = {
+                    text: deskWords(NPC_READY_CUE),
                     ts: Date.now(),
                     isQuest: true
                   };
@@ -8030,7 +8186,20 @@ export var BroTown = function BroTown(_ref0) {
            it can never fight the ring on a touch device that also has a
            mouse plugged in. */
         if (S._shieldUp && S._shieldKb && typeof S._mouseAimAngle === 'number') {
-          S._shieldAngle = S._mouseAimAngle;
+          /* ═══ v2.3.3847: THE TOGGLED GUARD: AT WHAT IS NEAR, ELSE THE POINTER ═══
+             The owner: "right click should just hold up shield until you
+             click right click again. You should also be able to just hold it
+             up and point if there's no monsters around."  With a lock, the
+             player who just hit you, or a monster or fighter near
+             (shieldTargetAngle), the guard faces it, as a phone's does; with
+             nothing near it follows the pointer -- live, from where the
+             pointer is on the screen NOW (deskPointerAngle), so walking with
+             the mouse still keeps it on the pointer.  `?shieldaim=mouse`:
+             the pointer always, monsters or not (the owner's to choose). */
+          if (S._shieldAimMouse == null) S._shieldAimMouse = shieldFollowsPointerAlways(typeof window !== 'undefined' ? window.location.search : '');
+          var _sta = S._shieldAimMouse ? null : shieldTargetAngle(S);
+          var _spa = deskPointerAngle(S);
+          S._shieldAngle = _sta != null ? _sta : (_spa != null ? _spa : S._mouseAimAngle);
         } else if (S._shieldUp) {
           /* v2.3.2242: a raised shield faces the locked target every frame --
              BlockRing's lerp used to do this; the toggle button has no finger
@@ -8701,6 +8870,12 @@ export var BroTown = function BroTown(_ref0) {
       var nb = S.nearBuilding;
       setNearBuilding(function (prev) {
         return prev === nb ? prev : nb;
+      });
+      /* v2.3.3868: a computer's door button follows E (talkBeforeDoor) */
+      var dtp = S._isDesktop && (nb !== null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) && talkBeforeDoor(S)
+        ? (S._nearNpc.name || 'them') : null;
+      setDeskTalkPick(function (prev) {
+        return prev === dtp ? prev : dtp;
       });
       /* v2.3.3032: and the Wheel's building door you stand at (game/wheelTownDoors.js) */
       var nwb = S._nearWheelBuilding || null;
@@ -10350,6 +10525,17 @@ export var BroTown = function BroTown(_ref0) {
     var slot = S.rpg && S.rpg.activeSlot;
     if (!S.rpg || slot === 'ranged' || slot === 'staff' || S._shieldUp) return false;
     var hit = monsterAtCss(cssX, cssY);
+    /* ═══ v2.3.3763: A CLICK ON A PLAYER MEANS THE PLAYER ═══
+       With no monster under the pointer this promoted the game's own monster
+       lock and noted it as the press's lock, and the click that ends the
+       press returns early on that (onClick, `_deskPressLock`) -- before its
+       player check.  So a computer clicking another player in No man's land
+       with a monster near lunged at the monster and never got the "Attack?"
+       window (the soak's mp-longplay, 0 of 2), and outside it never opened
+       their card.  A player under the pointer, and no monster: no lunge, no
+       lock taken; the press swings as before v2.3.3694 and the click asks
+       about them (mp-nomansland). */
+    if (!hit && otherPlayerAtCss(cssX, cssY)) return false;
     var lt = S.lockedTarget;
     if (hit) {
       if (!lt || lt.ref !== hit) S.lockedTarget = { type: 'monster', id: hit.id, ref: hit, src: 'tap' };
@@ -10363,18 +10549,31 @@ export var BroTown = function BroTown(_ref0) {
   };
   /* another player within the click's 25 px (onClick's own loop: the first
      one found, as it acts on) -- their id, or null */
+  /* ═══ v2.3.3837: A CLICK ON ANOTHER PLAYER'S BODY OR HEAD FINDS THEM ═══
+     The judge pass (2026-10-29): a player was found only within 25 px of
+     their FEET (renderX, renderY), while a player clicks their body or head.
+     The townsfolk's hit (npcAtCss) rises 26 px to the body and reaches 44;
+     a player's now does the same, and the click's own player loop (onClick)
+     asks the same distance, so the two cannot disagree.  A monster under the
+     pointer is still asked first by every caller.  A computer's click only:
+     a phone's tap is the touch path's. */
+  var PLAYER_TAP_RISE = 26, PLAYER_TAP_R = 44;
+  var otherPlayerDistCss = function (S, o, cssX, cssY) {
+    var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
+    var osx = (o.renderX - S.camera.x) * sx, osy = (o.renderY - S.camera.y) * sy - PLAYER_TAP_RISE;
+    return Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2));
+  };
   var otherPlayerAtCss = function (cssX, cssY) {
     var S = stateRef.current;
     if (!S || !S.others || !S.camera) return null;
-    var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
-    var cx = S.camera.x, cy = S.camera.y;
+    var best = null, bestD = PLAYER_TAP_R;
     for (var id in S.others) {
       var o = S.others[id];
       if (!o) continue;
-      var osx = (o.renderX - cx) * sx, osy = (o.renderY - cy) * sy;
-      if (Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2)) < 25) return id;
+      var d = otherPlayerDistCss(S, o, cssX, cssY);
+      if (d < bestD) { bestD = d; best = id; }
     }
-    return null;
+    return best;
   };
   var _deskPressTarget = function (cssX, cssY) {
     if (monsterAtCss(cssX, cssY)) return null;
@@ -10402,8 +10601,20 @@ export var BroTown = function BroTown(_ref0) {
      weapon's special (v2.3.1715's "R-Click Special"): a fresh character has
      no shield, and a right click that did nothing would read as broken.
      Returns what the press did, for the probe. */
+  /* ═══ v2.3.3847: ...AND IT IS A TOGGLE: PRESS IT UP, PRESS IT DOWN ═══
+     The owner: "Also I think right click should just hold up shield until
+     you click right click again."  The release lowers nothing now
+     (desktopControls.js onMouseUp); the next right press lowers it.  A guard
+     something else lowered (an attack, a roll, a jump, a daze, the water --
+     dropShield clears `_shieldMouse`) is down, so the next press raises it
+     again.  Leaving the window still lowers it (desktopControls.js onBlur). */
   var _deskRightPress = function (S) {
     if (!S || !S.rpg) return null;
+    if (S.rpg.shield && S._shieldUp) {
+      S._shieldMouse = false;
+      _desktopShieldOff();
+      return 'shield-down';
+    }
     if (S.rpg.shield) {
       if (typeof S._mouseAimAngle === 'number') S._shieldAngle = S._mouseAimAngle;
       S._shieldKb = true;
@@ -10564,7 +10775,8 @@ export var BroTown = function BroTown(_ref0) {
         var _no = S.others[_nid];
         if (!_no || typeof _no.renderX !== 'number' || typeof _no.renderY !== 'number') continue;
         var _nd = Math.hypot(_p.x - (_no.renderX - cam.x) * sx, _p.y - (_no.renderY - cam.y) * sy);
-        if (_nd < 25 && _nd < selfD && ((_nmlTap && nmlCanAttack(S, _nid)) || (_sparTap && sparCanAttack(S, _nid)))) return true;
+        /* v2.3.3770: a player you are locked out from is still a tap's (it opens the window that says why) */
+        if (_nd < 25 && _nd < selfD && ((_nmlTap && nmlCanAttack(S, _nid, true)) || (_sparTap && sparCanAttack(S, _nid)))) return true;
       }
       return false;
     };
@@ -11080,7 +11292,7 @@ export var BroTown = function BroTown(_ref0) {
                attack in its place if nothing else is there?)".  One swing, one
                arrow or one bolt the way you face, taken by the auto-attack
                loop as a press of the disc is (game/tapJump.js
-               requestTapAttack); the JUMP button and X jump. */
+               requestTapAttack); the JUMP button and Space jump (X until v2.3.3844). */
             try { requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }
           }
         }
@@ -12649,6 +12861,7 @@ export var BroTown = function BroTown(_ref0) {
          click handlers below still seed _aimAngle from _mouseAimAngle
          at attack-start, so attacks still aim where the cursor is. */
       S._mouseAimAngle = Math.atan2(worldY - S.player.y, worldX - S.player.x);
+      S._mouseScreen = { x: screenX, y: screenY };   /* v2.3.3847: where the pointer is, for the toggled guard's live aim (deskPointerAngle) */
       if (S.autoAttack || S._aiming) { S._aimAngle = S._mouseAimAngle; S._aimSrc = 'mouse'; }  /* v2.3.2261 */
       S._mouseWorldX = worldX;
       S._mouseWorldY = worldY;
@@ -12890,13 +13103,17 @@ export var BroTown = function BroTown(_ref0) {
          answering a tap, nothing needs to write that lock. */
       if (tapNpcAtCss(cssX, cssY)) return;
       /* Check other players for lock-on OR inspect */
+      /* v2.3.3837: the player is otherPlayerAtCss's pick -- the NEAREST within
+         reach of the body and head, not the first in S.others order: with the
+         reach up from 25 px to 44, two bros a step apart are both in reach,
+         and the press's question (_deskPressTarget) and this click must name
+         the same one */
+      var _pickedPeer = otherPlayerAtCss(cssX, cssY);
       for (var _i43 = 0, _Object$entries7 = Object.entries(S.others); _i43 < _Object$entries7.length; _i43++) {
         var _Object$entries7$_i = _slicedToArray(_Object$entries7[_i43], 2),
           id = _Object$entries7$_i[0],
           o = _Object$entries7$_i[1];
-        var osx = (o.renderX - cx) * SCALE_X,
-          osy = (o.renderY - cy) * SCALE_Y;
-        if (Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2)) < 25) {
+        if (o && _pickedPeer !== null && id === _pickedPeer) {
           /* ═══ v2.3.1742: NEVER COMBAT-LOCK A PARTY MEMBER ═══
              Owner: "it auto targeted my teammate".  A tap within 25px of
              another player combat-locks them, and in a lawless zone (which
@@ -12960,6 +13177,16 @@ export var BroTown = function BroTown(_ref0) {
              go, as for anyone. */
           var _nmlFoe = false;
           try { _nmlFoe = !_isDuelOpponent && nmlCanAttack(S, id); } catch (e) { _nmlFoe = false; }
+          /* ═══ v2.3.3770: ...OR ONE WHO BEAT YOU ═══  Locked out from them
+             (nomansland.js _nmlLockSet): the tap opens the window that says
+             why, with its "Ask for a rematch" (game/nmlAsk.js) -- never an
+             aim, which the worker would refuse. */
+          var _nmlLockedTap = false;
+          try { _nmlLockedTap = !_nmlFoe && !_isDuelOpponent && nmlAskOn(S) && nmlLockedOut(S, id) > 0 && nmlCanAttack(S, id, true); } catch (e) { _nmlLockedTap = false; }
+          if (_nmlLockedTap) {
+            try { nmlAsk(S, id, 'tap'); } catch (e) { /* the worker refuses an attack anyway */ }
+            return;
+          }
           if (_nmlFoe) {
             /* nml: the lock is No man's land's, so noteNoMansLand lets it go
                the moment the rule stops allowing the fight.  Tapping them
@@ -13155,12 +13382,28 @@ export var BroTown = function BroTown(_ref0) {
          .bt-inspect content box, which now reserves BOTH the band
          (padding-bottom) and the HUD chip strip (padding-top — the chip
          paints over in-wrap modals, see game.css). */
-      width: 'min(360px, calc(100vw - 24px))',
+      /* ═══ v2.3.3769: ON A COMPUTER, A COMPUTER'S WINDOW ═══
+         The owner: "As you find improvements you can make to the empty space
+         on the desktop version go ahead" (the judges play on computers).  The
+         building windows were a phone's 360 px card in a ~1170 px world,
+         their lists scrolling after two rows with empty world all round.  On
+         a computer playing wide (deskWide.js) the card is 470 px and up to
+         82% of the world's height, its room picture and rows growing with it,
+         so a list shows more before it scrolls.  This card is every
+         building's window (each panel's LS_WRAP bleeds to it), the Town
+         Hall's board included.  The Blacksmith keeps its height rule below
+         (the smith is seen working above it) and takes the width only.
+         Phones unchanged. */
+      /* v2.3.3802: the Town Hall's board is wider -- up to 800 px on a
+         computer and a sideways phone, never wider than the play column
+         (100% is the window's box, inside the column: TRAPS §214) -- its
+         columns following its own width (game.css .bt-tb) */
+      width: buildingPanel === 'townhall' ? 'min(800px, calc(100% - 24px))' : deskWideActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
       /* v2.3.2826: the Blacksmith card's TOP stays below the player's feet --
          the camera centres the player, so the card ends at the band and is
          (50vh - 72px - band) tall, i.e. its top sits at 50vh + 60px.  230px
          floor so a short phone still gets the header, the tabs and a row. */
-      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : '100%',
+      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : (buildingPanel === 'townhall' && deskWideActive()) ? '85%' /* v2.3.3802 */ : deskWideActive() ? '82%' : '100%',
       overflowY: 'auto',
       /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
          as the destination sheets/leaderboard): at 390 the Woodworker's
@@ -13200,8 +13443,11 @@ export var BroTown = function BroTown(_ref0) {
     onRest: function onRest() { setBuildingPanel(null); requestRest(stateRef.current, 'hotel'); },
     /* v2.3.3258: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
     onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('more'); dashboardPanelBus.push('leaderboard'); },
-    onMap: function onMap() { setBuildingPanel(null); openWorldMap(); }
-  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState /* v2.3.3481: no cookMinigame props -- the fish game is gone */ }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3258: the Saloon's door opens the Saloon -- where a party is formed (WheelHallPanel.jsx SaloonPanel) -- and the Gladiator Arena is its own window, 'arena', from the Sheriff's Office (the owner: "the gladiator arena is showing 'saloon' behind it") */
+    onMap: function onMap() { setBuildingPanel(null); openWorldMap(); },
+    /* v2.3.3801: the board's shortcuts -- a dashboard page (Quests, the Codex, More -> Journey) -- and closing it (the skateboard's "Ride now") */
+    onDash: function onDash(id, sub) { setBuildingPanel(null); dashboardPanelBus.open(id); if (sub) dashboardPanelBus.push(sub); },
+    onClose: function onClose() { setBuildingPanel(null); }
+  }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState, stateRef: stateRef /* v2.3.3785: the vault asks the worker */ }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState /* v2.3.3481: no cookMinigame props -- the fish game is gone */ }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3258: the Saloon's door opens the Saloon -- where a party is formed (WheelHallPanel.jsx SaloonPanel) -- and the Gladiator Arena is its own window, 'arena', from the Sheriff's Office (the owner: "the gladiator arena is showing 'saloon' behind it") */
   buildingPanel === 'party' && /*#__PURE__*/React.createElement(SaloonPanel, { stateRef: stateRef, onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); } }), buildingPanel === 'arena' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), (buildingPanel === 'gemcut' || buildingPanel === 'enchant') && /*#__PURE__*/React.createElement(GemWorksPanel, { tab: buildingPanel, onTab: setBuildingPanel, rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }) /* v2.3.3259: cut gems / set gems, one building */, /* v2.3.3258: the Land Office's window is a panel in the card now (it was a separate dialog under an empty card, panels/buildings/LandOfficePanel.jsx) */
   buildingPanel === 'farmhome' && /*#__PURE__*/React.createElement(LandOfficePanel, {
     onCancel: function onCancel() { return setBuildingPanel(null); },
@@ -13466,10 +13712,15 @@ export var BroTown = function BroTown(_ref0) {
      kind filter moves inside pushLevelUpBurst, where 'warning' and the bare
      T1 stat kinds are rejected and fall through to the banner below. */
   /*#__PURE__*/React.createElement(LevelUpBurstStack, { msg: levelUpMsg }),
+  /* v2.3.3877: "Swap weapons", said once, the first time you hold two (SwapHint.jsx) */
+  /*#__PURE__*/React.createElement(SwapHint, { stateRef: stateRef }),
   /* v2.3.2615: 'char' joins 'combat' and 'life' as a kind the STACK owns — it
      is the character-level notification, and it wears the character's portrait
      in the medallion (levelUpIcons.levelUpMedallionSrc). */
-  levelUpMsg && levelUpMsg.kind !== 'combat' && levelUpMsg.kind !== 'life' && levelUpMsg.kind !== 'char' && Date.now() - levelUpMsg.ts < 4000 && /*#__PURE__*/React.createElement("div", {
+  /* v2.3.3839: the banner keeps its own clock (TimedBanner.jsx): drawn once
+     a message, its fade froze at its first frame -- the Mayor gate's "Speak
+     to Mayor Bro first" all but invisible on a quick computer */
+  levelUpMsg && levelUpMsg.kind !== 'combat' && levelUpMsg.kind !== 'life' && levelUpMsg.kind !== 'char' && /*#__PURE__*/React.createElement(TimedBanner, { msg: levelUpMsg, ms: 4000, render: function () { return /*#__PURE__*/React.createElement("div", {
     /* v2.3.2615: an autotest handle, same posture as data-levelup-art on the
        burst.  A banner that did NOT appear photographs exactly like the world
        behind it, and "a prog3 character is never shown this" is a claim about
@@ -13512,7 +13763,14 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       textAlign: 'center',
       transform: "translateY(".concat(Math.max(0, 30 - (Date.now() - levelUpMsg.ts) / 1000 * 40), "px) scale(").concat(Math.min(1.1, 0.8 + (Date.now() - levelUpMsg.ts) / 3000), ")"),
-      opacity: Date.now() - levelUpMsg.ts < 3500 ? Math.min(1, (Date.now() - levelUpMsg.ts) / 400) * Math.max(0, 1 - (Date.now() - levelUpMsg.ts) / 3500) : 0
+      /* v2.3.3839: a warning HOLDS -- in in a quarter second, full until its
+         last 0.7 s: "Speak to Mayor Bro first" faded from the moment it came,
+         and was faint for most of its life; the gate says it again every
+         2.5 s you lean on it, so it stays up while you do */
+      opacity: Date.now() - levelUpMsg.ts >= 3500 ? 0
+        : levelUpMsg.kind === 'warning'
+          ? Math.min(1, (Date.now() - levelUpMsg.ts) / 250) * Math.min(1, (3500 - (Date.now() - levelUpMsg.ts)) / 700)
+          : Math.min(1, (Date.now() - levelUpMsg.ts) / 400) * Math.max(0, 1 - (Date.now() - levelUpMsg.ts) / 3500)
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -13584,7 +13842,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.2615: nor does a legacy T1 stat tick refill anything — it is a
        training crossing, not a level, and it must not inherit the pools line. */
     : levelUpMsg.label ? "Training \u2014 keep using this style"
-      : (levelUpMsg.gains || "You got stronger! HP \xB7 Stamina \xB7 Mana refilled")))),
+      : (levelUpMsg.gains || "You got stronger! HP \xB7 Stamina \xB7 Mana refilled")))); } }),
   /* ═══ v2.3.1745: QUEST ACCEPTED! / QUEST COMPLETED! ═══
      Owner: "...that appear over the quest modal menu the moment you accept
      or turn in the quest."
@@ -13634,6 +13892,15 @@ export var BroTown = function BroTown(_ref0) {
          26% put its top under the 42 px top bar: "WELCOME" was cut in half.
          Upright and on a computer 26% is already lower, so nothing moves. */
       top: 'max(26%, 150px)',
+      /* ═══ v2.3.3812: ON A COMPUTER, BELOW MAYOR BRO, NOT ON HIM ═══
+         Lane A's judge pass (1440 x 900, 1280 x 720): at 26% the plate lay
+         over the Town Hall and Mayor Bro -- the one it tells you to find
+         (measured: the plate 128-282 px, the Mayor 212-309 at 720 tall).
+         A new bro comes in at the Hall's steps with the Mayor above the
+         world's middle, so on a computer the plate stands lower, its top at
+         58%: clear of both, and of the chat bar along the world's foot.  A
+         phone keeps 26% (its dashboard is the lower half upright). */
+      ...(stateRef.current && stateRef.current._isDesktop ? { top: 'max(58%, 150px)' } : null),
       /* v2.3.1816: the fade starts 500ms before THIS banner's own hold
          ends — a fixed 1700ms here would have the long banners fade out and
          then sit invisible for two more seconds. */
@@ -14702,7 +14969,8 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */, sendMove: sendMove, movesOn: movesLive(stateRef.current) /* v2.3.3392 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
-  React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3629: beside the minimap's name plate (sideways level with the box's top, or in the top bar's row on a short screen, portalled to the body there) */
+  React.createElement(DeathCard, { stateRef: stateRef }),   /* v2.3.3817: the death card (game/deathCard.js) */
+  React.createElement(NmlBadge, { stateRef: stateRef }),   /* v2.3.3629: beside the minimap's name plate; v2.3.3765: the pill moved to the top bar (ZoneHeader, NmlPill), this keeps the red line along the band */
   /* v2.3.3253: the small window a tap or a stray shot raises about a player
      you could fight there (game/nmlAsk.js), portalled to the top of the
      screen, under the minimap */
@@ -14733,7 +15001,26 @@ export var BroTown = function BroTown(_ref0) {
        tapped, so it stops rendering. Walking away and back re-arms it
        normally -- nearBuilding is untouched, which keeps the desktop E key
        (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
-    buildingPanel === null && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
+    /* ═══ v2.3.3868: AT A DOOR WITH A TOWNSPERSON IN RANGE, THE PROMPT SAYS TALK ═══
+       The owner, on a computer: "When you're next to mayor bro ... you would
+       actually open the door to the building right next to him."  E talks to
+       him now (desktopControls.js talkBeforeDoor), and the prompt says so --
+       "E  Talk to Mayor Bro" -- in the door prompt's place; a click on it
+       talks, as E does.  A step out of his range and the door's prompt is
+       back.  A phone never shows it: there the door's button stays as it was
+       and a tap on a person talks. */
+    buildingPanel === null && deskTalkPick && (nearBuilding !== null || nearHall) && /*#__PURE__*/React.createElement("button", {
+      className: "bt-interact-prompt",
+      "data-talk-prompt": deskTalkPick,
+      onClick: function onClick(e) {
+        e.preventDefault();
+        var S2 = stateRef.current;
+        if (S2 && S2._interactNow) S2._interactNow();
+      }
+    }, /*#__PURE__*/React.createElement("kbd", {
+      style: { background: 'rgba(255,255,255,.2)', padding: '1px 5px', borderRadius: 3, fontSize: 11, marginRight: 4 }
+    }, "E"), "Talk to ", deskTalkPick),
+    buildingPanel === null && !deskTalkPick /* v2.3.3868 */ && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
        Sheriff's Office): the same button, its own picture and name */

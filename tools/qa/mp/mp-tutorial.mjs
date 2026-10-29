@@ -55,7 +55,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(500);
   const questsBody = await H.bodyText(P);
   /* v2.3.3525: the tour's first step is the slimes' "Into the Blue" in the
-     Verdant Wilds (the Mayor's snowmen are the tour's finale now, tut_2) */
+     Earth Forest (the Mayor's snowmen are the tour's finale now, tut_2) */
   rec.ok('the Quests panel offers the first tutorial quest',
     /Into the Blue/.test(questsBody), questsBody.slice(0, 400));
 
@@ -65,7 +65,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const detail = await H.bodyText(P);
   rec.ok('the detail page states the objective and the zone',
-    /Verdant Wilds/.test(detail), detail.slice(0, 400));
+    /Earth Forest/.test(detail), detail.slice(0, 400));
   /* v2.3.1673: the arc asks for REMNANTS now, not a kill count.  Pinned here
      because the client `check` and the server objective are two tables that
      have to agree, and the symptom of disagreement is a Turn In button that

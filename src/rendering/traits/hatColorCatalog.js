@@ -16,6 +16,7 @@ import { headwearIsSolid } from './headwearCatalog.js';
 import { recolorEnabled, SOLID_ONLY_HAT_COLOR } from './recolorOptions.js';
 import { segmentMaterials, mainMaterial } from './traitMaterials.js'; /* v2.3.1926 */
 import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
+import { headLookTextures, headLookReady } from './headLook.js';   /* v2.3.3753: drawn from the shared numbers */
 
 export const HAT_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#7c6cff', target: null },
@@ -223,9 +224,12 @@ function build(hatId, colorId) {
 /** v2.3.3520: settles once (hatId, colorId)'s recolour is made (at once when
  *  there is none to make, or it is made) -- the loading screen waits for it. */
 export function coloredHatReady(hatId, colorId) {
-  getColoredHatTextures(hatId, colorId);
-  const p = _building[hatId + '/' + colorId];
-  return p ? p.catch(() => {}) : Promise.resolve();
+  /* v2.3.3753: the numbers first, so yours is drawn from them, not copied */
+  return headLookReady().then(() => {
+    getColoredHatTextures(hatId, colorId);
+    const p = _building[hatId + '/' + colorId];
+    return p ? p.catch(() => {}) : undefined;
+  });
 }
 
 /** Recolored hat texture map for (hatId, colorId), or null for the default
@@ -245,6 +249,9 @@ export function getColoredHatTextures(hatId, colorId) {
      in the picker matters: hatColor persists in localStorage, so a player who
      already chose one would keep seeing it long after the picker was hidden. */
   if (SOLID_ONLY_HAT_COLOR && !headwearIsSolid(hatId)) return null;
+  /* v2.3.3753: from the shared numbers when they can draw it (headLook.js) */
+  const look = headLookTextures('headwear', hatId, hatColorTarget(colorId, hatId));
+  if (look) return look;
   const key = hatId + '/' + colorId;
   const e = _cache[key];
   if (e === undefined) { build(hatId, colorId); return null; }

@@ -424,6 +424,48 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   }
   check('8e. the lower-case rule is unchanged', flagNameOk('disable_dungeons') && flagNameOk('xp_mult') && flagNameOk('bowvolley') && !flagNameOk(null) && !flagNameOk(7));
   check('8e. the list is frozen', Object.isFrozen(LIVEOPS.CAMEL_SWITCHES));
+  // 8j. v2.3.3776: the skateboard's switch (ride.js) is a lower-case name the
+  //     operator's route takes, and it is off only when written false
+  check('8j. `ride` is a name POST /flags takes', flagNameOk('ride'));
+  { const was = room._liveFlags; room._liveFlags = { ride: false }; const off = room._rideOff(); room._liveFlags = {}; const on = room._rideOff(); room._liveFlags = was;
+    check('8j. `ride: false` switches the board off, and nothing set leaves it on', off === true && on === false); }
+  // 8k. v2.3.3806: the pet's fetch (pets.js) -- `petfetch: false` puts every
+  //     viaPet pickup back on the vacuum's 240
+  check('8k. `petfetch` is a name POST /flags takes', flagNameOk('petfetch'));
+  { const was = room._liveFlags; room._liveFlags = { petfetch: false }; const off = room._petFetchOff(); room._liveFlags = {}; const on = room._petFetchOff(); room._liveFlags = was;
+    check('8k. `petfetch: false` switches the fetch off, and nothing set leaves it on', off === true && on === false); }
+  // 8h. v2.3.3732: the message diet's two lower-case switches (movepath.js):
+  //     v2.3.3744: every phone is on it by default, `pathall: false` leaves
+  //     only ?diet=1 phones, `movepath: false` kills it, each through the
+  //     operator's route, and a join is told
+  {
+    check('8h. with nothing set the worker glides and every phone is on the path', room._movePathOn() === true && room._movePathAll() === true);
+    const r0 = await jbody(await setFlag('pathall', false));
+    check('8h. POST /flags stores pathall: false, and only ?diet=1 phones are on it', r0.status === 200 && r0.body.flags.pathall === false && room._movePathAll() === false && room._movePathOn() === true, r0);
+    const r1 = await jbody(await setFlag('pathall', true));
+    check('8h. ...pathall: true puts every phone back on it', r1.status === 200 && r1.body.flags.pathall === true && room._movePathAll() === true && room._movePathOn() === true, r1);
+    const r2 = await jbody(await setFlag('movepath', false));
+    check('8h. the kill switch movepath: false turns off the glide and every phone, pathall or not', r2.status === 200 && room._movePathOn() === false && room._movePathAll() === false, r2);
+    const ws8f = fakeWs('s8f');
+    await join(ws8f, 'bp_lo_s8f');
+    const caps = (msgsOfType(ws8f, 'state_sync')[0] || {}).caps || {};
+    check('8h. ...and a join is told both are off', caps.movepath === false && caps.pathall === false, { movepath: caps.movepath, pathall: caps.pathall });
+    await req('DELETE', '/api/admin/flags?name=movepath');
+    await req('DELETE', '/api/admin/flags?name=pathall');
+    check('8h. cleared, the worker glides again and every phone is on the path (the default)', room._movePathOn() === true && room._movePathAll() === true);
+  }
+  // 8i. v2.3.3755: a memory saver turned off for every phone (clientoff.js):
+  //     `off_<name>: true` through the operator's route, told at join
+  {
+    const r = await jbody(await setFlag('off_onecopy', true));
+    check('8i. POST /flags stores off_onecopy: true', r.status === 200 && r.body.flags.off_onecopy === true, r);
+    const ws8i = fakeWs('s8i');
+    await join(ws8i, 'bp_lo_s8i');
+    const caps = (msgsOfType(ws8i, 'state_sync')[0] || {}).caps || {};
+    check('8i. ...and a join is told the saver is off (caps.clientoff)', caps.clientoff === 'onecopy', caps.clientoff);
+    await req('DELETE', '/api/admin/flags?name=off_onecopy');
+    check('8i. cleared, no saver is off', room._clientOffList() === '');
+  }
 
   // 8f. every flag the WORKER READS is a name the route takes.  The reads
   //     come in three shapes: _flagOn/_flagNum('<name>'), and a cache held

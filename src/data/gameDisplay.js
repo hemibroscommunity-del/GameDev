@@ -25,7 +25,8 @@ import { SPRINT_GRUNT } from './sprintGrunt.js';   /* v2.3.3455: the owner's spr
 import { EVENT_SOUNDS } from './eventSounds.js';   /* v2.3.3343: each creature its own death (monsterDeath) */
 import { OWNER_SOUNDS, OWNER_LOOPS } from './ownerSoundClips.js';   /* v2.3.3462: the owner's recordings for the sounds still needed */
 import { foldToMono } from './soundFold.js';   /* v2.3.3706: a stereo sound whose two sides are one is kept as one */
-import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (`?sfxcache`) */
+import { PINNED as SFX_PINNED, PREFETCH as SFX_PREFETCH, BUDGET_MB as SFX_BUDGET_MB, COLD_MS as SFX_COLD_MS, LATE_MS as SFX_LATE_MS, familyOf as sfxFamilyOf, makeLru as makeSfxLru, parseSfxCache } from './sfxCache.js';   /* v2.3.3714: decoded sound held only while it is needed (on by default since v2.3.3735; `?sfxcache=0` off) */
+import { makeVoiceCap, parseVoiceCap, exempt as voiceExempt } from './voiceCap.js';   /* v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) */
 import { FARM_GATE, FARM_SPOTS } from './farmLayout.js';   /* v2.3.3136: the farm you walk */
 
 /* ── Babel helper polyfill (from pre-transpiled source) ── */
@@ -2195,6 +2196,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       return;
     }
     this._asleepTicks = 0;
+    /* v2.3.3800: under the loading screen the silence is meant (the sound gate) */
+    if (this.soundGateClosed()) { this._silentTicks = 0; return; }
     this._ensureAudible();
     var z = this._currentZoneAmbient;
     var zoneWants = !!(z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]);
@@ -4124,6 +4127,32 @@ BT_AUDIO.swimStroke = function () {
   this._noteSwim('stroke', L[0], h);
 };
 /** Into the water ('in') or out of it ('out'). */
+/* ═══ v2.3.3791: THE SKATEBOARD ROLLING, FOR THE SOUND STUDIO ═══
+   The roll itself is game/rideSound.js's own loop (the music bus, never
+   SFX_MANIFEST); this is the studio's play button: three seconds of the same
+   file at the same level, decoded as the ride decodes it (an `amb-` key, 24 kHz
+   mono) and let go with the ride's rule.  `vol` is rideSound.rollVol(). */
+BT_AUDIO.skateRollDemo = function (vol) {
+  if (!this.ctx || this.muted) return;
+  var self = this, key = 'amb-skate-roll';
+  Promise.resolve(this.loadSample(key, OWNER_LOOPS['skate-roll'].url)).then(function () {
+    var buf = self._samples && self._samples[key];
+    if (!buf || !self.ctx) return;
+    try {
+      var src = self.ctx.createBufferSource();
+      src.buffer = buf;
+      src.loop = true;
+      var g = self.ctx.createGain();
+      g.gain.value = typeof vol === 'number' ? vol : 0.25;
+      src.connect(g);
+      g.connect(self._out('music'));
+      var at = self.ctx.currentTime;
+      src.start(at);
+      g.gain.setTargetAtTime(0, at + 2.6, 0.1);
+      src.stop(at + 3.2);
+    } catch (e) { /* a preview only */ }
+  });
+};
 BT_AUDIO.swimSplash = function (how) {
   if (!this.ctx || this.muted) return;
   var w = how === 'out' ? 'out' : 'in';
@@ -4334,19 +4363,20 @@ BT_AUDIO.loadSfxManifest = function () {
 };
 /* ═══ v2.3.3714: DECODED SOUND HELD ONLY WHILE IT IS NEEDED (`?sfxcache`) ═══
    The why, the pinned list and the numbers: data/sfxCache.js and
-   docs/specs/sfx-cache.md.  Off (the default) none of this runs: every sound
-   in SFX_MANIFEST is decoded on the loading screen and held, as before. */
-BT_AUDIO.SFX_CACHE = false;
+   docs/specs/sfx-cache.md.
+   v2.3.3735: ON BY DEFAULT (the owner: "I think including the new memory
+   change work by default would be better.  I can always revert the change
+   if I don't like it or it doesn't work well.").  `?sfxcache=0` is the
+   off-ramp for one phone: every sound in SFX_MANIFEST decoded on the loading
+   screen and held, as before; `?sfxcache=8` another budget (parseSfxCache). */
+BT_AUDIO.SFX_CACHE = true;
 BT_AUDIO.SFX_CACHE_MB = SFX_BUDGET_MB;
 BT_AUDIO.SFX_LATE_MS = SFX_LATE_MS;   /* a test on a slow box raises it (mp-sfxcache) */
 try {
-  var _sc = typeof location !== 'undefined' && /[?&]sfxcache(?:=([0-9.]+))?(?:&|$)/.exec(location.search || '');
-  if (_sc) {
-    BT_AUDIO.SFX_CACHE = true;
-    /* `?sfxcache=8`: another budget, in MB, to try one (1-32) */
-    if (_sc[1]) BT_AUDIO.SFX_CACHE_MB = Math.max(1, Math.min(32, parseFloat(_sc[1]) || SFX_BUDGET_MB));
-  }
-} catch (e) { /* off */ }
+  var _sc = parseSfxCache(typeof location !== 'undefined' ? location.search || '' : '');
+  BT_AUDIO.SFX_CACHE = _sc.on;
+  BT_AUDIO.SFX_CACHE_MB = _sc.mb;
+} catch (e) { /* on, at the budget */ }
 BT_AUDIO._sfxPinned = Object.create(null);
 for (var _sp = 0; _sp < SFX_PINNED.length; _sp++) BT_AUDIO._sfxPinned[SFX_PINNED[_sp]] = true;
 BT_AUDIO._sfxLru = null;   /* made on first use: tag -> decoded bytes */
@@ -4606,6 +4636,162 @@ BT_AUDIO._noteStep = function (asked, played, key, i) {
   if (!this._stepCounts) this._stepCounts = Object.create(null);
   this._stepCounts[played] = (this._stepCounts[played] || 0) + 1;
 };
+/* ═══ v2.3.3800: NO SOUND OF THE WORLD UNDER THE LOADING SCREEN ═══
+   The owner: "when first loading the game don't play any music or sound
+   effects until the world is fully loaded.  It's a bit creepy hearing the
+   crowd murmur when you're not seeing anything on screen yet."
+
+   Measured on a fresh load (mp-loadhush), under a 22 s loading screen: the
+   session track coming back at 13.6 s, townsfolk's emote pops at 14.2 and
+   20.5 s, and the town's crowd bed at 21.1 s -- the world behind the screen
+   was already playing (the way in walks through it, wheelHome.js).
+
+   THE GATE.  The world is hidden while the loading screen is up (body's
+   `bt-intro-up`, BroTown at PLAY and IntroVideo), or a veil covers it (the
+   reconnect's `.bt-connect-veil`, serverReady.js; the straight-in road's and
+   a recovery reload's `.bt-avatar-hold`, avatarHold.js).  One observer of
+   the body's class and children sees all three.  While it is closed:
+     - play() starts nothing of the world: a one-shot is dropped, never
+       queued, so no burst comes when it lifts.  The player's own taps still
+       sound (a `ui-*` sound, anything within GATE_TAP_MS of a tap or key);
+     - the music deck has nothing to play (_deckTarget), so the session track
+       fades out at PLAY; a loop asked for (startSfxLoop: the zone's air)
+       waits; the ambient beds and the river hear no share (ambientBeds.js,
+       waterAmbience.js); the watchdog does not fight the silence.
+   It opens two frames after the last veil goes -- the first world frame
+   painted -- and then the music and the waiting loops start, with their own
+   fades.  `?soundgate=0` turns it off for one phone (the game as before);
+   the Test panel's Memory savers row ("Sound waits for the world",
+   game/clientOff.js `soundgate`) turns it off for every phone, live, and a
+   closed gate opens at once.
+   A FAILSAFE: a gate shut for the loading screen's reasons longer than
+   GATE_FAILSAFE_MS (a class or a veil left behind by a fault) opens anyway
+   and is counted (`failsafe`); the loading reasons are then not heard again
+   until they have gone.  A reconnect's veil is not cut short: silence while
+   the server is away is right.  window.__btSoundGate is the QA's view. */
+BT_AUDIO.SOUND_GATE = true;
+try {
+  if (typeof location !== 'undefined' && /[?&]soundgate=(0|off|false|no)(?:&|$)/i.test(location.search || '')) BT_AUDIO.SOUND_GATE = false;
+} catch (e) { /* on */ }
+BT_AUDIO.GATE_TAP_MS = 1500;
+BT_AUDIO.GATE_FAILSAFE_MS = 60000;
+BT_AUDIO._soundGate = { closed: false, why: null, closedAt: 0, openAt: 0, closes: 0, opens: 0, dropped: 0, pending: false,
+  failsafe: 0, loadingSince: 0, loadingForced: false, failTimer: null };
+BT_AUDIO._gateLoops = Object.create(null);
+BT_AUDIO._gateTapAt = 0;
+BT_AUDIO.soundGateClosed = function () {
+  return !!(this._soundGate && this._soundGate.closed);
+};
+/* the player's own: a menu sound, or anything a tap just asked for */
+BT_AUDIO._gatePasses = function (key) {
+  if (typeof key === 'string' && /^ui-/.test(key)) return true;
+  return Date.now() - this._gateTapAt < this.GATE_TAP_MS;
+};
+/* why the world is hidden, or null */
+BT_AUDIO._gateWhy = function () {
+  if (!this.SOUND_GATE || typeof document === 'undefined' || !document.body) return null;
+  var b = document.body, loading = !!(b.classList && b.classList.contains('bt-intro-up')), net = false;
+  for (var c = b.firstElementChild; c; c = c.nextElementSibling) {
+    var cl = c.classList;
+    if (!cl) continue;
+    if (cl.contains('bt-connect-veil')) net = true;
+    if (cl.contains('bt-avatar-hold')) loading = true;
+  }
+  var g = this._soundGate;
+  /* the failsafe (above): once fired, the loading reasons are not heard
+     until they have gone */
+  if (!loading) g.loadingForced = false;
+  if (net) return 'reconnecting';
+  if (loading && !g.loadingForced) return 'loading';
+  return null;
+};
+/* the failsafe's watch: the loading reasons' first sight, and a check when
+   GATE_FAILSAFE_MS has passed */
+BT_AUDIO._gateFailsafe = function (why) {
+  var g = this._soundGate, self = this;
+  if (why !== 'loading') {
+    g.loadingSince = 0;
+    if (g.failTimer) { clearTimeout(g.failTimer); g.failTimer = null; }
+    return;
+  }
+  if (!g.loadingSince) g.loadingSince = Date.now();
+  if (g.failTimer) return;
+  g.failTimer = setTimeout(function () {
+    g.failTimer = null;
+    if (!g.closed || g.why !== 'loading' || !g.loadingSince) return;
+    if (Date.now() - g.loadingSince < self.GATE_FAILSAFE_MS) { self._gateFailsafe('loading'); return; }
+    g.loadingForced = true;
+    g.loadingSince = 0;
+    g.failsafe++;
+    try { if (typeof window !== 'undefined' && window.debug && window.debug.pushLog) window.debug.pushLog('warn', ['BT_AUDIO sound gate shut for the loading screen over ' + self.GATE_FAILSAFE_MS + ' ms: opened anyway']); } catch (e) { /* log only */ }
+    self._gateEval();
+  }, Math.max(50, this.GATE_FAILSAFE_MS - (Date.now() - g.loadingSince)));
+};
+BT_AUDIO._gateEval = function () {
+  var g = this._soundGate, why = this._gateWhy(), self = this;
+  this._gateFailsafe(why);
+  if (why) {
+    g.pending = false;
+    g.why = why;
+    if (g.closed) return;
+    g.closed = true;
+    g.closedAt = Date.now();
+    g.closes++;
+    try { this._soundGateClose(); } catch (e) { /* sound only */ }
+    return;
+  }
+  if (!g.closed || g.pending) return;
+  g.pending = true;
+  var open = function () {
+    if (!g.pending || self._gateWhy()) return;
+    g.pending = false;
+    g.closed = false;
+    g.why = null;
+    g.openAt = Date.now();
+    g.opens++;
+    try { self._soundGateOpen(); } catch (e) { /* sound only */ }
+  };
+  /* the first world frame painted: two frames on (a hidden tab has none: a
+     second at most) */
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(function () { requestAnimationFrame(open); });
+  setTimeout(open, 1000);
+};
+BT_AUDIO._soundGateClose = function () {
+  for (var k in (this._sfxLoops || {})) {
+    var l = this._sfxLoops[k];
+    if (l && l.vol !== undefined) this._gateLoops[k] = [l.vol, l.bus];
+    this.stopSfxLoop(k);
+    if (l && l.vol !== undefined) this._gateLoops[k] = [l.vol, l.bus];
+  }
+  this._deckSync();
+};
+BT_AUDIO._soundGateOpen = function () {
+  var w = this._gateLoops;
+  this._gateLoops = Object.create(null);
+  for (var k in w) this.startSfxLoop(k, w[k][0], w[k][1]);
+  this._deckSync();
+};
+(function () {
+  if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return;
+  var tap = function () { BT_AUDIO._gateTapAt = Date.now(); };
+  var go = function () {
+    if (!document.body) return;
+    try {
+      new MutationObserver(function () { BT_AUDIO._gateEval(); }).observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true });
+    } catch (e) { return; }
+    ['pointerdown', 'touchstart', 'keydown'].forEach(function (t) { document.addEventListener(t, tap, true); });
+    BT_AUDIO._gateEval();
+  };
+  if (document.body) go();
+  else document.addEventListener('DOMContentLoaded', go);
+})();
+if (typeof window !== 'undefined') {
+  window.__btSoundGate = function () {
+    var g = BT_AUDIO._soundGate;
+    return { on: !!BT_AUDIO.SOUND_GATE, open: !g.closed, why: g.why, closedAt: g.closedAt, openAt: g.openAt,
+      closes: g.closes, opens: g.opens, dropped: g.dropped, failsafe: g.failsafe, loopsWaiting: Object.keys(BT_AUDIO._gateLoops) };
+  };
+}
 /* v2.3.1422: managed looping SFX (sizzle while cooking, reel while
    cranking).  Keyed + idempotent: callers ENSURE the loop every frame
    and stop it when their condition lapses, so lifecycle bugs can't
@@ -4615,6 +4801,9 @@ BT_AUDIO.startSfxLoop = function (key, vol, bus) {
   if (this.muted || !this.ctx) return;
   if (!this._sfxLoops) this._sfxLoops = {};
   if (this._sfxLoops[key]) return;             /* already running */
+  /* v2.3.3800: under the loading screen (the sound gate, below) a loop waits
+     and starts when the world is drawn */
+  if (this.soundGateClosed()) { this._gateLoops[key] = [vol, bus]; return; }
   var buf = this._samples[key];
   /* v2.3.3714: a loop's start is a family's first sound too (the river under
      a cast warms the reel), with the sound cache on */
@@ -4633,7 +4822,7 @@ BT_AUDIO.startSfxLoop = function (key, vol, bus) {
     src.connect(g);
     g.connect(this._out(bus));   /* v2.3.2820: 'music' for the zone ambience, an effect otherwise */
     src.start(0);
-    this._sfxLoops[key] = { src: src, gain: g };
+    this._sfxLoops[key] = { src: src, gain: g, vol: vol, bus: bus };   /* v2.3.3800: + what it was asked at, for the sound gate to bring it back */
   } catch (e) {}
 };
 /* ═══ v2.3.3462: A LOOP WITHOUT ITS FILE'S SILENT EDGES ═══
@@ -4674,6 +4863,7 @@ BT_AUDIO._loopOverEdges = function (src, buf) {
   } catch (err) { /* plays whole */ }
 };
 BT_AUDIO.stopSfxLoop = function (key) {
+  if (this._gateLoops) delete this._gateLoops[key];   /* v2.3.3800: one waiting for the gate is called off too */
   var l = this._sfxLoops && this._sfxLoops[key];
   if (!l) return;
   delete this._sfxLoops[key];
@@ -4969,6 +5159,7 @@ BT_AUDIO._deckDrop = function () {
    session track unless a zone track ducked it (the decoded tracks' rule:
    duckGlobalMusic, startZoneAmbient), else nothing. */
 BT_AUDIO._deckTarget = function () {
+  if (this.soundGateClosed()) return null;   /* v2.3.3800: no music under the loading screen; _soundGateOpen syncs it back */
   if (this._danceWant) return this._danceWant;   /* v2.3.3462: while you dance (setDanceMusic) */
   if (this._zoneWant) return this._zoneWant;
   if (this._globalWant && !this._globalMusicDucked) return this._globalWant;
@@ -5573,8 +5764,74 @@ BT_AUDIO.uiClick = function (vol, since) {
   this._uiClickPending = schedule(fire, this.UI_CLICK_DEFER_MS);
 };
 
+/* ═══ v2.3.3727: A CROWD OF ONE SOUND STARTS AS A FEW (`?voicecap`) ═══
+   The rule and why: data/voiceCap.js.  The gate play() asks before a copy
+   starts: false holds it back.  A copy that will not start (its recording not
+   in, the sound cache off) is not a start.  On a test page (window.__btProbe)
+   or with the switch on, every start is counted for window.__btVoiceCap: the
+   most starting in any W ms (all recordings, and one recording), the most
+   sounding at once, and what was held back.
+   v2.3.3735: ON BY DEFAULT (the owner's "including the new memory change work
+   by default"); `?voicecap=0` is the off-ramp for one phone (parseVoiceCap). */
+BT_AUDIO.VOICE_CAP = parseVoiceCap('');
+try {
+  if (typeof location !== 'undefined') BT_AUDIO.VOICE_CAP = parseVoiceCap(location.search || '');
+} catch (e) { /* on, at N and W */ }
+BT_AUDIO._voiceRule = null;
+BT_AUDIO._voiceStats = null;
+BT_AUDIO._voiceGate = function (key, buf, opts) {
+  if (!buf && !this.SFX_CACHE) return true;   /* nothing will start */
+  var cap = this.VOICE_CAP;
+  var count = cap || (typeof window !== 'undefined' && window.__btProbe);
+  if (!cap && !count) return true;
+  var now = this._sfxNow();
+  var t = now + ((opts && opts.delay > 0) ? Math.min(2, opts.delay) * 1000 : 0);
+  var vs = this._voiceStats || (this._voiceStats = { live: [], maxWindow: 0, maxWindowKey: 0, maxWindowKeyName: null, maxPlaying: 0, starts: 0, held: 0, heldBy: Object.create(null) });
+  if (cap && !voiceExempt(key)) {
+    if (!this._voiceRule) this._voiceRule = makeVoiceCap(cap.n, cap.w);
+    if (!this._voiceRule.allow(key, t, now)) {
+      vs.held++;
+      vs.heldBy[key] = (vs.heldBy[key] || 0) + 1;
+      return false;
+    }
+  }
+  /* the count: this start and what is around it */
+  var w = cap ? cap.w : 50;
+  var rate = (opts && opts.rate) || 1;
+  var len = (opts && opts.duration != null) ? opts.duration : (buf ? Math.max(0, (buf.duration || 0) - ((opts && opts.offset) || 0)) : 0.5);
+  var end = t + (len / (rate || 1)) * 1000;
+  var keep = now - 4000, live = [], inWin = 1, inKey = 1, playing = 1;
+  for (var i = 0; i < vs.live.length; i++) {
+    var v = vs.live[i];
+    if (v.end < keep && v.t < keep) continue;
+    live.push(v);
+    if (Math.abs(v.t - t) < w) { inWin++; if (v.key === key) inKey++; }
+    if (v.t <= t && v.end > t) playing++;
+  }
+  live.push({ key: key, t: t, end: end });
+  if (live.length > 400) live.splice(0, live.length - 400);
+  vs.live = live;
+  vs.starts++;
+  if (inWin > vs.maxWindow) vs.maxWindow = inWin;
+  if (inKey > vs.maxWindowKey) { vs.maxWindowKey = inKey; vs.maxWindowKeyName = key; }
+  if (playing > vs.maxPlaying) vs.maxPlaying = playing;
+  return true;
+};
+if (typeof window !== 'undefined') {
+  window.__btVoiceCap = function (reset) {
+    var A = BT_AUDIO, vs = A._voiceStats;
+    var out = { on: !!A.VOICE_CAP, n: A.VOICE_CAP ? A.VOICE_CAP.n : null, w: A.VOICE_CAP ? A.VOICE_CAP.w : 50,
+      starts: vs ? vs.starts : 0, maxWindow: vs ? vs.maxWindow : 0, maxWindowKey: vs ? vs.maxWindowKey : 0, maxWindowKeyName: vs ? vs.maxWindowKeyName : null,
+      maxPlaying: vs ? vs.maxPlaying : 0, held: vs ? vs.held : 0, heldBy: vs ? Object.assign({}, vs.heldBy) : {} };
+    if (reset) { A._voiceStats = null; if (A._voiceRule) A._voiceRule.clear(); }
+    return out;
+  };
+}
 BT_AUDIO.play = function (key, opts) {
   if (this.muted || !this.ctx) return null;
+  /* v2.3.3800: under the loading screen a sound of the world is not played
+     at all (never queued: no burst when it lifts); the player's own taps are */
+  if (this.soundGateClosed() && !this._gatePasses(key)) { this._soundGate.dropped++; return null; }
   /* v2.3.130: iOS Safari suspends the AudioContext on tab-switch,
      phone call, screen lock, and sometimes spuriously after memory
      pressure.  unlock() resumes the ctx once on the first gesture,
@@ -5607,6 +5864,9 @@ BT_AUDIO.play = function (key, opts) {
     this._ensureAudible();
   }
   var buf = this._samples[key];
+  /* v2.3.3727: at most N copies of one recording start within W ms
+     (data/voiceCap.js, `?voicecap`; off, only counted on a test page) */
+  if (!this._voiceGate(key, buf, opts)) return null;
   /* v2.3.3714: what played, for the sound cache's pinned list (mp-sfxcache),
      and the rest of its family decoded ahead when the cache is on */
   if (this.SFX_CACHE) {
@@ -5946,7 +6206,7 @@ export const NPC_DATA = [{
   phrases: [
     "Betcha can't catch me!",
     "Bet you can't beat me round the square!",
-    "My bro says the Verdant Wilds are full of exploding slimes! He also said my face would freeze like this, so.",
+    "My bro says the Earth Forest is full of exploding slimes! He also said my face would freeze like this, so.",
     "One day I'm gonna have a sword bigger than my whole body! Then nobody can make me go to bed!",
     "Did you see Bro Pond? It's got monster fish. Probably! I've never actually been.",
   ],
@@ -6418,6 +6678,440 @@ export const NPC_DATA = [{
     "Do NOT let the Mayor near my compost. He knows what he did.",
     "If a carrot talks to you, be polite. You're on its land.",
     "Every bro gets a farm. It's in the town rules. I've read the town rules. Twice.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  /* v2.3.3833: THE NEW CAST (docs/specs/npc-cast.md; the owner: "Keep all as
+     you have them for now (NPCs)").  Ten keepers at the doors that had nobody,
+     three locals; chatter only, in the satire voice (docs/specs/npc-dialogue-v2.md).
+     Their looks are NPC_LOOKS rows (tools/qa/npc-looks.mjs), baked standing. */
+  id: 'banker',
+  name: 'Sterling',
+  plateRole: 'Banker',
+  sprite: '/sprites/npc/sterling.webp',
+  portrait: '/sprites/npc/sterling-head.webp',
+  avatar: '💰',
+  color: '#d4af37',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "Your coins are safe here. Safe is a strong word. Your coins are here. I put the rest in a coin named after my dog.",
+    "Interest rates are up. I'm not interested, though. Ha. Banking joke. Fees apply.",
+    "The vault is totally secure. The password is 'password'. Was. It was 'password'.",
+    "Diversify, bro. Put half your coins in slime futures. The other half in me.",
+    "I don't lose money. I just haven't found where it went yet.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'barkeep',
+  name: 'Slim',
+  plateRole: 'Barkeep',
+  sprite: '/sprites/npc/slim.webp',
+  portrait: '/sprites/npc/slim-head.webp',
+  avatar: '🍸',
+  color: '#7a4a2a',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "This one's barrel-aged. The barrel is that one. It used to hold nails, which is why it's called the Tetanus.",
+    "I infuse my ice with ice. It's a double ice. Twelve coins.",
+    "No, we don't have a menu. You tell me your feelings and I pour accordingly.",
+    "The garnish is a leaf from outside. Locally sourced. The local is the door.",
+    "Last call was an hour ago. I just like saying it.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'chef',
+  name: 'Chef Blaze',
+  plateRole: 'Chef',
+  sprite: '/sprites/npc/chef-blaze.webp',
+  portrait: '/sprites/npc/chef-blaze-head.webp',
+  avatar: '🔥',
+  color: '#e0442a',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "Welcome to Flavor Country, population: me! The fish is raw. That's not a mistake, that's a choice.",
+    "WHO SEASONED THIS? Oh. Me. It's perfect. Carry on.",
+    "You call that a stew? That's a soup with ambition!",
+    "Every dish is plated on a smaller dish. On a board. On a shovel. Presentation, bro.",
+    "If it's not on fire, it's not ready. If it IS on fire, it's also not ready. Keep watching.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'gemguru',
+  name: 'Glint',
+  plateRole: 'Gem Cutter',
+  sprite: '/sprites/npc/glint.webp',
+  portrait: '/sprites/npc/glint-head.webp',
+  avatar: '💎',
+  color: '#a46fe0',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "This amethyst cures stress. It's also forty coins, which causes stress. Balance.",
+    "Hold this quartz to your forehead. Feel that? That's the quartz. It's cold.",
+    "Mercury's in retrograde, so all sales are final. Also when it isn't.",
+    "I don't cut gems. I invite them to become smaller. They agree.",
+    "Your aura is beige. I have a stone for that. I have a stone for everything.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'postman',
+  name: 'Postmaster Pete',
+  plateRole: 'Postmaster',
+  sprite: '/sprites/npc/postmaster-pete.webp',
+  portrait: '/sprites/npc/postmaster-pete-head.webp',
+  avatar: '📮',
+  color: '#3d6fc4',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "Your letter's in the back. The back is closed. The back has been closed since the telegraph.",
+    "Take a number. We're serving number four. You're number nine hundred.",
+    "Next. ...I said next. I didn't say I'd serve you. I just like the word.",
+    "Express post gets there tomorrow. Regular post gets there yesterday. Don't ask.",
+    "Lunch is from noon till whenever I finish. I'm a slow eater. On purpose.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'realtor',
+  name: 'Deed Dave',
+  plateRole: 'Land Agent',
+  sprite: '/sprites/npc/deed-dave.webp',
+  portrait: '/sprites/npc/deed-dave-head.webp',
+  avatar: '🏡',
+  color: '#2fa59a',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "Waterfront property! The water's not there yet, but it's coming. It's coming fast. Sign here.",
+    "Cozy starter plot. By cozy I mean small. By small I mean a rock.",
+    "Great neighborhood. Very quiet. The slimes keep to themselves. Mostly.",
+    "That's not a crack in the wall. That's a feature. It's a window. A thin one.",
+    "Prices only go up, bro. Except when they go down. Then it's a bargain.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'bellhop',
+  name: 'Benny',
+  plateRole: 'Bellhop',
+  sprite: '/sprites/npc/benny.webp',
+  portrait: '/sprites/npc/benny-head.webp',
+  avatar: '🛎️',
+  color: '#c43d3d',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "Every room has a view. Of the next room. Late checkout is extra. Early checkout is also extra.",
+    "Can I take your bag? The tip is optional. The tip is also mandatory.",
+    "The pillows are filled with the finest feathers. From a bird I saw once.",
+    "Room service is available any time between three and three fifteen.",
+    "Your room's ready. Your bed isn't. You can wait in the lobby for a small fee.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'guildmaster',
+  name: 'Guildmaster Gary',
+  plateRole: 'Guildmaster',
+  sprite: '/sprites/npc/guildmaster-gary.webp',
+  portrait: '/sprites/npc/guildmaster-gary-head.webp',
+  avatar: '⚔️',
+  color: '#2b2b3a',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "Guild meeting at eight. Attendance is mandatory. Fun is optional. Fun was voted out.",
+    "We wipe, we learn. We wipe again, we learn less. We wipe a third time, I make a spreadsheet.",
+    "Loot goes to whoever I say. Democracy is for guilds that lose.",
+    "Pull when I say pull. Don't pull when I say don't. Kevin. KEVIN.",
+    "I've been doing this ten years. Not this exact thing. But a lot of standing and shouting.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'sheriff',
+  name: 'Sheriff Buck',
+  plateRole: 'Sheriff',
+  sprite: '/sprites/npc/sheriff-buck.webp',
+  portrait: '/sprites/npc/sheriff-buck-head.webp',
+  avatar: '⭐',
+  color: '#d9b23a',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "I've got my eye on you. The other one's on the snack machine. It's been acting shifty.",
+    "This badge is real. I got it in the mail. You get the mail, you get the badge. That's the law.",
+    "No running in BroTown. Unless something's chasing you. Then run. I'll be behind you. Way behind.",
+    "I patrol this whole square. Twice a day. Sometimes I take a little break in the middle. It's a big square.",
+    "Crime's down a hundred percent since I got here. I don't keep records.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'auctioneer',
+  name: 'Gavel Greg',
+  plateRole: 'Auctioneer',
+  sprite: '/sprites/npc/gavel-greg.webp',
+  portrait: '/sprites/npc/gavel-greg-head.webp',
+  avatar: '🔨',
+  color: '#b8862b',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "Going once, going twice, sold to the man who sneezed! Sir, that's your sword now. Sir, sit down.",
+    "Do I hear ten? Do I hear twelve? I hear a bird. Sold to the bird.",
+    "This fine rusty bucket, previously owned by a king. Which king? A king. Bidding starts at fifty.",
+    "Every item comes with a free story. The story is also for sale.",
+    "I don't sleep. I just auction off my dreams. Last night's went for six coins.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'fisher',
+  name: 'Old Man Reel',
+  plateRole: 'Fisherman',
+  sprite: '/sprites/npc/old-man-reel.webp',
+  portrait: '/sprites/npc/old-man-reel-head.webp',
+  avatar: '🎣',
+  color: '#e0c23a',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "Caught one THIS big yesterday. Threw it back. Out of respect. It had a family. It told me.",
+    "When I was your age, the fish were bigger. And they paid rent.",
+    "Patience, kid. Fishing's ninety percent waiting and ten percent telling people about it.",
+    "That fish over there? I've been chasing him forty years. He knows my name. He spells it wrong.",
+    "Sea's that way. Somewhere. I'm practicing out here first.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'streamer',
+  name: 'Bean',
+  plateRole: 'Streamer',
+  sprite: '/sprites/npc/bean.webp',
+  portrait: '/sprites/npc/bean-head.webp',
+  avatar: '📹',
+  color: '#e86fae',
+  wheelOnly: true,
+  figureSize: 0.8,         /* a kid, like Lil Bro */
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "I'm streaming right now, say hi to chat! Chat is my mom. Hi, Mom.",
+    "Smash that like button! There's no button. Just nod. Thanks.",
+    "Today's stream: me, standing here. Forty minutes. Very chill content.",
+    "One viewer! ...Oh, it's me on the other tab. Still counts.",
+    "Gonna hit a hundred followers this year. I'm at two. It's a process.",
+  ],
+  canFollow: false,
+  followZones: [],
+  _facing: 'down',
+  _questMarker: null,
+  _hitThisSwing: false,
+}, {
+  id: 'tourist',
+  name: 'Tourist Terry',
+  plateRole: 'Tourist',
+  sprite: '/sprites/npc/tourist-terry.webp',
+  portrait: '/sprites/npc/tourist-terry-head.webp',
+  avatar: '📸',
+  color: '#f08a3a',
+  wheelOnly: true,
+  x: 0, y: 0,            /* placed by _spawnWheelNpcs (WHEEL_TOWNSFOLK) */
+  spawnX: 0, spawnY: 0,
+  renderX: 0, renderY: 0,
+  hp: 100, maxHp: 100,
+  noHp: true,
+  alive: true,
+  respawnAt: 0,
+  pathRadius: 0,
+  moveTimer: 0,
+  targetX: 0, targetY: 0,
+  chatTimer: 14000,
+  chatBubble: null,
+  phrases: [
+    "Excuse me, which way to BroTown? ...I'm IN it? Huh. The brochure had more dragons.",
+    "Could you take my picture? With the building. No, the other building. No, you're in it now. Keep it.",
+    "Where's the gift shop? Every town has a gift shop. This one's hiding it.",
+    "I've been on holiday nine years. Can't find the exit. Lovely weather though.",
+    "Is the slime dangerous? Should I pet it? I'm petting it. Too late to say.",
   ],
   canFollow: false,
   followZones: [],

@@ -112,13 +112,13 @@ function _set(ready, reason) {
 export function serverHoldText(st, elapsedMs) {
   const s = st || _state;
   if (s.ready) return '';
-  if (s.reason === 'lost') return 'Reconnecting to Bro Town…';
+  if (s.reason === 'lost') return 'Reconnecting to BroTown…';
   if (s.reason === 'no-caps' || (s.reason && s.reason.indexOf('missing:') === 0)) {
     return 'The game server isn’t fully up yet — retrying…';
   }
   const t = typeof elapsedMs === 'number' ? elapsedMs : (Date.now() - s.since);
   if (t < 6000) return '';
-  if (t < 20000) return 'Connecting to Bro Town…';
+  if (t < 20000) return 'Connecting to BroTown…';
   return 'Still connecting — the game server isn’t answering yet. Hang on, we keep trying.';
 }
 
@@ -136,7 +136,7 @@ let _veilTimer = null;
 let _installed = false;
 
 function _showVeil(st) {
-  const text = serverHoldText(st, Infinity) || 'Connecting to Bro Town…';
+  const text = serverHoldText(st, Infinity) || 'Connecting to BroTown…';
   if (_veil) {
     const t = _veil.querySelector('.bt-connect-veil-text');
     if (t) t.textContent = text;
@@ -152,7 +152,7 @@ function _showVeil(st) {
     t.textContent = text;
     const sub = document.createElement('div');
     sub.className = 'bt-connect-veil-sub';
-    sub.textContent = 'Bro Town is online only — the world comes back the moment the server does.';
+    sub.textContent = 'BroTown is online only — the world comes back the moment the server does.';
     _veil.appendChild(spin); _veil.appendChild(t); _veil.appendChild(sub);
     document.body.appendChild(_veil);
   } catch (e) { _veil = null; }

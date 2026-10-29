@@ -545,7 +545,10 @@ ORDER_SLOTS = ['Clothes', 'Eyes', 'Eyewear', 'Headwear', 'Mouth Items']
 # the game's skin tones (playerSkins.js SKIN_CATALOG targets), and the bro's
 # own orange, which the collection's every Bro wears
 SKIN = {'fair': (230, 194, 155), 'tan': (200, 140, 80), 'brown': (155, 105, 65), 'sand': (217, 177, 132),
-        'pale': (240, 205, 170), 'olive': (178, 138, 94), 'honey': (201, 162, 113), 'rosy': (242, 201, 184)}
+        'pale': (240, 205, 170), 'olive': (178, 138, 94), 'honey': (201, 162, 113), 'rosy': (242, 201, 184),
+        # v2.3.3833: the new cast's five more
+        'ivory': (242, 218, 188), 'porcelain': (245, 221, 205), 'alabaster': (249, 236, 226), 'deep': (112, 76, 50),
+        'ebony': (82, 56, 39)}
 SKIN_REF = (233, 153, 73)
 BROWN = (198, 129, 61)      # the collection's other skin, the Different Bro's
 SKIN_FAMILY = [(233, 153, 73), (224, 147, 70), (189, 124, 59), (148, 97, 46)]
@@ -553,6 +556,8 @@ GREY = ((96, 96, 104), (206, 206, 212))
 DARK = ((42, 38, 44), (92, 86, 90))
 HAT_BLACK = ((34, 32, 38), (84, 82, 92))
 HAIR_BLACK = ((14, 15, 17), (52, 52, 58))   # v2.3.3585: Diego's, the slick-back's grey shine taken out
+BLONDE = ((150, 104, 36), (250, 222, 128))  # v2.3.3833: Chef Blaze's flat-top
+PINK = ((160, 60, 110), (250, 170, 210))     # v2.3.3833: Bean's hair and cat ears
 OUTLINE = (31, 13, 27)      # the collection's one outline colour, in every layer
 # The hats.  The collection wears hair OR a hat (one Headwear each): a bro in
 # a hat is bald under it, his ear showing below the brim.  So is a
@@ -601,6 +606,45 @@ PORTRAITS = {
     # the bookie: a black derby, yellow diamonds on green felt
     'cardsharp-bro-head': dict(look='ace', skin='rosy', bg='Middle Green', headwear='derbyhat',
                                recolour={'headwear': HAT_BLACK}, tee=dict(cell=1, ox=7, oy=27)),
+    # ═══ v2.3.3833: THE NEW CAST (docs/specs/npc-cast.md) ═══
+    # Each from the traits the approved draft named; past them, as above, his
+    # shirt, beard and eyes as the world wears them (so the draft's Suit or
+    # Raincoat is his tee and its pattern, as every bust's clothes are).
+    # the crypto banker: split hair, the laser visor, navy pinstripes
+    'sterling-head': dict(look='banker', skin='ivory', bg='Purple Navy', hair='splithair', eyewear='laserglass',
+                          recolour={'hair': HAIR_BLACK}, tee=dict(cell=1)),
+    # the mixologist: black hair (the collection has no wavy), his beard, checks
+    'slim-head': dict(look='barkeep', skin='deep', bg='Rose Taupe', hair='lightbrownhair',
+                      recolour={'hair': HAIR_BLACK}, tee=dict(cell=1)),
+    # the TV chef: a blonde flat-top, the shades, his blonde beard, flames
+    'chef-blaze-head': dict(look='chef', skin='rosy', bg='Dark Lavender', hair='flattophairstyle', eyewear='thuglifeglasses',
+                            recolour={'hair': BLONDE}, tee=dict(cell=1)),
+    # the crystal healer: dark hair under a halo, purple polka
+    'glint-head': dict(look='gemguru', skin='porcelain', bg='Teal Blue', hair='lightbrownhair', headwear='halo',
+                       recolour={'hair': DARK}, tee=dict(cell=1)),
+    # the clerk: the blue cap, his grey beard, bands
+    'postmaster-pete-head': dict(look='postman', skin='fair', bg='Purple Navy', headwear='bluecap', tee=dict(cell=1)),
+    # the swamp seller: a flat cap, teal diamonds
+    'deed-dave-head': dict(look='realtor', skin='tan', bg='Middle Green', headwear='flatcap', tee=dict(cell=1)),
+    # the bellhop: the fez, a red windowpane
+    'benny-head': dict(look='bellhop', skin='brown', bg='Dark Lavender', headwear='fez', tee=dict(cell=1)),
+    # the raid leader: the headband over blonde hair, black diamonds
+    'guildmaster-gary-head': dict(look='guildmaster', skin='pale', bg='Russian Green', hair='blondehair', headwear='naruto',
+                                  tee=dict(cell=1)),
+    # the mall cop: the sheriff's hat, the shades, yellow stripes
+    'sheriff-buck-head': dict(look='sheriff', skin='sand', bg='Camouflage Green', headwear='sheriffhat',
+                              eyewear='thuglifeglasses', tee=dict(cell=1)),
+    # the auctioneer: the crown, his black beard, yellow diagonals
+    'gavel-greg-head': dict(look='auctioneer', skin='ebony', bg='Purple Navy', headwear='crown', tee=dict(cell=1)),
+    # the old fisherman: a grey beanie, his long white beard, sleepy eyes, his yellow slicker
+    'old-man-reel-head': dict(look='fisher', skin='alabaster', bg='Teal Blue', headwear='redbeanie',
+                              recolour={'headwear': GREY}, tee=dict(cell=1)),
+    # the kid streamer: pink cat ears on pink hair, pink polka
+    'bean-head': dict(look='streamer', skin='honey', bg='Dark Lavender', hair='splithair', headwear='catears',
+                      recolour={'hair': PINK, 'headwear': PINK}, tee=dict(cell=1)),
+    # the lost tourist: the sombrero, the monocle, white polka
+    'tourist-terry-head': dict(look='tourist', skin='porcelain', bg='Middle Green', headwear='mexicanhat',
+                               eyewear='goldenmonocle', tee=dict(cell=1)),
 }
 # the game's eye styles as the collection's eyes
 EYES = {'none': 'normaleyes', 'wtf': 'wtfeyes', 'sleepy': 'sleepyeyes', 'happy': 'happyeyes', 'sus': 'suseyes'}
@@ -662,7 +706,7 @@ def _rgb_targets(rel):
 
 def _game():
     """the shirt and beard colours, the drawing palette, the pattern tiles, and
-    every townsperson's look (tools/qa/npc-looks.mjs NPC_LOOKS)"""
+    every townsperson's look (src/data/npcLooks.js NPC_LOOKS)"""
     pal_src = _read('src/rendering/traits/playerArt.js')
     pal_src = pal_src[pal_src.index('export const ART_PALETTE = ['):]
     pal_src = re.sub(r'/\*.*?\*/', '', pal_src[:pal_src.index('];')], flags=re.S)
@@ -673,7 +717,7 @@ def _game():
         cells = ''.join(re.findall(r"'([01]+)'", m.group(5)))
         tiles[m.group(1)] = dict(w=int(m.group(2)), h=int(m.group(3)), cell=int(m.group(4)), cells=cells)
     looks = {}
-    src = _read('tools/qa/npc-looks.mjs')
+    src = _read('src/data/npcLooks.js')   # v2.3.3809: moved from tools/qa/npc-looks.mjs
     body = src[src.index('export const NPC_LOOKS = {'):]
     body = body[:body.index('\n};')]
     for m in re.finditer(r"\n  (\w+): \{(.*?)\n  \},", body, re.S):

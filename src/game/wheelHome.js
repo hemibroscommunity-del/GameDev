@@ -130,7 +130,22 @@ export function wheelSpawnTick(S) {
   /* not in the world yet -- no player, no worker, or the worker has not yet
      said what it runs (the stairs lead to the Wheel's own zone only on a
      worker that runs its monsters: worldTrial.js trialZoneFor) -- or dying */
-  if (!P || !S.channel || !S._serverCaps || S._dying) return;
+  if (!P || !S.channel || !S._serverCaps || S._dying) {
+    /* ═══ v2.3.3729: THE VEIL'S CLOCK STARTS WHEN THE WORKER HAS ANSWERED ═══
+       It started at the first frame, and on a slow phone the worker's first
+       word (state_sync, its caps) came ~40 s later, behind the loading
+       screen's own art: the trip's TRIP_VEIL_MS ran out before it could
+       begin, today's town counted as "shown after all", and its map (11.3 MB,
+       the largest picture in the game) and NPCs were loaded for the stop and
+       freed a beat after the stairs (mp-gpuaudit, reproduced at
+       BT_QA_CPU_THROTTLE=4).  Until the worker has said what it runs the
+       clock is held at now: the loading screen waits for it anyway
+       (serverReady.js, no cap), and `_serverCaps` is never cleared, so this
+       is the tab's first answer only.  A worker that answers and never takes
+       the trip still lets go of the veil TRIP_VEIL_MS later, as before. */
+    if (!S._serverCaps) S._spawnAskedAt = Date.now();
+    return;
+  }
   const now = Date.now();
   if (!S._spawnSince) { S._spawnSince = now; return; }
   if (now - S._spawnSince < SPAWN_SETTLE_MS) return;

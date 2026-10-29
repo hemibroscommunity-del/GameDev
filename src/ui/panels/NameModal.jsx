@@ -338,7 +338,9 @@ export function NameModal(props) {
          - the EYES go to the species' own (the Alien Eyes) when the bro
            has his own eyes, and back to his own when he leaves a species whose
            eyes he still wears; a style the player picked stays. */
-    species: { label: 'Species', kind: 'thumb', spriteCat: 'species', catalog: SPECIES_CATALOG, sel: speciesSel,
+    /* v2.3.3772: the owner, 2026-10-28: "Change species to bro type" -- the
+       word a player reads; the code still says species */
+    species: { label: 'Bro type', kind: 'thumb', spriteCat: 'species', catalog: SPECIES_CATALOG, sel: speciesSel,
       set: function (id) {
         var was = speciesSel;
         setSpecies(id); setSpeciesSel(id);
@@ -493,10 +495,15 @@ export function NameModal(props) {
     /* v2.3.3589: Species, its own tab (owner: "Yes make species it's own
        button"), FIRST and `wide`: one button across the top of the grid, so
        the nine below it stand exactly where they did (game.css
-       .bt-cc-tab--wide).  Its icon is the Skin tab's bald head made an alien
-       (cc-tab-species.png, tools/ui/make_species_tab_icon.py: the same 17 x 18
-       grid at 8 px a pixel). */
-    { t: 'species', label: 'Species', img: _TAB_ICON('species'), wide: true },
+       .bt-cc-tab--wide).  Its icon was the Skin tab's bald head made an alien
+       (cc-tab-species.png, tools/ui/make_species_tab_icon.py) until v2.3.3772. */
+    /* v2.3.3772: "Change species to bro type", and "for bro type just include
+       3 small heads of each type instead of just the weird shaped alien one":
+       its icon is the three bro types' heads side by side, Human, Monkey and
+       Alien, as its strip offers them (cc-tab-brotype.png,
+       tools/ui/make_brotype_tab_icon.py: their picker tiles' own heads), drawn
+       at the tabs' icon height with its own width (`trio`, game.css). */
+    { t: 'species', label: 'Bro type', img: _TAB_ICON('brotype'), wide: true, trio: true },
     { t: 'hair', label: 'Hair', img: _TAB_ICON('hair') },
     { t: 'hat', label: 'Hats', img: _TAB_ICON('hat') },
     { t: 'skin', label: 'Skin', img: _TAB_ICON('skin') },
@@ -1072,7 +1079,7 @@ export function NameModal(props) {
        edge copy to defeat — and the <link rel=preload> in index.html has to
        match this URL exactly or it adds a request instead of saving one
        (docs/TRAPS.md §52). */
-    src: '/ui/welcome/title/brotown-lockup.png', alt: 'BRO TOWN', className: "bt-cc-logo"
+    src: '/ui/welcome/title/brotown-lockup.png', alt: 'BroTown', className: "bt-cc-logo"
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-logo-shine", "aria-hidden": true
   }))), /*#__PURE__*/React.createElement("section", {
@@ -1629,7 +1636,7 @@ export function NameModal(props) {
     /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's one dominant gold
        action.  v2.3.1307: gated on a valid name (round-7). */
     className: "bt-cc-play",
-    "aria-label": 'Enter Bro Town',
+    "aria-label": 'Enter BroTown',
     style: {
       width: '100%',
       cursor: _blockReason ? 'default' : 'pointer',
@@ -1654,7 +1661,7 @@ export function NameModal(props) {
     src: '/ui/welcome/title/crest.webp?v=2.3.2359',
     alt: '', draggable: false, "aria-hidden": true
   }),
-  /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter Bro Town")),
+  /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter BroTown")),
   /* ═══ v2.3.2219: THE WAY BACK ═══
      Owner: "Create a character need a back button to main menu."  The
      creator is reached deliberately (CREATE CHARACTER on the splash), and
@@ -1743,7 +1750,8 @@ export function NameModal(props) {
     var on = x.t === _activeType;
     return /*#__PURE__*/React.createElement("button", {
       key: x.t, type: 'button', role: 'tab', "aria-selected": on ? 'true' : 'false',
-      className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : '') + (x.wide ? ' bt-cc-tab--wide' : ''),   /* v2.3.3589 */
+      className: 'bt-cc-tab' + (on ? ' bt-cc-tab--on' : '') + (x.wide ? ' bt-cc-tab--wide' : '')   /* v2.3.3589 */
+        + (x.trio ? ' bt-cc-tab--trio' : ''),   /* v2.3.3777: the three heads over the words (game.css) */
       onClick: function () { setActiveCat(x.t); }
     }, x.glyph === 'build' ? /*#__PURE__*/React.createElement("svg", {
       /* v2.3.1953: two figures, one short and one tall, which is the whole
@@ -1766,7 +1774,7 @@ export function NameModal(props) {
       /* v2.3.1308: the owner's painted category art.
          v2.3.1931: one sheet for all eight, and no per-tab pixel flag — the
          catalog-thumb tabs that needed `pixelated` are gone (see _TABS). */
-      className: "bt-cc-tab-icon",
+      className: "bt-cc-tab-icon" + (x.trio ? " bt-cc-tab-icon--trio" : ""),   /* v2.3.3772 */
       src: x.img, alt: '', draggable: false, decoding: 'async'
     }) : null,
     /*#__PURE__*/React.createElement("span", { className: "bt-cc-tab-label" }, x.label));

@@ -28,7 +28,10 @@ import * as H from './harness.mjs';
 import { MEM_INIT, memSampler } from './memprobe.mjs';
 
 const PHONE = { width: 390, height: 844 };
-const QUERY = process.env.BT_MN_QUERY || '';
+/* v2.3.3715: heldNumbers.js's own path -- with the strips sent to the chip as
+   colour numbers (picsNumbers.js, on by default) they are never held this
+   way; mp-picsonce proves that path */
+const QUERY = ['picnumbers=0', process.env.BT_MN_QUERY || ''].filter(Boolean).join('&');
 
 /* every sprite on the stage drawn from a held strip, and what each draws:
    the opaque pixels the renderer gives back for it (the chip's copy) */

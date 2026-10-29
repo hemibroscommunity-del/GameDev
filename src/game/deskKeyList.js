@@ -37,11 +37,13 @@
  * while a click is held down, double clicking, etc)."  The left hand on WASD,
  * the right on the mouse (docs/specs/desktop-keys.md "v2.3.3711"):
  *   - Q the weapon's special (was F, and the right click), F the Element
- *     Burst (was G), the right mouse button HELD the shield (was Q), a left
- *     click while it is up the bash (was Q+E), the wheel the next or last
+ *     Burst (was G), the right mouse button HELD the shield (was Q; since
+ *     v2.3.3847 a toggle, pressed up and pressed down), a left click while
+ *     it is up the bash (was Q+E), the wheel the next or last
  *     weapon (Tab and 1-3 stay);
- *   - `2×WASD` a direction key tapped twice rolls that way (Space still
- *     rolls), `2×Click` a double click on a monster locks on to it (with the
+ *   - `2×WASD` a direction key tapped twice rolls that way (X still
+ *     rolls: Space until v2.3.3844, when Space became the jump),
+ *     `2×Click` a double click on a monster locks on to it (with the
  *     sword, the opening lunge) -- game/deskCombos.js;
  *   - `+Click` is listed right under `R-Click`, so the pair reads as the
  *     combo it is: the right button held, then a click.
@@ -69,13 +71,14 @@ export const DESK_KEY_GROUPS = [
 export const DESK_KEY_ROWS = [
   ['WASD', 'Move', null, 'move'],
   ['Shift', 'Sprint', 'sprint', 'move'],
-  ['Space', 'Dodge', null, 'move'],
+  ['Space', 'Jump', null, 'move'],   /* v2.3.3844: was X ("spacebar I think should be jump") */
+  ['X', 'Dodge', null, 'move'],   /* v2.3.3844: was Space */
   ['2\u00d7WASD', 'Dodge', null, 'move'],   /* v2.3.3711: a direction tapped twice */
-  ['X', 'Jump', null, 'move'],
+  ['Z', 'Board', 'ride', 'move'],   /* v2.3.3776: the skateboard, in BroTown */
   ['Click', 'Attack', null, 'fight'],
   ['2\u00d7Click', 'Lock on', null, 'fight'],   /* v2.3.3711: a double click on a monster */
   ['Q', 'Special', null, 'fight'],   /* v2.3.3711: was F and the right click */
-  ['R-Click', 'Shield', 'shield', 'fight'],   /* v2.3.3711: held; was Q */
+  ['R-Click', 'Shield \u2195', 'shield', 'fight'],   /* v2.3.3711: held; was Q.  v2.3.3847: pressed up, pressed down -- the arrow up and down ("Shield (toggle)" is 97 px of the column's 73) */
   ['+Click', 'Bash', 'bash', 'fight'],   /* v2.3.3711: a click with it held; was Q+E */
   ['R', 'Whirl', 'whirl', 'fight'],
   ['F', 'Burst', 'burst', 'fight'],   /* v2.3.3711: was G */
@@ -83,7 +86,12 @@ export const DESK_KEY_ROWS = [
   ['V', 'Eat', 'food', 'fight'],
   ['Wheel', 'Swap', null, 'fight'],   /* v2.3.3711: the mouse wheel */
   ['Tab', 'Swap', null, 'fight'],
-  ['1-3', 'Weapon', null, 'fight'],
+  /* v2.3.3847: the owner: "instead of '1-3 weapon' just list which number
+     represents which weapon (1 melee, 2 bow, 3 staff, etc)".  Always all
+     three: every player's weapons row has the three slots */
+  ['1', 'Melee', null, 'fight'],
+  ['2', 'Bow', null, 'fight'],
+  ['3', 'Staff', null, 'fight'],
   ['E', 'Interact', null, 'other'],
   ['B', 'Emotes', null, 'other'],
   ['C', 'Chat', null, 'other'],
@@ -99,7 +107,7 @@ export const DESK_KEY_ROWS = [
 ];
 
 /** The requirements a row may name, in the stamp's order. */
-const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food'];
+const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food', 'ride'];   /* v2.3.3776: + ride, last so the earlier stamps read the same */
 
 /** The rows to list for what you have: `have` maps each requirement to true
     when it is met (an absent one is not met). */

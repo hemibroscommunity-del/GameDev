@@ -1,3 +1,4 @@
+import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useState, useEffect, useRef } from 'react';
 import { tradeBagBus } from '../mobile/tradeBagBus.js'; /* v2.3.2149 */
 import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
@@ -137,8 +138,9 @@ const ItemThumb = ({ itemKey, size = 24, fallback }) => {
   );
 };
 
-const GoldIcon = () => (
-  <img src="/icons/popups/gold.webp" alt="" draggable={false}
+/* v2.3.3734: the pile for `amount` (none given: the one coin) */
+const GoldIcon = ({ amount }) => (
+  <img src={amount == null ? COIN_ONE : coinArtFor(amount)} alt="" draggable={false}
     style={{ width: 16, height: 16, objectFit: 'contain', verticalAlign: '-3px' }}
     onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('💰')); }} />
 );
@@ -218,6 +220,20 @@ const DRAWER_FRAME = {
    empty for most): "invite" lets game.css put the sideways ▴ chip away while
    an invite's Open trade lies under it.  Everything else reads the attribute
    by its presence only. */
+/* v2.3.3856: the two offers' row (.bt-t2-lanes, game.css): side by side
+   where the drawer is 520 px or wider, stacked below that.  `?tradeside=1`
+   side by side always, `?tradeside=0` stacked always -- the owner's to try on
+   one phone (read once). */
+let _tradeSide;
+function tradeLanesCls() {
+  if (_tradeSide === undefined) {
+    let m = null;
+    try { m = /[?&]tradeside=([01])(?:&|$)/.exec(window.location.search); } catch (e) { /* no window: the default */ }
+    _tradeSide = m ? m[1] : '';
+  }
+  return 'bt-t2-lanes' + (_tradeSide === '1' ? ' bt-t2-lanes--side' : _tradeSide === '0' ? ' bt-t2-lanes--stack' : '');
+}
+
 function TradeDrawer({ title, titleColor, onClose, children, kind, icon }) {
   return (
     <div
@@ -503,7 +519,7 @@ function OfferRows({ offer, weapons, pets, empty, onRemoveItem, onRemoveWeapon, 
           well without an edge. */}
       {gold > 0 && (
         <div className="bt-t2-row" data-trade-row="_gold" style={{ minHeight: 36 }}>
-          <div className="bt-t2-plate"><GoldIcon /></div>
+          <div className="bt-t2-plate"><GoldIcon amount={gold} /></div>
           <div style={{ flex: 1, fontSize: 12, color: ink.name }}>Gold</div>
           <div style={{ fontSize: 14, fontWeight: 700, color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}{goldSuffix || ''}</div>
         </div>
@@ -824,6 +840,7 @@ export function TradeWindowPanel(props) {
      `liveTrade` is deliberately false for the receipt and failure states too,
      so the bag is handed back the instant the trade stops being editable. */
   const bagTapRef = useRef(null);
+  const weaponTapRef = useRef(null);   /* v2.3.3849: a bag weapon tile stages into the weapon lane (tradeBagBus.tapWeapon) */
   /* ═══ v2.3.2280: THE BAG LETS GO FOR THE REVIEW SCREEN ═══
      The review screen tells the player, in its own footer, "Nothing on this
      screen can change the trade." With the bag attached that was not true:
@@ -842,7 +859,8 @@ export function TradeWindowPanel(props) {
   const liveTrade = !!trade2 && !trade2.invite && trade2.state === 'open' && !reviewStage;
   useEffect(() => {
     if (!liveTrade) return undefined;
-    tradeBagBus.attach((k) => { if (bagTapRef.current) bagTapRef.current(k); });
+    tradeBagBus.attach((k) => { if (bagTapRef.current) bagTapRef.current(k); },
+      (i, w) => (weaponTapRef.current ? weaponTapRef.current(i, w) : false));
     return () => tradeBagBus.detach();
   }, [liveTrade]);
   useEffect(() => { if (liveTrade) tradeBagBus.setStaged(stage); }, [liveTrade, stage]);
@@ -1031,7 +1049,7 @@ export function TradeWindowPanel(props) {
               are bold" is true on one screen and not the other. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
             <span style={{ ...laneHeader, marginBottom: 0, fontWeight: 800, color: '#B6C1BE' }}>Balance</span>
-            <GoldIcon />
+            <GoldIcon amount={liveCoins} />
             <span style={{ fontSize: 15, fontWeight: 800, color: '#F4F0E7', fontVariantNumeric: 'tabular-nums' }}>{liveCoins}G</span>
           </div>
       </TradeDrawer>
@@ -1181,6 +1199,16 @@ export function TradeWindowPanel(props) {
      a captured one would add to a stale copy and silently undo the last
      change. */
   bagTapRef.current = addOne;
+  /* v2.3.3849: a weapon tile in the bag stages that weapon, exactly as its
+     chip in the weapon lane below does (same send, same max).  False with no
+     weapon lane on this worker, so the tile opens its card as it always did;
+     at the max the click is taken and nothing is staged, as the chips are
+     disabled there (the lane header says "max"). */
+  weaponTapRef.current = (i, w) => {
+    if (!weaponLane) return false;
+    if (myWpn.length < T2_WPN_MAX) send('trade2_stage_weapon', { stashIdx: i, expectName: (w && w.name) || (stash[i] && stash[i].name) });
+    return true;
+  };
   /* v2.3.1235: batch-4 state-correction §4 — the staged-row Remove
      control.  Same pathway an item already left the stage by (delete
      the key, push the whole offer via the existing trade2_set send) —
@@ -1308,7 +1336,7 @@ export function TradeWindowPanel(props) {
              so a find-and-replace on the other hex misses this line and leaves
              1.40:1 gold on the one screen whose job is to be read. */
           <div className="bt-t2-row" style={{ minHeight: 30, gap: 6, fontSize: 13, color: WELL_INK.gold, fontWeight: 700, lineHeight: 1.5 }}>
-            {chip(<GoldIcon />)}<span>{gold} gold</span>
+            {chip(<GoldIcon amount={gold} />)}<span>{gold} gold</span>
           </div>
         )}
         </div>
@@ -1337,7 +1365,7 @@ export function TradeWindowPanel(props) {
             Weight without contrast is not emphasis; it is the same grey, thicker. */}
         <div data-trade-subtotal="" style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, fontWeight: 800, color: ink.name, marginTop: 7, paddingTop: 0 }}>
           <span>{ls.length} item{ls.length === 1 ? '' : 's'}</span>
-          {gold > 0 && (<><span style={{ color: ink.muted, fontWeight: 700 }}>·</span><GoldIcon /><span style={{ color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}</span></>)}
+          {gold > 0 && (<><span style={{ color: ink.muted, fontWeight: 700 }}>·</span><GoldIcon amount={gold} /><span style={{ color: ink.gold, fontVariantNumeric: 'tabular-nums' }}>{gold}</span></>)}
         </div>
       </div>
     );
@@ -1375,10 +1403,17 @@ export function TradeWindowPanel(props) {
           {/* v2.3.2292: the same two faces as the live screen, so the pile you
               are about to hand over is labelled with the person you are handing
               it to on every screen of the trade. */}
-          {side('YOU RECEIVE', theirLines, theirGold, 'var(--ui-positive-on-invert, #1C5A40)', theirWell, theirInk,
-            <Face src={theirFace} name={otherName} onLight />)}
+          {/* v2.3.3856: side by side where the drawer has the room, yours on
+              the left (the live screen's .bt-t2-lanes, and its note): YOU
+              GIVE first in the row, YOU RECEIVE beside it; stacked, YOU
+              RECEIVE is still on top (CSS order), as v2.3.2282 put it.  Each
+              call still carries its own label, tone, well and ink. */}
+          <div className={tradeLanesCls()} data-trade-lanes=""><div className="bt-t2-lanes-in">
           {side('YOU GIVE', myLines, myGold, '#D8635D', myWell, myInk,
             <Face src={portraitStore.get()} name="You" />)}
+          {side('YOU RECEIVE', theirLines, theirGold, 'var(--ui-positive-on-invert, #1C5A40)', theirWell, theirInk,
+            <Face src={theirFace} name={otherName} onLight />)}
+          </div></div>
           {bigGold && !goldAck && (
             /* Owner: "large currency amounts trigger an explicit confirmation
                to catch typos." */
@@ -1477,61 +1512,24 @@ export function TradeWindowPanel(props) {
        numbers; the ✕ still routes through requestLeave (v2.3.1235 §7). */
     <TradeDrawer title={`Trading with ${otherName}`} onClose={requestLeave}>
 
-        {/* v2.3.1235: batch-4 state-correction §6 — "<name> confirmed ✓"
-            positive check by their lane header, straight off the
-            server's confirmed flag (was "· CONFIRMED" inline). */}
-        <div className={theirLaneCls} style={theirWell}>
-        {/* v2.3.2290: the header lives INSIDE the frame now, which is where the
-            owner's mockup puts it -- icon, label, hairline, then the pile. The
-            QA lane readers used to take the header's NEXT SIBLING as the well;
-            they now take its PARENT, which is this frame. That is the more
-            honest anchor anyway: the thing being measured is the lane, and it
-            is now the element that actually carries the lane's shading. */}
-        {/* v2.3.2290: theirInk.muted, NOT the dark ramp's #8D9B98. Moving this
-            header inside the lane put it on the light card, and the first cut
-            left it on the dark colour -- 1.87:1, caught by the ink probe in
-            mp-trade rather than by eye. Same trap as TRAPS §48: the ink has to
-            travel with the fill, and a header that changes side changes ramp. */}
-        <div className="bt-t2-lane-hdr" style={{ color: theirInk.muted }}>
-          <Face src={theirFace} name={otherName} onLight />
-          <span className="bt-t2-lane-name">{otherName} offers</span>
-
-          {/* v2.3.2280: under the two-stage flow `confirmed` is only ever set
-              on the REVIEW screen, so at the offer stage this header showed
-              nothing at all and a player who had readied up looked, from the
-              other side, exactly like one who was still shopping. `ready` is
-              server state from the same trade2_state echo (trade2.js _t2Wire)
-              -- a direct read, not a guess. */}
-          {/* and the same for the green: #55B98A is ~2:1 on the light card. */}
-          {theyConfirmed ? <span className="bt-t2-lane-hint" style={{ color: 'var(--ui-positive-on-invert, #1C5A40)' }}>confirmed ✓</span>
-            : theyReady ? <span className="bt-t2-lane-hint" style={{ color: 'var(--ui-positive-on-invert, #1C5A40)' }}>ready ✓</span> : null}
-        </div>
-        {/* v2.3.1235: batch-4 rollout — offer wells onto the corrected well
-            token #111E23 + .11 hairline (×3 below, incl. the item tray).
-            v2.3.2282: the two offer wells split by OWNER -- theirs sunk to
-            well-deep, mine raised to well-soft. This lane's order was already
-            right (theirs on top) and is deliberately untouched: mp-trade's
-            lane reader finds this header and then takes its NEXT SIBLING as
-            the well, so moving a header without its well, or wrapping either
-            in a new div, makes it silently read the wrong player's pile while
-            every presence assertion keeps passing. */}
-          {/* v2.3.2293: the offered items get their own sunk well, so "what is on
-              the table" is visibly a different thing from the controls that
-              change it -- see .bt-t2-items.
-              v2.3.2294: and that well is now TINTED, which is also what retired
-              the explicit `ink={theirInk}` that stood here since v2.3.2283. The
-              ink no longer has to be inferred OR passed: it is declared on the
-              well, so text picks up the ramp for the ground it is standing on
-              whichever lane the well happens to be in. */}
-          <div className="bt-t2-items">
-            <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} pets={otherPets} empty="Nothing staged yet" />
-          </div>
-        </div>
-
+        {/* ═══ v2.3.3856: YOUR OFFER ON THE LEFT, THEIRS ON THE RIGHT ═══
+            The owner: "for trade window I'd prefer a side by side layout of
+            your trade window on left and other person trade window on right.
+            Top to bottom (current) is more confusing."  The two lanes sit in
+            one row (.bt-t2-lanes, game.css): yours first, theirs beside it.
+            Where the drawer is too narrow for two -- an upright phone's,
+            about 378 px, where a lane would be 180 px and the gold ladder and
+            a row's steppers no longer fit -- they stack as before, theirs on
+            top (CSS order), so nothing a phone shows changes.  `?tradeside=1`
+            puts them side by side whatever the width, `?tradeside=0` stacks
+            them everywhere (tradeLanesCls).  The lanes themselves are
+            untouched: the QA readers find each by its header and walk up to
+            .bt-t2-lane. */}
+        <div className={tradeLanesCls()} data-trade-lanes=""><div className="bt-t2-lanes-in">
         {/* v2.3.1235: batch-4 state-correction §6 — "Editing offer" while
             my side is editable, "Confirmed ✓" once the server echoes my
             confirm flag. */}
-        <div className={myLaneCls} style={{ ...myWell, marginBottom: 6 }}>
+        <div className={myLaneCls} style={myWell}>
         {/* v2.3.2290: mine gets the money bag, theirs the coin stack -- the two
             icons the owner drew into the lane art, lifted out so the header
             they belong to can say something different on each screen. */}
@@ -1622,7 +1620,7 @@ export function TradeWindowPanel(props) {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <GoldIcon />
+          <GoldIcon amount={stage._gold || 0} />
           {/* v2.3.1235: batch-4 rollout — section-header ramp 11/700 .14em
               muted. */}
           <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#8D9B98' }}>Gold</span>
@@ -1797,6 +1795,59 @@ export function TradeWindowPanel(props) {
             says so. It also removes the last of the stacked-container look he
             objected to. */}
         </div>
+
+        {/* v2.3.1235: batch-4 state-correction §6 — "<name> confirmed ✓"
+            positive check by their lane header, straight off the
+            server's confirmed flag (was "· CONFIRMED" inline). */}
+        <div className={theirLaneCls} style={theirWell}>
+        {/* v2.3.2290: the header lives INSIDE the frame now, which is where the
+            owner's mockup puts it -- icon, label, hairline, then the pile. The
+            QA lane readers used to take the header's NEXT SIBLING as the well;
+            they now take its PARENT, which is this frame. That is the more
+            honest anchor anyway: the thing being measured is the lane, and it
+            is now the element that actually carries the lane's shading. */}
+        {/* v2.3.2290: theirInk.muted, NOT the dark ramp's #8D9B98. Moving this
+            header inside the lane put it on the light card, and the first cut
+            left it on the dark colour -- 1.87:1, caught by the ink probe in
+            mp-trade rather than by eye. Same trap as TRAPS §48: the ink has to
+            travel with the fill, and a header that changes side changes ramp. */}
+        <div className="bt-t2-lane-hdr" style={{ color: theirInk.muted }}>
+          <Face src={theirFace} name={otherName} onLight />
+          <span className="bt-t2-lane-name">{otherName} offers</span>
+
+          {/* v2.3.2280: under the two-stage flow `confirmed` is only ever set
+              on the REVIEW screen, so at the offer stage this header showed
+              nothing at all and a player who had readied up looked, from the
+              other side, exactly like one who was still shopping. `ready` is
+              server state from the same trade2_state echo (trade2.js _t2Wire)
+              -- a direct read, not a guess. */}
+          {/* and the same for the green: #55B98A is ~2:1 on the light card. */}
+          {theyConfirmed ? <span className="bt-t2-lane-hint" style={{ color: 'var(--ui-positive-on-invert, #1C5A40)' }}>confirmed ✓</span>
+            : theyReady ? <span className="bt-t2-lane-hint" style={{ color: 'var(--ui-positive-on-invert, #1C5A40)' }}>ready ✓</span> : null}
+        </div>
+        {/* v2.3.1235: batch-4 rollout — offer wells onto the corrected well
+            token #111E23 + .11 hairline (×3 below, incl. the item tray).
+            v2.3.2282: the two offer wells split by OWNER -- theirs sunk to
+            well-deep, mine raised to well-soft. This lane's order was already
+            right (theirs on top) and is deliberately untouched: mp-trade's
+            lane reader finds this header and then takes its NEXT SIBLING as
+            the well, so moving a header without its well, or wrapping either
+            in a new div, makes it silently read the wrong player's pile while
+            every presence assertion keeps passing. */}
+          {/* v2.3.2293: the offered items get their own sunk well, so "what is on
+              the table" is visibly a different thing from the controls that
+              change it -- see .bt-t2-items.
+              v2.3.2294: and that well is now TINTED, which is also what retired
+              the explicit `ink={theirInk}` that stood here since v2.3.2283. The
+              ink no longer has to be inferred OR passed: it is declared on the
+              well, so text picks up the ramp for the ground it is standing on
+              whichever lane the well happens to be in. */}
+          <div className="bt-t2-items">
+            <OfferRows offer={trade2.offers[otherId]} weapons={otherWpn} pets={otherPets} empty="Nothing staged yet" />
+          </div>
+        </div>
+        </div></div>
+
 
         {/* v2.3.1235: batch-4 state-correction §6 — the server reset both
             confirms after an offer change (see the wire map + detection

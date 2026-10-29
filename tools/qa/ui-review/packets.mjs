@@ -32,7 +32,7 @@ export const PACKETS = [
   { slug: 'dashboard-character-bag', title: 'Dashboard: your character, your quests and the bag',
     screens: ['dash-hero', 'dash-hero-points', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card'] },
   { slug: 'dashboard-skills-codex', title: 'Dashboard: life skills, the Codex and More',
-    screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more'] },
+    screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',
     /* v2.3.3527: + the Achievements page, the ninth (MAX_PICTURES) */
     screens: ['more-settings', 'more-pets', 'more-leaderboard', 'more-social', 'more-achievements', 'more-journey', 'more-account', 'more-about', 'more-feedback'] },
@@ -43,9 +43,11 @@ export const PACKETS = [
   { slug: 'townsfolk-and-halls', title: 'Diego, Ace and the halls',
     screens: ['shop-diego', 'ace-flip', 'building-party', 'building-post', 'building-sheriff', 'building-guildhall', 'building-townhall', 'building-hotel', 'building-arena'] },
   { slug: 'maps-chat-players', title: 'The maps, chat and other players',
-    screens: ['world-map', 'chat', 'player-list', 'player-card', 'inspect-self', 'trade-request', 'duel-request'] },
-  { slug: 'harvesting-and-fighting', title: 'Harvesting and fighting',
-    screens: ['harvest-near', 'harvest-windup', 'harvest-ready', 'spar-fight'] },
+    screens: ['world-map', 'building-townhall-page', 'building-townhall-action', 'chat', 'player-list', 'player-card', 'inspect-self', 'trade-request', 'duel-request'] },
+  /* v2.3.3768: the party chip's two screens here, as the Town Hall's page
+     (v2.3.3766) filled the maps packet to MAX_PICTURES */
+  { slug: 'harvesting-and-fighting', title: 'Your party, harvesting and fighting',
+    screens: ['party-hud', 'party-hud-open', 'harvest-near', 'harvest-windup', 'harvest-ready', 'spar-fight', 'death-card'] },
 ];
 
 /* the views as the briefs name them, in the order a picture shows them */

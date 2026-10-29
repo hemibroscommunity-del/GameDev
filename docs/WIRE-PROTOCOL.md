@@ -131,6 +131,8 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 | Type | Purpose / payload | Client handler (BroTown.jsx) |
 |---|---|---|
 | `tick` | Batched per-tick frame: `players` (id → x/y/dir/facing/zone/vx/vy + live equip fields; v2.3.3015: `spr: 1` while that player sprints -- a step the worker paid for in the last 600 ms, absent when walking, and deliberately not `sp`, which in a player's data is the shirt pattern; docs/specs/sprint.md "Seen and heard"; v2.3.3123: `pw`, the pet out with that player as the worker keeps it, `'kind.stage.gold.size.lv'`, absent with none -- deliberately not `pt`, which in a player's data is the pants, nor `pet`, the old client-relayed one; docs/specs/trapping.md "Pets that matter"; v2.3.3142: `eqg`, the grades of the torso and greaves that player wears as the worker counts them, two letters `n`/`r`/`e`/`g` (`'rn'`, `'ee'`; godly only on a piece the worker minted, else `e`, combat.js's rule), absent in plain armour; docs/specs/armor-grade-look.md), `events` (array fed to `_processGameEvent`), `monsters`/`nodes` (zone → entity list; v2 = dirty entities only). **Zone-scoped since v2.3.1575** — see below | ~2048 |
+| `move_path` | v2.3.3732: `{on, all}`, sent to every phone when the live flag `movepath` (the kill switch) or `pathall` is set or cleared: `on` is caps.movepath (the worker glides), `all` caps.pathall (every phone on the path). Privileged; the client updates its caps (server/src/movepath.js, docs/specs/move-path.md) | ~40 |
+| `client_off` | v2.3.3755: `{off}`, the memory savers turned off for every phone as a comma list (`''` with none), sent to every phone when a live flag `off_<name>` is set or cleared; `caps.clientoff` carries the same at join. Privileged; the client follows it (server/src/clientoff.js, src/game/clientOff.js, docs/specs/client-off.md) | ~40 |
 | `state_sync` | Full room snapshot on join: players, zone monsters, etc. v2.3.3244: each other player as the public keys only (`PEER_PUBLIC_KEYS`, index.js: position, name, look, gear on show) -- see "What the others are told about you" below | ~2223 |
 | `zone_state` | v2 zone change: `{ zone, monsters, nodes, loot }` merged. **v2.3.1983: also sent MID-SESSION**, unprompted, when population-scaled spawns change a zone's roster — the client already replaces its lists wholesale on it, and a per-entity `tick` delta cannot introduce an entity, so this resend is how a new monster becomes real on any client (`docs/specs/spawn-scaling.md`) | ~2352 |
 | `zone_monsters` / `zone_nodes` / `zone_loot` | v1 legacy zone-change trio (kept as fallback). v2.3.1983: `zone_monsters` + `zone_nodes` are the v1 half of the mid-session roster push above (no `zone_loot` — piles are unaffected) | ~2732 / ~2727 / ~2347 |
@@ -162,7 +164,7 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | Type | Purpose | Server case |
 |---|---|---|
 | `join` | Session start; negotiates `protocolVersion` | ~3418 |
-| `move` | Position/zone update (batched client-side, 33 ms). v2.3.3006: `sp: 1` marks a sprint step, judged at 1.33x the walking bound and paid for in stamina (server/src/sprint.js; an old worker ignores it) | ~3672 |
+| `move` | Position/zone update (batched client-side, 33 ms). v2.3.3006: `sp: 1` marks a sprint step, judged at 1.33x the walking bound and paid for in stamina (server/src/sprint.js; an old worker ignores it). v2.3.3732: `pd: 1` asks to be moved along `vx`/`vy` until the next move (caps.movepath; sent with caps.pathall, on by default since v2.3.3744, or `?diet=1`; server/src/movepath.js) | ~3672 |
 | `pong` | Heartbeat reply | ~3811 |
 | `track` | **Cosmetics/appearance only** (2 s cadence) — allowlisted, see below | ~3819 |
 | `player_attack` | Attack swing (also relayed to peers — see Quirks) | ~3828 |
@@ -289,6 +291,26 @@ turn, stop, start or any other change goes on the next 33 ms batch. The worker
 passes such a move on at its next tick (`STEADY.SPACED_MS`). Same message, sent
 less often; an old worker gets every move, an old client sends every move. Kill
 switch: `movediet: false` (un-advertises the cap). `docs/specs/move-diet.md`.
+
+**v2.3.3732: the message diet -- a steady walk is sent as a path (v2.3.3744:
+on for every phone by default; the owner: "Just turn the message diet on now
+I'll turn it off if I do not like").** Against a worker advertising
+`caps.movepath` (on unless the kill switch `movepath: false`), a client in the
+Wheel, not in a duel or an arena match, that is told `caps.pathall` (on unless
+the live flag `pathall: false`) and was not opened with `?diet=0`, or was
+opened with `?diet=1` (changes to either flag reach every client at once as
+the privileged `move_path {on, all}`), marks every `move` with `pd: 1` ("move me along my speed until my
+next one"). A steady move (every other field as sent, the same speed within ~2
+degrees, on its line, as far along it as the speed says, under 500 px/s)
+waits until 200 ms after the last one sent; a change (a turn, start, stop,
+sprint, roll, any field) goes on the next 33 ms batch; a move only off its
+line at the same speed (a wall, a shove) keeps the old rate
+(`src/game/moveDiet.js` pathMayWait / pathTurned). The worker moves its copy
+of a `pd` player along the speed between moves, at most the walk bound and 300
+ms past the last move, judging each new move from the last move's place
+(`server/src/movepath.js`), and sends a glider to the other phones every 66
+ms. Without `pd` (an old client, or the switch off) nothing changes; an old
+worker never advertises the cap. `docs/specs/move-path.md`.
 
 **v2.3.3254: the quiet phone -- several messages in one frame, and fewer.**
 - **A bundle.** Against a worker advertising `caps.bundle`, a frame may be a
@@ -678,7 +700,7 @@ Summary of the wire-visible changes:
 | `duel_end` | Server duel resolution: `{winner, loser, wager, how: kill\|death\|forfeit\|timeout}` | duels.md |
 | `gamble_result` | Server-rolled gamble outcome (private): `{won, wager, payout}` | gambling.md |
 | `clan_state` / `clan_error` / `clan_war_kill` / `clan_war_end` | Clan registry echo + war referee (private; `clan_create` / `clan_invite` / `clan_join_accept` / `clan_leave` / `clan_kick` / `clan_war_declare` c→s cases, all gated client-side on `caps.clans`). v2.3.2301: `clan_leave` finally has a SENDER — the button had been local-only, so the registry kept you a member and the clan returned on reload. Removal now also emits `player_update {clanTag:null, clanColor1:null}` to peers, because the peer merge is `Object.assign` and cannot remove a key | clans.md |
-| `arena_match_start` / `arena_match_result` / `arena_tournament_complete` | Arena bracket (matches are duels) | arena.md |
+| `arena_match_start` / `arena_match_result` / `arena_tournament_complete` | Arena bracket (matches are duels). v2.3.3713: `arena_match_start` is sent again on a rejoin mid-match (`rejoin: true`); an arena match's `duel_end` carries `arena: true`; `GET /api/arena/status?playerId=` says where that player stands (`status` queued/fighting/eliminated/waiting/none) | arena.md |
 | `dungeon_started` / `dungeon_wave` / `dungeon_boss` / `dungeon_complete` / `dungeon_error` | Instanced dungeons (private; `dungeon_start` c→s case) | dungeons.md |
 | `dungeon_boss_ability` | v2.3.1194 boss ability telegraph/execute notice (private to players inside; client handler is display-only — damage rides `monster_attack`). v2.3.1199 adds kind `enrage` (soft anti-stall timer; `{stacks, pct}` extras) on the same type | dungeons.md |
 | `arena_stake_placed` / `arena_stake_result` / `arena_stake_error` | Sponsorship stakes (private; `arena_sponsor` c→s case; legacy `arena_bet` relay stays cosmetic) | sponsorship.md |
@@ -775,6 +797,21 @@ caps.nmlchoice):**
   docs/specs/no-mans-land.md "A group attacks you: one window" and "You are
   white the moment they choose".
 
+**No man's land: beaten by them, not again for half an hour (v2.3.3770,
+caps.nmllock):**
+- c→s: `nml_lock_ask {target}`, from a player locked out from `target`; the
+  worker passes it on once a minute per pair. `nml_lock_allow {target}`,
+  from the one who beat them, lifts that player's lock. Each is its own
+  router case, never relayed.
+- s→c (PRIVILEGED, private): `nml_lock {out: [[id, ms left]], in: [[id, ms
+  left]]}`, the locks this player is in, sent to both players when one is set
+  or lifted, and at a join only when there is one. `nml_lock_ask {from}` goes
+  to the target alone: the sword clash and "?" over `from`'s head.
+- Storage: `nml_state:<pid>` gains `lock` (`[[id, until]]`).
+- Kill switch `nmllock: false`.
+- Full rules: docs/specs/no-mans-land.md "Beaten by them, not again for half
+  an hour".
+
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/
 `state_sync.loot` via `_serializePile`) gains `hasWeapon`,
@@ -809,6 +846,14 @@ pet (new `loot_pickup_rejected` reason `no-pet`). The private
 petLootCount quest tally. Client vacuum requests are gated on
 `caps.petLoot`; absent it, the legacy self-credit vacuum stays (old
 workers would out-of-range-reject the wide pickup).
+
+**The pet's fetch (v2.3.3806, caps.petfetch):** no new message types. The
+same `loot_pickup {viaPet: true}` reaches `PETS.FETCH_RANGE` (600 px from the
+owner) for a monster pile the sender is a recipient of; a death drop or a
+dropped item keeps `VACUUM_RANGE` (240). The phone's pet runs to such a pile
+up to 450 px from you and asks from there (docs/specs/pet-fetch.md).
+`petfetch: false` in the live flags un-advertises the cap and puts every pile
+back on 240.
 
 ## Known quirks (documented, deliberately not "fixed" here)
 

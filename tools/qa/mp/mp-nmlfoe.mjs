@@ -51,6 +51,8 @@
  *      and a tap asks again;
  *  10. the badge clear of the shield button, the bell, the weapon button and
  *      the attack disc at 320, 360, 375, 390 and 430 px, and sideways --
+ *      (v2.3.3765: in the top bar just right of the title -- the owner: "just
+ *      to the right of the Brotown name at the top"; it was, below,)
  *      since v2.3.3629 up beside the minimap's name plate (the owner: "just
  *      beside the minimap where it lists the zone and level range"): just
  *      left of the minimap's box, level with the plate (sideways level with
@@ -266,6 +268,8 @@ const layout = (P) => P.page.evaluate(() => {
       const el = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
       return !!el && (el === b || b.contains(el));
     })(),
+    /* v2.3.3765: the top bar and its title, where the pill lives now */
+    header: box('.bt-zone-header'), title: box('[data-zone-title]'),
     /* v2.3.3629: the minimap's box and its name plate */
     mini: window.__btWheelMini ? { l: window.__btWheelMini.left, t: window.__btWheelMini.top,
       r: window.__btWheelMini.left + window.__btWheelMini.w, b: window.__btWheelMini.top + window.__btWheelMini.h } : null,
@@ -411,7 +415,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(2500);
   const lv = [];
   for (const P of [A, B, C]) lv.push(await H.readState(P, (S) => S._nmlLevel || 0));
-  rec.ok(`setup: all three stand in No man's land 1 (${lv.join(' / ')})`, lv.every((n) => n === 1), lv);
+  /* v2.3.3767: the number is the monster level where you stand (caps.nmlsteps),
+     so on the Lv 1-5 ring it is 1 to 5, not 1 -- what the fights below need is
+     that all three are in it, levels within one of each other (above) */
+  rec.ok(`setup: all three stand in No man's land on its first ring (${lv.join(' / ')})`, lv.every((n) => n >= 1 && n <= 5), lv);
   for (const id of [idA, idB, idC]) await H.devOp(wsPort, 'vitals', id, { heal: true, god: false });
   for (const P of [A, B, C]) {
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
@@ -782,7 +789,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 10. the badge clear of the shield and its neighbours, at every width ── */
   /* v2.3.3629: + a short sideways screen, where the sprint button reaches up
      beside the minimap's top and the badge goes up into the top bar's row */
-  const widths = [[320, 640], [360, 780], [375, 812], [390, 844], [430, 932], [844, 390], [667, 320]];
+  const widths = [[320, 640], [360, 780], [375, 812], [390, 844], [430, 932], [844, 390], [667, 375], [667, 320]];   /* v2.3.3765: + 667 x 375 */
   const rows = [];
   for (const [w, h] of widths) {
     await A.page.setViewportSize({ width: w, height: h });
@@ -792,7 +799,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const L = await layout(A);
     const hitShield = overlaps(L.badge, L.shield);
     const hitOthers = L.others.filter((q) => overlaps(L.badge, q)).map((q) => q.sel);
-    rows.push({ w, h, orient: L.orient, badge: L.badge, shield: L.shield, top: L.top, hitShield, hitOthers, mini: L.mini, plate: L.plate, vw: L.vw, at: L.at, seen: L.seen });
+    rows.push({ w, h, orient: L.orient, badge: L.badge, shield: L.shield, top: L.top, hitShield, hitOthers, mini: L.mini, plate: L.plate, vw: L.vw, at: L.at, seen: L.seen, title: L.title, header: L.header });
     if (w === 360 || w === 844 || w === 667) await shot(A, `10-${w}`);
   }
   await A.page.setViewportSize(PHONE);
@@ -807,28 +814,58 @@ export async function run({ browser, wsPort, webPort, rec }) {
        row above it (the sprint button and Special stand left of the plate
        there and the attack disc reaches up under the box: these rows found
        the badge behind the sprint button, then on the disc) */
-    const mid = r.badge ? (r.badge.t + r.badge.b) / 2 : null;
+    /* v2.3.3765: in the top bar now, just right of the title (the owner:
+       "just to the right of the Brotown name at the top"), at every width and
+       sideways (mp-nmltopbar measures the bar itself) */
     const side = r.orient === 'landscape';
-    const beside = !!r.badge && r.seen && !!r.mini && !!r.plate && r.badge.l >= 0 && r.badge.r <= r.vw && r.badge.t >= 0
-      && r.badge.r <= r.mini.l - 2 && r.mini.l - r.badge.r <= 10 && (side
-        ? (r.at === 'top' ? Math.abs(r.badge.t - r.mini.t) <= 4 : (r.at === 'bar' && r.badge.b <= r.mini.t + 2))
-        : (r.at === 'plate' && mid >= r.plate.t && mid <= r.plate.b));
-    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) ${side ? (r.at === 'bar' ? 'in the top bar\'s row' : 'level with the minimap\'s top') + ' (its box ' + (r.mini ? r.mini.l + '-' + r.mini.r + ', ' + r.mini.t + '-' + r.mini.b : 'none') + ')' : 'beside the minimap\'s name plate (' + (r.plate ? r.plate.t + '-' + r.plate.b : 'none') + ')'}${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
+    const beside = !!r.badge && r.seen && r.at === 'bar' && !!r.title && !!r.header && r.badge.l >= r.title.r && r.badge.l - r.title.r <= 14
+      && r.badge.t >= r.header.t && r.badge.b <= r.header.b && r.badge.r <= r.vw;
+    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) in the top bar just right of the title (${r.title ? r.title.l + '-' + r.title.r : 'none'})${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
       beside && !!r.shield && !r.hitShield && r.top === 'shield' && !r.hitOthers.length, r);
   }
 
   /* ── 11. out of No man's land, the choice and the button go ── */
-  const sbx = await H.serverPlayer(wsPort, idB);
-  const out = sbx ? { x: Math.round(sbx.x - spot.ux * 1300 * LONG), y: Math.round(sbx.y - spot.uy * 1300 * LONG) } : null;
-  if (out) await H.hopTo(B, out.x, out.y, { tries: 40, step: 150 });
-  await A.page.waitForTimeout(2500);
+  /* v2.3.3822: both to No man's land's inner edge first -- the raider 500 px
+     out from the safe ground, the wanderer beside them -- and the wanderer
+     walks 800 px, into the safe ground.  From the spot the walk out was
+     6,500 px: past 2,400 px the worker sends a player nobody's moves
+     (tick.js FAR_PLAYERS NEAR_R), so the raider's copy of the wanderer
+     stayed frozen inside No man's land and the choice never lapsed (40/41,
+     1 run in 3).  The raider stays in No man's land: the choice lapses
+     because the WANDERER left */
+  const rOf = (x, y) => Math.hypot(x - WHEEL_CENTRE[0], y - WHEEL_CENTRE[1]);
+  const onSpoke = (r) => { const d = rOf(spot.x, spot.y) - r; return { x: Math.round(spot.x - spot.ux * d), y: Math.round(spot.y - spot.uy * d) }; };
+  const edgeA = onSpoke(NML.SAFE_R + 500), inB = onSpoke(NML.SAFE_R - 300);
+  await H.hopTo(A, edgeA.x, edgeA.y, { tries: 60, step: 150 });
+  await H.hopTo(B, edgeA.x + 70, edgeA.y, { tries: 60, step: 150 });
+  await A.page.waitForTimeout(1500);
+  /* the walk took longer than a fight's quiet minute: the choice is still
+     the raider's (sparTargets.js FIGHT_QUIET_MS), stamped now */
+  const pre11 = await A.page.evaluate((bid) => { const S = window._gameState.current;
+    if (S._nmlFoes instanceof Map) S._nmlFoes.set(bid, Date.now());
+    return { foe: S._nmlFoes instanceof Map && S._nmlFoes.has(bid), lvl: S._nmlLevel || 0 }; }, idB);
+  await H.hopTo(B, inB.x, inB.y, { tries: 40, step: 150 });
+  /* judge only once the raider's VIEW of the wanderer is current (within
+     250 px of where the worker has them) */
+  const sbNow = await H.serverPlayer(wsPort, idB);
+  for (let i = 0; i < 40 && sbNow; i++) {
+    const near = await A.page.evaluate(([pid, x, y]) => { const S = window._gameState.current, o = S.others && S.others[pid];
+      return !o || Math.hypot((typeof o.x === 'number' ? o.x : o.renderX) - x, (typeof o.y === 'number' ? o.y : o.renderY) - y) <= 250; }, [idB, sbNow.x, sbNow.y]);
+    if (near) break;
+    await A.page.waitForTimeout(500);
+  }
   await A.page.evaluate(() => { const S = window._gameState.current; S.lastDamageTaken = 0; });
-  await A.page.waitForTimeout(1200);
-  const s11 = await H.readState(A, (S) => ({ foes: S._nmlFoes instanceof Map ? Array.from(S._nmlFoes.keys()) : [], lock: S.lockedTarget ? S.lockedTarget.id : null }));
-  const lvlB = await H.readState(B, (S) => S._nmlLevel || 0);
-  const L11 = await layout(A);
-  rec.ok(`11. the wanderer walks out of No man's land (now ${lvlB}): the raider's choice lapses, its lock goes, and its shield button with them`,
-    lvlB === 0 && !s11.foes.includes(idB) && s11.lock !== idB && !L11.shield, { s11, lvlB, shield: L11.shield });
+  let s11 = null, lvlB = -1, L11 = null;
+  for (let i = 0; i < 10; i++) {
+    await A.page.waitForTimeout(1000);
+    s11 = await H.readState(A, (S) => ({ foes: S._nmlFoes instanceof Map ? Array.from(S._nmlFoes.keys()) : [], lock: S.lockedTarget ? S.lockedTarget.id : null }));
+    lvlB = await H.readState(B, (S) => S._nmlLevel || 0);
+    L11 = await layout(A);
+    if (lvlB === 0 && !s11.foes.includes(idB) && s11.lock !== idB && !L11.shield) break;
+  }
+  const lvlA11 = await H.readState(A, (S) => S._nmlLevel || 0);
+  rec.ok(`11. the wanderer walks out of No man's land (now ${lvlB}; the raider still in it, ${lvlA11}): the raider's choice lapses, its lock goes, and its shield button with them`,
+    pre11.foe && lvlB === 0 && lvlA11 > 0 && !s11.foes.includes(idB) && s11.lock !== idB && !L11.shield, { pre11, s11, lvlB, lvlA11, shield: L11.shield, edgeA, inB });
 
   stopAlive = true;
   const errs = [...A.logs, ...B.logs, ...C.logs].filter((l) => /pageerror/.test(l));

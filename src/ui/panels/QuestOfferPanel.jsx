@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { PROG3_SKILL_META } from '@/data/prog3.js';
@@ -78,7 +79,7 @@ function Claimed(props) {
       const goldEl = w.querySelector('[data-qw-gold] img') || w.querySelector('[data-qw-gold]');
       const slots = [...w.querySelectorAll('.bt-qw-slot-icon')];
       flyQuestRewards({
-        gold, goldFrom: goldEl, goldSrc: QUEST_COIN,
+        gold, goldFrom: goldEl, goldSrc: coinArtFor(gold),   /* v2.3.3734: the reward's pile flies to the purse */
         items: slots.map((el) => ({ el, src: el.getAttribute('src') })),
       });
     }, 260);

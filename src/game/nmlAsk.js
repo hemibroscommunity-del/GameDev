@@ -126,7 +126,7 @@
  * _pvpEngaged).
  */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { nmlLive, nmlCanAttack, nmlHere } from '@/game/noMansLand.js';
+import { nmlLive, nmlCanAttack, nmlHere, nmlLockedOut, nmlLockedIn, nmlLockAsk, nmlLockAllow } from '@/game/noMansLand.js';   /* v2.3.3770: + the lock */
 import { NML } from '@/data/noMansLandRings.js'; /* v2.3.3530: SKULL_MS -- an attacker's right in `bys` dates their choice or blow */
 import { chooseFoe, isLiveFighter, pvpBoutAt, isLiveFoe, liveFoes, hitMeAt, attackersNow, FIGHT_QUIET_MS } from '@/game/sparTargets.js'; /* v2.3.3268: Attack is a choice that lasts; v2.3.3316: + who a swing already hits; v2.3.3528: + when a bout began; v2.3.3530: + who attacks you (a group joins your fight) */
 
@@ -352,7 +352,12 @@ export function nmlPartyInvite(S, id) {
 export function nmlAsk(S, id, why) {
   if (!S || id == null || !nmlAskOn(S) || S._inDuel) return false;
   const key = String(id);
-  if (!S.others || !S.others[key] || !nmlCanAttack(S, key)) return false;
+  if (!S.others || !S.others[key]) return false;
+  /* v2.3.3770: locked out from them (they beat you, nomansland.js
+     _nmlLockSet): a TAP still opens the window, to say why and offer the "?"
+     -- nothing else asks about them */
+  const locked = nmlLockedOut(S, key) > 0;
+  if (!nmlCanAttack(S, key) && !(why === 'tap' && locked && nmlCanAttack(S, key, true))) return false;
   const quiet = why === 'shot' || why === 'swing' || why === 'aim';
   if (quiet) {
     if (_ask) return false;
@@ -371,7 +376,8 @@ export function nmlAsk(S, id, why) {
   const at = askedAtMap(S);
   if (at.size >= 64 && !at.has(key)) at.clear();
   at.set(key, now);
-  _ask = { id: key, name: (o && o.name) || 'Player', lv: Number(o && o.rpgLv) || 1, why: quiet ? why : 'tap', back: nmlHitBack(S, key, now), at: now };
+  _ask = { id: key, name: (o && o.name) || 'Player', lv: Number(o && o.rpgLv) || 1, why: quiet ? why : 'tap', back: nmlHitBack(S, key, now), at: now,
+    locked, lockedIn: nmlLockedIn(S, key) > 0 };   /* v2.3.3770: you are locked out from them / they from you */
   emit();
   return true;
 }
@@ -434,6 +440,9 @@ export function nmlAskAnswer(S, choice) {
   emit();
   if (choice === 'attack') return nmlCanAttack(S, a.id) ? nmlAim(S, a.id) : false;
   if (choice === 'party') return nmlPartyInvite(S, a.id);
+  /* v2.3.3770: the lock's two -- your "?" for them, and letting them at you again */
+  if (choice === 'rematch') return nmlLockAsk(S, a.id);
+  if (choice === 'allow') return nmlLockAllow(S, a.id);
   return true;
 }
 

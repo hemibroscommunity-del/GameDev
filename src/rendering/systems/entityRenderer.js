@@ -5,7 +5,7 @@
 import { tickSmithing } from '@/game/smithing.js';   /* v2.3.2827: the smith borrows the mining swing */
 import { Assets, Cache, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's roll and jog, one readback */
-import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
+import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount, wheelNpcPhotosHeld, loadWheelNpcArt } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2748: a building's base, read off its art */
 import { TILE } from '@/data/constants.js';
@@ -79,8 +79,19 @@ import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the sp
 import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame */
+import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the tee from the look palette */
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
+import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0`; v2.3.3809: + drawing now */
+import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
+import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
+import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
+import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
+import { lookSheetParse } from '../lookExpand.js';
+import { installArmourProbe } from '../lookArmourProbe.js';   /* v2.3.3752: QA, `?lookprobe` / `?lookpalette=1` only */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
+/* v2.3.3860: QA, `?headframes` only: the head-frame count's context is set on
+   each figure (headFrames.js, loaded by pixiRenderer only then) */
+const HEAD_FRAMES_ON = typeof window !== 'undefined' && /[?&]headframes(=|&|$)/.test((window.location && window.location.search) || '');
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
 import { getCapeTexture, getCapeHoodTexture, getCapeHoodMaskTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape; v2.3.2186: its hood half + the hair clip */
@@ -90,7 +101,7 @@ import { getHatColor, getColoredHatTextures, coloredHatReady } from '../traits/h
 import { getFacialHairColor, getColoredFacialHairTextures, coloredFacialHairReady } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed, preloadBeltSheets } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed, preloadBeltSheets, gearSheetLoad } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -104,7 +115,10 @@ import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.
 import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's footsteps and pick, heard */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
+import { flipHeadAt } from '../flipHead.js';   /* v2.3.3738: the head pieces ride the tumble's head */
+import { headCrown } from '../headCrowns.js';   /* v2.3.3880: the flinch's crown on the head, not the fist */
 import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase; v2.3.3682: a flip, the roll's tumble */
+import { rideLook } from '@/game/ride.js';   /* v2.3.3776: a rider stands sideways, and pushes now and then */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
 import { TRAIT_LOAD_TIMEOUT_MS } from '../traits/traitImg.js';   /* v2.3.3689: a stalled head piece is asked for again */
@@ -207,6 +221,19 @@ const HPBAR_IN_X = 0.05, HPBAR_IN_W = 0.90, HPBAR_IN_Y = 0.21, HPBAR_IN_H = 0.58
    does not strobe between exchanges — long enough to cover a missed swing
    or a dodge, short enough that a peer who walked away loses it. */
 const PEER_HPBAR_Y = -48;
+/* ═══ v2.3.3858: WHILE A PLAYER TALKS, THE BUBBLE HAS THE NAME'S PLACE ═══
+   The owner: "for character messages I'd rather have chat bubbles right
+   above character head and just cover nameplate during chat".  Is a chat
+   bubble up over this speaker (effectsRenderer _updateChatBubbles draws a
+   line for CHAT_BUBBLE_MS)?  While it is, their name plate steps aside and
+   the bubble's point comes down to the band's bottom, over the head
+   (`_chatTipY` below).  An HP bar in a fight keeps its place: the bubble
+   stands over it as before. */
+const CHAT_BUBBLE_MS = 5000;
+function _chatBubbleUp(S, pid, now) {
+  const b = S && S.chatBubbles && pid != null ? S.chatBubbles[pid] : null;
+  return !!(b && b.text && (now - (b.ts || 0)) < CHAT_BUBBLE_MS);
+}
 const PEER_HPBAR_HOLD_MS = 8000;
 const MONSTER_HPBAR_W = 44;
 const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
@@ -418,6 +445,21 @@ const NPC_SCALE_MULT = Object.assign(Object.create(null), {
   '/sprites/npc/farmer-bro.webp': NPC_BRO_MULT,
   '/sprites/npc/beastmaster-bro.webp': NPC_BRO_MULT,
   '/sprites/npc/lil-bro-walk-south.webp': NPC_BRO_MULT,
+  /* v2.3.3833: the new cast (docs/specs/npc-cast.md), each a bro's scale; Bean
+     a child, photographed at 0.8 as Lil Bro is */
+  '/sprites/npc/sterling.webp': NPC_BRO_MULT,
+  '/sprites/npc/slim.webp': NPC_BRO_MULT,
+  '/sprites/npc/chef-blaze.webp': NPC_BRO_MULT,
+  '/sprites/npc/glint.webp': NPC_BRO_MULT,
+  '/sprites/npc/postmaster-pete.webp': NPC_BRO_MULT,
+  '/sprites/npc/deed-dave.webp': NPC_BRO_MULT,
+  '/sprites/npc/benny.webp': NPC_BRO_MULT,
+  '/sprites/npc/guildmaster-gary.webp': NPC_BRO_MULT,
+  '/sprites/npc/sheriff-buck.webp': NPC_BRO_MULT,
+  '/sprites/npc/gavel-greg.webp': NPC_BRO_MULT,
+  '/sprites/npc/old-man-reel.webp': NPC_BRO_MULT,
+  '/sprites/npc/bean.webp': NPC_BRO_MULT,
+  '/sprites/npc/tourist-terry.webp': NPC_BRO_MULT,
 });
 const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
 /* v2.3.3580: how big his figure is painted in his cell, a grown bro's 1
@@ -594,6 +636,16 @@ const npcFigureHeight = (src, npc) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - 
  * rather than flickering between south and southeast on sub-pixel jitter. */
 const NPC_DIRS_8 = ['east', 'southeast', 'south', 'southwest',
                     'west', 'northwest', 'north', 'northeast'];
+/* v2.3.3809: a townsperson drawn live has no figure this far past the view
+   (world px beyond its half-diagonal: _updateNPCs) */
+const FOLK_FAR_MARGIN = 300;
+/* v2.3.3809: a townsperson drawn live -- his body's size on the screen, world
+   px (the probe's; mp-wheelfolk sizes him against a player) */
+function _folkBodyPx(folk, k) {
+  const b = folk && folk._spriteBody;
+  if (!b || !b.texture) return 0;
+  return Math.abs(b.texture[k] * (k === 'height' ? b.scale.y : b.scale.x) * folk.scale.y);
+}
 function npcDirFromDelta(dx, dy) {
   const a = Math.atan2(dy, dx);                    /* -pi..pi, +y is down */
   const oct = Math.round(a / (Math.PI / 4));       /* -4..4 */
@@ -981,8 +1033,11 @@ const _traitCache = {};  // `${category}/${id}` -> { tex:{east,...}, meta, loadS
 const TRAIT_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
 let _traitRetryOn = true;
 try { if (typeof location !== 'undefined' && /[?&]traitretry=0\b/.test(location.search || '')) _traitRetryOn = false; } catch (e) { /* on */ }
+/* v2.3.3865: P1's off-ramp for every art loader that asks again (`?retrylooks=0`), read here too */
+let _looksRetryOn = true;
+try { if (typeof location !== 'undefined' && /[?&]retrylooks=0\b/.test(location.search || '')) _looksRetryOn = false; } catch (e) { /* on */ }
 function _traitGaveUp(e) {
-  if (!_traitRetryOn) return;
+  if (!_traitRetryOn || !_looksRetryOn) return;   /* v2.3.3865: + P1's shared `?retrylooks=0` */
   const n = e.retries || 0;
   e.retryAt = Date.now() + TRAIT_RETRY_LATER_MS[Math.min(n, TRAIT_RETRY_LATER_MS.length - 1)];
 }
@@ -1758,7 +1813,35 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
      pose would place hats on feet.  Re-enabling traits needs a real per-frame
      head anchor (the head IS separable — it is the bare skin blob left in the
      armoured art, which is how the seal below finds it), not a bodyTop. */
-  if (pose === 'dodge') { sprite.visible = false; sprite._btHide = 'dodge'; return; }
+  /* ═══ v2.3.3738: ...AND THAT ANCHOR NOW EXISTS, FOR THE FLIP ═══
+     The owner: "needs at least the hat rotated to match the head during the
+     flip".  flipHead.js has the head's centre and turn on every roll frame.
+     While a flip draws the roll, the piece is placed as it sits standing on that facing, then carried with
+     the head: moved from the standing head's centre to the tumble's and
+     turned by the head's turn about it -- the hat, the hair, the beard, the
+     glasses, the eyes and the hat's hair mask alike, as all of them come
+     through here.
+     v2.3.3798: ...and the GROUND roll too (the owner: "change the ground roll
+     to fix the hat and skin recolor that it looks like you fixed for the
+     double jump"): it is the same sheet, frame for frame, so every roll, the
+     dodge, the dash's loop and the flip, carries the head pieces with the
+     head (the flag the flip set, display._flipHead, is gone). */
+  if (pose === 'dodge') {
+    const fh = flipHeadAt(dir, frameIdx);
+    if (!fh) { sprite.visible = false; sprite._btHide = 'dodge'; return; }
+    _placeTrait(sprite, entry, display, 'stand', dir, mirror, 0, bodyScale, tune);
+    if (!sprite.visible) return;
+    const sb = display._spriteBody, ab = Math.abs(bodyScale), m = mirror ? -1 : 1;
+    const hsx = sb.x + (fh.sx - 128) * ab * m, hsy = sb.y + (fh.sy - 128) * ab;
+    const hdx = sb.x + (fh.x - 128) * ab * m, hdy = sb.y + (fh.y - 128) * ab;
+    const th = fh.turn * m, c = Math.cos(th), sn = Math.sin(th);
+    const vx = sprite.x - hsx, vy = sprite.y - hsy;
+    sprite.x = hdx + vx * c - vy * sn;
+    sprite.y = hdy + vx * sn + vy * c;
+    sprite.rotation = th;
+    return;
+  }
+  if (sprite.rotation !== 0) sprite.rotation = 0;   /* v2.3.3738: a flip turned it */
   _ensureBodyData();
   /* v2.3.1305: fallbackTex = the NATIVE-color textures behind a recolored
      set.  The color catalogs cache a build as complete even when one
@@ -2040,6 +2123,14 @@ const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '
    painted-figure path under the half-res memory mode. */
 function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
   if (pose !== 'jog') return null;
+  /* v2.3.3846: north-east (and north-west, its mirror) ships no knight figure
+     (gearSheets preloadFullsetFigures: south, south-west, north, east; and
+     _fullsetCoversBake below), so it is never asked for.  Asked, the sheet
+     404'd and its retries ran, and the final failure landed in the crash ring
+     as `gear-sheet-failed fullset/steel/jog/northeast` (E's judge pass, a
+     computer on the old path) -- the plates were drawn the classic way after
+     it either way. */
+  if (dir === 'northeast') return null;
   /* v2.3.1757: compare the ART, not the id, so a recoloured pair still gets the
      painted knight figure instead of silently dropping to the overlay path.
      The figure REPLACES the body sprite, so its colour is applied to that
@@ -2657,7 +2748,21 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
        print would be multiplied by it).  `_shirtBaked` carries that decision
        the few lines down to where the tint is set. */
     let _shirtBaked = false;
-    if (tex && _slotName === 'shirt' && display._shirtLook) {
+    /* v2.3.3751: the look palette's tee (on; `?lookpalette=0` off): its stand
+       and jog from the shared numbers, the tint, pattern and print painted
+       from the look's row as it is drawn (lookShirtFrame.js) -- a patterned
+       or printed tee no longer a copy per player.  A plain tee stays the
+       shared sheet and its tint (the numbers save it nothing).  Null: as
+       before. */
+    if (tex && _slotName === 'shirt') {
+      const _L = display._shirtLook;
+      const _lt = getLookShirtFrame(item, _gPose, dir, _gFrame, {
+        art: _L && _L.art ? _L.art[sideForDir(dir)] : null, pattern: _L ? _L.pattern : null,
+        tint: (equip && equip.shirtTint) || null, mirror: display._shirtArtMirror,
+      });
+      if (_lt) { tex = _lt; _shirtBaked = true; }
+    }
+    if (tex && !_shirtBaked && _slotName === 'shirt' && display._shirtLook) {
       /* Mirroring never changes WHICH side shows: every mirror pair stays in
          the same hemisphere (east/west and southwest/southeast are both front,
          northeast/northwest both back), so the base dir decides the side and
@@ -2762,6 +2867,10 @@ function _bodyRegionTex(bodyTex, region) {
   }
   return m[region];
 }
+
+/* v2.3.3716: an armour slot worn with nothing in it (the look-palette body
+   is drawn only where no armour masks it) */
+const _bareOf = (it) => !it || it === 'none';
 
 /* ═══ v2.3.1872: AN ARBITRARY ROW BAND OF A BODY/GEAR FRAME ═══
  * _bodyRegionTex above crops the three NAMED bands (head/torso/legs) and
@@ -3288,12 +3397,13 @@ function _pumpBakes() {
     _runBake(job).catch(() => { /* best-effort */ }).then(() => {
       _bakeBusy--;
       _bakeByKey.delete(job.key);
-      job.resolve();
+      job.resolve(job.reply);   /* v2.3.3752: a look job's answer (lookArmour.js); undefined for the others */
       _pumpBakes();
     });
   }
 }
 async function _runBake(job) {
+  if (job.look) return _runLookBake(job);   /* v2.3.3752 */
   const { key, bodyTex, worn, dilate, poseInfo } = job;
   if (_maskedBodyCache.has(key)) { _bakeWorkerStats.skipped++; return; }   /* baked inline while it waited */
   const wk = _getBakeWorker();
@@ -3340,6 +3450,196 @@ async function _runBake(job) {
   _bakeWorkerStats.worker++;
   if (job.rank > 0) _localBakeStats.delivered++;
 }
+/* ═══ v2.3.3752: THE ARMOURED BODY FROM THE COLOUR NUMBERS (lookArmour.js) ═══
+   The same queue and the same worker as every masked bake, the same bake
+   (maskedBake.js, every fix in it), but the body is a look drawn from the
+   shared numbers: the worker colours the frame itself from the sheet it was
+   sent once (lookSheetForWorker), and answers with what the bake decided --
+   a bit a display texel and the residue -- instead of a picture.  No worker:
+   no look armour (the old path, lookArmour's fallback). */
+function _lookBake(j) {
+  const key = 'look|' + j.key;
+  const had = _bakeByKey.get(key);
+  if (had) {
+    if (j.rank > had.rank) had.rank = j.rank;
+    return { done: had.done, raise: (r) => { if (r > had.rank) had.rank = r; } };
+  }
+  if (!_getBakeWorker() || _lookInline()) return { done: _runLookBakeInline(j) };
+  const job = { key, look: j.look, worn: j.worn, dilate: 6, poseInfo: j.poseInfo, rank: j.rank > 0 ? j.rank : 0, started: false, done: null, resolve: null, reply: null };
+  job.done = new Promise((res) => { job.resolve = res; });
+  _bakeByKey.set(key, job);
+  _bakeQueue.push(job);
+  _pumpBakes();
+  return { done: job.done, raise: (r) => { if (r > job.rank) job.rank = r; } };
+}
+setLookArmourBaker(_lookBake);
+async function _runLookBake(job) {
+  const { worn, poseInfo } = job;
+  const wk = _getBakeWorker();
+  if (!wk) { job.reply = { err: 'no worker' }; return; }
+  if (poseInfo.pose === 'fish') _sendRod(wk);
+  const sm = lookSheetForWorker(job.look.sheet, wk);
+  if (sm) { try { wk.postMessage(sm, [sm.bytes.buffer]); } catch (e) { job.reply = { err: String(e) }; return; } }
+  const hasChest = worn.some(w => w.k && w.k.indexOf('chest:') === 0), hasLegs = worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+  let beltTex = null, beltPending = false;
+  if (poseInfo.pose === 'jog' && hasChest && hasLegs) {
+    const bt = getGearFrame('belt', 'chainbelt', 'jog', poseInfo.dir, poseInfo.frameIdx | 0);
+    if (bt && bt.source && bt.source.resource) beltTex = bt; else beltPending = true;
+  }
+  const [belt, ...inps] = await Promise.all([beltTex ? _frameInput(beltTex) : null, ...worn.map(w => _frameInput(w.tex))]);
+  const _close = () => { for (const x of [belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
+  /* a piece whose sheet is not in yet would be baked as if not worn: asked again later */
+  if (inps.some((x) => !x)) { _close(); job.reply = { err: 'gear not loaded' }; return; }
+  const id = ++_bakeSeq;
+  const reply = await new Promise((resolve) => {
+    _bakeJobs.set(id, resolve);
+    const transfer = [belt, ...inps].filter(Boolean).map((x) => x.bm);
+    try {
+      wk.postMessage({ id, look: job.look, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate: job.dilate, poseInfo, ds: DISPLAY_DS }, transfer);
+    } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
+  });
+  if (beltPending) reply.beltPending = true;
+  if (reply.err) _bakeWorkerStats.failed++; else _bakeWorkerStats.worker++;
+  if (!reply.err && job.rank > 0) _localBakeStats.delivered++;
+  job.reply = reply;
+}
+/* No worker (old Safari, a worker error) -- or QA's window.__btLookBakeInline,
+   since a worker's canvas on the QA box's software chip is ~200x slower than
+   the page's (mp-lookarmour runs the full oracle this way and samples the
+   worker): the same bake (lookBake.js) here, as the old path's no-worker
+   bake is (_maskedBodyFrame). */
+const _lookInlineAddr = (() => { try { return /(^|[?&])lookinline(=1)?(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();   /* QA: BT_QA_QUERY=lookinline */
+const _lookInline = () => typeof window !== 'undefined' && (window.__btLookBakeInline === true || (_lookInlineAddr && window.__btLookBakeInline !== false));
+const _lookSheetsHere = new Map();
+const _mkCpuCanvas = (w, h) => {
+  const c = _mkBakeCanvas(w, h);
+  const g = c.getContext.bind(c);
+  c.getContext = (t, o) => g(t, Object.assign({}, o || {}, { willReadFrequently: true }));
+  return c;
+};
+async function _runLookBakeInline(j, keepDisplay) {
+  try {
+    let sh = _lookSheetsHere.get(j.look.sheet);
+    if (!sh) {
+      const m = lookSheetForWorker(j.look.sheet, null);
+      if (!m) return { err: 'no sheet ' + j.look.sheet };
+      sh = lookSheetParse(m.bytes, m.w, m.rows, m.bits);
+      _lookSheetsHere.set(j.look.sheet, sh);
+    }
+    const pi = j.poseInfo;
+    const hasChest = j.worn.some(w => w.k && w.k.indexOf('chest:') === 0), hasLegs = j.worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+    let belt = null, beltPending = false;
+    if (pi.pose === 'jog' && hasChest && hasLegs) {
+      const bt = getGearFrame('belt', 'chainbelt', 'jog', pi.dir, pi.frameIdx | 0);
+      if (bt && bt.source && bt.source.resource) belt = (c, x, y, W, H) => drawGearFrame(c, bt, x, y, W, H); else beltPending = true;
+    }
+    if (j.worn.some((w) => !(w.tex && w.tex.source && w.tex.source.resource))) return { err: 'gear not loaded' };
+    const r = lookBake(sh, {
+      cell: j.look.cell, row: j.look.row,
+      worn: j.worn.map((w) => ({ k: w.k, draw: (c, x, y, W, H) => drawGearFrame(c, w.tex, x, y, W, H) })),
+      belt, dilate: 6, poseInfo: pi, ds: DISPLAY_DS, fishRod: { has: hasFishRodMask, at: fishRodAt }, keepDisplay: !!keepDisplay,
+    }, _mkCpuCanvas);
+    if (keepDisplay) return r;
+    if (beltPending) r.beltPending = true;
+    if (r.residue) {
+      const rc = _mkBakeCanvas(r.residue.w, r.residue.h);
+      rc.getContext('2d').putImageData(new ImageData(r.residue.px, r.residue.w, r.residue.h), 0, 0);
+      const bitmap = await createImageBitmap(rc);
+      rc.width = 0; rc.height = 0;
+      r.residue = { x: r.residue.x, y: r.residue.y, w: r.residue.w, h: r.residue.h, bitmap };
+    }
+    _bakeWorkerStats.inline++;
+    return r;
+  } catch (e) { return { err: String((e && e.message) || e) }; }
+}
+/* The body's frame under armour for a figure the look palette draws: the
+   masked look frame once decided; while it is not, `pending` (the caller
+   draws as the old path does for a frame not baked yet); null when it
+   cannot be drawn so (the caller's old path). */
+function _lookArmourBody(entries, worn, poseInfo, rank) {
+  if (!entries) return null;
+  const why = {};
+  const r = lookArmourFrame(entries, worn, poseInfo, rank, why);
+  if (r) return r;
+  return why.fallback ? null : { pending: true };
+}
+/* The residue (the texels the bake drew that are not the body: the chain
+   belt, the steel fill) as its own sprite right over the body, as the whirl's
+   glow is (_whirlGlow).  It stays visible while the figure is drawn this way
+   and takes the empty texture on a frame with none, so a run cycle does not
+   rebuild the draw list every frame (TRAPS §218). */
+function _placeLookResidue(display, on, tex, forTex) {
+  const sb = display._spriteBody;
+  let g = display._lookResidue;
+  if (!on || !sb || sb.parent !== display) {
+    if (g && g.visible) g.visible = false;
+    return;
+  }
+  if (!g) {
+    g = new Sprite(Texture.EMPTY);
+    g.label = 'lookResidue';
+    g.visible = false;
+    display.addChildAt(g, display.getChildIndex(sb) + 1);
+    display._lookResidue = g;
+    /* drawn only over the body frame it belongs to: a branch that draws the
+       body some other way this frame (and so never calls this) sees it at
+       alpha 0, not a stale belt over another picture */
+    g.onRender = () => {
+      const mine = !!(g._forTex && sb.texture === g._forTex && !g._forTex.destroyed);
+      const a = mine ? sb.alpha : 0;
+      if (g.alpha !== a) g.alpha = a;
+      /* a residue let go of with its look (lookArmour's sweep) is never drawn */
+      if ((!mine || g.texture.destroyed) && g.texture !== Texture.EMPTY) g.texture = Texture.EMPTY;
+    };
+  }
+  g._forTex = forTex || null;
+  const bi = display.getChildIndex(sb);
+  if (display.children[bi + 1] !== g) display.setChildIndex(g, Math.min(display.children.length - 1, display.getChildIndex(g) < bi ? bi : bi + 1));
+  const t = (tex && !tex.destroyed) ? tex : Texture.EMPTY;
+  if (g.texture !== t) g.texture = t;
+  if (g._sharp !== sb._sharp) g._sharp = sb._sharp;
+  if (g._vShade !== sb._vShade) g._vShade = sb._vShade;
+  if (g.anchor.x !== sb.anchor.x || g.anchor.y !== sb.anchor.y) g.anchor.set(sb.anchor.x, sb.anchor.y);
+  if (g.x !== sb.x || g.y !== sb.y) g.position.set(sb.x, sb.y);
+  if (g.scale.x !== sb.scale.x || g.scale.y !== sb.scale.y) g.scale.set(sb.scale.x, sb.scale.y);
+  if (g.rotation !== sb.rotation) g.rotation = sb.rotation;
+  if (g.skew.x !== sb.skew.x || g.skew.y !== sb.skew.y) g.skew.set(sb.skew.x, sb.skew.y);
+  if (g.pivot.x !== sb.pivot.x || g.pivot.y !== sb.pivot.y) g.pivot.set(sb.pivot.x, sb.pivot.y);
+  if (g.tint !== sb.tint) g.tint = sb.tint;
+  const vis = !!sb.visible;
+  if (g.visible !== vis) g.visible = vis;
+}
+/* v2.3.3752: the armoured look's oracle (mp-lookarmour), on a page that asks for it only */
+try {
+  if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(window.location.search || '')) {
+    installArmourProbe({ getBodyFrame, getLookBodyEntries, getFrame, getGearFrame, playerFrameCount,
+      maskedFrame: (t, w, d, p) => _maskedBodyFrame(t, w, d, p), fullsetCovers: (w, p, d) => _fullsetCoversBake(w, p, d),
+      /* the masked bake's own picture over the body the numbers draw (the
+         same lookBake.js, its display kept): what the new way must draw */
+      reference: async (job) => {
+        const r = await _runLookBakeInline(job, true);
+        if (!r || !r.display) return null;
+        const t = Texture.from(r.display);
+        t.source.autoGenerateMipmaps = true;
+        return t;
+      },
+      lookJob: (entries, worn, pi) => lookArmourJob(entries, worn, pi),
+      loadGear: async (sets) => {
+        const jobs = [preloadBeltSheets()];
+        for (const [c, l] of sets) for (const pose of ['stand', 'jog', 'hit', 'dodge', 'mine']) for (const dir of ['east', 'north', 'northeast', 'south', 'southwest']) {
+          if (c) jobs.push(gearSheetLoad('chest', c, pose, dir));
+          if (l) jobs.push(gearSheetLoad('legs', l, pose, dir));
+        }
+        await Promise.all(jobs);
+      } });
+  }
+} catch (e) { /* QA only */ }
+/* the local player's look as row entries, where the look palette draws it
+   (getLookBodyEntries), for the armour's prewarm and the render path */
+function _localLookEntries(pose, dir, art) {
+  if (!lookArmourOn()) return null;
+  return getLookBodyEntries(getSkin(), getPants(), getShoes(), pose, dir, null, getEyeColor(), art, getEyeStyle());
+}
 if (typeof window !== 'undefined') {
   window.__btBakeWorker = () => ({ ..._bakeWorkerStats, rawKeys: _bakeWorkerStats.rawKeys.slice(), alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size,
     queued: _bakeQueue.length, busy: _bakeBusy,
@@ -3370,6 +3670,20 @@ if (typeof window !== 'undefined') {
         for (const mirror of flips) {
           for (let f = 0; f < fc; f++) {
             const art = localBodyArt(mirror);
+            /* v2.3.3752: a look the numbers draw: decided by the worker (lookArmour.js) */
+            const le = (pose !== 'fish' && pose !== 'pickup') ? _localLookEntries(pose, dir, art) : null;
+            if (le) {
+              const worn = [];
+              for (const sl of ['chest', 'legs']) {
+                const it = getEquip(sl);
+                if (it && it !== 'none') { const gt = getGearFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
+              }
+              if (!worn.length || _fullsetCoversBake(worn, pose, dir)) continue;
+              out.want++;
+              if (lookArmourDecided(le, worn.map((w) => w.k).join(','), pose + '-' + dir, f)) out.have++;
+              else if (out.missing.length < 24) out.missing.push(pose + '/' + dir + (mirror ? ' flipped' : '') + ' #' + f + ' (numbers)');
+              continue;
+            }
             const tex = (pose === 'fish') ? getFishFrame(art, f, getSkin(), getPants(), getShoes())
               : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, null, 'none', getEyeColor(), art, getEyeStyle());
             if (!tex) continue;
@@ -3513,6 +3827,33 @@ function _peerPrewarmIfChanged(display, sig, bodyFor, gearIds) {
   _peerQueue.push({ display, sig, bodyFor, gearIds });
   _peerBakeStats.queuedSets++;
   if (!_peerRunning) _runPeerQueue();
+}
+/* v2.3.3752: the same for a peer drawn from the numbers (lookArmour.js):
+   their stand and jog frames asked of the worker, one at a time, in the
+   background, when what they wear or how they look changes */
+async function _peerLookPrewarmIfChanged(display, sig, entriesFor, gearIds) {
+  if (display._peerLookSig === sig) return;
+  display._peerLookSig = sig;
+  if (!_peerWorkerOk() || !gearIds.length) return;
+  _peerBakeStats.queuedSets++;
+  const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  for (const pose of ['stand', 'jog']) {
+    for (const dir of DIRS) {
+      const ents = entriesFor(pose, dir);
+      if (!ents) continue;
+      const fc = playerFrameCount(pose, dir) || 1;
+      for (let f = 0; f < fc; f++) {
+        if (display.destroyed || display._peerLookSig !== sig) return;   /* gone, or changed again */
+        const worn = [];
+        for (const [sl, it] of gearIds) {
+          const gt = getGearFrame(sl, it, pose, dir, f);
+          if (gt) worn.push({ k: sl + ':' + it, tex: gt });
+        }
+        if (!worn.length || _fullsetCoversBake(worn, pose, dir)) continue;
+        try { await lookArmourPrewarm(ents, worn, { pose, dir, frameIdx: f }); _peerBakeStats.prewarmed++; } catch (e) { /* best-effort */ }
+      }
+    }
+  }
 }
 async function _runPeerQueue() {
   _peerRunning = true;
@@ -3965,6 +4306,21 @@ export async function prewarmMaskedBodyFrames(opts) {
       for (const art of _prewarmArts(pose, dir)) {   /* v2.3.3577: + a drawn player's flipped facings */
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
+        /* v2.3.3752: a look the numbers draw is masked from them: its frames
+           are decided by the worker behind this same loading screen, and no
+           picture of the body is made for them (lookArmour.js) */
+        const _le = (pose !== 'fish' && pose !== 'pickup') ? _localLookEntries(pose, dir, art) : null;
+        if (_le) {
+          const worn = [];
+          for (const sl of slots) {
+            const it = getEquip(sl);
+            if (it && it !== 'none') { const gt = getGearFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
+          }
+          if (!worn.length || !_prewarmMasks(pose) || _fullsetCoversBake(worn, pose, dir)) continue;
+          pending.push(lookArmourPrewarm(_le, worn, { pose, dir, frameIdx: f }));
+          if (pending.length >= 2) await pending.shift();
+          continue;
+        }
         /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
            v2.3.2854: ...with the drawings on it (getFishFrame), the frame the
            renderer now asks for; baked by preloadBodyAll, which this runs after.
@@ -4105,6 +4461,20 @@ export async function prewarmAltWornSets(opts) {
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
+          /* v2.3.3752: a look the numbers draw: the worn set was decided by
+             prewarmMaskedBodyFrames; a set one equip away is decided when it
+             goes on (the plain body for the frame or two the worker takes),
+             so it holds no palette row or mask book before then */
+          if (pose !== 'fish' && pose !== 'pickup' && _localLookEntries(pose, dir, art)) {
+            if (!spare) {
+              const worn = [];
+              for (const [sl, id] of set.worn) { const gt = getGearFrame(sl, id, pose, dir, f); if (gt) worn.push({ k: sl + ':' + id, tex: gt }); }
+              if (worn.length && _prewarmMasks(pose) && !_fullsetCoversBake(worn, pose, dir)) {
+                try { await lookArmourPrewarm(_localLookEntries(pose, dir, art), worn, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
+              }
+            }
+            continue;
+          }
           /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
              v2.3.2854: with the drawings on it, as the pass above.
              v2.3.3146: and your skin, trousers and boots. */
@@ -4640,12 +5010,42 @@ function _ensureHairMaskLoaded(hatId) {
     /* v2.3.3520: kept as one promise (`ready`), so the loading screen can
        wait for YOUR hat's five -- a direction whose mask was not in yet drew
        the hair unclipped through the hat for its first frames */
-    e.ready = Promise.allSettled(Object.keys(e.tex).map((dir) =>
-      Assets.load(`/sprites/traits/headwear/${hatId}/hairmask/${dir}.png?v=${TRAIT_VER}`)
-        .then(t => { e.tex[dir] = t; if (t && t.source) t.source.scaleMode = 'linear'; })
-        .catch(() => {})));  // a hat without a hairmask just won't clip
+    e.ready = Promise.allSettled(Object.keys(e.tex).map((dir) => _loadHairMaskDir(e, hatId, dir, 0)));
+  }
+  /* v2.3.3865: a facing whose mask failed, its time come round: asked again */
+  if (e.retryAt) {
+    const now = Date.now();
+    for (const dir of Object.keys(e.retryAt)) {
+      if (now < e.retryAt[dir]) continue;
+      delete e.retryAt[dir];
+      _loadHairMaskDir(e, hatId, dir, (e.rounds[dir] || 0) + 1);
+    }
   }
   return e;
+}
+/* ═══ v2.3.3865: A HAT'S HAIR MASK IS ASKED FOR AGAIN ═══
+   The owner, on their iPhone: "some things still go missing.  One was the
+   'long hair' on the north run" under a cowboy hat.  P1 found art loaders
+   that give up for the session after a failed fetch (a wifi blip, a Pages
+   deploy mid-session): this one asked ONCE and gave up silently, so a hat
+   whose north mask missed its one chance left that facing's mask null for the
+   rest of the page, and _clipHairToHat then draws the hair unclipped under it
+   (mp-longhairhat LH_FAIL: the hair still shows -- this is not the owner's
+   missing hair -- but nothing holds it inside the hat's outline).  Every clipping hat ships all five masks (checked on disk), so a
+   failure is always a blip: asked again on the head pieces' own schedule
+   (TRAIT_RETRY_LATER_MS: 5, 10, 20, 40 s and every minute after), only while
+   the hat is worn (this runs when it is placed), ten rounds at most, past
+   Pixi's cache of the failed load (`&g=`).  `?traitretry=0` or
+   `?retrylooks=0` (P1's switch, shared) is the game as it was. */
+const HAIR_MASK_ROUNDS = 10;
+function _loadHairMaskDir(e, hatId, dir, round) {
+  return Assets.load(`/sprites/traits/headwear/${hatId}/hairmask/${dir}.png?v=${TRAIT_VER}${round > 0 ? `&g=${round}` : ''}`)
+    .then((t) => { e.tex[dir] = t; if (t && t.source) t.source.scaleMode = 'linear'; })
+    .catch(() => {
+      if (!_traitRetryOn || !_looksRetryOn || round >= HAIR_MASK_ROUNDS) return;
+      (e.rounds || (e.rounds = Object.create(null)))[dir] = round;
+      (e.retryAt || (e.retryAt = Object.create(null)))[dir] = Date.now() + TRAIT_RETRY_LATER_MS[Math.min(round, TRAIT_RETRY_LATER_MS.length - 1)];
+    });
 }
 
 /* When the equipped headwear declares `clipsHair`, clip the hair to the
@@ -4805,7 +5205,15 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, l
   const tex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
   const meta = entry && entry.meta;
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
-  if (!(tex && meta && meta.fullFrame && anchorPx)) { sprite.visible = false; return; }
+  if (!(tex && meta && meta.fullFrame && anchorPx)) {
+    sprite.visible = false;
+    /* v2.3.3860: why, as _placeTrait says it (the head-frame count, headFrames.js:
+       'design' a facing the piece does not ship -- the stand-in faces its own way) */
+    sprite._btHide = !entry ? 'entry' : !meta ? 'meta'
+      : !anchorPx ? ((meta.anchors && !meta.anchors[dir]) ? 'design' : 'anchor') : !tex ? 'tex' : 'frame';
+    return;
+  }
+  sprite._btHide = null;
   if (sprite.texture !== tex) sprite.texture = tex;
   const screenDir = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;
   const _pick = (obj) => obj && (obj[screenDir] != null ? obj[screenDir] : obj[dir]);
@@ -5370,7 +5778,8 @@ function _lookupStandHeadBox(dir) {
    actual top of the body silhouette for this frame. */
 function _lookupBodyTop(pose, dir, frame) {
   if (!_bodyTops) return null;
-  return _bodyTops[`${pose}-${dir}-${frame}`] || _bodyTops[`stand-${dir}-0`] || null;
+  /* v2.3.3880: the head's own crown where the topmost pixel is a fist (headCrowns.js, TRAPS §100) */
+  return headCrown(_bodyTops, pose, dir, frame);
 }
 const _traitTex = { east: null, north: null, northeast: null, south: null, southwest: null };
 /* v2.3.264: faceless mannequin textures used as the stand-pose body
@@ -12080,9 +12489,15 @@ export class EntityRenderer {
       /* v2.3.3682: ...and their flip, the roll's somersault, as yours is */
       const _rFlip = _rJump && _rJump.flip ? { angle: _rJump.ang || 0, startTime: _rJump.t0, durMs: _rJump.dur, kind: 'flip' } : null;
       const _rDodge = other._dodgeRoll || _rFlip || null;
+      /* v2.3.3776: on a board (the tick's `brd`) they stand sideways and
+         push now and then (game/ride.js rideLook), as you do */
+      const _rLk = (other._brd && !_rexBodyPose && !_rDodge && !_rJump && !isHit)
+        ? rideLook(display._rideLook || (display._rideLook = {}), facing, isMoving, now) : null;
+      if (_rLk) facing = _rLk.facing;
+      display._rideLkPose = _rLk ? _rLk.pose : null;
       const pose = _rexBodyPose
         ? _rexBodyPose
-        : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'))));
+        : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : (_rLk ? _rLk.pose : (isMoving ? 'jog' : 'stand')))));
       const spritesAvailable = hasPose(pose) || hasPose('stand');
       let useSprite = false;
       if (!_rexStandIn && spritesAvailable) {
@@ -12277,9 +12692,17 @@ export class EntityRenderer {
            fishes in their own colours: baked the first time they cast, as
            every pose of a peer's is (their look is the preload law's named
            exception), the painted frame shown until it lands. */
-        let tex = pose === 'fish'
+        /* v2.3.3716: the look palette (on; `?lookpalette=0` off) -- THEIR stand and jog from the shared
+           colour numbers and a row of their colours (lookPalette.js), when
+           they wear no chest or leg armour (masked from the body's own
+           pixels, below); null otherwise, and always with `?lookpalette=0` */
+        /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels).
+           v2.3.3752: under their armour too (lookArmour.js), not fishing */
+        const _lookTex = (lookPaletteWanted() && ((_bareOf(_oEq.chest) && _bareOf(_oEq.legs) && (pose !== 'fish' || _bareOf(_oShirtEquip))) || (lookArmourOn() && pose !== 'fish')))
+          ? getLookBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle) : null;
+        let tex = _lookTex || (pose === 'fish'
           ? getFishFrame(_oBodyArt, frameIdx, other.skin, other.pants, other.shoes)
-          : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643: THEIR style */
+          : getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle));   /* v2.3.2643: THEIR style */
         if (!tex) tex = getBodyFrame(other.skin, other.pants, other.shoes, 'stand', dir, 0, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);   /* v2.3.2643 */
         if (tex) {
           /* Reassign texture whenever it differs — same self-heal as
@@ -12356,11 +12779,25 @@ export class EntityRenderer {
                figure showing through at its edges. */
             /* v2.3.2876: a peer's armour bakes in the worker (prewarm on a
                change, hold-don't-bake on a miss) -- _peerMaskedFrame. */
-            _peerPrewarmIfChanged(display,
-              [other.skin, other.pants, other.shoes, other.eyeColor, other.eyeStyle, _oBodyArt ? 'art' : '', other.equip && other.equip.chest, other.equip && other.equip.legs].join('|'),
+            /* v2.3.3752: a peer drawn from the numbers is prewarmed and masked
+               from them (lookArmour.js); else the old path, as before */
+            const _rEnt = (tex && tex._btLook) ? (p, d) => getLookBodyEntries(other.skin, other.pants, other.shoes, p, d, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle) : null;
+            const _rSig = [other.skin, other.pants, other.shoes, other.eyeColor, other.eyeStyle, _oBodyArt ? 'art' : '', other.equip && other.equip.chest, other.equip && other.equip.legs].join('|');
+            if (_rEnt) _peerLookPrewarmIfChanged(display, _rSig, _rEnt, _rworn.map((w) => w.k.split(':')));
+            else _peerPrewarmIfChanged(display, _rSig,
               (p, d, f, m) => getBodyFrame(other.skin, other.pants, other.shoes, p, d, f, _oShirtT, _oShirtKey, other.eyeColor, _remoteBodyArt(other, m), other.eyeStyle),
               _rworn.map((w) => w.k.split(':')));
-            const _mt = _fsR || ((pose === 'pickup') ? tex : _peerMaskedFrame(display, tex, _rworn, 6, { pose, dir, frameIdx }, mirror));
+            let _rla = null;
+            if (_rEnt && !_fsR && pose !== 'pickup') _rla = _lookArmourBody(_rEnt(pose, dir), _rworn, { pose, dir, frameIdx }, 0);
+            const _rpd = pose + '|' + dir + '|' + (mirror ? 1 : 0) + '|' + _rworn.map((w) => w.k).join(',');
+            let _rOld = tex;
+            if (_rEnt && !_rla && !_fsR && pose !== 'pickup') _rOld = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);
+            /* not decided yet: the last masked frame of this pose and facing, as _peerMaskedFrame holds one */
+            const _rHold = (_rla && _rla.pending && display._peerLastPD === _rpd && display._peerLastMasked && display._peerLastMasked._btLook && !display._peerLastMasked.destroyed && display._peerLastMasked.source && !display._peerLastMasked.source.destroyed) ? display._peerLastMasked : null;
+            const _mt = _fsR || ((pose === 'pickup') ? tex : (_rla ? (_rla.tex || _rHold || tex) : _peerMaskedFrame(display, _rOld, _rworn, 6, { pose, dir, frameIdx }, mirror)));
+            const _rRes = _rla && _rla.tex ? _rla.residue : (_rHold ? display._peerLastResidue : null);
+            _placeLookResidue(display, !!(_rla && (_rla.tex || _rHold)), _rRes, _mt);
+            if (_rla && _rla.tex) display._peerLastResidue = _rla.residue || null;
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
             if (!_fsR && pose !== 'pickup' && _mt !== tex) {
               display._peerLastMasked = _mt;
@@ -12417,6 +12854,9 @@ export class EntityRenderer {
           _placeEyewear(display, other.eyewear, other.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361; v2.3.2424 + colour */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
+          /* v2.3.3860: the head-frame count's context (headFrames.js) */
+          if (HEAD_FRAMES_ON) display._btHeadAt = { pose, dir, mirror, frameIdx, now,
+            worn: { headwear: other.headwear, hair: other.hair, facialhair: other.facialhair, eyewear: other.eyewear, eyestyle: other.eyeStyle } };
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -12534,7 +12974,7 @@ export class EntityRenderer {
              flying off into space. */
           let bodyScale = 0.6; /* v2.3.741: 0.5 -> 0.6, tracking the +20% body bump */
           const isHitNow = other._hitFlash && (now - other._hitFlash) < 250;
-          const poseNow = isHitNow ? 'hit' : (isMoving ? 'jog' : 'stand');
+          const poseNow = isHitNow ? 'hit' : (display._rideLkPose || (isMoving ? 'jog' : 'stand'));   /* v2.3.3776: a rider's own pose (rideLook) */
           if (dir === 'east' && poseNow === 'hit') bodyScale = 0.88 * 0.6;
           else if (dir === 'northeast' && poseNow !== 'hit') bodyScale = 1.03 * 0.6;
           const animFrame = display._animFrame || 0;
@@ -12887,7 +13327,7 @@ export class EntityRenderer {
       /* v2.3.3313: "[TAG] Name" while they are in an alliance -- the worker's
          allyTag (alliance.js), on their snapshot and every change */
       _updateNamePill(display, plateNameWithTag(nextName, other.allyTag), other.rpgLv || 1,
-        !other._isDead && !display._peerBarUp, broBadgeOf(other.bro, other.brn), false, 'gold', !!_inParty);   /* v2.3.3255: + a wallet's count; v2.3.3279: + the party badge */
+        !other._isDead && !display._peerBarUp && !_chatBubbleUp(S, id, now), broBadgeOf(other.bro, other.brn), false, 'gold', !!_inParty);   /* v2.3.3858: + the bubble has its place */   /* v2.3.3255: + a wallet's count; v2.3.3279: + the party badge */
       if (_inParty && display._partyBadge && display._partyBadge.visible) _bindSmallTex(display._partyBadge, 'partyMember');
       if (display._namePill) {
         const _pH = (display._pillCss || 14) * PLATE_H_RATIO;
@@ -12910,6 +13350,11 @@ export class EntityRenderer {
         const _bandTop = Math.min(PEER_HPBAR_Y - _bandHalf, display._peerBarUp ? PEER_BAR_Y - PEER_BAR_H / 2 : Infinity);
         other._bandTopY = display.visible
           ? display.y + _bandTop * Math.abs(display.scale.y || 1) : null;
+        /* v2.3.3858: where a chat bubble's point goes -- the band's bottom,
+           over the head, the plate's place (it steps aside while the bubble
+           is up); with the HP bar up, the band's top as before */
+        other._chatTipY = display.visible
+          ? (display._peerBarUp ? other._bandTopY : display.y + (PEER_HPBAR_Y + _bandHalf) * Math.abs(display.scale.y || 1)) : null;
         /* ═══ v2.3.3481: AN OPPONENT'S PLATE STEPS UP OFF YOURS ═══
            The 2026-10-19 UI review: "Reviewer 3" and "Sword Clone 3" on top
            of each other, the opponent's name hidden (upright almost wholly).
@@ -12976,6 +13421,8 @@ export class EntityRenderer {
             name: display._pillName ? display._pillName.text : null,
             skull: !!(display._skullText && display._skullText.visible),
             skullArt: !!(display._skullText && display._skullText.texture && display._skullText.texture !== Texture.EMPTY && display._skullText.texture.width > 1),
+            /* v2.3.3770: the rematch's sword clash and "?" over their head, drawn with its picture */
+            nmlAsk: !!(display._nmlAskIcon && !display._nmlAskIcon.destroyed && display._nmlAskIcon.texture && display._nmlAskIcon.texture !== Texture.EMPTY),
           };
         }
       } catch (e) { /* never breaks the frame */ }
@@ -12998,6 +13445,42 @@ export class EntityRenderer {
       if (_skullPhase) {
         const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
         display._skullText.y = Math.round(PEER_HPBAR_Y - _sbh - 2) + bobY;
+      }
+      /* ═══ v2.3.3770: A REMATCH ASKED OF YOU ═══  The player locked out from
+         you (they attacked you and you beat them, nomansland.js _nmlLockSet)
+         asked: the duel's sword clash with a "?" over their head, for
+         NML_LOCK_ASK_SHOW_MS, on YOUR screen alone (the worker sends it to
+         you only).  Made when it starts and destroyed when it ends -- a rare
+         structural change, never a Text kept hidden (TRAPS §192) -- above
+         the skull's place, which it leaves alone. */
+      const _askUntil = S._nmlAskMarks instanceof Map ? (S._nmlAskMarks.get(id) || 0) : 0;
+      if (_askUntil > now) {
+        if (!display._nmlAskIcon && display._skullText && display._skullText.parent) {
+          const ic = new Sprite(_smallTex('nmlAskDuel'));
+          ic._smallW = THREAT_SKULL_PX + 4;
+          ic.width = ic.height = THREAT_SKULL_PX + 4;
+          ic.anchor.set(0.5, 1);
+          const q = new Text({ text: '?', style: { fontFamily: 'system-ui, sans-serif', fontSize: 16, fontWeight: '900', fill: 0xFFE27A, stroke: { color: 0x1a0b0a, width: 3 } } });
+          q.anchor.set(0, 1);
+          display._skullText.parent.addChild(ic);
+          display._skullText.parent.addChild(q);
+          display._nmlAskIcon = ic;
+          display._nmlAskQ = q;
+        }
+        if (display._nmlAskIcon) {
+          _bindSmallTex(display._nmlAskIcon, 'nmlAskDuel');
+          const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+          const _ay = Math.round(PEER_HPBAR_Y - _sbh - 2 - (_skullPhase ? THREAT_SKULL_PX + 2 : 0)) + bobY;
+          display._nmlAskIcon.y = _ay;
+          display._nmlAskQ.x = Math.round((THREAT_SKULL_PX + 4) / 2) - 2;
+          display._nmlAskQ.y = _ay - 4;
+        }
+      } else if (display._nmlAskIcon) {
+        display._nmlAskIcon.destroy();
+        display._nmlAskQ.destroy();
+        display._nmlAskIcon = null;
+        display._nmlAskQ = null;
+        if (S._nmlAskMarks instanceof Map) S._nmlAskMarks.delete(id);
       }
     }
 
@@ -13700,6 +14183,12 @@ export class EntityRenderer {
        to _facingAngle mid-slew; the probe below now says so in one word. */
     S._renderFacing = facing;
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
+    /* v2.3.3776: on the board you stand sideways and push now and then
+       (game/ride.js rideLook) -- AFTER the facing is published above, so the
+       others are sent the way you go and turn it themselves */
+    const _rideLk = (S._ride && S._ride.on && !isHit)
+      ? rideLook(display._rideLook || (display._rideLook = {}), facing, isMoving, now) : null;
+    if (_rideLk) facing = _rideLk.facing;
     /* v2.3.3017: in the air (game/jump.js) the body holds one leaping frame of
        the jog for the way it faces -- the owner's "just use the jog
        directions" -- above the hit-react (as the roll is: the jump is what the
@@ -13769,7 +14258,7 @@ export class EntityRenderer {
                       ? 'jog'
                       : (isHit
                           ? 'hit'
-                          : ((isMoving && !_blockPlanted) ? 'jog' : 'stand'))))));
+                          : (_rideLk ? _rideLk.pose : ((isMoving && !_blockPlanted) ? 'jog' : 'stand')))))));   /* v2.3.3776: on the board, rideLook's pose */
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet
@@ -14090,9 +14579,20 @@ export class EntityRenderer {
       /* v2.3.2854: fishing keeps the drawings -- getFishFrame stamps them onto
          the raw sheet without the recolour above (playerSkins), baked behind
          the loading screen by preloadBodyAll. */
-      let tex = pose === 'fish'
+      /* v2.3.3716: the look palette (on; `?lookpalette=0` off) -- the stand and jog frames from the shared
+         colour numbers and this look's row (lookPalette.js), where the frame is
+         drawn as it is: not under chest or leg armour (masked from the body's
+         own pixels) and not in the south block (cut into bands).  Null
+         otherwise, and always with `?lookpalette=0`: the old path below. */
+      /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels).
+         v2.3.3752: under chest or leg armour too, where the armour's masks
+         are drawn from the numbers (lookArmour.js) -- not fishing (its head
+         overlay reads the body's pixels) */
+      const _lookTex = (lookPaletteWanted() && !_southBlock && ((_bareOf(getEquip('chest')) && _bareOf(getEquip('legs')) && (pose !== 'fish' || _bareOf(getEquip('shirt')))) || (lookArmourOn() && pose !== 'fish')))
+        ? getLookBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, getEyeColor(), _bodyArt, getEyeStyle()) : null;
+      let tex = _lookTex || (pose === 'fish'
         ? getFishFrame(_bodyArt, frameIdx, getSkin(), getPants(), getShoes())   /* v2.3.3146: your colours */
-        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
+        : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle()));   /* v2.3.2643 */
       if (!tex) tex = getBodyFrame(getSkin(), getPants(), getShoes(), 'stand', dir, 0, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());   /* v2.3.2643 */
       /* v2.3.291: mannequin swap removed -- user wants helmet stickered
          to the NORMAL character body as a rigid assembly.  Trait + body
@@ -14184,7 +14684,21 @@ export class EntityRenderer {
           /* v2.3.2904: _localMaskedFrame -- a frame the worker has not baked yet
              goes to the front of its queue and this frame draws the plain body
              under the armour, instead of a bake inside the frame. */
-          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _localMaskedFrame(tex, _worn, 6, { pose, dir, frameIdx }));
+          /* v2.3.3752: a body drawn from the numbers takes its mask from them
+             too (lookArmour.js): decided, the masked look frame and its
+             residue; not yet, the plain body, as a frame the worker has not
+             baked (above); unable (no row, no room), the old path's own bake
+             of the old body picture */
+          let _la = null;
+          if (!_fsT && _worn.length && pose !== 'pickup' && tex && tex._btLook) {
+            _la = _lookArmourBody(getLookBodyEntries(getSkin(), getPants(), getShoes(), pose, dir, _shirtT, getEyeColor(), _bodyArt, getEyeStyle()),
+              _worn, { pose, dir, frameIdx }, _localEpoch + 1);
+            if (_la && _la.pending) { _localEpoch++; _localBakeStats.plain++; }
+          }
+          let _oldTex = tex;
+          if (!_la && tex && tex._btLook && _worn.length && !_fsT && pose !== 'pickup') _oldTex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());
+          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : (_la ? (_la.tex || tex) : _localMaskedFrame(_oldTex, _worn, 6, { pose, dir, frameIdx })));
+          _placeLookResidue(display, !!(_la && _la.tex), _la && _la.residue, _la && _la.tex);
           /* v2.3.1757: material colour for the figure-on-body case (see the
              remote path above for why it is cleared rather than left set). */
           const _fsTint = _fsT ? _fullsetTint(getEquip('chest')) : 0xffffff;
@@ -14319,6 +14833,7 @@ export class EntityRenderer {
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
         _watchOwnHead(display, pose, dir, mirror);   /* v2.3.3689: a piece hidden where it ships, asked for again and logged */
+        if (HEAD_FRAMES_ON) display._btHeadAt = { pose, dir, mirror, frameIdx };   /* v2.3.3860: the head-frame count's context (headFrames.js, `?headframes` only) */
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
@@ -16013,7 +16528,7 @@ export class EntityRenderer {
        positions from — a real risk to buy an invisible one. */
     /* v2.3.3313: your alliance's tag, from your party's roster */
     _updateNamePill(display, plateNameWithTag(S.myName || 'Anon', myAllyTag(S)), (S.rpg && S.rpg.level) || 1,
-      !S._dying, !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2) */
+      !S._dying && !_chatBubbleUp(S, S.myId, now), !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2); v2.3.3858: the bubble has its place */
     /* v2.3.3313: QA probe (mp-alliance) -- your plate's words as drawn */
     if (window.__btProbe && display._pillName) window.__btSelfPlate = display._pillName.text;
     if (display._namePill) {
@@ -16068,6 +16583,9 @@ export class EntityRenderer {
       S._selfBandBotY = display.visible
         ? display.y + (PLAYER_BAND_Y + _bandHalf) * Math.abs(display.scale.y || 1) : null;
       S._selfBandHalfW = display.visible ? Math.max(_plateHalf, _barHalf) * _bsx : 0;
+      /* v2.3.3858: your chat bubble's point, as a peer's (_chatTipY above) */
+      S._selfChatTipY = display.visible
+        ? (_barHalf > 0 ? S._selfBandTopY : S._selfBandBotY) : null;
       /* v2.3.3027 published the band's centre here too (S._selfBand), for the
          harvest's bar over your head; v2.3.3035 put that bar over the
          resource, so nothing reads it and it is gone. */
@@ -16395,6 +16913,8 @@ export class EntityRenderer {
        the spot beside you for the one frame before it seeds itself. */
     const x = (typeof S._petX === 'number') ? S._petX : S.player.x + 20;
     const y = (typeof S._petY === 'number') ? S._petY : S.player.y + 15;
+    /* v2.3.3806: on a fetch (game/petFetch.js) it RUNS: its walk's frames, faster */
+    d._run = !!(S._petFetch && S._petFetch.phase);
     const { k, hop } = this._posePet(d, art, pet, x, y, now);
     const nm = worldSafeText(petDisplayName({ ...pet, kind }));
     if (d._nameText.text !== nm) d._nameText.text = nm;
@@ -16446,7 +16966,7 @@ export class EntityRenderer {
     const frames = side ? petFrames(art.base, 'side') : front;
     /* slimes bounce standing still too; a walker steps only while it walks */
     const bounces = art.base === 'slime' || art.base === 'blueSlime';
-    const fi = frames.length > 1 && (moving || bounces) ? Math.floor(now / (bounces ? 120 : 105)) % frames.length : 0;
+    const fi = frames.length > 1 && (moving || bounces) ? Math.floor(now / (bounces ? 120 : (d._run ? 70 : 105))) % frames.length : 0;   /* v2.3.3806: 70 on a fetch's run */
     const spr = d._sprite;
     if (spr.texture !== frames[fi]) spr.texture = frames[fi];
     /* PET_DRAW_K: the sheet is 2 px a game px (k 0.5 draws its 30 px art 30
@@ -16796,6 +17316,107 @@ export class EntityRenderer {
     }
   }
 
+  /* ═══ v2.3.3809: A TOWNSPERSON DRAWN LIVE, AS ANOTHER PLAYER IS ═══
+     (the why: rendering/lookFolk.js.)  His look (src/data/npcLooks.js, under
+     a peer's field names) dresses a peer's figure, kept inside his own
+     display, by the very calls that dress another player standing or
+     walking bare -- the body from the look palette, his tee, cape, hat,
+     beard, eye style, glasses and hair -- so he is drawn from the shared
+     pieces every player is, and costs a few rows of colours.  The figure's
+     feet on his display's origin (his feet), at his size (Lil Bro's 0.8).
+     His walk (the race) is the jog by the distance he covers; standing, the
+     stand's own breath.  Returns false when he cannot be drawn so (no
+     look): the photograph, as before. */
+  _drawFolk(S, now, npc, display) {
+    const look = display._folkLook;
+    if (!look) return false;
+    let folk = display._folk;
+    if (!folk) {
+      folk = createOtherPlayerDisplay();
+      folk.label = 'npc_folk';
+      /* a peer's plate, bars and skull are not his: his display has its own */
+      if (folk._uiLayer) folk._uiLayer.visible = false;
+      folk._vShadeRef = folk._spriteBody;
+      display.addChildAt(folk, 0);   /* behind his bars and labels, as the photograph was */
+      display._folk = folk;
+    }
+    if (!folk.visible) folk.visible = true;
+    /* his facing and stride, from where he has got to (the photograph's
+       rule below: a floor, so a standing townsperson does not turn) */
+    const hadLast = typeof display._lastX === 'number';
+    const dx = hadLast ? npc.x - display._lastX : 0;
+    const dy = hadLast ? npc.y - display._lastY : 0;
+    display._lastX = npc.x; display._lastY = npc.y;
+    const step = Math.hypot(dx, dy);
+    const moving = step > 0.08;
+    if (moving) {
+      display._walkDir = npcDirFromDelta(dx, dy);
+      display._walkPhase = (display._walkPhase || 0) + step;
+      display._folkMovedAt = now;
+    }
+    /* a stride's last few px lands him on the stand, not frozen mid-step */
+    const jogging = moving || (now - (display._folkMovedAt || -1e9)) < 120;
+    const facing = folkFaceOverride() || display._walkDir || 'south';   /* QA may turn him (lookFolk.js) */
+    const { dir, mirror } = resolveDirection(facing);
+    const pose = jogging ? 'jog' : 'stand';
+    /* his size against a bro's: the photographs' own table, so the Mayor
+       stays the owner's 10% larger (v2.3.1822) and Lil Bro a child */
+    const size = (NPC_SCALE_MULT[npc.sprite] || NPC_BRO_MULT) / PLAYER_SIZE_MULT * npcFigureSize(npc);
+    let frameIdx = 0;
+    if (pose === 'jog') {
+      const fc = playerFrameCount('jog', dir) || 24;
+      const stride = NPC_WALK_SPEED * ((cycleMs('jog', dir) || 1000) / 1000) * size;
+      frameIdx = Math.floor(((display._walkPhase || 0) / Math.max(1, stride)) * fc) % fc;
+    } else {
+      const fc = playerFrameCount('stand', dir) || 1;
+      const cyc = cycleMs('stand', dir) || 1000;
+      /* each townsperson breathes on his own beat (his id), not in step */
+      if (display._folkBeat == null) {
+        let h = 0;
+        for (const c of String(npc.id)) h = (h * 31 + c.charCodeAt(0)) % 9973;
+        display._folkBeat = h * 7;
+      }
+      frameIdx = Math.floor(((now + display._folkBeat) / cyc) * fc) % fc;
+    }
+    const spriteBody = folk._spriteBody;
+    const art = _remoteBodyArt(look, mirror);
+    const shirtEquip = look.equip.shirt;
+    const tex = (lookPaletteWanted()
+      ? getLookBodyFrame(look.skin, look.pants, look.shoes, pose, dir, frameIdx, null, look.eyeColor, art, look.eyeStyle) : null)
+      || getBodyFrame(look.skin, look.pants, look.shoes, pose, dir, frameIdx, null, 'none', look.eyeColor, art, look.eyeStyle);
+    if (!tex) { folk.visible = false; return true; }
+    if (spriteBody.texture !== tex) spriteBody.texture = tex;
+    folk._animPose = pose; folk._animDir = dir; folk._animFrame = frameIdx;
+    const sizeMul = bodyDirScale(pose, dir) * 0.421875;
+    spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * DISPLAY_DS;
+    spriteBody.scale.y = sizeMul * DISPLAY_DS;
+    spriteBody.tint = 0xffffff;
+    spriteBody.visible = true;
+    if (folk._body) folk._body.visible = false;
+    const tint = shirtFill(look.shirt || 'tshirt', look.shirtColor);
+    folk._shirtLook = _shirtLook(null, null, sanitizePattern(look.shirtPattern, 'shirt'), tint);
+    folk._shirtArtMirror = mirror;
+    _placeGear(folk, { shirt: shirtEquip, legs: 'none', chest: 'none', shoulders: 'none', shirtTint: tint }, pose, dir, frameIdx);
+    _hideBodyRegions(folk);
+    if (folk._shirtSprite) folk._shirtSprite.visible = false;
+    _placeCape(folk, look.cape, pose, dir, mirror, frameIdx);
+    _placeHeadwear(folk, look.headwear, look.hatColor, pose, dir, mirror, frameIdx, sizeMul, look.hair);
+    _placeFacialHair(folk, look.facialhair, look.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
+    _placeSpecies(folk, look.species, look.skin, pose, dir, mirror, frameIdx, sizeMul);
+    _placeEyeStyle(folk, look.eyeStyle, look.eyeColor, pose, dir, mirror, frameIdx, sizeMul);
+    _placeEyewear(folk, look.eyewear, look.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);
+    _placeHair(folk, look.hair, look.hairColor, look.headwear, pose, dir, mirror, frameIdx, sizeMul);
+    _orderTraitsAndWeapon(folk, SECTORS.indexOf(facing), look.headwear);
+    if (HEAD_FRAMES_ON) folk._btHeadAt = { pose, dir, mirror, frameIdx, now,   /* v2.3.3860: the head-frame count (headFrames.js, `?headframes` only) */
+      worn: { headwear: look.headwear, hair: look.hair, facialhair: look.facialhair, eyewear: look.eyewear, eyestyle: look.eyeStyle } };
+    /* a player's size on this ground, times his own (above); his feet on his origin */
+    const k = this._zonePscale(S, npc.x, npc.y) * PLAYER_SIZE_MULT * size;
+    if (folk.scale.x !== k) folk.scale.set(k);
+    folk.y = -_feetOffsetUnits(folk) * k;
+    display._walkIdx = frameIdx;   /* the probe's (mp-wheelfolk) */
+    return true;
+  }
+
   _updateNPCs(S, now) {
     const npcs = S.npcs || [];
     const activeIds = new Set();
@@ -16992,6 +17613,42 @@ export class EntityRenderer {
       display.x = npc.x;
       display.y = npc.y;
 
+      /* ═══ v2.3.3809: DRAWN LIVE FROM HIS LOOK (lookFolk.js) ═══
+         With the switch on, his look dresses a player's figure (_drawFolk)
+         and his photograph sprite is hidden; his plate, badge, bubble and tap
+         are his display's, as before.  Switched off, the photograph -- loaded
+         then if the world left it out -- and, until it is in, still live. */
+      if (display._folkLook === undefined) display._folkLook = npcLookAsPeer(npcLookByName(npc.name));
+      let _folkLive = false;
+      if (display._folkLook) {
+        const _folkOn = lookFolkOn();
+        if (!_folkOn && zoneHomes(S.currentZone) && !wheelNpcPhotosHeld()) loadWheelNpcArt(true);
+        const _photoMissing = !hasNpcWalk(npc.id) && !getNpcTexture(npc.sprite);
+        if (_folkOn || (_photoMissing && lookPaletteOn())) {
+          /* ═══ ...BUILT ONLY WHILE HE IS NEAR THE SCREEN ═══
+             A player's figure is some 45 display objects; 21 townsfolk each
+             holding one wherever they stood put the memory check's heap
+             line 1.3 MB over (CI, v2.3.3833's cast).  So, as for a player
+             far off (PEER_FAR_MARGIN), a townsperson past the view's
+             half-diagonal + FOLK_FAR_MARGIN has no figure: it is destroyed,
+             and made again when he comes near -- a few are on a screen. */
+          const _cam = S.camera, _vw = S._viewW, _vh = S._viewH;
+          const _far = !!(_cam && _vw > 0 && _vh > 0)
+            && Math.hypot(npc.x - (_cam.x + _vw / 2), npc.y - (_cam.y + _vh / 2)) > Math.hypot(_vw, _vh) / 2 + FOLK_FAR_MARGIN;
+          if (_far) {
+            if (display._folk) {
+              display.removeChild(display._folk);
+              display._folk.destroy({ children: true });
+              display._folk = null;
+            }
+            _folkLive = true;   /* live, and nothing of him to draw out there */
+          } else _folkLive = this._drawFolk(S, now, npc, display);
+        }
+      }
+      display._folkLive = _folkLive;
+      if (!_folkLive && display._folk && display._folk.visible) display._folk.visible = false;
+      if (display._fig && display._fig.visible === _folkLive) display._fig.visible = !_folkLive;
+
       /* v2.3.2048: keep the plate's text current. Cheap: _updateNamePill
          rebuilds the rounded rect only when the string changes (_pillKey),
          so this is a string comparison per frame and nothing more. */
@@ -17010,7 +17667,7 @@ export class EntityRenderer {
          with what is drawn.
          The phase accumulates DISTANCE, so a slow wander steps slowly and a
          stopped NPC holds frame 0 instead of marching on the spot. */
-      if (display._fig && hasNpcWalk(npc.id)) {
+      if (!_folkLive && display._fig && hasNpcWalk(npc.id)) {
         const hadLast = typeof display._lastX === 'number';
         const dx = hadLast ? npc.x - display._lastX : 0;
         const dy = hadLast ? npc.y - display._lastY : 0;
@@ -17041,7 +17698,7 @@ export class EntityRenderer {
          drawn figure: marker just above the hat, name above the marker, HP bar
          and star tucked above that.  Recomputed if the scale ever changes,
          and only once the texture is bound so we know he is actually drawn. */
-      if (display._fig && !display._lifted && display._fig.texture !== Texture.EMPTY) {
+      if (display._fig && !display._lifted && (display._fig.texture !== Texture.EMPTY || _folkLive)) {   /* v2.3.3809: or drawn live */
         display._lifted = true;
         const top = npcFigureHeight(npc.sprite, npc); // world px above the feet
         /* The marker is anchored at its CENTRE, so clearing the hat needs half
@@ -17098,7 +17755,7 @@ export class EntityRenderer {
         }
         /* Only hide the emoji stand-in once real art is actually on screen —
            otherwise a failed load leaves an NPC you cannot see at all. */
-        const drawn = fig.texture !== Texture.EMPTY;
+        const drawn = fig.texture !== Texture.EMPTY || _folkLive;   /* v2.3.3809: or drawn live */
         if (display._avatar.visible !== !drawn) display._avatar.visible = !drawn;
         display._suppressBody = drawn;
         /* v2.3.1773: QA probe — what each NPC figure is ACTUALLY drawn as.
@@ -17109,8 +17766,10 @@ export class EntityRenderer {
         if (typeof window !== 'undefined' && drawn) {
           _npcDrawn[npc.id] = {
             id: npc.id, name: npc.name, x: npc.x, y: npc.y,
-            height: fig.texture.height * fig.scale.y,
-            width: fig.texture.width * fig.scale.x,
+            /* v2.3.3809: drawn live, his figure's body as drawn */
+            height: _folkLive ? _folkBodyPx(display._folk, 'height') : fig.texture.height * fig.scale.y,
+            width: _folkLive ? _folkBodyPx(display._folk, 'width') : fig.texture.width * fig.scale.x,
+            live: _folkLive,
             /* world y of the figure's feet — anchor is the frame's foot row */
             footY: display.y,
             src: display._figSrc,
@@ -17126,7 +17785,7 @@ export class EntityRenderer {
                within the crop's 4-11 px pad, world px) -- Lil Bro's picture
                is photographed small, not drawn small */
             size: npcFigureSize(npc),
-            paintTop: fig.texture.trim ? (NPC_FRAME_FEET_Y - fig.texture.trim.y) * fig.scale.y : null,
+            paintTop: !_folkLive && fig.texture.trim ? (NPC_FRAME_FEET_Y - fig.texture.trim.y) * fig.scale.y : null,
             /* v2.3.2071: the PLATE as painted -- the two strings on it, how
                far below the feet it hangs, and whether the old above-head
                label is really gone. Owner: "Make every persons name or title

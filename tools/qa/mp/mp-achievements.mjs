@@ -236,8 +236,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         whole: !!sp && sp.scrollWidth <= sp.clientWidth + 1 && sp.scrollHeight <= sp.clientHeight + 1,
         icon: !!(t.querySelector('img') && /\/icons\/achievements\/achievements\.webp/.test(t.querySelector('img').src)) };
     })).catch(() => null);
-    rec.ok(`1b More: Journey's tile is Achievements, whole ("${tile && tile.label}"), the owner's medal its picture, "0 of 23 earned"`,
-      !!tile && tile.label === 'Achievements' && !tile.journey && tile.whole && tile.icon && /0 of 23 earned/.test(tile.title || ''), tile);
+    /* v2.3.3773: and Journey keeps a tile of its own beside it (the owner:
+       "journey ... its own icon in the more/other apps menus") */
+    rec.ok(`1b More: an Achievements tile, whole ("${tile && tile.label}"), the owner's medal its picture, "0 of 23 earned", and Journey's own tile beside it`,
+      !!tile && tile.label === 'Achievements' && tile.journey && tile.whole && tile.icon && /0 of 23 earned/.test(tile.title || ''), tile);
 
     /* ── 2 ── */
     await tap(A, '[data-more-tile="achievements"]');

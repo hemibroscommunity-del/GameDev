@@ -84,8 +84,8 @@ const near = (a, b, d = 2) => !!a && !!b && Math.abs(a.x - b.x) <= d && Math.abs
 export async function run({ browser, wsPort, webPort, rec }) {
   const { WHEEL_SPAWNS, WHEEL_CENTRE, WHEEL_SAFE_R } = await import(H.REPO + '/server/src/wheelspawns.js');
   const { PLAN } = await import(H.REPO + '/public/tools/world/plan.js');
-  const landName = (PLAN.regions[LAND] && PLAN.regions[LAND].name) || LAND;   /* "Verdant Wilds" */
-  const poss = /s$/.test(landName) ? `the ${landName}'` : `${landName}'s`;   /* "the Verdant Wilds'", "Frost Ridge's" */
+  const landName = (PLAN.regions[LAND] && PLAN.regions[LAND].name) || LAND;   /* "Earth Forest" */
+  const poss = /s$/.test(landName) ? `the ${landName}'` : `${landName}'s`;   /* "Earth Forest's", "Frost Ridge's"; v2.3.3778: was "the Verdant Wilds'" */
   const [cx, cy] = WHEEL_CENTRE;
   const r = (p) => Math.round(Math.hypot(p.x - cx, p.y - cy));
   const P = await H.newPlayer(browser, { name: 'Settler', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });
@@ -125,7 +125,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3009: the owner: "Put the 'brotown safe' and other location
      indicators in place of the 'the wheel lvl 1-2' on the top bar" */
   rec.ok(`...the minimap's name plate says where he is, "${shown.place}" over "${shown.sub}" (the top bar "${shown.title}", not "The Wheel (Lv1-2)"), and no test readout is on screen`,
-    shown.place === 'Brotown' && shown.sub === 'safe' && !/The Wheel|Lv1-2|trial/i.test(shown.title || '') && !shown.readout, shown);
+    shown.place === 'BroTown' && shown.sub === 'safe' && !/The Wheel|Lv1-2|trial/i.test(shown.title || '') && !shown.readout, shown);
 
   /* ── 8a. the way to the Mayor, before a word with him ── */
   const w0 = await way(P);

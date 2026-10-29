@@ -377,7 +377,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null, host = 'localhost', device = null, wide = false }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, nmlOnce = false, query = '', world = null, host = 'localhost', device = null, wide = false }) {
   /* ═══ v2.3.3552: THE OLD MAP IS RETIRED -- NEVER PLAYED BY ACCIDENT ═══
      The owner: "Hold on you're in the old map (this was retired).  You keep
      making that mistake so flag it in a way you won't accidentally do that
@@ -442,6 +442,11 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      headless player.  Held back for every scenario but the ones that test it,
      or anything that reads pixels or clicks mid-screen is looking at a chest. */
   if (!chestOffer) await page.addInitScript(() => { window.__btNoChestOffer = true; });
+  /* v2.3.3825: No man's land's explainer coming up by itself near the line
+     (game/nmlExplainOnce.js) is a window over the middle of the screen on
+     every new character's first walk out -- held back for every scenario but
+     the one that tests it (mp-nmlonce), as the chest's is */
+  if (!nmlOnce) await page.addInitScript(() => { window.__btNoNmlOnce = true; });
   /* v2.3.1814: `phrase` seeds this context's Login Key BEFORE first paint, so
      a scenario can arrive as an EXISTING character.  It has to be an init
      script rather than a post-load write: the boot check that decides which
@@ -1992,8 +1997,12 @@ export async function advanceNpcDialogue(P, { max = 12, onChunk = null } = {}) {
  * quest.  There is no claim panel, so advanceNpcDialogue would walk on into
  * the NEXT quest's lines; this walks to that button and taps it ONCE, a real
  * click (see confirmQuestOffer for why).  Returns true when it was tapped --
- * or, with `press: false`, when it was reached and left unpressed. */
-export async function claimOnLastLine(P, { max = 12, timeout = 6000, press = true } = {}) {
+ * or, with `press: false`, when it was reached and left unpressed.
+ *
+ * v2.3.3848: 15 s, not 6, for the same reason as confirmQuestOffer's (CI's
+ * slower frames since the townsfolk are drawn live): with the Accept fixed,
+ * #1315's run failed here instead, on tut_1 and race_1. */
+export async function claimOnLastLine(P, { max = 12, timeout = 15000, press = true } = {}) {
   await waitClaimedDone(P);
   for (let i = 0; i < max; i++) {
     const label = await P.page.evaluate(() => {
@@ -2033,8 +2042,17 @@ export async function claimOnLastLine(P, { max = 12, timeout = 6000, press = tru
  *  and the centre of Claim Reward was unreachable to a finger while every
  *  in-page click in the suite kept passing.  A real click times out there,
  *  which is what a player experiences and therefore what the test must do.
+ *
+ *  v2.3.3848: 15 s, not 6.  CI's software renderer draws a frame far more
+ *  slowly since the townsfolk are drawn live (#1301): the questline took 311 s
+ *  before it, 480 s with it and ~560 s on main tonight, and a click needs a few
+ *  frames (visible, stable, the hit test, then the press itself).  Accepts that
+ *  passed took 4-6.5 s, and the ones over 6 s failed although the worker
+ *  recorded each quest accepted, the click landing after Playwright gave up.
+ *  The playable job then retried and hit its 15-minute limit (#1313, #1314).  A
+ *  covered button still never takes a real click, at any timeout.
  */
-export async function confirmQuestOffer(P, { timeout = 6000 } = {}) {
+export async function confirmQuestOffer(P, { timeout = 15000 } = {}) {
   const blocked = await questOfferBlocked(P);
   if (blocked) return false;
   try {
@@ -2370,4 +2388,30 @@ export async function openPointCols(P, keys = ['sword'], { drift = 16 } = {}) {
     const c = document.querySelector('[data-prog3-card]');
     return c ? [c.getAttribute('data-prog3-card')] : [];
   });
+}
+
+/* ═══ v2.3.3768: THE PARTY LIST, OPENED AS A PLAYER OPENS IT ═══
+ * The party strip is a chip by default now (PartyHUD.jsx, game/partyChip.js):
+ * a scenario that reads the roster's rows, its ✖ Leave or a kick opens the
+ * list first.  `tap: true` taps the chip (a real click at its middle); else
+ * the device's remembered choice is set, as that tap sets it, and the HUD is
+ * told (the 'bt-party-list' event) -- open before the party forms, too.
+ * Resolves to whether the list is open (or no party is drawn yet). */
+export async function openPartyList(P, { tap = false } = {}) {
+  if (tap) {
+    const c = await P.page.evaluate(() => {
+      const el = document.querySelector('[data-party-chip="folded"]');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    if (c) await P.page.mouse.click(c.x, c.y);
+  } else {
+    await P.page.evaluate(() => {
+      try { localStorage.setItem('bt_party_list', 'open'); } catch (e) { /* private mode */ }
+      window.dispatchEvent(new Event('bt-party-list'));
+    });
+  }
+  await P.page.waitForTimeout(250);
+  return P.page.evaluate(() => !document.querySelector('[data-party-chip="folded"]'));
 }

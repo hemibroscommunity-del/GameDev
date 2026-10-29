@@ -248,6 +248,13 @@ export const tickMethods = {
          synchronous handler and keeps no reference, so reusing one a tick
          later cannot change what it saw.  playerState is null-prototype
          (index.js), so for...in walks exactly its own ids. */
+      /* v2.3.3732: a player whose phone sends a steady walk as a path is
+         moved along it first (movepath.js), so the history below, the
+         monsters' chase and every hit read where they are now */
+      try { this._tickMovePath(Date.now()); } catch (e) {
+        this._tickErrs = this._tickErrs || Object.create(null);
+        this._tickErrs.movePath = (this._tickErrs.movePath || 0) + 1;
+      }
       const _hist = this.stateHistory, _lim = this.LAGCOMP_BUFFER_TICKS;
       const _rollNow = Date.now();   /* v2.3.3292: one clock for the roll window below */
       for (const id in this.playerState) {
@@ -539,6 +546,9 @@ export const tickMethods = {
            pattern (join, the track relay, state_sync's players), and a peer
            update read through peerCosmetics.js would take a 1 for one. */
         ...(this._sprintWire(ps, ts) ? { spr: 1 } : {}),
+        /* v2.3.3776: on the skateboard (ride.js), the worker's own word;
+           absent on foot, so everyone else's wire is unchanged */
+        ...(this._rideWire(ps) ? { brd: 1 } : {}),
         /* v2.3.3058: No man's land's skull, 'r' or 'w' (nomansland.js);
            absent with none, so everyone else's wire is unchanged */
         ...(ps._nml && (ps._nml.red > 0 || ps._nml.white > 0) ? { sk: ps._nml.red > 0 ? 'r' : 'w' } : {}),
@@ -582,7 +592,7 @@ export const tickMethods = {
         const ps = this.playerState[id];
         if (!ps) continue;
         if (rosterMoved) rosterMoved.add(id);
-        if (steady && ps.z === WHEEL_ZONE && this._steadyHold(id, playerWire(ps), ts, ps.lastMoveAt)) {
+        if (steady && ps.z === WHEEL_ZONE && this._steadyHold(id, playerWire(ps), ts, this._movePathAt(ps))   /* v2.3.3732: a glide's own time (movepath.js) */) {
           (held || (held = [])).push(id);
           continue;
         }
@@ -618,7 +628,7 @@ export const tickMethods = {
             farList.push([id, ps]);
             /* v2.3.3203: every phone in the Wheel gets this list, so it is
                what went out for these players (steadymovers.js) */
-            if (steady) this._steadySent(id, playerWire(ps), ts, ps.lastMoveAt);
+            if (steady) this._steadySent(id, playerWire(ps), ts, this._movePathAt(ps));
           }
         }
       }
@@ -663,7 +673,7 @@ export const tickMethods = {
             roster[id] = playerWire(ps);
             rosterPairs.push([id, ps]);
             /* v2.3.3203: the roster is what went out for everyone in it */
-            if (steadyOn && ps.z === WHEEL_ZONE) this._steadySent(id, roster[id], ts, ps.lastMoveAt);
+            if (steadyOn && ps.z === WHEEL_ZONE) this._steadySent(id, roster[id], ts, this._movePathAt(ps));
           }
         }
         if (slimOn) {

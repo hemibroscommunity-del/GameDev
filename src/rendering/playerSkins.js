@@ -18,8 +18,9 @@
  * recolored.
  */
 
+import { laterRounds } from './retryLooks.js';   /* v2.3.3882 */
 import { Rectangle, Texture } from 'pixi.js';
-import { getFrame, SPRITE_VERSION, stripDetachedComponents } from './playerSprites.js';
+import { getFrame, SPRITE_VERSION, stripDetachedComponents, frameCount as playerFrameCount } from './playerSprites.js';   /* v2.3.3716: + frameCount, the look probe's */
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { packTrimmed, sliceCropped } from './gearSheets.js';   /* v2.3.2775: the head sheets are cropped; v2.3.2791: + the body sheets */
@@ -37,7 +38,9 @@ import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegi
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine; v2.3.2854: + the file's key mask */
 import { garmentBands, inGarmentBand, judgeGarments, GC_PANTS, GC_BOOT, GC_SKIN, GC_DARK } from './garmentConfine.js';   /* v2.3.3658: trousers and boots painted where they are */
-import { toolWoodMask } from './toolWood.js';   /* v2.3.3671: the pickaxe keeps its wood */
+import { toolWoodMask, solidTool } from './toolWood.js';   /* v2.3.3671: the pickaxe keeps its wood; v2.3.3881: and is drawn solid */
+import { lookPaletteWanted, lookPose, getLookFrame, preloadLookSheets } from './lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
+import { installLookProbe } from './lookPaletteProbe.js';   /* v2.3.3716: QA, `?lookpalette=1` / `?lookprobe` only */
 
 /* ── Catalogs ── `target` = the LIT color for that choice; null = native. */
 /* v2.3.1513: seven more tones at the light end (owner: "more white tan and
@@ -933,8 +936,12 @@ if (typeof window !== 'undefined') {
    of the pickaxe's pixels each mining bake kept, by sheet. */
 const PICK_WOOD_OFF = (() => { try { return /[?&]pickwood=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 const _pickWoodKept = Object.create(null);
+/* v2.3.3881: `?toolsolid=0`: the pickaxe as the sheet draws it, thin and pale
+   (toolWood.js solidTool); and, for QA, the pixels each mining bake painted */
+const TOOL_SOLID_OFF = (() => { try { return /[?&]toolsolid=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+const _toolSolid = Object.create(null);
 if (typeof window !== 'undefined') {
-  window.__btPickWood = () => ({ on: !PICK_WOOD_OFF, kept: { ..._pickWoodKept } });
+  window.__btPickWood = () => ({ on: !PICK_WOOD_OFF, kept: { ..._pickWoodKept }, solid: TOOL_SOLID_OFF ? null : { ..._toolSolid } });
 }
 /* v2.3.1991: which sheet the bake below is for.  recolorBodyToCanvas takes an
    IMAGE, not a pose and a direction, so the probe inside it cannot name what it
@@ -1338,6 +1345,16 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
     const n = _clampLegsUnder(d, w, h, FW, greaves, legAll, skinAll);
     try { cv.__btLegsClamp = n; } catch (e) { /* a frozen canvas: no probe, no harm */ }
   }
+  /* ═══ v2.3.3881: THE PICKAXE, SOLID ═══
+     The owner, playtesting: "the pickaxe for the first quest is still
+     invisible or at least very lightly drawn. Can you use code to fill it
+     with a handle and just an iron color for the metal part?"  Last, over the
+     pixels the recolour passed over: a wood handle and an iron head, opaque,
+     outlined into the empty pixels round it (toolWood.js solidTool).  Here,
+     in the one bake both ways of drawing a look share (buildBodySheet, and
+     lookSets/body.js with the look palette), once a look behind the loading
+     screen; never a frame. */
+  if (tool && !TOOL_SOLID_OFF) _toolSolid[_sheetName || ('w' + w + 'h' + h)] = solidTool(d, w, h, FW, tool);
   ctx.putImageData(imgData, 0, 0);
   /* v2.3.1962: hand the grids back on the canvas rather than through a second
      return value — `canvas.__btDir` (v2.3.1815) set the precedent, and every
@@ -1903,11 +1920,21 @@ function _fileKeyMask(img, w, h) {
   g.drawImage(src, 0, 0);
   return toolKeyMask(g.getImageData(0, 0, w, h).data, w, h);
 }
-function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt = 0) {
+/* ═══ v2.3.3882: A BODY OR HEAD SHEET GIVEN UP ON IS ASKED FOR AGAIN, LATER ═══
+   Both bakes below gave up for the visit after their bounded retries (8 s): a
+   recoloured body sheet then drew the plain base sheet (the wrong skin and
+   trousers in that facing), a knight's or a pickup's head sheet drew no head.
+   Now each is asked for again while drawn, on the later rounds every loader
+   that asks again shares (retryLooks.js, docs/specs/retry-looks.md);
+   `?bodyretry=0` or `?retrylooks=0` is the game as it was. */
+const _bodyLater = laterRounds('bodyretry');
+const _headLater = laterRounds('bodyretry');
+function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt = 0, round = 0) {
+  const art0 = art;   /* v2.3.3882: as asked, for a later round */
   art = artForFacing(art, dir);   /* v2.3.2042: the bake must match the key above */
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
-  const bust = attempt > 0 ? `&r=${attempt}` : '';
+  const bust = (attempt > 0 ? `&r=${attempt}` : '') + (round > 0 ? `&g=${round}` : '');   /* v2.3.3882: + the later round */
   return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}${bust}`).then(img => {
     /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
        runs at full 256 (exact skin/pants/shoes pixel thresholds). */
@@ -1994,10 +2021,11 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
     _bodySheets[sheetKey] = out;
   }).catch(() => {
     if (attempt < _BODY_RETRY_MS.length) {
-      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt + 1), _BODY_RETRY_MS[attempt]);
+      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt + 1, round), _BODY_RETRY_MS[attempt]);
       return; /* stays 'loading' during the backoff */
     }
     _bodySheets[sheetKey] = []; /* missing -> caller falls back */
+    _bodyLater.gaveUp(sheetKey, (g) => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art0, eyeBlank, 0, g));   /* v2.3.3882 */
     try { if (window.__spriteLog) console.warn('[sprite] body sheet failed', sheetKey); } catch (e) { /* ignore */ }
   });
 }
@@ -2208,8 +2236,44 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, _art, blank && blank.id);
   const entry = _bodySheets[sheetKey];
   if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, _art, blank && blank.rects); return getFrame(pose, dir, frameIdx); }
-  if (entry === 'loading' || !entry.length) return getFrame(pose, dir, frameIdx);
+  if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _bodyLater.due(sheetKey); return getFrame(pose, dir, frameIdx); }   /* v2.3.3882 */
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
+}
+
+/* ═══ v2.3.3716: THE STAND AND JOG FRAMES FROM THE NUMBERS (on; `?lookpalette=0` off) ═══
+   The same look getBodyFrame bakes a copy of, drawn instead from one shared
+   sheet of colour numbers and a row of this look's colours (lookPalette.js;
+   docs/specs/look-palette.md).  Null whenever the old path is the one that
+   draws it: the switch off, a pose without numbers, the art's own look (the
+   shipped sheet, as getBodyFrame gives it), or anything the numbers do not
+   carry yet -- a baked shirt, a drawing, an eye style (its erase samples the
+   face round each eye), no atlas row free.  The caller then asks getBodyFrame,
+   exactly as before.  Only for a body drawn as it is: a frame that is masked
+   under armour or cut into bands reads its pixels, and those are numbers. */
+export function getLookBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shirtT, eyeId, art, eyeStyleId) {
+  /* v2.3.3750: every pose the body's manifest has (lookPose).  Fishing asks
+     as getFishFrame does: no shirt, eye or eye style on that sheet, its
+     drawings unmirrored */
+  if (pose === 'fish') { shirtT = null; eyeId = undefined; eyeStyleId = undefined; art = _fishArt(art); }
+  if (!lookPaletteWanted() || !lookPose(pose) || shirtT) return null;
+  if (eyeBlankFor(pose, dir, eyeStyleId)) return null;
+  if (bodyArtSeg(artForFacing(art, dir))) return null;
+  const eye = eyeFor(pose, dir, eyeId);
+  return getLookFrame(pose, dir, frameIdx, poseSkinTarget(skinTarget(skinId), pose), pantsTarget(pantsId),
+    shoesTarget(shoesId), eye ? eye.t : null);
+}
+
+/* v2.3.3752: the same look as getLookBodyFrame's, as the row entries the
+   armoured body is coloured with (lookArmour.js) -- the art's own look
+   included (all null), which the bare body draws from its shipped sheet but
+   whose masked frames under armour were copies like any other look's.  Null
+   where getLookBodyFrame would be for any other reason: the old path. */
+export function getLookBodyEntries(skinId, pantsId, shoesId, pose, dir, shirtT, eyeId, art, eyeStyleId) {
+  if (!lookPaletteWanted() || !lookPose(pose) || shirtT) return null;
+  if (eyeBlankFor(pose, dir, eyeStyleId)) return null;
+  if (bodyArtSeg(artForFacing(art, dir))) return null;
+  const eye = eyeFor(pose, dir, eyeId);
+  return [[1, poseSkinTarget(skinTarget(skinId), pose)], [2, pantsTarget(pantsId)], [3, shoesTarget(shoesId)], [4, eye ? eye.t : null]];
 }
 
 /* ═══ v2.3.2854: FISHING KEEPS YOUR DRAWINGS ═══
@@ -2371,13 +2435,13 @@ function _stampHeadInk(full, img, a) {
   stampRegion(id.data, w, h, FRAME_W, skin, a.tattooFace, !!a.mirror, FACE_BOX, { underSkin: true });
   fctx.putImageData(id, 0, 0);
 }
-function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art = null, attempt = 0) {
+function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art = null, attempt = 0, round = 0) {
   _pickupHeadSheets[key] = 'loading';
   /* v2.3.1381: bounded retry (v2.3.1305 pattern) — a flaked head-sheet
      fetch used to cache [] permanently, leaving the fullset knight
      headless for that dir all session.  Missing dirs still settle to []
      after the retries (pickup ships south-only by design). */
-  const _bust = attempt > 0 ? `&r=${attempt}` : '';
+  const _bust = (attempt > 0 ? `&r=${attempt}` : '') + (round > 0 ? `&g=${round}` : '');   /* v2.3.3882: + the later round */
   return loadImg(`/sprites/player/${pose}-${dir}-head.png?v=${SPRITE_VERSION}${_bust}`).then(img => {
     /* v2.3.2643: the head overlay is a FACE, so it carries the eyes too -- and
        it is the face an ARMOURED player actually shows while jogging, because
@@ -2445,9 +2509,12 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, 
          backoff instead of passing while a flaked sheet is still
          re-fetching (owner: assets missing right after a deploy). */
       return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
-        .then(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art, attempt + 1));
+        .then(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art, attempt + 1, round));
     }
     _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */
+    /* v2.3.3882: asked for again later while drawn (a facing that ships no
+       head sheet, by design, costs a round now and then, ten at most) */
+    _headLater.gaveUp(key, (g) => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art, 0, g));
   });
 }
 /** Recolored loot-pickup head-overlay frame for (skin, pants, shoes, pose, dir,
@@ -2476,7 +2543,7 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
   const key = _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a);
   const entry = _pickupHeadSheets[key];
   if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects, a); return null; }
-  if (entry === 'loading' || !entry.length) return null;
+  if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _headLater.due(key); return null; }   /* v2.3.3882 */
   /* v2.3.1389: jog callers pass the cycle `phase` (0..1) — the SAME clock
      getGearFramePhased plays the fullset armor with, so a head sheet whose
      native frame count differs from the body's (east: 25 vs 28) stays
@@ -2625,6 +2692,11 @@ export function preloadBodyAll() {
   const _hArt = artForFacing(localBodyArt(false), 'south');
   const headKey = _headSheetKey(skinId, pantsId, shoesId, 'pickup', 'south', _hBlank, _hArt);
   if (!plain && _pickupHeadSheets[headKey] === undefined) tasks.push(_buildPickupHeadSheet(headKey, 'pickup', 'south', skinT, pantsT, shoesT, _hBlank && _hBlank.rects, _hArt));   /* v2.3.2861: !plain -- the default combo never reached here before */
+  /* v2.3.3716: the stand and jog sheets as colour numbers, behind the same
+     loading screen (not with `?lookpalette=0`).
+     The bakes above are kept as they were: the armour's masked frames and the
+     south block read the body's own pixels (getLookBodyFrame) */
+  if (lookPaletteWanted()) tasks.push(preloadLookSheets());
   return Promise.all(tasks);
 }
 
@@ -2726,6 +2798,7 @@ function _dropArtSheets() {
       try { releaseCanvasSource(entry[0].source); } catch (e) { /* already gone */ }   /* v2.3.3074: Cache entry and canvas too (TRAPS §139) */
     }
     delete _bodySheets[key];
+    _bodyLater.forget(key);   /* v2.3.3882 */
   }
   /* v2.3.2862: and the head overlays that carried a face drawing.  Destroyed
      on the same 30 s delay _pickupHeadCap uses: one of them may be on screen
@@ -2734,6 +2807,7 @@ function _dropArtSheets() {
     if (key.indexOf('#hf') === -1) continue;
     const entry = _pickupHeadSheets[key];
     delete _pickupHeadSheets[key];
+    _headLater.forget(key);   /* v2.3.3882 */
     const src = Array.isArray(entry) && entry[0] && entry[0].source;
     if (src) setTimeout(() => { try { releaseCanvasSource(src); } catch (e) { /* already gone */ } }, 30000);   /* v2.3.3074 */
   }
@@ -2768,3 +2842,13 @@ onArtChange(_onArtChanged);
 onPatternChange(_onArtChanged);   /* v2.3.1941: a trouser pattern is part of the same bake */
 
 _prewarmCurrent();
+
+/* v2.3.3716: the look-palette oracle's probe (mp-lookpalette), on a page that
+   asks for it only */
+try {
+  if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(window.location.search || '')) {
+    installLookProbe({ getBodyFrame, getLookBodyFrame, getFrame, playerFrameCount,
+      /* v2.3.3750: poseSkinTarget -- hit, roll, mine and fish always recolour the skin */
+      touches: (L, pose, dir) => !!(poseSkinTarget(skinTarget(L[0]), pose) || pantsTarget(L[1]) || shoesTarget(L[2]) || eyeFor(pose, dir, L[3])) });
+  }
+} catch (e) { /* QA only */ }

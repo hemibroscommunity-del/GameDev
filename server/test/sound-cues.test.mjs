@@ -797,6 +797,17 @@ for (const p of files) {
   check('14e a campfire catching is the owner\'s fire lit (the flint strikes still start it)', L0('campfire').join() === 'fire-light' && L0('fireStrike').every((k) => k === 'mine-strike'));
   check('14f blacksmithing is the owner\'s hammer on the flat hoe: a bar smelted, a blade or armour forged, the forge at work in town',
     ['smelt', 'forge', 'armourForge', 'anvil'].every((n) => L0(n).includes('forge-strike')) && !L0('anvil').includes('mine-strike') && !L0('smelt').includes('mine-strike'));
+  /* v2.3.3874: the owner: forging made "the fleshy sound for hurting monsters"
+     -- the smithing swing's own blow and a hardening that worked were the
+     sword's hit (sword-hit2); both are the owner's hammer now */
+  {
+    const ER = src('src/rendering/systems/effectsRenderer.js');
+    const at = ER.indexOf('  _updateSmithing(S, now) {');   /* the method, not its call */
+    const sw = at >= 0 ? ER.slice(at, ER.indexOf('\n  }\n', at) + 4) : '';
+    check('14f2 the smithing swing lands the owner\'s hammer (smithStrike, one forge-strike blow), never the sword\'s hit; a hardening that worked rings it too',
+      L0('smithStrike').join() === 'forge-strike' && L0('hardenOk').includes('forge-strike') && !L0('hardenOk').includes('sword-hit2')
+        && /cue\('smithStrike'\)/.test(sw) && !/sword-hit2/.test(sw.replace(/\/\*[\s\S]*?\*\//g, '')), { strike: L0('smithStrike'), harden: L0('hardenOk') });
+  }
   check('14g woodworking is the owner\'s knife carving: a bow or staff made, hardened wood, traps (more than one stroke each)',
     ['woodwork', 'hardWood', 'trapsMade'].every((n) => L0(n).filter((k) => k === 'wood-carve').length >= 2) && !L0('woodwork').includes('axe-chop'));
   check('14h a crop harvested is the owner\'s harvest (with the soil giving)', L0('farmHarvest').includes('farm-harvest') && !L0('farmHarvest').includes('lure-drop'));
@@ -946,10 +957,116 @@ for (const p of files) {
   check('18e the cache lets go of the least recently played first, and never of the one just decoded', out.join() === 'b' && L.bytes === 80 && L.has('a') && L.has('c') && big.length === 0, { out, bytes: L.bytes });
   /* the switch: off by default, `?sfxcache` on; play() decodes a cold sound and plays it when ready */
   const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
-  check('18f off by default (the game as it was); `?sfxcache` turns it on; with it on the manifest decodes only the pinned, a cold play() is decoded and played when ready',
-    /BT_AUDIO\.SFX_CACHE = false;/.test(G) && /\[\?&\]sfxcache\(\?:=/.test(G)
+  /* v2.3.3735: on by default (the owner: "including the new memory change work by default"); `?sfxcache=0` the off-ramp */
+  const P = SC.parseSfxCache;
+  check('18f ON by default (v2.3.3735); `?sfxcache=0` (or off) turns it off for one phone, `?sfxcache=8` another budget; with it on the manifest decodes only the pinned, a cold play() is decoded and played when ready',
+    P('').on === true && P('?sfxcache').on === true && P('?sfxcache=0').on === false && P('?a=1&sfxcache=0&b=2').on === false && P('?sfxcache=off').on === false
+      && P('?sfxcache=8').on === true && P('?sfxcache=8').mb === 8 && P('').mb === SC.BUDGET_MB
+      && /BT_AUDIO\.SFX_CACHE = true;/.test(G) && /parseSfxCache\(typeof location/.test(G)
       && /if \(this\.SFX_CACHE && !this\._sfxPinned\[k\] && !pinUrl\[m\[k\]\]\) this\._sfxHold\(m\[k\]\);/.test(G)
       && /if \(url && this\.SFX_CACHE\) \{ try \{ return this\._playCold\(key, url, opts\); \}/.test(G));
+  /* the owner: "I definitely don't want combat to feel slow" -- the jump's, the roll's and the swings' sounds pinned by name too */
+  const moves = ['jumpUp', 'jumpFlip', 'jumpLand', 'dodgeRoll', 'shieldBlock', 'shieldUp', 'shieldDown'].flatMap((n) => (EVENT_SOUNDS[n] || []).map((L) => L[0]));
+  const named = moves.concat(['sword-swing-1', 'sword-swing-2', 'sword-swing-3', 'sword-hit2', 'sword-hit3', 'monster-hit', 'footstep-v2', 'footstep-v3', 'shield-block']);
+  check(`18g the jump (its hup, flip and landing), the roll, the shield, the swings, the hits and the steps are pinned (${new Set(named).size} recordings)`,
+    moves.length >= 7 && named.every((k) => PIN.has(k)), named.filter((k) => !PIN.has(k)));
+}
+
+/* ── 19. v2.3.3727: a crowd of one sound starts as a few (`?voicecap`) ──
+   The owner wants many copies of the same sound starting at nearly the same
+   moment grouped into one or a few.  data/voiceCap.js: at most N copies of
+   one recording start within W ms; the first always plays; different
+   recordings never hold each other back; the menu's ticks, the loops and the
+   music never pass it; off by default. */
+{
+  const VC = await import('../../src/data/voiceCap.js');
+  const C = VC.makeVoiceCap(VC.VOICE_N, VC.VOICE_W_MS);
+  const burst = [];
+  for (let i = 0; i < 10; i++) burst.push(C.allow('monster-hit', 1000 + i));
+  check(`19a ten copies of one recording in one instant: ${VC.VOICE_N} start, the rest held back`,
+    VC.VOICE_N >= 2 && VC.VOICE_N <= 4 && VC.VOICE_W_MS === 50 && burst.filter(Boolean).length === VC.VOICE_N && burst[0] === true, burst);
+  const D = VC.makeVoiceCap(3, 50);
+  const first = D.allow('sword-hit3', 0);
+  const rot = ['sword-swing-1', 'sword-swing-2', 'sword-swing-3'].map((k) => D.allow(k, 1));
+  check('19b the first copy always plays, and different recordings never hold each other back (the swing rotation layers)', first && rot.every(Boolean), rot);
+  const E = VC.makeVoiceCap(3, 50);
+  const flurry = [];
+  for (let i = 0; i < 8; i++) flurry.push(E.allow('sword-hit2', i * 250));   /* a fast flurry: four swings a second */
+  const later = [E.allow('monster-hit', 0), E.allow('monster-hit', 0), E.allow('monster-hit', 0), E.allow('monster-hit', 0), E.allow('monster-hit', 60)];
+  check('19c a flurry of swings (one each 250 ms) is untouched, and a held recording starts again once its window has passed', flurry.every(Boolean) && later.join() === 'true,true,true,false,true', { flurry, later });
+  const F = VC.makeVoiceCap(1, 50);
+  check('19d the menu\'s sounds never pass it (uiTick has its own rule)', F.allow('ui-click', 0) && F.allow('ui-click', 0) && F.allow('ui-equip', 0) && F.allow('ui-equip', 0));
+  check('19e ON by default at N, W (v2.3.3735); `?voicecap=0` (or off) turns it off for one phone; `?voicecap=4:60` other values',
+    VC.parseVoiceCap('').n === VC.VOICE_N && VC.parseVoiceCap('?voicecap').n === VC.VOICE_N && VC.parseVoiceCap('?a=1&voicecap=4:60').w === 60 && VC.parseVoiceCap('?voicecap=4').n === 4
+      && VC.parseVoiceCap('?voicecap=0') === null && VC.parseVoiceCap('?x&voicecap=off') === null && VC.parseVoiceCap('?novoicecap=0').n === VC.VOICE_N);
+  const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
+  const loopFn = G.slice(G.indexOf('BT_AUDIO.startSfxLoop = function'), G.indexOf('BT_AUDIO.stopSfxLoop = function'));
+  const playFn = G.slice(G.indexOf('BT_AUDIO.play = function'), G.indexOf('BT_AUDIO._startOn = function'));
+  check('19f every one-shot play() start asks the gate before it starts (cold or warm), on by default; the loops do not',
+    /BT_AUDIO\.VOICE_CAP = parseVoiceCap\(''\);/.test(G) && /BT_AUDIO\.VOICE_CAP = parseVoiceCap\(location\.search/.test(G)
+      && /var buf = this\._samples\[key\];\s*if \(!this\._voiceGate\(key, buf, opts\)\) return null;/.test(playFn)
+      && loopFn.length > 100 && !/_voiceGate/.test(loopFn));
+}
+
+/* ── 20. v2.3.3791: the skateboard rolling ──
+   The owner's "Drive Over Border" (freesound_community, Pixabay 82185), cut
+   into a seamless loop by cut_owner_sounds.py; game/rideSound.js plays it on
+   the music bus while YOU ride and roll, and stops it the frame the ride
+   ends.  A loop: never in SFX_MANIFEST (decoded only where a board could be
+   ridden, let go after). */
+{
+  const OSC = await import('../../src/data/ownerSoundClips.js');
+  const SS = await import('../../src/data/soundStudio.js');
+  const L = OSC.OWNER_LOOPS['skate-roll'];
+  const file = L && existsSync(new URL('../../public' + L.url, import.meta.url));
+  check('20a the roll is one of the owner\'s loops (public/audio/ambient/skate-roll.mp3), a few seconds, levelled to the river',
+    !!L && file && L.dur > 3 && L.dur < 7 && L.target === 'river' && Math.abs(L.rms - OSC.LOOP_REFS.river) < 1.5, L);
+  check('20b ...and never in SFX_MANIFEST (a loop is decoded only while it can play)', !Object.values(MANIFEST).some((u) => /skate-roll/.test(String(u))));
+  check('20c its recording is kept in assets/sfx-source/2026-10-29/, cut by the tool, credited (license to confirm)',
+    existsSync(new URL('../../assets/sfx-source/2026-10-29/freesound_community-drive-over-border-82185.mp3', import.meta.url))
+      && /'skate-roll', '2026-10-29\/freesound_community-drive-over-border-82185\.mp3'/.test(src('tools/audio/cut_owner_sounds.py'))
+      && /Skateboard rolling[^\n]*82185[^\n]*\*\*CONFIRM\.\*\*/.test(src('CREDITS.md')));
+  check('20d labelled in the studio, played through BT_AUDIO.skateRollDemo',
+    SS.OTHER_PLAYS.some((r) => r[0] === 'skateRoll' && r[3].fn === 'skateRollDemo') && /BT_AUDIO\.skateRollDemo = function/.test(GD));
+  const RS = src('src/game/rideSound.js');
+  check('20e played while you ride (isRiding), on the music bus, its own source stopped after the ride ends, and the game loop ticks it',
+    /isRiding\(S\)/.test(RS) && /_out\('music'\)/.test(RS) && /st\.riding && !riding/.test(RS) && /setTargetAtTime\(0/.test(RS)
+      && /tickRideSound\(S, _jNow\)/.test(src('src/ui/BroTown.jsx')));
+}
+
+/* ── 21. v2.3.3800: no sound of the world under the loading screen ──
+   The owner: "when first loading the game don't play any music or sound
+   effects until the world is fully loaded."  BT_AUDIO's sound gate is closed
+   while the loading screen is up (body.bt-intro-up) or a veil covers the
+   world (.bt-connect-veil, .bt-avatar-hold): play() drops a sound of the world
+   (the player's taps pass), the music deck has nothing to play, a loop waits,
+   the beds and the river hear no share, the watchdog leaves the silence be;
+   it opens two frames after the last veil goes.  `?soundgate=0` is off. */
+{
+  const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
+  const fn = (name) => { const a = G.indexOf(name + ' = function'); return a < 0 ? '' : G.slice(a, G.indexOf('\n};', a)); };
+  check('21a the gate closes on the loading screen and on both veils, opens two frames after the last goes, and `?soundgate=0` turns it off',
+    /classList\.contains\('bt-intro-up'\)/.test(fn('BT_AUDIO._gateWhy')) && /bt-connect-veil/.test(fn('BT_AUDIO._gateWhy')) && /bt-avatar-hold/.test(fn('BT_AUDIO._gateWhy'))
+      && /requestAnimationFrame\(function \(\) \{ requestAnimationFrame\(open\); \}\)/.test(fn('BT_AUDIO._gateEval'))
+      && /soundgate=\(0\|off\|false\|no\)/.test(G) && /BT_AUDIO\.SOUND_GATE = true;/.test(G)
+      && /new MutationObserver/.test(G) && /attributeFilter: \['class'\], childList: true/.test(G));
+  check('21b while it is closed: play() drops a sound of the world (the taps pass), the deck has nothing to play, a loop waits for the reveal, the watchdog leaves the silence be',
+    /if \(this\.soundGateClosed\(\) && !this\._gatePasses\(key\)\) \{ this\._soundGate\.dropped\+\+; return null; \}/.test(fn('BT_AUDIO.play'))
+      && /if \(this\.soundGateClosed\(\)\) return null;/.test(fn('BT_AUDIO._deckTarget'))
+      && /if \(this\.soundGateClosed\(\)\) \{ this\._gateLoops\[key\] = \[vol, bus\]; return; \}/.test(fn('BT_AUDIO.startSfxLoop'))
+      && /\/\^ui-\//.test(fn('BT_AUDIO._gatePasses'))
+      && /if \(this\.soundGateClosed\(\)\) \{ this\._silentTicks = 0; return; \}/.test(G));
+  const CO = await import('../../src/game/clientOff.js');
+  const ap = src('src/game/clientOffApply.js');
+  check('21d the Test panel turns it off for every phone, live ("Sound waits for the world", off_soundgate): off opens a closed gate at once',
+    CO.CLIENT_SAVERS.some((c) => c.id === 'soundgate' && c.live === true && c.words === 'Sound waits for the world')
+      && /BT_AUDIO\.SOUND_GATE = clientOff\('soundgate'\) \? false : _gateAsLoaded;\s*if \(BT_AUDIO\._gateEval\) BT_AUDIO\._gateEval\(\);/.test(ap) && /onClientOff\(function \(\) \{ applyVoice\(\); applyGate\(\); \}\)/.test(ap));
+  check('21e a failsafe: shut for the loading screen over 60 s, it opens anyway and is counted; a reconnect\'s veil is never cut short',
+    /BT_AUDIO\.GATE_FAILSAFE_MS = 60000;/.test(G) && /g\.failsafe\+\+/.test(fn('BT_AUDIO._gateFailsafe')) && /if \(why !== 'loading'\) \{\s*g\.loadingSince = 0;\s*if \(g\.failTimer\) \{ clearTimeout\(g\.failTimer\); g\.failTimer = null; \}\s*return;/.test(fn('BT_AUDIO._gateFailsafe'))
+      && /if \(net\) return 'reconnecting';\s*if \(loading && !g\.loadingForced\) return 'loading';/.test(fn('BT_AUDIO._gateWhy')));
+  check('21c the ambient beds and the river hear no share while it is closed',
+    /const hush = !!\(B\.soundGateClosed && B\.soundGateClosed\(\)\);\s*if \(live && !hush\)/.test(src('src/game/ambientBeds.js'))
+      && /!\(B\.soundGateClosed && B\.soundGateClosed\(\)\)/.test(src('src/game/waterAmbience.js')));
 }
 
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);

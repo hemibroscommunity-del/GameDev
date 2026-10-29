@@ -18,9 +18,10 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
    the three-column dashboard — and until now it was the one state the
    toolbar could not show you were in, because bar mode lights nothing.
    DASHBOARD is that state's button: lit whenever no panel is open, and
-   tapping it closes back to rest.  It uses panel-stats (the bar chart
-   with the rising arrow), which is the painted set's only "your numbers"
-   glyph and was otherwise used on one legacy screen.
+   tapping it closes back to rest.  v2.3.3784: its picture is the sack
+   with the sword, bow and staff small across it (nav-dashboard.png, the
+   owner: "a bag icon mini combat icons"), what it opens -- the bag's slots
+   and the three combat cards; it was panel-stats, the bar chart.
 
    NO LABELS.  The ribbon had them because six buttons across the full
    width had the room; a rail sized to its icon does not, and stacking a

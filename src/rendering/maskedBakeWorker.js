@@ -38,8 +38,33 @@
  * The pixels drawn are the same, frame for frame (tools/qa/qa-bake-ident.mjs
  * fingerprints every baked frame drawn back from its crop). */
 import { bakeMaskedCanvas } from './maskedBake.js';
+import { lookSheetParse } from './lookExpand.js';   /* v2.3.3752: the armoured body from the colour numbers */
+import { lookBake } from './lookBake.js';
+
+/* ═══ v2.3.3752: THE BODY FROM THE COLOUR NUMBERS (lookArmour.js) ═══
+   A look drawn from the shared numbers has no picture of its own to send, so
+   its sheets come here once ({ type: 'lookSheet' }) and a job names the
+   sheet, the frame's cell and the look's row: the frame is coloured here
+   exactly as the chip colours it (lookExpand.js), the bake runs on it
+   unchanged -- every fix inside maskedBake.js rides along -- and what comes
+   back is not a picture but what the bake DECIDED: a bit a display texel
+   (the body shows there or not) and the few texels it drew itself (the
+   residue: the chain belt, the steel fill), drawn as their own sprite. */
+const lookSheets = new Map();   /* key -> parsed sheet */
 
 const mk = (w, h) => new OffscreenCanvas(w, h);
+/* v2.3.3752: for a look job every canvas of the bake is a CPU canvas.  The
+   bake reads its canvases back and draws one into another, and a canvas on
+   the graphics chip pays a copy to the CPU each time (measured on the QA
+   box's software chip: 1.7 s a bake against 7 ms on the page's CPU canvas);
+   a CPU canvas also halves by nearest exactly, as the page's does
+   (look-palette.md: on a chip's canvas the pick is erratic). */
+const mkCpu = (w, h) => {
+  const c = new OffscreenCanvas(w, h);
+  const g = c.getContext.bind(c);
+  c.getContext = (t, o) => g(t, Object.assign({}, o || {}, { willReadFrequently: true }));
+  return c;
+};
 let rod = null;   /* toolRecolor's { frames, fw, fh, w, mask } -- see fishRodAt there */
 const rodAt = (i, u, v) => {
   const f = ((i % rod.frames) + rod.frames) % rod.frames;
@@ -99,6 +124,8 @@ function cropFrame(dc, dctx) {
 self.onmessage = (e) => {
   const j = e.data || {};
   if (j.type === 'rod') { rod = j.rod || null; return; }
+  if (j.type === 'lookSheet') { try { lookSheets.set(j.key, lookSheetParse(j.bytes, j.w, j.rows, j.bits)); } catch (e2) { /* the job then fails: the old path */ } return; }
+  if (j.look) { lookJob(j); return; }
   const reply = { id: j.id, bitmap: null, cell: null, beltPending: false, raw: false, err: null };
   const transfer = [];
   try {
@@ -137,3 +164,37 @@ self.onmessage = (e) => {
   }
   self.postMessage(reply, transfer);
 };
+
+/* v2.3.3752: a look job -- lookBake.js, on CPU canvases (mkCpu) */
+function lookJob(j) {
+  const reply = { id: j.id, raw: false, err: null };
+  const transfer = [];
+  try {
+    const sh = lookSheets.get(j.look.sheet);
+    if (!sh) throw new Error('no sheet ' + j.look.sheet);
+    const r = lookBake(sh, {
+      cell: j.look.cell, row: j.look.row,
+      worn: (j.worn || []).map((w) => ({ k: w.k, draw: drawer(w.inp) })),
+      belt: drawer(j.belt), dilate: j.dilate, poseInfo: j.poseInfo, ds: j.ds,
+      fishRod: rod ? { has: () => true, at: rodAt } : null,
+    }, mkCpu);
+    if (r.raw) reply.raw = true;
+    else {
+      reply.show = r.show; transfer.push(r.show.buffer);
+      reply.counts = r.counts;
+      reply.beltPending = r.beltPending;
+      if (r.residue) {
+        const rc = mkCpu(r.residue.w, r.residue.h);
+        rc.getContext('2d').putImageData(new ImageData(r.residue.px, r.residue.w, r.residue.h), 0, 0);
+        reply.residue = { x: r.residue.x, y: r.residue.y, w: r.residue.w, h: r.residue.h, bitmap: rc.transferToImageBitmap() };
+        transfer.push(reply.residue.bitmap);
+      }
+    }
+  } catch (err) {
+    reply.err = String((err && err.message) || err);
+  }
+  for (const inp of [j.belt, ...((j.worn || []).map((w) => w.inp))]) {
+    try { if (inp && inp.bm && inp.bm.close) inp.bm.close(); } catch (e2) { /* already closed */ }
+  }
+  self.postMessage(reply, transfer);
+}

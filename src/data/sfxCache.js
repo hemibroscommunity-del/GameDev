@@ -25,7 +25,12 @@
  *     building's sounds on the way in, the rest of a family on its first
  *     sound (the river under a cast warms the reel's clicks).
  * No sample rate is lowered (the owner has not approved duller sounds).
- * With the switch off nothing here is used and the game is as it was.
+ *
+ * v2.3.3735: ON BY DEFAULT.  The owner: "I think including the new memory
+ * change work by default would be better.  I can always revert the change if
+ * I don't like it or it doesn't work well."  `?sfxcache=0` turns it off for
+ * one phone (every sound decoded on the loading screen and held, as before);
+ * `?sfxcache=8` tries another budget (parseSfxCache, below).
  *
  * Plain data and a small LRU, no imports, so node tests it. */
 
@@ -97,6 +102,16 @@ export const PREFETCH = {
     ['farm-hoe', 'farm-water', 'farm-mould', 'farm-harvest'],
   ],
 };
+
+/** The switch, from a location.search: on unless `sfxcache=0` (or `off`);
+ *  `sfxcache=N` (N > 0) a budget of N MB, 1-32. */
+export function parseSfxCache(search) {
+  const m = /[?&]sfxcache(?:=([^&]*))?(?:&|$)/.exec(String(search || ''));
+  if (!m || m[1] == null || m[1] === '') return { on: true, mb: BUDGET_MB };
+  if (/^(0+(\.0*)?|off|false|no)$/i.test(m[1])) return { on: false, mb: BUDGET_MB };
+  const n = parseFloat(m[1]);
+  return { on: true, mb: n > 0 ? Math.max(1, Math.min(32, n)) : BUDGET_MB };
+}
 
 /** The keys a family's first sound warms (none when `key` starts none). */
 export function familyOf(key) {

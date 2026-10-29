@@ -1,10 +1,10 @@
 import React from 'react';
-import { jumpAnchor, ctlBottom } from './ShieldButton.jsx';
+import { jumpAnchor, ctlBottom, discRight, RBTN, LBTN } from './ShieldButton.jsx';
 import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
-import { Skin, AbilityFace, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup */
+import { Skin, JumpGlyph, jumpGlyphKind, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3721: a plain jump mark */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
  *
@@ -51,6 +51,15 @@ import { Skin, AbilityFace, pressOn, pressOff } from './controlSkin.jsx'; /* v2.
 const POLL_MS = 80;
 /* A touch's mouse echo arrives within this of its touchend; not a press. */
 const GHOST_MS = 700;
+/* v2.3.3799: the doors' button over Jump's top, upright: 8 px of air and
+   the 3 px its pulse swells by (promptPulse, scale 1.04) */
+const JUMP_PROMPT_AIR = 12;
+/* ...8 px clear of the move stick and the disc, and 150 px at most */
+const PROMPT_SIDE_AIR = 8;
+/* ...and the 3 px each side its pulse swells by (promptPulse, scale 1.04:
+   on a 320 px phone it came 6 px from the disc at the swell's top) */
+const PROMPT_SWELL = 3;
+const PROMPT_MAX_W = 150;
 
 /** What the button draws, as plain data (and its re-render key), or null
     when it is not drawn. */
@@ -82,6 +91,43 @@ export function JumpButton(props) {
     }, POLL_MS);
     return function () { clearInterval(id); };
   }, [stateRef]);
+
+  /* ═══ v2.3.3799: THE DOORS' BUTTON STANDS ABOVE JUMP ═══
+     Jump went south-west of the disc on its ring (jumpAnchor), into the strip
+     just over the band where the doors' "Enter" button (.bt-interact-prompt,
+     +24) stands.  While Jump is drawn upright on a touch screen, the page
+     says where a prompt may stand -- over Jump's top (--bt-jump-clear: its
+     top and the air), between the move stick's right edge and the disc's
+     left, each with 8 px of air: its centre (--bt-prompt-cx) and its widest
+     (--bt-prompt-w, 150 px at most; on a 320 px phone the room is ~90 px,
+     and the prompt draws small, without its picture: data-jump-clear="narrow")
+     -- and game.css stands the prompts with no place of their own there.
+     Jump gone (dead, swimming, ?jumpbtn=0), sideways, or on a computer (no
+     Jump button): the prompt is where it always was. */
+  React.useEffect(function () {
+    var root = typeof document !== 'undefined' && document.documentElement;
+    if (!root) return undefined;
+    var fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
+    var on = !isLandscape && !fine && !!jumpButtonView(stateRef && stateRef.current) && jumpButtonWanted();
+    if (!on) { root.removeAttribute('data-jump-clear'); return undefined; }
+    var a = jumpAnchor(false);
+    var vw = window.innerWidth || 390;
+    var lo = LBTN.left + LBTN.w + PROMPT_SIDE_AIR + PROMPT_SWELL;
+    var hi = vw - discRight(false) - RBTN.w - PROMPT_SIDE_AIR - PROMPT_SWELL;
+    var w = Math.max(0, Math.min(PROMPT_MAX_W, hi - lo));
+    var cx = Math.max(lo + w / 2, Math.min(vw / 2 - 10, hi - w / 2));
+    root.style.setProperty('--bt-jump-clear', (a.bottomPx + a.size + JUMP_PROMPT_AIR) + 'px');
+    root.style.setProperty('--bt-prompt-cx', Math.round(cx) + 'px');
+    root.style.setProperty('--bt-prompt-w', Math.floor(w) + 'px');
+    root.setAttribute('data-jump-clear', w < PROMPT_MAX_W ? 'narrow' : '1');
+    return function () { root.removeAttribute('data-jump-clear'); };
+  });
+  /* ...and read again when the screen changes size, or the address (QA) */
+  React.useEffect(function () {
+    var again = function () { setTick(function (x) { return (x + 1) % 1000000; }); };
+    window.addEventListener('resize', again);
+    return function () { window.removeEventListener('resize', again); };
+  }, []);
 
   /* QA probe (house style: __btSprintBtn): what the button and the jump
      think, which a screenshot cannot say. */
@@ -128,6 +174,9 @@ export function JumpButton(props) {
   };
 
   var air = view.air;
+  /* v2.3.3721: no longer the mockup's blue arrow: the Lantern Slate rest look
+     of Sprint and Block (slate face, gold ring) with a plain jump mark, lit
+     warm in the air as before */
   /* ═══ v2.3.3018: THE MOCKUP'S JUMP ═══
      The owner's mockup draws this button as a bold blue arrow on a gold-ringed
      button, and no word (controlSkin, as every control): Normal on the ground,
@@ -151,6 +200,10 @@ export function JumpButton(props) {
       right: anchor.right,
       bottom: ctlBottom(anchor.bottomPx),
       width: size, height: size,
+      /* v2.3.3799: touched by its circle, not its box: on the ring south-west
+         of the disc, the box's corner reached into the disc's circle, and a
+         touch there jumped (a browser takes a touch by the rounded shape) */
+      borderRadius: '50%',
       zIndex: 31,
       touchAction: 'none',
       WebkitTapHighlightColor: 'transparent',
@@ -158,6 +211,9 @@ export function JumpButton(props) {
     },
   },
   React.createElement(Skin, { size: size, tone: air ? 'warm' : 'slate', state: air ? 'on' : 'normal' },
-    /* v2.3.3526: the owner's round jump (card 11), the button's face */
-    React.createElement(AbilityFace, { size: size, name: 'jump' })));
+    /* v2.3.3526: the owner's round jump (card 11), the button's face.
+       v2.3.3721: a plain arrow over the ground instead (the owner's pick of
+       four: "I like option B for jump better") -- the owner: "the
+       icon now for jump looks like a special ability" (controlSkin JumpGlyph) */
+    React.createElement(JumpGlyph, { size: Math.round(size * 0.68), kind: jumpGlyphKind() })));
 }
