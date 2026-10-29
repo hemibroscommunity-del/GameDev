@@ -227,7 +227,7 @@ export const bankMethods = {
         v.gold -= n;
       }
     } else {
-      if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {};
+      if (!ps.inventory || typeof ps.inventory !== 'object') ps.inventory = {}; // proto-ok: the bag's own shape; every key reaching it passed okKey (no '__proto__' / 'constructor' / 'prototype') and is read own-property only
       const inv = ps.inventory;
       if (dir === 'in') {
         const held = has(inv, id) ? Math.floor(Number(inv[id]) || 0) : 0;
