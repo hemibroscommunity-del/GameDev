@@ -1113,6 +1113,17 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
   color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
   animation:promptPulse 1.5s ease-in-out infinite;
   -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+/* v2.3.3799: upright, Jump stands south-west of the attack disc, in this
+   strip: while it is drawn (JumpButton sets data-jump-clear, --bt-jump-clear
+   -- its top and the air -- and --bt-disc-clear -- the disc's left edge and
+   8 px, from the right), a prompt with no place of its own (no bottom in its
+   style) stands over Jump, its right edge left of the disc: its centre where
+   it was, or further left when 150 px would reach the disc (a longer name
+   wraps: SHERIFF'S OFFICE).  A prompt that
+   names its own bottom (the Workshop's, the bed's...) keeps its place. */
+html[data-jump-clear]:not([data-orient="landscape"]) .bt-interact-prompt:not([style*="bottom"]){bottom:calc(var(--sheet-h, var(--dash-h)) + var(--bt-jump-clear, 24px));
+  max-width:150px;box-sizing:border-box;white-space:normal;left:min(calc(50% + 10px), calc(100% - var(--bt-disc-clear, 0px) - 75px))}
+html[data-jump-clear]:not([data-orient="landscape"]) .bt-interact-prompt[style*="left"]:not([style*="bottom"]){left:min(calc(50% - 10px), calc(100% - var(--bt-disc-clear, 0px) - 75px))!important}
 @keyframes promptPulse{0%,100%{opacity:.9;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.04)}}
 /* v2.3.911: build-skill dashboard cell pulses while it has an unspent Tier-2
    point waiting to be allocated.  Brightness pulse reads even where the cell's

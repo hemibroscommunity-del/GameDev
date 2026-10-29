@@ -824,3 +824,41 @@ there though (some appear only during combat). This is portrait on mobile".
 **Checked:** `mp-jumpbtn`, `mp-jump`, `mp-abilslot` (their upright places
 re-pointed), `mp-rbutton`, `mp-btnskin`, `mp-joyfade`, `mp-btnlayout`,
 `mp-wheeldoors`, `mp-questline`. Pictures: docs/specs/jump-button/thumb-*.png.
+
+## v2.3.3799: on the disc's ring, south-west
+
+The owner, 2026-10-29: *"I do want a change to the placement on the jump
+button. It should be positioned orbiting southwest of the large contextual
+button."*
+
+- **Where** (`ShieldButton.jsx` `jumpAnchor`): Jump's centre on the disc's
+  ring at the distance Sprint uses (`JUMP_RING_GAP`, 10 px between the two
+  circles), at 45 degrees below west upright. Sideways the same ring, turned
+  toward south just enough to keep `RCTL_JUMP_AIR` (8 px) under Shield Bash
+  and the board, which stand left of the disc there.
+- **Its touch area is its circle** (`borderRadius: 50%`): its square's corner
+  reached into the disc's circle.
+- **Block** (`blockAnchor`) stays the disc's diagonal bottom-left (v2.3.2562):
+  beside Jump on its left, 8 px of air (`BLOCK_JUMP_SIDE`), at its old height
+  upright and its old height sideways. On a phone too narrow for that beside
+  the bell (`BELL_RIGHT_PX`, a 320 px phone) it stands up beside Jump, under
+  TRAP (`BLOCK_TRAP_DROP`). TRAP and Shield Bash keep their places
+  (`ctlColumn` stands them on Jump's old upright place, `jumpSpotUp`).
+- **The doors' Enter button** stood in the strip just over the band, which
+  Jump now reaches. While Jump is drawn upright on a touch screen, JumpButton
+  puts `data-jump-clear`, `--bt-jump-clear` (Jump's top and 12 px: 8 of air
+  and the 3 its pulse swells by) and `--bt-disc-clear` on the page, and
+  game.css stands every `.bt-interact-prompt` with no bottom of its own over
+  Jump, its right edge 8 px left of the disc, 150 px at most (a long name
+  wraps). On 320 and 360 px phones it then covers part of the left stick's
+  resting circle (a picture: the stick starts anywhere in its half).
+  Sideways and on a computer nothing changes.
+- **Known corner**: in a fight AT a door on a 320 px phone, the raised Enter
+  button and Block (stood up beside Jump there) overlap. Nowhere else does a
+  touch area overlap another.
+- **Proof**: `node tools/qa/mp/run.mjs thumbbtn` asserts, at 320, 360, 375, 390 and 430 upright and
+  844 sideways, out of a fight at a door and in one with the guard down and
+  up: Jump south-west on the ring, every button and the Enter button 8 px
+  clear of it, no two touch areas overlapping, Jump on screen above the band,
+  and a touch in Jump's box corners never reaching it. Before and after
+  pictures: `tools/qa/mp/out/thumbbtn-<before|after>-<size>-*.png`.

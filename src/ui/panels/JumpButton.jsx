@@ -1,5 +1,5 @@
 import React from 'react';
-import { jumpAnchor, ctlBottom } from './ShieldButton.jsx';
+import { jumpAnchor, ctlBottom, discRight, RBTN } from './ShieldButton.jsx';
 import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
@@ -51,6 +51,11 @@ import { Skin, JumpGlyph, jumpGlyphKind, pressOn, pressOff } from './controlSkin
 const POLL_MS = 80;
 /* A touch's mouse echo arrives within this of its touchend; not a press. */
 const GHOST_MS = 700;
+/* v2.3.3799: the doors' button over Jump's top, upright: 8 px of air and
+   the 3 px its pulse swells by (promptPulse, scale 1.04) */
+const JUMP_PROMPT_AIR = 12;
+/* ...and its right edge this far left of the disc's */
+const DISC_PROMPT_AIR = 8;
 
 /** What the button draws, as plain data (and its re-render key), or null
     when it is not drawn. */
@@ -82,6 +87,30 @@ export function JumpButton(props) {
     }, POLL_MS);
     return function () { clearInterval(id); };
   }, [stateRef]);
+
+  /* ═══ v2.3.3799: THE DOORS' BUTTON STANDS ABOVE JUMP ═══
+     Jump went south-west of the disc on its ring (jumpAnchor), into the strip
+     just over the band where the doors' "Enter" button (.bt-interact-prompt,
+     +24) stands.  While Jump is drawn upright on a touch screen, the page
+     says how high its top is (--bt-jump-clear: its top and the air) and where
+     the disc begins (--bt-disc-clear, from the screen's right), and game.css
+     stands the prompts with no place of their own over Jump, left of the
+     disc.  On a 320 or 360 px phone that is over the resting picture of the
+     left stick (a stick that starts under the thumb anywhere in its half:
+     v2.3.816's floating model).  Sideways, and on a computer (no Jump
+     button), nothing changes. */
+  React.useEffect(function () {
+    var root = typeof document !== 'undefined' && document.documentElement;
+    if (!root) return undefined;
+    var fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
+    var on = !isLandscape && !fine && !!jumpButtonView(stateRef && stateRef.current) && jumpButtonWanted();
+    if (!on) { root.removeAttribute('data-jump-clear'); return undefined; }
+    var a = jumpAnchor(false);
+    root.style.setProperty('--bt-jump-clear', (a.bottomPx + a.size + JUMP_PROMPT_AIR) + 'px');
+    root.style.setProperty('--bt-disc-clear', (discRight(false) + RBTN.w + DISC_PROMPT_AIR) + 'px');
+    root.setAttribute('data-jump-clear', '1');
+    return function () { root.removeAttribute('data-jump-clear'); };
+  });
 
   /* QA probe (house style: __btSprintBtn): what the button and the jump
      think, which a screenshot cannot say. */
@@ -154,6 +183,10 @@ export function JumpButton(props) {
       right: anchor.right,
       bottom: ctlBottom(anchor.bottomPx),
       width: size, height: size,
+      /* v2.3.3799: touched by its circle, not its box: on the ring south-west
+         of the disc, the box's corner reached into the disc's circle, and a
+         touch there jumped (a browser takes a touch by the rounded shape) */
+      borderRadius: '50%',
       zIndex: 31,
       touchAction: 'none',
       WebkitTapHighlightColor: 'transparent',
