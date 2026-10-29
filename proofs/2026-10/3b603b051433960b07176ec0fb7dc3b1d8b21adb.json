@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3b603b051433960b07176ec0fb7dc3b1d8b21adb",
+  "tree": "c5339938d8799009ae9cfc35a40a2503b15dfae8",
+  "committedAt": "2026-10-29T08:51:20-07:00",
+  "subject": "Merge pull request #1329 from hemibroscommunity-del/claude/shark-north",
+  "files": 7293,
+  "bytes": 840270027,
+  "listingSha256": "a97a39c6ac0d5344a60924bbbfc0fa4df9471632b94b1f71ad218b91411c1051",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
