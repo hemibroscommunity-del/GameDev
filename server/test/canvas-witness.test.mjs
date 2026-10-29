@@ -121,13 +121,18 @@ check('7: the door opens only in the world, and is put away with its effect',
   /if \(worldInMs\(\) < 0\) return false;/.test(bt) && /window\.__btRecoveryReload = _rrOpen;/.test(bt) && /if \(window\.__btRecoveryReload === _rrOpen\) window\.__btRecoveryReload = null;/.test(bt));
 
 /* ── 8: the black screen's rebuild asks first (v2.3.3701) ── */
-const rb = bt.slice(bt.indexOf('window._rebuildRenderer = function (reason)'), bt.indexOf('window._rebuildRenderer = function (reason)') + 4000);
+const rb = bt.slice(bt.indexOf('window._rebuildRenderer = function (reason)'), bt.indexOf('window._rebuildRenderer = function (reason)') + 7000);   /* v2.3.3890: the owed rebuild's note made it longer */
 const iDebounce = rb.indexOf('_now - window.__btLastGlRebuild < 5000'), iAsk = rb.indexOf('checkWitnesses()'), iEpoch = rb.indexOf('setGlEpoch(');
 check('8: a rebuild reads the witnesses after its debounce and before it remounts the canvas',
   iDebounce > 0 && iAsk > iDebounce && iEpoch > iAsk, { iDebounce, iAsk, iEpoch });
 check('8: ...two or more empty is the recovery reload on the same spot, through the one door, and the rebuild stops there',
   /_cw\.emptied >= EMPTIED_NEED/.test(rb) && /__btRecoveryReload\([^)]*\{ spot: true \}\)/.test(rb) && /if \(_cwGo\) \{ window\.__btLastGlRebuild = _now; return; \}/.test(rb)
   && /recordCrash\('canvas-purge'/.test(rb) && /if \(!CANVAS_CHECK_OFF\)/.test(rb));
+/* v2.3.3890: a call inside the window is owed one rebuild for when it ends
+   (mp-doubleloss), only for a canvas lost since the last rebuild began */
+check('8b: a call inside the 5 s is not dropped: one rebuild owed for the window\'s end, only if this canvas was lost since, `?owedrebuild=0` the old way',
+  /if \(!OWED_REBUILD_OFF && !window\.__btGlRebuildOwed\)/.test(rb) && /\(window\.__btGlLostAt \|\| 0\) > \(window\.__btLastGlRebuild \|\| 0\)/.test(rb)
+  && /5000 - \(_now - window\.__btLastGlRebuild\)/.test(rb) && /owedrebuild=0/.test(bt));
 check('8: ...and BroTown imports the check from canvasWitness.js',
   /import \{ checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF \} from '@\/rendering\/canvasWitness\.js'/.test(bt));
 
