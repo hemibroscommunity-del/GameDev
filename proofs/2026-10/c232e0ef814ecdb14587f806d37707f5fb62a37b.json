@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c232e0ef814ecdb14587f806d37707f5fb62a37b",
+  "tree": "8199c782b09d755d981b01f7f689a1e21e095923",
+  "committedAt": "2026-10-29T08:53:41-07:00",
+  "subject": "Merge pull request #1330 from hemibroscommunity-del/claude/one-click-handin",
+  "files": 7296,
+  "bytes": 840548592,
+  "listingSha256": "d9ea85c9dd2db32dd43f6b8e0382f5819eb3b32273e49e93ce0c05e680ebe400",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
