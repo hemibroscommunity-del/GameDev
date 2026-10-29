@@ -130,6 +130,17 @@ export const bankMethods = {
      (rule 9).  Two messages arriving together share one read, and whichever
      resolves second finds the first's copy already cached and keeps it, so
      an op made between the two is never overwritten by a stale read. */
+  /* ═══ A READ THAT FAILS IS NOT AN EMPTY VAULT (the review of #1267) ═══
+     A storage.get that throws used to read as "no record", which is an EMPTY
+     vault -- cached for the session, so the player's next deposit put it over
+     the real `bank:<pid>` and every coin and item banked was gone.  It fails
+     toward "no transfer" now, the pets record's posture (petbook.js
+     _petbookLoadOnJoin, `locked`): the vault comes back marked `failed`, is
+     NOT cached (nor left loading), every move against it is refused 'busy'
+     before anything moves, and the next bank message reads again.
+     And a read still in flight when the player left, or when a restart
+     deleted the vault, is not cached either: only the read that is still
+     this player's own (`_bankLoading` still holds it) may fill the cache. */
   async _bankLoad(pid) {
     const cached = this._bankMap().get(pid);
     if (cached) return cached;
@@ -138,15 +149,19 @@ export const bankMethods = {
     if (!p) {
       p = (async () => {
         let rec = null;
-        try { rec = await this.state.storage.get('bank:' + pid); } catch (e) { rec = null; }
+        try { rec = await this.state.storage.get('bank:' + pid); } catch (e) { return { failed: true }; }
         return normalizeVault(rec);
       })();
       this._bankLoading.set(pid, p);
     }
     const v = await p;
-    if (this._bankLoading.get(pid) === p) this._bankLoading.delete(pid);
-    if (!this._bankMap().has(pid)) this._bankMap().set(pid, v);
-    return this._bankMap().get(pid);
+    const mine = this._bankLoading.get(pid) === p;
+    if (mine) this._bankLoading.delete(pid);
+    if (v.failed) {
+      return { gold: 0, items: new Map(), ops: [], newer: false, failed: true };
+    }
+    if (mine && !this._bankMap().has(pid)) this._bankMap().set(pid, v);
+    return this._bankMap().get(pid) || v;
   },
 
   /* Standing at the Bank's door in the Wheel this room plays. */
@@ -171,8 +186,9 @@ export const bankMethods = {
     const inv = (ps && ps.inventory) || {};
     const noBank = Object.keys(inv).filter((k) => (Number(inv[k]) || 0) > 0 && this._bankKept(k));
     const payload = {
-      ok: !v.newer,
+      ok: !v.newer && !v.failed,   /* a failed read: "try again", never an empty vault drawn as the truth */
       on: !this._bankOff(),
+      failed: !!v.failed,
       gold: v.gold,
       items: [...v.items].map(([key, n]) => ({ key, n })),
       slots: BANK.SLOTS,
@@ -207,6 +223,7 @@ export const bankMethods = {
     const ps = this.playerState[pid];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return;
     if (v.newer) return this._bankSend(pid, v, last(false, 'newer'));
+    if (v.failed) return this._bankSend(pid, v, last(false, 'busy'));   /* the read failed: move nothing, read again next time */
     if (opId && v.ops.includes(opId)) return this._bankSend(pid, v, last(true, null));
     if (this._bankOff()) return this._bankSend(pid, v, last(false, 'off'));
     if (!kind || !opId || !n) return this._bankSend(pid, v, last(false, 'bad'));

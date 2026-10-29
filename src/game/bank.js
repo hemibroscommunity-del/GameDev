@@ -77,6 +77,9 @@ export function onBankState(S, p) {
   S._bank = {
     ok: p.ok !== false,
     on: p.on !== false,
+    /* the worker could not read the vault just now: say "try again", draw no
+       vault as the truth, and ask again (the window does) */
+    failed: p.failed === true,
     gold: Math.max(0, Math.floor(Number(p.gold) || 0)),
     items,
     slots: Math.max(0, Math.floor(Number(p.slots) || 0)),

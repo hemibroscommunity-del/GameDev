@@ -15,7 +15,9 @@
  *      vault (48 kinds), no opId, a bad count, past the pace.
  *   5. A death drops the bag as Remains and never the vault; the vault
  *      outlives a reconnect and a worker restart (it is read back from
- *      storage), and an id spent before a restart stays spent.
+ *      storage), and an id spent before a restart stays spent; a read that
+ *      FAILS is refused, never an empty vault written over the real one, and
+ *      a read that lands after the player left is not cached.
  *   6. `bank: false`: every move answered 'off', caps.bank false at the next
  *      join, and opening still shows what is in it.
  *   7. The wire: the three messages are routed, never relayed; bank_state is
@@ -320,6 +322,49 @@ const P = room.playerState.bp_bank_b;
   atBank(r3, R3);
   await send(r3, w3, 'bank_deposit', { kind: 'gold', n: 250, opId: 'rr-2' });
   check('5b: ...and an id spent before the restart is still spent: resent, it moves nothing', stateOf(w3).last.ok === true && R3.coins === 50 && stateOf(w3).gold === 250, stateOf(w3));
+}
+
+// ── 5c. a read that fails is not an empty vault (the review of #1267) ──
+{
+  const { room: r9, state: st9 } = await makeRoom();
+  const w9 = fakeWs();
+  await join(r9, w9, 'bp_bank_fail');
+  const F = r9.playerState.bp_bank_fail;
+  const real = { _v: 1, gold: 400, items: [{ key: 'wood_oak', n: 9 }], ops: [] };
+  st9._store.set('bank:bp_bank_fail', JSON.parse(JSON.stringify(real)));
+  atBank(r9, F);
+  F.inventory = { fish_minnow: 5 }; F.coins = 70;
+  const get0 = st9.storage.get;
+  let throws = 1;
+  st9.storage.get = async (k) => { if (String(k).startsWith('bank:') && throws > 0) { throws--; throw new Error('storage hiccup'); } return get0(k); };
+  const p0 = st9._puts();
+  await send(r9, w9, 'bank_deposit', { kind: 'item', id: 'fish_minnow', n: 2, opId: 'fail-1' });
+  let s = stateOf(w9);
+  const p1 = st9._puts();
+  check("5c: a deposit on a read that threw is refused 'busy' and nothing is written (bank: and rpg: untouched, the bag as it was)",
+    !!s && s.last && s.last.ok === false && s.last.err === 'busy' && p1.bank === p0.bank && p1.rpg === p0.rpg
+      && F.inventory.fish_minnow === 5 && F.coins === 70 && JSON.stringify(st9._store.get('bank:bp_bank_fail')) === JSON.stringify(real), { last: s && s.last, p0, p1 });
+  check("5c: ...the window is told 'try again' (ok false, failed), never an empty vault as the truth", !!s && s.ok === false && s.failed === true, s);
+  check('5c: ...and the failed read is not cached', !r9._bankMap().has('bp_bank_fail') && !(r9._bankLoading && r9._bankLoading.has('bp_bank_fail')));
+  await send(r9, w9, 'bank_deposit', { kind: 'item', id: 'fish_minnow', n: 2, opId: 'fail-2' });
+  s = stateOf(w9);
+  const rec = st9._store.get('bank:bp_bank_fail');
+  check('5c: the next deposit, after a good read, moves -- onto the REAL vault: 400 gold and 9 oak kept, 2 fish added',
+    s.last.ok === true && F.inventory.fish_minnow === 3 && rec.gold === 400
+      && rec.items.some((i) => i.key === 'wood_oak' && i.n === 9) && rec.items.some((i) => i.key === 'fish_minnow' && i.n === 2), { last: s.last, rec });
+  st9.storage.get = get0;
+
+  /* a read still in flight when the player leaves is not cached */
+  let release;
+  st9.storage.get = async (k) => { if (String(k).startsWith('bank:')) { await new Promise((r) => { release = r; }); } return get0(k); };
+  r9._bankForget('bp_bank_fail');
+  const loading = r9._bankLoad('bp_bank_fail');
+  await settle();
+  r9._bankForget('bp_bank_fail');   /* the player left (or a restart deleted the vault) mid-read */
+  release();
+  await loading;
+  check('5c: a read that lands after the player left is not cached (a stale copy cannot come back)', !r9._bankMap().has('bp_bank_fail'));
+  st9.storage.get = get0;
 }
 
 // ── 6. the kill switch ──

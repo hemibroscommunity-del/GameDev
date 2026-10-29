@@ -64,6 +64,18 @@ rules 5 and 7), so the Durable Object commits them together: a restart can
 never leave an item in both places or in neither. The only await is the vault's
 first read, and everything is checked again after it.
 
+### A read that fails is not an empty vault
+
+If the vault's storage read throws, the worker does **not** treat it as an
+empty record (which, cached, would let the next deposit write an empty vault
+over the real one). It fails toward "no transfer", the pets record's posture
+(petbook.js `locked`): the vault comes back marked `failed`, is not cached,
+every move is refused `busy` before anything moves, `bank_state` says
+`ok: false, failed: true` (the window says "Trying again…", asks again every
+few seconds, and draws no vault as the truth), and the next bank message reads
+again. A read still in flight when the player leaves, or when a restart
+deletes the vault, is not cached either.
+
 ### opIds
 
 Every move carries an `opId` (1–64 characters). The id of a move that moved

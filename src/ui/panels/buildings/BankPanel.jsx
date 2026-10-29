@@ -209,7 +209,12 @@ function BankVault(props) {
   useEffect(() => {
     const off = bankSubscribe(() => force((v) => v + 1));
     bankOpen(S);
-    const id = setInterval(() => force((v) => v + 1), 500);   /* the busy wait running out, the bag's echo */
+    const id = setInterval(() => {
+      /* a read that failed is asked again every few seconds (server/src/bank.js) */
+      const b0 = S && S._bank;
+      if (b0 && b0.failed && Date.now() - b0.at > 3000) bankOpen(S);
+      force((v) => v + 1);
+    }, 500);   /* the busy wait running out, the bag's echo */
     return () => { off(); clearInterval(id); };
   }, []);
   const b = (S && S._bank) || null;
@@ -230,11 +235,13 @@ function BankVault(props) {
   const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(46px, 1fr))', gap: 5 };
   const well = { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder, padding: 8 };
   const closed = b && (!b.on || !b.ok);
-  return React.createElement("div", { style: LS_WRAP, "data-bank-vault": b ? (closed ? 'closed' : 'open') : 'loading' },
+  const failed = !!(b && b.failed);
+  return React.createElement("div", { style: LS_WRAP, "data-bank-vault": b ? (failed ? 'failed' : closed ? 'closed' : 'open') : 'loading' },
     lsHeader('bank', '🏦', "Bank", "Your vault"),
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 10, lineHeight: 1.5 } },
-        closed ? "The vault is closed for now. What is in it stays safe."
+        failed ? "The vault could not be opened just now. Trying again… What is in it stays safe."
+          : closed ? "The vault is closed for now. What is in it stays safe."
           /* v2.3.3785: what goes in and why, plainly (the orchestrator, for the
              owner: so nobody is surprised that a sword stays in the bag) */
           : deskWords("Safe from death: what is in the vault stays here when you die. Materials, food and gold go in; weapons, armour and tools stay with you. Tap an item to put it in or take it out.")),
@@ -243,7 +250,7 @@ function BankVault(props) {
       React.createElement("div", { style: { ...well, marginBottom: 12 } },
         React.createElement("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 } },
           React.createElement("span", { style: { fontSize: 13, color: LS.txt2 } }, "On you ", lsGold(coins.toLocaleString('en-US'), 15, coins)),
-          React.createElement("span", { "data-bank-gold": b ? b.gold : '', style: { fontSize: 13, color: LS.txt2 } }, "In the vault ", lsGold(b ? b.gold.toLocaleString('en-US') : '…', 15, b ? b.gold : 0))),
+          React.createElement("span", { "data-bank-gold": b && !failed ? b.gold : '', style: { fontSize: 13, color: LS.txt2 } }, "In the vault ", lsGold(b && !failed ? b.gold.toLocaleString('en-US') : '…', 15, b && !failed ? b.gold : 0))),
         b && !closed ? React.createElement(AmountRow, { label: 'Put in', max: coins, busy, testid: 'gold-in', act: (n) => move('in', 'gold', null, n) }) : null,
         b && !closed ? React.createElement(AmountRow, { label: 'Take out', max: b.gold, busy, testid: 'gold-out', act: (n) => move('out', 'gold', null, n) }) : null),
       /* ── the line for the last move ── */
@@ -255,12 +262,12 @@ function BankVault(props) {
         React.createElement(AmountRow, { label: sel.side === 'bag' ? 'Put in' : 'Take out', max: selN, busy, testid: 'item-' + sel.side,
           act: (n) => { move(sel.side === 'bag' ? 'in' : 'out', 'item', sel.key, n); setSel(null); } })) : null,
       /* ── the vault ── */
-      React.createElement("div", { style: LS_MOD }, "The vault ", React.createElement("span", { style: { letterSpacing: 0, textTransform: 'none' } }, b ? '(' + vault.length + ' of ' + b.slots + ')' : '')),
+      React.createElement("div", { style: LS_MOD }, "The vault ", React.createElement("span", { style: { letterSpacing: 0, textTransform: 'none' } }, b && !failed ? '(' + vault.length + ' of ' + b.slots + ')' : '')),
       React.createElement("div", { style: { ...well, marginBottom: 12 } },
         vault.length ? React.createElement("div", { style: grid }, vault.map((it) => React.createElement(Tile, {
           key: it.key, ikey: it.key, n: it.n, side: 'vault', dim: closed || busy,
           sel: !!(sel && sel.side === 'vault' && sel.key === it.key), onTap: () => tap('vault', it.key, it.n) })))
-          : React.createElement("div", { style: { fontSize: 12, color: LS.txt3 } }, b ? "Nothing in the vault yet." : "Opening the vault…")),
+          : React.createElement("div", { style: { fontSize: 12, color: LS.txt3 } }, b && !failed ? "Nothing in the vault yet." : "Opening the vault…")),
       /* ── your bag ── */
       React.createElement("div", { style: LS_MOD }, "Your bag"),
       React.createElement("div", { style: well },

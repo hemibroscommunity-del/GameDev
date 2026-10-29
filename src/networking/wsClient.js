@@ -2095,9 +2095,6 @@ export function setupWebSocket(ctx) {
             { if (!msg.from) { try { onRaceCheckpoint(S, msg.payload); } catch (_re) { /* display only */ } } break; }
           case 'race_end':
             { if (!msg.from) { try { onRaceEnd(S, msg.payload); } catch (_re) { /* display only */ } } break; }
-          /* v2.3.3539: a rest's answer (server/src/rest.js) -- here, in the
-             direct switch, for the race's reason: a worker from before the
-             Hotel opened would relay a forged one to everyone */
           case 'bank_state':
             {
               /* v2.3.3785: the Bank's vault as the worker holds it (bank.js),
@@ -2108,6 +2105,9 @@ export function setupWebSocket(ctx) {
               }
               break;
             }
+          /* v2.3.3539: a rest's answer (server/src/rest.js) -- here, in the
+             direct switch, for the race's reason: a worker from before the
+             Hotel opened would relay a forged one to everyone */
           case 'rest_result':
             {
               if (!msg.from) {
