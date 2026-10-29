@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "118fde872ebb4b56b371e1f1e0dbde0a73dd1526",
+  "tree": "75223de21b816f52b3002c05a3c89547f32fb458",
+  "committedAt": "2026-10-28T18:20:52-07:00",
+  "subject": "XP bar: the white shows longer, the gold climbs slower, the number counts up (v2.3.3796) (#1269)",
+  "files": 7097,
+  "bytes": 816325221,
+  "listingSha256": "d1d8f7862e3a247056be72204077c7362905a257ecaeca7e1a6e0013ddc48f0a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
