@@ -13715,6 +13715,15 @@ export var BroTown = function BroTown(_ref0) {
          26% put its top under the 42 px top bar: "WELCOME" was cut in half.
          Upright and on a computer 26% is already lower, so nothing moves. */
       top: 'max(26%, 150px)',
+      /* ═══ v2.3.3812: ON A COMPUTER, BELOW MAYOR BRO, NOT ON HIM ═══
+         Lane A's judge pass (1440 x 900, 1280 x 720): at 26% the plate lay
+         over the Town Hall and Mayor Bro -- the one it tells you to find
+         (measured: the plate 128-282 px, the Mayor 212-309 at 720 tall).
+         A new bro comes in at the Hall's steps with the Mayor above the
+         world's middle, so on a computer the plate stands lower, its top at
+         58%: clear of both, and of the chat bar along the world's foot.  A
+         phone keeps 26% (its dashboard is the lower half upright). */
+      ...(stateRef.current && stateRef.current._isDesktop ? { top: 'max(58%, 150px)' } : null),
       /* v2.3.1816: the fade starts 500ms before THIS banner's own hold
          ends — a fixed 1700ms here would have the long banners fade out and
          then sit invisible for two more seconds. */
