@@ -38,6 +38,7 @@ export const SMALL_ICON = Object.freeze({
   chatParty: ui('chat-party'),
   chatArea: ui('chat-area'),
   chatWhisper: ui('chat-whisper'),
+  nmlAskDuel: ui('nml-ask-duel'),   /* v2.3.3770: the canvas's only (SMALL_TEX) */
 });
 
 export const BUFF_ICON = Object.freeze({
@@ -63,6 +64,12 @@ export const SMALL_TEX = Object.freeze({
   partyMember: SMALL_ICON.partyMember,
   threatSkull: SMALL_ICON.threatSkull,
   npcTalk: SMALL_ICON.npcTalk,
+  /* v2.3.3770: the sword clash over the head of a player locked out from you
+     asking for a rematch (game/noMansLand.js nmlLockAskShow): the duel's own
+     picture (soc-duel.webp), no new art (the owner), made 64 x 64 as every
+     small mark is (a 256 px texture drawn at 28 px only shimmers); loaded
+     behind the loading screen with the rest of these */
+  nmlAskDuel: SMALL_ICON.nmlAskDuel,
 });
 
 /* The popup mark's key and file (effectsRenderer POPUP_ICON_SRC) */
@@ -72,7 +79,7 @@ export const DEFENSE_POPUP_SRC = '/icons/popups/defense-up.webp';
 /* What the page shows as <img>: warmed on the loading screen
    (controlsPreload.js).  The skull and the talk bubble are the canvas's only. */
 export function smallIconDomUrls() {
-  const canvasOnly = new Set([SMALL_ICON.threatSkull, SMALL_ICON.npcTalk]);
+  const canvasOnly = new Set([SMALL_ICON.threatSkull, SMALL_ICON.npcTalk, SMALL_ICON.nmlAskDuel]);
   return Object.values(SMALL_ICON).filter((u) => !canvasOnly.has(u)).concat(Object.values(BUFF_ICON));
 }
 
