@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1597c62098f4e4cf3245ddacbc77b995b97762ab",
+  "tree": "a1a5b220ba3c8185b5a8c3b6377cf5a5f2e6b403",
+  "committedAt": "2026-10-29T07:58:11-07:00",
+  "subject": "Merge pull request #1325 from hemibroscommunity-del/claude/mayor-no-grotto",
+  "files": 7273,
+  "bytes": 836128375,
+  "listingSha256": "12e7838347618e55705a5cbf5ff12058363ed105790bc4e40dec98d200f41868",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
