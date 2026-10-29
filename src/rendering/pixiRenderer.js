@@ -200,6 +200,15 @@ const _playerGround = { x: NaN, y: NaN };
    counts are the QA probe window.__btGroundKeep (mp-groundkeep) */
 const _groundKeepOffUrl = (() => { try { return /[?&]groundkeep=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 function groundKeepOn() { return !_groundKeepOffUrl && !clientOff('groundkeep'); }
+/* ...and never after a loss: wsClient's resume has a third way here -- the
+   context lost when it looked, restored 1.5 s later, then forceRefresh (not a
+   whole rebuild) -- and a restored context keeps none of the old textures
+   (v2.3.773: "the baked render textures are gone"; gpuOnly pieces have no
+   copy to bring back).  A loss since the last renderer rebuild (crashTrap's
+   __btGlLostAt, BroTown's __btLastGlRebuild) rebuilds the ground as before. */
+function _lostSinceRebuild() {
+  try { return !!(window.__btGlLostAt && window.__btGlLostAt > (window.__btLastGlRebuild || 0)); } catch (e) { return false; }
+}
 const _groundKeep = { kept: 0, rebuilt: 0 };
 try { if (typeof window !== 'undefined') window.__btGroundKeep = _groundKeep; } catch (e) { /* no page */ }
 const _depthProbe = { legacy: false };
@@ -951,7 +960,7 @@ export async function initPixiRenderer(canvas) {
            that was never lost, so they are as good as ever: kept.  Every
            other zone is rebuilt as before.  `?groundkeep=0`, or the live
            flag off_groundkeep (game/clientOff.js), rebuilds as before. */
-        if (groundKeepOn() && tileRenderer.keepsGround(currentZone)) { _groundKeep.kept++; return; }
+        if (groundKeepOn() && !_lostSinceRebuild() && tileRenderer.keepsGround(currentZone)) { _groundKeep.kept++; return; }
         if (currentZone && currentMap) { tileRenderer.rebuild(app, currentMap, currentZone); _groundKeep.rebuilt++; }
       } catch (e) { /* best-effort */ }
     },

@@ -15,6 +15,11 @@
  *   3. a LOST context (WEBGL_lose_context) and a return: the black-screen
  *      recovery still rebuilds the whole renderer (__btLastGlRebuild), and the
  *      ground comes back -- that path untouched;
+ *   4. the third way back: a context lost and restored within 1.5 s, then
+ *      forceRefresh (wsClient's resume when the context was lost as it
+ *      looked): the ground is REBUILT, never kept from a lost context --
+ *      both a real loss and restore, and the rule alone (a loss stamped
+ *      after the last renderer rebuild, on a healthy context);
  *   and with `?groundkeep=0` (the off-ramp) a freeze rebuilds, as before.
  *
  *   node tools/qa/mp/run.mjs groundkeep
@@ -99,6 +104,47 @@ async function device(browser, wsPort, webPort, rec, label, opts) {
     const c1 = await read(P);
     rec.ok(`${label}: a lost context still rebuilds the whole renderer (${rebuilt ? 'rebuilt' : 'NOT rebuilt'}) and the ground comes back (${c1.resident} pieces; a return on the rebuilt, healthy context after it kept: ${c1.kept - c0.kept})`,
       rebuilt && !!back && c1.resident > 0, { c0, c1 });
+
+    /* 4. the third way back: lost, restored, then forceRefresh (not a whole
+       rebuild).  First the rule alone, on a healthy context: a loss stamped
+       after the last renderer rebuild */
+    await P.page.waitForTimeout(3000);
+    const e0 = await read(P);
+    await P.page.evaluate(() => { window.__btGlLostAt = Date.now() + 1; window._pixiRenderer.forceRefresh(); });
+    await P.page.waitForTimeout(500);
+    const e1 = await read(P);
+    rec.ok(`${label}: a loss since the last renderer rebuild -- forceRefresh REBUILDS the ground (rebuilt ${e1.rebuilt - e0.rebuilt}), never keeps it (kept ${e1.kept - e0.kept})`,
+      e1.rebuilt - e0.rebuilt === 1 && e1.kept === e0.kept, { e0, e1 });
+    /* ...then for real: lost, restored after 600 ms, forceRefresh 1.5 s after
+       the loss, as wsClient does -- rebuilt (or the whole renderer already
+       rebuilt meanwhile, a fresh context), never kept; the ground back */
+    await H.waitFor(P, () => { const w = window.__btWorldTrial.stats; return { r: w.resident, l: w.loading }; }, (v) => v.r > 0 && v.l === 0,
+      { timeout: 60000, label: 'the ground laid again' }).catch(() => null);
+    const f0 = await read(P);
+    const lost2 = await P.page.evaluate(() => new Promise((res) => {
+      const r = window._pixiRenderer;
+      const gl = r && r.app && r.app.renderer && r.app.renderer.gl;
+      const ext = gl && gl.getExtension('WEBGL_lose_context');
+      if (!ext) { res('no WEBGL_lose_context'); return; }
+      const before = window.__btLastGlRebuild || 0;
+      ext.loseContext();
+      setTimeout(() => { try { ext.restoreContext(); } catch (e) { /* gone */ } }, 600);
+      setTimeout(() => {
+        const fresh = (window.__btLastGlRebuild || 0) > before;
+        const r2 = window._pixiRenderer;
+        if (r2 && r2.forceRefresh) r2.forceRefresh();
+        res({ fresh });
+      }, 1500);
+    }));
+    if (typeof lost2 === 'string') { rec.ok(`${label}: lost and restored (guard): ${lost2}`, false); return; }
+    await P.page.waitForTimeout(800);
+    const f1 = await read(P);
+    const back2 = await H.waitFor(P, () => { const w = window.__btWorldTrial.stats; return { r: w.resident, l: w.loading }; }, (v) => v.r > 0 && v.l === 0,
+      { timeout: 60000, label: 'the ground back' }).then(() => true).catch(() => false);
+    const keptFromLost = !lost2.fresh && f1.kept > f0.kept;
+    rec.ok(`${label}: lost, restored within 1.5 s, then forceRefresh: the ground is not kept from the lost context (`
+      + `${lost2.fresh ? 'the whole renderer was rebuilt meanwhile' : 'ground rebuilt ' + (f1.rebuilt - f0.rebuilt)}), and it comes back`,
+      !keptFromLost && (lost2.fresh || f1.rebuilt - f0.rebuilt >= 1) && back2, { f0, f1, lost2 });
   } finally {
     await P.ctx.close().catch(() => {});
   }
