@@ -1386,6 +1386,14 @@ body:has(.bt-plist) [data-coach]{display:none}
 @media (min-height:461px) and (max-height:800px){
   .bt-inspect-card[data-room="blacksmith"]{--room-stage:min(36px, calc(25vw - 6px))}
 }
+/* v2.3.3793: ON A COMPUTER THE CARD IS 470 PX (BroTown.jsx, v2.3.3769), so its
+   stage is 62% of THAT picture: 41.33% of 470 = 194.3 px (the rule above is
+   the 360 px card's, "change one, change both"), still at most 22vh on a short
+   window.  At 148.8 the menu began 47% down a 470 x 313 room, over its sign.
+   The Blacksmith keeps its slim band (its own rules above). */
+@media (min-height:461px){
+  html.bt-desk-wide .bt-inspect-card[data-room]:not([data-room="blacksmith"]){--room-stage:min(194.3px, 22vh)}
+}
 @media (max-height:460px){.bt-room{display:none}}
 /* ═══ v2.3.3802: THE TOWN HALL'S BOARD, LAID OUT (panels/buildings/TownBoard.jsx) ═══
    The owner ran the board past ChatGPT; we took its layout advice.
@@ -5810,6 +5818,16 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
      that very column, below): its trait picker otherwise ran the window's
      whole width with one row of tiles in it.  The backdrop fills the window. */
   html.bt-desk-wide .bt-name-modal > *{max-width:min(100%, calc(100vh * 390 / 715));margin-left:auto;margin-right:auto}
+  /* ═══ v2.3.3793: NOTHING TO CLICK UNDER A STRIP ═══
+     The 2026-10-28 desktop review: with Diego's shop strip or a trade's
+     drawer across the world's foot, the world's own buttons in that corner
+     (the door's "E Enter ..." prompt, the skateboard) were drawn under the
+     strip, a click on them landing on the strip (the UI review's "covered by
+     div[data-shop-shelf]").  While one is up, on a computer, they step aside;
+     their keys (E, Z) still work, read by the keyboard, not by these buttons.
+     Phones unchanged. */
+  html.bt-desk-wide:has([data-shop-shelf], [data-trade-drawer]) .bt-interact-prompt,
+  html.bt-desk-wide:has([data-shop-shelf], [data-trade-drawer]) .bt-ride-btn{visibility:hidden;pointer-events:none}
   /* ═══ v2.3.3769: THE TRAIT PICKER, PROPORTIONALLY LARGER ═══
      The owner: "For the trait picker desktop only you can make the trait
      picker area and buttons proportionally larger".  The creator takes 1.4
