@@ -9630,7 +9630,11 @@ export class EffectsRenderer {
          Only a speaker never seen with a band falls back to the old anchor. */
       /* v2.3.3392: a sitter's or a sleeper's band came down with him
          (rendering/emoteFx.js, last frame's: it draws after this pass) */
-      const _band = bandWithEmote(pid === S.myId ? S._selfBandTopY : source._bandTopY, pid === S.myId ? S : source);
+      /* v2.3.3854, the owner: "chat bubbles right above character head and
+         just cover nameplate during chat" -- the point comes down to the
+         band's bottom (the plate steps aside while the bubble is up,
+         entityRenderer _chatTipY); with an HP bar up it stays over the band */
+      const _band = bandWithEmote(pid === S.myId ? (S._selfChatTipY != null ? S._selfChatTipY : S._selfBandTopY) : (source._chatTipY != null ? source._chatTipY : source._bandTopY), pid === S.myId ? S : source);
       let _top = null;
       if (typeof _band === 'number' && isFinite(_band)) {
         _top = _band;

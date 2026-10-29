@@ -41,7 +41,7 @@ export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'capeattack', 'capehair', 'capekill', 'cardreach', 'ccbuttons',
   'ccfeet', 'ccjoin', 'cckb', 'ccload',
   'ccshades', 'ccspin', 'ccstand', 'charlock', 'chat',
-  'chatbubble', 'chatcompose', 'chatfeed', 'chatfont', 'chatjoy',
+  'chatcompose', 'chatfeed', 'chatfont', 'chatjoy',
   'chatlanes', 'chatlayer', 'chatpicker', 'chopink', 'chopyield', 'clan',
   'coachearly', 'codexfit', 'contblack', 'cookink', 'cookpeer', 'cooktap',
   'copperfeet', 'coppergear', 'cosmpose', 'cosmrelay', 'critpreview',

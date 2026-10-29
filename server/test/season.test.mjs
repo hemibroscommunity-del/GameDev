@@ -66,12 +66,11 @@ check('4b ...a held dance the worker keeps any day', seasonal.every((id) => EMOT
   const { BUBBLE_SKINS, bubbleSkinFor } = await import('../../src/game/bubbleSkins.js');
   check('5a a townsperson\'s bubble is white, in Halloween week and out of it',
     bubbleSkinFor('npc:mayor_bro', true) === 'plain' && bubbleSkinFor('npc:diego', false) === 'plain');
-  check('5b a player\'s is dark: purple in Halloween week, the slate one out of it',
-    bubbleSkinFor('bp_abc123', true) === 'halloween' && bubbleSkinFor('bp_abc123', false) === 'player'
-      && bubbleSkinFor('guest_9', false) === 'player');
-  check('5c a key that only looks like a townsperson\'s is a player\'s (the prefix is the whole rule)',
-    bubbleSkinFor('xnpc:1', true) === 'halloween' && bubbleSkinFor('', false) === 'player' && bubbleSkinFor(null, false) === 'player'
-      && bubbleSkinFor(undefined, true) === 'halloween');
+  check('5b v2.3.3854: a player\'s is white too ("Make chat bubble background white and the chat font black"), in Halloween week and out of it',
+    bubbleSkinFor('bp_abc123', true) === 'plain' && bubbleSkinFor('bp_abc123', false) === 'plain'
+      && bubbleSkinFor('guest_9', false) === 'plain');
+  check('5c any key at all is the white bubble', bubbleSkinFor('xnpc:1', true) === 'plain' && bubbleSkinFor('', false) === 'plain'
+    && bubbleSkinFor(null, false) === 'plain' && bubbleSkinFor(undefined, true) === 'plain');
   const lum = (h) => { const v = parseInt(h.slice(1), 16); return 0.2126 * ((v >> 16) & 255) + 0.7152 * ((v >> 8) & 255) + 0.0722 * (v & 255); };
   const S = BUBBLE_SKINS;
   check('5d the white bubble is light with black words; both player skins dark with light words',
