@@ -461,8 +461,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return r.right > shR.right + 2 && r.width > 4;
     }).length;
     const text = sh.textContent || '';
-    return { scrollFits: sh.scrollWidth <= sh.clientWidth + 1, wide,
-             hasStats: /OFFENSE/i.test(text) && /PLAYER|DEFENSE/i.test(text) && /Damage/.test(text) }; /* v2.3.3053: PLAYER (owner mockup) */
+    /* v2.3.3783: the stats are family pills since v2.3.3605 (HeroExpanded
+       famPill, `data-family`: this view holds Damage and Defense), and the
+       OFFENSE / PLAYER headings are gone -- so the view's stats are found by
+       their families, not by a heading's word (TRAPS §177: the test, not the
+       game, was out of date) */
+    const fams = [...sh.querySelectorAll('[data-family]')].map((e) => e.getAttribute('data-family'));
+    return { scrollFits: sh.scrollWidth <= sh.clientWidth + 1, wide, fams,
+             hasStats: fams.includes('damage') && fams.includes('defense') && /Damage/.test(text) }; /* v2.3.3053: PLAYER (owner mockup) */
   });
   rec.ok('the character view fits the skinny column — stacked, nothing clipped sideways',
     !!heroFit && heroFit.scrollFits && heroFit.wide === 0 && heroFit.hasStats, heroFit);
