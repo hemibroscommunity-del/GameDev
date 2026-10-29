@@ -88,6 +88,23 @@ looks; a look is a row of the palette atlas (1 KB), freed 30 s after its last
 draw. On a phone where no one wears a pattern or a print this is 0.6 MB MORE
 than before (the sheets are loaded behind the loading screen either way).
 
+## What it costs a frame
+
+`mp-crowdbots` (BT_CROWD_GL=1), 15 bots in a printed, striped tee, the body
+drawn from the numbers both ways, the shirt part alone switched by
+`?lookshirt=0` (two runs each):
+
+| | draws a frame | programs a frame | work ms p50 / p95 | frames in 20 s (this box's software chip) |
+|---|---|---|---|---|
+| `?lookshirt=0` | 98 / 97 | 79 / 80 | 10.3 / 20.0, 10.7 / 19.2 | 47 / 45 |
+| the tee from the numbers | 166 / 185 | 149 / 164 | 11.4 / 18.0, 13.1 / 20.0 | 30 / 29 |
+
+About five more draws and program switches a dressed figure: the tee on its
+own program breaks the batch round it (it does not sit next to the body in
+the draw order, and four sheets fill a batch). This is the cost the look
+program's fold into the one batcher (`claude/look-palette-fold`) is for. `?lookshirt=0` draws
+the tee the old way, the rest of the look palette as it is.
+
 ## Where it is not exact
 
 Minified (a computer), as the body: the chip rounds its own level of detail
