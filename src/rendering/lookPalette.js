@@ -217,7 +217,7 @@ function buildSheet(set, name, m, img, roles) {
     format: bits === 8 ? 'r8unorm' : 'rg8unorm', scaleMode: 'nearest', alphaMode: 'premultiplied-alpha',
     autoGenerateMipmaps: false, autoGarbageCollect: false, label: 'bt-look:' + (set === 'body' ? '' : set + '/') + name,
   });
-  src._btLook = { ds: m.ds, w: W, rows, bits, make };
+  src._btLook = { ds: m.ds, w: W, rows, bits, make, n };
   const frames = m.cells.map(([ax, ay, tx, ty, w, h], i) => {
     const r = { i, n: m.cells.length };
     /* in display texels, which are the source's points (a ds 2 sheet is
@@ -267,6 +267,29 @@ async function loadSet(name) {
     }
   })();
   return s.loading;
+}
+/* ═══ v2.3.3752 (P3): THE ARMOUR'S MASKS (lookArmour.js) ═══
+   Under armour a body sheet shows only the display texels the masked bake
+   kept: a bit a texel, in a book of its pose in one R8 atlas MASK_W bytes
+   wide, bound after the palette atlas.  The sheet's book offset (68-69,
+   setLookSheetBook) is its pose's index << 16 | its first row in the book + 1;
+   the masked look's row entry 32 + the pose's index holds the book's first
+   atlas row (lookShown in the program). */
+export const MASK_W = 2048;
+let _maskSource = null;
+/** lookArmour.js gives the mask atlas's source (null: none yet, a blank is bound). */
+export function setLookMaskSource(fn) { _maskSource = fn; }
+/** A set's sheet names in its manifest's own order (null while it loads). */
+export function lookSetSheets(set) { const s = _sets.get(set); return s && s.manifest ? Object.keys(s.manifest.sheets) : null; }
+/** A sheet's source and frames (lookArmour.js builds its masked frames over them). */
+export function lookSheetOf(set, sheet) { return _sheets[set + '/' + sheet] || null; }
+/** A sheet's numbers, table and header as the chip gets them (made again from
+ *  its <img>), for the bake to colour a frame on the CPU (lookExpand.js). */
+export function lookSheetBytes(set, sheet) {
+  const sh = _sheets[set + '/' + sheet];
+  if (!sh || !sh.src._btLook) return null;
+  const L = sh.src._btLook;
+  return { bytes: L.make(), w: L.w, rows: L.rows, ds: L.ds, bits: L.bits, n: L.n };
 }
 /** v2.3.3737 (P3): a sheet's offset in its book of masks, in the header
  *  (68-69) for the shader -- uploaded again with it. */
@@ -515,6 +538,7 @@ flat in float vMirror;
 out vec4 finalColor;
 uniform highp sampler2D uTextures[${SLOTS}];
 uniform highp sampler2D uPalAtlas;
+uniform highp sampler2D uMaskAtlas;
 highp vec4 fetchT(highp ivec2 p)
 {
 ${fetchChain((t) => `texelFetch(uTextures[${t}], p, 0)`)}
@@ -532,6 +556,7 @@ highp int sE[16];
 highp int sRoE[16], sRoF[16], sRoU[16];
 highp ivec2 sDisp;
 highp int sRow;
+highp int mBase;   /* v2.3.3752: the armour mask's first atlas row for this sheet, -1 none */
 /* a number: one R texel (8 bits) or an RG pair of bytes (16) */
 highp int num(highp ivec2 p)
 {
@@ -626,8 +651,19 @@ highp vec4 entry(highp int k)
 }
 ${Array.from(_kinds.values()).join('\n')}
 /* a texel's colour: its kind's function (registerLookKind), else its entry */
+/* v2.3.3752 (P3): display texel q shown under the armour (the masked bake
+   kept it): one bit of the sheet's pose book in the mask atlas (lookArmour.js) */
+bool lookShown(highp ivec2 q)
+{
+    if (mBase < 0) return true;
+    highp int a = q.y * sDisp.x + q.x;
+    highp int b = a >> 3;
+    highp int v = int(texelFetch(uMaskAtlas, ivec2(b % ${MASK_W}, mBase + b / ${MASK_W}), 0).r * 255.0 + 0.5);
+    return ((v >> (a & 7)) & 1) == 1;
+}
 highp vec4 colourAt(highp int k, highp ivec2 p)
 {
+    if (mBase >= 0 && !lookShown(p / sDs)) return vec4(0.0);
 ${kindDispatch()}
     return entry(k);
 }
@@ -646,7 +682,7 @@ highp vec4 dispTexel(highp ivec2 q)
         if (k != k0) same = false;
         sum += colourAt(k, pi);
     }
-    if (same && sKind == 0) return entry(k0);
+    if (same && sKind == 0 && mBase < 0) return entry(k0);
     /* the canvas's 'high' halving: the box of the premultiplied bytes,
        truncated (measured in Chromium) */
     return floor((sum + colourAt(k0, o)) / 4.0);
@@ -672,7 +708,7 @@ highp vec4 bilinear(highp vec2 P, bool level1)
         highp int k[4];
         highp ivec2 pp[4];
         for (int i = 0; i < 4; i++) { pp[i] = clamp(a + ivec2(i & 1, i >> 1), ivec2(0), sDisp - 1); k[i] = num(pp[i]); }
-        if (sKind == 0 && k[0] == k[1] && k[0] == k[2] && k[0] == k[3]) return entry(k[0]);
+        if (sKind == 0 && mBase < 0 && k[0] == k[1] && k[0] == k[2] && k[0] == k[3]) return entry(k[0]);
         for (int i = 0; i < 4; i++) c[i] = colourAt(k[i], pp[i]);
     } else {
         for (int i = 0; i < 4; i++) c[i] = level1 ? mipTexel(a + ivec2(i & 1, i >> 1)) : dispTexel(a + ivec2(i & 1, i >> 1));
@@ -685,6 +721,11 @@ void main(void) {
     sRow = int(vLook + 0.5) - 1;
     sMirror = vMirror > 0.5;
     readSheet();
+    mBase = -1;
+    if (sBook > 0 && sRow >= 0) {
+        highp vec4 mb = rowT(32 + sBook / 65536);
+        if (mb.a > 0.5) mBase = int(mb.r) + 256 * int(mb.g) + (sBook % 65536) - 1;
+    }
     /* the body as the chip drew it: sharpPixels.js's sharpSample (or Pixi's
        plain read) on a mipmapped texture, done by hand on the coloured texels */
     highp vec2 ts = vec2(sizeT()) / float(sDs);   /* in display texels */
@@ -719,6 +760,7 @@ function lookShader() {
       lookSamplers: new UniformGroup({
         uTextures: { value: units, type: 'i32', size: SLOTS },
         uPalAtlas: { value: SLOTS, type: 'i32' },
+        uMaskAtlas: { value: SLOTS + 1, type: 'i32' },   /* v2.3.3752 */
       }, { isStatic: true }),
     },
   });
@@ -753,7 +795,10 @@ class LookBatcher extends DefaultBatcher {
     const empty = Texture.EMPTY.source;
     for (let k = textureBatch.count; k < SLOTS; k++) textureBatch.textures[k] = empty;
     textureBatch.textures[SLOTS] = paletteAtlasSource();
-    textureBatch.count = SLOTS + 1;
+    /* v2.3.3752: the armour's mask atlas after it (a blank until a figure is
+       drawn under armour, lookArmour.js) */
+    textureBatch.textures[SLOTS + 1] = (_maskSource && _maskSource()) || empty;
+    textureBatch.count = SLOTS + 2;
     super._finishBatch(batch, indexStart, indexSize, textureBatch, blendMode, topology, instructionSet, action, elements);
   }
   _updateMaxTextures() {}

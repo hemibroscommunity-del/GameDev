@@ -554,6 +554,24 @@ Each its own pull request (on by default, as this one: the owner's rule for the 
 8. **One program.** Fold the look read into `paletteTex.js`'s `ONE_BATCHER` as
    a fourth kind, so a figure no longer breaks the batch (the pictures lane's
    file: a joint change).
+   **Tried, and why not that way (v2.3.3762, claude/look-palette-fold,
+   b1184f205 -- not for merging).** The look reading put in `ONE_BATCHER`'s
+   program as a fourth kind, through a seam (`setOneBatchLook`), its codes
+   fitted by making the texture id slot + 16 x code: on the QA box's
+   SwiftShader (`?onebatch=1`) the WHOLE program then drew nothing -- plain
+   sprites, sharp sprites, the look's -- while it compiled, linked and raised
+   no GL error; replace the one `lookDraw` call with a constant colour and
+   everything drew again. ONE has 15 picture slots, so every texel read is a
+   15-way constant-index chain, and the reading makes ~300 of them once its
+   loops and the mip path are inlined: ~4,500 texel fetches in one program. A
+   phone's driver may fail the same way, blanking the screen for everyone, and
+   a link check cannot see it. **The way to do it:** one LOOK ATLAS texture on a
+   unit of its own (ONE's slots 15 -> 14), every look sheet packed in it, the
+   look branch reading it directly with no chain (a small program, and no slot
+   used by look sprites); a sheet's place found from a directory row in the
+   atlas or a vertex attribute; and setOneBatchRenderer's prewarm DRAWING a
+   known sprite and reading its pixel back, falling back to the three
+   programs if it is wrong. After the showing (the orchestrator), its own PR.
 9. **The old copies' code removed**, once every part draws from numbers and
    the owner has played with it on a phone.
 
