@@ -9,8 +9,8 @@
  * ('cowboy-hat-2') and, for comparison, the Army Helmet, standing and jogging
  * in all eight facings, on a phone (390 x 844, the look palette on) and on a
  * computer (the sideways layout, the palette off): in each, the hair's
- * pixels on screen (its colour, read back off the drawing buffer by the
- * head-frame count's own reading, ?headframes) against the same facing and
+ * pixels on screen (v2.3.3883: its own -- the frame drawn with it and without
+ * it, read back off the drawing buffer, the pixels that differ) against the same facing and
  * pose bare-headed -- under a hat the hair must keep at least LH_MIN of them
  * where it ships a picture (the brim covers its top, never all of it).
  * Pictures of each head: tools/qa/mp/out/longhairhat-*.png.
@@ -23,6 +23,15 @@
  *   LH_FAIL=part         fail every download whose address holds `part` for LH_FAIL_MS
  *                        (20 s) from the page's start, as a wifi blip or a deploy does, then
  *                        let it through (LH_INITHAT=hat: worn from the start, so it loads then)
+ *   LH_CTX=n             then the graphics lost and given back n times (WEBGL_lose_context:
+ *                        the black-screen recovery, a rebuilt renderer 2.5 s on): each round
+ *                        every hat in every facing read just before the loss and again after
+ *                        it, from the same spot with the same moves: the hat drawn, the
+ *                        hair's own pixels and the whole bro's (each drawn without, and the
+ *                        pixels that differ counted: the ground behind counts for neither); with n >= 2 the
+ *                        chip's textures counted after each round (v2.3.3883: nothing piles up)
+ *   LH_CTXWATCH=s        and second by second for s seconds after the (first) loss, what the
+ *                        hair, hat and mask hold
  *   LH_QUERY=x           another switch on the page (retrylooks=0: the loaders as they were)
  *   LH_HATS=a,b          these hats only; LH_REPEAT=n  each reading n times, frame after frame (a flicker
  *                        is one frame: the least of the n is what is judged, all n printed)
@@ -65,7 +74,7 @@ const hairPixels = (P) => P.page.evaluate((t) => {
     const x0 = Math.max(0, Math.floor(b.minX * res)), x1 = Math.min(W2, Math.ceil(b.maxX * res));
     const y0 = Math.max(0, Math.floor(b.minY * res)), y1 = Math.min(H2, Math.ceil(b.maxY * res));
     const w = x1 - x0, h = y1 - y0;
-    if (w < 2 || h < 2) return { vis: true, n: 0, box: [x0, y0, w, h] };
+    if (w < 2 || h < 2) return { vis: true, n: 0, nd: 0, box: [x0, y0, w, h] };
     const buf = new Uint8Array(w * h * 4);
     gl.readPixels(x0, H2 - y1, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
     let n = 0;
@@ -73,9 +82,52 @@ const hairPixels = (P) => P.page.evaluate((t) => {
       const r = buf[i], g = buf[i + 1], bb = buf[i + 2];
       if (Math.abs(r - t[0]) + Math.abs(g - t[1]) + Math.abs(bb - t[2]) < 45 && r > g && g > bb) n++;
     }
-    return { vis: true, n, box: [x0, y0, w, h], mask: !!sp.mask, dir: d._animDir, pose: d._animPose };
+    /* v2.3.3883: the hair's own pixels whatever the ground -- the frame drawn
+       with it hidden, the same box read, the pixels that differ counted */
+    const keep = new Uint8Array(buf);
+    let nd = 0;
+    sp.visible = false;
+    try { app.render(); gl.readPixels(x0, H2 - y1, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf); } finally { sp.visible = true; }
+    app.render();
+    for (let i = 0; i < buf.length; i += 4) {
+      if (Math.abs(keep[i] - buf[i]) + Math.abs(keep[i + 1] - buf[i + 1]) + Math.abs(keep[i + 2] - buf[i + 2]) > 24) nd++;
+    }
+    const hs = d._headwearSprite;
+    /* v2.3.3883: the whole bro's pixels -- the frame drawn without him and
+       with him, read in his box, and the pixels that differ counted */
+    let bro = null;
+    if (d.visible) {
+      const bb = d.getBounds();
+      const bx0 = Math.max(0, Math.floor(bb.minX * res)), bx1 = Math.min(W2, Math.ceil(bb.maxX * res));
+      const by0 = Math.max(0, Math.floor(bb.minY * res)), by1 = Math.min(H2, Math.ceil(bb.maxY * res));
+      const bw = bx1 - bx0, bh = by1 - by0;
+      if (bw > 1 && bh > 1) {
+        const withHim = new Uint8Array(bw * bh * 4), without = new Uint8Array(bw * bh * 4);
+        gl.readPixels(bx0, H2 - by1, bw, bh, gl.RGBA, gl.UNSIGNED_BYTE, withHim);
+        d.visible = false;
+        try { app.render(); gl.readPixels(bx0, H2 - by1, bw, bh, gl.RGBA, gl.UNSIGNED_BYTE, without); } finally { d.visible = true; }
+        app.render();
+        bro = 0;
+        for (let i = 0; i < withHim.length; i += 4) {
+          if (Math.abs(withHim[i] - without[i]) + Math.abs(withHim[i + 1] - without[i + 1]) + Math.abs(withHim[i + 2] - without[i + 2]) > 24) bro++;
+        }
+      }
+    }
+    return { vis: true, n, nd, bro, box: [x0, y0, w, h], mask: !!sp.mask, dir: d._animDir, pose: d._animPose, hat: hs ? (hs.visible ? 'drawn' : 'hidden:' + hs._btHide) : 'none' };
   } catch (e) { return { err: String(e && e.message || e) }; }
 }, HAIR_T);
+
+/* v2.3.3883: for the restore's before and after, two readings a moment
+   apart and the most each counted (a restore that left a piece undrawn
+   leaves it so in both; one jog frame can read low on its own) */
+async function readBest(P) {
+  const a = await hairPixels(P);
+  await P.page.waitForTimeout(150);
+  const b = await hairPixels(P);
+  if (!a || !a.vis) return b;
+  if (!b || !b.vis) return a;
+  return { ...a, nd: Math.max(a.nd || 0, b.nd || 0), bro: Math.max(a.bro || 0, b.bro || 0), hat: a.hat === 'drawn' && b.hat === 'drawn' ? 'drawn' : (a.hat !== 'drawn' ? a.hat : b.hat), mask: a.mask && b.mask };
+}
 
 /* LH_REPEAT readings, a frame apart: the least one (a flicker is one frame), and all of them */
 async function readMin(P) {
@@ -83,13 +135,20 @@ async function readMin(P) {
   const all = [];
   for (let i = 0; i < REPEAT; i++) {
     const r = await hairPixels(P);
-    all.push(r && r.vis ? r.n : (r ? 'hidden:' + r.why : '?'));
-    if (!least || !r || !r.vis || (least.vis && r.n < least.n)) least = r;
+    all.push(r && r.vis ? r.nd : (r ? 'hidden:' + r.why : '?'));
+    if (!least || !r || !r.vis || (least.vis && r.nd < least.nd)) least = r;
     if (REPEAT > 1) await P.page.waitForTimeout(120);
   }
   if (least && REPEAT > 1) least.all = all;
   return least;
 }
+
+/* v2.3.3883: with LH_CTX the first hat is worn from the start, so the
+   character's record on the worker holds it: the rebuild after a loss joins
+   again and puts the record's look back on (applyCharacterRecord), and the
+   QA setter used for the other hats never tells the worker -- a test hat
+   worn only through it came off at the rejoin, a test's fault, not the game's */
+const INIT_HAT = process.env.LH_INITHAT || (process.env.LH_CTX ? HATS[0] : 'none');
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
@@ -99,7 +158,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const V = VIEWS[vname];
     const P = await H.newPlayer(browser, {
       name: 'Longhair' + vname, wsPort, webPort, world: 'wheel', ...V, query: 'headframes' + (process.env.LH_QUERY ? '&' + process.env.LH_QUERY : ''),
-      init: `try { localStorage.setItem('bt-hair', 'long'); localStorage.setItem('bt-headwear', ${JSON.stringify(process.env.LH_INITHAT || 'none')}); localStorage.setItem('bt-facialhair', 'none'); localStorage.setItem('bt-eyewear', 'none');`
+      init: `try { localStorage.setItem('bt-hair', 'long'); localStorage.setItem('bt-headwear', ${JSON.stringify(INIT_HAT)}); localStorage.setItem('bt-facialhair', 'none'); localStorage.setItem('bt-eyewear', 'none');`
         + (process.env.LH_HATCOLOR ? ` localStorage.setItem('bt-hatcolor', ${JSON.stringify(process.env.LH_HATCOLOR)});` : '')
         + (process.env.LH_CAPE ? ` localStorage.setItem('bt_cape', ${JSON.stringify(process.env.LH_CAPE)});` : '') + ' } catch (e) {}',
     });
@@ -131,6 +190,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
         });
         await P.page.screenshot({ path: join(OUT, `longhairhat-${vname}${process.env.LH_TAG ? '-' + process.env.LH_TAG : ''}-${name}.png`), clip: { x: Math.max(0, pos.x - 45), y: Math.max(0, pos.y - 110), width: 90, height: 120 } }).catch(() => {});
       };
+      /* v2.3.3883: where the bro stands and how his body is drawn; and a walk
+         back to a spot.  Each hat's readings start from where that hat's
+         readings started before the loss: the jogs do not cancel out (the
+         Town Hall stops a jog north), so by the last hat the bro has drifted
+         to its door, and a reading compared with one taken elsewhere
+         compares the ground behind him (the door's wood is the hair's brown;
+         a jog north into the doorway hides the bro) */
+      const where = () => P.page.evaluate(() => {
+        const S = window._gameState.current, R = window._pixiRenderer, d = R && R.playerDisplayRaw && R.playerDisplayRaw();
+        const b = d && d._body, bb = b && b.getBounds();
+        return { x: Math.round(S.player.x), y: Math.round(S.player.y), zone: S.currentZone, shown: !!(d && d.visible && b && b.visible),
+          tex: b && b.texture ? [b.texture.width, b.texture.height, !!(b.texture.source && b.texture.source.destroyed)] : (b ? 'kids:' + (b.children || []).length : null), box: bb ? [Math.round(bb.minX), Math.round(bb.minY), Math.round(bb.width), Math.round(bb.height)] : null };
+      }).catch((e) => ({ err: String(e) }));
+      const walkTo = async (to) => {
+        if (!to || !isFinite(to.x)) return null;
+        for (let step = 0; step < 80; step++) {
+          const at = await where();
+          const dx = to.x - at.x, dy = to.y - at.y;
+          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) break;
+          const keys = [];
+          if (dx > 4) keys.push('d'); else if (dx < -4) keys.push('a');
+          if (dy > 4) keys.push('s'); else if (dy < -4) keys.push('w');
+          for (const k of keys) await P.page.keyboard.down(k);
+          await P.page.waitForTimeout(Math.min(400, 40 + Math.max(Math.abs(dx), Math.abs(dy)) * 2));
+          for (const k of keys) await P.page.keyboard.up(k);
+        }
+        await P.page.waitForTimeout(400);
+        return where();
+      };
+      const CTX_ROUNDS = process.env.LH_CTX ? Math.max(1, Math.min(4, +process.env.LH_CTX || 1)) : 0;
       /* each hat, each facing, standing and jogging: the hair's pixels */
       const table = {};
       for (const hat of ['none', ...HATS]) {
@@ -149,17 +238,171 @@ export async function run({ browser, wsPort, webPort, rec }) {
           table[hat][face] = { jog, stand };
         }
       }
-      /* under each hat against bare-headed, the same facing and pose */
+      /* v2.3.3865: LH_CTX -- the graphics lost and given back, as the iPhone's
+         black-screen recovery does, then each hat's back facings read again */
+      /* v2.3.3883: LH_CTX=2, twice -- and the chip's textures counted at the
+         end of each round, in the same state (nothing may pile up per loss) */
+      const texCounts = [];
+      /* v2.3.3883: a round's readings, each hat from the same spot: before
+         the loss and after it, back to back, the same moves from the same
+         place (the table above, taken minutes earlier, is not: the jogs drift
+         the bro, and what is behind him changes) */
+      const readRound = async (spot, tag) => {
+        const t = {};
+        for (const hat of HATS) {
+          await P.page.evaluate((h) => window.__btSetHeadwear(h), hat);
+          await walkTo(spot);
+          await P.page.waitForTimeout(1100);
+          t[hat] = {};
+          for (const face of Object.keys(FACINGS)) {
+            const keys = FACINGS[face];
+            for (const k of keys) await P.page.keyboard.down(k);
+            await P.page.waitForTimeout(700);
+            const jog = await readBest(P);
+            if (face === 'north') await shot(`${hat}-${face}-jog-${tag}`);
+            for (const k of keys) await P.page.keyboard.up(k);
+            await P.page.waitForTimeout(600);
+            t[hat][face] = { jog, stand: await readBest(P) };
+          }
+        }
+        return t;
+      };
+      for (let round = 1; round <= CTX_ROUNDS; round++) {
+        const spot = await where();
+        const pre = await readRound(spot, `before-loss${round}`);
+        await walkTo(spot);
+        const wasAt = await where();
+        const lost = await P.page.evaluate(() => {
+          const c = document.querySelector('canvas');
+          const gl = c && (c.getContext('webgl2') || c.getContext('webgl'));
+          const ext = gl && gl.getExtension('WEBGL_lose_context');
+          if (!ext) return false;
+          ext.loseContext();
+          setTimeout(() => { try { ext.restoreContext(); } catch (e) { /* gone */ } }, 800);
+          return true;
+        }).catch(() => false);
+        /* LH_CTXWATCH: second by second after the loss, the hair, hat and
+           mask's pictures under the first hat, facing northeast */
+        if (process.env.LH_CTXWATCH) {
+          await P.page.evaluate((h) => window.__btSetHeadwear(h), HATS[0]);
+          await P.page.keyboard.down('w'); await P.page.keyboard.down('d');
+          await P.page.waitForTimeout(300);
+          await P.page.keyboard.up('w'); await P.page.keyboard.up('d');
+          for (let i = 0; i < +(process.env.LH_CTXWATCH); i++) {
+            const r = await hairPixels(P);
+            const st = await P.page.evaluate(() => {
+              const R = window._pixiRenderer, d = R && R.playerDisplayRaw && R.playerDisplayRaw();
+              const rr = R && R.app && R.app.renderer;
+              const srcOf = (sp) => {
+                const s = sp && sp.texture && sp.texture.source;
+                if (!s) return null;
+                const res = s.resource;
+                return { lbl: String(s.label || '').slice(-40), vis: !!sp.visible, why: sp._btHide, tw: sp.texture.width, dir: d._animDir, pose: d._animPose, w: s.pixelWidth, dead: !!s.destroyed,
+                  res: res ? (res.tagName || res.constructor && res.constructor.name) + (res.width != null ? ':' + res.width + 'x' + res.height : '') + (res.complete === false ? ':loading' : '') : null,
+                  gpu: !!(rr && s._gpuData && s._gpuData[rr.uid]), once: !!s.__btOnce, look: !!s._btLook };
+              };
+              return { worn: localStorage.getItem('bt-headwear'), ren: rr && rr.uid, lost: rr && rr.gl && rr.gl.isContextLost(), hair: srcOf(d && d._hairSprite), hat: srcOf(d && d._headwearSprite), mask: srcOf(d && d._hairMask),
+                body: srcOf(d && d._body), once: window.__btPicsOnce && window.__btPicsOnce() };
+            }).catch((e) => ({ err: String(e) }));
+            console.log(`      +${i}s hair ${r && r.vis ? r.n : JSON.stringify(r)} ${JSON.stringify(st).slice(0, 900)}`);
+            await P.page.waitForTimeout(1000);
+          }
+        }
+        await P.page.waitForTimeout(8000);
+        /* what the count saw through the restore: pieces not drawn and why,
+           frames with no bro, and the look palette's own state */
+        const diag = await P.page.evaluate(() => ({
+          head: window.__btHeadCount ? window.__btHeadCount() : null,
+          pal: window.__btLookPalette ? window.__btLookPalette() : null,
+        })).catch((e) => ({ err: String(e) }));
+        const hc = diag && diag.head;
+        console.log(`    [${vname}] through the restore: ${hc ? `${hc.frames} frames, ${hc.missed} piece-frames missing ${JSON.stringify(hc.byWhy)}, ${hc.bodyGone} with no bro ${JSON.stringify(hc.goneBy)}` : 'no count'}`);
+        if (hc) for (const l of hc.log.slice(-6)) console.log('      miss: ' + JSON.stringify(l));
+        if (hc) for (const l of (hc.goneLog || []).slice(0, 4)) console.log('      gone: ' + JSON.stringify(l));
+        console.log('      look palette: ' + JSON.stringify(diag && diag.pal).slice(0, 400));
+        console.log(`      the bro before the loss ${JSON.stringify(wasAt)}, after ${JSON.stringify(await where())}`);
+        const post = await readRound(spot, `after-loss${round}`);
+        const after = [];
+        for (const hat of HATS) {
+          for (const face of Object.keys(FACINGS)) {
+            for (const pose of ['jog', 'stand']) {
+              const was = pre[hat][face][pose], r = post[hat][face][pose];
+              /* the hair's own pixels (nd), where it shows at all */
+              const share = was && was.vis && was.nd > 40 ? ((r && r.vis ? r.nd : 0) / was.nd) : null;
+              const broShare = was && was.bro ? ((r && r.bro) || 0) / was.bro : null;
+              after.push({ hat, face, pose, before: was && was.vis ? was.nd : 'hidden', after: r && r.vis ? r.nd : 'hidden:' + (r && r.why), clip: r && r.mask, share, hatShown: r && r.hat,
+                bro: `${was && was.bro} -> ${r && r.bro}`, broShare });
+            }
+          }
+        }
+        console.log(`    [${vname}] after the graphics were lost (round ${round}, ${lost ? 'lost and given back' : 'NOT LOST'}), against before:\n      `
+          + after.map((a) => `${a.hat} ${a.face} ${a.pose}: hair ${a.before} -> ${a.after}${a.clip ? ', clipped' : ', NOT CLIPPED'}${a.share != null ? ` (${Math.round(a.share * 100)}%)` : ''}, the hat ${a.hatShown}, the bro ${a.bro}`).join('\n      '));
+        /* the hair where it shows bare-headed (from the front a short fringe
+           reads a few pixels either way) */
+        /* a reading short of its before is read again, on its own, from the
+           spot: a piece the restore left undrawn stays short; one reading
+           that caught a passing frame does not (one in about fifty did, the
+           same before the loss as after it, palette on or off) */
+        const short = (a) => (a.share != null && a.share < 0.5) || a.hatShown !== 'drawn' || a.broShare == null || a.broShare < 0.7;
+        for (const a of after.filter(short)) {
+          await P.page.evaluate((h) => window.__btSetHeadwear(h), a.hat);
+          await walkTo(spot);
+          await P.page.waitForTimeout(800);
+          const keys = FACINGS[a.face];
+          for (const k of keys) await P.page.keyboard.down(k);
+          await P.page.waitForTimeout(700);
+          let r = a.pose === 'jog' ? await readBest(P) : null;
+          for (const k of keys) await P.page.keyboard.up(k);
+          if (a.pose === 'stand') { await P.page.waitForTimeout(600); r = await readBest(P); }
+          const was = pre[a.hat][a.face][a.pose];
+          a.again = `hair ${r && r.nd}, bro ${r && r.bro}, the hat ${r && r.hat}`;
+          a.share = was && was.vis && was.nd > 40 ? ((r && r.vis ? r.nd : 0) / was.nd) : null;
+          a.broShare = was && was.bro ? ((r && r.bro) || 0) / was.bro : null;
+          a.hatShown = r && r.hat;
+        }
+        for (const a of after.filter((x) => x.again)) console.log(`      read again: ${a.hat} ${a.face} ${a.pose}: ${a.again}`);
+        const lostHair = after.filter((a) => a.share != null && a.share < 0.5);
+        const lostHat = after.filter((a) => a.hatShown !== 'drawn');
+        const lostBro = after.filter((a) => a.broShare == null || a.broShare < 0.7);
+        /* (the hair and the bro as drawn before the loss and after it, from
+           the same spot with the same moves: a figure the restore left
+           undrawn reads near nothing, the ground behind him counts for
+           neither) */
+        rec.ok(`${vname}: round ${round}: after the graphics were lost and given back, each hat is drawn in every facing (${lostHat.length} not)`, !!lost && lostHat.length === 0, lostHat.slice(0, 8));
+        rec.ok(`${vname}: round ${round}: after the graphics were lost and given back, the long hair under each hat keeps at least half its pixels in every facing (${lostHair.length} short)`,
+          !!lost && lostHair.length === 0, lostHair.slice(0, 8));
+        rec.ok(`${vname}: round ${round}: after the graphics were lost and given back, the whole bro is drawn in every facing (at least 70% of his pixels before; ${lostBro.length} short)`,
+          !!lost && lostBro.length === 0, lostBro.slice(0, 8));
+        texCounts.push(await P.page.evaluate(() => {
+          const r = window._pixiRenderer && window._pixiRenderer.app && window._pixiRenderer.app.renderer;
+          const t = r && r.texture;
+          const pal = window.__btLookPalette ? window.__btLookPalette() : {};
+          return { textures: t && t.managedTextures ? t.managedTextures.length : null, looks: pal.looks, rows: pal.rows, remade: pal.remade, remadeInFrame: pal.remadeInFrame,
+            heapMB: performance.memory ? +(performance.memory.usedJSHeapSize / 1048576).toFixed(1) : null };
+        }).catch(() => null));
+        console.log(`    [${vname}] round ${round}: on the chip ${JSON.stringify(texCounts[texCounts.length - 1])}`);
+      }
+      if (texCounts.length >= 2) {
+        const a = texCounts[0], b = texCounts[texCounts.length - 1];
+        const grew = a && b && a.textures != null ? b.textures - a.textures : null;
+        rec.ok(`${vname}: nothing piles up across ${texCounts.length} losses (the chip's textures ${a && a.textures} after the first, ${b && b.textures} after the last: at most 5% more)`,
+          grew != null && grew <= Math.max(5, Math.ceil(a.textures * 0.05)), texCounts);
+      }
+
+      /* under each hat against bare-headed, the same facing and pose (v2.3.3883:
+         the hair's own pixels, nd -- its colour counted in its box counted the
+         ground behind it too, and the jogs drift the bro from one reading's
+         ground to the next's) */
       const bad = [];
       const rows = [];
       for (const hat of HATS) {
         for (const face of Object.keys(FACINGS)) {
           for (const pose of ['jog', 'stand']) {
             const bare = table.none[face][pose], hatted = table[hat][face][pose];
-            if (!bare || !bare.vis || !(bare.n > 20)) continue;   /* the hair does not show here bare-headed (from the front, a short fringe) */
-            const share = hatted && hatted.vis ? (hatted.n || 0) / bare.n : 0;
-            rows.push(`${hat} ${face} ${pose}: ${hatted && hatted.vis ? hatted.n : 'hidden'} / ${bare.n} (${Math.round(share * 100)}%)${hatted && hatted.vis ? (hatted.mask ? ', clipped to the hat' : ', NOT CLIPPED') : ''}${hatted && hatted.all ? ' [' + hatted.all.join(' ') + ']' : ''}`);
-            if (share < LH_MIN) bad.push({ hat, face, pose, n: hatted && hatted.n, bare: bare.n, hatted });
+            if (!bare || !bare.vis || !(bare.nd > 40)) continue;   /* the hair does not show here bare-headed (from the front, a short fringe) */
+            const share = hatted && hatted.vis ? (hatted.nd || 0) / bare.nd : 0;
+            rows.push(`${hat} ${face} ${pose}: ${hatted && hatted.vis ? hatted.nd : 'hidden'} / ${bare.nd} (${Math.round(share * 100)}%)${hatted && hatted.vis ? (hatted.mask ? ', clipped to the hat' : ', NOT CLIPPED') : ''}${hatted && hatted.all ? ' [' + hatted.all.join(' ') + ']' : ''}`);
+            if (share < LH_MIN) bad.push({ hat, face, pose, n: hatted && hatted.nd, bare: bare.nd, hatted });
           }
         }
       }
