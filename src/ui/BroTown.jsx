@@ -56,6 +56,7 @@ import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import TimedBanner from './TimedBanner.jsx';   /* v2.3.3839: the warning / stat banner's own clock */
+import MayorGateCard from './MayorGateCard.jsx';   /* v2.3.3839: "Speak to Mayor Bro first", while you lean on the gate */
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { trackedFirst, onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track */
@@ -13563,6 +13564,8 @@ export var BroTown = function BroTown(_ref0) {
      kind filter moves inside pushLevelUpBurst, where 'warning' and the bare
      T1 stat kinds are rejected and fall through to the banner below. */
   /*#__PURE__*/React.createElement(LevelUpBurstStack, { msg: levelUpMsg }),
+  /* v2.3.3839: the Mayor gate's reason, while you lean on it (MayorGateCard.jsx) */
+  /*#__PURE__*/React.createElement(MayorGateCard, { stateRef: stateRef }),
   /* v2.3.2615: 'char' joins 'combat' and 'life' as a kind the STACK owns — it
      is the character-level notification, and it wears the character's portrait
      in the medallion (levelUpIcons.levelUpMedallionSrc). */
@@ -13612,14 +13615,7 @@ export var BroTown = function BroTown(_ref0) {
     style: {
       textAlign: 'center',
       transform: "translateY(".concat(Math.max(0, 30 - (Date.now() - levelUpMsg.ts) / 1000 * 40), "px) scale(").concat(Math.min(1.1, 0.8 + (Date.now() - levelUpMsg.ts) / 3000), ")"),
-      /* v2.3.3839: a warning HOLDS -- in in a quarter second, full until its
-         last 0.7 s: "Speak to Mayor Bro first" faded from the moment it came,
-         and was faint for most of its life; the gate says it again every
-         2.5 s you lean on it, so it stays up while you do */
-      opacity: Date.now() - levelUpMsg.ts >= 3500 ? 0
-        : levelUpMsg.kind === 'warning'
-          ? Math.min(1, (Date.now() - levelUpMsg.ts) / 250) * Math.min(1, (3500 - (Date.now() - levelUpMsg.ts)) / 700)
-          : Math.min(1, (Date.now() - levelUpMsg.ts) / 400) * Math.max(0, 1 - (Date.now() - levelUpMsg.ts) / 3500)
+      opacity: Date.now() - levelUpMsg.ts < 3500 ? Math.min(1, (Date.now() - levelUpMsg.ts) / 400) * Math.max(0, 1 - (Date.now() - levelUpMsg.ts) / 3500) : 0
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {

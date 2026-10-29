@@ -17,7 +17,9 @@ import React from 'react';
  * The level-up burst met the same mistake in v2.3.2615 and drives itself off
  * its own animation frame (LevelUpBurstStack); this does the same for the
  * banner: while `msg` is younger than `ms`, it re-renders itself each frame
- * and calls `render`, which reads Date.now() as before; after, nothing. */
+ * and calls `render`, which reads Date.now() as before; after, nothing.  (The
+ * Mayor gate itself says why on its own card now, MayorGateCard.jsx; the
+ * banner still carries the other warnings and the stat ticks.) */
 export default function TimedBanner({ msg, ms, render }) {
   const [, setTick] = React.useState(0);
   const ts = msg && msg.ts;

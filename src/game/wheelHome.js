@@ -174,17 +174,17 @@ export function wheelCommonsGate(S) {
   P.x = cx + (dx / d) * lim;
   P.y = cy + (dy / d) * lim;
   P.vx = 0; P.vy = 0;
+  /* ═══ v2.3.3839: THE REASON, ON A CARD, WHILE YOU LEAN ON IT ═══
+     The owner met this gate on a laptop as "an invisible wall" (on the
+     skateboard; on foot the same): its "Speak to Mayor Bro first" was the
+     red DANGER banner, which froze almost clear on a quick computer and
+     faded in and out every 2.5 s besides.  Every frame you lean on the gate
+     now marks the time, and ui/MayorGateCard.jsx shows a plain card while you
+     do and a moment after.  The tick is still heard (once in 2.5 s). */
+  S._mayorGateLeanAt = Date.now();
   if (!S._mayorGateAt || Date.now() - S._mayorGateAt > 2500) {
     S._mayorGateAt = Date.now();
     S._wheelGateHits = (S._wheelGateHits || 0) + 1;   /* QA readout (mp-wheelhome) */
     cue('denied');   /* v2.3.3462: the gate is heard (the owner's "denied" tick) */
-    if (typeof window !== 'undefined' && typeof window._setLevelUpMsg === 'function') {
-      window._setLevelUpMsg({
-        kind: 'warning',
-        text: 'Speak to Mayor Bro first',
-        sub: "He's beside the Town Hall — he'll arm you",
-        ts: Date.now(),
-      });
-    }
   }
 }

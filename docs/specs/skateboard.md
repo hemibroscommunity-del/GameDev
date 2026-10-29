@@ -158,8 +158,9 @@ added to their figure when they get on and destroyed when they get off.
   - (v2.3.3791) the roll heard while the computer's rider rolls, silent at once
     and stopped after Z takes them off.
   - (v2.3.3839) the computer's new character rides D into the Mayor gate
-    (below), held inside and the warning seen; the first quest taken, the same
-    ride rolls out, off the board with its line.
+    (below): held inside, still on the board, the card up the whole time and
+    no DANGER banner; the first quest taken, the same ride rolls out, off the
+    board with its line; the phone upright shows the same card.
 - `sound-cues` §20: the loop's file, level and length, never in
   `SFX_MANIFEST`, its source kept, its studio row and its credit, and
   `rideSound.js` ticked by the game loop.
@@ -182,13 +183,16 @@ on the board, and the board's step-off line is the edge itself, so the board
 stays on. The same on a phone. Once the first quest is taken, the board rolls
 out and puts you off with "Off the board: boards stay in BroTown.", as before.
 
-The gate does say why ("Speak to Mayor Bro first / He's beside the Town Hall --
-he'll arm you"), but its banner was never seen: its fade was worked out once,
-when the game happened to redraw, a few ms after it was set, so on a quick
-computer it froze almost clear (about 0.04) until the next message. It keeps
-its own clock now (`ui/TimedBanner.jsx`, as the level-up burst does), and a
-warning holds at full strength instead of fading from the moment it comes:
-in a quarter second, full, out over its last 0.7 s. The gate says it again
-every 2.5 s you lean on it, so it stays up while you do.
+The gate said why, but on the red "DANGER" banner, which a quick computer drew
+almost clear (its fade was worked out once, when the game happened to redraw,
+a few ms after it was set; `ui/TimedBanner.jsx` now gives that banner its own
+clock) and which came and went every 2.5 s. The gate (its clamp, its "denied"
+tick, the owner's rule) stays as it was; its reason is a plain card now, in
+the coach card's look, at the top of the world: "Speak to Mayor Bro first /
+He's beside the Town Hall: he'll arm you" (`ui/MayorGateCard.jsx`), up while
+you lean on the gate and 1.5 s after, so it never flickers, on a computer and
+on phones alike. The DANGER banner no longer comes for it. A rider is not put
+off the board at the gate: the board is allowed in town.
 
-![the Mayor gate on a computer, the board held and the reason shown](skateboard/mayor-gate-computer.png)
+![the Mayor gate on a computer, before and after](skateboard/mayor-gate-computer.png)
+![the same card on a phone held upright](skateboard/mayor-gate-phone.png)
