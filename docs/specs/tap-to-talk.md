@@ -79,7 +79,7 @@ itself are not moved here, so they no longer reach the townsperson:
 `mp-figureseam`. They run only by hand. Each needs a tap (`H.talkToNpc`) when
 it is moved to the world.
 
-## v2.3.3816: E does what the prompt on the screen says
+## v2.3.3834: E does what the prompt on the screen says
 
 The judge pass (2026-10-29), on a computer: at the Town Hall's door with
 Mayor Bro beside it, his quest under way, the prompt read **E  ENTER TOWN

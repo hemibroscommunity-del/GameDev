@@ -15,7 +15,7 @@
  *   4. closed while standing there, it stays closed;
  *   5. the right stick's tap opens it;
  *   6. E on a keyboard opens it, his quest coming before a door (desktopControls
- *      questWaits) -- v2.3.3816: except where the door's prompt is up, where E
+ *      questWaits) -- v2.3.3834: except where the door's prompt is up, where E
  *      does what that prompt says (the judge pass: "E ENTER TOWN HALL" talked
  *      to the Mayor); so 6 finds a spot beside him with no door prompt (E
  *      talks) and, where there is one, a spot with it up (E opens the door);
@@ -165,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
 
   /* ── 6. E on a keyboard: his quest before a door, but never over the
-        door's own prompt (v2.3.3816) ── */
+        door's own prompt (v2.3.3834) ── */
   /* the door's prompt is up where desktopControls' doorPromptUp says so */
   const promptUp = () => P.page.evaluate(() => {
     const S = window._gameState && window._gameState.current;

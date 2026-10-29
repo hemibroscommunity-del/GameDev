@@ -47,7 +47,7 @@ function dblTapOn() {
 export function interactKind(S, opts) {
   if (!S) return null;
   if (opts && opts.npcFirst && S._nearNpc) return 'talk';   /* the right stick's order (runInteract) */
-  if (questWaits(S) && !doorPromptUp(S)) return 'talk';   /* v2.3.3583: E's order too (runInteract); v2.3.3816: not over the door's prompt */
+  if (questWaits(S) && !doorPromptUp(S)) return 'talk';   /* v2.3.3583: E's order too (runInteract); v2.3.3834: not over the door's prompt */
   if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) return 'door';
   if (S._nearHouse) return 'sleep';
   if (S._nearWorkshop || S._nearWheelDoor || S._nearPetHouse) return 'door';
@@ -76,7 +76,7 @@ function questWaits(S) {
   try { return !!getNpcQuest(S.rpg, npc.name); } catch (e) { return false; }
 }
 
-/* ═══ v2.3.3816: E DOES WHAT THE PROMPT ON THE SCREEN SAYS ═══
+/* ═══ v2.3.3834: E DOES WHAT THE PROMPT ON THE SCREEN SAYS ═══
    The judge pass (2026-10-29): at the Town Hall's door, Mayor Bro beside it,
    the prompt read "E  ENTER TOWN HALL" and E talked to the Mayor instead --
    v2.3.3583 put a townsperson with a quest before a door, for a keyboard that
@@ -167,7 +167,7 @@ export function setupDesktopControls(S, deps) {
          first would never let the stick's tap reach them */
       if (opts && opts.npcFirst && S._nearNpc && runTalk()) return true;
       /* v2.3.3583: and E for a townsperson with a quest for you (questWaits) */
-      /* v2.3.3816: ...unless the door's prompt is up: then E is the door, as it says */
+      /* v2.3.3834: ...unless the door's prompt is up: then E is the door, as it says */
       if (questWaits(S) && !doorPromptUp(S) && runTalk()) return true;
       /* 1. Building (v2.3.3066: or a Wheel hall's door) */
       if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) {

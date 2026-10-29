@@ -1,4 +1,4 @@
-/* ═══ E DOES WHAT THE PROMPT SAYS; THE BOARD'S BUTTON; A CLICK ON A PLAYER (v2.3.3816) ═══
+/* ═══ E DOES WHAT THE PROMPT SAYS; THE BOARD'S BUTTON; A CLICK ON A PLAYER (v2.3.3834) ═══
  *
  * From the judge pass of 2026-10-29 (a judge's first twenty minutes, on a
  * computer), the three items the orchestrator gave lane A:
