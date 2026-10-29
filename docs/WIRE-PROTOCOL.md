@@ -847,6 +847,14 @@ petLootCount quest tally. Client vacuum requests are gated on
 `caps.petLoot`; absent it, the legacy self-credit vacuum stays (old
 workers would out-of-range-reject the wide pickup).
 
+**The pet's fetch (v2.3.3806, caps.petfetch):** no new message types. The
+same `loot_pickup {viaPet: true}` reaches `PETS.FETCH_RANGE` (600 px from the
+owner) for a monster pile the sender is a recipient of; a death drop or a
+dropped item keeps `VACUUM_RANGE` (240). The phone's pet runs to such a pile
+up to 450 px from you and asks from there (docs/specs/pet-fetch.md).
+`petfetch: false` in the live flags un-advertises the cap and puts every pile
+back on 240.
+
 ## Known quirks (documented, deliberately not "fixed" here)
 
 - ~~Duplicate `case 'arena_bet'` in `_processGameEvent`~~ — FIXED

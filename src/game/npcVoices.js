@@ -42,6 +42,21 @@ export const VOICE_OF = Object.freeze({
   'Beastmaster Bro': [2, 0.94],
   'Woodworker Bro': [1, 0.92],   /* v2.3.3525: the tour's two new townsfolk */
   'Farmer Bro': [3, 0.88],
+  /* v2.3.3833: the new cast (docs/specs/npc-cast.md): each his own hum and
+     pitch, the old men low, Bean a kid's high hum */
+  'Sterling': [0, 1.0],
+  'Slim': [1, 0.86],
+  'Chef Blaze': [3, 1.04],
+  'Glint': [4, 0.96],
+  'Postmaster Pete': [2, 0.78],
+  'Deed Dave': [0, 0.94],
+  'Benny': [4, 1.08],
+  'Guildmaster Gary': [1, 1.0],
+  'Sheriff Buck': [2, 0.9],
+  'Gavel Greg': [3, 0.82],
+  'Old Man Reel': [1, 0.76],
+  'Bean': [4, 1.3],
+  'Tourist Terry': [0, 1.12],
 });
 /* v2.3.3664: whose voice is his own recording, not one of the hums */
 export const LIL_BRO = 'Lil Bro';

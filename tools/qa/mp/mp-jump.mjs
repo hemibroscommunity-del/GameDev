@@ -185,6 +185,9 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
     if (!L.btn || !L.disc) return { ok: false, why: 'no button or disc', L };
     const cx = (L.btn.l + L.btn.r) / 2, dcx = (L.disc.l + L.disc.r) / 2;
     const hits = L.others.filter((o) => overlap(L.btn, o));
+    const cy = (L.btn.t + L.btn.b) / 2, dcy = (L.disc.t + L.disc.b) / 2;
+    const ang = Math.round(Math.atan2(cy - dcy, dcx - cx) * 180 / Math.PI);   /* v2.3.3799: 0 west, 90 south */
+    const ring = Math.round(Math.hypot(cx - dcx, cy - dcy) - L.btn.w / 2 - (L.disc.r - L.disc.l) / 2);
     const bandTop = L.vh - L.dashH;
     /* v2.3.3018: the arrow, centred and no wider than the face inside the
        gold ring (mp-sprint's test of its boot) -- the word it replaced had to
@@ -199,15 +202,18 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
          its foot level with the disc's (the owner: "move the contextual
          button slightly down and to the right more.  Move the jump button
          more to the left"; ShieldButton jumpAnchor) */
-      ok: L.btn.w >= 44 && L.btn.h >= 44 && (upright
-        ? L.disc.l - L.btn.r >= 16 && Math.abs(L.btn.b - L.disc.b) <= 4
-        : Math.abs(cx - dcx) <= (L.disc.r - L.disc.l) / 4 && L.btn.t >= L.disc.b + 2) && L.btn.b <= bandTop - 8 && hits.length === 0 && inside,
-      size: Math.round(L.btn.w), centreOff: +(cx - dcx).toFixed(1), belowDisc: Math.round(L.btn.t - L.disc.b), leftOfDisc: Math.round(L.disc.l - L.btn.r), aboveBand: Math.round(bandTop - L.btn.b),
+      /* v2.3.3799: on the disc's ring, SOUTH-WEST of it (the owner: "It
+         should be positioned orbiting southwest of the large contextual
+         button"): its centre 45 deg +-20 below west of the disc's upright
+         (sideways between west and south), its circle 8-14 px off the disc's */
+      ok: L.btn.w >= 44 && L.btn.h >= 44 && (upright ? ang >= 25 && ang <= 65 : ang > 0 && ang < 90) && ring >= 8 && ring <= 14
+        && L.btn.b <= bandTop - 8 && hits.length === 0 && inside,
+      size: Math.round(L.btn.w), ang, ring, aboveBand: Math.round(bandTop - L.btn.b),
       hits, inside, pic: L.label ? { w: Math.round(L.label.w), face: Math.round(face), off: +picOff.toFixed(1) } : null,
     };
   };
   const l1 = lay(L1, true);
-  rec.ok(`upright, JUMP is left of the attack disc (${l1.leftOfDisc} px of air), its foot level with the disc's, ${l1.aboveBand} px above the dashboard, ${l1.size} px, on no other control, its arrow inside the ring`, l1.ok, l1);
+  rec.ok(`upright, JUMP orbits the attack disc south-west (${l1.ang} deg below west, ${l1.ring} px off its ring), ${l1.aboveBand} px above the dashboard, ${l1.size} px, on no other control, its arrow inside the ring`, l1.ok, l1);
   if (L1.btn) await shot(P, 'layout', { x: Math.max(0, L1.btn.l - 120), y: Math.max(0, L1.disc ? L1.disc.t - 20 : L1.btn.t - 160), width: 250, height: Math.min(380, L1.vh - Math.max(0, L1.disc ? L1.disc.t - 20 : L1.btn.t - 160)) });
 
   /* ── 2. a jump, where both players arrived ──
@@ -331,7 +337,7 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
 
   /* ── 3. in the air, the rest waits ──
      take off, and in the SAME turn of the page (its frames are ~200 ms
-     apart here) press again, roll (Space) and tap the attack zone */
+     apart here) press again, roll (X; Space until v2.3.3844) and tap the attack zone */
   await P.page.waitForTimeout(400);
   const waited = await P.page.evaluate(() => {
     const S = window._gameState.current;
@@ -346,8 +352,9 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
     tap(btn, 41, 0.5, 0.5);
     const midAir = { air: window.__btJumpBtn().air, count: window.__btJumpBtn().count, swing: S.swingTimer || 0 };
     tap(btn, 42, 0.5, 0.5);
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space', key: ' ', bubbles: true }));
-    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space', key: ' ', bubbles: true }));
+    /* v2.3.3844: the roll is X now (Space jumps) */
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyX', key: 'x', bubbles: true }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyX', key: 'x', bubbles: true }));
     const z = document.querySelector('[data-joyzone="R"]');
     if (z) tap(z, 52, 0.5, 0.4);
     return { midAir, air: window.__btJumpBtn().air, count: window.__btJumpBtn().count, why: window.__btJumpBtn().why, roll: !!S._dodgeRoll, swing: S.swingTimer || 0 };
@@ -454,20 +461,20 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
     const sw = await H.waitFor(P, (S) => !!(S._wheelSwim && S._wheelSwim.on), (v) => v === true, { timeout: 6000, label: 'swimming' }).catch(() => false);
     await P.page.waitForTimeout(400);
     const c0 = await P.page.evaluate(() => window.__btJumpBtn().count);
-    await P.page.keyboard.press('x');
+    await P.page.keyboard.press('Space');   /* v2.3.3844: Space jumps (was X) */
     await P.page.waitForTimeout(200);
     const inWater = await P.page.evaluate(() => ({ btn: window.__btJumpBtn(), shown: !!document.querySelector('[data-jump]') }));
-    rec.ok('in the water there is no JUMP button, and X does nothing ("swimming")', sw === true && !inWater.shown && !inWater.btn.shown && inWater.btn.count === c0 && inWater.btn.why === 'swimming', { sw, inWater });
+    rec.ok('in the water there is no JUMP button, and Space does nothing ("swimming")', sw === true && !inWater.shown && !inWater.btn.shown && inWater.btn.count === c0 && inWater.btn.why === 'swimming', { sw, inWater });
   }
 
-  /* ── X on a keyboard, on dry ground ── */
+  /* ── Space on a keyboard, on dry ground (v2.3.3844: was X) ── */
   {
     const c0 = await P.page.evaluate(() => window.__btJumpBtn().count);
     await travel(P, wsPort, myId, before.x, before.y);
     await P.page.waitForTimeout(800);
-    await P.page.keyboard.press('x');
-    const kx = await H.waitFor(P, () => window.__btJumpBtn(), (v) => v.air === true, { timeout: 3000, label: 'X' }).catch(() => null);
-    rec.ok('X on a keyboard jumps too', !!kx && kx.count === c0 + 1, kx);
+    await P.page.keyboard.press('Space');
+    const kx = await H.waitFor(P, () => window.__btJumpBtn(), (v) => v.air === true, { timeout: 3000, label: 'Space' }).catch(() => null);
+    rec.ok('Space on a keyboard jumps too', !!kx && kx.count === c0 + 1, kx);
     await H.waitFor(P, () => window.__btJumpBtn().air, (v) => v === false, { timeout: AIR_MS + 3000, label: 'down' }).catch(() => null);
   }
 
@@ -475,7 +482,7 @@ async function body({ P, Q, wsPort, rec, shot, errors }) {
   await P.page.setViewportSize(SIDEWAYS);
   await P.page.waitForTimeout(1500);
   const l2 = lay(await LAYOUT(P), false);
-  rec.ok(`sideways too: centred under the disc (${l2.centreOff} px), ${l2.belowDisc} px below it, ${l2.aboveBand} px above the dashboard, ${l2.size} px, on nothing`, l2.ok, l2);
+  rec.ok(`sideways too: south-west on the disc's ring (${l2.ang} deg below west, ${l2.ring} px off it), ${l2.aboveBand} px above the dashboard, ${l2.size} px, on nothing`, l2.ok, l2);
   await P.page.setViewportSize(PHONE);
 
   rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));

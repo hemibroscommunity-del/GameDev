@@ -174,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && col.groups.map((g) => g.head.toLowerCase()).join() === 'move,fight,other,menus', col && col.groups.map((g) => [g.id, g.head]));
     const allRows = col ? col.groups.flatMap((g) => g.rows) : [];
     /* v2.3.3711: the owner's layout -- Q the special, the combos, the wheel */
-    const want = ['WASD', 'Space', '2\u00d7WASD', 'X', 'Click', '2\u00d7Click', 'Q', 'Wheel', 'Tab', '1-3', 'E', 'B', 'C', 'H', 'Esc', 'I', 'P', 'J', 'L', 'K', 'O', 'M'];
+    const want = ['WASD', 'Space', 'X', '2\u00d7WASD', 'Click', '2\u00d7Click', 'Q', 'Wheel', 'Tab', '1-3', 'E', 'B', 'C', 'H', 'Esc', 'I', 'P', 'J', 'L', 'K', 'O', 'M'];
     rec.ok('...every key that always works listed, the menus\' letters too', want.every((k) => keysOf(col).includes(k)), keysOf(col));
     rec.ok('...every row on the screen, inside the column', !!col && onScreen(allRows, col.box.t, Math.min(col.box.b, DESK.height)),
       allRows.filter((r) => r.b > DESK.height || r.t < 0));
@@ -230,32 +230,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cvI = await box(P, 'canvas');
     const pagesI = await box(P, '.bt-land-sheet');
     const stripI = await box(P, '[data-desk-foldstrip]');
-    const chipI = await box(P, '[data-land-fold]');
-    const chipWord = await P.page.evaluate(() => { const c = document.querySelector('[data-land-fold]'); return c ? c.textContent.trim() : null; });
+    /* v2.3.3793 (the owner: "Also you can remove the 'open' button on desktop
+       since the arrow takes the place of that (redundant with both)"): no
+       OPEN on the folded strip; its fold hook (data-land-fold, which the
+       coach rings) and I's key cap are the arrow's */
+    const openWord = await P.page.evaluate(() => [...document.querySelectorAll('button')].some((b) => {
+      const r = b.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && b.textContent.trim() === 'OPEN';
+    }));
     await shot(P, '4-folded');
-    rec.ok('I with the bag open folds the pages away: the world starts after the fold chip\'s strip, the chip at its top saying OPEN, the controls stay',
-      !!sI && sI.mode === 'bar' && !pagesI && !!cvI && !!stripI && !!chipI
+    rec.ok('I with the bag open folds the pages away: the world starts after the strip, the strip the screen\'s height, no OPEN on it, the controls stay',
+      !!sI && sI.mode === 'bar' && !pagesI && !!cvI && !!stripI && !openWord
         && stripI.l <= 1 && Math.abs(stripI.w - FOLD_STRIP_W) <= 2 && stripI.t <= 1 && stripI.b >= DESK.height - 1
-        && Math.abs(cvI.l - FOLD_STRIP_W) <= 2 && chipI.l >= stripI.l && chipI.r <= stripI.r && chipI.t <= 10
-        && chipWord === 'OPEN' && !!(await box(P, '.bt-desk-keys')), { sI, cvI, stripI, chipI, chipWord });
+        && Math.abs(cvI.l - FOLD_STRIP_W) <= 2 && !!(await box(P, '.bt-desk-keys')), { sI, cvI, stripI, openWord });
     /* v2.3.3769 (the owner: "Make the left long strip black bar the same gray
        color as the top bar but have an arrow centered in the middle pointing
        towards the screen play area"): the strip in the top bar's grey, one
-       arrow at its middle pointing into the world, and a click anywhere on it
-       opens the dashboard */
+       arrow at its middle pointing into the world, and a click on it opens
+       the dashboard */
     const strip = await P.page.evaluate(() => {
       const r = document.querySelector('[data-desk-foldstrip]');
       const a = document.querySelector('[data-desk-foldstrip] [data-desk-foldarrow]');
       if (!r || !a) return null;
       const rb = r.getBoundingClientRect(), ab = a.getBoundingClientRect();
-      return { bg: getComputedStyle(r).backgroundColor, key: r.getAttribute('data-key'),
+      return { bg: getComputedStyle(r).backgroundColor, key: a.getAttribute('data-key'), fold: a.getAttribute('data-land-fold'),
+        x: Math.round((ab.left + ab.right) / 2), y: Math.round((ab.top + ab.bottom) / 2),
         midY: Math.round((ab.top + ab.bottom) / 2 - (rb.top + rb.bottom) / 2), midX: Math.round((ab.left + ab.right) / 2 - (rb.left + rb.right) / 2) };
     });
-    rec.ok(`...and the strip is the top bar's grey (${strip && strip.bg}) with an arrow at its middle (${strip && strip.midX}, ${strip && strip.midY} px off), wearing I`,
-      !!strip && strip.bg === 'rgb(21, 42, 52)' && Math.abs(strip.midY) <= 3 && Math.abs(strip.midX) <= 3 && strip.key === 'I', strip);
-    if (stripI) { await P.page.mouse.click(stripI.l + stripI.w / 2, Math.round(DESK.height * 0.6)); await P.page.waitForTimeout(900); }
+    rec.ok(`...and the strip is the top bar's grey (${strip && strip.bg}) with an arrow at its middle (${strip && strip.midX}, ${strip && strip.midY} px off), the arrow wearing I and the fold hook`,
+      !!strip && strip.bg === 'rgb(21, 42, 52)' && Math.abs(strip.midY) <= 3 && Math.abs(strip.midX) <= 3 && strip.key === 'I' && strip.fold === 'min', strip);
+    if (strip) { await P.page.mouse.click(strip.x, strip.y); await P.page.waitForTimeout(900); }
     const sS = await sheet(P);
-    rec.ok('...a click on the strip opens the dashboard', !!sS && sS.mode === 'expanded' && sS.root === 'dashboard', sS);
+    rec.ok('...a click on the arrow opens the dashboard', !!sS && sS.mode === 'expanded' && sS.root === 'dashboard', sS);
     await key(P, 'i', 900);
     /* v2.3.3769: every page but the dashboard's own ends in the three weapons */
     await key(P, 'j', 900);
@@ -337,5 +343,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...no page errors', lerr.length === 0, lerr.slice(0, 5));
   } finally {
     await L.ctx.close().catch(() => {});
+  }
+
+  /* ── 8. THE FIRST LESSON RINGS THE ARROW (v2.3.3793) ──
+     OPEN left the folded strip (the owner: "the arrow takes the place of
+     that"); the coach's "open the dashboard" lesson must ring the arrow and a
+     click there must answer it.  The arrow lets the click through to its
+     strip, so the lesson reaches the strip too -- without it the lesson was
+     skipped in silence (TRAPS 41; the 2026-10-29 review). */
+  const C = await H.newPlayer(browser, { name: 'Deskcoach', wsPort, webPort, viewport: DESK, world: 'wheel', wide: true });
+  const cerr = [];
+  C.page.on('pageerror', (e) => cerr.push(String((e && e.message) || e).slice(0, 200)));
+  try {
+    await H.enterWorld(C);
+    await H.waitFor(C, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),
+      (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'into the Wheel' }).catch(() => null);
+    await H.pastWelcome(C).catch(() => {});
+    await C.page.waitForTimeout(1500);
+    /* folded, as the lesson wants it (a computer opens the column once a load) */
+    const s0 = await sheet(C);
+    if (s0 && s0.mode === 'expanded') await key(C, 'i', 900);
+    const lesson = async () => C.page.evaluate(() => {
+      const el = document.querySelector('[data-coach]');
+      if (!el) return null;
+      const bx = (n) => { if (!n) return null; const r = n.getBoundingClientRect(); return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2, w: r.width }; };
+      const a = document.querySelector('[data-desk-foldarrow]');
+      const card = el.querySelector('[data-coach-card]');
+      return { id: el.getAttribute('data-coach'), ring: bx(el.querySelector('[data-coach-ring]')), arrow: bx(a), words: card ? card.textContent.trim() : '' };
+    });
+    let c = null;
+    for (let i = 0; i < 120 && !(c && c.id === 'openDash' && c.ring && c.ring.w > 0); i++) { c = await lesson(); await C.page.waitForTimeout(250); }
+    await C.page.screenshot({ path: join(OUT, 'deskwide-8-lesson.png') }).catch(() => {});
+    const offBy = c && c.ring && c.arrow ? Math.round(Math.hypot(c.ring.x - c.arrow.x, c.ring.y - c.arrow.y)) : null;
+    rec.ok(`a new bro on a computer is taught to open the dashboard: the ring on the arrow (${offBy} px off), "${c && c.words}"`,
+      !!c && c.id === 'openDash' && offBy != null && offBy <= 6 && /click the arrow/i.test(c.words), c);
+    if (c && c.arrow) { await C.page.mouse.click(c.arrow.x, c.arrow.y); await C.page.waitForTimeout(1200); }
+    const s1 = await sheet(C);
+    const c1 = await lesson();
+    rec.ok('...a click on the arrow opens the dashboard and answers the lesson', !!s1 && s1.mode === 'expanded' && !(c1 && c1.id === 'openDash'), { s1, c1: c1 && c1.id });
+    rec.ok('...no page errors', cerr.length === 0, cerr.slice(0, 5));
+  } finally {
+    await C.ctx.close().catch(() => {});
   }
 }

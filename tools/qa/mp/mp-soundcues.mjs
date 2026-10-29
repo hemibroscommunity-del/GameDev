@@ -11,7 +11,7 @@
  *   0. the sound is up, and every sample a cue plays was decoded on the
  *      loading screen (nothing is fetched on first use);
  *   1. every cue in the table starts when asked;
- *   2. your own, through the keys: a jump's push-off and landing (X), a weapon
+ *   2. your own, through the keys: a jump's push-off and landing (Space; X until v2.3.3844), a weapon
  *      change (2, 1), the shield up and down (Q), a door (the bank's Enter);
  *   3. monsters, through the real handlers (window.__btDispatch): a snowball's,
  *      a fireball's and a glob's throw beside you and none 2,000 px off; a
@@ -150,10 +150,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 2. your own ── */
   await P.page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); window.__btCues.reset(); });
-  await P.page.keyboard.press('x');
+  await P.page.keyboard.press('Space');   /* v2.3.3844: Space jumps (was X) */
   const jump = await H.waitFor(P, () => ({ up: window.__btCues.stats.played.jumpUp || 0, land: window.__btCues.stats.played.jumpLand || 0 }),
     (v) => v.up >= 1 && v.land >= 1, { timeout: 8000, label: 'the jump heard' }).catch(() => null);
-  rec.ok('2a. a jump (X): its push-off, then its landing', !!jump && jump.up === 1 && jump.land === 1, jump);
+  rec.ok('2a. a jump (Space): its push-off, then its landing', !!jump && jump.up === 1 && jump.land === 1, jump);
 
   await P.page.evaluate(() => window.__btCues.reset());
   const slot0 = await H.readState(P, (S) => S.rpg && S.rpg.activeSlot);

@@ -15,7 +15,7 @@
 import { BT_AUDIO, getNpcQuest, calcDisplayHeal } from '@/data/index.js';
 import { quickEatView } from '@/game/quickEat.js';   /* v2.3.3260: V eats */
 import { eatBus } from '@/ui/mobile/eatBus.js';   /* v2.3.3260: ...through the bag's own Eat */
-import { triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: X jumps */
+import { triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: X jumps; v2.3.3844: Space does */
 import { trapButtonView, armTrap } from '@/game/trapping.js';   /* v2.3.3120: T arms a trap */
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3120: the Pet House opens the Pets page */
 import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E at a Wheel dungeon's mouth */
@@ -228,11 +228,11 @@ export function setupDesktopControls(S, deps) {
          more creative combos".  W, A, S or D (or an arrow) pressed twice
          within 250 ms is a dodge roll that way, the move a PC action game's
          player reaches for without leaving the keys they walk with; Space
-         still rolls.  The rule is game/deskCombos.js (node-tested): only
+         still rolls (X since v2.3.3844, when Space became the jump).  The rule is game/deskCombos.js (node-tested): only
          presses count (a held key's repeats never), only the same key pairs,
          the other axis from the keys held across it (W held, D tapped twice:
          up and right, as Space there).  The press still walks -- nothing
-         returns here -- and the roll is Space's own call, so a lock still
+         returns here -- and the roll is the roll key's own call, so a lock still
          turns it into the sword's lunge or the bow's retreat shot
          (dodge.js resolveDodgeContext).  `?dbltap=0` turns it off. */
       if (!e.repeat && !browserChord(e) && tapDir(e.key) && dblTapOn()) {
@@ -252,8 +252,24 @@ export function setupDesktopControls(S, deps) {
         }
       }
 
-      /* Space — dodge roll in movement or facing direction (§5.8 contextual). */
+      /* ═══ v2.3.3844: SPACE JUMPS, X ROLLS ═══
+         The owner, 2026-10-29: "Also spacebar I think should be jump."  Space
+         was the dodge roll (and X the jump, v2.3.3017); the two swap.  Space
+         is the jump: one press, one jump, a held key's repeats nothing more
+         (game/jumpActions.js; the touch button is JumpButton.jsx), and a
+         second press in the air is the double jump's flip, as X's was.  Its
+         repeats are still refused to the browser: Space must never scroll the
+         page, nor press a button a click left focused (the keyup below
+         refuses that too). */
       if (e.code === 'Space') {
+        e.preventDefault();
+        if (!e.repeat) triggerJump(S);
+        return;
+      }
+
+      /* X -- the dodge roll in movement or facing direction (§5.8
+         contextual), exactly as Space rolled it until v2.3.3844. */
+      if (e.code === 'KeyX') {
         e.preventDefault();
         var _R1 = S.rpg;
         if (!_R1 || S._dodgeRoll) return;
@@ -271,17 +287,6 @@ export function setupDesktopControls(S, deps) {
           ang = dirs[S.player.dir] || 0;
         }
         triggerContextualDodge(S, _R1, ang);
-        return;
-      }
-
-      /* ═══ v2.3.3017: X — JUMP ═══
-         Space is the dodge roll, Shift the sprint, so the jump needs its own
-         key under the left hand: X, beside them on the bottom row (and a
-         controller's jump button).  Held does nothing more -- one press, one
-         jump (game/jumpActions.js; the touch button is JumpButton.jsx). */
-      if (e.code === 'KeyX' && !e.repeat) {
-        e.preventDefault();
-        triggerJump(S);
         return;
       }
 
@@ -556,6 +561,13 @@ export function setupDesktopControls(S, deps) {
     };
     var onKeyUp = function onKeyUp(e) {
       S.keys[e.key] = false;
+      /* v2.3.3844: Space is the jump: its release never presses the button a
+         click left focused (a button's Space press lands on the keyup) --
+         except in a field, where Space is a space */
+      if (e.code === 'Space') {
+        var _uae = document.activeElement, _uTag = _uae && _uae.tagName;
+        if (_uTag !== 'INPUT' && _uTag !== 'TEXTAREA' && _uTag !== 'SELECT' && !(_uae && _uae.isContentEditable)) e.preventDefault();
+      }
       /* v2.3.3006: Shift is the sprint now, so it is held WHILE walking, and a
          letter's e.key changes case with it: press W, press Shift, let go of W
          and the keyup says 'W' -- K['w'] stayed true and you walked on with

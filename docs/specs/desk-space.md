@@ -25,6 +25,15 @@ dashboard (as OPEN and the I key do). `BottomDashboard.jsx`
 A first version made the strip a toolbar (the six buttons and the weapons); the
 owner's design replaced it the same night.
 
+Since v2.3.3793 OPEN is gone from the strip's top (the owner: "Also you can
+remove the 'open' button on desktop since the arrow takes the place of that
+(redundant with both)"). The arrow wears I's key cap and the fold hook
+(`data-land-fold="min"`) that the coach's "open the dashboard" lessons ring,
+now "Tap the arrow." (QuestCoach.jsx). CLOSE stays on the open column; phones
+keep their own chips.
+
+![OPEN gone from the strip](desk-space/no-open-before-after.png)
+
 ## 2. The creator's Trait Picker
 
 - It is as tall as its tab: on Bro type it ended three tiles in with some 60% of
@@ -70,6 +79,29 @@ Every building's window is one card (BroTown's `bt-inspect-card`; each panel's
 360 px in a ~1170 px world, its lists scrolling after two rows. On a computer
 it is 470 px wide and up to 82% of the world's height. The Blacksmith keeps its
 low place and height (the smith is seen working above it) and gains the width.
+
+## 7. Nothing to click under a strip (v2.3.3793)
+
+With Diego's shop strip or a trade's drawer across the world's foot, the
+world's own buttons in that corner (a door's "E Enter ..." prompt, the
+skateboard) were drawn under the strip, and a click on them landed on the
+strip. While one is up, on a computer, they step aside; E and Z still work.
+`game.css`, the computer's block.
+
+![a trade request, before and after: the skateboard button on its edge](desk-space/strip-before-after.png)
+
+## 8. The room picture behind a building's menu (v2.3.3793)
+
+The menu starts 62% down the room picture, `--room-stage` in `game.css`, which
+was written for the phone's 360 px card. On a computer the card is 470 px, so
+the stage is 194.3 px there (41.33% of 470), still at most 22vh on a short
+window; at 148.8 px the menu began 47% down the room and covered its sign. The
+Blacksmith keeps its slim band. Every building window checked at 1440 x 900 and
+1280 x 720: nothing clipped, nothing over the top bar or the minimap, the ✕ in
+its corner.
+
+![the Bank, before and after](desk-space/room-stage-bank.png)
+![the Cookhouse, before and after](desk-space/room-stage-cook.png)
 
 ## 9. A ✕'s "Esc" beside it (v2.3.3813)
 

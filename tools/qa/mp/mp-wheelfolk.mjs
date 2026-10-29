@@ -21,7 +21,11 @@
  *   6. E beside him opens it too (it said "has nothing for you");
  *   7. a tap on Lil Bro answers ("has nothing for you right now"), so he is a
  *      man in the street and not a picture;
+ *   7b. (v2.3.3833) the new cast: all thirteen in 1, 2 and 4 (read off the
+ *      table); a tap on Sterling opens the Bank, a tap on Bean answers;
  *   8. no page errors.
+ * v2.3.3809: drawn live from their looks by default (2 and 4b read so);
+ * BT_WF_QUERY=lookfolk=0 checks the photographs.
  * Pictures: tools/qa/mp/out/wheelfolk-*.png.
  */
 import * as H from './harness.mjs';
@@ -29,6 +33,9 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
+/* v2.3.3809: BT_WF_QUERY=lookfolk=0 -- the townsfolk from their photographs */
+const QUERY = process.env.BT_WF_QUERY || '';
+const LIVE = !/(^|&)lookfolk=0(&|$)/.test(QUERY) && !/(^|&)lookpalette=0(&|$)/.test(QUERY);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
@@ -36,7 +43,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const { WHEEL_TOWNSFOLK } = await import(H.REPO + '/src/data/wheelBuildingDoors.js');
   const { NPC_DATA } = await import(H.REPO + '/src/data/gameDisplay.js');
 
-  const P = await H.newPlayer(browser, { name: 'Folkbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
+  const P = await H.newPlayer(browser, { name: 'Folkbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, query: QUERY || undefined });
   const shot = (name) => P.page.screenshot({ path: join(OUT, `wheelfolk-${name}.png`) }).catch(() => {});
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
@@ -102,14 +109,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
        five where this said three), and what they hold: the creator bros,
        standing pictures cropped to their figures, Diego and Ace their one
        standing cell, Lil Bro his race's four ways at his own size -- 2.93 MB
-       (main's cast, five pictures whole: 3.58) */
+       (main's cast, five pictures whole: 3.58).
+       v2.3.3833: the new cast's thirteen standing pictures, cropped, add
+       0.85 MB: 3.78 MB measured (walkers 2.58, pictures 1.20), so the line
+       is 4.0 (was 3.2).  Each is on 256 colours (tools/art/npc256.mjs), but
+       the graphics chip holds every pixel whatever its colours, so that
+       halves the files, not this. */
     const castRows = NPC_DATA.filter((r) => wantNames.split(', ').indexOf(r.name) >= 0);
     const wantWalkers = castRows.filter((r) => r.walk).map((r) => r.id).sort().join();
     const wantPictures = castRows.filter((r) => r.sprite && !r.walk).length;
-    rec.ok(`their pictures came in behind the loading screen -- none fetched after arriving -- and the cast holds ${art ? art.mb : '?'} MB (walkers' strips ${art ? art.cropMb : '?'} MB cropped, pictures ${art ? art.picMb : '?'} MB cropped)`,
-      late.length === 0 && !!art && art.loaded && art.walkers.sort().join() === wantWalkers
-        && art.pictures.length === wantPictures && art.mb < 3.2,
-      { late, art, asked: npcReqs.map((q) => [q.f, q.t - arrivedAt]) });
+    /* v2.3.3809: drawn live from their looks (rendering/lookFolk.js, on by
+       default): no photograph is fetched at all, before or after arriving;
+       `?lookfolk=0` (BT_WF_QUERY) the photographs, as before */
+    if (LIVE) {
+      rec.ok(`drawn live: no photograph of the cast fetched (${npcReqs.length}), none held (${art ? art.mb : '?'} MB)`,
+        npcReqs.length === 0 && !!art && art.skipped === true && art.mb === 0, { art, asked: npcReqs.map((q) => [q.f, q.t - arrivedAt]) });
+    } else {
+      rec.ok(`their pictures came in behind the loading screen -- none fetched after arriving -- and the cast holds ${art ? art.mb : '?'} MB (walkers' strips ${art ? art.cropMb : '?'} MB cropped, pictures ${art ? art.picMb : '?'} MB cropped)`,
+        late.length === 0 && !!art && art.loaded && art.walkers.sort().join() === wantWalkers
+          && art.pictures.length === wantPictures && art.mb < 4.0,
+        { late, art, asked: npcReqs.map((q) => [q.f, q.t - arrivedAt]) });
+    }
 
     /* ── 3. Lil Bro on screen where you arrive ── */
     const lilOnArrival = await P.page.evaluate(() => {
@@ -133,7 +153,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     const drawnOf = (name) => P.page.evaluate((nm) => {
       const d = (window.__btNpcSprites ? window.__btNpcSprites() : []).find((n) => n.name === nm);
-      return d ? { h: Math.round(d.height), w: Math.round(d.width), x: Math.round(d.x), y: Math.round(d.y), dir: d.walkDir, src: d.src, frame: d.frame } : null;
+      return d ? { h: Math.round(d.height), w: Math.round(d.width), x: Math.round(d.x), y: Math.round(d.y), dir: d.walkDir, src: d.src, frame: d.frame, live: !!d.live } : null;
     }, name);
     const drawn = {};
     for (const f of WHEEL_TOWNSFOLK) {
@@ -150,7 +170,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const dh = drawn.Diego && drawn.Diego.h;
     rec.ok(`each is drawn where he stands, a man's height (${WHEEL_TOWNSFOLK.map((f) => f.name + ' ' + (drawn[f.name] ? drawn[f.name].h + ' px' : 'NOT DRAWN')).join(', ')}), the walkers facing the street`,
       WHEEL_TOWNSFOLK.every((f) => { const d = drawn[f.name], w = where(f.name); return d && w && Math.abs(d.x - w.x) < 1 && Math.abs(d.y - w.y) < 1 && d.h > 60 && d.h < 240; })
-        && ['Ace', 'Lil Bro', 'Diego'].every((n) => /-walk-south\.webp$/.test(drawn[n].src || '')) && dh > 100,
+        && (LIVE || ['Ace', 'Lil Bro', 'Diego'].every((n) => /-walk-south\.webp$/.test(drawn[n].src || ''))) && dh > 100,
       drawn);
 
     /* v2.3.3520: the owner: "Ace is stuck in one walking frame" -- a still
@@ -159,7 +179,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
        v2.3.3580: the walkers are creator bros, their strips the player's jog
        in eight cells and then his stand -- cell 8 */
     const standOf = (n) => { const row = NPC_DATA.find((r) => r.name === n); return row && row.walk ? row.walk.stand : null; };
-    rec.ok(`4b. the walkers stand on their standing frames: ${['Ace', 'Lil Bro', 'Diego'].map((n) => n + ' ' + (drawn[n] ? drawn[n].frame : '?') + ' (his ' + standOf(n) + ')').join(', ')}`,
+    /* v2.3.3809: drawn live, each stands on the player's own stand (every
+       one of the cast live), facing the street; the photographs' stand cells
+       are the photographs' */
+    if (LIVE) rec.ok(`4b. drawn live, every one of the cast (${WHEEL_TOWNSFOLK.filter((f) => drawn[f.name] && drawn[f.name].live).length}/${WHEEL_TOWNSFOLK.length}), facing the street`,
+      WHEEL_TOWNSFOLK.every((f) => drawn[f.name] && drawn[f.name].live && !drawn[f.name].dir), WHEEL_TOWNSFOLK.map((f) => drawn[f.name]));
+    else rec.ok(`4b. the walkers stand on their standing frames: ${['Ace', 'Lil Bro', 'Diego'].map((n) => n + ' ' + (drawn[n] ? drawn[n].frame : '?') + ' (his ' + standOf(n) + ')').join(', ')}`,
       ['Ace', 'Lil Bro', 'Diego'].every((n) => drawn[n] && Number.isInteger(standOf(n)) && drawn[n].frame === standOf(n)) && standOf('Ace') === 8,
       ['Ace', 'Lil Bro', 'Diego'].map((n) => drawn[n]));
 
@@ -257,6 +282,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const lilTap = await P.page.evaluate((t0) => { const r = window.__btNpcTap; return r && r.ts >= t0 - 50 ? r : { stale: r || null }; }, tappedAt);
     rec.ok('a tap on Lil Bro answers ("has nothing for you right now"): a man in the street, not a picture',
       !!lilTap && lilTap.npc === 'Lil Bro' && lilTap.result === 'nothing', lilTap);
+
+    /* ── 7b. v2.3.3833: the new cast -- a tap on a keeper opens his building
+       (Sterling the Bank), a tap on a local answers (Bean) ── */
+    const tapOn = async (name) => {
+      let prev = null;
+      for (let i = 0; i < 40; i++) {
+        const cur = await P.page.evaluate((nm) => {
+          const S = window._gameState.current, c = document.querySelector('canvas'), r = c.getBoundingClientRect();
+          const n = (S.npcs || []).find((q) => q.name === nm);
+          return n && S.camera ? { x: r.left + (n.x - S.camera.x) * (S._worldScaleX || 1), y: r.top + (n.y - S.camera.y) * (S._worldScaleY || 1) - 26 } : null;
+        }, name);
+        if (cur && prev && Math.abs(cur.x - prev.x) < 1.5 && Math.abs(cur.y - prev.y) < 1.5) break;
+        prev = cur;
+        await P.page.waitForTimeout(80);
+      }
+      const t0 = Date.now();
+      if (prev) await P.page.touchscreen.tap(prev.x, prev.y);
+      await P.page.waitForTimeout(700);
+      return P.page.evaluate((t) => { const r = window.__btNpcTap; return r && r.ts >= t - 50 ? r : { stale: r || null }; }, t0);
+    };
+    await standNear('Sterling', 30, 24);
+    const sterTap = await tapOn('Sterling');
+    const bankOpen = await H.waitFor(P, () => { const c = document.querySelector('.bt-inspect-card'); return c ? c.getAttribute('data-building-panel') : null; },
+      (v) => v === 'bank', { timeout: 4000, label: 'the bank open' }).catch(() => null);
+    await shot('sterling-bank');
+    rec.ok('7b. a tap on Sterling, the new cast\'s banker, opens the Bank, as the Blacksmith opens the forge (v2.3.3833)',
+      !!sterTap && sterTap.npc === 'Sterling' && sterTap.result === 'opens' && bankOpen === 'bank', { sterTap, bankOpen });
+    await P.page.evaluate(() => { const b = document.querySelector('.bt-inspect-close'); if (b) b.click(); if (window.__btBuildingWindow) window.__btBuildingWindow.open(null); });
+    await P.page.waitForTimeout(500);
+    await standNear('Bean', 30, 24);
+    const beanTap = await tapOn('Bean');
+    rec.ok('...and a tap on Bean, a local, answers (no quest, no window): talking is a tap (v2.3.3833)',
+      !!beanTap && beanTap.npc === 'Bean' && beanTap.result === 'nothing', beanTap);
 
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 6));
   } finally {

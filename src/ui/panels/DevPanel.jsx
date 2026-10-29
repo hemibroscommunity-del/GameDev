@@ -267,6 +267,7 @@ const CAP_GATES = [
   'tour' /* v2.3.3525: the tour's two new townsfolk (Woodworker Bro, Farmer Bro) -- lower case, a kill switch */,
   'race' /* v2.3.3525: Lil Bro's race -- lower case, a kill switch */,
   'ride' /* v2.3.3776: the skateboard in BroTown -- lower case, a kill switch */,
+  'petfetch' /* v2.3.3806: the pet runs to your loot and fetches it -- lower case, a kill switch */,
   'rest' /* v2.3.3539: a real rest -- the Hotel opens and the farm's bed asks the worker (server/src/rest.js) -- lower case, a kill switch */,
   'bank' /* v2.3.3785: the Bank's vault -- bag items and gold in and out at the Bank's door (server/src/bank.js) -- lower case, a kill switch */,
   'tourgear' /* v2.3.3525: the tour's gear rules in the forge's and bench's windows (hardened wood, the equip gate) -- no switch, the tables */,
@@ -353,6 +354,7 @@ const CAP_NOTES = {
   /* v2.3.3552: "world", never "Wheel", in what anyone reads */
   wheelmonsters: 'monsters in the world: each land\'s own, the levels rising away from town (v2.3.2978; without it: the world has none)',
   sprint: 'the sprint button right of the movement stick (and Shift): a third faster while your stamina lasts (v2.3.3006; without it: no button, everyone walks)',
+  petfetch: 'your pet runs to a monster pile of yours up to 450 px away and fetches it (v2.3.3806; without it: the pet only takes what lies at your heels, 80 px)',
   ride: 'the skateboard in BroTown (its button, and Z): faster than a sprint, off at the edge of town, in a fight or when hit (v2.3.3776; without it: no button, everyone off their boards)',
   wheelnodes: 'resources in the world: copper, pine and fish round town, iron and softwood at levels 1-10, black steel and hardwood at 11-20 (v2.3.3012; without it: nothing to gather there)',
   wheeldungeons: 'dungeons in the world: the Goo Grotto, the Great Cave, the Foundry Dome and the Buried City open at their mouths (v2.3.3016; without it: no mouths, no Enter button)',
