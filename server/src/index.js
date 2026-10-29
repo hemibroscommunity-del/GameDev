@@ -94,6 +94,7 @@ import { petMethods, PETS } from './pets.js';
    pets record, pets:<pid> (petbook.js).  docs/specs/trapping.md. */
 import { trappingMethods } from './trapping.js';
 import { hardenedWoodMethods } from './hardenedwood.js'; /* v2.3.3139: logs into hardened wood */
+import { rideMethods, RIDE_ENDS_ON } from './ride.js'; /* v2.3.3776: the skateboard, in BroTown's safe ground */
 import { raceMethods } from './race.js'; /* v2.3.3525: Lil Bro's race round the square (the tour's race_1) */
 import { petbookMethods } from './petbook.js';
 /* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
@@ -539,6 +540,7 @@ export const PRIVILEGED_EVENTS = new Set([
      touched, the result.  Forged into a relay, one would start or win a race
      on another player's screen that the worker never ran. */
   'race_state', 'race_cp', 'race_end',
+  'ride_state',   /* v2.3.3776: the skateboard (ride.js): on, off and why */
   /* v2.3.3539: a rest's answer (rest.js) -- forged into a relay, it would
      tell another player they had rested and were Well Rested when the worker
      rested nobody. */
@@ -3348,6 +3350,7 @@ export class GameRoom {
     if (this._sparById && this._sparById.size && this._sparDeath(ps, playerId, cause)) return;
     ps.dying = true;
     ps.dead = true;
+    if (ps._ride) this._rideEnd(ps, 'dead', playerId);   /* v2.3.3776: off the board (ride.js) */
     ps.respawnAt = Date.now() + 5000;
     ps.dmgFromMonster = {};
     /* v2.3.3264: the record of what each player dealt them (the melee
@@ -5057,6 +5060,11 @@ export class GameRoom {
       session.lastRecv = Date.now();
     }
 
+    /* v2.3.3776: fighting, gathering or posing puts a rider off the board
+       (ride.js RIDE_ENDS_ON) -- one Set lookup, before the message's own
+       handler, so the fight is judged on foot */
+    if (session.id && RIDE_ENDS_ON.has(msg.type)) this._rideOnInput(session.id, msg.type);
+
     switch (msg.type) {
       case 'join':
         /* v2.3.3274: ONE JOIN A SOCKET.  A second one under another id left
@@ -5097,6 +5105,11 @@ export class GameRoom {
          on the player (poses.js), told to the phones near by the tick's `po` */
       case 'pose':
         this._handlePose(session, msg);
+        break;
+      /* v2.3.3776: the skateboard -- get on, get off (ride.js), answered
+         `ride_state` */
+      case 'ride':
+        this._handleRide(session, msg);
         break;
       /* v2.3.3393: /roll and /flip (dice.js): the worker rolls, and tells the
          players near as `dice_roll` */
@@ -6535,6 +6548,7 @@ Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
 Object.assign(GameRoom.prototype, raceMethods); /* v2.3.3525 */
+Object.assign(GameRoom.prototype, rideMethods); /* v2.3.3776 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */

@@ -3,6 +3,7 @@
  * projectiles, telegraphs, lock-on, ambient particles, chat bubbles, building signs.
  * Uses PixiJS Graphics for procedural particles and Text for damage numbers.
  */
+import { notePileShine } from '@/game/dropLines.js';   /* v2.3.3746: a pile's shine, its best line's colour */
 import { coinPileTexture } from '../coinPileArt.js';   /* v2.3.3734: the owner's coin piles, one an amount */
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
@@ -3043,6 +3044,41 @@ const LOOT_Z = {
    death branch) grows by the same DROP_GROW.  The pickup and magnet reach are
    groundLoot.js's own numbers and do not move. */
 const DROP_GROW = 1.5;
+/* ═══ v2.3.3746: YOUR PILE SHINES, THEN GLOWS ═══
+   The owner, asking how to show the drop lines still mean "walk over and
+   pick it up": "I'd prefer a bright shine the moment it drops that lowers to
+   a glow", "Shine color same color as rarity tier (uses best)".  The moment
+   YOUR pile lands, a bright shine on it eases down over SHINE_SETTLE_S to a
+   soft, steady glow that stays while the pile lies there and goes with it
+   (picked up or gone: _disposeLoot).  Its colour is the pile's best drop
+   line's (game/dropLines.js pileShine, set on the pile at its loot_drop), so
+   the shine and the words always match.  Another player's pile has none.
+   Drawn in code: ONE soft round picture made once (shineTexture), kept on
+   the graphics chip only, a sprite of it per pile, tinted -- each frame
+   changes only its alpha and scale, never its visibility (TRAPS §218). */
+const SHINE_SETTLE_S = 1.0;    /* bright to steady */
+const SHINE_PEAK_A = 1.0;      /* its alpha the moment it lands */
+const SHINE_GLOW_A = 0.7;      /* ...and while it lies there */
+const SHINE_PEAK_PX = 260;     /* its size the moment it lands, world px (a pile is ~60 across) */
+const SHINE_GLOW_PX = 150;     /* ...and while it lies there: well past the pile's edge, or the pile hides it */
+const SHINE_TEX_PX = 64;
+/* each effects renderer makes its own (a rebuilt one, after a black screen,
+   has never drawn the last one's, whose canvas is gone) */
+function makeShineTexture() {
+  if (typeof document === 'undefined') return null;
+  const N = SHINE_TEX_PX, c = N / 2;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  const rg = g.createRadialGradient(c, c, 0, c, c, c);
+  rg.addColorStop(0, 'rgba(255,255,255,0.8)');
+  rg.addColorStop(0.35, 'rgba(255,255,255,0.45)');
+  rg.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = rg;
+  g.fillRect(0, 0, N, N);
+  return Texture.from(cv);   /* its canvas let go once drawn: _renderPileShine */
+}
+const _hexTint = (h) => { const n = parseInt(String(h || '').replace('#', ''), 16); return Number.isFinite(n) ? n : 0xffffff; };
 const DROP_ICON_WORLD = 40 * DROP_GROW;
 /* ...and its count, in the owner label's type (_renderOwnerLabel), a size up */
 const DROP_COUNT_STYLE = new TextStyle({
@@ -9728,6 +9764,48 @@ export class EffectsRenderer {
     this._knownLoot.clear();
   }
 
+  /* v2.3.3746: the shine (SHINE_* above).  Made once with the pile, under
+     everything on it; then only its alpha, size and place. */
+  _renderPileShine(S, l, now, bob, alpha) {
+    if (!this._shineTex || this._shineTex.destroyed) {
+      this._shineTex = makeShineTexture();
+      /* kept on the graphics chip only, once this renderer has drawn it
+         (emptied the moment it was made, the shine drew nothing) */
+      if (this._shineTex && this._gpuWaiting) this._gpuWaiting.add(this._shineTex.source);
+    }
+    const tex = this._shineTex;
+    if (!tex) return;
+    if (!l._pixiShine || l._pixiShine.destroyed) {
+      const sp = new Sprite(tex);
+      sp.anchor.set(0.5, 0.5);
+      /* over the remains (and the layer's worldLife holder, z 0, which
+         hid it under them), under the coins, the shard and the gear */
+      sp.zIndex = LOOT_Z.remnant + 1;
+      sp.tint = _hexTint(l._shine.color);
+      /* light, not paint: added to what is under it, so it shines on dirt,
+         grass and water alike (blue on the river would vanish if laid over
+         it).  Set once, as it is made -- never a change a frame (TRAPS §218);
+         a few piles each a batch of their own */
+      sp.blendMode = 'add';
+      sp.alpha = 0;
+      this.lootLayer.addChild(sp);
+      l._pixiShine = sp;
+    }
+    const sp = l._pixiShine;
+    /* another player's pile: none (the watcher's grey, as before) */
+    const mine = !l.recipients || !S.myId || l.recipients.includes(S.myId);
+    const t = Math.max(0, (now - l._shine.at) / 1000);
+    const k = Math.min(1, t / SHINE_SETTLE_S);
+    const e = 1 - (1 - k) * (1 - k);   /* quick off the peak, gentle into the glow */
+    sp.x = l.x;
+    sp.y = l.y + bob + 2;
+    /* window.__btShineOff: QA's off switch (mp-droplines compares the screen
+       with and without it) -- alpha only, never a structural change */
+    const qaOff = typeof window !== 'undefined' && window.__btShineOff === true;
+    sp.alpha = mine && !qaOff ? (SHINE_PEAK_A + (SHINE_GLOW_A - SHINE_PEAK_A) * e) * alpha : 0;
+    sp.scale.set((SHINE_PEAK_PX + (SHINE_GLOW_PX - SHINE_PEAK_PX) * e) / SHINE_TEX_PX);
+  }
+
   _disposeLoot(l) {
     /* Explicit removeFromParent before destroy: same Pixi v8 edge case
        _disposeNode documents -- destroy() doesn't always unparent in
@@ -9749,6 +9827,7 @@ export class EffectsRenderer {
     kill(l._pixiShardSprite);
     kill(l._pixiOwnerLabel);
     kill(l._pixiWpnLabel);
+    kill(l._pixiShine); l._pixiShine = null;   /* v2.3.3746: its shine goes with it */
     /* v2.3.2771: the rare icons, their shines, and the RARE DROP! call */
     if (l._pixiRare) { for (const r of l._pixiRare) { kill(r.icon); kill(r.beam); } l._pixiRare = null; }
     kill(l._pixiRareDrop); l._pixiRareDrop = null;
@@ -10088,6 +10167,24 @@ export class EffectsRenderer {
         return out;
       };
     }
+    /* v2.3.3746 QA probe (mp-droplines): each pile's shine -- its colour, how
+       bright and how big now, and how long since it landed */
+    if (typeof window !== 'undefined' && !window.__btLootShine) {
+      const _selfS = this;
+      window.__btLootShine = function () {
+        const t = Date.now();
+        const out = [];
+        for (const e of (_selfS._knownLoot || [])) {
+          if (!e || e.dropped || e.isDeathDrop) continue;
+          const sp = e._pixiShine && !e._pixiShine.destroyed ? e._pixiShine : null;
+          out.push({ lootId: e.lootId || null, color: e._shine ? e._shine.color : null, ageMs: e._shine ? t - e._shine.at : null,
+            alpha: sp ? +sp.alpha.toFixed(3) : 0, px: sp ? Math.round(sp.texture.width * sp.scale.x) : 0,
+            tint: sp ? '#' + (sp.tint >>> 0).toString(16).padStart(6, '0').toUpperCase() : null,
+            box: sp ? (() => { const b = sp.getBounds(); return { x: b.x, y: b.y, w: b.width, h: b.height }; })() : null });
+        }
+        return out;
+      };
+    }
     gfx.clear();
 
     /* ═══ v2.3.2316: GROUND LOOT AT TWICE THE SIZE ═══
@@ -10237,6 +10334,16 @@ export class EffectsRenderer {
         const _rate = 3 + _urg * 9;
         alpha = 0.35 + 0.65 * (0.5 + 0.5 * Math.cos(age * _rate));
       }
+
+      /* v2.3.3746: your pile's shine, then its glow.  Its colour is set at
+         its loot_drop (gameEvents); a pile that reached this phone another
+         way first (a tick's loot, a zone's list) is given it here, once,
+         the moment it is first drawn */
+      if (!l._shine && !l._shineAsked && !l.dropped && !l.isDeathDrop) {
+        l._shineAsked = true;
+        try { notePileShine(S, l, S.myId, now); } catch (e) { /* display only */ }
+      }
+      if (l._shine && !l.dropped && !l.isDeathDrop) this._renderPileShine(S, l, now, bob, alpha);
 
       /* v2.3.3473: a dropped item -- its own picture, never the death pile's
          ring, skull and "N items" below (game/itemDrop.js) */
@@ -17237,6 +17344,8 @@ export class EffectsRenderer {
     /* v2.3.3402: the lands' specks, and their pool -- a rebuilt renderer makes its own */
     if (this._landAuras) { this._landAuras.destroy(); this._landAuras = null; }
     this._captureRenderer = null;
+    if (this._shineTex && !this._shineTex.destroyed) this._shineTex.destroy(true);   /* v2.3.3746 */
+    this._shineTex = null;
     this._layers = null;
   }
 

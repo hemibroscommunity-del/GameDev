@@ -231,11 +231,197 @@ software as every QA phone's is):
   that minified) where the chip did one filtered read; a batch ends at each
   body (its own program).
 
+## Phase 2: adding a set (v2.3.3737, P0)
+
+Each part kept as numbers is a **set**: its own module, folder and manifest,
+so five lanes can add theirs without editing one shared line.
+
+1. **The set's module**: `src/rendering/lookSets/<set>.js` (the body's,
+   `body.js`, is the example and the contract in its header). It tells the bake
+   how the GAME loads, recolours and halves that art -- the game's own
+   functions, never re-implemented -- and its `roleDefs`. Nothing in the game
+   imports it.
+2. **The bake**: `node tools/art/role-bake.mjs --set <set> [--sheets a,b]
+   [--bits 8|16] [--out dir]`. It writes `public/sprites/look/<set>/` (the
+   body, v2.3.3716, at the folder's root). A new set is **8 bits** unless its
+   module says otherwise (the owner: *"You can go ahead and reduce it. I won't
+   notice at all from anything at 256"*): at most 255 colours a sheet, cut PER
+   ROLE (no colour crosses from one role to another) by median cut weighted by
+   pixel count, each colour its box's mean. The bake reports how far the cut
+   moved a pixel (`quant` in the manifest); an 8-bit sheet's self-check reports
+   instead of failing. `--sheets` re-bakes some sheets and keeps the others.
+   Measured on stand and jog at 8 bits: 1.1 MB on the chip instead of 2.6; a
+   pixel moved 1.3-1.5 levels on average on the stand sheets and 3.4-5.1 on the
+   jog sheets, the rarest colours up to 40-146 (a median cut merges a colour
+   few pixels use) -- the oracle for an 8-bit set is the quantized art
+   recoloured the old way, and its look is for the owner's eye.
+   **The quality bar** (the orchestrator, on the owner's "I won't notice"): a
+   sheet's worst texel stays within 16 levels a channel of the art, and a
+   sheet that cannot meet the bar stays 16 bits, named here. Since v2.3.3750
+   the cut is `tools/art/lookCut.mjs`, one for every bake, error-bounded (the
+   body's section below says how and what it measured).
+3. **The game**: `registerLookSheets('<set>', '/sprites/look/<set>/roles.json')`
+   (a promise: loaded behind the loading screen with the body, or at once if
+   later), then `getLookPartFrame('<set>', sheetName, frameIdx, [[entry, rgb |
+   null], ...])` for a Texture, or null: draw the old way. A pose is DATA: the
+   body has a pose when its manifest has its sheets (`lookPose`, `lookHas`), so
+   P1 adds poses by baking them, not by editing `lookPalette.js`.
+4. **Its roles** (`roleDefs`, in the manifest and so in each sheet's header):
+   up to 15 a sheet, each `{ name, entry, ref, under }`:
+   - `entry`: which entry of the look's row holds its colour;
+   - `ref` > 0: recoloured as `recolorBodyToCanvas`'s `_retint` (the target at
+     the pixel's luminance over `ref`); `ref` 0: painted the target (the iris);
+   - `under`: the role used when this one's entry is unset (the iris over the
+     skin); 0, the art's own colour.
+5. **Sharing a texture**: a sheet is one RG8 (16 bits) or R8 (8 bits) texture;
+   its header (the last row) says which, its scale, its roles, its refs' scale
+   (`refScale`: a role's `ref` in 1/refScale's, for fractional refs), its KIND
+   and its book offset. The sampling and the batcher are the body's.
+6. **A kind's own texel** (P2's prints, P3's masks, P4's heads):
+   `registerLookKind('<kind>', glsl)` from the part's own module, before the
+   program is built (behind the loading screen; a late one is counted,
+   `lateKinds`, and ignored). The GLSL defines `highp vec4
+   lookKind_<kind>(highp int k, highp ivec2 p)`: the texel's number and its
+   position in the sheet's texture, returning the premultiplied 0-255 colour.
+   It may call `entry(k)` (the default), `tableRGBA(k)`, `num(p)`, `fetchT(p)`
+   (the ONE fetch chain -- never a second), `rowT(e)`, `recol(c, T, ref)`, and
+   read `sMirror`, `sBook`, `sKind`, `sW`, `sN`, `sDs`, `sBits`.
+7. **The frame's options** (and `getLookPartFrames(...)`, the whole strip,
+   for a caller that indexes it -- ask again each time it is drawn: a look no
+   one asks for in 30 s gives its frames back): `getLookPartFrame(set, sheet, f, entries, { key,
+   mirror })`: an entry's value of four bytes is RGBA verbatim (three: a
+   colour, alpha 255); `key` is the caller's own key for the entries (not
+   joined every frame); `mirror` gives the flipped facings their own frames and
+   the shader its `sMirror` (vertex id: slot + 16 x (4 x look + 2 x mirror +
+   sharp)). `setLookSheetBook(set, sheet, offset)` writes a sheet's book offset
+   into its header (uploaded again).
+
+### The row is law
+
+A look's row has 256 entries, and a player's parts will share one row (the
+plan's item 8), so each kind of part owns a range of entries, checked when a
+set loads (a role outside its kind's range fails the set, `rangeErrors`):
+
+| entries | kind (`kind` in the manifest) |
+|---|---|
+| 0-7 | body: 1 skin, 2 trousers, 3 boots, 4 eye |
+| 8-31 | shirt and prints |
+| 32-63 | armour (P3: entry 32 a mask book's address) |
+| 64-127 | head pieces |
+| 128-159 | shirt drawings (P2: 256 cells x 4 bits) |
+| 160-255 | spare |
+
+The orchestrator owns the row map and the atlas budget (256 rows, shared with
+the Wheel's pictures): every phase 2 test reports `rowsFull` 0.
+
+### What a phase 2 lane must read first
+
+- **Bake from what the game reads**: the `.webp` twin (`webpImage.js`), which
+  decodes see-through pixels differently from the `.png`.
+- **The old path's halvings**: 'high' smoothing is a 2x2 box TRUNCATED;
+  nearest is the top-left pixel on a software canvas and uneven on a canvas the
+  graphics chip draws -- bake and test with `--disable-gpu` (the QA phones do).
+- **Lay frames out with the old path's cells** (`packTrimmed`): a different
+  quad drifted the sharp read up to 9 levels.
+- **One texel-fetch chain in the shader**: a reading inlined once a texture
+  slot froze the QA box's software chip for minutes building the program.
+- **Never hand a look texture to code that reads pixels** (the armour's masked
+  bake, the south block, anything through `drawGearFrame`): they are numbers.
+- **The batch cost**: a look texture breaks the figure's batch (its own
+  program): measured with 15 bare peers on screen, about 5 draw calls more a
+  peer (166 against 94 a frame). The plan's item 8 (one program) is the fix.
+
+## Every pose (v2.3.3750, phase 2 lane P1)
+
+The body set (`public/sprites/look/roles.json` and its sheets) now carries every
+pose the body draws through `getBodyFrame`, not only the stand and the jog:
+
+| what the player does | the sheets |
+|---|---|
+| stand; walk, sprint and the jump's held frame | `stand-*`, `jog-*` (five facings each) |
+| the hit taken | `hit-*` (five) |
+| the roll, and the double jump's flip (`_rFlip` draws the roll) | `dodge-east`, `dodge-south` |
+| mining; fishing; picking up | `mine-south`, `fish-south`, `pickup-south` |
+
+20 sheets. A pose is live because the manifest has it (`lookPose`); nothing in
+`lookPalette.js` lists them.
+
+- **The bake runs `buildBodySheet`'s own call for each pose**: the jog's
+  steadied drawing, the fish's boots under its legs (`bootsUnderLegs`), the
+  pickaxe's wood (`toolWood`), and then the rod's pine
+  (`recolorToolKeyCanvas`, only where the FILE has the key).
+- **A kept entry's colour is the bake's, not the art's**: the default look's
+  output. The rod is pine whatever the look, so its pixels are role 0 with the
+  pine colour in the table. For every other kept pixel the two are the same
+  (the stand and jog sheets re-baked byte for byte the same).
+- **The skin floor** (`poseSkinTarget`: hit, roll, mine and fish always take the
+  walking tan) was already in `getLookBodyFrame`.
+- **Fishing asks as `getFishFrame` does**: no shirt, eye colour or eye style
+  on that sheet, its drawings unmirrored.
+- **Not from the numbers**: a cast in a shirt (`_placeFishHead` lifts the
+  hand from the body's own pixels), and, as before, anything under chest or leg
+  armour, the south block, a drawing, an eye style. The stand-ins (the swings,
+  the bow and the shield block, chop, cook, fire, the farm) are their own path
+  and their own pull request. Death needs nothing: `death-v1` is one bald body
+  for everyone, and the crumble photographs the figure as drawn.
+
+**Known difference (not copied):** the old fish bake tests the rod's hue again
+AFTER the retint, so a boot pixel inside the file's key turns to pine for a look
+whose boots land in that hue -- 2 texels of fish-south's 1.57 million, a tan
+boot. The bake counts them apart (`rod flips`) and keeps them boots, as the file
+draws them.
+
+### At 8 bits: the cut held to its worst colour (`tools/art/lookCut.mjs`)
+
+P0's first cut (median cut by pixel count, each box its mean) left the common
+colours 1-3 levels off and merged the rare ones 40-146 off. The cut now:
+
+- **measures a colour as the screen shows it**: premultiplied (an edge's colour
+  counts for its alpha), and for a retinted role the retint's output at ANY
+  target -- `min(255, T x lum / ref)` moves at most 255 |u - v| below the clamp
+  and 255 (1 - v / u) past it (u = lum / ref), so luminance is measured on
+  255 u up to 1 and 255 (1 + ln u) above. (Measured first at a white target
+  only, the clamp hid the error: an entry 16 levels off at white was 34 at a
+  darker target.)
+- **spends all 255 entries as one pool**: each step splits the box, of any
+  role, whose worst colour is furthest from its entry, at the middle of the
+  axis that error lies on; an entry is its box's middle, then its pixels' mean
+  where that stays 1.5 levels under the bar.
+- **keeps a sheet exact (16 bits) when its worst is past the bar** (16), or its
+  self-check (three looks against the old path's canvases) shows a texel past
+  it. The manifest says so per sheet (`bits: 16`).
+
+| sheet | bits | colours cut from | worst (levels) |
+|---|---|---|---|
+| stand x5 | 8 | 2,117-2,762 | 6-10 |
+| jog-east, -north, -south | 8 | 13,636-22,773 | 15-15.5 |
+| **jog-northeast, jog-southwest** | **16** | (17, 18 at 8 bits) | exact |
+| hit x5 | 8 | 7,854-9,583 | 14.2-14.5 |
+| dodge-east, -south | 8 | 19,249-20,568 | 14 |
+| **mine-south** | **16** | (19 at 8 bits) | exact |
+| fish-south | 8 | 31,256 | 15.4 |
+| pickup-south | 8 | 21,802 | 15 |
+
+The body's 20 sheets: **3.3 MB on the chip** (17 at 8 bits, 2.1 MB; 3 at 16,
+1.2 MB), against 6.1 MB all at 16 bits and 2.6 MB for stand and jog alone
+before. On screen (two looks, seven poses, drawn in JS from both bakes): about
+1 level on average on the stand, 2 on the roll, 4-7 on the jog, hit, fish and
+pickup, almost all of it on the outline and the see-through edge.
+
+**The oracle** (`mp-lookpalette`, 16-bit numbers, before the cut): 24 looks x every pose x
+every facing it is drawn in (the flipped ones flipped), 8,424 frames, 20.7
+million pixels drawn both ways: **0 pixels more than 1 level apart** (worst 1).
+At a phone's 2.6x: 0 of 3.7 million over 1. At a computer's 0.8x: 2.6% over 1,
+worst 4 on one texel of jog-east (the chip's rounding of the mip blend; the
+check's line is 4 now, under 5% of the pixels). The atlas: 20 rows at the most,
+none refused. `tools/qa/mp/out/lookpalette-poses.png` is the side-by-side: six
+poses in two looks, the old way above the new.
+
 ## The plan for the rest
 
 Each its own pull request (on by default, as this one: the owner's rule for the phase).
 
-1. **Every pose.** The same bake for hit, dodge, pickup, mine and fish (the
+1. **Every pose** (done, v2.3.3750: above). The same bake for hit, dodge, pickup, mine and fish (the
    mining sheet's pickaxe keeps its wood, `toolWood.js`; the fish sheet's boots
    are under the legs, `bootsUnderLegs`; both are rules inside the recolour, so
    the bake carries them as it does the garment bands). Needs: the pose list in
@@ -254,8 +440,9 @@ Each its own pull request (on by default, as this one: the owner's rule for the 
    armour's own art).
 4. **Shirts and their prints.** The shirt is its own sprite (a white-base sheet
    times a tint, `gearSheets.composeShirt`): a tint is already free; a print or
-   pattern stamped per player is a copy per player. Needs: the print as its own
-   small texture drawn over the shirt's numbers.
+   pattern stamped per player is a copy per player. **Done (v2.3.3751,
+   `docs/specs/look-shirts.md`)**: the tee's stand and jog kept once as
+   numbers, its tint, tile and drawing painted from the look's row.
 5. **Head pieces** (hats, hair, beards, eyewear, eye styles): each colour a
    recoloured copy today (`traits/*ColorCatalog.js`). The same bake per piece
    (their roles are simpler: the piece's own shades and its outline), one row a

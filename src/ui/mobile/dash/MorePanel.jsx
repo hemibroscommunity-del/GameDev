@@ -41,6 +41,9 @@ export const TILES = [
   { id: 'quests',      src: '/icons/ui/panel-quests.webp?v=2.3.1224',      label: 'Quests',   glyph: '📜', group: 'Progress',  iconScale: 1 },
   { id: 'skills',      src: '/icons/ui/nav-lifeskills.webp?v=2.3.1331',    label: 'Life Skills', glyph: '⛏', group: 'Progress', iconScale: 1 },
   { id: 'journey',     src: '/icons/ui/journey.webp?v=2.3.1224',           label: 'Journey',  glyph: '🛤', group: 'Progress',  iconScale: 1.18 },
+  /* v2.3.3773: Journey is a page again -- the Character page's records,
+     moved here (JourneyPanel.jsx) -- and its tile stands beside Achievements
+     rather than giving way to it (the grid's note below). */
   /* ═══ v2.3.3527: JOURNEY'S PLACE BECOMES ACHIEVEMENTS ═══
      The owner's decision 6 ("Go recommended on everything", server
      achievements.js): the always-empty Journey tile -- nothing in the game or
@@ -94,13 +97,14 @@ export const TILES = [
 function statusFor(id, S) {
   const R = S?.rpg || {};
   switch (id) {
+    /* v2.3.3773: Journey is the Character page's old records tab
+       (JourneyPanel.jsx), so its line is two of those records, read where
+       the page reads them (the worker's kill count first) */
     case 'journey': {
-      const j = R.journey || S?.journey || {};
-      const n = (j.entries || j.recent || []).length;
-      /* v2.3.3481: the 2026-10-19 UI review -- "logged live" claimed more
-         than the page does: nothing in the game or the server writes this
-         log yet (docs/UI-DESIGN-NOTES.md, More's Still open) */
-      return n > 0 ? `Travel log · ${n} entr${n === 1 ? 'y' : 'ies'}` : 'Your travels';
+      const cs = R._compStats || {};
+      const kills = Number(R.svKills ?? cs.monstersKilled ?? cs.kills ?? 0) || 0;
+      const duels = Number(cs.duelsWon ?? 0) || 0;
+      return `${kills.toLocaleString()} kill${kills === 1 ? '' : 's'} · ${duels} duel${duels === 1 ? '' : 's'} won`;
     }
     /* v2.3.3527: the worker's count (game/achievements.js), real state as
        every line here */
@@ -299,9 +303,14 @@ export const MorePanel = () => {
         height: narrow ? undefined : '100%', boxSizing: 'border-box',
       }}>
         {/* v2.3.3527: Journey's place is Achievements against a worker that
-            grants them (the tile's note in TILES) */}
+            grants them (the tile's note in TILES).  v2.3.3773: and Journey has
+            a tile of its own beside it, the Character page's records (the
+            owner: "I also think I want 'journey' to be put as its own icon in
+            the more/other apps menus").  Twelve tiles: two full rows of six
+            upright, six rows of two sideways and on a computer, so the
+            eleventh tile's row is filled rather than a row added. */}
         {['quests', 'skills', 'pets', 'social', 'clan', 'guild',
-          achvLive(S) ? 'achievements' : 'journey', 'encyclopedia', 'leaderboard', 'settings', 'account'].map(id => {
+          ...(achvLive(S) ? ['achievements'] : []), 'journey', 'encyclopedia', 'leaderboard', 'settings', 'account'].map(id => {
           const t = tile(id);
           if (!t) return null;
           return (

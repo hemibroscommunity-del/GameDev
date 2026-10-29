@@ -244,6 +244,7 @@ const CAP_GATES = [
   'nmlgroup' /* v2.3.3530: a group attacks you, one window -- every attacker yours to hit back, joining a fight you chose (nmlAsk.js nmlJoinFight) -- lower case, a kill switch */,
   'nmlchoice' /* v2.3.3530: the window's Attack is the attack -- `nml_attack` starts both skulls at once, the one attacked white before any blow (nomansland.js _handleNmlAttack) -- lower case, a kill switch */,
   'nmlnear' /* v2.3.3690: No man's land from the safe ground's edge, the Lv 1-5 ring its 1 (nomansland.js NML.FIRST_TIER; the phone's nmlFirst) -- lower case, a kill switch */,
+  'nmlsteps' /* v2.3.3767: No man's land a step a monster level (nomansland.js nmlStepLevelAt; the phone's nmlLevelFor) -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
   'farm' /* v2.3.3127: the farm -- lower case, a kill switch */,
   'meals' /* v2.3.3130: meals and brews you carry -- lower case, a kill switch */,
@@ -264,6 +265,7 @@ const CAP_GATES = [
   'beastmaster' /* v2.3.3121: Beastmaster Bro and his quests -- lower case, a kill switch */,
   'tour' /* v2.3.3525: the tour's two new townsfolk (Woodworker Bro, Farmer Bro) -- lower case, a kill switch */,
   'race' /* v2.3.3525: Lil Bro's race -- lower case, a kill switch */,
+  'ride' /* v2.3.3776: the skateboard in BroTown -- lower case, a kill switch */,
   'rest' /* v2.3.3539: a real rest -- the Hotel opens and the farm's bed asks the worker (server/src/rest.js) -- lower case, a kill switch */,
   'tourgear' /* v2.3.3525: the tour's gear rules in the forge's and bench's windows (hardened wood, the equip gate) -- no switch, the tables */,
   'pettrade' /* v2.3.3122: pets in trades, the auction house and the mail -- lower case, a kill switch */,
@@ -349,6 +351,7 @@ const CAP_NOTES = {
   /* v2.3.3552: "world", never "Wheel", in what anyone reads */
   wheelmonsters: 'monsters in the world: each land\'s own, the levels rising away from town (v2.3.2978; without it: the world has none)',
   sprint: 'the sprint button right of the movement stick (and Shift): a third faster while your stamina lasts (v2.3.3006; without it: no button, everyone walks)',
+  ride: 'the skateboard in BroTown (its button, and Z): faster than a sprint, off at the edge of town, in a fight or when hit (v2.3.3776; without it: no button, everyone off their boards)',
   wheelnodes: 'resources in the world: copper, pine and fish round town, iron and softwood at levels 1-10, black steel and hardwood at 11-20 (v2.3.3012; without it: nothing to gather there)',
   wheeldungeons: 'dungeons in the world: the Goo Grotto, the Great Cave, the Foundry Dome and the Buried City open at their mouths (v2.3.3016; without it: no mouths, no Enter button)',
   farm: 'the farm: the Feed & Seed window digs, plants, waters, fertilizes and harvests beds the worker owns, on its clock, and sells seeds and compost (v2.3.3127; without it: the old browser-only plots, which never kept anything)',
