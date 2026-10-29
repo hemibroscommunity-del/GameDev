@@ -1582,3 +1582,22 @@ Screens: spar-fight
 - Clones walk through buildings and water, since the server knows no walls. On your screen an arrow may stick in a wall while the server still lands it on you.
 
 Sources: docs/specs/damage-number-size.md, docs/specs/monster-statuses.md, docs/specs/first-30-minutes.md, docs/specs/sparring.md, docs/specs/combat-feel-pack.md, docs/specs/control-redesign.md, docs/specs/no-mans-land.md, docs/specs/pvp-fights.md, docs/specs/one-formula.md, docs/specs/xp-decay.md, docs/specs/bow-sight-gate.md, docs/specs/specials-rebalance.md, docs/TRAPS.md, CLAUDE.md, src/data/gameSystems.js, src/rendering/systems/entityRenderer.js, src/ui/ElemStatusChips.jsx, src/ui/panels/ShieldButton.jsx, src/ui/panels/SpecialButton.jsx, src/ui/panels/TouchControls.jsx, src/game/targeting.js, src/game/playerActions.js
+
+## Dying: the death card
+Screens: death-card
+
+**What it is for:** Saying that you died, what killed you, and where you are going, for the five seconds before the worker brings you back in BroTown, and saying it again in the chat once you are back.
+
+**Decisions, and why:**
+- **A card, for the five seconds** (v2.3.3817). A judge's pass on a computer: a level-1 bro died in the first quest's slimes and "just reappeared in BroTown"; none of the captures showed a death. A death showed only things that pass: the body's fall, a shake, a half-second dark flash, the sound and a floating "YOU DIED" like a hit number. Now a small card in the middle of the play area says "You died", "Killed by Blue Slime" (the monster's name as its plate says it; in No man's land the player's name, and what they took once the worker says so), and "Back in BroTown in 5" counting down.
+- **It never takes a tap or a click**, and has nothing to close: a notice, not a window. A dying player's thumbs are still on the controls, and the card goes by itself with the respawn.
+- **One line in the chat once you are back** ("You were killed by Blue Slime, and came back in BroTown."), so a glance away, or a screenshot that missed the five seconds, still finds it.
+- **"BroTown"**, never "town" or "the Wheel": the place you come back to, as the top bar names it.
+
+**Tried before, and changed:**
+- The floating "YOU DIED" over the body alone (kept: it is the death's moment; the card says the rest).
+
+**Still open:**
+- Whether a death should cost anything outside No man's land and a red skull is the owner's call; the card says only what the worker did.
+
+Sources: docs/specs/death-card.md, src/game/deathCard.js, src/ui/mobile/DeathCard.jsx, tools/qa/mp/mp-deathcard.mjs.

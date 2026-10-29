@@ -47,7 +47,7 @@ export const PACKETS = [
   /* v2.3.3768: the party chip's two screens here, as the Town Hall's page
      (v2.3.3766) filled the maps packet to MAX_PICTURES */
   { slug: 'harvesting-and-fighting', title: 'Your party, harvesting and fighting',
-    screens: ['party-hud', 'party-hud-open', 'harvest-near', 'harvest-windup', 'harvest-ready', 'spar-fight'] },
+    screens: ['party-hud', 'party-hud-open', 'harvest-near', 'harvest-windup', 'harvest-ready', 'spar-fight', 'death-card'] },
 ];
 
 /* the views as the briefs name them, in the order a picture shows them */

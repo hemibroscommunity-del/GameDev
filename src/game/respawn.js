@@ -24,6 +24,8 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the respawn heard */
 import { releaseLeftZoneArt, veilWheelTrip } from '@/game/zoneTransitions.js'; /* v2.3.2328: dying is leaving a zone; v2.3.3025: under one veil */
 import { wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: and you come back in the Wheel's Brotown */
 import { dropDungeonZone } from '@/game/wheelDungeons.js'; /* v2.3.3016: a dungeon's synthetic zone, dropped after its art is released */
+import { deathLine } from '@/game/deathCard.js'; /* v2.3.3817: the chat's line once you are back */
+import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
 
 /**
  * Put the player back on their feet in `zone`.  Idempotent enough to call
@@ -81,6 +83,16 @@ export function applyLocalRespawn(S, zone) {
   S.respawnTimer = Date.now() + 3000;
   S._deathStart = 0;
   S._dying = false;
+  /* v2.3.3817: one line in the chat saying what happened -- the card over the
+     scene (ui/mobile/DeathCard.jsx) goes with the respawn, and a capture or a
+     glance away missed everything a death showed (game/deathCard.js) */
+  try {
+    const line = deathLine(S);
+    if (line) {
+      S.chatLog = [...(S.chatLog || []).slice(-50), { id: 'death-' + Date.now(), name: '', text: line, color: '#E07B72', ts: Date.now(), system: true }];
+      chatLogBus.bump();
+    }
+  } catch (e) { /* a line is never worth a respawn */ }
   /* v2.3.2990: the worker brings you back in today's town; from there you
      are taken down its stairs into the Wheel's Brotown, where you start
      (wheelHome.js) */

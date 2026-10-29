@@ -649,6 +649,7 @@ const SCENARIOS = {
   wvscale: () => import('./mp-wvscale.mjs'), /* v2.3.2287: your own art shrinks on the vista, and nothing changes off it */
   tapswing: () => import('./mp-tapswing.mjs'), /* v2.3.2285: tap a monster, walk there -- does the swing ever start? */
   deathgold: () => import('./mp-deathgold.mjs'), /* v2.3.2343: dying charges no gold, and the HUD agrees with the worker */
+  deathcard: () => import('./mp-deathcard.mjs'), /* v2.3.3817: a death says what happened -- "You died", what killed you, back in BroTown in N, counting down, never in the way; then a line in the chat (phone, and a computer sideways) */
   deathstrip: () => import('./mp-deathstrip.mjs'), /* v2.3.2281: what is painted ON the corpse, from the screen's side rather than the display's */
   questprox: () => import('./mp-questprox.mjs'), /* v2.3.3583: a townsperson talks on a TAP only (the owner: "tap only instead of proximity based") -- in the world's BroTown, standing beside Mayor Bro or walking through him opens nothing, a tap on him, the right stick's tap and E (his quest before the Town Hall's door) each open his window, closed beside him it stays closed, beside Diego no shop until a tap, a READY quest's turn-in only on a tap, and ?npcprox brings the walk-up opener back (v2.3.1701's, which this file tested until then) */
   questlegs: () => import('./mp-questlegs.mjs'), /* v2.3.1701: the quest greaves equip to the LEGS */

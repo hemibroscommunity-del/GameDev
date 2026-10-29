@@ -185,6 +185,9 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
 import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
+import { noteDeath, noteDeathLoss } from '@/game/deathCard.js'; /* v2.3.3817: the death card (ui/mobile/DeathCard.jsx) */
+import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.3817: the killer's name, as its plate reads */
+import { wheelStageName } from '@/data/wheelStageLooks.js'; /* v2.3.3817: ...with its stage ("Glacier Snowman") */
 import { nmlJoinFromBys } from '@/game/nmlAsk.js'; /* v2.3.3530: one who chose to attack you joins a fight you chose */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
@@ -1901,6 +1904,8 @@ export function setupWebSocket(ctx) {
           case 'nml_loss':
             {
               if (msg.payload) applyNmlLoss(S, msg.payload, saveRpgSoon);
+              /* v2.3.3817: and the death card says what went */
+              if (msg.payload) { try { noteDeathLoss(S, !!(msg.payload.red && !msg.payload.keepWorn)); } catch (_dl) { /* the chat says it */ } }
               break;
             }
           /* v2.3.3316: and what a kill of yours there took (the pile, the gold) */
@@ -3084,6 +3089,10 @@ export function setupWebSocket(ctx) {
               if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
               S.rpg._compStats.deaths++;
               S._deathStart = Date.now();
+              /* v2.3.3817: the card over the scene for the five seconds --
+                 what killed you, read now (the respawn empties the monster
+                 list), and when you are back (game/deathCard.js) */
+              try { noteDeath(S, msg.payload, Date.now(), { monsterName: function (m) { return wheelStageName(m, monsterDisplayName(m.archetype || m.type)); } }); } catch (_dc) { /* the death plays without it */ }
               /* v2.3.2343: NO local gold penalty.  The worker owns coins
                  (_handlePlayerDeath never touches ps.coins -- there is no
                  death penalty server-side today), and under protocol v2 an

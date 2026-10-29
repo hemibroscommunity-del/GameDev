@@ -386,6 +386,7 @@ import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settl
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
+import DeathCard from '@/ui/mobile/DeathCard.jsx';   /* v2.3.3817: "You died", what killed you, back in BroTown in N */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
 import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3528: about the one who attacked you too */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
@@ -14769,6 +14770,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */, sendMove: sendMove, movesOn: movesLive(stateRef.current) /* v2.3.3392 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
+  React.createElement(DeathCard, { stateRef: stateRef }),   /* v2.3.3817: the death card (game/deathCard.js) */
   React.createElement(NmlBadge, { stateRef: stateRef }),   /* v2.3.3629: beside the minimap's name plate; v2.3.3765: the pill moved to the top bar (ZoneHeader, NmlPill), this keeps the red line along the band */
   /* v2.3.3253: the small window a tap or a stray shot raises about a player
      you could fight there (game/nmlAsk.js), portalled to the top of the
