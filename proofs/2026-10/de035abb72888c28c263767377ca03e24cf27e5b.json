@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "de035abb72888c28c263767377ca03e24cf27e5b",
+  "tree": "77162135a582763ab3e0fe3e4e0648f1aef6bf9b",
+  "committedAt": "2026-10-28T18:22:36-07:00",
+  "subject": "The sword, bow and shield-block poses from one shared sheet too: 11.5 MB less on your phone (v2.3.3757) (#1253)",
+  "files": 7121,
+  "bytes": 817483696,
+  "listingSha256": "8a93fc8387d582728e6480e105a143ba5e0a7ce898883adad94ef8f0b47bfd3d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
