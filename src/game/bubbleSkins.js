@@ -18,6 +18,10 @@
  *     -- "keep players the darker color" holds all year, so the difference is
  *     never only a season's.
  *
+ * v2.3.3858: the owner, the morning of the showing: "Make chat bubble
+ * background white and the chat font black" -- every bubble is `plain` now
+ * (bubbleSkinFor), a player's as a townsperson's.
+ *
  * Colours as data, no imports, so node reads it (server/test/season.test.mjs);
  * the renderer makes each skin's FillGradient once from `stops`. */
 
@@ -45,6 +49,12 @@ export const BUBBLE_SKINS = Object.freeze({
 /** The skin for a bubble keyed `key` (a player's id, or 'npc:<id>' for a
  *  townsperson), with Halloween week on or off (`spooky`). */
 export function bubbleSkinFor(key, spooky) {
-  if (typeof key === 'string' && key.indexOf('npc:') === 0) return 'plain';
-  return spooky ? 'halloween' : 'player';
+  /* ═══ v2.3.3858: EVERY BUBBLE WHITE, BLACK WORDS ═══
+     The owner: "Make chat bubble background white and the chat font black"
+     -- a player's line too, now, in Halloween week and out of it, so the
+     townsfolk's and a player's match again (v2.3.3522's "keep players the
+     darker color" is replaced).  The dark skins stay in the table, unused,
+     for the owner to bring back. */
+  void key; void spooky;
+  return 'plain';
 }

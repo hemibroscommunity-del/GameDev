@@ -89,6 +89,9 @@ import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the 
 import { lookSheetParse } from '../lookExpand.js';
 import { installArmourProbe } from '../lookArmourProbe.js';   /* v2.3.3752: QA, `?lookprobe` / `?lookpalette=1` only */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
+/* v2.3.3860: QA, `?headframes` only: the head-frame count's context is set on
+   each figure (headFrames.js, loaded by pixiRenderer only then) */
+const HEAD_FRAMES_ON = typeof window !== 'undefined' && /[?&]headframes(=|&|$)/.test((window.location && window.location.search) || '');
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
 import { getCapeTexture, getCapeHoodTexture, getCapeHoodMaskTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape; v2.3.2186: its hood half + the hair clip */
@@ -217,6 +220,19 @@ const HPBAR_IN_X = 0.05, HPBAR_IN_W = 0.90, HPBAR_IN_Y = 0.21, HPBAR_IN_H = 0.58
    does not strobe between exchanges — long enough to cover a missed swing
    or a dodge, short enough that a peer who walked away loses it. */
 const PEER_HPBAR_Y = -48;
+/* ═══ v2.3.3858: WHILE A PLAYER TALKS, THE BUBBLE HAS THE NAME'S PLACE ═══
+   The owner: "for character messages I'd rather have chat bubbles right
+   above character head and just cover nameplate during chat".  Is a chat
+   bubble up over this speaker (effectsRenderer _updateChatBubbles draws a
+   line for CHAT_BUBBLE_MS)?  While it is, their name plate steps aside and
+   the bubble's point comes down to the band's bottom, over the head
+   (`_chatTipY` below).  An HP bar in a fight keeps its place: the bubble
+   stands over it as before. */
+const CHAT_BUBBLE_MS = 5000;
+function _chatBubbleUp(S, pid, now) {
+  const b = S && S.chatBubbles && pid != null ? S.chatBubbles[pid] : null;
+  return !!(b && b.text && (now - (b.ts || 0)) < CHAT_BUBBLE_MS);
+}
 const PEER_HPBAR_HOLD_MS = 8000;
 const MONSTER_HPBAR_W = 44;
 const MONSTER_HPBAR_H = Math.round(MONSTER_HPBAR_W * HPBAR_ASPECT); /* 13 */
@@ -5155,7 +5171,15 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, l
   const tex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
   const meta = entry && entry.meta;
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
-  if (!(tex && meta && meta.fullFrame && anchorPx)) { sprite.visible = false; return; }
+  if (!(tex && meta && meta.fullFrame && anchorPx)) {
+    sprite.visible = false;
+    /* v2.3.3860: why, as _placeTrait says it (the head-frame count, headFrames.js:
+       'design' a facing the piece does not ship -- the stand-in faces its own way) */
+    sprite._btHide = !entry ? 'entry' : !meta ? 'meta'
+      : !anchorPx ? ((meta.anchors && !meta.anchors[dir]) ? 'design' : 'anchor') : !tex ? 'tex' : 'frame';
+    return;
+  }
+  sprite._btHide = null;
   if (sprite.texture !== tex) sprite.texture = tex;
   const screenDir = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;
   const _pick = (obj) => obj && (obj[screenDir] != null ? obj[screenDir] : obj[dir]);
@@ -12795,6 +12819,9 @@ export class EntityRenderer {
           _placeEyewear(display, other.eyewear, other.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361; v2.3.2424 + colour */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
+          /* v2.3.3860: the head-frame count's context (headFrames.js) */
+          if (HEAD_FRAMES_ON) display._btHeadAt = { pose, dir, mirror, frameIdx, now,
+            worn: { headwear: other.headwear, hair: other.hair, facialhair: other.facialhair, eyewear: other.eyewear, eyestyle: other.eyeStyle } };
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -13265,7 +13292,7 @@ export class EntityRenderer {
       /* v2.3.3313: "[TAG] Name" while they are in an alliance -- the worker's
          allyTag (alliance.js), on their snapshot and every change */
       _updateNamePill(display, plateNameWithTag(nextName, other.allyTag), other.rpgLv || 1,
-        !other._isDead && !display._peerBarUp, broBadgeOf(other.bro, other.brn), false, 'gold', !!_inParty);   /* v2.3.3255: + a wallet's count; v2.3.3279: + the party badge */
+        !other._isDead && !display._peerBarUp && !_chatBubbleUp(S, id, now), broBadgeOf(other.bro, other.brn), false, 'gold', !!_inParty);   /* v2.3.3858: + the bubble has its place */   /* v2.3.3255: + a wallet's count; v2.3.3279: + the party badge */
       if (_inParty && display._partyBadge && display._partyBadge.visible) _bindSmallTex(display._partyBadge, 'partyMember');
       if (display._namePill) {
         const _pH = (display._pillCss || 14) * PLATE_H_RATIO;
@@ -13288,6 +13315,11 @@ export class EntityRenderer {
         const _bandTop = Math.min(PEER_HPBAR_Y - _bandHalf, display._peerBarUp ? PEER_BAR_Y - PEER_BAR_H / 2 : Infinity);
         other._bandTopY = display.visible
           ? display.y + _bandTop * Math.abs(display.scale.y || 1) : null;
+        /* v2.3.3858: where a chat bubble's point goes -- the band's bottom,
+           over the head, the plate's place (it steps aside while the bubble
+           is up); with the HP bar up, the band's top as before */
+        other._chatTipY = display.visible
+          ? (display._peerBarUp ? other._bandTopY : display.y + (PEER_HPBAR_Y + _bandHalf) * Math.abs(display.scale.y || 1)) : null;
         /* ═══ v2.3.3481: AN OPPONENT'S PLATE STEPS UP OFF YOURS ═══
            The 2026-10-19 UI review: "Reviewer 3" and "Sword Clone 3" on top
            of each other, the opponent's name hidden (upright almost wholly).
@@ -14766,6 +14798,7 @@ export class EntityRenderer {
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
         _watchOwnHead(display, pose, dir, mirror);   /* v2.3.3689: a piece hidden where it ships, asked for again and logged */
+        if (HEAD_FRAMES_ON) display._btHeadAt = { pose, dir, mirror, frameIdx };   /* v2.3.3860: the head-frame count's context (headFrames.js, `?headframes` only) */
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
@@ -16460,7 +16493,7 @@ export class EntityRenderer {
        positions from — a real risk to buy an invisible one. */
     /* v2.3.3313: your alliance's tag, from your party's roster */
     _updateNamePill(display, plateNameWithTag(S.myName || 'Anon', myAllyTag(S)), (S.rpg && S.rpg.level) || 1,
-      !S._dying, !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2) */
+      !S._dying && !_chatBubbleUp(S, S.myId, now), !!(S.rpg && broBadgeOf(S.rpg._bro, S.rpg._broN)), false, 'gold');   /* v2.3.2513: the gold border (§5.2); v2.3.3858: the bubble has its place */
     /* v2.3.3313: QA probe (mp-alliance) -- your plate's words as drawn */
     if (window.__btProbe && display._pillName) window.__btSelfPlate = display._pillName.text;
     if (display._namePill) {
@@ -16515,6 +16548,9 @@ export class EntityRenderer {
       S._selfBandBotY = display.visible
         ? display.y + (PLAYER_BAND_Y + _bandHalf) * Math.abs(display.scale.y || 1) : null;
       S._selfBandHalfW = display.visible ? Math.max(_plateHalf, _barHalf) * _bsx : 0;
+      /* v2.3.3858: your chat bubble's point, as a peer's (_chatTipY above) */
+      S._selfChatTipY = display.visible
+        ? (_barHalf > 0 ? S._selfBandTopY : S._selfBandBotY) : null;
       /* v2.3.3027 published the band's centre here too (S._selfBand), for the
          harvest's bar over your head; v2.3.3035 put that bar over the
          resource, so nothing reads it and it is gone. */
@@ -17336,6 +17372,8 @@ export class EntityRenderer {
     _placeEyewear(folk, look.eyewear, look.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);
     _placeHair(folk, look.hair, look.hairColor, look.headwear, pose, dir, mirror, frameIdx, sizeMul);
     _orderTraitsAndWeapon(folk, SECTORS.indexOf(facing), look.headwear);
+    if (HEAD_FRAMES_ON) folk._btHeadAt = { pose, dir, mirror, frameIdx, now,   /* v2.3.3860: the head-frame count (headFrames.js, `?headframes` only) */
+      worn: { headwear: look.headwear, hair: look.hair, facialhair: look.facialhair, eyewear: look.eyewear, eyestyle: look.eyeStyle } };
     /* a player's size on this ground, times his own (above); his feet on his origin */
     const k = this._zonePscale(S, npc.x, npc.y) * PLAYER_SIZE_MULT * size;
     if (folk.scale.x !== k) folk.scale.set(k);

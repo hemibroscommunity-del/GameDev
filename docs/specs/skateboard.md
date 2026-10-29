@@ -192,3 +192,31 @@ in a quarter second, full, out over its last 0.7 s. The gate says it again
 every 2.5 s you lean on it, so it stays up while you do.
 
 ![the Mayor gate on a computer, the board held and the reason shown](skateboard/mayor-gate-computer.png)
+
+## v2.3.3857: the wheels roll
+
+The owner, 2026-10-29: *"use code to make the skateboard wheels appear moving
+using lighting or wobble just a bit whatever you think looks good"*.
+
+- **No new picture.** Each wheel wears small light spots, the engine's own
+  white texture tinted a warm white at 75%, one game px across
+  (`rendering/rideFx.js`, THE WHEELS ROLL):
+  - from the side and at an angle, two on opposite sides of each hub;
+  - from above, a glint sliding along each tread.
+- **They turn with the ground covered**, about 2.5 turns a second at the
+  board's 300 game px a second (`TURNS_PER_PX`). That reads as a roll, not a
+  strobe. Rolling backward turns them back.
+- **The deck dips** half a game px (one picture px) once every 90 game px
+  rolled, as over the cobbles.
+- **Still when stopped:** a step under 0.3 game px is the settle after a stop,
+  not a roll.
+- **The same for every rider:** yours, and every other player the tick says
+  rides.
+- **Cheap on a phone's frame:**
+  - four small sprites a board, made when the board is and destroyed with it;
+  - a change of view only moves and sizes them;
+  - so no frame changes a layer's draw list (TRAPS §218).
+- **Off for one tab:** `?boardroll=0` draws the board as it was.
+- **Proof** (`node tools/qa/mp/run.mjs boardwheels`, a computer): the turn
+  grows and the spots move while rolling; it holds still when stopped; it is
+  gone with the board. Pictures: `docs/shots/boardwheels.md`.

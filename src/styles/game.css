@@ -771,6 +771,29 @@ input{font-family:inherit}
   border-color:#B9B5A6;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.5), 0 2px 5px rgba(0,0,0,.30);
 }
+/* ═══ v2.3.3856: YOUR OFFER ON THE LEFT, THEIRS ON THE RIGHT ═══
+   The owner: "for trade window I'd prefer a side by side layout of your trade
+   window on left and other person trade window on right."  The live drawer's
+   and the review screen's two lanes sit in .bt-t2-lanes, yours first.  The
+   row is measured as a container: 520 px or wider (a computer's drawer, about
+   850) the lanes stand side by side, equal widths; narrower (an upright
+   phone's, about 360 inside) they stack, theirs on top as before -- at 180 px
+   a lane cannot hold the gold ladder or a row's steppers.  The --side and
+   --stack classes are ?tradeside=1 / ?tradeside=0 (TradeWindowPanel). */
+.bt-t2-lanes{container-type:inline-size}
+.bt-t2-lanes-in{display:flex;flex-direction:column}
+.bt-t2-lanes-in > .bt-t2-lane--theirs{order:-1}
+@container (min-width:520px){
+  .bt-t2-lanes-in{flex-direction:row;align-items:stretch;gap:8px}
+  .bt-t2-lanes-in > .bt-t2-lane{flex:1 1 0;min-width:0}
+  .bt-t2-lanes-in > .bt-t2-lane--theirs{order:0}
+}
+.bt-t2-lanes.bt-t2-lanes--side > .bt-t2-lanes-in{flex-direction:row;align-items:stretch;gap:8px}
+.bt-t2-lanes.bt-t2-lanes--side > .bt-t2-lanes-in > .bt-t2-lane{flex:1 1 0;min-width:0}
+.bt-t2-lanes.bt-t2-lanes--side > .bt-t2-lanes-in > .bt-t2-lane--theirs{order:0}
+.bt-t2-lanes.bt-t2-lanes--stack > .bt-t2-lanes-in{flex-direction:column}
+.bt-t2-lanes.bt-t2-lanes--stack > .bt-t2-lanes-in > .bt-t2-lane{flex:none}
+.bt-t2-lanes.bt-t2-lanes--stack > .bt-t2-lanes-in > .bt-t2-lane--theirs{order:-1}
 .bt-t2-lane-hdr{
   display:flex;align-items:center;gap:7px;
   font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;

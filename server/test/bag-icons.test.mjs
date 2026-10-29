@@ -12,7 +12,9 @@
  *      other dish;
  *   4. the places use them: the bag's thumbFor, the TRAP pop-up's picture, the
  *      Feed & Seed window's rows, the Cookhouse's recipe rows; the two old
- *      generators refuse to draw over the owner's pictures.
+ *      generators refuse to draw over the owner's pictures;
+ *   5. (v2.3.3861) a shard has a picture only if the game has that shard: an
+ *      old `shard_dungeon:<run id>` gets the glyph, not a missing file.
  */
 import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -104,6 +106,22 @@ const is256 = (u) => existsSync(pub(u)) && dims(u).join('x') === '256x256';
     if (r.error) { check(`4e ${tool} refuses to draw over the owner's ${what} (python3 not here: read the guard)`, /--standins/.test(src(tool))); continue; }
     check(`4e ${tool} refuses to draw over the owner's ${what}`, r.status !== 0 && /owner's art now/.test(r.stderr + r.stdout), { status: r.status, out: (r.stderr + r.stdout).slice(0, 200) });
   }
+}
+
+/* ── 5. v2.3.3861: a shard has a picture only if the game has that shard ──
+   An old character still carries `shard_dungeon:<run id>` (a Workshop kill
+   until v2.3.3170, docs/specs/dungeons.md); the bag named its missing file
+   and the browser drew a broken-picture box (the owner, 2026-10-29). */
+{
+  const SH = await import('../../src/data/shards.js');
+  const keys = Object.values(SH.ZONE_SHARDS).map((s) => s.key);
+  const missing = keys.filter((k) => !existsSync(pub(`/icons/items/${k}.webp`)));
+  check(`5a every shard the game has (${keys.length}, data/shards.js) has its picture`, keys.length >= 9 && missing.length === 0, missing);
+  check('5b an old Workshop key is no shard the game has', SH.shardByKey('shard_dungeon:1a2b3c4d') === null && SH.shardByKey('shard_meadow') !== null);
+  const inv = src('src/ui/mobile/dash/InventoryPanel.jsx');
+  const tf = inv.slice(inv.indexOf('export const thumbFor'), inv.indexOf('export const ITEM_NAMES'));
+  check('5c the bag\'s thumbFor names a shard\'s file only through shardByKey (no picture for the rest: the glyph)',
+    /if \(k\.startsWith\('shard_'\)\)\s+return shardByKey\(k\) \? `\/icons\/items\/\$\{k\}\.webp\$\{ITEMS_V\}` : null;/.test(tf));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

@@ -62,7 +62,10 @@ button).
 - **Where the game finds them:** `src/data/farmCrops.js` `farmIconFor` (seeds,
   crops, compost), `src/data/dishes.js` each dish's `icon`,
   `src/rendering/controlsPreload.js` `TRAP_ICON_URL`. The glyphs stay as the
-  fallback where a picture fails to load.
+  fallback for an item with no picture (`thumbFor` returns nothing). A picture
+  that fails to load is NOT caught (no tile has an `onError`), so `thumbFor`
+  must only name files that exist (v2.3.3861: an old `shard_dungeon:<run id>`
+  named a missing file and drew the browser's broken-picture box).
 
 ## Tests
 
