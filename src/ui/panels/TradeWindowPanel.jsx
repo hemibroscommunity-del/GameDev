@@ -826,6 +826,7 @@ export function TradeWindowPanel(props) {
      `liveTrade` is deliberately false for the receipt and failure states too,
      so the bag is handed back the instant the trade stops being editable. */
   const bagTapRef = useRef(null);
+  const weaponTapRef = useRef(null);   /* v2.3.3849: a bag weapon tile stages into the weapon lane (tradeBagBus.tapWeapon) */
   /* ═══ v2.3.2280: THE BAG LETS GO FOR THE REVIEW SCREEN ═══
      The review screen tells the player, in its own footer, "Nothing on this
      screen can change the trade." With the bag attached that was not true:
@@ -844,7 +845,8 @@ export function TradeWindowPanel(props) {
   const liveTrade = !!trade2 && !trade2.invite && trade2.state === 'open' && !reviewStage;
   useEffect(() => {
     if (!liveTrade) return undefined;
-    tradeBagBus.attach((k) => { if (bagTapRef.current) bagTapRef.current(k); });
+    tradeBagBus.attach((k) => { if (bagTapRef.current) bagTapRef.current(k); },
+      (i, w) => (weaponTapRef.current ? weaponTapRef.current(i, w) : false));
     return () => tradeBagBus.detach();
   }, [liveTrade]);
   useEffect(() => { if (liveTrade) tradeBagBus.setStaged(stage); }, [liveTrade, stage]);
@@ -1183,6 +1185,16 @@ export function TradeWindowPanel(props) {
      a captured one would add to a stale copy and silently undo the last
      change. */
   bagTapRef.current = addOne;
+  /* v2.3.3849: a weapon tile in the bag stages that weapon, exactly as its
+     chip in the weapon lane below does (same send, same max).  False with no
+     weapon lane on this worker, so the tile opens its card as it always did;
+     at the max the click is taken and nothing is staged, as the chips are
+     disabled there (the lane header says "max"). */
+  weaponTapRef.current = (i, w) => {
+    if (!weaponLane) return false;
+    if (myWpn.length < T2_WPN_MAX) send('trade2_stage_weapon', { stashIdx: i, expectName: (w && w.name) || (stash[i] && stash[i].name) });
+    return true;
+  };
   /* v2.3.1235: batch-4 state-correction §4 — the staged-row Remove
      control.  Same pathway an item already left the stage by (delete
      the key, push the whole offer via the existing trade2_set send) —
