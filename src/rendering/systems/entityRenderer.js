@@ -1765,14 +1765,18 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   /* ═══ v2.3.3738: ...AND THAT ANCHOR NOW EXISTS, FOR THE FLIP ═══
      The owner: "needs at least the hat rotated to match the head during the
      flip".  flipHead.js has the head's centre and turn on every roll frame.
-     While a flip draws the roll (display._flipHead, set by the two callers),
-     the piece is placed as it sits standing on that facing, then carried with
+     While a flip draws the roll, the piece is placed as it sits standing on that facing, then carried with
      the head: moved from the standing head's centre to the tumble's and
      turned by the head's turn about it -- the hat, the hair, the beard, the
      glasses, the eyes and the hat's hair mask alike, as all of them come
-     through here.  The ground roll keeps them hidden, as it always has. */
+     through here.
+     v2.3.3798: ...and the GROUND roll too (the owner: "change the ground roll
+     to fix the hat and skin recolor that it looks like you fixed for the
+     double jump"): it is the same sheet, frame for frame, so every roll, the
+     dodge, the dash's loop and the flip, carries the head pieces with the
+     head (the flag the flip set, display._flipHead, is gone). */
   if (pose === 'dodge') {
-    const fh = display && display._flipHead ? flipHeadAt(dir, frameIdx) : null;
+    const fh = flipHeadAt(dir, frameIdx);
     if (!fh) { sprite.visible = false; sprite._btHide = 'dodge'; return; }
     _placeTrait(sprite, entry, display, 'stand', dir, mirror, 0, bodyScale, tune);
     if (!sprite.visible) return;
@@ -12252,7 +12256,6 @@ export class EntityRenderer {
              (player_dodge `dur`), exactly as the local branch plays across
              durMs; the cycleMs default only for an older client. */
           const fc = playerFrameCount('dodge', dir) || 9;
-          display._flipHead = _rDodge.kind === 'flip';   /* v2.3.3738: their head pieces ride their head (_placeTrait) */
           if (_rDodge.kind === 'flip') {
             /* v2.3.3682: their flip, by its phase (game/jump.js FLIP_FRAMES) */
             frameIdx = flipFrame(fc, (now - _rDodge.startTime) / (_rDodge.durMs || 1));
@@ -14062,11 +14065,9 @@ export class EntityRenderer {
            actually used; DODGE_DURATION_MS covers the first frame before
            it has been published. */
         const fc = playerFrameCount('dodge', dir) || 9;
-        display._flipHead = false;   /* v2.3.3738 */
         if (_flipRoll && !S._dodgeRoll && !_dashRoll) {
           /* v2.3.3682: the flip -- the tumble's frames by its phase */
           frameIdx = flipFrame(fc, jumpPhase(_flipJ, now));
-          display._flipHead = true;   /* v2.3.3738: the head pieces ride the head (_placeTrait) */
           display._jumpFrameIdx = frameIdx;   /* QA (__btJumpFx) */
         } else if (_dashRoll && !S._dodgeRoll) {
           /* ═══ v2.3.2463: A DASH LOOPS WHERE A DODGE CLAMPS ═══
