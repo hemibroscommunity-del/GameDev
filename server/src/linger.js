@@ -133,6 +133,7 @@ export const lingerMethods = {
     if (this._placeRemember) this._placeRemember(id, ps, Date.now());
     delete this.playerState[id];
     this._gearProvForget(id);
+    if (this._bankForget) this._bankForget(id);   /* v2.3.3785 */
     const pets = this._petbookDirtyCopy(id);
     this._petbookForget(id);
     const codex = this._codexDirtyCopy(id);

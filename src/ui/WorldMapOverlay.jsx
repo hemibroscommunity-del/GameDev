@@ -885,7 +885,29 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
         ok = label(b.x, b.top - 3 - bh / 2, lines, Object.assign({}, opt, { same }));
         if (ok) more.buildingsOver = (more.buildingsOver || 0) + 1;
       }
+      /* v2.3.3814: and if neither had room (lane A's judge pass: "names
+         every building except the Town Hall" -- your mark, kept first, is
+         just south of its door, and its neighbours' names took the rest):
+         under your mark, then beside the picture, left or right; and at the
+         last its name goes under its picture all the same.  Every building
+         on the screen keeps its name, as v2.3.3522 meant (a picture just past
+         the screen's edge, with no room on it for a name, is no building
+         left unnamed). */
+      if (!ok) {
+        const lines = tries[0][0];
+        g.font = `${opt.weight} ${opt.size}px system-ui, -apple-system, sans-serif`;
+        const half = Math.max(...lines.map((ln) => g.measureText(ln).width)) / 2 + 4;
+        const side = TOWN_ICON_PX / 2 + half + 6;   /* clear of its own picture's box */
+        const mid = b.top + 8;   /* level with its picture's upper half: clear of your mark below the door */
+        ok = label(b.x, b.y + 22, lines, Object.assign({}, opt, { below: true }))
+          || label(b.x - side, mid, lines, opt)
+          || label(b.x + side, mid, lines, opt);
+        if (!ok && b.y - 2 >= 0 && b.top <= h) { label(b.x, b.y, lines, Object.assign({}, opt, { below: true, force: true })); ok = true; }
+        more.buildingsMoved = (more.buildingsMoved || 0) + 1;
+      }
       if (ok) more.buildings++;
+      /* v2.3.3814: which were named, and which found no room on the screen (QA) */
+      (ok ? (more.named || (more.named = [])) : (b.y - 2 >= 0 && b.top <= h) ? (more.unnamed || (more.unnamed = [])) : (more.offEdge || (more.offEdge = []))).push(d.id);
     }
   }
   drawPins();   /* v2.3.3525: farther out, where the buildings are not drawn */

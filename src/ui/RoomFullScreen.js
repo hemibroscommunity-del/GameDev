@@ -119,7 +119,7 @@ export function showRoomFull(info) {
       el.innerHTML =
         '<div class="bt-rf-card">'
         + '<div class="bt-rf-ring"></div>'
-        + '<h2>Bro Town is full right now</h2>'
+        + '<h2>BroTown is full right now</h2>'
         + '<div class="bt-rf-count"></div>'
         + '<p>Every spot in the world is taken. Keep this open — you will drop '
         + 'straight in the moment someone leaves.</p>'

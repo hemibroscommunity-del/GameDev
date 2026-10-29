@@ -78,3 +78,26 @@ itself are not moved here, so they no longer reach the townsperson:
 `mp-questui`, `mp-questwin`, `mp-questxp`, `mp-questbanner`, `mp-layer`,
 `mp-figureseam`. They run only by hand. Each needs a tap (`H.talkToNpc`) when
 it is moved to the world.
+
+## v2.3.3834: E does what the prompt on the screen says
+
+The judge pass (2026-10-29), on a computer: at the Town Hall's door with
+Mayor Bro beside it, his quest under way, the prompt read **E  ENTER TOWN
+HALL**, and E talked to the Mayor (the v2.3.3583 rule above: a townsperson
+with a quest before a door). A key that does something other than what the
+screen says reads as broken.
+
+Now, where the door's own prompt is up (`desktopControls.js` `doorPromptUp`:
+the same test the prompt makes, a building or a Wheel hall's door), E is the
+door. Everywhere else a townsperson with a quest still comes before a door,
+and a click (or a tap) on him always talks. A step from the Town Hall's door,
+beside the Mayor, E talks to him again. Phones are unchanged: the right
+stick's tap asks for the character first, as before.
+
+Not changed: walking into a townsperson. Your bro can still stand where he
+stands (their name plates overlap); blocking it would touch the move the
+worker checks, so it waits.
+
+Tests: `mp-mayordoor` (the door's prompt and E, a computer; also the board's
+button in and out of town, and a click on another player beside you in No
+man's land); `mp-questprox` step 6 (both sides, a phone's keyboard).
