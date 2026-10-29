@@ -16,6 +16,8 @@
  *   5. a WEAPON in the bag (a StashTile, which never asked the trade before):
  *      a click stages it into the weapon lane -- B sees it offered and it
  *      leaves A's bag -- where on main it opened the weapon's card.
+ *   6. v2.3.3856: the drawer's two offers stand side by side -- yours on the
+ *      left, theirs on the right, the same width -- on both computers.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -149,6 +151,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('5c ...and B sees it offered', bSeesW, { name: wpn.name });
     await shot(A, '5-weapon');
   }
+
+  /* ── 6. v2.3.3856: side by side -- yours on the left, theirs on the right ──
+     The owner: "for trade window I'd prefer a side by side layout of your
+     trade window on left and other person trade window on right." */
+  const lanes = (P) => P.page.evaluate(() => {
+    const d = document.querySelector('[data-trade-drawer]');
+    const pick = (rx) => {
+      const h = [...(d ? d.querySelectorAll('.bt-t2-lane-hdr') : [])].find((x) => rx.test(((x.querySelector('.bt-t2-lane-name') || {}).textContent || '').trim()));
+      const l = h && h.closest('.bt-t2-lane'); if (!l) return null;
+      const r = l.getBoundingClientRect(); return { top: Math.round(r.top), left: Math.round(r.left), right: Math.round(r.right), w: Math.round(r.width) };
+    };
+    return { mine: pick(/^You offer$/i), theirs: pick(/offers$/i), drawerW: d ? Math.round(d.getBoundingClientRect().width) : 0 };
+  });
+  const LA = await lanes(A), LB = await lanes(B);
+  const side = (L) => !!(L.mine && L.theirs) && Math.abs(L.mine.top - L.theirs.top) <= 4 && L.mine.right <= L.theirs.left && L.mine.w > 250 && Math.abs(L.mine.w - L.theirs.w) <= 4;
+  rec.ok(`6a on a computer (drawer ${LA.drawerW} px) your offer is on the left, theirs on the right, side by side, the same width`, side(LA), LA);
+  rec.ok('6b ...and on the other side the same: their own offer left, the seller\'s right', side(LB), LB);
+  await shot(A, '6-side-by-side');
 
   await A.ctx.close().catch(() => {});
   await B.ctx.close().catch(() => {});
