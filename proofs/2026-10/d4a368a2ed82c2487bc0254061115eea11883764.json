@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d4a368a2ed82c2487bc0254061115eea11883764",
+  "tree": "bef1bd0d497fe36f951694cd3b043c91997ca8b7",
+  "committedAt": "2026-10-28T17:27:27-07:00",
+  "subject": "The world map's markers are now little pictures of what they mark (v2.3.3780) (#1250)",
+  "files": 6995,
+  "bytes": 808537899,
+  "listingSha256": "feb14ac96c8557422e271bd5a747459bbb881d543286975c408277a4f465df7f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
