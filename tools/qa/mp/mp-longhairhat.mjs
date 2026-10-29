@@ -20,12 +20,15 @@
  *   LH_HATCOLOR=red      the hats in a colour (drawn from the look palette)
  *   LH_CAPE=crimson      a cape, whose hood clips the hair too
  *   LH_TAG=x             a word in the pictures' names
+ *   LH_HATS=a,b          these hats only; LH_REPEAT=n  each reading n times, frame after frame (a flicker
+ *                        is one frame: the least of the n is what is judged, all n printed)
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const HATS = ['cowboy-hat', 'cowboy-hat-2', 'army-helmet'];
+const HATS = process.env.LH_HATS ? process.env.LH_HATS.split(',') : ['cowboy-hat', 'cowboy-hat-2', 'army-helmet'];
+const REPEAT = Math.max(1, +(process.env.LH_REPEAT || 1));
 /* the share of its bare-headed pixels the hair keeps under a hat, at least */
 const LH_MIN = 0.25;
 const FACINGS = {
@@ -70,6 +73,20 @@ const hairPixels = (P) => P.page.evaluate((t) => {
   } catch (e) { return { err: String(e && e.message || e) }; }
 }, HAIR_T);
 
+/* LH_REPEAT readings, a frame apart: the least one (a flicker is one frame), and all of them */
+async function readMin(P) {
+  let least = null;
+  const all = [];
+  for (let i = 0; i < REPEAT; i++) {
+    const r = await hairPixels(P);
+    all.push(r && r.vis ? r.n : (r ? 'hidden:' + r.why : '?'));
+    if (!least || !r || !r.vis || (least.vis && r.n < least.n)) least = r;
+    if (REPEAT > 1) await P.page.waitForTimeout(120);
+  }
+  if (least && REPEAT > 1) least.all = all;
+  return least;
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
@@ -108,11 +125,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (const [face, keys] of Object.entries(FACINGS)) {
           for (const k of keys) await P.page.keyboard.down(k);
           await P.page.waitForTimeout(700);
-          const jog = await hairPixels(P);
+          const jog = await readMin(P);
           if (face === 'north' || face === 'northwest' || face === 'northeast') await shot(`${hat}-${face}-jog`);
           for (const k of keys) await P.page.keyboard.up(k);
           await P.page.waitForTimeout(600);
-          const stand = await hairPixels(P);
+          const stand = await readMin(P);
           if (face === 'north') await shot(`${hat}-${face}-stand`);
           table[hat][face] = { jog, stand };
         }
@@ -126,7 +143,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
             const bare = table.none[face][pose], hatted = table[hat][face][pose];
             if (!bare || !bare.vis || !(bare.n > 20)) continue;   /* the hair does not show here bare-headed (from the front, a short fringe) */
             const share = hatted && hatted.vis ? (hatted.n || 0) / bare.n : 0;
-            rows.push(`${hat} ${face} ${pose}: ${hatted && hatted.vis ? hatted.n : 'hidden'} / ${bare.n} (${Math.round(share * 100)}%)`);
+            rows.push(`${hat} ${face} ${pose}: ${hatted && hatted.vis ? hatted.n : 'hidden'} / ${bare.n} (${Math.round(share * 100)}%)${hatted && hatted.all ? ' [' + hatted.all.join(' ') + ']' : ''}`);
             if (share < LH_MIN) bad.push({ hat, face, pose, n: hatted && hatted.n, bare: bare.n, hatted });
           }
         }
