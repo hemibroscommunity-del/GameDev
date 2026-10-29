@@ -682,14 +682,29 @@ export const STATES = [
      Today page again (found by the design notes' research) */
   building('farm', 'Feed & Seed', 'The Feed & Seed: visit your farm, buy seeds, the order board.'),
   building('farmhome', 'Land Office', 'The Land Office: the trip to your own farm.'),
-  building('bank', 'Bank', 'The Bank: your gold and what you wear (nothing is stored in it yet).'),
+  /* v2.3.3785: the Bank is a vault (server/src/bank.js) -- seeded with a few
+     things in the bag, so the picture shows tiles to put in, not "Your bag is
+     empty" (moving them needs the door; the window shows them anywhere) */
+  (() => {
+    const b = building('bank', 'Bank', 'The Bank\'s vault: your gold and the vault\'s, put in and taken out by 10, 100, All or a typed amount; the vault (48 kinds) and your bag, a tap moving an item, a stack asking how many.');
+    const open = b.run;
+    b.run = async (ctx) => {
+      if (ctx.wsPort && ctx.myId) {
+        await H.grant(ctx.wsPort, ctx.myId, 'item', { invKey: 'wood_oak', count: 12 }).catch(() => {});
+        await H.grant(ctx.wsPort, ctx.myId, 'item', { invKey: 'fish_minnow', count: 3 }).catch(() => {});
+        await wait(ctx.P, 800);
+      }
+      return open(ctx);
+    };
+    return b;
+  })(),
   building('exchange', 'General Store (market)', 'The General Store\'s Marketplace: an order book where players post buy and sell orders for kinds of gear, with a way to the Auction House at its top.'),
   building('auctionhouse', 'Auction House', 'The Auction House: its clerk behind the counter and its one button, Market, which opens the players\' listings and bids.'),
   building('party', 'Saloon', 'The Saloon: your party and finding one.'),
   building('post', 'Post Office', 'The Post Office: your mail and friends\' messages.'),
   building('sheriff', "Sheriff's Office", "The Sheriff's Office: the player list (duels start from a player's card) and the arena sign-up."),
   building('guildhall', 'Guild Hall', 'The Guild Hall: a row saying clans are parties now (made in the Saloon), and the skill guilds.'),
-  building('townhall', 'Town Hall', 'The Town Hall (v2.3.3766): the board of everything to do in the world, under five headings, the leaderboard and the world map at its foot.'),
+  building('townhall', 'Town Hall', 'The Town Hall (v2.3.3766): the board of everything to do in the world, under eight headings (v2.3.3801: the owner\'s review\'s), a line under every tile, the leaderboard, the world map, the Codex and Journey at its foot.'),
   /* v2.3.3766: a page of the board -- the arena's, with its two pins */
   building('townhall', 'Town Hall: a page', 'A page of the Town Hall\'s board (v2.3.3766): what the arena is, where it is, and the Red pin and Blue pin buttons.', {
     id: 'building-townhall-page',
@@ -698,6 +713,19 @@ export const STATES = [
       if (!ok) return 'no building-window probe';
       for (let i = 0; i < 30; i++) {
         const hit = await evalIn(P, () => { const t = document.querySelector('[data-board-tile="arena"]'); if (t) { t.click(); return true; } return false; });
+        if (hit) break;
+        await wait(P, 200);
+      }
+    },
+  }),
+  /* v2.3.3801: a page with no one place -- Town Quests', with its one action, "Open Quests" */
+  building('townhall', 'Town Hall: a page with one action', 'A page of the Town Hall\'s board with no one place (v2.3.3801): Town Quests -- what they are, look for the gold "!", and one button, Open Quests, in place of the pins.', {
+    id: 'building-townhall-action',
+    run: async ({ P }) => {
+      const ok = await evalIn(P, (p) => { if (!window.__btBuildingWindow) return false; window.__btBuildingWindow.open(p); return true; }, 'townhall');
+      if (!ok) return 'no building-window probe';
+      for (let i = 0; i < 30; i++) {
+        const hit = await evalIn(P, () => { const t = document.querySelector('[data-board-tile="townquests"]'); if (t) { t.click(); return true; } return false; });
         if (hit) break;
         await wait(P, 200);
       }
