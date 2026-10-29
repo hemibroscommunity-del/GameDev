@@ -2,51 +2,77 @@
 
 The owner, 2026-10-28, before the judges' showing (the judges play on
 computers): "As you find improvements you can make to the empty space on the
-desktop version go ahead and make your changes to better it".
+desktop version go ahead and make your changes to better it". Then, of two of
+the screens: "Make the left long strip black bar the same gray color as the top
+bar but have an arrow centered in the middle pointing towards the screen play
+area" and "For the trait picker desktop only you can make the trait picker area
+and buttons proportionally larger".
 
 Computer only. Phones, upright and sideways, do not change: every change here
-is behind the computer's wide layout (`deskWideActive`, `deskFoldStripW`) or
-the computer's CSS block (`@media (pointer:fine) and (min-width:1000px)`).
+is behind the computer's wide layout (`deskWideActive`, `deskFoldStripW`,
+`html.bt-desk-wide`) or the computer's CSS block
+(`@media (pointer:fine) and (min-width:1000px)`).
 
-## 1. The closed dashboard's strip is a toolbar
+## 1. The closed dashboard's strip
 
-On a computer the dashboard is a column at the left edge. CLOSE folds it to a
-strip at the edge, which was a dark band the screen's height with OPEN alone
-at its top.
+CLOSE folds the dashboard's column to a strip at the edge. It was a black band
+the screen's height with OPEN alone at its top. It is the top bar's grey now
+(`zone-header-bar.svg`'s face, #152A34, its rim at the edge), with one arrow at
+its middle pointing into the world, and a click anywhere on it opens the
+dashboard (as OPEN and the I key do). `BottomDashboard.jsx`
+(`bt-desk-foldstrip`).
 
-Now the strip holds, under OPEN:
+A first version made the strip a toolbar (the six buttons and the weapons); the
+owner's design replaced it the same night.
 
-- the dashboard's six buttons stacked (Dashboard/Bag, Character, Quests,
-  Skills, Codex, More), the open row's own, each wearing its key (I P J L K O);
-  a click opens the dashboard on that page;
-- at its foot, the three weapons and their levels, as the open column shows
-  them at its bottom; a click opens the dashboard, where the full card is.
+## 2. The creator's Trait Picker
 
-The strip is the width it was: the world does not lose a pixel.
-`BottomDashboard.jsx` (`bt-desk-foldrail`), `NavRail.jsx` (`vertical`),
-`DashColumns.jsx` (`DeskRailWeapons`, and `combatSkillLevel`, the level rule
-the card and the chip share), `sheetGeometry.js` (`DESK_RAIL_BTN_H`,
-`DESK_RAIL_ICON`: a little shorter than the open row's, so all of it fits a
-720-high screen).
+- It is as tall as its tab: on Bro type it ended three tiles in with some 60% of
+  the pane an empty navy box; now it stops under its content and the painted
+  backdrop shows below. A long tab (Hair, Hats, Shirt) still reaches the foot
+  and scrolls inside.
+- It is drawn 1.3 times larger, in proportion (`zoom`), in a creator 1.4 play
+  columns wide (still sized from the window's height, TRAPS §214). The bro's
+  column (the bro, the name plate, ENTER) is exactly as it was.
 
-![the closed dashboard, before and after](desk-space/folded-before-after.png)
+`game.css`, the computer's blocks.
 
-## 2. The creator's Trait Picker is as tall as its tab
+## 3. Quests with nothing active
 
-The picker ran to the screen's foot whatever its tab held: on Species, three
-tiles and some 60% of the pane an empty navy box. On a computer it is now as
-tall as its tab, and the creator's painted backdrop shows below a short one; a
-long tab (Hair, Hats, Shirt) still reaches the foot and scrolls inside. The bro
-does not move. `game.css`, the computer's block.
+A new player has no active quest, so the Active tab was one line over a column
+three quarters empty. On a computer the quests on offer are listed under it,
+the Available tab's own rows (a click opens the quest). `QuestsPanel.jsx`.
 
-![the Species tab, before and after](desk-space/creator-species-before-after.png)
+## 4. Skills
+
+The ten tiles were spread down the column (v2.3.3687, the owner's "Every menu
+needs to look like it fits the space"), which on a tall window stood the rows
+~180 px apart with wide empty bands between them. They are packed at the top
+now, each with its XP to the next level in numbers (the worker's price, as the
+skill's own page shows it). `SkillsPanel.jsx`.
+
+## 5. The weapons at the foot of every page
+
+The dashboard's own page ended in the three weapons; every other page ended in
+empty column. Now each page does (`DashColumns.jsx` `DeskRailWeapons`, pinned
+under the page, which scrolls above them when it needs the height). A click
+opens the dashboard, where the full card is. `combatSkillLevel` is the level
+rule the card and the chip share.
+
+## 6. The building windows
+
+Every building's window is one card (BroTown's `bt-inspect-card`; each panel's
+`LS_WRAP` bleeds to it, the Town Hall's board included). It was a phone's
+360 px in a ~1170 px world, its lists scrolling after two rows. On a computer
+it is 470 px wide and up to 82% of the world's height. The Blacksmith keeps its
+low place and height (the smith is seen working above it) and gains the width.
 
 ## Checks
 
-- `mp-deskwide`: the folded strip's six buttons with their keys and the three
-  weapons, inside the strip and on the screen; a click on Quests opens Quests,
-  a click on a weapon opens the dashboard.
+- `mp-deskwide`: the strip's grey, its arrow at the middle, I on it, a click
+  opening the dashboard; the Quests page ending in the three weapons at the
+  column's foot.
 - The UI review: a new state, `hud-folded` (the dashboard closed), and a new
   view not in the default run, `desk720` (1280 x 720). Every creator tab at
-  1440 x 900 and 1280 x 720; the upright phone's creator and HUD before and
-  after, the same.
+  1440 x 900 and 1280 x 720, every building window at 1440 x 900; the upright
+  phone's creator, HUD, Quests and Skills before and after, the same.

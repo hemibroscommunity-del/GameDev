@@ -30,8 +30,8 @@
  *   3. H folds the controls to the ⌨ and the world grows into the room; H again
  *      brings them back;
  *   4. I and P open and close the pages, and with the pages folded the world
- *      starts after a strip just wide enough for the fold chip (v2.3.3769: a
- *      toolbar -- the six buttons under OPEN, the weapons at its foot), the chip at
+ *      starts after a strip just wide enough for the fold chip (v2.3.3769: in
+ *      the top bar's grey, an arrow at its middle, a click opens it), the chip at
  *      its top, saying OPEN;
  *   5. the chat bar lies over the world, not over either column;
  *   6. the Points tab is a list down the column: thirteen rows, every one on
@@ -238,35 +238,36 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && stripI.l <= 1 && Math.abs(stripI.w - FOLD_STRIP_W) <= 2 && stripI.t <= 1 && stripI.b >= DESK.height - 1
         && Math.abs(cvI.l - FOLD_STRIP_W) <= 2 && chipI.l >= stripI.l && chipI.r <= stripI.r && chipI.t <= 10
         && chipWord === 'OPEN' && !!(await box(P, '.bt-desk-keys')), { sI, cvI, stripI, chipI, chipWord });
-    /* v2.3.3769: the folded strip is a toolbar -- under OPEN the dashboard's
-       six buttons stacked, each wearing its key, and the three weapons and
-       their levels at the foot, all inside the strip and on the screen; a
-       click on a button opens its page, a click on a weapon the dashboard */
-    const rail = await P.page.evaluate(() => {
-      const r = document.querySelector('[data-desk-foldrail]');
-      if (!r) return null;
-      const bx = (n) => { const q = n.getBoundingClientRect(); return { l: Math.round(q.left), t: Math.round(q.top), r: Math.round(q.right), b: Math.round(q.bottom) }; };
-      return {
-        keys: [...r.querySelectorAll('[data-nav]')].map((n) => n.getAttribute('data-key')),
-        btns: [...r.querySelectorAll('[data-nav]')].map(bx),
-        weapons: [...r.querySelectorAll('[data-rail-weapon]')].map((n) => ({ ...bx(n), text: n.textContent.trim() })),
-      };
+    /* v2.3.3769 (the owner: "Make the left long strip black bar the same gray
+       color as the top bar but have an arrow centered in the middle pointing
+       towards the screen play area"): the strip in the top bar's grey, one
+       arrow at its middle pointing into the world, and a click anywhere on it
+       opens the dashboard */
+    const strip = await P.page.evaluate(() => {
+      const r = document.querySelector('[data-desk-foldstrip]');
+      const a = document.querySelector('[data-desk-foldstrip] [data-desk-foldarrow]');
+      if (!r || !a) return null;
+      const rb = r.getBoundingClientRect(), ab = a.getBoundingClientRect();
+      return { bg: getComputedStyle(r).backgroundColor, key: r.getAttribute('data-key'),
+        midY: Math.round((ab.top + ab.bottom) / 2 - (rb.top + rb.bottom) / 2), midX: Math.round((ab.left + ab.right) / 2 - (rb.left + rb.right) / 2) };
     });
-    const inStrip = (b) => !!stripI && b.l >= stripI.l - 1 && b.r <= stripI.r + 1 && b.t >= 0 && b.b <= DESK.height;
-    rec.ok(`...and the strip is a toolbar: the six buttons stacked under OPEN, wearing I P J L K O (${rail && rail.keys.join(' ')}), the three weapons at its foot (${rail && rail.weapons.map((w) => w.text).join(', ')}), all inside it`,
-      !!rail && rail.keys.join('') === 'IPJLKO' && rail.btns.every(inStrip) && rail.btns.every((b, i) => i === 0 || b.t > rail.btns[i - 1].t)
-        && !!chipI && rail.btns.length > 0 && rail.btns[0].t >= chipI.b
-        && rail.weapons.length === 3 && rail.weapons.every(inStrip) && rail.weapons.every((w) => /^LV \d+$/.test(w.text))
-        && rail.weapons[0].t > rail.btns[rail.btns.length - 1].b, rail);
-    const clickIn = async (sel) => { const b = await box(P, sel); if (b) { await P.page.mouse.click(b.l + b.w / 2, b.t + b.h / 2); await P.page.waitForTimeout(900); } return !!b; };
-    const qOk = await clickIn('[data-desk-foldrail] [data-nav="quests"]');
-    const sQ = await sheet(P);
-    rec.ok('...a click on its Quests button opens the Quests page', qOk && !!sQ && sQ.mode === 'expanded' && sQ.root === 'quests', sQ);
-    await key(P, 'j', 900);
-    const wOk = await clickIn('[data-desk-foldrail] [data-rail-weapon="agility"]');
-    const sW = await sheet(P);
-    rec.ok('...and a click on a weapon opens the dashboard', wOk && !!sW && sW.mode === 'expanded' && sW.root === 'dashboard', sW);
+    rec.ok(`...and the strip is the top bar's grey (${strip && strip.bg}) with an arrow at its middle (${strip && strip.midX}, ${strip && strip.midY} px off), wearing I`,
+      !!strip && strip.bg === 'rgb(21, 42, 52)' && Math.abs(strip.midY) <= 3 && Math.abs(strip.midX) <= 3 && strip.key === 'I', strip);
+    if (stripI) { await P.page.mouse.click(stripI.l + stripI.w / 2, Math.round(DESK.height * 0.6)); await P.page.waitForTimeout(900); }
+    const sS = await sheet(P);
+    rec.ok('...a click on the strip opens the dashboard', !!sS && sS.mode === 'expanded' && sS.root === 'dashboard', sS);
     await key(P, 'i', 900);
+    /* v2.3.3769: every page but the dashboard's own ends in the three weapons */
+    await key(P, 'j', 900);
+    const foot = await P.page.evaluate(() => {
+      const f = document.querySelector('[data-desk-foot]');
+      if (!f) return null;
+      const b = f.getBoundingClientRect();
+      return { n: f.querySelectorAll('[data-rail-weapon]').length, b: Math.round(b.bottom), h: innerHeight };
+    });
+    rec.ok(`...the Quests page ends in the three weapons at the column's foot (${foot && foot.n}, bottom ${foot && foot.b} of ${foot && foot.h})`,
+      !!foot && foot.n === 3 && foot.b <= foot.h && foot.b >= foot.h - 80, foot);
+    await key(P, 'j', 900);
     await key(P, 'p', 900);
     const sP = await sheet(P);
     const pagesP = await box(P, '.bt-land-sheet');
