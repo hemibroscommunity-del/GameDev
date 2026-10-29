@@ -5027,10 +5027,10 @@ function _ensureHairMaskLoaded(hatId) {
    'long hair' on the north run" under a cowboy hat.  P1 found art loaders
    that give up for the session after a failed fetch (a wifi blip, a Pages
    deploy mid-session): this one asked ONCE and gave up silently, so a hat
-   whose north mask missed its one chance clipped the hair to nothing it could
-   place there for the rest of the page -- the hair drawn unclipped through the
-   crown, or (_clipHairToHat) not clipped at all, as the facing's mask stayed
-   null.  Every clipping hat ships all five masks (checked on disk), so a
+   whose north mask missed its one chance left that facing's mask null for the
+   rest of the page, and _clipHairToHat then draws the hair unclipped under it
+   (mp-longhairhat LH_FAIL: the hair still shows -- this is not the owner's
+   missing hair -- but nothing holds it inside the hat's outline).  Every clipping hat ships all five masks (checked on disk), so a
    failure is always a blip: asked again on the head pieces' own schedule
    (TRAIT_RETRY_LATER_MS: 5, 10, 20, 40 s and every minute after), only while
    the hat is worn (this runs when it is placed), ten rounds at most, past

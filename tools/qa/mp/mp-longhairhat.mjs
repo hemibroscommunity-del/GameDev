@@ -23,6 +23,7 @@
  *   LH_FAIL=part         fail every download whose address holds `part` for LH_FAIL_MS
  *                        (20 s) from the page's start, as a wifi blip or a deploy does, then
  *                        let it through (LH_INITHAT=hat: worn from the start, so it loads then)
+ *   LH_QUERY=x           another switch on the page (retrylooks=0: the loaders as they were)
  *   LH_HATS=a,b          these hats only; LH_REPEAT=n  each reading n times, frame after frame (a flicker
  *                        is one frame: the least of the n is what is judged, all n printed)
  */
@@ -97,7 +98,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const vname of views) {
     const V = VIEWS[vname];
     const P = await H.newPlayer(browser, {
-      name: 'Longhair' + vname, wsPort, webPort, world: 'wheel', guest: true, ...V, query: 'headframes',
+      name: 'Longhair' + vname, wsPort, webPort, world: 'wheel', guest: true, ...V, query: 'headframes' + (process.env.LH_QUERY ? '&' + process.env.LH_QUERY : ''),
       init: `try { localStorage.setItem('bt-hair', 'long'); localStorage.setItem('bt-headwear', ${JSON.stringify(process.env.LH_INITHAT || 'none')}); localStorage.setItem('bt-facialhair', 'none'); localStorage.setItem('bt-eyewear', 'none');`
         + (process.env.LH_HATCOLOR ? ` localStorage.setItem('bt-hatcolor', ${JSON.stringify(process.env.LH_HATCOLOR)});` : '')
         + (process.env.LH_CAPE ? ` localStorage.setItem('bt_cape', ${JSON.stringify(process.env.LH_CAPE)});` : '') + ' } catch (e) {}',
@@ -157,7 +158,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
             const bare = table.none[face][pose], hatted = table[hat][face][pose];
             if (!bare || !bare.vis || !(bare.n > 20)) continue;   /* the hair does not show here bare-headed (from the front, a short fringe) */
             const share = hatted && hatted.vis ? (hatted.n || 0) / bare.n : 0;
-            rows.push(`${hat} ${face} ${pose}: ${hatted && hatted.vis ? hatted.n : 'hidden'} / ${bare.n} (${Math.round(share * 100)}%)${hatted && hatted.all ? ' [' + hatted.all.join(' ') + ']' : ''}`);
+            rows.push(`${hat} ${face} ${pose}: ${hatted && hatted.vis ? hatted.n : 'hidden'} / ${bare.n} (${Math.round(share * 100)}%)${hatted && hatted.vis ? (hatted.mask ? ', clipped to the hat' : ', NOT CLIPPED') : ''}${hatted && hatted.all ? ' [' + hatted.all.join(' ') + ']' : ''}`);
             if (share < LH_MIN) bad.push({ hat, face, pose, n: hatted && hatted.n, bare: bare.n, hatted });
           }
         }
