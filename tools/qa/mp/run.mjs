@@ -679,6 +679,7 @@ const SCENARIOS = {
   authority: () => import('./mp-authority.mjs'), /* v2.3.1702: ability spends, firemaking + local-AI HP */
   hubspawn: () => import('./mp-hubspawn.mjs'), /* v2.3.1703: leaving town does not put you back in town */
   block: () => import('./mp-block.mjs'), /* v2.3.1705: the shield is directional, and the cone is the hitbox */
+  handin1: () => import('./mp-handin1.mjs'), /* v2.3.3871: one click on Mayor Bro hands in the first quest -- its Claim reward on that same window (a computer and a phone) */
   questline: () => import('./mp-questline.mjs'), /* v2.3.1707: the WHOLE line, start to finish, through the dialogue */
   questwall: () => import('./mp-questwall.mjs'), /* v2.3.1972: what he offers after the last quest he can be paid for */
   questkill: () => import('./mp-questkill.mjs'), /* v2.3.1972: the objective EARNED — kill it, and see the drop land */
