@@ -11231,7 +11231,7 @@ export var BroTown = function BroTown(_ref0) {
                attack in its place if nothing else is there?)".  One swing, one
                arrow or one bolt the way you face, taken by the auto-attack
                loop as a press of the disc is (game/tapJump.js
-               requestTapAttack); the JUMP button and X jump. */
+               requestTapAttack); the JUMP button and Space jump (X until v2.3.3844). */
             try { requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }
           }
         }
