@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ff8e8530a3623d342d1dd9bcbff118d31ad5f2ed",
+  "tree": "673db6f29ddc0248e0144837d4d14e59b81e47b3",
+  "committedAt": "2026-10-28T17:55:20-07:00",
+  "subject": "The Verdant Wilds is now the Earth Forest (v2.3.3778) (#1257)",
+  "files": 7023,
+  "bytes": 814784431,
+  "listingSha256": "326975015fca87629a6f93d7ad37fd5f57590eff185b936f4d3b195700c4d8ef",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
