@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useRef, useState } from 'react';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { shopBus } from '../mobile/shopBus.js';
@@ -386,7 +387,7 @@ export function ShopkeeperPanel() {
           fontSize: 13, fontWeight: 700, color: '#EAC675',
           fontVariantNumeric: 'tabular-nums', flex: 'none',
         }}>
-          <img src="/icons/popups/gold.webp" alt="" draggable={false}
+          <img src={coinArtFor(coins)} alt="" draggable={false}   /* v2.3.3734: your purse, the pile for it */
             style={{ width: 15, height: 15, objectFit: 'contain' }}
             onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🪙')); }} />
           {/* v2.3.3481: the 2026-10-19 UI review -- his drawer read "2550"

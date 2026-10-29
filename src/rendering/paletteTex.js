@@ -140,6 +140,14 @@ function giveRow(row) {
   _atlas.used--;
 }
 
+/* v2.3.3716: a row of the atlas for colours that are not one picture's --
+   a look's role colours (lookPalette.js, `?lookpalette`): -1 when it is full */
+export function takePaletteRow(rgba) { return takeRow(rgba); }
+export function givePaletteRow(row) { giveRow(row); }
+/* v2.3.3716: the renderer the programs were built for (lookPalette.js builds
+   its own behind the same loading screen) */
+export function paletteRendererOf() { return _renderer; }
+
 /* the 4-byte row a picture's width needs (WebGL unpacks rows 4-aligned) */
 export function paletteStride(w) { return (w + 3) & ~3; }
 
@@ -1056,3 +1064,8 @@ extensions.add(PaletteFillBatcher);
 export function paletteFillProgram() { return fillBatchShader().glProgram; }
 export function paletteFillMade() { return FRAG_FILL !== FRAG; }
 export function paletteProgramLinked(r, program) { return programLinked(r, program); }
+
+/** v2.3.3728: has the renderer said yet whether pictures are drawn as colour
+ *  numbers here (setPaletteRenderer ran)?  p256.js waits on it: the effects
+ *  load as their modules are read, before the renderer is made. */
+export function paletteDecided() { return _ok !== null; }

@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React from 'react';
 import { xpRequired } from '@/data/index.js'; /* v2.3.3120: the trap button's imports went with it */
 import { btRpc, getBtPassphrase, getBtPlayerId, syncRpgToServer } from '@/networking/index.js';
@@ -121,7 +122,7 @@ export function MenuBar(props) {
       gap: 2
     }
   }, /*#__PURE__*/React.createElement("img", {
-    src: "/icons/popups/gold.webp",
+    src: coinArtFor(rpgState.coins), /* v2.3.3734: the pile for the amount */
     alt: "",
     draggable: false,
     style: {

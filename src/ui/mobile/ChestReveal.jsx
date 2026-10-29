@@ -1,3 +1,4 @@
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, QUALITY_COLOR, QUALITY_LABEL, qualityInk, getState } from './dash/common.js';
 import { thumbFor } from './dash/InventoryPanel.jsx';
@@ -72,7 +73,7 @@ export function prizeText(p) {
 }
 function prizeIcon(p) {
   if (!p) return null;
-  if (p.kind === 'coins') return '/icons/ui/cur-gold.webp';
+  if (p.kind === 'coins') return coinArtFor(p.coins);   /* v2.3.3734: the pile for the prize */
   if (p.kind === 'fish') return thumbFor(p.invKey || 'fish_minnow');
   if (p.kind === 'gem') return thumbFor(p.invKey || 'rare_gem');
   if (p.kind === 'armor' && p.piece) return armorIconFor(p.piece.slot === 'legsArmor' ? 'legsArmor' : 'armor', p.piece.mat);
@@ -83,7 +84,7 @@ function prizeIcon(p) {
 const _warm = [];
 function warmPrizeIcons() {
   if (_warm.length || typeof Image === 'undefined') return;
-  const urls = ['/icons/ui/cur-gold.webp', thumbFor('fish_minnow'), thumbFor('rare_gem'),
+  const urls = [thumbFor('fish_minnow'), thumbFor('rare_gem'),
     armorIconFor('armor', 'copper'), armorIconFor('legsArmor', 'copper'),
     armorIconFor('armor', 'iron'), armorIconFor('legsArmor', 'iron')];
   for (const u of urls) { if (!u) continue; const i = new Image(); i.src = u; _warm.push(i); }

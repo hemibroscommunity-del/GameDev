@@ -20,6 +20,7 @@
  * Byte-identity with the inline version is pinned by tools/qa/qa-bake-ident.mjs. */
 import { jogWaistRow } from './jogWaist.js';
 import { gearTint } from './gearVariants.js';
+import { flipHeadAt } from './flipHead.js';   /* v2.3.3738: the tumble's head, kept */
 
 function _histMedian(h, n) {
   const want = n >> 1;
@@ -869,6 +870,31 @@ export function bakeMaskedCanvas(inp) {
         if (dirty2) ctx.putImageData(img2, 0, 0);
       }
     } catch (e) { /* silhouette confinement is best-effort */ }
+    /* ═══ v2.3.3738: THE TUMBLE'S HEAD IS KEPT ═══
+       The owner: "The double jump head is transparent".  Everything above
+       keeps the head as the top third of the figure (neckY) -- and on the
+       roll's handstand and tuck the head is at the BOTTOM, upside down, so the
+       dilated erase and the silhouette confinement took it with the body under
+       the plate, and the ground showed through where it was.  On a roll frame
+       the head is given back from the body as drawn, in a circle round where
+       the head is on that frame (flipHead.js, measured); the plates are drawn
+       over the body, so what they cover stays covered. */
+    if (origBody && poseInfo && poseInfo.pose === 'dodge') {
+      const h = flipHeadAt(poseInfo.dir, poseInfo.frameIdx);
+      if (h && h.r > 0) {
+        const R = Math.ceil(h.r * 1.35), x0 = Math.max(0, Math.floor(h.x - R)), x1 = Math.min(255, Math.ceil(h.x + R));
+        const y0 = Math.max(0, Math.floor(h.y - R)), y1 = Math.min(255, Math.ceil(h.y + R));
+        const img3 = ctx.getImageData(0, 0, 256, 256), d3 = img3.data;
+        for (let y = y0; y <= y1; y++) {
+          for (let x = x0; x <= x1; x++) {
+            if ((x - h.x) * (x - h.x) + (y - h.y) * (y - h.y) > R * R) continue;
+            const o = (y * 256 + x) * 4;
+            if (origBody[o + 3] > d3[o + 3]) { d3[o] = origBody[o]; d3[o + 1] = origBody[o + 1]; d3[o + 2] = origBody[o + 2]; d3[o + 3] = origBody[o + 3]; }
+          }
+        }
+        ctx.putImageData(img3, 0, 0);
+      }
+    }
   } catch (e) { return null; }
   return { cv, beltPending: _beltPending };
 }
