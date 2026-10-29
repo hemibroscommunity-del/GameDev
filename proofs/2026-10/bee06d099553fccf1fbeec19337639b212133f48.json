@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bee06d099553fccf1fbeec19337639b212133f48",
+  "tree": "36c54193c8912bb754a6448398a63a004dfae42f",
+  "committedAt": "2026-10-29T02:37:08-07:00",
+  "subject": "Add files via upload",
+  "files": 7256,
+  "bytes": 833540161,
+  "listingSha256": "6e0c9af073ab32ca301914faf8138f73250d717ec5ad3badfe7232def36a001b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
