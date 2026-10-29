@@ -1113,6 +1113,18 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
   color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
   animation:promptPulse 1.5s ease-in-out infinite;
   -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+/* v2.3.3799: upright, Jump stands south-west of the attack disc, in this
+   strip.  While it is drawn, JumpButton sets data-jump-clear and where a
+   prompt may stand: over Jump's top (--bt-jump-clear), centred at
+   --bt-prompt-cx, no wider than --bt-prompt-w -- between the move stick and
+   the disc, 8 px clear of each.  Only a prompt with no bottom of its own
+   (the doors' Enter): one that names its place (the Workshop's, the bed's,
+   a harvest's) keeps it.  A long name wraps; on a 320 px phone ("narrow")
+   it draws small, without its picture. */
+html[data-jump-clear]:not([data-orient="landscape"]) .bt-interact-prompt:not([style*="bottom"]){bottom:calc(var(--sheet-h, var(--dash-h)) + var(--bt-jump-clear, 24px));
+  left:var(--bt-prompt-cx, calc(50% + 10px))!important;max-width:var(--bt-prompt-w, 150px);box-sizing:border-box;white-space:normal;overflow-wrap:anywhere}
+html[data-jump-clear="narrow"]:not([data-orient="landscape"]) .bt-interact-prompt:not([style*="bottom"]){padding:5px 7px!important;font-size:11px}
+html[data-jump-clear="narrow"]:not([data-orient="landscape"]) .bt-interact-prompt:not([style*="bottom"]) > img{display:none}
 @keyframes promptPulse{0%,100%{opacity:.9;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.04)}}
 /* v2.3.911: build-skill dashboard cell pulses while it has an unspent Tier-2
    point waiting to be allocated.  Brightness pulse reads even where the cell's
@@ -1385,6 +1397,14 @@ body:has(.bt-plist) [data-coach]{display:none}
    unchanged. */
 @media (min-height:461px) and (max-height:800px){
   .bt-inspect-card[data-room="blacksmith"]{--room-stage:min(36px, calc(25vw - 6px))}
+}
+/* v2.3.3793: ON A COMPUTER THE CARD IS 470 PX (BroTown.jsx, v2.3.3769), so its
+   stage is 62% of THAT picture: 41.33% of 470 = 194.3 px (the rule above is
+   the 360 px card's, "change one, change both"), still at most 22vh on a short
+   window.  At 148.8 the menu began 47% down a 470 x 313 room, over its sign.
+   The Blacksmith keeps its slim band (its own rules above). */
+@media (min-height:461px){
+  html.bt-desk-wide .bt-inspect-card[data-room]:not([data-room="blacksmith"]){--room-stage:min(194.3px, 22vh)}
 }
 @media (max-height:460px){.bt-room{display:none}}
 /* ═══ v2.3.3802: THE TOWN HALL'S BOARD, LAID OUT (panels/buildings/TownBoard.jsx) ═══
@@ -5810,6 +5830,16 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
      that very column, below): its trait picker otherwise ran the window's
      whole width with one row of tiles in it.  The backdrop fills the window. */
   html.bt-desk-wide .bt-name-modal > *{max-width:min(100%, calc(100vh * 390 / 715));margin-left:auto;margin-right:auto}
+  /* ═══ v2.3.3793: NOTHING TO CLICK UNDER A STRIP ═══
+     The 2026-10-28 desktop review: with Diego's shop strip or a trade's
+     drawer across the world's foot, the world's own buttons in that corner
+     (the door's "E Enter ..." prompt, the skateboard) were drawn under the
+     strip, a click on them landing on the strip (the UI review's "covered by
+     div[data-shop-shelf]").  While one is up, on a computer, they step aside;
+     their keys (E, Z) still work, read by the keyboard, not by these buttons.
+     Phones unchanged. */
+  html.bt-desk-wide:has([data-shop-shelf], [data-trade-drawer]) .bt-interact-prompt,
+  html.bt-desk-wide:has([data-shop-shelf], [data-trade-drawer]) .bt-ride-btn{visibility:hidden;pointer-events:none}
   /* ═══ v2.3.3769: THE TRAIT PICKER, PROPORTIONALLY LARGER ═══
      The owner: "For the trait picker desktop only you can make the trait
      picker area and buttons proportionally larger".  The creator takes 1.4
@@ -5822,6 +5852,36 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
      scrolling inside as before. */
   html.bt-desk-wide .bt-name-modal > .bt-cc-shell{max-width:min(100%, calc(100vh * 390 / 715 * 1.4))}
   html.bt-desk-wide .bt-cc-cols>.bt-cc-panel{zoom:1.3;max-height:100%}
+  /* ═══ v2.3.3836: THE SPLASH AND THE LOADING SCREEN, SIDEWAYS ═══
+     The owner, 2026-10-29: "The loading screen (ocean scene) and the splash
+     page both look like they have effects that only suit the portrait mode."
+     Both pictures are upright (the splash 720 x 1096, the beach 400 x 736).
+     THE SPLASH (and the creator, the same backdrop): the rule above held its
+     <video> to the column too, so the column showed the whole painting small
+     while the window behind it (.bt-name-modal's own bg.webp, cover) showed
+     it again twice the size -- two hard seams and two of every castle.  The
+     painting is ONE picture across the window now, the dark castle left, the
+     golden right, the river under the buttons, and the gold motes drift
+     across all of it; the logo, the buttons and the creator keep the column.
+     THE LOADING SCREEN: the beach keeps its whole frame (its LOADING bar is
+     painted into it, so `contain` stays: v2.3.2199), over a blurred, dimmed
+     copy of its own first frame instead of black bars, standing clear of the
+     window's foot so the server's words (.bt-intro-status) sit under it
+     rather than across the painted bar.  A phone, upright or sideways, keeps
+     both screens as they were (this block is a computer's). */
+  html.bt-desk-wide .bt-name-modal > .bt-cc-bgvideo,
+  html.bt-desk-wide .bt-name-modal > .bt-login-motes{max-width:none;margin-left:0;margin-right:0}
+  /* ...and the haze behind the logo (.bt-login-title::before) reaches clear
+     to its own box's edge: drawn to the box's far corners it was still ~7%
+     dark at its left and right sides, two faint vertical lines either side of
+     the logo that a phone never shows (its sides are off the screen).  The
+     same falloff, ending at the box's sides. */
+  html.bt-desk-wide .bt-login-title::before{background:radial-gradient(ellipse closest-side at center,
+    rgba(6,10,20,.60) 0%,rgba(6,10,20,.40) 44%,rgba(6,10,20,.15) 80%,transparent 100%)}
+  html.bt-desk-wide .bt-intro::before{content:"";position:absolute;top:-48px;left:-48px;right:-48px;bottom:-48px;pointer-events:none;
+    background:url('/intro/loading-ashore-poster.webp') center/cover no-repeat;filter:blur(22px) brightness(.45) saturate(1.1)}
+  html.bt-desk-wide .bt-intro video{background:transparent;height:calc(100% - 52px)}   /* a height, not `bottom`: the base rule's height:100% would win over it */
+  html.bt-desk-wide .bt-intro .bt-intro-status{bottom:15px}
   /* THE CONTROLS' COLUMN at the screen's far edge (KeyboardHintsPanel.jsx
      DeskKeysList, from BottomDashboard): the screen's height, its keys in
      groups; folded, the ⌨ alone.  Its width and its edge are set inline from

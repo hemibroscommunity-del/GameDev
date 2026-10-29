@@ -36,6 +36,8 @@ export const CLIENT_SAVERS = Object.freeze([
   /* v2.3.3800: no sound of the world under the loading screen (BT_AUDIO's
      sound gate, gameDisplay.js): off, a closed gate opens at once */
   Object.freeze({ id: 'soundgate', words: 'Sound waits for the world', live: true }),
+  /* v2.3.3752: the body under armour, from the colour numbers (lookArmour.js) */
+  Object.freeze({ id: 'lookarmour', words: 'Bodies under armour coloured on the chip', live: true }),
   /* v2.3.3809: the townsfolk drawn live from their looks, not their
      photographs (rendering/lookFolk.js); off brings the photographs back */
   Object.freeze({ id: 'lookfolk', words: 'Townsfolk drawn live', live: true }),

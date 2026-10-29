@@ -255,30 +255,28 @@ export function blockAnchor(isLandscape) {
      notification bell (66-102 px from the left, at the band's foot) is
      there.  It lies in the doors' Enter lane, as it always has (a fight's
      button; the Enter button is drawn over it). */
-  if (!isLandscape) {
-    var j = jumpAnchor(false);
-    return {
-      size: col.size,
-      right: j.right + JUMP_BLOCK_AIR,
-      bottomPx: j.bottomPx - BLOCK_JUMP_DROP - col.size,
-    };
+  /* ═══ v2.3.3799: JUMP WENT SOUTH-WEST ON THE RING (jumpAnchor) ═══
+     Block stays the disc's diagonal bottom-left (v2.3.2562, the owner's
+     "mental separation"), now beside Jump on its left, BLOCK_JUMP_SIDE of
+     air: upright at the height it had (BLOCK_JUMP_DROP under Jump's old
+     foot), sideways at the height it had (BLOCK_BAND_BOTTOM: half a button
+     under Shield Bash, mp-abilslot).  Upright
+     on a phone too narrow for that beside the notification bell (66-102 px
+     from the left at the band's foot; a 320 px phone), it stands up beside
+     Jump instead, under TRAP (ctlColumn), still left of the disc. */
+  var jl = jumpAnchor(isLandscape);
+  var right = jl.right + jl.size + BLOCK_JUMP_SIDE;
+  if (isLandscape) return { size: col.size, right: right, bottomPx: BLOCK_BAND_BOTTOM - col.size - CTL_GAP };
+  var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+  if (vw - right - col.size >= BELL_RIGHT_PX + BLOCK_JUMP_SIDE) {
+    return { size: col.size, right: right, bottomPx: JUMP_FOOT_UP - BLOCK_JUMP_DROP - col.size };
   }
-  return {
-    size: col.size,
-    right: col.right,
-    /* Below the disc's bottom edge by one gap.  Stays above the dashboard band
-       by construction: RBTN.bottom is 70 and the button is at most 54 wide, so
-       the result is positive at every width -- asserted in mp-btnlayout, which
-       measures the real painted band rather than trusting that arithmetic. */
-    /* v2.3.3721: from BLOCK_BAND_BOTTOM, the disc's old bottom edge, not
-       RBTN.bottom: the disc rose 10 px for the larger JUMP button beside
-       Block, and Block rising with it left 22 px of air under Shield Bash,
-       under the 24 px floor mp-btnlayout holds that pair to.  Where it was,
-       it has 32 (Bash hangs from the disc's centre, which rose 4). */
-    bottomPx: BLOCK_BAND_BOTTOM - col.size - CTL_GAP,
-  };
+  return { size: col.size, right: right, bottomPx: col.bottomPx(CTL_SLOT.trap) - BLOCK_TRAP_DROP - col.size };
 }
 export const BLOCK_BAND_BOTTOM = 70;
+export const BLOCK_JUMP_SIDE = 8;    /* v2.3.3799: Block's edge <-> Jump's, side by side */
+export const BLOCK_TRAP_DROP = 10;   /* v2.3.3799: upright on a narrow phone, TRAP's foot <-> Block's top */
+export const BELL_RIGHT_PX = 102;   /* v2.3.3799: the bell's right edge from the screen's left, upright (WorldChatFeed) */
 export const BLOCK_JUMP_DROP = 10;   /* v2.3.3740: upright, Jump's foot <-> Block's top */
 
 /* ═══ v2.3.2562: THE LEFT CLUSTER -- WHIRLWIND AND SPECIAL ═══
@@ -467,19 +465,49 @@ export const JUMP_SIZE = { up: 60, land: 64 };
 export const JUMP_BLOCK_AIR = 24;
 export const JUMP_DISC_AIR = 18;   /* v2.3.3740: upright, the disc's left edge <-> Jump */
 export const JUMP_FOOT_UP = 72;    /* v2.3.3740: upright, Jump's foot over the band */
+/* ═══ v2.3.3799: SOUTH-WEST ON THE DISC'S RING ═══
+ * The owner, 2026-10-29: "I do want a change to the placement on the jump
+ * button. It should be positioned orbiting southwest of the large contextual
+ * button."  Jump stands on the disc's ring -- its centre the disc's radius,
+ * JUMP_RING_GAP and its own radius from the disc's centre, the 10 px of air
+ * Sprint keeps over the disc -- down and to the left:
+ *   UPRIGHT at 45 degrees (58 px left and 58 px down of the disc's centre),
+ *     its foot 26 px over the band at every width.  That is the doors' Enter
+ *     lane (v2.3.3740's note above): the interact prompt rises over Jump
+ *     while Jump is on screen upright (JumpButton publishes --bt-jump-clear,
+ *     game.css .bt-interact-prompt).  TRAP and Shield Bash keep their places
+ *     (ctlColumn stands on jumpSpotUp, Jump's old place); Block moves into
+ *     the room Jump left (blockAnchor).
+ *   SIDEWAYS turned toward south as far as it must to keep RCTL_JUMP_AIR
+ *     from Shield Bash (and the skateboard, in Bash's place out of a fight),
+ *     which hang left of the disc there; Block moves under the disc, Jump's
+ *     old place.
+ * A computer has no jump button (X). */
+export const JUMP_RING_GAP = 10;   /* v2.3.3799: the disc's ring <-> Jump's, as Sprint's RCTL_GAP */
+export const RCTL_JUMP_AIR = 8;    /* v2.3.3799: sideways, Shield Bash's foot <-> Jump's top */
+/* v2.3.3799: where Jump stood upright before (v2.3.3740), which TRAP and
+   Shield Bash still stand on (ctlColumn) */
+export function jumpSpotUp() {
+  var size = Math.max(CTL_MIN_SIZE, JUMP_SIZE.up);
+  return { size: size, right: discRight(false) + RBTN.w + JUMP_DISC_AIR, bottomPx: JUMP_FOOT_UP };
+}
 export function jumpAnchor(isLandscape) {
   var size = Math.max(CTL_MIN_SIZE, isLandscape ? JUMP_SIZE.land : JUMP_SIZE.up);
   var discW = isLandscape ? RBTN.wLand : RBTN.w;
-  if (!isLandscape) {
-    return { size: size, right: discRight(false) + discW + JUMP_DISC_AIR, bottomPx: JUMP_FOOT_UP };
+  /* the disc's centre: px in from the screen's right, px over the band */
+  var cR = discRight(isLandscape) + discW / 2, cB = discBottom(isLandscape) + discW / 2;
+  var ring = discW / 2 + JUMP_RING_GAP + size / 2;
+  var down = ring * Math.SQRT1_2;
+  if (isLandscape) {
+    /* low enough that Jump's top keeps RCTL_JUMP_AIR under Shield Bash's foot */
+    var bashFoot = ctlColumn(true).bottomPx(CTL_SLOT.bash);
+    down = Math.min(ring, Math.max(down, cB + size / 2 - (bashFoot - RCTL_JUMP_AIR)));
   }
-  /* Block's right edge, from the screen's right (ctlColumn: the disc's left
-     edge plus CTL_GAP) -- the same at every width */
-  var blockRight = RBTN.right + discW + CTL_GAP;
+  var left = Math.sqrt(Math.max(0, ring * ring - down * down));
   return {
     size: size,
-    right: Math.max(RBTN.right, Math.min(RBTN.right + Math.round((discW - size) / 2), blockRight - size - JUMP_BLOCK_AIR)),
-    bottomPx: RBTN.bottom - size - CTL_GAP,
+    right: Math.round(cR + left - size / 2),
+    bottomPx: Math.round(cB - down - size / 2),
   };
 }
 
@@ -633,7 +661,7 @@ export function ctlColumn(isLandscape) {
      (TrapButton's tag): there they lie level with Element Burst, the room
      v2.3.3635 measured them against; one place up they would lie on Quick
      eat.  Both clear Sprint and Whirlwind (mp-thumbbtn measures every pair). */
-  var jmp = isLandscape ? null : jumpAnchor(false);
+  var jmp = isLandscape ? null : jumpSpotUp();   /* v2.3.3799: Jump's old place, which it has left (jumpAnchor) */
   var up0 = jmp ? jmp.bottomPx + jmp.size + CTL_STACK_GAP : 0;
   return {
     size: size,

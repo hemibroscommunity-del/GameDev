@@ -181,13 +181,15 @@ book2.active = savedActive;
 await pickup(ws3, 'vac-a', true);
 check('second recipient vacuums their share; fully-claimed pile despawns', lastCredit(ws3) && lastCredit(ws3).coins === 40 && (ps2v.coins || 0) === coins2Before + 40 && !room.loot.meadow.find((p) => p.lootId === 'vac-a'), { cred: lastCredit(ws3), coins: ps2v.coins });
 
-// Range validation: beyond VACUUM_RANGE the pet reaches nothing.
-mkPile('vac-far', 500 + PETS.VACUUM_RANGE + 60, 500, 50, ['bp_pet_p'], { bp_pet_p: 1 });
+// Range validation: beyond its reach the pet reaches nothing.  v2.3.3806:
+// a monster pile you may claim is the FETCH's reach (pets.js FETCH_RANGE);
+// the vacuum's 240 is held for death drops in petfetch.test.
+mkPile('vac-far', 500 + PETS.FETCH_RANGE + 60, 500, 50, ['bp_pet_p'], { bp_pet_p: 1 });
 ps.x = 500; ps.y = 500;
 coinsBefore = ps.coins;
 ws.sent.length = 0;
 await pickup(ws, 'vac-far', true);
-check('vacuum beyond VACUUM_RANGE rejected out-of-range', lastReject(ws) && lastReject(ws).reason === 'out-of-range' && lastReject(ws).max === PETS.VACUUM_RANGE && ps.coins === coinsBefore, lastReject(ws));
+check('vacuum beyond FETCH_RANGE rejected out-of-range', lastReject(ws) && lastReject(ws).reason === 'out-of-range' && lastReject(ws).max === PETS.FETCH_RANGE && ps.coins === coinsBefore, lastReject(ws));
 
 // Recipient gate still applies to vacuum pickups.
 mkPile('vac-other', 520, 500, 50, ['bp_pet_new'], { bp_pet_new: 1 });

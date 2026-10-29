@@ -386,6 +386,7 @@ import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settl
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
+import DeathCard from '@/ui/mobile/DeathCard.jsx';   /* v2.3.3817: "You died", what killed you, back in BroTown in N */
 import NmlAskCard from '@/ui/mobile/NmlAskCard.jsx';   /* v2.3.3253: "Attack <name>?" -- Attack / Party / Ignore */
 import { nmlAsk, nmlAskOn, nmlAim } from '@/game/nmlAsk.js';   /* v2.3.3253: a tap in No man's land asks first; v2.3.3528: about the one who attacked you too */
 import ElemStatusChips from '@/ui/ElemStatusChips.jsx';   /* v2.3.2996: their chips, on their own clock */
@@ -511,7 +512,8 @@ import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
 import { isWheelTrialZone, footstepSurface, setWheelArrival } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown; v2.3.3574: + the spot a recovery reload puts you back on */
 import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
-import { wheelObjectsInfo } from '@/game/wheelTrial.js';
+import { wheelObjectsInfo, wheelWaterAt } from '@/game/wheelTrial.js';
+import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch */
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
@@ -4711,6 +4713,34 @@ export var BroTown = function BroTown(_ref0) {
       return false;
     };
     if (typeof window !== 'undefined') window.__btPropFeetBlocked = (cx, cy, px, py) => propFeetBlocked(cx, cy, px, py, 10);
+    /* v2.3.3806: where a fetching pet may not step (game/petFetch.js): the
+       walk's own walls (isSolid: the zone's edge, the walk grid, townsfolk),
+       the Wheel's water, and an object's footprint (a building, a rock, a
+       tree, a bush), read at one point, the pet's feet: it is small.  It goes
+       round these; it never sets off across the water (_petWaterAt). */
+    var _petWaterAt = function (x, y) { return S.currentZone === 'wheel' && wheelWaterAt(x, y) === true; };
+    var _petBlockWhy = null;   /* QA: which rule stopped the last point */
+    var _petBlockedAt = function (x, y) {
+      /* isSolid reads a feet grid playerGroundDy below a BODY's middle; the
+         pet's y is already its feet */
+      var _wg = S._tiledWalkable && S._tiledWalkable[S.currentZone];
+      if (isSolid(x, (_wg && _wg.atFeet) ? y - playerGroundDy(S.currentZone, x, y) : y)) return (_petBlockWhy = 'solid'), true;
+      if (S.currentZone === 'wheel' && wheelWaterAt(x, y) === true) return (_petBlockWhy = 'water'), true;
+      var bx = zoneBlockers(S.currentZone);
+      for (var i = 0; bx && i < bx.length; i++) {
+        var b = bx[i];
+        if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return (_petBlockWhy = 'object ' + (b.id || b.kind || i)), true;
+      }
+      return false;
+    };
+    /* v2.3.3806: where a fetching pet may not run, for mp-petfetch */
+    if (typeof window !== 'undefined') window.__btPetBlockedAt = (x, y) => (_petBlockedAt(x, y) ? _petBlockWhy || true : false);
+    /* v2.3.3806: the fetch's state for mp-petfetch (read only) */
+    if (typeof window !== 'undefined') window.__btPetFetch = () => {
+      var F = S._petFetch;
+      return { phase: F ? F.phase : null, lootId: F ? F.lootId : null, runs: F ? F.runs : 0, got: F ? F.got : 0, credited: F && F.credited ? F.credited.slice() : [], closest: F && F.closest < 1e9 ? F.closest : null, goSteps: F ? F.goSteps || 0 : 0, pace: F ? F.pace || 0 : 0, skip: F ? Array.from(F.skip.keys()) : [], why: F ? F.why : null, on: !!(S._serverCaps && S._serverCaps.petfetch && S._serverCaps.petLoot), dt: S._dtScale || 1,
+        x: S._petX, y: S._petY, px: S.player ? S.player.x : null, py: S.player ? S.player.y : null };
+    };
     var _gameLoop = function gameLoop() {
       frameRef.current = requestAnimationFrame(_gameLoop);
       try {
@@ -6994,9 +7024,40 @@ export var BroTown = function BroTown(_ref0) {
                every screen, and slows with the walk only where the game itself
                does (under 20 fps, the scale's x3 clamp). */
             var _petDt = S._dtScale || 1;
+            /* ═══ v2.3.3806: THE FETCH (game/petFetch.js) ═══
+               The owner: "make pets run towards loot drops and pick them up
+               for you".  A monster pile of yours within PET_FETCH.RADIUS: the
+               pet leaves the follow and runs to it at 1.5x your run (your
+               measured step, never under the base walk), the vacuum below
+               asks for it once it is there, and it runs back.  Only against a
+               worker that reaches that far (caps.petfetch, and the vacuum's
+               own caps.petLoot); alive, and not while the zone loads. */
+            if (!S._petFetch) S._petFetch = petFetchState();
+            var _pfRunPx = 0;
+            if (typeof S._petPrevPX === 'number' && _petDt > 0) {
+              _pfRunPx = Math.sqrt(Math.pow(P.x - S._petPrevPX, 2) + Math.pow(P.y - S._petPrevPY, 2)) / _petDt;
+            }
+            S._petPrevPX = P.x; S._petPrevPY = P.y;
+            /* a walk is ~2.5-6 px a frame; a bigger jump is a teleport, not a run */
+            var _pfRun = Math.max(SPEED, _pfRunPx < 12 ? _pfRunPx : 0);
+            var _pfOn = !!(S._serverCaps && S._serverCaps.petfetch && S._serverCaps.petLoot) &&
+              !S._dying && !(S.rpg && S.rpg.hp <= 0) && !S._zoneLoading && !!S.myId;
+            var _pf = null;
+            if (_pfOn) {
+              _pf = petFetchStep(S._petFetch, {
+                now: now, zone: S.currentZone, me: S.myId, piles: S.groundLoot,
+                px: P.x, py: P.y, petX: S._petX, petY: S._petY,
+                stepPx: _pfRun * PET_FETCH.SPEED_K * _petDt, pace: _pfRun * PET_FETCH.SPEED_K, blockedAt: _petBlockedAt, waterAt: _petWaterAt
+              });
+            } else if (S._petFetch.phase) {
+              S._petFetch.phase = null; S._petFetch.lootId = null;
+            }
+            if (_pf) { S._petX = _pf.x; S._petY = _pf.y; }
             var petDistToP = Math.sqrt(Math.pow(S._petX - P.x, 2) + Math.pow(S._petY - P.y, 2));
             var petTargetDist = 35;
-            if (petDistToP > petTargetDist + 15) {
+            if (_pf) {
+              /* running: the fetch has it this frame */
+            } else if (petDistToP > petTargetDist + 15) {
               var pDx = P.x - S._petX,
                 pDy = P.y - S._petY;
               var pDist = Math.sqrt(pDx * pDx + pDy * pDy) || 1;
@@ -7011,14 +7072,16 @@ export var BroTown = function BroTown(_ref0) {
               S._petY += by / bd * 0.5 * _petDt;
             }
             /* Personality idle movement */
-            if (pet.personality === 'playful') {
+            if (_pf) {
+              /* no idle wander on a run */
+            } else if (pet.personality === 'playful') {
               S._petX += Math.sin(now / 300) * 0.3 * _petDt;
               S._petY += Math.cos(now / 400) * 0.2 * _petDt;
             }
-            if (pet.personality === 'curious') {
+            if (!_pf && pet.personality === 'curious') {
               S._petX += Math.sin(now / 500 + 1) * 0.5 * _petDt;
             }
-            if (pet.personality === 'anxious') {
+            if (!_pf && pet.personality === 'anxious') {
               S._petX += (Math.random() - 0.5) * 0.4 * _petDt;
               S._petY += (Math.random() - 0.5) * 0.4 * _petDt;
             }
@@ -7051,6 +7114,14 @@ export var BroTown = function BroTown(_ref0) {
                        put it down; the pet at your heels would hand it straight
                        back.  Walking onto it still takes it back. */
                     if (loot.dropped && loot.dropBy === S.myId) return true;
+                    /* v2.3.3806: a running pet passes piles far from you; a
+                       death drop (or a dropped item) is still the worker's
+                       240 from YOU (pets.js), so it is not asked for there */
+                    if (loot.isDeathDrop && Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(P.y - loot.y, 2)) > 230) return true;
+                    /* v2.3.3806: the pile a pet is running to is asked for when
+                       it gets there, not from the vacuum's 80 px on its way in
+                       (game/petFetch.js waits at the pile for this ask) */
+                    if (petFetchHolds(S._petFetch, loot.lootId)) return true;
                     /* v2.3.2490: THE PET'S IN-FLIGHT FLAG IS ITS OWN.
                        This used to share `_pickupPending` with the manual
                        walk-over path in groundLoot.js, reasoning that pet +
@@ -10429,18 +10500,31 @@ export var BroTown = function BroTown(_ref0) {
   };
   /* another player within the click's 25 px (onClick's own loop: the first
      one found, as it acts on) -- their id, or null */
+  /* ═══ v2.3.3837: A CLICK ON ANOTHER PLAYER'S BODY OR HEAD FINDS THEM ═══
+     The judge pass (2026-10-29): a player was found only within 25 px of
+     their FEET (renderX, renderY), while a player clicks their body or head.
+     The townsfolk's hit (npcAtCss) rises 26 px to the body and reaches 44;
+     a player's now does the same, and the click's own player loop (onClick)
+     asks the same distance, so the two cannot disagree.  A monster under the
+     pointer is still asked first by every caller.  A computer's click only:
+     a phone's tap is the touch path's. */
+  var PLAYER_TAP_RISE = 26, PLAYER_TAP_R = 44;
+  var otherPlayerDistCss = function (S, o, cssX, cssY) {
+    var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
+    var osx = (o.renderX - S.camera.x) * sx, osy = (o.renderY - S.camera.y) * sy - PLAYER_TAP_RISE;
+    return Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2));
+  };
   var otherPlayerAtCss = function (cssX, cssY) {
     var S = stateRef.current;
     if (!S || !S.others || !S.camera) return null;
-    var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
-    var cx = S.camera.x, cy = S.camera.y;
+    var best = null, bestD = PLAYER_TAP_R;
     for (var id in S.others) {
       var o = S.others[id];
       if (!o) continue;
-      var osx = (o.renderX - cx) * sx, osy = (o.renderY - cy) * sy;
-      if (Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2)) < 25) return id;
+      var d = otherPlayerDistCss(S, o, cssX, cssY);
+      if (d < bestD) { bestD = d; best = id; }
     }
-    return null;
+    return best;
   };
   var _deskPressTarget = function (cssX, cssY) {
     if (monsterAtCss(cssX, cssY)) return null;
@@ -12957,13 +13041,17 @@ export var BroTown = function BroTown(_ref0) {
          answering a tap, nothing needs to write that lock. */
       if (tapNpcAtCss(cssX, cssY)) return;
       /* Check other players for lock-on OR inspect */
+      /* v2.3.3837: the player is otherPlayerAtCss's pick -- the NEAREST within
+         reach of the body and head, not the first in S.others order: with the
+         reach up from 25 px to 44, two bros a step apart are both in reach,
+         and the press's question (_deskPressTarget) and this click must name
+         the same one */
+      var _pickedPeer = otherPlayerAtCss(cssX, cssY);
       for (var _i43 = 0, _Object$entries7 = Object.entries(S.others); _i43 < _Object$entries7.length; _i43++) {
         var _Object$entries7$_i = _slicedToArray(_Object$entries7[_i43], 2),
           id = _Object$entries7$_i[0],
           o = _Object$entries7$_i[1];
-        var osx = (o.renderX - cx) * SCALE_X,
-          osy = (o.renderY - cy) * SCALE_Y;
-        if (Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2)) < 25) {
+        if (o && _pickedPeer !== null && id === _pickedPeer) {
           /* ═══ v2.3.1742: NEVER COMBAT-LOCK A PARTY MEMBER ═══
              Owner: "it auto targeted my teammate".  A tap within 25px of
              another player combat-locks them, and in a lawless zone (which
@@ -14807,6 +14895,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */, sendMove: sendMove, movesOn: movesLive(stateRef.current) /* v2.3.3392 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
+  React.createElement(DeathCard, { stateRef: stateRef }),   /* v2.3.3817: the death card (game/deathCard.js) */
   React.createElement(NmlBadge, { stateRef: stateRef }),   /* v2.3.3629: beside the minimap's name plate; v2.3.3765: the pill moved to the top bar (ZoneHeader, NmlPill), this keeps the red line along the band */
   /* v2.3.3253: the small window a tap or a stray shot raises about a player
      you could fight there (game/nmlAsk.js), portalled to the top of the

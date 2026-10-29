@@ -36,9 +36,37 @@ export const PETS = {
    * same slack without opening cross-screen theft.
    * v2.3.3120: "an active pet" is the record's (petbook.js _petbookActive). */
   VACUUM_RANGE: 240,
+  /* v2.3.3806: the pet's FETCH (docs/specs/pet-fetch.md; the owner: "make
+   * pets run towards loot drops and pick them up for you").  The phone's pet
+   * runs to a monster pile you may claim up to PET_FETCH.RADIUS (450) from
+   * you and asks for it from there; you may walk on while it runs, and the
+   * phone gives up once you are PET_FETCH.LEASH (550) from the pile.  This
+   * range is measured from where the WORKER has you, which lags the phone by
+   * up to ~50 px mid-walk: 550 + 50 = 600.  Only for a monster pile you are a
+   * recipient of (never a death drop or a dropped item, which keep the 240:
+   * a wider grab there would be a wider steal), and `petfetch: false` in the
+   * live flags puts every pile back on the 240. */
+  FETCH_RANGE: 600,
 };
 
+const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
+
 export const petMethods = {
+  /* v2.3.3806: `petfetch: false` in the live flags (lower case, TRAPS §117)
+     un-advertises caps.petfetch and puts every viaPet pickup back on 240. */
+  _petFetchOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && own(f, 'petfetch') && !f.petfetch);
+  },
+
+  /* v2.3.3806: the viaPet range for this pile and player: the fetch's 600 for
+     a monster pile they are a recipient of, else the vacuum's 240. */
+  _petPickupRange(pile, playerId) {
+    const fetchOk = !!pile && !pile.isDeathDrop && !this._petFetchOff()
+      && Array.isArray(pile.recipients) && pile.recipients.includes(playerId);
+    return fetchOk ? PETS.FETCH_RANGE : PETS.VACUUM_RANGE;
+  },
+
   _petSend(playerId, type, payload) {
     const ws = this._wsBySessionId(playerId);
     if (!ws) return;

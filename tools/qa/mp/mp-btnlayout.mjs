@@ -86,7 +86,8 @@ const rects = (P) => P.page.evaluate(() => {
     burst: one('.bt-burst-btn'),
     /* v2.3.3017: the JUMP button, centred under the attack disc in Block's
        band (JumpButton.jsx, jumpAnchor) -- measured against Block here, the
-       one fixture where the shield is up and Block is drawn */
+       one fixture where the shield is up and Block is drawn (v2.3.3799: on
+       the disc's ring, south-west) */
     jump: one('[data-jump]'),
   };
 });
@@ -263,18 +264,23 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
        16 px of air or more to the disc's left edge, and Block diagonal below
        and left of it, 8 px or more under its foot. */
     const upright = phone.width < phone.height;
+    /* ═══ v2.3.3799: ON THE DISC'S RING, SOUTH-WEST ═══
+       The owner, 2026-10-29: "It should be positioned orbiting southwest of
+       the large contextual button" (ShieldButton jumpAnchor): its centre 45
+       deg +-20 below west of the disc's upright (sideways between west and
+       south), its circle 8-14 px off the disc's; Block beside it on its
+       left, 8 px or more of air. */
     if (r.attack && r.attack.shown) {
-      if (upright) rec.ok(`${tag}: ...and LEFT of the attack disc, ${r.attack.left - r.jump.right}px of air from it (16 or more)`, r.attack.left - r.jump.right >= 16, { jump: r.jump, attack: r.attack });
-      else rec.ok(`${tag}: ...and under the attack disc, not on it (top ${r.jump.top} vs disc bottom ${r.attack.bottom})`, r.jump.top >= r.attack.bottom, { jump: r.jump, attack: r.attack });
+      const jx = (r.jump.left + r.jump.right) / 2, jy = (r.jump.top + r.jump.bottom) / 2;
+      const dx = (r.attack.left + r.attack.right) / 2, dy = (r.attack.top + r.attack.bottom) / 2;
+      const ang = Math.round(Math.atan2(jy - dy, dx - jx) * 180 / Math.PI);
+      const ring = Math.round(Math.hypot(jx - dx, jy - dy) - (r.jump.right - r.jump.left) / 2 - (r.attack.right - r.attack.left) / 2);
+      rec.ok(`${tag}: ...and on the attack disc's ring, south-west of it (${ang} deg below west, ${ring}px off its circle)`,
+        (upright ? ang >= 25 && ang <= 65 : ang > 0 && ang < 90) && ring >= 8 && ring <= 14, { jump: r.jump, attack: r.attack, ang, ring });
     }
     if (r.shield && r.shield.shown) {
-      if (upright) {
-        const gap = r.shield.top - r.jump.bottom;
-        rec.ok(`${tag}: ...with ${gap}px of clear air down to Block, below and left of it, so a thumb on one is not on the other`, gap >= 8 && r.shield.left < r.jump.left, { jump: r.jump, shield: r.shield });
-      } else {
-        const gap = r.shield.right <= r.jump.left ? r.jump.left - r.shield.right : null;
-        rec.ok(`${tag}: ...with ${gap}px of clear air from Block to its left, so a thumb on one is not on the other`, gap != null && gap >= 20, { jump: r.jump, shield: r.shield });
-      }
+      const gap = r.jump.left - r.shield.right;
+      rec.ok(`${tag}: ...with ${gap}px of clear air from Block to its left, so a thumb on one is not on the other`, gap >= 8, { jump: r.jump, shield: r.shield });
     }
     rec.ok(`${tag}: ...and overlapping neither Bash nor Special`, clearOf(r.bash) && clearOf(r.special), { jump: r.jump, bash: r.bash, special: r.special });
   }
@@ -432,7 +438,11 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     /* v2.3.3740: upright the column stands on JUMP (TRAP 8 px over it, Bash
        8 px over TRAP): pinned to Jump's top instead of the disc's middle */
     const onJump = phone.width < phone.height && r.jump && r.jump.shown;
-    const wantBottom = onJump ? r.jump.top - 8 - size - 8 : discMidY + size / 2;   /* slot 0: centred on the disc's midline */
+    /* v2.3.3799: Jump moved on to the disc's ring; the column stays on the
+       place it had (ShieldButton jumpSpotUp: 60 px, its foot level with the
+       disc's), so TRAP and Bash do not move */
+    const jumpSpotTop = r.attack && r.attack.shown ? r.attack.bottom - 60 : r.jump && r.jump.top;
+    const wantBottom = onJump ? jumpSpotTop - 8 - size - 8 : discMidY + size / 2;   /* slot 0: centred on the disc's midline */
     rec.ok(onJump ? `${tag}: Shield Bash stands on the column over Jump, over TRAP's place (bottom ${r.bash.bottom}, expected ~${Math.round(wantBottom)})`
       : `${tag}: Shield Bash is in column slot 0, level with the disc's centre `
       + `(bottom ${r.bash.bottom}, expected ~${Math.round(wantBottom)})`,

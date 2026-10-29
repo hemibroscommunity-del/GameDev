@@ -100,3 +100,20 @@ v2.3.3763: `mp-nomansland` (a computer that clicks, a monster wandering near)
 failed on main from step 2: the window only from a stray swing, never from
 the click, and the later swings locking a monster. With the fix it passes,
 28 of 28. `mp-nmlfoe`, `mp-deskreach` and `mp-questline` were re-run.
+
+## v2.3.3837: a click on another player's body or head finds them
+
+Re-checked after v2.3.3763 (the judge pass, 2026-10-29): with both bros in No
+man's land, a real click on the other bro's BODY or HEAD raised no "Attack?"
+on main and fell through to the swing. A player was found only within 25 px
+of their feet (`renderX`, `renderY`), while a player clicks the body or head.
+`otherPlayerAtCss` and the click's own player loop (`onClick`) now ask one
+distance (`otherPlayerDistCss`): the townsfolk's (npcAtCss), rising 26 px to
+the body and reaching 44. A monster under the pointer is still asked first:
+with a monster beside a player, a click on the monster locks the monster.
+A computer's click only; a phone's tap is the touch path's.
+
+Test: `mp-mayordoor` step 3 (both bros on a quiet spot of No man's land's
+first ring in the Earth Forest; a real click on the body and on the head each
+asks "Attack?"; a click on a monster 41-76 px from the other bro locks the
+monster). On main the body and head clicks asked nothing.

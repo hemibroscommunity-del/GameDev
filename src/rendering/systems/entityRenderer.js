@@ -80,10 +80,14 @@ import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the tee from the look palette */
-import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
+import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
 import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0`; v2.3.3809: + drawing now */
 import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
 import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
+import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
+import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
+import { lookSheetParse } from '../lookExpand.js';
+import { installArmourProbe } from '../lookArmourProbe.js';   /* v2.3.3752: QA, `?lookprobe` / `?lookpalette=1` only */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
@@ -94,7 +98,7 @@ import { getHatColor, getColoredHatTextures, coloredHatReady } from '../traits/h
 import { getFacialHairColor, getColoredFacialHairTextures, coloredFacialHairReady } from '../traits/facialHairColorCatalog.js';
 import { getShirt } from '../traits/shirtCatalog.js';
 import { getShirtColor, shirtFill } from '../traits/shirtColorCatalog.js';
-import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed, preloadBeltSheets } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
+import { getGearFrame, getGearFramePhased, getLoadedGearSources, getShirtLookFrame, drawGearFrame, loadCroppedStrip, subTexture, frameBounds, packTrimmed, preloadBeltSheets, gearSheetLoad } from '../gearSheets.js';   /* v2.3.1938; v2.3.1941 renamed — it bakes colour + pattern + print now */
 import { sideForDir, getShirtArt, sanitizeShirtArt, artHasInk } from '../traits/playerArt.js';   /* v2.3.1938 */
 import { getPattern, parsePattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.1941 */
 import { hatHairFit } from '../traits/hatHairFit.js';   /* v2.3.1943 band refit + v2.3.1561 float lift, in one place since v2.3.1959 */
@@ -3365,12 +3369,13 @@ function _pumpBakes() {
     _runBake(job).catch(() => { /* best-effort */ }).then(() => {
       _bakeBusy--;
       _bakeByKey.delete(job.key);
-      job.resolve();
+      job.resolve(job.reply);   /* v2.3.3752: a look job's answer (lookArmour.js); undefined for the others */
       _pumpBakes();
     });
   }
 }
 async function _runBake(job) {
+  if (job.look) return _runLookBake(job);   /* v2.3.3752 */
   const { key, bodyTex, worn, dilate, poseInfo } = job;
   if (_maskedBodyCache.has(key)) { _bakeWorkerStats.skipped++; return; }   /* baked inline while it waited */
   const wk = _getBakeWorker();
@@ -3417,6 +3422,196 @@ async function _runBake(job) {
   _bakeWorkerStats.worker++;
   if (job.rank > 0) _localBakeStats.delivered++;
 }
+/* ═══ v2.3.3752: THE ARMOURED BODY FROM THE COLOUR NUMBERS (lookArmour.js) ═══
+   The same queue and the same worker as every masked bake, the same bake
+   (maskedBake.js, every fix in it), but the body is a look drawn from the
+   shared numbers: the worker colours the frame itself from the sheet it was
+   sent once (lookSheetForWorker), and answers with what the bake decided --
+   a bit a display texel and the residue -- instead of a picture.  No worker:
+   no look armour (the old path, lookArmour's fallback). */
+function _lookBake(j) {
+  const key = 'look|' + j.key;
+  const had = _bakeByKey.get(key);
+  if (had) {
+    if (j.rank > had.rank) had.rank = j.rank;
+    return { done: had.done, raise: (r) => { if (r > had.rank) had.rank = r; } };
+  }
+  if (!_getBakeWorker() || _lookInline()) return { done: _runLookBakeInline(j) };
+  const job = { key, look: j.look, worn: j.worn, dilate: 6, poseInfo: j.poseInfo, rank: j.rank > 0 ? j.rank : 0, started: false, done: null, resolve: null, reply: null };
+  job.done = new Promise((res) => { job.resolve = res; });
+  _bakeByKey.set(key, job);
+  _bakeQueue.push(job);
+  _pumpBakes();
+  return { done: job.done, raise: (r) => { if (r > job.rank) job.rank = r; } };
+}
+setLookArmourBaker(_lookBake);
+async function _runLookBake(job) {
+  const { worn, poseInfo } = job;
+  const wk = _getBakeWorker();
+  if (!wk) { job.reply = { err: 'no worker' }; return; }
+  if (poseInfo.pose === 'fish') _sendRod(wk);
+  const sm = lookSheetForWorker(job.look.sheet, wk);
+  if (sm) { try { wk.postMessage(sm, [sm.bytes.buffer]); } catch (e) { job.reply = { err: String(e) }; return; } }
+  const hasChest = worn.some(w => w.k && w.k.indexOf('chest:') === 0), hasLegs = worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+  let beltTex = null, beltPending = false;
+  if (poseInfo.pose === 'jog' && hasChest && hasLegs) {
+    const bt = getGearFrame('belt', 'chainbelt', 'jog', poseInfo.dir, poseInfo.frameIdx | 0);
+    if (bt && bt.source && bt.source.resource) beltTex = bt; else beltPending = true;
+  }
+  const [belt, ...inps] = await Promise.all([beltTex ? _frameInput(beltTex) : null, ...worn.map(w => _frameInput(w.tex))]);
+  const _close = () => { for (const x of [belt, ...inps]) { try { if (x && x.bm) x.bm.close(); } catch (e) { /* gone */ } } };
+  /* a piece whose sheet is not in yet would be baked as if not worn: asked again later */
+  if (inps.some((x) => !x)) { _close(); job.reply = { err: 'gear not loaded' }; return; }
+  const id = ++_bakeSeq;
+  const reply = await new Promise((resolve) => {
+    _bakeJobs.set(id, resolve);
+    const transfer = [belt, ...inps].filter(Boolean).map((x) => x.bm);
+    try {
+      wk.postMessage({ id, look: job.look, belt, worn: worn.map((w, i) => ({ k: w.k, inp: inps[i] })), dilate: job.dilate, poseInfo, ds: DISPLAY_DS }, transfer);
+    } catch (e) { _bakeJobs.delete(id); _close(); resolve({ err: String(e) }); }
+  });
+  if (beltPending) reply.beltPending = true;
+  if (reply.err) _bakeWorkerStats.failed++; else _bakeWorkerStats.worker++;
+  if (!reply.err && job.rank > 0) _localBakeStats.delivered++;
+  job.reply = reply;
+}
+/* No worker (old Safari, a worker error) -- or QA's window.__btLookBakeInline,
+   since a worker's canvas on the QA box's software chip is ~200x slower than
+   the page's (mp-lookarmour runs the full oracle this way and samples the
+   worker): the same bake (lookBake.js) here, as the old path's no-worker
+   bake is (_maskedBodyFrame). */
+const _lookInlineAddr = (() => { try { return /(^|[?&])lookinline(=1)?(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();   /* QA: BT_QA_QUERY=lookinline */
+const _lookInline = () => typeof window !== 'undefined' && (window.__btLookBakeInline === true || (_lookInlineAddr && window.__btLookBakeInline !== false));
+const _lookSheetsHere = new Map();
+const _mkCpuCanvas = (w, h) => {
+  const c = _mkBakeCanvas(w, h);
+  const g = c.getContext.bind(c);
+  c.getContext = (t, o) => g(t, Object.assign({}, o || {}, { willReadFrequently: true }));
+  return c;
+};
+async function _runLookBakeInline(j, keepDisplay) {
+  try {
+    let sh = _lookSheetsHere.get(j.look.sheet);
+    if (!sh) {
+      const m = lookSheetForWorker(j.look.sheet, null);
+      if (!m) return { err: 'no sheet ' + j.look.sheet };
+      sh = lookSheetParse(m.bytes, m.w, m.rows, m.bits);
+      _lookSheetsHere.set(j.look.sheet, sh);
+    }
+    const pi = j.poseInfo;
+    const hasChest = j.worn.some(w => w.k && w.k.indexOf('chest:') === 0), hasLegs = j.worn.some(w => w.k && w.k.indexOf('legs:') === 0);
+    let belt = null, beltPending = false;
+    if (pi.pose === 'jog' && hasChest && hasLegs) {
+      const bt = getGearFrame('belt', 'chainbelt', 'jog', pi.dir, pi.frameIdx | 0);
+      if (bt && bt.source && bt.source.resource) belt = (c, x, y, W, H) => drawGearFrame(c, bt, x, y, W, H); else beltPending = true;
+    }
+    if (j.worn.some((w) => !(w.tex && w.tex.source && w.tex.source.resource))) return { err: 'gear not loaded' };
+    const r = lookBake(sh, {
+      cell: j.look.cell, row: j.look.row,
+      worn: j.worn.map((w) => ({ k: w.k, draw: (c, x, y, W, H) => drawGearFrame(c, w.tex, x, y, W, H) })),
+      belt, dilate: 6, poseInfo: pi, ds: DISPLAY_DS, fishRod: { has: hasFishRodMask, at: fishRodAt }, keepDisplay: !!keepDisplay,
+    }, _mkCpuCanvas);
+    if (keepDisplay) return r;
+    if (beltPending) r.beltPending = true;
+    if (r.residue) {
+      const rc = _mkBakeCanvas(r.residue.w, r.residue.h);
+      rc.getContext('2d').putImageData(new ImageData(r.residue.px, r.residue.w, r.residue.h), 0, 0);
+      const bitmap = await createImageBitmap(rc);
+      rc.width = 0; rc.height = 0;
+      r.residue = { x: r.residue.x, y: r.residue.y, w: r.residue.w, h: r.residue.h, bitmap };
+    }
+    _bakeWorkerStats.inline++;
+    return r;
+  } catch (e) { return { err: String((e && e.message) || e) }; }
+}
+/* The body's frame under armour for a figure the look palette draws: the
+   masked look frame once decided; while it is not, `pending` (the caller
+   draws as the old path does for a frame not baked yet); null when it
+   cannot be drawn so (the caller's old path). */
+function _lookArmourBody(entries, worn, poseInfo, rank) {
+  if (!entries) return null;
+  const why = {};
+  const r = lookArmourFrame(entries, worn, poseInfo, rank, why);
+  if (r) return r;
+  return why.fallback ? null : { pending: true };
+}
+/* The residue (the texels the bake drew that are not the body: the chain
+   belt, the steel fill) as its own sprite right over the body, as the whirl's
+   glow is (_whirlGlow).  It stays visible while the figure is drawn this way
+   and takes the empty texture on a frame with none, so a run cycle does not
+   rebuild the draw list every frame (TRAPS §218). */
+function _placeLookResidue(display, on, tex, forTex) {
+  const sb = display._spriteBody;
+  let g = display._lookResidue;
+  if (!on || !sb || sb.parent !== display) {
+    if (g && g.visible) g.visible = false;
+    return;
+  }
+  if (!g) {
+    g = new Sprite(Texture.EMPTY);
+    g.label = 'lookResidue';
+    g.visible = false;
+    display.addChildAt(g, display.getChildIndex(sb) + 1);
+    display._lookResidue = g;
+    /* drawn only over the body frame it belongs to: a branch that draws the
+       body some other way this frame (and so never calls this) sees it at
+       alpha 0, not a stale belt over another picture */
+    g.onRender = () => {
+      const mine = !!(g._forTex && sb.texture === g._forTex && !g._forTex.destroyed);
+      const a = mine ? sb.alpha : 0;
+      if (g.alpha !== a) g.alpha = a;
+      /* a residue let go of with its look (lookArmour's sweep) is never drawn */
+      if ((!mine || g.texture.destroyed) && g.texture !== Texture.EMPTY) g.texture = Texture.EMPTY;
+    };
+  }
+  g._forTex = forTex || null;
+  const bi = display.getChildIndex(sb);
+  if (display.children[bi + 1] !== g) display.setChildIndex(g, Math.min(display.children.length - 1, display.getChildIndex(g) < bi ? bi : bi + 1));
+  const t = (tex && !tex.destroyed) ? tex : Texture.EMPTY;
+  if (g.texture !== t) g.texture = t;
+  if (g._sharp !== sb._sharp) g._sharp = sb._sharp;
+  if (g._vShade !== sb._vShade) g._vShade = sb._vShade;
+  if (g.anchor.x !== sb.anchor.x || g.anchor.y !== sb.anchor.y) g.anchor.set(sb.anchor.x, sb.anchor.y);
+  if (g.x !== sb.x || g.y !== sb.y) g.position.set(sb.x, sb.y);
+  if (g.scale.x !== sb.scale.x || g.scale.y !== sb.scale.y) g.scale.set(sb.scale.x, sb.scale.y);
+  if (g.rotation !== sb.rotation) g.rotation = sb.rotation;
+  if (g.skew.x !== sb.skew.x || g.skew.y !== sb.skew.y) g.skew.set(sb.skew.x, sb.skew.y);
+  if (g.pivot.x !== sb.pivot.x || g.pivot.y !== sb.pivot.y) g.pivot.set(sb.pivot.x, sb.pivot.y);
+  if (g.tint !== sb.tint) g.tint = sb.tint;
+  const vis = !!sb.visible;
+  if (g.visible !== vis) g.visible = vis;
+}
+/* v2.3.3752: the armoured look's oracle (mp-lookarmour), on a page that asks for it only */
+try {
+  if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(window.location.search || '')) {
+    installArmourProbe({ getBodyFrame, getLookBodyEntries, getFrame, getGearFrame, playerFrameCount,
+      maskedFrame: (t, w, d, p) => _maskedBodyFrame(t, w, d, p), fullsetCovers: (w, p, d) => _fullsetCoversBake(w, p, d),
+      /* the masked bake's own picture over the body the numbers draw (the
+         same lookBake.js, its display kept): what the new way must draw */
+      reference: async (job) => {
+        const r = await _runLookBakeInline(job, true);
+        if (!r || !r.display) return null;
+        const t = Texture.from(r.display);
+        t.source.autoGenerateMipmaps = true;
+        return t;
+      },
+      lookJob: (entries, worn, pi) => lookArmourJob(entries, worn, pi),
+      loadGear: async (sets) => {
+        const jobs = [preloadBeltSheets()];
+        for (const [c, l] of sets) for (const pose of ['stand', 'jog', 'hit', 'dodge', 'mine']) for (const dir of ['east', 'north', 'northeast', 'south', 'southwest']) {
+          if (c) jobs.push(gearSheetLoad('chest', c, pose, dir));
+          if (l) jobs.push(gearSheetLoad('legs', l, pose, dir));
+        }
+        await Promise.all(jobs);
+      } });
+  }
+} catch (e) { /* QA only */ }
+/* the local player's look as row entries, where the look palette draws it
+   (getLookBodyEntries), for the armour's prewarm and the render path */
+function _localLookEntries(pose, dir, art) {
+  if (!lookArmourOn()) return null;
+  return getLookBodyEntries(getSkin(), getPants(), getShoes(), pose, dir, null, getEyeColor(), art, getEyeStyle());
+}
 if (typeof window !== 'undefined') {
   window.__btBakeWorker = () => ({ ..._bakeWorkerStats, rawKeys: _bakeWorkerStats.rawKeys.slice(), alive: !!_bakeWorker, dead: _bakeWorkerDead, pending: _bakeJobs.size,
     queued: _bakeQueue.length, busy: _bakeBusy,
@@ -3447,6 +3642,20 @@ if (typeof window !== 'undefined') {
         for (const mirror of flips) {
           for (let f = 0; f < fc; f++) {
             const art = localBodyArt(mirror);
+            /* v2.3.3752: a look the numbers draw: decided by the worker (lookArmour.js) */
+            const le = (pose !== 'fish' && pose !== 'pickup') ? _localLookEntries(pose, dir, art) : null;
+            if (le) {
+              const worn = [];
+              for (const sl of ['chest', 'legs']) {
+                const it = getEquip(sl);
+                if (it && it !== 'none') { const gt = getGearFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
+              }
+              if (!worn.length || _fullsetCoversBake(worn, pose, dir)) continue;
+              out.want++;
+              if (lookArmourDecided(le, worn.map((w) => w.k).join(','), pose + '-' + dir, f)) out.have++;
+              else if (out.missing.length < 24) out.missing.push(pose + '/' + dir + (mirror ? ' flipped' : '') + ' #' + f + ' (numbers)');
+              continue;
+            }
             const tex = (pose === 'fish') ? getFishFrame(art, f, getSkin(), getPants(), getShoes())
               : getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, f, null, 'none', getEyeColor(), art, getEyeStyle());
             if (!tex) continue;
@@ -3590,6 +3799,33 @@ function _peerPrewarmIfChanged(display, sig, bodyFor, gearIds) {
   _peerQueue.push({ display, sig, bodyFor, gearIds });
   _peerBakeStats.queuedSets++;
   if (!_peerRunning) _runPeerQueue();
+}
+/* v2.3.3752: the same for a peer drawn from the numbers (lookArmour.js):
+   their stand and jog frames asked of the worker, one at a time, in the
+   background, when what they wear or how they look changes */
+async function _peerLookPrewarmIfChanged(display, sig, entriesFor, gearIds) {
+  if (display._peerLookSig === sig) return;
+  display._peerLookSig = sig;
+  if (!_peerWorkerOk() || !gearIds.length) return;
+  _peerBakeStats.queuedSets++;
+  const DIRS = ['south', 'east', 'north', 'northeast', 'southwest'];
+  for (const pose of ['stand', 'jog']) {
+    for (const dir of DIRS) {
+      const ents = entriesFor(pose, dir);
+      if (!ents) continue;
+      const fc = playerFrameCount(pose, dir) || 1;
+      for (let f = 0; f < fc; f++) {
+        if (display.destroyed || display._peerLookSig !== sig) return;   /* gone, or changed again */
+        const worn = [];
+        for (const [sl, it] of gearIds) {
+          const gt = getGearFrame(sl, it, pose, dir, f);
+          if (gt) worn.push({ k: sl + ':' + it, tex: gt });
+        }
+        if (!worn.length || _fullsetCoversBake(worn, pose, dir)) continue;
+        try { await lookArmourPrewarm(ents, worn, { pose, dir, frameIdx: f }); _peerBakeStats.prewarmed++; } catch (e) { /* best-effort */ }
+      }
+    }
+  }
 }
 async function _runPeerQueue() {
   _peerRunning = true;
@@ -4042,6 +4278,21 @@ export async function prewarmMaskedBodyFrames(opts) {
       for (const art of _prewarmArts(pose, dir)) {   /* v2.3.3577: + a drawn player's flipped facings */
       for (let f = 0; f < fc; f++) {
         prewarmProgress.done++;
+        /* v2.3.3752: a look the numbers draw is masked from them: its frames
+           are decided by the worker behind this same loading screen, and no
+           picture of the body is made for them (lookArmour.js) */
+        const _le = (pose !== 'fish' && pose !== 'pickup') ? _localLookEntries(pose, dir, art) : null;
+        if (_le) {
+          const worn = [];
+          for (const sl of slots) {
+            const it = getEquip(sl);
+            if (it && it !== 'none') { const gt = getGearFrame(sl, it, pose, dir, f); if (gt) worn.push({ k: sl + ':' + it, tex: gt }); }
+          }
+          if (!worn.length || !_prewarmMasks(pose) || _fullsetCoversBake(worn, pose, dir)) continue;
+          pending.push(lookArmourPrewarm(_le, worn, { pose, dir, frameIdx: f }));
+          if (pending.length >= 2) await pending.shift();
+          continue;
+        }
         /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
            v2.3.2854: ...with the drawings on it (getFishFrame), the frame the
            renderer now asks for; baked by preloadBodyAll, which this runs after.
@@ -4182,6 +4433,20 @@ export async function prewarmAltWornSets(opts) {
         for (let f = 0; f < fc; f++) {
           if (seq !== _altPrewarmSeq) return;
           if (fast) prewarmProgress.done++;
+          /* v2.3.3752: a look the numbers draw: the worn set was decided by
+             prewarmMaskedBodyFrames; a set one equip away is decided when it
+             goes on (the plain body for the frame or two the worker takes),
+             so it holds no palette row or mask book before then */
+          if (pose !== 'fish' && pose !== 'pickup' && _localLookEntries(pose, dir, art)) {
+            if (!spare) {
+              const worn = [];
+              for (const [sl, id] of set.worn) { const gt = getGearFrame(sl, id, pose, dir, f); if (gt) worn.push({ k: sl + ':' + id, tex: gt }); }
+              if (worn.length && _prewarmMasks(pose) && !_fullsetCoversBake(worn, pose, dir)) {
+                try { await lookArmourPrewarm(_localLookEntries(pose, dir, art), worn, { pose, dir, frameIdx: f }); } catch (e) { /* best-effort */ }
+              }
+            }
+            continue;
+          }
           /* v2.3.2500: fish draws the raw sheet -- see _prewarmMasks.
              v2.3.2854: with the drawings on it, as the pass above.
              v2.3.3146: and your skin, trousers and boots. */
@@ -12364,8 +12629,9 @@ export class EntityRenderer {
            colour numbers and a row of their colours (lookPalette.js), when
            they wear no chest or leg armour (masked from the body's own
            pixels, below); null otherwise, and always with `?lookpalette=0` */
-        /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels) */
-        const _lookTex = (lookPaletteWanted() && _bareOf(_oEq.chest) && _bareOf(_oEq.legs) && (pose !== 'fish' || _bareOf(_oShirtEquip)))
+        /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels).
+           v2.3.3752: under their armour too (lookArmour.js), not fishing */
+        const _lookTex = (lookPaletteWanted() && ((_bareOf(_oEq.chest) && _bareOf(_oEq.legs) && (pose !== 'fish' || _bareOf(_oShirtEquip))) || (lookArmourOn() && pose !== 'fish')))
           ? getLookBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle) : null;
         let tex = _lookTex || (pose === 'fish'
           ? getFishFrame(_oBodyArt, frameIdx, other.skin, other.pants, other.shoes)
@@ -12446,11 +12712,25 @@ export class EntityRenderer {
                figure showing through at its edges. */
             /* v2.3.2876: a peer's armour bakes in the worker (prewarm on a
                change, hold-don't-bake on a miss) -- _peerMaskedFrame. */
-            _peerPrewarmIfChanged(display,
-              [other.skin, other.pants, other.shoes, other.eyeColor, other.eyeStyle, _oBodyArt ? 'art' : '', other.equip && other.equip.chest, other.equip && other.equip.legs].join('|'),
+            /* v2.3.3752: a peer drawn from the numbers is prewarmed and masked
+               from them (lookArmour.js); else the old path, as before */
+            const _rEnt = (tex && tex._btLook) ? (p, d) => getLookBodyEntries(other.skin, other.pants, other.shoes, p, d, _oShirtT, other.eyeColor, _oBodyArt, other.eyeStyle) : null;
+            const _rSig = [other.skin, other.pants, other.shoes, other.eyeColor, other.eyeStyle, _oBodyArt ? 'art' : '', other.equip && other.equip.chest, other.equip && other.equip.legs].join('|');
+            if (_rEnt) _peerLookPrewarmIfChanged(display, _rSig, _rEnt, _rworn.map((w) => w.k.split(':')));
+            else _peerPrewarmIfChanged(display, _rSig,
               (p, d, f, m) => getBodyFrame(other.skin, other.pants, other.shoes, p, d, f, _oShirtT, _oShirtKey, other.eyeColor, _remoteBodyArt(other, m), other.eyeStyle),
               _rworn.map((w) => w.k.split(':')));
-            const _mt = _fsR || ((pose === 'pickup') ? tex : _peerMaskedFrame(display, tex, _rworn, 6, { pose, dir, frameIdx }, mirror));
+            let _rla = null;
+            if (_rEnt && !_fsR && pose !== 'pickup') _rla = _lookArmourBody(_rEnt(pose, dir), _rworn, { pose, dir, frameIdx }, 0);
+            const _rpd = pose + '|' + dir + '|' + (mirror ? 1 : 0) + '|' + _rworn.map((w) => w.k).join(',');
+            let _rOld = tex;
+            if (_rEnt && !_rla && !_fsR && pose !== 'pickup') _rOld = getBodyFrame(other.skin, other.pants, other.shoes, pose, dir, frameIdx, _oShirtT, _oShirtKey, other.eyeColor, _oBodyArt, other.eyeStyle);
+            /* not decided yet: the last masked frame of this pose and facing, as _peerMaskedFrame holds one */
+            const _rHold = (_rla && _rla.pending && display._peerLastPD === _rpd && display._peerLastMasked && display._peerLastMasked._btLook && !display._peerLastMasked.destroyed && display._peerLastMasked.source && !display._peerLastMasked.source.destroyed) ? display._peerLastMasked : null;
+            const _mt = _fsR || ((pose === 'pickup') ? tex : (_rla ? (_rla.tex || _rHold || tex) : _peerMaskedFrame(display, _rOld, _rworn, 6, { pose, dir, frameIdx }, mirror)));
+            const _rRes = _rla && _rla.tex ? _rla.residue : (_rHold ? display._peerLastResidue : null);
+            _placeLookResidue(display, !!(_rla && (_rla.tex || _rHold)), _rRes, _mt);
+            if (_rla && _rla.tex) display._peerLastResidue = _rla.residue || null;
             if (spriteBody.texture !== _mt) spriteBody.texture = _mt;
             if (!_fsR && pose !== 'pickup' && _mt !== tex) {
               display._peerLastMasked = _mt;
@@ -14229,8 +14509,11 @@ export class EntityRenderer {
          drawn as it is: not under chest or leg armour (masked from the body's
          own pixels) and not in the south block (cut into bands).  Null
          otherwise, and always with `?lookpalette=0`: the old path below. */
-      /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels) */
-      const _lookTex = (lookPaletteWanted() && !_southBlock && _bareOf(getEquip('chest')) && _bareOf(getEquip('legs')) && (pose !== 'fish' || _bareOf(getEquip('shirt'))))
+      /* v2.3.3750: every pose with numbers; not a cast in a shirt (_placeFishHead reads the body's pixels).
+         v2.3.3752: under chest or leg armour too, where the armour's masks
+         are drawn from the numbers (lookArmour.js) -- not fishing (its head
+         overlay reads the body's pixels) */
+      const _lookTex = (lookPaletteWanted() && !_southBlock && ((_bareOf(getEquip('chest')) && _bareOf(getEquip('legs')) && (pose !== 'fish' || _bareOf(getEquip('shirt')))) || (lookArmourOn() && pose !== 'fish')))
         ? getLookBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, getEyeColor(), _bodyArt, getEyeStyle()) : null;
       let tex = _lookTex || (pose === 'fish'
         ? getFishFrame(_bodyArt, frameIdx, getSkin(), getPants(), getShoes())   /* v2.3.3146: your colours */
@@ -14326,7 +14609,21 @@ export class EntityRenderer {
           /* v2.3.2904: _localMaskedFrame -- a frame the worker has not baked yet
              goes to the front of its queue and this frame draws the plain body
              under the armour, instead of a bake inside the frame. */
-          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : _localMaskedFrame(tex, _worn, 6, { pose, dir, frameIdx }));
+          /* v2.3.3752: a body drawn from the numbers takes its mask from them
+             too (lookArmour.js): decided, the masked look frame and its
+             residue; not yet, the plain body, as a frame the worker has not
+             baked (above); unable (no row, no room), the old path's own bake
+             of the old body picture */
+          let _la = null;
+          if (!_fsT && _worn.length && pose !== 'pickup' && tex && tex._btLook) {
+            _la = _lookArmourBody(getLookBodyEntries(getSkin(), getPants(), getShoes(), pose, dir, _shirtT, getEyeColor(), _bodyArt, getEyeStyle()),
+              _worn, { pose, dir, frameIdx }, _localEpoch + 1);
+            if (_la && _la.pending) { _localEpoch++; _localBakeStats.plain++; }
+          }
+          let _oldTex = tex;
+          if (!_la && tex && tex._btLook && _worn.length && !_fsT && pose !== 'pickup') _oldTex = getBodyFrame(getSkin(), getPants(), getShoes(), pose, dir, frameIdx, _shirtT, _shirtKey, getEyeColor(), _bodyArt, getEyeStyle());
+          _bodyTex = _fsT || ((!_worn.length || pose === 'pickup') ? tex : (_la ? (_la.tex || tex) : _localMaskedFrame(_oldTex, _worn, 6, { pose, dir, frameIdx })));
+          _placeLookResidue(display, !!(_la && _la.tex), _la && _la.residue, _la && _la.tex);
           /* v2.3.1757: material colour for the figure-on-body case (see the
              remote path above for why it is cleared rather than left set). */
           const _fsTint = _fsT ? _fullsetTint(getEquip('chest')) : 0xffffff;
@@ -16537,6 +16834,8 @@ export class EntityRenderer {
        the spot beside you for the one frame before it seeds itself. */
     const x = (typeof S._petX === 'number') ? S._petX : S.player.x + 20;
     const y = (typeof S._petY === 'number') ? S._petY : S.player.y + 15;
+    /* v2.3.3806: on a fetch (game/petFetch.js) it RUNS: its walk's frames, faster */
+    d._run = !!(S._petFetch && S._petFetch.phase);
     const { k, hop } = this._posePet(d, art, pet, x, y, now);
     const nm = worldSafeText(petDisplayName({ ...pet, kind }));
     if (d._nameText.text !== nm) d._nameText.text = nm;
@@ -16588,7 +16887,7 @@ export class EntityRenderer {
     const frames = side ? petFrames(art.base, 'side') : front;
     /* slimes bounce standing still too; a walker steps only while it walks */
     const bounces = art.base === 'slime' || art.base === 'blueSlime';
-    const fi = frames.length > 1 && (moving || bounces) ? Math.floor(now / (bounces ? 120 : 105)) % frames.length : 0;
+    const fi = frames.length > 1 && (moving || bounces) ? Math.floor(now / (bounces ? 120 : (d._run ? 70 : 105))) % frames.length : 0;   /* v2.3.3806: 70 on a fetch's run */
     const spr = d._sprite;
     if (spr.texture !== frames[fi]) spr.texture = frames[fi];
     /* PET_DRAW_K: the sheet is 2 px a game px (k 0.5 draws its 30 px art 30
