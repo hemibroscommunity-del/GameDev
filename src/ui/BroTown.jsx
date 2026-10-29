@@ -510,7 +510,8 @@ import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
 import { isWheelTrialZone, footstepSurface, setWheelArrival } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown; v2.3.3574: + the spot a recovery reload puts you back on */
 import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
-import { wheelObjectsInfo } from '@/game/wheelTrial.js';
+import { wheelObjectsInfo, wheelWaterAt } from '@/game/wheelTrial.js';
+import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch */
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
@@ -4699,6 +4700,34 @@ export var BroTown = function BroTown(_ref0) {
       return false;
     };
     if (typeof window !== 'undefined') window.__btPropFeetBlocked = (cx, cy, px, py) => propFeetBlocked(cx, cy, px, py, 10);
+    /* v2.3.3806: where a fetching pet may not step (game/petFetch.js): the
+       walk's own walls (isSolid: the zone's edge, the walk grid, townsfolk),
+       the Wheel's water, and an object's footprint (a building, a rock, a
+       tree, a bush), read at one point, the pet's feet: it is small.  It goes
+       round these; it never sets off across the water (_petWaterAt). */
+    var _petWaterAt = function (x, y) { return S.currentZone === 'wheel' && wheelWaterAt(x, y) === true; };
+    var _petBlockWhy = null;   /* QA: which rule stopped the last point */
+    var _petBlockedAt = function (x, y) {
+      /* isSolid reads a feet grid playerGroundDy below a BODY's middle; the
+         pet's y is already its feet */
+      var _wg = S._tiledWalkable && S._tiledWalkable[S.currentZone];
+      if (isSolid(x, (_wg && _wg.atFeet) ? y - playerGroundDy(S.currentZone, x, y) : y)) return (_petBlockWhy = 'solid'), true;
+      if (S.currentZone === 'wheel' && wheelWaterAt(x, y) === true) return (_petBlockWhy = 'water'), true;
+      var bx = zoneBlockers(S.currentZone);
+      for (var i = 0; bx && i < bx.length; i++) {
+        var b = bx[i];
+        if (x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1) return (_petBlockWhy = 'object ' + (b.id || b.kind || i)), true;
+      }
+      return false;
+    };
+    /* v2.3.3806: where a fetching pet may not run, for mp-petfetch */
+    if (typeof window !== 'undefined') window.__btPetBlockedAt = (x, y) => (_petBlockedAt(x, y) ? _petBlockWhy || true : false);
+    /* v2.3.3806: the fetch's state for mp-petfetch (read only) */
+    if (typeof window !== 'undefined') window.__btPetFetch = () => {
+      var F = S._petFetch;
+      return { phase: F ? F.phase : null, lootId: F ? F.lootId : null, runs: F ? F.runs : 0, got: F ? F.got : 0, credited: F && F.credited ? F.credited.slice() : [], closest: F && F.closest < 1e9 ? F.closest : null, goSteps: F ? F.goSteps || 0 : 0, pace: F ? F.pace || 0 : 0, skip: F ? Array.from(F.skip.keys()) : [], why: F ? F.why : null, on: !!(S._serverCaps && S._serverCaps.petfetch && S._serverCaps.petLoot), dt: S._dtScale || 1,
+        x: S._petX, y: S._petY, px: S.player ? S.player.x : null, py: S.player ? S.player.y : null };
+    };
     var _gameLoop = function gameLoop() {
       frameRef.current = requestAnimationFrame(_gameLoop);
       try {
@@ -6981,9 +7010,40 @@ export var BroTown = function BroTown(_ref0) {
                every screen, and slows with the walk only where the game itself
                does (under 20 fps, the scale's x3 clamp). */
             var _petDt = S._dtScale || 1;
+            /* ═══ v2.3.3806: THE FETCH (game/petFetch.js) ═══
+               The owner: "make pets run towards loot drops and pick them up
+               for you".  A monster pile of yours within PET_FETCH.RADIUS: the
+               pet leaves the follow and runs to it at 1.5x your run (your
+               measured step, never under the base walk), the vacuum below
+               asks for it once it is there, and it runs back.  Only against a
+               worker that reaches that far (caps.petfetch, and the vacuum's
+               own caps.petLoot); alive, and not while the zone loads. */
+            if (!S._petFetch) S._petFetch = petFetchState();
+            var _pfRunPx = 0;
+            if (typeof S._petPrevPX === 'number' && _petDt > 0) {
+              _pfRunPx = Math.sqrt(Math.pow(P.x - S._petPrevPX, 2) + Math.pow(P.y - S._petPrevPY, 2)) / _petDt;
+            }
+            S._petPrevPX = P.x; S._petPrevPY = P.y;
+            /* a walk is ~2.5-6 px a frame; a bigger jump is a teleport, not a run */
+            var _pfRun = Math.max(SPEED, _pfRunPx < 12 ? _pfRunPx : 0);
+            var _pfOn = !!(S._serverCaps && S._serverCaps.petfetch && S._serverCaps.petLoot) &&
+              !S._dying && !(S.rpg && S.rpg.hp <= 0) && !S._zoneLoading && !!S.myId;
+            var _pf = null;
+            if (_pfOn) {
+              _pf = petFetchStep(S._petFetch, {
+                now: now, zone: S.currentZone, me: S.myId, piles: S.groundLoot,
+                px: P.x, py: P.y, petX: S._petX, petY: S._petY,
+                stepPx: _pfRun * PET_FETCH.SPEED_K * _petDt, pace: _pfRun * PET_FETCH.SPEED_K, blockedAt: _petBlockedAt, waterAt: _petWaterAt
+              });
+            } else if (S._petFetch.phase) {
+              S._petFetch.phase = null; S._petFetch.lootId = null;
+            }
+            if (_pf) { S._petX = _pf.x; S._petY = _pf.y; }
             var petDistToP = Math.sqrt(Math.pow(S._petX - P.x, 2) + Math.pow(S._petY - P.y, 2));
             var petTargetDist = 35;
-            if (petDistToP > petTargetDist + 15) {
+            if (_pf) {
+              /* running: the fetch has it this frame */
+            } else if (petDistToP > petTargetDist + 15) {
               var pDx = P.x - S._petX,
                 pDy = P.y - S._petY;
               var pDist = Math.sqrt(pDx * pDx + pDy * pDy) || 1;
@@ -6998,14 +7058,16 @@ export var BroTown = function BroTown(_ref0) {
               S._petY += by / bd * 0.5 * _petDt;
             }
             /* Personality idle movement */
-            if (pet.personality === 'playful') {
+            if (_pf) {
+              /* no idle wander on a run */
+            } else if (pet.personality === 'playful') {
               S._petX += Math.sin(now / 300) * 0.3 * _petDt;
               S._petY += Math.cos(now / 400) * 0.2 * _petDt;
             }
-            if (pet.personality === 'curious') {
+            if (!_pf && pet.personality === 'curious') {
               S._petX += Math.sin(now / 500 + 1) * 0.5 * _petDt;
             }
-            if (pet.personality === 'anxious') {
+            if (!_pf && pet.personality === 'anxious') {
               S._petX += (Math.random() - 0.5) * 0.4 * _petDt;
               S._petY += (Math.random() - 0.5) * 0.4 * _petDt;
             }
@@ -7038,6 +7100,14 @@ export var BroTown = function BroTown(_ref0) {
                        put it down; the pet at your heels would hand it straight
                        back.  Walking onto it still takes it back. */
                     if (loot.dropped && loot.dropBy === S.myId) return true;
+                    /* v2.3.3806: a running pet passes piles far from you; a
+                       death drop (or a dropped item) is still the worker's
+                       240 from YOU (pets.js), so it is not asked for there */
+                    if (loot.isDeathDrop && Math.sqrt(Math.pow(P.x - loot.x, 2) + Math.pow(P.y - loot.y, 2)) > 230) return true;
+                    /* v2.3.3806: the pile a pet is running to is asked for when
+                       it gets there, not from the vacuum's 80 px on its way in
+                       (game/petFetch.js waits at the pile for this ask) */
+                    if (petFetchHolds(S._petFetch, loot.lootId)) return true;
                     /* v2.3.2490: THE PET'S IN-FLIGHT FLAG IS ITS OWN.
                        This used to share `_pickupPending` with the manual
                        walk-over path in groundLoot.js, reasoning that pet +

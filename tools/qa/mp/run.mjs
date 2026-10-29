@@ -626,6 +626,7 @@ const SCENARIOS = {
   townlock: () => import('./mp-townlock.mjs'), /* v2.3.1676: unarmed start + town gate */
   proj: () => import('./mp-proj.mjs'), /* v2.3.1678: the snowball is visible */
   lifeskill: () => import('./mp-lifeskill.mjs'), /* v2.3.1680: tool-gated gathering */
+  petfetch: () => import('./mp-petfetch.mjs'), /* v2.3.3806: the pet runs to a monster pile of yours ~350 px off and fetches it, upright and on a computer: it runs, the pile lands in the bag, it comes back */
   petdraw: () => import('./mp-petdraw.mjs'), /* v2.3.2078: an active pet is actually drawn */
   dodgetrail: () => import('./mp-dodgetrail.mjs'), /* v2.3.2078: your own dodge leaves a trail too */
   rollweapon: () => import('./mp-rollweapon.mjs'), /* v2.3.2925: no weapon in a roll -- hidden while the tumble plays, yours and a watcher's view, back after */

@@ -1340,6 +1340,13 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.2078: what the pet display is doing — the pet was invisible
        for its whole life and nothing could see that. */
     petDrawn: () => entityRenderer.petDrawn(),
+    /* v2.3.3806: world points -> the page's pixels, through the pet's own
+       layer (mp-petfetch draws the fetch's path over its picture) */
+    petScreen: (pts) => {
+      const d = entityRenderer.petDisplay;
+      if (!d || !d.parent || !Array.isArray(pts)) return null;
+      return pts.map((p) => { const g = d.parent.toGlobal({ x: p[0], y: p[1] }); return [g.x, g.y]; });
+    },
     /* v2.3.3123: the others' pets as drawn (mp-petshow) */
     peerPetsDrawn: () => entityRenderer.peerPetsDrawn(),
     blockGeomProbe: () => {

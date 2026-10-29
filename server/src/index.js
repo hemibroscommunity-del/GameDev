@@ -4554,7 +4554,9 @@ export class GameRoom {
     const dx = ps.x - pile.x;
     const dy = ps.y - pile.y;
     const distSq = dx * dx + dy * dy;
-    const range = viaPet ? PETS.VACUUM_RANGE : this.LOOT_PICKUP_RANGE;
+    /* v2.3.3806: a pet's fetch widens it for a monster pile you may claim
+       (pets.js _petPickupRange); a death drop keeps the vacuum's 240. */
+    const range = viaPet ? this._petPickupRange(pile, session.id) : this.LOOT_PICKUP_RANGE;
     const rangeSq = range * range;
     if (distSq > rangeSq) return reject('out-of-range', { dist: Math.round(Math.sqrt(distSq)), max: range });
 
