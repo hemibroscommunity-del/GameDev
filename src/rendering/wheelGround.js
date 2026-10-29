@@ -44,6 +44,7 @@ import { wheelInfo, wheelStart, wheelChunk, wheelIsWarm, wheelDropWarm, wheelWar
 import { worldTrialLeft } from '../game/worldTrial.js';
 import { WheelWater } from './wheelWater.js';   /* v2.3.3019: the water moves */
 import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   /* v2.3.3190: pieces as colour numbers */
+import { isRiding, RIDE_MULT } from '../game/ride.js';   /* v2.3.3843: further ahead of the board */
 
 const MAX_IN_FLIGHT = 3;
 const MARGIN = 96;
@@ -92,6 +93,23 @@ if (typeof window !== 'undefined') {
    memory on every side instead of one. */
 const AHEAD_MS = 700;
 const AHEAD_MAX = 480;
+/* ═══ v2.3.3843: FURTHER AHEAD ON THE SKATEBOARD ═══
+   The owner, on a computer: "the world still looks unbuilt on the edges when
+   I'm on the skateboard. I think you haven't compensated for the speed of the
+   skateboard yet in what to load from the world around you on the edges."
+   The board rolls at twice a walk (game/ride.js RIDE_MULT, 300 game px a
+   second against 150), and 700 ms ahead of it is 210 px: one piece.  A
+   computer's wide view lays ~8 pieces a column at ~45-55 ms each, ~400 ms a
+   column, and the board brings a new column every ~640 ms -- no lead to
+   speak of (mp-ridelay: the overview showed under 3.7% of a ride's frames).
+   So on the board the look ahead, and its cap, grow by the board's own
+   factor (RIDE_MULT, at most AHEAD_GROW): 420 px ahead riding, two pieces.
+   By the board, not by the camera's speed: the memory check's trip glides
+   at three times a walk, and grown by its speed it held 3.7 MB more on the
+   graphics chip (mp-membudget) -- a walk, a sprint and a fight lay exactly
+   what they did.  Behind you nothing changes (KEEP_PX: freed where you
+   leave, the memory law). */
+const AHEAD_GROW = 2;
 /* Pieces the zone gate laid round the arrival and this view never took (a
    wide desktop view is shaped differently from the phone's) are let go this
    long after arriving, rather than held until the worker stops. */
@@ -179,7 +197,7 @@ export class WheelGround {
     this.under = s;
   }
 
-  update(cx, cy, viewW, viewH) {
+  update(cx, cy, viewW, viewH, S) {
     this.coversView = false;   /* v2.3.3452: until this frame's test says so (below) */
     if (this.dead) return;
     const info = wheelInfo();
@@ -204,8 +222,10 @@ export class WheelGround {
     const cs = info.chunk.gamePx, C = info.chunk.cols, R = info.chunk.rows;
     const clampI = (v) => Math.max(0, Math.min(C - 1, v));
     const clampJ = (v) => Math.max(0, Math.min(R - 1, v));
-    const ax = Math.max(-AHEAD_MAX, Math.min(AHEAD_MAX, this._vx * AHEAD_MS));
-    const ay = Math.max(-AHEAD_MAX, Math.min(AHEAD_MAX, this._vy * AHEAD_MS));
+    const grow = isRiding(S) ? Math.max(1, Math.min(AHEAD_GROW, RIDE_MULT)) : 1;   /* v2.3.3843 */
+    const aMax = AHEAD_MAX * grow, aMs = AHEAD_MS * grow;
+    const ax = Math.max(-aMax, Math.min(aMax, this._vx * aMs));
+    const ay = Math.max(-aMax, Math.min(aMax, this._vy * aMs));
     /* the view and its margin, stretched the way the camera is going */
     const nx0 = cx - MARGIN + Math.min(0, ax), nx1 = cx + viewW + MARGIN + Math.max(0, ax);
     const ny0 = cy - MARGIN + Math.min(0, ay), ny1 = cy + viewH + MARGIN + Math.max(0, ay);
