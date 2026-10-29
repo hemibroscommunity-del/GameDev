@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a07be7e59fe1514c41a59533cf14acca2b89bc4e",
+  "tree": "8d793a4c93cd51ad6b110ef99e95b47b5784f3ac",
+  "committedAt": "2026-10-28T20:51:24-07:00",
+  "subject": "Merge pull request #1307 from hemibroscommunity-del/claude/look-palette-mac",
+  "files": 7234,
+  "bytes": 831807847,
+  "listingSha256": "6bcd63610df13011266f43b968c4d75da113ef5eb89d96359cd2a70d27a1e73c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

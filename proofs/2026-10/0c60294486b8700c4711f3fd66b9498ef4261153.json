@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0c60294486b8700c4711f3fd66b9498ef4261153",
+  "tree": "6c8eaa228847a0cd1a448af31d6efe8339ae00be",
+  "committedAt": "2026-10-28T20:51:27-07:00",
+  "subject": "Merge pull request #1308 from hemibroscommunity-del/claude/respawn-title",
+  "files": 7235,
+  "bytes": 831815014,
+  "listingSha256": "efe75e799a13b8be8cb62466dfa68ef136942ed34ef8a4551182d67b12e00418",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
