@@ -152,7 +152,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (const id of d.npcs) {
         await place(A, id, 0, 30);
         await A.page.waitForTimeout(300);
-        const h = await settled((x) => !x.up || (!!x.prompt && /talk/i.test(x.prompt)));
+        /* settled: out of the door's reach with no prompt left, or the Talk
+           prompt -- never an Enter prompt still on screen */
+        const h = await settled((x) => (!x.up && x.prompt === null) || (!!x.prompt && /talk/i.test(x.prompt)));
         people.push({ id, near: h.npc, prompt: h.prompt });
       }
       checks.push({ door: d.id, spot, button: at && at.prompt, people });
@@ -163,6 +165,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`1. every open door (${checks.length}): out of everyone's range its Enter button is up; beside each townsperson near it (${checks.reduce((n, c) => n + c.people.length, 0)}) the prompt says Talk, never Enter`,
       checks.length >= 5 && bad.length === 0, { bad, checks: checks.map((c) => [c.door, !!c.spot, c.button, c.people.map((p) => p.id + ':' + (p.prompt === null ? 'none' : p.prompt)).join(' ')]) });
 
+    /* BT_MAYORDOOR_ONLY=1: step 1 alone (the E and door rules), for a quick
+       run; the full scenario is the default */
+    if (process.env.BT_MAYORDOOR_ONLY === '1') {
+      const errs1 = [].concat(A.errors, C.errors);
+      rec.ok('4. no page errors', errs1.length === 0, errs1.slice(0, 3));
+      return;
+    }
     /* ── 2. the board's button: on the safe ground, and not past it ── */
     const town = { A: await rideBtn(A), C: await rideBtn(C) };
     rec.ok(`2. in BroTown the board's button is drawn (computer ${!!(town.A && town.A.shown)}, phone ${!!(town.C && town.C.shown)})`,
