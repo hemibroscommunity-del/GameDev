@@ -67,6 +67,14 @@ try {
     import('./headFrames.js').then((m) => { _headFrames = m; }).catch(() => {});
   }
 } catch (e) { /* QA only */ }
+/* v2.3.3891: the body-frame count (bodyFrames.js), the same way: only with
+   `?bodyframes`, else not even fetched */
+let _bodyFrames = null;
+try {
+  if (typeof window !== 'undefined' && /[?&]bodyframes(=|&|$)/.test((window.location && window.location.search) || '')) {
+    import('./bodyFrames.js').then((m) => { _bodyFrames = m; }).catch(() => {});
+  }
+} catch (e) { /* QA only */ }
 import { getHeadwear } from './traits/headwearCatalog.js';
 import { getHair } from './traits/hairCatalog.js';
 import { getFacialHair } from './traits/facialHairCatalog.js';
@@ -836,8 +844,10 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.3860: QA (`?headframes`): each worn head piece on screen this frame? */
     if (_headFrames) try { _headFrames.othersFrameTick(entityRenderer, app.stage, now); } catch (e) { /* QA only */ }
     if (_headFrames) try { _headFrames.headFrameTick(entityRenderer, effectsRenderer, app.stage, { headwear: getHeadwear(), hair: getHair(), facialhair: getFacialHair(), eyewear: getEyewear(), eyestyle: getEyeStyle() }); } catch (e) { /* QA only */ }
+    /* v2.3.3891: QA (`?bodyframes`): your body and legs this frame */
+    if (_bodyFrames) try { _bodyFrames.bodyFrameTick(entityRenderer); } catch (e) { /* QA only */ }
     // Manual render
-    try { app.render(); update._renderStreak = 0; if (_headFrames) _headFrames.headPixelsTick(entityRenderer, effectsRenderer, app.renderer); }
+    try { app.render(); update._renderStreak = 0; if (_headFrames) _headFrames.headPixelsTick(entityRenderer, effectsRenderer, app.renderer); if (_bodyFrames) try { _bodyFrames.bodyPixelsTick(entityRenderer, app.renderer); } catch (e2) { /* QA only */ } }
     catch (e) {
       update._renderStreak = (update._renderStreak || 0) + 1;
       /* v2.3.3152: Pixi's masks and filters put back to "nothing open", or the
