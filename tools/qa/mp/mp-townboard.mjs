@@ -193,8 +193,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await waitSel(A, '[data-board-page="goo-grotto"]');
     const p2c = await pageOf(A);
     await shot(A, '2-dungeon');
+    /* v2.3.3778: the owner's rename, "Change verdant wilds on the town hall
+       description to Earth Forest": the land's tile and the Goo Grotto's
+       page read the world's new name */
+    rec.ok(`...the forest's tile reads the owner's new name, "${verd && verd.name}"`, !!verd && verd.name === 'Earth Forest', verd);
     rec.ok('...and the Goo Grotto\'s page, under Dungeons, says its land by the world\'s own name, with Red pin and Blue pin',
       !!p2c && !!verd && p2c.text.includes(verd.name) && !/[{}]/.test(p2c.text) && p2c.btns.length === 2, p2c && { text: p2c.text.slice(0, 240), verd: verd && verd.name });
+    await press(A, '[data-board-back]', false);
+    await waitSel(A, '[data-town-board]');
+    await press(A, '[data-board-tile="land-verdant"]', false);
+    await waitSel(A, '[data-board-page="land-verdant"]');
+    const p2d = await pageOf(A);
+    await shot(A, '2-forest');
+    rec.ok('...and the Earth Forest\'s own page says its name', !!p2d && /Earth Forest/.test(p2d.text) && !/Verdant Wilds/i.test(p2d.text), p2d && { text: p2d.text.slice(0, 200) });
     await press(A, '[data-board-back]', false);
     await waitSel(A, '[data-town-board]');
 
@@ -266,6 +277,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const b7 = await board(C);
     const hint = await C.page.evaluate(() => { const b = document.querySelector('[data-town-board]'); return !!b && (b.textContent || '').indexOf('Click one to read about it') >= 0; });
     await shot(C, '7-desk-board');
+    /* v2.3.3778: the Earth Forest's page and the Goo Grotto's, wide */
+    for (const [tile, name] of [['land-verdant', '7-desk-forest'], ['goo-grotto', '7-desk-grotto']]) {
+      if (!o7.open) break;
+      await press(C, `[data-board-tile="${tile}"]`, true);
+      await waitSel(C, `[data-board-page="${tile}"]`);
+      const pg = await pageOf(C);
+      await shot(C, name);
+      rec.ok(`7. on a computer, the ${tile} page says "Earth Forest"`, !!pg && /Earth Forest/.test(pg.text) && !/Verdant Wilds/i.test(pg.text), pg && { text: pg.text.slice(0, 200) });
+      await press(C, '[data-board-back]', true);
+      await waitSel(C, '[data-town-board]');
+    }
     const r7 = o7.open ? await pinIt(C, 'woodworker', 'blue', true) : null;
     await closeCard(C);
     const m7 = await miniPins(C);

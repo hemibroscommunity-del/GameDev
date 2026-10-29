@@ -14,7 +14,14 @@ The owner, 2026-10-28: "Rename verdant wilds to something like earth forest
   Earth Forest") and his dungeon quest (the Goo Grotto "off the West Road in
   the Earth Forest").
 - A townsperson's line, the Blue Slime's codex story, the daily rewards' land
-  names, the Sound Studio's label, the old map's gate label.
+  names, the Sound Studio's label, the old map's gate label, the Test panel's
+  button and the objects studio's heading.
+- The Town Hall board (v2.3.3779) reads the land's name from the world's plan,
+  so its Earth Forest tile and the Goo Grotto's page say it with no change of
+  their own (`mp-townboard`, upright and wide):
+
+![The board's Earth Forest page, upright](../shots/earth-forest-board.webp)
+![The Goo Grotto's page, wide](../shots/earth-forest-grotto-wide.webp)
 
 ## What stays
 
@@ -23,6 +30,8 @@ The owner, 2026-10-28: "Rename verdant wilds to something like earth forest
 - The flora element's own word "Verdant" on items (`src/data/elements.js`:
   a Verdant fishing spot, the meadow's "Verdant Shard"): items players
   already hold keep their names (`src/data/shards.js` says why).
+- The ground studio's piece names (`public/world/ground/manifest.json`, made
+  by the ground pipeline, never read in the game).
 - No painted text: the land's banner, the zone banner's art and the world
   map's art carry no name.
 
