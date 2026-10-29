@@ -30,8 +30,11 @@ killed you or where you were going.
     "They took what you carried", or with a red skull "You lost what you
     carried and wore"; in a dungeon, "Your bag is safe";
   - "Back in BroTown in 5", counting down from the worker's `respawnInMs`.
-  It sits in the middle of the play area, above the controls' band, z 22 with
-  the banners. It never takes a tap or a click (`pointer-events: none`) and
+  It sits at the top of the play area (v2.3.3841: in the middle it covered the
+  bro bursting into bones, and the owner missed his own death): beside the
+  minimap on a computer and a sideways phone, under it on an upright phone,
+  never over you (NmlAskCard.jsx `cardPlace`), portalled to the body at
+  `Z_ABOVE_DASH_PROMPT`; it comes in over 150 ms. It never takes a tap or a click (`pointer-events: none`) and
   has nothing to close.
 - **One line in the chat** once you are back (`src/game/respawn.js`, so the
   watchdog's respawn says it too): "You were killed by Blue Slime, and came
@@ -64,3 +67,10 @@ worker since v2.3.3556 sends.
 
 ![a computer, a real death](death-card/computer-fire-goblin.png)
 ![an upright phone (the UI review, staged)](death-card/phone.png)
+
+At the top since v2.3.3841 (before, then after, at the moment of death):
+
+![a computer, before](death-card/before-computer.png)
+![a computer, after](death-card/after-computer.png)
+![an upright phone, before](death-card/before-phone.png)
+![an upright phone, after](death-card/after-phone.png)

@@ -28,8 +28,9 @@
       17-19   inline info panels in BroTown.jsx (quest tracker, zone
               title, death-drop notice, status effects — top-anchored)
       20-22   banners + toasts (farm/sleep/rested banners, achievement,
-              level-up overlay, ActiveWarBanner); 22 the death card (DeathCard,
-              v2.3.3817: never takes a tap)
+              level-up overlay, ActiveWarBanner).  (The death card was 22
+              until v2.3.3841; it sits at the top now, portalled at
+              Z_ABOVE_DASH_PROMPT as NmlAskCard, never taking a tap.)
       25      topbar / chat strip; WorldChatFeed (v2.3.2037 -- the lower-left
               World Chat section.  It sits at 25 rather than above the
               dashboard because it CLEARS the band geometrically with
