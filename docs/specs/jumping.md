@@ -825,6 +825,33 @@ there though (some appear only during combat). This is portrait on mobile".
 re-pointed), `mp-rbutton`, `mp-btnskin`, `mp-joyfade`, `mp-btnlayout`,
 `mp-wheeldoors`, `mp-questline`. Pictures: docs/specs/jump-button/thumb-*.png.
 
+## v2.3.3798: the flip 25% smaller, and the ground roll wears its head pieces
+
+The owner: "shrink the character a bit when he's doing the jump flip. I think
+it needs about 25% smaller. Also change the ground roll to fix the hat and skin
+recolor that it looks like you fixed for the double jump."
+
+- **Smaller**: `FLIP_BODY_K` 1.4 -> 1.05 (1.4 x 0.75), still evenly, about the
+  feet.
+- **The ground roll's head pieces**: the roll is the same sheet as the flip,
+  frame for frame, so `_placeTrait` now carries the hat, its hair mask, the
+  hair, the beard, the glasses and the eyes with the head on EVERY roll (the
+  dodge, the dash's loop, a lunge, another player's roll), from `flipHead.js`'s
+  table; the flag only the flip set (`display._flipHead`) is gone. The head
+  itself was already solid in the character's skin on the ground roll: the bake
+  that gives the head back (`maskedBake.js`, v2.3.3738) runs on every roll
+  frame, not only the flip's.
+- **The ghost audit's roll family** now presses Space from inside the page and
+  holds the clock the moment the roll starts: polled from outside, a 250-500 ms
+  roll was over before it was seen on a slow box, and no roll frame was swept
+  (on main too).
+
+**Checked:** test-world-core (the flip 1.05x); the ghost audit's `dodge` family
+(each facing once, the full set, a top hat and wavy hair, the purple alien and
+ebony; before on main, after) and its `flip` family at the new size;
+`mp-doublejump`, `mp-jump`, `mp-dashroll`, `mp-rollweapon`, `mp-dodgetime`.
+Before/after: `docs/specs/flip-roll-2/`.
+
 ## v2.3.3799: on the disc's ring, south-west
 
 The owner, 2026-10-29: *"I do want a change to the placement on the jump

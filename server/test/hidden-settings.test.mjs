@@ -256,42 +256,59 @@ const synthFp = (i) => ({ len: 400, n: 60, dur: 1200, ent: 0.001, tv: 0, vc: 0.0
     }
     if (hiddenRefusal(n, markers[n]) !== null) delete markers[n];
   }
-  /* small enough that the bot below crosses them */
-  const s = { ...markers, FLAG_AT: 3.917243, SCORE_SYNTH: 2.718281 };
-  const state = makeState({ [HIDDEN.KEY]: { v: 1, s } });
-  const room = new GameRoom(state, envWith(KEY));
-  await room._hiddenEnsure();
-  check('6. the markers are in force', room._hid().FLAG_AT === 3.917243 && Object.keys(markers).length >= 15, Object.keys(markers).length);
-
-  const phones = [];
-  const bot = await harvester(room, 'bp_hid_bot', { id: 'hidfleet', env: 'e1' });
-  phones.push(bot.ws);
-  const honest = await harvester(room, 'bp_hid_ok', { id: 'hidok', env: 'e2' });
-  phones.push(honest.ws);
-  for (let k = 0; k < 6; k++) await strike(room, bot.ws, 'bp_hid_bot', bot.node, synthFp(k), 'perfect');
-  for (let k = 0; k < 3; k++) await strike(room, honest.ws, 'bp_hid_ok', honest.node, { len: 800 + k, n: 90, dur: 1500, ent: 0.12 + k / 50, tv: 40, vc: 0.3, h: 'ok' + k });
-  const rb = room._botfpRecord('bp_hid_bot', Date.now());
-  rb.hour.bySkill[bot.skill] = 1e6;   /* past any cap: a withheld strike */
-  await strike(room, bot.ws, 'bp_hid_bot', bot.node, synthFp(99));
-  await send(room, bot.ws, 'chat', { text: 'hello' });
-  await send(room, honest.ws, 'cook_result', { kind: 'cooked', fish: 'fish_raw', swipeFp: { h: 'c1' } });
-  await admin(room, 'POST', '/flags', KEY, { name: HIDDEN.OFF_FLAG, value: true });
-  phones.push(await join(room, 'bp_hid_late'));
-  await admin(room, 'DELETE', '/flags?name=' + HIDDEN.OFF_FLAG, KEY);
-  await admin(room, 'POST', '/dev/hidden', KEY, { name: 'COOK_HOUR_CAP', value: markers.COOK_HOUR_CAP || 3001 });
-  if (typeof room._tick === 'function') { try { await room._tick(); } catch (e) { /* a bare room's tick may want more; the messages so far are the point */ } }
+  /* v2.3.3824: the whole-number markers are 4-5 digits (3056, 2367, ...),
+     which a message carries by chance -- a run on GitHub's runner found
+     "3056" sent (INTERVAL_MAX_MS's marker; it is only ever compared, never
+     sent: botfp.js), most likely a time a few seconds into the run.  So the
+     scene is played twice, the second time with every whole-number marker
+     one higher: a whole number counts as leaked only when it follows its
+     marker (there in the first run AND its +1 in the second).  The decimals'
+     seven figures are not met by chance, and are judged on the first run. */
+  const play = async (mk, tag) => {
+    /* small enough that the bot below crosses them */
+    const s = { ...mk, FLAG_AT: 3.917243, SCORE_SYNTH: 2.718281 };
+    const state = makeState({ [HIDDEN.KEY]: { v: 1, s } });
+    const room = new GameRoom(state, envWith(KEY));
+    await room._hiddenEnsure();
+    const phones = [];
+    const bot = await harvester(room, 'bp_hid_bot' + tag, { id: 'hidfleet' + tag, env: 'e1' });
+    phones.push(bot.ws);
+    const honest = await harvester(room, 'bp_hid_ok' + tag, { id: 'hidok' + tag, env: 'e2' });
+    phones.push(honest.ws);
+    for (let k = 0; k < 6; k++) await strike(room, bot.ws, 'bp_hid_bot' + tag, bot.node, synthFp(k), 'perfect');
+    for (let k = 0; k < 3; k++) await strike(room, honest.ws, 'bp_hid_ok' + tag, honest.node, { len: 800 + k, n: 90, dur: 1500, ent: 0.12 + k / 50, tv: 40, vc: 0.3, h: 'ok' + k });
+    const rb = room._botfpRecord('bp_hid_bot' + tag, Date.now());
+    rb.hour.bySkill[bot.skill] = 1e6;   /* past any cap: a withheld strike */
+    await strike(room, bot.ws, 'bp_hid_bot' + tag, bot.node, synthFp(99));
+    await send(room, bot.ws, 'chat', { text: 'hello' });
+    await send(room, honest.ws, 'cook_result', { kind: 'cooked', fish: 'fish_raw', swipeFp: { h: 'c1' } });
+    await admin(room, 'POST', '/flags', KEY, { name: HIDDEN.OFF_FLAG, value: true });
+    phones.push(await join(room, 'bp_hid_late' + tag));
+    await admin(room, 'DELETE', '/flags?name=' + HIDDEN.OFF_FLAG, KEY);
+    await admin(room, 'POST', '/dev/hidden', KEY, { name: 'COOK_HOUR_CAP', value: mk.COOK_HOUR_CAP || 3001 });
+    if (typeof room._tick === 'function') { try { await room._tick(); } catch (e) { /* a bare room's tick may want more; the messages so far are the point */ } }
+    return { s, room, rb, phones, raw: phones.flatMap((w) => w.raw).join('\n') };
+  };
+  const seen = (raw, v) => new RegExp('(^|[^0-9.])' + String(v).replace('.', '\\.') + '([^0-9]|$)').test(raw);
+  const A = await play(markers, '');
+  const { s, rb, phones, raw } = A;
+  check('6. the markers are in force', A.room._hid().FLAG_AT === 3.917243 && Object.keys(markers).length >= 15, Object.keys(markers).length);
   check('6. the bot was flagged and capped (the paths that might speak were run)',
     rb.flags.length >= 1 && rb.counters.capClamps >= 1, { flags: rb.flags.map((f) => f.kind), c: rb.counters });
-
-  const raw = phones.flatMap((w) => w.raw).join('\n');
   check('6. the phones got messages to read', phones.every((w) => w.raw.length > 0) && raw.length > 2000, phones.map((w) => w.raw.length));
+  const ints = Object.keys(markers).filter((n) => Number.isInteger(markers[n]) && HIDDEN_SPEC[n].int);
+  const moved = Object.assign(Object.create(null), markers);
+  for (const n of ints) if (hiddenRefusal(n, markers[n] + 1) === null) moved[n] = markers[n] + 1;
+  const B = await play(moved, '_2');
   const leaks = [];
   for (const [n, v] of Object.entries(s)) {
-    const re = new RegExp('(^|[^0-9.])' + String(v).replace('.', '\\.') + '([^0-9]|$)');
-    if (re.test(raw)) leaks.push(n + '=' + v);
+    if (!seen(raw, v)) continue;
+    /* a whole number met by chance does not move with its marker */
+    if (ints.includes(n) && moved[n] !== v && !seen(B.raw, moved[n])) continue;
+    leaks.push(n + '=' + v);
   }
-  for (const n of Object.keys(HIDDEN_SPEC)) if (raw.includes(n)) leaks.push('name ' + n);
-  if (raw.includes(HIDDEN.KEY)) leaks.push('the key');
+  for (const n of Object.keys(HIDDEN_SPEC)) if (raw.includes(n) || B.raw.includes(n)) leaks.push('name ' + n);
+  if (raw.includes(HIDDEN.KEY) || B.raw.includes(HIDDEN.KEY)) leaks.push('the key');
   check('6. no phone got a hidden value, a setting\'s name or the record\'s key', leaks.length === 0, leaks);
   const caps = (phones[2].sent.find((m) => m.type === 'state_sync') || {}).caps || {};
   check('6. ...the kill switch is a flag a phone may see (its name only, no value)', caps.hidden_off === true && !Object.keys(caps).some((k) => k in HIDDEN_SPEC), Object.keys(caps).filter((k) => /hid/i.test(k)));

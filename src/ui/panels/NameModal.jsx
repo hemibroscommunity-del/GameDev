@@ -1079,7 +1079,7 @@ export function NameModal(props) {
        edge copy to defeat — and the <link rel=preload> in index.html has to
        match this URL exactly or it adds a request instead of saving one
        (docs/TRAPS.md §52). */
-    src: '/ui/welcome/title/brotown-lockup.png', alt: 'BRO TOWN', className: "bt-cc-logo"
+    src: '/ui/welcome/title/brotown-lockup.png', alt: 'BroTown', className: "bt-cc-logo"
   }), /*#__PURE__*/React.createElement("div", {
     className: "bt-cc-logo-shine", "aria-hidden": true
   }))), /*#__PURE__*/React.createElement("section", {
@@ -1636,7 +1636,7 @@ export function NameModal(props) {
     /* v2.3.1251: PLAY → ENTER BRO TOWN, the screen's one dominant gold
        action.  v2.3.1307: gated on a valid name (round-7). */
     className: "bt-cc-play",
-    "aria-label": 'Enter Bro Town',
+    "aria-label": 'Enter BroTown',
     style: {
       width: '100%',
       cursor: _blockReason ? 'default' : 'pointer',
@@ -1661,7 +1661,7 @@ export function NameModal(props) {
     src: '/ui/welcome/title/crest.webp?v=2.3.2359',
     alt: '', draggable: false, "aria-hidden": true
   }),
-  /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter Bro Town")),
+  /*#__PURE__*/React.createElement("span", { className: "bt-cc-play-label" }, "Enter BroTown")),
   /* ═══ v2.3.2219: THE WAY BACK ═══
      Owner: "Create a character need a back button to main menu."  The
      creator is reached deliberately (CREATE CHARACTER on the splash), and

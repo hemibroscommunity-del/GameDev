@@ -33,6 +33,9 @@ export const CLIENT_SAVERS = Object.freeze([
   Object.freeze({ id: 'lookpalette', words: 'Characters coloured on the chip', live: true }),
   /* v2.3.3790: the patterned and printed tees, on the look palette (lookShirtFrame.js) */
   Object.freeze({ id: 'lookshirt', words: 'Printed shirts coloured on the chip', live: true }),
+  /* v2.3.3800: no sound of the world under the loading screen (BT_AUDIO's
+     sound gate, gameDisplay.js): off, a closed gate opens at once */
+  Object.freeze({ id: 'soundgate', words: 'Sound waits for the world', live: true }),
 ]);
 
 const KEY = 'bt_clientoff';

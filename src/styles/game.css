@@ -1399,6 +1399,51 @@ body:has(.bt-plist) [data-coach]{display:none}
   .bt-inspect-card[data-room="blacksmith"]{--room-stage:min(36px, calc(25vw - 6px))}
 }
 @media (max-height:460px){.bt-room{display:none}}
+/* ═══ v2.3.3802: THE TOWN HALL'S BOARD, LAID OUT (panels/buildings/TownBoard.jsx) ═══
+   The owner ran the board past ChatGPT; we took its layout advice.
+   - The header is a band, not the room: the picture cropped to the sign and
+     the map (100-124 px on a phone, the scene pulled up as the forge's band
+     is), so Quests and the first tiles show without scrolling.  A sideways
+     phone (under 460 px tall) has no room picture at all, as every window.
+   - The window is wider on a computer and a sideways phone (BroTown.jsx: up
+     to 800 px, never wider than the play column), up to 85% tall; the board
+     scrolls inside it.
+   - Its columns follow the BOARD'S OWN width (a container query, never the
+     window's: TRAPS §214): 3, then 4 from 540 px, then 5 from 720 px; an
+     upright phone keeps 3.
+   - Every tile in a section is one height (grid-auto-rows: 1fr), even when a
+     name wraps; the line under the name sits at the tile's foot, 11 px and
+     muted; 8 px between tiles, 22 px between sections.
+   - The nav strip under the header stays at the top of the window while the
+     board scrolls under it (sticky in the card, the scroller), on the card's
+     own colour, clear of the close button. */
+@media (min-height:461px){
+  .bt-inspect-card[data-room="townhall"]{--room-stage:clamp(100px, 31vw, 124px)}
+  .bt-inspect-card[data-room="townhall"] .bt-room-scene{margin-top:-7.33%}
+}
+.bt-tb{display:grid;gap:8px;container-type:inline-size}
+.bt-tb-lede{font-size:12.5px;color:#B6C1BE;line-height:1.4;padding-bottom:20px}   /* the strip's -20 px at rest lies over this, not the words */
+/* stuck at the very top of the window: into the card's 20 px padding (top
+   -20), its own padding covering that band so nothing shows above it, the
+   same 20 px taken back from its place at rest */
+.bt-tb-nav{position:sticky;top:-20px;z-index:1;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;
+  margin-top:-20px;padding:26px 52px 6px 0;background:#1E2E34;touch-action:manipulation}
+.bt-tb-nav::-webkit-scrollbar{display:none}
+.bt-tb-chip{flex:none;min-height:32px;padding:4px 12px;border-radius:999px;border:1px solid rgba(229,237,233,.20);
+  background:#293B41;color:#B6C1BE;font:inherit;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.bt-tb-chip.is-on{border-color:#D8AA58;color:#F4F0E7;box-shadow:inset 0 -2px 0 #D8AA58}
+.bt-tb-sec{display:grid;gap:8px;margin-top:14px}
+.bt-tb-head{scroll-margin-top:72px}   /* the stuck strip (64 px) and air */
+.bt-tb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;gap:8px}
+@container (min-width:540px){.bt-tb-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@container (min-width:720px){.bt-tb-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+.bt-tb-tile{position:relative;min-height:96px;padding:8px 6px;border-radius:10px;background:#293B41;color:#F4F0E7;
+  display:flex;flex-direction:column;align-items:center;gap:6px}
+.bt-tb-thumb{position:relative;width:52px;height:52px;flex:none;overflow:hidden;border-radius:6px}
+.bt-tb-thumb img{display:block;width:52px;height:52px;object-fit:contain}
+.bt-tb-name{font-size:12.5px;font-weight:700;line-height:1.2;text-align:center;overflow-wrap:anywhere}
+.bt-tb-sub{margin-top:auto;font-size:11px;font-weight:600;color:#8D9B98;line-height:1.2;text-align:center}
 @media (prefers-reduced-motion:reduce){.bt-room-img{transition:none}}
 /* ═══ v2.3.3259: THE GEM WORKS (panels/buildings/GemWorksPanel.jsx) ═══
    The Cut and Set tabs sit on a strip, the window's first row -- so, like the
@@ -5489,6 +5534,15 @@ body:has([data-trade-drawer]) [data-coach]{display:none}
   [data-key-at="end"]::after { bottom:auto; right:14px; top:50%; transform:translateY(-50%); }
   [data-key-at="inline"]::after { position:relative; display:inline-flex; right:auto; bottom:auto; margin-left:8px; vertical-align:1px; }
   [data-key-at="xy"]::after { right:auto; bottom:auto; left:var(--key-x,0px); top:var(--key-y,0px); }
+  /* ═══ v2.3.3813: A ✕'S "Esc" BESIDE IT, NOT UNDER IT ═══
+     The judge pass on a computer: hung under the ✕ (top right of a window),
+     the cap fell into the words below it -- Mayor Bro's "Blue slimes explode,
+     by [Esc] the way", the No man's land explainer.  Every ✕ Esc presses
+     (data-esc, and the building windows' .bt-inspect-close) wears it to its
+     LEFT now, level with it, where a window's corner has only its title row
+     or picture; other hanging caps (the folded strip's I) keep hanging. */
+  [data-esc][data-key-at="hang"]::after,
+  .bt-inspect-close::before { left:auto; bottom:auto; right:calc(100% + 2px); top:50%; transform:translateY(-50%); }
 }
 
 /* v2.3.1719: the DESKTOP STAT HUD is gone (owner: "remove the HUD stuff that

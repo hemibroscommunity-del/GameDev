@@ -159,9 +159,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
      v2.3.3108: the minimap's plate's (the owner: "move the zone name and
      level band beneath the minimap") */
   let tb = null;
-  for (let i = 0; i < 10; i++) { tb = await bar(P); if (barHolds(tb, 'Brotown', /^safe$/)) break; await P.page.waitForTimeout(300); }
+  for (let i = 0; i < 10; i++) { tb = await bar(P); if (barHolds(tb, 'BroTown', /^safe$/)) break; await P.page.waitForTimeout(300); }
   rec.ok(`...and the NAME PLATE under the map says where you are: "${tb && tb.place && tb.place.text}" over "${tb && tb.sub && tb.sub.text}" -- both lines whole, at 11 px or more`,
-    m && m.words && m.words.title === 'Brotown' && barHolds(tb, 'Brotown', /^safe$/) && tb.plate.titlePx >= 11 && tb.plate.subPx >= 11, { tb, words: m && m.words });
+    m && m.words && m.words.title === 'BroTown' && barHolds(tb, 'BroTown', /^safe$/) && tb.plate.titlePx >= 11 && tb.plate.subPx >= 11, { tb, words: m && m.words });
   rec.ok(`...and the top bar names the world ("${tb && tb.text}"), the place having moved to the plate`, !!tb && /^\s*BroTown\s*$/.test(tb.text || ''), tb && tb.text);
   await shot(P, '01-minimap');
   /* the box is drawn: its middle is the land's colours, not one flat colour */
@@ -289,7 +289,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`tapping it in BroTown opens the world map ON THE TOWN: all ${w && w.more && w.more.buildingsAt} of the ${nDoors} buildings on the screen, ${w && w.more && w.more.buildings} named, ${w && w.more && w.more.buildingIcons} wearing their pictures, at zoom ${rel ? rel.toFixed(1) : '?'} (names from 6)`,
     opened.el && !!w && w.open && nDoors >= 16 && w.more.buildingsAt === nDoors && w.more.buildings === nDoors && w.more.buildingIcons === nDoors && rel >= 6 - 1e-6,
     { opened, w: w && { zoom: w.zoom, rel: w.rel, cx: w.cx, cy: w.cy, more: w.more } });
-  rec.ok('...saying where you are', /You are in Brotown/.test(opened.where), opened);
+  rec.ok('...saying where you are', /You are in BroTown/.test(opened.where), opened);
   await shot(P, '02-worldmap');
   /* ...and zoomed out, the whole Wheel as it always opened: its eight lands
      named with their levels, and you */
