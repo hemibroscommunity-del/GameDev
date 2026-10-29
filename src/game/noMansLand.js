@@ -87,11 +87,83 @@ function myLevel(S) {
   return (R && Number(R.level)) || 1;
 }
 
+/* ═══ v2.3.3770: BEATEN BY THEM, NOT AGAIN FOR HALF AN HOUR ═══
+   The worker's lock (server/src/nomansland.js _nmlLockSet): a red skull
+   killed by the player they attacked may not attack them for 30 minutes
+   unless that player lets them.  `nml_lock` {out, in} tells you yours: `out`
+   the players you may not attack, `in` those who may not attack you, each with
+   its ms left (S._nmlLocks: id -> until, by this phone's clock).  Only against
+   a worker that says caps.nmllock. */
+export function nmlLockOn(S) {
+  return !!(S && S._serverCaps && S._serverCaps.nmllock === true);
+}
+export function applyNmlLock(S, payload) {
+  if (!S || !payload || typeof payload !== 'object') return;
+  const now = Date.now();
+  const read = (list) => {
+    const m = new Map();
+    if (Array.isArray(list)) for (const e of list.slice(0, 16)) {
+      if (!Array.isArray(e) || typeof e[0] !== 'string' || !e[0] || e[0].length > 64) continue;
+      const ms = Math.max(0, Math.min(30 * 60 * 1000, Number(e[1]) || 0));
+      if (ms > 0) m.set(e[0], now + ms);
+    }
+    return m;
+  };
+  S._nmlLocks = { out: read(payload.out), in: read(payload.in) };
+}
+/** ms left of your lock out from attacking `id` (0: none) */
+export function nmlLockedOut(S, id) {
+  if (!nmlLockOn(S) || id == null) return 0;
+  const m = S._nmlLocks && S._nmlLocks.out;
+  const t = m instanceof Map ? (m.get(String(id)) || 0) : 0;
+  return Math.max(0, t - Date.now());
+}
+/** ms left of `id`'s lock out from attacking YOU (0: none) */
+export function nmlLockedIn(S, id) {
+  if (!nmlLockOn(S) || id == null) return 0;
+  const m = S._nmlLocks && S._nmlLocks.in;
+  const t = m instanceof Map ? (m.get(String(id)) || 0) : 0;
+  return Math.max(0, t - Date.now());
+}
+/* the "?" over a head: `nml_lock_ask` {from} -- the locked player asking you
+   for a rematch, shown over THEIR head for NML_LOCK_ASK_SHOW_MS
+   (entityRenderer reads S._nmlAskMarks) */
+export const NML_LOCK_ASK_SHOW_MS = 5000;
+export function nmlLockAskShow(S, payload) {
+  if (!S || !payload || typeof payload.from !== 'string' || !payload.from || payload.from.length > 64) return;
+  if (!(S._nmlAskMarks instanceof Map)) S._nmlAskMarks = new Map();
+  if (S._nmlAskMarks.size >= 16) S._nmlAskMarks.clear();
+  S._nmlAskMarks.set(payload.from, Date.now() + NML_LOCK_ASK_SHOW_MS);
+}
+/** Your window's "Ask for a rematch": the "?" over your head for them, once
+ *  a minute (the worker refuses faster). */
+export function nmlLockAsk(S, id) {
+  if (!nmlLockOn(S) || !S.channel || id == null || !nmlLockedOut(S, id)) return false;
+  const key = String(id);
+  if (!(S._nmlLockAskAt instanceof Map)) S._nmlLockAskAt = new Map();
+  const now = Date.now();
+  if (now - (S._nmlLockAskAt.get(key) || 0) < 60000) return false;
+  S._nmlLockAskAt.set(key, now);
+  try { S.channel.send({ type: 'nml_lock_ask', payload: { target: key } }); } catch (e) { return false; }
+  return true;
+}
+/** Their window's "Let <name> attack you again" */
+export function nmlLockAllow(S, id) {
+  if (!nmlLockOn(S) || !S.channel || id == null || !nmlLockedIn(S, id)) return false;
+  try { S.channel.send({ type: 'nml_lock_allow', payload: { target: String(id) } }); } catch (e) { return false; }
+  /* the worker's nml_lock answers; until then, the button goes */
+  if (S._nmlLocks && S._nmlLocks.in instanceof Map) S._nmlLocks.in.delete(String(id));
+  return true;
+}
+
 /** May you aim at `otherId` here?  The worker's rule from your side:
  *  both of you in No man's land, your levels within the lower of the two
- *  levels you stand in, not one party. */
-export function nmlCanAttack(S, otherId) {
+ *  levels you stand in, not one party.  v2.3.3770: and not locked out from
+ *  them (nmlLockedOut) -- `ignoreLock` asks the rest alone, for the window
+ *  that says why (nmlAsk.js). */
+export function nmlCanAttack(S, otherId, ignoreLock) {
   if (!nmlLive(S) || !S.player || S.currentZone !== WHEEL || !S.others) return false;
+  if (!ignoreLock && nmlLockedOut(S, otherId)) return false;
   const o = S.others[otherId];
   if (!o || (o.zone || o.z) !== WHEEL) return false;
   /* v2.3.3690: from the worker's first tier; v2.3.3767: counted as it counts */
