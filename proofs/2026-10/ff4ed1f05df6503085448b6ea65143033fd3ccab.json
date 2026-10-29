@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ff4ed1f05df6503085448b6ea65143033fd3ccab",
+  "tree": "97c90c1afb25495e5023210996411279f1359e76",
+  "committedAt": "2026-10-29T12:30:53-07:00",
+  "subject": "Merge pull request #1342 from hemibroscommunity-del/claude/keep-switches",
+  "files": 7319,
+  "bytes": 841253487,
+  "listingSha256": "55ef9a577604edf49396470569d1f4c213c478b5a1d9cf801d4e3b303375adb1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
