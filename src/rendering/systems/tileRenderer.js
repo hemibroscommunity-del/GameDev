@@ -1216,7 +1216,7 @@ export class TileRenderer {
     }
     /* v2.3.2932: stream the trial's ground round the camera (null otherwise) */
     try {
-      if (this._chunkGround) this._chunkGround.update(cx, cy, viewW, viewH);
+      if (this._chunkGround) this._chunkGround.update(cx, cy, viewW, viewH, S);   /* v2.3.3843: + S, the Wheel's ground lays further ahead of the board */
     } finally {
       this._groundBg();   /* v2.3.3452: decided every frame, a ground that threw included */
     }
