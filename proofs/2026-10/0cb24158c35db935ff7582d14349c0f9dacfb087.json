@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0cb24158c35db935ff7582d14349c0f9dacfb087",
+  "tree": "a4075d454104145680a1702831145bb256dd4e3a",
+  "committedAt": "2026-10-29T04:16:17-07:00",
+  "subject": "Merge pull request #1320 from hemibroscommunity-del/claude/board-wheels",
+  "files": 7266,
+  "bytes": 835800059,
+  "listingSha256": "ba09157d2de5d462733437fc6bad1ec6bf3bf2fe5f034bee11fc8c48ac231827",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
