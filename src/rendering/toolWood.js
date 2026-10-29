@@ -108,7 +108,7 @@ function _steel(d, out, q) {
   if ((mx - mn) < 28 && mx >= 45 && mx < 140) out[q] = 2;
 }
 
-/* ═══ v2.3.3880: THE PICKAXE, SOLID ═══
+/* ═══ v2.3.3881: THE PICKAXE, SOLID ═══
  * The owner, 2026-10-29, playtesting for the showing: "Ok the pickaxe for the
  * first quest is still invisible or at least very lightly drawn. Can you use
  * code to fill it with a handle and just an iron color for the metal part?"
