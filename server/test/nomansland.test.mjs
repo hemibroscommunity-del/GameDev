@@ -41,7 +41,9 @@
  *      kill switch `nmlchoice` as a mutation; the caps.
  */
 import { GameRoom } from '../src/index.js';
-import { NML, nmlTierAt, nmlLevelAt, NML_KEY } from '../src/nomansland.js';
+import { NML, nmlTierAt, nmlLevelAt, nmlStepLevelAt, NML_KEY } from '../src/nomansland.js';
+import { WHEEL as WHEEL_RULES } from '../src/wheelzone.js';   /* v2.3.3767: the first stretch's levels */
+import { WHEEL_SPAWNS } from '../src/wheelspawns.js';   /* v2.3.3767: the monsters' real places */
 import { WHEEL_ZONE } from '../src/wheelzone.js';
 import { WHEEL_CENTRE, WHEEL_LONG, WHEEL_SAFE_R } from '../src/wheelspawns.js';   /* v2.3.3315: the live Wheel, WHEEL_LONG times longer; v2.3.3690: + its safe ground */
 import { WHEEL_SAFE_R as WHEEL_SAFE_R_1 } from '../src/wheelspawns1.js';   /* v2.3.3690: the short Wheel's safe ground */
@@ -77,6 +79,9 @@ function check(name, cond, detail) {
 }
 
 const state = makeState();
+/* v2.3.3767: §1-§11 are the TIER's rule (one step every five levels), which
+   `nmlsteps: false` keeps; the step a monster level is §12 */
+state._store.set('liveflags', { nmlsteps: false });
 const room = new GameRoom(state, mockEnv);
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id, name, data) {
@@ -911,6 +916,89 @@ const ps = (k) => room.playerState[ids[k]];
   check('...and nmlchoice: false un-advertises it', !!sync2 && sync2.caps && sync2.caps.nmlchoice === false, sync2 && sync2.caps && sync2.caps.nmlchoice);
   room._liveFlags = keep;
   check('...and the choice is never rebroadcast to the room (its own router case)', !wsI.sent.some((m) => m.type === 'nml_attack' || (m.payload && m.payload.type === 'nml_attack')));
+}
+
+
+// ── 12. v2.3.3767: a step a monster level ──
+// The owner: "also the no mans land level should raise at the same rate you
+// see other monster levels increasing".
+{
+  const keep = room._liveFlags;
+  room._liveFlags = { ...(keep || {}) };
+  delete room._liveFlags.nmlsteps;
+  const L = WHEEL_LONG, len = NML.TIER * L;
+  const band = (t) => [NML.HUB + (t - 1) * len + NML.BAND_CLEAR, NML.HUB + t * len - NML.BAND_CLEAR];
+  const lvlAt = (r, first) => nmlStepLevelAt(WHEEL_ZONE, at(r).x, at(r).y, L, first);
+  /* the band's ends and middle, every tier: the tier's lowest, middle and highest monster level */
+  const bad = [];
+  for (let t = 1; t <= NML.TIERS; t++) {
+    const [b0, b1] = band(t), lo = (t - 1) * 5 + 1;
+    /* tier 1's band begins inside the safe ground, which is never in it: its first spot is the safe ground's edge */
+    const want = [[Math.max(b0, NML.SAFE_R + 1), lo], [(b0 + b1) / 2, lo + 2], [b1, lo + 4]];
+    if (t > 1) want.push([NML.HUB + (t - 1) * len + 1, lo]);   /* just past the ring, before the band: the band's first level */
+    want.push([NML.HUB + t * len - 1, lo + 4]);                  /* just inside the next ring: its last */
+    for (const [r, w] of want) { const got = lvlAt(r); if (got !== w) bad.push({ t, r: Math.round(r), got, want: w }); }
+  }
+  check('12. a step a monster level: at every tier\'s band ends and middle, its lowest, middle and highest monster level (Lv 1 monsters: No man\'s land 1)', bad.length === 0, bad.slice(0, 4));
+  /* against the monsters themselves, at their real baked places: the level wheelzone gives them */
+  let n = 0, same = 0, worst = 0;
+  const off = [];
+  const [F0, F1] = WHEEL_RULES.FIRST_STRETCH_LEVELS;
+  for (const home of Object.keys(WHEEL_SPAWNS)) {
+    const land = WHEEL_SPAWNS[home];
+    const stretches = [{ levels: [F0, F1], points: land.points || [] }].concat(land.deeper || []);
+    for (const st of stretches) {
+      const lo = Number(st.levels[0]), hi = Number(st.levels[1]);
+      for (const p of st.points || []) {
+        const mon = Math.round(lo + Math.max(0, Math.min(1, Number(p[2]) || 0)) * (hi - lo));
+        const nml = nmlStepLevelAt(WHEEL_ZONE, p[0], p[1], L);
+        n++;
+        if (nml === mon) same++;
+        worst = Math.max(worst, Math.abs(nml - mon));
+        if (nml !== mon && off.length < 4) off.push({ home, lo, mon, nml });
+      }
+    }
+  }
+  console.log(`    ${n} baked monster places: ${same} stand in No man's land exactly their level, the rest within ${worst}`);
+  check(`12. at the monsters' own baked places (${n}), the number is their level (${same} exact) and never more than one off`, n > 300 && same / n >= 0.9 && worst <= 1, { n, same, worst, off });
+  /* the rule at the new widths: the lower of the two numbers they stand in */
+  const [b40, b41] = band(2);
+  const r7 = b40 + (b41 - b40) * 0.25, r9 = b40 + (b41 - b40) * 0.75;   /* NML 7 and 9 */
+  check('12. (setup) the spots are No man\'s land 7 and 9', lvlAt(r7) === 7 && lvlAt(r9) === 9, [lvlAt(r7), lvlAt(r9)]);
+  place(ps('a'), at(r9), 10); place(ps('b'), at(r9, 60), 19);
+  check('12. both in No man\'s land 9, nine levels apart: allowed (it was 2 for the whole tier)', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === true);
+  ps('b').level = 20;
+  check('12. ...ten apart: refused', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === false);
+  place(ps('b'), at(r7, 60), 18);
+  check('12. one in 9, the other in 7, eight apart: refused (the lower of the two numbers)', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === false);
+  ps('b').level = 17;
+  check('12. ...seven apart: allowed', room._pvpAllowed(ids.a, ids.b, WHEEL_ZONE) === true);
+  place(ps('a'), at(SAFE_IN), 10);
+  check('12. the safe ground is never in it', room._nmlLevelOf(ps('a')) === 0 && lvlAt(NML.SAFE_R - 1) === 0 && lvlAt(NML.SAFE_R + 1) === 1);
+  /* nmlnear: false -- it still starts at 1 where No man's land starts */
+  room._liveFlags.nmlnear = false;
+  place(ps('a'), at(band(2)[0]), 10);
+  const near0 = room._nmlLevelOf(ps('a'));
+  place(ps('a'), at(band(1)[1]), 10);
+  const near1 = room._nmlLevelOf(ps('a'));
+  place(ps('a'), at(band(3)[1]), 10);
+  const near2 = room._nmlLevelOf(ps('a'));
+  delete room._liveFlags.nmlnear;
+  check('12. `nmlnear: false`: it starts at 1 at the Lv 6-10 tier (the monster level less five), the Lv 1-5 tier not in it', near0 === 1 && near1 === 0 && near2 === 10, { near0, near1, near2 });
+  /* the kill switch, both sides */
+  place(ps('a'), at(r9), 10);
+  const stepLvl = room._nmlLevelOf(ps('a'));
+  room._liveFlags.nmlsteps = false;
+  const tierLvl = room._nmlLevelOf(ps('a'));
+  delete room._liveFlags.nmlsteps;
+  check('12. `nmlsteps: false` puts the tier\'s number back on the worker', stepLvl === 9 && tierLvl === 2, { stepLvl, tierLvl });
+  const wsS = fakeWs('st'); await join(wsS, 'bp_nml_st', 'NmlST');
+  const capOn = ((wsS.sent.find((m) => m.type === 'state_sync') || {}).caps || {}).nmlsteps;
+  room._liveFlags.nmlsteps = false;
+  const wsT = fakeWs('st2'); await join(wsT, 'bp_nml_st2', 'NmlST2');
+  const capOff = ((wsT.sent.find((m) => m.type === 'state_sync') || {}).caps || {}).nmlsteps;
+  check('12. ...and takes caps.nmlsteps from the phones (advertised true, the switch thrown false)', capOn === true && capOff === false, { capOn, capOff });
+  room._liveFlags = keep;
 }
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }

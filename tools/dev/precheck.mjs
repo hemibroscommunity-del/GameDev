@@ -83,7 +83,8 @@
  *   9d. look-roles    — FAIL: if a stand or jog body sheet changed and the
  *                      look-palette numbers (public/sprites/look/) were not
  *                      re-baked from it; WARN if only the recolour code
- *                      changed (tools/art/role-bake.mjs --hashes, v2.3.3716).
+ *                      changed (tools/art/role-bake.mjs --hashes, v2.3.3716);
+ *                      look-shirt: the same for the tee (shirt-bake.mjs, v2.3.3751).
  *  10. hairmask-rule  — FAIL: if the headwear art, a hair-clip mask or
  *                      tools/make_hairmask.py changed, every committed
  *                      hairmask/<dir>.png must still be the v2.3.1957
@@ -914,6 +915,21 @@ if (changedServer.length || changedClient.length) {
     else if (r.status === 2) add('WARN', 'look-roles', said + ' -- node tools/art/role-bake.mjs --check (a browser, ~15 s) says whether the roles moved; re-bake if they did');
     else add('FAIL', 'look-roles', said + ' -- re-bake: node tools/art/role-bake.mjs');
   } else add('PASS', 'look-roles', 'no body sheet with numbers or recolour change -- check skipped');
+}
+/* v2.3.3751: the tee's numbers (tools/art/shirt-bake.mjs, public/sprites/look/shirt/),
+   the same rule: a tee stand or jog sheet changed without a re-bake FAILS, the
+   shirt code WARNS */
+{
+  const touched = changed.filter((f) => /^public\/sprites\/gear\/shirt\/tshirt\/(stand|jog)-/.test(f)
+    || /^src\/rendering\/(playerDecal|gearSheets|lookShirt)\.js$/.test(f) || /^src\/rendering\/traits\/(patternCatalog|playerArt)\.js$/.test(f)
+    || /^public\/sprites\/look\/shirt\//.test(f));
+  if (touched.length) {
+    const r = spawnSync('node', ['tools/art/shirt-bake.mjs', '--hashes'], { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
+    const said = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-3).join(' ');
+    if (r.status === 0) add('PASS', 'look-shirt', said);
+    else if (r.status === 2) add('WARN', 'look-shirt', said + ' -- node tools/art/shirt-bake.mjs --check says whether the numbers moved; re-bake if they did');
+    else add('FAIL', 'look-shirt', said + ' -- re-bake: node tools/art/shirt-bake.mjs');
+  }
 }
 
 /* ---- 9c. town-rim ----------------------------------------------------

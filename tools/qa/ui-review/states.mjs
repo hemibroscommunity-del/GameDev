@@ -223,6 +223,25 @@ async function bannersGone(P, maxMs = 20000) {
   return false;
 }
 
+/* v2.3.3768: a stand-in party of four for the party chip's pictures: `open`
+   true opens its list as a tap does (the device's choice), false leaves it
+   folded, null takes the party away and forgets the choice */
+const partyStub = (P, open) => evalIn(P, (o) => {
+  const S = window._gameState && window._gameState.current;
+  if (!S || !window._uiPanels) return 'no state';
+  try { if (o) localStorage.setItem('bt_party_list', 'open'); else localStorage.removeItem('bt_party_list'); } catch (e) { /* private mode */ }
+  window.dispatchEvent(new Event('bt-party-list'));
+  if (o === null) { window._uiPanels.party(null); return null; }
+  const z = S.currentZone;
+  window._uiPanels.party({ id: 'party_demo', leader: S.myId, max: 4, members: [
+    { id: S.myId, name: (S.rpg && S.rpg.name) || 'You', level: (S.rpg && S.rpg.level) || 1, hp: 90, maxHp: 100, zone: z },
+    { id: 'bp_demo1', name: 'Rival Bro', level: 7, hp: 80, maxHp: 100, zone: z },
+    { id: 'bp_demo2', name: 'Sandy', level: 5, hp: 45, maxHp: 100, zone: z },
+    { id: 'bp_demo3', name: 'Moss', level: 4, hp: 15, maxHp: 100, zone: z },
+  ] });
+  return null;
+}, open);
+
 /* v2.3.3460: your sparring clones are the ids the worker's spar_state named
    (game/spar.js S._spar.ids), there once a tick has put them in S.others --
    v2.3.3407 looked for a `.spar` flag no player entry carries, and aimed with
@@ -395,6 +414,13 @@ export const STATES = [
     },
   },
   {
+    /* v2.3.3769: on a computer the dashboard's column folded to its strip --
+       in the top bar's grey, OPEN at its top, an arrow at its middle */
+    id: 'hud-folded', group: 'The world (HUD)', title: 'BroTown, dashboard closed',
+    about: 'The same screen with the dashboard closed. On a computer its column folds to a narrow strip at the edge, in the top bar\'s grey: OPEN at its top and one arrow at its middle pointing into the world; a click anywhere on it opens the dashboard. Upright the band folds to its button row; sideways nothing but the chip shows.',
+    run: async ({ P }) => { await foldBand(P); await wait(P, 400); },
+  },
+  {
     id: 'hud-controls', group: 'The world (HUD)', title: 'Controls in use',
     about: 'Walking with the left stick (a phone) or WASD (a computer): the movement stick and the contextual right button show while you play.',
     views: ['portrait', 'landscape', 'tablet'],
@@ -462,7 +488,8 @@ export const STATES = [
   },
 
   /* ═══ THE DASHBOARD ═══ */
-  dash('hero', 'Character', 'Your character page: equipment slots, the figure, your stats as pills (offense, player, vitals).'),
+  /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page) */
+  dash('hero', 'Character', 'Your character page, two tabs (Equipment and Points): equipment slots, the figure, your stats as pills (offense, player, vitals).'),
   {
     id: 'dash-hero-points', group: 'Dashboard', title: 'Character: Points',
     about: 'The Character page on its Points tab: spending points on each weapon skill and on the character.',
@@ -579,7 +606,8 @@ export const STATES = [
       await P.page.waitForSelector('[data-achv-title-current="first_blood"]', { timeout: 6000 }).catch(() => {});
     },
   }),
-  more('journey', 'Journey', 'Your journey so far.'),
+  /* v2.3.3773: Journey is its own page under More, the Character page's old records tab moved here */
+  more('journey', 'Journey', 'Your journey: kills, deaths, lifetime gold and XP, duels won and the deepest zone (the Character page\'s old third tab).'),
   more('account', 'Login Key', 'Your Login Key: how to carry this character to another device.'),
   more('about', 'About & privacy', 'About the game, privacy, rules and credits.'),
   more('feedback', 'Feedback', 'Sending feedback to the developer.'),
@@ -694,7 +722,7 @@ export const STATES = [
   /* ═══ OVERLAYS ═══ */
   {
     id: 'world-map', group: 'Maps and chat', title: 'World map',
-    about: 'The world map (a tap on the minimap): the Wheel, its eight lands, where you are, the quest\'s road, zoom buttons and the compass.',
+    about: 'The world map (a tap on the minimap): the Wheel, its eight lands, where you are, the quest\'s road, zoom buttons and the compass, and the key bottom left -- its marks little pictures of what they mark (a house, a tent, two peaks, an arch, a flag; zoomed in a horned head for a monster, a fish, a tree, a rock with metal, a person), drawn the same on the map.',
     settle: 1600,
     run: async ({ P }) => {
       const ok = await evalIn(P, () => { if (!window.__btWorldMapOpen) return false; window.__btWorldMapOpen(true); return true; });
@@ -749,6 +777,22 @@ export const STATES = [
       await H.devOp(wsPort, 'spar', myId, { clear: true }).catch(() => {});
       await wait(P, 1000);
     },
+  },
+  /* v2.3.3768: the party strip folds to a chip (PartyHUD.jsx, game/partyChip.js):
+     a party of four drawn from a stand-in roster (you, the leader, and three
+     friends, one of them low), folded as it is by default and opened as a tap
+     opens it.  View state only: the worker knows no such party. */
+  {
+    id: 'party-hud', group: 'Other players', title: 'In a party: the chip',
+    about: 'In a party of four (shown with stand-in friends): the party chip at the top left -- the party mark, 4/4 and a pip a friend, coloured as their health bar (one friend low, in red).  A tap opens the list.',
+    run: async ({ P }) => { await partyStub(P, false); },
+    after: async ({ P }) => { await partyStub(P, null); },
+  },
+  {
+    id: 'party-hud-open', group: 'Other players', title: 'In a party: the list opened',
+    about: 'The same party with its list opened by a tap: each member\'s name, level and health bar, the leader\'s crown, a kick (two taps) on each friend for the leader, and ✖ to leave (two taps).  A tap on its head folds it back to the chip.',
+    run: async ({ P }) => { await partyStub(P, true); },
+    after: async ({ P }) => { await partyStub(P, null); },
   },
   {
     id: 'inspect-self', group: 'Other players', title: 'An Inspect card (your own)',

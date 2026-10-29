@@ -1,6 +1,7 @@
 import React from 'react';
 import { RBTN, LBTN, discRight, discBottom } from './ShieldButton.jsx'; /* v2.3.2472: LBTN -- the left disc's geometry, shared with SpecialButton */
 import { SprintButton } from './SprintButton.jsx'; /* v2.3.3006 */
+import { RideButton } from './RideButton.jsx'; /* v2.3.3776: the skateboard */
 import { QuickEatButton } from './QuickEatButton.jsx'; /* v2.3.3260 */
 import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
 import { Skin, RDISC_ICONS } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control */
@@ -163,7 +164,7 @@ export function TouchControls(props) {
   }), /* v2.3.3006: the sprint button, right of the movement disc (SprintButton.jsx).
      Rendered here, with the stick it belongs to, after the zones it sits on:
      it swallows its own touches, so the walk and the roll beneath never see
-     a tap on it. */ React.createElement(SprintButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3260: quick eat, over the movement disc (QuickEatButton.jsx) -- it swallows its own touches, so a bite never starts a walk */ React.createElement(QuickEatButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3017: the jump button, beneath the attack disc (JumpButton.jsx) -- on the R zone, whose touches it swallows, so a jump never swings */ React.createElement(JumpButton, { stateRef: stateRef, isLandscape: isLandscape }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
+     a tap on it. */ React.createElement(SprintButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3776: the skateboard's button, in Shield Bash's place while no fight is near (RideButton.jsx) */ React.createElement(RideButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3260: quick eat, over the movement disc (QuickEatButton.jsx) -- it swallows its own touches, so a bite never starts a walk */ React.createElement(QuickEatButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3017: the jump button, beneath the attack disc (JumpButton.jsx) -- on the R zone, whose touches it swallows, so a jump never swings */ React.createElement(JumpButton, { stateRef: stateRef, isLandscape: isLandscape }), /* duplicate kb-hints removed — kept the one near joystick zone below */ /*#__PURE__*/React.createElement("div", {
     className: "bt-joystick-zone",
     ref: lWrapRef,
     'data-disc': 'L',

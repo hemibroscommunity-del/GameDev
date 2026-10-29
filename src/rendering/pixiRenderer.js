@@ -6,6 +6,7 @@ import { createPixiApp } from './pixiApp.js';
 import { renderDpr } from '../game/renderRes.js'; /* v2.3.3339 */
 import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
+import { clientOff } from '../game/clientOff.js';   /* v2.3.3775: off_groundkeep */
 import { WheelObjects } from './wheelObjects.js'; /* v2.3.2975: the Wheel's buildings, trees, rocks and props */
 import { FarmWorld } from './farmWorld.js';   /* v2.3.3136: your farm -- its barn, props, beds and crops */
 import { ArenaWorld } from './arenaWorld.js';   /* v2.3.3566: a dungeon's arena, its things and the boss's chest */
@@ -24,6 +25,7 @@ import { setWheelWaterRenderer } from './wheelWater.js'; /* v2.3.3019: the Wheel
 import { setPaletteRenderer, setOneBatchRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers; v2.3.3447: one program for every sprite */
 import './paletteLoad.js';                                 /* v2.3.3464: the farm's too, read so by Pixi's own loader */
 import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
+import { RideFx } from './rideFx.js';                 /* v2.3.3776: a rider is drawn on the board */
 import { EmoteFx } from './emoteFx.js';               /* v2.3.3392: a bro who emotes moves */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
@@ -194,6 +196,22 @@ let _appRef = null;   /* v2.3.701: handle for uploadBakedTextures behind the int
    player's FEET -- published for mp-propdepth, which has to compare it with
    each prop's base.  Mutated in place: no allocation per frame. */
 const _playerGround = { x: NaN, y: NaN };
+/* v2.3.3775: the world's ground kept on a return (forceRefresh, below):
+   `?groundkeep=0` or the live flag off_groundkeep rebuilds it as before; the
+   counts are the QA probe window.__btGroundKeep (mp-groundkeep) */
+const _groundKeepOffUrl = (() => { try { return /[?&]groundkeep=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+function groundKeepOn() { return !_groundKeepOffUrl && !clientOff('groundkeep'); }
+/* ...and never after a loss: wsClient's resume has a third way here -- the
+   context lost when it looked, restored 1.5 s later, then forceRefresh (not a
+   whole rebuild) -- and a restored context keeps none of the old textures
+   (v2.3.773: "the baked render textures are gone"; gpuOnly pieces have no
+   copy to bring back).  A loss since the last renderer rebuild (crashTrap's
+   __btGlLostAt, BroTown's __btLastGlRebuild) rebuilds the ground as before. */
+function _lostSinceRebuild() {
+  try { return !!(window.__btGlLostAt && window.__btGlLostAt > (window.__btLastGlRebuild || 0)); } catch (e) { return false; }
+}
+const _groundKeep = { kept: 0, rebuilt: 0 };
+try { if (typeof window !== 'undefined') window.__btGroundKeep = _groundKeep; } catch (e) { /* no page */ }
 const _depthProbe = { legacy: false };
 if (typeof window !== 'undefined') {
   window.__btPlayerGround = () => ({ x: _playerGround.x, y: _playerGround.y });
@@ -307,6 +325,7 @@ export async function initPixiRenderer(canvas) {
   const worldLife = new WorldLife(layers);
   const swimFx = new SwimFx(layers);   /* v2.3.3003 */
   const jumpFx = new JumpFx();          /* v2.3.3017 */
+  const rideFx = new RideFx();          /* v2.3.3776 */
   const emoteFx = new EmoteFx();        /* v2.3.3392 */
   worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
@@ -768,6 +787,10 @@ export async function initPixiRenderer(canvas) {
        lights, which cast their shadows on the ground under them. */
     try { jumpFx.update(S, entityRenderer); }
     catch (e) { if (!update._jumpErr) { update._jumpErr = true; console.error('[pixi-render] jumpFx threw', e && e.message, e && e.stack); } }
+    /* v2.3.3776: the skateboard under a rider's boots, after the jump so it
+       rides up with the feet (rideFx.js) */
+    try { rideFx.update(S, entityRenderer); }
+    catch (e) { if (!update._rideErr) { update._rideErr = true; console.error('[pixi-render] rideFx threw', e && e.message, e && e.stack); } }
     /* ═══ v2.3.3392: EMOTES, AFTER THE JUMPERS ═══
        A wave, a dance, a sit: sorted where they stand, then drawn moving
        about their feet (emoteFx.js), the name plate held still -- before the
@@ -931,7 +954,20 @@ export async function initPixiRenderer(canvas) {
        context; after restore the tile buffers can be stale/black). */
     forceRefresh: () => {
       try {
-        if (currentZone && currentMap) tileRenderer.rebuild(app, currentMap, currentZone);
+        /* ═══ v2.3.3775: THE WORLD'S GROUND IS KEPT ON A RETURN ═══
+           Called on a healthy context only (wsClient's resume: a lost one
+           rebuilds the whole renderer, _rebuildRenderer, as before).  In the
+           Wheel this threw away every piece of the ground on screen and asked
+           the worker for each again: a tab brought back, or a page frozen
+           past 5 s (the 'thaw'), showed flat blocks of plain colour for
+           seconds while ~70 pieces were laid again (the 2026-10-28 UI review
+           on a computer; reproduced with a 6.5 s freeze: 72 pieces on screen
+           -> 9, 15 s to come back).  The pieces are textures on a context
+           that was never lost, so they are as good as ever: kept.  Every
+           other zone is rebuilt as before.  `?groundkeep=0`, or the live
+           flag off_groundkeep (game/clientOff.js), rebuilds as before. */
+        if (groundKeepOn() && !_lostSinceRebuild() && tileRenderer.keepsGround(currentZone)) { _groundKeep.kept++; return; }
+        if (currentZone && currentMap) { tileRenderer.rebuild(app, currentMap, currentZone); _groundKeep.rebuilt++; }
       } catch (e) { /* best-effort */ }
     },
     /* v2.3.113: expose immediate-dispose for a single loot pile.

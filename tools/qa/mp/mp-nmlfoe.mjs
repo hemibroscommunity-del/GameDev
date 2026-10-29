@@ -51,6 +51,8 @@
  *      and a tap asks again;
  *  10. the badge clear of the shield button, the bell, the weapon button and
  *      the attack disc at 320, 360, 375, 390 and 430 px, and sideways --
+ *      (v2.3.3765: in the top bar just right of the title -- the owner: "just
+ *      to the right of the Brotown name at the top"; it was, below,)
  *      since v2.3.3629 up beside the minimap's name plate (the owner: "just
  *      beside the minimap where it lists the zone and level range"): just
  *      left of the minimap's box, level with the plate (sideways level with
@@ -266,6 +268,8 @@ const layout = (P) => P.page.evaluate(() => {
       const el = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
       return !!el && (el === b || b.contains(el));
     })(),
+    /* v2.3.3765: the top bar and its title, where the pill lives now */
+    header: box('.bt-zone-header'), title: box('[data-zone-title]'),
     /* v2.3.3629: the minimap's box and its name plate */
     mini: window.__btWheelMini ? { l: window.__btWheelMini.left, t: window.__btWheelMini.top,
       r: window.__btWheelMini.left + window.__btWheelMini.w, b: window.__btWheelMini.top + window.__btWheelMini.h } : null,
@@ -411,7 +415,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(2500);
   const lv = [];
   for (const P of [A, B, C]) lv.push(await H.readState(P, (S) => S._nmlLevel || 0));
-  rec.ok(`setup: all three stand in No man's land 1 (${lv.join(' / ')})`, lv.every((n) => n === 1), lv);
+  /* v2.3.3767: the number is the monster level where you stand (caps.nmlsteps),
+     so on the Lv 1-5 ring it is 1 to 5, not 1 -- what the fights below need is
+     that all three are in it, levels within one of each other (above) */
+  rec.ok(`setup: all three stand in No man's land on its first ring (${lv.join(' / ')})`, lv.every((n) => n >= 1 && n <= 5), lv);
   for (const id of [idA, idB, idC]) await H.devOp(wsPort, 'vitals', id, { heal: true, god: false });
   for (const P of [A, B, C]) {
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
@@ -782,7 +789,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 10. the badge clear of the shield and its neighbours, at every width ── */
   /* v2.3.3629: + a short sideways screen, where the sprint button reaches up
      beside the minimap's top and the badge goes up into the top bar's row */
-  const widths = [[320, 640], [360, 780], [375, 812], [390, 844], [430, 932], [844, 390], [667, 320]];
+  const widths = [[320, 640], [360, 780], [375, 812], [390, 844], [430, 932], [844, 390], [667, 375], [667, 320]];   /* v2.3.3765: + 667 x 375 */
   const rows = [];
   for (const [w, h] of widths) {
     await A.page.setViewportSize({ width: w, height: h });
@@ -792,7 +799,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const L = await layout(A);
     const hitShield = overlaps(L.badge, L.shield);
     const hitOthers = L.others.filter((q) => overlaps(L.badge, q)).map((q) => q.sel);
-    rows.push({ w, h, orient: L.orient, badge: L.badge, shield: L.shield, top: L.top, hitShield, hitOthers, mini: L.mini, plate: L.plate, vw: L.vw, at: L.at, seen: L.seen });
+    rows.push({ w, h, orient: L.orient, badge: L.badge, shield: L.shield, top: L.top, hitShield, hitOthers, mini: L.mini, plate: L.plate, vw: L.vw, at: L.at, seen: L.seen, title: L.title, header: L.header });
     if (w === 360 || w === 844 || w === 667) await shot(A, `10-${w}`);
   }
   await A.page.setViewportSize(PHONE);
@@ -807,13 +814,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
        row above it (the sprint button and Special stand left of the plate
        there and the attack disc reaches up under the box: these rows found
        the badge behind the sprint button, then on the disc) */
-    const mid = r.badge ? (r.badge.t + r.badge.b) / 2 : null;
+    /* v2.3.3765: in the top bar now, just right of the title (the owner:
+       "just to the right of the Brotown name at the top"), at every width and
+       sideways (mp-nmltopbar measures the bar itself) */
     const side = r.orient === 'landscape';
-    const beside = !!r.badge && r.seen && !!r.mini && !!r.plate && r.badge.l >= 0 && r.badge.r <= r.vw && r.badge.t >= 0
-      && r.badge.r <= r.mini.l - 2 && r.mini.l - r.badge.r <= 10 && (side
-        ? (r.at === 'top' ? Math.abs(r.badge.t - r.mini.t) <= 4 : (r.at === 'bar' && r.badge.b <= r.mini.t + 2))
-        : (r.at === 'plate' && mid >= r.plate.t && mid <= r.plate.b));
-    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) ${side ? (r.at === 'bar' ? 'in the top bar\'s row' : 'level with the minimap\'s top') + ' (its box ' + (r.mini ? r.mini.l + '-' + r.mini.r + ', ' + r.mini.t + '-' + r.mini.b : 'none') + ')' : 'beside the minimap\'s name plate (' + (r.plate ? r.plate.t + '-' + r.plate.b : 'none') + ')'}${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
+    const beside = !!r.badge && r.seen && r.at === 'bar' && !!r.title && !!r.header && r.badge.l >= r.title.r && r.badge.l - r.title.r <= 14
+      && r.badge.t >= r.header.t && r.badge.b <= r.header.b && r.badge.r <= r.vw;
+    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) in the top bar just right of the title (${r.title ? r.title.l + '-' + r.title.r : 'none'})${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
       beside && !!r.shield && !r.hitShield && r.top === 'shield' && !r.hitOthers.length, r);
   }
 

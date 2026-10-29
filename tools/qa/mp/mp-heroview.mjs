@@ -276,9 +276,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         imgs: el.querySelectorAll('img').length };
     });
   });
-  rec.ok('all three section tabs were found (guard)', tabs.length === 3, { tabs });
-  rec.ok('the tabs read Equipment / Points / Journey',
-    tabs.map((t) => (t.text || '').toLowerCase()).join(',') === 'equipment,points,journey', { tabs });
+  /* v2.3.3773: two tabs -- the owner: "I also think I want 'journey' to be
+     put as its own icon in the more/other apps menus. That way the two main
+     ones, equipment and points, stand out further as just two tabs." */
+  rec.ok('both section tabs were found (guard)', tabs.length === 2, { tabs });
+  rec.ok('the tabs read Equipment / Points, and Journey is not one of them',
+    tabs.map((t) => (t.text || '').toLowerCase()).join(',') === 'equipment,points', { tabs });
   /* Painted, not merely present: a word in a zero-width box is invisible. */
   rec.ok('...and each word is actually laid out, not collapsed',
     tabs.every((t) => t.w > 20 && t.h > 6), { tabs });

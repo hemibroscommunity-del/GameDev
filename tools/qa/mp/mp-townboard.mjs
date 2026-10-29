@@ -11,6 +11,8 @@
  *   1. at the Town Hall's door, "Enter" opens the BOARD: tiles under their
  *      headings, the dungeons, the arena, the forge and the Gambling Den among
  *      them, and the Leaderboard and World map at its foot;
+ *      v2.3.3779: the Dungeons under their own heading, every tile its own
+ *      picture (each drawn), a land's name the world's own;
  *   2. a tile opens its PAGE: its words, where it is, Red pin and Blue pin;
  *   3. RED on the arena, BLUE on the forge: the board's tiles wear them, and
  *      both are on the minimap (the forge's in the box, near the Town Hall);
@@ -102,7 +104,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const b = document.querySelector('[data-town-board]');
     if (!b) return null;
     return {
-      tiles: Array.from(b.querySelectorAll('[data-board-tile]')).map((t) => ({ id: t.getAttribute('data-board-tile'), pins: t.getAttribute('data-board-pins') })),
+      tiles: Array.from(b.querySelectorAll('[data-board-tile]')).map((t) => {
+        const img = t.querySelector('img');
+        /* v2.3.3779: each tile's name and its picture, drawn (not the emoji a broken one falls back to) */
+        return { id: t.getAttribute('data-board-tile'), pins: t.getAttribute('data-board-pins'), name: (t.textContent || '').trim(),
+          pic: img ? img.getAttribute('src') : null, drawn: !!img && img.complete && img.naturalWidth > 0 };
+      }),
       groups: Array.from(b.querySelectorAll('[data-board-group]')).map((g) => g.getAttribute('data-board-group')),
       foot: Array.from(b.querySelectorAll('[data-hall-row]')).map((x) => x.getAttribute('data-hall-row')),
     };
@@ -147,13 +154,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* 1. the board */
     const o1 = await openBoard(A, th, false);
+    /* v2.3.3779: the pictures have loaded before the board is read */
+    await A.page.waitForFunction(() => Array.from(document.querySelectorAll('[data-board-tile] img')).every((i) => i.complete), null, { timeout: 15000 }).catch(() => {});
     const b1 = await board(A);
     await shot(A, '1-board');
     const ids = b1 ? b1.tiles.map((t) => t.id) : [];
     rec.ok(`1. at the Town Hall's door, "${o1.btn}" opens the board: ${ids.length} tiles under ${b1 ? b1.groups.length : 0} headings, the Leaderboard and World map at its foot`,
       o1.open && !!b1 && ids.length >= 20 && ['goo-grotto', 'arena', 'nomansland', 'forge', 'gambling', 'woodworker', 'land-verdant'].every((id) => ids.includes(id))
-        && b1.groups.join() === 'fight,lands,make,money,people' && b1.foot.join() === 'leaderboard,map',
+        && b1.groups.join() === 'fight,dungeons,lands,make,money,people' && b1.foot.join() === 'leaderboard,map',
       { btn: o1.btn, open: o1.open, n: ids.length, groups: b1 && b1.groups, foot: b1 && b1.foot });
+    /* v2.3.3779, the owner: "classified by 'dungeon' not by 'fight' ... Also use better icons for each one" */
+    const pics = b1 ? b1.tiles.map((t) => t.pic) : [];
+    const verd = b1 ? b1.tiles.find((t) => t.id === 'land-verdant') : null;
+    rec.ok('...every tile wears its own picture, each drawn, and a land\'s name is the world\'s (never "{verdant}" or the stand-in "The flora land")',
+      pics.length === ids.length && new Set(pics).size === pics.length && b1.tiles.every((t) => t.drawn)
+        && !!verd && verd.name.length > 3 && !/[{}]/.test(verd.name) && !/flora land/i.test(verd.name),
+      { undrawn: b1 && b1.tiles.filter((t) => !t.drawn).map((t) => t.id), verd: verd && verd.name, dup: pics.filter((p, i) => pics.indexOf(p) !== i) });
 
     /* 2. a page */
     await press(A, '[data-board-tile="arena"]', false);
@@ -170,6 +186,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const p2b = await pageOf(A);
     rec.ok('...and No man\'s land, under Fight, has a page (fights between players, the skulls, what you lose) and no pins',
       !!p2b && /red skull/.test(p2b.text) && /safe ground/.test(p2b.text) && p2b.btns.length === 0, p2b && { text: p2b.text.slice(0, 200), btns: p2b.btns });
+    await press(A, '[data-board-back]', false);
+    await waitSel(A, '[data-town-board]');
+    /* v2.3.3779: a dungeon's page names its land as the world does */
+    await press(A, '[data-board-tile="goo-grotto"]', false);
+    await waitSel(A, '[data-board-page="goo-grotto"]');
+    const p2c = await pageOf(A);
+    await shot(A, '2-dungeon');
+    rec.ok('...and the Goo Grotto\'s page, under Dungeons, says its land by the world\'s own name, with Red pin and Blue pin',
+      !!p2c && !!verd && p2c.text.includes(verd.name) && !/[{}]/.test(p2c.text) && p2c.btns.length === 2, p2c && { text: p2c.text.slice(0, 240), verd: verd && verd.name });
     await press(A, '[data-board-back]', false);
     await waitSel(A, '[data-town-board]');
 
