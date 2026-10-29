@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8cb1c8d12c8a708d8c9eeedfe9d01ff9911b9513",
+  "tree": "510cc9e075748da5809a77d0c0dfdcab6aaeb64e",
+  "committedAt": "2026-10-28T19:46:59-07:00",
+  "subject": "Merge pull request #1298 from hemibroscommunity-del/claude/mayor-door",
+  "files": 7161,
+  "bytes": 824063114,
+  "listingSha256": "a3ed07ced5902c8a870a5dd23883a877c71bd3c921a23bc4bec072bd435de234",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
