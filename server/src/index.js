@@ -128,6 +128,7 @@ import { trade2Methods } from './trade2.js';
 import { accountMethods } from './account.js';
 // v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.
 import { botfpMethods } from './botfp.js';
+import { gestureFpMethods } from './gesturefp.js'; /* v2.3.3725: the harvest's raw gesture */
 import { botsigMethods } from './botsig.js'; /* v2.3.3731: the server's own bot signals (botsig.js) */
 import { hiddenMethods } from './hidden.js'; /* v2.3.3723: the hidden settings (docs/specs/hidden-settings.md) */
 // v2.3.1162 (P4 decomposition): quest accept/credit/turn-in -- see quests.js.
@@ -6606,6 +6607,7 @@ Object.assign(GameRoom.prototype, trade2Methods);
 Object.assign(GameRoom.prototype, accountMethods);
 // v2.3.1146: behavioral anti-bot for life skills (flag-only) -- see botfp.js.
 Object.assign(GameRoom.prototype, botfpMethods);
+Object.assign(GameRoom.prototype, gestureFpMethods);   /* v2.3.3725 */
 Object.assign(GameRoom.prototype, botsigMethods);   /* v2.3.3731 */
 Object.assign(GameRoom.prototype, hiddenMethods);   /* v2.3.3723 */
 // v2.3.1148: operator toolkit -- see admin.js.

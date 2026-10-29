@@ -26,6 +26,23 @@ import { jumpAirborne } from '@/game/jump.js';     /* v2.3.3017 */
 import { MINE_SEAT_DX, MINE_SEAT_DY, FISH_SEAT_DX, FISH_SEAT_DY } from '@/data/constants.js';   /* v2.3.2915 */
 import { gatherNeed } from '@/data/lifeSkills.js';   /* v2.3.3038: a resource's level is a real requirement */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: the prize heard landing in the bag */
+/* ═══ v2.3.3725: WHAT A HARVEST'S STRIKE CARRIES ═══
+   To a worker that says `caps.gesturepts`: the gesture's own POINTS (`g`,
+   gesturePoints.js, packed by ExtractionSwipeLayer at the meter's end) in
+   place of the phone's summary, which the server now computes itself
+   (server/src/gesturefp.js); and, for a harvest E worked on a computer, the
+   presses' rhythm (`k`, [start, held] ms pairs) the server measures.  To any
+   other worker the summary (`swipeFp`) as before. */
+export function strikePayload(S, node, accuracy) {
+  var ex = S._extraction;
+  var np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
+  var pts = !!(S._serverCaps && S._serverCaps.gesturepts);
+  if (pts && ex && ex.gesturePts) np.g = ex.gesturePts;
+  else if (ex && ex.swipeFp) np.swipeFp = ex.swipeFp;
+  if (pts && ex && Array.isArray(ex.keyRhythm) && ex.keyRhythm.length) np.k = ex.keyRhythm;
+  return np;
+}
+
 /* v2.3.849: fly a harvested-resource icon from its world node into the
    bottom-left inventory.  DOM-only (appended to document.body, like the
    resume spinner) so it floats above the canvas/HUD and animates on the
@@ -569,9 +586,7 @@ function applyFishingReward(S, node, result, deps) {
         /* v2.3.229: attach extraction swipe fingerprint when present
            so the server's anomaly tracker (per the v2.3.229 hand-off
            note) can flag suspicious sessions. Field is optional. */
-        var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
-        var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
-        if (_swipeFp) _np.swipeFp = _swipeFp;
+        var _np = strikePayload(S, node, accuracy);   /* v2.3.3725: the gesture's points to a worker that reads them */
         S.channel.send({ type: 'node_strike', payload: _np });
       } catch (e) {}
     }
@@ -686,9 +701,7 @@ function applyWoodReward(S, node, result, deps) {
         /* v2.3.229: attach extraction swipe fingerprint when present
            so the server's anomaly tracker (per the v2.3.229 hand-off
            note) can flag suspicious sessions. Field is optional. */
-        var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
-        var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
-        if (_swipeFp) _np.swipeFp = _swipeFp;
+        var _np = strikePayload(S, node, accuracy);   /* v2.3.3725: the gesture's points to a worker that reads them */
         S.channel.send({ type: 'node_strike', payload: _np });
       } catch (e) {}
     }
@@ -783,9 +796,7 @@ function applyMiningReward(S, node, result, deps) {
         /* v2.3.229: attach extraction swipe fingerprint when present
            so the server's anomaly tracker (per the v2.3.229 hand-off
            note) can flag suspicious sessions. Field is optional. */
-        var _swipeFp = (S._extraction && S._extraction.swipeFp) || null;
-        var _np = { id: node.id, zone: S.currentZone, accuracy: accuracy };
-        if (_swipeFp) _np.swipeFp = _swipeFp;
+        var _np = strikePayload(S, node, accuracy);   /* v2.3.3725: the gesture's points to a worker that reads them */
         S.channel.send({ type: 'node_strike', payload: _np });
       } catch (e) {}
     }

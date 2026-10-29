@@ -22,6 +22,9 @@
  *             ground: a person moves;
  *   marathon  hours of activity with no break of five minutes;
  *   loop      ...the same harvest route, again and again, through them;
+ *   keys      (v2.3.3725) a harvest worked by holding E on a computer: the
+ *             gaps between its presses and how long each was held, as the
+ *             phone reports them (`k`): a person's wander, a script's repeat;
  *   cloud     the connection comes from a cloud provider's network
  *             (request.cf.asn at the socket's opening): one more signal,
  *             never enough alone.
@@ -89,6 +92,9 @@ export const BOTSIG = {
   MARATHON_MS: 14400000,    // four hours without one
   LOOP_MIN_N: 100,
   LOOP_SHARE: 0.6,          // harvests whose step (node to node) was taken before
+  // ── keys (v2.3.3725): E's presses ──
+  KEYS_MIN_N: 60,
+  KEYS_SPREAD_MAX: 1,
   // ── network ──
   /* cloud and hosting networks, by AS number: Amazon (16509, 14618), Google
      Cloud (396982, 15169), Microsoft Azure (8075), Hetzner (24940), OVH
@@ -98,7 +104,7 @@ export const BOTSIG = {
      Relay and Chrome's IP protection leave from those, for real players. */
   CLOUD_ASNS: [16509, 14618, 396982, 15169, 8075, 24940, 16276, 14061, 63949, 20473, 31898, 45102, 51167, 12876],
   // ── the score ──
-  W_AIM: 6, W_GEST: 3, W_COOK: 6, W_REACT: 6, W_ROOT: 6, W_MARATHON: 2, W_LOOP: 4, W_CLOUD: 2,
+  W_AIM: 6, W_GEST: 3, W_COOK: 6, W_REACT: 6, W_ROOT: 6, W_MARATHON: 2, W_LOOP: 4, W_CLOUD: 2, W_KEYS: 3,
   SIG_FLAG_AT: 6,
   // ── plumbing (public: memory and cost) ──
   MOVE_RING: 12,
@@ -106,10 +112,11 @@ export const BOTSIG = {
   LOOP_WINDOW: 64,
   EVAL_EVERY: 20,           // measures between evaluations
   HIST_LO_GEST: 50, HIST_N_GEST: 72, HIST_LO_COOK: 100, HIST_N_COOK: 80, HIST_PER: 8,
+  HIST_LO_KEY: 20, HIST_N_KEY: 64, KEYS_MAX: 24,
 };
 
 /* the reasons, in the order the Test panel lists them */
-export const SIG_REASONS = ['aimed', 'reflex', 'rooted', 'cook', 'gesture', 'loop', 'marathon', 'cloud'];
+export const SIG_REASONS = ['aimed', 'reflex', 'rooted', 'cook', 'gesture', 'keys', 'loop', 'marathon', 'cloud'];
 
 /* the values in force: the room's hidden settings, or (a stub) the placeholders.
    A local helper, not an import: hidden.js imports BOTSIG (botfp.js's way). */
@@ -121,6 +128,7 @@ export function freshSig() {
     aim: { n: 0, hit: 0 },
     gest: histNew(BOTSIG.HIST_N_GEST),
     cook: histNew(BOTSIG.HIST_N_COOK), cookAt: 0,
+    keyGap: histNew(BOTSIG.HIST_N_KEY), keyHold: histNew(BOTSIG.HIST_N_KEY),   /* v2.3.3725 */
     react: { n: 0, quick: 0 },
     root: { c: null, run: 0, mons: [], max: 0, maxMons: 0 },
     act: { start: 0, last: 0 },
@@ -140,6 +148,8 @@ export function hydrateSig(s) {
   if (okPair(s.react, 'n', 'quick')) f.react = { n: s.react.n, quick: s.react.quick };
   if (Array.isArray(s.gest) && s.gest.length === f.gest.length) f.gest = s.gest.map((x) => Number(x) || 0);
   if (Array.isArray(s.cook) && s.cook.length === f.cook.length) f.cook = s.cook.map((x) => Number(x) || 0);
+  if (Array.isArray(s.keyGap) && s.keyGap.length === f.keyGap.length) f.keyGap = s.keyGap.map((x) => Number(x) || 0);
+  if (Array.isArray(s.keyHold) && s.keyHold.length === f.keyHold.length) f.keyHold = s.keyHold.map((x) => Number(x) || 0);
   if (s.root && typeof s.root === 'object') {
     f.root.max = Number(s.root.max) || 0;
     f.root.maxMons = Number(s.root.maxMons) || 0;
@@ -210,13 +220,16 @@ export function judgeSig(sig, T, now) {
   if (sig.root.max >= T.ROOT_HITS && sig.root.maxMons >= T.ROOT_MONSTERS) reasons.push('rooted');
   if (histTotal(sig.cook) >= T.COOK_MIN_N && histSpread(sig.cook) <= T.COOK_SPREAD_MAX) reasons.push('cook');
   if (histTotal(sig.gest) >= T.GEST_MIN_N && histSpread(sig.gest) <= T.GEST_SPREAD_MAX) reasons.push('gesture');
+  /* v2.3.3725: E's presses -- either their gaps or their holds the same every time */
+  const kOk = (h) => Array.isArray(h) && histTotal(h) >= T.KEYS_MIN_N && histSpread(h) <= T.KEYS_SPREAD_MAX;
+  if (kOk(sig.keyGap) || kOk(sig.keyHold)) reasons.push('keys');
   const long = sig.act.start > 0 && sig.act.last - sig.act.start >= T.MARATHON_MS && (now - sig.act.last) < T.BREAK_MS;
   if (long) {
     if (sig.loop.n >= T.LOOP_MIN_N && sig.loop.rep / sig.loop.n >= T.LOOP_SHARE) reasons.push('loop');
     else reasons.push('marathon');
   }
   if (sig.net.asn != null && Array.isArray(T.CLOUD_ASNS) && T.CLOUD_ASNS.includes(sig.net.asn)) reasons.push('cloud');
-  const W = { aimed: T.W_AIM, reflex: T.W_REACT, rooted: T.W_ROOT, cook: T.W_COOK, gesture: T.W_GEST, loop: T.W_LOOP, marathon: T.W_MARATHON, cloud: T.W_CLOUD };
+  const W = { aimed: T.W_AIM, reflex: T.W_REACT, rooted: T.W_ROOT, cook: T.W_COOK, gesture: T.W_GEST, keys: T.W_KEYS, loop: T.W_LOOP, marathon: T.W_MARATHON, cloud: T.W_CLOUD };
   let score = 0;
   for (const r of reasons) score += Number(W[r]) || 0;
   return { reasons, score };
@@ -402,7 +415,9 @@ export const botsigMethods = {
        a computer (ExtractionSwipeLayer v2.3.3407: the meter fills in exactly
        1.5 s of holding, the same every time, honestly) or an old phone: its
        even time is the client's, not a script's. */
-    if (!payload.swipeFp || typeof payload.swipeFp !== 'object') return;
+    /* v2.3.3725: E's presses are measured on their own (_sigOnKeys) */
+    if (Array.isArray(payload.k)) this._sigOnKeys(session, payload.k);
+    if ((!payload.swipeFp || typeof payload.swipeFp !== 'object') && (!payload.g || typeof payload.g !== 'object')) return;
     const now = Date.now();
     const extra = now - ex.startedAt - (Number(ex.openDelayBase) || 0);
     if (!(extra > 0)) return;
@@ -411,6 +426,26 @@ export const botsigMethods = {
     histAdd(rec.sig.gest, extra, BOTSIG.HIST_LO_GEST, BOTSIG.HIST_PER, BOTSIG.COUNT_CAP);
     this._sigActive(rec.sig, now, hid(this));
     this._sigMeasured(session.id, rec, now, true);
+  },
+
+  /* ── v2.3.3725: a harvest E worked: `k` is [[start, held], ...] ms from the
+     first press (ExtractionSwipeLayer).  The gaps between presses, and the
+     holds of every press but the last (the last is held until the harvest
+     ends, so its length is the harvest's, not the hand's).  Shape-checked:
+     at most KEYS_MAX pairs of whole, sane numbers, else nothing is read. ── */
+  _sigOnKeys(session, k) {
+    if (this._sigSkip(session) || !Array.isArray(k) || k.length < 2 || k.length > BOTSIG.KEYS_MAX) return;
+    for (const p of k) if (!Array.isArray(p) || p.length !== 2 || !Number.isFinite(p[0]) || !Number.isFinite(p[1]) || p[0] < 0 || p[1] < 0 || p[0] > 600000 || p[1] > 600000) return;
+    const now = Date.now();
+    const rec = this._sigOf(session.id, now);
+    if (!rec) return;
+    const sig = rec.sig;
+    if (!Array.isArray(sig.keyGap)) { sig.keyGap = histNew(BOTSIG.HIST_N_KEY); sig.keyHold = histNew(BOTSIG.HIST_N_KEY); }
+    for (let i = 1; i < k.length; i++) {
+      const gap = k[i][0] - k[i - 1][0];
+      if (gap > 0) histAdd(sig.keyGap, gap, BOTSIG.HIST_LO_KEY, BOTSIG.HIST_PER, BOTSIG.COUNT_CAP);
+      histAdd(sig.keyHold, Math.max(1, k[i - 1][1]), BOTSIG.HIST_LO_KEY, BOTSIG.HIST_PER, BOTSIG.COUNT_CAP);
+    }
   },
 
   /* ── a cook: the beat ── */

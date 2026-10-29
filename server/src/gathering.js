@@ -1275,7 +1275,12 @@ export const gatheringMethods = {
 
   _handleNodeStrike(session, payload) {
     if (!session || !session.id) return;
-    const { id, zone, accuracy, swipeFp } = payload || {};
+    const { id, zone, accuracy } = payload || {};
+    /* v2.3.3725: the gesture's own points, measured here (gesturefp.js), in
+       place of the phone's summary when they came; a summary still judges an
+       old phone's strike, and points that do not decode judge as none */
+    const _ptsFp = this._gesturePtsFp(payload);
+    const swipeFp = _ptsFp !== undefined ? _ptsFp : (payload || {}).swipeFp;
     if (!id || !zone) { this._strikeRefused(session, 'no-id-or-zone', { id: id || null, zone: zone || null }); return; }
     const list = this.nodes[zone];
     if (!list) { this._strikeRefused(session, 'zone-has-no-nodes', { zone }); return; }
