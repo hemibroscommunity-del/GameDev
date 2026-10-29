@@ -97,16 +97,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       return null;
     }, doorId);
-    /* next to the Mayor, his door's reach and all */
-    await place(A, 'mayor_bro', 0, 34);
-    await A.page.waitForTimeout(600);
-    const h0 = await here(A);
+    /* the prompt as the page settles on it (this box draws a few frames a
+       second, and the prompt follows the game's loop) */
+    const settled = async (want, ms = 5000) => {
+      let h = await here(A);
+      for (const t0 = Date.now(); Date.now() - t0 < ms && !want(h);) { await A.page.waitForTimeout(250); h = await here(A); }
+      return h;
+    };
+    /* next to the Mayor, inside his door's reach: searched round him */
+    let besideAt = null;
+    for (const [dx, dy] of [[0, 34], [0, -30], [-30, -20], [30, -20], [-40, 0], [40, 0], [0, -50], [-50, -40], [50, -40]]) {
+      await place(A, 'mayor_bro', dx, dy);
+      await A.page.waitForTimeout(400);
+      const h = await here(A);
+      if (h.npc === 'mayor_bro' && h.up) { besideAt = [dx, dy]; break; }
+    }
+    const h0 = await settled((h) => !!h.prompt && /talk/i.test(h.prompt));
     await shot(A, '1-beside-mayor');
     await A.page.keyboard.press('e');
     await A.page.waitForTimeout(1500);
     const h1 = await here(A);
     await shot(A, '1-talk');
-    rec.ok(`1. next to Mayor Bro, in the Town Hall door's reach (${h0.up ? 'yes' : 'NO'}): the prompt reads "${h0.prompt}", and E opens his dialogue, not the door`,
+    rec.ok(`1. next to Mayor Bro (${JSON.stringify(besideAt)}), in the Town Hall door's reach (${h0.up ? 'yes' : 'NO'}): the prompt reads "${h0.prompt}", and E opens his dialogue, not the door`,
       h0.up && h0.npc === 'mayor_bro' && !!h0.prompt && /talk to mayor bro/i.test(h0.prompt) && h1.dialogue && !h1.building, { h0, h1 });
     await H.closeNpcDialogue(A).catch(() => {});
     await A.page.waitForTimeout(600);
@@ -135,13 +147,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const checks = [];
     for (const d of doors) {
       const spot = await doorSpot(d.id);
-      await A.page.waitForTimeout(300);
-      const at = spot ? await here(A) : null;
+      const at = spot ? await settled((h) => !!h.prompt && /enter/i.test(h.prompt)) : null;
       const people = [];
       for (const id of d.npcs) {
         await place(A, id, 0, 30);
-        await A.page.waitForTimeout(350);
-        const h = await here(A);
+        await A.page.waitForTimeout(300);
+        const h = await settled((x) => !x.up || (!!x.prompt && /talk/i.test(x.prompt)));
         people.push({ id, near: h.npc, prompt: h.prompt });
       }
       checks.push({ door: d.id, spot, button: at && at.prompt, people });
