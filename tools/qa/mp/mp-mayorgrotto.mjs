@@ -8,8 +8,10 @@
  *
  *   1. the worker plays the Grotto for a party (caps.partydungeon)
  *   2. the hand-in is one tap (v2.3.3591, the owner's "just one message";
- *      seven until then), and its last sentence names the Goo Grotto:
- *      level 16, 2 or 3 friends, after who to see first
+ *      seven until then), and since v2.3.3869 it never names the Goo Grotto
+ *      (the owner, the morning of the showing: "remove mayor bro reference to
+ *      'the goo grotto is for level 10 and up...' ... Just remove that
+ *      sentence") -- even while the worker plays it for a party
  *   3. "Claim reward" still pays it: the worker hands tut_1 in
  *   4. `partydungeon: false`: a second character's hand-in is one tap, no
  *      Grotto
@@ -30,7 +32,7 @@ async function walkHandIn(P, shot) {
     });
     if (at.line == null) break;
     if (!lines.length || lines[lines.length - 1] !== at.line) lines.push(at.line);
-    if (shot && /Goo Grotto/.test(at.line)) await P.page.screenshot({ path: `${OUT}/mayorgrotto-aside.png` }).catch(() => {});
+    if (shot) await P.page.screenshot({ path: `${OUT}/mayorgrotto-handin.png` }).catch(() => {});   /* v2.3.3869: the hand-in as shown */
     if (/^claim reward$/i.test(at.button || '')) return { lines, claim: true };
     const clicked = await P.page.evaluate(() => {
       const b = document.querySelector('.bt-npcdlg-next');
@@ -72,14 +74,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const myId = await slimesToHandIn(P, wsPort, rec, '2');
   const walk = await walkHandIn(P, true);
-  const at = walk.lines.findIndex((l) => /Goo Grotto/.test(l));
-  const aside = at >= 0 ? walk.lines[at] : '';
   rec.ok(`2a. the hand-in is one tap (${walk.lines.length})`, walk.lines.length === 1, walk.lines);
-  rec.ok('2b. ...it names the Goo Grotto', at === 0, { at, aside });
-  rec.ok('2c. ...the level it is for and its party: level 10 and up (v2.3.3608), 2 or 3 friends', /for level 10 and up\b/.test(aside) && /take 2 or 3 friends\./.test(aside), aside);
-  rec.ok('2d. ...last, after the bow and staff and who to see first',
-    /bow and a staff/.test(aside) && /Diego[^.]*\. The Goo Grotto/.test(aside), aside);   /* v2.3.3611: "...Diego have work for you." */
-  rec.ok('2e. ...in his voice ("I\'m out of eulogies")', /I'm out of eulogies\.$/.test(aside), aside);
+  /* v2.3.3869: the Grotto's sentence removed (the owner: "It has nothing to
+     do with anything and it's confusing") -- the line ends on who to see */
+  rec.ok('2b. ...it never names the Goo Grotto, with the party Grotto on (v2.3.3869)',
+    !walk.lines.some((l) => /Grotto|eulogies/.test(l)), walk.lines);
+  rec.ok('2c. ...the bow and staff, and who to see first, last',
+    walk.lines.length === 1 && /bow and a staff/.test(walk.lines[0]) && /Diego have work for you\.$/.test(walk.lines[0]), walk.lines);
 
   rec.ok('3. "Claim reward" is reached on his last line', walk.claim, walk.lines.slice(-1));
   if (walk.claim) {
