@@ -1033,8 +1033,11 @@ const _traitCache = {};  // `${category}/${id}` -> { tex:{east,...}, meta, loadS
 const TRAIT_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
 let _traitRetryOn = true;
 try { if (typeof location !== 'undefined' && /[?&]traitretry=0\b/.test(location.search || '')) _traitRetryOn = false; } catch (e) { /* on */ }
+/* v2.3.3865: P1's off-ramp for every art loader that asks again (`?retrylooks=0`), read here too */
+let _looksRetryOn = true;
+try { if (typeof location !== 'undefined' && /[?&]retrylooks=0\b/.test(location.search || '')) _looksRetryOn = false; } catch (e) { /* on */ }
 function _traitGaveUp(e) {
-  if (!_traitRetryOn) return;
+  if (!_traitRetryOn || !_looksRetryOn) return;   /* v2.3.3865: + P1's shared `?retrylooks=0` */
   const n = e.retries || 0;
   e.retryAt = Date.now() + TRAIT_RETRY_LATER_MS[Math.min(n, TRAIT_RETRY_LATER_MS.length - 1)];
 }
@@ -5007,12 +5010,42 @@ function _ensureHairMaskLoaded(hatId) {
     /* v2.3.3520: kept as one promise (`ready`), so the loading screen can
        wait for YOUR hat's five -- a direction whose mask was not in yet drew
        the hair unclipped through the hat for its first frames */
-    e.ready = Promise.allSettled(Object.keys(e.tex).map((dir) =>
-      Assets.load(`/sprites/traits/headwear/${hatId}/hairmask/${dir}.png?v=${TRAIT_VER}`)
-        .then(t => { e.tex[dir] = t; if (t && t.source) t.source.scaleMode = 'linear'; })
-        .catch(() => {})));  // a hat without a hairmask just won't clip
+    e.ready = Promise.allSettled(Object.keys(e.tex).map((dir) => _loadHairMaskDir(e, hatId, dir, 0)));
+  }
+  /* v2.3.3865: a facing whose mask failed, its time come round: asked again */
+  if (e.retryAt) {
+    const now = Date.now();
+    for (const dir of Object.keys(e.retryAt)) {
+      if (now < e.retryAt[dir]) continue;
+      delete e.retryAt[dir];
+      _loadHairMaskDir(e, hatId, dir, (e.rounds[dir] || 0) + 1);
+    }
   }
   return e;
+}
+/* ═══ v2.3.3865: A HAT'S HAIR MASK IS ASKED FOR AGAIN ═══
+   The owner, on their iPhone: "some things still go missing.  One was the
+   'long hair' on the north run" under a cowboy hat.  P1 found art loaders
+   that give up for the session after a failed fetch (a wifi blip, a Pages
+   deploy mid-session): this one asked ONCE and gave up silently, so a hat
+   whose north mask missed its one chance left that facing's mask null for the
+   rest of the page, and _clipHairToHat then draws the hair unclipped under it
+   (mp-longhairhat LH_FAIL: the hair still shows -- this is not the owner's
+   missing hair -- but nothing holds it inside the hat's outline).  Every clipping hat ships all five masks (checked on disk), so a
+   failure is always a blip: asked again on the head pieces' own schedule
+   (TRAIT_RETRY_LATER_MS: 5, 10, 20, 40 s and every minute after), only while
+   the hat is worn (this runs when it is placed), ten rounds at most, past
+   Pixi's cache of the failed load (`&g=`).  `?traitretry=0` or
+   `?retrylooks=0` (P1's switch, shared) is the game as it was. */
+const HAIR_MASK_ROUNDS = 10;
+function _loadHairMaskDir(e, hatId, dir, round) {
+  return Assets.load(`/sprites/traits/headwear/${hatId}/hairmask/${dir}.png?v=${TRAIT_VER}${round > 0 ? `&g=${round}` : ''}`)
+    .then((t) => { e.tex[dir] = t; if (t && t.source) t.source.scaleMode = 'linear'; })
+    .catch(() => {
+      if (!_traitRetryOn || !_looksRetryOn || round >= HAIR_MASK_ROUNDS) return;
+      (e.rounds || (e.rounds = Object.create(null)))[dir] = round;
+      (e.retryAt || (e.retryAt = Object.create(null)))[dir] = Date.now() + TRAIT_RETRY_LATER_MS[Math.min(round, TRAIT_RETRY_LATER_MS.length - 1)];
+    });
 }
 
 /* When the equipped headwear declares `clipsHair`, clip the hair to the

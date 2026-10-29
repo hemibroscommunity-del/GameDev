@@ -242,6 +242,20 @@ function overlapping(stage, d, sp, box) {
   walk(stage);
   return out.filter((x) => x.startsWith('over')).slice(0, 6);
 }
+/* v2.3.3865: a hair's clip, for a dropped frame's log */
+function clipState(hair, m) {
+  const k = hair && hair.mask;
+  const box = m && m._btClipBox;
+  let mb = null;
+  try { mb = m && m.visible ? m.getBounds() : null; } catch (e) { mb = null; }
+  return {
+    maskedTo: !k ? null : (k === box ? 'its box' : k === m ? 'the silhouette' : (k.label || 'other')),
+    boxRenderable: box ? box.renderable !== false : null,
+    silhouetteInBox: !!(m && box && m.parent === box),
+    silhouetteShown: !!(m && m.visible), silhouetteTex: !!(m && m.texture && m.texture.source && !m.texture.destroyed),
+    silhouetteBox: mb ? [Math.round(mb.minX), Math.round(mb.minY), Math.round(mb.maxX - mb.minX), Math.round(mb.maxY - mb.minY)] : null,
+  };
+}
 export function headPixelsTick(entityRenderer, effectsRenderer, renderer) {
   if (!HEAD_FRAMES_ON) return;
   const targets = typeof window !== 'undefined' && window.__btHeadTargets;
@@ -281,7 +295,10 @@ export function headPixelsTick(entityRenderer, effectsRenderer, renderer) {
       _px.log.push({ f: _px.frames, cat: who + cat, n, usual: mid, pose: at.pose, dir: at.dir, mirror: at.mirror, frame: at.frameIdx, box: [x0, y0, w, h], t: Math.round(performance.now()),
         over: overlapping(stage, d, sp, [x0 / res, y0 / res, x1 / res, y1 / res]),
         /* a tint (a hit's flash) turns the piece's colour, not its presence */
-        tint: (sp.groupColorAlpha >>> 0).toString(16), figureTint: (d.groupColorAlpha >>> 0).toString(16) });
+        tint: (sp.groupColorAlpha >>> 0).toString(16), figureTint: (d.groupColorAlpha >>> 0).toString(16),
+        /* v2.3.3865: the hair's clip as it was drawn (hairClip.js): what it is
+           masked to, and the hat's silhouette -- shown, in its box, where */
+        clip: cat === 'hair' ? clipState(sp, sp === own ? d._hairMask : (standIn && standIn.hairMask)) : undefined });
       if (_px.log.length > 40) _px.log.shift();
       /* the first few: a picture of the head and round it, as drawn */
       if (_px.shots.length < 4) {
