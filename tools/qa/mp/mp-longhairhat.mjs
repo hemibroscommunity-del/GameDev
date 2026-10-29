@@ -198,7 +198,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const S = window._gameState.current, R = window._pixiRenderer, d = R && R.playerDisplayRaw && R.playerDisplayRaw();
           const b = d && d._body, bb = b && b.getBounds();
           return { x: Math.round(S.player.x), y: Math.round(S.player.y), zone: S.currentZone, shown: !!(d && d.visible && b && b.visible),
-            tex: b && b.texture ? [b.texture.width, b.texture.height, !!b.texture.source.destroyed] : null, box: bb ? [Math.round(bb.minX), Math.round(bb.minY), Math.round(bb.width), Math.round(bb.height)] : null };
+            tex: b && b.texture ? [b.texture.width, b.texture.height, !!(b.texture.source && b.texture.source.destroyed)] : (b ? 'kids:' + (b.children || []).length : null), box: bb ? [Math.round(bb.minX), Math.round(bb.minY), Math.round(bb.width), Math.round(bb.height)] : null };
         }).catch((e) => ({ err: String(e) }));
         const wasAt = await where();
         const lost = await P.page.evaluate(() => {
@@ -250,6 +250,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (hc) for (const l of (hc.goneLog || []).slice(0, 4)) console.log('      gone: ' + JSON.stringify(l));
         console.log('      look palette: ' + JSON.stringify(diag && diag.pal).slice(0, 400));
         console.log(`      the bro before the loss ${JSON.stringify(wasAt)}, after ${JSON.stringify(await where())}`);
+        /* the re-join puts the bro back where the game's record has him (the
+           Town Hall's door, where a jog north walks him into the doorway):
+           walked back to where he stood before the loss, so each reading is
+           against the same ground behind him */
+        if (wasAt && isFinite(wasAt.x)) {
+          for (let step = 0; step < 80; step++) {
+            const at = await where();
+            const dx = wasAt.x - at.x, dy = wasAt.y - at.y;
+            if (Math.abs(dx) < 12 && Math.abs(dy) < 12) break;
+            const keys = [];
+            if (dx > 6) keys.push('d'); else if (dx < -6) keys.push('a');
+            if (dy > 6) keys.push('s'); else if (dy < -6) keys.push('w');
+            for (const k of keys) await P.page.keyboard.down(k);
+            await P.page.waitForTimeout(Math.min(400, 40 + Math.max(Math.abs(dx), Math.abs(dy)) * 2));
+            for (const k of keys) await P.page.keyboard.up(k);
+          }
+          console.log(`      walked back to ${JSON.stringify(await where())}`);
+        }
         const after = [];
         for (const hat of HATS) {
           await P.page.evaluate((h) => window.__btSetHeadwear(h), hat);
