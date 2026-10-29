@@ -41,6 +41,13 @@ v2.3.3801, the owner's review: [a page's one action](town-board/page-action.jpg)
   ride); Codex and Journey at the foot. The page and the foot are
   `TownBoardPage.jsx` (the grid stays in `TownBoard.jsx`); BroTown hands the
   hall `onDash(id, sub)` and `onClose()`.
+- **Badges** (v2.3.3803), real state only (`mapPinPlaces.js` `boardBadge`,
+  the row's `badge`): 'mayor' and 'townsfolk' count the gold "!" marks
+  (`npc._questMarker`, through `questPins.js` `questPinsOf`) on Mayor Bro and
+  on everyone else; 'spin' says "Spin ready" while `dailyRewardsBus`'s
+  `spin.ready` (with caps.dailyspin). The board re-draws when the daily state
+  changes.
+  Pictures: [the Mayor's "1"](town-board/badge-mayor.jpg), ["Spin ready"](town-board/badge-spin.jpg).
 - **A dungeon's levels on its tile** (v2.3.3788): "Lv 10+ · party of 2–3",
   "Lv 26+", "Lv 41+" -- `data/wheelDungeons.js` `dungeonBoardLine` (the
   party row and the level it is for, else the lowest of the place's levels:
