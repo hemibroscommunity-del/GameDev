@@ -19,7 +19,16 @@
  *   5. on the computer, Z gets on, and Z again gets off;
  *   6. the board button sideways (844 x 390) is drawn, on the screen, and on
  *      no other control;
- *   7. no page errors.
+ *   7. no page errors;
+ *   8. (v2.3.3839) the owner, on a laptop with a new character: "It just has an
+ *      invisible wall up if you're on skateboard and try to go into no man's
+ *      land."  The computer's character has not spoken to Mayor Bro, so the
+ *      Mayor gate holds it inside the safe ground (game/wheelHome.js), board
+ *      and all; ridden into it with D, "Speak to Mayor Bro first" must be
+ *      SEEN: the banner's fade runs (it froze at its first frame, ~0.04 on a
+ *      quick computer: ui/TimedBanner.jsx);
+ *   9. ...and once the first quest is taken, the same ride rolls out past the
+ *      edge, off the board with "Off the board: boards stay in BroTown.".
  * Pictures: tools/qa/mp/out/skateboard-*.png (the 8 directions, the button
  * upright, sideways and on a computer).
  */
@@ -175,6 +184,62 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const gone = await B.page.evaluate(() => window.__btRideSound.state());
     rec.ok(`5c. off the board the roll falls silent (gain ${hush.gain} after 0.4 s) and stops (playing ${gone.playing} after 2.6 s)`,
       hush.gain < 0.01 && !hush.riding && gone.playing === false, { hush, gone });
+
+    /* ── 8. v2.3.3839: the Mayor gate, ridden into on the computer's keys ── */
+    const gateLook = () => B.page.evaluate((c) => {
+      const S = window._gameState.current;
+      const n = [...document.querySelectorAll('[data-levelup-banner] *')].find((e) => e.children.length === 0 && /Mayor Bro first/.test(e.textContent));
+      let op = 0;
+      if (n) { op = 1; for (let e = n; e && e !== document.body; e = e.parentElement) { const cs = getComputedStyle(e); op *= +cs.opacity; if (cs.visibility === 'hidden' || cs.display === 'none') op = 0; } }
+      const pop = (S.dmgNumbers || []).some((d) => d && d.text === 'Off the board: boards stay in BroTown.');
+      return { r: Math.round(Math.hypot(S.player.x - c[0], S.player.y - c[1])), op: Math.round(op * 100) / 100, hits: S._wheelGateHits || 0,
+        ride: S._ride ? { on: !!S._ride.on, why: S._ride.why } : null, tut: !!(S.rpg && S.rpg._quests && S.rpg._quests.tut_1), pop };
+    }, [G.cx, G.cy]);
+    await H.glideTo(B, G.cx + R - 150, G.cy, { speed: 600, timeoutMs: 30000 });   /* due east, along the road */
+    await B.page.waitForTimeout(1200);
+    const g0 = await gateLook();
+    await B.page.keyboard.press('z');
+    await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'on, at the gate' }).catch(() => null);
+    await B.page.keyboard.down('d');
+    const g8 = [];
+    let shot8 = false;
+    for (let t0 = Date.now(); Date.now() - t0 < 12000;) {
+      await B.page.waitForTimeout(150);
+      const q = await gateLook();
+      g8.push(q);
+      /* the picture at the banner's height */
+      if (!shot8 && q.op >= 0.9) { shot8 = true; await B.page.screenshot({ path: join(OUT, 'skateboard-mayor-gate-computer.png') }).catch(() => {}); }
+    }
+    await B.page.keyboard.up('d');
+    /* one message's samples (the best-sampled one: a picture can eat a
+       message's time): its fade must move -- frozen, it read one value */
+    const byHit = new Map();
+    for (const q of g8) if (q.hits > g0.hits && q.op > 0) byHit.set(q.hits, (byHit.get(q.hits) || []).concat(q.op));
+    const one = [...byHit.values()].sort((a, b) => new Set(b).size - new Set(a).size)[0] || [];
+    const firstHit = byHit.size > 0;
+    const opMax = Math.max(0, ...g8.map((q) => q.op));
+    rec.ok(`8. a new character (no first quest: ${!g0.tut}) rides D into the Mayor gate: held inside the safe ground (r at most ${Math.max(...g8.map((q) => q.r))} of ${R}), still on the board`,
+      !g0.tut && g8.length > 0 && g8.every((q) => q.r < R) && g8[g8.length - 1].ride && g8[g8.length - 1].ride.on, { g0, last: g8[g8.length - 1] });
+    rec.ok(`8. ...and "Speak to Mayor Bro first" is SEEN: its fade runs (${new Set(one).size} opacities in one message: ${one.slice(0, 8).join(', ')}), held at ${opMax} (a warning holds full, v2.3.3839)`,
+      !!firstHit && new Set(one).size >= 2 && opMax >= 0.95, { hits: g8.map((q) => q.hits + ':' + q.op).join(' ') });
+
+    /* ── 9. ...the first quest taken, the same ride rolls out, off the board ── */
+    await B.page.evaluate(() => { const S = window._gameState.current; S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } }); });
+    const tut = await H.waitFor(B, (S) => !!(S.rpg && S.rpg._quests && S.rpg._quests.tut_1), (v) => v, { timeout: 8000, label: 'the first quest taken' }).catch(() => null);
+    const on9 = await B.page.evaluate(() => window.__btRideBtn().on);
+    if (!on9) { await B.page.keyboard.press('z'); await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000 }).catch(() => null); }
+    await B.page.keyboard.down('d');
+    let g9 = null, pop9 = false;
+    for (let t0 = Date.now(); Date.now() - t0 < 20000;) {
+      await B.page.waitForTimeout(150);
+      g9 = await gateLook();
+      pop9 = pop9 || g9.pop;
+      if (g9.ride && !g9.ride.on && g9.r > R + 40) break;
+    }
+    await B.page.keyboard.up('d');
+    await B.page.screenshot({ path: join(OUT, 'skateboard-edge-computer.png') }).catch(() => {});
+    rec.ok(`9. the first quest taken (${!!tut}), the computer rides out past the edge (r ${g9 && g9.r} of ${R}) and off the board (${g9 && g9.ride && g9.ride.why}) with "Off the board: boards stay in BroTown." (${pop9})`,
+      !!tut && !!g9 && g9.r > R && !!g9.ride && !g9.ride.on && g9.ride.why === 'edge' && pop9, g9);
 
     /* 6. sideways: back in town, the phone turned */
     await H.glideTo(A, G.arrival.x + 200, G.arrival.y, { speed: 450, timeoutMs: 30000 });
