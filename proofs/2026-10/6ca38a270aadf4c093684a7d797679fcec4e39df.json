@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6ca38a270aadf4c093684a7d797679fcec4e39df",
+  "tree": "5d647f96532a880755da19b321896c19e6845670",
+  "committedAt": "2026-10-28T19:24:48-07:00",
+  "subject": "Merge pull request #1291 from hemibroscommunity-del/claude/world-check-townboard",
+  "files": 7132,
+  "bytes": 818426374,
+  "listingSha256": "8b05b2d134eba8328dc56e64a58c97bb66dfcd6d17ed6ff0844461ed948732e4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
