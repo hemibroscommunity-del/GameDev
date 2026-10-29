@@ -22,6 +22,7 @@
  *
  *   node tools/qa/mp/run.mjs headframes
  *   BT_HF_QUERY=x   another URL switch on the page (e.g. lookpalette=0)
+ *   BT_HF_ONLY=fight  the fight alone (and BT_HF_ROUNDS=n rounds, 3)
  */
 import * as H from './harness.mjs';
 
@@ -30,6 +31,8 @@ const PHONE = { width: 390, height: 844 };
    frames a second, too few to see a one-frame gap; what hides a piece is the
    game's own state, the same at any density.  BT_HF_DPR=3 for the phone's. */
 const DPR = +(process.env.BT_HF_DPR || 1);
+const ONLY = process.env.BT_HF_ONLY || '';
+const ROUNDS = +(process.env.BT_HF_ROUNDS || 3);
 const QUERY = 'headframes' + (process.env.BT_HF_QUERY ? '&' + process.env.BT_HF_QUERY : '');
 const LOOK = { hair: 'wavy', hairColor: 'pink', hat: 'beanie', hatColor: 'blue', beard: 'beard', beardColor: 'red', eye: 'golden-glasses' };
 /* each colour's target (the catalogs'), for the pixels read back: colours no
@@ -153,6 +156,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate((t) => { window.__btHeadTargets = t; }, TARGETS);
     await P.page.waitForTimeout(3000);
 
+    if (!ONLY) {
     await phase('standing', () => P.page.waitForTimeout(5000));
     await phase('jogging the eight facings', async () => { for (const keys of Object.values(FACINGS)) await hold(P, keys, 1200); });
     await phase('quick turns', async () => {
@@ -171,6 +175,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (const k of keys) await P.page.keyboard.up(k);
       }
     });
+    }
 
     /* armed, then to the Flame Fields' monsters */
     const armed = await H.armWorker(P, wsPort, me, ['bow']).catch(() => []);
@@ -186,7 +191,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(2500);
     let hits = 0;
     const fc = await phase('a fight: sword swings and bow shots', async () => {
-      for (let r = 0; r < 3; r++) {
+      for (let r = 0; r < ROUNDS; r++) {
         hits += await fight(P, 'Digit1', 'melee', 2500).catch(() => 0);
         hits += await fight(P, 'Digit2', 'ranged', 2500).catch(() => 0);
       }

@@ -116,6 +116,39 @@ function inColour(r, g, b, t) {
   if (m < 30) return false;
   return Math.abs(r / m - t[0] / tm) + Math.abs(g / m - t[1] / tm) + Math.abs(b / m - t[2] / tm) < 0.3;
 }
+/* on a dropped frame: what else is drawn over the piece's box -- every shown
+   sprite outside your own figure whose bounds cross it, in drawing order (the
+   later, the more on top), named by its field, label or picture */
+function overlapping(stage, d, sp, box) {
+  const out = [];
+  let seenSp = false;
+  const name = (c) => {
+    if (c.label) return c.label;
+    for (let p = c.parent; p; p = p.parent) {
+      for (const k of Object.keys(p)) { if (k[0] === '_' || k === 'parent') continue; try { if (p[k] === c) return k; } catch (e) { /* none */ } }
+      if (p.label) return p.label + '/?';
+    }
+    const t = c.texture, src = t && t.source;
+    return String((src && (src.label || (src.resource && src.resource.src))) || '?').slice(-40);
+  };
+  const walk = (c) => {
+    if (!c || !c.visible || c.renderable === false || c.alpha <= 0 || out.length >= 8) return;
+    if (c === sp) { seenSp = true; return; }
+    if (c !== d && c.texture && c.texture.source && c !== stage) {
+      let mine = false;
+      for (let p = c.parent; p; p = p.parent) if (p === d) { mine = true; break; }
+      if (!mine) {
+        let b;
+        try { b = c.getBounds(); } catch (e) { b = null; }
+        if (b && b.maxX > box[0] && b.minX < box[2] && b.maxY > box[1] && b.minY < box[3]) out.push((seenSp ? 'over: ' : 'under: ') + name(c));
+      }
+    }
+    const k = c.children;
+    if (k) for (let i = 0; i < k.length; i++) walk(k[i]);
+  };
+  walk(stage);
+  return out.filter((x) => x.startsWith('over')).slice(0, 6);
+}
 export function headPixelsTick(entityRenderer, effectsRenderer, renderer) {
   if (!HEAD_FRAMES_ON) return;
   const targets = typeof window !== 'undefined' && window.__btHeadTargets;
@@ -152,7 +185,8 @@ export function headPixelsTick(entityRenderer, effectsRenderer, renderer) {
     if (mid != null && mid >= 12 && n < mid * 0.25) {
       _px.drops++;
       _px.byCat[who + cat] = (_px.byCat[who + cat] || 0) + 1;
-      _px.log.push({ f: _px.frames, cat: who + cat, n, usual: mid, pose: at.pose, dir: at.dir, mirror: at.mirror, frame: at.frameIdx, box: [x0, y0, w, h], t: Math.round(performance.now()) });
+      _px.log.push({ f: _px.frames, cat: who + cat, n, usual: mid, pose: at.pose, dir: at.dir, mirror: at.mirror, frame: at.frameIdx, box: [x0, y0, w, h], t: Math.round(performance.now()),
+        over: overlapping(stage, d, sp, [x0 / res, y0 / res, x1 / res, y1 / res]) });
       if (_px.log.length > 40) _px.log.shift();
     } else {
       hist.push(n);
