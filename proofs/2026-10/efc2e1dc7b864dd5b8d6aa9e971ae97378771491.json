@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "efc2e1dc7b864dd5b8d6aa9e971ae97378771491",
+  "tree": "c0f508e18999481a53dfa154704dc870bf6200aa",
+  "committedAt": "2026-10-29T15:12:19-07:00",
+  "subject": "Merge pull request #1344 from hemibroscommunity-del/claude/double-loss",
+  "files": 7320,
+  "bytes": 841287624,
+  "listingSha256": "6bace02fa21ce2b67d5ab5d6d7ace014373f9190884198ffef999197a37d0df0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
