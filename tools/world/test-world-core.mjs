@@ -34,6 +34,9 @@
  *
  *   node tools/world/test-world-core.mjs
  */
+/* v2.3.3792: first -- the src/ modules this loads later (await import) are
+   vite's, with its `@/` alias and bare json imports (tools/dev/srcLoader.mjs) */
+import '../dev/srcLoader.mjs';
 import { PLAN, SPOKES } from '../../public/tools/world/plan.js';
 import { PIXEL, NO_DIRECTION, PLANK_BOARDS } from '../../public/tools/style/bible.js';
 import { promptFor } from '../../public/tools/ground/prompts.js';
