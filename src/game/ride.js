@@ -88,7 +88,7 @@ export function rideApply(S, p, now) {
   r.at = now || Date.now();
   if (r.on && !was) r.n++;
   if (!r.on && was) {
-    const line = rideOffLine(r.why);
+    const line = rideOffLine(r.why, r.why === 'fight' ? rideActVerb(S, r.at) : null);
     if (line) { r.line = line; r.lineAt = r.at; }
   }
 }
@@ -115,14 +115,41 @@ export function rideCheck(S, now, f) {
   return null;
 }
 
+/* ═══ v2.3.3875: THE LINE NAMES WHAT YOU WERE DOING ═══
+   The owner, playtesting on a computer: "the message 'off the board to
+   fight' appeared when I pressed E near fish to just fish. Technically the
+   message wasn't correct."  The worker ends a ride with one word, 'fight',
+   for every action that ends it (server/src/ride.js RIDE_ENDS_ON: a swing,
+   an ability, a harvest, a pose, a trap), and the board already steps off
+   by itself and the action goes ahead -- so only the words were wrong.  The
+   phone knows what it just started, so the line names it: a harvest under
+   way names its skill ("Off the board to fish."), a pose "to strike a
+   pose", a trap "to set a trap"; a swing or an ability is still "to fight".
+   Client-only: the worker's word is unchanged. */
+const RIDE_ACT_MS = 5000;
+const SKILL_VERB = Object.freeze({ fishing: 'fish', woodcutting: 'chop', mining: 'mine', cooking: 'cook' });
+export function rideActVerb(S, now) {
+  if (!S) return null;
+  const t = typeof now === 'number' ? now : Date.now();
+  const ex = S._extraction;
+  if (ex && typeof ex.startedAt === 'number' && t - ex.startedAt <= RIDE_ACT_MS) {
+    return Object.prototype.hasOwnProperty.call(SKILL_VERB, ex.skill) ? SKILL_VERB[ex.skill] : 'gather';
+  }
+  if (S._pose && typeof S._pose.at === 'number' && t - S._pose.at <= RIDE_ACT_MS) return 'strike a pose';
+  const tp = S._trap && S._trap.pending;   /* game/trapping.js armTrap */
+  if (tp && typeof tp.at === 'number' && t - tp.at <= RIDE_ACT_MS) return 'set a trap';
+  return null;
+}
+
 /** The short line a player reads when the board goes (players read
-    "BroTown", never "Wheel"); null when they asked. */
-export function rideOffLine(why) {
+    "BroTown", never "Wheel"); null when they asked.  v2.3.3875: `verb`, for
+    'fight', what you were doing instead (rideActVerb). */
+export function rideOffLine(why, verb) {
   switch (why) {
     case 'edge': return 'Off the board: boards stay in BroTown.';
     case 'zone': return 'Off the board: boards stay in BroTown.';
     case 'hit': return 'Knocked off the board!';
-    case 'fight': return 'Off the board to fight.';
+    case 'fight': return 'Off the board to ' + (typeof verb === 'string' && verb ? verb : 'fight') + '.';
     case 'duel': return 'Off the board for the duel.';
     case 'dead': return null;
     case 'off': return 'Boards are put away for now.';
