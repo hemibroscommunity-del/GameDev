@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "45e169176a8c5aad3c7f27eaf1ae50434bb0dc42",
+  "tree": "7572bd07a61a592ccdc2243e5ec7aea78508ec0b",
+  "committedAt": "2026-10-28T22:13:40-07:00",
+  "subject": "Merge pull request #1313 from hemibroscommunity-del/claude/ride-lay-ahead",
+  "files": 7253,
+  "bytes": 833380540,
+  "listingSha256": "e9692ad9700c77eb4807b483a25e1304633f8f0019e595831e643bd0497d215a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

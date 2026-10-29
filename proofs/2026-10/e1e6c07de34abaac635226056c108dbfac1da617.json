@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e1e6c07de34abaac635226056c108dbfac1da617",
+  "tree": "d2c7bd9c5ff3fc794aa022143fb6c951e118615f",
+  "committedAt": "2026-10-28T22:13:47-07:00",
+  "subject": "Merge pull request #1314 from hemibroscommunity-del/claude/rclick-shield-toggle",
+  "files": 7255,
+  "bytes": 833403486,
+  "listingSha256": "e29232702cd9fb83bb808b07d1311111075d1825fa30849ef4983114e5aaee96",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
