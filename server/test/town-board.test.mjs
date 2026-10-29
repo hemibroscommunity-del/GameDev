@@ -102,7 +102,10 @@ const { readFileSync } = await import('node:fs');
   const newPics = pics.filter((p) => p.startsWith('/icons/board/'));
   const fat = newPics.filter((p) => { const n = plte(new URL('public' + p, root)); return !(n > 0 && n <= 256); });
   check('1m the board\'s own pictures (public/icons/board/) are palette pictures of 256 colours or fewer', newPics.length === 5 && fat.length === 0, { newPics, fat });
-  const landNames = Object.values(PLAN.regions).map((r) => r && r.name).filter((n) => typeof n === 'string' && n.length > 3);
+  /* v2.3.3814: the LANDS' names -- not the town's or its commons', whose
+     "BroTown" the board says as every player reads it (the plan's spelling
+     was "Brotown" until then, which no row happened to match) */
+  const landNames = Object.entries(PLAN.regions).filter(([id]) => id !== 'town' && id !== 'commons').map(([, r]) => r && r.name).filter((n) => typeof n === 'string' && n.length > 3);
   const spelt = B.BOARD.filter((e) => landNames.some((n) => [e.name, e.where, ...e.page].join(' ').includes(n))).map((e) => e.id);
   check('1n no row spells a land\'s name: each is {land}, read from the world\'s plan', spelt.length === 0 && landNames.length >= 8, spelt);
   const toks = new Set();
