@@ -467,7 +467,10 @@ export const GameApp = () => {
     offs.push(wheelBus.onActivate('social', legacyPanel('social')));
     offs.push(wheelBus.onActivate('clan',   legacyPanel('clan')));
     offs.push(wheelBus.onActivate('quests', legacyPanel('encyclopedia'))); // closest match
-    offs.push(wheelBus.onActivate('journey', legacyPanel('encyclopedia'))); // until journey surface lands
+    /* v2.3.3773: the journey surface has landed -- More's Journey page (the
+       Character page's old records tab, dash/JourneyPanel.jsx), opened the way
+       its More tile opens it */
+    offs.push(wheelBus.onActivate('journey', () => { dashboardPanelBus.open('more'); dashboardPanelBus.push('journey'); }));
     offs.push(wheelBus.onActivate('map',    legacyPanel('encyclopedia'))); // until map surface lands
 
     // Debug commands for the wheel.

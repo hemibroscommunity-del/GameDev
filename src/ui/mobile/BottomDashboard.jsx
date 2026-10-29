@@ -433,7 +433,10 @@ const PANELS = {
   inventory:    { title: 'Inventory',   Component: InventoryPanel },
   self:         { title: 'Self',        Component: SelfPanel },
   /* v2.3.3527: kept for a stale drill id and a worker without
-     caps.achievements, where More's tile is still Journey */
+     caps.achievements, where More's tile is still Journey.
+     v2.3.3773: a page of its own beside Achievements, the Character page's
+     old records tab moved here (the owner: "journey ... its own icon in the
+     more/other apps menus") */
   journey:      { title: 'Journey',     Component: JourneyPanel },
   /* v2.3.3527: the Achievements page (dash/AchievementsPanel.jsx): More's
      Journey tile against a worker that grants them (the owner's decision 6),

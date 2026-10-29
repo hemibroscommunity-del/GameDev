@@ -461,8 +461,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return r.right > shR.right + 2 && r.width > 4;
     }).length;
     const text = sh.textContent || '';
-    return { scrollFits: sh.scrollWidth <= sh.clientWidth + 1, wide,
-             hasStats: /OFFENSE/i.test(text) && /PLAYER|DEFENSE/i.test(text) && /Damage/.test(text) }; /* v2.3.3053: PLAYER (owner mockup) */
+    /* v2.3.3783: the stats are family pills since v2.3.3605 (HeroExpanded
+       famPill, `data-family`: this view holds Damage and Defense), and the
+       OFFENSE / PLAYER headings are gone -- so the view's stats are found by
+       their families, not by a heading's word (TRAPS §177: the test, not the
+       game, was out of date) */
+    const fams = [...sh.querySelectorAll('[data-family]')].map((e) => e.getAttribute('data-family'));
+    return { scrollFits: sh.scrollWidth <= sh.clientWidth + 1, wide, fams,
+             hasStats: fams.includes('damage') && fams.includes('defense') && /Damage/.test(text) }; /* v2.3.3053: PLAYER (owner mockup) */
   });
   rec.ok('the character view fits the skinny column — stacked, nothing clipped sideways',
     !!heroFit && heroFit.scrollFits && heroFit.wide === 0 && heroFit.hasStats, heroFit);
@@ -549,12 +555,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
   await P.page.waitForTimeout(900);
-  for (const sec of ['Overview', 'Build', 'Records']) {
+  /* v2.3.3773: the records are More's Journey page now, not Hero's third
+     tab, so the third screen of this walk is that page, opened the way its
+     More tile opens it, swept by the same rule */
+  for (const sec of ['Overview', 'Build', 'Journey']) {
     const fit = await P.page.evaluate((s) => {
+      if (s === 'Journey') {
+        window.__broDashPanelBus.open('more'); window.__broDashPanelBus.push('journey');
+        return true;
+      }
       const tab = document.querySelector(`.bt-land-sheet [role="button"][data-section="${s}"]`);
       if (tab) tab.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
       return !!tab;
     }, sec);
+    if (sec === 'Journey') {
+      await P.page.waitForTimeout(650);
+      const page = await P.page.evaluate(() => document.querySelectorAll('.bt-land-sheet [data-journey-page] [data-journey-card]').length);
+      rec.ok('More\'s Journey page shows its six record cards in the side column', page === 6, { page });
+    }
     if (!fit) { rec.ok(`hero/${sec}: the section tab exists`, false, { sec }); continue; }
     await P.page.waitForTimeout(650);
     const clip = await P.page.evaluate(() => {
