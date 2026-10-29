@@ -1089,7 +1089,7 @@ body:has([data-trade-drawer="invite"]) .bt-land-navdock:has([data-land-fold="min
    test: game/renderRes.js) is stretched smoothly -- a 1.5x nearest-neighbour
    stretch doubles every other pixel, the uneven "gritty" look */
 html[data-res-soft] .brotown-canvas{image-rendering:auto}
-.brotown-hud{position:absolute;top:46px;right:12px;pointer-events:none;z-index:10;display:flex;align-items:flex-start}
+.brotown-hud{position:absolute;top:calc(46px + var(--bt-bar-grow,0px));right:12px;pointer-events:none;z-index:10;display:flex;align-items:flex-start}
 .brotown-hud>*{pointer-events:auto}
 .bt-player-dot{width:6px;height:6px;border-radius:50%;background:#59BF91;animation:pulse-dot 2s ease-in-out infinite}
 /* v2.3.1205: was bottom:80px / z-index:20 — inside + under the opaque
@@ -1193,7 +1193,7 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
    off the cell (v2.3.2597), a spent point now changes nothing visible on the
    row.  The only confirmation left is the now -> after line inside the window,
    which is shown BEFORE you commit rather than after. */
-.bt-plist{position:absolute;top:46px;left:8px;z-index:25;width:200px;max-height:260px;
+.bt-plist{position:absolute;top:calc(46px + var(--bt-bar-grow,0px));left:8px;z-index:25;width:200px;max-height:260px;
   background:rgba(17,25,29,.94);border:1px solid rgba(255,255,255,.15);border-radius:10px;
   overflow-y:auto;
   /* v2.3.3481: the 2026-10-19 UI review -- room for the list's new ✕
@@ -1914,25 +1914,46 @@ button.bt-pin-drop{color:inherit;margin:0}
      off-screen (height grows to match) so the svg's top edge and
      corner rounding disappear past the screen edge, exactly as the
      spec intended. */
-  box-sizing:border-box;height:calc(50px + env(safe-area-inset-top,0px));
+  /* v2.3.3765: everything on the bar is sized by --zk (the owner: "Make the
+     info on the top ribbon larger ... It can fit more"), the bar's height
+     with it: the row was 34 px tall, it is 34 x --zk.  --zk per layout below
+     (the largest that fits, measured by mp-topbar). */
+  --zk:var(--bt-bar-k,1);
+  box-sizing:border-box;height:calc(50px + 34px * (var(--zk) - 1) + env(safe-area-inset-top,0px));
   padding:calc(env(safe-area-inset-top,0px) + 4px) 5px 0;
   border:6px solid transparent;
   border-image:url('/icons/ui/zone-header-bar.svg?v=2.3.1333') 18 fill / 6px stretch;
   pointer-events:none}
-.bt-zone-header__logout{width:34px;height:34px;display:grid;place-items:center;
+/* v2.3.3765: --zk per layout, the largest each passes with nothing cut or
+   overlapping (mp-topbar's sweep with a 2,550,000 purse, 12,400 AP, the
+   pill, TEST MODE and the XP bar up): upright 320 1.05, 360 1.1, 375 1.15,
+   390 1.2; 430 is a wide phone that shows the full numbers, 1.1.  Sideways
+   fits 1.6 but the screen is short (320-390 px), so 1.3 keeps the world in
+   view; the computer's wide layout has room to spare: 1.45.
+   The scale lives on <html> (--bt-bar-k) so the things placed just under
+   the bar (the gold popups, the achievement banner, the new-monster card,
+   the player list) move down with it by --bt-bar-grow. */
+html{--bt-bar-k:1.05;--bt-bar-grow:calc(34px * (var(--bt-bar-k) - 1))}
+@media (min-width:360px){ html{--bt-bar-k:1.1} }
+@media (min-width:375px){ html{--bt-bar-k:1.15} }
+@media (min-width:390px){ html{--bt-bar-k:1.2} }
+@media (min-width:430px){ html{--bt-bar-k:1.1} }
+html[data-orient="landscape"]{--bt-bar-k:1.3}
+@media (pointer:fine){ html.bt-desk-wide{--bt-bar-k:1.45} }
+.bt-zone-header__logout{width:calc(34px * var(--zk));height:calc(34px * var(--zk));display:grid;place-items:center;
   padding:0;pointer-events:auto}
 /* v2.3.3553: the bar's left column: the log-out door, then your AP (the
    owner: "Achievement points should be a prominent part of the experience").
    `auto` in the grid now (it was the door's fixed 38px), min-width keeping
    the old 38 so a worker without achievements lays the bar out as before. */
-.bt-zone-header__left{min-width:38px;display:flex;align-items:center;gap:2px}
-.bt-zone-header__ap{position:relative;height:34px;min-width:44px;display:flex;
-  align-items:center;gap:4px;padding:0 6px;margin:0;border:none;background:transparent;
-  color:#EAC675;font:800 15px/1 'Source Sans 3',sans-serif;
+.bt-zone-header__left{min-width:calc(38px * var(--zk));display:flex;align-items:center;gap:2px}
+.bt-zone-header__ap{position:relative;height:calc(34px * var(--zk));min-width:44px;display:flex;
+  align-items:center;gap:4px;padding:0 calc(6px * var(--zk));margin:0;border:none;background:transparent;
+  color:#EAC675;font:800 calc(15px * var(--zk))/1 'Source Sans 3',sans-serif;
   font-variant-numeric:tabular-nums;white-space:nowrap;cursor:pointer;
   touch-action:manipulation;pointer-events:auto;
   text-shadow:0 1px 2px rgba(0,0,0,.78)}
-.bt-zone-header__ap img{width:20px;height:20px;display:block;object-fit:contain;
+.bt-zone-header__ap img{width:calc(20px * var(--zk));height:calc(20px * var(--zk));display:block;object-fit:contain;
   pointer-events:none}
 /* the "+N" pops up just right of the number and slides into it as it goes,
    inside the bar's own box: it reads as the counter's, and never lies over
@@ -1948,7 +1969,7 @@ button.bt-pin-drop{color:inherit;margin:0}
   70%{opacity:1;transform:translate(2px,-50%) scale(1)}
   100%{opacity:0;transform:translate(-14px,-50%) scale(.9)}}
 html.bt-calm .bt-ap-gain{animation:none;opacity:0}
-.bt-zone-header__logout img{width:26px;height:26px;object-fit:contain;display:block;
+.bt-zone-header__logout img{width:calc(26px * var(--zk));height:calc(26px * var(--zk));object-fit:contain;display:block;
   pointer-events:none} /* v2.3.1333c: 21 -> 26 + svg viewBox tightened (owner: icon read tiny) */
 /* ═══ v2.3.2413: THE TITLE HAS TO RECEIVE THE PRESS ═══
    Owner, trying to open the test panel: "The long press on zone name to open
@@ -1979,9 +2000,9 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
    dock target) and its ellipsis, and the icon never takes a touch. */
 .bt-zone-header__mid{min-width:0;display:flex;align-items:center;
   justify-content:center;gap:6px}
-.bt-zone-header__tod{flex:none;display:block;pointer-events:none}
+.bt-zone-header__tod{flex:none;display:block;pointer-events:none;width:calc(16px * var(--zk));height:calc(16px * var(--zk))}
 .bt-zone-header__title{min-width:0;overflow:hidden;color:#F4F5F3;
-  font:650 15px/1.1 'Source Sans 3',sans-serif;letter-spacing:.045em;
+  font:650 calc(15px * var(--zk))/1.1 'Source Sans 3',sans-serif;letter-spacing:.045em;
   text-align:center;text-overflow:ellipsis;white-space:nowrap;
   pointer-events:auto;
   text-shadow:0 1px 2px rgba(0,0,0,.78)}
@@ -2016,6 +2037,61 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
 .bt-zone-header__mid > .bt-zone-header__test{transition:opacity 220ms linear}
 .bt-zone-header__mid--xp > .bt-zone-header__title,
 .bt-zone-header__mid--xp > .bt-zone-header__test{opacity:0}
+/* ═══ v2.3.3765: NO MAN'S LAND'S PILL, RIGHT OF THE TITLE ═══
+   (NmlBadge.jsx NmlPill) The owner: "just to the right of the Brotown name at
+   the top (you can cut it away same as when earning xp in a weapon)".  It
+   takes touches (a tap opens the rules), as the AP chip does; the bar does
+   not.  Cut away with the title under the XP bar.  It never squeezes: the
+   title keeps its box and the purse its column, and on a narrow phone the
+   pill is the smaller size.  Flat fills only: the bar is over the WebGL
+   canvas (TRAPS section 42). */
+.bt-nml-pill{flex:none;position:relative;height:calc(34px * var(--zk));min-width:34px;margin:0;padding:0 1px;
+  display:flex;align-items:center;border:0;background:transparent;cursor:pointer;
+  pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+  transition:opacity 220ms linear}
+.bt-nml-pill__body{position:relative;display:flex;align-items:center;gap:3px;
+  padding:1px 7px 1px 3px;border-radius:999px;background:rgba(22,10,10,.9);
+  border:2px solid #FF6B5E;box-shadow:0 0 0 1px rgba(0,0,0,.5)}
+.bt-nml-pill__skull{display:block;line-height:0}
+.bt-nml-pill__skull svg{width:calc(20px * var(--zk));height:calc(20px * var(--zk))}
+.bt-nml-pill__num{color:#FF6B5E;font:900 calc(17px * var(--zk))/1 'Source Sans 3',sans-serif;
+  font-variant-numeric:tabular-nums}
+.bt-nml-pill__own{position:absolute;top:-6px;right:-7px;width:14px;height:14px;
+  border-radius:999px;background:rgba(22,10,10,.94);border:1px solid #FF6B5E;
+  display:flex;align-items:center;justify-content:center;pointer-events:none}
+.bt-zone-header__mid--xp > .bt-nml-pill{opacity:0;pointer-events:none}
+/* v2.3.3765: on a narrow bar the XP bar needs the AP's room too: while it is
+   up the AP chip steps out (it comes back with the title).  mp-topbar: at
+   320-390 px with a rich purse the bar's "+N XP" and its track lay over the
+   AP and the purse. */
+@media (max-width:429px){
+  .bt-zone-header:has(.bt-zone-header__mid--xp) .bt-zone-header__ap{display:none}
+}
+@media (max-width:374px){
+  .bt-nml-pill__body{gap:2px;padding:0 5px 0 2px}
+  .bt-nml-pill__skull svg{width:calc(16px * var(--zk));height:calc(16px * var(--zk))}
+  .bt-nml-pill__num{font-size:calc(14px * var(--zk))}
+  /* ...and with the owner's TEST MODE tag beside them too (mp-nmltopbar: at
+     320 px the title lost its tail), the hour's icon gives way and the gaps
+     close a little: never the title or the purse */
+  .bt-zone-header__mid:has(> .bt-nml-pill):has(> .bt-zone-header__test){gap:4px}
+  .bt-zone-header__mid:has(> .bt-nml-pill):has(> .bt-zone-header__test) > .bt-zone-header__tod{display:none}
+}
+/* v2.3.3765: the pill AND the owner's TEST MODE tag on a phone narrower than
+   430 is the fullest bar there is, and it does not fit grown (mp-nmltopbar:
+   "BroTown" lost its tail at 320, 375 and 390): that bar stays the old size,
+   the owner's own test characters only, never a player's bar */
+@media (max-width:429px){
+  .bt-zone-header:has(.bt-zone-header__mid > .bt-nml-pill):has(.bt-zone-header__mid > .bt-zone-header__test){--zk:1}
+  .bt-zone-header__mid:has(> .bt-nml-pill):has(> .bt-zone-header__test){gap:4px}
+  .bt-zone-header__mid:has(> .bt-nml-pill):has(> .bt-zone-header__test) > .bt-zone-header__tod{display:none}
+}
+/* v2.3.3765: ...and on the narrowest phones (an iPhone SE, 320 px) the hour's
+   icon gives way to the pill whenever it is up (mp-topbar: with a rich purse
+   "BroTown" lost its tail even at the old size) */
+@media (max-width:359px){
+  .bt-zone-header__mid:has(> .bt-nml-pill) > .bt-zone-header__tod{display:none}
+}
 .bt-xp-bar{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;
   align-items:center;justify-content:center;gap:5px;opacity:0;
   transition:opacity 220ms linear;pointer-events:none}
@@ -2085,12 +2161,12 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
 /* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
    holds the old 38px so the title stays centred on the SCREEN while the
    purse is narrow, which is the property the spacer existed for. */
-.bt-zone-header__balance{justify-self:end;min-width:38px;
+.bt-zone-header__balance{justify-self:end;min-width:calc(38px * var(--zk));
   display:flex;align-items:center;justify-content:flex-end;gap:4px;
-  color:#D8AA58;font:800 15px/1 'Source Sans 3',sans-serif;
+  color:#D8AA58;font:800 calc(15px * var(--zk))/1 'Source Sans 3',sans-serif;
   font-variant-numeric:tabular-nums;white-space:nowrap;
   text-shadow:0 1px 2px rgba(0,0,0,.78)}
-.bt-zone-header__balance img{width:18px;height:18px;display:block;
+.bt-zone-header__balance img{width:calc(18px * var(--zk));height:calc(18px * var(--zk));display:block;
   image-rendering:pixelated;object-fit:contain}
 /* v2.3.1336: equipped-item marker — a simple green gradient dot (owner:
    replaces the bracketed-checkmark art, which read as UI chrome). */
@@ -5595,6 +5671,16 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
      !important because the wrap's size is an inline style (BroTown.jsx). */
   .bt-name-modal { height:100%; }
   .brotown-wrap { width:100%!important; height:100%!important; }
+  /* ═══ v2.3.3769: THE TRAIT PICKER AS TALL AS WHAT IT HOLDS ═══
+     The owner: "As you find improvements you can make to the empty space on
+     the desktop version go ahead and make your changes to better it" (the
+     judges play on computers).  The picker ran to the screen's foot whatever
+     its tab held: on Species, three tiles and some 60% of the pane an empty
+     navy box.  On a computer it is as tall as its tab now, the creator's
+     painted backdrop showing below a short one; a long tab (Hair, Shirt)
+     still meets the foot and scrolls inside, as before.  Phones keep the
+     full-height pane: this block is pointer:fine only. */
+  .bt-cc-cols>.bt-cc-panel { align-self:flex-start; max-height:100%; }
   #root {
     /* v2.3.1715: 50% -> 25% (owner: "force shrink the game area another 50%
        ... including the dashboard").  480px at 1920, which lands close to the
@@ -5670,6 +5756,18 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
      that very column, below): its trait picker otherwise ran the window's
      whole width with one row of tiles in it.  The backdrop fills the window. */
   html.bt-desk-wide .bt-name-modal > *{max-width:min(100%, calc(100vh * 390 / 715));margin-left:auto;margin-right:auto}
+  /* ═══ v2.3.3769: THE TRAIT PICKER, PROPORTIONALLY LARGER ═══
+     The owner: "For the trait picker desktop only you can make the trait
+     picker area and buttons proportionally larger".  The creator takes 1.4
+     columns now (still the window's HEIGHT that sizes it, TRAPS §214): the
+     left column keeps its --cc-leftw (the bro, the plate, ENTER exactly as
+     they were) and the picker takes the rest, drawn 1.3 times its size --
+     its tiles, tabs, swatches and words together, in proportion (`zoom`, so
+     its layout is the size it is drawn).  Its height stays the column's
+     (a percentage is not zoomed: 100% is the column's foot), a long tab
+     scrolling inside as before. */
+  html.bt-desk-wide .bt-name-modal > .bt-cc-shell{max-width:min(100%, calc(100vh * 390 / 715 * 1.4))}
+  html.bt-desk-wide .bt-cc-cols>.bt-cc-panel{zoom:1.3;max-height:100%}
   /* THE CONTROLS' COLUMN at the screen's far edge (KeyboardHintsPanel.jsx
      DeskKeysList, from BottomDashboard): the screen's height, its keys in
      groups; folded, the ⌨ alone.  Its width and its edge are set inline from
@@ -7450,8 +7548,8 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
   animation:bt-achv-banner var(--achv-ms,3200ms) linear both;
 }
 .bt-achv-banner.is-low{top:calc(max(22%, calc(env(safe-area-inset-top,0px) + 192px)) + 76px)}
-html[data-orient="landscape"] .bt-achv-banner{top:calc(env(safe-area-inset-top,0px) + 52px)}
-html[data-orient="landscape"] .bt-achv-banner.is-low{top:calc(env(safe-area-inset-top,0px) + 128px)}
+html[data-orient="landscape"] .bt-achv-banner{top:calc(env(safe-area-inset-top,0px) + 52px + var(--bt-bar-grow,0px))}
+html[data-orient="landscape"] .bt-achv-banner.is-low{top:calc(env(safe-area-inset-top,0px) + 128px + var(--bt-bar-grow,0px))}
 @keyframes bt-achv-banner{
   0%{opacity:0;transform:translateX(-50%) translateY(-10px) scale(.96)}
   8%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
