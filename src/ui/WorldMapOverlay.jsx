@@ -60,7 +60,9 @@ import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525:
 import { deskWideActive } from './deskWide.js';                    /* v2.3.3830: the key sized from the column on a computer */
 import { GLYPHS, drawGlyph, glyphDetailColor } from './mapGlyphs.js';   /* v2.3.3780: each mark a little picture of what it is, the key the same */
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
-import { loadPins, pinsOf, PIN_KEYS, PIN_CSS } from '../game/mapPins.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
+import { loadPins, pinsOf, PIN_KEYS, PIN_CSS } from '../game/mapPins.js';
+import { DROP_PIN, dropPinAt, dropPinOn, setDropPin, clearDropPin, isMapTap } from '../game/dropPin.js';   /* v2.3.3879: your own pin, dropped with a tap */
+import { deskWords } from '../game/deskWords.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
 import { boardPlaceAt } from '../game/mapPinPlaces.js';
 import { boardPinnable } from '../data/townBoard.js';
 import { wheelDungeonOpen, wheelDungeonLevelsLine } from '../game/wheelDungeons.js';                  /* v2.3.3540: which landmarks are dungeons this worker opens; v2.3.3573: + a party dungeon's level and players */
@@ -217,6 +219,9 @@ function WorldMap({ stateRef, onClose }) {
   const [partyShown, setPartyShown] = useState(false);
   /* v2.3.3525: ...and "has a quest" while a townsperson's pin is */
   const [pinsShown, setPinsShown] = useState(false);
+  /* v2.3.3879: your own pin (game/dropPin.js): set or not, for the chip */
+  const [pinSet, setPinSet] = useState(() => !!dropPinAt(stateRef && stateRef.current));
+  const press = useRef(null);
   /* v2.3.3481: the canvas's size in CSS px, for the key's width (below);
      set by the draw loop, so a turn of the phone moves the key too */
   const [cvBox, setCvBox] = useState(null);
@@ -335,7 +340,15 @@ function WorldMap({ stateRef, onClose }) {
   const onDown = (e) => {
     e.stopPropagation();
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* fine */ }
+    /* v2.3.3879: a PRIMARY press means no other finger is down: a lift the map
+       never heard (a finger let go off it) must not make this one a pinch --
+       on a phone every other tap was read as a second finger and dropped
+       nothing (mp-mappin) */
+    if (e.isPrimary) { ptrs.current.clear(); pinch.current = null; }
     ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    /* v2.3.3879: a press that may be a tap (one finger, the main button) */
+    press.current = ptrs.current.size === 1 && (e.button === undefined || e.button === 0)
+      ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now() } : null;
     if (ptrs.current.size === 2) {
       const [a, b] = [...ptrs.current.values()];
       pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
@@ -361,7 +374,42 @@ function WorldMap({ stateRef, onClose }) {
       pinch.current.d = d;
     }
   };
-  const onUp = (e) => { ptrs.current.delete(e.pointerId); if (ptrs.current.size < 2) pinch.current = null; };
+  const onUp = (e) => {
+    ptrs.current.delete(e.pointerId);
+    if (ptrs.current.size < 2) pinch.current = null;
+    /* ═══ v2.3.3879: A TAP DROPS YOUR PIN; A TAP ON IT LIFTS IT ═══
+       The map did nothing on a tap before (a drag looks round, two fingers
+       or the wheel zoom), so a tap is free: one finger that hardly moved, not
+       long held (game/dropPin.js isMapTap).  A drag, a pinch or a long press
+       drops nothing. */
+    const pr = press.current;
+    press.current = null;
+    if (!pr || pr.id !== e.pointerId || ptrs.current.size > 0 || !dropPinOn()) return;
+    if (!isMapTap(pr.x, pr.y, e.clientX, e.clientY, Date.now() - pr.t)) return;
+    const cv = cvRef.current, map = wheelMapInfo(), S = stateRef && stateRef.current;
+    if (!cv || !map || !S) return;
+    const r = cv.getBoundingClientRect(), V = view.current;
+    const k = baseScale(cv.clientWidth, cv.clientHeight, map) * V.zoom;
+    const sx = e.clientX - r.left, sy = e.clientY - r.top;
+    const at = dropPinAt(S);
+    if (at) {
+      const px = (at.x - V.cx) * k + cv.clientWidth / 2, py = (at.y - V.cy) * k + cv.clientHeight / 2;
+      /* the pin's head stands above its point */
+      if (Math.hypot(sx - px, sy - (py - 16)) <= DROP_PIN.HIT_PX) { clearDropPin(S); setPinSet(false); dirty.current = true; return; }
+    }
+    const wx = V.cx + (sx - cv.clientWidth / 2) / k, wy = V.cy + (sy - cv.clientHeight / 2) / k;
+    if (wx < 0 || wy < 0 || wx > map.worldW || wy > map.worldH) return;
+    if (setDropPin(S, wx, wy)) { setPinSet(true); dirty.current = true; }
+  };
+  const onCancel = (e) => { press.current = null; onUp({ pointerId: e.pointerId, clientX: NaN, clientY: NaN }); };
+  /* "Remove pin": a click, on its own element, not the map's -- the map never
+     sees the press, and it closes nothing */
+  const removePin = (e) => {
+    if (e) e.stopPropagation();
+    const S = stateRef && stateRef.current;
+    if (S && clearDropPin(S)) dirty.current = true;
+    setPinSet(false);
+  };
   const onWheel = (e) => { const r = cvRef.current.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX - r.left, e.clientY - r.top); };
   const centreOnMe = () => {
     const S = stateRef.current, map = wheelMapInfo();
@@ -429,7 +477,7 @@ function WorldMap({ stateRef, onClose }) {
         <canvas
           ref={cvRef}
           data-world-map-canvas=""
-          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onWheel={onWheel}
+          onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel} onWheel={onWheel}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block', touchAction: 'none' }}
         />
         {/* v2.3.3065: north, as on the minimap's frame -- the map never turns */}
@@ -445,6 +493,21 @@ function WorldMap({ stateRef, onClose }) {
           <button type="button" aria-label="Zoom out" data-world-map-zoom-out="" onClick={() => zoomBtn(1 / 1.6)} style={btn}>−</button>
           <button type="button" aria-label="Back to you" data-world-map-me="" onClick={centreOnMe} style={{ ...btn, fontSize: 18 }}>◎</button>
         </div>
+        {/* ═══ v2.3.3879: YOUR PIN -- how to drop one, and how to lift it ═══ */}
+        {dropPinOn() ? (pinSet ? (
+          <button type="button" data-world-map-unpin="" onClick={removePin} onPointerDown={(e) => e.stopPropagation()}
+            style={{ position: 'absolute', left: '50%', top: 10, transform: 'translateX(-50%)', appearance: 'none', minHeight: 40, padding: '0 14px',
+              borderRadius: 20, border: `2px solid ${DROP_PIN.CSS}`, background: 'rgba(17,30,35,0.94)', color: INK, fontSize: 14, fontWeight: 800,
+              display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', touchAction: 'manipulation', whiteSpace: 'nowrap' }}>
+            <PinGlyph />Remove pin
+          </button>
+        ) : (
+          <div data-world-map-pinhint="" style={{ position: 'absolute', left: '50%', top: 12, transform: 'translateX(-50%)', pointerEvents: 'none',
+            padding: '6px 12px', borderRadius: 16, background: 'rgba(17,30,35,0.85)', color: INK, fontSize: 12.5, fontWeight: 700,
+            display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+            <PinGlyph />{deskWords('Tap the map to drop a pin')}
+          </div>
+        )) : null}
         <div data-world-map-legend="" style={{ position: 'absolute', left: 10, bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)', display: 'flex', flexWrap: 'wrap', gap: '4px 10px', maxWidth: keyMaxW,
           padding: '6px 9px', borderRadius: 8, background: 'rgba(17,30,35,0.85)', color: INK, fontSize: 11,
           ...(keyK > 1 ? { zoom: +keyK.toFixed(3) } : null) }}>
@@ -458,6 +521,7 @@ function WorldMap({ stateRef, onClose }) {
           <Key shape="line" color="#5AAEE8">river</Key>
           <Key shape="star" color={C_STAR}>quest</Key>
           {pinsShown ? <Key shape="pin">has a quest</Key> : null}
+          {pinSet && dropPinOn() ? <span data-world-map-key="droppin" style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center' }}><PinGlyph size={12} />your pin</span> : null}
           {partyShown ? <Key shape="dot" color={PARTY_MARK.CSS}>party</Key> : null}
           {zoomShown[0] >= AT.others ? <Key glyph="bro">bro</Key> : null}
           {zoomShown[1] >= AT.monster ? <Key glyph="monster">monster</Key> : null}
@@ -468,6 +532,16 @@ function WorldMap({ stateRef, onClose }) {
         </div>
       </div>
     </div>
+  );
+}
+
+/* v2.3.3879: your pin, as the map draws it (DROP_PIN.CSS), for the key and the chip */
+function PinGlyph({ size = 14 }) {
+  return (
+    <svg viewBox="-9 -26 18 27" width={size} height={Math.round(size * 1.5)} aria-hidden="true" style={{ flex: '0 0 auto', marginRight: 4 }}>
+      <path d="M0 0 L-7 -13 A8 8 0 1 1 7 -13 Z" fill={DROP_PIN.CSS} stroke="rgba(11,22,27,0.92)" strokeWidth="1.6" />
+      <circle cx="0" cy="-16" r="3.2" fill="#FFFFFF" />
+    </svg>
   );
 }
 
@@ -618,6 +692,7 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
   const more = { ticks: 0, nodes: 0, others: 0, monsters: 0, quest: null, buildings: 0, buildingIcons: 0, buildingsAt: 0, bridges: 0, ponds: 0, tierLabels: 0, party: 0, partyNames: 0,
     questPins: 0, questPinNames: 0, pins: [],   /* v2.3.3525: the townsfolk's quest pins */
     mapPins: [],   /* v2.3.3766: the board's red and blue pins */
+    dropPin: null,   /* v2.3.3879: your own pin, where drawn */
     dungeons: 0,   /* v2.3.3540: the dungeons' mouths named with their levels */
     glyphs: { town: 0, camp: 0, pass: 0, gate: 0, landmark: 0, monster: 0, fish: 0, tree: 0, ore: 0, bro: 0 },   /* v2.3.3780: each glyph drawn (the probe's) */
     dungeonLines: [],   /* v2.3.3573: ...and what each says (the probe's; a party dungeon says its players) */
@@ -763,6 +838,33 @@ function draw(g, w, h, dpr, map, V, P, facing, t, S) {
       g.lineWidth = 1.8; g.strokeStyle = HALO; g.stroke();
       g.beginPath(); g.arc(x, y - 16 * sc, 3 * sc, 0, Math.PI * 2); g.fillStyle = '#0B161B'; g.fill();
       more.mapPins.push({ color: kk, id, edge, x: Math.round(x), y: Math.round(y) });
+    }
+  }
+  /* ═══ v2.3.3879: YOUR OWN PIN (game/dropPin.js) ═══
+     The board's pin shape in purple, bigger, at every zoom; off the screen at
+     its edge on the line from the middle, as the board's pins. */
+  if (S && dropPinOn()) {
+    const at = dropPinAt(S);
+    if (at) {
+      let x = X(at.x), y = Y(at.y), edge = false;
+      const m = 20;
+      if (x < m || y < m + 22 || x > w - m || y > h - m) {
+        const cx = w / 2, cy = h / 2, dx = x - cx, dy = y - cy;
+        let t = 1;
+        if (dx > 0) t = Math.min(t, (w - m - cx) / dx); else if (dx < 0) t = Math.min(t, (m - cx) / dx);
+        if (dy > 0) t = Math.min(t, (h - m - cy) / dy); else if (dy < 0) t = Math.min(t, (m + 22 - cy) / dy);
+        x = cx + dx * t; y = cy + dy * t; edge = true;
+      }
+      const sc = edge ? 0.9 : 1.4;
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x - 7 * sc, y - 13 * sc);
+      g.arc(x, y - 16 * sc, 8 * sc, Math.PI * 0.82, Math.PI * 0.18, false);
+      g.closePath();
+      g.fillStyle = DROP_PIN.CSS; g.fill();
+      g.lineWidth = 2; g.strokeStyle = HALO; g.stroke();
+      g.beginPath(); g.arc(x, y - 16 * sc, 3.2 * sc, 0, Math.PI * 2); g.fillStyle = '#FFFFFF'; g.fill();
+      more.dropPin = { x: Math.round(x), y: Math.round(y), edge, at };
     }
   }
   /* ═══ v2.3.3525: THE QUEST PINS (src/game/questPins.js) ═══
