@@ -82,13 +82,21 @@ const FADE_IN_MS = 1600;     /* v2.3.2995: a mended object fading back in */
    you while you stand behind its foot eases to SEE_ALPHA, and back when you
    step out: Stardew's rule.  Buildings stay solid (the roof drawn over you
    is the owner's, v2.3.2975).  With placing v2 (`?placing=2`) or `?fade`;
-   `?nofade` never. */
+   `?nofade` never.  (v2.3.3815: always, below.) */
 const SEE_ALPHA = 0.42, SEE_MS = 110;
+/* ═══ v2.3.3815: ...IN THE LIVE WORLD TOO ═══
+   Lane A's judge pass, 2026-10-29: in the Earth Forest a judge walking the
+   first quest lost his own bro under a wildfruit's crown -- the rule above
+   was on only in the placing v2 preview, and the Earth Forest's woods are
+   as thick.  So it is on everywhere now; `?nofade` is the old way (mp-canopy:
+   the crown eases to SEE_ALPHA over the bro, back once he steps out).  A
+   monster under a crown is already shown, as its silhouette
+   (monsterSilhouette.js). */
 const CANOPY_FADE = (() => {
   try {
     const q = window.location.search || '';
-    return /(^|[?&])(placing=2|fade)(=|&|$)/.test(q) && !/(^|[?&])nofade(=|&|$)/.test(q);
-  } catch (e) { return false; }
+    return !/(^|[?&])nofade(=|&|$)/.test(q);
+  } catch (e) { return true; }
 })();
 
 /* The numbers for the trial's readout and the QA scenario live in

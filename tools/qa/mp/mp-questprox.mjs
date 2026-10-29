@@ -14,8 +14,11 @@
  *   3. a tap on him, where a thumb lands, opens his window;
  *   4. closed while standing there, it stays closed;
  *   5. the right stick's tap opens it;
- *   6. E on a keyboard opens it, his quest coming before the Town Hall's door
- *      (desktopControls questWaits);
+ *   6. E on a keyboard opens it, his quest coming before a door (desktopControls
+ *      questWaits) -- v2.3.3834: except where the door's prompt is up, where E
+ *      does what that prompt says (the judge pass: "E ENTER TOWN HALL" talked
+ *      to the Mayor); so 6 finds a spot beside him with no door prompt (E
+ *      talks) and, where there is one, a spot with it up (E opens the door);
  *   7. beside Diego no shop opens, and a tap on him opens it;
  *   8. a READY quest: beside him nothing opens, and a tap opens the turn-in;
  *   9. with `?npcprox` walking up opens him again (the switch works);
@@ -161,7 +164,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await close();
   await P.page.waitForTimeout(400);
 
-  /* ── 6. E on a keyboard, his quest before the Town Hall's door ── */
+  /* ── 6. E on a keyboard: his quest before a door, but never over the
+        door's own prompt (v2.3.3834) ── */
+  /* the door's prompt is up where desktopControls' doorPromptUp says so */
+  const promptUp = () => P.page.evaluate(() => {
+    const S = window._gameState && window._gameState.current;
+    return !!(S && (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)));
+  });
+  const SPOTS = [[0, 34], [70, 10], [-70, 10], [60, 50], [-60, 50], [0, 70], [40, -30], [-40, -30], [0, -40]];
+  let talkAt = null, doorAt = null;
+  for (const [dx, dy] of SPOTS) {
+    await place(P, 'mayor_bro', dx, dy);
+    await P.page.waitForTimeout(350);
+    const n = await near(P), up = await promptUp();
+    if (n.npc === 'mayor_bro' && !up && !talkAt) talkAt = [dx, dy];
+    if (n.npc === 'mayor_bro' && up && !doorAt) doorAt = [dx, dy];
+    if (talkAt && doorAt) break;
+  }
+  if (talkAt) await place(P, 'mayor_bro', talkAt[0], talkAt[1]);
+  await P.page.waitForTimeout(400);
   const n6 = await near(P);
   await P.page.keyboard.press('e');
   await P.page.waitForTimeout(900);
@@ -169,10 +190,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const n = document.querySelector('.bt-npcdlg-name');
     return n ? (n.innerText || '').trim() : null;
   });
-  rec.ok('6: E opens his window (his quest before the Town Hall\'s door)',
-    await open() && (t6 === null || /mayor/i.test(t6)), { near: n6, dialogue: t6 });
+  rec.ok(`6: beside him with no door prompt up (${JSON.stringify(talkAt)}), E opens his window (his quest before a door)`,
+    !!talkAt && await open() && (t6 === null || /mayor/i.test(t6)), { talkAt, near: n6, dialogue: t6 });
   await close();
   await P.page.waitForTimeout(400);
+  if (doorAt) {
+    await place(P, 'mayor_bro', doorAt[0], doorAt[1]);
+    await P.page.waitForTimeout(500);
+    const prompt6 = await P.page.evaluate(() => { const b = document.querySelector('.bt-interact-prompt'); return b ? b.innerText.replace(/\s+/g, ' ').trim() : null; });
+    await P.page.keyboard.press('e');
+    await P.page.waitForTimeout(1200);
+    const b6 = await P.page.evaluate(() => ({ building: !!document.querySelector('[data-building-panel]'), dialogue: !!document.querySelector('.bt-npcdlg-name') }));
+    rec.ok(`6: ...and beside him with the door's prompt up ("${prompt6}"), E does what it says: the door opens, not his window`,
+      b6.building && !b6.dialogue, { doorAt, prompt6, b6 });
+    /* the Town Hall's window shut again, wholly, before Diego's taps */
+    await P.page.evaluate(() => { if (window._uiPanels && window._uiPanels.building) window._uiPanels.building(null); });
+    await P.page.waitForTimeout(800);
+    const shut6 = await P.page.evaluate(() => !document.querySelector('[data-building-panel]'));
+    rec.ok('6: ...and the Town Hall shut again (guard)', shut6, shut6);
+  } else {
+    rec.ok('6: (no spot beside him puts the door\'s prompt up: nothing to choose between)', true, { tried: SPOTS });
+  }
 
   /* ── 7. Diego: beside him no shop; a tap opens it ── */
   const dFar = await place(P, 'shopkeeper_bro', 420, 0);

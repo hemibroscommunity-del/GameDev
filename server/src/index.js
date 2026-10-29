@@ -165,6 +165,7 @@ import { poseMethods } from './poses.js'; /* v2.3.3392: a held pose (sit, sleep,
 import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled by the worker */
 import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
 import { pointsResetMethods } from './pointsreset.js'; /* v2.3.3541: the free points reset -- every placed point back */
+import { bankMethods } from './bank.js'; /* v2.3.3785: the Bank's vault -- bag items and gold the worker holds, out of a death's reach */
 import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
 import { heapBurnMethods } from './heapburn.js'; /* v2.3.3748: a burning heap sets you on fire */
 import { safeHealMethods } from './safeheal.js'; /* v2.3.3569: BroTown's safe ground heals as the old town did, out of a fight */
@@ -546,6 +547,7 @@ export const PRIVILEGED_EVENTS = new Set([
      tell another player they had rested and were Well Rested when the worker
      rested nobody. */
   'rest_result',
+  'bank_state',   /* v2.3.3785: the Bank's vault (bank.js) */
   /* v2.3.3127: the farm (farm.js) -- the beds, what grows in them and when it
      is ready, and what an action paid.  A forged one would paint ripe crops
      and harvests the worker never settled on another player's screen. */
@@ -5507,6 +5509,19 @@ export class GameRoom {
         if (session.id) this._handleHeapBurn(session);
         break;
 
+      /* v2.3.3785: the Bank's vault (bank.js): open it, put in, take out --
+         each awaited (its first read of the vault is a storage get), each
+         answered bank_state */
+      case 'bank_open':
+        if (session.id) await this._handleBankOpen(session);
+        break;
+      case 'bank_deposit':
+        if (session.id) await this._handleBankMove(session, msg.payload || msg, 'in');
+        break;
+      case 'bank_withdraw':
+        if (session.id) await this._handleBankMove(session, msg.payload || msg, 'out');
+        break;
+
       case 'rest_request':
         /* v2.3.3539: a rest at the Hotel or on your farm's bed (rest.js) --
            full bars and Well Rested, paid by the worker */
@@ -6297,6 +6312,7 @@ export class GameRoom {
          The record itself is durable in gear_prov:<pid> and reloads on the
          next join (gearprov.js); this is only the cache. */
       this._gearProvForget(session.id);
+      this._bankForget(session.id);   /* v2.3.3785: the vault's cache, the same way (bank.js) */
       /* v2.3.3120: the pets record's cache goes with the session too
          (petbook.js).  A try counted only in memory is copied out here and
          written at the very END of this handler -- awaited, as the last
@@ -6619,6 +6635,7 @@ Object.assign(GameRoom.prototype, diceMethods); /* v2.3.3393 */
 Object.assign(GameRoom.prototype, itemDropMethods); /* v2.3.3473 */
 Object.assign(GameRoom.prototype, pointsResetMethods); /* v2.3.3541 */
 Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
+Object.assign(GameRoom.prototype, bankMethods); /* v2.3.3785 */
 Object.assign(GameRoom.prototype, safeHealMethods); /* v2.3.3569 */
 Object.assign(GameRoom.prototype, heapBurnMethods); /* v2.3.3748 */
 Object.assign(GameRoom.prototype, statCapMethods); /* v2.3.3578 */

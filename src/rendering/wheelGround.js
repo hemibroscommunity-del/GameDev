@@ -40,7 +40,7 @@
  * which reads the picture up to 4 game px away; still half a game px shown.)
  */
 import { Container, Sprite, Texture, Rectangle, BufferImageSource, CanvasSource } from 'pixi.js';
-import { wheelInfo, wheelStart, wheelChunk, wheelIsWarm, wheelDropWarm, wheelOverview, wheelStats, wheelOnGot } from '../game/wheelTrial.js';
+import { wheelInfo, wheelStart, wheelChunk, wheelIsWarm, wheelDropWarm, wheelWarmGen, wheelOverview, wheelStats, wheelOnGot } from '../game/wheelTrial.js';   /* v2.3.3823: + wheelWarmGen */
 import { worldTrialLeft } from '../game/worldTrial.js';
 import { WheelWater } from './wheelWater.js';   /* v2.3.3019: the water moves */
 import { paletteOn, makePaletteSource, paletteStats } from './paletteTex.js';   /* v2.3.3190: pieces as colour numbers */
@@ -158,7 +158,9 @@ export class WheelGround {
     this._vx = 0; this._vy = 0;   /* the camera's speed, game px a ms, smoothed */
     this._lastT = null;
     this._born = performance.now();
+    this._warmAt = this._born;   /* v2.3.3823: when the latest laid-ahead pieces came */
     this._warmDropped = false;
+    this._warmGen = -1;   /* v2.3.3823: the fill of laid-ahead pieces last seen (wheelWarmGen) */
   }
 
   _placeUnder(info) {
@@ -185,7 +187,11 @@ export class WheelGround {
     /* a camera that jumped more than a screen is still settling: ask for
        nothing until it lands (chunkGround.js) */
     const now = performance.now();
-    if (!this._warmDropped && now - this._born > WARM_KEEP_MS) { wheelDropWarm(); this._warmDropped = true; }
+    /* v2.3.3823: WARM_KEEP_MS after the LATEST fill, not once in this
+       ground's life: a later way in lays pieces ahead again */
+    const _wg = wheelWarmGen();
+    if (_wg !== this._warmGen) { this._warmGen = _wg; this._warmAt = now; this._warmDropped = false; }
+    if (!this._warmDropped && now - this._warmAt > WARM_KEEP_MS) { wheelDropWarm(); this._warmDropped = true; }
     const jumped = this._lastCx != null && Math.abs(cx - this._lastCx) + Math.abs(cy - this._lastCy) > 400;
     if (this._lastT != null && !jumped) {
       const dt = Math.max(1, now - this._lastT), k = Math.min(1, dt / 250);
