@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8d0abe6a0536d4d7ae2b124d0f7d55762dbe3c55",
+  "tree": "88c4ce104de9b8c4c3bca9e798769d966a02fd79",
+  "committedAt": "2026-10-29T08:21:00-07:00",
+  "subject": "Merge pull request #1327 from hemibroscommunity-del/claude/star-cue",
+  "files": 7277,
+  "bytes": 836345031,
+  "listingSha256": "d0c299753f972399ccd7510a33e13242e8cde1c48911ada9613587d7ba4ecbbd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

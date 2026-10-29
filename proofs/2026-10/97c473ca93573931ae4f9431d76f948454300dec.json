@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "97c473ca93573931ae4f9431d76f948454300dec",
+  "tree": "c7751275325ecb27fd47e57ecf1ddd5792f26d74",
+  "committedAt": "2026-10-29T08:20:51-07:00",
+  "subject": "Merge pull request #1328 from hemibroscommunity-del/claude/ride-gather-words",
+  "files": 7273,
+  "bytes": 836135313,
+  "listingSha256": "e939de339a8216354c7f0e8f2b3d067e37449d99d6595dc1498881762001aa65",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
