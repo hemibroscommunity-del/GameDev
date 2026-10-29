@@ -781,6 +781,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     writeFileSync(join(OUT, 'index.json'), JSON.stringify({ index, summary }, null, 1));
 
+    /* v2.3.3846: no knight figure asked for where none ships (north-east,
+       and north-west its mirror): the old path's request for it 404'd into the
+       crash ring as gear-sheet-failed (E's judge pass) */
+    if (outfits.includes('full')) {
+      const sheets = await page.evaluate(() => (window.__btGearSheets ? window.__btGearSheets() : []));
+      const asked = sheets.filter((k) => /^fullset\/[^/]+\/jog\/northeast$/.test(k));
+      rec.ok(`no knight figure asked for north-east (${asked.length ? asked.join(', ') : 'none'}; ${sheets.filter((k) => /^fullset\//.test(k)).length} figure sheets asked)`, asked.length === 0, asked);
+    }
     /* the checks a number can make here; the colours are counted by the report */
     for (const [k, s] of Object.entries(summary)) {
       rec.ok(`${k}: ${s.frames} frames photographed (guard)`, s.frames > 0, s.equip || null);
