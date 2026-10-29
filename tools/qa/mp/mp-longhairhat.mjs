@@ -23,6 +23,8 @@
  *   LH_FAIL=part         fail every download whose address holds `part` for LH_FAIL_MS
  *                        (20 s) from the page's start, as a wifi blip or a deploy does, then
  *                        let it through (LH_INITHAT=hat: worn from the start, so it loads then)
+ *   LH_CTX=1             then the graphics lost and given back (WEBGL_lose_context, the
+ *                        black-screen recovery) and each hat's N/NE/NW read again, against before
  *   LH_QUERY=x           another switch on the page (retrylooks=0: the loaders as they were)
  *   LH_HATS=a,b          these hats only; LH_REPEAT=n  each reading n times, frame after frame (a flicker
  *                        is one frame: the least of the n is what is judged, all n printed)
@@ -149,6 +151,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
           table[hat][face] = { jog, stand };
         }
       }
+      /* v2.3.3865: LH_CTX -- the graphics lost and given back, as the iPhone's
+         black-screen recovery does, then each hat's back facings read again */
+      if (process.env.LH_CTX) {
+        const lost = await P.page.evaluate(() => {
+          const c = document.querySelector('canvas');
+          const gl = c && (c.getContext('webgl2') || c.getContext('webgl'));
+          const ext = gl && gl.getExtension('WEBGL_lose_context');
+          if (!ext) return false;
+          ext.loseContext();
+          setTimeout(() => { try { ext.restoreContext(); } catch (e) { /* gone */ } }, 800);
+          return true;
+        }).catch(() => false);
+        await P.page.waitForTimeout(8000);
+        const after = [];
+        for (const hat of HATS) {
+          await P.page.evaluate((h) => window.__btSetHeadwear(h), hat);
+          await P.page.waitForTimeout(1500);
+          for (const face of ['north', 'northeast', 'northwest']) {
+            const keys = FACINGS[face];
+            for (const k of keys) await P.page.keyboard.down(k);
+            await P.page.waitForTimeout(700);
+            const jog = await readMin(P);
+            if (face === 'north') await shot(`${hat}-${face}-jog-after-loss`);
+            for (const k of keys) await P.page.keyboard.up(k);
+            await P.page.waitForTimeout(600);
+            const stand = await readMin(P);
+            for (const [pose, r] of [['jog', jog], ['stand', stand]]) {
+              const was = table[hat][face][pose];
+              const share = was && was.vis && was.n ? ((r && r.vis ? r.n : 0) / was.n) : null;
+              after.push({ hat, face, pose, before: was && was.vis ? was.n : 'hidden', after: r && r.vis ? r.n : 'hidden:' + (r && r.why), clip: r && r.mask, share });
+            }
+          }
+        }
+        console.log(`    [${vname}] after the graphics were lost (${lost ? 'lost and given back' : 'NOT LOST'}), against before:\n      `
+          + after.map((a) => `${a.hat} ${a.face} ${a.pose}: ${a.before} -> ${a.after}${a.clip ? ', clipped' : ', NOT CLIPPED'}${a.share != null ? ` (${Math.round(a.share * 100)}%)` : ''}`).join('\n      '));
+        const lostHair = after.filter((a) => a.share != null && a.share < 0.5);
+        rec.ok(`${vname}: after the graphics were lost and given back, the long hair under each hat keeps at least half its pixels facing N/NE/NW (${lostHair.length} short)`,
+          !!lost && lostHair.length === 0, lostHair.slice(0, 8));
+      }
+
       /* under each hat against bare-headed, the same facing and pose */
       const bad = [];
       const rows = [];
