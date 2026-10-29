@@ -6,11 +6,15 @@
  * caller (entityRenderer _placeGear) falls back to it, and to the plain sheet,
  * whenever this answers null.  docs/specs/look-shirts.md. */
 import { registerLookSheets, registerLookKind, getLookPartFrame, lookHas, lookPaletteWanted } from './lookPalette.js';
-import { shirtRowEntries, SHIRT_GLSL } from './lookShirt.js';
+import { shirtRowEntries, SHIRT_GLSL, SHIRT_TILE_MAX } from './lookShirt.js';
 import { artHash, sideForDir } from './traits/playerArt.js';
 import { getGearFrame, getShirtLookFrame, gearSheetLoad } from './gearSheets.js';
 import { parsePattern } from './traits/patternCatalog.js';
 import { installShirtProbe } from './lookShirtProbe.js';
+
+/* `?lookshirt=0`: the tee the old way, the rest of the look palette as it is
+   (for comparing the shirt part alone) */
+const _wanted = (() => { try { return !/(^|[?&])lookshirt=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
 
 /* behind the loading screen with the body's sheets (preloadLookSheets) */
 registerLookSheets('shirt', '/sprites/look/shirt/roles.json');
@@ -20,8 +24,20 @@ registerLookKind('shirt', SHIRT_GLSL);   /* the print, the tile and the tint, pe
    ~55 entries, and the look's key is made from them every frame otherwise */
 const _dress = new Map();
 const DRESS_CAP = 64;
+/* a drawing's hash by the drawing (the same string every frame: a Map hit,
+   not a 256-character hash a player a frame) */
+const _hashes = new Map();
+function hashOf(art) {
+  let h = _hashes.get(art);
+  if (h === undefined) {
+    if (_hashes.size >= DRESS_CAP) _hashes.delete(_hashes.keys().next().value);
+    h = artHash(art);
+    _hashes.set(art, h);
+  }
+  return h;
+}
 function dressOf(tint, pattern, art) {
-  const key = 's' + (tint ? tint.join(',') : '-') + '/' + (pattern ? pattern.id + ':' + pattern.colorIdx : '-') + '/' + (art ? artHash(art) : '-');
+  const key = 's' + (tint ? tint[0] + ',' + tint[1] + ',' + tint[2] : '-') + '/' + (pattern ? pattern.id + ':' + pattern.colorIdx : '-') + '/' + (art ? hashOf(art) : '-');
   let d = _dress.get(key);
   if (d) return d;
   const row = shirtRowEntries(tint, pattern, art);
@@ -45,8 +61,9 @@ function dressOf(tint, pattern, art) {
  * way).  Drawn UNTINTED: the tint is in the row.
  */
 export function getLookShirtFrame(item, pose, dir, frameIdx, look, plain) {
-  if (!lookPaletteWanted() || item !== 'tshirt' || !look) return null;
+  if (!_wanted || !lookPaletteWanted() || item !== 'tshirt' || !look) return null;
   const dressed = !!(look.art || look.pattern);
+  if (look.pattern && look.pattern.tile && look.pattern.tile.w * look.pattern.tile.h > SHIRT_TILE_MAX) return null;   /* its ink does not fit the row */
   if (!dressed && !(plain && look.tint)) return null;   /* white and plain: the shipped sheet as it is */
   const sheet = pose + '-' + dir;
   if (!lookHas('shirt', sheet)) return null;

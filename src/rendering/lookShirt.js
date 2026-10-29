@@ -26,6 +26,11 @@
 import { ART_PALETTE, ART_W, ART_H, isValidArt, artHasInk } from './traits/playerArt.js';
 
 export const SHIRT_E = Object.freeze({ TINT: 8, PAT: 9, TILE: 10, INK: 11, PRINT: 13, PAL: 16, ART: 128 });
+/* the tee's frame width, the mirror's axis (the bake refuses a sheet of any
+   other, so a resized sheet fails loudly rather than mirroring off-centre) */
+export const SHIRT_FW = 128;
+/* a tile's ink is two entries, 64 bits: a bigger tile is drawn the old way */
+export const SHIRT_TILE_MAX = 64;
 const HEX = '0123456789abcdef';
 const rgbOf = (hex) => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
 
@@ -40,7 +45,7 @@ export function shirtRowEntries(tint, pattern, art, row) {
     const t = pattern.tile;
     put(SHIRT_E.PAT, [...rgbOf(pattern.color), 255]);
     put(SHIRT_E.TILE, [t.w, t.h, Math.max(1, t.cell), 0]);
-    for (let i = 0; i < t.w * t.h && i < 64; i++) {
+    for (let i = 0; i < t.w * t.h && i < SHIRT_TILE_MAX; i++) {
       if (t.cells.charCodeAt(i) === 49) r[SHIRT_E.INK * 4 + (i >> 3)] |= 1 << (i & 7);
     }
   }
@@ -89,8 +94,8 @@ export function shirtTexel(sh, row, v, X, Y, mirror) {
     if (E(SHIRT_E.PAT, 3)) {
       const tw0 = E(SHIRT_E.TILE, 0), th0 = E(SHIRT_E.TILE, 1), cell = E(SHIRT_E.TILE, 2);
       const tw = tw0 * cell, th = th0 * cell;
-      const sx = mirror ? sh.fw - 1 - fx : fx;
-      const ax = mirror ? sh.fw - 1 - F(4) : F(4);
+      const sx = mirror ? SHIRT_FW - 1 - fx : fx;
+      const ax = mirror ? SHIRT_FW - 1 - F(4) : F(4);
       const tx = Math.floor((((sx - ax) % tw) + tw) % tw / cell);
       const ty = Math.floor((((fy - F(5)) % th) + th) % th / cell);
       const i = ty * tw0 + tx;
@@ -169,8 +174,8 @@ highp vec4 lookKind_shirt(highp int v, highp ivec2 q)
             highp vec4 tl = rowT(${SHIRT_E.TILE});
             highp int tw0 = int(tl.r), th0 = int(tl.g), cell = int(tl.b);
             highp int ax = shirtF(f, 4);
-            highp int sx = mirror ? 127 - fx : fx;
-            if (mirror) ax = 127 - ax;
+            highp int sx = mirror ? ${SHIRT_FW - 1} - fx : fx;
+            if (mirror) ax = ${SHIRT_FW - 1} - ax;
             highp int tx = shirtMod(sx - ax, tw0 * cell) / cell;
             highp int ty = shirtMod(fy - shirtF(f, 5), th0 * cell) / cell;
             highp int i = ty * tw0 + tx;
