@@ -69,12 +69,14 @@ const SWEEP_MS = 5000;
 /* v2.3.3838: and not on Windows, whose shader compiler takes minutes over this
    program -- the loading screen froze at 75% for 5-10 minutes on the owner's
    laptop, Chrome and Firefox both (game/lookPaletteChoice.js has the why);
-   `?lookpalette=1` builds it anyway */
+   `?lookpalette=1` builds it anyway.  v2.3.3842: and not on a Mac (ANGLE's
+   Metal inlines too; nothing measured it before the judges) */
 let _why = 'default';
 function wantedByAddress() {
   try {
     const nav = typeof navigator !== 'undefined' ? navigator : null;
-    const c = lookPaletteChoice(window.location.search || '', nav && nav.userAgent, nav && nav.userAgentData && nav.userAgentData.platform);
+    const c = lookPaletteChoice(window.location.search || '', nav && nav.userAgent, nav && nav.userAgentData && nav.userAgentData.platform,
+      nav && nav.maxTouchPoints);   /* v2.3.3842: a Mac too (an iPad, with touch, keeps it) */
     _why = c.why;
     return c.on;
   } catch (e) { return true; }
@@ -878,7 +880,7 @@ if (typeof window !== 'undefined') {
   window.__btLookPalette = () => {
     let rows = 0;
     for (const l of _looks.values()) if (l.row >= 0) rows++;
-    return { wanted: _wanted, why: _why /* v2.3.3838: 'address', 'windows' or 'default' */, on: lookPaletteOn(), ok: _ok, renderer: !!paletteRendererOf(), prewarmed: !!_prewarmedFor, ..._stats, looks: _looks.size, rows,
+    return { wanted: _wanted, why: _why /* v2.3.3838: 'address', 'windows' or 'default' (v2.3.3842: or 'mac') */, on: lookPaletteOn(), ok: _ok, renderer: !!paletteRendererOf(), prewarmed: !!_prewarmedFor, ..._stats, looks: _looks.size, rows,
       sheetMB: +(_stats.sheetBytes / 1048576).toFixed(2), sets: [..._sets.keys()].filter((k) => _sets.get(k).manifest) };
   };
 }
