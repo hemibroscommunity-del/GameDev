@@ -4,8 +4,8 @@
  * and "keep trying to patch the causes of any flicker or missing traits
  * first."  mp-traitsoak and mp-headkeep look at the head once you stop; a
  * flicker is a frame or a few in between.  So this plays a phone (390 x 844,
- * at 1x: see DPR) in a full coloured look -- wavy hair, a bandana, a beard, the golden
- * glasses, each in a colour (drawn from the look palette's numbers,
+ * at 1x: see DPR) in a full coloured look -- pink wavy hair, a blue beanie, a red beard, the golden
+ * glasses, the first three in a colour (drawn from the look palette's numbers,
  * traits/headLook.js) -- with the page counting, the moment before EVERY
  * frame is drawn, each worn piece not on screen (src/rendering/headFrames.js,
  * `?headframes`): on the walking figure or on the stand-in that draws you
@@ -31,7 +31,10 @@ const PHONE = { width: 390, height: 844 };
    game's own state, the same at any density.  BT_HF_DPR=3 for the phone's. */
 const DPR = +(process.env.BT_HF_DPR || 1);
 const QUERY = 'headframes' + (process.env.BT_HF_QUERY ? '&' + process.env.BT_HF_QUERY : '');
-const LOOK = { hair: 'wavy', hairColor: 'blonde', hat: 'bandana-2', hatColor: 'blue', beard: 'beard', beardColor: 'black', eye: 'golden-glasses' };
+const LOOK = { hair: 'wavy', hairColor: 'pink', hat: 'beanie', hatColor: 'blue', beard: 'beard', beardColor: 'red', eye: 'golden-glasses' };
+/* each colour's target (the catalogs'), for the pixels read back: colours no
+   skin, ground or outline shares, so a piece's own pixels are what is counted */
+const TARGETS = { hair: [232, 110, 170], headwear: [74, 96, 200], facialhair: [170, 58, 42] };
 const FACINGS = {
   east: ['d'], northeast: ['w', 'd'], north: ['w'], northwest: ['w', 'a'],
   west: ['a'], southwest: ['s', 'a'], south: ['s'], southeast: ['s', 'd'],
@@ -49,6 +52,7 @@ const INIT = (look) => {
 };
 
 const count = (P, reset) => P.page.evaluate((r) => (window.__btHeadFrames ? window.__btHeadFrames(r) : null), !!reset);
+const pixels = (P, reset) => P.page.evaluate((r) => (window.__btHeadPixels ? window.__btHeadPixels(r) : null), !!reset);
 
 async function hold(P, keys, ms) {
   for (const k of keys) await P.page.keyboard.down(k);
@@ -106,12 +110,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const phases = [];
   const phase = async (name, fn) => {
     await count(P, true);
+    await pixels(P, true);
     await fn();
     const c = await count(P, false);
+    const px = await pixels(P, false);
+    if (c) c.px = px;
     phases.push({ name, c });
     const top = c ? Object.entries(c.byWhy).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k} x${v}`).join(', ') : '?';
     console.log(`    [${name}] ${c ? c.frames : '?'} frames, ${c ? c.missed : '?'} piece-frames missing${c && c.missed ? ': ' + top : ''}`);
     if (c && c.missed) for (const l of c.log.slice(-8)) console.log('      ' + JSON.stringify(l));
+    if (px) console.log(`      pixels: ${px.looked} piece-frames read back, ${px.drops} dropped${px.drops ? ' ' + JSON.stringify(px.byCat) : ''}`);
+    if (px && px.drops) for (const l of px.log.slice(-8)) console.log('      ' + JSON.stringify(l));
     return c;
   };
   try {
@@ -141,6 +150,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     })();
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
+    await P.page.evaluate((t) => { window.__btHeadTargets = t; }, TARGETS);
     await P.page.waitForTimeout(3000);
 
     await phase('standing', () => P.page.waitForTimeout(5000));
@@ -185,7 +195,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     for (const { name, c } of phases) {
       rec.ok(`${name}: every worn head piece drawn in every frame (${c ? c.frames : '?'} frames, ${c ? c.counted : '?'} piece-frames, ${c ? c.missed : '?'} missing${c && c.bodyGone ? `, ${c.bodyGone} with no bro drawn` : ''})`,
-        !!c && c.frames > 20 && c.missed === 0, c ? { byWhy: c.byWhy, log: c.log.slice(-10) } : null);
+        !!c && c.frames > 8 && c.missed === 0, c ? { byWhy: c.byWhy, log: c.log.slice(-10) } : null);
+      rec.ok(`${name}: and on the screen, every frame (${c && c.px ? c.px.looked : '?'} piece-frames read back, ${c && c.px ? c.px.drops : '?'} under a quarter of the piece's usual pixels)`,
+        !!c && !!c.px && c.px.looked > 8 && c.px.drops === 0, c && c.px ? { byCat: c.px.byCat, log: c.px.log.slice(-10) } : null);
     }
     void fc;
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 6));

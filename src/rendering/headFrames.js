@@ -95,3 +95,72 @@ if (HEAD_FRAMES_ON && typeof window !== 'undefined') {
     return out;
   };
 }
+
+/* ═══ ...AND WHAT REACHED THE SCREEN ═══
+ * A piece can be shown, with a good picture, and still draw nothing -- a
+ * stale draw list, a clip that is not ready, a colour row rewritten.  So
+ * right after the frame is drawn (pixiRenderer, after app.render) the pixels
+ * inside each shown piece's box are read back off the drawing buffer and
+ * those in the piece's colour counted (the test names the colours:
+ * `window.__btHeadTargets = { headwear: [r, g, b], ... }`).  A frame whose
+ * count falls under a quarter of that piece's usual count in the same pose
+ * and facing (its running middle value) is a frame it did not reach the
+ * screen: counted in `pixelDrops`, the last 40 kept. */
+const _px = { frames: 0, looked: 0, drops: 0, byCat: Object.create(null), log: [], base: Object.create(null) };
+function inColour(r, g, b, t) {
+  const tm = Math.max(t[0], t[1], t[2]);
+  if (tm < 70) return Math.max(r, g, b) < 80;   /* a dark colour: dark */
+  const m = Math.max(r, g, b);
+  if (m < 30) return false;
+  return Math.abs(r / m - t[0] / tm) + Math.abs(g / m - t[1] / tm) + Math.abs(b / m - t[2] / tm) < 0.3;
+}
+export function headPixelsTick(entityRenderer, effectsRenderer, renderer) {
+  if (!HEAD_FRAMES_ON) return;
+  const targets = typeof window !== 'undefined' && window.__btHeadTargets;
+  const d = entityRenderer && entityRenderer.playerDisplay;
+  const gl = renderer && renderer.gl;
+  if (!targets || !d || d.destroyed || !gl || !d._btHeadAt) return;
+  _px.frames++;
+  const at = d._btHeadAt, res = renderer.resolution || 1;
+  const H = gl.drawingBufferHeight, W = gl.drawingBufferWidth;
+  const standIn = effectsRenderer && effectsRenderer.skillTraits;
+  for (const [cat, field, sk] of PIECES) {
+    const t = targets[cat];
+    /* the walking figure's piece, or the stand-in's while it draws you */
+    const own = d[field];
+    const alt = standIn && standIn[sk];
+    const sp = own && own.visible && own.worldAlpha > 0.01 ? own : (alt && alt.visible && alt.worldAlpha > 0.01 ? alt : null);
+    if (!t || !sp) continue;
+    const who = sp === own ? '' : 'stand-in ';
+    let b;
+    try { b = sp.getBounds(); } catch (e) { continue; }
+    const x0 = Math.max(0, Math.floor(b.minX * res)), x1 = Math.min(W, Math.ceil(b.maxX * res));
+    const y0 = Math.max(0, Math.floor(b.minY * res)), y1 = Math.min(H, Math.ceil(b.maxY * res));
+    const w = x1 - x0, h = y1 - y0;
+    if (w < 2 || h < 2 || w * h > 250000) continue;
+    const buf = new Uint8Array(w * h * 4);
+    gl.readPixels(x0, H - y1, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+    let n = 0;
+    for (let i = 0; i < buf.length; i += 4) if (inColour(buf[i], buf[i + 1], buf[i + 2], t)) n++;
+    _px.looked++;
+    const key = who + cat + '|' + at.pose + '|' + at.dir + '|' + (at.mirror ? 'm' : '');
+    const hist = _px.base[key] || (_px.base[key] = []);
+    const mid = hist.length >= 3 ? hist.slice().sort((p, q) => p - q)[hist.length >> 1] : null;
+    if (mid != null && mid >= 12 && n < mid * 0.25) {
+      _px.drops++;
+      _px.byCat[who + cat] = (_px.byCat[who + cat] || 0) + 1;
+      _px.log.push({ f: _px.frames, cat: who + cat, n, usual: mid, pose: at.pose, dir: at.dir, mirror: at.mirror, frame: at.frameIdx, box: [x0, y0, w, h], t: Math.round(performance.now()) });
+      if (_px.log.length > 40) _px.log.shift();
+    } else {
+      hist.push(n);
+      if (hist.length > 15) hist.shift();
+    }
+  }
+}
+if (HEAD_FRAMES_ON && typeof window !== 'undefined') {
+  window.__btHeadPixels = (reset) => {
+    const out = { frames: _px.frames, looked: _px.looked, drops: _px.drops, byCat: { ..._px.byCat }, log: _px.log.slice() };
+    if (reset) { _px.frames = 0; _px.looked = 0; _px.drops = 0; _px.byCat = Object.create(null); _px.log = []; }
+    return out;
+  };
+}
