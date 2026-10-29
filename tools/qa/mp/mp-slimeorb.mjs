@@ -99,7 +99,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── THE SUBJECT: the Verdant Wilds, whose fodder IS the blue slime ── */
   const there = await warpTo(P, 'verdant');
-  rec.ok('we can reach the Verdant Wilds (guard)', there, { zone: await zoneOf(P) });
+  rec.ok('we can reach the Earth Forest (guard)', there, { zone: await zoneOf(P) });
   await P.page.waitForTimeout(1800);
   /* Informational only, and said so on purpose: the branch is chosen from
      ZONE_VARIANT_MAP[currentZone], NOT from what happens to be alive, so a
@@ -134,8 +134,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       && (blue.srcPx === 128 || (blue.srcPx == null && blue.style === 'goo' && green.style === 'goo')),
     { blue: blue && [blue.srcPx, blue.style], green: green && [green.srcPx, green.style] });
   /* v2.3.2732: ...and in its own colour.  The green orb is the slime sheet's
-     green; the Verdant Wilds' is the blue its slimes are recoloured to. */
-  rec.ok('...and each in its thrower\'s colour: green in town, blue in the Verdant Wilds',
+     green; the Earth Forest's is the blue its slimes are recoloured to. */
+  rec.ok('...and each in its thrower\'s colour: green in town, blue in the Earth Forest',
     !!blue && !!green && (blue.srcPx === 128 || (green.tint === 0x5ca84c && blue.tint === 0x3a7ad0)),
     { blue: blue && blue.tint, green: green && green.tint });
   /* And the recolour branch really was taken: the fallback would have handed

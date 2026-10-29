@@ -31,7 +31,7 @@ landmarks.**
   | **the Great Cave** | the Stone Hollows | 26–30 |
   | **the Foundry Dome** | the Electric Foundry | 26–30 |
   | **the Buried City** | the Wind Dunes | 41–45 |
-  | **the Goo Grotto** (v2.3.3540) | the Verdant Wilds | 1–5 |
+  | **the Goo Grotto** (v2.3.3540) | the Earth Forest | 1–5 |
 
   The world map and the minimap already named these places. Now each is drawn
   on the ground: a dark opening with its rim lit in its land's light (crystal
@@ -196,7 +196,7 @@ dungeons) shows none of the old zones' own tools.
 ## A bug the way in found
 
 Leaving the Wheel for the Great Cave freed every Wheel look the arena does not
-use. Two looks share one picture module (the Verdant Wilds' thorn shambler is
+use. Two looks share one picture module (the Earth Forest's thorn shambler is
 the rock monster recoloured; the Poison Forest's bog lurker is the fishman's), and
 freeing the thorn shambler tore out the rock monster's pictures from under
 the arena's rock monsters: none was drawn, and the renderer threw on their
@@ -263,7 +263,7 @@ picture (above); its walls are drawn in code.
 - **The other four lands** have no landmark on their spokes yet. A dungeon for
   each is a landmark added to the plan, then one word in `WHEEL_DUNGEON.LANDS`
   (and in `WHEEL_DUNGEON_HOMES`, in the same order: `caps.dungeonLands` counts
-  them). The Verdant Wilds got theirs, the Goo Grotto, in v2.3.3540.
+  them). The Earth Forest got theirs, the Goo Grotto, in v2.3.3540.
 - **Pictures** of each mouth, and things standing in the arena (rocks,
   crystals, pillars). The worker's monsters know nothing of the floor, so
   anything that blocks a player would have to block them too.

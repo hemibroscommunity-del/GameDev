@@ -119,7 +119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        these ask only for what ambientFx adds there */
     { label: 'Flame Fields', zoneId: 'ember', u: 0.62, v: 0.38, want: { glows: 8, smoke: 1 } },
     { label: 'Wind Dunes', zoneId: 'sky', u: 0.5, v: 0.3, want: { wind: 1 } },
-    { label: 'Verdant Wilds', zoneId: 'verdant', u: 0.7, v: 0.45, want: { glows: 3 } },
+    { label: 'Earth Forest', zoneId: 'verdant', u: 0.7, v: 0.45, want: { glows: 3 } },
     { label: 'Frost Ridge', zoneId: 'frost', u: 0.3, v: 0.55, want: { glows: 1 } },
   ];
   for (const sp of spokes) {

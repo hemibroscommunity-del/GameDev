@@ -31,7 +31,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3399: the lands opened by the harness (H.openLands), as
      mp-fightsoak's since v2.3.3321: since v2.3.3179 the worker refuses
      tut_2..tut_4 taken at once, so only Frost Ridge opened, the spoke's
-     marker took nobody to the Verdant Wilds, and this watched the World
+     marker took nobody to the Earth Forest, and this watched the World
      View, which has no monsters (the sweep of 2026-10-17). */
   await H.openLands(P, wsPort);
   const marks = await P.page.evaluate(() => {
@@ -47,7 +47,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.waitFor(P,(S)=>S.currentZone,(z)=>z==='verdant',{timeout:30000,label:'verdant'}).catch(()=>{});
   /* v2.3.3399: the worker's god mode (the Test panel's, /dev/vitals: no
      damage taken, in memory, it expires), as mp-beastmaster's.  Standing
-     still among the Verdant Wilds' monsters, a fresh character was killed
+     still among the Earth Forest's monsters, a fresh character was killed
      between 30 and 45 s and woke in town, its list empty for the respawn,
      not for anything the client dropped (the run of 2026-10-18).  The
      client-side HP pin below is the page's copy and never kept anyone
