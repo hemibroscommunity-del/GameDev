@@ -56,6 +56,9 @@ const GHOST_MS = 700;
 const JUMP_PROMPT_AIR = 12;
 /* ...8 px clear of the move stick and the disc, and 150 px at most */
 const PROMPT_SIDE_AIR = 8;
+/* ...and the 3 px each side its pulse swells by (promptPulse, scale 1.04:
+   on a 320 px phone it came 6 px from the disc at the swell's top) */
+const PROMPT_SWELL = 3;
 const PROMPT_MAX_W = 150;
 
 /** What the button draws, as plain data (and its re-render key), or null
@@ -109,8 +112,8 @@ export function JumpButton(props) {
     if (!on) { root.removeAttribute('data-jump-clear'); return undefined; }
     var a = jumpAnchor(false);
     var vw = window.innerWidth || 390;
-    var lo = LBTN.left + LBTN.w + PROMPT_SIDE_AIR;
-    var hi = vw - discRight(false) - RBTN.w - PROMPT_SIDE_AIR;
+    var lo = LBTN.left + LBTN.w + PROMPT_SIDE_AIR + PROMPT_SWELL;
+    var hi = vw - discRight(false) - RBTN.w - PROMPT_SIDE_AIR - PROMPT_SWELL;
     var w = Math.max(0, Math.min(PROMPT_MAX_W, hi - lo));
     var cx = Math.max(lo + w / 2, Math.min(vw / 2 - 10, hi - w / 2));
     root.style.setProperty('--bt-jump-clear', (a.bottomPx + a.size + JUMP_PROMPT_AIR) + 'px');
