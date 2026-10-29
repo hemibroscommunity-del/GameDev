@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4a88ed1f5e08658ee8c1dd96b8653cd715c5cfd5",
+  "tree": "8de5c5089659f316297ed6e72015d7cef88a8e9d",
+  "committedAt": "2026-10-28T21:03:15-07:00",
+  "subject": "Merge pull request #1288 from hemibroscommunity-del/claude/look-armour",
+  "files": 7242,
+  "bytes": 832095918,
+  "listingSha256": "d51e2606d3370bac6e90851bc633794fecdbd2ab03f71594205c5660a52cc6fd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
