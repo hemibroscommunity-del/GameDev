@@ -57,3 +57,6 @@ worker since v2.3.3556 sends.
   die to a Flame Fields goblin; the card comes and names it, counts down,
   never takes a tap, goes with the respawn, and the chat says it once.
 - The UI review's `death-card` screen.
+
+![a computer, a real death](death-card/computer-fire-goblin.png)
+![an upright phone (the UI review, staged)](death-card/phone.png)

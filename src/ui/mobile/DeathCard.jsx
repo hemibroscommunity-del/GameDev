@@ -45,7 +45,7 @@ export default function DeathCard({ stateRef }) {
     }}>
       <div style={{
         minWidth: 220, maxWidth: 'min(86%, 360px)', padding: '14px 20px 13px',
-        background: 'rgba(20,14,16,0.86)', border: '1px solid rgba(217,92,84,0.55)',
+        background: '#1A1315', border: '1px solid rgba(217,92,84,0.55)',   /* solid: the plates under it showed through at 0.86 (the UI review) */
         borderRadius: 12, textAlign: 'center', color: '#F4F0E7',
         boxShadow: '0 6px 18px rgba(0,0,0,0.45)',
       }}>

@@ -904,17 +904,22 @@ export const STATES = [
     },
   },
   {
-    /* v2.3.3817: the death card, staged (a real death's is mp-deathcard's):
-       held a minute so the picture finds it, then let go */
+    /* v2.3.3817: the death card, staged (a real death's is mp-deathcard's),
+       then let go */
     id: 'death-card', group: 'Fighting', title: 'You died (the death card)',
     about: 'The card over the scene for the five seconds between a death and coming back: "You died", what killed you, and "Back in BroTown in N" counting down. It never takes a tap or a click. Once you are back, one line in the chat says what happened.',
     run: async ({ P }) => {
       await evalIn(P, () => {
         const S = window._gameState.current;
-        S._deathCard = { at: Date.now(), ms: 60000, killer: 'Blue Slime', pvp: false, keptBag: false, lost: null };
+        /* restaged every 4 s, so the picture reads as a real death's does
+           ("in 5", "in 4"), whenever the shot is taken */
+        const stage = () => { const S = window._gameState.current; if (S) S._deathCard = { at: Date.now(), ms: 5000, killer: 'Blue Slime', pvp: false, keptBag: false, lost: null }; };
+        stage();
+        clearInterval(window.__uiDeathStage);
+        window.__uiDeathStage = setInterval(stage, 4000);
       });
       await wait(P, 700);
     },
-    after: async ({ P }) => { await evalIn(P, () => { const S = window._gameState.current; if (S) S._deathCard = null; }).catch(() => {}); await wait(P, 400); },
+    after: async ({ P }) => { await evalIn(P, () => { clearInterval(window.__uiDeathStage); const S = window._gameState.current; if (S) S._deathCard = null; }).catch(() => {}); await wait(P, 400); },
   },
 ];
