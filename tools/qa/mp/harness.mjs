@@ -2038,8 +2038,17 @@ export async function claimOnLastLine(P, { max = 12, timeout = 6000, press = tru
  *  and the centre of Claim Reward was unreachable to a finger while every
  *  in-page click in the suite kept passing.  A real click times out there,
  *  which is what a player experiences and therefore what the test must do.
+ *
+ *  v2.3.3848: 15 s, not 6.  CI's software renderer draws a frame far more
+ *  slowly since the townsfolk are drawn live (#1301): the questline took 311 s
+ *  before it, 480 s with it and ~560 s on main tonight, and a click needs a few
+ *  frames (visible, stable, the hit test, then the press itself).  Accepts that
+ *  passed took 4-6.5 s, and the ones over 6 s failed although the worker
+ *  recorded each quest accepted, the click landing after Playwright gave up.
+ *  The playable job then retried and hit its 15-minute limit (#1313, #1314).  A
+ *  covered button still never takes a real click, at any timeout.
  */
-export async function confirmQuestOffer(P, { timeout = 6000 } = {}) {
+export async function confirmQuestOffer(P, { timeout = 15000 } = {}) {
   const blocked = await questOfferBlocked(P);
   if (blocked) return false;
   try {
