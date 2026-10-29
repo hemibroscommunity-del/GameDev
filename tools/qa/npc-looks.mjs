@@ -259,6 +259,19 @@ try {
     if (bad.length) { console.log(id, 'setter trouble:', JSON.stringify(bad)); failed = true; }
     await P.page.waitForTimeout(+(process.env.NPC_LOOK_WAIT || 6000));   /* the bakes: hair, hat, recolours */
     if (!BAKE) {
+      /* v2.3.3811: the page's join can put the stored plain look back after
+         he is dressed (the bake checks this before every facing, below); a
+         preview did not, and photographed the plain bro about every other
+         look early in a run (for up to half a minute after the join) -- so
+         dressed again until his look is on, and never photographed without it */
+      let on = await lookIsOn(P.page, L);
+      for (let t = 0; t < 10 && !on; t++) {
+        console.log(id, 'look was off: dressed again');
+        await dress(P.page, L);
+        await P.page.waitForTimeout(6000);
+        on = await lookIsOn(P.page, L);
+      }
+      if (!on) { console.log(id, 'his look never stayed on: NOT photographed'); failed = true; continue; }
       const url = await photograph(P.page);
       if (!url) { console.log(id, 'NO PICTURE'); failed = true; continue; }
       writeFileSync(join(OUT, id + '.png'), png(url));

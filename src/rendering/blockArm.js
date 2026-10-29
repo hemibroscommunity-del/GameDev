@@ -144,7 +144,9 @@ const _sheets = Object.create(null);
 const _cache = new Map();
 const _sleeveCache = new Map();   /* `${sheet}|${item}` -> sliced sleeve */
 
-/** effectsRenderer calls this whenever it (re)bakes a bow body strip. */
+/** effectsRenderer calls this whenever it (re)bakes a bow body strip.
+ *  v2.3.3757: or hands a function that gives the strip as it is drawn (the
+ *  look palette: your look's frames, asked for again each time) */
 export function registerBowBodyFrames(dir, frames) {
   _sheets[dir] = frames;
   _cache.delete(dir);          // a rebake means a new source; re-slice on demand
@@ -156,7 +158,7 @@ export function registerBowBodyFrames(dir, frames) {
 export function blockArmTexture(sheet) {
   if (!BLOCK_ARM_ENABLED) return null;
   const cut = BLOCK_ARM_CUT[sheet];
-  const frames = _sheets[sheet];
+  const frames = typeof _sheets[sheet] === 'function' ? _sheets[sheet]() : _sheets[sheet];
   if (!cut || !frames || !frames[cut.frame]) return null;
   const base = frames[cut.frame];
   /* v2.3.3074: a renderer let go of (a black screen's rebuild) releases the
@@ -164,12 +166,14 @@ export function blockArmTexture(sheet) {
      no arm -- never a cut of a freed source (TRAPS §49) */
   if (!base.source || base.source.destroyed) return null;
   const hit = _cache.get(sheet);
-  if (hit && hit.src === base.source) return hit.tex;
+  /* v2.3.3757: the same FRAME, not only the same source -- a look-palette
+     source is shared by every look, its frame is the look's */
+  if (hit && hit.src === base.source && hit.base === base) return hit.tex;
   /* v2.3.2775: the bow body frames are cropped (effectsRenderer
      _sliceStandIn), so the cut is taken in the WHOLE frame's coordinates by
      gearSheets.subTexture -- the same rectangle, the same texels. */
-  const tex = subTexture(base, cut.rect[0], cut.rect[1], cut.rect[2], cut.rect[3]);
-  _cache.set(sheet, { src: base.source, tex });
+  const tex = _keepLook(base, subTexture(base, cut.rect[0], cut.rect[1], cut.rect[2], cut.rect[3]));
+  _cache.set(sheet, { src: base.source, base, tex });
   return tex;
 }
 
@@ -183,6 +187,12 @@ export function blockArmTexture(sheet) {
    Cached per source frame (a WeakMap: when a peer's bake is evicted the cut
    goes with it; callers still check the source is alive before drawing). */
 const _peerArmCache = new WeakMap();
+/* v2.3.3757: a cut of a look-palette frame is coloured by the same look
+   (lookPalette.js reads it off the texture: `_btLook`) */
+function _keepLook(base, tex) {
+  if (tex && base && base._btLook) tex._btLook = base._btLook;
+  return tex;
+}
 export function blockArmTextureFrom(frames, sheet) {
   if (!BLOCK_ARM_ENABLED) return null;
   const cut = BLOCK_ARM_CUT[sheet];
@@ -190,7 +200,7 @@ export function blockArmTextureFrom(frames, sheet) {
   if (!base || !base.source || base.source.destroyed) return null;
   let tex = _peerArmCache.get(base);
   if (!tex) {
-    tex = subTexture(base, cut.rect[0], cut.rect[1], cut.rect[2], cut.rect[3]);
+    tex = _keepLook(base, subTexture(base, cut.rect[0], cut.rect[1], cut.rect[2], cut.rect[3]));
     _peerArmCache.set(base, tex);
   }
   return tex;

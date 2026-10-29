@@ -34,6 +34,9 @@
  *
  *   node tools/world/test-world-core.mjs
  */
+/* v2.3.3792: first -- the src/ modules this loads later (await import) are
+   vite's, with its `@/` alias and bare json imports (tools/dev/srcLoader.mjs) */
+import '../dev/srcLoader.mjs';
 import { PLAN, SPOKES } from '../../public/tools/world/plan.js';
 import { PIXEL, NO_DIRECTION, PLANK_BOARDS } from '../../public/tools/style/bible.js';
 import { promptFor } from '../../public/tools/ground/prompts.js';
@@ -275,7 +278,7 @@ console.log('prompt');
   ok('says which edges are finished', /along the right edge is finished neighbouring squares/.test(mill.text));
   ok('the river flows in by one edge and out by another', /The Sweetwater River flows in from the top edge and out by the bottom edge/.test(mill.text), mill.summary);
   ok('the bridge, the mill plot and the fork', /The Mill Bridge \(bright yellow\) carries the West Road over the river/.test(mill.text) && /kept for the Old Mill/.test(mill.text) && /The Bog Trail branches off the West Road here/.test(mill.text));
-  ok('the commons meets a spoke through its designed edge', /Where Brotown Commons meets Verdant Wilds, the commons grass grows lush/.test(mill.text), mill.summary);
+  ok('the commons meets a spoke through its designed edge', /Where Brotown Commons meets Earth Forest, the commons grass grows lush/.test(mill.text), mill.summary);
   const src = P(sqAt(PLAN.rivers[0].pts[0]));
   ok('the river rises under the glacier', /rises here, pouring as meltwater from under the glacier/.test(src.text) && /Frost Ridge — the glacier/.test(src.text), src.summary);
   const fl = P(sqAt(PLAN.rivers[0].falls[0].at));
@@ -3972,9 +3975,21 @@ console.log("the buildings' insides (v2.3.3258)");
     const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
     const th = WHEEL_HALLS.townhall;
     const hallSrc = read('../../src/ui/panels/buildings/WheelHallPanel.jsx');
+    const boardSrc = read('../../src/ui/panels/buildings/TownBoard.jsx');   /* v2.3.3804 */
+    /* v2.3.3829: the board's foot (and a page) are TownBoardPage.jsx (v2.3.3801), the
+       board hands them its openers (and the hall two more: onDash, onClose) */
+    const footSrc = read('../../src/ui/panels/buildings/TownBoardPage.jsx');
     ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
       !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
-        && /row\('leaderboard', '\/icons\/ui\/panel-leaderboard\.webp'/.test(hallSrc) && /row\('map', '\/icons\/ui\/nav-map\.webp'/.test(hallSrc)
+        /* v2.3.3804: since v2.3.3766 the two rows are two buttons at the foot of
+           the Town Hall's board (TownBoard.jsx), still data-hall-row
+           "leaderboard" and "map" on the same icons and the same openers; the
+           hall's window draws the board.  The check read WheelHallPanel's old
+           rows (a stale check, the game unchanged) */
+        && /<TownBoard key="board" stateRef=\{props\.stateRef\} onLeaderboard=\{props\.onLeaderboard\} onMap=\{props\.onMap\}[^>]*\/>/.test(hallSrc)
+        && /<BoardFoot onLeaderboard=\{props\.onLeaderboard\} onMap=\{props\.onMap\}/.test(boardSrc)
+        && /data-hall-row="leaderboard" onClick=\{props\.onLeaderboard\}[\s\S]{0,400}src="\/icons\/ui\/panel-leaderboard\.webp"/.test(footSrc)
+        && /data-hall-row="map" onClick=\{props\.onMap\}[\s\S]{0,400}src="\/icons\/ui\/nav-map\.webp"/.test(footSrc)
         && fs.existsSync(new URL('../../public/icons/ui/panel-leaderboard.webp', import.meta.url)) && fs.existsSync(new URL('../../public/icons/ui/nav-map.webp', import.meta.url))
         && /leaderboard:\s+\{ title: 'Ranks',\s+Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))   /* v2.3.3546: headed 'Ranks' since v2.3.3481, the More tile's word; the Town Hall's row keeps "Leaderboard" (BottomDashboard's note) */
         && /export function openWorldMap\(\)/.test(read('../../src/ui/WorldMapOverlay.jsx'))
@@ -4004,10 +4019,16 @@ console.log("the buildings' insides (v2.3.3258)");
      min(360px, 100vw - 24px), the forge's band a quarter of it -- if the card's width changes, these must */
   const stageOk = /--room-stage:min\(148\.8px, calc\(41\.33vw - 9\.92px\), 22vh\)/.test(css)
     && /\.bt-inspect-card\[data-room="blacksmith"\]\{--room-stage:min\(90px, calc\(25vw - 6px\)\)\}/.test(css)
-    && /width: 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
+    /* v2.3.3804: since v2.3.3769 (desk-space) the card is 'min(470px, ...)' on
+       a computer playing wide and still min(360px, 100vw - 24px) on a phone; the
+       stage below is the PHONE's (62% there).  On a computer the same 148.8 px
+       is about 47% of a 470 x 313 room: more of the room under the menu than
+       the 62% design, nothing cut -- a deskWide --room-stage is lane F's to
+       judge with pictures (the orchestrator, 2026-10-29) */
+    && /width: deskWideActive\(\) \? 'min\(470px, calc\(100% - 32px\)\)' : 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
     && Math.abs(360 * (2 / 3) * 0.62 - 148.8) < 0.1 && Math.abs(24 * 0.4133 - 9.92) < 0.01
     && R.BAND_ROOMS.length === 1 && R.roomIdFor(R.BAND_ROOMS[0]) === 'blacksmith' && R.isBandRoom('forge');
-  ok('...its stage is 62% of the room\'s height at the card\'s own width (148.8 px of 240 at 360 wide, 41.33vw - 9.92 px below it, at most 22vh), the forge\'s band a quarter of the width -- keyed on the forge\'s room, the one band', stageOk, {});
+  ok('...its stage is 62% of the room\'s height at the phone card\'s own width (148.8 px of 240 at 360 wide, 41.33vw - 9.92 px below it, at most 22vh; a computer\'s 470 px card keeps the same stage, ~47%), the forge\'s band a quarter of the width -- keyed on the forge\'s room, the one band', stageOk, {});
   const hd = fs.readFileSync(new URL('../../public/_headers', import.meta.url), 'utf8');
   ok(`the pictures are asked for at ?v=${R.ROOMS_V} and cached for a year (public/_headers)`,
     R.roomUrl('bank') === `/world/interiors/bank.webp?v=${R.ROOMS_V}` && /\/world\/interiors\/\*\s*\n\s*Cache-Control: public, max-age=31536000, immutable/.test(hd), {});

@@ -43,8 +43,9 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
   /* v2.3.3539: nine buffs -- + Well Rested, the owner's bed made small (tools/ui/make-rested-badge.py) */
   check(`2a every DOM icon is a file in public/ (${dom.length}: the party's four, the chat's three, nine buffs)`, dom.length === 16 && missing.length === 0, missing);
   const tex = Object.values(SI.SMALL_TEX).filter((u) => !existsSync(pub(u)));
-  check('2b the canvas\'s three too, and the page never warms those two as <img>', Object.keys(SI.SMALL_TEX).length === 3 && tex.length === 0
-    && dom.indexOf(SI.SMALL_ICON.threatSkull) < 0 && dom.indexOf(SI.SMALL_ICON.npcTalk) < 0, tex);
+  /* v2.3.3770: + the rematch's sword clash (No man's land's lock), the canvas's only */
+  check('2b the canvas\'s four too, and the page never warms those three as <img>', Object.keys(SI.SMALL_TEX).length === 4 && tex.length === 0
+    && dom.indexOf(SI.SMALL_ICON.threatSkull) < 0 && dom.indexOf(SI.SMALL_ICON.npcTalk) < 0 && dom.indexOf(SI.SMALL_ICON.nmlAskDuel) < 0, tex);
   /* each cut at the size it is drawn (cut-small-icons.py size_of): the webp's own header */
   const dims = (u) => { const b = readFileSync(pub(u)); const i = b.indexOf('VP8'); if (b[i + 3] === 0x58) return [1 + b.readUIntLE(i + 12, 3), 1 + b.readUIntLE(i + 15, 3)];
     if (b[i + 3] === 0x4c) { const v = b.readUInt32LE(i + 9); return [1 + (v & 0x3fff), 1 + ((v >> 14) & 0x3fff)]; } return [b.readUInt16LE(i + 14) & 0x3fff, b.readUInt16LE(i + 16) & 0x3fff]; };
