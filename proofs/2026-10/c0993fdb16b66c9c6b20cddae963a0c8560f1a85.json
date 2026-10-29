@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c0993fdb16b66c9c6b20cddae963a0c8560f1a85",
+  "tree": "28a49479b79e05240f31af2b93a13025beb976d9",
+  "committedAt": "2026-10-28T22:46:00-07:00",
+  "subject": "Merge pull request #1315 from hemibroscommunity-del/claude/questline-accept-wait",
+  "files": 7255,
+  "bytes": 833404321,
+  "listingSha256": "08d6de4f04355d1aa308208d3846e383b833e05d7d88a4caf938e7c762e688e8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
