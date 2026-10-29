@@ -10429,18 +10429,31 @@ export var BroTown = function BroTown(_ref0) {
   };
   /* another player within the click's 25 px (onClick's own loop: the first
      one found, as it acts on) -- their id, or null */
+  /* ═══ v2.3.3837: A CLICK ON ANOTHER PLAYER'S BODY OR HEAD FINDS THEM ═══
+     The judge pass (2026-10-29): a player was found only within 25 px of
+     their FEET (renderX, renderY), while a player clicks their body or head.
+     The townsfolk's hit (npcAtCss) rises 26 px to the body and reaches 44;
+     a player's now does the same, and the click's own player loop (onClick)
+     asks the same distance, so the two cannot disagree.  A monster under the
+     pointer is still asked first by every caller.  A computer's click only:
+     a phone's tap is the touch path's. */
+  var PLAYER_TAP_RISE = 26, PLAYER_TAP_R = 44;
+  var otherPlayerDistCss = function (S, o, cssX, cssY) {
+    var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
+    var osx = (o.renderX - S.camera.x) * sx, osy = (o.renderY - S.camera.y) * sy - PLAYER_TAP_RISE;
+    return Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2));
+  };
   var otherPlayerAtCss = function (cssX, cssY) {
     var S = stateRef.current;
     if (!S || !S.others || !S.camera) return null;
-    var sx = S._worldScaleX || 1.0, sy = S._worldScaleY || 1.0;
-    var cx = S.camera.x, cy = S.camera.y;
+    var best = null, bestD = PLAYER_TAP_R;
     for (var id in S.others) {
       var o = S.others[id];
       if (!o) continue;
-      var osx = (o.renderX - cx) * sx, osy = (o.renderY - cy) * sy;
-      if (Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2)) < 25) return id;
+      var d = otherPlayerDistCss(S, o, cssX, cssY);
+      if (d < bestD) { bestD = d; best = id; }
     }
-    return null;
+    return best;
   };
   var _deskPressTarget = function (cssX, cssY) {
     if (monsterAtCss(cssX, cssY)) return null;
@@ -12961,9 +12974,8 @@ export var BroTown = function BroTown(_ref0) {
         var _Object$entries7$_i = _slicedToArray(_Object$entries7[_i43], 2),
           id = _Object$entries7$_i[0],
           o = _Object$entries7$_i[1];
-        var osx = (o.renderX - cx) * SCALE_X,
-          osy = (o.renderY - cy) * SCALE_Y;
-        if (Math.sqrt(Math.pow(cssX - osx, 2) + Math.pow(cssY - osy, 2)) < 25) {
+        /* v2.3.3837: the body and head, not just the feet (otherPlayerAtCss's distance) */
+        if (o && otherPlayerDistCss(S, o, cssX, cssY) < PLAYER_TAP_R) {
           /* ═══ v2.3.1742: NEVER COMBAT-LOCK A PARTY MEMBER ═══
              Owner: "it auto targeted my teammate".  A tap within 25px of
              another player combat-locks them, and in a lawless zone (which
