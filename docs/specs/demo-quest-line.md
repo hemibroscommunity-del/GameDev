@@ -86,7 +86,7 @@ one who wanders can take any of them.
 
 | # | Giver | Quest | What you do | You get |
 |---|---|---|---|---|
-| 1 | Mayor Bro | Into the Blue | 4 Slime Remains from the Verdant Wilds (the exploding blue slimes, first: "they almost always get a good reaction") | sword + shield on accept; bow + staff, 25 gold |
+| 1 | Mayor Bro | Into the Blue | 4 Slime Remains from the Earth Forest (the exploding blue slimes, first: "they almost always get a good reaction") | sword + shield on accept; bow + staff, 25 gold |
 | 2 | Farmer Bro | Carrot Comeback | plant and water 3 carrots on your farm | 3 carrot seeds + 3 compost on accept; 40 gold |
 | 3 | Blacksmith Bro | Heavy Metal | 5 copper ore (the rocks just outside town) | pickaxe on accept; **5 copper bars**, 20 gold |
 | 4 | Blacksmith Bro | Some Assembly Required | forge one thing from the bars: a greatsword, a chest plate or greaves ("your choice"; the forge makes greatswords only since v2.3.3524) | 60 gold |

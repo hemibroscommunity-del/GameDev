@@ -424,6 +424,11 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   }
   check('8e. the lower-case rule is unchanged', flagNameOk('disable_dungeons') && flagNameOk('xp_mult') && flagNameOk('bowvolley') && !flagNameOk(null) && !flagNameOk(7));
   check('8e. the list is frozen', Object.isFrozen(LIVEOPS.CAMEL_SWITCHES));
+  // 8j. v2.3.3776: the skateboard's switch (ride.js) is a lower-case name the
+  //     operator's route takes, and it is off only when written false
+  check('8j. `ride` is a name POST /flags takes', flagNameOk('ride'));
+  { const was = room._liveFlags; room._liveFlags = { ride: false }; const off = room._rideOff(); room._liveFlags = {}; const on = room._rideOff(); room._liveFlags = was;
+    check('8j. `ride: false` switches the board off, and nothing set leaves it on', off === true && on === false); }
   // 8h. v2.3.3732: the message diet's two lower-case switches (movepath.js):
   //     v2.3.3744: every phone is on it by default, `pathall: false` leaves
   //     only ?diet=1 phones, `movepath: false` kills it, each through the

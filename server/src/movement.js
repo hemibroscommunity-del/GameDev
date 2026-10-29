@@ -232,7 +232,15 @@ export const movementMethods = {
        (_handleProg3Allocate) and re-clamped on every read (_prog3Pts).
        prog3.test.mjs pins the arithmetic against the client's constants. */
     const _moveMult = (ps.prog3 && typeof this._prog3MoveMult === 'function') ? this._prog3MoveMult(ps) : 1;
-    return { spdCap: _spdCap, moveMult: _moveMult };
+    /* ═══ v2.3.3776: ...AND FOR A RIDE THE WORKER ITSELF ACCEPTED ═══
+       The skateboard (ride.js): RIDE.MULT while the worker has you on the
+       board, folded in HERE so every bound that reads this -- the move
+       budget, the follow, the glide's cap (movepath.js), the join's judge
+       (lastplace.js) -- agrees by construction (lane D's review).  Read from
+       the worker's own `ps._ride`, never a move's field; 1 dead, off the
+       board or with the kill switch thrown (_rideK). */
+    const _rideK = typeof this._rideK === 'function' ? this._rideK(ps) : 1;
+    return { spdCap: _spdCap, moveMult: _moveMult * _rideK };
   },
 
   /* v2.3.3325: a move the budget could not cover goes on being followed
@@ -533,6 +541,14 @@ export const movementMethods = {
     /* v2.3.3006: is this move a sprint step the worker pays for (sprint.js)?
        Asked of every move, so a zone change or a first move never leaves an
        earlier step's mark to be billed. */
+    /* v2.3.3776: a move that leaves the safe ground or the Wheel ends a ride
+       BEFORE it is judged, so it is judged at the walk -- not with the
+       board's doubled budget (lane D's probe: 3,080 px out of town in one
+       move, then a follow at the board's 1,000 px/s) */
+    if (ps._ride && typeof this._rideEnd === 'function'
+      && (newZone !== WHEEL_ZONE || typeof msg.x !== 'number' || typeof msg.y !== 'number' || !this._wheelSafeAt(msg.x, msg.y))) {
+      this._rideEnd(ps, 'edge', session.id);
+    }
     const _sprintK = typeof this._sprintK === 'function' ? this._sprintK(ps, msg, _now) : 1;
     /* v2.3.3325: where this move is judged from -- the worker's own place in
        this zone, or, coming back into the Wheel, where the player left it
@@ -783,6 +799,9 @@ export const movementMethods = {
       if (ps.po && this._poseEndsOn(ps, _stepPx, zoneChanged, msg)) ps.po = null;
       /* v2.3.3525: a race under way judges the step the worker just took
          (race.js) -- one property read when there is none */
+      /* v2.3.3776: off the board past the safe ground's edge, out of the
+         Wheel or into a fight (ride.js) -- one property read when not riding */
+      if (ps._ride && typeof this._rideOnMove === 'function') this._rideOnMove(session.id, ps, zoneChanged);
       if (ps._race && typeof this._raceOnMove === 'function') {
         this._raceOnMove(session.id, ps, zoneChanged ? ps.x : _raceFromX, zoneChanged ? ps.y : _raceFromY);
       }

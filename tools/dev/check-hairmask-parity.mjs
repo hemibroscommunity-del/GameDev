@@ -52,10 +52,9 @@
  * check that runs everywhere beats a browser test that runs nowhere.
  *
  * Zero dependencies (node only), like every other check precheck runs: the
- * loader hook below exists because src/ imports .json with vite's bare
- * syntax, which node requires an import attribute for.
+ * loader hook (tools/dev/srcLoader.mjs) exists because src/ imports .json
+ * with vite's bare syntax, which node requires an import attribute for.
  */
-import { register } from 'node:module';
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -63,14 +62,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..');
 
-/* Node 22 refuses `import X from './y.json'` without `with { type: 'json' }`;
-   vite adds it for us in the app build, so the source cannot carry it. */
-register('data:text/javascript,' + encodeURIComponent(
-  'export async function resolve(s, c, next) {\n'
-  + '  const r = await next(s, c);\n'
-  + '  if (/\\.json(\\?|$)/.test(r.url)) return { ...r, importAttributes: { type: "json" } };\n'
-  + '  return r;\n'
-  + '}\n'));
+/* v2.3.3792: the loader hook (vite's json imports, and its `@/` alias) is
+   tools/dev/srcLoader.mjs's, shared with test-world-core */
+import './srcLoader.mjs';
 
 let fails = 0;
 const ok = (name, cond, detail) => {

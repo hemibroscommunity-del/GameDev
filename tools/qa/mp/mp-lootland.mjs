@@ -50,7 +50,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.addStyleTag({ content: '*:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
   /* a combat zone: town is safe, and a safe zone empties the pile list on
      every loot sync (wsClient: "Safe zones never have loot piles") */
-  await H.warpToZone(P, { wsPort, label: 'Verdant Wilds', zoneId: 'verdant' }).catch(() => null);
+  await H.warpToZone(P, { wsPort, label: 'Earth Forest', zoneId: 'verdant' }).catch(() => null);
   const z = await H.readState(P, (S) => S.currentZone);
   rec.ok('in a combat zone (guard)', z === 'verdant', { z });
   await H.closeDest(P).catch(() => {});

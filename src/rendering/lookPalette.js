@@ -124,6 +124,9 @@ export function lookPaletteOn() {
      for each look on first sight, as before) */
   return _wanted && _ok !== false && _stats.sheets > 0 && webgl2(paletteRendererOf()) && !clientOff('lookpalette');
 }
+/** v2.3.3753: a loaded set's manifest (its sheets, their facings, its
+ *  entries), or null -- one fetch of it, shared (headLook.js reads it). */
+export function lookManifest(set) { const s = _sets.get(set); return (s && s.manifest) || null; }
 /** This set has this sheet in numbers (loaded). */
 export function lookHas(set, sheet) { return !!_sheets[set + '/' + sheet]; }
 /** The body has sheets of numbers for this pose (whatever its manifest lists). */

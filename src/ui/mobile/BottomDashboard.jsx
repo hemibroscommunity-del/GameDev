@@ -23,7 +23,7 @@ import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCa
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
-import { DashColumns } from './dash/DashColumns.jsx';           /* v2.3.1636 */
+import { DashColumns, DeskRailWeapons } from './dash/DashColumns.jsx';           /* v2.3.1636; v2.3.3769 the folded rail's weapons */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
@@ -433,7 +433,10 @@ const PANELS = {
   inventory:    { title: 'Inventory',   Component: InventoryPanel },
   self:         { title: 'Self',        Component: SelfPanel },
   /* v2.3.3527: kept for a stale drill id and a worker without
-     caps.achievements, where More's tile is still Journey */
+     caps.achievements, where More's tile is still Journey.
+     v2.3.3773: a page of its own beside Achievements, the Character page's
+     old records tab moved here (the owner: "journey ... its own icon in the
+     more/other apps menus") */
   journey:      { title: 'Journey',     Component: JourneyPanel },
   /* v2.3.3527: the Achievements page (dash/AchievementsPanel.jsx): More's
      Journey tile against a worker that grants them (the owner's decision 6),
@@ -550,7 +553,13 @@ const DESTINATIONS = [
    rising-arrow -- the only "your numbers" glyph in it, and used on one
    legacy screen otherwise, so it costs no collision.  Tapping it closes
    to rest (toBar) rather than opening a panel; there is no 'dashboard'
-   entry in DESTINATIONS and the bus never sees the id. */
+   entry in DESTINATIONS and the bus never sees the id.
+   v2.3.3784, the owner: "Instead of the bar graphs for the dashboard button
+   that brings up the inventory slots and 3 primary combat skills I actually
+   think a bag icon mini combat icons would be better" -- its picture is now
+   nav-dashboard.png, the sack with the sword, bow and staff small across its
+   front (tools/ui/make-dash-bag-icon.mjs); panel-stats stays the stat
+   screen's. */
 /* v2.3.1637b (owner): HERO is not in the rail — "the hero can just be
    pressing on the icon of the hero up top".  IdentityStrip's portrait
    carries it in band mode, which is the v2.3.1294 rule the ribbon's own
@@ -602,7 +611,7 @@ const DESTINATIONS = [
    choice: sheetGeometry IDENTITY_MIN_LINE). */
 const RAIL_ORDER = ['hero', 'quests', 'skills', 'encyclopedia', 'more'];
 const RAIL_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/panel-stats.webp?v=2.3.1637' },
+  { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/nav-dashboard.png?v=2.3.3784' },   /* v2.3.3784: the bag and its three fights */
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
 ];
 
@@ -1163,6 +1172,22 @@ export const BottomDashboard = () => {
               both from the same expression. */}
           <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: `8px 8px ${landDock.reserve}` }}>
             {Active && <Active />}
+            {/* ═══ v2.3.3769: THE WEAPONS AT THE FOOT OF EVERY PAGE ═══
+                On a computer the dashboard's own page ends in the three
+                weapons and their levels; every other page ended in empty
+                column (the owner: "As you find improvements you can make to
+                the empty space on the desktop version go ahead").  Now each
+                page does, the same three (DeskRailWeapons, as the folded
+                strip's), pinned at the column's foot under the page, which
+                scrolls above them when it needs the height.  A computer only;
+                the dashboard page keeps its own row. */}
+            {deskKeys && active && dashboardPanelBus.state.stack[0] !== 'dashboard' ? (
+              <div data-desk-foot="" style={{ flex: 'none', marginTop: 'auto', paddingTop: 2 * DASH_GAP }}>
+                <DeskRailWeapons
+                  R={(typeof window !== 'undefined' && window._gameState && window._gameState.current && window._gameState.current.rpg) || null}
+                  row />
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}
@@ -1179,18 +1204,37 @@ export const BottomDashboard = () => {
       {deskKeys ? <DeskKeysList side={side === 'left' ? 'right' : 'left'} /> : null}
       {/* v2.3.3687: the folded column on a computer: a strip in the column's
           slate, the chip at its top (the dock below), the world after it */}
+      {/* ═══ v2.3.3769: THE FOLDED STRIP, IN THE TOP BAR'S GREY, POINTS AT THE WORLD ═══
+          The owner: "Make the left long strip black bar the same gray color
+          as the top bar but have an arrow centered in the middle pointing
+          towards the screen play area."  The strip wears the top bar's face
+          (zone-header-bar.svg's #152A34, its rim #526A74 at the edge), one
+          arrow at its middle points into the world, and the whole strip is
+          the way back: a click opens the dashboard, as OPEN at its top does
+          and as I does (its data-key). */}
       {deskStripW ? (
         <div
           className="bt-desk-foldstrip bt-noselect"
           data-desk-foldstrip=""
-          aria-hidden="true"
+          role="button"
+          aria-label="Open dashboard"
+          title="Open dashboard (I)"
+          data-key="I" data-key-at="hang"
           onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.open('dashboard'); }}
           style={{
             position: 'fixed', top: 0, bottom: 0, width: deskStripW, zIndex: 29,
-            ...(side === 'left' ? { left: 0, borderRight: '1px solid rgba(229,237,233,.20)' } : { right: 0, borderLeft: '1px solid rgba(229,237,233,.20)' }),
-            boxSizing: 'border-box', background: 'rgba(13,22,27,.96)',
+            ...(side === 'left' ? { left: 0, borderRight: '1px solid rgba(82,106,116,.85)' } : { right: 0, borderLeft: '1px solid rgba(82,106,116,.85)' }),
+            boxSizing: 'border-box', background: '#152A34',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', touchAction: 'manipulation',
           }}
-        />
+        >
+          <svg data-desk-foldarrow="" width="30" height="44" viewBox="0 0 30 44" aria-hidden="true"
+            style={{ display: 'block', pointerEvents: 'none', transform: side === 'left' ? 'none' : 'scaleX(-1)' }}>
+            <path d="M9 6 L23 22 L9 38" fill="none" stroke="#E8D9B0" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
       ) : null}
 
       {/* ═══ v2.3.2168: GOLD, AS A CHIP ═══

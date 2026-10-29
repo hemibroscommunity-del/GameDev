@@ -79,6 +79,7 @@ import { getSpecies } from '../traits/speciesCatalog.js';   /* v2.3.2682: the sp
 import { getSpeciesBuild, preloadSpeciesArt } from '../traits/speciesArt.js';   /* v2.3.2682 */
 import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js';   /* v2.3.2645 */
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
+import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the tee from the look palette */
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
 import { lookPaletteWanted } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
@@ -107,6 +108,7 @@ import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
 import { flipHeadAt } from '../flipHead.js';   /* v2.3.3738: the head pieces ride the tumble's head */
 import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase; v2.3.3682: a flip, the roll's tumble */
+import { rideLook } from '@/game/ride.js';   /* v2.3.3776: a rider stands sideways, and pushes now and then */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
 import { TRAIT_LOAD_TIMEOUT_MS } from '../traits/traitImg.js';   /* v2.3.3689: a stalled head piece is asked for again */
@@ -2683,7 +2685,21 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
        print would be multiplied by it).  `_shirtBaked` carries that decision
        the few lines down to where the tint is set. */
     let _shirtBaked = false;
-    if (tex && _slotName === 'shirt' && display._shirtLook) {
+    /* v2.3.3751: the look palette's tee (on; `?lookpalette=0` off): its stand
+       and jog from the shared numbers, the tint, pattern and print painted
+       from the look's row as it is drawn (lookShirtFrame.js) -- a patterned
+       or printed tee no longer a copy per player.  A plain tee stays the
+       shared sheet and its tint (the numbers save it nothing).  Null: as
+       before. */
+    if (tex && _slotName === 'shirt') {
+      const _L = display._shirtLook;
+      const _lt = getLookShirtFrame(item, _gPose, dir, _gFrame, {
+        art: _L && _L.art ? _L.art[sideForDir(dir)] : null, pattern: _L ? _L.pattern : null,
+        tint: (equip && equip.shirtTint) || null, mirror: display._shirtArtMirror,
+      });
+      if (_lt) { tex = _lt; _shirtBaked = true; }
+    }
+    if (tex && !_shirtBaked && _slotName === 'shirt' && display._shirtLook) {
       /* Mirroring never changes WHICH side shows: every mirror pair stays in
          the same hemisphere (east/west and southwest/southeast are both front,
          northeast/northwest both back), so the base dir decides the side and
@@ -12110,9 +12126,15 @@ export class EntityRenderer {
       /* v2.3.3682: ...and their flip, the roll's somersault, as yours is */
       const _rFlip = _rJump && _rJump.flip ? { angle: _rJump.ang || 0, startTime: _rJump.t0, durMs: _rJump.dur, kind: 'flip' } : null;
       const _rDodge = other._dodgeRoll || _rFlip || null;
+      /* v2.3.3776: on a board (the tick's `brd`) they stand sideways and
+         push now and then (game/ride.js rideLook), as you do */
+      const _rLk = (other._brd && !_rexBodyPose && !_rDodge && !_rJump && !isHit)
+        ? rideLook(display._rideLook || (display._rideLook = {}), facing, isMoving, now) : null;
+      if (_rLk) facing = _rLk.facing;
+      display._rideLkPose = _rLk ? _rLk.pose : null;
       const pose = _rexBodyPose
         ? _rexBodyPose
-        : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : (isMoving ? 'jog' : 'stand'))));
+        : (_rDodge ? 'dodge' : (_rJump ? 'jog' : (isHit ? 'hit' : (_rLk ? _rLk.pose : (isMoving ? 'jog' : 'stand')))));
       const spritesAvailable = hasPose(pose) || hasPose('stand');
       let useSprite = false;
       if (!_rexStandIn && spritesAvailable) {
@@ -12572,7 +12594,7 @@ export class EntityRenderer {
              flying off into space. */
           let bodyScale = 0.6; /* v2.3.741: 0.5 -> 0.6, tracking the +20% body bump */
           const isHitNow = other._hitFlash && (now - other._hitFlash) < 250;
-          const poseNow = isHitNow ? 'hit' : (isMoving ? 'jog' : 'stand');
+          const poseNow = isHitNow ? 'hit' : (display._rideLkPose || (isMoving ? 'jog' : 'stand'));   /* v2.3.3776: a rider's own pose (rideLook) */
           if (dir === 'east' && poseNow === 'hit') bodyScale = 0.88 * 0.6;
           else if (dir === 'northeast' && poseNow !== 'hit') bodyScale = 1.03 * 0.6;
           const animFrame = display._animFrame || 0;
@@ -13776,6 +13798,12 @@ export class EntityRenderer {
        to _facingAngle mid-slew; the probe below now says so in one word. */
     S._renderFacing = facing;
     const isHit = S._hitFlash && (now - S._hitFlash) < 250;
+    /* v2.3.3776: on the board you stand sideways and push now and then
+       (game/ride.js rideLook) -- AFTER the facing is published above, so the
+       others are sent the way you go and turn it themselves */
+    const _rideLk = (S._ride && S._ride.on && !isHit)
+      ? rideLook(display._rideLook || (display._rideLook = {}), facing, isMoving, now) : null;
+    if (_rideLk) facing = _rideLk.facing;
     /* v2.3.3017: in the air (game/jump.js) the body holds one leaping frame of
        the jog for the way it faces -- the owner's "just use the jog
        directions" -- above the hit-react (as the roll is: the jump is what the
@@ -13845,7 +13873,7 @@ export class EntityRenderer {
                       ? 'jog'
                       : (isHit
                           ? 'hit'
-                          : ((isMoving && !_blockPlanted) ? 'jog' : 'stand'))))));
+                          : (_rideLk ? _rideLk.pose : ((isMoving && !_blockPlanted) ? 'jog' : 'stand')))))));   /* v2.3.3776: on the board, rideLook's pose */
     /* Resolve to the unmirrored sheet direction + mirror flag.  Lifted
        to outer scope so the weapon-positioning code below can pin to
        the per-frame hand anchor regardless of whether the spritesheet

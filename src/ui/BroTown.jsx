@@ -126,6 +126,7 @@ import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
 /* v2.3.1205: named z-index registry — see src/ui/zLayers.js for the
    observed ladder + the tutorial-banner-under-dashboard incident. */
 import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
+import { deskWideActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size */
 import { MenuBar } from './panels/MenuBar.jsx';
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
@@ -375,7 +376,9 @@ import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2
 import { elemMoveMult, gustStep, wobbleTurn } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
-import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
+import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn, stopSprint } from '@/game/sprint.js';
+import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js) */
+import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
@@ -410,6 +413,7 @@ import { tickMoveSounds, tickDanceMusic } from '@/game/moveSounds.js';   /* v2.3
 import { tickHeartbeat } from '@/game/ownSounds.js';   /* v2.3.3462: the owner's heartbeat under a quarter of your health */
 import { npcSpeaks } from '@/game/npcVoices.js';   /* v2.3.3462: the townsfolk's voices (v2.3.3664: a talk and a quest taken only) */
 import { tickAmbientBeds } from '@/game/ambientBeds.js';   /* v2.3.3462: the sea, BroTown's crowd and a fire's crackle */
+import { tickRideSound } from '@/game/rideSound.js';   /* v2.3.3791: the skateboard rolling */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -5207,6 +5211,7 @@ export var BroTown = function BroTown(_ref0) {
         tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
         tickTownAmbience(S, _jNow);   /* v2.3.3434: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         tickAmbientBeds(S, _jNow);   /* v2.3.3462: the sea from its shore, BroTown's crowd, a fire's crackle (game/ambientBeds.js) */
+        tickRideSound(S, _jNow);   /* v2.3.3791: your skateboard's wheels while you ride (game/rideSound.js) */
         tickHeartbeat(S, _jNow);   /* v2.3.3462: under a quarter of your health (game/ownSounds.js) */
         tickDanceMusic(S);   /* v2.3.3462: your dance takes the music deck (game/moveSounds.js) */
         var _inAir = !!S._jump;
@@ -5240,6 +5245,23 @@ export var BroTown = function BroTown(_ref0) {
            and a frame that cannot move must not spend the predicted
            stamina.  An attack, the shield or the water ends a sprint. */
         var _sprNow = Date.now();
+        /* ═══ v2.3.3776: THE SKATEBOARD ═══
+           Off the board at the safe ground's edge, out of the Wheel, in the
+           water, dead or fighting -- the phone's own step, ahead of the
+           worker's word (game/ride.js; server/src/ride.js), with its one
+           line.  On the board there is no sprint: the board is the faster. */
+        try {
+          if (isRiding(S)) {
+            var _rg = rideGround(S);
+            _rg.fighting = !!(S._shieldUp || S.autoAttack || S.isSwinging || S._bashDash || S._dodgeRoll);
+            rideCheck(S, _sprNow, _rg);
+            if (isRiding(S) && S._sprint && S._sprint.on) stopSprint(S, 'ride', _sprNow);
+          }
+          if (S._ride && S._ride.line && S.player) {
+            pushDmgPopup(S, S.player.x, S.player.y - 70, S._ride.line, '#F4E7C8');
+            S._ride.line = null;
+          }
+        } catch (e) { /* on foot */ }
         var _sprEv = updateSprint(S, _sprNow, {
           moving: (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1)
             && !S._dodgeRoll && !S._sled && !S._zoneLoading && !S._netHold && !S._townArtHold && !S._farmArtHold
@@ -5378,6 +5400,7 @@ export var BroTown = function BroTown(_ref0) {
         if (_dsc != null) vistaSpeedMult = Math.max(0.2, _dsc / ((_vz.depth && _vz.depth.near) || 1));
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
         finalSpd *= wheelSwimMult(S);   /* v2.3.3003: the Wheel's water, in strokes (1 on land) */
+        finalSpd *= rideMult(S);   /* v2.3.3776: RIDE_MULT on the skateboard; the worker judges the moves at the same (server/src/ride.js) */
         finalSpd *= sprintMult(S);   /* v2.3.3006: SPRINT_MULT while you sprint; the worker widens its bound by the same for the moves it paid for (server/src/sprint.js) */
         /* v2.3.1405: per-zone loading gate — while a zone's assets warm
            behind the loading overlay (zoneTransitions.js), freeze the
@@ -5731,7 +5754,15 @@ export var BroTown = function BroTown(_ref0) {
            player off that edge cannot strand a portal.  A top-edge entry SPAWN
            lands above the clamp and is nudged down on its first frame, which is
            what the bottom edge already does. */
-        var _RAIL_CSS = 46;
+        /* v2.3.3765: the rail grew per layout (game.css --bt-bar-k: 34 px
+           of row x k); read once a second, never a style read every frame. */
+        var _rNow = Date.now();
+        if (!S._railCssAt || _rNow - S._railCssAt > 1000) {
+          S._railCssAt = _rNow;
+          var _bk = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bt-bar-k'));
+          S._railCss = 46 + 34 * ((_bk > 0 ? _bk : 1) - 1);
+        }
+        var _RAIL_CSS = S._railCss || 46;
         var _HEAD_MARGIN = 57 + Math.round(_RAIL_CSS / Math.max(0.2, S._worldScaleY || 1));
         P.x = Math.max(hs, Math.min(ZONE_W - hs, P.x));
         P.y = Math.max(hs + _HEAD_MARGIN, Math.min(ZONE_H - _FOOT_MARGIN, P.y));
@@ -10363,6 +10394,17 @@ export var BroTown = function BroTown(_ref0) {
     var slot = S.rpg && S.rpg.activeSlot;
     if (!S.rpg || slot === 'ranged' || slot === 'staff' || S._shieldUp) return false;
     var hit = monsterAtCss(cssX, cssY);
+    /* ═══ v2.3.3763: A CLICK ON A PLAYER MEANS THE PLAYER ═══
+       With no monster under the pointer this promoted the game's own monster
+       lock and noted it as the press's lock, and the click that ends the
+       press returns early on that (onClick, `_deskPressLock`) -- before its
+       player check.  So a computer clicking another player in No man's land
+       with a monster near lunged at the monster and never got the "Attack?"
+       window (the soak's mp-longplay, 0 of 2), and outside it never opened
+       their card.  A player under the pointer, and no monster: no lunge, no
+       lock taken; the press swings as before v2.3.3694 and the click asks
+       about them (mp-nomansland). */
+    if (!hit && otherPlayerAtCss(cssX, cssY)) return false;
     var lt = S.lockedTarget;
     if (hit) {
       if (!lt || lt.ref !== hit) S.lockedTarget = { type: 'monster', id: hit.id, ref: hit, src: 'tap' };
@@ -13179,12 +13221,24 @@ export var BroTown = function BroTown(_ref0) {
          .bt-inspect content box, which now reserves BOTH the band
          (padding-bottom) and the HUD chip strip (padding-top — the chip
          paints over in-wrap modals, see game.css). */
-      width: 'min(360px, calc(100vw - 24px))',
+      /* ═══ v2.3.3769: ON A COMPUTER, A COMPUTER'S WINDOW ═══
+         The owner: "As you find improvements you can make to the empty space
+         on the desktop version go ahead" (the judges play on computers).  The
+         building windows were a phone's 360 px card in a ~1170 px world,
+         their lists scrolling after two rows with empty world all round.  On
+         a computer playing wide (deskWide.js) the card is 470 px and up to
+         82% of the world's height, its room picture and rows growing with it,
+         so a list shows more before it scrolls.  This card is every
+         building's window (each panel's LS_WRAP bleeds to it), the Town
+         Hall's board included.  The Blacksmith keeps its height rule below
+         (the smith is seen working above it) and takes the width only.
+         Phones unchanged. */
+      width: deskWideActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
       /* v2.3.2826: the Blacksmith card's TOP stays below the player's feet --
          the camera centres the player, so the card ends at the band and is
          (50vh - 72px - band) tall, i.e. its top sits at 50vh + 60px.  230px
          floor so a short phone still gets the header, the tabs and a row. */
-      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : '100%',
+      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : deskWideActive() ? '82%' : '100%',
       overflowY: 'auto',
       /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
          as the destination sheets/leaderboard): at 390 the Woodworker's
@@ -14726,7 +14780,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */, sendMove: sendMove, movesOn: movesLive(stateRef.current) /* v2.3.3392 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
-  React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3629: beside the minimap's name plate (sideways level with the box's top, or in the top bar's row on a short screen, portalled to the body there) */
+  React.createElement(NmlBadge, { stateRef: stateRef }),   /* v2.3.3629: beside the minimap's name plate; v2.3.3765: the pill moved to the top bar (ZoneHeader, NmlPill), this keeps the red line along the band */
   /* v2.3.3253: the small window a tap or a stray shot raises about a player
      you could fight there (game/nmlAsk.js), portalled to the top of the
      screen, under the minimap */
