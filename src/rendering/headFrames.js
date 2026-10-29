@@ -80,6 +80,8 @@ export function headFrameTick(entityRenderer, effectsRenderer, stage, worn) {
     if (!why) continue;
     const alt = standIn && standIn[sk];
     if (alt && !whyNotDrawn(alt, stage)) continue;   /* the stand-in draws it */
+    /* the stand-in is drawing you, in its own facing, which this piece does not ship */
+    if (standInOn && alt && !alt.visible && alt._btHide === 'design') continue;
     _hf.missed++;
     const k = cat + ' ' + why;
     _hf.byWhy[k] = (_hf.byWhy[k] || 0) + 1;
@@ -129,7 +131,8 @@ export function headPixelsTick(entityRenderer, effectsRenderer, renderer) {
     /* the walking figure's piece, or the stand-in's while it draws you */
     const own = d[field];
     const alt = standIn && standIn[sk];
-    const sp = own && own.visible && own.worldAlpha > 0.01 ? own : (alt && alt.visible && alt.worldAlpha > 0.01 ? alt : null);
+    const stage = d.parent && (function top(c) { while (c.parent) c = c.parent; return c; })(d);
+    const sp = own && !whyNotDrawn(own, stage) ? own : (alt && !whyNotDrawn(alt, stage) ? alt : null);
     if (!t || !sp) continue;
     const who = sp === own ? '' : 'stand-in ';
     let b;

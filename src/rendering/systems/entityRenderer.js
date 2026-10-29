@@ -5155,7 +5155,15 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, l
   const tex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
   const meta = entry && entry.meta;
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
-  if (!(tex && meta && meta.fullFrame && anchorPx)) { sprite.visible = false; return; }
+  if (!(tex && meta && meta.fullFrame && anchorPx)) {
+    sprite.visible = false;
+    /* v2.3.3852: why, as _placeTrait says it (the head-frame count, headFrames.js:
+       'design' a facing the piece does not ship -- the stand-in faces its own way) */
+    sprite._btHide = !entry ? 'entry' : !meta ? 'meta'
+      : !anchorPx ? ((meta.anchors && !meta.anchors[dir]) ? 'design' : 'anchor') : !tex ? 'tex' : 'frame';
+    return;
+  }
+  sprite._btHide = null;
   if (sprite.texture !== tex) sprite.texture = tex;
   const screenDir = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;
   const _pick = (obj) => obj && (obj[screenDir] != null ? obj[screenDir] : obj[dir]);
