@@ -61,7 +61,8 @@ function whyNotDrawn(sp, stage) {
 export function headFrameTick(entityRenderer, effectsRenderer, stage, worn) {
   if (!HEAD_FRAMES_ON) return;
   const d = entityRenderer && entityRenderer.playerDisplay;
-  if (!d || d.destroyed || !d._btHeadAt) return;
+  if (!d || d.destroyed || !d._btHeadAt) { readoutGone(); return; }
+  readout();
   _hf.frames++;
   const at = d._btHeadAt;
   const body = d._spriteBody;
@@ -128,7 +129,7 @@ export function othersFrameTick(entityRenderer, stage, now) {
       _oth.missed++;
       const k = cat + ' ' + why;
       _oth.byWhy[k] = (_oth.byWhy[k] || 0) + 1;
-      _oth.log.push({ f: _oth.frames, who, cat, id, why, pose: at.pose, dir: at.dir, mirror: at.mirror, frame: at.frameIdx });
+      _oth.log.push({ f: _oth.frames, who, cat, id, why, pose: at.pose, dir: at.dir, mirror: at.mirror, frame: at.frameIdx, t: Math.round(performance.now()) });
       if (_oth.log.length > 60) _oth.log.shift();
     }
   }
@@ -145,6 +146,49 @@ if (HEAD_FRAMES_ON && typeof window !== 'undefined') {
     if (reset) { _hf.frames = 0; _hf.counted = 0; _hf.missed = 0; _hf.bodyGone = 0; _hf.goneBy = Object.create(null); _hf.goneLog = []; _hf.byWhy = Object.create(null); _hf.log = []; }
     return out;
   };
+}
+
+/* ═══ ON THE SCREEN ITSELF, FOR A PHONE WITH NO CONSOLE ═══
+ * The owner plays on an iPhone, where reading window.__btHeadFrames() needs a
+ * Mac.  So with `?headframes` a small box in the top-left corner says it: the
+ * frames counted, the misses so far (your pieces, everyone else's, and the
+ * frames a piece did not reach the screen), and the last three misses as
+ * "piece, reason, pose, facing" -- play until it flickers, take a
+ * screenshot.  A plain element outside the game's root (never a Pixi Text),
+ * pointer-events none, `data-headframes`; written at most twice a second;
+ * taken off the page and let go of on leaving the world and on leaving the
+ * page. */
+let _box = null, _boxAt = 0;
+function readout() {
+  if (typeof document === 'undefined') return;
+  const now = performance.now();
+  if (now - _boxAt < 500) return;
+  _boxAt = now;
+  if (!_box) {
+    _box = document.createElement('div');
+    _box.setAttribute('data-headframes', '');
+    _box.style.cssText = 'position:fixed;left:4px;top:max(4px,env(safe-area-inset-top));z-index:2147483000;pointer-events:none;touch-action:manipulation;'
+      + 'font:11px/1.35 ui-monospace,Menlo,monospace;color:#fff;background:rgba(0,0,0,.72);padding:4px 6px;border-radius:4px;max-width:70vw;white-space:pre-wrap;';
+    document.body.appendChild(_box);
+    if (typeof window !== 'undefined') window.addEventListener('pagehide', readoutGone, { once: true });
+  }
+  const last = [];
+  const take = (arr, fmt) => { for (const l of arr) last.push([l.t || l.f || 0, fmt(l)]); };
+  take(_hf.log, (l) => `${l.cat}, ${l.why}, ${l.pose}, ${(l.mirror ? 'm-' : '') + l.dir}`);
+  take(_oth.log, (l) => `${l.who} ${l.cat}, ${l.why}, ${l.pose}, ${(l.mirror ? 'm-' : '') + l.dir}`);
+  take(_px.log, (l) => `${l.cat}, not on screen (${l.n}/${l.usual} px), ${l.pose}, ${(l.mirror ? 'm-' : '') + l.dir}`);
+  last.sort((p, q) => p[0] - q[0]);
+  const lines = [`head pieces: ${_hf.frames} frames`,
+    `missing: yours ${_hf.missed}, others ${_oth.missed}, off screen ${_px.drops}${_hf.bodyGone ? `, no bro ${_hf.bodyGone}` : ''}`]
+    .concat(last.slice(-3).map((x) => '- ' + x[1]));
+  const text = lines.join('\n');
+  if (_box.textContent !== text) _box.textContent = text;
+}
+function readoutGone() {
+  if (!_box) return;
+  try { _box.remove(); } catch (e) { /* gone */ }
+  _box = null;
+  _boxAt = 0;
 }
 
 /* ═══ ...AND WHAT REACHED THE SCREEN ═══

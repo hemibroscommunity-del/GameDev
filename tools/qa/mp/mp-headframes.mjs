@@ -21,7 +21,10 @@
  *      memory purge), the pieces counted through the restore;
  *   5. a fight in the Flame Fields: the greatsword's swings and the bow's
  *      shots on the nearest monster (the stand-ins take over the figure);
- *   6. no page errors.
+ *   6. with ?headframes the count shows itself on the screen (the owner's
+ *      iPhone has no console); without it (the peer's page) no readout, no
+ *      probe, the module never fetched;
+ *   7. no page errors.
  * Every phase's count of frames with a worn piece missing must be 0.  The
  * misses are printed with their reason, pose, facing and frame.
  *
@@ -156,6 +159,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const probe = await count(P, false);
     rec.ok('in the world, the head-frame count on (guard)', !!ok && !!probe && probe.on, { ok, probe: !!probe });
     if (!ok || !probe) return;
+    /* the count shows itself on the screen (the owner's iPhone has no console) */
+    const box = await H.waitFor(P, () => { const b = document.querySelector('[data-headframes]'); return b ? { text: b.textContent, pe: getComputedStyle(b).pointerEvents } : null; },
+      (v) => !!v && /head pieces: \d+ frames/.test(v.text), { timeout: 8000, label: 'the readout' }).catch(() => null);
+    rec.ok(`with ?headframes the count is on the screen, touching nothing ("${box ? box.text.split('\n').slice(0, 2).join(' / ') : 'NONE'}")`,
+      !!box && box.pe === 'none' && /missing: yours \d+/.test(box.text), box);
     const me = await H.readState(P, (S) => S.myId);
     await H.devOp(wsPort, 'quests', me).catch(() => null);
     /* the first quest's gate held open, so the weapons come (mp-traitsoak) */
@@ -235,10 +243,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
         name: 'Headpeer', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel',
         init: `(${INIT.toString()})(${JSON.stringify(PEER_LOOK)});`,
       });
+      const qAsked = [];
+      Q.page.on('request', (r) => { if (/headFrames/i.test(r.url())) qAsked.push(r.url()); });
       try {
         await H.enterWorld(Q);
         await H.waitFor(Q, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading,
           { timeout: 90000, label: 'the peer in the world' }).catch(() => null);
+        await Q.page.waitForTimeout(1500);
+        /* ...and without the switch: no readout, no probe, the module never fetched */
+        const qOff = await Q.page.evaluate(() => ({ box: !!document.querySelector('[data-headframes]'), probe: typeof window.__btHeadFrames }));
+        rec.ok(`without ?headframes there is no readout, no probe, and the counter is never fetched (${qAsked.length} asked)`,
+          !qOff.box && qOff.probe === 'undefined' && qAsked.length === 0, { qOff, qAsked });
         const here = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
         await H.hopTo(Q, here.x + 80, here.y + 40, { step: 100, gap: 260, tries: 60 }).catch(() => null);
         const seen = await H.waitFor(P, (S) => (S.others ? Object.keys(S.others).length : 0), (v) => v > 0, { timeout: 20000, label: 'the peer seen' }).catch(() => 0);
