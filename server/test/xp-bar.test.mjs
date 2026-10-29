@@ -3,7 +3,8 @@
  * skill's bar shows; one "+N" for a flurry; when it goes. */
 import { skillXpGain, xpGainWords, noteProg3Xp, onXpBar, xpBarShown,
   XP_BAR_SHOW_MS, XP_GAIN_MS, XP_BAR_CATS,
-  xpNumWords, xpToNextWords, xpFillSteps, XP_FILL_DELAY_MS, XP_FILL_MS, XP_WRAP_MS } from '../../src/game/xpBar.js';
+  xpNumWords, xpToNextWords, xpFillSteps, XP_FILL_DELAY_MS, XP_FILL_MS, XP_WRAP_MS,
+  xpEase, xpCountAt, xpShowMs, XP_BAR_UP_SHOW_MS } from '../../src/game/xpBar.js';
 import { prog3XpRequired } from '../src/prog3.js';
 
 let pass = 0, fail = 0;
@@ -104,9 +105,34 @@ check('4f: never "/ 0"', xpToNextWords(3, 0) === '3 / 1');
   check('5g: the next gain after a level-up grows on (no second wrap)', !p.fresh && !p.wrap, p);
   p = xpFillSteps({ cat: 'sword', level: 5, at: 9900 }, b({}));
   check('5h: a fall in level (a respec) is drawn fresh, never a wrap', p.fresh && !p.wrap, p);
-  check('5i: a level-up\'s whole run (to the end, then the carry-over) ends well inside the bar\'s 3 s',
-    XP_FILL_DELAY_MS + XP_FILL_MS <= XP_WRAP_MS && XP_WRAP_MS + XP_FILL_DELAY_MS + XP_FILL_MS <= XP_BAR_SHOW_MS - 1000
-      && XP_FILL_MS >= 400 && XP_FILL_MS <= 600, [XP_FILL_DELAY_MS, XP_FILL_MS, XP_WRAP_MS]);
+  check('5i: v2.3.3796: the white alone >= 0.5 s, the climb >= 1 s, the level-up\'s second step after the first has run',
+    XP_FILL_DELAY_MS >= 500 && XP_FILL_MS >= 1000 && XP_FILL_MS <= 1500 && XP_FILL_DELAY_MS + XP_FILL_MS <= XP_WRAP_MS,
+    [XP_FILL_DELAY_MS, XP_FILL_MS, XP_WRAP_MS]);
+  check('5j: v2.3.3796: the whole show ends with time to read it (a gain 1 s, a level-up 1 s, inside its longer show)',
+    XP_FILL_DELAY_MS + XP_FILL_MS + 1000 <= XP_BAR_SHOW_MS && XP_WRAP_MS + XP_FILL_DELAY_MS + XP_FILL_MS + 1000 <= XP_BAR_UP_SHOW_MS,
+    [XP_BAR_SHOW_MS, XP_BAR_UP_SHOW_MS]);
+  check('5k: v2.3.3796: a level-up\'s bar stays XP_BAR_UP_SHOW_MS, any other XP_BAR_SHOW_MS',
+    xpShowMs({ up: true }) === XP_BAR_UP_SHOW_MS && xpShowMs({ up: false }) === XP_BAR_SHOW_MS && xpShowMs(null) === XP_BAR_SHOW_MS
+      && xpBarShown({ at: 0, up: true }, XP_BAR_SHOW_MS + 100) && !xpBarShown({ at: 0, up: false }, XP_BAR_SHOW_MS + 100));
+  p = xpFillSteps({ cat: 'sword', level: 3, at: 10000 - XP_BAR_SHOW_MS - 100, up: true }, b({}));
+  check('5l: a level-up\'s bar is still up past XP_BAR_SHOW_MS: the next gain grows on, not fresh', !p.fresh, p);
+}
+
+// §6 v2.3.3796: the number counts (the owner: "instead of changing the whole xp number make it count up")
+check('6a: the ease-out: 0 at the start, 1 at the end, past half by the middle (quick, then settling)',
+  xpEase(0) === 0 && xpEase(1) === 1 && xpEase(0.5) > 0.8 && xpEase(-1) === 0 && xpEase(2) === 1, [xpEase(0.5)]);
+check('6b: held at the old value while the white stands alone', xpCountAt(10, 30, 0) === 10 && xpCountAt(10, 30, XP_FILL_DELAY_MS) === 10);
+{
+  const mid = xpCountAt(10, 30, XP_FILL_DELAY_MS + XP_FILL_MS / 2);
+  check('6c: between the two halfway through the climb, on the gold\'s curve', mid > 10 && mid < 30 && Math.abs(mid - (10 + 20 * xpEase(0.5))) < 1e-9, mid);
+}
+check('6d: the new value once the climb is done, and after', xpCountAt(10, 30, XP_FILL_DELAY_MS + XP_FILL_MS) === 30 && xpCountAt(10, 30, 99999) === 30);
+check('6e: down as well as up (a count that falls)', xpCountAt(30, 10, XP_FILL_DELAY_MS + XP_FILL_MS / 2) < 30 && xpCountAt(30, 10, 99999) === 10);
+{
+  const S = {};
+  noteProg3Xp(S, blob({ level: 2, xp: req(2) - 4 }, { level: 1, xp: 0 }, { level: 1, xp: 0 }), blob({ level: 3, xp: 6 }, { level: 1, xp: 0 }, { level: 1, xp: 0 }), req, 1000);
+  check('6f: the bar knows the old level\'s XP and its end (the count runs to it before the new level)',
+    S._xpBar.fromXp === req(2) - 4 && S._xpBar.fromNeed === req(2) && S._xpBar.up === true, S._xpBar);
 }
 
 console.log(`\n${pass + fail} checks, ${pass} passed, ${fail} failed`);

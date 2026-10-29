@@ -29,7 +29,7 @@ dungeon near town, with every boss at its dungeon's level.
 
 ### The Goo Grotto
 
-- **Where.** The Verdant Wilds' landmark, in the middle of their first
+- **Where.** The Earth Forest's landmark, in the middle of their first
   stretch (levels 1–5), north of the West Road.
   - That is where the Mayor's first quest sends a new player, for slimes.
   - It is about **36 seconds' walk** from where you arrive in town on the
@@ -38,16 +38,16 @@ dungeon near town, with every boss at its dungeon's level.
   (`public/tools/world/plan.js`, the `verdant` region's `landmark`: tier 1,
   side 0.6, r 200), so it has what they have:
   - its own clearing, where nothing grows;
-  - a footpath off the West Road, leaving it where the Verdant Wilds begin
+  - a footpath off the West Road, leaving it where the Earth Forest begin
     (the road's point at the commons' edge). Tier 1 has no road point of its
     own, and a path must leave from one of the road's points: the road
     wanders between them, so a path from the middle of a stretch can miss it;
   - its name on the world map and a dot on the minimap.
-- **What is inside.** The Verdant Wilds' own monsters, its blue slimes:
+- **What is inside.** The Earth Forest's own monsters, its blue slimes:
   - three waves, then a boss slime;
   - at your level, never above 5 (the rule every dungeon follows: a level-1
     player meets level 1, a level-40 one level 5);
-  - on the Verdant Wilds' mossy stone (`WHEEL_DUNGEON_FLOOR.verdant`,
+  - on the Earth Forest's mossy stone (`WHEEL_DUNGEON_FLOOR.verdant`,
     `verdant-3`), its mouth lit slime green.
 - **What it pays.** The same as any dungeon: each kill's own pay and the
   land's shard, then the clear.
@@ -111,8 +111,8 @@ tables were baked again (`bake-wheel-world.mjs`, `bake-wheel-spawns.mjs`).
 | | Long Wheel (live) | Short Wheel |
 |---|---|---|
 | Objects | 63,486 → 63,468 | 12,635 → 12,621 |
-| Monster places moved | 3 of 3,840 (the Verdant Wilds) | none |
-| Resources moved | 13 of 131 in the Verdant Wilds, 10 of 130 in the Stone Hollows | 5 of 27 in the Verdant Wilds |
+| Monster places moved | 3 of 3,840 (the Earth Forest) | none |
+| Resources moved | 13 of 131 in the Earth Forest, 10 of 130 in the Stone Hollows | 5 of 27 in the Earth Forest |
 | The other three mouths | where they were | where they were |
 
 ## Switch and deploy order
@@ -144,9 +144,9 @@ tables were baked again (`bake-wheel-world.mjs`, `bake-wheel-spawns.mjs`).
     "Clear any dungeon" check reads it as done.
 - **`wheeldungeon` suite** §10:
   - the Grotto on both Wheels at tier 1, levels 1–5, opened by the worker;
-  - on the Verdant Wilds' first stretch, west of town, 36 s and 23 s walks;
+  - on the Earth Forest's first stretch, west of town, 36 s and 23 s walks;
   - no monster's place at its mouth;
-  - a level-3 run: the Verdant Wilds' six slimes at 3–5, then the boss at 3;
+  - a level-3 run: the Earth Forest's six slimes at 3–5, then the boss at 3;
   - levels 1 → 1 and 40 → 5, and refused from too far off.
 - **`wheeldungeon` §6 and `dungeon`**: the boss at the dungeon's level; and a
   Workshop clear recorded for each player inside, not for one outside.

@@ -37,6 +37,8 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { XP_BAR_SHOW_MS, XP_FILL_DELAY_MS, XP_FILL_MS, xpToNextWords } from '../../../src/game/xpBar.js';
+/* v2.3.3796: "45 / 120" as numbers */
+const parseNum = (t) => { const m = /^([\d.,]+) \/ ([\d.,]+)$/.exec(String(t || '').trim()); return m ? { v: Number(m[1].replace(/,/g, '')), of: Number(m[2].replace(/,/g, '')) } : null; };
 import { XP_BAR_ICONS } from '../../../src/ui/mobile/xpBarArt.js';
 
 const PHONE = { width: 390, height: 844 };
@@ -176,9 +178,6 @@ async function layout(P, rec, OUT, tag, label, opts) {
   rec.ok(`${label}: the white stands at once at the worker's share (${b.whiteAt} = ${b.frac}), the gold behind it (${b.goldNow})`,
     Math.abs(b.whiteAt - b.frac) < 0.002 && Math.abs((b.whiteNow == null ? -1 : b.whiteNow) - b.frac) < 0.01 && b.goldNow != null && b.goldNow < b.whiteNow - 0.0005,
     { whiteAt: b.whiteAt, whiteNow: b.whiteNow, goldNow: b.goldNow, frac: b.frac });
-  const words = want && b.worker ? xpToNextWords(want.xp, b.worker.need) : null;
-  rec.ok(`${label}: "${b.numText}" on the bar, the worker's numbers (${words}), inside the track (${b.numW && Math.round(b.numW)} of ${b.trackBox && Math.round(b.trackBox.w)} px)`,
-    !!words && b.numText === words && b.numW > 0 && b.numW <= b.trackBox.w - 4, { numText: b.numText, words, numW: b.numW, track: b.trackBox });
   rec.ok(`${label}: inside the middle, nothing over the door, the AP or the gold`, clear(b),
     { bar: b.barBox, mid: b.mid, gain: b.gainBox, icon: b.iconBox, track: b.trackBox, ap: b.ap, gold: b.gold, door: b.door });
   /* the gold catches up (by the renderer's clock: polled, TRAPS §200) */
@@ -193,6 +192,9 @@ async function layout(P, rec, OUT, tag, label, opts) {
   await P.page.evaluate(() => { window.__btXpHold = false; }).catch(() => {});
   rec.ok(`${label}: then the gold grows up to the white and covers it (${f.goldNow} / ${f.whiteNow})`,
     f.goldNow != null && Math.abs(f.goldNow - f.whiteNow) < 0.003 && Math.abs(f.goldNow - f.frac) < 0.003, { gold: f.goldNow, white: f.whiteNow, frac: f.frac, shown: f.shown });
+  const words = want && b.worker ? xpToNextWords(want.xp, b.worker.need) : null;
+  rec.ok(`${label}: once the count is done, "${f.numText}" on the bar, the worker's numbers (${words}), inside the track (${f.numW && Math.round(f.numW)} of ${f.trackBox && Math.round(f.trackBox.w)} px)`,
+    !!words && f.numText === words && f.numW > 0 && f.numW <= f.trackBox.w - 4, { numText: f.numText, words, numW: f.numW, track: f.trackBox });
   return { b, f, t };
 }
 
@@ -265,6 +267,62 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`2. ...the title and the hour's icon faded under it (${bF.titleOpacity}, ${bF.todOpacity}) but still there, "${bF.title}"`,
       bF.titleOpacity < 0.05 && (bF.todOpacity == null || bF.todOpacity < 0.05) && bF.title === 'BroTown', { t: bF.title, o: bF.titleOpacity, tod: bF.todOpacity, shown: bF.shown });
 
+    /* 2b. v2.3.3796, the owner: "show the white bar longer ... make the fill
+       up to that white portion slower.  Also instead of changing the whole
+       xp number make it count up".  The gold's own transition, as the page
+       has it: the white alone at least 0.5 s, the climb at least 1 s. */
+    const trn = await P.page.evaluate(() => {
+      const f = document.querySelector('[data-xp-bar] .bt-xp-bar__fill');
+      const cs = f ? getComputedStyle(f) : null;
+      return cs ? { delay: parseFloat(cs.transitionDelay) || 0, dur: parseFloat(cs.transitionDuration) || 0, ease: cs.transitionTimingFunction } : null;
+    });
+    rec.ok(`2b. the white stands alone ${trn && trn.delay} s, then the gold climbs over ${trn && trn.dur} s (${trn && trn.ease})`,
+      !!trn && trn.delay >= 0.5 && trn.dur >= 1, trn);
+    /* 2c. two gains in a row, the second mid-count: the number never goes
+       back, and ends on the worker's XP (sampled in the page every 30 ms) */
+    await P.page.waitForTimeout(XP_BAR_SHOW_MS + 300);
+    /* (the fill and count stretched 4x, the QA switch: on this box a second
+       real hit takes seconds to land, longer than the real count) */
+    const SLOW = 4;
+    await P.page.evaluate((k) => {
+      window.__btXpSlow = k;
+      const log = [];
+      window.__xpNumLog = log;
+      const t0 = performance.now();
+      const id = setInterval(() => {
+        const n = document.querySelector('[data-xp-bar="sword"] [data-xp-num]');
+        const S = window._gameState.current;
+        if (n) log.push({ t: Math.round(performance.now() - t0), text: n.textContent, at: (S._xpBar || {}).at || 0, lv: (S._xpBar || {}).level || 0 });
+        if (log.length > 600 || window.__xpNumLog !== log) clearInterval(id);
+      }, 30);
+    }, SLOW);
+    const g1 = await earn(P, {});
+    let g2 = null;
+    if (g1.b) {
+      const at1 = g1.b.worker.at;
+      for (let k = 0; k < 6 && !g2; k++) {
+        await tapR(P);
+        for (let i = 0; i < 12; i++) {
+          await P.page.waitForTimeout(60);
+          const w = await P.page.evaluate(() => { const B = window._gameState.current._xpBar; return B ? { at: B.at, xp: B.xp } : null; });
+          if (w && w.at !== at1) { g2 = { ...w, after: w.at - at1 }; break; }
+        }
+      }
+    }
+    await P.page.waitForTimeout((XP_FILL_DELAY_MS + XP_FILL_MS) * SLOW + 600);
+    const nl = await P.page.evaluate(() => { const l = window.__xpNumLog || []; window.__xpNumLog = null; window.__btXpSlow = 0; return l; });
+    const endText = nl.length ? nl[nl.length - 1].text : null;
+    const wantEnd = await P.page.evaluate(() => { const B = window._gameState.current._xpBar; return B ? { xp: B.xp, need: B.need, lv: B.level } : null; });
+    const vals = nl.map((x) => ({ ...x, n: parseNum(x.text) })).filter((x) => x.n && x.lv === (wantEnd && wantEnd.lv));
+    let back = null;
+    for (let i = 1; i < vals.length; i++) if (vals[i].n.v < vals[i - 1].n.v - 1e-9) { back = [vals[i - 1], vals[i]]; break; }
+    const firstV = vals.length ? vals[0].n.v : null, lastV = vals.length ? vals[vals.length - 1].n.v : null;
+    const between = vals.some((x) => x.n.v > firstV + 1e-9 && x.n.v < lastV - 1e-9);
+    rec.ok(`2c. two hits, the second ${g2 ? g2.after + ' ms' : 'not'} after the first: the number counts ${firstV} -> ${lastV} through ${vals.length} reads, never back${back ? ' (BACK: ' + JSON.stringify(back) + ')' : ''}, passing values between (${between})`,
+      !!g1.b && !!g2 && g2.after < (XP_FILL_DELAY_MS + XP_FILL_MS) * SLOW && !back && between, { g2, vals: vals.map((x) => x.t + ':' + x.text).slice(0, 40) });
+    rec.ok(`2c. ...and ends on the worker's XP ("${endText}" = "${wantEnd && xpToNextWords(wantEnd.xp, wantEnd.need)}")`,
+      !!wantEnd && endText === xpToNextWords(wantEnd.xp, wantEnd.need), { endText, wantEnd });
+
     /* 3. no XP for a while: gone, the title back */
     const tLast = await P.page.evaluate(() => (window._gameState.current._xpBar || {}).at || 0);
     let b2 = null;
@@ -297,7 +355,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const m = /matrix\(([^,]+)/.exec(getComputedStyle(bar.querySelector('.bt-xp-bar__fill')).transform || '');
         const white = Number(tr.getAttribute('data-xp-white'));
         log.push({ t: Math.round(performance.now() - t0), white,
-          gold: m ? Math.round(parseFloat(m[1]) * 1000) / 1000 : null, lv: Number(bar.getAttribute('data-xp-level')) });
+          gold: m ? Math.round(parseFloat(m[1]) * 1000) / 1000 : null, lv: Number(bar.getAttribute('data-xp-level')),
+          text: (bar.querySelector('[data-xp-num]') || {}).textContent || null });
         /* the picture of the run to the end: the gold held where it was
            when the white first stood at the end */
         if (white >= 0.999 && !window.__xpbarHeld) {
@@ -343,6 +402,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const startedOver = iEnd >= 0 && !!lastS && seenAll.indexOf(lastS) > iEnd && lastS.white <= 0.001 && lastS.gold != null && lastS.gold <= 0.01;
     rec.ok(`4. a level-up: the white ran to the end with the gold after it (${ranToEnd}), then the new level from what carried over, empty here (${startedOver}); "${b3 && b3.numText}"`,
       ranToEnd && startedOver && !!b3 && b3.numText === xpToNextWords(0, b3.worker && b3.worker.need), seen.slice(0, 30));
+    /* v2.3.3796: the number on the run to the end counts to the OLD level's
+       end ("n / old"), passing values between, then the new level's count
+       ("0 / new": the lever carries nothing over) */
+    const nums = seenAll.map((x) => ({ t: x.t, white: x.white, n: parseNum(x.text) })).filter((x) => x.n);
+    const newNeed = b3 && b3.worker ? b3.worker.need : null;
+    const oldOf = nums.length ? nums[0].n.of : null;
+    const oldMid = nums.some((x) => x.n.of === oldOf && x.n.v > 0 && x.n.v < oldOf);
+    const oldEnd = nums.some((x) => x.n.of === oldOf && x.n.v === oldOf);
+    const iNew = nums.findIndex((x) => x.n.of === newNeed && newNeed !== oldOf);
+    const newEnd = iNew >= 0 && nums.slice(iNew).every((x) => x.n.of === newNeed) && nums[nums.length - 1].n.v === 0;
+    rec.ok(`4. ...the number counts to the old level's end (of ${oldOf}: between ${oldMid}, at the end ${oldEnd}), then the new level's (of ${newNeed}: "${nums.length ? nums[nums.length - 1].n.v + ' / ' + nums[nums.length - 1].n.of : '-'}")`,
+      oldMid && oldEnd && newEnd, nums.slice(0, 40).map((x) => x.t + ':' + x.n.v + '/' + x.n.of));
 
     /* 5. a 320 px phone: real hits */
     await P.page.setViewportSize({ width: 320, height: 700 });

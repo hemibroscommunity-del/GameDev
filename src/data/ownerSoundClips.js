@@ -345,6 +345,12 @@ export const OWNER_LOOPS = {
     "dur": 16.0,
     "music": -18.2,
     "beatMs": 500
+  },
+  "skate-roll": {
+    "url": "/audio/ambient/skate-roll.mp3",
+    "rms": -32.0,
+    "dur": 4.65,
+    "target": "river"
   }
 };
 

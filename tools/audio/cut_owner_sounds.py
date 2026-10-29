@@ -277,6 +277,14 @@ LOOPS = [
     ('lava', 'world/freesound_community-lava-loop-1-67307.mp3', 2.0, 14.0, 2.0, 'wind', 48),
     ('town-crowd', 'world/freesound_community-crowd-murmuring-60721.mp3', 0.8, 12.0, 2.0, 'river', 48),
     ('fire-crackle', 'world/dragon-studio-fire-crackling-356123.mp3', 0.2, 7.7, 1.2, 'river', 48),
+    # v2.3.3791: the skateboard rolling (docs/specs/skateboard.md), the owner's
+    # "Drive Over Border" of 2026-10-29 (assets/sfx-source/2026-10-29/): MONO
+    # (its two sides are the same samples), a rolling rumble at ~-22 dB from
+    # 0.5 s to 6.2 s with a wheel knocking over a crack every 0.2-0.7 s
+    # (peaks to -0.6 dB at 2.98, 3.20, 4.34 s) -- no stretch is free of them,
+    # and none is wanted: the knocks are the board rolling on the town's
+    # stones.  The ramp in (0.0-0.5 s) and out (6.2 s on) is left off.
+    ('skate-roll', '2026-10-29/freesound_community-drive-over-border-82185.mp3', 0.55, 5.65, 1.0, 'river', 48),
 ]
 
 DANCE_SRC = 'emote/prdbyd-club-beat-120-bmin-294045.mp3'
@@ -406,6 +414,12 @@ def seamless(w, xf, sr):
 
 def main():
     scan = '--scan' in sys.argv
+    # v2.3.3791: `--only=a,b` cuts just those loops and rewrites just their
+    # rows of the table, every other file and row left as it is (re-encoding
+    # every sound to add one would change files nobody asked to change)
+    only = next((a.split('=', 1)[1].split(',') for a in sys.argv if a.startswith('--only=')), None)
+    if only:
+        return only_loops(only)
     ref = loudest50(load(REF)) * REF_GAIN
     table, loops = {}, {}
     print(f'  reference: sword-hit3 at 0.55 x 1.7, loudest 50 ms {ref:.4f}')
@@ -566,6 +580,35 @@ def main():
         fh.write(f'/* the references the loops were levelled against (dBFS, whole-file RMS) */\n'
                  f'export const LOOP_REFS = {json.dumps({"wind": round(wind_db, 1), "river": round(river_db, 1)})};\n')
     print('  wrote', os.path.relpath(DATA, ROOT))
+    return 0
+
+
+def only_loops(names):
+    """v2.3.3791: cut the named LOOPS and put their rows into the table as it
+    stands (OWNER_SOUNDS, the other loops and LOOP_REFS untouched)."""
+    import re
+    text = open(DATA).read()
+    m = re.search(r'export const OWNER_LOOPS = (\{.*?\n\});', text, re.S)
+    loops = json.loads(m.group(1))
+    refs = json.loads(re.search(r'export const LOOP_REFS = (\{.*?\});', text).group(1))
+    for name, src, start, length, xf, target, kbps in LOOPS:
+        if name not in names:
+            continue
+        w = seamless(window(src, start, length, LOW), xf, LOW)
+        want = refs[target]
+        w *= 10 ** ((want - rms_db(w)) / 20)
+        if np.abs(w).max() > 0.7:
+            w = soft_limit(w)
+        w *= min(1.0, 0.95 / max(1e-9, np.abs(w).max()))
+        path = os.path.join(ROOT, 'public', 'audio', 'ambient', f'{name}.mp3')
+        encode(w, LOW, path, kbps)
+        back = load(path, LOW)
+        loops[name] = {'url': f'/audio/ambient/{name}.mp3', 'rms': round(rms_db(back), 1),
+                       'dur': round(len(back) / LOW, 3), 'target': target}
+        print(f'  {name:12s} loop {len(w) / LOW:5.2f} s -> {os.path.getsize(path) / 1024:5.1f} KB, rms {rms_db(back):5.1f} dBFS')
+    text = text[:m.start(1)] + json.dumps(loops, indent=2) + text[m.end(1):]
+    open(DATA, 'w').write(text)
+    print('  wrote', os.path.relpath(DATA, ROOT), '(only', ', '.join(names) + ')')
     return 0
 
 

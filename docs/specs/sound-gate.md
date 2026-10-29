@@ -71,4 +71,4 @@ and how many sounds it dropped.
   - the town's sound within 2 s of the reveal;
   - a real reconnect (the socket refused for six seconds): none under the
     veil, and the town's music back after.
-- `sound-cues` §20 (the gate's wiring).
+- `sound-cues` §21 (the gate's wiring).

@@ -997,7 +997,33 @@ for (const p of files) {
       && loopFn.length > 100 && !/_voiceGate/.test(loopFn));
 }
 
-/* ── 20. v2.3.3800: no sound of the world under the loading screen ──
+/* ── 20. v2.3.3791: the skateboard rolling ──
+   The owner's "Drive Over Border" (freesound_community, Pixabay 82185), cut
+   into a seamless loop by cut_owner_sounds.py; game/rideSound.js plays it on
+   the music bus while YOU ride and roll, and stops it the frame the ride
+   ends.  A loop: never in SFX_MANIFEST (decoded only where a board could be
+   ridden, let go after). */
+{
+  const OSC = await import('../../src/data/ownerSoundClips.js');
+  const SS = await import('../../src/data/soundStudio.js');
+  const L = OSC.OWNER_LOOPS['skate-roll'];
+  const file = L && existsSync(new URL('../../public' + L.url, import.meta.url));
+  check('20a the roll is one of the owner\'s loops (public/audio/ambient/skate-roll.mp3), a few seconds, levelled to the river',
+    !!L && file && L.dur > 3 && L.dur < 7 && L.target === 'river' && Math.abs(L.rms - OSC.LOOP_REFS.river) < 1.5, L);
+  check('20b ...and never in SFX_MANIFEST (a loop is decoded only while it can play)', !Object.values(MANIFEST).some((u) => /skate-roll/.test(String(u))));
+  check('20c its recording is kept in assets/sfx-source/2026-10-29/, cut by the tool, credited (license to confirm)',
+    existsSync(new URL('../../assets/sfx-source/2026-10-29/freesound_community-drive-over-border-82185.mp3', import.meta.url))
+      && /'skate-roll', '2026-10-29\/freesound_community-drive-over-border-82185\.mp3'/.test(src('tools/audio/cut_owner_sounds.py'))
+      && /Skateboard rolling[^\n]*82185[^\n]*\*\*CONFIRM\.\*\*/.test(src('CREDITS.md')));
+  check('20d labelled in the studio, played through BT_AUDIO.skateRollDemo',
+    SS.OTHER_PLAYS.some((r) => r[0] === 'skateRoll' && r[3].fn === 'skateRollDemo') && /BT_AUDIO\.skateRollDemo = function/.test(GD));
+  const RS = src('src/game/rideSound.js');
+  check('20e played while you ride (isRiding), on the music bus, its own source stopped after the ride ends, and the game loop ticks it',
+    /isRiding\(S\)/.test(RS) && /_out\('music'\)/.test(RS) && /st\.riding && !riding/.test(RS) && /setTargetAtTime\(0/.test(RS)
+      && /tickRideSound\(S, _jNow\)/.test(src('src/ui/BroTown.jsx')));
+}
+
+/* ── 21. v2.3.3800: no sound of the world under the loading screen ──
    The owner: "when first loading the game don't play any music or sound
    effects until the world is fully loaded."  BT_AUDIO's sound gate is closed
    while the loading screen is up (body.bt-intro-up) or a veil covers the
@@ -1008,18 +1034,18 @@ for (const p of files) {
 {
   const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
   const fn = (name) => { const a = G.indexOf(name + ' = function'); return a < 0 ? '' : G.slice(a, G.indexOf('\n};', a)); };
-  check('20a the gate closes on the loading screen and on both veils, opens two frames after the last goes, and `?soundgate=0` turns it off',
+  check('21a the gate closes on the loading screen and on both veils, opens two frames after the last goes, and `?soundgate=0` turns it off',
     /classList\.contains\('bt-intro-up'\)/.test(fn('BT_AUDIO._gateWhy')) && /bt-connect-veil/.test(fn('BT_AUDIO._gateWhy')) && /bt-avatar-hold/.test(fn('BT_AUDIO._gateWhy'))
       && /requestAnimationFrame\(function \(\) \{ requestAnimationFrame\(open\); \}\)/.test(fn('BT_AUDIO._gateEval'))
       && /soundgate=\(0\|off\|false\|no\)/.test(G) && /BT_AUDIO\.SOUND_GATE = true;/.test(G)
       && /new MutationObserver/.test(G) && /attributeFilter: \['class'\], childList: true/.test(G));
-  check('20b while it is closed: play() drops a sound of the world (the taps pass), the deck has nothing to play, a loop waits for the reveal, the watchdog leaves the silence be',
+  check('21b while it is closed: play() drops a sound of the world (the taps pass), the deck has nothing to play, a loop waits for the reveal, the watchdog leaves the silence be',
     /if \(this\.soundGateClosed\(\) && !this\._gatePasses\(key\)\) \{ this\._soundGate\.dropped\+\+; return null; \}/.test(fn('BT_AUDIO.play'))
       && /if \(this\.soundGateClosed\(\)\) return null;/.test(fn('BT_AUDIO._deckTarget'))
       && /if \(this\.soundGateClosed\(\)\) \{ this\._gateLoops\[key\] = \[vol, bus\]; return; \}/.test(fn('BT_AUDIO.startSfxLoop'))
       && /\/\^ui-\//.test(fn('BT_AUDIO._gatePasses'))
       && /if \(this\.soundGateClosed\(\)\) \{ this\._silentTicks = 0; return; \}/.test(G));
-  check('20c the ambient beds and the river hear no share while it is closed',
+  check('21c the ambient beds and the river hear no share while it is closed',
     /const hush = !!\(B\.soundGateClosed && B\.soundGateClosed\(\)\);\s*if \(live && !hush\)/.test(src('src/game/ambientBeds.js'))
       && /!\(B\.soundGateClosed && B\.soundGateClosed\(\)\)/.test(src('src/game/waterAmbience.js')));
 }
