@@ -910,6 +910,7 @@ if (changedServer.length || changedClient.length) {
   /* v2.3.3750: every body pose with numbers, and the rod's and pickaxe's recolours */
   const touched = changed.filter((f) => /^public\/sprites\/player\/(stand|jog|hit|dodge|mine|fish|pickup)-(east|north|northeast|south|southwest)\.(png|webp)$/.test(f)
     || /^src\/rendering\/(playerSkins|garmentConfine|spriteScale|playerDecal|toolRecolor|toolWood)\.js$/.test(f) || f === 'src/rendering/eyeMask.json'
+    || /^public\/sprites\/player\/((sword|bow)-[a-z]+-(body|torso)|jog-[a-z]+-legs)\.(png|webp)$/.test(f)   /* v2.3.3757: the stand-ins' sheets */
     || /^public\/sprites\/look\//.test(f) || /^src\/rendering\/lookSets\//.test(f));   /* v2.3.3737: + a set's module */
   if (touched.length) {
     const r = spawnSync('node', ['tools/art/role-bake.mjs', '--hashes'], { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
