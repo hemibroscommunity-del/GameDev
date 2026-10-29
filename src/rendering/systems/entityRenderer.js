@@ -422,6 +422,21 @@ const NPC_SCALE_MULT = Object.assign(Object.create(null), {
   '/sprites/npc/farmer-bro.webp': NPC_BRO_MULT,
   '/sprites/npc/beastmaster-bro.webp': NPC_BRO_MULT,
   '/sprites/npc/lil-bro-walk-south.webp': NPC_BRO_MULT,
+  /* v2.3.3820: the new cast (docs/specs/npc-cast.md), each a bro's scale; Bean
+     a child, photographed at 0.8 as Lil Bro is */
+  '/sprites/npc/sterling.webp': NPC_BRO_MULT,
+  '/sprites/npc/slim.webp': NPC_BRO_MULT,
+  '/sprites/npc/chef-blaze.webp': NPC_BRO_MULT,
+  '/sprites/npc/glint.webp': NPC_BRO_MULT,
+  '/sprites/npc/postmaster-pete.webp': NPC_BRO_MULT,
+  '/sprites/npc/deed-dave.webp': NPC_BRO_MULT,
+  '/sprites/npc/benny.webp': NPC_BRO_MULT,
+  '/sprites/npc/guildmaster-gary.webp': NPC_BRO_MULT,
+  '/sprites/npc/sheriff-buck.webp': NPC_BRO_MULT,
+  '/sprites/npc/gavel-greg.webp': NPC_BRO_MULT,
+  '/sprites/npc/old-man-reel.webp': NPC_BRO_MULT,
+  '/sprites/npc/bean.webp': NPC_BRO_MULT,
+  '/sprites/npc/tourist-terry.webp': NPC_BRO_MULT,
 });
 const npcSpriteScale = (src) => NPC_SPRITE_SCALE * (NPC_SCALE_MULT[src] || 1);
 /* v2.3.3580: how big his figure is painted in his cell, a grown bro's 1

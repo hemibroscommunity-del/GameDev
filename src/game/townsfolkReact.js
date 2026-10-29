@@ -182,6 +182,20 @@ export const IDLE_MOVES = Object.freeze({
   'Beastmaster Bro': Object.freeze(['shrug', 'wave']),
   'Woodworker Bro': Object.freeze(['facepalm', 'shrug']),
   'Farmer Bro': Object.freeze(['wave', 'shrug']),
+  /* v2.3.3820: the new cast (docs/specs/npc-cast.md), in character */
+  Sterling: Object.freeze(['flex', 'shrug']),             /* gains */
+  Slim: Object.freeze(['shrug', 'wave']),
+  'Chef Blaze': Object.freeze(['facepalm', 'cheer', 'facepalm']),   /* WHO SEASONED THIS */
+  Glint: Object.freeze(['wave', 'cheer']),
+  'Postmaster Pete': Object.freeze(['shrug', 'shrug', 'facepalm']),  /* the back is closed */
+  'Deed Dave': Object.freeze(['wave', 'cheer']),           /* sign here */
+  Benny: Object.freeze(['wave', 'shrug']),
+  'Guildmaster Gary': Object.freeze(['cheer', 'facepalm']),  /* KEVIN */
+  'Sheriff Buck': Object.freeze(['flex', 'shrug']),
+  'Gavel Greg': Object.freeze(['cheer', 'laugh']),         /* sold! */
+  'Old Man Reel': Object.freeze(['shrug', 'laugh']),
+  Bean: Object.freeze(['wave', 'cheer', 'laugh']),         /* say hi to chat */
+  'Tourist Terry': Object.freeze(['facepalm', 'shrug', 'wave']),   /* which way to BroTown */
 });
 const IDLE_DEFAULT = Object.freeze(['wave', 'shrug']);
 
