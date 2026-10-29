@@ -1386,6 +1386,37 @@ export function QuestCoach(props) {
     };
   }, [stateRef]);
 
+  /* ═══ v2.3.3812: NO CARD ON THE QUEST CARD, MEASURED ═══
+     v2.3.3782 kept GEAR UP off the pinned quest card by a guess at the card's
+     height (two lines, about 70 px), and lane A's judge pass on a computer
+     (1440 x 900 and 1280 x 720) still saw "SAVE YOUR LOGIN KEY" and "YOUR
+     REWARD" -- taller cards -- drawn over it, text on text.  So after every
+     draw, before the paint, the card as drawn is measured against the quest
+     card: crossing it, it steps right of it while the world has the room (a
+     style written here; React writes `left` again only when its own value
+     changes, and this runs again after).  Two rects a draw, only while a
+     card is up and only on a computer playing wide (deskWideActive): a phone
+     never meets the case and does no layout work for it. */
+  React.useLayoutEffect(function () {
+    /* a computer playing wide only: a phone never meets the case, so it
+       does no layout work for it (the coach draws up to ~12 times a second
+       while a world-anchored lesson's ring follows you) */
+    if (!deskWideActive()) return;
+    const el = document.querySelector('[data-coach-card]');
+    const qh = document.querySelector('[data-quest-hud]');
+    if (!el || !qh) return;
+    const cr = el.getBoundingClientRect(), qr = qh.getBoundingClientRect();
+    if (!(cr.width > 0) || !(qr.width > 0)) return;
+    if (!(cr.left < qr.right && cr.right > qr.left && cr.top < qr.bottom && cr.bottom > qr.top)) return;
+    const layer = document.querySelector('[data-coach]');
+    const lb = layer ? fixedBox(layer) : { x: 0 };
+    const cs = getComputedStyle(document.documentElement);
+    const wx = parseFloat(cs.getPropertyValue('--world-x')) || 0;
+    const pw = parseFloat(cs.getPropertyValue('--play-w')) || window.innerWidth;
+    const left = qr.right - lb.x + 8;
+    if (left + cr.width <= wx + pw - 8) el.style.left = left + 'px';
+  });
+
   if (!view) return null;
   /* ═══ v2.3.3470: THE RING IS DRAWN IN THE LAYER'S BOX, NOT THE WINDOW'S ═══
      measure() reads every control (and the bro, worldRect) in the WINDOW's
@@ -1658,6 +1689,32 @@ export function QuestCoach(props) {
             if (qr && qr.width > 0) {
               _l = Math.min(Math.max(_l, qr.right - box.x + 8),
                 Math.max(_wx + 8, _wx + _pw - 228));
+            }
+          }
+          /* ═══ v2.3.3782: ANYWHERE IT WOULD CROSS THE QUEST CARD ═══
+             A computer playing wide (the QA play-through of the judges'
+             path): GEAR UP hung below the fold chip ("OPEN", the top-left
+             corner), and its next step ("Click each glowing item") stood
+             above a bag tile at the cap (120 px from the top, `bottom`
+             below) -- both across the pinned quest card's body line, where
+             v2.3.3481's rule (above, the band's cap) did not reach.  Where
+             the card will stand -- below its control, or above it with
+             `bottom` as set below -- crossing the quest card, it steps right
+             of it, still inside the world's span (its height is not
+             knowable here: two lines of copy, about 70 px).  Upright the
+             card never meets the quest card, so nothing there moves. */
+          {
+            const qh = document.querySelector('[data-quest-hud]');
+            const qr = qh && qh.getBoundingClientRect();
+            if (qr && qr.width > 0) {
+              const cTop = above
+                ? boxH - Math.min(Math.max(Math.max(6, boxH - (r.top - pad - 10)), bandClear, broClear), Math.max(6, boxH - 120)) - 70
+                : r.top + r.height + pad + 10;
+              if (cTop < qr.bottom - box.y && cTop + 70 > qr.top - box.y
+                && _l < qr.right - box.x && _l + 220 > qr.left - box.x) {
+                _l = Math.min(Math.max(_l, qr.right - box.x + 8),
+                  Math.max(_wx + 8, _wx + _pw - 228));
+              }
             }
           }
           return _l;

@@ -108,12 +108,15 @@ export function maybeShowWelcome(getS) {
                "Welcome to Bro Town" in the title would print the word twice,
                and the title line is nowrap-with-ellipsis, so it is also the
                line that cannot afford the extra words. */
-            title: 'Bro Town',
+            title: 'BroTown',
             /* v2.3.2992: the gold is on the map now, the road on the
                ground put away (questTrailStyle.js GROUND_PATH).
                v2.3.3583: and a townsperson talks when tapped, never by
                walking up (BroTown NPC_PROX_OPENS), so the first one says so */
-            sub: 'Find Mayor Bro — he wants a word. Follow the gold road on your map, then tap him.',
+            /* v2.3.3812: lane A's judge pass -- "Follow the gold road" sent
+               players looking for a road in the world; the gold line is on
+               the map, so it says that */
+            sub: 'Find Mayor Bro — he wants a word. The gold line on your map leads to him; then tap him.',
             ts: Date.now(),
             /* queue: the player has caused nothing yet, so there is nothing
                to preempt, and if something did land first this should wait

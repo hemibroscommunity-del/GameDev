@@ -81,7 +81,7 @@ const actionBtn = (_danger) => ({
 const shareInvite = async () => {
   const url = (typeof location !== 'undefined' && location.origin) || 'https://brotown.pages.dev';
   try {
-    if (navigator.share) { await navigator.share({ title: 'Bro Town', url }); return true; }
+    if (navigator.share) { await navigator.share({ title: 'BroTown', url }); return true; }
   } catch (_e) { return false; }
   try { await navigator.clipboard.writeText(url); return 'copied'; } catch (_e) {}
   return false;
@@ -228,7 +228,7 @@ export const SocialPanel = () => {
           marginBottom: 8,
           fontSize: 12, lineHeight: 1.4, color: COL.text2,
         }}>
-          {deskWords('Tap another player anywhere in Bro Town to view their profile and add them as a friend.')}
+          {deskWords('Tap another player anywhere in BroTown to view their profile and add them as a friend.')}
           <button
             onPointerUp={async (e) => {
               e.stopPropagation();
@@ -343,7 +343,7 @@ export const SocialPanel = () => {
         rows.length === 0 ? (
           allRows.length === 0 ? (
             <Empty compact line="No friends yet"
-              sub={deskWords('Tap another player anywhere in Bro Town to view their profile and add them as a friend.')} />
+              sub={deskWords('Tap another player anywhere in BroTown to view their profile and add them as a friend.')} />
           ) : (
             <Empty line="No matches" sub="Try a different name." />
           )

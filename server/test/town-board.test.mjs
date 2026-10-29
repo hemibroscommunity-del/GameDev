@@ -21,6 +21,10 @@
  *      Mayor's story, the townsfolk's, the guild ladders, Lil Bro's race),
  *      a Gambling heading after Money and trade, and each dungeon's level
  *      line from the dungeon tables; the quests' numbers are the worker's.
+ *      v2.3.3801, the owner's review (ChatGPT's, adopted): the headings'
+ *      names and order, a line under every tile (its numbers the code's), the
+ *      Skateboard, Lil Bro's race in Town Life, the Bank's vault words, and
+ *      one action button on a page with no place.
  *   2. The pins (src/game/mapPins.js): a press puts a pin on a place, moving
  *      it from wherever it was; the same press there lifts it; red and blue
  *      at once (even on one place); kept per character, read back after a
@@ -41,6 +45,11 @@ const D = await import('../../src/data/wheelBuildingDoors.js');
 const L = await import('../../src/data/wheelLands.js');
 const W = await import('../../src/data/wheelDungeons.js');
 const SD = await import('../src/data.js');
+const { ARENA } = await import('../src/gladiator.js');
+const { ACE_FLIP } = await import('../src/gamble.js');
+const { FARM_CROP_IDS } = await import('../src/farm.js');
+const { RIDE_MULT } = await import('../../src/game/ride.js');
+const { SKATEBOARD_ART } = await import('../../src/data/skateboardArt.js');
 const { PLAN } = await import('../../public/tools/world/plan.js');
 const { inflateSync } = await import('node:zlib');
 const { readFileSync } = await import('node:fs');
@@ -79,8 +88,8 @@ const { readFileSync } = await import('node:fs');
       && !B.boardPinnable('nomansland') && B.boardPinnable('arena') && !/\d/.test(B.boardEntry('nomansland').page.join(' ')));
   /* ── v2.3.3779 ── */
   const dungeons = B.BOARD.filter((e) => e.group === 'dungeons').map((e) => e.id).sort().join();
-  check('1k the four dungeons have their own heading, Dungeons, after Fight; Fight keeps the Arena, No man\'s land and Duels',
-    dungeons === 'buried-city,foundry-dome,goo-grotto,great-cave' && B.GROUPS.map((g) => g.id).join() === 'quests,fight,dungeons,lands,make,money,gambling,people'
+  check('1k the four dungeons have their own heading, Dungeons (v2.3.3801: after the Lands, before Fight); Fight keeps the Arena, No man\'s land and Duels',
+    dungeons === 'buried-city,foundry-dome,goo-grotto,great-cave' && B.GROUPS.map((g) => g.id).join() === 'quests,lands,dungeons,fight,make,money,gambling,people'
       && B.BOARD.filter((e) => e.group === 'fight').map((e) => e.id).join() === 'arena,nomansland,duel', { dungeons, groups: B.GROUPS.map((g) => g.id) });
   const pics = B.BOARD.map((e) => e.icon.split('?')[0]);
   check('1l every tile has its own picture (no two alike)', new Set(pics).size === pics.length, pics.filter((p, i) => pics.indexOf(p) !== i));
@@ -93,7 +102,10 @@ const { readFileSync } = await import('node:fs');
   const newPics = pics.filter((p) => p.startsWith('/icons/board/'));
   const fat = newPics.filter((p) => { const n = plte(new URL('public' + p, root)); return !(n > 0 && n <= 256); });
   check('1m the board\'s own pictures (public/icons/board/) are palette pictures of 256 colours or fewer', newPics.length === 5 && fat.length === 0, { newPics, fat });
-  const landNames = Object.values(PLAN.regions).map((r) => r && r.name).filter((n) => typeof n === 'string' && n.length > 3);
+  /* v2.3.3814: the LANDS' names -- not the town's or its commons', whose
+     "BroTown" the board says as every player reads it (the plan's spelling
+     was "Brotown" until then, which no row happened to match) */
+  const landNames = Object.entries(PLAN.regions).filter(([id]) => id !== 'town' && id !== 'commons').map(([, r]) => r && r.name).filter((n) => typeof n === 'string' && n.length > 3);
   const spelt = B.BOARD.filter((e) => landNames.some((n) => [e.name, e.where, ...e.page].join(' ').includes(n))).map((e) => e.id);
   check('1n no row spells a land\'s name: each is {land}, read from the world\'s plan', spelt.length === 0 && landNames.length >= 8, spelt);
   const toks = new Set();
@@ -110,8 +122,8 @@ const { readFileSync } = await import('node:fs');
   check('1q every land\'s tile is its scene (the owner\'s pick 1b), drawn wide', B.BOARD.filter((e) => e.group === 'lands').every((e) => /^\/ui\/banners\/land-/.test(e.icon) && e.iconAspect === 2));
   /* ── v2.3.3788 ── */
   const inGroup = (g) => B.BOARD.filter((e) => e.group === g).map((e) => e.id).join();
-  check('1r Quests first (the Mayor\'s story, the townsfolk\'s, the Guild Hall, Lil Bro\'s race); Gambling (the Den, Ace) after Money and trade; People and Money keep the rest',
-    inGroup('quests') === 'mayor,townquests,guildhall,race' && inGroup('gambling') === 'gambling,ace' && inGroup('money') === 'store,diego,auction,bank' && inGroup('people') === 'saloon,post,hotel',
+  check('1r Quests first (the Mayor\'s story, the townsfolk\'s, the Guild Hall); Gambling (the Den, Ace) after Trade & Bank; Town Life the Saloon, Post Office, Hotel, Lil Bro\'s race (v2.3.3801) and the Skateboard',
+    inGroup('quests') === 'mayor,townquests,guildhall' && inGroup('gambling') === 'gambling,ace' && inGroup('money') === 'store,diego,auction,bank' && inGroup('people') === 'saloon,post,hotel,race,skate',
     { quests: inGroup('quests'), gambling: inGroup('gambling'), money: inGroup('money'), people: inGroup('people') });
   check('1s the Mayor\'s story pins on Mayor Bro; the townsfolk\'s quests (six people) have no pins',
     B.boardPinnable('mayor') && B.boardEntry('mayor').at.npc === 'Mayor Bro' && !B.boardPinnable('townquests') && B.boardEntry('townquests').at === null);
@@ -141,6 +153,30 @@ const { readFileSync } = await import('node:fs');
   check('1u each dungeon\'s level line, from the dungeon tables: Goo Grotto "Lv 10+ · party of 2–3", Great Cave and Foundry Dome "Lv 26+", Buried City "Lv 41+"',
     lines.verdant === 'Lv 10+ · party of 2–3' && lines.hollows === 'Lv 26+' && lines.thunder === 'Lv 26+' && lines.sky === 'Lv 41+'
       && line('verdant', false) === 'Lv 1+' && W.dungeonBoardLine(null, null, 0) === null, lines);
+  /* ── v2.3.3801: the owner's review -- headings, a line under every tile, one action on a page with no place ── */
+  check('1v the headings, in the owner\'s order and words: Quests, Explore the Lands, Dungeons, Fight, Craft & Grow, Trade & Bank, Gambling, Town Life',
+    B.GROUPS.map((g) => g.name).join('|') === 'Quests|Explore the Lands|Dungeons|Fight|Craft & Grow|Trade & Bank|Gambling|Town Life');
+  const noSub = B.BOARD.filter((e) => !e.mouth && !B.boardLand(e) && !(typeof e.sub === 'string' && e.sub.length > 0 && e.sub.length <= 26)).map((e) => e.id);
+  check('1w every tile has its one short line (a land\'s and a dungeon\'s made at runtime)', noSub.length === 0, noSub);
+  const sub = (id) => B.boardEntry(id).sub;
+  check('1x the lines\' numbers are the code\'s: the Arena\'s entry, the guilds, the farm\'s crops, Ace\'s odds',
+    sub('arena') === 'Entry: ' + ARENA.ENTRY_FEE + ' gold' && sub('guildhall') === SD.GUILD_SKILLS.length + ' skill guilds'
+      && sub('farm') === 'Grow ' + FARM_CROP_IDS.length + ' crops' && sub('ace') === Math.round(ACE_FLIP.WIN_CHANCE * 100) + '% chance to win',
+    { arena: sub('arena'), guild: sub('guildhall'), farm: sub('farm'), ace: sub('ace') });
+  const want = { verdant: 'West \u00b7 Flora', ember: 'North \u00b7 Fire', frost: 'NW \u00b7 Frost', sky: 'NE \u00b7 Wind', hollows: 'East \u00b7 Stone', thunder: 'SE \u00b7 Storm', tidal: 'South \u00b7 Water', mist: 'SW \u00b7 Venom' };
+  const got = Object.fromEntries(L.WHEEL_LANDS.map((id) => [id, B.landSub(PLAN.regions[id].dir, PLAN.regions[id].element)]));
+  check('1y a land\'s line is its compass and element from the world\'s plan ("West \u00b7 Flora" ... "SW \u00b7 Venom"); the element alone without the map',
+    L.WHEEL_LANDS.every((id) => got[id] === want[id]) && B.landSub(null, B.boardLandElement('verdant')) === 'Flora' && B.landSub(null, null) === null, got);
+  const bank = B.boardEntry('bank');
+  check('1z the Bank says what it is: an overview, or with the worker\'s vault (caps.bank) "Store gold & items" and its own page',
+    bank.sub === 'Gold & gear overview' && bank.ifCap && bank.ifCap.cap === 'bank' && bank.ifCap.sub === 'Store gold & items' && bank.ifCap.page.length >= 1);
+  const sk = B.boardEntry('skate');
+  check('1za the Skateboard: Town Life, with caps.ride, no pin, one "ride" action, its button\'s own picture, and its page true to the board (twice as fast, Z)',
+    sk.group === 'people' && sk.cap === 'ride' && !B.boardPinnable('skate') && sk.action === 'ride'
+      && sk.icon.split('?')[0] === '/sprites/ride/' + SKATEBOARD_ART.views.top.file && RIDE_MULT === 2 && /twice/.test(sk.page.join(' ')) && /\bZ\b/.test(sk.page.join(' ')),
+    sk);
+  check('1zb the pages with no place: Town Quests opens Quests (one action), No man\'s land has none',
+    B.boardEntry('townquests').action === 'quests' && !B.boardEntry('nomansland').action && B.BOARD.filter((e) => e.action).every((e) => !B.boardPinnable(e.id)));
   check('1i the four dungeons, the arena, the forge and the Gambling Den are on the board', ['goo-grotto', 'great-cave', 'foundry-dome', 'buried-city', 'arena', 'forge', 'gambling', 'woodworker'].every((id) => !!B.boardEntry(id)));
 }
 

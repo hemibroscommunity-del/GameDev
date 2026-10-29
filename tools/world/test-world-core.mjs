@@ -278,7 +278,7 @@ console.log('prompt');
   ok('says which edges are finished', /along the right edge is finished neighbouring squares/.test(mill.text));
   ok('the river flows in by one edge and out by another', /The Sweetwater River flows in from the top edge and out by the bottom edge/.test(mill.text), mill.summary);
   ok('the bridge, the mill plot and the fork', /The Mill Bridge \(bright yellow\) carries the West Road over the river/.test(mill.text) && /kept for the Old Mill/.test(mill.text) && /The Bog Trail branches off the West Road here/.test(mill.text));
-  ok('the commons meets a spoke through its designed edge', /Where Brotown Commons meets Earth Forest, the commons grass grows lush/.test(mill.text), mill.summary);
+  ok('the commons meets a spoke through its designed edge', /Where BroTown Commons meets Earth Forest, the commons grass grows lush/.test(mill.text), mill.summary);
   const src = P(sqAt(PLAN.rivers[0].pts[0]));
   ok('the river rises under the glacier', /rises here, pouring as meltwater from under the glacier/.test(src.text) && /Frost Ridge — the glacier/.test(src.text), src.summary);
   const fl = P(sqAt(PLAN.rivers[0].falls[0].at));
@@ -1319,7 +1319,7 @@ console.log('wheel map');
   const inside = (x, y) => x >= 0 && y >= 0 && x <= m.worldW && y <= m.worldH;
   const c = m.worldW / 2;
   ok(`the map names the eight lands, each out along its own spoke from the town (${m.lands.map((l) => l.name).join(', ')})`,
-    m.lands.length === 8 && m.lands.every((l) => { const dx = l.x - c, dy = l.y - c, d = Math.hypot(dx, dy); return d > 5000 && (dx * l.ux + dy * l.uy) / d > 0.99; }) && m.hub.town.name === 'Brotown' && Math.abs(m.hub.town.x - c) < 2,
+    m.lands.length === 8 && m.lands.every((l) => { const dx = l.x - c, dy = l.y - c, d = Math.hypot(dx, dy); return d > 5000 && (dx * l.ux + dy * l.uy) / d > 0.99; }) && m.hub.town.name === 'BroTown' && Math.abs(m.hub.town.x - c) < 2,
     m.lands.map((l) => [l.id, l.x, l.y]));
   ok('...and each land\'s four stages with their levels, in order outward (32)',
     m.stages.length === 32 && m.lands.every((l) => { const st = m.stages.filter((s) => s.region === l.id); return st.length === 4 && st.every((s, k) => s.k === k && s.levels[0] === k * 20 + 1 && s.levels[1] === (k + 1) * 20 && (k === 0 || Math.hypot(s.x - c, s.y - c) > Math.hypot(st[k - 1].x - c, st[k - 1].y - c))); }));
@@ -1339,7 +1339,7 @@ console.log('wheel map');
     { before, after });
   ok('"where am I" in words: the land, its stage and the levels there; the town and the commons safe',
     JSON.stringify(whereWords(m, 'frost', 2)) === JSON.stringify({ title: 'Frost Ridge', sub: 'the thaw line · Lv 6–10' }) &&
-    whereWords(m, 'ember', 16).sub === 'the volcano flanks · Lv 76–80' && whereWords(m, 'town', 0).title === 'Brotown' && /safe/.test(whereWords(m, 'commons', 0).sub),
+    whereWords(m, 'ember', 16).sub === 'the volcano flanks · Lv 76–80' && whereWords(m, 'town', 0).title === 'BroTown' && /safe/.test(whereWords(m, 'commons', 0).sub),
     [whereWords(m, 'frost', 2), whereWords(m, 'ember', 16)]);
   /* v2.3.3057: the world map's level bands and Bro Pond */
   ok(`...each land's level bands: a tick where every tier of five levels begins, from the commons' edge outward (${m.lands[0].ticks.length / 2} a land), the spoke ${m.spokeHalf * 2} px wide; and Bro Pond named`,
@@ -3153,9 +3153,10 @@ console.log('jumping (v2.3.3017)');
       J.clearMsLeft(fw, fw.t0 + 10) > 0 && J.clearMsLeft(fw, fw.t0 + fw.dur - 5) === 0);
     const lk = J.jumpLook(fw, fw.t0 + fw.dur / 2, null, 1);
     /* v2.3.3738: "The flipped body is too small (looks about 40% too small)":
-       drawn FLIP_BODY_K (1.4) larger, evenly, about the feet (jumpFx) */
-    ok('drawn as the roll\'s somersault: no stretch or lean of its own, FLIP_BODY_K (1.4) larger evenly (v2.3.3738), the tumble frames in order (dodge sheets)',
-      lk && lk.flip && lk.air && J.FLIP_BODY_K === 1.4 && lk.ky === J.FLIP_BODY_K && lk.kx === J.FLIP_BODY_K && lk.rot === 0 && lk.lift > 0
+       drawn FLIP_BODY_K (1.4) larger, evenly, about the feet (jumpFx);
+       v2.3.3798: 1.05, 25% smaller (the owner) */
+    ok('drawn as the roll\'s somersault: no stretch or lean of its own, FLIP_BODY_K (1.05) larger evenly (v2.3.3738; v2.3.3798 25% smaller), the tumble frames in order (dodge sheets)',
+      lk && lk.flip && lk.air && J.FLIP_BODY_K === 1.05 && lk.ky === J.FLIP_BODY_K && lk.kx === J.FLIP_BODY_K && lk.rot === 0 && lk.lift > 0
         && [0, 0.2, 0.4, 0.6, 0.85].map((t) => J.flipFrame(9, t)).join() === J.FLIP_FRAMES.join() && J.flipFrame(9, 0.999) === 6);
     const real = J.peerJump({ flip: 1, h0: fw.h0, v: fw.v, g: fw.g, ang: 1.5, dur: 1, peak: 1 }, 50);
     ok('another player\'s flip from the relay: the same arc, its numbers clamped, a forged one a plain hop',
@@ -3611,6 +3612,19 @@ console.log("the buildings' doors (v2.3.3032)");
         && REST.HOTEL_R >= WHEEL_DOOR_REACH + 60 && doors.every((d) => d.id === 'hotel' || Math.hypot(d.x - h.x, d.y - h.y) > REST.HOTEL_R + WHEEL_DOOR_REACH),
       { rel, hotel: REST.HOTEL, r: REST.HOTEL_R });
   }
+  /* v2.3.3785: the worker's BANK.DOOR is the Bank's door as the ground worker
+     places it -- a deposit or a withdrawal is taken only there (bank.js) */
+  {
+    const { BANK } = await import('../../server/src/bank.js');
+    const { WHEEL_CENTRE } = await import('../../server/src/wheelspawns1.js');
+    const bankIds = Object.keys(WHEEL_BUILDING_DOORS).filter((k) => WHEEL_BUILDING_DOORS[k] === 'bank');
+    const b = bankIds.length === 1 ? byDoor[bankIds[0]] : null;
+    const rel = b ? [b.x - WHEEL_CENTRE[0], b.y - WHEEL_CENTRE[1]] : null;
+    ok(`the worker's Bank door is the placed one: (${rel && rel.join(', ')}) from the Wheel's middle, BANK.DOOR (${BANK.DOOR}), its reach taking in standing at the door and no other door`,
+      !!rel && Math.abs(rel[0] - BANK.DOOR[0]) < 1 && Math.abs(rel[1] - BANK.DOOR[1]) < 1
+        && BANK.DOOR_R >= WHEEL_DOOR_REACH + 60 && doors.every((d) => d === b || Math.hypot(d.x - b.x, d.y - b.y) > BANK.DOOR_R + WHEEL_DOOR_REACH),
+      { rel, door: BANK.DOOR, r: BANK.DOOR_R, ids: bankIds });
+  }
   {
     const PO = await import('../../src/game/postOffice.js');
     const S = {};
@@ -3976,9 +3990,21 @@ console.log("the buildings' insides (v2.3.3258)");
     const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
     const th = WHEEL_HALLS.townhall;
     const hallSrc = read('../../src/ui/panels/buildings/WheelHallPanel.jsx');
+    const boardSrc = read('../../src/ui/panels/buildings/TownBoard.jsx');   /* v2.3.3804 */
+    /* v2.3.3829: the board's foot (and a page) are TownBoardPage.jsx (v2.3.3801), the
+       board hands them its openers (and the hall two more: onDash, onClose) */
+    const footSrc = read('../../src/ui/panels/buildings/TownBoardPage.jsx');
     ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
       !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
-        && /row\('leaderboard', '\/icons\/ui\/panel-leaderboard\.webp'/.test(hallSrc) && /row\('map', '\/icons\/ui\/nav-map\.webp'/.test(hallSrc)
+        /* v2.3.3804: since v2.3.3766 the two rows are two buttons at the foot of
+           the Town Hall's board (TownBoard.jsx), still data-hall-row
+           "leaderboard" and "map" on the same icons and the same openers; the
+           hall's window draws the board.  The check read WheelHallPanel's old
+           rows (a stale check, the game unchanged) */
+        && /<TownBoard key="board" stateRef=\{props\.stateRef\} onLeaderboard=\{props\.onLeaderboard\} onMap=\{props\.onMap\}[^>]*\/>/.test(hallSrc)
+        && /<BoardFoot onLeaderboard=\{props\.onLeaderboard\} onMap=\{props\.onMap\}/.test(boardSrc)
+        && /data-hall-row="leaderboard" onClick=\{props\.onLeaderboard\}[\s\S]{0,400}src="\/icons\/ui\/panel-leaderboard\.webp"/.test(footSrc)
+        && /data-hall-row="map" onClick=\{props\.onMap\}[\s\S]{0,400}src="\/icons\/ui\/nav-map\.webp"/.test(footSrc)
         && fs.existsSync(new URL('../../public/icons/ui/panel-leaderboard.webp', import.meta.url)) && fs.existsSync(new URL('../../public/icons/ui/nav-map.webp', import.meta.url))
         && /leaderboard:\s+\{ title: 'Ranks',\s+Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))   /* v2.3.3546: headed 'Ranks' since v2.3.3481, the More tile's word; the Town Hall's row keeps "Leaderboard" (BottomDashboard's note) */
         && /export function openWorldMap\(\)/.test(read('../../src/ui/WorldMapOverlay.jsx'))
@@ -4008,10 +4034,18 @@ console.log("the buildings' insides (v2.3.3258)");
      min(360px, 100vw - 24px), the forge's band a quarter of it -- if the card's width changes, these must */
   const stageOk = /--room-stage:min\(148\.8px, calc\(41\.33vw - 9\.92px\), 22vh\)/.test(css)
     && /\.bt-inspect-card\[data-room="blacksmith"\]\{--room-stage:min\(90px, calc\(25vw - 6px\)\)\}/.test(css)
-    && /width: 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
+    /* v2.3.3804: since v2.3.3769 (desk-space) the card is 'min(470px, ...)' on
+       a computer playing wide and still min(360px, 100vw - 24px) on a phone; the
+       stage below is the PHONE's (62% there).  On a computer the same 148.8 px
+       is about 47% of a 470 x 313 room: more of the room under the menu than
+       the 62% design, nothing cut -- a deskWide --room-stage is lane F's to
+       judge with pictures (the orchestrator, 2026-10-29).  v2.3.3835: and the
+       Town Hall's board its own wider window first (v2.3.3802, #1277) -- every
+       other building's card as before */
+    && /width: (?:buildingPanel === 'townhall' \? 'min\(800px, calc\(100% - 24px\)\)' : )?deskWideActive\(\) \? 'min\(470px, calc\(100% - 32px\)\)' : 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
     && Math.abs(360 * (2 / 3) * 0.62 - 148.8) < 0.1 && Math.abs(24 * 0.4133 - 9.92) < 0.01
     && R.BAND_ROOMS.length === 1 && R.roomIdFor(R.BAND_ROOMS[0]) === 'blacksmith' && R.isBandRoom('forge');
-  ok('...its stage is 62% of the room\'s height at the card\'s own width (148.8 px of 240 at 360 wide, 41.33vw - 9.92 px below it, at most 22vh), the forge\'s band a quarter of the width -- keyed on the forge\'s room, the one band', stageOk, {});
+  ok('...its stage is 62% of the room\'s height at the phone card\'s own width (148.8 px of 240 at 360 wide, 41.33vw - 9.92 px below it, at most 22vh; a computer\'s 470 px card keeps the same stage, ~47%), the forge\'s band a quarter of the width -- keyed on the forge\'s room, the one band', stageOk, {});
   const hd = fs.readFileSync(new URL('../../public/_headers', import.meta.url), 'utf8');
   ok(`the pictures are asked for at ?v=${R.ROOMS_V} and cached for a year (public/_headers)`,
     R.roomUrl('bank') === `/world/interiors/bank.webp?v=${R.ROOMS_V}` && /\/world\/interiors\/\*\s*\n\s*Cache-Control: public, max-age=31536000, immutable/.test(hd), {});

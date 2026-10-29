@@ -49,6 +49,7 @@
  * /tmp/qa-species-*.png for a human to look at.
  */
 import * as H from './harness.mjs';
+import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 const TAN = [149, 116, 89];
@@ -136,6 +137,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     JSON.stringify(titles) === JSON.stringify(['Human', 'Monkey', 'Alien']), { titles });
   const rowS = await colourRow(A);
   rec.ok('...and no colour row: the skin is the next tab along', !rowS.present || rowS.ghost, rowS);
+  /* v2.3.3814: lane A's judge pass, "only the first bro type is labelled":
+     every tile wears its name; and the gold button reads "Enter BroTown" */
+  const words = await A.page.evaluate(() => {
+    const tiles = [...document.querySelectorAll('.bt-cc-strip > *')].filter((b) => /^(Human|Monkey|Alien)$/.test(b.getAttribute('title') || ''));
+    const play = document.querySelector('.bt-cc-play-label');
+    return { tiles: tiles.map((b) => ({ title: b.getAttribute('title'), text: (b.textContent || '').trim() })), play: play ? play.textContent : null };
+  });
+  rec.ok(`every bro type wears its name (${words.tiles.map((t) => t.title + ': "' + t.text + '"').join(', ')}), and the button reads "${words.play}"`,
+    words.tiles.length === 3 && words.tiles.every((t) => t.text === t.title) && words.play === 'Enter BroTown', words);
+  await A.page.screenshot({ path: join(H.REPO, 'tools/qa/mp/out/species-brotype-names.png') }).catch(() => {});
   const human = await grab(A);
   await A.page.screenshot({ path: '/tmp/qa-species-creator-human.png' });
 

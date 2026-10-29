@@ -144,7 +144,7 @@ function postOffice(props) {
    board", the board (TownBoard.jsx), the two rows kept at its foot as two
    small buttons (still data-hall-row "leaderboard" and "map") */
 function townHall(props) {
-  return [<TownBoard key="board" stateRef={props.stateRef} onLeaderboard={props.onLeaderboard} onMap={props.onMap} />];
+  return [<TownBoard key="board" stateRef={props.stateRef} onLeaderboard={props.onLeaderboard} onMap={props.onMap} onDash={props.onDash} onClose={props.onClose} />];   /* v2.3.3801: + onDash, onClose */
 }
 
 /* ═══ v2.3.3539: THE HOTEL -- A BED FOR THE NIGHT ═══
@@ -182,7 +182,11 @@ export function WheelHallPanel(props) {
   var body = hall === 'guildhall' ? guildHall(props) : hall === 'post' ? postOffice(props) : hall === 'townhall' ? townHall(props)
     : hall === 'hotel' ? hotel(props) : sheriff(props);   /* v2.3.3539: + the Hotel */
   return (
-    <div style={LS_WRAP} data-wheel-hall={hall}>
+    /* v2.3.3802: the Town Hall's wrap CLIPS its corners rather than hiding
+       its overflow -- `hidden` makes a scroll box of it, and the board's
+       nav strip, sticky, would stick to that box (which never scrolls)
+       instead of the window's card, and scroll away with the board */
+    <div style={hall === 'townhall' ? Object.assign({}, LS_WRAP, { overflow: 'clip' }) : LS_WRAP} data-wheel-hall={hall}>
       {header(hall)}
       <div style={LS_BODY}>{body}</div>
     </div>

@@ -825,17 +825,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 11. out of No man's land, the choice and the button go ── */
-  const sbx = await H.serverPlayer(wsPort, idB);
-  const out = sbx ? { x: Math.round(sbx.x - spot.ux * 1300 * LONG), y: Math.round(sbx.y - spot.uy * 1300 * LONG) } : null;
-  if (out) await H.hopTo(B, out.x, out.y, { tries: 40, step: 150 });
-  await A.page.waitForTimeout(2500);
+  /* v2.3.3822: both to No man's land's inner edge first -- the raider 500 px
+     out from the safe ground, the wanderer beside them -- and the wanderer
+     walks 800 px, into the safe ground.  From the spot the walk out was
+     6,500 px: past 2,400 px the worker sends a player nobody's moves
+     (tick.js FAR_PLAYERS NEAR_R), so the raider's copy of the wanderer
+     stayed frozen inside No man's land and the choice never lapsed (40/41,
+     1 run in 3).  The raider stays in No man's land: the choice lapses
+     because the WANDERER left */
+  const rOf = (x, y) => Math.hypot(x - WHEEL_CENTRE[0], y - WHEEL_CENTRE[1]);
+  const onSpoke = (r) => { const d = rOf(spot.x, spot.y) - r; return { x: Math.round(spot.x - spot.ux * d), y: Math.round(spot.y - spot.uy * d) }; };
+  const edgeA = onSpoke(NML.SAFE_R + 500), inB = onSpoke(NML.SAFE_R - 300);
+  await H.hopTo(A, edgeA.x, edgeA.y, { tries: 60, step: 150 });
+  await H.hopTo(B, edgeA.x + 70, edgeA.y, { tries: 60, step: 150 });
+  await A.page.waitForTimeout(1500);
+  /* the walk took longer than a fight's quiet minute: the choice is still
+     the raider's (sparTargets.js FIGHT_QUIET_MS), stamped now */
+  const pre11 = await A.page.evaluate((bid) => { const S = window._gameState.current;
+    if (S._nmlFoes instanceof Map) S._nmlFoes.set(bid, Date.now());
+    return { foe: S._nmlFoes instanceof Map && S._nmlFoes.has(bid), lvl: S._nmlLevel || 0 }; }, idB);
+  await H.hopTo(B, inB.x, inB.y, { tries: 40, step: 150 });
+  /* judge only once the raider's VIEW of the wanderer is current (within
+     250 px of where the worker has them) */
+  const sbNow = await H.serverPlayer(wsPort, idB);
+  for (let i = 0; i < 40 && sbNow; i++) {
+    const near = await A.page.evaluate(([pid, x, y]) => { const S = window._gameState.current, o = S.others && S.others[pid];
+      return !o || Math.hypot((typeof o.x === 'number' ? o.x : o.renderX) - x, (typeof o.y === 'number' ? o.y : o.renderY) - y) <= 250; }, [idB, sbNow.x, sbNow.y]);
+    if (near) break;
+    await A.page.waitForTimeout(500);
+  }
   await A.page.evaluate(() => { const S = window._gameState.current; S.lastDamageTaken = 0; });
-  await A.page.waitForTimeout(1200);
-  const s11 = await H.readState(A, (S) => ({ foes: S._nmlFoes instanceof Map ? Array.from(S._nmlFoes.keys()) : [], lock: S.lockedTarget ? S.lockedTarget.id : null }));
-  const lvlB = await H.readState(B, (S) => S._nmlLevel || 0);
-  const L11 = await layout(A);
-  rec.ok(`11. the wanderer walks out of No man's land (now ${lvlB}): the raider's choice lapses, its lock goes, and its shield button with them`,
-    lvlB === 0 && !s11.foes.includes(idB) && s11.lock !== idB && !L11.shield, { s11, lvlB, shield: L11.shield });
+  let s11 = null, lvlB = -1, L11 = null;
+  for (let i = 0; i < 10; i++) {
+    await A.page.waitForTimeout(1000);
+    s11 = await H.readState(A, (S) => ({ foes: S._nmlFoes instanceof Map ? Array.from(S._nmlFoes.keys()) : [], lock: S.lockedTarget ? S.lockedTarget.id : null }));
+    lvlB = await H.readState(B, (S) => S._nmlLevel || 0);
+    L11 = await layout(A);
+    if (lvlB === 0 && !s11.foes.includes(idB) && s11.lock !== idB && !L11.shield) break;
+  }
+  const lvlA11 = await H.readState(A, (S) => S._nmlLevel || 0);
+  rec.ok(`11. the wanderer walks out of No man's land (now ${lvlB}; the raider still in it, ${lvlA11}): the raider's choice lapses, its lock goes, and its shield button with them`,
+    pre11.foe && lvlB === 0 && lvlA11 > 0 && !s11.foes.includes(idB) && s11.lock !== idB && !L11.shield, { pre11, s11, lvlB, lvlA11, shield: L11.shield, edgeA, inB });
 
   stopAlive = true;
   const errs = [...A.logs, ...B.logs, ...C.logs].filter((l) => /pageerror/.test(l));

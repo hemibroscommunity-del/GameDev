@@ -89,9 +89,9 @@ async function capsOf(flags) {
 
 /* ── 3. the panel's names ─────────────────────────────────────────────── */
 check('3a. every saver has plain words, a known kind, and a flag name the route takes',
-  CLIENT_SAVERS.length === 10 && CLIENT_SAVERS.every((c) => typeof c.words === 'string' && c.words.length > 5 && typeof c.live === 'boolean' && flagNameOk('off_' + c.id)),
+  CLIENT_SAVERS.length === 11 && CLIENT_SAVERS.every((c) => typeof c.words === 'string' && c.words.length > 5 && typeof c.live === 'boolean' && flagNameOk('off_' + c.id)),
   CLIENT_SAVERS.map((c) => c.id));
-check('3b. the names are the owner\'s eight, the printed shirts (v2.3.3790) and the townsfolk (v2.3.3809)', JSON.stringify(CLIENT_SAVERS.map((c) => c.id)) === JSON.stringify(['sfxcache', 'voicecap', 'onecopy', 'picnumbers', 'codelazy', 'groundlean', 'heaplean', 'lookpalette', 'lookshirt', 'lookfolk']));
+check('3b. the names are the owner\'s eight, the printed shirts (v2.3.3790), the sound gate (v2.3.3800) and the townsfolk (v2.3.3809)', JSON.stringify(CLIENT_SAVERS.map((c) => c.id)) === JSON.stringify(['sfxcache', 'voicecap', 'onecopy', 'picnumbers', 'codelazy', 'groundlean', 'heaplean', 'lookpalette', 'lookshirt', 'soundgate', 'lookfolk']));
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

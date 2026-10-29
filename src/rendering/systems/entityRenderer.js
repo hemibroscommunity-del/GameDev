@@ -1774,14 +1774,18 @@ function _placeTrait(sprite, entry, display, pose, dir, mirror, frameIdx, bodySc
   /* ═══ v2.3.3738: ...AND THAT ANCHOR NOW EXISTS, FOR THE FLIP ═══
      The owner: "needs at least the hat rotated to match the head during the
      flip".  flipHead.js has the head's centre and turn on every roll frame.
-     While a flip draws the roll (display._flipHead, set by the two callers),
-     the piece is placed as it sits standing on that facing, then carried with
+     While a flip draws the roll, the piece is placed as it sits standing on that facing, then carried with
      the head: moved from the standing head's centre to the tumble's and
      turned by the head's turn about it -- the hat, the hair, the beard, the
      glasses, the eyes and the hat's hair mask alike, as all of them come
-     through here.  The ground roll keeps them hidden, as it always has. */
+     through here.
+     v2.3.3798: ...and the GROUND roll too (the owner: "change the ground roll
+     to fix the hat and skin recolor that it looks like you fixed for the
+     double jump"): it is the same sheet, frame for frame, so every roll, the
+     dodge, the dash's loop and the flip, carries the head pieces with the
+     head (the flag the flip set, display._flipHead, is gone). */
   if (pose === 'dodge') {
-    const fh = display && display._flipHead ? flipHeadAt(dir, frameIdx) : null;
+    const fh = flipHeadAt(dir, frameIdx);
     if (!fh) { sprite.visible = false; sprite._btHide = 'dodge'; return; }
     _placeTrait(sprite, entry, display, 'stand', dir, mirror, 0, bodyScale, tune);
     if (!sprite.visible) return;
@@ -12262,7 +12266,6 @@ export class EntityRenderer {
              (player_dodge `dur`), exactly as the local branch plays across
              durMs; the cycleMs default only for an older client. */
           const fc = playerFrameCount('dodge', dir) || 9;
-          display._flipHead = _rDodge.kind === 'flip';   /* v2.3.3738: their head pieces ride their head (_placeTrait) */
           if (_rDodge.kind === 'flip') {
             /* v2.3.3682: their flip, by its phase (game/jump.js FLIP_FRAMES) */
             frameIdx = flipFrame(fc, (now - _rDodge.startTime) / (_rDodge.durMs || 1));
@@ -13045,6 +13048,8 @@ export class EntityRenderer {
             name: display._pillName ? display._pillName.text : null,
             skull: !!(display._skullText && display._skullText.visible),
             skullArt: !!(display._skullText && display._skullText.texture && display._skullText.texture !== Texture.EMPTY && display._skullText.texture.width > 1),
+            /* v2.3.3770: the rematch's sword clash and "?" over their head, drawn with its picture */
+            nmlAsk: !!(display._nmlAskIcon && !display._nmlAskIcon.destroyed && display._nmlAskIcon.texture && display._nmlAskIcon.texture !== Texture.EMPTY),
           };
         }
       } catch (e) { /* never breaks the frame */ }
@@ -13067,6 +13072,42 @@ export class EntityRenderer {
       if (_skullPhase) {
         const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
         display._skullText.y = Math.round(PEER_HPBAR_Y - _sbh - 2) + bobY;
+      }
+      /* ═══ v2.3.3770: A REMATCH ASKED OF YOU ═══  The player locked out from
+         you (they attacked you and you beat them, nomansland.js _nmlLockSet)
+         asked: the duel's sword clash with a "?" over their head, for
+         NML_LOCK_ASK_SHOW_MS, on YOUR screen alone (the worker sends it to
+         you only).  Made when it starts and destroyed when it ends -- a rare
+         structural change, never a Text kept hidden (TRAPS §192) -- above
+         the skull's place, which it leaves alone. */
+      const _askUntil = S._nmlAskMarks instanceof Map ? (S._nmlAskMarks.get(id) || 0) : 0;
+      if (_askUntil > now) {
+        if (!display._nmlAskIcon && display._skullText && display._skullText.parent) {
+          const ic = new Sprite(_smallTex('nmlAskDuel'));
+          ic._smallW = THREAT_SKULL_PX + 4;
+          ic.width = ic.height = THREAT_SKULL_PX + 4;
+          ic.anchor.set(0.5, 1);
+          const q = new Text({ text: '?', style: { fontFamily: 'system-ui, sans-serif', fontSize: 16, fontWeight: '900', fill: 0xFFE27A, stroke: { color: 0x1a0b0a, width: 3 } } });
+          q.anchor.set(0, 1);
+          display._skullText.parent.addChild(ic);
+          display._skullText.parent.addChild(q);
+          display._nmlAskIcon = ic;
+          display._nmlAskQ = q;
+        }
+        if (display._nmlAskIcon) {
+          _bindSmallTex(display._nmlAskIcon, 'nmlAskDuel');
+          const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+          const _ay = Math.round(PEER_HPBAR_Y - _sbh - 2 - (_skullPhase ? THREAT_SKULL_PX + 2 : 0)) + bobY;
+          display._nmlAskIcon.y = _ay;
+          display._nmlAskQ.x = Math.round((THREAT_SKULL_PX + 4) / 2) - 2;
+          display._nmlAskQ.y = _ay - 4;
+        }
+      } else if (display._nmlAskIcon) {
+        display._nmlAskIcon.destroy();
+        display._nmlAskQ.destroy();
+        display._nmlAskIcon = null;
+        display._nmlAskQ = null;
+        if (S._nmlAskMarks instanceof Map) S._nmlAskMarks.delete(id);
       }
     }
 
@@ -14072,11 +14113,9 @@ export class EntityRenderer {
            actually used; DODGE_DURATION_MS covers the first frame before
            it has been published. */
         const fc = playerFrameCount('dodge', dir) || 9;
-        display._flipHead = false;   /* v2.3.3738 */
         if (_flipRoll && !S._dodgeRoll && !_dashRoll) {
           /* v2.3.3682: the flip -- the tumble's frames by its phase */
           frameIdx = flipFrame(fc, jumpPhase(_flipJ, now));
-          display._flipHead = true;   /* v2.3.3738: the head pieces ride the head (_placeTrait) */
           display._jumpFrameIdx = frameIdx;   /* QA (__btJumpFx) */
         } else if (_dashRoll && !S._dodgeRoll) {
           /* ═══ v2.3.2463: A DASH LOOPS WHERE A DODGE CLAMPS ═══

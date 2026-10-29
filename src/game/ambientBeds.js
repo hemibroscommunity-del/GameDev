@@ -171,7 +171,10 @@ export function tickAmbientBeds(S, now) {
     const B = BT_AUDIO;
     const want = { sea: 0, crowd: 0, fire: 0 };
     const live = !off() && S && S.player && S.currentZone === 'wheel' && !S._zoneLoading && B.ctx && !B.muted;
-    if (live) {
+    /* v2.3.3800: under the loading screen or a veil (BT_AUDIO's sound gate)
+       no bed has a share: none starts, one playing fades, kept for the reveal */
+    const hush = !!(B.soundGateClosed && B.soundGateClosed());
+    if (live && !hush) {
       const P = S.player;
       const map = wheelMapInfo();
       if (map) noteWaterMap(map);

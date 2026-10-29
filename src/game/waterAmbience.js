@@ -131,7 +131,8 @@ export function tickWaterAmbience(S, now) {
     let want = 0;
     const ex = S && S._extraction;
     const fishing = !!(ex && ex.skill === 'fishing');
-    if (S && S.player && S.currentZone === 'wheel' && !S._zoneLoading && !fishing && B.ctx && !B.muted) {
+    /* v2.3.3800: and not under the loading screen or a veil (the sound gate) */
+    if (S && S.player && S.currentZone === 'wheel' && !S._zoneLoading && !fishing && B.ctx && !B.muted && !(B.soundGateClosed && B.soundGateClosed())) {
       const map = wheelMapInfo();
       if (map) {
         geom(map);

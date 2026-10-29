@@ -337,7 +337,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const only = process.env.BT_GHOST_ONLY ? new Set(process.env.BT_GHOST_ONLY.split(',')) : null;
   const want = (f) => !only || only.has(f);
   const outfits = (process.env.BT_GHOST_OUTFITS || 'full,plate,greaves').split(',').filter((o) => OUTFITS[o]);
-  const P = await H.newPlayer(browser, { name: 'Ghostbro', wsPort, webPort, viewport: VIEW, touch: false, dpr: DPR, world: 'wheel', init: LOOK });
+  const P = await H.newPlayer(browser, { name: 'Ghostbro', wsPort, webPort, viewport: VIEW, touch: false, dpr: DPR, world: 'wheel', init: LOOK, ...(process.env.BT_GHOST_QUERY ? { query: process.env.BT_GHOST_QUERY } : {}) });   /* v2.3.3757: BT_GHOST_QUERY=lookpalette=0, the old path for a comparison */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   let stopAlive = false;
@@ -576,8 +576,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await face(keys, ang);
           await begin();
           await keysDown(keys);
-          await page.keyboard.press('Space');
-          const r = await H.waitFor(P, (S) => (S._dodgeRoll ? { s: S._dodgeRoll.startTime, d: S._dodgeRoll.durMs } : null), (v) => !!v, { timeout: 3000, label: 'a roll' }).catch(() => null);
+          /* v2.3.3798: Space from inside the page, and the clock held the
+             moment the roll starts: a roll is 250-500 ms, and polled from
+             outside on this box it was over before it was seen (no roll
+             frame swept, on main too) */
+          const r = await page.evaluate(async () => {
+            const S = window._gameState.current;
+            const sp = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'Space', key: ' ', bubbles: true }));
+            sp('keydown'); sp('keyup');
+            for (let i = 0; i < 600; i++) {
+              const d = S._dodgeRoll;
+              if (d) { window.__qaGhost.hold(d.startTime); return { s: d.startTime, d: d.durMs || null }; }
+              await new Promise((res) => setTimeout(res, 2));
+            }
+            return null;
+          }).catch(() => null);
           await keysUp(keys);
           if (r) await sweep(outfit, 'dodge', dir, r.s, Math.max(200, (r.d || 500) - 20), 40);
           await end(outfit, 'dodge');

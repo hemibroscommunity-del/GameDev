@@ -125,7 +125,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3009: the owner: "Put the 'brotown safe' and other location
      indicators in place of the 'the wheel lvl 1-2' on the top bar" */
   rec.ok(`...the minimap's name plate says where he is, "${shown.place}" over "${shown.sub}" (the top bar "${shown.title}", not "The Wheel (Lv1-2)"), and no test readout is on screen`,
-    shown.place === 'Brotown' && shown.sub === 'safe' && !/The Wheel|Lv1-2|trial/i.test(shown.title || '') && !shown.readout, shown);
+    shown.place === 'BroTown' && shown.sub === 'safe' && !/The Wheel|Lv1-2|trial/i.test(shown.title || '') && !shown.readout, shown);
 
   /* ── 8a. the way to the Mayor, before a word with him ── */
   const w0 = await way(P);

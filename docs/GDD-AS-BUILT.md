@@ -143,7 +143,7 @@ A courthouse-square town laid at 1.5× its plan's plots with the buildings drawn
 | | Feed & Seed | Visit Your Farm, Seeds, Orders |
 | West, south side | Land Office | travel to your farm |
 | | General Store | the Exchange (the order book); Diego stands beside it with his own shop |
-| East, north side | Bank | a display of your gold and gear ("Nothing can be stored here yet") |
+| East, north side | Bank | your vault (v2.3.3785): bag items and gold put in and taken out at its door, kept through any death (3.6) |
 | East, south side | Gem Works | Cut gems / Set gems |
 | | Auction House | listings by players |
 | Centre | Town Hall | the Leaderboard and the World map; Mayor Bro beside its steps |
@@ -268,6 +268,8 @@ Regen per ~0.67 s tick: HP 10% of max in today's town, the farm and the old hub,
 ### 3.6 Death (the ordinary rule)
 
 At 0 HP: "YOU DIED", 5 s, then a respawn on BroTown's stairs with every pool full. **No XP, gold or level is lost.** The bag drops into a pile at the death spot that is yours alone for 60 s, anyone's until 120 s, holding no coins. Kept through a death: the three gathering tools, every quest-objective item (remains, every ore and cooked fish), gems, anything picked up in the last second (so dying on your own pile cannot re-drop it), worn gear, the spare weapon stash, spare armour and shields, outfits and gold. A duel death loses nothing; a No man's land death loses everything carried (Part 10). A dungeon death returns you to BroTown.
+
+**The Bank's vault (v2.3.3785, `server/src/bank.js`, docs/specs/bank-vault.md).** At the Bank's door you put bag items and gold into a vault the server holds, and take them out again: 48 kinds of item, any number of each, and any amount of gold (up to 1,000,000,000). What is in the vault is out of every death's reach, the ordinary one and No man's land alike, since both take only what you carry. Everything in the bag can go in but the three gathering tools. Each move is one server write of the bag or purse and the vault together; a move resent after a dropped connection moves nothing twice. `bank: false` in the live flags closes the vault to moves and keeps what is in it.
 
 ### 3.7 Life skills: the list and the curve
 
@@ -990,6 +992,8 @@ Fighting other players is off everywhere except No man's land, duels and the are
 **Where**: from the safe ground's edge outward. **Since v2.3.3767 its number is the level of the monsters where you stand**, by the monsters' own arithmetic (the ring's band and the spot's depth in it): No man's land 1 among the Lv 1 monsters, 7 among the Lv 7s, out to 80 at the gates (so 1–40 in the populated world). Before, it was the ring's number, one step every five levels: the Lv 1–5 ring 1, the next 2, out to 16 (since v2.3.3690; before that it began at the Lv 6–10 ring). `nmlsteps: false` in the live flags brings the ring's number back. The hub and the commons (the safe ground) are never PvP; dungeons never. The chat says a line only when you cross into another ring; the badge shows every step.
 
 **Who may fight whom**: both standing in No man's land, both alive; their **character levels** at most N apart, where N is the **lower** of their two No man's land numbers (one standing in 9 cannot reach someone in 7 who is 8 levels apart). Since v2.3.3767 the numbers climb a step a monster level, so the range grows five times as fast as it did; not in one party.
+
+**Beaten by them** (v2.3.3770, `nmllock`): a red skull killed by the player they attacked may not attack that player for **30 minutes** (wall clock, kept through a restart). Their window says so; its one button, "Ask for a rematch", shows a sword clash and "?" over their head to that player alone, once a minute. That player can lift it ("Let <name> attack you again"), and it lifts when they attack first. The red skull goes at the death. Full rules: docs/specs/no-mans-land.md.
 
 **Attacking is a choice.** A stray shot or swing never hurts a player. The first time you tap a fightable player, pass a shot through one, reach one with a sword swing, or rest the bow's line on one, a small window asks **"Attack <name>?"** with three answers: **Attack** (they become your foe: every weapon lands on them, locked or not, until the fight lapses), **Party** (a party invite), **Ignore** (or 10 s). The window's Attack is itself the attack: the server starts both skulls at once, before any blow. The one attacked gets "**Hit back <name>?**" with the white skull; hitting back gives no red skull. Once you have a live foe, everyone else who attacks you joins the fight with no window of their own. A foe lapses when the rule stops allowing the fight, they leave, or 60 s pass with no blow either way. While a foe (or anyone you traded a blow with in the last minute) is within 900 px the shield and Special buttons stay up for every weapon.
 
