@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cb34c14ce1941ee218a3625c9640ff6b7b0a635c",
+  "tree": "6f08f4434d14ea7b562ab4acbe69246f8df5d893",
+  "committedAt": "2026-10-28T19:39:45-07:00",
+  "subject": "Merge pull request #1295 from hemibroscommunity-del/claude/warm-drop",
+  "files": 7155,
+  "bytes": 821379701,
+  "listingSha256": "27f0e8d07e3ba5ad0d19c94cd6d52a178f58be05a1ae0df12d78e5b8313dd0f7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
