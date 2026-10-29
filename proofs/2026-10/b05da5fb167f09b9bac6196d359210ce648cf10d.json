@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b05da5fb167f09b9bac6196d359210ce648cf10d",
+  "tree": "182eb1c9243334a033c1204fda72f927422503c2",
+  "committedAt": "2026-10-28T20:29:57-07:00",
+  "subject": "Merge pull request #1306 from hemibroscommunity-del/claude/look-palette-windows",
+  "files": 7164,
+  "bytes": 824081912,
+  "listingSha256": "0f1726a9a68b086c32e8d0ec1f8f7bb9495dd03109f67b66ab37ceacf5c7684c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
