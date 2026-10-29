@@ -1030,6 +1030,81 @@ Tests:
   the bell, the weapon button, the disc, the sprint button and the fight's
   buttons. The one exception before this, the 320 px phone's bell, is gone.
 
+## Beaten by them, not again for half an hour (v2.3.3770)
+
+The owner, 2026-10-28: *"I think another rule I want is that a player attacks
+you (and gets red skulled) but you kill him, he can't attack you for at least
+30 minutes unless you approve of letting him have another attack. A red skull
+disappears after dying but the game should remember if the red skull player
+was killed by you. This prevents griefing where the player keeps coming back
+with cheap weapons to attack you over and over again"*, and then: *"...instead
+of the player that was red skulled and killed who comes back a second time to
+attack again can't push an attack notification to you, they can only pop up
+with a sword clash icon and question mark above their head (once per
+minute)"*.
+
+**When.** A attacks V (A takes a red skull, V a white one), and V kills A
+under No man's land's rule (`_nmlOnDeath`'s own attribution). A must be V's
+attacker: V's `whiteBy`, or a right to hit back still running in V's `from`.
+A's red skull goes at the death (any death, while the switch is on).
+
+**Then, for 30 minutes of wall clock** (`NML.LOCK_MS`), A may not attack V.
+The rule from A toward V is false (`_nmlAllowed`), so every blow and stray
+shot of A's at V is refused by the worker. Nothing changes from V toward A.
+The lock is per pair: V's party is not covered. It is stored in A's own record
+(`nml_state:<A>` `lock`, `[[V, until]]`, 16 at most, the soonest to end giving
+way), so a restart or A's rejoin keeps it. On load, an `until` further away
+than 30 minutes is cut back to 30.
+
+**It ends** at its time; when V attacks A (V started a new fight:
+`_nmlSkulls`); or when V lets A at them again.
+
+**What each one sees.**
+- A's tap on V opens No man's land's small window, which says
+  **"V beat you. You can't attack them for N more minutes."** with one button,
+  **"Ask for a rematch"**. A cannot reach V any other way: no card, no line,
+  no sound.
+- The button pops the duel's sword clash with a **"?"** over A's own head,
+  for about 5 seconds, seen by V alone (`nml_lock_ask` both ways). The worker
+  passes it on once a minute for a pair and refuses it faster; the phone
+  holds its own button to the same minute.
+- V's window on A, while the lock runs, adds **"Let A attack you again"**
+  (`nml_lock_allow`): the lock lifts at once.
+- The icon is `public/icons/ui/nml-ask-duel.webp`, the duel's
+  `soc-duel.webp` at 64 x 64 (`SMALL_ICON.nmlAskDuel`, canvas only, loaded
+  with the small icons behind the loading screen). It is drawn only while it
+  shows, and destroyed after (`entityRenderer`, probe
+  `__btPeerBadge[id].nmlAsk`).
+
+**Wire, storage and switches.**
+- c→s `nml_lock_ask {target}` and `nml_lock_allow {target}`, each its own
+  router case, never relayed.
+- s→c (PRIVILEGED, private) `nml_lock {out: [[id, ms left]], in: [[id, ms
+  left]]}`, sent to both players when a lock is set or lifted, and at a join
+  only to a player with a lock (each player online that the joiner is locked
+  out from hears it too). Also `nml_lock_ask {from}`, to V only.
+- Storage: `nml_state:<pid>` gains `lock`; a record with only a lock stays
+  on file.
+- Cap `caps.nmllock`; kill switch `nmllock: false` in the live flags. With
+  the switch off, no lock is set or enforced, no ask is passed on, and the
+  red skull stays at a death as before.
+- It never asks test mode: it protects another player.
+- An older phone sends neither message and draws nothing, but the worker's
+  refusal still holds. A new phone against an older worker shows nothing
+  (no cap).
+
+**Tests.** `server/test/nml-lock.test.mjs` checks:
+- the lock is set only for the attacker V killed;
+- it refuses at 29 minutes and allows at 31;
+- the red skull goes at the death;
+- V attacking A lifts it, and so does V's allow;
+- a second ask at 30 s is refused and goes at 61 s, and reaches V alone;
+- a restart keeps the lock, and the join messages are right;
+- the kill switch;
+- an old phone.
+
+The phone scenario `mp-nmllock` plays it with two browsers.
+
 ## Decisions for the owner
 
 - **v2.3.3316, decided:** the tools drop and Diego sells them back; a player

@@ -5622,6 +5622,15 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
+        /* v2.3.3770: the lock after a red skull's death (game/noMansLand.js
+           nmlLockAsk, nmlLockAllow) -> nomansland.js _handleNmlLockAsk,
+           _handleNmlLockAllow.  TRAPS #18: mp-nmllock's first run found the
+           rematch's "?" and "Let them attack you again" never left the
+           browser without this line. */
+        if (msg.type === 'nml_lock_ask' || msg.type === 'nml_lock_allow') {
+          wsOut(msg);
+          return;
+        }
         /* v2.3.3313: the alliance (game/alliance.js, the Saloon's Alliance
            part) -> alliance.js: the leader's Name and Declare war, and anyone's
            board.  TRAPS #18: without this line all three would send nothing. */

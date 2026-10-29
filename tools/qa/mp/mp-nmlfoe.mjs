@@ -824,12 +824,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const sbx = await H.serverPlayer(wsPort, idB);
   const out = sbx ? { x: Math.round(sbx.x - spot.ux * 1300 * LONG), y: Math.round(sbx.y - spot.uy * 1300 * LONG) } : null;
   if (out) await H.hopTo(B, out.x, out.y, { tries: 40, step: 150 });
-  await A.page.waitForTimeout(2500);
+  /* v2.3.3770: judge only once the raider's VIEW of the wanderer is current --
+     it failed 1 run in 3 on this box (40/41) while the raider still drew the
+     wanderer where they last stood, inside No man's land: wait until
+     the raider sees them within 250 px of where the worker has them (or not
+     at all), then give the choice up to 10 s to lapse */
+  /* ...and the raider follows to within 800 px of them (outward): past
+     2,400 px the worker sends a player nobody's moves (tick.js FAR_PLAYERS
+     NEAR_R), so the raider's copy of the wanderer stayed frozen where it
+     last was, inside No man's land, and the choice never lapsed */
+  const sbOut = await H.serverPlayer(wsPort, idB);
+  if (sbOut) await H.hopTo(A, Math.round(sbOut.x + spot.ux * 800), Math.round(sbOut.y + spot.uy * 800), { tries: 40, step: 150 });
+  const sbNow = await H.serverPlayer(wsPort, idB);
+  for (let i = 0; i < 40 && sbNow; i++) {
+    const near = await A.page.evaluate(([pid, x, y]) => { const S = window._gameState.current, o = S.others && S.others[pid];
+      return !o || Math.hypot((typeof o.x === 'number' ? o.x : o.renderX) - x, (typeof o.y === 'number' ? o.y : o.renderY) - y) <= 250; }, [idB, sbNow.x, sbNow.y]);
+    if (near) break;
+    await A.page.waitForTimeout(500);
+  }
   await A.page.evaluate(() => { const S = window._gameState.current; S.lastDamageTaken = 0; });
-  await A.page.waitForTimeout(1200);
-  const s11 = await H.readState(A, (S) => ({ foes: S._nmlFoes instanceof Map ? Array.from(S._nmlFoes.keys()) : [], lock: S.lockedTarget ? S.lockedTarget.id : null }));
-  const lvlB = await H.readState(B, (S) => S._nmlLevel || 0);
-  const L11 = await layout(A);
+  let s11 = null, lvlB = -1, L11 = null;
+  for (let i = 0; i < 10; i++) {
+    await A.page.waitForTimeout(1000);
+    s11 = await H.readState(A, (S) => ({ foes: S._nmlFoes instanceof Map ? Array.from(S._nmlFoes.keys()) : [], lock: S.lockedTarget ? S.lockedTarget.id : null }));
+    lvlB = await H.readState(B, (S) => S._nmlLevel || 0);
+    L11 = await layout(A);
+    if (lvlB === 0 && !s11.foes.includes(idB) && s11.lock !== idB && !L11.shield) break;
+  }
   rec.ok(`11. the wanderer walks out of No man's land (now ${lvlB}): the raider's choice lapses, its lock goes, and its shield button with them`,
     lvlB === 0 && !s11.foes.includes(idB) && s11.lock !== idB && !L11.shield, { s11, lvlB, shield: L11.shield });
 

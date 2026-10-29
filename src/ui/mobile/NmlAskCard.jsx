@@ -208,7 +208,7 @@ export default function NmlAskCard({ stateRef }) {
           {ask.name} beat you.
         </div>
         <div data-nml-ask-locked="" style={{ fontSize: 12, color: '#B9C1BF', marginTop: 2, lineHeight: 1.35 }}>
-          You can't attack them for {lockMin} more minute{lockMin === 1 ? '' : 's'}.
+          {"You can't attack them for "}{lockMin}{lockMin === 1 ? ' more minute.' : ' more minutes.'}
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
           <button type="button" data-nml-ask-rematch="" onClick={answer('rematch')} style={Object.assign({}, BTN, SECONDARY)}>Ask for a rematch</button>
