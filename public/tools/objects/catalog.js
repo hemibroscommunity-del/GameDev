@@ -259,7 +259,7 @@ export const GROUPS = [
   { id: 'thunder', name: 'Electric Foundry' },
   { id: 'tidal', name: 'Water Caves' },
   { id: 'mist', name: 'Poison Forest' },
-  { id: 'verdant', name: 'Verdant Wilds' },
+  { id: 'verdant', name: 'Earth Forest' },   /* v2.3.3778: was the Verdant Wilds */
 ];
 
 export function objectCatalog() {

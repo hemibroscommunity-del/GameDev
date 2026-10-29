@@ -51,7 +51,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';
-import { NML_RED, nmlHere, nmlCanAttack } from '@/game/noMansLand.js';
+import { NML_RED, nmlHere, nmlCanAttack, nmlLockedOut } from '@/game/noMansLand.js';   /* v2.3.3770: + the lock */
 import { nmlAskCurrent, nmlAskSubscribe, nmlAskAnswer, nmlAskClose, nmlAskMs, nmlHitBack } from '@/game/nmlAsk.js';
 import { NmlSkull, openNmlInfo } from './NmlBadge.jsx';
 import { infoPopupBus } from './infoPopupBus.js';
@@ -85,7 +85,7 @@ const CARD_H = 96;
 /* the other small cards that sit at the top of the screen: the window goes
    under one rather than over it (mp-nmlask's computer showed it over the
    party invite card the raider's Party had just raised) */
-const TOP_CARDS = ['[data-party-invite]', '[data-nml-badge]'];   /* v2.3.3629: + No man's land's badge, beside the minimap's name plate */
+const TOP_CARDS = ['[data-party-invite]', '[data-nml-badge]'];   /* v2.3.3629: + No man's land's badge, beside the minimap's name plate (v2.3.3765: in the top bar now, above this window's places) */
 
 /* the play area on the screen (.brotown-wrap: the whole width on a phone held
    upright, the world's own window sideways and in a computer's shell) */
@@ -153,7 +153,8 @@ export default function NmlAskCard({ stateRef }) {
       const now = Date.now();
       if (infoPopupBus.isOpen()) until = Math.max(until, now + 4000);
       let ok = false;
-      try { ok = nmlCanAttack(S, ask.id); } catch (e) { ok = false; }
+      /* v2.3.3770: a locked window stays while the rest of the rule holds */
+      try { ok = ask.locked ? nmlCanAttack(S, ask.id, true) : nmlCanAttack(S, ask.id); } catch (e) { ok = false; }
       /* v2.3.3316: with the game's state, so an unanswered window may ask again later */
       if (!ok || now >= until) { nmlAskClose(S); return; }
       /* v2.3.3528: they attacked you while it was up, or your white skull ran out */
@@ -187,6 +188,35 @@ export default function NmlAskCard({ stateRef }) {
   };
   /* v2.3.3528: hitting back says so, with the white skull you carry */
   const back = liveBack && liveBack.ask === ask ? liveBack.v : !!ask.back;
+  /* ═══ v2.3.3770: LOCKED OUT FROM THEM ═══  They beat you (nomansland.js
+     _nmlLockSet): the window says why and for how long, and its one button
+     pops the sword clash with a "?" over your head for them alone, once a
+     minute -- nothing else of yours reaches them */
+  let lockMin = 0;
+  if (ask.locked) { try { lockMin = Math.ceil(nmlLockedOut(S, ask.id) / 60000); } catch (e) { lockMin = 0; } }
+  if (ask.locked && lockMin > 0) {
+    return createPortal(
+      <div data-nml-ask="locked" data-nml-ask-id={ask.id} data-nml-ask-at={pl.at} role="dialog" aria-label={`${ask.name} beat you`}
+        onPointerDown={stop} onTouchStart={stop} onMouseDown={stop} onClick={stop}
+        style={{
+          position: 'fixed', left: pl.left, top: pl.top, zIndex: Z_ABOVE_DASH_PROMPT,
+          width: pl.w, boxSizing: 'border-box', padding: '8px 8px 8px 10px',
+          borderRadius: 12, background: 'rgba(17,25,29,.94)', border: '1px solid rgba(238,242,235,.24)',
+          boxShadow: '0 14px 30px rgba(4,7,9,.38)', color: '#F7F2E7', textAlign: 'left',
+        }}>
+        <div data-nml-ask-name="" style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {ask.name} beat you.
+        </div>
+        <div data-nml-ask-locked="" style={{ fontSize: 12, color: '#B9C1BF', marginTop: 2, lineHeight: 1.35 }}>
+          {"You can't attack them for "}{lockMin}{lockMin === 1 ? ' more minute.' : ' more minutes.'}
+        </div>
+        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+          <button type="button" data-nml-ask-rematch="" onClick={answer('rematch')} style={Object.assign({}, BTN, SECONDARY)}>Ask for a rematch</button>
+        </div>
+      </div>,
+      document.body
+    );
+  }
   const title = back ? `Hit back ${ask.name}?` : `Attack ${ask.name}?`;
   return createPortal(
     <div data-nml-ask={ask.why} data-nml-ask-id={ask.id} data-nml-ask-at={pl.at} data-nml-ask-stacked={pl.stacked ? '1' : undefined}
@@ -221,6 +251,12 @@ export default function NmlAskCard({ stateRef }) {
         {hasParty && <button type="button" data-nml-ask-party="" onClick={answer('party')} style={Object.assign({}, BTN, SECONDARY)}>Party</button>}
         <button type="button" data-nml-ask-ignore="" onClick={answer('ignore')} style={Object.assign({}, BTN, QUIET)}>Ignore</button>
       </div>
+      {/* v2.3.3770: you beat them, and they are locked out from you: let them have another go */}
+      {ask.lockedIn && (
+        <div style={{ display: 'flex', marginTop: 6, paddingLeft: 4 }}>
+          <button type="button" data-nml-ask-allow="" onClick={answer('allow')} style={Object.assign({}, BTN, SECONDARY, { flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' })}>Let {ask.name} attack you again</button>
+        </div>
+      )}
     </div>,
     document.body
   );

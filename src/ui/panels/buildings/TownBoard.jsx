@@ -1,8 +1,9 @@
 import React from 'react';
 import { deskWords } from '@/game/deskWords.js';
-import { GROUPS, boardEntry, boardPinnable, boardWords, boardName } from '@/data/townBoard.js';
-import { boardRows, boardLandNames } from '@/game/mapPinPlaces.js';
-import { loadPins, pinsOn, togglePin, PIN_CSS, PIN_KEYS } from '@/game/mapPins.js';
+import { GROUPS, boardEntry, boardPinnable, boardName } from '@/data/townBoard.js';
+import { boardRows, boardLandNames, boardSub } from '@/game/mapPinPlaces.js';
+import { loadPins, pinsOn, PIN_CSS } from '@/game/mapPins.js';
+import { BoardPage, BoardFoot } from './TownBoardPage.jsx';   /* v2.3.3801: a page and the foot, apart from the grid */
 
 /* ═══ v2.3.3766: THE TOWN HALL'S BOARD ═══
  *
@@ -21,16 +22,18 @@ import { loadPins, pinsOn, togglePin, PIN_CSS, PIN_KEYS } from '@/game/mapPins.j
  *   THE FOOT    the Town Hall's two rows of v2.3.3258, the owner's choice
  *               (the trophy case is the leaderboard, the painted map the world
  *               map), as two small buttons.
+ * v2.3.3801: a page and the foot are TownBoardPage.jsx (and a page with no
+ * place has one action button); every tile has a line under its name.
  * The pins show on the minimap and the world map, until lifted, per
  * character.  Lantern Slate, as WheelHallPanel's halls (its tokens). */
-const LS = {
+export const LS = {
   txt1: '#F4F0E7', txt2: '#B6C1BE', txt3: '#8D9B98',
   strip: '#27393F', raised: '#293B41', well: '#111E23',
   border: 'rgba(229,237,233,.11)', borderStrong: 'rgba(229,237,233,.20)',
   brass: '#D8AA58'
 };
 const MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.14em', color: LS.txt3, margin: '4px 0 0' };
-const TAP = { touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', font: 'inherit', cursor: 'pointer' };
+export const TAP = { touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', font: 'inherit', cursor: 'pointer' };
 
 /* v2.3.3779: `aspect`, a picture wider than tall (a land's scene, the
    Arena's gate) drawn at the tile's height and its own width.  Every tile's
@@ -42,7 +45,7 @@ const TAP = { touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent
    pixelated, crisp rather than blurred. */
 const PAD = 1.45;
 function padOf(src) { return src.startsWith('/icons/ui/') || src.startsWith('/ui/controls/') ? PAD : 1; }
-function Icon({ src, emoji, size, aspect }) {
+export function Icon({ src, emoji, size, aspect }) {
   const zoom = padOf(src);
   return (
     <img src={src} alt="" draggable={false} data-icon-zoom={zoom}
@@ -79,46 +82,8 @@ export function TownBoard(props) {
   const names = boardLandNames();   /* v2.3.3779: a land's name is the world's */
 
   if (e) {
-    const on = pinsOn(S, e.id);
-    return (
-      <div data-board-page={e.id} style={{ display: 'grid', gap: 10 }}>
-        <button type="button" data-board-back="" onClick={function () { setPage(null); }}
-          style={Object.assign({}, TAP, { justifySelf: 'start', minHeight: 36, padding: '6px 12px 6px 8px', borderRadius: 999, background: 'transparent', color: LS.brass, border: '1px solid ' + LS.borderStrong, fontSize: 13, fontWeight: 700 })}>
-          ‹ All things to do
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Icon src={e.icon} emoji={e.emoji} size={44} aspect={e.iconAspect} />
-          <div style={{ fontSize: 19, fontWeight: 800, color: LS.txt1, lineHeight: 1.2 }}>{boardName(e, names)}</div>
-        </div>
-        <div style={{ background: LS.well, border: '1px solid ' + LS.border, borderRadius: 10, padding: '10px 12px', display: 'grid', gap: 6 }}>
-          {e.page.map(function (line, i) {
-            return <div key={i} style={{ fontSize: 13.5, color: LS.txt1, lineHeight: 1.45 }}>{boardWords(line, names)}</div>;
-          })}
-          <div data-board-where="" style={{ fontSize: 12.5, color: LS.txt2, lineHeight: 1.4, marginTop: 2 }}>
-            <span style={{ color: LS.brass, fontWeight: 700 }}>Where: </span>{boardWords(e.where, names)}
-          </div>
-        </div>
-        {/* v2.3.3766: a place that is nowhere in particular (No man's land) has no pins */}
-        {boardPinnable(e.id) ? <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          {PIN_KEYS.map(function (k) {
-            const here = on.indexOf(k) >= 0;
-            const name = k === 'red' ? 'Red pin' : 'Blue pin';
-            return (
-              <button key={k} type="button" data-pin-btn={k} data-pin-on={here ? 1 : 0}
-                onClick={function () { togglePin(S, k, e.id); bump(function (n) { return n + 1; }); }}
-                style={Object.assign({}, TAP, { minHeight: 48, borderRadius: 10, fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  background: here ? PIN_CSS[k] : LS.raised, color: here ? '#FFFFFF' : LS.txt1, border: '1.5px solid ' + PIN_CSS[k] })}>
-                <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', background: here ? '#FFFFFF' : PIN_CSS[k] }} />
-                {here ? 'Lift ' + name.toLowerCase() : name}
-              </button>
-            );
-          })}
-        </div> : null}
-        {boardPinnable(e.id) ? <div style={{ fontSize: 11.5, color: LS.txt3, lineHeight: 1.4 }}>
-          A pin shows on your minimap and the world map, and stays until you lift it.
-        </div> : null}
-      </div>
-    );
+    return <BoardPage S={S} entry={e} names={names} onBack={function () { setPage(null); }} bump={function () { bump(function (n) { return n + 1; }); }}
+      onDash={props.onDash} onClose={props.onClose} />;
   }
 
   return (
@@ -135,6 +100,7 @@ export function TownBoard(props) {
             <div data-board-group={g.id} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(98px, 1fr))', gap: 6 }}>
               {list.map(function (r) {
                 const on = pinsOn(S, r.id);
+                const sub = boardSub(S, r);   /* v2.3.3801: every tile's one line (a dungeon's its levels) */
                 return (
                   <button key={r.id} type="button" data-board-tile={r.id} data-board-pins={on.join(',')}
                     onClick={function () { setPage(r.id); }}
@@ -142,6 +108,9 @@ export function TownBoard(props) {
                       border: '1px solid ' + (on.length ? PIN_CSS[on[0]] : LS.borderStrong), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 })}>
                     <Icon src={r.icon} emoji={r.emoji} size={36} aspect={r.iconAspect} />
                     <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2, textAlign: 'center' }}>{boardName(r, names)}</span>
+                    {/* v2.3.3788: a dungeon's levels under its name (the owner: "list the level ranges below the dungeons");
+                        v2.3.3801: every tile's line (data-board-level stays on a dungeon's) */}
+                    {sub ? <span data-board-sub="" data-board-level={r.mouth ? '' : undefined} style={{ fontSize: 10.5, fontWeight: 600, color: LS.txt2, lineHeight: 1.2, textAlign: 'center', marginTop: -3 }}>{sub}</span> : null}
                     <PinDots on={on} />
                   </button>
                 );
@@ -150,16 +119,7 @@ export function TownBoard(props) {
           </React.Fragment>
         );
       })}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 6 }}>
-        <button type="button" data-hall-row="leaderboard" onClick={props.onLeaderboard}
-          style={Object.assign({}, TAP, { minHeight: 44, borderRadius: 10, background: LS.strip, color: LS.txt1, border: '1px solid ' + LS.borderStrong, fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 })}>
-          <Icon src="/icons/ui/panel-leaderboard.webp" emoji="🏆" size={20} />Leaderboard
-        </button>
-        <button type="button" data-hall-row="map" onClick={props.onMap}
-          style={Object.assign({}, TAP, { minHeight: 44, borderRadius: 10, background: LS.strip, color: LS.txt1, border: '1px solid ' + LS.borderStrong, fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 })}>
-          <Icon src="/icons/ui/nav-map.webp" emoji="🗺" size={20} />World map
-        </button>
-      </div>
+      <BoardFoot onLeaderboard={props.onLeaderboard} onMap={props.onMap} onDash={props.onDash} />
     </div>
   );
 }

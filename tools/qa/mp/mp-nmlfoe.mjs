@@ -51,6 +51,8 @@
  *      and a tap asks again;
  *  10. the badge clear of the shield button, the bell, the weapon button and
  *      the attack disc at 320, 360, 375, 390 and 430 px, and sideways --
+ *      (v2.3.3765: in the top bar just right of the title -- the owner: "just
+ *      to the right of the Brotown name at the top"; it was, below,)
  *      since v2.3.3629 up beside the minimap's name plate (the owner: "just
  *      beside the minimap where it lists the zone and level range"): just
  *      left of the minimap's box, level with the plate (sideways level with
@@ -266,6 +268,8 @@ const layout = (P) => P.page.evaluate(() => {
       const el = document.elementFromPoint(q.left + q.width / 2, q.top + q.height / 2);
       return !!el && (el === b || b.contains(el));
     })(),
+    /* v2.3.3765: the top bar and its title, where the pill lives now */
+    header: box('.bt-zone-header'), title: box('[data-zone-title]'),
     /* v2.3.3629: the minimap's box and its name plate */
     mini: window.__btWheelMini ? { l: window.__btWheelMini.left, t: window.__btWheelMini.top,
       r: window.__btWheelMini.left + window.__btWheelMini.w, b: window.__btWheelMini.top + window.__btWheelMini.h } : null,
@@ -785,7 +789,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 10. the badge clear of the shield and its neighbours, at every width ── */
   /* v2.3.3629: + a short sideways screen, where the sprint button reaches up
      beside the minimap's top and the badge goes up into the top bar's row */
-  const widths = [[320, 640], [360, 780], [375, 812], [390, 844], [430, 932], [844, 390], [667, 320]];
+  const widths = [[320, 640], [360, 780], [375, 812], [390, 844], [430, 932], [844, 390], [667, 375], [667, 320]];   /* v2.3.3765: + 667 x 375 */
   const rows = [];
   for (const [w, h] of widths) {
     await A.page.setViewportSize({ width: w, height: h });
@@ -795,7 +799,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const L = await layout(A);
     const hitShield = overlaps(L.badge, L.shield);
     const hitOthers = L.others.filter((q) => overlaps(L.badge, q)).map((q) => q.sel);
-    rows.push({ w, h, orient: L.orient, badge: L.badge, shield: L.shield, top: L.top, hitShield, hitOthers, mini: L.mini, plate: L.plate, vw: L.vw, at: L.at, seen: L.seen });
+    rows.push({ w, h, orient: L.orient, badge: L.badge, shield: L.shield, top: L.top, hitShield, hitOthers, mini: L.mini, plate: L.plate, vw: L.vw, at: L.at, seen: L.seen, title: L.title, header: L.header });
     if (w === 360 || w === 844 || w === 667) await shot(A, `10-${w}`);
   }
   await A.page.setViewportSize(PHONE);
@@ -810,13 +814,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
        row above it (the sprint button and Special stand left of the plate
        there and the attack disc reaches up under the box: these rows found
        the badge behind the sprint button, then on the disc) */
-    const mid = r.badge ? (r.badge.t + r.badge.b) / 2 : null;
+    /* v2.3.3765: in the top bar now, just right of the title (the owner:
+       "just to the right of the Brotown name at the top"), at every width and
+       sideways (mp-nmltopbar measures the bar itself) */
     const side = r.orient === 'landscape';
-    const beside = !!r.badge && r.seen && !!r.mini && !!r.plate && r.badge.l >= 0 && r.badge.r <= r.vw && r.badge.t >= 0
-      && r.badge.r <= r.mini.l - 2 && r.mini.l - r.badge.r <= 10 && (side
-        ? (r.at === 'top' ? Math.abs(r.badge.t - r.mini.t) <= 4 : (r.at === 'bar' && r.badge.b <= r.mini.t + 2))
-        : (r.at === 'plate' && mid >= r.plate.t && mid <= r.plate.b));
-    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) ${side ? (r.at === 'bar' ? 'in the top bar\'s row' : 'level with the minimap\'s top') + ' (its box ' + (r.mini ? r.mini.l + '-' + r.mini.r + ', ' + r.mini.t + '-' + r.mini.b : 'none') + ')' : 'beside the minimap\'s name plate (' + (r.plate ? r.plate.t + '-' + r.plate.b : 'none') + ')'}${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
+    const beside = !!r.badge && r.seen && r.at === 'bar' && !!r.title && !!r.header && r.badge.l >= r.title.r && r.badge.l - r.title.r <= 14
+      && r.badge.t >= r.header.t && r.badge.b <= r.header.b && r.badge.r <= r.vw;
+    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) in the top bar just right of the title (${r.title ? r.title.l + '-' + r.title.r : 'none'})${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
       beside && !!r.shield && !r.hitShield && r.top === 'shield' && !r.hitOthers.length, r);
   }
 
@@ -824,12 +828,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const sbx = await H.serverPlayer(wsPort, idB);
   const out = sbx ? { x: Math.round(sbx.x - spot.ux * 1300 * LONG), y: Math.round(sbx.y - spot.uy * 1300 * LONG) } : null;
   if (out) await H.hopTo(B, out.x, out.y, { tries: 40, step: 150 });
-  await A.page.waitForTimeout(2500);
+  /* v2.3.3770: judge only once the raider's VIEW of the wanderer is current --
+     it failed 1 run in 3 on this box (40/41) while the raider still drew the
+     wanderer where they last stood, inside No man's land: wait until
+     the raider sees them within 250 px of where the worker has them (or not
+     at all), then give the choice up to 10 s to lapse */
+  /* ...and the raider follows to within 800 px of them (outward): past
+     2,400 px the worker sends a player nobody's moves (tick.js FAR_PLAYERS
+     NEAR_R), so the raider's copy of the wanderer stayed frozen where it
+     last was, inside No man's land, and the choice never lapsed */
+  const sbOut = await H.serverPlayer(wsPort, idB);
+  if (sbOut) await H.hopTo(A, Math.round(sbOut.x + spot.ux * 800), Math.round(sbOut.y + spot.uy * 800), { tries: 40, step: 150 });
+  const sbNow = await H.serverPlayer(wsPort, idB);
+  for (let i = 0; i < 40 && sbNow; i++) {
+    const near = await A.page.evaluate(([pid, x, y]) => { const S = window._gameState.current, o = S.others && S.others[pid];
+      return !o || Math.hypot((typeof o.x === 'number' ? o.x : o.renderX) - x, (typeof o.y === 'number' ? o.y : o.renderY) - y) <= 250; }, [idB, sbNow.x, sbNow.y]);
+    if (near) break;
+    await A.page.waitForTimeout(500);
+  }
   await A.page.evaluate(() => { const S = window._gameState.current; S.lastDamageTaken = 0; });
-  await A.page.waitForTimeout(1200);
-  const s11 = await H.readState(A, (S) => ({ foes: S._nmlFoes instanceof Map ? Array.from(S._nmlFoes.keys()) : [], lock: S.lockedTarget ? S.lockedTarget.id : null }));
-  const lvlB = await H.readState(B, (S) => S._nmlLevel || 0);
-  const L11 = await layout(A);
+  let s11 = null, lvlB = -1, L11 = null;
+  for (let i = 0; i < 10; i++) {
+    await A.page.waitForTimeout(1000);
+    s11 = await H.readState(A, (S) => ({ foes: S._nmlFoes instanceof Map ? Array.from(S._nmlFoes.keys()) : [], lock: S.lockedTarget ? S.lockedTarget.id : null }));
+    lvlB = await H.readState(B, (S) => S._nmlLevel || 0);
+    L11 = await layout(A);
+    if (lvlB === 0 && !s11.foes.includes(idB) && s11.lock !== idB && !L11.shield) break;
+  }
   rec.ok(`11. the wanderer walks out of No man's land (now ${lvlB}): the raider's choice lapses, its lock goes, and its shield button with them`,
     lvlB === 0 && !s11.foes.includes(idB) && s11.lock !== idB && !L11.shield, { s11, lvlB, shield: L11.shield });
 

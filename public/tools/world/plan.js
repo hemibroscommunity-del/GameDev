@@ -725,7 +725,7 @@ const BASE_PLAN = {
       ],
     },
     verdant: {
-      name: 'Verdant Wilds', short: 'the wilds', element: 'flora', dir: 'W', realm: 'shadow',
+      name: 'Earth Forest', short: 'the forest',   /* v2.3.3778: the owner, "Rename verdant wilds to something like earth forest" */ element: 'flora', dir: 'W', realm: 'shadow',
       road: { id: 'west', name: 'the West Road' },
       ground: '#3f9a3f', groundName: 'deep green',
       paint: 'lush jungle floor of grass, ferns and giant colourful flowers (red, purple, teal and yellow)',

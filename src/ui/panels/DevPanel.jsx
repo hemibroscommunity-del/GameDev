@@ -24,7 +24,7 @@ const DEV_PET_LANDS = [
   { home: 'frost', label: 'Frost' }, { home: 'ember', label: 'Flame' },
   { home: 'sky', label: 'Dunes' }, { home: 'hollows', label: 'Hollows' },
   { home: 'thunder', label: 'Foundry' }, { home: 'tidal', label: 'Water' },
-  { home: 'mist', label: 'Poison' }, { home: 'verdant', label: 'Verdant' },
+  { home: 'mist', label: 'Poison' }, { home: 'verdant', label: 'Earth Forest' },
 ];
 
 /* ═══ v2.3.2240: THE OWNER'S TEST PANEL ═══
@@ -245,6 +245,7 @@ const CAP_GATES = [
   'nmlchoice' /* v2.3.3530: the window's Attack is the attack -- `nml_attack` starts both skulls at once, the one attacked white before any blow (nomansland.js _handleNmlAttack) -- lower case, a kill switch */,
   'nmlnear' /* v2.3.3690: No man's land from the safe ground's edge, the Lv 1-5 ring its 1 (nomansland.js NML.FIRST_TIER; the phone's nmlFirst) -- lower case, a kill switch */,
   'nmlsteps' /* v2.3.3767: No man's land a step a monster level (nomansland.js nmlStepLevelAt; the phone's nmlLevelFor) -- lower case, a kill switch */,
+  'nmllock' /* v2.3.3770: beaten by them, not again for half an hour (nomansland.js _nmlLockSet; the phone's nmlLockOn) -- lower case, a kill switch */,
   'gatherreq' /* v2.3.3038: lower case, a kill switch */,
   'farm' /* v2.3.3127: the farm -- lower case, a kill switch */,
   'meals' /* v2.3.3130: meals and brews you carry -- lower case, a kill switch */,

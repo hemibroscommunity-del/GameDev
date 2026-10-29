@@ -2692,14 +2692,15 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
     /* v2.3.3751: the look palette's tee (on; `?lookpalette=0` off): its stand
        and jog from the shared numbers, the tint, pattern and print painted
        from the look's row as it is drawn (lookShirtFrame.js) -- a patterned
-       or printed tee no longer a copy per player.  A plain one too when the
-       body beside it is drawn from the numbers (one batch).  Null: as before. */
+       or printed tee no longer a copy per player.  A plain tee stays the
+       shared sheet and its tint (the numbers save it nothing).  Null: as
+       before. */
     if (tex && _slotName === 'shirt') {
       const _L = display._shirtLook;
       const _lt = getLookShirtFrame(item, _gPose, dir, _gFrame, {
         art: _L && _L.art ? _L.art[sideForDir(dir)] : null, pattern: _L ? _L.pattern : null,
         tint: (equip && equip.shirtTint) || null, mirror: display._shirtArtMirror,
-      }, !!(sb.texture && sb.texture._btLook));
+      });
       if (_lt) { tex = _lt; _shirtBaked = true; }
     }
     if (tex && !_shirtBaked && _slotName === 'shirt' && display._shirtLook) {
@@ -13315,6 +13316,8 @@ export class EntityRenderer {
             name: display._pillName ? display._pillName.text : null,
             skull: !!(display._skullText && display._skullText.visible),
             skullArt: !!(display._skullText && display._skullText.texture && display._skullText.texture !== Texture.EMPTY && display._skullText.texture.width > 1),
+            /* v2.3.3770: the rematch's sword clash and "?" over their head, drawn with its picture */
+            nmlAsk: !!(display._nmlAskIcon && !display._nmlAskIcon.destroyed && display._nmlAskIcon.texture && display._nmlAskIcon.texture !== Texture.EMPTY),
           };
         }
       } catch (e) { /* never breaks the frame */ }
@@ -13337,6 +13340,42 @@ export class EntityRenderer {
       if (_skullPhase) {
         const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
         display._skullText.y = Math.round(PEER_HPBAR_Y - _sbh - 2) + bobY;
+      }
+      /* ═══ v2.3.3770: A REMATCH ASKED OF YOU ═══  The player locked out from
+         you (they attacked you and you beat them, nomansland.js _nmlLockSet)
+         asked: the duel's sword clash with a "?" over their head, for
+         NML_LOCK_ASK_SHOW_MS, on YOUR screen alone (the worker sends it to
+         you only).  Made when it starts and destroyed when it ends -- a rare
+         structural change, never a Text kept hidden (TRAPS §192) -- above
+         the skull's place, which it leaves alone. */
+      const _askUntil = S._nmlAskMarks instanceof Map ? (S._nmlAskMarks.get(id) || 0) : 0;
+      if (_askUntil > now) {
+        if (!display._nmlAskIcon && display._skullText && display._skullText.parent) {
+          const ic = new Sprite(_smallTex('nmlAskDuel'));
+          ic._smallW = THREAT_SKULL_PX + 4;
+          ic.width = ic.height = THREAT_SKULL_PX + 4;
+          ic.anchor.set(0.5, 1);
+          const q = new Text({ text: '?', style: { fontFamily: 'system-ui, sans-serif', fontSize: 16, fontWeight: '900', fill: 0xFFE27A, stroke: { color: 0x1a0b0a, width: 3 } } });
+          q.anchor.set(0, 1);
+          display._skullText.parent.addChild(ic);
+          display._skullText.parent.addChild(q);
+          display._nmlAskIcon = ic;
+          display._nmlAskQ = q;
+        }
+        if (display._nmlAskIcon) {
+          _bindSmallTex(display._nmlAskIcon, 'nmlAskDuel');
+          const _sbh = Math.max(8, display._namePill ? ((display._pillCss || 14) * PLATE_H_RATIO * (display._pillZoom || 1)) / 2 : 0);
+          const _ay = Math.round(PEER_HPBAR_Y - _sbh - 2 - (_skullPhase ? THREAT_SKULL_PX + 2 : 0)) + bobY;
+          display._nmlAskIcon.y = _ay;
+          display._nmlAskQ.x = Math.round((THREAT_SKULL_PX + 4) / 2) - 2;
+          display._nmlAskQ.y = _ay - 4;
+        }
+      } else if (display._nmlAskIcon) {
+        display._nmlAskIcon.destroy();
+        display._nmlAskQ.destroy();
+        display._nmlAskIcon = null;
+        display._nmlAskQ = null;
+        if (S._nmlAskMarks instanceof Map) S._nmlAskMarks.delete(id);
       }
     }
 

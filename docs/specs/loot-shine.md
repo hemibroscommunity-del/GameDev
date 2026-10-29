@@ -55,3 +55,35 @@ No new art files; one 16 KB picture on the chip.
   elite (`__btReveal`).
 
 `BT_QA_SIDEWAYS=1` runs it sideways. Probe: `window.__btLootShine()`.
+
+## v2.3.3805: a beam comes down into the glow
+
+The owner, 2026-10-29: "for the loot drop add a vertical shine that starts at
+its peak and climbs downward to just end at the normal glow".
+
+![The beam over its second, 0 to 1 s: coins (white) and a Frost Shard (green)](../shots/lootbeam-strip.webp)
+
+- **What a player sees.** The moment YOUR pile lands, a narrow column of light
+  stands on it in the shine's colour (the pile's best line's), 230 world px
+  tall (a pile is ~60). Its top comes down to the pile over the shine's own
+  second (`SHINE_SETTLE_S`), easing in and out, fading a little as it comes,
+  and it is gone just as the round shine settles into the glow. Then nothing
+  of it is left but the glow.
+- **Only a pile seen landing.** A pile already lying when it reached your
+  phone (a zone's list on the way in) glows, with no beam (`_shine.late`, set
+  where a pile is given its shine on first drawing rather than at its
+  `loot_drop`). Another player's pile has neither.
+- **How it is drawn.** ONE soft column picture per effects renderer
+  (`makeBeamTexture`: 32 x 128, a bright core and soft sides, fading toward
+  its top), kept on the graphics chip only (`_gpuWaiting`, its canvas let go
+  once drawn). A sprite of it per landing pile, anchored at its foot, added
+  light like the shine; each frame changes only its height and alpha (TRAPS
+  §218). At the settle it is destroyed, once; `_disposeLoot` takes it with
+  the pile if the pile goes first. The picture goes with the renderer.
+- **Off for one phone:** `?lootbeam=0`.
+- **Checked:** `mp-lootbeam` (7, a phone in BroTown, piles through the game's
+  own `loot_drop` handler): the beam at its peak as the pile lands (the first
+  frame drawn at the height due at its age); its whole fall, the page's clock
+  held at each 100 ms (230, 224, 206, 180, 149, 115, 81, 50, 24, 6 px, gone
+  at 1 s), never rising; destroyed after, the glow still there; none on a
+  pile already lying; two rarity colours side by side; no page errors.

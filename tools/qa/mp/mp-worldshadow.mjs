@@ -280,7 +280,7 @@ async function scenario({ browser, wsPort, webPort, rec }, opened) {
   const zones = [
     { label: 'Frost Ridge', id: 'frost' },
     { label: 'Wind Dunes', id: 'sky' },
-    { label: 'Verdant Wilds', id: 'verdant' },
+    { label: 'Earth Forest', id: 'verdant' },
   ];
   const typesSeen = {};
   for (const z of zones) {

@@ -48,7 +48,7 @@ check('4: the owner\'s medal, and a hook for tests', /src=\{ACHV_MEDAL_SRC\}/.te
 check('4: it is in the bar\'s left column, after the door', zh.indexOf('className="bt-zone-header__left"') > 0
   && zh.indexOf('bt-zone-header__logout') > zh.indexOf('className="bt-zone-header__left"')
   && zh.indexOf('data-ap-chip') > zh.indexOf('bt-zone-header__logout', zh.indexOf('className="bt-zone-header__left"')));
-check('4: the bar\'s left column grows to fit it', /grid-template-columns:auto minmax\(0,1fr\) auto/.test(css) && /\.bt-zone-header__left\{min-width:38px/.test(css));
+check('4: the bar\'s left column grows to fit it', /grid-template-columns:auto minmax\(0,1fr\) auto/.test(css) && /\.bt-zone-header__left\{min-width:calc\(38px \* var\(--zk\)\)/.test(css));   /* v2.3.3765: 38 px x the bar's scale */
 const apCss = (css.match(/\.bt-zone-header__ap\{[\s\S]*?\}/) || [''])[0] + (css.match(/\.bt-ap-gain\{[\s\S]*?\}/) || [''])[0];
 check('4: a flat fill: no filter over the canvas (TRAPS section 42), and it takes a touch', apCss.length > 0 && !/filter|backdrop/.test(apCss) && /pointer-events:auto/.test(apCss), apCss);
 check('4: the "+N" is still under calm motion', /html\.bt-calm \.bt-ap-gain\{animation:none;opacity:0\}/.test(css));

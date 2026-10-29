@@ -380,7 +380,7 @@ export const WORLDVIEW_EXITS = [
   // { zoneId: 'thunder', tx: 42, ty: 36, dir: 'se',    label: 'Electric Foundry',   color: ELEMENTS.storm.color },   /* lightning/tech building */
   // { zoneId: 'tidal',   tx: 24, ty: 40, dir: 'south', label: 'Water Caves',     color: ELEMENTS.water.color },   /* sea level / beach+pier */
   // { zoneId: 'mist',    tx: 8,  ty: 32, dir: 'sw',    label: 'Poison Forest',        color: ELEMENTS.venom.color },   /* poison forest */
-  { zoneId: 'verdant', tx: 7,  ty: 20, dir: 'nw',    label: 'Verdant Wilds',   color: '#6abf4f' },
+  { zoneId: 'verdant', tx: 7,  ty: 20, dir: 'nw',    label: 'Earth Forest',    color: '#6abf4f' },
   { zoneId: 'frost',   tx: 13, ty: 13, dir: 'nw',    label: 'Frost Ridge',    color: ELEMENTS.frost.color },
 ];
 

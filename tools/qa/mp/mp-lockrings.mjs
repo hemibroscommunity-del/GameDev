@@ -172,7 +172,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      lock is absolute until the monster dies or leaves the 220px perimeter"
      -- nothing TAKES your target off you; it can only LEAVE (tapReleased).
      They went unnoticed because since v2.3.3179 this check never reached the
-     Verdant Wilds (TRAPS §201).  The tapped monster here stands at 200px,
+     Earth Forest (TRAPS §201).  The tapped monster here stands at 200px,
      inside the perimeter, so D3's answer is that it stays the lock, a tap's,
      with the nearer one standing beside it. */
   rec.ok(`...and a NEARER monster does not take it while the tapped one is still in the fight `

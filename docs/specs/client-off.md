@@ -41,6 +41,7 @@ for each client saver, from the Test panel, live, as the message diet has
 | `groundlean` | Lean ground builder | `src/game/wheelTrial.js` (adds `groundlean=0` to what the ground worker is told) | next load |
 | `heaplean` | Map leftover let go | `src/game/wheelTrial.js` (_heapLean) | next load |
 | `lookpalette` | Characters coloured on the chip | its own PR (`src/rendering/lookPalette.js`): one line | at once |
+| `lookshirt` | Printed shirts coloured on the chip | v2.3.3790 (`src/rendering/lookShirtFrame.js`): `clientOff('lookshirt')` in `getLookShirtFrame`, asked every frame | at once |
 | `lookarmour` | Bodies under armour coloured on the chip | v2.3.3752 (`src/rendering/lookArmour.js` `lookArmourOn`); `?lookarmour=0` for one phone | at once (the next frame draws the old masked bake) |
 
 The look palette, not yet on main when this shipped, takes one line in its

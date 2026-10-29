@@ -330,6 +330,9 @@ export const OTHER_PLAYS = [
   ['playerDeath', 'hurt', 'Your death', { fn: 'playerDeath', args: [] }],
   ['sprint', 'move', 'Your sprint starting: the effort grunt (another player\'s, quieter)', { fn: 'sprintPush', args: [] }],
   ['swimStroke', 'move', 'A swimming stroke', { fn: 'swimStroke', args: [] }],
+  /* v2.3.3791: the skateboard's wheels (game/rideSound.js, a loop on the music
+     bus while you ride; the studio plays three seconds of it) */
+  ['skateRoll', 'move', 'Riding your skateboard: the wheels rolling on the town\'s stones (a loop, under the music, while you roll)', { fn: 'skateRollDemo', args: [0.3] }],
   ['swimIn', 'move', 'Getting into the water', { fn: 'swimSplash', args: ['in'] }],
   ['swimOut', 'move', 'Climbing out of the water', { fn: 'swimSplash', args: ['out'] }],
   ['dieSnowman', 'monsters', 'A snowman dying', { fn: 'monsterDeath', args: ['snowman'] }],
@@ -433,7 +436,7 @@ export const MUSIC_PLACES = [
   ['hollows', 'The Stone Hollows', 'Rock level'],
   ['tidal', 'The Water Caves', 'Water lvl'],
   ['mist', 'The Poison Forest', 'Murky Loop'],
-  ['verdant', 'The Verdant Wilds', 'Forest Loop'],
+  ['verdant', 'The Earth Forest', 'Forest Loop'],   /* v2.3.3778: was the Verdant Wilds */
   ['dungeon', 'Inside a dungeon: the Goo Grotto and the others', 'Swift Skirmish Clash'],
   ['minigame', "Lil Bro's race, from the countdown to the finish", 'Minigame'],
   /* v2.3.3672: the owner's farm track (assets/music-source/2026-10-27/) */
