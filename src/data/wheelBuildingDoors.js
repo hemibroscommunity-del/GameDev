@@ -188,7 +188,35 @@ export const WHEEL_TOWNSFOLK = [
      a player at the door is ~119 px from each, past the 90 a quest opens at
      by itself.  test-world-core checks each spot's ground. */
   { name: 'Woodworker Bro', door: 'woodworker', dx: -130, dy: 80, cap: 'tour' },
-  { name: 'Farmer Bro', door: 'feedseed', dx: -105, dy: 34, cap: 'tour' },
+  { name: 'Farmer Bro', door: 'feedseed', dx: -105, dy: 34, cap: 'tour' },  /* ═══ v2.3.3833: THE NEW CAST (docs/specs/npc-cast.md) ═══
+     The owner: "Keep all as you have them for now (NPCs)".  A keeper at each
+     of the ten doors that had nobody, WEST of its steps as Diego and Ace
+     stand (-105; the Post Office's and the Guild Hall's porches reach further
+     south, so their two stand 40 px nearer the wall, clear of the props
+     either side).  Each is the keeper of his building (WHEEL_KEEPERS below).
+     The three locals: Bean on the square, EAST of where you arrive (Lil Bro
+     has the west); Old Man Reel at the town's south-west edge, past the
+     store (the plan: "no pond in the town", and a townsperson stands on
+     the town's ground, so he stands at its rim -- beside the river that runs
+     along it there);
+     Tourist Terry on the square below the Town Hall's steps, where P5's
+     walking will start him off (below the Bank he stood behind its belt of
+     trees, only his head showing: mp-npccast's picture).  Every spot is checked by test-world-core: town ground,
+     24 px clear of any footprint, within 160 px of his own door and clear
+     of its steps, 200+ px from any other townsperson. */
+  { name: 'Sterling', door: 'bank', dx: -105, dy: 100 },
+  { name: 'Slim', door: 'saloon', dx: -105, dy: 100 },
+  { name: 'Chef Blaze', door: 'cookhouse', dx: -105, dy: 100 },
+  { name: 'Glint', door: 'gemcutter', dx: -105, dy: 100 },
+  { name: 'Postmaster Pete', door: 'post', dx: -105, dy: 60 },
+  { name: 'Deed Dave', door: 'landoffice', dx: -105, dy: 100 },
+  { name: 'Benny', door: 'hotel', dx: -105, dy: 100 },
+  { name: 'Guildmaster Gary', door: 'guildhall', dx: -105, dy: 60 },
+  { name: 'Sheriff Buck', door: 'sheriff', dx: -105, dy: 100 },
+  { name: 'Gavel Greg', door: 'auction', dx: -105, dy: 100 },
+  { name: 'Bean', door: 'townhall', dx: 320, dy: 180 },
+  { name: 'Old Man Reel', door: 'store', dx: -300, dy: 200 },
+  { name: 'Tourist Terry', door: 'townhall', dx: 60, dy: 400 },
 ];
 
 /* ═══ v2.3.3258: THE KEEPERS -- TALK TO HIM, AND HIS BUILDING OPENS ═══
@@ -211,7 +239,17 @@ export const WHEEL_KEEPERS = {
   'Blacksmith Bro': 'blacksmith',   /* the forge, at whose steps he stands */
   'Mayor Bro': 'townhall',          /* the Town Hall: its leaderboard and the world map */
   'Woodworker Bro': 'woodworker',   /* v2.3.3525: the bench (bows, staffs, traps, hardened wood) */
-  'Farmer Bro': 'feedseed',         /* v2.3.3525: the Feed & Seed (seeds, your farm, the orders) */
+  'Farmer Bro': 'feedseed',         /* v2.3.3525: the Feed & Seed (seeds, your farm, the orders) */  /* v2.3.3833: the new cast's ten keepers (docs/specs/npc-cast.md) */
+  'Sterling': 'bank',
+  'Slim': 'saloon',
+  'Chef Blaze': 'cookhouse',
+  'Glint': 'gemcutter',
+  'Postmaster Pete': 'post',
+  'Deed Dave': 'landoffice',
+  'Benny': 'hotel',
+  'Guildmaster Gary': 'guildhall',
+  'Sheriff Buck': 'sheriff',
+  'Gavel Greg': 'auction',
 };
 
 /* ═══ v2.3.3522: EACH BUILDING'S PICTURE, ON THE MAPS ═══
