@@ -17,6 +17,9 @@
  *
  *   node tools/qa/mp/run.mjs longhairhat
  *   LH_VIEW=phone|desk  one of the two (both)
+ *   LH_HATCOLOR=red      the hats in a colour (drawn from the look palette)
+ *   LH_CAPE=crimson      a cape, whose hood clips the hair too
+ *   LH_TAG=x             a word in the pictures' names
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -75,7 +78,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const V = VIEWS[vname];
     const P = await H.newPlayer(browser, {
       name: 'Longhair' + vname, wsPort, webPort, world: 'wheel', guest: true, ...V,
-      init: `try { localStorage.setItem('bt-hair', 'long'); localStorage.setItem('bt-headwear', 'none'); localStorage.setItem('bt-facialhair', 'none'); localStorage.setItem('bt-eyewear', 'none'); } catch (e) {}`,
+      init: `try { localStorage.setItem('bt-hair', 'long'); localStorage.setItem('bt-headwear', 'none'); localStorage.setItem('bt-facialhair', 'none'); localStorage.setItem('bt-eyewear', 'none');`
+        + (process.env.LH_HATCOLOR ? ` localStorage.setItem('bt-hatcolor', ${JSON.stringify(process.env.LH_HATCOLOR)});` : '')
+        + (process.env.LH_CAPE ? ` localStorage.setItem('bt_cape', ${JSON.stringify(process.env.LH_CAPE)});` : '') + ' } catch (e) {}',
     });
     const errors = [];
     P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
@@ -92,7 +97,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const S = window._gameState.current, c = document.querySelector('canvas'), r = c.getBoundingClientRect();
           return { x: r.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), y: r.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1) };
         });
-        await P.page.screenshot({ path: join(OUT, `longhairhat-${vname}-${name}.png`), clip: { x: Math.max(0, pos.x - 45), y: Math.max(0, pos.y - 110), width: 90, height: 120 } }).catch(() => {});
+        await P.page.screenshot({ path: join(OUT, `longhairhat-${vname}${process.env.LH_TAG ? '-' + process.env.LH_TAG : ''}-${name}.png`), clip: { x: Math.max(0, pos.x - 45), y: Math.max(0, pos.y - 110), width: 90, height: 120 } }).catch(() => {});
       };
       /* each hat, each facing, standing and jogging: the hair's pixels */
       const table = {};
