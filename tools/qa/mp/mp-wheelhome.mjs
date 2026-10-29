@@ -84,8 +84,8 @@ const near = (a, b, d = 2) => !!a && !!b && Math.abs(a.x - b.x) <= d && Math.abs
 export async function run({ browser, wsPort, webPort, rec }) {
   const { WHEEL_SPAWNS, WHEEL_CENTRE, WHEEL_SAFE_R } = await import(H.REPO + '/server/src/wheelspawns.js');
   const { PLAN } = await import(H.REPO + '/public/tools/world/plan.js');
-  const landName = (PLAN.regions[LAND] && PLAN.regions[LAND].name) || LAND;   /* "Verdant Wilds" */
-  const poss = /s$/.test(landName) ? `the ${landName}'` : `${landName}'s`;   /* "the Verdant Wilds'", "Frost Ridge's" */
+  const landName = (PLAN.regions[LAND] && PLAN.regions[LAND].name) || LAND;   /* "Earth Forest" */
+  const poss = /s$/.test(landName) ? `the ${landName}'` : `${landName}'s`;   /* "Earth Forest's", "Frost Ridge's"; v2.3.3778: was "the Verdant Wilds'" */
   const [cx, cy] = WHEEL_CENTRE;
   const r = (p) => Math.round(Math.hypot(p.x - cx, p.y - cy));
   const P = await H.newPlayer(browser, { name: 'Settler', wsPort, webPort, viewport: PHONE, touch: true, world: 'wheel' });

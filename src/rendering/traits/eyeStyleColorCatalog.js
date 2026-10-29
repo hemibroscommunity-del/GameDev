@@ -82,6 +82,7 @@ import { EYE_COLOR_CATALOG, eyeColorTarget } from './eyeColorCatalog.js';
 import { recolorEnabled } from './recolorOptions.js';
 import { segmentMaterials, materialIndex, mainMaterial } from './traitMaterials.js';
 import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
+import { headLookTextures } from './headLook.js';   /* v2.3.3753: drawn from the shared numbers */
 
 /* The Eyes tab's own palette, re-exported rather than copied -- see the
    header.  Named so a reader of the picker does not have to know that the two
@@ -261,6 +262,9 @@ export function getColoredEyeStyleTextures(id, colorId) {
      saved appearance naming either falls back cleanly rather than showing
      something the picker no longer offers (the v2.3.1927 hat precedent). */
   if (!eyeStyleColorTarget(colorId, id)) return null;
+  /* v2.3.3753: from the shared numbers when they can draw it (headLook.js) */
+  const look = headLookTextures('eyestyle', id, eyeStyleColorTarget(colorId, id));
+  if (look) return look;
   const key = id + '/' + colorId;
   const e = _cache[key];
   if (e === undefined) { build(id, colorId); return null; }
@@ -275,6 +279,7 @@ export function getColoredEyeStyleTextures(id, colorId) {
    paints the PINNED material and not the biggest one, and that an unlisted
    style falls back to native art.  None of that is visible in the DOM and none
    of it is reachable from a built bundle. */
+const _probeBakes = Object.create(null);   /* v2.3.3753: the QA probe's old-path answers (rule 4) */
 if (typeof window !== 'undefined') {
   window.__btEyeStyleColor = {
     paints: eyeStylePaints,
@@ -288,8 +293,29 @@ if (typeof window !== 'undefined') {
        [r, g, b, a] -- for the Alien Eyes, the solid squares painted and the
        see-through shadow left as drawn (mp-species §5) */
     pixels: (id, colorId) => {
-      const t = getColoredEyeStyleTextures(id, colorId);
+      let t = getColoredEyeStyleTextures(id, colorId);
       if (!t) return null;
+      /* v2.3.3753: drawn from the shared numbers (headLook.js) there is no
+         bake to read: the old path's own recolour of it is made once, as the
+         answer (mp-lookheads holds the numbers to it, pixel for pixel) --
+         null until it is, so the caller asks again */
+      const k0 = Object.keys(t)[0];
+      if (k0 && t[k0] && t[k0].source && t[k0].source._btLook) {
+        const key = id + '/' + colorId;
+        if (!_probeBakes[key]) {
+          _probeBakes[key] = 'loading';
+          const target = eyeStyleColorTarget(colorId, id);
+          Promise.all(DIRS.map((dir) => loadImg(`/sprites/traits/eyestyle/${id}/${dir}.png?v=${TRAIT_VER}`).then((img) => ({ dir, img })).catch(() => ({ dir, img: null }))))
+            .then((loaded) => {
+              const prof = _refCache[id] || (_refCache[id] = _pooledProfile(loaded.map((l) => l.img), id));
+              const out = {};
+              for (const { dir, img } of loaded) if (img) out[dir] = { source: { resource: recolorHairToCanvas(img, target, prof) } };
+              _probeBakes[key] = out;
+            });
+        }
+        if (_probeBakes[key] === 'loading') return null;
+        t = _probeBakes[key];
+      }
       const out = {};
       for (const dir of Object.keys(t)) {
         const res = t[dir] && t[dir].source && t[dir].source.resource;

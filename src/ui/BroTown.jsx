@@ -413,6 +413,7 @@ import { tickMoveSounds, tickDanceMusic } from '@/game/moveSounds.js';   /* v2.3
 import { tickHeartbeat } from '@/game/ownSounds.js';   /* v2.3.3462: the owner's heartbeat under a quarter of your health */
 import { npcSpeaks } from '@/game/npcVoices.js';   /* v2.3.3462: the townsfolk's voices (v2.3.3664: a talk and a quest taken only) */
 import { tickAmbientBeds } from '@/game/ambientBeds.js';   /* v2.3.3462: the sea, BroTown's crowd and a fire's crackle */
+import { tickRideSound } from '@/game/rideSound.js';   /* v2.3.3791: the skateboard rolling */
 import { sendEmote as sendEmoteImpl, enterBuilding as enterBuildingImpl, enterWheelDoor, sendMove as sendMoveImpl, updateOwnEmote, updatePeerEmotes, movesLive } from '@/game/interactions.js';   /* v2.3.3258: + a keeper opens his building; v2.3.3392: + your bro moves */
 /* v2.3.784: connection lifecycle extracted behavior-frozen (REBUILD-PLAN Phase 5);
    the Phase-4 dispatcher is now consumed by wsClient.js, not here. */
@@ -5210,6 +5211,7 @@ export var BroTown = function BroTown(_ref0) {
         tickWaterAmbience(S, _jNow);   /* v2.3.3343: the river heard on its banks (game/waterAmbience.js) */
         tickTownAmbience(S, _jNow);   /* v2.3.3434: the Blacksmith's anvil near the forge (game/townAmbience.js) */
         tickAmbientBeds(S, _jNow);   /* v2.3.3462: the sea from its shore, BroTown's crowd, a fire's crackle (game/ambientBeds.js) */
+        tickRideSound(S, _jNow);   /* v2.3.3791: your skateboard's wheels while you ride (game/rideSound.js) */
         tickHeartbeat(S, _jNow);   /* v2.3.3462: under a quarter of your health (game/ownSounds.js) */
         tickDanceMusic(S);   /* v2.3.3462: your dance takes the music deck (game/moveSounds.js) */
         var _inAir = !!S._jump;
@@ -10392,6 +10394,17 @@ export var BroTown = function BroTown(_ref0) {
     var slot = S.rpg && S.rpg.activeSlot;
     if (!S.rpg || slot === 'ranged' || slot === 'staff' || S._shieldUp) return false;
     var hit = monsterAtCss(cssX, cssY);
+    /* ═══ v2.3.3763: A CLICK ON A PLAYER MEANS THE PLAYER ═══
+       With no monster under the pointer this promoted the game's own monster
+       lock and noted it as the press's lock, and the click that ends the
+       press returns early on that (onClick, `_deskPressLock`) -- before its
+       player check.  So a computer clicking another player in No man's land
+       with a monster near lunged at the monster and never got the "Attack?"
+       window (the soak's mp-longplay, 0 of 2), and outside it never opened
+       their card.  A player under the pointer, and no monster: no lunge, no
+       lock taken; the press swings as before v2.3.3694 and the click asks
+       about them (mp-nomansland). */
+    if (!hit && otherPlayerAtCss(cssX, cssY)) return false;
     var lt = S.lockedTarget;
     if (hit) {
       if (!lt || lt.ref !== hit) S.lockedTarget = { type: 'monster', id: hit.id, ref: hit, src: 'tap' };

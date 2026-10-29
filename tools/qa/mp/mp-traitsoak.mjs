@@ -37,7 +37,11 @@ const DESK = process.env.BT_TS_VIEW === 'desk';
 const VIEW = DESK ? { viewport: { width: 1366, height: 768 }, touch: false, dpr: 1 } : { viewport: PHONE, touch: true, dpr: 3 };
 const LAPS = +(process.env.BT_TS_LAPS || 2);
 const QUERY = process.env.BT_TS_QUERY || '';
-const LOOK = { hair: 'wavy', hat: 'bandana-2', beard: 'beard', eye: 'golden-glasses' };
+/* v2.3.3753: BT_TS_LOOK='{"hair":"afro","hairColor":"pink",...}' -- another
+   look, its colours too (a coloured piece is drawn from the look palette's
+   numbers, traits/headLook.js) */
+const LOOK = process.env.BT_TS_LOOK ? JSON.parse(process.env.BT_TS_LOOK)
+  : { hair: 'wavy', hat: 'bandana-2', beard: 'beard', eye: 'golden-glasses' };
 const STOPS = ['ember', 'sky', 'frost', 'verdant'];
 const FACINGS = {
   east: ['d'], northeast: ['w', 'd'], north: ['w'], northwest: ['w', 'a'],
@@ -54,6 +58,10 @@ const INIT = (look) => {
     localStorage.setItem('bt-headwear', look.hat);
     localStorage.setItem('bt-facialhair', look.beard);
     localStorage.setItem('bt-eyewear', look.eye);
+    if (look.hairColor) localStorage.setItem('bt-haircolor', look.hairColor);
+    if (look.hatColor) localStorage.setItem('bt-hatcolor', look.hatColor);
+    if (look.beardColor) localStorage.setItem('bt-beardcolor', look.beardColor);
+    if (look.eyeColor) localStorage.setItem('bt-eyewearcolor', look.eyeColor);
   } catch (e) { /* none */ }
 };
 

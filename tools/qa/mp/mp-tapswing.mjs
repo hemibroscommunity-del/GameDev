@@ -192,7 +192,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3399: the worker's god mode (the Test panel's, /dev/vitals: no
      damage taken, in memory, it expires), as mp-monwatch's.  Now and then a
      run ended in town at full health with nothing to swing at -- a fresh
-     character killed on its walk through the Verdant Wilds and respawned,
+     character killed on its walk through the Earth Forest and respawned,
      as mp-monwatch saw standing still there (the sweep of 2026-10-18, and
      one run in five after it).  What is under test is whether the swing
      starts on arrival, not surviving the walk. */
