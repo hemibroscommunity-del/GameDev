@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "84dbf8c98351baeda8dc70563c921366d22a28ad",
+  "tree": "7bfebeb61621d868da35e3eabc3b24977c1766f8",
+  "committedAt": "2026-10-28T17:51:27-07:00",
+  "subject": "Town Hall board: Quests first, a Gambling heading, and each dungeon's level under its name (v2.3.3788) (#1260)",
+  "files": 7019,
+  "bytes": 814463958,
+  "listingSha256": "e06935f61957da9b81cd232d5e735619fe488021133b3ee050467164b31a6c5b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
