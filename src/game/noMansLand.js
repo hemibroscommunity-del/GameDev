@@ -36,7 +36,6 @@
 import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';   /* v2.3.3316: the killer's "LOOT" */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: No man's land heard: crossing in, a skull, a loss, a take */
-import { playZoneBanner } from '@/ui/zoneBannerOverlay.js';
 
 import { NML, NML_CENTRE, NML_CENTRES, nmlTierAt, nmlLevelAt, nmlStepLevelAt } from '@/data/noMansLandRings.js';   /* v2.3.3767: + a step a monster level */
 import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3315: the rings of the Wheel the room plays */
@@ -223,7 +222,9 @@ export function noteNoMansLand(S) {
   if (was && tier === wasTier) return;   /* a step within the tier: the badge says it */
   const rule = `players within ${lvl} level${lvl === 1 ? '' : 's'} of yours`;
   if (!was) {
-    try { playZoneBanner('nml-' + lvl, S, { title: `No man's land ${lvl}`, plain: true, color: NML_RED }); } catch (e) { /* the line still says it */ }
+    /* v2.3.3853: no banner on the way in (the owner: "just get rid of the no
+       man's land gigantic warning message. I'd rather not have anything");
+       the skull pill, the red line and the chat's line say it */
     cue('nmlEnter');   /* v2.3.3343: crossing in is heard, an ominous sting under its banner (it was silent) */
     if (!_note.told.first) {
       _note.told.first = true;

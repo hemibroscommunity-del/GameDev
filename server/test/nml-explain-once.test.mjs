@@ -94,14 +94,14 @@ check('5c no number: not', !E.nmlExplainHit(null, 10) && !E.nmlExplainHit(10, un
 /* ── 6. the wiring ── */
 {
   const b = src('src/ui/mobile/NmlBadge.jsx');
-  check('6a the badge\'s clock opens it once near the line, with its lead line, and marks it told',
-    /nmlExplainDue\(\{/.test(b) && /nmlMarkTold\(S\.myId\)/.test(b) && /openNmlInfo\(S, 1, \{ lead: /.test(b));
+  /* v2.3.3853: the owner, "just get rid of the no man's land gigantic warning
+     message. I'd rather not have anything": it opens only from the skull pill */
+  check('6a the badge\'s clock never opens it by itself (v2.3.3853)',
+    !/nmlExplainDue\(/.test(b) && !/nmlMarkTold\(/.test(b) && !/openNmlInfo\(S, 1, \{ lead: /.test(b));
   check('6b ...and closes it on a hit', /nmlExplainHit\(openHp, hp\)\) \{ infoPopupBus\.close\(\)/.test(b));
   check('6c every explainer is marked nml, and the lead shows over the rules', /nml: true,/.test(b) && /data-nml-lead=""/.test(b));
   check('6d the rule module reads the rings by a relative path (node runs it)', /from '\.\.\/data\/noMansLandRings\.js'/.test(src('src/game/nmlExplainOnce.js')));
-  check('6e QA pages hold it back unless a scenario asks (the harness\'s nmlOnce, as the chest\'s window); mp-nmlonce asks',
-    /window\.__btNoNmlOnce/.test(b) && /if \(!nmlOnce\) await page\.addInitScript\(\(\) => \{ window\.__btNoNmlOnce = true; \}\)/.test(src('tools/qa/mp/harness.mjs'))
-      && /nmlOnce: true/.test(src('tools/qa/mp/mp-nmlonce.mjs')));
+  check('6e ...and no banner on the way in (noMansLand.js noteNoMansLand)', !/playZoneBanner\(/.test(src('src/game/noMansLand.js')));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
