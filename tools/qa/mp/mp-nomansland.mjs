@@ -277,10 +277,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const band = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-h')) || 0;
         return {
           lvl: S._nmlLevel || 0,
-          banner: zb && zb.shownAt ? zb.shownAt('nml-1') : 0,
-          chat: (S.chatLog || []).filter((l) => /No man's land 1/.test(l.text || '')).map((l) => l.text),
+          /* v2.3.3767: the number is the step (Lv 1-5 on the first ring), not 1 */
+          banner: zb && zb.shownAt && S._nmlLevel ? zb.shownAt('nml-' + S._nmlLevel) : 0,
+          chat: (S.chatLog || []).filter((l) => /No man's land \d/.test(l.text || '')).map((l) => l.text),
           bar: sub ? sub.textContent : null,
-          /* v2.3.3629: the minimap's box and its name plate, beside which the badge stands */
+          /* v2.3.3765: the top bar's title, right of which the badge stands */
+          title: (() => { const q = document.querySelector('[data-zone-title]'); const x = q && q.getBoundingClientRect(); return x ? { l: Math.round(x.left), r: Math.round(x.right) } : null; })(),
+          header: (() => { const q = document.querySelector('.bt-zone-header'); const x = q && q.getBoundingClientRect(); return x ? { t: Math.round(x.top), b: Math.round(x.bottom) } : null; })(),
+          /* v2.3.3629: the minimap's box and its name plate, beside which the badge stood */
           mini: window.__btWheelMini ? { l: window.__btWheelMini.left, t: window.__btWheelMini.top } : null,
           plateBox: window.__btWheelPlate ? { t: window.__btWheelPlate.top, b: window.__btWheelPlate.top + window.__btWheelPlate.height } : null,
           badge: b ? { n: b.getAttribute('data-nml-badge'), text: b.textContent, mid: Math.round(r.left + r.width / 2 - innerWidth / 2),
@@ -293,7 +297,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
             gap: Math.round((innerHeight - band) - r.bottom), h: Math.round(r.height), w: Math.round(r.width) } : null,
         };
       });
-      if (t.lvl === 1 && t.banner > 0 && t.chat.length && t.badge) break;
+      if (t.lvl >= 1 && t.lvl <= 5 && t.banner > 0 && t.chat.length && t.badge) break;
       await P.page.waitForTimeout(400);
     }
     return t;
@@ -301,7 +305,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const tA = await told(A), tB = await told(B);
   for (const [who, t] of [['the raider', tA], ['the wanderer', tB]]) {
     rec.ok(`1. ${who} is told: the banner, the chat ("${t && t.chat[0]}") and the badge (skull ${t && t.badge && t.badge.text}, ${t && t.badge && t.badge.w} px wide)`,
-      !!t && t.lvl === 1 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && !!t.badge && t.badge.n === '1' && /^\s*1\s*$/.test(t.badge.text) && t.badge.w <= 90, t);
+      !!t && t.lvl >= 1 && t.lvl <= 5 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && !!t.badge && t.badge.n === String(t.lvl) && t.badge.text.trim() === String(t.lvl) && t.badge.w <= 90, t);
     /* v2.3.3268: just LEFT of the middle -- centred, it sat on the shield
        button (the shield's left edge is the middle, ShieldButton.jsx
        ctlColumn) and a tap on the shield's middle opened the badge; it stops
@@ -315,11 +319,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
        minimap where it lists the zone and level range"): its right edge just
        left of the minimap's box, its middle level with the plate, a 44 px
        target, on the screen */
+    /* v2.3.3765: IN THE TOP BAR, just right of the title (the owner: "just
+       to the right of the Brotown name at the top"), a target the bar's height
+       (34 px, as the AP's; mp-nmltopbar measures every width) */
     const tb = t && t.badge;
-    const mid = tb ? (tb.t + tb.bt) / 2 : null;
-    rec.ok(`1. ...the badge just left of the minimap (${t && t.mini && tb ? t.mini.l - tb.r : '?'} px from its box), level with its name plate (middle ${mid} in ${t && t.plateBox ? t.plateBox.t + '-' + t.plateBox.b : '?'}), a ${tb && tb.h} px target`,
-      !!tb && !!t.mini && !!t.plateBox && tb.r <= t.mini.l - 2 && t.mini.l - tb.r <= 10 && mid >= t.plateBox.t && mid <= t.plateBox.b
-        && tb.h >= 44 && tb.l >= 0, { tb, mini: t && t.mini, plate: t && t.plateBox });
+    rec.ok(`1. ...the badge in the top bar just right of the title (${t && t.title && tb ? tb.l - t.title.r : '?'} px from it), a ${tb && tb.h} px target`,
+      !!tb && !!t.title && !!t.header && tb.l >= t.title.r && tb.l - t.title.r <= 14 && tb.t >= t.header.t && tb.bt <= t.header.b
+        && tb.h >= 34 && tb.l >= 0, { tb, title: t && t.title, header: t && t.header });
     rec.ok(`1. ...and the minimap's name plate shows the level band, the badge saying No man's land ("${t && t.bar}")`, !!t && t.bar === BAND, t && t.bar);
   }
   await shot(A, '1-told');
@@ -405,7 +411,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, own);
   rec.ok(`3b. the raider's badge wears their red skull (${info && info.own})`, !!info && info.own === 'red', info);
   rec.ok(`3b. a tap on it says what No man's land means ("${info && info.title}"), with the skull's minutes ("${info && info.note}")`,
-    !!info && /No man's land 1/.test(info.title || '') && /attack/.test(info.body || '') && /red skull/.test(info.body || '') && /red skull: \d+ min/.test(info.note || ''), info);
+    !!info && /No man's land [1-5] · Lv [1-5] monsters/.test(info.title || '') && /attack/.test(info.body || '') && /red skull/.test(info.body || '') && /red skull: \d+ min/.test(info.note || ''), info);
 
   /* ── 4. the killing blow ── */
   const vit = await H.devOp(wsPort, 'vitals', idB, { heal: true, hp: 1 });

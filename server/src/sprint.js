@@ -97,6 +97,7 @@ export const sprintMethods = {
     if (!ps || this._sprintOff()) return false;
     if (ps.dying || ps.dead || ps.disconnected) return false;
     if (ps.blocking) return false;
+    if (ps._ride) return false;   /* v2.3.3776: no sprint on the skateboard -- the board is the faster (ride.js) */
     if (ps._guardBrokenUntil && now < ps._guardBrokenUntil) return false;
     const st = typeof ps.stamina === 'number' ? ps.stamina : 0;
     if (st <= 0) return false;
@@ -124,7 +125,7 @@ export const sprintMethods = {
       d.steps++;
       return SPRINT.MULT;
     }
-    if (ps._sprintAt && now - ps._sprintAt < SPRINT.GRACE_MS && !this._sprintOff()) return SPRINT.MULT;
+    if (ps._sprintAt && now - ps._sprintAt < SPRINT.GRACE_MS && !this._sprintOff() && !ps._ride) return SPRINT.MULT;
     return 1;
   },
 

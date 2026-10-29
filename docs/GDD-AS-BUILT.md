@@ -62,7 +62,7 @@ BroTown is a real-time, server-based multiplayer action RPG played in a phone's 
 2. **The tour**: six townsfolk then offer their lines at once (farming, smithing, woodworking, fishing and cooking, a foot race, trapping), each teaching one building and one system, ending in the Mayor's finale (the burrowing snowmen) and two more hunts.
 3. **The lands**: walk out a gate down a road into a land whose monsters climb from level 1 at the town end to 40 at its far camp; kill for skill XP (0.2 per point of damage, into the weapon's own skill), gold, remains, shards and the one-roll drop; the XP fades for anything 5+ levels below you, so the game keeps pulling you outward.
 4. **The lands feed the town**: ore, logs and fish come back to the Blacksmith, the Woodworker, the Gem Works and the Cookhouse; shards become gems that give a weapon its element; crops from your farm become meals and brews for fights.
-5. **Risk**: from each land's second ring onward is No man's land, where other players within a few levels may attack you after a confirmation window, and a death there costs everything carried.
+5. **Risk**: from the safe ground's edge outward is No man's land, where other players within a few levels may attack you after a confirmation window, and a death there costs everything carried.
 6. **Depth**: three dungeons, a persistent party of up to 50 that becomes an alliance at 20 active members, duels, an arena, pets that ward their land's element, a monster codex, hardening as the long gold sink, and material rungs that today stop at obsidian (rung 5 of 20).
 
 ### 1.3 Pillars as the code expresses them
@@ -121,7 +121,7 @@ Each land has four named **stages** (one look per twenty levels: Frost Ridge's t
 
 **The safe ground** is one circle of 2,937 px round the Town Hall: no monster targets, chases or hits anyone on it, except a monster that player **provoked** (hurt it this life and dealt damage to anything in the last 10 s), which follows them onto the grass and out to 1,800 px from its home. An unprovoked chase ends 720 px from home. Monsters know nothing of water or walls on the server side: they follow you into rivers and through props.
 
-**No man's land** (the PvP rings, Part 10) begins at the safe ground's edge, each land's Lv 1–5 ring being ring 1, and counts up to 16 at Lv 76–80 (since v2.3.3690; it began at the Lv 6–10 ring before); the hub and the safe ground are never PvP. The rings are plain radii from the centre so phone and server agree.
+**No man's land** (the PvP rings, Part 10) begins at the safe ground's edge. Since v2.3.3767 its number is the level of the monsters where you stand (1 among the Lv 1 monsters, 80 at the gates), climbing a step a monster level; before, it was the ring's, one step every five levels, 1 to 16 (and since v2.3.3690 the Lv 1–5 ring was ring 1; it began at the Lv 6–10 ring before). The hub and the safe ground are never PvP. The rings are plain radii from the centre so phone and server agree.
 
 ### 2.2 BroTown
 
@@ -320,7 +320,7 @@ Every touch button follows the owner's mockup: a gold ring, a picture, no words;
 | Left cluster | Element Burst (a gem in the weapon) and Quick Eat (while carrying a heal and missing HP, its ring the bite rule's wait). |
 | Bell | bottom left above the band, shut with an unread count; a tap opens the chat feed. |
 | Enter | a small button over a building's sign when your boots are within 140 px of its steps. |
-| No man's land badge | a red skull with the ring number just left of centre above the band; a tap opens the rules. |
+| No man's land badge | a red skull with the No man's land number (the monster level where you stand, v2.3.3767) just left of centre above the band; a tap opens the rules. |
 | Minimap tap | the world map. |
 | OPEN / CLOSE pill | folds the dashboard to its button row (remembered; a new character starts folded). |
 
@@ -989,9 +989,9 @@ Twenty-two quests for seven givers who are not in the world (a trader, an enchan
 
 Fighting other players is off everywhere except No man's land, duels and the arena (and the owner's sparring clones). The master switch for open PvP has been off since the owner's "remove the option to kill other players for now"; No man's land is the one place its rule allows a fight.
 
-**Where**: from the safe ground's edge, each land's Lv 1–5 ring is No man's land 1, the next ring 2, out to 16 at Lv 76–80 (so 1–8 in the populated world; since v2.3.3690, before which it began at the Lv 6–10 ring). The hub and the commons (the safe ground) are never PvP; dungeons never.
+**Where**: from the safe ground's edge outward. **Since v2.3.3767 its number is the level of the monsters where you stand**, by the monsters' own arithmetic (the ring's band and the spot's depth in it): No man's land 1 among the Lv 1 monsters, 7 among the Lv 7s, out to 80 at the gates (so 1–40 in the populated world). Before, it was the ring's number, one step every five levels: the Lv 1–5 ring 1, the next 2, out to 16 (since v2.3.3690; before that it began at the Lv 6–10 ring). `nmlsteps: false` in the live flags brings the ring's number back. The hub and the commons (the safe ground) are never PvP; dungeons never. The chat says a line only when you cross into another ring; the badge shows every step.
 
-**Who may fight whom**: both standing in No man's land, both alive; their **character levels** at most N apart, where N is the **lower** of their two ring numbers (a ring-3 player cannot reach into ring 1 at someone 3 levels apart); not in one party.
+**Who may fight whom**: both standing in No man's land, both alive; their **character levels** at most N apart, where N is the **lower** of their two No man's land numbers (one standing in 9 cannot reach someone in 7 who is 8 levels apart). Since v2.3.3767 the numbers climb a step a monster level, so the range grows five times as fast as it did; not in one party.
 
 **Attacking is a choice.** A stray shot or swing never hurts a player. The first time you tap a fightable player, pass a shot through one, reach one with a sword swing, or rest the bow's line on one, a small window asks **"Attack <name>?"** with three answers: **Attack** (they become your foe: every weapon lands on them, locked or not, until the fight lapses), **Party** (a party invite), **Ignore** (or 10 s). The window's Attack is itself the attack: the server starts both skulls at once, before any blow. The one attacked gets "**Hit back <name>?**" with the white skull; hitting back gives no red skull. Once you have a live foe, everyone else who attacks you joins the fight with no window of their own. A foe lapses when the rule stops allowing the fight, they leave, or 60 s pass with no blow either way. While a foe (or anyone you traded a blow with in the last minute) is within 900 px the shield and Special buttons stay up for every weapon.
 

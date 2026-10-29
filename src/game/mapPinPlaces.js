@@ -22,6 +22,14 @@ import { BOARD, boardEntry } from '@/data/townBoard.js';
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
+/* v2.3.3779: the lands' names as the world spells them (plan.js regions,
+   the world map's `names`), for the board's `{land}` words (data/townBoard.js
+   boardWords); null before the world map is made */
+export function boardLandNames() {
+  const map = wheelMapInfo();
+  return map && map.names && typeof map.names === 'object' ? map.names : null;
+}
+
 /** Is board row `e` there to do with this worker? */
 export function boardRowOpen(S, e) {
   if (!e) return false;

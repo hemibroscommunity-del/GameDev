@@ -24,7 +24,9 @@ import { npcSpeaks } from '@/game/npcVoices.js';   /* v2.3.3462: the townsfolk a
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 import { startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed on your farm, worked where it lies */
 import { emotesLive } from '@/game/emotes.js';   /* v2.3.3391: B opens the emotes */
-import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL, ENTER_SEL, MAP_KEY } from '@/game/deskKeys.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
+import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL, ENTER_SEL, MAP_KEY } from '@/game/deskKeys.js';
+import { rideButtonWanted, toggleRide } from '@/game/ride.js';   /* v2.3.3776: Z rides the skateboard */
+import { rideGround } from '@/game/rideGround.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
 import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
 import { dblTapRoll, tapDir } from '@/game/deskCombos.js';   /* v2.3.3711: a direction key tapped twice rolls */
 
@@ -267,6 +269,18 @@ export function setupDesktopControls(S, deps) {
         e.preventDefault();
         triggerJump(S);
         return;
+      }
+
+      /* ═══ v2.3.3776: Z — THE SKATEBOARD ═══
+         The board button's twin (ui/panels/RideButton.jsx): on, and off
+         again, where the button is shown -- BroTown's safe ground, a worker
+         that carries boards.  Anywhere else it does nothing. */
+      if (e.code === 'KeyZ' && !e.repeat) {   /* RIDE_KEY (deskKeys.js), written out as the other keys are (desk-keys.test §6) */
+        if (rideButtonWanted(S, rideGround(S))) {
+          e.preventDefault();
+          toggleRide(S, Date.now(), function (type, payload) { if (S.channel) S.channel.send({ type: type, payload: payload }); });
+          return;
+        }
       }
 
       /* ═══ v2.3.3120: T — TRAP ═══

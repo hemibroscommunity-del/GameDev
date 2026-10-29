@@ -8,6 +8,8 @@ import { quickEatChoices } from '@/game/quickEat.js';
 import { calcDisplayHeal } from '@/data/gameSystems.js';
 import { sprintSupported } from '@/game/sprint.js';
 import { trappingOn, trapsHeld } from '@/game/trapping.js';
+import { rideButtonWanted } from '@/game/ride.js';   /* v2.3.3776: Z, the skateboard, in BroTown */
+import { rideGround } from '@/game/rideGround.js';
 
 /* === KeyboardHintsPanel — the desktop keyboard-hints overlay === */
 /* v2.3.889: extracted verbatim from the bt-kb-hints JSX subtree in
@@ -65,6 +67,7 @@ export function deskKeyHave(S) {
     burst: burst,
     trap: trap,
     food: food,
+    ride: (function () { try { return rideButtonWanted(S, rideGround(S)); } catch (_e) { return false; } })(),
   };
 }
 

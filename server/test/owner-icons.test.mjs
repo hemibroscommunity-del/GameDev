@@ -133,8 +133,12 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   check('3e the free daily spin row wears the prize wheel; the drawn wheel stays for the bonus spins elsewhere',
     /<img src=\{OWNER_ICON\.prizeWheel\.src\}/.test(spin) && !/<SpinGlyph/.test(spin) && (dr.match(/<SpinGlyph size=/g) || []).length >= 2, { spin: spin.slice(0, 200) });
   const jp = src('src/ui/mobile/dash/JourneyPanel.jsx');
-  check('3f the empty Journey page shows the treasure map, not dimmed (its emoji fallback kept)',
-    /<img src=\{OWNER_ICON\.journeyMap\.src\}/.test(jp) && !/nav-journey/.test(jp) && !/opacity: 0\.4/.test(jp) && /createTextNode\('🧭'\)/.test(jp));
+  /* v2.3.3773: the Journey page is the Character page's records now (the
+     owner: "journey ... its own icon in the more/other apps menus"), so the
+     always-empty travel log that wore the treasure map is gone; the map stays
+     the owner's pick on disk (7b holds its bytes) */
+  check('3f the Journey page is the records, and the treasure map stays an owner pick',
+    /data-journey-card=\{icon\}/.test(jp) && !/OWNER_ICON\.journeyMap/.test(jp) && /journeyMap:/.test(src('src/data/ownerIcons.js')));
   const er = src('src/rendering/systems/entityRenderer.js');
   check('3g the townsfolk wear the owner\'s pins, 38 tall, the drawn disc kept as the fallback',
     /const qmPin = new Sprite\(Texture\.EMPTY\);/.test(er) && /const t = _questPinTex\(display\._qmState\);/.test(er)

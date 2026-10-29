@@ -85,7 +85,7 @@ const CARD_H = 96;
 /* the other small cards that sit at the top of the screen: the window goes
    under one rather than over it (mp-nmlask's computer showed it over the
    party invite card the raider's Party had just raised) */
-const TOP_CARDS = ['[data-party-invite]', '[data-nml-badge]'];   /* v2.3.3629: + No man's land's badge, beside the minimap's name plate */
+const TOP_CARDS = ['[data-party-invite]', '[data-nml-badge]'];   /* v2.3.3629: + No man's land's badge, beside the minimap's name plate (v2.3.3765: in the top bar now, above this window's places) */
 
 /* the play area on the screen (.brotown-wrap: the whole width on a phone held
    upright, the world's own window sideways and in a computer's shell) */

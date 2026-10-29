@@ -263,6 +263,9 @@ function enterWheel(bot) {
 }
 
 function pickAnchor(bot) {
+  /* v2.3.3754: CFG.fightAt -- every fighter round one spot (a phone's
+     screen: mp-crowdfight), chasing only the monsters within CFG.chaseR of it */
+  if (CFG && CFG.fightAt) return { x: CFG.fightAt.x, y: CFG.fightAt.y };
   /* the monsters of its own land, nearest the middle: the first stretch,
      where a new character's fights are (wheelzone.js, levels 1-5) */
   let best = null, bestD = Infinity;
@@ -300,7 +303,10 @@ function startWalking(bot) {
         if (bot.state !== 'walking' && bot.state !== 'dead') return;
         /* v2.3.3453: CFG.look -- what the bots wear on top of the sample
            (mp-crowdbots BT_CROWD_LOOK: armoured bots, for the metal shine) */
-        const data = Object.assign({}, trackSample(), CFG.look || null, {
+        /* v2.3.3754: CFG.looks -- one look a bot (its k), so a crowd is N
+           different looks, as a real one is (mp-crowdfight) */
+        const own = Array.isArray(CFG.looks) && CFG.looks.length ? CFG.looks[bot.k % CFG.looks.length] : null;
+        const data = Object.assign({}, trackSample(), CFG.look || null, own, {
           x: Math.round(bot.x * 10) / 10, y: Math.round(bot.y * 10) / 10,
           name: 'Load' + bot.k, zone: 'wheel', dir: 'down',
         });
@@ -329,8 +335,10 @@ function newTarget(bot) {
 
 function nearestMonster(bot) {
   let best = null, bestD = Infinity;
+  const at = CFG && CFG.fightAt && CFG.chaseR > 0 ? CFG.fightAt : null;
   for (const m of bot.monsters.values()) {
     if (m.alive === false) continue;
+    if (at && Math.hypot(m.x - at.x, m.y - at.y) > CFG.chaseR) continue;
     const d = Math.hypot(m.x - bot.x, m.y - bot.y);
     if (d < bestD) { bestD = d; best = m; }
   }
