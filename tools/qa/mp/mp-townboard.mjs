@@ -13,6 +13,8 @@
  *      them, and the Leaderboard and World map at its foot;
  *      v2.3.3779: the Dungeons under their own heading, every tile its own
  *      picture (each drawn), a land's name the world's own;
+ *      v2.3.3788: Quests first and Gambling after Money and trade; each
+ *      dungeon's level line on its tile, inside it at 390, 320 and sideways;
  *   2. a tile opens its PAGE: its words, where it is, Red pin and Blue pin;
  *   3. RED on the arena, BLUE on the forge: the board's tiles wear them, and
  *      both are on the minimap (the forge's in the box, near the Town Hall);
@@ -108,7 +110,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const img = t.querySelector('img');
         /* v2.3.3779: each tile's name and its picture, drawn (not the emoji a broken one falls back to) */
         return { id: t.getAttribute('data-board-tile'), pins: t.getAttribute('data-board-pins'), name: (t.textContent || '').trim(),
-          pic: img ? img.getAttribute('src') : null, drawn: !!img && img.complete && img.naturalWidth > 0 };
+          pic: img ? img.getAttribute('src') : null, drawn: !!img && img.complete && img.naturalWidth > 0,
+          /* v2.3.3788: a dungeon's level line, and whether it fits inside its tile */
+          level: (() => { const l = t.querySelector('[data-board-level]'); if (!l) return null;
+            const lr = l.getBoundingClientRect(), tr = t.getBoundingClientRect();
+            return { text: (l.textContent || '').trim(), fits: lr.left >= tr.left - 0.5 && lr.right <= tr.right + 0.5 && lr.bottom <= tr.bottom + 0.5 && l.scrollWidth <= l.clientWidth + 1 }; })() };
       }),
       groups: Array.from(b.querySelectorAll('[data-board-group]')).map((g) => g.getAttribute('data-board-group')),
       foot: Array.from(b.querySelectorAll('[data-hall-row]')).map((x) => x.getAttribute('data-hall-row')),
@@ -161,7 +167,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ids = b1 ? b1.tiles.map((t) => t.id) : [];
     rec.ok(`1. at the Town Hall's door, "${o1.btn}" opens the board: ${ids.length} tiles under ${b1 ? b1.groups.length : 0} headings, the Leaderboard and World map at its foot`,
       o1.open && !!b1 && ids.length >= 20 && ['goo-grotto', 'arena', 'nomansland', 'forge', 'gambling', 'woodworker', 'land-verdant'].every((id) => ids.includes(id))
-        && b1.groups.join() === 'fight,dungeons,lands,make,money,people' && b1.foot.join() === 'leaderboard,map',
+        && b1.groups.join() === 'quests,fight,dungeons,lands,make,money,gambling,people' && b1.foot.join() === 'leaderboard,map',
       { btn: o1.btn, open: o1.open, n: ids.length, groups: b1 && b1.groups, foot: b1 && b1.foot });
     /* v2.3.3779, the owner: "classified by 'dungeon' not by 'fight' ... Also use better icons for each one" */
     const pics = b1 ? b1.tiles.map((t) => t.pic) : [];
@@ -170,6 +176,32 @@ export async function run({ browser, wsPort, webPort, rec }) {
       pics.length === ids.length && new Set(pics).size === pics.length && b1.tiles.every((t) => t.drawn)
         && !!verd && verd.name.length > 3 && !/[{}]/.test(verd.name) && !/flora land/i.test(verd.name),
       { undrawn: b1 && b1.tiles.filter((t) => !t.drawn).map((t) => t.id), verd: verd && verd.name, dup: pics.filter((p, i) => pics.indexOf(p) !== i) });
+
+    /* v2.3.3788, the owner: "list the level ranges below the dungeons (e.g lvl
+       10+ for goo grotto)" -- on the tile, fitting upright at 390 and 320 and
+       sideways; and the Quests and Gambling headings */
+    const lvOf = (b) => Object.fromEntries((b ? b.tiles : []).filter((t) => t.level).map((t) => [t.id, t.level]));
+    const fitAt = async (vp, tag) => {
+      await A.page.setViewportSize(vp);
+      await A.page.waitForTimeout(600);
+      const b = await board(A);
+      await A.page.evaluate(() => { const t = document.querySelector('[data-board-group="dungeons"]'); if (t) t.scrollIntoView({ block: 'center' }); });
+      await A.page.waitForTimeout(300);
+      await shot(A, tag);
+      return lvOf(b);
+    };
+    const lv390 = lvOf(b1);
+    const lv320 = await fitAt({ width: 320, height: 700 }, '1-board-320');
+    const lvSide = await fitAt({ width: 844, height: 390 }, '1-board-sideways');
+    await A.page.setViewportSize(PHONE);
+    await A.page.waitForTimeout(600);
+    const want = { 'goo-grotto': /^Lv 10\+ · party of 2–3$/, 'great-cave': /^Lv 26\+$/, 'foundry-dome': /^Lv 26\+$/, 'buried-city': /^Lv 41\+$/ };
+    const lvOk = (m) => Object.keys(want).every((id) => m[id] && want[id].test(m[id].text) && m[id].fits) && Object.keys(m).length === 4;
+    rec.ok('...each dungeon\'s tile says its levels under its name (Goo Grotto "Lv 10+ · party of 2–3", Great Cave and Foundry Dome "Lv 26+", Buried City "Lv 41+"), inside the tile upright at 390 and 320 px and sideways',
+      lvOk(lv390) && lvOk(lv320) && lvOk(lvSide), { lv390, lv320, lvSide });
+    const inG = (g) => b1 ? b1.tiles.filter((t) => ['mayor', 'townquests', 'guildhall', 'race', 'gambling', 'ace'].includes(t.id)).map((t) => t.id) : [];
+    rec.ok('...Quests heads the board (the Mayor\'s story, the townsfolk\'s quests, the Guild Hall), and Gambling has the Gambling Den and Ace',
+      ['mayor', 'townquests', 'guildhall', 'gambling', 'ace'].every((id) => inG().includes(id)) && b1.groups[0] === 'quests', { tiles: inG() });
 
     /* 2. a page */
     await press(A, '[data-board-tile="arena"]', false);
@@ -272,6 +304,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('7. on a computer the board opens (its words say "click"), a page pins blue on the Woodworker, and the minimap shows it',
       o7.open && !!b7 && b7.tiles.length === b1.tiles.length && hint && !!r7 && r7.after && r7.after.btns[1].on === '1'
         && !!m7 && m7.some((m) => m.color === 'blue' && m.id === 'woodworker'), { open: o7.open, n: b7 && b7.tiles.length, m7, hint });
+    const lvDesk = lvOf(b7);
+    rec.ok('...and on the computer\'s wide layout each dungeon\'s level line fits its tile', lvOk(lvDesk), lvDesk);
 
     rec.ok(`8. no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {

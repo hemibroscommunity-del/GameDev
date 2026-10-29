@@ -1,7 +1,7 @@
 import React from 'react';
 import { deskWords } from '@/game/deskWords.js';
 import { GROUPS, boardEntry, boardPinnable, boardWords, boardName } from '@/data/townBoard.js';
-import { boardRows, boardLandNames } from '@/game/mapPinPlaces.js';
+import { boardRows, boardLandNames, boardDungeonLine } from '@/game/mapPinPlaces.js';
 import { loadPins, pinsOn, togglePin, PIN_CSS, PIN_KEYS } from '@/game/mapPins.js';
 
 /* ═══ v2.3.3766: THE TOWN HALL'S BOARD ═══
@@ -135,6 +135,7 @@ export function TownBoard(props) {
             <div data-board-group={g.id} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(98px, 1fr))', gap: 6 }}>
               {list.map(function (r) {
                 const on = pinsOn(S, r.id);
+                const lv = boardDungeonLine(S, r);
                 return (
                   <button key={r.id} type="button" data-board-tile={r.id} data-board-pins={on.join(',')}
                     onClick={function () { setPage(r.id); }}
@@ -142,6 +143,8 @@ export function TownBoard(props) {
                       border: '1px solid ' + (on.length ? PIN_CSS[on[0]] : LS.borderStrong), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 })}>
                     <Icon src={r.icon} emoji={r.emoji} size={36} aspect={r.iconAspect} />
                     <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2, textAlign: 'center' }}>{boardName(r, names)}</span>
+                    {/* v2.3.3788: a dungeon's levels under its name (the owner: "list the level ranges below the dungeons") */}
+                    {lv ? <span data-board-level="" style={{ fontSize: 10.5, fontWeight: 600, color: LS.txt2, lineHeight: 1.2, textAlign: 'center', marginTop: -3 }}>{lv}</span> : null}
                     <PinDots on={on} />
                   </button>
                 );

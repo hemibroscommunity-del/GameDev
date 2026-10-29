@@ -41,17 +41,31 @@
  * No imports: a node suite reads it (server/test/town-board.test.mjs). */
 
 export const GROUPS = Object.freeze([
+  { id: 'quests', name: 'Quests' },   /* v2.3.3788: the owner, "(quests should've be another one)" -- first */
   { id: 'fight', name: 'Fight' },
   { id: 'dungeons', name: 'Dungeons' },   /* v2.3.3779: the owner, "classified by 'dungeon' not by 'fight'" */
   { id: 'lands', name: 'Explore the lands' },
   { id: 'make', name: 'Make' },
   { id: 'money', name: 'Money and trade' },
+  { id: 'gambling', name: 'Gambling' },   /* v2.3.3788: the owner, "'Gambling' should be another category" */
   { id: 'people', name: 'People' },
 ]);
 
 const E = (o) => Object.freeze(o);
 
 export const BOARD = Object.freeze([
+  /* ── Quests (v2.3.3788, the owner: "(quests should've be another one)";
+     the numbers are the worker's QUEST_REWARDS and GUILD_QUESTS, held to
+     these words by town-board.test 1r) ── */
+  E({ id: 'mayor', group: 'quests', name: 'Mayor Bro\u2019s story', icon: '/sprites/npc/mayor-bro-head.webp', emoji: '🎩',
+    page: ['The Mayor\u2019s quests, six in a row: slimes in the land of {verdant}, snowmen in {frost}, skeletons in {sky} and fire goblins in {ember}, then a hunt and a dungeon.',
+      'About 1,175 gold in all, with XP and gear on the way. His first quest opens everyone else\u2019s.'],
+    where: 'Mayor Bro, on the Town Hall\u2019s steps, in BroTown.', at: { npc: 'Mayor Bro' } }),
+  /* not one place (six people), so no pins: the gold "!" over a head says who */
+  E({ id: 'townquests', group: 'quests', name: 'Townsfolk quests', icon: '/ui/quest/pin-offer.webp?v=2.3.3481', emoji: '❗',
+    page: ['Twelve quests from six people: Blacksmith Bro, Woodworker Bro, Farmer Bro, Beastmaster Bro, Diego and Lil Bro. Each teaches a trade and pays gold and tools.',
+      'They open after the Mayor\u2019s first quest. Look for the gold \u201c!\u201d over a head, in the street and on your map.'],
+    where: 'Around BroTown\u2019s square.', at: null, nopin: true }),
   /* ── Dungeons (v2.3.3779: their own heading, and each its own boss's picture) ── */
   E({ id: 'goo-grotto', group: 'dungeons', name: 'Goo Grotto', icon: '/icons/board/goo-grotto.png?v=2.3.3779', emoji: '🕳',
     page: ['A dungeon of the land of {verdant}: three waves of its slimes, then a giant slime that splits three times.',
@@ -159,10 +173,10 @@ export const BOARD = Object.freeze([
     page: ['List items, weapons, gear or pets at your own price for 7 days, or buy, bid and make offers.',
       'Sales are paid by mail if you are away. No fee.'],
     where: 'In BroTown, east of the square.', at: { door: 'auction' } }),
-  E({ id: 'gambling', group: 'money', name: 'Gambling Den', icon: '/icons/ui/bldg-gamble.webp?v=2.3.1224', emoji: '🎲',
+  E({ id: 'gambling', group: 'gambling', name: 'Gambling Den', icon: '/icons/ui/bldg-gamble.webp?v=2.3.1224', emoji: '🎲',
     page: ['A free daily spin you can double or nothing, a wager of 10 to 10,000 gold, and a weekly jackpot of 50-gold tickets.'],
     where: 'In BroTown, south of the square.', at: { door: 'gambling' } }),
-  E({ id: 'ace', group: 'money', name: 'Ace’s coin flip', icon: '/sprites/npc/cardsharp-bro-head.webp', emoji: '🪙',
+  E({ id: 'ace', group: 'gambling', name: 'Ace’s coin flip', icon: '/sprites/npc/cardsharp-bro-head.webp', emoji: '🪙',
     page: ['Ace flips a coin: stake at least 10 gold, and win three times your stake or lose three times it.',
       'The odds are against you: you win 45 times in 100.'],
     where: 'Beside the Gambling Den, in BroTown.', at: { npc: 'Ace' } }),
@@ -174,8 +188,9 @@ export const BOARD = Object.freeze([
   E({ id: 'saloon', group: 'people', name: 'Saloon', icon: '/icons/ui/bldg-tavern.webp?v=2.3.1224', emoji: '🍺',
     page: ['Team up: invite players to your party. A party sees each other’s health, has its own chat and goes into dungeons together.'],
     where: 'In BroTown, south of the square.', at: { door: 'saloon' } }),
-  E({ id: 'guildhall', group: 'people', name: 'Guild Hall', icon: '/icons/ui/panel-guild.webp', emoji: '🏛',
-    page: ['Your rank in each life skill’s guild, and its quests.'],
+  E({ id: 'guildhall', group: 'quests', name: 'Guild Hall', icon: '/icons/ui/panel-guild.webp', emoji: '🏛',
+    page: ['Your rank in each life skill’s guild, and its quests: a ladder of eight rewards for reaching level 5, 15, 30, 50, 70, 90, 100 and 150 in the skill.',
+      'Each pays gold, from 30 at the first to 2,000 at the last.'],
     where: 'In BroTown, north of the square.', at: { door: 'guildhall' } }),
   E({ id: 'post', group: 'people', name: 'Post Office', icon: '/icons/ui/evt-mail.webp', emoji: '📫',
     page: ['Your mail: sales, refunds, trade payouts and rewards, and anything that came while you were away. Write to your friends here too.'],
@@ -183,7 +198,7 @@ export const BOARD = Object.freeze([
   E({ id: 'hotel', group: 'people', name: 'Hotel', icon: '/ui/controls/sleep.webp?v=2.3.3526', emoji: '🛏',
     page: ['A free night’s rest: full health, stamina and mana, and Well Rested, more XP from fights for a while.'],
     where: 'In BroTown, south of the square.', at: { door: 'hotel' }, cap: 'rest' }),
-  E({ id: 'race', group: 'people', name: 'Lil Bro’s race', icon: '/sprites/npc/lil-bro-head.webp', emoji: '🏁',
+  E({ id: 'race', group: 'quests', name: 'Lil Bro’s race', icon: '/sprites/npc/lil-bro-head.webp', emoji: '🏁',
     page: ['Race Lil Bro once round the Town Hall’s square. He runs a little faster than you walk, so sprint.'],
     where: 'Lil Bro, on the square west of the Town Hall.', at: { npc: 'Lil Bro' }, cap: 'race' }),
 ]);
