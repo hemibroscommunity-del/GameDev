@@ -2371,3 +2371,29 @@ export async function openPointCols(P, keys = ['sword'], { drift = 16 } = {}) {
     return c ? [c.getAttribute('data-prog3-card')] : [];
   });
 }
+
+/* ═══ v2.3.3768: THE PARTY LIST, OPENED AS A PLAYER OPENS IT ═══
+ * The party strip is a chip by default now (PartyHUD.jsx, game/partyChip.js):
+ * a scenario that reads the roster's rows, its ✖ Leave or a kick opens the
+ * list first.  `tap: true` taps the chip (a real click at its middle); else
+ * the device's remembered choice is set, as that tap sets it, and the HUD is
+ * told (the 'bt-party-list' event) -- open before the party forms, too.
+ * Resolves to whether the list is open (or no party is drawn yet). */
+export async function openPartyList(P, { tap = false } = {}) {
+  if (tap) {
+    const c = await P.page.evaluate(() => {
+      const el = document.querySelector('[data-party-chip="folded"]');
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    if (c) await P.page.mouse.click(c.x, c.y);
+  } else {
+    await P.page.evaluate(() => {
+      try { localStorage.setItem('bt_party_list', 'open'); } catch (e) { /* private mode */ }
+      window.dispatchEvent(new Event('bt-party-list'));
+    });
+  }
+  await P.page.waitForTimeout(250);
+  return P.page.evaluate(() => !document.querySelector('[data-party-chip="folded"]'));
+}

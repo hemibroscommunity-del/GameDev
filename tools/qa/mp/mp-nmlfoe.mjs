@@ -415,7 +415,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(2500);
   const lv = [];
   for (const P of [A, B, C]) lv.push(await H.readState(P, (S) => S._nmlLevel || 0));
-  rec.ok(`setup: all three stand in No man's land 1 (${lv.join(' / ')})`, lv.every((n) => n === 1), lv);
+  /* v2.3.3767: the number is the monster level where you stand (caps.nmlsteps),
+     so on the Lv 1-5 ring it is 1 to 5, not 1 -- what the fights below need is
+     that all three are in it, levels within one of each other (above) */
+  rec.ok(`setup: all three stand in No man's land on its first ring (${lv.join(' / ')})`, lv.every((n) => n >= 1 && n <= 5), lv);
   for (const id of [idA, idB, idC]) await H.devOp(wsPort, 'vitals', id, { heal: true, god: false });
   for (const P of [A, B, C]) {
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
