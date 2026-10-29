@@ -18,6 +18,7 @@
  * recolored.
  */
 
+import { laterRounds } from './retryLooks.js';   /* v2.3.3882 */
 import { Rectangle, Texture } from 'pixi.js';
 import { getFrame, SPRITE_VERSION, stripDetachedComponents, frameCount as playerFrameCount } from './playerSprites.js';   /* v2.3.3716: + frameCount, the look probe's */
 import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteScale.js'; /* v2.3.1108: normalize downscaled sheets to the 256px frame before recolour; v2.3.1120: downscale the final DISPLAY texture for VRAM; v2.3.1237: bakeDisplayCanvas smooths nearest-upscaled sheets at DISPLAY_DS=1 (jog-shimmer fix) */
@@ -1919,11 +1920,21 @@ function _fileKeyMask(img, w, h) {
   g.drawImage(src, 0, 0);
   return toolKeyMask(g.getImageData(0, 0, w, h).data, w, h);
 }
-function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt = 0) {
+/* ═══ v2.3.3882: A BODY OR HEAD SHEET GIVEN UP ON IS ASKED FOR AGAIN, LATER ═══
+   Both bakes below gave up for the visit after their bounded retries (8 s): a
+   recoloured body sheet then drew the plain base sheet (the wrong skin and
+   trousers in that facing), a knight's or a pickup's head sheet drew no head.
+   Now each is asked for again while drawn, on the later rounds every loader
+   that asks again shares (retryLooks.js, docs/specs/retry-looks.md);
+   `?bodyretry=0` or `?retrylooks=0` is the game as it was. */
+const _bodyLater = laterRounds('bodyretry');
+const _headLater = laterRounds('bodyretry');
+function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt = 0, round = 0) {
+  const art0 = art;   /* v2.3.3882: as asked, for a later round */
   art = artForFacing(art, dir);   /* v2.3.2042: the bake must match the key above */
   _bodySheets[sheetKey] = 'loading';
   /* Returns an always-resolving promise so a full preload can await it. */
-  const bust = attempt > 0 ? `&r=${attempt}` : '';
+  const bust = (attempt > 0 ? `&r=${attempt}` : '') + (round > 0 ? `&g=${round}` : '');   /* v2.3.3882: + the later round */
   return loadImg(`/sprites/player/${pose}-${dir}.png?v=${SPRITE_VERSION}${bust}`).then(img => {
     /* body poses are 256px frames; restore if stored smaller on disk.  Recolour
        runs at full 256 (exact skin/pants/shoes pixel thresholds). */
@@ -2010,10 +2021,11 @@ function buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT
     _bodySheets[sheetKey] = out;
   }).catch(() => {
     if (attempt < _BODY_RETRY_MS.length) {
-      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt + 1), _BODY_RETRY_MS[attempt]);
+      setTimeout(() => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art, eyeBlank, attempt + 1, round), _BODY_RETRY_MS[attempt]);
       return; /* stays 'loading' during the backoff */
     }
     _bodySheets[sheetKey] = []; /* missing -> caller falls back */
+    _bodyLater.gaveUp(sheetKey, (g) => buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eyeT, art0, eyeBlank, 0, g));   /* v2.3.3882 */
     try { if (window.__spriteLog) console.warn('[sprite] body sheet failed', sheetKey); } catch (e) { /* ignore */ }
   });
 }
@@ -2224,7 +2236,7 @@ export function getBodyFrame(skinId, pantsId, shoesId, pose, dir, frameIdx, shir
   const sheetKey = bodySheetKey(skinId, pantsId, shoesId, shirtT, shirtKey, eye && eye.id, pose, dir, _art, blank && blank.id);
   const entry = _bodySheets[sheetKey];
   if (entry === undefined) { buildBodySheet(sheetKey, pose, dir, skinT, pantsT, shoesT, shirtT, eye && eye.t, _art, blank && blank.rects); return getFrame(pose, dir, frameIdx); }
-  if (entry === 'loading' || !entry.length) return getFrame(pose, dir, frameIdx);
+  if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _bodyLater.due(sheetKey); return getFrame(pose, dir, frameIdx); }   /* v2.3.3882 */
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
@@ -2423,13 +2435,13 @@ function _stampHeadInk(full, img, a) {
   stampRegion(id.data, w, h, FRAME_W, skin, a.tattooFace, !!a.mirror, FACE_BOX, { underSkin: true });
   fctx.putImageData(id, 0, 0);
 }
-function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art = null, attempt = 0) {
+function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art = null, attempt = 0, round = 0) {
   _pickupHeadSheets[key] = 'loading';
   /* v2.3.1381: bounded retry (v2.3.1305 pattern) — a flaked head-sheet
      fetch used to cache [] permanently, leaving the fullset knight
      headless for that dir all session.  Missing dirs still settle to []
      after the retries (pickup ships south-only by design). */
-  const _bust = attempt > 0 ? `&r=${attempt}` : '';
+  const _bust = (attempt > 0 ? `&r=${attempt}` : '') + (round > 0 ? `&g=${round}` : '');   /* v2.3.3882: + the later round */
   return loadImg(`/sprites/player/${pose}-${dir}-head.png?v=${SPRITE_VERSION}${_bust}`).then(img => {
     /* v2.3.2643: the head overlay is a FACE, so it carries the eyes too -- and
        it is the face an ARMOURED player actually shows while jogging, because
@@ -2497,9 +2509,12 @@ function _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, 
          backoff instead of passing while a flaked sheet is still
          re-fetching (owner: assets missing right after a deploy). */
       return new Promise((res) => setTimeout(res, [2000, 6000][attempt]))
-        .then(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art, attempt + 1));
+        .then(() => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art, attempt + 1, round));
     }
     _pickupHeadSheets[key] = []; /* missing dir -> caller hides the overlay */
+    /* v2.3.3882: asked for again later while drawn (a facing that ships no
+       head sheet, by design, costs a round now and then, ten at most) */
+    _headLater.gaveUp(key, (g) => _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, eyeBlank, art, 0, g));
   });
 }
 /** Recolored loot-pickup head-overlay frame for (skin, pants, shoes, pose, dir,
@@ -2528,7 +2543,7 @@ export function getPickupHeadFrame(skinId, pantsId, shoesId, pose, dir, frameIdx
   const key = _headSheetKey(skinId, pantsId, shoesId, pose, dir, blank, a);
   const entry = _pickupHeadSheets[key];
   if (entry === undefined) { _buildPickupHeadSheet(key, pose, dir, skinT, pantsT, shoesT, blank && blank.rects, a); return null; }
-  if (entry === 'loading' || !entry.length) return null;
+  if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _headLater.due(key); return null; }   /* v2.3.3882 */
   /* v2.3.1389: jog callers pass the cycle `phase` (0..1) — the SAME clock
      getGearFramePhased plays the fullset armor with, so a head sheet whose
      native frame count differs from the body's (east: 25 vs 28) stays
@@ -2783,6 +2798,7 @@ function _dropArtSheets() {
       try { releaseCanvasSource(entry[0].source); } catch (e) { /* already gone */ }   /* v2.3.3074: Cache entry and canvas too (TRAPS §139) */
     }
     delete _bodySheets[key];
+    _bodyLater.forget(key);   /* v2.3.3882 */
   }
   /* v2.3.2862: and the head overlays that carried a face drawing.  Destroyed
      on the same 30 s delay _pickupHeadCap uses: one of them may be on screen
@@ -2791,6 +2807,7 @@ function _dropArtSheets() {
     if (key.indexOf('#hf') === -1) continue;
     const entry = _pickupHeadSheets[key];
     delete _pickupHeadSheets[key];
+    _headLater.forget(key);   /* v2.3.3882 */
     const src = Array.isArray(entry) && entry[0] && entry[0].source;
     if (src) setTimeout(() => { try { releaseCanvasSource(src); } catch (e) { /* already gone */ } }, 30000);   /* v2.3.3074 */
   }
