@@ -56,6 +56,7 @@ import { checkAccountLogin } from '@/networking/index.js';
 import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import TimedBanner from './TimedBanner.jsx';   /* v2.3.3839: the warning / stat banner's own clock */
+import { keptQuery } from './keepSwitches.js';   /* v2.3.3888: the address's switches kept through the door */
 import SwapHint from './SwapHint.jsx';   /* v2.3.3877: how to swap weapons, said once */
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
@@ -8697,8 +8698,8 @@ export var BroTown = function BroTown(_ref0) {
            it — but only if noresume=1 is not there to make it return first. */
         setTimeout(function () {
           try {
-            var _g = /[?&]guest=1\b/.test(window.location.search) ? '?guest=1' : '';
-            window.location.replace(window.location.pathname + _g);
+            /* v2.3.3888: the page's switches ride along (keepSwitches.js), guest among them */
+            window.location.replace(window.location.pathname + keptQuery());
           } catch (e2) { window.location.reload(); }
         }, 350);
         return true;
@@ -12366,7 +12367,9 @@ export var BroTown = function BroTown(_ref0) {
              LOGGING OUT, which navigates to '/?noresume=1&login=1'
              (v2.3.1840).  Reloading with those still on would land the
              player back on the door they just chose a character from. */
-          var _gp = /[?&]guest=1\b/.test(window.location.search) ? '/?guest=1' : '/';
+          /* v2.3.3888: ...minus the door's own words (noresume, login), its
+             switches kept (keepSwitches.js) */
+          var _gp = '/' + keptQuery();
           /* v2.3.2447: the player just chose this row; the reload must not
              land them on the door again.  See the boot check. */
           try { sessionStorage.setItem('bt_play_now', '1'); } catch (e2) {}
@@ -12462,8 +12465,8 @@ export var BroTown = function BroTown(_ref0) {
              the creator would otherwise mint a character against the very
              identity we just walked away from. */
           try {
-            var _g = /[?&]guest=1\b/.test(window.location.search) ? '&guest=1' : '';
-            window.location.href = '/?create=1' + _g;
+            /* v2.3.3888: + the page's switches (keepSwitches.js), guest among them */
+            window.location.href = '/' + keptQuery(undefined, [['create', '1']]);
             return;
           } catch (e) {}
         }
