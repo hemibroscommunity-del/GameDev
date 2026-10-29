@@ -385,7 +385,7 @@ import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: t
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here */
+import { interactKind, talkBeforeDoor } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.3868: + E's nearer of a townsperson and a door */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
 import DeathCard from '@/ui/mobile/DeathCard.jsx';   /* v2.3.3817: "You died", what killed you, back in BroTown in N */
@@ -1638,6 +1638,12 @@ export var BroTown = function BroTown(_ref0) {
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],
     setNearBuilding = _useState6[1];
+  /* v2.3.3868: on a computer, E would talk (a townsperson nearer than the
+     door, desktopControls.js talkBeforeDoor): the door's Enter button stands
+     aside meanwhile, so it never says one thing while E does another */
+  var _useDeskTalkPick = useState(false),
+    deskTalkPick = _useDeskTalkPick[0],
+    setDeskTalkPick = _useDeskTalkPick[1];
   var _useState7 = useState(false),
     _useState8 = _slicedToArray(_useState7, 2),
     showPlayerList = _useState8[0],
@@ -8843,6 +8849,11 @@ export var BroTown = function BroTown(_ref0) {
       setNearBuilding(function (prev) {
         return prev === nb ? prev : nb;
       });
+      /* v2.3.3868: a computer's door button follows E (talkBeforeDoor) */
+      var dtp = !!(S._isDesktop && (nb !== null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) && talkBeforeDoor(S));
+      setDeskTalkPick(function (prev) {
+        return prev === dtp ? prev : dtp;
+      });
       /* v2.3.3032: and the Wheel's building door you stand at (game/wheelTownDoors.js) */
       var nwb = S._nearWheelBuilding || null;
       var nwbLabel = nwb && (nwb.index >= 0 || nwb.hall) ? nwb.label : null;
@@ -14965,7 +14976,7 @@ export var BroTown = function BroTown(_ref0) {
        tapped, so it stops rendering. Walking away and back re-arms it
        normally -- nearBuilding is untouched, which keeps the desktop E key
        (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
-    buildingPanel === null && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
+    buildingPanel === null && !deskTalkPick /* v2.3.3868 */ && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
        Sheriff's Office): the same button, its own picture and name */

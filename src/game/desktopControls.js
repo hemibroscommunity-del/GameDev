@@ -29,6 +29,7 @@ import { rideButtonWanted, toggleRide } from '@/game/ride.js';   /* v2.3.3776: Z
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
 import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
 import { dblTapRoll, tapDir } from '@/game/deskCombos.js';   /* v2.3.3711: a direction key tapped twice rolls */
+import { wheelDoorDist } from '@/game/wheelTownDoors.js';   /* v2.3.3868: E's nearer of a townsperson and a door */
 
 /* v2.3.3711: `?dbltap=0` -- the double tap's roll off, for a tab (the owner's
    to keep or not: a quick double nudge of W rolls now) */
@@ -47,7 +48,7 @@ function dblTapOn() {
 export function interactKind(S, opts) {
   if (!S) return null;
   if (opts && opts.npcFirst && S._nearNpc) return 'talk';   /* the right stick's order (runInteract) */
-  if (questWaits(S) && !doorPromptUp(S)) return 'talk';   /* v2.3.3583: E's order too (runInteract); v2.3.3834: not over the door's prompt */
+  if (talkBeforeDoor(S)) return 'talk';   /* v2.3.3583: E's order too (runInteract); v2.3.3834: not over the door's prompt; v2.3.3868: the nearer of the two */
   if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) return 'door';
   if (S._nearHouse) return 'sleep';
   if (S._nearWorkshop || S._nearWheelDoor || S._nearPetHouse) return 'door';
@@ -87,6 +88,35 @@ function questWaits(S) {
    always talks.  The right stick's `npcFirst` order on a phone is unchanged. */
 function doorPromptUp(S) {
   return !!(S && (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)));
+}
+
+/* ═══ v2.3.3868: E TALKS TO THE TOWNSPERSON BESIDE YOU -- THE NEARER WINS ═══
+   The owner, playtesting on a computer: "the instructions say 'E' is
+   interact. When you're next to mayor bro (intending to accept the first
+   quest by 'interacting') you would actually open the door to the building
+   right next to him (town hall)."  v2.3.3834 gave the door E wherever its
+   prompt was up, and Mayor Bro stands on the Town Hall's steps, so beside
+   him E opened the hall.  Now, with a townsperson in talk range (any of
+   them, a quest or not: E is the computer's tap, and a tap on a person
+   talks) AND a door's prompt up, E does the NEARER of the two -- beside the
+   Mayor it talks, on the hall's doorstep it opens the door -- and on a
+   computer the door's "Enter" button shows only while the door is E's pick
+   (BroTown deskTalkPick), so the button never says one thing while E does
+   another (v2.3.3834's judge-pass complaint).  Nearer rather than "the
+   person always first": the townsfolk's reach (90 px) covers the doorsteps
+   they stand by, so "always the person" would leave E unable to open the
+   Town Hall, Diego's or any door with someone beside it.  No door's prompt:
+   as before, a townsperson with a quest for you comes first (questWaits,
+   v2.3.3583) and one without waits behind a bed, a dungeon's mouth or a
+   resource.  A tie goes to the person. */
+export function talkBeforeDoor(S) {
+  var npc = S && S._nearNpc, P = S && S.player;
+  if (!npc || !P) return false;
+  if (!doorPromptUp(S)) return questWaits(S);
+  var d = S._nearWheelBuilding;
+  var dd = d ? wheelDoorDist(S, d) : Infinity;
+  if (!isFinite(dd)) return true;   /* a door with no place to measure: the person */
+  return Math.hypot(npc.x - P.x, npc.y - P.y) <= dd;
 }
 
 export function setupDesktopControls(S, deps) {
@@ -166,9 +196,10 @@ export function setupDesktopControls(S, deps) {
          has its own Enter button, and Ace and Diego stand by theirs, so door
          first would never let the stick's tap reach them */
       if (opts && opts.npcFirst && S._nearNpc && runTalk()) return true;
-      /* v2.3.3583: and E for a townsperson with a quest for you (questWaits) */
-      /* v2.3.3834: ...unless the door's prompt is up: then E is the door, as it says */
-      if (questWaits(S) && !doorPromptUp(S) && runTalk()) return true;
+      /* v2.3.3583: and E for a townsperson with a quest for you (questWaits);
+         v2.3.3834: ...unless the door's prompt is up; v2.3.3868: then the
+         nearer of the two (talkBeforeDoor) */
+      if (talkBeforeDoor(S) && runTalk()) return true;   /* v2.3.3868: the nearer of the townsperson and the door */
       /* 1. Building (v2.3.3066: or a Wheel hall's door) */
       if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) {
         _desktopEnterBuilding();
