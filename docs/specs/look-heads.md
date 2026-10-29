@@ -20,8 +20,8 @@ native colour.
 Every recolourable piece (59: hair 7, hats 39, the beard, 7 pairs of glasses,
 5 eye styles) is kept **once** as colour numbers, the set `heads`
 (`public/sprites/look/heads/`, `tools/art/head-bake.mjs`). All 59 together are
-**0.82 MB on the chip** (16-bit numbers and their tables), loaded behind the
-loading screen. A colour is one entry of a palette row, in the head range of
+**0.32 MB on the chip** (8-bit numbers and their tables; 0.82 MB exact at 16
+bits), loaded behind the loading screen. A colour is one entry of a palette row, in the head range of
 the row (64-127):
 
 | entry | piece |
@@ -51,9 +51,14 @@ No pixel goes unexplained in any of the 59 pieces. The refs are fractional
 (a mean luminance x 1.15), so a role's ref is carried in 1/64ths (the
 manifest's `refScale`, the last header value; the body's is 1).
 
-- **Exact.** Every pixel keeps its own colour (a facing has up to 771 of
-  them), so the sheets are 16 bits a number; 8 bits would mean reducing the
-  art's colours.
+- **256 colours a piece** (the owner: "I won't notice at all from anything at
+  256"). A facing has up to 771 colours of its own, so each piece is cut to
+  255 by `tools/art/lookCut.mjs` (shared with the body's bake, error-bounded
+  by P1 in #1239), within a bar of 16 levels on every colour a look can show.
+  All 59 fit: 49 were cut and 10 already had 255 or fewer. Across the 49, a
+  pixel moved 2 levels on average, and the worst piece's worst colour moved 16.
+  A piece that cannot meet the bar stays exact at 16 bits (`head-bake.mjs
+  --bits 8` decides piece by piece).
 - **Cropped.** A piece is 2-9% of its frame. Each facing is cut to its art, with
   two see-through texels round it, on even texels, so the chip's blend and
   the first mip level see what they saw in the old frame. A texture's `orig`
@@ -94,10 +99,17 @@ the colour shows at once.
   every eye style in 3. That is 213 pieces in a colour and 1,611 facings, the
   three flipped facings drawn flipped as the game draws them. Each is drawn
   the old way (the catalog's copy) and from the numbers, 1:1, through the sharp
-  read: **0 pixels more than 1 level of 255 apart** (646,742 pixels).
-- At a phone's 2.6 screen pixels a texel and a computer's 0.8: see the PR.
+  read (646,742 pixels). The exact pieces: **0 pixels more than 1 level of 255
+  apart**. The pieces cut to 255 colours: **at most 15 levels**, the cut's bar
+  being 16. Baked at 16 bits for a check, every piece was 0 over 1.
+- At a phone's 2.6 screen pixels a texel: 1 level at most. At a computer's 0.8
+  (the mip chain): 3 levels at most, on 5% of pixels. Both are the body's
+  bars.
+- `mp-membudget` with the heads at 8 bits: 11 of 11, no line raised (gpu 87.8 of
+  105 MB, buffers 19.0 of 22, heap 33.7 of 34).
 - `head-bake.mjs` checks its own bake against `recolorHairToCanvas`: three real
-  colours, every texel of every facing, 1 level at most.
+  colours, every texel of every facing, 1 level at most for an exact piece and
+  16 for a cut one.
 - `precheck` `look-heads`: a piece's art changed without a re-bake FAILS; the
   recolour code or a catalog changed WARNS (`head-bake.mjs --check`).
 
