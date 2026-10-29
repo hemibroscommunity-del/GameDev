@@ -13,6 +13,8 @@
  *   3. it never takes a tap or a click: the point at its middle is the game's,
  *      not the card's;
  *   4. it goes with the respawn, and the chat says what happened, once;
+ *   5. (v2.3.3841) it sits at the top of the play area, never over you: the
+ *      owner missed his own death, the bro bursting into bones, under it;
  * with a picture of each for eyes (tools/qa/mp/out/deathcard-*.png).
  */
 import * as H from './harness.mjs';
@@ -68,12 +70,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (Date.now() - lowAt > 15000) { await H.devOp(wsPort, 'vitals', myId, { heal: false, hp: 1 }).catch(() => {}); lowAt = Date.now(); }
         const s = await P.page.evaluate(() => {
           const S = window._gameState.current, W = window.__qaCard;
-          const card = document.querySelector('[data-death-card] > div');
+          const card = document.querySelector('[data-death-card]');
           let mid = null;
           if (card) {
             const r = card.getBoundingClientRect();
             const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-            mid = { box: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], hitsCard: !!(top && top.closest && top.closest('[data-death-card]')), pe: getComputedStyle(card.parentElement).pointerEvents };
+            /* v2.3.3841: and where it is against the play area and you (the
+               camera keeps you in the middle of the world's canvas) */
+            const cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('.brotown-wrap canvas');
+            const c = cv ? cv.getBoundingClientRect() : null;
+            mid = { box: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], hitsCard: !!(top && top.closest && top.closest('[data-death-card]')), pe: getComputedStyle(card).pointerEvents,
+              at: card.getAttribute('data-death-at'),
+              play: c ? [Math.round(c.left), Math.round(c.top), Math.round(c.width), Math.round(c.height)] : null };
           }
           const live = (S.monsters || []).filter((m) => m && m.alive !== false && (m.curHp == null || m.curHp > 0));
           let best = null, bd = Infinity;
@@ -97,6 +105,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
         secs.length >= 2 && secs.every((n, i) => i === 0 || n < secs[i - 1]) && secs[0] >= 3 && /^Back in BroTown in \d$/.test(first && first.back), secs);
       rec.ok(`3. ${cfg.key}: it never takes a tap or a click (pointer-events ${mid && mid.pe}, its middle is the game's)`,
         !!mid && mid.pe === 'none' && !mid.hitsCard, mid);
+      /* ═══ v2.3.3841: AT THE TOP, NEVER OVER YOU ═══
+         The owner missed his own death (the bro bursting into bones) under the
+         card in the middle.  Its box ends in the top part of the play area,
+         and stays off you: your box is the middle of the canvas, 36 px either
+         side and from 80 px above (your head) to 24 below (your feet). */
+      const off = (() => {
+        if (!mid || !mid.play) return null;
+        const [l, t, w, h] = mid.box, [pl, pt, pw, ph] = mid.play;
+        const cx = pl + pw / 2, cy = pt + ph / 2;
+        const overYou = !(l + w <= cx - 36 || l >= cx + 36 || t + h <= cy - 80 || t >= cy + 24);
+        return { bottomFrac: Math.round(((t + h) - pt) / ph * 100) / 100, overYou, at: mid.at };
+      })();
+      rec.ok(`5. ${cfg.key}: it sits at the top of the play area (${off && off.at}, its bottom ${off && off.bottomFrac} of the way down), never over you`,
+        !!off && off.bottomFrac <= 0.42 && !off.overYou, { off, mid });
       rec.ok(`4. ${cfg.key}: it goes with the respawn, and the chat says it once ("${W.line && W.line.text}")`,
         !!W.gone && !W.gone.dying && !!W.line && W.line.n === 1 && /^You were killed by .+, and came back in BroTown\.$/.test(W.line.text), { gone: W.gone, line: W.line });
     } finally {
