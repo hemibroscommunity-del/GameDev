@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ed75d34bf4f4dc5c130fc9d714312843c576a8e4",
+  "tree": "98974d08cd75f8fcba08cd9ced23784164802446",
+  "committedAt": "2026-10-28T20:31:20-07:00",
+  "subject": "Merge pull request #1297 from hemibroscommunity-del/claude/jump-orbit",
+  "files": 7225,
+  "bytes": 830770974,
+  "listingSha256": "5ac764acd3e2c47d1330305bcb25077a45d7884b4b17642385b14b983c113edd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

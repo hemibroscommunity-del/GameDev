@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cdcc0a9f7a465188669e77be612bd678e0c821e7",
+  "tree": "a395a39ca5ce2a600e367e47048c87fedff9ff65",
+  "committedAt": "2026-10-28T20:30:36-07:00",
+  "subject": "Merge pull request #1303 from hemibroscommunity-del/claude/shadow-pool-release",
+  "files": 7197,
+  "bytes": 825099795,
+  "listingSha256": "8a55f9b0660885e214292268297fac6696ebf257a4b64ecd74148727645701b7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
