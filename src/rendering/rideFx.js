@@ -26,7 +26,7 @@
  *
  * PRELOADING IS LAW: preloadRideArt is awaited by preloadWorldAnimations;
  * this file only LOOKS UP what it holds (never a first-use load). */
-import { Assets, Sprite } from 'pixi.js';
+import { Assets, Sprite, Texture } from 'pixi.js';
 import { figureFeetUnits } from './systems/entityRenderer.js';
 import { SKATEBOARD_ART } from '../data/skateboardArt.js';
 
@@ -69,12 +69,51 @@ function viewOf(vx, vy, last) {
   return { k: 'angled', m: (vx > 0) !== (vy > 0) };
 }
 
+/* ═══ v2.3.3855: THE WHEELS ROLL ═══
+   The owner, 2026-10-29: "use code to make the skateboard wheels appear
+   moving using lighting or wobble just a bit whatever you think looks good".
+   No new picture: each wheel wears small light spots (Texture.WHITE, tinted)
+   that turn with the ground covered -- two on opposite sides of the hub from
+   the side and at an angle, a glint sliding along the tread from above -- and
+   the deck dips half a game px now and then, as over the cobbles.  Still when
+   the board is still.  The spots are made when the board is, and destroyed
+   with it: a change of view only moves and sizes them, so no frame changes a
+   layer's draw list (TRAPS §218).
+   WHEELS: each wheel's hub in picture px and the spot's orbit (`r`), or for
+   the view from above the tread's run along y (`y0`..`y1`), measured off the
+   three pictures (tools/art/cut-skateboard.mjs's cut).  `?boardroll=0`: off
+   for one tab (BOARD_ROLL). */
+const WHEELS = {
+  side: [{ x: 33, y: 39, r: 4.5 }, { x: 142, y: 39, r: 4.5 }],
+  angled: [{ x: 12, y: 42, r: 4.5 }, { x: 75, y: 83, r: 4.5 }],
+  top: [{ x: 5.5, y0: 20, y1: 29 }, { x: 56, y0: 21, y1: 29 }, { x: 4, y0: 84, y1: 95 }, { x: 57, y0: 84, y1: 94 }],
+};
+const SPOTS = 4;                 /* sprites a board: side and angled 2 wheels x 2 spots, from above 4 wheels x 1 */
+const SPOT_TINT = 0xffe8de, SPOT_ALPHA = 0.75;
+const TURNS_PER_PX = 1 / 120;    /* how far the spots turn a game px rolled: ~2.5 turns a second at the board's 300 px -- read as a roll, not a strobe */
+const BOB_EVERY_PX = 90;         /* the deck dips this often... */
+const BOB_PX = 0.5;              /* ...by this much (one picture px) */
+const ROLL_MIN_PX = 0.3;         /* a frame's step that counts as rolling (the board covers ~5 px a frame) */
+/* `?boardroll=0` in the address: the board as it was, no spots and no dip
+   (one tab, to compare) */
+const BOARD_ROLL = (() => {
+  try { return !/(^|[?&])boardroll=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+})();
+
 export class RideFx {
   constructor() {
-    this._probe = { self: null, peers: 0 };
+    this._probe = { self: null, peers: 0, held: 0 };
     if (typeof window !== 'undefined') {
       const self = this;
-      window.__btRideFx = () => self._probe;
+      /* v2.3.3855: (box: true) and where your board is on the screen, for a
+         test's picture of it -- worked out only when asked */
+      window.__btRideFx = (o) => {
+        if (!(o && o.box)) return self._probe;
+        const b = self._selfBoard;
+        if (!b || b.destroyed || !b.parent) return null;
+        const r = b.getBounds();
+        return { x: r.x, y: r.y, w: r.width, h: r.height };
+      };
     }
   }
 
@@ -87,8 +126,14 @@ export class RideFx {
     if (pd && !pd.destroyed) {
       const on = !!(S._ride && S._ride.on) && !(S.rpg && S.rpg.hp <= 0);
       const v = S.player ? viewOf(S.player.vx || 0, S.player.vy || 0, pd._rideView) : null;
+      if (v && S.player) v.vy = S.player.vy || 0;   /* v2.3.3855: which way the wheels turn */
       const b = this._board(pd, on, v);
-      if (b) p.self = { view: pd._rideView.k, mirror: pd._rideView.m, y: +b.y.toFixed(1), feet: +figureFeetUnits(pd).toFixed(1) };
+      this._selfBoard = b;
+      p.held = (pd._rideBoard ? 1 : 0) + (pd._rideSpots ? pd._rideSpots.length : 0);   /* v2.3.3855: the board and its spots, on or off */
+      if (b) p.self = { view: pd._rideView.k, mirror: pd._rideView.m, y: +b.y.toFixed(1), feet: +figureFeetUnits(pd).toFixed(1),
+        /* v2.3.3855: the wheels' turn so far, and their spots */
+        turn: +(pd._rideTurn || 0).toFixed(3), spots: pd._rideSpots ? pd._rideSpots.length : 0,
+        spot0: pd._rideSpots && pd._rideSpots[0] ? [+pd._rideSpots[0].x.toFixed(2), +pd._rideSpots[0].y.toFixed(2)] : null };
     }
     if (er.otherPlayerDisplays) {
       const others = S.others || null;
@@ -97,6 +142,7 @@ export class RideFx {
         const o = others && others[id];
         const on = !!(o && o._brd && !o._isDead && d.visible);
         const v = o ? viewOf(o._vx || 0, o._vy || 0, d._rideView) : null;
+        if (v && o) v.vy = o._vy || 0;   /* v2.3.3855 */
         if (this._board(d, on, v)) p.peers++;
       }
     }
@@ -111,6 +157,7 @@ export class RideFx {
         d._rideView = null;
         if (!b.destroyed) { if (b.parent) b.parent.removeChild(b); b.destroy(); }
       }
+      dropSpots(d);   /* v2.3.3855 */
       return null;
     }
     const view = v || d._rideView || { k: 'side', m: false };
@@ -137,11 +184,86 @@ export class RideFx {
     const wantY = k / sy;
     if (b.scale.x !== wantX || b.scale.y !== wantY) b.scale.set(wantX, wantY);
     const fy = figureFeetUnits(d);
+    /* v2.3.3855: the ground covered since the last frame, in game px (the
+       figure's own place: yours and a peer's alike) -- the wheels' turn and
+       the deck's dip */
+    const roll = d._rideRoll || (d._rideRoll = { x: d.x, y: d.y, dist: 0 });
+    const step = Math.hypot(d.x - roll.x, d.y - roll.y);
+    roll.x = d.x; roll.y = d.y;
+    /* a step under ROLL_MIN_PX is the settle after a stop (a few tenths of a
+       px), not a roll; one over 60 a place set, not rolled to */
+    const rolling = step > ROLL_MIN_PX && step < 60;
+    if (rolling) roll.dist += step;
+    const bob = BOARD_ROLL && rolling && Math.sin(roll.dist / BOB_EVERY_PX * Math.PI * 2) > 0.6 ? BOB_PX / sy : 0;
     if (b.x !== 0) b.x = 0;
-    if (b.y !== fy) b.y = fy;
+    if (b.y !== fy + bob) b.y = fy + bob;
     /* level against a lean or a flip of the figure (jumpFx) */
     const r = -(d.rotation || 0);
     if (b.rotation !== r) b.rotation = r;
+    if (BOARD_ROLL) spots(d, b, view, roll.dist, v);
     return b;
   }
+}
+
+/* v2.3.3855: the wheels' spots, placed on the board as it is drawn this
+   frame (its anchor, scale, mirror and level turn), made the first frame of
+   a ride, next to the board (child 1: over it, under the body) */
+function spots(d, b, view, dist, v) {
+  let list = d._rideSpots;
+  if (!list) {
+    list = [];
+    for (let n = 0; n < SPOTS; n++) {
+      const q = new Sprite(Texture.WHITE);
+      q.label = 'rideSpot';
+      q.tint = SPOT_TINT;
+      q.alpha = SPOT_ALPHA;
+      q.anchor.set(0.5);
+      d.addChildAt(q, Math.min(d.children.length, 1 + n));
+      list.push(q);
+    }
+    d._rideSpots = list;
+  }
+  const W = WHEELS[view.k], tex = b.texture;
+  const tw = tex.orig ? tex.orig.width : tex.width, th = tex.orig ? tex.orig.height : tex.height;
+  const ax = b.anchor.x * tw, ay = b.anchor.y * th;
+  const cr = Math.cos(b.rotation), sr = Math.sin(b.rotation);
+  /* which way the wheels turn in the picture: forward is the picture's own
+     way along (east from the side, drawn mirrored going west); at an angle
+     forward is south-east (south-west mirrored), so a rider going north
+     turns them back; from above, a rider going south runs down the picture */
+  const vy = v ? v.vy : 0;
+  const dir = view.k === 'side' ? 1 : (vy < 0 ? -1 : 1);
+  const turn = dist * TURNS_PER_PX * dir;
+  const put = (q, px, py, w, h) => {
+    const lx = (px - ax) * b.scale.x, ly = (py - ay) * b.scale.y;
+    const x = b.x + lx * cr - ly * sr, y = b.y + lx * sr + ly * cr;
+    if (q.x !== x) q.x = x;
+    if (q.y !== y) q.y = y;
+    const sx = Math.abs(b.scale.x) * w, sy2 = Math.abs(b.scale.y) * h;
+    if (q.scale.x !== sx || q.scale.y !== sy2) q.scale.set(sx, sy2);
+    if (q.rotation !== b.rotation) q.rotation = b.rotation;
+  };
+  if (view.k === 'top') {
+    /* a glint along each tread, top to bottom and round again */
+    const f = ((turn % 1) + 1) % 1;
+    for (let n = 0; n < SPOTS; n++) {
+      const w = W[n];
+      put(list[n], w.x, w.y0 + (w.y1 - w.y0) * f, 2, 2);
+    }
+  } else {
+    /* two spots on opposite sides of each hub, turning */
+    const a = turn * Math.PI * 2;
+    for (let n = 0; n < SPOTS; n++) {
+      const w = W[n >> 1], ang = a + (n & 1) * Math.PI;
+      put(list[n], w.x + Math.cos(ang) * w.r, w.y + Math.sin(ang) * w.r, 2, 2);
+    }
+  }
+  d._rideTurn = turn;
+}
+function dropSpots(d) {
+  const list = d._rideSpots;
+  d._rideSpots = null;
+  d._rideRoll = null;
+  if (!list) return;
+  for (const q of list) if (q && !q.destroyed) { if (q.parent) q.parent.removeChild(q); q.destroy(); }
 }
