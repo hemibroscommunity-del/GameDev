@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "33781f46a231a00582afb2110e5e6cd4906366c6",
+  "tree": "f6ae31532fa0f4143798112f41deed8d5989d449",
+  "committedAt": "2026-10-28T19:54:00-07:00",
+  "subject": "Merge pull request #1300 from hemibroscommunity-del/claude/nml-once-holdback",
+  "files": 7161,
+  "bytes": 824064144,
+  "listingSha256": "c426aa569574e3c9edb691137114f354081d56f5ce85aabe2cd2493c960cf3c3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
