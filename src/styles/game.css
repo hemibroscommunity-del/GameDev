@@ -1113,6 +1113,18 @@ html[data-res-soft] .brotown-canvas{image-rendering:auto}
   color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;
   animation:promptPulse 1.5s ease-in-out infinite;
   -webkit-tap-highlight-color:transparent;touch-action:manipulation}
+/* v2.3.3799: upright, Jump stands south-west of the attack disc, in this
+   strip.  While it is drawn, JumpButton sets data-jump-clear and where a
+   prompt may stand: over Jump's top (--bt-jump-clear), centred at
+   --bt-prompt-cx, no wider than --bt-prompt-w -- between the move stick and
+   the disc, 8 px clear of each.  Only a prompt with no bottom of its own
+   (the doors' Enter): one that names its place (the Workshop's, the bed's,
+   a harvest's) keeps it.  A long name wraps; on a 320 px phone ("narrow")
+   it draws small, without its picture. */
+html[data-jump-clear]:not([data-orient="landscape"]) .bt-interact-prompt:not([style*="bottom"]){bottom:calc(var(--sheet-h, var(--dash-h)) + var(--bt-jump-clear, 24px));
+  left:var(--bt-prompt-cx, calc(50% + 10px))!important;max-width:var(--bt-prompt-w, 150px);box-sizing:border-box;white-space:normal;overflow-wrap:anywhere}
+html[data-jump-clear="narrow"]:not([data-orient="landscape"]) .bt-interact-prompt:not([style*="bottom"]){padding:5px 7px!important;font-size:11px}
+html[data-jump-clear="narrow"]:not([data-orient="landscape"]) .bt-interact-prompt:not([style*="bottom"]) > img{display:none}
 @keyframes promptPulse{0%,100%{opacity:.9;transform:translateX(-50%) scale(1)}50%{opacity:1;transform:translateX(-50%) scale(1.04)}}
 /* v2.3.911: build-skill dashboard cell pulses while it has an unspent Tier-2
    point waiting to be allocated.  Brightness pulse reads even where the cell's

@@ -851,3 +851,50 @@ recolor that it looks like you fixed for the double jump."
 ebony; before on main, after) and its `flip` family at the new size;
 `mp-doublejump`, `mp-jump`, `mp-dashroll`, `mp-rollweapon`, `mp-dodgetime`.
 Before/after: `docs/specs/flip-roll-2/`.
+
+## v2.3.3799: on the disc's ring, south-west
+
+The owner, 2026-10-29: *"I do want a change to the placement on the jump
+button. It should be positioned orbiting southwest of the large contextual
+button."*
+
+- **Where** (`ShieldButton.jsx` `jumpAnchor`): Jump's centre on the disc's
+  ring at the distance Sprint uses (`JUMP_RING_GAP`, 10 px between the two
+  circles), at 45 degrees below west upright. Sideways the same ring, turned
+  toward south just enough to keep `RCTL_JUMP_AIR` (8 px) under Shield Bash
+  and the board, which stand left of the disc there.
+- **Its touch area is its circle** (`borderRadius: 50%`): its square's corner
+  reached into the disc's circle.
+- **Block** (`blockAnchor`) stays the disc's diagonal bottom-left (v2.3.2562):
+  beside Jump on its left, 8 px of air (`BLOCK_JUMP_SIDE`), at its old height
+  upright and its old height sideways. On a phone too narrow for that beside
+  the bell (`BELL_RIGHT_PX`, a 320 px phone) it stands up beside Jump, under
+  TRAP (`BLOCK_TRAP_DROP`). TRAP and Shield Bash keep their places
+  (`ctlColumn` stands them on Jump's old upright place, `jumpSpotUp`).
+- **The doors' Enter button** stood in the strip just over the band, which
+  Jump now reaches. While Jump is drawn upright on a touch screen, JumpButton
+  puts `data-jump-clear` on the page with where a prompt may stand: over
+  Jump's top (`--bt-jump-clear`: its top and 12 px, 8 of air and the 3 its
+  pulse swells by), between the move stick and the disc with 8 px of air to
+  each (`--bt-prompt-cx`, `--bt-prompt-w`, 150 px at most). game.css stands
+  every `.bt-interact-prompt` with no bottom of its own there (the Enter
+  button; the Workshop's, the bed's and a harvest's name their own place and
+  keep it). A long name wraps. On a 320 px phone the room is ~90 px, and the
+  button draws small, without its picture (`data-jump-clear="narrow"`).
+  When Jump is not drawn (dead, swimming, `?jumpbtn=0`), sideways, and on a
+  computer, the button is where it always was.
+- **Sideways, Block** stands left of Jump rather than under the disc (the
+  first plan): that keeps the owner's v2.3.2562 rule, Block the disc's
+  diagonal bottom-left, which `mp-abilslot` and `mp-rbutton` hold.
+- **Known corner**: in a fight AT a door on a 320 px phone, the risen Enter
+  button and Block (stood up beside Jump there) overlap: the one room
+  between the stick and the disc holds one of them. Nowhere else does a
+  touch area overlap another.
+- **Proof**: `node tools/qa/mp/run.mjs thumbbtn` asserts, at 320, 360, 375, 390 and 430 upright and
+  844 sideways, out of a fight at a door and in one with the guard down and
+  up: Jump south-west on the ring, every button and the Enter button 8 px
+  clear of it, no two touch areas overlapping, Jump on screen above the band,
+  a touch in Jump's box corners never reaching it, the Enter button 8 px
+  clear of the move stick, the disc, Burst, Sprint, the board and Jump, and
+  back down in its strip when Jump is gone. Before and after
+  pictures: `tools/qa/mp/out/thumbbtn-<before|after>-<size>-*.png`.
