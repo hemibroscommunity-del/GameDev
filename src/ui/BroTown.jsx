@@ -165,6 +165,8 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
 import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3701: a black screen's rebuild asks first whether Safari emptied the pictures */
+/* v2.3.3886: a second loss inside a rebuild's 5 s is owed a rebuild (window._rebuildRenderer); `?owedrebuild=0` drops it, as before */
+const OWED_REBUILD_OFF = (function () { try { return /[?&]owedrebuild=0\b/.test(window.location.search || ''); } catch (e) { return false; } })();
 import { markWorldIn, skipTutorial, worldInMs } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
 import { BUILD_INFO } from './BuildBadge.jsx';
 import { pushHudPopup } from './XpFlyOverlay.jsx';
@@ -4128,7 +4130,33 @@ export var BroTown = function BroTown(_ref0) {
     window.__btGlLostAt = 0;
     window._rebuildRenderer = function (reason) {
       var _now = Date.now();
-      if (window.__btLastGlRebuild && _now - window.__btLastGlRebuild < 5000) return;
+      if (window.__btLastGlRebuild && _now - window.__btLastGlRebuild < 5000) {
+        /* ═══ v2.3.3886: A SECOND LOSS INSIDE THE WINDOW IS OWED A REBUILD ═══
+           The window is there for ONE death that two callers both conclude
+           is a rebuild (the loss's own timer and the resume probe).  But a
+           second loss on the NEW canvas inside it (an iPhone under memory
+           pressure can lose twice in seconds) was dropped as well: that
+           context came back in place, and the game never draws on a restored
+           context for a reason -- every canvas gpuOnly.js emptied once on the
+           chip (the combat gear, the weapon bodies, the damage numbers'
+           pages) is sent to it again from nothing, and drew blank until some
+           later check.  So a call inside the window is not dropped: one
+           rebuild is owed for the moment the window ends, never more than
+           one, and only if the canvas drawn on now lost its context after the
+           last rebuild began (crashTrap's __btGlLostAt, cleared for each new
+           canvas below) -- the same death's second caller owes nothing.
+           mp-doubleloss.  `?owedrebuild=0` drops it, as before. */
+        if (!OWED_REBUILD_OFF && !window.__btGlRebuildOwed) {
+          window.__btGlRebuildOwed = setTimeout(function () {
+            window.__btGlRebuildOwed = 0;
+            if ((window.__btGlLostAt || 0) > (window.__btLastGlRebuild || 0) && typeof window._rebuildRenderer === 'function') {
+              window.__btGlRebuildsOwed = (window.__btGlRebuildsOwed || 0) + 1;
+              window._rebuildRenderer((reason || 'manual') + ' (owed: lost again inside the last rebuild\'s 5 s)');
+            }
+          }, 5000 - (_now - window.__btLastGlRebuild) + 50);
+        }
+        return;
+      }
       /* ═══ v2.3.3701: A REBUILD CANNOT GIVE BACK A PICTURE SAFARI EMPTIED ═══
          The owner: "Northwest jog has trouble loading reloading textures after
          recovering from black screen".  A black screen is the graphics chip
@@ -4161,6 +4189,7 @@ export var BroTown = function BroTown(_ref0) {
         } catch (eCw) { /* a check must never stop the rebuild */ }
       }
       window.__btLastGlRebuild = _now;
+      window.__btGlRebuilds = (window.__btGlRebuilds || 0) + 1;   /* v2.3.3886: QA (mp-doubleloss) */
       /* v2.3.773: let the fresh renderer record its own first error --
          otherwise a rebuild that didn't cure the throw leaves no trace. */
       window.__pixiUpdateErrLogged = false;
