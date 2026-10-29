@@ -10,6 +10,11 @@
  *      town places, a dungeon's land or a land -- never a coordinate; no row
  *      says "Wheel" or "tap" (deskWords' word: the page is read on computers
  *      too).
+ *      v2.3.3779, the owner: "it should be classified by 'dungeon' not by
+ *      'fight' ... Also use better icons for each one" -- the dungeons have
+ *      their own heading; every tile its own picture, a new one 256 colours
+ *      at most; a land's name is never spelt here but read from the world's
+ *      plan (lane K's rename lands in plan.js alone).
  *   2. The pins (src/game/mapPins.js): a press puts a pin on a place, moving
  *      it from wherever it was; the same press there lifts it; red and blue
  *      at once (even on one place); kept per character, read back after a
@@ -29,6 +34,9 @@ const P = await import('../../src/game/mapPins.js');
 const D = await import('../../src/data/wheelBuildingDoors.js');
 const L = await import('../../src/data/wheelLands.js');
 const W = await import('../../src/data/wheelDungeons.js');
+const { PLAN } = await import('../../public/tools/world/plan.js');
+const { inflateSync } = await import('node:zlib');
+const { readFileSync } = await import('node:fs');
 
 /* ── 1. the board ── */
 {
@@ -62,6 +70,37 @@ const W = await import('../../src/data/wheelDungeons.js');
   check('1j No man\'s land is on the board under Fight with no place and no pins, its level words general (no numbers)',
     !!B.boardEntry('nomansland') && B.boardEntry('nomansland').group === 'fight' && B.boardEntry('nomansland').at === null
       && !B.boardPinnable('nomansland') && B.boardPinnable('arena') && !/\d/.test(B.boardEntry('nomansland').page.join(' ')));
+  /* ── v2.3.3779 ── */
+  const dungeons = B.BOARD.filter((e) => e.group === 'dungeons').map((e) => e.id).sort().join();
+  check('1k the four dungeons have their own heading, Dungeons, after Fight; Fight keeps the Arena, No man\'s land and Duels',
+    dungeons === 'buried-city,foundry-dome,goo-grotto,great-cave' && B.GROUPS.map((g) => g.id).join() === 'fight,dungeons,lands,make,money,people'
+      && B.BOARD.filter((e) => e.group === 'fight').map((e) => e.id).join() === 'arena,nomansland,duel', { dungeons, groups: B.GROUPS.map((g) => g.id) });
+  const pics = B.BOARD.map((e) => e.icon.split('?')[0]);
+  check('1l every tile has its own picture (no two alike)', new Set(pics).size === pics.length, pics.filter((p, i) => pics.indexOf(p) !== i));
+  /* a PNG's colours: palette PNGs (PLTE) of 256 entries or fewer */
+  const plte = (f) => {
+    const b = readFileSync(f); let o = 8;
+    while (o < b.length) { const n = b.readUInt32BE(o), t = b.toString('latin1', o + 4, o + 8); if (t === 'PLTE') return n / 3; if (t === 'IDAT') return 0; o += 12 + n; }
+    return 0;
+  };
+  const newPics = pics.filter((p) => p.startsWith('/icons/board/'));
+  const fat = newPics.filter((p) => { const n = plte(new URL('public' + p, root)); return !(n > 0 && n <= 256); });
+  check('1m the board\'s own pictures (public/icons/board/) are palette pictures of 256 colours or fewer', newPics.length === 5 && fat.length === 0, { newPics, fat });
+  const landNames = Object.values(PLAN.regions).map((r) => r && r.name).filter((n) => typeof n === 'string' && n.length > 3);
+  const spelt = B.BOARD.filter((e) => landNames.some((n) => [e.name, e.where, ...e.page].join(' ').includes(n))).map((e) => e.id);
+  check('1n no row spells a land\'s name: each is {land}, read from the world\'s plan', spelt.length === 0 && landNames.length >= 8, spelt);
+  const toks = new Set();
+  for (const e of B.BOARD) for (const t of [e.name, e.where, ...e.page].join(' ').matchAll(/\{([^}]*)\}/g)) toks.add(t[1]);
+  check('1o every {land} is one of the eight lands', [...toks].every((t) => L.WHEEL_LANDS.includes(t)) && toks.size === 8, [...toks]);
+  const names = Object.create(null);
+  for (const id of L.WHEEL_LANDS) names[id] = PLAN.regions[id].name;
+  const verd = B.boardEntry('land-verdant');
+  check('1p a land\'s tile and pages read its name from the plan (a rename lands there alone); without the map, its element',
+    B.boardName(verd, names) === PLAN.regions.verdant.name && B.boardName(verd, null) === 'The flora land'
+      && B.boardWords(B.boardEntry('goo-grotto').where, { verdant: 'Earth Forest' }).includes('Earth Forest')
+      && B.boardWords('{__proto__} {toString}', names) === '{__proto__} {toString}',
+    [B.boardName(verd, names), B.boardName(verd, null)]);
+  check('1q every land\'s tile is its scene (the owner\'s pick 1b), drawn wide', B.BOARD.filter((e) => e.group === 'lands').every((e) => /^\/ui\/banners\/land-/.test(e.icon) && e.iconAspect === 2));
   check('1i the four dungeons, the arena, the forge and the Gambling Den are on the board', ['goo-grotto', 'great-cave', 'foundry-dome', 'buried-city', 'arena', 'forge', 'gambling', 'woodworker'].every((id) => !!B.boardEntry(id)));
 }
 

@@ -51,6 +51,49 @@ is what an older worker, or the `nmlnear: false` switch, still plays):
 - Kill switch: `nmlnear: false` in the live flags puts the old start back on
   the worker and takes `caps.nmlnear` away from the phones.
 
+## A step a monster level (v2.3.3767)
+
+> The owner, 2026-10-28: *"also the no mans land level should raise at the
+> same rate you see other monster levels increasing"*
+
+The number used to be the ring's (above): one step every five monster levels.
+Against a worker that says `caps.nmlsteps`, it is now **the level of the
+monsters where you stand**:
+
+| Where | Monsters there | No man's land |
+|---|---|---|
+| just off the safe ground | Lv 1 | **1** |
+| the middle of the Lv 1–5 ring | Lv 3 | **3** |
+| the Lv 6–10 ring, inner end to outer | Lv 6 … 10 | **6 … 10** |
+| the last ring before the gates | Lv 76 … 80 | **76 … 80** |
+
+- **The same arithmetic as the monsters** (`server/src/wheelzone.js`): a
+  ring's monsters stand in its band, the ring less the bake's `clearTier`
+  (120 px, `NML.BAND_CLEAR`) at either end. A monster's level is the ring's
+  lowest + its depth across the band × 4, rounded. No man's land's number at a
+  spot is the same, the radius standing for the distance along the spoke. At
+  the 3,840 baked monster places, 97% stand in exactly their own level and the
+  rest within one (`nomansland.test` §12).
+- **On the plan's rings**, never a Wheel coordinate: `nmlStepLevelAt` in
+  `server/src/nomansland.js` and `src/data/noMansLandRings.js`, held equal by
+  mirror-audit on both Wheels.
+- **The rule is unchanged, so its range grows five times as fast**: two
+  players may fight when their character levels are at most N apart, N the
+  LOWER of the two numbers they stand in. In the Lv 6–10 ring that is now 6 to
+  10 levels, where it was 2.
+- **`nmlnear: false`** (No man's land from the Lv 6–10 ring) still starts at
+  1 where No man's land starts: the monster level less five.
+- **The chat stays quiet**: the banner on the way in and a line on the way out
+  as before, and a line only when you cross into another ring (every five
+  levels), not at every step. The badge shows every step live (`nmlHere`).
+- **Either side ships first**: the phone counts this way only against a
+  worker that says `caps.nmlsteps` (`nmlLevelFor`, src/game/noMansLand.js).
+  **Kill switch:** `nmlsteps: false` in the live flags puts the ring's number
+  back on the worker and takes the cap from the phones, so both sides count
+  alike again at once.
+- The short Wheel (`wheel5x: false`, the rollback) counts the same way on its
+  own rings, though its first ring's monsters there stay Lv 1–2.
+
 - The rings are the plan's own: the hub is 2.7 zones of 1,024 px, then a ring
   every 1,024 px (`public/tools/world/plan.js`).
 - The worker and the game measure them with the same arithmetic, from the same

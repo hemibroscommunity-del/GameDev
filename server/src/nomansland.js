@@ -133,6 +133,10 @@ export const NML = Object.freeze({
      the same on both Wheels; nomansland.test holds them equal): no No man's
      land on it, though the first tier begins at HUB, a little inside it */
   SAFE_R: 2937,
+  /* v2.3.3767: a tier's monsters stand this far in from either of its ends
+     (the bake's clearTier): the band their levels climb across, which No
+     man's land's number now climbs across too (nmlStepLevelAt) */
+  BAND_CLEAR: 120,
   SKULL_MS: 20 * 60 * 1000,
   /* how often a running skull's time left is written down */
   SAVE_EVERY_MS: 30000,
@@ -178,6 +182,35 @@ export function nmlLevelAt(zone, x, y, long = 1, first = NML.FIRST_TIER) {
   return t - first + 1;
 }
 
+/* ═══ v2.3.3767: ONE STEP A MONSTER LEVEL ═══
+   The owner: "also the no mans land level should raise at the same rate you
+   see other monster levels increasing".  The number above was the plan's
+   tier, one step every five monster levels.  Here it is the level of the
+   monsters at that spot, by the worker's own arithmetic for them
+   (server/src/wheelzone.js _wheelSpawnMonsters: `Math.round(lo + depth *
+   (hi - lo))`, depth 0-1 across the tier's BAND -- the tier less the bake's
+   clearTier, BAND_CLEAR, at either end -- lo..hi the tier's five levels): so
+   standing among Lv 7 monsters is No man's land 7.  On the plan's rings,
+   never a coordinate; the radius stands for the bake's distance along the
+   spoke (they differ by under 6 px near the axis).  From the tier `first`:
+   with caps.nmlnear (tier 1) the number IS the monster level; under
+   `nmlnear: false` (tier 2) it still starts at 1 there -- the monster level
+   less five a tier skipped.  Never on the safe ground.  The game's copy is
+   src/data/noMansLandRings.js nmlStepLevelAt, mirror-audit holds them equal. */
+export function nmlStepLevelAt(zone, x, y, long = 1, first = NML.FIRST_TIER) {
+  if (zone !== WHEEL_ZONE) return 0;
+  const t = nmlTierAt(x, y, long);
+  if (t < first) return 0;
+  const C = wheelTable(long).WHEEL_CENTRE, L = wheelTable(long).WHEEL_LONG || 1;
+  const r = Math.hypot(x - C[0], y - C[1]);
+  if (r < NML.SAFE_R) return 0;
+  const len = NML.TIER * L;
+  const b0 = NML.HUB + (t - 1) * len + NML.BAND_CLEAR, b1 = NML.HUB + t * len - NML.BAND_CLEAR;
+  const depth = Math.max(0, Math.min(1, (r - b0) / (b1 - b0)));
+  const lo = (t - 1) * NML.LEVELS_PER_TIER + 1, hi = t * NML.LEVELS_PER_TIER;
+  return Math.round(lo + depth * (hi - lo)) - NML.LEVELS_PER_TIER * (first - 1);
+}
+
 const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 const clampMs = (v) => Math.max(0, Math.min(NML.SKULL_MS, Math.round(Number(v) || 0)));
 /* the worn gear a red skull loses, by field (the provenance slot is the
@@ -217,7 +250,21 @@ export const noMansLandMethods = {
     /* v2.3.3315: a phone that does not draw this room's Wheel stands somewhere
        else on its own map: no rule holds for it (wheeltables.js _wheelInStep) */
     if (this._wheelInStep && !this._wheelInStep(ps)) return 0;
-    return nmlLevelAt(ps.z, ps.x, ps.y, this._wheelLongNow(), this._nmlFirstTier());
+    /* v2.3.3767: one step a monster level (nmlStepLevelAt), or the tier's
+       number under `nmlsteps: false` */
+    const at = this._nmlStepsOn() ? nmlStepLevelAt : nmlLevelAt;
+    return at(ps.z, ps.x, ps.y, this._wheelLongNow(), this._nmlFirstTier());
+  },
+
+  /* v2.3.3767: the No man's land number climbs a step a monster level --
+     unless `nmlsteps: false` is in the live flags, which puts the tier's
+     number back here AND takes caps.nmlsteps from the phones, so both sides
+     count alike again at once.  The rule reads whichever number this says:
+     two players may fight within the LOWER of the two numbers they stand in,
+     so the range now widens a level a step, five times as fast. */
+  _nmlStepsOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'nmlsteps') && !f.nmlsteps);
   },
 
   /* v2.3.3690: the tier No man's land starts at: the Lv 1-5 one, or with

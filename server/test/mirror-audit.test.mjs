@@ -53,6 +53,8 @@ import { CHILL_MULT as CLIENT_CHILL_MULT, ELEM_STATUSES as CLIENT_ELEM_STATUSES,
 import { PVP_EXTRAS as SRV_PVP_EXTRAS, PVP_STATUSES as SRV_PVP_STATUSES } from '../src/pvpextras.js'; /* v2.3.3264 */
 import { elementMoveMult as SRV_ELEMENT_MOVE_MULT } from '../src/elemental.js'; /* v2.3.3264 */
 import { SPRINT as SRV_SPRINT } from '../src/sprint.js'; /* v2.3.3006 */
+import { RIDE as SRV_RIDE } from '../src/ride.js'; /* v2.3.3776 */
+import { RIDE_MULT as CLIENT_RIDE_MULT } from '../../src/game/ride.js'; /* v2.3.3776 */
 import { WHEEL_DUNGEON as SRV_WHEEL_DUNGEON } from '../src/wheeldungeon.js'; /* v2.3.3016 */
 import { WHEEL_DUNGEON_HOMES as CLIENT_WHEEL_DUNGEON_HOMES, DOOR_R as CLIENT_DOOR_R, WHEEL_DOOR_LOOK as CLIENT_WHEEL_DOOR_LOOK, WHEEL_DUNGEON_FLOOR as CLIENT_WHEEL_DUNGEON_FLOOR, WHEEL_ARENA as CLIENT_WHEEL_ARENA, WHEEL_DUNGEON_PARTY as CLIENT_WHEEL_DUNGEON_PARTY } from '../../src/data/wheelDungeons.js'; /* v2.3.3016; v2.3.3573: + the party dungeons */
 import { WHEEL_LAND_LEVELS as CLIENT_WHEEL_LAND_LEVELS } from '../../src/data/wheelSignposts.js'; /* v2.3.3089 */
@@ -76,8 +78,8 @@ import { LIFE_SKILL_XP_BASE as SRV_LIFE_SKILL_XP_BASE } from '../src/gathering.j
 import { LIFE_SKILL_XP_BASE as CLIENT_LIFE_SKILL_XP_BASE, skillXpRequired as clientSkillXpRequired } from '../../src/data/items.js'; /* v2.3.3090 */
 import { LIFE_SKILL_XP as CLIENT_LIFE_SKILL_XP } from '../../src/data/lifeSkills.js'; /* v2.3.3090 */
 import { PROG3 as CLIENT_PROG3 } from '../../src/data/prog3.js';
-import { NML as CLIENT_NML, NML_CENTRES as CLIENT_NML_CENTRES, nmlLevelAt as clientNmlLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058; v2.3.3315 by size */
-import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt } from '../src/nomansland.js';
+import { NML as CLIENT_NML, NML_CENTRES as CLIENT_NML_CENTRES, nmlLevelAt as clientNmlLevelAt, nmlStepLevelAt as clientNmlStepLevelAt } from '../../src/data/noMansLandRings.js'; /* v2.3.3058; v2.3.3315 by size; v2.3.3767: + a step a monster level */
+import { NML as SRV_NML, nmlLevelAt as srvNmlLevelAt, nmlStepLevelAt as srvNmlStepLevelAt } from '../src/nomansland.js';
 /* v2.3.3120: pet trapping -- the button's odds, the Traps tab, the kinds, the name rule */
 import { TRAPPING as SRV_TRAPPING, trapChance as srvTrapChance, trapRollXp as srvTrapRollXp, trapCatchXp as srvTrapCatchXp } from '../src/trapping.js';
 import { CODEX as SRV_CODEX } from '../src/codex.js'; /* v2.3.3209 */
@@ -1841,6 +1843,13 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('elem hits: every element icon is in public/', missing.length === 0, missing);
 }
 
+// ── v2.3.3776: the skateboard (server ride.js, client game/ride.js): the
+// phone rolls at RIDE_MULT and the worker judges its moves at RIDE.MULT -- a
+// pair apart rubber-bands every ride.
+{
+  check('ride: the same speed on both sides (RIDE.MULT = RIDE_MULT)',
+    SRV_RIDE.MULT === CLIENT_RIDE_MULT, { srv: SRV_RIDE.MULT, cli: CLIENT_RIDE_MULT });
+}
 // ── v2.3.3006: the sprint (server sprint.js, client game/sprint.js).  The
 // worker bills the stamina and widens its bound; the client moves you and
 // predicts the bar between echoes.  Off by one number and either the bound
@@ -2126,7 +2135,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
 // game's; every hit is the worker's -- one ring apart, and a player standing
 // on the line would be told they are safe while they are being hit.
 {
-  const keys = ['HUB', 'TIER', 'TIERS', 'LEVELS_PER_TIER', 'FIRST_TIER', 'WAS_FIRST_TIER', 'SAFE_R', 'SKULL_MS'];   /* v2.3.3690: + where it started, and the safe ground */
+  const keys = ['HUB', 'TIER', 'TIERS', 'LEVELS_PER_TIER', 'FIRST_TIER', 'WAS_FIRST_TIER', 'SAFE_R', 'SKULL_MS', 'BAND_CLEAR'];   /* v2.3.3690: + where it started, and the safe ground; v2.3.3767: + the monsters' band */
   const bad = keys.filter((k) => SRV_NML[k] !== CLIENT_NML[k]);
   check('no man\'s land: the same rings and skull time on both sides', bad.length === 0, bad);
   /* v2.3.3315: for every Wheel a room may play (wheeltables.js), its own centre
@@ -2147,6 +2156,15 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
         if (srvNmlLevelAt('wheel', C[0], C[1] + r, long, first) !== clientNmlLevelAt('wheel', C[0], C[1] + r, long, first)) off.push({ r, edge: 1 });
       }
       check(`no man's land: the same level at every spot out to the gates (${long}x, from tier ${first})`, off.length === 0, off.slice(0, 4));
+      /* v2.3.3767: and the number a step a monster level (caps.nmlsteps),
+         every 13 px -- finer than a level's width on either Wheel */
+      const offS = [];
+      for (let r = 0; r < 20000 * long; r += 13 * long) {
+        const x = C[0] + r, y = C[1] + r * 0.3;
+        const a = srvNmlStepLevelAt('wheel', x, y, long, first), b = clientNmlStepLevelAt('wheel', x, y, long, first);
+        if (a !== b) offS.push({ r, srv: a, cli: b });
+      }
+      check(`no man's land: the same step-a-level number at every spot out to the gates (${long}x, from tier ${first})`, offS.length === 0, offS.slice(0, 4));
     }
   }
 }

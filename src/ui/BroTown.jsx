@@ -375,7 +375,9 @@ import { triggerContextualDodge, dodgeWindowMs } from '@/game/dodge.js';   /* v2
 import { elemMoveMult, gustStep, wobbleTurn } from '@/game/elemHits.js';   /* v2.3.2996: a snowman's chill, a slime's hold, a mummy's gust */
 import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, SWIM_NOTE, SWIM_NOTE_COLOR } from '@/game/wheelSwim.js';   /* v2.3.3003: swimming in the Wheel */
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
-import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn } from '@/game/sprint.js';   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
+import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn, stopSprint } from '@/game/sprint.js';
+import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js) */
+import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
@@ -5240,6 +5242,23 @@ export var BroTown = function BroTown(_ref0) {
            and a frame that cannot move must not spend the predicted
            stamina.  An attack, the shield or the water ends a sprint. */
         var _sprNow = Date.now();
+        /* ═══ v2.3.3776: THE SKATEBOARD ═══
+           Off the board at the safe ground's edge, out of the Wheel, in the
+           water, dead or fighting -- the phone's own step, ahead of the
+           worker's word (game/ride.js; server/src/ride.js), with its one
+           line.  On the board there is no sprint: the board is the faster. */
+        try {
+          if (isRiding(S)) {
+            var _rg = rideGround(S);
+            _rg.fighting = !!(S._shieldUp || S.autoAttack || S.isSwinging || S._bashDash || S._dodgeRoll);
+            rideCheck(S, _sprNow, _rg);
+            if (isRiding(S) && S._sprint && S._sprint.on) stopSprint(S, 'ride', _sprNow);
+          }
+          if (S._ride && S._ride.line && S.player) {
+            pushDmgPopup(S, S.player.x, S.player.y - 70, S._ride.line, '#F4E7C8');
+            S._ride.line = null;
+          }
+        } catch (e) { /* on foot */ }
         var _sprEv = updateSprint(S, _sprNow, {
           moving: (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1)
             && !S._dodgeRoll && !S._sled && !S._zoneLoading && !S._netHold && !S._townArtHold && !S._farmArtHold
@@ -5378,6 +5397,7 @@ export var BroTown = function BroTown(_ref0) {
         if (_dsc != null) vistaSpeedMult = Math.max(0.2, _dsc / ((_vz.depth && _vz.depth.near) || 1));
         var finalSpd = S._sled ? 0 : baseSpd * terrainMult * spdBuff * amuletSpdMult * swimMult * shieldMult * vistaSpeedMult; /* sled overrides movement */
         finalSpd *= wheelSwimMult(S);   /* v2.3.3003: the Wheel's water, in strokes (1 on land) */
+        finalSpd *= rideMult(S);   /* v2.3.3776: RIDE_MULT on the skateboard; the worker judges the moves at the same (server/src/ride.js) */
         finalSpd *= sprintMult(S);   /* v2.3.3006: SPRINT_MULT while you sprint; the worker widens its bound by the same for the moves it paid for (server/src/sprint.js) */
         /* v2.3.1405: per-zone loading gate — while a zone's assets warm
            behind the loading overlay (zoneTransitions.js), freeze the

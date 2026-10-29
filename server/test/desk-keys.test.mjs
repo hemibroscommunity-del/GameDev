@@ -38,7 +38,7 @@ function check(name, cond, detail) {
 const root = new URL('../../', import.meta.url);
 const src = (p) => readFileSync(new URL(p, root), 'utf8');
 
-const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food'];
+const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food', 'ride'];   /* v2.3.3776: + Z, the skateboard */
 const GROUP_IDS = DESK_KEY_GROUPS.map((g) => g[0]);
 
 /* ── 1. the table ── */

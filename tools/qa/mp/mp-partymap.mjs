@@ -11,7 +11,8 @@
  *   3. the friend 3,000 px east, off the box: their mark rides the box's east
  *      edge, level with them;
  *   4. the world map at its first zoom (the bros are drawn only from 1.5): the
- *      friend drawn as party and named, and the key says "party";
+ *      friend drawn as party and named, and the key says "party" (v2.3.3786:
+ *      zoomed out to it with the map's − button, as it opens on the town);
  *   5. the friend leaves the party: no party mark on either map;
  *   6. the dungeons' and the farm's box (minimapRenderer.js, played in today's
  *      town here: a second phone, in a room of its own): a party member in the
@@ -110,6 +111,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 4. the world map ── */
   await A.page.evaluate(() => window.__btWorldMapOpen(true));
+  /* v2.3.3786: in town the map opens ON THE TOWN since v2.3.3522 (zoomed in
+     to its buildings' names, about 43), where every bro is drawn anyway --
+     so it is zoomed out first, with its own − button, to its first zoom (1),
+     where the bros are not drawn and the party is: the zoom this check was
+     written for.  On main it read the town's zoom and failed 'zoom < 1.5'. */
+  await until(() => A.page.evaluate(() => { const m = window.__btWorldMap || {}; return m.open ? true : null; }), 5000);
+  for (let i = 0; i < 20; i++) {
+    const zNow = await A.page.evaluate(() => { const m = window.__btWorldMap || {}; return m.open ? m.zoom : null; });
+    if (zNow != null && zNow < 1.5) break;
+    await A.page.evaluate(() => { const b = document.querySelector('[data-world-map-zoom-out]'); if (b) b.click(); });
+    await A.page.waitForTimeout(250);
+  }
   /* v2.3.3399: ...with the two names far enough apart ON THE MAP to both be
      written.  A name is written only where it clears the labels placed
      before it, yours first (WorldMapOverlay.jsx label()), and since v2.3.3315
