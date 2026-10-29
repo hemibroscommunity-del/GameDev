@@ -13,7 +13,13 @@ Captured on main cdee525 against a local worker, a new player in BroTown. Each s
 | 1180x820 (iPad Air / 11" Pro) | `ipad-1180x820.png`, `ipad-1180x820-dash.png` | `desk-1180x820.png`, `desk-1180x820-dash.png` |
 | 1366x1024 (12.9" iPad Pro) | `ipad-1366x1024.png`, `ipad-1366x1024-dash.png` | `desk-1366x1024.png`, `desk-1366x1024-dash.png` |
 
-The pictures are in the session's scratchpad (`tablet/`); `sheet-1180x820.png` and `sheet-1366x1024.png` put all four side by side.
+Each sheet puts all four side by side:
+- top row: the iPad, folded and then open;
+- bottom row: the computer layout, folded and then open.
+
+![1180x820: the iPad today (top) and the computer layout (bottom)](tablet-landscape/sheet-1180x820.jpg)
+
+![1366x1024: the iPad today (top) and the computer layout (bottom)](tablet-landscape/sheet-1366x1024.jpg)
 
 What the iPad shows:
 
