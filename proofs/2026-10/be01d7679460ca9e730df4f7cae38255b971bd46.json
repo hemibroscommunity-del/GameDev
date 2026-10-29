@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "be01d7679460ca9e730df4f7cae38255b971bd46",
+  "tree": "f6127b39052ca799d26ed96d7eb53d0b71dc1a9f",
+  "committedAt": "2026-10-28T17:11:50-07:00",
+  "subject": "mp-landscape-dash finds the Character page's stats by their pills, not the gone OFFENSE heading (v2.3.3783) (#1252)",
+  "files": 6941,
+  "bytes": 805516156,
+  "listingSha256": "ab8b9a962b0892df77e784f12a7fab0427d041318ac1674f746f602e8e509bf7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

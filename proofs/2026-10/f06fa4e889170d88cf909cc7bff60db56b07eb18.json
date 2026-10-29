@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f06fa4e889170d88cf909cc7bff60db56b07eb18",
+  "tree": "1e1fc644b0de669b6454ca64848fb6a836364128",
+  "committedAt": "2026-10-28T17:11:43-07:00",
+  "subject": "A test of what a crowded fight costs a phone's memory (v2.3.3754) (#1249)",
+  "files": 6941,
+  "bytes": 805514755,
+  "listingSha256": "06b81345df616423c6bdfc6efc6d90c90ed5ea2a81a74739101b99c1e39d1c80",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
