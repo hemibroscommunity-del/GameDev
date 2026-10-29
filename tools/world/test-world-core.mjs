@@ -3976,7 +3976,7 @@ console.log("the buildings' insides (v2.3.3258)");
     const th = WHEEL_HALLS.townhall;
     const hallSrc = read('../../src/ui/panels/buildings/WheelHallPanel.jsx');
     const boardSrc = read('../../src/ui/panels/buildings/TownBoard.jsx');   /* v2.3.3804 */
-    /* v2.3.3801: the board's foot (and a page) are TownBoardPage.jsx, the
+    /* v2.3.3829: the board's foot (and a page) are TownBoardPage.jsx (v2.3.3801), the
        board hands them its openers (and the hall two more: onDash, onClose) */
     const footSrc = read('../../src/ui/panels/buildings/TownBoardPage.jsx');
     ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
