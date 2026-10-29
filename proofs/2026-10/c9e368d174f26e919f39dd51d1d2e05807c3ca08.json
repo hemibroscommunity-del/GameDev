@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c9e368d174f26e919f39dd51d1d2e05807c3ca08",
+  "tree": "5db04467f7b5c17fad7abb2b266bc959903c396a",
+  "committedAt": "2026-10-28T21:30:10-07:00",
+  "subject": "Merge pull request #1312 from hemibroscommunity-del/claude/steel-ne-oldpath",
+  "files": 7252,
+  "bytes": 833369239,
+  "listingSha256": "81f756402c77d78258313b00142271648208dc202bcc055603857a390a129574",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

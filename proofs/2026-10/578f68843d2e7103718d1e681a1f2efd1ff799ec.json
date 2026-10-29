@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "578f68843d2e7103718d1e681a1f2efd1ff799ec",
+  "tree": "ed33ee26cd1340fe082c5013c8417d2d132c7000",
+  "committedAt": "2026-10-28T21:30:05-07:00",
+  "subject": "Merge pull request #1311 from hemibroscommunity-del/claude/ride-edge-desk",
+  "files": 7252,
+  "bytes": 833368065,
+  "listingSha256": "3a8febee3249b2df5b6b92102c4a991721c0824bba38967d14f527fb9850b0e1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
