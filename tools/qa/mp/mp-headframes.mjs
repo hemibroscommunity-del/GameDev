@@ -1,4 +1,4 @@
-/* ═══ v2.3.3852: A HEAD PIECE IS NEVER A FRAME LATE ═══
+/* ═══ v2.3.3860: A HEAD PIECE IS NEVER A FRAME LATE ═══
  *
  * The owner, 2026-10-29: "For disappearing traits sometimes it's a flicker",
  * and "keep trying to patch the causes of any flicker or missing traits

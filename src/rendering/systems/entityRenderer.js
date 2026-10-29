@@ -5157,7 +5157,7 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, l
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
   if (!(tex && meta && meta.fullFrame && anchorPx)) {
     sprite.visible = false;
-    /* v2.3.3852: why, as _placeTrait says it (the head-frame count, headFrames.js:
+    /* v2.3.3860: why, as _placeTrait says it (the head-frame count, headFrames.js:
        'design' a facing the piece does not ship -- the stand-in faces its own way) */
     sprite._btHide = !entry ? 'entry' : !meta ? 'meta'
       : !anchorPx ? ((meta.anchors && !meta.anchors[dir]) ? 'design' : 'anchor') : !tex ? 'tex' : 'frame';
@@ -12803,7 +12803,7 @@ export class EntityRenderer {
           _placeEyewear(display, other.eyewear, other.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361; v2.3.2424 + colour */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
-          /* v2.3.3852: the head-frame count's context (headFrames.js) */
+          /* v2.3.3860: the head-frame count's context (headFrames.js) */
           display._btHeadAt = { pose, dir, mirror, frameIdx, now,
             worn: { headwear: other.headwear, hair: other.hair, facialhair: other.facialhair, eyewear: other.eyewear, eyestyle: other.eyeStyle } };
         } else {
@@ -14777,7 +14777,7 @@ export class EntityRenderer {
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
         _watchOwnHead(display, pose, dir, mirror);   /* v2.3.3689: a piece hidden where it ships, asked for again and logged */
-        display._btHeadAt = { pose, dir, mirror, frameIdx };   /* v2.3.3852: the head-frame count's context (headFrames.js) */
+        display._btHeadAt = { pose, dir, mirror, frameIdx };   /* v2.3.3860: the head-frame count's context (headFrames.js) */
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
@@ -17348,7 +17348,7 @@ export class EntityRenderer {
     _placeEyewear(folk, look.eyewear, look.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);
     _placeHair(folk, look.hair, look.hairColor, look.headwear, pose, dir, mirror, frameIdx, sizeMul);
     _orderTraitsAndWeapon(folk, SECTORS.indexOf(facing), look.headwear);
-    folk._btHeadAt = { pose, dir, mirror, frameIdx, now,   /* v2.3.3852: the head-frame count (headFrames.js) */
+    folk._btHeadAt = { pose, dir, mirror, frameIdx, now,   /* v2.3.3860: the head-frame count (headFrames.js) */
       worn: { headwear: look.headwear, hair: look.hair, facialhair: look.facialhair, eyewear: look.eyewear, eyestyle: look.eyeStyle } };
     /* a player's size on this ground, times his own (above); his feet on his origin */
     const k = this._zonePscale(S, npc.x, npc.y) * PLAYER_SIZE_MULT * size;

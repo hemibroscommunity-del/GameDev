@@ -1,4 +1,4 @@
-/* ═══ v2.3.3852: EVERY FRAME, IS EACH HEAD PIECE YOU WEAR DRAWN? ═══
+/* ═══ v2.3.3860: EVERY FRAME, IS EACH HEAD PIECE YOU WEAR DRAWN? ═══
  *
  * The owner, 2026-10-29: "For disappearing traits sometimes it's a flicker",
  * and "keep trying to patch the causes of any flicker or missing traits
