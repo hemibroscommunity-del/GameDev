@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2e60257279fdf0cb3bfb4b6c9394952cea354c9f",
+  "tree": "33b788fe4e5cad5e180f2e1f91656415d290c64f",
+  "committedAt": "2026-10-28T21:25:31-07:00",
+  "subject": "Merge pull request #1310 from hemibroscommunity-del/claude/death-card-top",
+  "files": 7247,
+  "bytes": 833087381,
+  "listingSha256": "1fde8117c1f6cacb9cbb27d7e2ce8d739fd4148e7960d0f82be1608edb373dd7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
