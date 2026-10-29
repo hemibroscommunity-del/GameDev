@@ -33,11 +33,26 @@ const MOD = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterS
 const TAP = { touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', font: 'inherit', cursor: 'pointer' };
 
 /* v2.3.3779: `aspect`, a picture wider than tall (a land's scene, the
-   Arena's gate) drawn at the tile's height and its own width */
+   Arena's gate) drawn at the tile's height and its own width.  Every tile's
+   picture fills about the same height (the orchestrator: the small icons
+   "look half-empty next to the lands"): the game's UI icons (a building's map
+   picture, the skull, the swords) leave a wide clear margin round what they
+   draw, so they are drawn PAD times larger, the margin spilling into the
+   tile's padding; a picture with fewer pixels than it is drawn with goes
+   pixelated, crisp rather than blurred. */
+const PAD = 1.45;
+function padOf(src) { return /^\/(icons\/ui|ui\/controls)\//.test(src) ? PAD : 1; }
 function Icon({ src, emoji, size, aspect }) {
+  const zoom = padOf(src);
   return (
-    <img src={src} alt="" draggable={false}
-      style={{ width: Math.round(size * (aspect || 1)), height: size, objectFit: 'contain', flexShrink: 0, borderRadius: 6 }}
+    <img src={src} alt="" draggable={false} data-icon-zoom={zoom}
+      style={{ width: Math.round(size * (aspect || 1)), height: size, objectFit: 'contain', flexShrink: 0, borderRadius: 6,
+        transform: zoom !== 1 ? 'scale(' + zoom + ')' : undefined }}
+      onLoad={function (e) {
+        const img = e.currentTarget;
+        const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
+        if (img.naturalHeight && img.naturalHeight < size * zoom * dpr) img.style.imageRendering = 'pixelated';
+      }}
       onError={function (e) { e.currentTarget.replaceWith(document.createTextNode(emoji)); }} />
   );
 }
@@ -125,7 +140,7 @@ export function TownBoard(props) {
                     onClick={function () { setPage(r.id); }}
                     style={Object.assign({}, TAP, { position: 'relative', minHeight: 78, padding: '10px 6px 8px', borderRadius: 10, background: LS.raised, color: LS.txt1,
                       border: '1px solid ' + (on.length ? PIN_CSS[on[0]] : LS.borderStrong), display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 })}>
-                    <Icon src={r.icon} emoji={r.emoji} size={30} aspect={r.iconAspect} />
+                    <Icon src={r.icon} emoji={r.emoji} size={36} aspect={r.iconAspect} />
                     <span style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.2, textAlign: 'center' }}>{boardName(r, names)}</span>
                     <PinDots on={on} />
                   </button>
