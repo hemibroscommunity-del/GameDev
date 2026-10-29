@@ -80,6 +80,8 @@ const LOOK = `try {
      (the flip carries the head pieces now); none by default */
   localStorage.setItem('bt-hair', ${JSON.stringify(process.env.BT_GHOST_HAIR || 'none')});
   localStorage.setItem('bt-headwear', ${JSON.stringify(process.env.BT_GHOST_HAT || 'none')});
+  /* v2.3.3867: BT_GHOST_SPECIES=monkey -- the bro type (its ears and muzzle over the head) */
+  if (${JSON.stringify(process.env.BT_GHOST_SPECIES || '')}) localStorage.setItem('bt-species', ${JSON.stringify(process.env.BT_GHOST_SPECIES || '')});
   /* v2.3.3738: BT_GHOST_SKIN / BT_GHOST_SPECIES -- the owner: the flip's head
      "will need to be recolored to whatever color the character is" */
   if (${JSON.stringify(process.env.BT_GHOST_SKIN || '')}) localStorage.setItem('bt-skin', ${JSON.stringify(process.env.BT_GHOST_SKIN || '')});
