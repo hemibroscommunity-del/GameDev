@@ -228,6 +228,17 @@ export var QUEST_MSG_WELCOME_MS = 9000;
    v2.3.3712: ...else null: the tap attacks, and the stick wears the weapon */
 function _tapActIcon(S) { return tapActIcon(interactKind(S, { npcFirst: true })); }
 
+/* ═══ v2.3.3871: HIS HAND-IN LINE IS SAID ONCE, IN THE WINDOW THAT PAYS ═══
+   The owner, before the showing: "don't make your character click on mayor
+   bro again to claim the reward from turning in the first quest.  It's a
+   strange series where he says that message.  Then you click on him again to
+   claim the reward".  A giver walking with you said his quest's `complete`
+   line in his speech bubble the moment it was done -- the reward speech, with
+   nothing to claim on it -- and the claim came on the click after.  While a
+   quest is ready his bubble says this cue instead (a computer reads "Click
+   me!"), and his hand-in line comes with its Claim reward, on the click. */
+const NPC_READY_CUE = 'All done? Tap me!';
+
 function _npcQuestReady(S, npcQ) {
   if (!npcQ || npcQ.status !== 'active') return false;
   /* v2.3.1914: the shared implementation, so the opener and the panel it
@@ -7297,7 +7308,8 @@ export var BroTown = function BroTown(_ref0) {
               if (npc.chatTimer <= 0) {
                 var quest = npcQuest.quest;
                 var isComplete = quest.check(S.rpg, S);
-                var phrase = isComplete ? quest.dialogue.complete : quest.dialogue.progress;
+                /* v2.3.3871: never his hand-in line over his head (NPC_READY_CUE) */
+                var phrase = isComplete ? deskWords(NPC_READY_CUE) : quest.dialogue.progress;
                 npc.chatBubble = {
                   text: phrase,
                   ts: Date.now(),
@@ -7342,6 +7354,14 @@ export var BroTown = function BroTown(_ref0) {
                 if (npcQuest && npcQuest.status === 'available' && distToPlayer < 100) {
                   npc.chatBubble = {
                     text: deskWords('I have a task for you! Tap me.'),   /* v2.3.3615: "Click me." on a computer */
+                    ts: Date.now(),
+                    isQuest: true
+                  };
+                } else if (distToPlayer < 100 && _npcQuestReady(S, npcQuest)) {
+                  /* v2.3.3871: his quest is ready to hand in: the cue, the
+                     same as the offer's hint above */
+                  npc.chatBubble = {
+                    text: deskWords(NPC_READY_CUE),
                     ts: Date.now(),
                     isQuest: true
                   };
