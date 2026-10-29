@@ -166,7 +166,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
 import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3701: a black screen's rebuild asks first whether Safari emptied the pictures */
-/* v2.3.3886: a second loss inside a rebuild's 5 s is owed a rebuild (window._rebuildRenderer); `?owedrebuild=0` drops it, as before */
+/* v2.3.3890: a second loss inside a rebuild's 5 s is owed a rebuild (window._rebuildRenderer); `?owedrebuild=0` drops it, as before */
 const OWED_REBUILD_OFF = (function () { try { return /[?&]owedrebuild=0\b/.test(window.location.search || ''); } catch (e) { return false; } })();
 import { markWorldIn, skipTutorial, worldInMs } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
 import { BUILD_INFO } from './BuildBadge.jsx';
@@ -4131,13 +4131,13 @@ export var BroTown = function BroTown(_ref0) {
     window.__btGlLostAt = 0;
     window._rebuildRenderer = function (reason) {
       var _now = Date.now();
-      /* v2.3.3886: QA (mp-doubleloss) -- each call, and what came of it */
+      /* v2.3.3890: QA (mp-doubleloss) -- each call, and what came of it */
       var _rbLog = window.__btGlRebuildLog || (window.__btGlRebuildLog = []);
       if (_rbLog.length > 20) _rbLog.shift();
       _rbLog.push({ at: _now, age: window.__btLastGlRebuild ? _now - window.__btLastGlRebuild : null, reason: String(reason || 'manual').slice(0, 80) });
       if (window.__btLastGlRebuild && _now - window.__btLastGlRebuild < 5000) {
         _rbLog[_rbLog.length - 1].inWindow = OWED_REBUILD_OFF ? 'dropped' : (window.__btGlRebuildOwed ? 'already owed' : 'owed');
-        /* ═══ v2.3.3886: A SECOND LOSS INSIDE THE WINDOW IS OWED A REBUILD ═══
+        /* ═══ v2.3.3890: A SECOND LOSS INSIDE THE WINDOW IS OWED A REBUILD ═══
            The window is there for ONE death that two callers both conclude
            is a rebuild (the loss's own timer and the resume probe).  But a
            second loss on the NEW canvas inside it (an iPhone under memory
@@ -4195,7 +4195,7 @@ export var BroTown = function BroTown(_ref0) {
         } catch (eCw) { /* a check must never stop the rebuild */ }
       }
       window.__btLastGlRebuild = _now;
-      window.__btGlRebuilds = (window.__btGlRebuilds || 0) + 1;   /* v2.3.3886: QA (mp-doubleloss) */
+      window.__btGlRebuilds = (window.__btGlRebuilds || 0) + 1;   /* v2.3.3890: QA (mp-doubleloss) */
       /* v2.3.773: let the fresh renderer record its own first error --
          otherwise a rebuild that didn't cure the throw leaves no trace. */
       window.__pixiUpdateErrLogged = false;

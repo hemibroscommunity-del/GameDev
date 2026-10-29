@@ -1,4 +1,4 @@
-/* ═══ v2.3.3886: TWO LOSSES OF THE GRAPHICS, SECONDS APART ═══
+/* ═══ v2.3.3890: TWO LOSSES OF THE GRAPHICS, SECONDS APART ═══
  *
  * A black screen (the graphics chip's context lost, on an iPhone from memory
  * pressure) is answered by a rebuilt renderer 2.5 s on (crashTrap
