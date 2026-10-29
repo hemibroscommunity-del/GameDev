@@ -8,11 +8,10 @@
  *      Hall opens; a step away from the door, the prompt gone, E talks to him
  *      (his quest before a door, v2.3.3583, everywhere else).
  *      v2.3.3868 (the owner: "When you're next to mayor bro ... you would
- *      actually open the door"): E does the NEARER of the townsperson and
- *      the door, and the computer's Enter button shows only while the door
- *      is E's pick -- next to the Mayor no button and E talks, on the
- *      doorstep the button and E opens the hall; and at every door with a
- *      townsperson beside it, the same;
+ *      actually open the door"): a townsperson in talk range comes before
+ *      a door, and a computer's Enter button stands aside meanwhile -- next
+ *      to the Mayor no button and E talks; at the hall's door out of his
+ *      range the button and E opens it; and at every open door the same;
  *   2. the skateboard's button (Z on a computer) is drawn on the safe ground,
  *      where the board rides, and nowhere past it: in the Earth Forest no
  *      button -- on a computer (wide) and on an upright phone;
@@ -79,81 +78,76 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3868: the owner, on a computer: "When you're next to mayor bro
        (intending to accept the first quest by 'interacting') you would
        actually open the door to the building right next to him (town hall)."
-       E does the NEARER of a townsperson and a door (desktopControls.js
-       talkBeforeDoor), and a computer's Enter button shows only while the
-       door is E's pick.  Searched round him: a spot in the door's reach but
-       nearer him, and one nearer the door. */
-    const SPOTS = [[0, 34], [0, 20], [-20, 20], [20, 20], [-40, -30], [40, -30], [0, -40], [-60, 10], [60, 10], [70, 40], [-70, 40], [0, 70], [0, 90], [-30, 80], [30, 80]];
-    let nearHim = null, nearDoor = null;
-    for (const [dx, dy] of SPOTS) {
-      await place(A, 'mayor_bro', dx, dy);
-      await A.page.waitForTimeout(400);
-      const h = await here(A);
-      const dd = await A.page.evaluate(() => (window.__btWheelTownDoors ? window.__btWheelTownDoors.dist() : null));
-      const dn = Math.hypot(dx, dy);
-      if (h.npc === 'mayor_bro' && h.up && dd != null && dn < dd && !nearHim) nearHim = [dx, dy, Math.round(dn), dd];
-      if (h.up && dd != null && (h.npc !== 'mayor_bro' || dd < dn) && !nearDoor) nearDoor = [dx, dy, Math.round(dn), dd];
-      if (nearHim && nearDoor) break;
-    }
-    rec.ok(`1. round the Mayor, in the Town Hall door's reach: a spot nearer him (${JSON.stringify(nearHim)}) and one nearer the door (${JSON.stringify(nearDoor)}) (guard)`, !!nearHim && !!nearDoor, { nearHim, nearDoor });
-    if (nearHim) {
-      await place(A, 'mayor_bro', nearHim[0], nearHim[1]);
-      await A.page.waitForTimeout(600);
-      const h0 = await here(A);
-      await shot(A, '1-beside-mayor');
-      await A.page.keyboard.press('e');
-      await A.page.waitForTimeout(1500);
-      const h1 = await here(A);
-      await shot(A, '1-talk');
-      rec.ok(`1. next to Mayor Bro (nearer him than the Town Hall's door): no Enter button (${h0.prompt === null ? 'none' : '"' + h0.prompt + '"'}), and E opens his dialogue, not the door`,
-        h0.prompt === null && h1.dialogue && !h1.building, { h0, h1 });
-      await H.closeNpcDialogue(A).catch(() => {});
-      await A.page.waitForTimeout(600);
-    }
-    if (nearDoor) {
-      await place(A, 'mayor_bro', nearDoor[0], nearDoor[1]);
-      await A.page.waitForTimeout(600);
-      const h2 = await here(A);
-      await shot(A, '1-door-prompt');
-      await A.page.keyboard.press('e');
-      await A.page.waitForTimeout(1500);
-      const h3 = await here(A);
-      await shot(A, '1-door-opened');
-      rec.ok(`1. on the doorstep (nearer the door): the button reads "${h2.prompt}" and E opens the Town Hall, not his window`,
-        !!h2.prompt && /town hall/i.test(h2.prompt) && h3.building && !h3.dialogue, { h2, h3 });
-      await A.page.keyboard.press('Escape');
-      await A.page.waitForTimeout(800);
-    }
-    /* every door with a townsperson in its reach: standing at the person,
-       the door's button stands aside (E talks); standing on the door's foot,
-       it is up (E opens it) */
-    const pairs = await A.page.evaluate(() => {
+       A townsperson in talk range comes before a door (desktopControls.js
+       talkBeforeDoor), and a computer's Enter button stands aside meanwhile.
+       Each door's spot: in its reach (__btWheelTownDoors.at) and out of
+       every townsperson's (S._nearNpc null) -- searched round its foot. */
+    const doorSpot = (doorId) => A.page.evaluate(async (id) => {
       const S = window._gameState.current;
-      const doors = (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []).filter((d) => d.index >= 0 || d.hall);
-      const out = [];
-      for (const d of doors) for (const n of (S.npcs || [])) {
-        if (n && n.alive !== false && Math.hypot(n.x - d.x, n.y - d.y) < 160) out.push({ door: d.id, dx: d.x, dy: d.y, npc: n.id });
+      const d = window.__btWheelTownDoors.doors().find((x) => x.id === id);
+      if (!d) return null;
+      for (const r of [40, 70, 100, 125]) {
+        for (let k = 0; k < 16; k++) {
+          const a = (k / 16) * Math.PI * 2;
+          S.player.x = d.x + Math.cos(a) * r; S.player.y = d.y - 52 + Math.sin(a) * r;
+          await new Promise((res) => setTimeout(res, 250));
+          if (window.__btWheelTownDoors.at() === id && !S._nearNpc) return { x: Math.round(S.player.x), y: Math.round(S.player.y) };
+        }
       }
-      return out;
+      return null;
+    }, doorId);
+    /* next to the Mayor, his door's reach and all */
+    await place(A, 'mayor_bro', 0, 34);
+    await A.page.waitForTimeout(600);
+    const h0 = await here(A);
+    await shot(A, '1-beside-mayor');
+    await A.page.keyboard.press('e');
+    await A.page.waitForTimeout(1500);
+    const h1 = await here(A);
+    await shot(A, '1-talk');
+    rec.ok(`1. next to Mayor Bro, in the Town Hall door's reach (${h0.up ? 'yes' : 'NO'}): no Enter button (${h0.prompt === null ? 'none' : '"' + h0.prompt + '"'}), and E opens his dialogue, not the door`,
+      h0.up && h0.npc === 'mayor_bro' && h0.prompt === null && h1.dialogue && !h1.building, { h0, h1 });
+    await H.closeNpcDialogue(A).catch(() => {});
+    await A.page.waitForTimeout(600);
+    /* a step aside, out of his range: the door's button, and E opens it */
+    const th = await doorSpot('townhall');
+    await A.page.waitForTimeout(500);
+    const h2 = await here(A);
+    await shot(A, '1-door-prompt');
+    await A.page.keyboard.press('e');
+    await A.page.waitForTimeout(1500);
+    const h3 = await here(A);
+    await shot(A, '1-door-opened');
+    rec.ok(`1. at the Town Hall's door out of anyone's talk range (${JSON.stringify(th)}): the button reads "${h2.prompt}" and E opens the Town Hall`,
+      !!th && !!h2.prompt && /town hall/i.test(h2.prompt) && h3.building && !h3.dialogue, { th, h2, h3 });
+    await A.page.keyboard.press('Escape');
+    await A.page.waitForTimeout(800);
+    /* every open door: a spot at it out of everyone's range shows its
+       button; and each townsperson whose range reaches its doorstep, stood
+       beside, shows none (E talks) */
+    const doors = await A.page.evaluate(() => {
+      const S = window._gameState.current;
+      return window.__btWheelTownDoors.doors().filter((d) => d.index >= 0 || d.hall).map((d) => ({
+        id: d.id, npcs: (S.npcs || []).filter((n) => n && n.alive !== false && Math.hypot(n.x - d.x, n.y - 52 - d.y) < 230).map((n) => n.id),
+      }));
     });
     const checks = [];
-    for (const p of pairs) {
-      await place(A, p.npc, 0, 12);
-      await A.page.waitForTimeout(400);
-      const atPerson = await here(A);
-      /* the door's foot: its point is where the boots go */
-      let atDoor = null;
-      for (const off of [0, 10, 20, 30, 40]) {
-        await A.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; }, { x: p.dx, y: p.dy - off });
-        await A.page.waitForTimeout(400);
-        const id = await A.page.evaluate(() => window.__btWheelTownDoors.at());
-        if (id === p.door) { atDoor = await here(A); break; }
+    for (const d of doors) {
+      const spot = await doorSpot(d.id);
+      await A.page.waitForTimeout(300);
+      const at = spot ? await here(A) : null;
+      const people = [];
+      for (const id of d.npcs) {
+        await place(A, id, 0, 30);
+        await A.page.waitForTimeout(350);
+        const h = await here(A);
+        people.push({ id, near: h.npc, prompt: h.prompt });
       }
-      checks.push({ ...p, personPrompt: atPerson.prompt, personNpc: atPerson.npc, doorPrompt: atDoor && atDoor.prompt, doorUp: !!(atDoor && atDoor.up) });
+      checks.push({ door: d.id, spot, button: at && at.prompt, people });
     }
-    const bad = checks.filter((c) => !(c.personNpc === c.npc && c.personPrompt === null && c.doorUp && !!c.doorPrompt));
-    rec.ok(`1. every door with a townsperson beside it (${checks.map((c) => c.npc + '@' + c.door).join(', ')}): at the person no Enter button (E talks), on the doorstep the button (E opens it)`,
-      checks.length >= 1 && bad.length === 0, { bad, checks });
+    const bad = checks.filter((c) => !c.spot || !c.button || c.people.some((p) => !p.near || p.prompt !== null));
+    rec.ok(`1. every open door (${checks.length}): out of everyone's range its button is up; beside each townsperson near it (${checks.reduce((n, c) => n + c.people.length, 0)}) no button`,
+      checks.length >= 5 && bad.length === 0, { bad, checks: checks.map((c) => [c.door, !!c.spot, c.button, c.people.map((p) => p.id + ':' + (p.prompt === null ? 'none' : p.prompt)).join(' ')]) });
 
     /* ── 2. the board's button: on the safe ground, and not past it ── */
     const town = { A: await rideBtn(A), C: await rideBtn(C) };

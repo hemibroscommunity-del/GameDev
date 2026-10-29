@@ -385,7 +385,7 @@ import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: t
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { interactKind, talkBeforeDoor } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.3868: + E's nearer of a townsperson and a door */
+import { interactKind, talkBeforeDoor } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.3868: + a townsperson in range before a door */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
 import DeathCard from '@/ui/mobile/DeathCard.jsx';   /* v2.3.3817: "You died", what killed you, back in BroTown in N */
@@ -1638,9 +1638,9 @@ export var BroTown = function BroTown(_ref0) {
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],
     setNearBuilding = _useState6[1];
-  /* v2.3.3868: on a computer, E would talk (a townsperson nearer than the
-     door, desktopControls.js talkBeforeDoor): the door's Enter button stands
-     aside meanwhile, so it never says one thing while E does another */
+  /* v2.3.3868: on a computer, E would talk (a townsperson in range,
+     desktopControls.js talkBeforeDoor): the door's Enter button stands aside
+     meanwhile, so it never says one thing while E does another */
   var _useDeskTalkPick = useState(false),
     deskTalkPick = _useDeskTalkPick[0],
     setDeskTalkPick = _useDeskTalkPick[1];

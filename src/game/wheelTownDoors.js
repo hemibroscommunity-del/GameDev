@@ -80,16 +80,6 @@ export function wheelTownDoors() {
   return _doors;
 }
 
-/** v2.3.3868: how far your boots are from a door's foot (the measure
-    wheelTownDoorAt picks by), for E's "the nearer of the townsperson and the
-    door" (desktopControls.js talkBeforeDoor).  Infinity without a place. */
-export function wheelDoorDist(S, d) {
-  if (!S || !S.player || !d || !isFinite(d.x) || !isFinite(d.y)) return Infinity;
-  const P = S.player;
-  const by = P.y + playerGroundDy(S.currentZone, P.x, P.y);
-  return Math.hypot(d.x - P.x, d.y - by);
-}
-
 /** The door you stand at in the Wheel (your boots within WHEEL_DOOR_REACH of
     the foot of its steps; the nearest), or null.  A door with nothing behind
     it and nothing to say is never returned (the Town Hall was one, Mayor Bro
@@ -128,7 +118,5 @@ if (typeof window !== 'undefined') {
   window.__btWheelTownDoors = {
     doors: () => wheelTownDoors().map((d) => ({ ...d })),
     at: () => { const S = window._gameState && window._gameState.current; const d = wheelTownDoorAt(S); return d ? d.id : null; },
-    /* v2.3.3868 (mp-mayordoor): your boots' distance from the door you stand at */
-    dist: () => { const S = window._gameState && window._gameState.current; const d = wheelTownDoorAt(S); return d ? Math.round(wheelDoorDist(S, d)) : null; },
   };
 }
