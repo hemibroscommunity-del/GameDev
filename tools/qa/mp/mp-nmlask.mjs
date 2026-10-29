@@ -391,7 +391,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(2500);
   const here = await H.readState(A, (S) => S._nmlLevel || 0);
   const hereB = await H.readState(B, (S) => S._nmlLevel || 0);
-  rec.ok(`setup: both stand in No man's land 1 (${here} / ${hereB})`, here === 1 && hereB === 1, { here, hereB });
+  /* v2.3.3767: the number is the step (Lv 1-5 on the first ring), not 1 */
+  rec.ok(`setup: both stand on No man's land's first ring (${here} / ${hereB})`, here >= 1 && here <= 5 && hereB >= 1 && hereB <= 5, { here, hereB });
   /* the wanderer can be hurt again (the HP the worker keeps is the proof) */
   await H.devOp(wsPort, 'vitals', idB, { heal: true, god: false });
   await H.devOp(wsPort, 'vitals', idA, { heal: true, god: false });
@@ -518,7 +519,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { title: cur && cur.title, body: body ? body.textContent : null, card: !!document.querySelector('[data-nml-ask]') };
   });
   rec.ok(`4. ...its (i) opens what No man's land means ("${info.title}"), saying how to attack, the window kept under it`,
-    /No man's land 1/.test(info.title || '') && /tap a player.*choose Attack/.test(info.body || '') && /red skull/.test(info.body || '') && info.card, info);
+    /No man's land [1-5]/.test(info.title || '') && /tap a player.*choose Attack/.test(info.body || '') && /red skull/.test(info.body || '') && info.card, info);
   await A.page.evaluate(() => { if (window.__btInfoPopup) window.__btInfoPopup.close(); });
   await A.page.waitForTimeout(400);
 

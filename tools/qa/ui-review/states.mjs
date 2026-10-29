@@ -223,6 +223,25 @@ async function bannersGone(P, maxMs = 20000) {
   return false;
 }
 
+/* v2.3.3768: a stand-in party of four for the party chip's pictures: `open`
+   true opens its list as a tap does (the device's choice), false leaves it
+   folded, null takes the party away and forgets the choice */
+const partyStub = (P, open) => evalIn(P, (o) => {
+  const S = window._gameState && window._gameState.current;
+  if (!S || !window._uiPanels) return 'no state';
+  try { if (o) localStorage.setItem('bt_party_list', 'open'); else localStorage.removeItem('bt_party_list'); } catch (e) { /* private mode */ }
+  window.dispatchEvent(new Event('bt-party-list'));
+  if (o === null) { window._uiPanels.party(null); return null; }
+  const z = S.currentZone;
+  window._uiPanels.party({ id: 'party_demo', leader: S.myId, max: 4, members: [
+    { id: S.myId, name: (S.rpg && S.rpg.name) || 'You', level: (S.rpg && S.rpg.level) || 1, hp: 90, maxHp: 100, zone: z },
+    { id: 'bp_demo1', name: 'Rival Bro', level: 7, hp: 80, maxHp: 100, zone: z },
+    { id: 'bp_demo2', name: 'Sandy', level: 5, hp: 45, maxHp: 100, zone: z },
+    { id: 'bp_demo3', name: 'Moss', level: 4, hp: 15, maxHp: 100, zone: z },
+  ] });
+  return null;
+}, open);
+
 /* v2.3.3460: your sparring clones are the ids the worker's spar_state named
    (game/spar.js S._spar.ids), there once a tick has put them in S.others --
    v2.3.3407 looked for a `.spar` flag no player entry carries, and aimed with
@@ -309,13 +328,16 @@ export const STATES = [
      owner's "Go recommended"), so the opening shot no longer shows Hair.
      v2.3.3589: and 'species', a tab of its own (the owner: "Yes make species
      it's own button"); the creator opens on it, and Skin is the skin tones. */
+  /* v2.3.3777: the 'species' tab reads "Bro type" (v2.3.3772, the owner:
+     "Change species to bro type"); its id stays, as UI-DESIGN-NOTES and the
+     review's packets key on it, and the tab is found by either word */
   ...['species', 'hair', 'hat', 'skin', 'eyes', 'eyewear', 'beard', 'shirt', 'pants', 'shoes'].map((t) => ({
-    id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + t + ' tab',
-    about: 'The character creator with the "' + t + '" tab of the Trait Picker open.',
+    id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + (t === 'species' ? 'Bro type' : t) + ' tab',
+    about: 'The character creator with the "' + (t === 'species' ? 'Bro type' : t) + '" tab of the Trait Picker open.',
     run: async ({ P }) => {
       const r = await evalIn(P, (tt) => {
         const tabs = Array.from(document.querySelectorAll('button.bt-cc-tab'));
-        const want = { species: /^species/i, hair: /^hair/i, hat: /hat/i, skin: /^skin/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
+        const want = { species: /^(bro type|species)/i, hair: /^hair/i, hat: /hat/i, skin: /^skin/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
         const b = tabs.find((x) => want.test((x.innerText || x.getAttribute('aria-label') || '').trim()));
         if (!b) return 'no tab ' + tt + ' (have: ' + tabs.map((x) => (x.innerText || '').trim()).join(', ') + ')';
         b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -459,7 +481,8 @@ export const STATES = [
   },
 
   /* ═══ THE DASHBOARD ═══ */
-  dash('hero', 'Character', 'Your character page: equipment slots, the figure, your stats as pills (offense, player, vitals).'),
+  /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page) */
+  dash('hero', 'Character', 'Your character page, two tabs (Equipment and Points): equipment slots, the figure, your stats as pills (offense, player, vitals).'),
   {
     id: 'dash-hero-points', group: 'Dashboard', title: 'Character: Points',
     about: 'The Character page on its Points tab: spending points on each weapon skill and on the character.',
@@ -576,7 +599,8 @@ export const STATES = [
       await P.page.waitForSelector('[data-achv-title-current="first_blood"]', { timeout: 6000 }).catch(() => {});
     },
   }),
-  more('journey', 'Journey', 'Your journey so far.'),
+  /* v2.3.3773: Journey is its own page under More, the Character page's old records tab moved here */
+  more('journey', 'Journey', 'Your journey: kills, deaths, lifetime gold and XP, duels won and the deepest zone (the Character page\'s old third tab).'),
   more('account', 'Login Key', 'Your Login Key: how to carry this character to another device.'),
   more('about', 'About & privacy', 'About the game, privacy, rules and credits.'),
   more('feedback', 'Feedback', 'Sending feedback to the developer.'),
@@ -746,6 +770,22 @@ export const STATES = [
       await H.devOp(wsPort, 'spar', myId, { clear: true }).catch(() => {});
       await wait(P, 1000);
     },
+  },
+  /* v2.3.3768: the party strip folds to a chip (PartyHUD.jsx, game/partyChip.js):
+     a party of four drawn from a stand-in roster (you, the leader, and three
+     friends, one of them low), folded as it is by default and opened as a tap
+     opens it.  View state only: the worker knows no such party. */
+  {
+    id: 'party-hud', group: 'Other players', title: 'In a party: the chip',
+    about: 'In a party of four (shown with stand-in friends): the party chip at the top left -- the party mark, 4/4 and a pip a friend, coloured as their health bar (one friend low, in red).  A tap opens the list.',
+    run: async ({ P }) => { await partyStub(P, false); },
+    after: async ({ P }) => { await partyStub(P, null); },
+  },
+  {
+    id: 'party-hud-open', group: 'Other players', title: 'In a party: the list opened',
+    about: 'The same party with its list opened by a tap: each member\'s name, level and health bar, the leader\'s crown, a kick (two taps) on each friend for the leader, and ✖ to leave (two taps).  A tap on its head folds it back to the chip.',
+    run: async ({ P }) => { await partyStub(P, true); },
+    after: async ({ P }) => { await partyStub(P, null); },
   },
   {
     id: 'inspect-self', group: 'Other players', title: 'An Inspect card (your own)',

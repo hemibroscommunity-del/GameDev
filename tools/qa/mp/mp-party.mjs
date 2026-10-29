@@ -217,6 +217,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      tooltip — and tooltips do not exist on touch, which is the primary
      platform.  The test therefore selects on the title, which is the only
      stable handle the markup offers. */
+  await H.openPartyList(B, { tap: true });   /* v2.3.3768: the ✖ is in the list, which the chip opens */
   const left = await B.page.locator('button[title="Leave party"]').first()
     .click({ timeout: 8000 }).then(() => true).catch(() => false);
   /* v2.3.3399: ...and a second tap, on its "Leave?".  Since v2.3.3284 a party
