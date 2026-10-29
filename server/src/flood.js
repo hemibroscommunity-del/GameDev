@@ -101,6 +101,11 @@ export const PACE = Object.freeze({
      a change; past the burst a change is refused and the page told what
      stands */
   ACHVT: { BURST: 10, REFILL_MS: 10000 },
+  /* v2.3.3785: a move in or out of the Bank's vault (bank.js): two rows a
+     move (the bag or purse, and the vault).  Thirty covers emptying a full
+     bag into it in one go; past that a move is refused 'busy' and the window
+     says so */
+  BANK: { BURST: 30, REFILL_MS: 20000 },
   /* unread messages one sender may leave in an offline friend's box; past
      that a line is dropped, not written (the box keeps the last
      FRIENDS.DM_BACKLOG_MAX in all) */
