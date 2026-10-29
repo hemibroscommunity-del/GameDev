@@ -34,7 +34,7 @@
  * WebGL2, `?nopalette`) packs its canvas exactly as before.
  *
  * QA: window.__btPicNumbers(). */
-import { clientOffAtLoad } from '@/game/clientOff.js';   /* v2.3.3755 */
+import { clientOffAtLoad } from '../game/clientOff.js';   /* v2.3.3755; v2.3.3818: relative, so node's checks can load it (check-hairmask-parity imports the renderer: '@/' is Vite's alone) */
 import { numbersOf } from './heldNumbers.js';
 import { Sprite, Texture } from 'pixi.js';
 import { paletteOn, paletteStride, paletteRowTake, paletteRowWrite, paletteRowGive, makePaletteSourceOnRow, paletteFillProgram, paletteProgramLinked } from './paletteTex.js';

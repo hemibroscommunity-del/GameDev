@@ -38,7 +38,7 @@
  *
  * On by default (the owner's word, below); `?onecopy=0` or `?gpucopies` keep
  * every copy.  QA: window.__btPicsOnce(). */
-import { clientOffAtLoad } from '@/game/clientOff.js';   /* v2.3.3755 */
+import { clientOffAtLoad } from '../game/clientOff.js';   /* v2.3.3755; v2.3.3818: relative, so node's checks can load it (check-hairmask-parity imports the renderer: '@/' is Vite's alone) */
 import { Cache, Texture } from 'pixi.js';
 
 const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
