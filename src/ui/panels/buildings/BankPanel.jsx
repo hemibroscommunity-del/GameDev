@@ -64,6 +64,8 @@ function BankReadOnly(props) {
   var meleeName = ((_rpgState$weapon = rpgState.weapon) === null || _rpgState$weapon === void 0 ? void 0 : _rpgState$weapon.name) || 'None';
   var rangedName = ((_rpgState$rangedWeapo = rpgState.rangedWeapon) === null || _rpgState$rangedWeapo === void 0 ? void 0 : _rpgState$rangedWeapo.name) || 'None';
   var armorName = ((_rpgState$armor = rpgState.armor) === null || _rpgState$armor === void 0 ? void 0 : _rpgState$armor.name) || 'None';
+  /* v2.3.3785: the worn shield too (lane A's judge pass: the list left it out) */
+  var shieldName = (rpgState.shield && rpgState.shield.name) || 'None';
   var gearRow = function gearRow(label, value, isLast) {
     return React.createElement("div", {
       style: {
@@ -115,7 +117,8 @@ function BankReadOnly(props) {
         style: { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder }
       }, gearRow('Melee', meleeName, false),
       gearRow('Bow' /* v2.3.3481: was 'Ranged' -- the bow slot, named as the Gem Works' Set gems and the hero sheet name it (the 2026-10-19 UI review) */, rangedName, false),
-      gearRow('Armor', armorName, true))));
+      gearRow('Armor', armorName, false),
+      gearRow('Shield', shieldName, true))));
 }
 
 /* ═══ v2.3.3785: THE VAULT ═══
