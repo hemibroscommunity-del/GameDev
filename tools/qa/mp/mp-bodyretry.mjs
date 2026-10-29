@@ -59,7 +59,12 @@ const TOOLS = () => {
     const s = me && T.hide ? me._spriteBody : null;
     let was = null;
     if (s) { was = s.renderable; s.renderable = false; }
-    T.renders++;
+    /* v2.3.3882: only the screen's own frames count (the stage): other
+       renders run inside one frame (off-screen bakes: fillBatch, the palette's
+       warm-ups, the water, render textures), and two of those can pass before
+       the held-back state is ever shown -- M4's finding, the "first-frame miss"
+       that was never one */
+    if (a[0] === app.stage || (a[0] && a[0].container === app.stage)) T.renders++;
     try { return orig(...a); } finally { if (was != null) s.renderable = was; }
   };
   T.body = () => {
@@ -117,9 +122,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await stick(Math.cos(ang), Math.sin(ang));
         await page.waitForTimeout(900);
         if (pose === 'stand') { await stick(0, 0); await page.waitForTimeout(900); }
-        let px = await bodyPx();
-        /* a facing's first frames can miss while its picture goes up; a lasting loss stays */
-        if (px == null || px < MIN_PX) { await page.waitForTimeout(1500); px = await bodyPx(); }
+        const px = await bodyPx();
         const b = await page.evaluate(() => window.__qaBR.body());
         rec.ok(`${pose} ${dir} (${b.facing}): the body is drawn (${px} px)`, px != null && px >= MIN_PX, b);
         if (pose === 'jog') { await stick(0, 0); await page.waitForTimeout(400); }
