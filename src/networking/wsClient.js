@@ -34,6 +34,7 @@ import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } fr
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
+import { onBankState } from '@/game/bank.js'; /* v2.3.3785: the Bank's vault (server/src/bank.js) */
 import { onRestResult, restMapsBuffs } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
 import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the Hotel opens against a worker that rests */
 import { cue, cueAt, cuePeer, peerOwn, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
@@ -2086,6 +2087,16 @@ export function setupWebSocket(ctx) {
           /* v2.3.3539: a rest's answer (server/src/rest.js) -- here, in the
              direct switch, for the race's reason: a worker from before the
              Hotel opened would relay a forged one to everyone */
+          case 'bank_state':
+            {
+              /* v2.3.3785: the Bank's vault as the worker holds it (bank.js),
+                 after each move and on opening; the bag and the purse ride the
+                 player_state that follows a move */
+              if (!msg.from) {
+                try { onBankState(S, msg.payload); } catch (_bk) { /* display only */ }
+              }
+              break;
+            }
           case 'rest_result':
             {
               if (!msg.from) {
@@ -5511,6 +5522,12 @@ export function setupWebSocket(ctx) {
            -> rest.js.  TRAPS #18: without this line Rest would send nothing
            at all. */
         if (msg.type === 'rest_request') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3785: the Bank's vault (game/bank.js) -> bank.js.  TRAPS #18:
+           without these the window would send nothing at all. */
+        if (msg.type === 'bank_open' || msg.type === 'bank_deposit' || msg.type === 'bank_withdraw') {
           wsOut(msg);
           return;
         }

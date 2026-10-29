@@ -1,5 +1,8 @@
 import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3785: "tap" reads "click" on a computer */
+import { bankOn, bankOpen, bankMove, bankBusy, bankSubscribe, bankLastWords, bankAmount, BANK_CHIPS } from '@/game/bank.js';   /* v2.3.3785: the vault */
+import { thumbFor, iconFor, ITEM_NAMES } from '@/ui/mobile/dash/InventoryPanel.jsx';   /* v2.3.3785: the bag's own pictures and names */
 
 /* === BankPanel — buildingPanel === 'bank' sub-panel === */
 /* v2.3.878: extracted verbatim from the buildingPanel === 'bank'
@@ -52,7 +55,8 @@ function lsGold(amount, size, have) {
     onError: function onError(e) { e.currentTarget.replaceWith(document.createTextNode('🪙')); }
   }), amount);
 }
-export function BankPanel(props) {
+/* v2.3.3785: the window as it was, for a worker without a vault (caps.bank) */
+function BankReadOnly(props) {
   var rpgState = props.rpgState;
   var _rpgState$armor, _rpgState$rangedWeapo, _rpgState$weapon;
   /* v2.3.1232: display-only string temps (identical optional chains to
@@ -112,4 +116,160 @@ export function BankPanel(props) {
       }, gearRow('Melee', meleeName, false),
       gearRow('Bow' /* v2.3.3481: was 'Ranged' -- the bow slot, named as the Gem Works' Set gems and the hero sheet name it (the 2026-10-19 UI review) */, rangedName, false),
       gearRow('Armor', armorName, true))));
+}
+
+/* ═══ v2.3.3785: THE VAULT ═══
+   The owner: "Oh yeah make it so you can actually deposit and retrieve items
+   and gold from the bank".  Against a worker that keeps vaults (caps.bank,
+   server/src/bank.js) the window is the vault: your gold and the vault's, put
+   in and taken out by 10, 100, All or a typed amount; "Your bag" (a tap puts
+   an item in, a stack asks how many) and "The vault" (a tap takes it out).
+   Nothing here moves anything: each tap ASKS the worker (game/bank.js), and
+   the bag, the purse and the vault redraw from what it answers.  The
+   equipped list of the old window is gone from here: the Character page is
+   where what you wear lives, and the window's height is the vault's. */
+function itemName(key) {
+  if (!key) return '';
+  if (ITEM_NAMES[key]) return ITEM_NAMES[key];
+  return String(key)
+    .replace(/^cooked_fish_/, 'Cooked ').replace(/^burnt_/, 'Burnt ').replace(/^fish_/, '')
+    .replace(/^wood_/, '').replace(/^ore_/, '').replace(/^shard_/, '')
+    .replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const BTN = {
+  minHeight: 34, padding: '0 10px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+  border: '1px solid ' + LS.borderStrong, background: LS.raised, color: LS.txt1,
+  cursor: 'pointer', touchAction: 'manipulation', whiteSpace: 'nowrap',
+};
+const BTN_MAIN = { ...BTN, background: LS.brass, color: LS.onBrass, border: '1px solid ' + LS.brass };
+const BTN_OFF = { opacity: 0.45, cursor: 'default' };
+const INPUT = {
+  flex: '1 1 0', minWidth: 52, width: 0, minHeight: 34, padding: '0 8px', borderRadius: 8, boxSizing: 'border-box',
+  border: '1px solid ' + LS.wellBorder, background: LS.well, color: LS.txt1,
+  fontSize: 13, fontVariantNumeric: 'tabular-nums', touchAction: 'manipulation',
+};
+
+function Tile(props) {
+  const { ikey, n, sel, onTap, side, dim } = props;
+  const thumb = thumbFor(ikey);
+  return React.createElement("button", {
+    type: 'button', title: itemName(ikey) + ' x' + n,
+    "data-bank-tile": side, "data-bank-key": ikey,
+    onClick: dim ? undefined : onTap,
+    style: {
+      position: 'relative', width: '100%', aspectRatio: '1 / 1', padding: 0,
+      borderRadius: 7, background: sel ? LS.brassFill : LS.well,
+      border: '1px solid ' + (sel ? LS.brass : LS.wellBorder),
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      cursor: dim ? 'default' : 'pointer', touchAction: 'manipulation', opacity: dim ? 0.4 : 1,
+    }
+  }, thumb
+    ? React.createElement("img", { src: thumb, alt: '', draggable: false, style: { width: '78%', height: '78%', objectFit: 'contain', pointerEvents: 'none' } })
+    : React.createElement("span", { style: { fontSize: 20, pointerEvents: 'none' } }, iconFor(ikey)),
+  n > 1 ? React.createElement("span", {
+    style: { position: 'absolute', right: 2, bottom: 1, fontSize: 11, fontWeight: 700, color: LS.txt1,
+      fontVariantNumeric: 'tabular-nums', textShadow: '0 1px 2px #000', pointerEvents: 'none' }
+  }, n > 9999 ? Math.floor(n / 1000) + 'k' : n) : null);
+}
+
+/* One row of amounts: the chips act at once, the box and its button act on
+   what is typed.  `max` is what there is to move. */
+function AmountRow(props) {
+  const { label, max, act, busy, testid } = props;
+  const [typed, setTyped] = useState('');
+  const go = (n) => { if (!busy && n >= 1 && n <= max) act(n); };
+  const off = (n) => busy || !(n >= 1 && n <= max);
+  const typedN = bankAmount(typed, max);
+  /* the label over its row, so the chips, the box and OK keep to one line in
+     the phone's 360 px window (beside them, OK wrapped onto a line of its own) */
+  return React.createElement("div", { "data-bank-row": testid, style: { marginTop: 8 } },
+    React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 4 } }, label),
+    React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 6 } },
+    BANK_CHIPS.map((c) => React.createElement("button", {
+      key: c, type: 'button', "data-bank-chip": c, onClick: () => go(c), disabled: off(c),
+      style: { ...BTN, ...(off(c) ? BTN_OFF : null) } }, c)),
+    React.createElement("button", { type: 'button', "data-bank-chip": 'all', onClick: () => go(max), disabled: off(max),
+      style: { ...BTN, ...(off(max) ? BTN_OFF : null) } }, 'All'),
+    React.createElement("input", {
+      type: 'text', inputMode: 'numeric', pattern: '[0-9]*', placeholder: 'Amount', value: typed,
+      "data-bank-typed": testid, "aria-label": label + ' amount',
+      onChange: (e) => setTyped(e.target.value.replace(/[^0-9]/g, '').slice(0, 10)),
+      onKeyDown: (e) => { if (e.key === 'Enter' && typedN) { go(typedN); setTyped(''); } },
+      style: INPUT }),
+    React.createElement("button", { type: 'button', "data-bank-go": testid, onClick: () => { go(typedN); setTyped(''); }, disabled: off(typedN),
+      style: { ...BTN_MAIN, ...(off(typedN) ? BTN_OFF : null) } }, 'OK')));
+}
+
+function BankVault(props) {
+  const S = props.stateRef && props.stateRef.current;
+  const rpg = props.rpgState || {};
+  const [, force] = useState(0);
+  const [sel, setSel] = useState(null);   /* { side: 'bag'|'vault', key } */
+  useEffect(() => {
+    const off = bankSubscribe(() => force((v) => v + 1));
+    bankOpen(S);
+    const id = setInterval(() => force((v) => v + 1), 500);   /* the busy wait running out, the bag's echo */
+    return () => { off(); clearInterval(id); };
+  }, []);
+  const b = (S && S._bank) || null;
+  const busy = bankBusy(S);
+  const coins = Math.max(0, Math.floor(Number((S && S.rpg && S.rpg.coins) != null ? S.rpg.coins : rpg.coins) || 0));
+  const inv = (S && S.rpg && S.rpg.inventory) || rpg.inventory || {};
+  const noBank = new Set(b ? b.noBank : []);
+  const bag = Object.keys(inv).filter((k) => (Number(inv[k]) || 0) > 0).map((k) => ({ key: k, n: Math.floor(Number(inv[k])) }));
+  const vault = b ? b.items : [];
+  const words = b && b.last ? bankLastWords(b.last, itemName) : null;
+  const move = (dir, kind, id, n) => bankMove(S, dir, kind, id, n);
+  const selN = sel ? (sel.side === 'bag' ? (Math.floor(Number(inv[sel.key])) || 0) : ((vault.find((i) => i.key === sel.key) || {}).n || 0)) : 0;
+  const tap = (side, key, n) => {
+    if (busy) return;
+    if (n === 1) { setSel(null); move(side === 'bag' ? 'in' : 'out', 'item', key, 1); return; }
+    setSel(sel && sel.side === side && sel.key === key ? null : { side, key });
+  };
+  const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(46px, 1fr))', gap: 5 };
+  const well = { borderRadius: 8, background: LS.wellSoft, border: '1px solid ' + LS.wellBorder, padding: 8 };
+  const closed = b && (!b.on || !b.ok);
+  return React.createElement("div", { style: LS_WRAP, "data-bank-vault": b ? (closed ? 'closed' : 'open') : 'loading' },
+    lsHeader('bank', '🏦', "Bank", "Your vault"),
+    React.createElement("div", { style: LS_BODY },
+      React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 10, lineHeight: 1.5 } },
+        closed ? "The vault is closed for now. What is in it stays safe."
+          : deskWords("What you put in the vault stays here when you die. Tap an item to put it in or take it out.")),
+      /* ── gold ── */
+      React.createElement("div", { style: LS_MOD }, "Gold"),
+      React.createElement("div", { style: { ...well, marginBottom: 12 } },
+        React.createElement("div", { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 } },
+          React.createElement("span", { style: { fontSize: 13, color: LS.txt2 } }, "On you ", lsGold(coins.toLocaleString('en-US'), 15, coins)),
+          React.createElement("span", { "data-bank-gold": b ? b.gold : '', style: { fontSize: 13, color: LS.txt2 } }, "In the vault ", lsGold(b ? b.gold.toLocaleString('en-US') : '…', 15, b ? b.gold : 0))),
+        b && !closed ? React.createElement(AmountRow, { label: 'Put in', max: coins, busy, testid: 'gold-in', act: (n) => move('in', 'gold', null, n) }) : null,
+        b && !closed ? React.createElement(AmountRow, { label: 'Take out', max: b.gold, busy, testid: 'gold-out', act: (n) => move('out', 'gold', null, n) }) : null),
+      /* ── the line for the last move ── */
+      words ? React.createElement("div", { "data-bank-last": words.ok ? 'ok' : 'no', style: { fontSize: 12, fontWeight: 600, color: words.ok ? '#7FC9A0' : '#E0A070', margin: '-4px 0 10px' } }, words.text) : null,
+      /* ── a stack chosen: how many ── */
+      sel && selN > 0 && b && !closed ? React.createElement("div", { "data-bank-pick": sel.side, style: { ...well, marginBottom: 12, border: '1px solid ' + LS.brass } },
+        React.createElement("div", { style: { fontSize: 13, fontWeight: 700, color: LS.txt1 } },
+          itemName(sel.key), React.createElement("span", { style: { color: LS.txt3, fontWeight: 600 } }, '  x' + selN)),
+        React.createElement(AmountRow, { label: sel.side === 'bag' ? 'Put in' : 'Take out', max: selN, busy, testid: 'item-' + sel.side,
+          act: (n) => { move(sel.side === 'bag' ? 'in' : 'out', 'item', sel.key, n); setSel(null); } })) : null,
+      /* ── the vault ── */
+      React.createElement("div", { style: LS_MOD }, "The vault ", React.createElement("span", { style: { letterSpacing: 0, textTransform: 'none' } }, b ? '(' + vault.length + ' of ' + b.slots + ')' : '')),
+      React.createElement("div", { style: { ...well, marginBottom: 12 } },
+        vault.length ? React.createElement("div", { style: grid }, vault.map((it) => React.createElement(Tile, {
+          key: it.key, ikey: it.key, n: it.n, side: 'vault', dim: closed || busy,
+          sel: !!(sel && sel.side === 'vault' && sel.key === it.key), onTap: () => tap('vault', it.key, it.n) })))
+          : React.createElement("div", { style: { fontSize: 12, color: LS.txt3 } }, b ? "Nothing in the vault yet." : "Opening the vault…")),
+      /* ── your bag ── */
+      React.createElement("div", { style: LS_MOD }, "Your bag"),
+      React.createElement("div", { style: well },
+        bag.length ? React.createElement("div", { style: grid }, bag.map((it) => React.createElement(Tile, {
+          key: it.key, ikey: it.key, n: it.n, side: 'bag', dim: closed || busy || noBank.has(it.key),
+          sel: !!(sel && sel.side === 'bag' && sel.key === it.key), onTap: () => tap('bag', it.key, it.n) })))
+          : React.createElement("div", { style: { fontSize: 12, color: LS.txt3 } }, "Your bag is empty."),
+        noBank.size ? React.createElement("div", { style: { fontSize: 11, color: LS.txt3, marginTop: 6 } }, "Tools stay in your bag.") : null)));
+}
+
+export function BankPanel(props) {
+  const S = props.stateRef && props.stateRef.current;
+  return bankOn(S) ? React.createElement(BankVault, props) : React.createElement(BankReadOnly, props);
 }

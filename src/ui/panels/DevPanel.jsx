@@ -265,6 +265,7 @@ const CAP_GATES = [
   'tour' /* v2.3.3525: the tour's two new townsfolk (Woodworker Bro, Farmer Bro) -- lower case, a kill switch */,
   'race' /* v2.3.3525: Lil Bro's race -- lower case, a kill switch */,
   'rest' /* v2.3.3539: a real rest -- the Hotel opens and the farm's bed asks the worker (server/src/rest.js) -- lower case, a kill switch */,
+  'bank' /* v2.3.3785: the Bank's vault -- bag items and gold in and out at the Bank's door (server/src/bank.js) -- lower case, a kill switch */,
   'tourgear' /* v2.3.3525: the tour's gear rules in the forge's and bench's windows (hardened wood, the equip gate) -- no switch, the tables */,
   'pettrade' /* v2.3.3122: pets in trades, the auction house and the mail -- lower case, a kill switch */,
   'petwards' /* v2.3.3123: the land ward of the pet out with you -- lower case, a kill switch */,

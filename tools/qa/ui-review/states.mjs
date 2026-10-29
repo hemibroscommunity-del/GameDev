@@ -654,7 +654,22 @@ export const STATES = [
      Today page again (found by the design notes' research) */
   building('farm', 'Feed & Seed', 'The Feed & Seed: visit your farm, buy seeds, the order board.'),
   building('farmhome', 'Land Office', 'The Land Office: the trip to your own farm.'),
-  building('bank', 'Bank', 'The Bank: your gold and what you wear (nothing is stored in it yet).'),
+  /* v2.3.3785: the Bank is a vault (server/src/bank.js) -- seeded with a few
+     things in the bag, so the picture shows tiles to put in, not "Your bag is
+     empty" (moving them needs the door; the window shows them anywhere) */
+  (() => {
+    const b = building('bank', 'Bank', 'The Bank\'s vault: your gold and the vault\'s, put in and taken out by 10, 100, All or a typed amount; the vault (48 kinds) and your bag, a tap moving an item, a stack asking how many.');
+    const open = b.run;
+    b.run = async (ctx) => {
+      if (ctx.wsPort && ctx.myId) {
+        await H.grant(ctx.wsPort, ctx.myId, 'item', { invKey: 'wood_oak', count: 12 }).catch(() => {});
+        await H.grant(ctx.wsPort, ctx.myId, 'item', { invKey: 'fish_minnow', count: 3 }).catch(() => {});
+        await wait(ctx.P, 800);
+      }
+      return open(ctx);
+    };
+    return b;
+  })(),
   building('exchange', 'General Store (market)', 'The General Store\'s Marketplace: an order book where players post buy and sell orders for kinds of gear, with a way to the Auction House at its top.'),
   building('auctionhouse', 'Auction House', 'The Auction House: its clerk behind the counter and its one button, Market, which opens the players\' listings and bids.'),
   building('party', 'Saloon', 'The Saloon: your party and finding one.'),

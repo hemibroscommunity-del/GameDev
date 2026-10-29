@@ -143,7 +143,7 @@ A courthouse-square town laid at 1.5× its plan's plots with the buildings drawn
 | | Feed & Seed | Visit Your Farm, Seeds, Orders |
 | West, south side | Land Office | travel to your farm |
 | | General Store | the Exchange (the order book); Diego stands beside it with his own shop |
-| East, north side | Bank | a display of your gold and gear ("Nothing can be stored here yet") |
+| East, north side | Bank | your vault (v2.3.3785): bag items and gold put in and taken out at its door, kept through any death (3.6) |
 | East, south side | Gem Works | Cut gems / Set gems |
 | | Auction House | listings by players |
 | Centre | Town Hall | the Leaderboard and the World map; Mayor Bro beside its steps |
@@ -268,6 +268,8 @@ Regen per ~0.67 s tick: HP 10% of max in today's town, the farm and the old hub,
 ### 3.6 Death (the ordinary rule)
 
 At 0 HP: "YOU DIED", 5 s, then a respawn on BroTown's stairs with every pool full. **No XP, gold or level is lost.** The bag drops into a pile at the death spot that is yours alone for 60 s, anyone's until 120 s, holding no coins. Kept through a death: the three gathering tools, every quest-objective item (remains, every ore and cooked fish), gems, anything picked up in the last second (so dying on your own pile cannot re-drop it), worn gear, the spare weapon stash, spare armour and shields, outfits and gold. A duel death loses nothing; a No man's land death loses everything carried (Part 10). A dungeon death returns you to BroTown.
+
+**The Bank's vault (v2.3.3785, `server/src/bank.js`, docs/specs/bank-vault.md).** At the Bank's door you put bag items and gold into a vault the server holds, and take them out again: 48 kinds of item, any number of each, and any amount of gold (up to 1,000,000,000). What is in the vault is out of every death's reach, the ordinary one and No man's land alike, since both take only what you carry. Everything in the bag can go in but the three gathering tools. Each move is one server write of the bag or purse and the vault together; a move resent after a dropped connection moves nothing twice. `bank: false` in the live flags closes the vault to moves and keeps what is in it.
 
 ### 3.7 Life skills: the list and the curve
 
