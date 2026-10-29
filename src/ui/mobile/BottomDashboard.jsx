@@ -553,7 +553,13 @@ const DESTINATIONS = [
    rising-arrow -- the only "your numbers" glyph in it, and used on one
    legacy screen otherwise, so it costs no collision.  Tapping it closes
    to rest (toBar) rather than opening a panel; there is no 'dashboard'
-   entry in DESTINATIONS and the bus never sees the id. */
+   entry in DESTINATIONS and the bus never sees the id.
+   v2.3.3784, the owner: "Instead of the bar graphs for the dashboard button
+   that brings up the inventory slots and 3 primary combat skills I actually
+   think a bag icon mini combat icons would be better" -- its picture is now
+   nav-dashboard.png, the sack with the sword, bow and staff small across its
+   front (tools/ui/make-dash-bag-icon.mjs); panel-stats stays the stat
+   screen's. */
 /* v2.3.1637b (owner): HERO is not in the rail — "the hero can just be
    pressing on the icon of the hero up top".  IdentityStrip's portrait
    carries it in band mode, which is the v2.3.1294 rule the ribbon's own
@@ -605,7 +611,7 @@ const DESTINATIONS = [
    choice: sheetGeometry IDENTITY_MIN_LINE). */
 const RAIL_ORDER = ['hero', 'quests', 'skills', 'encyclopedia', 'more'];
 const RAIL_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/panel-stats.webp?v=2.3.1637' },
+  { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/nav-dashboard.png?v=2.3.3784' },   /* v2.3.3784: the bag and its three fights */
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
 ];
 
