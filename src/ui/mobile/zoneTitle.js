@@ -20,8 +20,25 @@ import { DEPTH_CONFIG } from '../../data/lifeSkills.js';
 /* Title stays white per the v2.3.1333 spec (the old per-element tint fought
    the recessed navy face), and carries the depth suffix the retired floating
    label showed — the info survived that move, only the housing changed. */
+/* ═══ v2.3.3840: NEVER "TOWN" ON THE WAY BACK TO BROTOWN ═══
+   A death (respawn.js), the way in and the way out of a dungeon put you in
+   the retired map's `town` for a moment, and take you from there to the
+   Wheel's BroTown under one veil (wheelHome.js wantWheelSpawn).  The veil is
+   see-through, and this printed the zone you were in: "Town", the retired
+   map's name, for 5-8 s at every death on a phone judge pass, and for a frame
+   after the veil lifted.  While that trip is wanted the bar names where you
+   are going.  The 30 s is wheelHome.js TRIP_VEIL_MS: a trip that never
+   happened leaves you on the old map, and then it says so (TRAPS §244).
+   A leaf: reads the state, imports nothing new. */
+const TRIP_MS = 30000;
+function goingToWheel(S, zoneId) {
+  return zoneId === 'town' && !!S && !!S._spawnToWheel && Date.now() - (S._spawnAskedAt || 0) < TRIP_MS;
+}
+
 export function zoneTitle(S) {
   const zoneId = (S && S.currentZone) || 'town';
+  /* the Wheel's own name, as ZoneHeader.jsx prints it there (no levels) */
+  if (goingToWheel(S, zoneId)) return (ZONES.wheel && ZONES.wheel.name) || 'BroTown';
   const z = ZONES[zoneId];
   const name = (z && z.name) || 'Town';
   const depth = S && S._currentDepth;
