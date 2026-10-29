@@ -40,7 +40,7 @@ function check(name, cond, detail) {
   check('2: tap -> click mid-sentence', c('Catch 2 fish, tap a log in your Bag, and tap the fire.') === 'Catch 2 fish, click a log in your Bag, and click the fire.', c('Catch 2 fish, tap a log in your Bag, and tap the fire.'));
   check('2: taps, tapped, tapping', c('two taps; you tapped it; keep tapping') === 'two clicks; you clicked it; keep clicking', c('two taps; you tapped it; keep tapping'));
   check('2: double-tap -> double-click', c('Double-tap to cycle.') === 'Double-click to cycle.', c('Double-tap to cycle.'));
-  check('2: the welcome', c('Find Mayor Bro — he wants a word. Follow the gold road on your map, then tap him.') === 'Find Mayor Bro — he wants a word. Follow the gold road on your map, then click him.');
+  check('2: the welcome', c('Find Mayor Bro — he wants a word. The gold line on your map leads to him; then tap him.') === 'Find Mayor Bro — he wants a word. The gold line on your map leads to him; then click him.');
 }
 
 /* ── 3. what stays ── */

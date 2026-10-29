@@ -37,7 +37,7 @@ const ul = { margin: 0, paddingLeft: 18 };
 
 export const AboutPanel = () => (
   <div style={panelStyle} data-about="">
-    <Section title="Bro Town">
+    <Section title="BroTown">
       An early demo of an online action RPG. Everything you do is saved on our
       server, so the world is shared with everyone playing. It is a work in
       progress: things change, break and get fixed often, and progress may be
@@ -73,7 +73,7 @@ export const AboutPanel = () => (
         <Li>Be decent in chat. Harassment, hate and spam get muted or removed.</Li>
         <Li>No cheating, bots, or exploiting bugs. Report bugs instead.</Li>
         <Li>Keep your Login Key private — anyone with it can play your character.</Li>
-        <Li>Bro Town is meant for players aged 13 and over.</Li>
+        <Li>BroTown is meant for players aged 13 and over.</Li>
         <Li>The demo is provided as-is, and characters or items may be changed or
           reset while it is being built.</Li>
       </ul>

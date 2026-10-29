@@ -75,7 +75,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!welcome && /WELCOME/.test(welcome.text || ''), welcome);
   /* The owner asked for two things in one message and both have to survive
      the copy: where you are, and who wants you. */
-  rec.ok('...it names the town', !!welcome && /Bro Town/i.test(welcome.text || ''), welcome);
+  rec.ok('...it names the town', !!welcome && /BroTown/i.test(welcome.text || ''), welcome);
   rec.ok('...and sends you to the Mayor',
     !!welcome && /Mayor Bro/i.test(welcome.text || ''), welcome);
   /* v2.3.2992: ...along the gold road on the map, where the way is now */

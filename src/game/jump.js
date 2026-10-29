@@ -452,8 +452,10 @@ export const FLIP_FRAMES = Object.freeze([2, 3, 4, 5, 6]);
    on the tuck frames against 186-194 standing -- so on screen it read as a
    smaller bro.  The whole figure (body, armour, head pieces) is drawn this
    much larger through the flip, about the feet (jumpFx, which holds the name
-   plate unscaled): the owner's 40%. */
-export const FLIP_BODY_K = 1.4;
+   plate unscaled): the owner's 40%.
+   v2.3.3798: 25% smaller, 1.4 x 0.75 (the owner: "shrink the character a bit
+   when he's doing the jump flip. I think it needs about 25% smaller"). */
+export const FLIP_BODY_K = 1.05;
 export const FLIP_FRAME_AT = Object.freeze([0.16, 0.36, 0.56, 0.78]);
 
 /** The flip's grade at phase p of the jump: 0..1 (0 outside the window). */

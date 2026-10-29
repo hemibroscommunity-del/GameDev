@@ -1125,3 +1125,30 @@ The phone scenario `mp-nmllock` plays it with two browsers.
   made for the owner, each a line to change:
   - the window closes by itself after 10 seconds (`NML_ASK_MS`);
   - the player who attacked you is aimed at by a tap, with no window.
+
+## The explainer before you step in, once (v2.3.3825)
+
+A judge's pass on a computer: a level-1 bro died reading the explainer (the
+badge's InfoPopup, a window over a world that keeps running) among the first
+quest's slimes, which stand in No man's land since v2.3.3690. Offered three
+ways (it comes up at the line; you can't be hurt while it is open, a server
+change and an exploit in a fight; it doesn't block), the coordinating session
+chose the first with the third's "a hit closes it":
+
+- **Once per character, on the safe ground before the line**
+  (`src/game/nmlExplainOnce.js`): within 320 px inside the line (the plan's
+  rings: the safe ground's edge against a worker with caps.nmlnear, the next
+  tier's start against an older one), in the Wheel, alive, with nothing else
+  open, it opens by itself with a lead line ("Just ahead is No man's land. Read
+  this here, on safe ground: out there, players can fight you."). Told is
+  remembered in the browser by the character's id (`bt_nml_told_<id>`), and
+  by the page whatever the browser keeps; a second phone may show it once
+  more.
+- **A hit closes it**: every explainer is marked `nml`, and the badge's clock
+  (`NmlBadge.jsx`) closes it when your HP drops below what it was when it
+  opened.
+
+Client only: no message, no cap. Tests: `server/test/nml-explain-once.test.mjs`,
+`tools/qa/mp/mp-nmlonce.mjs` (an upright phone: it comes up before the line,
+never again, remembered, and a goblin's hit closes it mid-fight).
+

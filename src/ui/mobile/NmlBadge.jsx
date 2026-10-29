@@ -80,6 +80,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { nmlHere, nmlFirst, nmlSteps, NML_RED } from '@/game/noMansLand.js';   /* v2.3.3690: + nmlFirst, where it starts */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
+import { nmlLive } from '@/game/noMansLand.js';   /* v2.3.3825: the explainer once, near the line */
+import { wheelLong } from '@/game/wheelSize.js';
+import { nmlExplainDue, nmlExplainHit, nmlMarkTold, _nmlForget } from '@/game/nmlExplainOnce.js';
 
 /* a skull, drawn rather than the emoji (every phone draws 💀 its own way) */
 export function NmlSkull({ size = 18, color = NML_RED }) {
@@ -121,7 +124,11 @@ function Line({ children }) {
   return <li style={{ marginBottom: 6 }}>{children}</li>;
 }
 
-export function openNmlInfo(S, lvl) {
+/* v2.3.3825: `opts.lead`, a line over the rules (the explainer coming up by
+   itself at the line: game/nmlExplainOnce.js); every opening is marked `nml`,
+   so a hit while it is open closes it (NmlBadge's clock, below) */
+export function openNmlInfo(S, lvl, opts) {
+  const lead = opts && opts.lead;
   const skull = nmlSkullLeft(S, Date.now());
   const n = lvl;
   const lv = (k) => `${k} level${k === 1 ? '' : 's'}`;
@@ -129,6 +136,7 @@ export function openNmlInfo(S, lvl) {
     title: nmlSteps(S) ? `No man's land ${n} · Lv ${n + 5 * (nmlFirst(S) - 1)} monsters` : `No man's land ${n} · ${nmlLevels(n, nmlFirst(S))}`,   /* v2.3.3767: the number IS the monster level (caps.nmlsteps) */
     body: (
       <div data-nml-info={n}>
+        {lead && <div data-nml-lead="" style={{ marginBottom: 8, fontWeight: 800, color: NML_RED }}>{lead}</div>}
         <div style={{ marginBottom: 8 }}>
           Other players can attack you here, and you can attack them.
         </div>
@@ -155,6 +163,7 @@ export function openNmlInfo(S, lvl) {
         ? `You carry a red skull: ${skull.min} min of play left.`
         : `You carry a white skull: ${skull.min} min of play left.`)
       : undefined,
+    nml: true,   /* v2.3.3825: a hit closes it (NmlBadge's clock) */
   });
 }
 
@@ -222,12 +231,39 @@ export default function NmlBadge({ stateRef }) {
   const [lvl, setLvl] = useState(0);
   useEffect(() => {
     let last = 0;
+    /* v2.3.3825: the HP when the explainer was seen open, to close it on a hit */
+    let openHp = null;
     const id = setInterval(() => {
+      const S = stateRef && stateRef.current;
       let l = 0;
-      try { l = nmlHere(stateRef && stateRef.current); } catch (e) { l = 0; }
+      try { l = nmlHere(S); } catch (e) { l = 0; }
       if (l !== last) { last = l; setLvl(l); }
+      /* ═══ v2.3.3825: ONCE, AT THE LINE; AND A HIT CLOSES IT ═══
+         (game/nmlExplainOnce.js): a judge died reading the explainer among
+         the first quest's slimes.  It comes up by itself once per character
+         on the safe ground near the line, where nothing can hurt you; and
+         while it is up, your HP dropping closes it. */
+      try {
+        const cur = infoPopupBus.current();
+        const hp = S && S.rpg && typeof S.rpg.hp === 'number' ? S.rpg.hp : null;
+        if (cur && cur.nml) {
+          if (openHp == null) openHp = hp;
+          else if (nmlExplainHit(openHp, hp)) { infoPopupBus.close(); openHp = null; }
+        } else openHp = null;
+        if (S && S.player && nmlExplainDue({
+          live: nmlLive(S), inWheel: S.currentZone === 'wheel' && !S._zoneLoading, dying: !!S._dying,
+          open: infoPopupBus.isOpen(), x: S.player.x, y: S.player.y, long: wheelLong(), first: nmlFirst(S), id: S.myId,
+        })) {
+          nmlMarkTold(S.myId);
+          openNmlInfo(S, 1, { lead: "Just ahead is No man's land. Read this here, on safe ground: out there, players can fight you." });
+        }
+      } catch (e) { /* the badge's rules are a tap away */ }
     }, 250);
     return () => clearInterval(id);
+  }, [stateRef]);
+  /* QA (mp-nmlonce): forget this character's "told", as a new phone would */
+  useEffect(() => {
+    try { window.__btNmlOnce = { forget: () => { const S = stateRef && stateRef.current; if (S && S.myId) _nmlForget(S.myId); } }; } catch (e) { /* no window */ }
   }, [stateRef]);
   if (!lvl) return null;
   return (
