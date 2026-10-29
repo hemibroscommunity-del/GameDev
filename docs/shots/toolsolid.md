@@ -1,4 +1,4 @@
-# The pickaxe, solid (v2.3.3876)
+# The pickaxe, solid (v2.3.3880)
 
 Owner: *"Ok the pickaxe for the first quest is still invisible or at least very
 lightly drawn. Can you use code to fill it with a handle and just an iron color
