@@ -443,7 +443,14 @@ export async function wheelWarm(x, y, rx, ry) {
     jobs.push(wheelChunk(i, j).then((m) => { _warm.set(i + ',' + j, m); }).catch(() => {}));
   }
   await Promise.all(jobs);
+  _warmGen++;   /* v2.3.3823: a new fill -- the ground lets it go WARM_KEEP_MS from now */
 }
+/* v2.3.3823: which fill of laid-ahead pieces this is.  The ground dropped them
+   once in its life, 3 s after it was made, so every later way in that laid
+   pieces ahead while the same ground lived kept the ones it never took, for
+   good (mp-heapdiff: about 14 pieces, 1.1 MB, a trip to a fight and back). */
+let _warmGen = 0;
+export function wheelWarmGen() { return _warmGen; }
 export function wheelIsWarm(i, j) { return _warm.has(i + ',' + j); }
 /* The readout's counts start again on each way in: they describe this visit. */
 export function wheelResetCounts() {
