@@ -152,8 +152,8 @@ async function onePhone({ browser, wsPort, webPort, rec, errors, OUT }, ph) {
     const jw = a.jump.r - a.jump.l, land = a.vw > a.vh;
     const blk = a.block;
     /* v2.3.3740: upright Block is diagonal BELOW Jump, so the air is up and down.
-       v2.3.3799: side by side now -- upright Block left of Jump, sideways right */
-    const air = blk ? (land ? blk.l - a.jump.r : a.jump.l - blk.r) : null;
+       v2.3.3799: side by side now, Block left of Jump both ways up */
+    const air = blk ? a.jump.l - blk.r : null;
     console.log(`    ${tag}: disc ${dw} px, jump ${jw} px, jump <-> Block ${air} px of air, jump ${a.dash ? a.dash.t - a.jump.b : '?'} px over the dashboard`);
     rec.ok(`${tag}: 2b. the disc is smaller (${dw} px) and the button larger (${jw} px), 8 px or more of air from Block (${air} px)`,
       dw === (land ? 94 : 84) && jw === (land ? 64 : 60) && air != null && air >= 8, { dw, jw, air, block: blk });

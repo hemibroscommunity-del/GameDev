@@ -259,13 +259,14 @@ export function blockAnchor(isLandscape) {
      Block stays the disc's diagonal bottom-left (v2.3.2562, the owner's
      "mental separation"), now beside Jump on its left, BLOCK_JUMP_SIDE of
      air: upright at the height it had (BLOCK_JUMP_DROP under Jump's old
-     foot), sideways where it was (one gap under the disc's foot).  Upright
+     foot), sideways at the height it had (BLOCK_BAND_BOTTOM: half a button
+     under Shield Bash, mp-abilslot).  Upright
      on a phone too narrow for that beside the notification bell (66-102 px
      from the left at the band's foot; a 320 px phone), it stands up beside
      Jump instead, under TRAP (ctlColumn), still left of the disc. */
   var jl = jumpAnchor(isLandscape);
   var right = jl.right + jl.size + BLOCK_JUMP_SIDE;
-  if (isLandscape) return { size: col.size, right: right, bottomPx: RBTN.bottom - col.size - CTL_GAP };
+  if (isLandscape) return { size: col.size, right: right, bottomPx: BLOCK_BAND_BOTTOM - col.size - CTL_GAP };
   var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
   if (vw - right - col.size >= BELL_RIGHT_PX + BLOCK_JUMP_SIDE) {
     return { size: col.size, right: right, bottomPx: JUMP_FOOT_UP - BLOCK_JUMP_DROP - col.size };
