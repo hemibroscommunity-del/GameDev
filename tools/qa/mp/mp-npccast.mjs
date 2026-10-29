@@ -3,13 +3,15 @@
  * The new cast (docs/specs/npc-cast.md) asked for "a picture of BroTown with
  * all 21 at their spots, upright and on a computer".  No game view takes in
  * the whole town at a playable zoom, so:
- *   1. on a computer (the sideways layout, a big window, ?zoom=0.4: the
- *      furthest the view goes), the camera over the middle of the 21 -- the
- *      whole cast in one frame, each checked to be inside it;
+ *   1. on a computer (the sideways layout, 1440 x 900): each of the 21
+ *      walked to and photographed at his spot (the 21 span ~3,700 x 3,200
+ *      world px: no view takes them in at once, not even ?zoom=0.4);
  *   2. on a phone held upright (390 x 844, dpr 3, the game's own zoom), the
- *      square: where you arrive, with Bean, Lil Bro and the Mayor;
+ *      square where you arrive, with Bean, Lil Bro and the Mayor, then each
+ *      of the 21 at his spot as on the computer;
  *   3. no page errors.
- * Pictures: tools/qa/mp/out/npccast-*.png.  Run after `npm run build`.
+ * Pictures: tools/qa/mp/out/npccast-*.png, one sheet a kind by
+ * tools/qa/npccast_sheet.py.  Run after `npm run build`.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -31,14 +33,37 @@ const onScreen = (P) => P.page.evaluate(() => {
     .concat([{ box: [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] }]);
 });
 
+/* walk to each townsperson (the way mp-wheelfolk does) and photograph the
+   ground round him: npccast-<kind>-NN-<name>.png, laid out as one sheet by
+   tools/qa/npccast_sheet.py */
+async function townsfolkShots(P, kind, { w, h }) {
+  const OUT = join(H.REPO, 'tools/qa/mp/out');
+  const npcs = await H.waitFor(P, (S) => (S.npcs || []).map((n) => ({ name: n.name, x: n.x, y: n.y })), (v) => v.length >= 21,
+    { timeout: 20000, label: 'the 21' }).catch(() => []);
+  const done = [];
+  for (let i = 0; i < npcs.length; i++) {
+    const n = npcs[i];
+    await H.hopTo(P, n.x + 70, n.y + 90, { step: 100, gap: 260, tries: 90 });
+    await P.page.waitForTimeout(1200);
+    const at = (await onScreen(P)).find((q) => q.name === n.name);
+    const vp = P.page.viewportSize();
+    const x = Math.max(0, Math.min(vp.width - w, (at ? at.x : vp.width / 2) - w / 2));
+    const y = Math.max(0, Math.min(vp.height - h, (at ? at.y : vp.height / 2) - h * 0.62));
+    const ok = !!at && at.x > x && at.x < x + w && at.y > y && at.y < y + h;
+    await P.page.screenshot({ path: join(OUT, `npccast-${kind}-${String(i).padStart(2, '0')}-${n.name.toLowerCase().replace(/\s+/g, '-')}.png`), clip: { x, y, width: w, height: h } });
+    done.push({ name: n.name, ok });
+  }
+  return done;
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const errors = [];
 
-  /* ── 1. on a computer, the whole cast ── */
+  /* ── 1. on a computer, each at his spot ── */
   const C = await H.newPlayer(browser, { name: 'Castcam', wsPort, webPort, world: 'wheel', wide: true,
-    viewport: { width: 2400, height: 1500 }, query: 'zoom=0.4' });
+    viewport: { width: 1440, height: 900 } });
   C.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   try {
     const inC = await enter(C);
@@ -47,18 +72,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const id = await H.readState(C, (S) => S.myId);
       await H.devOp(wsPort, 'vitals', id, { god: true, godMinutes: 30 });
       await C.page.addStyleTag({ content: HIDE }).catch(() => {});
-      const npcs = await H.waitFor(C, (S) => (S.npcs || []).map((n) => ({ name: n.name, x: n.x, y: n.y })), (v) => v.length >= 21,
-        { timeout: 20000, label: 'the 21' }).catch(() => []);
-      const xs = npcs.map((n) => n.x), ys = npcs.map((n) => n.y);
-      const mid = { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
-      await H.hopTo(C, mid.x, mid.y + 60, { step: 100, gap: 260, tries: 120 });
-      await C.page.waitForTimeout(4000);
-      const at = await onScreen(C);
-      const box = at.pop().box;
-      const out = at.filter((q) => !(q.x > box[0] && q.x < box[2] && q.y > box[1] && q.y < box[3]));
-      await C.page.screenshot({ path: join(OUT, 'npccast-computer.png') });
-      rec.ok(`computer: all ${at.length} townsfolk in one frame of BroTown (span ${Math.round(Math.max(...xs) - Math.min(...xs))} x ${Math.round(Math.max(...ys) - Math.min(...ys))} world px)`,
-        at.length === 21 && out.length === 0, { out, box });
+      const shot = await townsfolkShots(C, 'computer', { w: 420, h: 320 });
+      rec.ok(`computer: each of the ${shot.length} photographed at his spot (${shot.filter((q) => q.ok).length} inside his frame)`,
+        shot.length === 21 && shot.every((q) => q.ok), shot.filter((q) => !q.ok));
     }
   } finally {
     await C.ctx.close().catch(() => {});
@@ -78,6 +94,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const seen = at.filter((q) => q.x > box[0] && q.x < box[2] && q.y > box[1] && q.y < box[3]).map((q) => q.name);
       await P.page.screenshot({ path: join(OUT, 'npccast-phone.png') });
       rec.ok(`phone: the square where you arrive, upright, with ${seen.join(', ')}`, seen.includes('Bean') && seen.includes('Lil Bro'), seen);
+      const id = await H.readState(P, (S) => S.myId);
+      await H.devOp(wsPort, 'vitals', id, { god: true, godMinutes: 30 });
+      const shot = await townsfolkShots(P, 'phone', { w: 300, h: 300 });
+      rec.ok(`phone: each of the ${shot.length} photographed at his spot, upright (${shot.filter((q) => q.ok).length} inside his frame)`,
+        shot.length === 21 && shot.every((q) => q.ok), shot.filter((q) => !q.ok));
     }
   } finally {
     await P.ctx.close().catch(() => {});
