@@ -90,7 +90,49 @@ export function headFrameTick(entityRenderer, effectsRenderer, stage, worn) {
   }
 }
 
+/* ═══ ...AND EVERY OTHER BRO ON SCREEN, AND THE TOWNSFOLK ═══
+ * The same question of each other player's walking figure and each
+ * townsperson drawn live (lookFolk.js), on the frames that figure's body is
+ * drawn and was placed this frame (a peer swinging is drawn by a stand-in of
+ * its own: his walking body is hidden then, and not counted). */
+const _oth = { frames: 0, counted: 0, missed: 0, byWhy: Object.create(null), log: [], figures: 0 };
+export function othersFrameTick(entityRenderer, stage, now) {
+  if (!HEAD_FRAMES_ON || !entityRenderer) return;
+  _oth.frames++;
+  const figs = [];
+  if (entityRenderer.otherPlayerDisplays) for (const [id, dsp] of entityRenderer.otherPlayerDisplays) figs.push(['peer ' + id, dsp]);
+  if (entityRenderer.npcDisplays) for (const [id, dsp] of entityRenderer.npcDisplays) if (dsp && dsp._folk) figs.push(['folk ' + id, dsp._folk]);
+  _oth.figures = figs.length;
+  for (const [who, dsp] of figs) {
+    if (!dsp || dsp.destroyed) continue;
+    const at = dsp._btHeadAt;
+    if (!at || at.now !== now) continue;   /* not placed this frame (off screen, culled) */
+    const body = dsp._spriteBody;
+    if (!body || whyNotDrawn(body, stage)) continue;
+    for (const [cat, field] of PIECES) {
+      const id = at.worn[cat];
+      if (!id || id === 'none') continue;
+      const sp = dsp[field];
+      const hide = sp && sp._btHide;
+      if (hide === 'design' || hide === 'dodge') continue;
+      _oth.counted++;
+      const why = whyNotDrawn(sp, stage);
+      if (!why) continue;
+      _oth.missed++;
+      const k = cat + ' ' + why;
+      _oth.byWhy[k] = (_oth.byWhy[k] || 0) + 1;
+      _oth.log.push({ f: _oth.frames, who, cat, id, why, pose: at.pose, dir: at.dir, mirror: at.mirror, frame: at.frameIdx });
+      if (_oth.log.length > 60) _oth.log.shift();
+    }
+  }
+}
+
 if (HEAD_FRAMES_ON && typeof window !== 'undefined') {
+  window.__btHeadOthers = (reset) => {
+    const out = { frames: _oth.frames, figures: _oth.figures, counted: _oth.counted, missed: _oth.missed, byWhy: { ..._oth.byWhy }, log: _oth.log.slice() };
+    if (reset) { _oth.frames = 0; _oth.counted = 0; _oth.missed = 0; _oth.byWhy = Object.create(null); _oth.log = []; }
+    return out;
+  };
   window.__btHeadFrames = (reset) => {
     const out = { on: true, frames: _hf.frames, counted: _hf.counted, missed: _hf.missed, bodyGone: _hf.bodyGone, byWhy: { ..._hf.byWhy }, log: _hf.log.slice() };
     if (reset) { _hf.frames = 0; _hf.counted = 0; _hf.missed = 0; _hf.bodyGone = 0; _hf.byWhy = Object.create(null); _hf.log = []; }

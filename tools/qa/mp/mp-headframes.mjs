@@ -14,6 +14,9 @@
  *   2. jogging each of the eight facings;
  *   3. turning: the eight facings in quick turns, a fifth of a second each;
  *   4. rolls and double jumps (the flip), facing about;
+ *   4b. a peer in sight, in pieces of their own colours, jogging the eight
+ *      facings and rolling: every other bro's and townsperson's pieces are
+ *      counted too, in every phase (headFrames.js othersFrameTick);
  *   5. a fight in the Flame Fields: the greatsword's swings and the bow's
  *      shots on the nearest monster (the stand-ins take over the figure);
  *   6. no page errors.
@@ -37,6 +40,8 @@ const QUERY = 'headframes' + (process.env.BT_HF_QUERY ? '&' + process.env.BT_HF_
 const LOOK = { hair: 'wavy', hairColor: 'pink', hat: 'beanie', hatColor: 'blue', beard: 'beard', beardColor: 'red', eye: 'golden-glasses' };
 /* each colour's target (the catalogs'), for the pixels read back: colours no
    skin, ground or outline shares, so a piece's own pixels are what is counted */
+/* the peer: pieces in their own colours (each facing a picture of its own) */
+const PEER_LOOK = { hair: 'afro', hairColor: 'default', hat: 'cowboy-hat-2', hatColor: 'default', beard: 'beard', beardColor: 'default', eye: 'thug-life' };
 const TARGETS = { hair: [232, 110, 170], headwear: [74, 96, 200], facialhair: [170, 58, 42] };
 const FACINGS = {
   east: ['d'], northeast: ['w', 'd'], north: ['w'], northwest: ['w', 'a'],
@@ -55,6 +60,7 @@ const INIT = (look) => {
 };
 
 const count = (P, reset) => P.page.evaluate((r) => (window.__btHeadFrames ? window.__btHeadFrames(r) : null), !!reset);
+const others = (P, reset) => P.page.evaluate((r) => (window.__btHeadOthers ? window.__btHeadOthers(r) : null), !!reset);
 const pixels = (P, reset) => P.page.evaluate((r) => (window.__btHeadPixels ? window.__btHeadPixels(r) : null), !!reset);
 
 async function hold(P, keys, ms) {
@@ -114,14 +120,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const phase = async (name, fn) => {
     await count(P, true);
     await pixels(P, true);
+    await others(P, true);
     await fn();
     const c = await count(P, false);
     const px = await pixels(P, false);
-    if (c) c.px = px;
+    const ot = await others(P, false);
+    if (c) { c.px = px; c.ot = ot; }
     phases.push({ name, c });
     const top = c ? Object.entries(c.byWhy).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k} x${v}`).join(', ') : '?';
     console.log(`    [${name}] ${c ? c.frames : '?'} frames, ${c ? c.missed : '?'} piece-frames missing${c && c.missed ? ': ' + top : ''}`);
     if (c && c.missed) for (const l of c.log.slice(-8)) console.log('      ' + JSON.stringify(l));
+    if (ot) console.log(`      others (${ot.figures} peers and townsfolk): ${ot.counted} piece-frames, ${ot.missed} missing${ot.missed ? ' ' + JSON.stringify(ot.byWhy) : ''}`);
+    if (ot && ot.missed) for (const l of ot.log.slice(-8)) console.log('      ' + JSON.stringify(l));
     if (px) console.log(`      pixels: ${px.looked} piece-frames read back, ${px.drops} dropped${px.drops ? ' ' + JSON.stringify(px.byCat) : ''}`);
     if (px && px.drops) for (const l of px.log.slice(-8)) console.log('      ' + JSON.stringify(l));
     if (px && px.shots) {
@@ -187,6 +197,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     }
 
+    /* a peer in sight, in pieces of their own colours (each facing its own
+       picture, not the look palette's numbers): jogging round you through
+       the eight facings, rolling and turning */
+    {
+      const Q = await H.newPlayer(browser, {
+        name: 'Headpeer', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel',
+        init: `(${INIT.toString()})(${JSON.stringify(PEER_LOOK)});`,
+      });
+      try {
+        await H.enterWorld(Q);
+        await H.waitFor(Q, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading,
+          { timeout: 90000, label: 'the peer in the world' }).catch(() => null);
+        const here = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+        await H.hopTo(Q, here.x + 80, here.y + 40, { step: 100, gap: 260, tries: 60 }).catch(() => null);
+        const seen = await H.waitFor(P, (S) => (S.others ? Object.keys(S.others).length : 0), (v) => v > 0, { timeout: 20000, label: 'the peer seen' }).catch(() => 0);
+        await P.page.waitForTimeout(2000);
+        const pc = await phase('a peer jogging, rolling and turning in sight', async () => {
+          for (const keys of Object.values(FACINGS)) await hold(Q, keys, 900);
+          for (let r = 0; r < 2; r++) for (const keys of Object.values(FACINGS)) await hold(Q, keys, 200);
+          for (const keys of [FACINGS.east, FACINGS.west, FACINGS.north, FACINGS.south]) {
+            for (const k of keys) await Q.page.keyboard.down(k);
+            await Q.page.waitForTimeout(150);
+            await Q.page.keyboard.press('x');
+            await Q.page.waitForTimeout(800);
+            for (const k of keys) await Q.page.keyboard.up(k);
+          }
+        });
+        rec.ok(`the peer was in sight (guard: ${seen} seen, ${pc && pc.ot ? pc.ot.counted : 0} of their piece-frames counted)`, !!seen && !!pc && !!pc.ot && pc.ot.counted > 20, { seen });
+      } finally {
+        await Q.ctx.close().catch(() => {});
+      }
+    }
+
     /* armed, then to the Flame Fields' monsters */
     const armed = await H.armWorker(P, wsPort, me, ['bow']).catch(() => []);
     const swordHeld = () => H.readState(P, (S) => !!(S.rpg.weapon && S.rpg.weapon.type === 'greatsword'));
@@ -211,6 +254,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const { name, c } of phases) {
       rec.ok(`${name}: every worn head piece drawn in every frame (${c ? c.frames : '?'} frames, ${c ? c.counted : '?'} piece-frames, ${c ? c.missed : '?'} missing${c && c.bodyGone ? `, ${c.bodyGone} with no bro drawn` : ''})`,
         !!c && c.frames > 8 && c.missed === 0, c ? { byWhy: c.byWhy, log: c.log.slice(-10) } : null);
+      rec.ok(`${name}: every other bro's and townsperson's worn head pieces drawn in every frame (${c && c.ot ? c.ot.counted : '?'} piece-frames, ${c && c.ot ? c.ot.missed : '?'} missing)`,
+        !!c && !!c.ot && c.ot.missed === 0, c && c.ot ? { byWhy: c.ot.byWhy, log: c.ot.log.slice(-10) } : null);
       rec.ok(`${name}: and on the screen, every frame (${c && c.px ? c.px.looked : '?'} piece-frames read back, ${c && c.px ? c.px.drops : '?'} under a quarter of the piece's usual pixels)`,
         !!c && !!c.px && c.px.looked > 8 && c.px.drops === 0, c && c.px ? { byCat: c.px.byCat, log: c.px.log.slice(-10) } : null);
     }

@@ -12803,6 +12803,9 @@ export class EntityRenderer {
           _placeEyewear(display, other.eyewear, other.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361; v2.3.2424 + colour */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
+          /* v2.3.3852: the head-frame count's context (headFrames.js) */
+          display._btHeadAt = { pose, dir, mirror, frameIdx, now,
+            worn: { headwear: other.headwear, hair: other.hair, facialhair: other.facialhair, eyewear: other.eyewear, eyestyle: other.eyeStyle } };
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -17345,6 +17348,8 @@ export class EntityRenderer {
     _placeEyewear(folk, look.eyewear, look.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);
     _placeHair(folk, look.hair, look.hairColor, look.headwear, pose, dir, mirror, frameIdx, sizeMul);
     _orderTraitsAndWeapon(folk, SECTORS.indexOf(facing), look.headwear);
+    folk._btHeadAt = { pose, dir, mirror, frameIdx, now,   /* v2.3.3852: the head-frame count (headFrames.js) */
+      worn: { headwear: look.headwear, hair: look.hair, facialhair: look.facialhair, eyewear: look.eyewear, eyestyle: look.eyeStyle } };
     /* a player's size on this ground, times his own (above); his feet on his origin */
     const k = this._zonePscale(S, npc.x, npc.y) * PLAYER_SIZE_MULT * size;
     if (folk.scale.x !== k) folk.scale.set(k);

@@ -59,7 +59,7 @@ import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets, TextureSource } from 'pixi.js';   /* v2.3.3074: + TextureSource (destroy, below) */
 import { markStandIns, refreshFigureShades } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
 import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
-import { headFrameTick, headPixelsTick, HEAD_FRAMES_ON } from './headFrames.js';   /* v2.3.3852: QA, `?headframes` only */
+import { headFrameTick, headPixelsTick, othersFrameTick, HEAD_FRAMES_ON } from './headFrames.js';   /* v2.3.3852: QA, `?headframes` only */
 import { getHeadwear } from './traits/headwearCatalog.js';
 import { getHair } from './traits/hairCatalog.js';
 import { getFacialHair } from './traits/facialHairCatalog.js';
@@ -827,6 +827,7 @@ export async function initPixiRenderer(canvas) {
     update._lastStages.fpsMs = _t4 - _t3;
 
     /* v2.3.3852: QA (`?headframes`): each worn head piece on screen this frame? */
+    if (HEAD_FRAMES_ON) try { othersFrameTick(entityRenderer, app.stage, now); } catch (e) { /* QA only */ }
     if (HEAD_FRAMES_ON) try { headFrameTick(entityRenderer, effectsRenderer, app.stage, { headwear: getHeadwear(), hair: getHair(), facialhair: getFacialHair(), eyewear: getEyewear(), eyestyle: getEyeStyle() }); } catch (e) { /* QA only */ }
     // Manual render
     try { app.render(); update._renderStreak = 0; if (HEAD_FRAMES_ON) headPixelsTick(entityRenderer, effectsRenderer, app.renderer); }
