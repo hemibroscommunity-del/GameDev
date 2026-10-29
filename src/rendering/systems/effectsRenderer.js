@@ -11,6 +11,7 @@ import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another playe
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
+import { LockReticle } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
 import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
@@ -3563,6 +3564,13 @@ export class EffectsRenderer {
 
     this.overlayGfx = new Graphics();
     this.overlayLayer.addChild(this.overlayGfx);
+    /* v2.3.3876: the corner brackets round a lock you chose (lockReticle.js):
+       made once, moved per frame, destroyed with this renderer */
+    this._lockReticle = new LockReticle(this.overlayLayer);
+    if (typeof window !== 'undefined') {
+      const _selfLR = this;
+      window.__btLockReticle = function () { return _selfLR._lockReticle ? _selfLR._lockReticle.probe() : null; };
+    }
 
     this.hudGfx = new Graphics();
     this.hudLayer.addChild(this.hudGfx);
@@ -8743,6 +8751,16 @@ export class EffectsRenderer {
         }
       }
       this._atkMarks = _marks;
+      /* v2.3.3876: a lock you chose wears four corner brackets round the
+         monster's body (lockReticle.js) -- the box from the same shared body
+         table the chip and the aim read */
+      if (this._lockReticle) {
+        this._lockReticle.update(S, (m) => {
+          const x = m.renderX != null ? m.renderX : m.x, y = m.renderY != null ? m.renderY : m.y;
+          const off = (monsterBodyOffsetY(m.arch || m.archetype || m.type) || 23) * bossSizeK(m);
+          return { cx: x, cy: y - off, hw: Math.max(16, off * 0.85) + 6, hh: off + 10 };
+        });
+      }
       if (typeof window !== 'undefined' && !window.__btAtkMark) {
         const _self = this;
         window.__btAtkMark = function () { return (_self._atkMarks || []).slice(); };
@@ -17483,6 +17501,7 @@ export class EffectsRenderer {
   destroy() {
     if (this._destroyed) return;
     this._destroyed = true;
+    if (this._lockReticle) { this._lockReticle.destroy(); this._lockReticle = null; }   /* v2.3.3876 */
     for (const off of this._offs) { try { off(); } catch (e) { /* already off */ } }
     this._offs = [];
     try { this._freeFarm(); } catch (e) { /* v2.3.3439: the farmer's strips and tools; _bakes below has the rest */ }
