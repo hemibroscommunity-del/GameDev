@@ -38,36 +38,34 @@ const VIEWS = {
 
 /* the hair sprite's box on screen and how many of its pixels are its browns
    (the pixels read straight after a frame is drawn, as headFrames.js does) */
-const hairPixels = (P) => P.page.evaluate((t) => new Promise((resolve) => {
+const hairPixels = (P) => P.page.evaluate((t) => {
   const R = window._pixiRenderer;
   const d = R && R.playerDisplayRaw && R.playerDisplayRaw();
   const app = R && R.app;
-  if (!d || !app) return resolve(null);
+  if (!d || !app) return null;
   const sp = d._hairSprite;
-  app.ticker.addOnce(() => {
-    requestAnimationFrame(() => {
-      try {
-        const gl = app.renderer.gl, res = app.renderer.resolution || 1;
-        app.render();
-        if (!sp || !sp.visible) return resolve({ vis: false, why: sp && sp._btHide, mask: !!(sp && sp.mask) });
-        const b = sp.getBounds();
-        const H2 = gl.drawingBufferHeight, W2 = gl.drawingBufferWidth;
-        const x0 = Math.max(0, Math.floor(b.minX * res)), x1 = Math.min(W2, Math.ceil(b.maxX * res));
-        const y0 = Math.max(0, Math.floor(b.minY * res)), y1 = Math.min(H2, Math.ceil(b.maxY * res));
-        const w = x1 - x0, h = y1 - y0;
-        if (w < 2 || h < 2) return resolve({ vis: true, n: 0, box: [x0, y0, w, h] });
-        const buf = new Uint8Array(w * h * 4);
-        gl.readPixels(x0, H2 - y1, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
-        let n = 0;
-        for (let i = 0; i < buf.length; i += 4) {
-          const r = buf[i], g = buf[i + 1], bb = buf[i + 2];
-          if (Math.abs(r - t[0]) + Math.abs(g - t[1]) + Math.abs(bb - t[2]) < 45 && r > g && g > bb) n++;
-        }
-        resolve({ vis: true, n, box: [x0, y0, w, h], mask: !!sp.mask, dir: d._animDir, pose: d._animPose });
-      } catch (e) { resolve({ err: String(e && e.message || e) }); }
-    });
-  });
-}), HAIR_T);
+  try {
+    /* a frame drawn now, by hand as the game draws (it runs no ticker), and
+       read straight back before the page shows it */
+    const gl = app.renderer.gl, res = app.renderer.resolution || 1;
+    app.render();
+    if (!sp || !sp.visible) return { vis: false, why: sp && sp._btHide, mask: !!(sp && sp.mask) };
+    const b = sp.getBounds();
+    const H2 = gl.drawingBufferHeight, W2 = gl.drawingBufferWidth;
+    const x0 = Math.max(0, Math.floor(b.minX * res)), x1 = Math.min(W2, Math.ceil(b.maxX * res));
+    const y0 = Math.max(0, Math.floor(b.minY * res)), y1 = Math.min(H2, Math.ceil(b.maxY * res));
+    const w = x1 - x0, h = y1 - y0;
+    if (w < 2 || h < 2) return { vis: true, n: 0, box: [x0, y0, w, h] };
+    const buf = new Uint8Array(w * h * 4);
+    gl.readPixels(x0, H2 - y1, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+    let n = 0;
+    for (let i = 0; i < buf.length; i += 4) {
+      const r = buf[i], g = buf[i + 1], bb = buf[i + 2];
+      if (Math.abs(r - t[0]) + Math.abs(g - t[1]) + Math.abs(bb - t[2]) < 45 && r > g && g > bb) n++;
+    }
+    return { vis: true, n, box: [x0, y0, w, h], mask: !!sp.mask, dir: d._animDir, pose: d._animPose };
+  } catch (e) { return { err: String(e && e.message || e) }; }
+}, HAIR_T);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
