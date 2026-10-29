@@ -41,7 +41,16 @@ get off." And on the owner's list (docs/OWNER-LIST-2026-10-26.md, item 26):
 - The button is not shown while a fight is near (the shield up, the Block
   button showing, a monster targeted), in the water, dead, or anywhere but the
   safe ground.
-- No sound yet (none was uploaded).
+- **The wheels are heard** (v2.3.3791): the owner's "Drive Over Border"
+  (freesound_community, Pixabay 82185, uploaded 2026-10-29) as a seamless
+  4.65 s loop of the board rolling on the town's stones, its knocks over the
+  cracks inside it -- the recording has one every 0.2-0.7 s, so there is no
+  separate clack for a push (the push is a foot; the knocks are already in the
+  roll). Your own board only (a loop for every rider in a busy town would be a
+  pile of noise, and more decoded sound held), low under the music on the
+  music bus, rising as you roll and falling as you stand on the board; the
+  frame the ride ends, for any reason, it falls silent in a tenth of a second
+  and its source stops 1.5 s later (`src/game/rideSound.js`).
 
 ## How it works
 
@@ -109,6 +118,26 @@ They load behind the loading screen (`rendering/rideFx.js` preloadRideArt in
 (docs/MEMORY-MAP.md, "the skateboard"). A rider's board is one small Sprite
 added to their figure when they get on and destroyed when they get off.
 
+## The sound
+
+- Cut by `tools/audio/cut_owner_sounds.py` (its LOOPS row `skate-roll`;
+  `--only=skate-roll` cuts just it and rewrites just its row of
+  `src/data/ownerSoundClips.js`): measured first, by its own channels (TRAPS
+  §230) -- its two sides are the same samples, so it is mono; a ramp in to
+  0.5 s and out after 6.2 s, between them a rumble at about -22 dB with
+  knocks peaking at -0.6 to -7 dB -- then 0.55-6.2 s, its last second folded
+  over its first (equal power), levelled to the river's loudness, 24 kHz mono,
+  48 kb/s: 28 KB.
+- Never in `SFX_MANIFEST` (a loop): decoded as an `amb-` key (24 kHz mono,
+  ~0.45 MB) where a board could be ridden -- the board button's own rule,
+  BroTown's safe ground -- so it is in before the first tap; let go 20 s
+  after you leave that ground on foot, at once out of the world.
+- Its volume: 0.9 of the river at its bank (`ROLL_K`, `rollVol()`), on the
+  music bus, so the Settings music slider sets it with the world's loops.
+- The Sound Studio's "Moving" section plays three seconds of it
+  (`BT_AUDIO.skateRollDemo`). `CREDITS.md` has its row (Pixabay Content
+  License, CONFIRM).
+
 ## Tests
 
 - `server/test/ride.test.mjs`:
@@ -125,7 +154,12 @@ added to their figure when they get on and destroyed when they get off.
   - the other player sees the board;
   - off at the edge, and the button gone;
   - Z on and off;
-  - the button on no other control, upright and sideways.
+  - the button on no other control, upright and sideways;
+  - (v2.3.3791) the roll heard while the computer's rider rolls, silent at once
+    and stopped after Z takes them off.
+- `sound-cues` §20: the loop's file, level and length, never in
+  `SFX_MANIFEST`, its source kept, its studio row and its credit, and
+  `rideSound.js` ticked by the game loop.
 
   Pictures: `tools/qa/mp/out/skateboard-*.png`; the owner's are in
   `docs/specs/skateboard/`: the 8 directions, a ride as frames and a GIF
