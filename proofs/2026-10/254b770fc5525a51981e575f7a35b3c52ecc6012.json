@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "254b770fc5525a51981e575f7a35b3c52ecc6012",
+  "tree": "27fc056e18bf4cffbbd80009ccdf95fe478c0a5b",
+  "committedAt": "2026-10-28T19:01:00-07:00",
+  "subject": "Test fix: the No man's land \"Attack?\" window test no longer trips on wandering monsters or far-away players (v2.3.3819) (#1279)",
+  "files": 7132,
+  "bytes": 818424876,
+  "listingSha256": "a5c58d03cfc1e509f3bc72cd7c764a16c3c536905258c6f00ec584b59111fec5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

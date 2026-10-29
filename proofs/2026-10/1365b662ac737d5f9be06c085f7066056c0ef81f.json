@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1365b662ac737d5f9be06c085f7066056c0ef81f",
+  "tree": "d2195ffc636d19eb84181ecb349e231a2ee5aab2",
+  "committedAt": "2026-10-28T19:01:03-07:00",
+  "subject": "Shirt test: the Memory savers switch checked so it can't fail by accident (v2.3.3826) (#1284)",
+  "files": 7132,
+  "bytes": 818425712,
+  "listingSha256": "2634cf87a1a35c02f468fc32e085c3154647eb05d63db303a80fdbb77b83e24c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

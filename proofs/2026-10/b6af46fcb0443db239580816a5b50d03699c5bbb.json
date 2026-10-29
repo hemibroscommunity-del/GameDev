@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b6af46fcb0443db239580816a5b50d03699c5bbb",
+  "tree": "07cd443bc2d916b55ac04a9b3654da1cde04df58",
+  "committedAt": "2026-10-28T19:00:57-07:00",
+  "subject": "BroTown's new cast, approved: 10 keepers and 3 locals, and the looks tool waits for the look (v2.3.3811) (#1278)",
+  "files": 7132,
+  "bytes": 818423102,
+  "listingSha256": "cddb2d6b7f8564311b581ab8bfb54fa4768a8bf541ede8fac67c17cea739007d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
