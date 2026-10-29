@@ -9,7 +9,7 @@
  * A computer page (wide, ?lookpalette=0).  For the first BT_BR_FAIL_S (90) s
  * every body sheet of the south-west facing (stand and jog, the head
  * overlays too) fails to load; once they load again and one full step of the
- * later rounds has passed (65 s), each of the eight facings, standing and
+ * later rounds and its tries have passed (80 s), each of the eight facings, standing and
  * jogging, must draw its body: held back for one frame, the figure changes by
  * a body's worth of pixels.  BT_BR_SKIN (default 'ebony': the recoloured bake,
  * whose fallback is the base sheet; 'default' draws the base sheet itself).
@@ -94,7 +94,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 60 });
     rec.ok('the page tools (guard)', !!(await page.evaluate(TOOLS)));
     const fail = await page.evaluate(() => ({ left: Math.max(0, window.__qaFailUntil - Date.now()), failed: window.__qaFailed }));
-    if (fail.left) await page.waitForTimeout(fail.left + 65000);
+    /* v2.3.3882: 80 s, not 65: a picture that failed again and again through the
+       outage is on the minute-long step, and its round is three tries (8 s) */
+    if (fail.left) await page.waitForTimeout(fail.left + 80000);
     const failed = await page.evaluate(() => window.__qaFailed);
     rec.ok(`the south-west body sheets failed to load for a while (${failed} requests) (guard)`, failed > 0);
     const renders = () => page.evaluate(() => window.__qaBR.renders);

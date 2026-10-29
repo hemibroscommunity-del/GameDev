@@ -73,7 +73,12 @@ const TOOLS = () => {
     const s = me && T.hide ? me[T.hide] : null;
     let was = null;
     if (s) { was = s.renderable; s.renderable = false; }
-    T.renders++;
+    /* v2.3.3882: only the screen's own frames count (the stage): other
+       renders run inside one frame (off-screen bakes: fillBatch, the palette's
+       warm-ups, the water, render textures), and two of those could pass
+       before the held-back state was ever shown -- M4's finding: the
+       "first-frame miss" this check once reported was that, not the game */
+    if (a[0] === app.stage || (a[0] && a[0].container === app.stage)) T.renders++;
     try { return orig(...a); } finally { if (was != null) s.renderable = was; }
   };
   /* the collector, quick: let go of what was not drawn for 1.5 s, every 0.5 s */
@@ -141,7 +146,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const fail = await page.evaluate(() => ({ left: Math.max(0, window.__qaFailUntil - Date.now()), failed: window.__qaFailed }));
     /* ...and one full step of the later rounds (their longest is a minute), so
        every picture given up on has been asked for again since */
-    if (fail.left) await page.waitForTimeout(fail.left + 65000);
+    /* v2.3.3882: 80 s, not 65: a picture that failed again and again through the
+       outage is on the minute-long step, and its round is three tries (8 s) */
+    if (fail.left) await page.waitForTimeout(fail.left + 80000);
     const failed = await page.evaluate(() => window.__qaFailed);
     console.log(`    ${failed} picture requests failed on purpose while the window was open`);
     const visits = +(process.env.BT_SGC_VISITS || 3);
@@ -162,19 +169,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         } catch (e) { /* the picture is for people, not the check */ }
         const spPx = await piecePx('_speciesSprite');
         const shPx = await piecePx('_gearShirt');
-        /* a miss on the first frames of a facing (its picture just uploaded
-           again) heals within a moment and is not this check's subject: the
-           same facing 1.5 s later, unmoved, decides; a lasting loss stays */
-        let spAgain = null, shAgain = null;
-        if (spPx == null || spPx < MIN_PX || shPx == null || shPx < MIN_PX) {
-          await page.waitForTimeout(1500);
-          spAgain = await piecePx('_speciesSprite');
-          shAgain = await piecePx('_gearShirt');
-          console.log(`    ${dir} visit ${v}: a first-frames miss (muzzle ${spPx}, shirt ${shPx}), 1.5 s on: muzzle ${spAgain}, shirt ${shAgain}`);
-        }
-        const spOk = (spAgain != null ? spAgain : spPx), shOk = (shAgain != null ? shAgain : shPx);
-        rec.ok(`visit ${v} ${dir} (${facing}): the muzzle paints (${spOk} px) and the shirt paints (${shOk} px)`,
-          spOk != null && spOk >= MIN_PX && shOk != null && shOk >= MIN_PX, { sp, sh, first: { spPx, shPx } });
+        rec.ok(`visit ${v} ${dir} (${facing}): the muzzle paints (${spPx} px) and the shirt paints (${shPx} px)`,
+          spPx != null && spPx >= MIN_PX && shPx != null && shPx >= MIN_PX, { sp, sh });
         /* a pause long enough for the collector to let go of this facing's pictures once it is left */
         await page.waitForTimeout(400);
       }
