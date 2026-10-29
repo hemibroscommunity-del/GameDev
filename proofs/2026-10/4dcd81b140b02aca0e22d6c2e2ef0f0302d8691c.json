@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4dcd81b140b02aca0e22d6c2e2ef0f0302d8691c",
+  "tree": "7c0a98caaef13c253527bd466f5fd6695f9bfb5c",
+  "committedAt": "2026-10-28T17:18:06-07:00",
+  "subject": "The skateboard: ride it around BroTown, off at the edge of town, when hit or in a fight (v2.3.3776) (#1244)",
+  "files": 6961,
+  "bytes": 807143390,
+  "listingSha256": "0f4368f96dfbffd7bdce26f1595b0e00a0b71f1ca451dfe19d8aa7149acfbbb3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

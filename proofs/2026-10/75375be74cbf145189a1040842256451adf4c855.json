@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "75375be74cbf145189a1040842256451adf4c855",
+  "tree": "f28b760db9bfe8195e69f86328c1e00521d7ea3e",
+  "committedAt": "2026-10-28T17:18:12-07:00",
+  "subject": "Town Hall board: a Dungeons heading, every tile its own picture (v2.3.3779) (#1248)",
+  "files": 6968,
+  "bytes": 807358159,
+  "listingSha256": "0a4b0877c05001fb4abd4d9508ee17d948eebaeb6d1778684238f75b955ad237",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
