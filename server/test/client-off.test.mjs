@@ -89,9 +89,9 @@ async function capsOf(flags) {
 
 /* ── 3. the panel's names ─────────────────────────────────────────────── */
 check('3a. every saver has plain words, a known kind, and a flag name the route takes',
-  CLIENT_SAVERS.length === 8 && CLIENT_SAVERS.every((c) => typeof c.words === 'string' && c.words.length > 5 && typeof c.live === 'boolean' && flagNameOk('off_' + c.id)),
+  CLIENT_SAVERS.length === 9 && CLIENT_SAVERS.every((c) => typeof c.words === 'string' && c.words.length > 5 && typeof c.live === 'boolean' && flagNameOk('off_' + c.id)),
   CLIENT_SAVERS.map((c) => c.id));
-check('3b. the names are the owner\'s eight', JSON.stringify(CLIENT_SAVERS.map((c) => c.id)) === JSON.stringify(['sfxcache', 'voicecap', 'onecopy', 'picnumbers', 'codelazy', 'groundlean', 'heaplean', 'lookpalette']));
+check('3b. the names are the owner\'s eight and the printed shirts (v2.3.3790)', JSON.stringify(CLIENT_SAVERS.map((c) => c.id)) === JSON.stringify(['sfxcache', 'voicecap', 'onecopy', 'picnumbers', 'codelazy', 'groundlean', 'heaplean', 'lookpalette', 'lookshirt']));
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

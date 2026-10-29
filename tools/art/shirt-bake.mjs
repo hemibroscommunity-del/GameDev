@@ -94,8 +94,8 @@ async function pageBake({ pose, dir }) {
   /* the sheet as the game reads it (gearSheets loadImg: the .webp twin) */
   const img = await WI.loadWebpOrPng(`/sprites/gear/shirt/tshirt/${sheet}.png?v=${window.__btGearVersion()}`);
   const W = img.naturalWidth, H = img.naturalHeight;
-  if (H !== 128) throw new Error(sheet + ': ' + H + ' tall (the shirt bake knows the 128 sheets, sliced raw)');
-  const FW = 128, frames = Math.max(1, Math.floor(W / FW));
+  if (H !== LS.SHIRT_FW) throw new Error(sheet + ': ' + H + ' tall (the shirt bake knows the 128 sheets, sliced raw)');
+  const FW = LS.SHIRT_FW, frames = Math.max(1, Math.floor(W / FW));   /* the shader mirrors about this width */
   const read = (cv) => {
     const c = document.createElement('canvas'); c.width = cv.width || cv.naturalWidth; c.height = cv.height || cv.naturalHeight;
     const g = c.getContext('2d', { willReadFrequently: true });

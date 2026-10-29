@@ -2688,14 +2688,15 @@ function _placeGear(display, equip, pose, dir, frameIdx, legsFrom) {
     /* v2.3.3751: the look palette's tee (on; `?lookpalette=0` off): its stand
        and jog from the shared numbers, the tint, pattern and print painted
        from the look's row as it is drawn (lookShirtFrame.js) -- a patterned
-       or printed tee no longer a copy per player.  A plain one too when the
-       body beside it is drawn from the numbers (one batch).  Null: as before. */
+       or printed tee no longer a copy per player.  A plain tee stays the
+       shared sheet and its tint (the numbers save it nothing).  Null: as
+       before. */
     if (tex && _slotName === 'shirt') {
       const _L = display._shirtLook;
       const _lt = getLookShirtFrame(item, _gPose, dir, _gFrame, {
         art: _L && _L.art ? _L.art[sideForDir(dir)] : null, pattern: _L ? _L.pattern : null,
         tint: (equip && equip.shirtTint) || null, mirror: display._shirtArtMirror,
-      }, !!(sb.texture && sb.texture._btLook));
+      });
       if (_lt) { tex = _lt; _shirtBaked = true; }
     }
     if (tex && !_shirtBaked && _slotName === 'shirt' && display._shirtLook) {
