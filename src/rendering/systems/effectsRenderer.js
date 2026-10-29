@@ -330,7 +330,7 @@ import { getCape } from '../traits/capeCatalog.js'; /* v2.3.2190: the worn cape,
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.2500: the stand-ins follow the bro's build */
 import { WHIRL_VORTEX, WHIRL_FX_MS, WHIRL_ART_R /* v2.3.2824 */, FIRE_TRAIL_FX, FIRE_TRAIL_FX_MS, FIRE_TRAIL_PLATE_FRAC } from '../fxStrips.js'; /* v2.3.1735; v2.3.2239 fire trail */
 import { CampfireFx, fireLightSpot } from '../campfireFx.js'; /* v2.3.2846: the lit-log campfire, in pixel art; v2.3.3666: + where a peer's light catches */
-import { PersonFire } from '../buildingFire.js'; /* v2.3.3748: on fire in a burning heap, the building's own flames */
+import { PersonFire } from '../buildingFire.js'; /* v2.3.3748: on fire in a burning heap, the building's own flames; v2.3.3878: and burning from a fire goblin */
 import { FIRE_STRIP_V, FIRE_FRAME_OFF, FIRE_FIGURE_X, FIRE_STRIKE_FRAME } from '../../data/fireStrip.js'; /* v2.3.3666: the fire-lighter's strip, measured (tools/build_fire_clean.py) */
 import { getEquip, onEquipChange } from '../gearCatalog.js';   /* v2.3.3640: + the greaves' change (_rebakeLegBodies) */
 import { getShirt, onShirtChange } from '../traits/shirtCatalog.js';   /* v2.3.3146: + the change, for the dressed stand-in shirts */
@@ -3115,6 +3115,11 @@ const BEAM_W_PX = 40;          /* its width: a narrow column, the pile wider tha
 const BEAM_A = 0.95;           /* its alpha at the peak, easing a little as it comes down */
 const BEAM_TEX_W = 32, BEAM_TEX_H = 128;
 const BEAM_ON = (() => { try { return new URLSearchParams(window.location.search).get('lootbeam') !== '0'; } catch (e) { return true; } })();
+/* v2.3.3878: a burn (a fire goblin's, a flame gem's) is the burning building's
+   own fire on whoever burns (buildingFire.js PersonFire), as standing in a
+   burning heap is; `?burnfire=0` draws the old flames, for one phone */
+const BURN_BLAZE = (() => { try { return new URLSearchParams(window.location.search).get('burnfire') !== '0'; } catch (e) { return true; } })();
+const PEER_FIRES = 6;   /* other players burning in the building's flames at once; past it, the drawn flames */
 /* a soft column: a bright core, soft sides, fading out toward its top */
 function makeBeamTexture() {
   if (typeof document === 'undefined') return null;
@@ -3560,6 +3565,10 @@ export class EffectsRenderer {
     /* v2.3.3748: on fire in a burning heap -- the building's own flames on
        you (buildingFire.js PersonFire), made the first time you burn */
     this.personFire = new PersonFire(this.overlayLayer);
+    /* v2.3.3878: ...and on another player burning, one each, made as they
+       catch and let go once their fire has died down (at most PEER_FIRES) */
+    this._peerFires = new Map();
+    this._peerFireTick = 0;
     this.fireTrailSprites = [];
 
     this.overlayGfx = new Graphics();
@@ -13029,7 +13038,9 @@ export class EffectsRenderer {
        and were checked at phone size (mp-elemhits' look-* pictures): the
        first cut -- a thin ring, three 8 px flames -- was there but did not
        read on a phone, so each look now reaches up the body as well. */
-    const draw = (R, x, y) => {
+    /* `blazed`: R's burn is the building's fire (PersonFire, below), so none
+       of the drawn flames */
+    const draw = (R, x, y, blazed) => {
       const chill = R._chillUntil > now ? R._chillUntil - now : 0;
       const stuck = R._stuckUntil > now ? R._stuckUntil - now : 0;
       const burn = R._burnUntil > now ? R._burnUntil - now : 0;
@@ -13070,7 +13081,7 @@ export class EffectsRenderer {
         if (frozen) d.frozen = (d.frozen || 0) + 1;   /* v2.3.3620 (mp-strongerhits) */
         if (wobble) d.wobble = (d.wobble || 0) + 1;
       }
-      if (burn) {
+      if (burn && !blazed) {
         const a = Math.min(1, burn / 250);
         const fl = 0.8 + 0.2 * Math.sin(now / 70);
         g.ellipse(x, fy, 24 * k, 8 * k); g.fill({ color: 0xff8a2a, alpha: 0.3 * a * fl });
@@ -13494,15 +13505,27 @@ export class EffectsRenderer {
         }
       }
     };
-    if (!isPlayerDead(S)) draw(S, S.player.x, S.player.y);
-    /* v2.3.3748: standing in a burning heap (game/heapBurn.js) */
+    /* ═══ v2.3.3878: A FIRE GOBLIN'S BURN IS THE BUILDING'S FIRE ═══
+       The owner, 2026-10-29: "Make the fire effect more realistic from fire
+       goblins when you take damage from them. I like the fire effect you
+       drew from taking damage from the burning buildings."  A burn's flames
+       were drawn shapes (v2.3.2996, taller in v2.3.3620); now they are the
+       PersonFire a burning heap puts on you (v2.3.3748): the campfire's own
+       pixel flames, coals, sparks and smoke, sized with you.  The ground glow
+       and the drawn tongues go with them (the blaze has its own light).
+       `?burnfire=0` draws the old flames. */
+    const blazeMe = BURN_BLAZE && !!this.personFire;
+    if (!isPlayerDead(S)) draw(S, S.player.x, S.player.y, blazeMe);
+    /* v2.3.3748: standing in a burning heap (game/heapBurn.js); v2.3.3878: or burning */
     if (this.personFire) {
       const px = S.player.x, py = S.player.y;
-      const on = !isPlayerDead(S) && S._heapBurnUntil > now;
+      const on = !isPlayerDead(S) && (S._heapBurnUntil > now || (blazeMe && S._burnUntil > now));
       this.personFire.step(on, px, py + playerGroundDy(zone, px, py), zonePlayerScale(zone, px, py, TILE) || 1, now);
       if (typeof window !== 'undefined' && window.__btProbe) window.__btPersonFire = this.personFire.probe();
     }
     const others = S.others;
+    const fires = BURN_BLAZE ? this._peerFires : null;
+    const tick = ++this._peerFireTick;
     if (others) {
       for (const id of Object.keys(others)) {
         const o = others[id];
@@ -13513,8 +13536,38 @@ export class EffectsRenderer {
           || o._slowUntil > now || o._fractureUntil > now || o._thornUntil > now)) continue;   /* v2.3.3264: + a player's gem's three */
         const ox = typeof o.renderX === 'number' ? o.renderX : o.x;
         const oy = typeof o.renderY === 'number' ? o.renderY : o.y;
-        if (typeof ox === 'number' && typeof oy === 'number') draw(o, ox, oy);
+        if (typeof ox !== 'number' || typeof oy !== 'number') continue;
+        /* v2.3.3878: another player burning wears the building's fire too */
+        let pf = null;
+        if (fires && o._burnUntil > now) {
+          pf = fires.get(id) || null;
+          if (!pf && fires.size < PEER_FIRES) { pf = { fire: new PersonFire(this.overlayLayer), tick: 0 }; fires.set(id, pf); }
+          if (pf) { pf.tick = tick; pf.fire.step(true, ox, oy + playerGroundDy(zone, ox, oy), zonePlayerScale(zone, ox, oy, TILE) || 1, now); }
+        }
+        draw(o, ox, oy, !!pf);
       }
+    }
+    /* v2.3.3878: a player no longer burning: their fire dies down where they
+       stand and its last sparks and smoke drift off, then it is let go; one
+       gone (left, fallen, in another zone, not drawn) is let go at once */
+    if (this._peerFires && this._peerFires.size) {
+      for (const [id, pf] of this._peerFires) {
+        if (pf.tick === tick) continue;
+        const o = fires && others ? others[id] : null;
+        const ox = o ? (typeof o.renderX === 'number' ? o.renderX : o.x) : NaN;
+        const oy = o ? (typeof o.renderY === 'number' ? o.renderY : o.y) : NaN;
+        if (o && !o._isDead && (o.zone || o.z || 'town') === zone && !_peerNotDrawn(S, id) && Number.isFinite(ox) && Number.isFinite(oy)) {
+          pf.fire.step(false, ox, oy + playerGroundDy(zone, ox, oy), zonePlayerScale(zone, ox, oy, TILE) || 1, now);
+          if (!pf.fire.done()) continue;
+        }
+        pf.fire.destroy();
+        this._peerFires.delete(id);
+      }
+    }
+    if (typeof window !== 'undefined' && window.__btProbe) {   /* QA (mp-burnfire): the other players' fires, by id */
+      const pr = Object.create(null);
+      if (this._peerFires) for (const [id, pf] of this._peerFires) pr[id] = pf.fire.probe();
+      window.__btPeerFires = pr;
     }
   }
 
@@ -17515,6 +17568,8 @@ export class EffectsRenderer {
     try { this.clear(); } catch (e) { /* a half-built renderer */ }
     try { if (this.personFire) this.personFire.destroy(); } catch (e) { /* v2.3.3748: gone with its layer */ }
     this.personFire = null;
+    try { if (this._peerFires) for (const pf of this._peerFires.values()) pf.fire.destroy(); } catch (e) { /* v2.3.3878: gone with its layer */ }
+    this._peerFires = null;
     for (const src of this._bakes) { unregisterGearSource(src); releaseCanvasSource(src); }
     this._bakes.clear();
     this._gpuWaiting.clear();   /* v2.3.3698: released with the rest just above */
