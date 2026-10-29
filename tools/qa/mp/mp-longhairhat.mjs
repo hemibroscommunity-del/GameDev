@@ -164,6 +164,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
           return true;
         }).catch(() => false);
         await P.page.waitForTimeout(8000);
+        /* what the count saw through the restore: pieces not drawn and why,
+           frames with no bro, and the look palette's own state */
+        const diag = await P.page.evaluate(() => ({
+          head: window.__btHeadCount ? window.__btHeadCount() : null,
+          pal: window.__btLookPalette ? window.__btLookPalette() : null,
+        })).catch((e) => ({ err: String(e) }));
+        const hc = diag && diag.head;
+        console.log(`    [${vname}] through the restore: ${hc ? `${hc.frames} frames, ${hc.missed} piece-frames missing ${JSON.stringify(hc.byWhy)}, ${hc.bodyGone} with no bro ${JSON.stringify(hc.goneBy)}` : 'no count'}`);
+        if (hc) for (const l of hc.log.slice(-6)) console.log('      miss: ' + JSON.stringify(l));
+        if (hc) for (const l of (hc.goneLog || []).slice(0, 4)) console.log('      gone: ' + JSON.stringify(l));
+        console.log('      look palette: ' + JSON.stringify(diag && diag.pal).slice(0, 400));
         const after = [];
         for (const hat of HATS) {
           await P.page.evaluate((h) => window.__btSetHeadwear(h), hat);
