@@ -786,8 +786,17 @@ export class ShadowSystem {
         this._held.delete(cs.key);
       }
     }
+    /* v2.3.3827: a piece out of use lets go of its picture as it is hidden,
+       not only at a zone change (clear): a hidden piece held the last
+       monster strip it was cut from, and so the strip's colour numbers,
+       after the monster's art had let it go -- mp-heapdiff found 160 of
+       them, 1.65 MB, kept over three trips to a fight.  Once, as it leaves
+       use (the hide is the same moment's change); _place gives it a
+       picture again when it is next wanted. */
     for (let i = this.used; i < this.pool.length; i++) {
-      if (this.pool[i].visible) this.pool[i].visible = false;
+      const s = this.pool[i];
+      if (s.visible) s.visible = false;
+      if (s.texture !== Texture.EMPTY) s.texture = Texture.EMPTY;
     }
     for (let i = this.meshUsed; i < this.meshPool.length; i++) {
       if (this.meshPool[i].visible) this.meshPool[i].visible = false;
