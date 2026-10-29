@@ -119,7 +119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       tiles: Array.from(b.querySelectorAll('[data-board-tile]')).map((t) => {
         const img = t.querySelector('img');
         /* v2.3.3779: each tile's name and its picture, drawn (not the emoji a broken one falls back to) */
-        return { id: t.getAttribute('data-board-tile'), pins: t.getAttribute('data-board-pins'), name: (() => { const n = t.querySelector(':scope > span:not([data-board-sub])'); return ((n || t).textContent || '').trim(); })(),   /* v2.3.3801: the name alone, not its line */
+        return { id: t.getAttribute('data-board-tile'), pins: t.getAttribute('data-board-pins'), name: (() => { const n = t.querySelector('.bt-tb-name') || t.querySelector(':scope > span:not([data-board-sub])');   return ((n || t).textContent || '').trim(); })(),   /* v2.3.3801: the name alone, not its line; v2.3.3802: its own span first (the picture's box is a span too) */
           pic: img ? img.getAttribute('src') : null, drawn: !!img && img.complete && img.naturalWidth > 0,
           /* v2.3.3788: a dungeon's level line, and whether it fits inside its tile */
           /* v2.3.3801: every tile's line under its name, and whether it fits */
