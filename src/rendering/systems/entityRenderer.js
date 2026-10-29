@@ -5,7 +5,7 @@
 import { tickSmithing } from '@/game/smithing.js';   /* v2.3.2827: the smith borrows the mining swing */
 import { Assets, Cache, ColorMatrixFilter, Container, Graphics, Rectangle, Sprite, Text, TextStyle, Texture } from 'pixi.js';
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's roll and jog, one readback */
-import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
+import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCount, wheelNpcPhotosHeld, loadWheelNpcArt } from '../npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2046: walking NPCs; v2.3.2061: animated props */
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2748: a building's base, read off its art */
 import { TILE } from '@/data/constants.js';
@@ -81,7 +81,9 @@ import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js'; 
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the tee from the look palette */
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
-import { lookPaletteWanted } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
+import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0`; v2.3.3809: + drawing now */
+import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
+import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
 import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
 import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
 import { lookSheetParse } from '../lookExpand.js';
@@ -617,6 +619,16 @@ const npcFigureHeight = (src, npc) => npcSpriteScale(src) * (NPC_FRAME_FEET_Y - 
  * rather than flickering between south and southeast on sub-pixel jitter. */
 const NPC_DIRS_8 = ['east', 'southeast', 'south', 'southwest',
                     'west', 'northwest', 'north', 'northeast'];
+/* v2.3.3809: a townsperson drawn live has no figure this far past the view
+   (world px beyond its half-diagonal: _updateNPCs) */
+const FOLK_FAR_MARGIN = 300;
+/* v2.3.3809: a townsperson drawn live -- his body's size on the screen, world
+   px (the probe's; mp-wheelfolk sizes him against a player) */
+function _folkBodyPx(folk, k) {
+  const b = folk && folk._spriteBody;
+  if (!b || !b.texture) return 0;
+  return Math.abs(b.texture[k] * (k === 'height' ? b.scale.y : b.scale.x) * folk.scale.y);
+}
 function npcDirFromDelta(dx, dy) {
   const a = Math.atan2(dy, dx);                    /* -pi..pi, +y is down */
   const oct = Math.round(a / (Math.PI / 4));       /* -4..4 */
@@ -17225,6 +17237,105 @@ export class EntityRenderer {
     }
   }
 
+  /* ═══ v2.3.3809: A TOWNSPERSON DRAWN LIVE, AS ANOTHER PLAYER IS ═══
+     (the why: rendering/lookFolk.js.)  His look (src/data/npcLooks.js, under
+     a peer's field names) dresses a peer's figure, kept inside his own
+     display, by the very calls that dress another player standing or
+     walking bare -- the body from the look palette, his tee, cape, hat,
+     beard, eye style, glasses and hair -- so he is drawn from the shared
+     pieces every player is, and costs a few rows of colours.  The figure's
+     feet on his display's origin (his feet), at his size (Lil Bro's 0.8).
+     His walk (the race) is the jog by the distance he covers; standing, the
+     stand's own breath.  Returns false when he cannot be drawn so (no
+     look): the photograph, as before. */
+  _drawFolk(S, now, npc, display) {
+    const look = display._folkLook;
+    if (!look) return false;
+    let folk = display._folk;
+    if (!folk) {
+      folk = createOtherPlayerDisplay();
+      folk.label = 'npc_folk';
+      /* a peer's plate, bars and skull are not his: his display has its own */
+      if (folk._uiLayer) folk._uiLayer.visible = false;
+      folk._vShadeRef = folk._spriteBody;
+      display.addChildAt(folk, 0);   /* behind his bars and labels, as the photograph was */
+      display._folk = folk;
+    }
+    if (!folk.visible) folk.visible = true;
+    /* his facing and stride, from where he has got to (the photograph's
+       rule below: a floor, so a standing townsperson does not turn) */
+    const hadLast = typeof display._lastX === 'number';
+    const dx = hadLast ? npc.x - display._lastX : 0;
+    const dy = hadLast ? npc.y - display._lastY : 0;
+    display._lastX = npc.x; display._lastY = npc.y;
+    const step = Math.hypot(dx, dy);
+    const moving = step > 0.08;
+    if (moving) {
+      display._walkDir = npcDirFromDelta(dx, dy);
+      display._walkPhase = (display._walkPhase || 0) + step;
+      display._folkMovedAt = now;
+    }
+    /* a stride's last few px lands him on the stand, not frozen mid-step */
+    const jogging = moving || (now - (display._folkMovedAt || -1e9)) < 120;
+    const facing = folkFaceOverride() || display._walkDir || 'south';   /* QA may turn him (lookFolk.js) */
+    const { dir, mirror } = resolveDirection(facing);
+    const pose = jogging ? 'jog' : 'stand';
+    /* his size against a bro's: the photographs' own table, so the Mayor
+       stays the owner's 10% larger (v2.3.1822) and Lil Bro a child */
+    const size = (NPC_SCALE_MULT[npc.sprite] || NPC_BRO_MULT) / PLAYER_SIZE_MULT * npcFigureSize(npc);
+    let frameIdx = 0;
+    if (pose === 'jog') {
+      const fc = playerFrameCount('jog', dir) || 24;
+      const stride = NPC_WALK_SPEED * ((cycleMs('jog', dir) || 1000) / 1000) * size;
+      frameIdx = Math.floor(((display._walkPhase || 0) / Math.max(1, stride)) * fc) % fc;
+    } else {
+      const fc = playerFrameCount('stand', dir) || 1;
+      const cyc = cycleMs('stand', dir) || 1000;
+      /* each townsperson breathes on his own beat (his id), not in step */
+      if (display._folkBeat == null) {
+        let h = 0;
+        for (const c of String(npc.id)) h = (h * 31 + c.charCodeAt(0)) % 9973;
+        display._folkBeat = h * 7;
+      }
+      frameIdx = Math.floor(((now + display._folkBeat) / cyc) * fc) % fc;
+    }
+    const spriteBody = folk._spriteBody;
+    const art = _remoteBodyArt(look, mirror);
+    const shirtEquip = look.equip.shirt;
+    const tex = (lookPaletteWanted()
+      ? getLookBodyFrame(look.skin, look.pants, look.shoes, pose, dir, frameIdx, null, look.eyeColor, art, look.eyeStyle) : null)
+      || getBodyFrame(look.skin, look.pants, look.shoes, pose, dir, frameIdx, null, 'none', look.eyeColor, art, look.eyeStyle);
+    if (!tex) { folk.visible = false; return true; }
+    if (spriteBody.texture !== tex) spriteBody.texture = tex;
+    folk._animPose = pose; folk._animDir = dir; folk._animFrame = frameIdx;
+    const sizeMul = bodyDirScale(pose, dir) * 0.421875;
+    spriteBody.scale.x = (mirror ? -1 : 1) * sizeMul * DISPLAY_DS;
+    spriteBody.scale.y = sizeMul * DISPLAY_DS;
+    spriteBody.tint = 0xffffff;
+    spriteBody.visible = true;
+    if (folk._body) folk._body.visible = false;
+    const tint = shirtFill(look.shirt || 'tshirt', look.shirtColor);
+    folk._shirtLook = _shirtLook(null, null, sanitizePattern(look.shirtPattern, 'shirt'), tint);
+    folk._shirtArtMirror = mirror;
+    _placeGear(folk, { shirt: shirtEquip, legs: 'none', chest: 'none', shoulders: 'none', shirtTint: tint }, pose, dir, frameIdx);
+    _hideBodyRegions(folk);
+    if (folk._shirtSprite) folk._shirtSprite.visible = false;
+    _placeCape(folk, look.cape, pose, dir, mirror, frameIdx);
+    _placeHeadwear(folk, look.headwear, look.hatColor, pose, dir, mirror, frameIdx, sizeMul, look.hair);
+    _placeFacialHair(folk, look.facialhair, look.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
+    _placeSpecies(folk, look.species, look.skin, pose, dir, mirror, frameIdx, sizeMul);
+    _placeEyeStyle(folk, look.eyeStyle, look.eyeColor, pose, dir, mirror, frameIdx, sizeMul);
+    _placeEyewear(folk, look.eyewear, look.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);
+    _placeHair(folk, look.hair, look.hairColor, look.headwear, pose, dir, mirror, frameIdx, sizeMul);
+    _orderTraitsAndWeapon(folk, SECTORS.indexOf(facing), look.headwear);
+    /* a player's size on this ground, times his own (above); his feet on his origin */
+    const k = this._zonePscale(S, npc.x, npc.y) * PLAYER_SIZE_MULT * size;
+    if (folk.scale.x !== k) folk.scale.set(k);
+    folk.y = -_feetOffsetUnits(folk) * k;
+    display._walkIdx = frameIdx;   /* the probe's (mp-wheelfolk) */
+    return true;
+  }
+
   _updateNPCs(S, now) {
     const npcs = S.npcs || [];
     const activeIds = new Set();
@@ -17421,6 +17532,42 @@ export class EntityRenderer {
       display.x = npc.x;
       display.y = npc.y;
 
+      /* ═══ v2.3.3809: DRAWN LIVE FROM HIS LOOK (lookFolk.js) ═══
+         With the switch on, his look dresses a player's figure (_drawFolk)
+         and his photograph sprite is hidden; his plate, badge, bubble and tap
+         are his display's, as before.  Switched off, the photograph -- loaded
+         then if the world left it out -- and, until it is in, still live. */
+      if (display._folkLook === undefined) display._folkLook = npcLookAsPeer(npcLookByName(npc.name));
+      let _folkLive = false;
+      if (display._folkLook) {
+        const _folkOn = lookFolkOn();
+        if (!_folkOn && zoneHomes(S.currentZone) && !wheelNpcPhotosHeld()) loadWheelNpcArt(true);
+        const _photoMissing = !hasNpcWalk(npc.id) && !getNpcTexture(npc.sprite);
+        if (_folkOn || (_photoMissing && lookPaletteOn())) {
+          /* ═══ ...BUILT ONLY WHILE HE IS NEAR THE SCREEN ═══
+             A player's figure is some 45 display objects; 21 townsfolk each
+             holding one wherever they stood put the memory check's heap
+             line 1.3 MB over (CI, v2.3.3833's cast).  So, as for a player
+             far off (PEER_FAR_MARGIN), a townsperson past the view's
+             half-diagonal + FOLK_FAR_MARGIN has no figure: it is destroyed,
+             and made again when he comes near -- a few are on a screen. */
+          const _cam = S.camera, _vw = S._viewW, _vh = S._viewH;
+          const _far = !!(_cam && _vw > 0 && _vh > 0)
+            && Math.hypot(npc.x - (_cam.x + _vw / 2), npc.y - (_cam.y + _vh / 2)) > Math.hypot(_vw, _vh) / 2 + FOLK_FAR_MARGIN;
+          if (_far) {
+            if (display._folk) {
+              display.removeChild(display._folk);
+              display._folk.destroy({ children: true });
+              display._folk = null;
+            }
+            _folkLive = true;   /* live, and nothing of him to draw out there */
+          } else _folkLive = this._drawFolk(S, now, npc, display);
+        }
+      }
+      display._folkLive = _folkLive;
+      if (!_folkLive && display._folk && display._folk.visible) display._folk.visible = false;
+      if (display._fig && display._fig.visible === _folkLive) display._fig.visible = !_folkLive;
+
       /* v2.3.2048: keep the plate's text current. Cheap: _updateNamePill
          rebuilds the rounded rect only when the string changes (_pillKey),
          so this is a string comparison per frame and nothing more. */
@@ -17439,7 +17586,7 @@ export class EntityRenderer {
          with what is drawn.
          The phase accumulates DISTANCE, so a slow wander steps slowly and a
          stopped NPC holds frame 0 instead of marching on the spot. */
-      if (display._fig && hasNpcWalk(npc.id)) {
+      if (!_folkLive && display._fig && hasNpcWalk(npc.id)) {
         const hadLast = typeof display._lastX === 'number';
         const dx = hadLast ? npc.x - display._lastX : 0;
         const dy = hadLast ? npc.y - display._lastY : 0;
@@ -17470,7 +17617,7 @@ export class EntityRenderer {
          drawn figure: marker just above the hat, name above the marker, HP bar
          and star tucked above that.  Recomputed if the scale ever changes,
          and only once the texture is bound so we know he is actually drawn. */
-      if (display._fig && !display._lifted && display._fig.texture !== Texture.EMPTY) {
+      if (display._fig && !display._lifted && (display._fig.texture !== Texture.EMPTY || _folkLive)) {   /* v2.3.3809: or drawn live */
         display._lifted = true;
         const top = npcFigureHeight(npc.sprite, npc); // world px above the feet
         /* The marker is anchored at its CENTRE, so clearing the hat needs half
@@ -17527,7 +17674,7 @@ export class EntityRenderer {
         }
         /* Only hide the emoji stand-in once real art is actually on screen —
            otherwise a failed load leaves an NPC you cannot see at all. */
-        const drawn = fig.texture !== Texture.EMPTY;
+        const drawn = fig.texture !== Texture.EMPTY || _folkLive;   /* v2.3.3809: or drawn live */
         if (display._avatar.visible !== !drawn) display._avatar.visible = !drawn;
         display._suppressBody = drawn;
         /* v2.3.1773: QA probe — what each NPC figure is ACTUALLY drawn as.
@@ -17538,8 +17685,10 @@ export class EntityRenderer {
         if (typeof window !== 'undefined' && drawn) {
           _npcDrawn[npc.id] = {
             id: npc.id, name: npc.name, x: npc.x, y: npc.y,
-            height: fig.texture.height * fig.scale.y,
-            width: fig.texture.width * fig.scale.x,
+            /* v2.3.3809: drawn live, his figure's body as drawn */
+            height: _folkLive ? _folkBodyPx(display._folk, 'height') : fig.texture.height * fig.scale.y,
+            width: _folkLive ? _folkBodyPx(display._folk, 'width') : fig.texture.width * fig.scale.x,
+            live: _folkLive,
             /* world y of the figure's feet — anchor is the frame's foot row */
             footY: display.y,
             src: display._figSrc,
@@ -17555,7 +17704,7 @@ export class EntityRenderer {
                within the crop's 4-11 px pad, world px) -- Lil Bro's picture
                is photographed small, not drawn small */
             size: npcFigureSize(npc),
-            paintTop: fig.texture.trim ? (NPC_FRAME_FEET_Y - fig.texture.trim.y) * fig.scale.y : null,
+            paintTop: !_folkLive && fig.texture.trim ? (NPC_FRAME_FEET_Y - fig.texture.trim.y) * fig.scale.y : null,
             /* v2.3.2071: the PLATE as painted -- the two strings on it, how
                far below the feet it hangs, and whether the old above-head
                label is really gone. Owner: "Make every persons name or title
