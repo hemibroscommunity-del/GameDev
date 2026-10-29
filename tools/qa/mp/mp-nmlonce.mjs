@@ -2,15 +2,15 @@
  * (game/nmlExplainOnce.js, ui/mobile/NmlBadge.jsx)
  *
  * A judge died reading No man's land's explainer among the first quest's
- * slimes.  On an upright phone:
- *   1. walking out of BroTown toward the first quest's slimes, the explainer
- *      comes up BY ITSELF on the safe ground, before the line (No man's land
- *      0 where you stand), with its lead line;
- *   2. closed, it does not come again: back and forth by the line, nothing;
- *   3. the character is remembered as told (the browser's store, by its id);
+ * slimes.  v2.3.3853: and then the owner, before the showing: "just get rid
+ * of the no man's land gigantic warning message. I'd rather not have
+ * anything" -- so the explainer no longer comes up by itself at all.  On an
+ * upright phone:
+ *   1. walking out of BroTown toward the first quest's slimes and on over the
+ *      line, NOTHING comes up: no explainer, no "No man's land" banner;
  *   4. opened in a fight (the skull pill in the top bar, among the Flame
  *      Fields goblins), the first hit you take closes it;
- * with pictures of 1 and 4 for eyes (tools/qa/mp/out/nmlonce-*.png).
+ * with a picture of 4 for eyes (tools/qa/mp/out/nmlonce-4-in-a-fight.png).
  */
 import * as H from './harness.mjs';
 import { join } from 'node:path';
@@ -36,7 +36,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!inW) return;
     const myId = await H.readState(P, (S) => S.myId);
     const first = await H.readState(P, (S) => ((S._serverCaps && S._serverCaps.nmlnear === true) ? 1 : 2));
-    await P.page.evaluate(() => { if (window.__btNmlOnce) window.__btNmlOnce.forget(); });
     /* the line toward the first quest's slimes (the Earth Forest's anchor), on the plan's rings */
     const C = NML_CENTRES[long] || NML_CENTRES[1], A = WHEEL_SPAWNS.verdant.anchor || WHEEL_SPAWNS.verdant.points[0];
     const dx = A[0] - C[0], dy = A[1] - C[1], d = Math.hypot(dx, dy), ux = dx / d, uy = dy / d;
@@ -51,36 +50,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     const nmlHereNow = () => P.page.evaluate(() => { const b = window.__btNmlBadge && window.__btNmlBadge(); return b ? b.lvl : 0; });
 
-    /* ── 1. walking out, it comes up before the line ── */
+    /* ── 1. v2.3.3853: walking out and over the line, nothing comes up ── */
+    const banners = () => P.page.evaluate(() => { const zb = window.__btZoneBanner; let n = 0; for (let k = 1; zb && zb.shownAt && k <= 200; k++) if (zb.shownAt('nml-' + k) > 0) n++; return n; });
+    /* past the Mayor gate (a new character stays in town until it has spoken to him) */
+    await P.page.evaluate(() => { const R2 = window._gameState.current.rpg; R2._quests = R2._quests || {}; R2._quests.tut_1 = true; });
     const [mx, my] = at(R - 600);
     await H.hopTo(P, mx, my, { tries: 200 });
-    const before = await popup();
-    let seen = null;
-    for (let r = R - 600; r <= R - 120 && !(seen && seen.open); r += 60) {
+    let came = null, crossed = 0;
+    for (let r = R - 600; r <= R + 300; r += 60) {
       const [x, y] = at(r);
       await H.hopTo(P, x, y, { tries: 10, step: 60 });
       await P.page.waitForTimeout(700);
-      seen = await popup();
-      if (seen.open) seen.lvl = await nmlHereNow();
+      const s1 = await popup();
+      if (s1.open && !came) came = s1;
+      if (!crossed) crossed = await nmlHereNow();
     }
-    if (seen && seen.open) await P.page.screenshot({ path: join(OUT, 'nmlonce-1-at-the-line.png') }).catch(() => {});
-    rec.ok(`1. walking out of BroTown, the explainer comes up by itself on the safe ground before the line ("${seen && seen.lead}")`,
-      !before.open && !!seen && seen.open && seen.nml && /No man's land/.test(seen.lead || '') && !seen.lvl, { before, seen, R });
-
-    /* ── 2. closed, it does not come again ── */
-    await P.page.evaluate(() => window.__btInfoPopup && window.__btInfoPopup.close());
-    let again = false;
-    for (const r of [R - 300, R - 60, R - 250, R - 40, R - 200]) {
-      const [x, y] = at(r);
-      await H.hopTo(P, x, y, { tries: 10, step: 60 });
-      await P.page.waitForTimeout(800);
-      if ((await popup()).open) again = true;
-    }
-    rec.ok('2. closed, it does not come again: back and forth by the line, nothing', !again);
-
-    /* ── 3. remembered for this character ── */
-    const told = await P.page.evaluate((id) => { try { return localStorage.getItem('bt_nml_told_' + id); } catch (e) { return 'no store'; } }, myId);
-    rec.ok(`3. the character is remembered as told (${told})`, told === '1', told);
+    await P.page.waitForTimeout(2500);   /* past the badge's dwell, when the banner played */
+    const nb = await banners();
+    rec.ok(`1. walking out of BroTown and over the line (No man's land ${crossed} reached), nothing comes up: no explainer (${came ? came.title : 'none'}), no banner (${nb})`,
+      crossed > 0 && !came && nb === 0, { came, crossed, nb, R });
 
     /* ── 4. opened in a fight, a hit closes it ── */
     await P.page.evaluate(() => { const R2 = window._gameState.current.rpg; R2._quests = R2._quests || {}; R2._quests.tut_1 = true; });
