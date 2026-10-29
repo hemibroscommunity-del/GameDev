@@ -3,8 +3,8 @@
  * The owner, 2026-10-29: "For disappearing traits sometimes it's a flicker",
  * and "keep trying to patch the causes of any flicker or missing traits
  * first."  mp-traitsoak and mp-headkeep look at the head once you stop; a
- * flicker is a frame or a few in between.  So this plays a phone (390 x 844
- * at 3x) in a full coloured look -- wavy hair, a bandana, a beard, the golden
+ * flicker is a frame or a few in between.  So this plays a phone (390 x 844,
+ * at 1x: see DPR) in a full coloured look -- wavy hair, a bandana, a beard, the golden
  * glasses, each in a colour (drawn from the look palette's numbers,
  * traits/headLook.js) -- with the page counting, the moment before EVERY
  * frame is drawn, each worn piece not on screen (src/rendering/headFrames.js,
@@ -26,6 +26,10 @@
 import * as H from './harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
+/* 1x by default: this box draws a 3x phone's 1170 x 2532 canvas at about two
+   frames a second, too few to see a one-frame gap; what hides a piece is the
+   game's own state, the same at any density.  BT_HF_DPR=3 for the phone's. */
+const DPR = +(process.env.BT_HF_DPR || 1);
 const QUERY = 'headframes' + (process.env.BT_HF_QUERY ? '&' + process.env.BT_HF_QUERY : '');
 const LOOK = { hair: 'wavy', hairColor: 'blonde', hat: 'bandana-2', hatColor: 'blue', beard: 'beard', beardColor: 'black', eye: 'golden-glasses' };
 const FACINGS = {
@@ -93,7 +97,7 @@ async function fight(P, key, slot, ms) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
-    name: 'Headframe', wsPort, webPort, viewport: PHONE, touch: true, dpr: 3, world: 'wheel', query: QUERY,
+    name: 'Headframe', wsPort, webPort, viewport: PHONE, touch: true, dpr: DPR, world: 'wheel', query: QUERY,
     init: `(${INIT.toString()})(${JSON.stringify(LOOK)});`,
   });
   const errors = [];
@@ -119,6 +123,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!ok || !probe) return;
     const me = await H.readState(P, (S) => S.myId);
     await H.devOp(wsPort, 'quests', me).catch(() => null);
+    /* the first quest's gate held open, so the weapons come (mp-traitsoak) */
+    await P.page.evaluate(() => {
+      const keep = () => {
+        const S = window._gameState && window._gameState.current, R = S && S.rpg;
+        if (!R) return;
+        if (!R._quests || typeof R._quests !== 'object') R._quests = {};
+        if (!R._quests.tut_1) R._quests.tut_1 = true;
+      };
+      keep();
+      window.__hfGateOpen = setInterval(keep, 100);
+    });
     (async () => {
       while (!stop) {
         await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 8 }).catch(() => null);
@@ -128,7 +143,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
     await P.page.waitForTimeout(3000);
 
-    await phase('standing', () => P.page.waitForTimeout(3000));
+    await phase('standing', () => P.page.waitForTimeout(5000));
     await phase('jogging the eight facings', async () => { for (const keys of Object.values(FACINGS)) await hold(P, keys, 1200); });
     await phase('quick turns', async () => {
       for (let r = 0; r < 3; r++) for (const keys of Object.values(FACINGS)) await hold(P, keys, 200);
