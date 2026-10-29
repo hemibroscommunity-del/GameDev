@@ -126,6 +126,7 @@ import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
 /* v2.3.1205: named z-index registry — see src/ui/zLayers.js for the
    observed ladder + the tutorial-banner-under-dashboard incident. */
 import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
+import { deskWideActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size */
 import { MenuBar } from './panels/MenuBar.jsx';
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
@@ -5753,7 +5754,15 @@ export var BroTown = function BroTown(_ref0) {
            player off that edge cannot strand a portal.  A top-edge entry SPAWN
            lands above the clamp and is nudged down on its first frame, which is
            what the bottom edge already does. */
-        var _RAIL_CSS = 46;
+        /* v2.3.3765: the rail grew per layout (game.css --bt-bar-k: 34 px
+           of row x k); read once a second, never a style read every frame. */
+        var _rNow = Date.now();
+        if (!S._railCssAt || _rNow - S._railCssAt > 1000) {
+          S._railCssAt = _rNow;
+          var _bk = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--bt-bar-k'));
+          S._railCss = 46 + 34 * ((_bk > 0 ? _bk : 1) - 1);
+        }
+        var _RAIL_CSS = S._railCss || 46;
         var _HEAD_MARGIN = 57 + Math.round(_RAIL_CSS / Math.max(0.2, S._worldScaleY || 1));
         P.x = Math.max(hs, Math.min(ZONE_W - hs, P.x));
         P.y = Math.max(hs + _HEAD_MARGIN, Math.min(ZONE_H - _FOOT_MARGIN, P.y));
@@ -13190,12 +13199,24 @@ export var BroTown = function BroTown(_ref0) {
          .bt-inspect content box, which now reserves BOTH the band
          (padding-bottom) and the HUD chip strip (padding-top — the chip
          paints over in-wrap modals, see game.css). */
-      width: 'min(360px, calc(100vw - 24px))',
+      /* ═══ v2.3.3769: ON A COMPUTER, A COMPUTER'S WINDOW ═══
+         The owner: "As you find improvements you can make to the empty space
+         on the desktop version go ahead" (the judges play on computers).  The
+         building windows were a phone's 360 px card in a ~1170 px world,
+         their lists scrolling after two rows with empty world all round.  On
+         a computer playing wide (deskWide.js) the card is 470 px and up to
+         82% of the world's height, its room picture and rows growing with it,
+         so a list shows more before it scrolls.  This card is every
+         building's window (each panel's LS_WRAP bleeds to it), the Town
+         Hall's board included.  The Blacksmith keeps its height rule below
+         (the smith is seen working above it) and takes the width only.
+         Phones unchanged. */
+      width: deskWideActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
       /* v2.3.2826: the Blacksmith card's TOP stays below the player's feet --
          the camera centres the player, so the card ends at the band and is
          (50vh - 72px - band) tall, i.e. its top sits at 50vh + 60px.  230px
          floor so a short phone still gets the header, the tabs and a row. */
-      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : '100%',
+      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : deskWideActive() ? '82%' : '100%',
       overflowY: 'auto',
       /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
          as the destination sheets/leaderboard): at 390 the Woodworker's
@@ -14737,7 +14758,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "\u26A0\uFE0F Dark! Monsters hear you.")), showEmotes && /*#__PURE__*/React.createElement(EmotePanel, { sendEmote: sendEmote, onClose: function () { setShowEmotes(false); } /* v2.3.3391 */, sendMove: sendMove, movesOn: movesLive(stateRef.current) /* v2.3.3392 */ }),
   /* v2.3.3107: No man's land's skull and number over the middle of the band;
      a tap says what it means (the owner: "instead of the top bar") */
-  React.createElement(NmlBadge, { stateRef: stateRef, isLandscape: isLandscape }),   /* v2.3.3629: beside the minimap's name plate (sideways level with the box's top, or in the top bar's row on a short screen, portalled to the body there) */
+  React.createElement(NmlBadge, { stateRef: stateRef }),   /* v2.3.3629: beside the minimap's name plate; v2.3.3765: the pill moved to the top bar (ZoneHeader, NmlPill), this keeps the red line along the band */
   /* v2.3.3253: the small window a tap or a stray shot raises about a player
      you could fight there (game/nmlAsk.js), portalled to the top of the
      screen, under the minimap */
