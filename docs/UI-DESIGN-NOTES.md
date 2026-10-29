@@ -443,7 +443,7 @@ Screens: mayor-dialogue, quest-offer, quest-accepted
 Sources: CLAUDE.md, docs/specs/quest-windows.md, docs/specs/quest-guidance.md, docs/specs/quest-path-guide.md, docs/specs/quest-coach.md, docs/specs/onboarding-pace.md, docs/specs/desktop-keys.md, docs/specs/reach-every-button.md, docs/LANTERN-SLATE-SPEC.md, src/ui/panels/NpcDialogue.jsx, src/ui/panels/QuestOfferPanel.jsx, src/ui/panels/QuestPanel.jsx, src/ui/panels/QuestBannerLayer.jsx, src/ui/BroTown.jsx, src/ui/mobile/QuestStepNudge.jsx, src/ui/onboardingPace.js, src/game/welcomeBanner.js, src/styles/game.css
 
 ## The minimap and the world map
-Screens: world-map
+Screens: world-map, world-map-pin
 
 **What it is for:** Finding your way round the Wheel, a big world of eight lands around BroTown. The minimap in the top-right corner says where you are and which way to go; a tap on it opens the full world map, which shows more the further you zoom in.
 
@@ -474,6 +474,7 @@ Screens: world-map
 - Far from you, zoomed in, the land is drawn as sharply as round you, with finer pieces loaded only while shown (v2.3.3319).
 - Dungeons and the farm still use the older 52 px box, sized by an earlier owner ask, "shrink the minimap size by 50% but increase the size of the icons on it", and "Make it 20% transparent." (v2.3.2247).
 - On a computer M opens and closes the world map; the minimap wears the M beside its tap-me mark (v2.3.3407).
+- **Your own pin** (v2.3.3879, the owner: "add the ability to drop a pin to the map for where you want to go after opening it ... You just need to also have an easy way to remove it afterwards"): a tap (a click) on open ground in the world map drops a purple pin there, a second tap elsewhere moves it; a tap on it, or "Remove pin" at the top of the map, lifts it. A plain tap did nothing on the map before, so it is safe; a drag, a pinch or a long press drops nothing. The minimap shows it, on its edge toward it when it is off the box, beside the quest's gold star. One pin a character, kept on this device, never sent to the server. Purple, not the quest's gold or the Town Hall board's red and blue pins (docs/specs/map-pin.md).
 - On a computer the key is sized from the play column, not drawn at the phone's 11 px in a window-sized map (v2.3.3830, the judges' pass found it small at 1440 x 900): the column a computer gives the phone's layout over the phone's 390, so 1.26 times at 1440 x 900, 1.5 at 1920 x 1080, as before at 1280 x 720, never past twice; its words and pictures grow together. Phones never change (docs/specs/layout-nits.md).
 
 **Tried before, and changed:**

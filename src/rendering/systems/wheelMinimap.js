@@ -76,6 +76,7 @@ import { wheelOverviewLands, wheelMapInfo, wheelHere, wheelObjectsInfo, wheelLoc
 import { wheelTownDoors } from '@/game/wheelTownDoors.js';   /* v2.3.3146: the town's buildings */
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { starCue } from '@/ui/starCue.js';                 /* v2.3.3872: a new star, shown */
+import { DROP_PIN, dropPinAt, dropPinOn } from '@/game/dropPin.js';   /* v2.3.3879: your own pin */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 import { peerDotAt } from '@/game/peerDot.js';             /* v2.3.3243: a player's dot where they are now */
 import { PARTY_MARK, partyIdsOf, clampToBox } from '@/game/partyMarks.js';   /* v2.3.3277: your party, blue, and on the box's edge when off it */
@@ -809,6 +810,26 @@ export class WheelMinimap {
         mapPins.push({ color: k, id, edge, x: Math.round(x * SCALE + this.pan.x), y: Math.round(y * SCALE + this.pan.y) });
       }
     }
+    /* ═══ v2.3.3879: YOUR OWN PIN (game/dropPin.js) ═══
+       Dropped on the World map; drawn as the board's pins are, in purple, on
+       the box's edge on the line to it when it is off the box -- however far,
+       so the box always says which way. */
+    let dropPin = null;
+    if (dropPinOn()) {
+      const at = dropPinAt(S);
+      if (at) {
+        const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
+        const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE, hiY = MAP_BOT - (QUEST_EDGE - FRAME);
+        let x = at.x, y = at.y, edge = false;
+        if (!inBox(x, y)) {
+          const c = clampToBox(pbx, pby, x * SCALE + this.pan.x, y * SCALE + this.pan.y, lo, hi, hiY);
+          x = (c.x - this.pan.x) / SCALE; y = (c.y - this.pan.y) / SCALE; edge = true;
+        }
+        const px = edge ? MAP_PIN_EDGE_PX : MAP_PIN_PX;
+        this._mark(x, y - (edge ? 0 : px / 2 / SCALE), 'mappin', DROP_PIN.COLOR, px);
+        dropPin = { edge, x: Math.round(x * SCALE + this.pan.x), y: Math.round(y * SCALE + this.pan.y) };
+      }
+    }
     /* v2.3.2990: the quest's way (above the bros and monsters: drawn last) */
     let quest = null;
     try { quest = questRoutePoint(S.currentZone, S.rpg || null, S); } catch (e) { quest = null; }
@@ -938,6 +959,7 @@ export class WheelMinimap {
         h: WHEEL_H, mapBottom: MAP_BOT, plate: plate ? { ...plate, rect: this._plateRect || null } : null,
         /* v2.3.3522: + whose road it is and where it leads (game/questWays.js) */
         star: this._starAt ? { x: Math.round(this._starAt.x), y: Math.round(this._starAt.y) } : null,   /* v2.3.3872: the star in the box (mp-starcue) */
+        dropPin,   /* v2.3.3879: your own pin in the box (mp-mappin) */
         quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road,
           qid: quest.qid || null, way: quest.way || null, door: quest.door || null } : null,
         /* v2.3.3023: the way home: whether town is off the box, whether its

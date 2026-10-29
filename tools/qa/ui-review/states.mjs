@@ -759,6 +759,22 @@ export const STATES = [
     after: async ({ P }) => { await evalIn(P, () => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); }); },
   },
   {
+    id: 'world-map-pin', group: 'Maps and chat', title: 'World map, your pin',
+    about: 'The world map with your own pin dropped (a tap on open ground drops it, a tap on it lifts it): the purple pin on the map, "Remove pin" at the top, "your pin" in the key; the minimap shows it too (v2.3.3879).',
+    settle: 1600,
+    run: async ({ P }) => {
+      const ok = await evalIn(P, () => {
+        const S = window._gameState && window._gameState.current;
+        if (!window.__btMapPin || !window.__btWorldMapOpen || !S || !S.player) return false;
+        window.__btMapPin.set(S.player.x - 260, S.player.y - 180);
+        window.__btWorldMapOpen(true);
+        return true;
+      });
+      if (!ok) return 'no map-pin probe';
+    },
+    after: async ({ P }) => { await evalIn(P, () => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); if (window.__btMapPin) window.__btMapPin.clear(); }); },
+  },
+  {
     id: 'chat', group: 'Maps and chat', title: 'Chat',
     about: 'Writing in the chat.  On a phone a tap on your own bro opens the chat box high over him, its tail pointing down at him (no Send button: the keyboard\'s own key sends; the smiley opens the emotes, the mic types by voice); on a computer C opens the chat bar at the top (All / Area / Whisper, the line and Send).',
     /* v2.3.3460: each the way its player opens it -- a phone's tap on your
