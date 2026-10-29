@@ -25,7 +25,8 @@ import { propSpriteSources, propSpriteSourcesIn, propAnimStrips, zoneDecorSource
 import { loadCroppedStrip } from './gearSheets.js'; /* v2.3.2859: the NPC walk strips load cropped */
 import { WHEEL_TOWNSFOLK } from '../data/wheelBuildingDoors.js'; /* v2.3.3067: who stands in the Wheel's Brotown */
 import { loadTracked, unloadBundle, bundleLoaded } from './zoneTextures.js'; /* v2.3.2651: zone decor is freed on exit like every other per-zone sheet */
-import { lookFolkAtLoad, noteFolkPhotos, noteFolkPhotosLate } from './lookFolk.js'; /* v2.3.3809: the townsfolk drawn live leave their photographs unloaded */
+import { lookFolkAtLoad, noteFolkPhotos, noteFolkPhotosLate } from './lookFolk.js';
+import { npcLookByName } from '../data/npcLooks.js'; /* v2.3.3809: who has a look to be drawn from */ /* v2.3.3809: the townsfolk drawn live leave their photographs unloaded */
 
 /* v2.3.2618: art an NPC's DIALOG needs warm, as opposed to art the world
    draws.  Ace's coin lands on one of these two strips the instant the server
@@ -393,16 +394,17 @@ export function freeTownScenery() {
 const _wheelTex = Object.create(null);
 let _wheelArt = null;
 /* Mayor Bro and the townsfolk, as NPC_DATA rows */
-function _wheelCast() {
+function _wheelCast(live) {
   const names = ['Mayor Bro'].concat(WHEEL_TOWNSFOLK.map((f) => f.name));
-  return (NPC_DATA || []).filter((n) => n && names.indexOf(n.name) >= 0);
+  /* v2.3.3809: `live`: less those drawn live from a look (lookFolk.js) */
+  return (NPC_DATA || []).filter((n) => n && names.indexOf(n.name) >= 0 && !(live && npcLookByName(n.name)));
 }
 function _walksSouth(n) {
   return !!(n.walk && n.walk.base && Array.isArray(n.walk.dirs) && n.walk.dirs.indexOf('south') >= 0);
 }
 /** The Wheel's figures drawn from one picture each (no walk): their files. */
-export function wheelNpcSources() {
-  return _wheelCast().filter((n) => n.sprite && !_walksSouth(n)).map((n) => n.sprite);
+export function wheelNpcSources(live) {
+  return _wheelCast(live).filter((n) => n.sprite && !_walksSouth(n)).map((n) => n.sprite);
 }
 /** The walkers the Wheel shows, and the one strip of each it loads:
     [{ id, dir, src, frames, only }].  v2.3.3525: or the strips its row names
@@ -411,8 +413,8 @@ export function wheelNpcSources() {
     stands still facing the street here, so of his strip only the cell he
     stands on (NPC_DATA `walk.stand`, the cell entityRenderer draws him on);
     getNpcWalkFrame's lookup wraps, so that one cell answers every frame. */
-export function wheelWalkSources() {
-  return _wheelCast().filter(_walksSouth)
+export function wheelWalkSources(live) {
+  return _wheelCast(live).filter(_walksSouth)
     .flatMap((n) => {
       const ways = Array.isArray(n.wheelDirs) && n.wheelDirs.length ? n.wheelDirs : null;
       const stand = Number.isInteger(n.walk.stand) && n.walk.stand >= 0 ? n.walk.stand : 0;
@@ -429,18 +431,16 @@ export function loadWheelNpcArt(late) {
      nothing.  `late`: the Test panel turned that off while you play (or the
      palette could not draw) -- the photographs load now, the switch's own
      load; until they are in, the townsfolk stay drawn live. */
-  if (!late && lookFolkAtLoad()) {
-    _wheelArt = { p: Promise.resolve(), crops: [], stills: [], skipped: true };
-    noteFolkPhotos(true);
-    return _wheelArt.p;
-  }
+  /* Only those with a look (src/data/npcLooks.js): a townsperson with none
+     keeps his photograph, or he would be drawn as nothing at all */
+  const live = !late && lookFolkAtLoad();
   if (late) { _wheelArt = null; noteFolkPhotosLate(); }
-  noteFolkPhotos(false);
-  const run = { p: null, crops: [], stills: [] };
+  noteFolkPhotos(live);
+  const run = { p: null, crops: [], stills: [], skipped: live };
   run.p = Promise.allSettled([
     /* v2.3.3580: a one-picture townsperson cropped to his figure, as a strip
        of one cell (`orig` the whole 256 cell, so he stands where he did) */
-    ...wheelNpcSources().map((src) => loadCroppedStrip(npcArtUrl(src), 1).then((frames) => {
+    ...wheelNpcSources(live).map((src) => loadCroppedStrip(npcArtUrl(src), 1).then((frames) => {
       const tex = frames && frames[0];
       if (!tex || !tex.source) return;
       if (_wheelArt !== run) { _releaseCrops([{ src: tex.source, frames }]); return; }   /* freed while loading */
@@ -448,7 +448,7 @@ export function loadWheelNpcArt(late) {
       run.stills.push({ src: tex.source, frames });
       _wheelTex[src] = tex;
     })),
-    ...wheelWalkSources().map((w) => loadCroppedStrip(npcArtUrl(w.src), w.frames, w.only ? { only: w.only } : null).then((frames) => {
+    ...wheelWalkSources(live).map((w) => loadCroppedStrip(npcArtUrl(w.src), w.frames, w.only ? { only: w.only } : null).then((frames) => {
       const src = frames && frames[0] && frames[0].source;
       if (!src) return;
       if (_wheelArt !== run) { _releaseCrops([{ src, frames }]); return; }   /* freed while loading */
