@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2263b2061e6d60bd557b3bfaacb3cc0151cef3a7",
+  "tree": "98cf686dd5871c933a401f603bf92a7b0079032f",
+  "committedAt": "2026-10-28T19:09:21-07:00",
+  "subject": "Docs: the storage registry's nml_state row carries the rematch lock (v2.3.3818) (#1287)",
+  "files": 7132,
+  "bytes": 818426027,
+  "listingSha256": "9834826bc28697c82e1f6c03ee63c0594a7106e70ec1f963870e79a54de06ff3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
