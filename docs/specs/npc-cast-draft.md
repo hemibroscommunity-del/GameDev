@@ -6,7 +6,7 @@ to walk a little, do some animations etc / After phase 2 and all that"*.
 **APPROVED by the owner, 2026-10-29:** *"Keep all as you have them for now
 (NPCs)"*. All thirteen stay, with their names and looks as drafted and the three
 locals kept. Chatter only for now; quests maybe later. They are built in their
-own change (v2.3.3820).
+own change (v2.3.3833).
 
 ![The eight today, and the thirteen proposed](npc-cast-draft.png)
 

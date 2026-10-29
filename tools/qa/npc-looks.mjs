@@ -112,6 +112,116 @@ export const NPC_LOOKS = {
     patterns: { shirt: 'diamond:5' },
     walk: 'cardsharp-bro-walk-',
   },
+  /* ═══ v2.3.3833: THE NEW CAST (docs/specs/npc-cast-draft.md) ═══
+     The owner, of the draft: "Keep all as you have them for now (NPCs)".  A
+     keeper at each of the ten buildings that had nobody at the door, and three
+     locals.  Each stands still facing the street, so one picture each
+     (`still`); P5's live townsfolk (v2.3.3809) can draw them from these same
+     rows instead. */
+  banker: {
+    name: 'Sterling', why: 'crypto bro running a bank: laser-eyes visor, pinstripes',
+    skin: 'ivory', hair: 'split-hair', hairColor: 'black', beard: 'none', beardColor: 'default',
+    hat: 'none', hatColor: 'default', eyewear: 'laser-glasses', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'navy', pants: 'black', shoes: 'black',
+    patterns: { shirt: 'stripe-v:2' },
+    still: 'sterling',
+  },
+  barkeep: {
+    name: 'Slim', why: 'craft mixologist: the beard, the checked shirt, the attitude',
+    skin: 'deep', hair: 'wavy', hairColor: 'black', beard: 'beard', beardColor: 'black',
+    hat: 'none', hatColor: 'default', eyewear: 'none', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'black', pants: 'gray', shoes: 'brown',
+    patterns: { shirt: 'check:5' },
+    still: 'slim',
+  },
+  chef: {
+    name: 'Chef Blaze', why: 'shouting TV chef: spiky blonde flat-top, white shades, flame tee',
+    skin: 'rosy', hair: 'flat-top', hairColor: 'blonde', beard: 'beard', beardColor: 'blonde',
+    hat: 'none', hatColor: 'default', eyewear: 'white-glass', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'red', pants: 'black', shoes: 'white',
+    patterns: { shirt: 'chevron:11' },
+    still: 'chef-blaze',
+  },
+  gemguru: {
+    name: 'Glint', why: 'crystal-healing influencer: long hair, a halo, polka purple',
+    skin: 'porcelain', hair: 'long', hairColor: 'default', beard: 'none', beardColor: 'default',
+    hat: 'halo', hatColor: 'default', eyewear: 'none', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'purple', pants: 'white', shoes: 'white',
+    patterns: { shirt: 'dots:9' },
+    still: 'glint',
+  },
+  postman: {
+    name: 'Postmaster Pete', why: 'the slowest clerk alive: postal cap, grey beard, striped blue',
+    skin: 'fair', hair: 'none', hairColor: 'default', beard: 'beard', beardColor: 'gray',
+    hat: 'red-cap', hatColor: 'blue', eyewear: 'none', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'blue', pants: 'navy', shoes: 'black',
+    patterns: { shirt: 'stripe-h:2' },
+    still: 'postmaster-pete',
+  },
+  realtor: {
+    name: 'Deed Dave', why: 'swamp-selling realtor: a little hat over a loud teal shirt',
+    skin: 'tan', hair: 'none', hairColor: 'default', beard: 'none', beardColor: 'default',
+    hat: 'gray-hat', hatColor: 'default', eyewear: 'none', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'teal', pants: 'white', shoes: 'brown',
+    patterns: { shirt: 'diamond:5' },
+    still: 'deed-dave',
+  },
+  bellhop: {
+    name: 'Benny', why: 'upselling bellhop: the fez, a red windowpane jacket',
+    skin: 'brown', hair: 'none', hairColor: 'default', beard: 'none', beardColor: 'default',
+    hat: 'fez-hat', hatColor: 'default', eyewear: 'none', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'red', pants: 'black', shoes: 'black',
+    patterns: { shirt: 'grid:9' },
+    still: 'benny',
+  },
+  guildmaster: {
+    name: 'Guildmaster Gary', why: 'raid leader who takes it too seriously: the headband',
+    skin: 'pale', hair: 'blonde-hair', hairColor: 'default', beard: 'none', beardColor: 'default',
+    hat: 'naruto-headband', hatColor: 'default', eyewear: 'none', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'black', pants: 'navy', shoes: 'red',
+    patterns: { shirt: 'diamond:5' },
+    still: 'guildmaster-gary',
+  },
+  sheriff: {
+    name: 'Sheriff Buck', why: 'mall cop with a bought badge: black cowboy hat, aviators',
+    skin: 'sand', hair: 'none', hairColor: 'default', beard: 'none', beardColor: 'default',
+    hat: 'cowboy-hat-2', hatColor: 'black', eyewear: 'thug-life', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'yellow', pants: 'brown', shoes: 'black',
+    patterns: { shirt: 'stripe-v:2' },
+    still: 'sheriff-buck',
+  },
+  auctioneer: {
+    name: 'Gavel Greg', why: 'auctioneer who never stops: a crown, a gold-striped tee',
+    skin: 'ebony', hair: 'none', hairColor: 'default', beard: 'beard', beardColor: 'black',
+    hat: 'crown', hatColor: 'default', eyewear: 'none', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'yellow', pants: 'black', shoes: 'white',
+    patterns: { shirt: 'diag:5' },
+    still: 'gavel-greg',
+  },
+  fisher: {
+    name: 'Old Man Reel', why: 'fisherman whose fish grow every telling: beanie, white beard, a slicker',
+    skin: 'alabaster', hair: 'none', hairColor: 'default', beard: 'beard', beardColor: 'white',
+    hat: 'beanie', hatColor: 'gray', eyewear: 'none', eyes: 'sleepy',
+    shirt: 'tshirt', shirtColor: 'yellow', pants: 'navy', shoes: 'black',
+    patterns: {  },
+    still: 'old-man-reel',
+  },
+  streamer: {
+    name: 'Bean', why: 'kid streamer with no viewers: cat ears, pink everything (a child: NPC_DATA figureSize 0.8)',
+    skin: 'honey', hair: 'split-hair', hairColor: 'pink', beard: 'none', beardColor: 'default',
+    hat: 'cat-ears', hatColor: 'pink', eyewear: 'none', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'pink', pants: 'gray', shoes: 'white',
+    patterns: { shirt: 'dots:9' },
+    still: 'bean',
+  },
+  tourist: {
+    name: 'Tourist Terry', why: 'lost tourist: a souvenir sombrero, a monocle, orange shorts',
+    skin: 'porcelain', hair: 'none', hairColor: 'default', beard: 'none', beardColor: 'default',
+    hat: 'sombrero', hatColor: 'default', eyewear: 'golden-monocle', eyes: 'none',
+    shirt: 'tshirt', shirtColor: 'white', pants: 'orange', shoes: 'white',
+    patterns: { shirt: 'dots:5' },
+    still: 'tourist-terry',
+  },
 };
 
 /* caller px per figure unit: see the header */
