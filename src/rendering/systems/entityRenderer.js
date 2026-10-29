@@ -2103,6 +2103,14 @@ const _GEAR_SLOTS = [['shirt', '_gearShirt'], ['legs', '_gearLegs'], ['chest', '
    painted-figure path under the half-res memory mode. */
 function _fullsetFrame(chestItem, legsItem, pose, dir, frameIdx, phase) {
   if (pose !== 'jog') return null;
+  /* v2.3.3846: north-east (and north-west, its mirror) ships no knight figure
+     (gearSheets preloadFullsetFigures: south, south-west, north, east; and
+     _fullsetCoversBake below), so it is never asked for.  Asked, the sheet
+     404'd and its retries ran, and the final failure landed in the crash ring
+     as `gear-sheet-failed fullset/steel/jog/northeast` (E's judge pass, a
+     computer on the old path) -- the plates were drawn the classic way after
+     it either way. */
+  if (dir === 'northeast') return null;
   /* v2.3.1757: compare the ART, not the id, so a recoloured pair still gets the
      painted knight figure instead of silently dropping to the overlay path.
      The figure REPLACES the body sprite, so its colour is applied to that
