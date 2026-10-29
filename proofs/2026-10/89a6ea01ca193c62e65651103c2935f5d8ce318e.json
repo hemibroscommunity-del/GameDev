@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "89a6ea01ca193c62e65651103c2935f5d8ce318e",
+  "tree": "78abb111437d28bd4d99aa90dfd4fea386a147a5",
+  "committedAt": "2026-10-28T19:37:13-07:00",
+  "subject": "Merge pull request #1282 from hemibroscommunity-del/claude/coach-desk",
+  "files": 7144,
+  "bytes": 820182721,
+  "listingSha256": "dce322d92dd746368ec4d5ec86d7279fe1ec64bdc080419eab369521817fcc21",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

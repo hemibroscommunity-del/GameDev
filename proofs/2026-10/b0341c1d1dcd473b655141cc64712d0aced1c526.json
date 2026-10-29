@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b0341c1d1dcd473b655141cc64712d0aced1c526",
+  "tree": "e04bd6e518f7cc9e814517713e4c31582069afe9",
+  "committedAt": "2026-10-28T19:37:10-07:00",
+  "subject": "Merge pull request #1283 from hemibroscommunity-del/claude/desk-escape-caps",
+  "files": 7140,
+  "bytes": 819480643,
+  "listingSha256": "674b3feb0a5919c2bcc789087b95ffc1a70b0ca2ba7fd0b2c527e7c0d33d4812",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
