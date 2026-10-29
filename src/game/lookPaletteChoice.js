@@ -24,6 +24,13 @@
  * saver: docs/MEMORY-MAP.md).  `?lookpalette=0` is off anywhere, as before;
  * `?lookpalette=1` builds it anyway, Windows too (QA).  Phones are unchanged.
  *
+ * v2.3.3842: AND NOT ON A MAC.  Chrome and Safari on a Mac build WebGL's
+ * programs through ANGLE's Metal, which inlines as FXC does.  Nothing measured
+ * a Mac (this box has neither), and the judges play on computers: a computer
+ * has the memory the palette saves, so a Mac draws the old way too.  An iPad
+ * asking for the desktop site says "Macintosh" but has touch points: it keeps
+ * the palette, as an iPhone does.  Linux (the QA box) is unchanged.
+ *
  * No imports, so node can test it (server/test/look-palette-choice.test.mjs).
  */
 
@@ -35,11 +42,23 @@ export function onWindows(ua, platform) {
   return WINDOWS_UA.test(typeof ua === 'string' ? ua : '');
 }
 
+/** v2.3.3842: is this browser on a Mac -- not an iPad asking for the desktop
+ *  site (it says "Macintosh" too, but has touch points), not an iPhone (whose
+ *  "like Mac OS X" is no Macintosh)? */
+export function onMac(ua, platform, touchPoints) {
+  const s = typeof ua === 'string' ? ua : '';
+  if (/\b(iPhone|iPad|iPod)\b/.test(s) || Number(touchPoints) > 1) return false;
+  if (typeof platform === 'string' && /^macos$/i.test(platform.trim())) return true;
+  return /\bMacintosh\b/.test(s);
+}
+
 /** The look palette here, or not: the address first (`lookpalette=0|1`), then
- *  Windows (not built: its compiler takes minutes), else on.  `{ on, why }`. */
-export function lookPaletteChoice(search, ua, platform) {
+ *  Windows and a Mac (not built: a computer's compiler may take minutes, and
+ *  a computer has the memory), else on.  `{ on, why }`. */
+export function lookPaletteChoice(search, ua, platform, touchPoints) {
   const m = /(^|[?&])lookpalette=([01])(&|$)/.exec(typeof search === 'string' ? search : '');
   if (m) return { on: m[2] === '1', why: 'address' };
   if (onWindows(ua, platform)) return { on: false, why: 'windows' };
+  if (onMac(ua, platform, touchPoints)) return { on: false, why: 'mac' };
   return { on: true, why: 'default' };
 }

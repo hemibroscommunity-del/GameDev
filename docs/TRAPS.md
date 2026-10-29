@@ -8625,9 +8625,10 @@ the night before the judges, who play on computers), long enough for the worker
 to log the idle character out. No test here can see it: this box has no
 Direct3D.
 
-**The rule.** The look palette is not built on Windows
-(`src/game/lookPaletteChoice.js`: the address first, then Windows, else on;
-`__btLookPalette().why`). Grow a program only with its compile measured on a
+**The rule.** The look palette is not built on Windows, nor (v2.3.3842) on a
+Mac, whose ANGLE Metal inlines too and which nothing here can measure
+(`src/game/lookPaletteChoice.js`: the address first, then Windows, then a Mac
+with no touch points, else on; `__btLookPalette().why`). Grow a program only with its compile measured on a
 Windows machine (`?lookpalette=1` builds it there on purpose). The cure for
 Windows is a smaller program: one bilinear read with no mip pass, or the kinds
 chosen per batch rather than all inlined into every read.

@@ -231,7 +231,7 @@ software as every QA phone's is):
   that minified) where the chip did one filtered read; a batch ends at each
   body (its own program).
 
-## Not on Windows (v2.3.3838)
+## Not on Windows (v2.3.3838), nor on a Mac (v2.3.3842)
 
 The owner, 2026-10-29, on a Windows laptop in Chrome and in Firefox: the
 loading screen *"stalls at the 75%, I wait what seems like 5-10 minutes,
@@ -275,6 +275,15 @@ built, and an iPhone with it built and on.
 machine (`?lookpalette=1`, the loading screen's time to the world). The cure
 is a smaller program, e.g. one bilinear read with no mip pass, or the kinds
 selected per batch rather than all inlined (TRAPS §259).
+
+**And not on a Mac (v2.3.3842).** Chrome and Safari on a Mac build WebGL's
+programs through ANGLE's Metal, which inlines too. Nothing here can measure a
+Mac, and the judges play on computers, so a Mac draws the old way as well
+(`why: 'mac'`). A Mac is a "Macintosh" user agent (or Chromium's `macOS`)
+with no touch points. An iPad asking for the desktop site says "Macintosh"
+too, but has touch points, so it keeps the palette, as an iPhone does. Linux,
+which is the QA box, is unchanged, so every test still measures the palette.
+`mp-lookwin` steps 4 and 5 cover both.
 
 ## Phase 2: adding a set (v2.3.3737, P0)
 
