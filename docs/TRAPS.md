@@ -4294,7 +4294,7 @@ every trait at once, is correcting those five `body-tops` entries -- but hats,
 hair and the hair-clip masks were all dialled in against the current values,
 so it needs its own before/after pass over every trait, not a drive-by edit.
 
-**Fixed in v2.3.3867** (the owner on a computer: "shark head north on desktop
+**Fixed in v2.3.3880** (the owner on a computer: "shark head north on desktop
 disappeared"): `src/rendering/headCrowns.js` holds the head's own crown for
 `hit-north` 3-5 and `hit-northeast` 3-5 (the monkey's measured crowns), and
 `_lookupBodyTop` answers it before body-tops, so every head piece -- and the

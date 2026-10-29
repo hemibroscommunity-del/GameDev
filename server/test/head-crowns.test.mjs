@@ -1,4 +1,4 @@
-/* v2.3.3867: the head's crown on the flinch facing north and north-east
+/* v2.3.3880: the head's crown on the flinch facing north and north-east
  * (src/rendering/headCrowns.js, TRAPS §100): where body-tops' topmost pixel
  * is the raised fist, the head pieces sit on the head instead. */
 import { readFileSync } from 'node:fs';

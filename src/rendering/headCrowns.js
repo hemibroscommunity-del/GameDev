@@ -1,4 +1,4 @@
-/* ═══ v2.3.3867: THE HEAD'S CROWN WHERE THE TOPMOST PIXEL IS NOT THE HEAD ═══
+/* ═══ v2.3.3880: THE HEAD'S CROWN WHERE THE TOPMOST PIXEL IS NOT THE HEAD ═══
  *
  * The owner, on a computer: "shark head north on desktop disappeared".  Every
  * head piece (the hat, the hair, the beard, the glasses, the eye style, the
