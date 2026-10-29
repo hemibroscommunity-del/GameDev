@@ -96,7 +96,7 @@ export const ClanPanel = () => {
           </div>
           <div style={{ fontSize: 12, color: COL.muted, marginTop: 4, lineHeight: 1.4, padding: '0 12px' }}>
             Make one, or join one when a clan leader invites you. Clans meet at
-            the Guild Hall in Brotown.
+            the Guild Hall in BroTown.
           </div>
         </div>
         <button type="button" data-dash-open-clan="" style={btnBrass} onClick={() => openGameWindow('clanOpen')}>

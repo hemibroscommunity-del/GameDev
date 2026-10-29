@@ -103,6 +103,17 @@ its corner.
 ![the Bank, before and after](desk-space/room-stage-bank.png)
 ![the Cookhouse, before and after](desk-space/room-stage-cook.png)
 
+## 9. A ✕'s "Esc" beside it (v2.3.3813)
+
+On a computer each ✕ that Esc presses wears an "Esc" key cap. It hung under
+the ✕, in a window's top right corner, and fell into the words below: Mayor
+Bro's "Blue slimes explode, by [Esc] the way", the No man's land explainer,
+the daily rewards' first row. It sits to the ✕'s left now, level with it, on
+the title row (every `data-esc` ✕ and the building windows' ✕; `game.css`).
+Other hanging caps keep hanging.
+
+![Esc beside the ✕](desk-space/esc-caps-before-after.png)
+
 ## Checks
 
 - `mp-deskwide`: the strip's grey, its arrow at the middle, I on it, a click
