@@ -9,9 +9,10 @@
  *      (his quest before a door, v2.3.3583, everywhere else).
  *      v2.3.3868 (the owner: "When you're next to mayor bro ... you would
  *      actually open the door"): a townsperson in talk range comes before
- *      a door, and a computer's Enter button stands aside meanwhile -- next
- *      to the Mayor no button and E talks; at the hall's door out of his
- *      range the button and E opens it; and at every open door the same;
+ *      a door, and the computer's prompt says "Talk to <name>" meanwhile --
+ *      next to the Mayor "Talk to Mayor Bro" and E talks; at the hall's door
+ *      out of his range "Enter Town Hall" and E opens it; and at every open
+ *      door the same;
  *   2. the skateboard's button (Z on a computer) is drawn on the safe ground,
  *      where the board rides, and nowhere past it: in the Earth Forest no
  *      button -- on a computer (wide) and on an upright phone;
@@ -79,7 +80,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        (intending to accept the first quest by 'interacting') you would
        actually open the door to the building right next to him (town hall)."
        A townsperson in talk range comes before a door (desktopControls.js
-       talkBeforeDoor), and a computer's Enter button stands aside meanwhile.
+       talkBeforeDoor), and the computer's prompt says "Talk to <name>".
        Each door's spot: in its reach (__btWheelTownDoors.at) and out of
        every townsperson's (S._nearNpc null) -- searched round its foot. */
     const doorSpot = (doorId) => A.page.evaluate(async (id) => {
@@ -105,8 +106,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(1500);
     const h1 = await here(A);
     await shot(A, '1-talk');
-    rec.ok(`1. next to Mayor Bro, in the Town Hall door's reach (${h0.up ? 'yes' : 'NO'}): no Enter button (${h0.prompt === null ? 'none' : '"' + h0.prompt + '"'}), and E opens his dialogue, not the door`,
-      h0.up && h0.npc === 'mayor_bro' && h0.prompt === null && h1.dialogue && !h1.building, { h0, h1 });
+    rec.ok(`1. next to Mayor Bro, in the Town Hall door's reach (${h0.up ? 'yes' : 'NO'}): the prompt reads "${h0.prompt}", and E opens his dialogue, not the door`,
+      h0.up && h0.npc === 'mayor_bro' && !!h0.prompt && /talk to mayor bro/i.test(h0.prompt) && h1.dialogue && !h1.building, { h0, h1 });
     await H.closeNpcDialogue(A).catch(() => {});
     await A.page.waitForTimeout(600);
     /* a step aside, out of his range: the door's button, and E opens it */
@@ -145,8 +146,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       checks.push({ door: d.id, spot, button: at && at.prompt, people });
     }
-    const bad = checks.filter((c) => !c.spot || !c.button || c.people.some((p) => !p.near || p.prompt !== null));
-    rec.ok(`1. every open door (${checks.length}): out of everyone's range its button is up; beside each townsperson near it (${checks.reduce((n, c) => n + c.people.length, 0)}) no button`,
+    /* beside a townsperson the prompt (if a door's reach puts one up) says
+       Talk, never Enter */
+    const bad = checks.filter((c) => !c.spot || !c.button || !/enter/i.test(c.button) || c.people.some((p) => !p.near || (p.prompt !== null && !/^E ?Talk to /i.test(p.prompt))));
+    rec.ok(`1. every open door (${checks.length}): out of everyone's range its Enter button is up; beside each townsperson near it (${checks.reduce((n, c) => n + c.people.length, 0)}) the prompt says Talk, never Enter`,
       checks.length >= 5 && bad.length === 0, { bad, checks: checks.map((c) => [c.door, !!c.spot, c.button, c.people.map((p) => p.id + ':' + (p.prompt === null ? 'none' : p.prompt)).join(' ')]) });
 
     /* ── 2. the board's button: on the safe ground, and not past it ── */

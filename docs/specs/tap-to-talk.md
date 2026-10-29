@@ -115,10 +115,15 @@ stands on the Town Hall's steps, so beside him E opened the hall.
 - **A townsperson in talk range (90 px) comes before a door** (`talkBeforeDoor`
   in `src/game/desktopControls.js`): any townsperson, quest or not. E is the
   computer's tap, and a tap on a person talks (the owner's standing rule).
-- **The button agrees with the key:** on a computer, while a townsperson is in
-  range, the door's Enter button stands aside (BroTown `deskTalkPick`), so it
-  never says "Enter Town Hall" while E talks (v2.3.3834's judge-pass
-  complaint). A phone's button is unchanged.
+- **The prompt agrees with the key:** on a computer, while a townsperson is in
+  range at a door, the prompt reads "E  Talk to Mayor Bro" in the door
+  prompt's place (BroTown `deskTalkPick`, `data-talk-prompt`), and a click on
+  it talks, as E does. It never says "Enter Town Hall" while E talks
+  (v2.3.3834's judge-pass complaint). A phone's button is unchanged, and a tap
+  or click on a person always talks.
+- **The owner's words outrank v2.3.3834's choice:** #1298 gave E to the door
+  from a judge pass. The owner, playing, asked for the person, so the person
+  comes first and the prompt follows E.
 - **The door is still reachable:** a door's reach (140 px, `WHEEL_DOOR_REACH`)
   is wider than a townsperson's, so every door has doorstep out of everyone's
   range. A step aside from the Mayor and the Town Hall's button is back, and E
@@ -131,9 +136,12 @@ stands on the Town Hall's steps, so beside him E opened the hall.
   resource.
 
 Test: `mp-mayordoor` step 1:
-- next to the Mayor, inside the Town Hall door's reach: no Enter button, and E
-  opens his dialogue, not the door;
+- next to the Mayor, inside the Town Hall door's reach: the prompt reads "Talk
+  to Mayor Bro", and E opens his dialogue, not the door;
 - at the hall's door out of anyone's range: the button, and E opens the Town
   Hall;
-- every open door: a spot out of everyone's range shows its button, and beside
-  each townsperson near it there is none.
+- every open door: a spot out of everyone's range shows its Enter button, and
+  beside each townsperson near it the prompt says Talk, never Enter.
+
+`mp-questprox` step 6: beside the Mayor in the door's reach, the prompt says
+"Talk to Mayor Bro" and E talks to him.

@@ -1639,9 +1639,10 @@ export var BroTown = function BroTown(_ref0) {
     nearBuilding = _useState6[0],
     setNearBuilding = _useState6[1];
   /* v2.3.3868: on a computer, E would talk (a townsperson in range,
-     desktopControls.js talkBeforeDoor): the door's Enter button stands aside
-     meanwhile, so it never says one thing while E does another */
-  var _useDeskTalkPick = useState(false),
+     desktopControls.js talkBeforeDoor): the townsperson's name, and the
+     door's Enter prompt says "Talk to <name>" meanwhile, so it never says one
+     thing while E does another */
+  var _useDeskTalkPick = useState(null),
     deskTalkPick = _useDeskTalkPick[0],
     setDeskTalkPick = _useDeskTalkPick[1];
   var _useState7 = useState(false),
@@ -8850,7 +8851,8 @@ export var BroTown = function BroTown(_ref0) {
         return prev === nb ? prev : nb;
       });
       /* v2.3.3868: a computer's door button follows E (talkBeforeDoor) */
-      var dtp = !!(S._isDesktop && (nb !== null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) && talkBeforeDoor(S));
+      var dtp = S._isDesktop && (nb !== null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) && talkBeforeDoor(S)
+        ? (S._nearNpc.name || 'them') : null;
       setDeskTalkPick(function (prev) {
         return prev === dtp ? prev : dtp;
       });
@@ -14976,6 +14978,25 @@ export var BroTown = function BroTown(_ref0) {
        tapped, so it stops rendering. Walking away and back re-arms it
        normally -- nearBuilding is untouched, which keeps the desktop E key
        (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
+    /* ═══ v2.3.3868: AT A DOOR WITH A TOWNSPERSON IN RANGE, THE PROMPT SAYS TALK ═══
+       The owner, on a computer: "When you're next to mayor bro ... you would
+       actually open the door to the building right next to him."  E talks to
+       him now (desktopControls.js talkBeforeDoor), and the prompt says so --
+       "E  Talk to Mayor Bro" -- in the door prompt's place; a click on it
+       talks, as E does.  A step out of his range and the door's prompt is
+       back.  A phone never shows it: there the door's button stays as it was
+       and a tap on a person talks. */
+    buildingPanel === null && deskTalkPick && (nearBuilding !== null || nearHall) && /*#__PURE__*/React.createElement("button", {
+      className: "bt-interact-prompt",
+      "data-talk-prompt": deskTalkPick,
+      onClick: function onClick(e) {
+        e.preventDefault();
+        var S2 = stateRef.current;
+        if (S2 && S2._interactNow) S2._interactNow();
+      }
+    }, /*#__PURE__*/React.createElement("kbd", {
+      style: { background: 'rgba(255,255,255,.2)', padding: '1px 5px', borderRadius: 3, fontSize: 11, marginRight: 4 }
+    }, "E"), "Talk to ", deskTalkPick),
     buildingPanel === null && !deskTalkPick /* v2.3.3868 */ && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
