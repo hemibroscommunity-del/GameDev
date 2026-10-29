@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9a79ea8db4b141b9e72d12648856690c179b3450",
+  "tree": "164686a55d3e510121897ecb3557f0a06589c633",
+  "committedAt": "2026-10-28T18:05:26-07:00",
+  "subject": "The world check runs to its end again: one shared loader for the checks (v2.3.3792) (#1263)",
+  "files": 7026,
+  "bytes": 814833710,
+  "listingSha256": "6ea146dff438eafd816becc11abdcfc6855bfeefe14652136836804a7696ed4c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

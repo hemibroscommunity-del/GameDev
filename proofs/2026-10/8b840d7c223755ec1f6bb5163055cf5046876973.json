@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8b840d7c223755ec1f6bb5163055cf5046876973",
+  "tree": "3300fb2e6580797519ecb33160ee1bc3d0d0467b",
+  "committedAt": "2026-10-28T18:05:23-07:00",
+  "subject": "A computer's click on a player in No man's land asks \"Attack?\" again, with a monster near (v2.3.3763) (#1259)",
+  "files": 7025,
+  "bytes": 814832463,
+  "listingSha256": "b2c1d0feae23af1ee55547d4023876fe69d0364c36b9430c6f8faa4b4865a778",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
