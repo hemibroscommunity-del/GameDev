@@ -47,6 +47,7 @@ v2.3.3801, the owner's review: [a page's one action](town-board/page-action.jpg)
   on everyone else; 'spin' says "Spin ready" while `dailyRewardsBus`'s
   `spin.ready` (with caps.dailyspin). The board re-draws when the daily state
   changes.
+  Pictures: [the Mayor's "1"](town-board/badge-mayor.jpg), ["Spin ready"](town-board/badge-spin.jpg).
 - **A dungeon's levels on its tile** (v2.3.3788): "Lv 10+ · party of 2–3",
   "Lv 26+", "Lv 41+" -- `data/wheelDungeons.js` `dungeonBoardLine` (the
   party row and the level it is for, else the lowest of the place's levels:
