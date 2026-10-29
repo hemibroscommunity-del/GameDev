@@ -104,13 +104,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
        five where this said three), and what they hold: the creator bros,
        standing pictures cropped to their figures, Diego and Ace their one
        standing cell, Lil Bro his race's four ways at his own size -- 2.93 MB
-       (main's cast, five pictures whole: 3.58) */
+       (main's cast, five pictures whole: 3.58).
+       v2.3.3833: the new cast's thirteen standing pictures, cropped, add
+       0.85 MB: 3.78 MB measured (walkers 2.58, pictures 1.20), so the line
+       is 4.0 (was 3.2).  Each is on 256 colours (tools/art/npc256.mjs), but
+       the graphics chip holds every pixel whatever its colours, so that
+       halves the files, not this. */
     const castRows = NPC_DATA.filter((r) => wantNames.split(', ').indexOf(r.name) >= 0);
     const wantWalkers = castRows.filter((r) => r.walk).map((r) => r.id).sort().join();
     const wantPictures = castRows.filter((r) => r.sprite && !r.walk).length;
     rec.ok(`their pictures came in behind the loading screen -- none fetched after arriving -- and the cast holds ${art ? art.mb : '?'} MB (walkers' strips ${art ? art.cropMb : '?'} MB cropped, pictures ${art ? art.picMb : '?'} MB cropped)`,
       late.length === 0 && !!art && art.loaded && art.walkers.sort().join() === wantWalkers
-        && art.pictures.length === wantPictures && art.mb < 3.2,
+        && art.pictures.length === wantPictures && art.mb < 4.0,
       { late, art, asked: npcReqs.map((q) => [q.f, q.t - arrivedAt]) });
 
     /* ── 3. Lil Bro on screen where you arrive ── */

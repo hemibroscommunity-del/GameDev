@@ -54,7 +54,11 @@ word is in capitals, never `*stars*`.
 - **In the world**: each is his `NPC_LOOKS` row in `tools/qa/npc-looks.mjs`,
   photographed in the game standing, facing south
   (`npc-looks.mjs --bake`, then `npc_looks_bake.py`), into
-  `public/sprites/npc/<still>.webp`. They load where the eight's do:
+  `public/sprites/npc/<still>.webp`, then put on 256 colours
+  (`node tools/art/npc256.mjs <still> ...`, the memory law: about 2,500
+  colours each before, 3.5-4.9 KB a file after). On the graphics chip they
+  hold 0.85 MB together (cropped): the townsfolk's art goes from 2.93 to
+  3.78 MB, and `mp-wheelfolk`'s line from 3.2 to 4.0. They load where the eight's do:
   `npcSprites.js` `_wheelCast()` reads the names off `WHEEL_TOWNSFOLK`, behind
   the Wheel's loading screen, cropped to the figure (the preload law). When
   P5's live drawing lands it takes them over from the same rows.
