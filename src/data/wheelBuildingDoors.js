@@ -196,10 +196,12 @@ export const WHEEL_TOWNSFOLK = [
      either side).  Each is the keeper of his building (WHEEL_KEEPERS below).
      The three locals: Bean on the square, EAST of where you arrive (Lil Bro
      has the west); Old Man Reel at the town's south-west edge, past the
-     store (the town has no water of its own -- the plan: "no pond in the
-     town" -- so he stands at its rim, looking out to the sea's side);
-     Tourist Terry on the street below the Bank, where P5's walking will
-     start him off.  Every spot is checked by test-world-core: town ground,
+     store (the plan: "no pond in the town", and a townsperson stands on
+     the town's ground, so he stands at its rim -- beside the river that runs
+     along it there);
+     Tourist Terry on the square below the Town Hall's steps, where P5's
+     walking will start him off (below the Bank he stood behind its belt of
+     trees, only his head showing: mp-npccast's picture).  Every spot is checked by test-world-core: town ground,
      24 px clear of any footprint, within 160 px of his own door and clear
      of its steps, 200+ px from any other townsperson. */
   { name: 'Sterling', door: 'bank', dx: -105, dy: 100 },
@@ -214,7 +216,7 @@ export const WHEEL_TOWNSFOLK = [
   { name: 'Gavel Greg', door: 'auction', dx: -105, dy: 100 },
   { name: 'Bean', door: 'townhall', dx: 320, dy: 180 },
   { name: 'Old Man Reel', door: 'store', dx: -300, dy: 200 },
-  { name: 'Tourist Terry', door: 'bank', dx: 0, dy: 300 },
+  { name: 'Tourist Terry', door: 'townhall', dx: 60, dy: 400 },
 ];
 
 /* ═══ v2.3.3258: THE KEEPERS -- TALK TO HIM, AND HIS BUILDING OPENS ═══

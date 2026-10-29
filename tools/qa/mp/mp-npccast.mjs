@@ -41,8 +41,11 @@ async function townsfolkShots(P, kind, { w, h }) {
   const npcs = await H.waitFor(P, (S) => (S.npcs || []).map((n) => ({ name: n.name, x: n.x, y: n.y })), (v) => v.length >= 21,
     { timeout: 20000, label: 'the 21' }).catch(() => []);
   const done = [];
+  /* NPCCAST_ONLY="Tourist Terry": one townsperson's photographs again */
+  const only = process.env.NPCCAST_ONLY || '';
   for (let i = 0; i < npcs.length; i++) {
     const n = npcs[i];
+    if (only && n.name !== only) { done.push({ name: n.name, ok: true }); continue; }
     await H.hopTo(P, n.x + 70, n.y + 90, { step: 100, gap: 260, tries: 90 });
     await P.page.waitForTimeout(1200);
     const at = (await onScreen(P)).find((q) => q.name === n.name);

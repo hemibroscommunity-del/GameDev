@@ -23,20 +23,24 @@ now, and three locals live in town. That makes 21 townsfolk with Mayor Bro.
 | Sheriff Buck | the Sheriff's Office's door | the Sheriff's Office | `sheriff` |
 | Gavel Greg | the Auction House's door | the Auction House | `auctioneer` |
 | Bean | the square, east of where you arrive (Lil Bro has the west) | nothing | `streamer` |
-| Old Man Reel | the town's south-west edge, past the General Store | nothing | `fisher` |
-| Tourist Terry | the street below the Bank | nothing | `tourist` |
+| Old Man Reel | the town's south-west edge, past the General Store, by the river | nothing | `fisher` |
+| Tourist Terry | the square, below the Town Hall's steps | nothing | `tourist` |
 
 - Each keeper stands west of his steps, as Diego and Ace do, 100 px down the
   street (60 at the Post Office and the Guild Hall, whose porches reach
   further). Talking to him (a tap, E, or the right stick's tap) opens his
   building's window, exactly as the Blacksmith and the Mayor do. The door
   still opens too.
-- **Old Man Reel is not at the water.** BroTown has no water of its own (the
-  plan: "no pond in the town"), and a townsperson must stand on the town's
-  ground. He stands at the town's rim instead, toward the sea. His lines
-  allow for it ("Sea's that way. Somewhere. I'm practicing out here first.").
-- Tourist Terry stands at his spot until P5's walking (v2.3.3809) lets him
-  wander.
+- **Old Man Reel stands by the river, not in the town's water.** BroTown has
+  no water of its own (the plan: "no pond in the town"), and a townsperson
+  must stand on the town's ground. So he stands at the town's south-west rim,
+  where the river runs along it (`mp-npccast`'s picture shows it beside
+  him). His lines allow for it ("Sea's that way. Somewhere. I'm practicing
+  out here first.").
+- Tourist Terry stands on the square until P5's walking (v2.3.3809) lets him
+  wander. He was first put on the street below the Bank, but there he stood
+  behind its belt of trees, only his head showing: the footprint check does
+  not see a tree's top, the picture did.
 - Every spot passes test-world-core's rules: the town's ground, 24 px clear
   of any footprint, within 160 px of his own door and clear of its steps, and
   more than 200 px from any other townsperson (so a tap finds the one meant).
