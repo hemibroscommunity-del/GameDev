@@ -20,6 +20,9 @@
  *   LH_HATCOLOR=red      the hats in a colour (drawn from the look palette)
  *   LH_CAPE=crimson      a cape, whose hood clips the hair too
  *   LH_TAG=x             a word in the pictures' names
+ *   LH_FAIL=part         fail every download whose address holds `part` for LH_FAIL_MS
+ *                        (20 s) from the page's start, as a wifi blip or a deploy does, then
+ *                        let it through (LH_INITHAT=hat: worn from the start, so it loads then)
  *   LH_HATS=a,b          these hats only; LH_REPEAT=n  each reading n times, frame after frame (a flicker
  *                        is one frame: the least of the n is what is judged, all n printed)
  */
@@ -95,12 +98,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const V = VIEWS[vname];
     const P = await H.newPlayer(browser, {
       name: 'Longhair' + vname, wsPort, webPort, world: 'wheel', guest: true, ...V, query: 'headframes',
-      init: `try { localStorage.setItem('bt-hair', 'long'); localStorage.setItem('bt-headwear', 'none'); localStorage.setItem('bt-facialhair', 'none'); localStorage.setItem('bt-eyewear', 'none');`
+      init: `try { localStorage.setItem('bt-hair', 'long'); localStorage.setItem('bt-headwear', ${JSON.stringify(process.env.LH_INITHAT || 'none')}); localStorage.setItem('bt-facialhair', 'none'); localStorage.setItem('bt-eyewear', 'none');`
         + (process.env.LH_HATCOLOR ? ` localStorage.setItem('bt-hatcolor', ${JSON.stringify(process.env.LH_HATCOLOR)});` : '')
         + (process.env.LH_CAPE ? ` localStorage.setItem('bt_cape', ${JSON.stringify(process.env.LH_CAPE)});` : '') + ' } catch (e) {}',
     });
     const errors = [];
     P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
+    const failed = [];
+    if (process.env.LH_FAIL) {
+      const part = process.env.LH_FAIL, until = Date.now() + +(process.env.LH_FAIL_MS || 20000);
+      await P.page.route((u) => String(u).includes(part), (r) => {
+        if (Date.now() < until) { failed.push(r.request().url().split('/sprites/')[1]); return r.abort(); }
+        return r.continue();
+      });
+    }
     try {
       await H.enterWorld(P);
       const ok = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading,
@@ -151,6 +162,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           }
         }
       }
+      if (process.env.LH_FAIL) console.log(`    [${vname}] failed on purpose (${failed.length}): ${[...new Set(failed)].slice(0, 6).join(', ')}`);
       console.log(`    [${vname}] the long hair's pixels under each hat, against bare-headed:\n      ` + rows.join('\n      '));
       const px = await P.page.evaluate(() => (window.__btHeadCountPixels ? window.__btHeadCountPixels() : null)).catch(() => null);
       if (px) {
