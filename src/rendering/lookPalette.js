@@ -54,6 +54,7 @@
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource } from 'pixi.js';
 import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf } from './paletteTex.js';
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
+import { lookPaletteChoice } from '../game/lookPaletteChoice.js';   /* v2.3.3838: not built on Windows */
 
 export const LOOK_BATCHER = 'bt-look';
 const SLOTS = 4;                  /* sheets a batch (a figure draws one); the atlas is the unit after */
@@ -65,8 +66,18 @@ const SWEEP_MS = 5000;
    new memory change work by default would be better. I can always revert the
    change if I don't like it or it doesn't work well."  `?lookpalette=0` is the
    old path, for one page. */
+/* v2.3.3838: and not on Windows, whose shader compiler takes minutes over this
+   program -- the loading screen froze at 75% for 5-10 minutes on the owner's
+   laptop, Chrome and Firefox both (game/lookPaletteChoice.js has the why);
+   `?lookpalette=1` builds it anyway */
+let _why = 'default';
 function wantedByAddress() {
-  try { return !/(^|[?&])lookpalette=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
+  try {
+    const nav = typeof navigator !== 'undefined' ? navigator : null;
+    const c = lookPaletteChoice(window.location.search || '', nav && nav.userAgent, nav && nav.userAgentData && nav.userAgentData.platform);
+    _why = c.why;
+    return c.on;
+  } catch (e) { return true; }
 }
 const _wanted = wantedByAddress();
 /** The body's stand and jog drawn from the numbers (`?lookpalette=0`: not). */
@@ -867,7 +878,7 @@ if (typeof window !== 'undefined') {
   window.__btLookPalette = () => {
     let rows = 0;
     for (const l of _looks.values()) if (l.row >= 0) rows++;
-    return { wanted: _wanted, on: lookPaletteOn(), ok: _ok, renderer: !!paletteRendererOf(), prewarmed: !!_prewarmedFor, ..._stats, looks: _looks.size, rows,
+    return { wanted: _wanted, why: _why /* v2.3.3838: 'address', 'windows' or 'default' */, on: lookPaletteOn(), ok: _ok, renderer: !!paletteRendererOf(), prewarmed: !!_prewarmedFor, ..._stats, looks: _looks.size, rows,
       sheetMB: +(_stats.sheetBytes / 1048576).toFixed(2), sets: [..._sets.keys()].filter((k) => _sets.get(k).manifest) };
   };
 }
