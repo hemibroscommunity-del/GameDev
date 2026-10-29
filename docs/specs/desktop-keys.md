@@ -212,3 +212,43 @@ there Space rolls and X jumps), `server/test/desk-keys.test.mjs` §10, and the
 scenarios that pressed the old keys (`mp-jump`, `mp-ghostaudit`,
 `mp-soundcues`, `mp-soundstudio`, `mp-armourflash`, `mp-garmentspecks`,
 `mp-inkplace`, `mp-traitsoak`, `mp-deskwide`) press the new ones.
+
+## v2.3.3847: the right button toggles the shield
+
+The owner, 2026-10-29: *"Also I think right click should just hold up shield
+until you click right click again. You should also be able to just hold it up
+and point if there's no monsters around."*
+
+- **A toggle.** A right press raises the guard (BroTown `_deskRightPress`), and
+  letting go lowers nothing: v2.3.3711's `onMouseUp` in
+  `src/game/desktopControls.js` is gone. The next right press lowers it.
+- **Everything that lowered a guard still does**: an attack, a roll, a jump,
+  a daze, the water, a block landing. `dropShield` clears `_shieldMouse`, so
+  after any of them the next right press raises the guard again (never a
+  press that does nothing).
+- **Leaving the window lowers it** (`onBlur`, as before): alt-tab away and
+  back and the guard you see is the guard you have, one right click from up.
+- **With no shield on your arm** the right click is still the special.
+- **Where it points.** With something near to face (a lock, the player who
+  just hit you, the nearest monster or sparring fighter: `shieldTargetAngle`
+  in `src/game/shieldToggle.js`, the same rungs a phone's guard uses), the
+  guard faces it. With nothing near it follows the mouse pointer, live:
+  `deskPointerAngle` (`src/game/deskShield.js`) reads where the pointer is on
+  the screen and where the camera is now, so walking with the mouse still
+  keeps it on the pointer.
+  - **This is a change with monsters near.** Until now a guard held on the
+    right button followed the pointer always, monsters or not (v2.3.1726's
+    steer). `?shieldaim=mouse` puts that back for one tab: the owner's choice
+    of "always follow the pointer".
+- The list says `R-Click Shield ↕` (up and down): "Shield (toggle)" is 97 px
+  and the column's words have 73.
+
+Tests: `mp-shieldtoggle` (a computer, the wide layout, the real mouse; fails on
+main, where the release lowers the guard), `mp-deskkeys` 8c (the release keeps
+it up, the next press lowers it), `server/test/desk-keys.test.mjs` §11.
+
+**Also in v2.3.3847, the weapon numbers.** The owner: *"instead of '1-3
+weapon' just list which number represents which weapon (1 melee, 2 bow, 3
+staff, etc)"*. The list's `1-3 Weapon` row is three: `1 Melee`, `2 Bow`,
+`3 Staff`, always shown (every player's weapons row has the three slots;
+3 does nothing until you carry a staff, as before).

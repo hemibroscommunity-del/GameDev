@@ -62,8 +62,15 @@ export function shieldThreatPoint(S, now) {
   return lockAimPoint(o);
 }
 
-export function shieldAimAngle(S) {
-  if (!S || !S.player) return 0;
+/* ═══ v2.3.3847: THE RUNGS THAT AIM AT SOMETHING, ON THEIR OWN ═══
+   The lock, the player who just hit you, the nearest monster or fighter --
+   the angle to it, or null when there is nothing near to aim at.  The
+   computer's toggled guard (BroTown's loop) asks it: with something near the
+   guard faces it, with nothing it follows the mouse pointer (the owner:
+   "You should also be able to just hold it up and point if there's no
+   monsters around").  shieldAimAngle is this, then its fallbacks. */
+export function shieldTargetAngle(S) {
+  if (!S || !S.player) return null;
   const pt = lockAimPoint(S.lockedTarget && S.lockedTarget.ref);
   if (pt) return Math.atan2(pt.y - S.player.y, pt.x - S.player.x);
   /* v2.3.3260: the player who just hit you (the note above) */
@@ -102,6 +109,13 @@ export function shieldAimAngle(S) {
     const np = lockAimPoint(near.m);
     if (np) return Math.atan2(np.y - S.player.y, np.x - S.player.x);
   }
+  return null;
+}
+
+export function shieldAimAngle(S) {
+  if (!S || !S.player) return 0;
+  const at = shieldTargetAngle(S);
+  if (at != null) return at;
   if (typeof S._shieldAngle === 'number') return S._shieldAngle;
   if (typeof S._aimAngle === 'number') return S._aimAngle;
   if (typeof S._facingAngle === 'number') return S._facingAngle;
@@ -158,6 +172,7 @@ export function dropShield(S, why) {
   if (!S || !S._shieldUp) return false;
   S._shieldUp = false;
   S._shieldKb = false;   /* v2.3.1726's desktop mouse-steer stops with it */
+  S._shieldMouse = false;   /* v2.3.3847: ...and the right button's toggle: its next press raises it again */
   S.shieldEnd = 0;
   S._shieldDroppedWhy = why || 'tap';
   S._shieldDroppedAt = Date.now();

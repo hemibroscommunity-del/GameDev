@@ -405,8 +405,8 @@ export function setupDesktopControls(S, deps) {
          fighting move you reach for most after the swing, so it takes the key
          under the left hand's first finger beside W -- Q, where the shield
          was.  The shield is the right mouse button HELD now (BroTown's
-         canvas onMouseDown, released by onMouseUp below): a guard you hold
-         with the hand that aims it.  Aimed at the mouse, as F and the right
+         canvas onMouseDown, released by onMouseUp below; v2.3.3847: pressed
+         up and pressed down again, a toggle): a guard on the hand that aims it.  Aimed at the mouse, as F and the right
          click were (both gave it up: F is the Element Burst, the right button
          the shield).  Q+E's bash is a left click with the shield up.
          v2.3.1726's note on the old Q (the mouse-steered shield) lives on in
@@ -577,7 +577,7 @@ export function setupDesktopControls(S, deps) {
         S.keys[e.key.toUpperCase()] = false;
       }
       /* v2.3.3711: Q is the special now, so its release lowers nothing (the
-         right mouse button's does: onMouseUp below) */
+         right mouse button's did; v2.3.3847: its next press does) */
       /* v2.3.3407: let go of E, and the harvest's gesture stops being worked */
       if (e.code === 'KeyE' && S._harvestKeys) S._harvestKeys.up();
     };
@@ -588,19 +588,16 @@ export function setupDesktopControls(S, deps) {
       for (var k in S.keys) S.keys[k] = false;
       if (S._harvestKeys) S._harvestKeys.up();   /* v2.3.3407: ...E's work too */
       /* v2.3.3711: ...and a shield held on the right mouse button: its
-         release would come to another window */
+         release would come to another window.  v2.3.3847: a toggle now, and
+         still lowered here: alt-tab away and back, and the guard you see is
+         the guard you have -- down, one right click from up -- never a
+         guard left raised while you were in another window */
       if (S._shieldMouse) { S._shieldMouse = false; _desktopShieldOff(); }
     };
-    /* ═══ v2.3.3711: LET GO OF THE RIGHT MOUSE BUTTON, AND THE SHIELD COMES DOWN ═══
-       The canvas's press raises it (BroTown onMouseDown, `_shieldMouse`); the
-       release is heard on the window, so a guard dragged off the world -- onto
-       the pages, the controls or out of the page -- still comes down. */
-    var onMouseUp = function onMouseUp(e) {
-      if (e && e.button === 2 && S._shieldMouse) {
-        S._shieldMouse = false;
-        _desktopShieldOff();
-      }
-    };
+    /* v2.3.3711's onMouseUp (the right button's release lowered the guard)
+       is gone with v2.3.3847: the right button is a toggle -- "right click
+       should just hold up shield until you click right click again" -- and
+       the next right press lowers it (BroTown _deskRightPress). */
     /* ═══ v2.3.3711: NO BROWSER MENU OVER THE GAME ═══
        The right button is the shield, so its click must never open the
        browser's menu: the canvas refused it already, but a guard let go over
@@ -618,13 +615,11 @@ export function setupDesktopControls(S, deps) {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
-    window.addEventListener('mouseup', onMouseUp);
     document.addEventListener('contextmenu', onContextMenu);
   return function teardownDesktopControls() {
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
     window.removeEventListener('blur', onBlur);
-    window.removeEventListener('mouseup', onMouseUp);
     document.removeEventListener('contextmenu', onContextMenu);
   };
 }
