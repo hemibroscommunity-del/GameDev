@@ -13233,12 +13233,16 @@ export var BroTown = function BroTown(_ref0) {
          Hall's board included.  The Blacksmith keeps its height rule below
          (the smith is seen working above it) and takes the width only.
          Phones unchanged. */
-      width: deskWideActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
+      /* v2.3.3802: the Town Hall's board is wider -- up to 800 px on a
+         computer and a sideways phone, never wider than the play column
+         (100% is the window's box, inside the column: TRAPS §214) -- its
+         columns following its own width (game.css .bt-tb) */
+      width: buildingPanel === 'townhall' ? 'min(800px, calc(100% - 24px))' : deskWideActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
       /* v2.3.2826: the Blacksmith card's TOP stays below the player's feet --
          the camera centres the player, so the card ends at the band and is
          (50vh - 72px - band) tall, i.e. its top sits at 50vh + 60px.  230px
          floor so a short phone still gets the header, the tabs and a row. */
-      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : deskWideActive() ? '82%' : '100%',
+      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : (buildingPanel === 'townhall' && deskWideActive()) ? '85%' /* v2.3.3802 */ : deskWideActive() ? '82%' : '100%',
       overflowY: 'auto',
       /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
          as the destination sheets/leaderboard): at 390 the Woodworker's
