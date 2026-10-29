@@ -89,6 +89,9 @@ import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the 
 import { lookSheetParse } from '../lookExpand.js';
 import { installArmourProbe } from '../lookArmourProbe.js';   /* v2.3.3752: QA, `?lookprobe` / `?lookpalette=1` only */
 import { getEyeColor } from '../traits/eyeColorCatalog.js';   /* v2.3.1930: eye colour is per-player now, so every draw names whose eyes it means */
+/* v2.3.3860: QA, `?headframes` only: the head-frame count's context is set on
+   each figure (headFrames.js, loaded by pixiRenderer only then) */
+const HEAD_FRAMES_ON = typeof window !== 'undefined' && /[?&]headframes(=|&|$)/.test((window.location && window.location.search) || '');
 import { DISPLAY_DS, bakeDisplayCanvas } from '../spriteScale.js'; /* v2.3.1120: display-texture downscale + lockstep transform compensation; v2.3.2325: bakeDisplayCanvas, because the masked bake needs the EXACT-TEXEL 2x inverse, not the smooth one */
 import { buildScale, getBuildHeight, getBuildFrame } from '../traits/buildCatalog.js'; /* v2.3.1953: height x frame render scale */
 import { getCapeTexture, getCapeHoodTexture, getCapeHoodMaskTexture } from '../capeSprites.js'; /* v2.3.2023: the cosmetic cape; v2.3.2186: its hood half + the hair clip */
@@ -5168,7 +5171,15 @@ function _placeStandaloneTrait(sprite, entry, dir, mirror, cwx, cwy, scaleVal, l
   const tex = entry && (entry.tex[dir] || (entry.fallbackTex && entry.fallbackTex[dir]));
   const meta = entry && entry.meta;
   const anchorPx = (meta && meta.anchors && meta.anchors[dir]) || null;
-  if (!(tex && meta && meta.fullFrame && anchorPx)) { sprite.visible = false; return; }
+  if (!(tex && meta && meta.fullFrame && anchorPx)) {
+    sprite.visible = false;
+    /* v2.3.3860: why, as _placeTrait says it (the head-frame count, headFrames.js:
+       'design' a facing the piece does not ship -- the stand-in faces its own way) */
+    sprite._btHide = !entry ? 'entry' : !meta ? 'meta'
+      : !anchorPx ? ((meta.anchors && !meta.anchors[dir]) ? 'design' : 'anchor') : !tex ? 'tex' : 'frame';
+    return;
+  }
+  sprite._btHide = null;
   if (sprite.texture !== tex) sprite.texture = tex;
   const screenDir = mirror ? (MIRROR_SCREEN_DIR[dir] || dir) : dir;
   const _pick = (obj) => obj && (obj[screenDir] != null ? obj[screenDir] : obj[dir]);
@@ -12808,6 +12819,9 @@ export class EntityRenderer {
           _placeEyewear(display, other.eyewear, other.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);   /* v2.3.2361; v2.3.2424 + colour */
           _placeHair(display, other.hair, other.hairColor, other.headwear, pose, dir, mirror, frameIdx, sizeMul);
           _crownOverride = null;
+          /* v2.3.3860: the head-frame count's context (headFrames.js) */
+          if (HEAD_FRAMES_ON) display._btHeadAt = { pose, dir, mirror, frameIdx, now,
+            worn: { headwear: other.headwear, hair: other.hair, facialhair: other.facialhair, eyewear: other.eyewear, eyestyle: other.eyeStyle } };
         } else {
           spriteBody.visible = false;
           body.visible = true;
@@ -14784,6 +14798,7 @@ export class EntityRenderer {
         _placeHair(display, getHair(), getHairColor(), getHeadwear(), pose, dir, mirror, frameIdx, bodyScale);
         _crownOverride = null;
         _watchOwnHead(display, pose, dir, mirror);   /* v2.3.3689: a piece hidden where it ships, asked for again and logged */
+        if (HEAD_FRAMES_ON) display._btHeadAt = { pose, dir, mirror, frameIdx };   /* v2.3.3860: the head-frame count's context (headFrames.js, `?headframes` only) */
 
         /* v2.3.265: combined-trait overlay disabled while sticker
            pipeline is being wired. */
@@ -17357,6 +17372,8 @@ export class EntityRenderer {
     _placeEyewear(folk, look.eyewear, look.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);
     _placeHair(folk, look.hair, look.hairColor, look.headwear, pose, dir, mirror, frameIdx, sizeMul);
     _orderTraitsAndWeapon(folk, SECTORS.indexOf(facing), look.headwear);
+    if (HEAD_FRAMES_ON) folk._btHeadAt = { pose, dir, mirror, frameIdx, now,   /* v2.3.3860: the head-frame count (headFrames.js, `?headframes` only) */
+      worn: { headwear: look.headwear, hair: look.hair, facialhair: look.facialhair, eyewear: look.eyewear, eyestyle: look.eyeStyle } };
     /* a player's size on this ground, times his own (above); his feet on his origin */
     const k = this._zonePscale(S, npc.x, npc.y) * PLAYER_SIZE_MULT * size;
     if (folk.scale.x !== k) folk.scale.set(k);
