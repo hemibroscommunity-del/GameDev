@@ -377,7 +377,7 @@ export async function stopWorker(w) {
    "passed" three assertions about marks that were never drawn.)  isMobile
    flips the emulated pointer to coarse and turns on the meta viewport, which
    together are the closest this harness gets to the primary platform. */
-export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, query = '', world = null, host = 'localhost', device = null, wide = false }) {
+export async function newPlayer(browser, { name, wsPort, webPort, guest = false, viewport, touch = false, phrase = null, dpr = null, init = null, chestOffer = false, nmlOnce = false, query = '', world = null, host = 'localhost', device = null, wide = false }) {
   /* ═══ v2.3.3552: THE OLD MAP IS RETIRED -- NEVER PLAYED BY ACCIDENT ═══
      The owner: "Hold on you're in the old map (this was retired).  You keep
      making that mistake so flag it in a way you won't accidentally do that
@@ -442,6 +442,11 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      headless player.  Held back for every scenario but the ones that test it,
      or anything that reads pixels or clicks mid-screen is looking at a chest. */
   if (!chestOffer) await page.addInitScript(() => { window.__btNoChestOffer = true; });
+  /* v2.3.3825: No man's land's explainer coming up by itself near the line
+     (game/nmlExplainOnce.js) is a window over the middle of the screen on
+     every new character's first walk out -- held back for every scenario but
+     the one that tests it (mp-nmlonce), as the chest's is */
+  if (!nmlOnce) await page.addInitScript(() => { window.__btNoNmlOnce = true; });
   /* v2.3.1814: `phrase` seeds this context's Login Key BEFORE first paint, so
      a scenario can arrive as an EXISTING character.  It has to be an init
      script rather than a post-load write: the boot check that decides which

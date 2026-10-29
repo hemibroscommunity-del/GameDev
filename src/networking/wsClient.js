@@ -815,7 +815,7 @@ export function setupWebSocket(ctx) {
         var welcomeMsg = {
           id: 'sys-' + Date.now(),
           name: '',
-          text: S.myName + ' joined Bro Town!',
+          text: S.myName + ' joined BroTown!',
           color: '',
           ts: Date.now(),
           system: true
@@ -4531,13 +4531,13 @@ export function setupWebSocket(ctx) {
           var _rf = _rfPending;
           _rfPending = null;
           S._realtimeStatus = 'full';
-          /* onopen pushed "<name> joined Bro Town!" into the chat log
+          /* onopen pushed "<name> joined BroTown!" into the chat log
              optimistically, before the refusal could possibly be known.
              That join never happened, and a player who waits out twenty
              retries would otherwise walk in to twenty of them. */
           try {
             var _last = S.chatLog[S.chatLog.length - 1];
-            if (_last && _last.system && _last.text === S.myName + ' joined Bro Town!') {
+            if (_last && _last.system && _last.text === S.myName + ' joined BroTown!') {
               S.chatLog = S.chatLog.slice(0, -1);
               setChatLog(_toConsumableArray(S.chatLog));
             }
@@ -4669,7 +4669,7 @@ export function setupWebSocket(ctx) {
         _text.style.cssText = 'opacity:.85;margin-bottom:12px;';
         _text.textContent = _g.shown > 1
           ? "That didn't go through. One more try:"
-          : 'Before your character is made, Bro Town checks that a person is here.';
+          : 'Before your character is made, BroTown checks that a person is here.';
         var _box = document.createElement('div');
         _box.id = 'bt-verify-box';
         _box.style.cssText = 'display:flex;justify-content:center;min-height:65px;';

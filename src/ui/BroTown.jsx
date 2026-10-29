@@ -2753,6 +2753,17 @@ export var BroTown = function BroTown(_ref0) {
          about the eyes (measured where the four thumbs differ: 38% across,
          36-40% down) and clipped to the tile's panel; pixelated, so the scale
          stays crisp.  The frame and every other strip are untouched. */
+      /* v2.3.3814: lane A's judge pass, "only the first bro type is labelled
+         (Human)": the Human was captioned because it is the strip's 'none'
+         (every 'none' tile is), and the Monkey and the Alien were pictures
+         alone.  Every bro type now wears its name, above its picture as the
+         Human's does (clear of the check painted in the tile's corner). */
+      : cat === 'species'
+        ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', justifyContent: 'center' } },
+            /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async', draggable: false,
+              onError: function (e) { _thumbFallback(e, cat, opt.id); },
+              style: { width: '68%', height: '68%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+            /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, opt.name))
       : cat === 'eyestyle'
         ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 } },
             /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
@@ -13303,12 +13314,16 @@ export var BroTown = function BroTown(_ref0) {
          Hall's board included.  The Blacksmith keeps its height rule below
          (the smith is seen working above it) and takes the width only.
          Phones unchanged. */
-      width: deskWideActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
+      /* v2.3.3802: the Town Hall's board is wider -- up to 800 px on a
+         computer and a sideways phone, never wider than the play column
+         (100% is the window's box, inside the column: TRAPS §214) -- its
+         columns following its own width (game.css .bt-tb) */
+      width: buildingPanel === 'townhall' ? 'min(800px, calc(100% - 24px))' : deskWideActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
       /* v2.3.2826: the Blacksmith card's TOP stays below the player's feet --
          the camera centres the player, so the card ends at the band and is
          (50vh - 72px - band) tall, i.e. its top sits at 50vh + 60px.  230px
          floor so a short phone still gets the header, the tabs and a row. */
-      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : deskWideActive() ? '82%' : '100%',
+      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : (buildingPanel === 'townhall' && deskWideActive()) ? '85%' /* v2.3.3802 */ : deskWideActive() ? '82%' : '100%',
       overflowY: 'auto',
       /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
          as the destination sheets/leaderboard): at 390 the Woodworker's
@@ -13785,6 +13800,15 @@ export var BroTown = function BroTown(_ref0) {
          26% put its top under the 42 px top bar: "WELCOME" was cut in half.
          Upright and on a computer 26% is already lower, so nothing moves. */
       top: 'max(26%, 150px)',
+      /* ═══ v2.3.3812: ON A COMPUTER, BELOW MAYOR BRO, NOT ON HIM ═══
+         Lane A's judge pass (1440 x 900, 1280 x 720): at 26% the plate lay
+         over the Town Hall and Mayor Bro -- the one it tells you to find
+         (measured: the plate 128-282 px, the Mayor 212-309 at 720 tall).
+         A new bro comes in at the Hall's steps with the Mayor above the
+         world's middle, so on a computer the plate stands lower, its top at
+         58%: clear of both, and of the chat bar along the world's foot.  A
+         phone keeps 26% (its dashboard is the lower half upright). */
+      ...(stateRef.current && stateRef.current._isDesktop ? { top: 'max(58%, 150px)' } : null),
       /* v2.3.1816: the fade starts 500ms before THIS banner's own hold
          ends — a fixed 1700ms here would have the long banners fade out and
          then sit invisible for two more seconds. */

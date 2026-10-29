@@ -155,7 +155,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('out on the lands its things stand and are drawn, their pages loaded, as v1\'s are ('
     + names.map((n) => `${n}: ${drawnAt(v2, n)} vs ${drawnAt(v1, n)}`).join(', ') + ')',
   spotsOf.v2.length === 4 && spotsOf.v1.length === 4 && reached(v2) && reached(v1) && fine(v2) && fine(v1), { v1: v1.at, v2: v2.at });
-  rec.ok(`with v2 a tree you stand behind goes see-through and comes back when you step out (${v2.see && v2.see.tree && v2.see.tree.id}: ${v2.see && v2.see.behind} behind, ${v2.see && v2.see.front} in front); without the switch it stays as it was (${v1.see && v1.see.behind})`,
-    !!(v2.see && v2.see.behind != null && v2.see.behind < 0.6 && v2.see.front > 0.95 && v1.see && v1.see.behind === 1), { v1: v1.see, v2: v2.see });
+  /* v2.3.3815: the see-through crown is on in the live world too (wheelObjects.js
+     CANOPY_FADE, the judge who lost his bro in the Earth Forest; `?nofade` is
+     the old way), so v1 fades as v2 does */
+  rec.ok(`a tree you stand behind goes see-through and comes back when you step out, with v2 (${v2.see && v2.see.tree && v2.see.tree.id}: ${v2.see && v2.see.behind} behind, ${v2.see && v2.see.front} in front) and with v1 since v2.3.3815 (${v1.see && v1.see.behind} behind)`,
+    !!(v2.see && v2.see.behind != null && v2.see.behind < 0.6 && v2.see.front > 0.95 && v1.see && v1.see.behind != null && v1.see.behind < 0.6), { v1: v1.see, v2: v2.see });
   rec.ok('no page errors, either way', !v1.errors.length && !v2.errors.length, { v1: v1.errors, v2: v2.errors });
 }
