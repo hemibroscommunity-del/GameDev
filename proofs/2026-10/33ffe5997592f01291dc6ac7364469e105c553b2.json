@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "33ffe5997592f01291dc6ac7364469e105c553b2",
+  "tree": "ba8d1e67e1d440e6a78c2f1d24a77894cdfdf8c1",
+  "committedAt": "2026-10-28T20:32:14-07:00",
+  "subject": "Merge pull request #1305 from hemibroscommunity-del/claude/desk-splash-wide",
+  "files": 7228,
+  "bytes": 831374240,
+  "listingSha256": "38811cc51a990bf7646a73d3cc4ad352a7ac0b7ee2222024cd5e3051901a028d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
