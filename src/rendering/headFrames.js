@@ -17,7 +17,7 @@
  * roll frame with no head (flipHead.js) are not counted, nor a frame where
  * the whole bro is not drawn (a death, a zone's loading).  Every miss is
  * counted by its piece and its reason, the last 60 kept with the pose,
- * facing and frame: `window.__btHeadFrames()`, `window.__btHeadFrames(true)`
+ * facing and frame: `window.__btHeadCount()`, `window.__btHeadCount(true)`
  * to start again.  mp-headframes plays a phone through it.
  */
 import { Texture } from 'pixi.js';
@@ -136,12 +136,12 @@ export function othersFrameTick(entityRenderer, stage, now) {
 }
 
 if (HEAD_FRAMES_ON && typeof window !== 'undefined') {
-  window.__btHeadOthers = (reset) => {
+  window.__btHeadCountOthers = (reset) => {
     const out = { frames: _oth.frames, figures: _oth.figures, counted: _oth.counted, missed: _oth.missed, byWhy: { ..._oth.byWhy }, log: _oth.log.slice() };
     if (reset) { _oth.frames = 0; _oth.counted = 0; _oth.missed = 0; _oth.byWhy = Object.create(null); _oth.log = []; }
     return out;
   };
-  window.__btHeadFrames = (reset) => {
+  window.__btHeadCount = (reset) => {
     const out = { on: true, frames: _hf.frames, counted: _hf.counted, missed: _hf.missed, bodyGone: _hf.bodyGone, goneBy: { ..._hf.goneBy }, goneLog: _hf.goneLog.slice(), byWhy: { ..._hf.byWhy }, log: _hf.log.slice() };
     if (reset) { _hf.frames = 0; _hf.counted = 0; _hf.missed = 0; _hf.bodyGone = 0; _hf.goneBy = Object.create(null); _hf.goneLog = []; _hf.byWhy = Object.create(null); _hf.log = []; }
     return out;
@@ -149,7 +149,7 @@ if (HEAD_FRAMES_ON && typeof window !== 'undefined') {
 }
 
 /* ═══ ON THE SCREEN ITSELF, FOR A PHONE WITH NO CONSOLE ═══
- * The owner plays on an iPhone, where reading window.__btHeadFrames() needs a
+ * The owner plays on an iPhone, where reading window.__btHeadCount() needs a
  * Mac.  So with `?headframes` a small box in the top-left corner says it: the
  * frames counted, the misses so far (your pieces, everyone else's, and the
  * frames a piece did not reach the screen), and the last three misses as
@@ -303,7 +303,7 @@ export function headPixelsTick(entityRenderer, effectsRenderer, renderer) {
   }
 }
 if (HEAD_FRAMES_ON && typeof window !== 'undefined') {
-  window.__btHeadPixels = (reset) => {
+  window.__btHeadCountPixels = (reset) => {
     const out = { frames: _px.frames, looked: _px.looked, drops: _px.drops, byCat: { ..._px.byCat }, log: _px.log.slice(), shots: _px.shots.slice() };
     if (reset) { _px.frames = 0; _px.looked = 0; _px.drops = 0; _px.byCat = Object.create(null); _px.log = []; _px.shots = []; }
     return out;

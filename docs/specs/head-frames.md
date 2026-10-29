@@ -38,8 +38,8 @@ the renderer's own clock (`pixiRenderer.js`, beside `app.render`):
    with what else is drawn over the box, and the first few are saved as
    pictures.
 
-The results are in `window.__btHeadFrames()`, `window.__btHeadOthers()` and
-`window.__btHeadPixels()`. Pass `true` to any of them to start counting
+The results are in `window.__btHeadCount()`, `window.__btHeadCountOthers()` and
+`window.__btHeadCountPixels()`. Pass `true` to any of them to start counting
 again.
 
 ## The test: `mp-headframes`
@@ -90,6 +90,6 @@ So the flicker the owner sees does not happen on this box: not for your own
 bro, other players or the townsfolk, not when slowed, and not through a
 graphics loss. What remains is phone-only: iPhone Safari's own memory
 pressure and its 60 frames a second. The counter is the tool to catch it
-there. On the owner's phone, `?headframes` makes `window.__btHeadFrames()`
+there. On the owner's phone, `?headframes` makes `window.__btHeadCount()`
 name the piece, the reason, the pose and the facing of every frame a piece
 went missing.

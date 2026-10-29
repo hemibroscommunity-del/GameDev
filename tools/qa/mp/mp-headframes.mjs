@@ -64,9 +64,9 @@ const INIT = (look) => {
   } catch (e) { /* none */ }
 };
 
-const count = (P, reset) => P.page.evaluate((r) => (window.__btHeadFrames ? window.__btHeadFrames(r) : null), !!reset);
-const others = (P, reset) => P.page.evaluate((r) => (window.__btHeadOthers ? window.__btHeadOthers(r) : null), !!reset);
-const pixels = (P, reset) => P.page.evaluate((r) => (window.__btHeadPixels ? window.__btHeadPixels(r) : null), !!reset);
+const count = (P, reset) => P.page.evaluate((r) => (window.__btHeadCount ? window.__btHeadCount(r) : null), !!reset);
+const others = (P, reset) => P.page.evaluate((r) => (window.__btHeadCountOthers ? window.__btHeadCountOthers(r) : null), !!reset);
+const pixels = (P, reset) => P.page.evaluate((r) => (window.__btHeadCountPixels ? window.__btHeadCountPixels(r) : null), !!reset);
 
 async function hold(P, keys, ms) {
   for (const k of keys) await P.page.keyboard.down(k);
@@ -251,12 +251,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
           { timeout: 90000, label: 'the peer in the world' }).catch(() => null);
         await Q.page.waitForTimeout(1500);
         /* ...and without the switch: no readout, no probe, the module never fetched */
-        const qOff = await Q.page.evaluate(() => ({ box: !!document.querySelector('[data-headframes]'), probe: typeof window.__btHeadFrames }));
+        const qOff = await Q.page.evaluate(() => ({ box: !!document.querySelector('[data-headframes]'), probe: typeof window.__btHeadCount }));
         rec.ok(`without ?headframes there is no readout, no probe, and the counter is never fetched (${qAsked.length} asked)`,
           !qOff.box && qOff.probe === 'undefined' && qAsked.length === 0, { qOff, qAsked });
-        const here = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-        await H.hopTo(Q, here.x + 80, here.y + 40, { step: 100, gap: 260, tries: 60 }).catch(() => null);
-        const seen = await H.waitFor(P, (S) => (S.others ? Object.keys(S.others).length : 0), (v) => v > 0, { timeout: 20000, label: 'the peer seen' }).catch(() => 0);
+        /* walked over to you, a few tries (the worker shows a peer once it is near) */
+        let seen = 0;
+        for (let t = 0; t < 3 && !seen; t++) {
+          const here = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+          await H.hopTo(Q, here.x + 80, here.y + 40, { step: 100, gap: 260, tries: 60 }).catch(() => null);
+          seen = await H.waitFor(P, (S) => (S.others ? Object.keys(S.others).length : 0), (v) => v > 0, { timeout: 15000, label: 'the peer seen' }).catch(() => 0);
+        }
         await P.page.waitForTimeout(2000);
         const pc = await phase('a peer jogging, rolling and turning in sight', async () => {
           for (const keys of Object.values(FACINGS)) await hold(Q, keys, 900);
