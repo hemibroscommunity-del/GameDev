@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "edc9ca7357b07b7e9c2a1a0552d390e8ffa2be19",
+  "tree": "747980a7d887f6f3ccfc6c15f57a7be80185e68f",
+  "committedAt": "2026-10-28T17:04:32-07:00",
+  "subject": "The party list folds into a small chip, so it doesn't clutter the screen (v2.3.3768) (#1240)",
+  "files": 6937,
+  "bytes": 804997719,
+  "listingSha256": "0d640ddb240447c0a5e7b4ce7cc366d0b400cd4851f897985e9fce6d62680c82",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
