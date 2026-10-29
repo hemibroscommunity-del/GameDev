@@ -9,6 +9,7 @@ import { panelVw } from '../playViewport.js'; /* v2.3.2172: the sheet's width, n
 import { TRAIL_STYLES, isTrailOff, getShownTrailStyle, setTrailShown, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2896; v2.3.2992 GROUND_PATH */
 import { useScrollTap } from '../sheet/scrollTap.js'; /* v2.3.2896: the switch sits in a scroller */
 import { DailyRewardsCard } from './DailyRewardsCard.jsx'; /* v2.3.3140: the way into the daily quests and the season */
+import { deskWideActive } from '../../deskWide.js';   /* v2.3.3769: a computer's empty Active tab lists the offers */
 
 /* v2.3.1265: Quests — read-only quest log (accepting/turning-in stays
    with the NPCs; server-authoritative flow untouched).
@@ -167,6 +168,38 @@ export const QuestsPanel = () => {
     ...active.filter(a => !a.ready && a.quest.id !== tracked),
   ];
 
+  /* v2.3.3769: an available quest's row, the Available tab's and (on a
+     computer) the empty Active tab's */
+  const availRow = (quest) => (
+    <button key={quest.id} style={rowBtn}
+      onPointerUp={(e) => { e.stopPropagation(); openDetail(quest.id); }}>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{
+          display: 'block', fontSize: 13.5, fontWeight: 600, color: COL.text,
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>{quest.title}</span>
+        <span style={{ display: 'block', fontSize: 11.5, color: COL.text2, marginTop: 1 }}>
+          Talk to {quest.npc}
+        </span>
+      </span>
+      {/* round-5: the segment already says AVAILABLE — the
+          right side earns its keep as the reward. */}
+      {/* v2.3.1704: ...and it was a bare money figure floating at the
+          right edge with no label, which is the same figure shape an
+          ACTIVE row carries.  A player looking at an offer could not
+          tell whether "25g · 40 XP" was what this new quest pays or a
+          leftover from the one they are already on.  Two words fix
+          it, and "pays" matches the wording on the active rows above
+          so the two lists read as one language. */}
+      {rewardText(quest) && (
+        <span style={{ flex: '0 0 auto', fontSize: 11, fontWeight: 700, color: COL.gold, whiteSpace: 'nowrap' }}>
+          pays {rewardText(quest)}
+        </span>
+      )}
+      <span aria-hidden="true" style={{ flex: 'none', fontSize: 14, color: COL.muted }}>›</span>
+    </button>
+  );
+
   return (
     <div style={{ ...panelStyle, overflowY: 'auto' }}>
       {/* v2.3.3140: the daily quests and the season, one line above the
@@ -210,7 +243,25 @@ export const QuestsPanel = () => {
         {GROUND_PATH && <PathSwitch />}
         {segment === 'Active' && (
           activeSorted.length === 0
-            ? <EmptyLine text="No active quests. Choose one from Available or speak with someone in town." />
+            ? (
+              /* ═══ v2.3.3769: ON A COMPUTER, WHAT YOU COULD TAKE ═══
+                 The owner: "As you find improvements you can make to the
+                 empty space on the desktop version go ahead" (the judges play
+                 on computers, and Quests is the first page they open).  A new
+                 player has no active quest, so the tab was this one line over
+                 a column three quarters empty.  On a computer the quests on
+                 offer are listed under it, the Available tab's own rows (a
+                 click opens the quest).  Phones keep the line alone. */
+              <>
+                <EmptyLine text="No active quests. Choose one from Available or speak with someone in town." />
+                {deskWideActive() && upcoming.length > 0 ? (
+                  <div data-quests-offer="">
+                    <div style={{ padding: '0 4px 6px', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: COL.muted, textTransform: 'uppercase' }}>Available</div>
+                    {upcoming.map(availRow)}
+                  </div>
+                ) : null}
+              </>
+            )
             : activeSorted.map(({ quest, ready }) => (
               <button key={quest.id} style={rowBtn} data-quest-row={quest.id /* v2.3.3522: mp-trackquest */}
                 onPointerUp={(e) => { e.stopPropagation(); openDetail(quest.id); }}>
@@ -263,35 +314,7 @@ export const QuestsPanel = () => {
         {segment === 'Available' && (
           upcoming.length === 0
             ? <EmptyLine text="You're caught up — for now." />
-            : upcoming.map((quest) => (
-              <button key={quest.id} style={rowBtn}
-                onPointerUp={(e) => { e.stopPropagation(); openDetail(quest.id); }}>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{
-                    display: 'block', fontSize: 13.5, fontWeight: 600, color: COL.text,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{quest.title}</span>
-                  <span style={{ display: 'block', fontSize: 11.5, color: COL.text2, marginTop: 1 }}>
-                    Talk to {quest.npc}
-                  </span>
-                </span>
-                {/* round-5: the segment already says AVAILABLE — the
-                    right side earns its keep as the reward. */}
-                {/* v2.3.1704: ...and it was a bare money figure floating at the
-                    right edge with no label, which is the same figure shape an
-                    ACTIVE row carries.  A player looking at an offer could not
-                    tell whether "25g · 40 XP" was what this new quest pays or a
-                    leftover from the one they are already on.  Two words fix
-                    it, and "pays" matches the wording on the active rows above
-                    so the two lists read as one language. */}
-                {rewardText(quest) && (
-                  <span style={{ flex: '0 0 auto', fontSize: 11, fontWeight: 700, color: COL.gold, whiteSpace: 'nowrap' }}>
-                    pays {rewardText(quest)}
-                  </span>
-                )}
-                <span aria-hidden="true" style={{ flex: 'none', fontSize: 14, color: COL.muted }}>›</span>
-              </button>
-            ))
+            : upcoming.map(availRow)
         )}
 
         {segment === 'Completed' && (

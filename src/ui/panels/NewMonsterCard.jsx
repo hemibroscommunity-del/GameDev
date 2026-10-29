@@ -77,7 +77,8 @@ export function NewMonsterCard({ stateRef }) {
       onKeyDown={(ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); } }}
       style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', zIndex: 59,
         top: (() => {
-          const base = sideways ? 'calc(env(safe-area-inset-top, 0px) + 52px)' : 'max(22%, calc(env(safe-area-inset-top, 0px) + 192px))';
+          /* v2.3.3765: + --bt-bar-grow, the top bar grew (game.css --bt-bar-k) */
+          const base = sideways ? 'calc(env(safe-area-inset-top, 0px) + 52px + var(--bt-bar-grow, 0px))' : 'max(22%, calc(env(safe-area-inset-top, 0px) + 192px))';
           return clearRef.current ? 'max(' + base + ', ' + clearRef.current + 'px)' : base;
         })(),
         width: 'min(300px, calc(100vw - 32px))', boxSizing: 'border-box', minHeight: 64,

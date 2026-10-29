@@ -414,6 +414,13 @@ export const STATES = [
     },
   },
   {
+    /* v2.3.3769: on a computer the dashboard's column folded to its strip --
+       in the top bar's grey, OPEN at its top, an arrow at its middle */
+    id: 'hud-folded', group: 'The world (HUD)', title: 'BroTown, dashboard closed',
+    about: 'The same screen with the dashboard closed. On a computer its column folds to a narrow strip at the edge, in the top bar\'s grey: OPEN at its top and one arrow at its middle pointing into the world; a click anywhere on it opens the dashboard. Upright the band folds to its button row; sideways nothing but the chip shows.',
+    run: async ({ P }) => { await foldBand(P); await wait(P, 400); },
+  },
+  {
     id: 'hud-controls', group: 'The world (HUD)', title: 'Controls in use',
     about: 'Walking with the left stick (a phone) or WASD (a computer): the movement stick and the contextual right button show while you play.',
     views: ['portrait', 'landscape', 'tablet'],

@@ -14,6 +14,8 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';            /* v2.3.3
 import { onXpBar, xpBarShown, xpGainWords, xpToNextWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
 import { XpTrack } from './XpTrack.jsx';                                  /* v2.3.3739: its white gain bar and "45 / 120" */
 import { XP_BAR_ICONS, XP_BAR_LABELS } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
+import { NmlPill } from './NmlBadge.jsx';                               /* v2.3.3765: No man's land's pill, right of the title */
+import { barNarrow, barNumber, BAR_GOLD_SHORT, BAR_AP_SHORT } from '../../game/barNumbers.js';   /* v2.3.3765: big numbers short on a narrow bar */
 
 /* ═══ v2.3.2892: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
    Owner: "Add a time of day icon next to current map name."  The hour is
@@ -237,6 +239,9 @@ export const ZoneHeader = ({ onExit }) => {
     apSeen.current = ap;
   }
   const apBump = apRises.current;
+  /* v2.3.3765: on a narrow bar (an upright phone) a big number is said short,
+     so the larger bar still holds the title (game/barNumbers.js) */
+  const narrow = barNarrow(typeof window !== 'undefined' ? window.innerWidth : 0);
   /* v2.3.3695: the XP bar -- the skill that last earned, while it is up */
   const xb = S._xpBar || null;
   /* (QA only: `window.__btXpHold` keeps it up while a slow box takes its
@@ -298,7 +303,7 @@ export const ZoneHeader = ({ onExit }) => {
             onClick={openAchievements}>
             <img key={'m' + apBump} className={apBump ? 'bt-purse-flip' : undefined}
               src={ACHV_MEDAL_SRC} alt="" draggable={false} />
-            <span key={'a' + apBump} className={apBump ? 'bt-purse-bump' : undefined}>{apWords(ap)}</span>
+            <span key={'a' + apBump} className={apBump ? 'bt-purse-bump' : undefined}>{narrow ? barNumber(ap, true, BAR_AP_SHORT) : apWords(ap)}</span>
             {apBump && apGain.current > 0 ? (
               <span key={'g' + apBump} className="bt-ap-gain" data-ap-gain={apGain.current} aria-hidden="true">
                 {apGainWords(apGain.current)}
@@ -326,6 +331,14 @@ export const ZoneHeader = ({ onExit }) => {
           onContextMenu={(e) => e.preventDefault()}
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         >{S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'BroTown' /* v2.3.3039 */) : zoneTitle(S)}</div>
+        {/* ═══ v2.3.3765: NO MAN'S LAND, JUST RIGHT OF THE TITLE ═══
+            The owner: "I think the no man's land pill would work better just to
+            the right of the Brotown name at the top (you can cut it away same as
+            when earning xp in a weapon)".  Beside the title, never inside it
+            ([data-zone-title] is the banner's dock target); cut away with the
+            title while the XP bar is up (game.css bt-zone-header__mid--xp).  Its
+            own 250 ms clock (NmlBadge.jsx NmlPill). */}
+        <NmlPill getS={getState} />
         {/* ═══ v2.3.3430: TEST MODE, SAID WHERE IT IS ALWAYS SEEN ═══
             The owner's switch (Test panel; server/src/testmode.js): while the
             worker has the honesty checks off for this character, the top bar
@@ -408,7 +421,7 @@ export const ZoneHeader = ({ onExit }) => {
           aria-label={`${gold} gold`}>
           <img key={'c' + flip} className={flip ? 'bt-purse-flip' : undefined}
             src={coinArtFor(gold)} alt="" draggable={false} />{/* v2.3.3734: the owner's pile for your gold */}
-          <span key={'n' + flip} className={flip ? 'bt-purse-bump' : undefined}>{Number(gold).toLocaleString()}</span>
+          <span key={'n' + flip} className={flip ? 'bt-purse-bump' : undefined}>{narrow ? barNumber(gold, true, BAR_GOLD_SHORT) : Number(gold).toLocaleString()}</span>
         </div>
       </header>
 
