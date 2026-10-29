@@ -250,7 +250,10 @@ export default function NmlBadge({ stateRef }) {
           if (openHp == null) openHp = hp;
           else if (nmlExplainHit(openHp, hp)) { infoPopupBus.close(); openHp = null; }
         } else openHp = null;
-        if (S && S.player && nmlExplainDue({
+        /* QA pages hold it back (window.__btNoNmlOnce, the harness's
+           nmlOnce: false), as the daily chest's window */
+        const heldBack = typeof window !== 'undefined' && window.__btNoNmlOnce;
+        if (!heldBack && S && S.player && nmlExplainDue({
           live: nmlLive(S), inWheel: S.currentZone === 'wheel' && !S._zoneLoading, dying: !!S._dying,
           open: infoPopupBus.isOpen(), x: S.player.x, y: S.player.y, long: wheelLong(), first: nmlFirst(S), id: S.myId,
         })) {
