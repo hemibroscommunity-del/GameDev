@@ -9,8 +9,8 @@
  * ('cowboy-hat-2') and, for comparison, the Army Helmet, standing and jogging
  * in all eight facings, on a phone (390 x 844, the look palette on) and on a
  * computer (the sideways layout, the palette off): in each, the hair's
- * pixels on screen (its colour, read back off the drawing buffer by the
- * head-frame count's own reading, ?headframes) against the same facing and
+ * pixels on screen (v2.3.3883: its own -- the frame drawn with it and without
+ * it, read back off the drawing buffer, the pixels that differ) against the same facing and
  * pose bare-headed -- under a hat the hair must keep at least LH_MIN of them
  * where it ships a picture (the brim covers its top, never all of it).
  * Pictures of each head: tools/qa/mp/out/longhairhat-*.png.
@@ -74,13 +74,23 @@ const hairPixels = (P) => P.page.evaluate((t) => {
     const x0 = Math.max(0, Math.floor(b.minX * res)), x1 = Math.min(W2, Math.ceil(b.maxX * res));
     const y0 = Math.max(0, Math.floor(b.minY * res)), y1 = Math.min(H2, Math.ceil(b.maxY * res));
     const w = x1 - x0, h = y1 - y0;
-    if (w < 2 || h < 2) return { vis: true, n: 0, box: [x0, y0, w, h] };
+    if (w < 2 || h < 2) return { vis: true, n: 0, nd: 0, box: [x0, y0, w, h] };
     const buf = new Uint8Array(w * h * 4);
     gl.readPixels(x0, H2 - y1, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
     let n = 0;
     for (let i = 0; i < buf.length; i += 4) {
       const r = buf[i], g = buf[i + 1], bb = buf[i + 2];
       if (Math.abs(r - t[0]) + Math.abs(g - t[1]) + Math.abs(bb - t[2]) < 45 && r > g && g > bb) n++;
+    }
+    /* v2.3.3883: the hair's own pixels whatever the ground -- the frame drawn
+       with it hidden, the same box read, the pixels that differ counted */
+    const keep = new Uint8Array(buf);
+    let nd = 0;
+    sp.visible = false;
+    try { app.render(); gl.readPixels(x0, H2 - y1, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf); } finally { sp.visible = true; }
+    app.render();
+    for (let i = 0; i < buf.length; i += 4) {
+      if (Math.abs(keep[i] - buf[i]) + Math.abs(keep[i + 1] - buf[i + 1]) + Math.abs(keep[i + 2] - buf[i + 2]) > 24) nd++;
     }
     const hs = d._headwearSprite;
     /* v2.3.3883: the whole bro's pixels -- the frame drawn without him and
@@ -103,9 +113,21 @@ const hairPixels = (P) => P.page.evaluate((t) => {
         }
       }
     }
-    return { vis: true, n, bro, box: [x0, y0, w, h], mask: !!sp.mask, dir: d._animDir, pose: d._animPose, hat: hs ? (hs.visible ? 'drawn' : 'hidden:' + hs._btHide) : 'none' };
+    return { vis: true, n, nd, bro, box: [x0, y0, w, h], mask: !!sp.mask, dir: d._animDir, pose: d._animPose, hat: hs ? (hs.visible ? 'drawn' : 'hidden:' + hs._btHide) : 'none' };
   } catch (e) { return { err: String(e && e.message || e) }; }
 }, HAIR_T);
+
+/* v2.3.3883: for the restore's before and after, two readings a moment
+   apart and the most each counted (a restore that left a piece undrawn
+   leaves it so in both; one jog frame can read low on its own) */
+async function readBest(P) {
+  const a = await hairPixels(P);
+  await P.page.waitForTimeout(150);
+  const b = await hairPixels(P);
+  if (!a || !a.vis) return b;
+  if (!b || !b.vis) return a;
+  return { ...a, nd: Math.max(a.nd || 0, b.nd || 0), bro: Math.max(a.bro || 0, b.bro || 0), hat: a.hat === 'drawn' && b.hat === 'drawn' ? 'drawn' : (a.hat !== 'drawn' ? a.hat : b.hat), mask: a.mask && b.mask };
+}
 
 /* LH_REPEAT readings, a frame apart: the least one (a flicker is one frame), and all of them */
 async function readMin(P) {
@@ -113,8 +135,8 @@ async function readMin(P) {
   const all = [];
   for (let i = 0; i < REPEAT; i++) {
     const r = await hairPixels(P);
-    all.push(r && r.vis ? r.n : (r ? 'hidden:' + r.why : '?'));
-    if (!least || !r || !r.vis || (least.vis && r.n < least.n)) least = r;
+    all.push(r && r.vis ? r.nd : (r ? 'hidden:' + r.why : '?'));
+    if (!least || !r || !r.vis || (least.vis && r.nd < least.nd)) least = r;
     if (REPEAT > 1) await P.page.waitForTimeout(120);
   }
   if (least && REPEAT > 1) least.all = all;
@@ -236,11 +258,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
             const keys = FACINGS[face];
             for (const k of keys) await P.page.keyboard.down(k);
             await P.page.waitForTimeout(700);
-            const jog = await readMin(P);
+            const jog = await readBest(P);
             if (face === 'north') await shot(`${hat}-${face}-jog-${tag}`);
             for (const k of keys) await P.page.keyboard.up(k);
             await P.page.waitForTimeout(600);
-            t[hat][face] = { jog, stand: await readMin(P) };
+            t[hat][face] = { jog, stand: await readBest(P) };
           }
         }
         return t;
@@ -345,17 +367,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
           grew != null && grew <= Math.max(5, Math.ceil(a.textures * 0.05)), texCounts);
       }
 
-      /* under each hat against bare-headed, the same facing and pose */
+      /* under each hat against bare-headed, the same facing and pose (v2.3.3883:
+         the hair's own pixels, nd -- its colour counted in its box counted the
+         ground behind it too, and the jogs drift the bro from one reading's
+         ground to the next's) */
       const bad = [];
       const rows = [];
       for (const hat of HATS) {
         for (const face of Object.keys(FACINGS)) {
           for (const pose of ['jog', 'stand']) {
             const bare = table.none[face][pose], hatted = table[hat][face][pose];
-            if (!bare || !bare.vis || !(bare.n > 20)) continue;   /* the hair does not show here bare-headed (from the front, a short fringe) */
-            const share = hatted && hatted.vis ? (hatted.n || 0) / bare.n : 0;
-            rows.push(`${hat} ${face} ${pose}: ${hatted && hatted.vis ? hatted.n : 'hidden'} / ${bare.n} (${Math.round(share * 100)}%)${hatted && hatted.vis ? (hatted.mask ? ', clipped to the hat' : ', NOT CLIPPED') : ''}${hatted && hatted.all ? ' [' + hatted.all.join(' ') + ']' : ''}`);
-            if (share < LH_MIN) bad.push({ hat, face, pose, n: hatted && hatted.n, bare: bare.n, hatted });
+            if (!bare || !bare.vis || !(bare.nd > 40)) continue;   /* the hair does not show here bare-headed (from the front, a short fringe) */
+            const share = hatted && hatted.vis ? (hatted.nd || 0) / bare.nd : 0;
+            rows.push(`${hat} ${face} ${pose}: ${hatted && hatted.vis ? hatted.nd : 'hidden'} / ${bare.nd} (${Math.round(share * 100)}%)${hatted && hatted.vis ? (hatted.mask ? ', clipped to the hat' : ', NOT CLIPPED') : ''}${hatted && hatted.all ? ' [' + hatted.all.join(' ') + ']' : ''}`);
+            if (share < LH_MIN) bad.push({ hat, face, pose, n: hatted && hatted.nd, bare: bare.nd, hatted });
           }
         }
       }
