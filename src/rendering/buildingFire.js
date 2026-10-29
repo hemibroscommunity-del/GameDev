@@ -771,10 +771,16 @@ export const HEAP_REACH = 34;
    Blaze, made the first time you burn and kept (its sprites pooled); shown
    and hidden by `visible` alone, and only as you step in or out (TRAPS §218);
    its last sparks and smoke drift off after you leave.  In the effects'
-   overlay layer, as every other look on you is. */
+   overlay layer, as every other look on you is.
+   v2.3.3878: a burn (a fire goblin's) puts it on you too, and on another
+   player burning -- one each, let go once `done` (effectsRenderer
+   _updateElemStatusFx) -- and its sparks and smoke stay where they rose as
+   you run on, a trail behind a burning runner, where they had moved as one
+   with you (the flames and coals go with you). */
 const PERSON_HEAT = 0.36;   /* flames ~63 px tall at the middle, ~30 px round it */
+const TRAIL_JUMP = 160;     /* world px: a move this big in a frame is a jump (a respawn, a door), and its sparks go with you */
 export class PersonFire {
-  constructor(layer) { this.layer = layer; this.blaze = null; this.spot = null; this.lastT = 0; }
+  constructor(layer) { this.layer = layer; this.blaze = null; this.spot = null; this.lastT = 0; this.px = null; this.py = null; }
   /* once a frame: `on` you burn now; (x, y) your feet; `k` your figure's scale */
   step(on, x, y, k, now) {
     if (!this.blaze) {
@@ -792,16 +798,33 @@ export class PersonFire {
     sp.heat += (want - sp.heat) * Math.min(1, dt * (on ? 6 : 4));
     if (!on && sp.heat < 0.01) sp.heat = 0;
     const root = this.blaze.root;
-    if (!on && sp.heat <= 0 && this.blaze.spent()) { this.blaze.hide(); this.lastT = 0; return; }
+    if (!on && sp.heat <= 0 && this.blaze.spent()) { this.blaze.hide(); this.lastT = 0; this.px = null; return; }
     if (!root.visible) root.visible = true;
-    root.x = Math.round(x); root.y = Math.round(y);
     const kk = k > 0 ? k : 1;
+    const rx = Math.round(x), ry = Math.round(y);
+    /* v2.3.3878: the sparks and smoke kept where they are in the world as
+       the figure moves (theirs are the blaze's own coordinates, which move
+       with it) */
+    if (this.px != null && (rx !== this.px || ry !== this.py) && Math.abs(rx - this.px) < TRAIL_JUMP && Math.abs(ry - this.py) < TRAIL_JUMP) {
+      const dx = (rx - this.px) / kk, dy = (ry - this.py) / kk;
+      for (const e of this.blaze.embers) { e.x -= dx; e.y -= dy; }
+      for (const p of this.blaze.smoke) { p.x -= dx; p.y -= dy; }
+    }
+    this.px = rx; this.py = ry;
+    root.x = rx; root.y = ry;
     if (root.scale.x !== kk) root.scale.set(kk);
     this.blaze.step([sp], now, dt, windAt(now), 1, on, null, null, null);
   }
-  /** drawn now (QA) */
-  probe() { return { flames: this.blaze ? this.blaze.drawn.flames : 0, visible: !!(this.blaze && this.blaze.root.visible), heat: this.spot ? +this.spot.heat.toFixed(3) : 0 }; }
-  destroy() { if (this.blaze) this.blaze.destroy(); this.blaze = null; this.spot = null; }
+  /** nothing of it left on the screen: its flames out and its last sparks and smoke gone (v2.3.3878) */
+  done() { return !this.blaze || !this.blaze.root.visible; }
+  /** drawn now (QA); v2.3.3878: + its sparks and smoke, and how far across from the figure they are on average (mp-burnfire: behind a runner) */
+  probe() {
+    const b = this.blaze;
+    let n = 0, sx = 0;
+    if (b) { for (const e of b.embers) { sx += e.x; n++; } for (const p of b.smoke) { sx += p.x; n++; } }
+    return { flames: b ? b.drawn.flames : 0, visible: !!(b && b.root.visible), heat: this.spot ? +this.spot.heat.toFixed(3) : 0, bits: n, lagX: n ? Math.round(sx / n) : 0 };
+  }
+  destroy() { if (this.blaze) this.blaze.destroy(); this.blaze = null; this.spot = null; this.px = null; }
 }
 
 /* QA probe, house style (mp-buildingfire).  `fires()` needs the live
