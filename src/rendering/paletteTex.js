@@ -186,13 +186,17 @@ export function makePaletteSource({ idx, w, h, stride, rgba, alphaMode, label, a
 
 /* ═══ THE BATCHER ═══ */
 
+/* v2.3.3864: vUV highp on both sides, in all three of this file's programs
+   (this one, ONE_BATCHER's and the meshes'), as in lookPalette.js's (its note
+   says why: Pixi's default fragment precision is mediump, 16 bits on an
+   iPhone) */
 const VERT = `#version 300 es
 in vec2 aPosition;
 in vec2 aUV;
 in vec4 aColor;
 in vec2 aTextureIdAndRound;
 out vec4 vColor;
-out vec2 vUV;
+out highp vec2 vUV;
 flat out float vTextureId;
 flat out float vPalRow;
 uniform mat3 uProjectionMatrix;
@@ -269,7 +273,7 @@ const BLEND = `    highp vec4 c;
    the arithmetic after it is highp, as the chip's own filtering is exact) */
 const FRAG = `#version 300 es
 in vec4 vColor;
-in vec2 vUV;
+in highp vec2 vUV;
 flat in float vTextureId;
 flat in float vPalRow;
 out vec4 finalColor;
@@ -481,7 +485,7 @@ in vec2 aUV;
 in vec4 aColor;
 in vec2 aTextureIdAndRound;
 out vec4 vColor;
-out vec2 vUV;
+out highp vec2 vUV;
 flat out float vTextureId;
 flat out float vCode;
 uniform mat3 uProjectionMatrix;
@@ -530,7 +534,7 @@ function oneChain(read) {
 }
 const ONE_FRAG = `#version 300 es
 in vec4 vColor;
-in vec2 vUV;
+in highp vec2 vUV;
 flat in float vTextureId;
 flat in float vCode;
 out vec4 finalColor;
@@ -734,7 +738,7 @@ const MESH_VERT = `#version 300 es
 in vec2 aPosition;
 in vec2 aUV;
 out vec4 vColor;
-out vec2 vUV;
+out highp vec2 vUV;
 uniform mat3 uProjectionMatrix;
 uniform mat3 uWorldTransformMatrix;
 uniform vec4 uWorldColorAlpha;
@@ -772,7 +776,7 @@ void main(void){
 `;
 const MESH_FRAG = `#version 300 es
 in vec4 vColor;
-in vec2 vUV;
+in highp vec2 vUV;
 out vec4 finalColor;
 uniform highp sampler2D uTexture;
 uniform highp sampler2D uPalAtlas;
