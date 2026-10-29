@@ -6795,8 +6795,14 @@ export const QUEST_CHAINS = {
          worker plays the Grotto for a party */
       /* v2.3.3591: one tap -- the warning that came too late in a sentence,
          the bow and staff, the town's work, and the Grotto's sentence last */
-      get complete() { return "You're back, mostly standing! Blue slimes explode, by the way. Officially, you were warned. Here's a bow and a staff from the emergency fund. You're the emergency. Blacksmith Bro and Diego have work for you."
-        + grottoPartyAside(); },
+      /* v2.3.3869: ...and the Grotto's sentence gone again.  The owner,
+         playtesting on the morning of the showing: "remove mayor bro
+         reference to 'the goo grotto is for level 10 and up...' after
+         turning in the first quest. It has nothing to do with anything and
+         it's confusing. Just remove that sentence."  A plain line, whatever
+         the worker plays; grottoPartyAside (below) is kept, unused, for the
+         owner to bring back. */
+      complete: "You're back, mostly standing! Blue slimes explode, by the way. Officially, you were warned. Here's a bow and a staff from the emergency fund. You're the emergency. Blacksmith Bro and Diego have work for you.",
     },
   },
   tut_2: {
@@ -8211,6 +8217,9 @@ export function lilBroRaceLine(lost) {
   if (lost === 2) return "You lost AGAIN?! I'm nine! I eat cereal for dinner! Tap Race! and run it back. Farmer Bro's Zoom Juice would help, if you could hold a cup.";
   return "That's " + lost + " wins for me. I'm making a montage: \"Hero Gets Destroyed by a Literal Child, Part " + lost + ".\" Tap Race! when you're ready to lose again.";
 }
+/* v2.3.3869: no line asks for this any more -- tut_1's hand-in dropped the
+   sentence (the owner: "Just remove that sentence").  Kept, with its row
+   (setGrottoParty), for the owner to bring back. */
 export function grottoPartyAside() {
   if (!_grottoParty) return '';
   /* v2.3.3591: a sentence at the end of the hand-in's one tap (it was a tap
