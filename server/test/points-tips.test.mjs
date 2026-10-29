@@ -130,7 +130,7 @@ const coach = readFileSync(new URL('../../src/ui/mobile/QuestCoach.jsx', import.
   const hero = readFileSync(new URL('../../src/ui/mobile/sheet/HeroExpanded.jsx', import.meta.url), 'utf8');
   const dash = readFileSync(new URL('../../src/ui/mobile/BottomDashboard.jsx', import.meta.url), 'utf8');
   check('6: the grid\'s top row and its head cell are there', /data-prog3-band="lane"/.test(hero) && /data-prog3-lane=\{isLane \? buildCat : 'shared'\}/.test(hero));
-  check('6: the Points tab is the "Build" section', /const SECTIONS = \['Overview', 'Build', 'Records'\]/.test(hero) && /data-section=\{s\}/.test(hero));
+  check('6: the Points tab is the "Build" section', /const SECTIONS = \['Overview', 'Build'\]/.test(hero) && /data-section=\{s\}/.test(hero));
   check('6: Character is the "hero" destination', /\{ id: 'hero',\s+label: 'Character'/.test(dash));
   check('6: the stat window shows the hint under "points spent"', /spentHint: spentN > 0 \? firstSpendHint\(/.test(hero));
   const pop = readFileSync(new URL('../../src/ui/mobile/InfoPopup.jsx', import.meta.url), 'utf8');
