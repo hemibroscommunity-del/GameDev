@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "24fad6664b5ed730db6c5f575f69e9fa8b5707d3",
+  "tree": "c25e1210474de71e9151499b20826cc5147202d5",
+  "committedAt": "2026-10-28T19:37:19-07:00",
+  "subject": "Merge pull request #1285 from hemibroscommunity-del/claude/flip-roll-2",
+  "files": 7148,
+  "bytes": 821291942,
+  "listingSha256": "ef4124b3d4b9064822c3550bba48ccd2c7f339b9d7198a91e9e0a1fae4b24c13",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

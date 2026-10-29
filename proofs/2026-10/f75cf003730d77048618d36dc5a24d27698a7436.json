@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f75cf003730d77048618d36dc5a24d27698a7436",
+  "tree": "103cf830453d6edbf4c0bc82aae6948d1bd885ca",
+  "committedAt": "2026-10-28T19:37:23-07:00",
+  "subject": "Merge pull request #1272 from hemibroscommunity-del/claude/sound-after-load",
+  "files": 7150,
+  "bytes": 821320836,
+  "listingSha256": "038ccd9f6783b04bc494bbc1376cf25a001fb94261ada72b3b23da73b570d3d3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4186caea529ecad0afdc8bab3e72b678cfbbba7f",
+  "tree": "4120d31879092c57e518a518f807423fa2a6950c",
+  "committedAt": "2026-10-28T19:37:32-07:00",
+  "subject": "Merge pull request #1290 from hemibroscommunity-del/claude/nmlfoe-test",
+  "files": 7155,
+  "bytes": 821378721,
+  "listingSha256": "e95c2e11c0385c113cabea93bafe7de2b448caa35505217fefad2055bf6ce3ae",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
