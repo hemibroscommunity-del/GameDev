@@ -13,7 +13,9 @@
  *      respawn, then gone; the dungeon's "Your bag is safe"; No man's land's
  *      loss once the worker has said it;
  *   3. the chat's line once you are back, and the card gone with it -- never
- *      a line for a death that never was;
+ *      a line for a death that never was, nor for one long before;
+ *      "in No man's land" only for a death there (the worker's pvp:<id> is a
+ *      duel's, a spar's and a war's too: the review of v2.3.3817);
  *   4. the wiring, read from the source: wsClient's player_died notes it with
  *      the plate's name, nml_loss adds the loss, respawn.js says the line,
  *      BroTown mounts the card, and the card never takes a tap.
@@ -67,8 +69,15 @@ const S0 = () => ({
   D.noteDeath(S3, { cause: 'monster:wm-verdant-28', keptBag: 1 }, 0, name);
   check('2f a dungeon\'s kept bag says so', D.deathCardView(S3, 0).note === 'Your bag is safe');
   const S4 = S0();
-  D.noteDeath(S4, { cause: 'pvp:bp_raider' }, 0, name);
-  check('2g a player: "Raider killed you in No man\'s land"', D.deathCardView(S4, 0).by === 'Raider killed you in No man\'s land');
+  D.noteDeath(S4, { cause: 'pvp:bp_raider' }, 0, { ...name, inNml: true });
+  check('2g a player in No man\'s land: "Raider killed you in No man\'s land"', D.deathCardView(S4, 0).by === 'Raider killed you in No man\'s land');
+  /* the review of v2.3.3817: pvp:<id> is a duel's, a spar's and a war's death too */
+  const S6 = S0();
+  D.noteDeath(S6, { cause: 'pvp:bp_raider' }, 0, { ...name, inNml: false });
+  check('2k a player anywhere else (a duel, a war): "Raider killed you", never "in No man\'s land"', D.deathCardView(S6, 0).by === 'Raider killed you');
+  const S7 = S0();
+  D.noteDeath(S7, { cause: 'monster:wm-verdant-28' }, 0, { ...name, inNml: true });
+  check('2l a monster in No man\'s land is still "Killed by Blue Slime"', D.deathCardView(S7, 0).by === 'Killed by Blue Slime');
   D.noteDeathLoss(S4, false);
   check('2h ...and once the worker says it, what they took', D.deathCardView(S4, 0).note === 'They took what you carried');
   D.noteDeathLoss(S4, true);
@@ -82,12 +91,16 @@ const S0 = () => ({
 {
   const S = S0();
   D.noteDeath(S, { cause: 'monster:wm-verdant-28' }, 0, name);
-  check('3a "You were killed by Blue Slime, and came back in BroTown."', D.deathLine(S) === 'You were killed by Blue Slime, and came back in BroTown.');
+  check('3a "You were killed by Blue Slime, and came back in BroTown."', D.deathLine(S, 0) === 'You were killed by Blue Slime, and came back in BroTown.');
   check('3b ...and the card goes with it, once', S._deathCard === null && D.deathLine(S) === null && D.deathCardView(S, 0) === null);
-  D.noteDeath(S, { cause: 'pvp:bp_raider' }, 0, name);
-  check('3c a player\'s', D.deathLine(S) === 'Raider killed you in No man\'s land. You came back in BroTown.');
+  D.noteDeath(S, { cause: 'pvp:bp_raider' }, 0, { ...name, inNml: true });
+  check('3c a player\'s in No man\'s land', D.deathLine(S, 0) === 'Raider killed you in No man\'s land. You came back in BroTown.');
+  D.noteDeath(S, { cause: 'pvp:bp_raider' }, 0, { ...name, inNml: false });
+  check('3f a player\'s anywhere else: no "No man\'s land"', D.deathLine(S, 0) === 'Raider killed you. You came back in BroTown.');
+  D.noteDeath(S, { cause: 'monster:wm-verdant-28', respawnInMs: 5000 }, 0, name);
+  check('3g a card left from a death long before this respawn says nothing, and goes', D.deathLine(S, 5000 + D.DEATH_LINE_STALE_MS + 1) === null && S._deathCard === null);
   D.noteDeath(S, { cause: 'stuck-at-zero' }, 0, name);
-  check('3d nobody named', D.deathLine(S) === 'You died, and came back in BroTown.');
+  check('3d nobody named', D.deathLine(S, 0) === 'You died, and came back in BroTown.');
   check('3e no death, no line', D.deathLine(S0()) === null && D.deathLine(null) === null);
 }
 
@@ -95,10 +108,10 @@ const S0 = () => ({
 {
   const ws = src('src/networking/wsClient.js');
   const died = ws.slice(ws.indexOf("case 'player_died':"), ws.indexOf("case 'player_respawned':"));
-  check('4a player_died notes the card, with the plate\'s name (its stage too)', /noteDeath\(S, msg\.payload, Date\.now\(\), \{ monsterName: function \(m\) \{ return wheelStageName\(m, monsterDisplayName\(m\.archetype \|\| m\.type\)\); \} \}\)/.test(died));
+  check('4a player_died notes the card, with the plate\'s name (its stage too) and whether you lie in No man\'s land', /noteDeath\(S, msg\.payload, Date\.now\(\), \{ monsterName: function \(m\) \{ return wheelStageName\(m, monsterDisplayName\(m\.archetype \|\| m\.type\)\); \}, inNml: nmlHere\(S\) > 0 \}\)/.test(died));
   const loss = ws.slice(ws.indexOf("case 'nml_loss':"), ws.indexOf("case 'nml_loss':") + 600);
   check('4b nml_loss adds what went', /noteDeathLoss\(S, /.test(loss));
-  check('4c the respawn says the line (both ways back: the message and the watchdog)', /deathLine\(S\)/.test(src('src/game/respawn.js')) && /chatLogBus\.bump\(\)/.test(src('src/game/respawn.js')));
+  check('4c the respawn says the line (both ways back: the message and the watchdog)', /deathLine\(S, Date\.now\(\)\)/.test(src('src/game/respawn.js')) && /chatLogBus\.bump\(\)/.test(src('src/game/respawn.js')));
   check('4d BroTown mounts the card', /React\.createElement\(DeathCard, \{ stateRef: stateRef \}\)/.test(src('src/ui/BroTown.jsx')));
   const card = src('src/ui/mobile/DeathCard.jsx');
   check('4e the card never takes a tap, and has nothing to close', /pointerEvents: 'none'/.test(card) && !/onClick|data-esc/.test(card));

@@ -87,7 +87,7 @@ export function applyLocalRespawn(S, zone) {
      scene (ui/mobile/DeathCard.jsx) goes with the respawn, and a capture or a
      glance away missed everything a death showed (game/deathCard.js) */
   try {
-    const line = deathLine(S);
+    const line = deathLine(S, Date.now());
     if (line) {
       S.chatLog = [...(S.chatLog || []).slice(-50), { id: 'death-' + Date.now(), name: '', text: line, color: '#E07B72', ts: Date.now(), system: true }];
       chatLogBus.bump();

@@ -62,7 +62,7 @@ const DIET_ASK = (function () {
   } catch (e) { return null; }   /* no page: a test */
 })();
 import { QUIET, quietOn, bundleOn, lookNews, peerNear, quietMoveGap, framesOf } from '@/game/quietPhone.js'; /* v2.3.3254: the quiet phone */
-import { nmlCanAttack } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk is not held near a player who may fight you */
+import { nmlCanAttack, nmlHere } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk is not held near a player who may fight you */
 import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
 import { wheelLong, setWheelLong, wheelSizesDrawn } from '@/game/wheelSize.js'; /* v2.3.3315: which Wheel the room plays */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
@@ -3116,7 +3116,7 @@ export function setupWebSocket(ctx) {
               /* v2.3.3817: the card over the scene for the five seconds --
                  what killed you, read now (the respawn empties the monster
                  list), and when you are back (game/deathCard.js) */
-              try { noteDeath(S, msg.payload, Date.now(), { monsterName: function (m) { return wheelStageName(m, monsterDisplayName(m.archetype || m.type)); } }); } catch (_dc) { /* the death plays without it */ }
+              try { noteDeath(S, msg.payload, Date.now(), { monsterName: function (m) { return wheelStageName(m, monsterDisplayName(m.archetype || m.type)); }, inNml: nmlHere(S) > 0 }); } catch (_dc) { /* the death plays without it */ }
               /* v2.3.2343: NO local gold penalty.  The worker owns coins
                  (_handlePlayerDeath never touches ps.coins -- there is no
                  death penalty server-side today), and under protocol v2 an

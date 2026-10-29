@@ -22,7 +22,10 @@ killed you or where you were going.
   - "You died";
   - what killed you: "Killed by Blue Slime" (the monster's name as its plate
     reads it, with its stage, "Boss " on a boss), "Killed by a burning heap",
-    or in No man's land "Raider killed you in No man's land";
+    a player "Raider killed you" -- "Raider killed you in No man's land" only
+    when you died there (the worker's `pvp:<id>` is a duel's, a spar's and a
+    war's death too: `noteDeath`'s `inNml`, read while you lie where you
+    fell);
   - in No man's land, what went, once the worker has said it (`nml_loss`):
     "They took what you carried", or with a red skull "You lost what you
     carried and wore"; in a dungeon, "Your bag is safe";
@@ -32,7 +35,8 @@ killed you or where you were going.
   has nothing to close.
 - **One line in the chat** once you are back (`src/game/respawn.js`, so the
   watchdog's respawn says it too): "You were killed by Blue Slime, and came
-  back in BroTown."
+  back in BroTown." A card from a death the worker never brought you
+  back from says nothing at a later respawn (`DEATH_LINE_STALE_MS`).
 
 What killed you is read when you die: the respawn empties the monster list,
 and the card outlives it.

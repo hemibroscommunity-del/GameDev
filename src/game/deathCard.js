@@ -48,7 +48,11 @@ export function killerOf(S, cause, opts) {
   return null;
 }
 
-/** On the worker's player_died: the card's record. */
+/** On the worker's player_died: the card's record.  `opts.inNml`: you died in
+ *  No man's land (the caller reads it while you still lie where you fell) --
+ *  the worker's `pvp:<id>` is a duel's, a spar's and a war's death too, so a
+ *  player is named "in No man's land" only when it was there (the review of
+ *  v2.3.3817). */
 export function noteDeath(S, payload, now, opts) {
   if (!S) return null;
   const p = payload || {};
@@ -59,6 +63,7 @@ export function noteDeath(S, payload, now, opts) {
     ms,
     killer: k ? k.name : null,
     pvp: !!(k && k.pvp),
+    nml: !!(k && k.pvp && opts && opts.inNml),
     keptBag: !!p.keptBag,
     lost: null,
   };
@@ -81,20 +86,25 @@ export function deathCardView(S, now) {
   if (left < -DEATH_CARD.LINGER_MS) return null;
   return {
     title: 'You died',
-    by: d.killer ? (d.pvp ? d.killer + ' killed you in No man\'s land' : 'Killed by ' + d.killer) : null,
+    by: d.killer ? (d.pvp ? d.killer + (d.nml ? ' killed you in No man\'s land' : ' killed you') : 'Killed by ' + d.killer) : null,
     note: d.lost || (d.keptBag ? 'Your bag is safe' : null),
     back: 'Back in BroTown in ' + Math.max(0, Math.ceil(left / 1000)),
     secs: Math.max(0, Math.ceil(left / 1000)),
   };
 }
 
+/* a card older than this at a respawn is not that respawn's death (one the
+   worker never brought you back from) and says nothing */
+export const DEATH_LINE_STALE_MS = 30000;
+
 /** The chat's line once you are back (game/respawn.js), and the card gone. */
-export function deathLine(S) {
+export function deathLine(S, now) {
   const d = S && S._deathCard;
   if (!d) return null;
   S._deathCard = null;
+  const t = typeof now === 'number' ? now : Date.now();
+  if (t - (d.at + d.ms) > DEATH_LINE_STALE_MS) return null;
   if (!d.killer) return 'You died, and came back in BroTown.';
-  return d.pvp
-    ? d.killer + ' killed you in No man\'s land. You came back in BroTown.'
-    : 'You were killed by ' + d.killer + ', and came back in BroTown.';
+  if (d.pvp) return d.killer + (d.nml ? ' killed you in No man\'s land.' : ' killed you.') + ' You came back in BroTown.';
+  return 'You were killed by ' + d.killer + ', and came back in BroTown.';
 }
