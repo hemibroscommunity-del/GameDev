@@ -31,10 +31,19 @@
  *   node tools/qa/mp/run.mjs headframes
  *   BT_HF_QUERY=x   another URL switch on the page (e.g. lookpalette=0)
  *   BT_HF_ONLY=fight|peer|ctx  that phase alone (BT_HF_ROUNDS=n the fight's rounds, 3)
+ *   v2.3.3884 (the owner's flicker, in real play):
+ *   BT_HF_WIDE=1    a computer instead (1280 x 800, wide, a mouse)
+ *   BT_HF_SKIP=ctx,peer   phases left out (ctx: never force a context loss
+ *                   where another lane owns that bug)
+ *   BT_HF_PLAY=1    and the rest of play: a sprint, gathering (mine, chop,
+ *                   fish), the board ridden round BroTown, a fire lit
  */
 import * as H from './harness.mjs';
 
 const PHONE = { width: 390, height: 844 };
+const WIDE = process.env.BT_HF_WIDE === '1';
+const SKIP = new Set((process.env.BT_HF_SKIP || '').split(',').filter(Boolean));
+const PLAY = process.env.BT_HF_PLAY === '1';
 /* 1x by default: this box draws a 3x phone's 1170 x 2532 canvas at about two
    frames a second, too few to see a one-frame gap; what hides a piece is the
    game's own state, the same at any density.  BT_HF_DPR=3 for the phone's. */
@@ -113,9 +122,71 @@ async function fight(P, key, slot, ms) {
   }), { id: m.id, slot, ms });
 }
 
+/* v2.3.3884: mp-ghostaudit's walk, tap and nodes, for the gathering phase */
+async function travel(P, wsPort, myId, tx, ty) {
+  const worker = async () => {
+    const a = await H.adminPlayer(wsPort, myId).catch(() => null);
+    return (a && a.live) || {};
+  };
+  const here = () => H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
+  const apart = (L, c) => typeof L.x === 'number' && Math.hypot(L.x - c.x, L.y - c.y) > 60;
+  for (let leg = 0; leg < 300; leg++) {
+    const L = await worker();
+    const c = await here();
+    if (apart(L, c)) {
+      await P.page.waitForTimeout(900);
+      const L2 = await worker();
+      const c2 = await here();
+      if (apart(L2, c2) && Math.hypot(L2.x - L.x, L2.y - L.y) < 2) {
+        await P.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; S.player.vx = 0; S.player.vy = 0; }, { x: L2.x, y: L2.y });
+        await P.page.waitForTimeout(500);
+      }
+      continue;
+    }
+    if (Math.hypot(tx - c.x, ty - c.y) < 6) return true;
+    await H.hopTo(P, tx, ty, { tries: 4 });
+  }
+  return false;
+}
+async function tapNode(P, id, done, tries = 6) {
+  for (let i = 0; i < tries; i++) {
+    await P.page.evaluate((nid) => {
+      const S = window._gameState.current;
+      const n = (S.gatherNodes || []).find((g) => g.id === nid);
+      if (!n) return;
+      const cv = document.querySelector('canvas');
+      const rc = cv.getBoundingClientRect();
+      const x = rc.left + (n.x - S.camera.x) * (S._worldScaleX || 1);
+      const y = rc.top + (n.y - 24 - S.camera.y) * (S._worldScaleY || 1);
+      const o = { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 };
+      cv.dispatchEvent(new MouseEvent('mousedown', o));
+      cv.dispatchEvent(new MouseEvent('mouseup', o));
+      cv.dispatchEvent(new MouseEvent('click', o));
+    }, id);
+    await P.page.waitForTimeout(400);
+    if (await H.readState(P, done)) return true;
+    /* or E, the computer's own way in (desktopControls runInteract) */
+    await P.page.keyboard.press('e');
+    await P.page.waitForTimeout(400);
+    if (await H.readState(P, done)) return true;
+  }
+  return false;
+}
+const nearestNode = (P, type) => P.page.evaluate((t) => {
+  const S = window._gameState.current, p = S.player;
+  let best = null, d = Infinity;
+  for (const n of S.gatherNodes || []) {
+    if (n.nodeType !== t || !n.alive || (n.gatherLvl || 1) !== 1) continue;
+    const dd = Math.hypot(n.x - p.x, n.y - p.y);
+    if (dd < d) { d = dd; best = { id: n.id, x: n.x, y: n.y, d: Math.round(dd) }; }
+  }
+  return best;
+}, type);
+const STAND = { oreVein: [0, -70], tree: [0, -130], fishSpot: [52, -43] };
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
-    name: 'Headframe', wsPort, webPort, viewport: PHONE, touch: true, dpr: DPR, world: 'wheel', query: QUERY,
+    name: 'Headframe', wsPort, webPort, ...(WIDE ? { viewport: { width: 1280, height: 800 }, touch: false, wide: true } : { viewport: PHONE, touch: true }), dpr: DPR, world: 'wheel', query: QUERY,
     init: `(${INIT.toString()})(${JSON.stringify(LOOK)});`,
   });
   const errors = [];
@@ -212,10 +283,55 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     }
 
+    /* v2.3.3884: the rest of play -- a sprint, the board, a fire, gathering */
+    if (PLAY && !ONLY) {
+      await phase('sprinting the eight facings', async () => {
+        await P.page.keyboard.down('Shift');
+        for (const keys of Object.values(FACINGS)) await hold(P, keys, 1000);
+        await P.page.keyboard.up('Shift');
+      });
+      await phase('riding the board round', async () => {
+        await P.page.keyboard.press('z');
+        await P.page.waitForTimeout(1200);
+        for (const keys of Object.values(FACINGS)) await hold(P, keys, 900);
+        await P.page.keyboard.press('z');
+        await P.page.waitForTimeout(1500);
+      });
+      for (const k of ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe']) await H.grant(wsPort, me, 'item', { invKey: k, count: 1 }).catch(() => {});
+      await H.grant(wsPort, me, 'item', { invKey: 'wood_pine_log', count: 2 }).catch(() => {});
+      await P.page.waitForTimeout(1500);
+      for (const [fam, type, skill] of [['mine', 'oreVein', 'mining'], ['chop', 'tree', 'woodcutting'], ['fish', 'fishSpot', 'fishing']]) {
+        const n = await nearestNode(P, type);
+        if (!n) { console.log(`    [${fam}] no ${type} near`); continue; }
+        await travel(P, wsPort, me, n.x + STAND[type][0], n.y + STAND[type][1]);
+        await P.page.waitForTimeout(1000);
+        await phase(`gathering: ${fam}`, async () => {
+          const ok = await tapNode(P, n.id, (S) => !!S._extraction);
+          const st = await H.waitFor(P, (S) => (S._extraction ? S._extraction.skill : null), (v) => v === skill, { timeout: 8000, label: fam }).catch(() => null);
+          console.log(`    [${fam}] started ${ok}, ${st}`);
+          await P.page.waitForTimeout(6000);
+          await P.page.keyboard.press('Escape').catch(() => {});
+          await P.page.waitForTimeout(800);
+        });
+      }
+      await phase('lighting a fire', async () => {
+        await P.page.evaluate(() => {
+          const bus = window._itemDetailBus, S = window._gameState && window._gameState.current;
+          if (bus && S && S.rpg) bus.open({ kind: 'inventory', key: 'wood_pine_log', count: (S.rpg.inventory || {}).wood_pine_log || 0 });
+        });
+        await P.page.locator('button:visible', { hasText: 'Light fire' }).first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => {});
+        await P.page.evaluate(() => { const b = [...document.querySelectorAll('button')].find((x) => /Light fire/.test(x.textContent || '') && x.offsetParent); if (b) b.click(); });
+        const lit = await H.waitFor(P, (S) => !!S._firemaking, (v) => v, { timeout: 8000, label: 'lighting' }).catch(() => null);
+        console.log(`    [fire] lit ${!!lit}`);
+        await P.page.waitForTimeout(4000);
+        await P.page.keyboard.press('Escape').catch(() => {});
+      });
+    }
+
     /* the graphics lost and given back mid-play (WEBGL_lose_context), as a
        phone's memory purge does: every piece counted through the restore,
        standing and jogging the eight facings after it */
-    if (!ONLY || ONLY === 'ctx') {
+    if ((!ONLY || ONLY === 'ctx') && !SKIP.has('ctx')) {
       /* each piece's usual pixels learnt first, in every facing, before the
          loss (the pixel count compares with them): a piece that came back
          blank must not become its own yardstick */
@@ -242,7 +358,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* a peer in sight, in pieces of their own colours (each facing its own
        picture, not the look palette's numbers): jogging round you through
        the eight facings, rolling and turning */
-    if (!ONLY || ONLY === 'peer') {
+    if ((!ONLY || ONLY === 'peer') && !SKIP.has('peer')) {
       const Q = await H.newPlayer(browser, {
         /* guest: its own identity (two tabs share one by design, mp-crowd) */
         name: 'Headpeer', wsPort, webPort, viewport: PHONE, touch: true, dpr: 1, world: 'wheel', guest: true,
