@@ -1660,6 +1660,32 @@ export function QuestCoach(props) {
                 Math.max(_wx + 8, _wx + _pw - 228));
             }
           }
+          /* ═══ v2.3.3782: ANYWHERE IT WOULD CROSS THE QUEST CARD ═══
+             A computer playing wide (the QA play-through of the judges'
+             path): GEAR UP hung below the fold chip ("OPEN", the top-left
+             corner), and its next step ("Click each glowing item") stood
+             above a bag tile at the cap (120 px from the top, `bottom`
+             below) -- both across the pinned quest card's body line, where
+             v2.3.3481's rule (above, the band's cap) did not reach.  Where
+             the card will stand -- below its control, or above it with
+             `bottom` as set below -- crossing the quest card, it steps right
+             of it, still inside the world's span (its height is not
+             knowable here: two lines of copy, about 70 px).  Upright the
+             card never meets the quest card, so nothing there moves. */
+          {
+            const qh = document.querySelector('[data-quest-hud]');
+            const qr = qh && qh.getBoundingClientRect();
+            if (qr && qr.width > 0) {
+              const cTop = above
+                ? boxH - Math.min(Math.max(Math.max(6, boxH - (r.top - pad - 10)), bandClear, broClear), Math.max(6, boxH - 120)) - 70
+                : r.top + r.height + pad + 10;
+              if (cTop < qr.bottom - box.y && cTop + 70 > qr.top - box.y
+                && _l < qr.right - box.x && _l + 220 > qr.left - box.x) {
+                _l = Math.min(Math.max(_l, qr.right - box.x + 8),
+                  Math.max(_wx + 8, _wx + _pw - 228));
+              }
+            }
+          }
           return _l;
         })(),
         /* Anchored by its BOTTOM when it sits above the control, because the

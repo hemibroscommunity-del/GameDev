@@ -43,7 +43,7 @@ import { EmotePanel } from './panels/EmotePanel.jsx';
 import { LeaderboardPanel, FeedbackPanel, ClanPanel, PetHousePanel, FurniturePanel, DungeonCreatorPanel, EncyclopediaPanel, StatScreenPanel, TradeWindowPanel, InspectPlayerPanel, ExchangePanel, GamblePanel, PartyPanel,
   /* the buildings' windows: v2.3.2826 the Blacksmith; v2.3.3259 the Gem Cutter and the Enchanter, one window (GemcutPanel, EnchantPanel); v2.3.3258 the Land Office's, in the card like the others; v2.3.2476 the auction house */
   SmithyPanel, WoodworkPanel, GemWorksPanel, FarmPanel, BankPanel, CookPanel, VendorPanel, LandOfficePanel, StorePanel } from './lazyPanels.js';
-import { nmlCanAttack, nmlHere } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
+import { nmlCanAttack, nmlHere, nmlLockedOut } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
 import { sparCanAttack, sparAim } from '../game/spar.js'; /* v2.3.3265: aim at your sparring clones */
 import { isLiveFoe } from '../game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is aimed at by a tap, no second window */
 import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
@@ -10619,7 +10619,8 @@ export var BroTown = function BroTown(_ref0) {
         var _no = S.others[_nid];
         if (!_no || typeof _no.renderX !== 'number' || typeof _no.renderY !== 'number') continue;
         var _nd = Math.hypot(_p.x - (_no.renderX - cam.x) * sx, _p.y - (_no.renderY - cam.y) * sy);
-        if (_nd < 25 && _nd < selfD && ((_nmlTap && nmlCanAttack(S, _nid)) || (_sparTap && sparCanAttack(S, _nid)))) return true;
+        /* v2.3.3770: a player you are locked out from is still a tap's (it opens the window that says why) */
+        if (_nd < 25 && _nd < selfD && ((_nmlTap && nmlCanAttack(S, _nid, true)) || (_sparTap && sparCanAttack(S, _nid)))) return true;
       }
       return false;
     };
@@ -13015,6 +13016,16 @@ export var BroTown = function BroTown(_ref0) {
              go, as for anyone. */
           var _nmlFoe = false;
           try { _nmlFoe = !_isDuelOpponent && nmlCanAttack(S, id); } catch (e) { _nmlFoe = false; }
+          /* ═══ v2.3.3770: ...OR ONE WHO BEAT YOU ═══  Locked out from them
+             (nomansland.js _nmlLockSet): the tap opens the window that says
+             why, with its "Ask for a rematch" (game/nmlAsk.js) -- never an
+             aim, which the worker would refuse. */
+          var _nmlLockedTap = false;
+          try { _nmlLockedTap = !_nmlFoe && !_isDuelOpponent && nmlAskOn(S) && nmlLockedOut(S, id) > 0 && nmlCanAttack(S, id, true); } catch (e) { _nmlLockedTap = false; }
+          if (_nmlLockedTap) {
+            try { nmlAsk(S, id, 'tap'); } catch (e) { /* the worker refuses an attack anyway */ }
+            return;
+          }
           if (_nmlFoe) {
             /* nml: the lock is No man's land's, so noteNoMansLand lets it go
                the moment the rule stops allowing the fight.  Tapping them
@@ -13267,7 +13278,10 @@ export var BroTown = function BroTown(_ref0) {
     onRest: function onRest() { setBuildingPanel(null); requestRest(stateRef.current, 'hotel'); },
     /* v2.3.3258: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
     onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('more'); dashboardPanelBus.push('leaderboard'); },
-    onMap: function onMap() { setBuildingPanel(null); openWorldMap(); }
+    onMap: function onMap() { setBuildingPanel(null); openWorldMap(); },
+    /* v2.3.3801: the board's shortcuts -- a dashboard page (Quests, the Codex, More -> Journey) -- and closing it (the skateboard's "Ride now") */
+    onDash: function onDash(id, sub) { setBuildingPanel(null); dashboardPanelBus.open(id); if (sub) dashboardPanelBus.push(sub); },
+    onClose: function onClose() { setBuildingPanel(null); }
   }), buildingPanel === 'auctionhouse' && /*#__PURE__*/React.createElement(VendorPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'bank' && /*#__PURE__*/React.createElement(BankPanel, { rpgState: rpgState }), buildingPanel === 'cook' && /*#__PURE__*/React.createElement(CookPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState /* v2.3.3481: no cookMinigame props -- the fish game is gone */ }), buildingPanel === 'farm' && /*#__PURE__*/React.createElement(FarmPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel }), buildingPanel === 'gamble' && /*#__PURE__*/React.createElement(GamblePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), /* v2.3.3258: the Saloon's door opens the Saloon -- where a party is formed (WheelHallPanel.jsx SaloonPanel) -- and the Gladiator Arena is its own window, 'arena', from the Sheriff's Office (the owner: "the gladiator arena is showing 'saloon' behind it") */
   buildingPanel === 'party' && /*#__PURE__*/React.createElement(SaloonPanel, { stateRef: stateRef, onPlayers: function onPlayers() { setBuildingPanel(null); setShowPlayerList(true); } }), buildingPanel === 'arena' && /*#__PURE__*/React.createElement(PartyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, arenaBetAmount: arenaBetAmount, arenaBetTarget: arenaBetTarget, arenaBets: arenaBets, arenaHistory: arenaHistory, arenaStatus: arenaStatus, arenaTournament: arenaTournament, setArenaBetAmount: setArenaBetAmount, setArenaBetTarget: setArenaBetTarget, setArenaBets: setArenaBets, setArenaHistory: setArenaHistory, setArenaStatus: setArenaStatus, setArenaTournament: setArenaTournament }), buildingPanel === 'store' && /*#__PURE__*/React.createElement(StorePanel, { rpgState: rpgState, stateRef: stateRef, setBuildingPanel: setBuildingPanel }), buildingPanel === 'exchange' && /*#__PURE__*/React.createElement(ExchangePanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState, setBuildingPanel: setBuildingPanel, mktCategory: mktCategory, mktElement1: mktElement1, mktElement2: mktElement2, mktMode: mktMode, mktOrders: mktOrders, mktPrice: mktPrice, mktSellItem: mktSellItem, mktSubtype: mktSubtype, mktTier: mktTier, setMktCategory: setMktCategory, setMktElement1: setMktElement1, setMktElement2: setMktElement2, setMktMode: setMktMode, setMktOrders: setMktOrders, setMktPrice: setMktPrice, setMktSellItem: setMktSellItem, setMktSubtype: setMktSubtype, setMktTier: setMktTier }), buildingPanel === 'forge' && /*#__PURE__*/React.createElement(SmithyPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), buildingPanel === 'woodwork' && /*#__PURE__*/React.createElement(WoodworkPanel, { rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }), (buildingPanel === 'gemcut' || buildingPanel === 'enchant') && /*#__PURE__*/React.createElement(GemWorksPanel, { tab: buildingPanel, onTab: setBuildingPanel, rpgState: rpgState, stateRef: stateRef, setRpgState: setRpgState }) /* v2.3.3259: cut gems / set gems, one building */, /* v2.3.3258: the Land Office's window is a panel in the card now (it was a separate dialog under an empty card, panels/buildings/LandOfficePanel.jsx) */
   buildingPanel === 'farmhome' && /*#__PURE__*/React.createElement(LandOfficePanel, {

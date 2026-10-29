@@ -22,8 +22,13 @@
  * NO IMPORTS: server/test/xp-bar.test.mjs runs this in node; the XP curve is
  * passed in (`req`, data/prog3.js prog3XpRequired). */
 
-/* how long the bar stays after the last gain */
-export const XP_BAR_SHOW_MS = 3000;
+/* how long the bar stays after the last gain.  v2.3.3796: 3000 -> 3500, the
+   slower fill (XP_FILL_DELAY_MS + XP_FILL_MS, 1.8 s) and then time to read
+   it; a level-up's longer show is XP_BAR_UP_SHOW_MS */
+export const XP_BAR_SHOW_MS = 3500;
+/* v2.3.3796: a level-up's show: the run to the end, the new level's fill
+   (XP_WRAP_MS + XP_FILL_DELAY_MS + XP_FILL_MS, 3.75 s) and time to read it */
+export const XP_BAR_UP_SHOW_MS = 5200;
 /* the combat skills, in the Points tab's order of their keys */
 export const XP_BAR_CATS = Object.freeze(['sword', 'bow', 'staff']);
 /* how long a "+N" pops (game.css bt-xp-gain) */
@@ -32,11 +37,18 @@ export const XP_GAIN_MS = 1200;
    at once where the XP now stands; the gold waits XP_FILL_DELAY_MS, so the
    white is seen, then grows to it over XP_FILL_MS.  A level-up runs the gold
    to the end, and XP_WRAP_MS after the gain the bar starts the new level
-   empty, the white at what carried over and the gold growing to it: about
-   1.4 s in all, well inside XP_BAR_SHOW_MS. */
-export const XP_FILL_DELAY_MS = 120;
-export const XP_FILL_MS = 500;
-export const XP_WRAP_MS = 750;
+   empty, the white at what carried over and the gold growing to it.
+   v2.3.3796, the owner: "when you gain xp show the white bar longer (the
+   added xp that the bar climbs to) and make the fill up to that white portion
+   slower" -- the white alone 120 -> 600 ms, the climb 500 -> 1200 ms, eased
+   out (XP_FILL_EASE: quick at first, settling into the white); the level-up's
+   second step after the first has run (1800 ms) and a breath, 2000 ms. */
+export const XP_FILL_DELAY_MS = 600;
+export const XP_FILL_MS = 1200;
+export const XP_WRAP_MS = 2000;
+/* the gold's easing as CSS, and the same curve for the counting number
+   (xpEase): an ease-out cubic, 1 - (1 - p)^3 */
+export const XP_FILL_EASE = 'cubic-bezier(.33,1,.68,1)';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const lvlOf = (sk) => Math.max(1, Math.floor(num(sk && sk.level) || 1));
@@ -72,6 +84,27 @@ export function xpNumWords(v) {
   return w >= 1000 ? w.toLocaleString('en-US') : String(w);
 }
 
+/** v2.3.3796: the fill's ease-out (XP_FILL_EASE's curve), p in 0..1 */
+export function xpEase(p) {
+  const q = Math.max(0, Math.min(1, num(p)));
+  return 1 - Math.pow(1 - q, 3);
+}
+
+/** v2.3.3796: the number while it counts, `t` ms after the count began from
+ *  `from` toward `to` -- held XP_FILL_DELAY_MS with the white alone, then
+ *  XP_FILL_MS in step with the gold (the owner: "instead of changing the
+ *  whole xp number make it count up").  Done: `to`. */
+export function xpCountAt(from, to, t) {
+  const a = num(from), b = num(to), tt = num(t);
+  if (tt <= XP_FILL_DELAY_MS) return a;
+  return a + (b - a) * xpEase((tt - XP_FILL_DELAY_MS) / XP_FILL_MS);
+}
+
+/** v2.3.3796: how long `bar` stays up after its gain: a level-up longer */
+export function xpShowMs(bar) {
+  return bar && bar.up ? XP_BAR_UP_SHOW_MS : XP_BAR_SHOW_MS;
+}
+
 /** v2.3.3739: "45 / 120", the XP into this level over what the next level
  *  needs (the owner: "It should also show the number of xp needed for the
  *  next level somewhere on the bar").  The worker's numbers, `bar.xp` and
@@ -91,7 +124,7 @@ export function xpToNextWords(xp, need) {
 export function xpFillSteps(was, bar) {
   if (!bar) return { fresh: true, wrap: false, from: 0 };
   const level = lvlOf(bar);
-  const fresh = !was || was.cat !== bar.cat || num(bar.at) - num(was.at) >= XP_BAR_SHOW_MS
+  const fresh = !was || was.cat !== bar.cat || num(bar.at) - num(was.at) >= (was.up ? XP_BAR_UP_SHOW_MS : XP_BAR_SHOW_MS)
     || lvlOf(was) > level;
   const fromLevel = bar.fromLevel != null ? lvlOf({ level: bar.fromLevel }) : level;
   const wrap = level > (fresh ? fromLevel : lvlOf(was));
@@ -128,7 +161,9 @@ export function noteProg3Xp(S, prevP3, nextP3, req, now) {
   /* v2.3.3739: where this skill stood before the gain (the white bar's start) */
   const psk = prevP3.sk[best.cat];
   const fromLevel = lvlOf(psk);
-  const fromFrac = Math.max(0, Math.min(1, Math.max(0, num(psk && psk.xp)) / Math.max(1, num(req(fromLevel)))));
+  const fromXp = Math.max(0, num(psk && psk.xp));
+  const fromNeed = Math.max(1, num(req(fromLevel)));
+  const fromFrac = Math.max(0, Math.min(1, fromXp / fromNeed));
   const was = S._xpBar;
   const same = !!(was && was.cat === best.cat && t - was.gainAt < XP_GAIN_MS);
   S._xpBar = {
@@ -146,6 +181,9 @@ export function noteProg3Xp(S, prevP3, nextP3, req, now) {
     up: level > fromLevel,
     fromLevel,
     fromFrac,
+    /* v2.3.3796: the number's start (XpTrack counts from it) */
+    fromXp,
+    fromNeed,
   };
   for (const fn of Array.from(_listeners)) { try { fn(S._xpBar); } catch (_e) { /* a reader's fault is its own */ } }
   return S._xpBar;
@@ -153,5 +191,5 @@ export function noteProg3Xp(S, prevP3, nextP3, req, now) {
 
 /** Is the bar up at `now`? */
 export function xpBarShown(bar, now) {
-  return !!(bar && num(now) - num(bar.at) < XP_BAR_SHOW_MS);
+  return !!(bar && num(now) - num(bar.at) < xpShowMs(bar));
 }

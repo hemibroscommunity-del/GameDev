@@ -79,14 +79,16 @@ const PROBE_AT = process.env.ROLE_BAKE_PROBE ? ((m) => [m[1], [Number(m[2]), Num
 /* ── in the page: the set's module, and through it the game's own code ── */
 async function pageMeta({ set }) {
   const S = (await import(`/rendering/lookSets/${set}.js`)).default;
-  return { kind: S.kind, bits: S.bits, refScale: S.refScale || 1, fw: S.fw || 128, fh: S.fh || 128, out: S.out || null, roleDefs: S.roleDefs,
+  return { mip: S.mip !== false, kind: S.kind, bits: S.bits, refScale: S.refScale || 1, fw: S.fw || 128, fh: S.fh || 128, out: S.out || null, roleDefs: S.roleDefs,
     sheets: S.sheets, code: S.code || [], art: Object.fromEntries(S.sheets.map((k) => [k, S.art(k)])) };
 }
 async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
   const CUT_BAR = bar;   /* v2.3.3750: the 8-bit cut's worst colour, in levels */
   const S = (await import(`/rendering/lookSets/${set}.js`)).default;
   const GS = await import('/rendering/gearSheets.js');
-  const FW = S.fw || 128, FH = S.fh || 128;
+  /* v2.3.3757: a set whose sheets differ in frame size (the stand-ins) says so per sheet */
+  const fr0 = S.frameOf ? S.frameOf(sheet) : null;
+  const FW = (fr0 && fr0.fw) || S.fw || 128, FH = (fr0 && fr0.fh) || S.fh || 128;
   const RS = S.refScale || 1;   /* v2.3.3737: a role's ref in 1/RS's (P4's fractional refs) */
   const roles = S.roleDefs;   /* role r (1..R) is roles[r - 1] */
   const R = roles.length;
@@ -151,8 +153,11 @@ async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
   const dd = read(defDisp);
   const DW = defDisp.width, DH = defDisp.height;
   const ds = S.ds(src);
-  let ox = 1, oy = 1;
-  if (ds === 1) {
+  /* v2.3.3757: a ds 1 display is the full bake halved (the body's jog: hx 2)
+     or the full bake itself (the stand-ins, drawn at their own size: hx 1) */
+  const hx = ds === 1 ? Math.round(W / DW) : 2;
+  let ox = hx === 2 ? 1 : 0, oy = hx === 2 ? 1 : 0;
+  if (ds === 1 && hx === 2) {
     /* the nearest pick's offset in its 2x2 block, read off a probe look */
     const p1d = read(disp(run(P1)));
     let best = -1;
@@ -177,7 +182,7 @@ async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
     let p;
     if (ds === 1) {
       if (!dd[(y * DW + x) * 4 + 3]) continue;   /* see-through on the display (and the stripped specks) */
-      p = (2 * y + oy) * W + 2 * x + ox;
+      p = (hx * y + oy) * W + hx * x + ox;
     } else p = y * W + x;
     if (!d[p * 4 + 3]) continue;
     srcOf[y * nw + x] = p;
@@ -196,7 +201,7 @@ async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
      sheet, along a garment's edge, where the bake's band or the eye's box
      cuts a block. */
   let split = 0;
-  if (ds === 1) {
+  if (ds === 1 && hx === 2) {
     for (let y = 0; y < nh; y++) for (let x = 0; x < nw; x++) {
       if (srcOf[y * nw + x] < 0) continue;
       const k0 = keyOf((2 * y) * W + 2 * x);
@@ -308,7 +313,7 @@ async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
          role (`fickle`: the fish's rod key, re-tested after the retint) is
          counted apart, not held to the old path (an 8-bit sheet's: only past
          the cut's bar, which the cut itself is held to on every pixel) */
-      if (fickle && m > (quant ? CUT_BAR : 1.5) && fickle[ds === 1 ? (2 * y + oy) * W + 2 * x + ox : (2 * y) * W + 2 * x]) { check.fickle = (check.fickle || 0) + 1; continue; }
+      if (fickle && m > (quant ? CUT_BAR : 1.5) && fickle[ds === 1 ? (hx * y + oy) * W + hx * x + ox : (2 * y) * W + 2 * x]) { check.fickle = (check.fickle || 0) + 1; continue; }
       check.texels++;
       check.sum += m;
       if (m > check.max) check.max = +m.toFixed(2);
@@ -327,7 +332,7 @@ async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
   for (let p = 0; p < role.length; p++) if (d[p * 4 + 3]) roleCount[role[p]]++;
   const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 32768) s += String.fromCharCode.apply(null, u8.subarray(i, i + 32768)); return btoa(s); };
   return {
-    sheet, ds, frames, w: PW, h: PH, entries: sorted.length + 1, ends, cells,
+    sheet, ds, frames, fw: FW, fh: FH, w: PW, h: PH, entries: sorted.length + 1, ends, cells,
     unexplained, ambiguous, pick: [ox, oy], split, check, probe, quant,
     counts: roleCount,
     nums: b64(new Uint8Array(nums.buffer, nums.byteOffset, nums.byteLength)), table: b64(table),
@@ -392,7 +397,7 @@ async function main() {
     const jsonFile = path.join(outDir, 'roles.json');
     /* a bake of some sheets keeps the manifest's others */
     const prev = fs.existsSync(jsonFile) ? JSON.parse(fs.readFileSync(jsonFile, 'utf8')) : null;
-    out = { v: 2, version: 'v2.3.3737', set, kind: meta.kind, bits, refScale: meta.refScale, fw: meta.fw, fh: meta.fh,
+    out = { v: 2, version: 'v2.3.3737', set, kind: meta.kind, bits, ...(meta.mip ? {} : { mip: false }),   /* v2.3.3757: drawn without mipmaps */ refScale: meta.refScale, fw: meta.fw, fh: meta.fh,
       roles: ['keep', ...meta.roleDefs.map((ro) => ro.name)], roleDefs: meta.roleDefs.map(({ name, entry, ref, under }) => ({ name, entry, ref: ref || 0, under: under || 0 })),
       code: hashFiles(codeFiles), codeFiles, sheets: (prev && argOf('--sheets') && prev.bits === bits) ? prev.sheets : {} };
     if (!CHECK) fs.mkdirSync(outDir, { recursive: true });
@@ -421,7 +426,7 @@ async function main() {
         + `  roles ${r.counts.join('/')}  unexplained ${r.unexplained}  ambiguous ${r.ambiguous}  pick ${r.pick}, ${r.split} split`
         + `  check ${r.check.texels} texels, ${r.check.over1} over 1, max ${r.check.max}, mean ${r.check.mean}${r.check.fickle ? ', ' + r.check.fickle + ' fickle' : ''}  (${Date.now() - t0} ms)`);
       const artFiles = meta.art[name] || [];
-      out.sheets[name] = { ...(sheetBits !== bits ? { bits: sheetBits } : {}), ds: r.ds, frames: r.frames, w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
+      out.sheets[name] = { ...(sheetBits !== bits ? { bits: sheetBits } : {}), ds: r.ds, frames: r.frames, ...(r.fw !== meta.fw || r.fh !== meta.fh ? { fw: r.fw, fh: r.fh } : {}), w: r.w, h: r.h, tableRows, entries: r.entries, ends: r.ends,
         cells: r.cells, split: r.split, quant: r.quant || undefined, artFiles, art: hashFiles(artFiles), bytes: png.length };
       const file = path.join(outDir, name + '.png');
       if (CHECK) {

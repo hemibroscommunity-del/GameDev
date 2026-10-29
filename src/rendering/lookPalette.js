@@ -161,7 +161,7 @@ function buildSheet(set, name, m, img, roles) {
   let rows = n + tRows + hRows;
   if (m.ds === 2 && (rows & 1)) rows++;
   const head = new Array(HEAD_VALUES).fill(0);
-  head[0] = m.ds | (bits === 8 ? 128 : 0); head[1] = n; head[2] = n; head[3] = bits; head[4] = roles.length;
+  head[0] = m.ds | (bits === 8 ? 128 : 0) | (m.mip === false ? 64 : 0);   /* v2.3.3757: 64, a sheet drawn without mipmaps (the stand-ins) */ head[1] = n; head[2] = n; head[3] = bits; head[4] = roles.length;
   const ends = m.ends || [];
   for (let r = 0; r < 16; r++) head[5 + r] = ends[Math.min(r, ends.length - 1)] != null ? ends[Math.min(r, ends.length - 1)] : E;
   roles.forEach((ro, i) => { head[21 + 3 * i] = ro.entry; head[22 + 3 * i] = Math.round(ro.ref || 0); head[23 + 3 * i] = ro.under || 0; });
@@ -235,7 +235,7 @@ async function loadSet(name) {
       await Promise.all(Object.keys(m.sheets).map(async (sheet) => {
         const e = m.sheets[sheet];
         const img = await loadPng(s.base + sheet + '.png?v=' + v + '.' + (e.art || ''));
-        buildSheet(name, sheet, { bits: m.bits, fw: m.fw, fh: m.fh, refScale: m.refScale, kind: m.kind, ...e }, img, e.roleDefs || roles);
+        buildSheet(name, sheet, { bits: m.bits, fw: m.fw, fh: m.fh, refScale: m.refScale, kind: m.kind, mip: m.mip, ...e }, img, e.roleDefs || roles);
       }));
       s.manifest = m;
       _stats.sets++;
@@ -513,6 +513,7 @@ ${fetchChain((t) => `textureSize(uTextures[${t}], 0)`)}
 /* the sheet's header, read once a pixel (lookPalette.js buildSheet): its
    scale, rows, table, bits, and each role's entry of the row, ref and under */
 highp int sDs, sN, sW, sT0, sBits, sR, sRefScale, sKind, sBook;
+bool sNoMip;   /* v2.3.3757: the old texture had no mip chain (header byte 0's 64) */
 bool sMirror;
 highp int sE[16];
 highp int sRoE[16], sRoF[16], sRoU[16];
@@ -543,6 +544,8 @@ void readSheet()
     highp int b0 = int(fetchT(ivec2(0, sz.y - 1)).r * 255.0 + 0.5);
     sBits = b0 >= 128 ? 8 : 16;
     sDs = b0 >= 128 ? b0 - 128 : b0;
+    sNoMip = sDs >= 64;
+    if (sNoMip) sDs -= 64;
     sN = hdr(1, sz);
     sT0 = hdr(2, sz);
     sR = hdr(4, sz);
@@ -684,7 +687,9 @@ void main(void) {
     highp float rho = max(length(dx * ts), length(dy * ts));
     highp float lod = log2(max(rho, 1e-6));
     highp vec4 c = bilinear(P, false);
-    if (lod > 0.0) c = mix(c, bilinear(P, true), min(lod, 1.0));
+    /* v2.3.3757: a sheet whose old texture had no mipmaps (the stand-ins'
+       canvases) was read at its level 0 however small it was drawn */
+    if (lod > 0.0 && !sNoMip) c = mix(c, bilinear(P, true), min(lod, 1.0));
     finalColor = (c / 255.0) * vColor;
 }
 `;

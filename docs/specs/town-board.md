@@ -17,6 +17,8 @@ Every tile (v2.3.3779): ![every tile](town-board/every-tile.jpg)
 
 v2.3.3788, Quests and the dungeons' levels: [320 px upright](town-board/board-320.jpg), [sideways](town-board/board-sideways.jpg), [computer](town-board/board-computer.jpg).
 
+v2.3.3801, the owner's review: [a page's one action](town-board/page-action.jpg), [the Skateboard](town-board/page-skate.jpg), [Town Life and the foot](town-board/board-foot.jpg).
+
 ## What it does
 
 - **Entering the Town Hall opens the board**: a tile a thing to do, under
@@ -27,6 +29,18 @@ v2.3.3788, Quests and the dungeons' levels: [320 px upright](town-board/board-32
   Mayor's story (an `npc` pin on Mayor Bro, found at the hall he keeps until
   he is spawned), the townsfolk's quests (no pin), the Guild Hall, Lil Bro's
   race; their numbers are the worker's (town-board.test 1t).
+- **The owner's review (v2.3.3801)**, ChatGPT's, adopted: the headings
+  Quests, Explore the Lands, Dungeons, Fight, Craft & Grow, Trade & Bank,
+  Gambling, Town Life (the ids stay: quests, lands, dungeons, fight, make,
+  money, gambling, people); Lil Bro's Race in Town Life; a Skateboard tile
+  (`cap: 'ride'`); a line under every tile (`sub`, or made at runtime by
+  `mapPinPlaces.js` `boardSub`: a land's compass and element from the world
+  map's `lands`, a dungeon's levels, the Bank's `ifCap` words with
+  caps.bank); one action button on a page with no place (`action`: 'quests'
+  opens the dashboard's Quests, 'ride' asks for the board where you may
+  ride); Codex and Journey at the foot. The page and the foot are
+  `TownBoardPage.jsx` (the grid stays in `TownBoard.jsx`); BroTown hands the
+  hall `onDash(id, sub)` and `onClose()`.
 - **A dungeon's levels on its tile** (v2.3.3788): "Lv 10+ · party of 2–3",
   "Lv 26+", "Lv 41+" -- `data/wheelDungeons.js` `dungeonBoardLine` (the
   party row and the level it is for, else the lowest of the place's levels:
@@ -79,7 +93,7 @@ v2.3.3788, Quests and the dungeons' levels: [320 px upright](town-board/board-32
 - `tools/qa/mp/mp-townboard.mjs`: an upright phone and a computer in the
   world's BroTown: the board, a page, red and blue on the minimap, red
   moved, blue lifted, a reload keeping red, the world map.
-- UI review: `building-townhall`, `building-townhall-page`.
+- UI review: `building-townhall`, `building-townhall-page`, `building-townhall-action`.
 
 ## Not on the board
 
