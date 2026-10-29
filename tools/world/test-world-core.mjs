@@ -3153,9 +3153,10 @@ console.log('jumping (v2.3.3017)');
       J.clearMsLeft(fw, fw.t0 + 10) > 0 && J.clearMsLeft(fw, fw.t0 + fw.dur - 5) === 0);
     const lk = J.jumpLook(fw, fw.t0 + fw.dur / 2, null, 1);
     /* v2.3.3738: "The flipped body is too small (looks about 40% too small)":
-       drawn FLIP_BODY_K (1.4) larger, evenly, about the feet (jumpFx) */
-    ok('drawn as the roll\'s somersault: no stretch or lean of its own, FLIP_BODY_K (1.4) larger evenly (v2.3.3738), the tumble frames in order (dodge sheets)',
-      lk && lk.flip && lk.air && J.FLIP_BODY_K === 1.4 && lk.ky === J.FLIP_BODY_K && lk.kx === J.FLIP_BODY_K && lk.rot === 0 && lk.lift > 0
+       drawn FLIP_BODY_K (1.4) larger, evenly, about the feet (jumpFx);
+       v2.3.3798: 1.05, 25% smaller (the owner) */
+    ok('drawn as the roll\'s somersault: no stretch or lean of its own, FLIP_BODY_K (1.05) larger evenly (v2.3.3738; v2.3.3798 25% smaller), the tumble frames in order (dodge sheets)',
+      lk && lk.flip && lk.air && J.FLIP_BODY_K === 1.05 && lk.ky === J.FLIP_BODY_K && lk.kx === J.FLIP_BODY_K && lk.rot === 0 && lk.lift > 0
         && [0, 0.2, 0.4, 0.6, 0.85].map((t) => J.flipFrame(9, t)).join() === J.FLIP_FRAMES.join() && J.flipFrame(9, 0.999) === 6);
     const real = J.peerJump({ flip: 1, h0: fw.h0, v: fw.v, g: fw.g, ang: 1.5, dur: 1, peak: 1 }, 50);
     ok('another player\'s flip from the relay: the same arc, its numbers clamped, a forged one a plain hop',
