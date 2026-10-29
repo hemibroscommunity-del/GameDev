@@ -2077,6 +2077,15 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
   .bt-zone-header__mid:has(> .bt-nml-pill):has(> .bt-zone-header__test){gap:4px}
   .bt-zone-header__mid:has(> .bt-nml-pill):has(> .bt-zone-header__test) > .bt-zone-header__tod{display:none}
 }
+/* v2.3.3765: the pill AND the owner's TEST MODE tag on a phone narrower than
+   430 is the fullest bar there is, and it does not fit grown (mp-nmltopbar:
+   "BroTown" lost its tail at 320, 375 and 390): that bar stays the old size,
+   the owner's own test characters only, never a player's bar */
+@media (max-width:429px){
+  .bt-zone-header:has(.bt-zone-header__mid > .bt-nml-pill):has(.bt-zone-header__mid > .bt-zone-header__test){--zk:1}
+  .bt-zone-header__mid:has(> .bt-nml-pill):has(> .bt-zone-header__test){gap:4px}
+  .bt-zone-header__mid:has(> .bt-nml-pill):has(> .bt-zone-header__test) > .bt-zone-header__tod{display:none}
+}
 /* v2.3.3765: ...and on the narrowest phones (an iPhone SE, 320 px) the hour's
    icon gives way to the pill whenever it is up (mp-topbar: with a rich purse
    "BroTown" lost its tail even at the old size) */
