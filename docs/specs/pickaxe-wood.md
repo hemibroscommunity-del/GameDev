@@ -114,3 +114,44 @@ wood. It raised two design points, left for later:
   `garmentConfine.js`, `tools/qa/garment-confine.mjs` and
   `tools/gear/fill-mine-tee-holes.mjs`, beside the originals in
   `playerSkins.js`. One small module all five import would keep them in step.
+
+## v2.3.3873: the pickaxe, solid
+
+The owner, 2026-10-29, playtesting for the showing: *"Ok the pickaxe for the
+first quest is still invisible or at least very lightly drawn. Can you use code
+to fill it with a handle and just an iron color for the metal part?"*
+
+The mining sheet draws the pickaxe as a thin stroke, one or two art px wide, in
+a pale wood and a blue-grey steel, slightly see-through. Kept in its own colours
+(above), it still all but vanished at the game's scale. Now, at the same bake
+(`toolWood.js` `solidTool`, last in `playerSkins.js` `recolorBodyToCanvas`),
+once a look behind the loading screen and never a frame:
+
+- **Which pixels:** toolWoodMask's wood, and the blue-tinted grey touching it.
+  The rock's dust is a plain grey and is left out.
+- **Which part is the head:** the art shades the handle in the head's own grey,
+  so colour can't tell them apart; thickness can. A grey piece with
+  `HEAD_CORE_MIN` pixels grey all round is the head; the handle's one-pixel
+  shading has none.
+  - The pickaxe's long axis was tried first and failed: at the rock it points
+    at you, and its axis runs along the head.
+  - The wood right against the head is its rim, and goes iron.
+- **Painted:**
+  - the handle a solid wood brown (134, 88, 46);
+  - the head iron grey (150, 157, 166), with a light top edge;
+  - every pixel fully opaque;
+  - outlined half an art px outward, into the empty pixels only: dark brown
+    round the handle, dark iron round the head.
+- **The look palette** (phones) draws numbers baked from this bake, so
+  `public/sprites/look/mine-south.png` is re-baked
+  (`node tools/art/role-bake.mjs --sheets mine-south`).
+  - The role bake now takes a kept pixel's alpha from the game's bake as well
+    as its colour, and keeps a pixel the bake alone draws (the outline).
+  - Self-check: 0 texels over 1.
+- **Off for one tab:** `?toolsolid=0`, on the old path only (the look palette
+  draws the baked numbers).
+- **Proof:** `node tools/qa/mp/run.mjs toolsolid` (`TOOLSOLID_PAL=0` and `=1`),
+  and a ghost-audit sample (`BT_GHOST_ONLY=mine`). Pictures:
+  `docs/shots/toolsolid.md`.
+- **The axe and the rod** are left as they are. They are drawn in the magenta
+  key and coloured at load (toolRecolor.js), and are not faint.
