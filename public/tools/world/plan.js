@@ -235,7 +235,7 @@ const BASE_PLAN = {
      the scale the owner likes ("I prefer the scale of when the character is
      in town"). */
   town: {
-    name: 'Brotown',
+    name: 'BroTown',   /* v2.3.3814: the town's one spelling (was Brotown) */
     main: 62,          /* Main Street half-width (north-south) */
     row: 52,           /* Market Row half-width (east-west) */
     boardwalk: 22,
@@ -444,12 +444,12 @@ const BASE_PLAN = {
      in. */
   regions: {
     town: {
-      name: 'Brotown', short: 'the town',
+      name: 'BroTown', short: 'the town',   /* v2.3.3814: was Brotown */
       ground: '#b98f55', groundName: 'ochre',
       paint: "packed-earth yards with patchy grass between the building plots, with barrels, crates, hitching posts, water troughs and a parked wagon or two",
     },
     commons: {
-      name: 'Brotown Commons', short: 'the commons',
+      name: 'BroTown Commons', short: 'the commons',   /* v2.3.3814: was Brotown Commons */
       ground: '#86b94f', groundName: 'grass green',
       paint: 'the safe common land round the town: neat fenced fields of crops and hay, orchards, split-rail fences, haystacks and cart tracks through short green grass',
       stages: [

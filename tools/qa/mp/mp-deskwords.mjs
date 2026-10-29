@@ -2,7 +2,8 @@
  *
  * The owner's list of 2026-10-26 (docs/OWNER-LIST-2026-10-26.md): the judges
  * play the DESKTOP version.  On a computer the very first instruction read
- * "Follow the gold road on your map, then tap him."  game/deskWords.js swaps
+ * "The gold line on your map leads to him; then tap him." (v2.3.3812; it said
+ * "Follow the gold road on your map, then tap him.")  game/deskWords.js swaps
  * the word as it is shown, under a mouse only (docs/specs/desktop-words.md).
  * On a real page, 1440 x 900 with a mouse:
  *   1. the WELCOME plate says "then click him.";
@@ -54,7 +55,7 @@ const welcomeText = (P) => P.page.evaluate(() => {
 async function waitWelcome(P, ms = 30000) {
   for (const t0 = Date.now(); Date.now() - t0 < ms;) {
     const t = await welcomeText(P);
-    if (t && /gold road/.test(t)) return t;
+    if (t && /gold line/.test(t)) return t;   /* v2.3.3812: was "gold road" */
     await P.page.waitForTimeout(150);
   }
   return welcomeText(P);
