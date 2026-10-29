@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d1cf53ebe6b974e7185c238f8beacb33a35a02bc",
+  "tree": "c76d56307bf9c08ae635edb71ce6a656b3d605b0",
+  "committedAt": "2026-10-29T08:49:31-07:00",
+  "subject": "Merge pull request #1332 from hemibroscommunity-del/claude/goblin-burn-fire",
+  "files": 7290,
+  "bytes": 840082178,
+  "listingSha256": "925ad25eeb1ca906e12c102e37a55dbf190af0093d23efefce27049e05b9e375",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
