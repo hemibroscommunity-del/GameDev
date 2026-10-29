@@ -9,18 +9,33 @@
  * phone (a real tap), in the world:
  *   1. a click on Mayor Bro opens his dialogue; through it, the first quest
  *      (tut_1, Into the Blue) is taken;
- *   2. its 4 Slime Remains granted, ONE click on Mayor Bro opens the hand-in,
- *      and its "Claim reward" is reached from that same window -- no second
- *      click on him in between -- and the worker marks the quest turned in;
- *   3. every window and button on the way is logged (the record of what the
- *      player saw);
- *   4. no page errors. */
+ *   2. the computer: his reminder open at 3 of 4 Slime Remains, the 4th
+ *      granted -- the SAME window turns into the hand-in, its Claim reward
+ *      pays, no click on him in between;
+ *      the phone: its 4 Remains granted, ONE tap on him opens the hand-in and
+ *      its Claim reward is reached from that same window;
+ *   3. while the quest is ready, his speech bubble never says his hand-in
+ *      line: a cue ("All done? Click me!" / "Tap me!");
+ *   4. no page errors.
+ * Every window and button on the way is logged (the record of what the
+ * player saw).  Pictures: tools/qa/mp/out/handin1-<view>{-bubble,-window,}.png. */
 import * as H from './harness.mjs';
 
 const VIEWS = [
-  { id: 'computer', opts: { viewport: { width: 1280, height: 800 }, wide: true } },
+  { id: 'computer', opts: { viewport: { width: 1280, height: 800 }, wide: true }, openFirst: true },
   { id: 'phone', opts: { viewport: { width: 390, height: 844 }, touch: true } },
 ];
+
+/* his speech bubble, said now (his chat timer run out) */
+const bubbleNow = (P) => P.page.evaluate(async () => {
+  const S = window._gameState.current;
+  const n = (S.npcs || []).find((o) => o.id === 'mayor_bro');
+  if (!n) return null;
+  n.chatBubble = null;
+  n.chatTimer = 0;
+  for (let i = 0; i < 40 && !n.chatBubble; i++) await new Promise((r) => setTimeout(r, 100));
+  return n.chatBubble ? n.chatBubble.text : null;
+});
 
 /* what is on screen: the dialogue (its words and its button), the offer, the
    claim panel */
@@ -78,15 +93,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${V.id} 1. the first quest is taken (${st1})`, !!st1 && st1 !== 'turnedIn', st1);
       await H.closeNpcDialogue(P).catch(() => {});
 
-      /* 2. its Slime Remains, then ONE click on him */
-      await H.grant(wsPort, me, 'item', { invKey: 'slime-remnants', count: 4 });
+      /* 2. its Slime Remains, then ONE click on him -- the computer with
+         his reminder already open at 3 of 4, the 4th granted under it */
+      await H.grant(wsPort, me, 'item', { invKey: 'slime-remnants', count: V.openFirst ? 3 : 4 });
       await P.page.waitForTimeout(2000);
       await besideNpc(P, 'mayor_bro');
       const before = await screen(P);
       rec.ok(`${V.id} 2. (guard) nothing open before the click`, !before.dlg && !before.offer, before);
+      let bubble = null;
+      if (!V.openFirst) {
+        bubble = await bubbleNow(P);
+        await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/handin1-${V.id}-bubble.png` }).catch(() => {});
+      }
       await clickNpc(P, 'mayor_bro', touch);
       await P.page.waitForTimeout(1200);
-      let s = await note('ONE click on him, quest ready');
+      let s = await note('ONE click on him');
+      if (V.openFirst) {
+        rec.ok(`${V.id} 2. at 3 of 4, his reminder ("${s.dlg}", button ${s.next})`, !!s.dlg && !!s.next && !/claim reward/i.test(s.next), s);
+        await H.grant(wsPort, me, 'item', { invKey: 'slime-remnants', count: 1 });
+        await P.page.waitForTimeout(2500);
+        s = await note('the 4th granted, the window still open');
+        await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/handin1-${V.id}-window.png` }).catch(() => {});
+        bubble = await bubbleNow(P);
+      }
       /* through his words with the dialogue's own button, counting any click
          on HIM needed in between */
       let clicksOnHim = 1, claimed = false;
@@ -94,13 +123,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
         s = await screen(P);
         if (s.next && /claim reward/i.test(s.next)) {
           await note('Claim reward on the dialogue');
+          if (!V.openFirst) await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/handin1-${V.id}-window.png` }).catch(() => {});
           await P.page.locator('.bt-npcdlg-next:visible').first().click({ timeout: 8000 }).catch(() => {});
           claimed = true;
           break;
         }
-        if (s.next) { await P.page.locator('.bt-npcdlg-next:visible').first().click({ timeout: 8000 }).catch(() => {}); await P.page.waitForTimeout(700); await note('Next'); continue; }
+        if (s.next && !/close/i.test(s.next)) { await P.page.locator('.bt-npcdlg-next:visible').first().click({ timeout: 8000 }).catch(() => {}); await P.page.waitForTimeout(700); await note('Next'); continue; }
         if (s.claim) { await note('claim panel'); break; }
-        /* nothing open: the player would click him again */
+        /* nothing open (or only his reminder's Close): the player would close
+           it and click him again */
+        await H.closeNpcDialogue(P).catch(() => {});
         clicksOnHim++;
         await clickNpc(P, 'mayor_bro', touch);
         await P.page.waitForTimeout(1200);
@@ -109,8 +141,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(2000);
       const st2 = await H.readState(P, (S) => (S.rpg && S.rpg._quests ? S.rpg._quests.tut_1 : null));
       await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/handin1-${V.id}.png` }).catch(() => {});
-      rec.ok(`${V.id} 2. one click on Mayor Bro hands the quest in: Claim reward on that same window (clicks on him: ${clicksOnHim}, claimed ${claimed}, tut_1 ${st2})`,
+      rec.ok(`${V.id} 2. ${V.openFirst ? 'his open reminder turns into the hand-in' : 'one click on Mayor Bro hands the quest in'}: Claim reward on that same window (clicks on him: ${clicksOnHim}, claimed ${claimed}, tut_1 ${st2})`,
         clicksOnHim === 1 && claimed && st2 === 'turnedIn', log);
+
+      /* 3. his bubble while it was ready: the cue, never his hand-in line
+         ("You're back, mostly standing! ...") */
+      rec.ok(`${V.id} 3. his bubble while the quest was ready: "${bubble}"`,
+        !!bubble && !/mostly standing/i.test(bubble) && (touch ? /tap me/i.test(bubble) : /click me/i.test(bubble)), bubble);
       rec.ok(`${V.id} 4. no page errors`, errors.length === 0, errors.slice(0, 3));
     } finally {
       await P.ctx.close().catch(() => {});
