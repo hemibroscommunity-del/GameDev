@@ -215,3 +215,35 @@ alliance at 20+ (tag, wars, leaderboard), 3. clans retire into it.
   offline member removed after the grace — and nothing is read or written.
   Records stored before stay as they were and are read again when it is
   turned back on.
+
+## v2.3.3768: the party strip folds to a chip
+
+The owner, 2026-10-28: "Also is partying unobtrusive right now? Just wanting
+to make sure the screen isn't cluttered with party stuff".  It was not: the
+roster strip (`PartyHUD.jsx`) stood open at the top left the whole time you
+were in a party, about 150 px tall for four (40% of a sideways phone), and
+could not be put away.  Client only; the worker is unchanged.
+
+- **Folded by default**: a 32 px chip in the strip's place (top 92, left 8):
+  the party mark, `3/4`, and a pip per friend coloured as their health bar
+  (`pipOf`: green over half, amber over a quarter, red under; red-ringed when
+  down; grey offline).  An alliance's or a former clan's tag shows on it.
+- **A tap opens the list**, the list it always was; a tap on its head (▴)
+  folds it.  The choice is kept on the device (`localStorage`
+  `bt_party_list` = `open`; folded when absent).
+- **It opens by itself** for `ATTN_MS` (4 s) when a friend joins or leaves,
+  goes down, or drops under `LOW_FRAC` (a quarter) of their health, then
+  folds again unless you opened it (`partyAttention`: only on the change;
+  never the first roster, never your own health, never an offline member's).
+- **The leader's kick is two taps**, as leaving is (v2.3.3284): the first
+  turns ✕ into "Kick?" for `KICK_ARM_MS` (3 s); it is only in the opened
+  list.
+- Unchanged: the invite card, the minimap's party marks, name-plate badges,
+  the Party chat lane.
+
+Built in `src/game/partyChip.js` (no imports; `server/test/party-chip.test.mjs`)
+and `src/ui/panels/PartyHUD.jsx`.  Tests: `mp-partychip` (three browsers in
+one party: a phone leader, a computer friend, a phone friend; pictures before
+and after in `tools/qa/mp/out/partychip-*.png`), the UI review's `party-hud`
+and `party-hud-open`.  A scenario that reads the list's rows opens it first:
+`H.openPartyList(P)` (mp-partykeep, mp-smallicons, mp-party).

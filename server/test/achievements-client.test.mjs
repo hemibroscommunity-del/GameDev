@@ -200,8 +200,10 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
     shimFrom > 0 && /if \(msg\.type === 'achv_title'\) \{\s*wsOut\(msg\);\s*return;\s*\}/.test(ws.slice(shimFrom, shimTo)));
   check('7c the player_state echo of achievementPoints feeds the page\'s total', /noteServerAp\(S, msg\.payload\.achievementPoints\)/.test(ws));
   const more = src('src/ui/mobile/dash/MorePanel.jsx');
-  check('7d More: the Journey tile is Achievements against a worker that grants them (the owner\'s medal its picture), Journey otherwise',
-    /achvLive\(S\) \? 'achievements' : 'journey'/.test(more) && /id: 'achievements', src: ACHV_MEDAL_SRC, +label: 'Achievements'[^\n]*iconScale: 1 \}/.test(more)
+  /* v2.3.3773: Journey keeps a tile of its own beside it (the owner: "journey
+     ... its own icon in the more/other apps menus") */
+  check('7d More: an Achievements tile against a worker that grants them (the owner\'s medal its picture), and Journey\'s own tile always',
+    /\.\.\.\(achvLive\(S\) \? \['achievements'\] : \[\]\), 'journey'/.test(more) && /id: 'achievements', src: ACHV_MEDAL_SRC, +label: 'Achievements'[^\n]*iconScale: 1 \}/.test(more)
       && /id: 'journey', +src: '\/icons\/ui\/journey\.webp/.test(more));
   check('7e the dashboard knows the page, with its Head', /achievements: \{ title: 'Achievements', Component: AchievementsPanel, Head: AchievementsHead \}/.test(src('src/ui/mobile/BottomDashboard.jsx')));
   check('7f the chat\'s mail line names an achievement', /_e\.kind === 'achv' \? achvMailPhrase\(_ep\)/.test(src('src/networking/gameEvents.js')));

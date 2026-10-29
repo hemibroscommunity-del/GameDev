@@ -549,12 +549,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
   await P.page.waitForTimeout(900);
-  for (const sec of ['Overview', 'Build', 'Records']) {
+  /* v2.3.3773: the records are More's Journey page now, not Hero's third
+     tab, so the third screen of this walk is that page, opened the way its
+     More tile opens it, swept by the same rule */
+  for (const sec of ['Overview', 'Build', 'Journey']) {
     const fit = await P.page.evaluate((s) => {
+      if (s === 'Journey') {
+        window.__broDashPanelBus.open('more'); window.__broDashPanelBus.push('journey');
+        return true;
+      }
       const tab = document.querySelector(`.bt-land-sheet [role="button"][data-section="${s}"]`);
       if (tab) tab.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
       return !!tab;
     }, sec);
+    if (sec === 'Journey') {
+      await P.page.waitForTimeout(650);
+      const page = await P.page.evaluate(() => document.querySelectorAll('.bt-land-sheet [data-journey-page] [data-journey-card]').length);
+      rec.ok('More\'s Journey page shows its six record cards in the side column', page === 6, { page });
+    }
     if (!fit) { rec.ok(`hero/${sec}: the section tab exists`, false, { sec }); continue; }
     await P.page.waitForTimeout(650);
     const clip = await P.page.evaluate(() => {
