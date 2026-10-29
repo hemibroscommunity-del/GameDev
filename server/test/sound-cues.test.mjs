@@ -997,5 +997,32 @@ for (const p of files) {
       && loopFn.length > 100 && !/_voiceGate/.test(loopFn));
 }
 
+/* ── 20. v2.3.3800: no sound of the world under the loading screen ──
+   The owner: "when first loading the game don't play any music or sound
+   effects until the world is fully loaded."  BT_AUDIO's sound gate is closed
+   while the loading screen is up (body.bt-intro-up) or a veil covers the
+   world (.bt-connect-veil, .bt-avatar-hold): play() drops a sound of the world
+   (the player's taps pass), the music deck has nothing to play, a loop waits,
+   the beds and the river hear no share, the watchdog leaves the silence be;
+   it opens two frames after the last veil goes.  `?soundgate=0` is off. */
+{
+  const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
+  const fn = (name) => { const a = G.indexOf(name + ' = function'); return a < 0 ? '' : G.slice(a, G.indexOf('\n};', a)); };
+  check('20a the gate closes on the loading screen and on both veils, opens two frames after the last goes, and `?soundgate=0` turns it off',
+    /classList\.contains\('bt-intro-up'\)/.test(fn('BT_AUDIO._gateWhy')) && /bt-connect-veil/.test(fn('BT_AUDIO._gateWhy')) && /bt-avatar-hold/.test(fn('BT_AUDIO._gateWhy'))
+      && /requestAnimationFrame\(function \(\) \{ requestAnimationFrame\(open\); \}\)/.test(fn('BT_AUDIO._gateEval'))
+      && /soundgate=\(0\|off\|false\|no\)/.test(G) && /BT_AUDIO\.SOUND_GATE = true;/.test(G)
+      && /new MutationObserver/.test(G) && /attributeFilter: \['class'\], childList: true/.test(G));
+  check('20b while it is closed: play() drops a sound of the world (the taps pass), the deck has nothing to play, a loop waits for the reveal, the watchdog leaves the silence be',
+    /if \(this\.soundGateClosed\(\) && !this\._gatePasses\(key\)\) \{ this\._soundGate\.dropped\+\+; return null; \}/.test(fn('BT_AUDIO.play'))
+      && /if \(this\.soundGateClosed\(\)\) return null;/.test(fn('BT_AUDIO._deckTarget'))
+      && /if \(this\.soundGateClosed\(\)\) \{ this\._gateLoops\[key\] = \[vol, bus\]; return; \}/.test(fn('BT_AUDIO.startSfxLoop'))
+      && /\/\^ui-\//.test(fn('BT_AUDIO._gatePasses'))
+      && /if \(this\.soundGateClosed\(\)\) \{ this\._silentTicks = 0; return; \}/.test(G));
+  check('20c the ambient beds and the river hear no share while it is closed',
+    /const hush = !!\(B\.soundGateClosed && B\.soundGateClosed\(\)\);\s*if \(live && !hush\)/.test(src('src/game/ambientBeds.js'))
+      && /!\(B\.soundGateClosed && B\.soundGateClosed\(\)\)/.test(src('src/game/waterAmbience.js')));
+}
+
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

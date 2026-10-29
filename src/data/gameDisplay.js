@@ -2196,6 +2196,8 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
       return;
     }
     this._asleepTicks = 0;
+    /* v2.3.3800: under the loading screen the silence is meant (the sound gate) */
+    if (this.soundGateClosed()) { this._silentTicks = 0; return; }
     this._ensureAudible();
     var z = this._currentZoneAmbient;
     var zoneWants = !!(z && this.ZONE_MUSIC && this.ZONE_MUSIC[z]);
@@ -4608,6 +4610,125 @@ BT_AUDIO._noteStep = function (asked, played, key, i) {
   if (!this._stepCounts) this._stepCounts = Object.create(null);
   this._stepCounts[played] = (this._stepCounts[played] || 0) + 1;
 };
+/* ═══ v2.3.3800: NO SOUND OF THE WORLD UNDER THE LOADING SCREEN ═══
+   The owner: "when first loading the game don't play any music or sound
+   effects until the world is fully loaded.  It's a bit creepy hearing the
+   crowd murmur when you're not seeing anything on screen yet."
+
+   Measured on a fresh load (mp-loadhush), under a 22 s loading screen: the
+   session track coming back at 13.6 s, townsfolk's emote pops at 14.2 and
+   20.5 s, and the town's crowd bed at 21.1 s -- the world behind the screen
+   was already playing (the way in walks through it, wheelHome.js).
+
+   THE GATE.  The world is hidden while the loading screen is up (body's
+   `bt-intro-up`, BroTown at PLAY and IntroVideo), or a veil covers it (the
+   reconnect's `.bt-connect-veil`, serverReady.js; the straight-in road's and
+   a recovery reload's `.bt-avatar-hold`, avatarHold.js).  One observer of
+   the body's class and children sees all three.  While it is closed:
+     - play() starts nothing of the world: a one-shot is dropped, never
+       queued, so no burst comes when it lifts.  The player's own taps still
+       sound (a `ui-*` sound, anything within GATE_TAP_MS of a tap or key);
+     - the music deck has nothing to play (_deckTarget), so the session track
+       fades out at PLAY; a loop asked for (startSfxLoop: the zone's air)
+       waits; the ambient beds and the river hear no share (ambientBeds.js,
+       waterAmbience.js); the watchdog does not fight the silence.
+   It opens two frames after the last veil goes -- the first world frame
+   painted -- and then the music and the waiting loops start, with their own
+   fades.  `?soundgate=0` turns it off for one phone (the game as before).
+   window.__btSoundGate is the QA's view. */
+BT_AUDIO.SOUND_GATE = true;
+try {
+  if (typeof location !== 'undefined' && /[?&]soundgate=(0|off|false|no)(?:&|$)/i.test(location.search || '')) BT_AUDIO.SOUND_GATE = false;
+} catch (e) { /* on */ }
+BT_AUDIO.GATE_TAP_MS = 1500;
+BT_AUDIO._soundGate = { closed: false, why: null, closedAt: 0, openAt: 0, closes: 0, opens: 0, dropped: 0, pending: false };
+BT_AUDIO._gateLoops = Object.create(null);
+BT_AUDIO._gateTapAt = 0;
+BT_AUDIO.soundGateClosed = function () {
+  return !!(this._soundGate && this._soundGate.closed);
+};
+/* the player's own: a menu sound, or anything a tap just asked for */
+BT_AUDIO._gatePasses = function (key) {
+  if (typeof key === 'string' && /^ui-/.test(key)) return true;
+  return Date.now() - this._gateTapAt < this.GATE_TAP_MS;
+};
+/* why the world is hidden, or null */
+BT_AUDIO._gateWhy = function () {
+  if (!this.SOUND_GATE || typeof document === 'undefined' || !document.body) return null;
+  var b = document.body;
+  if (b.classList && b.classList.contains('bt-intro-up')) return 'loading';
+  for (var c = b.firstElementChild; c; c = c.nextElementSibling) {
+    var cl = c.classList;
+    if (!cl) continue;
+    if (cl.contains('bt-connect-veil')) return 'reconnecting';
+    if (cl.contains('bt-avatar-hold')) return 'loading';
+  }
+  return null;
+};
+BT_AUDIO._gateEval = function () {
+  var g = this._soundGate, why = this._gateWhy(), self = this;
+  if (why) {
+    g.pending = false;
+    g.why = why;
+    if (g.closed) return;
+    g.closed = true;
+    g.closedAt = Date.now();
+    g.closes++;
+    try { this._soundGateClose(); } catch (e) { /* sound only */ }
+    return;
+  }
+  if (!g.closed || g.pending) return;
+  g.pending = true;
+  var open = function () {
+    if (!g.pending || self._gateWhy()) return;
+    g.pending = false;
+    g.closed = false;
+    g.why = null;
+    g.openAt = Date.now();
+    g.opens++;
+    try { self._soundGateOpen(); } catch (e) { /* sound only */ }
+  };
+  /* the first world frame painted: two frames on (a hidden tab has none: a
+     second at most) */
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(function () { requestAnimationFrame(open); });
+  setTimeout(open, 1000);
+};
+BT_AUDIO._soundGateClose = function () {
+  for (var k in (this._sfxLoops || {})) {
+    var l = this._sfxLoops[k];
+    if (l && l.vol !== undefined) this._gateLoops[k] = [l.vol, l.bus];
+    this.stopSfxLoop(k);
+    if (l && l.vol !== undefined) this._gateLoops[k] = [l.vol, l.bus];
+  }
+  this._deckSync();
+};
+BT_AUDIO._soundGateOpen = function () {
+  var w = this._gateLoops;
+  this._gateLoops = Object.create(null);
+  for (var k in w) this.startSfxLoop(k, w[k][0], w[k][1]);
+  this._deckSync();
+};
+(function () {
+  if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return;
+  var tap = function () { BT_AUDIO._gateTapAt = Date.now(); };
+  var go = function () {
+    if (!document.body) return;
+    try {
+      new MutationObserver(function () { BT_AUDIO._gateEval(); }).observe(document.body, { attributes: true, attributeFilter: ['class'], childList: true });
+    } catch (e) { return; }
+    ['pointerdown', 'touchstart', 'keydown'].forEach(function (t) { document.addEventListener(t, tap, true); });
+    BT_AUDIO._gateEval();
+  };
+  if (document.body) go();
+  else document.addEventListener('DOMContentLoaded', go);
+})();
+if (typeof window !== 'undefined') {
+  window.__btSoundGate = function () {
+    var g = BT_AUDIO._soundGate;
+    return { on: !!BT_AUDIO.SOUND_GATE, open: !g.closed, why: g.why, closedAt: g.closedAt, openAt: g.openAt,
+      closes: g.closes, opens: g.opens, dropped: g.dropped, loopsWaiting: Object.keys(BT_AUDIO._gateLoops) };
+  };
+}
 /* v2.3.1422: managed looping SFX (sizzle while cooking, reel while
    cranking).  Keyed + idempotent: callers ENSURE the loop every frame
    and stop it when their condition lapses, so lifecycle bugs can't
@@ -4617,6 +4738,9 @@ BT_AUDIO.startSfxLoop = function (key, vol, bus) {
   if (this.muted || !this.ctx) return;
   if (!this._sfxLoops) this._sfxLoops = {};
   if (this._sfxLoops[key]) return;             /* already running */
+  /* v2.3.3800: under the loading screen (the sound gate, below) a loop waits
+     and starts when the world is drawn */
+  if (this.soundGateClosed()) { this._gateLoops[key] = [vol, bus]; return; }
   var buf = this._samples[key];
   /* v2.3.3714: a loop's start is a family's first sound too (the river under
      a cast warms the reel), with the sound cache on */
@@ -4635,7 +4759,7 @@ BT_AUDIO.startSfxLoop = function (key, vol, bus) {
     src.connect(g);
     g.connect(this._out(bus));   /* v2.3.2820: 'music' for the zone ambience, an effect otherwise */
     src.start(0);
-    this._sfxLoops[key] = { src: src, gain: g };
+    this._sfxLoops[key] = { src: src, gain: g, vol: vol, bus: bus };   /* v2.3.3800: + what it was asked at, for the sound gate to bring it back */
   } catch (e) {}
 };
 /* ═══ v2.3.3462: A LOOP WITHOUT ITS FILE'S SILENT EDGES ═══
@@ -4676,6 +4800,7 @@ BT_AUDIO._loopOverEdges = function (src, buf) {
   } catch (err) { /* plays whole */ }
 };
 BT_AUDIO.stopSfxLoop = function (key) {
+  if (this._gateLoops) delete this._gateLoops[key];   /* v2.3.3800: one waiting for the gate is called off too */
   var l = this._sfxLoops && this._sfxLoops[key];
   if (!l) return;
   delete this._sfxLoops[key];
@@ -4971,6 +5096,7 @@ BT_AUDIO._deckDrop = function () {
    session track unless a zone track ducked it (the decoded tracks' rule:
    duckGlobalMusic, startZoneAmbient), else nothing. */
 BT_AUDIO._deckTarget = function () {
+  if (this.soundGateClosed()) return null;   /* v2.3.3800: no music under the loading screen; _soundGateOpen syncs it back */
   if (this._danceWant) return this._danceWant;   /* v2.3.3462: while you dance (setDanceMusic) */
   if (this._zoneWant) return this._zoneWant;
   if (this._globalWant && !this._globalMusicDucked) return this._globalWant;
@@ -5640,6 +5766,9 @@ if (typeof window !== 'undefined') {
 }
 BT_AUDIO.play = function (key, opts) {
   if (this.muted || !this.ctx) return null;
+  /* v2.3.3800: under the loading screen a sound of the world is not played
+     at all (never queued: no burst when it lifts); the player's own taps are */
+  if (this.soundGateClosed() && !this._gatePasses(key)) { this._soundGate.dropped++; return null; }
   /* v2.3.130: iOS Safari suspends the AudioContext on tab-switch,
      phone call, screen lock, and sometimes spuriously after memory
      pressure.  unlock() resumes the ctx once on the first gesture,
