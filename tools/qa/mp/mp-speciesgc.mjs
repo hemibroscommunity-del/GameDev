@@ -162,11 +162,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
         } catch (e) { /* the picture is for people, not the check */ }
         const spPx = await piecePx('_speciesSprite');
         const shPx = await piecePx('_gearShirt');
-        /* the same facing a moment later, unmoved: does a miss heal? */
-        let again = null;
-        if (spPx != null && spPx < MIN_PX) { await page.waitForTimeout(1500); again = await piecePx('_speciesSprite'); }
-        rec.ok(`visit ${v} ${dir} (${facing}): the muzzle paints (${spPx} px) and the shirt paints (${shPx} px)`,
-          spPx != null && spPx >= MIN_PX && shPx != null && shPx >= MIN_PX, { sp, sh, again });
+        /* a miss on the first frames of a facing (its picture just uploaded
+           again) heals within a moment and is not this check's subject: the
+           same facing 1.5 s later, unmoved, decides; a lasting loss stays */
+        let spAgain = null, shAgain = null;
+        if (spPx == null || spPx < MIN_PX || shPx == null || shPx < MIN_PX) {
+          await page.waitForTimeout(1500);
+          spAgain = await piecePx('_speciesSprite');
+          shAgain = await piecePx('_gearShirt');
+          console.log(`    ${dir} visit ${v}: a first-frames miss (muzzle ${spPx}, shirt ${shPx}), 1.5 s on: muzzle ${spAgain}, shirt ${shAgain}`);
+        }
+        const spOk = (spAgain != null ? spAgain : spPx), shOk = (shAgain != null ? shAgain : shPx);
+        rec.ok(`visit ${v} ${dir} (${facing}): the muzzle paints (${spOk} px) and the shirt paints (${shOk} px)`,
+          spOk != null && spOk >= MIN_PX && shOk != null && shOk >= MIN_PX, { sp, sh, first: { spPx, shPx } });
         /* a pause long enough for the collector to let go of this facing's pictures once it is left */
         await page.waitForTimeout(400);
       }

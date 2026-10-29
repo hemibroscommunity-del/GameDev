@@ -122,11 +122,14 @@ const _GEAR_RETRY_MS = [2000, 6000];
    every minute after (the head pieces' times).  Each round's file has its own
    `&g=` bust, so a round is never answered from a cached failure.  A sheet
    that does not ship (a fish or pickup pose that 404s) costs one request a
-   minute while drawn, nothing otherwise.  mp-speciesgc fails the files for a
-   while and checks they come back; `?gearretry=0` is the game as it was. */
+   minute while drawn, ten rounds at most, nothing otherwise.  mp-speciesgc
+   fails the files for a while and checks they come back; `?gearretry=0` (or
+   `?retrylooks=0`, the switch every loader that asks again shares,
+   docs/specs/retry-looks.md) is the game as it was. */
 const GEAR_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
+const GEAR_RETRY_ROUNDS = 10;   /* then the sheet stays given up on: never a request a minute for good */
 let _gearRetryOn = true;
-try { if (typeof location !== 'undefined' && /[?&]gearretry=0\b/.test(location.search || '')) _gearRetryOn = false; } catch (e) { /* on */ }
+try { if (typeof location !== 'undefined' && /[?&](gearretry|retrylooks)=0\b/.test(location.search || '')) _gearRetryOn = false; } catch (e) { /* on */ }
 const _gaveUp = Object.create(null);   /* sheet key -> { at, n, args }; keys built from ids off the wire (rule 4) */
 /* the sheet at `key` again, if it was given up on and its time has come; true
    when a new round has started (the caller answers null meanwhile) */
@@ -736,7 +739,7 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
     }
     _sheets[key] = []; /* missing -> caller hides the slot */
     /* v2.3.3870: ...for now: asked for again later while still drawn */
-    if (_gearRetryOn) {
+    if (_gearRetryOn && (_gearRound[key] || 0) < GEAR_RETRY_ROUNDS) {
       const n = (_gearRound[key] || 0) + 1;
       _gaveUp[key] = { at: Date.now() + GEAR_RETRY_LATER_MS[Math.min(n - 1, GEAR_RETRY_LATER_MS.length - 1)], n, args: [slot, item, pose, dir, stampArt] };
     }
@@ -746,7 +749,8 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
        misdressed character — land it in the crash ring so on-device
        reports arrive with facts.  Poses that legitimately 404 (fish/
        pickup non-south) never reach here with these slots. */
-    if (slot === 'fullset' || slot === 'belt') {
+    /* v2.3.3870: on the first give-up only, not on each later round (a report a minute a player) */
+    if ((slot === 'fullset' || slot === 'belt') && !_gearRound[key]) {
       try { import('../debug/crashTrap.js').then(ct => ct.recordCrash('gear-sheet-failed', key)).catch(() => {}); } catch (e) { /* ignore */ }
     }
   });

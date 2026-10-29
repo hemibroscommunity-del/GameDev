@@ -54,14 +54,16 @@ function _url(id, path, round) { return `/sprites/traits/species/${id}/${path}?v
    remembered, and while the species is drawn (getSpeciesBuild, every frame)
    it is asked for again: 5 s after, then 10, 20, 40 and every minute (the
    head pieces' times), each round its own `&g=` bust.  When it comes, the
-   species' builds are made again with it.  mp-speciesgc fails the files for a
-   while and checks they come back; `?traitretry=0` (the head pieces' switch)
-   is the game as it was. */
+   species' builds are made again with it.  Ten rounds at most.  mp-speciesgc
+   fails the files for a while and checks they come back; `?traitretry=0` (the
+   head pieces' switch) or `?retrylooks=0` (the one every loader that asks
+   again shares, docs/specs/retry-looks.md) is the game as it was. */
 const SPECIES_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
+const SPECIES_RETRY_ROUNDS = 10;
 let _retryOn = true;
-try { if (typeof location !== 'undefined' && /[?&]traitretry=0\b/.test(location.search || '')) _retryOn = false; } catch (e) { /* on */ }
+try { if (typeof location !== 'undefined' && /[?&](traitretry|retrylooks)=0\b/.test(location.search || '')) _retryOn = false; } catch (e) { /* on */ }
 function _gaveUp(art) {
-  if (!_retryOn || !art.missing.length) return;
+  if (!_retryOn || !art.missing.length || (art.rounds || 0) >= SPECIES_RETRY_ROUNDS) return;
   art.retryAt = Date.now() + SPECIES_RETRY_LATER_MS[Math.min(art.rounds || 0, SPECIES_RETRY_LATER_MS.length - 1)];
 }
 /* another round for the pictures given up on, once its time has come */
