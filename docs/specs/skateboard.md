@@ -220,3 +220,30 @@ using lighting or wobble just a bit whatever you think looks good"*.
 - **Proof** (`node tools/qa/mp/run.mjs boardwheels`, a computer): the turn
   grows and the spots move while rolling; it holds still when stopped; it is
   gone with the board. Pictures: `docs/shots/boardwheels.md`.
+
+## v2.3.3875: the line says what you got off the board to do
+
+The owner, playtesting on a computer: *"the message 'off the board to fight'
+appeared when I pressed E near fish to just fish. Technically the message
+wasn't correct."*
+
+The worker ends a ride with one word, `fight`, for every action that ends it
+(`server/src/ride.js` `RIDE_ENDS_ON`: a swing, an ability, a harvest, a pose,
+a trap). The board already steps off by itself and the action goes ahead (E
+on a fishing spot fishes), so only the words were wrong. The phone knows what
+it has just started, so the line names it (`rideActVerb` in
+`src/game/ride.js`):
+
+- a harvest under way names its skill: "Off the board to fish.", "...to
+  chop.", "...to mine.", "...to cook.", "...to gather.";
+- a pose: "Off the board to strike a pose."; a trap: "Off the board to set a
+  trap.";
+- a swing, an ability, or anything else is still "Off the board to fight."
+
+**Why not ask the player to step off first:** stepping off and doing the
+thing is what already happens, and it is the kinder of the two. A refusal
+would make every gather on the board take two presses.
+
+Client-only: the worker's word is unchanged. Test: `server/test/ride.test.mjs`
+§6b (each skill's line, a pose, a trap, a swing, a harvest long over, and the
+worker's `fight` mid-harvest reading "Off the board to fish.").
