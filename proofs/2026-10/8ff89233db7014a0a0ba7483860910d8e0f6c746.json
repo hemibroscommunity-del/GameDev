@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8ff89233db7014a0a0ba7483860910d8e0f6c746",
+  "tree": "9f9065a33c2c75f3527c13680fb887af301c5a9f",
+  "committedAt": "2026-10-28T17:27:16-07:00",
+  "subject": "The ground stays drawn when you come back to the game (v2.3.3775) (#1246)",
+  "files": 6990,
+  "bytes": 808097274,
+  "listingSha256": "96a5a329b130ecd55e1e24d44eba3a72d1eb50cc01106a8e519aa0080d15a01a",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
