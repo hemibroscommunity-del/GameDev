@@ -43,7 +43,9 @@
  *   8. a window left alone goes by itself (the QA handle's setMs), and one
  *      whose player walks out of No man's land goes at once;
  *   9. held SIDEWAYS (844 x 390) the window sits beside the minimap, inside
- *      the world's own window, clear of the thumbs' controls and of you;
+ *      the world's own window, clear of the thumbs' controls and of you,
+ *      with 12 px to spare for the camera's lead (v2.3.3830: it came 2 px
+ *      into the space over you once the top bar grew);
  *  10. no page errors.
  *   0. (v2.3.3316, first) the owner: "Attacks without locking on target did
  *      not pop up the window for attack ignore etc."  A SWORD swing at the
@@ -122,6 +124,20 @@ const swingLocked = (P, ms) => P.page.evaluate((ms) => new Promise((resolve) => 
   S.autoAttack = true;
   setTimeout(() => { S.autoAttack = false; resolve(true); }, ms);
 }), ms);
+
+/* v2.3.3819: the monsters within 600 px of P, gone (the Test panel's
+   /dev/hurt, mp-nmllock's): a Lv 4 wandering onto the spot took the
+   wanderer's hit-back in step 7 (its sword's automatic target locked the
+   monster, and no window asked) */
+async function clearNear(P, wsPort, pid) {
+  const ids = await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    return (S.monsters || []).filter((m) => m && m.alive !== false && Math.hypot(m.x - S.player.x, m.y - S.player.y) < 600).map((m) => m.id);
+  });
+  for (const id of ids) await H.devOp(wsPort, 'hurt', pid, { id, dmg: 10000000 });
+  await P.page.evaluate(() => { const S = window._gameState.current; if (S.lockedTarget && S.lockedTarget.type === 'monster') S.lockedTarget = null; });
+  return ids.length;
+}
 
 /* put P's boots `gap` px west of where the WORKER has `otherId` */
 async function standBeside(P, wsPort, otherId, gap = 30) {
@@ -391,7 +407,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await B.page.waitForTimeout(2500);
   const here = await H.readState(A, (S) => S._nmlLevel || 0);
   const hereB = await H.readState(B, (S) => S._nmlLevel || 0);
-  rec.ok(`setup: both stand in No man's land 1 (${here} / ${hereB})`, here === 1 && hereB === 1, { here, hereB });
+  /* v2.3.3767: the number is the step (Lv 1-5 on the first ring), not 1 */
+  rec.ok(`setup: both stand on No man's land's first ring (${here} / ${hereB})`, here >= 1 && here <= 5 && hereB >= 1 && hereB <= 5, { here, hereB });
   /* the wanderer can be hurt again (the HP the worker keeps is the proof) */
   await H.devOp(wsPort, 'vitals', idB, { heal: true, god: false });
   await H.devOp(wsPort, 'vitals', idA, { heal: true, god: false });
@@ -518,7 +535,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return { title: cur && cur.title, body: body ? body.textContent : null, card: !!document.querySelector('[data-nml-ask]') };
   });
   rec.ok(`4. ...its (i) opens what No man's land means ("${info.title}"), saying how to attack, the window kept under it`,
-    /No man's land 1/.test(info.title || '') && /tap a player.*choose Attack/.test(info.body || '') && /red skull/.test(info.body || '') && info.card, info);
+    /No man's land [1-5]/.test(info.title || '') && /tap a player.*choose Attack/.test(info.body || '') && /red skull/.test(info.body || '') && info.card, info);
   await A.page.evaluate(() => { if (window.__btInfoPopup) window.__btInfoPopup.close(); });
   await A.page.waitForTimeout(400);
 
@@ -635,6 +652,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let h7 = null, b7 = null;
   for (let i = 0; i < 3 && !(b7 && b7.dom); i++) {
     await closeIn(B, wsPort, idB, idA, 34);
+    await clearNear(B, wsPort, idB);
     h7 = await holdAt(B, idA, 5000, true);
     b7 = await waitAsk(B, (v) => !!v.dom, 3000);
   }
@@ -645,8 +663,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { eqB, h7, b7: b7 && b7.dom });
   rec.ok(`7. ...with the WHITE skull it carries (${b7 && b7.dom && b7.dom.fill}), not the red one: hitting back gives no red skull`,
     !!b7 && !!b7.dom && b7.dom.skull && b7.dom.fill === '#F2F2F2' && b7.dom.btns.map((b) => b.t).join('|') === 'Attack|Party|Ignore', b7 && b7.dom);
-  rec.ok(`7. ...and until it is answered the swing does the raider nothing: no player_attack sent (${h7 && h7.attacks}), the HP unchanged (${hp7a} -> ${hp7a2})`,
-    !!h7 && h7.attacks === 0 && typeof hp7a === 'number' && hp7a2 === hp7a, { h7, hp7a, hp7a2 });
+  /* v2.3.3830: NOT LOWERED, not "unchanged": a raider a bog lurker had
+     scratched heals while the swing is held (a run of 2026-10-29: 203 -> 224,
+     no player_attack sent) */
+  rec.ok(`7. ...and until it is answered the swing does the raider nothing: no player_attack sent (${h7 && h7.attacks}), the HP not lowered (${hp7a} -> ${hp7a2})`,
+    !!h7 && h7.attacks === 0 && typeof hp7a === 'number' && typeof hp7a2 === 'number' && hp7a2 >= hp7a, { h7, hp7a, hp7a2 });
   await shot(B, '7-hitback');
   await tapAsk(B, 'attack', true);
   await B.page.waitForTimeout(600);
@@ -659,6 +680,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let hp7b = hp7a, w7 = 0;
   for (let i = 0; i < 8 && !(hp7b < hp7a); i++) {
     await closeIn(B, wsPort, idB, idA, 34);
+    await clearNear(B, wsPort, idB);
     const h = await holdAt(B, idA, 1500, false);
     w7 += h.attacks;
     hp7b = await hpA();
@@ -693,18 +715,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`8. a window left alone goes by itself (after ${gone8} ms of a 1.5 s wait), aiming nobody`,
     !!a8 && !!a8.dom && !!a8b && !a8b.dom && gone8 <= 3500 && !(a8b.lock && a8b.lock.id === idB), { a8: a8 && a8.dom, a8b, gone8 });
   await A.page.evaluate(() => window.__btNmlAsk.setMs(30000));
+  /* v2.3.3819: both to No man's land's inner edge first, the raider 500 px
+     out from the safe ground and the wanderer beside them.  From the spot,
+     the walk out is 3,000-odd px, and past 2,400 px the worker sends a
+     player nobody's moves (tick.js FAR_PLAYERS NEAR_R): the raider's copy of
+     the wanderer stayed frozen inside No man's land and the window never
+     went (a run of 2026-10-29).  Here the walk out is 800 px, in view */
+  const rOf = (x, y) => Math.hypot(x - WHEEL_CENTRE[0], y - WHEEL_CENTRE[1]);
+  const onSpoke = (r) => { const d = rOf(spot.x, spot.y) - r; return { x: Math.round(spot.x - spot.ux * d), y: Math.round(spot.y - spot.uy * d) }; };
+  const edgeA = onSpoke(NML.SAFE_R + 500), inB = onSpoke(NML.SAFE_R - 300);
+  await H.hopTo(A, edgeA.x, edgeA.y, { tries: 60, step: 150 });
+  await H.hopTo(B, edgeA.x + 70, edgeA.y, { tries: 60, step: 150 });
+  await A.page.waitForTimeout(1500);
+  await clearNear(A, wsPort, idA);
   let a8c = null;
   for (let i = 0; i < 4 && !(a8c && a8c.dom); i++) {
     await tapPeer(A, idB);
     a8c = await waitAsk(A, (v) => !!v.dom, 1200);
   }
   /* the wanderer walks back toward BroTown, out of No man's land */
-  const sb = await H.serverPlayer(wsPort, idB);
-  const out = sb ? { x: Math.round(sb.x - spot.ux * 1300 * LONG), y: Math.round(sb.y - spot.uy * 1300 * LONG) } : null;
-  if (out) await H.hopTo(B, out.x, out.y, { tries: 40, step: 150 });
+  await H.hopTo(B, inB.x, inB.y, { tries: 40, step: 150 });
   const a8d = await waitAsk(A, (v) => !v.dom, 8000);
   const lvlB = await H.readState(B, (S) => S._nmlLevel || 0);
-  rec.ok(`8. ...and one whose player walks out of No man's land (now ${lvlB}) goes at once`, !!a8c && !!a8c.dom && !!a8d && !a8d.dom && lvlB === 0, { a8c: a8c && a8c.dom, a8d, lvlB });
+  const lvlA8 = await H.readState(A, (S) => S._nmlLevel || 0);
+  rec.ok(`8. ...and one whose player walks out of No man's land (now ${lvlB}; the raider still in it, ${lvlA8}) goes at once`,
+    !!a8c && !!a8c.dom && !!a8d && !a8d.dom && lvlB === 0 && lvlA8 > 0, { a8c: a8c && a8c.dom, a8d, lvlB, lvlA8, edgeA, inB });
 
   /* ── 9. sideways ── */
   /* v2.3.3629: the raider at the spot, healed and untouchable, first: from
@@ -737,8 +772,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`9. held sideways (${orient}) a tap asks, the window beside the minimap (${a9 && a9.at}), inside the world's window, nothing over it`,
     orient === 'landscape' && !!d9 && a9.at === 'beside' && !!m9 && d9.r <= m9.l && !!geo9.wrap && d9.l >= geo9.wrap.l && d9.r <= geo9.wrap.r
       && !!tops9 && tops9.every((t) => t.ok), { orient, d9, at: a9 && a9.at, m9, wrap: geo9.wrap, tops9 });
-  rec.ok(`9. ...clear of the thumbs' controls (${a9 && a9.controls.map((q) => q.sel).join(', ')}) and of you`,
-    !!a9 && a9.controls.length >= 1 && a9.controls.every((q) => !hit9(q)) && !!geo9.me && !hit9({ l: geo9.me.x - 15, r: geo9.me.x + 15, t: geo9.me.y - 50, b: geo9.me.y + 10 }),
+  /* v2.3.3830: how far clear of you, in words (H's run found it 2 px INTO the
+     space over you: the window slides left of you now when it would come
+     that low, NmlAskCard.jsx clearOfYou) */
+  const clr9 = d9 && geo9.me ? `${Math.round((geo9.me.y - 50) - d9.b)} px above your head, ${Math.round((geo9.me.x - 15) - d9.r)} px left of you` : 'not measured';
+  rec.ok(`9. ...clear of the thumbs' controls (${a9 && a9.controls.map((q) => q.sel).join(', ')}) and of you (${clr9})`,
+    !!a9 && a9.controls.length >= 1 && a9.controls.every((q) => !hit9(q)) && !!geo9.me && !hit9({ l: geo9.me.x - 27, r: geo9.me.x + 27, t: geo9.me.y - 62, b: geo9.me.y + 10 }),   /* v2.3.3830: + the camera's lead, 12 px each way */
     a9 && { d9, controls: a9.controls, me: geo9.me });
   if (a9 && a9.dom) await tapAsk(A, 'ignore');
 

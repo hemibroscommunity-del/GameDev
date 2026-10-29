@@ -147,7 +147,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
   await shot('arena');
   /* v2.3.3556: every one AT the dungeon's level (they rolled +0..2) */
-  rec.ok(`a tap opens it (${inZ}): the Verdant Wilds' own monsters, all at Lv ${arena && Math.min(...arena.levels)} (yours is ${level}: a party dungeon is its own ${want}; v2.3.3556: no +0..2), drawn in their own looks (${arena && arena.drawn} of ${arena && arena.n}), on the land's mossy stone, the way back out remembered`,
+  rec.ok(`a tap opens it (${inZ}): the Earth Forest's own monsters, all at Lv ${arena && Math.min(...arena.levels)} (yours is ${level}: a party dungeon is its own ${want}; v2.3.3556: no +0..2), drawn in their own looks (${arena && arena.drawn} of ${arena && arena.n}), on the land's mossy stone, the way back out remembered`,
     /^dungeon:/.test(inZ || '') && !!arena && arena.n > 0 && arena.homes.length === 1 && arena.homes[0] === 'verdant'
       && arena.levels.every((l) => l === want) && arena.drawn === arena.n
       && !!arena.floor && arena.floor.drawn === true && /verdant-3-A\.png/.test(arena.floor.pic || '')
@@ -183,7 +183,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!/^dungeon:/.test(z || '')) break;
     if (await H.readState(P, (S) => !!S._dungeonComplete)) break;
   }
-  rec.ok(`the waves, then the boss at the dungeon's level: Lv ${boss && boss.level} (the dungeon's ${want}), the Verdant Wilds' own`,
+  rec.ok(`the waves, then the boss at the dungeon's level: Lv ${boss && boss.level} (the dungeon's ${want}), the Earth Forest's own`,
     !!boss && boss.level === want && boss.home === 'verdant', { boss, want, seen });
   const back = await waitZone((z) => z === 'wheel', 60000);
   await P.page.waitForTimeout(1500);

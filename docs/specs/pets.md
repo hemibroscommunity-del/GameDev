@@ -36,6 +36,10 @@ authoritative flow.
 
 ## Pet loot vacuum — v2.3.1200
 
+> v2.3.3806: the pet now also RUNS to a monster pile of yours up to 450 px
+> away and fetches it; the worker reaches 600 px for such a pile
+> (`PETS.FETCH_RANGE`, caps.petfetch). See `docs/specs/pet-fetch.md`.
+
 The §18.1 client vacuum (`BroTown.jsx`) used to self-credit
 coins/shards for worker-owned piles that the next `player_state` echo
 stomped — pure theatre. It now routes through the REAL loot path:

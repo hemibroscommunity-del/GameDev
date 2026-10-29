@@ -137,7 +137,9 @@ export const arenaMethods = {
       }
       if (request.method === 'GET' && path.startsWith('/status')) {
         const q = this._arena && this._arena.status === 'gathering' ? this._arena.queue : [];
-        return new Response(JSON.stringify({ ok: true, settled: true, queueSize: q.length, queue: q.map((p) => ({ playerId: p.playerId, playerName: p.playerName })), tournament: this._arenaWire() }), { headers: H });
+        /* v2.3.3713: and the asking player's own place (_arenaStatusFor) */
+        const mine = this._arenaStatusFor(url.searchParams.get('playerId'));
+        return new Response(JSON.stringify({ ok: true, settled: true, queueSize: q.length, queue: q.map((p) => ({ playerId: p.playerId, playerName: p.playerName })), tournament: this._arenaWire(), ...mine }), { headers: H });
       }
       if (request.method === 'GET' && path.startsWith('/tournament')) {
         return new Response(JSON.stringify({ ok: true, settled: true, tournament: this._arenaWire() }), { headers: H });
@@ -146,6 +148,43 @@ export const arenaMethods = {
     } catch (err) {
       return new Response(JSON.stringify({ ok: false, error: err.message }), { status: 500, headers: H });
     }
+  },
+
+  /* ═══ v2.3.3713: /status SAYS WHERE THE ASKING PLAYER STANDS ═══
+     The arena's window (PartyPanel.jsx) draws "In Queue", the fight card and
+     "Eliminated" off /status's `status` -- the old Arena DO's word -- but the
+     settled route sent none, so a gladiator who had just paid saw "In Queue"
+     for one poll (the window's own guess after the join) and then "Enter
+     Arena · 100G" again for the whole minute the queue gathered, and the
+     fight card and the eliminated box were never drawn at all (found by
+     mp-arena, the first tournament played in the world).  The old shape,
+     filled from the worker's own record: 'queued' (position, queueSize,
+     startsAt), 'fighting' (round, currentMatch with both names, levels and
+     colours, deadline), 'eliminated' (round, wins) or 'none'.  Read-only and
+     public -- the queue and the bracket it repeats already are. */
+  _arenaStatusFor(playerId) {
+    const t = this._arena;
+    if (!t || typeof playerId !== 'string' || !playerId) return { status: 'none' };
+    if (t.status === 'gathering') {
+      const i = t.queue.findIndex((p) => p.playerId === playerId);
+      if (i < 0) return { status: 'none' };
+      return { status: 'queued', position: i + 1, startsAt: t.gatherDeadline };
+    }
+    const rec = t.players.find((p) => p.playerId === playerId);
+    if (!rec || t.status !== 'running') return { status: 'none' };
+    const wins = t.matches.filter((m) => m.winner === playerId).length;
+    if (rec.eliminated) return { status: 'eliminated', round: t.round, wins };
+    const m = t.matches.find((x) => !x.winner && x.round === t.round && (x.a === playerId || x.b === playerId));
+    if (!m) return { status: 'waiting', round: t.round, wins };
+    const side = (pid, name) => {
+      const ps = this.playerState[pid];
+      return { id: pid, name, level: (ps && ps.level) || 1, color: (ps && ps.color) || null };
+    };
+    const A = side(m.a, m.aName), B = side(m.b, m.bName);
+    return {
+      status: 'fighting', round: t.round, wins,
+      currentMatch: { id: m.id, p1: A.id, p2: B.id, p1Name: A.name, p2Name: B.name, p1Level: A.level, p2Level: B.level, p1Color: A.color, p2Color: B.color, active: !!m.active, deadline: m.deadline || 0 },
+    };
   },
 
   // Old arena.js sanitizeTournament shape (what PartyPanel renders).
@@ -182,8 +221,11 @@ export const arenaMethods = {
       remaining: t.players.filter((p) => !p.eliminated).length,
       players: t.players.map(wireP),
       matches: t.matches.map((m) => ({ id: m.id, round: m.round, p1: m.a, p2: m.b, p1Name: m.aName, p2Name: m.bName, winner: m.winner || null, status: m.winner ? 'complete' : (m.active ? 'active' : 'pending') })),
-      currentMatches: t.matches.filter((m) => !m.winner && m.round === t.round).map((m) => ({ id: m.id, round: m.round, p1: m.a, p2: m.b })),
-      recentMatches: t.matches.filter((m) => m.winner).slice(-10).map((m) => ({ id: m.id, round: m.round, p1: m.a, p2: m.b, winnerId: m.winner, loserId: m.a === m.winner ? m.b : m.a, ts: 0 })),
+      /* v2.3.3713: + both names -- the window's "Current Matches" card drew
+         an empty "vs" (it reads p1Name / p2Name, as the old DO sent them) */
+      currentMatches: t.matches.filter((m) => !m.winner && m.round === t.round).map((m) => ({ id: m.id, round: m.round, p1: m.a, p2: m.b, p1Name: m.aName, p2Name: m.bName })),
+      /* v2.3.3713: + `how` it ended (kill, forfeit, timeout, walkover) */
+      recentMatches: t.matches.filter((m) => m.winner).slice(-10).map((m) => ({ id: m.id, round: m.round, p1: m.a, p2: m.b, p1Name: m.aName, p2Name: m.bName, winnerId: m.winner, loserId: m.a === m.winner ? m.b : m.a, how: m.how || null, ts: 0 })),
       champion: t.champion ? { ...t.champion, id: t.champion.playerId, name: t.champion.playerName } : null,
     };
   },
@@ -241,7 +283,9 @@ export const arenaMethods = {
     t.queue.push({ playerId, playerName: (typeof playerName === 'string' && playerName.slice(0, 24)) || 'Gladiator', n });
     if (t.queue.length >= ARENA.MAX_BRACKET) this._arenaStart();
     await Promise.all(writes);
-    return { ok: true, settled: true, queueSize: t.queue.length };
+    /* v2.3.3713: + the joiner's place and when the bracket starts, so the
+       window's first "In Queue" is the worker's word, not a guess */
+    return { ok: true, settled: true, queueSize: t.queue.length, queuePosition: t.queue.length, startsAt: t.gatherDeadline };
   },
 
   async _arenaLeave(playerId) {
@@ -348,10 +392,30 @@ export const arenaMethods = {
       const ws = this._wsBySessionId(pid);
       if (ws) {
         try {
-          ws.send(JSON.stringify({ type: 'arena_match_start', payload: { matchId: m.id, tid: t.id, round: m.round, opponentId: pid === m.a ? m.b : m.a, opponentName: pid === m.a ? m.bName : m.aName, deadline: m.deadline } }));
+          ws.send(JSON.stringify({ type: 'arena_match_start', payload: this._arenaStartPayload(t, m, pid) }));
         } catch (e) {}
       }
     }
+  },
+
+  _arenaStartPayload(t, m, pid) {
+    return { matchId: m.id, tid: t.id, round: m.round, opponentId: pid === m.a ? m.b : m.a, opponentName: pid === m.a ? m.bName : m.aName, deadline: m.deadline };
+  },
+
+  /* ═══ v2.3.3713: A MATCH IN PROGRESS IS SAID AGAIN ON A REJOIN ═══
+     arena_match_start goes once, straight to the fighter's socket.  A phone
+     whose socket was down at that moment (a dropped connection, an iPhone
+     tab put away and brought back) never heard it: no duel on the phone, so
+     no attack it would send in BroTown (safe ground), and the match's end
+     read "Duel lost" (mp-arena, five phones on a busy box).  The duel itself
+     waits for them (duel.js's reconnect grace); now the phone is told again,
+     after its state_sync (join.js), with `rejoin` set. */
+  _arenaOnRejoin(playerId, ws) {
+    const t = this._arena;
+    if (!t || t.status !== 'running' || !ws) return;
+    const m = t.matches.find((x) => x.active && !x.winner && x.round === t.round && (x.a === playerId || x.b === playerId));
+    if (!m) return;
+    try { ws.send(JSON.stringify({ type: 'arena_match_start', payload: { ...this._arenaStartPayload(t, m, playerId), rejoin: true } })); } catch (e) {}
   },
 
   // Shot-clock tiebreak: the server owns hp, so no new state is needed.
@@ -534,6 +598,7 @@ export const arenaMethods = {
     const m = t.matches.find((x) => x.id === arenaMatch.matchId);
     if (!m || m.winner) return;
     m.winner = winnerId;
+    m.how = how || null;   /* v2.3.3713: for the wire's recentMatches */
     m.active = false;
     // v2.3.1128: settle this match's sponsorship stakes off the
     // server-observed winner (fire-and-forget; opId-idempotent).

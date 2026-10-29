@@ -401,6 +401,14 @@ export class TileRenderer {
     }).catch(() => {});
   }
 
+  /* v2.3.3775: is this zone's ground the world's streamed one, alive and
+     drawn -- kept through a return on a healthy context (pixiRenderer
+     forceRefresh: a rebuild there threw every piece away) */
+  keepsGround(zoneId) {
+    const g = this._chunkGround;
+    return !!(g && g instanceof WheelGround && !g.dead && zoneId && this.currentZone === zoneId);
+  }
+
   rebuild(app, map, zoneId) {
     this.currentZone = zoneId;
     this.currentMap = map;
@@ -1208,7 +1216,7 @@ export class TileRenderer {
     }
     /* v2.3.2932: stream the trial's ground round the camera (null otherwise) */
     try {
-      if (this._chunkGround) this._chunkGround.update(cx, cy, viewW, viewH);
+      if (this._chunkGround) this._chunkGround.update(cx, cy, viewW, viewH, S);   /* v2.3.3843: + S, the Wheel's ground lays further ahead of the board */
     } finally {
       this._groundBg();   /* v2.3.3452: decided every frame, a ground that threw included */
     }

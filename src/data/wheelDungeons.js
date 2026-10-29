@@ -94,3 +94,12 @@ export function dungeonLevelsLine(party, levels, rec) {
 export function dungeonDoorLine(party, rec) {
   return party ? `Lv ${_lvWord(party, rec)} · for ${party.size - 1}–${party.size} players` : null;
 }
+/* v2.3.3788: the line under a dungeon's tile on the Town Hall's board (the
+   owner: "list the level ranges below the dungeons (e.g lvl 10+ for goo
+   grotto)"): the level it is for and the party it is built for ("Lv 10+ ·
+   party of 2–3"), else the lowest of the place's levels ("Lv 26+"); null
+   while neither is known. */
+export function dungeonBoardLine(party, levels, rec) {
+  if (party) return `Lv ${rec > 0 ? rec : party.level}+ · party of ${party.size - 1}–${party.size}`;
+  return Array.isArray(levels) && levels[0] > 0 ? `Lv ${levels[0]}+` : null;
+}

@@ -34,6 +34,9 @@
  *
  *   node tools/world/test-world-core.mjs
  */
+/* v2.3.3792: first -- the src/ modules this loads later (await import) are
+   vite's, with its `@/` alias and bare json imports (tools/dev/srcLoader.mjs) */
+import '../dev/srcLoader.mjs';
 import { PLAN, SPOKES } from '../../public/tools/world/plan.js';
 import { PIXEL, NO_DIRECTION, PLANK_BOARDS } from '../../public/tools/style/bible.js';
 import { promptFor } from '../../public/tools/ground/prompts.js';
@@ -275,7 +278,7 @@ console.log('prompt');
   ok('says which edges are finished', /along the right edge is finished neighbouring squares/.test(mill.text));
   ok('the river flows in by one edge and out by another', /The Sweetwater River flows in from the top edge and out by the bottom edge/.test(mill.text), mill.summary);
   ok('the bridge, the mill plot and the fork', /The Mill Bridge \(bright yellow\) carries the West Road over the river/.test(mill.text) && /kept for the Old Mill/.test(mill.text) && /The Bog Trail branches off the West Road here/.test(mill.text));
-  ok('the commons meets a spoke through its designed edge', /Where Brotown Commons meets Verdant Wilds, the commons grass grows lush/.test(mill.text), mill.summary);
+  ok('the commons meets a spoke through its designed edge', /Where BroTown Commons meets Earth Forest, the commons grass grows lush/.test(mill.text), mill.summary);
   const src = P(sqAt(PLAN.rivers[0].pts[0]));
   ok('the river rises under the glacier', /rises here, pouring as meltwater from under the glacier/.test(src.text) && /Frost Ridge — the glacier/.test(src.text), src.summary);
   const fl = P(sqAt(PLAN.rivers[0].falls[0].at));
@@ -1316,7 +1319,7 @@ console.log('wheel map');
   const inside = (x, y) => x >= 0 && y >= 0 && x <= m.worldW && y <= m.worldH;
   const c = m.worldW / 2;
   ok(`the map names the eight lands, each out along its own spoke from the town (${m.lands.map((l) => l.name).join(', ')})`,
-    m.lands.length === 8 && m.lands.every((l) => { const dx = l.x - c, dy = l.y - c, d = Math.hypot(dx, dy); return d > 5000 && (dx * l.ux + dy * l.uy) / d > 0.99; }) && m.hub.town.name === 'Brotown' && Math.abs(m.hub.town.x - c) < 2,
+    m.lands.length === 8 && m.lands.every((l) => { const dx = l.x - c, dy = l.y - c, d = Math.hypot(dx, dy); return d > 5000 && (dx * l.ux + dy * l.uy) / d > 0.99; }) && m.hub.town.name === 'BroTown' && Math.abs(m.hub.town.x - c) < 2,
     m.lands.map((l) => [l.id, l.x, l.y]));
   ok('...and each land\'s four stages with their levels, in order outward (32)',
     m.stages.length === 32 && m.lands.every((l) => { const st = m.stages.filter((s) => s.region === l.id); return st.length === 4 && st.every((s, k) => s.k === k && s.levels[0] === k * 20 + 1 && s.levels[1] === (k + 1) * 20 && (k === 0 || Math.hypot(s.x - c, s.y - c) > Math.hypot(st[k - 1].x - c, st[k - 1].y - c))); }));
@@ -1336,7 +1339,7 @@ console.log('wheel map');
     { before, after });
   ok('"where am I" in words: the land, its stage and the levels there; the town and the commons safe',
     JSON.stringify(whereWords(m, 'frost', 2)) === JSON.stringify({ title: 'Frost Ridge', sub: 'the thaw line · Lv 6–10' }) &&
-    whereWords(m, 'ember', 16).sub === 'the volcano flanks · Lv 76–80' && whereWords(m, 'town', 0).title === 'Brotown' && /safe/.test(whereWords(m, 'commons', 0).sub),
+    whereWords(m, 'ember', 16).sub === 'the volcano flanks · Lv 76–80' && whereWords(m, 'town', 0).title === 'BroTown' && /safe/.test(whereWords(m, 'commons', 0).sub),
     [whereWords(m, 'frost', 2), whereWords(m, 'ember', 16)]);
   /* v2.3.3057: the world map's level bands and Bro Pond */
   ok(`...each land's level bands: a tick where every tier of five levels begins, from the commons' edge outward (${m.lands[0].ticks.length / 2} a land), the spoke ${m.spokeHalf * 2} px wide; and Bro Pond named`,
@@ -3137,16 +3140,23 @@ console.log('jumping (v2.3.3017)');
     const fs = J.startFlip(base(0), J.FLIP_SWEET * T, { sprint: true }), fw = J.startFlip(base(0), J.FLIP_SWEET * T, {});
     ok(`sprinting into the jump, the flip is bigger: boost ${fs.boost.toFixed(2)} (walking ${fw.boost.toFixed(2)}), ${fs.peak.toFixed(0)} px at the top (walking ${fw.peak.toFixed(0)}), more ground (${(distAt(J.FLIP_SWEET, true) / T).toFixed(2)}x)`,
       fs.sprint && Math.abs(fs.boost / fw.boost - J.FLIP_SPRINT_BOOST) < 1e-9 && fs.peak > fw.peak && fs.dur > fw.dur && distAt(J.FLIP_SWEET, true) > distAt(J.FLIP_SWEET));
-    ok(`"Perfect!" from a grade of ${J.FLIP_PERFECT}: the press at the sweet spot, not one right after take-off`,
+    ok(`a perfect flip from a grade of ${J.FLIP_PERFECT}: the press at the sweet spot, not one right after take-off`,
       fw.perfect && !J.startFlip(base(0), 0.2 * T, {}).perfect);
+    /* v2.3.3738: the owner, "You can remove the 'perfect!' after a well timed
+       jump" -- the carry stays (the grade and boost above), the words go */
+    ok('v2.3.3738: ...and no "Perfect!" said over you any more (jumpActions triggerFlip pushes no popup)',
+      !/Perfect!'|pushDmgPopup/.test((await import('node:fs')).readFileSync(new URL('../../src/game/jumpActions.js', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')));
     ok('...faster across the ground only while the flip is in the air',
       J.flipBoost(fw, fw.t0 + 1) === 1 + fw.boost && J.flipBoost(fw, fw.t0 + fw.dur + 1) === 1 && J.flipBoost(fw, fw.t0 - 1) === 1
         && J.flipBoost(base(0), 100) === 1 && J.flipBoost(null, 1) === 1);
     ok('...clearing low things while it is high enough (the jump\'s own JUMP_CLEAR), and not as it comes down',
       J.clearMsLeft(fw, fw.t0 + 10) > 0 && J.clearMsLeft(fw, fw.t0 + fw.dur - 5) === 0);
     const lk = J.jumpLook(fw, fw.t0 + fw.dur / 2, null, 1);
-    ok('drawn as the roll\'s somersault: no stretch or lean of its own, the tumble frames in order (dodge sheets)',
-      lk && lk.flip && lk.air && lk.ky === 1 && lk.rot === 0 && lk.lift > 0
+    /* v2.3.3738: "The flipped body is too small (looks about 40% too small)":
+       drawn FLIP_BODY_K (1.4) larger, evenly, about the feet (jumpFx);
+       v2.3.3798: 1.05, 25% smaller (the owner) */
+    ok('drawn as the roll\'s somersault: no stretch or lean of its own, FLIP_BODY_K (1.05) larger evenly (v2.3.3738; v2.3.3798 25% smaller), the tumble frames in order (dodge sheets)',
+      lk && lk.flip && lk.air && J.FLIP_BODY_K === 1.05 && lk.ky === J.FLIP_BODY_K && lk.kx === J.FLIP_BODY_K && lk.rot === 0 && lk.lift > 0
         && [0, 0.2, 0.4, 0.6, 0.85].map((t) => J.flipFrame(9, t)).join() === J.FLIP_FRAMES.join() && J.flipFrame(9, 0.999) === 6);
     const real = J.peerJump({ flip: 1, h0: fw.h0, v: fw.v, g: fw.g, ang: 1.5, dur: 1, peak: 1 }, 50);
     ok('another player\'s flip from the relay: the same arc, its numbers clamped, a forged one a plain hop',
@@ -3602,6 +3612,19 @@ console.log("the buildings' doors (v2.3.3032)");
         && REST.HOTEL_R >= WHEEL_DOOR_REACH + 60 && doors.every((d) => d.id === 'hotel' || Math.hypot(d.x - h.x, d.y - h.y) > REST.HOTEL_R + WHEEL_DOOR_REACH),
       { rel, hotel: REST.HOTEL, r: REST.HOTEL_R });
   }
+  /* v2.3.3785: the worker's BANK.DOOR is the Bank's door as the ground worker
+     places it -- a deposit or a withdrawal is taken only there (bank.js) */
+  {
+    const { BANK } = await import('../../server/src/bank.js');
+    const { WHEEL_CENTRE } = await import('../../server/src/wheelspawns1.js');
+    const bankIds = Object.keys(WHEEL_BUILDING_DOORS).filter((k) => WHEEL_BUILDING_DOORS[k] === 'bank');
+    const b = bankIds.length === 1 ? byDoor[bankIds[0]] : null;
+    const rel = b ? [b.x - WHEEL_CENTRE[0], b.y - WHEEL_CENTRE[1]] : null;
+    ok(`the worker's Bank door is the placed one: (${rel && rel.join(', ')}) from the Wheel's middle, BANK.DOOR (${BANK.DOOR}), its reach taking in standing at the door and no other door`,
+      !!rel && Math.abs(rel[0] - BANK.DOOR[0]) < 1 && Math.abs(rel[1] - BANK.DOOR[1]) < 1
+        && BANK.DOOR_R >= WHEEL_DOOR_REACH + 60 && doors.every((d) => d === b || Math.hypot(d.x - b.x, d.y - b.y) > BANK.DOOR_R + WHEEL_DOOR_REACH),
+      { rel, door: BANK.DOOR, r: BANK.DOOR_R, ids: bankIds });
+  }
   {
     const PO = await import('../../src/game/postOffice.js');
     const S = {};
@@ -3671,8 +3694,8 @@ console.log("the buildings' doors (v2.3.3032)");
     blocked.length === 0, blocked.map((d) => [d.id, hit(d.x, d.y + 30, 10)]));
   /* Diego keeps the General Store (v2.3.3067: and the rest of town's cast) */
   const sp = WHEEL_TOWNSFOLK.map((f) => ({ f, d: byDoor[f.door] })).map(({ f, d }) => ({ name: f.name, x: d.x + f.dx, y: d.y + f.dy, d }));
-  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro, Lil Bro, Beastmaster Bro, and the tour\'s Woodworker Bro and Farmer Bro (v2.3.3525)',
-    sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro,Beastmaster Bro,Woodworker Bro,Farmer Bro' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
+  ok('each of the townsfolk has a door to stand by, in no footprint with room round them, on the town\'s ground: Diego, Ace, Blacksmith Bro, Lil Bro, Beastmaster Bro, the tour\'s Woodworker Bro and Farmer Bro (v2.3.3525), and the new cast\'s thirteen (v2.3.3833)',
+    sp.map((q) => q.name).join() === 'Diego,Ace,Blacksmith Bro,Lil Bro,Beastmaster Bro,Woodworker Bro,Farmer Bro,Sterling,Slim,Chef Blaze,Glint,Postmaster Pete,Deed Dave,Benny,Guildmaster Gary,Sheriff Buck,Gavel Greg,Bean,Old Man Reel,Tourist Terry' && sp.every((q) => q.d && hit(q.x, q.y, 24).length === 0 && dbp.regionIds[dbp.reg[cellG(q.x, q.y)]] === 'town'),
     sp.map((q) => [q.name, hit(q.x, q.y, 24)]));
   /* ...and standing at the General Store's door does not open his window by
      itself: it opens within 90 px of him from your middle, ~52 px above your boots */
@@ -3751,10 +3774,27 @@ console.log("the buildings' doors (v2.3.3032)");
       ok(`the course is clear: its ${RACE.FLAGS.length} flags on the town's ground with room round them, and Lil Bro's ${Math.round(lilLapPx())} px line between them through no footprint`,
         badFlags.length === 0 && badPath.length === 0, { badFlags, badPath });
     }
+    /* ═══ v2.3.3833: THE NEW CAST (docs/specs/npc-cast.md) ═══
+       Each keeper at his own door, clear of its steps; the three locals where
+       the spec puts them; every one a Wheel-only row with his pictures on disk
+       and four to six lines (the 200 px between any two is checked above) */
+    const KEEP = { Sterling: 'bank', Slim: 'saloon', 'Chef Blaze': 'cookhouse', Glint: 'gemcutter', 'Postmaster Pete': 'post',
+      'Deed Dave': 'landoffice', Benny: 'hotel', 'Guildmaster Gary': 'guildhall', 'Sheriff Buck': 'sheriff', 'Gavel Greg': 'auction' };
+    const castRow = (n) => { const r = row(n); return !!r && r.wheelOnly === true && Array.isArray(r.phrases) && r.phrases.length >= 4 && r.phrases.length <= 6
+      && fs.existsSync(new URL('../../public' + r.sprite, import.meta.url)) && fs.existsSync(new URL('../../public' + r.portrait, import.meta.url)); };
+    const badKeep = Object.entries(KEEP).filter(([n, id]) => !ownDoor(at[n], id) || !castRow(n));
+    ok('the new cast\'s ten keepers each stand by the building he keeps, clear of its steps, a Wheel-only row with his pictures on disk and four to six lines (v2.3.3833)',
+      badKeep.length === 0, badKeep.map(([n]) => [n, at[n] && [at[n].x - at[n].d.x, at[n].y - at[n].d.y], castRow(n)]));
+    const bean = at.Bean, reel = at['Old Man Reel'], terry = at['Tourist Terry'];
+    const beanToArrive = bean && Math.hypot(bean.x - arrive.x, bean.y - arrive.y);
+    ok(`...and the three locals: Bean on the square east of where you land (${Math.round(beanToArrive)} px), Lil Bro west of it; Old Man Reel and Tourist Terry on the town's ground; all three rows ready, Bean a kid's size (v2.3.3833)`,
+      !!bean && !!reel && !!terry && bean.x > arrive.x && beanToArrive < 420 && ['Bean', 'Old Man Reel', 'Tourist Terry'].every(castRow) && row('Bean').figureSize === 0.8,
+      { beanToArrive, bean: !!bean, reel: !!reel, terry: !!terry });
     const spriteSrc = fs.readFileSync(new URL('../../src/rendering/npcSprites.js', import.meta.url), 'utf8');
     ok('...and the Wheel loads each one\'s picture behind its loading screen, read off the same table (npcSprites.js _wheelCast)',
-      /WHEEL_TOWNSFOLK\.map\(\(f\) => f\.name\)/.test(spriteSrc) && /export function wheelNpcSources\(\) \{\s*return _wheelCast\(\)/.test(spriteSrc)
-        && /export function wheelWalkSources\(\) \{\s*return _wheelCast\(\)/.test(spriteSrc), {});
+      /* v2.3.3809: `live` leaves out those drawn live from a look (lookFolk.js) */
+      /WHEEL_TOWNSFOLK\.map\(\(f\) => f\.name\)/.test(spriteSrc) && /export function wheelNpcSources\((live)?\) \{\s*return _wheelCast\((live)?\)/.test(spriteSrc)
+        && /export function wheelWalkSources\((live)?\) \{\s*return _wheelCast\((live)?\)/.test(spriteSrc), {});
   }
   /* the worker ships them, the game reads them, the scan uses them */
   const readSrc = (u) => fs.readFileSync(new URL(u, import.meta.url), 'utf8');
@@ -3966,9 +4006,21 @@ console.log("the buildings' insides (v2.3.3258)");
     const read = (f) => fs.readFileSync(new URL(f, import.meta.url), 'utf8');
     const th = WHEEL_HALLS.townhall;
     const hallSrc = read('../../src/ui/panels/buildings/WheelHallPanel.jsx');
+    const boardSrc = read('../../src/ui/panels/buildings/TownBoard.jsx');   /* v2.3.3804 */
+    /* v2.3.3829: the board's foot (and a page) are TownBoardPage.jsx (v2.3.3801), the
+       board hands them its openers (and the hall two more: onDash, onClose) */
+    const footSrc = read('../../src/ui/panels/buildings/TownBoardPage.jsx');
     ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
       !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
-        && /row\('leaderboard', '\/icons\/ui\/panel-leaderboard\.webp'/.test(hallSrc) && /row\('map', '\/icons\/ui\/nav-map\.webp'/.test(hallSrc)
+        /* v2.3.3804: since v2.3.3766 the two rows are two buttons at the foot of
+           the Town Hall's board (TownBoard.jsx), still data-hall-row
+           "leaderboard" and "map" on the same icons and the same openers; the
+           hall's window draws the board.  The check read WheelHallPanel's old
+           rows (a stale check, the game unchanged) */
+        && /<TownBoard key="board" stateRef=\{props\.stateRef\} onLeaderboard=\{props\.onLeaderboard\} onMap=\{props\.onMap\}[^>]*\/>/.test(hallSrc)
+        && /<BoardFoot onLeaderboard=\{props\.onLeaderboard\} onMap=\{props\.onMap\}/.test(boardSrc)
+        && /data-hall-row="leaderboard" onClick=\{props\.onLeaderboard\}[\s\S]{0,400}src="\/icons\/ui\/panel-leaderboard\.webp"/.test(footSrc)
+        && /data-hall-row="map" onClick=\{props\.onMap\}[\s\S]{0,400}src="\/icons\/ui\/nav-map\.webp"/.test(footSrc)
         && fs.existsSync(new URL('../../public/icons/ui/panel-leaderboard.webp', import.meta.url)) && fs.existsSync(new URL('../../public/icons/ui/nav-map.webp', import.meta.url))
         && /leaderboard:\s+\{ title: 'Ranks',\s+Component: LeaderboardPanel \}/.test(read('../../src/ui/mobile/BottomDashboard.jsx'))   /* v2.3.3546: headed 'Ranks' since v2.3.3481, the More tile's word; the Town Hall's row keeps "Leaderboard" (BottomDashboard's note) */
         && /export function openWorldMap\(\)/.test(read('../../src/ui/WorldMapOverlay.jsx'))
@@ -3998,10 +4050,18 @@ console.log("the buildings' insides (v2.3.3258)");
      min(360px, 100vw - 24px), the forge's band a quarter of it -- if the card's width changes, these must */
   const stageOk = /--room-stage:min\(148\.8px, calc\(41\.33vw - 9\.92px\), 22vh\)/.test(css)
     && /\.bt-inspect-card\[data-room="blacksmith"\]\{--room-stage:min\(90px, calc\(25vw - 6px\)\)\}/.test(css)
-    && /width: 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
+    /* v2.3.3804: since v2.3.3769 (desk-space) the card is 'min(470px, ...)' on
+       a computer playing wide and still min(360px, 100vw - 24px) on a phone; the
+       stage below is the PHONE's (62% there).  On a computer the same 148.8 px
+       is about 47% of a 470 x 313 room: more of the room under the menu than
+       the 62% design, nothing cut -- a deskWide --room-stage is lane F's to
+       judge with pictures (the orchestrator, 2026-10-29).  v2.3.3835: and the
+       Town Hall's board its own wider window first (v2.3.3802, #1277) -- every
+       other building's card as before */
+    && /width: (?:buildingPanel === 'townhall' \? 'min\(800px, calc\(100% - 24px\)\)' : )?deskWideActive\(\) \? 'min\(470px, calc\(100% - 32px\)\)' : 'min\(360px, calc\(100vw - 24px\)\)'/.test(bt)
     && Math.abs(360 * (2 / 3) * 0.62 - 148.8) < 0.1 && Math.abs(24 * 0.4133 - 9.92) < 0.01
     && R.BAND_ROOMS.length === 1 && R.roomIdFor(R.BAND_ROOMS[0]) === 'blacksmith' && R.isBandRoom('forge');
-  ok('...its stage is 62% of the room\'s height at the card\'s own width (148.8 px of 240 at 360 wide, 41.33vw - 9.92 px below it, at most 22vh), the forge\'s band a quarter of the width -- keyed on the forge\'s room, the one band', stageOk, {});
+  ok('...its stage is 62% of the room\'s height at the phone card\'s own width (148.8 px of 240 at 360 wide, 41.33vw - 9.92 px below it, at most 22vh; a computer\'s 470 px card keeps the same stage, ~47%), the forge\'s band a quarter of the width -- keyed on the forge\'s room, the one band', stageOk, {});
   const hd = fs.readFileSync(new URL('../../public/_headers', import.meta.url), 'utf8');
   ok(`the pictures are asked for at ?v=${R.ROOMS_V} and cached for a year (public/_headers)`,
     R.roomUrl('bank') === `/world/interiors/bank.webp?v=${R.ROOMS_V}` && /\/world\/interiors\/\*\s*\n\s*Cache-Control: public, max-age=31536000, immutable/.test(hd), {});
@@ -4017,8 +4077,13 @@ console.log("the keepers (v2.3.3258)");
   const bad = Object.entries(WHEEL_KEEPERS).filter(([name, plot]) => !((name === 'Mayor Bro' || WHEEL_TOWNSFOLK.some((f) => f.name === name && f.door === plot))
     && (own(WHEEL_BUILDING_DOORS, plot) || own(WHEEL_HALL_DOORS, plot))));
   ok('each keeper stands at the very building he opens (Mayor Bro on the Town Hall\'s steps, the rest a WHEEL_TOWNSFOLK row at that door), and it is one with a window -- a building or a hall: Blacksmith Bro the forge, Mayor Bro the Town Hall, and the tour\'s Woodworker Bro the bench and Farmer Bro the Feed & Seed (v2.3.3525)',
-    Object.keys(WHEEL_KEEPERS).length === 4 && WHEEL_KEEPERS['Blacksmith Bro'] === 'blacksmith' && WHEEL_KEEPERS['Mayor Bro'] === 'townhall'
+    Object.keys(WHEEL_KEEPERS).length === 14 && WHEEL_KEEPERS['Blacksmith Bro'] === 'blacksmith' && WHEEL_KEEPERS['Mayor Bro'] === 'townhall'
       && WHEEL_KEEPERS['Woodworker Bro'] === 'woodworker' && WHEEL_KEEPERS['Farmer Bro'] === 'feedseed' && bad.length === 0, bad);
+  /* v2.3.3833: the new cast's ten keepers, one to each door that had nobody, and no building with two */
+  const plots = Object.values(WHEEL_KEEPERS);
+  ok('...and the new cast\'s ten: Sterling the Bank, Slim the Saloon, Chef Blaze the Cookhouse, Glint the Gem Works, Postmaster Pete the Post Office, Deed Dave the Land Office, Benny the Hotel, Guildmaster Gary the Guild Hall, Sheriff Buck the Sheriff\'s Office, Gavel Greg the Auction House -- no building with two keepers (v2.3.3833)',
+    ['bank', 'saloon', 'cookhouse', 'gemcutter', 'post', 'landoffice', 'hotel', 'guildhall', 'sheriff', 'auction'].every((p) => plots.includes(p))
+      && new Set(plots).size === plots.length, plots);
   const bt = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
   const dc = fs.readFileSync(new URL('../../src/game/desktopControls.js', import.meta.url), 'utf8');
   const it = fs.readFileSync(new URL('../../src/game/interactions.js', import.meta.url), 'utf8');

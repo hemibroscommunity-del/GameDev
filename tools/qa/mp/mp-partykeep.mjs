@@ -92,6 +92,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const errs = [];
   A.page.on('pageerror', (e) => errs.push(String(e && e.message || e)));
   await H.enterWorld(A);
+  await H.openPartyList(A);   /* v2.3.3768: the strip is a chip until opened; this reads the list */
   const inWheel = async () => {
     for (let i = 0; i < 120; i++) {
       if ((await H.readState(A, (S) => (S._zoneLoading ? null : S.currentZone))) === 'wheel') return true;
@@ -168,6 +169,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      (the harness's returning-device road, enterWorld) */
   await A.page.reload();
   await H.enterWorld(A);
+  await H.openPartyList(A);   /* v2.3.3768: the strip is a chip until opened; this reads the list */
   await inWheel();
   const meAgain = await H.readState(A, (S) => S.myId);
   rec.ok('the phone comes back as the same player (guard)', meAgain === me.id, { was: me.id, now: meAgain });

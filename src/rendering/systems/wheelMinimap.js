@@ -75,11 +75,16 @@ import { Container, Graphics, Sprite, Texture, CanvasSource, Text, Assets } from
 import { wheelOverviewLands, wheelMapInfo, wheelHere, wheelObjectsInfo, wheelLocalLands } from '@/game/wheelTrial.js';
 import { wheelTownDoors } from '@/game/wheelTownDoors.js';   /* v2.3.3146: the town's buildings */
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
+import { starCue } from '@/ui/starCue.js';                 /* v2.3.3872: a new star, shown */
+import { DROP_PIN, dropPinAt, dropPinOn } from '@/game/dropPin.js';   /* v2.3.3879: your own pin */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 import { peerDotAt } from '@/game/peerDot.js';             /* v2.3.3243: a player's dot where they are now */
 import { PARTY_MARK, partyIdsOf, clampToBox } from '@/game/partyMarks.js';   /* v2.3.3277: your party, blue, and on the box's edge when off it */
 import { questPinsOf, MAP_PIN } from '@/game/questPins.js';   /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '@/data/ownerIcons.js';              /* v2.3.3525: ...in the owner's own pictures */
+import { loadPins, pinsOf, PIN_KEYS, PIN_COLORS } from '@/game/mapPins.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
+import { boardPlaceAt } from '@/game/mapPinPlaces.js';
+import { boardPinnable } from '@/data/townBoard.js';
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
 import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and its music */
@@ -115,6 +120,8 @@ const EXPAND_MARK = Object.freeze({ x: FRAME + 3, y: MAP_BOT - 19, w: 16, h: 16 
 /* v2.3.2990: as the zones' minimap stars, held this far in from the box's
    edge -- v2.3.3009: and clear of the frame (was 10) */
 const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = FRAME + 9;
+/* v2.3.3766: the board's pins, CSS px (a quest pin's 14 x 17; smaller on the edge) */
+const MAP_PIN_PX = 18, MAP_PIN_EDGE_PX = 13;
 /* v2.3.2992: the gold road -- its width and its dark casing, CSS px; it
    starts clear of your chevron and is not drawn when the spot is this close */
 const ROAD_W = 2.5, ROAD_CASE = 5, ROAD_FROM = 8, ROAD_MIN = 12, C_ROAD_CASE = 0x0b161b;
@@ -774,6 +781,55 @@ export class WheelMinimap {
         questPins.push({ name: q.name, state: q.state, x: at.x, y: at.y, art: at.art, edge });
       }
     }
+    /* ═══ v2.3.3766: THE BOARD'S PINS (game/mapPins.js) ═══
+       The red and the blue pin from the Town Hall's board, its point on the
+       place (found where it stands this frame: game/mapPinPlaces.js); off the
+       box, smaller, riding its edge on the line to it, as your party does --
+       so the box always says which way.  Pooled marks like every other: a
+       pin is a sprite's texture, tint and place, never a Graphics change. */
+    const mapPins = [];
+    {
+      loadPins(S, null, boardPinnable);
+      const pins = pinsOf(S);
+      const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
+      const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE, hiY = MAP_BOT - (QUEST_EDGE - FRAME);
+      for (const k of PIN_KEYS) {
+        const id = pins[k];
+        if (!id) continue;
+        let at = null;
+        try { at = boardPlaceAt(S, id); } catch (e) { at = null; }
+        if (!at) continue;
+        let x = at.x, y = at.y, edge = false;
+        if (!inBox(x, y)) {
+          const c = clampToBox(pbx, pby, x * SCALE + this.pan.x, y * SCALE + this.pan.y, lo, hi, hiY);
+          x = (c.x - this.pan.x) / SCALE; y = (c.y - this.pan.y) / SCALE; edge = true;
+        }
+        const px = edge ? MAP_PIN_EDGE_PX : MAP_PIN_PX;
+        /* its point on the place: the glyph's tip is its box's bottom */
+        this._mark(x, y - (edge ? 0 : px / 2 / SCALE), 'mappin', PIN_COLORS[k], px);
+        mapPins.push({ color: k, id, edge, x: Math.round(x * SCALE + this.pan.x), y: Math.round(y * SCALE + this.pan.y) });
+      }
+    }
+    /* ═══ v2.3.3879: YOUR OWN PIN (game/dropPin.js) ═══
+       Dropped on the World map; drawn as the board's pins are, in purple, on
+       the box's edge on the line to it when it is off the box -- however far,
+       so the box always says which way. */
+    let dropPin = null;
+    if (dropPinOn()) {
+      const at = dropPinAt(S);
+      if (at) {
+        const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
+        const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE, hiY = MAP_BOT - (QUEST_EDGE - FRAME);
+        let x = at.x, y = at.y, edge = false;
+        if (!inBox(x, y)) {
+          const c = clampToBox(pbx, pby, x * SCALE + this.pan.x, y * SCALE + this.pan.y, lo, hi, hiY);
+          x = (c.x - this.pan.x) / SCALE; y = (c.y - this.pan.y) / SCALE; edge = true;
+        }
+        const px = edge ? MAP_PIN_EDGE_PX : MAP_PIN_PX;
+        this._mark(x, y - (edge ? 0 : px / 2 / SCALE), 'mappin', DROP_PIN.COLOR, px);
+        dropPin = { edge, x: Math.round(x * SCALE + this.pan.x), y: Math.round(y * SCALE + this.pan.y) };
+      }
+    }
     /* v2.3.2990: the quest's way (above the bros and monsters: drawn last) */
     let quest = null;
     try { quest = questRoutePoint(S.currentZone, S.rpg || null, S); } catch (e) { quest = null; }
@@ -811,7 +867,8 @@ export class WheelMinimap {
         road = { len: Math.round(L - ROAD_FROM), x0: Math.round(x0 + this.pan.x), y0: Math.round(y0 + this.pan.y), x1: Math.round(x1 + this.pan.x), y1: Math.round(y1 + this.pan.y) };
       }
       this._mark((pbx + dx * t - this.pan.x) / SCALE, (pby + dy * t - this.pan.y) / SCALE, 'star', C_QUEST_STAR, QUEST_STAR_PX);
-    }
+      this._starAt = { x: pbx + dx * t, y: pby + dy * t };   /* v2.3.3872: its place in the box, for the cue below */
+    } else this._starAt = null;
     if (!roadSig && this._roadSig) { this.road.clear(); this._roadSig = ''; }   /* v2.3.3339: no road now */
     for (let i = this.used; i < this.pool.length; i++) this.pool[i].visible = false;
     /* v2.3.3023: the way home -- when the town's centre is off the box, its
@@ -884,6 +941,9 @@ export class WheelMinimap {
       }
       window.__btWheelMini = this._rect;
       window.__btWheelPlate = this._plateRect;
+      /* v2.3.3872: a NEW quest star is shown with a big star shrinking onto it
+         (ui/starCue.js: once a target, the DOM's own animation) */
+      if (!S._zoneLoading && !S._spawnToWheel) starCue(quest, this._starAt ? { x: this._rect.left + this._starAt.x, y: this._rect.top + this._starAt.y } : null, this._rect);
       /* QA probe (tools/qa/mp/mp-wheelmap.mjs) */
       window.__btMinimap = {
         wheel: true, visible: true, zone: S.currentZone, box: WHEEL_BOX, window: WHEEL_WINDOW,
@@ -898,6 +958,8 @@ export class WheelMinimap {
         /* v2.3.3108: the map's window ends here, and the plate's two lines */
         h: WHEEL_H, mapBottom: MAP_BOT, plate: plate ? { ...plate, rect: this._plateRect || null } : null,
         /* v2.3.3522: + whose road it is and where it leads (game/questWays.js) */
+        star: this._starAt ? { x: Math.round(this._starAt.x), y: Math.round(this._starAt.y) } : null,   /* v2.3.3872: the star in the box (mp-starcue) */
+        dropPin,   /* v2.3.3879: your own pin in the box (mp-mappin) */
         quest: quest ? { x: Math.round(quest.x), y: Math.round(quest.y), npc: quest.npc || null, zoneId: quest.zoneId || null, edge: questEdge, road,
           qid: quest.qid || null, way: quest.way || null, door: quest.door || null } : null,
         /* v2.3.3023: the way home: whether town is off the box, whether its
@@ -921,6 +983,7 @@ export class WheelMinimap {
         /* v2.3.3525: the quest pins drawn (who, which, where in the box, and
            whether in the owner's picture) */
         questPins,
+        mapPins,   /* v2.3.3766 */
       };
     } catch (e) { /* never breaks the frame */ }
   }

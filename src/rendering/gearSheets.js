@@ -22,6 +22,7 @@ import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless We
 import { gearArt, gearArtSafe } from './gearVariants.js'; /* v2.3.1757: recoloured sets share their donor's sheets */
 import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 */
 import { witnessCanvas } from './canvasWitness.js';   /* v2.3.3574: a picture Safari threw away is noticed */
+import { p256Address, packedTwinAsNumbers } from './p256.js';   /* v2.3.3728: the effects from their 256-colour twins */
 import { keepAsImage } from './keepAsImage.js';   /* v2.3.3702: every strip packed here, kept as an image of itself */
 import { KEEP_GPU_COPIES } from './gpuOnly.js';
 
@@ -106,6 +107,43 @@ function loadImg(url) { return loadWebpOrPng(url); }
    failure is only distinguishable from expected-missing art by eye —
    flip window.__spriteLog = true to see them. */
 const _GEAR_RETRY_MS = [2000, 6000];
+/* ═══ v2.3.3870: A SHEET GIVEN UP ON IS ASKED FOR AGAIN, LATER ═══
+   The owner, 2026-10-29, on a computer, a monkey in a patterned shirt: "west
+   and southwest monkey face disappeared ... Oh also the shirt (along with the
+   patterns) for that direction also disappeared just for those directions",
+   then other facings, then back "if the game reloaded".  The bounded retry
+   above was still the end of it: three failed tries (8 s) and the sheet was
+   `[]` for the visit -- the slot hidden in that facing until a reload, for the
+   plain shirt AND its dressed bake (the same file), so the print went with it.
+   v2.3.3606 fixed exactly this for the head pieces (entityRenderer
+   _traitGaveUp: a later round while worn); the sheets never had it.  Now a
+   sheet given up on is asked for again while something still asks for it:
+   a round of three tries 5 s after the one that gave up, then 10, 20, 40, and
+   every minute after (the head pieces' times).  Each round's file has its own
+   `&g=` bust, so a round is never answered from a cached failure.  A sheet
+   that does not ship (a fish or pickup pose that 404s) costs one request a
+   minute while drawn, ten rounds at most, nothing otherwise.  mp-speciesgc
+   fails the files for a while and checks they come back; `?gearretry=0` (or
+   `?retrylooks=0`, the switch every loader that asks again shares,
+   docs/specs/retry-looks.md) is the game as it was. */
+const GEAR_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
+const GEAR_RETRY_ROUNDS = 10;   /* then the sheet stays given up on: never a request a minute for good */
+let _gearRetryOn = true;
+try { if (typeof location !== 'undefined' && /[?&](gearretry|retrylooks)=0\b/.test(location.search || '')) _gearRetryOn = false; } catch (e) { /* on */ }
+const _gaveUp = Object.create(null);   /* sheet key -> { at, n, args }; keys built from ids off the wire (rule 4) */
+/* the sheet at `key` again, if it was given up on and its time has come; true
+   when a new round has started (the caller answers null meanwhile) */
+function _retryGivenUp(key) {
+  const g = _gaveUp[key];
+  if (!g || Date.now() < g.at) return false;
+  delete _gaveUp[key];
+  _gearRound[key] = g.n;
+  delete _sheets[key];
+  const [slot, item, pose, dir, stampArt] = g.args;
+  buildSheet(key, slot, item, pose, dir, 0, stampArt);
+  return true;
+}
+const _gearRound = Object.create(null);   /* sheet key -> the later round it is on (its &g= bust) */
 
 /* ═══ v2.3.2750: CROPPED GEAR FRAMES ═══
  *
@@ -355,7 +393,10 @@ if (typeof window !== 'undefined') {
    cell they stand on, not the eight of their jog: the rest are never cut,
    packed or uploaded.  Without it, every cell, as before. */
 export function loadCroppedStrip(url, n, opts) {
-  return new Promise((res, rej) => {
+  /* v2.3.3728: an effect with a 256-colour twin is packed from the twin, and
+     kept as colour numbers (p256.js); every other strip as before */
+  let addr = url;
+  return p256Address(url).then((a) => { addr = a; return new Promise((res, rej) => {
     const im = new Image();
     /* v2.3.3689: `opts.timeoutMs` -- a picture that neither loads nor fails
        in that time is given up as failed, so the caller's retry asks again:
@@ -372,8 +413,8 @@ export function loadCroppedStrip(url, n, opts) {
         finish(rej, new Error('timeout'));
       }, opts.timeoutMs);
     }
-    im.src = url;
-  }).then((img) => {
+    im.src = addr;
+  }); }).then((img) => {
     const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
     const fw = Math.floor(W / n);
     const only = opts && Array.isArray(opts.only)
@@ -393,7 +434,9 @@ export function loadCroppedStrip(url, n, opts) {
     /* a pack declined keeps the plain cells of what it was given (the kept
        cells' copy then IS the source, and stays) */
     if (packed && cut) { cut.width = 0; cut.height = 0; }
-    const src = Texture.from(packed ? packed.canvas : from).source;
+    const packedBytes = packed ? packed.canvas.width * packed.canvas.height * 4 : 0;
+    const numSrc = packed && addr !== url ? packedTwinAsNumbers(url, packed.canvas) : null;
+    const src = numSrc || Texture.from(packed ? packed.canvas : from).source;
     src.scaleMode = 'linear';
     const frames = [];
     for (let i = 0; i < k; i++) {
@@ -408,12 +451,12 @@ export function loadCroppedStrip(url, n, opts) {
     /* (a strip cut to `only` is not listed: mp-geartrim checks frame i of
        each listed URL against cell i of its file) */
     if (packed && !cut) {
-      _fxTrimStats.push({ url, fullBytes: W * H * 4, packedBytes: packed.canvas.width * packed.canvas.height * 4 });
+      _fxTrimStats.push({ url, fullBytes: W * H * 4, packedBytes, numbers: !!numSrc });
       _fxTrimFrames.set(url, { frames, fw, fh: H });
     }
     /* v2.3.3702: the packed strip (or the kept cells' copy) as an image of
        itself; a strip left as the file's own Image is one already */
-    keepPackedAsImage(src);
+    if (!numSrc) keepPackedAsImage(src);
     return frames;
   });
 }
@@ -560,7 +603,7 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
   _sheets[key] = 'loading';
   /* Returns a promise that ALWAYS resolves (missing sheet -> []), so callers
      that want to await a full preload don't hang on a 404. */
-  const bust = attempt > 0 ? `&r=${attempt}` : '';
+  const bust = (attempt > 0 ? `&r=${attempt}` : '') + (_gearRound[key] ? `&g=${_gearRound[key]}` : '');   /* v2.3.3870: + the later round */
   return loadImg(`/sprites/gear/${slot}/${item}/${pose}-${dir}.png?v=${GEAR_VERSION}${bust}`).then(rawImg => {
     /* restore a downscaled-on-disk gear sheet to the 256px frame (no-op for any
        native >=256 sheet, so the variable-height combat poses are untouched) */
@@ -695,13 +738,19 @@ function _buildSheet(key, slot, item, pose, dir, attempt = 0, stampArt = null) {
         .then(() => buildSheet(key, slot, item, pose, dir, attempt + 1, stampArt));
     }
     _sheets[key] = []; /* missing -> caller hides the slot */
+    /* v2.3.3870: ...for now: asked for again later while still drawn */
+    if (_gearRetryOn && (_gearRound[key] || 0) < GEAR_RETRY_ROUNDS) {
+      const n = (_gearRound[key] || 0) + 1;
+      _gaveUp[key] = { at: Date.now() + GEAR_RETRY_LATER_MS[Math.min(n - 1, GEAR_RETRY_LATER_MS.length - 1)], n, args: [slot, item, pose, dir, stampArt] };
+    }
     try { if (window.__spriteLog) console.warn('[sprite] gear sheet failed', key); } catch (e) { /* ignore */ }
     /* v2.3.1384: a FINAL failure on a sheet that must exist (the fullset
        knights and their jog belts) is real evidence for an invisible /
        misdressed character — land it in the crash ring so on-device
        reports arrive with facts.  Poses that legitimately 404 (fish/
        pickup non-south) never reach here with these slots. */
-    if (slot === 'fullset' || slot === 'belt') {
+    /* v2.3.3870: on the first give-up only, not on each later round (a report a minute a player) */
+    if ((slot === 'fullset' || slot === 'belt') && !_gearRound[key]) {
       try { import('../debug/crashTrap.js').then(ct => ct.recordCrash('gear-sheet-failed', key)).catch(() => {}); } catch (e) { /* ignore */ }
     }
   });
@@ -738,7 +787,7 @@ export function getGearFrame(slot, item, pose, dir, frameIdx) {
   const key = slot + '/' + item + '/' + pose + '/' + dir;
   const entry = _sheets[key];
   if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }
-  if (entry === 'loading' || !entry.length) return null;
+  if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _retryGivenUp(key); return null; }   /* v2.3.3870 */
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
@@ -778,6 +827,7 @@ function touchArt(k) {
       releaseCanvasSource(entry[0].source);
     }
     delete _sheets[key];
+    delete _gaveUp[key]; delete _gearRound[key];   /* v2.3.3870 */
   }
 }
 
@@ -811,7 +861,7 @@ export function getShirtLookFrame(item, pose, dir, frameIdx, look) {
     return null;
   }
   touchArt(ak);
-  if (entry === 'loading' || !entry.length) return null;
+  if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _retryGivenUp(key); return null; }   /* v2.3.3870 */
   return entry[((frameIdx % entry.length) + entry.length) % entry.length];
 }
 
@@ -828,7 +878,7 @@ export function getGearFramePhased(slot, item, pose, dir, phase) {
   const key = slot + '/' + item + '/' + pose + '/' + dir;
   const entry = _sheets[key];
   if (entry === undefined) { buildSheet(key, slot, item, pose, dir); return null; }
-  if (entry === 'loading' || !entry.length) return null;
+  if (entry === 'loading' || !entry.length) { if (entry !== 'loading') _retryGivenUp(key); return null; }   /* v2.3.3870 */
   const p = ((phase % 1) + 1) % 1;
   return entry[Math.min(entry.length - 1, Math.floor(p * entry.length))];
 }

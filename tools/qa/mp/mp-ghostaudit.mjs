@@ -42,6 +42,11 @@
  *   BT_GHOST_ONLY=stand,jog   only those families
  *   BT_GHOST_OUTFITS=full     only that outfit (full, plate, greaves; bare, no armour, only when named)
  *   BT_GHOST_SHIRT=print      v2.3.3696: the tee striped and printed
+ *   BT_GHOST_DIRS=east,south  v2.3.3750: only those facings, every family (a sample)
+ *   v2.3.3738, the double jump's flip (family `flip`, not in the default run):
+ *   BT_GHOST_ONLY=flip BT_GHOST_DIRS=east,south,north BT_GHOST_HAT=top-hat
+ *   BT_GHOST_HAIR=wavy BT_GHOST_LOOK=plain (the game's own colours)
+ *   BT_GHOST_SKIN=ebony BT_GHOST_SPECIES=alien (v2.3.3738: the skin the head wears)
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -59,13 +64,26 @@ const LOOK = `try {
     'blockRanged', 'attack', 'special', 'chatTap', 'passkey'];
   const d = {}; for (const k of l) d[k] = true;
   localStorage.setItem('bt_coach_v1', JSON.stringify(d));
-  localStorage.setItem('bt-skin', 'green');
-  localStorage.setItem('bt-pants', 'pink');
-  localStorage.setItem('bt-shoes', 'blue');
-  localStorage.setItem('bt-shirt', 'tshirt');
-  localStorage.setItem('bt-shirtcolor', 'yellow');
-  localStorage.setItem('bt-hair', 'none');
-  localStorage.setItem('bt-headwear', 'none');
+  /* v2.3.3752: BT_LOOK_INLINE=1 -- the armour's look bakes on the page, not
+     the worker (whose canvas is ~200x slower on the QA box: lookArmour.js) */
+  if (${JSON.stringify(process.env.BT_LOOK_INLINE || '')} === '1') window.__btLookBakeInline = true;
+  /* v2.3.3738: BT_GHOST_LOOK=plain -- the game's own colours, for pictures a
+     person looks at (the flip's before/after); the ghost colours otherwise */
+  if (${JSON.stringify(process.env.BT_GHOST_LOOK || '')} !== 'plain') {
+    localStorage.setItem('bt-skin', 'green');
+    localStorage.setItem('bt-pants', 'pink');
+    localStorage.setItem('bt-shoes', 'blue');
+    localStorage.setItem('bt-shirt', 'tshirt');
+    localStorage.setItem('bt-shirtcolor', 'yellow');
+  }
+  /* v2.3.3738: BT_GHOST_HAT / BT_GHOST_HAIR -- a hat and hair on the head
+     (the flip carries the head pieces now); none by default */
+  localStorage.setItem('bt-hair', ${JSON.stringify(process.env.BT_GHOST_HAIR || 'none')});
+  localStorage.setItem('bt-headwear', ${JSON.stringify(process.env.BT_GHOST_HAT || 'none')});
+  /* v2.3.3738: BT_GHOST_SKIN / BT_GHOST_SPECIES -- the owner: the flip's head
+     "will need to be recolored to whatever color the character is" */
+  if (${JSON.stringify(process.env.BT_GHOST_SKIN || '')}) localStorage.setItem('bt-skin', ${JSON.stringify(process.env.BT_GHOST_SKIN || '')});
+  if (${JSON.stringify(process.env.BT_GHOST_SPECIES || '')}) localStorage.setItem('bt-species', ${JSON.stringify(process.env.BT_GHOST_SPECIES || '')});
   /* v2.3.3696: BT_GHOST_SHIRT=print -- the tee striped (ART_PALETTE 5) with
      a block printed on the chest (ART_PALETTE 10, mp-gatherlook's), to see
      where a print and a pattern sit on every frame */
@@ -82,12 +100,15 @@ const FACINGS = [
   ['east', ['d'], 0], ['southeast', ['s', 'd'], Math.PI / 4], ['south', ['s'], Math.PI / 2],
   ['southwest', ['s', 'a'], 3 * Math.PI / 4], ['west', ['a'], Math.PI], ['northwest', ['w', 'a'], -3 * Math.PI / 4],
   ['north', ['w'], -Math.PI / 2], ['northeast', ['w', 'd'], -Math.PI / 4],
-];
+].filter(([d]) => !process.env.BT_GHOST_DIRS || process.env.BT_GHOST_DIRS.split(',').includes(d));   /* v2.3.3750: BT_GHOST_DIRS=east,south,... samples the facings */
 
+/* v2.3.3752: BT_GHOST_METAL=copper -- the kit's copper pieces instead of its
+   iron (the look palette's armour, sampled in each metal the kit has) */
+const METAL = process.env.BT_GHOST_METAL === 'copper' ? 'copper' : 'iron';
 const OUTFITS = {
-  full: { chest: 'ironplate', legs: 'irongreaves' },
-  plate: { chest: 'ironplate', legs: 'none' },
-  greaves: { chest: 'none', legs: 'irongreaves' },
+  full: { chest: METAL + 'plate', legs: METAL + 'greaves' },
+  plate: { chest: METAL + 'plate', legs: 'none' },
+  greaves: { chest: 'none', legs: METAL + 'greaves' },
   /* v2.3.3685: no armour -- every colour drawn, nothing to hide; for a hole
      in the figure (the background seen through it), only when asked:
      BT_GHOST_OUTFITS=bare */
@@ -233,6 +254,20 @@ const PAGE_TOOLS = () => {
       ex: S._extraction ? S._extraction.skill : null, fire: !!S._firemaking,
       chop: fig('__btChopFigure'), cook: fig('__btCookFigure'), fireFig: fig('__btFireFigure'),
       x: S.player.x, y: S.player.y,
+      /* v2.3.3738: BT_GHOST_LAYERS=1 -- every visible piece of the figure,
+         named by its picture, with its alpha and tint (which layer paints what) */
+      layers: window.__qaGhostLayers && me ? (() => {
+        const out = [];
+        const walk = (c, depth) => {
+          if (!c || !c.visible || depth > 4) return;
+          let tex = null;
+          try { const t = c.texture, src = t && t.source, res = src && src.resource; tex = (t && t.label) || (src && src.label) || (res && res.src ? String(res.src).split('/').pop().split('?')[0] : null) || (src ? src.width + 'x' + src.height : null); } catch (e) { /* none */ }
+          if (tex || c.constructor.name === 'Graphics') out.push({ label: c.label || c.constructor.name, tex, a: +(c.alpha).toFixed(2), tint: c.tint != null ? c.tint : null, blend: c.blendMode || null, depth });
+          for (const k of c.children || []) walk(k, depth + 1);
+        };
+        walk(me, 0);
+        return out;
+      })() : undefined,
     };
   };
   return true;
@@ -308,7 +343,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const only = process.env.BT_GHOST_ONLY ? new Set(process.env.BT_GHOST_ONLY.split(',')) : null;
   const want = (f) => !only || only.has(f);
   const outfits = (process.env.BT_GHOST_OUTFITS || 'full,plate,greaves').split(',').filter((o) => OUTFITS[o]);
-  const P = await H.newPlayer(browser, { name: 'Ghostbro', wsPort, webPort, viewport: VIEW, touch: false, dpr: DPR, world: 'wheel', init: LOOK });
+  const P = await H.newPlayer(browser, { name: 'Ghostbro', wsPort, webPort, viewport: VIEW, touch: false, dpr: DPR, world: 'wheel', init: LOOK, ...(process.env.BT_GHOST_QUERY ? { query: process.env.BT_GHOST_QUERY } : {}) });   /* v2.3.3757: BT_GHOST_QUERY=lookpalette=0, the old path for a comparison */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   let stopAlive = false;
@@ -432,6 +467,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (const k of ['woodcutting_axe', 'fishing_pole', 'mining_pickaxe']) await H.grant(wsPort, myId, 'item', { invKey: k, count: 1 }).catch(() => {});
     await page.waitForTimeout(2500);
     const tools = await page.evaluate(PAGE_TOOLS);
+    if (process.env.BT_GHOST_LAYERS) await page.evaluate(() => { window.__qaGhostLayers = true; });   /* v2.3.3738 */
     rec.ok('the page\'s clock can be held and the figure photographed alone (guard)', !!tools);
     if (!tools) return;
     /* the black-screen watchdog (BroTown.jsx) judges a screen that is nearly
@@ -474,17 +510,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
        (gearCatalog.js syncArmorLayers), so a layer set on the page alone
        was undone after the first photograph */
     await H.devOp(wsPort, 'kit', myId, { what: 'armor' }).catch(() => {});
-    await H.waitFor(P, () => {
+    await page.waitForFunction((m) => {
       const R = window._gameState.current.rpg || {};
-      return !!((R.armorStash || []).concat(R.armor ? [R.armor] : []).some((x) => x && x.mat === 'iron' && x.gid)
-        && (R.legsStash || []).concat(R.legsArmor ? [R.legsArmor] : []).some((x) => x && x.mat === 'iron' && x.gid));
-    }, (v) => v, { timeout: 15000, label: 'the iron pieces' }).catch(() => null);
-    const wear = (o) => page.evaluate((o) => {
+      return !!((R.armorStash || []).concat(R.armor ? [R.armor] : []).some((x) => x && x.mat === m && x.gid)
+        && (R.legsStash || []).concat(R.legsArmor ? [R.legsArmor] : []).some((x) => x && x.mat === m && x.gid));
+    }, METAL, { timeout: 15000, polling: 250 }).catch(() => null);   /* the kit's pieces of the metal */
+    const wear = (o) => page.evaluate(([o, metal]) => {
       const S = window._gameState.current, R = S.rpg;
       const put = (stash, slot, want) => {
         if (R[slot]) { (R[stash] = R[stash] || []).push(R[slot]); R[slot] = null; }
         if (!want) return null;
-        const i = (R[stash] || []).findIndex((x) => x && x.mat === 'iron' && x.gid);
+        const i = (R[stash] || []).findIndex((x) => x && x.mat === metal && x.gid);
         if (i < 0) return null;
         R[slot] = R[stash][i]; R[stash].splice(i, 1);
         return R[slot].gid;
@@ -494,7 +530,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (window.__btSyncArmorLayers) window.__btSyncArmorLayers(R);
       S.channel.send({ type: 'stats_update', payload: { armorRef: t, legsArmorRef: l } });
       return { t, l };
-    }, o);
+    }, [o, METAL]);
 
     for (const outfit of outfits) {
       const o = OUTFITS[outfit];
@@ -546,8 +582,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await face(keys, ang);
           await begin();
           await keysDown(keys);
-          await page.keyboard.press('Space');
-          const r = await H.waitFor(P, (S) => (S._dodgeRoll ? { s: S._dodgeRoll.startTime, d: S._dodgeRoll.durMs } : null), (v) => !!v, { timeout: 3000, label: 'a roll' }).catch(() => null);
+          /* v2.3.3798: the roll key from inside the page, and the clock held the
+             moment the roll starts: a roll is 250-500 ms, and polled from
+             outside on this box it was over before it was seen (no roll
+             frame swept, on main too) */
+          const r = await page.evaluate(async () => {
+            const S = window._gameState.current;
+            const sp = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'KeyX', key: 'x', bubbles: true }));   /* v2.3.3844: X rolls (was Space) */
+            sp('keydown'); sp('keyup');
+            for (let i = 0; i < 600; i++) {
+              const d = S._dodgeRoll;
+              if (d) { window.__qaGhost.hold(d.startTime); return { s: d.startTime, d: d.durMs || null }; }
+              await new Promise((res) => setTimeout(res, 2));
+            }
+            return null;
+          }).catch(() => null);
           await keysUp(keys);
           if (r) await sweep(outfit, 'dodge', dir, r.s, Math.max(200, (r.d || 500) - 20), 40);
           await end(outfit, 'dodge');
@@ -593,11 +642,46 @@ export async function run({ browser, wsPort, webPort, rec }) {
         for (const [dir, keys, ang] of FACINGS) {
           await face(keys, ang);
           await begin();
-          await page.keyboard.press('x');
+          await page.keyboard.press('Space');   /* v2.3.3844: Space jumps (was X) */
           const j = await H.waitFor(P, (S) => (S._jump ? (S._jump.startedAt || S._jump.t0 || S._jump.start || null) : null), (v) => !!v, { timeout: 3000, label: 'a jump' }).catch(() => null);
           const t0 = j || await page.evaluate(() => Date.now());
           await sweep(outfit, 'jump', dir, t0, 600, 40);
           await end(outfit, 'jump');
+        }
+      }
+      /* ── v2.3.3738: the double jump's flip, the roll's tumble in the air:
+         only when named (BT_GHOST_ONLY=flip).  A jump (Space; X until v2.3.3844), then Space again half
+         way through it; the flip is swept on its own clock.  BT_GHOST_DIRS
+         limits the facings (the owner: three are enough to look at) ── */
+      if (only && only.has('flip')) {
+        const dirs = process.env.BT_GHOST_DIRS ? new Set(process.env.BT_GHOST_DIRS.split(',')) : null;
+        for (const [dir, keys, ang] of FACINGS) {
+          if (dirs && !dirs.has(dir)) continue;
+          await face(keys, ang);
+          await begin();
+          /* the jump and its flip from inside the page, where a slow frame
+             cannot land the jump between the two presses: the second press
+             goes the moment the jump is a third of the way through (the flip
+             may start from FLIP_FROM, 0.15); tried up to three times */
+          let f = null;
+          for (let k = 0; k < 3 && !f; k++) {
+            f = await page.evaluate(async () => {
+              const S = window._gameState.current;
+              const key = (t) => window.dispatchEvent(new KeyboardEvent(t, { code: 'Space', key: ' ', bubbles: true }));   /* v2.3.3844: Space jumps (was X) */
+              key('keydown'); key('keyup');
+              for (let i = 0; i < 300; i++) {
+                const j = S._jump;
+                if (j && !j.flip && (Date.now() - j.t0) / j.dur >= 0.33) { key('keydown'); key('keyup'); break; }
+                if (j && j.flip) break;
+                await new Promise((r) => setTimeout(r, 5));
+              }
+              const j = S._jump;
+              return j && j.flip ? { t0: j.t0, dur: j.dur } : null;
+            });
+            if (!f) await page.waitForTimeout(2500);
+          }
+          if (f) await sweep(outfit, 'flip', dir, f.t0, f.dur * 0.98, Math.max(20, f.dur / 14));
+          await end(outfit, 'flip');
         }
       }
       /* ── the harvests: mining, chopping, fishing, a fire and a cook (the
@@ -689,7 +773,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await travel(P, wsPort, myId, spot.x, spot.y);
         await page.waitForTimeout(1000);
       }
-      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'mine', 'chop', 'fire', 'cook', 'fish']) {
+      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'flip' /* v2.3.3738 */, 'mine', 'chop', 'fire', 'cook', 'fish']) {
         if (!want(fam)) continue;
         const s = summary[`${outfit}/${fam}`] || (summary[`${outfit}/${fam}`] = {});
         s.frames = count(outfit, fam);
@@ -697,6 +781,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     writeFileSync(join(OUT, 'index.json'), JSON.stringify({ index, summary }, null, 1));
 
+    /* v2.3.3846: no knight figure asked for where none ships (north-east,
+       and north-west its mirror): the old path's request for it 404'd into the
+       crash ring as gear-sheet-failed (E's judge pass) */
+    if (outfits.includes('full')) {
+      const sheets = await page.evaluate(() => (window.__btGearSheets ? window.__btGearSheets() : []));
+      const asked = sheets.filter((k) => /^fullset\/[^/]+\/jog\/northeast$/.test(k));
+      rec.ok(`no knight figure asked for north-east (${asked.length ? asked.join(', ') : 'none'}; ${sheets.filter((k) => /^fullset\//.test(k)).length} figure sheets asked)`, asked.length === 0, asked);
+    }
     /* the checks a number can make here; the colours are counted by the report */
     for (const [k, s] of Object.entries(summary)) {
       rec.ok(`${k}: ${s.frames} frames photographed (guard)`, s.frames > 0, s.equip || null);

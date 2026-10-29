@@ -32,6 +32,7 @@
 const WORKER_URL = '/tools/world/core/ground-worker.js';
 import { landLook, hexRgb } from '../data/wheelLands.js';   /* v2.3.3024: each land's flat colour */
 import { wheelLong, noteWheelBuilt } from './wheelSize.js';   /* v2.3.3315: which Wheel the room plays */
+import { clientOffAtLoad } from './clientOff.js';   /* v2.3.3755: the Test panel's Memory savers */
 
 const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3315: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
 /* v2.3.3298: the Wheel's walls come a block at a time (the worker's 'block':
@@ -242,9 +243,13 @@ const RENDERER_WAIT_MS = 15000;
 let _waitOn = true;
 try { if (typeof location !== 'undefined' && /[?&]groundwait=0(&|$)/.test(location.search || '')) _waitOn = false; } catch (e) { /* waits */ }
 /* v2.3.3717: `?heaplean`, the page's own leftovers let go (the overview's
-   pixels, above): docs/specs/worker-code-diet.md */
-let _heapLean = false;
-try { if (typeof location !== 'undefined' && /[?&]heaplean(=|&|$)/.test(location.search || '')) _heapLean = true; } catch (e) { /* kept */ }
+   pixels, above): docs/specs/worker-code-diet.md.
+   v2.3.3736: ON unless the address says `heaplean=0` (the owner's "including
+   the new memory change work by default would be better") */
+let _heapLean = true;
+try { if (typeof location !== 'undefined' && /[?&]heaplean=(0|off|false)(&|$)/.test(location.search || '')) _heapLean = false; } catch (e) { /* lean */ }
+/* v2.3.3755: ...and off when the Test panel's Memory savers row turned it off, from the next load (clientOff.js) */
+try { if (clientOffAtLoad('heaplean')) _heapLean = false; } catch (e) { /* as the address says */ }
 let _said = false;
 let _sayWaiters = [];
 export function wheelRendererSaid() {
@@ -290,6 +295,10 @@ export function wheelStart() {
        v2.3.2955: and `?trial=wheel&blends` the blends, put away too */
     let search = '';
     try { search = window.location.search || ''; } catch (e) { /* no page */ }
+    /* v2.3.3755: the lean ground builder (on unless `groundlean=0`, ground-
+       worker.js) turned off in what the worker is told when the Test panel's
+       Memory savers row turned it off, from this load (clientOff.js) */
+    try { if (clientOffAtLoad('groundlean')) search = (search ? search + '&' : '?') + 'groundlean=0'; } catch (e) { /* as the address says */ }
     /* v2.3.3021: and whether the game draws the water moving here, so the
        worker takes the frozen web of light out of the water pictures
        (ground.js CALM WATER; setWheelWaterMoves, from wheelWater.js) */
@@ -434,7 +443,14 @@ export async function wheelWarm(x, y, rx, ry) {
     jobs.push(wheelChunk(i, j).then((m) => { _warm.set(i + ',' + j, m); }).catch(() => {}));
   }
   await Promise.all(jobs);
+  _warmGen++;   /* v2.3.3823: a new fill -- the ground lets it go WARM_KEEP_MS from now */
 }
+/* v2.3.3823: which fill of laid-ahead pieces this is.  The ground dropped them
+   once in its life, 3 s after it was made, so every later way in that laid
+   pieces ahead while the same ground lived kept the ones it never took, for
+   good (mp-heapdiff: about 14 pieces, 1.1 MB, a trip to a fight and back). */
+let _warmGen = 0;
+export function wheelWarmGen() { return _warmGen; }
 export function wheelIsWarm(i, j) { return _warm.has(i + ',' + j); }
 /* The readout's counts start again on each way in: they describe this visit. */
 export function wheelResetCounts() {

@@ -50,6 +50,8 @@ import { codexDropsFor } from '../data/codexDrops.js';
 import { petKindOfMonster } from '../data/trapping.js';
 import { remainsName } from '../data/remains.js';
 import { shardByKey } from '../data/shards.js';
+import { coinArtFor } from './coinArt.js';   /* v2.3.3734 */
+import { QUALITY_COLOR } from '../ui/mobile/dash/common.js';   /* v2.3.3746: the gear's grade colours, the armour's own (no imports there) */
 
 const OFF = (() => {
   try { return typeof location !== 'undefined' && /[?&]droplines=0\b/.test(location.search || ''); }
@@ -72,25 +74,50 @@ export const DROP_LINES = Object.freeze({
 export function dropGroupMs(n) { return DROP_LINES.TTL_MS + Math.max(0, (n || 1) - 1) * DROP_LINES.STAGGER_MS; }
 
 /* how often a drop comes: the colour of its line (and the word the codex uses) */
+/* v2.3.3746: `rank`, the order the pile's shine picks its colour by (the
+   best line's: pileShine) */
 export const RARITY_TIERS = Object.freeze([
-  { at: 0.2, label: 'Normal', color: '#FFFFFF' },
-  { at: 0.02, label: 'Uncommon', color: '#7EE0A8' },
-  { at: 0.002, label: 'Rare', color: '#7FB2FF' },
-  { at: 0, label: 'Very rare', color: '#FFB25A' },
+  { at: 0.2, label: 'Normal', color: '#FFFFFF', rank: 0 },
+  { at: 0.02, label: 'Uncommon', color: '#7EE0A8', rank: 1 },
+  { at: 0.002, label: 'Rare', color: '#7FB2FF', rank: 2 },
+  { at: 0, label: 'Very rare', color: '#FFB25A', rank: 3 },
 ]);
-/* a piece of gear's grade: white as any normal drop, purple when the worker
-   says its grade is worth a reveal (the bag's colours, dash/common.js) */
+/* a piece of gear's grade: white as any normal drop; RARE BLUE when the
+   worker says its grade is worth a reveal.  v2.3.3746, the owner: "I'd
+   rather the gear in the drop just match the rarity tier (either blue or
+   yellow for rare can't remember, orange for elite, and prismatic for
+   godly)" -- it was purple.  The pile hides the real grade until it is
+   picked up (docs/specs/rarity-reveal.md: _serializePile's mystery bit says
+   only "rare or better"), so a mystery shows the one tier the game can
+   promise at the drop, rare, in the armour's own blue (QUALITY_COLOR, the
+   grades' one table); the reveal ceremony still climbs to elite's orange or
+   godly's prism on pickup (RevealOverlay, the same table). */
 export const GRADE_WORDS = Object.freeze({
-  normal: { label: 'Normal', color: '#FFFFFF' },
-  mystery: { label: 'Mystery', color: '#D9A6FF' },
+  normal: { label: 'Normal', color: '#FFFFFF', rank: 0 },
+  mystery: { label: 'Rare', color: QUALITY_COLOR.rare, rank: 2 },
 });
 
 /** A drop's rarity: its grade for gear, else how often it comes. */
 export function rarityOf(row, mystery) {
   if (row && row.graded) return mystery ? GRADE_WORDS.mystery : GRADE_WORDS.normal;
   const c = row && typeof row.chance === 'number' ? row.chance : 1;
-  for (const t of RARITY_TIERS) if (c >= t.at) return { label: t.label, color: t.color };
-  return { label: RARITY_TIERS[RARITY_TIERS.length - 1].label, color: RARITY_TIERS[RARITY_TIERS.length - 1].color };
+  for (const t of RARITY_TIERS) if (c >= t.at) return { label: t.label, color: t.color, rank: t.rank };
+  const last = RARITY_TIERS[RARITY_TIERS.length - 1];
+  return { label: last.label, color: last.color, rank: last.rank };
+}
+
+/** v2.3.3746: a pile's shine -- the colour of its BEST line, so the shine and
+ *  the words always match (the owner: "Shine color same color as rarity tier
+ *  (uses best)", "I want the loot message font color to match the loot shine
+ *  effect color").  Only what lies ON the pile: the killing blow's nugget and
+ *  raw gem go straight to the bag.  A pile with no line shines white. */
+export function pileShine(lines) {
+  let best = null;
+  for (const l of lines || []) {
+    if (!l || l.id === 'nugget' || l.id === 'rawgem') continue;
+    if (!best || (l.rank || 0) > (best.rank || 0)) best = l;
+  }
+  return best ? { color: best.color, rank: best.rank || 0 } : { color: RARITY_TIERS[0].color, rank: 0 };
 }
 
 /** "Coins x5": a drop's name and its amount after an x, the owner's way
@@ -123,8 +150,9 @@ export function linesFor(kind, pile, rh) {
     const nm = name || row.name || id;
     /* v2.3.3692: its picture, the codex row's (null for a drop with none: the
        line is its words alone) */
-    const icon = row.icon || null;
-    lines.push({ id, name: nm, qty: q, text: dropLineText(nm, q), label: r.label, color: r.color, icon });
+    /* v2.3.3734: coins show the owner's pile for the amount */
+    const icon = id === 'gold' ? coinArtFor(q) : (row.icon || null);
+    lines.push({ id, name: nm, qty: q, text: dropLineText(nm, q), label: r.label, color: r.color, rank: r.rank || 0, icon });
   };
   if (pile) {
     if (pile.coins > 0) add('gold', pile.coins, false, 'Coins');
@@ -235,6 +263,22 @@ export function noteKillCredit(S, cc, now = Date.now()) {
       pushGroup(S, id, kind, spotOf(S, id) || spot0, linesFor(kind, null, cur.rh), Date.now());
     }, DROP_LINES.NUGGET_WAIT_MS);
   }
+}
+
+/** v2.3.3746: loot_drop (gameEvents), a NEW pile in this zone: when it is
+ *  this player's, its shine (pile._shine: the best line's colour and the
+ *  moment it landed), drawn by effectsRenderer _renderPileShine.  Kept apart
+ *  from the lines' own switch (?droplines=0 hides the words, not the shine). */
+export function notePileShine(S, pile, myId, now = Date.now()) {
+  if (!S || !pile || pile.isDeathDrop || pile.dropped) return null;
+  const mine = Array.isArray(pile.recipients) ? pile.recipients.indexOf(myId) >= 0 : false;
+  if (!mine) return null;
+  const monsterId = monsterIdOfLoot(pile.lootId);
+  const c = monsterId ? credits(S).get(monsterId) : null;
+  const kind = (c && c.kind) || kindOf(S, monsterId, null);
+  const sh = pileShine(linesFor(kind, pile, null));
+  pile._shine = { color: sh.color, rank: sh.rank, at: now };
+  return pile._shine;
 }
 
 /** loot_drop (gameEvents), a NEW pile in this zone: its lines, when it is

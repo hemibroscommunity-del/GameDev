@@ -11,7 +11,9 @@
  *     (picture A, B, then A again within 400 ms);
  *   - the body's PLAIN frames: drawn with the plain body under the armour
  *     because its masked bake was not ready (window.__btBakeWorker().local);
- *   - which pose and facing each plain frame was, and its body picture.
+ *   - which pose and facing each plain frame was, and its body picture;
+ *   - v2.3.3742: and before all that, straight after putting the set on: how
+ *     long until its jog, and all of it, is baked (measured, not a line).
  *
  *   node tools/qa/mp/run.mjs armourflash
  */
@@ -188,6 +190,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
       chest: window.__btGetGear ? window.__btGetGear('chest') : null, legs: window.__btGetGear ? window.__btGetGear('legs') : null,
     }), (v) => v && v.chest === 'copperplate' && v.legs === 'coppergreaves', { timeout: 15000, label: 'the armour worn' }).catch((e) => ({ err: String(e.message || e).slice(0, 160) }));
     rec.ok('setup: the copper torso and copper greaves are worn (guard)', !!worn && !worn.err, worn);
+    /* v2.3.3742: straight after putting it on -- a judge handed the set,
+       wearing it and running off.  Measured, not held to a line (this box
+       draws a few frames a second, so a plain frame is rare here at any
+       pace): standing still, every 10 s for up to 150 s, the worker's
+       answered jobs and the set's frames baked (window.__btBakeWorker,
+       __btMaskedCoverage; `missing` lists the first 24 not baked, in the
+       prewarm's order), when its jog and all of it are baked, the worker's
+       queue at the end; then the walk, its plain body frames counted
+       (docs/specs/worn-first.md) */
+    const ready = await P.page.evaluate(async () => {
+      const t0 = performance.now();
+      let jog = null, all = null, last = null, nextS = 0;
+      const samples = [];   /* every 10 s: the worker's answered jobs, the set's frames held */
+      while (performance.now() - t0 < 150000 && all == null) {
+        const c = window.__btMaskedCoverage ? window.__btMaskedCoverage() : null;
+        if (performance.now() - t0 >= nextS) {
+          nextS += 10000;
+          const b = window.__btBakeWorker ? window.__btBakeWorker() : null;
+          samples.push([Math.round((performance.now() - t0) / 1000), b ? b.worker : null, c ? c.have : null]);
+        }
+        if (c && c.want > 0) {
+          last = c;
+          const t = Math.round(performance.now() - t0);
+          if (jog == null && c.missing.length < 24 && !c.missing.some((m) => /^jog\//.test(m))) jog = t;
+          if (c.have === c.want) { all = t; if (jog == null) jog = t; }
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      const bw = window.__btBakeWorker ? window.__btBakeWorker() : null;
+      const lm = window.__btLocalMisses ? window.__btLocalMisses() : null;
+      return { samples, jog, all, have: last && last.have, want: last && last.want, missing: last ? last.missing.slice(0, 12) : null,
+        worker: bw && { busy: bw.busy, queued: bw.queued, pending: bw.pending, worker: bw.worker, inline: bw.inline, failed: bw.failed, raw: bw.raw, skipped: bw.skipped, beltPending: bw.beltPending, dead: bw.dead },
+        cache: lm && { size: lm.size, cap: lm.cap, worn: lm.worn, uids: lm.cachedUids } };
+    });
+    await startWatch(P);
+    await walkAll(P, 1000);
+    const w0 = await stopWatch(P);
+    await report(P, 'the walk after putting the armour on', w0);
+    console.log('    every 10 s [s, worker answers, frames held]: ' + JSON.stringify(ready.samples));
+    console.log('    the bake worker then: ' + JSON.stringify(ready.worker) + '; the cache: ' + JSON.stringify(ready.cache));
+    console.log(`    after putting the armour on: every jog frame baked in ${ready.jog} ms, the whole set in ${ready.all} ms (held ${ready.have} of ${ready.want}${ready.missing && ready.missing.length ? '; missing ' + ready.missing.join(', ') : ''})`);
+    rec.ok(`(measure) after putting the armour on: the jog baked in ${ready.jog} ms, the set in ${ready.all} ms; the walk after, ${w0.plain} plain body frames`, true);
     const look = await P.page.evaluate(() => { const r = window.__btCharRecord ? window.__btCharRecord() : null; return r && r.look ? JSON.stringify(r.look).slice(0, 300) : null; });
     console.log('    the character\'s record: ' + look);
     await P.page.waitForTimeout(4000);
@@ -230,7 +274,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.keyboard.up('d'); await P.page.keyboard.down('a');
     await P.page.waitForTimeout(2000);
     await P.page.keyboard.up('a'); await P.page.keyboard.up('Shift');
-    for (let i = 0; i < 3; i++) { await P.page.keyboard.press('x'); await P.page.waitForTimeout(900); }
+    for (let i = 0; i < 3; i++) { await P.page.keyboard.press('Space'); await P.page.waitForTimeout(900);   /* v2.3.3844: the jump (was X) */ }
     const w1 = await stopWatch(P);
     await report(P, 'first walk after logging in', w1);
 

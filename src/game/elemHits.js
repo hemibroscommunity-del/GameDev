@@ -123,6 +123,7 @@ export const SLOW_MULT = 0.4;
 /* v2.3.3264: how long a blow's shove takes to carry out (the gust's own
    shove is GUST.MS, on the wire as stMs). */
 const KB_MS = 180;
+const MAX_KB_MS = 600;   /* v2.3.3747 */
 
 /* v2.3.3620: a freeze and a wobble the wire says are held to these (the
    worker's are 600 and 1000 ms) */
@@ -148,7 +149,8 @@ export function elemLook(elem) {
 
 /** Is this monster_attack a burn's tick (or the fire trail's), not a blow? */
 export function isBurnTick(p) {
-  return !!p && (p.ability === 'burn' || p.ability === 'firetrail');
+  /* v2.3.3748: + a burning heap's (server heapburn.js) */
+  return !!p && (p.ability === 'burn' || p.ability === 'firetrail' || p.ability === 'heapburn');
 }
 
 /**
@@ -266,7 +268,11 @@ export function applyHitShove(S, p, now) {
   if (!isFinite(dx) || !isFinite(dy)) return false;
   const len = Math.sqrt(dx * dx + dy * dy);
   if (len < 1 || len > MAX_KB_PX) return false;
-  S._gust = { dx, dy, t0: typeof now === 'number' ? now : Date.now(), ms: KB_MS, done: 0 };
+  /* v2.3.3747: a slime blast's blowback says how long (`kbMs`, the worker's
+     300), held to MAX_KB_MS; a player's blow says nothing (KB_MS) */
+  const km = Number(p.kbMs);
+  const ms = isFinite(km) && km > 0 ? Math.max(KB_MS, Math.min(MAX_KB_MS, km)) : KB_MS;
+  S._gust = { dx, dy, t0: typeof now === 'number' ? now : Date.now(), ms, done: 0 };
   return true;
 }
 

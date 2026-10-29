@@ -59,6 +59,21 @@
  * Whether the page's heap should grow over a long session at all is the
  * soak's question (docs/specs/long-play-soak.md: 7-14 MB an hour of play).
  *
+ * v2.3.3807, main's own code at the line again: `heap` 34 -> 36 -- RAISED.
+ * On 2026-10-29, between 00:20 and 00:55 UTC, pull requests whose code never
+ * runs on the check's trip read the heap at the third trip's fight at 34.0
+ * (#1257, a rename), 34.3 (#1253), 34.7 (#1261, a coach card's place) and
+ * 34.7 / 34.8 (#1230, its built-in retry too), against the line of 34: the
+ * same main on either side of it, so every check passed or failed by luck,
+ * as on 2026-10-27 (v2.3.3657).  What grew it since that day: the evening's
+ * merges (the skateboard and its board button, the Town Hall board and its
+ * pins, the party chip, the world map's marker pictures, the loot pile's
+ * shine, No man's land's steps and its pill, the look palette's shared sheets
+ * and their tables) -- about 0.7-1 MB of the page's objects at the fight.
+ * 36 leaves ~1.3 MB of room.  Nothing is kept: the third trip still ends
+ * where the second did.  Which of them holds the most is a bisect for after
+ * the showing (lane P1 offered); lower the line again when it is trimmed.
+ *
  * v2.3.3699, the monsters' strips held as their colour numbers once drawn
  * (rendering/heldNumbers.js): `canvases` 96 -> 88 -- LOWERED, the saving
  * locked in.  Two runs each way on one build (`QA_MB_QUERY=held=0` the game
@@ -104,6 +119,19 @@
  * other lines where main's are.  (memprobe.mjs now counts the buffers the
  * page makes as well as the ones it decodes: counting decodes alone, the
  * six one-channel copies went missing and the line read 23.8.)
+ *
+ * v2.3.3715, `artCache` read right (docs/specs/pictures-once.md): the line
+ * counted a canvas in the asset cache at its texture's size, and a canvas
+ * emptied once its copy is on the chip (gpuOnly.js, heldNumbers.js) holds
+ * nothing -- 21.6-23.3 MB of the line at the fight was pictures already let
+ * go of.  Counted by what each canvas holds, the code before the spec's two
+ * switches reads 78.9 MB at the fight (102.2 before) and 65.6 at home (79.5).
+ * No line is changed here: the room it opens is the owner's to lock in or
+ * spend.  The two switches (`?onecopy`, `?picnumbers`) are ON by default (the
+ * owner, 2026-10-28; `=0` turns each off); with both on the fight reads art
+ * 65.8, chip 75.2, canvases 26.7, buffers 19.6 (both off: 78.9, 83.8, 39.8,
+ * 16.8; QA_MB_QUERY=onecopy=0&picnumbers=0).
+ * (v2.3.3728: this note corrected: it said "off by default".)
  */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 112, measured: 102.2,   /* v2.3.3702: 156 -> 112, see the header */
@@ -114,7 +142,7 @@ export const MEMORY_BUDGET = {
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 29, measured: 27.0,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 34, measured: 33.3,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 36, measured: 34.7,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 22, measured: 20.4,   /* v2.3.3703: 24 -> 22, see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },

@@ -420,6 +420,37 @@ BroTown" with a button to brotown.net. Full write-up:
 - **Seeing which sites tried:** **Workers & Pages** → **brotown-server** →
   **Logs** → **Begin log stream**, and look for `origin refused`.
 
+## If something looks wrong during the showing: the memory savers (v2.3.3755)
+
+Every memory saver is on by default. If the game looks or sounds wrong on
+anyone's phone, you can turn the savers off for **every phone** from your own
+phone, with no deploy:
+
+1. Open the game, then the **Test panel** (enter your admin key if asked).
+2. Find **Memory savers**.
+3. Tap **All off**.
+
+Every phone is told at once. The savers marked **"next load"** change when
+each phone next opens or reloads the game; the others change straight away.
+If it was one saver, you can instead turn just that one off with its **Turn
+off** button, and **All on** (or its **Turn on**) puts them back.
+
+The eight savers, in the panel's words:
+
+| In the panel | What it saves | When "off" takes effect |
+|---|---|---|
+| Sound held only while needed | sound memory | next load |
+| A crowd of one sound plays as a few | nothing (a loudness rule) | at once |
+| Pictures held once | picture memory | next load |
+| Monster strips as colour numbers | monster picture memory | next load |
+| Windows load when opened | code memory | next load |
+| Lean ground builder | map-building memory | next load |
+| Map leftover let go | map memory | next load |
+| Characters coloured on the chip | character picture memory | at once |
+
+(Each is one live flag, `off_<name>`, shown in **Live flags** below; the
+Message diet has its own row, with **Off for everyone** as its switch.)
+
 ## Live switches (flags) — change the game without a deploy
 
 Flags take effect immediately for everyone, survive deploys, and are

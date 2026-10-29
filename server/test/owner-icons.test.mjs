@@ -133,8 +133,12 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   check('3e the free daily spin row wears the prize wheel; the drawn wheel stays for the bonus spins elsewhere',
     /<img src=\{OWNER_ICON\.prizeWheel\.src\}/.test(spin) && !/<SpinGlyph/.test(spin) && (dr.match(/<SpinGlyph size=/g) || []).length >= 2, { spin: spin.slice(0, 200) });
   const jp = src('src/ui/mobile/dash/JourneyPanel.jsx');
-  check('3f the empty Journey page shows the treasure map, not dimmed (its emoji fallback kept)',
-    /<img src=\{OWNER_ICON\.journeyMap\.src\}/.test(jp) && !/nav-journey/.test(jp) && !/opacity: 0\.4/.test(jp) && /createTextNode\('🧭'\)/.test(jp));
+  /* v2.3.3773: the Journey page is the Character page's records now (the
+     owner: "journey ... its own icon in the more/other apps menus"), so the
+     always-empty travel log that wore the treasure map is gone; the map stays
+     the owner's pick on disk (7b holds its bytes) */
+  check('3f the Journey page is the records, and the treasure map stays an owner pick',
+    /data-journey-card=\{icon\}/.test(jp) && !/OWNER_ICON\.journeyMap/.test(jp) && /journeyMap:/.test(src('src/data/ownerIcons.js')));
   const er = src('src/rendering/systems/entityRenderer.js');
   check('3g the townsfolk wear the owner\'s pins, 38 tall, the drawn disc kept as the fallback',
     /const qmPin = new Sprite\(Texture\.EMPTY\);/.test(er) && /const t = _questPinTex\(display\._qmState\);/.test(er)
@@ -315,9 +319,12 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     && !/<circle cx="9" cy="10" r="1\.2"/.test(chat) && existsSync(pub('/icons/ui/tab-forge.webp')) && existsSync(pub('/icons/ui/chat-emotes.webp')));
 
   const cs = src('src/ui/panels/controlSkin.jsx'), sb = src('src/ui/panels/SpecialButton.jsx'), jb = src('src/ui/panels/JumpButton.jsx');
-  check('7e Jump and the generic Special are round pictures drawn as the button\'s face (AbilityFace), at a new address, their greys beside them',
+  /* v2.3.3721: the Jump button no longer wears its round picture -- the owner,
+     "the icon now for jump looks like a special ability" -- but a plain mark
+     drawn in SVG (controlSkin JumpGlyph); the file stays on disk */
+  check('7e the generic Special is a round picture drawn as the button\'s face (AbilityFace), at a new address, its grey beside it; Jump wears its plain mark (v2.3.3721)',
     /export function AbilityFace\(props\)/.test(cs) && /AbilityFace, \{ size: size, name: 'special', grey: grey \}/.test(sb)
-    && /AbilityFace, \{ size: size, name: 'jump' \}/.test(jb) && /const ABILITY_ART_V = '2\.3\.3526'/.test(cs)
+    && /React\.createElement\(JumpGlyph, \{/.test(jb) && !/AbilityFace/.test(jb) && /const ABILITY_ART_V = '2\.3\.3526'/.test(cs)
     && /const SPECIAL_ART_V = '2\.3\.3526'/.test(cs) && !/JumpIcon|StarburstIcon/.test(cs + sb + jb)
     && ['jump', 'special', 'burst', 'special-sword', 'special-bow'].every((n) => existsSync(pub('/ui/controls/abil-' + n + '-grey.webp'))));
   const cut = src('tools/ui/cut-owner-icons.py');

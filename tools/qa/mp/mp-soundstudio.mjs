@@ -188,7 +188,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 6. heard just now: a real jump, then the studio on it ── */
     await P.page.evaluate(() => window.__btSoundStudio.clear());
-    await P.page.keyboard.press('x');
+    await P.page.keyboard.press('Space');   /* v2.3.3844: Space jumps (was X) */
     let jumped = null;
     for (const t0 = Date.now(); Date.now() - t0 < 6000;) {
       jumped = await P.page.evaluate(() => window.__btSoundStudio.heard().filter((e) => e.tag === 'cue:jumpUp').length);

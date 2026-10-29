@@ -94,6 +94,7 @@ import { petMethods, PETS } from './pets.js';
    pets record, pets:<pid> (petbook.js).  docs/specs/trapping.md. */
 import { trappingMethods } from './trapping.js';
 import { hardenedWoodMethods } from './hardenedwood.js'; /* v2.3.3139: logs into hardened wood */
+import { rideMethods, RIDE_ENDS_ON } from './ride.js'; /* v2.3.3776: the skateboard, in BroTown's safe ground */
 import { raceMethods } from './race.js'; /* v2.3.3525: Lil Bro's race round the square (the tour's race_1) */
 import { petbookMethods } from './petbook.js';
 /* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
@@ -150,6 +151,8 @@ import { gearProvMethods } from './gearprov.js'; /* v2.3.2534 */
 import { gridMethods } from './grids.js';
 // v2.3.1171 (P4 decomposition): the move handler (anti-teleport + zone streaming) -- see movement.js.
 import { movementMethods, ROLL } from './movement.js';   /* v2.3.3292: + the paid roll's window */
+import { movePathMethods } from './movepath.js';   /* v2.3.3732: the message diet's glide */
+import { clientOffMethods } from './clientoff.js';   /* v2.3.3755: each memory saver off from the Test panel */
 // v2.3.1172 (P4 decomposition): rpg-blob load/save + player_state emit -- see persistence.js.
 import { persistenceMethods } from './persistence.js';
 // v2.3.1173 (P4 decomposition): identity gate + join bootstrap -- see join.js.
@@ -163,7 +166,9 @@ import { poseMethods } from './poses.js'; /* v2.3.3392: a held pose (sit, sleep,
 import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled by the worker */
 import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
 import { pointsResetMethods } from './pointsreset.js'; /* v2.3.3541: the free points reset -- every placed point back */
+import { bankMethods } from './bank.js'; /* v2.3.3785: the Bank's vault -- bag items and gold the worker holds, out of a death's reach */
 import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
+import { heapBurnMethods } from './heapburn.js'; /* v2.3.3748: a burning heap sets you on fire */
 import { safeHealMethods } from './safeheal.js'; /* v2.3.3569: BroTown's safe ground heals as the old town did, out of a fight */
 import { statCapMethods } from './statcap.js'; /* v2.3.3578: no cap on how many points a stat holds (the owner's "Remove stat cap") */
 // v2.3.1178: per-session tokens for the mutating HTTP economy
@@ -515,6 +520,7 @@ export const PRIVILEGED_EVENTS = new Set([
      innocent player's own screen and the other would make a game clear its
      bag of things the worker never took. */
   'nml_skull', 'nml_loss',
+  'nml_lock', 'nml_lock_ask',   /* v2.3.3770: the lock after a red skull's death (nomansland.js) */
   /* v2.3.3316: and what a kill there took, told to the killer.  Forged, it
      would point a player at a pile that is not theirs. */
   'nml_take',
@@ -537,10 +543,12 @@ export const PRIVILEGED_EVENTS = new Set([
      touched, the result.  Forged into a relay, one would start or win a race
      on another player's screen that the worker never ran. */
   'race_state', 'race_cp', 'race_end',
+  'ride_state',   /* v2.3.3776: the skateboard (ride.js): on, off and why */
   /* v2.3.3539: a rest's answer (rest.js) -- forged into a relay, it would
      tell another player they had rested and were Well Rested when the worker
      rested nobody. */
   'rest_result',
+  'bank_state',   /* v2.3.3785: the Bank's vault (bank.js) */
   /* v2.3.3127: the farm (farm.js) -- the beds, what grows in them and when it
      is ready, and what an action paid.  A forged one would paint ripe crops
      and harvests the worker never settled on another player's screen. */
@@ -710,6 +718,13 @@ export const PRIVILEGED_EVENTS = new Set([
   // un-privileged 'chat' relay (any client could impersonate the
   // server there); this type is forgeable only by the worker.
   'server_announce',
+  // v2.3.3732: the message diet's switches, live (movepath.js
+  // _movePathFlagChanged) -- forged, it would put a phone on the path with
+  // no glide behind it, or take one off
+  'move_path',
+  // v2.3.3755: the memory savers turned off for every phone (clientoff.js) --
+  // forged, it would switch a phone's savers off or on
+  'client_off',
   // v2.3.1132: two-sided trade session echoes (server-truth renderer).
   'trade2_state', 'trade2_invite',
   // v2.3.1185: party roster echoes (server-truth HUD renderer) + the
@@ -3339,6 +3354,7 @@ export class GameRoom {
     if (this._sparById && this._sparById.size && this._sparDeath(ps, playerId, cause)) return;
     ps.dying = true;
     ps.dead = true;
+    if (ps._ride) this._rideEnd(ps, 'dead', playerId);   /* v2.3.3776: off the board (ride.js) */
     ps.respawnAt = Date.now() + 5000;
     ps.dmgFromMonster = {};
     /* v2.3.3264: the record of what each player dealt them (the melee
@@ -4542,7 +4558,9 @@ export class GameRoom {
     const dx = ps.x - pile.x;
     const dy = ps.y - pile.y;
     const distSq = dx * dx + dy * dy;
-    const range = viaPet ? PETS.VACUUM_RANGE : this.LOOT_PICKUP_RANGE;
+    /* v2.3.3806: a pet's fetch widens it for a monster pile you may claim
+       (pets.js _petPickupRange); a death drop keeps the vacuum's 240. */
+    const range = viaPet ? this._petPickupRange(pile, session.id) : this.LOOT_PICKUP_RANGE;
     const rangeSq = range * range;
     if (distSq > rangeSq) return reject('out-of-range', { dist: Math.round(Math.sqrt(distSq)), max: range });
 
@@ -5054,6 +5072,11 @@ export class GameRoom {
       session.lastRecv = Date.now();
     }
 
+    /* v2.3.3776: fighting, gathering or posing puts a rider off the board
+       (ride.js RIDE_ENDS_ON) -- one Set lookup, before the message's own
+       handler, so the fight is judged on foot */
+    if (session.id && RIDE_ENDS_ON.has(msg.type)) this._rideOnInput(session.id, msg.type);
+
     switch (msg.type) {
       case 'join':
         /* v2.3.3274: ONE JOIN A SOCKET.  A second one under another id left
@@ -5094,6 +5117,11 @@ export class GameRoom {
          on the player (poses.js), told to the phones near by the tick's `po` */
       case 'pose':
         this._handlePose(session, msg);
+        break;
+      /* v2.3.3776: the skateboard -- get on, get off (ride.js), answered
+         `ride_state` */
+      case 'ride':
+        this._handleRide(session, msg);
         break;
       /* v2.3.3393: /roll and /flip (dice.js): the worker rolls, and tells the
          players near as `dice_roll` */
@@ -5489,6 +5517,26 @@ export class GameRoom {
         if (session.id) this._handleRaceStart(session);
         break;
 
+      case 'heap_burn':
+        /* v2.3.3748: your phone says you stand in a burning heap -- the
+           worker burns you, at its own rate, never the last point
+           (heapburn.js) */
+        if (session.id) this._handleHeapBurn(session);
+        break;
+
+      /* v2.3.3785: the Bank's vault (bank.js): open it, put in, take out --
+         each awaited (its first read of the vault is a storage get), each
+         answered bank_state */
+      case 'bank_open':
+        if (session.id) await this._handleBankOpen(session);
+        break;
+      case 'bank_deposit':
+        if (session.id) await this._handleBankMove(session, msg.payload || msg, 'in');
+        break;
+      case 'bank_withdraw':
+        if (session.id) await this._handleBankMove(session, msg.payload || msg, 'out');
+        break;
+
       case 'rest_request':
         /* v2.3.3539: a rest at the Hotel or on your farm's bed (rest.js) --
            full bars and Well Rested, paid by the worker */
@@ -5563,6 +5611,18 @@ export class GameRoom {
            chose to attack you, you are white.  Its own case, so it is never
            rebroadcast by the default branch. */
         if (session.id) this._handleNmlAttack(session, msg.payload || msg);
+        break;
+
+      /* v2.3.3770: the lock after a red skull's death (nomansland.js
+         _handleNmlLockAsk, _handleNmlLockAllow): the locked player's "?"
+         over their head, to the one who beat them alone, once a minute; and
+         that player letting them at them again.  Their own cases, never
+         rebroadcast. */
+      case 'nml_lock_ask':
+        if (session.id) this._handleNmlLockAsk(session, msg.payload || msg);
+        break;
+      case 'nml_lock_allow':
+        if (session.id) this._handleNmlLockAllow(session, msg.payload || msg);
         break;
 
       case 'shield_wear':
@@ -6267,6 +6327,7 @@ export class GameRoom {
          The record itself is durable in gear_prov:<pid> and reloads on the
          next join (gearprov.js); this is only the cache. */
       this._gearProvForget(session.id);
+      this._bankForget(session.id);   /* v2.3.3785: the vault's cache, the same way (bank.js) */
       /* v2.3.3120: the pets record's cache goes with the session too
          (petbook.js).  A try counted only in memory is copied out here and
          written at the very END of this handler -- awaited, as the last
@@ -6531,6 +6592,7 @@ Object.assign(GameRoom.prototype, petMethods);
 Object.assign(GameRoom.prototype, trappingMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, hardenedWoodMethods); /* v2.3.3139 */
 Object.assign(GameRoom.prototype, raceMethods); /* v2.3.3525 */
+Object.assign(GameRoom.prototype, rideMethods); /* v2.3.3776 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
@@ -6571,6 +6633,8 @@ Object.assign(GameRoom.prototype, gearProvMethods); /* v2.3.2534 */
 Object.assign(GameRoom.prototype, gridMethods);
 // v2.3.1171 (P4 decomposition): movement -- see movement.js.
 Object.assign(GameRoom.prototype, movementMethods);
+Object.assign(GameRoom.prototype, movePathMethods);   /* v2.3.3732 */
+Object.assign(GameRoom.prototype, clientOffMethods);   /* v2.3.3755 */
 // v2.3.1172 (P4 decomposition): persistence core -- see persistence.js.
 Object.assign(GameRoom.prototype, persistenceMethods);
 // v2.3.1178: HTTP economy-endpoint session tokens -- see httpauth.js.
@@ -6587,7 +6651,9 @@ Object.assign(GameRoom.prototype, diceMethods); /* v2.3.3393 */
 Object.assign(GameRoom.prototype, itemDropMethods); /* v2.3.3473 */
 Object.assign(GameRoom.prototype, pointsResetMethods); /* v2.3.3541 */
 Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
+Object.assign(GameRoom.prototype, bankMethods); /* v2.3.3785 */
 Object.assign(GameRoom.prototype, safeHealMethods); /* v2.3.3569 */
+Object.assign(GameRoom.prototype, heapBurnMethods); /* v2.3.3748 */
 Object.assign(GameRoom.prototype, statCapMethods); /* v2.3.3578 */
 // v2.3.1185: party roster mixin (handoff item D).
 Object.assign(GameRoom.prototype, partyMethods);

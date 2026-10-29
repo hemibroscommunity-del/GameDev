@@ -36,7 +36,7 @@
  */
 import { performance, monitorEventLoopDelay } from 'node:perf_hooks';
 import { PlainWS } from './plainws.mjs';
-import { MOVE_DIET, dietMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule */
+import { MOVE_DIET, dietMayWait, MOVE_PATH, pathMayWait } from '../../../src/game/moveDiet.js';   /* v2.3.3204: --diet, the phone's own rule; v2.3.3732: --path */
 import { readFileSync } from 'node:fs';
 /* v2.3.3315: the Wheel the server plays -- the live spawn table's (five times
    longer since v2.3.3315; wheelspawns1.js the short one) */
@@ -263,6 +263,9 @@ function enterWheel(bot) {
 }
 
 function pickAnchor(bot) {
+  /* v2.3.3754: CFG.fightAt -- every fighter round one spot (a phone's
+     screen: mp-crowdfight), chasing only the monsters within CFG.chaseR of it */
+  if (CFG && CFG.fightAt) return { x: CFG.fightAt.x, y: CFG.fightAt.y };
   /* the monsters of its own land, nearest the middle: the first stretch,
      where a new character's fights are (wheelzone.js, levels 1-5) */
   let best = null, bestD = Infinity;
@@ -300,7 +303,10 @@ function startWalking(bot) {
         if (bot.state !== 'walking' && bot.state !== 'dead') return;
         /* v2.3.3453: CFG.look -- what the bots wear on top of the sample
            (mp-crowdbots BT_CROWD_LOOK: armoured bots, for the metal shine) */
-        const data = Object.assign({}, trackSample(), CFG.look || null, {
+        /* v2.3.3754: CFG.looks -- one look a bot (its k), so a crowd is N
+           different looks, as a real one is (mp-crowdfight) */
+        const own = Array.isArray(CFG.looks) && CFG.looks.length ? CFG.looks[bot.k % CFG.looks.length] : null;
+        const data = Object.assign({}, trackSample(), CFG.look || null, own, {
           x: Math.round(bot.x * 10) / 10, y: Math.round(bot.y * 10) / 10,
           name: 'Load' + bot.k, zone: 'wheel', dir: 'down',
         });
@@ -329,8 +335,10 @@ function newTarget(bot) {
 
 function nearestMonster(bot) {
   let best = null, bestD = Infinity;
+  const at = CFG && CFG.fightAt && CFG.chaseR > 0 ? CFG.fightAt : null;
   for (const m of bot.monsters.values()) {
     if (m.alive === false) continue;
+    if (at && Math.hypot(m.x - at.x, m.y - at.y) > CFG.chaseR) continue;
     const d = Math.hypot(m.x - bot.x, m.y - bot.y);
     if (d < bestD) { bestD = d; best = m; }
   }
@@ -403,6 +411,7 @@ function sendMove(bot, entering, vx = 0, vy = 0) {
     type: 'move', x, y, d, f, eqc: 'none', eql: 'none', eqs: 'none', ex: null, z: 'wheel',
     vx: Math.round(vx * perFrame * 100), vy: Math.round(vy * perFrame * 100),
     dodging: false, blocking: false, ba: null, dead: false,
+    ...(CFG.path ? { pd: 1 } : {}),   /* v2.3.3732: the message diet (wsClient.js movePathOn) */
   };
   /* v2.3.3204: --diet, as a phone on the Wheel's safe ground does it
      (src/game/moveDiet.js, wsClient.js moveDietOn): a move on the line the
@@ -411,6 +420,11 @@ function sendMove(bot, entering, vx = 0, vy = 0) {
   const now = performance.now();
   if (CFG.diet && !entering && now - bot.lastSent < MOVE_DIET.GAP_MS
       && dietMayWait(!bot.fighter, m, now, bot.lastMove, bot.lastMoveAt, DIET_CENTRE, DIET_SAFE_R)) { M.dieted = (M.dieted || 0) + 1; return; }
+  /* v2.3.3732: --path, as a phone against a worker with caps.movepath does
+     it (wsClient.js flushInputBuffer): a steady move waits to MOVE_PATH.GAP_MS;
+     a change goes now; the rest keep the bot's own rate */
+  if (CFG.path && !entering && bot.lastMove && now - bot.lastSent < MOVE_PATH.GAP_MS
+      && pathMayWait(true, m, now, bot.lastMove, bot.lastMoveAt)) { M.pathed = (M.pathed || 0) + 1; return; }
   const ok = send(bot, m);
   if (!ok) return;
   M.moves++;

@@ -1,0 +1,498 @@
+/* ═══ THE TOWN HALL'S BOARD, ON A PHONE AND A COMPUTER (v2.3.3766) ═══
+ *
+ * The owner: "at the town hall it was just a big menu board of all the things
+ * to do (dungeon, gambling, arena, woodworking, etc) with a page that
+ * describes what each thing does and pin drop you can put on the map to go to
+ * the one you want (two pins can be active at once - red pin and blue pin).
+ * When you "enter it" it brings up the board."
+ *
+ * In the world's BroTown, a 390 x 844 phone held upright, then a computer
+ * (wide: the sideways layout):
+ *   1. at the Town Hall's door, "Enter" opens the BOARD: tiles under their
+ *      headings, the dungeons, the arena, the forge and the Gambling Den among
+ *      them, and the Leaderboard and World map at its foot;
+ *      v2.3.3779: the Dungeons under their own heading, every tile its own
+ *      picture (each drawn), a land's name the world's own;
+ *      v2.3.3788: Quests first and Gambling after Money and trade; each
+ *      dungeon's level line on its tile, inside it at 390, 320 and sideways;
+ *      v2.3.3803: the badges, from real state (the Mayor's quest offered, the
+ *      free spin untaken), and none elsewhere;
+ *      v2.3.3801: the owner's review's order, every tile's line (fitting),
+ *      and on the computer: one action on a page with no place (Open Quests,
+ *      Ride now, none for No man's land) and the foot's Codex and Journey;
+ *   2. a tile opens its PAGE: its words, where it is, Red pin and Blue pin;
+ *   3. RED on the arena, BLUE on the forge: the board's tiles wear them, and
+ *      both are on the minimap (the forge's in the box, near the Town Hall);
+ *   4. red MOVED to the Gambling Den: one red pin, there now;
+ *   5. blue LIFTED (its button again on the forge's page);
+ *   6. a RELOAD: the red pin is still on the Gambling Den, on the minimap and
+ *      the world map; blue still lifted;
+ *   7. the computer: the board opens, a page pins, the minimap shows it;
+ *   8. no page errors.
+ *  12. v2.3.3802, the layout pass (the owner ran the board past ChatGPT):
+ *      the columns follow the board's own width (3, 4 from 540 px, 5 from
+ *      720), upright at 390 and 320, sideways, and on a computer at 1280 and
+ *      1440 wide (the window wider there, never past the play column); every
+ *      tile in a section one height; nothing cut; the nav strip stays at the
+ *      top as the board scrolls, and a chip scrolls the board to its heading
+ *      and wears the gold.
+ * Pictures: tools/qa/mp/out/townboard-*.png.
+ */
+import * as H from './harness.mjs';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+
+const PHONE = { width: 390, height: 844 };
+
+export async function run({ browser, wsPort, webPort, rec }) {
+  const OUT = join(H.REPO, 'tools/qa/mp/out');
+  mkdirSync(OUT, { recursive: true });
+  const shot = (P, name, clip) => P.page.screenshot({ path: join(OUT, `townboard-${name}.png`), clip }).catch(() => {});
+  const errors = [];
+
+  const standAt = async (P, x, bootsY) => {
+    for (let k = 0; k < 4; k++) {
+      const dy = await P.page.evaluate(() => { const S = window._gameState.current, g = window.__btPlayerGround(); return g.y - S.player.y; });
+      await H.hopTo(P, x, bootsY - dy, { step: 100, gap: 260, tries: 90 });
+      await P.page.waitForTimeout(800);
+      const g = await P.page.evaluate(() => window.__btPlayerGround());
+      if (Math.hypot(g.x - x, g.y - bootsY) < 12) return true;
+    }
+    return false;
+  };
+  const waitSel = async (P, sel, ms = 5000) => {
+    for (let t0 = Date.now(); Date.now() - t0 < ms;) {
+      const ok = await P.page.evaluate((s) => { const e = document.querySelector(s); if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 20 && r.height > 20; }, sel);
+      if (ok) return true;
+      await P.page.waitForTimeout(200);
+    }
+    return false;
+  };
+  /* a real touch (or click, on the computer) on what `sel` finds */
+  const press = async (P, sel, wide) => {
+    const at = await P.page.evaluate((s) => {
+      const e = document.querySelector(s);
+      if (!e) return null;
+      e.scrollIntoView({ block: 'center' });
+      const r = e.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    }, sel);
+    if (!at) return false;
+    await P.page.waitForTimeout(150);
+    if (wide) await P.page.mouse.click(at.x, at.y); else await P.page.touchscreen.tap(at.x, at.y);
+    await P.page.waitForTimeout(250);
+    return true;
+  };
+  const closeCard = async (P) => { await P.page.evaluate(() => { const b = document.querySelector('.bt-inspect-close'); if (b) b.click(); }); await P.page.waitForTimeout(500); };
+  /* a new character's welcome card, put away (it sits over the window) */
+  const skipTutorial = async (P) => {
+    for (let i = 0; i < 10; i++) {
+      const hit = await P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button')).find((q) => /Skip tutorial/.test(q.textContent || '')); if (b) { b.click(); return true; } return false; });
+      if (hit) { await P.page.waitForTimeout(400); return true; }
+      await P.page.waitForTimeout(300);
+    }
+    return false;
+  };
+  const doorsOf = async (P) => {
+    let doors = [];
+    for (let i = 0; i < 40 && !doors.some((d) => d.id === 'townhall'); i++) {
+      doors = await P.page.evaluate(() => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []));
+      if (!doors.some((d) => d.id === 'townhall')) await P.page.waitForTimeout(500);
+    }
+    return doors;
+  };
+  /* the Town Hall's board: to its door, Enter */
+  const openBoard = async (P, th, wide) => {
+    await closeCard(P);
+    await standAt(P, th.x, th.y + 30);
+    let btn = null;
+    for (let i = 0; i < 20 && !btn; i++) {
+      btn = await P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || '')); return b ? (b.textContent || '').trim() : null; });
+      if (!btn) await P.page.waitForTimeout(250);
+    }
+    await P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || '')); if (b) b.click(); });
+    const open = await waitSel(P, '[data-wheel-hall="townhall"] [data-town-board]');
+    return { btn, open, wide };
+  };
+  const board = (P) => P.page.evaluate(() => {
+    const b = document.querySelector('[data-town-board]');
+    if (!b) return null;
+    return {
+      tiles: Array.from(b.querySelectorAll('[data-board-tile]')).map((t) => {
+        const img = t.querySelector('img');
+        /* v2.3.3779: each tile's name and its picture, drawn (not the emoji a broken one falls back to) */
+        return { id: t.getAttribute('data-board-tile'), pins: t.getAttribute('data-board-pins'), name: (() => { const n = t.querySelector('.bt-tb-name') || t.querySelector(':scope > span:not([data-board-sub])');   return ((n || t).textContent || '').trim(); })(),   /* v2.3.3801: the name alone, not its line; v2.3.3802: its own span first (the picture's box is a span too) */
+          pic: img ? img.getAttribute('src') : null, drawn: !!img && img.complete && img.naturalWidth > 0,
+          /* v2.3.3788: a dungeon's level line, and whether it fits inside its tile */
+          /* v2.3.3803: what the tile's badge says, or null */
+          badge: (() => { const g = t.querySelector('[data-board-badge]'); return g ? g.getAttribute('data-board-badge') + ':' + (g.textContent || '').trim() : null; })(),
+          /* v2.3.3801: every tile's line under its name, and whether it fits */
+          sub: (() => { const l = t.querySelector('[data-board-sub]'); if (!l) return null;
+            const lr = l.getBoundingClientRect(), tr = t.getBoundingClientRect();
+            return { text: (l.textContent || '').trim(), fits: lr.left >= tr.left - 0.5 && lr.right <= tr.right + 0.5 && lr.bottom <= tr.bottom + 0.5 && l.scrollWidth <= l.clientWidth + 1 }; })(),
+          level: (() => { const l = t.querySelector('[data-board-level]'); if (!l) return null;
+            const lr = l.getBoundingClientRect(), tr = t.getBoundingClientRect();
+            return { text: (l.textContent || '').trim(), fits: lr.left >= tr.left - 0.5 && lr.right <= tr.right + 0.5 && lr.bottom <= tr.bottom + 0.5 && l.scrollWidth <= l.clientWidth + 1 }; })() };
+      }),
+      groups: Array.from(b.querySelectorAll('[data-board-group]')).map((g) => g.getAttribute('data-board-group')),
+      foot: Array.from(b.querySelectorAll('[data-hall-row]')).map((x) => x.getAttribute('data-hall-row')),
+    };
+  });
+  /* v2.3.3802: the board's layout as drawn: its width, its columns, each
+     section's tile heights, and anything cut */
+  const layout = (P) => P.page.evaluate(() => {
+    const b = document.querySelector('[data-town-board]'), card = b && b.closest('.bt-inspect-card');
+    if (!b || !card) return null;
+    const br = b.getBoundingClientRect(), cr = card.getBoundingClientRect();
+    const groups = Array.from(b.querySelectorAll('[data-board-group]')).map((g) => {
+      const tiles = Array.from(g.querySelectorAll('[data-board-tile]')).map((t) => t.getBoundingClientRect());
+      const hs = tiles.map((r) => Math.round(r.height));
+      return { id: g.getAttribute('data-board-group'), cols: getComputedStyle(g).gridTemplateColumns.split(' ').filter(Boolean).length,
+        equal: hs.length ? Math.max(...hs) - Math.min(...hs) <= 1 : true, hs,
+        cut: tiles.some((r) => r.left < br.left - 0.5 || r.right > br.right + 0.5) };
+    });
+    const names = Array.from(b.querySelectorAll('[data-board-tile]')).some((t) => t.scrollWidth > t.clientWidth + 1);
+    return { boardW: Math.round(br.width), cardW: Math.round(cr.width), playW: Math.round((document.querySelector('.bt-inspect') || document.body).getBoundingClientRect().width),
+      groups, overflow: card.scrollWidth > card.clientWidth + 1 || names };
+  });
+  const colsFor = (w) => (w >= 720 ? 5 : w >= 540 ? 4 : 3);
+  const layoutOk = (L) => !!L && !L.overflow && L.groups.length > 3 && L.groups.every((g) => g.cols === colsFor(L.boardW) && g.equal && !g.cut);
+  /* the strip: sticky as the window scrolls, and a chip to its heading */
+  const navCheck = async (P, wide) => {
+    const r = {};
+    await P.page.evaluate(() => { const c = document.querySelector('.bt-inspect-card'); if (c) c.scrollTop = c.scrollHeight; });
+    await P.page.waitForTimeout(400);
+    r.sticky = await P.page.evaluate(() => {
+      const n = document.querySelector('[data-board-nav]'), c = document.querySelector('.bt-inspect-card');
+      if (!n || !c) return null;
+      return { navTop: Math.round(n.getBoundingClientRect().top), cardTop: Math.round(c.getBoundingClientRect().top), scrolled: c.scrollTop };
+    });
+    await P.page.evaluate(() => { const c = document.querySelector('.bt-inspect-card'); if (c) c.scrollTop = 0; });
+    await P.page.waitForTimeout(300);
+    /* a real tap on the Dungeons chip (not scrollIntoView'd: it is on screen) */
+    const at = await P.page.evaluate(() => { const e = document.querySelector('[data-board-chip="dungeons"]'); if (!e) return null; const q = e.getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; });
+    if (at) { if (wide) await P.page.mouse.click(at.x, at.y); else await P.page.touchscreen.tap(at.x, at.y); }
+    await P.page.waitForTimeout(2500);   /* a smooth scroll, on this box's few frames a second */
+    r.jump = await P.page.evaluate(() => {
+      const h = document.querySelector('[data-board-heading="dungeons"]'), n = document.querySelector('[data-board-nav]'), on = document.querySelector('[data-board-chip][data-chip-on="1"]');
+      if (!h || !n) return null;
+      return { gap: Math.round(h.getBoundingClientRect().top - n.getBoundingClientRect().bottom), on: on && on.getAttribute('data-board-chip') };
+    });
+    r.ok = !!r.sticky && r.sticky.scrolled > 100 && Math.abs(r.sticky.navTop - r.sticky.cardTop) <= 2 && !!r.jump && r.jump.gap >= -2 && r.jump.gap <= 40 && r.jump.on === 'dungeons';
+    return r;
+  };
+  const pageOf = (P) => P.page.evaluate(() => {
+    const p = document.querySelector('[data-board-page]');
+    if (!p) return null;
+    return { id: p.getAttribute('data-board-page'), text: (p.textContent || '').replace(/\s+/g, ' ').trim(),
+      btns: Array.from(p.querySelectorAll('[data-pin-btn]')).map((b) => ({ k: b.getAttribute('data-pin-btn'), on: b.getAttribute('data-pin-on'), text: (b.textContent || '').trim() })) };
+  });
+  const pinIt = async (P, tile, color, wide) => {
+    await press(P, `[data-board-tile="${tile}"]`, wide);
+    const pg = await waitSel(P, `[data-board-page="${tile}"]`);
+    await press(P, `[data-pin-btn="${color}"]`, wide);
+    const after = await pageOf(P);
+    await press(P, '[data-board-back]', wide);
+    await waitSel(P, '[data-town-board]');
+    return { pg, after };
+  };
+  const pinsState = (P) => P.page.evaluate(() => { const S = window._gameState.current; const p = S._mapPins; return p ? { red: p.red, blue: p.blue } : null; });
+  const miniPins = async (P) => {
+    let v = null;
+    for (let i = 0; i < 16; i++) {
+      v = await P.page.evaluate(() => (window.__btMinimap && window.__btMinimap.mapPins ? window.__btMinimap.mapPins.map((m) => ({ ...m })) : null));
+      if (v) break;
+      await P.page.waitForTimeout(250);
+    }
+    return v;
+  };
+
+  /* ── the phone ── */
+  const A = await H.newPlayer(browser, { name: 'Boardbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true });
+  A.page.on('pageerror', (e) => errors.push(`phone: ${String((e && e.message) || e).slice(0, 200)}`));
+  let C = null;
+  try {
+    await H.enterWorld(A);
+    await skipTutorial(A);
+    const doors = await doorsOf(A);
+    const th = doors.find((d) => d.id === 'townhall');
+    rec.ok('the Town Hall is a door of the world\'s BroTown (guard)', !!th && th.hall === 'townhall', th);
+    if (!th) return;
+
+    /* 1. the board */
+    const o1 = await openBoard(A, th, false);
+    /* v2.3.3779: the pictures have loaded before the board is read */
+    await A.page.waitForFunction(() => Array.from(document.querySelectorAll('[data-board-tile] img')).every((i) => i.complete), null, { timeout: 15000 }).catch(() => {});
+    const b1 = await board(A);
+    await shot(A, '1-board');
+    const ids = b1 ? b1.tiles.map((t) => t.id) : [];
+    rec.ok(`1. at the Town Hall's door, "${o1.btn}" opens the board: ${ids.length} tiles under ${b1 ? b1.groups.length : 0} headings, the Leaderboard, World map, Codex and Journey at its foot`,
+      o1.open && !!b1 && ids.length >= 20 && ['goo-grotto', 'arena', 'nomansland', 'forge', 'gambling', 'woodworker', 'land-verdant'].every((id) => ids.includes(id))
+        && b1.groups.join() === 'quests,lands,dungeons,fight,make,money,gambling,people' && b1.foot.join() === 'leaderboard,map,codex,journey',
+      { btn: o1.btn, open: o1.open, n: ids.length, groups: b1 && b1.groups, foot: b1 && b1.foot });
+    /* v2.3.3779, the owner: "classified by 'dungeon' not by 'fight' ... Also use better icons for each one" */
+    const pics = b1 ? b1.tiles.map((t) => t.pic) : [];
+    const verd = b1 ? b1.tiles.find((t) => t.id === 'land-verdant') : null;
+    rec.ok('...every tile wears its own picture, each drawn, and a land\'s name is the world\'s (never "{verdant}" or the stand-in "The flora land")',
+      pics.length === ids.length && new Set(pics).size === pics.length && b1.tiles.every((t) => t.drawn)
+        && !!verd && verd.name.length > 3 && !/[{}]/.test(verd.name) && !/flora land/i.test(verd.name),
+      { undrawn: b1 && b1.tiles.filter((t) => !t.drawn).map((t) => t.id), verd: verd && verd.name, dup: pics.filter((p, i) => pics.indexOf(p) !== i) });
+
+    /* v2.3.3788, the owner: "list the level ranges below the dungeons (e.g lvl
+       10+ for goo grotto)" -- on the tile, fitting upright at 390 and 320 and
+       sideways; and the Quests and Gambling headings */
+    const lvOf = (b) => Object.fromEntries((b ? b.tiles : []).filter((t) => t.level).map((t) => [t.id, t.level]));
+    /* v2.3.3801: every tile's line, present and inside its tile */
+    const subsBad = (b) => (b ? b.tiles : []).filter((t) => !t.sub || !t.sub.text || !t.sub.fits).map((t) => t.id + ':' + (t.sub ? t.sub.text : '-'));
+    const subBad = { w390: subsBad(b1) };
+    const fitAt = async (vp, tag) => {
+      await A.page.setViewportSize(vp);
+      await A.page.waitForTimeout(600);
+      const b = await board(A);
+      subBad[tag] = subsBad(b);
+      await A.page.evaluate(() => { const t = document.querySelector('[data-board-group="dungeons"]'); if (t) t.scrollIntoView({ block: 'center' }); });
+      await A.page.waitForTimeout(300);
+      await shot(A, tag);
+      return lvOf(b);
+    };
+    const lv390 = lvOf(b1);
+    const L390 = await layout(A);
+    const nav390 = await navCheck(A, false);
+    await shot(A, '9-board-390-nav');
+    const lv320 = await fitAt({ width: 320, height: 700 }, '1-board-320');
+    const L320 = await layout(A);
+    const lvSide = await fitAt({ width: 844, height: 390 }, '1-board-sideways');
+    const LSide = await layout(A);
+    await A.page.setViewportSize(PHONE);
+    await A.page.waitForTimeout(600);
+    const want = { 'goo-grotto': /^Lv 10\+ · party of 2–3$/, 'great-cave': /^Lv 26\+$/, 'foundry-dome': /^Lv 26\+$/, 'buried-city': /^Lv 41\+$/ };
+    const lvOk = (m) => Object.keys(want).every((id) => m[id] && want[id].test(m[id].text) && m[id].fits) && Object.keys(m).length === 4;
+    rec.ok('...each dungeon\'s tile says its levels under its name (Goo Grotto "Lv 10+ · party of 2–3", Great Cave and Foundry Dome "Lv 26+", Buried City "Lv 41+"), inside the tile upright at 390 and 320 px and sideways',
+      lvOk(lv390) && lvOk(lv320) && lvOk(lvSide), { lv390, lv320, lvSide });
+    const lands = b1 ? b1.tiles.filter((t) => /^land-/.test(t.id)).map((t) => t.sub && t.sub.text) : [];
+    rec.ok('...every tile has its one line under its name, inside the tile at 390, 320 and sideways (a land its compass and element, e.g. "West \u00b7 Flora")',
+      Object.values(subBad).every((x) => x.length === 0) && lands.includes('West \u00b7 Flora') && lands.includes('SW \u00b7 Venom'), { subBad, lands });
+    /* v2.3.3803: badges from real state only -- a new character: Mayor Bro
+       offers his first quest (the gold "!" over his head), the townsfolk
+       wait on it, and today's free spin is not taken */
+    const truth = await A.page.evaluate(() => {
+      const S = window._gameState.current;
+      const offers = (S.npcs || []).filter((n) => n && n._questMarker === '\u2757');
+      return { mayor: offers.filter((n) => n.name === 'Mayor Bro').length, folk: offers.filter((n) => n.name !== 'Mayor Bro').length,
+        spin: !!(S._serverCaps && S._serverCaps.dailyspin) };
+    });
+    const bOf = (id) => { const t = b1 ? b1.tiles.find((x) => x.id === id) : null; return t ? t.badge : undefined; };
+    const others = b1 ? b1.tiles.filter((t) => t.badge && !['mayor', 'townquests', 'gambling'].includes(t.id)).map((t) => t.id) : [];
+    rec.ok('...badges say only what is so: Mayor\'s Story the quests he offers now (the gold "!" over his head), Town Quests the townsfolk\'s (none before his first), the Gambling Den "Spin ready" with today\'s free spin untaken; no other tile wears one',
+      truth.mayor === 1 && bOf('mayor') === 'quest:1' && (truth.folk > 0 ? bOf('townquests') === 'quest:' + truth.folk : bOf('townquests') === null)
+        && (truth.spin ? bOf('gambling') === 'spin:Spin ready' : bOf('gambling') === null) && others.length === 0,
+      { truth, mayor: bOf('mayor'), folk: bOf('townquests'), den: bOf('gambling'), others });
+    const inG = (g) => b1 ? b1.tiles.filter((t) => ['mayor', 'townquests', 'guildhall', 'race', 'gambling', 'ace'].includes(t.id)).map((t) => t.id) : [];
+    rec.ok(`12. the columns follow the board's own width -- ${L390 && L390.groups[0].cols} at 390 (${L390 && L390.boardW} px), ${L320 && L320.groups[0].cols} at 320, ${LSide && LSide.groups[0].cols} sideways (${LSide && LSide.boardW} px); every tile in a section one height; nothing cut`,
+      layoutOk(L390) && layoutOk(L320) && layoutOk(LSide) && L390.groups[0].cols === 3 && L320.groups[0].cols === 3, { L390, L320, LSide });
+    rec.ok('12. ...the nav strip stays at the top of the window as the board scrolls, and its Dungeons chip scrolls the board there and wears the gold', nav390.ok, nav390);
+    rec.ok('...Quests heads the board (the Mayor\'s story, the townsfolk\'s quests, the Guild Hall), and Gambling has the Gambling Den and Ace',
+      ['mayor', 'townquests', 'guildhall', 'gambling', 'ace'].every((id) => inG().includes(id)) && b1.groups[0] === 'quests', { tiles: inG() });
+
+    /* 2. a page */
+    await press(A, '[data-board-tile="arena"]', false);
+    await waitSel(A, '[data-board-page="arena"]');
+    const p2 = await pageOf(A);
+    await shot(A, '2-page');
+    rec.ok('2. the arena\'s tile opens its page: what it is (100 gold, up to 8 fighters), where (the Sheriff\'s Office), Red pin and Blue pin',
+      !!p2 && /100 gold/.test(p2.text) && /Sheriff/.test(p2.text) && p2.btns.map((b) => b.k + ':' + b.on).join() === 'red:0,blue:0', p2);
+    await press(A, '[data-board-back]', false);
+    await waitSel(A, '[data-town-board]');
+    /* v2.3.3766: No man's land is everywhere past the safe ground: a page, no pins */
+    await press(A, '[data-board-tile="nomansland"]', false);
+    await waitSel(A, '[data-board-page="nomansland"]');
+    const p2b = await pageOf(A);
+    rec.ok('...and No man\'s land, under Fight, has a page (fights between players, the skulls, what you lose) and no pins',
+      !!p2b && /red skull/.test(p2b.text) && /safe ground/.test(p2b.text) && p2b.btns.length === 0, p2b && { text: p2b.text.slice(0, 200), btns: p2b.btns });
+    await press(A, '[data-board-back]', false);
+    await waitSel(A, '[data-town-board]');
+    /* v2.3.3779: a dungeon's page names its land as the world does */
+    await press(A, '[data-board-tile="goo-grotto"]', false);
+    await waitSel(A, '[data-board-page="goo-grotto"]');
+    const p2c = await pageOf(A);
+    await shot(A, '2-dungeon');
+    /* v2.3.3778: the owner's rename, "Change verdant wilds on the town hall
+       description to Earth Forest": the land's tile and the Goo Grotto's
+       page read the world's new name */
+    rec.ok(`...the forest's tile reads the owner's new name, "${verd && verd.name}"`, !!verd && verd.name === 'Earth Forest', verd);
+    rec.ok('...and the Goo Grotto\'s page, under Dungeons, says its land by the world\'s own name, with Red pin and Blue pin',
+      !!p2c && !!verd && p2c.text.includes(verd.name) && !/[{}]/.test(p2c.text) && p2c.btns.length === 2, p2c && { text: p2c.text.slice(0, 240), verd: verd && verd.name });
+    await press(A, '[data-board-back]', false);
+    await waitSel(A, '[data-town-board]');
+    await press(A, '[data-board-tile="land-verdant"]', false);
+    await waitSel(A, '[data-board-page="land-verdant"]');
+    const p2d = await pageOf(A);
+    await shot(A, '2-forest');
+    rec.ok('...and the Earth Forest\'s own page says its name', !!p2d && /Earth Forest/.test(p2d.text) && !/Verdant Wilds/i.test(p2d.text), p2d && { text: p2d.text.slice(0, 200) });
+    await press(A, '[data-board-back]', false);
+    await waitSel(A, '[data-town-board]');
+
+    /* 3. red on the arena, blue on the forge */
+    const r3 = await pinIt(A, 'arena', 'red', false);
+    const b3 = await pinIt(A, 'forge', 'blue', false);
+    const t3 = await board(A);
+    const tilePins = Object.fromEntries((t3 ? t3.tiles : []).map((t) => [t.id, t.pins]));
+    await shot(A, '3-board-pinned');
+    rec.ok('3. Red pin on the arena and Blue pin on the forge: each button says "Lift", and the board\'s tiles wear them',
+      r3.after && r3.after.btns[0].on === '1' && /Lift red/.test(r3.after.btns[0].text) && b3.after && b3.after.btns[1].on === '1'
+        && tilePins.arena === 'red' && tilePins.forge === 'blue', { red: r3.after && r3.after.btns, blue: b3.after && b3.after.btns, arena: tilePins.arena, forge: tilePins.forge });
+    await closeCard(A);
+    const m3 = await miniPins(A);
+    const mini = await A.page.evaluate(() => window.__btWheelMini || null);
+    await shot(A, '3-minimap', mini ? { x: Math.max(0, mini.left - 8), y: Math.max(0, mini.top - 8), width: mini.w + 16, height: mini.h + 40 } : undefined);
+    const red3 = m3 && m3.find((m) => m.color === 'red'), blue3 = m3 && m3.find((m) => m.color === 'blue');
+    rec.ok('...and both are on the minimap: red on the arena (the Sheriff\'s Office), blue on the forge',
+      !!red3 && red3.id === 'arena' && !!blue3 && blue3.id === 'forge', m3);
+
+    /* 4. red moved */
+    await openBoard(A, th, false);
+    const r4 = await pinIt(A, 'gambling', 'red', false);
+    const s4 = await pinsState(A);
+    const t4 = await board(A);
+    const pins4 = Object.fromEntries((t4 ? t4.tiles : []).map((t) => [t.id, t.pins]));
+    rec.ok('4. red pinned on the Gambling Den MOVES there: one red pin, the arena\'s tile bare',
+      r4.after && r4.after.btns[0].on === '1' && s4 && s4.red === 'gambling' && pins4.gambling === 'red' && pins4.arena === '', { s4, gambling: pins4.gambling, arena: pins4.arena });
+
+    /* 5. blue lifted */
+    const b5 = await pinIt(A, 'forge', 'blue', false);
+    const s5 = await pinsState(A);
+    rec.ok('5. Blue pin pressed again on the forge LIFTS it (its button says "Blue pin" again)',
+      b5.after && b5.after.btns[1].on === '0' && /^Blue pin/.test(b5.after.btns[1].text) && s5 && s5.blue === null, { s5, btn: b5.after && b5.after.btns[1] });
+    await closeCard(A);
+
+    /* 6. a reload */
+    await A.page.reload();
+    await H.enterWorld(A);
+    await A.page.waitForTimeout(1500);
+    const m6 = await miniPins(A);
+    const s6 = await pinsState(A);
+    rec.ok('6. after a reload the red pin is still on the Gambling Den, on the minimap; blue is still lifted',
+      s6 && s6.red === 'gambling' && s6.blue === null && !!m6 && m6.length === 1 && m6[0].color === 'red' && m6[0].id === 'gambling', { s6, m6 });
+    await A.page.keyboard.press('m').catch(() => {});
+    await A.page.evaluate(() => { if (!(window.__btWorldMap && window.__btWorldMap.open)) { const b = document.querySelector('[data-world-map-btn], .bt-worldmap-btn'); if (b) b.click(); } });
+    let wm = null;
+    for (let i = 0; i < 20 && !(wm && wm.open); i++) {
+      wm = await A.page.evaluate(() => (window.__btWorldMap ? { open: window.__btWorldMap.open, pins: (window.__btWorldMap.more && window.__btWorldMap.more.mapPins) || null } : null));
+      if (!(wm && wm.open)) {
+        if (i === 6) await A.page.evaluate(() => { const r = window.__btWheelMini; if (r) { const x = r.left + r.w / 2, y = r.top + r.h / 2; const el = document.elementFromPoint(x, y); if (el) el.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: x, clientY: y })); } });
+        await A.page.waitForTimeout(400);
+      }
+    }
+    await A.page.waitForTimeout(800);
+    wm = await A.page.evaluate(() => (window.__btWorldMap ? { open: window.__btWorldMap.open, pins: (window.__btWorldMap.more && window.__btWorldMap.more.mapPins) || null } : null));
+    await shot(A, '6-worldmap');
+    rec.ok('...and on the world map', !!wm && wm.open && Array.isArray(wm.pins) && wm.pins.length === 1 && wm.pins[0].color === 'red' && wm.pins[0].id === 'gambling', wm);
+    await A.page.keyboard.press('Escape').catch(() => {});
+
+    /* ── 7. the computer ── */
+    C = await H.newPlayer(browser, { name: 'Deskbro', wsPort, webPort, world: 'wheel', wide: true });
+    C.page.on('pageerror', (e) => errors.push(`computer: ${String((e && e.message) || e).slice(0, 200)}`));
+    await H.enterWorld(C);
+    await skipTutorial(C);
+    const cdoors = await doorsOf(C);
+    const cth = cdoors.find((d) => d.id === 'townhall');
+    const o7 = cth ? await openBoard(C, cth, true) : { open: false };
+    const b7 = await board(C);
+    const hint = await C.page.evaluate(() => { const b = document.querySelector('[data-town-board]'); return !!b && (b.textContent || '').indexOf('Click one to read about it') >= 0; });
+    await shot(C, '7-desk-board');
+    /* v2.3.3778: the Earth Forest's page and the Goo Grotto's, wide */
+    for (const [tile, name] of [['land-verdant', '7-desk-forest'], ['goo-grotto', '7-desk-grotto']]) {
+      if (!o7.open) break;
+      await press(C, `[data-board-tile="${tile}"]`, true);
+      await waitSel(C, `[data-board-page="${tile}"]`);
+      const pg = await pageOf(C);
+      await shot(C, name);
+      rec.ok(`7. on a computer, the ${tile} page says "Earth Forest"`, !!pg && /Earth Forest/.test(pg.text) && !/Verdant Wilds/i.test(pg.text), pg && { text: pg.text.slice(0, 200) });
+      await press(C, '[data-board-back]', true);
+      await waitSel(C, '[data-town-board]');
+    }
+    const r7 = o7.open ? await pinIt(C, 'woodworker', 'blue', true) : null;
+    await closeCard(C);
+    const m7 = await miniPins(C);
+    rec.ok('7. on a computer the board opens (its words say "click"), a page pins blue on the Woodworker, and the minimap shows it',
+      o7.open && !!b7 && b7.tiles.length === b1.tiles.length && hint && !!r7 && r7.after && r7.after.btns[1].on === '1'
+        && !!m7 && m7.some((m) => m.color === 'blue' && m.id === 'woodworker'), { open: o7.open, n: b7 && b7.tiles.length, m7, hint });
+    const lvDesk = lvOf(b7);
+    rec.ok('...and on the computer\'s wide layout each dungeon\'s level line, and every tile\'s line, fits its tile', lvOk(lvDesk) && subsBad(b7).length === 0, { lvDesk, bad: subsBad(b7) });
+    /* v2.3.3802: a computer's window, wider, never past the play column */
+    const deskAt = async (vp, tag) => {
+      await C.page.setViewportSize(vp);
+      await C.page.waitForTimeout(800);
+      const o = await openBoard(C, cth, true);
+      const L = o.open ? await layout(C) : null;
+      await shot(C, tag);
+      return L;
+    };
+    const L1280 = cth ? await deskAt({ width: 1280, height: 800 }, '9-desk-1280') : null;
+    const nav1280 = L1280 ? await navCheck(C, true) : null;
+    const L1440 = cth ? await deskAt({ width: 1440, height: 900 }, '9-desk-1440') : null;
+    const wideOk = (L) => layoutOk(L) && L.cardW >= 640 && L.cardW <= 820 && L.cardW <= L.playW;
+    rec.ok(`12. on a computer the window is wider (${L1280 && L1280.cardW} px at 1280, ${L1440 && L1440.cardW} at 1440, never past the play column) with ${L1440 && L1440.groups[0].cols} columns, tiles even, nothing cut; the strip sticks and jumps there too`,
+      wideOk(L1280) && wideOk(L1440) && !!nav1280 && nav1280.ok, { L1280, L1440, nav1280 });
+
+    /* v2.3.3801: a page with no place has ONE action; the foot's shortcuts */
+    const dash = (P) => P.page.evaluate(() => { const b = window.__broDashPanelBus; return b ? { root: b.root(), mode: b.state.mode, top: b.current() } : null; });
+    const toBar = (P) => P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b) b.toBar(); });
+    const hallOpen = (P) => P.page.evaluate(() => !!document.querySelector('[data-town-board], [data-board-page]'));
+    const actPage = async (P, tile) => {
+      await press(P, `[data-board-tile="${tile}"]`, true);
+      await waitSel(P, `[data-board-page="${tile}"]`);
+      return P.page.evaluate(() => Array.from(document.querySelectorAll('[data-board-action]')).map((b) => b.getAttribute('data-board-action') + ':' + (b.textContent || '').trim()).concat(document.querySelectorAll('[data-pin-btn]').length ? ['pins'] : []));
+    };
+    await closeCard(C);
+    const o8 = cth ? await openBoard(C, cth, true) : { open: false };
+    const tq = o8.open ? await actPage(C, 'townquests') : null;
+    await shot(C, '9-townquests-page');
+    if (tq && tq.length) await press(C, '[data-board-action="quests"]', true);
+    await C.page.waitForTimeout(700);
+    const d8 = await dash(C);
+    const shut8 = !(await hallOpen(C));
+    rec.ok('9. Town Quests\' page has one button, "Open Quests" (no pins), and it opens your Quests page, the board put away',
+      !!tq && tq.join() === 'quests:Open Quests' && !!d8 && d8.root === 'quests' && d8.mode === 'expanded' && shut8, { tq, d8, shut8 });
+    await toBar(C);
+    const o9 = cth ? await openBoard(C, cth, true) : { open: false };
+    const nml = o9.open ? await actPage(C, 'nomansland') : null;
+    await press(C, '[data-board-back]', true);
+    await waitSel(C, '[data-town-board]');
+    const rideOk = await C.page.evaluate(() => { const S = window._gameState.current; return !!(S && S._serverCaps && S._serverCaps.ride === true); });
+    const sk = rideOk ? await actPage(C, 'skate') : null;
+    await shot(C, '10-skate-page');
+    if (sk && sk.length) await press(C, '[data-board-action="ride"]', true);
+    let riding = false;
+    for (let i = 0; i < 20 && rideOk && !riding; i++) {
+      await C.page.waitForTimeout(250);
+      riding = await C.page.evaluate(() => { const f = window.__btRideBtn; return !!(f && f().on); });
+    }
+    const shut9 = !(await hallOpen(C));
+    rec.ok('10. No man\'s land\'s page has no button; the Skateboard\'s (in town, the worker carrying boards) "Ride now" puts you on the board, the board put away',
+      !!nml && nml.length === 0 && rideOk && !!sk && sk.join() === 'ride:Ride now' && riding && shut9, { nml, rideOk, sk, riding, shut9 });
+    /* get off again, then the foot's Codex and Journey */
+    await C.page.evaluate(() => { const S = window._gameState.current; if (S && S.channel) S.channel.send({ type: 'ride', payload: { on: 0 } }); });
+    await C.page.waitForTimeout(800);
+    const o10 = cth ? await openBoard(C, cth, true) : { open: false };
+    await C.page.evaluate(() => { const f = document.querySelector('[data-hall-row="codex"]'); if (f) f.scrollIntoView({ block: 'end' }); });
+    await C.page.waitForTimeout(300);
+    await shot(C, '11-foot');
+    if (o10.open) await press(C, '[data-hall-row="codex"]', true);
+    await C.page.waitForTimeout(700);
+    const dCodex = await dash(C);
+    await toBar(C);
+    const o11 = cth ? await openBoard(C, cth, true) : { open: false };
+    if (o11.open) await press(C, '[data-hall-row="journey"]', true);
+    await C.page.waitForTimeout(700);
+    const dJourney = await dash(C);
+    await toBar(C);
+    rec.ok('11. the board\'s foot: Codex opens the Codex, Journey opens More \u2192 Journey',
+      !!dCodex && dCodex.root === 'encyclopedia' && dCodex.mode === 'expanded' && !!dJourney && dJourney.root === 'more' && dJourney.top === 'journey', { dCodex, dJourney });
+
+    rec.ok(`8. no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
+  } finally {
+    await A.ctx.close().catch(() => {});
+    if (C) await C.ctx.close().catch(() => {});
+  }
+}

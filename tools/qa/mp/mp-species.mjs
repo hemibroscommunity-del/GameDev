@@ -49,6 +49,7 @@
  * /tmp/qa-species-*.png for a human to look at.
  */
 import * as H from './harness.mjs';
+import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 const TAN = [149, 116, 89];
@@ -114,7 +115,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const settle = () => A.page.waitForTimeout(2500);
   /* a pick on the Species tab, and the stores and the figure after it */
   const pickSpecies = async (name) => {
-    await pickTab(A, 'Species');
+    await pickTab(A, 'Bro type');   /* v2.3.3772: the tab's words (the owner: "Change species to bro type") */
     await A.page.waitForTimeout(500);
     const ok = await pickTile(A, name);
     await settle();
@@ -123,19 +124,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ── 1 ── the Species tab */
   const opened = await onTab(A);
-  rec.ok(`the creator opens on the Species tab (on "${opened}")`, opened === 'Species', { opened });
+  rec.ok(`the creator opens on the Bro type tab (on "${opened}")`, opened === 'Bro type', { opened });
   const icon = await A.page.evaluate(() => {
-    const b = [...document.querySelectorAll('.bt-cc-tabs .bt-cc-tab')].find((x) => (x.textContent || '').trim() === 'Species');
+    const b = [...document.querySelectorAll('.bt-cc-tabs .bt-cc-tab')].find((x) => (x.textContent || '').trim() === 'Bro type');
     const img = b && b.querySelector('img.bt-cc-tab-icon');
     return img ? { src: img.getAttribute('src'), nat: img.naturalWidth } : null;
   });
-  rec.ok(`...its icon is the alien's head, and it decoded (${JSON.stringify(icon)})`,
-    !!icon && /cc-tab-species\.png/.test(icon.src) && icon.nat > 0, icon);
+  rec.ok(`...its icon is the three bro types' heads, and it decoded (${JSON.stringify(icon)})`,   /* v2.3.3772 */
+    !!icon && /cc-tab-brotype\.png/.test(icon.src) && icon.nat > 0, icon);
   const titles = await stripTitles(A);
-  rec.ok(`the Species tab offers Human, Monkey and Alien, in that order (saw ${JSON.stringify(titles)})`,
+  rec.ok(`the Bro type tab offers Human, Monkey and Alien, in that order (saw ${JSON.stringify(titles)})`,
     JSON.stringify(titles) === JSON.stringify(['Human', 'Monkey', 'Alien']), { titles });
   const rowS = await colourRow(A);
   rec.ok('...and no colour row: the skin is the next tab along', !rowS.present || rowS.ghost, rowS);
+  /* v2.3.3814: lane A's judge pass, "only the first bro type is labelled":
+     every tile wears its name; and the gold button reads "Enter BroTown" */
+  const words = await A.page.evaluate(() => {
+    const tiles = [...document.querySelectorAll('.bt-cc-strip > *')].filter((b) => /^(Human|Monkey|Alien)$/.test(b.getAttribute('title') || ''));
+    const play = document.querySelector('.bt-cc-play-label');
+    return { tiles: tiles.map((b) => ({ title: b.getAttribute('title'), text: (b.textContent || '').trim() })), play: play ? play.textContent : null };
+  });
+  rec.ok(`every bro type wears its name (${words.tiles.map((t) => t.title + ': "' + t.text + '"').join(', ')}), and the button reads "${words.play}"`,
+    words.tiles.length === 3 && words.tiles.every((t) => t.text === t.title) && words.play === 'Enter BroTown', words);
+  await A.page.screenshot({ path: join(H.REPO, 'tools/qa/mp/out/species-brotype-names.png') }).catch(() => {});
   const human = await grab(A);
   await A.page.screenshot({ path: '/tmp/qa-species-creator-human.png' });
 
@@ -253,7 +264,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!P) return null;
     P.textures('alien', 'green');                   /* kicks the bake */
     for (let i = 0; i < 40 && !P.textures('alien', 'green'); i++) await new Promise((r) => setTimeout(r, 150));
-    const px = P.pixels('alien', 'green');
+    /* v2.3.3753: drawn from the shared numbers, the probe's answer is made on the first ask */
+    let px = P.pixels('alien', 'green');
+    for (let i = 0; i < 40 && !px; i++) { await new Promise((r) => setTimeout(r, 150)); px = P.pixels('alien', 'green'); }
     if (!px) return null;
     const out = {};
     for (const dir of Object.keys(px)) {

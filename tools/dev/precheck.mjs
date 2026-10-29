@@ -80,6 +80,15 @@
  *                      tools/dev/check-town-rim.mjs: spawn, World View
  *                      arrival, exit, every NPC and door still reachable,
  *                      and the rocks all round still a wall (v2.3.2896).
+ *   9d. look-roles    — FAIL: if a stand or jog body sheet changed and the
+ *                      look-palette numbers (public/sprites/look/) were not
+ *                      re-baked from it; WARN if only the recolour code
+ *                      changed (tools/art/role-bake.mjs --hashes, v2.3.3716);
+ *                      look-shirt: the same for the tee (shirt-bake.mjs, v2.3.3751).
+ *   9e. look-heads    — FAIL: a recolourable head piece's art changed without a
+ *                      re-bake of public/sprites/look/heads/; WARN if only the
+ *                      recolour code or a catalog changed (tools/art/head-bake.mjs
+ *                      --hashes, v2.3.3753).
  *  10. hairmask-rule  — FAIL: if the headwear art, a hair-clip mask or
  *                      tools/make_hairmask.py changed, every committed
  *                      hairmask/<dir>.png must still be the v2.3.1957
@@ -889,6 +898,61 @@ if (changedServer.length || changedClient.length) {
       add('FAIL', 'foreground-crops', `check-foreground-crops.mjs exited ${r.status ?? 'timeout'}:\n    ${tail}`);
     }
   } else add('PASS', 'foreground-crops', 'no foreground art or placement changes — check skipped');
+}
+
+/* ---- 9d. look-roles ----------------------------------------------------
+   v2.3.3716.  `?lookpalette` draws the stand and jog body from colour numbers
+   baked offline by the game's own recolour (tools/art/role-bake.mjs,
+   public/sprites/look/).  A sheet changed without a re-bake draws the old
+   art's roles over the new art: FAIL.  The recolour code changed: WARN --
+   most edits leave the roles as they were; `role-bake.mjs --check` says. */
+{
+  /* v2.3.3750: every body pose with numbers, and the rod's and pickaxe's recolours */
+  const touched = changed.filter((f) => /^public\/sprites\/player\/(stand|jog|hit|dodge|mine|fish|pickup)-(east|north|northeast|south|southwest)\.(png|webp)$/.test(f)
+    || /^src\/rendering\/(playerSkins|garmentConfine|spriteScale|playerDecal|toolRecolor|toolWood)\.js$/.test(f) || f === 'src/rendering/eyeMask.json'
+    || /^public\/sprites\/player\/((sword|bow)-[a-z]+-(body|torso)|jog-[a-z]+-legs)\.(png|webp)$/.test(f)   /* v2.3.3757: the stand-ins' sheets */
+    || /^public\/sprites\/look\//.test(f) || /^src\/rendering\/lookSets\//.test(f));   /* v2.3.3737: + a set's module */
+  if (touched.length) {
+    const r = spawnSync('node', ['tools/art/role-bake.mjs', '--hashes'], { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
+    const said = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-3).join(' ');
+    if (r.status === 0) add('PASS', 'look-roles', said);
+    else if (r.status === 2) add('WARN', 'look-roles', said + ' -- node tools/art/role-bake.mjs --check (a browser, ~15 s) says whether the roles moved; re-bake if they did');
+    else add('FAIL', 'look-roles', said + ' -- re-bake: node tools/art/role-bake.mjs');
+  } else add('PASS', 'look-roles', 'no body sheet with numbers or recolour change -- check skipped');
+}
+/* v2.3.3751: the tee's numbers (tools/art/shirt-bake.mjs, public/sprites/look/shirt/),
+   the same rule: a tee stand or jog sheet changed without a re-bake FAILS, the
+   shirt code WARNS */
+{
+  const touched = changed.filter((f) => /^public\/sprites\/gear\/shirt\/tshirt\/(stand|jog)-/.test(f)
+    || /^src\/rendering\/(playerDecal|gearSheets|lookShirt)\.js$/.test(f) || /^src\/rendering\/traits\/(patternCatalog|playerArt)\.js$/.test(f)
+    || /^public\/sprites\/look\/shirt\//.test(f));
+  if (touched.length) {
+    const r = spawnSync('node', ['tools/art/shirt-bake.mjs', '--hashes'], { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
+    const said = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-3).join(' ');
+    if (r.status === 0) add('PASS', 'look-shirt', said);
+    else if (r.status === 2) add('WARN', 'look-shirt', said + ' -- node tools/art/shirt-bake.mjs --check says whether the numbers moved; re-bake if they did');
+    else add('FAIL', 'look-shirt', said + ' -- re-bake: node tools/art/shirt-bake.mjs');
+  }
+}
+
+/* ---- 9e. look-heads ----------------------------------------------------
+   v2.3.3753.  The head pieces in a colour are drawn from colour numbers baked
+   offline by the game's own recolour (tools/art/head-bake.mjs,
+   public/sprites/look/heads/).  A piece's art changed without a re-bake: FAIL.
+   The recolour code or a catalog changed: WARN (`head-bake.mjs --check`). */
+{
+  const touched = changed.filter((f) => /^public\/sprites\/traits\/(hair|headwear|facialhair|eyewear|eyestyle)\/[^/]+\/[a-z]+\.png$/.test(f)
+    || /^src\/rendering\/traits\/(hairColor|hatColor|facialHairColor|eyewearColor|eyeStyleColor|hair|headwear|facialHair|eyewear|eyeStyle)Catalog\.js$/.test(f)
+    || /^src\/rendering\/(characterPortrait|traits\/traitMaterials|traits\/recolorOptions|traits\/pendingTraits)\.js$/.test(f)
+    || /^public\/sprites\/look\/heads\//.test(f));
+  if (touched.length) {
+    const r = spawnSync('node', ['tools/art/head-bake.mjs', '--hashes'], { cwd: root, encoding: 'utf8', timeout: 60 * 1000 });
+    const said = ((r.stdout || '') + (r.stderr || '')).trim().split('\n').slice(-3).join(' ');
+    if (r.status === 0) add('PASS', 'look-heads', said);
+    else if (r.status === 2) add('WARN', 'look-heads', said);
+    else add('FAIL', 'look-heads', said + ' -- re-bake: node tools/art/head-bake.mjs');
+  } else add('PASS', 'look-heads', 'no head piece art or recolour change -- check skipped');
 }
 
 /* ---- 9c. town-rim ----------------------------------------------------

@@ -38,6 +38,7 @@ import { TRAP_ICON_URL } from '@/rendering/controlsPreload.js';   /* v2.3.3120: 
 import { COOKED_FISH_ICONS, COOKED_FISH_ICON_DEFAULT } from '@/data/foodIcons.js';   /* v2.3.3260 */
 import { setDropThumbs } from '@/game/dropLook.js';   /* v2.3.3473: a dropped item is drawn on the ground as its bag picture */
 import { GEM_ELEMENTS, gemRawKey, gemCutKey, gemName, gemIcon, parseGemKey } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
+import { shardByKey } from '@/data/shards.js';   /* v2.3.3861: only a shard the game has gets a picture */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -201,8 +202,9 @@ const POTION_THUMBS = {
 /* Elemental shards: one webp per zone, /icons/items/<key>.webp
    following the keys defined in src/data/shards.js (shard_meadow,
    shard_ember, ...).  thumbFor() takes the shard_ prefix branch
-   below so any zone we add later just needs the webp dropped in --
-   no new code in the inventory panel. */
+   below so any zone we add later just needs its shards.js entry and
+   the webp dropped in (v2.3.3861: a key shards.js does not name gets
+   no picture) -- no new code in the inventory panel. */
 export const thumbFor = (key) => {
   const k = (key || '').toLowerCase();
   /* v2.3.2104: FIRST. It matches no rule below and would fall to `null`, which
@@ -245,7 +247,14 @@ export const thumbFor = (key) => {
      never fall to the ore rule's 'stone'. */
   const gemPic = gemIcon(k);
   if (gemPic)                       return gemPic + ITEMS_V;
-  if (k.startsWith('shard_'))       return `/icons/items/${k}.webp${ITEMS_V}`;
+  /* v2.3.3861: a shard the game HAS (data/shards.js, one webp each), not any
+     `shard_` key.  A Workshop kill minted `shard_dungeon:<run id>` until
+     v2.3.3170 (docs/specs/dungeons.md) and older characters still carry it,
+     as Diego's stock may: '/icons/items/shard_dungeon:...' is no file, so the
+     bag, the shop, the bank and the trade window drew the browser's broken-
+     picture box (the owner, on an older character, 2026-10-29: "items that
+     looked like placeholder art").  Nothing here: the caller's glyph. */
+  if (k.startsWith('shard_'))       return shardByKey(k) ? `/icons/items/${k}.webp${ITEMS_V}` : null;
   /* v2.3.1924: the rare gem monsters drop at 1-in-200 (server/src/data.js
      RARE_GEM_KEY).  It borrows the gem icon this panel ALREADY uses for its
      GEM stat row — one gem picture in the bag, not two that have to be told
@@ -412,6 +421,9 @@ export const iconFor = (key) => {
   /* v2.3.3516: a gem -- above the ore rule, which 'gem_' and 'gem_stone'
      would match (a pickaxe for a gem) */
   if (parseGemKey(k)) return '\uD83D\uDC8E';
+  /* v2.3.3861: a shard with no picture (thumbFor above: an old
+     `shard_dungeon:<run id>`) is still a crystal, not the unknown '\u25C7' */
+  if (k.startsWith('shard_')) return '\uD83D\uDC8E';
   /* v2.3.2052: the three town-shop consumables, by EXACT key and above every
      pattern below. They had no entry at all, so a whetstone in your bag drew
      the '◇' fallback -- and it did so before Shopkeeper Bro existed; putting
@@ -1345,6 +1357,10 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
       const rect = e.currentTarget.getBoundingClientRect();
       anchor = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
     } catch (_e) {}
+    /* v2.3.3849: a live trade takes a WEAPON tile too, into the weapon lane
+       (tradeBagBus.tapWeapon), as it takes an item tile into the offer.
+       Armour and shields have no trade lane: their cards open as before. */
+    if (kind === 'stashWeapon' && tradeBagBus.open && tradeBagBus.tapWeapon(index, obj)) return;
     if (kind === 'stashShield') {
       itemDetailBus.open({ kind: 'stashShield', shield: obj, index, anchor });
     } else if (kind === 'stashArmor') {

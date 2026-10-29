@@ -36,6 +36,9 @@
  * at K, `crowd=all` none), and each row says how many players the renderer
  * left undrawn far off screen (`farHidden`) and past the cap (`crowdHidden`).
  *
+ * v2.3.3716: BT_CROWD_GL=1 adds each step's GL calls a frame (draws, programs
+ * used, textures bound) -- how a draw path is judged (TRAPS §225).
+ *
  * v2.3.3453: BT_CROWD_LOOK (JSON) is what the bots wear over the sampled look
  * -- iron plate, greaves and sword put three shining pieces of metal a bot on
  * the phone's screen -- and each row says how many the shine drew
@@ -204,7 +207,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
           switches: window.__bfCount || 0,
         };
       });
+      /* v2.3.3716: BT_CROWD_GL=1 -- the GL calls a frame (draws, programs
+         used, textures bound), counted on the renderer's own context for 3 s
+         (TRAPS §225: judge a draw path by these, never this box's fps) */
+      const gl = process.env.BT_CROWD_GL ? await P.page.evaluate(() => new Promise((resolve) => {
+        const R = window._pixiRenderer && window._pixiRenderer.app && window._pixiRenderer.app.renderer;
+        const g = R && R.gl;
+        if (!g) { resolve(null); return; }
+        const c = { draws: 0, programs: 0, binds: 0, frames: 0 };
+        const de = g.drawElements, da = g.drawArrays, up = g.useProgram, bt = g.bindTexture;
+        g.drawElements = function () { c.draws++; return de.apply(this, arguments); };
+        g.drawArrays = function () { c.draws++; return da.apply(this, arguments); };
+        g.useProgram = function () { c.programs++; return up.apply(this, arguments); };
+        g.bindTexture = function () { c.binds++; return bt.apply(this, arguments); };
+        const t0 = performance.now();
+        const tick = () => {
+          c.frames++;
+          if (performance.now() - t0 < 3000) { requestAnimationFrame(tick); return; }
+          g.drawElements = de; g.drawArrays = da; g.useProgram = up; g.bindTexture = bt;
+          const f = Math.max(1, c.frames - 1);
+          resolve({ frames: f, draws: +(c.draws / f).toFixed(1), programs: +(c.programs / f).toFixed(1), binds: +(c.binds / f).toFixed(1) });
+        };
+        requestAnimationFrame(() => { c.draws = 0; c.programs = 0; c.binds = 0; c.frames = 0; requestAnimationFrame(tick); });
+      })) : null;
       const row = {
+        gl,
         bots: want, known: r.known, onScreen: r.near, farHidden: r.farHidden, crowdHidden: r.crowdHidden, frames: r.work.length,
         workP50: q(r.work, 0.5), workP95: q(r.work, 0.95),
         entityP50: q(r.entity, 0.5), entityP95: q(r.entity, 0.95),

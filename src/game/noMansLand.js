@@ -36,12 +36,11 @@
 import { chatLogBus } from '@/ui/mobile/chatLogBus.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';   /* v2.3.3316: the killer's "LOOT" */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3343: No man's land heard: crossing in, a skull, a loss, a take */
-import { playZoneBanner } from '@/ui/zoneBannerOverlay.js';
 
-import { NML, NML_CENTRE, NML_CENTRES, nmlTierAt, nmlLevelAt } from '@/data/noMansLandRings.js';
+import { NML, NML_CENTRE, NML_CENTRES, nmlTierAt, nmlLevelAt, nmlStepLevelAt } from '@/data/noMansLandRings.js';   /* v2.3.3767: + a step a monster level */
 import { wheelLong } from '@/game/wheelSize.js';   /* v2.3.3315: the rings of the Wheel the room plays */
 import { setFoeRule } from '@/game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is yours to hit while this rule allows it */
-export { NML, NML_CENTRE, nmlTierAt, nmlLevelAt };
+export { NML, NML_CENTRE, nmlTierAt, nmlLevelAt, nmlStepLevelAt };
 /* v2.3.3315: the middle of the Wheel the room plays (game px) */
 export function nmlCentre() { return NML_CENTRES[wheelLong()] || NML_CENTRE; }
 const WHEEL = 'wheel';
@@ -62,10 +61,22 @@ export function nmlFirst(S) {
   return (S && S._serverCaps && S._serverCaps.nmlnear === true) ? NML.FIRST_TIER : NML.WAS_FIRST_TIER;
 }
 
+/* v2.3.3767: the number climbs a step a monster level (nmlStepLevelAt) on a
+   worker that says caps.nmlsteps; a tier's number (one step every five) on
+   an older one, or under its `nmlsteps: false`, so the badge, the window and
+   the worker never count apart */
+export function nmlSteps(S) {
+  return !!(S && S._serverCaps && S._serverCaps.nmlsteps === true);
+}
+/** The No man's land number at (x, y) as the worker you play counts it. */
+export function nmlLevelFor(S, x, y) {
+  return (nmlSteps(S) ? nmlStepLevelAt : nmlLevelAt)(WHEEL, x, y, wheelLong(), nmlFirst(S));
+}
+
 /** Your No man's land level right now (0: not in it, or not live). */
 export function nmlHere(S) {
   if (!nmlLive(S) || !S.player || S.currentZone !== WHEEL) return 0;
-  return nmlLevelAt(WHEEL, S.player.x, S.player.y, wheelLong(), nmlFirst(S));
+  return nmlLevelFor(S, S.player.x, S.player.y);
 }
 
 /* your level as the worker has it (player_state's `level`, wsClient) -- the
@@ -75,16 +86,88 @@ function myLevel(S) {
   return (R && Number(R.level)) || 1;
 }
 
+/* ═══ v2.3.3770: BEATEN BY THEM, NOT AGAIN FOR HALF AN HOUR ═══
+   The worker's lock (server/src/nomansland.js _nmlLockSet): a red skull
+   killed by the player they attacked may not attack them for 30 minutes
+   unless that player lets them.  `nml_lock` {out, in} tells you yours: `out`
+   the players you may not attack, `in` those who may not attack you, each with
+   its ms left (S._nmlLocks: id -> until, by this phone's clock).  Only against
+   a worker that says caps.nmllock. */
+export function nmlLockOn(S) {
+  return !!(S && S._serverCaps && S._serverCaps.nmllock === true);
+}
+export function applyNmlLock(S, payload) {
+  if (!S || !payload || typeof payload !== 'object') return;
+  const now = Date.now();
+  const read = (list) => {
+    const m = new Map();
+    if (Array.isArray(list)) for (const e of list.slice(0, 16)) {
+      if (!Array.isArray(e) || typeof e[0] !== 'string' || !e[0] || e[0].length > 64) continue;
+      const ms = Math.max(0, Math.min(30 * 60 * 1000, Number(e[1]) || 0));
+      if (ms > 0) m.set(e[0], now + ms);
+    }
+    return m;
+  };
+  S._nmlLocks = { out: read(payload.out), in: read(payload.in) };
+}
+/** ms left of your lock out from attacking `id` (0: none) */
+export function nmlLockedOut(S, id) {
+  if (!nmlLockOn(S) || id == null) return 0;
+  const m = S._nmlLocks && S._nmlLocks.out;
+  const t = m instanceof Map ? (m.get(String(id)) || 0) : 0;
+  return Math.max(0, t - Date.now());
+}
+/** ms left of `id`'s lock out from attacking YOU (0: none) */
+export function nmlLockedIn(S, id) {
+  if (!nmlLockOn(S) || id == null) return 0;
+  const m = S._nmlLocks && S._nmlLocks.in;
+  const t = m instanceof Map ? (m.get(String(id)) || 0) : 0;
+  return Math.max(0, t - Date.now());
+}
+/* the "?" over a head: `nml_lock_ask` {from} -- the locked player asking you
+   for a rematch, shown over THEIR head for NML_LOCK_ASK_SHOW_MS
+   (entityRenderer reads S._nmlAskMarks) */
+export const NML_LOCK_ASK_SHOW_MS = 5000;
+export function nmlLockAskShow(S, payload) {
+  if (!S || !payload || typeof payload.from !== 'string' || !payload.from || payload.from.length > 64) return;
+  if (!(S._nmlAskMarks instanceof Map)) S._nmlAskMarks = new Map();
+  if (S._nmlAskMarks.size >= 16) S._nmlAskMarks.clear();
+  S._nmlAskMarks.set(payload.from, Date.now() + NML_LOCK_ASK_SHOW_MS);
+}
+/** Your window's "Ask for a rematch": the "?" over your head for them, once
+ *  a minute (the worker refuses faster). */
+export function nmlLockAsk(S, id) {
+  if (!nmlLockOn(S) || !S.channel || id == null || !nmlLockedOut(S, id)) return false;
+  const key = String(id);
+  if (!(S._nmlLockAskAt instanceof Map)) S._nmlLockAskAt = new Map();
+  const now = Date.now();
+  if (now - (S._nmlLockAskAt.get(key) || 0) < 60000) return false;
+  S._nmlLockAskAt.set(key, now);
+  try { S.channel.send({ type: 'nml_lock_ask', payload: { target: key } }); } catch (e) { return false; }
+  return true;
+}
+/** Their window's "Let <name> attack you again" */
+export function nmlLockAllow(S, id) {
+  if (!nmlLockOn(S) || !S.channel || id == null || !nmlLockedIn(S, id)) return false;
+  try { S.channel.send({ type: 'nml_lock_allow', payload: { target: String(id) } }); } catch (e) { return false; }
+  /* the worker's nml_lock answers; until then, the button goes */
+  if (S._nmlLocks && S._nmlLocks.in instanceof Map) S._nmlLocks.in.delete(String(id));
+  return true;
+}
+
 /** May you aim at `otherId` here?  The worker's rule from your side:
  *  both of you in No man's land, your levels within the lower of the two
- *  levels you stand in, not one party. */
-export function nmlCanAttack(S, otherId) {
+ *  levels you stand in, not one party.  v2.3.3770: and not locked out from
+ *  them (nmlLockedOut) -- `ignoreLock` asks the rest alone, for the window
+ *  that says why (nmlAsk.js). */
+export function nmlCanAttack(S, otherId, ignoreLock) {
   if (!nmlLive(S) || !S.player || S.currentZone !== WHEEL || !S.others) return false;
+  if (!ignoreLock && nmlLockedOut(S, otherId)) return false;
   const o = S.others[otherId];
   if (!o || (o.zone || o.z) !== WHEEL) return false;
-  const first = nmlFirst(S);   /* v2.3.3690 */
-  const la = nmlLevelAt(WHEEL, S.player.x, S.player.y, wheelLong(), first);
-  const lt = nmlLevelAt(WHEEL, typeof o.x === 'number' ? o.x : o.renderX, typeof o.y === 'number' ? o.y : o.renderY, wheelLong(), first);
+  /* v2.3.3690: from the worker's first tier; v2.3.3767: counted as it counts */
+  const la = nmlLevelFor(S, S.player.x, S.player.y);
+  const lt = nmlLevelFor(S, typeof o.x === 'number' ? o.x : o.renderX, typeof o.y === 'number' ? o.y : o.renderY);
   if (la < 1 || lt < 1) return false;
   const theirs = Number(o.rpgLv) || 1;
   if (Math.abs(myLevel(S) - theirs) > Math.min(la, lt)) return false;
@@ -107,9 +190,12 @@ export function nmlSay(S, text) {
   } catch (e) { /* a line is never worth a frame */ }
 }
 
-const _note = { cur: 0, since: 0, shown: 0, told: Object.create(null) };
+const _note = { cur: 0, since: 0, shown: 0, tier: 0, told: Object.create(null) };
 /** Every frame in the Wheel (wheelMinimap.js): the banner on the way in, a
- *  line as the level changes, a line on the way out. */
+ *  line as the level changes, a line on the way out.
+ *  v2.3.3767: with the number a step a monster level, a line at every step
+ *  would fill the chat on a walk out; so a line only when you cross into
+ *  another tier (every five levels) -- the badge shows every step live. */
 export function noteNoMansLand(S) {
   /* a lock taken under the rule (BroTown's tap, `nml`) goes when the rule no
      longer allows the fight -- either of you out of it, levels apart, one
@@ -125,13 +211,20 @@ export function noteNoMansLand(S) {
   const was = _note.shown;
   _note.shown = lvl;
   if (S) S._nmlLevel = lvl;
+  /* v2.3.3767: the tier you are in, to say a line only on crossing one */
+  const tier = lvl && S && S.player ? nmlTierAt(S.player.x, S.player.y, wheelLong()) : 0;
+  const wasTier = _note.tier;
+  _note.tier = tier;
   if (!lvl) {
     if (was) nmlSay(S, "You left No man's land. Players can no longer attack you.");
     return;
   }
+  if (was && tier === wasTier) return;   /* a step within the tier: the badge says it */
   const rule = `players within ${lvl} level${lvl === 1 ? '' : 's'} of yours`;
   if (!was) {
-    try { playZoneBanner('nml-' + lvl, S, { title: `No man's land ${lvl}`, plain: true, color: NML_RED }); } catch (e) { /* the line still says it */ }
+    /* v2.3.3853: no banner on the way in (the owner: "just get rid of the no
+       man's land gigantic warning message. I'd rather not have anything");
+       the skull pill, the red line and the chat's line say it */
     cue('nmlEnter');   /* v2.3.3343: crossing in is heard, an ominous sting under its banner (it was silent) */
     if (!_note.told.first) {
       _note.told.first = true;
@@ -145,7 +238,7 @@ export function noteNoMansLand(S) {
     nmlSay(S, `☠ No man's land ${lvl}: ${rule} can attack you.`);
   }
 }
-export function resetNoMansLandNote() { _note.cur = 0; _note.since = 0; _note.shown = 0; }
+export function resetNoMansLandNote() { _note.cur = 0; _note.since = 0; _note.shown = 0; _note.tier = 0; }
 
 /** The tick's `sk` for another player ('r' | 'w' | absent) into the threat
  *  skull's anchor (entityRenderer reads S._threatMarks). */

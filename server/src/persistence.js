@@ -487,6 +487,10 @@ export const persistenceMethods = {
        same belt-and-braces argument as the playerState delete below). */
     try { await this.state.storage.delete('gear_prov:' + pid); } catch (e) { /* best-effort, as above */ }
     this._gearProvForget(pid);
+    /* v2.3.3785: and the vault goes with the character (bank.js): a restart
+       is a new character, and "deleted forever" means its bank too */
+    try { await this.state.storage.delete('bank:' + pid); } catch (e) { /* best-effort, as above */ }
+    if (this._bankForget) this._bankForget(pid);
     /* ═══ v2.3.3127: AND THE FARM GOES WITH THE CHARACTER ═══
        `farm:<pid>` (farm.js) is keyed by player id too, so without this a
        restarted level-1 character inherited every bed and whatever grew in

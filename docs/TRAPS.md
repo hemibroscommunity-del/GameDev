@@ -4294,6 +4294,15 @@ every trait at once, is correcting those five `body-tops` entries -- but hats,
 hair and the hair-clip masks were all dialled in against the current values,
 so it needs its own before/after pass over every trait, not a drive-by edit.
 
+**Fixed in v2.3.3880** (the owner on a computer: "shark head north on desktop
+disappeared"): `src/rendering/headCrowns.js` holds the head's own crown for
+`hit-north` 3-5 and `hit-northeast` 3-5 (the monkey's measured crowns), and
+`_lookupBodyTop` answers it before body-tops, so every head piece -- and the
+hat's hair mask, placed with the same numbers -- sits on the head on those
+frames; `server/test/head-crowns.test.mjs` holds the six to the measured ones.
+body-tops.json itself is unchanged (the tools that read it still see the
+topmost pixel). Before and after: `docs/specs/img/head-crowns-before-after.png`.
+
 ## 101. A whole-line block test asked about one frame's step blocks nothing (v2.3.2699)
 
 **Tempting:** `attackBlockPoint(zone, x0, y0, x1, y1)` answers "is a prop in the
@@ -8606,3 +8615,32 @@ suite §5d holds src/ to.
 **Receipt:** `ascii-only` suite (an emoji in a regex class with and without
 `u`, a range, a name, a comment, an identity escape, each run before and after
 escaping), mp-membudget's `buffers` line (24 -> 22), docs/specs/ascii-script.md.
+
+## 259. "It builds in a blink here and on the phone, so it builds in a blink everywhere" (v2.3.3838)
+
+**The move.** Grow a WebGL program (another look kind, another read, another
+pass) and trust the compile time measured on the QA box (SwiftShader) and on an
+iPhone (Metal): both build the look palette's program in well under a second.
+
+**Why it is wrong.** On Windows, Chrome, Edge and Firefox all draw WebGL through
+ANGLE's Direct3D, and its shader compiler (FXC) inlines every function call
+before it optimises. The look palette's fragment program reads its bilinear
+sample twice, the second through a mip level of 2x2 boxes: about eighty
+`colourAt()`s once inlined, each carrying every registered kind. FXC took
+MINUTES over it. Its prewarm behind the loading screen asks whether the program
+linked, and that question blocks the page until the compile ends: the owner's
+laptop stood frozen at 75% of the loading bar for 5-10 minutes (2026-10-29,
+the night before the judges, who play on computers), long enough for the worker
+to log the idle character out. No test here can see it: this box has no
+Direct3D.
+
+**The rule.** The look palette is not built on Windows, nor (v2.3.3842) on a
+Mac, whose ANGLE Metal inlines too and which nothing here can measure
+(`src/game/lookPaletteChoice.js`: the address first, then Windows, then a Mac
+with no touch points, else on; `__btLookPalette().why`). Grow a program only with its compile measured on a
+Windows machine (`?lookpalette=1` builds it there on purpose). The cure for
+Windows is a smaller program: one bilinear read with no mip pass, or the kinds
+chosen per batch rather than all inlined into every read.
+
+**Receipt:** `look-palette-choice` suite, `mp-lookwin`,
+docs/specs/look-palette.md "Not on Windows".

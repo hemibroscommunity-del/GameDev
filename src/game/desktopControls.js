@@ -15,7 +15,7 @@
 import { BT_AUDIO, getNpcQuest, calcDisplayHeal } from '@/data/index.js';
 import { quickEatView } from '@/game/quickEat.js';   /* v2.3.3260: V eats */
 import { eatBus } from '@/ui/mobile/eatBus.js';   /* v2.3.3260: ...through the bag's own Eat */
-import { triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: X jumps */
+import { triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: X jumps; v2.3.3844: Space does */
 import { trapButtonView, armTrap } from '@/game/trapping.js';   /* v2.3.3120: T arms a trap */
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3120: the Pet House opens the Pets page */
 import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E at a Wheel dungeon's mouth */
@@ -24,7 +24,9 @@ import { npcSpeaks } from '@/game/npcVoices.js';   /* v2.3.3462: the townsfolk a
 import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 import { startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed on your farm, worked where it lies */
 import { emotesLive } from '@/game/emotes.js';   /* v2.3.3391: B opens the emotes */
-import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL, ENTER_SEL, MAP_KEY } from '@/game/deskKeys.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
+import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL, ENTER_SEL, MAP_KEY } from '@/game/deskKeys.js';
+import { rideButtonWanted, toggleRide } from '@/game/ride.js';   /* v2.3.3776: Z rides the skateboard */
+import { rideGround } from '@/game/rideGround.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
 import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
 import { dblTapRoll, tapDir } from '@/game/deskCombos.js';   /* v2.3.3711: a direction key tapped twice rolls */
 
@@ -45,7 +47,7 @@ function dblTapOn() {
 export function interactKind(S, opts) {
   if (!S) return null;
   if (opts && opts.npcFirst && S._nearNpc) return 'talk';   /* the right stick's order (runInteract) */
-  if (questWaits(S)) return 'talk';   /* v2.3.3583: E's order too (runInteract) */
+  if (talkBeforeDoor(S)) return 'talk';   /* v2.3.3583: E's order too (runInteract); v2.3.3834: not over the door's prompt; v2.3.3868: any townsperson in range, over a door */
   if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) return 'door';
   if (S._nearHouse) return 'sleep';
   if (S._nearWorkshop || S._nearWheelDoor || S._nearPetHouse) return 'door';
@@ -72,6 +74,44 @@ function questWaits(S) {
   var npc = S && S._nearNpc;
   if (!npc) return false;
   try { return !!getNpcQuest(S.rpg, npc.name); } catch (e) { return false; }
+}
+
+/* ═══ v2.3.3834: E DOES WHAT THE PROMPT ON THE SCREEN SAYS ═══
+   The judge pass (2026-10-29): at the Town Hall's door, Mayor Bro beside it,
+   the prompt read "E  ENTER TOWN HALL" and E talked to the Mayor instead --
+   v2.3.3583 put a townsperson with a quest before a door, for a keyboard that
+   could reach his quest no other way.  Where the door's prompt is up (the
+   same test the prompt itself makes, BroTown's "bt-interact-prompt": a
+   building, or a Wheel hall's door), it is what E does; a townsperson with a
+   quest still comes first everywhere else, and a click (or a tap) on him
+   always talks.  The right stick's `npcFirst` order on a phone is unchanged. */
+function doorPromptUp(S) {
+  return !!(S && (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)));
+}
+
+/* ═══ v2.3.3868: E TALKS TO THE TOWNSPERSON BESIDE YOU ═══
+   The owner, playtesting on a computer: "the instructions say 'E' is
+   interact. When you're next to mayor bro (intending to accept the first
+   quest by 'interacting') you would actually open the door to the building
+   right next to him (town hall)."  v2.3.3834 gave the door E wherever its
+   prompt was up, and Mayor Bro stands on the Town Hall's steps, so beside
+   him E opened the hall.  Now a townsperson in talk range (90 px; any of
+   them, a quest or not: E is the computer's tap, and a tap on a person
+   talks) comes before a door's prompt, and on a computer the door's Enter
+   button stands aside meanwhile (BroTown deskTalkPick), so the button never
+   says one thing while E does another (v2.3.3834's judge-pass complaint).
+   The door is E's only with nobody in talk range: a door's reach (140 px,
+   WHEEL_DOOR_REACH) is wider than a townsperson's, so every door has
+   doorstep out of everyone's range -- a step aside from the Mayor, and
+   the Town Hall's button is back.  Not "the nearer of the two": the Mayor
+   stands in the hall's doorway, nearer than its foot from anywhere on the
+   doorstep, so the nearer rule came to the same thing with a rule a player
+   cannot see.  No door's prompt: as before, a townsperson with a quest for
+   you comes first (questWaits, v2.3.3583), and one without waits behind a
+   bed, a dungeon's mouth or a resource. */
+export function talkBeforeDoor(S) {
+  if (!S || !S._nearNpc) return false;
+  return doorPromptUp(S) ? true : questWaits(S);
 }
 
 export function setupDesktopControls(S, deps) {
@@ -151,8 +191,10 @@ export function setupDesktopControls(S, deps) {
          has its own Enter button, and Ace and Diego stand by theirs, so door
          first would never let the stick's tap reach them */
       if (opts && opts.npcFirst && S._nearNpc && runTalk()) return true;
-      /* v2.3.3583: and E for a townsperson with a quest for you (questWaits) */
-      if (questWaits(S) && runTalk()) return true;
+      /* v2.3.3583: and E for a townsperson with a quest for you (questWaits);
+         v2.3.3834: ...unless the door's prompt is up; v2.3.3868: any
+         townsperson in range first, then the door (talkBeforeDoor) */
+      if (talkBeforeDoor(S) && runTalk()) return true;   /* v2.3.3868: a townsperson in range before a door */
       /* 1. Building (v2.3.3066: or a Wheel hall's door) */
       if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) {
         _desktopEnterBuilding();
@@ -212,11 +254,11 @@ export function setupDesktopControls(S, deps) {
          more creative combos".  W, A, S or D (or an arrow) pressed twice
          within 250 ms is a dodge roll that way, the move a PC action game's
          player reaches for without leaving the keys they walk with; Space
-         still rolls.  The rule is game/deskCombos.js (node-tested): only
+         still rolls (X since v2.3.3844, when Space became the jump).  The rule is game/deskCombos.js (node-tested): only
          presses count (a held key's repeats never), only the same key pairs,
          the other axis from the keys held across it (W held, D tapped twice:
          up and right, as Space there).  The press still walks -- nothing
-         returns here -- and the roll is Space's own call, so a lock still
+         returns here -- and the roll is the roll key's own call, so a lock still
          turns it into the sword's lunge or the bow's retreat shot
          (dodge.js resolveDodgeContext).  `?dbltap=0` turns it off. */
       if (!e.repeat && !browserChord(e) && tapDir(e.key) && dblTapOn()) {
@@ -236,8 +278,24 @@ export function setupDesktopControls(S, deps) {
         }
       }
 
-      /* Space — dodge roll in movement or facing direction (§5.8 contextual). */
+      /* ═══ v2.3.3844: SPACE JUMPS, X ROLLS ═══
+         The owner, 2026-10-29: "Also spacebar I think should be jump."  Space
+         was the dodge roll (and X the jump, v2.3.3017); the two swap.  Space
+         is the jump: one press, one jump, a held key's repeats nothing more
+         (game/jumpActions.js; the touch button is JumpButton.jsx), and a
+         second press in the air is the double jump's flip, as X's was.  Its
+         repeats are still refused to the browser: Space must never scroll the
+         page, nor press a button a click left focused (the keyup below
+         refuses that too). */
       if (e.code === 'Space') {
+        e.preventDefault();
+        if (!e.repeat) triggerJump(S);
+        return;
+      }
+
+      /* X -- the dodge roll in movement or facing direction (§5.8
+         contextual), exactly as Space rolled it until v2.3.3844. */
+      if (e.code === 'KeyX') {
         e.preventDefault();
         var _R1 = S.rpg;
         if (!_R1 || S._dodgeRoll) return;
@@ -258,15 +316,16 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
-      /* ═══ v2.3.3017: X — JUMP ═══
-         Space is the dodge roll, Shift the sprint, so the jump needs its own
-         key under the left hand: X, beside them on the bottom row (and a
-         controller's jump button).  Held does nothing more -- one press, one
-         jump (game/jumpActions.js; the touch button is JumpButton.jsx). */
-      if (e.code === 'KeyX' && !e.repeat) {
-        e.preventDefault();
-        triggerJump(S);
-        return;
+      /* ═══ v2.3.3776: Z — THE SKATEBOARD ═══
+         The board button's twin (ui/panels/RideButton.jsx): on, and off
+         again, where the button is shown -- BroTown's safe ground, a worker
+         that carries boards.  Anywhere else it does nothing. */
+      if (e.code === 'KeyZ' && !e.repeat) {   /* RIDE_KEY (deskKeys.js), written out as the other keys are (desk-keys.test §6) */
+        if (rideButtonWanted(S, rideGround(S))) {
+          e.preventDefault();
+          toggleRide(S, Date.now(), function (type, payload) { if (S.channel) S.channel.send({ type: type, payload: payload }); });
+          return;
+        }
       }
 
       /* ═══ v2.3.3120: T — TRAP ═══
@@ -372,8 +431,8 @@ export function setupDesktopControls(S, deps) {
          fighting move you reach for most after the swing, so it takes the key
          under the left hand's first finger beside W -- Q, where the shield
          was.  The shield is the right mouse button HELD now (BroTown's
-         canvas onMouseDown, released by onMouseUp below): a guard you hold
-         with the hand that aims it.  Aimed at the mouse, as F and the right
+         canvas onMouseDown, released by onMouseUp below; v2.3.3847: pressed
+         up and pressed down again, a toggle): a guard on the hand that aims it.  Aimed at the mouse, as F and the right
          click were (both gave it up: F is the Element Burst, the right button
          the shield).  Q+E's bash is a left click with the shield up.
          v2.3.1726's note on the old Q (the mouse-steered shield) lives on in
@@ -528,6 +587,13 @@ export function setupDesktopControls(S, deps) {
     };
     var onKeyUp = function onKeyUp(e) {
       S.keys[e.key] = false;
+      /* v2.3.3844: Space is the jump: its release never presses the button a
+         click left focused (a button's Space press lands on the keyup) --
+         except in a field, where Space is a space */
+      if (e.code === 'Space') {
+        var _uae = document.activeElement, _uTag = _uae && _uae.tagName;
+        if (_uTag !== 'INPUT' && _uTag !== 'TEXTAREA' && _uTag !== 'SELECT' && !(_uae && _uae.isContentEditable)) e.preventDefault();
+      }
       /* v2.3.3006: Shift is the sprint now, so it is held WHILE walking, and a
          letter's e.key changes case with it: press W, press Shift, let go of W
          and the keyup says 'W' -- K['w'] stayed true and you walked on with
@@ -537,7 +603,7 @@ export function setupDesktopControls(S, deps) {
         S.keys[e.key.toUpperCase()] = false;
       }
       /* v2.3.3711: Q is the special now, so its release lowers nothing (the
-         right mouse button's does: onMouseUp below) */
+         right mouse button's did; v2.3.3847: its next press does) */
       /* v2.3.3407: let go of E, and the harvest's gesture stops being worked */
       if (e.code === 'KeyE' && S._harvestKeys) S._harvestKeys.up();
     };
@@ -548,19 +614,16 @@ export function setupDesktopControls(S, deps) {
       for (var k in S.keys) S.keys[k] = false;
       if (S._harvestKeys) S._harvestKeys.up();   /* v2.3.3407: ...E's work too */
       /* v2.3.3711: ...and a shield held on the right mouse button: its
-         release would come to another window */
+         release would come to another window.  v2.3.3847: a toggle now, and
+         still lowered here: alt-tab away and back, and the guard you see is
+         the guard you have -- down, one right click from up -- never a
+         guard left raised while you were in another window */
       if (S._shieldMouse) { S._shieldMouse = false; _desktopShieldOff(); }
     };
-    /* ═══ v2.3.3711: LET GO OF THE RIGHT MOUSE BUTTON, AND THE SHIELD COMES DOWN ═══
-       The canvas's press raises it (BroTown onMouseDown, `_shieldMouse`); the
-       release is heard on the window, so a guard dragged off the world -- onto
-       the pages, the controls or out of the page -- still comes down. */
-    var onMouseUp = function onMouseUp(e) {
-      if (e && e.button === 2 && S._shieldMouse) {
-        S._shieldMouse = false;
-        _desktopShieldOff();
-      }
-    };
+    /* v2.3.3711's onMouseUp (the right button's release lowered the guard)
+       is gone with v2.3.3847: the right button is a toggle -- "right click
+       should just hold up shield until you click right click again" -- and
+       the next right press lowers it (BroTown _deskRightPress). */
     /* ═══ v2.3.3711: NO BROWSER MENU OVER THE GAME ═══
        The right button is the shield, so its click must never open the
        browser's menu: the canvas refused it already, but a guard let go over
@@ -578,13 +641,11 @@ export function setupDesktopControls(S, deps) {
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     window.addEventListener('blur', onBlur);
-    window.addEventListener('mouseup', onMouseUp);
     document.addEventListener('contextmenu', onContextMenu);
   return function teardownDesktopControls() {
     window.removeEventListener('keydown', onKeyDown);
     window.removeEventListener('keyup', onKeyUp);
     window.removeEventListener('blur', onBlur);
-    window.removeEventListener('mouseup', onMouseUp);
     document.removeEventListener('contextmenu', onContextMenu);
   };
 }

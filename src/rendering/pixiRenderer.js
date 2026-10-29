@@ -6,6 +6,7 @@ import { createPixiApp } from './pixiApp.js';
 import { renderDpr } from '../game/renderRes.js'; /* v2.3.3339 */
 import { applyDepthBuckets } from './depthSort.js'; /* v2.3.2635: one depth pass per frame */
 import { TileRenderer } from './systems/tileRenderer.js';
+import { clientOff } from '../game/clientOff.js';   /* v2.3.3775: off_groundkeep */
 import { WheelObjects } from './wheelObjects.js'; /* v2.3.2975: the Wheel's buildings, trees, rocks and props */
 import { FarmWorld } from './farmWorld.js';   /* v2.3.3136: your farm -- its barn, props, beds and crops */
 import { ArenaWorld } from './arenaWorld.js';   /* v2.3.3566: a dungeon's arena, its things and the boss's chest */
@@ -24,6 +25,7 @@ import { setWheelWaterRenderer } from './wheelWater.js'; /* v2.3.3019: the Wheel
 import { setPaletteRenderer, setOneBatchRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers; v2.3.3447: one program for every sprite */
 import './paletteLoad.js';                                 /* v2.3.3464: the farm's too, read so by Pixi's own loader */
 import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
+import { RideFx } from './rideFx.js';                 /* v2.3.3776: a rider is drawn on the board */
 import { EmoteFx } from './emoteFx.js';               /* v2.3.3392: a bro who emotes moves */
 import { deathCrumble } from './deathCrumble.js';     /* v2.3.2712 */
 import { setFighterEffects } from './fighterCapture.js';   /* v2.3.2986; v2.3.2987 + the player renderer */
@@ -34,6 +36,7 @@ import { sweepTexturePool } from './texturePoolTrim.js'; /* v2.3.3152: Pixi's te
 import { healAfterRenderThrow } from './renderHeal.js'; /* v2.3.3152: a frame that throws does not leave the screen black */
 import { setSheen, prewarmGlintPipe } from './lightfx/glint.js'; /* v2.3.2864: the permanent soft metal shine, behind ?sheen=1; v2.3.2887: on for everyone, ?sheen=0 turns it off; v2.3.2904: its shader built behind the loading screen */
 import { warmSheenBatch } from './lightfx/sheenBatch.js'; /* v2.3.3453: the ordinary metal shine drawn in the frame, not in a pass a piece */
+import { warmPicNumbers } from './picsNumbers.js'; /* v2.3.3715: a monster's strips as colour numbers on the chip (?picnumbers) */
 import { warmFillBatch } from './fillBatch.js'; /* v2.3.3577: the whirlwind's catch, drawn in one colour */
 import { WHIRL_TINT, WHIRL_TINT_HI, WHIRL_GLOW_ALPHA } from '../game/whirlCatch.js'; /* v2.3.3577: QA's whirlGlowLooks */
 import { AmbientFx } from './systems/ambientFx.js'; /* v2.3.2762 */
@@ -56,6 +59,19 @@ import { preloadWorldAnimations } from './preloadAnimations.js'; /* v2.3.1358 */
 import { Assets, TextureSource } from 'pixi.js';   /* v2.3.3074: + TextureSource (destroy, below) */
 import { markStandIns, refreshFigureShades } from './formShade.js'; /* v2.3.2767: light from above (the batcher patch itself installs on import) */
 import { SELF_STAND_IN_FIELDS, PEER_STAND_IN_MAPS } from './lightfx/casters.js';
+/* v2.3.3860: the head-frame count (headFrames.js), loaded only with
+   `?headframes` in the address: without it, not even fetched */
+let _headFrames = null;
+try {
+  if (typeof window !== 'undefined' && /[?&]headframes(=|&|$)/.test((window.location && window.location.search) || '')) {
+    import('./headFrames.js').then((m) => { _headFrames = m; }).catch(() => {});
+  }
+} catch (e) { /* QA only */ }
+import { getHeadwear } from './traits/headwearCatalog.js';
+import { getHair } from './traits/hairCatalog.js';
+import { getFacialHair } from './traits/facialHairCatalog.js';
+import { getEyewear } from './traits/eyewearCatalog.js';
+import { getEyeStyle } from './traits/eyeStyleCatalog.js';
 import { recordCrash } from '../debug/crashTrap.js';   /* v2.3.3017: a frame that will not draw is reported, and rebuilt */
 
 /* v2.3.778: decode ALL textures to <img>-backed sources, never ImageBitmap.
@@ -193,6 +209,22 @@ let _appRef = null;   /* v2.3.701: handle for uploadBakedTextures behind the int
    player's FEET -- published for mp-propdepth, which has to compare it with
    each prop's base.  Mutated in place: no allocation per frame. */
 const _playerGround = { x: NaN, y: NaN };
+/* v2.3.3775: the world's ground kept on a return (forceRefresh, below):
+   `?groundkeep=0` or the live flag off_groundkeep rebuilds it as before; the
+   counts are the QA probe window.__btGroundKeep (mp-groundkeep) */
+const _groundKeepOffUrl = (() => { try { return /[?&]groundkeep=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+function groundKeepOn() { return !_groundKeepOffUrl && !clientOff('groundkeep'); }
+/* ...and never after a loss: wsClient's resume has a third way here -- the
+   context lost when it looked, restored 1.5 s later, then forceRefresh (not a
+   whole rebuild) -- and a restored context keeps none of the old textures
+   (v2.3.773: "the baked render textures are gone"; gpuOnly pieces have no
+   copy to bring back).  A loss since the last renderer rebuild (crashTrap's
+   __btGlLostAt, BroTown's __btLastGlRebuild) rebuilds the ground as before. */
+function _lostSinceRebuild() {
+  try { return !!(window.__btGlLostAt && window.__btGlLostAt > (window.__btLastGlRebuild || 0)); } catch (e) { return false; }
+}
+const _groundKeep = { kept: 0, rebuilt: 0 };
+try { if (typeof window !== 'undefined') window.__btGroundKeep = _groundKeep; } catch (e) { /* no page */ }
 const _depthProbe = { legacy: false };
 if (typeof window !== 'undefined') {
   window.__btPlayerGround = () => ({ x: _playerGround.x, y: _playerGround.y });
@@ -306,6 +338,7 @@ export async function initPixiRenderer(canvas) {
   const worldLife = new WorldLife(layers);
   const swimFx = new SwimFx(layers);   /* v2.3.3003 */
   const jumpFx = new JumpFx();          /* v2.3.3017 */
+  const rideFx = new RideFx();          /* v2.3.3776 */
   const emoteFx = new EmoteFx();        /* v2.3.3392 */
   worldFx.setEntityRenderer(entityRenderer);   /* v2.3.2715: night lights the plates and the monsters */
   deathCrumble.setRenderer(app.renderer);
@@ -336,6 +369,7 @@ export async function initPixiRenderer(canvas) {
      palette's (whose own prewarm must reach the palette program); the three
      programs, as before, if it does not link (rendering/paletteTex.js) */
   try { setOneBatchRenderer(app.renderer); } catch (e) { /* the three programs */ }
+  try { warmPicNumbers(app.renderer); } catch (e) { /* compiled on its first whirlwind */ }   /* v2.3.3715: ?picnumbers (picsNumbers.js) */
   /* v2.3.3707: the silhouettes' two stencil programs, built here behind the
      loading screen, not the first time a monster hides (monsterSilhouette.js) */
   try { warmSilhouettes(app.renderer); } catch (e) { /* none drawn until they build */ }
@@ -766,6 +800,10 @@ export async function initPixiRenderer(canvas) {
        lights, which cast their shadows on the ground under them. */
     try { jumpFx.update(S, entityRenderer); }
     catch (e) { if (!update._jumpErr) { update._jumpErr = true; console.error('[pixi-render] jumpFx threw', e && e.message, e && e.stack); } }
+    /* v2.3.3776: the skateboard under a rider's boots, after the jump so it
+       rides up with the feet (rideFx.js) */
+    try { rideFx.update(S, entityRenderer); }
+    catch (e) { if (!update._rideErr) { update._rideErr = true; console.error('[pixi-render] rideFx threw', e && e.message, e && e.stack); } }
     /* ═══ v2.3.3392: EMOTES, AFTER THE JUMPERS ═══
        A wave, a dance, a sit: sorted where they stand, then drawn moving
        about their feet (emoteFx.js), the name plate held still -- before the
@@ -795,8 +833,11 @@ export async function initPixiRenderer(canvas) {
     const _t4 = performance.now();
     update._lastStages.fpsMs = _t4 - _t3;
 
+    /* v2.3.3860: QA (`?headframes`): each worn head piece on screen this frame? */
+    if (_headFrames) try { _headFrames.othersFrameTick(entityRenderer, app.stage, now); } catch (e) { /* QA only */ }
+    if (_headFrames) try { _headFrames.headFrameTick(entityRenderer, effectsRenderer, app.stage, { headwear: getHeadwear(), hair: getHair(), facialhair: getFacialHair(), eyewear: getEyewear(), eyestyle: getEyeStyle() }); } catch (e) { /* QA only */ }
     // Manual render
-    try { app.render(); update._renderStreak = 0; }
+    try { app.render(); update._renderStreak = 0; if (_headFrames) _headFrames.headPixelsTick(entityRenderer, effectsRenderer, app.renderer); }
     catch (e) {
       update._renderStreak = (update._renderStreak || 0) + 1;
       /* v2.3.3152: Pixi's masks and filters put back to "nothing open", or the
@@ -929,7 +970,20 @@ export async function initPixiRenderer(canvas) {
        context; after restore the tile buffers can be stale/black). */
     forceRefresh: () => {
       try {
-        if (currentZone && currentMap) tileRenderer.rebuild(app, currentMap, currentZone);
+        /* ═══ v2.3.3775: THE WORLD'S GROUND IS KEPT ON A RETURN ═══
+           Called on a healthy context only (wsClient's resume: a lost one
+           rebuilds the whole renderer, _rebuildRenderer, as before).  In the
+           Wheel this threw away every piece of the ground on screen and asked
+           the worker for each again: a tab brought back, or a page frozen
+           past 5 s (the 'thaw'), showed flat blocks of plain colour for
+           seconds while ~70 pieces were laid again (the 2026-10-28 UI review
+           on a computer; reproduced with a 6.5 s freeze: 72 pieces on screen
+           -> 9, 15 s to come back).  The pieces are textures on a context
+           that was never lost, so they are as good as ever: kept.  Every
+           other zone is rebuilt as before.  `?groundkeep=0`, or the live
+           flag off_groundkeep (game/clientOff.js), rebuilds as before. */
+        if (groundKeepOn() && !_lostSinceRebuild() && tileRenderer.keepsGround(currentZone)) { _groundKeep.kept++; return; }
+        if (currentZone && currentMap) { tileRenderer.rebuild(app, currentMap, currentZone); _groundKeep.rebuilt++; }
       } catch (e) { /* best-effort */ }
     },
     /* v2.3.113: expose immediate-dispose for a single loot pile.
@@ -1302,6 +1356,13 @@ export async function initPixiRenderer(canvas) {
     /* v2.3.2078: what the pet display is doing — the pet was invisible
        for its whole life and nothing could see that. */
     petDrawn: () => entityRenderer.petDrawn(),
+    /* v2.3.3806: world points -> the page's pixels, through the pet's own
+       layer (mp-petfetch draws the fetch's path over its picture) */
+    petScreen: (pts) => {
+      const d = entityRenderer.petDisplay;
+      if (!d || !d.parent || !Array.isArray(pts)) return null;
+      return pts.map((p) => { const g = d.parent.toGlobal({ x: p[0], y: p[1] }); return [g.x, g.y]; });
+    },
     /* v2.3.3123: the others' pets as drawn (mp-petshow) */
     peerPetsDrawn: () => entityRenderer.peerPetsDrawn(),
     blockGeomProbe: () => {

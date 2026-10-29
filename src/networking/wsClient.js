@@ -34,6 +34,8 @@ import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } fr
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
+import { onBankState } from '@/game/bank.js'; /* v2.3.3785: the Bank's vault (server/src/bank.js) */
+import { rideApply, clearRide } from '@/game/ride.js'; /* v2.3.3776: the skateboard (server/src/ride.js) */
 import { onRestResult, restMapsBuffs } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
 import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the Hotel opens against a worker that rests */
 import { cue, cueAt, cuePeer, peerOwn, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
@@ -46,9 +48,21 @@ import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { sprintStepFlag } from '@/game/sprint.js'; /* v2.3.3006: a sprinting move says so */
 import { peerEntrySlim, broCountOf } from '@/networking/broWallet.js'; /* v2.3.3255: the Hemi Bro check, theirs and yours */
-import { MOVE_DIET, dietMayWait, steadyMove } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often */
+import { setClientOff } from '@/game/clientOff.js'; /* v2.3.3755: each memory saver off from the Test panel */
+import '@/game/clientOffApply.js'; /* v2.3.3755: ...the sound savers switched by it */
+import { MOVE_DIET, dietMayWait, steadyMove, MOVE_PATH, pathMayWait, pathTurned } from '@/game/moveDiet.js'; /* v2.3.3204: a steady walk on the safe ground, half as often; v2.3.3732: + the message diet's path */
+/* v2.3.3732: `?diet=1` (or `?diet=0`) in the address, read as the page loads
+   -- before anything tidies the address -- and kept for the tab's reloads
+   (sessionStorage), so the owner's own phone stays on the path it asked for */
+const DIET_ASK = (function () {
+  try {
+    var q = new URLSearchParams(window.location.search).get('diet');
+    if (q === '1' || q === '0') { try { sessionStorage.setItem('bt_diet', q); } catch (e) { /* private mode */ } return q; }
+    return sessionStorage.getItem('bt_diet');
+  } catch (e) { return null; }   /* no page: a test */
+})();
 import { QUIET, quietOn, bundleOn, lookNews, peerNear, quietMoveGap, framesOf } from '@/game/quietPhone.js'; /* v2.3.3254: the quiet phone */
-import { nmlCanAttack } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk is not held near a player who may fight you */
+import { nmlCanAttack, nmlHere } from '@/game/noMansLand.js'; /* v2.3.3254: a steady walk is not held near a player who may fight you */
 import { NML_CENTRE, NML_CENTRES } from '@/data/noMansLandRings.js'; /* v2.3.3204: the Wheel's middle, the safe ground's centre */
 import { wheelLong, setWheelLong, wheelSizesDrawn } from '@/game/wheelSize.js'; /* v2.3.3315: which Wheel the room plays */
 import { stashPendingZoneNodes } from '@/networking/nodeSync.js'; /* v2.3.1301: node self-heal */
@@ -171,7 +185,10 @@ function _rescueDisplacedArmor(S, slot, stashKey, incoming) {
 }
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822 */
 import { applyGatherHits } from '@/game/lifeSkillRewards.js'; /* v2.3.2956: the worker's gathering hits */
-import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
+import { applyNmlSkull, applyNmlLoss, applyNmlTake, nmlPeerSkull, applyNmlLock, nmlLockAskShow } from '@/game/noMansLand.js'; /* v2.3.3058: No man's land; v2.3.3316: + what your kill took */
+import { noteDeath, noteDeathLoss } from '@/game/deathCard.js'; /* v2.3.3817: the death card (ui/mobile/DeathCard.jsx) */
+import { monsterDisplayName } from '@/data/gameDisplay.js'; /* v2.3.3817: the killer's name, as its plate reads */
+import { wheelStageName } from '@/data/wheelStageLooks.js'; /* v2.3.3817: ...with its stage ("Glacier Snowman") */
 import { nmlJoinFromBys } from '@/game/nmlAsk.js'; /* v2.3.3530: one who chose to attack you joins a fight you chose */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
@@ -801,7 +818,7 @@ export function setupWebSocket(ctx) {
         var welcomeMsg = {
           id: 'sys-' + Date.now(),
           name: '',
-          text: S.myName + ' joined Bro Town!',
+          text: S.myName + ' joined BroTown!',
           color: '',
           ts: Date.now(),
           system: true
@@ -938,6 +955,9 @@ export function setupWebSocket(ctx) {
                        "not sprinting" -- from an old worker as from a new one. */
                     var _wasSpr = !!S.others[pid]._sp;
                     S.others[pid]._sp = data.spr === 1;
+                    /* v2.3.3776: on the skateboard, says the worker (tick.js
+                       `brd`, ride.js); absent is on foot, as for `spr` */
+                    S.others[pid]._brd = data.brd === 1;
                     /* v2.3.3343: a sprint starting is heard, your own push-off
                        (BT_AUDIO.SPRINT_PUSH) at their share by distance (it was
                        dust alone) */
@@ -1510,7 +1530,13 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
-              _capsHere = true;   /* v2.3.3254: this socket's caps (the quiet phone's bundles) */
+              _capsHere = true;
+              /* v2.3.3776: a fresh join is off the board (the worker forgot it
+                 too: ride.js stores nothing) */
+              try { clearRide(S); } catch (e) { /* on foot either way */ }   /* v2.3.3254: this socket's caps (the quiet phone's bundles) */
+              /* v2.3.3755: the memory savers the worker has turned off (game/clientOff.js);
+                 an old worker says nothing, and this phone keeps what it last heard */
+              try { if (typeof S._serverCaps.clientoff === 'string') setClientOff(S._serverCaps.clientoff); } catch (e) { /* the savers as they are */ }
               /* v2.3.3355: a join with a NEW key got in -- the old key kept
                  beside it (key_new below) is no longer needed */
               try { if (isNewKey(S._joinKey || '')) localStorage.removeItem('bt_passphrase_old'); } catch (e) { /* private mode */ }
@@ -1848,6 +1874,28 @@ export function setupWebSocket(ctx) {
                  despawn.  The actual coin/inventory mutation rides on
                  the player_state event that immediately follows. */
               if (msg.payload) _applyLootCredit(msg.payload, S);
+              /* v2.3.3806: the pet's last few fetched piles, for mp-petfetch
+                 (window.__btPetFetch); eight ids at most */
+              if (msg.payload && msg.payload.viaPet && S._petFetch) {
+                var _pfc = S._petFetch.credited || (S._petFetch.credited = []);
+                _pfc.push(msg.payload.lootId);
+                if (_pfc.length > 8) _pfc.shift();
+              }
+              break;
+            }
+          /* v2.3.3732: the message diet's switches, changed live (server
+             movepath.js _movePathFlagChanged): the phone's next batch follows */
+          /* v2.3.3755: a memory saver turned off or on for every phone (server
+             clientoff.js): the live ones follow at once, the rest next load */
+          case 'client_off':
+            {
+              if (S._serverCaps) S._serverCaps.clientoff = typeof msg.off === 'string' ? msg.off : '';
+              try { setClientOff(typeof msg.off === 'string' ? msg.off : ''); } catch (e) { /* the savers as they are */ }
+              break;
+            }
+          case 'move_path':
+            {
+              if (S._serverCaps) { S._serverCaps.movepath = !!msg.on; S._serverCaps.pathall = !!msg.all; }
               break;
             }
           /* v2.3.3058: No man's land (server/src/nomansland.js; the game's half,
@@ -1864,6 +1912,21 @@ export function setupWebSocket(ctx) {
           case 'nml_loss':
             {
               if (msg.payload) applyNmlLoss(S, msg.payload, saveRpgSoon);
+              /* v2.3.3817: and the death card says what went */
+              if (msg.payload) { try { noteDeathLoss(S, !!(msg.payload.red && !msg.payload.keepWorn)); } catch (_dl) { /* the chat says it */ } }
+              break;
+            }
+          /* v2.3.3770: the lock after a red skull's death (nomansland.js
+             _nmlLockSet): who you may not attack and who may not attack you,
+             and the "?" over the head of one asking you for a rematch */
+          case 'nml_lock':
+            {
+              if (msg.payload) applyNmlLock(S, msg.payload);
+              break;
+            }
+          case 'nml_lock_ask':
+            {
+              if (msg.payload) nmlLockAskShow(S, msg.payload);
               break;
             }
           /* v2.3.3316: and what a kill of yours there took (the pile, the gold) */
@@ -2049,10 +2112,24 @@ export function setupWebSocket(ctx) {
              worker's own message to you. */
           case 'race_state':
             { if (!msg.from) { try { onRaceState(S, msg.payload); } catch (_re) { /* display only */ } } break; }
+          /* v2.3.3776: the skateboard -- on, off and why (server/src/ride.js),
+             here in the direct switch for the race's reason */
+          case 'ride_state':
+            { if (!msg.from) { try { rideApply(S, msg.payload, Date.now()); } catch (_re) { /* on foot */ } } break; }
           case 'race_cp':
             { if (!msg.from) { try { onRaceCheckpoint(S, msg.payload); } catch (_re) { /* display only */ } } break; }
           case 'race_end':
             { if (!msg.from) { try { onRaceEnd(S, msg.payload); } catch (_re) { /* display only */ } } break; }
+          case 'bank_state':
+            {
+              /* v2.3.3785: the Bank's vault as the worker holds it (bank.js),
+                 after each move and on opening; the bag and the purse ride the
+                 player_state that follows a move */
+              if (!msg.from) {
+                try { onBankState(S, msg.payload); } catch (_bk) { /* display only */ }
+              }
+              break;
+            }
           /* v2.3.3539: a rest's answer (server/src/rest.js) -- here, in the
              direct switch, for the race's reason: a worker from before the
              Hotel opened would relay a forged one to everyone */
@@ -3043,6 +3120,10 @@ export function setupWebSocket(ctx) {
               if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
               S.rpg._compStats.deaths++;
               S._deathStart = Date.now();
+              /* v2.3.3817: the card over the scene for the five seconds --
+                 what killed you, read now (the respawn empties the monster
+                 list), and when you are back (game/deathCard.js) */
+              try { noteDeath(S, msg.payload, Date.now(), { monsterName: function (m) { return wheelStageName(m, monsterDisplayName(m.archetype || m.type)); }, inNml: nmlHere(S) > 0 }); } catch (_dc) { /* the death plays without it */ }
               /* v2.3.2343: NO local gold penalty.  The worker owns coins
                  (_handlePlayerDeath never touches ps.coins -- there is no
                  death penalty server-side today), and under protocol v2 an
@@ -3087,7 +3168,8 @@ export function setupWebSocket(ctx) {
                   S._camPunch = { dx: Math.cos(_dAng) * 16, dy: Math.sin(_dAng) * 16, ts: Date.now() };
                 }
               } catch (e) { /* a camera kick never breaks the death */ }
-              pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
+              /* v2.3.3748: a burning heap's (server heapburn.js) says how */
+              pushDmgPopup(S, S.player.x, S.player.y - 40, (msg.payload && msg.payload.cause === 'monster:heap') ? 'BURNED TO DEATH' : 'YOU DIED', '#ff5e6c');
               /* v2.3.3556: the worker kept your bag (a dungeon: the owner's
                  "Keep your bag in dungeons"; a duel) and says so -- only then,
                  so an older worker's death promises nothing */
@@ -4458,13 +4540,13 @@ export function setupWebSocket(ctx) {
           var _rf = _rfPending;
           _rfPending = null;
           S._realtimeStatus = 'full';
-          /* onopen pushed "<name> joined Bro Town!" into the chat log
+          /* onopen pushed "<name> joined BroTown!" into the chat log
              optimistically, before the refusal could possibly be known.
              That join never happened, and a player who waits out twenty
              retries would otherwise walk in to twenty of them. */
           try {
             var _last = S.chatLog[S.chatLog.length - 1];
-            if (_last && _last.system && _last.text === S.myName + ' joined Bro Town!') {
+            if (_last && _last.system && _last.text === S.myName + ' joined BroTown!') {
               S.chatLog = S.chatLog.slice(0, -1);
               setChatLog(_toConsumableArray(S.chatLog));
             }
@@ -4596,7 +4678,7 @@ export function setupWebSocket(ctx) {
         _text.style.cssText = 'opacity:.85;margin-bottom:12px;';
         _text.textContent = _g.shown > 1
           ? "That didn't go through. One more try:"
-          : 'Before your character is made, Bro Town checks that a person is here.';
+          : 'Before your character is made, BroTown checks that a person is here.';
         var _box = document.createElement('div');
         _box.id = 'bt-verify-box';
         _box.style.cssText = 'display:flex;justify-content:center;min-height:65px;';
@@ -5145,8 +5227,39 @@ export function setupWebSocket(ctx) {
         return false;
       }
     }
-    /* QA: what the diet did (mp-movediet) */
-    try { if (typeof window !== 'undefined') window.__btMoveDiet = function () { return { on: moveDietOn(), sent: _dietStats.sent, waited: _dietStats.waited }; }; } catch (e) { /* QA only */ }
+    /* ═══ v2.3.3732: THE MESSAGE DIET -- A STEADY WALK IS A PATH ═══
+       Against a worker that advertises caps.movepath (server movepath.js:
+       it always does, unless the kill switch `movepath: false` is thrown),
+       which moves its copy of you along your speed between your moves, and
+       only on a phone that asked (?diet=1, or caps.pathall for every phone:
+       movePathOn below), a steady move anywhere in
+       the Wheel waits until MOVE_PATH.GAP_MS (200) after the last one sent,
+       a turn, a start, a stop or any other change goes on the very next
+       batch, and a move off its line at the same speed (a wall, a shove)
+       keeps the rate it always had (game/moveDiet.js pathMayWait,
+       pathTurned).  Every such move carries `pd: 1`.  Not in a duel or an
+       arena match, which are judged blow by blow against where the worker
+       has you.  Your own walk never waits: these are reports. */
+    var _pathStats = { waited: 0, turned: 0 };
+    /* v2.3.3732: who is on the path -- this phone with `?diet=1` in its
+       address, or every phone with caps.pathall (the Test panel's Message
+       diet buttons); `?diet=0` keeps this one out.  Both need caps.movepath
+       (the worker glides; `movepath: false` is the kill switch), and either
+       may change live (`move_path`, the direct switch above) */
+    var _dietAsk = DIET_ASK;
+    function movePathOn() {
+      try {
+        var _S = stateRef.current;
+        if (!_capsHere || !_S || !_S._serverCaps || !_S._serverCaps.movepath) return false;
+        if (!(_dietAsk === '1' || (_S._serverCaps.pathall && _dietAsk !== '0'))) return false;
+        if (_S.currentZone !== 'wheel') return false;
+        return !(_S._inDuel || _S._activeDuel || _S._arenaMatch);
+      } catch (e) {
+        return false;
+      }
+    }
+    /* QA: what the diet did (mp-movediet; v2.3.3732: + the path, mp-movepath) */
+    try { if (typeof window !== 'undefined') window.__btMoveDiet = function () { return { on: moveDietOn(), sent: _dietStats.sent, waited: _dietStats.waited, path: movePathOn(), pathWaited: _pathStats.waited, pathTurned: _pathStats.turned }; }; } catch (e) { /* QA only */ }
     /* ═══ v2.3.3254: THE QUIET PHONE -- ONE FRAME A MOMENT, AND RIDERS ═══
        game/quietPhone.js has the whole story.  wsOut is every game message's
        way out (the join keeps its own): against a worker that advertises
@@ -5263,8 +5376,19 @@ export function setupWebSocket(ctx) {
       if (_pendingMove) {
         var _nowMv = Date.now();
         var _gapMv = moveGapMs();
+        /* v2.3.3732: the path (movePathOn above): a steady move waits to
+           GAP_MS, a change goes now, the rest keep the rate */
+        if (_pendingMove.pd === 1 && _moveSent && _moveSent.pd === 1) {
+          if (pathMayWait(movePathOn(), _pendingMove, _pendingMoveAt, _moveSent, _moveSentMadeAt)) {
+            _gapMv = MOVE_PATH.GAP_MS;
+            if (_nowMv - _lastMoveSentAt < _gapMv) _pathStats.waited++;
+          } else if (pathTurned(_moveSent, _pendingMove)) {
+            _gapMv = 0;
+            _pathStats.turned++;
+          }
+        }
         /* v2.3.3204: ...and a steady walk on the safe ground waits longer */
-        if (_gapMv < MOVE_DIET.GAP_MS && _nowMv - _lastMoveSentAt >= _gapMv && moveMayWait()) {
+        else if (_gapMv < MOVE_DIET.GAP_MS && _nowMv - _lastMoveSentAt >= _gapMv && moveMayWait()) {
           _gapMv = MOVE_DIET.GAP_MS;
           if (_nowMv - _lastMoveSentAt < _gapMv) _dietStats.waited++;
         }
@@ -5434,10 +5558,29 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
+        /* v2.3.3776: the skateboard (game/ride.js) -> ride.js.  TRAPS #18:
+           without this line the board button would send nothing at all. */
+        if (msg.type === 'ride') {
+          wsOut(msg);
+          return;
+        }
         /* v2.3.3539: a rest at the Hotel or on your farm's bed (game/rest.js)
            -> rest.js.  TRAPS #18: without this line Rest would send nothing
            at all. */
         if (msg.type === 'rest_request') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3785: the Bank's vault (game/bank.js) -> bank.js.  TRAPS #18:
+           without these the window would send nothing at all. */
+        if (msg.type === 'bank_open' || msg.type === 'bank_deposit' || msg.type === 'bank_withdraw') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3748: standing in a burning heap (game/heapBurn.js) ->
+           heapburn.js.  TRAPS #18: without this line the worker never hears
+           and nobody burns. */
+        if (msg.type === 'heap_burn') {
           wsOut(msg);
           return;
         }
@@ -5526,6 +5669,15 @@ export function setupWebSocket(ctx) {
            once.  TRAPS #18: without this line the choice never leaves the
            browser. */
         if (msg.type === 'nml_attack') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3770: the lock after a red skull's death (game/noMansLand.js
+           nmlLockAsk, nmlLockAllow) -> nomansland.js _handleNmlLockAsk,
+           _handleNmlLockAllow.  TRAPS #18: mp-nmllock's first run found the
+           rematch's "?" and "Let them attack you again" never left the
+           browser without this line. */
+        if (msg.type === 'nml_lock_ask' || msg.type === 'nml_lock_allow') {
           wsOut(msg);
           return;
         }
@@ -5832,7 +5984,11 @@ export function setupWebSocket(ctx) {
                  off (undefined, so not on the wire) when walking.  Only `sp: 1`
                  counts there, and only against a worker that advertised
                  caps.sprint does the client sprint at all (game/sprint.js). */
-              sp: sprintStepFlag(_S4) ? 1 : undefined
+              sp: sprintStepFlag(_S4) ? 1 : undefined,
+              /* v2.3.3732: "move me along my speed until my next one" -- only
+                 against a worker that glides (movePathOn); absent otherwise,
+                 so the move is byte for byte what it was */
+              pd: movePathOn() ? 1 : undefined
             };
             _pendingMoveAt = Date.now();   /* v2.3.3204: when this frame wrote it */
             startBatchTimer();

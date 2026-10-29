@@ -38,7 +38,7 @@
  * held by sockets that never join), `flood` (the room's time a message).
  *
  *   node tools/qa/load/bot-lab.mjs [minutes, default 60] [--only=a,b] [--seed=N] [--census]
- *                                  [--flags=movebudget:false,...]
+ *                                  [--flags=movebudget:false,...] [--pd[=boost]]
  *
  * --flags sets the room's live flags (v2.3.3325): a kill switch thrown, so a
  * fix can be measured against the rule it replaced on one checkout.
@@ -131,9 +131,15 @@ function humanFp() {
 const COPY_FP = { len: 820, n: 96, dur: 1500, ent: 0.15, tv: 12, vc: 0.3, h: 2779098405 };
 
 /* ── a player ────────────────────────────────────────────────────────── */
+/* v2.3.3732: --pd marks every move for the message diet's glide (server
+   movepath.js; with --flags=movepath:true); --pd=boost also claims ten times
+   the speed it walks, the script that hopes the worker glides it faster */
+const PD = FLAG('pd', null);
 function moveMsg(x, y, vx, vy) {
+  const k = PD === 'boost' ? 10 : 1;
   return { type: 'move', x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, d: 'down', f: 'south', eqc: 'none', eql: 'none', eqs: 'none',
-    ex: null, z: 'wheel', vx: Math.round(vx * 100), vy: Math.round(vy * 100), dodging: false, blocking: false, ba: null, dead: false };
+    ex: null, z: 'wheel', vx: Math.round(vx * 100 * k), vy: Math.round(vy * 100 * k), dodging: false, blocking: false, ba: null, dead: false,
+    ...(PD ? { pd: 1 } : {}) };
 }
 
 async function addPlayer(world, cfg, i) {
@@ -414,6 +420,36 @@ async function stepFighter(world, p) {
       await send(world, p, { type: 'ability_use', payload: { type: 'dodge' } });
     }
   }
+  /* v2.3.3806: a fighter that takes its loot home -- `loot: 'walk'` walks to
+     each pile of its own and picks it up by hand (the worker's 160 px), and
+     `loot: 'pet'` asks for it with a pet out, from where it stands, as far as
+     the pet's fetch reaches (pets.js PETS.FETCH_RANGE, 600): the most a
+     script gains from the wider reach */
+  if (p.cfg.loot) {
+    if (p.cfg.loot === 'pet' && !p.petOut) {
+      const book = room._petbookOf(p.id);
+      const pet = { id: 'p_lab' + String(p.i), kind: 'gobling', look: 'fireGoblin', home: 'frost', stage: 1, gold: false, size: 1, name: null,
+        lv: 1, xp: 0, at: now, caughtBy: p.id, owners: 1, tradeAfter: now };
+      book.rec.list.push(pet); book.rec.active = pet.id; p.petOut = true;
+    }
+    if (!p.asked) p.asked = new Map();
+    const mine = (room.loot.wheel || []).filter((l) => !l.isDeathDrop && Array.isArray(l.recipients) && l.recipients.includes(p.id)
+      && !l.claimedBy[p.id] && !(now - (p.asked.get(l.lootId) || 0) < 3000))
+      .map((l) => ({ l, d: Math.hypot(l.x - ps.x, l.y - ps.y) })).sort((a, b) => a.d - b.d);
+    if (p.cfg.loot === 'pet') {
+      for (const { l, d } of mine) {
+        if (d > 590) break;
+        p.asked.set(l.lootId, now); p.picks = (p.picks || 0) + 1;
+        await send(world, p, { type: 'loot_pickup', payload: { lootId: l.lootId, zone: 'wheel', viaPet: true } });
+      }
+    } else if (mine.length && mine[0].d < 1800) {
+      const { l } = mine[0];
+      if (!(await travel(world, p, l.x, l.y, 100))) return;
+      p.asked.set(l.lootId, now); p.picks = (p.picks || 0) + 1;
+      await send(world, p, { type: 'loot_pickup', payload: { lootId: l.lootId, zone: 'wheel' } });
+      return;
+    }
+  }
   /* honest */
   if (!p.target || !p.target.alive) {
     let best = null, bd = Infinity;
@@ -505,6 +541,12 @@ const SCENARIOS = [
     players: [{ fight: true, move: 'walk', human: true, speed: 220, startAt: () => landAnchor('frost'), reflex: () => (Math.random() < 0.7 ? u(280, 700) : null) }] },
   { name: 'reflex-fighter', note: 'the honest sword, dodging every wind-up 60 ms after it starts (a script reading the wind-up)',
     players: [{ fight: true, move: 'walk', speed: 220, startAt: () => landAnchor('frost'), reflex: () => 60 }] },
+  /* v2.3.3806: the honest fighter taking its loot home, by hand or by a pet's
+     fetch from where it stands */
+  { name: 'loot-walk-fighter', note: 'the honest fighter, walking to each pile of its own and picking it up by hand',
+    players: [{ fight: true, loot: 'walk', move: 'walk', human: true, speed: 220, startAt: () => landAnchor('frost') }] },
+  { name: 'loot-pet-fighter', note: 'the honest fighter with a pet out, asking for each pile of its own from where it stands, out to the fetch\'s 600 px (v2.3.3806)',
+    players: [{ fight: true, loot: 'pet', move: 'walk', human: true, speed: 220, startAt: () => landAnchor('frost') }] },
   { name: 'aimbot-fighter', note: 'standing still, a "ranged" hit on every level 1-5 monster within 3,600 px, no bow (v2.3.3334: under the message budget, 100 a second)',
     players: [{ fight: true, aimbot: true, perSec: 100, move: 'walk', startAt: () => landAnchor('frost') }] },
   /* v2.3.3334: the same script holding a bow (hitproof.js asks for one), and
@@ -567,7 +609,7 @@ async function runScenario(sc) {
       counters: rec ? rec.counters : null, extractionMissing: sess._extractionMissing || 0,
       pxPerS: p.dist / (MINUTES * 60), refusedMoves: p.refusedMoves, idleS: Math.round((p.idle || 0) / 1000),
       plannedHits: p.plannedHits || 0, deaths: p.deaths || 0,
-      kills: world.kills.get(p.id) || 0, combatXp: world.cxp.get(p.id) || 0, coins: (ps.coins || 0) - (p.coins0 || 0),
+      kills: world.kills.get(p.id) || 0, combatXp: world.cxp.get(p.id) || 0, coins: (ps.coins || 0) - (p.coins0 || 0), picks: p.picks || 0,
       sig: sigJ ? { score: sigJ.score, reasons: sigJ.reasons, aim: rec.sig.aim, react: rec.sig.react, rootMax: rec.sig.root.max, flagged: rec.flags.some((f) => f.kind === 'server-signals') } : null,
       dodges: p.dodges || 0,
     });
@@ -819,7 +861,7 @@ for (const sc of SCENARIOS) {
   for (const o of r.out) {
     const g = Object.entries(o.gained).filter(([k]) => !/^(woodcutting_axe|mining_pickaxe|fishing_pole)$/.test(k))
       .map(([k, v]) => `${k} ${Math.round(v / hours)}`).join(', ');
-    if (o.kills || /fighter/.test(o.name)) console.log(`  #${o.i}  kills/h ${Math.round(o.kills / hours)}  combat xp/h ${Math.round(o.combatXp / hours)}  coins/h ${Math.round(o.coins / hours)}  hit messages/h ${Math.round(o.moves / hours)}`);
+    if (o.kills || /fighter/.test(o.name)) console.log(`  #${o.i}  kills/h ${Math.round(o.kills / hours)}  combat xp/h ${Math.round(o.combatXp / hours)}  coins/h ${Math.round(o.coins / hours)}  hit messages/h ${Math.round(o.moves / hours)}${o.picks ? `  pickups asked/h ${Math.round(o.picks / hours)}` : ''}`);
     console.log(`  #${o.i}  strikes/h ${Math.round(o.strikes / hours)}  paid/h ${Math.round((o.why.paid || 0) / hours)}  xp/h ${Math.round(o.xp / hours)}  | got/h: ${g || '-'}`);
     console.log(`       refusals ${JSON.stringify(Object.fromEntries(Object.entries(o.why).filter(([k]) => k !== 'paid')))}  frames/h ${Math.round(o.frames / hours)}  travel ${Math.round(o.pxPerS)} px/s  idle ${o.idleS}s${o.deaths ? '  deaths ' + o.deaths : ''}`);
     if (o.sig) console.log(`       server signals: score ${o.sig.score}${o.sig.flagged ? ' FLAGGED' : ''}  reasons [${o.sig.reasons.join(', ')}]  aimed ${o.sig.aim.hit}/${o.sig.aim.n}  quick reactions ${o.sig.react.quick}/${o.sig.react.n}${o.dodges ? ' (' + o.dodges + ' dodges)' : ''}  most hits from one spot ${o.sig.rootMax}`);

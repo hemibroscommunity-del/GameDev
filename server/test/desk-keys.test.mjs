@@ -38,7 +38,7 @@ function check(name, cond, detail) {
 const root = new URL('../../', import.meta.url);
 const src = (p) => readFileSync(new URL(p, root), 'utf8');
 
-const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food'];
+const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food', 'ride'];   /* v2.3.3776: + Z, the skateboard */
 const GROUP_IDS = DESK_KEY_GROUPS.map((g) => g[0]);
 
 /* ── 1. the table ── */
@@ -60,7 +60,7 @@ check('2b with everything met, every row', all.length === DESK_KEY_ROWS.length);
 check('2c the owner\'s case: R (Whirl) only with whirl met', !none.some((r) => r[0] === 'R') && deskKeyRows({ whirl: true }).some((r) => r[0] === 'R' && r[1] === 'Whirl'));
 /* v2.3.3711: the shield is the right button held, the bash a click with it up */
 check('2d R-Click (Shield) only with a shield, +Click (Bash) only with the bash', !deskKeyRows({ bash: true }).some((r) => r[0] === 'R-Click')
-  && deskKeyRows({ shield: true }).some((r) => r[0] === 'R-Click' && r[1] === 'Shield') && !deskKeyRows({ shield: true }).some((r) => r[0] === '+Click')
+  && deskKeyRows({ shield: true }).some((r) => r[0] === 'R-Click' && r[1] === 'Shield \u2195') && !deskKeyRows({ shield: true }).some((r) => r[0] === '+Click')
   && deskKeyRows({ bash: true }).some((r) => r[0] === '+Click' && r[1] === 'Bash'));
 check('2e a requirement must be true, not just there', !deskKeyRows({ whirl: 1, shield: 'yes' }).some((r) => r[0] === 'R' || r[0] === 'R-Click'));
 
@@ -97,7 +97,7 @@ const bound = (k) => {
   if (k === 'Space') return /e\.code === 'Space'/.test(ctl);
   if (k === 'Tab') return /e\.code === 'Tab'/.test(ctl);
   if (k === 'Esc') return /e\.code === 'Escape'/.test(ctl);
-  if (k === '1-3') return ['1', '2', '3'].every((d) => new RegExp(`e\\.code === 'Digit${d}'`).test(ctl));
+  if (/^[123]$/.test(k)) return new RegExp(`e\\.code === 'Digit${k}'`).test(ctl);   /* v2.3.3847: a row a number (was '1-3') */
   /* v2.3.3711: the mouse's moves, and the combos */
   if (k === 'Click') return /onMouseDown/.test(bro);
   if (k === 'R-Click') return /e\.button === 2/.test(bro) && /_deskRightPress\(/.test(bro);
@@ -114,7 +114,7 @@ check('6a every key the list names is one the game binds', dead.length === 0, de
 /* ── 7. v2.3.3711: the owner's layout ── */
 const words = (k) => (DESK_KEY_ROWS.find((r) => r[0] === k) || [])[1];
 check('7a Q is the special, F the burst, the right button the shield, +Click the bash, the wheel a swap',
-  words('Q') === 'Special' && words('F') === 'Burst' && words('R-Click') === 'Shield' && words('+Click') === 'Bash' && words('Wheel') === 'Swap',
+  words('Q') === 'Special' && words('F') === 'Burst' && words('R-Click') === 'Shield \u2195' && words('+Click') === 'Bash' && words('Wheel') === 'Swap',
   ['Q', 'F', 'R-Click', '+Click', 'Wheel'].map((k) => [k, words(k)]));
 check('7b ...no row says G or Q+E any more', !DESK_KEY_ROWS.some((r) => r[0] === 'G' || r[0] === 'Q+E'));
 check('7c ...the combos listed: a direction tapped twice dodges, a double click locks on',
@@ -127,8 +127,9 @@ const qBlock = (/if \(e\.code === 'KeyQ' && !e\.repeat\) \{([\s\S]*?)\n {6}\}/.e
 check('7e Q fires the special, and raises no shield', /_desktopSpecialAttack\(\)/.test(qBlock) && !/_desktopShieldOn|_shieldKb = true/.test(qBlock), qBlock.slice(0, 300));
 check('7f F and G both fire the Element Burst', /e\.code === 'KeyF' \|\| e\.code === 'KeyG'\) && !e\.repeat\) \{\s*e\.preventDefault\(\);\s*_desktopElementBurst\(\)/.test(ctl));
 check('7g F no longer fires the special', !/e\.code === 'KeyF' && !e\.repeat\) \{[\s\S]{0,120}_desktopSpecialAttack/.test(ctl));
-check('7h the right button\'s release lowers the shield, heard on the window; a blur lowers it too',
-  /addEventListener\('mouseup', onMouseUp\)/.test(ctl) && /e\.button === 2 && S\._shieldMouse/.test(ctl) && /onBlur[\s\S]{0,400}_shieldMouse/.test(ctl));
+/* v2.3.3847: the right button is a toggle -- its release lowers nothing; a blur still does */
+check('7h the right button\'s release lowers nothing (a toggle); a blur lowers the guard',
+  !/addEventListener\('mouseup', onMouseUp\)/.test(ctl) && /onBlur[\s\S]{0,600}_shieldMouse = false; _desktopShieldOff\(\)/.test(ctl));
 check('7i no browser menu over the game on a computer (text fields and links keep theirs)',
   /addEventListener\('contextmenu', onContextMenu\)/.test(ctl) && /input, textarea/.test(ctl) && /onContextMenu: function onContextMenu\(e\) \{[\s\S]{0,900}?e\.preventDefault\(\);\s*\}/.test(bro));
 check('7j with no shield on the arm the right button keeps its old use, the special',
@@ -177,6 +178,39 @@ check('9a with all three: next melee -> ranged, the one before melee -> staff',
   nextWeaponSlot({ ...kit, activeSlot: 'melee' }) === 'ranged' && prevWeaponSlot({ ...kit, activeSlot: 'melee' }) === 'staff'
   && prevWeaponSlot({ ...kit, activeSlot: 'ranged' }) === 'melee', [prevWeaponSlot({ ...kit, activeSlot: 'melee' })]);
 check('9b ...one weapon: nowhere to go, both ways', prevWeaponSlot({ weapon: { type: 'sword' }, activeSlot: 'melee' }) === 'melee');
+
+/* ── 10. v2.3.3844: Space jumps, X rolls (the owner: "spacebar I think should be jump") ── */
+const spaceBlock = (/if \(e\.code === 'Space'\) \{([\s\S]*?)\n {6}\}/.exec(ctl) || [])[1] || '';
+const xBlock = (/if \(e\.code === 'KeyX'\) \{([\s\S]*?)\n {6}\}/.exec(ctl) || [])[1] || '';
+check('10a the list says Space Jump and X Dodge', words('Space') === 'Jump' && words('X') === 'Dodge', [words('Space'), words('X')]);
+check('10b Space jumps once a press (a repeat jumps nothing), and rolls nothing; its default refused (no scroll)',
+  /e\.preventDefault\(\);\s*if \(!e\.repeat\) triggerJump\(S\);/.test(spaceBlock) && !/triggerContextualDodge/.test(spaceBlock), spaceBlock.slice(0, 200));
+check('10c X rolls (the contextual dodge) and jumps nothing', /triggerContextualDodge\(S, _R1, ang\)/.test(xBlock) && !/triggerJump/.test(xBlock), xBlock.slice(0, 200));
+check('10d Space\'s release presses no focused button (its keyup refused, outside a field)',
+  /onKeyUp = function onKeyUp\(e\) \{[\s\S]{0,700}e\.code === 'Space'[\s\S]{0,300}e\.preventDefault\(\)/.test(ctl));
+check('10e Space and X come before the 2\u00d7WASD row; the double tap still rolls', DESK_KEY_ROWS.findIndex((r) => r[0] === 'X') === DESK_KEY_ROWS.findIndex((r) => r[0] === 'Space') + 1
+  && /dblTapRoll\(/.test(ctl));
+/* ── 11. v2.3.3847: the right button toggles the guard; with nothing near it follows the pointer ── */
+const { deskPointerAngle, shieldFollowsPointerAlways } = await import('../../src/game/deskShield.js');
+const S10 = { player: { x: 1000, y: 1000 }, camera: { x: 800, y: 900 }, _worldScaleX: 0.8, _worldScaleY: 0.8, _mouseScreen: { x: 320, y: 80 } };
+/* the pointer at world (800 + 320/0.8, 900 + 80/0.8) = (1200, 1000): straight right of the bro */
+check('11a the pointer\'s angle comes from where it is on the screen and the camera now', near0(deskPointerAngle(S10), 0), deskPointerAngle(S10));
+S10.camera = { x: 1000, y: 900 };   /* walked right 200 with the mouse still: the pointer is now at (1400, 1000)... */
+S10.player = { x: 1200, y: 1000 };
+check('11b ...so walking with the mouse still keeps the guard on the pointer', near0(deskPointerAngle(S10), 0), deskPointerAngle(S10));
+S10._mouseScreen = { x: 160, y: 80 };   /* the pointer on the bro */
+check('11c ...no angle with the pointer on the bro, or no pointer yet', deskPointerAngle(S10) === null && deskPointerAngle({ player: { x: 0, y: 0 }, camera: { x: 0, y: 0 } }) === null);
+check('11d ?shieldaim=mouse: the pointer always; anything else the default',
+  shieldFollowsPointerAlways('?shieldaim=mouse') && shieldFollowsPointerAlways('?a=1&shieldaim=mouse') && !shieldFollowsPointerAlways('?shieldaim=mousey')
+  && !shieldFollowsPointerAlways('') && !shieldFollowsPointerAlways(null));
+check('11e a right press with the guard up lowers it (the toggle); dropShield clears the toggle so the next press raises it',
+  /if \(S\.rpg\.shield && S\._shieldUp\) \{\s*S\._shieldMouse = false;\s*_desktopShieldOff\(\);\s*return 'shield-down';/.test(bro)
+  && /S\._shieldMouse = false;/.test(src('src/game/shieldToggle.js')));
+check('11g the numbers say their weapons: 1 Melee, 2 Bow, 3 Staff, always listed, no 1-3 row',
+  words('1') === 'Melee' && words('2') === 'Bow' && words('3') === 'Staff' && !DESK_KEY_ROWS.some((r) => r[0] === '1-3')
+  && ['1', '2', '3'].every((k) => deskKeyRows({}).some((r) => r[0] === k)));
+check('11f the toggled guard faces what is near (shieldTargetAngle), else the live pointer',
+  /var _sta = S\._shieldAimMouse \? null : shieldTargetAngle\(S\);\s*var _spa = deskPointerAngle\(S\);/.test(bro));
 
 console.log(`\ndesk-keys: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

@@ -22,7 +22,7 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { playIsLandscape } from './playViewport.js';
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 import { deskWords } from '@/game/deskWords.js'; /* v2.3.3615: "tap" reads "click" on a computer */
-import { deskWideActive } from '@/ui/deskWide.js'; /* v2.3.3687: a computer's fold chip says OPEN */
+import { deskWideActive } from '@/ui/deskWide.js'; /* v2.3.3687; v2.3.3793: no OPEN chip now, but the coach card's clear-of-the-quest-HUD layout (main) asks it */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -419,15 +419,16 @@ const LESSONS = [
     anchors: [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: 'Your bag, your gear and your stats live down here. Tap OPEN.' },
-      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
-        /* v2.3.3687: on a computer playing wide the chip is a word, OPEN
-           (BottomDashboard's dock, the owner's "a "close" button that says
-           close"); a phone on its side keeps its arrow */
-        get body() {
-          return deskWideActive()
-            ? 'Your bag, your gear and your stats live in here. Tap OPEN.'
-            : 'Your bag, your gear and your stats live in here. Tap the arrow.';
-        } },
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
+        /* v2.3.3793: an arrow both ways now -- a phone on its side its chip,
+           a computer the folded strip's arrow (BottomDashboard; the owner
+           took OPEN off a computer: "the arrow takes the place of that").
+           The arrow lets a click through to its strip (pointer-events none,
+           the strip is the button), so on a computer the reach check finds
+           the STRIP under the arrow's middle: every lesson ringing the fold
+           reaches it too ([data-desk-foldstrip]), or TRAPS 41 skips the
+           lesson in silence (the 2026-10-29 review) */
+        body: 'Your bag, your gear and your stats live in here. Tap the arrow.' },
     ],
     label: 'Your dashboard',
     live: function (rpg) { return preTutorial(rpg); },
@@ -508,7 +509,7 @@ const LESSONS = [
          measures when that is really the problem. */
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: 'Open your dashboard and equip your gear.' },
-      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: 'Open your dashboard and equip your gear.' },
     ],
     label: 'Gear up',
@@ -554,7 +555,7 @@ const LESSONS = [
     anchors: [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: 'Mayor Bro paid you in gear. Tap OPEN to find it.' },
-      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: 'Mayor Bro paid you in gear. Open the dashboard to find it.' },
       { sel: '[data-nav="dashboard"]', reach: '[data-nav="dashboard"]',
         body: 'Mayor Bro paid you in gear. Tap Dashboard to find it.' },
@@ -586,7 +587,7 @@ const LESSONS = [
          replaced the same way -- see the note there. */
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: 'Open your dashboard — equip the bow and the staff.' },
-      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: 'Open your dashboard — equip the bow and the staff.' },
     ],
     label: 'Three weapons',
@@ -820,7 +821,7 @@ const LESSONS = [
         body: function (S) { return pointsTipWords('nav', S && S.rpg); } },
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: function (S) { return pointsTipWords('fold', S && S.rpg); } },
-      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: function (S) { return pointsTipWords('side', S && S.rpg); } },
     ],
     label: 'Level up!',
@@ -1386,6 +1387,37 @@ export function QuestCoach(props) {
     };
   }, [stateRef]);
 
+  /* ═══ v2.3.3812: NO CARD ON THE QUEST CARD, MEASURED ═══
+     v2.3.3782 kept GEAR UP off the pinned quest card by a guess at the card's
+     height (two lines, about 70 px), and lane A's judge pass on a computer
+     (1440 x 900 and 1280 x 720) still saw "SAVE YOUR LOGIN KEY" and "YOUR
+     REWARD" -- taller cards -- drawn over it, text on text.  So after every
+     draw, before the paint, the card as drawn is measured against the quest
+     card: crossing it, it steps right of it while the world has the room (a
+     style written here; React writes `left` again only when its own value
+     changes, and this runs again after).  Two rects a draw, only while a
+     card is up and only on a computer playing wide (deskWideActive): a phone
+     never meets the case and does no layout work for it. */
+  React.useLayoutEffect(function () {
+    /* a computer playing wide only: a phone never meets the case, so it
+       does no layout work for it (the coach draws up to ~12 times a second
+       while a world-anchored lesson's ring follows you) */
+    if (!deskWideActive()) return;
+    const el = document.querySelector('[data-coach-card]');
+    const qh = document.querySelector('[data-quest-hud]');
+    if (!el || !qh) return;
+    const cr = el.getBoundingClientRect(), qr = qh.getBoundingClientRect();
+    if (!(cr.width > 0) || !(qr.width > 0)) return;
+    if (!(cr.left < qr.right && cr.right > qr.left && cr.top < qr.bottom && cr.bottom > qr.top)) return;
+    const layer = document.querySelector('[data-coach]');
+    const lb = layer ? fixedBox(layer) : { x: 0 };
+    const cs = getComputedStyle(document.documentElement);
+    const wx = parseFloat(cs.getPropertyValue('--world-x')) || 0;
+    const pw = parseFloat(cs.getPropertyValue('--play-w')) || window.innerWidth;
+    const left = qr.right - lb.x + 8;
+    if (left + cr.width <= wx + pw - 8) el.style.left = left + 'px';
+  });
+
   if (!view) return null;
   /* ═══ v2.3.3470: THE RING IS DRAWN IN THE LAYER'S BOX, NOT THE WINDOW'S ═══
      measure() reads every control (and the bro, worldRect) in the WINDOW's
@@ -1658,6 +1690,32 @@ export function QuestCoach(props) {
             if (qr && qr.width > 0) {
               _l = Math.min(Math.max(_l, qr.right - box.x + 8),
                 Math.max(_wx + 8, _wx + _pw - 228));
+            }
+          }
+          /* ═══ v2.3.3782: ANYWHERE IT WOULD CROSS THE QUEST CARD ═══
+             A computer playing wide (the QA play-through of the judges'
+             path): GEAR UP hung below the fold chip ("OPEN", the top-left
+             corner), and its next step ("Click each glowing item") stood
+             above a bag tile at the cap (120 px from the top, `bottom`
+             below) -- both across the pinned quest card's body line, where
+             v2.3.3481's rule (above, the band's cap) did not reach.  Where
+             the card will stand -- below its control, or above it with
+             `bottom` as set below -- crossing the quest card, it steps right
+             of it, still inside the world's span (its height is not
+             knowable here: two lines of copy, about 70 px).  Upright the
+             card never meets the quest card, so nothing there moves. */
+          {
+            const qh = document.querySelector('[data-quest-hud]');
+            const qr = qh && qh.getBoundingClientRect();
+            if (qr && qr.width > 0) {
+              const cTop = above
+                ? boxH - Math.min(Math.max(Math.max(6, boxH - (r.top - pad - 10)), bandClear, broClear), Math.max(6, boxH - 120)) - 70
+                : r.top + r.height + pad + 10;
+              if (cTop < qr.bottom - box.y && cTop + 70 > qr.top - box.y
+                && _l < qr.right - box.x && _l + 220 > qr.left - box.x) {
+                _l = Math.min(Math.max(_l, qr.right - box.x + 8),
+                  Math.max(_wx + 8, _wx + _pw - 228));
+              }
             }
           }
           return _l;

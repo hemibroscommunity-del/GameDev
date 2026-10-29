@@ -13,8 +13,8 @@ tier."*
 |---|---|---|---|
 | Normal | 1.00× | ~90.0998% | — (the panel's own white) |
 | Rare | 1.20× | 9% | `#5B99DE` blue |
-| Elite | 1.50× | 0.9% (1 in 111) | `#A477DF` purple |
-| Godly | 3.00× | 1 in 400,000 | `#F0C45F` gold |
+| Elite | 1.50× | 0.9% (1 in 111) | `#E8893A` orange (purple until v2.3.3142) |
+| Godly | 3.00× | 1 in 400,000 | `#F0C45F` gold glow, its name prismatic (`qualityInk`) |
 
 `Q_RARE` / `Q_ELITE` / `Q_GODLY` in `server/src/hardening.js`; multipliers
 mirrored client↔server and pinned by `mirror-audit.test.mjs`.
@@ -97,6 +97,13 @@ found it still spinning.
 blue, elite purple, godly gold. Two palettes for one ladder means the reveal
 and the inventory disagree about an item thirty seconds apart, so the code's
 palette wins (CLAUDE.md: the GDD is early thinking; code is truth).
+
+v2.3.3746: **at the drop**, a mystery piece's drop line and its pile's shine
+are rare blue (`QUALITY_COLOR.rare`, `game/dropLines.js` `GRADE_WORDS`;
+they were purple). The pile says only "rare or better", so rare is the tier
+the game can promise then. The reveal on pickup still climbs to elite's
+orange or godly. All of them read the one table, `QUALITY_COLOR`
+(`dash/common.js`).
 
 ## Wire surface
 

@@ -68,7 +68,10 @@ const fb = read('src/rendering/fillBatch.js');
 check('1: the one-colour batcher keeps each pixel\'s light (its luma, lifted) and none of its colour, and is pinned per sprite, never inherited by a pooled one',
   /float btL = clamp\(0\.5 \+ 0\.8 \* dot\(btC, vec3\(0\.299, 0\.587, 0\.114\)\), 0\.0, 1\.0\);/.test(fb)
     && /outColor = vec4\(vec3\(btL \* btA\), btA\);/.test(fb)
-    && /get\(\) \{ return \(this\.renderable && this\.renderable\._btFill\) \? FILL_BATCHER : this\._btBatcher; \}/.test(fb));
+    /* v2.3.3715: a sprite of colour numbers (a monster's strip, picsNumbers.js)
+       pinned the same way, to the colour-numbers program's one-colour twin */
+    && /if \(!\(r && r\._btFill\)\) return this\._btBatcher;\s*return isPaletteSource\(r\.texture && r\.texture\.source\) \? PAL_FILL_BATCHER : FILL_BATCHER;/.test(fb)
+    && /const FRAG_FILL = FRAG\.replace\(/.test(read('src/rendering/paletteTex.js')));
 check('1: installed after the sharp batcher, and its program built behind the loading screen',
   /installSharpPixels\(app, SHADE\.figure\)[\s\S]{0,400}installFillBatch\(app\)/.test(read('src/rendering/pixiApp.js'))
     && /warmFillBatch\(_appRef && _appRef\.renderer\)/.test(read('src/rendering/pixiRenderer.js')));

@@ -51,6 +51,49 @@ is what an older worker, or the `nmlnear: false` switch, still plays):
 - Kill switch: `nmlnear: false` in the live flags puts the old start back on
   the worker and takes `caps.nmlnear` away from the phones.
 
+## A step a monster level (v2.3.3767)
+
+> The owner, 2026-10-28: *"also the no mans land level should raise at the
+> same rate you see other monster levels increasing"*
+
+The number used to be the ring's (above): one step every five monster levels.
+Against a worker that says `caps.nmlsteps`, it is now **the level of the
+monsters where you stand**:
+
+| Where | Monsters there | No man's land |
+|---|---|---|
+| just off the safe ground | Lv 1 | **1** |
+| the middle of the Lv 1–5 ring | Lv 3 | **3** |
+| the Lv 6–10 ring, inner end to outer | Lv 6 … 10 | **6 … 10** |
+| the last ring before the gates | Lv 76 … 80 | **76 … 80** |
+
+- **The same arithmetic as the monsters** (`server/src/wheelzone.js`): a
+  ring's monsters stand in its band, the ring less the bake's `clearTier`
+  (120 px, `NML.BAND_CLEAR`) at either end. A monster's level is the ring's
+  lowest + its depth across the band × 4, rounded. No man's land's number at a
+  spot is the same, the radius standing for the distance along the spoke. At
+  the 3,840 baked monster places, 97% stand in exactly their own level and the
+  rest within one (`nomansland.test` §12).
+- **On the plan's rings**, never a Wheel coordinate: `nmlStepLevelAt` in
+  `server/src/nomansland.js` and `src/data/noMansLandRings.js`, held equal by
+  mirror-audit on both Wheels.
+- **The rule is unchanged, so its range grows five times as fast**: two
+  players may fight when their character levels are at most N apart, N the
+  LOWER of the two numbers they stand in. In the Lv 6–10 ring that is now 6 to
+  10 levels, where it was 2.
+- **`nmlnear: false`** (No man's land from the Lv 6–10 ring) still starts at
+  1 where No man's land starts: the monster level less five.
+- **The chat stays quiet**: the banner on the way in and a line on the way out
+  as before, and a line only when you cross into another ring (every five
+  levels), not at every step. The badge shows every step live (`nmlHere`).
+- **Either side ships first**: the phone counts this way only against a
+  worker that says `caps.nmlsteps` (`nmlLevelFor`, src/game/noMansLand.js).
+  **Kill switch:** `nmlsteps: false` in the live flags puts the ring's number
+  back on the worker and takes the cap from the phones, so both sides count
+  alike again at once.
+- The short Wheel (`wheel5x: false`, the rollback) counts the same way on its
+  own rings, though its first ring's monsters there stay Lv 1–2.
+
 - The rings are the plan's own: the hub is 2.7 zones of 1,024 px, then a ring
   every 1,024 px (`public/tools/world/plan.js`).
 - The worker and the game measure them with the same arithmetic, from the same
@@ -987,6 +1030,81 @@ Tests:
   the bell, the weapon button, the disc, the sprint button and the fight's
   buttons. The one exception before this, the 320 px phone's bell, is gone.
 
+## Beaten by them, not again for half an hour (v2.3.3770)
+
+The owner, 2026-10-28: *"I think another rule I want is that a player attacks
+you (and gets red skulled) but you kill him, he can't attack you for at least
+30 minutes unless you approve of letting him have another attack. A red skull
+disappears after dying but the game should remember if the red skull player
+was killed by you. This prevents griefing where the player keeps coming back
+with cheap weapons to attack you over and over again"*, and then: *"...instead
+of the player that was red skulled and killed who comes back a second time to
+attack again can't push an attack notification to you, they can only pop up
+with a sword clash icon and question mark above their head (once per
+minute)"*.
+
+**When.** A attacks V (A takes a red skull, V a white one), and V kills A
+under No man's land's rule (`_nmlOnDeath`'s own attribution). A must be V's
+attacker: V's `whiteBy`, or a right to hit back still running in V's `from`.
+A's red skull goes at the death (any death, while the switch is on).
+
+**Then, for 30 minutes of wall clock** (`NML.LOCK_MS`), A may not attack V.
+The rule from A toward V is false (`_nmlAllowed`), so every blow and stray
+shot of A's at V is refused by the worker. Nothing changes from V toward A.
+The lock is per pair: V's party is not covered. It is stored in A's own record
+(`nml_state:<A>` `lock`, `[[V, until]]`, 16 at most, the soonest to end giving
+way), so a restart or A's rejoin keeps it. On load, an `until` further away
+than 30 minutes is cut back to 30.
+
+**It ends** at its time; when V attacks A (V started a new fight:
+`_nmlSkulls`); or when V lets A at them again.
+
+**What each one sees.**
+- A's tap on V opens No man's land's small window, which says
+  **"V beat you. You can't attack them for N more minutes."** with one button,
+  **"Ask for a rematch"**. A cannot reach V any other way: no card, no line,
+  no sound.
+- The button pops the duel's sword clash with a **"?"** over A's own head,
+  for about 5 seconds, seen by V alone (`nml_lock_ask` both ways). The worker
+  passes it on once a minute for a pair and refuses it faster; the phone
+  holds its own button to the same minute.
+- V's window on A, while the lock runs, adds **"Let A attack you again"**
+  (`nml_lock_allow`): the lock lifts at once.
+- The icon is `public/icons/ui/nml-ask-duel.webp`, the duel's
+  `soc-duel.webp` at 64 x 64 (`SMALL_ICON.nmlAskDuel`, canvas only, loaded
+  with the small icons behind the loading screen). It is drawn only while it
+  shows, and destroyed after (`entityRenderer`, probe
+  `__btPeerBadge[id].nmlAsk`).
+
+**Wire, storage and switches.**
+- c→s `nml_lock_ask {target}` and `nml_lock_allow {target}`, each its own
+  router case, never relayed.
+- s→c (PRIVILEGED, private) `nml_lock {out: [[id, ms left]], in: [[id, ms
+  left]]}`, sent to both players when a lock is set or lifted, and at a join
+  only to a player with a lock (each player online that the joiner is locked
+  out from hears it too). Also `nml_lock_ask {from}`, to V only.
+- Storage: `nml_state:<pid>` gains `lock`; a record with only a lock stays
+  on file.
+- Cap `caps.nmllock`; kill switch `nmllock: false` in the live flags. With
+  the switch off, no lock is set or enforced, no ask is passed on, and the
+  red skull stays at a death as before.
+- It never asks test mode: it protects another player.
+- An older phone sends neither message and draws nothing, but the worker's
+  refusal still holds. A new phone against an older worker shows nothing
+  (no cap).
+
+**Tests.** `server/test/nml-lock.test.mjs` checks:
+- the lock is set only for the attacker V killed;
+- it refuses at 29 minutes and allows at 31;
+- the red skull goes at the death;
+- V attacking A lifts it, and so does V's allow;
+- a second ask at 30 s is refused and goes at 61 s, and reaches V alone;
+- a restart keeps the lock, and the join messages are right;
+- the kill switch;
+- an old phone.
+
+The phone scenario `mp-nmllock` plays it with two browsers.
+
 ## Decisions for the owner
 
 - **v2.3.3316, decided:** the tools drop and Diego sells them back; a player
@@ -1007,3 +1125,30 @@ Tests:
   made for the owner, each a line to change:
   - the window closes by itself after 10 seconds (`NML_ASK_MS`);
   - the player who attacked you is aimed at by a tap, with no window.
+
+## The explainer before you step in, once (v2.3.3825)
+
+A judge's pass on a computer: a level-1 bro died reading the explainer (the
+badge's InfoPopup, a window over a world that keeps running) among the first
+quest's slimes, which stand in No man's land since v2.3.3690. Offered three
+ways (it comes up at the line; you can't be hurt while it is open, a server
+change and an exploit in a fight; it doesn't block), the coordinating session
+chose the first with the third's "a hit closes it":
+
+- **Once per character, on the safe ground before the line**
+  (`src/game/nmlExplainOnce.js`): within 320 px inside the line (the plan's
+  rings: the safe ground's edge against a worker with caps.nmlnear, the next
+  tier's start against an older one), in the Wheel, alive, with nothing else
+  open, it opens by itself with a lead line ("Just ahead is No man's land. Read
+  this here, on safe ground: out there, players can fight you."). Told is
+  remembered in the browser by the character's id (`bt_nml_told_<id>`), and
+  by the page whatever the browser keeps; a second phone may show it once
+  more.
+- **A hit closes it**: every explainer is marked `nml`, and the badge's clock
+  (`NmlBadge.jsx`) closes it when your HP drops below what it was when it
+  opened.
+
+Client only: no message, no cap. Tests: `server/test/nml-explain-once.test.mjs`,
+`tools/qa/mp/mp-nmlonce.mjs` (an upright phone: it comes up before the line,
+never again, remembered, and a goblin's hit closes it mid-fight).
+

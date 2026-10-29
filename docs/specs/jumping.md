@@ -670,3 +670,237 @@ there?)".
   east, never the old aim south); `mp-jumpbtn` 23 of 23 (+ a real tap on the
   right stick beside the button does not jump); `mp-doublejump` + 3b, a tap
   on the right stick at the sweet spot does not flip.
+
+## v2.3.3721: a larger JUMP button, a smaller attack disc, a plain jump mark
+
+The owner, 2026-10-28: "I'm thinking maybe the contextual button should
+shrink in size a bit and the jump button made larger. I also think a more
+generic jump button icon on the button would be more appropriate because the
+icon now for jump looks like a special ability".
+
+| | before | after |
+|---|---|---|
+| attack disc (the right stick), upright / sideways | 96 / 108 px | 84 / 94 px (12.5% / 13% smaller) |
+| its bottom edge over the dashboard band | 70 px | 80 px |
+| its top edge over the band (Sprint and the right cluster hang from it) | 166 / 178 px | 164 / 174 px |
+| JUMP button, upright / sideways | 48 / 54 px | 60 / 64 px |
+| JUMP over the dashboard band, upright / sideways | 18 / 12 px | 16 / 12 px |
+| air between JUMP and Block beside it | 28 / 31 px | 24 / 24 px |
+
+- **Where** (`ShieldButton.jsx`: `RBTN`, `JUMP_SIZE`, `JUMP_BLOCK_AIR`,
+  `jumpAnchor`): the disc's bottom edge rose 10 px so the larger button
+  under it still clears the dashboard by 12 px or more; its top edge came
+  down, so nothing hung above it moves up (the health-bar ceiling and the
+  coach's band, `combatBandTopPx`, are computed from the same numbers).
+  Centred, the larger button would come within 16 px of Block (the disc's
+  half-width kept them apart, and the disc is narrower), so it stands
+  `JUMP_BLOCK_AIR` (24 px, half a 48 px button) clear of Block: 8 px
+  (upright) or 5 px (sideways) toward the screen's edge of the disc's centre.
+  The disc's weapon picture keeps its share of the face (`rIcon`, 0.6).
+- **The mark** (`controlSkin.jsx` `JumpGlyph`): a parchment upward arrow
+  over a short gold ground line, each with a dark edge, on the skin's slate
+  face and gold ring (Sprint's and Block's rest look), the warm face while
+  you are in the air. Drawn in SVG: no file to load or free. The owner's
+  card 11 picture (`abil-jump.webp`) is no longer warmed on the loading
+  screen, and nor is the stick's old JUMP arrow (`jump-glyph.webp`, unused
+  since v2.3.3712). Four marks were drawn for the owner to choose from (a
+  chevron, the first default; an arrow; a double chevron, the second
+  press's flip; a hop's arc), and the owner chose the arrow: "I like option
+  B for jump better" (2026-10-28). The phone shots in docs/specs/jump-button/
+  were taken before, with the chevron; `?jumpicon=chevron|double|hop` wears
+  another for a tab
+  (`docs/specs/jump-button/icons-choices.png`).
+
+**Block stays where it was** (`BLOCK_BAND_BOTTOM`, 70, the disc's old bottom
+edge): rising with the disc it came within 22 px of Shield Bash above it,
+under the 24 px floor `mp-btnlayout` and `mp-abilslot` hold that pair to.
+Where it was it has 32 (Bash hangs from the disc's centre, which rose 4).
+
+**Checked:** `mp-jumpbtn` (the disc 84/94 and the button 60/64, measured on
+an upright 390, a small 360 and a sideways 844 phone; 24 px from Block;
+under the disc; clear of every control and the dashboard), `mp-jump`,
+`mp-btnskin`, `mp-btnlayout`, `mp-abilslot` (its disc numbers updated),
+`mp-tapact`, `mp-tapstance`, `mp-doublejump`, `mp-questline`, and the UI
+review's control screens. `mp-rbutton` and `mp-joyfade` expected the stick's
+JUMP face at rest, gone since v2.3.3712: they now expect the weapon.
+
+## v2.3.3738: the flip polished -- a solid head, the hat turns with it, larger, no "Perfect!", a softer landing
+
+The owner, playing the jump: "The double jump head is transparent and needs at
+least the hat rotated to match the head during the flip. The landing sound
+effect after a jump is too harsh. You can remove the 'perfect!' after a well
+timed jump. The flipped body is too small (looks about 40% too small)."
+
+- **The see-through head** (in armour): the armoured body is baked with the
+  body under the plates erased (`maskedBake.js`), keeping the top third of the
+  figure as "the head".  On the tumble's handstand and tuck the head is at the
+  BOTTOM, upside down, so it was erased too and the ground showed through it.
+  The bake now gives the head back on a roll frame, from the body as drawn, in
+  a circle round where that frame's head is (`flipHead.js`).  Bare-chested it
+  was never see-through; the head pieces were missing (below).
+  The head given back is the body's own recoloured pixels (the bake runs on
+  the character's tinted body), so it wears the character's skin -- the
+  owner: "The head skin (that's transparent during the flip) will need to be
+  recolored to whatever color the character is".  Checked on the purple
+  alien, ebony and alabaster (`docs/specs/flip-polish/flip-skins-before-after.png`).
+- **The head pieces turn with the head**: they were hidden for the whole roll
+  (`_placeTrait`: the roll sheets record no head, and the topmost pixel is a
+  boot).  `flipHead.js` has the head's centre and turn on every roll frame
+  (measured by `tools/qa/flip_head_track.py`: the skin the steel plate's own
+  roll frame leaves uncovered, its largest blob; its turn from the line from the
+  figure's middle to the head; two south frames where the head is hidden set by
+  hand).  While a flip draws, each piece -- the hat, its hair mask, the hair,
+  the beard, the glasses, the eyes -- is placed as it sits standing on that
+  facing, then carried to the tumble's head and turned with it.  Another
+  player's flip the same.  The ground roll keeps them hidden, as it always has.
+- **Larger**: the tumble's frames are drawn at the standing figure's own scale
+  (the same head; as many opaque pixels a frame) but curled up, 85-103 px tall
+  on the tuck frames against 186-194 standing.  The whole figure is drawn
+  `FLIP_BODY_K` (1.4, the owner's 40%) larger through the flip, about the feet
+  (`jumpLook` -> `jumpFx`, which holds the name plate unscaled).
+- **No "Perfect!"**: the words are gone; the well-timed flip still carries you
+  further (its grade and boost are unchanged).
+- **The landing, softer**: the owner's "goblin fall" (`jumpLand`) at 0.6 of its
+  level (-4.4 dB) and 0.85 of its speed (2.8 semitones down, its bright top
+  lower and darker, the thump a touch longer).  The same file, the same Sound
+  Studio label.
+
+**Checked:** test-world-core (the flip 1.4x, evenly; no "Perfect!" pushed);
+`mp-doublejump` (no "Perfect!" at the sweet spot; the carry unchanged);
+`mp-jump`; the ghost audit's new `flip` family (BT_GHOST_ONLY=flip,
+BT_GHOST_DIRS=east,south,north) bare and in the full set, bare-headed and in a
+top hat: no body colour through the armour (one bare-headed frame shows a
+straight 14 px row under the figure, not the body's shape; none in the hat
+run).  Before/after: `docs/specs/flip-polish/`.
+
+## v2.3.3740: upright, the disc down and right, JUMP to its left
+
+The owner, 2026-10-28, on an iPhone the night before the judges: "Also I
+think you should move the contextual button slightly down and to the right
+more. Move the jump button more to the left. The way the thumb rests on the
+screen it will result in less accidental taps between jump and the
+contextual button. Just make sure the change doesn't overlap any buttons
+there though (some appear only during combat). This is portrait on mobile".
+
+**Upright phones only.** Sideways and on a computer nothing moves.
+
+| upright (px over the dashboard band, px in from the right edge) | before | after |
+|---|---|---|
+| attack disc, in from the right / its foot | 50 / 80 | 36 / 72 (14 right, 8 down) |
+| JUMP | under the disc, 4 px of air to it | LEFT of the disc, 18 px of air, its foot level with the disc's |
+| JUMP's centre to the disc's | 76 | 90 |
+| TRAP | over Shield Bash, beside the disc | 8 px over JUMP, beside the disc's top |
+| Shield Bash | beside the disc's middle | 8 px over TRAP, up and left of the disc, beside Sprint |
+| Block | diagonal below-left of the disc | still diagonal below-left: under JUMP's left part, 10 px below it |
+| Sprint | over the disc | the same, 14 px right and 8 px down with it |
+| Special, Whirlwind | over Sprint | the same, but 4 px further over Sprint: Shield Bash, beside Sprint now, keeps the half button of air `mp-abilslot` holds it to (Whirlwind's top 316 px over the band, 320 before) |
+
+- **Why JUMP went beside the disc and not along the bottom.** The strip at
+  the band's foot (23-63 px over it, from about 120 px in from the right on a
+  360 px phone) is the doors' "Enter" button's: "in the free stretch between
+  the bell and the jump button" (v2.3.3032), and `mp-wheeldoors` fails it on
+  any button. The old JUMP was already at its right end: it could not move
+  left at that height at all. So JUMP stands just over that strip (9 px), and
+  the disc, coming down, stops 9 px over it too.
+- **What made room.** The column left of the disc (Shield Bash, TRAP) stands on
+  JUMP now (`ctlColumn`), still 4 px off the disc's edge. TRAP takes the lower
+  place: its words stand LEFT of it, and there they lie level with Element
+  Burst (the room v2.3.3635 measured them against); one place up they would lie
+  on Quick Eat. Block stays the diagonal below-left the owner chose
+  ("diagonal bottom left of that right joystick", v2.3.2562), now of JUMP too;
+  it cannot step clear of JUMP to the left because the notification bell is
+  there on a 360 px phone. It lies in the doors' strip as it always has (a
+  fight's button; the Enter button is drawn over it).
+- **Not overlapping, measured** (`node tools/qa/mp/run.mjs thumbbtn`, every
+  combat button up at once on 360x640, 375x667, 390x844 and 430x932, and
+  out of a fight at a door): no two touch boxes closer than 8 px except the
+  ones the specs set closer on purpose (the column 4 px off the disc,
+  Whirlwind and Special's rings, the weapon chip and the bell). JUMP's left
+  edge is 18 px into the movement half on a 360 px phone (Block's was 2).
+- **Where** (`ShieldButton.jsx`): `RBTN.rightUp` / `bottomUp`, read through
+  `discRight` / `discBottom`; `JUMP_DISC_AIR`, `JUMP_FOOT_UP`, `jumpAnchor`;
+  `ctlColumn`; `blockAnchor`, `BLOCK_JUMP_DROP`.
+
+**Checked:** `mp-jumpbtn`, `mp-jump`, `mp-abilslot` (their upright places
+re-pointed), `mp-rbutton`, `mp-btnskin`, `mp-joyfade`, `mp-btnlayout`,
+`mp-wheeldoors`, `mp-questline`. Pictures: docs/specs/jump-button/thumb-*.png.
+
+## v2.3.3798: the flip 25% smaller, and the ground roll wears its head pieces
+
+The owner: "shrink the character a bit when he's doing the jump flip. I think
+it needs about 25% smaller. Also change the ground roll to fix the hat and skin
+recolor that it looks like you fixed for the double jump."
+
+- **Smaller**: `FLIP_BODY_K` 1.4 -> 1.05 (1.4 x 0.75), still evenly, about the
+  feet.
+- **The ground roll's head pieces**: the roll is the same sheet as the flip,
+  frame for frame, so `_placeTrait` now carries the hat, its hair mask, the
+  hair, the beard, the glasses and the eyes with the head on EVERY roll (the
+  dodge, the dash's loop, a lunge, another player's roll), from `flipHead.js`'s
+  table; the flag only the flip set (`display._flipHead`) is gone. The head
+  itself was already solid in the character's skin on the ground roll: the bake
+  that gives the head back (`maskedBake.js`, v2.3.3738) runs on every roll
+  frame, not only the flip's.
+- **The ghost audit's roll family** now presses Space from inside the page and
+  holds the clock the moment the roll starts: polled from outside, a 250-500 ms
+  roll was over before it was seen on a slow box, and no roll frame was swept
+  (on main too).
+
+**Checked:** test-world-core (the flip 1.05x); the ghost audit's `dodge` family
+(each facing once, the full set, a top hat and wavy hair, the purple alien and
+ebony; before on main, after) and its `flip` family at the new size;
+`mp-doublejump`, `mp-jump`, `mp-dashroll`, `mp-rollweapon`, `mp-dodgetime`.
+Before/after: `docs/specs/flip-roll-2/`.
+
+## v2.3.3799: on the disc's ring, south-west
+
+The owner, 2026-10-29: *"I do want a change to the placement on the jump
+button. It should be positioned orbiting southwest of the large contextual
+button."*
+
+- **Where** (`ShieldButton.jsx` `jumpAnchor`): Jump's centre on the disc's
+  ring at the distance Sprint uses (`JUMP_RING_GAP`, 10 px between the two
+  circles), at 45 degrees below west upright. Sideways the same ring, turned
+  toward south just enough to keep `RCTL_JUMP_AIR` (8 px) under Shield Bash
+  and the board, which stand left of the disc there.
+- **Its touch area is its circle** (`borderRadius: 50%`): its square's corner
+  reached into the disc's circle.
+- **Block** (`blockAnchor`) stays the disc's diagonal bottom-left (v2.3.2562):
+  beside Jump on its left, 8 px of air (`BLOCK_JUMP_SIDE`), at its old height
+  upright and its old height sideways. On a phone too narrow for that beside
+  the bell (`BELL_RIGHT_PX`, a 320 px phone) it stands up beside Jump, under
+  TRAP (`BLOCK_TRAP_DROP`). TRAP and Shield Bash keep their places
+  (`ctlColumn` stands them on Jump's old upright place, `jumpSpotUp`).
+- **The doors' Enter button** stood in the strip just over the band, which
+  Jump now reaches. While Jump is drawn upright on a touch screen, JumpButton
+  puts `data-jump-clear` on the page with where a prompt may stand: over
+  Jump's top (`--bt-jump-clear`: its top and 12 px, 8 of air and the 3 its
+  pulse swells by), between the move stick and the disc with 8 px of air to
+  each (`--bt-prompt-cx`, `--bt-prompt-w`, 150 px at most). game.css stands
+  every `.bt-interact-prompt` with no bottom of its own there (the Enter
+  button; the Workshop's, the bed's and a harvest's name their own place and
+  keep it). A long name wraps. On a 320 px phone the room is ~90 px, and the
+  button draws small, without its picture (`data-jump-clear="narrow"`).
+  When Jump is not drawn (dead, swimming, `?jumpbtn=0`), sideways, and on a
+  computer, the button is where it always was.
+- **Sideways, Block** stands left of Jump rather than under the disc (the
+  first plan): that keeps the owner's v2.3.2562 rule, Block the disc's
+  diagonal bottom-left, which `mp-abilslot` and `mp-rbutton` hold.
+- **Known corner**: in a fight AT a door on a 320 px phone, the risen Enter
+  button and Block (stood up beside Jump there) overlap: the one room
+  between the stick and the disc holds one of them. Nowhere else does a
+  touch area overlap another.
+- **Proof**: `node tools/qa/mp/run.mjs thumbbtn` asserts, at 320, 360, 375, 390 and 430 upright and
+  844 sideways, out of a fight at a door and in one with the guard down and
+  up: Jump south-west on the ring, every button and the Enter button 8 px
+  clear of it, no two touch areas overlapping, Jump on screen above the band,
+  a touch in Jump's box corners never reaching it, the Enter button 8 px
+  clear of the move stick, the disc, Burst, Sprint, the board and Jump, and
+  back down in its strip when Jump is gone. Before and after
+  pictures: `tools/qa/mp/out/thumbbtn-<before|after>-<size>-*.png`.
+
+## v2.3.3844: Space jumps on a keyboard
+
+The owner: *"Also spacebar I think should be jump."* Space is the jump now and
+X the dodge roll (the swap is in `docs/specs/desktop-keys.md`, "v2.3.3844").
+The "X on a keyboard" lines above are history: read Space there.

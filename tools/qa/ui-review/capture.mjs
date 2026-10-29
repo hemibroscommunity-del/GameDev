@@ -92,6 +92,14 @@ export const VIEWS = {
     viewport: { width: 1366, height: 768 }, touch: false, dpr: 2, clip: '#root',
     about: 'A laptop\'s browser window (1366 x 768) with a mouse: the computer\'s centred column, shorter -- 768 px tall, so anything laid out for a taller window shows here first.',
   },
+  /* v2.3.3769: not in the default run: --views=desk720.  The shortest common
+     computer window (a 720p screen), where a column sized for 900 shows its
+     limits first (the creator's picker, the folded dashboard's toolbar) */
+  desk720: {
+    id: 'desk720', short: 'a 1280 x 720 computer window (desk720)', title: 'Computer, 1280 x 720',
+    viewport: { width: 1280, height: 720 }, touch: false, dpr: 2, clip: '#root',
+    about: 'A computer\'s browser window at 1280 x 720 with a mouse: the computer\'s layout at its shortest common height.',
+  },
 };
 
 const OUT = ARGS.out ? String(ARGS.out) : join(H.REPO, 'tools/qa/out/ui-review');

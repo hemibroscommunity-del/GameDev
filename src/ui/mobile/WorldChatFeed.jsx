@@ -5,6 +5,7 @@ import { uiBusyBus } from './uiBusyBus.js';   /* v2.3.2085 */
 import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
 import { chatLaneOf, CHAT_LANE_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's chat-lane pictures */
 import { chatNameColor } from '../../game/chatColor.js';   /* v2.3.3391: a name's colour you can read */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.3812: "Tap to close" reads "Click to close" on a computer */
 
 /* ═══ v2.3.2037: WORLD CHAT, AS ITS OWN SECTION ═══
  *
@@ -624,7 +625,7 @@ export function WorldChatFeed() {
               whiteSpace: 'nowrap',
             }}
           >
-            Tap to close
+            {deskWords('Tap to close')}
           </span>
           </>
         )}

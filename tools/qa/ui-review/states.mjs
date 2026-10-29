@@ -223,6 +223,25 @@ async function bannersGone(P, maxMs = 20000) {
   return false;
 }
 
+/* v2.3.3768: a stand-in party of four for the party chip's pictures: `open`
+   true opens its list as a tap does (the device's choice), false leaves it
+   folded, null takes the party away and forgets the choice */
+const partyStub = (P, open) => evalIn(P, (o) => {
+  const S = window._gameState && window._gameState.current;
+  if (!S || !window._uiPanels) return 'no state';
+  try { if (o) localStorage.setItem('bt_party_list', 'open'); else localStorage.removeItem('bt_party_list'); } catch (e) { /* private mode */ }
+  window.dispatchEvent(new Event('bt-party-list'));
+  if (o === null) { window._uiPanels.party(null); return null; }
+  const z = S.currentZone;
+  window._uiPanels.party({ id: 'party_demo', leader: S.myId, max: 4, members: [
+    { id: S.myId, name: (S.rpg && S.rpg.name) || 'You', level: (S.rpg && S.rpg.level) || 1, hp: 90, maxHp: 100, zone: z },
+    { id: 'bp_demo1', name: 'Rival Bro', level: 7, hp: 80, maxHp: 100, zone: z },
+    { id: 'bp_demo2', name: 'Sandy', level: 5, hp: 45, maxHp: 100, zone: z },
+    { id: 'bp_demo3', name: 'Moss', level: 4, hp: 15, maxHp: 100, zone: z },
+  ] });
+  return null;
+}, open);
+
 /* v2.3.3460: your sparring clones are the ids the worker's spar_state named
    (game/spar.js S._spar.ids), there once a tick has put them in S.others --
    v2.3.3407 looked for a `.spar` flag no player entry carries, and aimed with
@@ -295,7 +314,7 @@ export const STATES = [
   },
   {
     id: 'creator', group: 'Before the game', pre: true, title: 'Character creator',
-    about: 'Making a new character: the bro on the left, the Trait Picker on the right (a wide Species button over tabs for hair, hats, skin, eyes, eyewear, beard, clothes), the name field and ENTER BRO TOWN.',
+    about: 'Making a new character: the bro on the left, the Trait Picker on the right (a wide Bro type button over tabs for hair, hats, skin, eyes, eyewear, beard, clothes), the name field and ENTER BRO TOWN.',
     run: async ({ P }) => {
       if (await has(P, '[data-tut="login-create"]')) {
         await H.uncoverDoor(P.page);
@@ -309,13 +328,16 @@ export const STATES = [
      owner's "Go recommended"), so the opening shot no longer shows Hair.
      v2.3.3589: and 'species', a tab of its own (the owner: "Yes make species
      it's own button"); the creator opens on it, and Skin is the skin tones. */
+  /* v2.3.3777: the 'species' tab reads "Bro type" (v2.3.3772, the owner:
+     "Change species to bro type"); its id stays, as UI-DESIGN-NOTES and the
+     review's packets key on it, and the tab is found by either word */
   ...['species', 'hair', 'hat', 'skin', 'eyes', 'eyewear', 'beard', 'shirt', 'pants', 'shoes'].map((t) => ({
-    id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + t + ' tab',
-    about: 'The character creator with the "' + t + '" tab of the Trait Picker open.',
+    id: 'creator-tab-' + t, group: 'Before the game', pre: true, keep: true, title: 'Creator: ' + (t === 'species' ? 'Bro type' : t) + ' tab',
+    about: 'The character creator with the "' + (t === 'species' ? 'Bro type' : t) + '" tab of the Trait Picker open.',
     run: async ({ P }) => {
       const r = await evalIn(P, (tt) => {
         const tabs = Array.from(document.querySelectorAll('button.bt-cc-tab'));
-        const want = { species: /^species/i, hair: /^hair/i, hat: /hat/i, skin: /^skin/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
+        const want = { species: /^(bro type|species)/i, hair: /^hair/i, hat: /hat/i, skin: /^skin/i, eyes: /^eyes/i, eyewear: /eyewear/i, beard: /beard/i, shirt: /shirt/i, pants: /pants/i, shoes: /shoes/i }[tt];
         const b = tabs.find((x) => want.test((x.innerText || x.getAttribute('aria-label') || '').trim()));
         if (!b) return 'no tab ' + tt + ' (have: ' + tabs.map((x) => (x.innerText || '').trim()).join(', ') + ')';
         b.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -392,6 +414,13 @@ export const STATES = [
     },
   },
   {
+    /* v2.3.3769: on a computer the dashboard's column folded to its strip --
+       in the top bar's grey, an arrow at its middle (v2.3.3793: no OPEN) */
+    id: 'hud-folded', group: 'The world (HUD)', title: 'BroTown, dashboard closed',
+    about: 'The same screen with the dashboard closed. On a computer its column folds to a narrow strip at the edge, in the top bar\'s grey, with one arrow at its middle pointing into the world (no OPEN: the arrow is the way back); a click on it, or I, opens the dashboard. Upright the band folds to its button row; sideways nothing but the chip shows.',
+    run: async ({ P }) => { await foldBand(P); await wait(P, 400); },
+  },
+  {
     id: 'hud-controls', group: 'The world (HUD)', title: 'Controls in use',
     about: 'Walking with the left stick (a phone) or WASD (a computer): the movement stick and the contextual right button show while you play.',
     views: ['portrait', 'landscape', 'tablet'],
@@ -459,7 +488,8 @@ export const STATES = [
   },
 
   /* ═══ THE DASHBOARD ═══ */
-  dash('hero', 'Character', 'Your character page: equipment slots, the figure, your stats as pills (offense, player, vitals).'),
+  /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page) */
+  dash('hero', 'Character', 'Your character page, two tabs (Equipment and Points): equipment slots, the figure, your stats as pills (offense, player, vitals).'),
   {
     id: 'dash-hero-points', group: 'Dashboard', title: 'Character: Points',
     about: 'The Character page on its Points tab: spending points on each weapon skill and on the character.',
@@ -527,6 +557,28 @@ export const STATES = [
     },
   },
   dash('more', 'More', 'The More page: tiles for everything else (settings, pets, ranks, friends, login key, about...).'),
+  /* v2.3.3736: a rare window whose script cannot come (src/ui/lazyPanel.js):
+     a tab left open across a deploy is answered with the page itself.  The
+     Settings page's script answered so here; its own state, next, opens it
+     with the script back (a fresh try) */
+  {
+    id: 'lazy-cantopen', group: 'Dashboard: More', title: 'A window that could not open',
+    about: '"Couldn\'t open this": a window whose code could not be loaded (a game left open across an update), with Reload and Close, over the game, which plays on.',
+    run: async ({ P }) => {
+      await P.page.route(/\/assets\/SettingsPanel-[^/]+\.js/, (r) => r.fulfill({ status: 200, contentType: 'text/html', body: '<!doctype html><html></html>' }));
+      const e = await bus(P, 'open', 'more');
+      if (e) return e;
+      await wait(P, 300);
+      await bus(P, 'push', 'settings');
+      const up = await P.page.waitForSelector('[data-lazy-cantopen]', { timeout: 10000 }).then(() => true).catch(() => false);
+      if (!up) return 'no "Couldn\'t open this" card (was the Settings page\'s script already loaded?)';
+    },
+    after: async ({ P }) => {
+      await P.page.unroute(/\/assets\/SettingsPanel-[^/]+\.js/).catch(() => {});
+      await evalIn(P, () => { const b = document.querySelector('[data-lazy-cantopen] button[data-esc]'); if (b) b.click(); });
+      await wait(P, 300);
+    },
+  },
   more('settings', 'Settings', 'Settings: sound, graphics, controls and the rest.'),
   more('pets', 'Pets', 'Your pets: the ones you caught, the one out with you, the journal of kinds.'),
   more('leaderboard', 'Ranks (leaderboard)', 'The leaderboard.'),
@@ -554,7 +606,8 @@ export const STATES = [
       await P.page.waitForSelector('[data-achv-title-current="first_blood"]', { timeout: 6000 }).catch(() => {});
     },
   }),
-  more('journey', 'Journey', 'Your journey so far.'),
+  /* v2.3.3773: Journey is its own page under More, the Character page's old records tab moved here */
+  more('journey', 'Journey', 'Your journey: kills, deaths, lifetime gold and XP, duels won and the deepest zone (the Character page\'s old third tab).'),
   more('account', 'Login Key', 'Your Login Key: how to carry this character to another device.'),
   more('about', 'About & privacy', 'About the game, privacy, rules and credits.'),
   more('feedback', 'Feedback', 'Sending feedback to the developer.'),
@@ -629,14 +682,55 @@ export const STATES = [
      Today page again (found by the design notes' research) */
   building('farm', 'Feed & Seed', 'The Feed & Seed: visit your farm, buy seeds, the order board.'),
   building('farmhome', 'Land Office', 'The Land Office: the trip to your own farm.'),
-  building('bank', 'Bank', 'The Bank: your gold and what you wear (nothing is stored in it yet).'),
+  /* v2.3.3785: the Bank is a vault (server/src/bank.js) -- seeded with a few
+     things in the bag, so the picture shows tiles to put in, not "Your bag is
+     empty" (moving them needs the door; the window shows them anywhere) */
+  (() => {
+    const b = building('bank', 'Bank', 'The Bank\'s vault: your gold and the vault\'s, put in and taken out by 10, 100, All or a typed amount; the vault (48 kinds) and your bag, a tap moving an item, a stack asking how many.');
+    const open = b.run;
+    b.run = async (ctx) => {
+      if (ctx.wsPort && ctx.myId) {
+        await H.grant(ctx.wsPort, ctx.myId, 'item', { invKey: 'wood_oak', count: 12 }).catch(() => {});
+        await H.grant(ctx.wsPort, ctx.myId, 'item', { invKey: 'fish_minnow', count: 3 }).catch(() => {});
+        await wait(ctx.P, 800);
+      }
+      return open(ctx);
+    };
+    return b;
+  })(),
   building('exchange', 'General Store (market)', 'The General Store\'s Marketplace: an order book where players post buy and sell orders for kinds of gear, with a way to the Auction House at its top.'),
   building('auctionhouse', 'Auction House', 'The Auction House: its clerk behind the counter and its one button, Market, which opens the players\' listings and bids.'),
   building('party', 'Saloon', 'The Saloon: your party and finding one.'),
   building('post', 'Post Office', 'The Post Office: your mail and friends\' messages.'),
   building('sheriff', "Sheriff's Office", "The Sheriff's Office: the player list (duels start from a player's card) and the arena sign-up."),
   building('guildhall', 'Guild Hall', 'The Guild Hall: a row saying clans are parties now (made in the Saloon), and the skill guilds.'),
-  building('townhall', 'Town Hall', 'The Town Hall: the leaderboard and the world map.'),
+  building('townhall', 'Town Hall', 'The Town Hall (v2.3.3766): the board of everything to do in the world, under eight headings (v2.3.3801: the owner\'s review\'s), a line under every tile, the leaderboard, the world map, the Codex and Journey at its foot.'),
+  /* v2.3.3766: a page of the board -- the arena's, with its two pins */
+  building('townhall', 'Town Hall: a page', 'A page of the Town Hall\'s board (v2.3.3766): what the arena is, where it is, and the Red pin and Blue pin buttons.', {
+    id: 'building-townhall-page',
+    run: async ({ P }) => {
+      const ok = await evalIn(P, (p) => { if (!window.__btBuildingWindow) return false; window.__btBuildingWindow.open(p); return true; }, 'townhall');
+      if (!ok) return 'no building-window probe';
+      for (let i = 0; i < 30; i++) {
+        const hit = await evalIn(P, () => { const t = document.querySelector('[data-board-tile="arena"]'); if (t) { t.click(); return true; } return false; });
+        if (hit) break;
+        await wait(P, 200);
+      }
+    },
+  }),
+  /* v2.3.3801: a page with no one place -- Town Quests', with its one action, "Open Quests" */
+  building('townhall', 'Town Hall: a page with one action', 'A page of the Town Hall\'s board with no one place (v2.3.3801): Town Quests -- what they are, look for the gold "!", and one button, Open Quests, in place of the pins.', {
+    id: 'building-townhall-action',
+    run: async ({ P }) => {
+      const ok = await evalIn(P, (p) => { if (!window.__btBuildingWindow) return false; window.__btBuildingWindow.open(p); return true; }, 'townhall');
+      if (!ok) return 'no building-window probe';
+      for (let i = 0; i < 30; i++) {
+        const hit = await evalIn(P, () => { const t = document.querySelector('[data-board-tile="townquests"]'); if (t) { t.click(); return true; } return false; });
+        if (hit) break;
+        await wait(P, 200);
+      }
+    },
+  }),
   building('hotel', 'Hotel', 'The Hotel (v2.3.3539): a free rest -- full health, stamina and mana, and Well Rested, +10% combat XP for 30 minutes -- paid by the server.'),
   building('arena', 'Gladiator Arena', 'The arena window (from the Sheriff\'s Office).'),
   {
@@ -656,13 +750,29 @@ export const STATES = [
   /* ═══ OVERLAYS ═══ */
   {
     id: 'world-map', group: 'Maps and chat', title: 'World map',
-    about: 'The world map (a tap on the minimap): the Wheel, its eight lands, where you are, the quest\'s road, zoom buttons and the compass.',
+    about: 'The world map (a tap on the minimap): the Wheel, its eight lands, where you are, the quest\'s road, zoom buttons and the compass, and the key bottom left -- its marks little pictures of what they mark (a house, a tent, two peaks, an arch, a flag; zoomed in a horned head for a monster, a fish, a tree, a rock with metal, a person), drawn the same on the map.',
     settle: 1600,
     run: async ({ P }) => {
       const ok = await evalIn(P, () => { if (!window.__btWorldMapOpen) return false; window.__btWorldMapOpen(true); return true; });
       if (!ok) return 'no world-map probe';
     },
     after: async ({ P }) => { await evalIn(P, () => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); }); },
+  },
+  {
+    id: 'world-map-pin', group: 'Maps and chat', title: 'World map, your pin',
+    about: 'The world map with your own pin dropped (a tap on open ground drops it, a tap on it lifts it): the purple pin on the map, "Remove pin" at the top, "your pin" in the key; the minimap shows it too (v2.3.3879).',
+    settle: 1600,
+    run: async ({ P }) => {
+      const ok = await evalIn(P, () => {
+        const S = window._gameState && window._gameState.current;
+        if (!window.__btMapPin || !window.__btWorldMapOpen || !S || !S.player) return false;
+        window.__btMapPin.set(S.player.x - 260, S.player.y - 180);
+        window.__btWorldMapOpen(true);
+        return true;
+      });
+      if (!ok) return 'no map-pin probe';
+    },
+    after: async ({ P }) => { await evalIn(P, () => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); if (window.__btMapPin) window.__btMapPin.clear(); }); },
   },
   {
     id: 'chat', group: 'Maps and chat', title: 'Chat',
@@ -711,6 +821,22 @@ export const STATES = [
       await H.devOp(wsPort, 'spar', myId, { clear: true }).catch(() => {});
       await wait(P, 1000);
     },
+  },
+  /* v2.3.3768: the party strip folds to a chip (PartyHUD.jsx, game/partyChip.js):
+     a party of four drawn from a stand-in roster (you, the leader, and three
+     friends, one of them low), folded as it is by default and opened as a tap
+     opens it.  View state only: the worker knows no such party. */
+  {
+    id: 'party-hud', group: 'Other players', title: 'In a party: the chip',
+    about: 'In a party of four (shown with stand-in friends): the party chip at the top left -- the party mark, 4/4 and a pip a friend, coloured as their health bar (one friend low, in red).  A tap opens the list.',
+    run: async ({ P }) => { await partyStub(P, false); },
+    after: async ({ P }) => { await partyStub(P, null); },
+  },
+  {
+    id: 'party-hud-open', group: 'Other players', title: 'In a party: the list opened',
+    about: 'The same party with its list opened by a tap: each member\'s name, level and health bar, the leader\'s crown, a kick (two taps) on each friend for the leader, and ✖ to leave (two taps).  A tap on its head folds it back to the chip.',
+    run: async ({ P }) => { await partyStub(P, true); },
+    after: async ({ P }) => { await partyStub(P, null); },
   },
   {
     id: 'inspect-self', group: 'Other players', title: 'An Inspect card (your own)',
@@ -820,5 +946,24 @@ export const STATES = [
       await H.devOp(wsPort, 'spar', myId, { clear: true }).catch(() => {});
       await wait(P, 1000);
     },
+  },
+  {
+    /* v2.3.3817: the death card, staged (a real death's is mp-deathcard's),
+       then let go */
+    id: 'death-card', group: 'Fighting', title: 'You died (the death card)',
+    about: 'The card over the scene for the five seconds between a death and coming back: "You died", what killed you, and "Back in BroTown in N" counting down. It never takes a tap or a click. Once you are back, one line in the chat says what happened.',
+    run: async ({ P }) => {
+      await evalIn(P, () => {
+        const S = window._gameState.current;
+        /* restaged every 4 s, so the picture reads as a real death's does
+           ("in 5", "in 4"), whenever the shot is taken */
+        const stage = () => { const S = window._gameState.current; if (S) S._deathCard = { at: Date.now(), ms: 5000, killer: 'Blue Slime', pvp: false, keptBag: false, lost: null }; };
+        stage();
+        clearInterval(window.__uiDeathStage);
+        window.__uiDeathStage = setInterval(stage, 4000);
+      });
+      await wait(P, 700);
+    },
+    after: async ({ P }) => { await evalIn(P, () => { clearInterval(window.__uiDeathStage); const S = window._gameState.current; if (S) S._deathCard = null; }).catch(() => {}); await wait(P, 400); },
   },
 ];
