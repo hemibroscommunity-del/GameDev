@@ -191,8 +191,8 @@ export function nmlSay(S, text) {
 }
 
 const _note = { cur: 0, since: 0, shown: 0, tier: 0, told: Object.create(null) };
-/** Every frame in the Wheel (wheelMinimap.js): the banner on the way in, a
- *  line as the level changes, a line on the way out.
+/** Every frame in the Wheel (wheelMinimap.js): the level you stand at
+ *  (S._nmlLevel), after a short dwell; v2.3.3887: nothing said or played.
  *  v2.3.3767: with the number a step a monster level, a line at every step
  *  would fill the chat on a walk out; so a line only when you cross into
  *  another tier (every five levels) -- the badge shows every step live. */
@@ -208,35 +208,15 @@ export function noteNoMansLand(S) {
   const now = Date.now();
   if (lvl !== _note.cur) { _note.cur = lvl; _note.since = now; return; }
   if (lvl === _note.shown || now - _note.since < NML_DWELL_MS) return;
-  const was = _note.shown;
   _note.shown = lvl;
   if (S) S._nmlLevel = lvl;
-  /* v2.3.3767: the tier you are in, to say a line only on crossing one */
-  const tier = lvl && S && S.player ? nmlTierAt(S.player.x, S.player.y, wheelLong()) : 0;
-  const wasTier = _note.tier;
-  _note.tier = tier;
-  if (!lvl) {
-    if (was) nmlSay(S, "You left No man's land. Players can no longer attack you.");
-    return;
-  }
-  if (was && tier === wasTier) return;   /* a step within the tier: the badge says it */
-  const rule = `players within ${lvl} level${lvl === 1 ? '' : 's'} of yours`;
-  if (!was) {
-    /* v2.3.3853: no banner on the way in (the owner: "just get rid of the no
-       man's land gigantic warning message. I'd rather not have anything");
-       the skull pill, the red line and the chat's line say it */
-    cue('nmlEnter');   /* v2.3.3343: crossing in is heard, an ominous sting under its banner (it was silent) */
-    if (!_note.told.first) {
-      _note.told.first = true;
-      /* v2.3.3316: "your bag" undersold it -- a player's kill takes everything
-         you carry, the gold, the tools and the ores too */
-      nmlSay(S, `☠ No man's land ${lvl}: ${rule} can attack you here. Killed by one, you lose everything you carry (not what you wear); attack one and you carry a red skull for 20 minutes.`);
-    } else {
-      nmlSay(S, `☠ No man's land ${lvl}: ${rule} can attack you.`);
-    }
-  } else {
-    nmlSay(S, `☠ No man's land ${lvl}: ${rule} can attack you.`);
-  }
+  /* ═══ v2.3.3887: NOTHING SAID ON THE WAY IN OR OUT ═══
+     The owner, after v2.3.3853 took the banner away: remove the red chat
+     line and the entry sound; keep the level number by the minimap and the
+     skull.  The skull pill in the top bar, the red line along the band and
+     the minimap's plate say where you are; the lines a fight brings (a red
+     skull, what a kill took) stay.  The 'nmlEnter' sting is no longer played
+     (its file and its Sound Studio row are kept). */
 }
 export function resetNoMansLandNote() { _note.cur = 0; _note.since = 0; _note.shown = 0; _note.tier = 0; }
 

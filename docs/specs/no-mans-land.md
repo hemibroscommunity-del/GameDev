@@ -104,14 +104,25 @@ monsters where you stand**:
 
 ## What the player sees
 
-- **Crossing in:** the land banner's red plaque, "No man's land 1", and a line
+- **Since v2.3.3887 nothing is said or played on the way in or out.** The
+  owner, before the showing, took away the big banner ("just get rid of the no
+  man's land gigantic warning message. I'd rather not have anything",
+  v2.3.3853), then the red chat lines and the entry sound below: "remove the
+  red chat line and the nmlEnter entry sound; keep the level number by the
+  minimap and keep the skull icon". What says where you are: the skull pill
+  with its number in the top bar, the red line along the band, the minimap's
+  plate. The `nmlEnter` sting is UNUSED now (its file and its Sound Studio row
+  are kept, should it come back). The lines a fight brings (your red skull,
+  what a kill took from you or gave you) and their sounds stay. The three
+  points below are how it was:
+- **Crossing in (until v2.3.3887):** the land banner's red plaque, "No man's land 1", and a line
   in the chat. The first time it says what the place means: *"☠ No man's land
   1: players within 1 level of yours can attack you here. Killed by one, you
   lose everything you carry (not what you wear); attack one and you carry a
   red skull for 20 minutes."* (v2.3.3316; it said "you lose your bag" before.)
   After that the line is shorter.
-- **A new ring:** a line in the chat with the new number.
-- **Leaving:** *"You left No man's land. Players can no longer attack you."*
+- **A new ring (until v2.3.3887):** a line in the chat with the new number.
+- **Leaving (until v2.3.3887):** *"You left No man's land. Players can no longer attack you."*
 - **The badge (v2.3.3107):** a red skull and the number, centred at the bottom
   of the play area just above the dashboard. The owner: *"make the skull level
   (no mans land) appear above the center of the dashboard (should be bottom
