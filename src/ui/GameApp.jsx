@@ -1,3 +1,4 @@
+import { keptQuery } from './keepSwitches.js';   /* v2.3.3888: the address's switches kept through the door */
 import React, { useState, useEffect } from 'react';
 import { BroTown } from './BroTown.jsx';
 import { DebugOverlay } from './lazyPanels.js';   /* v2.3.3717: ?dev=1 only, its own script (lazyPanels.js) */
@@ -728,9 +729,8 @@ export const GameApp = () => {
           identifies WHICH browser identity this tab is — dropping it would
           log a guest tab out into the main character. */}
       <ZoneHeader onExit={() => {
-        let guest = '';
-        try { guest = /[?&]guest=1\b/.test(window.location.search) ? '&guest=1' : ''; } catch (e) { guest = ''; }
-        window.location.href = `/?noresume=1&login=1${guest}`;
+        /* v2.3.3888: + the page's switches (keepSwitches.js), guest among them */
+        window.location.href = '/' + keptQuery(undefined, [['noresume', '1'], ['login', '1']]);
       }} />
       <BottomDashboard />
       <ChatBubble />
