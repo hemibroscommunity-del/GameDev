@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d39fc9a405372514c2b29bd908612753747465fd",
+  "tree": "7bd9297e8cb875c528a732272ed4871c9aa6deae",
+  "committedAt": "2026-10-28T21:24:43-07:00",
+  "subject": "Merge pull request #1309 from hemibroscommunity-del/claude/space-jump",
+  "files": 7243,
+  "bytes": 832107263,
+  "listingSha256": "e8f7eeead86cd118125fa217f5d6038d2da879505fbcac1d5190e3c080569b45",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
