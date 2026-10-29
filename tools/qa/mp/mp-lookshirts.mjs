@@ -102,6 +102,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const shirtSheets = await B.page.evaluate(() => (window.__btLookShirt ? window.__btLookShirt() : null));
     rec.ok(`the tee's 10 stand and jog sheets are colour numbers and the program built: ${JSON.stringify(shirtSheets)}, on ${st.on}, ok ${st.ok}`,
       st.on === true && st.ok === true && !st.loadError && !st.linkError && shirtSheets && shirtSheets.sheets === 10, { st, shirtSheets });
+    /* 3. the local player in a printed, patterned tee, given a body look */
+    await B.page.evaluate(([a, b]) => {
+      window.__btSetSkin('ebony'); window.__btSetPants('red');
+      window.__btSetArt('shirtFront', a); window.__btSetArt('shirtBack', b); window.__btSetPattern('shirt', 'dots:8');
+    }, [ART_A, ART_B]);
+    await B.page.waitForTimeout(3000);
+    const self = await B.page.evaluate(() => (window.__btSelfSprites() || []).filter((s) => /^bt-look:/.test(s.url)).map((s) => s.name + ' ' + s.url));
+    const after = await rows(B);
+    rec.ok(`the local player's printed, patterned tee is drawn from the numbers beside the body: ${JSON.stringify(self)}; rows ${after.rows}, rowsFull ${after.rowsFull}`,
+      self.some((s) => /bt-look:shirt\//.test(s)) && self.some((s) => /bt-look:(stand|jog)-/.test(s)) && after.rowsFull === 0, { self, after });
+    await B.page.screenshot({ path: join(OUT, 'lookshirts-local.png') });
+
+    /* 4. v2.3.3790; v2.3.3826 asked of the function, and run first: the Test
+       panel's Memory savers switch, live -- off_lookshirt
+       set: the dressed tee is no longer given from the numbers (the old dressed
+       bake draws it); cleared: it is again, no reload.  Asked of
+       getLookShirtFrame itself, as every figure's _placeGear asks it each frame
+       it is drawn (the shirt probe's frames: 0 while off) */
+    const fromNumbers = () => B.page.evaluate((a) => window.__btShirtOracle.compare({ looks: [{ tint: [200, 48, 44], pattern: 'dots:8', front: a, back: a }], frames: 1 }), ART_A)
+      .then((r) => r[0].frames);
+    const waitFrames = async (want) => { let n = -1; for (let i = 0; i < 40; i++) { n = await fromNumbers(); if (want(n)) return n; await B.page.waitForTimeout(250); } return n; };
+    const setRes = await H.liveFlag(wsPort, 'off_lookshirt', true);
+    const offN = await waitFrames((n) => n === 0);
+    const heard = await B.page.evaluate(() => { try { return localStorage.getItem('bt_clientoff'); } catch (e) { return 'x'; } });
+    const clrRes = await H.liveFlag(wsPort, 'off_lookshirt', null);
+    const onN = await waitFrames((n) => n > 0);
+    console.log(`    off_lookshirt set ${JSON.stringify(setRes)} (the phone kept ${JSON.stringify(heard)}): ${offN} frames from the numbers; cleared ${JSON.stringify(clrRes)}: ${onN}`);
+    rec.ok(`the Memory savers switch "Printed shirts coloured on the chip", live, no reload: off -> ${offN} dressed frames from the numbers (the old bake draws them); on again -> ${onN}`,
+      offN === 0 && onN > 0 && heard === 'lookshirt', { offN, onN, heard });
     if (!process.env.LS_ORACLE_ONLY) report.memory.new = await memoryTrip(B, browser, 'new', rec);
     const o = report.memory.old, n = report.memory.new;
     if (o && n) {
@@ -110,7 +139,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     rec.ok(`rows after the memory trip: ${JSON.stringify(await rows(B))} (rowsFull 0)`, (await rows(B)).rowsFull === 0);
 
-    /* 1. the oracle, 1:1 */
+    /* 1. the oracle, 1:1 (v2.3.3826: after 3 and 4 -- minutes of reading pictures back leave the page's socket
+       slow to hear the worker; LS_SWITCH_ONLY: none of it) */
+    if (!process.env.LS_SWITCH_ONLY) {
     const t0 = Date.now();
     const res = [];
     for (let i = 0; i < ORACLE.length; i += 4) res.push(...await B.page.evaluate((looks) => window.__btShirtOracle.compare({ looks, scale: 1 }), ORACLE.slice(i, i + 4)));
@@ -142,29 +173,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`at ${scale} screen pixels a texel: ${d} of ${px} px more than 1 level apart, worst ${w}`, scale > 1 ? w <= 1 : (w <= 3 && d < 0.10 * px), { d, px, w });
     }
 
-    /* 3. the local player in a printed, patterned tee, given a body look */
-    await B.page.evaluate(([a, b]) => {
-      window.__btSetSkin('ebony'); window.__btSetPants('red');
-      window.__btSetArt('shirtFront', a); window.__btSetArt('shirtBack', b); window.__btSetPattern('shirt', 'dots:8');
-    }, [ART_A, ART_B]);
-    await B.page.waitForTimeout(3000);
-    const self = await B.page.evaluate(() => (window.__btSelfSprites() || []).filter((s) => /^bt-look:/.test(s.url)).map((s) => s.name + ' ' + s.url));
-    const after = await rows(B);
-    rec.ok(`the local player's printed, patterned tee is drawn from the numbers beside the body: ${JSON.stringify(self)}; rows ${after.rows}, rowsFull ${after.rowsFull}`,
-      self.some((s) => /bt-look:shirt\//.test(s)) && self.some((s) => /bt-look:(stand|jog)-/.test(s)) && after.rowsFull === 0, { self, after });
-    await B.page.screenshot({ path: join(OUT, 'lookshirts-local.png') });
-
-    /* 4. v2.3.3790: the Test panel's Memory savers switch, live -- off_lookshirt
-       set, the same tee leaves the numbers (the old dressed bake), no reload;
-       cleared, it is back */
-    const teeUrl = () => B.page.evaluate(() => ((window.__btSelfSprites() || []).find((s) => s.name === '_gearShirt') || {}).url || '');
-    const waitTee = async (want) => { for (let i = 0; i < 40; i++) { const u = await teeUrl(); if (want(u)) return u; await B.page.waitForTimeout(250); } return teeUrl(); };
-    await H.liveFlag(wsPort, 'off_lookshirt', true);
-    const offUrl = await waitTee((u) => !/bt-look:shirt\//.test(u));
-    await H.liveFlag(wsPort, 'off_lookshirt', null);
-    const onUrl = await waitTee((u) => /bt-look:shirt\//.test(u));
-    rec.ok(`the Memory savers switch "Printed shirts coloured on the chip", live: off -> the tee is ${offUrl.slice(-40)}; on again -> ${onUrl.slice(-40)}`,
-      !/bt-look:shirt\//.test(offUrl) && /bt-look:shirt\//.test(onUrl), { offUrl, onUrl });
+    }
   } finally {
     if (said.length) console.log('    page said: ' + said.slice(0, 12).join('\n      '));
     writeFileSync(join(OUT, 'lookshirts.json'), JSON.stringify(report, null, 1));
