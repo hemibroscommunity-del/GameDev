@@ -52,9 +52,11 @@ ONCE, as numbers, and the chip paints the look as it draws:
   bit in the vertex.
 - **Where** (`lookShirtFrame.js`, asked by `entityRenderer.js` `_placeGear`):
   the tee's stand and jog, for every player, whenever it has a pattern or a
-  print; a plain coloured tee too when the body beside it is drawn from the
-  numbers (then body and tee are one batch, one draw call). Drawn untinted
-  (the tint is in the row). Anything else, and every other pose, the old way.
+  print. Drawn untinted (the tint is in the row). A plain coloured tee stays
+  the shared sheet and its sprite tint: the numbers save it nothing, and drawn
+  from them (the first cut, when the body beside it was) it broke the batch
+  round every figure in a tee (M3's review: mp-crowdbots, below). Anything
+  else, and every other pose, the old way.
 
 ## How it was proven
 
@@ -87,6 +89,30 @@ The new way's 0.6 MB is the ten sheets of numbers, held once whatever the
 looks; a look is a row of the palette atlas (1 KB), freed 30 s after its last
 draw. On a phone where no one wears a pattern or a print this is 0.6 MB MORE
 than before (the sheets are loaded behind the loading screen either way).
+
+## What it costs a frame
+
+`mp-crowdbots` (BT_CROWD_GL=1), 15 bots in a printed, striped tee, the body
+drawn from the numbers both ways, the shirt part alone switched by
+`?lookshirt=0` (two runs each):
+
+| | draws a frame | programs a frame | work ms p50 / p95 | frames in 20 s (this box's software chip) |
+|---|---|---|---|---|
+| `?lookshirt=0` | 98 / 97 | 79 / 80 | 10.3 / 20.0, 10.7 / 19.2 | 47 / 45 |
+| the tee from the numbers | 166 / 185 | 149 / 164 | 11.4 / 18.0, 13.1 / 20.0 | 30 / 29 |
+
+About five more draws and program switches a dressed figure: the tee on its
+own program breaks the batch round it (it does not sit next to the body in
+the draw order, and four sheets fill a batch). This is the cost the look
+program's fold into the one batcher (`claude/look-palette-fold`) is for.
+
+**v2.3.3790, the follow-up** (the orchestrator's decision, M3's review): a
+plain tee is never drawn from the numbers (it saved nothing and broke the
+batch); the dressed tee stays ON by default (the owner's rule for memory
+savers) with two off switches, the rest of the look palette as it is:
+`?lookshirt=0` for one phone, and **"Printed shirts coloured on the chip"** in
+the Test panel's Memory savers row (`off_lookshirt`, `docs/specs/client-off.md`)
+for every phone, at once.
 
 ## Where it is not exact
 

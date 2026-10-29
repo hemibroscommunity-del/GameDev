@@ -123,6 +123,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await B.page.screenshot({ path: join(OUT, 'skateboard-button-computer.png') }).catch(() => {});
     await B.page.keyboard.press('z');
     const zOn = await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === true, { timeout: 5000, label: 'Z on' }).catch(() => null);
+    /* v2.3.3791: the roll is heard while the rider rolls (game/rideSound.js) */
+    const snd = () => B.page.evaluate(() => ({ ctx: !!(window.BT_AUDIO && window.BT_AUDIO.ctx) || !!(window.__btRideSound), s: window.__btRideSound ? window.__btRideSound.state() : null }));
+    await B.page.keyboard.down('d');
+    let rolling = null;
+    for (let i = 0; i < 20; i++) { await B.page.waitForTimeout(200); const q = await snd(); if (q.s && q.s.playing && q.s.k === 1 && q.s.gain > 0.01) { rolling = q; break; } rolling = q; }
+    await B.page.keyboard.up('d');
+    rec.ok(`5b. riding and rolling, the board is heard (playing ${rolling && rolling.s && rolling.s.playing}, gain ${rolling && rolling.s && rolling.s.gain} of ${rolling && rolling.s && rolling.s.vol})`,
+      !!(rolling && rolling.s && rolling.s.playing && rolling.s.k === 1 && rolling.s.gain > 0.01), rolling);
     /* the eight ways, on the computer's keys, for the owner's picture */
     const ways = [['s'], ['s', 'd'], ['d'], ['w', 'd'], ['w'], ['w', 'a'], ['a'], ['s', 'a']];
     for (let i = 0; i < ways.length; i++) {
@@ -159,6 +167,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await B.page.keyboard.press('z');
     const zOff = await H.waitFor(B, () => window.__btRideBtn(), (v) => v.on === false, { timeout: 5000, label: 'Z off' }).catch(() => null);
     rec.ok('5. Z gets on, and Z again gets off', !!zOn && !!zOff, { zOn, zOff });
+    /* v2.3.3791: ...and the roll falls silent at once, its source stopped
+       soon after: nothing plays after the ride ends */
+    await B.page.waitForTimeout(400);
+    const hush = await B.page.evaluate(() => window.__btRideSound.state());
+    await B.page.waitForTimeout(2200);
+    const gone = await B.page.evaluate(() => window.__btRideSound.state());
+    rec.ok(`5c. off the board the roll falls silent (gain ${hush.gain} after 0.4 s) and stops (playing ${gone.playing} after 2.6 s)`,
+      hush.gain < 0.01 && !hush.riding && gone.playing === false, { hush, gone });
 
     /* 6. sideways: back in town, the phone turned */
     await H.glideTo(A, G.arrival.x + 200, G.arrival.y, { speed: 450, timeoutMs: 30000 });
