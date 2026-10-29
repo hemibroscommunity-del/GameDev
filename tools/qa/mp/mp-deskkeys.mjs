@@ -35,7 +35,9 @@
  *       G too, and F no longer the special;
  *   8c. the right button HELD raises the shield, facing the pointer, no
  *       browser menu; a left click while it is held is the shield bash (sent
- *       to the worker), not a swing; letting go lowers it;
+ *       to the worker), not a swing; letting go lowers it (v2.3.3845: keeps
+ *       it up, a toggle, and the next right press lowers it; with a snowman
+ *       near it faces the snowman -- mp-shieldtoggle has the rest);
  *   8d. with no shield on the arm, the right button is the special, as it was;
  *   8e. D tapped twice quickly rolls; once, or twice slowly, does not;
  *   8f. a double click on a snowman, the bow in hand, ends locked on it (two
@@ -489,8 +491,12 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await P.page.mouse.down({ button: 'right' });
     await P.page.waitForTimeout(700);
     const r1 = await look(P);
-    rec.ok(`8c. the right button held raises the shield (press: ${r1.press && r1.press.kind}), facing the pointer (shield ${r1.ang && r1.ang.toFixed(2)}, aim ${r1.aim && r1.aim.toFixed(2)})`,
-      shieldOn && r1.up && r1.mouse && r1.press && r1.press.kind === 'shield' && r1.ang != null && r1.aim != null && angGap(r1.ang, r1.aim) < 0.35 && r1.aim < 0, r1);
+    /* v2.3.3845: with a snowman near the guard faces it, not the pointer
+       (mp-shieldtoggle step 7 holds that, and the pointer with nothing near) */
+    const nearMon = await P.page.evaluate(() => { const S = window._gameState.current, p = S.player;
+      return (S.monsters || []).some((m) => m && m.alive !== false && Math.hypot(m.x - p.x, m.y - p.y) < 600); });
+    rec.ok(`8c. the right button pressed raises the shield (press: ${r1.press && r1.press.kind}), facing the pointer${nearMon ? ' or, a snowman near, the snowman' : ''} (shield ${r1.ang && r1.ang.toFixed(2)}, aim ${r1.aim && r1.aim.toFixed(2)})`,
+      shieldOn && r1.up && r1.mouse && r1.press && r1.press.kind === 'shield' && r1.ang != null && r1.aim != null && (nearMon || (angGap(r1.ang, r1.aim) < 0.35 && r1.aim < 0)), { r1, nearMon });
     rec.ok(`8c. ...and no browser menu: every one asked for was refused (${JSON.stringify(r1.menus)})`, r1.menus.every((p) => p === true), r1.menus);
     await P.page.mouse.down({ button: 'left' });
     await P.page.waitForTimeout(150);
@@ -506,7 +512,14 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await P.page.mouse.up({ button: 'right' });
     await P.page.waitForTimeout(600);
     const r3 = await look(P);
-    rec.ok('8c. letting the right button go lowers the shield', !r3.up && !r3.mouse, r3);
+    /* v2.3.3845: a toggle -- the release keeps it up, the next press lowers it */
+    await P.page.mouse.down({ button: 'right' });
+    await P.page.waitForTimeout(150);
+    await P.page.mouse.up({ button: 'right' });
+    await P.page.waitForTimeout(600);
+    const r3b = await look(P);
+    rec.ok(`8c. letting the right button go keeps the shield up (a toggle, v2.3.3845); the next right press lowers it (press: ${r3b.press && r3b.press.kind})`,
+      r3.up && !r3b.up && r3b.press && r3b.press.kind === 'shield-down', { r3, r3b });
 
     /* ── 8d. NO SHIELD: THE RIGHT BUTTON IS THE SPECIAL, AS IT WAS ── */
     await P.page.evaluate(() => { const S = window._gameState.current; S.rpg.shield = null; S.rpg.mana = Math.max(S.rpg.mana || 0, 500); S._lastSwipe = 0; });
