@@ -79,7 +79,7 @@ skateboard) were drawn under the strip, and a click on them landed on the
 strip. While one is up, on a computer, they step aside; E and Z still work.
 `game.css`, the computer's block.
 
-![Diego's shop, before and after](desk-space/shop-strip-before-after.png)
+![a trade request, before and after: the skateboard button on its edge](desk-space/strip-before-after.png)
 
 ## Checks
 
