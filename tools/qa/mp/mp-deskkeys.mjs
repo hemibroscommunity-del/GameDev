@@ -112,7 +112,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
         colLeft: Math.round(col.left), place: s && s.getAttribute('data-kb-place'), bellRight: b && Math.round(b.right),
         overlap: !!(r && b && b.width && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top) };
     });
-    rec.ok('the keys strip lists 1-3, and lies clear of the bell', strip.keys.includes('1-3') && !strip.overlap, strip);
+    rec.ok('the keys strip lists 1, 2 and 3 (v2.3.3845: was 1-3), and lies clear of the bell', ['1', '2', '3'].every((k) => strip.keys.includes(k)) && !strip.overlap, strip);
     /* v2.3.3526 (the owner's "Go recommended" on the review's "move the keys
        strip into the black margin beside the game"): on this window it is in
        the margin, wholly left of the game's column and on the screen */

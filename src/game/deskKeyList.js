@@ -85,7 +85,12 @@ export const DESK_KEY_ROWS = [
   ['V', 'Eat', 'food', 'fight'],
   ['Wheel', 'Swap', null, 'fight'],   /* v2.3.3711: the mouse wheel */
   ['Tab', 'Swap', null, 'fight'],
-  ['1-3', 'Weapon', null, 'fight'],
+  /* v2.3.3845: the owner: "instead of '1-3 weapon' just list which number
+     represents which weapon (1 melee, 2 bow, 3 staff, etc)".  Always all
+     three: every player's weapons row has the three slots */
+  ['1', 'Melee', null, 'fight'],
+  ['2', 'Bow', null, 'fight'],
+  ['3', 'Staff', null, 'fight'],
   ['E', 'Interact', null, 'other'],
   ['B', 'Emotes', null, 'other'],
   ['C', 'Chat', null, 'other'],

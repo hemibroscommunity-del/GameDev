@@ -224,3 +224,9 @@ and point if there's no monsters around."*
 Tests: `mp-shieldtoggle` (a computer, the wide layout, the real mouse; fails on
 main, where the release lowers the guard), `mp-deskkeys` 8c (the release keeps
 it up, the next press lowers it), `server/test/desk-keys.test.mjs` §11.
+
+**Also in v2.3.3845, the weapon numbers.** The owner: *"instead of '1-3
+weapon' just list which number represents which weapon (1 melee, 2 bow, 3
+staff, etc)"*. The list's `1-3 Weapon` row is three: `1 Melee`, `2 Bow`,
+`3 Staff`, always shown (every player's weapons row has the three slots;
+3 does nothing until you carry a staff, as before).

@@ -97,7 +97,7 @@ const bound = (k) => {
   if (k === 'Space') return /e\.code === 'Space'/.test(ctl);
   if (k === 'Tab') return /e\.code === 'Tab'/.test(ctl);
   if (k === 'Esc') return /e\.code === 'Escape'/.test(ctl);
-  if (k === '1-3') return ['1', '2', '3'].every((d) => new RegExp(`e\\.code === 'Digit${d}'`).test(ctl));
+  if (/^[123]$/.test(k)) return new RegExp(`e\\.code === 'Digit${k}'`).test(ctl);   /* v2.3.3845: a row a number (was '1-3') */
   /* v2.3.3711: the mouse's moves, and the combos */
   if (k === 'Click') return /onMouseDown/.test(bro);
   if (k === 'R-Click') return /e\.button === 2/.test(bro) && /_deskRightPress\(/.test(bro);
@@ -195,6 +195,9 @@ check('11d ?shieldaim=mouse: the pointer always; anything else the default',
 check('11e a right press with the guard up lowers it (the toggle); dropShield clears the toggle so the next press raises it',
   /if \(S\.rpg\.shield && S\._shieldUp\) \{\s*S\._shieldMouse = false;\s*_desktopShieldOff\(\);\s*return 'shield-down';/.test(bro)
   && /S\._shieldMouse = false;/.test(src('src/game/shieldToggle.js')));
+check('11g the numbers say their weapons: 1 Melee, 2 Bow, 3 Staff, always listed, no 1-3 row',
+  words('1') === 'Melee' && words('2') === 'Bow' && words('3') === 'Staff' && !DESK_KEY_ROWS.some((r) => r[0] === '1-3')
+  && ['1', '2', '3'].every((k) => deskKeyRows({}).some((r) => r[0] === k)));
 check('11f the toggled guard faces what is near (shieldTargetAngle), else the live pointer',
   /var _sta = S\._shieldAimMouse \? null : shieldTargetAngle\(S\);\s*var _spa = deskPointerAngle\(S\);/.test(bro));
 
