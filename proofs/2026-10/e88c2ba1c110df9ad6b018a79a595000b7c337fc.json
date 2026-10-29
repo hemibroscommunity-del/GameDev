@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e88c2ba1c110df9ad6b018a79a595000b7c337fc",
+  "tree": "a1fc5b2ea8d23438e16aac536a95d592c608c0bf",
+  "committedAt": "2026-10-29T09:14:38-07:00",
+  "subject": "Merge pull request #1336 from hemibroscommunity-del/claude/longhair-hat",
+  "files": 7302,
+  "bytes": 840656986,
+  "listingSha256": "beffb2cfff523ec81cecd62d932aac8c0ab5233615f2b637a8261a9378605965",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
