@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "15dcdb149766cd7f0555b16fee513e1eaa150f69",
+  "tree": "bbca966d1cb87e375d101a597312f265e288ec6f",
+  "committedAt": "2026-10-29T03:33:41-07:00",
+  "subject": "Merge pull request #1316 from hemibroscommunity-del/claude/desk-trade-click",
+  "files": 7256,
+  "bytes": 833416781,
+  "listingSha256": "8f258153463ea28591d43e5cf8ee1e8be16cc6bbd4f35c15c90ff581ededc961",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
