@@ -110,10 +110,35 @@ export function cardPlace() {
   try { m = window.__btWheelMini || null; } catch (e) { m = null; }
   if (m && typeof m.left === 'number' && typeof m.top === 'number') {
     const room = m.left - f.left;
-    if (room - 16 >= w) return clearOfTopCards({ top: Math.round(m.top), left: Math.round(f.left + (room - w) / 2), w, at: 'beside' });
+    if (room - 16 >= w) return clearOfTopCards(clearOfYou({ top: Math.round(m.top), left: Math.round(f.left + (room - w) / 2), w, at: 'beside' }, f));
     return clearOfTopCards({ top: Math.round(m.top + (m.h || 132) + 8), left: Math.round(f.left + (f.width - w) / 2), w, at: 'below' });
   }
   return clearOfTopCards({ top: Math.round(f.top + 96), left: Math.round(f.left + (f.width - w) / 2), w, at: 'top' });
+}
+/* ═══ v2.3.3830: CLEAR OF YOU, SIDEWAYS ═══
+   Held sideways (844 x 390) the window beside the minimap ends a few px
+   above your head, and the top bar's growth (v2.3.3765 --bt-bar-grow) put
+   it 2 px INTO the space over you in one run of mp-nmlask's step 9 -- the
+   camera's lead (BroTown.jsx _camLead, up to ~12 screen px as you walk
+   south) moves you that much anyway.  No room above (the top bar) and no
+   height to give (its buttons are already under Lantern Slate's 44 px), so
+   when it would come down that low it slides LEFT, off the middle of the
+   world where you stand, its right edge 36 px left of you (your 15 px half
+   width, the lead, a gap).  A tall world (a phone upright, a computer)
+   never comes near: the window is far above you there. */
+function clearOfYou(p, f) {
+  let c = null;
+  try {
+    const cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('.brotown-wrap canvas');
+    c = cv ? cv.getBoundingClientRect() : null;
+  } catch (e) { c = null; }
+  if (!c || !(c.width > 0 && c.height > 0)) return p;
+  const cx = c.left + c.width / 2, cy = c.top + c.height / 2;
+  if (p.top + CARD_H <= cy - 70) return p;          /* your head ~50 px, the lead ~12, a gap */
+  if (p.left >= cx + 36 || p.left + p.w <= cx - 36) return p;
+  const left = Math.round(cx - 36 - p.w);
+  if (left < f.left + 8) return p;                   /* no room: as before */
+  return Object.assign({}, p, { left, offYou: true });
 }
 /* ...moved down under any of TOP_CARDS it would cover */
 function clearOfTopCards(p) {
