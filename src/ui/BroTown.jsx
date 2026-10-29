@@ -43,7 +43,7 @@ import { EmotePanel } from './panels/EmotePanel.jsx';
 import { LeaderboardPanel, FeedbackPanel, ClanPanel, PetHousePanel, FurniturePanel, DungeonCreatorPanel, EncyclopediaPanel, StatScreenPanel, TradeWindowPanel, InspectPlayerPanel, ExchangePanel, GamblePanel, PartyPanel,
   /* the buildings' windows: v2.3.2826 the Blacksmith; v2.3.3259 the Gem Cutter and the Enchanter, one window (GemcutPanel, EnchantPanel); v2.3.3258 the Land Office's, in the card like the others; v2.3.2476 the auction house */
   SmithyPanel, WoodworkPanel, GemWorksPanel, FarmPanel, BankPanel, CookPanel, VendorPanel, LandOfficePanel, StorePanel } from './lazyPanels.js';
-import { nmlCanAttack, nmlHere } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
+import { nmlCanAttack, nmlHere, nmlLockedOut } from '../game/noMansLand.js'; /* v2.3.3058: aim at a player in No man's land; v2.3.3253: + where you stand */
 import { sparCanAttack, sparAim } from '../game/spar.js'; /* v2.3.3265: aim at your sparring clones */
 import { isLiveFoe } from '../game/sparTargets.js'; /* v2.3.3268: a player you chose to attack is aimed at by a tap, no second window */
 import { profileRelayFields } from './panels/playerProfile.js'; /* v2.3.2926: the Inspect card's relay fields */
@@ -10619,7 +10619,8 @@ export var BroTown = function BroTown(_ref0) {
         var _no = S.others[_nid];
         if (!_no || typeof _no.renderX !== 'number' || typeof _no.renderY !== 'number') continue;
         var _nd = Math.hypot(_p.x - (_no.renderX - cam.x) * sx, _p.y - (_no.renderY - cam.y) * sy);
-        if (_nd < 25 && _nd < selfD && ((_nmlTap && nmlCanAttack(S, _nid)) || (_sparTap && sparCanAttack(S, _nid)))) return true;
+        /* v2.3.3770: a player you are locked out from is still a tap's (it opens the window that says why) */
+        if (_nd < 25 && _nd < selfD && ((_nmlTap && nmlCanAttack(S, _nid, true)) || (_sparTap && sparCanAttack(S, _nid)))) return true;
       }
       return false;
     };
@@ -13015,6 +13016,16 @@ export var BroTown = function BroTown(_ref0) {
              go, as for anyone. */
           var _nmlFoe = false;
           try { _nmlFoe = !_isDuelOpponent && nmlCanAttack(S, id); } catch (e) { _nmlFoe = false; }
+          /* ═══ v2.3.3770: ...OR ONE WHO BEAT YOU ═══  Locked out from them
+             (nomansland.js _nmlLockSet): the tap opens the window that says
+             why, with its "Ask for a rematch" (game/nmlAsk.js) -- never an
+             aim, which the worker would refuse. */
+          var _nmlLockedTap = false;
+          try { _nmlLockedTap = !_nmlFoe && !_isDuelOpponent && nmlAskOn(S) && nmlLockedOut(S, id) > 0 && nmlCanAttack(S, id, true); } catch (e) { _nmlLockedTap = false; }
+          if (_nmlLockedTap) {
+            try { nmlAsk(S, id, 'tap'); } catch (e) { /* the worker refuses an attack anyway */ }
+            return;
+          }
           if (_nmlFoe) {
             /* nml: the lock is No man's land's, so noteNoMansLand lets it go
                the moment the rule stops allowing the fight.  Tapping them
