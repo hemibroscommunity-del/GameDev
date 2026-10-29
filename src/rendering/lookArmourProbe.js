@@ -23,10 +23,13 @@ import { gearTint } from './gearVariants.js';
 
 const DIRS = ['east', 'north', 'northeast', 'south', 'southwest'];
 const MIRRORED = ['east', 'northeast', 'southwest'];
+/* a colour may be P1's bar (16 levels a channel of the art) and the residue's
+   edge blend (2) from the old picture's */
+const COLOUR_BAR = 18;
 
 export function installArmourProbe(dep) {
   if (typeof window === 'undefined') return;
-  const { getBodyFrame, getLookBodyEntries, getFrame, getGearFrame, playerFrameCount, maskedFrame, fullsetCovers, loadGear } = dep;
+  const { getBodyFrame, getLookBodyEntries, getFrame, getGearFrame, playerFrameCount, maskedFrame, fullsetCovers, loadGear, reference, lookJob } = dep;
   const oldBody = (L, pose, dir, f) => getBodyFrame(L[0], L[1], L[2], pose, dir, f, null, 'none', L[3], null, undefined);
   const entriesOf = (L, pose, dir) => getLookBodyEntries(L[0], L[1], L[2], pose, dir, null, L[3], null, undefined);
   /* the old path's body bake for this look, waited for (getBodyFrame hands
@@ -85,6 +88,7 @@ export function installArmourProbe(dep) {
       for (const set of sets) {
         const cells = [];
         let notDecided = 0, oldPlain = 0, tOld = 0, tNew = 0;
+        const refs = [];
         for (const pose of poses) {
           for (const dir of DIRS) {
             if (!lookHas('body', pose + '-' + dir)) continue;
@@ -105,8 +109,12 @@ export function installArmourProbe(dep) {
               tNew += performance.now() - t0;
               const nw = lookArmourFrame(ents, worn, pi, 0);
               if (!nw) { notDecided++; continue; }
+              /* the masked bake's own picture over the body as the numbers
+                 draw it: what the new way must reproduce */
+              const rf = await reference(lookJob(ents, worn, pi));
+              if (rf) refs.push(rf);
               for (const mirror of MIRRORED.indexOf(dir) >= 0 ? [false, true] : [false]) {
-                cells.push({ pose, dir, f, mirror, ot, nt: nw.tex, res: nw.residue });
+                cells.push({ pose, dir, f, mirror, ot, rf, nt: nw.tex, res: nw.residue });
               }
             }
           }
@@ -114,8 +122,32 @@ export function installArmourProbe(dep) {
         const cell = Math.ceil(128 * scale) + 4;
         const a = render(cells, (c) => [c.ot], scale, cell, cols);
         const b = render(cells, (c) => [c.nt, c.res], scale, cell, cols);
+        const rr = render(cells, (c) => [c.rf], scale, cell, cols);
+        for (const t of refs) { try { t.destroy(true); } catch (e) { /* gone */ } }
+        /* the verdict: the new way against the bake's own picture over the
+           same body, every channel; and how far the new way is from the old
+           picture's (P1's 256 colours: information) */
+        const exact = { drawn: 0, over: 0, worst: 0, hist: {}, cells: Object.create(null), bad: [] };
+        for (let p = 0; p < rr.data.length; p += 4) {
+          if (!rr.data[p + 3] && !b.data[p + 3]) continue;
+          exact.drawn++;
+          let m = 0;
+          for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(rr.data[p + k] - b.data[p + k]));
+          if (!m) continue;
+          exact.hist[m] = (exact.hist[m] || 0) + 1;
+          if (m > exact.worst) exact.worst = m;
+          if (m > 2) {
+            exact.over++;
+            const q = p >> 2, x = q % rr.w, y = Math.floor(q / rr.w);
+            const c = cells[Math.floor(y / cell) * cols + Math.floor(x / cell)];
+            const name = c ? `${c.pose}-${c.dir}#${c.f}${c.mirror ? 'm' : ''}` : '?';
+            exact.cells[name] = (exact.cells[name] || 0) + 1;
+            if (exact.bad.length < 4) exact.bad.push({ at: [x % cell, y % cell], cell: name, ref: Array.from(rr.data.slice(p, p + 4)), now: Array.from(b.data.slice(p, p + 4)) });
+          }
+        }
+        exact.cells = Object.entries(exact.cells).sort((x, y) => y[1] - x[1]).slice(0, 6);
         const hist = {};
-        let drawn = 0, differ = 0, worst = 0, residues = 0;
+        let drawn = 0, differ = 0, worst = 0, residues = 0, alphaOver = 0, worstAlpha = 0, colourOver = 0, worstColour = 0;
         /* what each way holds on the chip for these frames: the old masked
            pictures (RGBA, a mip chain a third more), against the residues
            (the same) -- the bits are the book's, counted by __btLookArmour */
@@ -132,11 +164,21 @@ export function installArmourProbe(dep) {
         for (let p = 0; p < a.data.length; p += 4) {
           if (!a.data[p + 3] && !b.data[p + 3]) continue;
           drawn++;
-          let m = 0;
-          for (let k = 0; k < 4; k++) m = Math.max(m, Math.abs(a.data[p + k] - b.data[p + k]));
+          let m = 0, mc = 0;
+          for (let k = 0; k < 3; k++) mc = Math.max(mc, Math.abs(a.data[p + k] - b.data[p + k]));
+          /* v2.3.3752: the SHAPE (alpha: what shows, the masks' job) apart
+             from the colour, since P1 cut the body's sheets to 256 colours
+             within 16 levels of the art (look-palette.md, the quality bar):
+             a colour can be that far from the old picture's anywhere */
+          const ma = Math.abs(a.data[p + 3] - b.data[p + 3]);
+          if (ma > 2) alphaOver++;
+          if (ma > worstAlpha) worstAlpha = ma;
+          if (mc > COLOUR_BAR) colourOver++;
+          if (mc > worstColour) worstColour = mc;
+          m = Math.max(ma, mc);
           if (!m) continue;
           hist[m] = (hist[m] || 0) + 1;
-          if (m > 1) {
+          if (ma > 2 || mc > COLOUR_BAR) {
             differ++;
             const q = p >> 2, x = q % a.w, y = Math.floor(q / a.w);
             const ci = Math.floor(y / cell) * cols + Math.floor(x / cell);
@@ -147,7 +189,7 @@ export function installArmourProbe(dep) {
           }
           if (m > worst) worst = m;
         }
-        out.push({ look: L.join('/'), set: set.join('+'), baked: ok, tOld: Math.round(tOld), tNew: Math.round(tNew), oldKB: Math.round(oldBytes / 1024), residueKB: Math.round(resBytes / 1024), frames: cells.length, residues, notDecided, oldPlain, drawn, differ, worst, hist, bad,
+        out.push({ look: L.join('/'), set: set.join('+'), baked: ok, tOld: Math.round(tOld), tNew: Math.round(tNew), oldKB: Math.round(oldBytes / 1024), residueKB: Math.round(resBytes / 1024), frames: cells.length, residues, notDecided, oldPlain, drawn, differ, worst, hist, bad, exact, alphaOver, worstAlpha, colourOver, worstColour,
           badCells: Object.entries(badCells).sort((x, y) => y[1] - x[1]).slice(0, 8) });
       }
     }

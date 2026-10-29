@@ -81,7 +81,7 @@ import { getColoredEyeStyleTextures } from '../traits/eyeStyleColorCatalog.js'; 
 import { getHair, HAIR_CATALOG } from '../traits/hairCatalog.js';
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
 import { lookPaletteWanted } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
-import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, setLookArmourBaker, lookSheetForWorker } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
+import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
 import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
 import { lookSheetParse } from '../lookExpand.js';
 import { installArmourProbe } from '../lookArmourProbe.js';   /* v2.3.3752: QA, `?lookprobe` / `?lookpalette=1` only */
@@ -3442,7 +3442,7 @@ const _mkCpuCanvas = (w, h) => {
   c.getContext = (t, o) => g(t, Object.assign({}, o || {}, { willReadFrequently: true }));
   return c;
 };
-async function _runLookBakeInline(j) {
+async function _runLookBakeInline(j, keepDisplay) {
   try {
     let sh = _lookSheetsHere.get(j.look.sheet);
     if (!sh) {
@@ -3462,8 +3462,9 @@ async function _runLookBakeInline(j) {
     const r = lookBake(sh, {
       cell: j.look.cell, row: j.look.row,
       worn: j.worn.map((w) => ({ k: w.k, draw: (c, x, y, W, H) => drawGearFrame(c, w.tex, x, y, W, H) })),
-      belt, dilate: 6, poseInfo: pi, ds: DISPLAY_DS, fishRod: { has: hasFishRodMask, at: fishRodAt },
+      belt, dilate: 6, poseInfo: pi, ds: DISPLAY_DS, fishRod: { has: hasFishRodMask, at: fishRodAt }, keepDisplay: !!keepDisplay,
     }, _mkCpuCanvas);
+    if (keepDisplay) return r;
     if (beltPending) r.beltPending = true;
     if (r.residue) {
       const rc = _mkBakeCanvas(r.residue.w, r.residue.h);
@@ -3538,6 +3539,16 @@ try {
   if (typeof window !== 'undefined' && /(^|[?&])(lookpalette=1|lookprobe(=1)?)(&|$)/.test(window.location.search || '')) {
     installArmourProbe({ getBodyFrame, getLookBodyEntries, getFrame, getGearFrame, playerFrameCount,
       maskedFrame: (t, w, d, p) => _maskedBodyFrame(t, w, d, p), fullsetCovers: (w, p, d) => _fullsetCoversBake(w, p, d),
+      /* the masked bake's own picture over the body the numbers draw (the
+         same lookBake.js, its display kept): what the new way must draw */
+      reference: async (job) => {
+        const r = await _runLookBakeInline(job, true);
+        if (!r || !r.display) return null;
+        const t = Texture.from(r.display);
+        t.source.autoGenerateMipmaps = true;
+        return t;
+      },
+      lookJob: (entries, worn, pi) => lookArmourJob(entries, worn, pi),
       loadGear: async (sets) => {
         const jobs = [preloadBeltSheets()];
         for (const [c, l] of sets) for (const pose of ['stand', 'jog', 'hit', 'dodge', 'mine']) for (const dir of ['east', 'north', 'northeast', 'south', 'southwest']) {

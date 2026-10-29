@@ -34,6 +34,7 @@ export function lookBake(sheet, job, mk) {
   dctx.imageSmoothingEnabled = false;   /* nearest: exact texel picks, as bakeDisplayCanvas */
   dctx.drawImage(r.cv, 0, 0, Math.round(r.cv.width / ds), Math.round(r.cv.height / ds));
   const out = dctx.getImageData(0, 0, c.ow, c.oh).data;
+  if (job.keepDisplay) return { display: dc };   /* QA: the bake's own picture (mp-lookarmour's reference) */
   const m = lookMaskOf(out, c.ow, c.oh, f.pm, c);
   return { show: m.show, residue: m.residue, counts: m.counts, beltPending: !!r.beltPending };
 }

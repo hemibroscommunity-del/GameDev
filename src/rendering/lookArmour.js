@@ -317,6 +317,19 @@ export function lookArmourPrewarm(entries, worn, poseInfo) {
   const job = S && S.jobs[((poseInfo.frameIdx % n) + n) % n];
   return Promise.resolve(job && job.done).then(() => {}, () => {});
 }
+/** QA: the job lookArmourFrame would send for this frame (mp-lookarmour's reference), or null. */
+export function lookArmourJob(entries, worn, poseInfo) {
+  const sheet = poseInfo.pose + '-' + poseInfo.dir;
+  const sh = lookSheetOf('body', sheet);
+  if (!entries || !sh) return null;
+  const n = sh.frames.length, f = ((poseInfo.frameIdx % n) + n) % n, fr = sh.frames[f];
+  const cell = {
+    x: fr.frame.x, y: fr.frame.y, w: fr.frame.width, h: fr.frame.height,
+    tx: fr.trim ? fr.trim.x : 0, ty: fr.trim ? fr.trim.y : 0,
+    ow: fr.orig ? fr.orig.width : fr.frame.width, oh: fr.orig ? fr.orig.height : fr.frame.height,
+  };
+  return { look: { sheet: 'body/' + sheet, cell, row: baseRow(lookOf(entries)) }, worn, poseInfo: { pose: poseInfo.pose, dir: poseInfo.dir, frameIdx: f } };
+}
 /** This frame decided for this look and worn set (QA: __btMaskedCoverage). */
 export function lookArmourDecided(entries, wornSig, sheet, f) {
   const ml = entries && _mlooks.get(lookOf(entries).key + '|' + wornSig);

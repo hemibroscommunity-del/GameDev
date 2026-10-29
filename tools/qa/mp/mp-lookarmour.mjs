@@ -74,7 +74,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (const x of r) {
         report.push(x);
         frames += x.frames; differ += x.differ; drawn += x.drawn; worst = Math.max(worst, x.worst);
-        console.log(`    ${x.look} in ${x.set}: ${x.frames} frames (${x.residues} with a residue), ${x.drawn} px, ${x.differ} over 1 apart, worst ${x.worst}`
+        console.log(`    ${x.look} in ${x.set}: ${x.frames} frames (${x.residues} with a residue), ${x.drawn} px; against the bake over the same body: ${x.exact.over} px over 2 (worst ${x.exact.worst})${x.exact.over ? ' ' + JSON.stringify(x.exact.cells) + ' ' + JSON.stringify(x.exact.bad.slice(0, 2)) : ''}; against the old picture: shape ${x.alphaOver} px over 2 (worst ${x.worstAlpha}); colour: ${x.colourOver} px over ${18} (worst ${x.worstColour})`
           + `, ms old ${x.tOld} new ${x.tNew}, on the chip old ${x.oldKB} KB / residues ${x.residueKB} KB` + (x.notDecided ? `, ${x.notDecided} not decided` : '') + (x.oldPlain ? `, old plain ${x.oldPlain}` : '')
           + (x.differ ? ` ${JSON.stringify(x.badCells)} ${JSON.stringify(x.bad.slice(0, 2))}` : ''));
       }
@@ -90,7 +90,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (const x of r) {
         report.push({ ...x, worker: true });
         frames += x.frames; differ += x.differ; drawn += x.drawn; worst = Math.max(worst, x.worst);
-        console.log(`    worker: ${x.look} in ${x.set}: ${x.frames} frames (${x.residues} with a residue), ${x.differ} over 1 apart, worst ${x.worst}` + (x.differ ? ` ${JSON.stringify(x.badCells)}` : ''));
+        console.log(`    worker: ${x.look} in ${x.set}: ${x.frames} frames (${x.residues} with a residue); against the bake: ${x.exact.over} px over 2 (worst ${x.exact.worst}); old picture: shape ${x.alphaOver} px over 2 (worst ${x.worstAlpha}); colour: ${x.colourOver} over 18 (worst ${x.worstColour})` + (x.differ ? ` ${JSON.stringify(x.badCells)}` : ''));
       }
       console.log(`    (worker sample: ${((Date.now() - t0) / 1000).toFixed(0)} s)`);
     }
@@ -99,13 +99,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
        with its armour, the new with its armour, then the body alone under each */
     {
       const G = LOOKS[0];
-      const rows = [
+      const rows = process.env.BT_LA_ROWS ? JSON.parse(process.env.BT_LA_ROWS) : [
         { look: G, set: FULL.copper, pose: 'stand', dir: 'south' },
         { look: G, set: FULL.copper, pose: 'jog', dir: 'northeast', f: 6 },
         { look: LOOKS[1], set: MIXED, pose: 'jog', dir: 'south', f: 4 },
         { look: LOOKS[2], set: EXTRA.chest, pose: 'jog', dir: 'east', f: 10 },
         { look: LOOKS[3], set: EXTRA.greaves, pose: 'stand', dir: 'east', mirror: true },
       ];
+      for (const r of rows) if (typeof r.look === 'number') r.look = LOOKS[r.look];
       const url = await P.page.evaluate((r) => window.__btArmourOracle.picture({ rows: r, scale: 3 }), rows);
       const png = Buffer.from(String(url).replace(/^data:image\/png;base64,/, ''), 'base64');
       writeFileSync(join(OUT, 'lookarmour.png'), png);
@@ -118,9 +119,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const la = await P.page.evaluate(() => window.__btLookArmour());
     console.log(`    lookArmour: ${JSON.stringify(la)}`);
     writeFileSync(join(OUT, 'lookarmour.json'), JSON.stringify({ report, la }, null, 1));
-    const over = report.reduce((a, x) => a + Object.entries(x.hist).filter(([m]) => +m > OVER).reduce((b, [, n]) => b + n, 0), 0);
-    rec.ok(`the oracle: ${frames} armoured frames, ${drawn} px drawn both ways; ${over} px more than ${OVER} levels apart (worst ${worst})`,
-      frames > 0 && over === 0 && report.every((x) => !x.notDecided), { frames, drawn, differ, over, worst });
+    const exactOver = report.reduce((a, x) => a + x.exact.over, 0), exactDrawn = report.reduce((a, x) => a + x.exact.drawn, 0);
+    const wE = Math.max(...report.map((x) => x.exact.worst));
+    const shape = report.reduce((a, x) => a + x.alphaOver, 0), colour = report.reduce((a, x) => a + x.colourOver, 0);
+    const wA = Math.max(...report.map((x) => x.worstAlpha)), wC = Math.max(...report.map((x) => x.worstColour));
+    console.log(`    against the old full-colour pictures (information: P1 drew the body in 256 colours, within 16 levels of the art, alpha included): ${shape} px of alpha more than 2 apart (worst ${wA}), ${colour} px of colour more than 18 apart (worst ${wC})`);
+    rec.ok(`the oracle: ${frames} armoured frames, ${exactDrawn} px drawn both ways, the new way against the masked bake's own picture over the same body: ${exactOver} px more than ${OVER} levels apart (worst ${wE})`,
+      frames > 0 && exactOver === 0 && report.every((x) => !x.notDecided), { frames, exactDrawn, exactOver, wE, shape, colour, wA, wC });
     rec.ok(`no palette row or mask book refused (rows ${la.rows}, books ${la.books}, atlas ${la.atlasMB} MB): rowsFull ${la.rowsFull}, booksFull ${la.booksFull}`,
       la.rowsFull === 0 && la.booksFull === 0, la);
     rec.ok(`no page error (${errs.length})`, errs.length === 0, errs.slice(0, 4));
