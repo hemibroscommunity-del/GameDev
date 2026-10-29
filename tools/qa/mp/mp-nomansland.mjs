@@ -317,15 +317,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
             gap: Math.round((innerHeight - band) - r.bottom), h: Math.round(r.height), w: Math.round(r.width) } : null,
         };
       });
-      if (t.lvl >= 1 && t.lvl <= 5 && t.chat.length && t.badge) break;
+      if (t.lvl >= 1 && t.lvl <= 5 && t.badge) break;
       await P.page.waitForTimeout(400);
     }
     return t;
   };
   const tA = await told(A), tB = await told(B);
   for (const [who, t] of [['the raider', tA], ['the wanderer', tB]]) {
-    rec.ok(`1. ${who} is told: no banner (v2.3.3853, the owner: "I'd rather not have anything"), the chat ("${t && t.chat[0]}") and the badge (skull ${t && t.badge && t.badge.text}, ${t && t.badge && t.badge.w} px wide)`,
-      !!t && t.lvl >= 1 && t.lvl <= 5 && t.banner === 0 && t.chat.some((c) => /can attack you here/.test(c) && /No man's land \d+:/.test(c)) && !!t.badge && t.badge.n === String(t.lvl) && t.badge.text.trim() === String(t.lvl) && t.badge.w <= 90, t);
+    rec.ok(`1. ${who} is told by the badge alone: no banner (v2.3.3853), no chat line (v2.3.3887: ${t && t.chat.length}) and the badge (skull ${t && t.badge && t.badge.text}, ${t && t.badge && t.badge.w} px wide)`,
+      !!t && t.lvl >= 1 && t.lvl <= 5 && t.banner === 0 && t.chat.length === 0   /* v2.3.3887: and no chat line (the owner) */ && !!t.badge && t.badge.n === String(t.lvl) && t.badge.text.trim() === String(t.lvl) && t.badge.w <= 90, t);
     /* v2.3.3268: just LEFT of the middle -- centred, it sat on the shield
        button (the shield's left edge is the middle, ShieldButton.jsx
        ctlColumn) and a tap on the shield's middle opened the badge; it stops

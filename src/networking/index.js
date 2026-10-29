@@ -1,3 +1,4 @@
+import { keptQuery } from '../ui/keepSwitches.js';   /* v2.3.3888: the address's switches kept through the door */
 /* ═══ MULTIPLAYER SERVER — Cloudflare Durable Objects ═══ */
 
 /* Server URLs.
@@ -247,8 +248,8 @@ export function applyAccountLogin(phrase, id) {
      and land back on the door. */
   try { sessionStorage.setItem('bt_play_now', '1'); } catch (e) {}
   try {
-    var _g = /[?&]guest=1\b/.test(window.location.search) ? '?guest=1' : '';
-    window.location.replace(window.location.pathname + _g);
+    /* v2.3.3888: the page's switches ride along (ui/keepSwitches.js), guest among them */
+    window.location.replace(window.location.pathname + keptQuery());
   } catch (e) { window.location.reload(); }
 }
 

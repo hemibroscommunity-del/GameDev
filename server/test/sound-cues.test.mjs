@@ -283,7 +283,13 @@ for (const p of files) {
   for (const m of GD.matchAll(/EVENT_SOUNDS\.([A-Za-z0-9_]+)/g)) used.add(m[1]);
   const dc = GD.match(/BT_AUDIO\.DEATH_CUES = \{([^}]*)\}/);
   for (const n of namesIn(dc ? dc[1] : '')) used.add(n);
-  const dead = NAMES.filter((n) => !used.has(n));
+  /* v2.3.3887: cues kept on purpose while nothing plays them -- the owner
+     took the sound off and may want it back, so the table entry and its
+     Sound Studio row stay (docs/specs/no-mans-land.md, "nothing is said or
+     played on the way in or out").  A name here is a decision, not a leak */
+  const RESTING = new Set(['nmlEnter']);
+  const dead = NAMES.filter((n) => !used.has(n) && !RESTING.has(n));
+  check('5d\' a resting cue is really unplayed (else it belongs back in 5d)', [...RESTING].every((n) => !used.has(n) && NAMES.includes(n)), [...RESTING]);
   check('5d every cue is played somewhere (no dead cue in the table)', dead.length === 0, dead);
 }
 

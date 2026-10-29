@@ -140,13 +140,27 @@ const BOT_FLAG_WORDS = {
   'device-fleet': 'Many accounts harvesting on one device',
   'strikes-without-start': 'Harvests sent without starting them',
   test: 'A test flag, planted from this panel (not evidence)',
+  'server-signals': 'Plays like a script (measured by the server)',   /* v2.3.3731: botsig.js */
+};
+/* v2.3.3731: what the server itself saw (botsig.js SIG_REASONS), in words */
+const SIG_REASON_WORDS = {
+  aimed: 'walks dead straight through the centre of every node',
+  reflex: 'dodges monster attacks faster than a person can',
+  rooted: 'hundreds of hits without moving a step',
+  cook: 'cooks on a perfectly even beat',
+  gesture: 'every harvest gesture takes exactly the same time',
+  loop: 'the same harvest loop for hours without a break',
+  marathon: 'hours of play without a break',
+  cloud: 'connects from a cloud server\'s network',
 };
 function botFlagWords(kind, detail) {
   const words = (kind && BOT_FLAG_WORDS[kind]) || (kind ? 'Flag: ' + kind : 'Flagged');
   const score = detail && typeof detail.score === 'number' ? ' (score ' + detail.score + ')' : '';
   const n = detail && typeof detail.count === 'number' ? ' (' + detail.count.toLocaleString() + ')' : '';
   const ids = detail && Array.isArray(detail.activeIds) ? ' (' + detail.activeIds.length + ' accounts)' : '';
-  return words + score + n + ids;
+  const why = detail && Array.isArray(detail.reasons) && detail.reasons.length
+    ? ': ' + detail.reasons.map((r) => SIG_REASON_WORDS[r] || r).join('; ') : '';
+  return words + score + n + ids + why;
 }
 /* v2.3.3398: a chat report's reason in words (chatmod.js REPORT_REASONS) */
 const REPORT_WORDS = { spam: 'Spam', abuse: 'Abuse', harassment: 'Harassment', cheating: 'Cheating', other: 'Other' };
@@ -596,7 +610,9 @@ export const DevPanel = ({ onClose }) => {
   const saveHidden = useCallback(async (name, value) => {
     /* NaN goes over the wire as null, which is the RESET: a typo must not
        quietly put the placeholder back */
-    if (value !== null && !Number.isFinite(value)) { setMsg(name + ': that is not a number.'); return; }
+    if (value !== null && !Array.isArray(value) && !Number.isFinite(value)) { setMsg(name + ': that is not a number.'); return; }
+    /* v2.3.3731: a list (the cloud networks): every entry a number */
+    if (Array.isArray(value) && value.some((v) => !Number.isFinite(v))) { setMsg(name + ': every entry must be a number, separated by commas.'); return; }
     const j = await call('/dev/hidden', { name, value });
     if (j) {
       setHidden(j);
@@ -1399,7 +1415,7 @@ export const DevPanel = ({ onClose }) => {
                 <div style={{ color: COL.muted, fontSize: 12, marginBottom: 6, lineHeight: 1.4 }}>
                   Kept in the server, never in the public code and never sent to a phone.
                   A change is live at once. The placeholder is the public value, used when
-                  nothing is set.
+                  nothing is set. A character in test mode is exempt from all of these.
                 </div>
                 {hidden.off && (
                   <div data-hidden-off="1" style={{ background: COL.accentFill, border: '1px solid ' + COL.accent, color: COL.accent,
@@ -1419,17 +1435,19 @@ export const DevPanel = ({ onClose }) => {
                       padding: '8px 9px', border: '1px solid ' + (h.stored !== null ? COL.accent : COL.border) }}>
                       <div style={{ fontSize: 12.5, lineHeight: 1.35 }}>{h.words}</div>
                       <div style={{ fontSize: 11.5, color: COL.muted, marginTop: 2 }}>
-                        {h.name} · now <b style={{ color: COL.text }}>{String(h.value)}</b>
-                        {h.stored !== null ? ' (yours)' : ' (placeholder)'} · placeholder {String(h.placeholder)} · {h.lo} to {h.hi}{h.int ? ', whole' : ''}
+                        {h.name} · now <b style={{ color: COL.text, wordBreak: 'break-word' }}>{Array.isArray(h.value) ? h.value.join(', ') : String(h.value)}</b>
+                        {h.stored !== null ? ' (yours)' : ' (placeholder)'} · placeholder {Array.isArray(h.placeholder) ? h.placeholder.length + ' numbers' : String(h.placeholder)} · {h.list ? 'up to ' + h.max + ', each ' : ''}{h.lo} to {h.hi}{h.int ? ', whole' : ''}
                       </div>
                       <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                        <input inputMode="decimal" value={draft === undefined ? '' : draft}
+                        <input inputMode={h.list ? 'text' : 'decimal'} value={draft === undefined ? '' : draft}
                           onChange={(e) => { const v = e.target.value; setHidDraft((d) => ({ ...d, [h.name]: v })); }}
                           placeholder="new value" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                           style={{ flex: 1, minWidth: 0, boxSizing: 'border-box', background: COL.well, color: COL.text,
                             border: '1px solid ' + COL.border, borderRadius: 8, padding: '8px 9px', minHeight: 40 }} />
                         <button type="button" style={chip} disabled={busy || draft === undefined || draft === ''}
-                          onClick={() => saveHidden(h.name, Number(draft))}>Save</button>
+                          onClick={() => saveHidden(h.name, h.list
+                            ? String(draft).split(/[\s,]+/).filter(Boolean).map(Number)
+                            : Number(draft))}>Save</button>
                         {h.stored !== null && (
                           <button type="button" style={chip} disabled={busy}
                             onClick={() => saveHidden(h.name, null)}>Reset</button>

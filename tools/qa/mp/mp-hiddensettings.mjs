@@ -142,6 +142,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const capNow = (await admin('GET', '/dev/hidden')).settings.find((s) => s.name === 'HARVEST_HOUR_CAP');
   rec.ok('2. a value under its range is refused with the reason, nothing changed', !!said && /must be from/.test(said[0]) && capNow.stored === null, { said, capNow });
 
+  /* v2.3.3731: a LIST setting (the cloud networks' AS numbers), typed with commas */
+  const hasList = view.settings.some((s) => s.name === 'CLOUD_ASNS');
+  if (hasList) {
+    await typeInRow(O, 'CLOUD_ASNS', '16509, 8075');
+    await tapInRow(O, 'CLOUD_ASNS', 'Save');
+    await O.page.waitForTimeout(1500);
+    const asn = (await admin('GET', '/dev/hidden')).settings.find((s) => s.name === 'CLOUD_ASNS');
+    rec.ok('2. a list setting typed with commas is stored as numbers', JSON.stringify(asn.stored) === '[16509,8075]', asn);
+    await tapInRow(O, 'CLOUD_ASNS', 'Reset');
+    await O.page.waitForTimeout(1200);
+  }
+
   /* ── 4 (first half). the second player keeps playing while it is set ── */
   await B.page.waitForTimeout(3000);
 

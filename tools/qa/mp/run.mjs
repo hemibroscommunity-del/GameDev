@@ -147,6 +147,7 @@ const SCENARIOS = {
   swaphint: () => import('./mp-swaphint.mjs'), /* v2.3.3877: "Swap weapons" said once the first time you hold two -- a computer swaps with 2 and it goes for good; a phone left alone, gone after ~8 s for good; pictures */
   starcue: () => import('./mp-starcue.mjs'), /* v2.3.3872: a new quest star on the minimap plays a big star shrinking onto it, once a target; phone upright and sideways, a computer; pictures */
   mappin: () => import('./mp-mappin.mjs'), /* v2.3.3879: your own pin on the World map -- a drag drops none, a tap drops it, the minimap shows it (its edge when far), a reload keeps it, a tap on it or Remove pin lifts it; phone upright and a computer; pictures */
+  keepswitch: () => import('./mp-keepswitch.mjs'), /* v2.3.3888: a switch typed in the address (?mappin=0) survives logging out and picking the character from the list, still in effect */
   nmlask: () => import('./mp-nmlask.mjs'), /* v2.3.3253: "Attack <name>?" on two screens in No man's land -- the raider's real staff bolts through the wanderer do nothing and ask once (the red skull, its (i), Attack / Party / Ignore, small, over the badge); Ignore, and more bolts ask nothing; a tap asks, the (i) explains; Party invites; Attack aims and the swing lands with the red skull, the wanderer told who (nml_skull `by`); v2.3.3528: hitting back asks first ("Hit back Raider?", the white skull), the swing doing nothing until Attack, then landing with no lock and no red skull; a window left alone goes, and goes when its player walks out; pictures */
   nmlfoe: () => import('./mp-nmlfoe.mjs'), /* v2.3.3268: a player you chose to attack, on three screens in No man's land -- the window's Attack chooses them and the shield button is up before any blow, a tap on its middle reaching it (the badge no longer over it); the lock let go, the sword's automatic target takes them back and lands, the staff and the bow with nothing locked land, every claim naming them; a never-chosen bystander between them is not touched and is asked about; a tap on the chosen aims at once; the defender's shield is up with no lock and no recent blow, a real tap faces the attacker and the worker blocks; v2.3.3528: hitting back goes through the window (the bow held at the raider looses nothing and asks "Hit back", a tap asks too), and its Attack lasts; v2.3.3530: a group -- the bystander attacks the wanderer too, and the wanderer's ONE window joins it to the fight: its arrows land on the bystander with no window and no red skull; a quiet minute lapses the choice and a tap asks again; the badge clear of the shield, bell, weapon button and disc at 320-430 px and sideways; out of No man's land the choice and the button go */
   nmllock: () => import('./mp-nmllock.mjs'), /* v2.3.3770: beaten by them, not again for half an hour -- the raider chooses the wanderer and is killed hitting back: locked out 30 min on both screens, the red skull gone with the death; the raider's click says why ("Wanderer beat you.") with one button, its swings doing nothing; "Ask for a rematch" shows the sword clash and "?" over the raider's head on the wanderer's screen alone, then goes; again inside the minute sends nothing and a forged ask is refused; the wanderer's "Let Raider attack you again" lifts it and the raider is asked "Attack Wanderer?" again */
@@ -799,6 +800,7 @@ process.on('uncaughtException', (e) => { console.error(e); cleanup(); process.ex
 console.log(`up in ${((Date.now() - t0) / 1000).toFixed(0)}s\n`);
 
 const all = [];
+const _botsigSeen = new Set();   /* v2.3.3731: each flag reported once */
 for (const name of names) {
   const rec = H.recorder(name);
   const started = Date.now();
@@ -827,6 +829,19 @@ for (const name of names) {
      passed early.  Scenarios are isolated by their own fresh contexts, so
      none can need another's page afterwards. */
   for (const c of browser.contexts()) await c.close().catch(() => {});
+  /* v2.3.3731: did the server's own bot signals (botsig.js) flag anyone this
+     scenario played?  A report line, never a failure: the harness moves
+     players by script (teleports, exact steps), so a flag here is a question
+     about the scenario before it is one about the detector.  The close just
+     above made each player's last judgement (_botfpFlush). */
+  await new Promise((r) => setTimeout(r, 800));
+  try {
+    const bf = await (await fetch(`http://127.0.0.1:${WS}/api/admin/dev/botflags`, { headers: { Authorization: 'Bearer ' + H.ADMIN_KEY } })).json();
+    const sig = (bf.flagged || []).filter((f) => (f.kinds || []).includes('server-signals') && !_botsigSeen.has(f.id + ':' + (f.last && f.last.at)));
+    for (const f of sig) _botsigSeen.add(f.id + ':' + (f.last && f.last.at));
+    console.log(sig.length ? `   botsig: FLAGGED ${sig.map((f) => (f.name || f.id) + ' [' + ((f.last && f.last.detail && f.last.detail.reasons) || []).join(',') + ']').join('; ')}`
+      : '   botsig: no player flagged by the server\'s own signals');
+  } catch (e) { console.log('   botsig: (could not read the flags: ' + String(e).slice(0, 80) + ')'); }
   console.log(`   (${((Date.now() - started) / 1000).toFixed(0)}s)\n`);
   all.push(...rec.rows());
 }
