@@ -400,9 +400,10 @@ function WorldMap({ stateRef, onClose }) {
      layout is the size it is drawn; its widths are divided by it to stay
      where they were (the margin left of the Wheel sideways).  Phones never:
      the computer's wide layout only (deskWide.js). */
-  const keyK = deskWideActive() && cvBox && cvBox.oh
+  let keyK = deskWideActive() && cvBox && cvBox.oh
     ? Math.max(1, Math.min(2, Math.min(cvBox.ow, cvBox.oh * 390 / 715) / 390))
     : 1;
+  if (keyK < 1.05) keyK = 1;   /* a step too small to see only blurs the words */
   const keyMaxW = cvBox && cvBox.w > cvBox.h
     ? Math.max(150, Math.floor((cvBox.w - 0.96 * cvBox.h) / 2) - 18) / keyK
     : (keyK > 1 ? `calc((100% - 90px) / ${keyK.toFixed(3)})` : 'calc(100% - 90px)');

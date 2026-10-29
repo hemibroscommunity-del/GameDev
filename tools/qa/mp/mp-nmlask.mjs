@@ -663,8 +663,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { eqB, h7, b7: b7 && b7.dom });
   rec.ok(`7. ...with the WHITE skull it carries (${b7 && b7.dom && b7.dom.fill}), not the red one: hitting back gives no red skull`,
     !!b7 && !!b7.dom && b7.dom.skull && b7.dom.fill === '#F2F2F2' && b7.dom.btns.map((b) => b.t).join('|') === 'Attack|Party|Ignore', b7 && b7.dom);
-  rec.ok(`7. ...and until it is answered the swing does the raider nothing: no player_attack sent (${h7 && h7.attacks}), the HP unchanged (${hp7a} -> ${hp7a2})`,
-    !!h7 && h7.attacks === 0 && typeof hp7a === 'number' && hp7a2 === hp7a, { h7, hp7a, hp7a2 });
+  /* v2.3.3830: NOT LOWERED, not "unchanged": a raider a bog lurker had
+     scratched heals while the swing is held (a run of 2026-10-29: 203 -> 224,
+     no player_attack sent) */
+  rec.ok(`7. ...and until it is answered the swing does the raider nothing: no player_attack sent (${h7 && h7.attacks}), the HP not lowered (${hp7a} -> ${hp7a2})`,
+    !!h7 && h7.attacks === 0 && typeof hp7a === 'number' && typeof hp7a2 === 'number' && hp7a2 >= hp7a, { h7, hp7a, hp7a2 });
   await shot(B, '7-hitback');
   await tapAsk(B, 'attack', true);
   await B.page.waitForTimeout(600);
