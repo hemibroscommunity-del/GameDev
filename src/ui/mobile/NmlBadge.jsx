@@ -61,63 +61,25 @@
  * game's wrapper, so a badge inside the wrapper was drawn UNDER it whatever
  * its own z-index (mp-nmlfoe's 667 x 320 row found it in place but unseen).
  * Its other places keep it in the wrapper, layered as before.
+ *
+ * ═══ v2.3.3765: IN THE TOP BAR, JUST RIGHT OF "BroTown" ═══
+ * The owner: "I think the no man's land pill would work better just to the
+ * right of the Brotown name at the top (you can cut it away same as when
+ * earning xp in a weapon)".  So the pill (NmlPill below) lives in the top
+ * bar, ZoneHeader's middle column, beside the title -- never inside it: the
+ * title ([data-zone-title]) is the zone banner's dock target, read exactly.
+ * While the XP bar holds the title's place (v2.3.3695) it is cut away with
+ * the title, and back when the bar goes (game.css bt-zone-header__mid--xp).
+ * Everything that placed it beside the minimap's plate went with that place:
+ * nmlBadgeSpot, the sideways places and the portal to the body.  This file's
+ * default export keeps the blinking red line along the band.  On a narrow
+ * bar the pill is the smaller of its two sizes (game.css bt-nml-pill), so
+ * the title and the purse never give way to it.
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { nmlHere, nmlFirst, nmlSteps, NML_RED } from '@/game/noMansLand.js';   /* v2.3.3690: + nmlFirst, where it starts */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
-
-/* v2.3.3629: beside the minimap's box (wheelMinimap.js WHEEL_BOX), level with
-   its name plate: BOX_PAD the plate's inset in the box (PLATE_PAD), BOX_GAP the
-   air left between the badge and the box */
-const BOX_PAD = 4;
-const BOX_GAP = 6;
-
-/* the badge's tap row and its widest (a two-digit ring, your own skull on its
-   corner), for the places beside the box's top and in the top bar (sideways) */
-const BADGE_ROW = 44;
-const BADGE_W = 76;
-/* the minimap's box (wheelMinimap.js WHEEL_BOX), when its own box is not
-   published: the plate's foot, BOX_PAD inside it, is the box's */
-const MINI_BOX = 132;
-
-/** v2.3.3629: where the badge stands, from the name plate's box and the
- *  badge's containing block (both in the viewport's numbers, {left, top,
- *  width, height}).  `right` is px from the containing block's right edge,
- *  `top` px from its top to the badge's middle (it is drawn centred on it),
- *  `at` which place it took.  Upright ('plate'): its right edge BOX_GAP left
- *  of the minimap's box, its middle level with the plate.  SIDEWAYS (`side`)
- *  the sprint button and Special stand left of the plate and the attack disc
- *  reaches up under the box, so it takes the same right edge level with the
- *  box's TOP ('top'), unless that covers one of `avoid` (rects in the
- *  viewport's numbers: the sprint button reaches up there on a short screen),
- *  then the top bar's row above the box ('bar').  `mini` is the minimap's box
- *  ({left, top}, wheelMinimap.js __btWheelMini) when it is published. */
-export function nmlBadgeSpot(plate, cb, side, mini, avoid) {
-  if (!plate || !(plate.width > 8) || !cb) return null;
-  const boxLeft = plate.left - BOX_PAD;
-  const right = Math.round(cb.left + cb.width - (boxLeft - BOX_GAP));
-  if (!side) return { right, top: Math.round(plate.top - cb.top + plate.height / 2), at: 'plate' };
-  const boxTop = mini && typeof mini.top === 'number' ? mini.top : plate.top + plate.height + BOX_PAD - MINI_BOX;
-  const me = { left: boxLeft - BOX_GAP - BADGE_W, right: boxLeft - BOX_GAP, top: boxTop, bottom: boxTop + BADGE_ROW };
-  const hits = (a, b) => !!b && !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
-  if (!(avoid || []).some((r) => hits(me, r))) return { right, top: Math.round(boxTop - cb.top + BADGE_ROW / 2), at: 'top' };
-  return { right, top: Math.round(Math.max(BADGE_ROW / 2, (boxTop - cb.top) / 2)), at: 'bar' };
-}
-
-/* the controls a sideways badge may not cover, in the viewport's numbers */
-const AVOID_SEL = '[data-sprint], [data-special], .bt-ability-btn, .bt-burst-btn';
-function avoidRects() {
-  const out = [];
-  try {
-    for (const el of document.querySelectorAll(AVOID_SEL)) {
-      const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) out.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
-    }
-  } catch (e) { /* none */ }
-  return out;
-}
 
 /* a skull, drawn rather than the emoji (every phone draws 💀 its own way) */
 export function NmlSkull({ size = 18, color = NML_RED }) {
@@ -196,124 +158,86 @@ export function openNmlInfo(S, lvl) {
   });
 }
 
-export default function NmlBadge({ stateRef, isLandscape }) {
+/* ═══ v2.3.3765: THE PILL, IN THE TOP BAR ═══
+   Beside the title in ZoneHeader's middle column (see the header).  ITS OWN
+   CLOCK, as before: the game state read every 250 ms, a re-render only when
+   the level or your skull changes.  A tap opens the explainer.  Flat fills
+   only: the bar is over the WebGL canvas (TRAPS section 42). */
+export function NmlPill({ getS }) {
   const [lvl, setLvl] = useState(0);
   const [skull, setSkull] = useState(null);
-  /* v2.3.3629: where it stands (nmlBadgeSpot), read on its own clock from the
-     plate's box as the minimap last drew it and the containing block's (a
-     sentinel spanning it) */
-  const [spot, setSpot] = useState(null);
-  const probeRef = useRef(null);
-  const isLandscapeRef = useRef(!!isLandscape);
-  isLandscapeRef.current = !!isLandscape;
-  const placeNow = useRef(() => {});
-  placeNow.current = () => {
-    try {
-      const pr = probeRef.current;
-      const plate = typeof window !== 'undefined' ? window.__btWheelPlate : null;
-      const cb = pr ? pr.getBoundingClientRect() : null;
-      const side = !!isLandscapeRef.current;
-      const mini = typeof window !== 'undefined' ? window.__btWheelMini : null;
-      const p = cb ? nmlBadgeSpot(plate, { left: cb.left, top: cb.top, width: cb.width }, side, mini, side ? avoidRects() : null) : null;
-      setSpot((o) => (o === p || (o && p && o.right === p.right && o.top === p.top && o.at === p.at) ? o : p));
-    } catch (e) { /* the badge keeps its place */ }
-  };
+  const getRef = useRef(getS);
+  getRef.current = getS;
   useEffect(() => {
     let last = '';
     const id = setInterval(() => {
-      const S = stateRef && stateRef.current;
+      const S = getRef.current ? getRef.current() : null;
       let l = 0;
       try { l = nmlHere(S); } catch (e) { l = 0; }
       const sk = l ? nmlSkullLeft(S, Date.now()) : null;
       const sig = l + '|' + (sk ? sk.type : '');
       if (sig !== last) { last = sig; setLvl(l); setSkull(sk); }
-      if (l) placeNow.current();
     }, 250);
     return () => clearInterval(id);
-  }, [stateRef]);
-  /* QA handle, the house style (__btInfoPopup, __btCtlTut) */
+  }, []);
+  /* QA handle, the house style (__btInfoPopup, __btCtlTut); `at` the place it
+     stands (v2.3.3765: always the bar) */
   useEffect(() => {
     try {
-      window.__btNmlBadge = () => ({ lvl, skull: skull && skull.type, spot });
+      window.__btNmlBadge = () => ({ lvl, skull: skull && skull.type, at: lvl ? 'bar' : null });
     } catch (e) { /* no window */ }
-  }, [lvl, skull, spot]);
-  /* placed again at once when it comes up and when the window changes size */
-  useEffect(() => {
-    if (!lvl) { setSpot(null); return undefined; }
-    const f = () => placeNow.current();
-    const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame(f) : 0;
-    try { window.addEventListener('resize', f); } catch (e) { /* no window */ }
-    return () => {
-      try { if (raf) cancelAnimationFrame(raf); window.removeEventListener('resize', f); } catch (e) { /* gone */ }
-    };
-  }, [lvl, isLandscape]);
+  }, [lvl, skull]);
   if (!lvl) return null;
   const open = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    openNmlInfo(stateRef && stateRef.current, lvl);
+    openNmlInfo(getRef.current ? getRef.current() : null, lvl);
   };
-  const badge = (<>
-    {/* v2.3.3608: spans the badge's containing block, so its box says where
-        that block is in the viewport's numbers (v2.3.3629: nmlBadgeSpot; in
-        the body's portal that block is the viewport) */}
-    <div ref={probeRef} aria-hidden="true" style={{ position: 'fixed', left: 0, right: 0, top: 0, height: 0, visibility: 'hidden', pointerEvents: 'none' }} />
-    {spot && (
-    <button type="button" data-nml-badge={lvl} data-nml-at={spot.at}
-      aria-label={`No man's land ${lvl}: players can attack you here. Tap for what it means.`}
-      onClick={open}
-      style={{
-        /* v2.3.3629: just left of the minimap's box, level with its name
-           plate (sideways level with the box's top, or in the top bar's row:
-           nmlBadgeSpot), a 44 px target round a pill the plate's height */
-        position: 'fixed', right: spot.right, top: spot.top, transform: 'translateY(-50%)', zIndex: 30,
-        minHeight: 44, padding: '0 1px', background: 'transparent', border: 0,
-        display: 'flex', alignItems: 'center', cursor: 'pointer',
-        touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
-      }}>
-      <span style={{
-        /* v2.3.3629: as tall as the minimap's name plate beside it (the
-           plate 33 px, the pill 37: v2.3.3600's skull 38 and number 32 were
-           sized for the bottom of the screen) */
-        position: 'relative', display: 'flex', alignItems: 'center', gap: 5, padding: '3px 10px 3px 5px',
-        borderRadius: 999, background: 'rgba(22,10,10,.86)',
-        border: `2px solid ${NML_RED}`, boxShadow: '0 0 0 1px rgba(0,0,0,.5)',
-        color: '#FFE3DF', fontSize: 12, fontWeight: 800, letterSpacing: '.02em', whiteSpace: 'nowrap',
-      }}>
+  return (
+    <button type="button" className="bt-nml-pill" data-nml-badge={lvl} data-nml-at="bar"
+      aria-label={`No man's land ${lvl}: players can attack you here. ${deskWords('Tap')} for what it means.`}
+      onClick={open}>
+      <span className="bt-nml-pill__body">
         {/* the skull and the number only (the owner's "skull level"): the
-            land's name and its levels are on the plate beside it, and a tap
+            land's name and its levels are on the minimap's plate, and a tap
             says the rules */}
-        <NmlSkull size={27} />
-        <span data-nml-num="" style={{ fontSize: 23, color: NML_RED, fontWeight: 900, lineHeight: 1 }}>{lvl}</span>
-        {/* v2.3.3268: your own skull on the pill's top corner, as a count sits
-            on a bell, so the badge is no wider for it (see the header) */}
+        <span className="bt-nml-pill__skull"><NmlSkull size={20} /></span>
+        <span className="bt-nml-pill__num" data-nml-num="">{lvl}</span>
+        {/* v2.3.3268: your own skull on the pill's corner, as a count sits on
+            a bell, so the pill is no wider for it */}
         {skull && (
-          <span data-nml-own-skull={skull.type} title={`${skull.type} skull`} style={{
-            position: 'absolute', top: -8, right: -8, width: 18, height: 18, borderRadius: 999,
-            background: 'rgba(22,10,10,.94)', border: `1px solid ${skull.type === 'red' ? NML_RED : '#F2F2F2'}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
-          }}>
-            <NmlSkull size={12} color={skull.type === 'red' ? NML_RED : '#F2F2F2'} />
+          <span className="bt-nml-pill__own" data-nml-own-skull={skull.type} title={`${skull.type} skull`}
+            style={{ borderColor: skull.type === 'red' ? NML_RED : '#F2F2F2' }}>
+            <NmlSkull size={10} color={skull.type === 'red' ? NML_RED : '#F2F2F2'} />
           </span>
         )}
       </span>
     </button>
-    )}
-    </>);
+  );
+}
+
+/* v2.3.3765: the badge itself moved to the top bar (NmlPill); this keeps the
+   line along the band, on its own clock, while you are in No man's land */
+export default function NmlBadge({ stateRef }) {
+  const [lvl, setLvl] = useState(0);
+  useEffect(() => {
+    let last = 0;
+    const id = setInterval(() => {
+      let l = 0;
+      try { l = nmlHere(stateRef && stateRef.current); } catch (e) { l = 0; }
+      if (l !== last) { last = l; setLvl(l); }
+    }, 250);
+    return () => clearInterval(id);
+  }, [stateRef]);
+  if (!lvl) return null;
   return (
-    <>
-    {/* v2.3.3629: in the top bar's row the badge goes to the body (see the
-        header); everywhere else it stays in the game's wrapper, layered as it
-        always was (under a level-up's celebration, the dashboard's windows) */}
-    {spot && spot.at === 'bar' ? createPortal(badge, document.body) : badge}
-    {/* v2.3.3600: A SLOWLY BLINKING RED LINE along the top of the band while
-        you are in No man's land -- the owner: "some kind of slightly blinking
-        red line" (game.css bt-nml-line; still under calm motion) */}
+    /* v2.3.3600: A SLOWLY BLINKING RED LINE along the top of the band while
+       you are in No man's land -- the owner: "some kind of slightly blinking
+       red line" (game.css bt-nml-line; still under calm motion) */
     <div data-nml-line="" aria-hidden="true" className="bt-nml-line" style={{
       position: 'fixed', left: 0, right: 0, height: 3, pointerEvents: 'none', zIndex: 33,
       bottom: 'calc(var(--sheet-h, var(--dash-h)) - 1px)', background: NML_RED,
       boxShadow: `0 0 8px ${NML_RED}`,
     }} />
-    </>
   );
 }
