@@ -103,7 +103,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.evaluate(() => { const S = window._gameState.current; S.player.x = 1110; S.player.y = 1110; });
   await P.page.waitForTimeout(2500);
   await onOff(P, 'town', rec);
-  await H.warpToZone(P, { wsPort, label: 'Verdant Wilds', zoneId: 'verdant' }).catch(() => null);
+  await H.warpToZone(P, { wsPort, label: 'Earth Forest', zoneId: 'verdant' }).catch(() => null);
   const z = await H.readState(P, (S) => S.currentZone);
   rec.ok('warped to verdant (guard)', z === 'verdant', { z });
   if (z === 'verdant') {

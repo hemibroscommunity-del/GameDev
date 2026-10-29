@@ -6,11 +6,20 @@
  * caller (entityRenderer _placeGear) falls back to it, and to the plain sheet,
  * whenever this answers null.  docs/specs/look-shirts.md. */
 import { registerLookSheets, registerLookKind, getLookPartFrame, lookHas, lookPaletteWanted } from './lookPalette.js';
-import { shirtRowEntries, SHIRT_GLSL } from './lookShirt.js';
+import { shirtRowEntries, SHIRT_GLSL, SHIRT_TILE_MAX } from './lookShirt.js';
 import { artHash, sideForDir } from './traits/playerArt.js';
 import { getGearFrame, getShirtLookFrame, gearSheetLoad } from './gearSheets.js';
 import { parsePattern } from './traits/patternCatalog.js';
+import { clientOff } from '../game/clientOff.js';   /* v2.3.3790: the Test panel's live off switch */
 import { installShirtProbe } from './lookShirtProbe.js';
+
+/* v2.3.3790: the dressed tee's own off switches (the rest of the look palette
+   as it is): `?lookshirt=0` for one phone, and the Test panel's Memory savers
+   row for every phone, live (game/clientOff.js `lookshirt`) -- drawn from the
+   numbers it costs ~5 draw calls a dressed figure until the look program joins
+   the one batcher, so the owner can turn it off at the showing if frames
+   suffer (still ON by default: "I can always revert") */
+const _wanted = (() => { try { return !/(^|[?&])lookshirt=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
 
 /* behind the loading screen with the body's sheets (preloadLookSheets) */
 registerLookSheets('shirt', '/sprites/look/shirt/roles.json');
@@ -20,8 +29,20 @@ registerLookKind('shirt', SHIRT_GLSL);   /* the print, the tile and the tint, pe
    ~55 entries, and the look's key is made from them every frame otherwise */
 const _dress = new Map();
 const DRESS_CAP = 64;
+/* v2.3.3790: a drawing's hash by the drawing (the same string every frame: a Map hit,
+   not a 256-character hash a player a frame) */
+const _hashes = new Map();
+function hashOf(art) {
+  let h = _hashes.get(art);
+  if (h === undefined) {
+    if (_hashes.size >= DRESS_CAP) _hashes.delete(_hashes.keys().next().value);
+    h = artHash(art);
+    _hashes.set(art, h);
+  }
+  return h;
+}
 function dressOf(tint, pattern, art) {
-  const key = 's' + (tint ? tint.join(',') : '-') + '/' + (pattern ? pattern.id + ':' + pattern.colorIdx : '-') + '/' + (art ? artHash(art) : '-');
+  const key = 's' + (tint ? tint[0] + ',' + tint[1] + ',' + tint[2] : '-') + '/' + (pattern ? pattern.id + ':' + pattern.colorIdx : '-') + '/' + (art ? hashOf(art) : '-');
   let d = _dress.get(key);
   if (d) return d;
   const row = shirtRowEntries(tint, pattern, art);
@@ -39,15 +60,17 @@ function dressOf(tint, pattern, art) {
 /**
  * The tee's frame from the numbers, dressed, or null (the old path draws it).
  * `look` is _placeGear's: { art (this side's drawing or null), pattern
- * (parsePattern's), tint ([r, g, b] or null), mirror }.  `plain` asks for an
- * undressed tee too (only worth it when the body beside it is drawn from the
- * numbers: one batch; a plain tee is a shared sheet and a sprite tint either
- * way).  Drawn UNTINTED: the tint is in the row.
+ * (parsePattern's), tint ([r, g, b] or null), mirror }.  A plain tee (no
+ * pattern, no print) answers null (v2.3.3790): it is one shared sheet and a sprite tint
+ * the old way, so the numbers save it nothing, and drawn from them it broke
+ * the batch round every figure in a tee (M3's review of #1247: mp-crowdbots,
+ * +5 draws a figure).  Drawn UNTINTED: the tint is in the row.
  */
-export function getLookShirtFrame(item, pose, dir, frameIdx, look, plain) {
-  if (!lookPaletteWanted() || item !== 'tshirt' || !look) return null;
+export function getLookShirtFrame(item, pose, dir, frameIdx, look) {
+  if (!_wanted || !lookPaletteWanted() || item !== 'tshirt' || !look || clientOff('lookshirt')) return null;
   const dressed = !!(look.art || look.pattern);
-  if (!dressed && !(plain && look.tint)) return null;   /* white and plain: the shipped sheet as it is */
+  if (look.pattern && look.pattern.tile && look.pattern.tile.w * look.pattern.tile.h > SHIRT_TILE_MAX) return null;   /* its ink does not fit the row (v2.3.3790) */
+  if (!dressed) return null;   /* plain: the shared sheet and its sprite tint, as it always was */
   const sheet = pose + '-' + dir;
   if (!lookHas('shirt', sheet)) return null;
   const d = dressOf(look.tint || null, look.pattern || null, look.art || null);

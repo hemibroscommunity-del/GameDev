@@ -31,6 +31,8 @@ export const CLIENT_SAVERS = Object.freeze([
   Object.freeze({ id: 'groundlean', words: 'Lean ground builder', live: false }),
   Object.freeze({ id: 'heaplean', words: 'Map leftover let go', live: false }),
   Object.freeze({ id: 'lookpalette', words: 'Characters coloured on the chip', live: true }),
+  /* v2.3.3790: the patterned and printed tees, on the look palette (lookShirtFrame.js) */
+  Object.freeze({ id: 'lookshirt', words: 'Printed shirts coloured on the chip', live: true }),
 ]);
 
 const KEY = 'bt_clientoff';

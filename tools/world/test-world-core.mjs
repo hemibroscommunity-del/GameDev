@@ -278,7 +278,7 @@ console.log('prompt');
   ok('says which edges are finished', /along the right edge is finished neighbouring squares/.test(mill.text));
   ok('the river flows in by one edge and out by another', /The Sweetwater River flows in from the top edge and out by the bottom edge/.test(mill.text), mill.summary);
   ok('the bridge, the mill plot and the fork', /The Mill Bridge \(bright yellow\) carries the West Road over the river/.test(mill.text) && /kept for the Old Mill/.test(mill.text) && /The Bog Trail branches off the West Road here/.test(mill.text));
-  ok('the commons meets a spoke through its designed edge', /Where Brotown Commons meets Verdant Wilds, the commons grass grows lush/.test(mill.text), mill.summary);
+  ok('the commons meets a spoke through its designed edge', /Where Brotown Commons meets Earth Forest, the commons grass grows lush/.test(mill.text), mill.summary);
   const src = P(sqAt(PLAN.rivers[0].pts[0]));
   ok('the river rises under the glacier', /rises here, pouring as meltwater from under the glacier/.test(src.text) && /Frost Ridge — the glacier/.test(src.text), src.summary);
   const fl = P(sqAt(PLAN.rivers[0].falls[0].at));

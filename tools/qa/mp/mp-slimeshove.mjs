@@ -60,7 +60,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         .sort((a, b) => Math.hypot(a.x - S.player.x, a.y - S.player.y) - Math.hypot(b.x - S.player.x, b.y - S.player.y))[0];
       return m ? { id: m.id, x: m.x, y: m.y, variant: m.variant || null, arch: m.arch || null } : null;
     });
-    if (!target) { rec.ok('a blue slime of the Verdant Wilds to meet', false); break; }
+    if (!target) { rec.ok('a blue slime of the Earth Forest to meet', false); break; }
     await H.hopTo(P, target.x, target.y + 50, { step: 100, gap: 260, tries: 90 });
     /* beside it again (it chases), then kill it the real way */
     const m1 = await P.page.evaluate((id) => {

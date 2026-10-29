@@ -54,8 +54,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(1000);
   await H.equipWeapon(A, 'greatsword', 'weapon', 'melee');
   for (const id of [idA, idB]) await H.devOp(wsPort, 'vitals', id, { heal: true, god: true, godMinutes: 20 });
-  await H.warpToZone(A, { wsPort, label: 'Verdant Wilds', zoneId: 'verdant' });
-  await H.warpToZone(B, { wsPort, label: 'Verdant Wilds', zoneId: 'verdant' });
+  await H.warpToZone(A, { wsPort, label: 'Earth Forest', zoneId: 'verdant' });
+  await H.warpToZone(B, { wsPort, label: 'Earth Forest', zoneId: 'verdant' });
   for (const P of [A, B]) await H.clickText(P, 'CLOSE').catch(() => {});
 
   /* Walk A to a live monster, B close enough to watch. */
@@ -63,7 +63,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const m = (S.monsters || []).find((x) => x && x.alive !== false && (x.curHp == null || x.curHp > 0));
     return m ? { id: m.id, x: m.x, y: m.y } : null;
   });
-  rec.ok('guard: Verdant Wilds has a live monster to spin at', !!mon, mon);
+  rec.ok('guard: Earth Forest has a live monster to spin at', !!mon, mon);
   if (!mon) return;
   await H.hopTo(A, mon.x - 80, mon.y).catch(() => {});
   await H.hopTo(B, mon.x - 80, mon.y + 150).catch(() => {});
