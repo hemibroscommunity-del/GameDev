@@ -144,7 +144,7 @@ function postOffice(props) {
    board", the board (TownBoard.jsx), the two rows kept at its foot as two
    small buttons (still data-hall-row "leaderboard" and "map") */
 function townHall(props) {
-  return [<TownBoard key="board" stateRef={props.stateRef} onLeaderboard={props.onLeaderboard} onMap={props.onMap} />];
+  return [<TownBoard key="board" stateRef={props.stateRef} onLeaderboard={props.onLeaderboard} onMap={props.onMap} onDash={props.onDash} onClose={props.onClose} />];   /* v2.3.3801: + onDash, onClose */
 }
 
 /* ═══ v2.3.3539: THE HOTEL -- A BED FOR THE NIGHT ═══

@@ -82,12 +82,29 @@ async function swingAt(A, id) {
 /* walk the raider until the WORKER has the two within melee reach (mp-duel's
    closeIn: the client's copy of a peer can be tens of px stale) */
 async function closeIn(A, wsPort, aId, bId, want = 34) {
+  /* v2.3.3808: walked one key at a time on the longer axis, the raider can be
+     pinned by a trunk in the forest's thick trees (mp-nomansland red from step
+     4: stuck at 46 px, then at 100, three tries running -- nothing to send a
+     swing at, and nothing wrong with the game).  Two steps that gain under
+     4 px, and the rest is hopped (H.hopTo, the page's own moves, as the
+     scenario parts the two for its pictures) to `want` px short of the
+     wanderer, on the line between them. */
+  let last = Infinity, stuck = 0;
   for (let i = 0; i < 16; i++) {
     const [pa, pb] = await Promise.all([H.serverPlayer(wsPort, aId), H.serverPlayer(wsPort, bId)]);
     if (!pa || !pb) return { ok: false, why: 'no server state' };
     const dx = pb.x - pa.x, dy = pb.y - pa.y;
     const d = Math.hypot(dx, dy);
     if (d <= want) return { ok: true, d: Math.round(d) };
+    stuck = last - d < 4 ? stuck + 1 : 0;
+    last = d;
+    if (stuck >= 2) {
+      const k = Math.max(0, d - (want - 8)) / d;
+      await H.hopTo(A, pa.x + dx * k, pa.y + dy * k, { tries: 12 });
+      await A.page.waitForTimeout(400);
+      stuck = 0;
+      continue;
+    }
     const key = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'd' : 'a') : (dy > 0 ? 's' : 'w');
     await A.page.keyboard.down(key);
     await A.page.waitForTimeout(Math.min(500, Math.max(90, (d - want) * 2.2)));
@@ -278,7 +295,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return {
           lvl: S._nmlLevel || 0,
           /* v2.3.3767: the number is the step (Lv 1-5 on the first ring), not 1 */
-          banner: zb && zb.shownAt && S._nmlLevel ? zb.shownAt('nml-' + S._nmlLevel) : 0,
+          /* v2.3.3797: the banner plays once, on ENTRY, under the entry
+             step's key (noMansLand.js noteNoMansLand); S._nmlLevel climbs on
+             after the dwell, so read whichever nml-* banner has played */
+          ...(() => { let at = 0, k = 0; for (let n = 1; zb && zb.shownAt && n <= 200; n++) { const a = zb.shownAt('nml-' + n); if (a > at) { at = a; k = n; } } return { banner: at, bannerLvl: k }; })(),
           chat: (S.chatLog || []).filter((l) => /No man's land \d/.test(l.text || '')).map((l) => l.text),
           bar: sub ? sub.textContent : null,
           /* v2.3.3765: the top bar's title, right of which the badge stands */
@@ -305,7 +325,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const tA = await told(A), tB = await told(B);
   for (const [who, t] of [['the raider', tA], ['the wanderer', tB]]) {
     rec.ok(`1. ${who} is told: the banner, the chat ("${t && t.chat[0]}") and the badge (skull ${t && t.badge && t.badge.text}, ${t && t.badge && t.badge.w} px wide)`,
-      !!t && t.lvl >= 1 && t.lvl <= 5 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c)) && !!t.badge && t.badge.n === String(t.lvl) && t.badge.text.trim() === String(t.lvl) && t.badge.w <= 90, t);
+      !!t && t.lvl >= 1 && t.lvl <= 5 && t.banner > 0 && t.chat.some((c) => /can attack you here/.test(c) && c.includes(`No man's land ${t.bannerLvl}:`)) && !!t.badge && t.badge.n === String(t.lvl) && t.badge.text.trim() === String(t.lvl) && t.badge.w <= 90, t);
     /* v2.3.3268: just LEFT of the middle -- centred, it sat on the shield
        button (the shield's left edge is the middle, ShieldButton.jsx
        ctlColumn) and a tap on the shield's middle opened the badge; it stops
@@ -414,8 +434,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     !!info && /No man's land [1-5] · Lv [1-5] monsters/.test(info.title || '') && /attack/.test(info.body || '') && /red skull/.test(info.body || '') && /red skull: \d+ min/.test(info.note || ''), info);
 
   /* ── 4. the killing blow ── */
-  const vit = await H.devOp(wsPort, 'vitals', idB, { heal: true, hp: 1 });
+  /* v2.3.3808: close in FIRST, then the 1 HP: set before the walk, the
+     wanderer's out-of-combat regen had them back to 20-60 HP by the swing */
   await closeIn(A, wsPort, idA, idB, 34);
+  const vit = await H.devOp(wsPort, 'vitals', idB, { heal: true, hp: 1 });
   let dead = false;
   const trail = [];
   for (let i = 0; i < 8 && !dead; i++) {
@@ -429,7 +451,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const sent1 = (await H.wireCounts(A)).player_attack || 0;
     trail.push({ i, lock: before.lock, sent: sent1 - sent0, d: sa && sb ? Math.round(Math.hypot(sb.x - sa.x, sb.y - sa.y)) : null, hp: sb && sb.hp, dead: sb && sb.dead });
     dead = !!(sb && (sb.dead || sb.hp <= 0));
-    if (!dead) { await H.devOp(wsPort, 'vitals', idB, { heal: true, hp: 1 }); await closeIn(A, wsPort, idA, idB, 34); }
+    if (!dead) { await closeIn(A, wsPort, idA, idB, 34); await H.devOp(wsPort, 'vitals', idB, { heal: true, hp: 1 }); }
   }
   console.log('    kill trail: ' + JSON.stringify({ vit, trail }));
   rec.ok('4. the killing blow lands (the worker has the wanderer dead)', dead, { vit, trail });

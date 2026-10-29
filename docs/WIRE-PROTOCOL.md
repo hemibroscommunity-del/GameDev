@@ -797,6 +797,21 @@ caps.nmlchoice):**
   docs/specs/no-mans-land.md "A group attacks you: one window" and "You are
   white the moment they choose".
 
+**No man's land: beaten by them, not again for half an hour (v2.3.3770,
+caps.nmllock):**
+- c→s: `nml_lock_ask {target}`, from a player locked out from `target`; the
+  worker passes it on once a minute per pair. `nml_lock_allow {target}`,
+  from the one who beat them, lifts that player's lock. Each is its own
+  router case, never relayed.
+- s→c (PRIVILEGED, private): `nml_lock {out: [[id, ms left]], in: [[id, ms
+  left]]}`, the locks this player is in, sent to both players when one is set
+  or lifted, and at a join only when there is one. `nml_lock_ask {from}` goes
+  to the target alone: the sword clash and "?" over `from`'s head.
+- Storage: `nml_state:<pid>` gains `lock` (`[[id, until]]`).
+- Kill switch `nmllock: false`.
+- Full rules: docs/specs/no-mans-land.md "Beaten by them, not again for half
+  an hour".
+
 **Server-minted weapon drops (v2.3.1141, caps.weaponDrops):** no new
 message types. The loot pile broadcast (`loot_drop`/`zone_loot`/
 `state_sync.loot` via `_serializePile`) gains `hasWeapon`,

@@ -417,6 +417,51 @@ check's line is 4 now, under 5% of the pixels). The atlas: 20 rows at the most,
 none refused. `tools/qa/mp/out/lookpalette-poses.png` is the side-by-side: six
 poses in two looks, the old way above the new.
 
+## The stand-ins (v2.3.3757, phase 2 lane P1)
+
+The sword's swing, the bow's draw and the shield block (it swaps the figure to
+the bow's art) draw **stand-in** sheets, not the walking body:
+`effectsRenderer.js` recoloured a copy of each for your look
+(`_bakeBodyStrip`) and for every other player seen swinging
+(`_remoteBodyFramesFor`, `_remoteSheetFramesFor`, an LRU of bakes). They are
+now the set `standin` (`src/rendering/lookSets/standin.js`,
+`public/sprites/look/standin/`), registered by `effectsRenderer.js` and loaded
+behind the loading screen with the body:
+
+| part | sheets |
+|---|---|
+| the swing's body and torso | `sword-{south,east,north}-{body,torso}` |
+| the bow's (and the block's) body and torso | `bow-{east,southwest,south,northwest,north}-{body,torso}` |
+| the jog's legs under a torso | `jog-*-legs` (five) |
+
+21 sheets, 16 at 8 bits (worst 11-16 levels), 5 kept exact: sword-east-body
+(18 at 8 bits), sword-north-body (18), sword-north-torso (16.3),
+jog-northeast-legs (17), jog-southwest-legs (18).
+
+- **Their own sizes**: each sheet has its frame size (`frameOf`); nothing
+  halves them for the screen, so the display IS the full bake: `role-bake.mjs`
+  maps a ds 1 display texel to `W / DW` (1 here, 2 for the body's jog; the
+  body's numbers byte for byte the same).
+- **The skin is always recoloured** (`skinTarget || DEFAULT_SKIN_TARGET`, the
+  stand-ins' own rule since v2.3.1788), no eye colour; a torso strip's
+  garments are the waist's sliver, as the old bake.
+- **No mip chain** (`mip: false`, header byte 0's 64): the old strips are
+  canvases with no mipmaps, read at their level 0 however small they are drawn
+  (about half size). The shader skips its mip blend for such a sheet --
+  measured without it, 160 levels off at half size.
+- **Where it applies**: no drawing (`_peerStandInArt`'s seg, `localBodyArt`)
+  and no greaves (the legs are cut by their shape, `_legsUnder`). Your own
+  strips are a marker `_standInStrip` turns into your look's frames each time
+  they are drawn; the bow body's to `blockArm.js` as a function, and the
+  block's arm cut keeps the look (`_btLook`) and caches by the frame, not the
+  source (one source, every look).
+- **Not here**: cook, fire and chop have their own SKIN-ONLY bake, already
+  shared by skin colour (`recolorStandInSkinSplit`); they stay as they are.
+
+**The oracle** (`mp-lookstandins`): six looks x every frame of the 21 sheets
+(1,314 frames), the old bake and crop against the numbers, through the sharp
+read: at 1:1 worst 15, mean 3.0 levels, none past 16; at half size (how they are drawn) worst 15, mean 2.7, none past 16.
+
 ## The plan for the rest
 
 Each its own pull request (on by default, as this one: the owner's rule for the phase).
