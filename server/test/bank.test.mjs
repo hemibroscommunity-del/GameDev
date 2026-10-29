@@ -14,7 +14,8 @@
  *      gold), a key you do not hold, '__proto__' and its kin, a tool, a full
  *      vault (48 kinds), no opId, a bad count, past the pace.
  *   5. A death drops the bag as Remains and never the vault; the vault
- *      outlives a reconnect (it is read back from storage).
+ *      outlives a reconnect and a worker restart (it is read back from
+ *      storage), and an id spent before a restart stays spent.
  *   6. `bank: false`: every move answered 'off', caps.bank false at the next
  *      join, and opening still shows what is in it.
  *   7. The wire: the three messages are routed, never relayed; bank_state is
@@ -294,6 +295,31 @@ const P = room.playerState.bp_bank_b;
   await send(r3, w3, 'bank_open', {});
   const s = stateOf(w3);
   check('5: back again, the vault is read from storage: 5 oak and 60 gold', !!s && s.gold === 60 && vaultItem(s, 'wood_oak') === 5, s);
+}
+
+// ── 5b. a vault outlives a worker restart: a new room over the same storage,
+//        memory gone (rule 11), and no leave ever ran ──
+{
+  const { room: r2, state: st2 } = await makeRoom();
+  const w2 = fakeWs();
+  await join(r2, w2, 'bp_bank_rr');
+  const R = r2.playerState.bp_bank_rr;
+  atBank(r2, R);
+  R.inventory = { wood_oak: 9, fish_minnow: 2 }; R.coins = 300;
+  await send(r2, w2, 'bank_deposit', { kind: 'item', id: 'wood_oak', n: 7, opId: 'rr-1' });
+  await send(r2, w2, 'bank_deposit', { kind: 'gold', n: 250, opId: 'rr-2' });
+  /* the restart: a fresh room, the same storage, nothing of r2's memory */
+  const { room: r3 } = await makeRoom(null, st2);
+  const w3 = fakeWs();
+  await join(r3, w3, 'bp_bank_rr');
+  await send(r3, w3, 'bank_open', {});
+  const s = stateOf(w3);
+  const R3 = r3.playerState.bp_bank_rr;
+  check('5b: after a worker restart the vault is all there: 7 oak and 250 gold', !!s && s.gold === 250 && vaultItem(s, 'wood_oak') === 7, s);
+  check('5b: ...and the bag and purse as they were left: 2 oak, 50 gold (nothing in two places)', !!R3 && R3.inventory.wood_oak === 2 && R3.coins === 50, R3 && { inv: R3.inventory, coins: R3.coins });
+  atBank(r3, R3);
+  await send(r3, w3, 'bank_deposit', { kind: 'gold', n: 250, opId: 'rr-2' });
+  check('5b: ...and an id spent before the restart is still spent: resent, it moves nothing', stateOf(w3).last.ok === true && R3.coins === 50 && stateOf(w3).gold === 250, stateOf(w3));
 }
 
 // ── 6. the kill switch ──

@@ -168,6 +168,8 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
     const words = (l5 && l5.text) || '';
     rec.ok(tag(phone ? 'the words say "Tap" on a phone' : 'the words say "Click", never "Tap", on a computer'),
       phone ? /Tap an item/.test(words) : (/Click an item/.test(words) && !/\bTap\b/.test(words)), words.slice(0, 160));
+    rec.ok(tag('the window says what goes in and why: "Safe from death", materials, food and gold in, weapons, armour and tools not'),
+      /Safe from death/.test(words) && /Materials, food and gold go in/.test(words) && /weapons, armour and tools stay with you/.test(words), words.slice(0, 200));
 
     /* ── 5. a reload keeps it ── */
     await A.page.reload();

@@ -235,7 +235,9 @@ function BankVault(props) {
     React.createElement("div", { style: LS_BODY },
       React.createElement("div", { style: { fontSize: 12, color: LS.txt2, marginBottom: 10, lineHeight: 1.5 } },
         closed ? "The vault is closed for now. What is in it stays safe."
-          : deskWords("What you put in the vault stays here when you die. Tap an item to put it in or take it out.")),
+          /* v2.3.3785: what goes in and why, plainly (the orchestrator, for the
+             owner: so nobody is surprised that a sword stays in the bag) */
+          : deskWords("Safe from death: what is in the vault stays here when you die. Materials, food and gold go in; weapons, armour and tools stay with you. Tap an item to put it in or take it out.")),
       /* ── gold ── */
       React.createElement("div", { style: LS_MOD }, "Gold"),
       React.createElement("div", { style: { ...well, marginBottom: 12 } },

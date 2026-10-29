@@ -9,7 +9,10 @@ v2.3.3481). It is a vault now: bag items and gold the server holds for you.
 
 ## What a player gets
 
-- At the Bank's door, **Enter BANK** opens "Bank · Your vault".
+- At the Bank's door, **Enter BANK** opens "Bank · Your vault", whose first
+  line says what goes in and why: "Safe from death: what is in the vault
+  stays here when you die. Materials, food and gold go in; weapons, armour and
+  tools stay with you."
 - **Gold:** what is on you and what is in the vault. *Put in* and *Take out*,
   each with 10, 100, All and a typed amount with OK.
 - **The vault** (up to 48 kinds of item, any number of each) and **your bag**.
