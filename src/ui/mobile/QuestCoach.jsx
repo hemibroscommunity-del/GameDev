@@ -418,10 +418,15 @@ const LESSONS = [
     anchors: [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: 'Your bag, your gear and your stats live down here. Tap OPEN.' },
-      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         /* v2.3.3793: an arrow both ways now -- a phone on its side its chip,
            a computer the folded strip's arrow (BottomDashboard; the owner
-           took OPEN off a computer: "the arrow takes the place of that") */
+           took OPEN off a computer: "the arrow takes the place of that").
+           The arrow lets a click through to its strip (pointer-events none,
+           the strip is the button), so on a computer the reach check finds
+           the STRIP under the arrow's middle: every lesson ringing the fold
+           reaches it too ([data-desk-foldstrip]), or TRAPS 41 skips the
+           lesson in silence (the 2026-10-29 review) */
         body: 'Your bag, your gear and your stats live in here. Tap the arrow.' },
     ],
     label: 'Your dashboard',
@@ -503,7 +508,7 @@ const LESSONS = [
          measures when that is really the problem. */
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: 'Open your dashboard and equip your gear.' },
-      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: 'Open your dashboard and equip your gear.' },
     ],
     label: 'Gear up',
@@ -549,7 +554,7 @@ const LESSONS = [
     anchors: [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: 'Mayor Bro paid you in gear. Tap OPEN to find it.' },
-      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: 'Mayor Bro paid you in gear. Open the dashboard to find it.' },
       { sel: '[data-nav="dashboard"]', reach: '[data-nav="dashboard"]',
         body: 'Mayor Bro paid you in gear. Tap Dashboard to find it.' },
@@ -581,7 +586,7 @@ const LESSONS = [
          replaced the same way -- see the note there. */
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: 'Open your dashboard — equip the bow and the staff.' },
-      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: 'Open your dashboard — equip the bow and the staff.' },
     ],
     label: 'Three weapons',
@@ -815,7 +820,7 @@ const LESSONS = [
         body: function (S) { return pointsTipWords('nav', S && S.rpg); } },
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: function (S) { return pointsTipWords('fold', S && S.rpg); } },
-      { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
+      { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: function (S) { return pointsTipWords('side', S && S.rpg); } },
     ],
     label: 'Level up!',

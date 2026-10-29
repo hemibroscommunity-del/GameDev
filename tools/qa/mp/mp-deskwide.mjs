@@ -344,4 +344,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
   } finally {
     await L.ctx.close().catch(() => {});
   }
+
+  /* ── 8. THE FIRST LESSON RINGS THE ARROW (v2.3.3793) ──
+     OPEN left the folded strip (the owner: "the arrow takes the place of
+     that"); the coach's "open the dashboard" lesson must ring the arrow and a
+     click there must answer it.  The arrow lets the click through to its
+     strip, so the lesson reaches the strip too -- without it the lesson was
+     skipped in silence (TRAPS 41; the 2026-10-29 review). */
+  const C = await H.newPlayer(browser, { name: 'Deskcoach', wsPort, webPort, viewport: DESK, world: 'wheel', wide: true });
+  const cerr = [];
+  C.page.on('pageerror', (e) => cerr.push(String((e && e.message) || e).slice(0, 200)));
+  try {
+    await H.enterWorld(C);
+    await H.waitFor(C, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),
+      (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'into the Wheel' }).catch(() => null);
+    await H.pastWelcome(C).catch(() => {});
+    await C.page.waitForTimeout(1500);
+    /* folded, as the lesson wants it (a computer opens the column once a load) */
+    const s0 = await sheet(C);
+    if (s0 && s0.mode === 'expanded') await key(C, 'i', 900);
+    const lesson = async () => C.page.evaluate(() => {
+      const el = document.querySelector('[data-coach]');
+      if (!el) return null;
+      const bx = (n) => { if (!n) return null; const r = n.getBoundingClientRect(); return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2, w: r.width }; };
+      const a = document.querySelector('[data-desk-foldarrow]');
+      const card = el.querySelector('[data-coach-card]');
+      return { id: el.getAttribute('data-coach'), ring: bx(el.querySelector('[data-coach-ring]')), arrow: bx(a), words: card ? card.textContent.trim() : '' };
+    });
+    let c = null;
+    for (let i = 0; i < 120 && !(c && c.id === 'openDash' && c.ring && c.ring.w > 0); i++) { c = await lesson(); await C.page.waitForTimeout(250); }
+    await C.page.screenshot({ path: join(OUT, 'deskwide-8-lesson.png') }).catch(() => {});
+    const offBy = c && c.ring && c.arrow ? Math.round(Math.hypot(c.ring.x - c.arrow.x, c.ring.y - c.arrow.y)) : null;
+    rec.ok(`a new bro on a computer is taught to open the dashboard: the ring on the arrow (${offBy} px off), "${c && c.words}"`,
+      !!c && c.id === 'openDash' && offBy != null && offBy <= 6 && /click the arrow/i.test(c.words), c);
+    if (c && c.arrow) { await C.page.mouse.click(c.arrow.x, c.arrow.y); await C.page.waitForTimeout(1200); }
+    const s1 = await sheet(C);
+    const c1 = await lesson();
+    rec.ok('...a click on the arrow opens the dashboard and answers the lesson', !!s1 && s1.mode === 'expanded' && !(c1 && c1.id === 'openDash'), { s1, c1: c1 && c1.id });
+    rec.ok('...no page errors', cerr.length === 0, cerr.slice(0, 5));
+  } finally {
+    await C.ctx.close().catch(() => {});
+  }
 }
