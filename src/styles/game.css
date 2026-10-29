@@ -1386,6 +1386,14 @@ body:has(.bt-plist) [data-coach]{display:none}
 @media (min-height:461px) and (max-height:800px){
   .bt-inspect-card[data-room="blacksmith"]{--room-stage:min(36px, calc(25vw - 6px))}
 }
+/* v2.3.3793: ON A COMPUTER THE CARD IS 470 PX (BroTown.jsx, v2.3.3769), so its
+   stage is 62% of THAT picture: 41.33% of 470 = 194.3 px (the rule above is
+   the 360 px card's, "change one, change both"), still at most 22vh on a short
+   window.  At 148.8 the menu began 47% down a 470 x 313 room, over its sign.
+   The Blacksmith keeps its slim band (its own rules above). */
+@media (min-height:461px){
+  html.bt-desk-wide .bt-inspect-card[data-room]:not([data-room="blacksmith"]){--room-stage:min(194.3px, 22vh)}
+}
 @media (max-height:460px){.bt-room{display:none}}
 @media (prefers-reduced-motion:reduce){.bt-room-img{transition:none}}
 /* ═══ v2.3.3259: THE GEM WORKS (panels/buildings/GemWorksPanel.jsx) ═══
