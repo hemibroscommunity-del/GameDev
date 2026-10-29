@@ -25,6 +25,15 @@ dashboard (as OPEN and the I key do). `BottomDashboard.jsx`
 A first version made the strip a toolbar (the six buttons and the weapons); the
 owner's design replaced it the same night.
 
+Since v2.3.3793 OPEN is gone from the strip's top (the owner: "Also you can
+remove the 'open' button on desktop since the arrow takes the place of that
+(redundant with both)"). The arrow wears I's key cap and the fold hook
+(`data-land-fold="min"`) that the coach's "open the dashboard" lessons ring,
+now "Tap the arrow." (QuestCoach.jsx). CLOSE stays on the open column; phones
+keep their own chips.
+
+![OPEN gone from the strip](desk-space/no-open-before-after.png)
+
 ## 2. The creator's Trait Picker
 
 - It is as tall as its tab: on Bro type it ended three tiles in with some 60% of

@@ -22,7 +22,6 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { playIsLandscape } from './playViewport.js';
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 import { deskWords } from '@/game/deskWords.js'; /* v2.3.3615: "tap" reads "click" on a computer */
-import { deskWideActive } from '@/ui/deskWide.js'; /* v2.3.3687: a computer's fold chip says OPEN */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -420,14 +419,10 @@ const LESSONS = [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
         body: 'Your bag, your gear and your stats live down here. Tap OPEN.' },
       { sel: '[data-land-fold="min"]', reach: '[data-land-fold]',
-        /* v2.3.3687: on a computer playing wide the chip is a word, OPEN
-           (BottomDashboard's dock, the owner's "a "close" button that says
-           close"); a phone on its side keeps its arrow */
-        get body() {
-          return deskWideActive()
-            ? 'Your bag, your gear and your stats live in here. Tap OPEN.'
-            : 'Your bag, your gear and your stats live in here. Tap the arrow.';
-        } },
+        /* v2.3.3793: an arrow both ways now -- a phone on its side its chip,
+           a computer the folded strip's arrow (BottomDashboard; the owner
+           took OPEN off a computer: "the arrow takes the place of that") */
+        body: 'Your bag, your gear and your stats live in here. Tap the arrow.' },
     ],
     label: 'Your dashboard',
     live: function (rpg) { return preTutorial(rpg); },

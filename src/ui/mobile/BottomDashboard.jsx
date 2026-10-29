@@ -1219,7 +1219,6 @@ export const BottomDashboard = () => {
           role="button"
           aria-label="Open dashboard"
           title="Open dashboard (I)"
-          data-key="I" data-key-at="hang"
           onPointerDown={(e) => e.stopPropagation()}
           onPointerUp={(e) => { e.stopPropagation(); dashboardPanelBus.open('dashboard'); }}
           style={{
@@ -1230,10 +1229,19 @@ export const BottomDashboard = () => {
             cursor: 'pointer', touchAction: 'manipulation',
           }}
         >
-          <svg data-desk-foldarrow="" width="30" height="44" viewBox="0 0 30 44" aria-hidden="true"
-            style={{ display: 'block', pointerEvents: 'none', transform: side === 'left' ? 'none' : 'scaleX(-1)' }}>
-            <path d="M9 6 L23 22 L9 38" fill="none" stroke="#E8D9B0" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          {/* v2.3.3793 (the owner: "Also you can remove the 'open' button on
+              desktop since the arrow takes the place of that (redundant with
+              both)"): OPEN is gone from a computer's folded strip, so the
+              arrow wears what it wore -- I's key cap (data-key, hanging under
+              it) and the fold hook the coach's "open the dashboard" lessons
+              ring (data-land-fold="min", QuestCoach.jsx) */}
+          <span data-desk-foldarrow="" data-land-fold="min" data-key="I" data-key-at="hang"
+            style={{ position: 'relative', display: 'block', pointerEvents: 'none' }}>
+            <svg width="30" height="44" viewBox="0 0 30 44" aria-hidden="true"
+              style={{ display: 'block', transform: side === 'left' ? 'none' : 'scaleX(-1)' }}>
+              <path d="M9 6 L23 22 L9 38" fill="none" stroke="#E8D9B0" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
         </div>
       ) : null}
 
@@ -1271,7 +1279,9 @@ export const BottomDashboard = () => {
           or two positions.  Rendered after the band so it always paints
           on top; the buttons narrow to LAND_NAV_BTN_W so the whole group
           fits inside the container's width. */}
-      {land ? (
+      {/* v2.3.3793: on a computer, folded, no dock: its one control was OPEN,
+          which the strip's arrow replaces (the owner) */}
+      {land && !deskStripW ? (
         <div
           className="bt-land-navdock bt-noselect"
           onPointerDown={(e) => e.stopPropagation()}

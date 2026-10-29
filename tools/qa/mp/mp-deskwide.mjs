@@ -230,32 +230,38 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cvI = await box(P, 'canvas');
     const pagesI = await box(P, '.bt-land-sheet');
     const stripI = await box(P, '[data-desk-foldstrip]');
-    const chipI = await box(P, '[data-land-fold]');
-    const chipWord = await P.page.evaluate(() => { const c = document.querySelector('[data-land-fold]'); return c ? c.textContent.trim() : null; });
+    /* v2.3.3793 (the owner: "Also you can remove the 'open' button on desktop
+       since the arrow takes the place of that (redundant with both)"): no
+       OPEN on the folded strip; its fold hook (data-land-fold, which the
+       coach rings) and I's key cap are the arrow's */
+    const openWord = await P.page.evaluate(() => [...document.querySelectorAll('button')].some((b) => {
+      const r = b.getBoundingClientRect();
+      return r.width > 0 && r.height > 0 && b.textContent.trim() === 'OPEN';
+    }));
     await shot(P, '4-folded');
-    rec.ok('I with the bag open folds the pages away: the world starts after the fold chip\'s strip, the chip at its top saying OPEN, the controls stay',
-      !!sI && sI.mode === 'bar' && !pagesI && !!cvI && !!stripI && !!chipI
+    rec.ok('I with the bag open folds the pages away: the world starts after the strip, the strip the screen\'s height, no OPEN on it, the controls stay',
+      !!sI && sI.mode === 'bar' && !pagesI && !!cvI && !!stripI && !openWord
         && stripI.l <= 1 && Math.abs(stripI.w - FOLD_STRIP_W) <= 2 && stripI.t <= 1 && stripI.b >= DESK.height - 1
-        && Math.abs(cvI.l - FOLD_STRIP_W) <= 2 && chipI.l >= stripI.l && chipI.r <= stripI.r && chipI.t <= 10
-        && chipWord === 'OPEN' && !!(await box(P, '.bt-desk-keys')), { sI, cvI, stripI, chipI, chipWord });
+        && Math.abs(cvI.l - FOLD_STRIP_W) <= 2 && !!(await box(P, '.bt-desk-keys')), { sI, cvI, stripI, openWord });
     /* v2.3.3769 (the owner: "Make the left long strip black bar the same gray
        color as the top bar but have an arrow centered in the middle pointing
        towards the screen play area"): the strip in the top bar's grey, one
-       arrow at its middle pointing into the world, and a click anywhere on it
-       opens the dashboard */
+       arrow at its middle pointing into the world, and a click on it opens
+       the dashboard */
     const strip = await P.page.evaluate(() => {
       const r = document.querySelector('[data-desk-foldstrip]');
       const a = document.querySelector('[data-desk-foldstrip] [data-desk-foldarrow]');
       if (!r || !a) return null;
       const rb = r.getBoundingClientRect(), ab = a.getBoundingClientRect();
-      return { bg: getComputedStyle(r).backgroundColor, key: r.getAttribute('data-key'),
+      return { bg: getComputedStyle(r).backgroundColor, key: a.getAttribute('data-key'), fold: a.getAttribute('data-land-fold'),
+        x: Math.round((ab.left + ab.right) / 2), y: Math.round((ab.top + ab.bottom) / 2),
         midY: Math.round((ab.top + ab.bottom) / 2 - (rb.top + rb.bottom) / 2), midX: Math.round((ab.left + ab.right) / 2 - (rb.left + rb.right) / 2) };
     });
-    rec.ok(`...and the strip is the top bar's grey (${strip && strip.bg}) with an arrow at its middle (${strip && strip.midX}, ${strip && strip.midY} px off), wearing I`,
-      !!strip && strip.bg === 'rgb(21, 42, 52)' && Math.abs(strip.midY) <= 3 && Math.abs(strip.midX) <= 3 && strip.key === 'I', strip);
-    if (stripI) { await P.page.mouse.click(stripI.l + stripI.w / 2, Math.round(DESK.height * 0.6)); await P.page.waitForTimeout(900); }
+    rec.ok(`...and the strip is the top bar's grey (${strip && strip.bg}) with an arrow at its middle (${strip && strip.midX}, ${strip && strip.midY} px off), the arrow wearing I and the fold hook`,
+      !!strip && strip.bg === 'rgb(21, 42, 52)' && Math.abs(strip.midY) <= 3 && Math.abs(strip.midX) <= 3 && strip.key === 'I' && strip.fold === 'min', strip);
+    if (strip) { await P.page.mouse.click(strip.x, strip.y); await P.page.waitForTimeout(900); }
     const sS = await sheet(P);
-    rec.ok('...a click on the strip opens the dashboard', !!sS && sS.mode === 'expanded' && sS.root === 'dashboard', sS);
+    rec.ok('...a click on the arrow opens the dashboard', !!sS && sS.mode === 'expanded' && sS.root === 'dashboard', sS);
     await key(P, 'i', 900);
     /* v2.3.3769: every page but the dashboard's own ends in the three weapons */
     await key(P, 'j', 900);

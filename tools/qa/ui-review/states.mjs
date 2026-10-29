@@ -415,9 +415,9 @@ export const STATES = [
   },
   {
     /* v2.3.3769: on a computer the dashboard's column folded to its strip --
-       in the top bar's grey, OPEN at its top, an arrow at its middle */
+       in the top bar's grey, an arrow at its middle (v2.3.3793: no OPEN) */
     id: 'hud-folded', group: 'The world (HUD)', title: 'BroTown, dashboard closed',
-    about: 'The same screen with the dashboard closed. On a computer its column folds to a narrow strip at the edge, in the top bar\'s grey: OPEN at its top and one arrow at its middle pointing into the world; a click anywhere on it opens the dashboard. Upright the band folds to its button row; sideways nothing but the chip shows.',
+    about: 'The same screen with the dashboard closed. On a computer its column folds to a narrow strip at the edge, in the top bar\'s grey, with one arrow at its middle pointing into the world (no OPEN: the arrow is the way back); a click on it, or I, opens the dashboard. Upright the band folds to its button row; sideways nothing but the chip shows.',
     run: async ({ P }) => { await foldBand(P); await wait(P, 400); },
   },
   {
