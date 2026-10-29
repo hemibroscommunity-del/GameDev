@@ -69,7 +69,7 @@ function viewOf(vx, vy, last) {
   return { k: 'angled', m: (vx > 0) !== (vy > 0) };
 }
 
-/* ═══ v2.3.3855: THE WHEELS ROLL ═══
+/* ═══ v2.3.3857: THE WHEELS ROLL ═══
    The owner, 2026-10-29: "use code to make the skateboard wheels appear
    moving using lighting or wobble just a bit whatever you think looks good".
    No new picture: each wheel wears small light spots (Texture.WHITE, tinted)
@@ -105,7 +105,7 @@ export class RideFx {
     this._probe = { self: null, peers: 0, held: 0 };
     if (typeof window !== 'undefined') {
       const self = this;
-      /* v2.3.3855: (box: true) and where your board is on the screen, for a
+      /* v2.3.3857: (box: true) and where your board is on the screen, for a
          test's picture of it -- worked out only when asked */
       window.__btRideFx = (o) => {
         if (!(o && o.box)) return self._probe;
@@ -126,12 +126,12 @@ export class RideFx {
     if (pd && !pd.destroyed) {
       const on = !!(S._ride && S._ride.on) && !(S.rpg && S.rpg.hp <= 0);
       const v = S.player ? viewOf(S.player.vx || 0, S.player.vy || 0, pd._rideView) : null;
-      if (v && S.player) v.vy = S.player.vy || 0;   /* v2.3.3855: which way the wheels turn */
+      if (v && S.player) v.vy = S.player.vy || 0;   /* v2.3.3857: which way the wheels turn */
       const b = this._board(pd, on, v);
       this._selfBoard = b;
-      p.held = (pd._rideBoard ? 1 : 0) + (pd._rideSpots ? pd._rideSpots.length : 0);   /* v2.3.3855: the board and its spots, on or off */
+      p.held = (pd._rideBoard ? 1 : 0) + (pd._rideSpots ? pd._rideSpots.length : 0);   /* v2.3.3857: the board and its spots, on or off */
       if (b) p.self = { view: pd._rideView.k, mirror: pd._rideView.m, y: +b.y.toFixed(1), feet: +figureFeetUnits(pd).toFixed(1),
-        /* v2.3.3855: the wheels' turn so far, and their spots */
+        /* v2.3.3857: the wheels' turn so far, and their spots */
         turn: +(pd._rideTurn || 0).toFixed(3), spots: pd._rideSpots ? pd._rideSpots.length : 0,
         spot0: pd._rideSpots && pd._rideSpots[0] ? [+pd._rideSpots[0].x.toFixed(2), +pd._rideSpots[0].y.toFixed(2)] : null };
     }
@@ -142,7 +142,7 @@ export class RideFx {
         const o = others && others[id];
         const on = !!(o && o._brd && !o._isDead && d.visible);
         const v = o ? viewOf(o._vx || 0, o._vy || 0, d._rideView) : null;
-        if (v && o) v.vy = o._vy || 0;   /* v2.3.3855 */
+        if (v && o) v.vy = o._vy || 0;   /* v2.3.3857 */
         if (this._board(d, on, v)) p.peers++;
       }
     }
@@ -157,7 +157,7 @@ export class RideFx {
         d._rideView = null;
         if (!b.destroyed) { if (b.parent) b.parent.removeChild(b); b.destroy(); }
       }
-      dropSpots(d);   /* v2.3.3855 */
+      dropSpots(d);   /* v2.3.3857 */
       return null;
     }
     const view = v || d._rideView || { k: 'side', m: false };
@@ -184,7 +184,7 @@ export class RideFx {
     const wantY = k / sy;
     if (b.scale.x !== wantX || b.scale.y !== wantY) b.scale.set(wantX, wantY);
     const fy = figureFeetUnits(d);
-    /* v2.3.3855: the ground covered since the last frame, in game px (the
+    /* v2.3.3857: the ground covered since the last frame, in game px (the
        figure's own place: yours and a peer's alike) -- the wheels' turn and
        the deck's dip */
     const roll = d._rideRoll || (d._rideRoll = { x: d.x, y: d.y, dist: 0 });
@@ -205,7 +205,7 @@ export class RideFx {
   }
 }
 
-/* v2.3.3855: the wheels' spots, placed on the board as it is drawn this
+/* v2.3.3857: the wheels' spots, placed on the board as it is drawn this
    frame (its anchor, scale, mirror and level turn), made the first frame of
    a ride, next to the board (child 1: over it, under the body) */
 function spots(d, b, view, dist, v) {

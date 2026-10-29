@@ -193,7 +193,7 @@ every 2.5 s you lean on it, so it stays up while you do.
 
 ![the Mayor gate on a computer, the board held and the reason shown](skateboard/mayor-gate-computer.png)
 
-## v2.3.3855: the wheels roll
+## v2.3.3857: the wheels roll
 
 The owner, 2026-10-29: *"use code to make the skateboard wheels appear moving
 using lighting or wobble just a bit whatever you think looks good"*.
