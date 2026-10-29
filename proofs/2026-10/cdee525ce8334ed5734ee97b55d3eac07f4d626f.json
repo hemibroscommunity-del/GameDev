@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cdee525ce8334ed5734ee97b55d3eac07f4d626f",
+  "tree": "dc9b15b24e0b9f7ea6cfad8376d2461960530958",
+  "committedAt": "2026-10-28T19:55:47-07:00",
+  "subject": "Merge pull request #1302 from hemibroscommunity-del/claude/world-check-card-width",
+  "files": 7161,
+  "bytes": 824064359,
+  "listingSha256": "548a3765810229f77ec82b9b6d3a6a1aaae10ce28682fee46d8d6dc2fabdee35",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
