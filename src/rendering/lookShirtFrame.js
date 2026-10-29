@@ -55,16 +55,17 @@ function dressOf(tint, pattern, art) {
 /**
  * The tee's frame from the numbers, dressed, or null (the old path draws it).
  * `look` is _placeGear's: { art (this side's drawing or null), pattern
- * (parsePattern's), tint ([r, g, b] or null), mirror }.  `plain` asks for an
- * undressed tee too (only worth it when the body beside it is drawn from the
- * numbers: one batch; a plain tee is a shared sheet and a sprite tint either
- * way).  Drawn UNTINTED: the tint is in the row.
+ * (parsePattern's), tint ([r, g, b] or null), mirror }.  A plain tee (no
+ * pattern, no print) answers null: it is one shared sheet and a sprite tint
+ * the old way, so the numbers save it nothing, and drawn from them it broke
+ * the batch round every figure in a tee (M3's review of #1247: mp-crowdbots,
+ * +5 draws a figure).  Drawn UNTINTED: the tint is in the row.
  */
-export function getLookShirtFrame(item, pose, dir, frameIdx, look, plain) {
+export function getLookShirtFrame(item, pose, dir, frameIdx, look) {
   if (!_wanted || !lookPaletteWanted() || item !== 'tshirt' || !look) return null;
   const dressed = !!(look.art || look.pattern);
   if (look.pattern && look.pattern.tile && look.pattern.tile.w * look.pattern.tile.h > SHIRT_TILE_MAX) return null;   /* its ink does not fit the row */
-  if (!dressed && !(plain && look.tint)) return null;   /* white and plain: the shipped sheet as it is */
+  if (!dressed) return null;   /* plain: the shared sheet and its sprite tint, as it always was */
   const sheet = pose + '-' + dir;
   if (!lookHas('shirt', sheet)) return null;
   const d = dressOf(look.tint || null, look.pattern || null, look.art || null);

@@ -52,9 +52,11 @@ ONCE, as numbers, and the chip paints the look as it draws:
   bit in the vertex.
 - **Where** (`lookShirtFrame.js`, asked by `entityRenderer.js` `_placeGear`):
   the tee's stand and jog, for every player, whenever it has a pattern or a
-  print; a plain coloured tee too when the body beside it is drawn from the
-  numbers (then body and tee are one batch, one draw call). Drawn untinted
-  (the tint is in the row). Anything else, and every other pose, the old way.
+  print. Drawn untinted (the tint is in the row). A plain coloured tee stays
+  the shared sheet and its sprite tint: the numbers save it nothing, and drawn
+  from them (the first cut, when the body beside it was) it broke the batch
+  round every figure in a tee (M3's review: mp-crowdbots, below). Anything
+  else, and every other pose, the old way.
 
 ## How it was proven
 
