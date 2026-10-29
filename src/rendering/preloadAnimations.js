@@ -73,6 +73,7 @@ import { preloadFarmArt, freeFarmArt } from './farmWorld.js';   /* v2.3.3136: yo
 import { ensureStandIn } from './standIns.js';   /* v2.3.3136: the farmer kneels in the cook's figure */
 import { preloadMonsterShots } from './monsterShotFx.js'; /* v2.3.2732: the monsters' goo and fire, minted in code */
 import { preloadWorldLife } from './worldLife.js';        /* v2.3.2811: the buildings' swinging and waving pieces */
+import { preloadRideArt } from './rideFx.js';             /* v2.3.3776: the skateboard */
 
 /* v2.3.1405 (owner: "per zone loading instead of one long pregame loading
    screen"): ZONE-SPECIFIC textures moved OFF the blocking pre-game gate —
@@ -452,6 +453,11 @@ export async function preloadWorldAnimations() {
        icons), DOM pictures on the top bar from the first hit of any fight:
        GLOBAL for the level-up's reason.  See xpBarPreload.js. */
     xpBar: preloadXpBar(),
+    /* ═══ v2.3.3776: the skateboard's three views (the owner's picture, cut
+       by tools/art/cut-skateboard.mjs), drawn under any rider in BroTown and
+       worn by the board button.  GLOBAL: another rider can roll up to you
+       on the first frame you are in town; three ~1 KB pictures. */
+    rideArt: preloadRideArt(),
     /* ═══ v2.3.2616: the stat explainer's scenes ═══
        DOM assets again, and GLOBAL: the Build sheet opens from anywhere, so
        there is no zone to scope them to.  Most of what a scene draws is

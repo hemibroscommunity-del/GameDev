@@ -64,7 +64,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { nmlHere, nmlFirst, NML_RED } from '@/game/noMansLand.js';   /* v2.3.3690: + nmlFirst, where it starts */
+import { nmlHere, nmlFirst, nmlSteps, NML_RED } from '@/game/noMansLand.js';   /* v2.3.3690: + nmlFirst, where it starts */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
 
@@ -164,7 +164,7 @@ export function openNmlInfo(S, lvl) {
   const n = lvl;
   const lv = (k) => `${k} level${k === 1 ? '' : 's'}`;
   infoPopupBus.open({
-    title: `No man's land ${n} · ${nmlLevels(n, nmlFirst(S))}`,
+    title: nmlSteps(S) ? `No man's land ${n} · Lv ${n + 5 * (nmlFirst(S) - 1)} monsters` : `No man's land ${n} · ${nmlLevels(n, nmlFirst(S))}`,   /* v2.3.3767: the number IS the monster level (caps.nmlsteps) */
     body: (
       <div data-nml-info={n}>
         <div style={{ marginBottom: 8 }}>

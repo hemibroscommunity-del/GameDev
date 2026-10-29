@@ -72,6 +72,7 @@ export const DESK_KEY_ROWS = [
   ['Space', 'Dodge', null, 'move'],
   ['2\u00d7WASD', 'Dodge', null, 'move'],   /* v2.3.3711: a direction tapped twice */
   ['X', 'Jump', null, 'move'],
+  ['Z', 'Board', 'ride', 'move'],   /* v2.3.3776: the skateboard, in BroTown */
   ['Click', 'Attack', null, 'fight'],
   ['2\u00d7Click', 'Lock on', null, 'fight'],   /* v2.3.3711: a double click on a monster */
   ['Q', 'Special', null, 'fight'],   /* v2.3.3711: was F and the right click */
@@ -99,7 +100,7 @@ export const DESK_KEY_ROWS = [
 ];
 
 /** The requirements a row may name, in the stamp's order. */
-const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food'];
+const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food', 'ride'];   /* v2.3.3776: + ride, last so the earlier stamps read the same */
 
 /** The rows to list for what you have: `have` maps each requirement to true
     when it is met (an absent one is not met). */

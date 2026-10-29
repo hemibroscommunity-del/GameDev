@@ -486,6 +486,8 @@ export const combatMethods = {
       ps.lastDamageAt = Date.now();
       return { dmgTaken: 0, dodged: true };
     }
+    /* v2.3.3776: a hit that lands puts a rider off the board (ride.js) */
+    if (ps._ride && typeof this._rideEnd === 'function') this._rideEnd(ps, 'hit');
     let dmgTaken = Math.max(1, r);  // def reduction removed (Phase 1)
     // Resist buff (cooking recipe with buff:'resist', power 0.05 = 5%
     // reduction).  Cooking recipe power values are stored as the

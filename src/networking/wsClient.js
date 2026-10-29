@@ -34,6 +34,7 @@ import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } fr
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
+import { rideApply, clearRide } from '@/game/ride.js'; /* v2.3.3776: the skateboard (server/src/ride.js) */
 import { onRestResult, restMapsBuffs } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
 import { setWheelHallCaps } from '@/game/wheelTownDoors.js'; /* v2.3.3539: the Hotel opens against a worker that rests */
 import { cue, cueAt, cuePeer, peerOwn, cueLater } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, from recordings already in the game */
@@ -950,6 +951,9 @@ export function setupWebSocket(ctx) {
                        "not sprinting" -- from an old worker as from a new one. */
                     var _wasSpr = !!S.others[pid]._sp;
                     S.others[pid]._sp = data.spr === 1;
+                    /* v2.3.3776: on the skateboard, says the worker (tick.js
+                       `brd`, ride.js); absent is on foot, as for `spr` */
+                    S.others[pid]._brd = data.brd === 1;
                     /* v2.3.3343: a sprint starting is heard, your own push-off
                        (BT_AUDIO.SPRINT_PUSH) at their share by distance (it was
                        dust alone) */
@@ -1522,7 +1526,10 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
-              _capsHere = true;   /* v2.3.3254: this socket's caps (the quiet phone's bundles) */
+              _capsHere = true;
+              /* v2.3.3776: a fresh join is off the board (the worker forgot it
+                 too: ride.js stores nothing) */
+              try { clearRide(S); } catch (e) { /* on foot either way */ }   /* v2.3.3254: this socket's caps (the quiet phone's bundles) */
               /* v2.3.3755: the memory savers the worker has turned off (game/clientOff.js);
                  an old worker says nothing, and this phone keeps what it last heard */
               try { if (typeof S._serverCaps.clientoff === 'string') setClientOff(S._serverCaps.clientoff); } catch (e) { /* the savers as they are */ }
@@ -2079,6 +2086,10 @@ export function setupWebSocket(ctx) {
              worker's own message to you. */
           case 'race_state':
             { if (!msg.from) { try { onRaceState(S, msg.payload); } catch (_re) { /* display only */ } } break; }
+          /* v2.3.3776: the skateboard -- on, off and why (server/src/ride.js),
+             here in the direct switch for the race's reason */
+          case 'ride_state':
+            { if (!msg.from) { try { rideApply(S, msg.payload, Date.now()); } catch (_re) { /* on foot */ } } break; }
           case 'race_cp':
             { if (!msg.from) { try { onRaceCheckpoint(S, msg.payload); } catch (_re) { /* display only */ } } break; }
           case 'race_end':
@@ -5504,6 +5515,12 @@ export function setupWebSocket(ctx) {
         /* v2.3.3525: Lil Bro's race (game/race.js) -> race.js.  TRAPS #18:
            without this line Race! would send nothing at all. */
         if (msg.type === 'race_start') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.3776: the skateboard (game/ride.js) -> ride.js.  TRAPS #18:
+           without this line the board button would send nothing at all. */
+        if (msg.type === 'ride') {
           wsOut(msg);
           return;
         }

@@ -546,6 +546,9 @@ export const tickMethods = {
            pattern (join, the track relay, state_sync's players), and a peer
            update read through peerCosmetics.js would take a 1 for one. */
         ...(this._sprintWire(ps, ts) ? { spr: 1 } : {}),
+        /* v2.3.3776: on the skateboard (ride.js), the worker's own word;
+           absent on foot, so everyone else's wire is unchanged */
+        ...(this._rideWire(ps) ? { brd: 1 } : {}),
         /* v2.3.3058: No man's land's skull, 'r' or 'w' (nomansland.js);
            absent with none, so everyone else's wire is unchanged */
         ...(ps._nml && (ps._nml.red > 0 || ps._nml.white > 0) ? { sk: ps._nml.red > 0 ? 'r' : 'w' } : {}),
