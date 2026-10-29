@@ -41,7 +41,7 @@ const TAP = { touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent
    tile's padding; a picture with fewer pixels than it is drawn with goes
    pixelated, crisp rather than blurred. */
 const PAD = 1.45;
-function padOf(src) { return /^\/(icons\/ui|ui\/controls)\//.test(src) ? PAD : 1; }
+function padOf(src) { return src.startsWith('/icons/ui/') || src.startsWith('/ui/controls/') ? PAD : 1; }
 function Icon({ src, emoji, size, aspect }) {
   const zoom = padOf(src);
   return (
