@@ -528,6 +528,7 @@ const SCENARIOS = {
   chatlanes: () => import('./mp-chatlanes.mjs'), /* v2.3.2136: @area / @user across two real clients */
   deaddoor: () => import('./mp-deaddoor.mjs'), /* v2.3.2135: the depth door that cannot open */
   infopop: () => import('./mp-infopop.mjs'), /* v2.3.2131: tap a thing, find out what it is */
+  coachdesk: () => import('./mp-coachdesk.mjs'), /* v2.3.3782: on a computer playing wide, GEAR UP stands clear of the pinned quest card */
   coachearly: () => import('./mp-coachearly.mjs'), /* v2.3.2130: is anything taught in the first minute? */
   wvlens: () => import('./mp-wvlens.mjs'), /* v2.3.2137: the magnifier draws a lens, not a line */
   figscale: () => import('./mp-figscale.mjs'), /* v2.3.2123: is the character smaller outside town? */
