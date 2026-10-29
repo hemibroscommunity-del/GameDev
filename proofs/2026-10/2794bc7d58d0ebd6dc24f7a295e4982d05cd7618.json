@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2794bc7d58d0ebd6dc24f7a295e4982d05cd7618",
+  "tree": "fbcc02e533fa85ea5ff22c2b9e5fb623e86a07bc",
+  "committedAt": "2026-10-29T09:44:03-07:00",
+  "subject": "Merge pull request #1338 from hemibroscommunity-del/claude/monkey-face",
+  "files": 7310,
+  "bytes": 841141343,
+  "listingSha256": "4d7964eb2aa564dbf36710354b7a615fa574a87dee96c5d13d206aa2dd8fd00f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
