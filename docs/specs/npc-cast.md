@@ -45,6 +45,21 @@ now, and three locals live in town. That makes 21 townsfolk with Mayor Bro.
   of any footprint, within 160 px of his own door and clear of its steps, and
   more than 200 px from any other townsperson (so a tap finds the one meant).
 
+## At their spots
+
+All 21 photographed where they stand (`node tools/qa/mp/run.mjs npccast`,
+then `python3 tools/qa/npccast_sheet.py`). The 21 spread over about
+3,700 x 3,200 world px, more than any view takes in at once, so each is
+walked to and photographed at his spot.
+
+On a computer (the sideways layout, 1440 x 900):
+
+![The 21 townsfolk at their spots, on a computer](npc-cast-computer.jpg)
+
+On a phone held upright (390 x 844):
+
+![The 21 townsfolk at their spots, on an upright phone](npc-cast-phone.jpg)
+
 ## What they say
 
 Four to six lines each (five, as the eight have), in the satire pass's voice
