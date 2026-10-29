@@ -3611,6 +3611,19 @@ console.log("the buildings' doors (v2.3.3032)");
         && REST.HOTEL_R >= WHEEL_DOOR_REACH + 60 && doors.every((d) => d.id === 'hotel' || Math.hypot(d.x - h.x, d.y - h.y) > REST.HOTEL_R + WHEEL_DOOR_REACH),
       { rel, hotel: REST.HOTEL, r: REST.HOTEL_R });
   }
+  /* v2.3.3785: the worker's BANK.DOOR is the Bank's door as the ground worker
+     places it -- a deposit or a withdrawal is taken only there (bank.js) */
+  {
+    const { BANK } = await import('../../server/src/bank.js');
+    const { WHEEL_CENTRE } = await import('../../server/src/wheelspawns1.js');
+    const bankIds = Object.keys(WHEEL_BUILDING_DOORS).filter((k) => WHEEL_BUILDING_DOORS[k] === 'bank');
+    const b = bankIds.length === 1 ? byDoor[bankIds[0]] : null;
+    const rel = b ? [b.x - WHEEL_CENTRE[0], b.y - WHEEL_CENTRE[1]] : null;
+    ok(`the worker's Bank door is the placed one: (${rel && rel.join(', ')}) from the Wheel's middle, BANK.DOOR (${BANK.DOOR}), its reach taking in standing at the door and no other door`,
+      !!rel && Math.abs(rel[0] - BANK.DOOR[0]) < 1 && Math.abs(rel[1] - BANK.DOOR[1]) < 1
+        && BANK.DOOR_R >= WHEEL_DOOR_REACH + 60 && doors.every((d) => d === b || Math.hypot(d.x - b.x, d.y - b.y) > BANK.DOOR_R + WHEEL_DOOR_REACH),
+      { rel, door: BANK.DOOR, r: BANK.DOOR_R, ids: bankIds });
+  }
   {
     const PO = await import('../../src/game/postOffice.js');
     const S = {};
