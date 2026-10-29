@@ -47,8 +47,8 @@ export function installShirtProbe(dep) {
       for (const mirror of (MIRRORED.indexOf(dir) >= 0 ? [false, true] : [false])) {
         for (let f = 0; f < n && f < (limit || n); f++) {
           const a = lookArgs(L, dir, mirror);
-          const nt = old ? null : getLookShirtFrame('tshirt', pose, dir, f, a, true);
-          if (old ? !(dressed(a) || a.tint) : !nt) continue;   /* white and plain: the shipped sheet, both ways */
+          const nt = old ? null : getLookShirtFrame('tshirt', pose, dir, f, a);
+          if (old ? !dressed(a) : !nt) continue;   /* plain: the shared sheet and its tint, both ways */
           const ot = dressed(a) ? getShirtLookFrame('tshirt', pose, dir, f, a) : getGearFrame('shirt', 'tshirt', pose, dir, f);
           cells.push({ pose, dir, f, mirror, ot, nt, tint: dressed(a) ? null : a.tint, a });
         }
