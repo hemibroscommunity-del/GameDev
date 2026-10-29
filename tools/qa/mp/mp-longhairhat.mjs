@@ -98,7 +98,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const vname of views) {
     const V = VIEWS[vname];
     const P = await H.newPlayer(browser, {
-      name: 'Longhair' + vname, wsPort, webPort, world: 'wheel', guest: true, ...V, query: 'headframes' + (process.env.LH_QUERY ? '&' + process.env.LH_QUERY : ''),
+      name: 'Longhair' + vname, wsPort, webPort, world: 'wheel', ...V, query: 'headframes' + (process.env.LH_QUERY ? '&' + process.env.LH_QUERY : ''),
       init: `try { localStorage.setItem('bt-hair', 'long'); localStorage.setItem('bt-headwear', ${JSON.stringify(process.env.LH_INITHAT || 'none')}); localStorage.setItem('bt-facialhair', 'none'); localStorage.setItem('bt-eyewear', 'none');`
         + (process.env.LH_HATCOLOR ? ` localStorage.setItem('bt-hatcolor', ${JSON.stringify(process.env.LH_HATCOLOR)});` : '')
         + (process.env.LH_CAPE ? ` localStorage.setItem('bt_cape', ${JSON.stringify(process.env.LH_CAPE)});` : '') + ' } catch (e) {}',
