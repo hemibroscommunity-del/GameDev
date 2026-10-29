@@ -36,7 +36,7 @@ try {
   const at = P.attachShader;
   P.attachShader = function (pr, sh) {
     const src = srcOf.get(sh) || '';
-    const m = /#define SHADER_NAME (\S+)/.exec(src) || /name: '([^']+)'/.exec(src);
+    const m = /#define SHADER_NAME ([A-Za-z0-9_.-]+)/.exec(src) || /name: '([^']+)'/.exec(src);
     if (m && !/vertex/i.test(m[1])) nameOf.set(pr, m[1].replace(/-fragment$/, ''));
     else if (!nameOf.has(pr) && m) nameOf.set(pr, m[1].replace(/-vertex$/, ''));
     return at.call(this, pr, sh);
@@ -214,7 +214,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await stick(Math.cos(ang), Math.sin(ang));
           if (pose === 'jog') await page.waitForTimeout(900);
           else {
-            await page.waitForTimeout(700);
+            await page.waitForTimeout(1500);
             await stick(0, 0);
             await page.waitForTimeout(900);
           }
