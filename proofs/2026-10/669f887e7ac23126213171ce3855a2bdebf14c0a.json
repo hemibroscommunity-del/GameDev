@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "669f887e7ac23126213171ce3855a2bdebf14c0a",
+  "tree": "e5efb4f8c90d904f4311cb72a6c3f9102273ab95",
+  "committedAt": "2026-10-29T14:37:09-07:00",
+  "subject": "Merge pull request #1343 from hemibroscommunity-del/claude/ctx-restore",
+  "files": 7319,
+  "bytes": 841271287,
+  "listingSha256": "56ce369fd6be226293b0d58b2fbafab655d5a32c4c453723a24f116c63e3c68f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
