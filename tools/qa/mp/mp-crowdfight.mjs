@@ -99,7 +99,7 @@ function startBots(wsPort, { fighters, homes, fightAt }) {
 
 /* the renderer's own context, its calls counted while __btCfGlOn
    (mp-phoneframe's GL_INSTALL, the few this reads) */
-const GL_INSTALL = () => {
+export const GL_INSTALL = () => {
   const r = window._pixiRenderer && window._pixiRenderer.app && window._pixiRenderer.app.renderer;
   const gl = r && r.gl;
   if (!gl) return false;
@@ -132,6 +132,24 @@ const GL_INSTALL = () => {
   };
   return true;
 };
+
+/* v2.3.3809: the window's three steps, for another scenario's page.evaluate
+   (mp-lookfolk): counting on, the counts a frame (with perfTracker's frames),
+   and the context put back */
+export const GL_START = () => {
+  window.perfTracker && window.perfTracker.reset();
+  for (const k in (window.__btCfGl || {})) delete window.__btCfGl[k];
+  window.__btCfGlOn = true;
+};
+export const GL_READ = () => {
+  window.__btCfGlOn = false;
+  const a = (window.perfTracker && window.perfTracker.getSamples && window.perfTracker.getSamples()) || [];
+  const frames = a.length || 1;
+  const c = window.__btCfGl || {};
+  const per = (k) => +((c[k] || 0) / frames).toFixed(1);
+  return { frames: a.length, work: a.map((s) => s.workMs || 0), draws: per('draws'), programs: per('useProgram'), binds: per('bindTexture'), calls: per('all') };
+};
+export const GL_UNINSTALL = () => { if (window.__btCfGlUninstall) window.__btCfGlUninstall(); };
 
 /* the GPU a minute later, as Pixi's collector would leave it (mp-battlemem) */
 const settledGpu = (P) => P.page.evaluate(() => {

@@ -662,7 +662,7 @@ def _rgb_targets(rel):
 
 def _game():
     """the shirt and beard colours, the drawing palette, the pattern tiles, and
-    every townsperson's look (tools/qa/npc-looks.mjs NPC_LOOKS)"""
+    every townsperson's look (src/data/npcLooks.js NPC_LOOKS)"""
     pal_src = _read('src/rendering/traits/playerArt.js')
     pal_src = pal_src[pal_src.index('export const ART_PALETTE = ['):]
     pal_src = re.sub(r'/\*.*?\*/', '', pal_src[:pal_src.index('];')], flags=re.S)
@@ -673,7 +673,7 @@ def _game():
         cells = ''.join(re.findall(r"'([01]+)'", m.group(5)))
         tiles[m.group(1)] = dict(w=int(m.group(2)), h=int(m.group(3)), cell=int(m.group(4)), cells=cells)
     looks = {}
-    src = _read('tools/qa/npc-looks.mjs')
+    src = _read('src/data/npcLooks.js')   # v2.3.3809: moved from tools/qa/npc-looks.mjs
     body = src[src.index('export const NPC_LOOKS = {'):]
     body = body[:body.index('\n};')]
     for m in re.finditer(r"\n  (\w+): \{(.*?)\n  \},", body, re.S):

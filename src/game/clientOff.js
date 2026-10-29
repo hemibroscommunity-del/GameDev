@@ -33,6 +33,9 @@ export const CLIENT_SAVERS = Object.freeze([
   Object.freeze({ id: 'lookpalette', words: 'Characters coloured on the chip', live: true }),
   /* v2.3.3790: the patterned and printed tees, on the look palette (lookShirtFrame.js) */
   Object.freeze({ id: 'lookshirt', words: 'Printed shirts coloured on the chip', live: true }),
+  /* v2.3.3809: the townsfolk drawn live from their looks, not their
+     photographs (rendering/lookFolk.js); off brings the photographs back */
+  Object.freeze({ id: 'lookfolk', words: 'Townsfolk drawn live', live: true }),
 ]);
 
 const KEY = 'bt_clientoff';
