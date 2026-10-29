@@ -5477,6 +5477,15 @@ body:has([data-trade-drawer]) [data-coach]{display:none}
   [data-key-at="end"]::after { bottom:auto; right:14px; top:50%; transform:translateY(-50%); }
   [data-key-at="inline"]::after { position:relative; display:inline-flex; right:auto; bottom:auto; margin-left:8px; vertical-align:1px; }
   [data-key-at="xy"]::after { right:auto; bottom:auto; left:var(--key-x,0px); top:var(--key-y,0px); }
+  /* ═══ v2.3.3813: A ✕'S "Esc" BESIDE IT, NOT UNDER IT ═══
+     The judge pass on a computer: hung under the ✕ (top right of a window),
+     the cap fell into the words below it -- Mayor Bro's "Blue slimes explode,
+     by [Esc] the way", the No man's land explainer.  Every ✕ Esc presses
+     (data-esc, and the building windows' .bt-inspect-close) wears it to its
+     LEFT now, level with it, where a window's corner has only its title row
+     or picture; other hanging caps (the folded strip's I) keep hanging. */
+  [data-esc][data-key-at="hang"]::after,
+  .bt-inspect-close::before { left:auto; bottom:auto; right:calc(100% + 2px); top:50%; transform:translateY(-50%); }
 }
 
 /* v2.3.1719: the DESKTOP STAT HUD is gone (owner: "remove the HUD stuff that
