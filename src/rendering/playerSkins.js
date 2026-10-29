@@ -37,7 +37,7 @@ import { stampRegion, stampPattern, litFabricMask, regionFromFeet, splitSkinRegi
 import { getPattern, parsePattern, patternKey, onPatternChange } from './traits/patternCatalog.js';   /* v2.3.1941 */
 import { recolorToolKeyCanvas, toolKeyMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine; v2.3.2854: + the file's key mask */
 import { garmentBands, inGarmentBand, judgeGarments, GC_PANTS, GC_BOOT, GC_SKIN, GC_DARK } from './garmentConfine.js';   /* v2.3.3658: trousers and boots painted where they are */
-import { toolWoodMask, solidTool } from './toolWood.js';   /* v2.3.3671: the pickaxe keeps its wood; v2.3.3873: and is drawn solid */
+import { toolWoodMask, solidTool } from './toolWood.js';   /* v2.3.3671: the pickaxe keeps its wood; v2.3.3876: and is drawn solid */
 import { lookPaletteWanted, lookPose, getLookFrame, preloadLookSheets } from './lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0` */
 import { installLookProbe } from './lookPaletteProbe.js';   /* v2.3.3716: QA, `?lookpalette=1` / `?lookprobe` only */
 
@@ -935,7 +935,7 @@ if (typeof window !== 'undefined') {
    of the pickaxe's pixels each mining bake kept, by sheet. */
 const PICK_WOOD_OFF = (() => { try { return /[?&]pickwood=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 const _pickWoodKept = Object.create(null);
-/* v2.3.3873: `?toolsolid=0`: the pickaxe as the sheet draws it, thin and pale
+/* v2.3.3876: `?toolsolid=0`: the pickaxe as the sheet draws it, thin and pale
    (toolWood.js solidTool); and, for QA, the pixels each mining bake painted */
 const TOOL_SOLID_OFF = (() => { try { return /[?&]toolsolid=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
 const _toolSolid = Object.create(null);
@@ -1344,7 +1344,7 @@ export function recolorBodyToCanvas(img, skinT, pantsT, shoesT, shirtT, targetH,
     const n = _clampLegsUnder(d, w, h, FW, greaves, legAll, skinAll);
     try { cv.__btLegsClamp = n; } catch (e) { /* a frozen canvas: no probe, no harm */ }
   }
-  /* ═══ v2.3.3873: THE PICKAXE, SOLID ═══
+  /* ═══ v2.3.3876: THE PICKAXE, SOLID ═══
      The owner, playtesting: "the pickaxe for the first quest is still
      invisible or at least very lightly drawn. Can you use code to fill it
      with a handle and just an iron color for the metal part?"  Last, over the

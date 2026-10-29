@@ -1,4 +1,4 @@
-/* ═══ THE PICKAXE, SOLID (v2.3.3873) ═══
+/* ═══ THE PICKAXE, SOLID (v2.3.3876) ═══
  *
  * The owner, 2026-10-29, playtesting for the showing: "Ok the pickaxe for the
  * first quest is still invisible or at least very lightly drawn. Can you use

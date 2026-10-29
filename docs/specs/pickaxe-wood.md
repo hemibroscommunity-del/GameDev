@@ -115,7 +115,7 @@ wood. It raised two design points, left for later:
   `tools/gear/fill-mine-tee-holes.mjs`, beside the originals in
   `playerSkins.js`. One small module all five import would keep them in step.
 
-## v2.3.3873: the pickaxe, solid
+## v2.3.3876: the pickaxe, solid
 
 The owner, 2026-10-29, playtesting for the showing: *"Ok the pickaxe for the
 first quest is still invisible or at least very lightly drawn. Can you use code

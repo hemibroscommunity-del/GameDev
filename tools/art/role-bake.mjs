@@ -139,7 +139,7 @@ async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
   let unexplained = 0, ambiguous = 0;
   for (let p = 0; p < W * H; p++) {
     const i = p * 4;
-    if (d[i + 3] === 0) continue;   /* (see-through in the art: kept as the bake leaves it, below -- v2.3.3873) */
+    if (d[i + 3] === 0) continue;   /* (see-through in the art: kept as the bake leaves it, below -- v2.3.3876) */
     const cand = [];
     for (let r = 0; r <= R; r++) {
       if (near(f1, i, out(i, r, P1)) && near(f2, i, out(i, r, P2)) && near(f3, i, out(i, r, P3))) cand.push(r);
@@ -171,7 +171,7 @@ async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
     }
   }
   /* the table: one entry per (role, colour), sorted by role; entry 0 is see-through */
-  /* v2.3.3873: ...and its ALPHA the bake's too: the mining bake draws the
+  /* v2.3.3876: ...and its ALPHA the bake's too: the mining bake draws the
      pickaxe solid (toolWood.js solidTool), opaque where the art's stroke was
      see-through and out into the empty pixels round it for its outline */
   const keyOf = (p) => {
@@ -187,7 +187,7 @@ async function pageBake({ set, sheet, bits, probeAt, bar, cutSrc }) {
       if (!dd[(y * DW + x) * 4 + 3]) continue;   /* see-through on the display (and the stripped specks) */
       p = (hx * y + oy) * W + hx * x + ox;
     } else p = y * W + x;
-    if (!d[p * 4 + 3] && !kd[p * 4 + 3]) continue;   /* v2.3.3873: or drawn by the bake alone (the pickaxe's outline: kept) */
+    if (!d[p * 4 + 3] && !kd[p * 4 + 3]) continue;   /* v2.3.3876: or drawn by the bake alone (the pickaxe's outline: kept) */
     srcOf[y * nw + x] = p;
     const k = keyOf(p);
     keys.set(k, (keys.get(k) || 0) + 1);
