@@ -35,7 +35,7 @@
  *       G too, and F no longer the special;
  *   8c. the right button HELD raises the shield, facing the pointer, no
  *       browser menu; a left click while it is held is the shield bash (sent
- *       to the worker), not a swing; letting go lowers it (v2.3.3845: keeps
+ *       to the worker), not a swing; letting go lowers it (v2.3.3847: keeps
  *       it up, a toggle, and the next right press lowers it; with a snowman
  *       near it faces the snowman -- mp-shieldtoggle has the rest);
  *   8d. with no shield on the arm, the right button is the special, as it was;
@@ -112,7 +112,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
         colLeft: Math.round(col.left), place: s && s.getAttribute('data-kb-place'), bellRight: b && Math.round(b.right),
         overlap: !!(r && b && b.width && r.left < b.right && r.right > b.left && r.top < b.bottom && r.bottom > b.top) };
     });
-    rec.ok('the keys strip lists 1, 2 and 3 (v2.3.3845: was 1-3), and lies clear of the bell', ['1', '2', '3'].every((k) => strip.keys.includes(k)) && !strip.overlap, strip);
+    rec.ok('the keys strip lists 1, 2 and 3 (v2.3.3847: was 1-3), and lies clear of the bell', ['1', '2', '3'].every((k) => strip.keys.includes(k)) && !strip.overlap, strip);
     /* v2.3.3526 (the owner's "Go recommended" on the review's "move the keys
        strip into the black margin beside the game"): on this window it is in
        the margin, wholly left of the game's column and on the screen */
@@ -491,7 +491,7 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await P.page.mouse.down({ button: 'right' });
     await P.page.waitForTimeout(700);
     const r1 = await look(P);
-    /* v2.3.3845: with a snowman near the guard faces it, not the pointer
+    /* v2.3.3847: with a snowman near the guard faces it, not the pointer
        (mp-shieldtoggle step 7 holds that, and the pointer with nothing near) */
     const nearMon = await P.page.evaluate(() => { const S = window._gameState.current, p = S.player;
       return (S.monsters || []).some((m) => m && m.alive !== false && Math.hypot(m.x - p.x, m.y - p.y) < 600); });
@@ -512,13 +512,13 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await P.page.mouse.up({ button: 'right' });
     await P.page.waitForTimeout(600);
     const r3 = await look(P);
-    /* v2.3.3845: a toggle -- the release keeps it up, the next press lowers it */
+    /* v2.3.3847: a toggle -- the release keeps it up, the next press lowers it */
     await P.page.mouse.down({ button: 'right' });
     await P.page.waitForTimeout(150);
     await P.page.mouse.up({ button: 'right' });
     await P.page.waitForTimeout(600);
     const r3b = await look(P);
-    rec.ok(`8c. letting the right button go keeps the shield up (a toggle, v2.3.3845); the next right press lowers it (press: ${r3b.press && r3b.press.kind})`,
+    rec.ok(`8c. letting the right button go keeps the shield up (a toggle, v2.3.3847); the next right press lowers it (press: ${r3b.press && r3b.press.kind})`,
       r3.up && !r3b.up && r3b.press && r3b.press.kind === 'shield-down', { r3, r3b });
 
     /* ── 8d. NO SHIELD: THE RIGHT BUTTON IS THE SPECIAL, AS IT WAS ── */

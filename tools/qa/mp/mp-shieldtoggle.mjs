@@ -1,4 +1,4 @@
-/* ═══ ON A COMPUTER, THE RIGHT BUTTON TOGGLES THE SHIELD (v2.3.3845) ═══
+/* ═══ ON A COMPUTER, THE RIGHT BUTTON TOGGLES THE SHIELD (v2.3.3847) ═══
  *
  * The owner, 2026-10-29: "Also I think right click should just hold up
  * shield until you click right click again. You should also be able to just

@@ -213,7 +213,7 @@ scenarios that pressed the old keys (`mp-jump`, `mp-ghostaudit`,
 `mp-soundcues`, `mp-soundstudio`, `mp-armourflash`, `mp-garmentspecks`,
 `mp-inkplace`, `mp-traitsoak`, `mp-deskwide`) press the new ones.
 
-## v2.3.3845: the right button toggles the shield
+## v2.3.3847: the right button toggles the shield
 
 The owner, 2026-10-29: *"Also I think right click should just hold up shield
 until you click right click again. You should also be able to just hold it up
@@ -247,7 +247,7 @@ Tests: `mp-shieldtoggle` (a computer, the wide layout, the real mouse; fails on
 main, where the release lowers the guard), `mp-deskkeys` 8c (the release keeps
 it up, the next press lowers it), `server/test/desk-keys.test.mjs` §11.
 
-**Also in v2.3.3845, the weapon numbers.** The owner: *"instead of '1-3
+**Also in v2.3.3847, the weapon numbers.** The owner: *"instead of '1-3
 weapon' just list which number represents which weapon (1 melee, 2 bow, 3
 staff, etc)"*. The list's `1-3 Weapon` row is three: `1 Melee`, `2 Bow`,
 `3 Staff`, always shown (every player's weapons row has the three slots;

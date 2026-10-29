@@ -1,4 +1,4 @@
-/* ═══ v2.3.3845: A COMPUTER'S GUARD, TOGGLED ON THE RIGHT BUTTON ═══
+/* ═══ v2.3.3847: A COMPUTER'S GUARD, TOGGLED ON THE RIGHT BUTTON ═══
  *
  * The owner, 2026-10-29: "Also I think right click should just hold up
  * shield until you click right click again. You should also be able to just

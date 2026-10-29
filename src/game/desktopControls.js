@@ -405,7 +405,7 @@ export function setupDesktopControls(S, deps) {
          fighting move you reach for most after the swing, so it takes the key
          under the left hand's first finger beside W -- Q, where the shield
          was.  The shield is the right mouse button HELD now (BroTown's
-         canvas onMouseDown, released by onMouseUp below; v2.3.3845: pressed
+         canvas onMouseDown, released by onMouseUp below; v2.3.3847: pressed
          up and pressed down again, a toggle): a guard on the hand that aims it.  Aimed at the mouse, as F and the right
          click were (both gave it up: F is the Element Burst, the right button
          the shield).  Q+E's bash is a left click with the shield up.
@@ -577,7 +577,7 @@ export function setupDesktopControls(S, deps) {
         S.keys[e.key.toUpperCase()] = false;
       }
       /* v2.3.3711: Q is the special now, so its release lowers nothing (the
-         right mouse button's did; v2.3.3845: its next press does) */
+         right mouse button's did; v2.3.3847: its next press does) */
       /* v2.3.3407: let go of E, and the harvest's gesture stops being worked */
       if (e.code === 'KeyE' && S._harvestKeys) S._harvestKeys.up();
     };
@@ -588,14 +588,14 @@ export function setupDesktopControls(S, deps) {
       for (var k in S.keys) S.keys[k] = false;
       if (S._harvestKeys) S._harvestKeys.up();   /* v2.3.3407: ...E's work too */
       /* v2.3.3711: ...and a shield held on the right mouse button: its
-         release would come to another window.  v2.3.3845: a toggle now, and
+         release would come to another window.  v2.3.3847: a toggle now, and
          still lowered here: alt-tab away and back, and the guard you see is
          the guard you have -- down, one right click from up -- never a
          guard left raised while you were in another window */
       if (S._shieldMouse) { S._shieldMouse = false; _desktopShieldOff(); }
     };
     /* v2.3.3711's onMouseUp (the right button's release lowered the guard)
-       is gone with v2.3.3845: the right button is a toggle -- "right click
+       is gone with v2.3.3847: the right button is a toggle -- "right click
        should just hold up shield until you click right click again" -- and
        the next right press lowers it (BroTown _deskRightPress). */
     /* ═══ v2.3.3711: NO BROWSER MENU OVER THE GAME ═══

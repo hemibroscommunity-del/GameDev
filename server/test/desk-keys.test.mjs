@@ -97,7 +97,7 @@ const bound = (k) => {
   if (k === 'Space') return /e\.code === 'Space'/.test(ctl);
   if (k === 'Tab') return /e\.code === 'Tab'/.test(ctl);
   if (k === 'Esc') return /e\.code === 'Escape'/.test(ctl);
-  if (/^[123]$/.test(k)) return new RegExp(`e\\.code === 'Digit${k}'`).test(ctl);   /* v2.3.3845: a row a number (was '1-3') */
+  if (/^[123]$/.test(k)) return new RegExp(`e\\.code === 'Digit${k}'`).test(ctl);   /* v2.3.3847: a row a number (was '1-3') */
   /* v2.3.3711: the mouse's moves, and the combos */
   if (k === 'Click') return /onMouseDown/.test(bro);
   if (k === 'R-Click') return /e\.button === 2/.test(bro) && /_deskRightPress\(/.test(bro);
@@ -127,7 +127,7 @@ const qBlock = (/if \(e\.code === 'KeyQ' && !e\.repeat\) \{([\s\S]*?)\n {6}\}/.e
 check('7e Q fires the special, and raises no shield', /_desktopSpecialAttack\(\)/.test(qBlock) && !/_desktopShieldOn|_shieldKb = true/.test(qBlock), qBlock.slice(0, 300));
 check('7f F and G both fire the Element Burst', /e\.code === 'KeyF' \|\| e\.code === 'KeyG'\) && !e\.repeat\) \{\s*e\.preventDefault\(\);\s*_desktopElementBurst\(\)/.test(ctl));
 check('7g F no longer fires the special', !/e\.code === 'KeyF' && !e\.repeat\) \{[\s\S]{0,120}_desktopSpecialAttack/.test(ctl));
-/* v2.3.3845: the right button is a toggle -- its release lowers nothing; a blur still does */
+/* v2.3.3847: the right button is a toggle -- its release lowers nothing; a blur still does */
 check('7h the right button\'s release lowers nothing (a toggle); a blur lowers the guard',
   !/addEventListener\('mouseup', onMouseUp\)/.test(ctl) && /onBlur[\s\S]{0,600}_shieldMouse = false; _desktopShieldOff\(\)/.test(ctl));
 check('7i no browser menu over the game on a computer (text fields and links keep theirs)',
@@ -190,7 +190,7 @@ check('10d Space\'s release presses no focused button (its keyup refused, outsid
   /onKeyUp = function onKeyUp\(e\) \{[\s\S]{0,700}e\.code === 'Space'[\s\S]{0,300}e\.preventDefault\(\)/.test(ctl));
 check('10e Space and X come before the 2\u00d7WASD row; the double tap still rolls', DESK_KEY_ROWS.findIndex((r) => r[0] === 'X') === DESK_KEY_ROWS.findIndex((r) => r[0] === 'Space') + 1
   && /dblTapRoll\(/.test(ctl));
-/* ── 11. v2.3.3845: the right button toggles the guard; with nothing near it follows the pointer ── */
+/* ── 11. v2.3.3847: the right button toggles the guard; with nothing near it follows the pointer ── */
 const { deskPointerAngle, shieldFollowsPointerAlways } = await import('../../src/game/deskShield.js');
 const S10 = { player: { x: 1000, y: 1000 }, camera: { x: 800, y: 900 }, _worldScaleX: 0.8, _worldScaleY: 0.8, _mouseScreen: { x: 320, y: 80 } };
 /* the pointer at world (800 + 320/0.8, 900 + 80/0.8) = (1200, 1000): straight right of the bro */

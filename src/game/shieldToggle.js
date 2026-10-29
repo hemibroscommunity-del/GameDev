@@ -62,7 +62,7 @@ export function shieldThreatPoint(S, now) {
   return lockAimPoint(o);
 }
 
-/* ═══ v2.3.3845: THE RUNGS THAT AIM AT SOMETHING, ON THEIR OWN ═══
+/* ═══ v2.3.3847: THE RUNGS THAT AIM AT SOMETHING, ON THEIR OWN ═══
    The lock, the player who just hit you, the nearest monster or fighter --
    the angle to it, or null when there is nothing near to aim at.  The
    computer's toggled guard (BroTown's loop) asks it: with something near the
@@ -172,7 +172,7 @@ export function dropShield(S, why) {
   if (!S || !S._shieldUp) return false;
   S._shieldUp = false;
   S._shieldKb = false;   /* v2.3.1726's desktop mouse-steer stops with it */
-  S._shieldMouse = false;   /* v2.3.3845: ...and the right button's toggle: its next press raises it again */
+  S._shieldMouse = false;   /* v2.3.3847: ...and the right button's toggle: its next press raises it again */
   S.shieldEnd = 0;
   S._shieldDroppedWhy = why || 'tap';
   S._shieldDroppedAt = Date.now();

@@ -119,8 +119,8 @@ export const JOY_FADE_MS = 2000;
  * _desktopCycleWeapon), untouched since v2.3.97, which is what the onboarding
  * teaches and what mp-bowshield drives. */
 export const GHOST_PAD = 18;
-import { raiseShieldToggle, dropShield, shieldAimAngle, shieldTargetAngle /* v2.3.3845 */ } from '@/game/shieldToggle.js'; /* v2.3.2242 */
-import { deskPointerAngle, shieldFollowsPointerAlways } from '@/game/deskShield.js'; /* v2.3.3845: the toggled guard follows the pointer */
+import { raiseShieldToggle, dropShield, shieldAimAngle, shieldTargetAngle /* v2.3.3847 */ } from '@/game/shieldToggle.js'; /* v2.3.2242 */
+import { deskPointerAngle, shieldFollowsPointerAlways } from '@/game/deskShield.js'; /* v2.3.3847: the toggled guard follows the pointer */
 import { DuelRequestPanel } from './panels/DuelRequestPanel.jsx';
 import { ThreatIncomingPanel } from './panels/ThreatIncomingPanel.jsx';
 import { ChatPanel } from './panels/ChatPanel.jsx';
@@ -8158,7 +8158,7 @@ export var BroTown = function BroTown(_ref0) {
            it can never fight the ring on a touch device that also has a
            mouse plugged in. */
         if (S._shieldUp && S._shieldKb && typeof S._mouseAimAngle === 'number') {
-          /* ═══ v2.3.3845: THE TOGGLED GUARD: AT WHAT IS NEAR, ELSE THE POINTER ═══
+          /* ═══ v2.3.3847: THE TOGGLED GUARD: AT WHAT IS NEAR, ELSE THE POINTER ═══
              The owner: "right click should just hold up shield until you
              click right click again. You should also be able to just hold it
              up and point if there's no monsters around."  With a lock, the
@@ -10567,7 +10567,7 @@ export var BroTown = function BroTown(_ref0) {
      weapon's special (v2.3.1715's "R-Click Special"): a fresh character has
      no shield, and a right click that did nothing would read as broken.
      Returns what the press did, for the probe. */
-  /* ═══ v2.3.3845: ...AND IT IS A TOGGLE: PRESS IT UP, PRESS IT DOWN ═══
+  /* ═══ v2.3.3847: ...AND IT IS A TOGGLE: PRESS IT UP, PRESS IT DOWN ═══
      The owner: "Also I think right click should just hold up shield until
      you click right click again."  The release lowers nothing now
      (desktopControls.js onMouseUp); the next right press lowers it.  A guard
@@ -12827,7 +12827,7 @@ export var BroTown = function BroTown(_ref0) {
          click handlers below still seed _aimAngle from _mouseAimAngle
          at attack-start, so attacks still aim where the cursor is. */
       S._mouseAimAngle = Math.atan2(worldY - S.player.y, worldX - S.player.x);
-      S._mouseScreen = { x: screenX, y: screenY };   /* v2.3.3845: where the pointer is, for the toggled guard's live aim (deskPointerAngle) */
+      S._mouseScreen = { x: screenX, y: screenY };   /* v2.3.3847: where the pointer is, for the toggled guard's live aim (deskPointerAngle) */
       if (S.autoAttack || S._aiming) { S._aimAngle = S._mouseAimAngle; S._aimSrc = 'mouse'; }  /* v2.3.2261 */
       S._mouseWorldX = worldX;
       S._mouseWorldY = worldY;

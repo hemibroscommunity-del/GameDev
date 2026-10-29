@@ -38,7 +38,7 @@
  * the right on the mouse (docs/specs/desktop-keys.md "v2.3.3711"):
  *   - Q the weapon's special (was F, and the right click), F the Element
  *     Burst (was G), the right mouse button HELD the shield (was Q; since
- *     v2.3.3845 a toggle, pressed up and pressed down), a left click while
+ *     v2.3.3847 a toggle, pressed up and pressed down), a left click while
  *     it is up the bash (was Q+E), the wheel the next or last
  *     weapon (Tab and 1-3 stay);
  *   - `2×WASD` a direction key tapped twice rolls that way (X still
@@ -78,7 +78,7 @@ export const DESK_KEY_ROWS = [
   ['Click', 'Attack', null, 'fight'],
   ['2\u00d7Click', 'Lock on', null, 'fight'],   /* v2.3.3711: a double click on a monster */
   ['Q', 'Special', null, 'fight'],   /* v2.3.3711: was F and the right click */
-  ['R-Click', 'Shield \u2195', 'shield', 'fight'],   /* v2.3.3711: held; was Q.  v2.3.3845: pressed up, pressed down -- the arrow up and down ("Shield (toggle)" is 97 px of the column's 73) */
+  ['R-Click', 'Shield \u2195', 'shield', 'fight'],   /* v2.3.3711: held; was Q.  v2.3.3847: pressed up, pressed down -- the arrow up and down ("Shield (toggle)" is 97 px of the column's 73) */
   ['+Click', 'Bash', 'bash', 'fight'],   /* v2.3.3711: a click with it held; was Q+E */
   ['R', 'Whirl', 'whirl', 'fight'],
   ['F', 'Burst', 'burst', 'fight'],   /* v2.3.3711: was G */
@@ -86,7 +86,7 @@ export const DESK_KEY_ROWS = [
   ['V', 'Eat', 'food', 'fight'],
   ['Wheel', 'Swap', null, 'fight'],   /* v2.3.3711: the mouse wheel */
   ['Tab', 'Swap', null, 'fight'],
-  /* v2.3.3845: the owner: "instead of '1-3 weapon' just list which number
+  /* v2.3.3847: the owner: "instead of '1-3 weapon' just list which number
      represents which weapon (1 melee, 2 bow, 3 staff, etc)".  Always all
      three: every player's weapons row has the three slots */
   ['1', 'Melee', null, 'fight'],
