@@ -166,12 +166,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
         });
         await P.page.screenshot({ path: join(OUT, `longhairhat-${vname}${process.env.LH_TAG ? '-' + process.env.LH_TAG : ''}-${name}.png`), clip: { x: Math.max(0, pos.x - 45), y: Math.max(0, pos.y - 110), width: 90, height: 120 } }).catch(() => {});
       };
+      /* v2.3.3883: where the bro stands and how his body is drawn; and a walk
+         back to a spot.  Each hat's readings start from where that hat's
+         readings started before the loss: the jogs do not cancel out (the
+         Town Hall stops a jog north), so by the last hat the bro has drifted
+         to its door, and a reading compared with one taken elsewhere
+         compares the ground behind him (the door's wood is the hair's brown;
+         a jog north into the doorway hides the bro) */
+      const where = () => P.page.evaluate(() => {
+        const S = window._gameState.current, R = window._pixiRenderer, d = R && R.playerDisplayRaw && R.playerDisplayRaw();
+        const b = d && d._body, bb = b && b.getBounds();
+        return { x: Math.round(S.player.x), y: Math.round(S.player.y), zone: S.currentZone, shown: !!(d && d.visible && b && b.visible),
+          tex: b && b.texture ? [b.texture.width, b.texture.height, !!(b.texture.source && b.texture.source.destroyed)] : (b ? 'kids:' + (b.children || []).length : null), box: bb ? [Math.round(bb.minX), Math.round(bb.minY), Math.round(bb.width), Math.round(bb.height)] : null };
+      }).catch((e) => ({ err: String(e) }));
+      const walkTo = async (to) => {
+        if (!to || !isFinite(to.x)) return null;
+        for (let step = 0; step < 80; step++) {
+          const at = await where();
+          const dx = to.x - at.x, dy = to.y - at.y;
+          if (Math.abs(dx) < 12 && Math.abs(dy) < 12) break;
+          const keys = [];
+          if (dx > 6) keys.push('d'); else if (dx < -6) keys.push('a');
+          if (dy > 6) keys.push('s'); else if (dy < -6) keys.push('w');
+          for (const k of keys) await P.page.keyboard.down(k);
+          await P.page.waitForTimeout(Math.min(400, 40 + Math.max(Math.abs(dx), Math.abs(dy)) * 2));
+          for (const k of keys) await P.page.keyboard.up(k);
+        }
+        await P.page.waitForTimeout(400);
+        return where();
+      };
+      const CTX_ROUNDS = process.env.LH_CTX ? Math.max(1, Math.min(4, +process.env.LH_CTX || 1)) : 0;
       /* each hat, each facing, standing and jogging: the hair's pixels */
       const table = {};
       for (const hat of ['none', ...HATS]) {
         await P.page.evaluate((h) => window.__btSetHeadwear(h), hat);
         await P.page.waitForTimeout(1500);
-        table[hat] = {};
+        table[hat] = { at: CTX_ROUNDS ? await where() : null };
         for (const [face, keys] of Object.entries(FACINGS)) {
           for (const k of keys) await P.page.keyboard.down(k);
           await P.page.waitForTimeout(700);
@@ -188,18 +218,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
          black-screen recovery does, then each hat's back facings read again */
       /* v2.3.3883: LH_CTX=2, twice -- and the chip's textures counted at the
          end of each round, in the same state (nothing may pile up per loss) */
-      const CTX_ROUNDS = process.env.LH_CTX ? Math.max(1, Math.min(4, +process.env.LH_CTX || 1)) : 0;
       const texCounts = [];
       for (let round = 1; round <= CTX_ROUNDS; round++) {
-        /* where the bro stands and how his body is drawn, before the loss and
-           after it (a re-join that moved him would leave the pictures' crop
-           on the empty spot: the pixel count of the whole bro says which) */
-        const where = () => P.page.evaluate(() => {
-          const S = window._gameState.current, R = window._pixiRenderer, d = R && R.playerDisplayRaw && R.playerDisplayRaw();
-          const b = d && d._body, bb = b && b.getBounds();
-          return { x: Math.round(S.player.x), y: Math.round(S.player.y), zone: S.currentZone, shown: !!(d && d.visible && b && b.visible),
-            tex: b && b.texture ? [b.texture.width, b.texture.height, !!(b.texture.source && b.texture.source.destroyed)] : (b ? 'kids:' + (b.children || []).length : null), box: bb ? [Math.round(bb.minX), Math.round(bb.minY), Math.round(bb.width), Math.round(bb.height)] : null };
-        }).catch((e) => ({ err: String(e) }));
         const wasAt = await where();
         const lost = await P.page.evaluate(() => {
           const c = document.querySelector('canvas');
@@ -250,28 +270,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (hc) for (const l of (hc.goneLog || []).slice(0, 4)) console.log('      gone: ' + JSON.stringify(l));
         console.log('      look palette: ' + JSON.stringify(diag && diag.pal).slice(0, 400));
         console.log(`      the bro before the loss ${JSON.stringify(wasAt)}, after ${JSON.stringify(await where())}`);
-        /* the re-join puts the bro back where the game's record has him (the
-           Town Hall's door, where a jog north walks him into the doorway):
-           walked back to where he stood before the loss, so each reading is
-           against the same ground behind him */
-        if (wasAt && isFinite(wasAt.x)) {
-          for (let step = 0; step < 80; step++) {
-            const at = await where();
-            const dx = wasAt.x - at.x, dy = wasAt.y - at.y;
-            if (Math.abs(dx) < 12 && Math.abs(dy) < 12) break;
-            const keys = [];
-            if (dx > 6) keys.push('d'); else if (dx < -6) keys.push('a');
-            if (dy > 6) keys.push('s'); else if (dy < -6) keys.push('w');
-            for (const k of keys) await P.page.keyboard.down(k);
-            await P.page.waitForTimeout(Math.min(400, 40 + Math.max(Math.abs(dx), Math.abs(dy)) * 2));
-            for (const k of keys) await P.page.keyboard.up(k);
-          }
-          console.log(`      walked back to ${JSON.stringify(await where())}`);
-        }
         const after = [];
         for (const hat of HATS) {
           await P.page.evaluate((h) => window.__btSetHeadwear(h), hat);
-          await P.page.waitForTimeout(1500);
+          await walkTo(table[hat].at);
+          await P.page.waitForTimeout(1100);
           for (const face of Object.keys(FACINGS)) {
             const keys = FACINGS[face];
             for (const k of keys) await P.page.keyboard.down(k);
