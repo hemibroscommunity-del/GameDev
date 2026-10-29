@@ -16525,6 +16525,8 @@ export class EntityRenderer {
        the spot beside you for the one frame before it seeds itself. */
     const x = (typeof S._petX === 'number') ? S._petX : S.player.x + 20;
     const y = (typeof S._petY === 'number') ? S._petY : S.player.y + 15;
+    /* v2.3.3806: on a fetch (game/petFetch.js) it RUNS: its walk's frames, faster */
+    d._run = !!(S._petFetch && S._petFetch.phase);
     const { k, hop } = this._posePet(d, art, pet, x, y, now);
     const nm = worldSafeText(petDisplayName({ ...pet, kind }));
     if (d._nameText.text !== nm) d._nameText.text = nm;
@@ -16576,7 +16578,7 @@ export class EntityRenderer {
     const frames = side ? petFrames(art.base, 'side') : front;
     /* slimes bounce standing still too; a walker steps only while it walks */
     const bounces = art.base === 'slime' || art.base === 'blueSlime';
-    const fi = frames.length > 1 && (moving || bounces) ? Math.floor(now / (bounces ? 120 : 105)) % frames.length : 0;
+    const fi = frames.length > 1 && (moving || bounces) ? Math.floor(now / (bounces ? 120 : (d._run ? 70 : 105))) % frames.length : 0;   /* v2.3.3806: 70 on a fetch's run */
     const spr = d._sprite;
     if (spr.texture !== frames[fi]) spr.texture = frames[fi];
     /* PET_DRAW_K: the sheet is 2 px a game px (k 0.5 draws its 30 px art 30

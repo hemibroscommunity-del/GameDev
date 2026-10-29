@@ -1874,6 +1874,13 @@ export function setupWebSocket(ctx) {
                  despawn.  The actual coin/inventory mutation rides on
                  the player_state event that immediately follows. */
               if (msg.payload) _applyLootCredit(msg.payload, S);
+              /* v2.3.3806: the pet's last few fetched piles, for mp-petfetch
+                 (window.__btPetFetch); eight ids at most */
+              if (msg.payload && msg.payload.viaPet && S._petFetch) {
+                var _pfc = S._petFetch.credited || (S._petFetch.credited = []);
+                _pfc.push(msg.payload.lootId);
+                if (_pfc.length > 8) _pfc.shift();
+              }
               break;
             }
           /* v2.3.3732: the message diet's switches, changed live (server
