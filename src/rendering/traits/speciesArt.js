@@ -41,7 +41,46 @@ const _artReady = Object.create(null); /* id -> art (once loaded) */
 const _builds = Object.create(null);   /* id|target -> build */
 const _canvases = Object.create(null); /* id|target -> { dir: canvas } for the portrait */
 
-function _url(id, path) { return `/sprites/traits/species/${id}/${path}?v=${SPECIES_ART_VER}`; }
+function _url(id, path, round) { return `/sprites/traits/species/${id}/${path}?v=${SPECIES_ART_VER}${round ? `&g=${round}` : ''}`; }   /* v2.3.3870: + the later round's bust */
+
+/* ═══ v2.3.3870: A PICTURE GIVEN UP ON IS ASKED FOR AGAIN, LATER ═══
+   The owner, 2026-10-29, on a computer: "west and southwest monkey face
+   disappeared" -- the muzzle gone in a facing, then in others, back "if the
+   game reloaded".  _loadImg's two retries (1.5 s, 5 s) were the end of it: a
+   picture still failing was null for the visit, and that facing's piece hid
+   until a reload (v2.3.3689's note below: "that facing hides").  The head
+   pieces have been tried again later since v2.3.3606 (entityRenderer
+   _traitGaveUp); the species never was.  Now a picture given up on is
+   remembered, and while the species is drawn (getSpeciesBuild, every frame)
+   it is asked for again: 5 s after, then 10, 20, 40 and every minute (the
+   head pieces' times), each round its own `&g=` bust.  When it comes, the
+   species' builds are made again with it.  mp-speciesgc fails the files for a
+   while and checks they come back; `?traitretry=0` (the head pieces' switch)
+   is the game as it was. */
+const SPECIES_RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
+let _retryOn = true;
+try { if (typeof location !== 'undefined' && /[?&]traitretry=0\b/.test(location.search || '')) _retryOn = false; } catch (e) { /* on */ }
+function _gaveUp(art) {
+  if (!_retryOn || !art.missing.length) return;
+  art.retryAt = Date.now() + SPECIES_RETRY_LATER_MS[Math.min(art.rounds || 0, SPECIES_RETRY_LATER_MS.length - 1)];
+}
+/* another round for the pictures given up on, once its time has come */
+function _retryMissing(art) {
+  if (!art.retryAt || Date.now() < art.retryAt) return;
+  art.retryAt = 0;
+  art.rounds = (art.rounds || 0) + 1;
+  const round = art.rounds;
+  const want = art.missing;
+  art.missing = [];
+  Promise.all(want.map((m) => _loadImg(_url(art.id, m.path, round)).then((im) => {
+    if (im) art[m.into][m.key] = im;
+    else art.missing.push(m);
+    return !!im;
+  }))).then((got) => {
+    if (got.some(Boolean)) _dropBuilds(art.id);   /* made again, with the pictures that came */
+    _gaveUp(art);
+  });
+}
 
 function _loadImg(url, attempt = 0) {
   return new Promise((res) => {
@@ -69,15 +108,20 @@ export function loadSpeciesArt(id) {
       if (!meta) { delete _art[id]; return null; }
       const fur = meta.fur || {};
       const jobs = [];
-      const art = { id, meta, base: {}, baseFur: {}, strips: {}, stripFur: {} };
+      const art = { id, meta, base: {}, baseFur: {}, strips: {}, stripFur: {}, missing: [], retryAt: 0, rounds: 0 };
+      /* v2.3.3870: a picture that did not come is remembered for a later round */
+      const one = (path, into, key) => _loadImg(_url(id, path)).then((im) => {
+        art[into][key] = im;
+        if (!im) art.missing.push({ path, into, key });
+      });
       for (const d of DIRS) {
         if (!meta.anchors || !meta.anchors[d]) continue;
-        jobs.push(_loadImg(_url(id, `${d}.png`)).then((im) => { art.base[d] = im; }));
+        jobs.push(one(`${d}.png`, 'base', d));
       }
-      for (const d of (fur.base || [])) jobs.push(_loadImg(_url(id, `${d}.fur.png`)).then((im) => { art.baseFur[d] = im; }));
-      for (const k of Object.keys(meta.frameOverlays || {})) jobs.push(_loadImg(_url(id, `frames/${k}.png`)).then((im) => { art.strips[k] = im; }));
-      for (const k of (fur.frames || [])) jobs.push(_loadImg(_url(id, `frames/${k}.fur.png`)).then((im) => { art.stripFur[k] = im; }));
-      return Promise.all(jobs).then(() => { _artReady[id] = art; return art; });
+      for (const d of (fur.base || [])) jobs.push(one(`${d}.fur.png`, 'baseFur', d));
+      for (const k of Object.keys(meta.frameOverlays || {})) jobs.push(one(`frames/${k}.png`, 'strips', k));
+      for (const k of (fur.frames || [])) jobs.push(one(`frames/${k}.fur.png`, 'stripFur', k));
+      return Promise.all(jobs).then(() => { _artReady[id] = art; _gaveUp(art); return art; });
     });
   return _art[id];
 }
@@ -132,9 +176,18 @@ const _BUILD_CAP = 6;
 function _capBuilds() {
   const keys = Object.keys(_builds);
   if (keys.length <= _BUILD_CAP) return;
-  const k = keys[0];
+  _releaseBuild(keys[0]);
+}
+/* v2.3.3870: every build of a species, let go of (its pictures came in a later
+   round: the next ask makes it again with them), and its portrait canvases */
+function _dropBuilds(id) {
+  for (const k of Object.keys(_builds)) if (k.split('|')[0] === id) _releaseBuild(k);
+  for (const k of Object.keys(_canvases)) if (k.split('|')[0] === id) delete _canvases[k];
+}
+function _releaseBuild(k) {
   const b = _builds[k];
   delete _builds[k];
+  if (!b) return;
   /* deferred, so a texture still being drawn this frame is not pulled out */
   setTimeout(() => {
     try {
@@ -166,6 +219,7 @@ export function getSpeciesBuild(id, skinId) {
   if (!id || id === 'none') return null;
   const art = _artReady[id];
   if (!art) { loadSpeciesArt(id); return null; }
+  if (art.retryAt) _retryMissing(art);   /* v2.3.3870: a picture given up on, asked for again while drawn */
   const target = skinTarget(skinId);
   const key = id + '|' + _targetKey(target);
   let b = _builds[key];
