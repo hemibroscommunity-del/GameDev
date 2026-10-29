@@ -1023,5 +1023,40 @@ for (const p of files) {
       && /tickRideSound\(S, _jNow\)/.test(src('src/ui/BroTown.jsx')));
 }
 
+/* ── 21. v2.3.3800: no sound of the world under the loading screen ──
+   The owner: "when first loading the game don't play any music or sound
+   effects until the world is fully loaded."  BT_AUDIO's sound gate is closed
+   while the loading screen is up (body.bt-intro-up) or a veil covers the
+   world (.bt-connect-veil, .bt-avatar-hold): play() drops a sound of the world
+   (the player's taps pass), the music deck has nothing to play, a loop waits,
+   the beds and the river hear no share, the watchdog leaves the silence be;
+   it opens two frames after the last veil goes.  `?soundgate=0` is off. */
+{
+  const G = GD.replace(/\/\*[\s\S]*?\*\//g, '');
+  const fn = (name) => { const a = G.indexOf(name + ' = function'); return a < 0 ? '' : G.slice(a, G.indexOf('\n};', a)); };
+  check('21a the gate closes on the loading screen and on both veils, opens two frames after the last goes, and `?soundgate=0` turns it off',
+    /classList\.contains\('bt-intro-up'\)/.test(fn('BT_AUDIO._gateWhy')) && /bt-connect-veil/.test(fn('BT_AUDIO._gateWhy')) && /bt-avatar-hold/.test(fn('BT_AUDIO._gateWhy'))
+      && /requestAnimationFrame\(function \(\) \{ requestAnimationFrame\(open\); \}\)/.test(fn('BT_AUDIO._gateEval'))
+      && /soundgate=\(0\|off\|false\|no\)/.test(G) && /BT_AUDIO\.SOUND_GATE = true;/.test(G)
+      && /new MutationObserver/.test(G) && /attributeFilter: \['class'\], childList: true/.test(G));
+  check('21b while it is closed: play() drops a sound of the world (the taps pass), the deck has nothing to play, a loop waits for the reveal, the watchdog leaves the silence be',
+    /if \(this\.soundGateClosed\(\) && !this\._gatePasses\(key\)\) \{ this\._soundGate\.dropped\+\+; return null; \}/.test(fn('BT_AUDIO.play'))
+      && /if \(this\.soundGateClosed\(\)\) return null;/.test(fn('BT_AUDIO._deckTarget'))
+      && /if \(this\.soundGateClosed\(\)\) \{ this\._gateLoops\[key\] = \[vol, bus\]; return; \}/.test(fn('BT_AUDIO.startSfxLoop'))
+      && /\/\^ui-\//.test(fn('BT_AUDIO._gatePasses'))
+      && /if \(this\.soundGateClosed\(\)\) \{ this\._silentTicks = 0; return; \}/.test(G));
+  const CO = await import('../../src/game/clientOff.js');
+  const ap = src('src/game/clientOffApply.js');
+  check('21d the Test panel turns it off for every phone, live ("Sound waits for the world", off_soundgate): off opens a closed gate at once',
+    CO.CLIENT_SAVERS.some((c) => c.id === 'soundgate' && c.live === true && c.words === 'Sound waits for the world')
+      && /BT_AUDIO\.SOUND_GATE = clientOff\('soundgate'\) \? false : _gateAsLoaded;\s*if \(BT_AUDIO\._gateEval\) BT_AUDIO\._gateEval\(\);/.test(ap) && /onClientOff\(function \(\) \{ applyVoice\(\); applyGate\(\); \}\)/.test(ap));
+  check('21e a failsafe: shut for the loading screen over 60 s, it opens anyway and is counted; a reconnect\'s veil is never cut short',
+    /BT_AUDIO\.GATE_FAILSAFE_MS = 60000;/.test(G) && /g\.failsafe\+\+/.test(fn('BT_AUDIO._gateFailsafe')) && /if \(why !== 'loading'\) \{\s*g\.loadingSince = 0;\s*if \(g\.failTimer\) \{ clearTimeout\(g\.failTimer\); g\.failTimer = null; \}\s*return;/.test(fn('BT_AUDIO._gateFailsafe'))
+      && /if \(net\) return 'reconnecting';\s*if \(loading && !g\.loadingForced\) return 'loading';/.test(fn('BT_AUDIO._gateWhy')));
+  check('21c the ambient beds and the river hear no share while it is closed',
+    /const hush = !!\(B\.soundGateClosed && B\.soundGateClosed\(\)\);\s*if \(live && !hush\)/.test(src('src/game/ambientBeds.js'))
+      && /!\(B\.soundGateClosed && B\.soundGateClosed\(\)\)/.test(src('src/game/waterAmbience.js')));
+}
+
 console.log(`\nsound-cues: ${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
