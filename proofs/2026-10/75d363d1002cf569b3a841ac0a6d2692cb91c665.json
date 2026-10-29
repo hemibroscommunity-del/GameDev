@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "75d363d1002cf569b3a841ac0a6d2692cb91c665",
+  "tree": "1c12905c5ad7884e88870b1a5e210a3b25311f99",
+  "committedAt": "2026-10-29T08:47:32-07:00",
+  "subject": "Merge pull request #1334 from hemibroscommunity-del/claude/lock-reticle",
+  "files": 7287,
+  "bytes": 839961427,
+  "listingSha256": "78ed83aea99dbc1e4fccfd21f1034273a99b01293e9a66e1ef12f4a8791a4f5d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
