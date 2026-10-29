@@ -53,6 +53,37 @@ keeps the bar up while a slow box takes a picture (as `__btLevelUpFreeze`
 pins the level-up burst), and `window.__btXpWrapMs` stretches a level-up's
 first step.
 
+## Slower, and the number counts (v2.3.3796)
+
+The owner, 2026-10-28:
+
+> when you gain xp show the white bar longer (the added xp that the bar climbs
+> to) and make the fill up to that white portion slower. Also instead of
+> changing the whole xp number make it count up (or down depending on if the
+> number is just xp remaining to the next level up)
+
+- **The white stands alone longer**: 600 ms (was 120) before the gold moves.
+- **The gold climbs slower**: 1200 ms (was 500), eased out (quick at first,
+  settling into the white; `XP_FILL_EASE`, an ease-out cubic).
+- **The number counts** from where it stands to the worker's XP, on the
+  gold's own clock and curve (`xpCountAt`): held while the white stands
+  alone, then counting as the gold climbs. A level-up counts to the old
+  level's end ("280 / 280"), then the new level's from 0 to what carried
+  over, with the bar's wrap (now 2000 ms after the gain). A gain arriving
+  mid-count counts on from the number on screen, never back. One decimal
+  below 10 as before; whole numbers, rounded down, from 10.
+- No number here is "XP remaining", so nothing counts down.
+- **The bar stays longer** to fit it: 3.5 s after a gain (was 3 s), 5.2 s
+  after a level-up (`XP_BAR_UP_SHOW_MS`), so the whole show ends with about
+  a second and a half to read it.
+- **The phone's budget**: the count is written straight into its one text
+  node by a `requestAnimationFrame` loop that stops when it is done. React
+  never re-renders for it, and nothing is laid out but that line of text. The
+  gold is still one CSS transition on `transform`. Reduced motion: the number
+  says the worker's XP at once, as the gold jumps.
+- A third QA-only switch, `window.__btXpSlow` (a factor), stretches the fill
+  and the count so a second real hit on the slow test box lands mid-count.
+
 ## What a player sees
 
 The moment a hit earns combat XP, the middle of the top bar becomes the XP bar:
@@ -139,4 +170,10 @@ The moment a hit earns combat XP, the middle of the top bar becomes the XP bar:
     the gold caught up; "45 / 120" the worker's numbers, inside the track;
     nothing over the door, the AP or the gold; and a level-up whose white
     ran to the end, the gold after it, then the new level from empty.
-  - Pictures: `tools/qa/mp/out/xpbar-*.png` (`docs/shots/xpbar-*.webp`).
+  - since v2.3.3796: the gold's transition as the page has it (the white
+    alone 0.6 s, the climb 1.2 s); two real hits, the second mid-count (the
+    count stretched 4x): the number never goes back, passes values between
+    and ends on the worker's XP; a level-up counts to the old level's end,
+    then "0 / 325".
+  - Pictures: `tools/qa/mp/out/xpbar-*.png` (`docs/shots/xpbar-*.webp`;
+    before/after frame strips `docs/shots/xpbar-tween-*.webp`).
