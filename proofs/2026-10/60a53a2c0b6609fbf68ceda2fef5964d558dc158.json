@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "60a53a2c0b6609fbf68ceda2fef5964d558dc158",
+  "tree": "240b1cd80702de62af698bc17086da0d33a0f315",
+  "committedAt": "2026-10-29T08:44:31-07:00",
+  "subject": "Merge pull request #1331 from hemibroscommunity-del/claude/swap-hint",
+  "files": 7281,
+  "bytes": 836481564,
+  "listingSha256": "e5431886431bb20b3b8d42e94c544880577fdc167ee8e2fe2ec6c406052e5aee",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
