@@ -60,9 +60,9 @@ import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525:
 import { deskWideActive } from './deskWide.js';                    /* v2.3.3830: the key sized from the column on a computer */
 import { GLYPHS, drawGlyph, glyphDetailColor } from './mapGlyphs.js';   /* v2.3.3780: each mark a little picture of what it is, the key the same */
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
-import { loadPins, pinsOf, PIN_KEYS, PIN_CSS } from '../game/mapPins.js';
+import { loadPins, pinsOf, PIN_KEYS, PIN_CSS } from '../game/mapPins.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
 import { DROP_PIN, dropPinAt, dropPinOn, setDropPin, clearDropPin, isMapTap } from '../game/dropPin.js';   /* v2.3.3879: your own pin, dropped with a tap */
-import { deskWords } from '../game/deskWords.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
+import { deskWords } from '../game/deskWords.js';   /* v2.3.3879: the pin hint says "Click" on a computer */
 import { boardPlaceAt } from '../game/mapPinPlaces.js';
 import { boardPinnable } from '../data/townBoard.js';
 import { wheelDungeonOpen, wheelDungeonLevelsLine } from '../game/wheelDungeons.js';                  /* v2.3.3540: which landmarks are dungeons this worker opens; v2.3.3573: + a party dungeon's level and players */
@@ -348,7 +348,7 @@ function WorldMap({ stateRef, onClose }) {
     ptrs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     /* v2.3.3879: a press that may be a tap (one finger, the main button) */
     press.current = ptrs.current.size === 1 && (e.button === undefined || e.button === 0)
-      ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: Date.now() } : null;
+      ? { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp } : null;
     if (ptrs.current.size === 2) {
       const [a, b] = [...ptrs.current.values()];
       pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1 };
@@ -385,7 +385,10 @@ function WorldMap({ stateRef, onClose }) {
     const pr = press.current;
     press.current = null;
     if (!pr || pr.id !== e.pointerId || ptrs.current.size > 0 || !dropPinOn()) return;
-    if (!isMapTap(pr.x, pr.y, e.clientX, e.clientY, Date.now() - pr.t)) return;
+    /* how long the finger was down, by the events' own clocks: a heavy map
+       frame between the two handlers is not the player holding (mp-mappin:
+       on a slow phone a quick tap read as a long press and dropped nothing) */
+    if (!isMapTap(pr.x, pr.y, e.clientX, e.clientY, e.timeStamp - pr.t)) return;
     const cv = cvRef.current, map = wheelMapInfo(), S = stateRef && stateRef.current;
     if (!cv || !map || !S) return;
     const r = cv.getBoundingClientRect(), V = view.current;

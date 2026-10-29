@@ -34,12 +34,15 @@ function wr(st, k, v) { try { if (st) { if (typeof st.setItem === 'function') st
 function rm(st, k) { try { if (st) { if (typeof st.removeItem === 'function') st.removeItem(k); else st.delete(k); } } catch (e) { /* fine */ } }
 const okNum = (n) => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= DROP_PIN.MAX;
 
-/** Pins are on for this page (`?mappin=0` turns them off). */
+function readOn(s) {
+  try { return new URLSearchParams(s || '').get('mappin') !== '0'; } catch (e) { return true; }
+}
+/* the page's switch, read once (the maps ask every frame) */
+const PAGE_ON = readOn(typeof window !== 'undefined' && window.location ? window.location.search : '');
+/** Pins are on for this page (`?mappin=0` turns them off); a test passes
+    its own `search`. */
 export function dropPinOn(search) {
-  try {
-    const s = search !== undefined ? search : (typeof window !== 'undefined' ? window.location.search : '');
-    return new URLSearchParams(s || '').get('mappin') !== '0';
-  } catch (e) { return true; }
+  return search !== undefined ? readOn(search) : PAGE_ON;
 }
 /* the character's pin, kept on S so a frame never reads storage */
 function slot(S, storage) {
