@@ -339,6 +339,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
           + after.map((a) => `${a.hat} ${a.face} ${a.pose}: hair ${a.before} -> ${a.after}${a.clip ? ', clipped' : ', NOT CLIPPED'}${a.share != null ? ` (${Math.round(a.share * 100)}%)` : ''}, the hat ${a.hatShown}, the bro ${a.bro}`).join('\n      '));
         /* the hair where it shows bare-headed (from the front a short fringe
            reads a few pixels either way) */
+        /* a reading short of its before is read again, on its own, from the
+           spot: a piece the restore left undrawn stays short; one reading
+           that caught a passing frame does not (one in about fifty did, the
+           same before the loss as after it, palette on or off) */
+        const short = (a) => (a.share != null && a.share < 0.5) || a.hatShown !== 'drawn' || a.broShare == null || a.broShare < 0.7;
+        for (const a of after.filter(short)) {
+          await P.page.evaluate((h) => window.__btSetHeadwear(h), a.hat);
+          await walkTo(spot);
+          await P.page.waitForTimeout(800);
+          const keys = FACINGS[a.face];
+          for (const k of keys) await P.page.keyboard.down(k);
+          await P.page.waitForTimeout(700);
+          let r = a.pose === 'jog' ? await readBest(P) : null;
+          for (const k of keys) await P.page.keyboard.up(k);
+          if (a.pose === 'stand') { await P.page.waitForTimeout(600); r = await readBest(P); }
+          const was = pre[a.hat][a.face][a.pose];
+          a.again = `hair ${r && r.nd}, bro ${r && r.bro}, the hat ${r && r.hat}`;
+          a.share = was && was.vis && was.nd > 40 ? ((r && r.vis ? r.nd : 0) / was.nd) : null;
+          a.broShare = was && was.bro ? ((r && r.bro) || 0) / was.bro : null;
+          a.hatShown = r && r.hat;
+        }
+        for (const a of after.filter((x) => x.again)) console.log(`      read again: ${a.hat} ${a.face} ${a.pose}: ${a.again}`);
         const lostHair = after.filter((a) => a.share != null && a.share < 0.5);
         const lostHat = after.filter((a) => a.hatShown !== 'drawn');
         const lostBro = after.filter((a) => a.broShare == null || a.broShare < 0.7);
