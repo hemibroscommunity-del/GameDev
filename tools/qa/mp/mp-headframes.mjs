@@ -158,6 +158,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       { timeout: 90000, label: 'into the world' }).catch(() => null);
     const probe = await count(P, false);
     rec.ok('in the world, the head-frame count on (guard)', !!ok && !!probe && probe.on, { ok, probe: !!probe });
+    /* the look palette drawing the pieces (its program linked, looks made) -- the
+       iPhone's path, and what BT_HF_QUERY=fp16uv=1 changes */
+    const pal = await P.page.evaluate(() => (window.__btLookPalette ? window.__btLookPalette() : null)).catch(() => null);
+    console.log('    look palette: ' + JSON.stringify(pal).slice(0, 300));
     if (!ok || !probe) return;
     /* the count shows itself on the screen (the owner's iPhone has no console) */
     const box = await H.waitFor(P, () => { const b = document.querySelector('[data-headframes]'); return b ? { text: b.textContent, pe: getComputedStyle(b).pointerEvents } : null; },
