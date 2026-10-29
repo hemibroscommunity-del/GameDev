@@ -1,7 +1,8 @@
 import React from 'react';
 import { deskWords } from '@/game/deskWords.js';
 import { GROUPS, boardEntry, boardPinnable, boardName } from '@/data/townBoard.js';
-import { boardRows, boardLandNames, boardSub } from '@/game/mapPinPlaces.js';
+import { boardRows, boardLandNames, boardSub, boardBadge } from '@/game/mapPinPlaces.js';
+import { dailyRewardsBus } from '@/game/dailyRewards.js';   /* v2.3.3803: the spin's badge follows the worker's daily state */
 import { loadPins, pinsOn, PIN_CSS } from '@/game/mapPins.js';
 import { BoardPage, BoardFoot } from './TownBoardPage.jsx';   /* v2.3.3801: a page and the foot, apart from the grid */
 
@@ -60,6 +61,22 @@ export function Icon({ src, emoji, size, aspect }) {
   );
 }
 
+/* v2.3.3803: what waits at a tile (mapPinPlaces.js boardBadge, real state
+   only), in its top-left corner -- the pins have the right: the quests offered
+   now, a count on the gold of the "!" pin; "Spin ready" in the Den's brass */
+function Badge({ b }) {
+  if (!b) return null;
+  const quest = b.kind === 'quest';
+  return (
+    <span data-board-badge={b.kind} aria-label={quest ? b.n + (b.n === 1 ? ' quest' : ' quests') + ' to take' : b.text}
+      style={{ position: 'absolute', top: 5, left: 5, minWidth: quest ? 18 : 0, height: 18, padding: quest ? '0 5px' : '0 7px', borderRadius: 999,
+        background: quest ? '#F2B33D' : LS.brass, color: '#1B140A', fontSize: quest ? 11.5 : 10, fontWeight: 800, lineHeight: '18px', textAlign: 'center',
+        boxShadow: '0 0 0 1.5px #0b161b', whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+      {b.text}
+    </span>
+  );
+}
+
 /* the little pins a tile wears, in its corner */
 function PinDots({ on }) {
   if (!on.length) return null;
@@ -76,6 +93,8 @@ export function TownBoard(props) {
   const S = (props.stateRef && props.stateRef.current) || {};
   const [page, setPage] = React.useState(null);
   const [, bump] = React.useState(0);
+  /* v2.3.3803: the worker's daily state arrives (or a spin is taken): the Den's badge follows */
+  React.useEffect(function () { return dailyRewardsBus.subscribe(function () { bump(function (n) { return n + 1; }); }); }, []);
   loadPins(S, null, boardPinnable);
   const rows = boardRows(S);
   const e = page ? boardEntry(page) : null;
@@ -112,6 +131,7 @@ export function TownBoard(props) {
                         v2.3.3801: every tile's line (data-board-level stays on a dungeon's) */}
                     {sub ? <span data-board-sub="" data-board-level={r.mouth ? '' : undefined} style={{ fontSize: 10.5, fontWeight: 600, color: LS.txt2, lineHeight: 1.2, textAlign: 'center', marginTop: -3 }}>{sub}</span> : null}
                     <PinDots on={on} />
+                    <Badge b={boardBadge(S, r)} />
                   </button>
                 );
               })}

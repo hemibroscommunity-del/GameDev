@@ -20,6 +20,8 @@ import { wheelDungeonDoors, wheelDungeonOpen, wheelDungeonBoardLine } from './wh
 import { wheelMapInfo } from './wheelTrial.js';
 import { WHEEL_TOWNSFOLK, WHEEL_KEEPERS } from '@/data/wheelBuildingDoors.js';
 import { BOARD, boardEntry, landSub, boardLand, boardLandElement } from '@/data/townBoard.js';
+import { questPinsOf } from './questPins.js';   /* v2.3.3803: the gold "!" over a head */
+import { dailyRewardsBus, spinLive } from './dailyRewards.js';   /* v2.3.3803: the free daily spin */
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
 
@@ -70,6 +72,32 @@ export function boardSub(S, e) {
 export function boardPage(S, e) {
   if (!e) return [];
   return e.ifCap && hasCap(S, e.ifCap.cap) && Array.isArray(e.ifCap.page) ? e.ifCap.page : e.page;
+}
+
+/* ═══ v2.3.3803: A TILE'S BADGE, FROM REAL STATE ONLY ═══
+   The owner's review of the board: a tile says when something is waiting for
+   you there -- never a static word.
+     'mayor'      the quests Mayor Bro offers now, and
+     'townsfolk'  the townsfolk's: the gold "!" over a head (npc._questMarker,
+                  which BroTown's townsfolk loop sets from getNpcQuest every
+                  frame, and the maps' quest pins read: game/questPins.js), so
+                  the board can never disagree with the street;
+     'spin'       "Spin ready" while today's free spin is not taken (the
+                  worker's daily state, dailyRewardsBus: what the Gambling
+                  Den's wheel itself reads).
+   null when there is nothing to say. */
+const MAYOR = 'Mayor Bro';
+export function boardBadge(S, e) {
+  if (!e || !e.badge) return null;
+  if (e.badge === 'mayor' || e.badge === 'townsfolk') {
+    const n = questPinsOf(S).filter((p) => p.state === 'offer' && (e.badge === 'mayor' ? p.name === MAYOR : p.name !== MAYOR)).length;
+    return n > 0 ? { kind: 'quest', n, text: String(n) } : null;
+  }
+  if (e.badge === 'spin') {
+    const st = spinLive(S) ? dailyRewardsBus.get() : null;
+    return st && st.spin && st.spin.on && st.spin.ready ? { kind: 'spin', text: 'Spin ready' } : null;
+  }
+  return null;
 }
 
 /** Is board row `e` there to do with this worker? */

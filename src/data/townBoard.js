@@ -44,6 +44,9 @@
  *   action a page with no place has ONE button in place of the pins
  *          (v2.3.3801): 'quests' opens your Quests page, 'ride' gets you on
  *          the skateboard (only where you may ride);
+ *   badge  what the tile says when something waits there, from real state
+ *          only (v2.3.3803, mapPinPlaces.js boardBadge): 'mayor' and
+ *          'townsfolk' the quests offered now, 'spin' today's free spin;
  *   cap    a worker cap it waits for (the tile is not shown without it);
  *   mouth  a dungeon the worker must open (game/wheelDungeons.js).
  * No imports: a node suite reads it (server/test/town-board.test.mjs). */
@@ -67,12 +70,12 @@ export const BOARD = Object.freeze([
   /* ── Quests (v2.3.3788, the owner: "(quests should've be another one)";
      the numbers are the worker's QUEST_REWARDS and GUILD_QUESTS, held to
      these words by town-board.test 1r) ── */
-  E({ id: 'mayor', group: 'quests', name: 'Mayor\u2019s Story', sub: 'Main story quests', icon: '/sprites/npc/mayor-bro-head.webp', emoji: '🎩',
+  E({ id: 'mayor', group: 'quests', name: 'Mayor\u2019s Story', sub: 'Main story quests', badge: 'mayor', icon: '/sprites/npc/mayor-bro-head.webp', emoji: '🎩',
     page: ['The Mayor\u2019s quests, six in a row: slimes in the land of {verdant}, snowmen in {frost}, skeletons in {sky} and fire goblins in {ember}, then a hunt and a dungeon.',
       'About 1,175 gold in all, with XP and gear on the way. His first quest opens everyone else\u2019s.'],
     where: 'Mayor Bro, on the Town Hall\u2019s steps, in BroTown.', at: { npc: 'Mayor Bro' } }),
   /* not one place (six people), so no pins: the gold "!" over a head says who */
-  E({ id: 'townquests', group: 'quests', name: 'Town Quests', sub: 'Help the townsfolk', icon: '/ui/quest/pin-offer.webp?v=2.3.3481', emoji: '❗',
+  E({ id: 'townquests', group: 'quests', name: 'Town Quests', sub: 'Help the townsfolk', badge: 'townsfolk', icon: '/ui/quest/pin-offer.webp?v=2.3.3481', emoji: '❗',
     page: ['Twelve quests from six people: Blacksmith Bro, Woodworker Bro, Farmer Bro, Beastmaster Bro, Diego and Lil Bro. Each teaches a trade and pays gold and tools.',
       'They open after the Mayor\u2019s first quest. Look for the gold \u201c!\u201d over a head, in the street and on your map.'],
     where: 'Around BroTown\u2019s square.', at: null, nopin: true, action: 'quests' }),   /* v2.3.3801: its one button opens your Quests page */
@@ -183,7 +186,7 @@ export const BOARD = Object.freeze([
     page: ['List items, weapons, gear or pets at your own price for 7 days, or buy, bid and make offers.',
       'Sales are paid by mail if you are away. No fee.'],
     where: 'In BroTown, east of the square.', at: { door: 'auction' } }),
-  E({ id: 'gambling', group: 'gambling', name: 'Gambling Den', sub: 'Free spins & wagers', icon: '/icons/ui/bldg-gamble.webp?v=2.3.1224', emoji: '🎲',
+  E({ id: 'gambling', group: 'gambling', name: 'Gambling Den', sub: 'Free spins & wagers', badge: 'spin', icon: '/icons/ui/bldg-gamble.webp?v=2.3.1224', emoji: '🎲',
     page: ['A free daily spin you can double or nothing, a wager of 10 to 10,000 gold, and a weekly jackpot of 50-gold tickets.'],
     where: 'In BroTown, south of the square.', at: { door: 'gambling' } }),
   E({ id: 'ace', group: 'gambling', name: 'Ace\u2019s Coin Flip', sub: '45% chance to win', icon: '/sprites/npc/cardsharp-bro-head.webp', emoji: '🪙',

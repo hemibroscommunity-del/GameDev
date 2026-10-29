@@ -15,6 +15,8 @@
  *      picture (each drawn), a land's name the world's own;
  *      v2.3.3788: Quests first and Gambling after Money and trade; each
  *      dungeon's level line on its tile, inside it at 390, 320 and sideways;
+ *      v2.3.3803: the badges, from real state (the Mayor's quest offered, the
+ *      free spin untaken), and none elsewhere;
  *      v2.3.3801: the owner's review's order, every tile's line (fitting),
  *      and on the computer: one action on a page with no place (Open Quests,
  *      Ride now, none for No man's land) and the foot's Codex and Journey;
@@ -115,6 +117,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { id: t.getAttribute('data-board-tile'), pins: t.getAttribute('data-board-pins'), name: (() => { const n = t.querySelector(':scope > span:not([data-board-sub])'); return ((n || t).textContent || '').trim(); })(),   /* v2.3.3801: the name alone, not its line */
           pic: img ? img.getAttribute('src') : null, drawn: !!img && img.complete && img.naturalWidth > 0,
           /* v2.3.3788: a dungeon's level line, and whether it fits inside its tile */
+          /* v2.3.3803: what the tile's badge says, or null */
+          badge: (() => { const g = t.querySelector('[data-board-badge]'); return g ? g.getAttribute('data-board-badge') + ':' + (g.textContent || '').trim() : null; })(),
           /* v2.3.3801: every tile's line under its name, and whether it fits */
           sub: (() => { const l = t.querySelector('[data-board-sub]'); if (!l) return null;
             const lr = l.getBoundingClientRect(), tr = t.getBoundingClientRect();
@@ -213,6 +217,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const lands = b1 ? b1.tiles.filter((t) => /^land-/.test(t.id)).map((t) => t.sub && t.sub.text) : [];
     rec.ok('...every tile has its one line under its name, inside the tile at 390, 320 and sideways (a land its compass and element, e.g. "West \u00b7 Flora")',
       Object.values(subBad).every((x) => x.length === 0) && lands.includes('West \u00b7 Flora') && lands.includes('SW \u00b7 Venom'), { subBad, lands });
+    /* v2.3.3803: badges from real state only -- a new character: Mayor Bro
+       offers his first quest (the gold "!" over his head), the townsfolk
+       wait on it, and today's free spin is not taken */
+    const truth = await A.page.evaluate(() => {
+      const S = window._gameState.current;
+      const offers = (S.npcs || []).filter((n) => n && n._questMarker === '\u2757');
+      return { mayor: offers.filter((n) => n.name === 'Mayor Bro').length, folk: offers.filter((n) => n.name !== 'Mayor Bro').length,
+        spin: !!(S._serverCaps && S._serverCaps.dailyspin) };
+    });
+    const bOf = (id) => { const t = b1 ? b1.tiles.find((x) => x.id === id) : null; return t ? t.badge : undefined; };
+    const others = b1 ? b1.tiles.filter((t) => t.badge && !['mayor', 'townquests', 'gambling'].includes(t.id)).map((t) => t.id) : [];
+    rec.ok('...badges say only what is so: Mayor\'s Story the quests he offers now (the gold "!" over his head), Town Quests the townsfolk\'s (none before his first), the Gambling Den "Spin ready" with today\'s free spin untaken; no other tile wears one',
+      truth.mayor === 1 && bOf('mayor') === 'quest:1' && (truth.folk > 0 ? bOf('townquests') === 'quest:' + truth.folk : bOf('townquests') === null)
+        && (truth.spin ? bOf('gambling') === 'spin:Spin ready' : bOf('gambling') === null) && others.length === 0,
+      { truth, mayor: bOf('mayor'), folk: bOf('townquests'), den: bOf('gambling'), others });
     const inG = (g) => b1 ? b1.tiles.filter((t) => ['mayor', 'townquests', 'guildhall', 'race', 'gambling', 'ace'].includes(t.id)).map((t) => t.id) : [];
     rec.ok('...Quests heads the board (the Mayor\'s story, the townsfolk\'s quests, the Guild Hall), and Gambling has the Gambling Den and Ace',
       ['mayor', 'townquests', 'guildhall', 'gambling', 'ace'].every((id) => inG().includes(id)) && b1.groups[0] === 'quests', { tiles: inG() });

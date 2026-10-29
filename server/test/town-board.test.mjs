@@ -174,6 +174,9 @@ const { readFileSync } = await import('node:fs');
     sk);
   check('1zb the pages with no place: Town Quests opens Quests (one action), No man\'s land has none',
     B.boardEntry('townquests').action === 'quests' && !B.boardEntry('nomansland').action && B.BOARD.filter((e) => e.action).every((e) => !B.boardPinnable(e.id)));
+  /* v2.3.3803: badges from real state, on three tiles only */
+  check('1zc a badge only where state can say something waits: Mayor\'s Story and Town Quests (the quests offered now), the Gambling Den (today\'s spin)',
+    B.BOARD.filter((e) => e.badge).map((e) => e.id + ':' + e.badge).join() === 'mayor:mayor,townquests:townsfolk,gambling:spin');
   check('1i the four dungeons, the arena, the forge and the Gambling Den are on the board', ['goo-grotto', 'great-cave', 'foundry-dome', 'buried-city', 'arena', 'forge', 'gambling', 'woodworker'].every((id) => !!B.boardEntry(id)));
 }
 
