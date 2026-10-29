@@ -22,7 +22,7 @@
  */
 import { Container, Graphics } from 'pixi.js';
 
-const ARM = 9;          /* CSS px, each bracket's arm */
+const ARM = 11;         /* CSS px, each bracket's arm */
 const LINE = 2.2;       /* CSS px, the bracket's line */
 const RIM = 1.6;        /* CSS px of dark either side of it (TRAPS §21: it lands on sand and snow) */
 const COLOR = 0xF08A2E; /* the chip's resting orange: one colour for "your target" */

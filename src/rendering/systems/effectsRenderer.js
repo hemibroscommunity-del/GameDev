@@ -8758,7 +8758,7 @@ export class EffectsRenderer {
         this._lockReticle.update(S, (m) => {
           const x = m.renderX != null ? m.renderX : m.x, y = m.renderY != null ? m.renderY : m.y;
           const off = (monsterBodyOffsetY(m.arch || m.archetype || m.type) || 23) * bossSizeK(m);
-          return { cx: x, cy: y - off, hw: Math.max(16, off * 0.85) + 6, hh: off + 10 };
+          return { cx: x, cy: y - off, hw: Math.max(20, off) + 10, hh: off + 18 };   /* room round the body, clear of it */
         });
       }
       if (typeof window !== 'undefined' && !window.__btAtkMark) {
