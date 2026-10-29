@@ -32,8 +32,10 @@
  *     elementFromPoint over Jump's box: its corners never reach it);
  *   - every other button 8 px clear of Jump, and the doors' Enter button too;
  *   - no two touch areas overlap at all (the 4 px pairs printed are older,
- *     and by design: ctlColumn's air beside the disc; the left stick's
- *     resting picture is not a button -- it starts anywhere in its half);
+ *     and by design: ctlColumn's air beside the disc);
+ *   - the doors' Enter button, risen over Jump upright, 8 px clear of the
+ *     move stick, the disc, Burst, Sprint, the board and Jump -- and back
+ *     down where it was when Jump is not drawn (?jumpbtn=0);
  *   - Jump wholly on the screen and above the bottom band.
  * The old layout fails these (the "before" pictures came from main).
  */
@@ -136,13 +138,17 @@ function judge(rec, tag, st, d, upright) {
   const near = d.list.filter((q) => q !== j && q !== disc).map((q) => ({ n: q.n, g: gapOf(j, q) })).filter((q) => q.g < AIR);
   rec.ok(`${tag} ${st}: every other button (and a door's Enter) at least ${AIR} px clear of Jump${near.length ? ' -- ' + near.map((q) => q.n + ' ' + q.g).join(', ') : ''}`,
     near.length === 0, near);
-  /* the left stick's resting picture is not a button: the stick starts
-     under the thumb anywhere in its half (v2.3.816, floating), and on a 320
-     or 360 px phone the doors' Enter button stands over its corner */
   const over = [];
   for (let a = 0; a < d.list.length; a++) for (let b = a + 1; b < d.list.length; b++) {
-    if ([d.list[a].n, d.list[b].n].includes('move') && [d.list[a].n, d.list[b].n].includes('door')) continue;
     if (gapOf(d.list[a], d.list[b]) < 0) over.push(d.list[a].n + '/' + d.list[b].n);
+  }
+  /* the doors' Enter button, risen over Jump: clear of the move stick, the
+     disc, Burst, Sprint and the board (the orchestrator's list) */
+  const door = by('door');
+  if (door) {
+    const near2 = d.list.filter((q) => ['move', 'disc', 'burst', 'sprint', 'ride', 'jump'].includes(q.n)).map((q) => ({ n: q.n, g: gapOf(door, q) })).filter((q) => q.g < AIR);
+    rec.ok(`${tag} ${st}: the doors' Enter button (x ${door.l}..${door.r}, y ${door.t}..${door.b}) stands ${AIR} px or more clear of the move stick, the disc, Burst, Sprint, the board and Jump${near2.length ? ' -- ' + near2.map((q) => q.n + ' ' + q.g).join(', ') : ''}`,
+      near2.length === 0 && door.l >= 0 && door.r <= d.vw, { door, near2 });
   }
   rec.ok(`${tag} ${st}: no two touch areas overlap${over.length ? ' -- ' + over.join(', ') : ''}`, over.length === 0, over);
   rec.ok(`${tag} ${st}: Jump wholly on the screen and above the band (x ${j.l}..${j.r} of ${d.vw}, y ${j.t}..${j.b}, the band at ${d.dash})`,
@@ -221,7 +227,7 @@ const door = (P, on) => P.page.evaluate((show) => {
   b.id = 'thumb-door';
   b.className = 'bt-interact-prompt';
   b.style.cssText = 'left:calc(50% - 10px);display:flex;align-items:center;gap:5px;padding:6px 12px;line-height:1.15;text-align:left';
-  b.innerHTML = '<span style="width:16px;height:16px;display:inline-block;margin-right:3px;background:#a87"></span><span style="display:block"><span style="display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;opacity:.7"> Enter </span><span style="display:block">AUCTION HOUSE</span></span>';
+  b.innerHTML = '<img alt="" style="width:16px;height:16px;object-fit:contain;margin-right:3px;background:#a87" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="><span style="display:block"><span style="display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;opacity:.7"> Enter </span><span style="display:block">AUCTION HOUSE</span></span>';
   (document.querySelector('.brotown-wrap') || document.body).appendChild(b);
 }, on);
 
@@ -271,6 +277,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       tightAll.push(...report(`${label} / ${tag} / out of a fight, at a door`, calm).map((t) => tag + ' calm ' + t));
       const upright = ph.height > ph.width;
       judge(rec, tag, 'calm, at a door', calm, upright);
+      /* v2.3.3799: Jump gone (?jumpbtn=0, read again on a resize), the
+         Enter button goes back down to its old place; Jump back, up again */
+      const doorAt = () => P.page.evaluate(() => { const b = document.getElementById('thumb-door'); const r = b.getBoundingClientRect();
+        return { b: Math.round(r.bottom), jump: !!document.querySelector('.bt-jump-btn'), flag: document.documentElement.getAttribute('data-jump-clear') }; });
+      const setQ = (q) => P.page.evaluate((qq) => { history.replaceState(null, '', location.pathname + qq); window.dispatchEvent(new Event('resize')); }, q);
+      const q0 = await P.page.evaluate(() => location.search);
+      await setQ((q0 ? q0 + '&' : '?') + 'jumpbtn=0');
+      await P.page.waitForTimeout(700);
+      const gone = await doorAt();
+      await setQ(q0);
+      await P.page.waitForTimeout(700);
+      const back = await doorAt();
+      const dashB = calm.dash;
+      if (upright) {
+        rec.ok(`${tag}: Jump gone, the Enter button is back down in its strip (its foot ${dashB - gone.b} px over the band, flag ${gone.flag}); Jump back, it rises again (${dashB - back.b} px)`,
+          !gone.jump && gone.flag == null && dashB - gone.b >= 20 && dashB - gone.b <= 30 && back.jump && back.flag != null && dashB - back.b > 60, { gone, back, dashB });
+      } else {
+        rec.ok(`${tag}: sideways the Enter button never rises (flag ${calm && back.flag})`, back.flag == null, { back });
+      }
       await P.page.screenshot({ path: join(OUT, `thumbbtn-${label}-${tag}-calm.png`) });
       await outline(P, calm);
       await P.page.screenshot({ path: join(OUT, `thumbbtn-${label}-${tag}-calm-boxes.png`) });

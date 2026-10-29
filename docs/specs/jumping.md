@@ -846,19 +846,28 @@ button."*
   (`ctlColumn` stands them on Jump's old upright place, `jumpSpotUp`).
 - **The doors' Enter button** stood in the strip just over the band, which
   Jump now reaches. While Jump is drawn upright on a touch screen, JumpButton
-  puts `data-jump-clear`, `--bt-jump-clear` (Jump's top and 12 px: 8 of air
-  and the 3 its pulse swells by) and `--bt-disc-clear` on the page, and
-  game.css stands every `.bt-interact-prompt` with no bottom of its own over
-  Jump, its right edge 8 px left of the disc, 150 px at most (a long name
-  wraps). On 320 and 360 px phones it then covers part of the left stick's
-  resting circle (a picture: the stick starts anywhere in its half).
-  Sideways and on a computer nothing changes.
-- **Known corner**: in a fight AT a door on a 320 px phone, the raised Enter
-  button and Block (stood up beside Jump there) overlap. Nowhere else does a
+  puts `data-jump-clear` on the page with where a prompt may stand: over
+  Jump's top (`--bt-jump-clear`: its top and 12 px, 8 of air and the 3 its
+  pulse swells by), between the move stick and the disc with 8 px of air to
+  each (`--bt-prompt-cx`, `--bt-prompt-w`, 150 px at most). game.css stands
+  every `.bt-interact-prompt` with no bottom of its own there (the Enter
+  button; the Workshop's, the bed's and a harvest's name their own place and
+  keep it). A long name wraps. On a 320 px phone the room is ~90 px, and the
+  button draws small, without its picture (`data-jump-clear="narrow"`).
+  When Jump is not drawn (dead, swimming, `?jumpbtn=0`), sideways, and on a
+  computer, the button is where it always was.
+- **Sideways, Block** stands left of Jump rather than under the disc (the
+  first plan): that keeps the owner's v2.3.2562 rule, Block the disc's
+  diagonal bottom-left, which `mp-abilslot` and `mp-rbutton` hold.
+- **Known corner**: in a fight AT a door on a 320 px phone, the risen Enter
+  button and Block (stood up beside Jump there) overlap: the one room
+  between the stick and the disc holds one of them. Nowhere else does a
   touch area overlap another.
 - **Proof**: `node tools/qa/mp/run.mjs thumbbtn` asserts, at 320, 360, 375, 390 and 430 upright and
   844 sideways, out of a fight at a door and in one with the guard down and
   up: Jump south-west on the ring, every button and the Enter button 8 px
   clear of it, no two touch areas overlapping, Jump on screen above the band,
-  and a touch in Jump's box corners never reaching it. Before and after
+  a touch in Jump's box corners never reaching it, the Enter button 8 px
+  clear of the move stick, the disc, Burst, Sprint, the board and Jump, and
+  back down in its strip when Jump is gone. Before and after
   pictures: `tools/qa/mp/out/thumbbtn-<before|after>-<size>-*.png`.

@@ -1,5 +1,5 @@
 import React from 'react';
-import { jumpAnchor, ctlBottom, discRight, RBTN } from './ShieldButton.jsx';
+import { jumpAnchor, ctlBottom, discRight, RBTN, LBTN } from './ShieldButton.jsx';
 import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
@@ -54,8 +54,9 @@ const GHOST_MS = 700;
 /* v2.3.3799: the doors' button over Jump's top, upright: 8 px of air and
    the 3 px its pulse swells by (promptPulse, scale 1.04) */
 const JUMP_PROMPT_AIR = 12;
-/* ...and its right edge this far left of the disc's */
-const DISC_PROMPT_AIR = 8;
+/* ...8 px clear of the move stick and the disc, and 150 px at most */
+const PROMPT_SIDE_AIR = 8;
+const PROMPT_MAX_W = 150;
 
 /** What the button draws, as plain data (and its re-render key), or null
     when it is not drawn. */
@@ -92,13 +93,14 @@ export function JumpButton(props) {
      Jump went south-west of the disc on its ring (jumpAnchor), into the strip
      just over the band where the doors' "Enter" button (.bt-interact-prompt,
      +24) stands.  While Jump is drawn upright on a touch screen, the page
-     says how high its top is (--bt-jump-clear: its top and the air) and where
-     the disc begins (--bt-disc-clear, from the screen's right), and game.css
-     stands the prompts with no place of their own over Jump, left of the
-     disc.  On a 320 or 360 px phone that is over the resting picture of the
-     left stick (a stick that starts under the thumb anywhere in its half:
-     v2.3.816's floating model).  Sideways, and on a computer (no Jump
-     button), nothing changes. */
+     says where a prompt may stand -- over Jump's top (--bt-jump-clear: its
+     top and the air), between the move stick's right edge and the disc's
+     left, each with 8 px of air: its centre (--bt-prompt-cx) and its widest
+     (--bt-prompt-w, 150 px at most; on a 320 px phone the room is ~90 px,
+     and the prompt draws small, without its picture: data-jump-clear="narrow")
+     -- and game.css stands the prompts with no place of their own there.
+     Jump gone (dead, swimming, ?jumpbtn=0), sideways, or on a computer (no
+     Jump button): the prompt is where it always was. */
   React.useEffect(function () {
     var root = typeof document !== 'undefined' && document.documentElement;
     if (!root) return undefined;
@@ -106,11 +108,23 @@ export function JumpButton(props) {
     var on = !isLandscape && !fine && !!jumpButtonView(stateRef && stateRef.current) && jumpButtonWanted();
     if (!on) { root.removeAttribute('data-jump-clear'); return undefined; }
     var a = jumpAnchor(false);
+    var vw = window.innerWidth || 390;
+    var lo = LBTN.left + LBTN.w + PROMPT_SIDE_AIR;
+    var hi = vw - discRight(false) - RBTN.w - PROMPT_SIDE_AIR;
+    var w = Math.max(0, Math.min(PROMPT_MAX_W, hi - lo));
+    var cx = Math.max(lo + w / 2, Math.min(vw / 2 - 10, hi - w / 2));
     root.style.setProperty('--bt-jump-clear', (a.bottomPx + a.size + JUMP_PROMPT_AIR) + 'px');
-    root.style.setProperty('--bt-disc-clear', (discRight(false) + RBTN.w + DISC_PROMPT_AIR) + 'px');
-    root.setAttribute('data-jump-clear', '1');
+    root.style.setProperty('--bt-prompt-cx', Math.round(cx) + 'px');
+    root.style.setProperty('--bt-prompt-w', Math.floor(w) + 'px');
+    root.setAttribute('data-jump-clear', w < PROMPT_MAX_W ? 'narrow' : '1');
     return function () { root.removeAttribute('data-jump-clear'); };
   });
+  /* ...and read again when the screen changes size, or the address (QA) */
+  React.useEffect(function () {
+    var again = function () { setTick(function (x) { return (x + 1) % 1000000; }); };
+    window.addEventListener('resize', again);
+    return function () { window.removeEventListener('resize', again); };
+  }, []);
 
   /* QA probe (house style: __btSprintBtn): what the button and the jump
      think, which a screenshot cannot say. */
