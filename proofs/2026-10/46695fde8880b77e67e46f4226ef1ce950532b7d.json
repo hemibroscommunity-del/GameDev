@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "46695fde8880b77e67e46f4226ef1ce950532b7d",
+  "tree": "fa2dde5f6fdb485e4234b7bed05432864b37b035",
+  "committedAt": "2026-10-28T18:14:47-07:00",
+  "subject": "Hair, hats, beards, glasses and eye styles kept once, coloured on the graphics chip (v2.3.3753) (#1230)",
+  "files": 7092,
+  "bytes": 815367080,
+  "listingSha256": "5941a690a94744ed4eaecad2d6032d9189a31b47a35e58ac025ae03034a28b06",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
