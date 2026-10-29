@@ -177,7 +177,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ════════ TOWN: A GREEN SLIME AND A TINTED ONE, SIDE BY SIDE ════════
      The second thrower is the Poison Forest's mire wisp, a TINTED slime: its
      colour is the same everywhere.  A blue slime's blue is a recolour built for
-     the Verdant Wilds, where it lives (below) -- in town its body would draw the
+     the Earth Forest, where it lives (below) -- in town its body would draw the
      fallback, and so, by the same rule, would its ball. */
   const me = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
   const T = { x: me.x - 30, y: me.y + 70 };
@@ -268,7 +268,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      its distance. */
 
   /* ════════ VERDANT WILDS: BLUE BY DEFAULT, AND A GREEN ONE ════════ */
-  const vd = await H.warpToZone(P, { wsPort, label: 'Verdant Wilds', zoneId: 'verdant' });
+  const vd = await H.warpToZone(P, { wsPort, label: 'Earth Forest', zoneId: 'verdant' });
   await H.devOp(wsPort, 'vitals', pid, { heal: true, god: true, godMinutes: 15 }).catch(() => null);
   const arrived = await probe(P);
   rec.ok('zone change: nothing from the Flame Fields followed us (none of its balls, no marks)', vd.ok !== false && arrived && !arrived.shots.some((x) => /ember/.test(String(x.ownerId)) || x.style === 'fire') && arrived.marks.length === 0, arrived && { shots: arrived.shots, marks: arrived.marks.length });

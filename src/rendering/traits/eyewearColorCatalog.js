@@ -56,6 +56,7 @@ import { HAT_COLOR_CATALOG } from './hatColorCatalog.js';
 import { recolorEnabled } from './recolorOptions.js';
 import { segmentMaterials, mainMaterial } from './traitMaterials.js';
 import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
+import { headLookTextures } from './headLook.js';   /* v2.3.3753: drawn from the shared numbers */
 
 /* ONE palette, shared with hats on purpose.  A second copy of the same twelve
    swatches would drift the first time either is retuned, and "the blue on my
@@ -237,6 +238,9 @@ export function getColoredEyewearTextures(id, colorId) {
      saved appearance naming either falls back cleanly rather than showing
      something the picker no longer offers (the v2.3.1927 hat precedent). */
   if (!eyewearColorTarget(colorId, id)) return null;
+  /* v2.3.3753: from the shared numbers when they can draw it (headLook.js) */
+  const look = headLookTextures('eyewear', id, eyewearColorTarget(colorId, id));
+  if (look) return look;
   const key = id + '/' + colorId;
   const e = _cache[key];
   if (e === undefined) { build(id, colorId); return null; }

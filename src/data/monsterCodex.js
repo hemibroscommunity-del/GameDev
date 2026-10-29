@@ -220,7 +220,7 @@ export const CODEX_ENTRIES = Object.freeze({
       tip: 'Land the killing blow and walk away while it swells. It cannot follow you.',
     }),
     story: [
-      'Every morning the Verdant Wilds are covered in dew, and every morning a little of it does not dry. It gathers in the hollows of the leaves, rolls together, and by midday it is big enough to have opinions.',
+      'Every morning the Earth Forest is covered in dew, and every morning a little of it does not dry. It gathers in the hollows of the leaves, rolls together, and by midday it is big enough to have opinions.',
       'Its opinion of you is low. A blue slime has nothing inside it but water and grudges, and when it pops it makes very sure you are close enough to share both.',
       'The dew that never dries at all rolls downhill into the Goo Grotto, a cave off the West Road, and has been pooling there longer than anyone has had a reason to go in. You have one now.',
     ],

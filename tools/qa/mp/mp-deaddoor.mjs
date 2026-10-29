@@ -57,7 +57,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
   });
   if (!marks.townOut || !marks.spoke) {
-    rec.skip('the dead depth door is not advertised in Verdant Wilds', 'no exit tables');
+    rec.skip('the dead depth door is not advertised in Earth Forest', 'no exit tables');
     await P.ctx.close().catch(() => {});
     return;
   }
@@ -67,17 +67,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(800);
   await stand(P, marks.spoke.tx * TILE + 16, marks.spoke.ty * TILE + 16);
   await H.waitFor(P, (S) => S.currentZone, (z) => z === 'verdant',
-    { timeout: 30000, label: 'Verdant Wilds' }).catch(() => {});
+    { timeout: 30000, label: 'Earth Forest' }).catch(() => {});
   await P.page.waitForTimeout(2600);
 
   const zone = await H.readState(P, (S) => S.currentZone);
   if (zone !== 'verdant') {
-    rec.skip('the dead depth door is not advertised in Verdant Wilds',
+    rec.skip('the dead depth door is not advertised in Earth Forest',
       `never reached the zone (stuck in ${zone})`);
     await P.ctx.close().catch(() => {});
     return;
   }
-  rec.ok('we are standing in Verdant Wilds (guard)', zone === 'verdant', { zone });
+  rec.ok('we are standing in Earth Forest (guard)', zone === 'verdant', { zone });
 
   const look = await P.page.evaluate(() => {
     const S = window._gameState.current;

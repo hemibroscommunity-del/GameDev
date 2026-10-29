@@ -267,7 +267,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const ve = spot('verdant', IN_LAND);
     await travel(P, wsPort, myId, ve.x, ve.y);
     const v = await waitMusic(P, (x) => x.playing === 'verdant' && x.source, 15000);
-    rec.ok(`the Verdant Wilds: forest.mp3, the owner's Forest Loop (${v.v && v.v.url})`, v.ms !== null && /forest\.mp3\?v=2\.3\.3610/.test((v.v && v.v.url) || ''), v.v);
+    rec.ok(`the Earth Forest: forest.mp3, the owner's Forest Loop (${v.v && v.v.url})`, v.ms !== null && /forest\.mp3\?v=2\.3\.3610/.test((v.v && v.v.url) || ''), v.v);
 
     /* ── 7. a death out there: the Flame Fields' goblins, as mp-wheelhome ── */
     await travel(P, wsPort, myId, spot('verdant', COMMONS).x, spot('verdant', COMMONS).y);
