@@ -1345,6 +1345,10 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
       const rect = e.currentTarget.getBoundingClientRect();
       anchor = { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height };
     } catch (_e) {}
+    /* v2.3.3849: a live trade takes a WEAPON tile too, into the weapon lane
+       (tradeBagBus.tapWeapon), as it takes an item tile into the offer.
+       Armour and shields have no trade lane: their cards open as before. */
+    if (kind === 'stashWeapon' && tradeBagBus.open && tradeBagBus.tapWeapon(index, obj)) return;
     if (kind === 'stashShield') {
       itemDetailBus.open({ kind: 'stashShield', shield: obj, index, anchor });
     } else if (kind === 'stashArmor') {

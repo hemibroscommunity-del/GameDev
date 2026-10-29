@@ -154,3 +154,20 @@ are opaque blobs at REST in the stage, so they use **escrow-at-stage**
   it holds escrowed value (rule 11).
 - The atomicity argument: both debits run synchronously inside one
   input-gated event BEFORE any credit; credits are opId-idempotent.
+
+## Staging from the bag (the client)
+
+- While a trade window is live, the bag is the item source (`tradeBagBus`,
+  v2.3.2149): a click or tap on an item tile adds one to your offer
+  (`trade2_set`).
+- v2.3.3849: a click or tap on a **weapon** tile in the bag stages that weapon
+  into the weapon lane, with the same `trade2_stage_weapon` the lane's own chips
+  send (`tradeBagBus.tapWeapon`). Before, a weapon tile ignored the trade and
+  opened the weapon's card, so on a computer (the owner, with an older
+  character) clicking your gear seemed to do nothing for the trade. With no
+  weapon lane on the worker (`caps.trade2Weapons` absent) the tile opens its
+  card as before.
+- Armour and shields have no trade lane: their tiles open their cards.
+- `mp-desktrade` plays it on two computers (the sideways layout): an item click
+  stages one, a second click a second, and a weapon click stages the weapon
+  (it leaves the bag and the other trader sees it).
