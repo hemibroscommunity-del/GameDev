@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d41bfa735cac3cfb9e712dd4d6d43b1c19f0446f",
+  "tree": "b78b5ecbef8140f473aafe1dfca67d5417bab183",
+  "committedAt": "2026-10-29T12:23:38-07:00",
+  "subject": "Merge pull request #1341 from hemibroscommunity-del/claude/nml-quiet",
+  "files": 7316,
+  "bytes": 841244357,
+  "listingSha256": "1b3e68de7e4cfe844b58142f444d63c347e41f177934f790c571618941c05c13",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
