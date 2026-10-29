@@ -9,10 +9,13 @@
  *
  *   1. no party row (an older worker, `partydungeon: false`): the hand-in is
  *      one tap (v2.3.3591; the satire pass's six until then)
- *   2. the row: a sentence more at the end of that tap, its level and party
- *      the worker's own (v2.3.3591; a tap of its own until then)
+ *   2. the row: v2.3.3869, the hand-in says NOTHING more (the owner, the
+ *      morning of the showing: "remove mayor bro reference to 'the goo grotto
+ *      is for level 10 and up...' ... Just remove that sentence"); the aside
+ *      itself is kept, unused, its level and party the worker's own
  *   3. the row is the worker's (WHEEL_DUNGEON.PARTY), and a bad row says nothing
- *   4. the wiring: wsClient sets it from caps.partydungeon
+ *   4. the wiring: wsClient sets it from caps.partydungeon; the hand-in no
+ *      longer asks for it
  */
 import { readFileSync } from 'node:fs';
 import { QUEST_CHAINS, setGrottoParty, grottoPartyAside } from '../../src/data/gameSystems.js';
@@ -45,9 +48,9 @@ setGrottoParty(WHEEL_DUNGEON_PARTY.verdant);
 const said = chunks(tut1.dialogue.complete);
 const aside = grottoPartyAside();
 check('2a. with the party Grotto the hand-in is still one tap', said.length === 1, said.length);
-/* v2.3.3611: the zingers back -- who to see first is "Blacksmith Bro and
-   Diego have work for you." now */
-check('2b. ...the Grotto\'s sentence ends it, after who to see first', said[0] === plain[0] + aside && /Diego[^.]*\. The Goo Grotto/.test(said[0]), said[0]);
+/* v2.3.3869: the owner: "Just remove that sentence" -- the hand-in is the
+   same line with the party Grotto or without it, and never names it */
+check('2b. ...and it is the plain line: the Grotto is not named (v2.3.3869)', said[0] === plain[0] && !/Grotto/.test(said[0]), said[0]);
 /* v2.3.3608: the level it is FOR (WHEEL_DUNGEON_REC, the owner's "recommended
    level ... lvl 10"), "level 10 and up" -- its monsters stay the worker's 16 */
 check('2c. ...it names the Goo Grotto and the level it is for, 10 and up (its monsters stay the worker\'s 16)',
@@ -78,8 +81,9 @@ const ws = read('../../src/networking/wsClient.js');
 check('4a. wsClient sets it from caps.partydungeon (true only), the Grotto\'s row',
   /setGrottoParty\(S\._serverCaps && S\._serverCaps\.partydungeon === true \? WHEEL_DUNGEON_PARTY\.verdant : null\)/.test(ws));
 const gs = read('../../src/data/gameSystems.js');
-/* v2.3.3611: its line is whatever the Mayor says now; the shape is the check */
-check('4b. tut_1\'s hand-in is a getter that asks grottoPartyAside()', /get complete\(\) \{ return "[^"\n]+"\s*\+ grottoPartyAside\(\); \}/.test(gs));
+/* v2.3.3869: the hand-in is a plain line again, and nothing asks for the aside */
+check('4b. tut_1\'s hand-in is a plain line that never asks grottoPartyAside() (v2.3.3869)',
+  !/get complete\(\) \{/.test(gs) && !/\+ grottoPartyAside\(\)/.test(gs) && typeof Object.getOwnPropertyDescriptor(tut1.dialogue, 'complete').value === 'string');
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }
 console.log('\nmayor-grotto: all checks passed');

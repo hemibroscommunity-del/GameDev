@@ -7,7 +7,7 @@ import { notePileShine } from '@/game/dropLines.js';   /* v2.3.3746: a pile's sh
 import { coinPileTexture } from '../coinPileArt.js';   /* v2.3.3734: the owner's coin piles, one an amount */
 import { SMITH_STRIKE_MS, SMITH_STRIKE_FRAME, SMITH_ANVIL_DX, SMITH_ANVIL_DY, SMITH_FIRE_DX, SMITH_SCALE } from '@/game/smithing.js';   /* v2.3.2827 */
 import { BT_AUDIO } from '@/data/gameDisplay.js';   /* v2.3.2827: the smith's clink (window.BT_AUDIO is never assigned) */
-import { peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard */
+import { peerShare, cue } from '@/game/eventSounds.js';   /* v2.3.3343: another player's axe, heard; v2.3.3874: + cue, the smith's hammer */
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
@@ -12973,7 +12973,12 @@ export class EffectsRenderer {
          level (the loudest 50 ms 0.037 against 0.034).  The town anvil's
          ring (mine-strike from 0.58, pitched up) keeps that dull body (42%)
          under its click, so it was not used (docs/specs/blacksmith-2026-10-19.md). */
-      try { BT_AUDIO.play('sword-hit2', { offset: 0, duration: 0.25, vol: 0.22, rate: 1.2 + (Math.random() - 0.5) * 0.06 }); } catch (e) { /* sound only */ }
+      /* v2.3.3874: ...and not the sword's hit either: the owner heard it as
+         "the fleshy sound for hurting monsters" and asked for "the same
+         tinkering sound ... as the blacksmith has playing automatically" --
+         the town anvil's hammer (the owner's forge-strike), one blow a swing
+         (eventSounds.js smithStrike) */
+      cue('smithStrike');
       if (typeof window !== 'undefined' && window.__btProbe) window.__btSmithStrikes = (window.__btSmithStrikes || 0) + 1;
     }
   }
