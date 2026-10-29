@@ -101,7 +101,7 @@ export function askRewards() { return send('rewards_get', {}); }
 
 const LAND_NAMES = Object.freeze({
   frost: 'Frost Ridge', ember: 'Flame Fields', sky: 'Wind Dunes', hollows: 'Stone Hollows',
-  thunder: 'Electric Foundry', tidal: 'Water Caves', mist: 'Poison Forest', verdant: 'Verdant Wilds',
+  thunder: 'Electric Foundry', tidal: 'Water Caves', mist: 'Poison Forest', verdant: 'Earth Forest' /* v2.3.3778 */,
 });
 export function landName(id) {
   if (typeof id !== 'string') return '';

@@ -13,6 +13,7 @@ import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606 */
 import { recolorHairToCanvas } from '../characterPortrait.js';
 import { recolorEnabled } from './recolorOptions.js';
 import { loadTraitImg } from './traitImg.js';   /* v2.3.3689: a stalled picture is asked for again */
+import { headLookTextures, headLookReady } from './headLook.js';   /* v2.3.3753: drawn from the shared numbers */
 
 export const FACIALHAIR_COLOR_CATALOG = [
   { id: 'default', name: 'Default', swatch: '#5a3a22', target: null },
@@ -123,15 +124,21 @@ function build(fhId, colorId) {
 /** v2.3.3520: settles once (fhId, colorId)'s recolour is made (at once when
  *  there is none to make, or it is made) -- the loading screen waits for it. */
 export function coloredFacialHairReady(fhId, colorId) {
-  getColoredFacialHairTextures(fhId, colorId);
-  const p = _building[fhId + '/' + colorId];
-  return p ? p.catch(() => {}) : Promise.resolve();
+  /* v2.3.3753: the numbers first, so yours is drawn from them, not copied */
+  return headLookReady().then(() => {
+    getColoredFacialHairTextures(fhId, colorId);
+    const p = _building[fhId + '/' + colorId];
+    return p ? p.catch(() => {}) : undefined;
+  });
 }
 
 /** Recolored beard texture map for (fhId, colorId), or null for the default
  *  color / while baking (caller falls back to the native-color textures). */
 export function getColoredFacialHairTextures(fhId, colorId) {
   if (!fhId || fhId === 'none' || !colorId || colorId === 'default' || !facialHairColorTarget(colorId)) return null;
+  /* v2.3.3753: from the shared numbers when they can draw it (headLook.js) */
+  const look = headLookTextures('facialhair', fhId, facialHairColorTarget(colorId));
+  if (look) return look;
   const key = fhId + '/' + colorId;
   const e = _cache[key];
   if (e === undefined) { build(fhId, colorId); return null; }

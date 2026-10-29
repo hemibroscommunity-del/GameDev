@@ -45,7 +45,7 @@ const shootAt = (P, arch, special, hp) => P.page.evaluate((a) => {
   /* Built as a base ARCHETYPE and then re-keyed, which is what the game itself
      does: applyZoneVariant overwrites BOTH m.type and m.archetype with the
      variant key (projectiles.js's own v2.3.1534 note records that, and records
-     it as the reason a Verdant Wilds slime used to miss the anchor table).
+     it as the reason an Earth Forest slime used to miss the anchor table).
      createMonster only knows archetypes -- 'mummy' and 'skeleton' are variants
      -- so building one directly would have made a monster the renderer and the
      tables disagree about. */

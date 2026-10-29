@@ -6680,9 +6680,9 @@ export const QUEST_CHAINS = {
        other showpiece, are the tour's finale (tut_2).  The whole tour is
        written out at the server's copy (server/src/data.js QUEST_REWARDS
        tut_1's header) and in docs/specs/demo-quest-line.md. */
-    zone: 'verdant',   /* Verdant Wilds */
+    zone: 'verdant',   /* the Earth Forest (v2.3.3778: was the Verdant Wilds) */
     id: 'tut_1', npc: 'Mayor Bro', title: 'Into the Blue',
-    desc: 'Bring 4 Slime Remains from the Verdant Wilds.',
+    desc: 'Bring 4 Slime Remains from the Earth Forest.',
     check: function (rpg) { return ((rpg.inventory || {})['slime-remnants'] || 0) >= 4; },
     /* v2.3.3481: the 2026-10-19 UI review -- what `check` counts, written as
        data, so the quest log, the quest's page and the pinned card can say how
@@ -6778,8 +6778,8 @@ export const QUEST_CHAINS = {
          trash talk, the Beastmaster's danger zone behind the bakery -- and the
          job in the same tap, its counts, places and hand-overs as before
          (quest-lines §5 checks every count is still said). */
-      start: "Welcome to BroTown! I'm Mayor Bro, four elections in a row, and I'd like to thank the voters. Both of them. This sword and shield came out of the school budget. Go clear the blue slimes out of the Verdant Wilds and bring me 4 Slime Remains.",
-      progress: "4 Slime Remains from the blue slimes in the Verdant Wilds, bro. The insurance company wants proof the slimes are real, and apparently my drawing of one is \"not legal proof.\"",
+      start: "Welcome to BroTown! I'm Mayor Bro, four elections in a row, and I'd like to thank the voters. Both of them. This sword and shield came out of the school budget. Go clear the blue slimes out of the Earth Forest and bring me 4 Slime Remains.",
+      progress: "4 Slime Remains from the blue slimes in the Earth Forest, bro. The insurance company wants proof the slimes are real, and apparently my drawing of one is \"not legal proof.\"",
       /* v2.3.2237 (owner: "add something clever from mayor bro after
          finishing the quest ... watch out they explode ... then him
          acknowledging his advice was too late").  The chunks split on a
@@ -7516,8 +7516,8 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Last bit of paperwork: clear a dungeon. It's in the budget as \"road repair,\" so if anyone asks, you're fixing a road. The Goo Grotto is off the West Road in the Verdant Wilds: three waves of slimes, then a big one that splits when you hit it.",
-      progress: "Clear a dungeon, bro. The Goo Grotto is off the West Road in the Verdant Wilds. And if anyone asks, it's road repair.",
+      start: "Last bit of paperwork: clear a dungeon. It's in the budget as \"road repair,\" so if anyone asks, you're fixing a road. The Goo Grotto is off the West Road in the Earth Forest: three waves of slimes, then a big one that splits when you hit it.",
+      progress: "Clear a dungeon, bro. The Goo Grotto is off the West Road in the Earth Forest. And if anyone asks, it's road repair.",
       /* v2.3.3570: reworded at the owner's ask, as mayor_2's: no life-skill cap exists to lift at Lv50 */
       complete: "Dungeon cleared, and you're covered in it, which I'll accept as proof. That's the end of my list, and the deeper lands are open. Go get rich, and remember your mayor was right there with you. In spirit. From the office. With the door locked.",
     }

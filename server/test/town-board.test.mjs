@@ -15,6 +15,16 @@
  *      their own heading; every tile its own picture, a new one 256 colours
  *      at most; a land's name is never spelt here but read from the world's
  *      plan (lane K's rename lands in plan.js alone).
+ *      v2.3.3788, the owner: "'Gambling' should be another category ... list
+ *      the level ranges below the dungeons (e.g lvl 10+ for goo grotto) ...
+ *      (quests should've be another one)" -- a Quests heading first (the
+ *      Mayor's story, the townsfolk's, the guild ladders, Lil Bro's race),
+ *      a Gambling heading after Money and trade, and each dungeon's level
+ *      line from the dungeon tables; the quests' numbers are the worker's.
+ *      v2.3.3801, the owner's review (ChatGPT's, adopted): the headings'
+ *      names and order, a line under every tile (its numbers the code's), the
+ *      Skateboard, Lil Bro's race in Town Life, the Bank's vault words, and
+ *      one action button on a page with no place.
  *   2. The pins (src/game/mapPins.js): a press puts a pin on a place, moving
  *      it from wherever it was; the same press there lifts it; red and blue
  *      at once (even on one place); kept per character, read back after a
@@ -34,6 +44,12 @@ const P = await import('../../src/game/mapPins.js');
 const D = await import('../../src/data/wheelBuildingDoors.js');
 const L = await import('../../src/data/wheelLands.js');
 const W = await import('../../src/data/wheelDungeons.js');
+const SD = await import('../src/data.js');
+const { ARENA } = await import('../src/gladiator.js');
+const { ACE_FLIP } = await import('../src/gamble.js');
+const { FARM_CROP_IDS } = await import('../src/farm.js');
+const { RIDE_MULT } = await import('../../src/game/ride.js');
+const { SKATEBOARD_ART } = await import('../../src/data/skateboardArt.js');
 const { PLAN } = await import('../../public/tools/world/plan.js');
 const { inflateSync } = await import('node:zlib');
 const { readFileSync } = await import('node:fs');
@@ -55,7 +71,7 @@ const { readFileSync } = await import('node:fs');
     const keys = Object.keys(a);
     if (keys.length !== 1) return true;
     if (a.door) return !plots.has(a.door);
-    if (a.npc) return !folk.has(a.npc);
+    if (a.npc) return !folk.has(a.npc) && !Object.prototype.hasOwnProperty.call(D.WHEEL_KEEPERS, a.npc);   /* v2.3.3788: + Mayor Bro, at the hall he keeps */
     if (a.mouth) return !W.WHEEL_DUNGEON_HOMES.includes(a.mouth);
     if (a.land) return !L.WHEEL_LANDS.includes(a.land);
     return true;
@@ -72,8 +88,8 @@ const { readFileSync } = await import('node:fs');
       && !B.boardPinnable('nomansland') && B.boardPinnable('arena') && !/\d/.test(B.boardEntry('nomansland').page.join(' ')));
   /* ── v2.3.3779 ── */
   const dungeons = B.BOARD.filter((e) => e.group === 'dungeons').map((e) => e.id).sort().join();
-  check('1k the four dungeons have their own heading, Dungeons, after Fight; Fight keeps the Arena, No man\'s land and Duels',
-    dungeons === 'buried-city,foundry-dome,goo-grotto,great-cave' && B.GROUPS.map((g) => g.id).join() === 'fight,dungeons,lands,make,money,people'
+  check('1k the four dungeons have their own heading, Dungeons (v2.3.3801: after the Lands, before Fight); Fight keeps the Arena, No man\'s land and Duels',
+    dungeons === 'buried-city,foundry-dome,goo-grotto,great-cave' && B.GROUPS.map((g) => g.id).join() === 'quests,lands,dungeons,fight,make,money,gambling,people'
       && B.BOARD.filter((e) => e.group === 'fight').map((e) => e.id).join() === 'arena,nomansland,duel', { dungeons, groups: B.GROUPS.map((g) => g.id) });
   const pics = B.BOARD.map((e) => e.icon.split('?')[0]);
   check('1l every tile has its own picture (no two alike)', new Set(pics).size === pics.length, pics.filter((p, i) => pics.indexOf(p) !== i));
@@ -101,6 +117,63 @@ const { readFileSync } = await import('node:fs');
       && B.boardWords('{__proto__} {toString}', names) === '{__proto__} {toString}',
     [B.boardName(verd, names), B.boardName(verd, null)]);
   check('1q every land\'s tile is its scene (the owner\'s pick 1b), drawn wide', B.BOARD.filter((e) => e.group === 'lands').every((e) => /^\/ui\/banners\/land-/.test(e.icon) && e.iconAspect === 2));
+  /* ── v2.3.3788 ── */
+  const inGroup = (g) => B.BOARD.filter((e) => e.group === g).map((e) => e.id).join();
+  check('1r Quests first (the Mayor\'s story, the townsfolk\'s, the Guild Hall); Gambling (the Den, Ace) after Trade & Bank; Town Life the Saloon, Post Office, Hotel, Lil Bro\'s race (v2.3.3801) and the Skateboard',
+    inGroup('quests') === 'mayor,townquests,guildhall' && inGroup('gambling') === 'gambling,ace' && inGroup('money') === 'store,diego,auction,bank' && inGroup('people') === 'saloon,post,hotel,race,skate',
+    { quests: inGroup('quests'), gambling: inGroup('gambling'), money: inGroup('money'), people: inGroup('people') });
+  check('1s the Mayor\'s story pins on Mayor Bro; the townsfolk\'s quests (six people) have no pins',
+    B.boardPinnable('mayor') && B.boardEntry('mayor').at.npc === 'Mayor Bro' && !B.boardPinnable('townquests') && B.boardEntry('townquests').at === null);
+  /* the quests' numbers are the worker's (server/src/data.js) */
+  const R = SD.QUEST_REWARDS, live = (k) => R[k] && !SD.QUEST_DORMANT.includes(k) && !SD.QUEST_RETIRED.includes(k);
+  /* his line: tut_1, then (after the tour's first steps) tut_2 to tut_4 by
+     `next`, then mayor_2 on (data.js QUEST_RETIRED's note) */
+  const chain = ['tut_1']; for (let k = 'tut_2'; k; k = R[k].next) chain.push(k);
+  for (let n = 2; live('mayor_' + n); n++) chain.push('mayor_' + n);
+  const mayorGold = chain.filter(live).reduce((t, k) => t + R[k].gold, 0);
+  const mayorPage = B.boardEntry('mayor').page.join(' ');
+  const folkQ = Object.keys(R).filter((k) => live(k) && /^(smith|wood|farm|beast|fish|race)_\d$/.test(k));
+  const folkPage = B.boardEntry('townquests').page.join(' ');
+  const guildPage = B.boardEntry('guildhall').page.join(' ');
+  const lv = SD.GUILD_QUESTS.map((q) => q.checkLvl);
+  check('1t the quests\' numbers are the worker\'s: the Mayor\'s six and their gold, the townsfolk\'s twelve, the guild ladder\'s levels and gold',
+    chain.filter(live).length === 6 && /six/.test(mayorPage) && mayorPage.includes(mayorGold.toLocaleString('en-US') + ' gold')
+      && folkQ.length === 12 && /Twelve/.test(folkPage)
+      && guildPage.includes(lv.slice(0, -1).join(', ') + ' and ' + lv[lv.length - 1]) && SD.GUILD_QUESTS.length === 8 && /eight/.test(guildPage)
+      && guildPage.includes(SD.GUILD_QUESTS[0].gold + ' at the first') && guildPage.includes(SD.GUILD_QUESTS[7].gold.toLocaleString('en-US') + ' at the last'),
+    { chain, mayorGold, folk: folkQ.length });
+  /* the dungeons' level lines: the party row and the level it is for, else the
+     lowest of the place's levels (the plan's landmark tier) */
+  const lvls = (id) => { const t = PLAN.regions[id].landmark.tier, n = PLAN.wheel.levelsPerTier; return [(t - 1) * n + 1, t * n]; };
+  const line = (id, party) => W.dungeonBoardLine(party ? W.WHEEL_DUNGEON_PARTY[id] || null : null, lvls(id), W.WHEEL_DUNGEON_REC[id] || 0);
+  const lines = { verdant: line('verdant', true), hollows: line('hollows', true), thunder: line('thunder', true), sky: line('sky', true) };
+  check('1u each dungeon\'s level line, from the dungeon tables: Goo Grotto "Lv 10+ · party of 2–3", Great Cave and Foundry Dome "Lv 26+", Buried City "Lv 41+"',
+    lines.verdant === 'Lv 10+ · party of 2–3' && lines.hollows === 'Lv 26+' && lines.thunder === 'Lv 26+' && lines.sky === 'Lv 41+'
+      && line('verdant', false) === 'Lv 1+' && W.dungeonBoardLine(null, null, 0) === null, lines);
+  /* ── v2.3.3801: the owner's review -- headings, a line under every tile, one action on a page with no place ── */
+  check('1v the headings, in the owner\'s order and words: Quests, Explore the Lands, Dungeons, Fight, Craft & Grow, Trade & Bank, Gambling, Town Life',
+    B.GROUPS.map((g) => g.name).join('|') === 'Quests|Explore the Lands|Dungeons|Fight|Craft & Grow|Trade & Bank|Gambling|Town Life');
+  const noSub = B.BOARD.filter((e) => !e.mouth && !B.boardLand(e) && !(typeof e.sub === 'string' && e.sub.length > 0 && e.sub.length <= 26)).map((e) => e.id);
+  check('1w every tile has its one short line (a land\'s and a dungeon\'s made at runtime)', noSub.length === 0, noSub);
+  const sub = (id) => B.boardEntry(id).sub;
+  check('1x the lines\' numbers are the code\'s: the Arena\'s entry, the guilds, the farm\'s crops, Ace\'s odds',
+    sub('arena') === 'Entry: ' + ARENA.ENTRY_FEE + ' gold' && sub('guildhall') === SD.GUILD_SKILLS.length + ' skill guilds'
+      && sub('farm') === 'Grow ' + FARM_CROP_IDS.length + ' crops' && sub('ace') === Math.round(ACE_FLIP.WIN_CHANCE * 100) + '% chance to win',
+    { arena: sub('arena'), guild: sub('guildhall'), farm: sub('farm'), ace: sub('ace') });
+  const want = { verdant: 'West \u00b7 Flora', ember: 'North \u00b7 Fire', frost: 'NW \u00b7 Frost', sky: 'NE \u00b7 Wind', hollows: 'East \u00b7 Stone', thunder: 'SE \u00b7 Storm', tidal: 'South \u00b7 Water', mist: 'SW \u00b7 Venom' };
+  const got = Object.fromEntries(L.WHEEL_LANDS.map((id) => [id, B.landSub(PLAN.regions[id].dir, PLAN.regions[id].element)]));
+  check('1y a land\'s line is its compass and element from the world\'s plan ("West \u00b7 Flora" ... "SW \u00b7 Venom"); the element alone without the map',
+    L.WHEEL_LANDS.every((id) => got[id] === want[id]) && B.landSub(null, B.boardLandElement('verdant')) === 'Flora' && B.landSub(null, null) === null, got);
+  const bank = B.boardEntry('bank');
+  check('1z the Bank says what it is: an overview, or with the worker\'s vault (caps.bank) "Store gold & items" and its own page',
+    bank.sub === 'Gold & gear overview' && bank.ifCap && bank.ifCap.cap === 'bank' && bank.ifCap.sub === 'Store gold & items' && bank.ifCap.page.length >= 1);
+  const sk = B.boardEntry('skate');
+  check('1za the Skateboard: Town Life, with caps.ride, no pin, one "ride" action, its button\'s own picture, and its page true to the board (twice as fast, Z)',
+    sk.group === 'people' && sk.cap === 'ride' && !B.boardPinnable('skate') && sk.action === 'ride'
+      && sk.icon.split('?')[0] === '/sprites/ride/' + SKATEBOARD_ART.views.top.file && RIDE_MULT === 2 && /twice/.test(sk.page.join(' ')) && /\bZ\b/.test(sk.page.join(' ')),
+    sk);
+  check('1zb the pages with no place: Town Quests opens Quests (one action), No man\'s land has none',
+    B.boardEntry('townquests').action === 'quests' && !B.boardEntry('nomansland').action && B.BOARD.filter((e) => e.action).every((e) => !B.boardPinnable(e.id)));
   check('1i the four dungeons, the arena, the forge and the Gambling Den are on the board', ['goo-grotto', 'great-cave', 'foundry-dome', 'buried-city', 'arena', 'forge', 'gambling', 'woodworker'].every((id) => !!B.boardEntry(id)));
 }
 
