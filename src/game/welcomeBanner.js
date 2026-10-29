@@ -108,7 +108,7 @@ export function maybeShowWelcome(getS) {
                "Welcome to Bro Town" in the title would print the word twice,
                and the title line is nowrap-with-ellipsis, so it is also the
                line that cannot afford the extra words. */
-            title: 'Bro Town',
+            title: 'BroTown',
             /* v2.3.2992: the gold is on the map now, the road on the
                ground put away (questTrailStyle.js GROUND_PATH).
                v2.3.3583: and a townsperson talks when tapped, never by

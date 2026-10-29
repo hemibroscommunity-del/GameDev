@@ -48,7 +48,7 @@ export function ClanInviteCard(props) {
           <b style={{ color: '#F4F0E7' }}>{invite.fromName}</b> invites you to join <b style={{ color: '#D8AA58' }}>[{invite.clanTag}] {invite.clanName}</b>.
         </div>
         <div style={{ fontSize: 11, color: '#8D9B98', marginBottom: 12 }}>
-          It lasts two minutes. Your clan is in the Guild Hall in Brotown.
+          It lasts two minutes. Your clan is in the Guild Hall in BroTown.
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="button" data-clan-invite-accept="" onClick={accept}
