@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "98bafdc40096c81c8849f8c3280b757b7afb667c",
+  "tree": "9206379c46c6c8c3f6577bf5da9e146001738b4c",
+  "committedAt": "2026-10-29T04:29:19-07:00",
+  "subject": "Merge pull request #1321 from hemibroscommunity-del/claude/chat-bubble-white",
+  "files": 7269,
+  "bytes": 836068554,
+  "listingSha256": "550fac30c03de07d06a735acd391c963f5056b34aba3030b715575ee01299c23",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
