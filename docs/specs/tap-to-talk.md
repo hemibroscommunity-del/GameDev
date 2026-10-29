@@ -102,7 +102,7 @@ Tests: `mp-mayordoor` (the door's prompt and E, a computer; also the board's
 button in and out of town, and a click on another player beside you in No
 man's land); `mp-questprox` step 6 (both sides, a phone's keyboard).
 
-## v2.3.3868: E does the nearer of the townsperson and the door
+## v2.3.3868: E talks to the townsperson beside you, before a door
 
 The owner, playtesting on a computer: *"One thing that could be confusing is
 that the instructions say 'E' is interact. When you're next to mayor bro
@@ -112,24 +112,28 @@ the door to the building right next to him (town hall)."*
 v2.3.3834 gave E to the door wherever the door's prompt was up, and Mayor Bro
 stands on the Town Hall's steps, so beside him E opened the hall.
 
-- **With a townsperson in talk range (90 px) and a door's prompt up, E does
-  the NEARER of the two** (`talkBeforeDoor` in `src/game/desktopControls.js`;
-  the door measured from your boots to its foot, `wheelDoorDist` in
-  `src/game/wheelTownDoors.js`). Next to the Mayor E talks; on the hall's
-  doorstep it opens the door. A tie goes to the person.
-- **Why the nearer, not "the person always":** the townsfolk's 90 px reaches
-  the doorsteps they stand beside, so "the person always" would leave E unable
-  to open the Town Hall, Diego's, or any door with someone beside it.
-- **The button agrees with the key:** on a computer the door's Enter button
-  shows only while the door is E's pick (BroTown `deskTalkPick`), so it never
-  says "Enter Town Hall" while E talks. A phone's button is unchanged, and a
-  tap (or click) on a person always talks, the owner's standing rule.
+- **A townsperson in talk range (90 px) comes before a door** (`talkBeforeDoor`
+  in `src/game/desktopControls.js`): any townsperson, quest or not. E is the
+  computer's tap, and a tap on a person talks (the owner's standing rule).
+- **The button agrees with the key:** on a computer, while a townsperson is in
+  range, the door's Enter button stands aside (BroTown `deskTalkPick`), so it
+  never says "Enter Town Hall" while E talks (v2.3.3834's judge-pass
+  complaint). A phone's button is unchanged.
+- **The door is still reachable:** a door's reach (140 px, `WHEEL_DOOR_REACH`)
+  is wider than a townsperson's, so every door has doorstep out of everyone's
+  range. A step aside from the Mayor and the Town Hall's button is back, and E
+  opens it.
+- **Why not "the nearer of the two":** tried first. The Mayor stands in the
+  hall's doorway, nearer than the door's foot from anywhere on the doorstep,
+  so the nearer rule came to the same answer by a rule a player cannot see.
 - **No door's prompt:** as before, a townsperson with a quest for you comes
-  first (v2.3.3583), and one without waits behind a bed, a dungeon's mouth or
-  a resource.
+  first (v2.3.3583), and one without waits behind a bed, a dungeon's mouth or a
+  resource.
 
-Test: `mp-mayordoor` step 1: next to the Mayor, inside the Town Hall door's
-reach but nearer him, there is no Enter button and E opens his dialogue, not
-the door. On the doorstep the button is up and E opens the Town Hall. At every
-door with a townsperson beside it, standing at the person shows no button, and
-standing on the doorstep shows the button.
+Test: `mp-mayordoor` step 1:
+- next to the Mayor, inside the Town Hall door's reach: no Enter button, and E
+  opens his dialogue, not the door;
+- at the hall's door out of anyone's range: the button, and E opens the Town
+  Hall;
+- every open door: a spot out of everyone's range shows its button, and beside
+  each townsperson near it there is none.
