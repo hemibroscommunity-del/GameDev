@@ -337,7 +337,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const only = process.env.BT_GHOST_ONLY ? new Set(process.env.BT_GHOST_ONLY.split(',')) : null;
   const want = (f) => !only || only.has(f);
   const outfits = (process.env.BT_GHOST_OUTFITS || 'full,plate,greaves').split(',').filter((o) => OUTFITS[o]);
-  const P = await H.newPlayer(browser, { name: 'Ghostbro', wsPort, webPort, viewport: VIEW, touch: false, dpr: DPR, world: 'wheel', init: LOOK });
+  const P = await H.newPlayer(browser, { name: 'Ghostbro', wsPort, webPort, viewport: VIEW, touch: false, dpr: DPR, world: 'wheel', init: LOOK, ...(process.env.BT_GHOST_QUERY ? { query: process.env.BT_GHOST_QUERY } : {}) });   /* v2.3.3757: BT_GHOST_QUERY=lookpalette=0, the old path for a comparison */
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   let stopAlive = false;
