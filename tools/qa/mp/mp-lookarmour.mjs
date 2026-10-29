@@ -128,6 +128,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       frames > 0 && exactOver === 0 && report.every((x) => !x.notDecided), { frames, exactDrawn, exactOver, wE, shape, colour, wA, wC });
     rec.ok(`no palette row or mask book refused (rows ${la.rows}, books ${la.books}, atlas ${la.atlasMB} MB): rowsFull ${la.rowsFull}, booksFull ${la.booksFull}`,
       la.rowsFull === 0 && la.booksFull === 0, la);
+    /* v2.3.3752: its own switch, live (the Test panel's Memory savers row
+       "Bodies under armour coloured on the chip"): off, the armour's look path
+       answers no (the old masked bake draws); cleared, it is back */
+    {
+      const onOf = () => P.page.evaluate(() => window.__btLookArmour().on);
+      const waitOn = async (want) => { for (let i = 0; i < 40; i++) { if ((await onOf()) === want) return want; await P.page.waitForTimeout(250); } return onOf(); };
+      await H.liveFlag(wsPort, 'off_lookarmour', true);
+      const off = await waitOn(false);
+      await H.liveFlag(wsPort, 'off_lookarmour', null);
+      const on = await waitOn(true);
+      rec.ok(`the Memory savers switch "Bodies under armour coloured on the chip", live: off -> on ${off}; cleared -> on ${on}`, off === false && on === true, { off, on });
+    }
     rec.ok(`no page error (${errs.length})`, errs.length === 0, errs.slice(0, 4));
   } finally {
     await P.ctx.close().catch(() => {});

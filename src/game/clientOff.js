@@ -31,6 +31,8 @@ export const CLIENT_SAVERS = Object.freeze([
   Object.freeze({ id: 'groundlean', words: 'Lean ground builder', live: false }),
   Object.freeze({ id: 'heaplean', words: 'Map leftover let go', live: false }),
   Object.freeze({ id: 'lookpalette', words: 'Characters coloured on the chip', live: true }),
+  /* v2.3.3752: the body under armour, from the colour numbers (lookArmour.js) */
+  Object.freeze({ id: 'lookarmour', words: 'Bodies under armour coloured on the chip', live: true }),
 ]);
 
 const KEY = 'bt_clientoff';

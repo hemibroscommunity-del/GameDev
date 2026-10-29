@@ -101,15 +101,28 @@ All on this box's phone (390 x 844, dpr 3, the QA Chromium, software canvas):
 - **The oracle, `mp-lookarmour`**: 4 looks (green / pink / blue, the ghost audit's;
   alabaster in red with blue eyes; ebony; the art's own) x the full steel, iron,
   copper and black steel sets, the plate alone, the copper greaves alone and a
-  copper plate over iron greaves: every masked stand and jog frame in all eight
-  facings, drawn the old way (the bake over the look's own picture) and the new
-  (numbers + bits + residue), 1:1 through the sharp read. Results in the PR body.
-  The full run uses the page's CPU canvas (`__btLookBakeInline`): on this box a
-  worker's canvas is about 200 times slower than the page's (measured: the same 20
-  reads 780 ms against 4 ms -- the old worker path pays it too), so a sample runs
-  in the worker: a fifth look in full copper and in the mixed pair.
-- Run with lane F's copper belt (#1214) and lane B's flip head (#1223) merged in,
-  so the belt's metal tint is in the oracle's frames.
+  copper plate over iron greaves: every masked stand, jog, hit, roll and mining
+  frame in every facing it has (5,918 frames, 9.3 M pixels), drawn 1:1 through the
+  sharp read. **The verdict**: the new way (numbers + bits + residue) against the
+  masked bake's own picture over the SAME body (the bake run on the page, its
+  picture kept): worst 2 levels of 255, 0 pixels more than 2 apart. The full run
+  uses the page's CPU canvas (`__btLookBakeInline`): on this box a worker's canvas
+  is about 200 times slower than the page's (measured: the same 20 reads 780 ms
+  against 4 ms -- the old worker path pays it too), so a fifth look runs in the
+  worker as a sample (full copper and the mixed pair): worst 0.
+- **What a player sees**, information: the armour drawn over both ways, the old
+  picture against the new. Since P1 (v2.3.3750) the body is drawn in 256 colours
+  within 16 levels of the art, alpha included, and the bake's colour tests run on
+  those colours, so the two differ a little: more than 18 levels on 37 of 500,000
+  pixels a full set (0.007%), and on 0.06-0.2% under the plate alone, the greaves
+  alone or a mixed pair (a few pixels a frame, at a plate's edge). The side-by-side
+  picture (`docs/specs/look-armour/side-by-side.png`: each row the old way and the
+  new with the armour on, then the body alone under each) shows them the same.
+- Lane F's copper belt (#1214) and lane B's flip head (#1223) are in every run
+  (both inside `maskedBake.js`).
+- The ghost audit, sampled (the owner's rule): full iron, every family, five
+  facings (south, north, east, south-west, north-east; the other three are these
+  flipped); the full run follows the merge.
 
 ## Where it is not exact, and why
 
@@ -121,6 +134,33 @@ All on this box's phone (390 x 844, dpr 3, the QA Chromium, software canvas):
   On a CPU canvas the nearest halving takes the top-left pixel of each block, as the
   page's does (look-palette.md "Where it is not exact"): the new path is the one
   that matches the page.
+
+## What it saves (measured, `mp-lookarmour`, texture by texture)
+
+On the graphics chip, one look in one worn set, the old masked pictures (cropped,
+with their mip chains) against the new residues; the bits are a book on top
+(stand + jog + hit + roll + mining: ~400 KB of the mask atlas):
+
+| worn | frames masked | old | new: residues | new: bits |
+|---|---|---|---|---|
+| a full set (the knight figure draws its jog) | 145 | 2.5 MB | 0.5 MB | ~0.4 MB |
+| the plate alone | 290 | 6.8 MB | 0.5 MB | ~0.4 MB |
+| the greaves alone | 290 | 5.7 MB | 1.3 MB | ~0.4 MB |
+| a copper plate over iron greaves | 290 | 5.2 MB | 2.2 MB | ~0.4 MB |
+
+So ~1.6 MB saved a look for a full set, ~5.9 MB for the plate alone, ~4 MB for
+the greaves alone, ~2.6 MB for a mixed pair -- for you, for every armoured player
+on your screen, and the sets one equip away are no longer baked ahead at all (up to
+three more families of old pictures for you). The memory check's phone wears no
+armour: its lines do not move.
+
+### Next (not in this change)
+
+The residue is the costly part: a frame's texels that are not the body's own (the
+chain belt, the steel fill, a plate's soft edge eating the body partly) are kept as
+a picture of their bounding box, mostly empty. As colour numbers on the masked
+look's row, or packed tighter (the soft edge as a coverage in the book), it would
+shrink by about four.
 
 ## What it costs
 

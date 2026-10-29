@@ -38,6 +38,7 @@
 import { Texture, Rectangle, BufferImageSource, ImageSource, glUploadBufferImageResource } from 'pixi.js';
 import { lookPaletteWanted, lookPaletteOn, lookSetSheets, lookSheetBytes, lookSheetOf, setLookSheetBook, setLookMaskSource, MASK_W } from './lookPalette.js';
 import { takePaletteRow, givePaletteRow, paletteRowWrite } from './paletteTex.js';
+import { clientOff } from '../game/clientOff.js';   /* the Test panel's live off switch */
 
 const MAX_ROWS = 1024;            /* the atlas at most: 2 MB (MASK_W x 1024 bytes) */
 const GROW = 128;                 /* it grows by this many rows */
@@ -46,8 +47,14 @@ const SWEEP_MS = 5000;
 const _stats = { looks: 0, looksMade: 0, looksFreed: 0, books: 0, booksFull: 0, rowsFull: 0, atlasRows: 0,
   framesAsked: 0, framesDone: 0, framesFailed: 0, residues: 0, residueBytes: 0, keep: 0, near: 0, clear: 0, other: 0, maxNear: 0 };
 
-/** Armour drawn from the numbers: the look palette on (`?lookpalette=0`: not). */
-export function lookArmourOn() { return lookPaletteWanted() && lookPaletteOn(); }
+/* v2.3.3752: its own off switches (M3, so the owner can turn armour alone off
+   at the showing and keep the rest of the palette): `?lookarmour=0` for one
+   phone, and the Test panel's "Bodies under armour coloured on the chip" for
+   every phone, live (clientOff.js) -- then every armoured figure is the old
+   masked bake again, from the next frame */
+const _armourWanted = (() => { try { return !/(^|[?&])lookarmour=0(&|$)/.test(window.location.search || ''); } catch (e) { return true; } })();
+/** Armour drawn from the numbers: the look palette on, and its own switches (`?lookarmour=0`, clientOff). */
+export function lookArmourOn() { return _armourWanted && lookPaletteWanted() && lookPaletteOn() && !clientOff('lookarmour'); }
 
 /* ═══ THE BOOKS' LAYOUT ═══
    A pose's book holds every sheet of that pose of the body set, in the body
