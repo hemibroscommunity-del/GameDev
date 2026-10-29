@@ -131,17 +131,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
     outGone && !!out && out.flames === 0 && !out.visible, out);
 
   /* ── 4. another player burning, on your screen ── */
+  /* the other player in sight again first (the waits above are minutes on
+     this box), and the burn held on whatever record the screen keeps for
+     them: a snapshot may make it afresh, and the test holds the burn, not
+     the record (the worker's real burn refreshes it the same way) */
+  await H.waitMutualSight(A, B);
   const bUntil = await burn(A, bId, 5000);
   await until0(A, bId, 120000);
-  const peerLit = await waitPage(A, (id) => { const f = (window.__btPeerFires || {})[id]; return !!(f && f.visible && f.flames >= 3); }, bId, 60000);
+  const peerLit = await waitPage(A, (id) => {
+    const S = window._gameState.current, o = S && S.others ? S.others[id] : null;
+    if (o && !(o._burnUntil > Date.now() + 2000)) o._burnUntil = Date.now() + 120000;
+    const f = (window.__btPeerFires || {})[id]; return !!(f && f.visible && f.flames >= 3);
+  }, bId, 90000);
   const peer = await A.page.evaluate((id) => (window.__btPeerFires || {})[id] || null, bId);
+  const seen = await A.page.evaluate((id) => {
+    const S = window._gameState.current, o = S && S.others ? S.others[id] : null;
+    return { there: !!o, zone: o ? (o.zone || o.z || null) : null, mine: S.currentZone, dead: !!(o && o._isDead),
+      notDrawn: !!(S._peersNotDrawn && S._peersNotDrawn.has(id)), burnLeft: o && o._burnUntil ? o._burnUntil - Date.now() : 0 };
+  }, bId);
   const spr2 = await fireSprites(A);
   await shot(A, '3-peer');
-  rec.ok(`${bId} burning on your screen: their own fire (${peer ? peer.flames : 0} flames)`, bUntil > 0 && peerLit && !!peer && peer.visible && peer.flames >= 3, { peerLit, peer });
+  rec.ok(`${bId} burning on your screen: their own fire (${peer ? peer.flames : 0} flames)`, bUntil > 0 && peerLit && !!peer && peer.visible && peer.flames >= 3, { bUntil, peerLit, peer, seen });
   rec.ok(`...from the campfire's atlas too (${spr2.fires} fires drawn, pictures ${spr2.uids.join(',')})`,
     spr2.fires >= 1 && spr2.uids.length === 1 && spr2.uids[0] === spr2.atlas, spr2);
   await until0(A, bId, 0);
-  const let0 = await waitPage(A, () => Object.keys(window.__btPeerFires || {}).length === 0, null, 180000);
+  const let0 = await waitPage(A, (id) => {
+    const S = window._gameState.current, o = S && S.others ? S.others[id] : null;
+    if (o && o._burnUntil > Date.now()) o._burnUntil = 0;
+    return Object.keys(window.__btPeerFires || {}).length === 0;
+  }, bId, 180000);
   const kept = await A.page.evaluate(() => Object.keys(window.__btPeerFires || {}).length);
   rec.ok(`...and let go once it has died down (${kept} kept)`, let0 && kept === 0, kept);
 
