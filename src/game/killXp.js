@@ -79,3 +79,41 @@ export function killXpOnGain(S, bar, now) {
   S._killXpFlewAt = bar.at;
   return { x: w.x, y: w.y, monsterId: w.monsterId, cat: bar.cat, gain: bar.gain };
 }
+
+/* ═══ THE BAR'S "+N" IS HELD ONLY WHILE A KILL'S LABEL IS REALLY IN THE AIR ═══
+ * The bar's own "+N" is hidden while a kill's label flies to it (game.css
+ * html[data-xp-inbound]).  Each flight holds it with a token, given back once:
+ * on the landing, on the label's unmount, or -- if the label never mounted
+ * (the tab hidden as a burn finished a monster, its entry pruned on the first
+ * frame back before it was drawn) -- by the token's own failsafe timer, the
+ * flight plus a margin.  Without that the hold outlived its label and the
+ * bar's "+N" was gone for the rest of the visit (the orchestrator's review of
+ * #1347; xpLanding.js's HOLD_MAX_MS is the same guard for the card).
+ *   env: { set(on), land(), setTimeout(fn, ms), clearTimeout(t) } */
+export const KILL_XP_HOLD_MARGIN_MS = 600;
+export function killXpInbound(env) {
+  let n = 0;
+  const api = {
+    /** a flight of `ms` starts: its token */
+    begin(ms) {
+      const tk = { done: false, t: 0 };
+      n++;
+      env.set(true);
+      tk.t = env.setTimeout(() => api.end(tk, false), Math.max(0, num(ms)) + KILL_XP_HOLD_MARGIN_MS);
+      return tk;
+    },
+    /** its label landed (`arrived`) or went: once per token */
+    end(tk, arrived) {
+      if (!tk || tk.done) return;
+      tk.done = true;
+      env.clearTimeout(tk.t);
+      n = Math.max(0, n - 1);
+      if (!n) env.set(false);
+      if (arrived) env.land();
+    },
+    /** no kill label is left anywhere: nothing is held */
+    reset() { if (n) { n = 0; env.set(false); } },
+    count() { return n; },
+  };
+  return api;
+}

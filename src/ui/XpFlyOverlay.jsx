@@ -5,7 +5,7 @@ import { prog3HasSkills, prog3XpRequired, PROG3, PROG3_SKILL_META } from '@/data
 import { xpCardPoint, holdXp, landXp } from '@/ui/xpLanding.js'; /* v2.3.1874 */
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470 */
 import { xpGainWords } from '@/game/xpBar.js';  /* v2.3.3893 */
-import { killXpOn, KILL_XP_LINES_AFTER_MS } from '@/game/killXp.js';      /* v2.3.3893 */
+import { killXpOn, KILL_XP_LINES_AFTER_MS, killXpInbound } from '@/game/killXp.js';      /* v2.3.3893 */
 
 /* HudPopupOverlay — HUD-anchored "+N XP" / "+N G" feedback, plus the
    transient XP bar the XP popup flies into.  Reads entries pushed to
@@ -193,8 +193,14 @@ export const XpFlyOverlay = () => {
   const now = Date.now();
 
   for (let i = pops.length - 1; i >= 0; i--) {
-    if (now - pops[i].ts > ENTRY_LIFETIME_MS * (pops[i].toBar ? flySlow() : 1)) pops.splice(i, 1);
+    if (now - pops[i].ts > ENTRY_LIFETIME_MS * (pops[i].toBar ? flySlow() : 1)) {
+      /* v2.3.3893: pruned, perhaps never drawn: its hold goes with it */
+      if (pops[i].toBar) _inbound.end(pops[i].hold, false);
+      pops.splice(i, 1);
+    }
   }
+  /* ...and with no kill label left anywhere, nothing is held */
+  if (_inbound.count() && !pops.some((p) => p.toBar)) _inbound.reset();
 
   /* Remember the most recent XP gain so the bar can outlive the popup
      that triggered it (the popup dies at ~1.2s, the bar holds ~2.6s). */
@@ -260,13 +266,13 @@ const XpFlyToCard = ({ pop }) => {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      if (!landedRef.current) { landedRef.current = true; landXp(cat); if (pop.toBar) barLanded(true); tick((v) => v + 1); }
+      if (!landedRef.current) { landedRef.current = true; landXp(cat); if (pop.toBar) _inbound.end(pop.hold, true); tick((v) => v + 1); }
     }, (FLY_MS + LIFT_MS) * (pop.toBar ? flySlow() : 1));
     return () => {
       clearTimeout(t);
       /* Unmounted mid-flight (the entry aged out, or the overlay went away):
          release the hold anyway or the card's number is frozen for good. */
-      if (!landedRef.current) { landedRef.current = true; landXp(cat); if (pop.toBar) barLanded(false); }
+      if (!landedRef.current) { landedRef.current = true; landXp(cat); if (pop.toBar) _inbound.end(pop.hold, false); }
     };
   }, [cat]);
 
@@ -561,6 +567,7 @@ export function pushHudPopup(S, opts) {
        different frame.  Null when the world is not on screen yet. */
     from: opts.from || playerScreenPoint(S),
     toBar: !!opts.toBar,   /* v2.3.3893: a kill's, to the top bar (flyKillXp) */
+    hold: opts.hold || null,   /* ...and its hold on the bar's "+N" */
     ts: Date.now(),
   });
 }
@@ -585,34 +592,36 @@ export function flyKillXp(S, f) {
     : worldScreenPoint(S, f.x, f.y - 60);
   /* (QA: the stretched flight's lift holds the lines back as long) */
   if (flySlow() > 1 && S._dropLinesAt > Date.now()) S._dropLinesAt = Date.now() + KILL_XP_LINES_AFTER_MS * flySlow();
-  _inbound++;
-  try { document.documentElement.setAttribute('data-xp-inbound', '1'); } catch (e) { /* none */ }
-  pushHudPopup(S, { target: 'xpBar', text: xpGainWords(f.gain), color: '#F2D58C', cat: f.cat, from, toBar: true });
+  const hold = _inbound.begin((LIFT_MS + FLY_MS) * flySlow());
+  pushHudPopup(S, { target: 'xpBar', text: xpGainWords(f.gain), color: '#F2D58C', cat: f.cat, from, toBar: true, hold });
 }
 
-let _inbound = 0, _landAB = 0, _landT = 0;
+let _landAB = 0, _landT = 0;
+/* the holds on the bar's "+N" (game/killXp.js killXpInbound: one token a
+   flight, given back on the landing, the unmount, or its failsafe) */
+const _inbound = killXpInbound({
+  set(on) {
+    try { if (on) document.documentElement.setAttribute('data-xp-inbound', '1'); else document.documentElement.removeAttribute('data-xp-inbound'); } catch (e) { /* none */ }
+  },
+  land() {
+    try {
+      const H = document.documentElement;
+      /* two names in turn, so a second landing restarts the pulse */
+      _landAB = 1 - _landAB;
+      H.setAttribute('data-xp-land', _landAB ? 'a' : 'b');
+      clearTimeout(_landT);
+      _landT = setTimeout(() => { try { H.removeAttribute('data-xp-land'); } catch (e) { /* none */ } }, 450);
+    } catch (e) { /* feedback only */ }
+  },
+  setTimeout: (fn, ms) => setTimeout(fn, ms),
+  clearTimeout: (t) => clearTimeout(t),
+});
 /* QA only: `window.__btXpFlySlow` (a factor) stretches a kill's flight, so a
    picture on a slow box catches it in the air (mp-killxp) */
 function flySlow() {
   const q = typeof window !== 'undefined' ? Number(window.__btXpFlySlow) : 0;
   return q > 1 ? q : 1;
 }
-/* one kill label landed (`arrived`) or was dropped: the last one in lets the
-   bar's "+N" pop, and an arrival pulses the bar */
-function barLanded(arrived) {
-  _inbound = Math.max(0, _inbound - 1);
-  try {
-    const H = document.documentElement;
-    if (!_inbound) H.removeAttribute('data-xp-inbound');
-    if (!arrived) return;
-    /* two names in turn, so a second landing restarts the pulse */
-    _landAB = 1 - _landAB;
-    H.setAttribute('data-xp-land', _landAB ? 'a' : 'b');
-    clearTimeout(_landT);
-    _landT = setTimeout(() => { try { H.removeAttribute('data-xp-land'); } catch (e) { /* none */ } }, 450);
-  } catch (e) { /* feedback only */ }
-}
-
 /* the middle of the top bar's XP bar's picture, while the bar is up; null
    when it is not (the label then holds over the spot and fades) */
 function topBarXpPoint() {

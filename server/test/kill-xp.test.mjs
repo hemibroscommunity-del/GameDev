@@ -2,8 +2,11 @@
  * the worker's gain the bar took for the killing blow -- at the kill when the
  * gain came first (the worker sends it a tick before the kill), on the gain
  * when the kill came first, never twice for one gain, never a stale one; the
- * kill's drop lines wait behind it; and ?xpfly=0 turns it off. */
-import { killXpOnKill, killXpOnGain, killXpOn, KILL_XP_FRESH_MS, KILL_XP_WAIT_MS, KILL_XP_LINES_AFTER_MS } from '../../src/game/killXp.js';
+ * kill's drop lines wait behind it; the bar's "+N" is held only while a label
+ * is really in the air (a failsafe for one that never mounts); and ?xpfly=0
+ * turns it off. */
+import { killXpOnKill, killXpOnGain, killXpOn, KILL_XP_FRESH_MS, KILL_XP_WAIT_MS, KILL_XP_LINES_AFTER_MS,
+  killXpInbound, KILL_XP_HOLD_MARGIN_MS } from '../../src/game/killXp.js';
 import { noteLootDrop } from '../../src/game/dropLines.js';
 
 let pass = 0, fail = 0;
@@ -58,6 +61,42 @@ const kill = { x: 100, y: 200, monsterId: 'wm-frost-1' };
 check('5a: on by default', killXpOn('') && killXpOn('?guest=1'));
 check('5b: off with ?xpfly=0', !killXpOn('?xpfly=0') && !killXpOn('?guest=1&xpfly=0&x=1'));
 check('5c: ?xpfly=01 is not the off-ramp', killXpOn('?xpfly=01'));
+
+// §6 the hold on the bar's "+N" (killXpInbound), on a fake clock
+{
+  let clock = 0, held = false, lands = 0;
+  const timers = new Map(); let nextId = 1;
+  const env = { set: (on) => { held = on; }, land: () => { lands++; },
+    setTimeout: (fn, ms) => { const id = nextId++; timers.set(id, { fn, at: clock + ms }); return id; },
+    clearTimeout: (id) => { timers.delete(id); } };
+  const run = (to) => { clock = to; for (const [id, t] of [...timers]) if (t.at <= clock) { timers.delete(id); t.fn(); } };
+  const H = killXpInbound(env);
+  const FLY = 1040;
+  const a = H.begin(FLY);
+  check('6a: a flight holds the bar\'s "+N"', held && H.count() === 1);
+  H.end(a, true);
+  check('6b: its landing lets it go and pulses the bar, once', !held && lands === 1 && H.count() === 0);
+  H.end(a, false); H.end(a, true);
+  check('6c: a second release of the same token does nothing (no double count, no second pulse)', !held && lands === 1 && H.count() === 0);
+  /* a label that never mounts: nothing ever lands it or unmounts it */
+  H.begin(FLY);
+  run(FLY + KILL_XP_HOLD_MARGIN_MS - 1);
+  check('6d: a flight that never mounts still holds until the flight and its margin', held && H.count() === 1);
+  run(FLY + KILL_XP_HOLD_MARGIN_MS + 1);
+  check('6e: ...then its failsafe lets go: no data-xp-inbound left for good', !held && H.count() === 0 && lands === 0 + 1);
+  /* two in the air: the first to land does not let the second's go */
+  clock = 0;
+  const b = H.begin(FLY), c = H.begin(FLY);
+  H.end(b, true);
+  check('6f: two in the air, one landed: still held for the other', held && H.count() === 1);
+  run(FLY + KILL_XP_HOLD_MARGIN_MS + 1);
+  check('6g: ...and the landed one\'s failsafe never fires (its timer cleared); the other\'s does', !held && H.count() === 0);
+  H.end(c, true);
+  check('6h: a landing after its failsafe changes nothing', !held && H.count() === 0);
+  H.begin(FLY); H.begin(FLY);
+  H.reset();
+  check('6i: reset (no kill label left anywhere) lets everything go', !held && H.count() === 0);
+}
 
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
