@@ -280,8 +280,9 @@ spec. Add a line here only for a new RULE every session must follow.
     a filter pass in the middle of the frame (TRAPS §221);
   - the camera sits on whole device pixels, and a renderer never writes the
     player's place (TRAPS §231);
-  - one sprite program on a real graphics chip (`ONE_BATCHER`), three on a
-    software renderer (TRAPS §225).
+  - three sprite programs on every chip; the one program (`ONE_BATCHER`) only
+    with `?onebatch=1` (it lost a bro's legs on the owner's iPhone; TRAPS §225,
+    §260).
 - **Desktop** (the judges play on computers): a click on something you use is
   not a swing (`_deskPressTarget`); an overlay `position: fixed` inside `#root`
   is placed with `fixedBox(layer)`; sizes come from the play column, never the

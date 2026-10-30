@@ -10,14 +10,17 @@
  * `?onebatch=0` is the three programs.  Not where the picture is drawn in
  * software, as on this box: there every branch of a program runs for every
  * pixel, so the one program costs all three reads (TRAPS §225), and the game
- * keeps the three; `?onebatch=1` draws with the one anyway, as a phone does.
+ * keeps the three; `?onebatch=1` draws with the one anyway, as a phone did.
+ * v2.3.3894: every chip keeps the three unless the address asks for the one
+ * (the owner's iPhone lost a bro's legs with it, paletteTex.js
+ * oneBatchChoice).
  *
  * On a phone (390 x 844, 3x) in BroTown and at a fight at the Flame Fields:
  *   1. with `?onebatch=1` the one program linked behind the loading screen
  *      and draws the world (guard); with nothing in the address, on this
  *      box's software renderer, the three programs draw it (a second page);
- *      and the choice, asked about other addresses and chips: a phone's chip
- *      the one program, a software renderer the three, the address first;
+ *      and the choice, asked about other addresses and chips: the three on
+ *      every chip, the one only where the address asks;
  *   2. THE SAME FRAME: the game's frames held, the scene drawn twice with the
  *      one program (identical, or the comparison means nothing), once with
  *      the three programs by the Speed test's own lever (setOneBatchLive:
@@ -138,22 +141,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`with nothing in the address, this box's software renderer keeps the three programs (${stQ && stQ.ob && stQ.ob.why}: "${String(stQ && stQ.ob && stQ.ob.renderer).slice(0, 60)}"; ${JSON.stringify(stQ && stQ.n.by)})`,
       !!stQ && stQ.ob && stQ.ob.on === false && stQ.ob.why === 'software' && /swiftshader/i.test(stQ.ob.renderer || '') && !(stQ.n.by['bt-one']) && (stQ.n.by.sharp || 0) > 0, stQ);
     await Q.ctx.close().catch(() => {});
-    /* the choice for other addresses and chips (the names as each browser gives them) */
+    /* the choice for other addresses and chips (the names as each browser
+       gives them); v2.3.3894: the three on every chip, the one only where
+       the address asks */
     const CHIPS = [
-      ['', 'Apple GPU', true],
-      ['', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)', true],
-      ['', 'Mali-G78', true],
-      ['', 'ANGLE (Qualcomm, Adreno (TM) 650, OpenGL ES 3.2)', true],
+      ['', 'Apple GPU', false],
+      ['', 'ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)', false],
+      ['', 'Mali-G78', false],
+      ['', 'ANGLE (Qualcomm, Adreno (TM) 650, OpenGL ES 3.2)', false],
       ['', 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)', false],
       ['', 'llvmpipe (LLVM 15.0.7, 256 bits)', false],
       ['', 'ANGLE (Microsoft, Microsoft Basic Render Driver Direct3D11 vs_5_0 ps_5_0, D3D11)', false],
       ['?onebatch=0', 'Apple GPU', false],
+      ['?onebatch=1', 'Apple GPU', true],
       ['?trial=wheel&onebatch=1', 'llvmpipe (LLVM 15.0.7, 256 bits)', true],
-      ['?onebatch=10', 'Apple GPU', true],
+      ['?onebatch=10', 'Apple GPU', false],
     ];
     const asked = await P.page.evaluate((C) => C.map(([q, r]) => window.__btOneBatchChoice(q, r)), CHIPS);
     const wrong = CHIPS.filter((c, i) => !asked[i] || asked[i].on !== c[2]).map((c, i) => [c[0], c[1].slice(0, 30), asked[CHIPS.indexOf(c)]]);
-    rec.ok(`the choice: a phone's chip the one program, a software renderer the three, the address first (${CHIPS.length - wrong.length} of ${CHIPS.length})`,
+    rec.ok(`the choice: the three programs on every chip, the one only where the address asks (${CHIPS.length - wrong.length} of ${CHIPS.length})`,
       wrong.length === 0, wrong);
 
     /* 2 and 3 */

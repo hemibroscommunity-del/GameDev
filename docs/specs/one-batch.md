@@ -4,6 +4,45 @@ The owner, 2026-10-18: *"I'd like you to iterate on what best improves
 framerate without loss of quality (or negligible loss) for phone gameplay
 (iPhone, android)"*. The second round, after draw-lists.md.
 
+## Off by default (v2.3.3894)
+
+**Since v2.3.3894 the one program is off on every chip.** The game draws with
+the three programs, as it did until 2026-10-18. `?onebatch=1` in the address
+brings the one program back for that tab. `__btOneBatch().why` says
+`'default'` (or `'address'`, or `'software'`).
+
+**Why.** The owner, 2026-10-30, on an iPhone with a bow or a staff carried: in
+the four facings that draw the weapon *behind* the body (south-west, west,
+north-west, north), the legs flickered out. With the greatsword they did not.
+`?onebatch=0` cured it: *"This one fixed it. You're right it had nothing to do
+with skateboard it was just the weapon switching"*. The day before, on that
+phone, the same four facings lost the whole body (v2.3.3864, mp-bodyfacing).
+
+**What this box can say.** Nothing wrong. A GL audit of exactly that scene
+(`?onebatch=1`, a phone at 3x, the bow carried, jogging south-west, west,
+north-west, north, east and south) found:
+- every texture unit, at every draw, holding the texture Pixi's cache believes
+  it holds (a shadow of every `activeTexture`, `bindTexture` and
+  `deleteTexture` call, checked against `_boundTextures`);
+- no GL error on any draw;
+- the player's own body is not a look sheet, so the body and the bow are both
+  drawn by this program, in one draw call;
+- with the greatsword the blade is drawn by the metal shine's own program
+  (`batch-sheen`, lightfx/sheenBatch.js), so it never shares the body's draw
+  call. A bow or a staff has no shine: in the four facings that put it behind
+  the body it is the sprite drawn just before the body, in the same draw call,
+  its quad over the legs. That is the one arrangement that broke on the phone:
+  likely the chip mixing the two pictures where their pixels meet, which no
+  program here can show.
+
+So the fault is the phone's chip running this program, which SwiftShader
+cannot show (TRAPS §260). The cost of the three programs is the one this spec
+measured: about 50 draw calls a frame in BroTown and 71 at a fight, against 30
+and 28.
+
+**To turn it back on:** only with the owner's phone showing every facing with
+each weapon (bow, staff, greatsword), standing and walking, with `?onebatch=1`.
+
 ## What was wrong
 
 Three *batchers* drew the world's sprites, each with its own program on the
