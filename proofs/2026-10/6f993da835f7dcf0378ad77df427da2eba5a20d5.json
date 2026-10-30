@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6f993da835f7dcf0378ad77df427da2eba5a20d5",
+  "tree": "42fa92059ccacb76d8eb94814daf779608a3297b",
+  "committedAt": "2026-10-29T18:07:21-07:00",
+  "subject": "Merge pull request #1347 from hemibroscommunity-del/claude/xp-fly-first",
+  "files": 7328,
+  "bytes": 842057051,
+  "listingSha256": "cde2fb8dcde5dea1f69d38780c995e8aa957fffa321c84619b184f4149dbf1e5",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
