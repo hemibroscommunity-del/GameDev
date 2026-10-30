@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d12b2aaae62dafd661f5bc03f3db3ed4fa116349",
+  "tree": "0a2c18a7492474a7f9a660bf9d83e68160a24ad4",
+  "committedAt": "2026-10-29T17:19:13-07:00",
+  "subject": "Merge pull request #1345 from hemibroscommunity-del/claude/magic-burst",
+  "files": 7323,
+  "bytes": 841446594,
+  "listingSha256": "c176286564039df90f023eba7dc160b555f50a84be37e53f132ee8ce31682fdc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
