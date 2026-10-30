@@ -33,8 +33,11 @@ The owner's notes at the Blacksmith, 2026-10-19, word for word:
 
 Unchanged on purpose:
 
-- The one-handed **sword** is still forged by the worker for an older page,
-  and every sword already made is worn, hardened and salvaged as before.
+- ~~The one-handed **sword** is still forged by the worker for an older page,
+  and every sword already made is worn, hardened and salvaged as before.~~
+  **v2.3.3895:** no longer. The owner: "Yes turn old swords into
+  greatswords". An older page's sword request is given a greatsword, and every
+  sword already made became one (docs/specs/sword-to-greatsword.md).
 - The **wood tier's row** stays in the tables. The starter Pine Shield and
   every old wooden weapon carry `gearBase: 'wood'` (their label and tierMult
   are read there), and every tier index after it counts it: the hardening

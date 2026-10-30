@@ -434,6 +434,12 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('8k. `petfetch` is a name POST /flags takes', flagNameOk('petfetch'));
   { const was = room._liveFlags; room._liveFlags = { petfetch: false }; const off = room._petFetchOff(); room._liveFlags = {}; const on = room._petFetchOff(); room._liveFlags = was;
     check('8k. `petfetch: false` switches the fetch off, and nothing set leaves it on', off === true && on === false); }
+  // 8l. v2.3.3895: the sword conversion's switch (swordconvert.js) -- the
+  //     post's and the shelves' heals and the Forge's mapping; off only when
+  //     written false
+  check('8l. `swordconvert` is a name POST /flags takes', flagNameOk('swordconvert'));
+  { const was = room._liveFlags; room._liveFlags = { swordconvert: false }; const off = room._swordConvertOff(); room._liveFlags = {}; const on = room._swordConvertOff(); room._liveFlags = was;
+    check('8l. `swordconvert: false` switches the heals off, and nothing set leaves them on', off === true && on === false); }
   // 8h. v2.3.3732: the message diet's two lower-case switches (movepath.js):
   //     v2.3.3744: every phone is on it by default, `pathall: false` leaves
   //     only ?diet=1 phones, `movepath: false` kills it, each through the

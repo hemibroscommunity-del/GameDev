@@ -166,8 +166,17 @@ async function forged(tierKey, weaponType) {
 // ── 5. an older page's sword ──
 {
   bench(1, 1);
+  /* v2.3.3895: the sword is retired (swordconvert.js) -- an older page that
+     asks for one is given the greatsword of that metal, so no new sword is
+     ever minted; `swordconvert: false` hands it back its sword */
   const sw = await forged('copper', 'sword');
-  check('5a the worker still forges a one-handed sword for an older page (the game forges greatswords only)', !!sw && sw.type === 'sword' && sw.gearBase === 'copper', sw);
+  check('5a an older page asking the Forge for a one-handed sword is given a copper GREATSWORD (the sword is retired)', !!sw && sw.type === 'greatsword' && sw.gearBase === 'copper' && sw.name === 'copper greatsword', sw);
+  bench(1, 1);
+  const was = room._liveFlags;
+  room._liveFlags = Object.assign({}, was || {}, { swordconvert: false });
+  const sw2 = await forged('copper', 'sword');
+  room._liveFlags = was;
+  check('5b ...and under `swordconvert: false` the worker forges it the sword it asked for', !!sw2 && sw2.type === 'sword' && sw2.gearBase === 'copper', sw2);
 }
 
 // ── 6. hardening asks the level that makes the tier ──

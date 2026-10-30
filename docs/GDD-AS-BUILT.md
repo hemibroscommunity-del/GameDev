@@ -379,7 +379,7 @@ Every number that matters in a fight is rolled on the server. The phone sends an
 
 | Weapon | Trained skill (shown as) | Base damage | Per-hit variance band | Role as tuned |
 |---|---|---|---|---|
-| Sword / Great Sword | Melee | 6.67 / 10 | 0.75–1.25 | the reliable wide swing; the only weapon that auto-targets; opens with a dash |
+| Great Sword (the old one-handed Sword, 6.67, converted in v2.3.3895) | Melee | 10 | 0.75–1.25 | the reliable wide swing; the only weapon that auto-targets; opens with a dash |
 | Bow | Bow | 12.80 | 0.60–0.80 | "the predictable one": speed and DPS, kites |
 | Staff | Magic | 13.44 | 0.50–1.65 | "the swingy weapon": the hardest single hit on average, the weakest on a bad roll; splashes |
 | Fists | Melee | 6.25 | melee band | an unarmed player cannot leave the safe commons until armed |
@@ -752,7 +752,7 @@ The long Wheel bakes 1,222 resources (486 veins, 486 trees, 250 fishing spots; t
 Tabs: Smelt, Forge, Armor, Upgrade, Amulet, Salvage. Blacksmith Bro opens it after his quests; the smith works at the painted anvil while anything forges.
 
 - **Smelt**: 5 ore → 1 bar; Copper Bar at Smithing 1 (400 XP), Iron Bar at 5 (600), Black Steel Bar at 10 (800). Diego values a bar at 240 against its ore's 200. No bar exists for titanium or obsidian; those weapons still take raw ore.
-- **Forge**: greatswords only (the one-handed tab was removed; swords already owned still work). Copper (Smithing 1, 5 bars, 20 gold, 1,000 XP), Iron (5, 5 bars, 35, 1,500), Black Steel (10, 5 bars, 55, 2,000), then Titanium (15, 5 ore, 85) and Obsidian (20, 6 ore, 120); every rung past that asks ore that grows nowhere. To forge a blade you need what wearing it needs (black steel Melee 10, titanium 15…). The weapon in hand goes into the **weapon bag** (8 spares); a full bag refuses the forge.
+- **Forge**: greatswords only (the one-handed tab was removed; since v2.3.3895 every sword already owned became a greatsword of its metal, a wood one copper, its grade, hardening and gems kept: docs/specs/sword-to-greatsword.md). Copper (Smithing 1, 5 bars, 20 gold, 1,000 XP), Iron (5, 5 bars, 35, 1,500), Black Steel (10, 5 bars, 55, 2,000), then Titanium (15, 5 ore, 85) and Obsidian (20, 6 ore, 120); every rung past that asks ore that grows nowhere. To forge a blade you need what wearing it needs (black steel Melee 10, titanium 15…). The weapon in hand goes into the **weapon bag** (8 spares); a full bag refuses the forge.
 - **Armor**: a torso or greaves in copper (Smithing 1), iron (5) or black steel (10), **5 bars each, no gold**, 1,000 / 1,500 / 2,000 XP. Armour is on its own ladder of whole steps: a torso stops 30% + 7.5% a step, greaves 20% + 5%, multiplying to 44% (copper), 53% (iron), 61.5% (black steel), capped at 75% plus grade lifts; black steel asks level 5 to wear (5 allocated Defense points before v2.3.3544), copper and iron nothing. Armour adds no HP. A kill drops Iron Torso, Iron Greaves or an Iron Great Sword at 1 in 500 each.
 - **Upgrade** is hardening (Part 5.2): H1–H5 at 80 / 20 / 5 / 1 / 0.5%, 500 × 2^(n−1) gold plus n bars, a failure keeping the level.
 - **Salvage**: any carried copper, iron or black steel torso, greaves, sword or greatsword gives back 2 bars (of the 5 it took); a Rare, Elite or Godly piece also leaves an **essence** of its grade and metal that raises any carried piece of the same metal to that grade (Diego pays 750 / 4,000 / 125,000 for an essence). A piece from before the gear ledger ("Too old to salvage") cannot be salvaged or sold but still works.

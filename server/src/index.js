@@ -166,6 +166,7 @@ import { poseMethods } from './poses.js'; /* v2.3.3392: a held pose (sit, sleep,
 import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled by the worker */
 import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
 import { pointsResetMethods } from './pointsreset.js'; /* v2.3.3541: the free points reset -- every placed point back */
+import { swordConvertMethods } from './swordconvert.js'; /* v2.3.3895: old one-handed swords become greatswords -- the kill switch */
 import { bankMethods } from './bank.js'; /* v2.3.3785: the Bank's vault -- bag items and gold the worker holds, out of a death's reach */
 import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
 import { heapBurnMethods } from './heapburn.js'; /* v2.3.3748: a burning heap sets you on fire */
@@ -6652,6 +6653,7 @@ Object.assign(GameRoom.prototype, itemDropMethods); /* v2.3.3473 */
 Object.assign(GameRoom.prototype, pointsResetMethods); /* v2.3.3541 */
 Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
 Object.assign(GameRoom.prototype, bankMethods); /* v2.3.3785 */
+Object.assign(GameRoom.prototype, swordConvertMethods); /* v2.3.3895 */
 Object.assign(GameRoom.prototype, safeHealMethods); /* v2.3.3569 */
 Object.assign(GameRoom.prototype, heapBurnMethods); /* v2.3.3748 */
 Object.assign(GameRoom.prototype, statCapMethods); /* v2.3.3578 */

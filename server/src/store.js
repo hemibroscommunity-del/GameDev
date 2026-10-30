@@ -93,6 +93,7 @@
 
 import { SHOP_ITEMS } from './data.js';
 import { petPublic } from './petbook.js';   /* v2.3.3122: pet listings (what a buyer is shown) */
+import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's listing is rewritten once as a greatsword */
 
 /* v2.3.3525: the four remains keys in words (the game's src/data/remains.js) */
 const REMAINS_WORDS = Object.freeze({
@@ -436,6 +437,16 @@ export const storeMethods = {
       for (const [k, rec] of page) {
         last = k;
         if (!rec || !rec.id) { await this.state.storage.delete(k); continue; }
+        /* v2.3.3895: a listing that escrows a one-handed sword is rewritten
+           ONCE, here, as the greatsword it now is (swordconvert.js): the
+           weapon and the shelf's display copy, one put, so a buyer sees a
+           Great Sword and is delivered one.  Only a listing holding a sword
+           costs the put; the post's heal catches the delivery anyway. */
+        if (rec.kind === 'weapon' && rec.weapon && !(this._swordConvertOff && this._swordConvertOff())
+          && swordToGreatsword(rec.weapon)) {
+          rec.disp = this._stDisplay('weapon', null, rec.weapon);
+          await this.state.storage.put(k, rec);
+        }
         if (await this._stConverge(rec)) this._stAddToIndex(rec);
       }
       if (page.size < STORE.LOAD_PAGE || !last) break;

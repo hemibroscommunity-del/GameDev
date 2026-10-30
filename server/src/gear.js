@@ -494,8 +494,15 @@ export const gearMethods = {
     // v2.3.1129: forging mints INTO the active slot -- that's a gear
     // change, so the guard lock covers it (see threat.js).
     if (this._threatGearLocked(session.id, ps)) return;
-    const { weaponType, tierKey, isWoodwork } = payload || {};
+    const { tierKey, isWoodwork } = payload || {};
+    let { weaponType } = payload || {};
     if (weaponType !== 'greatsword' && weaponType !== 'sword' && weaponType !== 'bow' && weaponType !== 'staff') return;
+    /* v2.3.3895: the one-handed sword is retired (swordconvert.js; the owner:
+       "Yes turn old swords into greatswords").  An older page that still asks
+       the Forge for one is given a greatsword of that metal, the weapon the
+       Forge makes, so no new sword is ever minted.  `swordconvert: false`
+       hands it back its sword. */
+    if (weaponType === 'sword' && !(this._swordConvertOff && this._swordConvertOff())) weaponType = 'greatsword';
     if (typeof tierKey !== 'string') return;
 
     // Validate woodwork-vs-blacksmith match with weapon type.

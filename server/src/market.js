@@ -30,6 +30,7 @@
  * expiry; bounty boards deferred; direct self-trades never enter the
  * price history (the matcher already skips same-player orders). */
 
+import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's order is rewritten once as a greatsword */
 export const MARKET = {
   ORDER_EXPIRY: 86400000,       // 24h
   MAX_ORDERS_PER_PLAYER: 10,
@@ -101,8 +102,29 @@ export const marketMethods = {
         await this.state.storage.delete(k);
         continue;
       }
+      /* v2.3.3895: an order for a one-handed sword is rewritten ONCE, here
+         (swordconvert.js): a sell's escrowed weapon becomes the greatsword it
+         now is, and the order's subtype -- part of its place in the book --
+         moves from 'sword' to 'greatsword' (a wood one's tier to copper), a
+         buy's too, so it can still meet a seller.  One put, only for such an
+         order. */
+      if (!(this._swordConvertOff && this._swordConvertOff()) && this._mktSwordConvert(o)) {
+        await this.state.storage.put(k, o);
+      }
       this._mktAddToIndex(o);
     }
+  },
+
+  /* v2.3.3895: one order out of the retired sword, in place; true if it changed */
+  _mktSwordConvert(o) {
+    if (!o || typeof o !== 'object') return false;
+    let changed = false;
+    if (o.item && swordToGreatsword(o.item)) {
+      changed = true;
+      if (o.tierKey === 'wood' && o.item.gearBase === 'copper') { o.tierKey = 'copper'; o.tierLabel = 'Copper'; }
+    }
+    if (o.subtype === 'sword') { o.subtype = 'greatsword'; changed = true; }
+    return changed;
   },
 
   _mktAddToIndex(o) {
@@ -226,7 +248,10 @@ export const marketMethods = {
        `_mktField`) -- an unbounded field made the storage write throw
        after the seller's weapon had already left the stash. */
     const category = this._mktField(body.category);
-    const subtype = this._mktField(body.subtype);
+    let subtype = this._mktField(body.subtype);
+    /* v2.3.3895: the sword is retired (swordconvert.js); an older page's order
+       for one is an order for a greatsword */
+    if (subtype === 'sword' && !(this._swordConvertOff && this._swordConvertOff())) subtype = 'greatsword';
     const tierKey = this._mktField(body.tierKey);
     if (!category || !subtype || !tierKey) return { ok: false, error: 'Missing fields' };
     let element1 = body.element1 == null ? null : this._mktField(body.element1);   /* v2.3.3513: let -- a sell takes its item's */

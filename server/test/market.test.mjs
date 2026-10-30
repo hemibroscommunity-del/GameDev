@@ -74,7 +74,9 @@ async function join(ws, id) {
 }
 const wpn = (n) => ({ name: n, tierMult: 1.0, dmg: 5 });
 const ORD = (over) => ({
-  type: 'sell', category: 'weapon', subtype: 'sword', tierKey: 'iron',
+  /* v2.3.3895: 'greatsword' -- the worker moves an order for the retired
+     one-handed sword to it (swordconvert.js; sword-convert.test) */
+  type: 'sell', category: 'weapon', subtype: 'greatsword', tierKey: 'iron',
   price: 100, tierLabel: 'Iron', playerName: 'T', ...over,
 });
 
@@ -147,7 +149,7 @@ await room._mktCancelOrder(selfSell.order.id, 'bp_mkt_buyer');
 await room._mktCancelOrder(selfBuy.order.id, 'bp_mkt_buyer');
 
 // ── 8. price history ──
-const hist = state._store.get('mkt_hist:weapon:sword:iron:none:none');
+const hist = state._store.get('mkt_hist:weapon:greatsword:iron:none:none');
 check('executions recorded in price history', Array.isArray(hist) && hist.length === 2 && hist.every((h) => h.p === 100), hist);
 
 // ── 9. per-player order cap ──
