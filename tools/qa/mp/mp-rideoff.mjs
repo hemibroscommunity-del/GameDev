@@ -62,6 +62,8 @@ const TOOLS = () => {
     const look = t && t._btLook;
     return { facing: S._renderFacing, pose: me && me._animPose, frame: me && me._animFrame, ride: !!(S._ride && S._ride.on),
       look: look ? look.row : null, mirror: t ? !!t._btLookMirror : null, ix: t ? t.__btIx : null,
+      src: t && t.source ? { uid: t.source.uid, label: String(t.source.label || '').slice(-40), w: t.source.width, h: t.source.height, res: t.source.resource ? t.source.resource.constructor.name : null } : null,
+      orig: t && t.orig ? [Math.round(t.orig.width), Math.round(t.orig.height)] : null, trim: t && t.trim ? [Math.round(t.trim.x), Math.round(t.trim.y), Math.round(t.trim.width), Math.round(t.trim.height)] : null,
       tf: t && t.frame ? [Math.round(t.frame.x), Math.round(t.frame.y), Math.round(t.frame.width), Math.round(t.frame.height)] : null,
       scale: sb ? [+sb.scale.x.toFixed(3), +sb.scale.y.toFixed(3)] : null,
       bodyVis: !!(sb && sb.visible), standIn: S._standInBody === true, auto: !!S.autoAttack, slot: S.rpg && S.rpg.activeSlot,
@@ -125,7 +127,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* jog each facing, photographing the legs on SHOTS frames */
     const jogAll = async (tag) => {
       const out = {};
-      for (const [dir, k] of FACINGS) {
+      for (const [dir, k] of FACINGS.filter(([d]) => !process.env.BT_RO_DIRS || process.env.BT_RO_DIRS.split(',').includes(d))) {
         const ang = k * Math.PI / 4;
         await stick(Math.cos(ang), Math.sin(ang));
         await page.waitForTimeout(700);
@@ -134,6 +136,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
           const px = await legsPx();
           const b = await page.evaluate(() => window.__qaRO.body());
           shots.push({ px, ...b });
+          /* a frame with no legs: its picture, for a person */
+          if (px != null && px < 60) {
+            try {
+              const box = await H.figureBox(P, { pad: 20 });
+              if (box) await page.screenshot({ path: `/tmp/claude-0/nolegs-${tag}-${dir}-${b.frame}.png`, clip: box });
+            } catch (e) { /* the picture is for people */ }
+            console.log(`    NO LEGS ${tag} ${dir}:`, JSON.stringify(b));
+          }
         }
         await stick(0, 0);
         await page.waitForTimeout(300);
@@ -240,19 +250,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('off the board (guard)', !!off);
     await page.waitForTimeout(1000);
     const after = await jogAll('after');
-    for (const [dir] of FACINGS) {
+    for (const [dir] of FACINGS) { if (!before[dir] || !after[dir]) continue;
       const b0 = Math.min(...before[dir].map((s) => s.px || 0));
       const a0 = Math.min(...after[dir].map((s) => s.px || 0));
       const thin = after[dir].filter((s) => (s.px || 0) < Math.max(40, b0 * 0.4));
       rec.ok(`${dir}: the legs drawn on every frame after the ride (fewest px before ${b0}, after ${a0})`, thin.length === 0, thin.slice(0, 3));
     }
-    /* with `bodyframes` in the address: the probe counted, read the legs and
+    /* with `bodyframes` in the address: the probe counted, read the state and
        showed its box (bodyFrames.js) */
     if (/bodyframes/.test(process.env.BT_RO_QUERY || '')) {
       const bf = await page.evaluate(() => ({ data: window.__btBodyFrames ? window.__btBodyFrames() : null,
         box: (document.querySelector('[data-bodyframes]') || {}).textContent || null }));
-      console.log('    bodyframes:', JSON.stringify({ frames: bf.data && bf.data.frames, looked: bf.data && bf.data.looked, drops: bf.data && bf.data.drops, byFacing: bf.data && bf.data.byFacing }), '\n    box:', (bf.box || '').replace(/\n/g, ' / ').slice(0, 300));
-      rec.ok('?bodyframes counts the frames, reads the legs and shows its box', !!(bf.data && bf.data.frames > 10 && bf.data.looked > 10 && bf.box && /legs missing/.test(bf.box)), bf.data && { frames: bf.data.frames, looked: bf.data.looked, now: bf.data.now });
+      console.log('    bodyframes:', JSON.stringify({ frames: bf.data && bf.data.frames, drops: bf.data && bf.data.drops, byFacing: bf.data && bf.data.byFacing }), '\n    box:', (bf.box || '').replace(/\n/g, ' / ').slice(0, 300));
+      rec.ok('?bodyframes counts the frames, reads the state and shows its box', !!(bf.data && bf.data.frames > 10 && bf.data.now && bf.data.now.slot && bf.box && /not drawn/.test(bf.box)), bf.data && { frames: bf.data.frames, drops: bf.data.drops, now: bf.data.now });
     }
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));
   } finally {

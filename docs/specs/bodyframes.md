@@ -1,4 +1,4 @@
-# Body frames: your body and legs, counted on the phone (v2.3.3891)
+# Body frames: your body, its weapon and its state, on the phone (v2.3.3891)
 
 ## Why
 
@@ -38,23 +38,27 @@ never fetched (`pixiRenderer.js`).
 - **the weapon:** the lane in hand and what is in it, and whether the weapon
   is over or under the body, or hidden;
 - **the attack:** held, aiming or pending;
-- **the board:** on, or why you got off.
+- **the board:** on, or why you got off;
+- **the facing's source:** the stick, the aim (and its angle), moving, and so
+  on;
+- **the stand-ins:** the sword's or the bow's shown, and the bow body's cached
+  strip for this facing's sheet (its frame count).
 
-**Right after each frame is drawn**, it reads the lower half of your figure
-back off the drawing buffer and counts the pixels in your trousers' colour
-(their hue, and near their brightness: the hue alone takes the commons' grass
-for the default olive). A frame whose count falls under 15% of the usual count
-for that very frame of the pose and facing is a frame whose legs did not reach
-the screen. The usual count is the running middle value of the last 15 times
-that frame was drawn.
+It counts, by facing, the frames where the walking body is not drawn (hidden,
+or an empty or freed picture) while no stand-in is drawing you.
+
+A reading of the legs' pixels off the drawing buffer was tried and left out.
+On the test machine it counted the legs as missing on frames whose photograph
+shows them drawn, and a counter that cries wolf is worse than none. The state
+is what a screenshot needs.
 
 ## On the screen
 
 A box in the top-left corner, updated at most twice a second:
 
-- the frames counted, and the frames with missing legs, by facing;
+- the frames counted, and the frames the body was not drawn, by facing;
 - **now:** the state this frame;
-- the last three frames with missing legs, each with its state.
+- the last three frames the body was not drawn, each with its state.
 
 The box is a plain element outside the game's root, `pointer-events: none`,
 `data-bodyframes`, and it goes when you leave the page.
