@@ -6493,7 +6493,10 @@ export const MKT_CATEGORIES = {
   weapon: {
     label: 'Weapons',
     icon: '⚔️',
-    subtypes: ['greatsword', 'sword', 'bow', 'staff']
+    /* v2.3.3895: 'sword' out -- the one-handed sword is retired, every old one
+       a greatsword now (server/src/swordconvert.js), and an order for one is
+       moved to 'greatsword' by the worker */
+    subtypes: ['greatsword', 'bow', 'staff']
   },
   armor: {
     label: 'Armor',

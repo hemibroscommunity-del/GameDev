@@ -51,6 +51,7 @@ import { t2ReplayFlat } from './data.js';
 import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints, prog3MoveElemToAtk,
   prog3FoldLuck, prog3GrantSharedPoints /* v2.3.2592 */, prog3Redeal /* v2.3.3538 */ } from './prog3.js';
 import { normalizeGearStashes } from './gearstash.js';
+import { convertRecordSwords } from './swordconvert.js';   /* v2.3.3895: v19, swords become greatswords */
 
 /* v2.3.2523: 16, appended above the attributes restructure's v15
  * (v2.3.2512), which merged while this slice was in flight.  Migration
@@ -59,7 +60,7 @@ import { normalizeGearStashes } from './gearstash.js';
 /* v2.3.2592: 17 — the four-column points redesign (luck fold + shared pool). */
 /* v2.3.3538: 18 — one level (the highest skill): every character's points
    dealt again once (prog3Redeal). */
-export const RPG_SCHEMA_VERSION = 18;
+export const RPG_SCHEMA_VERSION = 19;   /* v2.3.3895: 18 -> 19, swords-become-greatswords */
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -687,6 +688,23 @@ export const MIGRATIONS = [
       if (!blob || typeof blob !== 'object') return false;
       if (!blob.prog3 || typeof blob.prog3 !== 'object') return false;
       return prog3Redeal(blob.prog3);
+    },
+  },
+  {
+    v: 19,
+    name: 'swords-become-greatswords',
+    /* v2.3.3895 (owner: "Yes turn old swords into greatswords"; spec
+       docs/specs/sword-to-greatsword.md).  Every one-handed sword the record
+       holds -- the three slots and the bag, as v12 walks them -- becomes a
+       greatsword of the same metal, a wood one a copper one, its grade,
+       hardening and gems kept, the game's own names rebuilt and a hand-given
+       one kept, and marked `was` (swordconvert.js, the one function every door
+       uses).  Idempotent: a greatsword is never touched again.  The post and
+       the shelves, which this never sees, convert at their own boundaries
+       (inbox.js, store.js, market.js); the Forge makes no new sword. */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      return convertRecordSwords(blob);
     },
   },
 ];
