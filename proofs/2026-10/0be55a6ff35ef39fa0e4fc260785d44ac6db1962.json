@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0be55a6ff35ef39fa0e4fc260785d44ac6db1962",
+  "tree": "f30bf9b4c3ef37410e1e400469528b53194951b4",
+  "committedAt": "2026-10-30T00:52:40-07:00",
+  "subject": "Merge pull request #1349 from hemibroscommunity-del/claude/sword-convert",
+  "files": 7331,
+  "bytes": 842101229,
+  "listingSha256": "82ab4ae0687d570da0ed05595c1bb47e3194e076e17c588506acccd50aecb102",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
