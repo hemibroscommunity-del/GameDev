@@ -61,7 +61,8 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';
 /* BT_API_BASE: same window.BROTOWN_WS_URL-derived value BroTown computes at
    its own module scope — the barrel export is the canonical copy. */
 import { BT_API_BASE } from '@/networking/index.js';
-import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
+import { pushHudPopup, flyKillXp } from '@/ui/XpFlyOverlay.jsx'; /* v2.3.3893: flyKillXp */
+import { killXpOnKill, killXpOn } from '@/game/killXp.js'; /* v2.3.3893: the kill's XP, the moment it dies */
 import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifesteal, addBuildUse, pushDmgPopup, monsterPopupY, heroPopupY, peerPopupY /* v2.3.3026: a hit on you pops over your head */, isAttackInShieldArc, spawnHitDebris /* v2.3.2200; v2.3.2843: its decal twin is retired here */, propSwingHit /* v2.3.2730 */ } from '@/game/combatHelpers.js';
 import { dropShield, noteShieldThreat } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield; v2.3.3260: and faces who hit you */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent, handleDiceEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes; v2.3.3393: + a /roll or /flip */
@@ -3101,6 +3102,16 @@ export function processGameEvent(type, payload, S, deps) {
                      for them the number is real. */
                   if (!prog3Live(R)) {
                     pushHudPopup(S, { target: 'xpBar', text: '+' + killXp + ' XP', color: '#60a5fa' });
+                  } else {
+                    /* v2.3.3893: ...a prog3 kill's "+N XP" is the worker's skill
+                       XP the bar took for it, flown from here to the bar (game/
+                       killXp.js), or the moment it lands if it is still on its way */
+                    try {
+                      if (killXpOn(typeof location !== 'undefined' ? location.search : '')) {
+                        var _kxF = killXpOnKill(S, payload, Date.now());
+                        if (_kxF) flyKillXp(S, _kxF);
+                      }
+                    } catch (_kx) { /* feedback only */ }
                   }
                   /* Local R.xp += / level-up loop runs only when the
                      worker doesn't own combat XP for this kill (i.e.
