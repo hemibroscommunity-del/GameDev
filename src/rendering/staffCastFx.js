@@ -83,6 +83,21 @@ const MAX_SPARKS = 320;
    _fxResX/_fxResY), so a point-blank hit still bursts at the drawn orb. */
 const CONVERGE_PX = 40;
 const TIP_FRESH_MS = 250;
+/* ═══ v2.3.3892: THE BOLT EXPLODES ON A HIT ═══
+   The owner: "Magic attacks need a mini explosion upon impact with monsters
+   and a larger explosion for the special attack. Right now it just
+   disappears upon impact."  The crash was a white flash two 55 ms steps long
+   and a spray of sparks: over in a tenth of a second.  Now the hit BLOOMS: a
+   fireball in the bolt's own heat ramp (white, through its element colour,
+   to its dark) swelling out and cooling, a white-hot core shrinking in it, a
+   dim cloud round it -- drawn smoothly over BURST_MS, not in flash steps --
+   and a harder throw of sparks.  The special's is bigger and longer.  The
+   same pooled glow sprites as every light here (nothing loaded, nothing
+   made per hit), over the monster (the front glows).  `?magicburst=0`: the
+   crash as it was, for one phone. */
+const BURST_ON = (() => { try { return new URLSearchParams(window.location.search).get('magicburst') !== '0'; } catch (e) { return true; } })();
+const BURST_MS = 340, BIG_BURST_MS = 540;   /* a bang, then gone */
+const BURST_R = 42, BIG_BURST_R = 96;       /* its fireball's full reach, world px (the bolt is ~16 across) */
 /* A launch offset bigger than this means the published crystal is not this
    bolt's (a stale frame, a zone hop) — draw the bolt where it is instead. */
 const MAX_LAUNCH_OFFSET = 60;
@@ -272,7 +287,12 @@ export class StaffCastFx {
     /* Glows beneath squares inside each layer: a spark reads on top of its
        own light. */
     const fg = new Container(), fs = new Container(), bg = new Container(), bs = new Container();
-    this.front.addChild(fg, fs);
+    /* v2.3.3892: the explosion's body, painted (normal blend) under the light:
+       added light only whitens bright ground (sand, snow), and the burst's
+       colour has to read on every land */
+    const fn = new Container();
+    this.front.addChild(fn, fg, fs);
+    this.glowN = new SpritePool(fn, glowTex(), null, 24);
     this.back.addChild(bg, bs);
     this.glowF = new SpritePool(fg, glowTex(), 'add', 64);
     this.sqF = new SpritePool(fs, sqTex(), null, 380);
@@ -307,11 +327,11 @@ export class StaffCastFx {
        paths, so keep ours on top rather than trusting creation order. */
     const L = this._frontLayer;
     if (L && L.children.length && L.children[L.children.length - 1] !== this.front) L.addChild(this.front);
-    this.glowF.begin(); this.sqF.begin(); this.glowB.begin(); this.sqB.begin();
+    this.glowF.begin(); this.sqF.begin(); this.glowB.begin(); this.sqB.begin(); this.glowN.begin();
   }
 
   end() {
-    this.glowF.end(); this.sqF.end(); this.glowB.end(); this.sqB.end();
+    this.glowF.end(); this.sqF.end(); this.glowB.end(); this.sqB.end(); this.glowN.end();
   }
 
   clear() {
@@ -333,9 +353,9 @@ export class StaffCastFx {
     return null;
   }
 
-  _glow(front, x, y, r, tint, alpha) {
+  _glow(front, x, y, r, tint, alpha, painted) {
     if (!(alpha > 0) || !(r > 0)) return;
-    const sp = (front ? this.glowF : this.glowB).take();
+    const sp = (painted ? this.glowN : front ? this.glowF : this.glowB).take();
     if (!sp) return;
     sp.x = x; sp.y = y;
     sp.scale.set((r * 2) / 64);
@@ -419,14 +439,20 @@ export class StaffCastFx {
     this._stats.crashN++;
     this._stats.lastCrash = { at: now, x: +x.toFixed(1), y: +y.toFixed(1), big: !!big };
     this.flashes.push({ kind: big ? 3 : 1, t0: now, x, y, owner: null, ramp, pk });
+    /* v2.3.3892: and the explosion (BURST_* above) */
+    if (BURST_ON) {
+      this.flashes.push({ kind: big ? 5 : 4, t0: now, x, y, owner: null, ramp, pk });
+      this._stats.burstN = (this._stats.burstN || 0) + 1;
+    }
     /* v2.3.2842: the one-bolt special lands like three orbs at once -- more
-       sparks, thrown harder, and a longer tail of embers. */
-    const nSp = big ? 38 : 20;
+       sparks, thrown harder, and a longer tail of embers.  v2.3.3892: an
+       explosion throws more of them, and harder */
+    const nSp = BURST_ON ? (big ? 56 : 30) : (big ? 38 : 20);
     for (let i = 0; i < nSp; i++) {
       const p = this._spawn();
       if (!p) break;
       const a = (i / nSp) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-      const sp = (1.6 + Math.random() * 3.6) * pk * (big ? 1.45 : 1);
+      const sp = (1.6 + Math.random() * 3.6) * pk * (big ? 1.45 : 1) * (BURST_ON ? 1.3 : 1);
       p.kind = K_SPARK; p.back = true; p.rev = false; p.ramp = ramp; p.pk = pk;
       p.x = x + Math.cos(a) * 3 * pk; p.y = y + Math.sin(a) * 3 * pk;
       p.vx = Math.cos(a) * sp; p.vy = Math.sin(a) * sp - 0.8 * pk;
@@ -709,6 +735,25 @@ export class StaffCastFx {
         if (fr >= 1) this._pixRing(false, fl.x, fl.y, (6 + 7 * fr) * pk, 10 + 5 * fr, r[Math.min(4, fr)], pk);
         continue;
       }
+      if (fl.kind === 4 || fl.kind === 5) {
+        /* v2.3.3892: the explosion, smooth over its own time */
+        const big = fl.kind === 5;
+        const u = (now - fl.t0) / (big ? BIG_BURST_MS : BURST_MS);
+        if (u >= 1) { this.flashes.splice(i, 1); continue; }
+        if (u < 0) continue;
+        const R = (big ? BIG_BURST_R : BURST_R) * pk;
+        const grow = easeOut(Math.min(1, u * 1.6));            /* out fast, then holds */
+        const fade = (1 - u) * (1 - u);
+        /* the cloud, painted, dark, the widest */
+        this._glow(true, fl.x, fl.y, R * (0.6 + 0.6 * grow), r[4], 0.55 * fade, true);
+        /* the fireball, painted in the element's own colour, darkening as it swells */
+        this._glow(true, fl.x, fl.y, R * (0.45 + 0.6 * grow), r[Math.min(4, 2 + Math.floor(u * 3))], 1 - u * u, true);
+        /* ...its light on what is round it */
+        this._glow(true, fl.x, fl.y, R * (0.7 + 0.5 * grow), r[2], 0.45 * fade);
+        /* the white-hot core, small and shrinking */
+        if (u < 0.5) this._glow(true, fl.x, fl.y, R * 0.28 * (1 - u / 0.5 * 0.6), 0xffffff, 0.9 * (1 - u / 0.5));
+        continue;
+      }
       if (fl.kind === 0) {
         if (fr >= 3) { this.flashes.splice(i, 1); continue; }
         /* the release rides the crystal as the staff kicks */
@@ -756,9 +801,12 @@ export class StaffCastFx {
       frontLayer: (L && L.label) || null,
       frontOnTop: !!(L && L.children[L.children.length - 1] === this.front),
       sparks: { orbit, front, back },
-      drawn: { glowFront: this.glowF.n, sqFront: this.sqF.n, glowBack: this.glowB.n, sqBack: this.sqB.n },
+      drawn: { glowFront: this.glowF.n, sqFront: this.sqF.n, glowBack: this.glowB.n, sqBack: this.sqB.n, glowPainted: this.glowN.n },
       flashes: this.flashes.length,
       casts: this._stats.castN, crashes: this._stats.crashN,
+      /* v2.3.3892: explosions begun, and playing now (each with its kind and age) */
+      bursts: this._stats.burstN || 0, burstOn: BURST_ON,
+      burstsLive: this.flashes.filter((f) => f.kind === 4 || f.kind === 5).map((f) => ({ big: f.kind === 5, age: Math.round(this._lastNow - f.t0), x: Math.round(f.x), y: Math.round(f.y) })),
       lastCast: this._stats.lastCast, lastCrash: this._stats.lastCrash,
     };
   }
