@@ -2220,6 +2220,14 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
   padding:1px 5px;border-radius:5px;background:#1A2328;color:#F2D58C;
   font:800 12px/1.1 'Source Sans 3',sans-serif;box-shadow:0 0 0 1px rgba(234,198,117,.65);
   opacity:0;animation:bt-xp-gain 1200ms cubic-bezier(.2,.8,.2,1) 1 forwards}
+/* v2.3.3893: a kill's "+N XP" in the air on its way to the bar (ui/
+   XpFlyOverlay.jsx flyKillXp): the bar's own "+N" holds at its first, unseen
+   frame and pops as it lands; the landing pulses the skill's picture */
+html[data-xp-inbound] .bt-xp-gain{animation-play-state:paused;visibility:hidden}
+html[data-xp-land="a"] .bt-xp-bar__icon{animation:bt-xp-land-a 420ms cubic-bezier(.2,.8,.2,1) 1}
+html[data-xp-land="b"] .bt-xp-bar__icon{animation:bt-xp-land-b 420ms cubic-bezier(.2,.8,.2,1) 1}
+@keyframes bt-xp-land-a{0%{transform:scale(1)}35%{transform:scale(1.35);filter:brightness(1.5)}100%{transform:scale(1)}}
+@keyframes bt-xp-land-b{0%{transform:scale(1)}35%{transform:scale(1.35);filter:brightness(1.5)}100%{transform:scale(1)}}
 @keyframes bt-xp-gain{
   0%{opacity:0;transform:translateY(25%) scale(.9)}
   15%{opacity:1;transform:translateY(0) scale(1.08)}

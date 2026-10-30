@@ -4,6 +4,8 @@ import { activeWeaponCategory, weaponXpRequired, WEAPON_LEVEL_CAP } from '@/data
 import { prog3HasSkills, prog3XpRequired, PROG3, PROG3_SKILL_META } from '@/data/prog3.js';
 import { xpCardPoint, holdXp, landXp } from '@/ui/xpLanding.js'; /* v2.3.1874 */
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470 */
+import { xpGainWords } from '@/game/xpBar.js';  /* v2.3.3893 */
+import { killXpOn, KILL_XP_LINES_AFTER_MS, killXpInbound } from '@/game/killXp.js';      /* v2.3.3893 */
 
 /* HudPopupOverlay — HUD-anchored "+N XP" / "+N G" feedback, plus the
    transient XP bar the XP popup flies into.  Reads entries pushed to
@@ -191,8 +193,14 @@ export const XpFlyOverlay = () => {
   const now = Date.now();
 
   for (let i = pops.length - 1; i >= 0; i--) {
-    if (now - pops[i].ts > ENTRY_LIFETIME_MS) pops.splice(i, 1);
+    if (now - pops[i].ts > ENTRY_LIFETIME_MS * (pops[i].toBar ? flySlow() : 1)) {
+      /* v2.3.3893: pruned, perhaps never drawn: its hold goes with it */
+      if (pops[i].toBar) _inbound.end(pops[i].hold, false);
+      pops.splice(i, 1);
+    }
   }
+  /* ...and with no kill label left anywhere, nothing is held */
+  if (_inbound.count() && !pops.some((p) => p.toBar)) _inbound.reset();
 
   /* Remember the most recent XP gain so the bar can outlive the popup
      that triggered it (the popup dies at ~1.2s, the bar holds ~2.6s). */
@@ -258,19 +266,20 @@ const XpFlyToCard = ({ pop }) => {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      if (!landedRef.current) { landedRef.current = true; landXp(cat); tick((v) => v + 1); }
-    }, FLY_MS + LIFT_MS);
+      if (!landedRef.current) { landedRef.current = true; landXp(cat); if (pop.toBar) _inbound.end(pop.hold, true); tick((v) => v + 1); }
+    }, (FLY_MS + LIFT_MS) * (pop.toBar ? flySlow() : 1));
     return () => {
       clearTimeout(t);
       /* Unmounted mid-flight (the entry aged out, or the overlay went away):
          release the hold anyway or the card's number is frozen for good. */
-      if (!landedRef.current) { landedRef.current = true; landXp(cat); }
+      if (!landedRef.current) { landedRef.current = true; landXp(cat); if (pop.toBar) _inbound.end(pop.hold, false); }
     };
   }, [cat]);
 
-  const age = Date.now() - pop.ts;
+  const age = (Date.now() - pop.ts) / (pop.toBar ? flySlow() : 1);
   const start = pop.from || null;
-  const dest = xpCardPoint(cat);
+  /* v2.3.3893: a kill's XP goes to the top bar's XP bar (topBarXpPoint) */
+  const dest = pop.toBar ? topBarXpPoint() : xpCardPoint(cat);
 
   /* No start point means the popup was pushed with no world anchor (an older
      call site); fall back to the middle of the play area rather than 0,0. */
@@ -291,6 +300,8 @@ const XpFlyToCard = ({ pop }) => {
     y = (sy - LIFT_PX) + (dest.y - (sy - LIFT_PX)) * e;
     scale = 1 - 0.45 * k;
     opacity = k > 0.75 ? Math.max(0, 1 - (k - 0.75) / 0.25) : 1;
+    /* v2.3.3893: a kill's stays whole till it is on the bar, which pulses */
+    if (pop.toBar) { scale = 1 - 0.3 * k; opacity = k > 0.92 ? Math.max(0, 1 - (k - 0.92) / 0.08) : 1; }
   } else {
     /* Nowhere to land — hold above the character and fade out. */
     const k = Math.min(1, (age - LIFT_MS) / FLY_MS);
@@ -317,6 +328,8 @@ const XpFlyToCard = ({ pop }) => {
          label as barely moving because the two samples picked different
          elements. */
       data-xpfly={cat}
+      data-xpfly-kill={pop.toBar ? '1' : undefined}
+      data-xpfly-to={pop.toBar && dest ? Math.round(dest.x) + ',' + Math.round(dest.y) : undefined}
       style={{
       position: 'fixed', left: 0, top: 0,
       transform: `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0) translate(-50%, -50%) scale(${scale.toFixed(3)})`,
@@ -326,6 +339,11 @@ const XpFlyToCard = ({ pop }) => {
       color: pop.color || COL.xp,
       textShadow: '0 2px 4px rgba(4,7,9,.95), 0 0 3px rgba(4,7,9,.9)',
       whiteSpace: 'nowrap', pointerEvents: 'none',
+      /* v2.3.3893: a kill's wears the bar's own "+N" pill (game.css
+         .bt-xp-gain), legible over snow and sand alike: the same number,
+         travelling to where it lands */
+      ...(pop.toBar ? { padding: '2px 7px', borderRadius: 6, background: '#1A2328',
+        boxShadow: '0 0 0 1px rgba(234,198,117,.75), 0 2px 6px rgba(0,0,0,.5)', textShadow: 'none' } : null),
     }}>{pop.text}</div>
   );
 };
@@ -548,8 +566,82 @@ export function pushHudPopup(S, opts) {
        the camera moves, so a point captured at render time is a point on a
        different frame.  Null when the world is not on screen yet. */
     from: opts.from || playerScreenPoint(S),
+    toBar: !!opts.toBar,   /* v2.3.3893: a kill's, to the top bar (flyKillXp) */
+    hold: opts.hold || null,   /* ...and its hold on the bar's "+N" */
     ts: Date.now(),
   });
+}
+
+/* ═══ v2.3.3893: A KILL'S XP JUMPS INTO THE TOP BAR'S XP BAR ═══
+   game/killXp.js decides when and how much (the worker's gain the bar took for
+   the killing blow); this sends it: born where the monster fell, the same lift
+   over the spot and drop as the v2.3.1874 flight above, into the top bar's
+   XP bar (ui/mobile/ZoneHeader.jsx), which pulses as it lands.  While it is
+   in the air the bar's own "+N" holds at its first frame (unseen: it starts
+   transparent), and pops on the landing -- one number, travelling, never two
+   at once.  Both through attributes on <html> (game.css), never a class on
+   the bar React draws, so a redraw of the bar cannot drop them. */
+export function flyKillXp(S, f) {
+  if (!S || !f || !(f.gain > 0)) return;
+  if (typeof window !== 'undefined' && !killXpOn(window.location && window.location.search)) return;
+  /* from where its drop lines rise (game/dropLines.js spotOf: half its
+     popup height over the monster), so the XP is up first, from the same
+     place, and well over them as they start */
+  const m = f.monsterId != null && S.monsters ? S.monsters.find((q) => q && q.id === f.monsterId) : null;
+  const from = m ? worldScreenPoint(S, m.x, (m.y != null ? m.y : (m.renderY || 0)) + (m._popupTopOff != null ? m._popupTopOff : -120) * 0.5)
+    : worldScreenPoint(S, f.x, f.y - 60);
+  /* (QA: the stretched flight's lift holds the lines back as long) */
+  if (flySlow() > 1 && S._dropLinesAt > Date.now()) S._dropLinesAt = Date.now() + KILL_XP_LINES_AFTER_MS * flySlow();
+  const hold = _inbound.begin((LIFT_MS + FLY_MS) * flySlow());
+  pushHudPopup(S, { target: 'xpBar', text: xpGainWords(f.gain), color: '#F2D58C', cat: f.cat, from, toBar: true, hold });
+}
+
+let _landAB = 0, _landT = 0;
+/* the holds on the bar's "+N" (game/killXp.js killXpInbound: one token a
+   flight, given back on the landing, the unmount, or its failsafe) */
+const _inbound = killXpInbound({
+  set(on) {
+    try { if (on) document.documentElement.setAttribute('data-xp-inbound', '1'); else document.documentElement.removeAttribute('data-xp-inbound'); } catch (e) { /* none */ }
+  },
+  land() {
+    try {
+      const H = document.documentElement;
+      /* two names in turn, so a second landing restarts the pulse */
+      _landAB = 1 - _landAB;
+      H.setAttribute('data-xp-land', _landAB ? 'a' : 'b');
+      clearTimeout(_landT);
+      _landT = setTimeout(() => { try { H.removeAttribute('data-xp-land'); } catch (e) { /* none */ } }, 450);
+    } catch (e) { /* feedback only */ }
+  },
+  setTimeout: (fn, ms) => setTimeout(fn, ms),
+  clearTimeout: (t) => clearTimeout(t),
+});
+/* QA only: `window.__btXpFlySlow` (a factor) stretches a kill's flight, so a
+   picture on a slow box catches it in the air (mp-killxp) */
+function flySlow() {
+  const q = typeof window !== 'undefined' ? Number(window.__btXpFlySlow) : 0;
+  return q > 1 ? q : 1;
+}
+/* the middle of the top bar's XP bar's picture, while the bar is up; null
+   when it is not (the label then holds over the spot and fades) */
+function topBarXpPoint() {
+  try {
+    const el = document.querySelector('[data-xp-bar][data-xp-shown="1"] .bt-xp-bar__icon');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return r.width > 0 ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;
+  } catch (e) { return null; }
+}
+
+/* a world point, in screen (CSS) pixels -- playerScreenPoint's arithmetic */
+function worldScreenPoint(S, x, y) {
+  try {
+    if (!S || !S.camera) return null;
+    const cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas');
+    if (!cv) return null;
+    const r = cv.getBoundingClientRect();
+    return { x: r.left + (x - S.camera.x) * (S._worldScaleX || 1), y: r.top + (y - S.camera.y) * (S._worldScaleY || 1) };
+  } catch (e) { return null; }
 }
 
 /* The skill a kill's XP belongs to — the equipped weapon's category, which is

@@ -42,6 +42,7 @@ import { cue, cueAt, cuePeer, peerOwn, cueLater } from '@/game/eventSounds.js'; 
 import { onKillRoll } from '@/game/killRoll.js'; /* v2.3.3209: a kill's one roll, over the monster (server/src/killroll.js) */
 import { noteKillCredit } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
 import { noteProg3Xp } from '@/game/xpBar.js'; /* v2.3.3695: the XP bar, from the worker's skill XP */
+import { killXpOnGain } from '@/game/killXp.js'; /* v2.3.3893: a kill's XP flies to the bar */
 import { prog3XpRequired } from '@/data/prog3.js'; /* v2.3.3695: the XP to each next level, for the bar */
 import { parsePetWire } from '@/data/trapping.js'; /* v2.3.3123: the others' pets */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2242 */
@@ -100,7 +101,7 @@ import { wireHeight, wireFrame } from '@/rendering/traits/buildCatalog.js';   /*
 import { getShirtArt, getArt, artHasInk } from '@/rendering/traits/playerArt.js';   /* v2.3.1939; v2.3.1940 + pants/tattoo */
 import { getPattern } from '@/rendering/traits/patternCatalog.js';   /* v2.3.1941 */
 import { getEquip, syncArmorLayers, migrateTier1Armor } from '@/rendering/gearCatalog.js'; /* v2.3.1761 */
-import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx';
+import { pushHudPopup, flyKillXp } from '@/ui/XpFlyOverlay.jsx'; /* v2.3.3893: flyKillXp */
 /* v2.3.1982: the "the world is full" screen — plain DOM, see its header
    for why it is not a React boot phase. */
 import { showRoomFull, hideRoomFull, roomFullOpen } from '@/ui/RoomFullScreen.js';
@@ -2947,7 +2948,12 @@ export function setupWebSocket(ctx) {
               if (msg.payload.prog3 && typeof msg.payload.prog3 === 'object') {
                 /* v2.3.3695: the XP bar (game/xpBar.js) -- the skill this blob
                    gained in, from the one it replaces; display only */
-                try { noteProg3Xp(S, S.rpg.prog3, msg.payload.prog3, prog3XpRequired, Date.now()); } catch (_xb) { /* the bar only */ }
+                try {
+                  var _xbBar = noteProg3Xp(S, S.rpg.prog3, msg.payload.prog3, prog3XpRequired, Date.now());
+                  /* v2.3.3893: a kill that came before its XP flies now (game/killXp.js) */
+                  var _kxF = killXpOnGain(S, _xbBar, Date.now());
+                  if (_kxF) flyKillXp(S, _kxF);
+                } catch (_xb) { /* the bar only */ }
                 S.rpg.prog3 = msg.payload.prog3; recalcDerived(S.rpg);
               }
               /* ═══ v2.3.2615: BASELINE THE CELEBRATION HIGH-WATER AGAINST THE

@@ -222,7 +222,10 @@ function pushGroup(S, monsterId, kind, spot, lines, now) {
   if (!spot || !lines.length) return null;
   const list = groups(S);
   while (list.length >= DROP_LINES.MAX_GROUPS) list.shift().gone = true;
-  const g = { monsterId, kind, x: spot.x, y: spot.y, ts: now, lines, over: spot.over || 'monster' };
+  /* v2.3.3893: a kill's XP first -- the lines start when the kill said they
+     may (game/killXp.js S._dropLinesAt; the renderer draws nothing before) */
+  const at = Math.max(now, Number(S._dropLinesAt) || 0);
+  const g = { monsterId, kind, x: spot.x, y: spot.y, ts: at, lines, over: spot.over || 'monster' };
   list.push(g);
   if (typeof window !== 'undefined' && window.__btProbe) {
     try {
