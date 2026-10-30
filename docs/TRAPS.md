@@ -7621,6 +7621,9 @@ they did; `?onebatch=1` tests the one program here anyway.
 **Receipt:** qa-branchcost (every branch run in software); mp-onebatch with
 `?onebatch=1`; docs/specs/one-batch.md "In software, the three programs".
 
+**v2.3.3894:** every chip now keeps the three programs unless the address asks
+for the one (§260): on the owner's iPhone the one program lost a bro's legs.
+
 ## 226. "Route it in my own wrapper: I installed it last, so it runs last" (v2.3.3459)
 
 **Tempting:** to send some sprites to a batcher of your own, wrap
@@ -8644,3 +8647,31 @@ chosen per batch rather than all inlined into every read.
 
 **Receipt:** `look-palette-choice` suite, `mp-lookwin`,
 docs/specs/look-palette.md "Not on Windows".
+
+## 260. "The one program draws the same frame to the pixel here, so it is safe on a phone" (v2.3.3894)
+
+**The move.** Trust a program that holds several reads (ONE_BATCHER,
+paletteTex.js) because this box draws the same held frame with it and without
+it, identical to the pixel (`mp-onebatch`), and a GL audit finds every texture
+unit holding what Pixi believes and no GL error.
+
+**Why it is wrong.** This box is SwiftShader. The owner's iPhone, a bow or a
+staff carried: in the four facings that draw the weapon behind the body (SW, W,
+NW, N) the legs flickered out with the one program, and `?onebatch=0` cured it
+(2026-10-30: "This one fixed it ... it was just the weapon switching"). The day
+before, the same four facings lost the whole body on that phone (v2.3.3864).
+Here the audit of exactly that scene (`?onebatch=1`, the bow, those facings)
+was clean, and the player's body and bow are both drawn by the one program, in
+one draw call (the greatsword is drawn by the metal shine's own program, so it
+never shares the body's call; the bow and the staff, behind the body in those
+facings, are the sprite drawn just before it): the fault is the phone's chip
+running it, and nothing here can see a chip's own fault.
+
+**The rule.** The three programs (Pixi's, the sharp one, the colour numbers)
+draw on every chip, as they did until 2026-10-18; `?onebatch=1` brings the one
+program back for one tab (`oneBatchChoice`, `why` 'default'). Turn it back on
+only with the owner's phone showing every facing with each weapon (bow, staff,
+greatsword), walking and standing.
+
+**Receipt:** docs/specs/one-batch.md "Off by default (v2.3.3894)"; mp-onebatch's
+choice table.

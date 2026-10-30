@@ -426,18 +426,31 @@ export function paletteClipMade() { return FRAG_CLIP !== FRAG; }
    skips a branch that every pixel of a quad agrees on, as Pixi's own batch
    program counts on (its chain of 16 picture slots).  So a renderer that
    names itself software keeps the three programs (oneBatchChoice), and
-   `?onebatch=1` draws with the one anyway (mp-onebatch). */
+   `?onebatch=1` draws with the one anyway (mp-onebatch).
+   v2.3.3894: AND EVERY OTHER CHIP KEEPS THE THREE TOO, unless the address
+   asks for the one (`?onebatch=1`).  The owner's iPhone, a bow or a staff
+   carried: in the four facings that draw the weapon behind the body (SW, W,
+   NW, N) the legs flickered out, and `?onebatch=0` cured it -- "This one
+   fixed it ... it was just the weapon switching".  The day before, the same
+   four facings lost the whole body on that phone (v2.3.3864).  This box
+   cannot see it: here the one program draws the frame the three do, to the
+   pixel, and a GL audit of the bow in those facings found every texture
+   unit holding what Pixi believes it holds and no GL error, the player's
+   body and bow both drawn by this program.  So it is the phone's chip
+   running this program, and the three are what drew the game until
+   2026-10-18 (a fight's frame ~70 draw calls again, not ~30). */
 export const ONE_BATCHER = 'bt-one';
 const ONE_ID_K = 64;   /* the texture id: slot + 64 x code (Pixi's is 16 bits) */
 const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|software|basic render|\bwarp\b/i;
 /** v2.3.3447: one program or three, from the address (`onebatch=0|1` wins)
  *  and the renderer's name -- {on, why}.  Pure, so the QA probe asks it
- *  about chips this box is not (mp-onebatch). */
+ *  about chips this box is not (mp-onebatch).  v2.3.3894: the three on
+ *  every chip unless the address asks for the one (`why` 'default'). */
 export function oneBatchChoice(search, renderer) {
   const m = /(^|[?&])onebatch=([01])(&|$)/.exec(search || '');
   if (m) return { on: m[2] === '1', why: 'address' };
   if (SOFTWARE_GL.test(renderer || '')) return { on: false, why: 'software' };
-  return { on: true, why: 'chip' };
+  return { on: false, why: 'default' };
 }
 /* the chip's own name: Firefox gives it as RENDERER, Chrome and Safari
    answer "WebKit WebGL" there and the name through the debug extension
