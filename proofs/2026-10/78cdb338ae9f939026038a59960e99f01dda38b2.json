@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "78cdb338ae9f939026038a59960e99f01dda38b2",
+  "tree": "3f25ae48c4c1ba2c18a47507728ab724a6c32f0f",
+  "committedAt": "2026-10-29T17:52:03-07:00",
+  "subject": "Merge pull request #1348 from hemibroscommunity-del/claude/onebatch-off",
+  "files": 7323,
+  "bytes": 841451976,
+  "listingSha256": "354a08b33ef02781571cce7c42cbf8e0b56ec04fea42e0a383a6a546404cadd6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
