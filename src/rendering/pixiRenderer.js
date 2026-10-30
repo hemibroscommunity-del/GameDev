@@ -23,6 +23,7 @@ import { WorldLife } from './worldLife.js';           /* v2.3.2811: trees sway, 
 import { SwimFx } from './swimFx.js';                 /* v2.3.3003: a swimmer is a head in the water */
 import { setWheelWaterRenderer } from './wheelWater.js'; /* v2.3.3019: the Wheel's water moves */
 import { setPaletteRenderer, setOneBatchRenderer } from './paletteTex.js';      /* v2.3.3190: pictures as colour numbers; v2.3.3447: one program for every sprite */
+import { warmLookPalette } from './lookPalette.js';   /* v2.3.3883: the looks' program and sheets on a rebuilt renderer too */
 import './paletteLoad.js';                                 /* v2.3.3464: the farm's too, read so by Pixi's own loader */
 import { JumpFx } from './jumpFx.js';                 /* v2.3.3017: a jumper is drawn in the air */
 import { RideFx } from './rideFx.js';                 /* v2.3.3776: a rider is drawn on the board */
@@ -378,6 +379,9 @@ export async function initPixiRenderer(canvas) {
      programs, as before, if it does not link (rendering/paletteTex.js) */
   try { setOneBatchRenderer(app.renderer); } catch (e) { /* the three programs */ }
   try { warmPicNumbers(app.renderer); } catch (e) { /* compiled on its first whirlwind */ }   /* v2.3.3715: ?picnumbers (picsNumbers.js) */
+  /* v2.3.3883: the looks' program and sheets, after both (as the join's
+     loading screen orders them): a rebuilt renderer gets them here */
+  try { warmLookPalette(); } catch (e) { /* built where first drawn */ }
   /* v2.3.3707: the silhouettes' two stencil programs, built here behind the
      loading screen, not the first time a monster hides (monsterSilhouette.js) */
   try { warmSilhouettes(app.renderer); } catch (e) { /* none drawn until they build */ }

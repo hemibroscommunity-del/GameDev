@@ -102,7 +102,7 @@ const _sets = new Map();          /* name -> { url, base, manifest, loading } */
 const _sheets = Object.create(null);   /* 'body/jog-east' -> { src, frames: [{frame, trim}], ds, bits } */
 let _loading = null;
 let _ok = null;                   /* the program: null not tried, true linked, false not here */
-const _stats = { sheets: 0, sheetBytes: 0, looksMade: 0, looksFreed: 0, rowsFull: 0, linkError: null, loadError: null, drawn: 0, sets: 0, rangeErrors: 0 };
+const _stats = { sheets: 0, sheetBytes: 0, looksMade: 0, looksFreed: 0, rowsFull: 0, linkError: null, loadError: null, drawn: 0, sets: 0, rangeErrors: 0, remade: 0, remadeInFrame: 0 };
 
 /* the body's roles, as v2.3.3716 baked them (its manifest predates `roles`):
    1 skin, 2 trousers, 3 boots retinted by luminance over their refs; 4-7 an
@@ -226,7 +226,7 @@ function buildSheet(set, name, m, img, roles) {
     else { r.frame = new Rectangle(ax, ay, w, h); r.orig = new Rectangle(0, 0, m.fw || 128, m.fh || 128); r.trim = new Rectangle(tx, ty, w, h); }
     return r;
   });
-  const sheetRec = { src, frames, ds: m.ds, bits, book: 0, uploaded: false };
+  const sheetRec = { src, frames, ds: m.ds, bits, book: 0, uploaded: -1 };
   holder.sheet = sheetRec;
   _sheets[set + '/' + name] = sheetRec;
   _stats.sheets++;
@@ -306,6 +306,7 @@ export function setLookSheetBook(set, sheet, offset) {
    23.0 MB of buffers at home against 20.3 with `?lookpalette=0`.  As the
    Wheel's ground does (wheelGround.js _toGpu); a context that is lost
    uploads as it is first drawn instead. */
+let _inPrewarm = false;
 function uploadSheets() {
   const r = paletteRendererOf();
   if (!r || !webgl2(r) || !r.texture || typeof r.texture.initSource !== 'function') return;
@@ -313,8 +314,13 @@ function uploadSheets() {
   if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
   for (const k of Object.keys(_sheets)) {
     const sh = _sheets[k];
-    if (sh.uploaded) continue;
-    try { r.texture.initSource(sh.src); sh.uploaded = true; } catch (e) { /* drawn the usual way */ }
+    /* v2.3.3883: on THIS renderer -- a black screen's rebuild is a new one,
+       and a true here from the old one sent nothing to it: every sheet was
+       then made again from its <img> inside the first frames drawn
+       (`remadeInFrame`), not behind the rebuild's wait (the renderer's uid,
+       not the renderer: a destroyed one is not kept) */
+    if (sh.uploaded === r.uid) continue;
+    try { _inPrewarm = true; r.texture.initSource(sh.src); sh.uploaded = r.uid; } catch (e) { /* drawn the usual way */ } finally { _inPrewarm = false; }
   }
 }
 /**
@@ -868,7 +874,12 @@ function patchPipes() {
          <img> for the rare second upload (a rebuilt renderer after a black
          screen).  The decoded <img> is the browser's to drop and decode
          again. */
-      const res = source.resource || source._btLook.make();
+      let res = source.resource;
+      if (!res) {
+        res = source._btLook.make();
+        _stats.remade++;
+        if (!_inPrewarm) _stats.remadeInFrame++;
+      }
       gl.pixelStorei(gl.UNPACK_ALIGNMENT, source._btLook.bits === 8 ? 1 : 2);   /* v2.3.3737: an 8-bit sheet's rows are a byte a texel */
       if (!forceAllocation && glTexture.width === w && glTexture.height === h) {
         gl.texSubImage2D(target, 0, 0, 0, w, h, glTexture.format, glTexture.type, res);
@@ -923,6 +934,13 @@ function prewarmProgram() {
   if (!_ok && !_stats.linkError) _stats.linkError = 'the look program did not build on this device';
   try { if (box) box.destroy({ children: true }); } catch (e) { /* gone */ }
 }
+/** v2.3.3883: a new renderer (initPixiRenderer: the first, and a black
+ *  screen's rebuild) -- the look program built and the sheets sent to it
+ *  there, behind its wait.  Only the join's loading screen did this, so after
+ *  a rebuild the program was compiled, and every sheet made again from its
+ *  <img>, inside the first frames drawn. */
+export function warmLookPalette() { if (_wanted) prewarmProgram(); }
+
 /* a sheet's first frame, in the art's own colours (the prewarm, QA) */
 function getLookFrameRaw(name) {
   const sh = _sheets[name];
