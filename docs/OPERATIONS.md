@@ -220,6 +220,7 @@ What each flag means:
   - *hundreds of hits without moving a step*;
   - *cooks on a perfectly even beat*;
   - *every harvest gesture takes exactly the same time*;
+  - *presses E in a perfectly even rhythm* (a computer harvesting with E, v2.3.3725);
   - *the same harvest loop for hours without a break* / *hours of play without a break*;
   - *connects from a cloud server's network*.
 

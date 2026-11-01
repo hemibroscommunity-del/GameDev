@@ -49,6 +49,7 @@
 import { GameRoom } from '../../../server/src/index.js';
 import { BOTFP } from '../../../server/src/botfp.js';
 import { BOTSIG } from '../../../server/src/botsig.js';   /* v2.3.3731: the server's own bot signals */
+import { encodeGesturePoints } from '../../../src/game/gesturePoints.js';   /* v2.3.3725: a script drawing its points */
 import { GATHER_HITS, HONEST_CYCLE, gatherReqLvl } from '../../../server/src/gathering.js';
 import { WHEEL_SPAWNS, WHEEL_CENTRE } from '../../../server/src/wheelspawns.js';
 
@@ -129,6 +130,15 @@ function humanFp() {
     ent: +u(0.06, 0.32).toFixed(3), tv: +u(2, 40).toFixed(2), vc: +u(0.06, 0.6).toFixed(3), h: hash32() };
 }
 const COPY_FP = { len: 820, n: 96, dur: 1500, ent: 0.15, tv: 12, vc: 0.3, h: 2779098405 };
+/* v2.3.3725: a script's POINTS (caps.gesturepts): a drag back and forth on a
+   16 ms timer at a steady speed, its reach varied a little each time so no
+   two hash alike -- the summary the worker computes from them is the test */
+function scriptPoints() {
+  const out = [];
+  const amp = 30 + Math.random() * 20;
+  for (let i = 0; i < 95; i++) { const k = i % 20; out.push({ x: 400 + (k < 10 ? k : 20 - k) * amp / 10, y: 700, t: i * 16 }); }
+  return encodeGesturePoints(out);
+}
 
 /* ── a player ────────────────────────────────────────────────────────── */
 /* v2.3.3732: --pd marks every move for the message diet's glide (server
@@ -317,6 +327,7 @@ async function stepGatherer(world, p) {
     const payload = { id: n.id, zone: 'wheel', accuracy: c.acc === 'mix' ? (Math.random() < 0.45 ? 'perfect' : Math.random() < 0.8 ? 'good' : 'ok') : c.acc };
     if (c.fp === 'human') payload.swipeFp = humanFp();
     else if (c.fp === 'copy') payload.swipeFp = { ...COPY_FP };
+    else if (c.fp === 'points') payload.g = scriptPoints();   /* v2.3.3725 */
     await send(world, p, { type: 'node_strike', payload });
     p.strikes++;
     const r = room._lastStrikeFor(p.id);
@@ -520,6 +531,10 @@ const SCENARIOS = [
     players: [{ type: 'tree', tier: 1, start: true, edge: true, fp: 'human', acc: 'perfect', move: 'burst' }] },
   { name: 'copy-pine', note: 'no start message, the same fingerprint every strike',
     players: [{ type: 'tree', tier: 1, start: false, fp: 'copy', acc: 'perfect', move: 'burst' }] },
+  /* v2.3.3725: the new protocol's script: the real messages, the points of a
+     timer's drag where the summary was */
+  { name: 'points-pine', note: 'the real messages, its gesture sent as points (caps.gesturepts): a drag on a 16 ms timer',
+    players: [{ type: 'tree', tier: 1, start: true, fp: 'points', acc: 'perfect', move: 'walk', human: true, speed: 220, after: () => u(250, 700) }] },
   { name: 'nofp-pine', note: 'no start message, no fingerprint',
     players: [{ type: 'tree', tier: 1, start: false, fp: 'none', acc: 'perfect', move: 'burst' }] },
   { name: 'disguised-pine', note: 'no start message, a fresh human-looking fingerprint and uneven gaps',

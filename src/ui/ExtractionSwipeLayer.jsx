@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, GESTURE_QUICK_CYCLE_MS, gestureTargetCycles, gradeGesture, KEY_WORK } from '@/game/gesturePose.js'; /* v2.3.2760; v2.3.3407: the grade lives there now, with the keyboard's work */
+import { GESTURE_STROKE, STROKE_SPAN_PX, GESTURE_FLOOR_MS, GESTURE_QUICK_CYCLE_MS, gestureTargetCycles, gradeGesture, KEY_WORK } from '@/game/gesturePose.js';
+import { encodeGesturePoints } from '@/game/gesturePoints.js'; /* v2.3.3725: the points the server measures */ /* v2.3.2760; v2.3.3407: the grade lives there now, with the keyboard's work */
 
 /* v2.3.229 / v2.4 — ExtractionSwipeLayer
  *
@@ -486,6 +487,15 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
           vc: velocityCurvature(sw.samples),
           h: pathHash(sw.samples),
         };
+        /* v2.3.3725: the samples themselves, packed -- what a worker with
+           caps.gesturepts judges instead of the summary above */
+        ex.gesturePts = encodeGesturePoints(sw.samples);
+      }
+      /* v2.3.3725: E's presses, [start, held] ms from the first, for the
+         server to measure their rhythm (a person's taps and holds wander) */
+      if (g.kb && Array.isArray(ex._keyLog) && ex._keyLog.length) {
+        const t0 = ex._keyLog[0].d;
+        ex.keyRhythm = ex._keyLog.map((p) => [Math.round(p.d - t0), Math.round((p.u || tNow) - p.d)]);
       }
       const accuracy = gradeGesture(g.activeMs, tNow - (g.firstMoveT || tNow), ent);
       swipeRef.current = null;
@@ -698,7 +708,7 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
       const cyc = GESTURE_QUICK_CYCLE_MS[ex.skill] || 450;
       if (!g.firstMoveT) g.firstMoveT = tNow;
       g.activeMs += dt;
-      g.kbCycles = (g.kbCycles || 0) + dt / cyc;
+      g.kbCycles = (g.kbCycles || 0) + dt * (KEY_WORK.slow || 1) / cyc;   /* v2.3.3725: E is the slower harvest */
       g.kbPhase = ((g.kbPhase || 0) + dt / cyc) % 1;
       const prevPhase = ex.cueFrame01 || 0;
       ex.cueFrame01 = g.kbPhase;
@@ -715,11 +725,22 @@ export const ExtractionSwipeLayer = ({ stateRef, onSuccess }) => {
         if (!(S && S._extraction)) return false;
         const tNow = performance.now();
         if (!kb) kb = { down: false, until: 0, lastT: tNow, raf: 0 };
-        if (!kb.down) { kb.down = true; kb.until = tNow + KEY_WORK.tapMs; }
+        if (!kb.down) {
+          kb.down = true; kb.until = tNow + KEY_WORK.tapMs;
+          /* v2.3.3725: each press on this harvest's record, for its rhythm */
+          const log = S._extraction._keyLog || (S._extraction._keyLog = []);
+          if (log.length < 24) log.push({ d: tNow, u: 0 });
+        }
         if (!kb.raf) kb.raf = requestAnimationFrame(keyStep);
         return true;
       },
-      up() { if (kb) kb.down = false; },
+      up() {
+        if (kb) kb.down = false;
+        /* v2.3.3725: when the press let go */
+        const S = stateRef.current;
+        const log = S && S._extraction && S._extraction._keyLog;
+        if (log && log.length && !log[log.length - 1].u) log[log.length - 1].u = performance.now();
+      },
       /* QA (mp-deskharvest) */
       probe() { return kb ? { down: !!kb.down, working: keyWorking() } : null; },
     };

@@ -18,6 +18,7 @@ default (below).
 | `rooted` | hits in a row from the same 2 px of ground | people move between targets | 600 hits on 3+ monsters |
 | `cook` | the gap between cooks (log histogram, 9% bins) | the minigame takes as long as it takes | 10th-90th percentile within 1 bin, 60+ cooks |
 | `gesture` | a harvest's start to its strike, minus the hits the server planned | a gesture takes 1.2-2.5 s, never the same twice | 10th-90th percentile within 1 bin, 60+ harvests |
+| `keys` (v2.3.3725) | a harvest worked by holding E: the gaps between its presses and the holds of all but the last (`node_strike.k`, gesture-points.md) | a person's taps and holds wander | 10th-90th percentile within 1 bin, 60+ presses; weight 3, never a flag alone |
 | `marathon` | activity with no 5-minute break | | 4 hours |
 | `loop` | ...and the same route of four nodes, in order, again and again | wandering among the same trees repeats steps between two trees, not whole routes of four | 60% of 100+ routes |
 | `cloud` | the socket's network, `request.cf.asn` (with `asOrganization`) at the opening, against a list of cloud providers' AS numbers | home and phone networks are not on it. Cloudflare's, Akamai's and Fastly's edges (Apple Private Relay) are left off on purpose | on the list |

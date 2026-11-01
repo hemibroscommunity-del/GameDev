@@ -168,7 +168,11 @@ export const DESK_GESTURE_HINT = {
  *          works as steadily as holding it;
  *   dtMax  no frame gives more than this, as a thumb's active clock counts no
  *          gap of 200 ms or more -- a stalled tab is not work. */
-export const KEY_WORK = { tapMs: 160, dtMax: 200 };
+/*   slow   v2.3.3725: E works at this fraction of a quick hand's pace -- the
+ *          plan's "keep E as a slower, lesser harvest" (HIDDEN-SERVER-PLAN,
+ *          the anti-bot plan 3): 1.5 s of drawing, 3 s of holding.  The mouse
+ *          drawing the gesture is the full harvest; E is the easy one. */
+export const KEY_WORK = { tapMs: 160, dtMax: 200, slow: 0.5 };
 
 /* How long after the thumb leaves the button (or stops) before the cue comes
    back to teach.  Long enough that the gaps inside one continuous swipe never
