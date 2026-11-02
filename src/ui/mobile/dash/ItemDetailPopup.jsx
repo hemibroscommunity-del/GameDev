@@ -40,6 +40,7 @@ import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { playVw } from '../playViewport.js';
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the card layer's box -- a computer's is the game's column (TRAPS §232) */
+import { canInspectFish, askFishWeigh } from '@/game/fishWeigh.js'; /* v2.3.3948: Inspect weighs a fish (server fishlog.js) */
 import {
   WEAPON_TYPES,
   calcDisplayDmgRange,
@@ -342,6 +343,9 @@ function resolveTarget(target) {
            would look like it had vanished.  Same shape as `open` and
            `drink` above -- the worker takes the goods out of ITS copy of
            the bag and holds them, so nothing here is credited locally. */
+        /* v2.3.3948: Inspect -- one catch of this fish weighed (game/fishWeigh.js,
+           caps.fishweigh read there); raw or cooked */
+        inspect: count > 0 && canInspectFish(SR, key),
         sell: count > 0 && storeEnabled(),
         /* v2.3.3473: Drop -- out of the bag and onto the ground at your feet,
            yours alone for a minute, then anyone's (server itemdrop.js).  Gated
@@ -1944,6 +1948,8 @@ export const ItemDetailPopup = () => {
           {actions.open     && <button onClick={onOpenTicket} className={buttonClass('primary')} style={buttonStyle('primary')}>Open Golden Ticket</button>}
           {actions.openChest && <button onClick={onOpenChest} data-open-chest="" className={buttonClass('primary')} style={buttonStyle('primary')}>Claim</button>}
           {actions.drink    && <button onClick={onDrink} className={buttonClass('primary')} style={buttonStyle('primary')}>Drink</button>}
+          {/* v2.3.3948: Inspect a fish -- the worker weighs one catch (the weigh-in card) */}
+          {actions.inspect  && <button onClick={() => { askFishWeigh(getState(), target.key); itemDetailBus.close(); }} data-fish-inspect={target.key} className={buttonClass()} style={buttonStyle()}>Inspect</button>}
           {actions.capeOn   && <button onClick={onCapeOn}  className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}
           {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}

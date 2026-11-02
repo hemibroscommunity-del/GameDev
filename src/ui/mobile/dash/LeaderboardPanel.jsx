@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { BT_API_BASE } from '@/networking/index.js';
+import { FishBoard } from './FishBoard.jsx';   /* v2.3.3948: the Biggest fish tab (server fishlog.js) */
+import { takeFishBoardWant, subscribeFishWeigh } from '@/game/fishWeigh.js';
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
    Owner: "a traditional high scores system that ranks each skill... I want
@@ -49,8 +51,12 @@ const CATS = [
    after Kills.  Its rows carry `ap`, not `value`; a 0 is left off, as the
    per-skill boards leave off a skill nobody trained. */
 const AP_CAT = { id: 'ap', label: 'AP' };
-const catsFor = (S) => (S && S._serverCaps && S._serverCaps.achievements
-  ? [...CATS.slice(0, 5), AP_CAT, ...CATS.slice(5)] : CATS);
+/* v2.3.3948: and BIGGEST FISH, the heaviest of each species weighed (the
+   rare-fish lane: FishBoard.jsx), its own board from the room, not this
+   page's fetch -- last, against a worker that says caps.fishweigh */
+const FISH_CAT = { id: 'fish', label: 'Biggest fish' };
+const catsFor = (S) => [...(S && S._serverCaps && S._serverCaps.achievements
+  ? [...CATS.slice(0, 5), AP_CAT, ...CATS.slice(5)] : CATS), ...(S && S._serverCaps && S._serverCaps.fishweigh ? [FISH_CAT] : [])];
 const rowValue = (cat, r) => {
   if (cat === 'ap') { const v = Math.floor(Number(r.ap) || 0); return v > 0 ? v.toLocaleString('en-US') + ' AP' : '-'; }
   const v = r.value ?? r.score;
@@ -95,7 +101,11 @@ const chip = (active) => ({
 });
 
 export const LeaderboardPanel = () => {
-  const [cat, setCat] = useState('combat');
+  /* v2.3.3948: the weigh-in card's Records opens this on the fish tab */
+  const [fishWant, setFishWant] = useState(() => takeFishBoardWant());
+  const [cat, setCat] = useState(() => (fishWant ? 'fish' : 'combat'));
+  /* ...and when it is already open (a Records tap with Ranks up) */
+  useEffect(() => subscribeFishWeigh(() => { const w = takeFishBoardWant(); if (w) { setFishWant(w); setCat('fish'); } }), []);
   const [boards, setBoards] = useState(() => Object.create(null));
   const [loading, setLoading] = useState(true);
 
@@ -108,6 +118,7 @@ export const LeaderboardPanel = () => {
      from a fetch response, and a plain {} silently no-ops on '__proto__'
      (CLAUDE.md — three incidents in one day). */
   useEffect(() => {
+    if (cat === 'fish') { setLoading(false); return undefined; }   /* v2.3.3948: FishBoard asks the room itself */
     let alive = true;
     const load = () => {
       fetch(BT_API_BASE + '/api/leaderboard/top?category=' + encodeURIComponent(cat) + '&limit=50')
@@ -139,7 +150,7 @@ export const LeaderboardPanel = () => {
           </button>
         ))}
       </div>
-      {board.length === 0 ? (
+      {cat === 'fish' ? <FishBoard key={fishWant || 'fish'} initial={fishWant} /> : board.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '16px 0' }}>
           {/* v2.3.1235: batch-1 rollout — empty-state contract: icon ≤40px,
               message 13/700 secondary (was 44px icon + 13/400 muted). */}

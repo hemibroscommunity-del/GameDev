@@ -79,8 +79,10 @@ export const FISH_VARIANT_NAMES = (() => {
 
 /* THE BAG'S LOOK (no new art, the lane's decision): an albino is the
    species' own picture washed pale with a little pink; a large one wears a
-   small "L" badge.  Filter on the <img> alone, never the tile, and no blur
-   (TRAPS §42 is about the canvas; this is a DOM picture). */
+   small "L" badge.  The filter is the BAG's only (its tiles sit in the
+   dashboard, never over the world): the item card and the weigh-in card are
+   drawn over the WebGL canvas, where a CSS filter is the iOS grain hazard
+   (TRAPS §42), so there the name says "Albino". */
 export const ALBINO_FILTER = 'grayscale(0.85) brightness(1.35) sepia(0.25) hue-rotate(300deg) saturate(1.6)';
 export function fishArtStyle(key) {
   return fishVariantOf(key) === 'albino' ? { filter: ALBINO_FILTER } : null;
