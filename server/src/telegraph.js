@@ -403,7 +403,10 @@ export const telegraphMethods = {
       m._tgUntil = 0;
       m._tgAim = null;
       m._tgTarget = null;
-      m._tgNextAt = now + kit.cooldownMs;
+      /* v2.3.3946: an elder's cooldowns are shorter (monstermoves.js
+         _moveCdK: 1 below tier 7), and the next move waits its gap */
+      m._tgNextAt = now + Math.round(kit.cooldownMs * this._moveCdK(m));
+      this._noteSpecialEnded(m, now);
       m.atkCd = now + this.MONSTER_ATTACK_CD;   /* no free basic swing after a cast */
       m._attackingUntil = now + 400;
 
@@ -467,6 +470,8 @@ export const telegraphMethods = {
     const kit = this._kitFor(m);   /* v2.3.3621: an archetype's kit, else an element's */
     if (!kit || m._tgPhase) return false;
     if (now < (m._tgNextAt || 0)) return false;
+    /* v2.3.3946: never over a move in flight, nor straight after one */
+    if (m._mvPhase || now < (m._mvGapAt || 0)) return false;
     if (now <= m.atkCd) return false;              /* respect the basic-swing cadence */
     /* v2.3.2790: the cast range and the ring shrink with the caster on a
        depth zone (Wind Dunes' north); 1 everywhere else.  The ring is

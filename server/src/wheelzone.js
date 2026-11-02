@@ -298,7 +298,7 @@ export const wheelzoneMethods = {
       for (let i = cx - R; i <= cx + R; i++) for (let j = cy - R; j <= cy + R; j++) awake.add(i * GRID_KEY + j);
     }
     return (m) => {
-      if (m.targetId || m._tgPhase || m._bwUntil || m._burstUntil || m._burPhase || m._projImpactAt) return false;
+      if (m.targetId || m._tgPhase || m._bwUntil || m._burstUntil || m._burPhase || m._projImpactAt || m._mvPhase) return false;   /* v2.3.3946: + a move in flight (monstermoves.js) */
       if (!Number.isFinite(m.x) || !Number.isFinite(m.y)) return false;
       return !awake.has(Math.floor(m.x / C) * GRID_KEY + Math.floor(m.y / C));
     };
