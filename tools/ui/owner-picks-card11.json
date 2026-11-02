@@ -11,7 +11,8 @@
   "T69.1": "the owner ticked both luck stars, T69.1 and T69.2, nearly the same picture; T69.2 is used, from the same sheet as the other stat picks"
  },
  "replaced": {
-  "T36.1": "v2.3.3571: the owner's own painted pickaxe took its place (\"Ok change the art style of the copper ore and the pickaxe to this\", 2026-10-22); tools/ui/cut-owner-items.py writes icons/items/mining-pickaxe.webp now"
+  "T36.1": "v2.3.3571: the owner's own painted pickaxe took its place (\"Ok change the art style of the copper ore and the pickaxe to this\", 2026-10-22); tools/ui/cut-owner-items.py writes icons/items/mining-pickaxe.webp now",
+  "T92.1": "v2.3.3907: the owner, 2026-11-02: \"None of the elements should have shapes behind them. Just the element itself.\" -- the flame on its red diamond gave way to a single flame drawn by tools/ui/draw-element-icons.py, which writes icons/ui/elem-flame.webp now"
  },
  "picks": [
   {
@@ -1002,31 +1003,6 @@
      64
     ],
     "fill": 0.766
-   }
-  },
-  {
-   "code": "T92.1",
-   "what": "Element: flame (land plates, hit numbers, chips)",
-   "src": "fantasy-game-ui-icon-collection.png",
-   "note": "a flame on a red diamond",
-   "cut": {
-    "box": [
-     464,
-     408,
-     612,
-     572
-    ],
-    "mode": "alpha",
-    "grow": 4
-   },
-   "name": "icons/ui/elem-flame",
-   "ext": "webp",
-   "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.758
    }
   },
   {

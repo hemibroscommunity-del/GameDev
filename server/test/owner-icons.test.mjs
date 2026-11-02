@@ -276,9 +276,10 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const extra = [...inList].filter((c) => OWNER.indexOf(c) < 0);
   /* v2.3.3571: T36.1, the pickaxe, REPLACED by the owner's own painted one
      (§8, tools/ui/cut-owner-items.py), so the cutter no longer writes it */
-  check('7a every one of the owner\'s 72 codes is cut, already in the game (5 from the first cut), set aside with its reason (T69.1, the same star as T69.2), or replaced by the owner\'s own later picture (T36.1, v2.3.3571)',
+  check('7a every one of the owner\'s 72 codes is cut, already in the game (5 from the first cut), set aside with its reason (T69.1, the same star as T69.2), or replaced by the owner\'s own later picture (T36.1, v2.3.3571) or words (T92.1, v2.3.3907)',
     OWNER.length === 72 && accounted.length === 72 && extra.length === 0 && Object.keys(spec.done).length === 5 && Object.keys(spec.dropped).join() === 'T69.1'
-    && Object.keys(spec.replaced || {}).join() === 'T36.1' && !inList.has('T36.1'),
+    /* v2.3.3907: and T92.1, the flame on a red diamond, by the drawn flame (§9) */
+    && Object.keys(spec.replaced || {}).join() === 'T36.1,T92.1' && !inList.has('T36.1') && !inList.has('T92.1'),
     { missing: OWNER.filter((c) => accounted.indexOf(c) < 0), extra });
 
   const sums = Object.create(null);
@@ -294,7 +295,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   /* v2.3.3571: 70 -- the pickaxe is §8's now, and T3.3 is written to the menu
      bow's own file (icons/ui/equip-bow), not over the bag's */
   check(`7b all ${want.length} files the cutter wrote are still the owner's picks, byte for byte (another tool writing over one fails here: run tools/ui/cut-owner-icons.py --force --only <code>)`,
-    want.length === 70 && changed.length === 0, changed);
+    want.length === 69 && changed.length === 0  /* v2.3.3907: 69, the flame is §9's */, changed);
 
   /* each is the size its rule says (a PNG's from its IHDR) */
   const size = (f) => {
@@ -392,21 +393,33 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
      boulder), each file as the drawing tool writes it: a re-run of
      process_icon_sheets.py, or any other tool, fails here */
   const sha9 = (p) => createHash('sha256').update(readFileSync(new URL(p, root))).digest('hex');
+  /* v2.3.3907: all ten -- the six that sat on a shape redrawn as the element
+     alone (the owner: "None of the elements should have shapes behind them"),
+     and every one on 256 colours or fewer (venom kept as drawn) */
   const DRAWN = {
-    wind: '23487bc21ac56f2d2da9d1a4e6a324f08d6939dc00a9a943d9eb2dc850529a17',
-    storm: '55e565a2fbcd890fe9ac0d142fad2f89ed27b2fa4af7381e58e9c763ae736786',
-    stone: '49672c88e4fe94e60d3e6b4bfe45dbb4145a50fca1bbf694caaedb76083439a8',
+    wind: '6825973843fe4ef1189eecc164943743642a78c2862a8f751992870f2967d52c',
+    storm: 'b577bbbcf58c461cafd647b4a6d4d7866199aca6032004d4a8d13a3b1421cb1c',
+    stone: 'cf6c48d0ae6e5b532c80ca515f7cc4a61757ad398fd57efa4c226e1975aecb8d',
+    flame: 'b2a3c47ec89dadd87ea981375179a6c9934e6d17c4a691da58dc753ea42908d5',
+    frost: '61d8bd521c16d3e878ac1006d677893b8a8da8b67d9a893a267bd0ab986d5b63',
+    water: '7816e9d9fc1956787fba84bd223a678ae087f8f0f2dad33e9c315c52f21df7a7',
+    dark: 'cbbf95292f82ce6bdfe0c689238a501673642d43c5501fafd7973beaf700f21f',
+    light: '8850423824d91b5375dea0ddbf076ae3f3a9009736ee7add3cb17c3e4d05a239',
+    flora: 'c374d78070b11200941bbe9ac7d94aaa236a449d39fef184a859903ccc13a302',
+    venom: '88fdbbd7c44cf8d26c3aa9c6a2009789d03d15a0e0f3b5e65188b670a06571c3',
   };
   const got = Object.keys(DRAWN).map((k) => ({ k, sha: sha9('public/icons/ui/elem-' + k + '.webp'), size: dims('/icons/ui/elem-' + k + '.webp').join('x') }));
-  check('9a wind, storm and stone are the drawn icons (wind lines, a lightning bolt, a boulder), 256 x 256 like the other seven',
+  check('9a the ten element icons are the drawn ones (wind lines, a bolt, a boulder, a flame, a snowflake, a wave, a smoke swirl, a burst of rays, a sprig; venom\'s drop), 256 x 256',
     got.every((g) => g.sha === DRAWN[g.k] && g.size === '256x256'), got);
   const dr = src('tools/ui/draw-element-icons.py');
-  check('9b ...drawn by tools/ui/draw-element-icons.py, which writes exactly those three',
-    /\('elem-wind', draw_wind\), \('elem-storm', draw_storm\), \('elem-stone', draw_stone\)/.test(dr) && /def draw_wind\(\)/.test(dr)
-    && /def draw_storm\(\)/.test(dr) && /def draw_stone\(\)/.test(dr));
+  check('9b ...drawn by tools/ui/draw-element-icons.py, which writes those nine and keeps venom (v2.3.3907)',
+    /\('elem-wind', draw_wind\), \('elem-storm', draw_storm\), \('elem-stone', draw_stone\)/.test(dr)
+    && ['wind', 'storm', 'stone', 'flame', 'frost', 'water', 'dark', 'light', 'flora'].every((k) => new RegExp('def draw_' + k + '\\(\\)').test(dr) && dr.includes("('elem-" + k + "', draw_" + k + ')'))
+    && /KEPT = \('elem-venom',\)/.test(dr) && /def reduce_256\(/.test(dr));
   const ps = src('tools/process_icon_sheets.py');
   check('9c ...and the sheet slicer never cuts sheet F\'s rune, star or tile over them again',
-    /DRAWN_IN_CODE = \{'elem-wind', 'elem-storm', 'elem-stone'\}/.test(ps) && /if name in DRAWN_IN_CODE:\s*\n\s*print\(/.test(ps));
+    /* v2.3.3907: now all ten */
+    ['wind', 'storm', 'stone', 'flame', 'frost', 'water', 'dark', 'light', 'flora', 'venom'].every((k) => new RegExp("DRAWN_IN_CODE = \\{[^}]*'elem-" + k + "'").test(ps)) && /if name in DRAWN_IN_CODE:\s*\n\s*print\(/.test(ps));
   const lands = await import('../../src/data/wheelLands.js');
   check('9d the Wind Dunes, the Stone Hollows and the Electric Foundry wear them (the top bar, the minimap\'s plate, the banner, the signposts)',
     lands.landLook('sky').icon === '/icons/ui/elem-wind.webp' && lands.landLook('hollows').icon === '/icons/ui/elem-stone.webp'

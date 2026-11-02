@@ -58,7 +58,10 @@ INTERIOR_KNOCKOUT = {
 # the element.  It should just be a pure icon of the element (like wind lines
 # or something)."  Sheet F's three (a spiral rune on a grey triangle, a purple
 # star, a cracked tile) are never cut again, whatever is deleted.
-DRAWN_IN_CODE = {'elem-wind', 'elem-storm', 'elem-stone'}
+# v2.3.3907: and the six that sat on a shape (the owner: "None of the elements
+# should have shapes behind them"); venom is kept, put on 256 colours there too
+DRAWN_IN_CODE = {'elem-wind', 'elem-storm', 'elem-stone', 'elem-flame', 'elem-frost',
+                 'elem-water', 'elem-dark', 'elem-light', 'elem-flora', 'elem-venom'}
 
 # Sheet manifest: rows, cols, row-major icon names (docs/UI-BIBLE.md Part 4).
 SHEETS = {
