@@ -171,6 +171,9 @@ export function toolEarned(quests, key) {
   return false;
 }
 
+/* v2.3.3948: what a rare fish is worth against its plain twin (fishlog.js) */
+export const SHOP_FISH_MULT = Object.freeze({ albino: 5, large: 10 });
+
 export const SHOP = {
   /* Coins he pays for the FIRST unit of something he has none of, before the
      stock decay applies. Keyed by a family SUBSTRING of the inventory key,
@@ -388,6 +391,10 @@ export const shopMethods = {
     for (const pre in SHOP.BASE) {
       if (pre.length > best && shopFamilyMatch(k, pre)) { best = pre.length; val = SHOP.BASE[pre]; }
     }
+    /* v2.3.3948: a rare fish (fishlog.js) is worth more than its plain twin:
+       an albino x5, a large one x10 (the lane's decision) -- he still pays
+       half and sells what he buys, so a flip is a loss as ever */
+    if (val != null && /^(cooked_)?fish_[a-z]+_(albino|large)$/.test(k)) val *= SHOP_FISH_MULT[k.slice(k.lastIndexOf('_') + 1)];
     return val;
   },
 

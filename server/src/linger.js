@@ -138,6 +138,8 @@ export const lingerMethods = {
     this._petbookForget(id);
     const codex = this._codexDirtyCopy(id);
     this._codexForget(id);
+    const fish = this._fishlogDirtyCopy(id);   /* v2.3.3948: the catches to weigh (fishlog.js) */
+    this._fishlogForget(id);
     delete this.stateHistory[id];
     /* v2.3.3322: the extraction record outlives the body, as it outlives a
        socket (index.js webSocketClose; gathering.js HARVEST_PROOF) */
@@ -148,6 +150,7 @@ export const lingerMethods = {
     try { await this._saveRpg(id, ps); } catch (e) { /* the next join reads what was saved */ }
     if (pets) await this._petbookPut(id, pets);
     if (codex) await this._codexPut(id, codex);
+    if (fish) await this._fishlogPut(id, fish);
   },
 
   /* A join from a player whose body is lingering.  'none' (no body: go on),

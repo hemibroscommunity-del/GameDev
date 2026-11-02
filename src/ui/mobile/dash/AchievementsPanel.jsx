@@ -85,9 +85,9 @@ const chip = (active) => ({
 
 /* a tier's points as a pill: its colour as the edge and the words, the
    super-rare a rainbow ring round rainbow words */
-function ApPill({ tier }) {
+function ApPill({ tier, ap }) {
   const t = ACHV_TIERS[tier];
-  const words = fmt(t.ap) + ' AP';
+  const words = fmt(typeof ap === 'number' ? ap : t.ap) + ' AP';   /* v2.3.3948: a row's own ap (the rare fish's 5 and 10) */
   const base = { flex: 'none', borderRadius: 999, fontSize: 11, fontWeight: 800, lineHeight: '15px', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' };
   if (t.color === 'prismatic') {
     return (
@@ -191,7 +191,7 @@ function Row({ r, S, now, wait, open, onToggle }) {
             {n > 1 ? <span data-achv-times={n} style={{ marginLeft: 5, color: COL.accent, fontVariantNumeric: 'tabular-nums' }}>×{fmt(n)}</span> : null}
             {wearing ? <span data-achv-wearing="" title="Your title" style={{ marginLeft: 6, verticalAlign: '-1px' }}><Tick size={10} /></span> : null}
           </span>
-          <ApPill tier={def.tier} />
+          <ApPill tier={def.tier} ap={def.ap} />
         </div>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, marginTop: 2 }}>
           {open ? (
