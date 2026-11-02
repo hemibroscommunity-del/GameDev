@@ -590,7 +590,7 @@ export const STATES = [
      page) and one worn as the title, so the picture has earned rows, a title
      and the locked super-rares together -- a new character's page is 23
      locked rows */
-  Object.assign(more('achievements', 'Achievements', 'Your achievements: all 23, which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
+  Object.assign(more('achievements', 'Achievements', 'Your achievements: all 33 (v2.3.3948: + the ten rare fish), which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
     run: async ({ P, wsPort, myId }) => {
       for (const id of ['first_blood', 'combat_10']) await H.devOp(wsPort, 'achv', myId, { id }).catch(() => {});
       await wait(P, 600);
@@ -632,6 +632,48 @@ export const STATES = [
       await wait(P, 600);
       const ok = await has(P, '[data-item-detail], .bt-item-detail, .bt-idp, [data-idp]');
       if (!ok) return null;   /* the card's class is not pinned: the picture says whether it opened */
+    },
+  },
+  /* v2.3.3948: the rare fish (server fishlog.js): two albino trout put in the
+     bag as catches by the owner's lever (/dev/fish give), one opened and
+     Inspected -- the weigh-in card over the world -- then Ranks' Biggest fish
+     tab, on the trout, with that weigh-in on it */
+  {
+    id: 'fish-weigh', group: 'Dashboard', title: 'A fish weighed (the weigh-in card)',
+    about: 'Inspect on a fish in the bag: the server weighs one catch of it, and this card says the weight, your best of that kind, a place on its board and how many more you have to weigh, with Records for the boards.',
+    run: async ({ P, view, wsPort, myId }) => {
+      const g = await H.devOp(wsPort, 'fish', myId, { give: 'fish_trout_albino', n: 2 }).catch(() => null);
+      if (!g || !g.ok) return 'the /dev/fish lever said ' + JSON.stringify(g);
+      const e0 = await openBag(P, view);
+      if (e0) return e0;
+      await wait(P, 800);
+      const e = await tapSel(P, '[data-bag-key="i-fish_trout_albino"]');
+      if (e) return e;
+      await wait(P, 600);
+      const e2 = await tapSel(P, '[data-fish-inspect]');
+      if (e2) return e2;
+      await P.page.waitForSelector('[data-fish-weigh="weighed"]', { timeout: 8000 }).catch(() => {});
+      if (!(await has(P, '[data-fish-weigh="weighed"]'))) return 'no weigh-in card';
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => { const b = document.querySelector('[data-fish-weigh-close]'); if (b) b.click(); });
+      await wait(P, 200);
+    },
+  },
+  {
+    id: 'fish-board', group: 'Dashboard: More', title: 'Ranks: Biggest fish',
+    about: 'More, Ranks, the Biggest fish tab: the ten heaviest of each kind of fish weighed, one row a player, the name and the kilos (an albino or a large one says so).',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'more');
+      if (e) return e;
+      await wait(P, 300);
+      await bus(P, 'push', 'leaderboard');
+      await wait(P, 500);
+      const e2 = await tapSel(P, '[data-lb-cat="fish"]');
+      if (e2) return 'no Biggest fish chip (' + e2 + ')';
+      await wait(P, 500);
+      await tapSel(P, '[data-fish-board-sp="trout"]');
+      await P.page.waitForSelector('[data-fish-board-row]', { timeout: 6000 }).catch(() => {});
     },
   },
 

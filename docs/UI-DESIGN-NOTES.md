@@ -853,7 +853,7 @@ Sources: CLAUDE.md, docs/specs/trapping.md, docs/PET-TRAPPING-PLAN.md, docs/spec
 ## Achievements
 Screens: more-achievements
 
-**What it is for:** Points for completing the game (v2.3.3527). The owner: "Achievement points are something I'd like in the game. You get it by completing the game. Some of them are through super rare achievements. Although not as rare, an arena winner should be included in that." Twenty-three achievements, each earned once: seven common, nine rare, the arena's one and six super-rare, 7,470 achievement points (AP) in all. The server decides every one; the page only shows what it says. The owner answered the plan's six questions "Go recommended on everything" (docs/specs/achievements.md "Decided").
+**What it is for:** Points for completing the game (v2.3.3527). The owner: "Achievement points are something I'd like in the game. You get it by completing the game. Some of them are through super rare achievements. Although not as rare, an arena winner should be included in that." Twenty-three achievements, each earned once: seven common, nine rare, the arena's one and six super-rare, 7,470 achievement points (AP) in all. v2.3.3948 added ten more, the rare fish eaten (see "Rare fish"): an albino of each of the five fish, common, 5 AP, and a large one, rare, 10 AP -- each row's own points, as no tier pays 5 -- so 33 and 7,545 AP. The server decides every one; the page only shows what it says. The owner answered the plan's six questions "Go recommended on everything" (docs/specs/achievements.md "Decided").
 
 **Decisions, and why:**
 - **A tier's points: common 10 AP, rare 100, super-rare 1,000, and the arena's 500 between them** ("although not as rare"). Each tier wears the armour's grade colours (v2.3.3142): common grey, rare blue, the arena orange, super-rare a rainbow, as the edge and words of its points pill, never a fill.
@@ -892,6 +892,33 @@ Screens: more-achievements
 - What the Journey page becomes: nothing writes a journey, and with achievements on its tile is gone.
 
 Sources: docs/specs/achievements.md, server/src/achievements.js, src/data/achievements.js, src/game/achievements.js, tools/ui/cut-achievement-badges.py, src/ui/mobile/dash/AchievementsPanel.jsx, src/ui/panels/AchievementBanner.jsx, src/ui/mobile/dash/MorePanel.jsx, src/ui/mobile/dash/LeaderboardPanel.jsx, src/ui/panels/buildings/PartyPanel.jsx, src/ui/panels/PlayerProfilePanel.jsx
+
+## Rare fish: the weigh-in card and Biggest fish
+Screens: fish-weigh, fish-board
+
+**What it is for:** Rare catches and a reason to weigh them (v2.3.3948). The owner: "Add a 1% chance of catching an albino version of whatever fish you're trying to catch. Consuming adds a one time 5 achievement point bonus. Also add a 0.1% chance of catching 'large' whatever fish you're fishing. Consuming adds 10 achievement points (one time). It also heals double. Doing an 'inspect' will roll for finding the weight of the fish. Include leaderboards for largest caught types of fish (triggered by inspection)." The server rolls the catch, the weight and the boards (docs/specs/fish-variants.md); these screens only say what it decided.
+
+**Decisions, and why:**
+- **The catch says it, in the popup over your head:** "An albino Trout!" (pale pink) or "A LARGE Salmon!" (gold), with the collect chime, beside the usual "+Trout". A plain fish says nothing new.
+- **A rare fish is its own item, so it never hides in a stack:** "Albino Trout" and "Large Trout" are separate tiles from the plain trout, and stay so cooked ("Cooked Albino Trout"). They sit under the bag's Fish chip like any fish.
+- **No new art (the owner's lane decision).** In the bag an albino is the species' own picture washed pale with a little pink (a CSS filter on the bag tile only), and a large one wears a small brass "L" in the tile's top-left corner (the anchor owns top-right, the count bottom-right). The item card and the weigh-in card are drawn over the world, where a CSS filter is the iPhone grain hazard (TRAPS §42), so there the name says "Albino" and the picture is plain. The ten achievements wear their fish's bag picture until the owner paints badges.
+- **Inspect is one more button on the item card** (beside Eat on a cooked fish, Sell and Drop), a quiet secondary button, on any fish, raw or cooked, only against a server that weighs (caps.fishweigh). Lane A is rebuilding the card around one shared action list: Inspect belongs in it.
+- **Each caught fish can be weighed once.** A fish you bought or were given has no catch to weigh, and the card says so plainly: "You've weighed all your Trout." A cooked fish weighs its raw catch. Weights are the owner's ranges in kilograms (Minnow 0.05-0.2, Clownfish 0.1-0.4, Trout 0.5-3, Salmon 2-8, Pike 2-12; a large one 3 to 5 times the biggest plain one); under a kilo they read "0.12 kg", above it "2.4 kg".
+- **The weigh-in card sits where the achievement banner does** (centred on the world, under the minimap upright, near the top sideways), so it never covers the stick or the attack buttons, and passes every touch but its own. "This Trout weighs 2.4 kg", then "Your heaviest Trout yet!" or "Your best: 3.1 kg", "· #3 on the board" in gold when it took a place, and "· 2 more to weigh". It stays about nine seconds, or until its ✕ (Esc on a computer) or Records. 44 px targets: the ✕ and Records stack at the card's right edge.
+- **Records opens More, Ranks, on the Biggest fish tab at that species.** The boards are a chip of Ranks, the last one, only against a server that weighs, rather than a page of their own: they are rankings, and Ranks is where rankings are. Five species chips; the ten heaviest each, one row a player (their best), "#1 Name Albino 2.4 kg", your own row highlighted, the top three ranks brass, as every board on the page.
+
+**Tried before, and changed:**
+- (New in v2.3.3948.)
+
+**Please don't suggest:**
+- A weight for every fish shown without Inspect: the weigh-in is the owner's "triggered by inspection".
+- Weighing the same catch again, or a fish that was bought: one catch, one roll, or the boards are a reroll machine.
+- A CSS filter on anything drawn over the world.
+
+**Still open:**
+- Painted badges for the ten rare-fish achievements, and painted albino and large pictures (both would replace the filter and the "L").
+
+Sources: docs/specs/fish-variants.md, server/src/fishlog.js, src/data/fishVariants.js, src/game/fishWeigh.js, src/ui/panels/FishWeighCard.jsx, src/ui/mobile/dash/FishBoard.jsx
 
 ## A window that could not open
 Screens: lazy-cantopen
