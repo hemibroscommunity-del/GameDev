@@ -736,6 +736,52 @@ export function combatBandTopPx(isLandscape) {
     LBTN.bottom + discL);                      /* the movement disc */
 }
 
+/* ═══ v2.3.3919: THE WEAPON TRIANGLE, IN THE RIGHT-HAND CLUSTER ═══
+ * The owner: "I need a button on screen for switching between weapons.  Maybe
+ * a triangle or wheel where the active weapon is highlighted on top and the
+ * others are greyed out", and from the design review: "relocate it near the
+ * right-hand combat controls, enlarge it" (WeaponTriangle.jsx).  Three round
+ * buttons in one box: the weapon in hand on top (WTRI.top), the other two
+ * below it to either side (WTRI.side), WTRI.air between the rings.
+ *
+ * WHERE.  The brief's first choice, just left of / above-left of the disc, is
+ * full: every place beside the disc is a slot (TRAP and Shield Bash over Jump,
+ * Block beside it, Sprint over the disc, Special and Whirlwind over Sprint),
+ * and slots are kept whether or not their control is drawn.  So:
+ *   UPRIGHT, over the cluster: its right edge on the disc's (discRight), its
+ *     foot WTRI_CLEAR over Whirlwind's top -- the right thumb's way up from
+ *     ATTACK past Sprint.  On a 390 x 844 phone that is y 382-466, far under
+ *     the minimap (its foot ~184) and right of the quest card (x 8-256).
+ *   SIDEWAYS, the free pocket left of the column: WTRI_CLEAR left of Shield
+ *     Bash's (and TRAP's, and the skateboard's) left edge, WTRI_CLEAR over
+ *     Block's top, under Special's foot (24 px of air), inside the right half
+ *     from a 600 px-wide screen up.
+ * Not in combatBandTopPx: the coach card's lift would rise by the whole
+ * triangle upright, a change to QuestCoach that is not this PR's (the card
+ * stands left, the triangle right). */
+export const WTRI = { top: 46, side: 40, air: 4 };
+export const WTRI_CLEAR = 10;
+export function weaponTriBox() {
+  var rT = WTRI.top / 2, rS = WTRI.side / 2;
+  var w = WTRI.side * 2 + 8;   /* the two lower buttons, 8 px apart */
+  var dx = w / 2 - rS;
+  var dy = Math.ceil(Math.sqrt(Math.max(0, Math.pow(rT + rS + WTRI.air, 2) - dx * dx)));
+  var h = rT + dy + rS;
+  /* the three centres, px from the box's top-left: top, lower-left, lower-right */
+  return { w: w, h: h, top: { x: w / 2, y: rT }, left: { x: rS, y: h - rS }, right: { x: w - rS, y: h - rS } };
+}
+export function weaponTriAnchor(isLandscape) {
+  var box = weaponTriBox();
+  if (isLandscape) {
+    var col = ctlColumn(true);
+    var blk = blockAnchor(true);
+    return { w: box.w, h: box.h, box: box, right: col.right + col.size + WTRI_CLEAR, bottomPx: blk.bottomPx + blk.size + WTRI_CLEAR };
+  }
+  var r = rightCluster(false);
+  return { w: box.w, h: box.h, box: box, right: discRight(false),
+    bottomPx: Math.max(r.bottomPx(RCTL_SLOT.whirl) + r.size, r.bottomPx(RCTL_SLOT.special) + r.size) + WTRI_CLEAR };
+}
+
 export function ctlBottom(px) {
   return 'calc(var(--sheet-h, var(--dash-h)) + ' + px + 'px)';
 }

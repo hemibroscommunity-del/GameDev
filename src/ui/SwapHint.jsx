@@ -15,7 +15,8 @@ import { deskWideActive } from './deskWide.js';
  * star cue's family (ui/starCue.js), pulses over the weapon buttons: on a
  * computer "Swap weapons: 1 Melee, 2 Bow, 3 Staff" over the three weapons at
  * the dashboard's foot (the keys deskKeyList.js lists), on a phone "Tap a
- * weapon to swap" over the weapon chip (WeaponSwapButton.jsx).  It waits while
+ * weapon to swap" over the weapon chip (WeaponSwapButton.jsx; v2.3.3919: "Tap a
+ * weapon to switch" over the weapon triangle, WeaponTriangle.jsx).  It waits while
  * a dialogue or a building's window is up; it goes on the first swap or after
  * SHOW_MS, and never comes again for that character (the browser's store, by
  * its id).  Off for one tab: `?swaphint=0`.  It takes no taps.
@@ -44,7 +45,8 @@ function offByUrl() {
 /* what it points at: the first of these on the screen */
 function anchorRect(desk) {
   /* a computer: the weapons at the foot of a page, or the dashboard's own row of them */
-  const sels = desk ? ['[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]'] : ['[data-weapon-chip]'];
+  const sels = desk ? ['[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]']
+    : ['[data-weapon-tri]', '[data-weapon-chip]'];   /* v2.3.3919: the whole triangle */
   for (const sel of sels) {
     const els = [...document.querySelectorAll(sel)].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
     if (els.length) {
@@ -88,7 +90,7 @@ export default function SwapHint({ stateRef }) {
       const a = anchorRect(desk);
       if (!a) return;
       if (!since) { since = Date.now(); slot = R.activeSlot; id = S.myId; qa.shown++; }
-      const text = desk ? 'Swap weapons: 1 Melee, 2 Bow, 3 Staff' : deskWords('Tap a weapon to swap');
+      const text = desk ? 'Swap weapons: 1 Melee, 2 Bow, 3 Staff' : deskWords('Tap a weapon to switch')   /* v2.3.3919: the triangle's words */;
       qa.text = text;
       const x = Math.round((a.left + a.right) / 2), y = Math.round(a.top - 10);
       setView((o) => (o && o.text === text && o.x === x && o.y === y ? o : { text, x, y }));
