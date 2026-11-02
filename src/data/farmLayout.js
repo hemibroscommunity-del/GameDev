@@ -52,12 +52,31 @@ export const FARM_CROP_FOOT_DY = 46;
 /* How near your boots must be to work a bed, game px round its edge. */
 export const FARM_BED_REACH = 46;
 /* Where you stand to work one: your boots on its back edge, a little in, and
-   left of its middle -- the hoe strikes and the hands go in at your feet, on
+   left of its middle -- the hands go in at your feet, on
    the bed's edge, and the watering can's water lands to your right, over its
    middle (effectsRenderer _updateFarmWork, v2.3.3439; the cook's crouch and
-   the crate where its pan was, v2.3.3136, stood here too). */
+   the crate where its pan was, v2.3.3136, stood here too).  v2.3.3913: but not the hoe: digging has its own spot, farmDigSpot below. */
 export const FARM_KNEEL_DY = 12;
 export const FARM_KNEEL_DX = -19;
+/* v2.3.3913: the farmer's head is drawn this wide, world px (his strips'
+   FARM_ANIM_HEAD px): his scale is this over FARM_ANIM_HEAD, times the
+   zone's player scale.  Here, not in effectsRenderer (which re-exports it,
+   with the why of 31.25), so the work spots below can read his reach.  */
+export const FARM_ANIM_HEAD_WORLD = 31.25;
+/* v2.3.3913: the owner, 2026-11-02: "Make the character plow in middle
+   center of square plot not at the very edge move the effects there
+   centered too".  Digging has a spot of its own: your boots placed so the
+   hoe's blade (its strip's `work` point, measured from its `foot`) lands on
+   the bed's middle -- about (cx, b.y + 40), worked out from the strip, never
+   a world spot written down.  The other steps keep the back-edge spot above
+   (FARM_KNEEL_*): mid-bed you would stand on the crop (its foot at
+   FARM_CROP_FOOT_DY).  `anim` is FARM_ANIMS.hoe (foot, work: frame px), `k`
+   the figure's scale (FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD x the zone's). */
+export function farmDigSpot(b, anim, k) {
+  const dx = anim && anim.work && anim.foot ? (anim.work[0] - anim.foot[0]) * k : 0;
+  const dy = anim && anim.work && anim.foot ? (anim.work[1] - anim.foot[1]) * k : 0;
+  return { x: b.x + b.w / 2 - dx, y: b.y + b.h / 2 - dy };
+}
 
 /* The places the old farm had as invisible spots, now things you can see:
    your bed for the night (the haystack until the owner's Farmhouse picture

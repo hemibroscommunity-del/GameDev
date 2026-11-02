@@ -57,6 +57,8 @@ import { cue } from '../game/eventSounds.js'; /* v2.3.3343: a crop heard ripenin
 import { playerGroundDy } from './systems/entityRenderer.js';
 
 export const FARM_ZONE_ID = 'farm_home';
+/* v2.3.3913: the fed soils near black (_bed): the picture times this */
+const SOIL_TINT = Object.freeze({ 'bed-fed': 0x4C4C4C, 'bed-wetfed': 0x404040 });
 const OBJ_BASE = '/world/objects/';
 const OBJ_PREFIX = 'farm-object/';
 const OBJ_QUERY = '?farm=1';
@@ -252,6 +254,14 @@ export class FarmWorld {
         B.soil.anchor.set(a ? a.foot[0] / a.w : 0.5, a ? a.foot[1] / a.h : 0.5);
         B.soil.x = B.b.x + B.b.w / 2;
         B.soil.y = B.b.y + B.b.h / 2;
+        /* v2.3.3913: the owner, 2026-11-02: "Make fertilized dirt even darker
+           like almost black.  This is a better visual cue for what stage the
+           farm plot is in."  The fed soils' own pictures (centre brightness
+           64, and 63 watered too) sat a shade under the wet one's 74; a tint
+           takes them near black (about 19-25) with the grain kept and no
+           new art.  A tint is not structural (TRAPS §218): set only when the
+           soil changes. */
+        B.soil.tint = SOIL_TINT[soilName] || 0xFFFFFF;
         B.soilName = soilName;
       }
     }
@@ -419,7 +429,9 @@ export class FarmWorld {
        hands in the soil (effectsRenderer _updateFarmWork); the bed's back if
        the farmer is not drawn */
     const h = w.step !== 'harvest' && S && S._farmHands && now - S._farmHands.at < 250 ? S._farmHands : null;   /* a harvest's leaves fly from the crop */
-    const hx = h ? h.x : B.b.x + B.b.w / 2, hy = h ? h.y : B.b.y + 16;
+    /* v2.3.3913: digging, the bed's middle -- where the hoe lands now
+       (farmLayout.js farmDigSpot) */
+    const hx = h ? h.x : B.b.x + B.b.w / 2, hy = h ? h.y : B.b.y + (w.step === 'dig' ? B.b.h / 2 : 16);
     /* sized to be SEEN at the farm's zoom (~0.5 CSS px a game px): a clod
        is 2-4 CSS px, as a pixel of the bro's own art is */
     const KINDS = {
@@ -501,7 +513,7 @@ export class FarmWorld {
     return {
       things: this.things.length, built: this._built,
       beds: this.beds.map((B) => ({
-        soil: B.soilName, crop: B.cropName,
+        soil: B.soilName, soilTint: B.soil && !B.soil.destroyed ? B.soil.tint : null /* v2.3.3913 */, crop: B.cropName,
         label: B.label && !B.label.destroyed && B.label.visible ? B.label._fl.words.slice() : null,
         icon: B.label && !B.label.destroyed && B.label.visible && B.label._fl.icon.visible ? (B.label._fl.key.split('|').pop() || null) : null,
       })),
