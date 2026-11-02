@@ -419,7 +419,7 @@ export const fishlogMethods = {
   _fishDev(pid, body) {
     const ps = this.playerState && this.playerState[pid];
     if (!ps) return { ok: false, error: 'not online' };
-    const b = body && typeof body === 'object' ? body : {};
+    const b = body && typeof body === 'object' ? body : Object.create(null);
     const out = { ok: true };
     if (has(b, 'next')) {
       if (!this._fishForce) this._fishForce = new Map();

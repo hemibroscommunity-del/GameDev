@@ -74,9 +74,13 @@ function hold(room, seq) {
   return q;
 }
 
+/* dice that roll a plain fish (and a middling weight), where a suite
+   section is not about the variant */
+const PLAIN = () => 0.5;
 const state = makeState();
 const room = new GameRoom(state, mockEnv);
 room._liveFlags = {};
+room._fishDice = PLAIN;
 const baseSession = () => ({ id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
 async function join(ws, id, name) {
   room.sessions.set(ws, baseSession());
@@ -148,7 +152,7 @@ const A = await join(wsA, 'bp_fv_a', 'Angler');
   const c4 = await strike(spot);
   check('2k `fishvariants: false`: dice that would roll large pay the plain fish', !!c4 && c4.fish && c4.fish.key === plain && c4.fish.v === null, c4);
   room._liveFlags = {};
-  room._fishDice = null;
+  room._fishDice = PLAIN;
 }
 
 // ── 3. NO STACKING ───────────────────────────────────────────────────────────
@@ -160,7 +164,7 @@ const A = await join(wsA, 'bp_fv_a', 'Angler');
   room._fishCatch('bp_fv_a', ps, 'fish_trout', 1);
   hold(room, [0.9, 0.0001]);
   room._fishCatch('bp_fv_a', ps, 'fish_trout', 1);
-  room._fishDice = null;
+  room._fishDice = PLAIN;
   check('3a three keys, three stacks: the plain trout, a large one, an albino', ps.inventory.fish_trout >= 3 && ps.inventory.fish_trout_large === 1 && ps.inventory.fish_trout_albino === 1, ps.inventory);
   check('3b fishKeyInfo reads each, raw and cooked; nothing else', fishKeyInfo('fish_trout_large').v === 'large' && fishKeyInfo('cooked_fish_pike_albino').raw === 'fish_pike_albino'
     && fishKeyInfo('cooked_fish_pike_albino').cooked && fishKeyInfo('fish_trout').v === null && fishKeyInfo('fish_nonesuch') === null && fishKeyInfo('fish_trout_golden') === null && fishKeyInfo('__proto__') === null);
@@ -230,7 +234,7 @@ const C = await join(wsC, 'bp_fv_c', 'Carl');
   room._fishDice = () => 0.5;
   room._fishCatch('bp_fv_c', C, 'fish_trout', 1);
   room._fishCatch('bp_fv_c', C, 'fish_trout', 1);
-  room._fishDice = null;
+  room._fishDice = PLAIN;
   check('7a (guard) two plain trout caught, two to weigh', C.inventory.fish_trout === 2 && bookOf('bp_fv_c').rec.u.fish_trout === 2, bookOf('bp_fv_c').rec.u);
   const w0 = state.writes.length;
   hold(room, [0.5]);
@@ -275,7 +279,7 @@ const C = await join(wsC, 'bp_fv_c', 'Carl');
   let alo = Infinity, ahi = 0;
   for (let i = 0; i < 2000; i++) { const g = rollFishWeight('minnow', 'albino'); alo = Math.min(alo, g); ahi = Math.max(ahi, g); }
   check('7k an albino minnow: the plain range, 0.05-0.2 kg', alo >= 50 && ahi <= 200, { alo, ahi });
-  room._fishDice = null;
+  room._fishDice = PLAIN;
 }
 
 // ── 8. THE BOARDS ────────────────────────────────────────────────────────────
@@ -289,13 +293,13 @@ const C = await join(wsC, 'bp_fv_c', 'Carl');
     room._fishCatch('bp_fv_t' + i, ps, 'fish_trout', 1);
     anglers.push({ ws, ps, id: 'bp_fv_t' + i });
   }
-  room._fishDice = null;
+  room._fishDice = PLAIN;
   for (let i = 0; i < 12; i++) {
     /* g = 500 + 2500 r: r for 1000 + 100 i grams */
     hold(room, [(1000 + 100 * i - 500) / 2500]);
     await send(anglers[i].ws, { type: 'fish_inspect', payload: { key: 'fish_trout' } });
   }
-  room._fishDice = null;
+  room._fishDice = PLAIN;
   await send(wsC, { type: 'fish_board_request' });
   const fb = last(wsC, 'fish_board');
   const trout = fb && fb.boards && fb.boards.trout;
@@ -311,7 +315,7 @@ const C = await join(wsC, 'bp_fv_c', 'Carl');
   const rk = last(t11.ws, 'fish_weight');
   hold(room, [0]);
   await send(t11.ws, { type: 'fish_inspect', payload: { key: 'fish_trout' } });
-  room._fishDice = null;
+  room._fishDice = PLAIN;
   const board = state._store.get(FISHLOG.BOARD_KEY).b.trout;
   check('8d a heavier weigh-in moves the angler to the top, once (one row a player)', rk.rank === 1 && board[0].pid === t11.id && board[0].g === 3000 && board.filter((e) => e.pid === t11.id).length === 1, board.map((e) => [e.pid, e.g]));
   check('8e ...and a lighter one later leaves their row as it was', last(t11.ws, 'fish_weight').rank === 0 && board.length === 10);
@@ -324,6 +328,7 @@ const C = await join(wsC, 'bp_fv_c', 'Carl');
   s2._store.set(FISHLOG.BOARD_KEY, { v: FISHLOG.BOARD_V + 1, b: {} });
   const r2 = new GameRoom(s2, mockEnv);
   r2._liveFlags = {};
+  r2._fishDice = PLAIN;
   const ws2 = fakeWs('L');
   r2.sessions.set(ws2, baseSession());
   await r2.webSocketMessage(ws2, JSON.stringify({ type: 'join', id: 'bp_fv_l', name: 'L', phrase: 'p', protocolVersion: 2, data: { x: 0, y: 0, z: 'town' } }));
@@ -341,6 +346,7 @@ const C = await join(wsC, 'bp_fv_c', 'Carl');
   const s3 = makeState();
   const r3 = new GameRoom(s3, mockEnv);
   r3._liveFlags = {};
+  r3._fishDice = PLAIN;
   let T = 1_800_000_000_000;
   const realNow = Date.now;
   Date.now = () => T;
@@ -367,6 +373,7 @@ const C = await join(wsC, 'bp_fv_c', 'Carl');
   s4.failReads((k) => k === FISHLOG_KEY('bp_fv_f'));
   const r4 = new GameRoom(s4, mockEnv);
   r4._liveFlags = {};
+  r4._fishDice = PLAIN;
   const ws4 = fakeWs('F');
   r4.sessions.set(ws4, baseSession());
   await r4.webSocketMessage(ws4, JSON.stringify({ type: 'join', id: 'bp_fv_f', name: 'F', phrase: 'p', protocolVersion: 2, data: { x: 0, y: 0, z: 'town' } }));
@@ -421,7 +428,7 @@ const C = await join(wsC, 'bp_fv_c', 'Carl');
   hold(room, [0.0001]);   /* dice that would roll large: the lever wins */
   room._fishCatch('bp_fv_a', A, 'fish_salmon', 1);
   room._fishCatch('bp_fv_a', A, 'fish_salmon', 1);
-  room._fishDice = null;
+  room._fishDice = PLAIN;
   check('12a /dev/fish next albino: the next fish is albino, once', r.ok && A.inventory.fish_salmon_albino === 1 && A.inventory.fish_salmon_large === 1, A.inventory);
   const g = room._fishDev('bp_fv_a', { give: 'fish_pike_large', n: 3 });
   check('12b give: three large pike in the bag, each a catch to weigh', g.ok && A.inventory.fish_pike_large === 3 && bookOf('bp_fv_a').rec.u.fish_pike_large === 3);
