@@ -40,8 +40,10 @@ export function moveColor(S, payload, dflt) {
  *  the event is handled (the case breaks). */
 export function monsterMoveEvent(S, payload) {
   if (!payload) return false;
+  /* this socket's worker (the noted caps are the same object, moveKindOn) */
+  const can = !!(S && S._serverCaps && S._serverCaps.monstermoves === true) && movesCapOn();
   if (payload.ability === 'enrage') {
-    if (!movesCapOn() || !S || !S.player) return true;
+    if (!can || !S.player) return true;
     const m = monsterOf(S, payload.monsterId);
     const x = typeof payload.x === 'number' ? payload.x : (m ? m.x : S.player.x);
     const y = typeof payload.y === 'number' ? payload.y : (m ? m.y : S.player.y);
@@ -51,8 +53,8 @@ export function monsterMoveEvent(S, payload) {
     return true;
   }
   if (payload.ability === 'volley' && payload.phase === 'execute' && payload.release) {
-    const balls = volleyBalls(payload);
-    if (!balls.length || !S) return true;
+    const balls = can ? volleyBalls(payload) : [];
+    if (!balls.length) return true;
     if (!S.slimeProjectiles) S.slimeProjectiles = [];
     const m = monsterOf(S, payload.monsterId);
     if (m) m._throwReleaseAt = Date.now();

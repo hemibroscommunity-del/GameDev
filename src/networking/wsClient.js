@@ -1532,8 +1532,8 @@ export function setupWebSocket(ctx) {
                  the legacy client-side credit paths stay in place but
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
-              noteMoveCaps(S._serverCaps);   /* v2.3.3946: the monster moves' warnings and enrage, against a worker that has them (S._serverCaps.monstermoves) */
               _capsHere = true;
+              noteMoveCaps(S._serverCaps);   /* v2.3.3946: the monster moves' warnings and enrage, against a worker that has them (caps.monstermoves) */
               /* v2.3.3776: a fresh join is off the board (the worker forgot it
                  too: ride.js stores nothing) */
               try { clearRide(S); } catch (e) { /* on foot either way */ }   /* v2.3.3254: this socket's caps (the quiet phone's bundles) */
