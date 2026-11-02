@@ -804,6 +804,9 @@ export const QUEST_REWARDS = {
          Mayor, Blacksmith Bro's ore and forge, Diego, the snowmen, then
          the rest of the town.  docs/specs/demo-quest-line.md "The snowmen
          after two".
+         v2.3.3924: and after Farmer Bro's carrots (farm_1), so a first play
+         farms before the snowmen (the owner: "I wanna make sure the first
+         play of the game includes an experience with farming").
          then tut_3 / tut_4 (the Mayor's) and the Beastmaster's beast_3/4.
          QUEST_TOUR (below) is the order the game's gold road suggests them
          in, one giver at a time, and the Test panel's "Tour: jump to"
@@ -881,7 +884,12 @@ export const QUEST_REWARDS = {
          beast_3 waits on it (below). */
       /* v2.3.3533: after Blacksmith Bro's ore and Diego's fish, no longer the
          whole town (the header above tut_1) */
-      tut_2: {gold:200, xp:50, next:'tut_3', after:['smith_1', 'fish_1'],
+      /* v2.3.3924: and Farmer Bro's carrots (farm_1) -- the owner: "I wanna
+         make sure the first play of the game includes an experience with
+         farming."  Diego's hand-in sends you to the farm, the farm's back to
+         the Mayor (docs/specs/demo-quest-line.md "Farming before the
+         snowmen") */
+      tut_2: {gold:200, xp:50, next:'tut_3', after:['smith_1', 'fish_1', 'farm_1'],
               objective:{type:'collect', invKey:'snowman', count:4, consume:true, zone:'frost'}},
       tut_3: {gold:150, xp:53, next:'tut_4',
               objective:{type:'collect', invKey:'skeleton-remnants', count:5, consume:true, zone:'sky'}},
@@ -915,6 +923,7 @@ export const QUEST_REWARDS = {
          waters are three planted carrots.  Seeds and compost come with it, so
          the farm is one trip: watered, they are ripe in six minutes, about
          when farm_2 asks for them. */
+      /* v2.3.3924: the Mayor's snowmen (tut_2) wait on it too */
       farm_1:  {gold:40,  xp:0, next:null, after:'tut_1',   /* farm_2 waits for fish_1 too */
                 objective:{type:'farm', act:'water', count:3},
                 grantOnAccept:[{kind:'inv', key:'seed_carrot', n:3}, {kind:'inv', key:'compost', n:3}]},
@@ -1126,8 +1135,15 @@ export const QUEST_FIRST = 'tut_1';
  * Blacksmith Bro's ore and his forge (he offers it at the hand-in, "Let's
  * make you something"), Diego's fish, the Mayor's snowmen, then the rest of
  * the town -- the farm before the woodworker's two steps, so the carrots
- * grow while they are done and Zoom Juice follows. */
-export const QUEST_TOUR = Object.freeze(['tut_1', 'smith_1', 'smith_2', 'fish_1', 'tut_2', 'farm_1', 'wood_1', 'wood_2', 'farm_2', 'race_1', 'beast_1', 'beast_2']);
+ * grow while they are done and Zoom Juice follows.
+ * v2.3.3924: FARMING BEFORE THE SNOWMEN.  The owner: "Instead of the snowmen
+ * quest right after completing the 2 cooked fish quest make them complete the
+ * farming quest first ... Then after that's done resume the snowman quest.  I
+ * wanna make sure the first play of the game includes an experience with
+ * farming."  Farmer Bro's carrots (farm_1) move up to fifth, the snowmen
+ * sixth, and tut_2 waits on them (its `after`); nothing else moves (Zoom
+ * Juice, farm_2, stays after the Woodworker's two steps). */
+export const QUEST_TOUR = Object.freeze(['tut_1', 'smith_1', 'smith_2', 'fish_1', 'farm_1', 'tut_2', 'wood_1', 'wood_2', 'farm_2', 'race_1', 'beast_1', 'beast_2']);
 
 /* ═══ v2.3.3525: QUESTS NOBODY IS OFFERED ANY MORE ═══
  * The tour (QUEST_REWARDS tut_1) hands their errands and tools to the men

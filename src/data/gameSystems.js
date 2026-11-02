@@ -6635,6 +6635,16 @@ export function questSteps(quest, R, S) {
   return out;
 }
 
+/* v2.3.3608: the level the Grotto is FOR, the owner's "recommended level ...
+   lvl 10" (data/wheelDungeons.js WHEEL_DUNGEON_REC; its monsters stay the
+   worker's 16) */
+/* v2.3.3924: moved up here and exported -- the Mayor's "Dungeon Delver"
+   (mayor_3) says it in its lines, which QUEST_CHAINS builds as the module
+   loads (a `var` below it was still undefined then), and questRoute.js lets
+   the tour's road lead past that quest to the town's below it (its
+   `recLevel`) */
+export const GROTTO_REC_LEVEL = 10;
+
 export const QUEST_CHAINS = {
   /* ═══ v2.3.1665: THE TUTORIAL ARC — Mayor Bro walks you through it ═══
      Mirrors QUEST_REWARDS in server/src/data.js; the SERVER is what pays,
@@ -6825,8 +6835,11 @@ export const QUEST_CHAINS = {
        `after` lists every giver's last step (getNpcQuest, questAfterMet; the
        worker's _questBarred the same).
        v2.3.3533: once Blacksmith Bro's ore and Diego's fish are in -- the
-       clownfish are the fight's food -- and the rest of the town after. */
-    after: ['smith_1', 'fish_1'],
+       clownfish are the fight's food -- and the rest of the town after.
+       v2.3.3924: and Farmer Bro's carrots (farm_1) -- the owner: "I wanna
+       make sure the first play of the game includes an experience with
+       farming."  The worker's tut_2 says the same (mirror-audit §5a). */
+    after: ['smith_1', 'fish_1', 'farm_1'],
     tour: true,
     next: 'tut_3',
     dialogue: {
@@ -7090,7 +7103,10 @@ export const QUEST_CHAINS = {
       start: "A slime blew up my carrot patch, man. I sang those carrots to sleep every night. Take 3 carrot seeds and 3 compost, go through my shop door to your farm, and dig, plant and water 3 beds. Watered carrots grow in about six minutes. Dry ones just sit there holding a grudge.",
       progress: "Plant and water 3 carrots on your farm, man. My shop door leads there. They're thirsty. I can hear them, even if you can't.",
       /* v2.3.3533: true whether or not Diego's fish_1 is in yet */
-      complete: "Three carrots, all watered. No machines, no chemicals, no Mayor. Come back when they're up and I'll share a juice recipe the government doesn't know about. If you can't work a campfire yet, see Diego first.",
+      /* v2.3.3924: farming comes before the snowmen now (tut_2's `after`),
+         so his hand-in sends you back to the Mayor -- said plainly, one
+         friendly sentence and then the next step (the owner's lane G) */
+      complete: "Three carrots, planted and watered. Thank you, friend! They take a few minutes to grow, so come back later and I'll show you what to make with them. Next, go see Mayor Bro at the Town Hall. He has a job for you.",
     },
   },
   smith_1: {
@@ -7227,10 +7243,17 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Ey, amigo, step into the office. I'm launching a cookbook, and I can't turn on a stove. That's not a problem, that's a job opening. Catch 2 fish at the pond with this rod, light one of these 2 pine logs from your Bag, tap the fire to cook them, and bring me both. You get 10 Cooked Clownfish.",
-      progress: "2 cooked fish, amigo. Not raw: the cover photo needs grill marks. Catch them at the pond, tap a log in your Bag for a fire, and tap the fire to cook.",
+      /* ═══ v2.3.3924: DIEGO SAYS IT PLAINLY ═══
+         The owner: "Diego quest line ... his dialog also doesn't make much
+         sense either."  Who he is in one friendly sentence, then exactly what
+         to do: the fish, the fire (a log tapped in the Bag), the cook, back
+         to him.  "A fishing spot", as the steps say, not "the pond": the
+         Wheel's town has none (plan.js), and a spot has no pond picture. */
+      start: "Hi, I'm Diego! I run the General Store, and I'm writing a cookbook, but I've never cooked a fish. Here's a fishing rod and 2 pine logs. Catch 2 fish at a fishing spot, cook them on a campfire, and bring them to me. To light a campfire, tap a log in your Bag.",
+      progress: "I still need 2 cooked fish, amigo. Catch 2 fish at a fishing spot, tap a log in your Bag to light a campfire, then tap the fire to cook them. Bring both to me.",
       /* v2.3.3533: the road leads to the Mayor's snowmen next */
-      complete: "Chapter One: \"Fish, But Hot.\" 50 gold a copy, and you get 0%. That's called passive income, amigo. Here are your 10 Cooked Clownfish. Eat one when you're hurt. They taste like hot pennies, but they work.",
+      /* v2.3.3924: to Farmer Bro's carrots next (farming before the snowmen) */
+      complete: "Two cooked fish, perfect! My cookbook finally has its first page. Here are 10 Cooked Clownfish: eat one from your Bag when you're hurt. Next, go see Farmer Bro at the Feed & Seed. He needs help with his crops.",
     },
   },
   farm_2: {
@@ -7489,7 +7512,13 @@ export const QUEST_CHAINS = {
     title: 'Dungeon Delver',
     /* v2.3.3540: the Goo Grotto, the starter dungeon, named -- the owner: "I
        value SIMPLICITY and INTELLIGIBILITY" */
-    desc: 'Clear any dungeon. The nearest is the Goo Grotto, off the West Road.',
+    /* v2.3.3924: the level it is for, on the quest itself -- the owner: "For
+       the clear dungeon quest from mayor bro put a [lvl 10+ recommended] and
+       direct players to other quests around town, starting with the
+       woodworker quest" (its lines below; questRoute.js tourOffer leads the
+       road there below that level: `recLevel`) */
+    desc: 'Clear any dungeon. The nearest is the Goo Grotto, off the West Road. [Lv ' + GROTTO_REC_LEVEL + '+ recommended]',
+    recLevel: GROTTO_REC_LEVEL,
     /* v2.3.3522: the Land Office's door -- your farm, and its Dungeon Workshop,
        are behind it (beast_1's note).  v2.3.3540: the Goo Grotto's mouth, the
        starter dungeon (game/questWays.js 'dungeon:<land>'), half a minute's
@@ -7525,8 +7554,12 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      start: "Last bit of paperwork: clear a dungeon. It's in the budget as \"road repair,\" so if anyone asks, you're fixing a road. The Goo Grotto is off the West Road in the Earth Forest: three waves of slimes, then a big one that splits when you hit it.",
-      progress: "Clear a dungeon, bro. The Goo Grotto is off the West Road in the Earth Forest. And if anyone asks, it's road repair.",
+      /* v2.3.3924: "[Lv 10+ recommended]", and the town's quests first below
+         it, starting with Woodworker Bro's (wood_1, the tour's next after
+         the Mayor's snowmen) -- said plainly.  NOT on tut_1's hand-in: the
+         owner had the Grotto's level sentence taken off there (v2.3.3869). */
+      start: "You've made this town proud, so I saved my biggest job for last: clear a dungeon. [Lv " + GROTTO_REC_LEVEL + "+ recommended] The Goo Grotto is off the West Road in the Earth Forest. Not level " + GROTTO_REC_LEVEL + " yet? Do the town's quests first, starting with Woodworker Bro at the Woodworker.",
+      progress: "Clear a dungeon, bro. [Lv " + GROTTO_REC_LEVEL + "+ recommended] The Goo Grotto is off the West Road in the Earth Forest. Not level " + GROTTO_REC_LEVEL + " yet? Do the town's quests first, starting with Woodworker Bro at the Woodworker.",
       /* v2.3.3570: reworded at the owner's ask, as mayor_2's: no life-skill cap exists to lift at Lv50 */
       complete: "Dungeon cleared, and you're covered in it, which I'll accept as proof. That's the end of my list, and the deeper lands are open. Go get rich, and remember your mayor was right there with you. In spirit. From the office. With the door locked.",
     }
@@ -8198,10 +8231,8 @@ var _grottoParty = null;
 export function setGrottoParty(row) {
   _grottoParty = (row && row.level > 0 && row.size > 1) ? { level: row.level, size: row.size } : null;
 }
-/* v2.3.3608: the level the Grotto is FOR, the owner's "recommended level ...
-   lvl 10" (data/wheelDungeons.js WHEEL_DUNGEON_REC; its monsters stay the
-   worker's 16) */
-var GROTTO_REC_LEVEL = 10;
+/* v2.3.3608: the level the Grotto is FOR -- GROTTO_REC_LEVEL, declared above
+   QUEST_CHAINS since v2.3.3924 (mayor_3's lines say it) */
 /* ═══ v2.3.3583: LIL BRO, ONCE HE HAS BEATEN YOU ═══
  * The owner, 2026-10-23: "lil bro should also have dialog change to
  * acknowledge the race has been lost and to try again if you've lost already
@@ -8321,8 +8352,11 @@ export function questReachable(quest) {
    `after` does -- and every step's `after` comes before it.  Mirrors the
    worker's QUEST_TOUR (server/src/data.js; mirror-audit §5a).
    v2.3.3533: the snowmen fifth -- the Mayor, Blacksmith Bro's ore and forge,
-   Diego's fish, the snowmen, then the rest of the town. */
-export const QUEST_TOUR = Object.freeze(['tut_1', 'smith_1', 'smith_2', 'fish_1', 'tut_2', 'farm_1', 'wood_1', 'wood_2', 'farm_2', 'race_1', 'beast_1', 'beast_2']);
+   Diego's fish, the snowmen, then the rest of the town.
+   v2.3.3924: Farmer Bro's carrots fifth and the snowmen sixth (the owner:
+   "make them complete the farming quest first ... Then after that's done
+   resume the snowman quest"); nothing else moves. */
+export const QUEST_TOUR = Object.freeze(['tut_1', 'smith_1', 'smith_2', 'fish_1', 'farm_1', 'tut_2', 'wood_1', 'wood_2', 'farm_2', 'race_1', 'beast_1', 'beast_2']);
 
 /* v2.3.3525: is a quest's `after` met -- one quest's id, or a list of them
    (the Mayor's tut_2 waits for the whole town), every one handed in?  The
