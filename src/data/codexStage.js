@@ -115,6 +115,14 @@ export const CODEX_SPECIAL_LABEL = Object.freeze({
   burrow: { text: 'BURROW!', color: '#cfe8ff' },
   unwrap: { text: 'UNWRAPPED!', color: '#ffd27a' },
   burst: { text: 'BURST!', color: '#7fb6ff' },
+  /* v2.3.3946: the moves of the tiers past the first (server/src/monstermoves.js
+     FAMILY_MOVES has each family's names for them) */
+  combo: { text: 'COMBO!', color: '#f0a050' },
+  charge: { text: 'CHARGE!', color: '#ea580c' },
+  volley: { text: 'VOLLEY!', color: '#9fd8ff' },
+  stomp: { text: 'TWO-STEP SLAM!', color: '#c8a070' },
+  quake: { text: 'QUAKE!', color: '#f5c542' },
+  enrage: { text: 'ENRAGED!', color: '#ff5448' },
 });
 
 /* how long each special's wind-up is in the world (server/src/telegraph.js) */

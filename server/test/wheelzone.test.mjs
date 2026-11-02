@@ -224,11 +224,13 @@ const deep = wheel.filter((m) => m.tier);
   for (const m of deep) {
     const z = ZONES[m.home], sp = z.spawns.find((q) => q.arch === m.arch);
     const ref = room._makeZoneMonster(m.home, z, sp, 'ref', 10, 10, m.level);
+    /* v2.3.3946: + its tier's stat step (monstermoves.js _moveTierStep) */
+    ref.tier = m.tier; room._moveTierStep(ref);
     for (const k of ['level', 'hp', 'maxHp', 'dmg', 'xp', 'gold', 'spd', 'variant', 'element', 'arch']) {
       if (ref[k] !== m[k]) { same = false; why3 = { id: m.id, k, got: m[k], want: ref[k] }; }
     }
   }
-  check('deeper: every stat what its home zone builds at that level (_makeZoneMonster, given the level)', same, why3);
+  check('deeper: every stat what its home zone builds at that level, and its tier\'s step (_makeZoneMonster, given the level; _moveTierStep)', same, why3);
   const snow1 = first.find((m) => m.home === 'frost' && m.level === 1);
   const snow20 = deep.find((m) => m.home === 'frost' && m.level === 20);
   check(`deeper: a level-20 snowman is tougher and pays more than a level-1 (hp ${snow1 && snow1.maxHp} -> ${snow20 && snow20.maxHp}, hit ${snow1 && snow1.dmg} -> ${snow20 && snow20.dmg}, XP ${snow1 && snow1.xp} -> ${snow20 && snow20.xp})`,

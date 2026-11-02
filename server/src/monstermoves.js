@@ -66,8 +66,11 @@ const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
  *   cooldownMs  before the same move again (x the tier's and enrage's K)
  *   minR, maxR  it starts only with its target this far (px, a plain distance)
  *
- *   combo   strikes: how many; gapMs between them; radius of the ring at its
- *           target's feet (aimed when it starts, the whole combo drawn then)
+ *   combo   strikes: how many; gapMs between them; `radius` of the ring round
+ *           the monster (it flails in front of itself, so the ring goes where
+ *           it goes: a player's own blows shove it back mid-combo, and a ring
+ *           left at the target's feet whiffed on everyone who followed it in --
+ *           measured, the first cut's tier 2 took LESS damage than tier 1)
  *   charge  the lane: from the monster through its target and `past` px on,
  *           `minLen`..`maxLen` long, `laneW` px each side; a dash of `pxPerS`
  *   volley  `n` balls in a fan `spread` radians wide, each landing `travelMs`
@@ -80,8 +83,8 @@ const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 export const MOVE_DEFS = Object.freeze({
   combo: Object.freeze({
     kind: 'combo', row: 'combo', flag: 'monstercombo',
-    windupMs: 700, gapMs: 400, strikes: 2, dmgMult: 1.0, radius: 80,
-    minR: 0, maxR: 130, cooldownMs: 6000,
+    windupMs: 700, gapMs: 400, strikes: 2, dmgMult: 1.0, radius: 100,
+    minR: 0, maxR: 100, cooldownMs: 4500,
   }),
   charge: Object.freeze({
     kind: 'charge', row: 'charge', flag: 'monstercharge',
@@ -115,7 +118,14 @@ export const MONSTER_MOVES = Object.freeze({
   GAP_MS: 1800,
   /* on a monster's first look at a fight each move waits this share of its
      cooldown, so the opening blows are its ordinary swings */
-  OPEN_K: 0.4,
+  OPEN_K: 0,
+  /* ═══ THE STAT STEP (the brief's fallback, taken: see the spec's tables) ═══
+     Moves alone did not make tier 2 noticeably harder: a same-level fight
+     is over in 3 to 5 seconds, one or two moves.  So each tier past the
+     first adds HP_K to a monster's health and DMG_K to its hit, at spawn
+     (wheelzone.js; 1.1x and 1.08x at tier 2, 1.7x and 1.56x at tier 8).
+     `monstermoves: false` leaves a monster spawned after it as it was. */
+  STEP: Object.freeze({ HP_K: 0.10, DMG_K: 0.08 }),
   /* tiers 7-8: every cooldown (a move's, a kit's) 20% shorter */
   ELDER_TIER: 7,
   ELDER_CD_K: 0.8,
@@ -149,7 +159,7 @@ export const FAMILY_MOVES = Object.freeze({
      combo's reach is his, and the volley is the deferred Snow Volley
      (telegraph.js header, COMBAT-OVERHAUL-PLAN PR3) */
   snowman: Object.freeze([
-    M(2, 'combo', 'Double Poke', { radius: 85 }),
+    M(2, 'combo', 'Double Poke'),
     M(3, 'volley', 'Snow Volley', { ball: 'snowball' }),
     M(5, 'quake', 'Avalanche'),
     M(7, 'enrage', 'Enrage'),
@@ -255,6 +265,20 @@ export const monsterMoveMethods = {
     return this._movesFor(m).find((mv) => mv.kind === m._mvKind) || null;
   },
 
+  /* The stat step on a monster just built for tier `m.tier` (wheelzone.js
+     after its stamp; the simulator the same).  Its HP and its hit, once. */
+  _moveTierStep(m) {
+    if (!m || m._mvStepped || !this._monsterMovesOn()) return m;
+    const t = moveTier(m);
+    if (t < 2) return m;
+    const kh = 1 + MONSTER_MOVES.STEP.HP_K * (t - 1), kd = 1 + MONSTER_MOVES.STEP.DMG_K * (t - 1);
+    m.maxHp = Math.max(1, Math.ceil(m.maxHp * kh));
+    m.hp = m.maxHp;
+    m.dmg = Math.max(1, Math.ceil(m.dmg * kd));
+    m._mvStepped = true;
+    return m;
+  },
+
   /* ── enrage and the elder tiers' cooldowns ── */
   _monsterEnraged(m) {
     if (!m || !m.alive || !(m.maxHp > 0) || !(m.hp > 0)) return false;
@@ -294,6 +318,13 @@ export const monsterMoveMethods = {
     this._noteSpecialEnded(m, now);
     m.atkCd = Math.max(m.atkCd || 0, now + this._monsterSwingCd(m, this.MONSTER_ATTACK_CD));
     m._attackingUntil = Math.max(m._attackingUntil || 0, now + 400);
+  },
+
+  /* Braced: winding up a move or between a combo's strikes, a monster is not
+     shoved by a player's blow (combat.js) -- the warning is where it lands.
+     A charge's dash and a volley's flight are not braced moments. */
+  _moveBraced(m) {
+    return !!(m && (m._mvPhase === 'windup' || m._mvPhase === 'strike'));
   },
 
   /* A parry breaks the move in flight (index.js _applyParry, its one hook):
@@ -346,11 +377,12 @@ export const monsterMoveMethods = {
     if (typeof this._sigOnWindup === 'function') this._sigOnWindup(pid, m, now);   /* the reflex clock (botsig.js), as a kit's */
     const ex = { ms: mv.windupMs };   /* proto-ok: fixed-field payload struct */
     if (mv.kind === 'combo') {
-      /* the whole combo drawn at once, at its target's feet: the second
-         strike is on the ground from the start, windup + gap ahead */
-      m._mvAim = { x: ps.x, y: ps.y };   /* proto-ok: fixed-field point */
+      /* the whole combo drawn at once, round the monster (`follow`: the ring
+         goes where it is shoved): the second strike is on the ground from
+         the start, windup + gap ahead */
+      m._mvAim = { x: m.x, y: m.y };   /* proto-ok: fixed-field point */
       ex.ms = mv.windupMs + mv.gapMs * (mv.strikes - 1);
-      ex.radius = mv.radius; ex.n = mv.strikes; ex.gap = mv.gapMs;
+      ex.radius = mv.radius; ex.n = mv.strikes; ex.gap = mv.gapMs; ex.follow = 1;
     } else if (mv.kind === 'stomp' || mv.kind === 'quake') {
       /* round the monster where it stands (an area's ring, telegraph.js
          v2.3.3634: what the ring shows is what it reaches) */
@@ -464,22 +496,14 @@ export const monsterMoveMethods = {
     return out;
   },
 
-  /* a combo's strike: its target only, inside the ring drawn at its feet */
+  /* a combo's strike: everyone in the ring round the monster, where it
+     stands NOW (the ring the phone draws follows it) */
   _comboStrike(zoneId, m, mv, now) {
-    const pid = m._mvTarget;
-    const ps = pid ? this.playerState[pid] : null;
     const at = { x: m.x, y: m.y };   /* proto-ok: fixed-field point */
-    const aim = m._mvAim;
-    let hit = false;
-    if (ps && !ps.dead && !ps.dying && ps.z === zoneId && !ps._spar) {
-      const dx = ps.x - aim.x, dy = ps.y - aim.y;
-      if (dx * dx + dy * dy <= mv.radius * mv.radius && !this._hitMissed(mv.row, zoneId, ps, at, now)) {
-        hit = true;
-        this._moveHit(zoneId, m, mv, pid, at);
-      }
-    }
+    const reached = this._moveReach(zoneId, m, mv, at.x, at.y, mv.radius, at, now);
+    for (const pid of reached) this._moveHit(zoneId, m, mv, pid, at);
     const step = ++m._mvStep;
-    this._monsterAbilityEvent(zoneId, m, mv.kind, 'execute', { radius: mv.radius, hit, ax: Math.round(aim.x), ay: Math.round(aim.y), step });
+    this._monsterAbilityEvent(zoneId, m, mv.kind, 'execute', { radius: mv.radius, hit: reached.length > 0, ax: Math.round(at.x), ay: Math.round(at.y), step });
     if (!m._mvPhase) return true;   /* a parry broke it (_breakMove) */
     if (step < mv.strikes) {
       m._mvPhase = 'strike';

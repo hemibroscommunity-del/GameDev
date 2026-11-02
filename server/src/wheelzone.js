@@ -383,6 +383,7 @@ export const wheelzoneMethods = {
             m.y = m.spawnY = p[1];
             m.home = home;
             m.tier = st.tier;   /* server-side only: the serializers name their fields */
+            this._moveTierStep(m);   /* v2.3.3946: + 10% HP, + 8% hit a tier past the first (monstermoves.js) */
             out.push(m);
           }
         }

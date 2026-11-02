@@ -1600,7 +1600,12 @@ export const combatMethods = {
        a DEBT the monster walks off at extra pace while chasing — see
        _tickMonsters.  The player still gets their moment of space; the
        monster is no longer permanently exiled by landing in its face. */
-    if (attackerPs && payload.noKb !== true) {
+    /* v2.3.3946: a monster BRACED for a move of its tier (monstermoves.js
+       _moveBraced: winding it up or mid-combo) is not shoved: the ring it
+       drew is where the blow lands, and a sword's shoves had pushed every
+       combo out of reach of the player chasing it (measured: the first cut's
+       tier 2 took LESS damage than tier 1) */
+    if (attackerPs && payload.noKb !== true && !(this._moveBraced && this._moveBraced(m))) {
       /* v2.3.2790: x the zone's depth at the monster's feet -- a mummy drawn
          at 0.42 on Wind Dunes' north edge is shoved 0.42 as far, so the hit
          reads as the same shove on screen (1 on every other zone).  The

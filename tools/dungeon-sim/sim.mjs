@@ -187,8 +187,11 @@ async function addPlayer(world, spec, i) {
   ps.legsArmor = gear.armour ? { name: 'Sim Greaves', mat: spec.gear || 'iron', tierMult: gear.armour, quality: 'normal' } : null;
   room._prog3Recompute(ps);
   const pts = POINTS[spec.points || 'balanced'];
-  for (const [stat, n] of pts.lane) for (let k = 0; k < n; k++) room._handleProg3Allocate(session, { stat, cat: LANE[style] });
-  for (const [stat, n] of pts.shared) for (let k = 0; k < n; k++) room._handleProg3Allocate(session, { stat });
+  /* v2.3.3946: `pointsK` scales the level-10 split to another level (the
+     open-world fights, one per tier); the handler stops a stat at its bound */
+  const pk = spec.pointsK || 1;
+  for (const [stat, n] of pts.lane) for (let k = 0; k < Math.round(n * pk); k++) room._handleProg3Allocate(session, { stat, cat: LANE[style] });
+  for (const [stat, n] of pts.shared) for (let k = 0; k < Math.round(n * pk); k++) room._handleProg3Allocate(session, { stat });
   room._prog3Recompute(ps);
   ps.hp = ps.maxHp; ps.mana = ps.maxMana; ps.stamina = ps.maxStamina;
   ps.inventory = ps.inventory || {};
@@ -455,3 +458,161 @@ async function keepAlive(world, p, ps, zone) {
 }
 
 export const _realNow = realNow;
+
+/* ═══ v2.3.3946: THE OPEN WORLD -- ONE PLAYER AGAINST ONE OR TWO MONSTERS ═══
+ * (docs/specs/monster-moves.md has the tables; tools/dungeon-sim/open-world.mjs
+ * prints them.)  The owner's "make next tier monsters noticeably harder", and
+ * item 18 of the list of 2026-10-26: measure it, and do not make the first
+ * slimes a wall.  The same room, clock and player as a dungeon run, out on
+ * the Wheel instead:
+ *
+ *   - one sword player at `level`, in that level's usual gear (copper to
+ *     level 5, iron to 10, black steel past it: the Wheel's ore tiers,
+ *     wheelzone.js NODE_TIERS) with the study's "balanced" points scaled to
+ *     the level, standing at one of the tier's own baked spawn places;
+ *   - `n` monsters of one kind (`home` and its spawn list's `spawn`), built by
+ *     the worker's own _makeZoneMonster at that level and stamped with the
+ *     tier as wheelzone.js stamps it -- the room's only monsters;
+ *   - the fight runs until they are all dead, the player is, or `maxMs`.
+ *
+ * The player swings at the nearest and never blocks or rolls.  `skill`
+ * decides whether they step out of a warning on the ground (a kit's ring, a
+ * move's ring, lane or fan, a slime about to go off): `careless` never does,
+ * `average` does 70% of the time, about half a second late (SKILL above).
+ * Returns {won, died, ms, taken (share of the bar), bySrc}. */
+export const OPEN_GEAR = (level) => (level <= 10 ? 'copper' : level <= 20 ? 'iron' : 'steel');
+
+export async function runOpenWorld(opts) {
+  const level = opts.level || 3;
+  const tier = opts.tier || Math.max(1, Math.ceil(level / 5));
+  const home = opts.home || 'frost';
+  const n = opts.n || 1;
+  const world = { ...makeRoom(opts.flags), players: [] };
+  const { room } = world;
+  room._saveRpg = () => {}; room._saveRpgVitals = () => {}; room._saveRpgPools = () => {};
+  const mh = room._monsterHit;
+  room._monsterHit = function (h) {
+    const took = mh.call(this, h);
+    const p = world.players.find((x) => x.id === h.pid);
+    if (p && took > 0) { p.taken += took; p.bySrc[h.src] = (p.bySrc[h.src] || 0) + took; }
+    return took;
+  };
+  const p = await addPlayer(world, { style: 'sword', level, gear: opts.gear || OPEN_GEAR(level), points: opts.points || 'balanced', pointsK: Math.max(0.1, level / 10), skill: opts.skill || 'average' }, 0);
+  const ps = room.playerState[p.id];
+  /* the tier's own baked places on the long Wheel */
+  const at = room._wheelT().WHEEL_SPAWNS[home];
+  const st = tier >= 2 ? (at.deeper || []).find((d) => Number(d.tier) === tier) : null;
+  const pts = st ? st.points : at.points;
+  const pt = pts[(opts.place || 0) % pts.length];
+  const zone = 'wheel';
+  const Z = room._getZoneConfig(home);
+  const spawn = Z.spawns[opts.spawn || 0];
+  const mons = [];
+  for (let i = 0; i < n; i++) {
+    const m = room._makeZoneMonster(home, Z, spawn, 'ow-' + i, Z.w * room.TILE / 2, Z.h * room.TILE / 2, level);
+    m.home = home;
+    if (tier >= 2) { m.tier = tier; room._moveTierStep(m); }   /* as wheelzone.js stamps and steps it */
+    m.x = m.spawnX = pt[0] + 130 * Math.cos(i * 2.2);
+    m.y = m.spawnY = pt[1] + 130 * Math.sin(i * 2.2);
+    mons.push(m);
+  }
+  room.monsters[zone] = mons;
+  ps.z = zone; ps.x = pt[0]; ps.y = pt[1]; ps.lastMoveAt = undefined; ps._zoneEntryGraceUntil = 0;
+  await send(world, p, moveMsg(zone, ps.x, ps.y, 0, 0));
+  p.inside = true;
+  const box = { x0: pt[0] - 900, x1: pt[0] + 900, y0: pt[1] - 900, y1: pt[1] + 900 };
+  const t0 = T, maxMs = opts.maxMs || 120000;
+  let sinceTick = 0, sinceFrame = 0, won = false;
+  while (T - t0 < maxMs) {
+    T += STEP; sinceTick += STEP; sinceFrame += STEP;
+    if (sinceTick >= TICK) { sinceTick -= TICK; world.tick(); }
+    if (sinceFrame >= FRAME) { sinceFrame -= FRAME; await stepOpen(world, p, zone, mons, box); }
+    if (mons.every((m) => !m.alive)) { won = true; break; }
+    if (p.dead || ps.dead || ps.dying) { p.dead = true; break; }
+  }
+  try { room.sessions.delete(p.ws); } catch (e) { /* ignore */ }
+  return { won, died: !!p.dead, ms: T - t0, taken: p.taken / (ps.maxHp || 1), maxHp: ps.maxHp,
+    bySrc: Object.fromEntries(Object.entries(p.bySrc).map(([k, v]) => [k, Math.round(v)])), level: mons[0].level, hpEach: mons[0].maxHp, dmgEach: mons[0].dmg };
+}
+
+/* every warning on the ground near the player, as a shape it can step out
+   of: a circle {x, y, r} or a lane {x, y, bx, by, r} (a capsule) */
+function openDangers(list, now) {
+  const out = [];
+  for (const m of list) {
+    if (m._burstUntil && m._burstUntil > now) out.push({ id: m.id + ':b' + m._burstUntil, x: m.x, y: m.y, r: m._burstR || SLIME_BURST.RADIUS });
+    if (m._tgPhase === 'telegraph') {
+      /* a kit: an area's ring is at its aim, a single target's is measured from the monster */
+      const c = m._tgAim && m._tgRadius >= 140 ? m._tgAim : m;
+      out.push({ id: m.id + ':k' + m._tgUntil, x: c.x, y: c.y, r: m._tgRadius || 88 });
+    }
+    if (m._mvPhase && m._mvAim) {
+      const k = m._mvKind, id = m.id + ':' + k + m._mvAim.x;
+      if (k === 'charge' && m._mvDir && m._mvPhase === 'windup') {
+        out.push({ id, x: m._mvAim.x, y: m._mvAim.y, bx: m._mvAim.x + m._mvDir.x * m._mvLeft, by: m._mvAim.y + m._mvDir.y * m._mvLeft, r: 34 });
+      } else if (k === 'volley' && m._mvBalls) {
+        m._mvBalls.forEach((b, i) => out.push({ id: id + ':' + i, x: b.x, y: b.y, r: 44 }));
+      } else if (k !== 'charge') {
+        out.push({ id, x: m._mvAim.x, y: m._mvAim.y, r: k === 'combo' ? 85 : 150 });
+      }
+    }
+  }
+  return out;
+}
+
+/* how far inside a danger the player stands (<= 0: outside), and the way out */
+function dangerDepth(d, x, y) {
+  if (d.bx == null) {
+    const dx = x - d.x, dy = y - d.y, L = Math.hypot(dx, dy) || 1;
+    return { depth: d.r - L, ax: dx / L, ay: dy / L };
+  }
+  const vx = d.bx - d.x, vy = d.by - d.y, L2 = vx * vx + vy * vy || 1;
+  const t = Math.max(0, Math.min(1, ((x - d.x) * vx + (y - d.y) * vy) / L2));
+  const qx = x - (d.x + vx * t), qy = y - (d.y + vy * t), L = Math.hypot(qx, qy);
+  /* sideways off the lane (never along it, where it runs) */
+  const L1 = Math.sqrt(L2);
+  const nx = L > 0.5 ? qx / L : -vy / L1, ny = L > 0.5 ? qy / L : vx / L1;
+  return { depth: d.r - L, ax: nx, ay: ny };
+}
+
+async function stepOpen(world, p, zone, mons, box) {
+  const { room } = world;
+  const ps = room.playerState[p.id];
+  if (!ps || ps.dead || ps.dying) { p.dead = true; return; }
+  const now = T;
+  const list = mons.filter((m) => m && m.alive);
+  /* 1. a warning on the ground: step out of it (if they react) */
+  let flee = null;
+  for (const d of openDangers(list, now)) {
+    let seen = p.danger.get(d.id);
+    if (!seen) {
+      seen = { react: rnd() < p.skill.react, at: now + p.skill.reactMs * (0.6 + 0.8 * rnd()) };
+      p.danger.set(d.id, seen);
+    }
+    if (!seen.react || now < seen.at) continue;
+    const g = dangerDepth(d, ps.x, ps.y);
+    if (g.depth + p.skill.margin > 0 && (!flee || g.depth > flee.depth)) flee = g;
+  }
+  if (p.danger.size > 400) p.danger.clear();
+  if (flee) { await walk(world, p, ps, zone, box, flee.ax, flee.ay, WALK); return; }
+  /* 2. the nearest, swung at */
+  const hittable = list.filter((m) => !m._burstUntil && !(m._invulnUntil > now));
+  let m = null, bd = Infinity;
+  for (const x of hittable) { const d = Math.hypot(x.x - ps.x, x.y - ps.y); if (d < bd) { bd = d; m = x; } }
+  if (!m) { await keepAlive(world, p, ps, zone); return; }
+  if (bd > MELEE_REACH) { await walk(world, p, ps, zone, box, (m.x - ps.x) / bd, (m.y - ps.y) / bd, WALK); return; }
+  await keepAlive(world, p, ps, zone);
+  if (p.skill.specials && now - p.specialAt >= SPECIAL_CD && (ps.mana || 0) >= room._blockCost(ps, 'mana', 1)) {
+    const ring = hittable.filter((x) => Math.hypot(x.x - ps.x, x.y - ps.y) <= SWORD_SPECIAL_R);
+    if (ring.length >= 2) {
+      p.specialAt = now; p.swingAt = now;
+      await send(world, p, { type: 'ability_use', payload: { type: 'swipe', tier: 0 } });
+      for (const x of ring) await send(world, p, { type: 'monster_damage', payload: { monsterId: x.id, zone, element: null, slot: 'melee', special: true } });
+      return;
+    }
+  }
+  if (now - p.swingAt >= swingCd(room, ps, 'sword', SWING_CD)) {
+    p.swingAt = now;
+    await send(world, p, { type: 'monster_damage', payload: { monsterId: m.id, zone, element: null, slot: 'melee', special: false } });
+  }
+}
