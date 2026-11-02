@@ -583,6 +583,7 @@ const SCENARIOS = {
   backshield: () => import('./mp-backshield.mjs'), /* v2.3.1782: the slung shield, and the z-order that killed it */
   slimewave: () => import('./mp-slimewave.mjs'), /* v2.3.2912: the slime burst draws a shockwave at its real radius, and shakes only the players inside it */
   deathcut: () => import('./mp-deathcut.mjs'), /* v2.3.2913: monsters die sliced, beheaded, legless or the normal way -- pieces fall and settle, then go */
+  deathzones: () => import('./mp-deathzones.mjs'), /* v2.3.3954: every look with labelled zones dies its own way -- a piece a zone, the beat first, its own colour, down and still, then gone and let go; the cap of 8, the same death every phone, ?deathkind=own and ?deathzones=0 */
   swordcarry: () => import('./mp-swordcarry.mjs'), /* v2.3.1786: the carried blade points up and forward */
   bladesoft: () => import('./mp-bladesoft.mjs'), /* v2.3.2927: the held blade at the body's resolution -- soft bake by default, ?bladesoft=0 sharp; pictures of both */
   standinskin: () => import('./mp-standinskin.mjs'), /* v2.3.1788: attack stand-ins wear the walking skin */

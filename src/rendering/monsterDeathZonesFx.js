@@ -236,7 +236,13 @@ export function buildZoneDeath(K, display, m, now, ctx) {
         pc.spin = dir * (1.5 + rand() * 2.5) / mk;
       }
     } else if (off === 'slump') {
-      pc.slump = { px: cx, py: gy, squash: z.squash != null ? z.squash : 0.45, lean: (z.lean || 0) * leanSide, sink: z.sink || 0 };
+      /* every slump piece of a death about ONE point, so they sag as one: under
+         the body's middle -- or, for one that leans as it crumples, its foot on
+         the side it leans to (turning about the middle would sink the other
+         foot through the ground) */
+      const lean = (z.lean || 0) * leanSide;
+      const px = lean > 0 ? x1 : lean < 0 ? x0 : cx;
+      pc.slump = { px, py: gy, squash: z.squash != null ? z.squash : 0.45, lean, sink: z.sink || 0 };
       if (pc.slump.sink > 0) {
         if (!clip) {
           clip = new Graphics();
@@ -465,6 +471,9 @@ function draw(K, st, t) {
   }
   st.root.alpha = t < K.FADE_FROM_MS ? 1 : Math.max(0, 1 - (t - K.FADE_FROM_MS) / (K.DUR_MS - K.FADE_FROM_MS));
 }
+
+/* QA probe, house style: the zone deaths made, playing and let go */
+if (typeof window !== 'undefined') window.__btDeathZones = zoneDeathStats;
 
 /** QA: what one zone death is doing (monsterDeathState adds it). */
 export function zoneDeathProbe(st) {
