@@ -617,7 +617,7 @@ export function updateMonsterCombat(S, deps) {
                   var abilities = m._bossAbilities;
                   m._currentAttack = abilities[m._attackPattern % abilities.length];
                   m._attackPattern++;
-                  /* v2.3.4020: no word for the move (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
+                  /* v2.3.4026: no word for the move (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
                   BT_AUDIO.beep(400, 0.08, 0.1, 'sine');
                   /* Boss glows during telegraph */
                   m.color = '#fbbf24';
@@ -633,7 +633,7 @@ export function updateMonsterCombat(S, deps) {
                     var slamRange = 80;
                     S.screenShake = 10;
                     BT_AUDIO.beep(80, 0.2, 0.25, 'sawtooth');
-                    /* v2.3.4020: no word for the move (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
+                    /* v2.3.4026: no word for the move (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
                     if (!S._impactRings) S._impactRings = [];
                     S._impactRings.push({
                       x: m.x,
@@ -687,13 +687,13 @@ export function updateMonsterCombat(S, deps) {
                     m._chargeUntil = Date.now() + 600;
                     m._chargeAngle = bossAngle;
                     m._chargeSpeed = m.spd * 6;
-                    /* v2.3.4020: no word for the move (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
+                    /* v2.3.4026: no word for the move (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
                     BT_AUDIO.beep(200, 0.15, 0.2, 'sawtooth');
                   }
                   if (ability === 'sweep') {
                     /* Wide arc sweep — must dodge or shield */
                     var sweepRange = 70;
-                    /* v2.3.4020: no word for the move (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
+                    /* v2.3.4026: no word for the move (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
                     BT_AUDIO.beep(150, 0.15, 0.2, 'square');
                     S.screenShake = 6;
                     if (!S._impactRings) S._impactRings = [];
@@ -743,14 +743,14 @@ export function updateMonsterCombat(S, deps) {
                       minion.maxHp = minion.hp;
                       S.monsters.push(minion);
                     }
-                    /* v2.3.4020: no word for the move (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
+                    /* v2.3.4026: no word for the move (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
                     BT_AUDIO.beep(300, 0.1, 0.15, 'square');
                   }
                   if (ability === 'enrage' && m.curHp < m.hp * 0.3 && !m._enraged) {
                     m._enraged = true;
                     m.dmg = Math.ceil(m.dmg * 1.5);
                     m.spd *= 1.4;
-                    /* v2.3.4020: no "ENRAGED!" word (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
+                    /* v2.3.4026: no "ENRAGED!" word (the owner: "Remove all text announcing what attacks or things the monsters are doing") */
                     S.screenShake = 6;
                     BT_AUDIO.beep(120, 0.2, 0.3, 'sawtooth');
                   }
@@ -945,7 +945,7 @@ export function updateMonsterCombat(S, deps) {
                        reads. */
                     if (_localAtkVariant && _localAtkVariant.blockStunMs) {
                       m._stunUntil = Math.max(m._stunUntil || 0, Date.now() + _localAtkVariant.blockStunMs);
-                      /* v2.3.4020: no "STUNNED!" word over it (the owner: "Remove all text announcing what ... the monsters are doing") */
+                      /* v2.3.4026: no "STUNNED!" word over it (the owner: "Remove all text announcing what ... the monsters are doing") */
                     }
                   }
 

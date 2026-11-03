@@ -9,7 +9,7 @@
  *   1. the boss comes: `bn: 3, bs: 0` on the wire, drawn x4.59 a wave slime;
  *   2. hurt far past its first mark (the QA op `hurt`: the real damage path),
  *      it stops at 75%, its bar wearing its three marks;
- *   3. it swells (v2.3.4020: with no "BURSTING!" word over it -- the owner:
+ *   3. it swells (v2.3.4026: with no "BURSTING!" word over it -- the owner:
  *      "Remove all text announcing what attacks or things the monsters are
  *      doing"), then goes off: 10 of the Grotto's slimes, it a
  *      step smaller (x2.76), its bar two marks; watched every frame, it does
@@ -194,7 +194,7 @@ export async function runAt({ browser, wsPort, webPort, rec }, land) {
     /* the swell (1.6 s) and its warning, watched while the pictures are taken:
        this box takes about a second a picture, so the swell's is asked for at
        once, and lands in it */
-    /* v2.3.4020: the swell is watched for, and every word over it the while:
+    /* v2.3.4026: the swell is watched for, and every word over it the while:
        none may name the move */
     let said = [];
     const swellP = poll(async () => {
