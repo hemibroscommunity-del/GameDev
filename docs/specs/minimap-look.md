@@ -59,9 +59,22 @@ dungeons' and the farm's small box are as they were.
 
 ## Checked
 
-See the PR body for the runs. The scenarios: `mp-wheelmap` (the frame, the
-plate, the ice blue under the wash, and the monsters as grouped dots on Frost
-Ridge), `mp-north`, `mp-minishot` (the two new glyphs distinct from every
-other), `mp-deskplace`, `mp-deskkeys`, `mp-starcue`, `mp-mappin`,
-`mp-partymap`, `mp-membudget`; the UI review's `hud`, `world-map` and
-`world-map-pin`.
+- `mp-wheelmap` 33/33 (the slim frame read off the screen, the plate's two
+  words whole at 11 px or more, the ice blue under the wash 81% of the box,
+  and on Frost Ridge 24 monsters drawn as 23 dots, one cell holding two);
+  `mp-north`, `mp-minishot` (the closest new pair `mdot` vs `quest` 0.278,
+  over the 0.18 bar) -- 59 of 59 with wheelmap.
+- `mp-deskplace`, `mp-starcue` (the cue ends on the star, 0 px off, phone and
+  computer), `mp-mappin` (the pin on the 264 px box and its edge),
+  `mp-partymap`: all passing. `mp-deskkeys`: the new check 8 (264 px, k 2,
+  4,800 across, the button over it) passes; its 8e (D tapped twice within
+  250 ms rolls) fails on this box: Playwright's two key presses land 270-500
+  ms apart here. Measured on the same box, main's first pair was 252 ms apart
+  too (a timing test on a box that draws a few frames a second, TRAPS §177);
+  the computer's bigger box does cost this software renderer a little (a
+  frame's middle 117-133 ms against main's 100-117 at 1280 x 800).
+- `mp-membudget`: every line held; the page's heap at most 34.5 MB (line 36,
+  34.7 measured before): no line changed.
+- The UI review's `hud`, `world-map`, `world-map-pin` on all three views;
+  `--check-notes` clean. `server/test/party-marks.test.mjs` reads the
+  monsters' new marks (3c had passed by itself once the skull was gone).
