@@ -1,4 +1,4 @@
-/* ═══ v2.3.4020: THE TWO PINS ON THE WORLD MAP, AND A LINE TO EACH ═══
+/* ═══ v2.3.4027: THE TWO PINS ON THE WORLD MAP, AND A LINE TO EACH ═══
  *
  * The owner: "Add a line path when you drop pins on your minimap" -- and the
  * World map draws the same: from you to each pin (game/pinSlots.js, blue and
@@ -47,7 +47,7 @@ export function drawMapPins(g, S, X, Y, w, h, P, ghost) {
   for (const k of PIN_SLOTS) {
     const pin = pinOf(S, k);
     if (!pin) continue;
-    /* ?mappin=0: the board's pins only, as before v2.3.4020 */
+    /* ?mappin=0: the board's pins only, as before v2.3.4027 */
     if (!on && !pin.id) continue;
     const at = pinPlace(S, k, resolve);
     if (!at) continue;

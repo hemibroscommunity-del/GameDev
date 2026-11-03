@@ -1,4 +1,4 @@
-/* ═══ v2.3.4020: THE MAP PINS' THREE SMALL CARDS ═══
+/* ═══ v2.3.4027: THE MAP PINS' THREE SMALL CARDS ═══
  *
  * The owner: "When you get near the pin (in game) make a window pop up asking
  * if you want to remove pin. A no just makes it stay up until you drop a new

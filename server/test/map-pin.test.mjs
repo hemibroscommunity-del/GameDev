@@ -1,5 +1,5 @@
 /* ═══ v2.3.3879: YOUR OWN PIN ON THE MAP ═══
- * ═══ v2.3.4020: TWO PINS, BLUE AND RED, WITH A LINE TO EACH (src/game/pinSlots.js) ═══
+ * ═══ v2.3.4027: TWO PINS, BLUE AND RED, WITH A LINE TO EACH (src/game/pinSlots.js) ═══
  * The owner: "Add a line path when you drop pins on your minimap. When you
  * get near the pin (in game) make a window pop up asking if you want to remove
  * pin. A no just makes it stay up until you drop a new pin and get close to it

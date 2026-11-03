@@ -1,4 +1,4 @@
-/* ═══ v2.3.4020: TWO MAP PINS, BLUE AND RED, WITH A LINE TO EACH ═══
+/* ═══ v2.3.4027: TWO MAP PINS, BLUE AND RED, WITH A LINE TO EACH ═══
  *
  * The owner: "Add a line path when you drop pins on your minimap. When you
  * get near the pin (in game) make a window pop up asking if you want to remove

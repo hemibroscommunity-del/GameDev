@@ -12,7 +12,7 @@
  *   - Both can be up at once, even on one place.
  *   - They stay until lifted, per character: localStorage `bt_pins:<id>`.
  *
- * ═══ v2.3.4020: ONE STORE FOR BOTH KINDS OF PIN ═══
+ * ═══ v2.3.4027: ONE STORE FOR BOTH KINDS OF PIN ═══
  * The board's pins and the pin you drop on the World map are the same two
  * slots now, blue and red (game/pinSlots.js, its header has the rules): a
  * slot holds a board row OR a place.  This module keeps the board's names and
