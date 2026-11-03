@@ -115,7 +115,7 @@ export function onRaceState(S, p) {
   S._race = { phase: 'count', t0, lilMs, speed, flagR: Number(p.flagR) || 80,
     flags: p.flags, path: p.path, next: 0, said: 0, count: -1 };
   S._raceLil = { path: p.path, t0, speed, len: pathLen(p.path), lilMs };
-  lilSays(S, 'On your marks! Try not to lag!');
+  lilSays(S, 'On your marks! Get set!');   /* v2.3.3945: plain words (docs/specs/plain-words.md) */
   raceBus.emit();
 }
 
@@ -149,9 +149,10 @@ export function onRaceEnd(S, p) {
      race left early is not a loss. */
   if (!res.won && (!res.err || res.err === 'late')) noteRaceLost();
   try {
-    if (res.won) { cue('duelWin'); lilSays(S, 'Lag! That was LAG! REPORT!'); }
-    else if (res.err === 'early') { cue('denied'); lilSays(S, "False start! That's a ban!"); }
-    else if (!res.err || res.err === 'late') { cue('duelLose'); lilSays(S, 'Easy! Skill issue, bro!'); }
+    /* v2.3.3945: his barks said plainly -- no "LAG!", "ban" or "skill issue" */
+    if (res.won) { cue('duelWin'); lilSays(S, 'Whoa, you won! Good race!'); }
+    else if (res.err === 'early') { cue('denied'); lilSays(S, 'False start! Wait for GO.'); }
+    else if (!res.err || res.err === 'late') { cue('duelLose'); lilSays(S, 'I won! Want to race again?'); }
     else cue('denied');
   } catch (e) { /* a sound */ }
   raceBus.emit();

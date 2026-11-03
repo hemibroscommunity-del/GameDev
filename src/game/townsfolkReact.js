@@ -11,7 +11,7 @@
  *                   their dance for as long as they dance, their wave;
  *   Blacksmith Bro  flexes back at a flex, and says so;
  *   Diego           "No dancing in my store!" at a dancer near his door;
- *   Ace             calls the odds when two or more dance near him;
+ *   Ace             calls a dance-off when two or more dance near him;
  *   Mayor Bro       cheers a party: three or more dancing near him.
  *
  * A townsperson's move is `npc._emoteMove` / `npc._po` (+ `npc._poAt`), drawn
@@ -37,14 +37,19 @@ export const REACT = Object.freeze({
 });
 
 /* v2.3.3575: the owner's satire pass (docs/specs/npc-dialogue-v2.md) */
+/* v2.3.3945: said plainly -- the owner, "a simple and easy to understand
+   personality and directions.  No cryptic jokes or anything that could
+   confuse someone" (docs/specs/plain-words.md).  Diego's first line stays
+   (mp-joinin waits for it).  Ace no longer calls betting odds ("3 to 1"):
+   he says who he thinks will win, `ace` is how he says it. */
 export const REACT_LINES = Object.freeze({
-  lil: Object.freeze(["Look, I'm doing it too!", 'Clip that! Somebody clip that!', 'Wait, like this?!']),
-  smith: Object.freeze(['Nice. Keep eating.', 'Ha! Now go curl an anvil!', "All natural, bro. Ask anyone. Don't ask my doctor."]),
-  diego: Object.freeze(['Hey! This is a business!', 'Dance outside, amigo. Outside is free.', "Unless you're buying, stop blocking my door!"]),
+  lil: Object.freeze(["Look, I'm doing it too!", 'I can do it too! Watch me!', 'Wait, like this?!']),
+  smith: Object.freeze(['Nice muscles! Keep it up.', 'Look at these! I lift every day.', 'Strong arms, strong hammer!']),
+  diego: Object.freeze(['Hey! This is a business!', 'Please dance outside, amigo.', "Please don't dance in front of my door!"]),
   /* v2.3.3395: Halloween week's Zombie Shuffle by his door */
-  diegoZombie: Object.freeze(['No zombies in the shop!', "Out! Unless you're selling. Then come in."]),
-  ace: Object.freeze(['3 to 1', '2 to 1', '5 to 2', 'even money']),
-  mayor: Object.freeze(["Now THAT's a crowd! Somebody get a photo of me in front of it!", "Street party! Nobody told me, but I'll allow it!", 'Look at this town. Happy. Dancing. I take full credit.']),
+  diegoZombie: Object.freeze(['No zombies in the shop!', 'Out you go, zombie! Unless you want to buy something.']),
+  ace: Object.freeze(['will win', 'has the best moves', 'is in the lead', 'is looking good']),
+  mayor: Object.freeze(['What a party! Somebody take a picture of me with everyone!', 'A street party! I love it!', 'Look at this town. Everyone is happy and dancing!']),
 });
 
 const isDance = (id) => !!(id && Object.prototype.hasOwnProperty.call(EMOTE_MOVES, id) && EMOTE_MOVES[id].dance);
@@ -145,8 +150,9 @@ function ace(npc, ms, now) {
   const i = npc._reactN || 0;
   npc._reactN = i + 1;
   const who = ds[i % ds.length];
-  const odds = REACT_LINES.ace[i % REACT_LINES.ace.length];
-  say(npc, "Dance-off! I've got " + who.name + ' at ' + odds + '! Who wants in?', now);
+  const pick = REACT_LINES.ace[i % REACT_LINES.ace.length];
+  /* v2.3.3945: "Dance-off! I think Mover will win! Who wants to join?" */
+  say(npc, 'Dance-off! I think ' + who.name + ' ' + pick + '! Who wants to join?', now);
 }
 
 function mayor(npc, ms, now) {
