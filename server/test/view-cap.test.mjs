@@ -1,4 +1,4 @@
-/* ═══ v2.3.4074: ONE VISIBLE AREA OF WORLD, WHATEVER THE SCREEN ═══
+/* ═══ v2.3.4084: ONE VISIBLE AREA OF WORLD, WHATEVER THE SCREEN ═══
  *
  * src/game/viewCap.js (the cap) and src/game/worldViewport.js (the one rule
  * the camera and the renderer read, with the cap folded in).  The owner:

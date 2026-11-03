@@ -1,4 +1,4 @@
-# The view cap: one visible area of world for every screen (v2.3.4074)
+# The view cap: one visible area of world for every screen (v2.3.4084)
 
 > A design review the owner shared: "I'd consider establishing a consistent
 > maximum gameplay visibility range regardless of screen dimensions."

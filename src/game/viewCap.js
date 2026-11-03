@@ -1,4 +1,4 @@
-/* ═══ v2.3.4074: ONE VISIBLE AREA OF WORLD, WHATEVER THE SCREEN ═══
+/* ═══ v2.3.4084: ONE VISIBLE AREA OF WORLD, WHATEVER THE SCREEN ═══
  *
  * A design review the owner shared: "I'd consider establishing a consistent
  * maximum gameplay visibility range regardless of screen dimensions".  A wide

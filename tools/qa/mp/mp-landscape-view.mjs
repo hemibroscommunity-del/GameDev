@@ -1,8 +1,8 @@
-/* ═══ ONE VISIBLE AREA OF WORLD, WHATEVER THE SCREEN (v2.3.4074) ═══
+/* ═══ ONE VISIBLE AREA OF WORLD, WHATEVER THE SCREEN (v2.3.4084) ═══
  *
  * Was (v2.3.2156): the view rule switches axes sideways; portrait is pinned --
  * on the retired old map's town and 'ember'.  Moved onto the world (the Wheel,
- * `world: 'wheel'`) by v2.3.4074, and asked the question that PR answers.
+ * `world: 'wheel'`) by v2.3.4084, and asked the question that PR answers.
  *
  * A design review the owner shared: "I'd consider establishing a consistent
  * maximum gameplay visibility range regardless of screen dimensions".  The
@@ -67,7 +67,7 @@ async function intoWorld(browser, wsPort, webPort, name, opts) {
 const SCREENS = [
   { tag: 'upright 390x844 folded', name: 'Upview', opts: { viewport: { width: 390, height: 844 }, touch: true }, upright: true },
   { tag: 'upright 390x844 open', name: 'Upopen', opts: { viewport: { width: 390, height: 844 }, touch: true }, upright: true, unfold: true },
-  /* v2.3.4074: the other upright phones, open: 850 (the reference's width) is the widest of them */
+  /* v2.3.4084: the other upright phones, open: 850 (the reference's width) is the widest of them */
   { tag: 'upright 375x812 open', name: 'Miniopen', opts: { viewport: { width: 375, height: 812 }, touch: true }, upright: true, unfold: true },
   { tag: 'upright 430x932 open', name: 'Maxopen', opts: { viewport: { width: 430, height: 932 }, touch: true }, upright: true, unfold: true },
   /* ...and a SHORT upright phone (an SE's 667 pt), on the character floor:
