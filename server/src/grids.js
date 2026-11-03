@@ -91,6 +91,10 @@ export const gridMethods = {
     if (this._threatGearLocked(session.id, ps)) return false;
     /* _prog3EquipOk's 'armor' slot covers BOTH body pieces (gear.js). */
     if (next && !this._prog3EquipOk(ps, 'armor', next)) return false;
+    /* v2.3.3951: a piece still a "?" is opened as it goes on, with its
+       ceremony (revealbag.js): a worn grade shows on your body (`eqg`) and
+       counts in every hit, so nothing worn is a secret */
+    if (next && next.unrevealed && this._revealBagOnWear) next = this._revealBagOnWear(session && session.id, ps, slot, next);
     const wasGrade = wornGradeLetter(ps[slot]);
     ps[slot] = next;
     /* v2.3.3142: a swap that changes the grade everyone else sees (tick.js

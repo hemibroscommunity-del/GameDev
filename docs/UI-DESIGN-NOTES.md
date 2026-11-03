@@ -811,6 +811,26 @@ Screens: dash-bag, item-card
 
 Sources: CLAUDE.md, docs/specs/landscape-mode.md, docs/specs/bag-icons.md, docs/specs/crop-food.md, docs/specs/armor-grade-look.md, docs/specs/rarity-reveal.md, docs/specs/quest-guidance.md, docs/LANTERN-SLATE-SPEC.md, src/ui/mobile/dash/InventoryPanel.jsx, src/ui/mobile/dash/ItemDetailPopup.jsx, src/ui/mobile/dash/BagFilterChips.jsx, src/ui/mobile/dash/bagFilterBus.js, src/ui/mobile/dash/bagModel.js, src/ui/mobile/dash/bagLife.js, src/ui/mobile/dash/DashColumns.jsx, src/ui/mobile/dash/common.js, src/ui/mobile/sheet/HeroExpanded.jsx, src/ui/mobile/BottomDashboard.jsx
 
+## A mystery piece in the bag
+Screens: bag-unrevealed
+
+**What it is for:** A rare-or-better drop you have not opened yet. It waits in the bag as a "?" until you choose to reveal it (v2.3.3951, owner: "Mystery item launched automatically. Should go to inventory then have reveal option").
+
+**Decisions, and why:**
+- **The tile is the reveal's own picture:** the item's painted art as a dark silhouette, a "?" over it in the rare blue, and the rare-blue 2 px edge. Rare blue because the pile only ever promised "rare or better", the same promise as the drop line and the pile's shine (v2.3.3746). No new art: a filter on the picture already loaded and one character of text, so it costs no memory.
+- **You know what it is, not how good it is.** The tile and the card keep the item's name and kind (an Iron Torso is an Iron Torso); only the grade is hidden, as on the ground (rarity-reveal.md).
+- **The card says "Rare or better" in blue and has two buttons: Reveal (the brass one) and Equip.** No damage or "% damage reduced" line, because that number would read the piece as a Normal. No Sell, Drop or Salvage until it is revealed.
+- **Reveal closes the card,** so the reveal is seen. It is the same short, non-modal reveal as before (2 s a stage): the world keeps playing.
+- **Equip reveals first,** then puts the piece on when the grade lands. What you wear is never a secret: your armour's grade shows on your body.
+- **The tile stays a "?" until the reveal lands,** even though the bag already knows the answer, so the grade never shows under the spin.
+
+**Please don't suggest:**
+- Revealing on pickup again (that is the switch `revealbag: false`, for emergencies), or a modal reveal.
+- A different colour for the "?" than the rare blue, or the word "Rare" on the tile.
+- Selling or trading a "?" from this card: that is a separate plan (docs/specs/sealed-gear.md).
+
+Sources: docs/specs/reveal-in-bag.md, docs/specs/rarity-reveal.md, docs/specs/sealed-gear.md, src/game/revealBag.js, src/ui/reveal/UnrevealedMark.jsx, src/ui/reveal/RevealOverlay.jsx, src/ui/mobile/dash/InventoryPanel.jsx, src/ui/mobile/dash/ItemDetailPopup.jsx
+
 ## The More page and its pages
 Screens: dash-more, more-settings, more-pets, more-leaderboard, more-social, more-journey, more-account, more-about, more-feedback
 

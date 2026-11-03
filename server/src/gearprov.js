@@ -226,6 +226,11 @@ export function stripProv(piece) {
   const out = { ...piece };
   delete out.gid;
   delete out.prov;
+  /* v2.3.3951: and the reveal mark (revealbag.js), which only the worker
+     writes: a claim with no id behind it has no row to hold its grade, so a
+     "?" here would be a forged mystery (a Normal sold as one).  A claim WITH
+     a recorded id never reaches this line: it is rebuilt from its row. */
+  delete out.unrevealed;
   return out;
 }
 
@@ -268,12 +273,31 @@ export function normalizeProvLedger(rec) {
       });
     }
   }
-  if (out.list.length > GEAR_PROV_CAP) {
-    out.forgotten += out.list.length - GEAR_PROV_CAP;
-    out.list = out.list.slice(out.list.length - GEAR_PROV_CAP);
-  }
+  capProvLedger(out);
   if (out.seq < out.list.length) out.seq = out.list.length;
   return out;
+}
+
+/* ═══ v2.3.3951: THE CAP NEVER FORGETS A PIECE STILL WAITING TO BE REVEALED ═══
+ * At GEAR_PROV_CAP the OLDEST row goes (the hole the cap's note above writes
+ * down) -- but an unrevealed piece's row (revealbag.js, `p.unrevealed`) is
+ * the ONLY copy of its grade: the phone's bag holds the piece without it.
+ * Forgotten, the piece would come back from the next join as a legacy plate
+ * with no grade at all.  So the oldest OPEN rows go first, and a marked row
+ * only if every row is marked.  The one trim, for all three places that
+ * grow a ledger. */
+export function capProvLedger(ledger) {
+  if (!ledger || !Array.isArray(ledger.list) || ledger.list.length <= GEAR_PROV_CAP) return ledger;
+  let over = ledger.list.length - GEAR_PROV_CAP;
+  const keep = [];
+  for (const r of ledger.list) {
+    if (over > 0 && !(r && r.p && r.p.unrevealed)) { over--; continue; }
+    keep.push(r);
+  }
+  if (keep.length > GEAR_PROV_CAP) keep.splice(0, keep.length - GEAR_PROV_CAP);
+  ledger.forgotten = (ledger.forgotten || 0) + (ledger.list.length - keep.length);
+  ledger.list = keep;
+  return ledger;
 }
 
 /* ═══ v2.3.2537: A REBUILT PIECE SHARES NOTHING WITH ITS ROW ═══
@@ -389,10 +413,7 @@ export const gearProvMethods = {
        without an edit here — the rebuild is what makes a forged gid
        worthless, and it can only be as complete as this copy. */
     ledger.list.push({ id, slot, src: typeof src === 'string' ? src.slice(0, 24) : '', at: Date.now(), p: clonePiece(piece) });
-    if (ledger.list.length > GEAR_PROV_CAP) {
-      ledger.forgotten += ledger.list.length - GEAR_PROV_CAP;
-      ledger.list = ledger.list.slice(ledger.list.length - GEAR_PROV_CAP);
-    }
+    capProvLedger(ledger);   /* v2.3.3951: an unrevealed row is never the one forgotten */
     this._gearProvSave(playerId, ledger);
     piece.gid = id;
     piece.prov = PROV_MINTED;
@@ -946,10 +967,7 @@ export const gearProvMethods = {
     }
     if (findProvRow(ledger, row.id)) return true;   /* already ours: converge, do not duplicate */
     ledger.list.push({ id: row.id, slot: row.slot, src: typeof row.src === 'string' ? row.src.slice(0, 24) : '', at: typeof row.at === 'number' ? row.at : Date.now(), p: row.p });
-    if (ledger.list.length > GEAR_PROV_CAP) {
-      ledger.forgotten += ledger.list.length - GEAR_PROV_CAP;
-      ledger.list = ledger.list.slice(ledger.list.length - GEAR_PROV_CAP);
-    }
+    capProvLedger(ledger);   /* v2.3.3951: an unrevealed row is never the one forgotten */
     if (cached) this._gearProvMap().set(playerId, ledger);
     /* Awaited for an offline recipient: there is no output gate holding a
        message for them, so an unawaited put can be lost to eviction and

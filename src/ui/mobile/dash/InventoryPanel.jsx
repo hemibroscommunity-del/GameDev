@@ -39,6 +39,8 @@ import { COOKED_FISH_ICONS, COOKED_FISH_ICON_DEFAULT } from '@/data/foodIcons.js
 import { setDropThumbs } from '@/game/dropLook.js';   /* v2.3.3473: a dropped item is drawn on the ground as its bag picture */
 import { GEM_ELEMENTS, gemRawKey, gemCutKey, gemName, gemIcon, parseGemKey } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 import { shardByKey } from '@/data/shards.js';   /* v2.3.3861: only a shard the game has gets a picture */
+import { shownUnrevealed } from '@/game/revealBag.js';   /* v2.3.3951: a mystery piece waits in the bag as a "?" */
+import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -1360,7 +1362,9 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     /* v2.3.3849: a live trade takes a WEAPON tile too, into the weapon lane
        (tradeBagBus.tapWeapon), as it takes an item tile into the offer.
        Armour and shields have no trade lane: their cards open as before. */
-    if (kind === 'stashWeapon' && tradeBagBus.open && tradeBagBus.tapWeapon(index, obj)) return;
+    /* v2.3.3951: ...but never a "?": it is revealed before it is traded
+       (game/revealBag.js), so its card opens instead */
+    if (kind === 'stashWeapon' && tradeBagBus.open && !shownUnrevealed(kind, index, obj) && tradeBagBus.tapWeapon(index, obj)) return;
     if (kind === 'stashShield') {
       itemDetailBus.open({ kind: 'stashShield', shield: obj, index, anchor });
     } else if (kind === 'stashArmor') {
@@ -1413,7 +1417,12 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
   /* v2.3.1228: edge from the item's REAL quality (weapons carry
      server-rolled quality; shields/armor have none -> common grey).
      Godly gets the conic ring class instead of a border color. */
-  const q = obj && obj.quality;
+  /* v2.3.3951: a piece still waiting to be revealed (or whose reveal is
+     playing) is the reveal's own picture: its silhouette under a "?", on the
+     rare-blue edge -- "rare or better" is all anyone knows yet, the pile's
+     own promise (game/revealBag.js) */
+  const hidden = shownUnrevealed(kind, index, obj);
+  const q = hidden ? 'rare' : (obj && obj.quality);
   const color = q === 'rare' ? '#5B99DE'
     : q === 'elite' ? '#E8893A'   /* v2.3.3142: orange, the owner's */
     : q === 'godly' ? 'transparent'
@@ -1436,7 +1445,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     /* v2.3.3049: data-gear names what it is (a weapon's type, or 'shield')
        so the first quest's flashes (gearFlash.js) can light the sword and the
        shield, then the bow and the staff, and nothing else in the bag */
-    <div onPointerUp={handleTap} className={rarityClass} data-tut="coach-gear" data-bag-key={`${kind}-${index}`}
+    <div onPointerUp={handleTap} className={rarityClass} data-tut="coach-gear" data-bag-key={`${kind}-${index}`} data-unrevealed={hidden ? '' : undefined}
       data-gear={kind === 'stashShield' ? 'shield' : kind === 'stashWeapon' ? String((obj && obj.type) || '') : undefined} style={{
       width: '100%', aspectRatio: '1 / 1',
       background: COL.tile,
@@ -1453,10 +1462,12 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
           rare-or-better piece a little more often (data-life-q) */}
       {thumb
         ? <img src={thumb} alt="" draggable={false} className="bt-bag-art"
-            data-life={lifeKindForGear(kind, obj) || undefined} data-life-q={q && q !== 'normal' ? '1' : undefined}
-            style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
+            data-life={hidden ? undefined : (lifeKindForGear(kind, obj) || undefined)} data-life-q={!hidden && q && q !== 'normal' ? '1' : undefined}
+            style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto',
+              ...(hidden ? { filter: 'brightness(0) opacity(.55)' } : null) }} />
         : <span className="bt-bag-art" data-life={lifeKindForGear(kind, obj) || undefined}
             style={{ fontSize: 18, display: 'inline-block' }}>{fallbackGlyph}</span>}
+      {hidden && <UnrevealedMark size={22} />}
       <span className="bt-bag-fx" aria-hidden="true" />
       {locked && (
         <span style={{
