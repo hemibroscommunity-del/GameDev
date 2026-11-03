@@ -194,7 +194,7 @@ const rec = (st, who) => JSON.parse(st.get('bt_pins:' + who) || 'null');
   const mm = src('src/rendering/systems/wheelMinimap.js');
   check('9e the minimap draws each pin, and redraws its lines only when they move (TRAPS §218)', /this\._mark\(x, y - \(edge \? 0 : px \/ 2 \/ SCALE\), 'mappin', PIN_COLORS\[k\], px\)/.test(mm) && /if \(pinSig !== this\._pinSig\) \{\s*const G = this\.pinLines;\s*G\.clear\(\);/.test(mm) && /PIN_ARROW_TIP/.test(mm));
   const pc = src('src/ui/PinCards.jsx');
-  check('9f every card: data-esc on its ✕, data-enter on its main button, swallowTapClick, deskWords', (pc.match(/data-esc="up" aria-label/g) || []).length === 2 && /data-pin-ask-remove="" data-enter=""/.test(pc) && /data-enter=\{i === 0 \? '' : undefined\}/.test(pc) && /swallowTapClick\(e\)/.test(pc) && (pc.match(/deskWords\(/g) || []).length >= 2);
+  check('9f every card: data-esc on its ✕, data-enter on its main button, swallowTapClick, deskWords', (pc.match(/data-esc="up" data-key="Esc"/g) || []).length === 2 && /data-pin-ask-remove="" data-enter=""/.test(pc) && /data-enter=\{i === 0 \? '' : undefined\}/.test(pc) && /swallowTapClick\(e\)/.test(pc) && (pc.match(/deskWords\(/g) || []).length >= 2);
   check('9g ...never in a fight, never over another card, placed as the "Attack?" window', /pinsFighting\(S, now\)/.test(pc) && /otherCardUp\(\)/.test(pc) && /import \{ cardPlace \} from '@\/ui\/mobile\/NmlAskCard\.jsx'/.test(pc));
   const ui = src('tools/qa/ui-review/states.mjs');
   check('9h the UI review shows each card', ['world-map-pin', 'map-pin-replace', 'map-pin-arrive', 'map-pin-remove'].every((id) => ui.includes(`id: '${id}'`)));

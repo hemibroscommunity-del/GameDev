@@ -558,7 +558,7 @@ function WorldMap({ stateRef, onClose }) {
           <div style={{ position: 'absolute', left: '50%', top: 10, transform: 'translateX(-50%)', display: 'flex', gap: 8 }}>
             {upList.map((k) => (
               <button key={k} type="button" data-world-map-unpin={k} onClick={removePin(k)} onPointerDown={(e) => e.stopPropagation()}
-                style={{ appearance: 'none', minHeight: 40, padding: '0 14px',
+                style={{ appearance: 'none', minHeight: 44, padding: '0 14px',   /* v2.3.3975: the 44 px touch guide (was 40) */
                   borderRadius: 20, border: `2px solid ${PIN_CSS[k]}`, background: 'rgba(17,30,35,0.94)', color: INK, fontSize: 14, fontWeight: 800,
                   display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer', touchAction: 'manipulation', whiteSpace: 'nowrap' }}>
                 <PinMark color={k} />{upList.length > 1 ? `Remove ${PIN_NAME[k].toLowerCase()}` : 'Remove pin'}

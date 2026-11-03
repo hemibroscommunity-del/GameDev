@@ -29,7 +29,8 @@
  * the prompt layer (Z_ABOVE_DASH_PROMPT), no scrim, taking only its own taps.
  * Every button acts on the finger's lift (swallowTapClick: the tap's click
  * that follows lands on nothing, TRAPS §247), and on a click a key made
- * (Enter, data-enter; Esc presses the ✕, data-esc="up"); words through
+ * (Enter, data-enter; Esc presses the ✕, data-esc="up"; each wears its key
+ * on a computer, data-key); words through
  * deskWords.  `?mappin=0`: no cards.
  *
  * QA: window.__btMapPin.ask() (game/pinSlots.js), [data-pin-ask],
@@ -60,9 +61,9 @@ function otherCardUp() {
   return false;
 }
 
-/* Lantern Slate's buttons (NmlAskCard's), the font shorthand FIRST */
+/* Lantern Slate's buttons (NmlAskCard's, at the 44 px touch guide), the font shorthand FIRST */
 const BTN = {
-  font: 'inherit', flex: 1, minWidth: 0, minHeight: 40, padding: '0 6px', borderRadius: 11,
+  font: 'inherit', flex: 1, minWidth: 0, minHeight: 44, padding: '0 6px', borderRadius: 11,
   fontSize: 13, fontWeight: 700, cursor: 'pointer', touchAction: 'manipulation',
   WebkitTapHighlightColor: 'transparent', whiteSpace: 'nowrap',
 };
@@ -75,7 +76,7 @@ const CARD = {
   boxShadow: '0 14px 30px rgba(4,7,9,.38)', color: '#F7F2E7', textAlign: 'left', touchAction: 'manipulation',
 };
 const X_BTN = {
-  font: 'inherit', flex: 'none', width: 36, height: 36, margin: '-2px -4px 0 4px', padding: 0, border: 0, borderRadius: 10,
+  position: 'relative', font: 'inherit', flex: 'none', width: 44, height: 44, margin: '-6px -8px -4px 2px', padding: 0, border: 0, borderRadius: 10,
   background: 'transparent', color: '#B9C1BF', fontSize: 20, lineHeight: 1, cursor: 'pointer', touchAction: 'manipulation',
   WebkitTapHighlightColor: 'transparent',
 };
@@ -163,11 +164,11 @@ export function PinAskCard({ stateRef, mapOpen }) {
       <div style={{ display: 'flex', alignItems: 'center', minHeight: 34 }}>
         <PinMark color={ask.color} />
         <div data-pin-ask-title="" style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700, lineHeight: 1.3 }}>{deskWords(title)}</div>
-        <button type="button" data-pin-ask-x="" data-esc="up" aria-label={ask.kind === 'arrive' ? 'Keep the pin' : 'Cancel'}
+        <button type="button" data-pin-ask-x="" data-esc="up" data-key="Esc" data-key-at="hang" aria-label={ask.kind === 'arrive' ? 'Keep the pin' : 'Cancel'}
           {...act('x', keep)} style={X_BTN}>×</button>
       </div>
       <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-        <button type="button" data-pin-ask-remove="" data-enter="" {...act('remove', remove)} style={{ ...BTN, ...PRIMARY }}>Remove</button>
+        <button type="button" data-pin-ask-remove="" data-enter="" data-key="Enter" data-key-at="inline" {...act('remove', remove)} style={{ ...BTN, ...PRIMARY }}>Remove</button>
         <button type="button" data-pin-ask-keep="" {...act('keep', keep)} style={{ ...BTN, ...QUIET }}>{ask.kind === 'arrive' ? 'Keep' : 'Cancel'}</button>
       </div>
     </div>,
@@ -186,11 +187,11 @@ export function PinReplaceCard({ onPick, onCancel }) {
       style={{ ...CARD, position: 'absolute', left: '50%', top: 60, transform: 'translateX(-50%)', width: 264, maxWidth: 'calc(100% - 32px)', zIndex: 2 }}>
       <div style={{ display: 'flex', alignItems: 'center', minHeight: 34 }}>
         <div data-pin-replace-title="" style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 700 }}>{deskWords('Replace which pin?')}</div>
-        <button type="button" data-pin-replace-x="" data-esc="up" aria-label="Cancel" {...act('x', onCancel)} style={X_BTN}>×</button>
+        <button type="button" data-pin-replace-x="" data-esc="up" data-key="Esc" data-key-at="hang" aria-label="Cancel" {...act('x', onCancel)} style={X_BTN}>×</button>
       </div>
       <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
         {PIN_SLOTS.map((k, i) => (
-          <button key={k} type="button" data-pin-replace-pick={k} data-enter={i === 0 ? '' : undefined} {...act(k, () => onPick(k))}
+          <button key={k} type="button" data-pin-replace-pick={k} data-enter={i === 0 ? '' : undefined} data-key={i === 0 ? 'Enter' : undefined} data-key-at={i === 0 ? 'inline' : undefined} {...act(k, () => onPick(k))}
             style={{ ...BTN, ...colorBtn(k), display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {PIN_NAME[k]}
           </button>
