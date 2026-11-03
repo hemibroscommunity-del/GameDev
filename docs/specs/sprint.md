@@ -41,6 +41,8 @@
   - A tap then shakes the button and shows **"Not enough energy!"** over your
     head. These are the abilities' own words.
 - **The legs keep up:** the run animation plays 1.33 times quicker.
+  (v2.3.4077: every loop follows the ground's speed now, the sprint's
+  included; `docs/specs/leg-sync.md`.)
 - **The button is hidden** while you swim (like the special and shield
   buttons), while you are dead, and against a server that cannot settle a
   sprint.
