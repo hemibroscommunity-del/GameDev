@@ -141,7 +141,9 @@ async function device(P, label, touch, rec) {
       !!mb && !mb.edge && !!mb.line && !mb.line.arrow && !!mr && mr.edge && !!mr.line && mr.line.arrow && d0 > 0 && d1 === d0, { mb, mr, d0, d1 });
     /* 7 */
     const R = s.mini0;
-    const head = mb ? { x: R.left + mb.x * ((R.k || 1)), y: R.top + mb.y * ((R.k || 1)) - 9 * (R.k || 1) } : null;
+    /* v2.3.4027: the probe's places are CSS px already (v2.3.3986 scaled
+       them on a computer's 2x box); only the pin's height grows with it */
+    const head = mb ? { x: R.left + mb.x, y: R.top + mb.y - 9 * (R.k || 1) } : null;
     if (head) await tapAt(P, touch, head.x, head.y);
     let a7 = await waitAsk(P, 2000);
     const ask7 = a7.ask;
