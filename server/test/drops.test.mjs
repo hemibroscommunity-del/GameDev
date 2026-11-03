@@ -47,6 +47,7 @@
  */
 import { GameRoom } from '../src/index.js';
 import { MONSTER_ARMOR_DROPS, RARE_GEM_MONSTER_DROP, RARE_GEM_KEY, MONSTER_IRON_WEAPON_DROP } from '../src/data.js';
+import { DROP_QUALITY_ODDS, WEAPON_QUALITY_ODDS } from '../src/hardening.js';   /* v2.3.3952 */
 /* v2.3.1925: the CLIENT's own armour formula, imported so the two can be
    compared directly.  mirror-audit.test.mjs already reaches across the same
    boundary for the constant tables; this reaches for the function, because
@@ -665,6 +666,49 @@ room._handleLootPickup({ id: 'pF', name: 'F' }, { lootId: firstKill.lootId, zone
 check('the older pile is still claimable on its own id',
   refusal === null && F.coins > coinsBefore, { refusal, coinsBefore, now: F.coins });
 room._wsBySessionId = () => null;
+
+
+/* ── 9. v2.3.3952: A DROP'S GRADE IS ITS OWN ROLL, 10x RARER THAN THE FORGE'S ──
+   The owner: "Double check rarity tier drop rates. Seems too high.  Smithing
+   it has 10x more unlikely at same tier drop chance."  His pick: drops rare
+   0.9% and elite 0.09%, godly unchanged; the forge keeps 9% / 0.9%; the live
+   flag `dropgrades: false` brings the forge's odds back on drops.  Stubbed
+   either side of each threshold, as §1b, and through the two drop paths. */
+{
+  const G = 1 / 2000000;
+  check('the drop odds: rare 0.9%, elite 0.09%, godly 1 in 2,000,000 -- each a tenth of the forge\'s (godly the same)',
+    DROP_QUALITY_ODDS.rare === 0.009 && DROP_QUALITY_ODDS.elite === 0.0009 && DROP_QUALITY_ODDS.godly === G
+    && WEAPON_QUALITY_ODDS.rare === 0.09 && WEAPON_QUALITY_ODDS.elite === 0.009 && WEAPON_QUALITY_ODDS.godly === G,
+    { drop: DROP_QUALITY_ODDS, forge: WEAPON_QUALITY_ODDS });
+  const q = (r) => withRandom([r], () => room._rollDropQuality());
+  const fq = (r) => withRandom([r], () => room._rollWeaponQuality());
+  check('a drop: just under godly + elite is elite, just over is rare',
+    q(G + 0.0009 - 1e-9) === 'elite' && q(G + 0.0009 + 1e-9) === 'rare', [q(G + 0.0009 - 1e-9), q(G + 0.0009 + 1e-9)]);
+  check('a drop: just under godly + elite + rare is rare, just over is normal',
+    q(G + 0.0099 - 1e-9) === 'rare' && q(G + 0.0099 + 1e-9) === 'normal', [q(G + 0.0099 - 1e-9), q(G + 0.0099 + 1e-9)]);
+  check('a drop: a roll of 0 is still godly', q(0) === 'godly');
+  check('the forge is unchanged: a roll of 5% is rare there and normal on a drop', fq(0.05) === 'rare' && q(0.05) === 'normal');
+  /* through the real drop paths: the iron torso / greaves and the greatsword */
+  const armourQ = withRandom([0, 0.05, 1], () => room._rollArmorDropsForKill());
+  /* (the prototype's own: a later section of this suite stubs the room's) */
+  const bladeQ = withRandom([0, 0.05], () => GameRoom.prototype._rollIronWeaponForKill.call(room));
+  check('the iron pieces and the greatsword roll the DROP odds (5% -> normal)',
+    !!armourQ && armourQ[0].quality === 'normal' && !!bladeQ && bladeQ.quality === 'normal', { armourQ, bladeQ });
+  /* the kill switch */
+  const keepFlags = room._liveFlags;
+  room._liveFlags = { dropgrades: false };
+  check('dropgrades: false -> a drop rolls the forge\'s odds again (5% -> rare)',
+    q(0.05) === 'rare' && withRandom([0, 0.05], () => GameRoom.prototype._rollIronWeaponForKill.call(room)).quality === 'rare');
+  room._liveFlags = { dropgrades: true };
+  check('...dropgrades: true (or unset) -> the drop odds', q(0.05) === 'normal');
+  room._liveFlags = keepFlags;
+  /* a long run, as a sanity check of the shares (not exact: Math.random) */
+  let rare = 0, elite = 0;
+  const N = 400000;
+  for (let i = 0; i < N; i++) { const g = room._rollDropQuality(); if (g === 'rare') rare++; else if (g === 'elite') elite++; }
+  check(`over ${N} drop rolls: about 0.9% rare (${(rare / N * 100).toFixed(3)}%) and 0.09% elite (${(elite / N * 100).toFixed(3)}%)`,
+    Math.abs(rare / N - 0.009) < 0.0015 && Math.abs(elite / N - 0.0009) < 0.0004, { rare, elite });
+}
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 if (failures > 0) process.exit(1);

@@ -16,10 +16,18 @@
  *      godly as 'gg', proven;
  *   4. a swap that changes only the grade marks the player for the next
  *      tick (the look the client relays does not change);
- *   5. `eqg` is derived, never saved with the character.
+ *   5. `eqg` is derived, never saved with the character;
+ *   6. (v2.3.3953) the drawing's side, read as text and from its one pure
+ *      module: a full set's figure splits at the jog frame's own waist
+ *      (gradeSplit.js, every facing the figure ships), and the grade's glow
+ *      is drawn OUTSIDE the art, under it -- the v2.3.3142 inner outline
+ *      (`rim * 0.92` over the art's own pixels) is gone.
  */
 import { GameRoom } from '../src/index.js';
 import { wornGradeLetter, armourGradeWire } from '../src/gearprov.js';
+import { readFileSync } from 'node:fs';
+import { fullsetSplitY } from '../../src/rendering/lightfx/gradeSplit.js';
+import { JOG_WAIST } from '../../src/rendering/jogWaist.js';
 
 /* v2.3.3639: a window of real time is not a tick.  Waiting TICK_RATE x N ms
    and reading the socket failed whenever the machine was busy (the precheck
@@ -180,6 +188,29 @@ const tickOnce = async (mark = true) => {
   await room._saveRpg && room._saveRpg('p1');
   const saved = JSON.stringify(state._store.get('rpg:p1') || {});
   check('eqg is derived, never saved with the character', !/"eqg"/.test(saved));
+}
+
+// ── 6. the drawing: a full set's two halves, and a glow outside the art (v2.3.3953) ──
+{
+  /* the figure ships for these four (gearSheets preloadFullsetFigures); each
+     mirrors to its other side, so these are every facing it is drawn in */
+  const FIG = ['south', 'southwest', 'east', 'north'];
+  const rows = FIG.map((d) => [d, JOG_WAIST[d].map((_, i) => fullsetSplitY(d, i))]);
+  check('split: every frame of every facing the figure ships has a waist, inside the frame\'s middle (0.45-0.6 of its height)',
+    rows.every(([, r]) => r.length > 0 && r.every((v) => v >= 0.45 && v <= 0.6)), rows.map(([d, r]) => [d, Math.min(...r), Math.max(...r)]));
+  check('split: by the jog\'s phase (the figure plays its own frame count on it): phase 0 is frame 0, just under 1 the last frame',
+    fullsetSplitY('east', 99, 0) === JOG_WAIST.east[0] / 256 && fullsetSplitY('east', 0, 0.999) === JOG_WAIST.east[JOG_WAIST.east.length - 1] / 256
+      && fullsetSplitY('east', 0, -0.25) === fullsetSplitY('east', 0, 0.75));
+  check('split: by the body\'s frame when there is no phase, wrapped; a facing with no row is 0 (one grade, as before)',
+    fullsetSplitY('south', 1, null) === JOG_WAIST.south[1] / 256 && fullsetSplitY('south', JOG_WAIST.south.length + 1) === JOG_WAIST.south[1] / 256
+      && fullsetSplitY('west', 3) === 0 && fullsetSplitY('__proto__', 3) === 0 && fullsetSplitY(undefined, 3) === 0);
+  const src = readFileSync(new URL('../../src/rendering/lightfx/glint.js', import.meta.url), 'utf8');
+  const frag = src.slice(src.indexOf('const FRAG = `'), src.indexOf('const VERT = `'));
+  check('glint.js: the v2.3.3142 inner outline (the art\'s own edge pixels repainted at 92%) is gone from the shader', frag.length > 500 && !/rim \* 0\.92/.test(frag));
+  check('glint.js: the glow is laid UNDER the art (weighted by 1 - its alpha), so no pixel of the art changes for it',
+    /float gA = glow \* GLOW_A \* ga \* \(1\.0 - c\.a\);/.test(frag) && /outc \+= vec4\(mix\(gc, vec3\(1\.0\), 0\.12\) \* gA, gA\);/.test(frag));
+  check('glint.js: a full set\'s figure carries both grades and the waist (uGrade2, uPrism2, uSplitY), declared in the shader and the filter',
+    ['uGrade2', 'uPrism2', 'uSplitY'].every((u) => new RegExp('uniform \\w+ ' + u + ';').test(frag) && new RegExp(u + ': \\{ value').test(src)));
 }
 
 console.log(failures === 0 ? '\nall armour grade checks passed' : `\n${failures} armour grade check(s) FAILED`);

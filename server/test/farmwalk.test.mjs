@@ -50,6 +50,7 @@ import {
 import {
   FARM_ZONE, FARM_GROUND, FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX, FARM_CROP_FOOT_DY, FARM_SPOTS, FARM_GATE,
   FARM_ARRIVE, FARM_FROM_WORKSHOP, FARM_THINGS, FARM_EDGE, farmBlockers,
+  FARM_ANIM_HEAD_WORLD, farmDigSpot,   /* v2.3.3960 */
 } from '../../src/data/farmLayout.js';
 import { FARM_ART } from '../../src/data/farmArt.js';
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '../../src/data/farmAnims.js';
@@ -493,6 +494,21 @@ const inBox = (x, y, half) => blockers.find((b) => x + half > b.x0 && x - half <
   const kneels = FARM_BEDS.map((b, i) => ({ i, x: b.x + b.w / 2 + FARM_KNEEL_DX, y: b.y + FARM_KNEEL_DY, in: inBox(b.x + b.w / 2 + FARM_KNEEL_DX, b.y + FARM_KNEEL_DY, 10) }));
   check('each bed\'s kneel spot (your boots just inside its back edge, left of its middle) is open ground, inside the bed', kneels.every((k, i) => !k.in && k.x > FARM_BEDS[i].x && k.x < FARM_BEDS[i].x + FARM_BEDS[i].w), kneels.filter((k) => k.in));
   check('what grows stands inside its bed', FARM_BEDS.every((b) => FARM_CROP_FOOT_DY > 0 && FARM_CROP_FOOT_DY < b.h));
+  /* v2.3.3960: the owner, "plow in middle center of square plot not at the
+     very edge": digging stands so the hoe's blade lands on the bed's middle
+     (farmDigSpot, from the hoe strip's work and foot points), boots inside
+     the bed and on open ground */
+  const kHoe = FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD;
+  const digs = FARM_BEDS.map((b, i) => {
+    const sp = farmDigSpot(b, FARM_ANIMS.hoe, kHoe);
+    const A = FARM_ANIMS.hoe;
+    const wx = sp.x + (A.work[0] - A.foot[0]) * kHoe, wy = sp.y + (A.work[1] - A.foot[1]) * kHoe;
+    return { i, x: +sp.x.toFixed(1), y: +sp.y.toFixed(1), wx: +(wx - (b.x + b.w / 2)).toFixed(2), wy: +(wy - (b.y + b.h / 2)).toFixed(2), in: inBox(sp.x, sp.y, 10) };
+  });
+  check(`digging, the hoe lands on each bed's middle (blade off it by ${JSON.stringify(digs.map((d) => [d.wx, d.wy]))}), your boots about (cx, b.y + 40): inside the bed, on open ground`,
+    digs.every((d, i) => Math.abs(d.wx) < 0.5 && Math.abs(d.wy) < 0.5 && !d.in
+      && Math.abs(d.x - (FARM_BEDS[i].x + FARM_BEDS[i].w / 2)) < 3 && Math.abs(d.y - FARM_BEDS[i].y - 40) < 4 && d.y < FARM_BEDS[i].y + FARM_BEDS[i].h), digs);
+  check('...and the old back-edge spot is where the other steps still stand (mid-bed is the crop\'s foot)', FARM_KNEEL_DY < FARM_CROP_FOOT_DY - 20, { FARM_KNEEL_DY, FARM_CROP_FOOT_DY });
 }
 
 // ── 6. walked: the arrival reaches every bed, the three places and the gate ──

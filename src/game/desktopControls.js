@@ -29,6 +29,7 @@ import { rideButtonWanted, toggleRide } from '@/game/ride.js';   /* v2.3.3776: Z
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
 import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
 import { dblTapRoll, tapDir } from '@/game/deskCombos.js';   /* v2.3.3711: a direction key tapped twice rolls */
+import { mayorSaysNext } from '@/game/mayorTalk.js';   /* v2.3.3899: Mayor Bro always talks */
 
 /* v2.3.3711: `?dbltap=0` -- the double tap's roll off, for a tab (the owner's
    to keep or not: a quick double nudge of W rolls now) */
@@ -182,7 +183,9 @@ export function setupDesktopControls(S, deps) {
       /* v2.3.1717: he is right there and has nothing left.  Say so — a
          giver whose chain is finished used to go completely inert, which
          is indistinguishable from a broken NPC. */
-      if (deps.pushNpcMsg) deps.pushNpcMsg(npc.name + ' has nothing for you right now');
+      /* v2.3.3899: Mayor Bro says the next step instead (game/mayorTalk.js),
+         as a tap's answer */
+      if (!mayorSaysNext(S, npc) && deps.pushNpcMsg) deps.pushNpcMsg(npc.name + ' has nothing for you right now');
       npcSpeaks(S, npc);
       return true;
     };
