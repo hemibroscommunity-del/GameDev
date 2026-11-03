@@ -314,7 +314,7 @@ export function weaponDiscIcon(slot, weapon) {
 /* v2.3.3920: no weapon pictures on the disc any more: an attack (data-ricon
    melee / ranged / staff / w-*, still the weapon in hand, weaponDiscIcon) wears
    the aiming reticle drawn in code (AimReticle), and the weapon in hand is the
-   weapon triangle's top button (WeaponTriangle.jsx, v2.3.3919).  Their eleven
+   weapon triangle's top button (WeaponTriangle.jsx, v2.3.3921).  Their eleven
    pictures are no longer put in the DOM or warmed for the disc. */
 export const RDISC_WEAPON_KEYS = ['melee', 'ranged', 'staff'].concat(WEAPON_ART.map(function (f) { return 'w-' + f; }));
 export const RDISC_ICONS = [

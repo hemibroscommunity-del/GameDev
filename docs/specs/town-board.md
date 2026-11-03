@@ -9,6 +9,38 @@
 
 Client only: nothing on the server changes.
 
+## v2.3.3899: on the square's noticeboard, not the Town Hall
+
+> The owner, 2026-11-02: *"Remove the town hall menu for now. It's too
+> confusing when trying to turn in mayor bro quests. It keeps popping up and
+> it'll confuse players. You can move the menu to the sign post to the left of
+> the town hall near the 3 street lamps."* And: *"I tried tapping on mayor bro
+> and kept opening the town hall door which was confusing ... apparently I
+> couldn't talk to him."*
+
+- The board opens from the square's **noticeboard** (the object catalog's
+  "Bragging board", in the square's north-west corner beside the lamps on its
+  west side), found by its kind in the worker's placed objects, the one
+  nearest the Town Hall's door (`src/game/wheelNoticeboard.js`). A **tap** on
+  its picture opens it (BroTown `tapNpcAtCss`; from further than 300 px,
+  "Too far away!"); standing at it (your boots within `WHEEL_DOOR_REACH`)
+  puts up **"Read THE TOWN BOARD"**, and E and the right stick's tap open it,
+  because it is a door whose hall is `townhall`. The window is the same,
+  headed "Town Board".
+- The **Town Hall's door opens nothing**: `townhall` is out of
+  `WHEEL_HALL_DOORS`, so `wheelTownDoorAt` never offers it.
+- **Mayor Bro keeps nothing** (out of `WHEEL_KEEPERS`). With no quest to
+  offer or hand in he says the next step in his bubble (`src/game/mayorTalk.js`:
+  the tour's next giver from `tourOffer`, else the quest you have, else a
+  friendly word pointing at the board), on a tap and on E.
+- This reverses the owner's v2.3.3258 (the Mayor as the hall's keeper) and
+  v2.3.3766 (the board opening as you enter the hall).
+- The board's Mayor pin still finds him (`WHEEL_MAYOR_STEPS`, read by `mapPinPlaces.js`).
+- Tests: `mp-townboard` (a tap on the noticeboard on a phone, its prompt on a
+  computer), `mp-mayordoor` (the hall's door: nothing; the noticeboard: Read
+  and E), `mp-handin1` (after the hand-in, he says the next step),
+  `mp-buildingrooms`, `mp-wheelhalls`, `mp-wheeldoors`, test-world-core.
+
 | The board | A page | The minimap, two pins | The world map |
 |---|---|---|---|
 | ![board](town-board/board.jpg) | ![page](town-board/page.jpg) | ![minimap](town-board/minimap-pins.jpg) | ![world map](town-board/worldmap-pin.jpg) |
