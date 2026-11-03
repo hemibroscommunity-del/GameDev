@@ -191,7 +191,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
        move inside Bro"); the Bro card's Life Skills row wears the L; L again
        closes it */
     await key(P, 'KeyP', 900);
-    const lCap = await capOf(P, '[data-bro-life]');
+    const lCap = await capOf(P, '[data-bro-row="skills"]');
     await key(P, 'KeyP');
     await key(P, 'KeyL');
     const lOn = await sheet(P);
