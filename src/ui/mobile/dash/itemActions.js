@@ -20,6 +20,7 @@ import { dishFor } from '@/data/dishes.js';
 import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js';
+import { askFishWeigh } from '@/game/fishWeigh.js';   /* v2.3.4051: v2.3.4036's Inspect, joined to the list */
 import { getState } from './common.js';
 import { eatBus } from '../eatBus.js';
 import { firemakingBus } from '../firemakingBus.js';
@@ -60,6 +61,9 @@ export function itemActionList(target, card) {
   if (a.open) add('open', 'Open Golden Ticket', 'primary');
   if (a.openChest) add('openChest', 'Claim', 'primary', { attrs: { 'data-open-chest': '' } });
   if (a.drink) add('drink', 'Drink', 'primary');
+  /* v2.3.4036: Inspect a fish -- the worker weighs one catch (the weigh-in
+     card); v2.3.4051: through the one list, so the Gear tab has it too */
+  if (a.inspect) add('inspect', 'Inspect', undefined, { attrs: { 'data-fish-inspect': (target && target.key) || '' } });
   if (a.capeOn) add('capeOn', 'Equip', 'primary');
   if (a.capeOff) add('capeOff', 'Unequip', 'danger');
   /* v2.3.4012: a "?" piece's Reveal leads, its Equip (which reveals first)
@@ -130,6 +134,7 @@ export function runItemAction(id, target, card, ui, opts) {
       cue('gulp');   /* v2.3.3462 */
       close(); return;
     }
+    case 'inspect': askFishWeigh(getState(), target.key); close(); return;
     case 'capeOn': sendCapeWorn(true); close(); return;
     case 'capeOff': sendCapeWorn(false); close(); return;
     /* v2.3.4012: Reveal -- the screen closes so the ceremony is seen */

@@ -31,6 +31,9 @@
  *      refused ask writes nothing (weapongem.js);
  *  11. v2.3.3981: one ore a bar -- smelting or hardening all writes the
  *      record once, and an ask with nothing to pay writes nothing;
+ *  12. v2.3.4036: fishing writes the fish log (the catches to weigh) at most
+ *      once a SAVE_MS, and tapping Inspect writes no more rows than the fish
+ *      caught (fishlog.js) -- a refused one writes nothing;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -475,6 +478,35 @@ const FAST = 110;
   }
   const refused = mine(state, 'cg_smelt', w1);
   check(`11. ...and 100 asks with no ore or logs left write ${refused.length} rows (none)`, refused.length === 0, byPrefix(refused));
+}
+
+/* ── 12. v2.3.4036: the rare fish (fishlog.js) ─────────────────────────── */
+{
+  const { FISHLOG, FISHLOG_KEY } = await import('../src/fishlog.js');
+  const { room, state } = await makeRoom();
+  const p = await join(room, 'cg_fish');
+  const ps = room.playerState.cg_fish;
+  ps.inventory = {};
+  const w0 = state.writes.length;
+  /* a fish every 5 s for 6 minutes, as a quick angler lands them */
+  let caught = 0;
+  for (let i = 0; i < 72; i++) { NOW += 5000; room._fishCatch('cg_fish', ps, 'fish_trout', 1); caught++; }
+  const logs = mine(state, 'cg_fish', w0).filter((k) => k.startsWith('fishlog:'));
+  const lim = Math.ceil((72 * 5000) / FISHLOG.SAVE_MS) + 1;
+  check(`12a. ${caught} fish in 6 minutes: the fish log written at most once a SAVE_MS (${logs.length}, at most ${lim}), and that is a minute`,
+    logs.length <= lim && FISHLOG.SAVE_MS >= 60000, { logs: logs.length, lim });
+  /* Inspect tapped 200 times: a weigh-in a catch at most */
+  const w1 = state.writes.length;
+  ps.inventory.fish_trout = 1;
+  const book = room._fishlogOf('cg_fish');
+  const toWeigh = book.rec.u.fish_trout || 0;
+  for (let i = 0; i < 200; i++) { NOW += 9; await send(room, p, { type: 'fish_inspect', payload: { key: 'fish_trout' } }); }
+  const rows = mine(state, 'cg_fish', w1).filter((k) => k === FISHLOG_KEY('cg_fish')).length;
+  check(`12b. Inspect 200 times with ${toWeigh} catches to weigh writes the log ${rows} times, no more than the catches`,
+    rows <= toWeigh && rows > 0 && !room._fishlogOf('cg_fish').rec.u.fish_trout, { rows, toWeigh });
+  const w2 = state.writes.length;
+  for (let i = 0; i < 50; i++) { NOW += 9; await send(room, p, { type: 'fish_inspect', payload: { key: 'fish_trout' } }); }
+  check('12c. ...and once all are weighed, more taps write nothing', state.writes.length === w2, state.writes.slice(w2));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

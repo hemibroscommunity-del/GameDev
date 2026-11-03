@@ -33,6 +33,8 @@ import { carryMonsterState } from '@/game/monsterCarry.js'; /* v2.3.3558: a re-p
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
+import { onFishWeight, onFishBoard } from '@/game/fishWeigh.js'; /* v2.3.4036: a weigh-in and the biggest-fish boards (server/src/fishlog.js) */
+import { fishCatchWords } from '@/data/fishVariants.js'; /* v2.3.4036: "An albino Trout!" */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
 import { onBankState } from '@/game/bank.js'; /* v2.3.3785: the Bank's vault (server/src/bank.js) */
 import { rideApply, clearRide } from '@/game/ride.js'; /* v2.3.3776: the skateboard (server/src/ride.js) */
@@ -2120,6 +2122,14 @@ export function setupWebSocket(ctx) {
             /* v2.3.4012: held while a bag reveal plays (game/revealBag.js):
                the grade's achievement comes right behind its answer */
             { if (msg.from) break; var _achvP = msg.payload; afterReveal(function () { try { onAchvState(S, _achvP); } catch (_ae) { /* display only */ } }); break; }
+          /* v2.3.4036: a weigh-in and the biggest-fish boards (server
+             fishlog.js), private and PRIVILEGED there; here, not the default
+             branch, for codex_state's reason, and a relayed copy (`from`) is
+             never taken, as achv_state's. */
+          case 'fish_weight':
+            { if (msg.from) break; try { onFishWeight(S, msg.payload); } catch (_fe) { /* display only */ } break; }
+          case 'fish_board':
+            { if (msg.from) break; try { onFishBoard(S, msg.payload); } catch (_fe) { /* display only */ } break; }
           case 'make_traps_result':
             { try { onMakeTrapsResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
           /* ═══ v2.3.3525: LIL BRO'S RACE (server/src/race.js) ═══
@@ -3248,6 +3258,13 @@ export function setupWebSocket(ctx) {
               if (hc.shard) {
                 var _pickedHShard = shardByKey(hc.shard);
                 pushDmgPopup(S, S.player.x, S.player.y - 54, '+ ' + (_pickedHShard ? _pickedHShard.label : 'Shard'), (_pickedHShard && _pickedHShard.color) || '#cce6ff');
+              }
+              /* v2.3.4036: a rare fish says so -- "An albino Trout!", "A LARGE
+                 Salmon!" (server fishlog.js rolls it; the bag's echo carries
+                 the key) -- against a worker that rolls them */
+              if (hc.fish && hc.fish.v && S._serverCaps && S._serverCaps.fishvariants) {
+                var _fw = fishCatchWords(hc.fish.v, hc.fish.sp);
+                if (_fw) { pushDmgPopup(S, S.player.x, S.player.y - 62, _fw, hc.fish.v === 'large' ? '#F2C14E' : '#F6D9E4'); try { BT_AUDIO.collect(); } catch (e) {} }
               }
               if (hc.leveled && hc.skillName) {
                 var _sklEmoji = hc.skillName === 'fishing' ? '🎣' : hc.skillName === 'woodcutting' ? '🪓' : '⛏';
@@ -5675,6 +5692,13 @@ export function setupWebSocket(ctx) {
            the ask never leaves the browser and "Use as title" waits for an
            answer that never comes. */
         if (msg.type === 'achv_title') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.4036: Inspect on a fish and the biggest-fish boards
+           (game/fishWeigh.js) -> fishlog.js.  TRAPS #18: without these the
+           asks never leave the browser and the weigh-in card waits forever. */
+        if (msg.type === 'fish_inspect' || msg.type === 'fish_board_request') {
           wsOut(msg);
           return;
         }

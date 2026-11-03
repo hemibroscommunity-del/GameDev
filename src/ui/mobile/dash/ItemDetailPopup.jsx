@@ -42,6 +42,7 @@ import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { playVw } from '../playViewport.js';
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the card layer's box -- a computer's is the game's column (TRAPS §232) */
+import { canInspectFish } from '@/game/fishWeigh.js'; /* v2.3.4036: Inspect weighs a fish (server fishlog.js); v2.3.4051: itemActions.js asks it */
 import {
   WEAPON_TYPES,
   calcDisplayDmgRange,
@@ -351,6 +352,9 @@ function resolveTarget(target) {
            would look like it had vanished.  Same shape as `open` and
            `drink` above -- the worker takes the goods out of ITS copy of
            the bag and holds them, so nothing here is credited locally. */
+        /* v2.3.4036: Inspect -- one catch of this fish weighed (game/fishWeigh.js,
+           caps.fishweigh read there); raw or cooked */
+        inspect: count > 0 && canInspectFish(SR, key),
         sell: count > 0 && storeEnabled(),
         /* v2.3.3473: Drop -- out of the bag and onto the ground at your feet,
            yours alone for a minute, then anyone's (server itemdrop.js).  Gated
