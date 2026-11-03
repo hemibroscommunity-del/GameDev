@@ -44,7 +44,7 @@ export function achvBadgeSrc(id) {
 }
 export const ACHV_MEDAL_SRC = achvBadgeSrc('achievements');
 
-/* v2.3.3948: the five fish of the ladder and their bag pictures (the bag's
+/* v2.3.3987: the five fish of the ladder and their bag pictures (the bag's
    ITEMS_V, ui/mobile/dash/InventoryPanel.jsx), for the rare-fish rows */
 const FISH_PIC_V = '?v=2.3.1774';
 const FISH_ROWS = [
@@ -88,7 +88,7 @@ export const ACHIEVEMENTS = Object.freeze([
   { id: 'house_limit', tier: 'superrare', name: 'Breaking the House', clue: 'Double the free spin to the limit', how: "Double the free spin's pot all the way to the house limit.", icon: achvBadgeSrc('house_limit'), glyph: '🎡', count: true },
   { id: 'combat_100', tier: 'superrare', name: 'Centurion', clue: 'Melee, Bow or Magic to Lv 100', how: 'Raise Melee, Bow or Magic to level 100.', icon: achvBadgeSrc('combat_100'), glyph: '👑' },
   { id: 'godly', tier: 'superrare', name: 'Godly', clue: 'Find or forge Godly gear', how: 'Find or forge a Godly piece of gear.', icon: achvBadgeSrc('godly'), glyph: '🌈', count: true },
-  /* v2.3.3948: THE RARE FISH, EATEN (server fishlog.js): the first albino of
+  /* v2.3.3987: THE RARE FISH, EATEN (server fishlog.js): the first albino of
      each species a player eats, 5 AP; the first large one, 10 AP -- each
      row's own `ap` (no tier pays 5).  No new art (the lane's decision): the
      fish's own bag picture is the badge. */
@@ -105,7 +105,7 @@ export function achvById(id) {
   return typeof id === 'string' && Object.prototype.hasOwnProperty.call(BY_ID, id) ? BY_ID[id] : null;
 }
 
-/** The points an achievement pays: its row's own `ap` (v2.3.3948: the rare
+/** The points an achievement pays: its row's own `ap` (v2.3.3987: the rare
  *  fish's 5 and 10), else its tier's. */
 export function achvAp(id) {
   const a = achvById(id);
@@ -120,4 +120,4 @@ export function achvBig(id) {
 }
 
 /** Every achievement's points added up: the most a character can earn. */
-export const ACHV_TOTAL_AP = ACHIEVEMENTS.reduce((n, a) => n + achvAp(a.id), 0);   /* v2.3.3948: a row's own ap */
+export const ACHV_TOTAL_AP = ACHIEVEMENTS.reduce((n, a) => n + achvAp(a.id), 0);   /* v2.3.3987: a row's own ap */

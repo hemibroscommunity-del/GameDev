@@ -1,4 +1,4 @@
-# Rare fish: albino and large, weighed, with records (v2.3.3948)
+# Rare fish: albino and large, weighed, with records (v2.3.3987)
 
 The owner, 2026-11-02 (the playtest list, lane M):
 

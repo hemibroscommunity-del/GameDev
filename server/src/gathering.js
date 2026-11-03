@@ -1476,7 +1476,7 @@ export const gatheringMethods = {
     this._strikeRefused(session, 'paid', { invKey, nodeType: n.nodeType });
     const yieldQty = this._harvestYieldMult(ratedAccuracy, n.nodeType);
     if (!ps.inventory) ps.inventory = {};
-    /* v2.3.3948: a fish rolls for its variant -- 0.1% large, else 1% albino
+    /* v2.3.3987: a fish rolls for its variant -- 0.1% large, else 1% albino
        (fishlog.js) -- and is counted as a catch to weigh; anything else is
        paid as before */
     const fishCaught = n.nodeType === 'fishSpot' ? this._fishCatch(session.id, ps, invKey, yieldQty) : null;
@@ -1538,7 +1538,7 @@ export const gatheringMethods = {
             leveled,
             newLevel,
             shard,
-            /* v2.3.3948: the fish's key and variant, for the catch's words */
+            /* v2.3.3987: the fish's key and variant, for the catch's words */
             ...(fishCaught ? { fish: fishCaught } : {}),
           },
         }));

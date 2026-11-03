@@ -87,7 +87,7 @@ const chip = (active) => ({
    super-rare a rainbow ring round rainbow words */
 function ApPill({ tier, ap }) {
   const t = ACHV_TIERS[tier];
-  const words = fmt(typeof ap === 'number' ? ap : t.ap) + ' AP';   /* v2.3.3948: a row's own ap (the rare fish's 5 and 10) */
+  const words = fmt(typeof ap === 'number' ? ap : t.ap) + ' AP';   /* v2.3.3987: a row's own ap (the rare fish's 5 and 10) */
   const base = { flex: 'none', borderRadius: 999, fontSize: 11, fontWeight: 800, lineHeight: '15px', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' };
   if (t.color === 'prismatic') {
     return (

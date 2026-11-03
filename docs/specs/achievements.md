@@ -54,10 +54,10 @@ answered "Go recommended on everything".
 | house_limit | Breaking the House | super-rare | 1,000 | the free spin's pot doubled to the house limit (counted) | dailyrewards.js (`news.top`) |
 | combat_100 | Centurion | super-rare | 1,000 | a combat skill to 100 | prog3.js |
 | godly | Godly | super-rare | 1,000 | a Godly piece, found or forged (counted) | as Elite |
-| albino_minnow ... albino_pike | Albino Minnow ... Albino Pike | common | **5** (the row's own `ap`) | eat an albino of that fish, once (v2.3.3948) | cooking.js `_handleEatRequest` (fish-variants.md) |
-| large_minnow ... large_pike | Large Minnow ... Large Pike | rare | **10** (the row's own `ap`) | eat a large one of that fish, once (v2.3.3948) | cooking.js `_handleEatRequest` |
+| albino_minnow ... albino_pike | Albino Minnow ... Albino Pike | common | **5** (the row's own `ap`) | eat an albino of that fish, once (v2.3.3987) | cooking.js `_handleEatRequest` (fish-variants.md) |
+| large_minnow ... large_pike | Large Minnow ... Large Pike | rare | **10** (the row's own `ap`) | eat a large one of that fish, once (v2.3.3987) | cooking.js `_handleEatRequest` |
 
-v2.3.3948 (fish-variants.md): ten more, the rare fish eaten -- 33 achievements,
+v2.3.3987 (fish-variants.md): ten more, the rare fish eaten -- 33 achievements,
 7,545 AP. The owner gave their points ("a one time 5 achievement point bonus",
 "10 achievement points (one time)"), and no tier pays 5, so a row may carry its
 own `ap` over its tier's (`achvAp` on both sides, held by mirror-audit); the
