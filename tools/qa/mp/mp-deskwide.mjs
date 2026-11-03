@@ -163,8 +163,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         inside: btns.every((r) => r.left >= 0 && r.right <= 392),
         chip: chip ? { text: chip.textContent.trim(), w: Math.round(cr.width), h: Math.round(cr.height), cut: chip.scrollWidth > chip.clientWidth + 1 } : null };
     });
-    rec.ok(`the buttons' pictures nearly twice a phone's 24 px (${nav.icons.join(', ')}), all six buttons in the column`,
-      nav.icons.length === 6 && nav.icons.every((w) => w >= NAV_ICON - 1) && nav.n === 6 && nav.inside, nav);
+    /* v2.3.3941: five buttons (Gear, Bro, Quests, Codex, More) */
+    rec.ok(`the buttons' pictures nearly twice a phone's 24 px (${nav.icons.join(', ')}), all five buttons in the column`,
+      nav.icons.length === 5 && nav.icons.every((w) => w >= NAV_ICON - 1) && nav.n === 5 && nav.inside, nav);
     rec.ok(`...and the chip that folds the pages says CLOSE ("${nav.chip && nav.chip.text}"), not an arrow, its word whole`,
       !!nav.chip && nav.chip.text === 'CLOSE' && !nav.chip.cut && nav.chip.h >= 44, nav.chip);
 

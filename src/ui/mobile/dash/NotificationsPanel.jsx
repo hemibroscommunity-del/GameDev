@@ -39,7 +39,7 @@ export const NotificationsPanel = () => {
     <div data-notif-panel={lines.length} style={{ ...panelStyle, overflowY: 'auto', padding: '4px 8px 12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 6px' }}>
         <div style={{ flex: 1, minWidth: 0, fontSize: 12, color: COL.text2, lineHeight: 1.3 }}>
-          World chat and the game's news{shown ? ', also on screen' : ''}.
+          World chat and news from the game{shown ? ', also on screen' : ''}.
         </div>
         <button type="button" data-notif-onscreen={shown ? 'on' : 'off'}
           aria-pressed={shown}
@@ -71,7 +71,7 @@ export const NotificationsPanel = () => {
         </div>
       ) : (
         <div data-notif-empty="" style={{ fontSize: 13, color: COL.text2, padding: '14px 2px' }}>
-          Nothing yet. Chat and the game's news show up here.
+          Nothing yet. Chat and news from the game show up here.
         </div>
       )}
       <div style={{ fontSize: 11.5, color: COL.muted, marginTop: 8, lineHeight: 1.35 }}>
