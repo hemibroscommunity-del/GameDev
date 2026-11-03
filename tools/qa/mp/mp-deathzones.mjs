@@ -326,8 +326,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const own = kinds.filter((k) => k === 'own').length;
       rec.ok(`6. ten slimes killed together: at most ${MAX_LIVE} play their own death, the rest today's (${own} own)`,
         own > 0 && own <= MAX_LIVE && kinds.every((k) => k != null) && kinds.filter((k) => k !== 'own').length === kinds.length - own && own === Math.min(MAX_LIVE, ids.length), kinds);
-      await P.page.waitForTimeout(1900 * SLOW + 1000);
-      const z = await P.page.evaluate(() => (window.__btDeathZones ? window.__btDeathZones() : null));
+      /* v2.3.4127: until they are over by their own clocks (this box can
+         draw ten deaths far slower than one: a fixed wait came up short) */
+      let z = null;
+      const tz = Date.now();
+      while (Date.now() - tz < 1900 * SLOW * 3) {
+        z = await P.page.evaluate(() => (window.__btDeathZones ? window.__btDeathZones() : null));
+        if (z && z.live === 0 && Date.now() - tz > 1900 * SLOW) break;
+        await P.page.waitForTimeout(1000);
+      }
       rec.ok('6. ...and every one let go once over', !!(z && z.live === 0 && z.made === z.freed), z);
       await release(P);
       await P.page.waitForTimeout(250);
