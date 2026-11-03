@@ -1,76 +1,39 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
-import { deriveQuestLog, trackedQuestId, rewardText } from '../sheet/questModel.js';
-import { questSteps, questCountText } from '../../../data/gameSystems.js';   /* v2.3.2820; v2.3.3481 questCountText */
 import { questDetailBus } from '../sheet/questDetailBus.js';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { panelVw } from '../playViewport.js'; /* v2.3.2172: the sheet's width, not the shell's */
 import { TRAIL_STYLES, isTrailOff, getShownTrailStyle, setTrailShown, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2896; v2.3.2992 GROUND_PATH */
 import { useScrollTap } from '../sheet/scrollTap.js'; /* v2.3.2896: the switch sits in a scroller */
 import { DailyRewardsCard } from './DailyRewardsCard.jsx'; /* v2.3.3140: the way into the daily quests and the season */
-import { deskWideActive } from '../../deskWide.js';   /* v2.3.3769: a computer's empty Active tab lists the offers */
+import { trackedQuestId, setTrackedQuest } from '@/game/trackedQuest.js';
+import { questJournalList, questJournalPage, journalCtx } from '../sheet/questJournalModel.js';   /* v2.3.3944: the journal */
+import { apTotalText } from '@/game/questJournal.js';
+import { QuestJournalPage, useBoxWidth, useJournalTap } from './QuestJournalPage.jsx';
 
 /* v2.3.1265: Quests — read-only quest log (accepting/turning-in stays
    with the NPCs; server-authoritative flow untouched).
-   v2.3.1298 (ChatGPT round-5, owner-approved): no more one long feed —
-   a sticky segmented control (Active · Available · Completed, with
-   counts) gives each state a focused view.  READY quests pin above
-   ordinary active ones with the brass treatment; the tracked quest
-   (★, client-side) comes next.  Available rows drop the redundant
-   AVAILABLE label for the reward on the right.  Rows are 44px+ and
-   tap through to the quest detail drill (objectives, rewards,
-   track/untrack, where to go).  Selected segment persists for the
-   session; reward text contrast raised. */
+   v2.3.1298 (ChatGPT round-5, owner-approved): a sticky segmented control
+   (Active · Available · Completed) -- until v2.3.3944, below.
 
-const SEGMENTS = ['Active', 'Available', 'Completed'];
-let _lastSegment = 'Active';
-
-/* v2.3.2172 (owner: every destination opens in the dashboard's skinny
-   landscape column): `narrow` shrinks the type a notch and lets the button
-   actually shrink — three nowrap flex:1 buttons whose text is wider than a
-   third of a ~204px row overflow the sheet's edge otherwise (measured:
-   "Available (1)" ran off the right of the landscape pane).  The count
-   moves to a corner badge there; see the render. */
-const seg = (active, narrow) => ({
-  /* v2.3.2173: narrow shares by CONTENT, not thirds — equal thirds starve
-     the longest word and "Completed" was still rendering "Comple…" at
-     10px.  'Active' cedes what it doesn't need. */
-  flex: narrow ? '1 1 auto' : 1,
-  minWidth: 0,
-  position: 'relative',
-  overflow: 'hidden',
-  minHeight: 36,
-  background: active ? COL.raised : 'transparent',
-  color: active ? COL.text : COL.text2,
-  border: 'none',
-  borderBottom: `2px solid ${active ? COL.accent : 'transparent'}`,
-  borderRadius: 8,
-  fontFamily: 'inherit',
-  fontSize: narrow ? 10 : 12,
-  fontWeight: 700,
-  padding: narrow ? '0 2px' : undefined,
-  cursor: 'pointer',
-  touchAction: 'manipulation',
-  whiteSpace: 'nowrap',
-  textOverflow: 'ellipsis', /* the backstop; at 10px all three words fit */
-});
-
-const rowBtn = {
-  display: 'flex', alignItems: 'center', gap: 10,
-  width: '100%',
-  minHeight: 48,
-  padding: '6px 4px',
-  background: 'transparent',
-  border: 'none',
-  borderBottom: `1px solid ${COL.divider}`,
-  color: COL.text,
-  fontFamily: 'inherit',
-  textAlign: 'left',
-  cursor: 'pointer',
-  touchAction: 'manipulation',
-  minWidth: 0,
-};
+   ═══ v2.3.3944: THE QUEST JOURNAL ═══
+   The owner, 2026-11-02: "Make the 'quest' button in the menu actually
+   useful.  Right now it's just a confusing menu with barely any utility and
+   it's not very easy to read.  Make it a place that makes it clear which
+   quest they are on, what's required, where to go, who was talked to and
+   what to do next, etc. show rewards preview, what was handed during the
+   quest too.  Also keep track of achievement points gained from each quest."
+   The tabs hid two thirds of the answer behind a tap each, and the rows were
+   12-13 px lines a phone could barely read.  So the page now OPENS on the
+   quest you are on -- the one you track, else the newest one in hand, else
+   the next one someone has for you -- drawn in full (QuestJournalPage: NOW,
+   WHERE, WHO, GIVEN TO YOU, REWARD, NEXT), and under it the whole log in
+   one scroll: the points your quests have paid, Active (the tracked one
+   first, each with its own ★ Track toggle), Available (who has one for you,
+   and where: every giver with an offer, as the gold "!" on the maps shows
+   them, the tour's suggestion first), and Done (each with its +5 AP).  A row
+   opens that quest's own page (QuestDetailPanel), as before.
+   The words are game/questJournal.js's (docs/specs/quest-journal.md). */
 
 const openDetail = (qid) => {
   questDetailBus.select(qid);
@@ -113,9 +76,9 @@ const PathSwitch = () => {
         cursor: 'pointer', touchAction: 'manipulation',
       }}>
       <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ display: 'block', fontSize: 13.5, fontWeight: 600, color: COL.text }}>Quest path</span>
+        <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: COL.text }}>Quest path</span>
         <span style={{
-          display: 'block', fontSize: 11.5, color: COL.text2, marginTop: 1,
+          display: 'block', fontSize: 14, color: COL.text2, marginTop: 1,   /* v2.3.3944: 13.5 / 11.5 were, the journal's floor is 13 */
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>{on ? (look ? look.label : 'On') + ' on the ground' : 'Hidden'}</span>
       </span>
@@ -144,190 +107,131 @@ const PathSwitch = () => {
   );
 };
 
-const EmptyLine = ({ text }) => (
-  <div style={{ padding: '26px 16px', textAlign: 'center', color: COL.muted, fontSize: 13, lineHeight: 1.45 }}>{text}</div>
+const SectionHead = ({ children, n }) => (
+  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '16px 4px 6px', borderBottom: `1px solid ${COL.borderStrong}` }}>
+    <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.accent }}>{children}</span>
+    <span style={{ fontSize: 14, fontWeight: 700, color: COL.text2 }}>{n}</span>
+  </div>
 );
+
+const EmptyLine = ({ text }) => (
+  <div style={{ padding: '12px 6px', color: COL.text2, fontSize: 15, lineHeight: 1.45 }}>{text}</div>
+);
+
+const rowBtn = {
+  display: 'block', flex: 1, minWidth: 0,
+  minHeight: 56,
+  padding: '8px 4px',
+  background: 'transparent',
+  border: 'none',
+  color: COL.text,
+  fontFamily: 'inherit',
+  textAlign: 'left',
+  cursor: 'pointer',
+  touchAction: 'manipulation',
+};
+const rowWrap = { display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COL.divider}` };
+const rowTitle = { display: 'block', fontSize: 16, fontWeight: 700, color: COL.text, lineHeight: 1.3 };
+const rowLine = { display: 'block', fontSize: 15, color: COL.text2, marginTop: 2, lineHeight: 1.35 };
 
 export const QuestsPanel = () => {
   const [, force] = useState(0);
-  const [segment, setSegmentState] = useState(_lastSegment);
-  const setSegment = (s) => { _lastSegment = s; setSegmentState(s); };
+  const [boxRef, boxW] = useBoxWidth();
+  const tap = useJournalTap();
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 1000);
     return () => clearInterval(id);
   }, []);
 
   const S = getState();
-  const { active, upcoming, done } = deriveQuestLog(S);
-  const tracked = trackedQuestId();
+  const ctx = journalCtx(S);
+  const L = questJournalList(S, ctx);
+  const focus = L.focusId ? questJournalPage(S, L.focusId, ctx) : null;
+  /* the box, measured: the page and the log side by side once there is room
+     for both (a wide band), one column otherwise */
+  const wide = boxW >= 760;
 
-  /* Active order: ready → tracked → rest (round-5). */
-  const activeSorted = [
-    ...active.filter(a => a.ready),
-    ...active.filter(a => !a.ready && a.quest.id === tracked),
-    ...active.filter(a => !a.ready && a.quest.id !== tracked),
-  ];
+  const toggleTrack = (qid) => { setTrackedQuest(trackedQuestId() === qid ? null : qid); force((v) => v + 1); };
 
-  /* v2.3.3769: an available quest's row, the Available tab's and (on a
-     computer) the empty Active tab's */
-  const availRow = (quest) => (
-    <button key={quest.id} style={rowBtn}
-      onPointerUp={(e) => { e.stopPropagation(); openDetail(quest.id); }}>
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span style={{
-          display: 'block', fontSize: 13.5, fontWeight: 600, color: COL.text,
-          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-        }}>{quest.title}</span>
-        <span style={{ display: 'block', fontSize: 11.5, color: COL.text2, marginTop: 1 }}>
-          Talk to {quest.npc}
-        </span>
-      </span>
-      {/* round-5: the segment already says AVAILABLE — the
-          right side earns its keep as the reward. */}
-      {/* v2.3.1704: ...and it was a bare money figure floating at the
-          right edge with no label, which is the same figure shape an
-          ACTIVE row carries.  A player looking at an offer could not
-          tell whether "25g · 40 XP" was what this new quest pays or a
-          leftover from the one they are already on.  Two words fix
-          it, and "pays" matches the wording on the active rows above
-          so the two lists read as one language. */}
-      {rewardText(quest) && (
-        <span style={{ flex: '0 0 auto', fontSize: 11, fontWeight: 700, color: COL.gold, whiteSpace: 'nowrap' }}>
-          pays {rewardText(quest)}
-        </span>
-      )}
-      <span aria-hidden="true" style={{ flex: 'none', fontSize: 14, color: COL.muted }}>›</span>
-    </button>
+  const focusCard = focus ? (
+    <div data-journal-focus={focus.id} style={{
+      margin: '8px 0 4px', padding: '2px 12px 4px', borderRadius: 12,
+      background: COL.raised, border: `1px solid ${COL.edgeWarm}`,
+    }}>
+      <QuestJournalPage page={focus} kicker={focus.status === 'available' ? 'Your next quest' : 'Your quest'} />
+    </div>
+  ) : (
+    <EmptyLine text="No quest right now. Look for a gold ! over someone's head in BroTown." />
+  );
+
+  const log = (
+    <div>
+      <SectionHead n={L.active.length}>Active</SectionHead>
+      {L.active.length === 0 ? <EmptyLine text="Nothing in hand. Take a quest from someone below." /> : L.active.map((r) => (
+        <div key={r.id} style={rowWrap}>
+          <button type="button" style={rowBtn} data-quest-row={r.id /* v2.3.3522: mp-trackquest */} {...tap(() => openDetail(r.id))}>
+            <span style={rowTitle}>{r.title}</span>
+            <span style={{ ...rowLine, color: r.ready ? COL.accent : COL.text2, fontWeight: r.ready ? 700 : 400 }}>{deskWords(r.line)}</span>
+          </button>
+          {/* v2.3.3944: Track from the list, a 44 px star */}
+          <button type="button" data-quest-row-track={r.tracked ? 'on' : 'off'} aria-pressed={r.tracked}
+            aria-label={(r.tracked ? 'Stop tracking ' : 'Track ') + r.title}
+            {...tap(() => toggleTrack(r.id))}
+            style={{
+              flex: 'none', width: 48, height: 48, borderRadius: 10,
+              background: r.tracked ? COL.accentFill : 'transparent',
+              border: `1px solid ${r.tracked ? COL.accent : COL.border}`,
+              color: r.tracked ? COL.accent : COL.text2, fontSize: 22, lineHeight: 1,
+              fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation',
+            }}>{r.tracked ? '★' : '☆'}</button>
+        </div>
+      ))}
+
+      <SectionHead n={L.available.length}>Available</SectionHead>
+      {L.available.length === 0 ? <EmptyLine text="No one has a new quest for you right now." /> : L.available.map((r) => (
+        <div key={r.id} style={rowWrap}>
+          <button type="button" style={rowBtn} data-quest-offer-row={r.id} {...tap(() => openDetail(r.id))}>
+            <span style={rowTitle}>{r.title}</span>
+            <span style={rowLine}>{r.where}</span>
+          </button>
+          <span aria-hidden="true" style={{ flex: 'none', fontSize: 20, color: COL.text2, padding: '0 8px' }}>›</span>
+        </div>
+      ))}
+
+      <SectionHead n={L.done.length}>Done</SectionHead>
+      {L.done.length === 0 ? <EmptyLine text="Quests you hand in are listed here, with the points they paid." /> : L.done.map((r) => (
+        <div key={r.id} style={rowWrap}>
+          <button type="button" style={{ ...rowBtn, minHeight: 48 }} data-quest-done-row={r.id} {...tap(() => openDetail(r.id))}>
+            <span style={{ ...rowTitle, fontWeight: 600, color: COL.text2 }}><span style={{ color: '#7FD6AC' }}>✓</span> {r.title}</span>
+          </button>
+          <span data-quest-done-ap={r.ap} style={{ flex: 'none', fontSize: 15, fontWeight: 800, color: COL.text, padding: '0 8px' }}>+{r.ap} AP</span>
+        </div>
+      ))}
+    </div>
   );
 
   return (
-    <div style={{ ...panelStyle, overflowY: 'auto' }}>
+    <div ref={boxRef} style={{ ...panelStyle, overflowY: 'auto' }}>
       {/* v2.3.3140: the daily quests and the season, one line above the
           story quests -- renders nothing against a worker without them */}
       <DailyRewardsCard />
-      {/* Sticky segmented control — content scrolls under it. */}
-      <div style={{
-        position: 'sticky', top: 0, zIndex: 2,
-        display: 'flex', gap: 2,
-        background: COL.bg,
-        borderRadius: 10, padding: 2,
-        border: `1px solid ${COL.border}`,
-      }}>
-        {SEGMENTS.map(s => {
-          const n = s === 'Active' ? active.length : s === 'Available' ? upcoming.length : done.length;
-          /* v2.3.2172: in the skinny landscape column the inline " (1)" is
-             the width that overflowed, so the count becomes a corner badge
-             there — same number, fewer pixels.  Portrait unchanged. */
-          const narrow = panelVw() < 260;
-          return (
-            <button key={s} onClick={() => setSegment(s)} style={seg(segment === s, narrow)}>
-              {s}{!narrow && n > 0 ? ` (${n})` : ''}
-              {narrow && n > 0 && (
-                <span aria-hidden="true" style={{
-                  position: 'absolute', top: 2, right: 2,
-                  minWidth: 13, height: 13, padding: '0 3px',
-                  borderRadius: 7, background: COL.accent, color: COL.onAccent,
-                  fontSize: 11, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
-                  fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-                }}>{n > 9 ? '9+' : n}</span>
-              )}
-            </button>
-          );
-        })}
+      {/* v2.3.3944: the points every hand-in pays (server quests.js
+          QUEST_AP_REWARD), added up -- shown nowhere before */}
+      <div data-journal-ap={L.apTotal} style={{ padding: '8px 4px 2px', fontSize: 16, fontWeight: 800, color: COL.text }}>
+        <span style={{ color: COL.accent }}>★</span> {apTotalText(L.apTotal)}
       </div>
-
-      <div style={{ paddingBottom: 26 }}>
-        {/* v2.3.2992: the road on the ground is put away -- the way is on
-            the minimap (questTrailStyle.js GROUND_PATH) -- so its switch
-            goes with it, back with `?questpath` */}
-        {GROUND_PATH && <PathSwitch />}
-        {segment === 'Active' && (
-          activeSorted.length === 0
-            ? (
-              /* ═══ v2.3.3769: ON A COMPUTER, WHAT YOU COULD TAKE ═══
-                 The owner: "As you find improvements you can make to the
-                 empty space on the desktop version go ahead" (the judges play
-                 on computers, and Quests is the first page they open).  A new
-                 player has no active quest, so the tab was this one line over
-                 a column three quarters empty.  On a computer the quests on
-                 offer are listed under it, the Available tab's own rows (a
-                 click opens the quest).  Phones keep the line alone. */
-              <>
-                <EmptyLine text="No active quests. Choose one from Available or speak with someone in town." />
-                {deskWideActive() && upcoming.length > 0 ? (
-                  <div data-quests-offer="">
-                    <div style={{ padding: '0 4px 6px', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', color: COL.muted, textTransform: 'uppercase' }}>Available</div>
-                    {upcoming.map(availRow)}
-                  </div>
-                ) : null}
-              </>
-            )
-            : activeSorted.map(({ quest, ready }) => (
-              <button key={quest.id} style={rowBtn} data-quest-row={quest.id /* v2.3.3522: mp-trackquest */}
-                onPointerUp={(e) => { e.stopPropagation(); openDetail(quest.id); }}>
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{
-                    display: 'block', fontSize: 13.5, fontWeight: 600, color: COL.text,
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>{quest.id === tracked && !ready ? '★ ' : ''}{quest.title}</span>
-                  {/* round-5: objective + giver, raised contrast (text2,
-                      was muted). */}
-                  {/* v2.3.2820: a quest with steps says the NEXT one here, not
-                      the whole objective again -- this row is what a stuck
-                      player glances at. */}
-                  <span style={{ display: 'block', fontSize: 12, color: COL.text2, marginTop: 1 }}>{(() => {
-                    if (ready) return deskWords(quest.desc);
-                    const st = questSteps(quest, getState() && getState().rpg, getState());
-                    const cur = st && st.find((x) => x.current);
-                    /* v2.3.3481: the 2026-10-19 UI review -- and how many you
-                       hold, " (2/4)", for a quest that collects (gameSystems
-                       questCountText); a ready row keeps its objective alone */
-                    return deskWords(cur ? ('Next: ' + cur.label) : quest.desc + questCountText(quest, getState() && getState().rpg));
-                  })()}</span>
-                  {/* v2.3.1704 (owner: "The quest UI is a little confusing
-                      what's rewards for the next quests vs what's rewarded for
-                      the current quest").  This read "Mayor Bro · 25g · 40 XP"
-                      — the giver and the payout joined by the SAME middot the
-                      payout uses internally, so it scanned as one undifferentiated
-                      run of facts with no word anywhere saying which part was a
-                      reward.  Naming it costs six characters and makes an active
-                      quest's payout impossible to confuse with an offer's. */}
-                  <span style={{ display: 'block', fontSize: 11, color: COL.text2, marginTop: 1 }}>
-                    {quest.npc}{rewardText(quest) ? ` · pays ${rewardText(quest)}` : ''}
-                  </span>
-                </span>
-                {ready ? (
-                  <span style={{
-                    flex: '0 0 auto',
-                    fontSize: 11, fontWeight: 700, letterSpacing: '.06em',
-                    color: '#20170D', background: COL.accent,
-                    borderRadius: 5, padding: '2px 6px',
-                    whiteSpace: 'nowrap',
-                  }}>READY</span>
-                ) : (
-                  <span aria-hidden="true" style={{ flex: 'none', fontSize: 14, color: COL.muted }}>›</span>
-                )}
-              </button>
-            ))
-        )}
-
-        {segment === 'Available' && (
-          upcoming.length === 0
-            ? <EmptyLine text="You're caught up — for now." />
-            : upcoming.map(availRow)
-        )}
-
-        {segment === 'Completed' && (
-          done.length === 0
-            ? <EmptyLine text="Your completed adventures will appear here." />
-            : [...done].reverse().map((quest) => (
-              <div key={quest.id} style={{ ...rowBtn, cursor: 'default', opacity: 0.55, minHeight: 38 }}>
-                <span style={{ flex: 1, fontSize: 12.5, color: COL.text2 }}>{quest.title}</span>
-                <span style={{ fontSize: 12, color: '#59BF91' }}>✓</span>
-              </div>
-            ))
-        )}
-      </div>
+      {/* v2.3.2992: the road on the ground is put away -- the way is on
+          the minimap (questTrailStyle.js GROUND_PATH) -- so its switch
+          goes with it, back with `?questpath` */}
+      {GROUND_PATH && <PathSwitch />}
+      {wide ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', columnGap: 20, alignItems: 'start', paddingBottom: 26 }}>
+          <div style={{ minWidth: 0 }}>{focusCard}</div>
+          <div style={{ minWidth: 0 }}>{log}</div>
+        </div>
+      ) : (
+        <div style={{ paddingBottom: 26 }}>{focusCard}{log}</div>
+      )}
     </div>
   );
 };
