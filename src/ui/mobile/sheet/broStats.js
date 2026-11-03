@@ -1,4 +1,4 @@
-/* ═══ v2.3.4152: THE BRO PAGE'S COMBAT STATS, ONE WEAPON AT A TIME ═══
+/* ═══ v2.3.4153: THE BRO PAGE'S COMBAT STATS, ONE WEAPON AT A TIME ═══
  *
  * The owner drew the Bro page (D474F679-...png in the repo root): a Sword |
  * Bow | Staff selector over "Combat Stats", one row a stat -- an icon, the

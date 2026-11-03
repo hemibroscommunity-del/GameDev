@@ -1,4 +1,4 @@
-/* ═══ mp-brocard (v2.3.4152): THE BRO PAGE, AS THE OWNER DREW IT ═══
+/* ═══ mp-brocard (v2.3.4153): THE BRO PAGE, AS THE OWNER DREW IT ═══
  *
  * The owner, of the first cut (your own Inspect card): "it reads like an old
  * PC menu".  Then a drawing (D474F679-...png in the repo root) and: "One
@@ -29,8 +29,8 @@
  *   6. CLOSE folds the page and the band, and reads OPEN; OPEN unfolds;
  *   7. a 320 px phone: the pictures alone, every button still 44 tall;
  *      a tablet upright (820 px): the three panels side by side, as drawn;
- *      a phone on its side: one column in the side column, no word cut, the
- *      fold chip says CLOSE;
+ *      a phone on its side: the card in the one band (#1410) laid out from
+ *      its width, no word cut, CLOSE first in the row;
  *   8. a computer playing wide (wide: true): P opens the card, the row's words
  *      show, a click on Points opens the window, Esc closes it, L opens Life
  *      Skills and L again closes it.
@@ -282,7 +282,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const c4 = await card(P);
     rec.ok('...its close comes back to the card, the Bow still picked', c4.there && !(await popup(P)) && c4.weapon === 'bow', { there: c4.there, weapon: c4.weapon });
 
-    /* v2.3.4152: since the Gear tab (v2.3.4151) the Equipment door opens
+    /* v2.3.4153: since the Gear tab (v2.3.4151) the Equipment door opens
        Gear -- the band at rest, unfolded, its three panels */
     await touch(P, '[data-bro-row="equipment"]');
     await P.page.waitForTimeout(1500);
@@ -361,11 +361,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1500);
     await P.page.evaluate(() => { window.__btHeroSection.request('Card'); window.__broDashPanelBus.open('hero'); });
     await P.page.waitForTimeout(1500);
+    /* v2.3.4153: the one band is the default (#1410): on its side the band
+       stays at the bottom, the card laid out from its width; the old side
+       column (?oneband=0) is one column at ~220 px, its chip CLOSE / OPEN */
     const side = await card(P);
-    const chip = await P.page.evaluate(() => { const c = document.querySelector('[data-land-fold]'); return c ? (c.textContent || '').trim() : null; });
-    rec.ok(`a phone on its side: one column in the side column (${side.w} px), no word cut, nothing past its edge`,
-      side.there && side.cols === 1 && side.cut.length === 0 && side.past === 0, { cols: side.cols, w: side.w, cut: side.cut, past: side.past });
-    rec.ok(`...and the fold chip says ${chip}`, chip === 'CLOSE', chip);
+    const rSide = await row(P);
+    rec.ok(`a phone on its side: the card in the band (${side.w} px, ${side.cols} columns from its width), no word cut, nothing past its edge`,
+      side.there && side.cols === (side.w >= 600 ? 3 : side.w >= 340 ? 2 : 1) && side.cut.length === 0 && side.past === 0, { cols: side.cols, w: side.w, cut: side.cut, past: side.past });
+    rec.ok(`...and CLOSE first in its row ("${rSide.close && rSide.close.text}")`, !!rSide.close && rSide.close.text === 'CLOSE' && rSide.btns.length === 5 && rSide.close.r <= rSide.btns[0].l, rSide);
   } finally {
     rec.ok(`no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));
     await P.page.context().close().catch(() => {});
@@ -384,7 +387,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`a computer: P opens Bro, the card in the column (${d1.cols} columns at ${d1.w} px), nothing cut`,
       d1.there && d1.cols >= 2 && d1.cut.length === 0 && d1.past === 0, { cols: d1.cols, w: d1.w, cut: d1.cut });
     const rd = await row(D);
-    const chipD = await D.page.evaluate(() => { const c = document.querySelector('[data-land-fold]'); return c ? (c.textContent || '').trim() : null; });
+    /* v2.3.4153: CLOSE in the row (the one band), or the old column's chip */
+    const chipD = (rd.close && rd.close.text) || await D.page.evaluate(() => { const c = document.querySelector('[data-land-fold]'); return c ? (c.textContent || '').trim() : null; });
     rec.ok(`...the row: CLOSE (${chipD}), the five with their words (${rd.words}: ${rd.btns.map((b) => b.word).join(' ')})`,
       chipD === 'CLOSE' && rd.words !== 'icon' && rd.btns.length === 5 && rd.btns.every((b) => b.word === WORDS[b.id] && !b.cut), rd.btns);
     const myId = await H.readState(D, (S) => S.myId);

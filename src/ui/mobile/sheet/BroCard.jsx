@@ -15,7 +15,7 @@ import { NAV_KEYS } from '@/game/deskKeys.js';   /* L, worn by the Life Skills r
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 
-/* ═══ v2.3.4152: THE BRO PAGE, AS THE OWNER DREW IT ═══
+/* ═══ v2.3.4153: THE BRO PAGE, AS THE OWNER DREW IT ═══
  * The owner, of the first cut (your own Inspect card): "I'll need to change
  * the layout of the bro tab, it reads like an old PC menu."  Then: "I added
  * what I want bro tab layout to look like on GitHub.  One different thing is
@@ -98,7 +98,7 @@ function explain(key, value) {
 
 const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
 
-/* ═══ v2.3.4152: EQUIPMENT IS THE GEAR TAB ═══
+/* ═══ v2.3.4153: EQUIPMENT IS THE GEAR TAB ═══
    The Gear button's own page (dash/GearTab.jsx, v2.3.4151: your bag, your
    bro and your gear) is on main, so the Equipment door goes there -- the way
    the Gear button itself goes (NavRail): upright (and on the one band) Gear

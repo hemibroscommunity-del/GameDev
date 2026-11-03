@@ -81,7 +81,7 @@ function shownRect(el) {
   if (scrolledAway(el, r)) return null;
   return r;
 }
-/* ═══ v2.3.4152: ON THE SCREEN MEANS NOT SCROLLED OUT OF ITS BOX ═══
+/* ═══ v2.3.4153: ON THE SCREEN MEANS NOT SCROLLED OUT OF ITS BOX ═══
    The Bro page scrolls (sheet/BroCard.jsx: its Points row is one of the
    doors, no longer a button stuck to the card's foot), and a row scrolled
    out of the page is still "in the window" -- above the band, under the world
@@ -141,7 +141,7 @@ export function guideTargets(id, rpg, shown) {
     return gearFlashSelectors(w, folded, tileOnScreen);
   }
   if (id === 'points') {
-    /* v2.3.4152: inside the Points window (over the Bro card) there is
+    /* v2.3.4153: inside the Points window (over the Bro card) there is
        nowhere left to go: no arrow (the coach's words say what the rows are) */
     if (shown('[data-bro-popup="Build"]')) return [];
     return ['[data-section="Build"]', '[data-nav="hero"]', '[data-dash-fold="min"]', '[data-land-fold="min"]'];
@@ -159,7 +159,7 @@ export function guideWords(id, sel, computer) {
   else if (/data-nav="dashboard"/.test(sel)) s = 'Tap Gear';
   else if (/data-gear/.test(sel)) s = 'Tap to equip';
   else if (/data-nav="hero"/.test(sel)) s = 'Tap Bro: points to spend';
-  else if (/data-section="Build"/.test(sel)) s = 'Tap Points';   /* v2.3.4152: the Bro card's Points row */
+  else if (/data-section="Build"/.test(sel)) s = 'Tap Points';   /* v2.3.4153: the Bro card's Points row */
   return deskWords(s, computer);
 }
 

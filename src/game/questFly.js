@@ -33,7 +33,7 @@ function shownRect(el) {
     var cs = getComputedStyle(el);
     if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return null;
   } catch (e) { return null; }
-  /* v2.3.4152: and not scrolled out of a box that clips it (the Bro page's
+  /* v2.3.4153: and not scrolled out of a box that clips it (the Bro page's
      Points row scrolls with the page): its middle inside every such box */
   var mx = r.left + r.width / 2, my = r.top + r.height / 2;
   for (var p = el.parentElement; p && p !== document.body; p = p.parentElement) {
@@ -55,7 +55,7 @@ function shownRect(el) {
 export var QUEST_FLY_TARGETS = {
   gold: ['[data-purse="1"]'],
   item: ['[data-tut="coach-gear"]', '[data-dash-fold]', '[data-nav="dashboard"]'],
-  /* v2.3.4152: the Bro card's Points row, or the Points window's title when
+  /* v2.3.4153: the Bro card's Points row, or the Points window's title when
      that window is open over the card */
   points: ['[data-section="Build"]', '[data-bro-popup-head="Build"]', '[data-nav="hero"]', '[data-dash-fold]'],
 };
@@ -135,7 +135,7 @@ export function flyPicture(src, from, kind, opts) {
       if (toEl) {
         where = toEl.getAttribute('data-purse') ? 'purse'
           : toEl.getAttribute('data-section') ? 'section-' + toEl.getAttribute('data-section')   /* v2.3.4055 */
-          : toEl.getAttribute('data-bro-popup-head') ? 'window-' + toEl.getAttribute('data-bro-popup-head')   /* v2.3.4152 */
+          : toEl.getAttribute('data-bro-popup-head') ? 'window-' + toEl.getAttribute('data-bro-popup-head')   /* v2.3.4153 */
           : toEl.getAttribute('data-tut') ? toEl.getAttribute('data-tut')
             : toEl.hasAttribute('data-dash-fold') ? 'fold'
               : (toEl.getAttribute('data-nav') || 'el');
