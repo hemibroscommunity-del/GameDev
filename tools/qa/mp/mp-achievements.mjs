@@ -188,6 +188,16 @@ async function inWheel(P) {
     { timeout: 120000, label: 'into the Wheel' }).then(() => true).catch(() => false);
 }
 
+/* v2.3.4142: a door on the Bro card is a button: its click, brought into its
+   own scroller's view (the page scrolls; a coach card or the guide arrow's
+   words can sit over the top row, so a mouse click could land on them) */
+const clickRow = (P, sel) => P.page.evaluate((s) => {
+  const el = document.querySelector(s);
+  if (!el) return false;
+  el.click();
+  return true;
+}, sel).catch(() => false);
+
 /* More -> the tile -> the page, by real taps (upright and on a computer; this
    box draws a few frames a second, so each step waits for what it opened) */
 /* v2.3.4142: Achievements are a page under Bro now (the owner's five
@@ -197,7 +207,7 @@ async function openPage(P) {
   await H.unfoldBand(P).catch(() => {});
   await H.openDest(P, 'Bro');
   await P.page.waitForSelector('[data-bro-row="achievements"]', { timeout: 8000 });
-  await P.page.click('[data-bro-row="achievements"]').catch(() => {});
+  await clickRow(P, '[data-bro-row="achievements"]');
   return P.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
 }
 
@@ -255,7 +265,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!tile && tile.ap === s0.ap && /^0 of 33$/.test(tile.text) && /0 AP$/.test(tile.apText) && tile.icon && tile.whole && !moreNow.achv && moreNow.journey, { tile, moreNow });
 
     /* ── 2 ── */
-    await A.page.click('[data-bro-row="achievements"]').catch(() => {});
+    await clickRow(A, '[data-bro-row="achievements"]');
     const up = await A.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
     const p0 = up ? await pageLook(A) : null;
     rec.ok(`2a the row opens the Achievements page under Bro: ${p0 && p0.rows} rows, "${p0 && p0.count}", the worker's AP (${p0 && p0.apTotal})`,
@@ -466,7 +476,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return b ? { text: b.textContent, whole: b.scrollWidth <= b.clientWidth + 1 } : null;
     })).catch(() => null);
     rec.ok('10a sideways: the Bro card\'s row reads Achievements, whole', !!sideTile && sideTile.text === 'Achievements' && sideTile.whole, sideTile);
-    await A.page.click('.bt-land-sheet [data-bro-row="achievements"]').catch(() => {});
+    await clickRow(A, '.bt-land-sheet [data-bro-row="achievements"]');
     const sUp = await A.page.waitForSelector('.bt-land-sheet [data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
     const ps = sUp ? await pageLook(A, '.bt-land-sheet') : null;
     rec.ok(`10b sideways the page is in the side column (${ps && ps.box.w} px), the chips two by two, no sideways scroll, nothing cut, rows readable, the summary under the header`,
