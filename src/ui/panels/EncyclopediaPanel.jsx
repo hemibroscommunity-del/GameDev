@@ -313,7 +313,7 @@ export function EncyclopediaPanel(props) {
       style: lsChip(true, el.color)
     }, /* v2.3.1232: elem-*.webp icon replaces the bare color dot; the '●'
          fallback inherits the chip's element color */
-    lsIcon('/icons/ui/elem-' + key + '.webp?v=2.3.1232', '●', 14), key, /*#__PURE__*/React.createElement("span", {
+    lsIcon('/icons/ui/elem-' + key + '.webp?v=2.3.3907' /* v2.3.3907: redrawn as the element alone */, '●', 14), key, /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         color: '#8D9B98'

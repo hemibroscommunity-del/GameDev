@@ -93,10 +93,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 1. the whole Wheel: no tile ── */
   await P.page.evaluate(() => window.__btWorldMapOpen && window.__btWorldMapOpen(true));
   await P.page.waitForTimeout(1200);
+  /* v2.3.3898: at home the map opens on the town (and anywhere else on you,
+     up close), never the whole Wheel: zoomed all the way out first with its
+     own − button, the view this check was written for.  The town's view may
+     have brought tiles in, so the check is that the whole Wheel loads no
+     NEW one and draws none */
+  for (let i = 0; i < 24; i++) {
+    const z = await wm();
+    if (z && z.open && Math.abs(z.zoom - 1) < 0.01) break;
+    await P.page.evaluate(() => { const b = document.querySelector('[data-world-map-zoom-out]'); if (b) b.click(); });
+    await P.page.waitForTimeout(200);
+  }
+  await P.page.waitForTimeout(800);
+  const loads0 = ((await probe()) || {}).loads || 0;
+  await P.page.waitForTimeout(1200);
   let w = await wm();
   let pr = await probe();
-  rec.ok(`the long Wheel's map has its tiles (${pr && pr.files} files of ${pr && pr.cols * pr.rows}), and on the whole Wheel loads none (${pr && pr.loads})`,
-    geom.long > 1 && !!w && w.open && !!pr && pr.has && pr.files === PLACED5.detail.fill.filter((f) => !f).length && pr.loads === 0 && pr.held === 0 && w.more && w.more.detail === null,
+  rec.ok(`the long Wheel's map has its tiles (${pr && pr.files} files of ${pr && pr.cols * pr.rows}), and on the whole Wheel loads none (${pr && pr.loads - loads0} new)`,
+    geom.long > 1 && !!w && w.open && !!pr && pr.has && pr.files === PLACED5.detail.fill.filter((f) => !f).length && pr.loads === loads0 && w.more && w.more.detail === null,
     { geom: geom.long, w: w && { zoom: w.zoom, detail: w.more && w.more.detail }, pr });
 
   /* ── 2. far off, zoomed in ── */
