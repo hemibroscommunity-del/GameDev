@@ -325,14 +325,14 @@ export function unequipGearDirect(slot) {
   persist(R);
 }
 
-/* ═══ v2.3.4022: THE THREE EQUIPS THAT LIVED INSIDE THE ITEM CARD ═══
+/* ═══ v2.3.4041: THE THREE EQUIPS THAT LIVED INSIDE THE ITEM CARD ═══
    The Gear tab (GearTab.jsx) equips a bag piece from its middle panel, and
    the item card (ItemDetailPopup) from its own button -- one shared action
    list (itemActions.js) runs both, so these three left the card's component
    closure for this file, the way the armour pair did at v2.3.1762.  Bodies
    unchanged except where marked. */
 
-/* v2.3.2341 (moved from ItemDetailPopup.jsx at v2.3.4022): find a bag weapon
+/* v2.3.2341 (moved from ItemDetailPopup.jsx at v2.3.4041): find a bag weapon
    after the array was replaced under it.  Every player_state that carries
    weaponStash replaces the client array wholesale (wsClient.js), so an object
    a card or picker row captured on open stops being IN the bag by identity
@@ -365,7 +365,7 @@ const ACTIVE_FOR = { weapon: 'melee', rangedWeapon: 'ranged', staffWeapon: 'staf
 /* A bag weapon into its slot (the old one back into the bag).  v2.3.2341's
    rule: a weapon the stash no longer holds is NOT equipped, before any local
    move or send.
-   v2.3.4022: `opts.activate` -- the item card puts the weapon in your hand as
+   v2.3.4041: `opts.activate` -- the item card puts the weapon in your hand as
    it always has (the default); the Gear tab passes false, the brief's "which
    weapon is in hand stays the server's call": the slot fills, the hand stays
    where it was, unless the hand is EMPTY (an activeSlot pointing at a slot

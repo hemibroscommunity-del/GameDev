@@ -1,4 +1,4 @@
-/* ═══ mp-geartab (v2.3.4022): THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR ═══
+/* ═══ mp-geartab (v2.3.4041): THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR ═══
  *
  * The owner's design (2026-11-02): the resting dashboard is three panels,
  * INVENTORY | BRO | EQUIPMENT (src/ui/mobile/dash/GearTab.jsx).  In the Wheel's

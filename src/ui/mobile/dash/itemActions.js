@@ -1,4 +1,4 @@
-/* ═══ v2.3.4022: WHAT YOU CAN DO WITH AN ITEM, IN ONE LIST ═══
+/* ═══ v2.3.4041: WHAT YOU CAN DO WITH AN ITEM, IN ONE LIST ═══
  *
  * The Gear tab (GearTab.jsx) shows a tapped bag item in its middle panel with
  * that item's buttons; the item card (ItemDetailPopup.jsx) shows the same
@@ -28,7 +28,7 @@ import { lock as lockItem, unlock as unlockItem, isLocked as itemIsLocked } from
 import {
   unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect,
   equipArmorFromStash, equipLegsFromStash, equipStashWeapon, equipStashShield, equipStashGear,
-  revealFromBag, targetUnrevealed,   /* v2.3.4012's Reveal, joined to the list at v2.3.4022 */
+  revealFromBag, targetUnrevealed,   /* v2.3.4012's Reveal, joined to the list at v2.3.4041 */
 } from './equipActions.js';
 
 /** A bag entry (bagModel) as the item card's target -- the same shapes

@@ -8,7 +8,7 @@ import { farmCropHeal } from '@/data/farmCrops.js';   /* v2.3.3537: every crop i
 import { parseGemKey, gemElementName } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 import { SHARD_GEM_ELEMENT, RAW_PER_GEM, shardCrackChance } from '@/data/shards.js';   /* v2.3.3516: a shard may hold its land's raw gem */
 import { isWeaponGem, weaponGemEffect, weaponGemEdge } from '@/data/weaponGems.js';   /* v2.3.3516: what a gem does on a weapon; v2.3.3518: + what it beats */
-/* v2.3.4022: fightFood's one-bite rule, the firemaking, eat and chest buses
+/* v2.3.4041: fightFood's one-bite rule, the firemaking, eat and chest buses
    went with Light / Eat / Drink / Claim to itemActions.js */
 import { offlineRefused /* v2.3.3473: Drop never into a dead socket */ } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a listing heard */
@@ -34,8 +34,8 @@ import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rend
 import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
 import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason.js'; /* v2.3.2551: and WHY it cannot be sold */
 import { unequipArmorDirect, unequipLegsDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
-import { resolveStashIdx } from './equipActions.js';   /* v2.3.4022: moved there, with the three equips */
-import { itemActionList, runItemAction } from './itemActions.js';   /* v2.3.4022: the one action list, shared with the Gear tab */
+import { resolveStashIdx } from './equipActions.js';   /* v2.3.4041: moved there, with the three equips */
+import { itemActionList, runItemAction } from './itemActions.js';   /* v2.3.4041: the one action list, shared with the Gear tab */
 import { revealCardFor } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's card */
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx'; /* v2.3.4012: its "?" */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
@@ -203,9 +203,9 @@ function capeIsWorn() {
   } catch (e) { return false; }
 }
 
-/* v2.3.4022: exported as resolveItemCard -- the Gear tab's middle panel shows
+/* v2.3.4041: exported as resolveItemCard -- the Gear tab's middle panel shows
    the same card (its name, its line, its actions) without opening this one. */
-/* v2.3.4022: the Gear tab's card, with v2.3.4012's "?" card over it, as the
+/* v2.3.4041: the Gear tab's card, with v2.3.4012's "?" card over it, as the
    item card itself draws it -- a mystery piece shows no grade on either */
 export function resolveItemCard(target) { return revealCardFor(target, resolveTarget(target), getState()); }
 
@@ -792,7 +792,7 @@ export const ItemDetailPopup = () => {
   /* A half-typed price belongs to the item it was typed for: opening the
      card on something else (or closing it) starts over. */
   useEffect(() => {
-    /* v2.3.4022: `flow` opens the card straight onto its Sell or Drop sheet --
+    /* v2.3.4041: `flow` opens the card straight onto its Sell or Drop sheet --
        the Gear tab's Sell and Drop buttons hand over to this card (the price
        and the how-many live here, itemActions.js) */
     const flow = itemDetailBus.state.open && itemDetailBus.state.target ? itemDetailBus.state.target.flow : null;
@@ -1437,7 +1437,7 @@ export const ItemDetailPopup = () => {
     ? lifeKindFor(target.key, classify(target.key))
     : ((target.gearId === 'tshirt' || (target.gear && target.gear.gearId === 'tshirt')) ? null : 'glint');
 
-  /* ═══ v2.3.4022: THE BUTTONS RUN FROM THE ONE LIST ═══
+  /* ═══ v2.3.4041: THE BUTTONS RUN FROM THE ONE LIST ═══
      Light, Eat, Open, Claim, Drink, the cape's Equip/Unequip, Equip and
      Unequip moved, bodies and notes unchanged, to itemActions.js (and the
      three equips to equipActions.js), where the Gear tab's middle panel runs
@@ -1586,7 +1586,7 @@ export const ItemDetailPopup = () => {
     itemDetailBus.close();
   };
 
-  /* v2.3.4022: v2.3.4012's Reveal and "Equip on a '?' reveals first" run
+  /* v2.3.4041: v2.3.4012's Reveal and "Equip on a '?' reveals first" run
      from the one action list too (itemActions.js 'reveal' / 'equip') */
   return (
     <div
@@ -1759,7 +1759,7 @@ export const ItemDetailPopup = () => {
         )}
 
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-          {/* v2.3.4022: one list (itemActions.js), the Gear tab's too.  Sell and
+          {/* v2.3.4041: one list (itemActions.js), the Gear tab's too.  Sell and
               Drop hide while either sheet is open; a greyed one keeps its
               button and says why below (v2.3.2551, v2.3.3473). */}
           {actionList.map((x) => {
@@ -1928,7 +1928,7 @@ function syncWeaponSlot(msg) {
   }
 }
 
-/* v2.3.4022: sameWeapon and resolveStashIdx (v2.3.2341, "find a bag weapon
+/* v2.3.4041: sameWeapon and resolveStashIdx (v2.3.2341, "find a bag weapon
    after the array was replaced under it") moved to equipActions.js with the
    equips that use them. */
 
