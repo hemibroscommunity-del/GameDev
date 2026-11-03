@@ -1,4 +1,4 @@
-/* v2.3.3900: the "Too far away" word over a resource tapped out of reach
+/* v2.3.3990: the "Too far away" word over a resource tapped out of reach
  * (src/game/tooFar.js), run in node: its words, phone and computer; once a
  * second a resource; each resource its own clock; the cap on the stamps; where
  * it sits. */

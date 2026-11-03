@@ -540,7 +540,7 @@ import { heapBurnStep } from '@/game/heapBurn.js'; /* v2.3.3748: a burning heap 
 import { burningAt } from '@/rendering/buildingFire.js'; /* v2.3.3748: ...where its pieces burn */
 import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
 import { deskWords, onComputer } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
-import { tooFarWord, tooFarPlace } from '@/game/tooFar.js';   /* v2.3.3900: "Too far away" over a resource out of reach */
+import { tooFarWord, tooFarPlace } from '@/game/tooFar.js';   /* v2.3.3990: "Too far away" over a resource out of reach */
 import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
@@ -9485,7 +9485,7 @@ export var BroTown = function BroTown(_ref0) {
      The resource in reach a tap at (cssX, cssY) lands on, or null -- nothing
      started.  A computer's press asks it before it swings (_deskPressTarget):
      the press is held back exactly when the click that follows will use it. */
-  /* v2.3.3900: `far` turns the reach test round -- the resource OUT of reach
+  /* v2.3.3990: `far` turns the reach test round -- the resource OUT of reach
      under the finger, for the "Too far away" word (_tapHarvestAtCss).  The
      same hit test, so the word and the harvest find the same picture. */
   var _harvestNodeAtCss = useCallback(function (cssX, cssY, far) {
@@ -9545,7 +9545,7 @@ export var BroTown = function BroTown(_ref0) {
     var _S = stateRef.current;
     var _tapNodeBest = _harvestNodeAtCss(cssX, cssY);
     if (!_tapNodeBest) {
-      /* ═══ v2.3.3900: ...BUT ONE OUT OF REACH SAYS SO ═══
+      /* ═══ v2.3.3990: ...BUT ONE OUT OF REACH SAYS SO ═══
          The owner: "There needs to be a message that you're too far away if
          you can't mine and are tapping on the ore.  Too far away message
          should also be with any resource."  The word floats over it and the
@@ -9631,7 +9631,7 @@ export var BroTown = function BroTown(_ref0) {
     var _probe = typeof window !== 'undefined' && window.__btProbe;
     if (_best < 0) {
       if (_probe && _far >= 0) window.__btBedTap = { bed: _far, far: true, at: Date.now() };
-      /* v2.3.3900: a bed out of reach says so too (the tap still goes on) */
+      /* v2.3.3990: a bed out of reach says so too (the tap still goes on) */
       if (_far >= 0) {
         var _fb = FARM_BEDS[_far];
         if (tooFarWord(_S, 'bed' + _far, _fb.x + _fb.w / 2, _fb.y - 52, Date.now(), { push: pushDmgPopup, computer: onComputer() }) && _probe) {

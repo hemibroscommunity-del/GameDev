@@ -1,4 +1,4 @@
-/* ═══ "TOO FAR AWAY" OVER A RESOURCE TAPPED FROM AFAR (v2.3.3900) ═══
+/* ═══ "TOO FAR AWAY" OVER A RESOURCE TAPPED FROM AFAR (v2.3.3990) ═══
  *
  * The owner, 2026-11-02: "There needs to be a message that you're too far
  * away if you can't mine and are tapping on the ore.  Too far away message

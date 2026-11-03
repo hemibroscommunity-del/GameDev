@@ -1,4 +1,4 @@
-# "Too far away" over a resource tapped from afar (v2.3.3900)
+# "Too far away" over a resource tapped from afar (v2.3.3990)
 
 The owner, 2026-11-02: "There needs to be a message that you're too far away if
 you can't mine and are tapping on the ore. Too far away message should also be
