@@ -704,9 +704,10 @@ export const STATES = [
   building('post', 'Post Office', 'The Post Office: your mail and friends\' messages.'),
   building('sheriff', "Sheriff's Office", "The Sheriff's Office: the player list (duels start from a player's card) and the arena sign-up."),
   building('guildhall', 'Guild Hall', 'The Guild Hall: a row saying clans are parties now (made in the Saloon), and the skill guilds.'),
-  building('townhall', 'Town Hall', 'The Town Hall (v2.3.3766): the board of everything to do in the world, under eight headings (v2.3.3801: the owner\'s review\'s), a line under every tile, the leaderboard, the world map, the Codex and Journey at its foot.'),
+  /* v2.3.3899: the board opens from the square's noticeboard now, not the Town Hall's door (game/wheelNoticeboard.js); the window and its ids are the same */
+  building('townhall', 'Town Board', 'The town board (v2.3.3766; on the square\'s noticeboard since v2.3.3899, the Town Hall\'s door opens nothing): the board of everything to do in the world, under eight headings (v2.3.3801: the owner\'s review\'s), a line under every tile, the leaderboard, the world map, the Codex and Journey at its foot.'),
   /* v2.3.3766: a page of the board -- the arena's, with its two pins */
-  building('townhall', 'Town Hall: a page', 'A page of the Town Hall\'s board (v2.3.3766): what the arena is, where it is, and the Red pin and Blue pin buttons.', {
+  building('townhall', 'Town Board: a page', 'A page of the town board (v2.3.3766): what the arena is, where it is, and the Red pin and Blue pin buttons.', {
     id: 'building-townhall-page',
     run: async ({ P }) => {
       const ok = await evalIn(P, (p) => { if (!window.__btBuildingWindow) return false; window.__btBuildingWindow.open(p); return true; }, 'townhall');
@@ -719,7 +720,7 @@ export const STATES = [
     },
   }),
   /* v2.3.3801: a page with no one place -- Town Quests', with its one action, "Open Quests" */
-  building('townhall', 'Town Hall: a page with one action', 'A page of the Town Hall\'s board with no one place (v2.3.3801): Town Quests -- what they are, look for the gold "!", and one button, Open Quests, in place of the pins.', {
+  building('townhall', 'Town Board: a page with one action', 'A page of the town board with no one place (v2.3.3801): Town Quests -- what they are, look for the gold "!", and one button, Open Quests, in place of the pins.', {
     id: 'building-townhall-action',
     run: async ({ P }) => {
       const ok = await evalIn(P, (p) => { if (!window.__btBuildingWindow) return false; window.__btBuildingWindow.open(p); return true; }, 'townhall');
