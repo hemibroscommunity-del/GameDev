@@ -52,6 +52,7 @@ import { getShieldArt } from './shieldSprites.js';        /* v2.3.1841 */
 import { getCape } from './traits/capeCatalog.js';        /* v2.3.2516: the worn cape, in the preview */
 import { speciesCanvases, loadSpeciesArt } from './traits/speciesArt.js';   /* v2.3.2682: the monkey, fur on the portrait's own skin */
 import { getWeaponHandle, getAnchor } from './playerAnchors.js'; /* v2.3.1841 */
+import { hemiBustUrl } from './hemiBust.js';   /* v2.3.3957: a headshot is a Hemi Bro */
 
 const FRAME = 256;
 
@@ -1105,6 +1106,18 @@ const HEAD_CROP = { x: 80, y: 16, s: 96 };
  *  top-right profile picture); otherwise the full figure.  Returns '' on
  *  failure. */
 export async function portraitDataUrl(opts, headshot) {
+  /* ═══ v2.3.3957: A HEADSHOT IS A HEMI BRO ═══
+     The owner: "For profile picture art I want it in the style of the
+     original hemi bro NFT's as much as possible with the custom stuff added
+     on to it."  Every headshot -- yours (BottomDashboard writes it into
+     portraitStore) and every other player's (portraitOptsFromPeer's callers)
+     -- is the collection's 32 x 32 bust of the look (hemiBust.js;
+     docs/specs/hemi-portrait.md).  '' (`?hemiface=0`, the monkey, a failure)
+     falls through to the game's own headshot below, as before. */
+  if (headshot) {
+    const hemi = await hemiBustUrl(opts);
+    if (hemi) return hemi;
+  }
   try {
     const cv = document.createElement('canvas');
     /* ═══ v2.3.1953: A HEADSHOT HAS NO SILHOUETTE ═══

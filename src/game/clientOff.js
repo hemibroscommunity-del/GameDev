@@ -41,6 +41,10 @@ export const CLIENT_SAVERS = Object.freeze([
   /* v2.3.3809: the townsfolk drawn live from their looks, not their
      photographs (rendering/lookFolk.js); off brings the photographs back */
   Object.freeze({ id: 'lookfolk', words: 'Townsfolk drawn live', live: true }),
+  /* v2.3.3957: your portrait as a Hemi Bros bust (rendering/hemiBust.js); off
+     brings back the game's own headshot, from each phone's next load.  Not a
+     memory saver: the owner's new look, kept switchable the same way */
+  Object.freeze({ id: 'hemiface', words: 'Your portrait as a Hemi Bro', live: false }),
 ]);
 
 const KEY = 'bt_clientoff';
