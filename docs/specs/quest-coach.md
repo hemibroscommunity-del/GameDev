@@ -48,12 +48,21 @@ A brand-new character's first minutes are exactly these, in order, each once:
   Mayor's tutorial).
 - The iPhone install card waits while a first step is to come
   (`noteFirstSteps`, `installMayShow`).
+- v2.3.4155: `minimap` alone is exempt from the size rule (v2.3.2495,
+  `src/game/coachMarkSize.js`; its flag `noSizeRule`): its rect is the
+  renderer's own box, and 264 px (a computer's side column) or 132 (a sideways
+  phone) is over 0.35 of a window 754 or 377 px tall or less, so "Your map",
+  and the quest card and Login Key behind it, never came there. The fractions
+  are unchanged; every other lesson, the Mayor's too, keeps them. A retiring
+  coach also calls `noteCoach(false)`, or a card up then held the install card.
 - Not cards, and unchanged: the gear's glow, the minimap's star cue, the
   townsfolk's bubbles, the "Speak to Mayor Bro first" refusal at the edge of
   town; after the first steps, the weapon-swap hint (first hand-in) and the
   NEW MONSTER card (a first kill).
-- Tests: `server/test/first-steps.test.mjs`; `tools/qa/mp/mp-firststeps.mjs`
-  (upright phone, sideways phone, computer: the cards seen are exactly
+- Tests: `server/test/first-steps.test.mjs`; `server/test/coach-mark-size.test.mjs`
+  (the size rule and its one exemption, v2.3.4155); `tools/qa/mp/mp-firststeps.mjs`
+  (upright phone, sideways phone, computer, and a laptop's short 1366 x 657
+  window in the band and in the side column: the cards seen are exactly
   mayor, equip, minimap, questPill). Pictures: `docs/shots/first-steps-*.webp`.
 
 `src/ui/mobile/QuestCoach.jsx`, mounted in `BroTown.jsx` as a sibling of
