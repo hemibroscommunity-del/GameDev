@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0b55e2ae1fbf6fce95605df67e616dabc71fb606",
+  "tree": "592e9a94bcc6058c62831e0f659f6e29cb78ebae",
+  "committedAt": "2026-11-02T19:20:32-08:00",
+  "subject": "Merge pull request #1371 from hemibroscommunity-del/claude/reveal-in-bag",
+  "files": 7440,
+  "bytes": 845729954,
+  "listingSha256": "c7ca93733cce9432d613a6ea4fb05e67994e051f50b37e5f6743d403ab49597e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
