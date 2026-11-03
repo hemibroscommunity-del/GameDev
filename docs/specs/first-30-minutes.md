@@ -127,7 +127,7 @@ Options (keeping the joke):
 **Decided (v2.3.3568): left as it is.** The owner: "No warning for the
 bursting I think it's more fun to discover that." Nothing in the game
 changed: an ordinary blue slime swells with no words over it ("BURSTING!"
-stays the dungeon's giant slime's alone), and its blast is the same size. (v2.3.3998: the giant slime's went too, with every monster's move
+stays the dungeon's giant slime's alone), and its blast is the same size. (v2.3.4020: the giant slime's went too, with every monster's move
 words: "Remove all text announcing what attacks or things the monsters are
 doing.")
 
