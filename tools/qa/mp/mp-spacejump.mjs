@@ -104,8 +104,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { const b = document.querySelector('[data-sj-btn]'); if (b) b.remove(); });
 
     /* ── 5. the controls list ── */
+    /* v2.3.4152: under the band (the default) the list is the ⌨'s strip,
+       folded until H opens it; the old layout's column is .bt-desk-keys */
+    const kbFolded = await P.page.evaluate(() => !document.querySelector('.bt-desk-keys') && !document.querySelector('.bt-kb-hints'));
+    if (kbFolded) { await P.page.keyboard.press('h'); await P.page.waitForTimeout(500); }
     const rows = await P.page.evaluate(() => Object.fromEntries([...document.querySelectorAll('.bt-desk-keys .bt-desk-key')]
-      .map((r) => [((r.querySelector('kbd') || {}).textContent || '').trim(), ((r.querySelector('span') || {}).textContent || '').trim()])));
+      .map((r) => [((r.querySelector('kbd') || {}).textContent || '').trim(), ((r.querySelector('span') || {}).textContent || '').trim()])
+      .concat([...document.querySelectorAll('.bt-kb-hints .bt-kb-key')].map((r) => { const k = ((r.querySelector('kbd') || {}).textContent || ''); return [k.trim(), r.textContent.slice(k.length).trim()]; }))));
     rec.ok(`5. the controls list says Space ${rows.Space}, X ${rows.X}`, rows.Space === 'Jump' && rows.X === 'Dodge', rows);
     rec.ok('6. no page errors', errors.length === 0, errors.slice(0, 3));
   } finally {

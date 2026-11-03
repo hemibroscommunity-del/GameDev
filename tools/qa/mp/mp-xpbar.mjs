@@ -132,8 +132,11 @@ const clickOn = async (P, m) => {
   const pt = await P.page.evaluate(([x, y]) => {
     const S = window._gameState.current;
     const cv = document.querySelector('canvas.brotown-canvas').getBoundingClientRect();
-    return { x: Math.round(cv.left + (x - S.camera.x) * S._worldScaleX), y: Math.round(cv.top + (y - S.camera.y) * S._worldScaleY) };
+    const px = Math.round(cv.left + (x - S.camera.x) * S._worldScaleX), py = Math.round(cv.top + (y - S.camera.y) * S._worldScaleY);
+    const t = document.elementFromPoint(px, py);
+    return { x: px, y: py, on: t ? t.tagName.toLowerCase() + (typeof t.className === 'string' && t.className ? '.' + t.className.trim().split(/\s+/)[0] : '') : null };
   }, [m.x, m.y - 20]);
+  console.log('    click on the snowman at ' + JSON.stringify(pt));   /* v2.3.4152: what the click landed on, for a failure below */
   await P.page.mouse.click(pt.x, pt.y, { delay: 90 });
   return true;
 };
@@ -146,7 +149,12 @@ async function earn(P, { desk = false } = {}) {
   let swings = 0;
   for (let tries = 0; tries < 18; tries++) {
     const m = (await near(P))[0];
-    if (!m) break;
+    if (!m) {
+      /* v2.3.4152: say where the bro is when the snowmen are gone (a computer
+         run of 2026-11-03 found him back at BroTown's spawn, alive) */
+      console.log('    no snowman near: ' + JSON.stringify(await P.page.evaluate(() => { const S = window._gameState.current; return { zone: S.currentZone, n: (S.monsters || []).length, homes: [...new Set((S.monsters || []).map((x) => x && x.home))], p: { x: Math.round(S.player.x), y: Math.round(S.player.y) }, dead: !!S.player.dead, hp: S.rpg && S.rpg.hp }; })));
+      break;
+    }
     if (m.d > 70) await H.hopTo(P, m.x, m.y + 50, { tries: 20 });
     await P.page.waitForTimeout(300);
     const m2 = (await near(P))[0] || m;
@@ -429,8 +437,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* 6. sideways: real hits */
     await P.page.setViewportSize({ width: 844, height: 390 });
     await P.page.waitForTimeout(XP_BAR_SHOW_MS + 600);
-    const orient = await P.page.evaluate(() => document.documentElement.getAttribute('data-orient'));
-    rec.ok(`6. sideways (guard): ${orient}`, orient === 'landscape', orient);
+    /* v2.3.4152: the one band (the default) keeps data-orient portrait
+       sideways, so the guard is the window's shape and the band's switch */
+    const orient = await P.page.evaluate(() => ({ o: document.documentElement.getAttribute('data-orient'), wide: innerWidth > innerHeight, band: document.documentElement.classList.contains('bt-one-band') }));
+    rec.ok(`6. sideways (guard): ${orient.o}${orient.band ? ', the band at the bottom' : ''}`, orient.wide && (orient.o === 'landscape' || orient.band), orient);
     await layout(P, rec, OUT, 'sideways', '6. sideways', {});
 
     rec.ok('7. no page errors (phone)', errors.length === 0, errors.slice(0, 3));

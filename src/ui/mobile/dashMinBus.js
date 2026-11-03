@@ -35,13 +35,25 @@ const readMin = () => {
 
 const listeners = new Set();
 
+/* ═══ v2.3.4152: SIDEWAYS, THE FOLD IS NOT REMEMBERED ═══
+ * The owner (one band, sideways phones): the band RESTS folded to its button
+ * row on a phone on its side, and comes back folded each time it goes
+ * sideways or loads sideways (bandSideways.js).  So while `sideways` is set a
+ * fold or unfold is the moment's only: `set` does not write bt_dash_min, and
+ * the upright's own remembered choice is what `stored()` gives back when the
+ * phone is turned upright again.  A player who unfolds sideways keeps it open
+ * until they fold it or turn the phone; nothing re-folds it behind them. */
 export const dashMinBus = {
   min: readMin(),
+  sideways: false,
+  stored: readMin,
   set(v) {
     const next = !!v;
     if (next === dashMinBus.min) return;
     dashMinBus.min = next;
-    try { localStorage.setItem(MIN_KEY, next ? '1' : '0'); } catch (e) { /* private window */ }
+    if (!dashMinBus.sideways) {
+      try { localStorage.setItem(MIN_KEY, next ? '1' : '0'); } catch (e) { /* private window */ }
+    }
     for (const fn of listeners) fn(next);
     /* The one geometry path: BroTown's resize() listens for this. */
     try { window.dispatchEvent(new Event('resize')); } catch (e) { /* ignore */ }

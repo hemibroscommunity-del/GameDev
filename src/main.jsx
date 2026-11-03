@@ -8,6 +8,7 @@ import { installUiSfxDelegate } from './ui/uiSfxDelegate.js';
 import { applyWorldTrial } from './game/worldTrial.js';
 import { applyDeskWide } from './ui/deskWide.js';
 import { applyOneBand } from './ui/oneBand.js';   /* v2.3.4072 */
+import { startBandSideways } from './ui/mobile/bandSideways.js';   /* v2.3.4152 */
 import './styles/game.css';
 
 /* Debug console intercept is handled by debugBus.initFromUrl() alone now.
@@ -51,8 +52,12 @@ applyWorldTrial();
    shape. */
 applyDeskWide();
 
-/* v2.3.4072: `?oneband=1` -- one dashboard on every screen, to try (src/ui/oneBand.js).
-   BEFORE the render, for the same reason. */
+/* v2.3.4072: one dashboard on every screen (src/ui/oneBand.js); v2.3.4152: the
+   default, `?oneband=0` the side column for one device.  BEFORE the render,
+   for the same reason. */
 applyOneBand();
+/* v2.3.4152: a phone on its side rests the band folded, the controls step
+   aside while it is open (src/ui/mobile/bandSideways.js) */
+startBandSideways();
 
 createRoot(document.getElementById('root')).render(<GameApp />);

@@ -203,7 +203,7 @@ spec. Add a line here only for a new RULE every session must follow.
   touch, upright AND sideways (TRAPS §175); every element is `touch-action:
   manipulation` unless it says otherwise (TRAPS §229).
 - **Harness rules**: `world: 'wheel'` always; a new computer test passes
-  `wide: true` (a computer plays the sideways layout); a townsperson is reached
+  `wide: true` (a computer plays the whole window, the band at the bottom); a townsperson is reached
   with `H.approachNpc` (talking is a tap only: never add a walk-up opener); a
   character brought back in a second browser passes its `device`; a probe a test
   reads (`window.__bt*`) must exist (precheck `qa-handles`).
@@ -289,7 +289,8 @@ spec. Add a line here only for a new RULE every session must follow.
   window (TRAPS §214); keys live in `src/game/deskKeys.js` and are worn by their
   buttons (`data-key`); a new window's ✕ takes `data-esc`, a dialogue's button
   `data-enter`; words a computer player reads say "click", through
-  `deskWords()`; a computer plays the sideways layout (`src/ui/deskWide.js`).
+  `deskWords()`; every screen, a computer included, plays the upright layout,
+  the band at the bottom (`src/ui/oneBand.js`; `?oneband=0` the old side column).
 - **Touch**: a control that closes its window on `pointerup` calls
   `swallowTapClick(e)` (TRAPS §247).
 - **Sound**: a new sound gets its label in the Sound Studio

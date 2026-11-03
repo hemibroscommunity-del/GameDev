@@ -5,7 +5,7 @@ import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
-import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4072: the one dashboard, to try */
+import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4072: the one dashboard (v2.3.4152: the row is its off switch) */
 
 /* v2.3.3525: the tour's steps, in order, for "Tour: jump to" (the worker's
    /dev/tour checks each is one) */
@@ -842,19 +842,22 @@ export const DevPanel = ({ onClose }) => {
           Open the sound studio
         </button>
 
-        {/* ═══ v2.3.4072: ONE DASHBOARD ON EVERY SCREEN, TO TRY ═══
-            Keyless and this device only (src/ui/oneBand.js): the installed
-            app has no address bar for ?oneband=1, so this row is how the
-            owner tries it on a sideways phone.  The page reloads into it. */}
-        <div style={label}>One dashboard (to try)</div>
+        {/* ═══ v2.3.4072: ONE DASHBOARD ON EVERY SCREEN ═══
+            v2.3.4152: the dashboard at the bottom is the default on every
+            device (the owner: "Move the left side menu to the bottom of screen
+            on computer and all other devices"), so this row is now the OFF
+            switch: the side column, the old sideways and computer layout, for
+            this device.  Keyless (src/ui/oneBand.js): the installed app has no
+            address bar for ?oneband=0.  The page reloads into it. */}
+        <div style={label}>Side column (old layout)</div>
         <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
-          Every screen uses the upright layout: the dashboard along the bottom, at most a third of the
-          screen, its slots counted from the room it has. For trying sideways and on a computer; the
-          game reloads, and this device keeps the choice until you switch it off here.
+          Every screen has the dashboard along the bottom. This puts it back in a column at the side
+          when the screen is sideways or on a computer, as it was before. The game reloads, and this
+          device keeps the choice until you switch it back here.
         </div>
-        <button type="button" style={btn(oneBandActive())} data-dev-one-band={oneBandActive() ? 'on' : 'off'}
+        <button type="button" style={btn(!oneBandActive())} data-dev-one-band={oneBandActive() ? 'on' : 'off'}
           onClick={() => setOneBand(!oneBandActive())}>
-          {oneBandActive() ? 'Switch the one dashboard off' : 'Switch the one dashboard on'}
+          {oneBandActive() ? 'Use the side column (old layout)' : 'Back to the dashboard at the bottom'}
         </button>
 
         {!key && (

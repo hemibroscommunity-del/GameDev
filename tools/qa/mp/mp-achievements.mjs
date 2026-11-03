@@ -43,8 +43,9 @@
  *     9. B's page on a computer: inside the game's column, no sideways
  *        scroll, rows readable; B's banner inside the column (#root);
  *   A again:
- *    10. sideways (844 x 390): More's tile whole, the page in the ~238 px
- *        side column, chips two by two, no sideways scroll, nothing cut;
+ *    10. sideways (844 x 390): the band still at the bottom (v2.3.4152: the
+ *        one band, the default), the Bro card's door whole, the page inside the band,
+ *        no sideways scroll, nothing cut;
  *    11. no page errors.
  * v2.3.4152 (the owner's five buttons): the page is not a More tile but a
  * page under Bro: the Bro card's Achievements row ("Achievement Points: N")
@@ -461,28 +462,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 10 ── */
     await H.closeDest(A).catch(() => {});
     await A.page.setViewportSize(SIDE);
-    await A.page.waitForFunction(() => document.documentElement.getAttribute('data-orient') === 'landscape', null, { timeout: 10000, polling: 250 }).catch(() => {});
     await A.page.waitForTimeout(2500);
-    /* the side column opens on its fold chip, then More on the dock (the
-       sideways page's own pointerup, mp-codexfit's way) */
-    if (await A.page.evaluate(() => { const f = document.querySelector('[data-land-fold]'); return !!f && f.getAttribute('data-land-fold') === 'min'; })) {
-      await pointerUp(A, '[data-land-fold]');
-      await A.page.waitForSelector('[data-land-fold="open"]', { timeout: 6000 }).catch(() => {});
-    }
-    await A.page.waitForSelector('.bt-navrail [data-nav="more"]', { timeout: 6000 }).catch(() => {});
-    /* v2.3.4152: Bro on the dock, then its card's Achievements row */
-    await pointerUp(A, '.bt-navrail [data-nav="hero"]');
-    const sideTile = await A.page.waitForSelector('.bt-land-sheet [data-bro-row="achievements"]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
-      const b = document.querySelector('.bt-land-sheet [data-bro-row="achievements"] .bt-bro2-rowt b');
+    /* v2.3.4152: the one band is the default (src/ui/oneBand.js), so the
+       phone turned on its side keeps the band at the bottom; the owner's five
+       buttons (v2.3.TAG): Bro, then its card's Achievements door, the page
+       opening inside the band, which scrolls in a short body -- where the old
+       layout (?oneband=0) had the side column */
+    const side = await A.page.evaluate(() => document.documentElement.getAttribute('data-orient'));
+    rec.ok('10 sideways the one band keeps the upright layout (data-orient portrait)', side === 'portrait', { orient: side });
+    await H.unfoldBand(A).catch(() => {});
+    await A.page.waitForSelector('.bt-dashboard .bt-navrail [data-nav="hero"]', { timeout: 6000 }).catch(() => {});
+    await pointerUp(A, '.bt-dashboard .bt-navrail [data-nav="hero"]');
+    const sideTile = await A.page.waitForSelector('.bt-dashboard [data-bro-row="achievements"]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
+      const b = document.querySelector('.bt-dashboard [data-bro-row="achievements"] .bt-bro2-rowt b');
       return b ? { text: b.textContent, whole: b.scrollWidth <= b.clientWidth + 1 } : null;
     })).catch(() => null);
-    rec.ok('10a sideways: the Bro card\'s row reads Achievements, whole', !!sideTile && sideTile.text === 'Achievements' && sideTile.whole, sideTile);
-    await clickRow(A, '.bt-land-sheet [data-bro-row="achievements"]');
-    const sUp = await A.page.waitForSelector('.bt-land-sheet [data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
-    const ps = sUp ? await pageLook(A, '.bt-land-sheet') : null;
-    rec.ok(`10b sideways the page is in the side column (${ps && ps.box.w} px), the chips two by two, no sideways scroll, nothing cut, rows readable, the summary under the header`,
-      !!ps && ps.rows === 33 && ps.box.w <= 270 && ps.sideScroll <= 0 && ps.cut.length === 0 && ps.minFont >= 11.5 && ps.minRowH >= 47
-        && !!ps.chipCols && ps.chipCols.split(' ').length === 2 && ps.summaryAt === 'head@head', ps);
+    rec.ok('10a sideways: the Bro card\'s door reads Achievements, whole', !!sideTile && sideTile.text === 'Achievements' && sideTile.whole, sideTile);
+    await clickRow(A, '.bt-dashboard [data-bro-row="achievements"]');
+    const sUp = await A.page.waitForSelector('.bt-dashboard [data-achv-panel="1"]', { timeout: 20000 }).then(() => true).catch(() => false);
+    const ps = sUp ? await pageLook(A, '.bt-dashboard') : null;
+    rec.ok(`10b sideways the page opens inside the band (${ps && ps.box.w} px of 844), no sideways scroll, nothing cut, rows readable, the summary under the header`,
+      !!ps && ps.rows === 33 && ps.box.w <= 844 && ps.sideScroll <= 0 && ps.cut.length === 0 && ps.minFont >= 11.5 && ps.minRowH >= 47
+        && ps.summaryAt === 'head@head', ps);
     await A.page.screenshot({ path: join(OUT, 'achievements-7-sideways.png') });
 
     /* ── 11 ── */
