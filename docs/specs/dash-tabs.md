@@ -71,13 +71,23 @@ the top-bar lane once this is on main; one layout on every screen is B3.
     AP (`achvApTotal`; a door to Achievements); tiles Achievements n / total
     (`achvSummary`) and Lifetime Kills (`profileFromSelf`).
   - **the weapon's stats** (`sheet/broStats.js` `broWeaponStats(R, cat)`,
-    pure, `server/test/bro-stats.test.mjs`): Sword | Bow | Staff, starting on
+    pure, `server/test/bro-stats.test.mjs`): the weapon picked, starting on
     `prog3ActiveCat`, kept while the page is visited.  v2.3.4162, the owner
     on #1386: *"Make the weapon icons above the combat stats larger and just
-    reuse the icons used on the 3 primary combat skills"*: the buttons wear
-    the Gear tab's skill-tile pictures (heroModel `COMBAT_SKILLS` Melee, Bow,
-    Magic: `BRO_WEAPONS` reads them from that table, no new art) at 32 px
-    (26 in one column, word under), the word beside, the button 44 px tall.  Thirteen rows: Damage
+    reuse the icons used on the 3 primary combat skills"*, then *"Move the 3
+    primary combat skills out of the gear menu and put them into the bro
+    menu"*: the Sword | Bow | Staff buttons are gone; the picker is the Gear
+    tab's three combat-skill tiles (`dash/SkillTiles.jsx` `SkillTile`, the
+    one component both pages draw; `WEAPON_SKILLS` / `combatSkillState`),
+    `data-bro-skill` sword | bow | staff, "Lv N" above the picture
+    (`lvAbove`: not a weapon in the bag), the picked one gold-edged
+    (`aria-pressed`); a tap picks the weapon AND shows that tile's XP bar,
+    "N / M XP" (`data-bro-xpopen`, `data-bro-xpnum`; the live numbers, not
+    xpLanding's held ones) for `SKILL_XP_HOLD_MS` (4 s) or until a second
+    tap.  `BRO_WEAPONS` names each weapon's skill (`skill`: power, agility,
+    mind); it has no pictures any more.  The Gear tab keeps its tiles (a pure
+    move: the same elements and hooks; the XP flight still lands there) until
+    Lane A takes them off.  Thirteen rows: Damage
     and DPS (`calcDisplayDmgRange` / `calcDisplayDps` for that slot's weapon),
     Attack Speed (1000 / `statSim.autoSwingMs`, "/s"), Range
     (`statSim.reachOf`, tiles), then `heroStatPills` worked out with
@@ -154,12 +164,15 @@ None: a client-only layout change, no wire, no server behaviour.
 - `brocard` (new; Equipment opens the Gear tab and the Bro button brings
   the card back): the row (CLOSE first, the five with their words, none
   cut, 44 x 44, touch-action), the card's three panels (portrait, name, Lv,
-  no XP bar, No title, No clan, AP, the tiles; the thirteen stats starting on
-  the weapon out, Bow changing them; the doors), Points lit and on screen
+  no XP bar, No title, No clan, AP, the tiles; the three combat-skill tiles
+  over the thirteen stats, starting on the weapon out, "Lv N" above each
+  picture, 44 x 44; a tap on Bow changing the stats, gold-edging Bow and
+  showing its XP (the game's numbers) for ~4 s; the doors), Points lit and on screen
   after a real level-up, every door to its page or window and back, the left
   panel's doors, an old road, CLOSE folding and OPEN unfolding, a 320 px phone
   (pictures alone), a tablet (three panels side by side), sideways (one
-  column, the chip's CLOSE), a computer (P, a click on Points, Esc, L and L).
+  column, the chip's CLOSE), a computer (P, a click on Points, Esc, a click
+  on Magic's tile and a second click, L and L).
   Pictures: `docs/shots/bro-tab-v2*.webp`.
 - `bandshots` (new): the band open on Gear and on Bro on a computer
   (1280 x 720 and 1920 x 1080, wide), a phone on its side and upright: Gear's
@@ -167,8 +180,10 @@ None: a client-only layout change, no wire, no server behaviour.
   `data-band-box` and no more, CLOSE first in the row; v2.3.4162: on a
   computer the band's edges are the world canvas's within 1 px (the bars run
   black under it, nothing over the world moved: one-band.md), upright and
-  sideways the screen's width, the selector's pictures the Gear tab's and
-  at least 44 px tall.  Pictures:
+  sideways the screen's width; Bro's three combat-skill tiles ("Lv N" above
+  each big picture, at least 44 x 44, inside their panel, one picked), a tap
+  (a mouse click on a computer) on Bow picking the bow's stats and showing
+  its "N / M XP", the picture back ~4 s later.  Pictures:
   `docs/shots/band-{gear,bro}-{desk,side,up}.webp`.
 - `server/test/bro-stats` (new): the thirteen rows, one reader with the
   Equipment window's pills, a lane's own points, an empty slot, the start,
