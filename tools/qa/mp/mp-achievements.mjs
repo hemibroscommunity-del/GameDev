@@ -11,7 +11,7 @@
  *     1. the worker says it grants them (caps.achievements) and sends the
  *        record at the join; More's Journey tile is Achievements, "0 of 33
  *        earned", its label whole;
- *     2. the tile opens the page: 33 rows (v2.3.4013: + the ten rare fish), "0/33", the worker's AP -- the
+ *     2. the tile opens the page: 33 rows (v2.3.4032: + the ten rare fish), "0/33", the worker's AP -- the
  *        two on the header row beside "◂ ACHIEVEMENTS", and two whole rows in
  *        view as it opens (the review: it showed one) -- the six super-rares
  *        SHOWN though not earned (decision 3), locked, and no "Use as title"
@@ -260,7 +260,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const l = await pageLook(A);
       counts[f] = l ? { n: l.rows, arena: l.ids.includes('gladiator') } : null;
     }
-    /* v2.3.4013: + the ten rare fish (five albino commons, five large rares) */
+    /* v2.3.4032: + the ten rare fish (five albino commons, five large rares) */
     rec.ok('2d the chips: Super-rare 6, Rare 15 with the arena\'s row, Common 12, All 33',
       counts.superrare && counts.superrare.n === 6 && counts.rare && counts.rare.n === 15 && counts.rare.arena
         && counts.common && counts.common.n === 12 && !counts.common.arena && counts.all && counts.all.n === 33, counts);
@@ -268,7 +268,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const badges = await A.page.waitForFunction(() => {
       const rows = [...document.querySelectorAll('[data-achv-row]')];
       const look = rows.map((r) => { const i = r.querySelector('img'); return { id: r.dataset.achvRow, src: i ? i.getAttribute('src') : '', w: i ? i.naturalWidth : 0 }; });
-      /* v2.3.4013: the ten rare-fish rows wear their fish's bag picture (no badge yet) */
+      /* v2.3.4032: the ten rare-fish rows wear their fish's bag picture (no badge yet) */
       return rows.length === 33 && look.filter((x) => !/^(albino|large)_/.test(x.id)).every((x) => x.w === 150) ? look : false;
     }, null, { timeout: 10000, polling: 250 }).then((h) => h.jsonValue()).catch(() => A.page.evaluate(() => [...document.querySelectorAll('[data-achv-row]')]
       .map((r) => { const i = r.querySelector('img'); return { id: r.dataset.achvRow, src: i ? i.getAttribute('src') : '', w: i ? i.naturalWidth : 0 }; })));

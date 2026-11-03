@@ -410,7 +410,7 @@ import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRA
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
 import { NewMonsterCard } from '@/ui/panels/NewMonsterCard.jsx';   /* v2.3.3336: NEW MONSTER, a tap opens its codex page */
 import { AchievementBanner } from '@/ui/panels/AchievementBanner.jsx';   /* v2.3.3527: a big achievement's banner, outside the wrap beside QuestCoach */
-import { FishWeighCard } from '@/ui/panels/FishWeighCard.jsx';   /* v2.3.4013: a fish's weigh-in, at the banner's spot */
+import { FishWeighCard } from '@/ui/panels/FishWeighCard.jsx';   /* v2.3.4032: a fish's weigh-in, at the banner's spot */
 import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
 import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */

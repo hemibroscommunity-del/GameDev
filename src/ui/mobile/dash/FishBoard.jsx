@@ -4,7 +4,7 @@ import { FISH_SPECIES, fishKg } from '@/data/fishVariants.js';
 import { askFishBoard, subscribeFishWeigh } from '@/game/fishWeigh.js';
 import { deskWords } from '@/game/deskWords.js';
 
-/* ═══ v2.3.4013: THE BIGGEST FISH -- RANKS' FISH TAB ═══
+/* ═══ v2.3.4032: THE BIGGEST FISH -- RANKS' FISH TAB ═══
  * The owner: "Include leaderboards for largest caught types of fish
  * (triggered by inspection)."  One board a species (server fishlog.js
  * `fish_board`): the ten heaviest weighed, one row a player (their best), the
