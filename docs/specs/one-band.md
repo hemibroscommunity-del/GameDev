@@ -192,7 +192,13 @@ always had -- and only its size changes:
   back at some window height.
 - On a sideways phone the world above the band is 260 px tall: the right-hand
   controls column (Sprint, the attack disc) reaches up over the minimap's
-  lower half (`docs/shots/oneband-default-sideways.webp`). Not moved here.
+  lower half (`docs/shots/oneband-default-sideways.webp`). The UI review
+  (`capture.mjs --views=landscape`) names what that costs: Sprint's middle is
+  under the world map's button (a tap there opens the map), and the weapon
+  triangle's bow and staff are under the player frame's HP number. Not moved
+  here: it needs the controls or the minimap laid out for a short world (the
+  owner's call). Diego's drawer sideways covers the whole world above the
+  band (it is 226 px tall), and still sells (mp-shopkeeper).
 - Dropping the old layout, if the owner never goes back to it: the side
   column, the dock and the keys strip
   (`landDockFootprint`, `landscapeSheetW`, DashColumns `stacked` / `desk`,

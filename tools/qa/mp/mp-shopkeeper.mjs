@@ -517,6 +517,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await D.page.waitForTimeout(1200);
   await H.unfoldBand(D);
   await openShop(D);
+  /* the first-join coach folds a new bro's band once (QuestCoach, v2.3.2495);
+     on this slow box that one-shot can land after the shop opened it, so the
+     band is opened again the way a player would, with its own control */
+  await D.page.waitForTimeout(1500);
+  await H.unfoldBand(D);
   const dv = await until(D, (x) => x.panel && x.bagQuote, 'D: drawer + first quote');
   const dLook = await D.page.evaluate((k) => {
     const R = (e) => { if (!e) return null; const r = e.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom) }; };

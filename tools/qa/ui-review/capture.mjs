@@ -84,7 +84,7 @@ export const VIEWS = {
     id: 'desktop', short: 'a computer window (desktop)', title: 'Computer (mouse and keyboard)',
     viewport: { width: 1440, height: 900 }, touch: false, dpr: 2, clip: '#root',
     /* v2.3.4092: the one band is the default -- the window's width, the band at the bottom */
-    about: 'A computer\'s browser window (1440 x 900) with a mouse: the game fills the window with the same dashboard along the bottom as a phone, an upright phone's height (243 px), the world above it (bars at its sides past 2.2:1); the touch controls are hidden, the buttons wear their key letters and the keyboard does the controls\' jobs (WASD, E, Q, Space, X, Shift, F/right-click...).',
+    about: 'A computer\'s browser window (1440 x 900) with a mouse: the game fills the window with the same dashboard along the bottom as a phone, an upright phone\'s height (243 px), the world above it (bars at its sides past 2.2:1); the touch controls are hidden, the buttons wear their key letters and the keyboard does the controls\' jobs (WASD, E, Q, Space, X, Shift, F/right-click...).',
   },
   /* v2.3.3407: not in the default run either: --views=laptop.  The commonest
      laptop window, and where the computer's creator hid ENTER BRO TOWN below
