@@ -62,7 +62,9 @@ export const FOLK_GIVER_NEAR = 200;
 /* with a window or dialogue open, any townsperson this near stops and faces
    you (the tap's own reach, BroTown.jsx NPC_TAP_REACH) */
 export const FOLK_TALK_NEAR = 300;
-/* a walker waits rather than walk into you */
+/* a walker waits rather than walk into you (feet to feet; v2.3.4098: you
+   are never stopped by him, so this is all that keeps the two of you apart:
+   folkStepBumps) */
 export const FOLK_BUMP_PX = 22;
 /* walkers near the screen at once */
 export const FOLK_MAX_WALKERS = 6;
@@ -212,6 +214,32 @@ export function folkGroundBlocked(grid, worldW, worldH, boxes, x, y) {
     }
   }
   return false;
+}
+
+/** ═══ v2.3.4098: HE WAITS, YOU NEVER DO ═══
+ *  The owner (2026-11-03): "I walked into Npc who walked into me and I got
+ *  stuck."  You are never stopped by a townsperson now (BroTown isSolid
+ *  reads none); this is his half.  Would his step from (ox, oy) to (nx, ny)
+ *  walk him into you, your feet at (fx, fy), r apart at the least
+ *  (FOLK_BUMP_PX)?  True: he holds this frame and steps once you have moved
+ *  on (his loop's clock runs on; he catches up).
+ *   - read along the step, not at its end, so a long frame on a slow phone
+ *     cannot hop him through you;
+ *   - already closer than r (you walked into him): a step that heads away
+ *     from your feet (not one across them) is let be, so he walks out of
+ *     you, never stays in.
+ *  No feet (NaN, null): nothing to bump. */
+export function folkStepBumps(ox, oy, nx, ny, fx, fy, r) {
+  const rr = typeof r === 'number' ? r : FOLK_BUMP_PX;
+  if (!Number.isFinite(fx) || !Number.isFinite(fy)) return false;
+  const dOld = Math.hypot(fx - ox, fy - oy), dNew = Math.hypot(fx - nx, fy - ny);
+  /* inside: let a step that heads away from your feet (not one across them) */
+  if (dOld < rr) return !((nx - ox) * (ox - fx) + (ny - oy) * (oy - fy) > 0 && dNew > dOld);
+  /* the step's nearest point to your feet */
+  const sx = nx - ox, sy = ny - oy, len2 = sx * sx + sy * sy;
+  let t = len2 > 0 ? ((fx - ox) * sx + (fy - oy) * sy) / len2 : 0;
+  t = t < 0 ? 0 : (t > 1 ? 1 : t);
+  return Math.hypot(fx - (ox + sx * t), fy - (oy + sy * t)) < rr;
 }
 
 /** Which of `walkers` ({ id, d }: d his distance from the view's middle) may

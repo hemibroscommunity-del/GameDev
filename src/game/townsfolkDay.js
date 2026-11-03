@@ -6,7 +6,8 @@
  * and who of them may walk; then, for each, townsfolkStep moves him there --
  * or holds him, facing you, when he gives quests and you are near, or a
  * window you opened is up and he is near you, or he would walk into you or
- * into something the walk test says is solid.
+ * into something the walk test says is solid.  He never holds YOU: no
+ * townsperson is solid to your walk (v2.3.4098, folkStepBumps).
  *
  * What it writes on a townsperson (entityRenderer _drawFolk reads the last
  * two; the tap, the map pins and the quest star read his x and y, so they
@@ -18,7 +19,7 @@
  *
  * Only an import of the pure loops, so node can test it
  * (server/test/townsfolk-walk.test.mjs). */
-import { folkStops, folkSeed, folkAt, folkStep, folkFacing, folkGroundBlocked, folkWalkersAllowed,
+import { folkStops, folkSeed, folkAt, folkStep, folkFacing, folkGroundBlocked, folkWalkersAllowed, folkStepBumps,
   FOLK_GIVER_NEAR, FOLK_TALK_NEAR, FOLK_BUMP_PX, FOLK_MAX_WALKERS, FOLK_WALK_PX_S } from './townsfolkWalk.js';
 
 /* past the view's half-diagonal by this much he is far from the screen (the
@@ -41,7 +42,10 @@ function giversOf(chains) {
 }
 
 /* the last frame's work, for the probe and the step */
-const _frame = { on: false, at: 0, allowed: null, near: 0, walkers: 0, held: 0 };   /* walkers: moved this frame near the screen */
+const _frame = { on: false, at: 0, allowed: null, near: 0, walkers: 0, held: 0, bumps: 0 };   /* walkers: moved this frame near the screen */
+/* v2.3.4098: bumps -- held this frame rather than step into you; the probe's
+   bumpsTotal counts them since the page loaded (mp-folkpass) */
+let _bumpsTotal = 0;
 
 /**
  * Once a frame, before the NPC pass.  ctx:
@@ -56,7 +60,7 @@ export function townsfolkFrame(S, now, ctx) {
   _frame.on = !!(ctx && ctx.on);
   _frame.at = now;
   _frame.ctx = ctx || null;
-  _frame.walkers = 0; _frame.held = 0; _frame.near = 0;
+  _frame.walkers = 0; _frame.held = 0; _frame.near = 0; _frame.bumps = 0;
   const npcs = (S && S.npcs) || null;
   if (!_frame.on || !npcs) { _frame.allowed = null; return; }
   const givers = giversOf(ctx.chains);
@@ -119,7 +123,10 @@ export function townsfolkStep(S, npc, dtMs) {
        solid (the loops are clear by the plan: this is what is placed) */
     const moved = npc.x !== ox || npc.y !== oy;
     if (moved && day.near && Math.hypot(npc.x - ox, npc.y - oy) < FOLK_WALK_PX_S) {
-      const bump = Math.hypot((ctx.feetX != null ? ctx.feetX : Infinity) - npc.x, (ctx.feetY != null ? ctx.feetY : Infinity) - npc.y) < FOLK_BUMP_PX;
+      /* v2.3.4098: along the step, and never held inside you (folkStepBumps):
+         you pass through him, he waits for you */
+      const bump = folkStepBumps(ox, oy, npc.x, npc.y, ctx.feetX != null ? ctx.feetX : NaN, ctx.feetY != null ? ctx.feetY : NaN, FOLK_BUMP_PX);
+      if (bump) { _frame.bumps++; _bumpsTotal++; }
       /* never trapped: a step out of somewhere solid (he was put there) is let be */
       const solid = (x, y) => folkGroundBlocked(ctx.grid, ctx.worldW, ctx.worldH, ctx.boxes, x, y);
       if (bump || (solid(npc.x, npc.y) && !solid(ox, oy))) {
@@ -146,7 +153,7 @@ if (typeof window !== 'undefined') {
     const st = S || (window._gameState && window._gameState.current);
     const npcs = (st && st.npcs) || [];
     return {
-      on: _frame.on, wanted: !_off, near: _frame.near, walkers: _frame.walkers, held: _frame.held, max: FOLK_MAX_WALKERS,
+      on: _frame.on, wanted: !_off, near: _frame.near, walkers: _frame.walkers, held: _frame.held, bumps: _frame.bumps, bumpsTotal: _bumpsTotal, max: FOLK_MAX_WALKERS,
       folk: npcs.filter((n) => n && n._folkDay).map((n) => ({ id: n.id, name: n.name, x: Math.round(n.x), y: Math.round(n.y),
         home: n._folkHome ? [Math.round(n._folkHome.x), Math.round(n._folkHome.y)] : null,
         walking: !!n._folkDay.walking, work: n._folkWork || null, face: n._folkFace || null, giver: !!n._folkDay.giver, near: !!n._folkDay.near })),
