@@ -1,4 +1,8 @@
 /* v2.3.4048: THE TOWNSFOLK GO BY NICKNAMES -- photographed.
+ * v2.3.4108: the auctioneer WALKS (living-town, v2.3.4058): the tap goes
+ * through H.approachNpc (beside him wherever he is), and the computer's door
+ * button is read standing by his door, waiting for his loop to bring him home
+ * (a test fix: a tap on a walking keeper already works, mp-folkwalk 6).
  * v2.3.4088: THE OLD NAMES ARE BACK.  The owner, 2026-11-03: "Revert the
  * nicknames and go back to the other names, I liked them better other way."
  * So every check below now reads the OWN name: the plate "Gavel Greg", the
@@ -112,7 +116,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await shot(P, 'phone-auctioneer');
       rec.ok(`1. beside the auctioneer his plate reads "${plate}" (Gavel Greg, his own name: v2.3.4088)`, plate === 'Gavel Greg', { plate, at });
 
-      const tap = await tapOn(P, 'auctioneer');
+      /* v2.3.4108: he walks his loop now (living-town, v2.3.4058): tapping
+         where he stood a moment ago tapped the ground.  The harness's way
+         instead -- beside him wherever he is, then the finger on him, three
+         tries (H.approachNpc / talkToNpc); his window opening is the test */
+      const t1 = await P.page.evaluate(() => Date.now());
+      await H.approachNpc(P, 'auctioneer').catch(() => false);
+      const tap = await P.page.evaluate((t) => { const r = window.__btNpcTap; return r && r.ts >= t - 50 ? r : { stale: r || null }; }, t1);
       const opened = await H.waitFor(P, () => { const c = document.querySelector('[data-building-panel]'); return c ? c.getAttribute('data-building-panel') : null; },
         (v) => !!v, { timeout: 5000, label: 'his building open' }).catch(() => null);
       await shot(P, 'phone-auction-open');
@@ -154,13 +164,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
          never v2.3.3868's "Talk to Going-Going" (E never talks: the owner,
          "Make talking to a npc player and entering a building always two
          different things"); his nickname is on his plate */
+      /* v2.3.4108: he walks a loop (living-town) whose first stop is his own
+         spot by his door, 8 s at the gavel each round: placed round his HOME
+         (not round where he happens to be, which can be 140 px from his
+         door), each spot is waited on for up to one loop (~45 s on this box)
+         until he is back beside you */
+      const home = await C.page.evaluate(() => {
+        const f = window.__btFolkWalk ? window.__btFolkWalk() : null;
+        const me = f && f.folk.find((q) => q.id === 'auctioneer');
+        return me && me.home ? me.home : null;
+      });
       let prompt = null, spot = null, talkPrompt = null;
       for (const [dx, dy] of [[30, -30], [50, -50], [0, 34], [40, 0], [60, -20], [20, -60], [70, -70], [-30, -30]]) {
-        await C.page.evaluate(({ ox, oy }) => {
+        await C.page.evaluate(({ ox, oy, h }) => {
           const S = window._gameState.current, n = (S.npcs || []).find((q) => q.id === 'auctioneer');
-          if (n) { S.player.x = n.x + ox; S.player.y = n.y + oy; }
-        }, { ox: dx, oy: dy });
-        for (let k = 0; k < 8 && !prompt; k++) {
+          const at = h ? { x: h[0], y: h[1] } : n;
+          if (at) { S.player.x = at.x + ox; S.player.y = at.y + oy; }
+        }, { ox: dx, oy: dy, h: home });
+        for (let k = 0; k < (home ? 150 : 8) && !prompt; k++) {
           await C.page.waitForTimeout(300);
           const pr = await C.page.evaluate(() => {
             const S = window._gameState.current, b = document.querySelector('.bt-interact-prompt');
