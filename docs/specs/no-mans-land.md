@@ -1163,3 +1163,35 @@ Client only: no message, no cap. Tests: `server/test/nml-explain-once.test.mjs`,
 `tools/qa/mp/mp-nmlonce.mjs` (an upright phone: it comes up before the line,
 never again, remembered, and a goblin's hit closes it mid-fight).
 
+
+## The place chip and the player frame (v2.3.3974)
+
+The owner, 2026-11-02: "The top bar is underwhelming (says 'brotown'). The red
+skull with the 1 is supposed to mean your character is in the wilderness ...
+But if you are the one to initiate an attack on another player you get a red
+skull above your head". He adopted the review's Safe / Wilderness / Outlaw
+chip, "reserve the red skull for the actual aggressor state", and a tap that
+says the exact cost.
+
+- **The pill becomes the place chip** (`ui/mobile/NmlBadge.jsx` PlaceChip),
+  always up right of the place name: green **Safe**; amber **PvP · Lv a-b** in
+  No man's land; red skull and **Outlaw** while you carry the red skull. The
+  levels are the worker's rule from your side (`_nmlAllowed`: |a - b| <=
+  min(na, nb), so your own number is the widest it can be): a level-7 bro in No
+  man's land 1 reads "Lv 6-8". The brief said "Lv 6+"; the rule caps the top
+  too, so the chip says the range (the smaller promise). On a bar under 430 px
+  "PvP" is dropped; at 320 px the shield and blade icons give way.
+- **The window** (`openNmlInfo`, `openPlaceInfo`) opens with two plain
+  sentences from `game/placeSafety.js` with your own gold and bag count
+  ("you drop your 2,306 gold and the 8 things in your bag. Put things in the
+  Bank in BroTown"), then the rules, shorter. Still nothing said or played on
+  the way in or out (v2.3.3853, v2.3.3887).
+- **The bar names the land** you stand in (`ui/mobile/placeName.js`, the
+  ground worker's words as the minimap's plate prints them), "BroTown" at home.
+- **The player frame** (`ui/PlayerFrame.jsx`): face, level, HP and energy
+  (mana while a staff is in hand), top-left under the bar; a tap opens the Bro
+  page; `--bt-hud-top` (game.css) is where the quest card and status chips
+  start. The day/night icon is gone.
+- QA: `window.__btPlaceHold = { nml, red }` stages the chip (the UI review's
+  hud-pvp, nml-popup, hud-outlaw); `window.__btPlayerFrame()`; mp-topbarplace;
+  `node tools/dev/test-place-safety.mjs`.
