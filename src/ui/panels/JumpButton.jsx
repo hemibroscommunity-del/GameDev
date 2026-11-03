@@ -215,5 +215,6 @@ export function JumpButton(props) {
        v2.3.3721: a plain arrow over the ground instead (the owner's pick of
        four: "I like option B for jump better") -- the owner: "the
        icon now for jump looks like a special ability" (controlSkin JumpGlyph) */
+    /* v2.3.3920: a figure mid-leap over its arc (controlSkin JUMP_MARKS.leap) */
     React.createElement(JumpGlyph, { size: Math.round(size * 0.68), kind: jumpGlyphKind() })));
 }

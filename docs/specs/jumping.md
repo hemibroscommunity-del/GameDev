@@ -920,3 +920,20 @@ that point (`x0`, `y0`) and `startFlip` carries it on. A jump going south off
 a top drops you to the face's foot. No jump on the vines (`jumpRefusal`
 'climbing'). Tested by test-world-core "climbing" (the distances worked out
 from these rules) and `mp-lagoonclimb`.
+
+## v2.3.3920: a leaping figure, a little larger
+
+The owner: "The up arrow with the line beneath it is used to make the character
+jump. I'm not a huge fan of the icon art and I'm not sure the button is large
+enough or have ideal placement"; from the design review they adopted: "a simple
+leaping silhouette or a motion arc with an airborne figure ... Slightly enlarge
+the button and preserve its lower-right position near the aiming thumb".
+
+- The button wears a parchment figure at the top of its leap over the gold arc
+  it rose along (controlSkin `JUMP_MARKS.leap`, drawn in SVG: no file). The
+  arrow stays for a tab: `?jumpicon=arrow`.
+- 64 px upright, 68 sideways (was 60 and 64), still south-west on the attack
+  disc's ring, 10 px off it. Block steps 4 px left with it; TRAP and Shield Bash
+  keep their pixels (they stand on `JUMP_SPOT_UP_SIZE`, the size Jump had when
+  they were placed). `jumpbtn` holds the sizes, the ring, the air to Block and
+  the overlaps.
