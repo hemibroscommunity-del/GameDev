@@ -2254,6 +2254,88 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
    own colour, ZoneHeader.jsx landTint) -- no filters over the canvas (TRAPS §42) */
 .bt-zone-header__elem{display:inline-block;width:16px;height:16px;margin:0 4px 0 0;
   vertical-align:-3px;pointer-events:none}
+/* ═══ v2.3.3974: THE PLACE CHIP (NmlBadge.jsx PlaceChip) ═══
+   The pill above, always up now: green Safe, amber "PvP · Lv 6-8" in No
+   man's land, red skull and Outlaw while you carry the red skull.  It keeps
+   the pill's box and its cut-away under the XP bar; only the face changes. */
+.bt-place-chip__body{gap:4px;padding:2px 9px 2px 5px;border-color:var(--pc-c,#6FCF7F);background:var(--pc-bg,rgba(10,24,14,.9))}
+.bt-place-chip--safe{--pc-c:#6FCF7F;--pc-bg:rgba(10,24,14,.9)}
+.bt-place-chip--pvp{--pc-c:#E5B45C;--pc-bg:rgba(30,22,8,.92)}
+.bt-place-chip--outlaw{--pc-c:#FF6B5E;--pc-bg:rgba(22,10,10,.92)}
+.bt-place-chip__icon{display:block;line-height:0}
+.bt-place-chip__icon svg{width:calc(15px * var(--zk));height:calc(15px * var(--zk))}
+.bt-place-chip__words{color:var(--pc-c);white-space:nowrap;
+  font:800 calc(13px * var(--zk))/1 'Source Sans 3',sans-serif;letter-spacing:.02em;
+  font-variant-numeric:tabular-nums}
+/* (an iPhone SE, 320 px: the shield's and the blades' icons give way, never
+   the place's name -- mp-topbar's rich purse in a land; the outlaw keeps
+   its skull) */
+@media (max-width:359px){
+  .bt-place-chip--safe .bt-place-chip__icon,.bt-place-chip--pvp .bt-place-chip__icon,
+  .bt-zone-header__mid:has(> .bt-zone-header__test) .bt-place-chip__icon{display:none}
+}
+@media (max-width:374px){
+  .bt-place-chip__body{gap:3px;padding:1px 6px 1px 4px}
+  .bt-place-chip__words{font-size:calc(11.5px * var(--zk))}
+  .bt-place-chip__icon svg{width:calc(13px * var(--zk));height:calc(13px * var(--zk))}
+}
+/* ═══ v2.3.3974: YOUR FRAME, TOP-LEFT (ui/PlayerFrame.jsx) ═══
+   The owner, 2026-11-02: "Yes, always on: compact: your face, level, an HP
+   bar and an energy bar at the top-left; the quest card moves just under it."
+   Just under the top bar (whose bottom is 46 px + its growth + the notch),
+   at the play area's left edge.  --bt-pf-k sizes it: 1 on a phone (150 x 44),
+   larger on a computer's play column.  --bt-hud-top is its bottom plus a
+   gap: the quest card and the status chips start there.  Flat fills, the
+   bars scaled (never re-laid out): it is over the WebGL canvas (TRAPS §42). */
+/* v2.3.3974: the face is drawn at a WHOLE multiple of 32 px, pixelated (the
+   orchestrator, for the owner's "in the style of the original hemi bro NFT's"
+   portrait: a 32 x 32 bust, Lane U) -- 64 px on a phone (2x), 96 px on a
+   computer (3x), never 36 or 44, which smears pixel art; the frame is sized
+   round it (about 70 px tall on a phone).  Its width gives way on a narrow
+   phone so it never reaches the minimap (132 px + its margin, top-right). */
+html{--bt-pf-k:1;--bt-pf-face:64px;
+  --bt-pf-top:calc(50px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,0px));
+  --bt-pf-h:calc(var(--bt-pf-face) + 6px * var(--bt-pf-k));
+  --bt-hud-top:calc(var(--bt-pf-top) + var(--bt-pf-h) + 6px)}
+@media (pointer:fine) and (min-width:1000px){ html.bt-desk-wide{--bt-pf-k:1.5;--bt-pf-face:96px} }
+.bt-pf{position:fixed;z-index:19;top:var(--bt-pf-top);left:8px;
+  width:min(calc(var(--bt-pf-face) + 126px * var(--bt-pf-k)), calc(100vw - 152px));height:var(--bt-pf-h);box-sizing:border-box;
+  display:flex;align-items:center;gap:calc(6px * var(--bt-pf-k));margin:0;
+  padding:calc(2px * var(--bt-pf-k)) calc(8px * var(--bt-pf-k)) calc(2px * var(--bt-pf-k)) calc(2px * var(--bt-pf-k));
+  border-radius:calc(9px * var(--bt-pf-k));border:1px solid rgba(216,169,77,.4);
+  background:rgba(17,25,29,.86);box-shadow:0 2px 6px rgba(0,0,0,.35);
+  cursor:pointer;pointer-events:auto;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;text-align:left}
+html[data-orient="landscape"] .bt-pf{left:calc(var(--world-x,0px) + var(--world-pad-l,0px) + 8px);
+  width:calc(var(--bt-pf-face) + 126px * var(--bt-pf-k))}
+.bt-pf__face{position:relative;flex:none;width:var(--bt-pf-face);height:var(--bt-pf-face);
+  border-radius:calc(7px * var(--bt-pf-k));background:#0C1316;box-shadow:inset 0 0 0 1px rgba(234,198,117,.55)}
+.bt-pf__face img{width:100%;height:100%;display:block;object-fit:cover;border-radius:inherit;pointer-events:none;
+  image-rendering:pixelated}
+.bt-pf__lv{position:absolute;left:calc(-3px * var(--bt-pf-k));bottom:calc(-3px * var(--bt-pf-k));
+  min-width:calc(17px * var(--bt-pf-k));height:calc(17px * var(--bt-pf-k));padding:0 3px;box-sizing:border-box;
+  border-radius:999px;background:#1A2328;box-shadow:0 0 0 1.5px #EAC675;
+  display:flex;align-items:center;justify-content:center;
+  color:#F2D58C;font:900 calc(11px * var(--bt-pf-k))/1 'Source Sans 3',sans-serif;font-variant-numeric:tabular-nums}
+.bt-pf__bars{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:calc(4px * var(--bt-pf-k))}
+.bt-pf--mp .bt-pf__bars{gap:calc(3px * var(--bt-pf-k))}
+.bt-pf__bar{position:relative;height:calc(8px * var(--bt-pf-k));border-radius:4px;background:#0C1316;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);overflow:hidden}
+.bt-pf__bar--hp{height:calc(14px * var(--bt-pf-k))}
+.bt-pf--mp .bt-pf__bar--hp{height:calc(12px * var(--bt-pf-k))}
+.bt-pf--mp .bt-pf__bar--en,.bt-pf--mp .bt-pf__bar--mp{height:calc(6px * var(--bt-pf-k))}
+.bt-pf__fill{position:absolute;left:1px;right:1px;top:1px;bottom:1px;border-radius:3px;transform-origin:0 50%;
+  transition:transform 200ms linear}
+.bt-pf__bar--hp .bt-pf__fill{background:#D9534F}
+.bt-pf__bar--en .bt-pf__fill{background:#E8C547}
+.bt-pf__bar--mp .bt-pf__fill{background:#4F8FDE}
+.bt-pf__num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;white-space:nowrap;
+  color:#FFF8E6;font:800 calc(10px * var(--bt-pf-k))/1 'Source Sans 3',sans-serif;font-variant-numeric:tabular-nums;
+  text-shadow:-1px 0 0 #10171B,1px 0 0 #10171B,0 -1px 0 #10171B,0 1px 0 #10171B}
+.bt-pf__of{opacity:.8}
+.bt-pf.is-dead{opacity:.6}
+html.bt-calm .bt-pf__fill{transition:none}
+@media (prefers-reduced-motion: reduce){ .bt-pf__fill{transition:none} }
 /* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
    holds the old 38px so the title stays centred on the SCREEN while the
    purse is narrow, which is the property the spacer existed for. */
@@ -6423,11 +6505,22 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
   background:var(--ui-sheet);border:1px solid var(--ui-line-strong);
   border-radius:14px;box-shadow:0 14px 30px rgba(4,7,9,.38);
   padding:12px;cursor:pointer;
+  /* v2.3.3915: its TOP is pinned (a little above the screen's middle) and a
+     long message grows it downward.  Centred, a message a line longer moved
+     the whole card -- and the portrait in it -- half a line up the screen. */
+  align-self:flex-start;margin-top:max(0px, calc(50vh - 116px));
 }
 /* The picture gets a fixed share rather than hugging its content, so the text
-   column never reflows as he changes pose or a different NPC speaks. */
+   column never reflows as he changes pose or a different NPC speaks.
+   v2.3.3915: the owner: "Fix all the portrait pics from slightly moving around
+   from one NPC message to the next."  The frame stretched to the card's
+   HEIGHT (the card's align-items:stretch), and the card grows with each
+   message's words, so the cover-fitted head was cropped and zoomed afresh on
+   every message.  Now a SQUARE sized from the card's width alone, pinned to
+   the card's top: the same box for every message and every townsperson. */
 .bt-npcdlg-art{
   flex:0 0 38%;max-width:190px;min-width:104px;
+  align-self:flex-start;aspect-ratio:1 / 1;height:auto;
   display:flex;align-items:flex-end;justify-content:center;
   background:var(--ui-well,#16232a);border:1px solid var(--ui-line);
   border-radius:10px;overflow:hidden;
@@ -6442,6 +6535,9 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
    for a full figure (feet on the ground) and wrong for a face, which it
    pushes to the bottom edge leaving a band of empty above the hat. */
 .bt-npcdlg-img--head{object-fit:cover;object-position:center top}
+/* v2.3.3915: in the square frame the whole head shows, anchored centre-bottom
+   (his shoulders on the frame's floor): nothing is cropped, so nothing moves */
+.bt-npcdlg-art .bt-npcdlg-img--head{object-fit:contain;object-position:center bottom}
 .bt-npcdlg-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
 .bt-npcdlg-name{
   font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
@@ -7177,8 +7273,13 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
   80%{transform:translateX(2px)}
 }
 .bt-sprint-nope{animation:bt-sprint-nope .42s ease-out 1}
+/* v2.3.3920: while the sprint is on, its gold glow breathes slowly (opacity
+   only: the shadow is drawn once, never a filter) */
+@keyframes bt-sprint-glow{0%,100%{opacity:1}50%{opacity:.45}}
+.bt-sprint-glow{animation:bt-sprint-glow 1.6s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){
   .bt-sprint-nope{animation:none}
+  .bt-sprint-glow{animation:none}
 }
 
 /* ═══ v2.3.3018: THE CONTROLS' SKIN (src/ui/panels/controlSkin.jsx) ═══
@@ -7272,24 +7373,31 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 .bt-rjoy-base[data-rstate="ghost"] .bt-skin-sheen{opacity:0}
 .bt-rjoy-base[data-pressed="1"] .bt-skin .bt-skin-ringc{stroke:url(#btSkinPress) #B67C35}
 .bt-rjoy-icon{display:none}
-.bt-rjoy-base[data-ricon="melee"] .bt-rjoy-icon[data-ricon-img="melee"],
-.bt-rjoy-base[data-ricon="ranged"] .bt-rjoy-icon[data-ricon-img="ranged"],
-.bt-rjoy-base[data-ricon="staff"] .bt-rjoy-icon[data-ricon-img="staff"],
 .bt-rjoy-base[data-ricon="mining"] .bt-rjoy-icon[data-ricon-img="mining"],
 .bt-rjoy-base[data-ricon="woodcutting"] .bt-rjoy-icon[data-ricon-img="woodcutting"],
 .bt-rjoy-base[data-ricon="fishing"] .bt-rjoy-icon[data-ricon-img="fishing"],
 .bt-rjoy-base[data-ricon="cooking"] .bt-rjoy-icon[data-ricon-img="cooking"]{display:block}
-/* v2.3.3105: the weapon in your hand, its bag picture (controlSkin weaponDiscIcon) */
-.bt-rjoy-base[data-ricon="w-sword"] .bt-rjoy-icon[data-ricon-img="w-sword"],
-.bt-rjoy-base[data-ricon="w-sword-copper"] .bt-rjoy-icon[data-ricon-img="w-sword-copper"],
-.bt-rjoy-base[data-ricon="w-sword-iron"] .bt-rjoy-icon[data-ricon-img="w-sword-iron"],
-.bt-rjoy-base[data-ricon="w-sword-blacksteel"] .bt-rjoy-icon[data-ricon-img="w-sword-blacksteel"],
-.bt-rjoy-base[data-ricon="w-great-sword"] .bt-rjoy-icon[data-ricon-img="w-great-sword"],
-.bt-rjoy-base[data-ricon="w-great-sword-copper"] .bt-rjoy-icon[data-ricon-img="w-great-sword-copper"],
-.bt-rjoy-base[data-ricon="w-great-sword-iron"] .bt-rjoy-icon[data-ricon-img="w-great-sword-iron"],
-.bt-rjoy-base[data-ricon="w-great-sword-blacksteel"] .bt-rjoy-icon[data-ricon-img="w-great-sword-blacksteel"],
-.bt-rjoy-base[data-ricon="w-bow"] .bt-rjoy-icon[data-ricon-img="w-bow"],
-.bt-rjoy-base[data-ricon="w-staff"] .bt-rjoy-icon[data-ricon-img="w-staff"]{display:block}
+/* v2.3.3105: the weapon in your hand, its bag picture (controlSkin weaponDiscIcon).
+   v2.3.3920: an attack wears the aiming reticle instead, whichever weapon
+   data-ricon names (controlSkin AimReticle; the weapon is the triangle's) */
+.bt-rjoy-base[data-ricon="melee"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="ranged"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="staff"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-sword"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-sword-copper"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-sword-iron"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-sword-blacksteel"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-great-sword"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-great-sword-copper"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-great-sword-iron"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-great-sword-blacksteel"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-bow"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-staff"] .bt-rjoy-aim{display:block}
+/* v2.3.3920: a thumb on the stick: the reticle and its rod (the pointer) light */
+.bt-rjoy-aim .bt-aim-ring,.bt-rjoy-aim .bt-aim-tick{transition:stroke 90ms linear}
+.bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-ring,.bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-tick{stroke:#FFF3C4}
+.bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-dot{fill:#FFD86A}
+.bt-rjoy-base[data-pressed="1"] [data-rod]{background:linear-gradient(180deg,rgba(255,214,106,.62) 0%,rgba(240,176,72,.5) 100%);box-shadow:inset 0 0 0 1px rgba(255,236,170,.75)}
 /* v2.3.3105: the JUMP arrow over the disc as it is, see-through -- the owner:
    "a semi transparent overlay on the existing disc" (controlSkin RDISC_ICONS) */
 /* v2.3.3721: the stick's JUMP face went with the tap's jump (v2.3.3712) */

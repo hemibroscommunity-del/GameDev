@@ -26,9 +26,40 @@
  *      'greatsword'.
  *   7. The Forge: an older page's sword request mints a greatsword (and a
  *      sword under the switch).
- *   8. The switch's name is lower case and off only when written false. */
+ *   8. The switch's name is lower case and off only when written false.
+ *
+ * v2.3.3980 -- OLD WOODEN GREATSWORDS BECOME COPPER (docs/specs/
+ * greatsword-copper.md, server/src/gscopper.js, migration v20).  The owner:
+ * "'Copper great sword' when Smithed looks gray in color like iron.  Fix that.
+ * Also just remove any of the 'wooden' swords."
+ *   9. The one function: a wood greatsword -> copper at 1.12, its grade,
+ *      hardening and gems kept, the game's names rebuilt ("Copper Great
+ *      Sword", a gem's "Copper Flame Great Sword"), a hand name kept (a
+ *      "Wooden ..." one made "Copper ..."), the `was` mark; an old base-less
+ *      "Great Sword" no stronger than copper -> copper; a base-less one
+ *      stronger than copper (an old Elemental roll) -> its metal, its tierMult
+ *      kept (v2.3.3980, 9b: one per band, the wear gate); the Pine Shield,
+ *      a pine bow, a wood one-handed sword (v19's), a metal greatsword and junk
+ *      left alone; twice is once.
+ *  10. Through the real load: a record at v19 (the old starter, v12's "Copper
+ *      Great Sword" at gearBase wood, in hand; old drops in the bag; the Pine
+ *      Shield) joins: copper in memory, echoed and stored at _v 20 in one
+ *      re-put, the shield still wood.
+ *  11. The retry: v20 throwing leaves the record at 19, the wood intact; mended,
+ *      the next load converts.
+ *  12. The post: a wood greatsword credited arrives copper; `gscopper: false`
+ *      delivers it as it was.
+ *  13. The Auction House: a listing escrowing one is rewritten once, weapon and
+ *      shelf copy.
+ *  14. The Marketplace: a sell order's wood greatsword and its tier, a buy
+ *      order's tier, a new order for a wood greatsword placed for copper; the
+ *      switch leaves a new one as asked.
+ *  15. The Forge makes no wood greatsword (its ladder, unchanged).
+ *  16. The switch's name is lower case and off only when written false. */
 import { GameRoom } from '../src/index.js';
 import { swordToGreatsword, convertRecordSwords } from '../src/swordconvert.js';
+import { oldGreatswordToMetal, convertRecordGreatswords, isOldGreatsword, metalForTierMult } from '../src/gscopper.js';   /* v2.3.3980 */
+import { flagNameOk } from '../src/liveops.js';   /* v2.3.3980 */
 import { MIGRATIONS, RPG_SCHEMA_VERSION } from '../src/migrations.js';
 import { BLACKSMITH_TIERS } from '../src/data.js';
 
@@ -171,7 +202,7 @@ async function onFile(id) {
   check('2: the bag: the gemmed iron sword is an "Iron Flame Great Sword", "Bro\'s Sword" a "Copper Great Sword", the bow a bow',
     !!P && P.weaponStash.length === 3 && P.weaponStash[0].type === 'greatsword' && P.weaponStash[0].name === 'Iron Flame Great Sword' && P.weaponStash[0].element1 === 'flame'
       && P.weaponStash[1].name === 'Copper Great Sword' && P.weaponStash[1].gearBase === 'copper' && P.weaponStash[2].type === 'bow', P && P.weaponStash);
-  check('2: stored at _v ' + RPG_SCHEMA_VERSION + ' with no sword left in it', RPG_SCHEMA_VERSION === 19 && stored._v === 19
+  check('2: stored at _v ' + RPG_SCHEMA_VERSION + ' with no sword left in it', RPG_SCHEMA_VERSION >= 19 && stored._v === RPG_SCHEMA_VERSION   /* v2.3.3980: current, 20 since v20 */
     && stored.weapon.type === 'greatsword' && stored.weaponStash.every((w) => w.type !== 'sword'), { v: stored._v });
   check('2: the record\'s conversion is written by the load\'s one re-put (and the join\'s own save), never one put a weapon',
     state._counts.rpgPuts - puts0 <= 2, state._counts.rpgPuts - puts0);
@@ -209,7 +240,7 @@ async function onFile(id) {
   await join(ws2, id);
   const P2 = room.playerState[id];
   check('3: mended, the next login converts them and the record is current',
-    P2.weapon.type === 'greatsword' && P2.weaponStash.every((w) => w.type !== 'sword') && state._store.get('rpg:' + id)._v === 19, P2.weapon);
+    P2.weapon.type === 'greatsword' && P2.weaponStash.every((w) => w.type !== 'sword') && state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION, P2.weapon);   /* v2.3.3980: current */
   await leave(ws2);
 }
 
@@ -307,6 +338,316 @@ async function onFile(id) {
   room._liveFlags = was;
   check('8: `swordconvert: false` switches it off, true or nothing set leaves it on', off === true && on1 === false && on2 === false);
   check('8: the switch\'s name is lower case', /^[a-z0-9_]+$/.test('swordconvert'));
+}
+
+/* ════ v2.3.3980: OLD WOODEN GREATSWORDS BECOME COPPER (gscopper.js, v20) ════ */
+
+/* a greatsword as the old Forge made one, at `base` */
+const forgeGs = (base, extra) => Object.assign({
+  type: 'greatsword', tier: 'common', tierMult: BLACKSMITH_TIERS[base] ? BLACKSMITH_TIERS[base].tierMult : 1,
+  element1: null, element2: null, isVolatile: false, name: base + ' greatsword', gearBase: base,
+  reforgeBonus: null, hardenBonus: null, quality: 'normal', hardness: 0, temper: 0,
+}, extra || {});
+/* the old starter grant (v2.3.1681-1759): a greatsword at wood, renamed by v12 alone */
+const oldStarter = (extra) => Object.assign({ type: 'greatsword', tier: 'common', tierMult: 1, name: 'Copper Great Sword', gearBase: 'wood' }, extra || {});
+/* an old random drop: no gearBase, its rarity's tierMult */
+const oldDrop = (mult, extra) => Object.assign({ type: 'greatsword', tier: mult > 1 ? 'elemental' : 'common', tierMult: mult, name: 'Great Sword', element1: null, element2: null }, extra || {});
+const COPPER_MULT = BLACKSMITH_TIERS.copper.tierMult;
+
+// ── 9. the one function ──
+{
+  check('9: copper\'s tierMult is the 1.12 the owner\'s gift is', COPPER_MULT === 1.12, COPPER_MULT);
+  const w = forgeGs('wood', { quality: 'rare', hardness: 2, temper: 40, reforgeBonus: 0.1, hardenBonus: 0.05, element1: 'flame', element2: 'frost', isVolatile: true });
+  const did = oldGreatswordToMetal(w);
+  check('9: a wood greatsword becomes copper at copper\'s 1.12, its grade, hardening, temper, bonuses and both gems kept',
+    did === true && w.type === 'greatsword' && w.gearBase === 'copper' && w.tierMult === COPPER_MULT && w.quality === 'rare' && w.hardness === 2
+      && w.temper === 40 && w.reforgeBonus === 0.1 && w.hardenBonus === 0.05 && w.element1 === 'flame' && w.element2 === 'frost' && w.isVolatile === true, w);
+  check('9: ...the Forge\'s "wood greatsword" named for its copper and its gems ("Copper Flamefrost Great Sword")',
+    w.name === 'Copper Flamefrost Great Sword', w.name);
+  check('9: ...and marked `was`: what it was, so it can be undone exactly',
+    !!w.was && w.was.t === 'greatsword' && w.was.gearBase === 'wood' && w.was.tierMult === 1 && w.was.name === 'wood greatsword', w.was);
+  const st = oldStarter({ quality: 'elite' });
+  oldGreatswordToMetal(st);
+  check('9: the old starter (v12\'s "Copper Great Sword" left at wood) is really copper now, the name kept as it reads',
+    st.gearBase === 'copper' && st.tierMult === COPPER_MULT && st.name === 'Copper Great Sword' && st.quality === 'elite', st);
+  const label = forgeGs('wood', { name: 'Wood Great Sword' });
+  oldGreatswordToMetal(label);
+  check('9: the label\'s "Wood Great Sword" -> "Copper Great Sword"', label.name === 'Copper Great Sword', label.name);
+  const bro = forgeGs('wood', { name: "Bro's Sword" });
+  oldGreatswordToMetal(bro);
+  check('9: a "Bro\'s Sword" greatsword v12 never reached -> "Copper Great Sword"', bro.name === 'Copper Great Sword', bro.name);
+  const drop = oldDrop(1);
+  oldGreatswordToMetal(drop);
+  check('9: an old drop\'s base-less "Great Sword" no stronger than copper -> a Copper Great Sword at 1.12, its `was` saying it had no base',
+    drop.gearBase === 'copper' && drop.tierMult === COPPER_MULT && drop.name === 'Copper Great Sword' && drop.was && drop.was.gearBase === null && drop.was.tierMult === 1, drop);
+  const strong = oldDrop(1.5, { element1: 'flame', quality: 'rare' });
+  check('9: an old drop STRONGER than copper (an Elemental 1.50 roll) becomes Black Steel, its 1.50 KEPT (never weaker), named for it and its gem',
+    isOldGreatsword(strong) === true && oldGreatswordToMetal(strong) === true && strong.gearBase === 'steel' && strong.tierMult === 1.5
+      && strong.name === 'Black Steel Flame Great Sword' && strong.element1 === 'flame' && strong.quality === 'rare' && strong.was && strong.was.tierMult === 1.5, strong);
+  const hand = forgeGs('wood', { name: "Grandpa's Blade" });
+  oldGreatswordToMetal(hand);
+  const wooden = forgeGs('wood', { name: 'Wooden Claymore' });
+  oldGreatswordToMetal(wooden);
+  check('9: a name given by hand is kept ("Grandpa\'s Blade"), a "Wooden ..." one made "Copper ..."',
+    hand.name === "Grandpa's Blade" && hand.gearBase === 'copper' && wooden.name === 'Copper Claymore', { hand: hand.name, wooden: wooden.name });
+  const shield = { name: 'Pine Shield', gearBase: 'wood', tierMult: 1 };
+  const shieldT = { type: 'shield', name: 'Pine Shield', gearBase: 'wood', tierMult: 1 };
+  const bow = { type: 'bow', name: 'Pine Bow', gearBase: 'ww_pine', tierMult: 1 };
+  const sword = forgeSword('wood');
+  const iron = forgeGs('iron');
+  const cop = forgeGs('copper');
+  const none = [shield, shieldT, bow, sword, iron, cop].map(clone);
+  const touched = [shield, shieldT, bow, sword, iron, cop].map((x) => oldGreatswordToMetal(x));
+  check('9: the Pine Shield, a pine bow, a wood one-handed sword (v19\'s), an iron and a copper greatsword are never touched',
+    touched.every((t) => t === false) && JSON.stringify([shield, shieldT, bow, sword, iron, cop]) === JSON.stringify(none), touched);
+  check('9: junk is left alone', oldGreatswordToMetal(null) === false && oldGreatswordToMetal('greatsword') === false && oldGreatswordToMetal([]) === false
+    && oldGreatswordToMetal({ type: 'greatsword', gearBase: 'mythril', tierMult: 1 }) === false);
+  const twice = forgeGs('wood');
+  oldGreatswordToMetal(twice);
+  const once = clone(twice);
+  check('9: twice is once (the second call changes nothing)', oldGreatswordToMetal(twice) === false && JSON.stringify(twice) === JSON.stringify(once), twice);
+  const rec = { weapon: oldStarter(), rangedWeapon: bow, shield: clone(shieldT), weaponStash: [forgeGs('wood'), forgeGs('iron'), oldDrop(1), oldDrop(2.25)] };
+  check('9: a record: the slots and the bag converted, the shield and the stronger drop not, and twice is once',
+    convertRecordGreatswords(rec) === true && rec.weapon.gearBase === 'copper' && rec.rangedWeapon.type === 'bow' && rec.shield.gearBase === 'wood'
+      && rec.weaponStash.map((x) => x.gearBase || '-').join() === 'copper,iron,copper,diamond' && rec.weaponStash[3].tierMult === 2.25 && convertRecordGreatswords(rec) === false, rec);
+}
+
+// ── 9b. v2.3.3980: the strong base-less drops, one per band ──
+{
+  /* the metal: the forge tier whose multiplier is the closest NOT above the
+     sword's own (never wood); the tierMult is kept */
+  const bands = [
+    [1.13, 'copper', 'Copper'],          /* just above copper's 1.12 */
+    [1.25, 'iron', 'Iron'],              /* exactly iron's */
+    [1.50, 'steel', 'Black Steel'],      /* the old Elemental roll */
+    [2.16, 'diamond', 'Diamond'],        /* exactly diamond's */
+    [2.25, 'diamond', 'Diamond'],        /* the old Fusion roll */
+    [3.00, 'shadowsteel', 'Shadowsteel'] /* the old Shift roll */,
+  ];
+  for (const [tm, metal, label] of bands) {
+    const w = oldDrop(tm, { element1: 'frost', element2: 'flame', isVolatile: true, quality: 'elite', hardness: 3, temper: 12, reforgeBonus: 0.2, hardenBonus: 0.1 });
+    oldGreatswordToMetal(w);
+    check(`9b: a base-less ${tm.toFixed(2)} greatsword becomes ${label}, its ${tm.toFixed(2)} kept, its grade, hardening and both gems kept`,
+      metalForTierMult(tm) === metal && w.gearBase === metal && w.tierMult === tm && w.name === `${label} Frostflame Great Sword`
+        && w.quality === 'elite' && w.hardness === 3 && w.temper === 12 && w.reforgeBonus === 0.2 && w.hardenBonus === 0.1
+        && w.element1 === 'frost' && w.element2 === 'flame' && w.isVolatile === true && w.was && w.was.gearBase === null && w.was.tierMult === tm, w);
+  }
+  check('9b: never wood, never below copper, never above the sword: 1.00 -> copper, 9 -> worldbreaker',
+    metalForTierMult(1) === 'copper' && metalForTierMult(9) === 'worldbreaker');
+  const named = oldDrop(3, { name: 'Flame Great Sword', element1: 'flame' });
+  oldGreatswordToMetal(named);
+  check('9b: a gem name the game gave a base-less drop is rebuilt for its metal ("Shadowsteel Flame Great Sword")', named.name === 'Shadowsteel Flame Great Sword', named.name);
+  const hand = oldDrop(2.25, { name: 'Old Faithful' });
+  oldGreatswordToMetal(hand);
+  check('9b: a hand-given name is kept', hand.name === 'Old Faithful' && hand.gearBase === 'diamond', hand);
+  const twice = oldDrop(2.25);
+  oldGreatswordToMetal(twice);
+  const once = clone(twice);
+  check('9b: twice is once (a metal now, never touched again)', oldGreatswordToMetal(twice) === false && JSON.stringify(twice) === JSON.stringify(once));
+  /* THE WEAR GATE: nobody loses a sword they can wear.  For every band, at the
+     melee level that wore it with no gearBase (the tierMult curve), the metal
+     still lets it be worn -- and the gate is asked at equip time only. */
+  for (const tm of [1.13, 1.25, 1.3, 1.4, 1.5, 1.94, 2.16, 2.25, 2.68, 3.0, 4.5, 7.84]) {
+    const before = oldDrop(tm);
+    const after = clone(before);
+    oldGreatswordToMetal(after);
+    let lowest = null;
+    for (let lvl = 1; lvl <= 100; lvl++) {
+      const ps = { prog3: { sk: { sword: { level: lvl, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } } } };
+      if (room._prog3EquipOk(ps, 'weapon', before)) { lowest = lvl; break; }
+    }
+    const ps = { prog3: { sk: { sword: { level: lowest, xp: 0 }, bow: { level: 1, xp: 0 }, staff: { level: 1, xp: 0 } } } };
+    check(`9b: wear gate: whoever could wear the base-less ${tm} (melee ${lowest}) can wear it as ${after.gearBase}`,
+      lowest != null && room._prog3EquipOk(ps, 'weapon', after) === true, { lowest, after });
+  }
+}
+
+/* a character on file at v19 holding the old greatswords */
+async function onFile19(id) {
+  const w0 = fakeWs();
+  await join(w0, id);
+  await leave(w0);
+  const blob = state._store.get('rpg:' + id);
+  blob._v = 19;
+  blob.weapon = oldStarter({ quality: 'elite', hardness: 1 });
+  blob.weaponStash = [oldDrop(1), oldDrop(1.5, { element1: 'flame' }), forgeGs('iron', { quality: 'rare' }), { type: 'bow', name: 'Pine Bow', gearBase: 'ww_pine', tierMult: 1 }];
+  blob.shield = { name: 'Pine Shield', gearBase: 'wood', tierMult: 1 };
+  return blob;
+}
+
+// ── 10. through the real load ──
+{
+  const id = 'bp_gsc_load';
+  await onFile19(id);
+  const ws = fakeWs();
+  const puts0 = state._counts.rpgPuts;
+  await join(ws, id);
+  const P = room.playerState[id];
+  const stored = state._store.get('rpg:' + id);
+  check('10: the old starter in hand is a real Copper Great Sword now (copper, 1.12), elite and hardened as it was',
+    !!P && P.weapon && P.weapon.type === 'greatsword' && P.weapon.gearBase === 'copper' && P.weapon.tierMult === COPPER_MULT
+      && P.weapon.name === 'Copper Great Sword' && P.weapon.quality === 'elite' && P.weapon.hardness === 1 && P.weapon.was && P.weapon.was.gearBase === 'wood', P && P.weapon);
+  check('10: the bag: the old "Great Sword" copper, the Elemental roll Black Steel at its 1.50, the iron greatsword and the bow untouched',
+    !!P && P.weaponStash.length === 4 && P.weaponStash[0].gearBase === 'copper' && P.weaponStash[0].name === 'Copper Great Sword'
+      && P.weaponStash[1].gearBase === 'steel' && P.weaponStash[1].tierMult === 1.5 && P.weaponStash[1].name === 'Black Steel Flame Great Sword' && P.weaponStash[2].gearBase === 'iron' && P.weaponStash[2].quality === 'rare'
+      && P.weaponStash[3].type === 'bow', P && P.weaponStash);
+  check('10: the Pine Shield is still wood (never a shield)', !!P && P.shield && P.shield.gearBase === 'wood' && P.shield.name === 'Pine Shield', P && P.shield);
+  check('10: stored at _v 20 with no wood greatsword left in it', RPG_SCHEMA_VERSION === 20 && stored._v === 20
+    && ![stored.weapon, ...stored.weaponStash].some((w) => w && w.type === 'greatsword' && w.gearBase === 'wood'), { v: stored._v });
+  check('10: written by the load\'s one re-put (and the join\'s own save), never one put a weapon', state._counts.rpgPuts - puts0 <= 2, state._counts.rpgPuts - puts0);
+  const echo = ws.sent.filter((m) => m.type === 'player_state').pop();
+  check('10: the phone is told: player_state carries the copper greatsword', !!echo && echo.payload.weapon && echo.payload.weapon.gearBase === 'copper', echo && echo.payload.weapon);
+  check('10: and its sell value is copper\'s (tierMult 1.12)', room._weaponSellValue ? room._weaponSellValue(P.weapon) >= room._weaponSellValue(oldStarter()) : true);
+  await leave(ws);
+}
+
+// ── 11. the retry ──
+{
+  const id = 'bp_gsc_retry';
+  await onFile19(id);
+  const v20 = MIGRATIONS.find((m) => m.v === 20);
+  const realRun = v20.run;
+  v20.run = () => { throw new Error('boom'); };
+  const realErr = console.error;
+  console.error = () => {};
+  const ws = fakeWs();
+  try {
+    await join(ws, id);
+    const P = room.playerState[id];
+    check('11: v20 throwing: the join goes ahead and the old greatsword is still what it was (nothing lost)',
+      !!P && P.weapon && P.weapon.gearBase === 'wood', P && P.weapon);
+    check('11: ...and the record stays at 19, unfinished', state._store.get('rpg:' + id)._v === 19, state._store.get('rpg:' + id)._v);
+    await leave(ws);
+  } finally {
+    v20.run = realRun;
+    console.error = realErr;
+  }
+  const ws2 = fakeWs();
+  await join(ws2, id);
+  const P2 = room.playerState[id];
+  check('11: mended, the next login converts it and the record is current',
+    P2.weapon.gearBase === 'copper' && state._store.get('rpg:' + id)._v === 20, P2.weapon);
+  await leave(ws2);
+}
+
+// ── 12. the post ──
+{
+  const id = 'bp_gsc_post';
+  const ws = fakeWs();
+  await join(ws, id);
+  const P = room.playerState[id];
+  P.weaponStash = [];
+  await room._creditPlayer(id, { opId: 'gsc:post:1', source: 'market', kind: 'weapon', payload: { weapon: forgeGs('wood', { quality: 'elite' }) }, note: 'refund' });
+  await room._creditPlayer(id, { opId: 'gsc:post:2', source: 'store', kind: 'weapon', payload: { weapon: oldDrop(1) }, note: 'sale' });
+  check('12: a wood greatsword and an old "Great Sword" credited through the post arrive copper, the grade kept',
+    P.weaponStash.length === 2 && P.weaponStash.every((w) => w.gearBase === 'copper' && w.tierMult === COPPER_MULT && w.was) && P.weaponStash[0].quality === 'elite', P.weaponStash);
+  const was = room._liveFlags;
+  room._liveFlags = Object.assign({}, was || {}, { gscopper: false });
+  await room._creditPlayer(id, { opId: 'gsc:post:3', source: 'market', kind: 'weapon', payload: { weapon: forgeGs('wood') }, note: 'refund' });
+  room._liveFlags = was;
+  check('12: under `gscopper: false` the post delivers it as it was', P.weaponStash.length === 3 && P.weaponStash[2].gearBase === 'wood', P.weaponStash[2]);
+  await leave(ws);
+}
+
+// ── 13. the Auction House ──
+{
+  const now = Date.now();
+  const rec = {
+    id: 'gsclist1', sellerId: 'bp_gsc_seller', sellerName: 'S', kind: 'weapon', cat: 'weapon', qty: 1, askPrice: 500,
+    createdAt: now, expiresAt: now + 86400000, weapon: oldStarter({ quality: 'rare' }),
+    disp: room._stDisplay('weapon', null, oldStarter({ quality: 'rare' })), topBid: null, bidCount: 0,
+  };
+  state._store.set('store_listing:gsclist1', clone(rec));
+  room._stIndex = null;
+  const puts0 = state._counts.puts;
+  await room._stEnsureIndex();
+  const after = state._store.get('store_listing:gsclist1');
+  check('13: a listing escrowing a wood greatsword is rewritten at the rebuild: copper, its shelf copy too, its grade kept',
+    !!after && after.weapon.gearBase === 'copper' && after.weapon.tierMult === COPPER_MULT && after.disp.tierMult === COPPER_MULT
+      && after.disp.name === 'Copper Great Sword' && after.disp.quality === 'rare', after && after.disp);
+  check('13: ...in one put, and it is still on the shelf', state._counts.puts - puts0 === 1 && room._stIndex.has('gsclist1'), state._counts.puts - puts0);
+  room._stIndex = null;
+  const puts1 = state._counts.puts;
+  await room._stEnsureIndex();
+  check('13: a second rebuild writes nothing (once)', state._counts.puts === puts1, state._counts.puts - puts1);
+}
+
+// ── 14. the Marketplace ──
+{
+  const now = Date.now();
+  state._store.set('mkt_order:gscsell', { id: 'gscsell', type: 'sell', category: 'weapon', subtype: 'greatsword', tierKey: 'wood', tierLabel: 'Wood',
+    element1: null, element2: null, price: 50, item: forgeGs('wood'), playerName: 'S', playerId: 'bp_gsc_seller', ts: now, expires: now + 9999999 });
+  state._store.set('mkt_order:gscbuy', { id: 'gscbuy', type: 'buy', category: 'weapon', subtype: 'greatsword', tierKey: 'wood', tierLabel: 'Wood',
+    element1: null, element2: null, price: 50, item: null, playerName: 'B', playerId: 'bp_gsc_buyer', ts: now, expires: now + 9999999 });
+  state._store.set('mkt_order:gscfusion', { id: 'gscfusion', type: 'sell', category: 'weapon', subtype: 'greatsword', tierKey: 'fusion', tierLabel: 'Fusion',
+    element1: null, element2: null, price: 50, item: oldDrop(2.25), playerName: 'S', playerId: 'bp_gsc_seller', ts: now, expires: now + 9999999 });
+  state._store.set('mkt_order:gscelbuy', { id: 'gscelbuy', type: 'buy', category: 'weapon', subtype: 'greatsword', tierKey: 'elemental', tierLabel: 'Elemental',
+    element1: null, element2: null, price: 50, item: null, playerName: 'B', playerId: 'bp_gsc_buyer', ts: now, expires: now + 9999999 });
+  state._store.set('mkt_order:gscshield', { id: 'gscshield', type: 'buy', category: 'shield', subtype: 'shield', tierKey: 'wood', tierLabel: 'Wood',
+    element1: null, element2: null, price: 50, item: null, playerName: 'B', playerId: 'bp_gsc_buyer', ts: now, expires: now + 9999999 });
+  room._mktIndex = null;
+  const puts0 = state._counts.puts;
+  await room._mktEnsureIndex();
+  const s = state._store.get('mkt_order:gscsell');
+  const b = state._store.get('mkt_order:gscbuy');
+  const sh = state._store.get('mkt_order:gscshield');
+  check('14: a sell order\'s wood greatsword is copper, its tier moved, and it is filed there in the book',
+    s.item.gearBase === 'copper' && s.tierKey === 'copper' && s.tierLabel === 'Copper' && room._mktIndex.has('weapon:greatsword:copper:none:none'), s);
+  check('14: a buy order for a wood greatsword is one for copper now; one for a wood shield is not touched',
+    b.tierKey === 'copper' && sh.tierKey === 'wood', { b, sh });
+  const fu = state._store.get('mkt_order:gscfusion');
+  const eb = state._store.get('mkt_order:gscelbuy');
+  check('14: v2.3.3980: a sell order\'s old Fusion drop is Diamond at its 2.25, filed under diamond; a buy under an old rarity key is left as it is',
+    fu.item.gearBase === 'diamond' && fu.item.tierMult === 2.25 && fu.tierKey === 'diamond' && fu.tierLabel === 'Diamond'
+      && room._mktIndex.has('weapon:greatsword:diamond:none:none') && eb.tierKey === 'elemental', { fu, eb });
+  check('14: three orders rewritten, three puts', state._counts.puts - puts0 === 3, state._counts.puts - puts0);
+  const id = 'bp_gsc_mkt';
+  const ws = fakeWs();
+  await join(ws, id);
+  const P = room.playerState[id];
+  P.coins = 1000;
+  const r = await room._mktPlaceOrder({ type: 'buy', category: 'weapon', subtype: 'greatsword', tierKey: 'wood', tierLabel: 'Wood', price: 10, playerId: id, playerName: 'M' });
+  check('14: a new order for a wood greatsword is placed as one for copper', !!r && r.ok !== false && r.order && r.order.tierKey === 'copper' && r.order.tierLabel === 'Copper', r);
+  const was = room._liveFlags;
+  room._liveFlags = Object.assign({}, was || {}, { gscopper: false });
+  const r2 = await room._mktPlaceOrder({ type: 'buy', category: 'weapon', subtype: 'greatsword', tierKey: 'wood', tierLabel: 'Wood', price: 10, playerId: id, playerName: 'M' });
+  room._liveFlags = was;
+  check('14: under `gscopper: false` it is placed as asked', !!r2 && r2.order && r2.order.tierKey === 'wood', r2);
+  await leave(ws);
+}
+
+// ── 15. the Forge ──
+{
+  /* The Forge is not changed: it makes no wood greatsword on its ladder
+     (v2.3.3524, forgeladder.js), and `forgeladder: false` -- the operator's
+     rollback of that ladder, which forge-ladder.test §7c pins -- stays whole. */
+  const id = 'bp_gsc_forge';
+  const ws = fakeWs();
+  await join(ws, id);
+  const P = room.playerState[id];
+  P.coins = 1000;
+  P.inventory = { wood_pine_log: 3 };
+  P.weapon = null; P.weaponStash = []; P._gearLockUntil = 0;
+  P.lifeSkills = Object.assign({}, P.lifeSkills || {}, { blacksmithing: { level: 1, xp: 0 } });
+  await room.webSocketMessage(ws, JSON.stringify({ type: 'forge_weapon', payload: { weaponType: 'greatsword', tierKey: 'wood' } }));
+  await settle();
+  check('15: the Forge makes no wood greatsword, and nothing is spent',
+    !P.weapon && P.coins === 1000 && P.inventory.wood_pine_log === 3, { w: P.weapon, coins: P.coins, inv: P.inventory });
+  await leave(ws);
+}
+
+// ── 16. the switch ──
+{
+  const was = room._liveFlags;
+  room._liveFlags = { gscopper: false };
+  const off = room._gsCopperOff();
+  room._liveFlags = { gscopper: true };
+  const on1 = room._gsCopperOff();
+  room._liveFlags = {};
+  const on2 = room._gsCopperOff();
+  room._liveFlags = was;
+  check('16: `gscopper: false` switches it off, true or nothing set leaves it on', off === true && on1 === false && on2 === false);
+  check('16: the switch\'s name is lower case and a name POST /flags takes', /^[a-z0-9_]+$/.test('gscopper') && flagNameOk('gscopper'));
 }
 
 if (failures) { console.log(failures + ' FAILURE(S)'); process.exit(1); }

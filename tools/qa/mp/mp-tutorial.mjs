@@ -348,37 +348,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the quest reminder is expanded by default', !!expanded
     && /Slime Remains/i.test(expanded.text), expanded);
 
+  /* v2.3.3918: the v2.3.1714 fold is retired -- the card is the owner's
+     "tappable tracker" now (src/ui/QuestCard.jsx): a tap opens the quest's
+     own page.  What stays: the tap never leaks to the world as a move order,
+     and the card offers a 44pt hit area (UI-BIBLE). */
+  rec.ok('the card offers a 44pt hit area (UI-BIBLE)', !!expanded && expanded.deepTapLands === true, expanded);
   await tapCard();
-  await P.page.waitForTimeout(400);
-  const folded = await readCard();
-  rec.ok('tapping the reminder hides the objective, leaving the title',
-    !!folded && /Into the Blue/.test(folded.text)
-    && !/Slime Remains/i.test(folded.text), folded);
-  /* v2.3.3399: by a LINE, not by more than 15 px.  Folded, the card loses its
-     objective, one line of the card's type -- 15 px on this phone (43 -> 28)
-     -- and "more than 15" failed on exactly the one line it was asking for.
-     10 is short of any line and far past a rounding wobble. */
-  rec.ok('...and the card actually got shorter (the point was screen space)',
-    !!folded && !!expanded && expanded.h - folded.h >= 10, { expanded, folded });
-  /* The card floats over the world, and the world takes taps.  Without
-     stopPropagation this fold would ALSO order the character to walk to the
-     top-left corner — silent, and only visible as drift. */
+  await P.page.waitForTimeout(600);
+  const tapped = await readCard();
+  const page = await P.page.evaluate(() => !!document.querySelector('[data-quest-track]')).catch(() => false);
+  rec.ok('tapping the card opens the quest\'s page (its Track button shows)', page === true, { page });
   rec.ok('...and the tap did NOT leak through to the world as a move order',
-    !!folded && !!expanded && folded.px === expanded.px && folded.py === expanded.py,
-    { before: expanded && [expanded.px, expanded.py], after: folded && [folded.px, folded.py] });
-  rec.ok('...and the folded pill still offers a 44pt hit area (UI-BIBLE)',
-    !!folded && folded.deepTapLands === true, folded);
-
-  await backIn();
-  const remembered = await readCard();
-  rec.ok('the folded choice survives a reload — it is a preference, not a toggle',
-    !!remembered && !/Slime Remains/i.test(remembered.text), remembered);
-
-  await tapCard();
-  await P.page.waitForTimeout(400);
-  const reopened = await readCard();
-  rec.ok('...and tapping again brings the objective back',
-    !!reopened && /Slime Remains/i.test(reopened.text), reopened);
+    !!tapped && !!expanded && tapped.px === expanded.px && tapped.py === expanded.py,
+    { before: expanded && [expanded.px, expanded.py], tapped: tapped && [tapped.px, tapped.py] });
 
   await P.ctx.close().catch(() => {});
 }

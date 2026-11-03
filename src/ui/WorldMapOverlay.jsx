@@ -251,13 +251,13 @@ function WorldMap({ stateRef, onClose }) {
          on the town's buildings instead, every one of them on the screen
          with its picture and its name (townView); anywhere else, the whole
          Wheel as before. */
-      const S0 = stateRef.current;
-      const P0 = S0 && S0.player;
-      const tv = P0 && inTownNow(P0) ? townView(map, cv.clientWidth, cv.clientHeight) : null;
-      if (tv) {
-        V.zoom = tv.zoom; V.cx = tv.cx; V.cy = tv.cy;
-        setZoomShown([V.zoom, V.zoom / spanK(map)]);
-      } else { V.cx = map.worldW / 2; V.cy = map.worldH / 2; }
+      /* v2.3.3898: the first view is one rule, shared with ◎ (firstView):
+         home (BroTown or its commons) is the town's buildings, anywhere else
+         you up close -- never the whole Wheel at zoom 1, where the town is a
+         ~6 px speck (the owner: a player "stuck on the old minimap that
+         looked really zoomed out and didn't show the town") */
+      applyView(V, firstView(map, cv, stateRef.current), map);
+      setZoomShown([V.zoom, V.zoom / spanK(map)]);
     }
     let raf = 0, last = 0, lastP = '';
     const size = () => {
@@ -280,6 +280,13 @@ function WorldMap({ stateRef, onClose }) {
       if (!dirty.current && pk === lastP && t - last < 120) return;
       lastP = pk; last = t; dirty.current = false;
       const { w, h, dpr } = size();
+      /* v2.3.3898: opened at home before the worker named the buildings
+         (the town's middle stood in): once their doors are known, and while
+         the player has not moved the map, the town's view takes over */
+      if (V.waitTown && !V.touched) {
+        const tv = townView(map, w, h);
+        if (tv) { V.waitTown = false; applyView(V, tv, map); setZoomShown([V.zoom, V.zoom / spanK(map)]); }
+      }
       /* v2.3.3830: + the map's whole box (#root's on a computer), for the key's size */
       const ob = cv.closest('[data-world-map]');
       const ow = ob ? ob.clientWidth : w, oh = ob ? ob.clientHeight : h;
@@ -330,7 +337,7 @@ function WorldMap({ stateRef, onClose }) {
     const k1 = baseScale(cv.clientWidth, cv.clientHeight, map) * z;
     /* the world point under (sx, sy) stays under it */
     const wx = V.cx + (sx - cv.clientWidth / 2) / k0, wy = V.cy + (sy - cv.clientHeight / 2) / k0;
-    V.zoom = z;
+    V.zoom = z; V.touched = true;   /* v2.3.3898: the player's own view now */
     V.cx = wx - (sx - cv.clientWidth / 2) / k1;
     V.cy = wy - (sy - cv.clientHeight / 2) / k1;
     clampView(V, map);
@@ -362,6 +369,7 @@ function WorldMap({ stateRef, onClose }) {
     const V = view.current, k = baseScale(cv.clientWidth, cv.clientHeight, map) * V.zoom;
     if (ptrs.current.size === 1) {
       V.cx -= (e.clientX - p.x) / k; V.cy -= (e.clientY - p.y) / k;
+      if (e.clientX !== p.x || e.clientY !== p.y) V.touched = true;   /* v2.3.3898: dragged */
       clampView(V, map);
       dirty.current = true;
     }
@@ -419,14 +427,10 @@ function WorldMap({ stateRef, onClose }) {
     if (!S || !S.player || !map) return;
     const V = view.current;
     /* v2.3.3522: in town, ◎ is the town's view (every building named), as
-       the map opens there -- 4x the short Wheel stopped short of the names */
-    const cv = cvRef.current;
-    const tv = cv && inTownNow(S.player) ? townView(map, cv.clientWidth, cv.clientHeight) : null;
-    if (tv) { V.zoom = tv.zoom; V.cx = tv.cx; V.cy = tv.cy; }
-    else {
-      V.cx = S.player.x; V.cy = S.player.y;
-      V.zoom = Math.max(V.zoom, 4 * spanK(map));
-    }
+       the map opens there -- 4x the short Wheel stopped short of the names.
+       v2.3.3898: the same rule as the map's opening (firstView) */
+    applyView(V, firstView(map, cvRef.current, S, V.zoom), map);
+    V.touched = false;   /* v2.3.3898: a view of its own again (the late town view may follow) */
     clampView(V, map);
     setZoomShown([V.zoom, V.zoom / spanK(map)]);
     dirty.current = true;
@@ -607,15 +611,50 @@ function townView(map, w, h) {
     cx: (b.x0 + b.x1) / 2 + (TOWN_PAD.r - TOWN_PAD.l) / 2 / kz,
     cy: (b.y0 + b.y1) / 2 + (TOWN_PAD.b - TOWN_PAD.t) / 2 / kz };
 }
-/* In BroTown: the worker's word for the spot under you, or -- before it has
-   answered -- within a short walk of the town's doors */
-function inTownNow(P) {
+/* At home: BroTown or its commons -- the top bar reads "BroTown" on both, the
+   commons "safe" too (v2.3.3898: the commons counts; before it only region
+   'town' did, so a player on the commons opened the whole Wheel).  The
+   worker's word for the spot under you only when it is FRESH, for the cell
+   you are in: its last answer can be where you died (wheelTrial.js
+   wheelHere), so a respawn in town opened the whole Wheel.  With no fresh
+   answer: within a short walk of the town's doors, or -- before the worker
+   has named them -- within the safe ground round the town's middle. */
+function inTownNow(P, map) {
   try {
     const here = wheelHere(P.x, P.y);
-    if (here && here.region) return here.region === 'town';
+    if (here && here.fresh && here.region) return here.region === 'town' || here.region === 'commons';
   } catch (e) { /* no answer yet */ }
   const b = townDoorsBox();
-  return !!b && P.x >= b.x0 - 300 && P.x <= b.x1 + 300 && P.y >= b.y0 - 500 && P.y <= b.y1 + 300;
+  if (b && P.x >= b.x0 - 300 && P.x <= b.x1 + 300 && P.y >= b.y0 - 500 && P.y <= b.y1 + 300) return true;
+  const T = map && map.hub && map.hub.town;
+  const safeR = ZONES && ZONES.wheel && Number(ZONES.wheel.safeR);
+  return !!(T && safeR > 0 && Math.hypot(P.x - T.x, P.y - T.y) <= safeR);
+}
+/* ═══ v2.3.3898: THE MAP'S FIRST VIEW (the opening and ◎) ═══
+   At home: the town's view (every building on the screen, named); before
+   the worker has named the buildings, the town's middle at the zoom they are
+   named from (AT.town), marked `waitTown` so the town's view takes over when
+   the doors come (unless the player has moved the map by then).  Anywhere
+   else: you, up close (◎'s 4x the short Wheel, or nearer if already
+   nearer).  Never zoom 1. */
+function firstView(map, cv, S, zoomNow) {
+  const P = S && S.player;
+  const k = spanK(map);
+  const near = Math.max(Number(zoomNow) || 1, 4 * k);
+  if (!P) return { zoom: near, cx: map.hub && map.hub.town ? map.hub.town.x : map.worldW / 2, cy: map.hub && map.hub.town ? map.hub.town.y : map.worldH / 2 };
+  if (inTownNow(P, map)) {
+    const tv = cv ? townView(map, cv.clientWidth, cv.clientHeight) : null;
+    if (tv) return { ...tv, waitTown: false };
+    const T = map.hub && map.hub.town;
+    if (T) return { zoom: AT.town * k, cx: T.x, cy: T.y, waitTown: true };
+  }
+  return { zoom: near, cx: P.x, cy: P.y, waitTown: false };
+}
+function applyView(V, v, map) {
+  V.zoom = Math.max(1, Math.min(ZOOM_MAX * spanK(map), v.zoom));
+  V.cx = v.cx; V.cy = v.cy;
+  V.waitTown = !!v.waitTown;
+  clampView(V, map);
 }
 /* A building's name in two lines, split at the space nearest its middle
    ("Auction" / "House"), for a street where one line would not fit */
