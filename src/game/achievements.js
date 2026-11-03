@@ -218,6 +218,30 @@ export function sendAchvTitle(S, id, now) {
   return true;
 }
 
+/* ═══ v2.3.4142: THE BRO PAGE'S "TITLES" ROW ═══
+   The title picker is the Achievements page (an earned row, opened, offers
+   "Use as title").  The Bro page's Titles row asks the page to open on the
+   row you would pick from -- the title you wear, else your newest -- so the
+   buttons are on screen when it lands.  A one-shot: the page takes it on
+   mount, and an Achievements page opened any other way opens as before. */
+let _titlePick = false;
+export function askTitlePicker() { _titlePick = true; }
+/** The page, on mount: the row to open for the title picker, or null. */
+export function takeTitlePicker(S) {
+  if (!_titlePick) return null;
+  _titlePick = false;
+  const a = S && S._achv;
+  if (!a || !a.got) return null;
+  if (typeof a.t === 'string' && has(a.got, a.t)) return a.t;
+  let best = null, at = -Infinity;
+  for (const id of Object.keys(a.got)) {
+    if (!achvById(id)) continue;
+    const t = Number(a.got[id]) || 0;
+    if (t > at) { at = t; best = id; }
+  }
+  return best;
+}
+
 /** A title ask still waiting for its answer: {id, at} or null. */
 export function achvTitleWaiting(S, now) {
   const a = S && S._achv;

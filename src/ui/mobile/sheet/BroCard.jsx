@@ -1,67 +1,79 @@
-import React from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getState } from '../dash/common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { PlayerProfilePanel } from '../../panels/PlayerProfilePanel.jsx';
-import { profileFromSelf } from '../../panels/playerProfile.js';
+import { profileFromSelf, compactCount } from '../../panels/playerProfile.js';
 import { portraitSrc } from './portraitStore.js';
-import { deriveHeroStats, weaponSkillProgress } from './heroModel.js';
-import { heroStatPills, HERO_PILL_ICON } from './heroStatPills.js';
+import { BRO_WEAPONS, broStartWeapon, broWeaponStats } from './broStats.js';
 import { SKILL_ROSTER, hasUnseenLevelUps } from './skillsModel.js';
 import { prog3Live, prog3CharLevel } from '../../../data/prog3.js';
-import { toDisplayHp } from '../../../data/gameSystems.js';
-import { POINTS_ART_DIR, POINTS_ART_V } from '../../../data/pointsHeadArt.js';
-import { achvLive, achvApTotal, achvSummary } from '@/game/achievements.js';
-import { achvById, ACHV_MEDAL_SRC } from '@/data/achievements.js';
-import { deskWords } from '@/game/deskWords.js';
+import { achvLive, achvApTotal, achvSummary, askTitlePicker } from '@/game/achievements.js';
+import { ACHV_MEDAL_SRC } from '@/data/achievements.js';
+import { clanPartyOn } from '@/game/alliance.js';
 import { NAV_KEYS } from '@/game/deskKeys.js';   /* L, worn by the Life Skills row on a computer */
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 
-/* ═══ v2.3.4142: THE BRO PAGE -- YOUR OWN INSPECT CARD ═══
- * The owner, 2026-11-03: "I wanted the bro tab to be like what it looks like
- * when you inspect another player.  PFP clan, achievements, all the base
- * character stats, primary combat skills, place where you can tap to open
- * points spend window, etc".
- *
- * So the page IS the Inspect card (ui/panels/PlayerProfilePanel.jsx, the
- * screen behind another player's portrait), drawn in the dashboard
- * (`embedded`) from your own state (playerProfile.js profileFromSelf, the
- * shape it already built for your own card), with the same look, top to
- * bottom:
- *   head      your portrait, name, LV, your Achievement Points (a tap opens
- *             the Achievements page), quests completed, the leaderboard
- *   tags      the title you wear (a tap: Achievements) and your clan ("No
- *             Clan" when none; a tap opens the clan's page)
- *   combat    Melee · Bow · Magic, each level with the bar to the next
- *   equip     the six worn slots; a tap opens the Equipment window
- *   + STATS   everything about your bro in numbers: HP, stamina and mana,
- *             then the Equipment window's own stat pills (heroStatPills: one
- *             reader, so the two never disagree), each a tap to its explainer
- *   showcase  lifetime kills, your rarest achievement, the Homestead
- *   + ACHIEVEMENTS   AP, how many of the table, the latest three badges; a
- *             tap opens the page
- *   + LIFE SKILLS    one row, a tap opens the page (a dot: an unseen level)
- *   + SPEND POINTS (N)   in the command dock's place (another player's card
- *             has Party / Trade / Duel there): stuck to the card's bottom
- *             edge, so on the phone's short page it is always on screen; gold,
- *             glowing while N > 0; it opens the Points window over the card
- *             (data-section="Build": the guide arrow and the points bubbles
- *             aim at it)
- * The "+" rows are only yours (the card's `slots`); an inspect window passes
- * none of them and is unchanged.  Achievements, Life Skills, the clan and the
- * leaderboard are pages pushed under Bro (their back chip returns here).
- *
- * "The five points stats" (Power, Vitality, Endurance, Agility, Mind) are the
- * retired tier-1 stats (StatScreenPanel v2.3.1236: "STALE presentation"):
- * points buy the weapon and shared stats now, so the card shows THOSE.
- *
- * Read only: nothing here spends or sends.  HeroExpanded re-reads every
- * 400 ms (and the card every second), so this has no clock of its own. */
+/* ═══ v2.3.4142: THE BRO PAGE, AS THE OWNER DREW IT ═══
+ * The owner, of the first cut (your own Inspect card): "I'll need to change
+ * the layout of the bro tab, it reads like an old PC menu."  Then: "I added
+ * what I want bro tab layout to look like on GitHub.  One different thing is
+ * the xp bar near profile portrait (no general combat xp)".  And on the
+ * portrait: "character portrait are fine it's just too much screen space for
+ * persistent thing stuck on game screen ... I'm wanting the portrait in the
+ * bro section".  The drawing is D474F679-...png in the repo root: THREE
+ * PANELS side by side under the button row --
+ *   LEFT     you: your portrait framed, your name, "Lv N" (no XP bar: there
+ *            is no general combat XP), the title you wear as a gold ribbon
+ *            ("No title" plainly), your clan (castle, name [TAG], "No clan";
+ *            a tap opens it), your AP with the star (a tap: Achievements),
+ *            and two tiles: Achievements n / total, Lifetime Kills;
+ *   MIDDLE   Sword | Bow | Staff (starting on the weapon out), then "Combat
+ *            Stats" for that weapon, a row a stat (broStats.js: the game's
+ *            own readers, per weapon); the list scrolls when the band is
+ *            shorter than it;
+ *   RIGHT    doors, a chevron each: Achievements, Life Skills (the drawing's
+ *            "Attributes" row: the game has no STR / AGI / INT, so the slot
+ *            went to the page that moved under Bro), Points (glowing while a
+ *            point waits: data-section="Build", where the guide arrow and
+ *            the points bubbles aim), Equipment (the worn six, until the Gear
+ *            button's lane takes them), Homestead, Pet, Titles, Clan.
+ * No full-body figure.  The band keeps today's height (the owner: "No don't
+ * change todays dashboard height"), so the page lays itself out from ITS box,
+ * measured, never the window's (TRAPS §214):
+ *   3 columns  600 px and wider (a tablet, a computer's one band): as drawn,
+ *              each panel its own scroller;
+ *   2 columns  340-599 (an upright phone: 378 px of page; a computer's side
+ *              column): you | the doors, the stats under them, one scroller.
+ *              The doors sit beside you rather than under the stats because
+ *              the upright page is ~185 px tall: what you tap (Points among
+ *              the first three) must be on screen when it opens, where the
+ *              guide arrow can point at it; the stats are a scroll away;
+ *   1 column   under 340 (a phone on its side: ~220 px): you, the doors, the
+ *              stats, one scroller.
+ * A taller box just shows more.  Read only: nothing here spends or sends;
+ * HeroExpanded re-renders every 400 ms, so this has no clock of its own. */
 
 const fmt = (v) => Math.max(0, Math.floor(Number(v) || 0)).toLocaleString('en-US');
-const SPEND_ICON = `${POINTS_ART_DIR}character.png?v=${POINTS_ART_V}`;   /* the Points window's own "character" head */
-const LIFE_ICON = '/icons/ui/nav-lifeskills.webp?v=2.3.1331';           /* the old Skills button's crest */
-const CB_CATS = [['melee', 'sword'], ['bow', 'bow'], ['staff', 'staff']];
+
+const ICON = {
+  achv: ACHV_MEDAL_SRC,
+  life: '/icons/ui/nav-lifeskills.webp?v=2.3.1331',   /* the old Skills button's crest */
+  points: '/icons/ui/cur-buildpoint.webp',
+  equip: '/icons/ui/panel-loadout.webp',
+  farm: '/icons/ui/bldg-farm.webp',
+  pet: '/icons/ui/pets-paw.webp?v=2.3.3526',             /* More's Pets tile */
+  titles: '/icons/ui/party-crown.webp',
+  clan: '/icons/ui/clan.webp',
+  kills: '/icons/ui/hero/rec-kills.webp',
+};
+
+/* the page's shape from its own width (above) */
+export const BRO_COLS_3 = 600;
+export const BRO_COLS_2 = 340;
+export function broCols(w) {
+  if (!(w > 0)) return 2;
+  return w >= BRO_COLS_3 ? 3 : w >= BRO_COLS_2 ? 2 : 1;
+}
 
 /* the level the game shows everywhere else: the best weapon's (v2.3.3538) */
 function levelOf(R) {
@@ -69,27 +81,12 @@ function levelOf(R) {
   return Math.max(1, Number(R && R.level) || 1);
 }
 
-/* your profile, as the card reads it, with the numbers the rest of the
-   game shows for you: the level, the worker's AP, and the combat bars */
-export function broProfile(S) {
-  const R = (S && S.rpg) || {};
-  const p = profileFromSelf(S);
-  p.characterLevel = levelOf(R);
-  p.achievementPoints = achvApTotal(S);
-  const pct = {};
-  for (const [k, cat] of CB_CATS) {
-    let v = 100;
-    try {
-      const w = weaponSkillProgress(R, cat);
-      if (w && w.thresh) v = Math.max(0, Math.min(100, (w.prog / w.thresh) * 100));
-    } catch (e) { v = 0; }
-    pct[k] = v;
-  }
-  p.combatPct = pct;
-  return p;
-}
+/* the weapon picked here, kept while the page is visited (the Points window
+   over it and back keeps it); a fresh visit starts on the weapon out */
+let _pick = null;
+dashboardPanelBus.subscribe(() => { if (dashboardPanelBus.state.mode === 'bar') _pick = null; });
 
-/* the explainer a stat's pill opens (the Equipment window's own) */
+/* the explainer a stat's row opens (the Equipment window's own) */
 function explain(key, value) {
   try {
     const info = statInfo(key);
@@ -97,13 +94,22 @@ function explain(key, value) {
   } catch (e) { /* no explainer: nothing opens */ }
 }
 
-function StatPill({ k, icon, label, value, info }) {
+const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
+
+function Row({ id, icon, title, sub, n, live, dot, chevron = true, onTap, extra }) {
   return (
-    <button type="button" className="bt-bro-stat" data-bro-stat={k}
-      onClick={(e) => { e.stopPropagation(); explain(info, value); }}>
-      {icon ? <img src={icon} alt="" draggable={false} /> : null}
-      <span className="bt-bro-statl">{label}</span>
-      <b>{value}</b>
+    <button type="button" className={'bt-bro2-row' + (live ? ' is-live' : '')} data-bro-row={id}
+      data-bro-row-n={n == null ? undefined : n} aria-label={title + (sub ? ': ' + sub : '')}
+      onClick={stop(onTap)} {...(extra || null)}>
+      {/* the Points tab's glow (v2.3.3004), kept while any point waits */}
+      {live ? <span className="bt-pts-glow" data-pts-glow="tab" aria-hidden="true" /> : null}
+      <img className="bt-bro2-rowic" src={icon} alt="" draggable={false} />
+      <span className="bt-bro2-rowt">
+        <b>{title}</b>
+        {sub ? <span>{sub}</span> : null}
+      </span>
+      {dot ? <span className="bt-bro2-dot" data-skills-dot="" aria-hidden="true" /> : null}
+      {chevron ? <span className="bt-bro2-chev" aria-hidden="true">{'›'}</span> : null}
     </button>
   );
 }
@@ -113,129 +119,186 @@ export const BroCard = ({ points, onPoints, onEquipment }) => {
   const R = (S && S.rpg) || {};
   const n = Math.max(0, Math.floor(Number(points) || 0));
   const apOn = achvLive(S);
+  const box = useRef(null);
+  const [cols, setCols] = useState(2);
+  const [weapon, setWeaponState] = useState(() => _pick || broStartWeapon(R));
+  const setWeapon = (c) => { _pick = c; setWeaponState(c); };
 
-  let d = {};
-  try { d = deriveHeroStats(R) || {}; } catch (e) { d = {}; }
-  let pills = null;
-  try { pills = heroStatPills(R, d); } catch (e) { pills = null; }
-  const vitals = [
-    { k: 'hp', label: 'HP', info: 'Max HP', icon: HERO_PILL_ICON.hp, value: fmt(toDisplayHp(Number(R.maxHp) || 100)) },
-    { k: 'stamina', label: 'Stamina', info: 'Stamina', icon: HERO_PILL_ICON.stam, value: fmt(Number(R.maxStamina) || 100) },
-    { k: 'mana', label: 'Mana', info: 'Max Mana', icon: HERO_PILL_ICON.mana, value: fmt(Number(R.maxMana) || 100) },
-  ];
-  const offense = pills ? [pills.dps].concat(pills.offense) : [];
-  /* the stamina pool is the vitals' own number; its "+N from points" pill
-     would say Stamina twice */
-  const defense = pills ? pills.player.filter((p) => p.key !== 'stam') : [];
+  /* the shape from the box (ResizeObserver: the band, the side column and the
+     one band all resize it without a window resize) */
+  useLayoutEffect(() => {
+    const el = box.current;
+    if (!el) return undefined;
+    const measure = () => { const w = el.clientWidth; if (w > 0) setCols(broCols(w)); };
+    measure();
+    let ro = null;
+    try { ro = new ResizeObserver(measure); ro.observe(el); } catch (e) { ro = null; }
+    return () => { try { if (ro) ro.disconnect(); } catch (e) { /* gone */ } };
+  }, []);
+  /* QA: the shape and the weapon (window.__btBroCard) */
+  useEffect(() => {
+    try { window.__btBroCard = { cols, weapon }; } catch (e) { /* no window */ }
+  }, [cols, weapon]);
+  useEffect(() => () => { try { window.__btBroCard = null; } catch (e) { /* no window */ } }, []);
 
-  /* the latest three achievements you earned, newest first */
-  const a = S && S._achv;
-  let latest = [];
+  let p = null;
+  try { p = profileFromSelf(S); } catch (e) { p = null; }
+  const name = (p && p.name) || 'You';
+  const level = levelOf(R);
+  const ap = achvApTotal(S);
   let sum = null;
-  if (apOn) {
-    try { sum = achvSummary(S); } catch (e) { sum = null; }
-    const got = (a && a.got) || {};
-    latest = Object.keys(got).map((id) => ({ id, at: got[id], def: achvById(id) }))
-      .filter((x) => x.def).sort((x, y) => y.at - x.at).slice(0, 3);
-  }
+  if (apOn) { try { sum = achvSummary(S); } catch (e) { sum = null; } }
+  const title = p && p.equippedTitle;
+  const clan = p && p.clan;
+  const kills = p && p.showcase ? p.showcase.lifetimeKills : 0;
+  const pet = p && p.pet;
+  const plots = p && p.homestead ? Math.max(0, Number(p.homestead.plotsReady) || 0) : 0;
+  const worn = p && Array.isArray(p.equipment) ? p.equipment.filter((s) => !s.ghost).length : 0;
+  const slots = p && Array.isArray(p.equipment) ? p.equipment.length : 6;
   const ls = R.lifeSkills || {};
   let lifeTotal = 0;
   for (const s of SKILL_ROSTER) lifeTotal += Math.max(0, Number(ls[s.key] && ls[s.key].level) || 0);
   let lifeNew = false;
   try { lifeNew = hasUnseenLevelUps(R); } catch (e) { lifeNew = false; }
+  let party = false;
+  try { party = clanPartyOn(S); } catch (e) { party = false; }
 
-  const go = (id) => {
-    if (id === 'encyclopedia') { dashboardPanelBus.open('encyclopedia'); return; }
-    /* a page under Bro: Achievements, the leaderboard (dashboardPanelBus
-       keeps Achievements and Life Skills under Bro whoever asks) */
-    dashboardPanelBus.push(id);
+  const go = (id) => dashboardPanelBus.push(id);   /* a page under Bro: its back chip returns here */
+  const openAchv = () => go('achievements');
+  const openTitles = () => { askTitlePicker(); go('achievements'); };
+  const openClan = () => go('clan');
+  const farmInfo = () => {
+    try {
+      infoPopupBus.open({
+        title: 'Homestead',
+        body: (plots > 0 ? `${plots} plot${plots === 1 ? '' : 's'} ready to harvest. ` : 'Nothing ready to harvest yet. ')
+          + 'Your farm is reached from the Feed & Seed in BroTown: walk in its door to plant, water and harvest.',
+      });
+    } catch (e) { /* no popup: the count says it */ }
   };
 
-  const spend = (
-    <button type="button" role="button" data-section="Build" data-bro-spend={n}
-      className={'bt-bro-spend' + (n > 0 ? ' is-live' : '')}
-      aria-label={`Spend points (${n})`} title={`Spend points (${n})`}
-      onClick={(e) => { e.stopPropagation(); if (onPoints) onPoints(); }}>
-      {/* the Points tab's glow, kept while any point waits (v2.3.3004) */}
-      {n > 0 ? <span className="bt-pts-glow" data-pts-glow="tab" aria-hidden="true" /> : null}
-      <img src={SPEND_ICON} alt="" draggable={false} />
-      <span className="bt-bro-spendl">Spend points</span>{' '}
-      <b data-bro-spend-n={n}>({n})</b>
-    </button>
-  );
+  const stats = broWeaponStats(R, weapon);
+  const clanWords = clan ? `${clan.name || clan.tag} [${clan.tag}]` : (party ? 'No party' : 'No clan');
+  const wLabel = (BRO_WEAPONS.find((w) => w.cat === stats.cat) || BRO_WEAPONS[0]).label;
 
-  const stats = (
-    <div className="bt-bro-stats-wrap" data-bro-stats="">
-      <div className="bt-pcard-rule" aria-hidden="true" />
-      <div className="bt-bro-sec">Stats</div>
-      <div className="bt-bro-vitals">
-        {vitals.map((v) => <StatPill key={v.k} {...v} />)}
-      </div>
-      {offense.length ? (
-        <>
-          <div className="bt-bro-sub">Offense</div>
-          <div className="bt-bro-stats">
-            {offense.map((p) => <StatPill key={p.key} k={p.key} icon={p.icon} label={p.label} value={p.value} info={p.info} />)}
-          </div>
-        </>
-      ) : null}
-      {defense.length ? (
-        <>
-          <div className="bt-bro-sub">Defense</div>
-          <div className="bt-bro-stats">
-            {defense.map((p) => <StatPill key={p.key} k={p.key} icon={p.icon} label={p.label} value={p.value} info={p.info} />)}
-          </div>
-        </>
-      ) : null}
-    </div>
-  );
-
-  const end = (
-    <div className="bt-bro-rows">
-      {apOn ? (
-        <button type="button" className="bt-bro-row" data-bro-achv={sum ? sum.earned : 0}
-          aria-label={`Achievements: ${fmt(achvApTotal(S))} points. Open`}
-          onClick={(e) => { e.stopPropagation(); go('achievements'); }}>
-          <img className="bt-bro-rowic" src={ACHV_MEDAL_SRC} alt="" draggable={false} />
-          <span className="bt-bro-rowt">
-            <b>Achievements</b>
-            <span>Achievement Points: <em>{fmt(achvApTotal(S))}</em>{sum ? ` · ${sum.earned} of ${sum.total}` : ''}</span>
-          </span>
-          <span className="bt-bro-badges" aria-hidden="true">
-            {latest.map((x) => (
-              <img key={x.id} data-bro-latest={x.id} src={x.def.icon} alt="" draggable={false} title={x.def.name} />
-            ))}
-          </span>
-          <span className="bt-bro-chev" aria-hidden="true">›</span>
-        </button>
-      ) : null}
-      <button type="button" className="bt-bro-row" data-bro-life={lifeTotal}
-        data-key={NAV_KEYS.skills} data-key-at="inline"
-        aria-label="Life Skills. Open"
-        onClick={(e) => { e.stopPropagation(); go('skills'); }}>
-        <img className="bt-bro-rowic" src={LIFE_ICON} alt="" draggable={false} />
-        <span className="bt-bro-rowt">
-          <b>Life Skills</b>
-          <span>Total level <em>{fmt(lifeTotal)}</em> {'·'} {deskWords('tap to see all')}</span>
+  /* ── LEFT: you ── */
+  const left = (
+    <section className="bt-bro2-panel bt-bro2-id" data-bro-panel="id">
+      <div className="bt-bro2-head">
+        <span className="bt-bro2-face"><img src={portraitSrc(S)} alt="" draggable={false} /></span>
+        <span className="bt-bro2-who">
+          <b className="bt-bro2-name" data-bro-name="">{name}</b>
+          <span className="bt-bro2-lv" data-bro-level={level}>Lv {level}</span>
         </span>
-        {lifeNew ? <span className="bt-bro-dot" data-skills-dot="" aria-hidden="true" /> : null}
-        <span className="bt-bro-chev" aria-hidden="true">›</span>
+      </div>
+      {title ? (
+        <button type="button" className="bt-bro2-ribbon" data-bro-title={title.id}
+          aria-label={`Title: ${title.text}. Change`} onClick={stop(apOn ? openTitles : openAchv)}>
+          <span className="bt-bro2-ribbon-in">
+            {title.iconSrc ? <img src={title.iconSrc} alt="" draggable={false} /> : null}
+            <span>{title.text}</span>
+          </span>
+        </button>
+      ) : (
+        <button type="button" className="bt-bro2-notitle" data-bro-title="none"
+          aria-label="No title. Choose one" onClick={stop(apOn ? openTitles : openAchv)}>No title</button>
+      )}
+      <button type="button" className="bt-bro2-line" data-bro-clan={clan ? clan.tag : 'none'}
+        aria-label={(clan ? 'Clan: ' + clanWords : clanWords) + '. Open'} onClick={stop(openClan)}>
+        <img src={ICON.clan} alt="" draggable={false} />
+        <span className={clan ? '' : 'is-none'}>
+          {clan ? <>{clan.name || clan.tag} <em>[{clan.tag}]</em></> : clanWords}
+        </span>
       </button>
-    </div>
+      <button type="button" className="bt-bro2-line is-ap" data-bro-ap={ap}
+        aria-label={`${fmt(ap)} Achievement Points. Open Achievements`} onClick={stop(openAchv)}>
+        <span className="bt-bro2-star" aria-hidden="true">{'★'}</span>
+        <span><b>{compactCount(ap)}</b> AP</span>
+      </button>
+      <div className="bt-bro2-tiles">
+        <button type="button" className="bt-bro2-tile" data-bro-tile="achievements"
+          data-bro-achv-tile={sum ? `${sum.earned}/${sum.total}` : ''}
+          aria-label={sum ? `Achievements: ${sum.earned} of ${sum.total}. Open` : 'Achievements. Open'}
+          onClick={stop(openAchv)}>
+          <img src={ICON.achv} alt="" draggable={false} />
+          <span>Achievements</span>
+          <b>{sum ? `${sum.earned} / ${sum.total}` : '–'}</b>
+        </button>
+        <div className="bt-bro2-tile" data-bro-tile="kills" data-bro-kills={kills || 0}>
+          <img src={ICON.kills} alt="" draggable={false} />
+          <span>Lifetime Kills</span>
+          <b>{compactCount(kills || 0)}</b>
+        </div>
+      </div>
+    </section>
+  );
+
+  /* ── MIDDLE: the weapon's combat stats ── */
+  const middle = (
+    <section className="bt-bro2-panel bt-bro2-stats" data-bro-panel="stats" data-bro-weapon={stats.cat} data-bro-has={stats.has ? 1 : 0}>
+      <div className="bt-bro2-wsel" role="group" aria-label="Weapon">
+        {BRO_WEAPONS.map((w) => (
+          <button key={w.cat} type="button" className="bt-bro2-wbtn" data-bro-wsel={w.cat}
+            aria-pressed={w.cat === stats.cat} onClick={stop(() => setWeapon(w.cat))}>
+            <img src={w.icon} alt="" draggable={false} />
+            <span>{w.label}</span>
+          </button>
+        ))}
+      </div>
+      <div className="bt-bro2-sec" aria-hidden="true"><i /><span>Combat Stats</span><i /></div>
+      {stats.has ? null : (
+        <div className="bt-bro2-none" data-bro-noweapon={stats.cat}>No {wLabel.toLowerCase()} equipped</div>
+      )}
+      <div className="bt-bro2-list">
+        {stats.rows.map((r) => (
+          <button key={r.key} type="button" className="bt-bro2-stat" data-bro-stat={r.key} data-v={r.value}
+            onClick={stop(() => explain(r.info, r.value))}>
+            <img src={r.icon} alt="" draggable={false} />
+            <span className="bt-bro2-statl">{r.label}</span>
+            <b>{r.value}</b>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+
+  /* ── RIGHT: the doors ── */
+  const right = (
+    <section className="bt-bro2-panel bt-bro2-rows" data-bro-panel="rows">
+      {apOn ? (
+        <Row id="achievements" icon={ICON.achv} title="Achievements" n={sum ? sum.earned : 0}
+          sub={sum ? `${sum.earned} of ${sum.total}` : null} onTap={openAchv} />
+      ) : null}
+      <Row id="skills" icon={ICON.life} title="Life Skills" n={lifeTotal} dot={lifeNew}
+        sub={`Total level ${fmt(lifeTotal)}`} onTap={() => go('skills')}
+        extra={{ 'data-key': NAV_KEYS.skills, 'data-key-at': 'inline' }} />
+      {/* data-section="Build": the guide arrow ("Tap Points") and the points
+          bubbles aim here; the Points window opens over the card and its
+          close comes back */}
+      <Row id="points" icon={ICON.points} title="Points" n={n} live={n > 0}
+        sub={n > 0 ? `${fmt(n)} to spend` : 'All spent'} onTap={() => { if (onPoints) onPoints(); }}
+        extra={{ 'data-section': 'Build', 'data-bro-spend': n }} />
+      <Row id="equipment" icon={ICON.equip} title="Equipment" n={worn}
+        sub={`${worn} of ${slots} worn`} onTap={() => { if (onEquipment) onEquipment(); }}
+        extra={{ 'data-section': 'Overview' }} />
+      {/* no window for the farm away from it: the count, and a tap says where */}
+      <Row id="homestead" icon={ICON.farm} title="Homestead" n={plots} chevron={false}
+        sub={plots > 0 ? `${plots} plot${plots === 1 ? '' : 's'} ready` : 'Nothing ready'} onTap={farmInfo} />
+      <Row id="pet" icon={ICON.pet} title="Pet" sub={pet ? pet.customName : 'No pet'} onTap={() => go('pets')} />
+      {apOn ? (
+        <Row id="titles" icon={ICON.titles} title="Titles" n={sum ? sum.earned : 0}
+          sub={`${sum ? sum.earned : 0} unlocked`} onTap={openTitles} />
+      ) : null}
+      <Row id="clan" icon={ICON.clan} title={party ? 'Party' : 'Clan'} sub={clanWords} onTap={openClan} />
+    </section>
   );
 
   return (
-    <PlayerProfilePanel
-      embedded
-      getProfile={() => broProfile(getState())}
-      face={<img src={portraitSrc(S)} alt="" draggable={false} />}
-      onOpen={go}
-      onAp={apOn ? () => go('achievements') : null}
-      onClan={() => go('clan')}
-      onEquipment={onEquipment}
-      slots={{ afterEquip: stats, end, dock: spend }}
-      dock={null}
-    />
+    <div ref={box} className="bt-bro2" data-bro-card="v2" data-bro-cols={cols}>
+      {left}
+      {middle}
+      {right}
+    </div>
   );
 };
 

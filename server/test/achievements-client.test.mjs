@@ -208,12 +208,12 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
      ... its own icon in the more/other apps menus") */
   /* v2.3.4142: the owner's five buttons -- Achievements left More: it is a
      page under Bro (dashboardPanelBus BRO_PAGES), opened from the Bro card's
-     Achievements row and its AP (only where the worker grants them); Journey
-     keeps its tile in More */
+     Achievements row, its tile and its AP (the row only where the worker
+     grants them); Journey keeps its tile in More */
   const bus = src('src/ui/mobile/dashboardPanelBus.js'), card = src('src/ui/mobile/sheet/BroCard.jsx');
-  check('7d Bro: Achievements is a page under Bro, the card\'s "Achievement Points: N" row and AP open it (only where granted), and Journey keeps its More tile',
+  check('7d Bro: Achievements is a page under Bro, the card\'s Achievements row and AP open it (the row only where granted), and Journey keeps its More tile',
     /const BRO_PAGES = \{ skills: 1, achievements: 1 \}/.test(bus) && /broPage\(id\) \? \['hero', id\]/.test(bus)
-      && /Achievement Points: <em>/.test(card) && /go\('achievements'\)/.test(card) && /apOn \? \(/.test(card)
+      && /<Row id="achievements"/.test(card) && /const openAchv = \(\) => go\('achievements'\)/.test(card) && /data-bro-ap=/.test(card) && /apOn \? \(/.test(card)
       && !/'achievements', 'journey'|\['achievements'\] : \[\]/.test(more) && /'pets', 'journey'/.test(more)
       && /id: 'journey', +src: '\/icons\/ui\/journey\.webp/.test(more));
   check('7e the dashboard knows the page, with its Head', /achievements: \{ title: 'Achievements', Component: AchievementsPanel, Head: AchievementsHead \}/.test(src('src/ui/mobile/BottomDashboard.jsx')));

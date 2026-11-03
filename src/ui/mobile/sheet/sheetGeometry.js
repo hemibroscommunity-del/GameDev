@@ -526,7 +526,12 @@ export function navButtonSize(vw, vh) {
      go to the five that are left (the brief: "give the freed width to the
      nav buttons"): 70 at 390, 64 at 360, 78 at 430.  The ceiling rises to
      match, so it is the row that decides, not a number from six buttons. */
-  return { w: Math.min(Math.max(w, 26), 80), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
+  /* v2.3.4142 (later the same PR): 80 -> 96 -- CLOSE is back at the row's
+     left and the buttons carry their words (NavRail navLabelMode): a wide
+     band (a tablet, a computer's one band) gives each the 86 its picture
+     and word side by side need, as the owner drew them.  A phone's row
+     decides below it: 58 at 390. */
+  return { w: Math.min(Math.max(w, 26), 96), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
 }
 
 /* v2.3.1653: the leftmost x the nav group may start at.  It WAS the weapon
@@ -575,9 +580,13 @@ export function navButtonSize(vw, vh) {
    very move the one-position rule (v2.3.1637b) is about.  84 is the pill
    (75.9) and its two 4 px gaps: six buttons at 44 on a 390 phone (the five
    were 46), 41 at 375, 39 at 360, 51 at 430. */
-/* v2.3.4142: 0 -- the CLOSE pill left this row for the grip on the band's
-   top edge (BottomDashboard), and nothing else stands beside the buttons */
-const IDENTITY_MIN_LINE = 0; /* was 84: the CLOSE pill and its gaps (v2.3.3215: the back chip moved out) */
+/* v2.3.4142: CLOSE is back at the row's left, as the owner drew it (the
+   grip on the band's top edge stays too: dash/BandGrip.jsx BandClose), at
+   the word's own width -- 56: "CLOSE" at 11 px with its tracking is ~40 --
+   and one 4 px gap: the five buttons are 58 at 390, 52 at 360, 44 at 320
+   (where their words give way to the pictures alone, NavRail navLabelMode). */
+export const BAND_CLOSE_W = 56;
+const IDENTITY_MIN_LINE = BAND_CLOSE_W + 4; /* was 84: the old pill and its gaps (v2.3.3215: the back chip moved out) */
 function navGroupLeftLimit(vw) {
   return DASH_GAP + IDENTITY_MIN_LINE;
 }

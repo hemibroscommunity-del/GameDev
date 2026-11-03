@@ -50,7 +50,7 @@ check('3d kept for later: done after POINTS_MS shown', G.guideState('points', p3
 
 /* 4 */
 check('4a a phone reads Tap, a computer Click', /^Tap/.test(G.guideWords('weapon', '[data-dash-fold="min"]', false)) && /^Click/.test(G.guideWords('weapon', '[data-dash-fold="min"]', true)));
-check('4b the Points tab and Character have their own words', G.guideWords('points', '[data-section="Build"]', false) === 'Tap Spend points' /* v2.3.4142 */ && /Bro/.test(G.guideWords('points', '[data-nav="hero"]', false)));
+check('4b the Points tab and Character have their own words', G.guideWords('points', '[data-section="Build"]', false) === 'Tap Points' /* v2.3.4142: the Bro card's Points row */ && /Bro/.test(G.guideWords('points', '[data-nav="hero"]', false)));
 
 /* 5 */
 check('5a a character that never took the first quest is owed the weapon lesson again', G.guideOwedAgain(fresh).includes('weapon'));

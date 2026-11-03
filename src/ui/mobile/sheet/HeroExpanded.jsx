@@ -45,7 +45,7 @@ import { deskWideActive } from '../../deskWide.js';                             
 import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
 import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS, pointsResetOn } from '../../../game/pointsReset.js'; /* v2.3.3541: the free points reset */
 import { firstSpendHint } from '../../../game/pointsTips.js'; /* v2.3.3551: after a first spend, the free reset named */
-import { BroCard } from './BroCard.jsx';                                      /* v2.3.4142: Bro is your own inspect card */
+import { BroCard } from './BroCard.jsx';                                      /* v2.3.4142: the Bro page, as the owner drew it */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -86,21 +86,20 @@ import { BroCard } from './BroCard.jsx';                                      /*
    stand out further as just two tabs."  The 'Records' section (Journey) is
    More's Journey page now (dash/JourneyPanel.jsx, its cards moved whole), and
    a request for it, from anything older, opens Equipment (KNOWN below). */
-/* ═══ v2.3.4142: THE BRO PAGE IS YOUR OWN INSPECT CARD ═══
-   The owner, 2026-11-03: "I wanted the bro tab to be like what it looks like
-   when you inspect another player.  PFP clan, achievements, all the base
-   character stats, primary combat skills, place where you can tap to open
-   points spend window, etc".  So no tab row: the page is ONE card ('Card',
-   BroCard.jsx: the Inspect card, PlayerProfilePanel, filled with your data and
-   a few rows only you need), and the two screens that were tabs here open
+/* ═══ v2.3.4142: THE BRO PAGE IS ONE CARD, WINDOWS OVER IT ═══
+   The owner, 2026-11-03, first: "I wanted the bro tab to be like what it
+   looks like when you inspect another player" -- then, of that card, "it
+   reads like an old PC menu", with a drawing of what he wants (BroCard.jsx:
+   you, the weapon's combat stats, the doors).  So no tab row: the page is ONE
+   card ('Card', BroCard.jsx), and the two screens that were tabs here open
    OVER it as windows with a title and a close: Points ('Build', from the
-   card's "Spend points (N)") and Equipment ('Overview', from the card's six
-   equipment slots -- the Gear button's lane takes the equipment once it is on
-   main).  Their close comes back to the card.  Life Skills and Achievements
+   card's Points row) and Equipment ('Overview', from its Equipment row --
+   the Gear button's lane takes the equipment once it is on main).  Their
+   close comes back to the card.  Life Skills, Achievements, Pets and the clan
    are dashboard pages pushed under Bro (dashboardPanelBus: a back chip
    returns here).  The section ids keep their names (tests, the coach, the
    guide arrow and the points bubbles find 'Build' by data-section: the
-   card's Spend button wears it); a request for 'Me' (the first cut's tab)
+   card's Points row wears it); a request for 'Me' (the first cut's tab)
    shows the card. */
 const SECTIONS = ['Card', 'Build', 'Overview'];
 const KNOWN = new Set(SECTIONS);
@@ -877,7 +876,7 @@ export const HeroExpanded = () => {
   );
 
   /* ═══ v2.3.4142: THE CARD, AND THE WINDOW OVER IT ═══
-     The page is the card (BroCard: your own Inspect card).  Points and
+     The page is the card (BroCard: the owner's drawing).  Points and
      Equipment are WINDOWS over it: the same two screens as before, in the same
      scroller, under a title row with a close where the tab row stood (the
      same height, HERO_TAB_H, so everything pinned under it is where it was).

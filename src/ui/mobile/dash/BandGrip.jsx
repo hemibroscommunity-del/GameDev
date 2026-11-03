@@ -2,6 +2,7 @@ import React from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashMinBus } from '../dashMinBus.js';
 import { swallowTapClick } from '../../swallowTapClick.js';
+import { BAND_CLOSE_W } from '../sheet/sheetGeometry.js';   /* v2.3.4142: CLOSE's width, kept by the row */
 
 /* ═══ v2.3.4142: THE SLIM HANDLE ON THE BAND'S TOP EDGE ═══
    The owner adopted this from the review of his dashboard: "remove the large
@@ -92,4 +93,58 @@ export const BandGrip = ({ min, expanded }) => (
       }} />
     </span>
   </button>
+);
+
+/* ═══ v2.3.4142: AND CLOSE AT THE ROW'S LEFT, AS THE OWNER DREW IT ═══
+   His drawing of the Bro page (D474F679-...png) and of the row
+   (61C354F2-...png): CLOSE at the left, then the five buttons.  So the word
+   comes back beside them on the upright phone too -- the grip above stays
+   (the handle every phone's sheets teach, and the hook [data-dash-fold] the
+   harness, the coach and the guide arrow find the fold by).  It does what the
+   grip does, which is what the CLOSE pill always did (v2.3.2119, v2.3.2266):
+   with a page open it closes the page and folds the band ("get all this out
+   of my way"); at rest it folds; folded it reads OPEN and unfolds.  Its hook
+   is its own (data-dash-close), so a test that finds the fold by
+   [data-dash-fold] finds the one control it always did.
+   The house chip (.bt-chisel: the frame art owns the corners), as tall as the
+   five buttons beside it, its width the word's: sheetGeometry's
+   BAND_CLOSE_W is what the row keeps for it. */
+export const BandClose = ({ min, expanded, h }) => (
+  <button
+    type="button"
+    className="bt-chisel bt-chisel--chip bt-band-close"
+    data-dash-close={min ? 'min' : 'open'}
+    aria-label={min ? 'Expand dashboard' : (expanded ? 'Close' : 'Minimize dashboard')}
+    aria-expanded={!min}
+    onPointerDown={(e) => e.stopPropagation()}
+    onPointerUp={(e) => {
+      e.stopPropagation();
+      swallowTapClick(e);
+      try { e.currentTarget.blur(); } catch (_) { /* fine */ }
+      if (expanded) { dashboardPanelBus.toBar(); dashMinBus.set(true); }
+      else dashMinBus.set(!dashMinBus.min);
+    }}
+    onClick={(e) => {
+      if (e.detail !== 0) return;
+      if (expanded) { dashboardPanelBus.toBar(); dashMinBus.set(true); }
+      else dashMinBus.set(!dashMinBus.min);
+    }}
+    style={{
+      flex: 'none',
+      width: BAND_CLOSE_W,
+      height: h || 44,
+      padding: 0,
+      margin: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      color: '#E5EDE9',
+      fontFamily: 'inherit',
+      fontSize: 11,
+      fontWeight: 800,
+      letterSpacing: '.08em',
+      lineHeight: 1,
+      cursor: 'pointer',
+      touchAction: 'manipulation',
+      WebkitTapHighlightColor: 'transparent',
+    }}
+  >{min ? 'OPEN' : 'CLOSE'}</button>
 );

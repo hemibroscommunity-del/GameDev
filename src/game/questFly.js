@@ -33,6 +33,16 @@ function shownRect(el) {
     var cs = getComputedStyle(el);
     if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return null;
   } catch (e) { return null; }
+  /* v2.3.4142: and not scrolled out of a box that clips it (the Bro page's
+     Points row scrolls with the page): its middle inside every such box */
+  var mx = r.left + r.width / 2, my = r.top + r.height / 2;
+  for (var p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+    var ps = null;
+    try { ps = getComputedStyle(p); } catch (e) { ps = null; }
+    if (!ps || (ps.overflowY === 'visible' && ps.overflowX === 'visible')) continue;
+    var b = p.getBoundingClientRect();
+    if (my < b.top || my > b.bottom || mx < b.left || mx > b.right) return null;
+  }
   return r;
 }
 
@@ -45,7 +55,7 @@ function shownRect(el) {
 export var QUEST_FLY_TARGETS = {
   gold: ['[data-purse="1"]'],
   item: ['[data-tut="coach-gear"]', '[data-dash-fold]', '[data-nav="dashboard"]'],
-  /* v2.3.4142: the Bro card's Spend points, or the Points window's title when
+  /* v2.3.4142: the Bro card's Points row, or the Points window's title when
      that window is open over the card */
   points: ['[data-section="Build"]', '[data-bro-popup-head="Build"]', '[data-nav="hero"]', '[data-dash-fold]'],
 };

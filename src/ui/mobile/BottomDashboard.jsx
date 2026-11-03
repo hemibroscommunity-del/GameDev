@@ -22,7 +22,7 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
+import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W, navButtonSize } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns, DeskRailWeapons } from './dash/DashColumns.jsx';           /* v2.3.1636; v2.3.3769 the folded rail's weapons */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { OneBandColumns } from './dash/OneBandColumns.jsx';    /* v2.3.4072 */
@@ -69,7 +69,7 @@ import { AboutPanel }        from './dash/AboutPanel.jsx';   /* v2.3.2820 */
 import { AccountPanel }      from './dash/AccountPanel.jsx';
 import { NotificationsPanel } from './dash/NotificationsPanel.jsx';   /* v2.3.4142: the bell's page */
 import { notifUnread } from './notifBus.js';                         /* v2.3.4142: the bell's unread count on More */
-import { BandGrip } from './dash/BandGrip.jsx';                      /* v2.3.4142: the slim handle that replaced CLOSE / OPEN */
+import { BandGrip, BandClose } from './dash/BandGrip.jsx';           /* v2.3.4142: the slim handle on the band's edge, and CLOSE at the row's left */
 import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
@@ -1396,12 +1396,15 @@ export const BottomDashboard = () => {
                they are folded, the upright phone's chip (v2.3.2266) in the
                computer's sizes (sheetGeometry DESK_FOLD_CHIP_W: why a phone
                on its side keeps the arrows). */
+            /* v2.3.4142: and on a phone on its side, the word too -- the
+               owner's drawing has CLOSE at the row's left on every screen;
+               "CLOSE" at 11 px with its tracking is ~40 of the chip's 44 */
             style={deskKeys
               ? { ...chipStyle, flex: 'none', width: DESK_FOLD_CHIP_W, height: DESK_NAV_BTN_H,
                   padding: 0, fontSize: 12, fontWeight: 800, letterSpacing: '.08em' }
-              : { ...chipStyle, flex: 'none', fontSize: 18,
+              : { ...chipStyle, flex: 'none', fontSize: 11, fontWeight: 800, letterSpacing: '.04em', padding: 0,
                   width: LAND_FOLD_CHIP_W, height: LAND_FOLD_CHIP_W }}
-          >{deskKeys ? (mode === 'expanded' ? 'CLOSE' : 'OPEN') : (mode === 'expanded' ? '▾' : '▴')}</button>
+          >{mode === 'expanded' ? 'CLOSE' : 'OPEN'}</button>
           {/* ═══ v2.3.2176: MINIMIZED MEANS MINIMIZED ═══
               Owner: the nav buttons "should've been hidden inside the main
               dashboard screen when it's minimized."  So sideways they are
@@ -1790,10 +1793,13 @@ export const BottomDashboard = () => {
             expanded or collapsed."  The fold is BandGrip now, on the band's
             top edge (below, a child of the band itself), with the same tap
             and the same data-dash-fold hook; this row is the five buttons'.
-            The v2.3.2266 reasons for a word (a subtle 15px glyph) do not
-            apply to a handle: a grip is the one fold control every phone's
-            sheets already teach.  Sideways and on a computer the fold chip
-            stays until B3 unifies the layouts. */}
+            Sideways and on a computer the fold chip stays until B3 unifies the
+            layouts.
+            ...AND CLOSE CAME BACK (v2.3.4142, the same PR): the owner's
+            drawing of the Bro page puts CLOSE at the row's left, then the five
+            buttons with their words.  So BandClose (dash/BandGrip.jsx) stands
+            first here, the grip staying on the edge; it does what the grip
+            does, and the row keeps its width (sheetGeometry BAND_CLOSE_W). */}
         {/* v2.3.3215: the drill's back chip USED to stand here (v2.3.1922).
             It is in the panel's own header now, beside the title ("◂
             SETTINGS", the drill branch above) -- the owner's choice when a
@@ -1840,6 +1846,10 @@ export const BottomDashboard = () => {
         {/* v2.3.2166: not sideways — there the five buttons live in the
             fixed nav dock so the side container can enclose them (owner:
             "included in that container on that whole right side"). */}
+        {!land && (
+          <BandClose min={dashMin} expanded={mode === 'expanded'}
+            h={navButtonSize(playVw(), typeof window !== 'undefined' ? window.innerHeight : 844).h} />
+        )}
         {!land && (
           <div style={{ flex: 'none', display: 'flex', alignItems: 'center' }}>
             <NavRail
