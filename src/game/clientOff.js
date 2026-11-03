@@ -45,6 +45,9 @@ export const CLIENT_SAVERS = Object.freeze([
      brings back the game's own headshot, from each phone's next load.  Not a
      memory saver: the owner's new look, kept switchable the same way */
   Object.freeze({ id: 'hemiface', words: 'Your portrait as a Hemi Bro', live: false }),
+  /* v2.3.4033: a big drawing's building lists let go once it is drawn
+     (rendering/gfxLean.js: the minimap's roads, ~1 MB of the heap) */
+  Object.freeze({ id: 'gfxlean', words: 'Big drawings kept once', live: false }),
 ]);
 
 const KEY = 'bt_clientoff';
