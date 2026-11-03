@@ -142,7 +142,13 @@ async function onePhone({ browser, wsPort, webPort, rec, errors, OUT }, ph) {
     const jcy = (a.jump.t + a.jump.b) / 2, dcy = (a.disc.t + a.disc.b) / 2;
     const ang = Math.round(Math.atan2(jcy - dcy, dcx - jcx) * 180 / Math.PI);
     const ring = Math.round(Math.hypot(jcx - dcx, jcy - dcy) - (a.jump.r - a.jump.l) / 2 - dw / 2);
-    const sw = a.vw > a.vh ? ang > 0 && ang < 90 : ang >= 25 && ang <= 65;
+    /* v2.3.4130: upright, turned west on the ring (~12 deg below west) to
+       stand over the weapon pill centred at the band's top (the owner: "Put it
+       centered bottom of screen area"); still on the ring, still down-left */
+    const sw = a.vw > a.vh ? ang > 0 && ang < 90 : ang >= 5 && ang <= 65;
+    const pill = await P.page.evaluate(() => { const p = document.querySelector('[data-weapon-pill]'); const r = p && p.getBoundingClientRect(); return r ? { l: r.left, t: r.top, r: r.right, b: r.bottom } : null; });
+    const pillAir = pill ? Math.max(pill.l - a.jump.r, a.jump.l - pill.r, pill.t - a.jump.b, a.jump.t - pill.b) : null;
+    rec.ok(`${tag}: 2a. 8 px or more off the weapon pill (${pillAir != null ? Math.round(pillAir) : 'no pill'} px)`, pillAir != null && pillAir >= 7.5, { pill, jump: a.jump });
     rec.ok(`${tag}: 2. on the attack disc's ring, south-west (${ang} deg below west, ${ring} px off the disc's circle), clear of the dashboard (${JSON.stringify(a.dash)}) and on the screen (${JSON.stringify(a.jump)} in ${a.vw} x ${a.vh})`,
       sw && ring >= 8 && ring <= 14 && clearOfDash && a.jump.l >= 0 && a.jump.r <= a.vw && a.jump.t >= 0 && a.jump.b <= a.vh, a);
     /* v2.3.3721: the owner, "the contextual button should shrink in size a bit

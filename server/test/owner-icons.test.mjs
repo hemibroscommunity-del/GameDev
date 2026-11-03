@@ -385,12 +385,14 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const eq = src('src/ui/mobile/sheet/equipModel.js');
   const bag = src('src/ui/mobile/dash/InventoryPanel.jsx'), card = src('src/ui/mobile/dash/ItemDetailPopup.jsx');
   const reveal = src('src/ui/reveal/RevealOverlay.jsx'), loot = src('src/rendering/lootIcons.js');
-  check('8g the menu (the Equipment slot, the weapon button and the player card, all wpnIconSrc) wears the new bow; the bag, its card, a drop\'s reveal and loot on the ground the pine one',
+  check('8g the menu (the Equipment slot and the player card, both wpnIconSrc; v2.3.4130: the weapon pill wears the Character sheet\'s pictures) wears the new bow; the bag, its card, a drop\'s reveal and loot on the ground the pine one',
     /return wpn\.type === 'bow' \? '\/icons\/ui\/equip-bow\.webp\?v=2\.3\.3571'/.test(eq)
     && /obj\.type === 'bow'\s*\? `\/icons\/items\/bow\.webp\$\{ITEMS_V\}`/.test(bag)
     && /if \(wpn\.type === 'bow'\)\s*return `\/icons\/items\/bow\.webp\$\{ITEMS_V\}`/.test(card)
     && /r\.itemType === 'bow' \? '\/icons\/items\/bow\.webp'/.test(reveal) && /bow: '\/icons\/items\/bow\.webp'/.test(loot)
-    && src('src/ui/panels/WeaponTriangle.jsx').indexOf('wpnIconSrc(R, w)') >= 0);
+    /* v2.3.4130: the weapon pill wears the Character sheet's own pictures
+       (controlSkin WPN_PILL_ICONS), no longer the weapon's equip picture */
+    && src('src/ui/panels/WeaponPill.jsx').indexOf('WPN_PILL_ICONS') >= 0);
 }
 
 /* ── 9. v2.3.3609: the element icons as the element itself ── */

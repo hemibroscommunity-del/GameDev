@@ -230,7 +230,9 @@ async function body(P, rec) {
     const c = A[k];
     rec.ok(`${k}: on screen in the fight (guard)`, !!(c && c.shown), c);
     if (!c) continue;
-    rec.ok(`${k}: wears the skin, its ring painted by one of the skin's gradients`, !!c.state && /url\(["']?#btSkin/.test(c.ring || ''), { state: c.state, ring: c.ring });
+    /* v2.3.4130: the weapon is a well of the owner's pill, ringed by its own
+       gold box-shadow, not a skinned button (WeaponPill.jsx) */
+    if (k !== 'weapon') rec.ok(`${k}: wears the skin, its ring painted by one of the skin's gradients`, !!c.state && /url\(["']?#btSkin/.test(c.ring || ''), { state: c.state, ring: c.ring });
     rec.ok(`${k}: no CSS filter anywhere in it (iOS grain, TRAPS §42)`, c.filtered.length === 0, c.filtered);
     rec.ok(`${k}: shows its picture, decoded`, (c.imgs > 0 && c.imgsOk) || c.svgs.length > 0, { imgs: c.imgs, ok: c.imgsOk, svgs: c.svgs, src: c.imgSrc });
     rec.ok(`${k}: no word on it -- a picture, as the mockup draws it`, c.words.length === 0, c.words);
@@ -253,7 +255,8 @@ async function body(P, rec) {
   rec.ok('...and no orbit is drawn round it', A.disc && !A.disc.orbit, A.disc);
   rec.ok('Spec, Whirl, Block, Sprint, Jump are Normal when ready', ['special', 'whirl', 'block', 'sprint', 'jump'].every((k) => A[k] && A[k].state === 'normal'),
     ['special', 'whirl', 'block', 'sprint', 'jump'].map((k) => A[k] && A[k].state));
-  rec.ok('Jump\'s picture is its plain jump mark (v2.3.3721: was the mockup\'s blue arrow)', A.jump && A.jump.svgs.join() === 'jump', A.jump && A.jump.svgs);
+  /* v2.3.4130: our drawing of the owner's leaping figure, a picture (it was a drawn mark, v2.3.3721) */
+  rec.ok('Jump\'s picture is the leaping figure, decoded', A.jump && A.jump.imgs === 1 && A.jump.imgsOk && /ctl-jump/.test(A.jump.imgSrc.join()), A.jump && A.jump.imgSrc);
 
   /* ── 5: the mockup's other states ── */
   const flags = () => P.page.evaluate(() => {

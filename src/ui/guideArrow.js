@@ -8,7 +8,7 @@
  * go."  And: "Then I noticed the flashing inventory button and gold star but
  * it took a few beats."
  *
- * Two lessons, each ONCE a character:
+ * Three lessons (v2.3.4130: swap, below), each ONCE a character:
  *   weapon  the first time a weapon is handed to you (Mayor Bro's first quest
  *           gives the sword and the shield as you take it): the arrow points
  *           where the glow is (gearFlash.js gearFlashSelectors: the fold
@@ -39,7 +39,8 @@
  */
 import { gearFlashWants, gearFlashSelectors } from './mobile/gearFlash.js';
 import { pointsTipWanted, pointsTipDone } from '../game/pointsTips.js';
-import { deskWords } from '../game/deskWords.js';
+import { deskWords, onComputer } from '../game/deskWords.js';
+import { ownedWeaponSlots } from '../game/weaponSlots.js';   /* v2.3.4130: the swap lesson */
 import { mayorScreenRect } from './mayorScreen.js';   /* v2.3.4106: the first steps' Mayor */
 /* v2.3.4106: the pacing referee's answers (onboardingPace.js: is a plate up,
    was the tutorial skipped) are handed in by the coach that starts this --
@@ -49,6 +50,7 @@ let _pace = { plateUp: () => false, skipped: () => false };
 const TICK_MS = 250;
 export const WEAPON_MS = 60000;
 export const POINTS_MS = 180000;
+export const SWAP_MS = 10000;
 export const MAYOR_MS = 180000;   /* v2.3.4106 */
 const SIZE = 56;                /* the arrow, CSS px */
 const GAP = 6;                  /* between its point and the target's edge */
@@ -86,6 +88,20 @@ function firstShown(sels) {
   return null;
 }
 
+/* ═══ v2.3.4130: THE THIRD LESSON -- SWAPPING WEAPONS, AT THE PILL ═══
+ * The owner, 2026-11-03: "Weapon swap instruction from tutorial should only
+ * become relevant after receiving new weapons from turning in first quest.
+ * Instructions will need to change to accommodate the new pill design. I like
+ * the big arrows to teach where things are on screen."  So the swap lesson is
+ * this arrow's, pointing at the weapon pill (WeaponPill.jsx) with one line --
+ * "Tap a weapon to switch" (a computer: "Click a weapon or press 1 2 3") --
+ * and it is wanted only once Mayor Bro's first quest is turned in (tut_1: its
+ * hand-in pays the bow and the staff) and a second weapon is yours: the
+ * moment the worker's reward lands, never on a timer.  It ends at the first
+ * switch (the slot in hand no longer the one it began on) or after SWAP_MS,
+ * once a character.  It replaces SwapHint.jsx's callout (v2.3.3877), which
+ * fired on two weapons alone. */
+
 /* ── which lesson, and where (pure: server/test/guide-arrow.test.mjs) ── */
 
 /** The weapon lesson's wants: the first quest's sword and shield only (the
@@ -108,11 +124,14 @@ export function guideTargets(id, rpg, shown) {
   if (id === 'points') {
     return ['[data-section="Build"]', '[data-nav="hero"]', '[data-dash-fold="min"]', '[data-land-fold="min"]'];
   }
+  if (id === 'swap') return ['[data-weapon-pill]'];   /* v2.3.4130: the pill */
   return [];
 }
 
 /** The words beside the arrow, for what it points at (said "click" on a computer). */
 export function guideWords(id, sel, computer) {
+  /* v2.3.4130: the swap lesson names the keys on a computer */
+  if (id === 'swap') return (computer === undefined ? onComputer() : !!computer) ? 'Click a weapon or press 1 2 3' : 'Tap a weapon to switch';
   let s = 'Tap here';
   if (/data-dash-fold|data-land-fold/.test(sel)) s = 'Tap to open';
   else if (/data-nav="dashboard"/.test(sel)) s = 'Tap Gear';
@@ -120,6 +139,13 @@ export function guideWords(id, sel, computer) {
   else if (/data-nav="hero"/.test(sel)) s = 'Tap Bro: points to spend';
   else if (/data-section="Build"/.test(sel)) s = 'Tap Points';
   return deskWords(s, computer);
+}
+
+/** v2.3.4130: the swap lesson's moment: the first quest turned in (its
+ *  hand-in pays the bow and the staff) and more than one weapon yours. */
+export function swapWanted(rpg) {
+  const q = rpg && rpg._quests && typeof rpg._quests === 'object' ? rpg._quests : {};
+  return q.tut_1 === 'turnedIn' && ownedWeaponSlots(rpg).length >= 2;
 }
 
 /* ═══ v2.3.4106: THE FIRST STEPS' MAYOR ═══
@@ -132,8 +158,9 @@ function mayorTalking() {
   try { const nm = document.querySelector('.bt-npcdlg-name'); return !!nm && /Mayor Bro/.test(nm.textContent || ''); } catch (e) { return false; }
 }
 
-/** Is lesson `id` wanted now, and is it finished?  `seen` the ms it has shown. */
-export function guideState(id, rpg, S, seen, now) {
+/** Is lesson `id` wanted now, and is it finished?  `seen` the ms it has shown;
+ *  `from` (the swap lesson, v2.3.4130) the slot in hand when it first showed. */
+export function guideState(id, rpg, S, seen, now, from) {
   if (id === 'mayor') {
     const q = (rpg && rpg._quests) || {};
     const talked = !!q.tut_1 || mayorTalking();
@@ -144,6 +171,10 @@ export function guideState(id, rpg, S, seen, now) {
     const w = weaponWants(rpg);
     const want = w.melee || w.shield;
     return { want, done: seen > 0 && (!want || seen >= WEAPON_MS) };
+  }
+  if (id === 'swap') {
+    const swapped = seen > 0 && from != null && ((rpg && rpg.activeSlot) || 'melee') !== from;
+    return { want: swapWanted(rpg), done: seen > 0 && (swapped || seen >= SWAP_MS) };
   }
   if (id === 'points') {
     const placed = pointsTipDone(rpg);
@@ -161,6 +192,7 @@ export function guideOwedAgain(rpg) {
   if (!rpg) return out;
   const q = rpg._quests && typeof rpg._quests === 'object' ? rpg._quests : {};
   if (!q.tut_1) out.push('weapon', 'mayor');
+  if (q.tut_1 !== 'turnedIn') out.push('swap');   /* v2.3.4130 */
   const p3 = rpg.prog3;
   if (p3 && typeof p3 === 'object' && !pointsTipDone(rpg) && !(Number(p3.pool) > 0) && !(Number(p3.shared) > 0)) out.push('points');
   return out;
@@ -176,7 +208,8 @@ function saveDone(id, v) {
 
 /* ── the arrow ── */
 let _timer = null, _el = null, _bob = null, _label = null, _side = null;
-const _seen = { mayor: 0, weapon: 0, points: 0 };
+const _seen = { mayor: 0, weapon: 0, swap: 0, points: 0 };
+let _swapFrom = null;   /* v2.3.4130: the slot in hand when the swap lesson first showed */
 let _lastTick = 0, _who = null, _done = {};
 const qa = { lesson: null, sel: null, side: null, rect: null, target: null, n: 0, off: false, done: {} };
 
@@ -274,14 +307,15 @@ function tick(getS) {
   if (!S || !rpg || !S.__introLiftedAt || S._zoneLoading) { hide(); return; }
   const who = S.myId || null;
   if (!who) { hide(); return; }
-  if (who !== _who) { _who = who; _done = loadDone(who); _seen.mayor = 0; _seen.weapon = 0; _seen.points = 0; }
+  if (who !== _who) { _who = who; _done = loadDone(who); _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _swapFrom = null; }
   for (const id of guideOwedAgain(rpg)) if (_done[id]) { delete _done[id]; _seen[id] = 0; saveDone(who, _done); }
   qa.done = Object.assign({}, _done);
   /* v2.3.4106: the Mayor's last -- a lesson that is wanted beats him (a
-     character with points who never took his quest is shown the points) */
-  for (const id of ['weapon', 'points', 'mayor']) {
+     character with points who never took his quest is shown the points).
+     v2.3.4130: swap after the weapon lesson, before the points */
+  for (const id of ['weapon', 'swap', 'points', 'mayor']) {
     if (_done[id]) continue;
-    const st = guideState(id, rpg, S, _seen[id], now);
+    const st = guideState(id, rpg, S, _seen[id], now, id === 'swap' ? _swapFrom : null);
     if (st.done) { _done[id] = 1; saveDone(who, _done); qa.done = Object.assign({}, _done); continue; }
     if (!st.want) continue;
     if (id === 'mayor') {
@@ -299,7 +333,7 @@ function tick(getS) {
     const shown = (sel) => { try { return Array.from(document.querySelectorAll(sel)).some((el) => !!shownRect(el)); } catch (e) { return false; } };
     const hit = firstShown(guideTargets(id, rpg, shown));
     if (!hit) continue;
-    if (_seen[id] === 0) qa.n++;
+    if (_seen[id] === 0) { qa.n++; if (id === 'swap') _swapFrom = rpg.activeSlot || 'melee'; }
     _seen[id] += Math.max(1, dt);
     qa.lesson = id; qa.sel = hit.sel;
     place(hit.r, guideWords(id, hit.sel));
@@ -326,7 +360,7 @@ export function stopGuideArrow() {
    shows and where, and a way to forget this character's lessons */
 try {
   if (typeof window !== 'undefined') {
-    qa.forget = () => { if (_who) saveDone(_who, {}); _done = {}; _seen.weapon = 0; _seen.points = 0; };
+    qa.forget = () => { if (_who) saveDone(_who, {}); _done = {}; _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _swapFrom = null; };
     window.__btGuideArrow = qa;
   }
 } catch (e) { /* no page */ }
