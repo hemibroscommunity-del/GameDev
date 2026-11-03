@@ -127,8 +127,9 @@ the top-bar lane once this is on main; one layout on every screen is B3.
   tile.  More → Notifications lists the lines newest first, marks them seen,
   and "Show on screen" opens the feed; a tap on the feed folds it (v2.3.2325).
 - **The handle** (`dash/BandGrip.jsx` `BandGrip`): upright only, on the band's top edge,
-  a 36 x 5 bar on a 56 px tab, the tap area 64 x 44 from 40 px above the band
-  to 4 px into it (the nav row's top air, so it never takes the middle
+  a 36 x 5 bar on a 56 px tab, the tap area the tab, 64 x 20, from 16 px
+  above the band to 4 px into it (it was 64 x 44 until CLOSE came back: that
+  patch took the centre of the weapon pill) (the nav row's top air, so it never takes the middle
   button's press).  Same tap as CLOSE / OPEN, `data-dash-fold="open|min"`
   kept, `swallowTapClick` (TRAPS §247).  Sideways and on a computer the fold
   chip stays (B3).  CLOSE in the row does the same tap (above).

@@ -29,8 +29,17 @@ import { BAND_CLOSE_W } from '../sheet/sheetGeometry.js';   /* v2.3.4153: CLOSE'
    The band moves its top edge when a page opens, so after a tap that closes a
    page the finger is over the world: the click that follows is eaten
    (swallowTapClick, TRAPS §247), or it would land on the game. */
+/* ═══ v2.3.4153: ...AND NOW ONLY THE TAB ITSELF ═══
+   With CLOSE back in the row (BandClose below: the 44 px fold control the
+   owner drew), the grip's tap area shrinks to the tab it draws, 64 x 20 --
+   16 px above the band's edge and its 4 px of air.  The 44 px patch over the
+   world took the middle of main's weapon pill (v2.3.4130, centred over the
+   band's top edge): sideways and on a computer the pill's centre sat inside
+   it, so a tap on the bow folded the band (mp-oneband's "a tap at its middle
+   reaches it").  The tab still answers a finger on it, and the harness and
+   the coach still find the fold by [data-dash-fold]. */
 export const GRIP_HIT_W = 64;
-export const GRIP_HIT_H = 44;
+export const GRIP_HIT_H = 20;
 const GRIP_IN_BAND = 4;   /* the part of the tap area inside the band: the nav row's top air */
 
 export const BandGrip = ({ min, expanded }) => (
