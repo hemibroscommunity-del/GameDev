@@ -2023,6 +2023,12 @@ button.bt-pin-drop{color:inherit;margin:0}
     background:linear-gradient(180deg,#0F1B23 0%,#0B151B 100%);border-top:1px solid #56788F;
     box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 -8px 16px rgba(8,14,18,.35)}
   .bt-pin.is-embedded .bt-pin-dock.is-own::before{display:block}
+  /* the sideways column is ~220 px: one column where two would cut words
+     (the stats' names, "Lifetime Kills"), the latest badges and the combat
+     words left to their pictures */
+  .bt-pin.is-embedded .bt-bro-vitals,.bt-pin.is-embedded .bt-bro-stats,.bt-pin.is-embedded .bt-pin-show{grid-template-columns:minmax(0,1fr)}
+  .bt-pin.is-embedded .bt-bro-badges,.bt-pin.is-embedded .bt-pin-cbl{display:none}
+  .bt-pin.is-embedded .bt-pin-row{flex-wrap:wrap}
 }
 /* the doors on your own card: the AP, the clan, the six slots */
 button.bt-pin-ap.is-btn{position:relative;margin:0;padding:0;border:0;background:none;font:inherit;font-size:14px;font-weight:700;
@@ -2043,7 +2049,10 @@ button.bt-pin-clan.is-btn:active{filter:brightness(.88)}
 /* ...in the dock's place, its sticky footing kept (the body's own bottom
    padding gives way to it, as on another player's card) */
 .bt-pin.is-embedded.has-dock .bt-pin-body{padding-bottom:0;scroll-padding-bottom:76px}   /* a row brought into view stops above the dock, not under it */
-.bt-pin-dock.is-own{display:block;margin:12px -14px 0;padding:8px 10px 10px}
+/* 16 px cheeks: the button stays under the coach's ring cap (92% of the
+   screen's width, QuestCoach MARK_RECT_W_FRAC), or "Tap Spend points" is
+   never rung on a 390 px phone */
+.bt-pin-dock.is-own{display:block;margin:12px -14px 0;padding:8px 16px 10px}
 .bt-bro-spend{position:relative;display:flex;align-items:center;gap:8px;width:100%;min-height:48px;margin:0;padding:0 12px 0 6px;box-sizing:border-box;
   border:1px solid #3B5366;border-radius:10px;background:#1C2F3C;color:#A0BACE;font:inherit;font-size:15px;font-weight:700;text-align:left;
   cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform 90ms cubic-bezier(.2,.8,.2,1)}

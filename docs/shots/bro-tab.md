@@ -18,6 +18,11 @@ page is about 190 px tall and the card scrolls under "Spend points"):
 
 ![whole card](bro-tab-full.webp)
 
+A phone on its side (the card in the ~220 px side column: one column of
+stats, the combat words left to their pictures):
+
+![sideways](bro-tab-side.webp)
+
 On a computer:
 
 ![computer](bro-tab-desk.webp)

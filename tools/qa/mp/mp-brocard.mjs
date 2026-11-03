@@ -217,6 +217,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const b8 = await bus(P);
     rec.ok('the clan box opens the clan\'s page under Bro', !!b8 && b8.stack.join('/') === 'hero/clan', b8);
 
+    /* ── sideways: the card in the ~220 px side column, no word cut ── */
+    await P.page.setViewportSize({ width: 844, height: 390 });
+    await P.page.waitForTimeout(1500);
+    await P.page.evaluate(() => { window.__btHeroSection.request('Card'); window.__broDashPanelBus.open('hero'); });
+    await P.page.waitForTimeout(1500);
+    const side = await P.page.evaluate(() => {
+      const c = document.querySelector('.bt-land-sheet [data-bro-page="Card"] .bt-pin');
+      if (!c) return null;
+      const cr = c.getBoundingClientRect();
+      const cut = [];
+      for (const el of c.querySelectorAll('*')) {
+        if (el.children.length || !(el.textContent || '').trim() || el.clientWidth <= 0) continue;
+        if (el.scrollWidth > el.clientWidth + 1) cut.push((el.textContent || '').trim().slice(0, 20));
+      }
+      const past = [...c.querySelectorAll('*')].filter((el) => { const r = el.getBoundingClientRect(); return r.width > 4 && r.right > cr.right + 2; }).length;
+      return { w: Math.round(cr.width), cut, past };
+    });
+    rec.ok(`sideways: the card in the side column (${side && side.w} px), no word cut, nothing past its edge`,
+      !!side && side.cut.length === 0 && side.past === 0, side);
+    await shot(P, 'bro-tab-side');
+    await P.page.setViewportSize({ width: 390, height: 844 });
+    await P.page.waitForTimeout(1500);
+
     /* a picture of the whole card for the PR: the page is ~190 px tall
        upright, so the card is stood up over the screen, a tall one, for it */
     await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
