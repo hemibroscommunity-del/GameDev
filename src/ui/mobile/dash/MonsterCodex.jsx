@@ -229,19 +229,21 @@ function Card({ kind, n, fresh, onOpen, wrap, big }) {
    first look was ALL header -- "‹ All monsters", this, and the tabs ended 172
    px down a box 167 px tall, so not one line of its tab showed.  The picture
    goes 60 -> 44, the count rides the name's line, the badges a size down. */
+/* v2.3.3910: the name went up into the pinned bar, beside the buttons (the
+   owner: "Move the 'all monsters, drops, info, and locations' row of buttons
+   to be in the same row it talks about the monster title ... that will give
+   much more room on mobile to see more of the drop table"); here the
+   portrait, the kills and the badges, one row shorter */
 function Header({ kind, e, n, n2, elder }) {
   const el = CODEX_ELEMENTS[e.element];
   return (
     <div data-cx-header style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '0 2px 2px' }}>
-      <Frame size={44} edge={GOLD_EDGE}><PetPortrait pet={{ kind, stage: elder ? 2 : 1 }} size={40} /></Frame>
+      <Frame size={40} edge={GOLD_EDGE}><PetPortrait pet={{ kind, stage: elder ? 2 : 1 }} size={36} /></Frame>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-          <div data-cx-name style={{ minWidth: 0, fontSize: 17, fontWeight: 900, lineHeight: 1.1, color: COL.text }}>{elder && e.elder ? e.elder.name : e.name}</div>
-          <div data-cx-kills style={{ marginLeft: 'auto', flex: 'none', fontSize: 11, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
-            {n} defeated{n2 ? ' · ' + n2 + ' past Lv 20' : ''}
-          </div>
+        <div data-cx-kills style={{ fontSize: 11, color: COL.muted, fontVariantNumeric: 'tabular-nums' }}>
+          {n} defeated{n2 ? ' · ' + n2 + ' past Lv 20' : ''}
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
           <Pill attr="level">{landLevelsText()}</Pill>
           {el ? <Pill attr="element">{el.name}<img src={el.icon} alt="" draggable={false} style={{ width: 14, height: 14, objectFit: 'contain' }} /></Pill> : null}
           <Pill attr="type">{e.type}</Pill>
@@ -259,34 +261,59 @@ function Header({ kind, e, n, n2, elder }) {
    and "‹ All monsters", which was a 40 px row of its own above the header,
    is its first button.  `reveal` keeps what a tap brings up just under it. */
 const TABS = [['drops', 'Drops'], ['info', 'Info'], ['locations', 'Locations']];
-/* ═══ v2.3.3481: THE WAY BACK SAYS SO, WHERE IT FITS (the 2026-10-19 UI review) ═══
-   The bar's first button was a bare "‹" -- its words only in its aria-label
-   and tooltip, so a finger never saw them, while Life Skills says "‹ All
-   skills".  Where the bar has the room it says "‹ All monsters" (~95 px), and
-   the three tabs share the rest; its height, so the pinned bar, the stage's
-   fit and where a tap lands, is unchanged.  The room is the point: on a
-   320 px phone, or in the sideways column, the words would leave each tab
-   ~65 px, under "Locations" with a button's own padding (~73), so those keep
-   the 38 px "‹" -- at 350 px and up each tab keeps ~75 px or more. */
+/* ═══ v2.3.3910: THE NAME AND THE BUTTONS ON ONE ROW ═══
+   The owner: "Move the 'all monsters, drops, info, and locations' row of
+   buttons to be in the same row it talks about the monster title (In this
+   case 'Fire goblin') that will give much more room on mobile to see more of
+   the drop table etc."  So the pinned bar is [‹][the name][Drops][Info]
+   [Where] ("‹ All" where there is room): the name on the left, the buttons on the right, compact -- an
+   icon and a short word each (TAB_SHORT), 40 px tall to tap -- and the
+   header under it loses its name line.  Where the bar is narrow (a 320 px
+   phone, the sideways column: under BACK_WORDS_MIN_VW, as v2.3.3481's rule)
+   the buttons are their icons alone, the word in the aria-label and
+   tooltip, so the name keeps ~60 px or more; a long name wraps to two lines
+   in the bar's height rather than push the buttons off. */
 const BACK_WORDS_MIN_VW = 350;
-function Tabs({ tab, setTab, onBack }) {
-  const words = panelVw() >= BACK_WORDS_MIN_VW;
+const TAB_SHORT = { drops: 'Drops', info: 'Info', locations: 'Where' };
+const TAB_ICON = {
+  drops: 'M5.6 2.4h4.8L9.2 4.7c2.5 1.2 4 3.6 4 6.1 0 1.9-1.6 2.7-5.2 2.7s-5.2-.8-5.2-2.7c0-2.5 1.5-4.9 4-6.1zM6.6 4.7h2.8',
+  info: 'M8 1.8a6.2 6.2 0 1 0 0 12.4a6.2 6.2 0 1 0 0-12.4zM8 7.2v4.4M8 4.7v.2',
+  locations: 'M8 14.4s-4.7-4.5-4.7-8a4.7 4.7 0 0 1 9.4 0c0 3.5-4.7 8-4.7 8zM8 4.6a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0-3.6z',
+};
+function TabIcon({ id }) {
   return (
-    <div data-cx-tabbar className="bt-cx-tabbar"
-      style={{ position: 'sticky', top: -4, zIndex: 3, display: 'grid', gridTemplateColumns: (words ? 'auto' : '38px') + ' repeat(3, minmax(0, 1fr))', gap: 5,
-        padding: '3px 0 4px', margin: '0 0 2px' }}>
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={{ flex: 'none', display: 'block' }}>
+      <path d={TAB_ICON[id]} fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function Tabs({ tab, setTab, onBack, name }) {
+  const words = panelVw() >= BACK_WORDS_MIN_VW;
+  const btn = { minHeight: 40, boxSizing: 'border-box', borderRadius: 9, fontFamily: 'inherit', fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, whiteSpace: 'nowrap' };
+  return (
+    <div data-cx-tabbar data-cx-tabwords={words ? 1 : 0} className="bt-cx-tabbar"
+      style={{ position: 'sticky', top: -4, zIndex: 3, display: 'flex', alignItems: 'center', gap: 4,
+        /* v2.3.3910: 40 px buttons in a bar no taller than the old 34 px
+           ones' (41 px): a tapped tab's first rows stay in view under it */
+        padding: '1px 0 0', margin: 0 }}>
       <button onClick={onBack} data-cx-back aria-label="All monsters" title="All monsters"
-        style={{ minHeight: 34, borderRadius: 9, fontFamily: 'inherit', fontSize: words ? 12.5 : 22, fontWeight: 800, lineHeight: 1, cursor: 'pointer', touchAction: 'manipulation',
-          border: '1px solid rgba(229,237,233,.18)', color: COL.accent, background: 'rgba(11,22,27,.45)', padding: words ? '0 9px' : 0,
-          whiteSpace: 'nowrap' }}>{words ? '‹ All monsters' : '‹'}</button>
+        style={{ ...btn, flex: 'none', minWidth: words ? 36 : 28, fontSize: 22, lineHeight: 1, padding: words ? '0 6px' : 0,
+          border: '1px solid rgba(229,237,233,.18)', color: COL.accent, background: 'rgba(11,22,27,.45)' }}>
+        ‹{words ? <span style={{ fontSize: 12.5 }}>All</span> : null}</button>
+      <div data-cx-name style={{ minWidth: 0, flex: 1, fontSize: words ? 16 : 13, fontWeight: 900, lineHeight: 1.1, color: COL.text,
+        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', padding: '0 2px' }}>{name}</div>
       {TABS.map(([id, label]) => {
         const on = tab === id;
         return (
           <button key={id} onClick={() => setTab(id)} data-cx-tab={id} data-cx-on={on ? 1 : 0}
-            style={{ minHeight: 34, borderRadius: 9, fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
+            aria-label={label} title={label}
+            style={{ ...btn, flex: 'none', minWidth: words ? 0 : 32, padding: words ? '0 8px' : 0, fontSize: 12.5,
               border: '1px solid ' + (on ? COL.accent : 'rgba(229,237,233,.18)'), color: on ? COL.focus : COL.text,
               background: on ? 'linear-gradient(rgba(216,170,88,.30), rgba(216,170,88,.12))' : 'rgba(11,22,27,.45)',
-              boxShadow: on ? 'inset 0 0 0 1px rgba(234,198,117,.25)' : 'none' }}>{label}</button>
+              boxShadow: on ? 'inset 0 0 0 1px rgba(234,198,117,.25)' : 'none' }}>
+            <TabIcon id={id} />{words ? <span>{TAB_SHORT[id]}</span> : null}
+          </button>
         );
       })}
     </div>
@@ -718,8 +745,10 @@ function Page({ kind, S, onBack }) {
         <ItemCard kind={kind} e={e} r={open} onClose={() => setCard(null)} />
       ) : (
         <>
+          {/* v2.3.3910: the bar, with the name, first; the header under it */}
+          <Tabs tab={tab} setTab={(id) => { setTab(id); setTabTap((v) => v + 1); }} onBack={onBack}
+            name={elder && e.elder ? e.elder.name : e.name} />
           <Header kind={kind} e={e} n={n} n2={n2} elder={elder} />
-          <Tabs tab={tab} setTab={(id) => { setTab(id); setTabTap((v) => v + 1); }} onBack={onBack} />
           <div ref={body}>
             {tab === 'drops' ? <DropsTab rows={rows} sel={sel} shared={shared} onPick={(id) => { setSel(id); setCard(id); }} />
               : tab === 'info' ? <InfoTab kind={kind} e={e} S={S} elder={elder} setElder={setElder} />

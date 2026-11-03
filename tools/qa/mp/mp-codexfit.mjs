@@ -162,6 +162,24 @@ async function portrait(P, rec, OUT, vw, result) {
   rec.ok(`the snowman's page: its first look shows its tab (${first && first.first.shown} px of the table; was none, it began 172 px down a 167 px box)`,
     !!first && first.first.contentTop != null && first.first.contentTop <= 110 && first.first.shown >= 60, first && first.first);
   await P.page.screenshot({ path: join(OUT, 'codexfit-page.png') });
+  /* v2.3.3910: the buttons ride the name's row (the owner: "Move the 'all
+     monsters, drops, info, and locations' row of buttons to be in the same
+     row it talks about the monster title"): one pinned bar holding the way
+     back, the name and the three tabs, side by side, each button 40+ px tall
+     and the name whole */
+  const row = await P.page.evaluate(() => {
+    const bar = document.querySelector('[data-cx-page] [data-cx-tabbar]');
+    if (!bar) return null;
+    const r = (el) => { const b = el.getBoundingClientRect(); return { l: Math.round(b.left), r: Math.round(b.right), t: Math.round(b.top), b: Math.round(b.bottom), h: Math.round(b.height) }; };
+    const nm = bar.querySelector('[data-cx-name]');
+    const btns = [bar.querySelector('[data-cx-back]'), ...bar.querySelectorAll('[data-cx-tab]')].filter(Boolean);
+    return { name: nm ? nm.innerText : null, nameBox: nm ? r(nm) : null, nameWhole: nm ? nm.scrollHeight <= nm.clientHeight + 1 && nm.scrollWidth <= nm.clientWidth + 1 : false,
+      btns: btns.map(r), bar: r(bar), headerHasName: !!document.querySelector('[data-cx-header] [data-cx-name]') };
+  });
+  rec.ok(`the page's buttons are on the name's row: ‹, "${row && row.name}", Drops, Info, Where -- each 40+ px tall, the name whole, beside them`,
+    !!row && row.name === 'Snowman' && row.nameWhole && !row.headerHasName && row.btns.length === 4
+    && row.btns.every((b) => b.h >= 40 && b.t >= row.bar.t - 1 && b.b <= row.bar.b + 1)
+    && row.btns[0].r <= row.nameBox.l + 1 && row.btns.slice(1).every((b) => b.l >= row.nameBox.r - 1), row);
 
   result.tabs = {};
   for (const t of ['drops', 'info', 'locations']) {
