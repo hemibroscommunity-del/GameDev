@@ -14041,7 +14041,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "Skip tutorial"))), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      top: 44,
+      top: 'var(--bt-hud-top, 44px)', /* v2.3.3974: the status chips start under the player frame (was 44) */
       left: 8,
       zIndex: 18,
       fontSize: 11,
