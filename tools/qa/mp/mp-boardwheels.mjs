@@ -8,7 +8,9 @@
  *      grows) and their light spots move from frame to frame;
  *   2. stopped, the wheels hold still (the turn and the spots stay put);
  *   3. off the board (Z), the spots are gone with it;
- *   4. no page errors.
+ *   4. no page errors;
+ *   5. v2.3.3973: rolling, the rider and board rise over small bumps (1-1.5
+ *      game px, now and then), the shadow's feet and the name plate still.
  * Pictures: tools/qa/mp/out/boardwheels-<label>-NN.png, the board every frame
  * or so while rolling (BOARDWHEELS_LABEL=before: the same build with
  * ?boardroll=0, the old look; its rows 1-3 fail there, as on main).
@@ -74,6 +76,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const moved = new Set(roll.map((r) => (r && r.spot0 ? r.spot0.join(',') : null)).filter(Boolean)).size;
     rec.ok(`1. rolling east the wheels turn (${turns.join(' -> ')}) and their spots move (${moved} places in ${roll.length} looks)`,
       roll.every((r) => r && r.spots === 4) && turns[turns.length - 1] > turns[0] && moved >= 3, roll);
+
+    /* ═══ v2.3.3973: OVER THE BUMPS IN THE ROAD ═══
+       The owner: "Make snowboard bounce subtly up and down like going over
+       small bumps in the road."  Rolling east, the rider and board rise 1-1.5
+       game px over a bump now and then (window.__btRideFx().self.bump), the
+       shadow's feet and the name plate holding still (their offsets from
+       where the figure stands, bumped or not, the same) */
+    {
+      /* (back west first: a long roll east runs off the ground a board rolls on) */
+      await H.glideTo(P, G.arrival.x - 600, G.arrival.y + 140, { speed: 900, timeoutMs: 20000 });
+      await P.page.waitForTimeout(800);
+      await P.page.keyboard.down('d');
+      const bs = [];
+      for (let i = 0; i < 28; i++) {
+        const f = await P.page.evaluate(() => { const r = window.__btRideFx ? window.__btRideFx() : null; return r && r.self ? { bump: r.self.bump, dist: r.self.dist, plate: r.self.plateOff, feet: r.self.feetOff } : null; });
+        if (f) bs.push(f);
+        await P.page.waitForTimeout(90);
+      }
+      await P.page.keyboard.up('d');
+      const up = bs.filter((f) => f.bump > 0.05), flat = bs.filter((f) => !(f.bump > 0.05));
+      const maxB = up.length ? Math.max(...up.map((f) => f.bump)) : 0;
+      /* (the feet's own height moves with the jog's frame, bumped or not: a
+         bumped look's must be one a flat look has) */
+      const same = (k) => up.length > 0 && flat.length > 0 && up.every((f) => flat.some((g) => Math.abs(f[k] - g[k]) < 0.05));
+      rec.ok(`5. rolling, the rider rides over bumps (${up.length} of ${bs.length} looks lifted, up to ${maxB} px; never over 1.5)`,
+        up.length >= 2 && flat.length >= 2 && maxB <= 1.5 + 1e-6 && maxB >= 0.5, { up: up.slice(0, 6), flat: flat.slice(0, 3) });
+      rec.ok(`5. ...its shadow's feet and its name plate hold still over a bump (feet ${[...new Set(flat.map((f) => f.feet))].join('/')}, plate ${[...new Set(flat.map((f) => f.plate))].join('/')})`,
+        same('feet') && same('plate'), { up: up.slice(0, 6), flat: flat.slice(0, 3) });
+    }
 
     /* the pictures: back to the open square, then short rolls east, a
        picture after each (the wheels a little further round each time) */
