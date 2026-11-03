@@ -103,11 +103,11 @@ async function runHalls({ browser, wsPort, webPort, rec }) {
       return false;
     };
     const enterBtn = (P) => P.page.evaluate(() => {
-      const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || ''));
+      const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /(Enter|Read) /.test(q.textContent || ''));   /* v2.3.3899: + the noticeboard's "Read" */
       const shut = document.querySelector('[data-wheel-shut-door]');
       return { btn: b ? (b.textContent || '').trim() : null, hall: b ? b.getAttribute('data-enter-hall') : null, shut: shut ? (shut.textContent || '').trim() : null };
     });
-    const tapEnter = (P) => P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || '')); if (b) b.click(); });
+    const tapEnter = (P) => P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /(Enter|Read) /.test(q.textContent || '')); if (b) b.click(); });
     const waitSel = async (P, sel, ms = 4000) => {
       for (let t0 = Date.now(); Date.now() - t0 < ms;) {
         const ok = await P.page.evaluate((s) => { const e = document.querySelector(s); if (!e) return false; const r = e.getBoundingClientRect(); return r.width > 20 && r.height > 20; }, sel);
@@ -141,7 +141,7 @@ async function runHalls({ browser, wsPort, webPort, rec }) {
     const halls = doors.filter((d) => d.hall), shut = doors.filter((d) => d.closed);
     /* v2.3.3539: the Hotel is the fifth, against this worker, which rests */
     rec.ok(`the client knows the halls -- ${halls.map((d) => d.name).join(', ')} -- and none is shut${shut.length ? ' (shut: ' + shut.map((d) => d.name).join(', ') + ')' : ''}`,
-      halls.length === 5 && Object.keys(WHEEL_HALL_DOORS).every((k) => byId[k] && byId[k].hall === WHEEL_HALL_DOORS[k] && byId[k].index < 0 && !byId[k].closed)
+      halls.length === 4 /* v2.3.3899: the Town Hall's door is no hall now; its board is on the noticeboard */ && Object.keys(WHEEL_HALL_DOORS).every((k) => byId[k] && byId[k].hall === WHEEL_HALL_DOORS[k] && byId[k].index < 0 && !byId[k].closed)
         && shut.length === 0 && WHEEL_SHUT_DOORS.length === 0 && Object.keys(WHEEL_HALL_CAPS).join() === 'hotel', doors.map((d) => [d.id, d.index, d.hall, d.closed]));
 
     /* ── 2. the Guild Hall ── */
@@ -290,7 +290,16 @@ async function runHalls({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(1200);
     const atArrival = await enterBtn(A);
     rec.ok('a new character does not start with the Town Hall\'s Enter button showing: arriving 108 px south of its door, there is none', !atArrival.btn && !atArrival.shut, atArrival);
-    const t1 = await enterHall(A, th);
+    /* ═══ v2.3.3899: the board is on the square's noticeboard ═══
+       The owner: "Remove the town hall menu for now ... move the menu to the
+       sign post to the left of the town hall near the 3 street lamps".  At the
+       Town Hall's own door: no button at all; the board's window opens from
+       the noticeboard (game/wheelNoticeboard.js), "Read THE TOWN BOARD" */
+    const atHallDoor = await atDoor(A, th);
+    rec.ok('at the Town Hall\'s own door: no button (its board is on the noticeboard, v2.3.3899)', !!atHallDoor && !atHallDoor.btn && !atHallDoor.shut, atHallDoor);
+    const nbAt = await A.page.evaluate(() => (window.__btNoticeboard ? window.__btNoticeboard.where() : null));
+    const board = nbAt ? { x: nbAt.x, y: nbAt.y + 30, hall: 'townhall' } : th;
+    const t1 = await enterHall(A, board);
     const trows = await A.page.evaluate(() => Array.from(document.querySelectorAll('[data-wheel-hall="townhall"] [data-hall-row]')).map((b) => b.getAttribute('data-hall-row')));
     let troom = null;
     for (let i = 0; i < 20; i++) {
@@ -300,7 +309,7 @@ async function runHalls({ browser, wsPort, webPort, rec }) {
     }
     await shot(A, 'townhall');
     rec.ok(`the Town Hall: "${t1.r && t1.r.btn}" at its steps, your picture of its inside on top, and ${trows.join(' and ')} under it`,
-      !!t1.r && /Enter\s*TOWN HALL/.test(t1.r.btn || '') && t1.r.hall === 'townhall' && t1.open && trows.join() === 'leaderboard,map'
+      !!nbAt && !!t1.r && /Read\s*THE TOWN BOARD/.test(t1.r.btn || '') && t1.open && trows.join() === 'leaderboard,map,codex,journey' /* v2.3.3899: the board's foot since v2.3.3801 (a stale check) */
         && !!troom && troom.id === 'townhall' && troom.state === 'ready', { t1, trows, troom });
     await tap(A, '[data-hall-row="leaderboard"]');
     await A.page.waitForTimeout(900);
@@ -312,7 +321,7 @@ async function runHalls({ browser, wsPort, webPort, rec }) {
     rec.ok('...Leaderboard closes the hall and opens the dashboard\'s Ranks page (More, then Leaderboard)', lb.hallGone && lb.mode === 'expanded' && lb.stack && lb.stack.join() === 'more,leaderboard', lb);
     await A.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) { /* bare */ } });
     await A.page.waitForTimeout(500);
-    const t2 = await enterHall(A, th);
+    const t2 = await enterHall(A, board);
     await tap(A, '[data-hall-row="map"]');
     const mapOpen = await waitSel(A, '[data-world-map]', 4000);
     const hallGone2 = await A.page.evaluate(() => !document.querySelector('[data-wheel-hall]'));

@@ -58,7 +58,11 @@ INTERIOR_KNOCKOUT = {
 # the element.  It should just be a pure icon of the element (like wind lines
 # or something)."  Sheet F's three (a spiral rune on a grey triangle, a purple
 # star, a cracked tile) are never cut again, whatever is deleted.
-DRAWN_IN_CODE = {'elem-wind', 'elem-storm', 'elem-stone'}
+# v2.3.3907: all ten -- the owner's own hand-made set, cut from their sheet by
+# tools/ui/cut-element-sheet.mjs ("None of the elements should have shapes
+# behind them")
+DRAWN_IN_CODE = {'elem-wind', 'elem-storm', 'elem-stone', 'elem-flame', 'elem-frost',
+                 'elem-water', 'elem-dark', 'elem-light', 'elem-flora', 'elem-venom'}
 
 # Sheet manifest: rows, cols, row-major icon names (docs/UI-BIBLE.md Part 4).
 SHEETS = {

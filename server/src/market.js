@@ -31,6 +31,8 @@
  * price history (the matcher already skips same-player orders). */
 
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's order is rewritten once as a greatsword */
+import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
+import { BLACKSMITH_TIER_LABELS } from './data.js';   /* v2.3.3980: a converted sell order's tier label */
 export const MARKET = {
   ORDER_EXPIRY: 86400000,       // 24h
   MAX_ORDERS_PER_PLAYER: 10,
@@ -108,7 +110,11 @@ export const marketMethods = {
          moves from 'sword' to 'greatsword' (a wood one's tier to copper), a
          buy's too, so it can still meet a seller.  One put, only for such an
          order. */
-      if (!(this._swordConvertOff && this._swordConvertOff()) && this._mktSwordConvert(o)) {
+      /* v2.3.3980: and an order for a wooden (or base-less) greatsword, as
+         the copper one it now is (gscopper.js) -- in the same one put */
+      const _sw = !(this._swordConvertOff && this._swordConvertOff()) && this._mktSwordConvert(o);
+      const _gs = !(this._gsCopperOff && this._gsCopperOff()) && this._mktGsCopper(o);
+      if (_sw || _gs) {
         await this.state.storage.put(k, o);
       }
       this._mktAddToIndex(o);
@@ -124,6 +130,27 @@ export const marketMethods = {
       if (o.tierKey === 'wood' && o.item.gearBase === 'copper') { o.tierKey = 'copper'; o.tierLabel = 'Copper'; }
     }
     if (o.subtype === 'sword') { o.subtype = 'greatsword'; changed = true; }
+    return changed;
+  },
+
+  /* v2.3.3980: one order out of the wooden greatsword, in place; true if it
+     changed.  A sell's escrowed weapon becomes copper and the order's tier --
+     part of its place in the book -- moves with it; a buy for a wood
+     greatsword (gold only) is re-filed for copper, so it can still meet a
+     seller, as v19 re-filed a sword's. */
+  _mktGsCopper(o) {
+    if (!o || typeof o !== 'object') return false;
+    let changed = false;
+    /* v2.3.3980: a sell's converted weapon files the order under its new
+       metal (copper, or the metal a strong base-less one became) */
+    if (o.item && oldGreatswordToMetal(o.item)) {
+      changed = true;
+      const gb = o.item.gearBase;
+      if (o.subtype === 'greatsword' && typeof gb === 'string' && o.tierKey !== gb) { o.tierKey = gb; o.tierLabel = BLACKSMITH_TIER_LABELS[gb] || gb; }
+    }
+    /* a buy names no tierMult: only 'wood' maps (to copper); a buy under an
+       old drop's rarity key ('common', 'elemental'...) is left as it is */
+    if (o.subtype === 'greatsword' && o.tierKey === 'wood') { o.tierKey = 'copper'; o.tierLabel = 'Copper'; changed = true; }
     return changed;
   },
 
@@ -252,7 +279,11 @@ export const marketMethods = {
     /* v2.3.3895: the sword is retired (swordconvert.js); an older page's order
        for one is an order for a greatsword */
     if (subtype === 'sword' && !(this._swordConvertOff && this._swordConvertOff())) subtype = 'greatsword';
-    const tierKey = this._mktField(body.tierKey);
+    let tierKey = this._mktField(body.tierKey);
+    let _tierLabel = tierLabel;
+    /* v2.3.3980: and the wooden greatsword (gscopper.js): an order for one is
+       an order for copper */
+    if (subtype === 'greatsword' && tierKey === 'wood' && !(this._gsCopperOff && this._gsCopperOff())) { tierKey = 'copper'; _tierLabel = 'Copper'; }
     if (!category || !subtype || !tierKey) return { ok: false, error: 'Missing fields' };
     let element1 = body.element1 == null ? null : this._mktField(body.element1);   /* v2.3.3513: let -- a sell takes its item's */
     let element2 = body.element2 == null ? null : this._mktField(body.element2);
@@ -304,7 +335,7 @@ export const marketMethods = {
          name), so they are truncated rather than charset-gated -- but they
          ride into the same 128 KB `mkt_order:` value as everything else,
          and an unbounded one was the destructive half of the bug above. */
-      tierLabel: (typeof tierLabel === 'string' && tierLabel) ? tierLabel.slice(0, 32) : tierKey,
+      tierLabel: (typeof _tierLabel === 'string' && _tierLabel) ? _tierLabel.slice(0, 32) : tierKey,   /* v2.3.3980: _tierLabel */
       playerName: (typeof playerName === 'string' && playerName) ? playerName.slice(0, 24) : 'Unknown',
       playerId,
       ts: Date.now(), expires: Date.now() + MARKET.ORDER_EXPIRY,
