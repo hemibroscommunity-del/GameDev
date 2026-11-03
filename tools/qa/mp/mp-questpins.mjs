@@ -8,7 +8,7 @@
  *
  *   1. A new character: the Mayor wears the gold "!" and nobody else does --
  *      over the heads and on the minimap.
- *   2. The Mayor's first quest in (the operator's /dev/tour, nothing paid):
+ *   2. The Mayor's first quest in (the operator's /dev/tour at smith_1, nothing paid):
  *      all six townsfolk wear the "!" at once, the Mayor none; the minimap's
  *      pins are those six, in the owner's pictures -- the ones the box holds
  *      where they stand, the rest on its edge toward them.
@@ -67,7 +67,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and on the minimap, his pin alone', Array.isArray(m0) && m0.join() === 'Mayor Bro:offer', m0);
 
   /* ── 2. the Mayor's first quest in: the whole town ── */
-  const jumped = await H.devOp(wsPort, 'tour', myId, { at: 'farm_1' });
+  /* v2.3.3945: jump to the tour's SECOND step, so only the Mayor's first quest is
+     handed in. `at: 'farm_1'` meant "the Mayor's first quest only" when farm_1 came
+     second; the tour order changed since (v2.3.3533 and v2.3.3924) and it handed in
+     the smith's, Diego's and the snowmen too, so the Blacksmith and Diego lost their
+     "!" and this went red on main. smith_1 is second in the tour, before and after. */
+  const jumped = await H.devOp(wsPort, 'tour', myId, { at: 'smith_1' });
   rec.ok('the Mayor\'s first quest handed in (the operator\'s /dev/tour, nothing paid)', !!jumped && jumped.ok === true, jumped);
   const h1 = await H.waitFor(P, (S) => {
     const out = {};
