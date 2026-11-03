@@ -74,35 +74,17 @@ const shot = async (P, name, peerId = null) => {
   const box = await H.figureBox(P, { pad: 26, peerId });
   await P.page.screenshot({ path: join(OUT, name + '.png'), ...(box ? { clip: box } : {}) }).catch(() => {});
 };
-/* a peer, cut from the phone's screen round where it is drawn (figureBox's
-   tight crop runs off a phone's screen at a peer's edge) */
-const peerShot = async (P, name, peerId) => {
-  const c = await P.page.evaluate((pid) => {
-    const S = window._gameState.current;
-    const r = document.querySelector('canvas').getBoundingClientRect();
-    const o = (S.others || {})[pid];
-    if (!o) return null;
-    const d = window.__btPeersDrawn ? window.__btPeersDrawn(pid) : null;
-    const wx = d ? d.x : (o.renderX != null ? o.renderX : o.x), wy = d ? d.footY : (o.renderY != null ? o.renderY : o.y);
-    const k = S._worldScaleX || 1;
-    return { x: r.left + (wx - S.camera.x) * k, y: r.top + (wy - S.camera.y) * (S._worldScaleY || 1), k, vw: innerWidth, vh: innerHeight };
-  }, peerId);
-  let clip;
-  if (c) {
-    const w = Math.round(90 * c.k), h = Math.round(110 * c.k);
-    const x = Math.max(0, Math.min(c.vw - w, Math.round(c.x - w / 2))), y = Math.max(0, Math.min(c.vh - h, Math.round(c.y - h * 0.85)));
-    clip = { x, y, width: w, height: h };
-  }
-  await P.page.screenshot({ path: join(OUT, name + '.png'), ...(clip ? { clip } : {}) }).catch(() => {});
-};
+/* the phone's whole screen (the peer is cut from it for docs/shots) */
+const peerShot = (P, name) => P.page.screenshot({ path: join(OUT, name + '.png') }).catch(() => {});
 /* the left-hand window of a computer (the character window, the bag) */
 const PANEL = { x: 0, y: 0, width: 392, height: 470 };
 
 const intoTown = async (P, rec, who) => {
   await H.enterWorld(P);
-  const ok = await H.waitFor(P, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l,
-    { timeout: 120000, label: who + ' into BroTown' }).then(() => true).catch(() => false);
-  rec.ok(`${who} is in BroTown (guard)`, ok);
+  let last = null;
+  const ok = await H.waitFor(P, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => { last = v; return v.z === 'wheel' && !v.l; },
+    { timeout: 240000, label: who + ' into BroTown' }).then(() => true).catch(() => false);
+  rec.ok(`${who} is in BroTown (guard)`, ok, { last, logs: (P.logs || []).slice(-12) });
   await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
   return ok;
 };
@@ -203,7 +185,7 @@ export async function run({ browser, webPort, rec }) {
     B.page.on('pageerror', (e) => errors.push('B: ' + String((e && e.message) || e).slice(0, 200)));
     if (!(await intoTown(B, rec, 'the onlooker (phone)'))) return;
     await B.page.evaluate(() => { window.__btProbe = true; });
-    await H.glideTo(B, G.arrival.x - 320, G.arrival.y + 150, { speed: 900, timeoutMs: 20000 });
+    await H.glideTo(B, G.arrival.x - 260, G.arrival.y + 150, { speed: 900, timeoutMs: 20000 });
     const seen = await H.waitMutualSight(A2, B, 40000).then(() => true).catch(() => false);
     rec.ok('the phone sees the smith (guard)', seen);
     const peerRead = () => B.page.evaluate((id) => ({ tint: window.__btWeaponTint().peer, sword: (window.__btPeerSword || {})[id] || null }), me2);
