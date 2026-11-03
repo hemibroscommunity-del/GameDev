@@ -7450,7 +7450,7 @@ export const QUEST_CHAINS = {
       /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
       start: "Now let's catch you a pet. Only about 1 box in 100 holds a monster, so you'll need patience. The TRAP button shows your chance. Keep trapping until a box holds one, then come back to me.",
       progress: "Keep trapping monsters until a box holds one. Every box you spring still gives you Trapping XP.",
-      complete: "You caught a pet! It grows stronger as your Trapping level goes up. Here are 500 gold and 15 Box Traps.",
+      complete: "You caught a pet! It grows stronger as your Trapping level goes up. Here is 500 gold, and 15 Box Traps too.",
     },
   },
 
