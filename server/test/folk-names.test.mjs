@@ -98,7 +98,7 @@ const names = NPC_DATA.map((r) => r.name);
   check('4d the pinned card says "Go back to Going-Going"', card && /Go back to Going-Going/.test(card.line), card);
   const er = read('../../src/rendering/systems/entityRenderer.js');
   check('4e his name plate reads the nickname', /_updateNamePill\(display, folkDisplayName\(npc\.name\), '', true, null\)/.test(er));
-  check('4f ...and the QA probe says what the plate reads', /plate: display\._pillName \? display\._pillName\.text : null/.test(er));
+  check('4f ...and the QA probe says what the plate reads (__btNpcSprites plate.name)', /name: display\._pillName \? display\._pillName\.text : null/.test(er));
   const nd = read('../../src/ui/panels/NpcDialogue.jsx');
   check('4g the dialogue\'s title reads it (its portrait still found by the key)',
     /bt-npcdlg-name">\{folkDisplayName\(npcName\)\}/.test(nd) && /const art = npcArt\(npcName\)/.test(nd));

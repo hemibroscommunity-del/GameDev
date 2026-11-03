@@ -17858,7 +17858,6 @@ export class EntityRenderer {
         if (typeof window !== 'undefined' && drawn) {
           _npcDrawn[npc.id] = {
             id: npc.id, name: npc.name, x: npc.x, y: npc.y,
-            plate: display._pillName ? display._pillName.text : null,   /* v2.3.4013: what his plate reads (a nickname) */
             /* v2.3.3809: drawn live, his figure's body as drawn */
             height: _folkLive ? _folkBodyPx(display._folk, 'height') : fig.texture.height * fig.scale.y,
             width: _folkLive ? _folkBodyPx(display._folk, 'width') : fig.texture.width * fig.scale.x,
