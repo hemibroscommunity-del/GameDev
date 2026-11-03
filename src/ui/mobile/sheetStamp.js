@@ -39,7 +39,7 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { dashMinBus } from './dashMinBus.js';
 import { playVw, playVh } from './playViewport.js';
 import { expandedSheetHeight, drillSheetHeight, bandFootprint } from './sheet/sheetGeometry.js'; /* v2.3.2255: barHeight is reached through bandFootprint now, so the fold cannot be forgotten */
-import { oneBandActive } from '../oneBand.js';   /* v2.3.4052 */
+import { oneBandActive } from '../oneBand.js';   /* v2.3.4072 */
 
 /* Why the "has it changed?" test reads the DOM rather than a remembered
    value: a module-local memo would be asserting that this function is the
@@ -101,7 +101,7 @@ export function stampSheetH() {
     const probe = document.getElementById('bt-sab-probe');
     if (probe) inset = parseFloat(getComputedStyle(probe).paddingBottom) || 0;
   } catch (e) { /* no probe yet: 0 is correct in a tab, and the watchdog re-runs */ }
-  const px = (vw > vh && !oneBandActive())   /* v2.3.4052: the one band is upright on every shape */
+  const px = (vw > vh && !oneBandActive())   /* v2.3.4072: the one band is upright on every shape */
     /* Landscape already IS the inset -- bandFootprint returns it as the whole
        band height there (v2.3.2168), so adding it again would double it. */
     ? bandFootprint(vw, vh, dashMinBus.min, false, inset).dashH

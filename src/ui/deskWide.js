@@ -15,7 +15,7 @@
  * (`?deskwide=1` the wide layout again); the phone tests' computer pages ask
  * for it unless they pass `wide: true` (tools/qa/mp/harness.mjs). */
 
-import { oneBandActive } from './oneBand.js';   /* v2.3.4052 */
+import { oneBandActive } from './oneBand.js';   /* v2.3.4072 */
 
 export function deskWideWanted(search) {
   let q;
@@ -78,7 +78,7 @@ export function deskWideActive() {
   try {
     if (typeof document === 'undefined' || typeof window === 'undefined') return false;
     if (!document.documentElement.classList.contains('bt-desk-wide')) return false;
-    /* v2.3.4052: the one band (?oneband=1) keeps the class -- it frees #root
+    /* v2.3.4072: the one band (?oneband=1) keeps the class -- it frees #root
        from the upright aspect lock (game.css) so the band is the window's
        width -- but a computer then plays the upright layout, not the side
        column and the keys strip (src/ui/oneBand.js) */

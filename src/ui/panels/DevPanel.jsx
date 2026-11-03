@@ -5,7 +5,7 @@ import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
-import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4052: the one dashboard, to try */
+import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4072: the one dashboard, to try */
 
 /* v2.3.3525: the tour's steps, in order, for "Tour: jump to" (the worker's
    /dev/tour checks each is one) */
@@ -842,7 +842,7 @@ export const DevPanel = ({ onClose }) => {
           Open the sound studio
         </button>
 
-        {/* ═══ v2.3.4052: ONE DASHBOARD ON EVERY SCREEN, TO TRY ═══
+        {/* ═══ v2.3.4072: ONE DASHBOARD ON EVERY SCREEN, TO TRY ═══
             Keyless and this device only (src/ui/oneBand.js): the installed
             app has no address bar for ?oneband=1, so this row is how the
             owner tries it on a sideways phone.  The page reloads into it. */}

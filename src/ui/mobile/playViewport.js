@@ -26,7 +26,7 @@
    whole control layout to the wrong one. */
 
 import { deskWideActive, DESK_SHEET_W } from '../deskWide.js';   /* v2.3.3687 */
-import { oneBandActive } from '../oneBand.js';                   /* v2.3.4052 */
+import { oneBandActive } from '../oneBand.js';                   /* v2.3.4072 */
 
 const PHONE_FALLBACK_W = 390;
 const PHONE_FALLBACK_H = 844;
@@ -71,7 +71,7 @@ export function playVh() {
 }
 
 export function playIsLandscape() {
-  /* v2.3.4052: with the one band on (?oneband=1, src/ui/oneBand.js) every
+  /* v2.3.4072: with the one band on (?oneband=1, src/ui/oneBand.js) every
      screen plays the upright layout -- the band at the bottom, whatever the
      shape -- so the one question every sideways path asks answers "no". */
   if (oneBandActive()) return false;

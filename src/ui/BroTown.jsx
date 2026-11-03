@@ -3789,7 +3789,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.3687: on a computer the controls' strip stands at the edge the
          panel does not take (deskWide.js), so with the panel on the right
          the world begins after the strip; --keys-w is its width (0 elsewhere) */
-      /* v2.3.4052: + barW, the one band's bar each side of a world wider than
+      /* v2.3.4072: + barW, the one band's bar each side of a world wider than
          the world rule (sheetGeometry oneBandFootprint; 0 everywhere else) */
       document.documentElement.style.setProperty('--world-x',
         (_dashSide === 'left' ? _fp.sheetW : (_fp.keysW || 0)) + (_fp.barW || 0) + 'px');
