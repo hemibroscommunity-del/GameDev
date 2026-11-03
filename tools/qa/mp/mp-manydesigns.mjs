@@ -202,7 +202,7 @@ async function sizeAndPlace(P, idx, tx, ty) {
    trousers and boots, the ground either side -- where the plain control reads
    0 (the whole widened crop read ~250 on both: his skin and the quest marker
    pass the colour test too), and the PICTURE is the whole widened crop. */
-async function figureRead(P, tag) {
+async function figureRead(P, tag, pick = 'max') {
   let best = null;
   for (let i = 0; i < 4; i++) {
     const b = await H.figureBox(P, { pad: 0 }).catch(() => null);
@@ -220,9 +220,12 @@ async function figureRead(P, tag) {
         width: Math.round(12 * k), height: Math.round(pad + 4 * k) };
       const px = await H.screenshotPixels(P, legs);
       const n = px.count(isFlame);
-      /* the LEAST of the reads: something passing (an arrow, a spark, a
-         card) only ever ADDS colour, so the minimum is his own */
-      if (!best || n < best.n) best = { n, clip };
+      /* The control keeps the LEAST of its reads: something passing (an
+         arrow, a spark, a card) only ever ADDS colour.  The inked bro keeps
+         the MOST: the one way his flames go missing from a read is his body
+         sheet still baking after the join (measured: 0, then 20, on one
+         spot), and that only ever takes colour away. */
+      if (!best || (pick === 'min' ? n < best.n : n > best.n)) best = { n, clip };
     }
     await P.page.waitForTimeout(900);
   }
@@ -261,7 +264,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     touch: true, dpr: 2, world: 'wheel', init: COACH_OFF });
   await H.enterWorld(C);
   await C.page.waitForTimeout(3000);
-  const plain = await figureRead(C, 'control');
+  const plain = await figureRead(C, 'control', 'min');
   rec.ok(`${tag}: the control bro can be found (guard)`, !!plain, plain && { n: plain.n });
   rec.ok(`${tag}: with no drawing, almost no flame red is on his legs (${plain && plain.n} px) -- the `
     + `count below measures his trousers, not the town`, !!plain && plain.n < 6, plain && { n: plain.n });
