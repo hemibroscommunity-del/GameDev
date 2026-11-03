@@ -132,3 +132,50 @@ newest words win. The round shine and its glow are gone.
   through the real `loot_drop`: two rare-blue beams, drawn). The probe
   `window.__btLootShine()` now gives `n`, `beams` (each `h`, `w`, `a`), `px`
   the tallest and `alpha` the brightest.
+
+## v2.3.4124: the loot pops out first, then a thicker, living beam
+
+The owner, 2026-11-03: "Monster deaths to loot drops need more of a
+transition. It's next frame there's a pinhole of light beaming upwards. I want
+about twice as thick for the beam of light and for it to behave like light
+would (not perfectly static)".
+
+![The drop, 0 to 1.5 s: in the air at 0, down by 300 ms, the beam rising at 450, standing at 600](../shots/loot-beam-strip-4124.webp)
+
+- **The transition.** The loot no longer lies there with its beam on the next
+  frame. Each item leaves the monster's body (44 world px up, where the body
+  stood), hops up a little, arcs out to its spot and bounces once, about half a
+  second in all (`lootPop`, `POP_*`; see `loot-landing.md`). Only once it is
+  down (`BEAM_AT_S`, 0.4 s) does the beam rise from it, over 0.3 s
+  (`BEAM_RISE_S`).
+- **Its clock.** YOUR pile that landed while you watched is timed from the
+  moment its `loot_drop` reached your phone (`landAgeOf`, by the phone's own
+  clock). On the QA box a real kill's drop arrived ~0.9 s after the worker's
+  drop time, so timing it on the worker's clock would have finished the pop
+  before the pile ever showed. Another's pile, or one synced on the way in,
+  keeps the worker's time and is lying still when you arrive.
+- **Twice as thick.** A beam's core is 12 world px (was 6), its edges falling
+  off softly, inside a halo 3.2 times as wide at a third of its brightness.
+- **Alive.** Its brightness trembles (two quick sines, out of step from beam
+  to beam: `BEAM_FLICKER`), swells slowly (`BEAM_PULSE_HZ`, 0.45 Hz), its
+  width and height breathe, and 3 to 5 motes of light drift up through it,
+  fading in and out (`BEAM_MOTES`).
+- **The frame budget.** Every sprite (core, halo, motes) is made once, with the
+  pile, its blend, tint and z set then; each frame changes only alpha, scale
+  and place (TRAPS §218). No masks, no filters. The cap still counts beams
+  (`LOOT_BEAMS_MAX` 36; a beam is a core and its halo).
+- **Pictures.** Two, drawn in code when the effects renderer is made (behind
+  the loading screen, never on a pile's first frame): the beam (16 x 128) and
+  a mote (8 x 8), white with alpha only, kept on the graphics chip only once
+  drawn (`_gpuWaiting`). About 9 KB on the chip.
+- **Off for one phone:** `?lootbeam=0` (no beams), `?lootpop=0` (the old fall
+  and two hops; the beam then rises at once).
+- **Checked:** `mp-lootbeam` (10, BroTown, the clock held each 50 ms: the coin
+  up at 43-47 px and down by 550 ms; no beam in the air, then rising from
+  450 ms to full by 700; standing with its brightness changing and motes
+  drifting; 1/1/2/3 beams 10.8-13.2 px wide in their halos; a pile already
+  lying stands at once; none on another's; gone with the pile). `mp-droplines`
+  §7 (a real kill at Frost Ridge: no beam on its first frame, 51 ms after it
+  arrived; then 13 px wide, brightness 0.68-0.93). The probe
+  `window.__btLootShine()` adds `halo`, `motes`, `popDy` (the coin's height
+  in its pop) and `landMs` (the landing's clock).

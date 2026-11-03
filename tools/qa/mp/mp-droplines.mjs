@@ -38,6 +38,10 @@
  * vertical light shining upwards": in 7 and 8 the shine is now the pile's
  * beams -- they RISE as it lands and then stay (no glow): one white beam on a
  * coins-and-remains pile, two rare-blue beams on a mystery piece's.
+ * v2.3.4124, the owner: "It's next frame there's a pinhole of light beaming
+ * upwards. I want about twice as thick ... (not perfectly static)": 7 also
+ * reads the kill's pile not beamed on its first frames (its loot pops out and
+ * lands first), then a beam twice the old width whose brightness changes.
  * BT_QA_SIDEWAYS=1 plays the phone sideways (its pictures end -sideways).
  * Pictures: tools/qa/mp/out/droplines-*.png. */
 import * as H from './harness.mjs';
@@ -137,7 +141,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const tick = () => {
         if (window.__qaShine !== w) return;
         const r = (window.__btLootShine ? window.__btLootShine() : []).find((x) => x.lootId && x.lootId.indexOf(w.pre) === 0);
-        if (r && r.ageMs != null) w.seen.push({ age: r.ageMs, alpha: r.alpha, px: r.px, n: r.n, color: r.color, tint: r.tint, lootId: r.lootId });
+        if (r && r.ageMs != null) w.seen.push({ age: r.ageMs, pileAge: r.landMs, alpha: r.alpha, px: r.px, n: r.n, w: r.beams[0] ? r.beams[0].w : 0, color: r.color, tint: r.tint, lootId: r.lootId });
         if (performance.now() - t0 < 9000) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -242,12 +246,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 7 ── v2.3.3746: your pile shines.  v2.3.3916: its beams rise, then stay */
     const sh1 = await P.page.evaluate(() => (window.__qaShine ? window.__qaShine.seen : []));
-    const rising = sh1.filter((x) => x.age < 300);
+    /* v2.3.4124: on the landing's clock (the probe's landMs): risen by ~0.7 s */
+    const rising = sh1.filter((x) => x.pileAge != null && x.pileAge < 650);
     const settled = sh1.filter((x) => x.age > 1500);
     const lastA = settled.length ? settled[settled.length - 1] : null;
     rec.ok(`7. your pile's beam rises as it lands (${rising.map((x) => x.px).join(',')} px) and stays (${lastA && lastA.alpha}, ${lastA && lastA.px} px, ${lastA && lastA.n} beam)`,
-      !!lastA && lastA.n === 1 && lastA.alpha >= 0.5 && lastA.alpha <= 0.9 && settled.every((x) => x.px >= 170 && x.alpha >= 0.5) && (!rising.length || rising[0].px < lastA.px),
+      !!lastA && lastA.n === 1 && lastA.alpha >= 0.5 && lastA.alpha <= 1 && settled.every((x) => x.px >= 170 && x.alpha >= 0.5) && (!rising.length || rising[0].px < lastA.px * 0.9),
       { first: sh1[0], lastA, n: sh1.length });
+    /* v2.3.4124, the owner: "It's next frame there's a pinhole of light
+       beaming upwards. I want about twice as thick ... and for it to behave
+       like light would (not perfectly static)": the kill's loot pops out of
+       the monster and lands first (effectsRenderer BEAM_AT_S, 0.4 s on the
+       landing's clock, from when the pile reached the phone), so no frame drawn before then has a beam; after, it
+       is twice the old 6 world px, and its brightness keeps changing */
+    const popEarly = sh1.filter((x) => x.pileAge != null && x.pileAge < 350);
+    rec.ok(`7. ...not beamed on the first frames, while the loot pops out and lands (${popEarly.map((x) => x.pileAge + 'ms:' + x.px + '/' + x.alpha).join(' ') || 'no frame drawn that early'})`,
+      popEarly.every((x) => x.px === 0 && x.alpha === 0) && sh1.length > 0 && (sh1[0].pileAge >= 350 || sh1[0].px === 0), { popEarly, first: sh1[0] });
+    const sAs = settled.map((x) => x.alpha);
+    rec.ok(`7. ...then a beam twice the old width (${lastA && lastA.w} world px; it was 6) whose brightness changes over time (${Math.min(...sAs)}-${Math.max(...sAs)})`,
+      !!lastA && lastA.w >= 10.8 && lastA.w <= 13.2 && settled.length >= 3 && Math.max(...sAs) - Math.min(...sAs) > 0.02, { lastA, sAs: sAs.slice(0, 12) });
     rec.ok(`7. ...white for coins and remains (${lastA && lastA.tint}), the colour of its best line`, !!lastA && lastA.color === '#FFFFFF' && lastA.tint === '#FFFFFF', lastA);
     const shardPile = await P.page.evaluate((mid) => (window.__btLootShine() || []).find((x) => x.lootId && x.lootId.indexOf('mk-' + mid + '-') === 0) || null, m2 ? m2.id : '');
     rec.ok(`7. ...the shard's green on the shard's pile (${shardPile && shardPile.tint}), as its line ("${sh && sh.text}" in ${sh && sh.color})`,

@@ -3092,11 +3092,29 @@ const DROP_GROW = 1.5;
    kept on the graphics chip only; a sprite of it per beam, tinted, added
    light; each frame changes only alpha, scale and place (TRAPS §218).  At
    most LOOT_BEAMS_MAX on screen.  `?lootbeam=0`: none, for one phone. */
-const BEAM_RISE_S = 0.35;      /* from the pile's foot to its full height */
+/* ═══ v2.3.4124: TWICE AS THICK, AND ALIVE LIKE LIGHT ═══
+   The owner, 2026-11-03: "I want about twice as thick for the beam of light
+   and for it to behave like light would (not perfectly static)".  Each beam
+   is a core twice the old width (BEAM_W_PX 6 -> 12) with soft edges that
+   fall off, inside a wide faint halo (BEAM_HALO_*); its brightness flickers a
+   little and pulses slowly (BEAM_FLICKER, BEAM_PULSE_HZ), its width and
+   height breathe, and a few motes of light drift up through it (BEAM_MOTES).
+   It rises once the pile has landed (BEAM_AT_S, the pop above), over
+   BEAM_RISE_S.  Still only alpha, scale and place each frame (TRAPS §218);
+   both pictures are made with the renderer (its constructor), not on first
+   use, and kept on the graphics chip only. */
+const BEAM_RISE_S = 0.3;       /* from the pile's foot to its full height, once it has landed */
 const BEAM_H_PX = 200;         /* the tallest beam, world px (a pile is ~60 tall) */
-const BEAM_W_PX = 6;           /* thin: a pile is ~60 across */
-const BEAM_A = 0.85;           /* its alpha, before the shimmer */
-const BEAM_TEX_W = 8, BEAM_TEX_H = 128;
+const BEAM_W_PX = 12;          /* v2.3.4124: twice v2.3.3916's 6 (a pile is ~60 across) */
+const BEAM_A = 0.85;           /* its alpha, before the flicker */
+const BEAM_TEX_W = 16, BEAM_TEX_H = 128;
+const BEAM_HALO_W = 3.2;       /* the halo, this many times the core's width... */
+const BEAM_HALO_A = 0.34;      /* ...and this bright, before the flicker */
+const BEAM_FLICKER = 0.12;     /* how much the brightness trembles */
+const BEAM_PULSE_HZ = 0.45;    /* the slow swell of the light */
+const BEAM_MOTES = 3;          /* motes drifting up a pile's beams (plus one a beam past the first) */
+const MOTE_PX = 5;             /* a mote's size, world px */
+const MOTE_TEX = 8;
 /* rank (dropLines RARITY_TIERS / GRADE_WORDS): 0 Normal, 1 Uncommon,
    2 Rare (a gem, a mystery gear piece), 3 Very rare */
 const LOOT_BEAMS_BY_RANK = [1, 1, 2, 3];
@@ -3114,7 +3132,9 @@ const BEAM_ON = (() => { try { return new URLSearchParams(window.location.search
    burning heap is; `?burnfire=0` draws the old flames, for one phone */
 const BURN_BLAZE = (() => { try { return new URLSearchParams(window.location.search).get('burnfire') !== '0'; } catch (e) { return true; } })();
 const PEER_FIRES = 6;   /* other players burning in the building's flames at once; past it, the drawn flames */
-/* v2.3.3916: a thin column: a bright core, soft edges, fading out toward its top */
+/* v2.3.3916: a thin column: a bright core, soft edges, fading out toward its
+   top.  v2.3.4124: twice as wide, its edges falling off softly (the light,
+   not a stripe), the same picture stretched wider for the halo */
 function makeBeamTexture() {
   if (typeof document === 'undefined') return null;
   const W = BEAM_TEX_W, H = BEAM_TEX_H;
@@ -3123,9 +3143,13 @@ function makeBeamTexture() {
   const g = cv.getContext('2d');
   const across = g.createLinearGradient(0, 0, W, 0);
   across.addColorStop(0, 'rgba(255,255,255,0)');
-  across.addColorStop(0.3, 'rgba(255,255,255,0.55)');
+  across.addColorStop(0.15, 'rgba(255,255,255,0.08)');
+  across.addColorStop(0.3, 'rgba(255,255,255,0.4)');
+  across.addColorStop(0.42, 'rgba(255,255,255,0.85)');
   across.addColorStop(0.5, 'rgba(255,255,255,1)');
-  across.addColorStop(0.7, 'rgba(255,255,255,0.55)');
+  across.addColorStop(0.58, 'rgba(255,255,255,0.85)');
+  across.addColorStop(0.7, 'rgba(255,255,255,0.4)');
+  across.addColorStop(0.85, 'rgba(255,255,255,0.08)');
   across.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = across;
   g.fillRect(0, 0, W, H);
@@ -3138,6 +3162,21 @@ function makeBeamTexture() {
   g.fillStyle = up;
   g.fillRect(0, 0, W, H);
   return Texture.from(cv);   /* its canvas let go once drawn: _gpuWaiting */
+}
+/* v2.3.4124: a mote of light, a soft round dot */
+function makeMoteTexture() {
+  if (typeof document === 'undefined') return null;
+  const N = MOTE_TEX, c = N / 2;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  const rg = g.createRadialGradient(c, c, 0, c, c, c);
+  rg.addColorStop(0, 'rgba(255,255,255,1)');
+  rg.addColorStop(0.45, 'rgba(255,255,255,0.5)');
+  rg.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = rg;
+  g.fillRect(0, 0, N, N);
+  return Texture.from(cv);
 }
 const _hexTint = (h) => { const n = parseInt(String(h || '').replace('#', ''), 16); return Number.isFinite(n) ? n : 0xffffff; };
 const DROP_ICON_WORLD = 40 * DROP_GROW;
@@ -3162,10 +3201,72 @@ const RARE_KINDS = { weapon: true, gem: true, armor: true };
  * drop time (l.ts): a pile you walk up to, or one synced on zone entry, is
  * already lying still.  Visual only -- the pickup test reads l.x / l.y. */
 const LAND_S = 1.0;
+/* ═══ v2.3.4124: LOOT POPS OUT OF THE MONSTER, THEN THE BEAM RISES ═══
+   The owner, 2026-11-03: "Monster deaths to loot drops need more of a
+   transition. It's next frame there's a pinhole of light beaming upwards."
+   Each item now leaves from the monster's BODY (POP_H above the pile, where
+   the body stood: the pile sits PILE_Y_OFFSET under it), arcs out to its spot
+   with a little hop up first, and bounces ONCE (POP_ARC_S + POP_BOUNCE_S,
+   about half a second, each item a touch after the one before), and only
+   when it is down does the pile's beam rise (BEAM_AT_S, below).
+   `?lootpop=0`: the v2.3.2771 fall and two hops, for one phone. */
+const LOOT_POP = (() => { try { return new URLSearchParams(window.location.search).get('lootpop') !== '0'; } catch (e) { return true; } })();
+const POP_H = 44;          /* from the body, world px over the pile's foot */
+const POP_JUMP = 16;       /* the little hop up as it leaves the body */
+const POP_DELAY_S = 0.08;  /* the last item leaves this much after the first */
+const POP_ARC_S = 0.32;    /* out of the body and down to the ground */
+const POP_BOUNCE_S = 0.15; /* its one bounce */
+const POP_BOUNCE_H = 7;
+const POP_LAND_S = POP_DELAY_S + POP_ARC_S + POP_BOUNCE_S;   /* ~0.55 s: settled */
+/* the beam rises once the pile is down: its first contact, the last item's */
+const BEAM_AT_S = LOOT_POP ? POP_DELAY_S + POP_ARC_S : 0;
+function lootPop(l, key, age, n) {
+  if (!(age < POP_LAND_S) || age < 0) return _NO_HOP;
+  if (l._landSeed == null) l._landSeed = Math.random();
+  const k = (HOP_KEYS[key] || 0) + n * 7 + 1;
+  /* the remains are the body itself: they slump from lower, and stay put */
+  const rem = key === 'remnant';
+  const H = (rem ? 0.35 : 1) * POP_H * (0.9 + 0.2 * _hash(l._landSeed * 131 + k * 1.7));
+  const J = (rem ? 0.3 : 1) * POP_JUMP * (0.8 + 0.4 * _hash(l._landSeed * 97 + k * 2.9));
+  const delay = rem ? 0 : POP_DELAY_S * _hash(l._landSeed * 71 + k * 3.1);
+  const lean = (_hash(l._landSeed * 29 + k * 7.9) < 0.5 ? -1 : 1) * (0.25 + 0.3 * _hash(l._landSeed * 17 + k * 2.3));
+  const t = age - delay;
+  if (t < 0) return { dy: H, sq: 0, rot: 0, out: 0 };
+  if (t < POP_ARC_S) {
+    /* the arc: from the body, a hop up, then down to the ground (a parabola
+       with its start at H and its end at 0), thrown out as it goes */
+    const u = t / POP_ARC_S;
+    const dy = H * (1 - u) * (1 - u * 0.15) + 4 * J * u * (1 - u);
+    const out = 1 - (1 - u) * (1 - u);
+    /* it turns a little in the air, level again at the ground */
+    return { dy: Math.max(0, dy), sq: 0, rot: lean * Math.sin(Math.PI * u), out };
+  }
+  const v = (t - POP_ARC_S) / POP_BOUNCE_S;
+  if (v < 1) {
+    /* the one bounce: a squash at the contact, a small hop, a lean */
+    const sq = 0.24 * Math.max(0, 1 - v / 0.3);
+    return { dy: 4 * POP_BOUNCE_H * v * (1 - v), sq, rot: lean * 0.5 * Math.sin(Math.PI * v), out: 1 };
+  }
+  return _NO_HOP;
+}
 const HOP_KEYS = { remnant: 0, coin: 1, shard: 2, weapon: 3, gem: 4, armor: 5 };
 const _NO_HOP = { dy: 0, sq: 0, rot: 0, out: 1 };
 const _hash = (x) => { const v = Math.sin(x) * 43758.5453; return v - Math.floor(v); };
+/* v2.3.4124: the age the landing (and the beam after it) plays at.  YOUR pile
+   that landed while you watched (its loot_drop: _shine set, not late) is timed
+   from the moment it reached THIS phone, by this phone's clock: on the QA box
+   a kill's loot_drop came ~0.9 s after the worker's drop time (l.ts), so a pop
+   on l.ts had already finished when the pile first showed -- the owner's
+   "next frame there's a pinhole of light", again -- and a phone whose clock
+   runs ahead of or behind the worker's would skip or stall it.  Anything else
+   (another's pile, one synced on the way in) keeps the worker's time: lying
+   still when you arrive, as v2.3.2771. */
+function landAgeOf(l, now, age) {
+  if (LOOT_POP && l._shine && !l._shine.late && Number.isFinite(l._shine.at)) return (now - l._shine.at) / 1000;
+  return age;
+}
 function lootHop(l, key, age, n = 0) {
+  if (LOOT_POP) return lootPop(l, key, age, n);   /* v2.3.4124 */
   if (!(age < LAND_S) || age < 0) return _NO_HOP;
   if (l._landSeed == null) l._landSeed = Math.random();
   const k = (HOP_KEYS[key] || 0) + n * 7 + 1;
@@ -3308,6 +3409,13 @@ export class EffectsRenderer {
        be drawn once, when its canvas goes (gpuOnly.js emptyOnceDrawn; looked
        at every GPU_WAIT_MS by update()) */
     this._gpuWaiting = new Set();
+    /* v2.3.4124: the loot beam's two pictures, made with the renderer (behind
+       the loading screen), never on a pile's first frame; kept on the
+       graphics chip only once drawn */
+    this._beamTex = makeBeamTexture();
+    this._moteTex = makeMoteTexture();
+    if (this._beamTex) this._gpuWaiting.add(this._beamTex.source);
+    if (this._moteTex) this._gpuWaiting.add(this._moteTex.source);
     this._gpuWaitAt = 0;
     /* v2.3.3074 QA (mp-bakeleak): how many bakes this renderer owns, and
        whether any strip it DRAWS from points at a released source -- what a
@@ -9921,63 +10029,107 @@ export class EffectsRenderer {
   /* v2.3.3916: the beams (BEAM_* above).  Made once with the pile, under
      everything on it; then only their alpha, height and place.  Kept on
      `_pixiShine` (the name the rest of the loot code has known since
-     v2.3.3746): an array of the pile's beam sprites. */
+     v2.3.3746): an array of the pile's sprites.  v2.3.4124: each beam a core
+     (`_role` 'core') in a halo ('halo'), and the pile's motes ('mote'); the
+     beams rise once the pile has landed (BEAM_AT_S). */
   _renderPileShine(S, l, now, bob, alpha) {
     if (!BEAM_ON) return;
     if (!l._pixiShine) {
       if (!this._beamTex || this._beamTex.destroyed) {
         this._beamTex = makeBeamTexture();
-        /* kept on the graphics chip only, once this renderer has drawn it */
         if (this._beamTex && this._gpuWaiting) this._gpuWaiting.add(this._beamTex.source);
       }
-      const tex = this._beamTex;
+      if (!this._moteTex || this._moteTex.destroyed) {
+        this._moteTex = makeMoteTexture();
+        if (this._moteTex && this._gpuWaiting) this._gpuWaiting.add(this._moteTex.source);
+      }
+      const tex = this._beamTex, mtex = this._moteTex;
       if (!tex) return;
       const n = LOOT_BEAMS_BY_RANK[Math.max(0, Math.min(LOOT_BEAMS_BY_RANK.length - 1, l._shine.rank | 0))] || 1;
       /* the cap: past it this pile waits (asked again each frame, cheap) */
       if ((this._lootBeamCount || 0) + n > LOOT_BEAMS_MAX) return;
       const tint = _hexTint(l._shine.color);
-      const beams = [];
+      const parts = [];
+      /* light, not paint: added to what is under it, so it shows on dirt,
+         grass and water alike.  Blend, tint and z set once, as each is made
+         -- never a change a frame (TRAPS §218).  Over the remains (and the
+         layer's worldLife holder, z 0), under the coins, the shard and the
+         gear; the halo under its core. */
+      const make = (t, role, slot, z, ax, ay) => {
+        const sp = new Sprite(t);
+        sp.anchor.set(ax, ay);
+        sp.zIndex = z;
+        sp.tint = tint;
+        sp.blendMode = 'add';
+        sp.alpha = 0;
+        sp.scale.set(0, 0);
+        sp._role = role; sp._slot = slot;
+        this.lootLayer.addChild(sp);
+        parts.push(sp);
+        return sp;
+      };
       for (const slot of BEAM_SLOTS[n - 1]) {
-        const b = new Sprite(tex);
-        b.anchor.set(0.5, 1);   /* its foot on the pile: the top is what rises */
-        /* over the remains (and the layer's worldLife holder, z 0), under
-           the coins, the shard and the gear */
-        b.zIndex = LOOT_Z.remnant + 1;
-        b.tint = tint;
-        /* light, not paint: added to what is under it, so it shows on dirt,
-           grass and water alike.  Set once, as it is made -- never a change
-           a frame (TRAPS §218) */
-        b.blendMode = 'add';
-        b.alpha = 0;
-        b.scale.set(BEAM_W_PX / BEAM_TEX_W, 0);
-        b._slot = slot;
-        this.lootLayer.addChild(b);
-        beams.push(b);
+        make(tex, 'halo', slot, LOOT_Z.remnant + 0.5, 0.5, 1);
+        make(tex, 'core', slot, LOOT_Z.remnant + 1, 0.5, 1);   /* its foot on the pile: the top is what rises */
       }
-      this._lootBeamCount = (this._lootBeamCount || 0) + beams.length;
-      l._pixiShine = beams;
+      if (mtex) {
+        const m = BEAM_MOTES + (n - 1);
+        if (l._landSeed == null) l._landSeed = Math.random();
+        for (let i = 0; i < m; i++) {
+          const slot = BEAM_SLOTS[n - 1][i % n];
+          /* each its own rise time, start and sway, from the pile's seed */
+          const mo = { P: 1.6 + 0.9 * _hash(l._landSeed * 13 + i * 3.7), off: _hash(l._landSeed * 41 + i * 5.9),
+            sway: 2 + 3 * _hash(l._landSeed * 23 + i * 1.3), ph: 6.28 * _hash(l._landSeed * 7 + i * 2.2), sz: 0.7 + 0.6 * _hash(l._landSeed * 59 + i) };
+          make(mtex, 'mote', Object.assign({}, slot, { mo }), LOOT_Z.remnant + 1.5, 0.5, 0.5);
+        }
+      }
+      this._lootBeamCount = (this._lootBeamCount || 0) + n;
+      l._beamN = n;
+      l._pixiShine = parts;
     }
     /* another player's pile: none (the watcher's grey, as before) */
     const mine = !l.recipients || !S.myId || l.recipients.includes(S.myId);
     /* window.__btShineOff: QA's off switch (mp-droplines compares the screen
        with and without it) -- alpha only, never a structural change */
     const qaOff = typeof window !== 'undefined' && window.__btShineOff === true;
-    const t = Math.max(0, (now - l._shine.at) / 1000);
-    /* rising, eased out; a pile already lying when it reached this phone (a
-       zone's list on the way in: _shine.late) stands at full height at once */
-    const k = l._shine.late ? 1 : Math.min(1, t / BEAM_RISE_S);
+    /* v2.3.4124: on the landing's own clock (landAgeOf, as lootHop):
+       nothing until it is down, then it
+       rises; a pile already lying when it reached this phone (a zone's
+       list on the way in: _shine.late) stands at full height at once */
+    const age0 = landAgeOf(l, now, (now - l.ts) / 1000);
+    const age = Number.isFinite(age0) ? age0 : (now - l._shine.at) / 1000 + BEAM_AT_S + BEAM_RISE_S;   /* no drop time: standing */
+    const tb = l._shine.late ? BEAM_RISE_S + Math.max(0, age) : age - BEAM_AT_S;
+    const k = tb <= 0 ? 0 : Math.min(1, tb / BEAM_RISE_S);
     const up = 1 - (1 - k) * (1 - k);
-    const a = mine && !qaOff ? BEAM_A * alpha : 0;
+    const t = Math.max(0, age);
+    const a = mine && !qaOff && k > 0 ? BEAM_A * alpha : 0;
+    /* the slow pulse, shared by the pile's beams */
+    const pulse = 1 + 0.1 * Math.sin(t * Math.PI * 2 * BEAM_PULSE_HZ);
+    const footY = l.y + bob + 6;
     for (const b of l._pixiShine) {
       if (!b || b.destroyed) continue;
       const sl = b._slot;
-      /* the shimmer: a slow breath of light, a little sway of width */
+      if (b._role === 'mote') {
+        /* drifting up through the beam, in and out of sight, swaying */
+        const mo = sl.mo;
+        const u = ((t / mo.P + mo.off) % 1 + 1) % 1;
+        const h = BEAM_H_PX * sl.h * up * 0.85;
+        b.x = l.x + sl.dx + Math.sin(u * 6.28 + mo.ph) * mo.sway;
+        b.y = footY - 8 - u * h;
+        b.scale.set((MOTE_PX * mo.sz) / MOTE_TEX);
+        b.alpha = a * k * 0.9 * Math.sin(Math.PI * u);
+        continue;
+      }
+      /* the flicker: two quick trembles, out of step beam to beam; the
+         width and height breathe with them */
+      const fl = 1 - BEAM_FLICKER * (0.5 + 0.5 * Math.sin(t * 11.3 + sl.ph) * Math.sin(t * 7.1 + sl.ph * 1.7));
       const sh = Math.sin(t * 3.1 + sl.ph);
+      const w = BEAM_W_PX * (1 + 0.1 * sh) * (b._role === 'halo' ? BEAM_HALO_W : 1);
       b.x = l.x + sl.dx;
-      b.y = l.y + bob + 6;
-      b.scale.x = (BEAM_W_PX * (1 + 0.12 * sh)) / BEAM_TEX_W;
-      b.scale.y = (BEAM_H_PX * sl.h * up * (1 + 0.04 * Math.sin(t * 1.7 + sl.ph))) / BEAM_TEX_H;
-      b.alpha = a * (0.82 + 0.18 * sh);
+      b.y = footY;
+      b.scale.x = w / BEAM_TEX_W;
+      b.scale.y = (BEAM_H_PX * sl.h * up * (1 + 0.05 * Math.sin(t * 1.7 + sl.ph)) * (b._role === 'halo' ? 1.04 : 1)) / BEAM_TEX_H;
+      b.alpha = a * fl * pulse * (b._role === 'halo' ? BEAM_HALO_A : 1);
     }
   }
 
@@ -10005,9 +10157,10 @@ export class EffectsRenderer {
     /* v2.3.3916: its beams go with it (and leave room under the cap) */
     if (Array.isArray(l._pixiShine)) {
       for (const b of l._pixiShine) kill(b);
-      this._lootBeamCount = Math.max(0, (this._lootBeamCount || 0) - l._pixiShine.length);
+      /* v2.3.4124: the count is beams, not sprites (a beam is a core and its halo, with motes) */
+      this._lootBeamCount = Math.max(0, (this._lootBeamCount || 0) - (l._beamN || l._pixiShine.length));
     }
-    l._pixiShine = null;
+    l._pixiShine = null; l._beamN = 0;
     /* v2.3.2771: the rare icons, their shines, and the RARE DROP! call */
     if (l._pixiRare) { for (const r of l._pixiRare) { kill(r.icon); kill(r.beam); } l._pixiRare = null; }
     kill(l._pixiRareDrop); l._pixiRareDrop = null;
@@ -10241,7 +10394,7 @@ export class EffectsRenderer {
           this.lootLayer.addChild(icon);
           r = pool[i] = { icon, beam };
         }
-        const h = lootHop(l, it.kind, age, i);
+        const h = lootHop(l, it.kind, landAgeOf(l, now, age), i);   /* v2.3.4124: on the landing's clock */
         /* side by side when a pile carries more than one; they overlap a
            little, and the rarer draws on top (zIndex) */
         /* v2.3.2773: its spot in the pile's circle (the loop's pileLayout) */
@@ -10358,7 +10511,10 @@ export class EffectsRenderer {
         const out = [];
         for (const e of (_selfS._knownLoot || [])) {
           if (!e || e.dropped || e.isDeathDrop) continue;
-          const bs = Array.isArray(e._pixiShine) ? e._pixiShine.filter((b) => b && !b.destroyed) : [];
+          const all = Array.isArray(e._pixiShine) ? e._pixiShine.filter((b) => b && !b.destroyed) : [];
+          /* v2.3.4124: `beams` are the cores; their halos and the motes counted beside */
+          const bs = all.filter((b) => !b._role || b._role === 'core');
+          const halos = all.filter((b) => b._role === 'halo'), motes = all.filter((b) => b._role === 'mote');
           const beams = bs.map((b) => ({ h: Math.round(b.texture.height * b.scale.y), w: +(b.texture.width * b.scale.x).toFixed(1), a: +b.alpha.toFixed(3), x: Math.round(b.x), y: Math.round(b.y) }));
           let box = null;
           for (const b of bs) {
@@ -10369,6 +10525,12 @@ export class EffectsRenderer {
           out.push({ lootId: e.lootId || null, color: e._shine ? e._shine.color : null, rank: e._shine ? e._shine.rank : null,
             ageMs: e._shine ? t - e._shine.at : null, late: !!(e._shine && e._shine.late),
             n: beams.length, beams,
+            halo: halos.length ? { n: halos.length, w: +(halos[0].texture.width * halos[0].scale.x).toFixed(1), a: +halos[0].alpha.toFixed(3) } : null,
+            motes: motes.map((m) => ({ y: Math.round(m.y), a: +m.alpha.toFixed(3) })),
+            ageMsPile: e.ts ? t - e.ts : null,
+            /* v2.3.4124: how high its coin is in its pop out of the monster, world px (0: down) */
+            popDy: e.ts ? +lootHop(e, 'coin', landAgeOf(e, t, (t - e.ts) / 1000)).dy.toFixed(1) : 0,
+            landMs: e.ts ? Math.round(landAgeOf(e, t, (t - e.ts) / 1000) * 1000) : null,
             alpha: beams.reduce((m, b) => Math.max(m, b.a), 0), px: beams.reduce((m, b) => Math.max(m, b.h), 0),
             tint: bs[0] ? '#' + (bs[0].tint >>> 0).toString(16).padStart(6, '0').toUpperCase() : null,
             box: box ? { x: box.x, y: box.y, w: box.x2 - box.x, h: box.y2 - box.y } : null });
@@ -10483,7 +10645,8 @@ export class EffectsRenderer {
       const bob = Math.sin(age * 3) * 2.5 + PILE_Y_OFFSET;
       /* v2.3.2771: each item's own landing (lootHop above) -- zero once the
          pile has settled, so every line below reads as before */
-      const hR = lootHop(l, 'remnant', age), hC = lootHop(l, 'coin', age), hS = lootHop(l, 'shard', age);
+      const _la = landAgeOf(l, now, age);   /* v2.3.4124: the landing's clock (YOUR fresh pile: from when it reached you) */
+      const hR = lootHop(l, 'remnant', _la), hC = lootHop(l, 'coin', _la), hS = lootHop(l, 'shard', _la);
       /* v2.3.2773: each item's spot in the pile's circle (pileLayout), rarest
          nearest the middle; the remains are the middle */
       const _pk = [];
@@ -17599,6 +17762,8 @@ export class EffectsRenderer {
     this._captureRenderer = null;
     if (this._beamTex && !this._beamTex.destroyed) this._beamTex.destroy(true);   /* v2.3.3805 */
     this._beamTex = null;
+    if (this._moteTex && !this._moteTex.destroyed) this._moteTex.destroy(true);   /* v2.3.4124 */
+    this._moteTex = null;
     this._lootBeamCount = 0;   /* v2.3.3916: the loot's beams went with their piles */
     this._layers = null;
   }
