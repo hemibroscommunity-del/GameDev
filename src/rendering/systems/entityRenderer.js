@@ -28,6 +28,7 @@ import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
 import { STUN_STARS, STUN_SPIN_MS, BLOCK_BARS, BLOCK_GEOM, blocksFor } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring; v2.3.2300: his 5-block resource strips */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
+import { fullsetSplitY } from '../lightfx/gradeSplit.js'; /* v2.3.3953: a full set's waist, for its two grades' glow */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount, SLIME_BASE_ROW, SLIME_FRAME_PX } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1573 generalised */
 
@@ -12870,6 +12871,7 @@ export class EntityRenderer {
             if (spriteBody.tint !== _fsTintR) spriteBody.tint = _fsTintR;
           }
           display._fullsetOn = !!_fsR;   /* v2.3.2864: see the local path */
+          display._fullsetWaist = _fsR ? fullsetSplitY(dir, frameIdx, _rJogPhase) : 0;   /* v2.3.3953: see the local path */
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
           try {
@@ -13015,10 +13017,27 @@ export class EntityRenderer {
       const oSpriteBody = display._spriteBody;
       const oWeaponSprite = display._weaponSprite;
       if (oWpnType && !oIsShielding && !_rDodge) {   /* v2.3.2925: not in a roll -- see the local twin */
-        const wpnIconTex = hasWeapon(oWpnType) ? getWeaponTexture(oWpnType) : null;
+        /* ═══ v2.3.3980: A PEER'S GREATSWORD IS THE ONE IN YOUR HAND ═══
+           The owner: "'Copper great sword' when Smithed looks gray".  Another
+           player's greatsword was drawn from the BARE greatsword sheet (the
+           one-handed Sword1 icon, every facing) -- the per-facing art the
+           local player carries (v2.3.942) was never used here.  So a carried
+           greatsword, in its metal, is the per-facing sheet for the canonical
+           `dir`, its grip and its widened fit height (weaponFitH), drawn as
+           the local carry draws it (the mirror rule, the south tilt).  Those
+           sheets load behind the loading screen (loadWeaponSprites, the
+           preload law); until one has, the bare sheet stands in as before.
+           The texture changes only when the facing does (TRAPS §218).  A
+           swing keeps the bare sheet: the effectsRenderer stand-in draws the
+           peer mid-swing, and this branch's swing rotation is for that sheet. */
+        const { dir, mirror } = resolveDirection(facing);
+        const _oMat = (other && other.wpnMat) || undefined;
+        const _oGsDir = (oWpnType === 'greatsword' && !oSwingActive && hasWeapon(oWpnType, _oMat, dir)) ? dir : null;
+        const wpnIconTex = hasWeapon(oWpnType, _oMat, _oGsDir) ? getWeaponTexture(oWpnType, _oMat, _oGsDir) : null;
+        display._oWpnArt = wpnIconTex ? (oWpnType + (_oGsDir ? '-' + _oGsDir : '')) : null;   /* v2.3.3980: QA probe (__btPeerSword.art) */
         if (wpnIconTex) {
           if (oWeaponSprite.texture !== wpnIconTex) oWeaponSprite.texture = wpnIconTex;
-          const handle = getWeaponHandle(oWpnType);
+          const handle = getWeaponHandle(oWpnType, _oMat, _oGsDir);
           const tw = wpnIconTex.width || 64;
           const th = wpnIconTex.height || 64;
           if (handle) oWeaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
@@ -13026,7 +13045,6 @@ export class EntityRenderer {
 
           /* Per-frame hand anchor — same math as local. */
           const SHEET_W = 256;
-          const { dir, mirror } = resolveDirection(facing);
           /* v2.3.163: baseline halved from 1.0 -> 0.5 to match the
              spriteBody scale change above (also 0.5).  Keeps the
              weapon anchored to the visual hand position rather than
@@ -13055,11 +13073,11 @@ export class EntityRenderer {
           oWeaponSprite.x = wpnX;
           oWeaponSprite.y = wpnY;
 
-          const targetH = oWpnType === 'greatsword' ? 36
+          const targetH = oWpnType === 'greatsword' ? (_oGsDir ? 48 : 36)   /* v2.3.3980: the local carry's 48 */
                          : oWpnType === 'staff'      ? 34
                          : oWpnType === 'bow'        ? 28
                          :                              26;
-          const fitScale = targetH / Math.max(8, th);
+          const fitScale = targetH / Math.max(8, _oGsDir ? weaponFitH(oWpnType, _oMat, _oGsDir, th) : th);
           /* v2.3.1786: carried blade points UP, same as the local player below —
              other bros have to hold their sword the way you hold yours. */
           let _oBladeUp = false;
@@ -13067,14 +13085,19 @@ export class EntityRenderer {
             oWeaponSprite.rotation = oSwingAng;
             oWeaponSprite.scale.x = fitScale;
           } else {
-            const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
+            /* v2.3.3980: the per-facing art flips as the local carry's does
+               (resolveDirection's mirror, plus south and north: v2.3.1821,
+               v2.3.2925), and the south blade keeps its tilt off the face */
+            const weaponMirror = _oGsDir
+              ? (mirror || _oGsDir === 'south' || _oGsDir === 'north')
+              : (facingIdx >= 3 && facingIdx <= 6);
             /* v2.3.2841: a peer's staff kicks on THEIR cast (gameEvents stamps
                _staffCastAt from their bolt).  Their cooldown is not on the
                wire, so a peer gets the kick without the charge-up dip. */
             oWeaponSprite.rotation = (oWpnType === 'staff')
               ? staffCastPose(now, other._staffCastAt, other._staffCastAng, 0, 0, weaponMirror, undefined,
                 !!other._staffCastBig && other._staffCastBig === other._staffCastAt)   /* v2.3.2842: their one-bolt special kicks harder */
-              : carryWobble(now, isMoving, oWpnType);   /* v2.3.2925: their blade wobbles with their run, as yours does */
+              : ((_oGsDir === 'south' ? SOUTH_IDLE_TILT : 0) + carryWobble(now, isMoving, oWpnType));   /* v2.3.2925: their blade wobbles with their run, as yours does */
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
             _oBladeUp = oWpnType !== 'staff';   /* v2.3.2841: a staff stands head-up -- see the local path */
           }
@@ -13092,7 +13115,11 @@ export class EntityRenderer {
              is a foreign string: materialTint answers native white for anything
              it does not know, so a forged or stale id cannot paint a peer an
              arbitrary colour. */
-          oWeaponSprite.tint = materialTint(other && other.wpnMat);
+          /* v2.3.3980: weaponTint, as your own blade: a melee weapon only, and
+             black steel's `steel` key reaches its metal (BASE_MATERIAL) -- a
+             peer's black steel greatsword drew bright steel through the bare
+             materialTint. */
+          oWeaponSprite.tint = weaponTint(oWpnType, _oMat);
           _lastPeerWeaponSprite = oWeaponSprite; /* v2.3.1760: QA probe */
           oWeaponSprite.visible = true;
 
@@ -13216,6 +13243,7 @@ export class EntityRenderer {
             gearChestVis: !!(display._gearChest && display._gearChest.visible),
             gearChestIdx: display._gearChest ? display.getChildIndex(display._gearChest) : -1,
             bladeUp: display._weaponSprite ? display._weaponSprite.scale.y < 0 : null,
+            art: display._oWpnArt || null,   /* v2.3.3980: which sheet ('greatsword-east', or the bare 'greatsword') */
           };
         } catch (e) { /* never breaks the frame */ }
       }
@@ -14763,6 +14791,8 @@ export class EntityRenderer {
           const _fsTint = _fsT ? _fullsetTint(getEquip('chest')) : 0xffffff;
           if (spriteBody.tint !== _fsTint) spriteBody.tint = _fsTint;
           display._fullsetOn = !!_fsT;   /* v2.3.2864: the metal shine finds the armour on the body sprite */
+          /* v2.3.3953: ...and the waist, where its glow turns from the torso's grade to the greaves' (glint.js) */
+          display._fullsetWaist = _fsT ? fullsetSplitY(dir, frameIdx, _jogPhase) : 0;
         } catch (e) { _bodyTex = tex; display._fullsetOn = false; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).

@@ -94,6 +94,7 @@
 import { SHOP_ITEMS } from './data.js';
 import { petPublic } from './petbook.js';   /* v2.3.3122: pet listings (what a buyer is shown) */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's listing is rewritten once as a greatsword */
+import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
 
 /* v2.3.3525: the four remains keys in words (the game's src/data/remains.js) */
 const REMAINS_WORDS = Object.freeze({
@@ -442,10 +443,15 @@ export const storeMethods = {
            weapon and the shelf's display copy, one put, so a buyer sees a
            Great Sword and is delivered one.  Only a listing holding a sword
            costs the put; the post's heal catches the delivery anyway. */
-        if (rec.kind === 'weapon' && rec.weapon && !(this._swordConvertOff && this._swordConvertOff())
-          && swordToGreatsword(rec.weapon)) {
-          rec.disp = this._stDisplay('weapon', null, rec.weapon);
-          await this.state.storage.put(k, rec);
+        /* v2.3.3980: and one escrowing a wooden (or base-less) greatsword as
+           the copper one it now is (gscopper.js), in the same one put */
+        if (rec.kind === 'weapon' && rec.weapon) {
+          const a = !(this._swordConvertOff && this._swordConvertOff()) && swordToGreatsword(rec.weapon);
+          const b = !(this._gsCopperOff && this._gsCopperOff()) && oldGreatswordToMetal(rec.weapon);
+          if (a || b) {
+            rec.disp = this._stDisplay('weapon', null, rec.weapon);
+            await this.state.storage.put(k, rec);
+          }
         }
         if (await this._stConverge(rec)) this._stAddToIndex(rec);
       }
