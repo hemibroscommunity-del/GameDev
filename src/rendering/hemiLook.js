@@ -1,4 +1,4 @@
-/* ═══ v2.3.3957: YOUR LOOK, AS THE HEMI BROS COLLECTION'S TRAITS ═══
+/* ═══ v2.3.3999: YOUR LOOK, AS THE HEMI BROS COLLECTION'S TRAITS ═══
  *
  * One table from the game's look catalogs (src/rendering/traits/) to the
  * collection's trait layers (assets/portrait-source/hemi-bros/), and the

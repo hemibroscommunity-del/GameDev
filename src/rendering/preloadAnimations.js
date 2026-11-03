@@ -58,7 +58,7 @@ import { loadMonsterRecolor, recolorFamilyOf, freeMonsterRecolor } from './monst
 import { loadFootprints, freeFootprints } from './footprintSprites.js'; /* v2.3.2654: per-zone ground reaction */
 import { loadNpcSprites, loadZoneDecor, freeZoneDecor, loadTownScenery } from './npcSprites.js'; /* v2.3.1672: NPC figure art; v2.3.2651: + per-zone decor props */
 import { preloadLevelUpBurst } from './levelUpBurstPreload.js';
-import { preloadHemiBust } from './hemiBust.js';   /* v2.3.3957: the Hemi Bros portrait's layers */
+import { preloadHemiBust } from './hemiBust.js';   /* v2.3.3999: the Hemi Bros portrait's layers */
 import { preloadXpBar } from './xpBarPreload.js';   /* v2.3.3695: the XP bar's skill icons */
 import { preloadStatDemo } from './statDemoPreload.js'; /* v2.3.2591: the level-up burst strip + its skill icons */
 import { preloadGestureCue } from './gestureCuePreload.js'; /* v2.3.2760: the harvest cue's mini tools */
@@ -450,7 +450,7 @@ export async function preloadWorldAnimations() {
        the LAW exists to stop, landing on the most dramatic moment the game
        has.  See levelUpBurstPreload.js. */
     levelUpBurst: preloadLevelUpBurst(),
-    /* ═══ v2.3.3957: your portrait as a Hemi Bro (hemiBust.js) ═══
+    /* ═══ v2.3.3999: your portrait as a Hemi Bro (hemiBust.js) ═══
        The collection's trait layers, ONE 6 KB palette PNG read as its colour
        numbers: the portrait in the Character button is made from it the
        moment the game opens, and every other player's as they come by.

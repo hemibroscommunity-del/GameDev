@@ -1,4 +1,4 @@
-/* ═══ v2.3.3957: THE TOWNSFOLK'S BUSTS, AS RECIPES FOR THE GAME'S COMPOSITOR ═══
+/* ═══ v2.3.3999: THE TOWNSFOLK'S BUSTS, AS RECIPES FOR THE GAME'S COMPOSITOR ═══
  *
  * tools/qa/nft_portraits.py PORTRAITS, ported: each townsperson's Hemi Bros
  * bust (public/sprites/npc/<head>.webp) as the recipe src/rendering/

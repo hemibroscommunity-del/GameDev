@@ -548,7 +548,7 @@ export const STATES = [
       if (!(await has(P, '[data-section="Build"][aria-pressed="true"]'))) return 'the Points tab did not take the press';
     },
   },
-  /* ═══ v2.3.3957: YOUR PORTRAIT IS A HEMI BRO (docs/specs/hemi-portrait.md) ═══
+  /* ═══ v2.3.3999: YOUR PORTRAIT IS A HEMI BRO (docs/specs/hemi-portrait.md) ═══
      The headshot on the Character button and the identity strip is a 32 x 32
      Hemi Bros bust of your look.  Two looks: the review's own character, and
      one dressed (a hat over hair, a coloured beard, a patterned tee) -- put

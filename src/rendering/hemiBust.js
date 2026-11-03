@@ -1,4 +1,4 @@
-/* ═══ v2.3.3957: YOUR PORTRAIT IS A HEMI BRO ═══
+/* ═══ v2.3.3999: YOUR PORTRAIT IS A HEMI BRO ═══
  *
  * The owner, 2026-11-03: "For profile picture art I want it in the style of
  * the original hemi bro NFT's as much as possible with the custom stuff added

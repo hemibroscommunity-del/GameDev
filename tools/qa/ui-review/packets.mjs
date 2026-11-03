@@ -30,7 +30,7 @@ export const PACKETS = [
   { slug: 'arriving-and-the-world', title: 'Arriving, the world screen and talking to Mayor Bro',
     screens: ['welcome', 'desktop-window', 'hud', 'hud-pvp', 'nml-popup', 'hud-outlaw', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
   { slug: 'dashboard-character-bag', title: 'Dashboard: your character, your quests and the bag',
-    /* v2.3.3957: + your portrait as a Hemi Bro, twice */
+    /* v2.3.3999: + your portrait as a Hemi Bro, twice */
     screens: ['guide-arrow', 'dash-hero', 'dash-hero-points', 'hemi-portrait', 'hemi-portrait-dressed', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card'] },
   { slug: 'dashboard-skills-codex', title: 'Dashboard: life skills, the Codex and More',
     screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen'] },

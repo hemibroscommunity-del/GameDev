@@ -52,7 +52,7 @@ import { getShieldArt } from './shieldSprites.js';        /* v2.3.1841 */
 import { getCape } from './traits/capeCatalog.js';        /* v2.3.2516: the worn cape, in the preview */
 import { speciesCanvases, loadSpeciesArt } from './traits/speciesArt.js';   /* v2.3.2682: the monkey, fur on the portrait's own skin */
 import { getWeaponHandle, getAnchor } from './playerAnchors.js'; /* v2.3.1841 */
-import { hemiBustUrl } from './hemiBust.js';   /* v2.3.3957: a headshot is a Hemi Bro */
+import { hemiBustUrl } from './hemiBust.js';   /* v2.3.3999: a headshot is a Hemi Bro */
 
 const FRAME = 256;
 
@@ -1106,7 +1106,7 @@ const HEAD_CROP = { x: 80, y: 16, s: 96 };
  *  top-right profile picture); otherwise the full figure.  Returns '' on
  *  failure. */
 export async function portraitDataUrl(opts, headshot) {
-  /* ═══ v2.3.3957: A HEADSHOT IS A HEMI BRO ═══
+  /* ═══ v2.3.3999: A HEADSHOT IS A HEMI BRO ═══
      The owner: "For profile picture art I want it in the style of the
      original hemi bro NFT's as much as possible with the custom stuff added
      on to it."  Every headshot -- yours (BottomDashboard writes it into

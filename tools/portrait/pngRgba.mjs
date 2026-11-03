@@ -1,4 +1,4 @@
-/* ═══ v2.3.3957: A PNG READ AS RGBA, AND AN RGB ONE WRITTEN (node, no packages) ═══
+/* ═══ v2.3.3999: A PNG READ AS RGBA, AND AN RGB ONE WRITTEN (node, no packages) ═══
  *
  * The hemi portrait's tools and test read the collection's trait layers
  * (assets/portrait-source/hemi-bros/*.png, RGBA as PIL wrote them) and the

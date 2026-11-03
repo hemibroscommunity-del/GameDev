@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* ═══ v2.3.3957: THE HEMI BROS ATLAS, AND THE TOWNSFOLK'S BUSTS AS A FIXTURE ═══
+/* ═══ v2.3.3999: THE HEMI BROS ATLAS, AND THE TOWNSFOLK'S BUSTS AS A FIXTURE ═══
  *
  *   node tools/portrait/make-hemi-atlas.mjs           write them
  *   node tools/portrait/make-hemi-atlas.mjs --check   say whether they are current

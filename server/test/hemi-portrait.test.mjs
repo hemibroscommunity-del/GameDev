@@ -1,4 +1,4 @@
-/* ═══ v2.3.3957: YOUR PORTRAIT IS A HEMI BRO ═══
+/* ═══ v2.3.3999: YOUR PORTRAIT IS A HEMI BRO ═══
  *
  * docs/specs/hemi-portrait.md.  The game's compositor (src/rendering/
  * hemiBustCore.js), the look table (hemiLook.js) and the atlas they read
