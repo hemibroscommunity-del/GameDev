@@ -1558,7 +1558,7 @@ export function processGameEvent(type, payload, S, deps) {
               var _maX = typeof payload.x === 'number' ? payload.x : S.player.x;
               var _maY = typeof payload.y === 'number' ? payload.y : S.player.y;
               if (payload.phase === 'telegraph') {
-                pushDmgPopup(S, _maX, _maY - 40, _maLabel, '#fbbf24');
+                /* v2.3.4026: no word over it (the owner: "Remove all text announcing what attacks or things the monsters are doing. It's lame.") -- the table stays the whitelist; the ring, wind-up, shake and sound stay */
                 /* The ground marker is the readable half of the tell: it
                    shows WHERE, at the radius the server will actually test,
                    so stepping out is an informed choice rather than a
@@ -1692,7 +1692,10 @@ export function processGameEvent(type, payload, S, deps) {
                     _spM._burstUntil = Date.now() + _spMs;
                     _spM._burstScale = Math.max(1, Math.min(2, Number(payload.scale) || 1.3));
                   }
-                  pushDmgPopup(S, _dbaX, _dbaY - 40, _dbaLabel, _dbaColors.split);
+                  /* v2.3.4026: no "BURSTING!" (the owner had approved it on the
+                     giant slime, docs/specs/slime-boss.md; his later "Remove all
+                     text announcing what attacks ... the monsters are doing"
+                     wins): its swell and sound say it */
                   cueAt(S, 'blueSwell', _dbaX, _dbaY);
                   break;
                 }
@@ -1734,8 +1737,8 @@ export function processGameEvent(type, payload, S, deps) {
                 break;
               }
               if (payload.phase === 'telegraph') {
-                /* Legacy telegraph read: amber "<ABILITY>!" over the boss. */
-                pushDmgPopup(S, _dbaX, _dbaY - 40, _dbaLabel, '#fbbf24');
+                /* Legacy telegraph read: amber "<ABILITY>!" over the boss.
+                   /* v2.3.4026: no word over it (the owner: "Remove all text announcing what attacks or things the monsters are doing. It's lame.") -- the table stays the whitelist; the ring, wind-up, shake and sound stay */
                 /* v2.3.3343: every boss sound here was a beep(), which plays
                    nothing (SOUND-GAPS) -- its warning now a deep swell and a
                    growl-like thump, and each move below its own sound */
@@ -1743,7 +1746,7 @@ export function processGameEvent(type, payload, S, deps) {
                 break;
               }
               /* Execute visuals per ability (legacy colors/shake). */
-              pushDmgPopup(S, _dbaX, _dbaY - 30, _dbaLabel, _dbaColors[payload.ability]);
+              /* v2.3.4026: no word over it (the owner: "Remove all text announcing what attacks or things the monsters are doing. It's lame.") -- the table stays the whitelist; the ring, wind-up, shake and sound stay */
               if (payload.ability === 'slam' || payload.ability === 'sweep') {
                 if (!S._impactRings) S._impactRings = [];
                 S._impactRings.push({
