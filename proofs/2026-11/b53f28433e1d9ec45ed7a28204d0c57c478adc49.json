@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b53f28433e1d9ec45ed7a28204d0c57c478adc49",
+  "tree": "5828d4471488f77d5594a10542074f4bee8997fc",
+  "committedAt": "2026-11-02T18:38:28-08:00",
+  "subject": "Merge pull request #1355 from hemibroscommunity-del/claude/plate-element",
+  "files": 7359,
+  "bytes": 843882682,
+  "listingSha256": "54e38313458f234ab84549210f5fedf707a232fe880b0e87ee6f052bcfc89ca1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
