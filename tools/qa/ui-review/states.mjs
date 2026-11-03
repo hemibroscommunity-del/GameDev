@@ -424,7 +424,7 @@ export const STATES = [
   },
   {
     id: 'hud', group: 'The world (HUD)', title: 'BroTown, nothing open',
-    about: 'The resting game screen in the town square: top bar (the place, its green Safe chip, coins), the player frame top-left (face, level, HP, energy), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
+    about: 'The resting game screen in the town square: top bar (the place, its green Safe chip, coins), the player frame top-left (the level beside the HP and energy bars, no picture: v2.3.4093), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
     run: async ({ P }) => { await wait(P, 600); },
   },
   /* v2.3.3974: the top bar's place chip in its other two states (staged with
@@ -432,7 +432,7 @@ export const STATES = [
      told), its window, and the player frame top-left */
   {
     id: 'hud-pvp', group: 'The world (HUD)', title: 'Top bar: No man\'s land (PvP)',
-    about: 'The place chip in No man\'s land: amber, "PvP · Lv 6–8", the character levels that can attack you here. Nothing is said or played on the way in; the chip and the red line along the band show it. The player frame top-left: your face, level, HP and energy; a tap opens your Bro page.',
+    about: 'The place chip in No man\'s land: amber, "PvP · Lv 6–8", the character levels that can attack you here. Nothing is said or played on the way in; the chip and the red line along the band show it. The player frame top-left: your level beside your HP and energy bars (no picture); a tap opens your Bro page.',
     run: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = { nml: 1, red: 0 }; }); await wait(P, 700); },
     after: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = null; }).catch(() => {}); await wait(P, 400); },
   },

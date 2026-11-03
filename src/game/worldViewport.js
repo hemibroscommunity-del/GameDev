@@ -34,6 +34,8 @@
 import { WORLD_ZOOM, TILE } from '@/data/constants.js';
 import { renderDpr } from './renderRes.js'; /* v2.3.3339 */
 import { ZONES } from '@/data/zones.js'; /* v2.3.2247: the per-zone zoom ceiling */
+import { capViewScale, viewCapChoice } from './viewCap.js'; /* v2.3.4084: one visible area for every screen */
+import { clientOff } from './clientOff.js'; /* v2.3.4084: the Test panel's row turns the cap off */
 
 /* The design target, in WORLD px: a 390px-wide iPhone Safari viewport times
    WORLD_ZOOM.  390 is the width playViewport.js falls back to and the one the
@@ -276,10 +278,22 @@ export const VIEW_OUT = readViewOut();
    expression so the parity survives the next change to WORLD_ZOOM too. */
 export const REF_VIEW_H = Math.round(320 * WORLD_ZOOM);   /* 960 at WORLD_ZOOM 3 */
 
+/* v2.3.4084: the view cap's switch -- the address read once (it cannot change
+   without a load), the Test panel's word every call (a Set lookup: it follows
+   the worker live, `live: true` in clientOff.js) */
+const VIEW_CAP_SEARCH = (() => {
+  try { return (typeof window !== 'undefined' && window.location && window.location.search) || ''; } catch (_e) { return ''; }
+})();
+export function viewCapOn() {
+  let off = false;
+  try { off = clientOff('viewcap'); } catch (_e) { off = false; }
+  return viewCapChoice(VIEW_CAP_SEARCH, off);
+}
+
 /** The logical world viewport for a canvas, plus the world->CSS scale.
  *  W/H are WORLD px — what the camera centres and clamps against, and what the
  *  projectile sim measures screen edges in. */
-export function worldViewport(canvas, zoneId) {
+export function worldViewport(canvas, zoneId, opts) {   /* v2.3.4084: + opts.cap === false, the probe's "without the cap" */
   const dpr = renderDpr();   /* v2.3.3339: as the canvas was sized (renderRes.js) */
   const cssW = (canvas ? canvas.width : 0) / dpr;
   const cssH = (canvas ? canvas.height : 0) / dpr;
@@ -428,6 +442,21 @@ export function worldViewport(canvas, zoneId) {
      v2.3.2997: the three character-size floors are VIEW_OUT of what they
      were; the zone's own no-void floor above is not (see VIEW_OUT). */
   scale = Math.max(scale, FIGURE_SCALE_FLOOR * VIEW_OUT);
+  /* ═══ v2.3.4084: ...AND NO SCREEN SEES MORE AREA THAN AN UPRIGHT PHONE ═══
+     Owner, on a design review's "a consistent maximum gameplay visibility
+     range regardless of screen dimensions": "Cap it for everyone now".  A
+     wide screen is zoomed in until it sees about an upright phone's area,
+     never so far its short side drops below 680 game px (viewCap.js, the
+     numbers per screen in docs/specs/view-cap.md).  ONE MORE FLOOR IN THE
+     SAME max(), last, on the one scale -- not a second axis term, so the
+     header's warning stands: the view keeps its canvas's shape and both
+     callers still agree by construction.  Upright phones are the reference
+     and do not move.
+     In every zone, D10 included: it only ever zooms IN, so it cannot draw
+     void, and sideways the old town (D10's zoom-out) still sees more than a
+     combat zone -- the cap trims it to an upright phone's area (1564 x 723
+     on 844x390), it does not undo the trade (the spec's D10 note).  `?viewcap=0` / the Test panel: off. */
+  if (!(opts && opts.cap === false) && viewCapOn()) scale = capViewScale(scale, cssW, cssH, VIEW_OUT);
   return { W: cssW / scale, H: cssH / scale, scale };
 }
 
@@ -441,13 +470,16 @@ export function worldViewport(canvas, zoneId) {
    make. Read-only, in the house style (__btWorldProps, __btCoach,
    __btMonsterPlates), and it computes nothing the game does not. */
 if (typeof window !== 'undefined') {
-  window.__btWorldView = function (zoneId) {
+  /* v2.3.4084: `{ cap: false }` answers what this canvas would see without
+     the view cap -- the before and after on one page (mp-landscape-view) */
+  window.__btWorldView = function (zoneId, opts) {
     try {
       const c = document.querySelector('canvas');
       if (!c) return null;
-      const v = worldViewport(c, zoneId);
+      const v = worldViewport(c, zoneId, opts);
       return { zone: zoneId || null, scale: +v.scale.toFixed(4),
-        W: Math.round(v.W), H: Math.round(v.H), viewOut: VIEW_OUT };   /* v2.3.2997: + the zoom-out in force */
+        W: Math.round(v.W), H: Math.round(v.H), viewOut: VIEW_OUT,   /* v2.3.2997: + the zoom-out in force */
+        viewCap: viewCapOn() };   /* v2.3.4084: + whether the view cap is in force */
     } catch (_e) { return null; }
   };
 }

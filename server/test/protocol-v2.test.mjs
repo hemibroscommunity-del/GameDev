@@ -143,6 +143,11 @@ check('v2 tick carries only the respawned node', !!ntick2 && ntick2.nodes.meadow
 // v2.3.853: a fishSpot yields exactly ONE fish even on a 'perfect' reel
 // (owner), so a perfect strike must credit the fish key by 1, not 2.
 {
+  /* v2.3.4088: a caught fish rolls 1% albino and 0.1% large (fishlog.js,
+     v2.3.4036), and this check asks for the plain fish by name: the dice are
+     pinned above both odds, as v2.3.4049 pinned them in gather-hits and
+     wheelzone (PR #1401's CI drew an albino minnow and went red) */
+  room._fishRand = () => 0.5;
   const mNodes = room._ensureZoneNodes('meadow');
   const node = mNodes.find((n) => n.nodeType === 'fishSpot');
   check('meadow has a fishSpot to test', !!node);

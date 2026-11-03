@@ -218,7 +218,11 @@ const synthFp = (i) => ({ len: 400, n: 60, dur: 1200, ent: 0.001, tv: 0, vc: 0.0
   check('4. DELETE with no name clears all', d2.status === 200 && Object.keys(state.store.get(HIDDEN.KEY).s).length === 0 && room._hid().COOK_HOUR_CAP === BOTFP.COOK_HOUR_CAP);
   const log = JSON.stringify(state.store.get('admin_log') || []);
   check('4. every write is in the audit log, by name', /hidden_set/.test(log) && /hidden_clear_all/.test(log) && /COOK_HOUR_CAP/.test(log), log.slice(0, 300));
-  check('4. ...and never with its value', !/3000|7\.5/.test(log), log);
+  /* v2.3.4088: the values are looked for with each entry's time taken out:
+     a timestamp such as 1793690673000 holds "3000", and PR #1401's CI read
+     that as the value leaking */
+  const logNoTs = JSON.stringify((state.store.get('admin_log') || []).map((e) => { const o = Object.assign({}, e); delete o.ts; return o; }));
+  check('4. ...and never with its value', !/3000|7\.5/.test(logNoTs), logNoTs);
 
   const newer = makeState({ [HIDDEN.KEY]: { v: HIDDEN.V + 1, s: { FLAG_AT: 4, x: 'future' } } });
   const rn = new GameRoom(newer, envWith(KEY));

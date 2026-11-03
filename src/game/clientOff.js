@@ -46,6 +46,11 @@ export const CLIENT_SAVERS = Object.freeze([
   /* v2.3.4080: a big drawing's building lists let go once it is drawn
      (rendering/gfxLean.js: the minimap's roads, ~1 MB of the heap) */
   Object.freeze({ id: 'gfxlean', words: 'Big drawings kept once', live: false }),
+  /* v2.3.4084: every screen sees about an upright phone's area of world
+     (game/viewCap.js).  Not a memory saver: the owner's fairness rule ("Cap
+     it for everyone now"), kept switchable the same way; off, a wide screen
+     sees its old wider view at once */
+  Object.freeze({ id: 'viewcap', words: 'Same view for every screen', live: true }),
 ]);
 
 const KEY = 'bt_clientoff';
