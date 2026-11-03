@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cb7e70840b3f555f10c08c77ff95a1395eeb6daa",
+  "tree": "bbfa5e4c899af8d024e6d001e5ca75db6a3224be",
+  "committedAt": "2026-11-03T10:57:37-08:00",
+  "subject": "Merge pull request #1413 from hemibroscommunity-del/claude/loot-beam-light",
+  "files": 7561,
+  "bytes": 860346421,
+  "listingSha256": "281d7f2cd5a47b5e1d840a8c4049e4a91ee73f6a96958784fdec39afcd2442f7",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
