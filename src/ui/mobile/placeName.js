@@ -1,4 +1,4 @@
-/* ═══ v2.3.3921: THE PLACE'S NAME ON THE TOP BAR ═══
+/* ═══ v2.3.3922: THE PLACE'S NAME ON THE TOP BAR ═══
  *
  * The owner, 2026-11-02: "The top bar is underwhelming (says 'brotown')".  In
  * the world the bar names the land you stand in -- its name as the minimap's

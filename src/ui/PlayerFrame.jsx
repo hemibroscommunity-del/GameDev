@@ -1,4 +1,4 @@
-/* ═══ v2.3.3921: YOUR FRAME, TOP-LEFT, ALWAYS ON ═══
+/* ═══ v2.3.3922: YOUR FRAME, TOP-LEFT, ALWAYS ON ═══
  *
  * The desktop playtest: "player status not showing (pfp with stat bars
  * usually anchored at the top)".  Asked on 2026-11-02, the owner chose "Yes,
@@ -17,8 +17,9 @@
  * (top-right), the stick and every button (all at the bottom).  Its bottom is
  * published as `--bt-hud-top` on <html>, so the quest card and the status
  * chips start just under it (game.css; Lane F's quest card reads the same
- * variable).  Sized by --bt-pf-k: 1 on a phone (about 150 x 44), larger on a
- * computer's play column (game.css; never the window, TRAPS §214).
+ * variable).  The face is a WHOLE multiple of 32 px, pixelated: 64 on a
+ * phone, 96 on a computer (the owner's Hemi Bro bust is 32 x 32), and the
+ * frame is sized round it (game.css --bt-pf-face; never the window, TRAPS §214).
  *
  * ITS OWN CLOCK: the game state read every 250 ms, a re-render only when a
  * number it shows changes; the bars are scaled, never re-laid out.  Flat

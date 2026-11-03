@@ -76,9 +76,10 @@ export const CODEX_ELEMENTS = Object.freeze({
    humanoid, beast, (some word along those lines that means flying creature,
    bug-like creature, swimming creature)".  So a type says what shape of
    creature it is, as the world draws it:
-     Humanoid   upright, with arms to swing (the snowman, goblin, mummy)
+     Humanoid   upright, with arms to swing (the goblin, mummy)
      Beast      a monster that lives like an animal, teeth first (the rock
-                monster: a boulder with a mouth)
+                monster: a boulder with a mouth; v2.3.3908: and the snowman,
+                the owner: "Change snowman from humanoid to beast")
      Winged     a flying creature (none in the Wheel yet)
      Insectoid  a bug-like creature (none yet)
      Aquatic    a swimming creature (the fishman and the bog lurker)
@@ -100,7 +101,7 @@ export const CODEX_TYPES = Object.freeze(['Humanoid', 'Beast', 'Winged', 'Insect
    held to it by mirror-audit). */
 export const CODEX_ENTRIES = Object.freeze({
   snowling: Object.freeze({
-    name: 'Snowman', home: 'frost', look: 'snowman', element: 'frost', type: 'Humanoid',
+    name: 'Snowman', home: 'frost', look: 'snowman', element: 'frost', type: 'Beast',   /* v2.3.3908: was Humanoid (the owner) */
     what: 'Slow, heavy and hard to put down. It can never catch you, so it does not try: from a few paces off it lobs snowballs, and up close it swings. The snowball takes almost a second to land, so a step aside is enough.',
     special: Object.freeze({
       name: 'Snow-Pile Burrow',

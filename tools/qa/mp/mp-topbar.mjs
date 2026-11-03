@@ -90,7 +90,7 @@ const MEASURE = (P) => P.page.evaluate(() => {
   return {
     vw: innerWidth, zk: hdr ? +getComputedStyle(hdr).getPropertyValue('--zk') || 1 : null, barH: h ? Math.round(h.b - h.t) : null,
     titleCut: xpOn ? false : cut(title), titleText: title ? title.textContent : null,
-    titleW: title ? Math.round(title.getBoundingClientRect().width) : 0,   /* v2.3.3921 */
+    titleW: title ? Math.round(title.getBoundingClientRect().width) : 0,   /* v2.3.3922 */
     purseText: purse ? purse.textContent : null, apText: ap ? ap.textContent : null,
     hits, out, xpOver, xpOn, pill: !!pieces.pill || xpOn,
     mini: window.__btWheelMini ? window.__btWheelMini.top : null, hdrB: h ? h.b : null,
@@ -98,7 +98,7 @@ const MEASURE = (P) => P.page.evaluate(() => {
 });
 /* on a narrow bar (an upright phone) the big numbers are said short
    (game/barNumbers.js), and while the XP bar is up the AP steps out */
-/* v2.3.3921: the bar names the land you stand in (ui/mobile/placeName.js),
+/* v2.3.3922: the bar names the land you stand in (ui/mobile/placeName.js),
    beside the always-on place chip: "BroTown" is always whole; a land's name
    on an upright phone with this rich a purse and AP may end in "..." but
    keeps at least 50 px (its whole name is on the minimap's plate just under

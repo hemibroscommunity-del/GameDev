@@ -20,7 +20,7 @@ import { inspectCardBus } from './mobile/inspectCardBus.js';
 import { generateMockProfile } from './mobile/mockProfile.js';
 import { setEquip, getEquip, GEAR_CATALOG, GEAR_SLOTS, gearInventoryItems } from '@/rendering/gearCatalog.js';
 import { ZoneHeader } from './mobile/ZoneHeader.jsx'; /* v2.3.1333 */
-import { PlayerFrame } from './PlayerFrame.jsx'; /* v2.3.3921: your face, level and bars, top-left */
+import { PlayerFrame } from './PlayerFrame.jsx'; /* v2.3.3922: your face, level and bars, top-left */
 /* v2.3.1895: SpecialChargePie retired — the special-charge readout moved
    back under the character as the MP spend bar (entityRenderer
    _drawResourceBar).  The component file is left in place; nothing renders
@@ -733,7 +733,7 @@ export const GameApp = () => {
         /* v2.3.3888: + the page's switches (keepSwitches.js), guest among them */
         window.location.href = '/' + keptQuery(undefined, [['noresume', '1'], ['login', '1']]);
       }} />
-      <PlayerFrame />{/* v2.3.3921: always on, under the top bar's left end */}
+      <PlayerFrame />{/* v2.3.3922: always on, under the top bar's left end */}
       <BottomDashboard />
       <ChatBubble />
       {/* v2.3.2037: the World Chat section, lower left above the dashboard.

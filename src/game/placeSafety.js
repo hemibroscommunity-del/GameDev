@@ -1,4 +1,4 @@
-/* ═══ v2.3.3921: WHERE YOU ARE, AND WHETHER YOU ARE SAFE THERE ═══
+/* ═══ v2.3.3922: WHERE YOU ARE, AND WHETHER YOU ARE SAFE THERE ═══
  *
  * The owner, 2026-11-02: "The top bar is underwhelming (says 'brotown'). The
  * red skull with the 1 is supposed to mean your character is in the

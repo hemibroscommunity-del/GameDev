@@ -1,4 +1,4 @@
-/* v2.3.3921: the place chip's words and numbers (src/game/placeSafety.js).
+/* v2.3.3922: the place chip's words and numbers (src/game/placeSafety.js).
    node tools/dev/test-place-safety.mjs */
 import { pvpRange, placeState, chipWords, bagRiskCount, riskWords, placeLines } from '../../src/game/placeSafety.js';
 

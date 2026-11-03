@@ -402,7 +402,7 @@ export const STATES = [
     about: 'The resting game screen in the town square: top bar (the place, its green Safe chip, coins), the player frame top-left (face, level, HP, energy), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
     run: async ({ P }) => { await wait(P, 600); },
   },
-  /* v2.3.3921: the top bar's place chip in its other two states (staged with
+  /* v2.3.3922: the top bar's place chip in its other two states (staged with
      window.__btPlaceHold: the chip and its window only, the worker never
      told), its window, and the player frame top-left */
   {

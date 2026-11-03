@@ -1164,7 +1164,7 @@ Client only: no message, no cap. Tests: `server/test/nml-explain-once.test.mjs`,
 never again, remembered, and a goblin's hit closes it mid-fight).
 
 
-## The place chip and the player frame (v2.3.3921)
+## The place chip and the player frame (v2.3.3922)
 
 The owner, 2026-11-02: "The top bar is underwhelming (says 'brotown'). The red
 skull with the 1 is supposed to mean your character is in the wilderness ...
