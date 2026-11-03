@@ -1,4 +1,4 @@
-# Five dashboard buttons: Gear, Bro, Quests, Codex, More (v2.3.4162)
+# Five dashboard buttons: Gear, Bro, Quests, Codex, More (v2.3.4172)
 
 The owner, 2026-11-02: "I want to consolidate the dashboard area as much as
 possible (limit lots of buttons to switch between different context) I have
@@ -72,7 +72,7 @@ the top-bar lane once this is on main; one layout on every screen is B3.
     (`achvSummary`) and Lifetime Kills (`profileFromSelf`).
   - **the weapon's stats** (`sheet/broStats.js` `broWeaponStats(R, cat)`,
     pure, `server/test/bro-stats.test.mjs`): the weapon picked, starting on
-    `prog3ActiveCat`, kept while the page is visited.  v2.3.4162, the owner
+    `prog3ActiveCat`, kept while the page is visited.  v2.3.4172, the owner
     on #1386: *"Make the weapon icons above the combat stats larger and just
     reuse the icons used on the 3 primary combat skills"*, then *"Move the 3
     primary combat skills out of the gear menu and put them into the bro
@@ -177,7 +177,7 @@ None: a client-only layout change, no wire, no server behaviour.
 - `bandshots` (new): the band open on Gear and on Bro on a computer
   (1280 x 720 and 1920 x 1080, wide), a phone on its side and upright: Gear's
   tab at rest (never the old bag page), the Bro card filling the centred
-  `data-band-box` and no more, CLOSE first in the row; v2.3.4162: on a
+  `data-band-box` and no more, CLOSE first in the row; v2.3.4172: on a
   computer the band's edges are the world canvas's within 1 px (the bars run
   black under it, nothing over the world moved: one-band.md), upright and
   sideways the screen's width; Bro's three combat-skill tiles ("Lv N" above

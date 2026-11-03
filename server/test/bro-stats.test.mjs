@@ -1,10 +1,10 @@
-/* v2.3.4162: THE BRO PAGE'S COMBAT STATS, ONE WEAPON AT A TIME
+/* v2.3.4172: THE BRO PAGE'S COMBAT STATS, ONE WEAPON AT A TIME
  * (src/ui/mobile/sheet/broStats.js, the middle panel of the owner's drawing:
  * Sword | Bow | Staff over "Combat Stats"), and the Titles row's ask
  * (src/game/achievements.js askTitlePicker / takeTitlePicker).
  *
  *   1. thirteen rows in the drawing's order, each with a picture and an explainer;
- *      the picker is the Gear tab's combat-skill tiles (v2.3.4162)
+ *      the picker is the Gear tab's combat-skill tiles (v2.3.4172)
  *   2. the weapon out reads what the Equipment window's pills read (one reader)
  *   3. another weapon reads ITS lane: crit points on the bow move the Bow
  *      column only; the shared stats are the same under every weapon
@@ -45,7 +45,7 @@ check('thirteen rows, the drawing\'s order', s1.rows.map((r) => r.label).join('|
 check('each has a picture and an explainer key', s1.rows.every((r) => r.icon && r.info), s1.rows.filter((r) => !r.icon || !r.info));
 check('three weapons: Sword, Bow, Staff', BRO_WEAPONS.map((w) => w.label).join(',') === 'Sword,Bow,Staff');
 check('BRO_STAT_ROWS is the list', BRO_STAT_ROWS.length === 13);
-/* v2.3.4162: the owner on #1386, "Move the 3 primary combat skills out of
+/* v2.3.4172: the owner on #1386, "Move the 3 primary combat skills out of
    the gear menu and put them into the bro menu": the Gear tab's Melee / Bow /
    Magic tiles pick the weapon -- each names the weapon whose stats it shows */
 check('the three combat-skill tiles (Melee, Bow, Magic) pick Sword, Bow, Staff, in order',

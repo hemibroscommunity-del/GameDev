@@ -47,7 +47,7 @@
  *        one band, the default), the Bro card's door whole, the page inside the band,
  *        no sideways scroll, nothing cut;
  *    11. no page errors.
- * v2.3.4162 (the owner's five buttons): the page is not a More tile but a
+ * v2.3.4172 (the owner's five buttons): the page is not a More tile but a
  * page under Bro: the Bro card's Achievements row ("Achievement Points: N")
  * and its AP open it, with its drilled header (the back chip returns to the
  * card), and every old road to it (a card's title chip, the top bar's medal)
@@ -189,7 +189,7 @@ async function inWheel(P) {
     { timeout: 120000, label: 'into the Wheel' }).then(() => true).catch(() => false);
 }
 
-/* v2.3.4162: a door on the Bro card is a button: its click, brought into its
+/* v2.3.4172: a door on the Bro card is a button: its click, brought into its
    own scroller's view (the page scrolls; a coach card or the guide arrow's
    words can sit over the top row, so a mouse click could land on them) */
 const clickRow = (P, sel) => P.page.evaluate((s) => {
@@ -201,7 +201,7 @@ const clickRow = (P, sel) => P.page.evaluate((s) => {
 
 /* More -> the tile -> the page, by real taps (upright and on a computer; this
    box draws a few frames a second, so each step waits for what it opened) */
-/* v2.3.4162: Achievements are a page under Bro now (the owner's five
+/* v2.3.4172: Achievements are a page under Bro now (the owner's five
    buttons), so: Bro -> the card's Achievements row, by real taps */
 async function openPage(P) {
   /* a first join arrives with the band folded (v2.3.2495) */
@@ -244,7 +244,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .then(() => achv(A)).catch(() => achv(A));
     rec.ok('1a the worker grants achievements (caps.achievements) and sent the record at the join: nothing earned yet',
       s0.caps && s0.known && !s0.unavailable && s0.got.length === 0 && typeof s0.ap === 'number', s0);
-    /* v2.3.4162: the owner's five buttons -- Achievements are a page under
+    /* v2.3.4172: the owner's five buttons -- Achievements are a page under
        Bro: the Bro card's Achievements door ("n of total", the owner's
        drawing) and its AP ("N AP" by the star) are the ways to the page;
        Journey keeps its own More tile */
@@ -267,7 +267,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 2 ── */
     await clickRow(A, '[data-bro-row="achievements"]');
-    /* v2.3.4162: 20 s -- on this box the page came up after 8 (2d's chips found it) */
+    /* v2.3.4172: 20 s -- on this box the page came up after 8 (2d's chips found it) */
     const up = await A.page.waitForSelector('[data-achv-panel="1"]', { timeout: 20000 }).then(() => true).catch(() => false);
     const p0 = up ? await pageLook(A) : null;
     rec.ok(`2a the row opens the Achievements page under Bro: ${p0 && p0.rows} rows, "${p0 && p0.count}", the worker's AP (${p0 && p0.apTotal})`,
@@ -393,7 +393,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       head: !!document.querySelector('[data-dash-head] [data-achv-summary="head"]'),
       stack: window.__broDashPanelBus ? window.__broDashPanelBus.state.stack.slice() : null,
     }))).catch(() => null);
-    /* v2.3.4162: the dashboard keeps the page under Bro, whoever asks */
+    /* v2.3.4172: the dashboard keeps the page under Bro, whoever asks */
     rec.ok(`6b the card's title chip opens the page under Bro ("${fromCard && fromCard.back}", ${fromCard && fromCard.stack}), the summary on its header`,
       !!fromCard && !fromCard.card && /ACHIEVEMENTS/i.test(fromCard.back) && fromCard.head && !!fromCard.stack && fromCard.stack.join() === 'hero,achievements', fromCard);
     await H.closeDest(A).catch(() => {});
@@ -465,7 +465,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(2500);
     /* v2.3.4152: the one band is the default (src/ui/oneBand.js), so the
        phone turned on its side keeps the band at the bottom; the owner's five
-       buttons (v2.3.4162): Bro, then its card's Achievements door, the page
+       buttons (v2.3.4172): Bro, then its card's Achievements door, the page
        opening inside the band, which scrolls in a short body -- where the old
        layout (?oneband=0) had the side column */
     const side = await A.page.evaluate(() => document.documentElement.getAttribute('data-orient'));

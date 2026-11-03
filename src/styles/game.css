@@ -1994,7 +1994,7 @@ button.bt-pin-drop{color:inherit;margin:0}
   .bt-pin-cmd .is-long{display:none}
   .bt-pin-cmd .is-short{display:inline}
 }
-/* ═══ v2.3.4162: THE BRO PAGE, AS THE OWNER DREW IT (sheet/BroCard.jsx) ═══
+/* ═══ v2.3.4172: THE BRO PAGE, AS THE OWNER DREW IT (sheet/BroCard.jsx) ═══
    Three panels -- you, the weapon's combat stats, the doors -- in the Inspect
    card's palette (#1C2F3C tiles, #3B5366 edges, #A0BACE ink, gold for what is
    yours and what to act on).  The shape is the page's own width
@@ -2053,7 +2053,7 @@ button.bt-pin-drop{color:inherit;margin:0}
 .bt-bro2-tile span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#A0BACE;font-size:11px;font-weight:700}
 .bt-bro2-tile b{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
 /* MIDDLE: the three combat skills, then the picked weapon's stats.
-   v2.3.4162: the owner on #1386, "Move the 3 primary combat skills out of
+   v2.3.4172: the owner on #1386, "Move the 3 primary combat skills out of
    the gear menu and put them into the bro menu" -- the Gear tab's Melee /
    Bow / Magic tiles (dash/SkillTiles.jsx, inline-styled there: "Lv N" above
    the picture, the picked one's gold edge, a tap its XP bar for 4 s) replace
@@ -5712,7 +5712,7 @@ body:has([data-trade-drawer]) [data-coach]{display:none}
   [data-key-at="end"]::after { bottom:auto; right:14px; top:50%; transform:translateY(-50%); }
   [data-key-at="inline"]::after { position:relative; display:inline-flex; right:auto; bottom:auto; margin-left:8px; vertical-align:1px; }
   [data-key-at="xy"]::after { right:auto; bottom:auto; left:var(--key-x,0px); top:var(--key-y,0px); }
-  /* v2.3.4162: the dashboard's buttons wear their words now (NavRail
+  /* v2.3.4172: the dashboard's buttons wear their words now (NavRail
      navLabelMode), along the bottom or the right: the cap goes to the top-left
      corner, where it covers neither the word nor the count badge (top-right) */
   .bt-navrail[data-nav-words="stack"] [data-key]::after,
@@ -6927,7 +6927,7 @@ html[data-orient="landscape"] .bt-dashboard{
        contain:paint carries every fixed HUD child -- the joysticks, the
        banners -- along), and the zone header, a sibling, is told the same
        numbers.  The band stays the screen's width: it is not world.
-       (v2.3.4162: no longer -- the owner wants it to stop at the bars;
+       (v2.3.4172: no longer -- the owner wants it to stop at the bars;
        THE BAND STOPS WHERE THE BARS BEGIN below.)
      - THE ISLAND.  Sideways the Dynamic Island and the rounded corners inset
        both long edges; the band steps in by them (--world-pad-l/r, resize()'s
@@ -6953,7 +6953,7 @@ html.bt-one-band .bt-dashboard{
   left:var(--world-pad-l,0px)!important;   /* the band's left/right are inline styles */
   right:var(--world-pad-r,0px)!important;
 }
-/* ═══ v2.3.4162: THE BAND STOPS WHERE THE BARS BEGIN ═══
+/* ═══ v2.3.4172: THE BAND STOPS WHERE THE BARS BEGIN ═══
    The owner on #1386: "Make the edge of the dashboard stop at the black bars
    width (hopefully that's an easy change and won't mess up anything)".  Where
    the world has bars at its sides (a computer, a tablet: sheetGeometry
@@ -6995,7 +6995,7 @@ html.bt-one-band .bt-kb-hints[data-beside]:not(.bt-kb-side *){left:calc(var(--wo
    the mockup's at a computer's 63 px tile), and the size a 1280 px laptop
    window, the judges' commonest, nearly fills.  The band's own background
    stays the screen's width.  Every tab inherits it (Lane A's Gear tab and the
-   Bro tab draw inside the page box).  (v2.3.4162: the band's background
+   Bro tab draw inside the page box).  (v2.3.4172: the band's background
    is the world's width now, the bars' rule above; the box inside it is
    unchanged.)  Not sideways: a phone on its side
    keeps the screen's width for its slots (the world there is narrower than

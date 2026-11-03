@@ -1,4 +1,4 @@
-/* ═══ mp-bandshots (v2.3.4162): THE BAND OPEN ON GEAR AND ON BRO, EVERY SCREEN ═══
+/* ═══ mp-bandshots (v2.3.4172): THE BAND OPEN ON GEAR AND ON BRO, EVERY SCREEN ═══
  *
  * The one band is the default on every screen (#1410, src/ui/oneBand.js):
  * the band at the bottom, its content centred in [data-band-box] on a
@@ -14,7 +14,7 @@
  * on a computer at 1280 x 720 and 1920 x 1080 (wide: true), a phone on its
  * side 844 x 390 (opened from the folded band), and upright 390 x 844.
  *
- * v2.3.4162, the owner on #1386: "Make the edge of the dashboard stop at the
+ * v2.3.4172, the owner on #1386: "Make the edge of the dashboard stop at the
  * black bars width" and "Make the weapon icons above the combat stats larger
  * and just reuse the icons used on the 3 primary combat skills".  So also:
  *   - on a computer the band's left and right edges are the world canvas's
@@ -26,7 +26,7 @@
  *   - upright the band is the screen's full width (no bars); on its side it
  *     keeps the screen's width (game.css: its open band is wider than its
  *     world on purpose);
- *   - (v2.3.4162, the owner: "Move the 3 primary combat skills out of the
+ *   - (v2.3.4172, the owner: "Move the 3 primary combat skills out of the
  *     gear menu and put them into the bro menu") Bro's middle panel has the
  *     Melee / Bow / Magic tiles (the Gear tab's pictures, /icons/ui/hero/, at
  *     least 36 px) with "Lv N" ABOVE each picture, each at least 44 x 44,
@@ -40,7 +40,7 @@ import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-/* v2.3.4162: the band's edges against the world's, the bars' colour, and the
+/* v2.3.4172: the band's edges against the world's, the bars' colour, and the
    world's own furniture (to show none of it moved) */
 const OLD_BAND_CSS = 'html.bt-one-band:not(.bt-band-side) body .bt-dashboard{left:var(--world-pad-l,0px)!important;right:var(--world-pad-r,0px)!important}';
 const edges = (P) => P.page.evaluate(() => {
@@ -81,7 +81,7 @@ const edges = (P) => P.page.evaluate(() => {
   };
 });
 
-/* v2.3.4162: Bro's three combat-skill tiles (SkillTiles.jsx): each one's
+/* v2.3.4172: Bro's three combat-skill tiles (SkillTiles.jsx): each one's
    picture, its "Lv N" (above the picture?), its box, picked, its XP words */
 const skillTiles = (P) => P.page.evaluate(() => [...document.querySelectorAll('[data-bro-skill]')].map((b) => {
   const r = b.getBoundingClientRect(); const img = b.querySelector('img'); const ir = img ? img.getBoundingClientRect() : null;
@@ -127,7 +127,7 @@ const look = (P) => P.page.evaluate(() => {
   };
 });
 
-/* v2.3.4162: on a computer, the band at rest: its edges are the world's, the
+/* v2.3.4172: on a computer, the band at rest: its edges are the world's, the
    bars run black to the bottom, and nothing over the world moved for it */
 async function deskEdges(D, tag, rec) {
   await D.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) { /* no band */ } });
@@ -171,7 +171,7 @@ async function both(P, tag, rec) {
     b.mode === 'expanded' && inBox && b.cut.length === 0, b);
   rec.ok(`${tag}: CLOSE first in the row ("${b.close && b.close.text}"), then the five (words: ${b.words})`,
     !!b.close && b.close.text === 'CLOSE' && !!b.first && b.first.id === 'dashboard' && b.close.r <= b.first.l, { close: b.close, first: b.first });
-  /* v2.3.4162: the owner on #1386, "Move the 3 primary combat skills out of
+  /* v2.3.4172: the owner on #1386, "Move the 3 primary combat skills out of
      the gear menu and put them into the bro menu": Melee / Bow / Magic over
      the stats, "Lv N" above each big picture, the weapon out's gold */
   const ws = await skillTiles(P);
@@ -241,7 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(2500);
       await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
       await P.page.waitForTimeout(1500);
-      /* v2.3.4162: upright the band is the screen's width (no bars); on its
+      /* v2.3.4172: upright the band is the screen's width (no bars); on its
          side, open, it keeps the screen's width (game.css: on purpose) */
       await H.unfoldBand(P).catch(() => {});
       await P.page.waitForTimeout(1000);

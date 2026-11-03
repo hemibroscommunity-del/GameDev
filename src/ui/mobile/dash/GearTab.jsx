@@ -11,7 +11,7 @@ import { weaponSlotFor, unequipWeaponSlot, unequipShieldDirect, unequipArmorDire
 import { weaponRows, shieldRows, armourRows, compareRows, charLevel } from './gearStats.js';
 import { combatSkillState, WEAPON_SKILLS } from './combatSkill.js';
 import { WeaponBar } from './WeaponBar.jsx';
-import { SkillTile, SkillXpWide } from './SkillTiles.jsx';   /* v2.3.4162: the tiles, shared with the Bro page */
+import { SkillTile, SkillXpWide } from './SkillTiles.jsx';   /* v2.3.4172: the tiles, shared with the Bro page */
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4151: the overview's bars, the Character page's own */
 import { shopBus } from '../shopBus.js';
@@ -731,7 +731,7 @@ export const GearTab = ({ R: Rin, desk }) => {
        after a kill still lands here, xpLanding); a tap turns it into its XP
        bar across the row -- "68 / 455 XP", the numbers the top bar's XP bar
        reads (combatSkill.js) -- until a second tap or 4 s (gearTabBus.showXp) */
-    /* v2.3.4162: the tile and its open bar live in SkillTiles.jsx (the Bro
+    /* v2.3.4172: the tile and its open bar live in SkillTiles.jsx (the Bro
        page draws the same tile); this is their v2.3.4151 use, unchanged --
        the same elements, styles and hooks */
     const tile = ({ s, k }) => (

@@ -36,7 +36,7 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
    and it is how you switch destinations or get out.  A rail that hid with
    the rest of the band would leave an open panel with no navigation. */
 
-/* ═══ v2.3.4162: FIVE BUTTONS -- GEAR, BRO, QUESTS, CODEX, MORE ═══
+/* ═══ v2.3.4172: FIVE BUTTONS -- GEAR, BRO, QUESTS, CODEX, MORE ═══
    The owner's consolidation ("limit lots of buttons to switch between
    different context"): the Skills button went inside Bro (a page under it).
    Then his drawing of the row (61C354F2-...png and D474F679-...png in the
@@ -74,7 +74,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
   /* v2.3.3687: a computer's buttons are taller, their pictures nearly twice a
      phone's (`btnH`, `iconPx`: sheetGeometry DESK_NAV_BTN_H / DESK_NAV_ICON) */
   const size = btnW ? { w: btnW, h: btnH || base.h } : base;
-  /* v2.3.4162: each button's real width -- `fill` flexes them past btnW --
+  /* v2.3.4172: each button's real width -- `fill` flexes them past btnW --
      measured from the group, so the words show wherever they fit */
   const railRef = useRef(null);
   const [realW, setRealW] = useState(0);
@@ -232,7 +232,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                    bag tiles never showed.  Unfold here too.  It only unfolds
                    -- a tap on an unfolded band is a no-op as before, never a
                    fold (the I key toggles; the grip folds).
-                   v2.3.4162: kept for Gear, the same button renamed. */
+                   v2.3.4172: kept for Gear, the same button renamed. */
                 if (!playIsLandscape()) dashMinBus.set(false);
                 return;
               }
@@ -250,7 +250,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
               ...(fill ? { flex: '1 1 0', minWidth: size.w } : { width: size.w, flex: 'none' }),
               height: size.h,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              /* v2.3.4162: the word under the picture, or beside it */
+              /* v2.3.4172: the word under the picture, or beside it */
               flexDirection: words === 'stack' ? 'column' : 'row',
               gap: words === 'stack' ? 1 : words === 'beside' ? 6 : 0,
               boxSizing: 'border-box', minWidth: 0,
@@ -307,7 +307,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                   opacity: on ? 1 : 0.82, pointerEvents: 'none',
                 }} />
             )}
-            {/* v2.3.4162: the button's word (the owner's drawing), where it
+            {/* v2.3.4172: the button's word (the owner's drawing), where it
                 fits (navLabelMode above); the open one's in gold */}
             {words !== 'icon' ? (
               <span className="bt-nav-word" data-nav-word={d.id} aria-hidden="true" style={{

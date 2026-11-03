@@ -1,7 +1,7 @@
-/* ═══ v2.3.4162: THE BRO PAGE'S COMBAT STATS, ONE WEAPON AT A TIME ═══
+/* ═══ v2.3.4172: THE BRO PAGE'S COMBAT STATS, ONE WEAPON AT A TIME ═══
  *
  * The owner drew the Bro page (D474F679-...png in the repo root): a Sword |
- * Bow | Staff selector (v2.3.4162: the Melee / Bow / Magic skill tiles) over
+ * Bow | Staff selector (v2.3.4172: the Melee / Bow / Magic skill tiles) over
  * "Combat Stats", one row a stat -- an icon, the
  * stat's name in capitals, its value at the right: Damage, DPS, Attack Speed,
  * Range, Crit Chance, Crit Damage, Special Damage, Element Power, Defense,
@@ -41,7 +41,7 @@ import { autoSwingMs, reachOf } from './statSim.js';
 /* the three weapons, in the mockup's order: the prog3 category, the rpg's
    activeSlot that means it, the word ("No bow equipped"), and the combat
    skill whose tile picks it (heroModel COMBAT_SKILLS' key: STAT_TO_WEAPON_CAT).
-   v2.3.4162: the owner on #1386, "Move the 3 primary combat skills out of the
+   v2.3.4172: the owner on #1386, "Move the 3 primary combat skills out of the
    gear menu and put them into the bro menu" -- the Gear tab's Melee / Bow /
    Magic tiles (dash/SkillTiles.jsx) ARE the picker now, so the old Sword |
    Bow | Staff buttons and their pictures are gone; a tile names its weapon

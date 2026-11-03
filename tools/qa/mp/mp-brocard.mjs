@@ -1,4 +1,4 @@
-/* ═══ mp-brocard (v2.3.4162): THE BRO PAGE, AS THE OWNER DREW IT ═══
+/* ═══ mp-brocard (v2.3.4172): THE BRO PAGE, AS THE OWNER DREW IT ═══
  *
  * The owner, of the first cut (your own Inspect card): "it reads like an old
  * PC menu".  Then a drawing (D474F679-...png in the repo root) and: "One
@@ -17,7 +17,7 @@
  *      NO XP bar, "No title" plainly, "No clan", the AP, the Achievements and
  *      Lifetime Kills tiles; the doors: Achievements (where granted), Life
  *      Skills, Points, Equipment, Homestead, Pet, Titles, Clan;
- *   3. the stats: v2.3.4162, the owner on #1386, "Move the 3 primary combat
+ *   3. the stats: v2.3.4172, the owner on #1386, "Move the 3 primary combat
  *      skills out of the gear menu and put them into the bro menu" -- the
  *      Melee / Bow / Magic tiles over them (the Gear tab's pictures, "Lv N"
  *      ABOVE each, at least 44 px, touch-action: manipulation), the one for
@@ -141,7 +141,7 @@ const card = (P) => P.page.evaluate(() => {
       kills: q('[data-bro-tile="kills"]') ? txt(q('[data-bro-tile="kills"] b')) : null },
     weapon: q('[data-bro-panel="stats"]') ? q('[data-bro-panel="stats"]').getAttribute('data-bro-weapon') : null,
     has: q('[data-bro-panel="stats"]') ? q('[data-bro-panel="stats"]').getAttribute('data-bro-has') : null,
-    /* v2.3.4162: the three combat-skill tiles (SkillTiles.jsx) */
+    /* v2.3.4172: the three combat-skill tiles (SkillTiles.jsx) */
     skills: [...c.querySelectorAll('[data-bro-skill]')].map((e) => {
       const r = e.getBoundingClientRect(); const img = e.querySelector('img'); const ir = img ? img.getBoundingClientRect() : null;
       const lv = [...e.querySelectorAll('span')].find((x) => /^Lv \d+$/.test((x.textContent || '').trim()));
@@ -199,7 +199,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   P.page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
   try {
     await H.enterWorld(P);
-    /* v2.3.4162: a real keystroke every 20 s -- two quiet minutes log the
+    /* v2.3.4172: a real keystroke every 20 s -- two quiet minutes log the
        page out (wsClient idleLogout), and most of this walk is evaluate */
     stopP = H.keepAlive(P);
     await P.page.waitForTimeout(2500);
@@ -324,7 +324,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const c4 = await card(P);
     rec.ok('...its close comes back to the card, the Bow still picked', c4.there && !(await popup(P)) && c4.weapon === 'bow', { there: c4.there, weapon: c4.weapon });
 
-    /* v2.3.4162: since the Gear tab (v2.3.4151) the Equipment door opens
+    /* v2.3.4172: since the Gear tab (v2.3.4151) the Equipment door opens
        Gear -- the band at rest, unfolded, its three panels */
     await touch(P, '[data-bro-row="equipment"]');
     await P.page.waitForTimeout(1500);
@@ -403,7 +403,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1500);
     await P.page.evaluate(() => { window.__btHeroSection.request('Card'); window.__broDashPanelBus.open('hero'); });
     await P.page.waitForTimeout(1500);
-    /* v2.3.4162: the one band is the default (#1410): on its side the band
+    /* v2.3.4172: the one band is the default (#1410): on its side the band
        stays at the bottom, the card laid out from its width; the old side
        column (?oneband=0) is one column at ~220 px, its chip CLOSE / OPEN */
     const side = await card(P);
@@ -432,7 +432,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`a computer: P opens Bro, the card in the column (${d1.cols} columns at ${d1.w} px), nothing cut`,
       d1.there && d1.cols >= 2 && d1.cut.length === 0 && d1.past === 0, { cols: d1.cols, w: d1.w, cut: d1.cut });
     const rd = await row(D);
-    /* v2.3.4162: CLOSE in the row (the one band), or the old column's chip */
+    /* v2.3.4172: CLOSE in the row (the one band), or the old column's chip */
     const chipD = (rd.close && rd.close.text) || await D.page.evaluate(() => { const c = document.querySelector('[data-land-fold]'); return c ? (c.textContent || '').trim() : null; });
     rec.ok(`...the row: CLOSE (${chipD}), the five with their words (${rd.words}: ${rd.btns.map((b) => b.word).join(' ')})`,
       chipD === 'CLOSE' && rd.words !== 'icon' && rd.btns.length === 5 && rd.btns.every((b) => b.word === WORDS[b.id] && !b.cut), rd.btns);
@@ -447,7 +447,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await D.page.keyboard.press('Escape');
     await D.page.waitForTimeout(800);
     rec.ok('...and Esc closes it, back to the card', !(await popup(D)) && (await card(D)).there);
-    /* v2.3.4162: a mouse on the skill tiles: a click picks the weapon and
+    /* v2.3.4172: a mouse on the skill tiles: a click picks the weapon and
        shows its XP; a second click puts the picture back */
     await D.page.click('[data-bro-skill="staff"]').catch(() => {});
     await D.page.waitForTimeout(600);

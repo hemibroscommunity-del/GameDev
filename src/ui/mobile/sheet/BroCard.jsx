@@ -6,7 +6,7 @@ import { playIsLandscape } from '../playViewport.js';
 import { profileFromSelf, compactCount } from '../../panels/playerProfile.js';
 import { portraitSrc } from './portraitStore.js';
 import { BRO_WEAPONS, broStartWeapon, broWeaponStats } from './broStats.js';
-import { SkillTile, SKILL_XP_HOLD_MS } from '../dash/SkillTiles.jsx';   /* v2.3.4162: the combat skills, moved here from Gear */
+import { SkillTile, SKILL_XP_HOLD_MS } from '../dash/SkillTiles.jsx';   /* v2.3.4172: the combat skills, moved here from Gear */
 import { combatSkillState, WEAPON_SKILLS } from '../dash/combatSkill.js';
 import { SKILL_ROSTER, hasUnseenLevelUps } from './skillsModel.js';
 import { prog3Live, prog3CharLevel } from '../../../data/prog3.js';
@@ -17,7 +17,7 @@ import { NAV_KEYS } from '@/game/deskKeys.js';   /* L, worn by the Life Skills r
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 
-/* ═══ v2.3.4162: THE BRO PAGE, AS THE OWNER DREW IT ═══
+/* ═══ v2.3.4172: THE BRO PAGE, AS THE OWNER DREW IT ═══
  * The owner, of the first cut (your own Inspect card): "I'll need to change
  * the layout of the bro tab, it reads like an old PC menu."  Then: "I added
  * what I want bro tab layout to look like on GitHub.  One different thing is
@@ -34,7 +34,7 @@ import { statInfo } from '../infoGlossary.js';
  *   MIDDLE   the weapon picker (starting on the weapon out), then "Combat
  *            Stats" for that weapon, a row a stat (broStats.js: the game's
  *            own readers, per weapon); the list scrolls when the band is
- *            shorter than it.  v2.3.4162, the owner on #1386: "Move the 3
+ *            shorter than it.  v2.3.4172, the owner on #1386: "Move the 3
  *            primary combat skills out of the gear menu and put them into
  *            the bro menu" -- the picker IS the three combat-skill tiles
  *            (Melee, Bow, Magic: dash/SkillTiles.jsx, the Gear tab's own),
@@ -106,7 +106,7 @@ function explain(key, value) {
 
 const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
 
-/* ═══ v2.3.4162: EQUIPMENT IS THE GEAR TAB ═══
+/* ═══ v2.3.4172: EQUIPMENT IS THE GEAR TAB ═══
    The Gear button's own page (dash/GearTab.jsx, v2.3.4151: your bag, your
    bro and your gear) is on main, so the Equipment door goes there -- the way
    the Gear button itself goes (NavRail): upright (and on the one band) Gear
@@ -145,7 +145,7 @@ export const BroCard = ({ points, onPoints }) => {
   const [cols, setCols] = useState(2);
   const [weapon, setWeaponState] = useState(() => _pick || broStartWeapon(R));
   const setWeapon = (c) => { _pick = c; setWeaponState(c); };
-  /* v2.3.4162: the skill tile showing its XP (one at a time), back to its
+  /* v2.3.4172: the skill tile showing its XP (one at a time), back to its
      picture after SKILL_XP_HOLD_MS or a second tap */
   const [xpCat, setXpCat] = useState(null);
   const xpTimer = useRef(0);
@@ -271,7 +271,7 @@ export const BroCard = ({ points, onPoints }) => {
   /* ── MIDDLE: the weapon's combat stats ── */
   const middle = (
     <section className="bt-bro2-panel bt-bro2-stats" data-bro-panel="stats" data-bro-weapon={stats.cat} data-bro-has={stats.has ? 1 : 0}>
-      {/* the three combat skills (v2.3.4162, above): a tile picks its
+      {/* the three combat skills (v2.3.4172, above): a tile picks its
           weapon; the picked one wears the gold edge (aria-pressed) */}
       <div className="bt-bro2-skills" role="group" aria-label="Combat skills">
         {skills.map(({ s: sk, k }) => {

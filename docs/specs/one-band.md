@@ -72,7 +72,7 @@ Decided (owner-approved), and built:
    fills. Measured: 1056 px at 1280 x 720 (the world's width there), 1200 at
    1920 x 1080. Every tab inherits the box: Lane A's Gear tab and the Bro
    tab draw inside the page box, so they need nothing of their own.
-   **v2.3.4162: the band stops where the bars begin.** The owner on #1386:
+   **v2.3.4172: the band stops where the bars begin.** The owner on #1386:
    *"Make the edge of the dashboard stop at the black bars width (hopefully
    that's an easy change and won't mess up anything)"*. Until then the band's
    background was the window's width under a narrower world. Now, wherever

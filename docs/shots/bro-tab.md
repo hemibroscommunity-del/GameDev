@@ -1,4 +1,4 @@
-# The Bro page, as the owner drew it (v2.3.4162)
+# The Bro page, as the owner drew it (v2.3.4172)
 
 The owner, of the first card (his own inspect card): *"I'll need to change the
 layout of the bro tab, it reads like an old PC menu."* Then: *"I added what I

@@ -1,7 +1,7 @@
 import React from 'react';
 import { COL } from './common.js';
 
-/* ═══ v2.3.4162: THE THREE COMBAT SKILLS' TILES, IN ONE PLACE ═══
+/* ═══ v2.3.4172: THE THREE COMBAT SKILLS' TILES, IN ONE PLACE ═══
  * Melee, Bow and Magic (combatSkill.js WEAPON_SKILLS), each its big picture
  * and "Lv N".  They were born on the Gear tab's card (v2.3.4151, the owner:
  * "Melee bow magic each need just their large icons and levels similar to
