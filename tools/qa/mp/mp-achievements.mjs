@@ -9,9 +9,9 @@
  *
  *   A, an upright phone:
  *     1. the worker says it grants them (caps.achievements) and sends the
- *        record at the join; More's Journey tile is Achievements, "0 of 23
+ *        record at the join; More's Journey tile is Achievements, "0 of 33
  *        earned", its label whole;
- *     2. the tile opens the page: 23 rows, "0/23", the worker's AP -- the
+ *     2. the tile opens the page: 33 rows (v2.3.4036: + the ten rare fish), "0/33", the worker's AP -- the
  *        two on the header row beside "◂ ACHIEVEMENTS", and two whole rows in
  *        view as it opens (the review: it showed one) -- the six super-rares
  *        SHOWN though not earned (decision 3), locked, and no "Use as title"
@@ -256,7 +256,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const up = await A.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
     const p0 = up ? await pageLook(A) : null;
     rec.ok(`2a the AP line opens the Achievements tab: ${p0 && p0.rows} rows, "${p0 && p0.count}", the worker's AP (${p0 && p0.apTotal})`,
-      !!p0 && p0.rows === 23 && /^0\/23$/.test(p0.count.trim()) && p0.apTotal === s0.ap && p0.got.length === 0, p0);
+      !!p0 && p0.rows === 33 && /^0\/33$/.test(p0.count.trim()) && p0.apTotal === s0.ap && p0.got.length === 0, p0);
     /* the owner's ChatGPT review: the page showed ONE row as it opened.
        v2.3.4071: as Bro's tab it has no drilled header to ride, so the
        summary is the page's first line (the root-page form it always had)
@@ -273,19 +273,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const l = await pageLook(A);
       counts[f] = l ? { n: l.rows, arena: l.ids.includes('gladiator') } : null;
     }
-    rec.ok('2d the chips: Super-rare 6, Rare 10 with the arena\'s row, Common 7, All 23',
-      counts.superrare && counts.superrare.n === 6 && counts.rare && counts.rare.n === 10 && counts.rare.arena
-        && counts.common && counts.common.n === 7 && !counts.common.arena && counts.all && counts.all.n === 23, counts);
+    /* v2.3.4036: + the ten rare fish (five albino commons, five large rares) */
+    rec.ok('2d the chips: Super-rare 6, Rare 15 with the arena\'s row, Common 12, All 33',
+      counts.superrare && counts.superrare.n === 6 && counts.rare && counts.rare.n === 15 && counts.rare.arena
+        && counts.common && counts.common.n === 12 && !counts.common.arena && counts.all && counts.all.n === 33, counts);
     /* the owner's painted badges: every row its own, loaded at its 150 px */
     const badges = await A.page.waitForFunction(() => {
       const rows = [...document.querySelectorAll('[data-achv-row]')];
       const look = rows.map((r) => { const i = r.querySelector('img'); return { id: r.dataset.achvRow, src: i ? i.getAttribute('src') : '', w: i ? i.naturalWidth : 0 }; });
-      return rows.length === 23 && look.every((x) => x.w === 150) ? look : false;
+      /* v2.3.4036: the ten rare-fish rows wear their fish's bag picture (no badge yet) */
+      return rows.length === 33 && look.filter((x) => !/^(albino|large)_/.test(x.id)).every((x) => x.w === 150) ? look : false;
     }, null, { timeout: 10000, polling: 250 }).then((h) => h.jsonValue()).catch(() => A.page.evaluate(() => [...document.querySelectorAll('[data-achv-row]')]
       .map((r) => { const i = r.querySelector('img'); return { id: r.dataset.achvRow, src: i ? i.getAttribute('src') : '', w: i ? i.naturalWidth : 0 }; })));
-    rec.ok('2e every row wears its own badge, the owner\'s, loaded (150 px)',
-      badges.length === 23 && badges.every((x) => x.src.startsWith('/icons/achievements/' + x.id + '.webp?v=') && x.w === 150),
-      badges.filter((x) => !x.src.startsWith('/icons/achievements/' + x.id + '.webp?v=') || x.w !== 150));
+    const fishRow = (x) => /^(albino|large)_/.test(x.id);
+    rec.ok('2e every row wears its own badge, the owner\'s, loaded (150 px); the rare fish their fish\'s bag picture',
+      badges.length === 33 && badges.filter((x) => !fishRow(x)).every((x) => x.src.startsWith('/icons/achievements/' + x.id + '.webp?v=') && x.w === 150)
+        && badges.filter(fishRow).every((x) => x.src.startsWith('/icons/items/fish-') && x.w > 0),
+      badges.filter((x) => (fishRow(x) ? !x.src.startsWith('/icons/items/fish-') : (!x.src.startsWith('/icons/achievements/' + x.id + '.webp?v=') || x.w !== 150))));
     await A.page.screenshot({ path: join(OUT, 'achievements-1-page.png') });
 
     /* ── 3 ── */
@@ -317,10 +321,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(1500);
     const q = await A.page.evaluate(() => (window.__btAchvBanner ? window.__btAchvBanner.ids.slice() : []));
     rec.ok('4c ...and no banner for a common one', !q.includes('first_blood'), q);
-    await A.page.waitForFunction(() => /^2\/23$/.test(((document.querySelector('[data-achv-count]') || {}).textContent || '').trim()), null, { timeout: 8000, polling: 250 }).catch(() => {});
+    await A.page.waitForFunction(() => /^2\/33$/.test(((document.querySelector('[data-achv-count]') || {}).textContent || '').trim()), null, { timeout: 8000, polling: 250 }).catch(() => {});
     const p2 = await pageLook(A);
     rec.ok(`4d the page agrees: "${p2 && p2.count}", ${p2 && p2.apTotal} AP, "${p2 && p2.split.trim()}"`,
-      !!p2 && /^2\/23$/.test(p2.count.trim()) && p2.apTotal === s2.ap && p2.got.includes('first_blood')
+      !!p2 && /^2\/33$/.test(p2.count.trim()) && p2.apTotal === s2.ap && p2.got.includes('first_blood')
         && /510 from achievements/.test(p2.split), p2);
 
     /* ── 5 ── */
@@ -434,8 +438,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const bUp = await openPage(B).catch(() => false);
     const pb = bUp ? await pageLook(B) : null;
     const col = await B.page.evaluate(() => { const r = document.getElementById('root').getBoundingClientRect(); return { x: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width) }; });
-    rec.ok(`9a on a computer the page is in the game's column (${col.x}-${col.r}), no sideways scroll, 23 rows of 48 px and up, type 12 px and up, two rows in view`,
-      !!pb && pb.rows === 23 && pb.box.x >= col.x - 1 && pb.box.r <= col.r + 1 && pb.sideScroll <= 0 && pb.minRowH >= 47 && pb.minFont >= 12 && pb.cut.length === 0
+    rec.ok(`9a on a computer the page is in the game's column (${col.x}-${col.r}), no sideways scroll, 33 rows of 48 px and up, type 12 px and up, two rows in view`,
+      !!pb && pb.rows === 33 && pb.box.x >= col.x - 1 && pb.box.r <= col.r + 1 && pb.sideScroll <= 0 && pb.minRowH >= 47 && pb.minFont >= 12 && pb.cut.length === 0
         && pb.summaryAt === 'page' && pb.inView >= 1, { pb, col });   /* v2.3.4071: Bro's tab: the summary its first line */
     await B.page.screenshot({ path: join(OUT, 'achievements-5-computer.png') });
     await H.devOp(wsPort, 'achv', bId, { id: 'golden_giant' }).catch(() => {});
@@ -468,7 +472,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const sUp = await A.page.waitForSelector('.bt-land-sheet [data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
     const ps = sUp ? await pageLook(A, '.bt-land-sheet') : null;
     rec.ok(`10b sideways the page is in the side column (${ps && ps.box.w} px), the chips two by two, no sideways scroll, nothing cut, rows readable, the summary its first line`,
-      !!ps && ps.rows === 23 && ps.box.w <= 270 && ps.sideScroll <= 0 && ps.cut.length === 0 && ps.minFont >= 11.5 && ps.minRowH >= 47
+      !!ps && ps.rows === 33 && ps.box.w <= 270 && ps.sideScroll <= 0 && ps.cut.length === 0 && ps.minFont >= 11.5 && ps.minRowH >= 47
         && !!ps.chipCols && ps.chipCols.split(' ').length === 2 && ps.summaryAt === 'page', ps);
     await A.page.screenshot({ path: join(OUT, 'achievements-7-sideways.png') });
 

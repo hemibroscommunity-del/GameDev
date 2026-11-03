@@ -136,13 +136,14 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   A.noteServerAp(S, 'x'); A.noteServerAp(S, -3);
   check('4d an echo that is not a number does not', A.achvApTotal(S) === 1605);
   const sum = A.achvSummary(S);
-  check('4e "3 of 23", the achievements worth 1,510, the rest 95', sum.earned === 3 && sum.total === 23 && sum.achvPts === 1510 && sum.otherPts === 95 && sum.maxPts === D.ACHV_TOTAL_AP, sum);
+  check('4e "3 of 33", the achievements worth 1,510, the rest 95', sum.earned === 3 && sum.total === 33 && sum.achvPts === 1510 && sum.otherPts === 95 && sum.maxPts === D.ACHV_TOTAL_AP, sum);
   const S2 = freshS();
   A.onAchvState(S2, { got: { godly: 1 }, ap: 0 });
   check('4f a row the owner\'s lever lit pays nothing: the rest reads 0, never below', A.achvSummary(S2).otherPts === 0);
   const ids = (f) => A.achvRows(S, f).map((r) => r.def.id);
-  check('4g All is the whole table in its order', ids('all').join() === D.ACHIEVEMENTS.map((a) => a.id).join() && ids('nonsense').length === 23);
-  check('4h Common 7, Rare 10 with the arena\'s row, Super-rare 6', ids('common').length === 7 && ids('rare').length === 10 && ids('rare').includes('gladiator') && ids('superrare').length === 6,
+  check('4g All is the whole table in its order', ids('all').join() === D.ACHIEVEMENTS.map((a) => a.id).join() && ids('nonsense').length === 33);
+  /* v2.3.4036: + the rare fish, five albino commons and five large rares */
+  check('4h Common 12, Rare 15 with the arena\'s row, Super-rare 6', ids('common').length === 12 && ids('rare').length === 15 && ids('rare').includes('gladiator') && ids('superrare').length === 6,
     { c: ids('common').length, r: ids('rare').length, s: ids('superrare').length });
   check('4i the filters cover every tier', D.ACHIEVEMENTS.every((a) => A.ACHV_FILTERS.some((f) => f.tiers && f.tiers.includes(a.tier))));
   const g = A.achvRows(S, 'rare').find((r) => r.def.id === 'gladiator');
@@ -283,11 +284,18 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
     if (kind === 'VP8 ') return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
     return null;
   };
-  const ids = D.ACHIEVEMENTS.map((a) => a.id);
+  /* v2.3.4036: the ten rare-fish rows (fishlog.js) wear their fish's own bag
+     picture until the owner paints their badges (the lane was "no new art"):
+     held below to exactly that picture; every other row to its badge */
+  const FISH_ROW = /^(albino|large)_(minnow|clownfish|trout|salmon|pike)$/;
+  const fishRows = D.ACHIEVEMENTS.filter((a) => FISH_ROW.test(a.id));
+  check('9f the rare fish wear their species\' bag picture, ten rows',
+    fishRows.length === 10 && fishRows.every((a) => a.icon === '/icons/items/fish-' + a.id.replace(FISH_ROW, '$2') + '.webp?v=2.3.1774'), fishRows.map((a) => [a.id, a.icon]));
+  const ids = D.ACHIEVEMENTS.filter((a) => !FISH_ROW.test(a.id)).map((a) => a.id);
   check('9a every achievement wears its own badge, /icons/achievements/<id>.webp at the badges\' cache key',
-    D.ACHIEVEMENTS.every((a) => a.icon === '/icons/achievements/' + a.id + '.webp?v=' + D.ACHV_BADGE_V && a.icon === D.achvBadgeSrc(a.id))
+    D.ACHIEVEMENTS.filter((a) => !FISH_ROW.test(a.id)).every((a) => a.icon === '/icons/achievements/' + a.id + '.webp?v=' + D.ACHV_BADGE_V && a.icon === D.achvBadgeSrc(a.id))
       && /^\d+\.\d+\.\d+$/.test(D.ACHV_BADGE_V) && D.ACHV_MEDAL_SRC === D.achvBadgeSrc('achievements'),
-    D.ACHIEVEMENTS.filter((a) => a.icon !== D.achvBadgeSrc(a.id)).map((a) => a.id));
+    D.ACHIEVEMENTS.filter((a) => !FISH_ROW.test(a.id) && a.icon !== D.achvBadgeSrc(a.id)).map((a) => a.id));
   const files = [...ids, 'achievements'].map((id) => 'public/icons/achievements/' + id + '.webp');
   const sizes = files.map((f) => (existsSync(new URL(f, root)) ? webpSize(bin(f)) : null));
   check('9b ...each file there, a WebP 150 px square (3x the card\'s 50 CSS px rarest box, the biggest place one is drawn), the medal too',

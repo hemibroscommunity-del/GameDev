@@ -19,6 +19,7 @@ are sections 5 to 7.
 | Lighting a fire (the fire-lighter) | the painted trousers and boots | your trousers and boots |
 | All three figures | 76% (lumberjack), 88% of your head (cook), 108% (fire-lighter) of your size | your size |
 | All three figures, and a sword swing or a bow shot | your shirt's colour, without its print or pattern | your shirt's colour, print and pattern |
+| All three, and the farmer (v2.3.4037) | your trousers' and boots' colours, without their patterns or the trouser print | their patterns and the print too (section 8) |
 
 ## How the bro is drawn while gathering
 
@@ -244,6 +245,68 @@ and no crack was heard.
 - Found by `mp-nodelabels` on a test machine drawing about a frame a second.
   Timed on main and on this branch alike: every miss followed a gap of 981 ms
   or more, every crack a gap of 892 ms or less.
+
+## 8. Your trouser and shoe patterns, and your trouser print (v2.3.4037)
+
+> The owner, 2026-11-03: *"Shoes and patterns aren't showing while hoeing."*
+
+The farmer (`docs/specs/farm-walk.md` "The farmer's own moves") is a stand-in
+too, baked by the same `_standInBake`. That bake retinted the trousers and the
+boots (section 3) and stamped the face, chest and arm drawings, and stopped:
+the trouser pattern, the shoe pattern and the trouser print, which the walking
+bake stamps (`recolorBodyToCanvas`), were never handed to it. So on all four
+figures (the farmer, the lumberjack, the cook, the fire-lighter) they went the
+moment you started to work. TRAPS §73 once more: a second bake site does not
+inherit the first one's arguments. The boots' COLOUR was already right
+(`mp-farmanim` reads red boots), so "shoes" was the shoe pattern.
+
+- **What a figure carries** (`src/rendering/standInGarb.js`, the "garb"): the
+  trouser pattern, the shoe pattern and the FRONT trouser print (every
+  stand-in faces you or the side). Yours from the stores (`localGarb`), a
+  peer's off the wire through the sanitisers every peer look passes
+  (`peerGarb`).
+- **Where it goes:** on the masks `_standInClothes` finds (section 3), the
+  trousers' and the boots' lit fabric only (`litFabricMask`, measured on the
+  art as painted), so the shaded rim still rounds the legs: the pattern first,
+  the print over it, then the shoe pattern, after the colours and before the
+  drawings (`_stampStandInGarb`, playerSkins). The split bakes' drawings layer
+  (the cook's, the fire-lighter's) still holds only the drawings: the garb is
+  the figure's own.
+- **Scaled to the figure.** A tile's `cell` is in the walking body's 256 sheet
+  pixels, where you stand 189 px and your head is 51 px across, so each
+  figure's cells grow by its size against that (`STANDIN_GARB_K`, through
+  `stampPattern`'s new `cellK`, rounded to whole pixels): the lumberjack
+  170/189 = 0.90, the cook by his head 85/51 = 1.67, the fire-lighter
+  381/189 = 2.02, the farmer by his head 64/51 = 1.25. The print needs nothing:
+  it is fitted to each frame's legs (`stampRegion`).
+- **Re-baked when they change** (`onGarbChange`): a pattern at once, the print
+  0.4 s after the strokes stop, as the drawings' re-bakes wait. Each figure
+  re-bakes as it already does for a new trouser colour.
+- **Another player's figure** wears THEIR patterns: the garb joins the figure's
+  colour key (`_standInColourKey`), so your figure is handed to a peer only
+  when they also wear your patterns and print, and a figure baked for one
+  peer's patterns is never handed to another's (TRAPS §189). A peer dressed
+  like you still shares yours.
+- **No new memory.** The same bakes, the same figures; only peers in different
+  patterns get figures of their own, within the one allowance every peer
+  figure shares (`PEER_FIG_BUDGET`), as peers in different colours already did.
+- **Under greaves, no garb.** The figure is then the `under` or legless cut,
+  its trousers and boots gone (the armour covers them), and what the trouser
+  test still finds on it is specks along the armour's edges: stamped, they lit
+  up pink beside the plate (`mp-ghostaudit` with `BT_GHOST_GARB=1`, the
+  lumberjack, 8 px a frame on 3 frames). So the legless and `under` strips are
+  baked without it, yours and a peer's alike.
+- **Not done:** a lumberjack drawn flipped (a tree on your left) shows the
+  trouser print mirrored, as his twin bake is made only for an asymmetric
+  face, chest or arm drawing (`_chopArtAsymmetric`): a twin for the print
+  alone would be 2.5 MB more for a backwards trouser print.
+
+**Checked:** `mp-farmanim` (yellow stripes and a purple print on the farmer's
+trousers, white checks on his boots, on each move: the pixels the bake laid,
+counted after every stamp, `window.__btStandInClothes[...].garb`);
+`mp-gatherlook` (aqua checks on the trousers, white stripes on the boots, on
+the lumberjack, the fire-lighter and the cook, the same reading); `mp-ghostaudit` with `BT_GHOST_GARB=1` (the patterns in the trousers'
+and boots' ghost colours, so one showing under the armour is a leak).
 
 ## What is still different, and why
 

@@ -410,6 +410,7 @@ import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRA
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
 import { NewMonsterCard } from '@/ui/panels/NewMonsterCard.jsx';   /* v2.3.3336: NEW MONSTER, a tap opens its codex page */
 import { AchievementBanner } from '@/ui/panels/AchievementBanner.jsx';   /* v2.3.3527: a big achievement's banner, outside the wrap beside QuestCoach */
+import { FishWeighCard } from '@/ui/panels/FishWeighCard.jsx';   /* v2.3.4036: a fish's weigh-in, at the banner's spot */
 import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
 import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -538,6 +539,7 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4048: the townsfolk's nicknames, where a player reads one */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
 import { heapBurnStep } from '@/game/heapBurn.js'; /* v2.3.3748: a burning heap sets you on fire */
 import { burningAt } from '@/rendering/buildingFire.js'; /* v2.3.3748: ...where its pieces burn */
@@ -10569,7 +10571,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.3899: Mayor Bro, with nothing of his own, says the next step
        (game/mayorTalk.js) -- he opened the Town Hall's board until now */
     if (mayorSaysNext(S, npc)) return _mark('says');
-    pushDmgPopup(S, npc.x, npc.y - 30, npc.name + ' has nothing for you right now', '#B6C1BE');
+    pushDmgPopup(S, npc.x, npc.y - 30, folkDisplayName(npc.name) + ' has nothing for you right now', '#B6C1BE');   /* v2.3.4048 */
     return _mark('nothing');
   };
   /* ═══ v2.3.3470: ON A COMPUTER, A PRESS ON SOMETHING YOU USE IS NOT A SWING ═══
@@ -14956,7 +14958,7 @@ export var BroTown = function BroTown(_ref0) {
       }
     }, /*#__PURE__*/React.createElement("kbd", {
       style: { background: 'rgba(255,255,255,.2)', padding: '1px 5px', borderRadius: 3, fontSize: 11, marginRight: 4 }
-    }, "E"), "Talk to ", deskTalkPick),
+    }, "E"), "Talk to ", folkDisplayName(deskTalkPick)),   /* v2.3.4048 */
     buildingPanel === null && !deskTalkPick /* v2.3.3868 */ && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
@@ -15747,5 +15749,5 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.3527: a rare, arena or super-rare achievement's banner -- here, out
      of the wrap with QuestCoach for the same reason, so its fixed layer is the
      game's column on a computer (ui/panels/AchievementBanner.jsx) */
-  /*#__PURE__*/React.createElement(AchievementBanner, { stateRef: stateRef }), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
+  /*#__PURE__*/React.createElement(AchievementBanner, { stateRef: stateRef }), /*#__PURE__*/React.createElement(FishWeighCard, null), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
 };

@@ -1476,7 +1476,11 @@ export const gatheringMethods = {
     this._strikeRefused(session, 'paid', { invKey, nodeType: n.nodeType });
     const yieldQty = this._harvestYieldMult(ratedAccuracy, n.nodeType);
     if (!ps.inventory) ps.inventory = {};
-    ps.inventory[invKey] = (ps.inventory[invKey] || 0) + yieldQty;
+    /* v2.3.4036: a fish rolls for its variant -- 0.1% large, else 1% albino
+       (fishlog.js) -- and is counted as a catch to weigh; anything else is
+       paid as before */
+    const fishCaught = n.nodeType === 'fishSpot' ? this._fishCatch(session.id, ps, invKey, yieldQty) : null;
+    if (n.nodeType !== 'fishSpot') ps.inventory[invKey] = (ps.inventory[invKey] || 0) + yieldQty;
 
     /* lifeSkill XP -- server applies the XP gain and detects level-up.
        Client used to do this via addLifeSkillXp(R.lifeSkills, ...);
@@ -1534,6 +1538,8 @@ export const gatheringMethods = {
             leveled,
             newLevel,
             shard,
+            /* v2.3.4036: the fish's key and variant, for the catch's words */
+            ...(fishCaught ? { fish: fishCaught } : {}),
           },
         }));
       } catch (e) {}

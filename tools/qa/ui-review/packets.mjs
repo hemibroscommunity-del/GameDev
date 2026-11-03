@@ -35,6 +35,10 @@ export const PACKETS = [
     screens: ['guide-arrow', 'dash-bro', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment', 'hemi-portrait', 'hemi-portrait-dressed'] },
   { slug: 'dashboard-quests-bag-codex', title: 'Dashboard: the band, your quests, the bag, the Codex and More',
     screens: ['dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
+  /* v2.3.4071: the rare fish's weigh-in card and Ranks' Biggest fish
+     (v2.3.4036), a packet of their own: the two dashboard packets are full */
+  { slug: 'dashboard-fish', title: 'Dashboard: the rare fish',
+    screens: ['fish-weigh', 'fish-board'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',
     /* v2.3.3527: + the Achievements page, the ninth (MAX_PICTURES);
        v2.3.4071: Achievements went to Bro, Notifications (the bell) came in */
