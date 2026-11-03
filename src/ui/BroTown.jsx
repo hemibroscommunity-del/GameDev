@@ -542,7 +542,8 @@ import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '
 import { heapBurnStep } from '@/game/heapBurn.js'; /* v2.3.3748: a burning heap sets you on fire */
 import { burningAt } from '@/rendering/buildingFire.js'; /* v2.3.3748: ...where its pieces burn */
 import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { deskWords, onComputer } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { tooFarWord, tooFarPlace } from '@/game/tooFar.js';   /* v2.3.3990: "Too far away" over a resource out of reach */
 import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
@@ -9514,7 +9515,10 @@ export var BroTown = function BroTown(_ref0) {
      The resource in reach a tap at (cssX, cssY) lands on, or null -- nothing
      started.  A computer's press asks it before it swings (_deskPressTarget):
      the press is held back exactly when the click that follows will use it. */
-  var _harvestNodeAtCss = useCallback(function (cssX, cssY) {
+  /* v2.3.3990: `far` turns the reach test round -- the resource OUT of reach
+     under the finger, for the "Too far away" word (_tapHarvestAtCss).  The
+     same hit test, so the word and the harvest find the same picture. */
+  var _harvestNodeAtCss = useCallback(function (cssX, cssY, far) {
     var _S = stateRef.current;
     if (!_S || !_S.player || !_S.camera) return null;
     var _cx = _S.camera.x, _cy = _S.camera.y;
@@ -9544,7 +9548,7 @@ export var BroTown = function BroTown(_ref0) {
          visible resource beside it win the tap.  The tap then goes on to
          what it would do with nothing under it: let go of a lock, or jump. */
       if (n !== _S._campfire && n.nodeType && !hasGatherTool(_S.rpg, n.nodeType)) return;
-      if (nodeReachDist(_S, n) == null) return;
+      if ((nodeReachDist(_S, n) == null) !== !!far) return;
       var _nb = nodeWorldBox(_S, n);
       var _nsx, _nsy;
       if (_nb) {
@@ -9570,7 +9574,23 @@ export var BroTown = function BroTown(_ref0) {
   var _tapHarvestAtCss = useCallback(function (cssX, cssY) {
     var _S = stateRef.current;
     var _tapNodeBest = _harvestNodeAtCss(cssX, cssY);
-    if (!_tapNodeBest) return false;
+    if (!_tapNodeBest) {
+      /* ═══ v2.3.3990: ...BUT ONE OUT OF REACH SAYS SO ═══
+         The owner: "There needs to be a message that you're too far away if
+         you can't mine and are tapping on the ore.  Too far away message
+         should also be with any resource."  The word floats over it and the
+         tap is NOT taken (false, as before): v2.3.3145's reason holds -- the
+         old "Too far away!" ate the tap (game/tooFar.js). */
+      var _farN = _S && !_S._extraction ? _harvestNodeAtCss(cssX, cssY, true) : null;
+      if (_farN) {
+        var _fp = tooFarPlace(nodeWorldBox(_S, _farN), _farN);
+        if (tooFarWord(_S, _farN.id != null ? _farN.id : (_farN.nodeType + ':' + _farN.x + ',' + _farN.y), _fp.x, _fp.y, Date.now(),
+          { push: pushDmgPopup, computer: onComputer() }) && typeof window !== 'undefined' && window.__btProbe) {
+          window.__btTooFar = { kind: _farN.nodeType, id: _farN.id, at: Date.now() };
+        }
+      }
+      return false;
+    }
     /* CLOSE ENOUGH, as he asked -- the same reach the button and the E key
        use, so the three cannot disagree about what is in range.
        v2.3.3145: the scan above passes over what is out of reach, so the
@@ -9641,6 +9661,13 @@ export var BroTown = function BroTown(_ref0) {
     var _probe = typeof window !== 'undefined' && window.__btProbe;
     if (_best < 0) {
       if (_probe && _far >= 0) window.__btBedTap = { bed: _far, far: true, at: Date.now() };
+      /* v2.3.3990: a bed out of reach says so too (the tap still goes on) */
+      if (_far >= 0) {
+        var _fb = FARM_BEDS[_far];
+        if (tooFarWord(_S, 'bed' + _far, _fb.x + _fb.w / 2, _fb.y - 52, Date.now(), { push: pushDmgPopup, computer: onComputer() }) && _probe) {
+          window.__btTooFar = { kind: 'bed', id: _far, at: Date.now() };
+        }
+      }
       return false;
     }
     var _used = startFarmStep(_S, _best);
