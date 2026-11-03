@@ -1197,7 +1197,7 @@ Where did each sound come from: Pixabay or Freesound? If Freesound, which licenc
 
 ## The ten element icons, the element alone (v2.3.3907)
 
-The owner, 2026-11-02: "None of the elements should have shapes behind them. Just the element itself. Give prompt to redo the element icons."  Until a sheet comes back, the six that sat on a shape are drawn in code (`tools/ui/draw-element-icons.py`, with stone, storm and wind from v2.3.3609).
+The owner, 2026-11-02: "None of the elements should have shapes behind them. Just the element itself. Give prompt to redo the element icons."  **Done (2026-11-02):** the owner sent the sheet; it is kept at `assets/icons-source/owner-2026-11-02/element-icons-sheet.png` and cut by `tools/ui/cut-element-sheet.mjs`. The drawings in code (`tools/ui/draw-element-icons.py`) stay as the fallback.
 
 - **Attach:** `public/icons/ui/elem-stone.webp`, `elem-storm.webp` and `elem-wind.webp` as the style reference. Never the bro.
 - **How:** one landscape picture, sent in chat. A session keys out the magenta and cuts each icon by its own edge (`public/tools/style/process.js`: keyOut, splitObjects), fits it to 256 x 256 as `public/icons/ui/elem-<name>.webp` on 256 colours or fewer (quant256), and makes the 64 x 64 copies the name plates draw (`elem-<name>-64.webp`, v2.3.3906). The names stay the same, so every screen picks them up.

@@ -98,6 +98,13 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const kept = SHEETS.filter((f) => existsSync(new URL('assets/icons-source/owner-2026-10-19/' + f, root)));
   const top = readdirSync(root).filter((f) => /sheet|sack of gold/i.test(f) && /\.png$/i.test(f));
   check('1g the owner\'s thirteen sheets are kept in assets/icons-source/owner-2026-10-19/, none at the top of the repo', kept.length === 13 && top.length === 0, { kept: kept.length, top });
+  /* v2.3.3907: and the owner's element icon sheet (2026-11-02, uploaded to the
+     top as F82FA00F-....png), kept untouched beside its cutter's input name */
+  const elemSheet = 'assets/icons-source/owner-2026-11-02/element-icons-sheet.png';
+  const topPng = readdirSync(root).filter((f) => /^F82FA00F-50E4-4678-8205-55B5F84D5426\.png$/i.test(f) || /element-icons/i.test(f));
+  check('1g2 the owner\'s element icon sheet is kept in assets/icons-source/owner-2026-11-02/, 1983 x 793, and its upload is not left at the top of the repo',
+    existsSync(new URL(elemSheet, root)) && (() => { const b = readFileSync(new URL(elemSheet, root)); return b.readUInt32BE(16) === 1983 && b.readUInt32BE(20) === 793; })()
+    && topPng.length === 0 && /owner-2026-11-02\/element-icons-sheet\.png/.test(src('tools/ui/cut-element-sheet.mjs')), topPng);
   const cut = src('tools/ui/cut-owner-icons.py');
   check('1h the cutter refuses to overwrite without --force and holds the review\'s four plate measures',
     /refusing to overwrite \(pass --force/.test(cut) && /REVIEW_PLATE_TOP = \{'hollows': 104, 'mist': 89, 'thunder': 101, 'tidal': 98\}/.test(cut));
@@ -278,7 +285,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
      (§8, tools/ui/cut-owner-items.py), so the cutter no longer writes it */
   check('7a every one of the owner\'s 72 codes is cut, already in the game (5 from the first cut), set aside with its reason (T69.1, the same star as T69.2), or replaced by the owner\'s own later picture (T36.1, v2.3.3571) or words (T92.1, v2.3.3907)',
     OWNER.length === 72 && accounted.length === 72 && extra.length === 0 && Object.keys(spec.done).length === 5 && Object.keys(spec.dropped).join() === 'T69.1'
-    /* v2.3.3907: and T92.1, the flame on a red diamond, by the drawn flame (§9) */
+    /* v2.3.3907: and T92.1, the flame on a red diamond, by the owner's hand-made flame (§9) */
     && Object.keys(spec.replaced || {}).join() === 'T36.1,T92.1' && !inList.has('T36.1') && !inList.has('T92.1'),
     { missing: OWNER.filter((c) => accounted.indexOf(c) < 0), extra });
 
@@ -393,29 +400,31 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
      boulder), each file as the drawing tool writes it: a re-run of
      process_icon_sheets.py, or any other tool, fails here */
   const sha9 = (p) => createHash('sha256').update(readFileSync(new URL(p, root))).digest('hex');
-  /* v2.3.3907: all ten -- the six that sat on a shape redrawn as the element
-     alone (the owner: "None of the elements should have shapes behind them"),
-     and every one on 256 colours or fewer (venom kept as drawn) */
+  /* v2.3.3907: all ten are the owner's own hand-made set ("None of the
+     elements should have shapes behind them"), cut from their sheet by
+     tools/ui/cut-element-sheet.mjs, each on 256 colours or fewer */
   const DRAWN = {
-    wind: '6825973843fe4ef1189eecc164943743642a78c2862a8f751992870f2967d52c',
-    storm: 'b577bbbcf58c461cafd647b4a6d4d7866199aca6032004d4a8d13a3b1421cb1c',
-    stone: 'cf6c48d0ae6e5b532c80ca515f7cc4a61757ad398fd57efa4c226e1975aecb8d',
-    flame: 'b2a3c47ec89dadd87ea981375179a6c9934e6d17c4a691da58dc753ea42908d5',
-    frost: '61d8bd521c16d3e878ac1006d677893b8a8da8b67d9a893a267bd0ab986d5b63',
-    water: '7816e9d9fc1956787fba84bd223a678ae087f8f0f2dad33e9c315c52f21df7a7',
-    dark: 'cbbf95292f82ce6bdfe0c689238a501673642d43c5501fafd7973beaf700f21f',
-    light: '8850423824d91b5375dea0ddbf076ae3f3a9009736ee7add3cb17c3e4d05a239',
-    flora: 'c374d78070b11200941bbe9ac7d94aaa236a449d39fef184a859903ccc13a302',
-    venom: '88fdbbd7c44cf8d26c3aa9c6a2009789d03d15a0e0f3b5e65188b670a06571c3',
+    flame: '0a799c602cd6e74afba322f2e300e00acb92d982f4eb4ee5684e34d5f8891545',
+    frost: '4c044bac97983efafc8a034deb94e628aaa46eab0d6eb6e18109975dec4f8d0c',
+    water: '35663a8db32ed241fab6362fa42d67c3138f3cf80dfca673af032ccc0b9d55f7',
+    venom: 'afdd396cce3912a97541ef50fdcc0c8f60ee6d2c1e5379794552a29c7999c983',
+    flora: 'bb372a30a3cb245dc61c2952c428fbdc851601516d1e0167e44afd0f3dcf430e',
+    stone: '4ba426a9aa31f1e92644aa413e98780a0d800bd44e1b3b2c4655956fa8350f3b',
+    storm: 'b1e1de91eb3cdbb55ed4eb9fdab46eccae3cbf6a8833f8199e03ba08c68ea523',
+    wind: 'b863f99301e1ead143eab677c492494cefff519fe6d5f64248a66801e5382a56',
+    dark: '9f5c488886b6af6eedce9eb5dbecda9e3cda919e1876d2f7696248a98eea70f2',
+    light: '6a2a01bdff420c5bc1468d46abf24dfedd040cc6f047c0bf24026dd4c2b49ca7',
   };
   const got = Object.keys(DRAWN).map((k) => ({ k, sha: sha9('public/icons/ui/elem-' + k + '.webp'), size: dims('/icons/ui/elem-' + k + '.webp').join('x') }));
-  check('9a the ten element icons are the drawn ones (wind lines, a bolt, a boulder, a flame, a snowflake, a wave, a smoke swirl, a burst of rays, a sprig; venom\'s drop), 256 x 256',
+  check('9a the ten element icons are the owner\'s hand-made set as cut (a flame, a snowflake, a wave, a drop, a sprig; a boulder, a bolt, gusts, a smoke swirl, a burst), 256 x 256',
     got.every((g) => g.sha === DRAWN[g.k] && g.size === '256x256'), got);
+  const cu = src('tools/ui/cut-element-sheet.mjs');
+  check('9b ...cut by tools/ui/cut-element-sheet.mjs through the house pipeline (process.js keyOut, splitObjects, reduceColours), the two rows in the sheet\'s order',
+    /keyOut\(/.test(cu) && /splitObjects\(/.test(cu) && /reduceColours\(sq, 256\)/.test(cu)
+    && cu.includes("[['flame', 'frost', 'water', 'venom', 'flora'], ['stone', 'storm', 'wind', 'dark', 'light']]"));
   const dr = src('tools/ui/draw-element-icons.py');
-  check('9b ...drawn by tools/ui/draw-element-icons.py, which writes those nine and keeps venom (v2.3.3907)',
-    /\('elem-wind', draw_wind\), \('elem-storm', draw_storm\), \('elem-stone', draw_stone\)/.test(dr)
-    && ['wind', 'storm', 'stone', 'flame', 'frost', 'water', 'dark', 'light', 'flora'].every((k) => new RegExp('def draw_' + k + '\\(\\)').test(dr) && dr.includes("('elem-" + k + "', draw_" + k + ')'))
-    && /KEPT = \('elem-venom',\)/.test(dr) && /def reduce_256\(/.test(dr));
+  check('9b2 ...and the icons drawn in code stay a fallback that never writes over them without --force',
+    /def draw_flame\(\)/.test(dr) && /'--force' not in argv/.test(dr));
   const ps = src('tools/process_icon_sheets.py');
   check('9c ...and the sheet slicer never cuts sheet F\'s rune, star or tile over them again',
     /* v2.3.3907: now all ten */

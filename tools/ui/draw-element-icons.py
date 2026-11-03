@@ -23,9 +23,11 @@ longer writes these three (its DRAWN_IN_CODE).
 
 v2.3.3907: and the six that sat on a shape (flame, frost, water, dark, light,
 flora: see "THE OTHER SIX" below), and every one put on 256 colours or fewer.
-Venom is kept as drawn, only put on 256 colours.
+Venom is kept as drawn, only put on 256 colours.  Then the owner sent their
+own hand-made set of all ten, which the game wears (tools/ui/cut-element-
+sheet.mjs): these drawings are the FALLBACK, written only with --out or --force.
 
-Usage: python3 tools/ui/draw-element-icons.py [--out DIR] [--only elem-a,elem-b]
+Usage: python3 tools/ui/draw-element-icons.py --out DIR [--only elem-a,elem-b] | --force
 """
 import math
 import os
@@ -605,6 +607,11 @@ def main(argv):
     out = OUT_DIR
     if '--out' in argv:
         out = argv[argv.index('--out') + 1]
+    # v2.3.3907: the game's ten are the owner's own hand-made set now
+    # (tools/ui/cut-element-sheet.mjs); these drawings are the fallback, and
+    # never written over the owner's without --force
+    if os.path.abspath(out) == os.path.abspath(OUT_DIR) and '--force' not in argv:
+        sys.exit('draw-element-icons: public/icons/ui/ holds the owner\'s cut set; pass --out DIR, or --force')
     os.makedirs(out, exist_ok=True)
     only = argv[argv.index('--only') + 1].split(',') if '--only' in argv else None
     for name, fn in DRAWN:
