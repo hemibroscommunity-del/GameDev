@@ -396,6 +396,59 @@ const BASE_PLAN = {
     { id: 'bro-pond', name: 'Bro Pond', at: [-1.30, 1.90], r: 200, paint: 'a wide clear pond with reeds, flat stones and a wooden fishing jetty' },
   ],
 
+  /* ═══ v2.3.3994: THE LAGOON ISLET -- the first slice of elevation ═══
+     The owner: "Make a portion of the game that you need to swim in ... and
+     also a portion of the game that you need to climb ... and double jump to
+     get to the next part.  Maybe this is part of the 'elevation' addition".
+     (docs/ELEVATION-PLAN.md has the whole design and the next PRs.)
+
+     ISLETS: land in the sea beside a spoke, reached ONLY by swimming its
+     shallows (ground.js swimBits) -- a dead end that touches no pass and no
+     other spoke, so it skips no gate (the open sea stays the wall that keeps
+     the spokes apart: docs/specs/wheel-swimming.md).  Placed in CELLS (24
+     game px), worked out by layout.js planFeatures: `tier` along the spoke's
+     road (a compass spoke, N or S), on its `side` (+1 the road's right
+     looking outward, -1 its left), `gap` cells of water out from that row's
+     coast (the coast measured over every row it spans, its outermost cell),
+     `size` [w, h] cells, a rounded box with a wandering shore.  Its ground is
+     its spoke's own (never the border land of a pass), and nothing is placed
+     or stands on it but what `rises` puts there: no object (placing.js), no
+     resource and no monster (tools/world/bake-wheel-spawns.mjs), `keepOut`
+     cells round it too.
+     `long`: only on the Wheel five times longer (plan.js PLAN5, the live
+     one).  On the short Wheel's tiers 2-3 the sea between two spokes is
+     ~600 game px, its coasts wandering ~320 either way: no room for an islet
+     that keeps clear of both, and of the pass at tier 4.
+
+     The Water Caves' lagoons (its stages' "pale sand bars and dark mossy
+     rocks between shallow lagoons" and "dark mossy sea cliffs and rock
+     shelves"): on the spoke's EAST side, away from the Sweetwater's delta on
+     its west (fresh water between the Poison Forest and the Water Caves), in
+     tier 2 -- levels 6-10 -- well short of the pass at tier 4. */
+  islets: [
+    { id: 'lagoon-islet', name: 'the Lagoon Islet', region: 'tidal', tier: 2.4, side: -1, gap: 4, size: [18, 27], keepOut: 4, long: true },
+  ],
+  /* ── RISES: raised ground, drawn on the flat map (docs/ELEVATION-PLAN.md) ──
+     A rise is ordinary ground with a rock FACE on its south side you cannot
+     walk through and a thin RIM on its other three edges; nobody has a
+     height number -- "being on top" is standing on the ground above the
+     face.  In cells from its islet's north-west corner: `box` [x0, y0, x1,
+     y1) (the face the last `face` rows, the rim the first row and the first
+     and last columns above it), `climb` [x0, x1) columns of vines down the
+     face (climbed at 0.4 of the walk, up and down only: src/game/climb.js),
+     `chest` [x0, y0, x1, y1) a chest's cells on top.  A face is `face` x 24
+     game px tall: 72 a sprinting jump can cross going north, 144 only the
+     flip (src/game/climb.js faceCross).  A later rise inside an earlier one
+     stands on its top.  Faces, rims, vines and the chest are cells of the
+     ground worker's walk grid (core/rises.js riseLayout) and drawn by it
+     (risePaint) -- never objects, which can be smashed (v2.3.2995) -- and
+     come only with `?climb=1` in the address while this is new (the islet's
+     sand comes for everyone: it is land of the baked plan). */
+  rises: [
+    { id: 'lagoon-terrace', name: 'the Lagoon Terrace', islet: 'lagoon-islet', box: [3, 2, 15, 22], face: 3, climb: [8, 10] },
+    { id: 'lagoon-ledge', name: 'the Lagoon Ledge', islet: 'lagoon-islet', box: [5, 2, 13, 13], face: 6, chest: [8, 3, 10, 4] },
+  ],
+
   /* ── PLACES: empty plots for sprites added later ──
      `at` in squares; `size` [w, h] art px, or `r` for a round plot.  The
      wheel's camps join these at the end of the file. */

@@ -172,9 +172,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const px = (x, y) => box.at(Math.round(x * dpr), Math.round(y * dpr));
   const like = (p, hex, tol) => !!p && Math.abs(p[0] - ((hex >> 16) & 255)) <= tol && Math.abs(p[1] - ((hex >> 8) & 255)) <= tol && Math.abs(p[2] - (hex & 255)) <= tol;
   const midY = m.topInset + Math.round(m.mapBottom / 2);   /* v2.3.3108: halfway down the map's window */
-  const frame = { band: m.frame, left: px(m.rootX + 4, midY), right: px(PHONE.width - 4, midY), brassL: px(m.rootX + 6, midY), brassR: px(PHONE.width - 6, midY) };
-  rec.ok(`the minimap wears a thick frame (${m.frame} px): a slate band down both sides, the colour of the bars, and the brass line inside it`,
-    m.frame >= 6 && like(frame.left, 0x202c32, 14) && like(frame.right, 0x202c32, 14) && like(frame.brassL, 0xd8aa58, 40) && like(frame.brassR, 0xd8aa58, 40), frame);
+  /* v2.3.3986: the slim frame -- the owner's "a thin charcoal or muted gold
+     border, gentle corner rounding": 3 px (was 7), a dark keyline and a px of
+     charcoal, the muted-gold line its inside px, read down both sides (each
+     sample in the middle of its px at 1x, 2x and 3x) */
+  const fl = m.frameLook || {};
+  const dark = (p) => !!p && p[0] + p[1] + p[2] < 150;
+  const frame = { band: m.frame, radius: fl.radius, left: px(m.rootX + 1.4, midY), right: px(PHONE.width - 1.6, midY), goldL: px(m.rootX + 2.4, midY), goldR: px(PHONE.width - 2.6, midY) };
+  rec.ok(`the minimap wears a slim frame (${m.frame} px, its corners rounded ${fl.radius}): dark charcoal down both sides and a thin muted-gold line inside it`,
+    m.frame === 3 && fl.radius >= 10 && dark(frame.left) && dark(frame.right) && like(frame.goldL, 0xc4a468, 50) && like(frame.goldR, 0xc4a468, 50), frame);
   let distinct = new Set();
   for (let y = m.topInset + 6; y < m.topInset + m.mapBottom - 2; y += 3) for (let x = PHONE.width - 126; x < PHONE.width - 6; x += 3) {
     const p = box.at(Math.round(x * dpr), Math.round(y * dpr));
@@ -446,7 +452,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   {
     /* the minimap's land here is the land's one flat colour: ice blue round
        you, read off the screen (wheelLands.js frost #7fbfe0 under the box's
-       0xdadada tint: about 108, 163, 191) */
+       0xdadada tint: about 108, 163, 191) -- v2.3.3986: under its 0xebebeb
+       tint and the ground's wash (0x6e6852 at 0.2): about 116, 162, 182 */
     const r = await P.page.evaluate(() => window.__btWheelMini);
     const { decodePNG } = await import('../../world/png.mjs');
     /* v2.3.3108: the map's window only, above the name plate */
@@ -455,10 +462,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     let ice = 0;
     for (let i = 0; i < png.width * png.height; i++) {
       const R = png.data[4 * i], G = png.data[4 * i + 1], B = png.data[4 * i + 2];
-      if (Math.abs(R - 108) < 14 && Math.abs(G - 163) < 14 && Math.abs(B - 191) < 14) ice++;
+      if (Math.abs(R - 116) < 14 && Math.abs(G - 162) < 14 && Math.abs(B - 182) < 14) ice++;
     }
     const share = ice / (png.width * png.height);
     rec.ok(`...and the minimap paints Frost Ridge one flat ice blue (${Math.round(share * 100)}% of the box round you)`, share > 0.25, { share });
+  }
+  /* ═══ v2.3.3986: THE MONSTERS, SMALL DOTS, GROUPED ═══
+     The owner's "smaller enemy markers, potentially grouped at low zoom, to
+     eliminate the current clusters of oversized red skulls": out on Frost
+     Ridge the monsters in the box are 5 px red dots (a 12 px skull each
+     before), one a 10 px cell of the box, so never more dots than monsters,
+     and a boss alone a skull -- a horned one, never the outlaws' plain skull.
+     Read when the box holds some (the worker sends those round you). */
+  {
+    let mo = null;
+    for (let i = 0; i < 20; i++) {
+      mo = ((await mini(P)) || {}).monsters || null;
+      if (mo && mo.inBox > 0) break;
+      await P.page.waitForTimeout(500);
+    }
+    rec.ok(`on Frost Ridge the minimap marks its monsters as small dots, grouped: ${mo && mo.inBox} monsters in the box drawn as ${mo && mo.dots} dots of ${mo && mo.px} px (${mo && mo.groups} holding two or more, ${mo && mo.big} of them ${mo && mo.bigPx} px for three or more), ${mo && mo.bosses} bosses as the horned skull`,
+      !!mo && mo.inBox > 0 && mo.dots >= 1 && mo.dots <= mo.inBox && mo.px === 5 && mo.bigPx === 7 && mo.glyph === 'mdot' && mo.bossGlyph === 'bossSkull'
+        && mo.groups <= mo.dots && mo.big <= mo.groups && (mo.dots === mo.inBox) === (mo.groups === 0), mo);
+    const r = await P.page.evaluate(() => window.__btWheelMini);
+    if (r) await P.page.screenshot({ path: join(OUT, 'wheelmap-04b-frost-minimap.png'), clip: { x: r.left - 6, y: r.top - 6, width: r.w + 6, height: r.h + 12 } }).catch(() => {});
   }
   /* v2.3.3023, owner: "the world feels hard to navigate without losing your
      sense of position relative to the town center" -- out on Frost Ridge

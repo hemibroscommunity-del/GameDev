@@ -31,7 +31,8 @@ export const PACKETS = [
     screens: ['welcome', 'desktop-window', 'hud', 'hud-pvp', 'nml-popup', 'hud-outlaw', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
   { slug: 'dashboard-character-bag', title: 'Dashboard: your character, your quests and the bag',
     /* v2.3.3987: + the rare fish's weigh-in card and Ranks' Biggest fish */
-    screens: ['guide-arrow', 'dash-hero', 'dash-hero-points', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'fish-weigh', 'fish-board'] },
+    /* v2.3.3999: + your portrait as a Hemi Bro, twice */
+    screens: ['guide-arrow', 'dash-hero', 'dash-hero-points', 'hemi-portrait', 'hemi-portrait-dressed', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'fish-weigh', 'fish-board'] },
   { slug: 'dashboard-skills-codex', title: 'Dashboard: life skills, the Codex and More',
     screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',

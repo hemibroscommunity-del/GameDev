@@ -396,6 +396,7 @@ import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: 
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
+import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
 import { interactKind, talkBeforeDoor } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.3868: + a townsperson in range before a door */
@@ -542,7 +543,8 @@ import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '
 import { heapBurnStep } from '@/game/heapBurn.js'; /* v2.3.3748: a burning heap sets you on fire */
 import { burningAt } from '@/rendering/buildingFire.js'; /* v2.3.3748: ...where its pieces burn */
 import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { deskWords, onComputer } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import { tooFarWord, tooFarPlace } from '@/game/tooFar.js';   /* v2.3.3990: "Too far away" over a resource out of reach */
 import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
@@ -4632,6 +4634,9 @@ export var BroTown = function BroTown(_ref0) {
              52 px short of the shore.  The never-trap rule below reads your
              boots too, so it keeps meaning "already standing in it". */
           var _gfd = _wgrid.atFeet ? playerGroundDy(S.currentZone, px, py) : 0;
+          /* v2.3.3994: a rise's face, rim, vines or chest -- or the way a
+             climb or a jump has through one (game/climbActions.js) */
+          if (_gfd && S.currentZone === 'wheel') { var _rsd = riseSolidAt(S, px, py + _gfd, _gfd); if (_rsd !== null) return _rsd; }
           var _gx = Math.floor(px * _gw / _mw);
           var _gy = Math.floor((py + _gfd) * _gh / _mh);
           /* boots past the world's last row: the sea's edge, read as its last row */
@@ -5585,6 +5590,17 @@ export var BroTown = function BroTown(_ref0) {
            the better its timing the more (game/jump.js flipBoost; the owner's
            "time it right to get maximum horizontal distance") */
         finalSpd *= flipBoost(S._jump, Date.now());
+        /* ═══ v2.3.3994: ON THE VINES ═══
+           At a strip of vines' foot, pushing north, you climb: straight up
+           and down at 0.4 of the walk, no weapon (game/climbActions.js); and
+           a jump that missed a face drops you back, the walk standing still */
+        if (S.currentZone === 'wheel') {
+          if (!_playerDead && !S._climb && climbBegin(S, dx, dy, playerGroundDy(S.currentZone, P.x, P.y))) dropShield(S, 'climb');
+          if (S._climb) S.autoAttack = false;   /* your hands are on the rock */
+          var _clS = climbSteer(S, dx, dy);
+          dx = _clS[0]; dy = _clS[1];
+          finalSpd *= climbSpeed(S, sprintMult(S));
+        }
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
         var ny = P.y + dy * _step;
@@ -5771,6 +5787,14 @@ export var BroTown = function BroTown(_ref0) {
             if (!isSolid(gx - hs, P.y - hs) && !isSolid(gx + hs, P.y + hs) && !_monBlock(P.x, P.y, gx, P.y) && !_nodeBlock(P.x, P.y, gx, P.y) && !propFeetBlocked(P.x, P.y, gx, P.y, hs)) P.x = gx;
             if (!isSolid(P.x - hs, gy - hs) && !isSolid(P.x + hs, gy + hs) && !_monBlock(P.x, P.y, P.x, gy) && !_nodeBlock(P.x, P.y, P.x, gy) && !propFeetBlocked(P.x, P.y, P.x, gy, hs)) P.y = gy;
           }
+        }
+        /* v2.3.3994: the climb's end, a face-crossing jump's landing (a miss
+           drops you back), a drop under way, the chest (game/climbActions.js) */
+        if (S.currentZone === 'wheel') {
+          climbTick(S, Date.now(), playerGroundDy(S.currentZone, P.x, P.y), function (x, y, t) { pushDmgPopup(S, x, y, t, '#f3d77a', { ttl: 2800 }); });
+        } else if (S._climb || S._climbDrop || S._riseCross || S._nearChest) {
+          /* off the Wheel (a door, a dungeon): nothing of a climb comes along */
+          S._climb = null; S._climbDrop = null; S._riseCross = null; S._nearChest = null;
         }
         /* ═══ v2.3.3748: A BURNING HEAP SETS YOU ON FIRE ═══
            Your boots in a burning piece of a fallen building's heap, on this
@@ -9492,7 +9516,10 @@ export var BroTown = function BroTown(_ref0) {
      The resource in reach a tap at (cssX, cssY) lands on, or null -- nothing
      started.  A computer's press asks it before it swings (_deskPressTarget):
      the press is held back exactly when the click that follows will use it. */
-  var _harvestNodeAtCss = useCallback(function (cssX, cssY) {
+  /* v2.3.3990: `far` turns the reach test round -- the resource OUT of reach
+     under the finger, for the "Too far away" word (_tapHarvestAtCss).  The
+     same hit test, so the word and the harvest find the same picture. */
+  var _harvestNodeAtCss = useCallback(function (cssX, cssY, far) {
     var _S = stateRef.current;
     if (!_S || !_S.player || !_S.camera) return null;
     var _cx = _S.camera.x, _cy = _S.camera.y;
@@ -9522,7 +9549,7 @@ export var BroTown = function BroTown(_ref0) {
          visible resource beside it win the tap.  The tap then goes on to
          what it would do with nothing under it: let go of a lock, or jump. */
       if (n !== _S._campfire && n.nodeType && !hasGatherTool(_S.rpg, n.nodeType)) return;
-      if (nodeReachDist(_S, n) == null) return;
+      if ((nodeReachDist(_S, n) == null) !== !!far) return;
       var _nb = nodeWorldBox(_S, n);
       var _nsx, _nsy;
       if (_nb) {
@@ -9548,7 +9575,23 @@ export var BroTown = function BroTown(_ref0) {
   var _tapHarvestAtCss = useCallback(function (cssX, cssY) {
     var _S = stateRef.current;
     var _tapNodeBest = _harvestNodeAtCss(cssX, cssY);
-    if (!_tapNodeBest) return false;
+    if (!_tapNodeBest) {
+      /* ═══ v2.3.3990: ...BUT ONE OUT OF REACH SAYS SO ═══
+         The owner: "There needs to be a message that you're too far away if
+         you can't mine and are tapping on the ore.  Too far away message
+         should also be with any resource."  The word floats over it and the
+         tap is NOT taken (false, as before): v2.3.3145's reason holds -- the
+         old "Too far away!" ate the tap (game/tooFar.js). */
+      var _farN = _S && !_S._extraction ? _harvestNodeAtCss(cssX, cssY, true) : null;
+      if (_farN) {
+        var _fp = tooFarPlace(nodeWorldBox(_S, _farN), _farN);
+        if (tooFarWord(_S, _farN.id != null ? _farN.id : (_farN.nodeType + ':' + _farN.x + ',' + _farN.y), _fp.x, _fp.y, Date.now(),
+          { push: pushDmgPopup, computer: onComputer() }) && typeof window !== 'undefined' && window.__btProbe) {
+          window.__btTooFar = { kind: _farN.nodeType, id: _farN.id, at: Date.now() };
+        }
+      }
+      return false;
+    }
     /* CLOSE ENOUGH, as he asked -- the same reach the button and the E key
        use, so the three cannot disagree about what is in range.
        v2.3.3145: the scan above passes over what is out of reach, so the
@@ -9619,6 +9662,13 @@ export var BroTown = function BroTown(_ref0) {
     var _probe = typeof window !== 'undefined' && window.__btProbe;
     if (_best < 0) {
       if (_probe && _far >= 0) window.__btBedTap = { bed: _far, far: true, at: Date.now() };
+      /* v2.3.3990: a bed out of reach says so too (the tap still goes on) */
+      if (_far >= 0) {
+        var _fb = FARM_BEDS[_far];
+        if (tooFarWord(_S, 'bed' + _far, _fb.x + _fb.w / 2, _fb.y - 52, Date.now(), { push: pushDmgPopup, computer: onComputer() }) && _probe) {
+          window.__btTooFar = { kind: 'bed', id: _far, at: Date.now() };
+        }
+      }
       return false;
     }
     var _used = startFarmStep(_S, _best);
