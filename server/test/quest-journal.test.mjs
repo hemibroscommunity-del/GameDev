@@ -194,7 +194,7 @@ const after1 = { npc: 'Blacksmith Bro', title: QUEST_CHAINS.smith_1.title, meet:
 // ── 8. the module and the wiring ──
 {
   const mod = read('../../src/game/questJournal.js');
-  /* v2.3.4021: but the townsfolk's nicknames (data/folkNames.js), itself import-free */
+  /* v2.3.4048: but the townsfolk's nicknames (data/folkNames.js), itself import-free */
   const imports = mod.match(/^\s*import\s.*$/gm) || [];
   check('questJournal.js has no imports but the import-free folkNames.js (node reads it as it is)',
     imports.every((l) => /from '\.\.\/data\/folkNames\.js'/.test(l)) && !/^\s*import\s/m.test(read('../../src/data/folkNames.js')), imports);

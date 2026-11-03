@@ -3,7 +3,7 @@ import { LIFE_SKILL_XP, QUEST_CHAINS, QUEST_STATUS, ZONE_RESOURCES, createDefaul
 import { _slicedToArray } from '@/lib/babelHelpers.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3527: your AP opens the Achievements page */
 import { GEM_ELEMENTS, gemCount } from '@/data/gems.js';
-import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4021: a quest's giver, his nickname */   /* v2.3.3516: gems are bag items */
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4048: a quest's giver, his nickname */   /* v2.3.3516: gems are bag items */
 
 /* ═══ SkillsPanel — life-skill levels / resources / quest progress ═══ */
 /* v2.3.865: moved verbatim from BroTown.jsx's JSX tree (UI-panel

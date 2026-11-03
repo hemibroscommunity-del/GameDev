@@ -55,7 +55,7 @@ import { sendMapWatch, PRESENCE2_CLIENT } from '../game/presence2.js';   /* v2.3
 import { peerDotAt } from '../game/peerDot.js';                    /* v2.3.3243: a far player's dot glides between rosters */
 import { PARTY_MARK, partyIdsOf } from '../game/partyMarks.js';    /* v2.3.3277: your party, blue, at every zoom */
 import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.3319: the long Wheel's lands up close */
-import { folkDisplayName } from '../data/folkNames.js';          /* v2.3.4021: a pin's name is his nickname */
+import { folkDisplayName } from '../data/folkNames.js';          /* v2.3.4048: a pin's name is his nickname */
 import { questPinsOf, MAP_PIN } from '../game/questPins.js';       /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525: ...in the owner's own pictures */
 import { deskWideActive } from './deskWide.js';                    /* v2.3.3830: the key sized from the column on a computer */

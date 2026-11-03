@@ -15,12 +15,12 @@
  *     card used to fall back to the plain objective here, which read as no
  *     progress, and nothing said to go back.
  *
- * No imports (but data/folkNames.js, itself import-free: v2.3.4021), so node
+ * No imports (but data/folkNames.js, itself import-free: v2.3.4048), so node
  * reads it (server/test/quest-card.test.mjs).  The count
  * is read the way gameSystems' questCountText reads it: `need.progress` is
  * the worker's own counter (_questKills), `need.key` what the bag holds.
  */
-import { folkDisplayName } from '../data/folkNames.js';   /* v2.3.4021: the giver's nickname */
+import { folkDisplayName } from '../data/folkNames.js';   /* v2.3.4048: the giver's nickname */
 
 /* { have, n } for a quest that counts, else null.  Never past n. */
 export function questCount(quest, rpg) {
@@ -45,7 +45,7 @@ export function questCardWords(quest, opts) {
   var ready = !!o.done;
   var line;
   if (ready) {
-    line = 'Done! Go back to ' + (folkDisplayName(quest.npc) || 'the quest giver');   /* v2.3.4021: his nickname */
+    line = 'Done! Go back to ' + (folkDisplayName(quest.npc) || 'the quest giver');   /* v2.3.4048: his nickname */
   } else {
     var cur = Array.isArray(o.steps) ? o.steps.find(function (s) { return s && s.current; }) : null;
     line = cur ? 'Next: ' + cur.label : String(quest.desc || '');
