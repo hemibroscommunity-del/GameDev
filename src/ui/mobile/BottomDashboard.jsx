@@ -22,11 +22,12 @@ import { getShirtColor, shirtColorTarget, onShirtColorChange } from '../../rende
 import { getEyeColor, onEyeColorChange } from '../../rendering/traits/eyeColorCatalog.js'; /* v2.3.1928 */
 import { getEquip } from '../../rendering/gearCatalog.js';
 import { dashboardPanelBus } from './dashboardPanelBus.js';
-import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W, navButtonSize } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
+import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W, navButtonSize, navRowFills } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns, DeskRailWeapons } from './dash/DashColumns.jsx';           /* v2.3.1636; v2.3.3769 the folded rail's weapons */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
 import { OneBandColumns } from './dash/OneBandColumns.jsx';    /* v2.3.4072 */
 import { oneBandActive } from '../oneBand.js';                  /* v2.3.4072 */
+import { bandSideways } from './bandSideways.js';             /* v2.3.4182: the nav row fills its block, not sideways */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
@@ -680,9 +681,16 @@ export const BottomDashboard = () => {
     try { return document.documentElement.getAttribute('data-dash-side') || 'left'; }
     catch (e) { return 'left'; }
   });
+  /* v2.3.4182: the nav row fills the band's centred block (sheetGeometry
+     navRowFills): the one band, not a phone on its side, buttons at their
+     ceiling -- a tablet, a computer.  A phone's row is unchanged. */
+  const navFillNow = () => oneBandActive() && !bandSideways()
+    && navRowFills(playVw(), typeof window !== 'undefined' ? window.innerHeight : 844);
+  const [navFill, setNavFill] = useState(navFillNow);
   useEffect(() => {
     const onR = () => {
       setLand(playIsLandscape());
+      setNavFill(navFillNow());
       try { setSide(document.documentElement.getAttribute('data-dash-side') || 'left'); }
       catch (e) { /* teardown: the next event heals it */ }
     };
@@ -1853,14 +1861,19 @@ export const BottomDashboard = () => {
           <BandClose min={dashMin} expanded={mode === 'expanded'}
             h={navButtonSize(playVw(), typeof window !== 'undefined' ? window.innerHeight : 844).h} />
         )}
+        {/* v2.3.4182: on a tablet or a computer the five fill the block's
+            width after CLOSE (`navFill`; the owner: "part of the dashboard
+            assembly the same way it appears on mobile"), so the row's ends
+            are the open tab's ends; a phone's row is as it was */}
         {!land && (
-          <div style={{ flex: 'none', display: 'flex', alignItems: 'center' }}>
+          <div data-nav-fill={navFill ? '1' : undefined} style={{ flex: navFill ? '1 1 0' : 'none', minWidth: 0, display: 'flex', alignItems: 'center' }}>
             <NavRail
               items={RAIL_ITEMS}
               litId={litId}
               atRest={mode === 'bar'}
               vw={playVw()}   /* v2.3.1715 */
               vh={typeof window !== 'undefined' ? window.innerHeight : 844}
+              fill={navFill}
               dots={dots}
               profilePortrait={profilePortrait} />
           </div>
