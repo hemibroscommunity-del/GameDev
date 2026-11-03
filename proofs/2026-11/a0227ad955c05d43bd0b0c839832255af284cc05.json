@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a0227ad955c05d43bd0b0c839832255af284cc05",
+  "tree": "d107867a0d14fd4ac5f381f77de7867dfe2a1659",
+  "committedAt": "2026-11-03T01:10:17-08:00",
+  "subject": "Merge pull request #1403 from hemibroscommunity-del/claude/folk-no-block",
+  "files": 7496,
+  "bytes": 855139265,
+  "listingSha256": "8676d8a99a23daa45f44e29a1b55dbd1658cea971e20177c7fe9ef8eccc0bcf0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
