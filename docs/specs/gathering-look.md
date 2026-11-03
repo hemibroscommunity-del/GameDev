@@ -300,9 +300,8 @@ inherit the first one's arguments. The boots' COLOUR was already right
 **Checked:** `mp-farmanim` (yellow stripes and a purple print on the farmer's
 trousers, white checks on his boots, on each move: the pixels the bake laid,
 counted after every stamp, `window.__btStandInClothes[...].garb`);
-`mp-gatherlook` (the patterns put on after the mining, so the re-bake on a
-change is what puts them on the lumberjack, then the fire-lighter and the
-cook); `mp-ghostaudit` with `BT_GHOST_GARB=1` (the patterns in the trousers'
+`mp-gatherlook` (aqua checks on the trousers, white stripes on the boots, on
+the lumberjack, the fire-lighter and the cook, the same reading); `mp-ghostaudit` with `BT_GHOST_GARB=1` (the patterns in the trousers'
 and boots' ghost colours, so one showing under the armour is a leak).
 
 ## What is still different, and why

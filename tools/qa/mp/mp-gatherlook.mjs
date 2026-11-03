@@ -16,8 +16,9 @@
  *      ROD still wood;
  *   3. the LUMBERJACK, the COOK and the FIRE-LIGHTER wear his trousers and
  *      boots: the bake's own reading (window.__btStandInClothes) is blue legs
- *      and red boots on each; (v2.3.3961) and, put on after the mining, his
- *      trouser and shoe PATTERNS: pixels of each on the legs and the boots;
+ *      and red boots on each; (v2.3.3961) and his trouser and shoe
+ *      PATTERNS (aqua checks, white stripes): pixels of each on the legs and
+ *      the boots;
  *   4. (the owner's "Yes fix all") the three are HIS SIZE: the lumberjack and
  *      the fire-lighter as tall as his walking figure from head to boots (they
  *      were 76% and 108%), the crouching cook's head as big as his (88%) --
@@ -77,6 +78,12 @@ const LOOK = `try {
   let art = '';
   for (let i = 0; i < 256; i++) { const x = i % 16, y = (i / 16) | 0; art += (x >= 5 && x <= 10 && y >= 4 && y <= 9) ? 'a' : '0'; }
   localStorage.setItem('bt-shirtart', art);
+  /* v2.3.3961: aqua checks on the trousers (ART_PALETTE 15) and white
+     stripes on the boots (2), in the character's record from the start: set
+     mid-run (__btSetPattern), the record's look put back on the next sync
+     undid them (characterRecord.js), so the figures never saw them */
+  localStorage.setItem('bt-pantspat', 'check:15');
+  localStorage.setItem('bt-shoespat', 'stripe-v:2');
 } catch (e) {}
 /* v2.3.3146: the stand-ins' dressed shirt strips are emptied once uploaded
    (gpuOnly.js); this keeps their canvases so the test can read them */
@@ -454,13 +461,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await shot(`4-${type}-after`);
     };
     await work('oreVein');
-    /* v2.3.3961: patterns on from here to the cook (set now, so the figures'
-       re-bake on a pattern change is what puts them on the lumberjack, made
-       for the ore's walk already), off again before fishing, whose colour
-       reading takes the means of the trousers and boots as drawn */
-    await P.page.evaluate(() => { window.__btSetPattern('pants', 'check:15'); window.__btSetPattern('shoes', 'stripe-v:2'); });
-    await H.waitFor(P, () => { const c = (window.__btStandInClothes || {}).chop; return !window.__btStandIns || window.__btStandIns().chop.state !== 'ready' || !!(c && c.garb); },
-      (v) => v, { timeout: 15000, label: 'the lumberjack re-baked in his patterns' }).catch(() => null);
     await work('tree');
 
     /* a fire, then a cook -- on dry ground, south of the tree's chopping spot
@@ -535,7 +535,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* fishing last: its seat is by the water, and the walk away from it can
        end in the river */
-    await P.page.evaluate(() => { window.__btSetPattern('pants', ''); window.__btSetPattern('shoes', ''); });   /* v2.3.3961: see above */
     await work('fishSpot');
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));
   } finally {
