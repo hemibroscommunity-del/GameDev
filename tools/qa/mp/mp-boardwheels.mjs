@@ -58,7 +58,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.glideTo(P, G.arrival.x - 500, G.arrival.y + 140, { speed: 900, timeoutMs: 20000 });
     await P.page.waitForTimeout(1500);
     await P.page.keyboard.press('z');
-    const on = await H.waitFor(P, () => window.__btRideBtn && window.__btRideBtn(), (v) => v && v.on === true, { timeout: 5000, label: 'on the board' }).then(() => true).catch(() => false);
+    const on = await H.waitFor(P, () => window.__btRideBtn && window.__btRideBtn(), (v) => v && v.on === true, { timeout: 15000 /* v2.3.3995: the worker's answer can take over 5 s on the QA box */, label: 'on the board' }).then(() => true).catch(() => false);
     rec.ok('on the board (Z)', on);
     if (!on) return;
     await P.page.waitForTimeout(500);
