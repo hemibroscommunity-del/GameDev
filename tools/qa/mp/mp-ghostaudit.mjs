@@ -706,6 +706,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await H.waitFor(P, (S) => !!S._climb, (v) => v, { timeout: 8000, label: 'on the vines' }).catch(() => null);
           await page.waitForTimeout(500);
           await page.keyboard.up('w');
+          console.log(`    climb: ${JSON.stringify(await page.evaluate(({ vx, footY }) => {
+            const S = window._gameState.current, c = window.__btClimb ? window.__btClimb() : null;
+            return { at: [Math.round(S.player.x), Math.round(S.player.y)], want: [vx, footY], climbing: !!S._climb, on: c && c.on, stats: c && c.stats };
+          }, { vx, footY }))}`);
           await begin();
           for (let k = 0; k < CLIMB_FRAMES.length; k++) {
             const on = await page.evaluate((d) => { const S = window._gameState.current; if (!S._climb) return false; S._climb.dist = d; return true; }, k * CLIMB_PX + 0.5);
@@ -809,7 +813,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await travel(P, wsPort, myId, spot.x, spot.y);
         await page.waitForTimeout(1000);
       }
-      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'flip' /* v2.3.3738 */, 'mine', 'chop', 'fire', 'cook', 'fish']) {
+      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'flip' /* v2.3.3738 */, 'climb' /* v2.3.3955 */, 'mine', 'chop', 'fire', 'cook', 'fish']) {
         if (!want(fam)) continue;
         const s = summary[`${outfit}/${fam}`] || (summary[`${outfit}/${fam}`] = {});
         s.frames = count(outfit, fam);
