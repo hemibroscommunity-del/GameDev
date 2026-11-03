@@ -2,7 +2,8 @@ import React from 'react';
 import { LIFE_SKILL_XP, QUEST_CHAINS, QUEST_STATUS, ZONE_RESOURCES, createDefaultCompStats, questObjectiveDone } from '@/data/index.js';
 import { _slicedToArray } from '@/lib/babelHelpers.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3527: your AP opens the Achievements page */
-import { GEM_ELEMENTS, gemCount } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
+import { GEM_ELEMENTS, gemCount } from '@/data/gems.js';
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4013: a quest's giver, his nickname */   /* v2.3.3516: gems are bag items */
 
 /* ═══ SkillsPanel — life-skill levels / resources / quest progress ═══ */
 /* v2.3.865: moved verbatim from BroTown.jsx's JSX tree (UI-panel
@@ -409,7 +410,7 @@ export function SkillsPanel(props) {
           color: 'var(--ui-text-muted)',
           flex: 'none'
         }
-      }, q.npc));
+      }, folkDisplayName(q.npc)));
     }));
   }()), /*#__PURE__*/React.createElement("div", {
     style: LS_SECTION

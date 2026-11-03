@@ -23,7 +23,8 @@
  * And the list: the achievement points quests have paid, then Active (the one
  * you track first), Available (who has one for you, and where), and Done.
  *
- * NO IMPORTS: server/test/quest-journal.test.mjs runs it in node with the real
+ * NO IMPORTS (but data/folkNames.js, itself import-free: v2.3.4013, a giver's
+ * name reads his nickname): server/test/quest-journal.test.mjs runs it in node with the real
  * quest table.  The page (ui/mobile/sheet/questJournalModel.js) hands it the
  * live game: the quest table, the bag, the steps, the land names, where each
  * giver stands and what the tour suggests.  Every word a player reads is made
@@ -31,6 +32,8 @@
  * "click" on a computer where it is drawn (game/deskWords.js), and the world
  * is "BroTown", never the code's name for it.
  */
+
+import { folkDisplayName } from '../data/folkNames.js';   /* v2.3.4013: every giver's name here is the one a player reads */
 
 /* the four states a quest's page can be in (the worker's 'complete' and a
    quest whose objective is met both read 'ready') */
@@ -163,7 +166,7 @@ function wayWords(w, quest, ctx) {
   const home = homeOf(ctx);
   if (w === 'monsters') return 'Out in the lands, past ' + home + "'s safe ground";
   if (w === 'visit') return 'Any building in ' + home;
-  if (w === 'giver') return quest && quest.npc ? quest.npc + ', ' + meetOf(quest.npc, ctx) : null;
+  if (w === 'giver') return quest && quest.npc ? folkDisplayName(quest.npc) + ', ' + meetOf(quest.npc, ctx) : null;
   if (w.indexOf('door:') === 0 && w.length > 5) {
     const plot = w.slice(5);
     const at = own(DOOR_WORDS, plot) ? DOOR_WORDS[plot] : 'a building';
@@ -188,7 +191,7 @@ export function whereLine(quest, status, steps, ctx) {
   /* a hand-in or an offer: the giver */
   if (status !== JOURNAL_STATUS.active) {
     if (!quest.npc) return null;
-    return { text: quest.npc + ', ' + meetOf(quest.npc, ctx), map };
+    return { text: folkDisplayName(quest.npc) + ', ' + meetOf(quest.npc, ctx), map };
   }
   if (quest.zone) return { text: landWords(quest.zone, ctx), map };
   const cur = Array.isArray(steps) ? steps.find((s) => s && s.current) : null;
@@ -210,15 +213,15 @@ export function nowLine(quest, status, steps, count) {
   const desc = str(quest.desc);
   const c = count ? { have: count.have, n: count.n, text: countText(quest, count) } : null;
   if (status === JOURNAL_STATUS.done) {
-    return { text: 'Done: handed in to ' + (quest.npc || 'its giver') + ' ✓', goal: desc, count: null, frac: 1 };
+    return { text: 'Done: handed in to ' + (folkDisplayName(quest.npc) || 'its giver') + ' ✓', goal: desc, count: null, frac: 1 };
   }
   if (status === JOURNAL_STATUS.ready) {
     /* how a hand-in is done (v2.3.3583: a townsperson talks on a tap only) */
-    return { text: 'You have it all: hand it in to ' + (quest.npc || 'its giver') + '.', goal: 'Tap ' + (quest.npc || 'the giver') + ' to talk. The reward is paid there.',
+    return { text: 'You have it all: hand it in to ' + (folkDisplayName(quest.npc) || 'its giver') + '.', goal: 'Tap ' + (folkDisplayName(quest.npc) || 'the giver') + ' to talk. The reward is paid there.',
       count: c ? { have: c.n, n: c.n, text: countText(quest, { have: c.n, n: c.n }) } : null, frac: 1 };
   }
   if (status === JOURNAL_STATUS.available) {
-    return { text: 'Talk to ' + (quest.npc || 'its giver') + ' to take this quest.', goal: desc, count: null, frac: null };
+    return { text: 'Talk to ' + (folkDisplayName(quest.npc) || 'its giver') + ' to take this quest.', goal: desc, count: null, frac: null };
   }
   if (status === JOURNAL_STATUS.locked) {
     return { text: 'Not open yet: finish the quests before it first.', goal: desc, count: null, frac: null };
@@ -231,7 +234,7 @@ export function nowLine(quest, status, steps, count) {
 /** WHO: the giver and what you have done with him, and the steps. */
 export function whoLines(quest, status, steps) {
   if (!quest) return null;
-  const npc = quest.npc || '';
+  const npc = folkDisplayName(quest.npc) || '';
   let talked = null, todo = null;
   if (status === JOURNAL_STATUS.available) todo = 'Talk to ' + npc + ' to start it';
   else if (status === JOURNAL_STATUS.locked) todo = npc + ' gives this one later';
@@ -251,7 +254,7 @@ export function givenPart(quest, status) {
   const items = ((quest && quest.gives) || []).filter((g) => g && g.when === 'accept' && (g.icon || g.label))
     .map((g) => ({ icon: g.icon || null, label: str(g.label) }));
   if (!items.length) return null;
-  const npc = (quest && quest.npc) || 'The giver';
+  const npc = folkDisplayName(quest && quest.npc) || 'The giver';
   const note = (status === JOURNAL_STATUS.available || status === JOURNAL_STATUS.locked)
     ? npc + ' hands you these when you say yes.'
     : npc + ' gave you these when you said yes.';
@@ -268,7 +271,7 @@ export function rewardPart(quest, status, ap) {
     .map((g) => ({ icon: g.icon || null, label: str(g.label) }));
   const itemText = r.item && !items.length ? String(r.item) : '';
   const pts = Number(ap) > 0 ? Number(ap) : 0;
-  const npc = quest.npc || 'its giver';
+  const npc = folkDisplayName(quest.npc) || 'its giver';
   return {
     gold: Number(r.gold) > 0 ? Number(r.gold) : 0,
     xp: Number(r.xp) > 0 ? Number(r.xp) : 0,
@@ -293,7 +296,7 @@ export function nextLine(quest, status, after, ctx) {
     const meet = str(after.meet) || meetOf(after.npc, ctx);
     const title = str(after.title);
     return {
-      text: lead + 'talk to ' + after.npc + ' ' + meet + (title ? ' for “' + title + '”' : '') + '.',
+      text: lead + 'talk to ' + folkDisplayName(after.npc) + ' ' + meet + (title ? ' for “' + title + '”' : '') + '.',
       more: Number(after.more) > 0 ? Number(after.more) : 0,
     };
   }
@@ -368,5 +371,5 @@ export function activeOrder(rows, tracked) {
  *  Town Hall"). */
 export function offerWhere(quest, ctx) {
   if (!quest || !quest.npc) return '';
-  return quest.npc + ', ' + meetOf(quest.npc, ctx);
+  return folkDisplayName(quest.npc) + ', ' + meetOf(quest.npc, ctx);
 }

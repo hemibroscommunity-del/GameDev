@@ -21,6 +21,7 @@ import { tourOffer } from './questRoute.js';
 import { TOUR_MEET } from './tour.js';
 import { QUEST_CHAINS, QUEST_STATUS } from '@/data/gameSystems.js';
 import { trackedQuestId } from './trackedQuest.js';
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4013: the giver he sends you to, by his nickname */
 
 export const MAYOR = 'Mayor Bro';
 
@@ -30,7 +31,7 @@ export function mayorIdleLine(rpg, S) {
   try { t = tourOffer(rpg, S); } catch (e) { t = null; }
   if (t && t.npc && t.npc !== MAYOR) {
     const where = TOUR_MEET[t.npc] ? ' ' + TOUR_MEET[t.npc] : '';
-    return 'Good work! Next, see ' + t.npc + where + '. Follow the gold road.';
+    return 'Good work! Next, see ' + folkDisplayName(t.npc) + where + '. Follow the gold road.';
   }
   /* a quest in hand (the tour waits while one is): the one you track, else the first */
   const quests = (rpg && rpg._quests) || null;

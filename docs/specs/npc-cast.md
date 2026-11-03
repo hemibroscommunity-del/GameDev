@@ -10,21 +10,30 @@ it. Client only: the worker is not touched.
 Ten of BroTown's sixteen buildings had nobody at the door. Each has a keeper
 now, and three locals live in town. That makes 21 townsfolk with Mayor Bro.
 
-| Who | Where (`WHEEL_TOWNSFOLK`) | Opens (`WHEEL_KEEPERS`) | `NPC_LOOKS` row |
-| --- | --- | --- | --- |
-| Sterling | the Bank's door, west of the steps | the Bank | `banker` |
-| Slim | the Saloon's door | the Saloon | `barkeep` |
-| Chef Blaze | the Cookhouse's door | the Cookhouse | `chef` |
-| Glint | the Gem Works' door | the Gem Works | `gemguru` |
-| Postmaster Pete | the Post Office's door | the Post Office | `postman` |
-| Deed Dave | the Land Office's door | the Land Office | `realtor` |
-| Benny | the Hotel's door | the Hotel (once the halls are open, as its door) | `bellhop` |
-| Guildmaster Gary | the Guild Hall's door | the Guild Hall | `guildmaster` |
-| Sheriff Buck | the Sheriff's Office's door | the Sheriff's Office | `sheriff` |
-| Gavel Greg | the Auction House's door | the Auction House | `auctioneer` |
-| Bean | the square, east of where you arrive (Lil Bro has the west) | nothing | `streamer` |
-| Old Man Reel | the town's south-west edge, past the General Store, by the river | nothing | `fisher` |
-| Tourist Terry | the square, below the Town Hall's steps | nothing | `tourist` |
+| Who (the key) | Shown as | Where (`WHEEL_TOWNSFOLK`) | Opens (`WHEEL_KEEPERS`) | `NPC_LOOKS` row |
+| --- | --- | --- | --- | --- |
+| Sterling | Sterling | the Bank's door, west of the steps | the Bank | `banker` |
+| Slim | Slim | the Saloon's door | the Saloon | `barkeep` |
+| Chef Blaze | Sizzle | the Cookhouse's door | the Cookhouse | `chef` |
+| Glint | Glint | the Gem Works' door | the Gem Works | `gemguru` |
+| Postmaster Pete | Snail Mail | the Post Office's door | the Post Office | `postman` |
+| Deed Dave | Swampy | the Land Office's door | the Land Office | `realtor` |
+| Benny | Benny | the Hotel's door | the Hotel (once the halls are open, as its door) | `bellhop` |
+| Guildmaster Gary | Tryhard | the Guild Hall's door | the Guild Hall | `guildmaster` |
+| Sheriff Buck | Badge | the Sheriff's Office's door | the Sheriff's Office | `sheriff` |
+| Gavel Greg | Going-Going | the Auction House's door | the Auction House | `auctioneer` |
+| Bean | Bean | the square, east of where you arrive (Lil Bro has the west) | nothing | `streamer` |
+| Old Man Reel | Fish Tales | the town's south-west edge, past the General Store, by the river | nothing | `fisher` |
+| Tourist Terry | Selfie | the square, below the Town Hall's steps | nothing | `tourist` |
+
+**Nicknames (v2.3.4013).** The owner: *"Instead of names like 'gavel Greg' it
+would be more humorous to just have them go by nicknames. I didn't mean to
+remake all the NPCs to be like gavel Greg. The way their appearance looks now
+is fine."* The "Who" column stays the key every table and test reads
+(`NPC_DATA` `name`, `WHEEL_KEEPERS`, `WHEEL_TOWNSFOLK`, `NPC_LOOKS`); "Shown
+as" is what a player reads, from `src/data/folkNames.js` (`FOLK_NICKNAMES`,
+`folkDisplayName`: one line a nickname, held by `server/test/folk-names.test.mjs`).
+Their looks are untouched.
 
 - Each keeper stands west of his steps, as Diego and Ace do, 100 px down the
   street (60 at the Post Office and the Guild Hall, whose porches reach

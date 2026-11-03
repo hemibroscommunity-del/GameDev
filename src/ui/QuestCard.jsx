@@ -25,6 +25,7 @@ import {
 } from '@/data/gameSystems.js';
 import { tourOffer } from '@/game/questRoute.js';
 import { TOUR_MEET } from '@/game/tour.js';
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4013: the giver's nickname */
 import { trackedFirst } from '@/game/trackedQuest.js';
 import { questCardWords } from '@/game/questCard.js';
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';
@@ -86,7 +87,7 @@ export default function QuestCard({ rpgState, live }) {
           <img src="/icons/ui/panel-quests.webp" alt="Quest" draggable={false} style={markStyle} />
           <span style={{ flex: 1, minWidth: 0 }}>{'Next: ' + to.quest.title}</span>
         </div>
-        <div style={subLine}>{'Talk to ' + to.npc + (TOUR_MEET[to.npc] ? ' ' + TOUR_MEET[to.npc] : '')}</div>
+        <div style={subLine}>{'Talk to ' + folkDisplayName(to.npc) + (TOUR_MEET[to.npc] ? ' ' + TOUR_MEET[to.npc] : '')}</div>
         {/* v2.3.3525: others have work too, and where they show */}
         {to.more > 0 && (
           <div data-quest-hud-more={to.more} style={{ ...subLine, color: 'rgba(216,169,77,.85)' }}>

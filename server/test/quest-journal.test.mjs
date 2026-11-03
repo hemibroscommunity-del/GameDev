@@ -194,7 +194,10 @@ const after1 = { npc: 'Blacksmith Bro', title: QUEST_CHAINS.smith_1.title, meet:
 // ── 8. the module and the wiring ──
 {
   const mod = read('../../src/game/questJournal.js');
-  check('questJournal.js has no imports (node reads it as it is)', !/^\s*import\s/m.test(mod));
+  /* v2.3.4013: but the townsfolk's nicknames (data/folkNames.js), itself import-free */
+  const imports = mod.match(/^\s*import\s.*$/gm) || [];
+  check('questJournal.js has no imports but the import-free folkNames.js (node reads it as it is)',
+    imports.every((l) => /from '\.\.\/data\/folkNames\.js'/.test(l)) && !/^\s*import\s/m.test(read('../../src/data/folkNames.js')), imports);
   check('the game\'s script is ASCII in its regular expressions (TRAPS §258)', !/new RegExp\([^)]*[^\x00-\xff]/.test(mod));
   const model = read('../../src/ui/mobile/sheet/questJournalModel.js');
   check('the page\'s points are the phone\'s QUEST_AP_REWARD (data/items.js, held to the worker by mirror-audit)',

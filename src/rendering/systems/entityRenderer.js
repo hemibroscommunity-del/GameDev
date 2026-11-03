@@ -9,6 +9,7 @@ import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCoun
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2748: a building's base, read off its art */
 import { TILE } from '@/data/constants.js';
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4013: the townsfolk's nicknames on their plates */
 import { ZONES, zonePlayerScale, zoneDepthScale, zoneHomes } from '@/data/zones.js';   /* v2.3.2978: + zoneHomes, the Wheel's far-monster cull */
 import { ELEMENTS } from '@/data/elements.js';
 import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
@@ -17747,7 +17748,7 @@ export class EntityRenderer {
         /* v2.3.3600: ONE LINE -- the owner: "the nameplate on NPCs should be 1 line
            long ... I don't need lil bro 'kid' with the kid as the second line".
            plateRole stays in NPC_DATA, no longer drawn. */
-        _updateNamePill(display, npc.name, '', true, null);
+        _updateNamePill(display, folkDisplayName(npc.name), '', true, null);   /* v2.3.4013: his nickname (data/folkNames.js) */
       }
 
       /* ═══ v2.3.2046: ANIMATE HIM IF HE HAS A WALK CYCLE ═══
@@ -17857,6 +17858,7 @@ export class EntityRenderer {
         if (typeof window !== 'undefined' && drawn) {
           _npcDrawn[npc.id] = {
             id: npc.id, name: npc.name, x: npc.x, y: npc.y,
+            plate: display._pillName ? display._pillName.text : null,   /* v2.3.4013: what his plate reads (a nickname) */
             /* v2.3.3809: drawn live, his figure's body as drawn */
             height: _folkLive ? _folkBodyPx(display._folk, 'height') : fig.texture.height * fig.scale.y,
             width: _folkLive ? _folkBodyPx(display._folk, 'width') : fig.texture.width * fig.scale.x,

@@ -2,6 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { NPC_DATA } from '@/data/gameDisplay.js';
 import { npcArtUrl } from '@/rendering/npcSprites.js'; /* v2.3.1829: same cache-bust as the world figures */
+import { folkDisplayName } from '@/data/folkNames.js'; /* v2.3.4013: the title reads his nickname */
 import { deskWords } from '@/game/deskWords.js'; /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.1820: HE TALKS TO YOU, ONE THING AT A TIME ═══
@@ -190,7 +191,7 @@ export const NpcDialogue = (props) => {
         </div>
 
         <div className="bt-npcdlg-body">
-          <div className="bt-npcdlg-name">{npcName}</div>
+          <div className="bt-npcdlg-name">{folkDisplayName(npcName)}</div>
           {/* `key` on the chunk restarts the fade for each line, so advancing
               reads as him saying the next thing rather than as text swapping
               underneath a static frame. */}
