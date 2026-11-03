@@ -7611,7 +7611,7 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 /* a reward flying home (questFly.js): one picture, transform and opacity */
 .bt-qw-fly{position:fixed;left:0;top:0;z-index:1200;pointer-events:none;will-change:transform,opacity;object-fit:contain}
 .bt-qw-landed{animation:bt-qw-landed .5s ease-out 1}
-/* v2.3.4042: a weapon level-up's bubbles on their way to your points (ui/
+/* v2.3.4055: a weapon level-up's bubbles on their way to your points (ui/
    pointsFly.js): a glowing gold-white circle, no picture.  Flat fills and a
    box-shadow glow, no filter (TRAPS section 42) */
 .bt-qw-bubble{display:block;border-radius:50%;

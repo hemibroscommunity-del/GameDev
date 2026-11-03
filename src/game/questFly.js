@@ -38,7 +38,7 @@ function shownRect(el) {
 
 /** Where a kind of reward lands: 'gold' the purse in the top bar, 'item' the
     gear stash's tile when the dashboard is open, else its fold chip, else its
-    dashboard button.  v2.3.4042: 'points' (a weapon level-up's bubbles,
+    dashboard button.  v2.3.4055: 'points' (a weapon level-up's bubbles,
     ui/pointsFly.js) the Points section when the Character page is open, else
     the Character button, else the dashboard's fold handle.  The element, or
     null. */
@@ -87,7 +87,7 @@ function qa() {
 }
 
 /** Fly one picture from an element (or rect) to the target of `kind`.
-    v2.3.4042: `opts.bubble` flies a glowing CSS circle instead of a picture
+    v2.3.4055: `opts.bubble` flies a glowing CSS circle instead of a picture
     (no art, so nothing to preload): `src` is then unused. */
 export function flyPicture(src, from, kind, opts) {
   try {
@@ -122,7 +122,7 @@ export function flyPicture(src, from, kind, opts) {
       var where = 'corner';
       if (toEl) {
         where = toEl.getAttribute('data-purse') ? 'purse'
-          : toEl.getAttribute('data-section') ? 'section-' + toEl.getAttribute('data-section')   /* v2.3.4042 */
+          : toEl.getAttribute('data-section') ? 'section-' + toEl.getAttribute('data-section')   /* v2.3.4055 */
           : toEl.getAttribute('data-tut') ? toEl.getAttribute('data-tut')
             : toEl.hasAttribute('data-dash-fold') ? 'fold'
               : (toEl.getAttribute('data-nav') || 'el');

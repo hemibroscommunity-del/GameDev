@@ -1,4 +1,4 @@
-/* ═══ v2.3.4042: A WEAPON LEVEL-UP SENDS BUBBLES TO YOUR POINTS ═══
+/* ═══ v2.3.4055: A WEAPON LEVEL-UP SENDS BUBBLES TO YOUR POINTS ═══
  * The owner, 2026-11-02: "When a level up on one of the 3 primary combat all
  * weapons happens do a 'jump to bag' effect that just shows bubbles in
  * representing xp or something jump to the character button or the character

@@ -1,4 +1,4 @@
-/* v2.3.4042: a weapon level-up's bubbles to your points: the rules
+/* v2.3.4055: a weapon level-up's bubbles to your points: the rules
  * (src/game/pointsBubbles.js) and where they land (src/game/questFly.js
  * QUEST_FLY_TARGETS.points), run in node. */
 import { POINTS_FLY_SKILLS, pointsFlyOn, pointsBubbleCount } from '../../src/game/pointsBubbles.js';
