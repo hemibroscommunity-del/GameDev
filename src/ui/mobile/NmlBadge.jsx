@@ -225,12 +225,35 @@ export function openPlaceInfo(S, lvl) {
    window, as a tap on the chip did; elsewhere the box opens the world map as
    before.  `data-nml-badge` carries the No man's land number while you are
    in it: the scenarios find it by that. */
+/* v2.3.4103: never over a thumb's control.  On a short sideways screen
+   (667 x 320) the attack disc reaches up under the minimap's box (v2.3.3629's
+   note; mp-nmlfoe 10): the plate's tap gives way -- its foot trimmed to above
+   the control, or its right edge to the control's left, or, with too little
+   left to aim at, no tap there (the plate still says it). */
+const THUMBS = ['[data-ricon]', '[data-sprint]', '[data-quickeat]', '.bt-special-btn', '.bt-ability-btn', '.bt-burst-btn'];
+function clearOfThumbs(p) {
+  let l = p.left, t = p.top, r = p.left + p.width, b = p.top + p.height;
+  try {
+    for (const sel of THUMBS) {
+      const n = document.querySelector(sel);
+      const q = n && n.getBoundingClientRect();
+      if (!q || !(q.width > 0 && q.height > 0)) continue;
+      if (q.right <= l || q.left >= r || q.bottom <= t || q.top >= b) continue;
+      if (q.top - t >= 14) b = q.top;
+      else if (q.left - l >= 40) r = q.left;
+      else return null;
+    }
+  } catch (e) { /* the plate as it is */ }
+  return { left: l, top: t, width: r - l, height: b - t };
+}
+
 function PlateTap({ getS, risk }) {
   const [rect, setRect] = useState(null);
   useEffect(() => {
     const id = setInterval(() => {
       let p = null;
       try { p = window.__btWheelPlate || null; } catch (e) { p = null; }
+      if (p) p = clearOfThumbs(p);
       setRect((o) => (o && p && o.left === p.left && o.top === p.top && o.width === p.width && o.height === p.height ? o : p));
     }, 300);
     return () => clearInterval(id);
