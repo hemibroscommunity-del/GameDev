@@ -241,7 +241,7 @@ const TR = await import('../../src/data/trapping.js');
     /export const GEAR_SEL_BLUE = '#4F8FDE'/.test(inv) && /GEAR_SEL_RING = `0 0 0 2px \$\{GEAR_SEL_BLUE\}/.test(inv)
       && /border: `1px solid \$\{linked \? GEAR_SEL_BLUE/.test(code));
   check('6f one square size `t` for the bag and the gear (the bag\'s grid and the gear\'s grid both `${t}px`)',
-    (code.match(/repeat\(\$\{BAG_COLS\}, \$\{t\}px\)/g) || []).length === 1 && (code.match(/repeat\(3, \$\{t\}px\)/g) || []).length === 1);
+    (code.match(/repeat\(\$\{cols\}, \$\{t\}px\)/g) || []).length === 2 && /const cols = short \? 9 : BAG_COLS/.test(code));
   check('6g the card never scrolls (its body overflow hidden) and its text keeps the 11 px floor',
     /data-gear-scroll="" style=\{\{ flex: 1, minHeight: 0, overflow: 'hidden'/.test(code) && /const FONT_MIN = 11;/.test(gt));
 }

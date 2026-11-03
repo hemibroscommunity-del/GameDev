@@ -2,7 +2,7 @@
  *
  * The owner's second mockup (2026-11-03): the bag (three by three, the coins
  * beside "All Items") | ONE card | "Equipped".  This scenario plays the real
- * tab in the Wheel's BroTown and saves the six pictures
+ * tab in the Wheel's BroTown and saves the eight pictures
  * docs/UI-DESIGN-NOTES.md shows:
  *
  *   docs/shots/gear-tab-overview.webp  upright phone (390 x 844, touch), nothing picked
@@ -11,6 +11,8 @@
  *   docs/shots/gear-tab-gear.webp      ...a bag weapon, compared against the one worn
  *   docs/shots/gear-tab-slot.webp      ...the Sword slot tapped (the bag filtered)
  *   docs/shots/gear-tab-desk.webp      a computer playing wide (1280 x 800)
+ *   docs/shots/gear-tab-oneband-desk.webp      the one band (?oneband=1), a computer, open
+ *   docs/shots/gear-tab-oneband-sideways.webp  ...a sideways phone (844 x 390), opened
  *
  * The character is levelled through the worker's own XP path (the dev kit's
  * levels) so the skill tiles read a played character's levels.
@@ -105,7 +107,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* a skill tile tapped: its XP bar (through the bus the tap calls: the
          level-up's coach may lie over the band here; mp-geartab taps it) */
       await P.page.evaluate(() => window.__btGearTab.bus.showXp('power'));
-      await shot('xp', 'overview', 'the Melee tile tapped (its XP bar)');
+      /* straight away: the bar holds 4 s, and a picture on this box can take
+         longer than that to come */
+      await P.page.waitForTimeout(250);
+      {
+        const f = `${OUT}/gear-tab-xp.png`;
+        const open = await P.page.evaluate(() => !!document.querySelector('[data-gear-xpopen]'));
+        await P.page.screenshot({ path: f, clip });
+        shots.push(f);
+        rec.ok('[390x844] the Melee tile tapped: its XP bar, pictured', open, open);
+      }
       await P.page.evaluate(() => window.__btGearTab.bus.showXp(null));
       /* a stack in the bag: the ore */
       const ore = await P.page.evaluate(() => { const t = document.querySelector('[data-gear-bag] [data-bag-key^="i-ore_"]'); return t ? t.getAttribute('data-bag-key') : null; });
@@ -155,12 +166,40 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }
 
+  /* ══ v2.3.4121: inside the one band (Lane B's PR #1410, here by its
+     ?oneband=1): a computer with the band open, and a sideways phone with
+     the band opened by a tap -- the short band, both grids one row of nine ══ */
+  for (const o of [
+    { name: 'oneband-desk', viewport: { width: 1280, height: 720 }, wide: true },
+    { name: 'oneband-sideways', viewport: { width: 844, height: 390 }, touch: true },
+  ]) {
+    const P = await H.newPlayer(browser, { name: 'Oneg' + o.name.slice(8, 12), wsPort, webPort, world: 'wheel', viewport: o.viewport, touch: !!o.touch, wide: !!o.wide, query: 'oneband=1' });
+    try {
+      await H.enterWorld(P);
+      await seed(P, wsPort);
+      await H.unfoldBand(P);
+      await P.page.evaluate(() => {
+        try { if (window.__broDashPanelBus.state.mode !== 'bar') window.__broDashPanelBus.toBar(); } catch (e) { /* at rest */ }
+        const g = window.__btGearTab;
+        if (g) { g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false); }
+      });
+      await P.page.waitForTimeout(1800);
+      const f = `${OUT}/gear-tab-${o.name}.png`;
+      await P.page.screenshot({ path: f });
+      shots.push(f);
+      const inBand = await P.page.evaluate(() => !!document.querySelector('[data-one-band-cols] [data-gear-tab]'));
+      rec.ok(`[${o.name}] the Gear tab in the one band, pictured`, inBand, inBand);
+    } finally {
+      await P.ctx.close().catch(() => {});
+    }
+  }
+
   /* 256 colours, lossless webp, into docs/shots */
   try {
     const out = execFileSync('python3', [`${H.REPO}/tools/qa/mp/gear_shots.py`, DOCS, ...shots], { encoding: 'utf8' });
     console.log(out.trim());
-    rec.ok('the six pictures saved to docs/shots at 256 colours', /saved 6/.test(out), out.trim());
+    rec.ok('the eight pictures saved to docs/shots at 256 colours', /saved 8/.test(out), out.trim());
   } catch (e) {
-    rec.ok('the six pictures saved to docs/shots at 256 colours', false, String(e).slice(0, 300));
+    rec.ok('the eight pictures saved to docs/shots at 256 colours', false, String(e).slice(0, 300));
   }
 }
