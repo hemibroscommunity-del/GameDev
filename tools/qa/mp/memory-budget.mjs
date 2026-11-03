@@ -59,6 +59,25 @@
  * Whether the page's heap should grow over a long session at all is the
  * soak's question (docs/specs/long-play-soak.md: 7-14 MB an hour of play).
  *
+ * v2.3.4033, the trim v2.3.4005 promised: `heap` 38 -> 36 -- LOWERED, the
+ * saving locked in (docs/specs/heap-trim-2026-11-03.md).  What grew it: the
+ * 13 merges of ~02:40 UTC added ~0.4 MB on arrival (bisected, three readings
+ * a build: the element icons on the plates with the quest order +0.2, the
+ * armour glow with the death zones and "too far" +0.2) and what their code
+ * compiles as it runs at the fight -- dozens of small new functions, all on
+ * the trip (heap snapshots of names-kept builds: no table, no leak).  What
+ * was trimmed is older and bigger: the Wheel minimap's roads, river and
+ * railway kept Pixi's three building lists for the whole Wheel (~1.0 MB:
+ * rendering/gfxLean.js lets them go once drawn, `?gfxlean=0` keeps them),
+ * and the old minimap's 18 glyphs and its dot never destroyed the Graphics
+ * they were photographed from (~0.3 MB).  On this box (4 vCPUs), main
+ * (0b55e2ae, the Hemi Bros portrait in) against it with the trim: arrival
+ * 31.3 / 31.8 / 31.3 -> 29.8 / 29.5 / 30.0 (about -1.5); the highest on
+ * the trip 35.3 and 36.6 -> 34.2 and 34.5; the buffers and the chip
+ * unchanged.  36 leaves ~1.5 MB over this box's readings; CI's runner
+ * read main ~0.7-1 MB above them (36.3 on main at 9d5cc37b, where this box
+ * read 35.0-35.6).
+ *
  * v2.3.4005, the owner's choice of 2026-11-03: `heap` 36 -> 38 -- RAISED,
  * with a trim to follow.  After the 13 pull requests merged at ~02:42 UTC on
  * 2026-11-03 (the quest journal, the guide arrow, the monster death zones,
@@ -155,7 +174,7 @@ export const MEMORY_BUDGET = {
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 29, measured: 27.0,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 38, measured: 36.3,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 36, measured: 34.5,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4033: 38 -> 36, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 22, measured: 20.4,   /* v2.3.3703: 24 -> 22, see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
