@@ -4,7 +4,7 @@ import { triggerJump } from '@/game/jumpActions.js';
 import { jumpAirborne } from '@/game/jump.js';
 import { isWheelSwimming } from '@/game/wheelSwim.js';
 import { jumpButtonWanted } from '@/game/tapJump.js'; /* v2.3.3105 */
-import { Skin, JumpGlyph, jumpGlyphKind, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3721: a plain jump mark */
+import { Skin, JumpGlyph, jumpGlyphKind, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3721: a plain jump mark */
 
 /* ═══ v2.3.3017: THE JUMP BUTTON, BENEATH THE ATTACK DISC ═══
  *
@@ -215,6 +215,10 @@ export function JumpButton(props) {
        v2.3.3721: a plain arrow over the ground instead (the owner's pick of
        four: "I like option B for jump better") -- the owner: "the
        icon now for jump looks like a special ability" (controlSkin JumpGlyph) */
-    /* v2.3.3920: a figure mid-leap over its arc (controlSkin JUMP_MARKS.leap) */
-    React.createElement(JumpGlyph, { size: Math.round(size * 0.68), kind: jumpGlyphKind() })));
+    /* v2.3.3920: a figure mid-leap over its arc (controlSkin JUMP_MARKS.leap).
+       v2.3.4100: the owner's "different icons for jump": our own drawing of
+       their leaping figure (ICON_URL.jump, a picture warmed on the loading
+       screen); ?jumpicon=leap|arrow|... still wears a drawn mark for a tab */
+    jumpGlyphKind() ? React.createElement(JumpGlyph, { size: Math.round(size * 0.68), kind: jumpGlyphKind() })
+      : React.createElement(PaintedIcon, { src: ICON_URL.jump, name: 'jump', size: Math.round(size * 0.74) })));
 }

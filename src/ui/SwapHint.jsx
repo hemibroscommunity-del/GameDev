@@ -16,7 +16,8 @@ import { deskWideActive } from './deskWide.js';
  * computer "Swap weapons: 1 Melee, 2 Bow, 3 Staff" over the three weapons at
  * the dashboard's foot (the keys deskKeyList.js lists), on a phone "Tap a
  * weapon to swap" over the weapon chip (WeaponSwapButton.jsx; v2.3.3921: "Tap a
- * weapon to switch" over the weapon triangle, WeaponTriangle.jsx).  It waits while
+ * weapon to switch" over the weapon triangle, WeaponTriangle.jsx; v2.3.4100:
+ * over the weapon pill, WeaponPill.jsx, on a phone and a computer).  It waits while
  * a dialogue or a building's window is up; it goes on the first swap or after
  * SHOW_MS, and never comes again for that character (the browser's store, by
  * its id).  Off for one tab: `?swaphint=0`.  It takes no taps.
@@ -45,8 +46,10 @@ function offByUrl() {
 /* what it points at: the first of these on the screen */
 function anchorRect(desk) {
   /* a computer: the weapons at the foot of a page, or the dashboard's own row of them */
-  const sels = desk ? ['[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]']
-    : ['[data-weapon-tri]', '[data-weapon-chip]'];   /* v2.3.3921: the whole triangle */
+  /* v2.3.4100: the weapon pill, a phone and a computer alike; the rail's
+     weapons stay a computer's fallback */
+  const sels = desk ? ['[data-weapon-pill]', '[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]']
+    : ['[data-weapon-pill]', '[data-weapon-chip]'];
   for (const sel of sels) {
     const els = [...document.querySelectorAll(sel)].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
     if (els.length) {

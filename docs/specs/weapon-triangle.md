@@ -1,5 +1,7 @@
 # The weapon triangle (v2.3.3921)
 
+> **Replaced by the weapon pill (v2.3.4100), docs/specs/weapon-pill.md.** What follows is the triangle's history.
+
 The owner, playtesting: "I need a button on screen for switching between
 weapons. Maybe a triangle or wheel where the active weapon is highlighted on top
 and the others are greyed out", and "I don't think it's clear enough that

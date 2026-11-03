@@ -28,7 +28,7 @@
  * nothing to fetch; since v2.3.3279 they are the owner's pictures, warmed
  * here with their grey copies.)
  */
-import { ICON_URL, RDISC_ICONS, ABILITY_ART_URLS } from '../ui/panels/controlSkin.jsx';
+import { ICON_URL, RDISC_ICONS, ABILITY_ART_URLS, WPN_PILL_ICONS } from '../ui/panels/controlSkin.jsx';
 import { smallIconDomUrls } from '../data/smallIcons.js';   /* v2.3.3279: the owner's small icons */
 import { quickEatIconUrls } from '../data/foodIcons.js';   /* v2.3.3260: the quick-eat button's food */
 import { OWNER_ICON } from '../data/ownerIcons.js';   /* v2.3.3481: the trade request's handshake */
@@ -61,7 +61,13 @@ export function controlsPreloadUrls() {
   const urls = RDISC_ICONS.map((ic) => ic[1]);
   /* v2.3.3522: the wood shield sprite is no longer the Block button's picture
      (the owner's painted shield is, warmed in ABILITY_ART_URLS below) */
-  urls.push(ICON_URL.boot);
+  /* v2.3.4100: Sprint and Jump wear our drawings of the owner's winged foot
+     and leaping figure (the winged boot no longer: it stays the Character
+     sheet's, loaded with its window); and the weapon pill's six pictures, the
+     three weapons in colour and in grey (WeaponPill.jsx) -- the pill is on
+     screen from the first frame of play */
+  urls.push(ICON_URL.sprint, ICON_URL.jump);
+  for (const k of Object.keys(WPN_PILL_ICONS)) urls.push(WPN_PILL_ICONS[k].on, WPN_PILL_ICONS[k].off);
   /* v2.3.3120: the TRAP pop-up's box trap (ui/panels/TrapButton.jsx) -- it
      pops up the moment a monster is targeted, the same moment as the rest */
   urls.push(TRAP_ICON_URL);
