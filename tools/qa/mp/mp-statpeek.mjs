@@ -50,7 +50,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Overview/Build/Records — there is no 'Stats' tab), and heroSectionBus is
      not on window, so the tab is tapped the way a finger taps it. */
   await P.page.evaluate(() => {
-    /* v2.3.4142: the Bro card, whose Spend points opens the Points window */
+    /* v2.3.4142: the Bro card, whose Points row opens the Points window */
     if (window.__broDashPanelBus) { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); }
   });
   await P.page.waitForTimeout(700);
@@ -64,7 +64,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      assertion below reaches for a cell's ℹ️ — so they are opened first. */
   const openCols = () => H.openPointCols(P);
   const openSection = (name) => P.page.evaluate((n) => {
-    const t = document.querySelector(`[role="button"][data-section="${n}"]`);
+    const t = document.querySelector(`[data-section="${n}"]`);
     if (!t) return false;
     t.click();   /* v2.3.4142: the card's doors are buttons (click) */
     return true;

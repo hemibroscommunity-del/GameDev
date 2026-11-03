@@ -52,7 +52,7 @@ const tapSel = (P, sel) => P.page.evaluate((s) => {
   return true;
 }, sel);
 
-/* v2.3.4142: the Bro card's doors (Spend points, the six slots) and its
+/* v2.3.4142: the Bro card's doors (Points, Equipment) and its
    windows' close are buttons: a click */
 const clickSel = (P, sel) => P.page.evaluate((s) => { const el = document.querySelector(s); if (!el) return false; el.click(); return true; }, sel);
 

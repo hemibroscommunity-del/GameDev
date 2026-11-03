@@ -196,8 +196,8 @@ async function openPage(P) {
   /* a first join arrives with the band folded (v2.3.2495) */
   await H.unfoldBand(P).catch(() => {});
   await H.openDest(P, 'Bro');
-  await P.page.waitForSelector('[data-bro-achv]', { timeout: 8000 });
-  await P.page.click('[data-bro-achv]').catch(() => {});
+  await P.page.waitForSelector('[data-bro-row="achievements"]', { timeout: 8000 });
+  await P.page.click('[data-bro-row="achievements"]').catch(() => {});
   return P.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
 }
 
@@ -234,27 +234,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('1a the worker grants achievements (caps.achievements) and sent the record at the join: nothing earned yet',
       s0.caps && s0.known && !s0.unavailable && s0.got.length === 0 && typeof s0.ap === 'number', s0);
     /* v2.3.4142: the owner's five buttons -- Achievements are a page under
-       Bro, and the Bro card's row says "Achievement Points: N" (the review he
-       adopted), a tap on it the way to the page; Journey keeps its own More
-       tile */
+       Bro: the Bro card's Achievements door ("n of total", the owner's
+       drawing) and its AP ("N AP" by the star) are the ways to the page;
+       Journey keeps its own More tile */
     await H.unfoldBand(A).catch(() => {});
     await H.openDest(A, 'More');
     await A.page.waitForSelector('[data-more-tile]', { timeout: 8000 }).catch(() => {});
     const moreNow = await A.page.evaluate(() => ({ achv: !!document.querySelector('[data-more-tile="achievements"]'), journey: !!document.querySelector('[data-more-tile="journey"]') }));
     await H.openDest(A, 'Bro');
-    const tile = await A.page.waitForSelector('[data-bro-achv]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
-      const t = document.querySelector('[data-bro-achv]');
-      const sub = t.querySelector('.bt-bro-rowt > span');
+    const tile = await A.page.waitForSelector('[data-bro-row="achievements"]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
+      const t = document.querySelector('[data-bro-row="achievements"]');
+      const sub = t.querySelector('.bt-bro2-rowt > span');
       const ap = document.querySelector('[data-bro-ap]');
-      return { ap: ap ? Number(ap.getAttribute('data-bro-ap')) : null, text: (sub ? sub.textContent : '').replace(/\s+/g, ' ').trim(),
+      return { ap: ap ? Number(ap.getAttribute('data-bro-ap')) : null, apText: ap ? (ap.textContent || '').replace(/\s+/g, ' ').trim() : '',
+        text: (sub ? sub.textContent : '').replace(/\s+/g, ' ').trim(),
         whole: !!sub && sub.scrollWidth <= sub.clientWidth + 1,
         icon: !!(t.querySelector('img') && /\/icons\/achievements\/achievements\.webp/.test(t.querySelector('img').src)) };
     })).catch(() => null);
-    rec.ok(`1b the Bro card: "${tile && tile.text}" with the owner's medal, whole, and its AP; More has no Achievements tile and keeps Journey's`,
-      !!tile && tile.ap === s0.ap && /^Achievement Points: 0(?!\d)/.test(tile.text) && /0 of 33/.test(tile.text) && tile.icon && tile.whole && !moreNow.achv && moreNow.journey, { tile, moreNow });
+    rec.ok(`1b the Bro card: Achievements "${tile && tile.text}" with the owner's medal, whole, and the AP ("${tile && tile.apText}"); More has no Achievements tile and keeps Journey's`,
+      !!tile && tile.ap === s0.ap && /^0 of 33$/.test(tile.text) && /0 AP$/.test(tile.apText) && tile.icon && tile.whole && !moreNow.achv && moreNow.journey, { tile, moreNow });
 
     /* ── 2 ── */
-    await A.page.click('[data-bro-achv]').catch(() => {});
+    await A.page.click('[data-bro-row="achievements"]').catch(() => {});
     const up = await A.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
     const p0 = up ? await pageLook(A) : null;
     rec.ok(`2a the row opens the Achievements page under Bro: ${p0 && p0.rows} rows, "${p0 && p0.count}", the worker's AP (${p0 && p0.apTotal})`,
@@ -460,12 +461,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForSelector('.bt-navrail [data-nav="more"]', { timeout: 6000 }).catch(() => {});
     /* v2.3.4142: Bro on the dock, then its card's Achievements row */
     await pointerUp(A, '.bt-navrail [data-nav="hero"]');
-    const sideTile = await A.page.waitForSelector('.bt-land-sheet [data-bro-achv]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
-      const b = document.querySelector('.bt-land-sheet [data-bro-achv] .bt-bro-rowt b');
+    const sideTile = await A.page.waitForSelector('.bt-land-sheet [data-bro-row="achievements"]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
+      const b = document.querySelector('.bt-land-sheet [data-bro-row="achievements"] .bt-bro2-rowt b');
       return b ? { text: b.textContent, whole: b.scrollWidth <= b.clientWidth + 1 } : null;
     })).catch(() => null);
     rec.ok('10a sideways: the Bro card\'s row reads Achievements, whole', !!sideTile && sideTile.text === 'Achievements' && sideTile.whole, sideTile);
-    await A.page.click('.bt-land-sheet [data-bro-achv]').catch(() => {});
+    await A.page.click('.bt-land-sheet [data-bro-row="achievements"]').catch(() => {});
     const sUp = await A.page.waitForSelector('.bt-land-sheet [data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
     const ps = sUp ? await pageLook(A, '.bt-land-sheet') : null;
     rec.ok(`10b sideways the page is in the side column (${ps && ps.box.w} px), the chips two by two, no sideways scroll, nothing cut, rows readable, the summary under the header`,
