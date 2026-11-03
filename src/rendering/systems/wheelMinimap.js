@@ -858,6 +858,7 @@ export class WheelMinimap {
         }
       }
       this._pinSig = pinSig;
+      this._pinDraws = (this._pinDraws || 0) + 1;   /* the probe's: a redraw, never a frame's */
     }
     /* v2.3.2990: the quest's way (above the bros and monsters: drawn last) */
     let quest = null;
@@ -1012,6 +1013,7 @@ export class WheelMinimap {
            whether in the owner's picture) */
         questPins,
         mapPins,   /* v2.3.3766; v2.3.3975: both pins, board rows (id) or places (id null), each with its line (in the box) */
+        pinLineDraws: this._pinDraws || 0,   /* v2.3.3975: how often the pins' lines were redrawn (mp-mappin: not while you stand) */
       };
     } catch (e) { /* never breaks the frame */ }
   }
