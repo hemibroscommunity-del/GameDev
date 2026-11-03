@@ -19,6 +19,7 @@
  * reward was made silent on purpose (v2.3.2037) and a toast for it would
  * put it right back, larger. */
 
+import { worldReady, whenWorldReady } from '../loadingGate.js';   /* v2.3.4126 */
 const listeners = new Set();
 let items = [];
 let seq = 0;
@@ -29,6 +30,9 @@ export const storeToastBus = {
   get() { return items; },
   push(text) {
     if (!text) return;
+    /* v2.3.4126: a toast that comes while a loading screen is up waits for
+       it to go, then shows its full time (ui/loadingGate.js) */
+    if (!worldReady()) { whenWorldReady(() => storeToastBus.push(text)); return; }
     seq = (seq + 1) % 1000000;
     /* Newest last, at most three on screen: a batch of mail drained at
        join can carry several sales at once, and a stack taller than that

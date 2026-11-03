@@ -1,4 +1,5 @@
 import React from 'react';
+import { worldReady } from './loadingGate.js';   /* v2.3.4126: not while a loading screen is up */
 import { createPortal } from 'react-dom';
 import { ownedWeaponSlots } from '@/game/weaponSlots.js';
 import { deskWords } from '@/game/deskWords.js';
@@ -84,7 +85,7 @@ export default function SwapHint({ stateRef }) {
       }
       /* not over a talk or a building's window: it waits for them */
       let busy = false;
-      try { busy = !!document.querySelector('.bt-npcdlg-scrim, .bt-inspect, [data-quest-offer]'); } catch (e) { busy = false; }
+      try { busy = !!document.querySelector('.bt-npcdlg-scrim, .bt-inspect, [data-quest-offer]') || !worldReady(); } catch (e) { busy = false; }   /* v2.3.4126: + a loading screen (ui/loadingGate.js) */
       if (busy) { if (since) setView(null); return; }
       const desk = deskWideActive();
       const a = anchorRect(desk);

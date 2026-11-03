@@ -165,6 +165,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    NOT the greeting video above — see welcomeBanner.js for why those are
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
+import { worldReady, whenWorldReady } from '@/ui/loadingGate.js';   /* v2.3.4126: nothing for the world while a loading screen is up */
 import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3701: a black screen's rebuild asks first whether Safari emptied the pictures */
 /* v2.3.3890: a second loss inside a rebuild's 5 s is owed a rebuild (window._rebuildRenderer); `?owedrebuild=0` drops it, as before */
 const OWED_REBUILD_OFF = (function () { try { return /[?&]owedrebuild=0\b/.test(window.location.search || ''); } catch (e) { return false; } })();
@@ -2163,7 +2164,12 @@ export var BroTown = function BroTown(_ref0) {
      (pushStatIncreaseNotice, addBuildProg) so they can fire the big
      LEVEL UP banner with kind=stat for build-stat ticks. Setter ref
      is stable across renders for useState so this is idempotent. */
-  if (typeof window !== 'undefined') window._setLevelUpMsg = setLevelUpMsg;
+  /* v2.3.4126: a banner that comes while a loading screen is up waits for it
+     to go and is shown then with a fresh clock (ui/loadingGate.js) */
+  if (typeof window !== 'undefined') window._setLevelUpMsg = function (m) {
+    if (m && !worldReady()) { whenWorldReady(function () { setLevelUpMsg(Object.assign({}, m, { ts: Date.now() })); }); return; }
+    setLevelUpMsg(m);
+  };
   /* ═══ v2.3.1745: THE QUEST BANNER ═══
      Owner: "it would be cool if there was a 'QUEST ACCEPTED!' and 'QUEST
      COMPLETED!' when you start or turn in quests that appear over the quest
@@ -2195,6 +2201,9 @@ export var BroTown = function BroTown(_ref0) {
   if (typeof window !== 'undefined') {
     window._setQuestMsg = function (m) {
       if (!m) { setQuestMsg(null); return; }
+      /* v2.3.4126: not while a loading screen is up -- it waits, then comes
+         with a fresh clock (ui/loadingGate.js) */
+      if (!worldReady()) { whenWorldReady(function () { window._setQuestMsg(Object.assign({}, m, { ts: Date.now() })); }); return; }
       var cur = questMsgRef.current;
       if (m.queue && cur && Date.now() - cur.ts < questMsgMs(cur.kind)) {
         questQueueRef.current.push(m);
