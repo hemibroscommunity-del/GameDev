@@ -54,6 +54,17 @@ answered "Go recommended on everything".
 | house_limit | Breaking the House | super-rare | 1,000 | the free spin's pot doubled to the house limit (counted) | dailyrewards.js (`news.top`) |
 | combat_100 | Centurion | super-rare | 1,000 | a combat skill to 100 | prog3.js |
 | godly | Godly | super-rare | 1,000 | a Godly piece, found or forged (counted) | as Elite |
+| albino_minnow ... albino_pike | Albino Minnow ... Albino Pike | common | **5** (the row's own `ap`) | eat an albino of that fish, once (v2.3.4036) | cooking.js `_handleEatRequest` (fish-variants.md) |
+| large_minnow ... large_pike | Large Minnow ... Large Pike | rare | **10** (the row's own `ap`) | eat a large one of that fish, once (v2.3.4036) | cooking.js `_handleEatRequest` |
+
+v2.3.4036 (fish-variants.md): ten more, the rare fish eaten -- 33 achievements,
+7,545 AP. The owner gave their points ("a one time 5 achievement point bonus",
+"10 achievement points (one time)"), and no tier pays 5, so a row may carry its
+own `ap` over its tier's (`achvAp` on both sides, held by mirror-audit); the
+tier stays what the row's rarity is (an albino 1 in 100 catches is common, a
+large one 1 in 1,000 is rare: its banner). They wear their fish's bag picture
+until the owner paints badges (`achievements-client` §9f). A fish bought or
+traded counts: what is paid for is eating one.
 
 "The story" is the last quest of every live chain, worked out from the quest
 table (`ACHV.STORY_ENDS`): a chain's middle can be skipped (mayor_1 hid itself

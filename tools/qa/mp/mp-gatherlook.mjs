@@ -16,7 +16,9 @@
  *      ROD still wood;
  *   3. the LUMBERJACK, the COOK and the FIRE-LIGHTER wear his trousers and
  *      boots: the bake's own reading (window.__btStandInClothes) is blue legs
- *      and red boots on each;
+ *      and red boots on each; (v2.3.4037) and his trouser and shoe
+ *      PATTERNS (aqua checks, white stripes): pixels of each on the legs and
+ *      the boots;
  *   4. (the owner's "Yes fix all") the three are HIS SIZE: the lumberjack and
  *      the fire-lighter as tall as his walking figure from head to boots (they
  *      were 76% and 108%), the crouching cook's head as big as his (88%) --
@@ -76,6 +78,12 @@ const LOOK = `try {
   let art = '';
   for (let i = 0; i < 256; i++) { const x = i % 16, y = (i / 16) | 0; art += (x >= 5 && x <= 10 && y >= 4 && y <= 9) ? 'a' : '0'; }
   localStorage.setItem('bt-shirtart', art);
+  /* v2.3.4037: aqua checks on the trousers (ART_PALETTE 15) and white
+     stripes on the boots (2), in the character's record from the start: set
+     mid-run (__btSetPattern), the record's look put back on the next sync
+     undid them (characterRecord.js), so the figures never saw them */
+  localStorage.setItem('bt-pantspat', 'check:15');
+  localStorage.setItem('bt-shoespat', 'stripe-v:2');
 } catch (e) {}
 /* v2.3.3146: the stand-ins' dressed shirt strips are emptied once uploaded
    (gpuOnly.js); this keeps their canvases so the test can read them */
@@ -369,6 +377,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`standing: his walking tee is striped and printed, its stripes ${walkShirt && walkShirt.worldPeriod} world px apart (guard)`,
       !!walkShirt && walkShirt.yellow > 20 && walkShirt.purple > 5, walkShirt);
     /* each stand-in's dressed shirt, against it */
+    /* v2.3.4037: his trouser and shoe patterns on the figure, which the
+       stand-in bake never stamped (TRAPS §73; the owner, "Shoes and patterns
+       aren't showing while hoeing"): pixels of the trousers' aqua checks on
+       the legs and of the boots' white stripes on the boots, counted on the
+       baked strip after every stamp (the probe's `garb`) */
+    const garbOk = (c, who) => {
+      const g = (c && c.garb) || {};
+      const lp = (g.legs && g.legs.px) || 0, bp = (g.boots && g.boots.px) || 0;
+      rec.ok(`...and ${who} wears his patterns: ${lp} px of aqua checks on his trousers, ${bp} px of white stripes on his boots (cells x${g.k && g.k.toFixed(2)})`,
+        !!g.legs && g.legs.color === '#6fd6e0' && lp > 50 && lp > (c.legs ? c.legs.n : 0) * 0.01
+          && !!g.boots && g.boots.color === '#ffffff' && bp > 12, { garb: g, legsN: c && c.legs && c.legs.n, bootsN: c && c.boots && c.boots.n });
+    };
     const dressedOk = async (key, who) => {
       let r = null;
       for (let i = 0; i < 40; i++) {
@@ -425,6 +445,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const c = await P.page.evaluate(() => (window.__btStandInClothes || {}).chop || null);
         rec.ok(`the lumberjack wears his trousers and boots: legs ${c && c.legs.rgb}, boots ${c && c.boots.rgb} (the bake's reading)`,
           !!c && isBlue(c.legs) && isRed(c.boots), c);
+        garbOk(c, 'the lumberjack');
         /* v2.3.3146: and he is your size (CHOP_STANDIN_H 104.5 -> 136.8) */
         const z = sizeOf('chop', await P.page.evaluate(() => (window.__btChopFigure ? window.__btChopFigure() : null)));
         rec.ok(`the lumberjack is his size: ${z && z.up.toFixed(1)} px from head to boots upright against his ${walk && walk.up.toFixed(1)} (${pct1(z && z.up, walk && walk.up)}, was 76%), his head ${z && z.head.toFixed(1)} against ${walk && walk.head.toFixed(1)}`,
@@ -466,6 +487,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const fc = await H.waitFor(P, () => (window.__btStandInClothes || {}).fire || null, (v) => !!v, { timeout: 15000, label: 'the fire-lighter baked' }).catch(() => null);
     rec.ok(`the fire-lighter wears his trousers and boots: legs ${fc && fc.legs.rgb}, boots ${fc && fc.boots.rgb} (the bake's reading)`,
       !!fc && isBlue(fc.legs) && isRed(fc.boots), fc);
+    garbOk(fc, 'the fire-lighter');
     /* v2.3.3146: and he is your size (FIRE_STANDIN_H 154 -> 142): his head
        runs a little big in his painting, so it is held to 5% */
     const zf = sizeOf('fire', await P.page.evaluate(() => (window.__btFireFigure ? window.__btFireFigure() : null)));
@@ -501,6 +523,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cc = await P.page.evaluate(() => (window.__btStandInClothes || {}).cook || null);
       rec.ok(`the cook wears his trousers and boots: legs ${cc && cc.legs.rgb}, boots ${cc && cc.boots.rgb} (the bake's reading)`,
         !!cc && isBlue(cc.legs) && isRed(cc.boots), cc);
+      garbOk(cc, 'the cook');
       /* v2.3.3146: and he is your size (COOK_STANDIN_H 65.1 -> 73.9): he
          crouches, so it is his head that is held to yours */
       const zc = sizeOf('cook', await P.page.evaluate(() => (window.__btCookFigure ? window.__btCookFigure() : null)));

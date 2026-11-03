@@ -454,7 +454,8 @@ export async function preloadWorldAnimations() {
        The collection's trait layers, ONE 6 KB palette PNG read as its colour
        numbers: the portrait in the Character button is made from it the
        moment the game opens, and every other player's as they come by.
-       GLOBAL: a portrait is shown everywhere.  Off with `?hemiface=0`. */
+       GLOBAL: a portrait is shown everywhere.  v2.3.4049: OFF by default (the
+       owner did not like it), so this loads nothing unless `?hemiface=1`. */
     hemiBust: preloadHemiBust(),
     /* ═══ v2.3.3695: the XP bar's three skill icons (the owner's Points
        icons), DOM pictures on the top bar from the first hit of any fight:

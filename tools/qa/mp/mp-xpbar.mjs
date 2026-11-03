@@ -12,7 +12,8 @@
  *   2. a real tap on the right half of the screen (the attack) lands on a
  *      snowman, and the worker's XP brings the bar into the top bar's middle:
  *      the sword's picture (loaded), its level, a fill at the worker's share
- *      of the next level, "+N XP" over it (the XP the worker added), the
+ *      of the next level, "+N XP" over it (the XP the worker added; whole
+ *      since v2.3.3992, the fraction held for the next gain), the
  *      title and the hour's icon faded under it, the title still in the page
  *      with its words; inside the middle column, clear of the AP chip and the
  *      gold;
@@ -174,7 +175,7 @@ async function layout(P, rec, OUT, tag, label, opts) {
   if (!b) return null;
   const want = b.sk && b.sk.sword;
   rec.ok(`${label}: "${b.gainText}" pops LEFT of the picture, clear of the bar (gain ${b.gainBox && Math.round(b.gainBox.r)} <= icon ${b.iconBox && Math.round(b.iconBox.l)})`,
-    !!b.gainBox && /^\+[\d.,]+ XP$/.test(b.gainText || '') && b.gainBox.r <= b.iconBox.l + 0.5 && b.gainBox.r <= b.trackBox.l, { gain: b.gainBox, icon: b.iconBox, track: b.trackBox });
+    !!b.gainBox && /^\+[\d,]+ XP$/ /* v2.3.3992: whole */.test(b.gainText || '') && b.gainBox.r <= b.iconBox.l + 0.5 && b.gainBox.r <= b.trackBox.l, { gain: b.gainBox, icon: b.iconBox, track: b.trackBox });
   rec.ok(`${label}: the white stands at once at the worker's share (${b.whiteAt} = ${b.frac}), the gold behind it (${b.goldNow})`,
     Math.abs(b.whiteAt - b.frac) < 0.002 && Math.abs((b.whiteNow == null ? -1 : b.whiteNow) - b.frac) < 0.01 && b.goldNow != null && b.goldNow < b.whiteNow - 0.0005,
     { whiteAt: b.whiteAt, whiteNow: b.whiteNow, goldNow: b.goldNow, frac: b.frac });
@@ -258,8 +259,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`2. ...with the sword's picture (${(b1.icon || '').split('/').pop()}), loaded`,
       b1.icon === XP_BAR_ICONS.sword && b1.iconLoaded, b1.icon);
     const gained = want && sk0 ? (want.level === sk0.level ? want.xp - sk0.xp : null) : null;
-    rec.ok(`2. ..."${b1.gainText}", the XP the worker added (${gained != null ? Math.round(gained * 10) / 10 : 'across a level'})`,
-      b1.gain > 0 && (gained == null || Math.abs(b1.gain - gained) < 0.01), { gain: b1.gain, gained, sk0, want });
+    /* v2.3.3992: the whole part of it (the owner: "don't include any decimals
+       in numbers for xp"; the fraction is held for the next gain) */
+    rec.ok(`2. ..."${b1.gainText}", the whole of the XP the worker added (${gained != null ? Math.round(gained * 10) / 10 : 'across a level'})`,
+      b1.gain > 0 && (gained == null || b1.gain === Math.floor(gained + 1e-9)) && /^\+[\d,]+ XP$/.test(b1.gainText || ''), { gain: b1.gain, gained, sk0, want });
     /* read just after the gain's picture (which takes seconds on this box:
        the bar may have just been told to go, its title's fade back not yet
        begun) */
