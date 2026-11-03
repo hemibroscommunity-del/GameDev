@@ -9,6 +9,7 @@ import {
   LEVELUP_NUM_H, LEVELUP_NUM_W, LEVELUP_NUM_URLS,
 } from '../data/levelUpBurst.js';
 import { BT_AUDIO } from '../data/index.js';
+import { flyPointsBubbles } from './pointsFly.js'; /* v2.3.4055: a weapon level-up's bubbles to your points */
 import { playVw, playVh } from './mobile/playViewport.js'; /* v2.3.3470: the column on a computer, until the burst's own box is measured */
 import { POINTS_DIGIT_H, POINTS_DIGIT_W } from '../data/pointsHeadArt.js'; /* v2.3.3693: the owner's gold numerals' widths, the level in the medallion */
 
@@ -227,6 +228,49 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
     const h = Math.ceil(el.getBoundingClientRect().height);
     if (h > 0) setCapH(h);
   });
+
+  /* ═══ v2.3.4055: AS A WEAPON'S MEDALLION STARTS TO GO, BUBBLES FLY TO YOUR
+     POINTS ═══ (ui/pointsFly.js: the owner's "jump to bag" of bubbles to the
+     Character button, or to its Points tab when that page is open).  Once a
+     burst, by its own clock.  Where they leave from is read ONCE, while the
+     medallion holds (one layout read a burst, never one a frame): a slow
+     phone can step from the hold straight past the 250 ms fade, to a render
+     with nothing drawn, or the stack can take the burst away on its last
+     frame with no render at all -- so they fly from that place then, and from
+     the unmount if no frame of the fade ever came. */
+  const bubblesRef = React.useRef({ ts: null, rect: null, sent: false });
+  const fireBubbles = () => {
+    const b = bubblesRef.current;
+    if (b.sent) return;
+    /* never read (a frame hitch stepped from before the hold straight past
+       the end): where the medallion is pinned -- the middle of the game's
+       column, LEVELUP_PIN_Y_FRAC down it (#root's box: the column on a
+       computer, the screen on a phone) */
+    let r = b.rect;
+    if (!r) {
+      try {
+        const root = document.getElementById('root');
+        const q = root && root.getBoundingClientRect();
+        if (q && q.width > 0) r = { left: q.left + q.width / 2 - 20, top: q.top + q.height * LEVELUP_PIN_Y_FRAC - 20, width: 40, height: 40 };
+      } catch (e) { r = null; }
+    }
+    if (!r) return;
+    b.sent = true;
+    flyPointsBubbles(r, msg.skill, msg.skillLevel);
+  };
+  React.useEffect(() => {
+    const b = bubblesRef.current;
+    if (b.ts !== msg.ts) { b.ts = msg.ts; b.rect = null; b.sent = false; }
+    if (msg.kind !== 'combat' || b.sent) return;
+    if (!b.rect && elapsed >= LEVELUP_RUN_MS) {
+      const root = layerRef.current;
+      const el = root && (root.querySelector('[data-levelup-icon]') || root.querySelector('[data-levelup-art]'));
+      const r = el && el.getBoundingClientRect();
+      if (r && r.width > 2) b.rect = { left: r.left, top: r.top, width: r.width, height: r.height };
+    }
+    if (elapsed >= LEVELUP_RUN_MS + LEVELUP_HOLD_MS) fireBubbles();
+  });
+  React.useEffect(() => () => { if (msg.kind === 'combat') fireBubbles(); }, [msg.ts]);
 
   /* Gone, not merely transparent, once it is over.  BroTown's own render
      guard would also drop it, but only on the next time something else
