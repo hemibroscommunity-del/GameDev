@@ -1,6 +1,6 @@
-# Old wooden greatswords become copper, and copper looks like copper (v2.3.3980)
+# Old wooden greatswords become copper, and copper looks like copper (v2.3.4000)
 
-> **Built (v2.3.3980).** The owner, 2026-11-03: *"'Copper great sword' when
+> **Built (v2.3.4000).** The owner, 2026-11-03: *"'Copper great sword' when
 > Smithed looks gray in color like iron. Fix that. Also just remove any of the
 > 'wooden' swords. Right now it's just called 'great sword'."*
 > Code: `server/src/gscopper.js`, migration v20 (`server/src/migrations.js`),
@@ -23,7 +23,7 @@ first.
   its gems kept.
 - An old drop with no metal that is **stronger** than copper (the old
   Elemental, Fusion and Shift rolls) gets the metal that matches its strength
-  (v2.3.3980): 1.50 becomes **Black Steel**, 2.25 **Diamond**, 3.00
+  (v2.3.4000): 1.50 becomes **Black Steel**, 2.25 **Diamond**, 3.00
   **Shadowsteel**. It keeps its own damage exactly, and its grade, hardening
   and gems. No metal-less greatsword is left.
 - The Forge already makes no wood greatsword (since v2.3.3524); that is
@@ -43,7 +43,7 @@ every drawing of your own blade tints by gearBase through `weaponTint`
 |---|---|---|
 | The old starter grant (v2.3.1681-1759) | a greatsword at gearBase **wood**; migration v12 renamed it "Copper Great Sword" by its NAME only, so it said copper and was wood. Wood has no metal (`weaponMaterial` returns none), so the blade drew in the native grey steel | migration v20 |
 | A greatsword from the old Forge's wood tier | the same: wood, no metal | migration v20 |
-| An old random drop (v2.3.1141-v2.3.3209) | no gearBase at all: named "Great Sword" (data.js `WEAPON_TYPE_LABELS`), drawn native grey | migration v20: copper, or the metal of its strength (v2.3.3980) |
+| An old random drop (v2.3.1141-v2.3.3209) | no gearBase at all: named "Great Sword" (data.js `WEAPON_TYPE_LABELS`), drawn native grey | migration v20: copper, or the metal of its strength (v2.3.4000) |
 | Another player's greatsword | drawn from the BARE greatsword sheet (the one-handed `Sword1` icon) at every facing, tinted with `materialTint` (which also drew black steel bright) | the per-facing art and `weaponTint` (section 4) |
 | Another player's swing (the stand-in) | `materialTint(wpnMat)`: black steel drew bright | `weaponTint(wpnType, wpnMat)` |
 
@@ -70,7 +70,7 @@ One pure function used by every door, so they can never disagree.
 | `name` | a name the game gave ("Great Sword", "Copper Great Sword", "Bro's Sword", "Wood Great Sword", the Forge's "wood greatsword", a gem's name through `weaponGemName`) becomes `weaponGemName` of the converted blade: "Copper Great Sword", "Black Steel Flame Great Sword". A name given by hand is kept; one starting "Wood"/"Wooden" says the metal instead |
 | `was` | `{ t: 'greatsword', name, gearBase, tierMult }`, what it was (null gearBase for an old drop), set once |
 
-**The metal of a strong drop (v2.3.3980).** The owner's intent ("just remove
+**The metal of a strong drop (v2.3.4000).** The owner's intent ("just remove
 any of the 'wooden' swords. Right now it's just called 'great sword'") covers
 the strong drops too. A greatsword with no gearBase and a tierMult ABOVE
 copper's becomes the forge tier (`BLACKSMITH_TIERS`, never wood) whose

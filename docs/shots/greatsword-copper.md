@@ -1,4 +1,4 @@
-# Old wooden greatswords become copper, and copper looks like copper (v2.3.3980)
+# Old wooden greatswords become copper, and copper looks like copper (v2.3.4000)
 
 Owner: *"'Copper great sword' when Smithed looks gray in color like iron. Fix
 that. Also just remove any of the 'wooden' swords. Right now it's just called

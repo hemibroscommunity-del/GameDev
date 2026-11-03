@@ -1,4 +1,4 @@
-/* ═══ v2.3.3980: OLD WOODEN GREATSWORDS BECOME COPPER ═══
+/* ═══ v2.3.4000: OLD WOODEN GREATSWORDS BECOME COPPER ═══
  * Spec: docs/specs/greatsword-copper.md
  *
  * The owner, 2026-11-03: "'Copper great sword' when Smithed looks gray in
@@ -20,7 +20,7 @@
  * first weapon, COPPER (tierMult 1.12 against wood's 1.00: a small gift, the
  * v19 rule).
  *
- * NEVER A WEAPON MADE WEAKER.  v2.3.3980 (the owner's intent, through the
+ * NEVER A WEAPON MADE WEAKER.  v2.3.4000 (the owner's intent, through the
  * orchestrator: "just remove any of the 'wooden' swords.  Right now it's just
  * called 'great sword'" -- yes, the strong ones too): a drop with no gearBase
  * whose tierMult is ABOVE copper's (the old Elemental 1.50, Fusion 2.25 and
@@ -74,7 +74,7 @@ export function isOldGreatsword(w) {
   return !has(w, 'gearBase') || w.gearBase === null || w.gearBase === undefined || w.gearBase === '';
 }
 
-/* v2.3.3980: the metal a base-less greatsword of tierMult `tm` becomes: the
+/* v2.3.4000: the metal a base-less greatsword of tierMult `tm` becomes: the
    forge tier whose multiplier is the closest one NOT above `tm`, never wood
    (and so never below copper). */
 export function metalForTierMult(tm) {
@@ -111,7 +111,7 @@ function gameNamesFor(w) {
 /** Convert one weapon blob, in place, if it is an old wooden or base-less
  *  greatsword: a metal at last, never weaker.  Returns true when it changed.
  *  Never throws on junk.  Idempotent: a greatsword with a metal is never
- *  touched again.  (v2.3.3980: was oldGreatswordToCopper.) */
+ *  touched again.  (v2.3.4000: was oldGreatswordToCopper.) */
 export function oldGreatswordToMetal(w) {
   if (!isOldGreatsword(w)) return false;
   const was = { t: 'greatsword', name: typeof w.name === 'string' ? w.name : null, gearBase: has(w, 'gearBase') ? w.gearBase : null };

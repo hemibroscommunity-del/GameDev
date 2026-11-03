@@ -1,4 +1,4 @@
-/* ═══ OLD WOODEN GREATSWORDS BECOME COPPER, AND COPPER LOOKS LIKE COPPER (v2.3.3980) ═══
+/* ═══ OLD WOODEN GREATSWORDS BECOME COPPER, AND COPPER LOOKS LIKE COPPER (v2.3.4000) ═══
  *
  * The owner: "'Copper great sword' when Smithed looks gray in color like
  * iron.  Fix that.  Also just remove any of the 'wooden' swords.  Right now
@@ -38,7 +38,7 @@ import { execSync } from 'node:child_process';
 
 const OUT = join(H.REPO, 'tools/qa/mp/out');
 const COPPER = 0xFF9E58;
-const BASE = process.env.GSC_BASE || 'f2b4c6ab';   /* main before v2.3.3980 */
+const BASE = process.env.GSC_BASE || 'f2b4c6ab';   /* main before v2.3.4000 */
 
 /* the worker of commit `rev`, unpacked into a folder of its own */
 async function workerAt(rev) {

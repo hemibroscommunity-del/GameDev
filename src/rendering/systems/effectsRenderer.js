@@ -15448,7 +15448,7 @@ export class EffectsRenderer {
          wire field — it was simply never applied to the swing stand-in. */
       if (set.legs) set.legs.tint = gearTint(eq.legs);
       if (set.chest) set.chest.tint = gearTint(eq.chest);
-      if (set.weapon) set.weapon.tint = weaponTint(o && o.wpnType, o && o.wpnMat);   /* v2.3.3980: weaponTint -- a peer's black steel is its metal, as your own swing's */
+      if (set.weapon) set.weapon.tint = weaponTint(o && o.wpnType, o && o.wpnMat);   /* v2.3.4000: weaponTint -- a peer's black steel is its metal, as your own swing's */
       /* v2.3.1047: north swings hold the blade on the far side -> behind body.
          v2.3.2516: and southwest, for the owner's D7 reason -- resolved from the
          peer's own swing ANGLE to the full 8 sectors, because dir4 above is a

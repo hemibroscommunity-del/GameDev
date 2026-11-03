@@ -28,7 +28,7 @@
  *      sword under the switch).
  *   8. The switch's name is lower case and off only when written false.
  *
- * v2.3.3980 -- OLD WOODEN GREATSWORDS BECOME COPPER (docs/specs/
+ * v2.3.4000 -- OLD WOODEN GREATSWORDS BECOME COPPER (docs/specs/
  * greatsword-copper.md, server/src/gscopper.js, migration v20).  The owner:
  * "'Copper great sword' when Smithed looks gray in color like iron.  Fix that.
  * Also just remove any of the 'wooden' swords."
@@ -38,7 +38,7 @@
  *      "Wooden ..." one made "Copper ..."), the `was` mark; an old base-less
  *      "Great Sword" no stronger than copper -> copper; a base-less one
  *      stronger than copper (an old Elemental roll) -> its metal, its tierMult
- *      kept (v2.3.3980, 9b: one per band, the wear gate); the Pine Shield,
+ *      kept (v2.3.4000, 9b: one per band, the wear gate); the Pine Shield,
  *      a pine bow, a wood one-handed sword (v19's), a metal greatsword and junk
  *      left alone; twice is once.
  *  10. Through the real load: a record at v19 (the old starter, v12's "Copper
@@ -58,8 +58,8 @@
  *  16. The switch's name is lower case and off only when written false. */
 import { GameRoom } from '../src/index.js';
 import { swordToGreatsword, convertRecordSwords } from '../src/swordconvert.js';
-import { oldGreatswordToMetal, convertRecordGreatswords, isOldGreatsword, metalForTierMult } from '../src/gscopper.js';   /* v2.3.3980 */
-import { flagNameOk } from '../src/liveops.js';   /* v2.3.3980 */
+import { oldGreatswordToMetal, convertRecordGreatswords, isOldGreatsword, metalForTierMult } from '../src/gscopper.js';   /* v2.3.4000 */
+import { flagNameOk } from '../src/liveops.js';   /* v2.3.4000 */
 import { MIGRATIONS, RPG_SCHEMA_VERSION } from '../src/migrations.js';
 import { BLACKSMITH_TIERS } from '../src/data.js';
 
@@ -202,7 +202,7 @@ async function onFile(id) {
   check('2: the bag: the gemmed iron sword is an "Iron Flame Great Sword", "Bro\'s Sword" a "Copper Great Sword", the bow a bow',
     !!P && P.weaponStash.length === 3 && P.weaponStash[0].type === 'greatsword' && P.weaponStash[0].name === 'Iron Flame Great Sword' && P.weaponStash[0].element1 === 'flame'
       && P.weaponStash[1].name === 'Copper Great Sword' && P.weaponStash[1].gearBase === 'copper' && P.weaponStash[2].type === 'bow', P && P.weaponStash);
-  check('2: stored at _v ' + RPG_SCHEMA_VERSION + ' with no sword left in it', RPG_SCHEMA_VERSION >= 19 && stored._v === RPG_SCHEMA_VERSION   /* v2.3.3980: current, 20 since v20 */
+  check('2: stored at _v ' + RPG_SCHEMA_VERSION + ' with no sword left in it', RPG_SCHEMA_VERSION >= 19 && stored._v === RPG_SCHEMA_VERSION   /* v2.3.4000: current, 20 since v20 */
     && stored.weapon.type === 'greatsword' && stored.weaponStash.every((w) => w.type !== 'sword'), { v: stored._v });
   check('2: the record\'s conversion is written by the load\'s one re-put (and the join\'s own save), never one put a weapon',
     state._counts.rpgPuts - puts0 <= 2, state._counts.rpgPuts - puts0);
@@ -240,7 +240,7 @@ async function onFile(id) {
   await join(ws2, id);
   const P2 = room.playerState[id];
   check('3: mended, the next login converts them and the record is current',
-    P2.weapon.type === 'greatsword' && P2.weaponStash.every((w) => w.type !== 'sword') && state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION, P2.weapon);   /* v2.3.3980: current */
+    P2.weapon.type === 'greatsword' && P2.weaponStash.every((w) => w.type !== 'sword') && state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION, P2.weapon);   /* v2.3.4000: current */
   await leave(ws2);
 }
 
@@ -340,7 +340,7 @@ async function onFile(id) {
   check('8: the switch\'s name is lower case', /^[a-z0-9_]+$/.test('swordconvert'));
 }
 
-/* ════ v2.3.3980: OLD WOODEN GREATSWORDS BECOME COPPER (gscopper.js, v20) ════ */
+/* ════ v2.3.4000: OLD WOODEN GREATSWORDS BECOME COPPER (gscopper.js, v20) ════ */
 
 /* a greatsword as the old Forge made one, at `base` */
 const forgeGs = (base, extra) => Object.assign({
@@ -412,7 +412,7 @@ const COPPER_MULT = BLACKSMITH_TIERS.copper.tierMult;
       && rec.weaponStash.map((x) => x.gearBase || '-').join() === 'copper,iron,copper,diamond' && rec.weaponStash[3].tierMult === 2.25 && convertRecordGreatswords(rec) === false, rec);
 }
 
-// ── 9b. v2.3.3980: the strong base-less drops, one per band ──
+// ── 9b. v2.3.4000: the strong base-less drops, one per band ──
 {
   /* the metal: the forge tier whose multiplier is the closest NOT above the
      sword's own (never wood); the tierMult is kept */
@@ -597,7 +597,7 @@ async function onFile19(id) {
     b.tierKey === 'copper' && sh.tierKey === 'wood', { b, sh });
   const fu = state._store.get('mkt_order:gscfusion');
   const eb = state._store.get('mkt_order:gscelbuy');
-  check('14: v2.3.3980: a sell order\'s old Fusion drop is Diamond at its 2.25, filed under diamond; a buy under an old rarity key is left as it is',
+  check('14: v2.3.4000: a sell order\'s old Fusion drop is Diamond at its 2.25, filed under diamond; a buy under an old rarity key is left as it is',
     fu.item.gearBase === 'diamond' && fu.item.tierMult === 2.25 && fu.tierKey === 'diamond' && fu.tierLabel === 'Diamond'
       && room._mktIndex.has('weapon:greatsword:diamond:none:none') && eb.tierKey === 'elemental', { fu, eb });
   check('14: three orders rewritten, three puts', state._counts.puts - puts0 === 3, state._counts.puts - puts0);

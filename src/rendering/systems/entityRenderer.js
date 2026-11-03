@@ -13015,7 +13015,7 @@ export class EntityRenderer {
       const oSpriteBody = display._spriteBody;
       const oWeaponSprite = display._weaponSprite;
       if (oWpnType && !oIsShielding && !_rDodge) {   /* v2.3.2925: not in a roll -- see the local twin */
-        /* ═══ v2.3.3980: A PEER'S GREATSWORD IS THE ONE IN YOUR HAND ═══
+        /* ═══ v2.3.4000: A PEER'S GREATSWORD IS THE ONE IN YOUR HAND ═══
            The owner: "'Copper great sword' when Smithed looks gray".  Another
            player's greatsword was drawn from the BARE greatsword sheet (the
            one-handed Sword1 icon, every facing) -- the per-facing art the
@@ -13032,7 +13032,7 @@ export class EntityRenderer {
         const _oMat = (other && other.wpnMat) || undefined;
         const _oGsDir = (oWpnType === 'greatsword' && !oSwingActive && hasWeapon(oWpnType, _oMat, dir)) ? dir : null;
         const wpnIconTex = hasWeapon(oWpnType, _oMat, _oGsDir) ? getWeaponTexture(oWpnType, _oMat, _oGsDir) : null;
-        display._oWpnArt = wpnIconTex ? (oWpnType + (_oGsDir ? '-' + _oGsDir : '')) : null;   /* v2.3.3980: QA probe (__btPeerSword.art) */
+        display._oWpnArt = wpnIconTex ? (oWpnType + (_oGsDir ? '-' + _oGsDir : '')) : null;   /* v2.3.4000: QA probe (__btPeerSword.art) */
         if (wpnIconTex) {
           if (oWeaponSprite.texture !== wpnIconTex) oWeaponSprite.texture = wpnIconTex;
           const handle = getWeaponHandle(oWpnType, _oMat, _oGsDir);
@@ -13071,7 +13071,7 @@ export class EntityRenderer {
           oWeaponSprite.x = wpnX;
           oWeaponSprite.y = wpnY;
 
-          const targetH = oWpnType === 'greatsword' ? (_oGsDir ? 48 : 36)   /* v2.3.3980: the local carry's 48 */
+          const targetH = oWpnType === 'greatsword' ? (_oGsDir ? 48 : 36)   /* v2.3.4000: the local carry's 48 */
                          : oWpnType === 'staff'      ? 34
                          : oWpnType === 'bow'        ? 28
                          :                              26;
@@ -13083,7 +13083,7 @@ export class EntityRenderer {
             oWeaponSprite.rotation = oSwingAng;
             oWeaponSprite.scale.x = fitScale;
           } else {
-            /* v2.3.3980: the per-facing art flips as the local carry's does
+            /* v2.3.4000: the per-facing art flips as the local carry's does
                (resolveDirection's mirror, plus south and north: v2.3.1821,
                v2.3.2925), and the south blade keeps its tilt off the face */
             const weaponMirror = _oGsDir
@@ -13113,7 +13113,7 @@ export class EntityRenderer {
              is a foreign string: materialTint answers native white for anything
              it does not know, so a forged or stale id cannot paint a peer an
              arbitrary colour. */
-          /* v2.3.3980: weaponTint, as your own blade: a melee weapon only, and
+          /* v2.3.4000: weaponTint, as your own blade: a melee weapon only, and
              black steel's `steel` key reaches its metal (BASE_MATERIAL) -- a
              peer's black steel greatsword drew bright steel through the bare
              materialTint. */
@@ -13241,7 +13241,7 @@ export class EntityRenderer {
             gearChestVis: !!(display._gearChest && display._gearChest.visible),
             gearChestIdx: display._gearChest ? display.getChildIndex(display._gearChest) : -1,
             bladeUp: display._weaponSprite ? display._weaponSprite.scale.y < 0 : null,
-            art: display._oWpnArt || null,   /* v2.3.3980: which sheet ('greatsword-east', or the bare 'greatsword') */
+            art: display._oWpnArt || null,   /* v2.3.4000: which sheet ('greatsword-east', or the bare 'greatsword') */
           };
         } catch (e) { /* never breaks the frame */ }
       }

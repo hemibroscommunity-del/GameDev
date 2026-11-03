@@ -290,7 +290,7 @@ export async function freePort() {
   });
 }
 
-/* v2.3.3980: `opts.cwd` runs another copy of the worker (a git archive of an
+/* v2.3.4000: `opts.cwd` runs another copy of the worker (a git archive of an
    older commit: mp-greatswordcopper plays a deploy, the old worker then this
    one), and `opts.state` a storage folder that outlives it (stopWorker's
    `keepState`), so the second worker reads what the first one saved. */
@@ -362,7 +362,7 @@ function killTree(proc) {
 export async function stopWorker(w, { keepState = false } = {}) {
   if (!w) return;
   killTree(w.proc);
-  if (keepState) return;   /* v2.3.3980: the next worker reads it (startWorker opts.state) */
+  if (keepState) return;   /* v2.3.4000: the next worker reads it (startWorker opts.state) */
   try { await rm(w.state, { recursive: true, force: true }); } catch { /* best effort */ }
 }
 
