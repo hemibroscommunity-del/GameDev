@@ -1,214 +1,134 @@
-/* LANDSCAPE GROUNDWORK: THE VIEW RULE SWITCHES AXES, PORTRAIT DOES NOT MOVE
- * (v2.3.2156)
+/* ═══ ONE VISIBLE AREA OF WORLD, WHATEVER THE SCREEN (v2.3.4084) ═══
  *
- * Owner: "Landscape would be an optional view.  You can play in portrait or
- * landscape."
+ * Was (v2.3.2156): the view rule switches axes sideways; portrait is pinned --
+ * on the retired old map's town and 'ember'.  Moved onto the world (the Wheel,
+ * `world: 'wheel'`) by v2.3.4084, and asked the question that PR answers.
  *
- * This scenario guards the two halves of that sentence in the order they
- * matter:
+ * A design review the owner shared: "I'd consider establishing a consistent
+ * maximum gameplay visibility range regardless of screen dimensions".  The
+ * owner: "Cap it for everyone now".  So every screen sees about an upright
+ * phone's AREA of world (850 x 1330 game px, its dashboard open), a wide screen zoomed in until it
+ * does, and never so far that its short side drops below 680 game px
+ * (src/game/viewCap.js; the numbers in docs/specs/view-cap.md).
  *
- * ═══ 1. PORTRAIT IS PINNED, at three device classes ═══
- * Portrait is the primary platform and every landscape change must be inert
- * there.  These are not tolerance assertions — they are the exact numbers the
- * shipped arithmetic produces today (bandFootprint == the old barHeight/fold
- * path, worldViewport's portrait branch byte-identical), so ANY drift is a
- * regression this file names before a player does.  Three widths because the
- * geometry is width-driven: a bug that spares 390 can still bite 375 or 430.
- *
- * ═══ 2. LANDSCAPE GETS THE HEIGHT-AXIS RULE ═══
- * Until the landscape dashboard ships, a landscape phone still carries the
- * portrait band, the canvas is ~143px tall, and the new rule bottoms out at
- * MIN_SCALE 0.5 — view ~1688x286.  The assertion is deliberately about the
- * RULE, not the interim numbers: H must come from cssH/scale with the scale
- * floored at 0.5, and the visible AREA must not exceed portrait's (fairness:
- * nobody buys spotting range by rotating).  When the 48px landscape band
- * lands, the same assertions hold with scale .742 and view 1138x480 — this
- * file will not need to change.
- *
- * ═══ 3. THE HARNESS DEFAULT STAYS PORTRAIT ═══
- * The QA default viewport is 1000x780 — window-landscape.  It trips the
- * desktop shell, whose play area is aspect-locked to a portrait phone, so
- * the CANVAS (the thing worldViewport reads) is portrait.  If this ever
- * flips, every scenario that relies on the default viewport starts running
- * a different game; assert it here so the flip is loud.
+ * Each screen in the Wheel's BroTown: an upright phone (390 x 844, the
+ * dashboard folded as a new bro arrives, and open; 375 x 812 and 430 x 932
+ * open), a short upright one (375 x 667, open), a sideways phone
+ * (844 x 390), and three computers playing the sideways layout as players do
+ * (`wide: true`): 1366 x 768, 1920 x 1080, 2560 x 1080.  On each:
+ *   1. the cap is in force (the probe says so) and the live view is the
+ *      rule's: the camera's view (S._viewW/H) is __btWorldView('wheel'), and
+ *      the renderer's scale (S._worldScaleX/Y, what every tap and aim converts
+ *      with: TRAPS §210) is its scale -- one number for all of them;
+ *   2. the cap only ever zooms IN (scale >= the scale without it,
+ *      __btWorldView('wheel', { cap: false })), and the view keeps the
+ *      canvas's shape;
+ *   3. the area is about an upright phone's (<= 850 x 1330, +1%), OR the short
+ *      side stopped at 680 (the letterbox stop);
+ *   4. the short side is never below 680 where the screen had more before;
+ * and the upright phone is UNCHANGED (scale with = without the cap), folded
+ * and open.  Then:
+ *   5. `?viewcap=0` on the sideways phone: the old wide view, live.
+ * The table of before and after, per screen, is printed for the PR and the
+ * spec.
  */
 import * as H from './harness.mjs';
 
-const geom = (P) => P.page.evaluate(() => {
+const REF_AREA = 850 * 1330;   /* viewCap.js REF_W x REF_H at the default zoom */
+const SHORT_MIN = 680;         /* viewCap.js SHORT_MIN */
+
+const read = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   const c = document.querySelector('canvas');
-  const r = c.getBoundingClientRect();
-  const cs = getComputedStyle(document.documentElement);
+  const r = c ? c.getBoundingClientRect() : { width: 0, height: 0 };
+  const on = window.__btWorldView ? window.__btWorldView('wheel') : null;
+  const off = window.__btWorldView ? window.__btWorldView('wheel', { cap: false }) : null;
   return {
-    canvasW: Math.round(r.width), canvasH: Math.round(r.height),
-    dashH: parseInt(cs.getPropertyValue('--dash-h')) || 0,
-    colsH: parseInt(cs.getPropertyValue('--cols-h')) || 0,
-    viewW: Math.round(S._viewW || 0), viewH: Math.round(S._viewH || 0),
-    scale: +(S._worldScaleX || 0).toFixed(4),
-    /* v2.3.2247: the zone floors the viewport now, so the fairness rule below
-       is stated against the zone rather than a fixed reference width. */
     zone: S.currentZone,
-    zoneW: (() => { const z = (window.__btZones || {})[S.currentZone]; return z ? z.w * 32 : 0; })(),
-    zoneH: (() => { const z = (window.__btZones || {})[S.currentZone]; return z ? z.h * 32 : 0; })(),
-    orient: document.documentElement.getAttribute('data-orient'),
+    canvasW: Math.round(r.width), canvasH: Math.round(r.height),
+    viewW: Math.round(S._viewW || 0), viewH: Math.round(S._viewH || 0),
+    scaleX: +(S._worldScaleX || 0).toFixed(4), scaleY: +(S._worldScaleY || 0).toFixed(4),
+    on, off,
+    topBar: (document.body.innerText.match(/BroTown/) || [null])[0],
   };
 });
 
-/* The portrait pins: {viewport} -> the numbers resize() must produce.
-   dashH from bandFootprint(vw,vh,false); canvas = vh - dashH + 14. */
-const PORTRAIT_PINS = [
-  { vp: { width: 390, height: 844 }, dashH: 243, canvasH: 615 },
-  { vp: { width: 375, height: 812 }, dashH: 239, canvasH: 587 },
-  { vp: { width: 430, height: 932 }, dashH: 257, canvasH: 689 },
+async function intoWorld(browser, wsPort, webPort, name, opts) {
+  const P = await H.newPlayer(browser, { name, wsPort, webPort, world: 'wheel', ...opts });
+  await H.enterWorld(P);
+  await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),
+    (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'into the Wheel' }).catch(() => null);
+  await P.page.waitForTimeout(2500);
+  await H.closeNpcDialogue(P).catch(() => {});
+  await P.page.waitForTimeout(600);
+  return P;
+}
+
+const SCREENS = [
+  { tag: 'upright 390x844 folded', name: 'Upview', opts: { viewport: { width: 390, height: 844 }, touch: true }, upright: true },
+  { tag: 'upright 390x844 open', name: 'Upopen', opts: { viewport: { width: 390, height: 844 }, touch: true }, upright: true, unfold: true },
+  /* v2.3.4084: the other upright phones, open: 850 (the reference's width) is the widest of them */
+  { tag: 'upright 375x812 open', name: 'Miniopen', opts: { viewport: { width: 375, height: 812 }, touch: true }, upright: true, unfold: true },
+  { tag: 'upright 430x932 open', name: 'Maxopen', opts: { viewport: { width: 430, height: 932 }, touch: true }, upright: true, unfold: true },
+  /* ...and a SHORT upright phone (an SE's 667 pt), on the character floor:
+     974 x 1158 (1.13M), inside the reference, asked as a capped screen is */
+  { tag: 'short upright 375x667 open', name: 'Seopen', opts: { viewport: { width: 375, height: 667 }, touch: true }, unfold: true },
+  { tag: 'sideways 844x390', name: 'Sideview', opts: { viewport: { width: 844, height: 390 }, touch: true } },
+  { tag: 'computer 1366x768', name: 'Lapview', opts: { viewport: { width: 1366, height: 768 }, wide: true } },
+  { tag: 'computer 1920x1080', name: 'Deskview', opts: { viewport: { width: 1920, height: 1080 }, wide: true } },
+  { tag: 'ultrawide 2560x1080', name: 'Ultraview', opts: { viewport: { width: 2560, height: 1080 }, wide: true } },
 ];
 
-export async function run({ browser, wsPort, webPort, rec }) {
-  /* v2.3.2247: the 390pt phone's measured viewport, captured from pin 1 and
-     used as the landscape fairness reference below -- measured, because the
-     zone now decides it and no literal can stay true. */
-  let PORTRAIT_REF = { viewW: 0, viewH: 0, scale: 0 };
-  /* ── 1. the portrait pins ── */
-  for (const pin of PORTRAIT_PINS) {
-    const P = await H.newPlayer(browser, {
-      name: 'Pin' + pin.vp.width, wsPort, webPort, touch: true, viewport: pin.vp,
-    });
-    await H.enterWorld(P);
-    await P.page.waitForTimeout(2500);
-    /* v2.3.3324: these pins are the OPEN band (barHeight).  Since v2.3.2495 a
-       new bro's first join arrives FOLDED, and each phone here is a new bro, so
-       each read the 52 px fold (390x806, 375x774, 430x894).  Sideways needs
-       none: the fold is ignored there (v2.3.2157). */
-    const band = await H.unfoldBand(P);
-    rec.ok(`portrait ${pin.vp.width}w: the band is open at rest (guard)`, band.now === 'open', band);
-    const g = await geom(P);
-    console.log(`    portrait ${pin.vp.width}x${pin.vp.height}: ${JSON.stringify(g)}`);
-    rec.ok(`portrait ${pin.vp.width}w: the band is exactly ${pin.dashH}px`,
-      g.dashH === pin.dashH, g);
-    rec.ok(`...the canvas is exactly ${pin.vp.width}x${pin.canvasH}`,
-      g.canvasW === pin.vp.width && g.canvasH === pin.canvasH, g);
-    /* ═══ v2.3.2247: THE REFERENCE MOVED FROM A WIDTH TO THE ZONE ═══
-       This pinned viewW === 585 on every phone -- "the same slice for
-       everyone", the fairness rule worldViewport.js's header argues for.  585
-       was 390 x WORLD_ZOOM when the zoom was one global number.  It is now a
-       TARGET a zone may refuse (the viewport can never exceed the map), and in
-       town the zone's depth binds first -- so the three pinned phones come out
-       at 1116 / 1124 / 1098 wide, all different, and the old equality is red on
-       a change working as designed.
-       The fairness property SURVIVES, on the other axis: every phone sees the
-       zone's whole height, so nobody spots further than anybody else.  That is
-       what is asserted now, and it is device-independent where a width pin no
-       longer can be. */
-    /* v2.3.2249: the character floor (FIGURE_SCALE_FLOOR) can stop the zoom
-       before the zone does, so "fills the zone exactly" is no longer always
-       true -- in town the floor binds first now.  The fairness claim survives
-       as an equality between PHONES rather than against the map: every phone
-       resolves the same world scale in the same zone, so nobody sees further
-       than anybody else.  PORTRAIT_REF is pin 1; the others must match it. */
-    /* ═══ v2.3.2257: BACK TO THE HEIGHT, WHICH IS WHERE IT BELONGED ═══
-       The fairness rule this line guards has been restated twice and the
-       second restatement was wrong.  v2.3.2247 moved it off the WIDTH (the
-       old viewW === 585 pin) and said so plainly: "The fairness property
-       SURVIVES, on the other axis: every phone sees the zone's whole height,
-       so nobody spots further than anybody else."  Then v2.3.2249 found the
-       flat FIGURE_SCALE_FLOOR binding in town on all three pinned phones and
-       restated it AGAIN, as an equality of SCALE -- which was true only
-       because one constant happened to be winning on every device in the
-       list.  It was measuring the floor, not the fairness: at 0.50 flat, the
-       three phones saw 1230 / 1174 / 1378 world px of height, which is the
-       property failing while its own assertion went green.
+const area = (v) => (v ? v.W * v.H : 0);
+const near = (a, b, d = 1.5) => Math.abs(a - b) <= d;
 
-       v2.3.2257's reference-zone floor makes town's scale cssH/1024 again, so
-       the three phones come out at three different SCALES and one identical
-       HEIGHT -- 1024 world px each, the reference zone's own depth.  That is
-       the v2.3.2247 property, restored, and it is what is asserted now. */
-    rec.ok(`...every phone sees the same world HEIGHT here (${g.viewH}px -- nobody spots further than anybody else)`,
-      PORTRAIT_REF.viewH === 0 || Math.abs(g.viewH - PORTRAIT_REF.viewH) <= 1,
-      { viewH: g.viewH, ref: PORTRAIT_REF.viewH, scale: g.scale, ...g });
-    rec.ok('...and never asks for more world than the zone holds',
-      g.viewW <= g.zoneW + 1 && g.viewH <= g.zoneH + 1, g);
-    rec.ok('...and the shell is stamped portrait', g.orient === 'portrait', g);
-    /* v2.3.3324: + what this canvas shows of a combat zone, for the fairness check (the real rule, TRAPS §37) */
-    if (pin.vp.width === 390) PORTRAIT_REF = { viewW: g.viewW, viewH: g.viewH, scale: g.scale,
-      combat: await P.page.evaluate(() => window.__btWorldView && window.__btWorldView('ember')) };
+export async function run({ browser, wsPort, webPort, rec }) {
+  const table = [];
+  for (const sc of SCREENS) {
+    const P = await intoWorld(browser, wsPort, webPort, sc.name, sc.opts);
+    if (sc.unfold) {
+      const band = await H.unfoldBand(P).catch(() => null);
+      rec.ok(`${sc.tag}: the dashboard is open (guard)`, band && band.now === 'open', band);
+      await P.page.waitForTimeout(1500);
+    }
+    const g = await read(P);
+    console.log(`    ${sc.tag}: ${JSON.stringify(g)}`);
+    rec.ok(`${sc.tag}: in the Wheel's BroTown (guard)`, g.zone === 'wheel' && !!g.topBar, g);
+    const { on, off } = g;
+    rec.ok(`${sc.tag}: the view cap is in force`, !!on && on.viewCap === true, on);
+    /* 1. one rule, read by the camera, the renderer and the taps alike */
+    rec.ok(`${sc.tag}: the live view is the rule's (${g.viewW}x${g.viewH}), and the scale every tap converts with is its scale (${g.scaleX})`,
+      !!on && near(g.viewW, on.W) && near(g.viewH, on.H) && near(g.scaleX, on.scale, 0.002) && near(g.scaleY, on.scale, 0.002), g);
+    /* 2. only ever in, the canvas's shape kept */
+    rec.ok(`${sc.tag}: the cap only zooms in (${off && off.scale} -> ${on && on.scale}), the view the canvas's shape`,
+      !!on && !!off && on.scale >= off.scale - 1e-4 && near(on.W / on.H, off.W / off.H, 0.01), { on, off });
+    if (sc.upright) {
+      rec.ok(`${sc.tag}: an upright phone is UNCHANGED (${off && off.W}x${off && off.H})`,
+        !!on && !!off && near(on.scale, off.scale, 1e-4) && near(on.H, 1330, 3), { on, off });
+    } else {
+      const short = Math.min(on.W, on.H);
+      /* 3. an upright phone's area, or stopped at the letterbox */
+      rec.ok(`${sc.tag}: sees about an upright phone's area (${on.W}x${on.H} = ${(area(on) / 1e6).toFixed(2)}M px^2, was ${(area(off) / 1e6).toFixed(2)}M) or stopped at a ${SHORT_MIN} short side`,
+        area(on) <= REF_AREA * 1.01 || near(short, SHORT_MIN, 2), { on, off });
+      /* 4. never a letterbox the screen did not have */
+      rec.ok(`${sc.tag}: the short side is ${short} (never below ${SHORT_MIN} where it had more)`,
+        short >= Math.min(SHORT_MIN, Math.min(off.W, off.H)) - 2, { on, off });
+    }
+    table.push({ screen: sc.tag, canvas: `${g.canvasW}x${g.canvasH}`,
+      before: off && `${off.W}x${off.H} ${(area(off) / 1e6).toFixed(2)}M @${off.scale}`,
+      after: on && `${on.W}x${on.H} ${(area(on) / 1e6).toFixed(2)}M @${on.scale}` });
     await P.ctx.close().catch(() => {});
   }
 
-  /* ── 2. landscape runs the height-axis rule ── */
-  const L = await H.newPlayer(browser, {
-    name: 'Wide', wsPort, webPort, touch: true, viewport: { width: 844, height: 390 },
-  });
-  await H.enterWorld(L);
-  await L.page.waitForTimeout(2500);
-  const g = await geom(L);
-  console.log('    landscape 844x390: ' + JSON.stringify(g));
-  rec.ok('landscape: the shell is stamped landscape', g.orient === 'landscape', g);
-  /* ═══ v2.3.2247: THE RULE GAINED A THIRD TERM ═══
-     This read `scale = max(0.5, canvasH/480)` -- MIN_SCALE and REF_VIEW_H as
-     literals.  Both are derived from WORLD_ZOOM now (0.25 and 960 at zoom 3),
-     and a zone floor sits alongside them, so the copied form is red on a
-     working build.  Restating the whole new formula here would be TRAPS §37 --
-     recomputing the renderer's arithmetic proves nothing about the picture.
-     The claim this scenario exists to make is the one below it: LANDSCAPE
-     TAKES ITS RULE FROM THE SHORT AXIS.  So assert that, plus the two
-     invariants that actually bound the result. */
-  rec.ok('...landscape never asks for more world than the zone holds',
-    g.viewW <= g.zoneW + 1 && g.viewH <= g.zoneH + 1, g);
-  rec.ok('...so the view derives from the SHORT axis, not the long one',
-    Math.abs(g.viewH - Math.round(g.canvasH / g.scale)) <= 1
-      && Math.abs(g.viewW - Math.round(g.canvasW / g.scale)) <= 1, g);
-  /* Fairness: rotating must never buy MORE world than the portrait
-     reference sees (585 x ~922 = ~539K px^2 at the 390x844 target). */
-  /* v2.3.2247: measured from the portrait client above rather than the old
-     585x922 literal, which described a viewport that no longer exists. */
-  rec.ok('the 390pt portrait reference was captured (guard)',
-    PORTRAIT_REF.viewW > 0 && PORTRAIT_REF.viewH > 0, PORTRAIT_REF);
-  const portraitArea = (PORTRAIT_REF.viewW * PORTRAIT_REF.viewH) || (585 * 922);
-  /* ═══ v2.3.2249: THE RULE, WHERE THE RULE IS WHAT DECIDES ═══
-     Area parity is a rule about REF_VIEW_W/REF_VIEW_H.  It can only hold while
-     those constants are the binding term -- and in town they are not any more:
-     portrait floors on the character (FIGURE_SCALE_FLOOR 0.45) while landscape
-     floors on the town's WIDTH (1664, scale 0.507), so the map's aspect decides
-     the ratio and it lands 8% apart.  Neither orientation is "buying" anything;
-     both are filling the screen with the most world the town will give them,
-     which is the owner's own rule from v2.3.2247.
-     So the parity claim is asserted where it is a GAMEPLAY claim -- and town is
-     not it: `safe: true`, no monsters, nothing to spot.  Where it matters (the
-     1024x1024 combat zones) the same arithmetic runs the other way, landscape
-     seeing LESS: portrait 649x1024 = 664K, landscape 1024x432 = 442K.
-     Asserted here as: parity holds, OR the zone itself is what clamped one of
-     them, in which case the map decided and the rule was never in play. */
-  /* ═══ v2.3.3324: TOWN IS NOT IT, SO THE RULE IS ASKED OF A COMBAT ZONE ═══
-     The escape above was town's own width, 1664 px.  Town grew to 2176
-     (v2.3.2628) and sideways now rests on REF_VIEW_H, 960 world px tall:
-     2078x960 against 843x1330 upright, no map clamping it.  That is D10
-     (v2.3.2497, owner: "landscape zoom: town/worldview only; combat zones
-     stay") on safe ground, so this was red on a game working as designed from
-     v2.3.2628 on (VIEW_OUT moved the numbers, not the verdict).
-     mp-landscape-rotate checks D10's town half; this is the other, asked of
-     the real rule on both canvases (worldViewport.js __btWorldView): a 32x32
-     combat zone, 649x1024 upright, 1024x473 sideways. */
-  const areaLand = g.viewW * g.viewH;
-  const combatLand = await L.page.evaluate(() => window.__btWorldView && window.__btWorldView('ember'));
-  const cArea = (v) => (v && v.W > 0 && v.H > 0 ? v.W * v.H : 0);
-  rec.ok('...and in a COMBAT zone the visible AREA sideways does not exceed portrait\'s',
-    cArea(combatLand) > 0 && cArea(PORTRAIT_REF.combat) > 0
-      && cArea(combatLand) <= cArea(PORTRAIT_REF.combat) * 1.05,
-    { combatLand, combatPortrait: PORTRAIT_REF.combat, town: { area: areaLand, portraitArea } });
-  await L.ctx.close().catch(() => {});
+  /* 5. the off-ramp for one phone */
+  const O = await intoWorld(browser, wsPort, webPort, 'Sideold', { viewport: { width: 844, height: 390 }, touch: true, query: 'viewcap=0' });
+  const go = await read(O);
+  console.log('    sideways 844x390 ?viewcap=0: ' + JSON.stringify(go));
+  rec.ok('?viewcap=0: the cap is off for this tab, and the live view is the old wide one',
+    !!go.on && go.on.viewCap === false && !!go.off && near(go.on.scale, go.off.scale, 1e-4)
+      && near(go.viewW, go.off.W) && near(go.viewH, go.off.H), go);
+  await O.ctx.close().catch(() => {});
 
-  /* ── 3. the harness default resolves portrait ── */
-  const D = await H.newPlayer(browser, { name: 'Deft', wsPort, webPort });
-  await H.enterWorld(D);
-  await D.page.waitForTimeout(2500);
-  const gd = await geom(D);
-  console.log('    default 1000x780: ' + JSON.stringify(gd));
-  /* v2.3.2247: <= the zone, not == it.  A zone only BINDS when it is the
-     scarcest of the three terms; at the QA default (425x539 canvas) the
-     WORLD_ZOOM target is scarcer than town's depth, so the viewport stops
-     short of the map and that is correct.  The three phone pins above DO bind,
-     which is why they assert equality and this one asserts the bound. */
-  rec.ok('the QA default viewport still resolves to a PORTRAIT canvas',
-    gd.canvasH > gd.canvasW && gd.orient === 'portrait'
-      && gd.zoneH > 0 && gd.viewH <= gd.zoneH + 1 && gd.viewW <= gd.zoneW + 1, gd);
-  await D.ctx.close().catch(() => {});
+  console.log('\n    the view per screen (world px, area, scale), without the cap -> with it:');
+  for (const r of table) console.log(`      ${r.screen.padEnd(24)} canvas ${r.canvas.padEnd(10)} ${r.before}  ->  ${r.after}`);
 }
