@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "16f3106f7c964d6b0e455714f014902f653bbe4d",
+  "tree": "d7c3ebc0c5e8bfd4847ee77ed61811b2e2968b1c",
+  "committedAt": "2026-11-02T16:33:02-08:00",
+  "subject": "Merge pull request #1360 from hemibroscommunity-del/claude/worldmap-home",
+  "files": 7340,
+  "bytes": 843723314,
+  "listingSha256": "d0233c25dd3d19d77d6efb4c34305f715d3428ec79ce04fe22cb9794fc35576c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

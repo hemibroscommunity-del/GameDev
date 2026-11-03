@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9303eb64d7aa41ee24f358d0ec71e8f6b633aab1",
+  "tree": "e1b049ec2186ba8cd2b37fc1635e9aaede34caf4",
+  "committedAt": "2026-11-02T16:32:43-08:00",
+  "subject": "Merge pull request #1354 from hemibroscommunity-del/claude/loot-beams",
+  "files": 7335,
+  "bytes": 843705424,
+  "listingSha256": "698f348d7870d112db8e17f92110c1d37615ac5fac3852aa6af721d91d2f506e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
