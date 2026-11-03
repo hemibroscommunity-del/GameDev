@@ -1,0 +1,502 @@
+[
+ {
+  "id": "S5-1",
+  "title": "Old cross-room Arena DO tournament (queue → active → complete)",
+  "area": "server",
+  "verdict": "retired",
+  "oneLine": "Retired Arena Durable Object's queue and bracket; unrouted since gladiator.js took /api/arena, kept for its binding.",
+  "topConcern": "If ever re-routed, POST /result trusts any client-claimed winner and the entry fee is client-side.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "high",
+  "files": [
+   "server/src/arena.js:154",
+   "server/src/arena.js:60",
+   "server/src/index.js:369"
+  ],
+  "linked": [
+   "S5-3",
+   "src/ui/panels/buildings/PartyPanel.jsx"
+  ]
+ },
+ {
+  "id": "S5-2",
+  "title": "Duel machine (challenge → accept → active → resolved), with wager escrow and away clocks",
+  "area": "server",
+  "verdict": "needs-thought",
+  "oneLine": "A two-player duel: challenge, accept with escrowed wagers, active with 15 s away clocks, resolved by kill, forfeit or clock.",
+  "topConcern": "Walking into another zone never ends a duel: 10 minutes with no HP regen, fight-locked bag, and a hider wins the wager on hp fraction.",
+  "modes": [
+   "stuck",
+   "authority",
+   "race",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/duel.js:172",
+   "server/src/duel.js:328",
+   "server/src/index.js:6435",
+   "server/src/index.js:3676",
+   "server/src/dungeon.js:294"
+  ],
+  "linked": [
+   "S5-3",
+   "S5-13",
+   "S5-19",
+   "server/src/threat.js",
+   "src/networking/wsClient.js"
+  ]
+ },
+ {
+  "id": "S5-3",
+  "title": "Gladiator arena bracket (gathering → running → complete → cleared)",
+  "area": "server",
+  "verdict": "needs-thought",
+  "oneLine": "The room's one tournament: a 60 s gather, rounds of wager-0 arena duels, a crowned champion, then cleared.",
+  "topConcern": "ps._arenaMatch is lost on any reconnect, so a fighter who drops and returns can eat fish and heals mid-match.",
+  "modes": [
+   "persistence",
+   "guard-drift",
+   "race",
+   "stuck"
+  ],
+  "confidence": "high",
+  "files": [
+   "server/src/gladiator.js:389",
+   "server/src/gladiator.js:413",
+   "server/src/cooking.js:162",
+   "server/src/join.js:876",
+   "server/src/gladiator.js:371"
+  ],
+  "linked": [
+   "S5-2",
+   "S5-4",
+   "S5-21",
+   "src/ui/BroTown.jsx:9066",
+   "docs/specs/arena.md"
+  ]
+ },
+ {
+  "id": "S5-4",
+  "title": "Arena sponsorship stake (escrowed → settled pool | swept refund)",
+  "area": "server",
+  "verdict": "needs-thought",
+  "oneLine": "A spectator's stake on one arena match: escrowed at placement, settled as a pool off the server-observed winner.",
+  "topConcern": "Debit and stamp commit before the arena_stake record is written; a restart between them loses the gold with no record to refund.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/gladiator.js:465",
+   "server/src/gladiator.js:467",
+   "server/src/inbox.js:648",
+   "server/src/gladiator.js:758"
+  ],
+  "linked": [
+   "S5-3",
+   "docs/specs/inbox-escrow.md",
+   "docs/specs/sponsorship.md"
+  ]
+ },
+ {
+  "id": "S5-5",
+  "title": "Sparring session and its clones as fake players",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "An admin test spar: up to three AI clones living as playerState entries, cleared on leave, zone change or switch.",
+  "topConcern": "Clones are socketless playerState entries; every playerState walker must skip _spar itself (14+ checks in 10 files), so a new walker can miss it.",
+  "modes": [
+   "opacity",
+   "leak",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/spar.js:356",
+   "server/src/spar.js:650",
+   "server/src/index.js:3387",
+   "server/src/persistence.js:232"
+  ],
+  "linked": [
+   "S5-6",
+   "S5-10",
+   "src/game/spar.js",
+   "src/ui/panels/DevPanel.jsx"
+  ]
+ },
+ {
+  "id": "S5-6",
+  "title": "Spar clone AI behaviour loop",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "One clone's step: idle or engaged, rolling, lunging, shielding, swinging, shooting, knocked down and standing back.",
+  "topConcern": "A copy of the fight simulator's player on the room clock; simulator changes do not reach it.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/spar.js:713",
+   "server/src/spar.js:757",
+   "server/src/spar.js:832",
+   "server/src/spar.js:523"
+  ],
+  "linked": [
+   "S5-5",
+   "S5-8",
+   "tools/pvp-sim/sim.mjs"
+  ]
+ },
+ {
+  "id": "S5-7",
+  "title": "PvP engagement record, directional",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Per pair, who struck whom within 10 s, deciding which players area moves may hit.",
+  "topConcern": "At 2048 live pairs the whole map is cleared, forgetting real engagements until the next blow.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/pvpextras.js:160",
+   "server/src/pvpextras.js:210",
+   "server/src/pvpextras.js:230"
+  ],
+  "linked": [
+   "S5-10",
+   "S5-19",
+   "src/game/nmlAsk.js"
+  ]
+ },
+ {
+  "id": "S5-8",
+  "title": "A player's PvP statuses and holds",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Time-gated statuses and holds on a PvP target: element statuses, daze/stuck immunity, stagger, guard break, gust, kill-heal ledger.",
+  "topConcern": "Daze is written by three files with copied logic; the kill-heal ledger survives the attacker's death and refunds an older life's damage.",
+  "modes": [
+   "guard-drift",
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/pvpextras.js:348",
+   "server/src/pvplunge.js:185",
+   "server/src/pvpextras.js:636",
+   "server/src/pvpextras.js:598"
+  ],
+  "linked": [
+   "S5-6",
+   "server/src/monsterstatus.js",
+   "src/game/elemHits.js"
+  ]
+ },
+ {
+  "id": "S5-9",
+  "title": "Paid special window",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "A charged swipe opens three special claims for 3.5 s; outside it a special claim rolls as ordinary.",
+  "topConcern": "A reconnect inside the window forgets it, so a paid special lands as an ordinary hit.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/pvpbalance.js:86",
+   "server/src/index.js:3299",
+   "server/src/combat.js:2310",
+   "server/src/combat.js:2610"
+  ],
+  "linked": [
+   "server/src/combat.js:2353"
+  ]
+ },
+ {
+  "id": "S5-10",
+  "title": "No Man's Land skulls (red / white with hit-back rights)",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Red and white skulls with per-attacker hit-back rights, counted down in online time, stored in nml_state.",
+  "topConcern": "NML live flags change the worker's rule at once, but phones learn their caps only at the next join, so they disagree meanwhile.",
+  "modes": [
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/nomansland.js:448",
+   "server/src/nomansland.js:476",
+   "server/src/nomansland.js:558",
+   "server/src/join.js:1792"
+  ],
+  "linked": [
+   "S5-7",
+   "S5-11",
+   "S5-12",
+   "src/game/noMansLand.js",
+   "src/data/noMansLandRings.js",
+   "src/game/nmlAsk.js"
+  ]
+ },
+ {
+  "id": "S5-11",
+  "title": "No Man's Land kill attribution and the death's loss",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "The last NML blow within 5 s makes a death an NML kill; the killer takes bag, gold and spares.",
+  "topConcern": "Each loot credit is fire-and-forget; a restart after the victim's save loses that piece for both, deliberately never a duplicate.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/nomansland.js:670",
+   "server/src/nomansland.js:434",
+   "server/src/index.js:3449",
+   "server/src/index.js:3491"
+  ],
+  "linked": [
+   "S5-10",
+   "server/src/gearstash.js",
+   "server/src/farmorders.js:195"
+  ]
+ },
+ {
+  "id": "S5-12",
+  "title": "No Man's Land lock after a red skull's death",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "A red skull killed by their victim is locked out from attacking them for 30 minutes, stored.",
+  "topConcern": "An older worker's save drops the lock field during a rollback, so locks lapse early; acknowledged.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/nomansland.js:871",
+   "server/src/nomansland.js:891",
+   "server/src/nomansland.js:959",
+   "server/src/nomansland.js:980"
+  ],
+  "linked": [
+   "S5-10"
+  ]
+ },
+ {
+  "id": "S5-13",
+  "title": "Dungeon instance (start → waves → boss → done → cleaned)",
+  "area": "server",
+  "verdict": "needs-thought",
+  "oneLine": "A private run whose membership is standing in its zone; swept when empty, done after its boss.",
+  "topConcern": "Start and party pull never check a duel or arena match, so a dueller is taken into a private zone and the duel becomes unwinnable.",
+  "modes": [
+   "guard-drift",
+   "authority",
+   "leak",
+   "stuck",
+   "persistence"
+  ],
+  "confidence": "high",
+  "files": [
+   "server/src/dungeon.js:288",
+   "server/src/dungeon.js:363",
+   "server/src/dungeon.js:950",
+   "server/src/movement.js:381",
+   "server/src/index.js:1877"
+  ],
+  "linked": [
+   "S5-2",
+   "S5-3",
+   "S5-14",
+   "S5-15",
+   "server/src/wheeldungeon.js",
+   "server/src/slimeboss.js"
+  ]
+ },
+ {
+  "id": "S5-14",
+  "title": "Dungeon boss ability cycle",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "A boss's cast cycle: ready, one-second telegraph, execute, cooldown; charges, capped summons and an enrage ramp.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "server/src/dungeon.js:658",
+   "server/src/dungeon.js:621",
+   "server/src/dungeon.js:577"
+  ],
+  "linked": [
+   "S5-13",
+   "server/src/slimeboss.js",
+   "server/src/hits.js"
+  ]
+ },
+ {
+  "id": "S5-15",
+  "title": "A run's XP ledger and the boss's chest",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Fight XP noted per weapon in a dungeon zone, paid flat into those skills, with the chest, at the clear.",
+  "topConcern": "A reconnect mid-run forgets the ledger, so the clear's XP goes to the weapon in hand.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/dungeonreward.js:97",
+   "server/src/dungeonreward.js:112",
+   "server/src/dungeon.js:874"
+  ],
+  "linked": [
+   "S5-13",
+   "server/src/prog3.js"
+  ]
+ },
+ {
+  "id": "S5-16",
+  "title": "On-chain score checkpoint",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "A level milestone queues a preflight, nonce read, send and receipt wait, then stores chain_score; failures retry next level-up.",
+  "topConcern": "rpcCall's fetch has no timeout, so one hung RPC blocks the room-wide send queue and that player's lane until a restart.",
+  "modes": [
+   "stuck",
+   "persistence",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/chainscore.js:230",
+   "server/src/chainscore.js:164",
+   "server/src/onchain.js:187",
+   "server/src/chainwriter.js:307"
+  ],
+  "linked": [
+   "contracts/BroTownScores.sol",
+   "server/src/prog3.js",
+   "docs/specs/progression-onchain.md"
+  ]
+ },
+ {
+  "id": "S5-17",
+  "title": "Event cape ticket and cape",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "A contest ticket drops against a cached ledger, is redeemed for a cape, then worn or taken off.",
+  "topConcern": "Before the ledger warms after a restart, a winner's cape is stripped from the relayed look.",
+  "modes": [
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/eventcapes.js:252",
+   "server/src/eventcapes.js:541",
+   "server/src/combat.js:1865",
+   "server/src/join.js:1709"
+  ],
+  "linked": [
+   "S5-18",
+   "docs/specs/cape-and-contest.md"
+  ]
+ },
+ {
+  "id": "S5-18",
+  "title": "Event contest switch",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Whether the cape contest runs: a source constant, a durable stop flag and rate, and a one-shot start clear.",
+  "topConcern": "The contest's phase spans source, durable flags and a stored id; its history records silent vetoes nobody could see.",
+  "modes": [
+   "opacity",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/eventcapes.js:236",
+   "server/src/eventcapes.js:370",
+   "server/src/eventcapes.js:99",
+   "server/src/eventcapes.js:138"
+  ],
+  "linked": [
+   "S5-17",
+   "server/src/liveops.js"
+  ]
+ },
+ {
+  "id": "S5-19",
+  "title": "PvP consent pair shared by duels, arena matches and threats",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Pair key to expiry: the damage gate's 'you two may fight', written and cleared by duels, arena and threats.",
+  "topConcern": "One keyspace for three owners: a duel's resolve deletes a threat consent between the same pair; dormant while open PvP is off.",
+  "modes": [
+   "combo",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/index.js:3115",
+   "server/src/index.js:3146",
+   "server/src/duel.js:232",
+   "server/src/gladiator.js:388",
+   "server/src/threat.js:164"
+  ],
+  "linked": [
+   "S5-2",
+   "S5-3",
+   "server/src/threat.js"
+  ]
+ },
+ {
+  "id": "S5-20",
+  "title": "Event placement filter",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Which phone hears each tick event: placed events by distance or zone, stateful ones kept room-wide by allowlist.",
+  "topConcern": "Correct only against a 2026-10-13 client audit; a client handler keeping state from a placed type would desync far phones.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/eventplace.js:59",
+   "server/src/eventplace.js:114",
+   "server/src/eventplace.js:167"
+  ],
+  "linked": [
+   "server/src/tick.js",
+   "src/networking/gameEvents.js",
+   "src/networking/wsClient.js"
+  ]
+ },
+ {
+  "id": "S5-21",
+  "title": "Arena house prize budget",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "A per-clock-hour house prize counter, loaded once per room life and saved before the champion is paid.",
+  "topConcern": "A failed fire-and-forget save keeps memory right but a later restart restores the older total, adding budget back.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/gladiator.js:647",
+   "server/src/gladiator.js:664",
+   "server/src/gladiator.js:702"
+  ],
+  "linked": [
+   "S5-3"
+  ]
+ }
+]

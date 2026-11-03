@@ -1,0 +1,471 @@
+[
+ {
+  "id": "M4-1",
+  "title": "The chat composer over your bro: open, closed, stood down under a decision panel",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "chatBubbleBus.open with five closers and a two-way reconcile against the modal guard; the draft",
+  "topConcern": "Comment promises a guard close keeps the typed draft; every close runs setVal(''), so a trade invite landing loses the half-written line.",
+  "modes": [
+   "divergence",
+   "guard-drift"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/chatBubbleBus.js:7",
+   "src/ui/mobile/ChatBubble.jsx:219",
+   "src/ui/mobile/ChatBubble.jsx:242",
+   "src/ui/mobile/ChatBubble.jsx:267",
+   "src/ui/BroTown.jsx:10877"
+  ],
+  "linked": [
+   "modalGuardBus (M1)",
+   "M4-2",
+   "G5-1",
+   "G5-3",
+   "src/ui/panels/ChatPanel.jsx"
+  ]
+ },
+ {
+  "id": "M4-2",
+  "title": "Dictation mic in the chat composer (idle, listening, thinking)",
+  "area": "ui",
+  "verdict": "needs-thought",
+  "oneLine": "Web Speech recogniser per dictation: micState idle/listening/thinking and recRef",
+  "topConcern": "Abort runs only on unmount and the composer never unmounts: closing it mid-sentence leaves the mic hot and the words land in the next draft.",
+  "modes": [
+   "leak",
+   "race"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/ChatBubble.jsx:181",
+   "src/ui/mobile/ChatBubble.jsx:187",
+   "src/ui/mobile/ChatBubble.jsx:276",
+   "src/ui/mobile/ChatBubble.jsx:317",
+   "src/ui/GameApp.jsx:738"
+  ],
+  "linked": [
+   "M4-1",
+   "tools/qa/mp/mp-chatcompose.mjs"
+  ]
+ },
+ {
+  "id": "M4-3",
+  "title": "World Chat corner: the bell vs the open feed, its unread mark and its tap-to-close classifier",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Remembered fold flag, newest-shown mark for unread, two tap recognisers, busy and guard stand-down",
+  "topConcern": "Stale comments: shut is the default now, so own sent lines and everything since boot count unread; the remount premise is gone.",
+  "modes": [
+   "divergence",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/WorldChatFeed.jsx:101",
+   "src/ui/mobile/WorldChatFeed.jsx:189",
+   "src/ui/mobile/WorldChatFeed.jsx:256",
+   "src/ui/mobile/WorldChatFeed.jsx:403",
+   "src/ui/mobile/WorldChatFeed.jsx:478"
+  ],
+  "linked": [
+   "chatLogBus",
+   "uiBusyBus (M1)",
+   "modalGuardBus (M1)",
+   "capeStatusBus"
+  ]
+ },
+ {
+  "id": "M4-4",
+  "title": "The Auction House listing chat bus (storeChatBus): additions to P1-17",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "One open listing's threads and offers, loading and error, plus per-listing unread counts",
+  "topConcern": "'Opening…' has no timeout or reconnect re-ask, and setErr is not scoped to the open listing.",
+  "modes": [
+   "stuck",
+   "guard-drift",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/storeChatBus.js:34",
+   "src/ui/mobile/storeChatBus.js:108",
+   "src/networking/gameEvents.js:600",
+   "src/ui/panels/buildings/StoreChatPanel.jsx:165",
+   "src/ui/panels/buildings/StorePanel.jsx:268"
+  ],
+  "linked": [
+   "P1-17",
+   "P1-16",
+   "server storechat.js"
+  ]
+ },
+ {
+  "id": "M4-5",
+  "title": "The info popup: open window, stepper count, open chip, and the Spend that stays",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "One payload holder with per-window stepper and chip state, and a 3.6 s fallback for a staying Spend",
+  "topConcern": "Fallback hands Spend back while the first spend may still be in flight; nothing closes the popup on zone change or death.",
+  "modes": [
+   "race",
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/infoPopupBus.js:15",
+   "src/ui/mobile/InfoPopup.jsx:96",
+   "src/ui/mobile/InfoPopup.jsx:108",
+   "src/ui/mobile/InfoPopup.jsx:255",
+   "src/ui/mobile/sheet/HeroExpanded.jsx:1865"
+  ],
+  "linked": [
+   "HeroExpanded stay wait (M3)",
+   "NmlBadge (M1)"
+  ]
+ },
+ {
+  "id": "M4-6",
+  "title": "The old inspect card (InspectCard.jsx + inspectCardBus)",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "Profile card state; imported but never rendered, opened only by the dead wheel and a debug command",
+  "topConcern": "",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/inspectCardBus.js:8",
+   "src/ui/GameApp.jsx:754",
+   "src/ui/GameApp.jsx:456",
+   "src/ui/GameApp.jsx:535"
+  ],
+  "linked": [
+   "BroTown .bt-inspect player card",
+   "wheelBus"
+  ]
+ },
+ {
+  "id": "M4-7",
+  "title": "The legacy Build (T2) spend screen and its 'Apply 1 point?' confirm",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "Client-side legacy point spend: confirm bus, local apply, bt_rpg write, stats_update with whole tables",
+  "topConcern": "Client decides the spend and ships the whole allocation for the worker to clamp; only reachable without prog3.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/dash/T2Panel.jsx:215",
+   "src/ui/mobile/dash/SpendPointConfirm.jsx:49",
+   "src/ui/mobile/dash/spendConfirmBus.js:9",
+   "src/ui/mobile/sheet/HeroExpanded.jsx:3534",
+   "src/ui/mobile/sheet/heroSectionBus.js:3"
+  ],
+  "linked": [
+   "server stats_update",
+   "heroSectionBus"
+  ]
+ },
+ {
+  "id": "M4-8",
+  "title": "Restart character from Settings (idle, confirm, connecting, sending, offline, wipe, reload)",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Five-stage restart with a 400 ms reconnect loop, an 8 s fallback reload, and the server's snapshot-and-delete",
+  "topConcern": "The 8 s fallback reload skips the cache wipe the ack path does: a lost ack after a real wipe boots over old caches.",
+  "modes": [
+   "persistence",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/dash/SettingsPanel.jsx:141",
+   "src/ui/mobile/dash/SettingsPanel.jsx:172",
+   "src/networking/wsClient.js:1512",
+   "server/src/persistence.js:418",
+   "src/ui/panels/CharacterPicker.jsx:325"
+  ],
+  "linked": [
+   "CHAR_CACHE_KEYS (charRoster.js)",
+   "reconnectNow (wsClient.js)",
+   "CharacterPicker restart"
+  ]
+ },
+ {
+  "id": "M4-9",
+  "title": "The Friends page: view, row menu, open DM thread, and the optimistic DM / Block / Remove sends",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Friends, requests and blocked views; one open thread suppressing unread; fire-and-forget friend sends",
+  "topConcern": "Refused or dropped DMs show as sent (friend_error never read); Block on a mutual friend leaves friendship, row and DMs in place.",
+  "modes": [
+   "divergence",
+   "combo",
+   "guard-drift",
+   "stuck",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/dash/SocialPanel.jsx:101",
+   "src/ui/mobile/dash/SocialPanel.jsx:147",
+   "src/ui/mobile/dash/SocialPanel.jsx:180",
+   "src/ui/mobile/sheet/friendsSync.js:44",
+   "src/networking/gameEvents.js:652"
+  ],
+  "linked": [
+   "server friends.js",
+   "friendsSync.js / friendsModel.js (M3)",
+   "InspectPlayerPanel Block",
+   "chatMute.js readBlockedIds"
+  ]
+ },
+ {
+  "id": "M4-10",
+  "title": "The Pets page: one open row and its sub-step (rename, release ask, sell, Pet House ask)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Row accordion with exclusive sub-steps; every change asked of the worker; one guarded HTTP listing await",
+  "topConcern": "While List is in flight the row's other buttons stay live and its answer closes whatever row is open now; UI flicker only.",
+  "modes": [
+   "race",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/dash/PetsPanel.jsx:93",
+   "src/ui/mobile/dash/PetsPanel.jsx:208",
+   "src/ui/mobile/dash/PetsPanel.jsx:293",
+   "src/game/petBook.js:44",
+   "src/ui/storeApi.js:116"
+  ],
+  "linked": [
+   "server petbook.js / pets.js",
+   "P1-16 store listing"
+  ]
+ },
+ {
+  "id": "M4-11",
+  "title": "Feedback: the report's send and the board's up-vote toggle",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Four-state HTTP report send and a load/failed board with a per-ticket vote toggle",
+  "topConcern": "Rate limit and votes key on the body's playerId with no token: rotate ids past the limit, or toggle someone else's vote off.",
+  "modes": [
+   "authority",
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/dash/FeedbackPanel.jsx:40",
+   "src/ui/mobile/dash/FeedbackPanel.jsx:43",
+   "src/ui/mobile/dash/FeedbackPanel.jsx:176",
+   "server/src/feedback.js:107",
+   "server/src/feedback.js:149"
+  ],
+  "linked": [
+   "server Feedback DO",
+   "docs/AUDIT-2026-08-03.md H-9"
+  ]
+ },
+ {
+  "id": "M4-12",
+  "title": "Ranks: per-category leaderboard fetch with a 20 s refresh, and the Biggest-fish board's room ask",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Per-category cached boards with an alive flag per fetch, and a 30 s fish-board ask to the room",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/dash/LeaderboardPanel.jsx:120",
+   "src/ui/mobile/dash/LeaderboardPanel.jsx:105",
+   "src/ui/mobile/dash/FishBoard.jsx:32"
+  ],
+  "linked": [
+   "Leaderboard DO",
+   "server fishlog.js",
+   "G4-25"
+  ]
+ },
+ {
+  "id": "M4-13",
+  "title": "Achievements page: filter chip, the opened row, and the title ask's wait (page half)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Filter and one open row over the worker's record; a title ask waits at most 4 s",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/dash/AchievementsPanel.jsx:307",
+   "src/ui/mobile/dash/AchievementsPanel.jsx:241",
+   "src/ui/mobile/dash/AchievementsPanel.jsx:136",
+   "src/game/achievements.js:211",
+   "src/game/achievements.js:223"
+  ],
+  "linked": [
+   "G4-7",
+   "server achievements.js"
+  ]
+ },
+ {
+  "id": "M4-14",
+  "title": "The Codex's monster pages: grid, page, tab, drop card, elder toggle, and the one-shot open request",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "Grid, page, tab and drop-card navigation, with the NEW MONSTER card's one-shot request to open a kind",
+  "topConcern": "Unkeyed Page: switching the open monster keeps the old page's tab, elder form and drop card, and does not scroll to top.",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/dash/EncyclopediaPanel.jsx:64",
+   "src/ui/mobile/dash/EncyclopediaPanel.jsx:70",
+   "src/ui/mobile/dash/MonsterCodex.jsx:699",
+   "src/ui/mobile/dash/MonsterCodex.jsx:786",
+   "src/game/monsterCodex.js:110"
+  ],
+  "linked": [
+   "G5-39",
+   "M4-15",
+   "src/ui/panels/NewMonsterCard.jsx"
+  ]
+ },
+ {
+  "id": "M4-15",
+  "title": "The Codex stage: strips loading (baked, revoked) and the beat loop",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Strip load holder baking blob URLs revoked on change, and a setTimeout beat chain with a live flag",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/dash/CodexStage.jsx:115",
+   "src/ui/mobile/dash/CodexStage.jsx:322",
+   "src/ui/mobile/dash/CodexStage.jsx:81"
+  ],
+  "linked": [
+   "M4-14"
+  ]
+ },
+ {
+  "id": "M4-16",
+  "title": "The nav rail's tap decision (open, rest, sideways dashboard; unfold the band)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Maps button, dashboard mode and orientation to a dashboardPanelBus move",
+  "topConcern": "Documented toggle tapDestination is dead; re-tapping a lit destination re-opens its root instead of resting.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/dash/NavRail.jsx:122",
+   "src/ui/mobile/dash/NavRail.jsx:174",
+   "src/ui/mobile/dashboardPanelBus.js:88"
+  ],
+  "linked": [
+   "dashboardPanelBus / dashMinBus / BottomDashboard (M1)"
+  ]
+ },
+ {
+  "id": "M4-17",
+  "title": "Life Skills page: the in-page skill detail and the level-up seen marks",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "One-shot open of a skill's detail, and a per-browser seen-levels record written on mount",
+  "topConcern": "bt_skillsSeenLv is per browser, not per character: a second or restarted character is compared with another's levels.",
+  "modes": [
+   "persistence",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/dash/SkillsPanel.jsx:44",
+   "src/ui/mobile/dash/SkillsPanel.jsx:54",
+   "src/ui/mobile/sheet/skillsModel.js:137",
+   "src/ui/mobile/sheet/skillsModel.js:156",
+   "src/networking/charRoster.js:47"
+  ],
+  "linked": [
+   "skillsModel.js / skillDetailBus.js (M3)",
+   "CHAR_CACHE_KEYS"
+  ]
+ },
+ {
+  "id": "M4-18",
+  "title": "Quests pages: the journal list, one quest's page, and Track (page half)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Read-only journal views with one write, the tracked quest",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/ui/mobile/dash/QuestsPanel.jsx:154",
+   "src/ui/mobile/dash/QuestDetailPanel.jsx:61",
+   "src/ui/mobile/dash/QuestJournalPage.jsx:58",
+   "src/game/trackedQuest.js:57"
+  ],
+  "linked": [
+   "G4-1",
+   "G4-2",
+   "questDetailBus / scrollTap (M3)"
+  ]
+ },
+ {
+  "id": "M4-19",
+  "title": "The chat lane chips: the UI half of G5-1",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Chips set the lane mode and whisper name held in chatChannel.js",
+  "topConcern": "A mode whose lane dropped out lights no chip, shows All's hint and keeps the old lane's placeholder (adds to G5-1).",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/ChatChannelChips.jsx:21",
+   "src/ui/mobile/ChatChannelChips.jsx:48",
+   "src/ui/mobile/ChatChannelChips.jsx:100",
+   "src/game/chatChannel.js:77"
+  ],
+  "linked": [
+   "G5-1",
+   "M4-1",
+   "src/ui/panels/ChatPanel.jsx"
+  ]
+ },
+ {
+  "id": "M4-20",
+  "title": "The read-only dashboard pages (Clan/Party, Guild, Journey, Self, Stats, Map, About, Login Key, daily line, columns)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Mount, redraw-interval, unmount views over others' records; the Clan page switches on caps.clanparty",
+  "topConcern": "Self, Stats and Map are registered but unreachable by a player (only a QA test opens Map).",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/dash/ClanPanel.jsx:76",
+   "src/ui/mobile/dash/MapPanel.jsx:52",
+   "src/ui/mobile/BottomDashboard.jsx:436",
+   "src/ui/mobile/BottomDashboard.jsx:454",
+   "src/ui/mobile/dash/DailyRewardsCard.jsx:15"
+  ],
+  "linked": [
+   "party machine (S._party)",
+   "G4-9",
+   "BottomDashboard PANELS (M1)"
+  ]
+ }
+]

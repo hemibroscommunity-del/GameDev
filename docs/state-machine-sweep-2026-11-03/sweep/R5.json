@@ -1,0 +1,388 @@
+[
+ {
+  "id": "R5-1",
+  "title": "The renderer's own life: made (async), live, destroyed, rebuilt",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Pixi renderer birth (qa delay, picture restores, app.init), live use, destroy, rebuild by canvas epoch; module-level handles.",
+  "topConcern": "A cleanup during a pending init destroys nothing; the stale init later assigns itself, leaking a WebGL context or drawing to a detached canvas.",
+  "modes": [
+   "race",
+   "leak",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/pixiRenderer.js:311-315",
+   "src/rendering/pixiApp.js:704-753",
+   "src/ui/BroTown.jsx:4001-4008",
+   "src/ui/BroTown.jsx:8401-8421",
+   "src/rendering/picsOnce.js:209-216"
+  ],
+  "linked": [
+   "R5-2",
+   "R5-4",
+   "BroTown.jsx renderer effect",
+   "wsClient.js resume probe",
+   "entityRenderer registerPrewarmRenderer",
+   "wheelTrial.js wheelRendererSaid",
+   "TRAPS \u00a7139"
+  ]
+ },
+ {
+  "id": "R5-2",
+  "title": "The WebGL context: asked for, lost, restored, judged on a tab's return",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Context loss/restore stamps, depth-buffer patch, no-stencil latch, and the tab-return keep-or-rebuild-ground decision.",
+  "topConcern": "createPixiApp's loss listener lacks crashTrap's isConnected test, so each rebuild teardown logs a synthetic gl-context-lost into the crash ring.",
+  "modes": [
+   "divergence",
+   "persistence",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/pixiApp.js:658-672",
+   "src/debug/crashTrap.js:286-320",
+   "src/rendering/pixiRenderer.js:212-228",
+   "src/rendering/pixiRenderer.js:975-993",
+   "src/networking/wsClient.js:5064-5110"
+  ],
+  "linked": [
+   "R5-1",
+   "R5-10",
+   "crashTrap.js watchContextLoss",
+   "BroTown.jsx _rebuildRenderer",
+   "TRAPS \u00a7194"
+  ]
+ },
+ {
+  "id": "R5-3",
+  "title": "One frame's passes: the camera on whole device pixels, your place lent to the draw",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "update() shifts S.player by a sub-pixel for the world passes and restores it; throw-once latches; pool sweep clock.",
+  "topConcern": "One unwrapped silhouettes.clear() between shift and restore could leave the player shifted; practically unreachable.",
+  "modes": [
+   "stuck",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/pixiRenderer.js:582-700",
+   "src/rendering/pixiRenderer.js:829-833",
+   "src/rendering/pixiRenderer.js:285-292"
+  ],
+  "linked": [
+   "TRAPS \u00a7231",
+   "renderFrame.js",
+   "R5-4"
+  ]
+ },
+ {
+  "id": "R5-4",
+  "title": "A world that will not draw: the render-throw streak, the heal, the one rebuild",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Counts consecutive throwing frames (app.render and update) and asks for one rebuild exactly at the 90th.",
+  "topConcern": "A 90th throw inside the 5 s rebuild window is dropped (a throw is not a loss) and never asked again; only the watchdog recovers.",
+  "modes": [
+   "stuck",
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/pixiRenderer.js:844-888",
+   "src/game/renderFrame.js:44-71",
+   "src/ui/BroTown.jsx:4139-4214"
+  ],
+  "linked": [
+   "R5-1",
+   "R5-2",
+   "black-screen watchdog",
+   "renderHeal.js"
+  ]
+ },
+ {
+  "id": "R5-5",
+  "title": "The renderer's zone: which world-holders exist, cleared on every zone or map swap",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "onZoneChange observes zone/map identity and owns one-at-a-time Wheel objects, farm and arena holders plus clears.",
+  "topConcern": "Holders are made only on the zone-change edge; a same-zone map swap reruns the full entry clear.",
+  "modes": [
+   "stuck",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/pixiRenderer.js:508-571",
+   "src/rendering/pixiRenderer.js:601-604",
+   "src/rendering/pixiRenderer.js:924-964"
+  ],
+  "linked": [
+   "R5-7",
+   "R5-10",
+   "zoneTransitions.js deferred frees",
+   "zoneBannerOverlay noteZoneEntered"
+  ]
+ },
+ {
+  "id": "R5-6",
+  "title": "The loading-screen gate: global pictures loaded, baked, uploaded",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "preloadPlayerAssets pipeline: wave 1, wave 2, mask bake, alt sets, GPU uploads, program warms; report and QA steps.",
+  "topConcern": "__btPreloadReport can never say rejected (groups are caught before allSettled), so QA 'fulfilled' checks are vacuous; no per-group timeout.",
+  "modes": [
+   "guard-drift",
+   "stuck",
+   "leak",
+   "race"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/rendering/preloadAnimations.js:330-543",
+   "src/rendering/pixiRenderer.js:102-183",
+   "src/ui/BroTown.jsx:12223-12237",
+   "src/ui/IntroVideo.jsx:134-145",
+   "src/ui/BroTown.jsx:346-365"
+  ],
+  "linked": [
+   "R5-9",
+   "R5-7",
+   "R5-1",
+   "tools/qa/mp/mp-coldload.mjs",
+   "tools/qa/mp/mp-statdemo.mjs",
+   "tools/qa/mp/mp-brobadge.mjs",
+   "CLAUDE.md PRELOADING IS LAW"
+  ]
+ },
+ {
+  "id": "R5-7",
+  "title": "A zone's own art: loaded behind its loading screen, freed a beat after you leave",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "preloadZoneAssets/freeZoneAssets with a 400 ms deferred free against the destination named at scheduling time.",
+  "topConcern": "A death in the Wheel frees its art 400 ms out; the town stop returns after a 400 ms settle; order holds by one frame.",
+  "modes": [
+   "race",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/preloadAnimations.js:98-211",
+   "src/rendering/preloadAnimations.js:253-327",
+   "src/game/zoneTransitions.js:60-100",
+   "src/game/respawn.js:63-75",
+   "src/game/wheelHome.js:38"
+  ],
+  "linked": [
+   "R5-8",
+   "R5-12",
+   "R5-5",
+   "zoneTransitions.js",
+   "farmTrip.js",
+   "respawn.js",
+   "gameEvents.js dungeon_started"
+  ]
+ },
+ {
+  "id": "R5-8",
+  "title": "A zone banner's strip: cold, warming, held, let go",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per-theme decoded banner strip held in a Map with in-flight dedupe and a cache-only ready gate.",
+  "topConcern": "freeZoneBanner skips a theme still in flight; the warm then lands and holds the strip for a zone already left.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/zoneBannerPreload.js:59-126",
+   "src/rendering/preloadAnimations.js:146-156",
+   "src/rendering/preloadAnimations.js:281-301"
+  ],
+  "linked": [
+   "R5-7",
+   "R5-12",
+   "ui/zoneBannerOverlay.js"
+  ]
+ },
+ {
+  "id": "R5-9",
+  "title": "The DOM pictures warmed on the gate and held for the page",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Seven warm-decode-hold modules (controls, cue, XP bar, quest art, level-up, stat demo, chest); only chest memoised.",
+  "topConcern": "Each rejoin without reload re-bakes the blue slime into new unrevoked blob URLs and holds ~2.4 MB more decoded strips.",
+  "modes": [
+   "leak",
+   "race",
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/statDemoPreload.js:44-101",
+   "src/rendering/levelUpBurstPreload.js:31-118",
+   "src/rendering/controlsPreload.js:41-93",
+   "src/rendering/chestPreload.js:19-39",
+   "src/ui/BroTown.jsx:2294-2303"
+  ],
+  "linked": [
+   "R5-6",
+   "src/data/statDemoAssets.js setBlueSlimeSheets",
+   "docs/MEMORY-MAP.md"
+  ]
+ },
+ {
+  "id": "R5-10",
+  "title": "The ground under a zone: which ground is live, and the map put off for today's town",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "TileRenderer picks one of six grounds per rebuild, with deferred town map, post-rebuild reloads, label pool and memos.",
+  "topConcern": "Zone-label Text pool is hidden, never destroyed or emptied (TRAPS \u00a7192); _forceImageReload outlived its ImageBitmap reason.",
+  "modes": [
+   "leak",
+   "opacity",
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/tileRenderer.js:383-445",
+   "src/rendering/systems/tileRenderer.js:728-915",
+   "src/rendering/systems/tileRenderer.js:1206-1230",
+   "src/rendering/systems/tileRenderer.js:2016-2036",
+   "src/rendering/systems/tileRenderer.js:664-718"
+  ],
+  "linked": [
+   "R5-5",
+   "R5-2",
+   "wheelGround.js destroy keepTrial",
+   "tiledMaps.js freeZoneMap",
+   "TRAPS \u00a7192"
+  ]
+ },
+ {
+  "id": "R5-11",
+  "title": "The zones' minimap box: shown, held back, handed to the Wheel's box",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "52 px box visibility (zone loading, Wheel hand-over) with memo keys for land, exits, party rims, rail inset.",
+  "topConcern": "Rail inset re-measured only on a canvas-height change; door tiles kept in three hand copies.",
+  "modes": [
+   "divergence",
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/minimapRenderer.js:786-847",
+   "src/rendering/systems/minimapRenderer.js:738-784",
+   "src/rendering/systems/minimapRenderer.js:1060-1141"
+  ],
+  "linked": [
+   "R5-12",
+   "questRoute.js",
+   "partyMarks.js",
+   "tileRenderer exit tiles",
+   "zoneTransitions.js tile 10 gate"
+  ]
+ },
+ {
+  "id": "R5-12",
+  "title": "The Wheel's minimap: per-map build, town pictures held and freed, clock of land-crossing notes",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Wheel box build/scale/town-icon holds, and the only caller of land banner, No man's land and land-music notes.",
+  "topConcern": "resetWheelMusic is unreachable, so after a death BroTown plays the death land's track ~8 s; notes freeze whenever the box stops.",
+  "modes": [
+   "stuck",
+   "persistence",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/wheelMinimap.js:779-800",
+   "src/rendering/systems/wheelMinimap.js:1105-1145",
+   "src/rendering/systems/wheelMinimap.js:575-668",
+   "src/game/wheelMusic.js:75-107",
+   "src/game/noMansLand.js:199-221"
+  ],
+  "linked": [
+   "R5-11",
+   "R5-7",
+   "R5-8",
+   "game/wheelMusic.js",
+   "game/noMansLand.js",
+   "ui/zoneBannerOverlay.js noteWheelLand",
+   "ui/starCue.js",
+   "tools/qa/mp/mp-landmusic.mjs"
+  ]
+ },
+ {
+  "id": "R5-13",
+  "title": "The maps' ambient life: per-zone glows and pooled drifting particles",
+  "area": "rendering",
+  "verdict": "retired",
+  "oneLine": "Zone config, persistent glows and age-driven pooled particles; plays only on retired old-map zones.",
+  "topConcern": "No destroy and an untrimmed pool, bounded by caps; idle in the Wheel.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/ambientFx.js:111-144",
+   "src/rendering/systems/ambientFx.js:188-229",
+   "src/rendering/systems/ambientFx.js:347-431",
+   "src/data/ambientSpots.js:5"
+  ],
+  "linked": [
+   "worldFx.js ZONE_AIR",
+   "R5-5"
+  ]
+ },
+ {
+  "id": "R5-14",
+  "title": "The dev frame-rate overlay",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "?dev=1 DOM overlay: 5-minute frame history, 250 ms redraw throttle, console summaries.",
+  "topConcern": "Fed Date.now() though it assumes a monotonic clock; destroy deletes globals without an owner check.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/fpsOverlay.js:28-84",
+   "src/rendering/systems/fpsOverlay.js:215-222",
+   "src/rendering/pixiRenderer.js:403-407"
+  ],
+  "linked": [
+   "wsClient getTickTimes",
+   "R5-1"
+  ]
+ },
+ {
+  "id": "R5-15",
+  "title": "A monster move's warning, drawn: lane, fan, ring, two rings, a ring that follows",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Drawing half of S._telegraphZones (created by gameEvents, aged out by effectsRenderer) by move shape.",
+  "topConcern": "The follow shape writes tz.x/tz.y from the renderer; harmless while nothing else reads an entry.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/telegraphShapes.js:36-121",
+   "src/rendering/systems/effectsRenderer.js:6035-6047",
+   "src/networking/gameEvents.js:1560-1574"
+  ],
+  "linked": [
+   "server/src/telegraph.js",
+   "src/game/monsterMoves.js moveGeometry",
+   "effectsRenderer (R3/R4)"
+  ]
+ }
+]

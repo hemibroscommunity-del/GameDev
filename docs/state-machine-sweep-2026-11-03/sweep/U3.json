@@ -1,0 +1,677 @@
+[
+{
+"id": "U3-1",
+"title": "World map overlay: in-the-Wheel poll, open/close, frees on close",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "One open flag driven by a 300 ms Wheel poll, minimap tap, Town Hall row and the M key.",
+"topConcern": "openWorldMap() sets open without the inWheel test the M-key toggler makes; harmless because the render is gated and the poll resets it.",
+"modes": [
+"guard-drift",
+"combo"
+],
+"confidence": "low",
+"files": [
+"src/ui/WorldMapOverlay.jsx:148",
+"src/ui/WorldMapOverlay.jsx:153",
+"src/ui/WorldMapOverlay.jsx:338"
+],
+"linked": [
+"U3-2",
+"U3-3",
+"U3-4",
+"U3-5",
+"U3-6",
+"src/rendering/systems/wheelMinimap.js"
+]
+},
+{
+"id": "U3-2",
+"title": "World map view: first view, late town-view takeover, player's own view",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "waitTown/touched flags choose between the town view, you up close, and the player's own pan or zoom.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/WorldMapOverlay.jsx:691",
+"src/ui/WorldMapOverlay.jsx:309",
+"src/ui/WorldMapOverlay.jsx:477"
+],
+"linked": [
+"U3-1",
+"src/game/wheelTrial.js wheelHere"
+]
+},
+{
+"id": "U3-3",
+"title": "World map gestures: tap vs drag vs pinch",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Pointer map, pinch and press holders recognise a tap (drops a pin), a drag (pans) and a pinch (zooms).",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/WorldMapOverlay.jsx:373",
+"src/ui/WorldMapOverlay.jsx:411",
+"src/game/pinSlots.js:311"
+],
+"linked": [
+"U3-4"
+]
+},
+{
+"id": "U3-4",
+"title": "Map pins: two slots, drop/replace/lift, and the reached-it card",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "Per-slot row/place/armed/asked on S._mapPins, a module ask bus, a 250 ms card clock and a replace ghost.",
+"topConcern": "Module-level _ask outlives its card: an unanswered 'remove' card left in the Wheel comes back on return, as its clock only checks the pin exists.",
+"modes": [
+"stuck",
+"persistence"
+],
+"confidence": "low",
+"files": [
+"src/game/pinSlots.js:289",
+"src/game/pinSlots.js:335",
+"src/ui/PinCards.jsx:114",
+"src/ui/WorldMapOverlay.jsx:442"
+],
+"linked": [
+"U3-1",
+"U3-3",
+"src/game/mapPinPlaces.js",
+"src/data/townBoard.js"
+]
+},
+{
+"id": "U3-5",
+"title": "Map watch heartbeat for far players (presence v2)",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Open map sends map_watch on, renewed every 4 s, off on close; the worker holds an 8 s lease.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/WorldMapOverlay.jsx:255",
+"src/game/presence2.js:134",
+"server/src/presence2.js:69",
+"server/src/tick.js:699",
+"server/src/join.js:853"
+],
+"linked": [
+"U3-1",
+"server/src/presence2.js"
+]
+},
+{
+"id": "U3-6",
+"title": "World map detail tiles: fetched, held (cap 16), freed on close",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Per-tile absent/loading/held/failed lifecycle with retry, LRU trim and a generation guard across closes.",
+"topConcern": "A fetch that never settles keeps its loading slot; four such stall all later tiles for the session.",
+"modes": [
+"leak"
+],
+"confidence": "low",
+"files": [
+"src/ui/worldMapDetail.js:46",
+"src/ui/worldMapDetail.js:88",
+"src/ui/worldMapDetail.js:115"
+],
+"linked": [
+"U3-1"
+]
+},
+{
+"id": "U3-7",
+"title": "Harvest gesture: press, adoption, resumable meter, success",
+"area": "client",
+"verdict": "watch",
+"oneLine": "Which finger owns the harvest gesture, the stroke tracker and the 1.5 s meter, riding on S._extraction status.",
+"topConcern": "Eight holders across five files with a history of finger-ownership fixes; the client grades 'perfect', bounded server-side; the header's 'window closes' note is stale.",
+"modes": [
+"opacity",
+"authority",
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/ExtractionSwipeLayer.jsx:332",
+"src/ui/ExtractionSwipeLayer.jsx:506",
+"src/ui/ExtractionSwipeLayer.jsx:608",
+"src/game/lifeSkillRewards.js:529",
+"src/ui/BroTown.jsx:6812"
+],
+"linked": [
+"U3-8",
+"server/src/gathering.js extractions",
+"src/game/gesturePose.js",
+"docs/specs/gesture-cue.md"
+]
+},
+{
+"id": "U3-8",
+"title": "Hold E to harvest (desktop keyboard work)",
+"area": "client",
+"verdict": "fine",
+"oneLine": "kb holder {down, until, raf} works the gesture at a quick pace through wind-up and window, sharing settle/finish.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/ExtractionSwipeLayer.jsx:665",
+"src/ui/ExtractionSwipeLayer.jsx:671",
+"src/game/desktopControls.js:331"
+],
+"linked": [
+"U3-7"
+]
+},
+{
+"id": "U3-9",
+"title": "HUD popup queue: +XP and +G flights to the card or top bar",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "S._hudPopups entries lift, fall or float, land (releasing holds) and are pruned at 1.6 s.",
+"topConcern": "rAF requested every frame for the whole session (only re-render skipped); the retired v2.3.1638 bar code still computes state.",
+"modes": [
+"leak",
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/ui/XpFlyOverlay.jsx:544",
+"src/ui/XpFlyOverlay.jsx:196",
+"src/ui/XpFlyOverlay.jsx:257"
+],
+"linked": [
+"U3-10",
+"U3-11",
+"src/game/killXp.js"
+]
+},
+{
+"id": "U3-10",
+"title": "Skill card's held XP number: frozen in flight, then counts up",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Per skill: tracking, holding (count, 2.1 s failsafe) and counting (420 ms ease) of the displayed XP.",
+"topConcern": "A popup pruned before mounting never calls landXp; a steady gain stream refreshes heldAt, freezing a card until 2.1 s after the last.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/xpLanding.js:89",
+"src/ui/xpLanding.js:97",
+"src/ui/xpLanding.js:108"
+],
+"linked": [
+"U3-9",
+"server/src/prog3.js"
+]
+},
+{
+"id": "U3-11",
+"title": "Kill XP inbound tokens and the top bar's landing pulse",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "One idempotent token per kill flight holds the bar's +N; landing pulses via attributes on html.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/game/killXp.js:116",
+"src/ui/XpFlyOverlay.jsx:607",
+"src/ui/XpFlyOverlay.jsx:589"
+],
+"linked": [
+"U3-9",
+"src/ui/mobile/ZoneHeader.jsx"
+]
+},
+{
+"id": "U3-12",
+"title": "Level-up bursts: two-slot bus and the levelUpMsg funnel",
+"area": "ui",
+"verdict": "needs-thought",
+"oneLine": "Two fixed column slots, retire-by-seq, bounded dedup; fed by BroTown's levelUpMsg from many setters.",
+"topConcern": "Loading gate only on window._setLevelUpMsg; prog3_level, combat_credit and character levels use the raw setter, so bursts and their sting play under a veil.",
+"modes": [
+"guard-drift",
+"race"
+],
+"confidence": "medium",
+"files": [
+"src/ui/levelUpBursts.js:68",
+"src/ui/LevelUpBurstStack.jsx:56",
+"src/ui/BroTown.jsx:2168",
+"src/ui/BroTown.jsx:3369",
+"src/networking/wsClient.js:3455"
+],
+"linked": [
+"U3-13",
+"U3-24",
+"src/ui/loadingGate.js",
+"src/game/levelCelebration.js"
+]
+},
+{
+"id": "U3-13",
+"title": "One level-up burst's life: clock, measure-once, bubbles, sting",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Self-driven rAF clock from msg.ts, measure-once layout, one-shot points bubbles, 450 ms sting debounce.",
+"topConcern": "Hidden tab holds the slot until return; a replaced combat burst flies its bubbles from the unmount fallback (deliberate).",
+"modes": [
+"stuck",
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/LevelUpBurst.jsx:98",
+"src/ui/LevelUpBurst.jsx:241",
+"src/ui/LevelUpBurst.jsx:576"
+],
+"linked": [
+"U3-12",
+"src/ui/pointsFly.js"
+]
+},
+{
+"id": "U3-14",
+"title": "Zone-entry and land banners: one element, a timer timeline, dwell watch",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Single body element, timers guarded by _playing, 45 s repeat; Wheel lands after a 600 ms dwell.",
+"topConcern": "_wl.shown latched before playZoneBanner can refuse (no dock rect), losing that crossing's banner; the land watch asks no loading gate.",
+"modes": [
+"stuck",
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/zoneBannerOverlay.js:168",
+"src/ui/zoneBannerOverlay.js:336",
+"src/ui/zoneBannerOverlay.js:400",
+"src/rendering/pixiRenderer.js:546",
+"src/rendering/systems/wheelMinimap.js:1115"
+],
+"linked": [
+"src/rendering/zoneBannerPreload.js",
+"src/game/zoneTransitions.js"
+]
+},
+{
+"id": "U3-15",
+"title": "Guide arrow: four once-a-character lessons",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "A 250 ms ticker shows weapon, swap, points and Mayor lessons by priority; done marks are stored per device.",
+"topConcern": "'Once a character' is per device: on any new browser a veteran gets the swap lesson again for 10 s; seen-time resets on reload.",
+"modes": [
+"persistence"
+],
+"confidence": "medium",
+"files": [
+"src/ui/guideArrow.js:300",
+"src/ui/guideArrow.js:164",
+"src/ui/guideArrow.js:191",
+"src/ui/mobile/QuestCoach.jsx:1068"
+],
+"linked": [
+"src/ui/mobile/gearFlash.js",
+"src/game/pointsTips.js",
+"src/ui/loadingGate.js"
+]
+},
+{
+"id": "U3-16",
+"title": "Intro loading screen: four gates, then the fade",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Minimum time, assets (20 s cap), server (no cap) and world gates feed one maybeFinish latch.",
+"topConcern": "The fade's setTimeout(finish) is not cancelled on unmount, so onComplete can run after the overlay was taken away.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/IntroVideo.jsx:121",
+"src/ui/IntroVideo.jsx:67",
+"src/networking/serverReady.js:93",
+"src/ui/BroTown.jsx:12568"
+],
+"linked": [
+"src/networking/serverReady.js",
+"src/game/wheelHome.js",
+"src/ui/loadingGate.js"
+]
+},
+{
+"id": "U3-17",
+"title": "Login Key form: idle, checking, confirm, switching",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Declared phase string for key entry: check via POST /api/account/login, confirm in-game, switch reloads.",
+"topConcern": "An in-flight check outlives its closed modal: on the login door, backing out mid-check still switches character when the answer lands.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/account/AccountLoginForm.jsx:76",
+"src/networking/index.js:144",
+"src/networking/index.js:221",
+"server/src/account.js:113"
+],
+"linked": [
+"U3-18",
+"server/src/devicelock.js",
+"server/src/loginkeys.js"
+]
+},
+{
+"id": "U3-18",
+"title": "Login Key card: the Copied! flash",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Two-state copy feedback with a 1.6 s timer and a select-and-copy fallback.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/account/AccountKeyCard.jsx:36"
+],
+"linked": [
+"U3-17"
+]
+},
+{
+"id": "U3-19",
+"title": "Mystery reveal ceremony: queue, staged spin, hold, next",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "Module queue feeds an overlay: spinning stages, landed, held 1.7 s, then onDone and the next one.",
+"topConcern": "Pump takes from the queue inside a setItem updater (impure); a double-invoked updater would drop a reveal, bounded by revealBag's time limit.",
+"modes": [
+"race",
+"stuck"
+],
+"confidence": "low",
+"files": [
+"src/ui/reveal/RevealOverlay.jsx:88",
+"src/ui/reveal/RevealOverlay.jsx:145",
+"src/ui/reveal/revealBus.js:16",
+"src/game/revealBag.js:173"
+],
+"linked": [
+"src/game/revealBag.js",
+"server item_reveal / loot_credit.reveals"
+]
+},
+{
+"id": "U3-20",
+"title": "World is full: waiting screen, endless retry, Try now",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Room-full refusal phase of wsClient's connection: fixed-cadence retries behind an updating screen.",
+"topConcern": "Try now calls connect() during an in-flight handshake: sockets overlap, onclose never checks this===ws, and orphans can veil or supersede the live session.",
+"modes": [
+"race",
+"guard-drift",
+"leak"
+],
+"confidence": "medium",
+"files": [
+"src/ui/RoomFullScreen.js:108",
+"src/networking/wsClient.js:420",
+"src/networking/wsClient.js:481",
+"src/networking/wsClient.js:4589",
+"src/networking/wsClient.js:5056"
+],
+"linked": [
+"U3-21",
+"U3-22",
+"server/src/join.js _roomFullRefusal",
+"wsClient connection machine"
+]
+},
+{
+"id": "U3-21",
+"title": "Your bro is still in that fight: linger wait and timed reconnect",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "linger_wait/4010 phase: countdown screen and one reconnect timer until the body is gone.",
+"topConcern": "Socket-effect teardown hides the room-full screen but not this one, leaving a countdown over a cleared timer until the next answer.",
+"modes": [
+"guard-drift",
+"combo"
+],
+"confidence": "low",
+"files": [
+"src/ui/LingerScreen.js:62",
+"src/networking/wsClient.js:390",
+"src/networking/wsClient.js:4613",
+"src/networking/wsClient.js:6211"
+],
+"linked": [
+"U3-20",
+"server/src/linger.js"
+]
+},
+{
+"id": "U3-22",
+"title": "Final refusal screens: not the official site; another device / key",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Terminal origin/device/key phases from join_rejected closes 4015/4016/4017; exits are reload, door or real site.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/OriginScreen.js:66",
+"src/ui/DeviceScreen.js:76",
+"src/networking/wsClient.js:4497",
+"src/networking/wsClient.js:4517"
+],
+"linked": [
+"U3-20",
+"server/src/origin.js",
+"server/src/devicelock.js",
+"server/src/loginkeys.js"
+]
+},
+{
+"id": "U3-23",
+"title": "Star cue: big star shrinks onto the minimap's new quest star",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "lastKey dedupe of the quest target and one live animated element, held while a loading screen is up.",
+"topConcern": "lastKey is latched before the box check, so a new target on a frame with no box rect never plays.",
+"modes": [
+"stuck"
+],
+"confidence": "low",
+"files": [
+"src/ui/starCue.js:48",
+"src/ui/starCue.js:64",
+"src/rendering/systems/wheelMinimap.js:1144"
+],
+"linked": [
+"src/ui/loadingGate.js"
+]
+},
+{
+"id": "U3-24",
+"title": "TimedBanner: a banner that drives its own clock",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "rAF loop keyed on msg.ts re-renders the warning banner until it is ms old, then nothing.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/TimedBanner.jsx:21",
+"src/ui/BroTown.jsx:13820"
+],
+"linked": [
+"U3-12"
+]
+},
+{
+"id": "U3-25",
+"title": "Swallow the click of a tap that closed its window",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "One armed {x, y, at} eats that tap's mousedown/mouseup/click; ends on click, 700 ms or a new press.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/swallowTapClick.js:117",
+"src/ui/swallowTapClick.js:79"
+],
+"linked": [
+"U3-26",
+"TRAPS §247"
+]
+},
+{
+"id": "U3-26",
+"title": "Tap-to-dismiss and the UI sound delegate: tap-vs-drag recognisers",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Per-surface moved flag and a page-wide last-press record decide tap or drag by slop.",
+"topConcern": "The sound delegate tracks one pointer; a second finger's press silences the first finger's button tap.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/tapDismiss.js:37",
+"src/ui/uiSfxDelegate.js:104"
+],
+"linked": [
+"U3-25"
+]
+},
+{
+"id": "U3-27",
+"title": "Player portraits in lists: bounded cache with in-flight dedupe",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Per look: absent, compositing, cached URL or null; 48 entries, oldest evicted.",
+"topConcern": "A transient composite failure is cached as null, so that look shows the letter disc for the session; the mounted guard is a stale closure.",
+"modes": [
+"stuck",
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/ui/PlayerIcon.jsx:55",
+"src/ui/PlayerIcon.jsx:102"
+],
+"linked": [
+"src/rendering/characterPortrait.js"
+]
+},
+{
+"id": "U3-28",
+"title": "Pet sheet for portraits: loaded once, retried, then held",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Promise-dedupe Image loader with retry on error; each portrait redraws on its look signature.",
+"topConcern": "After the first portrait the 768x448 pet sheet stays referenced for the session, beside the world's copy.",
+"modes": [
+"leak"
+],
+"confidence": "low",
+"files": [
+"src/ui/petPortrait.jsx:15",
+"src/ui/petPortrait.jsx:62"
+],
+"linked": [
+"src/rendering/petSprites.js"
+]
+},
+{
+"id": "U3-29",
+"title": "Elemental status chips and the wore-off sound",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "150 ms poll renders time-gated S._*Until statuses from the ROWS table; a since-map cues their end.",
+"topConcern": "clearElemStatuses on a zone change plays the 'wore off' cue walking through a door (only death is excluded).",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/ElemStatusChips.jsx:64",
+"src/game/elemHits.js:184",
+"src/game/elemHits.js:334"
+],
+"linked": [
+"src/game/elemHits.js",
+"server hits.js MONSTER_HITS"
+]
+},
+{
+"id": "U3-30",
+"title": "Mayor Bro welcome video (dormant)",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "Playing/closed greeting with a once-per-browser flag; nothing sets showMayorGreeting.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/MayorGreeting.jsx:36",
+"src/ui/BroTown.jsx:12576"
+],
+"linked": []
+},
+{
+"id": "U3-31",
+"title": "Sprite HP bar damage ghost and flash (no callers)",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "Ghost hold/drain and flash on a rAF loop for a DOM HP bar that nothing renders.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/SpriteHpBar.jsx:33",
+"src/ui/SpriteHpBar.jsx:3"
+],
+"linked": [
+"entityRenderer canvas bars"
+]
+},
+{
+"id": "U3-32",
+"title": "Layout mode: upright column, computer wide, or one band",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Boot-time layout choice (address, tab, device) plus a live media query, read by deskWideActive and oneBandActive.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/deskWide.js:20",
+"src/ui/deskWide.js:77",
+"src/ui/oneBand.js:44",
+"src/ui/wheelMiniSize.js:32"
+],
+"linked": [
+"src/ui/mobile/playViewport.js",
+"TRAPS §214"
+]
+}
+]

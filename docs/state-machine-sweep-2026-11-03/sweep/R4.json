@@ -1,0 +1,553 @@
+[
+ {
+  "id": "R4-1",
+  "title": "Chat bubble lifecycle (made, updated, faded, destroyed)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per-speaker speech bubble: made on text, re-measured on change, faded at 4.5 s, destroyed when quiet.",
+  "topConcern": "",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:9623",
+   "src/rendering/systems/effectsRenderer.js:9339",
+   "src/game/stateCleanup.js:21",
+   "src/game/chat.js:282"
+  ],
+  "linked": [
+   "R4-2",
+   "entityRenderer _chatTipY/_bandTopY",
+   "src/game/chat.js"
+  ]
+ },
+ {
+  "id": "R4-2",
+  "title": "Emote pop over the head",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Emoji Text per player popping, settling, rising and fading over EMOTE_POP_MS, destroyed the frame it ends.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:9749",
+   "src/game/interactions.js:35",
+   "src/game/chat.js:471",
+   "src/game/emotes.js:25"
+  ],
+  "linked": [
+   "R4-1",
+   "rendering/emoteFx.js bandWithEmote"
+  ]
+ },
+ {
+  "id": "R4-3",
+  "title": "A ground loot pile's life on the phone",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Pile landing, lying, rare call, last-call pulse, expiry and disposal; the renderer splices S.groundLoot itself.",
+  "topConcern": "Renderer removes monster piles at 30 s (phone clock vs worker ts); worker keeps and grants them until 60 s, groundLoot.js says 60 s/forever.",
+  "modes": [
+   "divergence",
+   "authority",
+   "leak"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:10459",
+   "server/src/index.js:1439",
+   "server/src/index.js:4486",
+   "src/game/groundLoot.js:45",
+   "src/networking/wsClient.js:3944"
+  ],
+  "linked": [
+   "server _tickLoot / LOOT_EXPIRY_MS",
+   "src/game/groundLoot.js",
+   "gameEvents loot_drop/loot_despawn",
+   "docs/specs/item-drop.md",
+   "TRAPS §233",
+   "TRAPS §192"
+  ]
+ },
+ {
+  "id": "R4-4",
+  "title": "Ground decals: footprints and hit splatter fading by age",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Footprint and splatter decals fading by age against TTLs that stateCleanup filters by; pools hide.",
+  "topConcern": "",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:10941",
+   "src/rendering/systems/effectsRenderer.js:11005",
+   "src/game/stateCleanup.js:28",
+   "src/game/stateCleanup.js:35"
+  ],
+  "linked": [
+   "src/game/visualSystems.js",
+   "PRINT_TTL_MS"
+  ]
+ },
+ {
+  "id": "R4-5",
+  "title": "Snapped arrow pieces",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Queue-fed arrow-snap pieces flying, landing flat, resting, fading; capped and wiped on zone change.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:11103",
+   "src/rendering/systems/effectsRenderer.js:11178"
+  ],
+  "linked": [
+   "combatHelpers.queueArrowSnap",
+   "R4-8"
+  ]
+ },
+ {
+  "id": "R4-6",
+  "title": "Marks on props: slashes, stuck arrows and burn marks",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Prop marks with per-kind TTLs and caps, broken-object exit, zone wipe; your planted arrows reaped by tick.",
+  "topConcern": "Per-prop overlay containers are only hidden when empty, never destroyed inside a zone; the Wheel is one zone all session.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:11487",
+   "src/rendering/systems/effectsRenderer.js:11309",
+   "src/rendering/systems/effectsRenderer.js:11417",
+   "src/rendering/systems/effectsRenderer.js:11477"
+  ],
+  "linked": [
+   "projectiles.js _inProp",
+   "wheelObjects.js wheelScorch",
+   "combatHelpers.markProp"
+  ]
+ },
+ {
+  "id": "R4-7",
+  "title": "A gather node's drawn life (alive, broken, revived, see-through, promoted)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Node draw follows worker alive flag, one-shot break, orphan dispose, tree fade ease, layer promotion while worked.",
+  "topConcern": "",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:11737",
+   "src/rendering/systems/effectsRenderer.js:11786",
+   "src/rendering/systems/effectsRenderer.js:11704",
+   "src/rendering/systems/effectsRenderer.js:11667"
+  ],
+  "linked": [
+   "R4-9",
+   "R4-20",
+   "src/game/lifeSkillRewards.js extraction",
+   "nodeSync"
+  ]
+ },
+ {
+  "id": "R4-8",
+  "title": "One-shot effect queues (bursts, blasts, shockwaves, smoke, pops)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Game/wire queues drained into playing lists, stepped by age, destroyed at end; frost frames freed mid-play handled.",
+  "topConcern": "",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:12326",
+   "src/rendering/systems/effectsRenderer.js:12384",
+   "src/rendering/systems/effectsRenderer.js:12262",
+   "src/rendering/systems/effectsRenderer.js:12662",
+   "src/rendering/systems/effectsRenderer.js:12618"
+  ],
+  "linked": [
+   "projectiles.js",
+   "gameEvents arrow_boom / execute",
+   "hitMaterialFx.js"
+  ]
+ },
+ {
+  "id": "R4-9",
+  "title": "A vein breaking (crack, split, settle, fade)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Ore break once-flags cracked/popped/faded on the break's age, with a lateness bound for stalled frames.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:12511",
+   "src/rendering/systems/effectsRenderer.js:12452",
+   "src/rendering/systems/effectsRenderer.js:11796"
+  ],
+  "linked": [
+   "R4-7",
+   "wheelShatter.js",
+   "applyMiningReward _selfMinedAt"
+  ]
+ },
+ {
+  "id": "R4-10",
+  "title": "The fire goblin's burning ground (inert, lit, guttering, out)",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Fire patches restamped at receipt with remaining life and arm time: inert, lit, guttering, spliced.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:12721",
+   "src/networking/gameEvents.js:2473",
+   "server/src/firetrail.js"
+  ],
+  "linked": [
+   "server firetrail.js"
+  ]
+ },
+ {
+  "id": "R4-11",
+  "title": "Whirlwind wind-up ring, catch marks and vortex",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Wind-up ring for you and peers, client copy of the worker's catch scan into S._whirlCatch, then the vortex.",
+  "topConcern": "Catch measured at drawn positions while the worker scans its own; an edge monster can be painted caught and missed.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:13594",
+   "src/rendering/systems/effectsRenderer.js:13678",
+   "src/rendering/systems/effectsRenderer.js:12813",
+   "src/game/abilities.js:634",
+   "src/networking/gameEvents.js:1278"
+  ],
+  "linked": [
+   "server abilities.js whirl scan",
+   "entityRenderer _whirlGlow",
+   "game/whirlCatch.js",
+   "_updateOverlays (R3)"
+  ]
+ },
+ {
+  "id": "R4-12",
+  "title": "The smith at work (anvil, fire and sparks)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Smithing FX container shown while S._smithing lasts, strike-frame edge for sparks and the hammer sound.",
+  "topConcern": "",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:12936",
+   "src/game/smithing.js:37",
+   "src/rendering/systems/entityRenderer.js:13929"
+  ],
+  "linked": [
+   "SmithyPanel.jsx",
+   "entityRenderer tickSmithing"
+  ]
+ },
+ {
+  "id": "R4-13",
+  "title": "Elemental status looks on you and on peers",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Thirteen *Until status stamps on you or a peer drawn as looks; peer pre-filter repeats the active-status test.",
+  "topConcern": "Peer pre-filter omits _wobbleUntil/_frozenUntil, so a peer's post-daze wobble is never drawn; clearElemStatuses has no caller at all.",
+  "modes": [
+   "guard-drift",
+   "stuck"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:13539",
+   "src/rendering/systems/effectsRenderer.js:13066",
+   "src/game/elemHits.js:204",
+   "src/networking/gameEvents.js:3185",
+   "server/src/monsterstatus.js:341"
+  ],
+  "linked": [
+   "src/game/elemHits.js",
+   "server monsterstatus.js",
+   "ElemStatusChips.jsx",
+   "docs/specs/stronger-elem-hits.md"
+  ]
+ },
+ {
+  "id": "R4-14",
+  "title": "Your fire-lighting figure",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "S._firemaking's 700 ms light drives a once-through strip at its spot, then the tick lights the campfire.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:13886",
+   "src/ui/BroTown.jsx:9714",
+   "src/ui/BroTown.jsx:6664",
+   "src/game/zoneTransitions.js:403"
+  ],
+  "linked": [
+   "R4-15",
+   "campfireFx.js",
+   "standIns.js (R3)"
+  ]
+ },
+ {
+  "id": "R4-15",
+  "title": "Other players' harvest stand-ins and their pool",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Per-peer stand-in entry (code, start, drawn-last-frame, side) driven by relayed o._ex; reaped when the peer leaves.",
+  "topConcern": "Peer-left reap never destroys ent.gear legs/shirt/chest sprites; three hidden sprites per departed gatherer stay in gestureLayer all session.",
+  "modes": [
+   "leak",
+   "divergence"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:14074",
+   "src/rendering/systems/effectsRenderer.js:14572",
+   "src/rendering/systems/effectsRenderer.js:14477",
+   "src/rendering/systems/effectsRenderer.js:14277",
+   "src/rendering/systems/effectsRenderer.js:17182"
+  ],
+  "linked": [
+   "R4-14",
+   "R4-20",
+   "_peerFigure / standIns.js (R3)",
+   "campfireFx lights",
+   "S._peerGatherNode"
+  ]
+ },
+ {
+  "id": "R4-16",
+  "title": "Other players' sword swing, bow shot and block stand-ins",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Peer attack poses from relayed swing/shot stamps; entityRenderer hides the body, this pass draws the stand-in.",
+  "topConcern": "Swings and shots have no readiness handshake: body hidden on the stamp, stand-in skipped if the bake returns null, peer invisible 300-360 ms.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:15290",
+   "src/rendering/systems/effectsRenderer.js:15574",
+   "src/rendering/systems/entityRenderer.js:13283",
+   "src/networking/gameEvents.js:2109",
+   "src/rendering/systems/effectsRenderer.js:15586"
+  ],
+  "linked": [
+   "R4-17",
+   "_remoteBodyFramesFor LRU (R3)",
+   "S._peerBlockPose",
+   "S._peerBowFacingsReady"
+  ]
+ },
+ {
+  "id": "R4-17",
+  "title": "Your sword and bow stand-ins and the flags traded with entityRenderer",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Your swing, shot and block pose drawn from entityRenderer's flags; publishes _bowArtReady and the bow grip back.",
+  "topConcern": "_bowArtReady answers for the last shot's facing one frame late while a block can face anywhere; all facings preload today.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:15962",
+   "src/rendering/systems/effectsRenderer.js:16429",
+   "src/rendering/systems/effectsRenderer.js:16457",
+   "src/rendering/systems/entityRenderer.js:13956",
+   "src/rendering/systems/effectsRenderer.js:16715"
+  ],
+  "linked": [
+   "R4-16",
+   "R4-23",
+   "projectiles.js bow grip"
+  ]
+ },
+ {
+  "id": "R4-18",
+  "title": "Gear strip and dressed-shirt textures (loading, ready, failed, dropped)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per-key gear strip and dressed-shirt texture states with load guards, LRU, farm drop and rebuild release.",
+  "topConcern": "A strip whose one fetch fails is cached as [] forever; that armour or shirt vanishes from attack and gathering poses all session.",
+  "modes": [
+   "stuck",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:14652",
+   "src/rendering/systems/effectsRenderer.js:14826",
+   "src/rendering/systems/effectsRenderer.js:17099",
+   "src/rendering/systems/effectsRenderer.js:5488"
+  ],
+  "linked": [
+   "R4-15",
+   "R4-16",
+   "R4-17",
+   "R4-24",
+   "_fxPreload (R3)",
+   "gearSheets.js"
+  ]
+ },
+ {
+  "id": "R4-19",
+  "title": "The farmer's moves, made on the farm and let go of on leaving",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Farm strips, tools and garments made per generation behind the farm's loading screen, re-baked, freed on exit.",
+  "topConcern": "Leave and re-enter while tools load: the stale generation's Assets.unload destroys the texture the new generation just cut frames from.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:16984",
+   "src/rendering/systems/effectsRenderer.js:17111",
+   "src/rendering/systems/effectsRenderer.js:17037",
+   "src/rendering/systems/effectsRenderer.js:17310"
+  ],
+  "linked": [
+   "standIns.js farmFigureReady (R3)",
+   "src/game/farmWalk.js",
+   "entityRenderer body hide"
+  ]
+ },
+ {
+  "id": "R4-20",
+  "title": "The harvest's visuals and sounds, read off S._extraction",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Waiting/ready harvest phases read in eight places: bar, label, chopper, cook, clink, splash, grease, SFX loops.",
+  "topConcern": "SFX loops stop only when this pass runs each frame; an earlier unwrapped pass throwing leaves sizzle or water playing. Linger code is dead.",
+  "modes": [
+   "stuck",
+   "race",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:17911",
+   "src/rendering/systems/effectsRenderer.js:12094",
+   "src/game/lifeSkillRewards.js:239",
+   "src/ui/BroTown.jsx:6812",
+   "src/rendering/systems/effectsRenderer.js:13818"
+  ],
+  "linked": [
+   "extraction machine (lifeSkillRewards.js, BroTown.jsx)",
+   "ExtractionSwipeLayer.jsx",
+   "R4-7",
+   "waterAmbience.js"
+  ]
+ },
+ {
+  "id": "R4-21",
+  "title": "Fish flying into the bag (catch flights)",
+  "area": "rendering",
+  "verdict": "retired",
+  "oneLine": "Catch-flight arc animation still stepped each frame; nothing has pushed S._catchFlights since v2.3.1429.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:13756",
+   "src/rendering/systems/effectsRenderer.js:13744"
+  ],
+  "linked": [
+   "_flyResourceToInventory (DOM flyer)"
+  ]
+ },
+ {
+  "id": "R4-22",
+  "title": "The Wheel's dressing, made on first need and let go by an empty list",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Wheel managers (fish, auras, doors, signposts, race flags, trap marks) made on demand, drained with an empty list.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:12026",
+   "src/rendering/systems/effectsRenderer.js:12047",
+   "src/rendering/systems/effectsRenderer.js:12062",
+   "src/rendering/systems/effectsRenderer.js:18457"
+  ],
+  "linked": [
+   "wheelFish.js",
+   "landAuras.js",
+   "wheelDoors.js",
+   "wheelSignposts.js",
+   "raceFlags.js",
+   "trapFx.js"
+  ]
+ },
+ {
+  "id": "R4-23",
+  "title": "Photographing the world's effects for the stat scene",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Captures borrow stand-in sprites and window probes between frames and restore them in finally.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:16715",
+   "src/rendering/systems/effectsRenderer.js:16834",
+   "src/rendering/systems/effectsRenderer.js:17645"
+  ],
+  "linked": [
+   "R4-17",
+   "photoSheet.readbackFrames",
+   "StatDemo"
+  ]
+ },
+ {
+  "id": "R4-24",
+  "title": "Owning a baked picture (owned, GPU only, waiting for first draw, let go)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Each bake registered so re-bakes, farm exit or rebuild release it after pointing sprites at Texture.EMPTY.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/effectsRenderer.js:17481",
+   "src/rendering/systems/effectsRenderer.js:17531",
+   "src/rendering/systems/effectsRenderer.js:17565",
+   "src/rendering/systems/effectsRenderer.js:5833"
+  ],
+  "linked": [
+   "gpuOnly.js",
+   "heldNumbers.js",
+   "R4-18",
+   "R4-19",
+   "TRAPS §139"
+  ]
+ }
+]

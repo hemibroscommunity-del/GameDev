@@ -1,0 +1,340 @@
+[
+ {
+  "id": "R9-1",
+  "title": "Lock reticle: a chosen lock's brackets, and the softer in-reach reticle",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Shown/hidden and lock/reach mode of the target brackets, rebuilt on zoom change, recomputed from S each frame.",
+  "topConcern": "Its update sits inside the overlays' big try: an earlier throw leaves the brackets frozen visible at their last place.",
+  "modes": [
+   "race",
+   "combo",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/lockReticle.js:110",
+   "src/rendering/lockReticle.js:82",
+   "src/rendering/systems/effectsRenderer.js:8767",
+   "src/rendering/systems/effectsRenderer.js:8794"
+  ],
+  "linked": [
+   "S.lockedTarget lock machine (targeting/BroTown)",
+   "lock chip (effectsRenderer)"
+  ]
+ },
+ {
+  "id": "R9-2",
+  "title": "Stuck arrows on a monster: stuck, pinned to a texel, carried with the animation, cleared",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Each monster's predicted stuck shafts, pinned to art texels and carried frame to frame until death or respawn.",
+  "topConcern": "Arrows stick on the phone's own predicted contact, never the worker's verdict: a judged miss still leaves a shaft, on that phone only.",
+  "modes": [
+   "authority",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/projectiles.js:436",
+   "src/rendering/arrowPin.js:189",
+   "src/rendering/arrowPin.js:44",
+   "src/rendering/systems/effectsRenderer.js:7061",
+   "src/game/monsterCarry.js:23"
+  ],
+  "linked": [
+   "R9-3",
+   "monsterCarry CARRY_ALIVE",
+   "wsClient respawn reset",
+   "monsterCombat local respawn"
+  ]
+ },
+ {
+  "id": "R9-3",
+  "title": "Stuck-arrow bake entries: one offscreen texture per monster carrying arrows",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per-monster baked wound texture: baked this frame, hidden, freed after 3 s unseen.",
+  "topConcern": "RenderTexture keyed on exact texel size: a walking monster's moving pins can recreate it on many frames (GPU churn).",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/arrowWound.js:114",
+   "src/rendering/arrowWound.js:183",
+   "src/rendering/arrowWound.js:143",
+   "src/rendering/systems/effectsRenderer.js:7143"
+  ],
+  "linked": [
+   "R9-2",
+   "effectsRenderer.destroy (no baker teardown)"
+  ]
+ },
+ {
+  "id": "R9-4",
+  "title": "A player's death: the crumble, the standing skeleton, the boom, the bone pile",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per dying player corpse: photograph, flakes fall, skeleton shivers, booms, bones settle; keyed on the death timestamp.",
+  "topConcern": "A re-stamped S._deathStart (renderer seed then player_died) restarts the corpse from an already-hidden body: empty flakes, second boom.",
+  "modes": [
+   "race",
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/deathCrumble.js:113",
+   "src/rendering/deathCrumble.js:117",
+   "src/rendering/systems/entityRenderer.js:13814",
+   "src/networking/wsClient.js:3159",
+   "src/rendering/worldFx.js:374"
+  ],
+  "linked": [
+   "player death/respawn machine (gameEvents, wsClient, BroTown, respawn.js)",
+   "server _handlePlayerDeath order (index.js)"
+  ]
+ },
+ {
+  "id": "R9-5",
+  "title": "A monster type's sprite module: not loaded, loading, ready, let go",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Six hand-copied monster sprite modules: memoised load, swallowed failures, unload that clears tables and frees the bundle.",
+  "topConcern": "A failed fetch resolves 'ready' with no art; the Wheel then draws the monster as a procedural stand-in, never retried, against its spec.",
+  "modes": [
+   "stuck",
+   "race",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/fireGoblinSprites.js:117",
+   "src/rendering/zoneTextures.js:134",
+   "src/rendering/wheelMonsterArt.js:166",
+   "src/rendering/systems/entityRenderer.js:10343",
+   "src/rendering/zoneTextures.js:166"
+  ],
+  "linked": [
+   "wheelMonsterArt _looks",
+   "zoneTextures bundles/_gen",
+   "preloadAnimations freeZoneAssets",
+   "zoneTransitions 400 ms free timer",
+   "R9-6",
+   "R9-12"
+  ]
+ },
+ {
+  "id": "R9-6",
+  "title": "The lazy first-sighting kick for a variant's sheets",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Module flag plus kicked-key set that fires a variant's load once on first render; off in the Wheel.",
+  "topConcern": "A kicked load is tied to no zone, so a variant a zone does not list stays loaded; retired-path only today.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/monsterVariantSprites.js:172",
+   "src/rendering/monsterVariantSprites.js:224",
+   "src/rendering/wheelMonsterArt.js:227"
+  ],
+  "linked": [
+   "R9-5",
+   "wheelMonsterArt setVariantKicks"
+  ]
+ },
+ {
+  "id": "R9-7",
+  "title": "A monster's death on its display: normal, cut, own zone death or splat; live; done",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per-display death record keyed on the death stamp: chosen once, stepped while live, done after DUR_MS.",
+  "topConcern": "Ten-input decision across five files; Done relies on the display being destroyed, so 'no display' reads as 'no death' next frame.",
+  "modes": [
+   "divergence",
+   "leak",
+   "race",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/monsterDeathFx.js:985",
+   "src/rendering/systems/entityRenderer.js:9881",
+   "src/rendering/monsterDeathFx.js:145",
+   "src/rendering/systems/entityRenderer.js:11848",
+   "src/rendering/monsterDeathFx.js:499"
+  ],
+  "linked": [
+   "R9-8",
+   "R9-9",
+   "R9-10",
+   "deathBlow.js",
+   "entityRenderer burst clock",
+   "monsterCarry CARRY_DEAD"
+  ]
+ },
+ {
+  "id": "R9-8",
+  "title": "A look's own zone death: beat, pieces parting their own ways, fade, let go",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Zone-labelled death: 120 ms beat, pieces fly/pop/slump/topple/stay with bounces, fade, then freed; global live cap.",
+  "topConcern": "Orphans (display destroyed mid-death) are pruned only when the next own death is considered; a few JS objects.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/monsterDeathZonesFx.js:166",
+   "src/rendering/monsterDeathZonesFx.js:396",
+   "src/rendering/monsterDeathZonesFx.js:94",
+   "src/data/monsterDeathZones.js:92"
+  ],
+  "linked": [
+   "R9-7",
+   "data/monsterDeathZones.js",
+   "deathBlow.js"
+  ]
+ },
+ {
+  "id": "R9-9",
+  "title": "A slime's splat: flatten, spread, fade, gone",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Slime-sheet death splat: playing on its own clock, over at SPLAT_MS, disposed once.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/slimeSplat.js:179",
+   "src/rendering/slimeSplat.js:224",
+   "src/rendering/monsterDeathFx.js:1005"
+  ],
+  "linked": [
+   "R9-7",
+   "game/slimeSplatPose.js"
+  ]
+ },
+ {
+  "id": "R9-10",
+  "title": "Hit material bursts and the chip caches cut from the monster's own art",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Ring of particle records flying, landing by material mode, skidding, fading; LRU chip caches guarded by recent use.",
+  "topConcern": "Monster chip canvases are never let go on a zone change (only prop chips are), and are plain canvases, not GPU-only.",
+  "modes": [
+   "race",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/hitMaterialFx.js:1390",
+   "src/rendering/hitMaterialFx.js:761",
+   "src/rendering/hitMaterialFx.js:475",
+   "src/rendering/systems/effectsRenderer.js:11491"
+  ],
+  "linked": [
+   "combatHelpers.spawnHitDebris",
+   "R9-7",
+   "R9-8",
+   "wheelObjects.wheelPropArt"
+  ]
+ },
+ {
+  "id": "R9-11",
+  "title": "Monster shots in flight and landing: atlas, per-ball record, trail, splash, marks",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Minted shot atlas lifecycle plus a record per flying ball, landing effects and capped particle/mark lists.",
+  "topConcern": "The spare sprite pool is never trimmed: up to 260 hidden sprites stay in the particles layer for the page.",
+  "modes": [
+   "leak",
+   "divergence",
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/monsterShotFx.js:297",
+   "src/rendering/monsterShotFx.js:128",
+   "src/rendering/monsterShotFx.js:668",
+   "src/rendering/monsterShotFx.js:699"
+  ],
+  "linked": [
+   "projectiles.js ball sim and _shotImpacts",
+   "monsterShotArt.js (explicit half)",
+   "R9-12"
+  ]
+ },
+ {
+  "id": "R9-12",
+  "title": "A recoloured copy of a monster's sheets: building, ready per state, freed",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Blue slime recolour cache entry: async per-sheet build, per-state readiness, free on zone exit or Wheel look release.",
+  "topConcern": "Freed mid-build, the still-running closures publish ~4 MB of retinted canvases into a deleted entry nothing can free.",
+  "modes": [
+   "leak",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/monsterRecolor.js:136",
+   "src/rendering/monsterRecolor.js:188",
+   "src/rendering/preloadAnimations.js:289",
+   "src/rendering/wheelMonsterArt.js:182"
+  ],
+  "linked": [
+   "R9-5",
+   "wheelMonsterArt freeLook/lateFree",
+   "preloadAnimations freeZoneAssets",
+   "TRAPS §139"
+  ]
+ },
+ {
+  "id": "R9-13",
+  "title": "A monster hidden behind a thing, seen as its silhouette",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per-monster silhouette riding a covering prop: shown, hidden, freed after 1.5 s or when its host goes.",
+  "topConcern": "No hysteresis on the 35% cover or nearest-4 cut: edge pacing toggles visibility and parenting in a big layer.",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/monsterSilhouette.js:140",
+   "src/rendering/monsterSilhouette.js:265",
+   "src/rendering/pixiRenderer.js:761",
+   "src/rendering/pixiRenderer.js:515"
+  ],
+  "linked": [
+   "depthSort _ridesOn",
+   "R9-7",
+   "wheelObjects"
+  ]
+ },
+ {
+  "id": "R9-14",
+  "title": "Art tables that time other files' phases: snowman throw and burrow, mummy shred",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Frame splits and clamp/wrap rules for the snowman's throw and burrow and the mummy's shred; explicit halves.",
+  "topConcern": "Owning slice: the burrow's tick fallback keeps a stale _burFrom and a 400 ms _burUntil, so a missed event plays wrong.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/snowmanSprites.js:276",
+   "src/rendering/snowmanSprites.js:134",
+   "src/networking/wsClient.js:1292",
+   "src/rendering/systems/entityRenderer.js:10741"
+  ],
+  "linked": [
+   "snowman burrow machine (gameEvents monster_burrow, wsClient tick ph, entityRenderer)",
+   "mummy transform (data/monsterVariants.js maybeTransformMonster)"
+  ]
+ }
+]

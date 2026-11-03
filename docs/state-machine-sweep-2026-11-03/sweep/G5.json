@@ -1,0 +1,958 @@
+[
+ {
+  "id": "G5-1",
+  "title": "Chat lane picker (All / Area / Whisper / Party)",
+  "area": "ui",
+  "verdict": "watch",
+  "oneLine": "The composer's lane mode and whisper target, turned into a slash line at send time.",
+  "topConcern": "Whisper mode with its lane gone falls back to ROOM chat while the placeholder still says whisper; Party refuses instead.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/chatChannel.js:123",
+   "src/game/chatChannel.js:117",
+   "src/ui/mobile/ChatChannelChips.jsx:106",
+   "server/src/join.js:1792"
+  ],
+  "linked": [
+   "server chatlanes.js",
+   "G5-3",
+   "caps whisper/areaChat/partyChat"
+  ]
+ },
+ {
+  "id": "G5-2",
+  "title": "Chat mute list: local mirror, server list, one-time migration",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Who you muted: localStorage mirror, the worker's stored list, and a once-only upload of legacy mutes.",
+  "topConcern": "A mute tapped while the socket reconnects is dropped by the shim, then the join's server list replaces the local one: silently un-muted.",
+  "modes": [
+   "persistence",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/chatMute.js:105",
+   "src/game/chatMute.js:171",
+   "src/networking/wsClient.js:5522",
+   "src/ui/panels/InspectPlayerPanel.jsx:642",
+   "server/src/chatmod.js:247"
+  ],
+  "linked": [
+   "server chatmod.js",
+   "G5-3",
+   "SocialPanel.jsx",
+   "BroTown mutedList"
+  ]
+ },
+ {
+  "id": "G5-3",
+  "title": "Incoming chat lines: block/mute filters and the 5-second overhead bubble",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Each speaker's overhead bubble (5 s) and log line, filtered by block and mute lists in seven handlers.",
+  "topConcern": "Muted-speaker rule written seven times with three outcomes; [muted] lines still pop (old-worker fallback only).",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/chat.js:261",
+   "src/game/stateCleanup.js:21",
+   "src/rendering/systems/entityRenderer.js:238",
+   "server/src/tick.js:1202"
+  ],
+  "linked": [
+   "G5-2",
+   "server mute fan-out (tick.js, chatlanes.js, party.js)"
+  ]
+ },
+ {
+  "id": "G5-4",
+  "title": "/roll and /flip ask gate",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "A client 5 s cooldown stamp mirroring the worker's DICE.GAP_MS; the worker rolls.",
+  "topConcern": "Stamped even when the ask is dropped or the worker silently refuses (dead/dying); nothing comes back.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/chat.js:84",
+   "src/game/dice.js:52",
+   "server/src/dice.js:76"
+  ],
+  "linked": [
+   "server dice.js",
+   "mirror-audit DICE_GAP_MS"
+  ]
+ },
+ {
+  "id": "G5-5",
+  "title": "Townsfolk day loop (walk, work, attend, cap, bump)",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Where each BroTown townsperson is on his clock-driven loop, and the local holds (attend, cap, bump, solid).",
+  "topConcern": "Lil Bro copies a held sit or sleep while his tether walk jogs him: a pose transform over jog frames.",
+  "modes": [
+   "combo",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/townsfolkDay.js:94",
+   "src/game/townsfolkWalk.js:157",
+   "src/ui/BroTown.jsx:7294",
+   "src/rendering/systems/entityRenderer.js:17476"
+  ],
+  "linked": [
+   "G5-6",
+   "race.js raceDriveNpc",
+   "emoteFx.js"
+  ]
+ },
+ {
+  "id": "G5-6",
+  "title": "Townsfolk reactions and idle moves",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Per-townsperson copy, flex-back, dance-off, party cheer and idle emotes, gated by stamps and a 20 s line gap.",
+  "topConcern": "npc.chatBubble has five writers and only two respect the line gap; a quest hint can replace a reaction line.",
+  "modes": [
+   "opacity",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/townsfolkReact.js:84",
+   "src/game/townsfolkReact.js:208",
+   "src/rendering/emoteFx.js:204",
+   "src/game/mayorTalk.js:52"
+  ],
+  "linked": [
+   "G5-5",
+   "G5-7",
+   "G5-30",
+   "race.js lilSays"
+  ]
+ },
+ {
+  "id": "G5-7",
+  "title": "Town idle-chatter gate",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "A town-wide 20 s stamp and each townsperson's 30-60 s timer for idle lines in BroTown.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/townChatter.js:56",
+   "src/ui/BroTown.jsx:7412",
+   "src/ui/BroTown.jsx:7428"
+  ],
+  "linked": [
+   "G5-6"
+  ]
+ },
+ {
+  "id": "G5-8",
+  "title": "Character-creator preview camera, offscreen composite and splash prewarm",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "The creator's eased preview camera, shared offscreen composite, and the intro clip prewarm.",
+  "topConcern": "The 768x768 willReadFrequently offscreen canvas and a preloaded video are module/ref-held for the whole session after the creator.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/characterCreatorEffects.js:211",
+   "src/game/characterCreatorEffects.js:273",
+   "src/game/characterCreatorEffects.js:517",
+   "src/rendering/characterPortrait.js:1058"
+  ],
+  "linked": [
+   "NameModal stage",
+   "IntroVideo.jsx",
+   "characterPortrait __pseq"
+  ]
+ },
+ {
+  "id": "G5-9",
+  "title": "Character record restore (stored name and look)",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "The worker's stored character look re-applied to the trait stores at every state_sync, blanks included.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/characterRecord.js:220",
+   "src/game/characterRecord.js:150",
+   "src/networking/wsClient.js:1604",
+   "src/ui/BroTown.jsx:12451"
+  ],
+  "linked": [
+   "server join.js _loadOrCreateCharacter",
+   "charRoster.js CHAR_CACHE_KEYS"
+  ]
+ },
+ {
+  "id": "G5-10",
+  "title": "The pet's fetch run (look, go, at the pile, back)",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Your pet's run to a claimable loot pile and back, with skip list, leash, time and wall exits.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/petFetch.js:98",
+   "src/game/petFetch.js:175",
+   "src/ui/BroTown.jsx:7098",
+   "src/ui/BroTown.jsx:7196"
+  ],
+  "linked": [
+   "server pets.js FETCH_RANGE",
+   "pet vacuum (BroTown)"
+  ]
+ },
+ {
+  "id": "G5-11",
+  "title": "Pets record mirror and the trap's hide",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "The worker's last pets_state and a short local hide while a trap springs.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/petBook.js:24",
+   "src/game/trapping.js:308",
+   "src/game/trapping.js:228"
+  ],
+  "linked": [
+   "server petbook.js"
+  ]
+ },
+ {
+  "id": "G5-12",
+  "title": "Party strip folded to a chip",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Party HUD folded, pinned open, opened 4 s for news, and two-tap kick and leave arms.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/partyChip.js:54",
+   "src/ui/panels/PartyHUD.jsx:89",
+   "src/ui/panels/PartyHUD.jsx:230"
+  ],
+  "linked": [
+   "server party.js party_state"
+  ]
+ },
+ {
+  "id": "G5-13",
+  "title": "Sparring clones, the page's half",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "The worker's spar_state (your clones, score, notes) and a lock on a clone.",
+  "topConcern": "The 'left' note goes to a departed socket, so stale clone ids linger after a reconnect (harmless).",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/spar.js:44",
+   "src/game/sparTargets.js:70",
+   "src/game/targeting.js:537",
+   "server/src/spar.js:661"
+  ],
+  "linked": [
+   "server spar.js",
+   "G5-14"
+  ]
+ },
+ {
+  "id": "G5-14",
+  "title": "PvP fight memory: chosen foes, blows, bouts, attackers",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "Four id-keyed Maps with 60 s lapses behind No man's land's shield, auto-target and re-ask rules.",
+  "topConcern": "_pvpBouts is never pruned and is cleared whole at the 33rd distinct opponent, wiping live bout starts the re-ask rule reads.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/sparTargets.js:155",
+   "src/game/sparTargets.js:225",
+   "src/game/nmlAsk.js:216",
+   "src/networking/gameEvents.js:4055"
+  ],
+  "linked": [
+   "nmlAsk.js",
+   "noMansLand.js nmlCanAttack",
+   "shieldToggle.js",
+   "server nomansland.js"
+  ]
+ },
+ {
+  "id": "G5-15",
+  "title": "Duel and arena lock follows its opponent",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "The duel's player lock, re-pointed to the live peer each frame and re-taken in an arena match.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/duelLock.js:38",
+   "src/game/duelLock.js:69",
+   "src/networking/gameEvents.js:4653"
+  ],
+  "linked": [
+   "targeting.js lockedTarget",
+   "server duel/arena"
+  ]
+ },
+ {
+  "id": "G5-16",
+  "title": "Quiet phone and move diet: what a phone sends, and when",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "This phone's outbound pacing: move gaps, three diets, bundling, riders and the standing keepalive.",
+  "topConcern": "About fifteen fields across wsClient and BroTown, three diets and five server mirrors in one if/else chain; risky to change.",
+  "modes": [
+   "opacity",
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/quietPhone.js:160",
+   "src/game/moveDiet.js:101",
+   "src/networking/wsClient.js:5263",
+   "src/networking/wsClient.js:5345",
+   "src/ui/BroTown.jsx:8014"
+  ],
+  "linked": [
+   "server bundle.js",
+   "lookrelay.js",
+   "steadymovers.js",
+   "movepath.js",
+   "tick.js NEAR_R"
+  ]
+ },
+ {
+  "id": "G5-17",
+  "title": "The speed test run",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "A 35 s run switching renderer features off step by step and putting them back.",
+  "topConcern": "A hidden tab pauses rAF mid-step; that step's numbers are wrong and features stay off until shown.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/speedTest.js:279",
+   "src/game/speedTest.js:145",
+   "src/game/speedTest.js:122"
+  ],
+  "linked": [
+   "G5-18",
+   "lightfx toggles",
+   "paletteTex setOneBatchLive"
+  ]
+ },
+ {
+  "id": "G5-18",
+  "title": "Canvas resolution override (?res and live)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "The canvas pixel ratio: the screen's own, lowered by the address, or lowered live by the speed test.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/renderRes.js:49",
+   "src/game/renderRes.js:72"
+  ],
+  "linked": [
+   "G5-17",
+   "worldViewport",
+   "pixiApp"
+  ]
+ },
+ {
+  "id": "G5-19",
+  "title": "Renderer self-heal after a throwing update streak",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "A count of consecutive throwing frames that rebuilds the renderer once at 90.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/renderFrame.js:44",
+   "src/game/renderFrame.js:67"
+  ],
+  "linked": [
+   "window._rebuildRenderer"
+  ]
+ },
+ {
+  "id": "G5-20",
+  "title": "Per-frame expiry of transient flags (and the zone wipe that never ends)",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "The exit side of a dozen short-lived flags: flashes, telegraphs, bubbles, decals, rings, loot expiry.",
+  "topConcern": "_zoneWipe is written as a number by sixteen writers but read as {ts,duration,toZone}: never drawn, never expired.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/game/stateCleanup.js:19",
+   "src/rendering/systems/effectsRenderer.js:6731",
+   "src/game/zoneTransitions.js:1177",
+   "src/networking/gameEvents.js:942",
+   "src/networking/wsClient.js:3979"
+  ],
+  "linked": [
+   "G5-3",
+   "G5-42",
+   "groundLoot.js",
+   "zone transitions"
+  ]
+ },
+ {
+  "id": "G5-21",
+  "title": "Ambient beds: sea, crowd, fire",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Each bed's load, play, fade, stop and free lifecycle in the Wheel, audio-context-rebuild aware.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/ambientBeds.js:137",
+   "src/game/ambientBeds.js:166",
+   "src/data/gameDisplay.js:2136"
+  ],
+  "linked": [
+   "G5-22",
+   "G5-23"
+  ]
+ },
+ {
+  "id": "G5-22",
+  "title": "The river's loop on its banks",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "One looped river source rising near water, dropped when quiet, rebuilt on a new context.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/waterAmbience.js:105",
+   "src/game/waterAmbience.js:125"
+  ],
+  "linked": [
+   "G5-21",
+   "fishing loop"
+  ]
+ },
+ {
+  "id": "G5-23",
+  "title": "Slime idle proximity loop",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "One slime-idle looping source whose gain follows the nearest plain slime within 250 px.",
+  "topConcern": "After any 2+ s away BT_AUDIO rebuilds its context; the slot keeps the dead source and never rebuilds: silent until reload.",
+  "modes": [
+   "stuck",
+   "leak"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/game/slimeAudio.js:26",
+   "src/game/slimeAudio.js:58",
+   "src/data/gameDisplay.js:2039",
+   "src/data/gameDisplay.js:2136",
+   "src/ui/GameApp.jsx:255"
+  ],
+  "linked": [
+   "G5-21 (rebuild-aware)",
+   "G5-22 (rebuild-aware)",
+   "BT_AUDIO reclaim"
+  ]
+ },
+ {
+  "id": "G5-24",
+  "title": "The forge's anvil schedule",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "A next-due stamp for the Blacksmith's anvil strikes near the forge door.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/townAmbience.js:39"
+  ],
+  "linked": [
+   "wheelTownDoors",
+   "G5-27"
+  ]
+ },
+ {
+  "id": "G5-25",
+  "title": "Town melody interval and the splash sound wirings",
+  "area": "client",
+  "verdict": "retired",
+  "oneLine": "A 1.8 s melody interval calling a bgNote that has been a no-op since v2.3.1103; splash stubs.",
+  "topConcern": "A live interval runs every 1.8 s for the session doing nothing.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/townMusic.js:14",
+   "src/data/gameDisplay.js:2627",
+   "src/game/splashAudio.js:23"
+  ],
+  "linked": [
+   "music deck"
+  ]
+ },
+ {
+  "id": "G5-26",
+  "title": "Hit sounds: echo de-dupe and the ball-blow match",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Per-monster and per-ball stamps so a worker echo is not heard twice and a snowball blow is not a sword.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/hitSounds.js:122",
+   "src/game/hitSounds.js:162",
+   "src/game/hitSounds.js:197"
+  ],
+  "linked": [
+   "gameEvents monster_hit / monster_attack",
+   "projectiles.js"
+  ]
+ },
+ {
+  "id": "G5-27",
+  "title": "Sound rate limiters: cue gaps, peer budgets, hum gap, hurt gap",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Small time windows that cap repeated cues, other players' sounds, townsfolk hums and hurt grunts.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/eventSounds.js:58",
+   "src/game/eventSounds.js:122",
+   "src/game/npcVoices.js:85",
+   "src/game/ownSounds.js:41"
+  ],
+  "linked": [
+   "data/eventSounds.js CUE_GAP_MS"
+  ]
+ },
+ {
+  "id": "G5-28",
+  "title": "Low-health heartbeat",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Your heartbeat: off, armed, beating, beating fast, by share of health.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/ownSounds.js:59"
+  ],
+  "linked": [
+   "effectsRenderer low-health pulse"
+  ]
+ },
+ {
+  "id": "G5-29",
+  "title": "Monster noises: the notice edge and the chase calls",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Each monster's call when it starts chasing you and now and then after, with per-monster and global gaps.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/monsterNoises.js:64",
+   "src/game/monsterNoises.js:94",
+   "src/networking/wsClient.js:1257"
+  ],
+  "linked": [
+   "G5-40"
+  ]
+ },
+ {
+  "id": "G5-30",
+  "title": "Pose-start sounds, snores and your dance's beat",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Once-per-pose sounds for peers and townsfolk, repeating snores, and the dance beat on the music deck.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/moveSounds.js:81",
+   "src/game/moveSounds.js:137",
+   "src/data/gameDisplay.js:5187"
+  ],
+  "linked": [
+   "G5-6",
+   "music deck (gameDisplay.js)",
+   "wsClient _po"
+  ]
+ },
+ {
+  "id": "G5-31",
+  "title": "The sound studio: open, close and the heard ring",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "The lazily loaded studio window and a fixed ring of the last 48 sounds started.",
+  "topConcern": "A close during the first open's import is ignored and the studio opens anyway.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/soundStudio.js:115",
+   "src/game/soundStudio.js:132",
+   "src/game/soundStudio.js:86"
+  ],
+  "linked": [
+   "BT_AUDIO.play wrappers"
+  ]
+ },
+ {
+  "id": "G5-32",
+  "title": "Memory savers switched off from the Test panel",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Which memory savers the worker turned off: last word at load, live word on this socket.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/clientOff.js:94",
+   "src/game/clientOffApply.js:15",
+   "src/networking/wsClient.js:1550"
+  ],
+  "linked": [
+   "server clientoff.js"
+  ]
+ },
+ {
+  "id": "G5-33",
+  "title": "Rest: the ask, the answer and Well Rested",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "A rest ask in flight, the worker's answer, and the 30-minute Well Rested buff mirrored from player_state.",
+  "topConcern": "The walk-on farm bed rest is ungated by caps.rest but unreachable (no bed tile in the farm grid).",
+  "modes": [
+   "authority",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/rest.js:58",
+   "src/game/rest.js:91",
+   "src/networking/wsClient.js:2788",
+   "src/ui/BroTown.jsx:5614"
+  ],
+  "linked": [
+   "server rest.js"
+  ]
+ },
+ {
+  "id": "G5-34",
+  "title": "Points reset: two-tap confirm and the ask in flight",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "The Reset button's 4 s arm, one ask in flight, and the worker's answer in words.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/pointsReset.js:55",
+   "src/game/pointsReset.js:85",
+   "src/ui/mobile/sheet/HeroExpanded.jsx:3413"
+  ],
+  "linked": [
+   "server pointsreset.js",
+   "G5-35"
+  ]
+ },
+ {
+  "id": "G5-35",
+  "title": "First-points tip lesson",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "The coach's first level-up tip: wanted when calm, snoozed after 45 s, done after a point or three snoozes.",
+  "topConcern": "The snooze count is memory only; a reload restarts it.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/pointsTips.js:61",
+   "src/ui/mobile/QuestCoach.jsx:1447"
+  ],
+  "linked": [
+   "G5-34",
+   "guideArrow.js"
+  ]
+ },
+ {
+  "id": "G5-36",
+  "title": "Debounced bt_rpg cache save",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "One timer collapsing bursts of cache writes; cancelled before the character wipes.",
+  "topConcern": "A flush armed after the cancel (between reload() and unload) can write the old blob back; cosmetic warm start.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/rpgSave.js:39",
+   "src/networking/wsClient.js:1523",
+   "src/ui/panels/CharacterPicker.jsx:336"
+  ],
+  "linked": [
+   "worker rpg blob (authoritative)"
+  ]
+ },
+ {
+  "id": "G5-37",
+  "title": "T1 raw stats: may this client report them?",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "A one-way seeded flag deciding whether the client reports all five T1 stats or only non-zero ones.",
+  "topConcern": "The client is the only reporter of T1 stats; the worker only clamps to level*10+20 and refuses decreases.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/t1Sync.js:70",
+   "src/networking/wsClient.js:3098",
+   "src/ui/BroTown.jsx:4260",
+   "server/src/grids.js:712"
+  ],
+  "linked": [
+   "server grids.js _handleStatsUpdate",
+   "equipActions.js"
+  ]
+ },
+ {
+  "id": "G5-38",
+  "title": "Per-join flags: test mode and monster-move caps",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Test mode and the monster-move caps, replaced at every state_sync.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/testMode.js:13",
+   "src/game/monsterMoves.js:33",
+   "src/networking/wsClient.js:1544",
+   "src/networking/wsClient.js:1630"
+  ],
+  "linked": [
+   "server testmode.js",
+   "monstermoves.js"
+  ]
+ },
+ {
+  "id": "G5-39",
+  "title": "Monster Codex: counts, NEW facts, card and page request",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "The worker's kill counts, unread facts, a 3 s new-monster card and a one-shot open request.",
+  "topConcern": "NEW marks are memory only; a reload forgets them.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/monsterCodex.js:73",
+   "src/game/monsterCodex.js:96",
+   "src/game/monsterCodex.js:123"
+  ],
+  "linked": [
+   "server codex.js",
+   "MonsterCodex.jsx"
+  ]
+ },
+ {
+  "id": "G5-40",
+  "title": "Monster moments carried across a re-push",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Phone-side arrival, death and swell fields carried when a monster list is re-sent.",
+  "topConcern": "Carry lists kept by a comment rule only; several moment fields are not on them (harmless today).",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/monsterCarry.js:38",
+   "src/networking/wsClient.js:1809",
+   "src/networking/wsClient.js:4338"
+  ],
+  "linked": [
+   "TRAPS 245",
+   "G5-29"
+  ]
+ },
+ {
+  "id": "G5-41",
+  "title": "Another player's shot as drawn here",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Each peer projectile copy: held, flying at the shooter's speed, ended by life, reach, target or prop.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/visualSystems.js:287",
+   "src/networking/gameEvents.js:2190",
+   "src/game/zoneTransitions.js:406"
+  ],
+  "linked": [
+   "projectiles.js",
+   "peerShots.js"
+  ]
+ },
+ {
+  "id": "G5-42",
+  "title": "Motion as drawn: facing, peer glide, footprint anchors",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Your sticky facing, other players' eased positions and facing, and footprint trail anchors.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/visualSystems.js:49",
+   "src/game/visualSystems.js:117",
+   "src/game/visualSystems.js:210"
+  ],
+  "linked": [
+   "G5-20",
+   "wsClient _vx",
+   "peerDot.js"
+  ]
+ },
+ {
+  "id": "G5-43",
+  "title": "Joystick disc holds",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Holder sets that keep a joystick disc on screen while a tutorial or the coach points at it.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/controlVisibility.js:35",
+   "src/ui/mobile/ControlsTutorial.jsx:216",
+   "src/ui/mobile/QuestCoach.jsx:1431"
+  ],
+  "linked": [
+   "BroTown disc visibility"
+  ]
+ },
+ {
+  "id": "G5-44",
+  "title": "Effect lifetimes: whirl catch, shock-spark arcs, soot queue",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Three short holders and queues written by events and drained or expired by their renderers each frame.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/whirlCatch.js:71",
+   "src/game/shockSpark.js:66",
+   "src/game/slimeBlast.js:20",
+   "src/rendering/sootMarks.js:182"
+  ],
+  "linked": [
+   "effectsRenderer",
+   "server combat.js _shockSpark"
+  ]
+ },
+ {
+  "id": "G5-45",
+  "title": "Alliance answers bus",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "The worker's last alliance board, refusal and war end, kept for the Saloon window.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/alliance.js:114",
+   "src/networking/wsClient.js:2298"
+  ],
+  "linked": [
+   "server alliance.js"
+  ]
+ },
+ {
+  "id": "G5-46",
+  "title": "Walkability grids loaded at mount",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Per-zone walk grids from two async loads; a real mask wins over a prop-only grid.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/spriteSheets.js:35",
+   "src/game/spriteSheets.js:94"
+  ],
+  "linked": [
+   "isSolid",
+   "worldProps footprints"
+  ]
+ },
+ {
+  "id": "G5-47",
+  "title": "Achievement points chip: a rise after the quiet start",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "The top bar's AP chip flying a +N only for rises after a 2.5 s mount quiet window.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/apChip.js:29",
+   "src/ui/mobile/ZoneHeader.jsx:167"
+  ],
+  "linked": [
+   "achievements.js achvApTotal"
+  ]
+ }
+]

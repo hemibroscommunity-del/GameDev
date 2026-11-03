@@ -1,0 +1,210 @@
+# V9b · Gear and building acts the phone shows before the server answers
+- Verdict: needs-thought
+- Severity: medium (players lose sight of items: a Rare armour piece can vanish from the phone's bag for good while the server still has it, and a weapon can drop out of view until a rejoin. The hand can show a weapon the server is not swinging. A double tap burns a gem. The arena shows a bet that does not exist. No gold or item is lost on the server, and no honest player can cheat with these.)
+- Who can trigger it: honest player: (1) with 8 weapons in the bag, open the Hero page's Weapon picker and tap the weapon in hand; (2) tap Equip on a bought or traded weapon above your trained level; (3) right after coming back from the 2-minute idle logout or a network drop, swap two armour pieces of the same kind and different grade; (4) double-tap an amulet gem pill with 2+ of that gem; (5) as a spectator, stake on a gladiator who has already won this round, or bet again in a later tournament without reloading. Modified phone only: forge or harden during a No man's land fight. Owner only: the `shardcrack: false` kill switch.
+- Summary: When you change gear or use a building, the phone shows the result at once and asks the server, which has the final say. Often the server says no silently, so the phone keeps showing something untrue: a weapon you cannot really use, a weapon squeezed into a full bag, a refused bet. After a reconnect the phone can mistake a new Rare armour piece for the old one and drop it from your bag. The server's records stay right; players lose sight of items and burn gems.
+- Key files: src/ui/mobile/dash/ItemDetailPopup.jsx:927, server/src/gear.js:747, src/networking/wsClient.js:156, server/src/grids.js:1066, src/ui/panels/buildings/EnchantPanel.jsx:473, src/ui/panels/buildings/PartyPanel.jsx:1576
+
+## The machine
+- Entity, and where its state lives: one player's gear and building-panel acts, each kept twice. The phone's copy is `S.rpg` (saved to localStorage `bt_rpg`), plus BroTown React state for arena bets. The worker's copy is `playerState`, the stored record and the gear ledger.
+  - Weapons: `R.weapon/rangedWeapon/staffWeapon`, `R.weaponStash`, `R.activeSlot` against `ps.*` (server/src/gear.js:29-38).
+  - Armour: `R.armor/legsArmor` against `ps.armor/legsArmor` (server/src/grids.js:87-107). The bags `armorStash/legsStash/shieldStash/gearStash` are the phone's own. The worker keeps a union snapshot of them and echoes it, but the phone never reads it (server/src/gearstash.js:472-527).
+  - Amulet gem: `R.amulet.gem` against `ps.amulet.gem` (server/src/amulet.js:174-207).
+  - Cook and eat: `R.inventory/lifeSkills` against `ps.*` (server/src/cooking.js:111-193, 386-495).
+  - Gems: bag keys (server/src/gems.js:123-138).
+  - Stake: `arenaBets` (src/ui/BroTown.jsx:1914-1917) against storage `arena_stake:<tid>:<mid>:<pid>` (server/src/gladiator.js:465-467).
+- States:
+  - Agreed: both copies say the same.
+  - Predicted: the phone has moved; the worker has not answered yet (one round trip).
+  - Told-no: the worker refused and re-sent the fields or a result event; the phone snaps back.
+  - Silent-no: the worker refused with a bare `return`, or with an echo of nothing changed, which v2 does not send (server/src/persistence.js:724-744). The phone keeps its guess.
+  - Dropped: the socket was closed, so the phone moved and the worker never heard (src/networking/wsClient.js:5520-5531).
+  - Repaired-at-join: the first full snapshot overwrites the weapon fields; the armour rescue guesses by name and tierMult.
+  - Phantom: the phone shows something the worker does not have (a bet, a 9th weapon, a second copy of a worn piece).
+- Moves:
+  - Weapon Equip (card, Gear tab, picker): the phone splices out the pick and APPENDS the old weapon, then sends `equip_request {stashIdx}` and `set_active_slot`: Agreed → Predicted (src/ui/mobile/dash/equipActions.js:374-401; src/ui/mobile/dash/ItemDetailPopup.jsx:939-968).
+  - Worker accepts and swaps IN PLACE, then echoes: Predicted → Agreed (server/src/gear.js:751-769).
+  - Worker refuses a type or slot mismatch with `_resendPlayerState` of the five weapon fields, on v1 and v2: Predicted → Told-no (server/src/gear.js:738-743).
+  - Worker refuses the level gate, or a player dying/dead/disconnected, with a bare return, so nothing reaches v1 or v2: Predicted → Silent-no (server/src/gear.js:710, :747).
+  - Unequip:
+    - `unequipWeaponSlot` refuses at 8 on the phone (equipActions.js:96-102). The picker does not check (ItemDetailPopup.jsx:927-938).
+    - The worker refuses at 8, or a dying player, with a bare return: Predicted → Silent-no (server/src/gear.js:667, :677).
+  - `set_active_slot`: accepted with no answer, and any of the three names is taken (server/src/gear.js:779-791). Once the player cycles, the phone stops adopting the worker's hand (src/networking/wsClient.js:2812-2814).
+  - Forge refusals are bare returns (server/src/gear.js:492-608). Hardening answers `harden_result` with a reason (server/src/hardening.js:242-293).
+  - Armour or legs equip:
+    - The phone asks `canEquipItem`, then moves the piece and sends `stats_update {armorRef}` (equipActions.js:253-313).
+    - The worker refuses (gate, ref miss) and echoes only on a real change, so nothing reaches v1 or v2: Predicted → Silent-no (server/src/grids.js:87-93, 942-948, 1061-1072).
+  - Shield: the phone decides which is worn and tells the worker with `shield_wear`. An `unknown` shield moves nothing and is answered with nothing (server/src/shieldwear.js:95-141).
+  - Any send while the socket is closed is dropped: Predicted → Dropped (src/networking/wsClient.js:5520-5531). The idle logout keeps the game playing, and the first touch only starts the reconnect (src/networking/wsClient.js:4946-4955).
+  - Rejoin: the full `player_state` (server/src/persistence.js:730-732) replaces the weapon fields and the bag (src/networking/wsClient.js:2797-2799, 2931). Armour goes through `_rescueDisplacedArmor`, which matches by name and tierMult: Dropped/Silent-no → Repaired-at-join, or the piece is lost on the phone (src/networking/wsClient.js:156-188).
+  - Cook and eat: the phone predicts. Every refusal re-sends, except a cook from a dying, dead or disconnected player (server/src/cooking.js:401; eat :127-175).
+  - Amulet gem: the phone predicts with no pending gate (EnchantPanel.jsx:473-506). The worker's refusals are silent returns (server/src/amulet.js:176-192). Weapon and shield gems ask and wait, answered by `weapon_gem_result` / `shield_gem_result` (src/game/weaponGem.js:74-81; src/game/shieldGem.js:82-91).
+  - Crack and combine ask and wait, and are answered (src/game/shardCrack.js:69-136). The kill-switch cut predicts on the old pouch (src/ui/panels/buildings/GemcutPanel.jsx:149-176).
+  - Stake: sent and appended at once: Predicted (PartyPanel.jsx:1572-1583). The worker answers `arena_stake_placed` or `arena_stake_error` (server/src/gladiator.js:440-470). The error leaves the entry in place: Predicted → Phantom (src/networking/gameEvents.js:1824-1829).
+- Diagram edges:
+  - `Agreed --tap: phone moves first--> Predicted`
+  - `Predicted --worker accepts, echo--> Agreed`
+  - `Predicted --refusal re-sent (cook, eat, weapon mismatch, gem asks)--> Agreed`
+  - `Predicted --!! bare-return refusal (level gate, bag full, armour gate, amulet)--> SilentNo`
+  - `Predicted --!! socket closed, send dropped--> Dropped`
+  - `SilentNo --!! a later echo carries only the bag--> ItemMissingOnPhone`
+  - `SilentNo --rejoin full snapshot--> Agreed`
+  - `Dropped --rejoin full snapshot (weapons)--> Agreed`
+  - `Dropped --!! rejoin armour rescue, same name and tierMult--> PieceLostOnPhone`
+  - `Predicted --!! second amulet tap, no pending gate--> GemBurned`
+  - `StakeShown --arena_stake_placed--> StakePlaced`
+  - `StakeShown --!! arena_stake_error, entry kept--> PhantomBet`
+  - `PhantomBet --!! later tournament, same round number--> PhantomBet`
+  - `KillSwitchOff --!! shardcrack false, tab counts the empty pouch--> NoCut`
+
+## Concerns, verified
+- [CONFIRMED] M2-1 (concern 1), S7-12 (bag-full part of concern 2): the Hero page's Weapon picker unequips the weapon in hand with no bag-full check, and the worker refuses at 8 with a bare return.
+  - Result: the phone shows an empty hand and a 9th bag weapon. The next echo that carries only the bag then hides the weapon on the phone entirely, until a rejoin or the next equip into that slot. The worker keeps swinging it.
+  - Evidence: src/ui/mobile/dash/ItemDetailPopup.jsx:927-938 vs src/ui/mobile/dash/equipActions.js:96-102; server/src/gear.js:677; src/networking/wsClient.js:2931.
+  - How checked: traced the picker's toggle and the echo's adoption rules (weapon fields only when present, wsClient.js:2797-2799). The picker is live, reached from the Hero page's Weapon slot (src/ui/mobile/sheet/equipModel.js:170; src/ui/mobile/sheet/HeroExpanded.jsx:1247-1256) and the Bag page (src/ui/mobile/dash/InventoryPanel.jsx:842).
+  - Docs: the v2.3.2123 note fixed this exact report ("Just lost my magic stick"), but only in `unequipWeaponSlot` (equipActions.js:75-95).
+- [CONFIRMED] S7-12 (concern 2), M2-1 (concern 3): a bag weapon above your trained level goes on the phone, and the worker refuses it with a bare return, so neither v1 nor v2 hears anything.
+  - Result: until the next join, the phone shows the new weapon and its damage in hand. The worker swings the old weapon, or a tier-1 greatsword stand-in for a newly chosen bow or staff slot (server/src/combat.js:901-907).
+  - Evidence: server/src/gear.js:745-747; src/ui/mobile/dash/ItemDetailPopup.jsx:429 (`equip: true` for every bag weapon); src/ui/mobile/dash/itemActions.js:154; src/ui/mobile/dash/equipActions.js:374-401 (no `canEquipItem`).
+  - How checked: searched every current equip path for a level gate. Only the older town-inventory swap asks (src/ui/panels/InventoryPanel.jsx:939). Random weapon drops are gone (server/src/index.js:3889-3902), so such a weapon comes by trade, auction house, mail or an old drop.
+  - Docs: the worker assumes "the client's own gate shows the requirement" (gear.js:745-746), which is true only of the old panel.
+- [REFUTED] S7-12 (concern 2), M2-1 (concern 3), M2-2 (concern 1), P1-6 (concern 2), the gear-lock half of each: the guards' 30-minute gear lock answers with a plain echo, which v2 drops.
+  - Evidence: server/src/threat.js:248-259.
+  - How checked: a lock is set only by Call Guards (threat.js:150-154). That needs a threat, which is refused while `OPEN_PVP` is false (threat.js:98), and `OPEN_PVP` is hard-coded false (server/src/index.js:1493). Dormant.
+  - Docs: GDD-AS-BUILT.md:1038 ("coded and off").
+- [CONFIRMED] S7-12 (concern 1), M2-1 (concern 2): the phone appends the old weapon to the end of the bag while the worker swaps it into place, so for one round trip the two orders differ.
+  - Result: a second equip of the same type inside that window ends with the ORIGINAL weapon back in hand. A by-index request made then names a different weapon, for example an auction listing (server/src/store.js:684-693). Nothing is lost or copied, and the echo replaces the phone's bag.
+  - Evidence: src/ui/mobile/dash/equipActions.js:383-387; src/ui/mobile/dash/ItemDetailPopup.jsx:955-958; server/src/gear.js:751-757.
+  - How checked: walked bag [A, B], hand X, all greatswords, with two quick taps in the picker (it stays open). A different type is refused out loud (gear.js:742-743).
+  - Docs: the v2.3.3160 note (gear.js:731-737) expects a refusal here, which happens only when the types differ.
+- [CONFIRMED] S7-12 (concern 3), modified phone only: `forge_weapon` and `harden_weapon` check neither a fight nor a place.
+  - Result: in a losing No man's land fight, a modified phone can turn gold and bars (which go to the killer) into a kept worn blade. The Bank vault, the other way out of a death's reach, is gated to its door (server/src/bank.js:30). Choosing which spare to wear (`equip_request`) is ordinary play, not a drain.
+  - Evidence: server/src/gear.js:492-499, 578-618; server/src/hardening.js:241-300; server/src/nomansland.js:233-251.
+  - How checked: read both handlers end to end. The Forge and the Woodworker are town buildings, so an honest player cannot reach them in a fight.
+  - Docs: docs/specs/no-mans-land.md:832-833 exempts forging on purpose. That was written at v2.3.3183, before v2.3.3316 made every loss take the gold (no-mans-land.md:642).
+- [REFUTED] S7-12 (concern 4): `unequip_request` for armour, shield or amulet empties the slot with no bag.
+  - Evidence: server/src/gear.js:674-680.
+  - How checked: no page sends it (equipActions.js:105 and ItemDetailPopup.jsx:933 send weapon slots only; src/ui/mobile/dash/GearTab.jsx:185-190 hides the amulet's Unequip for this reason). A forged message only harms its sender.
+  - Docs: the GearTab.jsx:185 note.
+- [REFUTED] M2-1 (concern 4): a dropped `set_active_slot` leaves the two sides holding different weapons for the session.
+  - Evidence: src/ui/mobile/dash/WeaponBar.jsx:59-66; src/networking/wsClient.js:2812-2814.
+  - How checked: every hit claim names its own slot (src/game/monsterCombat.js:2383-2391; src/game/projectiles.js:1241, 1332), and the worker uses it (server/src/combat.js:899-907, 1151-1153). A stale worker hand changes no damage.
+  - Docs: the monsterCombat.js:2385-2389 note.
+- [CONFIRMED] M2-2 (concern 2): an armour swap made while the socket is closed is dropped, and at the rejoin the repair compares only name and tierMult.
+  - Result: every grade of a forged piece shares both, so swapping a Normal Copper Torso for a Rare one ends with two Normal torsos on the phone and no Rare. The worker still holds the Rare in its ledger and its bag snapshot, which the phone never reads.
+  - Evidence: src/networking/wsClient.js:156-188 (the "kept it" exit at :171), 5520-5531; server/src/armorforge.js:59-64, 96; server/src/gearstash.js:472-527 (a union that never removes).
+  - How checked: traced the idle logout (play continues; the first touch only starts the reconnect, wsClient.js:4946-4955). BroTown's own `stats_update` effect re-sends the worn piece, but it stamps its signature before a send that may be dropped (src/ui/BroTown.jsx:3451-3455), so it seldom repairs this.
+  - Docs: the loot credit fixed the same weakness with the gid in v2.3.2544 (wsClient.js:4119-4126); docs/specs/gear-stash.md:261-271 ("What this does NOT solve").
+- [PLAUSIBLE] M2-2 (concern 1): a refused armour swap is never undone on the phone.
+  - Evidence: server/src/grids.js:74-76 (the contract promises an echo), 87-93, 942-948, 1061-1072 (echo only on a real change, so nothing on v1 or v2).
+  - How checked: the mechanism is confirmed; an honest refusal is the unproven link.
+    - The phone asks the same level gate first (equipActions.js:253-264), and the lock is dormant.
+    - A ref miss needs a piece that is already gone, such as a listing whose answer was lost (M2-3). There BroTown's description re-send makes the worker wear a `legacy` copy instead (grids.js:950-985; gearprov.js:482-500).
+    - Either way, after the next join the old piece shows twice (worn and in the bag), because the rescue never takes it out of the bag (wsClient.js:162-188).
+  - Docs: the v2.3.3130 resend note (persistence.js:750-756); server/src/storegear.js:434-446.
+- [CONFIRMED] M2-2 (concern 3), cosmetic only: in the Hero page's chest or legs picker, tapping the Copper Plate row while wearing an iron or black steel piece takes the cosmetic branch. The character shows copper until the next armour echo or Bag-page render re-derives the art.
+  - Evidence: src/ui/mobile/dash/ItemDetailPopup.jsx:1030-1056, 1113-1120; src/rendering/gearCatalog.js:40-45, 186-194.
+  - How checked: the claimed phantom "In bag" piece does not survive. The banked iron layer is not in `GEAR_CATALOG` (copperplate only), and the picker's own sanitizer drops it on the same refresh (ItemDetailPopup.jsx:1074-1083).
+  - Docs: the v2.3.1703 and v2.3.1762 notes (the layer is derived).
+- [REFUTED] M2-2 (concern 4): an equip from a stale card wears a piece the bag no longer holds.
+  - Evidence: src/ui/mobile/dash/equipActions.js:282-285, 302-305, 408-411, 425-431.
+  - How checked: nothing live replaces those arrays under an open card. Only an old worker's red-skull loss does (src/game/noMansLand.js:309). Latent.
+  - Docs: none.
+- [REFUTED] P1-4 (concern 1): the Cookhouse predicts a cook that the worker's stricter matcher refuses.
+  - Evidence: src/ui/panels/buildings/CookPanel.jsx:296-300 vs server/src/cooking.js:361-363.
+  - How checked: no bag key minted today contains an ingredient key as a longer string. Seeds are `seed_carrot` and so on (server/src/farm.js:131-164), and "shard_herb_firebloom" exists only in a comment (cooking.js:354). A refusal re-sends the bag, skills and effects anyway (cooking.js:451-454). Latent.
+  - Docs: cooking.js:351-360.
+- [REFUTED] P1-4 (concern 2): a refused cook still completes luna_1 through the phone's quest flag.
+  - Evidence: CookPanel.jsx:516-517.
+  - How checked: luna_1 is in `QUEST_DORMANT` (server/src/data.js:1110-1116) and is refused by `_questBarred` (server/src/quests.js:155, 338). The worker takes the phone's flags only at a first connect (server/src/join.js:1243); otherwise the stored record wins (join.js:1054).
+  - Docs: handoff rule 18.
+- [REFUTED] P1-4 (concern 3): a double tap cooks twice before the panel redraws.
+  - Evidence: CookPanel.jsx:438, 455-456.
+  - How checked: the root is `createRoot` (src/main.jsx:2, 58) and `setRpgState` is React's own setter (src/ui/BroTown.jsx:1749-1752). A tap's update is drawn before the next tap, so the button disables itself. A second cook the worker cannot afford is refused and re-sent.
+  - Docs: none.
+- [REFUTED] P1-4 (concern 4): a cook the worker drops while you are dying leaves the dish and herbs drawn.
+  - Evidence: server/src/cooking.js:401.
+  - How checked: only the field cook can be pressed where a player dies (src/ui/BroTown.jsx:15183-15243). A death drops the bag into a pile (GDD-AS-BUILT.md §3.6), so the worker's own death echo carries the bag. Only the predicted Cooking XP lingers.
+  - Docs: the v2.3.3130 note.
+- [CONFIRMED] P1-6 (concern 1): the amulet's gem pill has no wait, and the worker has no "same gem" or "already set" check.
+  - Result: a double tap with two or more of that gem spends two gems. If that element is already set, the second gem is lost for nothing.
+  - Evidence: src/ui/panels/buildings/EnchantPanel.jsx:453-506; server/src/amulet.js:174-207.
+  - How checked: the pill stays while any gem of that element remains, and its handler reads the live count, so a redraw does not stop the second tap. The weapon socket refuses 'full' and 'same' (server/src/weapongem.js:263-271), and the shield waits for its answer (src/game/shieldGem.js:82-91).
+  - Docs: GEM-PLAN.md:445 (decision 10) keeps "old gem lost" for amulets, but says nothing about a repeat.
+- [REFUTED] P1-6 (concern 2, apart from the lock): the amulet's silent refusals leave the gem drawn.
+  - Evidence: server/src/amulet.js:176-192.
+  - How checked: no honest trigger found.
+    - The tier keys match (server/src/data.js:1426-1431 vs src/data/items.js:71-76), and so does the gem list (data.js:1396).
+    - Gem counts agree, because cracks and combines ask and wait.
+    - The Enchanter is a town building, so a player there is not dying.
+  - Docs: none.
+- [CONFIRMED] P1-6 (concern 3), cosmetic: the phone adds 20 Enchanting XP. The worker pays 400 for a gem the player made and 0 otherwise. With 0, nothing re-sends the skills, so the +20 stays drawn until the skills next change.
+  - Evidence: EnchantPanel.jsx:500; server/src/weapongem.js:225-234; server/src/amulet.js:203-206.
+  - How checked: read both sides.
+  - Docs: GEM-PLAN decision 11.
+- [REFUTED] P1-6 (concern 4), P1-12 (concern 2): a late answer clears a newer pending ask.
+  - Evidence: src/game/weaponGem.js:114; src/game/shieldGem.js:101; src/game/shardCrack.js:109, 127.
+  - How checked: none of these asks predicts anything on the phone (weaponGem.js:10-17; shieldGem.js:98-124; shardCrack.js:69-136). An extra ask is just another request the worker judges, and it needs an answer slower than 4 s.
+  - Docs: none.
+- [REFUTED] P1-6 (concern 5): with `weapongem: false`, the phone's old local slot comes back. This is the deliberate kill-switch behaviour.
+  - Evidence: EnchantPanel.jsx:329-365.
+  - How checked: documented.
+  - Docs: src/game/weaponGem.js:21-22.
+- [CONFIRMED] P1-12 (concern 1), owner only: with `shardcrack: false`, the Gem Cutter's fallback counts only the old pouch, which the worker empties into the bag at every join.
+  - Result: the tab says "No raw gems yet" and offers no Cut while the bag holds raw gems. No item is lost.
+  - Evidence: src/ui/panels/buildings/GemcutPanel.jsx:76-81, 207-227; server/src/amulet.js:410-434, 510; server/src/gems.js:123-138.
+  - How checked: `gemsIntoBag` has no switch of its own, and the switch's own comment says the old cut and the kill's raw gem come back "into the bag" (server/src/join.js:1792).
+  - Docs: none. server/test/shard-crack.test.mjs tests the switch on the worker only.
+- [CONFIRMED] P1-13 (concern 1): a refused stake still reads "Bet placed ... waiting for results" and hides the form for the round.
+  - Evidence: src/ui/panels/buildings/PartyPanel.jsx:1452-1457, 1572-1583; src/networking/gameEvents.js:1824-1829; server/src/gladiator.js:450-456.
+  - How checked: the form offers every gladiator not yet eliminated, and the worker refuses one whose match this round is already decided ('no-match'). Every writer of the bet list only appends. No gold moves, since the live path takes none on the phone.
+  - Docs: none.
+- [CONFIRMED] P1-13 (concern 2): the bet list lasts as long as the page and is matched on the round number alone.
+  - Result: a bet in round 1 of one tournament shows "Bet placed ... on ???" and hides the form in round 1 of every later tournament that session.
+  - Evidence: PartyPanel.jsx:1455-1457, 1577; src/ui/BroTown.jsx:1914-1917; server/src/gladiator.js:253, 349.
+  - How checked: each tournament has a new id and starts at round 1. The live bet record has no tournament id, while the legacy ones do (PartyPanel.jsx:1122, 1871).
+  - Docs: none.
+- [CONFIRMED] P1-13 (concern 3), cosmetic: a winner waiting for the next round gets the status 'waiting', and no card draws for it.
+  - Evidence: server/src/gladiator.js:178; PartyPanel.jsx:233, 386, 477, 580.
+  - How checked: the tournament card still draws for everyone (PartyPanel.jsx:603-650), so only the personal card is missing.
+  - Docs: the v2.3.3713 note never lists 'waiting' (gladiator.js:153-163).
+- [PLAUSIBLE] P1-13 (concern 4): the arena window freezes for an idle player.
+  - Evidence: PartyPanel.jsx:192-197.
+  - How checked: the poll runs only inside a render, and the window has no timer or effect of its own. The tree no longer redraws on a timer (src/ui/BroTown.jsx:1800-1806), and its intervals touch no React state (:3936, :8770). The unproven link: that nothing else redraws the tree for an idle queued player.
+  - Docs: none.
+- [CONFIRMED] P1-13 (concern 5), cosmetic: the Hall of Fame loads once per page, and its flag is set before the fetch, so a failed first load is never retried either.
+  - Evidence: PartyPanel.jsx:1659-1665.
+  - How checked: read it.
+  - Docs: none.
+- [REFUTED] P1-13 (concern 6): the four legacy bet wells and their local payouts. Deliberate: they are drawn only against workers without `caps.sponsor`.
+  - Evidence: PartyPanel.jsx:79-95, 1190, 1422.
+  - How checked: read the gates.
+  - Docs: the v2.3.3481 note.
+
+## What needs further thought
+- Design questions for the owner:
+  - When the server says no to a gear change, should it always say so out loud, as cooking already does, so the phone puts things back at once? Today a refused weapon level, a full bag, a refused armour swap and an amulet gem get no answer at all.
+  - Should the phone use the server's copy of your armour and shield bags and match pieces by their id, instead of keeping its own bags and guessing by name after a reconnect? That is the gear-stash plan's next step (M3).
+  - Now that a No man's land death takes your gold, should forging, hardening, the armour forge and the amulet craft join the "not while fighting a player" lock? The spec exempted them before gold could be lost.
+- Making it explicit: give every gear and building act on the phone one holder, `pendingAct {opId, act, fields it predicted, sentAt}`, cleared only by the worker's answer.
+  - The worker answers every such act, accepted or refused, with one result (`gear_result {opId, ok, reason}`) and a forced re-send of the fields it touched: the `_resendPlayerState` that cooking and the weapon-mismatch refusal already use.
+  - The phone predicts with the worker's own rules (swap in place, cap 8, the level gate), so a prediction equals the answer.
+  - Requests name a thing by id, or by index plus signature.
+  - The armour rescue matches by gid.
+  - Arena bets are keyed by tournament id and round and dropped on `arena_stake_error`.
+- Quick fixes vs design work:
+  - Quick fixes, a line or two each:
+    - add the picker's bag-full check (copy equipActions.js:96-102);
+    - `return refuseWeapons()` at gear.js:747, and the same re-send at gear.js:677;
+    - ask `canEquipItem` in `equipStashWeapon`;
+    - a re-send on a refused armour swap in grids.js;
+    - hide the amulet pill for the element already set, or give it a pending gate;
+    - drop the bet on `arena_stake_error` and add `tournamentId` to the live record and to `myBet`;
+    - a 'waiting' card;
+    - make `GemcutPanel` count with `gemCount`;
+    - a 3 s timer for the arena poll;
+    - retry and refresh the Hall of Fame.
+  - Design work, which needs the owner's decision:
+    - the armour rescue's identity, and the phone reading the server's bags (gear-stash M3);
+    - whether the crafting roads join the fight lock;
+    - whether the phone should reorder the bag the worker's way, which changes the order players see.

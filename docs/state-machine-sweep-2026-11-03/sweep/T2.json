@@ -1,0 +1,368 @@
+[
+ {
+  "id": "T2-1",
+  "title": "Ground Studio picture slots (upload, keep, finish, remove) and the game reading them",
+  "area": "tools",
+  "verdict": "watch",
+  "oneLine": "Each swatch version's upload, seamless tile and finished picture across five maps and two IndexedDB stores.",
+  "topConcern": "Game worker replaces the game copy per id with any studio entry: owner's phone hides game versions or newer chat-added pictures others see.",
+  "modes": [
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "public/tools/ground/app.js:334-353",
+   "public/tools/ground/app.js:244-283",
+   "public/tools/ground/app.js:355-390",
+   "public/tools/world/core/ground-worker.js:772-795"
+  ],
+  "linked": [
+   "T2-2",
+   "T2-3",
+   "T2-6",
+   "public/tools/world/store.js:26-31",
+   "tools/world/add-ground-pictures.mjs",
+   "T1 ground-worker swatch sources"
+  ]
+ },
+ {
+  "id": "T2-2",
+  "title": "Ground Studio \"made from an older prompt\" marks (brief and time stamps)",
+  "area": "tools",
+  "verdict": "needs-thought",
+  "oneLine": "Per-version brief and time stamps deciding which pictures and blends are marked to make again.",
+  "topConcern": "Zip keeps one madeFrom per swatch and restore stamps A, B and E with it, and re-stamps every time: stale marks lost or invented.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "high",
+  "files": [
+   "public/tools/ground/app.js:1273-1276",
+   "public/tools/ground/app.js:1348-1370",
+   "public/tools/ground/app.js:685-688",
+   "public/tools/ground/app.js:1015-1025"
+  ],
+  "linked": [
+   "T2-1",
+   "tools/world/add-ground-pictures.mjs:119",
+   "world/core/ground.js groundCatalog brief/revised/accepts"
+  ]
+ },
+ {
+  "id": "T2-3",
+  "title": "Ground Studio \"seamless the new way\" remake stamp",
+  "area": "tools",
+  "verdict": "fine",
+  "oneLine": "One-time remake of saved seamless tiles behind the stored prepMade version string.",
+  "topConcern": "",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "public/tools/ground/app.js:88-90",
+   "public/tools/ground/app.js:357-384"
+  ],
+  "linked": [
+   "T2-1",
+   "public/tools/world/core/ground-worker.js:776-789",
+   "docs/WORLD-MAP-PIPELINE.md:983-988"
+  ]
+ },
+ {
+  "id": "T2-4",
+  "title": "Ground Studio shared palette: automatic, frozen, or each swatch its own (dormant)",
+  "area": "tools",
+  "verdict": "retired",
+  "oneLine": "Shared ground palette mode (automatic or frozen), pinned to per-swatch own colours since v2.3.2961.",
+  "topConcern": "Restore always saves the palette, wiping a pre-v2.3.2961 frozen palette if ownColours ever returns to 0.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "public/tools/ground/app.js:219-231",
+   "public/tools/ground/app.js:1426-1432",
+   "public/tools/ground/app.js:1373-1374",
+   "public/tools/style/bible.js:63"
+  ],
+  "linked": [
+   "public/tools/world/core/ground-worker.js:778,876"
+  ]
+ },
+ {
+  "id": "T2-5",
+  "title": "Ground Studio preview: lay the ground, then paint (compose loop)",
+  "area": "tools",
+  "verdict": "fine",
+  "oneLine": "Preview compose dedupe: one in-flight promise plus a dirty flag, re-checked until the laid ground covers the view.",
+  "topConcern": "Preview's 1024 game px phone height predates the game's zoom-outs (now about 1330): about 1.3x zoomed in.",
+  "modes": [
+   "divergence",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "public/tools/ground/app.js:508-524",
+   "public/tools/ground/app.js:476-502",
+   "public/tools/ground/app.js:579-601",
+   "public/tools/ground/app.js:98"
+  ],
+  "linked": [
+   "T2-15",
+   "src/game/worldViewport.js:225"
+  ]
+ },
+ {
+  "id": "T2-6",
+  "title": "Ground Studio page boot (S.ready) and its handlers",
+  "area": "tools",
+  "verdict": "needs-thought",
+  "oneLine": "Page boot: load every saved picture, then render and wire all buttons.",
+  "topConcern": "One saved picture whose tile and upload both fail to decode throws out of loadAll; nothing is wired, so no backup, restore or remove.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "public/tools/ground/app.js:1437-1506",
+   "public/tools/ground/app.js:374-381"
+  ],
+  "linked": [
+   "T2-10",
+   "T2-1",
+   "T2-3"
+  ]
+ },
+ {
+  "id": "T2-7",
+  "title": "Ground Studio footstep choices and the walk player",
+  "area": "tools",
+  "verdict": "watch",
+  "oneLine": "Owner's per-ground footstep sound choices (planned or changed) and the page's lazily built audio player.",
+  "topConcern": "Restore replaces all step choices with the zip's ({} when none) while merging pictures: newer choices silently lost, owner's game follows.",
+  "modes": [
+   "persistence",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "public/tools/ground/app.js:797-803",
+   "public/tools/ground/app.js:1377-1380",
+   "public/tools/ground/app.js:808-851",
+   "public/tools/world/core/ground-worker.js:777,794"
+  ],
+  "linked": [
+   "public/tools/world/core/footsteps.js cleanSteps",
+   "tools/qa/mp/mp-wheelsteps.mjs:249-262"
+  ]
+ },
+ {
+  "id": "T2-8",
+  "title": "Object Studio: where each object's pieces come from (its own picture wins, else its sheet)",
+  "area": "tools",
+  "verdict": "needs-thought",
+  "oneLine": "Per object source: none, made from its sheet, or its own picture, which always wins.",
+  "topConcern": "Restore and the MADE re-make keep an own picture that no longer cuts: 'not made', no Remove, sheet shadowed, left out of backups.",
+  "modes": [
+   "stuck",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "public/tools/objects/app.js:1174-1184",
+   "public/tools/objects/app.js:538-558",
+   "public/tools/objects/app.js:465-483",
+   "public/tools/objects/app.js:289-320",
+   "public/tools/objects/app.js:747"
+  ],
+  "linked": [
+   "T2-9",
+   "T2-10",
+   "public/tools/objects/sheets.js sheetsFor"
+  ]
+ },
+ {
+  "id": "T2-9",
+  "title": "Object Studio sheet pictures: found, named, re-read, removed",
+  "area": "tools",
+  "verdict": "watch",
+  "oneLine": "Sheet pictures: parts found by count, auto-named in reading order, renamed by the owner, re-read on finder change.",
+  "topConcern": "Owner's sheet names survive restore only if the same part count is found; a keyOut change (MADE) silently replaces them with guesses.",
+  "modes": [
+   "persistence",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "public/tools/objects/app.js:433-461",
+   "public/tools/objects/app.js:408-423",
+   "public/tools/objects/app.js:486-495",
+   "public/tools/objects/sheets.js:94-95"
+  ],
+  "linked": [
+   "T2-8",
+   "T2-10",
+   "public/tools/style/process.js objectsIn"
+  ]
+ },
+ {
+  "id": "T2-10",
+  "title": "Object Studio boot and its once-only remakes (MADE, FINDER, SIZES_BASE)",
+  "area": "tools",
+  "verdict": "needs-thought",
+  "oneLine": "Page boot and three stored stamps that drive one-time remakes of sizes, sheets and pieces.",
+  "topConcern": "An unreadable stored piece PNG with matching stamps throws (no try) out of loadAll; no buttons are wired, so no backup or restore.",
+  "modes": [
+   "stuck",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "public/tools/objects/app.js:510-560",
+   "public/tools/objects/app.js:1237-1263",
+   "public/tools/objects/app.js:71-83"
+  ],
+  "linked": [
+   "T2-6",
+   "T2-8"
+  ]
+ },
+ {
+  "id": "T2-11",
+  "title": "Object Studio stage: the one object shown at game size",
+  "area": "tools",
+  "verdict": "needs-thought",
+  "oneLine": "The one object shown at game size beside the bro: hidden, drawing, showing.",
+  "topConcern": "'As big as on your phone' uses the pre-v2.3.2997 view (1024 px); the game shows about 1330, so the stage is about 1.36x too big.",
+  "modes": [
+   "divergence",
+   "race",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "public/tools/objects/app.js:589-646",
+   "public/tools/objects/app.js:89-91",
+   "public/tools/objects/app.js:763",
+   "public/tools/objects/app.js:770-776"
+  ],
+  "linked": [
+   "T2-15",
+   "src/game/worldViewport.js:199-225",
+   "src/game/viewCap.js REF_H"
+  ]
+ },
+ {
+  "id": "T2-12",
+  "title": "Object Studio \"made from an older prompt\" marks (prompt fingerprints)",
+  "area": "tools",
+  "verdict": "fine",
+  "oneLine": "Prompt fingerprint per object picture and per sheet, with a size-only case for grown buildings.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "public/tools/objects/app.js:162-166",
+   "public/tools/objects/app.js:709-717",
+   "public/tools/objects/app.js:815-819"
+  ],
+  "linked": [
+   "T2-2"
+  ]
+ },
+ {
+  "id": "T2-13",
+  "title": "Style Lab preview: open, walk, close (the rAF loop)",
+  "area": "tools",
+  "verdict": "watch",
+  "oneLine": "Full-screen preview overlay: opening, open with its rAF loop, switching looks, closed.",
+  "topConcern": "Closing during openPreview's awaits still starts the rAF loop, which draws a window-size canvas every frame behind the hidden overlay.",
+  "modes": [
+   "race",
+   "leak",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "public/tools/style/app.js:568-598",
+   "public/tools/style/app.js:550-566",
+   "public/tools/style/app.js:600-610"
+  ],
+  "linked": [
+   "T2-14",
+   "T2-15"
+  ]
+ },
+ {
+  "id": "T2-14",
+  "title": "Style Lab saved work: pictures, scores and settings, and their caches",
+  "area": "tools",
+  "verdict": "fine",
+  "oneLine": "Lab pictures in IndexedDB or memory, scores and settings in localStorage, two at-keyed caches.",
+  "topConcern": "No busy overlay: two quick uploads to one slot keep whichever finishes last and leak the other's object URL.",
+  "modes": [
+   "race",
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "public/tools/style/app.js:19-69",
+   "public/tools/style/app.js:110-132",
+   "public/tools/style/app.js:194-241"
+  ],
+  "linked": [
+   "T2-13"
+  ]
+ },
+ {
+  "id": "T2-15",
+  "title": "Style Lab scene: the bro's walk, the demo stroll, and the scene's build cache",
+  "area": "tools",
+  "verdict": "watch",
+  "oneLine": "Stand-in screen: bro steered, resting, strolling or walled in; device-size build cache; weather drops.",
+  "topConcern": "Scene, ground preview and object stage hard-code the game's 1024 px phone height; the game now shows about 1330 after the zoom-outs.",
+  "modes": [
+   "divergence",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "public/tools/style/scene.js:508-536",
+   "public/tools/style/scene.js:164-182",
+   "public/tools/style/scene.js:199-253",
+   "public/tools/style/scene.js:37-40"
+  ],
+  "linked": [
+   "T2-5",
+   "T2-11",
+   "src/game/worldViewport.js:225",
+   "src/game/viewCap.js",
+   "src/game/legSync.js:54"
+  ]
+ },
+ {
+  "id": "T2-16",
+  "title": "Studio toasts, the busy overlay, and the download links (all three pages)",
+  "area": "tools",
+  "verdict": "fine",
+  "oneLine": "Per-page toast timer, full-screen busy overlay used as the edit mutex, revoked download links.",
+  "topConcern": "",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "public/tools/ground/app.js:141-153",
+   "public/tools/objects/app.js:138-150",
+   "public/tools/style/app.js:278-283",
+   "public/tools/ground/index.html:111"
+  ],
+  "linked": [
+   "T2-1",
+   "T2-8",
+   "T2-14"
+  ]
+ }
+]

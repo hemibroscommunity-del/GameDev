@@ -1,0 +1,469 @@
+[
+ {
+  "id": "R1-1",
+  "title": "Head-piece (trait) loader: per-facing load, give-up, later rounds, own-head watch",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per head piece and facing: asking, loaded, designed-missing, gave-up, later rounds, plus a watch that re-asks hidden pieces.",
+  "topConcern": "Watch starts a new three-try chain every 2.5 s beside one sleeping on its retry timer; rounds uncapped, unlike the spec.",
+  "modes": [
+   "race",
+   "leak",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:1052",
+   "src/rendering/systems/entityRenderer.js:1122",
+   "src/rendering/systems/entityRenderer.js:1225",
+   "src/rendering/systems/entityRenderer.js:1237",
+   "src/rendering/systems/entityRenderer.js:1086"
+  ],
+  "linked": [
+   "src/rendering/retryLooks.js",
+   "docs/specs/retry-looks.md",
+   "R1-2",
+   "R1-9",
+   "TRAPS 257"
+  ]
+ },
+ {
+  "id": "R1-2",
+  "title": "Body placement data (body-anchors/body-tops): one promise, rounds after a failure",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Deduped fetch promise for the body placement tables, with retries and a 20 s re-arm after a failed round.",
+  "topConcern": "Bare fetch without a timeout: a stalled request never settles, the promise is never re-armed, every head piece hidden for the page.",
+  "modes": [
+   "stuck",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:1297",
+   "src/rendering/systems/entityRenderer.js:1304",
+   "src/rendering/systems/entityRenderer.js:1327",
+   "src/rendering/systems/entityRenderer.js:1333"
+  ],
+  "linked": [
+   "R1-1",
+   "TRAPS 257",
+   "preloadTraits gate"
+  ]
+ },
+ {
+  "id": "R1-3",
+  "title": "HUD bar art: load once, never asked again",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "One-shot latch loading the HP/node bar frame and fill textures every bar draws from.",
+  "topConcern": "A flaked bar-art load is swallowed and the latch never re-arms: monster, peer and node HP bars vanish until reload.",
+  "modes": [
+   "stuck",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:188",
+   "src/rendering/systems/entityRenderer.js:191",
+   "src/rendering/systems/entityRenderer.js:212",
+   "src/rendering/systems/entityRenderer.js:877",
+   "src/rendering/systems/entityRenderer.js:5916"
+  ],
+  "linked": [
+   "R1-15",
+   "docs/specs/retry-looks.md",
+   "src/ui/SpriteHpBar.jsx"
+  ]
+ },
+ {
+  "id": "R1-4",
+  "title": "Masked-body bake worker and its one-job queue (rank, epoch, patience)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Worker lifecycle plus a serial rank-ordered bake queue; local misses open epochs and fall back inline after 1 s.",
+  "topConcern": "Only the local path has the hung-job patience; one job that never settles stalls peers, prewarm and look-armour bakes for the session.",
+  "modes": [
+   "guard-drift",
+   "stuck",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:3320",
+   "src/rendering/systems/entityRenderer.js:3394",
+   "src/rendering/systems/entityRenderer.js:3413",
+   "src/rendering/systems/entityRenderer.js:3430",
+   "src/rendering/systems/entityRenderer.js:3769"
+  ],
+  "linked": [
+   "src/rendering/maskedBakeWorker.js",
+   "src/rendering/lookArmour.js",
+   "R1-5",
+   "R1-6",
+   "R1-7"
+  ]
+ },
+ {
+  "id": "R1-5",
+  "title": "Masked-body frame cache: LRU, worn-set-last eviction, deferred destroy",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Bounded LRU of armoured body frames; evicts other armour first; destroys evicted frames 30 s later.",
+  "topConcern": "Worker-cropped frames are not canvas witnesses; other witnesses still catch a tab wipe.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:3025",
+   "src/rendering/systems/entityRenderer.js:3919",
+   "src/rendering/systems/entityRenderer.js:3970",
+   "src/rendering/systems/entityRenderer.js:3241",
+   "src/rendering/maskedEvict.js"
+  ],
+  "linked": [
+   "R1-4",
+   "TRAPS 250",
+   "src/rendering/canvasWitness.js"
+  ]
+ },
+ {
+  "id": "R1-6",
+  "title": "Peer armoured frames: hold the last frame, prewarm on a look change",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Per peer display: hold the last masked frame while the worker bakes the next; queue their stand/jog prewarm.",
+  "topConcern": "Hold has no deadline: a peer's belt-pending jog bake is never cached, so their body freezes on one frame until belt sheets load.",
+  "modes": [
+   "stuck",
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:3831",
+   "src/rendering/systems/entityRenderer.js:3847",
+   "src/rendering/systems/entityRenderer.js:3883",
+   "src/rendering/systems/entityRenderer.js:3930",
+   "src/rendering/gearSheets.js:588"
+  ],
+  "linked": [
+   "R1-4",
+   "R1-5",
+   "R2 peer draw site 12864-12882"
+  ]
+ },
+ {
+  "id": "R1-7",
+  "title": "Armour prewarm passes: intro, idle one-equip-away, equip-change re-prewarm",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Debounce/running/again latch, supersede counter and owned-gear signature driving background armour bakes.",
+  "topConcern": "A never-settling bake leaves _equipPrewarmRunning true forever; prewarmProgress is dead state nothing reads.",
+  "modes": [
+   "stuck",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:4303",
+   "src/rendering/systems/entityRenderer.js:4432",
+   "src/rendering/systems/entityRenderer.js:4580",
+   "src/rendering/systems/entityRenderer.js:4212",
+   "src/rendering/pixiRenderer.js:149"
+  ],
+  "linked": [
+   "R1-4",
+   "R1-5",
+   "src/ui/IntroVideo.jsx"
+  ]
+ },
+ {
+  "id": "R1-8",
+  "title": "Fishing head-and-rod overlay cache (armoured or shirted angler)",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "64-entry LRU of per-frame canvas overlays lifting the head and rod above the shirt or plate while fishing.",
+  "topConcern": "Eviction skips Pixi's Cache entry (TRAPS 139); three anglers thrash the per-frame keys, leaking ~64 KB per frame change.",
+  "modes": [
+   "leak",
+   "race"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:4702",
+   "src/rendering/systems/entityRenderer.js:4774",
+   "src/rendering/systems/entityRenderer.js:5001",
+   "src/rendering/systems/entityRenderer.js:12917",
+   "src/rendering/systems/entityRenderer.js:14878"
+  ],
+  "linked": [
+   "TRAPS 139",
+   "src/rendering/releaseCanvasTexture.js",
+   "R1-5"
+  ]
+ },
+ {
+  "id": "R1-9",
+  "title": "A hat's hair-mask loader (per facing, ten later rounds)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per hat and facing: asking, loaded, failed, waiting, next round, up to ten rounds.",
+  "topConcern": "Bare Assets.load without a time limit: a stalled mask is never retried, hair drawn unclipped through the hat all page.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:5024",
+   "src/rendering/systems/entityRenderer.js:5066",
+   "src/rendering/systems/entityRenderer.js:5089",
+   "src/rendering/systems/entityRenderer.js:5913"
+  ],
+  "linked": [
+   "R1-1",
+   "R1-12",
+   "TRAPS 257",
+   "docs/specs/retry-looks.md"
+  ]
+ },
+ {
+  "id": "R1-10",
+  "title": "NFT face and mannequin textures: loaded every session, never drawn",
+  "area": "rendering",
+  "verdict": "retired",
+  "oneLine": "One-shot latch loading test-1 NFT face sheets and naked stand sheets into slots nothing reads.",
+  "topConcern": "Ten 256x256 pictures (2.5 MB decoded) held for the session by a dormant Bro-NFT phase-4 loader.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:5823",
+   "src/rendering/systems/entityRenderer.js:5915",
+   "src/rendering/systems/entityRenderer.js:972"
+  ],
+  "linked": [
+   "src/rendering/nftAvatars.js"
+  ]
+ },
+ {
+  "id": "R1-11",
+  "title": "Module overrides set around a figure's head-piece placement",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "_crownOverride, _folkHatDy256 and _qaHatDy256 change every _placeTrait while set around one figure's draw.",
+  "topConcern": "_crownOverride has no try/finally: a throw mid-placement leaves the knight crown on later heads until reset.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:1811",
+   "src/rendering/systems/entityRenderer.js:1881",
+   "src/rendering/systems/entityRenderer.js:12927",
+   "src/rendering/systems/entityRenderer.js:14956",
+   "src/rendering/systems/entityRenderer.js:17544"
+  ],
+  "linked": [
+   "R2 peer and self trait placement"
+  ]
+ },
+ {
+  "id": "R1-12",
+  "title": "Hair clip target per figure (none, hat silhouette, hood)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per frame: clip the hair to a clipping hat's mask, else a ready hood mask, else unclipped.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:5082",
+   "src/rendering/systems/entityRenderer.js:5467",
+   "src/rendering/systems/entityRenderer.js:5632",
+   "src/rendering/hairClip.js:244"
+  ],
+  "linked": [
+   "R1-9",
+   "cape placement _btReady"
+  ]
+ },
+ {
+  "id": "R1-13",
+  "title": "Gathering node HP bar: ghost trail, flash, call halo",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "One holder's ghost, drain and flash timers for the node bar; reset on hide, rebuilt on destroy.",
+  "topConcern": "One holder for all nodes: switching nodes without a hidden frame flashes a phantom hit.",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:843",
+   "src/rendering/systems/entityRenderer.js:918",
+   "src/rendering/systems/entityRenderer.js:805",
+   "src/rendering/systems/effectsRenderer.js:12138"
+  ],
+  "linked": [
+   "R1-3",
+   "monster and peer HP bars (R2)"
+  ]
+ },
+ {
+  "id": "R1-14",
+  "title": "Chat bubble lifetime gate (plate steps aside)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per speaker a 5 s bubble window that hides the name plate while the bubble is drawn.",
+  "topConcern": "The 5000 ms is written separately in entityRenderer, effectsRenderer and stateCleanup; unpinned.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:238",
+   "src/rendering/systems/effectsRenderer.js:9639",
+   "src/game/stateCleanup.js:22",
+   "src/game/chat.js:282"
+  ],
+  "linked": [
+   "src/game/chat.js",
+   "R2 plate calls 13435 16661"
+  ]
+ },
+ {
+  "id": "R1-15",
+  "title": "Plate and head icons loaded once (Bro badge, small icons, quest pins)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Held icon textures filled once on the loading screen and bound to plate and head sprites when present.",
+  "topConcern": "No time limit or later round: a failed load leaves badge, party badge, skull and talk bubble invisible all session.",
+  "modes": [
+   "stuck",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:7357",
+   "src/rendering/systems/entityRenderer.js:7374",
+   "src/rendering/systems/entityRenderer.js:7408",
+   "src/rendering/systems/entityRenderer.js:7650",
+   "src/rendering/systems/entityRenderer.js:13543"
+  ],
+  "linked": [
+   "R1-3",
+   "R1-16",
+   "TRAPS 257"
+  ]
+ },
+ {
+  "id": "R1-16",
+  "title": "Threat skull phase over a head (red, white consent window)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Pure time phase red then white then none over server-stamped threat times, with a per-display change cache.",
+  "topConcern": "S._threatMarks is a plain {} keyed by wire ids (CLAUDE.md rule); ids are server-issued, so hygiene only.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:166",
+   "src/rendering/systems/entityRenderer.js:13541",
+   "src/rendering/systems/entityRenderer.js:16731",
+   "src/networking/gameEvents.js:236"
+  ],
+  "linked": [
+   "docs/specs/threats.md",
+   "server _tickThreats",
+   "R1-15"
+  ]
+ },
+ {
+  "id": "R1-17",
+  "title": "Local corpse hold guard (selfCorpseUp, 3.5 s)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Exported guard: dead while hp<=0 or within 3.5 s of _deathStart; stand-ins and gathering obey it.",
+  "topConcern": "Self plate hides on S._dying, stand-ins on selfCorpseUp; consistent today, unpinned.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:6792",
+   "src/rendering/systems/entityRenderer.js:6736",
+   "src/game/lifeSkillRewards.js:460",
+   "server/test/mirror-audit.test.mjs:1842"
+  ],
+  "linked": [
+   "gameEvents/wsClient/BroTown/monsterCombat/respawn death writers"
+  ]
+ },
+ {
+  "id": "R1-18",
+  "title": "Carried greatsword grip hole (inverse stencil on the fist)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "One-bit _gripHoleOn latch on the weapon sprite with a clear that undoes mask side effects.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:6111",
+   "src/rendering/systems/entityRenderer.js:6118",
+   "src/rendering/systems/entityRenderer.js:15763",
+   "src/rendering/systems/entityRenderer.js:8034"
+  ],
+  "linked": [
+   "R2 _updatePlayer weapon branch"
+  ]
+ },
+ {
+  "id": "R1-19",
+  "title": "Attack stand-in clocks: swing 250/300 ms, bow draw-release-hold 110/360 ms",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Swing and bow-shot phases read off one start stamp against constants exported from this file.",
+  "topConcern": "Arrow release latch hard-codes 110 in projectiles.js instead of BOW_RELEASE_MS; no mirror-audit line.",
+  "modes": [
+   "guard-drift",
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:5430",
+   "src/rendering/systems/entityRenderer.js:5420",
+   "src/rendering/systems/entityRenderer.js:6145",
+   "src/game/projectiles.js:1409",
+   "src/rendering/systems/effectsRenderer.js:15624"
+  ],
+  "linked": [
+   "effectsRenderer stand-ins",
+   "src/game/projectiles.js",
+   "R2 _updatePlayer"
+  ]
+ },
+ {
+  "id": "R1-20",
+  "title": "Overlay sprites made on first need (whirl glow, look-armour residue)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Lazily created child sprites that copy the body while shown and blank themselves when their texture goes.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/rendering/systems/entityRenderer.js:6282",
+   "src/rendering/systems/entityRenderer.js:3596",
+   "src/rendering/systems/entityRenderer.js:3612"
+  ],
+  "linked": [
+   "src/game/whirlCatch.js",
+   "src/rendering/lookArmour.js",
+   "TRAPS 218"
+  ]
+ }
+]

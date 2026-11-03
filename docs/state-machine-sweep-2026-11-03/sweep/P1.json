@@ -1,0 +1,458 @@
+[
+ {
+  "id": "P1-1",
+  "title": "The room picture behind a building's window",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Room background image lifecycle: loading, ready (keeper drawn), failed (box removed); remounted per room id.",
+  "topConcern": "",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/buildings/BuildingRoom.jsx:41",
+   "src/ui/panels/buildings/BuildingRoom.jsx:50",
+   "src/ui/BroTown.jsx:13523"
+  ],
+  "linked": [
+   "P1-19 building window",
+   "data/buildingRooms.js"
+  ]
+ },
+ {
+  "id": "P1-2",
+  "title": "The Saloon's alliance part (alliance, war, rename wait, board)",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Alliance status, war, rename and war waits, and the alliance board, drawn from party_state.ally and allyBus.",
+  "topConcern": "Board shows 'Asking...' forever when the worker refuses or rate-limits alliance_board; nothing re-asks until the board is reopened.",
+  "modes": [
+   "stuck",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/panels/buildings/AlliancePart.jsx:150",
+   "src/game/alliance.js:114",
+   "server/src/alliance.js:548",
+   "server/src/party.js:136"
+  ],
+  "linked": [
+   "server alliance.js",
+   "server party.js",
+   "src/networking/gameEvents.js party_state"
+  ]
+ },
+ {
+  "id": "P1-3",
+  "title": "The Bank vault window (one move in flight)",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Vault view loading/open/closed/failed, a 4 s pending move keyed by opId, retry of a failed read.",
+  "topConcern": "S._bank is never cleared on reconnect or character switch; a reopened window briefly draws the old vault.",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/buildings/BankPanel.jsx:207",
+   "src/game/bank.js:54",
+   "src/game/bank.js:73",
+   "server/src/bank.js:211"
+  ],
+  "linked": [
+   "server bank.js",
+   "handoff opId idempotency"
+  ]
+ },
+ {
+  "id": "P1-4",
+  "title": "The Cookhouse's cook and eat (client prediction)",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Cook/eat taps predict ingredients, dish, XP, level-up, quest flag and old-worker buff timers before the worker answers.",
+  "topConcern": "Client counts ingredients by k.includes(type), worker by exact key: a predicted cook and level-up celebration the worker then takes back.",
+  "modes": [
+   "guard-drift",
+   "authority",
+   "race",
+   "stuck"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/buildings/CookPanel.jsx:455",
+   "src/ui/panels/buildings/CookPanel.jsx:232",
+   "server/src/cooking.js:386",
+   "server/src/cooking.js:361",
+   "server/src/persistence.js:750"
+  ],
+  "linked": [
+   "BroTown.jsx field cooking",
+   "fightFood.js bite clock",
+   "legacy quest luna_1",
+   "bt_rpg localStorage"
+  ]
+ },
+ {
+  "id": "P1-5",
+  "title": "The Gambling Den's free daily spin",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Wheel phases idle/waiting/landing over the worker's stored pot (spin, double or nothing, collect, day rollover).",
+  "topConcern": "After 8 s with no answer the panel says 'Nothing was spent', though a slow or lost answer may have spent or lost the pot.",
+  "modes": [
+   "divergence",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/panels/buildings/DailySpin.jsx:307",
+   "src/ui/panels/buildings/DailySpin.jsx:242",
+   "server/src/dailyrewards.js:605",
+   "src/game/dailyRewards.js:239"
+  ],
+  "linked": [
+   "src/game/dailyRewards.js bus",
+   "DailyRewardsWindow",
+   "spinop opId stamp"
+  ]
+ },
+ {
+  "id": "P1-6",
+  "title": "The Enchanter's three gem sockets",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Weapon and shield gems asked with a 4 s pending gate; the amulet gem predicted locally with no gate.",
+  "topConcern": "Double tap on an amulet gem burns two gems (second replaces first); its refusals are silent, so the prediction sticks on v2.",
+  "modes": [
+   "race",
+   "stuck",
+   "divergence",
+   "authority"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/panels/buildings/EnchantPanel.jsx:473",
+   "src/game/weaponGem.js:74",
+   "src/game/shieldGem.js:82",
+   "server/src/amulet.js:174",
+   "server/src/threat.js:248"
+  ],
+  "linked": [
+   "server weapongem.js",
+   "server shieldgem.js",
+   "server amulet.js",
+   "P1-14 Take out",
+   "P1-19 Gem Works"
+  ]
+ },
+ {
+  "id": "P1-7",
+  "title": "The General Store's order book (place and cancel over HTTP)",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Buy/sell/my-orders form, stash-index sell escrow, resting orders, cancel refunds, and an order-book cache.",
+  "topConcern": "No in-flight guard or opId: a second Place Sell tap escrows the next weapon at the same stash index under the first one's kind.",
+  "modes": [
+   "race",
+   "authority",
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/buildings/ExchangePanel.jsx:618",
+   "src/ui/panels/buildings/ExchangePanel.jsx:808",
+   "server/src/market.js:268",
+   "server/src/market.js:306"
+  ],
+  "linked": [
+   "server market.js",
+   "docs/specs/marketplace.md",
+   "P1-16 Auction House"
+  ]
+ },
+ {
+  "id": "P1-8",
+  "title": "The Feed & Seed shop and order board (farmBus)",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Farm view and order board from the worker; one pending request with 4 s / 12 s timeouts; midnight re-ask.",
+  "topConcern": "A late answer to a timed-out request clears the newer pending request; farmBus.reset() is never called.",
+  "modes": [
+   "race",
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/mobile/farmBus.js:106",
+   "src/ui/panels/buildings/FeedSeedPanel.jsx:160",
+   "src/ui/panels/buildings/FeedSeedPanel.jsx:131"
+  ],
+  "linked": [
+   "server farm.js",
+   "server farmorders.js",
+   "src/game/farmWalk.js",
+   "P1-9"
+  ]
+ },
+ {
+  "id": "P1-9",
+  "title": "The trip onto your farm (three copies of one zone entry)",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "Warp to farm_home: zone, map, position, per-zone arrays reset, farm art hold, return point remembered.",
+  "topConcern": "Land Office copy calls startZoneAmbient('town') after the farm hold asked for farm music, so that trip plays BroTown's village track.",
+  "modes": [
+   "divergence",
+   "guard-drift",
+   "authority"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/buildings/FeedSeedPanel.jsx:178",
+   "src/ui/BroTown.jsx:13545",
+   "src/ui/panels/buildings/FarmPanel.jsx:124",
+   "src/game/farmTrip.js:35"
+  ],
+  "linked": [
+   "src/game/zoneTransitions.js",
+   "src/game/wheelTownDoors.js rememberFarmTrip",
+   "tools/qa/mp/mp-farmmusic.mjs"
+  ]
+ },
+ {
+  "id": "P1-10",
+  "title": "The legacy browser-only farm plots",
+  "area": "ui",
+  "verdict": "retired",
+  "oneLine": "Plots planted and harvested on the phone by plantedAt+growTime stamps, only for workers without caps.farm.",
+  "topConcern": "Client-only farm the echo undoes; kept as a rule-19 fallback that every live worker bypasses.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/buildings/FarmPanel.jsx:79",
+   "src/ui/panels/buildings/FarmPanel.jsx:386",
+   "src/ui/panels/buildings/FarmPanel.jsx:73"
+  ],
+  "linked": [
+   "P1-8"
+  ]
+ },
+ {
+  "id": "P1-11",
+  "title": "The Gambling Den's gold wager and weekly jackpot",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Chosen wager chip, worker-rolled bet with 2 s cooldown, 3 s result banner; jackpot pool and tickets.",
+  "topConcern": "Legacy local roll and local pool remain for workers without caps.gamble / caps.jackpot.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/buildings/GamblePanel.jsx:211",
+   "server/src/gamble.js:264",
+   "server/src/cadence.js:158",
+   "src/networking/gameEvents.js:702"
+  ],
+  "linked": [
+   "aceFlipBus",
+   "P1-5"
+  ]
+ },
+ {
+  "id": "P1-12",
+  "title": "The Gem Works' first tab: crack/combine and the one-gem cut fallback",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Shard crack and raw-gem combine asks with a 4 s pending gate; legacy one-gem cut when caps.shardcrack is off.",
+  "topConcern": "Kill-switch fallback counts only the retired gem pouch, emptied into the bag at every join: 'No raw gems yet' over a full bag.",
+  "modes": [
+   "guard-drift",
+   "race"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/buildings/ShardCrackPanel.jsx:113",
+   "src/game/shardCrack.js:70",
+   "src/ui/panels/buildings/GemcutPanel.jsx:76",
+   "server/src/amulet.js:434"
+  ],
+  "linked": [
+   "server shardcrack.js",
+   "server gems.js gemsIntoBag",
+   "P1-6",
+   "P1-19"
+  ]
+ },
+ {
+  "id": "P1-13",
+  "title": "The Gladiator Arena window (queue, fight card, the real stake)",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Arena status polled from render, queue/fight/eliminated cards, and an append-only optimistic bet list.",
+  "topConcern": "A refused stake still reads 'Bet placed'; bets keyed by round only, so an old tournament's bet hides later tournaments' forms.",
+  "modes": [
+   "divergence",
+   "stuck",
+   "persistence",
+   "authority"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/ui/panels/buildings/PartyPanel.jsx:195",
+   "src/ui/panels/buildings/PartyPanel.jsx:1455",
+   "src/ui/panels/buildings/PartyPanel.jsx:1574",
+   "server/src/gladiator.js:164",
+   "server/src/gladiator.js:440"
+  ],
+  "linked": [
+   "server gladiator.js",
+   "docs/specs/arena.md",
+   "docs/specs/sponsorship.md",
+   "tools/qa/mp/mp-arena.mjs"
+  ]
+ },
+ {
+  "id": "P1-14",
+  "title": "The Blacksmith's bench (signature watch, salvage two-tap arm)",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "One ask at a time; success inferred when a field signature changes within 3.5 s; smith work pose timer.",
+  "topConcern": "An answer slower than 3.5 s is announced 'Could not forge' with the fail sound, and the later success is never said.",
+  "modes": [
+   "divergence",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/panels/buildings/SmithyPanel.jsx:118",
+   "src/ui/panels/buildings/SmithyPanel.jsx:150",
+   "src/ui/panels/buildings/SmithyPanel.jsx:535",
+   "src/game/smithing.js:36"
+  ],
+  "linked": [
+   "P1-15",
+   "server gear.js",
+   "server salvage.js",
+   "src/game/salvage.js"
+  ]
+ },
+ {
+  "id": "P1-15",
+  "title": "The Woodworker's bench (copied watch, Traps and Hardened receipt counters)",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Bow/staff craft and harden via P1-14's copied watch; trap and hardened-wood makes wait on receipt counters.",
+  "topConcern": "Same 3.5 s false failure as the Blacksmith; a refused make_traps never bumps its counter, holding the buttons 3.5 s.",
+  "modes": [
+   "divergence",
+   "guard-drift",
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/panels/buildings/WoodworkPanel.jsx:81",
+   "src/ui/panels/buildings/TrapsTab.jsx:44",
+   "src/ui/panels/buildings/HardenedWoodTab.jsx:49",
+   "src/game/trapping.js:294"
+  ],
+  "linked": [
+   "P1-14",
+   "server hardenedwood.js",
+   "server trapping.js"
+  ]
+ },
+ {
+  "id": "P1-16",
+  "title": "The Auction House shelf",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Shelf/yours tabs, category, one busy flag over buy, bid, accept and take-down; shelves re-read after answers.",
+  "topConcern": "Browse answers applied in arrival order; a fast category switch can show an older category's rows briefly.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/buildings/StorePanel.jsx:243",
+   "src/ui/panels/buildings/StorePanel.jsx:289",
+   "src/ui/panels/buildings/StorePanel.jsx:313"
+  ],
+  "linked": [
+   "server store.js",
+   "P1-17",
+   "P1-7"
+  ]
+ },
+ {
+  "id": "P1-17",
+  "title": "The Auction House chat and offers (storeChatBus)",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "One listing's threads, offers and errors open at a time, plus per-listing unread counts.",
+  "topConcern": "Closing the building window leaves storeChatBus.open true: reopening shows the old chat, and that listing's new lines raise no dot.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/ui/mobile/storeChatBus.js:34",
+   "src/ui/mobile/storeChatBus.js:76",
+   "src/ui/panels/buildings/StorePanel.jsx:447",
+   "src/ui/panels/buildings/StoreChatPanel.jsx:87"
+  ],
+  "linked": [
+   "server storechat.js",
+   "P1-16",
+   "P1-19"
+  ]
+ },
+ {
+  "id": "P1-18",
+  "title": "The Town Board (grid, page, nav heading, pins)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Board grid vs a tile's page, the observed nav heading, and red/blue pin toggles stored per character.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/ui/panels/buildings/TownBoard.jsx:173",
+   "src/ui/panels/buildings/TownBoardPage.jsx:80",
+   "src/game/pinSlots.js:183"
+  ],
+  "linked": [
+   "src/game/pinSlots.js",
+   "src/game/mapPinPlaces.js",
+   "game/wheelNoticeboard.js"
+  ]
+ },
+ {
+  "id": "P1-19",
+  "title": "Which building window is open (buildingPanel) and the halls that hand it on",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "One nullable panel id opened at doors or keepers, closed by ✕, scrim, Esc, hall rows and farm trips.",
+  "topConcern": "Panel buses and S fields outlive the window (store chat, market refresh key), read by the next opening as their own.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/interactions.js:191",
+   "src/ui/BroTown.jsx:2041",
+   "src/ui/BroTown.jsx:13458",
+   "src/ui/panels/buildings/GemWorksPanel.jsx:185"
+  ],
+  "linked": [
+   "every P1 machine",
+   "src/game/wheelTownDoors.js",
+   "WheelHallPanel/SaloonPanel/VendorPanel/LandOfficePanel"
+  ]
+ }
+]

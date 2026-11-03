@@ -1,0 +1,447 @@
+[
+ {
+  "id": "R8-1",
+  "title": "The gathering-pose registry (stand-in made / making / failed)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per-pose idle/loading/ready/failed record with a generation counter and 15 s retry for the chop, cook, fire and farm stand-ins.",
+  "topConcern": "A make whose fetch never settles stays 'loading' for the session (no timeout); degrades to the walking body.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/standIns.js:35-77",
+   "src/rendering/systems/effectsRenderer.js:4917-4955",
+   "src/rendering/systems/effectsRenderer.js:17111-17113",
+   "src/rendering/systems/entityRenderer.js:13710-13712"
+  ],
+  "linked": [
+   "effectsRenderer _farmGen/_freeFarm",
+   "src/game/farmTrip.js S._farmArtHold",
+   "peer figure cache _peerFigs"
+  ]
+ },
+ {
+  "id": "R8-2",
+  "title": "Today's town's NPC and building art (load, ready, free, unloading)",
+  "area": "rendering",
+  "verdict": "retired",
+  "oneLine": "Old town's scenery load/free with _town, _townReady and _townUnload; skipped on the live trip to the Wheel.",
+  "topConcern": "Unreachable 'superseded while loading' branch would leave stills in _tex if it ever ran.",
+  "modes": [
+   "opacity",
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/npcSprites.js:237-366",
+   "src/game/zoneTransitions.js:305-364",
+   "src/rendering/preloadAnimations.js:420"
+  ],
+  "linked": [
+   "zoneTransitions syncTownScenery / S._townArtHold",
+   "wheelHome townSkippedOnTheWay"
+  ]
+ },
+ {
+  "id": "R8-3",
+  "title": "The Wheel's townsfolk photographs (skipped for live drawing, loaded late, freed with the Wheel)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Whether the Wheel cast's photographs are held: skipped when drawn live, loaded late when switched off, freed with the Wheel.",
+  "topConcern": "loadWheelNpcArt(true) drops a skipped run without releasing what it loaded; latent while every townsperson has a look.",
+  "modes": [
+   "leak",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/npcSprites.js:426-476",
+   "src/rendering/systems/entityRenderer.js:17757-17763",
+   "src/rendering/lookFolk.js:32-49",
+   "src/rendering/wheelObjects.js:423"
+  ],
+  "linked": [
+   "lookFolk lookFolkAtLoad vs lookFolkOn",
+   "wheelTrial wheelStop hooks",
+   "R8-2"
+  ]
+ },
+ {
+  "id": "R8-4",
+  "title": "Per-zone decor props (load behind the overlay, free on exit)",
+  "area": "rendering",
+  "verdict": "retired",
+  "oneLine": "Frost's decor sprites loaded per zone into the NPC registry and unloaded on exit.",
+  "topConcern": "A free overlapping an in-flight load republishes a destroyed texture (no generation check); frost only.",
+  "modes": [
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/npcSprites.js:538-578",
+   "src/rendering/zoneTextures.js:65-70",
+   "src/rendering/zoneTextures.js:166-178"
+  ],
+  "linked": [
+   "zoneTextures loadTrackedStrip _gen guard",
+   "preloadZoneAssets / freeZoneAssets"
+  ]
+ },
+ {
+  "id": "R8-5",
+  "title": "Global one-shot art loads (capes, pets, shields, weapons, NPC portraits)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Five load-once memos on the loading screen, each with a different failure policy.",
+  "topConcern": "A dropped request for a cape facing, weapon or shield view is never retried in the session; the pet sheet's retry has no later caller.",
+  "modes": [
+   "guard-drift",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/capeSprites.js:79-124",
+   "src/rendering/petSprites.js:20-32",
+   "src/rendering/weaponSprites.js:172-211",
+   "src/rendering/shieldSprites.js:23-39",
+   "src/rendering/npcSprites.js:193-209"
+  ],
+  "linked": [
+   "preloadAnimations preloadWorldAnimations",
+   "pixiRenderer preloadPlayerAssets"
+  ]
+ },
+ {
+  "id": "R8-6",
+  "title": "NFT 360-degree avatar textures, per avatar URL",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per-URL absent/loading/ready/failed cache of NFT avatar textures for the sprite-path fallback.",
+  "topConcern": "Uncapped cache keyed by peer-supplied URLs, fetched by every viewer on the fallback path.",
+  "modes": [
+   "leak",
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/nftAvatars.js:26-28",
+   "src/rendering/nftAvatars.js:113-140",
+   "src/rendering/systems/entityRenderer.js:12966-12976"
+  ],
+  "linked": [
+   "server/src/join.js cosmeticCap avatar"
+  ]
+ },
+ {
+  "id": "R8-7",
+  "title": "Fighter capture hand-off (the Points window's photographed swing, roll, jog and films)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Registered renderer handles plus a 16-entry LRU of filmed effect strips for the stat scene.",
+  "topConcern": "Handles are not cleared on renderer destroy; captures in the gap hit a destroyed renderer (caught).",
+  "modes": [
+   "race",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/fighterCapture.js:25-32",
+   "src/rendering/fighterCapture.js:212-241",
+   "src/rendering/pixiRenderer.js:357"
+  ],
+  "linked": [
+   "StatDemo capture effects",
+   "EffectsRenderer.captureAttackFrames",
+   "EntityRenderer.capturePoseFrames"
+  ]
+ },
+ {
+  "id": "R8-8",
+  "title": "Form shading's figure registry",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Figures listed when first shaded, repacked when their span moves, dropped when destroyed.",
+  "topConcern": "A figure detached but not destroyed stays listed and walked each frame.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/formShade.js:148-180",
+   "src/rendering/formShade.js:182-241"
+  ],
+  "linked": [
+   "drawLists liveSwitch __btShadeOff"
+  ]
+ },
+ {
+  "id": "R8-9",
+  "title": "The hair clip through the stencil (silhouette boxed, clipping, put away, reboxed)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per-silhouette box lifecycle and per-hair mask choice for clipping hair under hats and hoods, plus a once-per-page install.",
+  "topConcern": "Install is decided once per page; a rebuilt WebGL1 renderer would still route silhouettes to the GLSL3 clip batcher.",
+  "modes": [
+   "combo",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/hairClip.js:207-277",
+   "src/rendering/hairClip.js:180-201",
+   "src/rendering/systems/entityRenderer.js:5082-5126"
+  ],
+  "linked": [
+   "docs/specs/hair-clip-stencil.md",
+   "TRAPS 144, 221",
+   "effectsRenderer clipBoxOrSelf"
+  ]
+ },
+ {
+  "id": "R8-10",
+  "title": "Your look's selection stores (seeded from this device, overwritten by the record on every join, changed in the world)",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Twenty localStorage-seeded look stores, re-applied from the creation-time record on every state_sync.",
+  "topConcern": "Taking the t-shirt off in the world reverts on any reconnect: the record's st is stamped on the join and re-applied.",
+  "modes": [
+   "persistence",
+   "divergence",
+   "guard-drift",
+   "authority"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/characterRecord.js:220-251",
+   "src/networking/wsClient.js:1604-1619",
+   "server/src/join.js:810-822",
+   "src/ui/mobile/dash/ItemDetailPopup.jsx:1130",
+   "src/rendering/traits/shirtCatalog.js:17-35"
+  ],
+  "linked": [
+   "server char:<id> record / _stampRecordLook",
+   "docs/specs/identity.md",
+   "R8-14",
+   "R8-15"
+  ]
+ },
+ {
+  "id": "R8-11",
+  "title": "The six recoloured head-piece copies (hair, hat, beard, glasses, eye style, shirt)",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Six pasted LRU recolour caches: absent, baking, ready, evicted and freed 30 s later; the fallback to the colour numbers.",
+  "topConcern": "Hat, eyewear and eye style leave a key 'loading' forever if one recolour throws (e.g. a null iOS canvas context).",
+  "modes": [
+   "stuck",
+   "guard-drift",
+   "race",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/traits/hatColorCatalog.js:182-262",
+   "src/rendering/traits/eyewearColorCatalog.js:196-249",
+   "src/rendering/traits/eyeStyleColorCatalog.js:220-273",
+   "src/rendering/traits/hairColorCatalog.js:118-195"
+  ],
+  "linked": [
+   "headLook.js shared numbers",
+   "traitImg loadTraitImg (R8-13)",
+   "characterPortrait recolorHairToCanvas"
+  ]
+ },
+ {
+  "id": "R8-12",
+  "title": "Species art: meta loading, pictures retried later, per-skin builds evicted",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Species art load with its own retry-later rounds, a six-build LRU freed late, and an uncapped portrait-canvas map.",
+  "topConcern": "A failing meta.json is refetched as fast as it fails while a figure wearing the species is drawn: no backoff.",
+  "modes": [
+   "race",
+   "guard-drift",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/traits/speciesArt.js:103-129",
+   "src/rendering/traits/speciesArt.js:220-251",
+   "src/rendering/traits/speciesArt.js:61-85"
+  ],
+  "linked": [
+   "src/rendering/retryLooks.js laterRounds",
+   "docs/specs/retry-looks.md",
+   "R8-11"
+  ]
+ },
+ {
+  "id": "R8-13",
+  "title": "A head piece's picture load: asked, timed out, asked twice more, given up",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per-request three-attempt load with a 20 s timeout and a done-flag against late answers.",
+  "topConcern": "After the third failure the recolour entry is made without that facing and never rebuilt until evicted.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/traits/traitImg.js:22-56",
+   "src/rendering/traits/hairColorCatalog.js:150-163"
+  ],
+  "linked": [
+   "R8-11",
+   "TRAPS 257",
+   "docs/specs/retry-looks.md"
+  ]
+ },
+ {
+  "id": "R8-14",
+  "title": "The drawing editor's op list",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "Each canvas's base plus op list, kept only while it replays to the stored art (the drop rule).",
+  "topConcern": "",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/traits/artOps.js:413-449",
+   "src/rendering/traits/artOps.js:460-482",
+   "src/rendering/traits/artOps.js:531-539"
+  ],
+  "linked": [
+   "playerArt setArt/onArtChange",
+   "characterRecord _art",
+   "R8-10"
+  ]
+ },
+ {
+  "id": "R8-15",
+  "title": "The cape you wear (the worker's ledger, mirrored)",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Server-owned worn cape mirrored into a localStorage-seeded client store from player_state.",
+  "topConcern": "bt_cape is per device: another character on the phone shows the cape locally until the worker's first emit.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/traits/capeCatalog.js:15-42",
+   "src/networking/wsClient.js:2541-2570",
+   "server/src/eventcapes.js:429-440"
+  ],
+  "linked": [
+   "eventcapes ledger",
+   "peerCosmetics PEER_PASSTHROUGH_FIELDS",
+   "R8-5"
+  ]
+ },
+ {
+  "id": "R8-16",
+  "title": "Derived look data handed in by the renderers (block arm frames, fishing rod shape)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Module slots filled after each bake, read through source-identity and destroyed checks.",
+  "topConcern": "",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/blockArm.js:143-178",
+   "src/rendering/blockArm.js:223-249",
+   "src/rendering/toolRecolor.js:238-266"
+  ],
+  "linked": [
+   "effectsRenderer registerBowBodyFrames",
+   "playerSprites recordFishRodMask",
+   "TRAPS 49"
+  ]
+ },
+ {
+  "id": "R8-17",
+  "title": "A stand-in's garb: memo keys and the 400 ms re-bake wait",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Memoised trouser/shoe pattern garb with a debounced re-bake the unsubscriber cancels.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/standInGarb.js:57-95",
+   "src/rendering/systems/effectsRenderer.js:4968"
+  ],
+  "linked": [
+   "R8-1",
+   "TRAPS 73, 189",
+   "docs/specs/gathering-look.md"
+  ]
+ },
+ {
+  "id": "R8-18",
+  "title": "Pose tables that drive other slices' animation phases",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Drawing halves of the townsfolk work routine and the dodge roll's head placement.",
+  "topConcern": "A townsperson flips between work pose and standing as the palette's pose availability changes; deliberate.",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/folkPose.js:25-51",
+   "src/rendering/flipHead.js:26-62",
+   "src/rendering/systems/entityRenderer.js:17491-17512"
+  ],
+  "linked": [
+   "src/game/townsfolkDay.js _folkWork/_folkFace",
+   "lookPalette lookPose",
+   "maskedBake"
+  ]
+ },
+ {
+  "id": "R8-19",
+  "title": "The ?headframes probe and its on-screen readout (QA only)",
+  "area": "tools",
+  "verdict": "fine",
+  "oneLine": "QA-only per-frame head-piece counters with a DOM readout made, refreshed and removed.",
+  "topConcern": "",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/headFrames.js:61-104",
+   "src/rendering/headFrames.js:161-193"
+  ],
+  "linked": [
+   "pixiRenderer render loop",
+   "mp-headframes"
+  ]
+ },
+ {
+  "id": "R8-20",
+  "title": "The creator's thumbnail warm-up (once per page, held)",
+  "area": "ui",
+  "verdict": "fine",
+  "oneLine": "One-shot prefetch of the creator's trait thumbnails, the Image objects held for the page.",
+  "topConcern": "All 64 thumbnails (about 3.1 MB if decoded) held after the creator closes.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/traitThumbs.js:28-45",
+   "src/game/characterCreatorEffects.js:499"
+  ],
+  "linked": [
+   "BroTown _thumbTile"
+  ]
+ }
+]

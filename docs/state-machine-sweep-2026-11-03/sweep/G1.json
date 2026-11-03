@@ -1,0 +1,546 @@
+[
+ {
+  "id": "G1-1",
+  "title": "The target lock (who you are fighting)",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "S.lockedTarget: auto vs tap monster locks, fighter locks, latch, far drop; 38 writers in 12 files.",
+  "topConcern": "Only targeting.js's 8 drops stamp the why and clear the lock's aim; clearLockAim is private, so 30 outside drops cannot.",
+  "modes": [
+   "opacity",
+   "guard-drift"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/game/targeting.js:497-691",
+   "src/game/monsterCombat.js:1320-1328",
+   "src/ui/BroTown.jsx:10215",
+   "src/ui/BroTown.jsx:10628-10631",
+   "src/game/duelLock.js:48"
+  ],
+  "linked": [
+   "G1-2",
+   "G1-3",
+   "duelLock.js",
+   "spar.js",
+   "nmlAsk.js",
+   "noMansLand.js",
+   "zoneTransitions.js"
+  ]
+ },
+ {
+  "id": "G1-2",
+  "title": "Where the aim came from (_aimSrc provenance)",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "_aimAngle/_aimSrc/_aiming/_lastAimAngle: who wrote the aim, so a lock's aim dies with the lock.",
+  "topConcern": "A kill's lock clear skips clearLockAim; the stale bearing then draws the sword/bow pose one way while the hit goes another.",
+  "modes": [
+   "divergence",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/targeting.js:88-93",
+   "src/game/monsterCombat.js:1400-1418",
+   "src/game/combatHelpers.js:174-190",
+   "src/rendering/systems/entityRenderer.js:13945",
+   "src/ui/BroTown.jsx:13002"
+  ],
+  "linked": [
+   "G1-1",
+   "G1-5",
+   "entityRenderer facing ladder",
+   "desktopControls.js:390"
+  ]
+ },
+ {
+  "id": "G1-3",
+  "title": "\"I picked this fight\" (melee engagement)",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "_engagedId/_engaged/_engagedGapAt: the tapped monster that keeps the sword auto-swinging after the lock moves.",
+  "topConcern": "Ends only when the chosen monster dies or leaves S.monsters; a far Wheel copy never leaves, so later monsters get unrequested swings.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/targeting.js:469-495",
+   "src/game/monsterCombat.js:1471-1496",
+   "src/game/targeting.js:345-366"
+  ],
+  "linked": [
+   "G1-1",
+   "G1-4",
+   "server/src/wheelnear.js"
+  ]
+ },
+ {
+  "id": "G1-4",
+  "title": "May I attack now? (the held-attack fire gate)",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "autoAttack/engage/tap-attack drive the loop's shots and swings through one gate; presses use playerActions' own.",
+  "topConcern": "The loop never asks isStaggered: a held attack keeps swinging and sending after a parry the v2.3.3264 contract says sends nothing.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/game/monsterCombat.js:1597-1616",
+   "src/game/playerActions.js:25-63",
+   "src/game/combatHelpers.js:747-838",
+   "src/networking/gameEvents.js:1122-1131",
+   "tools/qa/mp/mp-pvpextras.mjs:463-473"
+  ],
+  "linked": [
+   "G1-3",
+   "G1-5",
+   "G1-6",
+   "tapJump.js",
+   "elemHits.js",
+   "server pvpextras.js"
+  ]
+ },
+ {
+  "id": "G1-5",
+  "title": "A melee swing (start, contact, sweep, end)",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "isSwinging/swingTimer/_specialAttack/_swingBcastPending/_hitThisSwing: one sword swing's wind, contact, sweep and end.",
+  "topConcern": "A press's first (tapped) swing never raises _swingBcastPending, so peers never see a tapped swing, only a hold's later ones.",
+  "modes": [
+   "divergence",
+   "race",
+   "leak"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/game/monsterCombat.js:1911-1928",
+   "src/game/monsterCombat.js:1941-2055",
+   "src/game/monsterCombat.js:3375-3386",
+   "src/game/playerActions.js:84-101",
+   "src/ui/BroTown.jsx:11479-11480"
+  ],
+  "linked": [
+   "G1-4",
+   "G1-2",
+   "gameEvents.js player_swing",
+   "abilities.js",
+   "shieldToggle.js",
+   "monsterCarry.js"
+  ]
+ },
+ {
+  "id": "G1-6",
+  "title": "The bow's sight gate and the queued bow special",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "_bowSight per frame and _bowSpecialQueued (2.5 s): the bow looses only on a line; a special waits for one.",
+  "topConcern": "The queue is consumed only inside the held-attack gate; the Special button and the flick queue with no thumb held, so it lapses.",
+  "modes": [
+   "stuck",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/monsterCombat.js:1516-1579",
+   "src/game/monsterCombat.js:1754-1772",
+   "src/game/playerActions.js:148-187",
+   "src/ui/panels/SpecialButton.jsx:141-144",
+   "src/ui/BroTown.jsx:11626-11630"
+  ],
+  "linked": [
+   "G1-4",
+   "G1-7",
+   "tools/qa/mp/mp-bowgate.mjs",
+   "projectiles.js nmlSightAsk"
+  ]
+ },
+ {
+  "id": "G1-7",
+  "title": "A player projectile from nock to removal",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "S.arrows entries: queued, nocked, flying, landing, stuck/burning, planting, planted, in a rock, spent, removed.",
+  "topConcern": "A stuck special holds the monster object, not its id; after a list replace it bills and rides a frozen copy for its whole burn.",
+  "modes": [
+   "divergence",
+   "stuck",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/projectiles.js:1166-1263",
+   "src/game/projectiles.js:1302-1359",
+   "src/game/projectiles.js:1777-2435",
+   "src/game/projectiles.js:1104-1145",
+   "src/game/monsterCombat.js:1808-1848"
+  ],
+  "linked": [
+   "G1-6",
+   "G1-9",
+   "bowVolley.js",
+   "server arrowblast.js",
+   "respawn.js",
+   "visualSystems.js peer shots"
+  ]
+ },
+ {
+  "id": "G1-8",
+  "title": "A monster's shot on its way to you",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "S.slimeProjectiles: the worker's display-only balls and the dormant local orbs, each ending in one burst queue.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/projectiles.js:2740-2916",
+   "src/game/projectiles.js:1054-1086",
+   "src/networking/gameEvents.js:2512",
+   "src/networking/monsterMoveEvents.js:58"
+  ],
+  "linked": [
+   "gameEvents.js monster_attack"
+  ]
+ },
+ {
+  "id": "G1-9",
+  "title": "The once-per-life remnant pile, in a worker's zone",
+  "area": "client",
+  "verdict": "needs-thought",
+  "oneLine": "m._localRemnantDropped: one local remnant pile per monster life, dropped when a monster sits alive at 0 hp.",
+  "topConcern": "Every swelling slime's first life drops a claimable phantom pile beside the worker's; the flag is never reset by the worker's respawn.",
+  "modes": [
+   "authority",
+   "divergence",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/combatHelpers.js:589-630",
+   "src/game/monsterCombat.js:268-282",
+   "src/game/projectiles.js:2260-2277",
+   "src/networking/wsClient.js:1297-1310",
+   "src/game/groundLoot.js:376-394"
+  ],
+  "linked": [
+   "G1-10",
+   "G1-14",
+   "gameEvents.js loot_drop / monster_kill",
+   "monsterCarry.js",
+   "tools/qa/mp/mp-remnant.mjs"
+  ]
+ },
+ {
+  "id": "G1-10",
+  "title": "The sword's local kill, in a worker's zone",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "The melee kill block (local XP, coin pile, alive=false) has no server-zone gate; the arrow's does.",
+  "topConcern": "Any server monster held alive at 0 hp lets a swing run the single-player kill; v2.3.2226 closed it only for the swelling slime.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/monsterCombat.js:2623-3046",
+   "src/game/projectiles.js:2260-2277",
+   "src/data/monsterVariants.js:419-433",
+   "src/networking/gameEvents.js:2691"
+  ],
+  "linked": [
+   "G1-9",
+   "gameEvents.js monster_kill",
+   "wsClient.js tick respawn edge"
+  ]
+ },
+ {
+  "id": "G1-11",
+  "title": "Other players' damage numbers, held and dripped out",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "Per-source peer popup queue with an 80 ms release cadence, 600 ms force and a zone-change wipe.",
+  "topConcern": "_peerDmgLastRel is pruned only on a zone change, and the Wheel is one zone (small).",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/game/combatHelpers.js:306-380"
+  ],
+  "linked": [
+   "gameEvents.js monster_hit"
+  ]
+ },
+ {
+  "id": "G1-12",
+  "title": "Styling your own server-rolled numbers",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "_ownSpecialRecent (sticky boolean) and _ownCollisionRecent (fresh-checked) dress the worker's number for your hits.",
+  "topConcern": "After one sword special every later own number (arrows, ticks, PvP) is drawn as a special; ranged specials never are.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/monsterCombat.js:2611",
+   "src/game/monsterCombat.js:2443",
+   "src/game/projectiles.js:1998",
+   "src/networking/gameEvents.js:2885-2905",
+   "src/networking/gameEvents.js:4196"
+  ],
+  "linked": [
+   "G1-23",
+   "gameEvents.js monster_hit / pvp_hit"
+  ]
+ },
+ {
+  "id": "G1-13",
+  "title": "\"This monster is after me\" flags written by your own hits",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "m._aggroed/_aggroTs/_chaseUntil/_kbUntil stamped on the worker's monsters by your hits; cleared only by tick tg.",
+  "topConcern": "tg is sent only while targeting (+2 s) and the worker respawn keeps _aggroed, so the reach ring can take a monster not after you.",
+  "modes": [
+   "stuck",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/game/monsterCombat.js:2329-2333",
+   "src/game/projectiles.js:1908-1912",
+   "src/networking/wsClient.js:1255-1288",
+   "server/src/tick.js:815-824",
+   "src/rendering/systems/effectsRenderer.js:8292-8305"
+  ],
+  "linked": [
+   "G1-14",
+   "server tick.js tg"
+  ]
+ },
+ {
+  "id": "G1-14",
+  "title": "The local monster brain",
+  "area": "client",
+  "verdict": "retired",
+  "oneLine": "Client-owned monster AI: aggro, archetype moves, boss idle/telegraph/attack/recovery, telegraph strike, local respawn.",
+  "topConcern": "Dormant; its _invulnerable flag is shared with the live burrow and refuses hits before monster_damage is sent.",
+  "modes": [
+   "stuck",
+   "persistence",
+   "divergence",
+   "guard-drift"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/game/monsterCombat.js:202-226",
+   "src/game/monsterCombat.js:419-606",
+   "src/game/monsterCombat.js:608-802",
+   "src/game/monsterCombat.js:804-1112",
+   "src/game/dungeonWaves.js:21-28"
+  ],
+  "linked": [
+   "G1-9",
+   "G1-13",
+   "dungeonWaves.js",
+   "gameEvents.js burrow",
+   "server telegraph.js / monstermoves.js"
+  ]
+ },
+ {
+  "id": "G1-15",
+  "title": "Dying to a local monster (third copy of death and respawn)",
+  "area": "client",
+  "verdict": "retired",
+  "oneLine": "_dying/_deathStart/respawnTimer + a 3.5 s setTimeout teleport, reachable only from a local monster's blow.",
+  "topConcern": "Third copy of the respawn; goes to 'town' without the Wheel trip and cannot be cancelled. Dormant.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/game/monsterCombat.js:1113-1281",
+   "src/game/respawn.js:36-118",
+   "src/ui/BroTown.jsx:4902-4950",
+   "src/game/combatHelpers.js:737-739"
+  ],
+  "linked": [
+   "respawn.js applyLocalRespawn",
+   "wsClient.js player_died / player_respawned"
+  ]
+ },
+ {
+  "id": "G1-16",
+  "title": "Use-trained Tier-1 stats",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "_buildUse tally split on a kill into _buildProg; a threshold raises a T1 stat and sends build_point_earned.",
+  "topConcern": "Stat level-ups and grid points are decided on the phone; the worker recomputes on its word (known, inert under prog3).",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/combatHelpers.js:449-586",
+   "src/networking/gameEvents.js:3096",
+   "server/src/grids.js:166-205",
+   "src/game/combatHelpers.js:385-413"
+  ],
+  "linked": [
+   "server grids.js",
+   "server prog3.js"
+  ]
+ },
+ {
+  "id": "G1-17",
+  "title": "The periodic local save (every 180 frames)",
+  "area": "client",
+  "verdict": "fine",
+  "oneLine": "_rpgSaveTimer frame counter: localStorage bt_rpg plus a syncRpgToServer whose RPC is a no-op.",
+  "topConcern": "A full JSON serialisation thrown away every ~3 s (1.25 s at 144 Hz): btRpc returns null.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/game/monsterCombat.js:3388-3396",
+   "src/networking/index.js:257-308",
+   "src/networking/index.js:28"
+  ],
+  "linked": [
+   "rpgSave.js",
+   "BroTown.jsx boot cache"
+  ]
+ },
+ {
+  "id": "G1-18",
+  "title": "The ranged attack's pose windows",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "_bowShotAt/_bowShotAng and _staffCastAt/_staffCastAng/_staffCadenceMs stamped at fire, drawn for a fixed window.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/monsterCombat.js:1883-1909",
+   "src/game/monsterCombat.js:2040-2043",
+   "src/ui/BroTown.jsx:5297"
+  ],
+  "linked": [
+   "entityRenderer.js bow pose",
+   "staffCastFx.js"
+  ]
+ },
+ {
+  "id": "G1-19",
+  "title": "Claims against players from a swing (and the dead threat timer)",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Per-frame player_attack sends throttled per swing (pvpSwing.js), painted under the same rule; per-shot claims.",
+  "topConcern": "S._pvpThreat is written at three sites and read nowhere: a phase that gates nothing.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/game/monsterCombat.js:3161-3308",
+   "src/game/monsterCombat.js:3330-3373",
+   "src/game/pvpSwing.js:47-71",
+   "src/game/projectiles.js:2464-2606"
+  ],
+  "linked": [
+   "pvpSwing.js",
+   "sparTargets.js",
+   "server pvpbalance.js / _pvpAllowed"
+  ]
+ },
+ {
+  "id": "G1-20",
+  "title": "A sword swing through a townsperson",
+  "area": "client",
+  "verdict": "retired",
+  "oneLine": "npc._hitThisSwing, shove and sound; the hp/death/respawn half is unreachable (every townsperson is noHp).",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/monsterCombat.js:3052-3151",
+   "src/game/monsterCombat.js:3375-3386"
+  ],
+  "linked": [
+   "NPC_DATA noHp"
+  ]
+ },
+ {
+  "id": "G1-21",
+  "title": "Impact rings: the producer's lifetime vs the cleanup's",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Rings carry their own duration/startDelay; stateCleanup removes all at a flat 400 ms before the renderer's end.",
+  "topConcern": "The big staff bolt's blast ring is cut at age 0.83, never drawn past ~91% of the radius the worker hits.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/combatHelpers.js:1027-1072",
+   "src/game/stateCleanup.js:38",
+   "src/rendering/systems/effectsRenderer.js:6050-6062",
+   "src/rendering/staffCastFx.js:567-576"
+  ],
+  "linked": [
+   "stateCleanup.js",
+   "staffCastFx.js"
+  ]
+ },
+ {
+  "id": "G1-22",
+  "title": "A worker's monster as drawn: eased position, split arc, hit recoil",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "renderX/Y easing and snap, the split arc (_popFrom), and the hit recoil/flash windows.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/game/monsterCombat.js:361-417",
+   "src/game/monsterCombat.js:2305-2341",
+   "src/game/projectiles.js:377-386",
+   "src/networking/gameEvents.js:2771-2779"
+  ],
+  "linked": [
+   "monsterCarry.js",
+   "gameEvents.js split / monster_hit"
+  ]
+ },
+ {
+  "id": "G1-23",
+  "title": "The phone's own elemental statuses and collisions, and what they award",
+  "area": "client",
+  "verdict": "watch",
+  "oneLine": "Local status clocks and collisions beside the worker's; certificates and the Codex awarded from the local roll.",
+  "topConcern": "Certs and Codex entries can be earned for a collision the worker never resolved, and live only in this browser.",
+  "modes": [
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/game/monsterCombat.js:2144-2214",
+   "src/game/monsterCombat.js:2394-2485",
+   "src/game/projectiles.js:1862-1876",
+   "src/game/projectiles.js:1978-2028",
+   "src/game/mastery.js:79-141"
+  ],
+  "linked": [
+   "G1-7",
+   "G1-12",
+   "server combat.js resolveElementCollision",
+   "gameSystems.js discoverCollision"
+  ]
+ }
+]

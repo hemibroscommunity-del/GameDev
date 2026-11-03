@@ -1,0 +1,577 @@
+[
+{
+"id": "R6-1",
+"title": "The parked-tab canvas witness check",
+"area": "rendering",
+"verdict": "needs-thought",
+"oneLine": "Pixels noted on packed canvases, read back on return or rebuild; two empties trigger the recovery reload.",
+"topConcern": "Since v2.3.3702 the big packed sheets become images (canvas zeroed, witness skipped); worker-baked masked frames were never witnessed, so a purge can go unnoticed.",
+"modes": [
+"divergence",
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"src/rendering/canvasWitness.js:101",
+"src/rendering/gearSheets.js:336",
+"src/rendering/keepAsImage.js:103",
+"src/rendering/systems/entityRenderer.js:3067",
+"src/networking/wsClient.js:5016"
+],
+"linked": [
+"R6-2 keepAsImage",
+"R6-3 gpuOnly",
+"R6-4 heldNumbers",
+"R7 gearSheets",
+"wsClient _resumeRecover",
+"BroTown _rebuildRenderer",
+"TRAPS §250"
+]
+},
+{
+"id": "R6-2",
+"title": "A made-once canvas kept as an image of itself",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "A canvas source encoded to PNG, swapped to an <img>, canvas zeroed; one stored promise dedupes asks.",
+"topConcern": "A toBlob that never calls back leaves the promise pending forever and the source unprotected.",
+"modes": [
+"stuck",
+"combo"
+],
+"confidence": "low",
+"files": [
+"src/rendering/keepAsImage.js:57",
+"src/rendering/keepAsImage.js:62",
+"src/rendering/keepAsImage.js:96",
+"src/rendering/gearSheets.js:55"
+],
+"linked": [
+"R6-1 canvasWitness",
+"R7 gearSheets keepPackedAsImage",
+"trait colour catalogs",
+"TRAPS §253"
+]
+},
+{
+"id": "R6-3",
+"title": "Pictures kept on the graphics chip only",
+"area": "rendering",
+"verdict": "watch",
+"oneLine": "Canvas emptied once uploaded (now, or once drawn via a pending set); a rebuilt renderer must remake them.",
+"topConcern": "keepOnGpuOnly has no lost-context guard; damage-font safety rests on a regex matching the font's install list.",
+"modes": [
+"race",
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/rendering/gpuOnly.js:58",
+"src/rendering/gpuOnly.js:102",
+"src/rendering/systems/effectsRenderer.js:5833",
+"src/rendering/systems/effectsRenderer.js:2763",
+"src/ui/BroTown.jsx:4145"
+],
+"linked": [
+"R6-4 heldNumbers",
+"R6-1",
+"effectsRenderer (R3/R4)",
+"BroTown owed rebuild v2.3.3890"
+]
+},
+{
+"id": "R6-4",
+"title": "A monster strip held as colour numbers once drawn",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Packed strip read to numbers after first draw, canvas emptied, refilled from numbers on any upload.",
+"topConcern": "Pending set drops destroyed sources only when a sweep runs; brief strong references between effects renderers.",
+"modes": [
+"leak"
+],
+"confidence": "low",
+"files": [
+"src/rendering/heldNumbers.js:166",
+"src/rendering/heldNumbers.js:181",
+"src/rendering/heldNumbers.js:215",
+"src/rendering/zoneTextures.js:113"
+],
+"linked": [
+"R6-3 gpuOnly",
+"R6-10 picsNumbers",
+"R6-6 zoneTextures",
+"hitMaterialFx",
+"arrowPin"
+]
+},
+{
+"id": "R6-5",
+"title": "The Wheel's monster looks, loaded as you walk toward them",
+"area": "rendering",
+"verdict": "needs-thought",
+"oneLine": "Per-look loading/ready/failed states by distance and land, freed after 10 s unused, reset on zone change.",
+"topConcern": "Freeing one look unloads a shared module (bogLurker/fishman) under a sibling still 'ready'; its monsters then draw as the generic brute.",
+"modes": [
+"race",
+"leak"
+],
+"confidence": "medium",
+"files": [
+"src/rendering/wheelMonsterArt.js:148",
+"src/rendering/wheelMonsterArt.js:258",
+"src/rendering/wheelMonsterArt.js:117",
+"src/rendering/monsterVariantSprites.js:115",
+"src/rendering/systems/entityRenderer.js:9740"
+],
+"linked": [
+"R6-6 zoneTextures",
+"monsterVariantSprites.unloadVariantSprites",
+"preloadAnimations.freeZoneAssets",
+"server tick.js _wheelInterest",
+"R1/R2 entityRenderer"
+]
+},
+{
+"id": "R6-6",
+"title": "Zone art bundles and the unload generation",
+"area": "rendering",
+"verdict": "watch",
+"oneLine": "Per-bundle URLs and cropped strips, freed together; a generation number drops strips decoding across an unload.",
+"topConcern": "Assets-tracked loads (fireballs, remnants, footprints) are not generation-guarded; sequential unload awaits can destroy a re-entry's cached texture.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/rendering/zoneTextures.js:65",
+"src/rendering/zoneTextures.js:101",
+"src/rendering/zoneTextures.js:166",
+"src/rendering/fireGoblinSprites.js:138"
+],
+"linked": [
+"R6-5 wheelMonsterArt",
+"R6-10 picsNumbers",
+"R6-4 heldNumbers",
+"zoneTransitions deferred free (400 ms)"
+]
+},
+{
+"id": "R6-7",
+"title": "The world trial's streamed island ground",
+"area": "rendering",
+"verdict": "retired",
+"oneLine": "Pieces of the ?trial=world island loaded near the camera, kept one ring out, freed beyond.",
+"topConcern": "A piece freed and re-wanted mid-load: the first arrival unloads the url under the second record.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/rendering/chunkGround.js:59",
+"src/rendering/chunkGround.js:112",
+"src/rendering/systems/tileRenderer.js:741"
+],
+"linked": [
+"R11 wheelGround",
+"game/worldTrial.js"
+]
+},
+{
+"id": "R6-8",
+"title": "Depth buckets: which side of the player each thing draws on",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Front/back layer per ground-standing child with 2 px hysteresis, plus the raise over a building's real base.",
+"topConcern": "On retired props the raise and the hysteresis disagree each frame, moving a figure twice a frame (both layers rebuilt).",
+"modes": [
+"guard-drift"
+],
+"confidence": "low",
+"files": [
+"src/rendering/depthSort.js:67",
+"src/rendering/depthSort.js:278",
+"src/rendering/depthSort.js:213",
+"src/rendering/pixiRenderer.js:793"
+],
+"linked": [
+"R5 pixiRenderer",
+"propGround.js",
+"worldLife riders",
+"TRAPS §218"
+]
+},
+{
+"id": "R6-9",
+"title": "A metal piece's shine: pooled filter or drawn in the frame",
+"area": "rendering",
+"verdict": "watch",
+"oneLine": "Each metal sprite filtered, batched by the sheen batcher, or plain, chosen per frame and routed at draw-list build.",
+"topConcern": "Glint, sheen and fill programs are warmed once a page; after a black-screen rebuild the first armoured player compiles them mid-frame.",
+"modes": [
+"divergence",
+"leak"
+],
+"confidence": "medium",
+"files": [
+"src/rendering/lightfx/glint.js:873",
+"src/rendering/lightfx/glint.js:844",
+"src/rendering/sharpPixels.js:250",
+"src/rendering/pixiRenderer.js:171",
+"src/rendering/pixiRenderer.js:356"
+],
+"linked": [
+"R6-12 LightFx",
+"R6-17 batcher hooks",
+"server tick.js eqg"
+]
+},
+{
+"id": "R6-10",
+"title": "Colour-number atlas rows",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "256-row colour atlas: rows taken per picture, shared per bundle, per look; given back on destroy/unload.",
+"topConcern": "Correctness depends on unloadBundle destroying strips before giving their shared rows back.",
+"modes": [
+"combo"
+],
+"confidence": "low",
+"files": [
+"src/rendering/paletteTex.js:126",
+"src/rendering/paletteTex.js:1000",
+"src/rendering/picsNumbers.js:57",
+"src/rendering/picsNumbers.js:134"
+],
+"linked": [
+"R6-6 zoneTextures",
+"R7 lookPalette/lookArmour",
+"R11 wheelGround/wheelObjects"
+]
+},
+{
+"id": "R6-11",
+"title": "Shadows: pieces, per-figure hold, pre-pass or filter",
+"area": "rendering",
+"verdict": "watch",
+"oneLine": "Per-renderer shadow pools drawn by a pre-pass or a filter, a 1.5 s hold per caster, cleared on zone/sheet frees.",
+"topConcern": "Unused pooled meshes keep building textures (sprites drop theirs); safe only while every art free clears the systems first.",
+"modes": [
+"leak",
+"race",
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/rendering/lightfx/shadows.js:711",
+"src/rendering/lightfx/shadows.js:451",
+"src/rendering/lightfx/shadows.js:835",
+"src/rendering/lightfx/shadows.js:801",
+"src/rendering/lightfx/shadows.js:357"
+],
+"linked": [
+"R6-12 LightFx",
+"R6-20 renderHeal",
+"R11 wheelObjects",
+"farmWorld",
+"casters.js"
+]
+},
+{
+"id": "R6-12",
+"title": "Light-and-shine switches and the Wheel's eased land light",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Per-device light and sheen switches with an on-to-off clear, and the Wheel light eased between lands.",
+"topConcern": "Turning light effects on at runtime leaves the shine programs unwarmed (gated on the switch at load).",
+"modes": [
+"persistence"
+],
+"confidence": "low",
+"files": [
+"src/rendering/lightfx/lightFx.js:35",
+"src/rendering/lightfx/lightFx.js:117",
+"src/rendering/lightfx/lightFx.js:84",
+"src/rendering/lightfx/glint.js:472"
+],
+"linked": [
+"R6-9 glint",
+"R6-11 shadows",
+"game/speedTest.js"
+]
+},
+{
+"id": "R6-13",
+"title": "The masked-body bake worker's state and replies",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Worker keeps the rod mask and parsed look sheets; every bake or look job gets one reply by id.",
+"topConcern": "A look sheet whose parse fails in the worker stays marked sent; its looks fall back to the old path silently.",
+"modes": [
+"stuck"
+],
+"confidence": "low",
+"files": [
+"src/rendering/maskedBakeWorker.js:124",
+"src/rendering/maskedBakeWorker.js:168",
+"src/rendering/lookArmour.js:274",
+"src/rendering/maskedBake.js:899"
+],
+"linked": [
+"R1 entityRenderer bake queue",
+"lookArmour",
+"lookBake.js"
+]
+},
+{
+"id": "R6-14",
+"title": "Does this renderer draw colour numbers (one program or three)?",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Per-renderer palette and one-batch decision made by a prewarm draw and link check behind the loading screen.",
+"topConcern": "A rebuild whose prewarm fails to link still routes existing palette sources to the unlinked palette batcher.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/rendering/paletteTex.js:868",
+"src/rendering/paletteTex.js:923",
+"src/rendering/paletteTex.js:664",
+"src/rendering/pixiRenderer.js:364"
+],
+"linked": [
+"R6-10",
+"R6-15 p256",
+"R6-17",
+"R11 wheelGround setWheelPalette"
+]
+},
+{
+"id": "R6-15",
+"title": "Effects' colour numbers packed on the chip (p256)",
+"area": "rendering",
+"verdict": "retired",
+"oneLine": "Dormant ?p256=1: numbers deflated once on the chip, unpacked before any upload, blank upload while packed.",
+"topConcern": "",
+"modes": [],
+"confidence": "low",
+"files": [
+"src/rendering/p256.js:42",
+"src/rendering/p256.js:207",
+"src/rendering/p256.js:249",
+"src/rendering/p256.js:272"
+],
+"linked": [
+"R6-16 picsOnce",
+"R6-10",
+"R6-14"
+]
+},
+{
+"id": "R6-16",
+"title": "A picture from a file held once (picsOnce)",
+"area": "rendering",
+"verdict": "watch",
+"oneLine": "fx/ui pictures release their page copy once on the chip, restored from file on unload, loss or blank upload.",
+"topConcern": "A failed restore after a blank upload has no retry: a picture drawn every frame stays an empty texture until reload.",
+"modes": [
+"stuck"
+],
+"confidence": "medium",
+"files": [
+"src/rendering/picsOnce.js:171",
+"src/rendering/picsOnce.js:225",
+"src/rendering/picsOnce.js:258",
+"src/rendering/pixiApp.js:724"
+],
+"linked": [
+"R6-15 p256",
+"R6-4 heldNumbers",
+"BroTown _rebuildRenderer",
+"public/_headers (sprites revalidated)"
+]
+},
+{
+"id": "R6-17",
+"title": "Which batcher draws a quad: the hook chain and install latches",
+"area": "rendering",
+"verdict": "watch",
+"oneLine": "Up to five prototype wrappers route each quad and its rounding; page-life install latches for every Pixi patch.",
+"topConcern": "Routing depends on install order and whether each wrapper assigns before or after the inner chain; each claims the last word.",
+"modes": [
+"opacity",
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"src/rendering/paletteTex.js:666",
+"src/rendering/sharpPixels.js:247",
+"src/rendering/fillBatch.js:112",
+"src/rendering/lightfx/shadows.js:158",
+"src/rendering/pixiApp.js:711"
+],
+"linked": [
+"R6-9",
+"R6-14",
+"R6-23 liveSwitch",
+"R6-21 pool trim",
+"bindGroupFix",
+"textRelease",
+"quietClear",
+"layerUniforms",
+"TRAPS §225 §260"
+]
+},
+{
+"id": "R6-18",
+"title": "The farm's palette reader worker lifecycle",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "png8 reader worker made on demand, stopped after 3 s idle or on error; failures load as pictures.",
+"topConcern": "test() and load() ask paletteFileFor separately; a decision between them falls back to the plain loader (harmless).",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/rendering/paletteLoad.js:78",
+"src/rendering/paletteLoad.js:159",
+"src/rendering/png8Worker.js:31"
+],
+"linked": [
+"R6-10",
+"R6-14",
+"R6-22 tiledMaps",
+"farmWorld"
+]
+},
+{
+"id": "R6-19",
+"title": "A look given up on, asked for again later",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Per-key retry rounds at 5/10/20/40/60 s, ten at most, started when a missing picture is asked for.",
+"topConcern": "Round counts never reset on success and due closures linger for keys nobody asks for again.",
+"modes": [
+"leak"
+],
+"confidence": "low",
+"files": [
+"src/rendering/retryLooks.js:23",
+"src/rendering/playerSprites.js:364",
+"src/rendering/playerSkins.js:2865"
+],
+"linked": [
+"R7 playerSprites",
+"R7 playerSkins",
+"docs/specs/retry-looks.md"
+]
+},
+{
+"id": "R6-20",
+"title": "A frame that threw leaves Pixi's stacks open; heal closes them",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "After a throwing render, stencil, colour mask, filter stack and sprite-mask stages reset to nothing open.",
+"topConcern": "Five Pixi-private fields; a rename makes the heal a silent no-op and the black screen returns.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/rendering/renderHeal.js:42",
+"src/rendering/lightfx/shadows.js:889"
+],
+"linked": [
+"R6-11",
+"bindGroupFix",
+"crashTrap watchdog",
+"TRAPS §144"
+]
+},
+{
+"id": "R6-21",
+"title": "Pixi's texture pool trimmed when idle or at a zone change",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Pooled scratch textures stamped when handed back, destroyed after 30 s idle or all at a zone change.",
+"topConcern": "",
+"modes": [],
+"confidence": "low",
+"files": [
+"src/rendering/texturePoolTrim.js:38",
+"src/rendering/texturePoolTrim.js:56",
+"src/rendering/bindGroupFix.js:62"
+],
+"linked": [
+"R6-17",
+"R5 pixiRenderer",
+"R6-9",
+"R6-11"
+]
+},
+{
+"id": "R6-22",
+"title": "Which zone maps are resident (sync mirror of async cache)",
+"area": "rendering",
+"verdict": "retired",
+"oneLine": "A Set mirroring Pixi's cache for the zone gate; live only for the farm's ground today.",
+"topConcern": "Mirror dropped before an awaited unload: a quick way back re-adds a texture the unload then destroys.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/rendering/tiledMaps.js:221",
+"src/rendering/tiledMaps.js:259",
+"src/rendering/tiledMaps.js:297",
+"src/game/zoneTransitions.js:92"
+],
+"linked": [
+"R5 tileRenderer",
+"zoneTransitions",
+"R6-18 paletteLoad"
+]
+},
+{
+"id": "R6-23",
+"title": "A live switch read where a sprite is packed",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "Window switches boxed for the batchers; a flip marks every render group for a draw-list rebuild.",
+"topConcern": "",
+"modes": [],
+"confidence": "low",
+"files": [
+"src/rendering/drawLists.js:42",
+"src/rendering/drawLists.js:25",
+"src/rendering/sharpPixels.js:50"
+],
+"linked": [
+"R6-17",
+"R6-9",
+"formShade.js"
+]
+},
+{
+"id": "R6-24",
+"title": "A big Graphics' building lists let go once drawn",
+"area": "rendering",
+"verdict": "watch",
+"oneLine": "Unbatched, drawn, clean Graphics contexts have Pixi's geometry lists emptied; a redraw refills them.",
+"topConcern": "If Pixi rebuilds its GPU copy without marking the context dirty, the minimap draws from emptied lists, silently.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/rendering/gfxLean.js:52",
+"src/rendering/systems/wheelMinimap.js:1105"
+],
+"linked": [
+"R6-17",
+"wheelMinimap",
+"docs/specs/heap-trim-2026-11-03.md"
+]
+}
+]
