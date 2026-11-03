@@ -90,7 +90,7 @@ import { CODEX_DROP_RATES as CLIENT_CODEX_DROP_RATES, CODEX_GRADE_ODDS as CLIENT
   CODEX_ROLL_SIDES as CLIENT_CODEX_ROLL_SIDES, codexRoll as clientCodexRoll,
   CODEX_ROLL_ORDER as CLIENT_CODEX_ROLL_ORDER, codexRollLayout as clientCodexRollLayout } from '../../src/data/codexDrops.js';
 import { KILL_ROLL as SRV_KILL_ROLL, KILL_ROLL_CHANCES as SRV_KILL_ROLL_CHANCES, killRollLayout as srvKillRollLayout } from '../src/killroll.js'; /* v2.3.3209: one roll a kill */
-import { WEAPON_QUALITY_ODDS as SRV_WEAPON_QUALITY_ODDS } from '../src/hardening.js';
+import { DROP_QUALITY_ODDS as SRV_WEAPON_QUALITY_ODDS } from '../src/hardening.js';   /* v2.3.3952: a drop's own grades, the codex's */
 import { WHEEL_ZONE as SRV_WHEEL_ZONE } from '../src/wheelzone.js';
 import { WHEEL_DOORS as SRV_WHEEL_DOORS } from '../src/wheelspawns.js';   /* v2.3.3209: a codex page's dungeon */
 import { CODEX_ROADS as CLIENT_CODEX_ROADS } from '../../src/data/monsterCodex.js';   /* v2.3.3209: ...and its way there */
@@ -2740,6 +2740,22 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('gems: a count reads the bag and an old pouch on both sides alike',
     CG.gemCount(ps, 'flame', false) === SG.gemCount(ps, 'flame', false) && CG.gemCount(ps, 'flame', true) === SG.gemCount(ps, 'flame', true)
       && CG.gemCount(ps, 'flame', false) === 3, [CG.gemCount(ps, 'flame', false), SG.gemCount(ps, 'flame', false)]);
+}
+
+/* ═══ v2.3.3944: THE POINTS A QUEST PAYS ═══
+   The quest journal says "+5 Achievement Points" on every quest and adds them
+   up ("Achievement Points from quests: 40") from the phone's QUEST_AP_REWARD
+   (src/data/items.js), which the hand-in's prediction already read
+   (src/game/quests.js).  The worker's is the GameRoom's own
+   (server/src/index.js this.QUEST_AP_REWARD, paid in quests.js): held here,
+   so the page can never promise a number the worker does not pay. */
+{
+  const CI = await import('../../src/data/items.js');
+  const apRoom = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {} }, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  check('quest AP: the points the journal shows for a quest are the ones the worker pays at its hand-in',
+    typeof CI.QUEST_AP_REWARD === 'number' && CI.QUEST_AP_REWARD > 0 && CI.QUEST_AP_REWARD === apRoom.QUEST_AP_REWARD,
+    { phone: CI.QUEST_AP_REWARD, worker: apRoom.QUEST_AP_REWARD });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

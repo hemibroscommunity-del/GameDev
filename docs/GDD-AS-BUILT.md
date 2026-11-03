@@ -340,7 +340,7 @@ Chat opens by tapping your own bro; the emote picker is the chat box's smiley; t
 ### 4.4 The pages
 
 - **Character**: Equipment (you as drawn, six gear slots, fourteen stat pills: OFFENSE in gold with DPS, PLAYER in blue, HP / EN / MP as bars; a slot's card opens in place; a grade is the item name's colour), Points (the six weapon stats behind a cell of the three weapons that follows the held one, the seven character stats behind your portrait; one window explains and spends, with the slime simulation "Now" and "+n" on the same dice), Journey (kills, deaths, lifetime gold and XP, duels won, deepest zone).
-- **Quests**: Active · Available · Completed; READY first, then the tracked; a row with title, next step, giver and pay; no Accept or Turn In here (everything happens with the giver in the world); a page with a steps checklist, "Track this quest", the giver's words; the Daily rewards card on top.
+- **Quests** (the quest journal, v2.3.3944, `docs/specs/quest-journal.md`): the Daily rewards card on top, then "Achievement Points from quests: N" (+5 a hand-in), then the quest you are on in full (the tracked one, else the newest in hand, else the next offer): NOW with its count and bar, WHERE with Show on map, WHO ("Talked to Mayor Bro ✓", each step ticked), GIVEN TO YOU, REWARD with +5 Achievement Points, NEXT. Under it Active (the tracked one first, a ★ Track each), Available (every giver with an offer, and where), Done (each +5 AP). No Accept or Turn In here (everything happens with the giver in the world); a quest's own page has the same parts and "Track this quest".
 - **Life Skills**: ten app tiles in a fixed order with level chips and XP bars; a detail with "Each hit" / "At Lv n+1" odds for the hit ladder, "Full XP / Less XP" for the fade, unlocks from the real tables.
 - **Codex**: nine monster cards, a page per kind (Part 6.7).
 - **More**: Quests, Life Skills, Journey (a travel log nothing writes yet), Codex, Ranks (the leaderboards), Friends, Clan (now "Clans are parties"), Guild (your rank per skill guild), Settings, Login Key, Pets. Settings: audio toggle and sliders, landscape menu side, silence notifications, replay the controls tutorial, play full screen, feedback, about, restart character. No dropdowns anywhere; choices are chips.
@@ -427,12 +427,14 @@ Only rungs 0–5 have resources, art and a place in the world today (Part 7). Ru
 
 **Quality grades**, rolled once at the forge or the drop and never changed:
 
-| Grade | Odds per mint | Weapon: whole hit × | Armour: tier × and the damage-reduction cap raised by |
-|---|---|---|---|
-| Normal | ~90.1% | 1.00 | +0 |
-| Rare | 9% | 1.30 | +2.5% |
-| Elite | 0.9% | 1.75 | +5% |
-| Godly | 1 in 2,000,000 | 5.00 | +10% |
+| Grade | Odds at the forge (and the daily chest) | Odds on a monster drop (v2.3.3952) | Weapon: whole hit × | Armour: tier × and the damage-reduction cap raised by |
+|---|---|---|---|---|
+| Normal | ~90.1% | ~99.0% | 1.00 | +0 |
+| Rare | 9% | 0.9% | 1.30 | +2.5% |
+| Elite | 0.9% | 0.09% | 1.75 | +5% |
+| Godly | 1 in 2,000,000 | 1 in 2,000,000 | 5.00 | +10% |
+
+Since v2.3.3952 a monster drop rolls its own grade, 10x rarer than the forge's (the owner: "Smithing it has 10x more unlikely at same tier drop chance"; `hardening.js` `_rollDropQuality`; the live flag `dropgrades: false` brings the forge's odds back on drops).
 
 The owner's brief for Godly was "literally one in millions so make it basically game breaking good". Worn armour draws its grade as an edge colour (rare blue, elite orange, godly rainbow), so a grade is visible to other players.
 
@@ -679,7 +681,7 @@ No telegraphed hit, burst or boss ability ever exceeds 50% of the victim's max H
 | 112–1,111 | the land's Shard | 1 in 10 |
 | 1,112–10,000 | nothing more | — |
 
-Every weapon or armour drop rolls its grade (Rare 9%, Elite 0.9%, Godly 1 in 2,000,000). The roll is shown over the monster ("7,431" in grey, "640 Frost Shard" in gold), and the codex prints the same bands. The random weapon off a kill was removed on the owner's word; the raw gem off a kill was replaced by shard cracking.
+Every weapon or armour drop rolls its grade (Rare 0.9%, Elite 0.09%, Godly 1 in 2,000,000 since v2.3.3952; the forge stays at 9% / 0.9%). The roll is shown over the monster ("7,431" in grey, "640 Frost Shard" in gold), and the codex prints the same bands. The random weapon off a kill was removed on the owner's word; the raw gem off a kill was replaced by shard cracking.
 
 ### 6.7 The Monster Codex
 
@@ -1105,7 +1107,7 @@ The owner has tried, seen and turned down many obvious suggestions. Each of the 
 
 **Layout and controls**: a light theme, blur or frosted glass, text labels instead of icons, emoji in the UI; a bigger screen seeing more of the world; menus over the world sideways; pausing while a menu is open; a band taller than a third of the screen or title bars on main pages; narrower dashboard buttons (the back arrow was moved instead); a Bag button; any new always-on button on a phone; words on touch buttons; a cooldown ring on the base attack; moving Sprint, Special or Whirlwind; a fixed JUMP button or a double-tap jump; the target-switch arrows; zooming the view further out (64 px was "probably best"; 37 was "too small"); a harvest button mid-screen or off the right button; a time limit on the harvest's frozen wait; anything always on screen over the bottom-left corner (the stick's area); a Send button or a scrollable chat feed on a phone; a chat or emote button on the HUD.
 
-**Onboarding and quests**: the creator as the first screen or auto-entering the world; email, password or social recovery; the Mayor's video greeting; a path drawn on the ground; a dimming step-by-step tutorial that stops play; more pop-ups on arrival; starting armed or leaving before the Mayor; an XP-choice window on the first quest; a coach for returning players; merging the dialogue with the offer; Accept or Turn In buttons in the quest log; several offers at once; the daily quests or the season as they were; anything that opens by itself at login; the spin before the first quest.
+**Onboarding and quests**: the creator as the first screen or auto-entering the world; email, password or social recovery; the Mayor's video greeting; a path drawn on the ground; a dimming step-by-step tutorial that stops play; more pop-ups on arrival; starting armed or leaving before the Mayor; an XP-choice window on the first quest; a coach for returning players; merging the dialogue with the offer; Accept or Turn In buttons in the quest log; several offers at once before the Mayor's first quest is handed in (after it the whole town offers its quests, the owner's tour, v2.3.3525, and the quest journal lists them all, v2.3.3944); the daily quests or the season as they were; anything that opens by itself at login; the spin before the first quest.
 
 **Windows and systems**: walking inside buildings (keepers and the room behind the menu were chosen); opening Diego's shop or Ace's flip from a door; food or drink on any shelf; a buy/sell toggle in the shop; explanations in the forge or listing every future tier; showing a result before the server confirms it; a one-handed or wooden sword at the forge; two gem buildings; a combine that can fail; a sixth bag chip for food; a suggested sell price; a one-tap Report; a Threat or teleport button; facts revealed over several kills in the codex; the random weapon drop; Track / Find Trainer / View Recipes buttons or "coming soon" cells on the skills page; a name-and-level label over every resource; a rod over the fish.
 
