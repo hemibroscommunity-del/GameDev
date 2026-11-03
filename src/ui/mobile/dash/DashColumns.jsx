@@ -178,7 +178,7 @@ export const DeskRailWeapons = ({ R, w, row }) => {
 };
 
 export const DashColumns = ({ R, stacked, vwBasis, desk, box }) => {
-  /* v2.3.4012: `box` -- the one band (?oneband=1) lays this row out from its
+  /* v2.3.4072: `box` -- the one band (?oneband=1) lays this row out from its
      measured box (OneBandColumns.jsx, sheetGeometry oneBandLayout): the
      tile, the counts and the cards come from L; without it nothing changes */
   const L = box ? oneBandLayout(box.w, box.h) : null;

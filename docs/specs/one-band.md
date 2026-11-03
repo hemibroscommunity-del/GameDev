@@ -1,4 +1,4 @@
-# One dashboard on every screen, to try (`?oneband=1`) (v2.3.4012)
+# One dashboard on every screen, to try (`?oneband=1`) (v2.3.4072)
 
 The owner, 2026-11-02:
 

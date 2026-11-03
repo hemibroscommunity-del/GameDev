@@ -6767,7 +6767,7 @@ html[data-orient="landscape"] .bt-dashboard{
   display:none!important;
 }
 
-/* ═══ v2.3.4012: THE ONE BAND (?oneband=1) -- THE UPRIGHT BAND ON EVERY SCREEN ═══
+/* ═══ v2.3.4072: THE ONE BAND (?oneband=1) -- THE UPRIGHT BAND ON EVERY SCREEN ═══
    The owner's "same layout ... the menu takes up [a third] of the bottom of
    the screen even in layout orientation", OFF by default, to try
    (src/ui/oneBand.js, docs/specs/one-band.md).  With the switch on,

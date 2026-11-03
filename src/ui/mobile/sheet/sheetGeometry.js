@@ -45,7 +45,7 @@
    reused so a stale stylesheet cannot silently size the new row with the
    old row's number. */
 import { deskWideActive, deskKeysW, DESK_SHEET_W } from '../../deskWide.js';   /* v2.3.3687 */
-import { oneBandActive } from '../../oneBand.js';                                 /* v2.3.4012 */
+import { oneBandActive } from '../../oneBand.js';                                 /* v2.3.4072 */
 
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
@@ -793,7 +793,7 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
      the same two callers -- exactly how the fold resizes height.  320 is
      the floor a degenerate window bottoms out at rather than a zero-width
      world. */
-  /* v2.3.4012: the one band (?oneband=1) is the upright band on every shape */
+  /* v2.3.4072: the one band (?oneband=1) is the upright band on every shape */
   if (vw > vh && !oneBandActive()) {
     /* v2.3.2165: `sheetOpen` carries the KIND now — false, 'dashboard', or
        'panel' — because the dashboard column and a pane column earn
@@ -821,7 +821,7 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
              playW: Math.max(320, vw - sheetW - keysW), sheetW: sheetW, keysW: keysW };
   }
   var dashH = barHeight(vw, vh);
-  /* v2.3.4012: under the one band the columns row is what the third leaves
+  /* v2.3.4072: under the one band the columns row is what the third leaves
      under the nav row (barHeight caps the band, the row pays) */
   var one = oneBandActive();
   var colsH = one ? Math.max(0, dashH - identityRowHeight(vw, vh)) : columnsRowHeight(vw);
@@ -856,7 +856,7 @@ export function barHeight(vw, vh) {
      navSlotSize stay exported: the ribbon's buttons are retired but the
      slot algebra is still the compact bag grid's. */
   var h = identityRowHeight(vw, vh) + columnsRowHeight(vw);
-  /* v2.3.4012: the one band (?oneband=1) is at most a third of the screen --
+  /* v2.3.4072: the one band (?oneband=1) is at most a third of the screen --
      the owner's "the 1/3 idea where the menu takes up that much of the
      bottom of the screen even in layout orientation".  An upright phone's
      band is under its third already (243 of 844), so it does not move;
@@ -867,7 +867,7 @@ export function barHeight(vw, vh) {
   return h;
 }
 
-/* ═══ v2.3.4012: THE ONE BAND'S FOOTPRINT, AND THE WORLD'S BARS ═══
+/* ═══ v2.3.4072: THE ONE BAND'S FOOTPRINT, AND THE WORLD'S BARS ═══
    The upright footprint (the band across the bottom, the canvas above it,
    DASH_OVERLAP under the band's rounded corners), with one addition: where
    the world above the band would come out wider than the world rule allows,
@@ -887,7 +887,7 @@ function oneBandFootprint(vw, vh, dashH, colsH) {
   return { dashH: dashH, colsH: colsH, overlap: DASH_OVERLAP, playW: vw - 2 * barW, sheetW: 0, barW: barW };
 }
 
-/* ═══ v2.3.4012: THE ONE BAND'S CONTENTS, FROM THE BOX THEY GET ═══
+/* ═══ v2.3.4072: THE ONE BAND'S CONTENTS, FROM THE BOX THEY GET ═══
    The owner's "responsive density rather than uniform scaling ... Use the
    available space to determine the number of inventory slots ... Maintain
    minimum readable text and touch-target sizes."  The upright band counts

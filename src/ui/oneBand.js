@@ -1,4 +1,4 @@
-/* ═══ v2.3.4012: ONE DASHBOARD ON EVERY SCREEN, TO TRY (?oneband=1) ═══
+/* ═══ v2.3.4072: ONE DASHBOARD ON EVERY SCREEN, TO TRY (?oneband=1) ═══
  *
  * The owner, 2026-11-02: "unification of all different screen types (mobile
  * landscape, portrait) desktop, tablet, etc to use the same layout and just

@@ -7,7 +7,7 @@ import { installCrashTrap } from './debug/crashTrap.js';
 import { installUiSfxDelegate } from './ui/uiSfxDelegate.js';
 import { applyWorldTrial } from './game/worldTrial.js';
 import { applyDeskWide } from './ui/deskWide.js';
-import { applyOneBand } from './ui/oneBand.js';   /* v2.3.4012 */
+import { applyOneBand } from './ui/oneBand.js';   /* v2.3.4072 */
 import './styles/game.css';
 
 /* Debug console intercept is handled by debugBus.initFromUrl() alone now.
@@ -51,7 +51,7 @@ applyWorldTrial();
    shape. */
 applyDeskWide();
 
-/* v2.3.4012: `?oneband=1` -- one dashboard on every screen, to try (src/ui/oneBand.js).
+/* v2.3.4072: `?oneband=1` -- one dashboard on every screen, to try (src/ui/oneBand.js).
    BEFORE the render, for the same reason. */
 applyOneBand();
 
