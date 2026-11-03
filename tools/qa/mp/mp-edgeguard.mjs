@@ -80,7 +80,7 @@ async function arrive(P) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ SIDEWAYS ═══ */
-  /* v2.3.4132: the controls at a sideways screen's left edge are the old
+  /* v2.3.4152: the controls at a sideways screen's left edge are the old
      side column's (the one band, the default, centres the world between
      bars): asked for with ?oneband=0, still reachable */
   const P = await H.newPlayer(browser, { name: 'Edgebro', wsPort, webPort, viewport: LAND, touch: true, world: 'wheel', query: 'oneband=0' });

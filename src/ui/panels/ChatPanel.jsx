@@ -5,7 +5,7 @@ import React from 'react';
 import { ChatChannelChips, lanePlaceholder } from '@/ui/mobile/ChatChannelChips.jsx';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615 */
 import { deskWideActive } from '@/ui/deskWide.js';   /* v2.3.3687 */
-import { oneBandActive } from '@/ui/oneBand.js';     /* v2.3.4132 */
+import { oneBandActive } from '@/ui/oneBand.js';     /* v2.3.4152 */
 
 /* === ChatPanel — the open-chat input overlay === */
 /* v2.3.892: extracted verbatim from the chatOpen JSX subtree in
@@ -36,7 +36,7 @@ export function ChatPanel(props) {
       /* v2.3.3687: on a computer playing wide the bar spans the WORLD, not
          the pages' column or the controls' column either side of it
          (deskWide.js; --world-x / --world-r, BroTown resize()) */
-      /* v2.3.4132: and under the band (the default) the world between its bars */
+      /* v2.3.4152: and under the band (the default) the world between its bars */
       left: (deskWideActive() || oneBandActive()) ? 'calc(10px + var(--world-x, 0px))' : 10,
       right: (deskWideActive() || oneBandActive()) ? 'calc(10px + var(--world-r, 0px))' : 10,
       bottom: '70%',

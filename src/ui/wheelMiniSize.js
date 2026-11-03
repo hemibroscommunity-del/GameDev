@@ -19,7 +19,7 @@
  * deskWideActive() asks a media query (a new MediaQueryList a call), so the
  * answer is kept for half a second: the minimap asks every frame.
  */
-/* v2.3.4132: the side column's only (deskWideActive), not the band's: under
+/* v2.3.4152: the side column's only (deskWideActive), not the band's: under
    the one band (the default) the world above the band is a third shorter
    (480 px at 1280 x 720), and a 264 px minimap and its plate took two thirds
    of its height and lay over the skateboard's button (mp-oneband's picture).

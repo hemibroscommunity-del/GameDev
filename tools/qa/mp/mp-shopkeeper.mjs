@@ -426,7 +426,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      chip that opens the column, and opening the column put the shop away.
      Now the shop opens the column with it and sits beside it, and his shelf
      fits its drawer.  Every press here is a real finger. */
-  /* v2.3.4132: the side column is the old layout now (the one band is the
+  /* v2.3.4152: the side column is the old layout now (the one band is the
      default, src/ui/oneBand.js): asked for with ?oneband=0, still reachable.
      The band sideways, the default, is the last client below. */
   const C = await H.newPlayer(browser, { name: 'Sideways', wsPort, webPort, world: 'wheel',
@@ -503,7 +503,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('no page errors on the sideways client', cErrs.length === 0, cErrs.slice(0, 3));
   await C.ctx.close();
 
-  /* ══ v2.3.4132: SIDEWAYS WITH THE BAND AT THE BOTTOM (THE DEFAULT) ══
+  /* ══ v2.3.4152: SIDEWAYS WITH THE BAND AT THE BOTTOM (THE DEFAULT) ══
      The one band on a phone on its side: the drawer rises from the band's
      top edge as upright, your bag the band's own tiles.  A sale made with
      real fingers, and the ✕ answering. */

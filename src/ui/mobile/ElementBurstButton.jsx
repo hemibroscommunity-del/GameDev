@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ctlBottom, leftCluster, LCTL_SLOT } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2574: the shared cluster over the MOVEMENT disc -- this button no longer writes its own anchor */
-import { playIsLandscape } from './playViewport.js';
+import { ctlLandscape } from './bandSideways.js';   /* v2.3.4152: a phone on its side over the one band too */
 import { PROG3, burstRefusal, burstWeapon } from '@/data/prog3.js';
 import { ELEMENTS } from '@/data/elements.js';
 import { elementBurst } from '@/game/playerActions.js';
@@ -74,7 +74,7 @@ const SIZE = 46;
 
 export const ElementBurstButton = () => {
   const [, force] = useState(0);
-  const [isLandscape, setIsLandscape] = useState(playIsLandscape());
+  const [isLandscape, setIsLandscape] = useState(ctlLandscape());
   /* ═══ v2.3.3513: UNDER A WINDOW, IT STANDS ASIDE ═══
      This button is drawn by GameApp, OUTSIDE .brotown-wrap, so it paints over
      an in-wrap window whatever the z-index ladder says (the lesson at
@@ -94,7 +94,7 @@ export const ElementBurstButton = () => {
   }, []);
 
   useEffect(() => {
-    const onResize = () => setIsLandscape(playIsLandscape());
+    const onResize = () => setIsLandscape(ctlLandscape());
     window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', onResize);
     return () => {

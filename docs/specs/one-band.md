@@ -1,6 +1,85 @@
-# One dashboard on every screen (`?oneband`) (v2.3.4072; the default since v2.3.4132)
+# One dashboard on every screen (`?oneband`) (v2.3.4072; the default since v2.3.4152)
 
-## v2.3.4132: the default, on every device
+## v2.3.4152 (B4, second part): sideways rests folded; a wide band's content centred
+
+The owner, 2026-11-03, shown the default sideways (the controls over the
+player frame and the minimap):
+
+> The new universal dashboard system will need to adapt to the new redesign
+> we're adding for "gear" and "bro." Go recommended on default behavior going
+> into landscape mode and recommendations on anything else for that
+
+Decided (owner-approved), and built:
+
+1. **A phone on its side rests FOLDED** to the band's button row (the nav row
+   alone, `data-dash-fold="min"`, 48 px at 844 x 390), so the world above it
+   is 342 px, not 260. A nav button opens its page, as upright (the band
+   unfolds); CLOSE folds it again, and so does closing a page any other way
+   (its own button again, a panel closing itself) and Diego's drawer or a
+   trade shutting. `src/ui/mobile/bandSideways.js`.
+   - *Sideways* is: the one band on, the window wider than tall, at most
+     500 px tall (`ONE_BAND_SIDE_MAX_H`: a phone is 320-430; an iPad on its
+     side is 768+ and keeps the band open), and not a mouse (`pointer:fine`:
+     a computer's short window keeps its band open). Two classes on `<html>`:
+     `bt-band-side` and `bt-band-side-open` (sideways and unfolded).
+   - **The stored fold (decided here).** Going sideways, or loading
+     sideways, folds the band WITHOUT writing `bt_dash_min`
+     (`dashMinBus.sideways`: while it is set, a fold or unfold is the
+     moment's only). A player who unfolds sideways keeps it open until they
+     fold it or turn the phone: nothing re-folds it behind them. Turning
+     upright gives the band back the upright's own remembered choice
+     (`dashMinBus.stored()`), so sideways never changes how the band rests
+     upright. A page open when the phone turns closes (the rotation rule
+     since v2.3.2157) and the band folds.
+2. **While the band is open sideways the controls step aside**: the stick,
+   the attack disc, Sprint, the skateboard, Quick eat, Jump, Block, Special,
+   the weapon triangle, the abilities, Element Burst, the charge gauge, the
+   round TRAP button, and the two touch zones (a drag on the world does not
+   start a walk under a page). Hidden by `visibility` (a hidden box is never
+   hit, and keeps its rect for the coach and the probes) and not touchable,
+   back the moment the band folds. game.css's `html.bt-band-side-open`
+   block; **no control file is edited for it**: each is found by the hook it
+   already carries (`data-sprint`, `.bt-rjoy-zone`, ...).
+3. **Folded, the controls play the sideways geometry** (the side column's
+   world was short too): BroTown's `isLandscape` for TouchControls and its
+   siblings, and ElementBurstButton's and SpecialChargePie's own, ask
+   `ctlLandscape()` (bandSideways.js: `playIsLandscape() || bandSideways()`)
+   -- one line in each of those three files. They are already inside the
+   world's box (`.brotown-wrap`'s `contain:paint` is the containing block of
+   every fixed control in it), so they stand in from the bars with the world.
+   That geometry was laid out for a 390 px world; over the folded row it is
+   342, and measured, two things met that never did: the attack disc's top
+   corner and the minimap's plate (13 px), and Quick eat (the left cluster's
+   top) and the player frame's foot (13 px). So, in game.css only: the disc
+   is drawn at 0.85 (80 px, its foot where it was, so Jump, Block and Shield
+   Bash keep their places), and the left thumb's cluster (the stick, Element
+   Burst, Quick eat, the weapon triangle) sits 20 px lower. Every touch
+   target keeps 44 px. What the screenshot showed is gone: the stick is under
+   the player frame, not on it; Sprint and the disc are left of and under the
+   minimap; the weapon triangle is low on the left, far from the HP number.
+4. **A computer and a tablet: the band open at rest** at today's height, as
+   built, and its content -- the nav row, an open page, the resting columns
+   (`data-band-box` in BottomDashboard) -- **centred**, as wide as the world
+   above it (`--play-w`: its edges line up with the world's, bars and all)
+   and at most **1200 px**. Why 1200: the Gear and Bro mockups (the repo
+   root's `61C354F2-...png` and `D474F679-...png`) are three panels side by
+   side at about 3.4 : 1, drawn for a phone's width; across a 1920 px window
+   they would be three thin strips. 1200 over a 191 px body is a little over
+   6 : 1, each of three panels about 400 px (the mockup's panel at a
+   computer's 63 px tile), and it is what a 1280 px laptop window nearly
+   fills. Measured: 1056 px at 1280 x 720 (the world's width there), 1200 at
+   1920 x 1080. The band's background stays the window's width. Every tab
+   inherits the box: Lane A's Gear tab and the Bro tab draw inside the page
+   box, so they need nothing of their own.
+5. **Upright phones unchanged.** The Test panel's "Side column (old layout)"
+   row stays the off-ramp.
+
+**Diego's drawer sideways** is not changed: the band unfolds for his bag (as
+it must: you sell from it), the world above is 260 px, and his drawer (226
+px: his name, his shelf, the deal) cannot be shorter without dropping one of
+them. Closing it now folds the band again. Left for the owner (below).
+
+## v2.3.4152: the default, on every device
 
 The owner, 2026-11-03:
 
@@ -23,7 +102,7 @@ address, or the Test panel's **Side column (old layout)** row (its button
 "Use the side column (old layout)", then "Back to the dashboard at the
 bottom"). The device keeps the choice.
 
-**The stored key.** Until v2.3.4132 `localStorage` `bt_oneband` held `'1'` for
+**The stored key.** Until v2.3.4152 `localStorage` `bt_oneband` held `'1'` for
 on and was removed for off, so "no key" meant off. Now it records only an
 explicit off, `'0'`: no key (a device that never asked, or an old "off") and
 the old `'1'` (a device that tried `?oneband=1`) both read **on**.
@@ -65,7 +144,7 @@ and the refinement he adopted:
 > and touch-target sizes.
 
 B3 (v2.3.4072, #1396) shipped it **off**, behind `?oneband=1` and the Test
-panel's "One dashboard (to try)" row, for the owner to try; B4 (v2.3.4132)
+panel's "One dashboard (to try)" row, for the owner to try; B4 (v2.3.4152)
 made it the default.
 
 ## What the one band does
@@ -83,7 +162,7 @@ always had -- and only its size changes:
   (they ride `--dash-h` / `--sheet-h`), and a key does what its button does.
   Whatever upright draws -- six buttons and the pill on main today, five and
   the grip once #1386 lands -- is what every screen draws.
-- **Today's height, never taller** (v2.3.4132, the owner: keep today's
+- **Today's height, never taller** (v2.3.4152, the owner: keep today's
   dashboard height on every layout, no taller band). An upright screen keeps
   exactly the band it has always had (`sheetGeometry.js` `barHeight`: 243 at
   390 x 844, 235 at 375 x 667, 269 on an upright tablet). A wider screen gets
@@ -146,11 +225,18 @@ always had -- and only its size changes:
   the header, the cards' row).
 - `src/ui/BroTown.jsx` -- resize() adds `barW` to `--world-x` / `--world-r`.
 - `src/styles/game.css` -- the `html.bt-one-band` block.
-- `src/ui/panels/DevPanel.jsx` -- the Test panel's row (v2.3.4132: "Side
+- `src/ui/panels/DevPanel.jsx` -- the Test panel's row (v2.3.4152: "Side
   column (old layout)", the off switch).
-- v2.3.4132: `src/ui/deskWide.js` `deskBandActive` and BroTown's
+- v2.3.4152: `src/ui/deskWide.js` `deskBandActive` and BroTown's
   `kbHintsOff` initialiser (the controls list folded on a computer playing the
   band).
+- v2.3.4152 (sideways folded, the centred box): `src/ui/mobile/bandSideways.js`
+  (new: the shape, the two classes, the fold, `ctlLandscape`, the probe
+  `window.__btBandSide()`), started in `src/main.jsx`; `dashMinBus.js`
+  (`sideways`, `stored`); BottomDashboard's three `data-band-box` hooks;
+  game.css (the centred box, the controls stepping aside, the disc at 0.85
+  and the left cluster 20 px lower sideways); one line each in BroTown,
+  ElementBurstButton and SpecialChargePie (`ctlLandscape()`).
 
 ## Tests
 
@@ -165,14 +251,30 @@ always had -- and only its size changes:
   the device's choice (no key on, the old `'1'` on, `?oneband=0` off and kept,
   `?oneband=1` clearing it); and with `?oneband=0` a sideways phone still
   plays the side column. Pictures in `tools/qa/mp/out/oneband-*.png`.
+  v2.3.4152: sideways, with a fight's controls on screen (a shield, three
+  weapons, food and a hurt bar, an enchanted sword, a monster near): the band
+  rests folded and the fold is not stored; every control above the row,
+  inside the world, clear of the player frame, the minimap and its plate
+  (rects), shown and reached by a tap at its middle, 44 px or more; a nav
+  button opens its page and every control is hidden and untouchable; CLOSE
+  folds it and they come back where they were; a page closed by its own
+  button folds it too. A phone turned sideways folds and turned back is the
+  upright band, open. Not sideways (upright, the computer): no fold. A
+  computer at 1920 x 1080 and 1280 x 720: the nav row, the resting columns and
+  an open page centred at min(1200, the world's width), the band the
+  window's width.
 - The old layout's suites pass `?oneband=0`: `landdash` (the sideways side
   column) and `deskwide` (the computer's side column and keys strip), and the
   sideways parts of the scenarios whose subject is the side column (B4's PR
   lists them).
 - `BT_QA_QUERY=oneband=0 node tools/qa/mp/run.mjs <name>` runs any scenario
   on the old layout.
-- Pictures: `docs/shots/oneband-default-computer.webp` (1280 x 720) and
-  `docs/shots/oneband-default-sideways.webp` (844 x 390).
+- Pictures (v2.3.4152): `docs/shots/oneband-default-computer.webp` (1280 x
+  720, the bag's page open: the Gear button's until Lane A's Gear tab),
+  `docs/shots/oneband-sideways-folded.webp` (844 x 390, playing, a fight's
+  controls up) and `docs/shots/oneband-sideways-open.webp` (844 x 390, the
+  bag's page open, the controls away). B4's first sideways picture
+  (`oneband-default-sideways.webp`) is gone with what it showed.
 
 ## Not done
 
@@ -190,15 +292,16 @@ always had -- and only its size changes:
   two thirds of it and lay over the skateboard's button, so the band keeps a
   phone's 132 px (`wheelMiniSize.js`). The owner's call whether to bring it
   back at some window height.
-- On a sideways phone the world above the band is 260 px tall: the right-hand
-  controls column (Sprint, the attack disc) reaches up over the minimap's
-  lower half (`docs/shots/oneband-default-sideways.webp`). The UI review
-  (`capture.mjs --views=landscape`) names what that costs: Sprint's middle is
-  under the world map's button (a tap there opens the map), and the weapon
-  triangle's bow and staff are under the player frame's HP number. Not moved
-  here: it needs the controls or the minimap laid out for a short world (the
-  owner's call). Diego's drawer sideways covers the whole world above the
-  band (it is 226 px tall), and still sells (mp-shopkeeper).
+- Sideways (v2.3.4152): Diego's drawer, opened, covers the world above the
+  unfolded band (226 of its 260 px; it sells from the bag, which needs the
+  band open). A shorter drawer sideways (a smaller shelf row, the deal beside
+  it) is the next step if the owner wants it. The special-attack charge
+  gauge (SpecialChargePie, shown only while mana refills after a special)
+  still hangs from the disc's old numbers and can sit over the minimap's
+  lower edge for those seconds; it is not touchable.
+- Sideways, the pages inside an open band still scroll inside an 82 px body
+  (Character, Quests, Life Skills, Codex, More): the owner's Gear and Bro
+  redesign is where their sideways density gets decided.
 - Dropping the old layout, if the owner never goes back to it: the side
   column, the dock and the keys strip
   (`landDockFootprint`, `landscapeSheetW`, DashColumns `stacked` / `desk`,

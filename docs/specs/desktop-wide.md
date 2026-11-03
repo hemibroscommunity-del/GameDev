@@ -1,6 +1,6 @@
 # A computer plays the sideways layout (v2.3.3687)
 
-> **v2.3.4132: the old layout.** The one band is the default on every device
+> **v2.3.4152: the old layout.** The one band is the default on every device
 > (the owner, 2026-11-03: "Move the left side menu to the bottom of screen on
 > computer and all other devices"; docs/specs/one-band.md). What this spec
 > describes is reached with `?oneband=0` or the Test panel's "Side column (old

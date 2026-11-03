@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { RBTN } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2242: right-button geometry */
-import { playIsLandscape } from './playViewport.js';
+import { ctlLandscape } from './bandSideways.js';   /* v2.3.4152: a phone on its side over the one band too */
 import { specialManaCost } from '@/data/prog3.js';
 
 /* SpecialChargePie — big-number + thin progress ring above the right
@@ -42,7 +42,7 @@ export const SpecialChargePie = () => {
   const [, force] = useState(0);
   const [gaugeReady, setGaugeReady] = useState(false);
   const [isLandscape, setIsLandscape] = useState(
-    playIsLandscape()   /* v2.3.1715: the shell's orientation, not the window's */
+    ctlLandscape()   /* v2.3.1715: the shell's orientation, not the window's (v2.3.4152: or a phone on its side over the one band) */
   );
   const fullSinceRef = useRef(null);
 
@@ -57,7 +57,7 @@ export const SpecialChargePie = () => {
   }, []);
 
   useEffect(() => {
-    const onResize = () => setIsLandscape(playIsLandscape());
+    const onResize = () => setIsLandscape(ctlLandscape());
     window.addEventListener('resize', onResize);
     window.addEventListener('orientationchange', onResize);
     return () => {

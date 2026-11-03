@@ -26,7 +26,7 @@
  * v2.3.3711, THE OWNER'S LAYOUT ("Do your recommended keyboard layout. I
  * still think there are better layouts if you consider more creative combos
  * (like keyboard presses while a click is held down, double clicking, etc)").
- * A second computer (1280 x 800, the layout players get: since v2.3.4132 the
+ * A second computer (1280 x 800, the layout players get: since v2.3.4152 the
  * band at the bottom, src/ui/oneBand.js), in the world at
  * Frost Ridge, a greatsword and a bow, every binding driven by Playwright's
  * real mouse and keyboard:
@@ -412,7 +412,7 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await H.enterWorld(P);
     const inW = await H.waitFor(P, (S) => ({ z: S.currentZone, l: !!S._zoneLoading, desk: !!S._isDesktop }),
       (v) => v.z === 'wheel' && !v.l, { timeout: 150000, label: 'into the world' }).catch(() => null);
-    /* v2.3.4132: the layout players get is the band at the bottom (the one
+    /* v2.3.4152: the layout players get is the band at the bottom (the one
        band, the default): no keys strip, the band the window's width */
     const lay = await P.page.evaluate(() => ({ band: document.documentElement.classList.contains('bt-one-band'), wide: document.documentElement.classList.contains('bt-desk-wide'), strip: !!document.querySelector('.bt-desk-keys') }));
     rec.ok('8. a computer in the world, the layout players get -- the band at the bottom (guard)', !!inW && inW.desk && lay.band && lay.wide && !lay.strip, { inW, lay });
@@ -432,7 +432,7 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
         return { k: m.k, box: m.box, h: m.h, window: m.window, frame: m.frame, mapBottom: m.mapBottom, scale: m.scale, rect: r,
           btn: { l: Math.round(br.left), t: Math.round(br.top), w: Math.round(br.width), h: Math.round(br.height) }, canvasRight: Math.round(cr.right), plate: window.__btWheelPlate || null };
       }, null, { timeout: 30000, polling: 300 }).then((h) => h.jsonValue()).catch(() => null);
-      /* v2.3.4132: twice as big in the side column's layout (?oneband=0);
+      /* v2.3.4152: twice as big in the side column's layout (?oneband=0);
          under the band (the default) the world is a third shorter and the
          minimap stays a phone's 132 px (wheelMiniSize.js) */
       const K = lay.band ? 1 : 2, BOX = 132 * K, WIN = lay.band ? 3200 : 4800;
@@ -486,7 +486,7 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     const w2 = await look(P);
     rec.ok(`8a. the wheel over the world (${aimPt.canvas ? 'the canvas' : 'NOT the canvas'}): down the next weapon, up the one before (${w0.slot} -> ${w1.slot} -> ${w2.slot})`,
       aimPt.canvas && w0.slot === 'melee' && w1.slot === 'ranged' && w2.slot === 'melee', { w0: w0.slot, w1: w1.slot, w2: w2.slot, aimPt });
-    /* v2.3.4132: over the band (the controls' column of the old layout,
+    /* v2.3.4152: over the band (the controls' column of the old layout,
        ?oneband=0, is gone with the side column) */
     const colBox = await P.page.evaluate(() => { const c = document.querySelector('.bt-desk-keys') || document.querySelector('.bt-dashboard'); if (!c) return null; const r = c.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + Math.min(r.height / 2, 20)) }; });
     if (colBox) { await P.page.mouse.move(colBox.x, colBox.y); await P.page.mouse.wheel(0, 100); await P.page.waitForTimeout(700); }

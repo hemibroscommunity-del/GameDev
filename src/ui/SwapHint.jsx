@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { ownedWeaponSlots } from '@/game/weaponSlots.js';
 import { deskWords } from '@/game/deskWords.js';
-import { deskBigActive } from './deskWide.js';   /* v2.3.4132: either computer layout */
+import { deskBigActive } from './deskWide.js';   /* v2.3.4152: either computer layout */
 
 /* ═══ v2.3.3877: "SWAP WEAPONS", SAID ONCE ═══
  *
@@ -45,7 +45,7 @@ function offByUrl() {
 /* what it points at: the first of these on the screen */
 function anchorRect(desk) {
   /* a computer: the weapons at the foot of a page, or the dashboard's own row of them */
-  /* v2.3.4132: under the band (the default) a computer's weapons are the band's combat cards ([data-rail-weapon]);
+  /* v2.3.4152: under the band (the default) a computer's weapons are the band's combat cards ([data-rail-weapon]);
      folded (a new bro arrives so) the band's own buttons, the hint being the keys 1 2 3 */
   const sels = desk ? ['[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]', '[data-weapon-tri]', '[data-weapon-chip]', '.bt-dashboard [data-nav]']
     : ['[data-weapon-tri]', '[data-weapon-chip]'];   /* v2.3.3921: the whole triangle */
@@ -88,7 +88,7 @@ export default function SwapHint({ stateRef }) {
       let busy = false;
       try { busy = !!document.querySelector('.bt-npcdlg-scrim, .bt-inspect, [data-quest-offer]'); } catch (e) { busy = false; }
       if (busy) { if (since) setView(null); return; }
-      const desk = deskBigActive();   /* v2.3.4132: the band on a computer too */
+      const desk = deskBigActive();   /* v2.3.4152: the band on a computer too */
       const a = anchorRect(desk);
       if (!a) return;
       if (!since) { since = Date.now(); slot = R.activeSlot; id = S.myId; qa.shown++; }

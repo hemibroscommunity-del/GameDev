@@ -5,7 +5,7 @@ import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
-import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4072: the one dashboard (v2.3.4132: the row is its off switch) */
+import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4072: the one dashboard (v2.3.4152: the row is its off switch) */
 
 /* v2.3.3525: the tour's steps, in order, for "Tour: jump to" (the worker's
    /dev/tour checks each is one) */
@@ -843,7 +843,7 @@ export const DevPanel = ({ onClose }) => {
         </button>
 
         {/* ═══ v2.3.4072: ONE DASHBOARD ON EVERY SCREEN ═══
-            v2.3.4132: the dashboard at the bottom is the default on every
+            v2.3.4152: the dashboard at the bottom is the default on every
             device (the owner: "Move the left side menu to the bottom of screen
             on computer and all other devices"), so this row is now the OFF
             switch: the side column, the old sideways and computer layout, for

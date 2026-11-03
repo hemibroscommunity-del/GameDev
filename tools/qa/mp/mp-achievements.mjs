@@ -43,7 +43,7 @@
  *     9. B's page on a computer: inside the game's column, no sideways
  *        scroll, rows readable; B's banner inside the column (#root);
  *   A again:
- *    10. sideways (844 x 390): the band still at the bottom (v2.3.4132: the
+ *    10. sideways (844 x 390): the band still at the bottom (v2.3.4152: the
  *        one band, the default), More's tile whole, the page inside the band,
  *        no sideways scroll, nothing cut;
  *    11. no page errors.
@@ -438,7 +438,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.closeDest(A).catch(() => {});
     await A.page.setViewportSize(SIDE);
     await A.page.waitForTimeout(2500);
-    /* v2.3.4132: the one band is the default (src/ui/oneBand.js), so the
+    /* v2.3.4152: the one band is the default (src/ui/oneBand.js), so the
        phone turned on its side keeps the band at the bottom -- More and its
        Achievements tile inside it, the page opening inside the band, which
        scrolls in a short body -- where the old layout (?oneband=0) had the

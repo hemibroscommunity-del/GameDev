@@ -136,7 +136,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('5. ...and leaving the window lowers it', !r5d.up && !r5d.mouse, r5d);
 
     /* ── 6. the controls list ── */
-    /* v2.3.4132: under the band (the default) the list is the ⌨'s strip,
+    /* v2.3.4152: under the band (the default) the list is the ⌨'s strip,
        folded until H opens it; the old layout's column is .bt-desk-keys */
     const kbFolded = await P.page.evaluate(() => !document.querySelector('.bt-desk-keys') && !document.querySelector('.bt-kb-hints'));
     if (kbFolded) { await P.page.keyboard.press('h'); await P.page.waitForTimeout(500); }

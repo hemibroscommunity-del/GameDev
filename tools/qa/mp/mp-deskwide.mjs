@@ -1,6 +1,6 @@
 /* ═══ A COMPUTER PLAYS THE SIDEWAYS LAYOUT (v2.3.3687) ═══
  *
- * v2.3.4132: THE OLD LAYOUT.  The one band is the default on every screen
+ * v2.3.4152: THE OLD LAYOUT.  The one band is the default on every screen
  * (src/ui/oneBand.js, mp-oneband), so every page here asks for the side
  * column with `?oneband=0`: this suite keeps the old layout, still reachable
  * for one device, working.
@@ -92,7 +92,7 @@ const OUT = join(H.REPO, 'tools/qa/mp/out');
 const shot = async (P, name) => { try { mkdirSync(OUT, { recursive: true }); await P.page.screenshot({ path: join(OUT, `deskwide-${name}.png`) }); } catch (e) { /* a picture only */ } };
 
 async function intoWorld(browser, wsPort, webPort, name, viewport) {
-  const P = await H.newPlayer(browser, { name, wsPort, webPort, viewport, world: 'wheel', wide: true, query: 'oneband=0' /* v2.3.4132: the old layout */ });
+  const P = await H.newPlayer(browser, { name, wsPort, webPort, viewport, world: 'wheel', wide: true, query: 'oneband=0' /* v2.3.4152: the old layout */ });
   await H.enterWorld(P);
   await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),
     (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'into the Wheel' }).catch(() => null);
@@ -356,7 +356,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      click there must answer it.  The arrow lets the click through to its
      strip, so the lesson reaches the strip too -- without it the lesson was
      skipped in silence (TRAPS 41; the 2026-10-29 review). */
-  const C = await H.newPlayer(browser, { name: 'Deskcoach', wsPort, webPort, viewport: DESK, world: 'wheel', wide: true, query: 'oneband=0' /* v2.3.4132: the old layout */ });
+  const C = await H.newPlayer(browser, { name: 'Deskcoach', wsPort, webPort, viewport: DESK, world: 'wheel', wide: true, query: 'oneband=0' /* v2.3.4152: the old layout */ });
   const cerr = [];
   C.page.on('pageerror', (e) => cerr.push(String((e && e.message) || e).slice(0, 200)));
   try {

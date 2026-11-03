@@ -130,7 +130,7 @@ import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
 /* v2.3.1205: named z-index registry — see src/ui/zLayers.js for the
    observed ladder + the tutorial-banner-under-dashboard incident. */
 import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
-import { deskWideActive, deskBandActive, deskBigActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size; v2.3.4132: deskBandActive / deskBigActive, the band on a computer */
+import { deskWideActive, deskBandActive, deskBigActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size; v2.3.4152: deskBandActive / deskBigActive, the band on a computer */
 import { MenuBar } from './panels/MenuBar.jsx';
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
@@ -526,6 +526,7 @@ const {
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
 import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W, deskFoldStripW } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
+import { ctlLandscape } from './mobile/bandSideways.js'; /* v2.3.4152: the controls' sideways geometry over a folded band */
 import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.2177: which edge the landscape dashboard takes, and the player's pin */
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
@@ -1620,7 +1621,7 @@ export var BroTown = function BroTown(_ref0) {
      INITIALISER for the same reason the quest fold below is — an effect
      would flash the strip for one frame on every load before hiding it. */
   var _useKbHints = useState(function () {
-    /* v2.3.4132: on a computer playing the band the list starts folded to its
+    /* v2.3.4152: on a computer playing the band the list starts folded to its
        ⌨ (deskWide.js deskBandActive) until the player has opened it ('0') */
     try { var _kh = localStorage.getItem('bt_kb_hints_off'); return _kh === '1' || (_kh !== '0' && deskBandActive()); } catch (e) { return false; }
   }),
@@ -9207,14 +9208,17 @@ export var BroTown = function BroTown(_ref0) {
      until the first resize event corrected it.  orientationSync has updated
      this flag from playIsLandscape() since v2.3.1715; the seed just never
      caught up. */
-  var _useState213 = useState(playIsLandscape()),
+  /* v2.3.4152: a phone on its side under the one band (bandSideways.js)
+     lays its controls out with the sideways geometry, as the side column's
+     world had: the world above the folded band is short, as that one was */
+  var _useState213 = useState(ctlLandscape()),
     _useState214 = _slicedToArray(_useState213, 2),
     isLandscape = _useState214[0],
     setIsLandscape = _useState214[1];
 
   /* Re-render on orientation change */
   useEffect(function () {
-    return wireOrientationSync(setIsLandscape);
+    return wireOrientationSync(function () { setIsLandscape(ctlLandscape()); });   /* v2.3.4152 */
   }, []);
   /* Expose legacy panel toggles for the utility wheel (replaces toolbar). */
   useEffect(function () {
@@ -13473,7 +13477,7 @@ export var BroTown = function BroTown(_ref0) {
          computer and a sideways phone, never wider than the play column
          (100% is the window's box, inside the column: TRAPS §214) -- its
          columns following its own width (game.css .bt-tb) */
-      /* v2.3.4132: a computer's size in either layout (deskBigActive: the band, the default, too) */
+      /* v2.3.4152: a computer's size in either layout (deskBigActive: the band, the default, too) */
       width: buildingPanel === 'townhall' ? 'min(800px, calc(100% - 24px))' : deskBigActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
       /* v2.3.2826: the Blacksmith card's TOP stays below the player's feet --
          the camera centres the player, so the card ends at the band and is
