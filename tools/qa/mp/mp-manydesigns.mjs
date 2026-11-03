@@ -198,8 +198,10 @@ async function sizeAndPlace(P, idx, tx, ty) {
    box was calibrated for the old map's zoom and anchor; in the Wheel at this
    zoom it frames his head and shirt and stops above his trousers (measured:
    the flames sat 8-25 px below its bottom edge), so it read 0 on him and 0 on
-   the control alike.  The widened crop takes in the whole bro and some ground,
-   and the control below takes the ground back out. */
+   the control alike.  So the COUNT is made on the band below that edge -- his
+   trousers and boots, the ground either side -- where the plain control reads
+   0 (the whole widened crop read ~250 on both: his skin and the quest marker
+   pass the colour test too), and the PICTURE is the whole widened crop. */
 async function figureRead(P, tag) {
   let best = null;
   for (let i = 0; i < 4; i++) {
@@ -208,7 +210,10 @@ async function figureRead(P, tag) {
       const pad = Math.round(40 * (b.k || 1));
       const clip = { x: Math.max(0, b.x - pad), y: Math.max(0, b.y - pad),
         width: b.width + pad * 2, height: b.height + pad * 2 };
-      const px = await H.screenshotPixels(P, clip);
+      const k = b.k || 1;
+      const legs = { x: clip.x, y: Math.round(b.y + b.height - 4 * k),
+        width: clip.width, height: Math.round(pad + 4 * k) };
+      const px = await H.screenshotPixels(P, legs);
       const n = px.count(isFlame);
       if (!best || n > best.n) best = { n, clip };
     }
@@ -251,8 +256,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await C.page.waitForTimeout(3000);
   const plain = await figureRead(C, 'control');
   rec.ok(`${tag}: the control bro can be found (guard)`, !!plain, plain && { n: plain.n });
-  rec.ok(`${tag}: with no drawing, almost no flame red is on him (${plain && plain.n} px) -- the `
-    + `count below measures his trousers, not the town`, !!plain && plain.n < 12, plain && { n: plain.n });
+  rec.ok(`${tag}: with no drawing, almost no flame red is on his legs (${plain && plain.n} px) -- the `
+    + `count below measures his trousers, not the town`, !!plain && plain.n < 6, plain && { n: plain.n });
   await C.ctx.close();
 
   /* ── 1. TWO FLAMES ON THE PANTS ── */
