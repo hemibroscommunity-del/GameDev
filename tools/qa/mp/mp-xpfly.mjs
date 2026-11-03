@@ -27,7 +27,9 @@ import * as H from './harness.mjs';
 const probe = (P) => P.page.evaluate(() => {
   const S = window._gameState.current;
   const pops = (S._hudPopups || []).filter((p) => (p.target || 'xpBar') === 'xpBar');
-  const els = [...document.querySelectorAll('[role="button"][aria-label*="level"]')]
+  /* v2.3.4151: + a real <button> -- the Gear tab's Melee / Bow / Magic tiles
+     (GearTab.jsx), which took the combat cards' place and their XP landing */
+  const els = [...document.querySelectorAll('[role="button"][aria-label*="level"], button[aria-label*="level"]')]
     .filter((el) => /^(Melee|Bow|Magic) level/i.test(el.getAttribute('aria-label') || ''));
   const cards = els.map((el) => {
     const r = el.getBoundingClientRect();
