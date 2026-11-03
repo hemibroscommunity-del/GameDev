@@ -304,7 +304,7 @@ export class WheelMinimap {
     this.townIcons.label = 'wheel-minimap-building-icons';
     /* v2.3.3922: the lands' wash (C_WASH's note), over the overview and the
        finer lands round you (both put in under it: _placeUnder, _placeLocal),
-       under every line and mark; drawn once a map (_build) */
+       under every line and mark; drawn once a map (_build), and held over the window as it pans */
     this.wash = new Graphics();
     this.pan.addChild(this.wash, this.lines, this.buildings, this.townIcons, this.places, this.townMark, this.road, this.marks, this.partyRims);
     this.player = new Sprite(this.icons.self || this.dotTex);
@@ -512,9 +512,11 @@ export class WheelMinimap {
   _build(map) {
     const SCALE = this.sc;   /* v2.3.3922: box px a game px, at the box's window (_setK) */
     this.built = map;
-    /* v2.3.3922: the lands' wash, the whole world's span (C_WASH's note) */
+    /* v2.3.3922: the lands' wash (C_WASH's note): the map's window only, held
+       over it as the map pans (update) -- never the world's span, which the
+       stencil would cut away only after filling it (a screen of fill a frame) */
     this.wash.clear();
-    this.wash.rect(0, 0, map.worldW * SCALE, map.worldH * SCALE).fill({ color: C_WASH, alpha: WASH_A });
+    this.wash.rect(0, 0, WHEEL_BOX, MAP_BOT + R_IN).fill({ color: C_WASH, alpha: WASH_A });
     const L = this.lines;
     L.clear();
     const path = (pts) => { L.moveTo(pts[0] * SCALE, pts[1] * SCALE); for (let i = 2; i < pts.length; i += 2) L.lineTo(pts[i] * SCALE, pts[i + 1] * SCALE); };
@@ -783,6 +785,7 @@ export class WheelMinimap {
     const winMidY = (FRAME + MAP_BOT) / 2;
     this.pan.x = Math.max(WHEEL_BOX - spanW, Math.min(0, WHEEL_BOX / 2 - P.x * SCALE));
     this.pan.y = Math.max(MAP_BOT - spanH, Math.min(0, winMidY - P.y * SCALE));
+    this.wash.x = -this.pan.x; this.wash.y = -this.pan.y;   /* v2.3.3922: over the window (a move, never a redraw) */
     this.root.x = Math.round(cssW - WHEEL_BOX * K);
     this.root.y = topInset;
     this.root.visible = true;
