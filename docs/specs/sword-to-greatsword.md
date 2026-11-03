@@ -6,6 +6,10 @@
 > (`server/src/migrations.js`), the post's heal (`inbox.js`), the shelves'
 > rebuilds (`store.js`, `market.js`), the Forge (`gear.js`). Tests:
 > `server/test/sword-convert.test.mjs`.
+>
+> **v2.3.3980:** the greatswords this left at wood (the old starter, the old
+> Forge's wood tier) and the old base-less drops become copper too: migration
+> v20, through the same doors (docs/specs/greatsword-copper.md).
 
 The owner decided: the old one-handed swords that older characters still hold
 become greatswords, so nobody is left holding a retired weapon. The Forge has

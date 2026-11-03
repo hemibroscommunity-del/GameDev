@@ -154,6 +154,8 @@ sends). All of these are in `PRIVILEGED_EVENTS` unless noted.
 | `monster_transform` | Variant transform (e.g. remnant skull) | [dispatcher] ~3163 |
 | `pvp_hit` | Server-resolved PvP damage. v2.3.3264 (the one formula's `slot`, `staminaDrain`, `parried`, `hp`/`maxHp` aside): what a player's blow did beyond its number, in `monster_attack`'s own words -- `elem`, `st` (`burn`/`stuck`/`daze`/`soak`/`shock`, and three a monster never sends: `slow` with `mult`, `fracture` with `stacks`, `thorn`), `stMs`, `kb` `[dx, dy]` (a bash's shove or a whirlwind's pull -- never an ordinary hit's: the target's own page carries it out, the worker granted the room), `wd`; and `ability` naming a blow that was not a plain hit (`bash`/`sworddash`/`whirl`/`lunge`/`burst`/`splash`/`blast`/`collision` with `collision` the id, or a tick: `burn`/`root`/`thorn`). Additive; an older page draws it as a plain hit (server/src/pvpextras.js, docs/specs/one-formula.md "The extras") | [dispatcher] ~3890 |
 | `chat_mute_list` | v2.3.1981 the SERVER's copy of who you have muted — `{list:[{id,name,at}], settled:true, error?}`, on join and after every mutation. Privileged: a forged one could paint (or silently empty) a mute list in the UI while the worker enforced something else | [dispatcher] chatmod.js |
+| `fish_weight` | v2.3.4036 a weigh-in's answer to one `fish_inspect` (server fishlog.js), private: `{key, sp, v, g, best, newBest, rank, left}` (`g` grams, `rank` 1-10 or 0), or `{key, sp, v, none: true}` (no catch of that fish left to weigh), `{key, off: true}` (`fishweigh: false`), `{key, unavailable: true}` (the fish log is locked). Privileged: a forged one would show a weight the worker never rolled | wsClient direct switch (game/fishWeigh.js) |
+| `fish_board` | v2.3.4036 the biggest-fish boards, private: `{boards: {<species>: [{pid, name, g, v?, at}]}}` (ten a species, one row a player), or `{off}` / `{unavailable}`. Privileged: a forged one would write names and kilos on a public record | wsClient direct switch (game/fishWeigh.js) |
 | `chat_report_ack` | v2.3.1981 answer to one `chat_report` — `{ok, id?, lines?, error?}`. A forged one would tell a harassed player their report was filed when nothing was written | [dispatcher] chatmod.js |
 
 ## Client → server messages (accepted cases)
@@ -179,7 +181,9 @@ Server cases in `GameRoom.webSocketMessage`, `server/src/index.js`
 | `ability` | v2.3.1733 stamina abilities — `{kind}` ∈ `bash`, `whirl`, under `caps.abil`. Server-resolved end to end (targets, damage, stun, knockback, kill credit); may answer `ability_rejected`. See abilities.js | abilities.js |
 | `element_burst` | v2.3.1734 Element Burst, under `caps.elemBurst`. **Payload is EMPTY** — the server reads the weapon, its `element1`, the position, the pools and the cooldown from its own state and picks the targets itself. Answers a broadcast `element_nova` + `monster_hit` per target (tagged `burst:true`), or `ability_rejected` with `{type:'burst', reason}`. Its own type rather than an `ability` kind: that table prices costs as a % of STAMINA, and this spends flat MANA behind an element gate | burst.js |
 | `arrow_blast` | v2.3.2279 the bow special's send-off: `{zone, x, y}` — a position and nothing else; the worker picks the targets (220 px) and rolls a bow special on each, answering a broadcast `arrow_boom`. **v2.3.2848: RETIRED while the volley is live** — refused silently as `retired` (counted in the operator view) whenever the worker advertises `caps.bowvolley`; the `bowvolley: false` live flag un-advertises the volley and lets the blast through again. See `docs/specs/bow-volley.md` | arrowblast.js |
-| `eat_request` | Consume food (server-authoritative heal) | ~3909 |
+| `eat_request` | Consume food (server-authoritative heal). v2.3.4036: a large fish heals double, and the first albino / large of each species eaten is an achievement | ~3909 |
+| `fish_inspect` | v2.3.4036 `{key}` -- a fish in the bag (raw or cooked, `fish_<species>[_albino\|_large]`) weighed: one catch of it, once, under `caps.fishweigh`; answers `fish_weight`. Anything not one of the game's fish is answered with nothing | fishlog.js |
+| `fish_board_request` | v2.3.4036 `{}` -- the biggest-fish boards, under `caps.fishweigh`; answers `fish_board` | fishlog.js |
 | `shop_purchase` | Buy from vendor | ~3918 |
 | `equip_request` / `unequip_request` | Equip/unequip gear | ~3935 / ~3953 |
 | `sell_weapon` | Sell to vendor | ~3944 |
@@ -756,6 +760,22 @@ field, gid|idx, essence, grade, metal, piece}`, or `{ok: false, reason}`
 no_essence, wrong_metal, not_lower, bad); a player_state follows each paid
 act. Full table: docs/specs/salvage.md.
 
+**A mystery piece waits in the bag (v2.3.4012, caps.revealbag):** the join
+gains `rb: 1` (this phone can show a "?"; old workers ignore it). For such a
+phone a rare-or-better armour piece or Iron Great Sword picked up off a
+monster's pile arrives in `loot_credit` (`armor[]`, `weapon`) WITHOUT
+`quality` and with `unrevealed: true`, and the credit's `reveals` leaves it
+out; `player_state`'s `weaponStash` / `armorStash` / `legsStash` strip the
+grade of a marked entry the same way. New c→s case `reveal_item {field:
+'armorStash'|'legsStash', gid}` or `{field: 'weaponStash', idx, name}`; new
+s→c type (PRIVILEGED, private) `item_reveal {ok, field, gid|idx, name, piece,
+reveals, already}` (`reveals` is loot_credit's own shape, the ladder to play)
+or `{ok: false, reason}` (busy, bad, not_held, changed). Equipping a marked
+piece (stats_update, equip_request) opens it and sends `item_reveal` too; a
+join opens anything worn that is marked, and everything marked for a phone
+without `rb` or under `revealbag: false`, sending each `item_reveal` after
+`player_state`. Full table: docs/specs/reveal-in-bag.md.
+
 **Shield gems (v2.3.3187, caps.shieldgem):** new c→s case `shield_gem {gem,
 gid}` or `{gem, sig}` (a polished gem into the shield the worker holds for
 you, named by its ledger id or, with no id, by its signature
@@ -854,6 +874,14 @@ dropped item keeps `VACUUM_RANGE` (240). The phone's pet runs to such a pile
 up to 450 px from you and asks from there (docs/specs/pet-fetch.md).
 `petfetch: false` in the live flags un-advertises the cap and puts every pile
 back on 240.
+
+**One ore a bar (v2.3.3981, caps.onetoone):** no new message types.
+`smelt_bar` takes one ore a bar and `make_hardened_wood` one log a piece (a
+`no-logs` refusal's `need` is 1), paying a fifth of the old XP; the game draws
+its rows from its one-to-one tables only with the cap, and the old five
+without it. `onetoone: false` in the live flags brings back five on the worker
+(costs, XP, Diego's 240 and 144) and un-advertises the cap
+(docs/specs/smelting.md "One ore, one bar").
 
 ## Known quirks (documented, deliberately not "fixed" here)
 

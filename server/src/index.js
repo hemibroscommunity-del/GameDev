@@ -62,6 +62,7 @@ import { arenaMethods } from './gladiator.js';
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster hit on a player */
+import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.4011: the tiers' moves (combo, charge, volley, slams, enrage) */
 import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
@@ -100,6 +101,7 @@ import { petbookMethods } from './petbook.js';
 /* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
    (codex.js).  docs/specs/monster-codex.md. */
 import { codexMethods } from './codex.js';
+import { fishlogMethods } from './fishlog.js';   /* v2.3.4036: the rare fish, weighed, with records */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
@@ -167,6 +169,8 @@ import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled b
 import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
 import { pointsResetMethods } from './pointsreset.js'; /* v2.3.3541: the free points reset -- every placed point back */
 import { swordConvertMethods } from './swordconvert.js'; /* v2.3.3895: old one-handed swords become greatswords -- the kill switch */
+import { revealBagMethods, revealPublic, isUnrevealed } from './revealbag.js'; /* v2.3.4012: a mystery piece waits in the bag until its owner reveals it */
+import { gsCopperMethods } from './gscopper.js'; /* v2.3.3980: old wooden greatswords become copper -- the kill switch */
 import { bankMethods } from './bank.js'; /* v2.3.3785: the Bank's vault -- bag items and gold the worker holds, out of a death's reach */
 import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
 import { heapBurnMethods } from './heapburn.js'; /* v2.3.3748: a burning heap sets you on fire */
@@ -513,6 +517,11 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.3473: the worker's answer to a drop (itemdrop.js).  Forged, one
      would tell a phone an item left its bag that never did. */
   'item_drop_result',
+  /* v2.3.4012: the worker's answer to a reveal (revealbag.js) -- the opened
+     piece and the ladder the overlay plays.  Forged, one would play a Godly
+     ceremony on any phone, and tell it a piece in its bag is a grade it is
+     not. */
+  'item_reveal',
   /* v2.3.3541: the worker's answer to a points reset (pointsreset.js).
      Forged, one would tell a phone its points came back when they did not. */
   'points_reset_result',
@@ -697,6 +706,10 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.3527: the achievements (achievements.js), server-sent and private.
      Forged, it would paint achievements never earned and play their banner. */
   'achv_state',
+  /* v2.3.4036: a weigh-in and the biggest-fish boards (fishlog.js),
+     server-sent and private.  Forged, `fish_weight` would show a weight the
+     worker never rolled and `fish_board` names and kilos on a public record. */
+  'fish_weight', 'fish_board',
   /* v2.3.3265: the sparring clones of the test panel (spar.js), to their
      owner only.  Forged, it would make a phone take any player for a clone
      it may aim at -- the worker still refuses every such hit (_sparPair) --
@@ -2027,6 +2040,9 @@ export class GameRoom {
                spawn 6-19 s later, half a hit and a 130 px shove.  Found by the
                review of v2.3.3621.  The cooldown stays, as the burrow's. */
             m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null; m._tgRadius = 0;
+            /* v2.3.4011: and a move (monstermoves.js), for the same reason: a
+               fresh life with nothing in flight, nothing cooling, not enraged */
+            this._clearMonsterMove(m);
             /* v2.3.3120: and its trap marks (trapping.js): a mark is on THIS
                life of the monster, and the kill path clears it -- this is the
                belt and braces dmgByPlayer has above. */
@@ -2117,6 +2133,10 @@ export class GameRoom {
            mid-cast used to strand the monster in a pending telegraph
            forever — see the note on _resolveMonsterTelegraph. */
         if (this._resolveMonsterTelegraph(zoneId, m, now)) continue;
+        /* v2.3.4011: and a move of the tiers past the first (monstermoves.js:
+           a combo's strikes, a charge's dash, a volley in the air), for the
+           same reason and in the same place */
+        if (this._resolveMonsterMove(zoneId, m, now)) continue;
         /* v2.3.2215: and the basic swing's wind-up, for the same reason and
            in the same place — before target acquisition, so a player who
            walks away cannot strand a pending swing that fires stale later. */
@@ -2500,7 +2520,7 @@ export class GameRoom {
                (and its aim point, frozen at release) is created by
                _resolveBasicWindup — travelMs remains the dodge window, this
                just puts a tell in front of it. */
-            this._startBasicWindup(zoneId, m, nearest.id, now, 'throw', _rangedCfg.cd);
+            this._startBasicWindup(zoneId, m, nearest.id, now, 'throw', this._monsterSwingCd(m, _rangedCfg.cd));   /* v2.3.4011: ...and throws faster */
           }
 
           /* v2.3.2221: START the snow-pile burrow — ABOVE the telegraph kits
@@ -2522,6 +2542,13 @@ export class GameRoom {
              branch); only starting one needs a live target.
              Gated on ccMoveMult like the swing below: a frozen or rooted
              monster cannot begin a cast either (v2.3.1139's rule). */
+          /* v2.3.4011: START a move of its tier (monstermoves.js), ABOVE the
+             kits for the reason the kits sit above the swing: one special at
+             a time, never two on one tick.  Tier 1 has none. */
+          if (ccMoveMult > 0 && this._maybeStartMove(zoneId, m, nearest, now)) {
+            continue;
+          }
+
           if (ccMoveMult > 0 && this._maybeStartTelegraph(zoneId, m, nearest, attackDist, now)) {
             continue;
           }
@@ -2550,7 +2577,8 @@ export class GameRoom {
                block arc, the parry window, the stamina cost and the thorns
                reflect are all evaluated at IMPACT — which is what lets a
                player raise their shield DURING the tell and have it count. */
-            this._startBasicWindup(zoneId, m, nearest.id, now, 'swing', this.MONSTER_ATTACK_CD);
+            /* v2.3.4011: an enraged elder swings faster (monstermoves.js) */
+            this._startBasicWindup(zoneId, m, nearest.id, now, 'swing', this._monsterSwingCd(m, this.MONSTER_ATTACK_CD));
             continue;
           }
         } else {
@@ -2897,6 +2925,10 @@ export class GameRoom {
       m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null;
       m._tgNextAt = now + this.PARRY_STAGGER_MS;
     }
+    /* v2.3.4011: and a move of the tiers past the first: a parried combo
+       loses its second strike, a parried charge stops on the shield
+       (monstermoves.js) */
+    if (m._mvPhase) this._breakMove(m, now);
     if (typeof ps.stamina === 'number') {
       ps.stamina = Math.min(ps.maxStamina || 100, ps.stamina + this.PARRY_STAMINA_REWARD);
     }
@@ -3902,8 +3934,9 @@ export class GameRoom {
          has now extended the ladder to armour.  Same roller, deliberately:
          one distribution means normal/rare/elite/godly mean the same thing on
          a breastplate as on a blade, and there is one place to retune. */
+      /* v2.3.3952: a drop's own roll, 10x rarer than the forge's (hardening.js) */
       out.push({ name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult,
-        quality: this._rollWeaponQuality() });
+        quality: this._revealBagDevGrade() || this._rollDropQuality() });   /* v2.3.4012: the test lever's grade, once (revealbag.js); v2.3.3952: else a drop's own roll */
     }
     return out.length ? out : null;
   }
@@ -3940,8 +3973,9 @@ export class GameRoom {
       reforgeBonus: null,
       hardenBonus: null,
       /* Rolled, like the forge's and like the ordinary drop's — which also
-         hands this the pile's hidden-until-pickup reveal for free. */
-      quality: this._rollWeaponQuality(),
+         hands this the pile's hidden-until-pickup reveal for free.
+         v2.3.3952: a drop's own roll now, 10x rarer than the forge's. */
+      quality: this._revealBagDevGrade() || this._rollDropQuality(),   /* v2.3.4012: the test lever's grade, once (revealbag.js) */
       hardness: 0,
       temper: 0,
     };
@@ -4644,6 +4678,10 @@ export class GameRoom {
       weaponForMe = pile.weapon;
       if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
       if (ps.weaponStash.length < this.WEAPON_STASH_CAP) {
+        /* v2.3.4012: a mystery grade waits in the bag, unrevealed, for a
+           phone that can show it (revealbag.js); a blade sold for a full bag
+           keeps today's at-once reveal (docs/specs/reveal-in-bag.md) */
+        this._revealBagMark(session, weaponForMe);
         ps.weaponStash.push(weaponForMe);
         weaponStashed = true;
       } else {
@@ -4680,8 +4718,11 @@ export class GameRoom {
          business on a room-wide broadcast.  drops.test.mjs already pins
          that the public pile never carries `quality`; the same crop is what
          keeps it from carrying `gid`. */
+      /* v2.3.4012: marked BEFORE the record, so the ledger row -- the copy
+         every inbound path rebuilds from -- holds the mark beside the grade
+         (revealbag.js) */
       armorForMe = pile.armor.map((a) => this._gearProvRecord(
-        session.id, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', { ...a }, 'drop'));
+        session.id, (a && a.slot === 'legsArmor') ? 'legsArmor' : 'armor', this._revealBagMark(session, { ...a }), 'drop'));
     }
     pile.claimedBy[session.id] = true;
 
@@ -4722,8 +4763,12 @@ export class GameRoom {
     /* v2.3.3527: a piece off a kill is an achievement's fact -- the Iron Great
        Sword, an Elite or a Godly grade (achievements.js), riding this save */
     try {
-      if (weaponForMe) this._achvOnPiece(session.id, ps, weaponForMe, 'kill');
-      if (armorForMe) for (const a of armorForMe) this._achvOnPiece(session.id, ps, a, 'kill');
+      /* v2.3.4012: an unrevealed piece earns only what its grade does not
+         say (the Iron Great Sword itself); its Elite or Godly is earned at
+         the reveal (revealbag.js _revealBagOpen), or "Elite piece!" would
+         pop before the "?" was opened and peers would read the rarest */
+      if (weaponForMe) this._achvOnPiece(session.id, ps, revealPublic(weaponForMe), 'kill');
+      if (armorForMe) for (const a of armorForMe) this._achvOnPiece(session.id, ps, revealPublic(a), 'kill');
     } catch (e) { /* an achievement must never break a pickup */ }
     this._saveRpg(session.id, ps);
 
@@ -4748,7 +4793,9 @@ export class GameRoom {
                client routes into its own armourStash / legsStash -- see the
                claim block above for why that store is the client's). */
             gem: gemForMe,
-            armor: armorForMe,
+            /* v2.3.4012: an unrevealed piece goes without its grade, marked
+               `unrevealed` (revealbag.js revealPublic) */
+            armor: armorForMe ? armorForMe.map(revealPublic) : armorForMe,
             /* ═══ v2.3.1925: THE REVEAL ═══
                One entry per thing on this pickup whose grade was hidden, in
                the order the client should play them.  Almost always empty
@@ -4757,9 +4804,14 @@ export class GameRoom {
                Supported anyway because "usually one" is not "only one", and a
                ceremony that silently dropped the second item's grade would
                hand the player an elite they never saw revealed. */
-            reveals: this._revealsFor(weaponForMe, armorForMe),
+            /* v2.3.4012: ...and only what is NOT waiting in the bag: an
+               unrevealed piece plays its ladder when its owner taps Reveal
+               (item_reveal), never here */
+            reveals: this._revealsFor(isUnrevealed(weaponForMe) ? null : weaponForMe,
+              armorForMe ? armorForMe.filter((a) => !isUnrevealed(a)) : armorForMe),
             // v2.3.1141: full blob incl. quality -- the private reveal.
-            weapon: weaponForMe,
+            // v2.3.4012: without it while unrevealed (revealPublic)
+            weapon: revealPublic(weaponForMe),
             weaponStashed,
             weaponSoldFor,
             // v2.3.1200: echo the pet-vacuum origin so the client can
@@ -5592,6 +5644,14 @@ export class GameRoom {
         if (session.id) this._handleSmithSalvage(session, msg.payload || msg);
         break;
 
+      case 'reveal_item':
+        /* v2.3.4012: open a mystery piece waiting in your bag (revealbag.js):
+           the phone names it, the worker clears its mark and answers
+           item_reveal with the ladder to play.  Deny by default: this case
+           is the only way the type is heard. */
+        if (session.id) this._handleRevealItem(session, msg.payload || msg);
+        break;
+
       case 'essence_apply':
         /* v2.3.3141: an essence raises a carried piece of its metal to its
            grade (salvage.js).  The client names both; the worker checks and
@@ -6001,6 +6061,16 @@ export class GameRoom {
         }
         break;
 
+      /* v2.3.4036: Inspect on a fish in the bag -- one catch weighed once
+         (fishlog.js); and the biggest-fish boards.  Handled on purpose (deny
+         by default): an unknown key is answered with nothing. */
+      case 'fish_inspect':
+        if (session.id) await this._handleFishInspect(session, msg.payload || msg);
+        break;
+      case 'fish_board_request':
+        if (session.id) await this._handleFishBoardRequest(session);
+        break;
+
       case 'ace_board_request':
         // v2.3.2619: the biggest-win / biggest-loss board (gamble.js).
         if (session.id) {
@@ -6288,6 +6358,7 @@ export class GameRoom {
     const session = this.sessions.get(ws);
     let _petsLeft = null;   /* v2.3.3120: see below */
     let _codexLeft = null;  /* v2.3.3209: the same, for the codex (codex.js) */
+    let _fishLeft = null;   /* v2.3.4036: and the catches to weigh (fishlog.js) */
     if (session?.id) {
       /* ═══ v2.3.3260: LEAVING IN THE MIDDLE OF A FIGHT, THE BODY STAYS ═══
          A player who leaves within 10 s of a hit between them and another
@@ -6341,6 +6412,9 @@ export class GameRoom {
          copied out now and written at the end with the pets record */
       _codexLeft = this._codexDirtyCopy(session.id);
       this._codexForget(session.id);
+      /* v2.3.4036: the catches to weigh, the codex's way (fishlog.js) */
+      _fishLeft = this._fishlogDirtyCopy(session.id);
+      this._fishlogForget(session.id);
       /* v2.3.3527: achievements hold nothing unwritten (achievements.js) */
       this._achvForget(session.id);
       delete this.stateHistory[session.id];
@@ -6380,6 +6454,7 @@ export class GameRoom {
     if (this.sessions.size === 0 && this.tickInterval) { clearInterval(this.tickInterval); this.tickInterval = null; }
     if (_petsLeft) await this._petbookPut(session.id, _petsLeft);
     if (_codexLeft) await this._codexPut(session.id, _codexLeft);
+    if (_fishLeft) await this._fishlogPut(session.id, _fishLeft);
   }
 
   async webSocketError(ws) { this.webSocketClose(ws); }
@@ -6566,6 +6641,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, hitMethods); /* v2.3.3296 */
+Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.4011 */
 Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
@@ -6596,6 +6672,7 @@ Object.assign(GameRoom.prototype, raceMethods); /* v2.3.3525 */
 Object.assign(GameRoom.prototype, rideMethods); /* v2.3.3776 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
+Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4036 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.
@@ -6654,6 +6731,8 @@ Object.assign(GameRoom.prototype, pointsResetMethods); /* v2.3.3541 */
 Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
 Object.assign(GameRoom.prototype, bankMethods); /* v2.3.3785 */
 Object.assign(GameRoom.prototype, swordConvertMethods); /* v2.3.3895 */
+Object.assign(GameRoom.prototype, revealBagMethods); /* v2.3.4012 */
+Object.assign(GameRoom.prototype, gsCopperMethods); /* v2.3.3980 */
 Object.assign(GameRoom.prototype, safeHealMethods); /* v2.3.3569 */
 Object.assign(GameRoom.prototype, heapBurnMethods); /* v2.3.3748 */
 Object.assign(GameRoom.prototype, statCapMethods); /* v2.3.3578 */

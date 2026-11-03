@@ -16,7 +16,9 @@
  *      its Claim reward is reached from that same window;
  *   3. while the quest is ready, his speech bubble never says his hand-in
  *      line: a cue ("All done? Click me!" / "Tap me!");
- *   4. no page errors.
+ *   4. no page errors;
+ *   5. v2.3.3899: one more click on him, the quest handed in: no window (the
+ *      Town Hall's board is on the noticeboard now), he says the next step.
  * Every window and button on the way is logged (the record of what the
  * player saw).  Pictures: tools/qa/mp/out/handin1-<view>{-bubble,-window,}.png. */
 import * as H from './harness.mjs';
@@ -52,7 +54,20 @@ async function besideNpc(P, id) {
   if (at) await H.hopTo(P, at.x, at.y + 40, { tries: 40 });
   await P.page.waitForTimeout(1200);
 }
+/* v2.3.3899: tapped until the world's scan has RUN (window.__btNpcTap
+   stamped), three tries at most -- on this box a frame drawn between a
+   touch's start and end can make it a hold (mp-buildingrooms' note,
+   v2.3.3465); the phone's first tap on him was lost that way */
 async function clickNpc(P, id, touch) {
+  const t0 = await P.page.evaluate(() => Date.now());
+  for (let k = 0; k < 3; k++) {
+    if (!(await clickNpcOnce(P, id, touch))) return false;
+    await P.page.waitForTimeout(400);
+    if (await P.page.evaluate((t) => !!(window.__btNpcTap && window.__btNpcTap.ts >= t - 50), t0)) return true;
+  }
+  return true;
+}
+async function clickNpcOnce(P, id, touch) {
   const at = await P.page.evaluate((nid) => {
     const S = window._gameState.current;
     const n = (S.npcs || []).find((o) => o.id === nid);
@@ -145,9 +160,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
         clicksOnHim === 1 && claimed && st2 === 'turnedIn', log);
 
       /* 3. his bubble while it was ready: the cue, never his hand-in line
-         ("You're back, mostly standing! ...") */
+         ("You're back, mostly standing! ...", "You made it back! ..." since
+         v2.3.4025) */
       rec.ok(`${V.id} 3. his bubble while the quest was ready: "${bubble}"`,
-        !!bubble && !/mostly standing/i.test(bubble) && (touch ? /tap me/i.test(bubble) : /click me/i.test(bubble)), bubble);
+        !!bubble && !/mostly standing|You made it back/i.test(bubble) && (touch ? /tap me/i.test(bubble) : /click me/i.test(bubble)), bubble);
+      /* 5. v2.3.3899: the owner, after this very hand-in: "it wasn't apparent
+         what to do next. I tried tapping on mayor bro and kept opening the
+         town hall door ... apparently I couldn't talk to him".  With nothing of
+         his own (tut_2 waits for the tour), one more click on him: no window
+         opens, he SAYS the next step in his bubble (game/mayorTalk.js) */
+      await H.closeNpcDialogue(P).catch(() => {});
+      await P.page.waitForTimeout(1500);
+      await P.page.evaluate(() => { window.__btMayorSaid = null; });
+      await clickNpc(P, 'mayor_bro', touch);
+      await P.page.waitForTimeout(1500);
+      const said = await P.page.evaluate(() => {
+        const S = window._gameState.current;
+        const n = (S.npcs || []).find((o) => o.id === 'mayor_bro');
+        return { tap: window.__btNpcTap ? window.__btNpcTap.result : null, said: window.__btMayorSaid ? window.__btMayorSaid.text : null,
+          bubble: n && n.chatBubble ? n.chatBubble.text : null, building: !!document.querySelector('[data-building-panel]'),
+          hall: !!document.querySelector('[data-wheel-hall]') };
+      });
+      await P.page.screenshot({ path: `${H.REPO}/tools/qa/mp/out/handin1-${V.id}-next.png` }).catch(() => {});
+      rec.ok(`${V.id} 5. one more click on him, his quest handed in: no Town Hall board (${said.tap}), he says "${said.said}"`,
+        said.tap === 'says' && !said.building && !said.hall && !!said.said && said.bubble === said.said && /gold road|lucky to have you/i.test(said.said), said);
       rec.ok(`${V.id} 4. no page errors`, errors.length === 0, errors.slice(0, 3));
     } finally {
       await P.ctx.close().catch(() => {});

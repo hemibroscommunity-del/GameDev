@@ -70,21 +70,9 @@ export function deriveQuestLog(S) {
 
   /* NEXT UP: for each quest-giving NPC, the first incomplete quest that
      is not yet accepted — the same selection the NPC dialogue uses.
-     getNpcQuest returns a { quest, status } wrapper, NOT the quest. */
-  /* v2.3.3121: a giver who stands only against a worker that advertises him
-     (Beastmaster Bro: `needsCap` on his NPC_DATA row, caps.beastmaster) offers
-     nothing here while he is not there -- an old worker, or his switch off */
-  const capOk = (npc) => {
-    const row = (NPC_DATA || []).find((n) => n && n.name === npc);
-    return !row || !row.needsCap || !!(S && S._serverCaps && S._serverCaps[row.needsCap]);
-  };
-  const npcs = [...new Set(Object.values(QUEST_CHAINS).map(q => q.npc))].filter(
-    (npc) => LIVE_QUEST_GIVERS.has(npc) && capOk(npc));
-  const upcoming = [];
-  for (const npc of npcs) {
-    const r = getNpcQuest(R, npc);
-    if (r && r.status === QUEST_STATUS.available) upcoming.push(r.quest);
-  }
+     v2.3.3944: worked out by deriveQuestOffers (below), which the quest
+     journal reads untrimmed. */
+  const upcoming = deriveQuestOffers(S);
   /* v2.3.1681 (owner: "must finish one to begin another").  One at a time is
      now stated rather than implied: while ANY quest is active there is no
      offer at all, so the log shows the job you have, not the next one queued
@@ -96,6 +84,35 @@ export function deriveQuestLog(S) {
   else upcoming.length = Math.min(upcoming.length, 1);
 
   return { active, upcoming, done };
+}
+
+/* ═══ v2.3.3944: EVERY OFFER, FOR THE JOURNAL ═══
+   For each quest-giving NPC standing in the world, the first incomplete quest
+   he has not given you yet -- the same selection the NPC dialogue makes, and
+   the same getNpcQuest the gold "!" over his head and on the maps reads
+   (game/questPins.js).  deriveQuestLog trims it to one (and none while a
+   quest is in hand); the quest journal lists them all, because since the
+   tour (v2.3.3525) the whole town offers its quests at once and the maps
+   already show every one.
+   getNpcQuest returns a { quest, status } wrapper, NOT the quest. */
+export function deriveQuestOffers(S) {
+  const R = (S && S.rpg) || {};
+  /* v2.3.3121: a giver who stands only against a worker that advertises him
+     (Beastmaster Bro: `needsCap` on his NPC_DATA row, caps.beastmaster) offers
+     nothing here while he is not there -- an old worker, or his switch off */
+  const capOk = (npc) => {
+    const row = (NPC_DATA || []).find((n) => n && n.name === npc);
+    return !row || !row.needsCap || !!(S && S._serverCaps && S._serverCaps[row.needsCap]);
+  };
+  const npcs = [...new Set(Object.values(QUEST_CHAINS).map(q => q.npc))].filter(
+    (npc) => LIVE_QUEST_GIVERS.has(npc) && capOk(npc));
+  const upcoming = [];
+  for (const npc of npcs) {
+    let r = null;
+    try { r = getNpcQuest(R, npc); } catch (_e) { r = null; }
+    if (r && r.status === QUEST_STATUS.available) upcoming.push(r.quest);
+  }
+  return upcoming;
 }
 
 /* v2.3.1298 (round-5 Quests): client-side quest TRACKING — a pinned

@@ -10,7 +10,8 @@
  * A phone in the Wheel's BroTown, against a real worker, through the real
  * doors:
  *   1. the worker advertises caps.hardenmats (and caps.harden);
- *   2. sixty copper ore smelted at the Blacksmith (Smithing 5, twelve bars),
+ *   2. twelve copper ore smelted at the Blacksmith (Smithing 5, twelve bars;
+ *      v2.3.3981: one ore a bar, was sixty),
  *      a wooden greatsword forged into the hand -- the wood tier, so copper
  *      bars;  v2.3.3524: a COPPER greatsword from four of them (the wood tier
  *      is not forged any more -- the owner: "'wood greatsword' is not an
@@ -114,12 +115,16 @@ async function body({ P, wsPort, rec, errors }) {
   await H.devOp(wsPort, 'quests', me, {});
   await P.page.waitForFunction(() => { const q = (window._gameState.current.rpg || {})._quests || {}; return q.tut_1 === 'turnedIn'; }, null, { timeout: 8000 }).catch(() => {});
   await H.closeNpcDialogue(P).catch(() => {});
-  await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 60 });
+  /* v2.3.3981: one ore a bar (caps.onetoone): twelve ore for the twelve bars,
+     and Smithing 5 set (the admin lever, as Woodworking is below) -- twelve
+     bars at 80 XP no longer reach it, as sixty ore at five a bar did */
+  await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 12 });
+  await H.devOp(wsPort, 'lifeskill', me, { skill: 'blacksmithing', level: 5 });
   /* v2.3.3524: no pine logs -- they were the wood tier's three, and a copper
      greatsword is forged from the bars; three left over made the Harden tab's
      twelve-log count read fifteen */
   await H.grant(wsPort, me, 'gold', { amount: 30000 });
-  await P.page.waitForFunction(() => { const R = window._gameState.current.rpg || {}; return ((R.inventory || {}).ore_copper_ore || 0) >= 60 && (R.coins || 0) >= 30000; }, null, { timeout: 8000 }).catch(() => {});
+  await P.page.waitForFunction(() => { const R = window._gameState.current.rpg || {}; return ((R.inventory || {}).ore_copper_ore || 0) >= 12 && (R.coins || 0) >= 30000 && (((R.lifeSkills || {}).blacksmithing || {}).level || 0) >= 5; }, null, { timeout: 8000 }).catch(() => {});
 
   const doors = await H.waitFor(P, () => (window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : []), (d) => d.length > 0,
     { timeout: 20000, label: 'the town\'s doors' }).catch(() => []);
@@ -342,11 +347,12 @@ async function body({ P, wsPort, rec, errors }) {
     make: (() => { const b = el.querySelector('[data-hw-make]'); return b ? { t: b.textContent.trim(), d: b.disabled } : null; })() })));
   const pineRow = tab0.find((r) => r.key === 'hardened_pine') || null;
   const softRow = tab0.find((r) => r.key === 'hardened_softwood') || null;
-  rec.ok(`the Hardened tab: five woods, each its own picture; Hardened Pine Wood wants 5 Pine Logs (+400 XP), Softwood waits on Woodworking 5 ("${pineRow && pineRow.text}" / "${softRow && softRow.text}")`,
-    tab0.length === 5 && tab0.every((r) => r.img) && !!pineRow && /Hardened Pine Wood/.test(pineRow.text) && /0\/5/.test(pineRow.text) && /\+400 XP/.test(pineRow.text)
+  /* v2.3.3981: one log a piece (caps.onetoone), 80 XP */
+  rec.ok(`the Hardened tab: five woods, each its own picture; Hardened Pine Wood wants 1 Pine Log (+80 XP), Softwood waits on Woodworking 5 ("${pineRow && pineRow.text}" / "${softRow && softRow.text}")`,
+    tab0.length === 5 && tab0.every((r) => r.img) && !!pineRow && /Hardened Pine Wood/.test(pineRow.text) && /0\/1/.test(pineRow.text) && /\+80 XP/.test(pineRow.text)
       && pineRow.make && pineRow.make.d && !!softRow && /Woodworking 5/.test(softRow.text) && softRow.make && softRow.make.d, tab0);
-  await H.grant(wsPort, me, 'item', { invKey: 'wood_pine_log', count: 12 });
-  await P.page.waitForFunction(() => ((window._gameState.current.rpg.inventory || {}).wood_pine_log || 0) >= 12, null, { timeout: 8000 }).catch(() => {});
+  await H.grant(wsPort, me, 'item', { invKey: 'wood_pine_log', count: 2 });   /* v2.3.3981: two logs, two pieces (was twelve) */
+  await P.page.waitForFunction(() => ((window._gameState.current.rpg.inventory || {}).wood_pine_log || 0) >= 2, null, { timeout: 8000 }).catch(() => {});
   await P.page.waitForSelector('[data-hw-all="hardened_pine"]', { timeout: 4000 }).catch(() => {});
   const allTxt = await P.page.$eval('[data-hw-all="hardened_pine"]', (b) => b.textContent.trim()).catch(() => null);
   await shot(P, 'hardwood-tab');
@@ -357,13 +363,13 @@ async function body({ P, wsPort, rec, errors }) {
   const h2 = await hw();
   const said = await P.page.evaluate(() => ((window._gameState.current.dmgNumbers) || []).map((d) => d && d.text).filter(Boolean));
   const totalXp = (x) => x.xp + (x.lvl >= 2 ? 1000 : 0);   /* one level up is the most 800 XP can make from level 1 */
-  rec.ok(`"${allTxt}": twelve Pine Logs became two Hardened Pine Wood (${h1.logs} -> ${h2.logs} logs, ${h1.hw} -> ${h2.hw}) and 800 Woodworking XP`,
-    allTxt === 'All 2' && h2.hw === 2 && h2.logs === 2 && totalXp(h2) - totalXp(h1) === 800, { h1, h2 });
+  rec.ok(`"${allTxt}": two Pine Logs became two Hardened Pine Wood (${h1.logs} -> ${h2.logs} logs, ${h1.hw} -> ${h2.hw}) and 160 Woodworking XP`,
+    allTxt === 'All 2' && h2.hw === 2 && h2.logs === 0 && totalXp(h2) - totalXp(h1) === 160, { h1, h2 });
   rec.ok(`...said over your head ("${said.filter((t) => /Hardened|Woodworking/.test(t)).join('", "')}")`,
-    said.some((t) => /\+2 Hardened Pine Wood/.test(t)) && said.some((t) => /\+800 Woodworking XP/.test(t)), said);
+    said.some((t) => /\+2 Hardened Pine Wood/.test(t)) && said.some((t) => /\+160 Woodworking XP/.test(t)), said);
   const srv2 = await H.adminPlayer(wsPort, me).catch(() => null);
   const srvInv2 = (srv2 && srv2.rpg && srv2.rpg.inventory) || {};
-  rec.ok('...and the worker\'s bag says the same (2 hardened, 2 logs)', srvInv2.hardened_pine === 2 && srvInv2.wood_pine_log === 2, { hardened: srvInv2.hardened_pine, logs: srvInv2.wood_pine_log });
+  rec.ok('...and the worker\'s bag says the same (2 hardened, no logs)', srvInv2.hardened_pine === 2 && !srvInv2.wood_pine_log, { hardened: srvInv2.hardened_pine, logs: srvInv2.wood_pine_log });
   await shot(P, 'hardwood-made');
 
   /* v2.3.3481: a worker that gates a bow's hardening on Woodworking

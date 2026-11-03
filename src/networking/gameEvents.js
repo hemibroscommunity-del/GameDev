@@ -76,6 +76,8 @@ import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the 
 import { achvMailPhrase } from '@/game/achievements.js';   /* v2.3.3527: an achievement in the mail (the arena's crown) */
 import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
 import { sparkLine } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn */
+import { moveGeometry } from '@/game/monsterMoves.js';   /* v2.3.4011: the moves' warnings' shapes */
+import { monsterMoveEvent, moveColor } from '@/networking/monsterMoveEvents.js';   /* v2.3.4011: an enrage, a volley's balls */
 
 /* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
  *
@@ -192,6 +194,7 @@ import { nmlJoinFight } from '@/game/nmlAsk.js'; /* v2.3.3530: one of a group wh
 import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance's moments on party_state */
 import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's bones rattle as it sheds */
 import { noteLootDrop, notePileShine } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
+import { noteHitBlow } from '@/game/deathBlow.js'; /* v2.3.3985: the killing blow's direction and size, for the monster's own death */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -1321,9 +1324,13 @@ export function processGameEvent(type, payload, S, deps) {
                  Softer orange than the brute's amber and a smaller shake
                  below: the tell should read as "here it comes", not as
                  "you are in trouble". */
-              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!', lunge: 'LUNGE!', roar: 'ROAR!' };   /* v2.3.3621: the mummy's roar */
-              var _maColors = { slam: '#f5c542', pounce: '#2C3E50', lunge: '#E8955A', roar: '#E6D3A8' };
-              var _maShake = { slam: 8, pounce: 5, lunge: 3, roar: 6 };
+              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!', lunge: 'LUNGE!', roar: 'ROAR!', combo: '!', charge: '!', volley: '!', stomp: '!', quake: '!' };   /* v2.3.3621: the mummy's roar; v2.3.4011: the tiers' moves, no words */
+              var _maColors = { slam: '#f5c542', pounce: '#2C3E50', lunge: '#E8955A', roar: '#E6D3A8', combo: '#f0a050', charge: '#ea580c', volley: '#9fd8ff', stomp: '#c8a070', quake: '#f5c542' };
+              var _maShake = { slam: 8, pounce: 5, lunge: 3, roar: 6, combo: 4, charge: 7, volley: 3, stomp: 7, quake: 9 };
+              /* v2.3.4011: a move's own parts (src/networking/monsterMoveEvents.js):
+                 an elder's enrage, a volley's balls; then its warning's
+                 shape rides the ring below */
+              if (monsterMoveEvent(S, payload)) break;
               /* ═══ v2.3.2215: THE UNIVERSAL BASIC-ATTACK TELL ═══
                  Every monster now winds up before an ordinary swing or throw
                  (server/src/telegraph.js BASIC_WINDUP).  Handled ABOVE the
@@ -1551,7 +1558,7 @@ export function processGameEvent(type, payload, S, deps) {
               var _maX = typeof payload.x === 'number' ? payload.x : S.player.x;
               var _maY = typeof payload.y === 'number' ? payload.y : S.player.y;
               if (payload.phase === 'telegraph') {
-                pushDmgPopup(S, _maX, _maY - 40, _maLabel, '#fbbf24');
+                /* v2.3.4026: no word over it (the owner: "Remove all text announcing what attacks or things the monsters are doing. It's lame.") -- the table stays the whitelist; the ring, wind-up, shake and sound stay */
                 /* The ground marker is the readable half of the tell: it
                    shows WHERE, at the radius the server will actually test,
                    so stepping out is an informed choice rather than a
@@ -1561,7 +1568,8 @@ export function processGameEvent(type, payload, S, deps) {
                   S._telegraphZones.push({
                     x: payload.ax, y: payload.ay, r: payload.radius || 55,
                     ts: Date.now(), duration: payload.ms || 800,
-                    color: _maColors[payload.ability] || '#fbbf24',
+                    color: moveColor(S, payload, _maColors[payload.ability] || '#fbbf24'),   /* v2.3.4011: a move's in its monster's element colour */
+                    geo: moveGeometry(payload),   /* v2.3.4011: a lane, a fan, two rings (telegraphShapes.js); null for a ring */
                   });
                 }
                 /* ═══ v2.3.1811: AND MARK THE MONSTER ITSELF ═══
@@ -1594,7 +1602,7 @@ export function processGameEvent(type, payload, S, deps) {
                    lunge (SOUND-GAPS). */
                 /* v2.3.3621: a mummy's roar is its roar (the owner's dragon,
                    higher and shorter: data/eventSounds.js mummyRoar) */
-                if (_tgK > 0) cue(payload.ability === 'slam' ? 'windSlam' : payload.ability === 'roar' ? 'mummyRoar' : 'windLunge', _tgK);
+                if (_tgK > 0) cue(payload.ability === 'slam' || payload.ability === 'stomp' || payload.ability === 'quake' ? 'windSlam' : payload.ability === 'roar' ? 'mummyRoar' : 'windLunge', _tgK);   /* v2.3.4011: the slams' swell */
                 break;
               }
               /* execute — a landed hit shakes, a whiff deliberately does
@@ -1626,14 +1634,14 @@ export function processGameEvent(type, payload, S, deps) {
                   /* v2.3.3343: the landing HEARD (this was a beep(), silent):
                      a slam's thud on the ground; a lunge's rush (the blow on
                      whoever it caught is their own monster_attack's sound) */
-                  if (payload.ability === 'slam') cue('slamHit', _exK);
+                  if (payload.ability === 'slam' || payload.ability === 'stomp' || payload.ability === 'quake') cue('slamHit', _exK);   /* v2.3.4011: + the moves' slams */
                   else cue('lungeMiss', 0.6 * _exK);
                 }
               } else {
                 pushDmgPopup(S, _maX, _maY - 30, 'MISS', '#8FD6A0');
                 /* v2.3.3343: a slam still hits the ground; a lunge whooshes
                    past (a beep(), silent) */
-                if (_exK > 0) cue(payload.ability === 'slam' ? 'slamHit' : 'lungeMiss', _exK);
+                if (_exK > 0) cue(payload.ability === 'slam' || payload.ability === 'stomp' || payload.ability === 'quake' ? 'slamHit' : 'lungeMiss', _exK);   /* v2.3.4011: + the moves' slams */
               }
             }
             break;
@@ -1684,7 +1692,10 @@ export function processGameEvent(type, payload, S, deps) {
                     _spM._burstUntil = Date.now() + _spMs;
                     _spM._burstScale = Math.max(1, Math.min(2, Number(payload.scale) || 1.3));
                   }
-                  pushDmgPopup(S, _dbaX, _dbaY - 40, _dbaLabel, _dbaColors.split);
+                  /* v2.3.4026: no "BURSTING!" (the owner had approved it on the
+                     giant slime, docs/specs/slime-boss.md; his later "Remove all
+                     text announcing what attacks ... the monsters are doing"
+                     wins): its swell and sound say it */
                   cueAt(S, 'blueSwell', _dbaX, _dbaY);
                   break;
                 }
@@ -1726,8 +1737,8 @@ export function processGameEvent(type, payload, S, deps) {
                 break;
               }
               if (payload.phase === 'telegraph') {
-                /* Legacy telegraph read: amber "<ABILITY>!" over the boss. */
-                pushDmgPopup(S, _dbaX, _dbaY - 40, _dbaLabel, '#fbbf24');
+                /* Legacy telegraph read: amber "<ABILITY>!" over the boss.
+                   /* v2.3.4026: no word over it (the owner: "Remove all text announcing what attacks or things the monsters are doing. It's lame.") -- the table stays the whitelist; the ring, wind-up, shake and sound stay */
                 /* v2.3.3343: every boss sound here was a beep(), which plays
                    nothing (SOUND-GAPS) -- its warning now a deep swell and a
                    growl-like thump, and each move below its own sound */
@@ -1735,7 +1746,7 @@ export function processGameEvent(type, payload, S, deps) {
                 break;
               }
               /* Execute visuals per ability (legacy colors/shake). */
-              pushDmgPopup(S, _dbaX, _dbaY - 30, _dbaLabel, _dbaColors[payload.ability]);
+              /* v2.3.4026: no word over it (the owner: "Remove all text announcing what attacks or things the monsters are doing. It's lame.") -- the table stays the whitelist; the ring, wind-up, shake and sound stay */
               if (payload.ability === 'slam' || payload.ability === 'sweep') {
                 if (!S._impactRings) S._impactRings = [];
                 S._impactRings.push({
@@ -2652,6 +2663,8 @@ export function processGameEvent(type, payload, S, deps) {
               if (S.monsters) {
                 var hitM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
                 if (hitM) {
+                  /* v2.3.3985: the blow, for the death's direction and size (game/deathBlow.js) */
+                  noteHitBlow(S, payload, hitM);
                   /* Update curHp from the server's authoritative hpPct,
                      but DON'T touch hitM.hp — that's the spawn-time
                      max-HP reference the HP bar uses as its denominator.
@@ -3101,7 +3114,7 @@ export function processGameEvent(type, payload, S, deps) {
                      like anything".  Legacy (non-prog3) players still get it:
                      for them the number is real. */
                   if (!prog3Live(R)) {
-                    pushHudPopup(S, { target: 'xpBar', text: '+' + killXp + ' XP', color: '#60a5fa' });
+                    pushHudPopup(S, { target: 'xpBar', text: '+' + Math.round(killXp) + ' XP' /* v2.3.3992: never a decimal */, color: '#60a5fa' });
                   } else {
                     /* v2.3.3893: ...a prog3 kill's "+N XP" is the worker's skill
                        XP the bar took for it, flown from here to the bar (game/

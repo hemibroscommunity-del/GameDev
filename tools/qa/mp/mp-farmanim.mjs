@@ -11,6 +11,9 @@
  *   1. the farmer's moves are made behind the farm's loading screen (the
  *      'farm' pose ready when it lifts), in HIS colours: the bake's own
  *      reading of each strip is his deep skin, blue legs and red boots;
+ *      (v2.3.4037) and HIS PATTERNS: yellow stripes and a purple print on
+ *      the trousers, white checks on the boots -- the pixels of each the
+ *      bake laid on the legs and the boots (the probe's `garb`);
  *   2. each step plays its own -- dig the hoe, plant the kneel, water the can,
  *      feed the kneel -- every frame of it, held one by one: the strip's foot
  *      point on his boots, the walking body put away, his green tee over the
@@ -63,6 +66,15 @@ const LOOK = `try {
   localStorage.setItem('bt-shirtcolor', 'green');
   localStorage.setItem('bt-pants', 'blue');
   localStorage.setItem('bt-shoes', 'red');
+  /* v2.3.4037: yellow stripes on the trousers (ART_PALETTE 5), white checks
+     on the boots (2), and a purple block printed on the trousers (10, a 8 x 8
+     in the 16 x 16 drawing) -- the owner, "Shoes and patterns aren't showing
+     while hoeing" */
+  localStorage.setItem('bt-pantspat', 'stripe-v:5');
+  localStorage.setItem('bt-shoespat', 'check:2');
+  let art = '';
+  for (let i = 0; i < 256; i++) { const x = i % 16, y = (i / 16) | 0; art += (x >= 4 && x <= 11 && y >= 4 && y <= 11) ? 'a' : '0'; }
+  localStorage.setItem('bt-pantsart', art);
 } catch (e) {}`;
 
 /* the ms into a step of `total` at which the step shows `frame` of its first
@@ -165,6 +177,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cl = made.clothes['farm-' + a] || {}, sk = made.skin['farm-' + a] || {};
       rec.ok(`...the ${a} in his colours: skin ${JSON.stringify(sk.rgb)} (deep), trousers ${JSON.stringify(cl.legs && cl.legs.rgb)} (blue), boots ${JSON.stringify(cl.boots && cl.boots.rgb)} (red)`,
         !!sk.rgb && sk.n > 500 && sk.rgb[0] < 150 && blue(cl.legs) && (a === 'kneel' || red(cl.boots)), { skin: sk, clothes: cl });
+      /* v2.3.4037: and his trouser and shoe patterns and trouser print, which
+         the stand-in bake never stamped (TRAPS §73): pixels of the stripes'
+         yellow on the legs, of the checks' white on the boots (the kneel
+         shows none), and pixels the print changed, each counted on the baked
+         strip after every stamp.  At least 1% of the legs' pixels, and
+         12 boot px (a cell of the checks is 5 px square here) */
+      const g = cl.garb || {};
+      const legsPx = (g.legs && g.legs.px) || 0, bootsPx = (g.boots && g.boots.px) || 0, printPx = (g.print && g.print.px) || 0;
+      rec.ok(`...the ${a} in his patterns: ${legsPx} px of yellow stripes and ${printPx} of the purple print on his trousers, ${bootsPx} px of white checks on his boots (cells x${g.k && g.k.toFixed(2)})`,
+        !!g.legs && g.legs.color === '#f2c94c' && legsPx > (cl.legs ? cl.legs.n : 0) * 0.01 && legsPx > 50 && printPx > 20
+          && (a === 'kneel' || (!!g.boots && g.boots.color === '#ffffff' && bootsPx > 12)), { garb: g, legsN: cl.legs && cl.legs.n, bootsN: cl.boots && cl.boots.n });
     }
 
     /* ── 2. bed 0, every step, every frame ── */
@@ -222,7 +245,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const F = v && v.fig;
         if (F) await shot(`${step}-${f}`, F);
         const P0 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-        frames.push({ f, ok: !!F && F.frame === f, anim: F && F.anim, foot: F && F.foot, feetY: F && F.figure.feetY, px: P0.x, work: v && v.work, made: v && v.made,
+        frames.push({ f, ok: !!F && F.frame === f, anim: F && F.anim, foot: F && F.foot, feetY: F && F.figure.feetY, px: P0.x, work: v && v.work, made: v && v.made, hit: F && F.work /* v2.3.3960: where the work lands */,
           body: v && v.body, shirt: F && F.shirt, prop: F && F.prop, order: F && F.order, crown: F && F.crown, h: F && F.figure.drawnH, headW: F && F.headW });
       }
       await P.page.evaluate(() => { clearInterval(window.__pinT); window.__pinNow = null; window.__btFarmHoldFrame = null; const w = window._gameState.current._farmWork; if (w) { w.startedAt = Date.now() - 50; w.doneAt = Date.now() + 120; } });
@@ -233,6 +256,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && x.order.body >= 0 && x.order.shirt > x.order.body && (!A.prop || x.order.prop > x.order.shirt));
       rec.ok(`${step}: the ${anim}, all ${A.n} frames shown one by one (${started ? 'started' : 'NOT started'})`, !!started && allShown, frames.map((x) => x.f + ':' + x.anim + ':' + x.ok).join(' '));
       rec.ok(`...his boots on yours in every frame, the walking body put away`, onBoots && frames.every((x) => x.body), frames.map((x) => x.foot && [+(x.foot.x - x.px).toFixed(2), +(x.foot.y - x.feetY).toFixed(2)]));
+      if (step === 'dig') {
+        /* v2.3.3960: the owner, "plow in middle center of square plot not at
+           the very edge": the hoe lands on the bed's middle (farmDigSpot) */
+        const B0m = { x: FARM_BEDS[0].x + FARM_BEDS[0].w / 2, y: FARM_BEDS[0].y + FARM_BEDS[0].h / 2 };
+        const offs = frames.map((x) => x.hit && [+(x.hit.x - B0m.x).toFixed(1), +(x.hit.y - B0m.y).toFixed(1)]);
+        rec.ok(`...the hoe lands in the bed's middle, not its edge (blade off the middle by ${JSON.stringify(offs[0])} world px)`,
+          offs.every((o) => o && Math.abs(o[0]) <= 4 && Math.abs(o[1]) <= 4), offs);
+      }
       rec.ok(`...your green tee over him${A.prop ? ', the ' + anim + "'s tool over both" : ', his hands empty'} (body ${frames[0].order && frames[0].order.body}, shirt ${frames[0].order && frames[0].order.shirt}, tool ${frames[0].order && frames[0].order.prop})`,
         dressed, frames.map((x) => ({ f: x.f, shirt: x.shirt, prop: x.prop, order: x.order })));
       if (anim === 'hoe' || anim === 'water') {

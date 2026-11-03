@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, LIFE_SKILL_XP, NUGGETS_PER_BAR,
-  SMELT_RECIPES, WEAPON_STASH_MAX, gemExtractCost, /* v2.3.3524: getGearStatReq moved into data/forgeLadder.js forgeStatReq */
+  SMELT_RECIPES, smeltRecipe /* v2.3.3981: one ore a bar, with caps.onetoone */, WEAPON_STASH_MAX, gemExtractCost, /* v2.3.3524: getGearStatReq moved into data/forgeLadder.js forgeStatReq */
   ARMOR_FORGE_RECIPES, getArmorPieceDr, armorDefReq, /* v2.3.3092: bars into armor */
 } from '@/data/index.js';
 import { armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.3092: each metal's plate and greaves */
@@ -206,7 +206,8 @@ function SmeltTab({ S, inv, lvl, ask, busy }) {
   return (
     <div data-smelt-section="1">
       {Object.keys(SMELT_RECIPES).map((key) => {
-        const r = SMELT_RECIPES[key];
+        /* v2.3.3981: one ore a bar against a worker that says so, five without */
+        const r = smeltRecipe(key, !!(S._serverCaps && S._serverCaps.onetoone));
         const ore = Math.floor(inv[r.ore] || 0);
         const can = Math.floor(ore / r.oreCost);
         const locked = lvl < r.minLvl;
@@ -511,7 +512,7 @@ function carriedPieces(R) {
   for (const field of ['armorStash', LEGS]) {
     const list = Array.isArray(R[field]) ? R[field] : [];
     list.forEach((p, i) => {
-      if (!p || typeof p !== 'object') return;
+      if (!p || typeof p !== 'object' || p.unrevealed) return;   /* v2.3.4012: a "?" is revealed before it is salvaged (game/revealBag.js) */
       const metal = armourMetal(p);
       if (!metal) return;
       const legs = field === LEGS;
@@ -520,6 +521,7 @@ function carriedPieces(R) {
     });
   }
   (Array.isArray(R.weaponStash) ? R.weaponStash : []).forEach((w, i) => {
+    if (w && w.unrevealed) return;   /* v2.3.4012: as the armour above */
     const metal = weaponMetal(w);
     if (!metal) return;
     const ic = weaponIcon(w.type, w.gearBase);

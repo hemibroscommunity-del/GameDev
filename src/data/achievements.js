@@ -44,6 +44,17 @@ export function achvBadgeSrc(id) {
 }
 export const ACHV_MEDAL_SRC = achvBadgeSrc('achievements');
 
+/* v2.3.4036: the five fish of the ladder and their bag pictures (the bag's
+   ITEMS_V, ui/mobile/dash/InventoryPanel.jsx), for the rare-fish rows */
+const FISH_PIC_V = '?v=2.3.1774';
+const FISH_ROWS = [
+  ['minnow', 'Minnow', '/icons/items/fish-minnow.webp' + FISH_PIC_V],
+  ['clownfish', 'Clownfish', '/icons/items/fish-clownfish.webp' + FISH_PIC_V],
+  ['trout', 'Trout', '/icons/items/fish-trout.webp' + FISH_PIC_V],
+  ['salmon', 'Salmon', '/icons/items/fish-salmon.webp' + FISH_PIC_V],
+  ['pike', 'Pike', '/icons/items/fish-pike.webp' + FISH_PIC_V],
+];
+
 /* The order the page lists them in: by tier, then as written.
    `count`: the row says how many times (a second Gladiator crown pays gold,
    not points, and counts here); the worker counts only these.
@@ -77,6 +88,12 @@ export const ACHIEVEMENTS = Object.freeze([
   { id: 'house_limit', tier: 'superrare', name: 'Breaking the House', clue: 'Double the free spin to the limit', how: "Double the free spin's pot all the way to the house limit.", icon: achvBadgeSrc('house_limit'), glyph: '🎡', count: true },
   { id: 'combat_100', tier: 'superrare', name: 'Centurion', clue: 'Melee, Bow or Magic to Lv 100', how: 'Raise Melee, Bow or Magic to level 100.', icon: achvBadgeSrc('combat_100'), glyph: '👑' },
   { id: 'godly', tier: 'superrare', name: 'Godly', clue: 'Find or forge Godly gear', how: 'Find or forge a Godly piece of gear.', icon: achvBadgeSrc('godly'), glyph: '🌈', count: true },
+  /* v2.3.4036: THE RARE FISH, EATEN (server fishlog.js): the first albino of
+     each species a player eats, 5 AP; the first large one, 10 AP -- each
+     row's own `ap` (no tier pays 5).  No new art (the lane's decision): the
+     fish's own bag picture is the badge. */
+  ...FISH_ROWS.map(([sp, Name, pic]) => ({ id: 'albino_' + sp, tier: 'common', ap: 5, name: 'Albino ' + Name, clue: 'Eat an albino ' + Name, how: 'Eat an albino ' + Name + ' (1 in 100 ' + Name.toLowerCase() + ' caught is albino).', icon: pic, glyph: '🐟' })),
+  ...FISH_ROWS.map(([sp, Name, pic]) => ({ id: 'large_' + sp, tier: 'rare', ap: 10, name: 'Large ' + Name, clue: 'Eat a large ' + Name, how: 'Eat a large ' + Name + ' (1 in 1,000 caught is large; it heals double).', icon: pic, glyph: '🐟' })),
 ].map((a) => Object.freeze({ count: false, ...a })));
 
 const BY_ID = Object.create(null);
@@ -88,10 +105,11 @@ export function achvById(id) {
   return typeof id === 'string' && Object.prototype.hasOwnProperty.call(BY_ID, id) ? BY_ID[id] : null;
 }
 
-/** The points an achievement pays (its tier's). */
+/** The points an achievement pays: its row's own `ap` (v2.3.4036: the rare
+ *  fish's 5 and 10), else its tier's. */
 export function achvAp(id) {
   const a = achvById(id);
-  return a ? ACHV_TIERS[a.tier].ap : 0;
+  return a ? (typeof a.ap === 'number' ? a.ap : ACHV_TIERS[a.tier].ap) : 0;
 }
 
 /** "Rare" and "Super-rare" and the arena's get the banner and its sound;
@@ -102,4 +120,4 @@ export function achvBig(id) {
 }
 
 /** Every achievement's points added up: the most a character can earn. */
-export const ACHV_TOTAL_AP = ACHIEVEMENTS.reduce((n, a) => n + ACHV_TIERS[a.tier].ap, 0);
+export const ACHV_TOTAL_AP = ACHIEVEMENTS.reduce((n, a) => n + achvAp(a.id), 0);   /* v2.3.4036: a row's own ap */

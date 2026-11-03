@@ -51,7 +51,13 @@ take the steps, and what you see, has changed.
    - a tap on the bed itself.
 4. **You work it.** You stand at the bed's back, a little left of its
    middle, facing the screen, and work it in the owner's own moves (below,
-   "The farmer's own moves"):
+   "The farmer's own moves"). **Digging** stands you further in, so the hoe
+   lands on the bed's middle (v2.3.3960, the owner: *"Make the character plow
+   in middle center of square plot not at the very edge move the effects
+   there centered too"*): `farmLayout.js` `farmDigSpot` works your boots out
+   from the hoe strip's `work` and `foot` points (about the bed's centre
+   line, 40 px below its top), and the dirt flies from there. The other steps
+   keep the back spot: mid-bed you would stand on the crop.
    - you **dig** with a hoe, swung twice;
    - you **water** from a can;
    - you **kneel** with your hands in the soil to **plant**, **fertilize** and
@@ -174,7 +180,11 @@ over trousers): a misfit between the sheets shows in the mixed ones.
 gathering figure is, in this order:
 
 1. his skin, trousers and boots are repainted in yours (`recolorStandInSkin`,
-   the lumberjack's repaint). Under greaves, the body cut for them;
+   the lumberjack's repaint), and since v2.3.4037 your trouser and shoe
+   patterns and your trouser print are stamped on them at his scale (the
+   owner: "Shoes and patterns aren't showing while hoeing";
+   docs/specs/gathering-look.md section 8). Under greaves, the body cut for
+   them;
 2. your greaves, in their metal (`_tintGearSprite`);
 3. your shirt, in its colour, with its print and pattern
    (`_placeSwingShirt`), hidden under a plate;
@@ -256,7 +266,8 @@ Their screens draw your farmer from it (effectsRenderer `_drawPeerFarmer`):
 - in your colours and with your drawings: their own farmer when you wear
   their colours and neither of you has drawings, else one baked for yours
   (`_peerFarmFigure`, `_peerFigFrames`, one per colours and drawings), under
-  greaves the body cut for them;
+  greaves the body cut for them; (v2.3.4037) your trouser and shoe patterns
+  and trouser print are among the colours (`_standInColourKey`);
 - your greaves, shirt (with its print) and plate in their metal, the hoe or
   the can, your hair, hat and beard, in that order;
 - the step's sound where its work lands, at your share by distance
@@ -561,3 +572,14 @@ two pictures still to come.
   their own beds (the beds are drawn from each page's own `farm_state`). A
   farm of your own -- a zone per player, or the other players hidden there --
   is the plan's Phase 4 question, with visiting.
+
+## The fed soil (v2.3.3960)
+
+The owner, 2026-11-02: *"Make fertilized dirt even darker like almost black.
+This is a better visual cue for what stage the farm plot is in."* The fed
+soils' pictures sat barely under the watered one (centre brightness 64 and 63
+against 74). `farmWorld.js` `_bed` tints them when the soil changes:
+`bed-fed` 0x4C4C4C, `bed-wetfed` 0x404040, a centre brightness of about 19-25
+with the grain kept and no new art (a tint is not structural, TRAPS §218).
+Plain dug earth (117) and watered (74) are untouched. mp-farmwalk reads the
+tint (`__btFarmWorld` `soilTint`).

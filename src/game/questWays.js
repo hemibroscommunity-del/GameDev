@@ -78,6 +78,31 @@ export function routeOrder(entries, tracked) {
     .map((x) => x.e);
 }
 
+/* ═══ v2.3.3924: A QUEST ABOVE YOUR LEVEL WAITS ═══
+   The owner: "For the clear dungeon quest from mayor bro put a [lvl 10+
+   recommended] and direct players to other quests around town, starting
+   with the woodworker quest."  A quest that says `recLevel` (mayor_3: the
+   Goo Grotto's GROTTO_REC_LEVEL, gameSystems.js) waits while the player is
+   below it: the tour's next step is suggested past it (questRoute.js
+   tourOffer) and it leads after the other quests in hand (levelWaitsLast) --
+   never once its objective is met (a hand-in), nor while you track it (you
+   asked to be led there). */
+export function waitsOnLevel(q, rpg) {
+  const rec = q ? Number(q.recLevel) : 0;
+  if (!(rec > 0)) return false;
+  return ((rpg && Number(rpg.level)) || 1) < rec;
+}
+
+/** routeOrder's list with every quest that waits on your level (not done,
+    not tracked) moved to the end, each in its order. */
+export function levelWaitsLast(entries, tracked, rpg) {
+  if (!Array.isArray(entries)) return [];
+  const t = typeof tracked === 'string' && tracked ? tracked : null;
+  const waits = (e) => !!e && !e.done && e.qid !== t && waitsOnLevel(e.q, rpg);
+  const later = entries.filter(waits);
+  return later.length ? entries.filter((e) => !waits(e)).concat(later) : entries;
+}
+
 /** A way written on a quest or a step, as data: 'monsters', 'visit',
     'door:<plot>', 'giver' (v2.3.3525), 'dungeon:<land>' (v2.3.3540) -- or
     null. */

@@ -171,6 +171,9 @@ export function toolEarned(quests, key) {
   return false;
 }
 
+/* v2.3.4036: what a rare fish is worth against its plain twin (fishlog.js) */
+export const SHOP_FISH_MULT = Object.freeze({ albino: 5, large: 10 });
+
 export const SHOP = {
   /* Coins he pays for the FIRST unit of something he has none of, before the
      stock decay applies. Keyed by a family SUBSTRING of the inventory key,
@@ -211,8 +214,14 @@ export const SHOP = {
     ore_: 40, wood_: 24, fish_: 28,
     /* v2.3.2822: smelted bars (smelting.js). Five ore go into one, so a bar
        is priced above the five ore it cost (5 x 40 = 200) -- smelting before
-       selling is worth a little, never a loss. */
-    bar_: 240,
+       selling is worth a little, never a loss.
+       v2.3.3981: ONE ore goes into one (the owner's one-to-one), so 48: the
+       ore's 40 and the same fifth on top (240 / 200).  At 240 a 40-coin ore
+       became a 240-coin bar -- buy his ore, smelt, sell him the bar (120) --
+       a gold tap.  He pays 24 for a bar and asks 48, the ore 20 and 40:
+       smelting before selling still earns a little, and buying ore to sell
+       him bars loses.  `onetoone: false` puts back 240 (FIVE_TO_ONE below). */
+    bar_: 48,
     /* v2.3.3141: the essences salvaging a Rare, Elite or Godly piece leaves
        (salvage.js).  Each turns a plain piece of its metal into its grade --
        a rare weapon hits 1.3x, an elite 1.75x, a godly 5x (data.js
@@ -226,8 +235,11 @@ export const SHOP = {
        into one, so it is priced above the five logs it cost (5 x 24 = 120) by
        the bar's margin -- hardening before selling is worth a little, never a
        loss.  Its keys are `hardened_<tier>`, never `wood_`, so no log price
-       reaches it. */
-    hardened_: 144,
+       reaches it.
+       v2.3.3981: one log goes into one, so 29: the log's 24 and the bar's
+       fifth on top (28.8, rounded up).  He pays 14 and asks 29, a log 12 and
+       24 -- the same rule as the bar's.  `onetoone: false` puts back 144. */
+    hardened_: 29,
     /* Longer than 'fish_', so the longest-match rule below prefers it: a
        cooked fish is worth more than the raw one it came from. */
     cooked_fish: 45,
@@ -279,6 +291,13 @@ export const SHOP = {
      quest, the old daily chest paid more to open than 20.  Kept as the
      number the three keys above were held to. */
   BASE_DEFAULT: 20,
+  /* v2.3.3981: the two families' prices while `onetoone: false` brings back
+     five ore a bar and five logs a hardened wood (smelting.js _oneToOneOff):
+     the prices they had until v2.3.3981, priced on five raw items each.
+     _shopBaseValue lays these over BASE, so a bar is never sold at its
+     one-to-one price while it costs five ore to make, nor bought at its
+     five-to-one price while it costs one. */
+  FIVE_TO_ONE: { bar_: 240, hardened_: 144 },
   /* He buys at half his asking price before decay -- the ordinary shopkeeper
      spread, and the thing that stops buy-then-sell-back being a money loop. */
   BUY_RATE: 0.5,
@@ -384,10 +403,17 @@ export const shopMethods = {
   _shopBaseValue(key) {
     if (typeof key !== 'string' || !key) return null;
     const k = key.toLowerCase();
-    let best = 0, val = null;
+    let best = 0, val = null, fam = null;
     for (const pre in SHOP.BASE) {
-      if (pre.length > best && shopFamilyMatch(k, pre)) { best = pre.length; val = SHOP.BASE[pre]; }
+      if (pre.length > best && shopFamilyMatch(k, pre)) { best = pre.length; val = SHOP.BASE[pre]; fam = pre; }
     }
+    /* v2.3.3981: the five-to-one prices while the switch is off */
+    if (fam && Object.prototype.hasOwnProperty.call(SHOP.FIVE_TO_ONE, fam)
+      && typeof this._oneToOneOff === 'function' && this._oneToOneOff()) val = SHOP.FIVE_TO_ONE[fam];
+    /* v2.3.4036: a rare fish (fishlog.js) is worth more than its plain twin:
+       an albino x5, a large one x10 (the lane's decision) -- he still pays
+       half and sells what he buys, so a flip is a loss as ever */
+    if (val != null && /^(cooked_)?fish_[a-z]+_(albino|large)$/.test(k)) val *= SHOP_FISH_MULT[k.slice(k.lastIndexOf('_') + 1)];
     return val;
   },
 
