@@ -6767,6 +6767,48 @@ html[data-orient="landscape"] .bt-dashboard{
   display:none!important;
 }
 
+/* ═══ v2.3.4012: THE ONE BAND (?oneband=1) -- THE UPRIGHT BAND ON EVERY SCREEN ═══
+   The owner's "same layout ... the menu takes up [a third] of the bottom of
+   the screen even in layout orientation", OFF by default, to try
+   (src/ui/oneBand.js, docs/specs/one-band.md).  With the switch on,
+   data-orient reads "portrait" on every shape (playIsLandscape), so none of
+   the sideways rules above apply and the upright layout is what draws; these
+   are the three things the upright layout never needed, because an upright
+   phone is never wider than its world rule or notched at its sides:
+     - THE WORLD'S BARS.  Where the world above the band would be wider than
+       2.2:1 (this file's own rule for a computer's shell: "fair by height;
+       past 2.2:1 the sides are bars"), resize() stamps a narrower --play-w and
+       centres it with --world-x (sheetGeometry oneBandFootprint).  The wrap
+       narrows and moves the way the sideways layout's does (v2.3.2157:
+       contain:paint carries every fixed HUD child -- the joysticks, the
+       banners -- along), and the zone header, a sibling, is told the same
+       numbers.  The band stays the screen's width: it is not world.
+     - THE ISLAND.  Sideways the Dynamic Island and the rounded corners inset
+       both long edges; the band steps in by them (--world-pad-l/r, resize()'s
+       probe, 0 upright and in every headless run), so no nav button or slot
+       sits under the punch hole.  Its columns row measures the box it is left
+       (OneBandColumns.jsx).
+     - THE BARS' COLOUR: the page's, as the computer's surround is. */
+html.bt-one-band .brotown-wrap{
+  width:var(--play-w,100%)!important;
+  margin-left:var(--world-x,0px);
+  contain:paint;
+}
+html.bt-one-band .bt-zone-header{
+  right:auto;
+  left:var(--world-x,0px);
+  width:var(--play-w,100%);
+  /* the exit chip clear of the Island where a bar does not already clear it */
+  padding-left:max(0px, calc(var(--world-pad-l,0px) - var(--world-x,0px)));
+  padding-right:max(0px, calc(var(--world-pad-r,0px) - var(--world-x,0px)));
+  box-sizing:border-box;
+}
+html.bt-one-band .bt-dashboard{
+  left:var(--world-pad-l,0px)!important;   /* the band's left/right are inline styles */
+  right:var(--world-pad-r,0px)!important;
+}
+html.bt-one-band, html.bt-one-band body{background:#070D11}
+
 /* ═══ v2.3.2222: THE STAT SCENE — "a preview of what the effect does (exaggerated)" ═══
    One scene per stat in the ℹ️ window (StatDemo.jsx), built from the
    game's own pieces after the owner called the first CSS-only cut

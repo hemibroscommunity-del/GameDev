@@ -5,6 +5,7 @@ import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
+import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4012: the one dashboard, to try */
 
 /* v2.3.3525: the tour's steps, in order, for "Tour: jump to" (the worker's
    /dev/tour checks each is one) */
@@ -837,6 +838,21 @@ export const DevPanel = ({ onClose }) => {
         <button type="button" style={btn(false)} data-dev-sound-studio=""
           onClick={() => { if (onClose) onClose(); setTimeout(() => { openSoundStudio(); }, 150); }}>
           Open the sound studio
+        </button>
+
+        {/* ═══ v2.3.4012: ONE DASHBOARD ON EVERY SCREEN, TO TRY ═══
+            Keyless and this device only (src/ui/oneBand.js): the installed
+            app has no address bar for ?oneband=1, so this row is how the
+            owner tries it on a sideways phone.  The page reloads into it. */}
+        <div style={label}>One dashboard (to try)</div>
+        <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+          Every screen uses the upright layout: the dashboard along the bottom, at most a third of the
+          screen, its slots counted from the room it has. For trying sideways and on a computer; the
+          game reloads, and this device keeps the choice until you switch it off here.
+        </div>
+        <button type="button" style={btn(oneBandActive())} data-dev-one-band={oneBandActive() ? 'on' : 'off'}
+          onClick={() => setOneBand(!oneBandActive())}>
+          {oneBandActive() ? 'Switch the one dashboard off' : 'Switch the one dashboard on'}
         </button>
 
         {!key && (

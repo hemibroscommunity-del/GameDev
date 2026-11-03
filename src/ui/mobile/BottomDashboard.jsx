@@ -25,6 +25,8 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { expandedSheetHeight, drillSheetHeight, dashPanelWidths, DASH_GAP, bandFootprint, LAND_NAV_BTN_W, landscapeNavGroupW, landscapeSheetW, identityRowHeight, LAND_FOLD_CHIP_W, landDockFootprint, deskFoldStripW, DESK_NAV_BTN_H, DESK_NAV_ICON, DESK_FOLD_CHIP_W } from './sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1350 two-state; v2.3.1311e drill height; v2.3.2197 barHeight left with the --sheet-h formula; v2.3.2157 the sideways band; v2.3.2166 the nav dock; v2.3.2168 the barless landscape */
 import { DashColumns, DeskRailWeapons } from './dash/DashColumns.jsx';           /* v2.3.1636; v2.3.3769 the folded rail's weapons */
 import { NavRail } from './dash/NavRail.jsx';                   /* v2.3.1637 */
+import { OneBandColumns } from './dash/OneBandColumns.jsx';    /* v2.3.4012 */
+import { oneBandActive } from '../oneBand.js';                  /* v2.3.4012 */
 import { portraitStore } from './sheet/portraitStore.js';          /* v2.3.1294 */
 import { hasUnseenLevelUps } from './sheet/skillsModel.js';        /* v2.3.1296 */
 import { getFriendRows } from './sheet/friendsModel.js';           /* v2.3.1323 */
@@ -1880,7 +1882,10 @@ export const BottomDashboard = () => {
              panels to show nothing. */
           height: 'var(--cols-h, 93px)',
         }}>
-          <DashColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
+          {/* v2.3.4012: the one band (?oneband=1) lays the row out from its measured box */}
+          {oneBandActive()
+            ? <OneBandColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />
+            : <DashColumns R={(window._gameState && window._gameState.current && window._gameState.current.rpg) || null} />}
         </div>
       )}
 

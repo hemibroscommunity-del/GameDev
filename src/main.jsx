@@ -7,6 +7,7 @@ import { installCrashTrap } from './debug/crashTrap.js';
 import { installUiSfxDelegate } from './ui/uiSfxDelegate.js';
 import { applyWorldTrial } from './game/worldTrial.js';
 import { applyDeskWide } from './ui/deskWide.js';
+import { applyOneBand } from './ui/oneBand.js';   /* v2.3.4012 */
 import './styles/game.css';
 
 /* Debug console intercept is handled by debugBus.initFromUrl() alone now.
@@ -49,5 +50,9 @@ applyWorldTrial();
    is the upright column).  BEFORE the render: the first layout reads #root's
    shape. */
 applyDeskWide();
+
+/* v2.3.4012: `?oneband=1` -- one dashboard on every screen, to try (src/ui/oneBand.js).
+   BEFORE the render, for the same reason. */
+applyOneBand();
 
 createRoot(document.getElementById('root')).render(<GameApp />);
