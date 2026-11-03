@@ -28,6 +28,7 @@ import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
 import { STUN_STARS, STUN_SPIN_MS, BLOCK_BARS, BLOCK_GEOM, blocksFor } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring; v2.3.2300: his 5-block resource strips */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
+import { fullsetSplitY } from '../lightfx/gradeSplit.js'; /* v2.3.3953: a full set's waist, for its two grades' glow */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount, SLIME_BASE_ROW, SLIME_FRAME_PX } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1573 generalised */
 
@@ -12870,6 +12871,7 @@ export class EntityRenderer {
             if (spriteBody.tint !== _fsTintR) spriteBody.tint = _fsTintR;
           }
           display._fullsetOn = !!_fsR;   /* v2.3.2864: see the local path */
+          display._fullsetWaist = _fsR ? fullsetSplitY(dir, frameIdx, _rJogPhase) : 0;   /* v2.3.3953: see the local path */
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
           try {
@@ -14789,6 +14791,8 @@ export class EntityRenderer {
           const _fsTint = _fsT ? _fullsetTint(getEquip('chest')) : 0xffffff;
           if (spriteBody.tint !== _fsTint) spriteBody.tint = _fsTint;
           display._fullsetOn = !!_fsT;   /* v2.3.2864: the metal shine finds the armour on the body sprite */
+          /* v2.3.3953: ...and the waist, where its glow turns from the torso's grade to the greaves' (glint.js) */
+          display._fullsetWaist = _fsT ? fullsetSplitY(dir, frameIdx, _jogPhase) : 0;
         } catch (e) { _bodyTex = tex; display._fullsetOn = false; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
