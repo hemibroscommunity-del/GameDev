@@ -2,7 +2,7 @@ import React from 'react';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2639: the tab-tap sound */
 import { COL } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
-import { dashMinBus } from '../dashMinBus.js'; /* v2.3.3897 (B1): the bag button unfolds the band; v2.3.3941 kept */
+import { dashMinBus } from '../dashMinBus.js'; /* v2.3.3897: the bag button unfolds the band */
 import { playIsLandscape } from '../playViewport.js'; /* v2.3.2158: the tap decides by shape */
 import { navButtonSize } from '../sheet/sheetGeometry.js';
 import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, shown on a computer */
@@ -187,15 +187,17 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                   return;
                 }
                 dashboardPanelBus.toBar();
-                /* v2.3.3897 (B1, claude/bag-unfold): UPRIGHT, THE BAG BUTTON
-                   UNFOLDS A FOLDED BAND.  Owner: "If you try to tap the bag
-                   dashboard button while playing with the menu minimized it
-                   doesn't expand the dashboard into the bag.  It should.  All
-                   the other buttons do."  toBar() at rest returns at once, so
-                   the fold stayed.  It only unfolds -- never a fold (the I key
-                   toggles; the grip folds).
-                   v2.3.3941: kept for Gear, the same button renamed, so the
-                   grip is not the only way back to the bag. */
+                /* v2.3.3897: UPRIGHT, THE BAG BUTTON UNFOLDS A FOLDED BAND.
+                   Owner: "If you try to tap the bag dashboard button while
+                   playing with the menu minimized it doesn't expand the
+                   dashboard into the bag.  It should.  All the other buttons
+                   do."  Every other button calls open(), and the band's
+                   expanded-mode effect clears the fold; toBar() at rest
+                   returns at once, so the fold (bt_dash_min) stayed and the
+                   bag tiles never showed.  Unfold here too.  It only unfolds
+                   -- a tap on an unfolded band is a no-op as before, never a
+                   fold (the I key toggles; the grip folds).
+                   v2.3.3941: kept for Gear, the same button renamed. */
                 if (!playIsLandscape()) dashMinBus.set(false);
                 return;
               }

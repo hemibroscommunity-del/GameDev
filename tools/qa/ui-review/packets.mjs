@@ -28,11 +28,11 @@ export const PACKETS = [
   { slug: 'creator-tabs', title: 'The creator\'s other tabs and the drawing editor',
     screens: ['creator-tab-eyewear', 'creator-tab-beard', 'creator-tab-shirt', 'creator-tab-pants', 'creator-tab-shoes', 'creator-paint'] },
   { slug: 'arriving-and-the-world', title: 'Arriving, the world screen and talking to Mayor Bro',
-    screens: ['welcome', 'desktop-window', 'hud', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
+    screens: ['welcome', 'desktop-window', 'hud', 'hud-pvp', 'nml-popup', 'hud-outlaw', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
   /* v2.3.3941: the owner's five buttons -- Bro's five tabs are a packet of
      their own; Quests, the bag, the Codex and More share the next */
   { slug: 'dashboard-bro', title: 'Dashboard: Bro (Me, Points, Skills, Achievements, Equipment)',
-    screens: ['dash-bro', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment'] },
+    screens: ['guide-arrow', 'dash-bro', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment'] },
   { slug: 'dashboard-quests-bag-codex', title: 'Dashboard: the band, your quests, the bag, the Codex and More',
     screens: ['dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',

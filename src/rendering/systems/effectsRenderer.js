@@ -11,7 +11,7 @@ import { peerShare, cue } from '@/game/eventSounds.js';   /* v2.3.3343: another 
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
-import { LockReticle } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
+import { LockReticle, nearestInMeleeReach } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
 import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
@@ -310,6 +310,7 @@ const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, bossSizeK /* v2.3.3556: ...and a dungeon boss's, at its size */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { farmWorkFrame, farmAnimOf, farmWorkBeats, parseFarmEx, farmBeatPlay } from '@/game/farmWork.js';   /* v2.3.3439: the farmer's own moves, frame by frame; and another player's, off their `ex` */
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3439: the owner's three farm animations, cut by tools/make_farm_anims.py */
+import { FARM_ANIM_HEAD_WORLD } from '@/data/farmLayout.js';   /* v2.3.3960 */
 import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
 import { WheelShatter } from '../wheelShatter.js';
@@ -515,7 +516,8 @@ export const COOK_STANDIN_H = 73.9;
  * his head is 10% over yours, and your hair, hat and beard with
  * it: they are sized by FARM_ANIM_HEAD / 51 (_skillTraitMul), the
  * fire-lighter's rule (his 1.98 is his 101 px over 51). */
-export const FARM_ANIM_HEAD_WORLD = 31.25;
+/* v2.3.3960: defined in data/farmLayout.js now (the dig spot reads it) */
+export { FARM_ANIM_HEAD_WORLD };
 /* the body strip is the man alone (the hoe and the can are a strip of their
    own), so every skin-coloured island in it is his skin: the floor only drops
    lone specks */
@@ -3064,63 +3066,45 @@ const LOOT_Z = {
    death branch) grows by the same DROP_GROW.  The pickup and magnet reach are
    groundLoot.js's own numbers and do not move. */
 const DROP_GROW = 1.5;
-/* ═══ v2.3.3746: YOUR PILE SHINES, THEN GLOWS ═══
-   The owner, asking how to show the drop lines still mean "walk over and
-   pick it up": "I'd prefer a bright shine the moment it drops that lowers to
-   a glow", "Shine color same color as rarity tier (uses best)".  The moment
-   YOUR pile lands, a bright shine on it eases down over SHINE_SETTLE_S to a
-   soft, steady glow that stays while the pile lies there and goes with it
-   (picked up or gone: _disposeLoot).  Its colour is the pile's best drop
-   line's (game/dropLines.js pileShine, set on the pile at its loot_drop), so
-   the shine and the words always match.  Another player's pile has none.
-   Drawn in code: ONE soft round picture made once (shineTexture), kept on
-   the graphics chip only, a sprite of it per pile, tinted -- each frame
-   changes only its alpha and scale, never its visibility (TRAPS §218). */
-const SHINE_SETTLE_S = 1.0;    /* bright to steady */
-const SHINE_PEAK_A = 1.0;      /* its alpha the moment it lands */
-const SHINE_GLOW_A = 0.7;      /* ...and while it lies there */
-const SHINE_PEAK_PX = 260;     /* its size the moment it lands, world px (a pile is ~60 across) */
-const SHINE_GLOW_PX = 150;     /* ...and while it lies there: well past the pile's edge, or the pile hides it */
-const SHINE_TEX_PX = 64;
-/* each effects renderer makes its own (a rebuilt one, after a black screen,
-   has never drawn the last one's, whose canvas is gone) */
-function makeShineTexture() {
-  if (typeof document === 'undefined') return null;
-  const N = SHINE_TEX_PX, c = N / 2;
-  const cv = document.createElement('canvas');
-  cv.width = cv.height = N;
-  const g = cv.getContext('2d');
-  const rg = g.createRadialGradient(c, c, 0, c, c, c);
-  rg.addColorStop(0, 'rgba(255,255,255,0.8)');
-  rg.addColorStop(0.35, 'rgba(255,255,255,0.45)');
-  rg.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = rg;
-  g.fillRect(0, 0, N, N);
-  return Texture.from(cv);   /* its canvas let go once drawn: _renderPileShine */
-}
-/* ═══ v2.3.3805: AND A BEAM COMES DOWN INTO IT ═══
-   The owner: "for the loot drop add a vertical shine that starts at its peak
-   and climbs downward to just end at the normal glow".  The moment YOUR pile
-   lands, a narrow column of light stands on it, the shine's colour, BEAM_PEAK_PX
-   tall; its top comes down to the pile over the shine's own SHINE_SETTLE_S,
-   eased in and out, so it is gone just as the shine settles into the glow.  Then it is destroyed: nothing of it is left but the glow.  A pile that
-   was already lying when it reached this phone (a zone's list on the way in)
-   has none: only a pile seen landing (its loot_drop) beams.
-   Drawn in code like the shine: ONE soft column picture per renderer
-   (makeBeamTexture), kept on the graphics chip only; a sprite of it per
-   landing pile, anchored at its foot, each frame only its alpha and its
-   height (TRAPS §218).  `?lootbeam=0`: none, for one phone. */
-const BEAM_PEAK_PX = 230;      /* its height the moment it lands, world px (a pile is ~60 tall) */
-const BEAM_W_PX = 40;          /* its width: a narrow column, the pile wider than it */
-const BEAM_A = 0.95;           /* its alpha at the peak, easing a little as it comes down */
-const BEAM_TEX_W = 32, BEAM_TEX_H = 128;
+/* ═══ v2.3.3916: THIN BEAMS OF LIGHT RISE FROM YOUR PILE ═══
+   The owner, 2026-11-02: "Redo the loot drop lighting. Instead of the glow I
+   just want it to be thin beams of vertical light shining upwards."  This
+   replaces v2.3.3746's round shine that lowered to a glow and v2.3.3805's
+   beam that came DOWN into it (docs/specs/loot-shine.md): his newest words
+   win.  YOUR pile has 1 to 3 thin vertical beams (LOOT_BEAMS_BY_RANK: one for
+   the most common, three for the rarest), in the colour of its best drop line
+   (game/dropLines.js pileShine, set on the pile at its loot_drop), so the
+   beams and the words always match.  They stand at the pile's foot and RISE
+   over BEAM_RISE_S, then stay for as long as the pile lies there, shimmering
+   a little: they are the "walk over and pick it up" cue the glow was.
+   Picked up or gone: _disposeLoot.  Another player's pile has none.
+   Drawn in code: ONE thin column picture per renderer (makeBeamTexture),
+   kept on the graphics chip only; a sprite of it per beam, tinted, added
+   light; each frame changes only alpha, scale and place (TRAPS §218).  At
+   most LOOT_BEAMS_MAX on screen.  `?lootbeam=0`: none, for one phone. */
+const BEAM_RISE_S = 0.35;      /* from the pile's foot to its full height */
+const BEAM_H_PX = 200;         /* the tallest beam, world px (a pile is ~60 tall) */
+const BEAM_W_PX = 6;           /* thin: a pile is ~60 across */
+const BEAM_A = 0.85;           /* its alpha, before the shimmer */
+const BEAM_TEX_W = 8, BEAM_TEX_H = 128;
+/* rank (dropLines RARITY_TIERS / GRADE_WORDS): 0 Normal, 1 Uncommon,
+   2 Rare (a gem, a mystery gear piece), 3 Very rare */
+const LOOT_BEAMS_BY_RANK = [1, 1, 2, 3];
+/* each beam of a pile: across from its middle (world px), its height (of
+   BEAM_H_PX) and its shimmer's phase, so two side by side never pulse as one */
+const BEAM_SLOTS = [
+  [{ dx: 0, h: 1, ph: 0 }],
+  [{ dx: -7, h: 1, ph: 0 }, { dx: 7, h: 0.78, ph: 2.1 }],
+  [{ dx: 0, h: 1, ph: 0 }, { dx: -12, h: 0.72, ph: 2.1 }, { dx: 12, h: 0.84, ph: 4.2 }],
+];
+const LOOT_BEAMS_MAX = 36;     /* beams drawn at once: a pile past it waits for one to go */
 const BEAM_ON = (() => { try { return new URLSearchParams(window.location.search).get('lootbeam') !== '0'; } catch (e) { return true; } })();
 /* v2.3.3878: a burn (a fire goblin's, a flame gem's) is the burning building's
    own fire on whoever burns (buildingFire.js PersonFire), as standing in a
    burning heap is; `?burnfire=0` draws the old flames, for one phone */
 const BURN_BLAZE = (() => { try { return new URLSearchParams(window.location.search).get('burnfire') !== '0'; } catch (e) { return true; } })();
 const PEER_FIRES = 6;   /* other players burning in the building's flames at once; past it, the drawn flames */
-/* a soft column: a bright core, soft sides, fading out toward its top */
+/* v2.3.3916: a thin column: a bright core, soft edges, fading out toward its top */
 function makeBeamTexture() {
   if (typeof document === 'undefined') return null;
   const W = BEAM_TEX_W, H = BEAM_TEX_H;
@@ -3129,23 +3113,21 @@ function makeBeamTexture() {
   const g = cv.getContext('2d');
   const across = g.createLinearGradient(0, 0, W, 0);
   across.addColorStop(0, 'rgba(255,255,255,0)');
-  across.addColorStop(0.25, 'rgba(255,255,255,0.3)');
-  across.addColorStop(0.42, 'rgba(255,255,255,0.9)');
+  across.addColorStop(0.3, 'rgba(255,255,255,0.55)');
   across.addColorStop(0.5, 'rgba(255,255,255,1)');
-  across.addColorStop(0.58, 'rgba(255,255,255,0.9)');
-  across.addColorStop(0.75, 'rgba(255,255,255,0.3)');
+  across.addColorStop(0.7, 'rgba(255,255,255,0.55)');
   across.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = across;
   g.fillRect(0, 0, W, H);
-  /* ...faded toward the top: the column's light thinning into the air */
+  /* ...faded toward the top: the light thinning into the air */
   g.globalCompositeOperation = 'destination-in';
   const up = g.createLinearGradient(0, 0, 0, H);
   up.addColorStop(0, 'rgba(255,255,255,0)');
-  up.addColorStop(0.3, 'rgba(255,255,255,0.7)');
+  up.addColorStop(0.45, 'rgba(255,255,255,0.6)');
   up.addColorStop(1, 'rgba(255,255,255,1)');
   g.fillStyle = up;
   g.fillRect(0, 0, W, H);
-  return Texture.from(cv);   /* its canvas let go once drawn, as the shine's */
+  return Texture.from(cv);   /* its canvas let go once drawn: _gpuWaiting */
 }
 const _hexTint = (h) => { const n = parseInt(String(h || '').replace('#', ''), 16); return Number.isFinite(n) ? n : 0xffffff; };
 const DROP_ICON_WORLD = 40 * DROP_GROW;
@@ -8768,7 +8750,17 @@ export class EffectsRenderer {
           const x = m.renderX != null ? m.renderX : m.x, y = m.renderY != null ? m.renderY : m.y;
           const off = (monsterBodyOffsetY(m.arch || m.archetype || m.type) || 23) * bossSizeK(m);
           return { cx: x, cy: y - off, hw: Math.max(20, off) + 10, hh: off + 18 };   /* room round the body, clear of it */
-        });
+        }, (S.rpg && (S.rpg.activeSlot === 'ranged' || S.rpg.activeSlot === 'staff')) || !S.player ? null : () => nearestInMeleeReach(S, (m) => {
+          /* v2.3.3973: with a melee weapon in hand, the nearest monster inside
+             your melee reach wears the reticle too, softer -- the reach ring's
+             own sum above (your reach x your depth + its hit radius x its
+             depth and a boss's size, to its body centre) */
+          const fy = m.renderY != null ? m.renderY : m.y;
+          const arch = m.arch || m.archetype || m.type;
+          const mk = depthK(S.currentZone, fy) * bossSizeK(m);
+          return { x: m.renderX != null ? m.renderX : m.x, y: fy - (monsterBodyOffsetY(arch) || 23) * mk,
+            r: GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y) + (monsterMeleeHitRadius(arch) || 24) * mk };
+        }));
       }
       if (typeof window !== 'undefined' && !window.__btAtkMark) {
         const _self = this;
@@ -9907,86 +9899,67 @@ export class EffectsRenderer {
     this._knownLoot.clear();
   }
 
-  /* v2.3.3746: the shine (SHINE_* above).  Made once with the pile, under
-     everything on it; then only its alpha, size and place. */
+  /* v2.3.3916: the beams (BEAM_* above).  Made once with the pile, under
+     everything on it; then only their alpha, height and place.  Kept on
+     `_pixiShine` (the name the rest of the loot code has known since
+     v2.3.3746): an array of the pile's beam sprites. */
   _renderPileShine(S, l, now, bob, alpha) {
-    if (!this._shineTex || this._shineTex.destroyed) {
-      this._shineTex = makeShineTexture();
-      /* kept on the graphics chip only, once this renderer has drawn it
-         (emptied the moment it was made, the shine drew nothing) */
-      if (this._shineTex && this._gpuWaiting) this._gpuWaiting.add(this._shineTex.source);
+    if (!BEAM_ON) return;
+    if (!l._pixiShine) {
+      if (!this._beamTex || this._beamTex.destroyed) {
+        this._beamTex = makeBeamTexture();
+        /* kept on the graphics chip only, once this renderer has drawn it */
+        if (this._beamTex && this._gpuWaiting) this._gpuWaiting.add(this._beamTex.source);
+      }
+      const tex = this._beamTex;
+      if (!tex) return;
+      const n = LOOT_BEAMS_BY_RANK[Math.max(0, Math.min(LOOT_BEAMS_BY_RANK.length - 1, l._shine.rank | 0))] || 1;
+      /* the cap: past it this pile waits (asked again each frame, cheap) */
+      if ((this._lootBeamCount || 0) + n > LOOT_BEAMS_MAX) return;
+      const tint = _hexTint(l._shine.color);
+      const beams = [];
+      for (const slot of BEAM_SLOTS[n - 1]) {
+        const b = new Sprite(tex);
+        b.anchor.set(0.5, 1);   /* its foot on the pile: the top is what rises */
+        /* over the remains (and the layer's worldLife holder, z 0), under
+           the coins, the shard and the gear */
+        b.zIndex = LOOT_Z.remnant + 1;
+        b.tint = tint;
+        /* light, not paint: added to what is under it, so it shows on dirt,
+           grass and water alike.  Set once, as it is made -- never a change
+           a frame (TRAPS §218) */
+        b.blendMode = 'add';
+        b.alpha = 0;
+        b.scale.set(BEAM_W_PX / BEAM_TEX_W, 0);
+        b._slot = slot;
+        this.lootLayer.addChild(b);
+        beams.push(b);
+      }
+      this._lootBeamCount = (this._lootBeamCount || 0) + beams.length;
+      l._pixiShine = beams;
     }
-    const tex = this._shineTex;
-    if (!tex) return;
-    if (!l._pixiShine || l._pixiShine.destroyed) {
-      const sp = new Sprite(tex);
-      sp.anchor.set(0.5, 0.5);
-      /* over the remains (and the layer's worldLife holder, z 0, which
-         hid it under them), under the coins, the shard and the gear */
-      sp.zIndex = LOOT_Z.remnant + 1;
-      sp.tint = _hexTint(l._shine.color);
-      /* light, not paint: added to what is under it, so it shines on dirt,
-         grass and water alike (blue on the river would vanish if laid over
-         it).  Set once, as it is made -- never a change a frame (TRAPS §218);
-         a few piles each a batch of their own */
-      sp.blendMode = 'add';
-      sp.alpha = 0;
-      this.lootLayer.addChild(sp);
-      l._pixiShine = sp;
-    }
-    const sp = l._pixiShine;
     /* another player's pile: none (the watcher's grey, as before) */
     const mine = !l.recipients || !S.myId || l.recipients.includes(S.myId);
-    const t = Math.max(0, (now - l._shine.at) / 1000);
-    const k = Math.min(1, t / SHINE_SETTLE_S);
-    const e = 1 - (1 - k) * (1 - k);   /* quick off the peak, gentle into the glow */
-    sp.x = l.x;
-    sp.y = l.y + bob + 2;
     /* window.__btShineOff: QA's off switch (mp-droplines compares the screen
        with and without it) -- alpha only, never a structural change */
     const qaOff = typeof window !== 'undefined' && window.__btShineOff === true;
-    sp.alpha = mine && !qaOff ? (SHINE_PEAK_A + (SHINE_GLOW_A - SHINE_PEAK_A) * e) * alpha : 0;
-    sp.scale.set((SHINE_PEAK_PX + (SHINE_GLOW_PX - SHINE_PEAK_PX) * e) / SHINE_TEX_PX);
-    /* v2.3.3805: the beam, on the shine's clock and easing */
-    if (BEAM_ON && !l._beamDone && !l._shine.late) this._renderPileBeam(l, k, bob, mine && !qaOff ? alpha : 0);
-  }
-
-  /* v2.3.3805: the beam (BEAM_* above), `k` the shine's own time (0..1).  Made with a landing pile; its top comes down to the pile; when
-     the shine has settled it is destroyed, once, and never made again. */
-  _renderPileBeam(l, k, bob, alpha) {
-    if (k >= 1) {
-      if (l._pixiBeam && !l._pixiBeam.destroyed) { l._pixiBeam.parent && l._pixiBeam.parent.removeChild(l._pixiBeam); l._pixiBeam.destroy(); }
-      l._pixiBeam = null;
-      l._beamDone = true;
-      return;
+    const t = Math.max(0, (now - l._shine.at) / 1000);
+    /* rising, eased out; a pile already lying when it reached this phone (a
+       zone's list on the way in: _shine.late) stands at full height at once */
+    const k = l._shine.late ? 1 : Math.min(1, t / BEAM_RISE_S);
+    const up = 1 - (1 - k) * (1 - k);
+    const a = mine && !qaOff ? BEAM_A * alpha : 0;
+    for (const b of l._pixiShine) {
+      if (!b || b.destroyed) continue;
+      const sl = b._slot;
+      /* the shimmer: a slow breath of light, a little sway of width */
+      const sh = Math.sin(t * 3.1 + sl.ph);
+      b.x = l.x + sl.dx;
+      b.y = l.y + bob + 6;
+      b.scale.x = (BEAM_W_PX * (1 + 0.12 * sh)) / BEAM_TEX_W;
+      b.scale.y = (BEAM_H_PX * sl.h * up * (1 + 0.04 * Math.sin(t * 1.7 + sl.ph))) / BEAM_TEX_H;
+      b.alpha = a * (0.82 + 0.18 * sh);
     }
-    if (!this._beamTex || this._beamTex.destroyed) {
-      this._beamTex = makeBeamTexture();
-      if (this._beamTex && this._gpuWaiting) this._gpuWaiting.add(this._beamTex.source);
-    }
-    const tex = this._beamTex;
-    if (!tex) return;
-    if (!l._pixiBeam || l._pixiBeam.destroyed) {
-      const b = new Sprite(tex);
-      b.anchor.set(0.5, 1);   /* its foot on the pile: the top is what comes down */
-      b.zIndex = LOOT_Z.remnant + 1;
-      b.tint = _hexTint(l._shine.color);
-      b.blendMode = 'add';   /* light, as the shine (set once, never a frame) */
-      b.alpha = 0;
-      b.scale.set(BEAM_W_PX / BEAM_TEX_W, BEAM_PEAK_PX / BEAM_TEX_H);
-      this.lootLayer.addChild(b);
-      l._pixiBeam = b;
-    }
-    const b = l._pixiBeam;
-    b.x = l.x;
-    b.y = l.y + bob + 8;
-    /* down on a smooth start and finish (not the shine's quick fall off its
-       peak, which took three quarters of the column in its first half
-       second): the top visibly comes down the whole second, landing on the
-       pile as the shine settles */
-    const d = k * k * (3 - 2 * k);
-    b.scale.y = (BEAM_PEAK_PX * (1 - d)) / BEAM_TEX_H;
-    b.alpha = BEAM_A * (1 - 0.45 * k * k) * alpha;
   }
 
   _disposeLoot(l) {
@@ -10010,8 +9983,12 @@ export class EffectsRenderer {
     kill(l._pixiShardSprite);
     kill(l._pixiOwnerLabel);
     kill(l._pixiWpnLabel);
-    kill(l._pixiShine); l._pixiShine = null;   /* v2.3.3746: its shine goes with it */
-    kill(l._pixiBeam); l._pixiBeam = null;     /* v2.3.3805: ...and its beam, if it is still coming down */
+    /* v2.3.3916: its beams go with it (and leave room under the cap) */
+    if (Array.isArray(l._pixiShine)) {
+      for (const b of l._pixiShine) kill(b);
+      this._lootBeamCount = Math.max(0, (this._lootBeamCount || 0) - l._pixiShine.length);
+    }
+    l._pixiShine = null;
     /* v2.3.2771: the rare icons, their shines, and the RARE DROP! call */
     if (l._pixiRare) { for (const r of l._pixiRare) { kill(r.icon); kill(r.beam); } l._pixiRare = null; }
     kill(l._pixiRareDrop); l._pixiRareDrop = null;
@@ -10351,8 +10328,10 @@ export class EffectsRenderer {
         return out;
       };
     }
-    /* v2.3.3746 QA probe (mp-droplines): each pile's shine -- its colour, how
-       bright and how big now, and how long since it landed */
+    /* v2.3.3746 QA probe (mp-droplines, mp-lootbeam): each pile's light --
+       its colour and how long since it landed.  v2.3.3916: its beams (each
+       one's height in world px and alpha), `alpha` the brightest, `px` the
+       tallest, `box` round them all */
     if (typeof window !== 'undefined' && !window.__btLootShine) {
       const _selfS = this;
       window.__btLootShine = function () {
@@ -10360,17 +10339,24 @@ export class EffectsRenderer {
         const out = [];
         for (const e of (_selfS._knownLoot || [])) {
           if (!e || e.dropped || e.isDeathDrop) continue;
-          const sp = e._pixiShine && !e._pixiShine.destroyed ? e._pixiShine : null;
-          out.push({ lootId: e.lootId || null, color: e._shine ? e._shine.color : null, ageMs: e._shine ? t - e._shine.at : null,
-            alpha: sp ? +sp.alpha.toFixed(3) : 0, px: sp ? Math.round(sp.texture.width * sp.scale.x) : 0,
-            tint: sp ? '#' + (sp.tint >>> 0).toString(16).padStart(6, '0').toUpperCase() : null,
-            /* v2.3.3805: its beam, while it comes down: height (world px) and alpha */
-            beam: e._pixiBeam && !e._pixiBeam.destroyed ? { h: Math.round(e._pixiBeam.texture.height * e._pixiBeam.scale.y), a: +e._pixiBeam.alpha.toFixed(3) } : null,
-            beamDone: !!e._beamDone, late: !!(e._shine && e._shine.late),
-            box: sp ? (() => { const b = sp.getBounds(); return { x: b.x, y: b.y, w: b.width, h: b.height }; })() : null });
+          const bs = Array.isArray(e._pixiShine) ? e._pixiShine.filter((b) => b && !b.destroyed) : [];
+          const beams = bs.map((b) => ({ h: Math.round(b.texture.height * b.scale.y), w: +(b.texture.width * b.scale.x).toFixed(1), a: +b.alpha.toFixed(3), x: Math.round(b.x), y: Math.round(b.y) }));
+          let box = null;
+          for (const b of bs) {
+            const r = b.getBounds();
+            if (!box) box = { x: r.x, y: r.y, x2: r.x + r.width, y2: r.y + r.height };
+            else { box.x = Math.min(box.x, r.x); box.y = Math.min(box.y, r.y); box.x2 = Math.max(box.x2, r.x + r.width); box.y2 = Math.max(box.y2, r.y + r.height); }
+          }
+          out.push({ lootId: e.lootId || null, color: e._shine ? e._shine.color : null, rank: e._shine ? e._shine.rank : null,
+            ageMs: e._shine ? t - e._shine.at : null, late: !!(e._shine && e._shine.late),
+            n: beams.length, beams,
+            alpha: beams.reduce((m, b) => Math.max(m, b.a), 0), px: beams.reduce((m, b) => Math.max(m, b.h), 0),
+            tint: bs[0] ? '#' + (bs[0].tint >>> 0).toString(16).padStart(6, '0').toUpperCase() : null,
+            box: box ? { x: box.x, y: box.y, w: box.x2 - box.x, h: box.y2 - box.y } : null });
         }
         return out;
       };
+      window.__btLootBeamCount = () => _selfS._lootBeamCount || 0;
     }
     gfx.clear();
 
@@ -10530,7 +10516,7 @@ export class EffectsRenderer {
         l._shineAsked = true;
         try {
           notePileShine(S, l, S.myId, now);
-          /* v2.3.3805: already lying when it reached us: the glow, no beam */
+          /* v2.3.3805: already lying when it reached us.  v2.3.3916: its beams stand at full height at once */
           if (l._shine) l._shine.late = true;
         } catch (e) { /* display only */ }
       }
@@ -15464,7 +15450,7 @@ export class EffectsRenderer {
          wire field — it was simply never applied to the swing stand-in. */
       if (set.legs) set.legs.tint = gearTint(eq.legs);
       if (set.chest) set.chest.tint = gearTint(eq.chest);
-      if (set.weapon) set.weapon.tint = materialTint(o && o.wpnMat);
+      if (set.weapon) set.weapon.tint = weaponTint(o && o.wpnType, o && o.wpnMat);   /* v2.3.3980: weaponTint -- a peer's black steel is its metal, as your own swing's */
       /* v2.3.1047: north swings hold the blade on the far side -> behind body.
          v2.3.2516: and southwest, for the owner's D7 reason -- resolved from the
          peer's own swing ANGLE to the full 8 sectors, because dir4 above is a
@@ -17591,10 +17577,9 @@ export class EffectsRenderer {
     /* v2.3.3402: the lands' specks, and their pool -- a rebuilt renderer makes its own */
     if (this._landAuras) { this._landAuras.destroy(); this._landAuras = null; }
     this._captureRenderer = null;
-    if (this._shineTex && !this._shineTex.destroyed) this._shineTex.destroy(true);   /* v2.3.3746 */
-    this._shineTex = null;
     if (this._beamTex && !this._beamTex.destroyed) this._beamTex.destroy(true);   /* v2.3.3805 */
     this._beamTex = null;
+    this._lootBeamCount = 0;   /* v2.3.3916: the loot's beams went with their piles */
     this._layers = null;
   }
 

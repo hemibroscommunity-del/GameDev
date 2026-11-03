@@ -49,6 +49,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const fits = !!s.scroll && s.scroll.sh <= s.scroll.h + 2;
         rec.ok(`[${tag}] ${k} opens alone on its members, and nothing needs a scroll`,
           s.open.join() === k && (s.rows[k] || []).length >= 2 && fits, { open: s.open, rows: s.rows[k], scroll: s.scroll });
+        if (k === 'defense') {
+          /* v2.3.3896: the head is the COMBINED cut -- Defense points, then
+             armour, multiplied -- not the Defense points alone ("It says '42%'
+             as the aggregate defense"), and the plain line under the rows */
+          const pct = (label) => { const r = (s.rows.defense || []).find((x) => x[0] === label); return r ? Number(String(r[1]).replace(/[^0-9.]/g, '')) / 100 : NaN; };
+          const def = pct('Defense points'), arm = pct('Armour');  /* data-statrow is the label */
+          const head = Number(String(s.heads.defense).replace(/[^0-9.]/g, '')) / 100;
+          const want = 1 - (1 - def) * (1 - arm);
+          const note = await P.page.evaluate(() => (document.querySelector('[data-family-note="defense"]') || {}).textContent || '');
+          rec.ok(`[${tag}] Defense's head is the combined cut (${s.heads.defense}: 1 - (1 - ${def})(1 - ${arm})), with its plain line`,
+            /damage/.test(s.heads.defense) && Math.abs(head - want) < 0.011 && /block/.test(note), { head: s.heads.defense, rows: s.rows.defense, note });
+        }
         if (k === 'health') {
           const nums = (s.rows.health || []).map((r) => Number(String(r[1]).replace(/[^0-9.-]/g, '')) || 0);
           const total = Number(String(s.heads.health).replace(/[^0-9.]/g, ''));

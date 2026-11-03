@@ -290,8 +290,12 @@ export async function freePort() {
   });
 }
 
-export async function startWorker(port) {
-  const state = await mkdtemp(join(tmpdir(), 'bt-wrangler-'));
+/* v2.3.3980: `opts.cwd` runs another copy of the worker (a git archive of an
+   older commit: mp-greatswordcopper plays a deploy, the old worker then this
+   one), and `opts.state` a storage folder that outlives it (stopWorker's
+   `keepState`), so the second worker reads what the first one saved. */
+export async function startWorker(port, opts = {}) {
+  const state = opts.state || await mkdtemp(join(tmpdir(), 'bt-wrangler-'));
   /* detached: npx spawns `sh -c wrangler` which spawns node which spawns
      workerd.  Killing the pid we hold leaves the whole tail running — three
      stray processes and a held port per run, which after a few runs is a
@@ -307,8 +311,8 @@ export async function startWorker(port) {
   /* v2.3.3240: BT_MAX_PLAYERS=N runs a COPY of server/ with the player cap
      set to N (load.mjs serverCopy's way), for a crowd scenario past the
      shipped cap (mp-crowdbots).  The repo's own server/ is never edited. */
-  let cwd = join(REPO, 'server');
-  if (+process.env.BT_MAX_PLAYERS > 0) {
+  let cwd = opts.cwd || join(REPO, 'server');
+  if (!opts.cwd && +process.env.BT_MAX_PLAYERS > 0) {
     const dir = await mkdtemp(join(tmpdir(), 'bt-crowd-server-'));
     await cp(join(REPO, 'server', 'src'), join(dir, 'src'), { recursive: true });
     for (const f of ['wrangler.toml', 'package.json']) await cp(join(REPO, 'server', f), join(dir, f));
@@ -355,9 +359,10 @@ function killTree(proc) {
   try { proc.kill('SIGKILL'); } catch { /* already gone */ }
 }
 
-export async function stopWorker(w) {
+export async function stopWorker(w, { keepState = false } = {}) {
   if (!w) return;
   killTree(w.proc);
+  if (keepState) return;   /* v2.3.3980: the next worker reads it (startWorker opts.state) */
   try { await rm(w.state, { recursive: true, force: true }); } catch { /* best effort */ }
 }
 

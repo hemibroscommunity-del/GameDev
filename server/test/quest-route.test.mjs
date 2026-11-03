@@ -30,6 +30,7 @@ import { QUEST_CHAINS, QUEST_STATUS, questSteps, NPC_DATA, BUILDINGS } from '../
 import { WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS, WHEEL_SHUT_DOORS } from '../../src/data/wheelBuildingDoors.js';
 import { WHEEL_GEOM, setWheelGeom, wheelLandAt, ZONES } from '../../src/data/zones.js';
 import {
+  waitsOnLevel, levelWaitsLast /* v2.3.3924 */,
   routeOrder, parseWay, wayOf, visitedSet, landStart, landHere, amongMonsters, nearestLandStart, pointFor, wheelWay,
   HERE, LAND_HERE_R, LAND_IN_PX, DOOR_HERE_R, GATHER_HERE_R, DUNGEON_HERE_R,
 } from '../../src/game/questWays.js';
@@ -310,21 +311,52 @@ const geomFor = (size) => {
 {
   const qr = read('../../src/game/questRoute.js');
   check('7a the road asks the tracked quest and each quest\'s way (questRoute.js): trackedQuestId, routeOrder, wheelWay, the town\'s doors',
-    /import \{ trackedQuestId \} from '\.\/trackedQuest\.js'/.test(qr) && /import \{ routeOrder, wheelWay \} from '\.\/questWays\.js'/.test(qr)
-      && /import \{ wheelTownDoors \} from '\.\/wheelTownDoors\.js'/.test(qr) && /return routeOrder\(list, trackedQuestId\(\)\)/.test(qr)
+    /import \{ trackedQuestId \} from '\.\/trackedQuest\.js'/.test(qr) && /import \{ routeOrder, wheelWay, waitsOnLevel, levelWaitsLast \/\*[^*]*\*\/ \} from '\.\/questWays\.js'/.test(qr)
+      && /import \{ wheelTownDoors \} from '\.\/wheelTownDoors\.js'/.test(qr) && /return levelWaitsLast\(routeOrder\(list, tracked\), tracked, rpg\)/.test(qr)
       && /return wheelWay\(\{/.test(qr));
   check('7b ...the old portals\' star and the hand-in take the same order (questTargetZone, _wantNpc read _routeQuests); the old _wantNode is gone',
     (qr.match(/of _routeQuests\(rpg, S\)/g) || []).length >= 2 && !/function _wantNode/.test(qr) && /if \(qid === tracked\) return ANY_FIELD_ZONE;/.test(qr));
   const qm = read('../../src/ui/mobile/sheet/questModel.js');
   check('7c the quest page and list keep their two calls, from the one module', /export \{ trackedQuestId, setTrackedQuest \} from '\.\.\/\.\.\/\.\.\/game\/trackedQuest\.js'/.test(qm) && !/localStorage/.test(qm.split('export { trackedQuestId')[0].slice(-400)));
   const bt = read('../../src/ui/BroTown.jsx');
-  check('7d the pinned quest card shows the tracked quest, and re-renders the moment it changes (BroTown.jsx)',
-    /import \{ trackedFirst, onTrackedQuest \} from '@\/game\/trackedQuest\.js'/.test(bt) && /activeQuests = trackedFirst\(activeQuests\.map/.test(bt)
+  /* v2.3.3918: the card is its own file (QuestCard.jsx); BroTown mounts it and re-renders it */
+  const qc = read('../../src/ui/QuestCard.jsx');
+  check('7d the pinned quest card shows the tracked quest, and re-renders the moment it changes (QuestCard.jsx, BroTown.jsx)',
+    /import \{ trackedFirst \} from '@\/game\/trackedQuest\.js'/.test(qc) && /active = trackedFirst\(active\.map/.test(qc)
+      && /React\.createElement\(QuestCard, \{ rpgState: rpgState, live: stateRef\.current \}\)/.test(bt)
       && /return onTrackedQuest\(function \(\) \{ setTrackTick\(/.test(bt));
   const mm = read('../../src/rendering/systems/wheelMinimap.js'), wm = read('../../src/ui/WorldMapOverlay.jsx');
   check('7e the minimap\'s star and the world map\'s road say whose road it is (their probes)', /qid: quest\.qid \|\| null, way: quest\.way \|\| null/.test(mm) && /qid: quest\.qid \|\| null, way: quest\.way \|\| null/.test(wm));
   const gs = read('../../src/data/gameSystems.js');
   check('7f questSteps carries a step\'s way beside its node', /node: st\.node \|\| null, way: st\.way \|\| null/.test(gs));
+}
+
+/* ── 8. v2.3.3924: a quest above your level waits ────────────────────────────
+   The owner: "For the clear dungeon quest from mayor bro put a [lvl 10+
+   recommended] and direct players to other quests around town, starting
+   with the woodworker quest."  The Mayor's mayor_3 says `recLevel`; below it
+   the tour's next step is suggested past it (tourOffer) and it leads after
+   the others in hand (levelWaitsLast) -- not once done, not while tracked. */
+{
+  const m3 = QUEST_CHAINS.mayor_3;
+  check('8a the Mayor\'s "Dungeon Delver" is for level 10 and up (its recLevel), and no other quest says one',
+    m3.recLevel === 10 && Object.keys(QUEST_CHAINS).filter((k) => QUEST_CHAINS[k].recLevel).join() === 'mayor_3', m3.recLevel);
+  check('8b it waits below level 10 (and for a level never set), not at 10 or above; a quest with no recLevel never waits',
+    waitsOnLevel(m3, { level: 9 }) && waitsOnLevel(m3, {}) && waitsOnLevel(m3, null) && !waitsOnLevel(m3, { level: 10 }) && !waitsOnLevel(m3, { level: 23 })
+      && !waitsOnLevel(QUEST_CHAINS.wood_1, { level: 1 }) && !waitsOnLevel(null, { level: 1 }));
+  const E = (qid, done) => ({ qid, q: QUEST_CHAINS[qid], done: !!done, zone: QUEST_CHAINS[qid].zone || null });
+  const ids = (l) => l.map((e) => e.qid).join();
+  const low = { level: 6 }, high = { level: 12 };
+  const held = [E('mayor_3'), E('wood_1')];
+  check('8c below level 10 the Woodworker\'s logs lead and the dungeon waits behind them', ids(levelWaitsLast(held, null, low)) === 'wood_1,mayor_3', ids(levelWaitsLast(held, null, low)));
+  check('8d ...at level 10 the order is the worker\'s, as before', ids(levelWaitsLast(held, null, high)) === 'mayor_3,wood_1');
+  check('8e ...tracked, the dungeon leads (you asked to be led there)', ids(levelWaitsLast(held, 'mayor_3', low)) === 'mayor_3,wood_1');
+  check('8f ...done (a dungeon cleared under 10), its hand-in leads', ids(levelWaitsLast([E('mayor_3', true), E('wood_1')], null, low)) === 'mayor_3,wood_1');
+  check('8g ...and junk is an empty list', levelWaitsLast(null, null, low).length === 0);
+  const qr = read('../../src/game/questRoute.js');
+  const to = qr.slice(qr.indexOf('export function tourOffer'), qr.indexOf('export function tourOffer') + 1400);
+  check('8h tourOffer suggests the tour\'s next step past an active quest only when it waits on your level, is not tracked and is not done (questRoute.js)',
+    /if \(!waitsOnLevel\(q, rpg\) \|\| k === trackedQuestId\(\)\) return null;/.test(to) && /if \(done\) return null;/.test(to), to.slice(0, 300));
 }
 
 console.log(`\nquest-route: ${passed} passed, ${failed} failed`);

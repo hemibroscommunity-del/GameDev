@@ -598,6 +598,11 @@ export const HeroExpanded = () => {
             ? { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 4 }
             : { display: 'flex', flexDirection: 'column', gap: 3, paddingLeft: 8 }}>
             {f.rows.map((p) => statPill(p, tone))}
+            {/* v2.3.3896: one plain line saying how the family's parts stack (Defense) */}
+            {f.note ? (
+              <div data-family-note={f.key} style={{ gridColumn: '1 / -1', fontSize: 10.5 * PF, lineHeight: 1.3,
+                color: COL.text2, padding: '1px 2px 0' }}>{f.note}</div>
+            ) : null}
           </div>
         )}
       </div>

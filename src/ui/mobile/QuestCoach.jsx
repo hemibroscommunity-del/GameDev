@@ -10,6 +10,7 @@ import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: ho
    ranged/staff fallback to `weapon` and a copy here would drift. */
 import { getActiveWeapon } from '@/data/gameSystems.js';
 import { prog3FreshLevel } from '@/data/prog3.js'; /* v2.3.3538: a new character's level (1 under one level) */
+import { startGuideArrow } from '@/ui/guideArrow.js'; /* v2.3.3925: the big arrow, the first time */
 import { pointsTipWanted, pointsTipDone, pointsTipWords, POINTS_TIP_SNOOZE_AFTER_MS, POINTS_TIP_SNOOZE_MS, POINTS_TIP_MAX_SNOOZES } from '@/game/pointsTips.js'; /* v2.3.3551: the first points, shown */
 import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'; /* v2.3.2246 */
 /* v2.3.2495: the two facts the dashboard lessons are about -- is the band
@@ -942,6 +943,12 @@ export function QuestCoach(props) {
      the same reason as the others -- it ticks every frame and only its
      crossing of the finish line is worth a render. */
   const walkRef = React.useRef({ x: null, y: null, px: 0 });
+
+  /* v2.3.3925: the big arrow, the first time a weapon is handed over and at
+     the first points (ui/guideArrow.js): beside the coach it helps */
+  React.useEffect(function () {
+    return startGuideArrow(function () { const S = stateRef && stateRef.current; return S && S._rpgFromServer ? S : null; });
+  }, []);
 
   React.useEffect(function () {
     let raf = 0, tick = 0, stop = false;

@@ -19,7 +19,7 @@
  *                   weapon a kill drops since v2.3.3209 took the random one
  *                   out of the game (the owner: "Remove it from the game");
  *     every weapon and armour piece rolls its grade as it drops
- *     (hardening.js WEAPON_QUALITY_ODDS).
+ *     (hardening.js DROP_QUALITY_ODDS: v2.3.3952, 10x rarer than the forge).
  *   THE KILLING BLOW (combat.js, the killer only, straight into the bag):
  *     a raw gem     GEM_RAW_MONSTER_DROP, of its land's element -- only the
  *                   elements the Gem Cutter takes (AMULET_GEMS: no Flora);
@@ -80,8 +80,11 @@ export const CODEX_DROP_RATES = Object.freeze({
 });
 
 /* the grade a dropped weapon or armour piece rolls (hardening.js
-   WEAPON_QUALITY_ODDS); what is left over is a plain one */
-export const CODEX_GRADE_ODDS = Object.freeze({ rare: 0.09, elite: 0.009, godly: 1 / 2000000 });
+   DROP_QUALITY_ODDS since v2.3.3952); what is left over is a plain one */
+/* v2.3.3952: a monster drop's own grades, 10x rarer than the forge's (the
+   owner: "Smithing it has 10x more unlikely at same tier drop chance"):
+   hardening.js DROP_QUALITY_ODDS now, no longer the forge's */
+export const CODEX_GRADE_ODDS = Object.freeze({ rare: 0.009, elite: 0.0009, godly: 1 / 2000000 });
 
 /* the elements whose raw gem a kill can give (server data.js AMULET_GEMS --
    the Gem Cutter's nine; Flora is not one of them) */

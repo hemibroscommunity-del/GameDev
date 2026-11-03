@@ -30,7 +30,7 @@
 /* the scenarios (run.mjs keys) written for the old map, frozen 2026-10-21 */
 export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'a2hs', 'ability', 'abilslot', 'afk', 'ahshot', 'aimpath', 'ambient',
-  'animparity', 'armcapsule', 'armorforge', 'armorgrade',
+  'animparity', 'armcapsule', 'armorforge',
   'armorloss', 'arrowblast', 'arrowdt', 'arrowhead', 'arrowshot',
   'arrowsnap', 'arrowwound', 'arules', 'authority', 'backprev', 'backshield',
   'bandsummary', 'basicwindup', 'bigtown', 'blacksmith', 'bladesoft',
@@ -85,7 +85,7 @@ export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'shapelayer', 'sharppixels', 'sheen', 'sheenall', 'sheenbatch',
   'shieldbonk', 'shirtarm', 'shirtjog', 'shirtkeyline',
   'shotland', 'sightrock', 'skeleton', 'skillapps', 'skinink',
-  'skinworld', 'slimebase', 'slimeburst', 'slimeorb', 'slimewave', 'smelt',
+  'skinworld', 'slimebase', 'slimeburst', 'slimeorb', 'slimewave',
   'smithy', 'snowburrow', 'snowman', 'soak', 'social', 'socialgrief',
   'solorate', 'solospecial', 'southshirt', 'southsword', 'spawnfx',
   'specialart', 'specshield', 'spinfeet', 'staffcast',
