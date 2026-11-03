@@ -3795,7 +3795,7 @@ console.log("the buildings' doors (v2.3.3032)");
       /* v2.3.3809: `live` leaves out those drawn live from a look (lookFolk.js) */
       /WHEEL_TOWNSFOLK\.map\(\(f\) => f\.name\)/.test(spriteSrc) && /export function wheelNpcSources\((live)?\) \{\s*return _wheelCast\((live)?\)/.test(spriteSrc)
         && /export function wheelWalkSources\((live)?\) \{\s*return _wheelCast\((live)?\)/.test(spriteSrc), {});
-    /* ═══ v2.3.4038: THE TOWNSFOLK WALK AROUND AND WORK ═══
+    /* ═══ v2.3.4058: THE TOWNSFOLK WALK AROUND AND WORK ═══
        The owner: "Make NPCs walk around and do stuff now since it doesn't
        make much memory anymore."  Each walks a day of his own from his spot
        (src/game/townsfolkWalk.js FOLK_DAYS, offsets from it): every stop on
@@ -3827,7 +3827,7 @@ console.log("the buildings' doors (v2.3.3032)");
           if (legBad) badDay.push(legBad);
         }
       }
-      ok(`the townsfolk's days (v2.3.4038): all ${all.length} walk their loops by their spots on the town's ground, through no footprint, never into another's reach`,
+      ok(`the townsfolk's days (v2.3.4058): all ${all.length} walk their loops by their spots on the town's ground, through no footprint, never into another's reach`,
         badDay.length === 0 && all.length === 21, badDay);
     }
   }

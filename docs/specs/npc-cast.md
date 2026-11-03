@@ -37,7 +37,7 @@ now, and three locals live in town. That makes 21 townsfolk with Mayor Bro.
   where the river runs along it (`mp-npccast`'s picture shows it beside
   him). His lines allow for it ("Sea's that way. Somewhere. I'm practicing
   out here first.").
-- Tourist Terry stands on the square, and since v2.3.4038 wanders it (every
+- Tourist Terry stands on the square, and since v2.3.4058 wanders it (every
   townsperson walks a day of his own: docs/specs/living-town.md). He was first put on the street below the Bank, but there he stood
   behind its belt of trees, only his head showing: the footprint check does
   not see a tree's top, the picture did.

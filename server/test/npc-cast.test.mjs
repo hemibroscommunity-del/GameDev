@@ -20,7 +20,7 @@ import fs from 'fs';
 import { NPC_DATA } from '../../src/data/gameDisplay.js';
 import { QUEST_CHAINS } from '../../src/data/gameSystems.js';
 import { WHEEL_TOWNSFOLK, WHEEL_KEEPERS, WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS } from '../../src/data/wheelBuildingDoors.js';
-import { FOLK_DAYS } from '../../src/game/townsfolkWalk.js';   /* v2.3.4038: their days */
+import { FOLK_DAYS } from '../../src/game/townsfolkWalk.js';   /* v2.3.4058: their days */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -39,7 +39,7 @@ const LOOK = { Sterling: 'banker', Slim: 'barkeep', 'Chef Blaze': 'chef', Glint:
   'Deed Dave': 'realtor', Benny: 'bellhop', 'Guildmaster Gary': 'guildmaster', 'Sheriff Buck': 'sheriff', 'Gavel Greg': 'auctioneer',
   'Old Man Reel': 'fisher', Bean: 'streamer', 'Tourist Terry': 'tourist' };
 const row = (n) => NPC_DATA.find((r) => r.name === n);
-const GIVERS = new Set(Object.values(QUEST_CHAINS).map((q) => q && q.npc).filter(Boolean));   /* v2.3.4038 */
+const GIVERS = new Set(Object.values(QUEST_CHAINS).map((q) => q && q.npc).filter(Boolean));   /* v2.3.4058 */
 
 /* ── 1. every townsperson's lines ─────────────────────────────────────────── */
 {
@@ -53,14 +53,14 @@ const GIVERS = new Set(Object.values(QUEST_CHAINS).map((q) => q && q.npc).filter
 {
   const missing = CAST.filter((n) => !row(n));
   check('2a all thirteen are NPC_DATA rows', missing.length === 0, missing);
-  /* v2.3.4038: they walk now -- the owner: "Make NPCs walk around and do stuff
+  /* v2.3.4058: they walk now -- the owner: "Make NPCs walk around and do stuff
      now since it doesn't make much memory anymore."  Each walks a day of his
      own (game/townsfolkWalk.js FOLK_DAYS), so the old wander (pathRadius)
      leaves them be; a quest giver is tethered to his spot, the rest walk a
      loop by theirs (server/test/townsfolk-walk.test.mjs) */
   const notWheel = CAST.filter((n) => row(n) && (row(n).wheelOnly !== true || row(n).noHp !== true || row(n).pathRadius !== 0
     || !own(FOLK_DAYS, n) || !!FOLK_DAYS[n].tether !== GIVERS.has(n) || (!GIVERS.has(n) && FOLK_DAYS[n].stops.length < 3)));
-  check('2b each the Wheel\'s only, with no health bar, the old wander off (pathRadius 0), walking his own day: a loop by his spot, a quest giver tethered to it (v2.3.4038)', notWheel.length === 0, notWheel);
+  check('2b each the Wheel\'s only, with no health bar, the old wander off (pathRadius 0), walking his own day: a loop by his spot, a quest giver tethered to it (v2.3.4058)', notWheel.length === 0, notWheel);
   const counts = CAST.map((n) => [n, row(n) ? row(n).phrases.length : 0]);
   check(`2c four to six lines each (${counts.map((c) => c[1]).join(', ')})`, counts.every((c) => c[1] >= 4 && c[1] <= 6), counts);
   const lines = CAST.flatMap((n) => (row(n) ? row(n).phrases.map((p) => [n, p]) : []));

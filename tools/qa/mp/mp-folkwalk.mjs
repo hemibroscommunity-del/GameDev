@@ -1,4 +1,4 @@
-/* ═══ v2.3.4038: THE TOWNSFOLK WALK AROUND AND WORK -- on a phone ═══
+/* ═══ v2.3.4058: THE TOWNSFOLK WALK AROUND AND WORK -- on a phone ═══
  *
  * The owner: "Make NPCs walk around and do stuff now since it doesn't make
  * much memory anymore." (docs/specs/living-town.md).  A phone (390 x 844,
@@ -110,7 +110,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot('blacksmith');
     rec.ok(`...the blacksmith hammers at the forge, from 260 px off (${smith && smith.pose})`, !!smith && smith.pose === 'mine', smith);
     await goNear('Old Man Reel', 40, -240);
-    const reel = await waitPose('Old Man Reel', 'fish', 45000);
+    /* v2.3.4058: two of his loops (about 30 s each), not 45 s: held by the
+       six-walker cap he catches up afterwards, and the catch-up can walk
+       straight through one 10 s fishing stop (seen once in four runs) */
+    const reel = await waitPose('Old Man Reel', 'fish', 90000);
     await shot('old-man-reel');
     rec.ok(`...and Old Man Reel fishes by the river (${reel && reel.pose})`, !!reel && reel.pose === 'fish', reel);
 

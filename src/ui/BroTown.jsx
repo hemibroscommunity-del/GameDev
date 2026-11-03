@@ -29,8 +29,8 @@ import { QuestPanel } from './panels/QuestPanel.jsx';
 import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3525: Lil Bro's race on the screen */
 import DungeonClearHud from './mobile/DungeonClearHud.jsx'; /* v2.3.3556: after a dungeon's clear, 30 s to pick up the loot */
 import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js judges it) */
-import { townsfolkFrame, townsfolkStep, folkWalkWanted } from '@/game/townsfolkDay.js';   /* v2.3.4038: the townsfolk walk around and work */
-import { lookFolkOn } from '@/rendering/lookFolk.js';   /* v2.3.4038: only while they are drawn live */
+import { townsfolkFrame, townsfolkStep, folkWalkWanted } from '@/game/townsfolkDay.js';   /* v2.3.4058: the townsfolk walk around and work */
+import { lookFolkOn } from '@/rendering/lookFolk.js';   /* v2.3.4058: only while they are drawn live */
 import { restOn, requestRest, wellRestedLeft } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
 import { QuestBannerLayer } from './panels/QuestBannerLayer.jsx'; /* v2.3.3030: the quest banners in the owner's art */
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
@@ -7310,7 +7310,7 @@ export var BroTown = function BroTown(_ref0) {
         /* v2.3.3525: Lil Bro's race -- the countdown's beats, the gun, the end
            (game/race.js) */
         raceTick(S, Date.now());
-        /* v2.3.4038: the townsfolk's day in the Wheel's BroTown -- where each is
+        /* v2.3.4058: the townsfolk's day in the Wheel's BroTown -- where each is
            on his loop, by the clock (game/townsfolkDay.js) */
         var _fwZone = ZONES[S.currentZone];
         townsfolkFrame(S, Date.now(), { on: isWheelTrialZone(S.currentZone) && folkWalkWanted() && lookFolkOn(), chains: QUEST_CHAINS,
@@ -7385,7 +7385,7 @@ export var BroTown = function BroTown(_ref0) {
               }
             } else {
               /* Normal wander behavior */
-              /* v2.3.4038: or his day's walk, in the Wheel's BroTown (game/townsfolkDay.js) */
+              /* v2.3.4058: or his day's walk, in the Wheel's BroTown (game/townsfolkDay.js) */
               var _folkWalked = townsfolkStep(S, npc, 16.7 * _npcDt);
               npc.moveTimer -= 16.7 * _npcDt;
               var distToTarget = Math.sqrt(Math.pow(npc.x - npc.targetX, 2) + Math.pow(npc.y - npc.targetY, 2));
