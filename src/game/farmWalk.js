@@ -30,7 +30,9 @@
  */
 import { BT_AUDIO } from '@/data/index.js';
 import { FARM, FARM_CROP_ORDER } from '@/data/farmCrops.js';
-import { FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX } from '@/data/farmLayout.js';
+import { FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX, FARM_ANIM_HEAD_WORLD, farmDigSpot } from '@/data/farmLayout.js';
+import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3960: the hoe's reach */
+import { zonePlayerScale } from '@/data/zones.js';
 import { farmBus } from '@/ui/mobile/farmBus.js';
 import { bedNext, bedAt, farmClock, farmWorkBeats, FARM_WORK_MS, farmBeatPlay, seedToPlant, seedsInHand } from '@/game/farmWork.js';
 import { pushDmgPopup, offlineRefused } from '@/game/combatHelpers.js';
@@ -174,12 +176,22 @@ export function startFarmStep(S, i) {
     const inv = S.rpg && S.rpg.inventory;
     if (!(inv && Math.floor(Number(inv[FARM.COMPOST]) || 0) > 0)) { sayOverBed(S, i, 'No compost: the Feed & Seed sells it', BAD); return true; }
   }
-  /* at its back, boots just inside its edge and left of its middle, facing
+  /* at its back (but digging: below), boots just inside its edge and left of its middle, facing
      us: the can's water lands to your right, over the bed (farmLayout.js
      FARM_KNEEL_DX) */
   const P = S.player;
-  P.x = b.x + b.w / 2 + FARM_KNEEL_DX;
-  P.y = b.y + FARM_KNEEL_DY - playerGroundDy(S.currentZone, P.x, b.y);
+  /* v2.3.3960: digging stands so the hoe lands in the bed's middle (the
+     owner: "plow in middle center of square plot not at the very edge";
+     farmLayout.js farmDigSpot) -- the figure's scale as effectsRenderer
+     _updateFarmWork draws him, his boots at the spot */
+  let bx = b.x + b.w / 2 + FARM_KNEEL_DX, by = b.y + FARM_KNEEL_DY;
+  if (n.step === 'dig') {
+    const k = (FARM_ANIM_HEAD_WORLD / FARM_ANIM_HEAD) * (zonePlayerScale(S.currentZone, bx, b.y + b.h / 2, 32) || 1);
+    const sp = farmDigSpot(b, FARM_ANIMS.hoe, k);
+    bx = sp.x; by = sp.y;
+  }
+  P.x = bx;
+  P.y = by - playerGroundDy(S.currentZone, P.x, by);
   P.vx = 0; P.vy = 0;
   S._facingAngle = Math.PI / 2;
   S._targetFacingAngle = Math.PI / 2;

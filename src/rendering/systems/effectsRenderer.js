@@ -11,7 +11,7 @@ import { peerShare, cue } from '@/game/eventSounds.js';   /* v2.3.3343: another 
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
-import { LockReticle } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
+import { LockReticle, nearestInMeleeReach } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
 import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
@@ -310,6 +310,7 @@ const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, bossSizeK /* v2.3.3556: ...and a dungeon boss's, at its size */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { farmWorkFrame, farmAnimOf, farmWorkBeats, parseFarmEx, farmBeatPlay } from '@/game/farmWork.js';   /* v2.3.3439: the farmer's own moves, frame by frame; and another player's, off their `ex` */
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3439: the owner's three farm animations, cut by tools/make_farm_anims.py */
+import { FARM_ANIM_HEAD_WORLD } from '@/data/farmLayout.js';   /* v2.3.3960 */
 import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
 import { WheelShatter } from '../wheelShatter.js';
@@ -515,7 +516,8 @@ export const COOK_STANDIN_H = 73.9;
  * his head is 10% over yours, and your hair, hat and beard with
  * it: they are sized by FARM_ANIM_HEAD / 51 (_skillTraitMul), the
  * fire-lighter's rule (his 1.98 is his 101 px over 51). */
-export const FARM_ANIM_HEAD_WORLD = 31.25;
+/* v2.3.3960: defined in data/farmLayout.js now (the dig spot reads it) */
+export { FARM_ANIM_HEAD_WORLD };
 /* the body strip is the man alone (the hoe and the can are a strip of their
    own), so every skin-coloured island in it is his skin: the floor only drops
    lone specks */
@@ -8748,7 +8750,17 @@ export class EffectsRenderer {
           const x = m.renderX != null ? m.renderX : m.x, y = m.renderY != null ? m.renderY : m.y;
           const off = (monsterBodyOffsetY(m.arch || m.archetype || m.type) || 23) * bossSizeK(m);
           return { cx: x, cy: y - off, hw: Math.max(20, off) + 10, hh: off + 18 };   /* room round the body, clear of it */
-        });
+        }, (S.rpg && (S.rpg.activeSlot === 'ranged' || S.rpg.activeSlot === 'staff')) || !S.player ? null : () => nearestInMeleeReach(S, (m) => {
+          /* v2.3.3973: with a melee weapon in hand, the nearest monster inside
+             your melee reach wears the reticle too, softer -- the reach ring's
+             own sum above (your reach x your depth + its hit radius x its
+             depth and a boss's size, to its body centre) */
+          const fy = m.renderY != null ? m.renderY : m.y;
+          const arch = m.arch || m.archetype || m.type;
+          const mk = depthK(S.currentZone, fy) * bossSizeK(m);
+          return { x: m.renderX != null ? m.renderX : m.x, y: fy - (monsterBodyOffsetY(arch) || 23) * mk,
+            r: GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y) + (monsterMeleeHitRadius(arch) || 24) * mk };
+        }));
       }
       if (typeof window !== 'undefined' && !window.__btAtkMark) {
         const _self = this;
@@ -15438,7 +15450,7 @@ export class EffectsRenderer {
          wire field — it was simply never applied to the swing stand-in. */
       if (set.legs) set.legs.tint = gearTint(eq.legs);
       if (set.chest) set.chest.tint = gearTint(eq.chest);
-      if (set.weapon) set.weapon.tint = materialTint(o && o.wpnMat);
+      if (set.weapon) set.weapon.tint = weaponTint(o && o.wpnType, o && o.wpnMat);   /* v2.3.3980: weaponTint -- a peer's black steel is its metal, as your own swing's */
       /* v2.3.1047: north swings hold the blade on the far side -> behind body.
          v2.3.2516: and southwest, for the owner's D7 reason -- resolved from the
          peer's own swing ANGLE to the full 8 sectors, because dir4 above is a

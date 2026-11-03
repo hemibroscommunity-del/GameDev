@@ -1377,6 +1377,9 @@ Owner, 2026-10-03:
 > dashboard but beneath left joystick. If you tap on it it switches to the
 > next equipped weapon.
 
+> **v2.3.3921: replaced by the weapon triangle beside the attack disc
+> (docs/specs/weapon-triangle.md).** What follows is the chip's history.
+
 `src/ui/panels/WeaponSwapButton.jsx`, mounted beside the other touch controls
 inside `.brotown-wrap` (so sideways it rides with the world like the discs).
 

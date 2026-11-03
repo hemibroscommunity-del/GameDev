@@ -25,8 +25,10 @@
  *   7. beside Diego no shop opens, and a tap on him opens it;
  *   8. a READY quest: beside him nothing opens, and a tap opens the turn-in;
  *   9. with `?npcprox` walking up opens him again (the switch works);
- *  10. with Diego's quest under way (fish_1), his line carries "Open the
- *      shop": walking up opened his shop then, and a tap is his quest's line.
+ *  10. with Diego's quest under way (fish_1), his line carries NO "Open the
+ *      shop" (v2.3.3924, the owner: "Diego quest line 'open the shop' option
+ *      is confusing when accepting his first quest"): his quest is fish
+ *      caught and cooked, not bought (game/tour.js questAction `shopBuy`).
  *
  * Moved to the world (it was on the old map's frozen list) as it was touched.
  */
@@ -256,9 +258,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('8: ...and a tap opens the turn-in (his last line\'s Claim reward)',
     !!reached && /Claim reward/i.test(text8), { talked8, reached, text: text8.slice(0, 300) });
 
-  /* ── 10. Diego's quest under way: his line carries his shop ── */
-  /* (walking up opened his shop while fish_1 ran, and a tap gave his quest;
-     a tap is all there is now, so the line holds the way: game/tour.js) */
+  /* ── 10. Diego's quest under way: his line carries no shop button ── */
+  /* (v2.3.3583 put "Open the shop" here; v2.3.3924 took it off -- the owner
+     found it confusing right after Accept, and fish_1 buys nothing from him:
+     game/tour.js questAction asks the quest's `shopBuy` now) */
   await close();
   const jumped = await H.devOp(wsPort, 'tour', myId, { at: 'fish_1' });
   await P.page.waitForTimeout(1500);
@@ -272,17 +275,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
   const talked10 = await H.talkToNpc(P, 'shopkeeper_bro');
   await P.page.waitForTimeout(800);
+  /* his "how's it going" line, read before the taps below put it away */
+  const line10 = await P.page.evaluate(() => { const t = document.querySelector('.bt-npcdlg-text'); return t ? (t.innerText || '').replace(/\s+/g, ' ').trim() : null; });
   for (let i = 0; i < 6; i++) {
     if (await P.page.evaluate(() => !!document.querySelector('[data-qa="quest-open"]'))) break;
     await P.page.evaluate(() => { const b = document.querySelector('.bt-npcdlg-next'); if (b) b.click(); });
     await P.page.waitForTimeout(250);
   }
   const btn10 = await P.page.evaluate(() => { const b = document.querySelector('[data-qa="quest-open"]'); return b ? b.innerText.trim() : null; });
-  rec.ok('10: with Diego\'s quest under way, his line carries "Open the shop"',
-    !!jumped && took10 && talked10 && btn10 === 'Open the shop', { jumped, offer10, took10, talked10, btn10 });
-  if (btn10) await H.clickSel(P, '[data-qa="quest-open"]').catch(() => {});
-  await P.page.waitForTimeout(900);
-  rec.ok('10: ...and it opens his shop', await shopOpen(P) && !(await open()));
+  rec.ok('10: with Diego\'s quest under way, his line carries no "Open the shop" (v2.3.3924)',
+    !!jumped && took10 && talked10 && btn10 === null && /2 cooked fish/.test(line10 || ''), { jumped, offer10, took10, talked10, btn10, line10 });
+  rec.ok('10: ...and no shop opened', !(await shopOpen(P)));
   await P.page.evaluate(() => window.__broShopBus.setOpen(false));
 
   /* ── 9. ?npcprox brings the walk-up opener back ── */

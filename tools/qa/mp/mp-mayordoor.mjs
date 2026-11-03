@@ -25,6 +25,9 @@
  *      and with a monster beside him, the pointer on the monster locks the
  *      monster, no "Attack?";
  *   4. no page errors.
+ * v2.3.3899: the Town Hall's door opens nothing (the owner: "Remove the town
+ * hall menu for now"); its board opens at the square's noticeboard, "Read
+ * THE TOWN BOARD" and E.
  * Pictures: tools/qa/mp/out/mayordoor-*.png.
  */
 import * as H from './harness.mjs';
@@ -110,29 +113,67 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await place(A, 'mayor_bro', dx, dy);
       await A.page.waitForTimeout(400);
       const h = await here(A);
-      if (h.npc === 'mayor_bro' && h.up) { besideAt = [dx, dy]; break; }
+      if (h.npc === 'mayor_bro') { besideAt = [dx, dy]; break; }   /* v2.3.3899: no door's reach to be in */
     }
-    const h0 = await settled((h) => !!h.prompt && /talk/i.test(h.prompt));
+    const h0 = await settled((h) => !!h.prompt && /talk/i.test(h.prompt), 2500);
     await shot(A, '1-beside-mayor');
     await A.page.keyboard.press('e');
     await A.page.waitForTimeout(1500);
     const h1 = await here(A);
     await shot(A, '1-talk');
-    rec.ok(`1. next to Mayor Bro (${JSON.stringify(besideAt)}), in the Town Hall door's reach (${h0.up ? 'yes' : 'NO'}): the prompt reads "${h0.prompt}", and E opens his dialogue, not the door`,
-      h0.up && h0.npc === 'mayor_bro' && !!h0.prompt && /talk to mayor bro/i.test(h0.prompt) && h1.dialogue && !h1.building, { h0, h1 });
+    /* v2.3.3899: the Town Hall's door opens nothing now (its board is on the
+       square's noticeboard), so beside him there is no door's prompt to beat:
+       no "Enter Town Hall", and E opens his dialogue */
+    rec.ok(`1. next to Mayor Bro (${JSON.stringify(besideAt)}): the prompt reads "${h0.prompt}" (never Enter Town Hall), and E opens his dialogue, not a window`,
+      h0.npc === 'mayor_bro' && !(h0.prompt && /town hall/i.test(h0.prompt)) && h1.dialogue && !h1.building, { h0, h1 });
     await H.closeNpcDialogue(A).catch(() => {});
     await A.page.waitForTimeout(600);
-    /* a step aside, out of his range: the door's button, and E opens it */
-    const th = await doorSpot('townhall');
-    await A.page.waitForTimeout(500);
-    const h2 = await here(A);
-    await shot(A, '1-door-prompt');
+    /* ═══ v2.3.3899: THE BOARD IS ON THE NOTICEBOARD ═══
+       The owner: "Remove the town hall menu for now ... move the menu to the
+       sign post to the left of the town hall near the 3 street lamps".  At
+       the Town Hall's door, out of anyone's range: no button, and E opens
+       nothing; at the square's noticeboard (game/wheelNoticeboard.js), out of
+       anyone's range: "Read THE TOWN BOARD", and E opens the board. */
+    const thDoor = await A.page.evaluate(() => { const d = window.__btWheelTownDoors.doors().find((x) => x.id === 'townhall'); return d ? { x: d.x, y: d.y } : null; });
+    let th = null;
+    for (const [ox, oy] of [[0, 40], [-60, 30], [60, 30], [-90, 0], [90, 0], [0, 80]]) {
+      if (!thDoor) break;
+      await A.page.evaluate(({ x, y }) => { const S = window._gameState.current; S.player.x = x; S.player.y = y; }, { x: thDoor.x + ox, y: thDoor.y - 52 + oy });
+      await A.page.waitForTimeout(400);
+      const h = await here(A);
+      if (!h.npc) { th = [ox, oy]; break; }
+    }
+    const h2 = await settled((h) => !h.up && h.prompt === null, 2500);
+    await shot(A, '1-door-nothing');
     await A.page.keyboard.press('e');
     await A.page.waitForTimeout(1500);
     const h3 = await here(A);
-    await shot(A, '1-door-opened');
-    rec.ok(`1. at the Town Hall's door out of anyone's talk range (${JSON.stringify(th)}): the button reads "${h2.prompt}" and E opens the Town Hall`,
-      !!th && !!h2.prompt && /town hall/i.test(h2.prompt) && h3.building && !h3.dialogue, { th, h2, h3 });
+    rec.ok(`1. at the Town Hall's door out of anyone's talk range (${JSON.stringify(th)}): no button (${h2.prompt}), and E opens no window (v2.3.3899)`,
+      !!th && !h2.up && !(h2.prompt && /town hall/i.test(h2.prompt)) && !h3.building, { th, h2, h3 });
+    await A.page.keyboard.press('Escape');
+    const nbSpot = await A.page.evaluate(async () => {
+      const S = window._gameState.current;
+      const b = window.__btNoticeboard && window.__btNoticeboard.where();
+      if (!b) return null;
+      for (const r of [40, 70, 100, 125]) {
+        for (let k = 0; k < 16; k++) {
+          const a = (k / 16) * Math.PI * 2;
+          S.player.x = b.x + Math.cos(a) * r; S.player.y = b.y - 52 + Math.sin(a) * r;
+          await new Promise((res) => setTimeout(res, 250));
+          if (window.__btNoticeboard.at() && !S._nearNpc) return { x: Math.round(S.player.x - b.x), y: Math.round(S.player.y - b.y) };
+        }
+      }
+      return null;
+    });
+    const h4 = await settled((h) => !!h.prompt && /town board/i.test(h.prompt));
+    await shot(A, '1-board-prompt');
+    await A.page.keyboard.press('e');
+    await A.page.waitForTimeout(1500);
+    const h5 = await here(A);
+    const boardUp = await A.page.evaluate(() => !!document.querySelector('[data-wheel-hall="townhall"] [data-town-board]'));
+    await shot(A, '1-board-opened');
+    rec.ok(`1. at the square's noticeboard (${JSON.stringify(nbSpot)} from its foot): the button reads "${h4.prompt}" and E opens the town board`,
+      !!nbSpot && !!h4.prompt && /read/i.test(h4.prompt) && /town board/i.test(h4.prompt) && h5.building && boardUp && !h5.dialogue, { nbSpot, h4, h5, boardUp });
     await A.page.keyboard.press('Escape');
     await A.page.waitForTimeout(800);
     /* every open door: a spot at it out of everyone's range shows its

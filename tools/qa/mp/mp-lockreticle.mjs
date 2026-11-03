@@ -13,8 +13,14 @@
  *   3. it follows: a second later the box is still centred on the snowman,
  *      wherever it walked;
  *   4. a click on empty ground lets the lock go, and the reticle with it;
- *   5. a sword's AUTOMATIC lock on the nearest snowman wears no reticle (the
- *      chip alone, as before): the brackets say "you chose this";
+ *   5. (v2.3.3973) a sword in hand and no lock chosen: once a snowman is
+ *      inside your melee reach the same reticle, softer, stands on it (the
+ *      owner: "Whenever a monster first comes in range for melee attack this
+ *      same reticle should appear too"), and walked out of reach it goes --
+ *      it was 5. "a sword's automatic lock wears no reticle";
+ *   2b. (v2.3.3973) the lock's reticle is thin (a 1 px line), roomier, and
+ *      grows and shrinks slowly by its scale ("a thin larger line that grows
+ *      and shrinks while on target");
  *   6. no page errors.
  * Pictures: tools/qa/mp/out/lockreticle-*.png.
  */
@@ -92,6 +98,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const centred = (r) => !!(r.ret && r.ret.shown && r.mon) && Math.abs(r.ret.cx - r.mon.x) <= 3 && r.ret.cy < r.mon.y && r.ret.cy > r.mon.y - 120;
     rec.ok(`2. a double click on a snowman (${mb && mb.id}, ${mb && mb.d} px) locks it (${JSON.stringify(r2.lock)}) and the brackets stand round it (${JSON.stringify(r2.ret)})`,
       !!pb && pb.canvas && !!r2.lock && r2.lock.id === mb.id && r2.lock.src === 'tap' && !!r2.ret && r2.ret.shown && r2.ret.id === mb.id && centred(r2), { r2, pb });
+    /* ── 2b. v2.3.3973: thin, roomier, pulsing by its scale ── */
+    const scales = [];
+    for (let i = 0; i < 8; i++) { const q = await look(P); if (q.ret && q.ret.shown) scales.push(q.ret.scale); await P.page.waitForTimeout(230); }
+    const spread = scales.length ? Math.max(...scales) - Math.min(...scales) : 0;
+    rec.ok(`2b. the lock's reticle is a thin line (${r2.ret && r2.ret.line} px, rim ${r2.ret && r2.ret.rim}), full strength (${r2.ret && r2.ret.alpha}), roomier (${r2.ret && r2.ret.hw}x${r2.ret && r2.ret.hh}), and grows and shrinks (scale ${Math.min(...scales)}..${Math.max(...scales)})`,
+      !!r2.ret && r2.ret.mode === 'lock' && r2.ret.line <= 1 && r2.ret.rim <= 0.5 && r2.ret.alpha === 1 && r2.ret.hw >= 34
+      && scales.length >= 6 && spread >= 0.04 && scales.every((v) => v >= 0.9 && v <= 1.1), { ret: r2.ret, scales });
 
     /* ── 3. it follows ── */
     await P.page.waitForTimeout(1500);
@@ -110,16 +123,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`4. a click on empty ground (${pe.canvas ? 'the world' : 'NOT the world'}) lets the lock go, and the reticle with it`,
       pe.canvas && !r4.lock && !!r4.ret && !r4.ret.shown, { r4, pe });
 
-    /* ── 5. a sword's automatic lock: no reticle ── */
+    /* ── 5. v2.3.3973: a sword in hand, no lock chosen: the reticle on what is in reach ── */
     await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
+    await P.page.evaluate(() => { window._gameState.current.lockedTarget = null; });
     const near = await snowmen(P);
-    if (near[0] && near[0].d > 150) await H.hopTo(P, near[0].x + 90, near[0].y + 30, { tries: 40 }).catch(() => {});
-    const auto = await H.waitFor(P, (S) => (S.lockedTarget ? S.lockedTarget.src || null : null), (v) => v === 'auto',
-      { timeout: 12000, label: 'an automatic lock' }).catch(() => null);
-    const r5 = await look(P);
-    await shot(P, '5-auto');
-    rec.ok(`5. a sword's automatic lock on the nearest snowman (${JSON.stringify(r5.lock)}) wears no reticle (the chip alone)`,
-      auto === 'auto' && !!r5.lock && r5.lock.src === 'auto' && !!r5.ret && !r5.ret.shown, r5);
+    const tgt = near[0];
+    const ring = () => P.page.evaluate(() => (window.__btReachRing ? window.__btReachRing() : null));
+    /* walked up to it: inside the reach the softer reticle stands on it */
+    const cur = tgt ? (await snowmen(P)).find((m) => m.id === tgt.id) || tgt : null;
+    if (cur) await H.hopTo(P, cur.x + 40, cur.y + 10, { tries: 40 }).catch(() => {});
+    const r5b = await H.waitFor(P, () => (window.__btLockReticle ? window.__btLockReticle() : null), (v) => !!(v && v.shown && v.mode === 'reach'),
+      { timeout: 8000, label: 'the in-reach reticle' }).catch(() => null);
+    const rr = await ring();
+    await shot(P, '5-reach');
+    rec.ok(`5. a sword in hand, no lock chosen: walked up to a snowman, inside your melee reach the same reticle, softer, stands on a monster in reach (${JSON.stringify(r5b)}; the reach ring says ${rr ? (rr.inReach ? 'in reach' : 'out of reach') : '-'})`,
+      !!r5b && r5b.shown && r5b.mode === 'reach' && r5b.alpha < 1 && r5b.line <= 1, { r5b, rr });
+    /* and out of reach again it goes */
+    const cur2 = tgt ? (await snowmen(P)).find((m) => m.id === tgt.id) || tgt : null;
+    if (cur2) await H.hopTo(P, cur2.x + 520, cur2.y + 60, { tries: 40 }).catch(() => {});
+    const r5c = await H.waitFor(P, () => (window.__btLockReticle ? window.__btLockReticle() : null), (v) => !!(v && !v.shown),
+      { timeout: 8000, label: 'the reticle gone out of reach' }).catch(() => null);
+    /* (out of reach is the snowmen's spread apart: a spot "far" from one can be
+       in reach of another, so "none in reach" is read here, walked away) */
+    rec.ok(`5. ...and walked out of reach it goes (${JSON.stringify(r5c)})`, !!r5c && !r5c.shown, r5c);
     rec.ok('6. no page errors', errors.length === 0, errors.slice(0, 3));
   } finally {
     await P.ctx.close().catch(() => {});
