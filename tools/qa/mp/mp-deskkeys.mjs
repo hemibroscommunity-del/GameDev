@@ -29,6 +29,8 @@
  * A second computer (1280 x 800, the wide layout players get), in the world at
  * Frost Ridge, a greatsword and a bow, every binding driven by Playwright's
  * real mouse and keyboard:
+ *   8.  (v2.3.3922) the minimap twice as big there: 264 px, 4,800 game px
+ *       across, the world map's button over it;
  *   8a. the mouse wheel over the world: down the next weapon, up the one
  *       before; over the controls column it swaps nothing;
  *   8b. Q is the weapon's special (it raises no shield); F the Element Burst,
@@ -45,6 +47,9 @@
  *   8g. no page errors.
  */
 import * as H from './harness.mjs';
+import { join } from 'node:path';   /* v2.3.3922: the minimap's picture */
+import { mkdirSync } from 'node:fs';
+const OUT = join(H.REPO, 'tools/qa/mp/out');
 
 const DESK = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
@@ -409,6 +414,29 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     rec.ok('8. a computer in the world, the wide layout (guard)', !!inW && inW.desk && !!(await P.page.$('.bt-desk-keys')), inW);
     if (!inW || !inW.desk) return;
     await H.closeNpcDialogue(P).catch(() => {});
+    /* ── 8. v2.3.3922: THE MINIMAP, TWICE AS BIG ON A COMPUTER ──
+       The owner: "make the mini map 100% + bigger/ double the size": 264 CSS
+       px (a phone's 132 x 2), 4,800 game px across (1.5 x a phone's), flush
+       in the canvas's top-right corner, the world map's button exactly over
+       it and the M beside its "tap me" mark, scaled with it */
+    {
+      const mm = await P.page.waitForFunction(() => {
+        const m = window.__btMinimap, r = window.__btWheelMini, b = document.querySelector('[data-world-map-open]');
+        const cv = document.querySelector('canvas.brotown-canvas');
+        if (!m || !m.wheel || !r || !b || !cv) return null;
+        const br = b.getBoundingClientRect(), cr = cv.getBoundingClientRect();
+        return { k: m.k, box: m.box, h: m.h, window: m.window, frame: m.frame, mapBottom: m.mapBottom, scale: m.scale, rect: r,
+          btn: { l: Math.round(br.left), t: Math.round(br.top), w: Math.round(br.width), h: Math.round(br.height) }, canvasRight: Math.round(cr.right), plate: window.__btWheelPlate || null };
+      }, null, { timeout: 30000, polling: 300 }).then((h) => h.jsonValue()).catch(() => null);
+      rec.ok(`8. the minimap is twice as big on a computer: ${mm && mm.box} x ${mm && mm.h} px (k ${mm && mm.k}), ${mm && mm.window} game px across, flush right in the canvas, the world map's button over it (${mm && mm.btn && mm.btn.w} x ${mm && mm.btn && mm.btn.h}), its plate inside it`,
+        !!mm && mm.k === 2 && mm.box === 264 && mm.h === 264 && mm.window === 4800 && mm.frame === 6 && Math.abs(mm.scale - 264 / 4800) < 1e-9
+          && Math.abs(mm.rect.left + mm.rect.w - mm.canvasRight) <= 1 && mm.rect.w === 264 && mm.rect.mark && mm.rect.mark.w === 32
+          && Math.abs(mm.btn.l - mm.rect.left) <= 1 && Math.abs(mm.btn.t - mm.rect.top) <= 1 && mm.btn.w === 264 && mm.btn.h === 264
+          && !!mm.plate && mm.plate.top >= mm.rect.top + mm.mapBottom && mm.plate.top + mm.plate.height <= mm.rect.top + mm.rect.h, mm);
+      const r = mm && mm.rect;
+      mkdirSync(OUT, { recursive: true });
+      if (r) await P.page.screenshot({ path: join(OUT, 'deskkeys-minimap.png'), clip: { x: r.left - 8, y: Math.max(0, r.top - 8), width: r.w + 8, height: r.h + 16 } }).catch(() => {});
+    }
     const me = await H.readState(P, (S) => S.myId);
     await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
     await H.devOp(wsPort, 'quests', me, {}).catch(() => {});

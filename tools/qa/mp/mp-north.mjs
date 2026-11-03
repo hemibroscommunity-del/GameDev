@@ -7,7 +7,9 @@
  * On a phone (390 x 844, 3x) in the Wheel:
  *   1. the minimap's frame carries a north bead at the middle of its top band
  *      (window.__btMinimap.north), drawn: brass N strokes on the slate bead,
- *      the box's top-left and top-right corners still the frame;
+ *      the box's top-left and top-right corners still the frame (v2.3.3922:
+ *      the slim frame's charcoal, a gold N on a charcoal bead -- the old
+ *      colours' tolerances hold both);
  *   2. tapping the minimap opens the world map, with a compass at its top
  *      left: the N, the brass north half of the needle, in the map's corner
  *      clear of the zoom buttons and the key, taking no taps (a drag that
@@ -65,8 +67,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     rec.ok(`...drawn: brass N strokes on the slate bead (${brass} brass, ${slate} slate of ${all} device px inside its rim)`,
       all > 200 && brass > all * 0.12 && brass < all * 0.6 && slate > all * 0.3, { brass, slate, all });
-    const cornerL = px(m.rootX + 3, m.topInset + 12), cornerR = px(m.rootX + m.box - 3, m.topInset + 12);
-    rec.ok('...and the frame either side of it is still the frame (slate)', like(cornerL, SLATE, 16) && like(cornerR, SLATE, 16), { cornerL, cornerR });
+    /* v2.3.3922: the frame is 3 px now (was 7, slate): its top band read a
+       little either side of the bead, dark (the keyline and the charcoal) */
+    const cornerL = px(m.rootX + m.box / 2 - 24, m.topInset + 1), cornerR = px(m.rootX + m.box / 2 + 24, m.topInset + 1);
+    const darkPx = (p) => !!p && p[0] + p[1] + p[2] < 150;
+    rec.ok('...and the frame either side of it is still the frame (dark charcoal)', darkPx(cornerL) && darkPx(cornerR), { cornerL, cornerR });
     const W = 170, Hh = 160;
     await P.page.screenshot({ path: join(OUT, 'north-minimap.png'),
       clip: { x: PHONE.width - W, y: Math.max(0, Math.round(m.topInset - 10)), width: W, height: Hh } }).catch(() => {});
