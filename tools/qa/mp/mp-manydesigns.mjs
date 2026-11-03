@@ -210,12 +210,19 @@ async function figureRead(P, tag) {
       const pad = Math.round(40 * (b.k || 1));
       const clip = { x: Math.max(0, b.x - pad), y: Math.max(0, b.y - pad),
         width: b.width + pad * 2, height: b.height + pad * 2 };
+      /* his legs only: 6 scale-px either side of the anchor (figureBox puts
+         it 20 in from the box's left), from just above the box's bottom edge
+         down -- the purse pill beside him ("1 q", gold) starts ~8 to his
+         right and read as flame on the plain control when the band was the
+         whole crop's width */
       const k = b.k || 1;
-      const legs = { x: clip.x, y: Math.round(b.y + b.height - 4 * k),
-        width: clip.width, height: Math.round(pad + 4 * k) };
+      const legs = { x: Math.round(b.x + 14 * k), y: Math.round(b.y + b.height - 4 * k),
+        width: Math.round(12 * k), height: Math.round(pad + 4 * k) };
       const px = await H.screenshotPixels(P, legs);
       const n = px.count(isFlame);
-      if (!best || n > best.n) best = { n, clip };
+      /* the LEAST of the reads: something passing (an arrow, a spark, a
+         card) only ever ADDS colour, so the minimum is his own */
+      if (!best || n < best.n) best = { n, clip };
     }
     await P.page.waitForTimeout(900);
   }
