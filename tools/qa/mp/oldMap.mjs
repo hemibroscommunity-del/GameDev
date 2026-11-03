@@ -90,7 +90,7 @@ export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'solorate', 'solospecial', 'southshirt', 'southsword', 'spawnfx',
   'specialart', 'specshield', 'spinfeet', 'staffcast',
   'standalone', 'standinart', 'standinskin', 'statcols', 'statdemo',
-  'statpeek', 'store', 'stuckarrow', 'swingsfx', 'switchbro', 'swordcarry',
+  'statpeek', 'store', 'stuckarrow', 'swingsfx', 'swordcarry',
   'tapswing', 'target', 'tattoos', 'teeshield', 'texdrift', 'textfloor',
   'toolshelf', 'townbuildings', 'townexit', 'townforge', 'townhill',
   'townlock', 'townmap', 'townmeal', 'townprops', 'townrim', 'townscenery',

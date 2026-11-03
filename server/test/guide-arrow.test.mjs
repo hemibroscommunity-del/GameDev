@@ -71,7 +71,7 @@ check('7f it points at the weapon pill', G.guideTargets('swap', twoAfter, () => 
 check('7g its words: a phone taps, a computer clicks or presses 1 2 3',
   G.guideWords('swap', '[data-weapon-pill]', false) === 'Tap a weapon to switch' && G.guideWords('swap', '[data-weapon-pill]', true) === 'Click a weapon or press 1 2 3');
 check('7h owed again while the first quest is not handed in, never after', G.guideOwedAgain(twoBefore).includes('swap') && !G.guideOwedAgain(twoAfter).includes('swap'));
-check('7i the swap lesson comes after the weapon lesson, before the points', /for \(const id of \['weapon', 'swap', 'points'\]\)/.test(readFileSync(new URL('../../src/ui/guideArrow.js', import.meta.url), 'utf8')));
+check('7i the swap lesson comes after the weapon lesson, before the points (the Mayor last, v2.3.4106)', /for \(const id of \['weapon', 'swap', 'points', 'mayor'\]\)/.test(readFileSync(new URL('../../src/ui/guideArrow.js', import.meta.url), 'utf8')));
 
 /* 6 */
 const src = readFileSync(new URL('../../src/ui/guideArrow.js', import.meta.url), 'utf8');

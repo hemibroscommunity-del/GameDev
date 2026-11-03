@@ -119,12 +119,15 @@ export function noteCoach(showing, now = Date.now()) {
   _coachUp = !!showing;
 }
 
-/** May the coach put a NEW card up now?  (A card already up stays.) */
-export function coachMayShow(now = Date.now()) {
+/** May the coach put a NEW card up now?  (A card already up stays.)
+ *  `gapMs` (v2.3.4106): the first steps' shorter breath (QuestCoach
+ *  FIRST_STEP_GAP_MS) in place of the 20 s; QA's __btCoachGapMs still wins
+ *  when shorter. */
+export function coachMayShow(now = Date.now(), gapMs) {
   if (!_worldInAt || tutorialSkipped() || _welcomePending) return false;   /* v2.3.2890 */
   const pu = plateUntil();
   if (now < pu + PLATE_GAP_MS) return false;
-  const gap = coachGapMs();
+  const gap = typeof gapMs === 'number' ? Math.min(gapMs, coachGapMs()) : coachGapMs();
   if (now < _coachEndAt + gap) return false;
   if (_welcomeEndAt && now < _welcomeEndAt + gap) return false;
   return true;
@@ -139,9 +142,17 @@ function installAfterMs() {
   } catch (e) { return INSTALL_AFTER_MS; }
 }
 
+/* ═══ v2.3.4106: NOTHING ELSE DURING THE FIRST STEPS ═══
+   The owner: a new character's first sequence is the welcome, the Mayor, the
+   gear, the map and the quest card, "Don't include the non-essential stuff
+   anymore".  QuestCoach says while one of its five is still to come; the
+   install card waits for them all. */
+let _firstStepsOpen = false;
+export function noteFirstSteps(open) { _firstStepsOpen = !!open; }
 /** May the install card appear now? */
 export function installMayShow(now = Date.now()) {
   if (tutorialSkipped()) return false;   /* v2.3.2890 */
+  if (_firstStepsOpen) return false;     /* v2.3.4106 */
   if (!_worldInAt || now - _worldInAt < installAfterMs()) return false;
   if (_coachUp || now < plateUntil() + INSTALL_QUIET_MS) return false;
   if (now < _coachEndAt + INSTALL_QUIET_MS) return false;
@@ -156,5 +167,6 @@ if (typeof window !== 'undefined') {
     coachGapMs: coachGapMs(),
     coachMayShow: coachMayShow(), installMayShow: installMayShow(),
     skipped: tutorialSkipped(), welcomePending: _welcomePending,   /* v2.3.2890 */
+    firstStepsOpen: _firstStepsOpen,   /* v2.3.4106 */
   });
 }

@@ -40,12 +40,18 @@
 import { gearFlashWants, gearFlashSelectors } from './mobile/gearFlash.js';
 import { pointsTipWanted, pointsTipDone } from '../game/pointsTips.js';
 import { deskWords, onComputer } from '../game/deskWords.js';
-import { ownedWeaponSlots } from '../game/weaponSlots.js';
+import { ownedWeaponSlots } from '../game/weaponSlots.js';   /* v2.3.4130: the swap lesson */
+import { mayorScreenRect } from './mayorScreen.js';   /* v2.3.4106: the first steps' Mayor */
+/* v2.3.4106: the pacing referee's answers (onboardingPace.js: is a plate up,
+   was the tutorial skipped) are handed in by the coach that starts this --
+   that module imports through '@/', which node (the server's test) cannot */
+let _pace = { plateUp: () => false, skipped: () => false };
 
 const TICK_MS = 250;
 export const WEAPON_MS = 60000;
 export const POINTS_MS = 180000;
 export const SWAP_MS = 10000;
+export const MAYOR_MS = 180000;   /* v2.3.4106 */
 const SIZE = 56;                /* the arrow, CSS px */
 const GAP = 6;                  /* between its point and the target's edge */
 const GOLD = '#F5CE3C', EDGE = '#3A2606';
@@ -142,9 +148,25 @@ export function swapWanted(rpg) {
   return q.tut_1 === 'turnedIn' && ownedWeaponSlots(rpg).length >= 2;
 }
 
+/* ═══ v2.3.4106: THE FIRST STEPS' MAYOR ═══
+   The owner, 2026-11-03: "First sequence of events when first creating
+   character should be welcome to Brotown, talk to mayor bro, equip weapons
+   ...".  Step 2: the arrow points at Mayor Bro (ui/mayorScreen.js, the
+   coach's own ring's rect) once the WELCOME plate has gone, until his
+   dialogue is open or the first quest has a record. */
+function mayorTalking() {
+  try { const nm = document.querySelector('.bt-npcdlg-name'); return !!nm && /Mayor Bro/.test(nm.textContent || ''); } catch (e) { return false; }
+}
+
 /** Is lesson `id` wanted now, and is it finished?  `seen` the ms it has shown;
- *  `from` (the swap lesson) the slot in hand when it first showed. */
+ *  `from` (the swap lesson, v2.3.4130) the slot in hand when it first showed. */
 export function guideState(id, rpg, S, seen, now, from) {
+  if (id === 'mayor') {
+    const q = (rpg && rpg._quests) || {};
+    const talked = !!q.tut_1 || mayorTalking();
+    /* v2.3.4106: given up after MAYOR_MS of showing, as the others are */
+    return { want: !talked && !q.tut_1, done: seen > 0 && (talked || seen >= MAYOR_MS) };
+  }
   if (id === 'weapon') {
     const w = weaponWants(rpg);
     const want = w.melee || w.shield;
@@ -169,7 +191,7 @@ export function guideOwedAgain(rpg) {
   const out = [];
   if (!rpg) return out;
   const q = rpg._quests && typeof rpg._quests === 'object' ? rpg._quests : {};
-  if (!q.tut_1) out.push('weapon');
+  if (!q.tut_1) out.push('weapon', 'mayor');
   if (q.tut_1 !== 'turnedIn') out.push('swap');   /* v2.3.4130 */
   const p3 = rpg.prog3;
   if (p3 && typeof p3 === 'object' && !pointsTipDone(rpg) && !(Number(p3.pool) > 0) && !(Number(p3.shared) > 0)) out.push('points');
@@ -186,7 +208,7 @@ function saveDone(id, v) {
 
 /* ── the arrow ── */
 let _timer = null, _el = null, _bob = null, _label = null, _side = null;
-const _seen = { weapon: 0, swap: 0, points: 0 };
+const _seen = { mayor: 0, weapon: 0, swap: 0, points: 0 };
 let _swapFrom = null;   /* v2.3.4130: the slot in hand when the swap lesson first showed */
 let _lastTick = 0, _who = null, _done = {};
 const qa = { lesson: null, sel: null, side: null, rect: null, target: null, n: 0, off: false, done: {} };
@@ -227,29 +249,42 @@ function hide() {
   sweepStrays();
   qa.lesson = null; qa.sel = null; qa.side = null; qa.rect = null; qa.target = null;
 }
-/* point at rect r from above (down), or from below (up) when there is no room above */
-function place(r, words) {
+/* point at rect r from above (down), or from below (up) when there is no room
+   above; v2.3.4106: or from its LEFT (pointing right) when `fromLeft` and
+   there is room -- the Mayor's step, whose coach card stands over his head */
+function place(r, words, fromLeft) {
   ensureEl();
-  const side = r.top >= SIZE + GAP + 4 ? 'above' : 'below';
+  /* v2.3.4106: above unless there is no room -- or the minimap's box is
+     there (Mayor Bro at a computer's spawn stands half under it) */
+  let side = r.top >= SIZE + GAP + 4 ? 'above' : 'below';
+  if (side === 'above') {
+    const m = typeof window !== 'undefined' ? window.__btWheelMini : null;
+    const ax = r.left + r.width / 2, at = r.top - GAP - SIZE;
+    if (m && m.w > 0 && ax + SIZE / 2 > m.left && ax - SIZE / 2 < m.left + m.w && at < m.top + m.h && r.top > m.top) side = 'below';
+  }
+  if (fromLeft && r.left >= SIZE + GAP + 4) side = 'left';
   const cx = r.left + r.width / 2;
   const vw = window.innerWidth || 0;
-  const left = Math.max(2, Math.min(vw - SIZE - 2, Math.round(cx - SIZE / 2)));
-  const top = side === 'above' ? Math.round(r.top - GAP - SIZE) : Math.round(r.bottom + GAP);
+  const left = side === 'left' ? Math.round(r.left - GAP - SIZE) : Math.max(2, Math.min(vw - SIZE - 2, Math.round(cx - SIZE / 2)));
+  const top = side === 'left' ? Math.round(r.top + r.height / 2 - SIZE / 2) : side === 'above' ? Math.round(r.top - GAP - SIZE) : Math.round(r.bottom + GAP);
   const first = !_el.style.transition;
   _el.style.left = left + 'px'; _el.style.top = top + 'px';
   if (first) { void _el.offsetWidth; _el.style.transition = 'left .2s ease-out, top .2s ease-out'; }
   if (_side !== side) {
     _side = side;
-    _bob.style.transform = side === 'below' ? 'rotate(180deg)' : '';
+    const rot0 = side === 'below' ? ' rotate(180deg)' : side === 'left' ? ' rotate(-90deg)' : '';
+    _bob.style.transform = rot0.trim();
     const ls = _label.style;
     if (side === 'above') { ls.top = ''; ls.bottom = (SIZE + 2) + 'px'; } else { ls.bottom = ''; ls.top = (SIZE + 2) + 'px'; }
     try { if (_bob.getAnimations) _bob.getAnimations().forEach((a) => a.cancel()); } catch (e) { /* none */ }
     if (!calm()) {
-      const d = side === 'above' ? 10 : -10, rot = side === 'below' ? ' rotate(180deg)' : '';
-      try { _bob.animate([{ transform: 'translateY(0)' + rot }, { transform: `translateY(${d}px)` + rot }, { transform: 'translateY(0)' + rot }], { duration: 900, iterations: Infinity, easing: 'ease-in-out' }); } catch (e) { /* still */ }
+      /* toward the target: down from above, up from below, right from the left */
+      const ax = side === 'left' ? 'X' : 'Y', d = side === 'below' ? -10 : 10;
+      try { _bob.animate([{ transform: `translate${ax}(0)` + rot0 }, { transform: `translate${ax}(${d}px)` + rot0 }, { transform: `translate${ax}(0)` + rot0 }], { duration: 900, iterations: Infinity, easing: 'ease-in-out' }); } catch (e) { /* still */ }
     }
   }
   if (_label.textContent !== words) _label.textContent = words;
+  _label.style.display = words ? '' : 'none';   /* v2.3.4106: no words, no box (the Mayor's card names him) */
   /* the words over the arrow's middle, but kept 4 px inside the screen (an
      arrow at the band's left end would put half of them off it) */
   const lw = _label.offsetWidth || 0;
@@ -258,7 +293,7 @@ function place(r, words) {
   _label.style.left = Math.round(at - left) + 'px';
   qa.side = side;
   qa.rect = { left, top, w: SIZE, h: SIZE };
-  qa.target = { x: Math.round(cx), y: Math.round(side === 'above' ? r.top : r.bottom), left: Math.round(r.left), top: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
+  qa.target = { x: Math.round(side === 'left' ? r.left : cx), y: Math.round(side === 'left' ? r.top + r.height / 2 : side === 'above' ? r.top : r.bottom), left: Math.round(r.left), top: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
 }
 
 function tick(getS) {
@@ -272,14 +307,29 @@ function tick(getS) {
   if (!S || !rpg || !S.__introLiftedAt || S._zoneLoading) { hide(); return; }
   const who = S.myId || null;
   if (!who) { hide(); return; }
-  if (who !== _who) { _who = who; _done = loadDone(who); _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _swapFrom = null; }
+  if (who !== _who) { _who = who; _done = loadDone(who); _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _swapFrom = null; }
   for (const id of guideOwedAgain(rpg)) if (_done[id]) { delete _done[id]; _seen[id] = 0; saveDone(who, _done); }
   qa.done = Object.assign({}, _done);
-  for (const id of ['weapon', 'swap', 'points']) {   /* v2.3.4130: swap, after the weapon lesson */
+  /* v2.3.4106: the Mayor's last -- a lesson that is wanted beats him (a
+     character with points who never took his quest is shown the points).
+     v2.3.4130: swap after the weapon lesson, before the points */
+  for (const id of ['weapon', 'swap', 'points', 'mayor']) {
     if (_done[id]) continue;
     const st = guideState(id, rpg, S, _seen[id], now, id === 'swap' ? _swapFrom : null);
     if (st.done) { _done[id] = 1; saveDone(who, _done); qa.done = Object.assign({}, _done); continue; }
     if (!st.want) continue;
+    if (id === 'mayor') {
+      /* v2.3.4106: after the welcome plate, never past Skip tutorial, and
+         at him on the page (a world rect, not a DOM element) */
+      if (_pace.skipped() || _pace.plateUp(now)) continue;
+      const mr = mayorScreenRect(S);
+      if (!mr) continue;
+      if (_seen[id] === 0) qa.n++;
+      _seen[id] += Math.max(1, dt);
+      qa.lesson = id; qa.sel = 'mayor';
+      place({ left: mr.left, top: mr.top, width: mr.width, height: mr.height, right: mr.left + mr.width, bottom: mr.top + mr.height }, '', true);
+      return;
+    }
     const shown = (sel) => { try { return Array.from(document.querySelectorAll(sel)).some((el) => !!shownRect(el)); } catch (e) { return false; } };
     const hit = firstShown(guideTargets(id, rpg, shown));
     if (!hit) continue;
@@ -293,7 +343,8 @@ function tick(getS) {
 }
 
 /** Start the arrow (QuestCoach mounts it once); returns the stop. */
-export function startGuideArrow(getS) {
+export function startGuideArrow(getS, pace) {
+  if (pace && typeof pace.plateUp === 'function' && typeof pace.skipped === 'function') _pace = pace;
   if (_timer || typeof document === 'undefined') return stopGuideArrow;
   _timer = setInterval(() => tick(getS), TICK_MS);
   tick(getS);
@@ -309,7 +360,7 @@ export function stopGuideArrow() {
    shows and where, and a way to forget this character's lessons */
 try {
   if (typeof window !== 'undefined') {
-    qa.forget = () => { if (_who) saveDone(_who, {}); _done = {}; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _swapFrom = null; };
+    qa.forget = () => { if (_who) saveDone(_who, {}); _done = {}; _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _swapFrom = null; };
     window.__btGuideArrow = qa;
   }
 } catch (e) { /* no page */ }
