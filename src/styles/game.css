@@ -7507,6 +7507,12 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 /* a reward flying home (questFly.js): one picture, transform and opacity */
 .bt-qw-fly{position:fixed;left:0;top:0;z-index:1200;pointer-events:none;will-change:transform,opacity;object-fit:contain}
 .bt-qw-landed{animation:bt-qw-landed .5s ease-out 1}
+/* v2.3.3971: a weapon level-up's bubbles on their way to your points (ui/
+   pointsFly.js): a glowing gold-white circle, no picture.  Flat fills and a
+   box-shadow glow, no filter (TRAPS section 42) */
+.bt-qw-bubble{display:block;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#FFFBEA 0 25%,#F2D58C 55%,rgba(229,180,92,.85) 100%);
+  box-shadow:0 0 6px 2px rgba(242,213,140,.75),0 0 0 1px rgba(16,23,27,.5)}
 /* ═══ v2.3.3049: THE FIRST QUEST'S GEAR FLASHES (gearFlash.js) ═══
    Owner: "After accepting first quest make 'OPEN' on dashboard flash.  Then
    make sword and shield both flash" (and the bow and staff after the turn-in).
