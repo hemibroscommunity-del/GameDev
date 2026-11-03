@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e26bf8401f1c0278364d655388c8fd969cbb7606",
+  "tree": "cbbece8cfbd7d033007e1cc91563fb8b67f9dfc0",
+  "committedAt": "2026-11-02T18:59:37-08:00",
+  "subject": "Merge pull request #1362 from hemibroscommunity-del/claude/monster-moves",
+  "files": 7412,
+  "bytes": 845202711,
+  "listingSha256": "bf8ac3639ad1117214b80e997ed4add78c4f19ec6f5c1f7d835c1f180f2c604f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
