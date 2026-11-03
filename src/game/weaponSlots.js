@@ -22,6 +22,17 @@
  * 'melee' is always present and never gated.  An empty melee slot is not a
  * phantom — it is FISTS, a real thing the game lets you fight with, and it is
  * the slot everything else falls back to.
+ *
+ * v2.3.4154: the same rule for the DIRECT pick (pickSlot): the 1, 2 and 3 keys
+ * and the computer's weapon bar, all through BroTown's _desktopSelectSlot.
+ * The 3 key asked for a staff at the key and the 2 key asked nothing, so a
+ * character with no bow pressed 2 into an empty bow slot (the state-machine
+ * sweep, 2026-11-03, VB-1 G2-17): every attack refused for want of a weapon,
+ * "undefined" over the head -- and since v2.3.4151 the pick is told to the
+ * worker, which saves any slot (server/src/gear.js _handleSetActiveSlot), so
+ * it came back on every join.  healedSlot is the way out for such a save:
+ * the phone takes melee as it adopts the worker's slot (wsClient.js
+ * player_state) and tells the worker.  server/test/weapon-pick.test.mjs.
  */
 
 /** The weapon slots this character can be in, in cycle order. */
@@ -44,6 +55,22 @@ export function nextWeaponSlot(rpg) {
      purpose instead: it is the slot that always exists. */
   if (i < 0) return 'melee';
   return slots[(i + 1) % slots.length];
+}
+
+/** v2.3.4154: a direct pick (the 1, 2 and 3 keys; the computer's weapon bar):
+ *  the slot to take up, or null for no swap -- the one already in hand, or one
+ *  you cannot fill (no bow, no staff).  The cycle's own list, so a key never
+ *  takes up a slot the cycle would skip. */
+export function pickSlot(rpg, slot) {
+  if (!rpg || rpg.activeSlot === slot) return null;
+  return ownedWeaponSlots(rpg).includes(slot) ? slot : null;
+}
+
+/** v2.3.4154: the slot to stand in: the one in hand while you can fill it,
+ *  melee (the slot that always exists) when not. */
+export function healedSlot(rpg) {
+  const cur = (rpg && rpg.activeSlot) || 'melee';
+  return ownedWeaponSlots(rpg).includes(cur) ? cur : 'melee';
 }
 
 /** v2.3.3711: the slot one step BACK round the cycle -- the mouse wheel turned

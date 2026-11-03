@@ -178,7 +178,7 @@ export function setupDesktopControls(S, deps) {
     /* ═══ DESKTOP KEYBOARD CONTROLS ═══ */
     S._isDesktop = window.matchMedia('(pointer:fine)').matches;
     var onKeyDown = function onKeyDown(e) {
-      var _document$activeEleme, _S$rpg25;
+      var _document$activeEleme;
       var _ae = document.activeElement, _aeTag = _ae && _ae.tagName;
       if (_aeTag === 'INPUT' || _aeTag === 'TEXTAREA') return; /* typing in a field (chat bar etc.) -- don't drive the game */
       S.keys[e.key] = true;
@@ -399,7 +399,10 @@ export function setupDesktopControls(S, deps) {
         return;
       }
 
-      /* 1/2/3 — direct weapon slot */
+      /* 1/2/3 — direct weapon slot.  v2.3.4154: no rule of their own --
+         _desktopSelectSlot takes up only a weapon you hold (weaponSlots.js
+         pickSlot), for these and the computer's weapon bar alike.  3 asked
+         for the staff here and 2 asked nothing: an empty bow slot. */
       if (e.code === 'Digit1') {
         _desktopSelectSlot('melee');
         return;
@@ -408,7 +411,7 @@ export function setupDesktopControls(S, deps) {
         _desktopSelectSlot('ranged');
         return;
       }
-      if (e.code === 'Digit3' && (_S$rpg25 = S.rpg) !== null && _S$rpg25 !== void 0 && _S$rpg25.staffWeapon) {
+      if (e.code === 'Digit3') {
         _desktopSelectSlot('staff');
         return;
       }

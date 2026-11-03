@@ -199,6 +199,7 @@ import { applyItemReveal, afterReveal } from '@/game/revealBag.js'; /* v2.3.4012
 import { onPointsResetResult } from '@/game/pointsReset.js'; /* v2.3.3541: the free points reset's answer */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 import { applyWeaponGemResult, noteWeaponsArrived } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
+import { healedSlot } from '@/game/weaponSlots.js'; /* v2.3.4154: a saved slot you cannot fill (an empty bow slot) is taken as melee */
 import { applyShardCrackResult, applyGemCombineResult } from '@/game/shardCrack.js'; /* v2.3.3516: shards cracked and raw gems combined by the worker */
 import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
@@ -2812,6 +2813,20 @@ export function setupWebSocket(ctx) {
                  cycle gesture. */
               if (typeof msg.payload.activeSlot === 'string' && !S._userCycledSlot) {
                 S.rpg.activeSlot = msg.payload.activeSlot;
+                /* v2.3.4154: ...unless it is a slot you cannot fill.  Until
+                   this version the 2 key took up an empty bow slot, and since
+                   v2.3.4151 the worker saved it (gear.js saves any slot), so a
+                   character that pressed 2 with no bow came back to it on
+                   every join, every attack refused.  Melee (the weapons above
+                   are this payload's, so a bow arriving with its slot counts),
+                   and the worker told, once, so the save heals too. */
+                var _healSlot = healedSlot(S.rpg);
+                if (_healSlot !== S.rpg.activeSlot) {
+                  S.rpg.activeSlot = _healSlot;
+                  if (S.channel) {
+                    try { S.channel.send({ type: 'set_active_slot', payload: { slot: _healSlot } }); } catch (e) { /* the next join heals it again */ }
+                  }
+                }
               }
               var _armorChanged = false;
               var _shieldGemChanged = false; /* v2.3.3187: the shield's gem adopted from the worker */
