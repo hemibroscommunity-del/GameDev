@@ -426,8 +426,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
      chip that opens the column, and opening the column put the shop away.
      Now the shop opens the column with it and sits beside it, and his shelf
      fits its drawer.  Every press here is a real finger. */
+  /* v2.3.4092: the side column is the old layout now (the one band is the
+     default, src/ui/oneBand.js): asked for with ?oneband=0, still reachable.
+     The band sideways, the default, is the last client below. */
   const C = await H.newPlayer(browser, { name: 'Sideways', wsPort, webPort, world: 'wheel',
-    viewport: { width: 844, height: 390 }, touch: true });
+    viewport: { width: 844, height: 390 }, touch: true, query: 'oneband=0' });
   await H.enterWorld(C);
   stopAlive.push(H.keepAlive(C));
   await C.page.waitForTimeout(2500);
@@ -499,6 +502,47 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const cErrs = C.logs.filter((l) => String(l).startsWith('pageerror'));
   rec.ok('no page errors on the sideways client', cErrs.length === 0, cErrs.slice(0, 3));
   await C.ctx.close();
+
+  /* ══ v2.3.4092: SIDEWAYS WITH THE BAND AT THE BOTTOM (THE DEFAULT) ══
+     The one band on a phone on its side: the drawer rises from the band's
+     top edge as upright, your bag the band's own tiles.  A sale made with
+     real fingers, and the ✕ answering. */
+  const D = await H.newPlayer(browser, { name: 'Sideband', wsPort, webPort, world: 'wheel',
+    viewport: { width: 844, height: 390 }, touch: true });
+  await H.enterWorld(D);
+  stopAlive.push(H.keepAlive(D));
+  await D.page.waitForTimeout(2500);
+  const dId = await H.readState(D, (S) => S.myId);
+  await H.grant(wsPort, dId, 'item', { invKey: KEY, count: 4 });
+  await D.page.waitForTimeout(1200);
+  await H.unfoldBand(D);
+  await openShop(D);
+  const dv = await until(D, (x) => x.panel && x.bagQuote, 'D: drawer + first quote');
+  const dLook = await D.page.evaluate((k) => {
+    const R = (e) => { if (!e) return null; const r = e.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), r: Math.round(r.right), b: Math.round(r.bottom) }; };
+    const x = document.querySelector('[data-shop-close]');
+    const xr = x && x.getBoundingClientRect();
+    const xTop = xr ? document.elementFromPoint(xr.left + xr.width / 2, xr.top + xr.height / 2) : null;
+    return { orient: document.documentElement.getAttribute('data-orient'), band: R(document.querySelector('.bt-dashboard')),
+      tile: R(document.querySelector(`.bt-dashboard [data-inv-key="${k}"]`)), panel: R(document.querySelector('[data-shop-panel]')),
+      closeOnTop: !!(xTop && xTop.closest && xTop.closest('[data-shop-close]')), vh: innerHeight };
+  }, KEY);
+  rec.ok('sideways with the band (the default): the drawer opens over the band, your slot in the band\'s own bag, its ✕ answering',
+    dv.panel && dLook.orient === 'portrait' && !!dLook.band && !!dLook.tile && dLook.tile.t >= dLook.band.t - 1
+      && !!dLook.panel && dLook.panel.t >= 0 && dLook.closeOnTop, { look: dLook, drawer: dv.drawer });
+  const dCoins0 = await purse(D);
+  if (dLook.tile) await D.page.touchscreen.tap((dLook.tile.l + dLook.tile.r) / 2, (dLook.tile.t + dLook.tile.b) / 2);
+  const dq = await until(D, (x) => x.dealKey === KEY && +x.dealTotal > 0, 'D: sell quote');
+  const dAct = await D.page.evaluate(() => { const b = document.querySelector('[data-shop-act]'); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+  if (dAct) await D.page.touchscreen.tap(dAct.x, dAct.y);
+  let dCoins1 = dCoins0;
+  for (let i = 0; i < 20 && dCoins1 <= dCoins0; i++) { await D.page.waitForTimeout(250); dCoins1 = await purse(D); }
+  rec.ok('...a tap on the band\'s slot is a SELL, and SELL pays, sideways with the band',
+    dq.dealSide === 'bag' && /SELL/i.test(dq.actLabel || '') && dCoins1 > dCoins0, { deal: dq.dealSide, act: dq.actLabel, dCoins0, dCoins1 });
+  await D.page.screenshot({ path: H.REPO + '/tools/qa/mp/out/shopkeeper-sideways-band.png' }).catch(() => {});
+  const dErrs = D.logs.filter((l) => String(l).startsWith('pageerror'));
+  rec.ok('no page errors on the sideways band client', dErrs.length === 0, dErrs.slice(0, 3));
+  await D.ctx.close();
 
   for (const P of [A, B]) {
     const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));

@@ -264,7 +264,9 @@ async function landscape({ browser, wsPort, webPort, rec, OUT }) {
      be clicked on a sideways page in this harness (mp-landscape-dash fails
      there on main too, 2026-10-13), and the row and the side sheet do not
      care how the phone got there */
-  const P = await H.newPlayer(browser, { name: 'FitSide', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2 });
+  /* v2.3.4092: the side column is the old layout now (the one band is the
+     default, src/ui/oneBand.js): asked for with ?oneband=0, still reachable */
+  const P = await H.newPlayer(browser, { name: 'FitSide', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, query: 'oneband=0' });
   try {
     await H.enterWorld(P);
     await P.page.waitForTimeout(2000);

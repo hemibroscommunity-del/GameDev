@@ -23,7 +23,7 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';
 import { playIsLandscape } from './playViewport.js';
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the layer's own box -- a computer's is the game's column (TRAPS §232) */
 import { deskWords } from '@/game/deskWords.js'; /* v2.3.3615: "tap" reads "click" on a computer */
-import { deskWideActive } from '@/ui/deskWide.js'; /* v2.3.3687; v2.3.3793: no OPEN chip now, but the coach card's clear-of-the-quest-HUD layout (main) asks it */
+import { deskBigActive } from '@/ui/deskWide.js'; /* v2.3.3687; v2.3.3793: no OPEN chip now, but the coach card's clear-of-the-quest-HUD layout (main) asks it; v2.3.4092: either computer layout */
 
 /* ═══════════════════════════════════════════════════════════════════
    QUEST COACH — the controls are taught by the questline (v2.3.1796)
@@ -1409,7 +1409,7 @@ export function QuestCoach(props) {
     /* a computer playing wide only: a phone never meets the case, so it
        does no layout work for it (the coach draws up to ~12 times a second
        while a world-anchored lesson's ring follows you) */
-    if (!deskWideActive()) return;
+    if (!deskBigActive()) return;   /* v2.3.4092: the band on a computer too */
     const el = document.querySelector('[data-coach-card]');
     const qh = document.querySelector('[data-quest-hud]');
     if (!el || !qh) return;

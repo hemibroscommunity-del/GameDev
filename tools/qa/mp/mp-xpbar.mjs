@@ -429,8 +429,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* 6. sideways: real hits */
     await P.page.setViewportSize({ width: 844, height: 390 });
     await P.page.waitForTimeout(XP_BAR_SHOW_MS + 600);
-    const orient = await P.page.evaluate(() => document.documentElement.getAttribute('data-orient'));
-    rec.ok(`6. sideways (guard): ${orient}`, orient === 'landscape', orient);
+    /* v2.3.4092: the one band (the default) keeps data-orient portrait
+       sideways, so the guard is the window's shape and the band's switch */
+    const orient = await P.page.evaluate(() => ({ o: document.documentElement.getAttribute('data-orient'), wide: innerWidth > innerHeight, band: document.documentElement.classList.contains('bt-one-band') }));
+    rec.ok(`6. sideways (guard): ${orient.o}${orient.band ? ', the band at the bottom' : ''}`, orient.wide && (orient.o === 'landscape' || orient.band), orient);
     await layout(P, rec, OUT, 'sideways', '6. sideways', {});
 
     rec.ok('7. no page errors (phone)', errors.length === 0, errors.slice(0, 3));

@@ -51,8 +51,9 @@ applyWorldTrial();
    shape. */
 applyDeskWide();
 
-/* v2.3.4072: `?oneband=1` -- one dashboard on every screen, to try (src/ui/oneBand.js).
-   BEFORE the render, for the same reason. */
+/* v2.3.4072: one dashboard on every screen (src/ui/oneBand.js); v2.3.4092: the
+   default, `?oneband=0` the side column for one device.  BEFORE the render,
+   for the same reason. */
 applyOneBand();
 
 createRoot(document.getElementById('root')).render(<GameApp />);

@@ -1,4 +1,43 @@
-# One dashboard on every screen, to try (`?oneband=1`) (v2.3.4072)
+# One dashboard on every screen (`?oneband`) (v2.3.4072; the default since v2.3.4092)
+
+## v2.3.4092: the default, on every device
+
+The owner, 2026-11-03:
+
+> Move the left side menu to the bottom of screen on computer and all other
+> devices if this isn't already being worked on
+
+So the one band is **on by default** on every device: a computer, a sideways
+phone, a tablet and an upright phone. These words supersede the owner's
+earlier choices the side column was built on:
+
+- sideways, "No I don't want an overlay over the world" (v2.3.2157) and "You
+  can actually remove that whole bottom length bar now" (v2.3.2168);
+- on a computer, "Yes base desktop off the landscape mode but fix the menu
+  sizes" (v2.3.3687);
+- UI-DESIGN-NOTES "Please don't suggest: bringing back a bottom bar sideways"
+  (taken off that list).
+
+**The old layout stays reachable** for one device: `?oneband=0` in the
+address, or the Test panel's **Side column (old layout)** row (its button
+"Use the side column (old layout)", then "Back to the dashboard at the
+bottom"). The device keeps the choice.
+
+**The stored key.** Until v2.3.4092 `localStorage` `bt_oneband` held `'1'` for
+on and was removed for off, so "no key" meant off. Now it records only an
+explicit off, `'0'`: no key (a device that never asked, or an old "off") and
+the old `'1'` (a device that tried `?oneband=1`) both read **on**.
+`?oneband=0` and the row store `'0'`; `?oneband=1` and the row again remove
+it.
+
+**A computer's controls list.** The keys strip is the side column's, so it
+goes; the nav buttons wear their key caps and I P J L K O and Esc work as
+before. The controls list (`KeyboardHintsPanel`) had come up over the world's
+bottom-left, above the band; on a computer playing the band it now starts
+folded to its ⌨ (`deskWide.js` `deskBandActive`) until the player opens it
+(the ⌨ or H; the choice kept in `bt_kb_hints_off`, `'0'` open).
+
+## The owner's words it is built on (v2.3.4072)
 
 The owner, 2026-11-02:
 
@@ -18,25 +57,11 @@ and the refinement he adopted:
 > rows, label sizes, and information density. Maintain minimum readable text
 > and touch-target sizes.
 
-## It reverses earlier decisions, so it is a switch, off
+B3 (v2.3.4072, #1396) shipped it **off**, behind `?oneband=1` and the Test
+panel's "One dashboard (to try)" row, for the owner to try; B4 (v2.3.4092)
+made it the default.
 
-This undoes things the owner chose before:
-
-- sideways, "No I don't want an overlay over the world" (v2.3.2157) and "You
-  can actually remove that whole bottom length bar now" (v2.3.2168);
-- on a computer, "Yes base desktop off the landscape mode but fix the menu
-  sizes" (v2.3.3687);
-- UI-DESIGN-NOTES "Please don't suggest: bringing back a bottom bar sideways".
-
-So it ships **off**. It is on for a device with `?oneband=1` in the address,
-or the Test panel's **One dashboard (to try)** row (the installed app has no
-address bar); `?oneband=0` or the row again turns it off. The choice is kept
-on the device (`localStorage` `bt_oneband`) until switched off, unlike
-`?deskwide` (the tab's). The PR asks the owner to try it on a sideways phone
-and a computer before it becomes the default. Nothing changes for anyone who
-has not switched it on.
-
-## What the switch does
+## What the one band does
 
 Every screen uses the **upright layout** -- the one an upright phone has
 always had -- and only its size changes:
@@ -110,24 +135,35 @@ always had -- and only its size changes:
   the header, the cards' row).
 - `src/ui/BroTown.jsx` -- resize() adds `barW` to `--world-x` / `--world-r`.
 - `src/styles/game.css` -- the `html.bt-one-band` block.
-- `src/ui/panels/DevPanel.jsx` -- the Test panel's row.
+- `src/ui/panels/DevPanel.jsx` -- the Test panel's row (v2.3.4092: "Side
+  column (old layout)", the off switch).
+- v2.3.4092: `src/ui/deskWide.js` `deskBandActive` and BroTown's
+  `kbHintsOff` initialiser (the controls list folded on a computer playing the
+  band).
 
 ## Tests
 
-- `mp-oneband` (new): an upright phone, a sideways phone and a computer
-  (`wide: true`), each with `?oneband=1` in the Wheel's BroTown -- the
+- `mp-oneband`: an upright phone, a sideways phone and a computer (`wide:
+  true`), each asking for nothing (the default) in the Wheel's BroTown -- the
   upright layout, the band at most a third (the upright band upright), the
   slots fitting the box and more of them on a wider one, Quests opening
   inside the band at its height, the canvas above the band no wider than
-  2.2:1 and centred, the joysticks above the band, a computer's key caps and
-  J; and without the switch a sideways phone still sideways. Pictures in
-  `tools/qa/mp/out/oneband-*.png`.
-- With the switch off nothing reads differently: `deskwide`, `landdash`,
-  `playable` and `membudget` run as before.
-- `BT_QA_QUERY=oneband=1 node tools/qa/mp/run.mjs <name>` runs any scenario
-  with the switch on.
+  2.2:1 and centred, the joysticks above the band; on a computer the key caps,
+  every page key opening its page inside the band and Esc closing it, I
+  folding the band and bringing it back, the controls list folded until H;
+  the device's choice (no key on, the old `'1'` on, `?oneband=0` off and kept,
+  `?oneband=1` clearing it); and with `?oneband=0` a sideways phone still
+  plays the side column. Pictures in `tools/qa/mp/out/oneband-*.png`.
+- The old layout's suites pass `?oneband=0`: `landdash` (the sideways side
+  column) and `deskwide` (the computer's side column and keys strip), and the
+  sideways parts of the scenarios whose subject is the side column (B4's PR
+  lists them).
+- `BT_QA_QUERY=oneband=0 node tools/qa/mp/run.mjs <name>` runs any scenario
+  on the old layout.
+- Pictures: `docs/shots/oneband-default-computer.webp` (1280 x 720) and
+  `docs/shots/oneband-default-sideways.webp` (844 x 390).
 
-## Not done (for after the owner has tried it)
+## Not done
 
 - Pages other than the band's resting row (Character, Quests, Life Skills,
   Codex, More) lay themselves out from the play area's width as upright; on a
@@ -135,10 +171,14 @@ always had -- and only its size changes:
   columns on a wide band, fewer rows) waits on the owner's verdict, and on
   Lane A's Gear tab, which lays itself out from the box it gets (it receives
   the same box here).
-- No UI-review state: the switch needs a reload, which the review's one
-  session cannot make between states. mp-oneband's pictures stand in.
-- If it becomes the default: drop the side column, the dock and the keys strip
+- The UI review's sideways and computer views now show the band (the
+  default); it has no state for the old layout (the switch needs a reload).
+- A computer's sizes keyed to the side column (`deskWideActive`) are not on
+  under the band: the doubled minimap (`wheelMiniSize.js`), 470 px building
+  windows, the world map key's zoom, the swap hint's key words.
+- Dropping the old layout, if the owner never goes back to it: the side
+  column, the dock and the keys strip
   (`landDockFootprint`, `landscapeSheetW`, DashColumns `stacked` / `desk`,
   HeroExpanded `landPane` / `deskCol`, game.css's `data-orient="landscape"`
-  and `bt-desk-wide` column blocks), and update UI-DESIGN-NOTES' "Please
-  don't suggest".
+  and `bt-desk-wide` column blocks); the owner's call, since `?oneband=0` is
+  how the old layout stays reachable.

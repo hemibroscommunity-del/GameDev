@@ -524,7 +524,10 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      (`narrow`, the game's own switch back) and test what they were written
      for; `wide: true` plays the layout players get (mp-deskwide).  A NEW
      scenario on a computer passes `wide: true` unless it is about the
-     column. */
+     column.
+     v2.3.4092: the one band is the default (src/ui/oneBand.js), so `wide:
+     true` plays the whole window with the band at the bottom; the side
+     column is the old layout, `query: 'oneband=0'`. */
   const _narrow = (!touch && !wide && !/(?:^|&)(?:narrow|deskwide=)/.test(query) && !/(?:^|&)(?:narrow|deskwide=)/.test(_env)) ? 'narrow' : '';
   const _q = [guest ? 'guest=1' : '', query, _env, _world, _narrow].filter(Boolean).join('&');
   /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a

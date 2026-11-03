@@ -80,7 +80,10 @@ async function arrive(P) {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   /* ═══ SIDEWAYS ═══ */
-  const P = await H.newPlayer(browser, { name: 'Edgebro', wsPort, webPort, viewport: LAND, touch: true, world: 'wheel' });
+  /* v2.3.4092: the controls at a sideways screen's left edge are the old
+     side column's (the one band, the default, centres the world between
+     bars): asked for with ?oneband=0, still reachable */
+  const P = await H.newPlayer(browser, { name: 'Edgebro', wsPort, webPort, viewport: LAND, touch: true, world: 'wheel', query: 'oneband=0' });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopAlive = H.keepAlive(P, 15000);

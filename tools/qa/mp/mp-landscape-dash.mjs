@@ -1,6 +1,10 @@
 /* THE LANDSCAPE DASHBOARD: A 48px STRIP, AND A SHEET THE WORLD YIELDS TO
  * (v2.3.2157)
  *
+ * v2.3.4092: THE OLD LAYOUT.  The one band is the default on every screen
+ * (src/ui/oneBand.js, mp-oneband), so this phone asks for the side column
+ * with `?oneband=0`, still reachable for one device.
+ *
  * Owner, across the mockup rounds: "Landscape would be an optional view.
  * You can play in portrait or landscape."  "No I don't want an overlay over
  * the world."  "You should be able to play the game with the menus open.
@@ -82,6 +86,7 @@ const navRect = (P) => P.page.evaluate(() => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
     name: 'Sidey', wsPort, webPort, touch: true, viewport: { width: 844, height: 390 }, dpr: 2,
+    query: 'oneband=0',   /* v2.3.4092: the old layout */
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3000);

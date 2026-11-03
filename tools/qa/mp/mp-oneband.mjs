@@ -1,15 +1,17 @@
-/* ═══ ONE DASHBOARD ON EVERY SCREEN, TO TRY (?oneband=1) (v2.3.4072) ═══
+/* ═══ ONE DASHBOARD ON EVERY SCREEN (v2.3.4072; v2.3.4092: THE DEFAULT) ═══
  *
  * The owner: "unification of all different screen types ... to use the same
  * layout and just scale differences to screen size ... I like the 1/3 idea
  * where the menu takes up that much of the bottom of the screen even in
  * layout orientation", with "responsive density rather than uniform scaling
  * ... Use the available space to determine the number of inventory slots".
- * Behind a switch, off by default (src/ui/oneBand.js, docs/specs/one-band.md).
+ * v2.3.4092, the owner: "Move the left side menu to the bottom of screen on
+ * computer and all other devices" -- ON by default, `?oneband=0` the side
+ * column for one device (src/ui/oneBand.js, docs/specs/one-band.md).
  *
- * Three screens in the Wheel's BroTown, each with ?oneband=1: an upright
- * phone (390 x 844), a phone on its side (844 x 390) and a computer playing
- * wide (1280 x 720, `wide: true`).  On each:
+ * Three screens in the Wheel's BroTown, each with NOTHING asked (the
+ * default): an upright phone (390 x 844), a phone on its side (844 x 390) and
+ * a computer playing wide (1280 x 720, `wide: true`).  On each:
  *   - the upright layout draws (data-orient "portrait", the band at the
  *     bottom, the nav row in it, no side sheet, no keys strip);
  *   - the band is at most a third of the screen, and an upright phone's band
@@ -20,10 +22,14 @@
  *   - a page (Quests) opens INSIDE the band, at the band's own height;
  *   - the world's canvas sits above the band, no wider than 2.2:1 (bars at
  *     its sides past that), and on a phone the two joysticks sit above it;
- *   - on a computer the nav buttons keep their key caps and a key opens a page.
- * And one guard the other way: the same sideways phone WITHOUT the switch
- * still plays the sideways layout (data-orient "landscape", no band) -- the
- * full sideways and computer suites are landdash and deskwide.
+ *   - on a computer the nav buttons keep their key caps, every key (I P J L K
+ *     O) opens its page inside the band and Esc closes it, the controls list
+ *     starts folded to its ⌨ (no list over the world) and H opens it.
+ * Then the device's choice (v2.3.4092): no key and the old "on" ('1') both
+ * read on; `?oneband=0` turns it off and the device keeps the off; `?oneband=1`
+ * clears it.  And the old layout, still reachable: a sideways phone with
+ * `?oneband=0` plays the side column (data-orient "landscape", no band) --
+ * the full old-layout suites are landdash and deskwide (both `?oneband=0`).
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -158,6 +164,33 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
     rec.ok(`${label}: the nav buttons keep their key caps (I P J L K O)`,
       ['dashboard', 'hero', 'quests', 'skills', 'encyclopedia', 'more'].every((id) => (g.navs.find((n) => n.id === id) || {}).key),
       g.navs.map((n) => ({ id: n.id, key: n.key })));
+    /* v2.3.4092: every page key opens its page inside the band, and Esc
+       closes it (deskKeys.js; the key each button wears is the key it obeys) */
+    const caps = g.navs.filter((n) => n.key && n.id !== 'dashboard').map((n) => ({ id: n.id, key: n.key }));
+    const keyed = [];
+    for (const c of caps) {
+      await P.page.keyboard.press(c.key.toLowerCase());
+      await P.page.waitForTimeout(700);
+      const k = await read(P);
+      await P.page.keyboard.press('Escape');
+      await P.page.waitForTimeout(600);
+      const e = await read(P);
+      keyed.push({ ...c, mode: k.mode, root: k.root, h: k.o && k.o.band && k.o.band.h, after: e.mode });
+    }
+    rec.ok(`${label}: each page key opens its page inside the band at the band's height, and Esc closes it`,
+      caps.length >= 5 && keyed.every((k) => k.mode === 'expanded' && Math.abs((k.h || 0) - rest.h) <= 1 && k.after === 'bar'),
+      keyed);
+    /* I is the bag: at rest it folds the band away and brings it back (the
+       fold control's job, deskKeys.js navKey) */
+    const fold = () => P.page.evaluate(() => { const b = document.querySelector('[data-dash-fold]'); return b ? b.getAttribute('data-dash-fold') : null; });
+    const f0 = await fold();
+    await P.page.keyboard.press('i');
+    await P.page.waitForTimeout(700);
+    const f1 = await fold();
+    await P.page.keyboard.press('i');
+    await P.page.waitForTimeout(700);
+    const f2 = await fold();
+    rec.ok(`${label}: I folds the band away and I brings it back`, f0 !== 'min' && f1 === 'min' && f2 !== 'min', { f0, f1, f2 });
     await P.page.keyboard.press('j');
     await P.page.waitForTimeout(800);
     const k = await read(P);
@@ -166,7 +199,27 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
       { mode: k.mode, root: k.root, band: k.o.band });
     await P.page.keyboard.press('j');
     await P.page.waitForTimeout(500);
+    /* v2.3.4092 (B3's rough edge): the controls list no longer comes up over
+       the world's bottom-left -- folded to its ⌨ until H or the ⌨ opens it */
+    const kb = () => P.page.evaluate(() => ({ chip: !!document.querySelector('.bt-kb-chip'), rows: document.querySelectorAll('.bt-kb-hints .bt-kb-key').length }));
+    const kb0 = await kb();
+    await P.page.keyboard.press('h');
+    await P.page.waitForTimeout(500);
+    const kb1 = await kb();
+    await P.page.keyboard.press('h');
+    await P.page.waitForTimeout(400);
+    rec.ok(`${label}: the controls list starts folded to its ⌨ (nothing over the world), and H opens it`,
+      kb0.chip && kb0.rows === 0 && kb1.rows >= 4, { start: kb0, afterH: kb1 });
   }
+}
+
+/* v2.3.4092: is the band on for this page load (html.bt-one-band, applied
+   before the first render, so a bare load answers without entering the world) */
+async function loadAndRead(P, url) {
+  await P.page.goto(url, { waitUntil: 'domcontentloaded' });
+  await P.page.waitForFunction(() => document.documentElement.classList.length > 0 || document.readyState === 'complete', null, { timeout: 15000 }).catch(() => {});
+  await P.page.waitForTimeout(600);
+  return P.page.evaluate(() => ({ on: document.documentElement.classList.contains('bt-one-band'), key: (() => { try { return localStorage.getItem('bt_oneband'); } catch (e) { return 'n/a'; } })() }));
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -176,16 +229,58 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { label: 'computer', viewport: { width: 1280, height: 720 }, wide: true, computer: true },
   ];
   for (const s of screens) {
-    const P = await screen(browser, wsPort, webPort, rec, { ...s, query: 'oneband=1' });
+    const P = await screen(browser, wsPort, webPort, rec, s);   /* v2.3.4092: nothing asked -- the default */
     try { await oneBandChecks(P, rec, s); }
     finally { await P.ctx.close().catch(() => {}); }
   }
 
-  /* ── the switch is off by default: sideways is still sideways ── */
-  const P = await screen(browser, wsPort, webPort, rec, { label: 'sideways off', viewport: { width: 844, height: 390 }, touch: true });
+  /* ── v2.3.4092: a phone turned, live: the band re-lays itself both ways ── */
+  {
+    const P = await screen(browser, wsPort, webPort, rec, { label: 'turned', viewport: { width: 390, height: 844 }, touch: true });
+    const warns = [];
+    P.page.on('console', (m) => { if (m.type() === 'warning' && m.text().includes('[canvas-watchdog]')) warns.push(m.text()); });
+    try {
+      const look = async () => { const g = await read(P); return { orient: g.o.orient, dashH: g.o.dashH, band: g.o.band, canvas: g.o.canvas, cols: g.o.layout && g.o.layout.cols, rows: g.o.layout && g.o.layout.rows }; };
+      const up0 = await look();
+      await P.page.setViewportSize({ width: 844, height: 390 });
+      await P.page.waitForTimeout(1500);
+      const side = await look();
+      await P.page.setViewportSize({ width: 390, height: 844 });
+      await P.page.waitForTimeout(1500);
+      const up1 = await look();
+      await P.page.waitForTimeout(2500);   /* a watchdog war heals twice a second: give it time to show */
+      rec.ok('a phone turned sideways and back keeps the band: 243 -> 130 (9 across) -> 243, the canvas above it each way, no watchdog heals',
+        up0.dashH === 243 && side.orient === 'portrait' && side.dashH === 130 && side.cols > 4 && side.band && side.band.y === 260
+          && !!side.canvas && side.canvas.y + side.canvas.h <= 260 + OVERLAP + 1
+          && up1.dashH === 243 && up1.cols === 4 && up1.canvas && up1.canvas.w === 390 && warns.length === 0,
+        { up0, side, up1, warns: warns.slice(0, 3) });
+    } finally { await P.ctx.close().catch(() => {}); }
+  }
+
+  /* ── v2.3.4092: the device's choice ── */
+  {
+    const P = await H.newPlayer(browser, { name: 'OneKeys', wsPort, webPort, world: 'wheel', viewport: { width: 844, height: 390 }, touch: true });
+    try {
+      const u = new URL(P.page.url());
+      const bare = (extra) => { const v = new URL(u.toString()); v.searchParams.delete('oneband'); if (extra) for (const [k, x] of Object.entries(extra)) v.searchParams.set(k, x); return v.toString(); };
+      const fresh = await loadAndRead(P, bare());
+      await P.page.evaluate(() => { try { localStorage.setItem('bt_oneband', '1'); } catch (e) { /* none */ } });
+      const oldOn = await loadAndRead(P, bare());
+      const offQ = await loadAndRead(P, bare({ oneband: '0' }));
+      const offKept = await loadAndRead(P, bare());
+      const onQ = await loadAndRead(P, bare({ oneband: '1' }));
+      const onKept = await loadAndRead(P, bare());
+      rec.ok('the device\'s choice: no key is on, the old "on" (\'1\') stays on, ?oneband=0 turns it off and the device keeps it, ?oneband=1 clears it',
+        fresh.on && oldOn.on && !offQ.on && offQ.key === '0' && !offKept.on && onQ.on && onQ.key === null && onKept.on,
+        { fresh, oldOn, offQ, offKept, onQ, onKept });
+    } finally { await P.ctx.close().catch(() => {}); }
+  }
+
+  /* ── the old layout, still reachable: ?oneband=0 sideways is the side column ── */
+  const P = await screen(browser, wsPort, webPort, rec, { label: 'sideways off', viewport: { width: 844, height: 390 }, touch: true, query: 'oneband=0' });
   try {
     const g = await read(P);
-    rec.ok('without the switch a sideways phone keeps the sideways layout (data-orient landscape, no band height, no one-band row)',
+    rec.ok('with ?oneband=0 a sideways phone plays the side column (data-orient landscape, no band height, no one-band row)',
       g.o && g.o.on === false && g.o.orient === 'landscape' && g.o.dashH === 0 && !g.o.cols,
       { o: g.o });
   } finally { await P.ctx.close().catch(() => {}); }

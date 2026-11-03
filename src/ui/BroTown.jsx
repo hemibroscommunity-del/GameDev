@@ -130,7 +130,7 @@ import { ActiveWarBanner, EndedWarBanner } from './panels/WarBanner.jsx';
 /* v2.3.1205: named z-index registry — see src/ui/zLayers.js for the
    observed ladder + the tutorial-banner-under-dashboard incident. */
 import { Z_ABOVE_DASH_PROMPT } from './zLayers.js';
-import { deskWideActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size */
+import { deskWideActive, deskBandActive, deskBigActive } from './deskWide.js';   /* v2.3.3769: a computer's building windows are a computer's size; v2.3.4092: deskBandActive / deskBigActive, the band on a computer */
 import { MenuBar } from './panels/MenuBar.jsx';
 import { RevealOverlay } from './reveal/RevealOverlay.jsx'; /* v2.3.1925 */
 /* v2.3.872: buildingPanel sub-panels (decomposed individually). */
@@ -1616,7 +1616,9 @@ export var BroTown = function BroTown(_ref0) {
      INITIALISER for the same reason the quest fold below is — an effect
      would flash the strip for one frame on every load before hiding it. */
   var _useKbHints = useState(function () {
-    try { return localStorage.getItem('bt_kb_hints_off') === '1'; } catch (e) { return false; }
+    /* v2.3.4092: on a computer playing the band the list starts folded to its
+       ⌨ (deskWide.js deskBandActive) until the player has opened it ('0') */
+    try { var _kh = localStorage.getItem('bt_kb_hints_off'); return _kh === '1' || (_kh !== '0' && deskBandActive()); } catch (e) { return false; }
   }),
     _useKbHints2 = _slicedToArray(_useKbHints, 2),
     kbHintsOff = _useKbHints2[0],
@@ -13520,12 +13522,13 @@ export var BroTown = function BroTown(_ref0) {
          computer and a sideways phone, never wider than the play column
          (100% is the window's box, inside the column: TRAPS §214) -- its
          columns following its own width (game.css .bt-tb) */
-      width: buildingPanel === 'townhall' ? 'min(800px, calc(100% - 24px))' : deskWideActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
+      /* v2.3.4092: a computer's size in either layout (deskBigActive: the band, the default, too) */
+      width: buildingPanel === 'townhall' ? 'min(800px, calc(100% - 24px))' : deskBigActive() ? 'min(470px, calc(100% - 32px))' : 'min(360px, calc(100vw - 24px))',
       /* v2.3.2826: the Blacksmith card's TOP stays below the player's feet --
          the camera centres the player, so the card ends at the band and is
          (50vh - 72px - band) tall, i.e. its top sits at 50vh + 60px.  230px
          floor so a short phone still gets the header, the tabs and a row. */
-      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : (buildingPanel === 'townhall' && deskWideActive()) ? '85%' /* v2.3.3802 */ : deskWideActive() ? '82%' : '100%',
+      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : (buildingPanel === 'townhall' && deskBigActive()) ? '85%' /* v2.3.3802 */ : deskBigActive() ? '82%' : '100%',
       overflowY: 'auto',
       /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
          as the destination sheets/leaderboard): at 390 the Woodworker's

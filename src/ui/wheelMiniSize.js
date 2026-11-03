@@ -19,7 +19,7 @@
  * deskWideActive() asks a media query (a new MediaQueryList a call), so the
  * answer is kept for half a second: the minimap asks every frame.
  */
-import { deskWideActive } from './deskWide.js';
+import { deskBigActive } from './deskWide.js';   /* v2.3.4092: either computer layout (the band, the default, or the side column) */
 
 export const WHEEL_MINI_PX = 132;              /* CSS px a side on a phone (the box's own units) */
 export const WHEEL_MINI_DESK_K = 2;            /* ...times this on a computer */
@@ -34,7 +34,7 @@ export function wheelMiniK(now) {
   if (t - _at >= 500 || t < _at) {
     _at = t;
     let on = false;
-    try { on = deskWideActive(); } catch (e) { on = false; }
+    try { on = deskBigActive(); } catch (e) { on = false; }
     _k = on ? WHEEL_MINI_DESK_K : 1;
   }
   return _k;

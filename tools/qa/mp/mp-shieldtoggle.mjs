@@ -136,11 +136,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('5. ...and leaving the window lowers it', !r5d.up && !r5d.mouse, r5d);
 
     /* ── 6. the controls list ── */
+    /* v2.3.4092: under the band (the default) the list is the ⌨'s strip,
+       folded until H opens it; the old layout's column is .bt-desk-keys */
+    const kbFolded = await P.page.evaluate(() => !document.querySelector('.bt-desk-keys') && !document.querySelector('.bt-kb-hints'));
+    if (kbFolded) { await P.page.keyboard.press('h'); await P.page.waitForTimeout(500); }
     const row = await P.page.evaluate(() => {
       const r = [...document.querySelectorAll('.bt-desk-keys .bt-desk-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'R-Click');
       const sp = r && r.querySelector('span');
-      return sp ? { w: sp.textContent, cut: sp.scrollWidth > sp.clientWidth + 1, sw: sp.scrollWidth, cw: sp.clientWidth } : null;
+      if (sp) return { w: sp.textContent, cut: sp.scrollWidth > sp.clientWidth + 1, sw: sp.scrollWidth, cw: sp.clientWidth };
+      const k = [...document.querySelectorAll('.bt-kb-hints .bt-kb-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'R-Click');
+      if (!k) return null;
+      const kb = k.querySelector('kbd');
+      return { w: k.textContent.slice((kb.textContent || '').length).trim(), cut: k.scrollWidth > k.clientWidth + 1, sw: k.scrollWidth, cw: k.clientWidth, strip: true };
     });
+    if (kbFolded) { await P.page.keyboard.press('h'); await P.page.waitForTimeout(300); }
     rec.ok(`6. the controls list says R-Click "${row && row.w}", not cut short`, !!row && row.w === 'Shield \u2195' && !row.cut, row);
 
     /* ── 7. a snowman near: the guard faces it ── */

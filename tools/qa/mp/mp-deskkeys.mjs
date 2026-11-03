@@ -26,13 +26,14 @@
  * v2.3.3711, THE OWNER'S LAYOUT ("Do your recommended keyboard layout. I
  * still think there are better layouts if you consider more creative combos
  * (like keyboard presses while a click is held down, double clicking, etc)").
- * A second computer (1280 x 800, the wide layout players get), in the world at
+ * A second computer (1280 x 800, the layout players get: since v2.3.4092 the
+ * band at the bottom, src/ui/oneBand.js), in the world at
  * Frost Ridge, a greatsword and a bow, every binding driven by Playwright's
  * real mouse and keyboard:
  *   8.  (v2.3.3986) the minimap twice as big there: 264 px, 4,800 game px
  *       across, the world map's button over it;
  *   8a. the mouse wheel over the world: down the next weapon, up the one
- *       before; over the controls column it swaps nothing;
+ *       before; over the band it swaps nothing;
  *   8b. Q is the weapon's special (it raises no shield); F the Element Burst,
  *       G too, and F no longer the special;
  *   8c. the right button HELD raises the shield, facing the pointer, no
@@ -411,7 +412,10 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await H.enterWorld(P);
     const inW = await H.waitFor(P, (S) => ({ z: S.currentZone, l: !!S._zoneLoading, desk: !!S._isDesktop }),
       (v) => v.z === 'wheel' && !v.l, { timeout: 150000, label: 'into the world' }).catch(() => null);
-    rec.ok('8. a computer in the world, the wide layout (guard)', !!inW && inW.desk && !!(await P.page.$('.bt-desk-keys')), inW);
+    /* v2.3.4092: the layout players get is the band at the bottom (the one
+       band, the default): no keys strip, the band the window's width */
+    const lay = await P.page.evaluate(() => ({ band: document.documentElement.classList.contains('bt-one-band'), wide: document.documentElement.classList.contains('bt-desk-wide'), strip: !!document.querySelector('.bt-desk-keys') }));
+    rec.ok('8. a computer in the world, the layout players get -- the band at the bottom (guard)', !!inW && inW.desk && lay.band && lay.wide && !lay.strip, { inW, lay });
     if (!inW || !inW.desk) return;
     await H.closeNpcDialogue(P).catch(() => {});
     /* ── 8. v2.3.3986: THE MINIMAP, TWICE AS BIG ON A COMPUTER ──
@@ -478,10 +482,12 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     const w2 = await look(P);
     rec.ok(`8a. the wheel over the world (${aimPt.canvas ? 'the canvas' : 'NOT the canvas'}): down the next weapon, up the one before (${w0.slot} -> ${w1.slot} -> ${w2.slot})`,
       aimPt.canvas && w0.slot === 'melee' && w1.slot === 'ranged' && w2.slot === 'melee', { w0: w0.slot, w1: w1.slot, w2: w2.slot, aimPt });
-    const colBox = await P.page.evaluate(() => { const c = document.querySelector('.bt-desk-keys'); if (!c) return null; const r = c.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) }; });
+    /* v2.3.4092: over the band (the controls' column of the old layout,
+       ?oneband=0, is gone with the side column) */
+    const colBox = await P.page.evaluate(() => { const c = document.querySelector('.bt-desk-keys') || document.querySelector('.bt-dashboard'); if (!c) return null; const r = c.getBoundingClientRect(); return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + Math.min(r.height / 2, 20)) }; });
     if (colBox) { await P.page.mouse.move(colBox.x, colBox.y); await P.page.mouse.wheel(0, 100); await P.page.waitForTimeout(700); }
     const w3 = await look(P);
-    rec.ok(`8a. ...over the controls column it swaps nothing (${w3.slot})`, !!colBox && w3.slot === 'melee', { colBox, slot: w3.slot });
+    rec.ok(`8a. ...over the band it swaps nothing (${w3.slot})`, !!colBox && w3.slot === 'melee', { colBox, slot: w3.slot });
     await P.page.mouse.move(aimPt.x, aimPt.y);
     await P.page.waitForTimeout(400);
 
