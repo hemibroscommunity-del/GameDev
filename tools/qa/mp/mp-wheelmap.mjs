@@ -172,7 +172,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const px = (x, y) => box.at(Math.round(x * dpr), Math.round(y * dpr));
   const like = (p, hex, tol) => !!p && Math.abs(p[0] - ((hex >> 16) & 255)) <= tol && Math.abs(p[1] - ((hex >> 8) & 255)) <= tol && Math.abs(p[2] - (hex & 255)) <= tol;
   const midY = m.topInset + Math.round(m.mapBottom / 2);   /* v2.3.3108: halfway down the map's window */
-  /* v2.3.3922: the slim frame -- the owner's "a thin charcoal or muted gold
+  /* v2.3.3974: the slim frame -- the owner's "a thin charcoal or muted gold
      border, gentle corner rounding": 3 px (was 7), a dark keyline and a px of
      charcoal, the muted-gold line its inside px, read down both sides (each
      sample in the middle of its px at 1x, 2x and 3x) */
@@ -452,7 +452,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   {
     /* the minimap's land here is the land's one flat colour: ice blue round
        you, read off the screen (wheelLands.js frost #7fbfe0 under the box's
-       0xdadada tint: about 108, 163, 191) -- v2.3.3922: under its 0xebebeb
+       0xdadada tint: about 108, 163, 191) -- v2.3.3974: under its 0xebebeb
        tint and the ground's wash (0x6e6852 at 0.2): about 116, 162, 182 */
     const r = await P.page.evaluate(() => window.__btWheelMini);
     const { decodePNG } = await import('../../world/png.mjs');
@@ -467,7 +467,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const share = ice / (png.width * png.height);
     rec.ok(`...and the minimap paints Frost Ridge one flat ice blue (${Math.round(share * 100)}% of the box round you)`, share > 0.25, { share });
   }
-  /* ═══ v2.3.3922: THE MONSTERS, SMALL DOTS, GROUPED ═══
+  /* ═══ v2.3.3974: THE MONSTERS, SMALL DOTS, GROUPED ═══
      The owner's "smaller enemy markers, potentially grouped at low zoom, to
      eliminate the current clusters of oversized red skulls": out on Frost
      Ridge the monsters in the box are 5 px red dots (a 12 px skull each

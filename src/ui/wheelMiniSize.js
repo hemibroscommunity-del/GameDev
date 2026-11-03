@@ -1,5 +1,5 @@
 /**
- * ═══ v2.3.3922: THE WHEEL'S MINIMAP'S SIZE, IN ONE PLACE ═══
+ * ═══ v2.3.3974: THE WHEEL'S MINIMAP'S SIZE, IN ONE PLACE ═══
  *
  * The owner, playtesting on a computer: "Map system is confusing... make the
  * mini map 100% + bigger/ double the size... and change the look of the mini

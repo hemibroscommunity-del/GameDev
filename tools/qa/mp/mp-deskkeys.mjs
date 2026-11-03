@@ -29,7 +29,7 @@
  * A second computer (1280 x 800, the wide layout players get), in the world at
  * Frost Ridge, a greatsword and a bow, every binding driven by Playwright's
  * real mouse and keyboard:
- *   8.  (v2.3.3922) the minimap twice as big there: 264 px, 4,800 game px
+ *   8.  (v2.3.3974) the minimap twice as big there: 264 px, 4,800 game px
  *       across, the world map's button over it;
  *   8a. the mouse wheel over the world: down the next weapon, up the one
  *       before; over the controls column it swaps nothing;
@@ -47,7 +47,7 @@
  *   8g. no page errors.
  */
 import * as H from './harness.mjs';
-import { join } from 'node:path';   /* v2.3.3922: the minimap's picture */
+import { join } from 'node:path';   /* v2.3.3974: the minimap's picture */
 import { mkdirSync } from 'node:fs';
 const OUT = join(H.REPO, 'tools/qa/mp/out');
 
@@ -414,7 +414,7 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     rec.ok('8. a computer in the world, the wide layout (guard)', !!inW && inW.desk && !!(await P.page.$('.bt-desk-keys')), inW);
     if (!inW || !inW.desk) return;
     await H.closeNpcDialogue(P).catch(() => {});
-    /* ── 8. v2.3.3922: THE MINIMAP, TWICE AS BIG ON A COMPUTER ──
+    /* ── 8. v2.3.3974: THE MINIMAP, TWICE AS BIG ON A COMPUTER ──
        The owner: "make the mini map 100% + bigger/ double the size": 264 CSS
        px (a phone's 132 x 2), 4,800 game px across (1.5 x a phone's), flush
        in the canvas's top-right corner, the world map's button exactly over

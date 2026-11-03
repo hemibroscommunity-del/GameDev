@@ -67,7 +67,7 @@
  *     mark at its door.  The white square stays only for a Wheel whose
  *     buildings are not known (`?noobjects`).
  *
- *   - v2.3.3922: A BIGGER, CLEANER BOX -- the owner, playtesting on a
+ *   - v2.3.3974: A BIGGER, CLEANER BOX -- the owner, playtesting on a
  *     computer: "Map system is confusing... make the mini map 100% + bigger/
  *     double the size... and change the look of the mini map", and
  *     "Questioning the minimap border shape, placement, size, and minimap
@@ -121,26 +121,26 @@ import { BT_AUDIO } from '@/data/gameDisplay.js';
 import { landLook } from '@/data/wheelLands.js';           /* v2.3.3108: the plate's land colour */
 import { landIconTexture, holdLandIcons, releaseLandIcons } from '../wheelSignposts.js';   /* v2.3.3108: the plate's icon */
 import { wheelBuildingIconTexture, holdBuildingIcons, releaseBuildingIcons } from '../wheelBuildingIcons.js';   /* v2.3.3522: each building's picture */
-import { WHEEL_MINI_PX, wheelMiniK, WHEEL_MINI_WINDOW, WHEEL_MINI_DESK_WINDOW } from '@/ui/wheelMiniSize.js';   /* v2.3.3922: twice as big on a computer */
+import { WHEEL_MINI_PX, wheelMiniK, WHEEL_MINI_WINDOW, WHEEL_MINI_DESK_WINDOW } from '@/ui/wheelMiniSize.js';   /* v2.3.3974: twice as big on a computer */
 
-/* v2.3.3922: every size below is in the box's own units, a phone's CSS px; on
+/* v2.3.3974: every size below is in the box's own units, a phone's CSS px; on
    a computer the root is scaled by K (ui/wheelMiniSize.js), so the box is
    WHEEL_BOX x K CSS px there */
 export const WHEEL_BOX = WHEEL_MINI_PX;   /* a side (v2.3.3108: across; and tall, the plate included) */
 /* v2.3.3108: THE NAME PLATE (the header's note).  The map's window ends
    MAP_BOT px down the box (was the box's own 132 - FRAME); the plate is the
    frame's slate below it, PLATE_PAD in from the box's sides and bottom.
-   v2.3.3922: slimmer -- the map's window 98 (was 92), the plate 29 px tall
+   v2.3.3974: slimmer -- the map's window 98 (was 92), the plate 29 px tall
    (was 33), on the frame's charcoal */
 export const WHEEL_H = WHEEL_BOX;
 const MAP_BOT = 98, PLATE_GAP = 2, PLATE_PAD = 3;
 const TITLE_PX = 13, SUB_PX = 11, MIN_PX = 11, ICON_PX = 14, ICON_GAP = 4;
 const C_PLATE = 0x141d22, C_SUB = 0xeac675, C_TITLE = 0xf7f2e7;
-export const WHEEL_WINDOW = WHEEL_MINI_WINDOW;  /* game px across the box on a phone: about three zones (v2.3.3922: 4,800 on a computer) */
+export const WHEEL_WINDOW = WHEEL_MINI_WINDOW;  /* game px across the box on a phone: about three zones (v2.3.3974: 4,800 on a computer) */
 /* v2.3.3243: peerDotAt's answer, reused every frame */
 const _peerAt = { x: 0, y: 0 };
 
-/* v2.3.3922: the frame's gold muted (was the brass 0xd8aa58), as the owner's
+/* v2.3.3974: the frame's gold muted (was the brass 0xd8aa58), as the owner's
    "a thin charcoal or muted gold border" */
 const C_SEA = 0x16324a, C_FRAME = 0xc4a468, C_ROAD = 0xf2e4c2, C_PATH = 0xe6d5ae, C_RIVER = 0x5aaee8, C_RAIL = 0x2b2320;
 const C_TOWN = 0xf4f0e7, C_CAMP = 0xeac675, C_GATE = 0xc58cff, C_PASS = 0xf4f0e7, C_LANDMARK = 0x9fe0c0;
@@ -148,16 +148,16 @@ const C_PLAYER = 0xf4f0e7, C_OTHER = 0x58b97b, C_MONSTER = 0xe35d5b;
 /* v2.3.3009: the frame -- its width over the map's edge, CSS px: a dark
    keyline, a slate band (the bars' panel colour, LANTERN-SLATE) and the brass
    line inside it.
-   v2.3.3922: 3 px (was 7, its corners 8): the keyline (C_KEYLINE), a px of
+   v2.3.3974: 3 px (was 7, its corners 8): the keyline (C_KEYLINE), a px of
    charcoal (C_CHAR) and the muted-gold line, round corners of R_BOX, over a
    soft shadow -- the owner's "thin charcoal or muted gold border, gentle
    corner rounding".  The charcoal runs on under the map as the plate's
    ground. */
 const FRAME = 3, R_BOX = 12, R_IN = R_BOX - FRAME, C_KEYLINE = 0x0b1013, C_CHAR = 0x1c2328;
-/* v2.3.3922: the lands' wash (the world's warm ground, faint: their flat
+/* v2.3.3974: the lands' wash (the world's warm ground, faint: their flat
    colours softened toward it) and the window's gentle inner shade */
 const C_WASH = 0x6e6852, WASH_A = 0.2;
-/* ═══ v2.3.3922: THE MONSTERS, SMALL AND GROUPED (the header's note) ═══
+/* ═══ v2.3.3974: THE MONSTERS, SMALL AND GROUPED (the header's note) ═══
    One dot a MON_GRID x MON_GRID cell of the box (the world's own grid, so a
    group holds still as you walk), at its monsters' middle: MON_PX across with
    a dark edge (the 'mdot' glyph, minimapRenderer.js), MON_BIG_PX for
@@ -214,7 +214,7 @@ const HOME_R = 10, HOME_ICON_PX = 13, C_HOME = 0xf4f0e7, C_HOME_BG = 0x0b161b, C
    stands NORTH_UP above the box and reaches 3 px past the band into the map,
    so the quest's star riding the top edge (QUEST_EDGE in) loses only its
    tip under it. */
-/* v2.3.3922: a touch smaller (6, was 6.5), on the slimmer frame: its middle
+/* v2.3.3974: a touch smaller (6, was 6.5), on the slimmer frame: its middle
    still on the band, charcoal with the muted-gold N */
 const NORTH_R = 6, NORTH_Y = FRAME / 2, NORTH_FONT = 9, NORTH_UP = NORTH_R - NORTH_Y;
 /* ═══ v2.3.3146: THE TOWN'S BUILDINGS (the header's note) ═══
@@ -267,7 +267,7 @@ export class WheelMinimap {
        what made it read as more of the game screen */
     this.root.alpha = 1;
     hudLayer.addChild(this.root);
-    /* v2.3.3922: the box's scale (ui/wheelMiniSize.js) and the game px a box
+    /* v2.3.3974: the box's scale (ui/wheelMiniSize.js) and the game px a box
        px is at it -- set by _setK, from update() */
     this._k = 1;
     this.win = WHEEL_MINI_WINDOW;
@@ -277,7 +277,7 @@ export class WheelMinimap {
     this._cx = []; this._cy = []; this._cn = [];
     this._monOut = { dots: 0, groups: 0, big: 0, bosses: 0, inBox: 0 };
 
-    /* v2.3.3922: a SOFT shadow (was one 2 px ring at 0.45): three faint
+    /* v2.3.3974: a SOFT shadow (was one 2 px ring at 0.45): three faint
        rounded rects, each wider, a touch low, so the box lifts off the world */
     const shadow = new Graphics();
     for (const [g, a] of [[4, 0.08], [2.5, 0.12], [1.2, 0.2]]) {
@@ -302,7 +302,7 @@ export class WheelMinimap {
     this.partyRims = new Graphics(); /* v2.3.3277: your party's marks' rims, over theirs: every frame */
     this.townIcons = new Container(); /* v2.3.3522: each building's picture: made once, with the town */
     this.townIcons.label = 'wheel-minimap-building-icons';
-    /* v2.3.3922: the lands' wash (C_WASH's note), over the overview and the
+    /* v2.3.3974: the lands' wash (C_WASH's note), over the overview and the
        finer lands round you (both put in under it: _placeUnder, _placeLocal),
        under every line and mark; drawn once a map (_build), and held over the window as it pans */
     this.wash = new Graphics();
@@ -319,13 +319,13 @@ export class WheelMinimap {
     /* v2.3.3108: the box is B across and WHEEL_H tall; the map's window
        (the cut) ends at MAP_BOT and the slate runs on below it as the plate */
     const B = WHEEL_BOX, H = WHEEL_H, IN = B - 2 * FRAME, MH = MAP_BOT - FRAME;
-    /* v2.3.3922: the window's gentle inner shade, over the map's edge and
+    /* v2.3.3974: the window's gentle inner shade, over the map's edge and
        under the frame: two faint dark rings just inside it */
     const shade = new Graphics();
     shade.roundRect(FRAME + 1, FRAME + 1, IN - 2, MH - 2, R_IN - 1).stroke({ width: 2, color: 0x000000, alpha: 0.2 })
       .roundRect(FRAME + 3, FRAME + 3, IN - 6, MH - 6, R_IN - 3).stroke({ width: 2.5, color: 0x000000, alpha: 0.07 });
     this.root.addChild(shade);
-    /* v2.3.3922: the slim frame (FRAME's note): charcoal with the window cut
+    /* v2.3.3974: the slim frame (FRAME's note): charcoal with the window cut
        out of it, the keyline round its outside, the muted-gold line its
        inside px, on whole px of the box so each line is one px of colour */
     const border = new Graphics();
@@ -334,7 +334,7 @@ export class WheelMinimap {
     border.roundRect(0.5, 0.5, B - 1, H - 1, R_BOX - 0.5).stroke({ width: 1, color: C_KEYLINE });
     border.roundRect(FRAME - 0.5, FRAME - 0.5, IN + 1, MH + 1, R_IN + 0.5).stroke({ width: 1, color: C_FRAME, alpha: 0.92 });
     /* the plate: a darker well in the charcoal, as the bars' inset readouts
-       (v2.3.3922: no rim of its own) */
+       (v2.3.3974: no rim of its own) */
     const PT = MAP_BOT + PLATE_GAP, PH = H - PLATE_PAD - PT;
     border.roundRect(PLATE_PAD, PT, B - 2 * PLATE_PAD, PH, R_IN - 3).fill(C_PLATE);
     this._plateBox = { x: PLATE_PAD, y: PT, w: B - 2 * PLATE_PAD, h: PH };
@@ -353,9 +353,9 @@ export class WheelMinimap {
     this.north.label = 'wheel-minimap-north';
     const nBead = new Graphics();
     nBead.circle(0, 0, NORTH_R + 0.75).fill(C_KEYLINE)
-      .circle(0, 0, NORTH_R).fill(C_CHAR).stroke({ width: 1.4, color: C_FRAME });   /* v2.3.3922: charcoal (was the slate) */
+      .circle(0, 0, NORTH_R).fill(C_CHAR).stroke({ width: 1.4, color: C_FRAME });   /* v2.3.3974: charcoal (was the slate) */
     const nRes = Math.min(4, Math.max(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1));
-    this._tRes = nRes;   /* v2.3.3922: x K on a computer (_setK) */
+    this._tRes = nRes;   /* v2.3.3974: x K on a computer (_setK) */
     const nText = new Text({ text: 'N', resolution: nRes, style: {
       fontFamily: 'Source Sans 3, sans-serif', fontSize: NORTH_FONT, fontWeight: '900', fill: C_FRAME,
     } });
@@ -433,7 +433,7 @@ export class WheelMinimap {
     try { if (window.__btWheelPlate) window.__btWheelPlate = null; } catch (e) { /* no page */ }
   }
 
-  /* ═══ v2.3.3922: THE BOX'S SCALE (ui/wheelMiniSize.js) ═══
+  /* ═══ v2.3.3974: THE BOX'S SCALE (ui/wheelMiniSize.js) ═══
      K 2 on a computer playing wide, 1 on a phone.  The root is scaled by it
      (the Graphics are vector: the frame and the lines stay sharp), its Texts
      drawn K times finer, and the world in it is at the box's window: what was
@@ -510,9 +510,9 @@ export class WheelMinimap {
 
   /* the lines and places, once per map */
   _build(map) {
-    const SCALE = this.sc;   /* v2.3.3922: box px a game px, at the box's window (_setK) */
+    const SCALE = this.sc;   /* v2.3.3974: box px a game px, at the box's window (_setK) */
     this.built = map;
-    /* v2.3.3922: the lands' wash (C_WASH's note): the map's window only, held
+    /* v2.3.3974: the lands' wash (C_WASH's note): the map's window only, held
        over it as the map pans (update) -- never the world's span, which the
        stencil would cut away only after filling it (a screen of fill a frame) */
     this.wash.clear();
@@ -553,7 +553,7 @@ export class WheelMinimap {
      ground it stands on -- and its door.  [] before the worker has posted
      its objects, or with `?noobjects`: then the town is its square again. */
   _buildTown(doors) {
-    const SCALE = this.sc;   /* v2.3.3922: box px a game px, at the box's window (_setK) */
+    const SCALE = this.sc;   /* v2.3.3974: box px a game px, at the box's window (_setK) */
     this._doorsFor = Array.isArray(doors) && doors.length ? doors : null;
     const G = this.buildings;
     G.clear();
@@ -648,7 +648,7 @@ export class WheelMinimap {
   }
 
   _placeUnder(map) {
-    const SCALE = this.sc;   /* v2.3.3922: box px a game px, at the box's window (_setK) */
+    const SCALE = this.sc;   /* v2.3.3974: box px a game px, at the box's window (_setK) */
     if (this.under) return;
     /* v2.3.3024: each land one flat colour (wheelTrial.js landsCanvas; the
        owner: "There might need to be flat colors on the minimap to help
@@ -663,7 +663,7 @@ export class WheelMinimap {
     /* a touch darker than the ground, so every mark on it reads --
        v2.3.3024: the flat land colours a lighter touch (they are mid-tones
        already) */
-    /* v2.3.3922: a lighter touch (was 0xdadada): the wash over it darkens and
+    /* v2.3.3974: a lighter touch (was 0xdadada): the wash over it darkens and
        softens it toward the world's ground */
     s.tint = 0xebebeb;
     this.pan.addChildAt(s, 0);
@@ -684,7 +684,7 @@ export class WheelMinimap {
      (wheelTrial.js wheelLocalLands), laid over it here.  The short Wheel has
      no such picture (null): its whole map is that fine already. */
   _placeLocal(P) {
-    const SCALE = this.sc;   /* v2.3.3922: box px a game px, at the box's window (_setK) */
+    const SCALE = this.sc;   /* v2.3.3974: box px a game px, at the box's window (_setK) */
     const L = wheelLocalLands(P.x, P.y);
     if (!L) { if (this.local) this.local.visible = false; return; }
     const c = L.canvas;
@@ -693,7 +693,7 @@ export class WheelMinimap {
       /* a fresh source, as _placeUnder's */
       const tex = new Texture({ source: new CanvasSource({ resource: c, width: c.width, height: c.height, resolution: 1, scaleMode: 'linear' }) });
       const s = new Sprite(tex);
-      s.tint = 0xebebeb;   /* the overview's touch darker (v2.3.3922: its lighter touch) */
+      s.tint = 0xebebeb;   /* the overview's touch darker (v2.3.3974: its lighter touch) */
       this.pan.addChildAt(s, this.under ? 1 : 0);
       this.local = s; this._localCanvas = c; this._localKey = '';
     }
@@ -714,7 +714,7 @@ export class WheelMinimap {
   }
 
   _mark(x, y, icon, color, px) {
-    const SCALE = this.sc;   /* v2.3.3922: box px a game px, at the box's window (_setK) */
+    const SCALE = this.sc;   /* v2.3.3974: box px a game px, at the box's window (_setK) */
     let s = this.pool[this.used];
     if (!s) { s = new Sprite(this.dotTex); s.anchor.set(0.5); this.marks.addChild(s); this.pool.push(s); }
     s.texture = (icon && this.icons[icon]) || this.dotTex;
@@ -733,7 +733,7 @@ export class WheelMinimap {
      the box's EDGE (a townsperson just off it), smaller, its middle on the
      edge point.  Returns where it went in the box, for the probe. */
   _pin(x, y, state, edge) {
-    const SCALE = this.sc;   /* v2.3.3922: box px a game px, at the box's window (_setK) */
+    const SCALE = this.sc;   /* v2.3.3974: box px a game px, at the box's window (_setK) */
     const url = QUEST_PIN[state];
     let tex = null;
     try { tex = url && Assets.cache.has(url) ? Texture.from(url) : null; } catch (e) { tex = null; }
@@ -760,7 +760,7 @@ export class WheelMinimap {
     const P = S && S.player;
     const map = wheelMapInfo();
     if (!P || !map) { this.hide(); return; }
-    /* v2.3.3922: the box's scale (_setK) */
+    /* v2.3.3974: the box's scale (_setK) */
     const K = wheelMiniK();
     if (K !== this._k) this._setK(K);
     const SCALE = this.sc;
@@ -785,7 +785,7 @@ export class WheelMinimap {
     const winMidY = (FRAME + MAP_BOT) / 2;
     this.pan.x = Math.max(WHEEL_BOX - spanW, Math.min(0, WHEEL_BOX / 2 - P.x * SCALE));
     this.pan.y = Math.max(MAP_BOT - spanH, Math.min(0, winMidY - P.y * SCALE));
-    this.wash.x = -this.pan.x; this.wash.y = -this.pan.y;   /* v2.3.3922: over the window (a move, never a redraw) */
+    this.wash.x = -this.pan.x; this.wash.y = -this.pan.y;   /* v2.3.3974: over the window (a move, never a redraw) */
     this.root.x = Math.round(cssW - WHEEL_BOX * K);
     this.root.y = topInset;
     this.root.visible = true;
@@ -835,7 +835,7 @@ export class WheelMinimap {
         }
       }
     }
-    /* ═══ v2.3.3922: THE MONSTERS, GROUPED (MON_GRID's note) ═══
+    /* ═══ v2.3.3974: THE MONSTERS, GROUPED (MON_GRID's note) ═══
        Each live monster in the box goes into its cell of the box's grid
        (fixed to the world: the cell is its place over MON_GRID); one dot a
        cell, at its monsters' middle, bigger for MON_MANY or more; the bosses
@@ -1082,7 +1082,7 @@ export class WheelMinimap {
       if (rk !== this._rectFor) {
         this._rectFor = rk;
         const c = (canvas || document.querySelector('canvas')).getBoundingClientRect();
-        /* v2.3.3922: in CSS px -- the box's own units times K */
+        /* v2.3.3974: in CSS px -- the box's own units times K */
         const mk = K === 1 ? EXPAND_MARK : { x: EXPAND_MARK.x * K, y: EXPAND_MARK.y * K, w: EXPAND_MARK.w * K, h: EXPAND_MARK.h * K };
         this._rect = { left: Math.round(c.left + this.root.x), top: Math.round(c.top + this.root.y), w: WHEEL_BOX * K, h: WHEEL_H * K, mark: mk, k: K };
         /* v2.3.3108: the plate's own box, where a land's banner docks */
@@ -1094,7 +1094,7 @@ export class WheelMinimap {
       /* v2.3.3872: a NEW quest star is shown with a big star shrinking onto it
          (ui/starCue.js: once a target, the DOM's own animation) */
       if (!S._zoneLoading && !S._spawnToWheel) starCue(quest, this._starAt ? { x: this._rect.left + this._starAt.x * K, y: this._rect.top + this._starAt.y * K } : null, this._rect);
-      /* QA probe (tools/qa/mp/mp-wheelmap.mjs).  v2.3.3922: every place and
+      /* QA probe (tools/qa/mp/mp-wheelmap.mjs).  v2.3.3974: every place and
          size in the box in CSS px (the box's own units times K: the same
          numbers on a phone); `k` the box's scale, `scale` CSS px a game px */
       const kp = K === 1 ? (o) => o : (o) => (o && typeof o.x === 'number' ? { ...o, x: o.x * K, y: o.y * K, ...(typeof o.px === 'number' ? { px: o.px * K } : null) } : o);
@@ -1108,7 +1108,7 @@ export class WheelMinimap {
         routes: map.routes.length, places: map.places.length, words: w ? { ...w } : null,
         nodes: nodeMarks,   /* v2.3.3012: the resources marked */
         frame: FRAME * K, label: false,   /* v2.3.3009: the frame's width; nothing printed under the box */
-        /* v2.3.3922: the frame's look, its corners' radius and its two lines' colours */
+        /* v2.3.3974: the frame's look, its corners' radius and its two lines' colours */
         frameLook: { radius: R_BOX * K, keyline: C_KEYLINE, band: C_CHAR, gold: C_FRAME },
         /* v2.3.3108: the map's window ends here, and the plate's two lines */
         h: WHEEL_H * K, mapBottom: MAP_BOT * K,
@@ -1116,7 +1116,7 @@ export class WheelMinimap {
         /* v2.3.3522: + whose road it is and where it leads (game/questWays.js) */
         star: this._starAt ? { x: Math.round(this._starAt.x * K), y: Math.round(this._starAt.y * K) } : null,   /* v2.3.3872: the star in the box (mp-starcue) */
         dropPin: kp(dropPin),   /* v2.3.3879: your own pin in the box (mp-mappin) */
-        /* v2.3.3922: the monsters' marks -- dots (one a cell), how many cells
+        /* v2.3.3974: the monsters' marks -- dots (one a cell), how many cells
            hold two or more (groups) and three or more (big), the bosses'
            skulls, the live monsters in the box, and the marks' sizes */
         monsters: { ...this._monOut, px: MON_PX * K, bigPx: MON_BIG_PX * K, bossPx: BOSS_PX * K, grid: MON_GRID * K, glyph: 'mdot', bossGlyph: 'bossSkull' },

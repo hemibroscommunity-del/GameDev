@@ -1,4 +1,4 @@
-# A bigger, cleaner minimap (v2.3.3922)
+# A bigger, cleaner minimap (v2.3.3974)
 
 The owner, playtesting on a computer, 2026-11-02:
 
