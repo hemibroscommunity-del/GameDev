@@ -77,9 +77,9 @@ const levelled = () => ({ prog3: { pool: 3, shared: 3, alloc: {}, atk: { sword: 
 /* ── 4. the words ── */
 {
   const R = levelled();
-  check('4: the handle (v2.3.4021: the grip replaced OPEN)', PT.pointsTipWords('fold', R) === 'You have 6 points to spend. Tap the handle.', PT.pointsTipWords('fold', R));
+  check('4: the handle (v2.3.4071: the grip replaced OPEN)', PT.pointsTipWords('fold', R) === 'You have 6 points to spend. Tap the handle.', PT.pointsTipWords('fold', R));
   check('4: the sideways dashboard', PT.pointsTipWords('side', R) === 'You have 6 points to spend. Open your dashboard.');
-  check('4: Bro (v2.3.4021: the button\'s new name)', PT.pointsTipWords('nav', R) === 'You have 6 points to spend. Tap Bro.');
+  check('4: Bro (v2.3.4071: the button\'s new name)', PT.pointsTipWords('nav', R) === 'You have 6 points to spend. Tap Bro.');
   check('4: the Points tab', PT.pointsTipWords('tab', R) === 'Your 6 points are on the Points tab.');
   const g = PT.pointsTipWords('grid', R);
   check('4: the grid says what the two rows are and to tap a stat',
@@ -130,7 +130,7 @@ const coach = readFileSync(new URL('../../src/ui/mobile/QuestCoach.jsx', import.
   const hero = readFileSync(new URL('../../src/ui/mobile/sheet/HeroExpanded.jsx', import.meta.url), 'utf8');
   const dash = readFileSync(new URL('../../src/ui/mobile/BottomDashboard.jsx', import.meta.url), 'utf8');
   check('6: the grid\'s top row and its head cell are there', /data-prog3-band="lane"/.test(hero) && /data-prog3-lane=\{isLane \? buildCat : 'shared'\}/.test(hero));
-  /* v2.3.4021: Bro's five tabs (Me, Points, Skills, Achievements, Equipment) */
+  /* v2.3.4071: Bro's five tabs (Me, Points, Skills, Achievements, Equipment) */
   check('6: the Points tab is the "Build" section', /const SECTIONS_ALL = \['Me', 'Build', 'Skills', 'Achievements', 'Overview'\]/.test(hero) && /data-section=\{s\}/.test(hero));
   check('6: Bro is the "hero" destination', /\{ id: 'hero',\s+label: 'Bro'/.test(dash));
   check('6: the stat window shows the hint under "points spent"', /spentHint: spentN > 0 \? firstSpendHint\(/.test(hero));

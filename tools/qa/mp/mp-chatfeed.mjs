@@ -95,7 +95,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ...and actually reached the other player, i.e. routing the composer
      through the game's sender did not break sending. */
-  /* v2.3.4021: waited for, not read the instant A sends -- the line is a
+  /* v2.3.4071: waited for, not read the instant A sends -- the line is a
      round trip to the worker and back, and on this box it can land after the
      read (seen once with the bell's walk through More taking longer) */
   await B.page.waitForFunction(() => {

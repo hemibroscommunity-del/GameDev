@@ -65,9 +65,9 @@ import { GuildPanel }        from './dash/GuildPanel.jsx';
 import { AboutPanel }        from './dash/AboutPanel.jsx';   /* v2.3.2820 */
 /* v2.3.1143: account panel -- Login Key display + device transfer. */
 import { AccountPanel }      from './dash/AccountPanel.jsx';
-import { NotificationsPanel } from './dash/NotificationsPanel.jsx';   /* v2.3.4021: the bell's page */
-import { notifUnread } from './notifBus.js';                         /* v2.3.4021: the bell's unread count on More */
-import { BandGrip } from './dash/BandGrip.jsx';                      /* v2.3.4021: the slim handle that replaced CLOSE / OPEN */
+import { NotificationsPanel } from './dash/NotificationsPanel.jsx';   /* v2.3.4071: the bell's page */
+import { notifUnread } from './notifBus.js';                         /* v2.3.4071: the bell's unread count on More */
+import { BandGrip } from './dash/BandGrip.jsx';                      /* v2.3.4071: the slim handle that replaced CLOSE / OPEN */
 import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
@@ -456,7 +456,7 @@ const PANELS = {
   /* v2.3.1291 (ChatGPT round-3 §1): the tab says Friends, so the header
      says Friends — one name everywhere (the panel id stays 'social' on
      the wire-free client side; renaming ids resets nothing). */
-  /* v2.3.4021: 'Social', its More tile's word now (v2.3.2038's rule) */
+  /* v2.3.4071: 'Social', its More tile's word now (v2.3.2038's rule) */
   social:       { title: 'Social',      Component: SocialPanel },
   more:         { title: 'More',        Component: MorePanel },
   /* v2.3.3120: the Pets page (dash/PetsPanel.jsx): More -> Pets, and the
@@ -475,7 +475,7 @@ const PANELS = {
      "Leaderboard" is too long for a six-across tile.  The Town Hall's row
      and the profile's button still say Leaderboard: they describe the
      board, and renaming them is the owner's taste. */
-  /* v2.3.4021: 'Leaderboards', the word in the owner's More list (its tile
+  /* v2.3.4071: 'Leaderboards', the word in the owner's More list (its tile
      breaks "Leader-boards" where six across has no room, as Achievements'
      did) -- one name for the tile and the page, v2.3.2038's rule */
   leaderboard:  { title: 'Leaderboards', Component: LeaderboardPanel },
@@ -489,10 +489,10 @@ const PANELS = {
   /* v2.3.1143: Login Key display + device transfer. */
   /* v2.3.2038: titled 'Login Key' to match the More tile that now opens it
      directly -- what you tap and what opens should carry one name. */
-  /* v2.3.4021: More -> Account: Log out / Switch character, then the key
+  /* v2.3.4071: More -> Account: Log out / Switch character, then the key
      (the owner's review: "Switch character / logout: More → Account") */
   account:      { title: 'Account',     Component: AccountPanel },
-  /* v2.3.4021: what the bell in the world's corner showed (the owner: "The
+  /* v2.3.4071: what the bell in the world's corner showed (the owner: "The
      notification bell could also move to More, retaining an unread badge") */
   notifications: { title: 'Notifications', Component: NotificationsPanel },
   /* v2.3.235 (Phase 5): Tier 2 spec allocation panel. */
@@ -506,7 +506,7 @@ const PANELS = {
      More launcher; their PANELS entries stay only so stale drill ids
      in old sessions don't render a blank sheet. */
   bag:          { title: 'Bag',         Component: InventoryPanel },
-  hero:         { title: 'Bro',         Component: HeroExpanded },   /* v2.3.4021: the Bro page */
+  hero:         { title: 'Bro',         Component: HeroExpanded },   /* v2.3.4071: the Bro page */
   /* ═══ v2.3.2163: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
      Owner: "I can see 8 slots playing in [portrait] view (plus space for
      combat skills) so this should translate to 8 slots of space viewable
@@ -544,7 +544,7 @@ let _deskOpened = false;
 
 const DESTINATIONS = [
   { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
-  /* v2.3.4021: "Bro" -- the owner's word for the page that is you (the id
+  /* v2.3.4071: "Bro" -- the owner's word for the page that is you (the id
      stays 'hero': tests, hooks and the guide arrow key on it, TRAPS §29) */
   { id: 'hero',   label: 'Bro',     icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
   /* v2.3.1331 (owner art drop): dedicated life-skills crest replaces
@@ -623,7 +623,7 @@ const DESTINATIONS = [
    as Quests and Life Skills do.  The width it needed came from the drill's
    back chip, which left this row for the panel's own header (the owner's
    choice: sheetGeometry IDENTITY_MIN_LINE). */
-/* ═══ v2.3.4021: FIVE -- GEAR, BRO, QUESTS, CODEX, MORE ═══
+/* ═══ v2.3.4071: FIVE -- GEAR, BRO, QUESTS, CODEX, MORE ═══
    The owner: "I want to consolidate the dashboard area as much as possible
    (limit lots of buttons to switch between different context)", with his
    table: Gear (the bag, the figure, what you wear, stats, gold), Bro (you:
@@ -637,7 +637,7 @@ const DESTINATIONS = [
    words changed (aria-label and title: the buttons stay icon-only). */
 const RAIL_ORDER = ['hero', 'quests', 'encyclopedia', 'more'];
 const RAIL_ITEMS = [
-  { id: 'dashboard', label: 'Gear', icon: '/icons/ui/nav-dashboard.png?v=2.3.3784' },   /* v2.3.3784: the bag and its three fights; v2.3.4021: "Gear" */
+  { id: 'dashboard', label: 'Gear', icon: '/icons/ui/nav-dashboard.png?v=2.3.3784' },   /* v2.3.3784: the bag and its three fights; v2.3.4071: "Gear" */
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
 ];
 
@@ -1049,7 +1049,7 @@ export const BottomDashboard = () => {
      social: pending requests + unread DMs, else an online dot.  The Bag's
      circle dot was removed at v2.3.1315 (owner) — the pickup pulse and
      the in-bag sparkles stay. */
-  /* v2.3.4021: Life Skills are Bro's tab now, so an unseen level-up marks
+  /* v2.3.4071: Life Skills are Bro's tab now, so an unseen level-up marks
      Bro (a plain dot when there are no points to count) and More carries the
      bell's unread count (More -> Notifications) */
   const _skillsNew = hasUnseenLevelUps((Sb && Sb.rpg) || {});
@@ -1491,7 +1491,7 @@ export const BottomDashboard = () => {
         touchAction: 'none',
       }}
     >
-      {/* v2.3.4021: the fold's grip on the band's top edge (dash/BandGrip.jsx).
+      {/* v2.3.4071: the fold's grip on the band's top edge (dash/BandGrip.jsx).
           Upright only: sideways the band is not drawn (the fold chip is in
           the dock), and a computer plays sideways. */}
       {!land ? <BandGrip min={dashMin} expanded={mode === 'expanded'} /> : null}
@@ -1735,7 +1735,7 @@ export const BottomDashboard = () => {
            cell to align to, there is nothing left for the tracks to keep
            in register — see IdentityStrip. */
         display: 'flex', alignItems: 'center', gap: DASH_GAP,
-        /* v2.3.4021: the five buttons centred in the row the pill left */
+        /* v2.3.4071: the five buttons centred in the row the pill left */
         justifyContent: 'center',
         borderBottom: mode === 'expanded' ? 'none' : `1px solid ${COL.divider}`,
       }}>
@@ -1781,7 +1781,7 @@ export const BottomDashboard = () => {
             closed the effect has nothing to say.  Opening any tab still
             unfolds (that effect is unchanged) — the chip stays put, its
             meaning flips with the glyph. */}
-        {/* ═══ v2.3.4021: THE CLOSE / OPEN PILL LEFT THIS ROW ═══
+        {/* ═══ v2.3.4071: THE CLOSE / OPEN PILL LEFT THIS ROW ═══
             The owner, adopting the review: "remove the large OPEN/CLOSE button
             taking up a full navigation slot.  A slim, centered handle at the
             top of the dashboard would communicate that the panel can be

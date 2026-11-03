@@ -25,7 +25,7 @@
 // combat chrome rides above the open sheet keyed off --sheet-h.
 
 import { playIsLandscape } from './playViewport.js'; /* v2.3.2173: the bag-pane tourniquet below */
-import { heroSectionBus } from './sheet/heroSectionBus.js'; /* v2.3.4021: Life Skills and Achievements live in Bro */
+import { heroSectionBus } from './sheet/heroSectionBus.js'; /* v2.3.4071: Life Skills and Achievements live in Bro */
 
 const listeners = new Set();
 const emit = () => {
@@ -70,7 +70,7 @@ const landSafe = (id) => {
   return id;
 };
 
-/* ═══ v2.3.4021: LIFE SKILLS AND ACHIEVEMENTS ARE BRO'S SUB-TABS ═══
+/* ═══ v2.3.4071: LIFE SKILLS AND ACHIEVEMENTS ARE BRO'S SUB-TABS ═══
    The owner's five buttons (Gear, Bro, Quests, Codex, More): "Lifeskills
    move inside Bro", and Achievements leave More for Bro too.  Every road
    that still asks for the old pages -- the L key, the top bar's AP medal
@@ -128,7 +128,7 @@ export const dashboardPanelBus = {
   },
 
   open(id) {
-    const tab = broTab(id);   /* v2.3.4021 */
+    const tab = broTab(id);   /* v2.3.4071 */
     if (tab) { heroSectionBus.request(tab); id = 'hero'; }
     this.state.stack = [landSafe(id)];
     this.state.mode = 'expanded';
@@ -182,7 +182,7 @@ export const dashboardPanelBus = {
 
   // Legacy toggle kept for old call sites (InventoryPreview tap etc.).
   toggle(id) {
-    if (broTab(id)) { this.open(id); return; }   /* v2.3.4021 */
+    if (broTab(id)) { this.open(id); return; }   /* v2.3.4071 */
     if (this.current() === id) {
       this.clear();
     } else {
@@ -195,7 +195,7 @@ export const dashboardPanelBus = {
   // Push a child panel onto the stack — used by launcher tiles and the
   // Hero -> Build jump.  Drill children render expanded.
   push(id) {
-    /* v2.3.4021: a drill to Life Skills or Achievements opens Bro on it */
+    /* v2.3.4071: a drill to Life Skills or Achievements opens Bro on it */
     if (broTab(id)) { this.open(id); return; }
     this.state.stack = [...this.state.stack, landSafe(id)];
     this.state.mode = 'expanded';

@@ -27,13 +27,13 @@ export const heroSectionBus = {
   /** Read-and-clear.  Consumed by HeroExpanded on render. */
   take() { const p = _pending; _pending = null; return p; },
   peek() { return _pending; },
-  /* v2.3.4021: the Bro page's sub-tab on screen right now (HeroExpanded
+  /* v2.3.4071: the Bro page's sub-tab on screen right now (HeroExpanded
      writes it each render; null while the page is shut), so a key that opens
      a sub-tab can close it again when pressed twice (deskKeys navKey: L) */
   shown: null,
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 };
-/* v2.3.4021: QA's handle on it (as __broDashPanelBus is the dashboard's): a
+/* v2.3.4071: QA's handle on it (as __broDashPanelBus is the dashboard's): a
    scenario written for the old Character page, which opened on Equipment,
    asks for that tab before opening Bro, which opens on Me now */
 if (typeof window !== 'undefined') window.__btHeroSection = heroSectionBus;

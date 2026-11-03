@@ -55,7 +55,7 @@ const DESK = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
 /* src/game/deskKeys.js NAV_KEYS -- held to it in step 1 by what the page
    wears, so a change there that this file missed fails here */
-/* v2.3.4021: five buttons (Gear, Bro, Quests, Codex, More); L opens Bro's
+/* v2.3.4071: five buttons (Gear, Bro, Quests, Codex, More); L opens Bro's
    Skills tab, which wears it (checked in step 2) */
 const NAV = { dashboard: 'I', hero: 'P', quests: 'J', encyclopedia: 'K', more: 'O' };
 
@@ -71,7 +71,7 @@ const shown = (c) => !!c && c.content && c.content !== 'none' && c.content !== '
 const sheet = (P) => P.page.evaluate(() => {
   const b = window.__broDashPanelBus;
   const f = document.querySelector('[data-dash-fold]');
-  /* v2.3.4021: + Bro's tab on screen (heroSectionBus.shown) */
+  /* v2.3.4071: + Bro's tab on screen (heroSectionBus.shown) */
   const h = window.__btHeroSection;
   return b ? { mode: b.state.mode, root: b.state.stack[0], top: b.current(), fold: f ? f.getAttribute('data-dash-fold') : null, tab: h ? h.shown : null } : null;
 });
@@ -104,7 +104,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
     /* ── 1. THE LETTERS ── */
     const caps = {};
     for (const id of Object.keys(NAV)) caps[id] = await capOf(P, `[data-nav="${id}"]`);
-    rec.ok('the dashboard\'s five buttons wear I P J K O (v2.3.4021)',
+    rec.ok('the dashboard\'s five buttons wear I P J K O (v2.3.4071)',
       Object.keys(NAV).every((id) => shown(caps[id]) && caps[id].key === NAV[id]), caps);
     const mapCap = await capOf(P, '[data-world-map-open]');
     const mark = await P.page.evaluate(() => (window.__btWheelMini && window.__btWheelMini.mark) || null);
@@ -186,7 +186,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
       const off = await sheet(P);
       rec.ok(`${k} opens ${id}, and ${k} again closes it`, !!on && on.mode === 'expanded' && on.root === id && !!off && off.mode === 'bar', { on, off });
     }
-    /* v2.3.4021: L is Bro's Skills tab (the owner: "Lifeskills move inside
+    /* v2.3.4071: L is Bro's Skills tab (the owner: "Lifeskills move inside
        Bro"), which wears the L; again closes it */
     await key(P, 'KeyL');
     const lOn = await sheet(P);

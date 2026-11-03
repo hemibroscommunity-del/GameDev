@@ -66,7 +66,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
   });
   rec.ok('the More destination opens from the nav rail', more.n > 0, more);
-  /* v2.3.4021: the owner's review, "Switch character / logout: More →
+  /* v2.3.4071: the owner's review, "Switch character / logout: More →
      Account": the tile is Account now, its page the door first and then the
      key, and its tooltip still names the key */
   rec.ok('...and carries a top-level Account tile', more.hasKey, more);
@@ -77,7 +77,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3357: "displaced none" is "it is the LAST tile": the list it was
      checked against named the nine of its day, and the Pets tile (v2.3.3120)
      has stood third since -- so it failed with nothing displaced */
-  /* v2.3.4021: the owner's More (map, social, ... settings, account,
+  /* v2.3.4071: the owner's More (map, social, ... settings, account,
      notifications, feedback, about): Account beside Settings, Map first */
   rec.ok('...in the owner\'s More, beside Settings',
     more.order.length === 12 && more.order.indexOf('account') === more.order.indexOf('settings') + 1
@@ -140,10 +140,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!el) return null;
     return { w: Math.round(el.clientWidth), sw: Math.round(el.scrollWidth) };
   });
-  rec.ok('the panel that opens is titled "Account" too (v2.3.4021)',
+  rec.ok('the panel that opens is titled "Account" too (v2.3.4071)',
     !!header, header);
 
-  /* ── v2.3.4021: THE DOOR, AT THE TOP OF ACCOUNT ──
+  /* ── v2.3.4071: THE DOOR, AT THE TOP OF ACCOUNT ──
      The same confirm window as the top bar's door, with the same one-bro
      rule: this device holds one bro, so it reads "Log out" and asks "Leave
      the world?".  Cancel closes it and nothing leaves. */
@@ -183,7 +183,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
   });
   await A.page.waitForTimeout(500);
-  /* v2.3.4021: the Settings page's script arrives when it is first opened
+  /* v2.3.4071: the Settings page's script arrives when it is first opened
      (lazyPanels), so wait for its row rather than a flat half second */
   await A.page.waitForFunction(() => [...document.querySelectorAll('button')].some((x) => /Login Key —/.test(x.textContent || '')),
     null, { timeout: 10000, polling: 200 }).catch(() => {});

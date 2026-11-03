@@ -263,7 +263,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const leaves = [...dash.querySelectorAll('*')]
       .filter((el) => !el.children.length && (el.textContent || '').trim())
       .map((el) => (el.textContent || '').trim());
-    /* The identity row is the absolute row that owns the nav rail (v2.3.4021:
+    /* The identity row is the absolute row that owns the nav rail (v2.3.4071:
        the fold left it for the grip on the band's top edge). */
     const nav = dash.querySelector('.bt-navrail');
     const row = nav ? nav.parentElement && nav.parentElement.parentElement : null;
@@ -281,7 +281,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('...and no gold count is left anywhere in the band',
     inBand.dash && inBand.gold.length === 0, inBand.gold);
-  /* v2.3.4021: the CLOSE pill became the grip on the band's edge (the owner:
+  /* v2.3.4071: the CLOSE pill became the grip on the band's edge (the owner:
      "remove the large OPEN/CLOSE button taking up a full navigation slot") */
   rec.ok('...the identity row now holds the rail, nothing else',
     !!inBand.kids && inBand.kids.length === 1 && inBand.kids[0] === 'rail', inBand.kids);

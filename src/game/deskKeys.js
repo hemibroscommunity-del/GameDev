@@ -27,10 +27,10 @@
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { dashMinBus } from '@/ui/mobile/dashMinBus.js';
 import { playIsLandscape } from '@/ui/mobile/playViewport.js';
-import { heroSectionBus } from '@/ui/mobile/sheet/heroSectionBus.js';   /* v2.3.4021: L is Bro's Skills tab */
+import { heroSectionBus } from '@/ui/mobile/sheet/heroSectionBus.js';   /* v2.3.4071: L is Bro's Skills tab */
 
 /** The dashboard's buttons (BottomDashboard RAIL_ITEMS ids) -> a letter.
-    v2.3.4021: five buttons (Gear, Bro, Quests, Codex, More); `skills` keeps
+    v2.3.4071: five buttons (Gear, Bro, Quests, Codex, More); `skills` keeps
     its L, which opens Bro on its Skills tab (the owner: "Lifeskills move
     inside Bro"), worn by that tab (HeroExpanded data-key). */
 export const NAV_KEYS = Object.freeze({
@@ -77,7 +77,7 @@ export function navKey(id) {
     dashMinBus.set(!dashMinBus.min);
     return;
   }
-  /* v2.3.4021: L opens Bro on Skills (the bus sends 'skills' there), and
+  /* v2.3.4071: L opens Bro on Skills (the bus sends 'skills' there), and
      pressed with that tab showing closes it, as every page key does */
   if (id === 'skills') {
     if (open && bus.root() === 'hero' && heroSectionBus.shown === 'Skills') bus.toBar();

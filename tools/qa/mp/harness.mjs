@@ -988,7 +988,7 @@ export async function coveringElement(P, locator) {
  * throwing, so a scenario that legitimately has no chat can carry on and fail
  * on its own assertion instead of on this.
  */
-/* ═══ v2.3.4021: ...AND THE BELL IS IN MORE NOW ═══
+/* ═══ v2.3.4071: ...AND THE BELL IS IN MORE NOW ═══
  * The owner moved the bell off the play screen ("The notification bell could
  * also move to More, retaining an unread badge"): shut, the feed draws nothing
  * at all, and More -> Notifications' "Show on screen" is what opens it.  So
@@ -997,7 +997,7 @@ export async function coveringElement(P, locator) {
  * Still "until it says it is open", and still false rather than a throw. */
 export async function openWorldChat(P, { timeout = 8000 } = {}) {
   const t0 = Date.now();
-  /* v2.3.4021: opening More unfolds a folded band (a page opens it), and a
+  /* v2.3.4071: opening More unfolds a folded band (a page opens it), and a
      caller that measured the screen before (mp-weaponswap: the triangle sits
      on the band) found its buttons moved.  So the band is put back as it was:
      the walk to More is this helper's business, not the scenario's. */
@@ -1032,7 +1032,7 @@ export async function openWorldChat(P, { timeout = 8000 } = {}) {
       if (t) t.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
     }, scope);
     await P.page.waitForTimeout(450);
-    /* v2.3.4021: tapTop, not page.click -- on this box Playwright never
+    /* v2.3.4071: tapTop, not page.click -- on this box Playwright never
        found the button "stable" (the band settling under it), so the click
        timed out and the feed never opened; tapTop still fails a covered one */
     await tapTop(P.page, scope + ' [data-notif-onscreen="off"]', 2000).catch(() => {});
@@ -1040,7 +1040,7 @@ export async function openWorldChat(P, { timeout = 8000 } = {}) {
     await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b) b.toBar(); });
     await P.page.waitForTimeout(400);
   }
-  /* v2.3.4021: the walk is longer than the bell's one tap, and on this box the
+  /* v2.3.4071: the walk is longer than the bell's one tap, and on this box the
      last pass can open the feed just as the time runs out: look once more */
   const last = await P.page.evaluate(() => {
     const b = document.querySelector('[data-world-chat-toggle]');
@@ -1211,7 +1211,7 @@ async function tapTop(page, selector, timeout) {
  *  the same two taps a player makes.  Still a UI path end to end: nothing
  *  here calls the bus, so a broken rail or a missing tile fails the test.
  */
-/* v2.3.4021: the owner's five buttons renamed three things a scenario may
+/* v2.3.4071: the owner's five buttons renamed three things a scenario may
    still ask for by its old word: Character is Bro (and a scenario written for
    the Character page meant its Equipment tab, the one it opened on: Bro opens
    on Me now, so that tab is chosen for it), Dashboard is Gear, and More's
