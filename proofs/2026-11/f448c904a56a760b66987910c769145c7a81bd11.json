@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f448c904a56a760b66987910c769145c7a81bd11",
+  "tree": "757dfde52259dbe3a1040458f521f57810416324",
+  "committedAt": "2026-11-02T17:40:08-08:00",
+  "subject": "Merge pull request #1383 from hemibroscommunity-del/claude/reticle-pulse",
+  "files": 7341,
+  "bytes": 843762606,
+  "listingSha256": "88f7bd9d3b6b217d9afab2fddf6f8b9d85c76be3adb3e136842d4faf1b88fb99",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
