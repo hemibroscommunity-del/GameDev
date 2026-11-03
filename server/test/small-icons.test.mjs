@@ -93,7 +93,8 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
   const cs = src('src/ui/panels/controlSkin.jsx');
   /* v2.3.3526: the eight are the owner's card 11 picks now, at a new
      address (owner-icons.test §6) -- what this pins is the webp, not its ?v= */
-  check('3h the stick\'s pictures and the ability art are the new files', /'\/ui\/controls\/talk\.webp\?v=2\.3\.\d+'/.test(cs)
+  /* v2.3.4105: the stick never talks, so its bubble is no longer asked for: the door's stands for the set */
+  check('3h the stick\'s pictures and the ability art are the new files', /'\/ui\/controls\/door\.webp\?v=2\.3\.\d+'/.test(cs) && !/controls\/talk\.webp/.test(cs)
     && /abilityArtUrl\(name, !!props\.grey\)/.test(cs) && !/talk\.svg|farm-dig\.svg/.test(cs));
   const pa = src('src/rendering/preloadAnimations.js'), cp = src('src/rendering/controlsPreload.js');
   check('3i nothing on first use: the canvas copies on the loading screen, the DOM ones warmed there',

@@ -4,7 +4,8 @@
    keydown/keyup on window and returns the teardown the effect cleanup
    calls. Closure captures made explicit:
    - BT_AUDIO / getNpcQuest imported below (the `typeof getNpcQuest`
-     guard in the E-handler is kept verbatim);
+     guard in the E-handler is kept verbatim; v2.3.4105: gone with E's
+     talk);
    - the _desktop* useCallback helpers, React setters, chatInputRef and
      the chatOpen value arrive via `deps` (destructured to the original
      names so the body is untouched). `chatOpen` is the value captured
@@ -12,16 +13,13 @@
      original inline closure (the effect's dep array is unchanged).
    S is stateRef.current; S.keys feeds the movement code that stayed in
    the game loop. */
-import { BT_AUDIO, getNpcQuest, calcDisplayHeal } from '@/data/index.js';
+import { BT_AUDIO, calcDisplayHeal } from '@/data/index.js';   /* v2.3.4105: getNpcQuest no longer (E never talks) */
 import { quickEatView } from '@/game/quickEat.js';   /* v2.3.3260: V eats */
 import { eatBus } from '@/ui/mobile/eatBus.js';   /* v2.3.3260: ...through the bag's own Eat */
 import { triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: X jumps; v2.3.3844: Space does */
 import { trapButtonView, armTrap } from '@/game/trapping.js';   /* v2.3.3120: T arms a trap */
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';   /* v2.3.3120: the Pet House opens the Pets page */
 import { enterWheelDungeon } from '@/game/wheelDungeons.js';   /* v2.3.3016: E at a Wheel dungeon's mouth */
-import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js';   /* v2.3.3067: E at Ace opens his coin flip */
-import { npcSpeaks } from '@/game/npcVoices.js';   /* v2.3.3462: the townsfolk answer in their own voices */
-import { shopBus } from '@/ui/mobile/shopBus.js';   /* v2.3.3067: ...and at Diego his shop */
 import { startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed on your farm, worked where it lies */
 import { emotesLive } from '@/game/emotes.js';   /* v2.3.3391: B opens the emotes */
 import { navIdForCode, navKey, browserChord, frontControl, pressControl, ESC_SEL, ENTER_SEL, MAP_KEY } from '@/game/deskKeys.js';
@@ -31,7 +29,10 @@ import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
 import { dblTapRoll, tapDir } from '@/game/deskCombos.js';   /* v2.3.3711: a direction key tapped twice rolls */
 import { openRiseChest } from '@/game/climbActions.js';   /* v2.3.3994: E (or the right stick's tap) at the lagoon's chest */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { mayorSaysNext } from '@/game/mayorTalk.js';   /* v2.3.3899: Mayor Bro always talks */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.4105: E beside someone says "Click <name> to talk" */
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4105: ...by the name his plate wears */
+/* v2.3.4105: aceFlipBus, shopBus, npcSpeaks and mayorSaysNext left with E's
+   talk (runTalk): a tap on him answers each (BroTown.jsx tapNpcAtCss) */
 
 /* v2.3.3711: `?dbltap=0` -- the double tap's roll off, for a tab (the owner's
    to keep or not: a quick double nudge of W rolls now) */
@@ -43,14 +44,12 @@ function dblTapOn() {
  * v2.3.3105: what runInteract would do here, for the right stick's picture
  * (BroTown's resolver): 'door' (a building, a hall, the Workshop, a dungeon's
  * mouth, the Pet House), 'sleep' (the farm's bed), 'gather' (a resource --
- * the stick's own harvest owns that), 'talk' (a character), or null.  The same
- * order as runInteract -- `{ npcFirst: true }` is the right stick's, the
- * character before the door.
+ * the stick's own harvest owns that), or null.  The same order as
+ * runInteract.  v2.3.4105: never 'talk' -- E and the stick never talk (the
+ * note below); the stick's `{ npcFirst: true }` is retired with it.
  */
-export function interactKind(S, opts) {
+export function interactKind(S) {
   if (!S) return null;
-  if (opts && opts.npcFirst && S._nearNpc) return 'talk';   /* the right stick's order (runInteract) */
-  if (talkBeforeDoor(S)) return 'talk';   /* v2.3.3583: E's order too (runInteract); v2.3.3834: not over the door's prompt; v2.3.3868: any townsperson in range, over a door */
   if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) return 'door';
   if (S._nearHouse) return 'sleep';
   if (S._nearWorkshop || S._nearWheelDoor || S._nearPetHouse) return 'door';
@@ -61,63 +60,39 @@ export function interactKind(S, opts) {
   if (S._nearChest) return 'door';
   var gn = S._nearNode || S._proxNode;
   if (gn && gn.alive) return 'gather';
-  if (S._nearNpc) return 'talk';
   return null;
 }
 
-/* ═══ v2.3.3583: A QUEST BESIDE YOU COMES BEFORE A DOOR ═══
-   The owner: "change the npc dialog behavior to be tap only instead of
-   proximity based" -- so walking up to a townsperson opens nothing now
-   (BroTown NPC_PROX_OPENS).  On a phone the right stick's tap asks for the
-   character first (npcFirst, below).  E asked for a DOOR first, and the
-   givers stand by doors -- Mayor Bro at the Town Hall's steps -- so with the
-   walk-up gone, E beside the Mayor opened the Town Hall and a keyboard could
-   reach his quest only with the mouse.  A townsperson with a quest for you
-   (offered, under way or ready: what walking up used to open) now comes
-   before a door for E too; one with none leaves the door first, as before. */
-function questWaits(S) {
-  var npc = S && S._nearNpc;
-  if (!npc) return false;
-  try { return !!getNpcQuest(S.rpg, npc.name); } catch (e) { return false; }
-}
-
-/* ═══ v2.3.3834: E DOES WHAT THE PROMPT ON THE SCREEN SAYS ═══
-   The judge pass (2026-10-29): at the Town Hall's door, Mayor Bro beside it,
-   the prompt read "E  ENTER TOWN HALL" and E talked to the Mayor instead --
-   v2.3.3583 put a townsperson with a quest before a door, for a keyboard that
-   could reach his quest no other way.  Where the door's prompt is up (the
-   same test the prompt itself makes, BroTown's "bt-interact-prompt": a
-   building, or a Wheel hall's door), it is what E does; a townsperson with a
-   quest still comes first everywhere else, and a click (or a tap) on him
-   always talks.  The right stick's `npcFirst` order on a phone is unchanged. */
-function doorPromptUp(S) {
-  return !!(S && (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)));
-}
-
-/* ═══ v2.3.3868: E TALKS TO THE TOWNSPERSON BESIDE YOU ═══
-   The owner, playtesting on a computer: "the instructions say 'E' is
-   interact. When you're next to mayor bro (intending to accept the first
-   quest by 'interacting') you would actually open the door to the building
-   right next to him (town hall)."  v2.3.3834 gave the door E wherever its
-   prompt was up, and Mayor Bro stands on the Town Hall's steps, so beside
-   him E opened the hall.  Now a townsperson in talk range (90 px; any of
-   them, a quest or not: E is the computer's tap, and a tap on a person
-   talks) comes before a door's prompt, and on a computer the door's Enter
-   button stands aside meanwhile (BroTown deskTalkPick), so the button never
-   says one thing while E does another (v2.3.3834's judge-pass complaint).
-   The door is E's only with nobody in talk range: a door's reach (140 px,
-   WHEEL_DOOR_REACH) is wider than a townsperson's, so every door has
-   doorstep out of everyone's range -- a step aside from the Mayor, and
-   the Town Hall's button is back.  Not "the nearer of the two": the Mayor
-   stands in the hall's doorway, nearer than its foot from anywhere on the
-   doorstep, so the nearer rule came to the same thing with a rule a player
-   cannot see.  No door's prompt: as before, a townsperson with a quest for
-   you comes first (questWaits, v2.3.3583), and one without waits behind a
-   bed, a dungeon's mouth or a resource. */
-export function talkBeforeDoor(S) {
-  if (!S || !S._nearNpc) return false;
-  return doorPromptUp(S) ? true : questWaits(S);
-}
+/* ═══ v2.3.4105: TALKING AND ENTERING ARE ALWAYS TWO DIFFERENT THINGS ═══
+   The owner, 2026-11-03: "Make talking to a npc player and entering a
+   building always two different things."  Three versions had flipped ONE
+   control between the two by who stood where, and each fixed the last one's
+   surprise with a new one:
+     v2.3.3583 (questWaits)    a townsperson with a quest for you came before
+                               a door for E, once walking up stopped talking;
+     v2.3.3834 (doorPromptUp)  ...except where the door's Enter prompt was up
+                               (the judge pass: "E  ENTER TOWN HALL" talked to
+                               the Mayor);
+     v2.3.3868 (talkBeforeDoor) any townsperson in talk range before a door,
+                               the computer's Enter button swapped for "E  Talk
+                               to <name>" meanwhile (the owner: "When you're
+                               next to mayor bro ... you would actually open
+                               the door to the building right next to him");
+   and on a phone the right stick's tap asked for the character first
+   (`npcFirst`, v2.3.3105), so the same tap at Diego's store talked or went in
+   by a step.  Now there is no order to learn:
+     TALK   a tap (a phone) or a click (a computer) ON the townsperson
+            (BroTown tapNpcAtCss), from up to NPC_TAP_REACH -- the owner's
+            standing rule, "tap only instead of proximity based";
+     ENTER  the door's own control: its Enter button, E, the right stick's
+            tap -- whoever stands beside the door, Mayor Bro on the Town
+            Hall's steps included.
+   E and the stick keep everything else they did (a bed, a chest, a dungeon's
+   mouth, the Workshop, the Pet House, a farm bed, a harvest); only the talk
+   left them, so the stick's picture is never the speech bubble and a
+   computer's Enter button is always the door's (BroTown's deskTalkPick is
+   gone).  E beside a townsperson with nothing else to do says how to talk to
+   him ("Click Mayor Bro to talk", below), never talks. */
 
 export function setupDesktopControls(S, deps) {
   var triggerContextualDodge = deps.triggerContextualDodge,
@@ -125,7 +100,7 @@ export function setupDesktopControls(S, deps) {
     _desktopSleep = deps._desktopSleep,
     _desktopOpenWorkshop = deps._desktopOpenWorkshop,
     _desktopGather = deps._desktopGather,
-    _desktopNpcQuest = deps._desktopNpcQuest,
+    /* v2.3.4105: _desktopNpcQuest no longer read (E never talks) */
     _desktopShieldOff = deps._desktopShieldOff,
     _desktopCycleWeapon = deps._desktopCycleWeapon,
     _desktopSelectSlot = deps._desktopSelectSlot,
@@ -143,65 +118,17 @@ export function setupDesktopControls(S, deps) {
        The owner: "I'd like the right joystick button to have an icon that
        represents the action like this current jump, the sword for attack,
        etc. so maybe chat bubble for speaking [to NPCs], door for entering
-       door".  What E does beside a door, a bed, a dungeon's mouth or a
-       character is what a tap on the stick does there now (BroTown's rE asks
+       door".  What E does beside a door, a bed or a dungeon's mouth (a
+       character too, until v2.3.4105) is what a tap on the stick does there now (BroTown's rE asks
        S._interactNow), and interactKind() below names it for the stick's
        picture -- one chain, so the picture can never promise one thing and
        the tap do another.  Returns true when it did something. */
-    /* 4. The character beside you -- his quest, Ace's flip, Diego's shop, or
-       "has nothing for you right now" (v2.3.3105: its own function, so the
-       right stick can ask for it first) */
-    var runTalk = function runTalk() {
-      if (!S._nearNpc) return false;
-      var npc = S._nearNpc;
-      var npcQ = typeof getNpcQuest === 'function' ? getNpcQuest(S.rpg, npc.name) : null;
-      if (npcQ) {
-        _desktopNpcQuest(npc, npcQ);
-        return true;
-      }
-      /* v2.3.3258: a keeper opens his building, as a tap does (BroTown.jsx
-         openKeeper; data/wheelBuildingDoors.js WHEEL_KEEPERS) */
-      if (npc.keeperOf && deps._desktopOpenKeeper && deps._desktopOpenKeeper(npc)) { npcSpeaks(S, npc); return true; }   /* v2.3.3664: he answers as he opens it */
-      /* v2.3.3067: the same answers a TAP gives (BroTown.jsx tapNpcAtCss):
-         Ace's coin flip and Diego's shop.  E said "has nothing for you"
-         to both, and Ace's flip has no other door -- he stands in the
-         Wheel's Brotown now (WHEEL_TOWNSFOLK), where a keyboard plays too. */
-      /* v2.3.3462: each answer in his own voice, as a tap's (game/npcVoices.js) */
-      if (npc.flip) {
-        try { aceFlipBus.setStake(0); aceFlipBus.setOpen(true); } catch (_e) { /* display-only */ }
-        npcSpeaks(S, npc);
-        return true;
-      }
-      if (npc.shop) {
-        S._npcProxLatch = { npc: npc, ready: false };   /* as the tap: closing it beside him does not reopen it */
-        try { shopBus.setOpen(true); } catch (_e) { /* display-only */ }
-        npcSpeaks(S, npc);
-        return true;
-      }
-      /* v2.3.3121: Beastmaster Bro, his quests done: the Pets page, as a tap */
-      if (npc.pets && S._serverCaps && S._serverCaps.petbook) {
-        try { dashboardPanelBus.open('pets'); } catch (_e) { /* display-only */ }
-        npcSpeaks(S, npc);
-        return true;
-      }
-      /* v2.3.1717: he is right there and has nothing left.  Say so — a
-         giver whose chain is finished used to go completely inert, which
-         is indistinguishable from a broken NPC. */
-      /* v2.3.3899: Mayor Bro says the next step instead (game/mayorTalk.js),
-         as a tap's answer */
-      if (!mayorSaysNext(S, npc) && deps.pushNpcMsg) deps.pushNpcMsg(npc.name + ' has nothing for you right now');
-      npcSpeaks(S, npc);
-      return true;
-    };
-    var runInteract = function runInteract(opts) {
-      /* the right stick asks for the character FIRST (opts.npcFirst): a door
-         has its own Enter button, and Ace and Diego stand by theirs, so door
-         first would never let the stick's tap reach them */
-      if (opts && opts.npcFirst && S._nearNpc && runTalk()) return true;
-      /* v2.3.3583: and E for a townsperson with a quest for you (questWaits);
-         v2.3.3834: ...unless the door's prompt is up; v2.3.3868: any
-         townsperson in range first, then the door (talkBeforeDoor) */
-      if (talkBeforeDoor(S) && runTalk()) return true;   /* v2.3.3868: a townsperson in range before a door */
+    /* 4. v2.3.4105: runTalk -- the character beside you (his quest, a
+       keeper's building, Ace's flip, Diego's shop, the Pets page, "has
+       nothing for you") -- is gone from this chain: E and the stick never
+       talk (the note over setupDesktopControls).  Each of those answers is
+       the tap's, on him (BroTown.jsx tapNpcAtCss), which a click is too. */
+    var runInteract = function runInteract() {
       /* 1. Building (v2.3.3066: or a Wheel hall's door) */
       if (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) {
         _desktopEnterBuilding();
@@ -244,8 +171,7 @@ export function setupDesktopControls(S, deps) {
         _desktopGather();
         return true;
       }
-      /* 4. Nearby NPC — open quest dialog */
-      if (S._nearNpc && runTalk()) return true;
+      /* 4. Nearby NPC -- v2.3.4105: never; a tap or a click on him talks */
       return false;
     };
     S._interactNow = runInteract;
@@ -416,6 +342,19 @@ export function setupDesktopControls(S, deps) {
           /* v2.3.3407: the press that starts a harvest, held on, works it once
              the window opens -- "hold E to harvest" */
           if (S._extraction && S._harvestKeys) S._harvestKeys.down();
+          return;
+        }
+        /* ═══ v2.3.4105: E BESIDE SOMEONE SAYS HOW TO TALK TO HIM ═══
+           E never talks (the note over setupDesktopControls; the owner: "Make
+           talking to a npc player and entering a building always two
+           different things").  With nothing else to do here and a
+           townsperson in talk range, the keyboard hand is told where the
+           talk is -- "Click Mayor Bro to talk" -- the owner's own case, who
+           pressed E beside the Mayor "intending to accept the first quest by
+           'interacting'".  A line, not a talk: nothing opens. */
+        if (S._nearNpc && deps.pushNpcMsg) {
+          S._eTalkHints = (S._eTalkHints || 0) + 1;   /* QA: mp-talkenter counts them */
+          deps.pushNpcMsg(deskWords('Tap ' + (folkDisplayName(S._nearNpc.name) || 'them') + ' to talk'));
           return;
         }
         /* v2.3.1717: NOT in range, but close enough that the player plainly
