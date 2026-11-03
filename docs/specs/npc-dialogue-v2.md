@@ -1,5 +1,9 @@
 # NPC dialogue, the owner's rewrite (v2.3.3570)
 
+> **Superseded in v2.3.4025** by plain words (`docs/specs/plain-words.md`):
+> the owner, "No cryptic jokes or anything that could confuse someone." The
+> history below is kept; the lines it quotes are no longer the game's.
+
 The owner had every NPC line pulled into one manuscript, had it reviewed, and
 sent back a new script: "Here's the new script to swap in". This swaps it in
 word for word. Each townsperson now plays a sharper stereotype:

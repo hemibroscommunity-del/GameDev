@@ -6,6 +6,12 @@
  * pretty corny so just a dry wisecrack while telling the character to do a
  * quest task is better."
  *
+ * v2.3.4025: the owner, "Just make the characters (all of them all dialog) a
+ * simple and easy to understand personality and directions.  No cryptic
+ * jokes or anything that could confuse someone."  §2c and §5 now hold that:
+ * Lil Bro says plainly that he won, each giver's first offer says who he is,
+ * and none of the old zingers' slang comes back (docs/specs/plain-words.md).
+ *
  *   1. every quest a townsperson offers says its offer, its progress line and
  *      its hand-in in ONE tap each (NpcDialogue's dialogueChunks splits on a
  *      blank line), and none of them runs long
@@ -59,8 +65,9 @@ check('1d. ...and none is empty', empty.length === 0, empty);
 const lil = [0, 1, 2, 3, 7].map((n) => lilBroRaceLine(n));
 check('2a. his line is one tap for 0, 1, 2, 3 and 7 losses', lil.every((t) => chunks(t).length === 1), lil);
 check('2b. ...each still sends you to Race!', lil.every((t) => /Tap Race!/.test(t)), lil);
-/* v2.3.3611: "GG EZ! I wasn't even trying." -- the brag first, then the excuse */
-check('2c. ...and owns up after a loss', /\bI wasn't even trying\./.test(lil[1]) && /That's 7 wins for me/.test(lil[4]), [lil[1], lil[4]]);
+/* v2.3.3611: "GG EZ! I wasn't even trying." -- the brag first, then the excuse.
+   v2.3.4025: plainly, "I won!" and how to try again */
+check('2c. ...and says plainly that he won', /^I won!/.test(lil[1]) && /^I won again!/.test(lil[2]) && /That's 7 wins for me/.test(lil[4]), [lil[1], lil[2], lil[4]]);
 
 // ── 3. The Mayor's first hand-in with the Grotto's sentence ──
 setGrottoParty(WHEEL_DUNGEON_PARTY.verdant);
@@ -89,10 +96,18 @@ check('4c. no line sends you to a "gold !"', !all.some((t) => /gold !/.test(t)))
     if (typeof q.dialogue.progress === 'string' && !names(q.dialogue.progress)) miss.push(id + '.progress (' + n + ')');
   }
   check(`5a. every offer and progress line with a count (${n5} quests) still names it: the call to action is in the one message`, n5 >= 9 && miss.length === 0, miss);
-  /* the joke is part of the line, not a second tap: an offer is more than its job */
+  /* v2.3.4025: no zinger now -- the owner, "a simple and easy to understand
+     personality and directions": each giver's first offer says who he is,
+     by name, before the job */
   const bare = ['tut_1', 'smith_1', 'wood_1', 'fish_1', 'farm_1', 'race_1', 'beast_1']
-    .filter((id) => String(QUEST_CHAINS[id].dialogue.start || '').length < 160);
-  check('5b. the tour\'s first offers carry a zinger before the job (160+ characters, one tap)', bare.length === 0, bare);
+    .filter((id) => !String(QUEST_CHAINS[id].dialogue.start || '').includes("I'm " + QUEST_CHAINS[id].npc));
+  check('5b. each giver\'s first offer says who he is ("I\'m <name>") before the job', bare.length === 0, bare);
+  /* v2.3.4025: "No cryptic jokes or anything that could confuse someone" --
+     the old zingers' slang and in-jokes, none of them back */
+  const SLANG = /\baura\b|skill issue|\bGG\b|\bEZ\b|\blag\b|hacker|montage|grandpa|passive income|protein|tourism board|city council|eulog|insurance|grudge|danger zone|stay frosty|sawdust|research wall|\bdummy\b/i;
+  const slang = [...lines.map((l) => [`${l.id}.${l.k}`, String(l.t || '')]), ...lil.map((t, i) => ['lil' + i, t])]
+    .filter(([id, t]) => /^(tut_|mayor_|smith_|wood_|fish_|farm_|race_|beast_|lil)/.test(id) && SLANG.test(t)).map(([id]) => id);
+  check('5c. no slang or in-joke from the old zingers in any townsperson\'s line', slang.length === 0, slang);
 }
 
 // ── 6. v2.3.3924: the order, said; Diego plainly; the dungeon's level ──
