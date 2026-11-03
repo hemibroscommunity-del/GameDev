@@ -1,4 +1,5 @@
-/* ═══ v2.3.4048: THE TOWNSFOLK GO BY NICKNAMES ═══
+/* ═══ v2.3.4048: THE TOWNSFOLK GO BY NICKNAMES (v2.3.4088: no longer: the
+ * owner asked for the old names back -- the map below is empty) ═══
  *
  * The owner: "Instead of names like 'gavel Greg' it would be more humorous to
  * just have them go by nicknames. I didn't mean to remake all the NPCs to be
@@ -22,16 +23,14 @@
  * No imports, so node (server/test/folk-names.test.mjs) and the rules in
  * src/game/ can read it.
  */
-export const FOLK_NICKNAMES = Object.freeze({
-  'Gavel Greg': 'Going-Going',       /* the auctioneer who never stops */
-  'Old Man Reel': 'Fish Tales',      /* his fish grow every telling */
-  'Tourist Terry': 'Selfie',         /* the lost tourist */
-  'Sheriff Buck': 'Badge',           /* the mall cop with a bought badge */
-  'Guildmaster Gary': 'Tryhard',     /* the raid leader who takes it too seriously */
-  'Deed Dave': 'Swampy',             /* the swamp-selling realtor */
-  'Postmaster Pete': 'Snail Mail',   /* the slowest clerk alive */
-  'Chef Blaze': 'Sizzle',            /* the shouting TV chef */
-});
+/* v2.3.4088: EMPTY.  The owner, 2026-11-03: "Revert the nicknames and go back
+   to the other names, I liked them better other way."  Every townsperson
+   shows his own name again (Gavel Greg, Old Man Reel, Tourist Terry, Sheriff
+   Buck, Guildmaster Gary, Deed Dave, Postmaster Pete, Chef Blaze).  Do not
+   bring nicknames back unless the owner asks.  The map and the helper stay so
+   the screens keep one door for a shown name (and a future rename is one
+   line again): a name not in the map is shown as it is. */
+export const FOLK_NICKNAMES = Object.freeze({});
 
 /** The name a player reads for the townsperson keyed `name` (NPC_DATA's
  *  `name`): his nickname, else the name itself.  Anything that is not a
