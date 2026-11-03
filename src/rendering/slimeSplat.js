@@ -82,10 +82,23 @@ export function buildSlimeSplat(kit, display, m, now) {
   return st;
 }
 
+/* Its own clock.  v2.3.4127: QA's window.__btSplatHold = ms holds every
+   splat at that moment (mp-deathzones' pictures: this box takes seconds a
+   screenshot, longer than the whole splat). */
+function splatT(st, now) {
+  const t = (now - st.born) / st.slow;
+  let hold = null;
+  try { hold = (typeof window !== 'undefined') ? window.__btSplatHold : null; } catch (e) { hold = null; }
+  return typeof hold === 'number' && hold >= 0 ? Math.min(t, hold) : t;
+}
+
+/** Over yet? */
+export function slimeSplatOver(st, now) { return st.freed || splatT(st, now) >= st.dur; }
+
 /** One frame of a splat. */
 export function stepSlimeSplat(st, now) {
   if (st.freed) return;
-  const p = splatPose((now - st.born) / st.slow);
+  const p = splatPose(splatT(st, now));
   st.c.scale.set(p.sx, p.sy);
   st.root.alpha = p.a;
 }

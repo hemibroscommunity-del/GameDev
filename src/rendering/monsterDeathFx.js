@@ -58,7 +58,7 @@ import { hitMaterialOf, hitFxTintOf } from '@/data/monsterVariants.js';
    zones for each monster that can apply physics and effects for") */
 import { deathZonesFor, deathZoneLook, deathZoneView, deathCutLines, MAX_LIVE } from '@/data/monsterDeathZones.js';
 /* v2.3.4127: a slime dies as a splat, never in chunks (the owner) */
-import { slimeSplatOn, buildSlimeSplat, stepSlimeSplat, slimeSplatProbe } from './slimeSplat.js';
+import { slimeSplatOn, buildSlimeSplat, stepSlimeSplat, slimeSplatOver, slimeSplatProbe } from './slimeSplat.js';
 import { deathZonesOn, buildZoneDeath, stepZoneDeath, zoneDeathProbe, zoneDeathsLive } from './monsterDeathZonesFx.js';
 /* v2.3.3985: the killing blow -- its direction and whether it was a big one
    (the owner: "simulate physics based on the direction they're hit in") */
@@ -1043,7 +1043,7 @@ export function drawMonsterDeath(m, display, deathKey, blob, now, S, noStrip) { 
   if (st.none) return DEATH_NONE;
   /* v2.3.4127: a splat is shorter, and lets go of its sprite when it ends */
   if (st.splat) {
-    if (st.freed || (now - st.born) / st.slow >= st.dur) { if (st.dispose) st.dispose(); return DEATH_DONE; }
+    if (slimeSplatOver(st, now)) { if (st.dispose) st.dispose(); return DEATH_DONE; }
     stepSlimeSplat(st, now);
     return DEATH_LIVE;
   }

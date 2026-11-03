@@ -445,14 +445,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
           if (o.off) {
             for (let i = 1; i <= 3; i++) await P.page.screenshot({ path: `${OUT}/${o.shot}-${i}.png`, clip: box }).catch(() => {});
           } else {
-            for (const [i, below] of [[1, 0.75], [2, 0.4]]) {
+            /* held at a moment of its own clock (window.__btSplatHold):
+               squashing, then lying flat */
+            for (const [i, ms] of [[1, 200], [2, 330]]) {
+              await P.page.evaluate((h) => { window.__btSplatHold = h; }, ms);
               for (let n = 0; n < 60; n++) {
                 const d = (await state(P, mid)).d;
-                if (d && d.flat && d.flat[1] < below) break;
+                if (d && d.flat && d.flat[0] >= (i === 1 ? 1.35 : 1.5)) break;
                 await P.page.waitForTimeout(200);
               }
+              await P.page.waitForTimeout(400);
               await P.page.screenshot({ path: `${OUT}/${o.shot}-${i}.png`, clip: box }).catch(() => {});
             }
+            await P.page.evaluate(() => { delete window.__btSplatHold; });
           }
         }
         let bursts = 0;

@@ -325,7 +325,8 @@ function readPng(rel) {
     /matBursts: null/.test(sp) && !/Graphics|_debrisBursts|new Texture/.test(sp) && /new Sprite\(tex\)/.test(sp));
   check('9e it goes when it ends: its root destroyed with its child, never the picture',
     /root\.destroy\(\{ children: true \}\)/.test(sp) && !/texture: true|destroy\(true\)/.test(sp)
-    && /if \(st\.freed \|\| \(now - st\.born\) \/ st\.slow >= st\.dur\) \{ if \(st\.dispose\) st\.dispose\(\); return DEATH_DONE; \}/.test(fx));
+    && /if \(slimeSplatOver\(st, now\)\) \{ if \(st\.dispose\) st\.dispose\(\); return DEATH_DONE; \}/.test(fx)
+    && /return st\.freed \|\| splatT\(st, now\) >= st\.dur;/.test(sp));
   check('9f a slime\'s burst (the blue slime) ends in the splat too; ?slimesplat=0 brings the old deaths back on one phone',
     /\(isFodder && slimeSplatOn\(\)\)/.test(er) && /get\('slimesplat'\)/.test(sp) && /return v !== '0';/.test(sp));
   check('9g the splat wears the slime\'s own colour, never the hit flash', /sb\._btBaseTint != null \? sb\._btBaseTint : sb\.tint/.test(sp));
