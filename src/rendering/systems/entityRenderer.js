@@ -9,6 +9,7 @@ import { getNpcTexture, getNpcWalkFrame, hasNpcWalk, getPropFrame, propFrameCoun
 import { propsForZone, propFootprint, foregroundForZone } from '../../data/worldProps.js'; /* v2.3.1775: scenery; v2.3.1794: + footprint for the props probe */
 import { propGroundFor, settleProfile, groundLineAt } from '../propGround.js'; /* v2.3.2748: a building's base, read off its art */
 import { TILE } from '@/data/constants.js';
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4048: the townsfolk's nicknames on their plates */
 import { ZONES, zonePlayerScale, zoneDepthScale, zoneHomes } from '@/data/zones.js';   /* v2.3.2978: + zoneHomes, the Wheel's far-monster cull */
 import { ELEMENTS } from '@/data/elements.js';
 import { rpgBlocks } from '@/data/abilities.js'; /* v2.3.2302: the block ladder */
@@ -84,6 +85,7 @@ import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the te
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
 import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0`; v2.3.3809: + drawing now */
 import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
+import { folkWorkPose, folkWorkFrame, folkStandFacing } from '../folkPose.js';   /* v2.3.4058: the townsfolk at work */
 import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
 import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
 import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
@@ -17482,9 +17484,12 @@ export class EntityRenderer {
     }
     /* a stride's last few px lands him on the stand, not frozen mid-step */
     const jogging = moving || (now - (display._folkMovedAt || -1e9)) < 120;
-    const facing = folkFaceOverride() || display._walkDir || 'south';   /* QA may turn him (lookFolk.js) */
+    /* v2.3.4058: at a job of his day, one of the player's work poses; standing,
+       his day's facing (toward you when he stops for you): rendering/folkPose.js */
+    const work = (jogging || folkFaceOverride()) ? null : folkWorkPose(npc);
+    const facing = work ? 'south' : (folkFaceOverride() || (jogging ? display._walkDir : folkStandFacing(npc, display._walkDir)) || 'south');   /* QA may turn him (lookFolk.js) */
     const { dir, mirror } = resolveDirection(facing);
-    const pose = jogging ? 'jog' : 'stand';
+    const pose = work || (jogging ? 'jog' : 'stand');
     /* his size against a bro's: the photographs' own table, so the Mayor
        stays the owner's 10% larger (v2.3.1822) and Lil Bro a child */
     const size = (NPC_SCALE_MULT[npc.sprite] || NPC_BRO_MULT) / PLAYER_SIZE_MULT * npcFigureSize(npc);
@@ -17502,7 +17507,7 @@ export class EntityRenderer {
         for (const c of String(npc.id)) h = (h * 31 + c.charCodeAt(0)) % 9973;
         display._folkBeat = h * 7;
       }
-      frameIdx = Math.floor(((now + display._folkBeat) / cyc) * fc) % fc;
+      frameIdx = work ? folkWorkFrame(work, now + display._folkBeat) : Math.floor(((now + display._folkBeat) / cyc) * fc) % fc;   /* v2.3.4058 */
     }
     const spriteBody = folk._spriteBody;
     const art = _remoteBodyArt(look, mirror);
@@ -17520,7 +17525,8 @@ export class EntityRenderer {
     spriteBody.visible = true;
     if (folk._body) folk._body.visible = false;
     const tint = shirtFill(look.shirt || 'tshirt', look.shirtColor);
-    folk._shirtLook = _shirtLook(null, null, sanitizePattern(look.shirtPattern, 'shirt'), tint);
+    /* v2.3.4058: at work, his tee's colour without its print (folkPose.js: no bake) */
+    folk._shirtLook = work ? null : _shirtLook(null, null, sanitizePattern(look.shirtPattern, 'shirt'), tint);
     folk._shirtArtMirror = mirror;
     _placeGear(folk, { shirt: shirtEquip, legs: 'none', chest: 'none', shoulders: 'none', shirtTint: tint }, pose, dir, frameIdx);
     _hideBodyRegions(folk);
@@ -17784,7 +17790,7 @@ export class EntityRenderer {
         /* v2.3.3600: ONE LINE -- the owner: "the nameplate on NPCs should be 1 line
            long ... I don't need lil bro 'kid' with the kid as the second line".
            plateRole stays in NPC_DATA, no longer drawn. */
-        _updateNamePill(display, npc.name, '', true, null);
+        _updateNamePill(display, folkDisplayName(npc.name), '', true, null);   /* v2.3.4048: his nickname (data/folkNames.js) */
       }
 
       /* ═══ v2.3.2046: ANIMATE HIM IF HE HAS A WALK CYCLE ═══
@@ -17898,6 +17904,7 @@ export class EntityRenderer {
             height: _folkLive ? _folkBodyPx(display._folk, 'height') : fig.texture.height * fig.scale.y,
             width: _folkLive ? _folkBodyPx(display._folk, 'width') : fig.texture.width * fig.scale.x,
             live: _folkLive,
+            pose: _folkLive && display._folk ? display._folk._animPose || null : null,   /* v2.3.4058: stand, jog or a work pose (mp-folkwalk) */
             /* world y of the figure's feet — anchor is the frame's foot row */
             footY: display.y,
             src: display._figSrc,

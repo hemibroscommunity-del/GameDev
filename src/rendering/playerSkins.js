@@ -1460,20 +1460,29 @@ function _standInBake(img, skinT, targetH, opts, apart) {
      stand-in whose face/torso/arms were fitted by hand (standInInk.js).  Only
      the three SKIN canvases: these figures keep their painted trousers (the
      recolour here is skin-only for the reasons above), so a trouser print would
-     have no garment of the player's to sit on. */
+     have no garment of the player's to sit on.  (v2.3.4037: they wear yours
+     now, and the trouser print with them -- `garb`, below, not `art`.) */
   const ink = (o.art && o.regions && (artHasInk(o.art.tattooFace) || artHasInk(o.art.tattoo)
     || artHasInk(o.art.tattooArm))) ? o.art : null;
   /* v2.3.3146: and your trousers and boots (_standInClothes) */
   const pantsT = o.pantsT || null, shoesT = o.shoesT || null;
   const clothesFW = o.frameW || (o.regions && o.regions.fw) || 0;
+  /* v2.3.4037: and your trouser and shoe patterns and your trouser print
+     (`garb`, standInGarb.js: the owner, "Shoes and patterns aren't showing
+     while hoeing"), their cells scaled to the figure by `patK` */
+  const garb = o.garb || null;
+  const pantsPat = garb ? parsePattern(garb.pantsPattern, 'pants') : null;
+  const shoesPat = garb ? parsePattern(garb.shoesPattern, 'shoes') : null;
+  const pantsArt = garb && artHasInk(garb.pantsArt) ? garb.pantsArt : null;
+  const dressed = !!(pantsPat || shoesPat || pantsArt);
   /* v2.3.3684: `legless` (the fire-lighter under greaves, _standInLegless)
      takes his legs out whatever the colours, so it always bakes */
-  if (!skinT && !ink && !pantsT && !shoesT && !o.legless) return { cv, ink: null };
+  if (!skinT && !ink && !pantsT && !shoesT && !o.legless && !dressed) return { cv, ink: null };
   const w = cv.width, h = cv.height;
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
   /* v2.3.3146: found on the art as painted, before the skin is retinted */
-  const clothes = (pantsT || shoesT || o.legless) && clothesFW ? _standInClothes(d, w, h, clothesFW, !!o.pantsWide) : null;
+  const clothes = (pantsT || shoesT || o.legless || dressed) && clothesFW ? _standInClothes(d, w, h, clothesFW, !!o.pantsWide) : null;
   /* pass 1: classify, with the SAME test the body pipeline uses (plus the
      caller's optional ratio window) */
   const skin = new Uint8Array(w * h);
@@ -1530,6 +1539,14 @@ function _standInBake(img, skinT, targetH, opts, apart) {
     }
     if (o.glowLegs) _standInGlowLegs(d, w, h, clothesFW, clothes.legs, label, keptId);
   }
+  /* v2.3.4037: where the patterns and the print go, measured now, while `d` is
+     still the art as painted (the walking bake measures on its `base` copy):
+     the lit fabric only, so the trousers' shaded rim keeps rounding the legs
+     under a pattern (litFabricMask, the owner's "keep it contained within the
+     black outlines").  The masks are _standInClothes' big pieces, so there
+     are no far specks for regionFromFeet to drop. */
+  const pantsPaint = clothes && (pantsPat || pantsArt) ? litFabricMask(d, clothes.legs, w * h, PANTS_LIT_MIN) : null;
+  const shoesPaint = clothes && shoesPat ? litFabricMask(d, clothes.boots, w * h, SHOES_LIT_MIN) : null;
   /* pass 3: retint the CHARACTER's skin; leave the small islands (props) */
   const body = ink ? new Uint8Array(w * h) : null;   /* v2.3.2855: the same pixels, for the stamp */
   for (let p = 0, i = 0; p < w * h; p++, i += 4) {
@@ -1559,6 +1576,13 @@ function _standInBake(img, skinT, targetH, opts, apart) {
       }
     } catch (e) { /* a probe never breaks a bake */ }
   }
+  /* v2.3.4037: the patterns and the print, as the walking bake has them --
+     pattern first, the print over it, then the shoes -- after the retint (a
+     pattern is colour ON the fabric) and before the drawings, so the split
+     bake's ink layer still holds only the drawings: these are the figure's,
+     and its key carries them (effectsRenderer _standInColourKey). */
+  if (pantsPaint || shoesPaint) _stampStandInGarb(d, w, h, clothesFW, pantsPaint, shoesPaint,
+    pantsPat, shoesPat, pantsArt, !!(o.art && o.art.mirror), o.patK, o.probe);
   /* v2.3.2855: the drawings, AFTER the retint (so the ink is shaded by the skin
      it lands on, exactly as the body's stamp is) and confined to the pixels the
      retint just called the character's skin. */
@@ -1740,6 +1764,46 @@ function _standInLegless(d, w, h, legs, boots, label, keptId) {
     for (let j = 0; j < sp; j++) { d[stack[j] * 4 + 3] = 0; went[stack[j]] = 1; gone++; }
   }
   return gone;
+}
+
+/* ═══ v2.3.4037: THE TROUSER AND SHOE PATTERNS AND THE TROUSER PRINT ON A STAND-IN ═══
+   The walking bake's three stamps (recolorBodyToCanvas, above), on the masks
+   _standInBake measured: the trouser pattern and the print on the legs, the
+   shoe pattern on the boots.  `k` scales the patterns' cells to the figure
+   (standInGarb.js STANDIN_GARB_K); the print is fitted to each frame's legs
+   (stampRegion), so it needs no scale.  With the QA probe armed (mp-farmanim,
+   mp-gatherlook), how many pixels of each pattern's own colour the legs and
+   the boots gained -- read off the baked pixels, after every stamp. */
+function _stampStandInGarb(d, w, h, fw, legs, boots, pantsPat, shoesPat, pantsArt, mirror, k, probe) {
+  const _probe = !!probe && typeof window !== 'undefined' && !!window.__btProbe;
+  const count = (mask, pat) => {
+    if (!mask || !pat) return 0;
+    const R = parseInt(pat.color.slice(1, 3), 16), G = parseInt(pat.color.slice(3, 5), 16), B = parseInt(pat.color.slice(5, 7), 16);
+    let n = 0;
+    for (let p = 0, i = 0; p < w * h; p++, i += 4) if (mask[p] && d[i] === R && d[i + 1] === G && d[i + 2] === B) n++;
+    return n;
+  };
+  const was = _probe ? { legs: count(legs, pantsPat), boots: count(boots, shoesPat) } : null;
+  if (legs && pantsPat) stampPattern(d, w, h, fw, legs, pantsPat, mirror, undefined, k);
+  /* the print's pixels: the legs' colours before it, to count what it changed */
+  let before = null;
+  if (_probe && legs && pantsArt) {
+    before = new Uint32Array(w * h);
+    for (let p = 0, i = 0; p < w * h; p++, i += 4) if (legs[p]) before[p] = ((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]) + 1;
+  }
+  if (legs && pantsArt) stampRegion(d, w, h, fw, legs, pantsArt, mirror, PANTS_BOX);
+  if (boots && shoesPat) stampPattern(d, w, h, fw, boots, shoesPat, mirror, undefined, k);
+  if (!_probe) return;
+  try {
+    let printed = 0;
+    if (before) for (let p = 0, i = 0; p < w * h; p++, i += 4) if (before[p] && before[p] !== ((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]) + 1) printed++;
+    const rec = (window.__btStandInClothes || (window.__btStandInClothes = {}))[probe] || (window.__btStandInClothes[probe] = {});
+    rec.garb = {
+      legs: pantsPat ? { color: pantsPat.color, px: count(legs, pantsPat) - was.legs } : null,
+      boots: shoesPat ? { color: shoesPat.color, px: count(boots, shoesPat) - was.boots } : null,
+      print: pantsArt ? { px: printed } : null, k: k || 1,
+    };
+  } catch (e) { /* a probe never breaks a bake */ }
 }
 
 /* ═══ v2.3.3146: A STAND-IN WEARS YOUR TROUSERS AND BOOTS ═══

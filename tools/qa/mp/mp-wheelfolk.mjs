@@ -21,9 +21,13 @@
  *   6. E beside him opens it too (it said "has nothing for you");
  *   7. a tap on Lil Bro answers ("has nothing for you right now"), so he is a
  *      man in the street and not a picture;
+ *   4c. (v2.3.4048) each plate reads his nickname (data/folkNames.js) or
+ *       his own name;
  *   7b. (v2.3.3833) the new cast: all thirteen in 1, 2 and 4 (read off the
  *      table); a tap on Sterling opens the Bank, a tap on Bean answers;
  *   8. no page errors.
+ * v2.3.4058: they walk their days (game/townsfolkWalk.js): 1 and 4 read his
+ * spot and his place on his loop by it, and each walk-up goes to where he is.
  * v2.3.3809: drawn live from their looks by default (2 and 4b read so);
  * BT_WF_QUERY=lookfolk=0 checks the photographs.
  * Pictures: tools/qa/mp/out/wheelfolk-*.png.
@@ -36,12 +40,15 @@ const PHONE = { width: 390, height: 844 };
 /* v2.3.3809: BT_WF_QUERY=lookfolk=0 -- the townsfolk from their photographs */
 const QUERY = process.env.BT_WF_QUERY || '';
 const LIVE = !/(^|&)lookfolk=0(&|$)/.test(QUERY) && !/(^|&)lookpalette=0(&|$)/.test(QUERY);
+/* v2.3.4058: the furthest a townsperson's loop takes him from his spot (game/townsfolkWalk.js; 2d of its test) */
+const FOLK_REACH = 262;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
   const { WHEEL_TOWNSFOLK } = await import(H.REPO + '/src/data/wheelBuildingDoors.js');
   const { NPC_DATA } = await import(H.REPO + '/src/data/gameDisplay.js');
+  const { folkDisplayName } = await import(H.REPO + '/src/data/folkNames.js');   /* v2.3.4048: the nicknames */
 
   const P = await H.newPlayer(browser, { name: 'Folkbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, query: QUERY || undefined });
   const shot = (name) => P.page.screenshot({ path: join(OUT, `wheelfolk-${name}.png`) }).catch(() => {});
@@ -82,7 +89,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 1. the cast ── */
     const cast = await H.waitFor(P, (S) => ({
-      npcs: (S.npcs || []).map((n) => ({ name: n.name, x: n.x, y: n.y, r: n.pathRadius, flip: !!n.flip })),
+      npcs: (S.npcs || []).map((n) => ({ name: n.name, x: n.x, y: n.y, sx: n.spawnX, sy: n.spawnY, r: n.pathRadius, flip: !!n.flip })),
       doors: window.__btWheelTownDoors ? window.__btWheelTownDoors.doors() : [],
     }), (v) => v.npcs.length >= 6 && v.doors.length > 0, { timeout: 20000, label: 'the cast' }).catch(() => null);
     const byDoor = Object.fromEntries(((cast && cast.doors) || []).map((d) => [d.id, d]));
@@ -95,8 +102,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3580: the cast read off the table (the tour's Woodworker Bro and
        Farmer Bro, v2.3.3525, were missing from the old list) */
     const wantNames = ['Mayor Bro', ...WHEEL_TOWNSFOLK.map((f) => f.name)].sort().join(', ');
-    const placedRight = WHEEL_TOWNSFOLK.every((f) => { const n = npc(f.name), w = where(f.name); return n && w && Math.abs(n.x - w.x) < 1 && Math.abs(n.y - w.y) < 1 && n.r === 0; });
-    rec.ok(`the Wheel's Brotown has its whole cast (${names}), each where WHEEL_TOWNSFOLK puts him, standing still`,
+    /* v2.3.4058: they walk their days now (game/townsfolkWalk.js): his spot is
+       where the table puts him, and he is on his loop by it (260 px at most) */
+    const placedRight = WHEEL_TOWNSFOLK.every((f) => { const n = npc(f.name), w = where(f.name); return n && w && Math.abs(n.sx - w.x) < 1 && Math.abs(n.sy - w.y) < 1 && n.r === 0
+      && Math.hypot(n.x - w.x, n.y - w.y) <= FOLK_REACH; });
+    rec.ok(`the Wheel's Brotown has its whole cast (${names}), each's spot where WHEEL_TOWNSFOLK puts him, and on his day's loop by it (v2.3.4058)`,
       names === wantNames && placedRight && !!npc('Ace').flip,
       { names, placed: WHEEL_TOWNSFOLK.map((f) => [f.name, npc(f.name), where(f.name)]) });
 
@@ -144,16 +154,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!lilOnArrival && lilOnArrival.x > 8 && lilOnArrival.x < lilOnArrival.vw - 8 && lilOnArrival.y > 60 && lilOnArrival.y < lilOnArrival.vh - 60, lilOnArrival);
 
     /* ── 4. each one drawn, as Diego is ── */
+    /* v2.3.4058: beside where he IS (he walks his day), twice: he may have
+       walked on while you came */
     const standNear = async (name, dx, dy) => {
-      const w = where(name);
-      if (!w) return false;
-      await H.hopTo(P, w.x + dx, w.y + dy, { step: 100, gap: 260, tries: 90 });
+      if (!where(name)) return false;
+      for (let k = 0; k < 2; k++) {
+        const n = await P.page.evaluate((nm) => { const S = window._gameState.current; const q = (S.npcs || []).find((m) => m.name === nm); return q ? { x: q.x, y: q.y } : null; }, name);
+        if (!n) return false;
+        await H.hopTo(P, n.x + dx, n.y + dy, { step: 100, gap: 260, tries: 90 });
+      }
       await P.page.waitForTimeout(900);
       return true;
     };
     const drawnOf = (name) => P.page.evaluate((nm) => {
       const d = (window.__btNpcSprites ? window.__btNpcSprites() : []).find((n) => n.name === nm);
-      return d ? { h: Math.round(d.height), w: Math.round(d.width), x: Math.round(d.x), y: Math.round(d.y), dir: d.walkDir, src: d.src, frame: d.frame, live: !!d.live } : null;
+      return d ? { h: Math.round(d.height), w: Math.round(d.width), x: Math.round(d.x), y: Math.round(d.y), dir: d.walkDir, src: d.src, frame: d.frame, live: !!d.live,
+        plate: d.plate ? d.plate.name : null } : null;   /* v2.3.4048: what his plate reads */
     }, name);
     const drawn = {};
     for (const f of WHEEL_TOWNSFOLK) {
@@ -169,9 +185,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     const dh = drawn.Diego && drawn.Diego.h;
     rec.ok(`each is drawn where he stands, a man's height (${WHEEL_TOWNSFOLK.map((f) => f.name + ' ' + (drawn[f.name] ? drawn[f.name].h + ' px' : 'NOT DRAWN')).join(', ')}), the walkers facing the street`,
-      WHEEL_TOWNSFOLK.every((f) => { const d = drawn[f.name], w = where(f.name); return d && w && Math.abs(d.x - w.x) < 1 && Math.abs(d.y - w.y) < 1 && d.h > 60 && d.h < 240; })
+      WHEEL_TOWNSFOLK.every((f) => { const d = drawn[f.name], w = where(f.name); return d && w && Math.hypot(d.x - w.x, d.y - w.y) <= FOLK_REACH && d.h > 60 && d.h < 240; })
         && (LIVE || ['Ace', 'Lil Bro', 'Diego'].every((n) => /-walk-south\.webp$/.test(drawn[n].src || ''))) && dh > 100,
       drawn);
+
+    /* v2.3.4048: the owner: "Instead of names like 'gavel Greg' it would be
+       more humorous to just have them go by nicknames" -- each plate reads
+       the name a player reads (data/folkNames.js): Going-Going, never Gavel
+       Greg; the rest their own names */
+    rec.ok(`4c. each plate reads his nickname or his own name (${WHEEL_TOWNSFOLK.map((f) => (drawn[f.name] && drawn[f.name].plate) || '?').join(', ')})`,
+      WHEEL_TOWNSFOLK.every((f) => drawn[f.name] && drawn[f.name].plate === folkDisplayName(f.name)),
+      WHEEL_TOWNSFOLK.map((f) => [f.name, folkDisplayName(f.name), drawn[f.name] && drawn[f.name].plate]));
 
     /* v2.3.3520: the owner: "Ace is stuck in one walking frame" -- a still
        walker stands on his own stand frame (NPC_DATA walk.stand: planted,
@@ -182,8 +206,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3809: drawn live, each stands on the player's own stand (every
        one of the cast live), facing the street; the photographs' stand cells
        are the photographs' */
-    if (LIVE) rec.ok(`4b. drawn live, every one of the cast (${WHEEL_TOWNSFOLK.filter((f) => drawn[f.name] && drawn[f.name].live).length}/${WHEEL_TOWNSFOLK.length}), facing the street`,
-      WHEEL_TOWNSFOLK.every((f) => drawn[f.name] && drawn[f.name].live && !drawn[f.name].dir), WHEEL_TOWNSFOLK.map((f) => drawn[f.name]));
+    /* v2.3.4058: walking his day, he faces the way he walks */
+    if (LIVE) rec.ok(`4b. drawn live, every one of the cast (${WHEEL_TOWNSFOLK.filter((f) => drawn[f.name] && drawn[f.name].live).length}/${WHEEL_TOWNSFOLK.length})`,
+      WHEEL_TOWNSFOLK.every((f) => drawn[f.name] && drawn[f.name].live), WHEEL_TOWNSFOLK.map((f) => drawn[f.name]));
     else rec.ok(`4b. the walkers stand on their standing frames: ${['Ace', 'Lil Bro', 'Diego'].map((n) => n + ' ' + (drawn[n] ? drawn[n].frame : '?') + ' (his ' + standOf(n) + ')').join(', ')}`,
       ['Ace', 'Lil Bro', 'Diego'].every((n) => drawn[n] && Number.isInteger(standOf(n)) && drawn[n].frame === standOf(n)) && standOf('Ace') === 8,
       ['Ace', 'Lil Bro', 'Diego'].map((n) => drawn[n]));
@@ -247,9 +272,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
        From his WEST side: on the den's side your boots are within its door's
        reach, and E is the Enter button's key first (desktopControls.js: a
        door before a person), as it is at Diego's store. */
-    await standNear('Ace', -60, 16);
-    const nearE = await H.waitFor(P, (S) => ({ npc: S._nearNpc ? S._nearNpc.name : null, door: S._nearWheelBuilding ? S._nearWheelBuilding.id : null }),
-      (v) => v.npc === 'Ace' && !v.door, { timeout: 4000, label: 'near Ace, no door' }).catch((e) => String(e.message).slice(-120));
+    /* v2.3.4058: Ace walks his day: stand beside him again until he is the one near */
+    let nearE = null;
+    for (let k = 0; k < 4 && !(nearE && nearE.npc === 'Ace'); k++) {
+      await standNear('Ace', -60, 16);
+      nearE = await H.waitFor(P, (S) => ({ npc: S._nearNpc ? S._nearNpc.name : null, door: S._nearWheelBuilding ? S._nearWheelBuilding.id : null }),
+        (v) => v.npc === 'Ace' && !v.door, { timeout: 4000, label: 'near Ace, no door' }).catch((e) => String(e.message).slice(-120));
+    }
     await P.page.keyboard.press('e');
     const eOpen = await H.waitFor(P, () => !!(window.__btAceFlipBus && window.__btAceFlipBus.open), (v) => v, { timeout: 4000, label: 'E opens the flip' }).catch(() => false);
     const eElse = await P.page.evaluate(() => { const c = document.querySelector('.bt-inspect-card'); return c ? c.getAttribute('data-building-panel') || 'a panel' : null; });
