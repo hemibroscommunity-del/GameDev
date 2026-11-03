@@ -1,7 +1,6 @@
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, getState } from './dash/common.js';
-import { rosterCount } from '../../networking/charRoster.js'; /* v2.3.2421 */
 import { calm as lifeCalm } from './dash/bagLife.js'; /* v2.3.2815: the purse's coin flip */
 import { placeName } from './placeName.js'; /* v2.3.3974: the land you stand in, or BroTown (was the Wheel's name, v2.3.3009) */
 import { testModeOn } from '../../game/testMode.js'; /* v2.3.3430: the owner's test mode tag */
@@ -84,12 +83,14 @@ const V = '?v=2.3.1333c'; /* v2.3.1333c: bigger logout glyph */
 export const ZoneHeader = ({ onExit }) => {
   const [, force] = useState(0);
   const [confirming, setConfirming] = useState(false);
-  /* v2.3.2421: does this device actually hold more than one bro?  Guarded
-     because charRoster reads localStorage, which throws in a private window
-     rather than returning empty -- and a header that throws takes the whole
-     world chrome with it. */
-  let _many = false;
-  try { _many = rosterCount() > 1; } catch (e) { _many = false; }
+  /* ═══ v2.3.4123: THE DOOR ALWAYS LOGS OUT ═══
+     The owner, 2026-11-03: "Change just the exit door icon on top left to
+     "logout" (bring to splash screen) not switch character".  v2.3.2421 made
+     this chip read "Switch Bro" (and open the list of bros) whenever the
+     device held more than one; now it always logs out to the splash screen,
+     however many bros the device holds, behind the same confirm.  A device
+     with several bros still picks another there: the splash screen's
+     Continue opens the list (LoginScreen.jsx, v2.3.2447). */
   /* v2.3.2240: the owner's test panel opens on a 1.2s press of the zone
      name (src/ui/panels/DevPanel.jsx).  Here rather than in a HUD button
      because the header is always on screen in the world and nobody
@@ -201,13 +202,9 @@ export const ZoneHeader = ({ onExit }) => {
       dim.appendChild(lbl);
       document.body.appendChild(dim);
     } catch (e) {}
-    /* v2.3.2447: the door no longer opens the character list by itself
-       (owner: "Player should need to tap continue or create a character").
-       This button, when it reads "Switch Bro", promises "You'll go to your
-       list of bros" -- and the tap on it IS the tap.  So it hands the door a
-       one-shot note to open the list; "Log Out" (one bro, nothing to switch
-       to) lands on the plain door.  LoginScreen consumes the note on mount. */
-    if (_many) { try { sessionStorage.setItem('bt_open_list', '1'); } catch (e) {} }
+    /* v2.3.2447 handed the splash screen a one-shot note to open the list
+       when this read "Switch Bro"; since v2.3.4123 it always logs out, so it
+       lands on the plain splash screen (Continue / Create) every time. */
     requestAnimationFrame(() => setTimeout(onExit, 30));
   };
 
@@ -218,7 +215,8 @@ export const ZoneHeader = ({ onExit }) => {
         <button
           type="button"
           className="bt-chisel bt-chisel--chip bt-zone-header__logout"
-          aria-label={_many ? 'Switch bro, or log out' : 'Log out to the character screen'}
+          aria-label="Log out"
+          title="Log out"   /* v2.3.4123: always (the owner: "logout ... not switch character") */
           onClick={() => setConfirming(true)}
         >
           <img src={`/icons/ui/logout-door-icon.svg${V}`} alt="" draggable={false} />
@@ -385,11 +383,9 @@ export const ZoneHeader = ({ onExit }) => {
               textAlign: 'center',
             }}
           >
-            <div style={{ fontSize: 15, fontWeight: 700, color: COL.text }}>{_many ? 'Switch bro?' : 'Leave the world?'}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: COL.text }}>Leave the world?</div>
             <div style={{ fontSize: 12, color: COL.text2, marginTop: 4 }}>
-              {_many
-                ? 'You\u2019ll go to your list of bros. This one is saved.'
-                : 'You\u2019ll return to the character screen.'}
+              {'You\u2019ll log out to the title screen. Your bro is saved.'}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button
@@ -402,16 +398,13 @@ export const ZoneHeader = ({ onExit }) => {
               </button>
               <button
                 type="button"
-                /* v2.3.2421: --danger only when it reads as an exit.  That red
-                   is the game's destroy colour (forge salvage, Leave Clan);
-                   on a switch nothing is destroyed and the bro is saved, so
-                   wearing it here is the control lying twice. */
-                className={_many ? 'bt-chisel bt-chisel--chip' : 'bt-chisel bt-chisel--danger'}
-                style={{ flex: 1, minHeight: 40, fontSize: 13, fontWeight: 800,
-                  color: _many ? COL.text : undefined }}
+                /* v2.3.2421: --danger because it reads as an exit (since
+                   v2.3.4123 it always is one) */
+                className="bt-chisel bt-chisel--danger"
+                style={{ flex: 1, minHeight: 40, fontSize: 13, fontWeight: 800 }}
                 onClick={doExit}
               >
-                {_many ? 'Switch Bro' : 'Log Out'}
+                Log Out
               </button>
             </div>
           </div>
