@@ -34,6 +34,10 @@ import { join } from 'node:path';
 import { CLIMB_FRAMES, CLIMB_MULT, CHEST_NOTE } from '../../../src/game/climb.js';
 
 const PHONE = { width: 390, height: 844 };
+/* v2.3.4139: the same climb on a computer (mp-lagoonclimbdesk): its walk stops
+   the feet further off a wall, which ended the climb at once and kept the
+   chest shut there */
+const DESK = { width: 1280, height: 800 };
 const HS = 10;
 const AIR_MS = 2600;
 
@@ -87,10 +91,12 @@ const jumpNorth = (P, flipAt) => P.page.evaluate(async ({ flipAt }) => {
     entries: c.stats.entries.slice(-2), drops: c.stats.drops };
 }, { flipAt });
 
-export async function run({ browser, wsPort, webPort, rec }) {
+export async function run(args) { return play(args, false); }
+
+export async function play({ browser, wsPort, webPort, rec }, desk) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  const shot = (name) => P.page.screenshot({ path: join(OUT, `lagoonclimb-${name}.png`) }).catch(() => {});
+  const shot = (name) => P.page.screenshot({ path: join(OUT, `lagoonclimb-${desk ? 'desk-' : ''}${name}.png`) }).catch(() => {});
   const G = await H.wheelGeom();
   const { riseMessage } = await import(H.REPO + '/public/tools/world/core/rises.js');
   const R = riseMessage(G.plan);
@@ -99,7 +105,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   if (!R || !I) return;
   const [T, L] = R.list;
   const cg = G.cellG;
-  const P = await H.newPlayer(browser, { name: 'Climber', wsPort, webPort, world: 'wheel', viewport: PHONE, query: `climb=1&jumpms=${AIR_MS}` });
+  const P = await H.newPlayer(browser, { name: 'Climber', wsPort, webPort, world: 'wheel', ...(desk ? { wide: true, viewport: DESK } : { viewport: PHONE }), query: `climb=1&jumpms=${AIR_MS}` });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopAlive = H.keepAlive(P);

@@ -57,7 +57,6 @@ import { KeyboardHintsPanel } from './panels/KeyboardHintsPanel.jsx';
 import { UpdateBanner } from './panels/UpdateBanner.jsx';
 import TimedBanner from './TimedBanner.jsx';   /* v2.3.3839: the warning / stat banner's own clock */
 import { keptQuery } from './keepSwitches.js';   /* v2.3.3888: the address's switches kept through the door */
-import SwapHint from './SwapHint.jsx';   /* v2.3.3877: how to swap weapons, said once */
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
 import { onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track (v2.3.3918: QuestCard.jsx reads it) */
@@ -68,7 +67,7 @@ import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the att
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
-import { WeaponTriangle } from './panels/WeaponTriangle.jsx'; /* v2.3.3921: the weapon triangle beside the attack disc (it was v2.3.3005's chip under the movement stick) */
+import { WeaponPill } from './panels/WeaponPill.jsx'; /* v2.3.4130: the weapon pill, centred at the foot of the world (it was v2.3.3921's triangle, v2.3.3005's chip) */
 import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
@@ -165,6 +164,7 @@ import { MayorGreeting } from './MayorGreeting.jsx';
    NOT the greeting video above — see welcomeBanner.js for why those are
    different asks. */
 import { maybeShowWelcome } from '@/game/welcomeBanner.js';
+import { worldReady, whenWorldReady } from '@/ui/loadingGate.js';   /* v2.3.4136: nothing for the world while a loading screen is up */
 import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '@/rendering/canvasWitness.js'; /* v2.3.3701: a black screen's rebuild asks first whether Safari emptied the pictures */
 /* v2.3.3890: a second loss inside a rebuild's 5 s is owed a rebuild (window._rebuildRenderer); `?owedrebuild=0` drops it, as before */
 const OWED_REBUILD_OFF = (function () { try { return /[?&]owedrebuild=0\b/.test(window.location.search || ''); } catch (e) { return false; } })();
@@ -2163,7 +2163,12 @@ export var BroTown = function BroTown(_ref0) {
      (pushStatIncreaseNotice, addBuildProg) so they can fire the big
      LEVEL UP banner with kind=stat for build-stat ticks. Setter ref
      is stable across renders for useState so this is idempotent. */
-  if (typeof window !== 'undefined') window._setLevelUpMsg = setLevelUpMsg;
+  /* v2.3.4136: a banner that comes while a loading screen is up waits for it
+     to go and is shown then with a fresh clock (ui/loadingGate.js) */
+  if (typeof window !== 'undefined') window._setLevelUpMsg = function (m) {
+    if (m && !worldReady()) { whenWorldReady(function () { setLevelUpMsg(Object.assign({}, m, { ts: Date.now() })); }); return; }
+    setLevelUpMsg(m);
+  };
   /* ═══ v2.3.1745: THE QUEST BANNER ═══
      Owner: "it would be cool if there was a 'QUEST ACCEPTED!' and 'QUEST
      COMPLETED!' when you start or turn in quests that appear over the quest
@@ -2195,6 +2200,9 @@ export var BroTown = function BroTown(_ref0) {
   if (typeof window !== 'undefined') {
     window._setQuestMsg = function (m) {
       if (!m) { setQuestMsg(null); return; }
+      /* v2.3.4136: not while a loading screen is up -- it waits, then comes
+         with a fresh clock (ui/loadingGate.js) */
+      if (!worldReady()) { whenWorldReady(function () { window._setQuestMsg(Object.assign({}, m, { ts: Date.now() })); }); return; }
       var cur = questMsgRef.current;
       if (m.queue && cur && Date.now() - cur.ts < questMsgMs(cur.kind)) {
         questQueueRef.current.push(m);
@@ -13785,8 +13793,9 @@ export var BroTown = function BroTown(_ref0) {
      kind filter moves inside pushLevelUpBurst, where 'warning' and the bare
      T1 stat kinds are rejected and fall through to the banner below. */
   /*#__PURE__*/React.createElement(LevelUpBurstStack, { msg: levelUpMsg }),
-  /* v2.3.3877: "Swap weapons", said once, the first time you hold two (SwapHint.jsx) */
-  /*#__PURE__*/React.createElement(SwapHint, { stateRef: stateRef }),
+  /* v2.3.3877's "Swap weapons" callout (SwapHint.jsx) went at v2.3.4130: the
+     guide arrow's swap lesson teaches the weapon pill after the first quest's
+     hand-in (ui/guideArrow.js) */
   /* v2.3.2615: 'char' joins 'combat' and 'life' as a kind the STACK owns — it
      is the character-level notification, and it wears the character's portrait
      in the medallion (levelUpIcons.levelUpMedallionSrc). */
@@ -15680,7 +15689,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3921: the weapon triangle in the right-hand cluster -- a tap on a weapon runs the same swap as the double tap and the desktop key (WeaponTriangle.jsx; it was v2.3.3005's chip). */ /*#__PURE__*/React.createElement(WeaponTriangle, { stateRef: stateRef, onCycle: _desktopCycleWeapon, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.4130: the weapon pill, centred at the foot of the world on a phone and a computer alike -- a tap or click on a weapon runs the same swap as the double tap and the keys (WeaponPill.jsx; it was v2.3.3921's triangle). */ /*#__PURE__*/React.createElement(WeaponPill, { stateRef: stateRef, onCycle: _desktopCycleWeapon, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

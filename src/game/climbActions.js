@@ -32,7 +32,7 @@ import { jumpActive } from '@/game/jump.js';
 import { cue } from '@/game/eventSounds.js';
 import {
   CLIMB_MULT, CLIMB_NOTE, CHEST_NOTE, FEET_HS,
-  riseCellAt, riseShuts, feetInBand, faceEntry, faceLanding, footOf, climbStartAt, climbWay, climbOut,
+  riseCellAt, riseShuts, feetInBand, faceEntry, faceLanding, footOf, climbStartAt, climbWay, climbOut, CLIMB_REACH,
   startDrop, dropAt, atChest,
 } from '@/game/climb.js';
 
@@ -114,10 +114,12 @@ export function climbBegin(S, dx, dy, gdy) {
 
 /** The step while climbing (straight up or down) or dropping (none). */
 export function climbSteer(S, dx, dy) {
+  S._pushY = dy;   /* v2.3.4139: the way you push, for the chest's walk-in (a blocked computer walk has no vy) */
   if (S._climbDrop) return [0, 0];
   if (!S._climb) return [dx, dy];
   const w = climbWay(dy);
   S._climb.way = w || S._climb.way;
+  S._climb.push = w;   /* v2.3.4139: this frame's push (climbTick's foot) */
   return [0, w];
 }
 
@@ -186,7 +188,14 @@ export function climbTick(S, now, gdy, popup) {
   /* on the vines: out at the top or the foot, else count the climb */
   if (S._climb) {
     const r = R.list[S._climb.k];
-    const out = S._climb.fresh ? null : r ? climbOut(r, fy, FEET_HS) : 'foot';
+    let out = S._climb.fresh ? null : r ? climbOut(r, fy, FEET_HS) : 'foot';
+    /* v2.3.4139: a climb begins with the feet up to CLIMB_REACH short of the
+       vines, and at 0.4 of the walk they take several frames to reach them:
+       judged 'foot' on its second frame it ended at once wherever the walk
+       had stopped the feet a step short (on a computer, the owner's
+       "I don't see the lagoon" pictures).  Pushing up within that reach it
+       goes on; let go or push down there and it ends at the foot. */
+    if (out === 'foot' && r && S._climb.push === -1 && fy - FEET_HS < r.face.y1 + CLIMB_REACH) out = null;
     S._climb.fresh = false;
     if (out) {
       S._climb = null;
@@ -213,7 +222,9 @@ export function climbTick(S, now, gdy, popup) {
     if (r.chest && atChest(r, fx, fy, FEET_HS)) { S._nearChest = r; break; }
   }
   /* ...and walking into it opens it, as a tap or E does (desktopControls) */
-  if (S._nearChest && (S.player.vy < 0 || (S.stickY || 0) < -0.5) && fy - FEET_HS <= S._nearChest.chest.y1 + 3) openRiseChest(S, popup);
+  if (S._nearChest && (S.player.vy < 0 || (S.stickY || 0) < -0.5 || (S._pushY || 0) < -0.3) && fy - FEET_HS <= S._nearChest.chest.y1 + CLIMB_REACH) openRiseChest(S, popup);
+  /* v2.3.4139: ...within a step of its front (CLIMB_REACH, was 3 px): a computer's walk stops the feet
+     6 px further off a wall than a phone's, and the chest never opened walking into it there */
 }
 
 /** Open the chest you stand at.  This PR's chest is empty: it says the

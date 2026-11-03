@@ -11,7 +11,8 @@ import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: ho
 import { getActiveWeapon } from '@/data/gameSystems.js';
 import { prog3FreshLevel } from '@/data/prog3.js'; /* v2.3.3538: a new character's level (1 under one level) */
 import { startGuideArrow } from '@/ui/guideArrow.js'; /* v2.3.3925: the big arrow, the first time */
-import { mayorScreenRect } from '@/ui/mayorScreen.js'; /* v2.3.4106: the first steps' step 2 rings him */
+import { mayorScreenRect } from '@/ui/mayorScreen.js';
+import { worldReady } from '@/ui/loadingGate.js'; /* v2.3.4136: no card while a loading screen is up */ /* v2.3.4106: the first steps' step 2 rings him */
 import { pointsTipWanted, pointsTipDone, pointsTipWords, POINTS_TIP_SNOOZE_AFTER_MS, POINTS_TIP_SNOOZE_MS, POINTS_TIP_MAX_SNOOZES } from '@/game/pointsTips.js'; /* v2.3.3551: the first points, shown */
 import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'; /* v2.3.2246 */
 /* v2.3.2495: the two facts the dashboard lessons are about -- is the band
@@ -1321,6 +1322,17 @@ export function QuestCoach(props) {
           for (const sd of discHoldRef.current.sides) releaseDisc(sd, 'coach');
           discHoldRef.current = { id: null, sides: [] };
         }
+        return;
+      }
+      /* ═══ v2.3.4136: NOT WHILE A LOADING SCREEN IS UP ═══
+         The owner: "Before the loading screen is finished I'm seeing pop up
+         messages meant for the main screen area ... Needs to wait until it's
+         done."  No card while the clip or a zone's veil is up, nor in the
+         breath after it (ui/loadingGate.js): a card up when a veil comes goes,
+         and the walk takes it up again, in its order, once the world is back */
+      if (!worldReady(now)) {
+        if (viewRef.current) { viewRef.current = null; setView(null); }
+        noteCoach(false, now);
         return;
       }
       let next = null;
