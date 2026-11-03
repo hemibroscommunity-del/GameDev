@@ -12,7 +12,9 @@
  *      WORKER minted and charged to it (two Power), its row lit and the
  *      sword still marked as the one in hand;
  *   3. the staff's row, then the sword's, the same;
- *   4. a change of weapon in hand brings the grid to that weapon;
+ *   4. a change of weapon in hand brings the grid to that weapon (the 2 key,
+ *      with a bow the worker armed: v2.3.4154, the key takes up only a weapon
+ *      you hold);
  *   5. a computer: a mouse click on a row does the same.
  *
  *   node tools/qa/mp/run.mjs pointsswitch
@@ -124,13 +126,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`3b. ...and the sword's row brings the sword back (${g3.lane})`, g3.lane === 'sword' && g3.shown === 'sword', g3);
 
     /* the staff shown, then the bow taken in hand (the 2 key: the game's own
-       slot pick, desktopControls -- a new character's bow slot) */
+       slot pick, desktopControls).  v2.3.4154: the 2 key takes up only a bow
+       you hold (weaponSlots.js pickSlot) and a new character has none, so the
+       worker arms one first (H.armWorker, as mp-monsternumbers does); that
+       leaves it in hand, and the 1 key takes melee (the sword's row) back first */
+    const myId = await H.readState(P, (S) => S.myId);
+    const armed = await H.armWorker(P, wsPort, myId, ['bow']).catch(() => []);
+    await P.page.keyboard.press('Digit1');
+    await P.page.waitForTimeout(600);
     await pick(P, 'staff');
     await P.page.keyboard.press('Digit2');
     await P.page.waitForTimeout(900);
     const g4 = await grid(P, 'dmg');
-    rec.ok(`4. the bow taken in hand brings the grid to the bow (${g4.lane}; in hand: ${g4.held})`,
-      g4.lane === 'bow' && g4.shown === 'bow' && g4.held === 'bow', g4);
+    rec.ok(`4. the bow taken in hand brings the grid to the bow (${g4.lane}; in hand: ${g4.held}; the worker's bow: ${armed.join(', ') || 'none'})`,
+      armed.includes('bow') && g4.lane === 'bow' && g4.shown === 'bow' && g4.held === 'bow', { g4, armed });
   } finally {
     await P.ctx.close().catch(() => {});
   }

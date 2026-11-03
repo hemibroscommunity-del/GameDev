@@ -327,6 +327,7 @@ import { wireCharacterPortrait, wireSplashPrewarm, clampLongHairColor } from '@/
 import { wireTownMusic } from '@/game/townMusic.js';
 import { nextWeaponSlot } from '@/game/weaponSlots.js'; /* v2.3.1845: one weapon-cycle rotation */
 import { prevWeaponSlot } from '@/game/weaponSlots.js'; /* v2.3.3711: the mouse wheel turned up, one weapon back */
+import { pickSlot } from '@/game/weaponSlots.js'; /* v2.3.4154: the 1/2/3 keys and the weapon bar take up only a weapon you hold */
 import { wheelStep } from '@/game/deskCombos.js'; /* v2.3.3711: the mouse wheel steps through your weapons */
 import { isAbilitiesEnabled } from '@/data/abilities.js'; /* v2.3.3711: a click with the shield up bashes only where the worker casts abilities */
 import { wireSpriteSheets } from '@/game/spriteSheets.js';
@@ -9905,7 +9906,13 @@ export var BroTown = function BroTown(_ref0) {
   var _desktopSelectSlot = useCallback(function (slot) {
     var _S2$rpg$weapon2, _S2$rpg$rangedWeapon2;
     var S2 = stateRef.current;
-    if (!S2.rpg || S2.rpg.activeSlot === slot) return;
+    /* v2.3.4154: only a weapon you hold (weaponSlots.js pickSlot, the cycle's
+       own rule: v2.3.1845's "neither offers a slot you cannot fill").  Here,
+       not at the keys: 3 asked for the staff at its key and 2 asked nothing,
+       so a character with no bow pressed 2 into the empty bow slot -- every
+       attack refused, "undefined" over the head, and (v2.3.4151) the worker
+       told and the slot saved.  The state-machine sweep, VB-1 G2-17. */
+    if (!pickSlot(S2.rpg, slot)) return;
     /* v2.3.2472: and the desktop's direct pick keeps the guard too -- same
        rule as the cycle above. */
     S2.rpg.activeSlot = slot;
