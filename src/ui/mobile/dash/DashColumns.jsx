@@ -14,7 +14,7 @@ import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js'; /* v
 /* v2.3.2131: the XP digits left the card face for a popup (owner). */
 import { infoPopupBus } from '../infoPopupBus.js';
 import { skillInfo } from '../infoGlossary.js';
-import { dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, landscapeDashTileSize, landscapeDashColW, LAND_PILL_H, BAG_RAIL_W, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
+import { oneBandLayout, dashTileSize, dashPanelWidths, combatPillWidth, combatPillHeight, landscapeDashTileSize, landscapeDashColW, LAND_PILL_H, BAG_RAIL_W, BAG_VIEW_COLS, DASH_GAP, DASH_ROWS, BAG_HEADER_H } from '../sheet/sheetGeometry.js';
 import { playVw } from '../playViewport.js';
 import { shopBus } from '../shopBus.js';   /* v2.3.2059 */
 
@@ -177,7 +177,11 @@ export const DeskRailWeapons = ({ R, w, row }) => {
   );
 };
 
-export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
+export const DashColumns = ({ R, stacked, vwBasis, desk, box }) => {
+  /* v2.3.4072: `box` -- the one band (?oneband=1) lays this row out from its
+     measured box (OneBandColumns.jsx, sheetGeometry oneBandLayout): the
+     tile, the counts and the cards come from L; without it nothing changes */
+  const L = box ? oneBandLayout(box.w, box.h) : null;
   /* v2.3.2163 (owner: "I can see 8 slots playing in [portrait] view (plus
      space for combat skills) so this should translate to 8 slots of space
      viewable in landscape (plus space for combat skills). Panes ... can be
@@ -195,9 +199,9 @@ export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
      axes of the rule. */
   /* v2.3.3687: on a computer the tile is what DESK_BAG_COLS across the column
      leaves (the column less the sheet's 8 px pads and this grid's own) */
-  const t = desk ? Math.floor((vw - 16 - 2 * DASH_GAP - (DESK_BAG_COLS - 1) * DASH_GAP) / DESK_BAG_COLS)
+  const t = L ? L.tile : desk ? Math.floor((vw - 16 - 2 * DASH_GAP - (DESK_BAG_COLS - 1) * DASH_GAP) / DESK_BAG_COLS)
     : stacked ? landscapeDashTileSize(vw, vw) : dashTileSize(vw);
-  const panelW = dashPanelWidths(vw);
+  const panelW = L ? { wide: L.wide, narrow: L.narrow } : dashPanelWidths(vw);
   const rpg = R || {};
   const [bagFilter, setBagFilter] = React.useState(bagFilterBus.get());
   React.useEffect(() => bagFilterBus.subscribe(setBagFilter), []);
@@ -274,8 +278,8 @@ export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
      the width; everything the rotation saves is world.  The scroll floor
      keeps the same "+3 rows past visible" rule so the peek-and-fade cue
      still has half a row to sit on. */
-  const bagCols = desk ? DESK_BAG_COLS : stacked ? 2 : BAG_VIEW_COLS;
-  const bagVisRows = desk ? DESK_BAG_ROWS : stacked ? 4 : DASH_ROWS;
+  const bagCols = L ? L.cols : desk ? DESK_BAG_COLS : stacked ? 2 : BAG_VIEW_COLS;
+  const bagVisRows = L ? L.rows : desk ? DESK_BAG_ROWS : stacked ? 4 : DASH_ROWS;
   /* v2.3.2166: stacked fits its EIGHT slots exactly (the container must
      hold the combat row and the nav below them with nothing to scroll
      for), so its floor is the visible grid itself; more items than eight
@@ -343,11 +347,11 @@ export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
      container's inner width three ways — compact upright cards (icon over
      level over bar) instead of the wide lying pills, because ~48px of
      width holds no horizontal layout. */
-  const pillW = desk ? Math.floor((gridW - 2 * DASH_GAP) / 3)   /* v2.3.3687: a third of the bag's width */
+  const pillW = L ? L.pillW : desk ? Math.floor((gridW - 2 * DASH_GAP) / 3)   /* v2.3.3687: a third of the bag's width */
     : stacked
     ? Math.floor((landscapeDashColW(vw, vw) - 10 - 2 * DASH_GAP) / 3)
     : combatPillWidth(vw);
-  const pillH = desk ? Math.max(combatPillHeight(vw), 56) : stacked ? LAND_PILL_H : combatPillHeight(vw);
+  const pillH = L ? L.pillH : desk ? Math.max(combatPillHeight(vw), 56) : stacked ? LAND_PILL_H : combatPillHeight(vw);
   /* v2.3.1853: the pill now carries THREE things across, so the icon stops
      taking the pill's whole height.  MEASURED against the narrowest phone
      the layout supports: at 360 the pill is 80px wide and 68 of that is
@@ -771,7 +775,7 @@ export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
           : { display: 'contents' }}>
         {stacked
           ? <BagFilterChips vertical width={BAG_RAIL_W} height={bagVisRows * t + (bagVisRows - 1) * DASH_GAP} />
-          : <BagFilterChips width={gridW} height={BAG_HEADER_H} />}
+          : (!L || L.header) && <BagFilterChips width={gridW} height={BAG_HEADER_H} />}
         {/* The scroller.  It is the ONLY thing on this row that scrolls —
             the world behind never does (the v2.3.1285 rule), and the panel
             itself stays exactly as tall as the band. */}
@@ -818,7 +822,7 @@ export const DashColumns = ({ R, stacked, vwBasis, desk }) => {
             should be enough to include the 3 combat skills at the bottom"
             (owner) — splitting the container's width three ways as compact
             upright cards.  Portrait keeps its stacked column. */}
-        {stacked
+        {stacked || (L && L.pillsRow)
           ? <div style={{ display: 'flex', gap: DASH_GAP, justifyContent: 'center' }}>
               {COMBAT_SKILLS.slice(0, 3).map(combatPill)}
             </div>
