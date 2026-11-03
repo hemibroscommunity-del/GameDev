@@ -7,7 +7,7 @@
  * On a phone (390 x 844, 3x) in the Wheel:
  *   1. the minimap's frame carries a north bead at the middle of its top band
  *      (window.__btMinimap.north), drawn: brass N strokes on the slate bead,
- *      the box's top-left and top-right corners still the frame (v2.3.3974:
+ *      the box's top-left and top-right corners still the frame (v2.3.3986:
  *      the slim frame's charcoal, a gold N on a charcoal bead -- the old
  *      colours' tolerances hold both);
  *   2. tapping the minimap opens the world map, with a compass at its top
@@ -67,7 +67,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     rec.ok(`...drawn: brass N strokes on the slate bead (${brass} brass, ${slate} slate of ${all} device px inside its rim)`,
       all > 200 && brass > all * 0.12 && brass < all * 0.6 && slate > all * 0.3, { brass, slate, all });
-    /* v2.3.3974: the frame is 3 px now (was 7, slate): its top band read a
+    /* v2.3.3986: the frame is 3 px now (was 7, slate): its top band read a
        little either side of the bead, dark (the keyline and the charcoal) */
     const cornerL = px(m.rootX + m.box / 2 - 24, m.topInset + 1), cornerR = px(m.rootX + m.box / 2 + 24, m.topInset + 1);
     const darkPx = (p) => !!p && p[0] + p[1] + p[2] < 150;

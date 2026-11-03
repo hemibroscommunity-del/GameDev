@@ -63,7 +63,7 @@ const PM = await import('../../src/game/partyMarks.js');
   const mm = readFileSync(new URL('../../src/rendering/systems/wheelMinimap.js', import.meta.url), 'utf8');
   check('3a the minimap leaves your party out of the green bros', /if \(party && party\.has\(id\)\) continue;[\s\S]{0,200}C_OTHER, 13\)/.test(mm));
   check('3b ...draws them in the party\'s blue, clamped to the box\'s edge, and its probe says where', /clampToBox\(pbx, pby/.test(mm) && /'player', PARTY_MARK\.COLOR, px\)/.test(mm) && /party: (?:K === 1 \? partyMarks : partyMarks\.map\(kp\)|partyMarks),/.test(mm));
-  /* v2.3.3974: the monsters are grouped dots ('mdot') and the bosses horned
+  /* v2.3.3986: the monsters are grouped dots ('mdot') and the bosses horned
      skulls ('bossSkull'), no longer a 12 px skull each: both drawn before the
      party (the old needle was gone, and -1 passed this by itself) */
   const monAt = mm.indexOf("'mdot', C_MONSTER,"), bossAt = mm.indexOf("'bossSkull', C_BOSS, BOSS_PX)"), partyMk = mm.indexOf("'player', PARTY_MARK.COLOR, px)");

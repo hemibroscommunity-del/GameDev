@@ -55,7 +55,7 @@ import { NML_RED, nmlHere, nmlCanAttack, nmlLockedOut } from '@/game/noMansLand.
 import { nmlAskCurrent, nmlAskSubscribe, nmlAskAnswer, nmlAskClose, nmlAskMs, nmlHitBack } from '@/game/nmlAsk.js';
 import { NmlSkull, openNmlInfo } from './NmlBadge.jsx';
 import { infoPopupBus } from './infoPopupBus.js';
-import { wheelMiniBox } from '@/ui/wheelMiniSize.js';   /* v2.3.3974: the minimap's side, twice as big on a computer */
+import { wheelMiniBox } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: the minimap's side, twice as big on a computer */
 
 /* the small "i" on the skull's corner */
 function InfoDot({ size = 13 }) {

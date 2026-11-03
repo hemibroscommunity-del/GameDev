@@ -510,7 +510,7 @@ export class MinimapRenderer {
       g.rect(13.5, 22.5, 1.6, 5).fill(0x0b161b);              /* teeth */
       g.rect(17, 22.5, 1.6, 5).fill(0x0b161b);
     });
-    /* ═══ v2.3.3974: THE WHEEL'S MONSTERS, A SMALL DOT; ITS BOSSES, A HORNED SKULL ═══
+    /* ═══ v2.3.3986: THE WHEEL'S MONSTERS, A SMALL DOT; ITS BOSSES, A HORNED SKULL ═══
        The owner, on the Wheel's minimap: "smaller enemy markers, potentially
        grouped at low zoom, to eliminate the current clusters of oversized red
        skulls", and its danger marks "visually distinct from the skull used
