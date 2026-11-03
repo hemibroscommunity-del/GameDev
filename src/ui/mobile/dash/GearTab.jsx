@@ -9,12 +9,10 @@ import { resolveItemCard } from './ItemDetailPopup.jsx';
 import { itemDetailBus } from './itemDetailBus.js';
 import { weaponSlotFor, unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect } from './equipActions.js';
 import { weaponRows, shieldRows, armourRows, compareRows, charLevel } from './gearStats.js';
-import { combatSkillState, WEAPON_SKILLS } from './combatSkill.js';
-import { WeaponBar } from './WeaponBar.jsx';
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
+import { CharacterView } from '../sheet/CharacterView.jsx';   /* v2.3.4161: the overview's full-body bro */
 import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4151: the overview's bars, the Character page's own */
 import { shopBus } from '../shopBus.js';
-import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
 import { WEAPON_STASH_MAX, toDisplayHp } from '../../../data/gameSystems.js';
 import { gemCutKey, gemIcon, gemElementName } from '@/data/gems.js';
@@ -104,6 +102,11 @@ const FONT_MIN = 11;   /* the owner's floor for anything in the card */
    (PR #1410).  Not the short band (the sideways phone, which the owner
    likes as it is): its row of nines wants the width. */
 const GEAR_MAX_W = 560;
+/* v2.3.4161: the overview's arrangement, for the owner to choose between
+   (?gearview=1|2|3, one tab): a temporary switch, gone once one is picked */
+const GEAR_VIEW = (() => {
+  try { const v = new URLSearchParams(window.location.search).get('gearview'); return v === '2' ? 2 : v === '3' ? 3 : 1; } catch (e) { return 1; }
+})();
 
 const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
 
@@ -256,14 +259,8 @@ export const GearTab = ({ R: Rin, desk }) => {
   React.useEffect(() => gearTabBus.subscribe(() => tick()), []);
   React.useEffect(() => shopBus.subscribe(() => tick()), []);   /* v2.3.2059: the bag is half the shop */
   React.useEffect(() => itemDetailBus.subscribe(() => tick()), []);
-  /* v2.3.1874's count-up, which the weapon cells' bars carry now: frames only
-     while xpLanding holds or counts a card */
-  React.useEffect(() => {
-    let raf = 0, alive = true;
-    const step = () => { if (!alive) return; if (xpCounting()) tick(); raf = requestAnimationFrame(step); };
-    raf = requestAnimationFrame(step);
-    return () => { alive = false; cancelAnimationFrame(raf); };
-  }, []);
+  /* v2.3.4161: no XP count-up here any more (the skills' tiles left for the
+     Bro page), so no frame loop either */
   const bro = React.useRef(null);
 
   const st = gearTabBus.state;
@@ -287,7 +284,10 @@ export const GearTab = ({ R: Rin, desk }) => {
   /* ── geometry: one square size `t` for both grids ── */
   const wide = box.w >= WIDE_AT;
   const W = Math.max(0, box.w), H = Math.max(0, box.h);
-  const footH = desk ? 48 + GAP : 0;   /* the computer's weapon bar, under the three */
+  /* v2.3.4161: the computer's weapon bar under the three is retired: since
+     #1405 the weapon pill at the foot of the world (keys 1 2 3) is the one
+     weapon switcher on every layout, the owner's choice */
+  const footH = 0;
   let t, sideH, broW, broH;
   /* v2.3.4151: SHORT -- a box too short for three rows of 34 px squares (the
      one band open on a sideways phone, Lane B's ~78 px row: PR #1410).  Both
@@ -695,115 +695,148 @@ export const GearTab = ({ R: Rin, desk }) => {
       </div>
     );
   } else {
-    /* the overview -- "<name> Lv N", the combat resource bars, then the three
-       combat skills.  The owner: "the gear tab just having the compact
-       version just combat resource bars ... the 3 primary combat skill pills
-       might sit well there too ... leveling up weapon is huge part", then
-       "Melee bow magic each need just their large icons and levels similar to
-       old bag layout with the 3 combat skills.  If you tap on it it should
-       turn into the xp bar".  HP on the display scale (the Character page's,
-       toDisplayHp); EN and MP as they are -- stamina IS the game's energy
-       (VitalBar's "EN"), one resource, one bar.  Spending points lives on the
-       Bro page. */
+    /* v2.3.4161: THE OVERVIEW IS YOUR BRO.  The owner (2026-11-03): "Move
+       the 3 primary combat skills out of the gear menu and put them into the
+       bro menu", then "I want the character preview in the middle panel by
+       default (actually showing what he's equipped) like how I had it in the
+       previous character layout ... Keep the profile picture in the bro tab.
+       This one just put the character preview in middle".  So the card at
+       rest is the full-body bro (CharacterView: the Character page's own
+       compositor, wearing exactly what is equipped, facing southwest as the
+       owner chose), his name and "Lv N", and the HP, MP and EN bars -- no
+       headshot.  Three arrangements, switchable by ?gearview=1|2|3 for the
+       owner to choose (GEAR_VIEW):
+         1  name and Lv above, the figure centred and large, the bars below;
+         2  the figure on the left half, the name, Lv and bars on the right;
+         3  the figure as large as fits, name and Lv a small badge over it,
+            the bars thin lines at the foot.
+       The short band (the sideways one band, ~66 px) has one shape for all
+       three: the figure at the left, the name and bars beside it.  HP on the
+       display scale (toDisplayHp); EN and MP as they are -- stamina IS the
+       game's energy (VitalBar's "EN"), one resource, one bar.  The skills'
+       tiles and their XP bars leave for the Bro page (Lane B, PR #1386); the
+       XP that flies in after a kill floats and fades while no card is on
+       screen (xpLanding xpCardPoint). */
     const S = getState();
     const who = (S && S.myName) || 'You';
     const lvl = charLevel(R);
-    const bar = (kind, cur, max) => (
-      <div key={kind} data-vital={kind} title={VITAL_LABEL[kind]} style={{ display: 'flex' }}>
-        <VitalBar kind={kind} cur={cur} max={max} thick={short ? 13 : 16}
-          inset={(
-            <div style={{
-              width: '100%', minWidth: 0, display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px 0 3px', boxSizing: 'border-box',
-              color: '#FFFFFF', lineHeight: 1, textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.7)',
-            }}>
-              <img src={VITAL_ICONS[kind]} alt="" draggable={false} style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-              <span style={{ fontSize: FONT_MIN, fontWeight: 800, letterSpacing: '.02em' }}>{VITAL_LABEL[kind]}</span>
-              <span style={{ flex: 1 }} />
-              <span style={{ fontSize: FONT_MIN, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
-            </div>
-          )} />
-      </div>
-    );
-    const skills = WEAPON_SKILLS.map((s) => ({ s, k: combatSkillState(R, s) }));
-    const open = skills.find((x) => x.s.key === st.xp) || null;
-    /* a skill's tile: its big picture and "Lv N" (the XP that flies in
-       after a kill still lands here, xpLanding); a tap turns it into its XP
-       bar across the row -- "68 / 455 XP", the numbers the top bar's XP bar
-       reads (combatSkill.js) -- until a second tap or 4 s (gearTabBus.showXp) */
-    const tile = ({ s, k }) => (
-      <button type="button" key={s.key} data-gear-skill={k.p3cat || s.key} data-lvl={k.lvl}
-        /* v2.3.4151: the skill's XP numbers as data (nothing drawn), the
-           XP-fly's count-up readers' hook since the weapon cells went plain */
-        data-xpbar={k.p3cat || undefined}
-        data-xpprog={k.p3cat && k.xp ? Math.round(displayXp(k.p3cat, k.xp.prog)) : undefined}
-        data-xpthresh={k.p3cat && k.xp ? Math.round(k.xp.thresh) : undefined}
-        aria-label={`${s.label} level ${k.lvl}: show its XP`}
-        ref={k.p3cat ? ((el) => { if (el) registerXpCard(k.p3cat, el.getBoundingClientRect()); }) : undefined}
-        onClick={(e) => { e.stopPropagation(); gearTabBus.showXp(s.key); }}
-        style={{
-          flex: '1 1 0', minWidth: 0, minHeight: 0, boxSizing: 'border-box', padding: short ? '0 3px' : '3px 2px', borderRadius: short ? 6 : 8,
-          display: 'flex', flexDirection: short ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', gap: short ? 4 : 2,
-          border: `1px solid ${COL.borderStrong}`, background: COL.wellSoft, color: COL.text, fontFamily: 'inherit',
-          cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
-        }}>
-        {short ? (
-          <img src={s.iconSrc} alt="" draggable={false} style={{ width: 16, height: 16, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-        ) : (
-          <span style={{ flex: '1 1 0', minHeight: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img src={s.iconSrc} alt="" draggable={false} style={{ maxWidth: '100%', maxHeight: '100%', width: 40, height: 40, objectFit: 'contain', pointerEvents: 'none' }} />
-          </span>
-        )}
-        <span style={{ flex: 'none', fontSize: 12, fontWeight: 900, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>Lv {k.lvl}</span>
-      </button>
-    );
-    const xpWide = ({ s, k }) => {
-      const prog = k.xp ? Math.round(displayXp(k.p3cat, k.xp.prog)) : 0;
-      const thresh = k.xp ? Math.round(k.xp.thresh) : 0;
+    const handWpn = R[HAND_FIELD[R.activeSlot || 'melee']] || null;
+    /* the card's inner box, the figure's room is measured from */
+    const cardPad = short ? 2 : PAD;
+    const cw = Math.max(40, broW - 2 * cardPad - 2 - (short ? 2 : 4));
+    const ch = Math.max(30, broH - 2 * cardPad - 2 - (short ? 0 : 5));
+    /* a bar: its picture and word where there is room, the numbers always */
+    const bar = (kind, cur, max, thick, w) => {
+      const roomy = w == null || w >= 96, wordy = w == null || w >= 74;
       return (
-        <button type="button" key={s.key} data-gear-skill={k.p3cat || s.key} data-lvl={k.lvl} data-gear-xpopen=""
-          aria-label={`${s.label} level ${k.lvl}: ${k.xp ? prog + ' of ' + thresh + ' XP' : 'fully levelled'}`}
-          ref={k.p3cat ? ((el) => { if (el) registerXpCard(k.p3cat, el.getBoundingClientRect()); }) : undefined}
-          onClick={(e) => { e.stopPropagation(); gearTabBus.showXp(null); }}
-          style={{
-            flex: '1 1 0', minWidth: 0, minHeight: 0, boxSizing: 'border-box', padding: short ? '0 6px' : '4px 8px', borderRadius: short ? 6 : 8,
-            display: 'flex', flexDirection: short ? 'row' : 'column', alignItems: short ? 'center' : undefined, justifyContent: 'center', gap: short ? 5 : 4,
-            border: `1px solid ${COL.borderStrong}`, background: COL.wellSoft, color: COL.text, fontFamily: 'inherit', textAlign: 'left',
-            cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
-          }}>
-          {short ? (
-            <img src={s.iconSrc} alt="" draggable={false} style={{ width: 16, height: 16, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-          ) : (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, width: '100%', minWidth: 0 }}>
-              <img src={s.iconSrc} alt="" draggable={false} style={{ width: 20, height: 20, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-              <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</span>
-              <span style={{ flex: 'none', fontSize: 12, fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>Lv {k.lvl}</span>
-            </span>
-          )}
-          <span aria-hidden="true" data-xpbar={k.p3cat || undefined} data-xpprog={k.xp ? prog : undefined} data-xpthresh={k.xp ? thresh : undefined}
-            style={{ display: 'block', width: short ? 'auto' : '100%', flex: short ? '1 1 0' : undefined, minWidth: 0, height: 7, borderRadius: 4, overflow: 'hidden', background: COL.wellDeep }}>
-            <span style={{ display: 'block', height: '100%', width: `${k.xp && thresh > 0 ? Math.min(100, (prog / thresh) * 100) : 100}%`, background: '#8AA9F9' }} />
-          </span>
-          <span data-gear-xpnum="" style={{ fontSize: FONT_MIN, fontWeight: 700, color: COL.text2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-            {k.xp ? (short ? `${prog.toLocaleString()}/${thresh.toLocaleString()}` : `${prog.toLocaleString()} / ${thresh.toLocaleString()} XP`) : 'Fully levelled'}
-          </span>
-        </button>
+        <div key={kind} data-vital={kind} title={VITAL_LABEL[kind]} style={{ display: 'flex' }}>
+          <VitalBar kind={kind} cur={cur} max={max} thick={thick}
+            inset={(
+              <div style={{
+                width: '100%', minWidth: 0, display: 'flex', alignItems: 'center', gap: 3, padding: '0 5px 0 3px', boxSizing: 'border-box',
+                color: '#FFFFFF', lineHeight: 1, textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.7)',
+              }}>
+                {roomy && <img src={VITAL_ICONS[kind]} alt="" draggable={false} style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />}
+                {wordy && <span style={{ fontSize: FONT_MIN, fontWeight: 800, letterSpacing: '.02em' }}>{VITAL_LABEL[kind]}</span>}
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: FONT_MIN, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
+              </div>
+            )} />
+        </div>
       );
     };
+    const vitals = [
+      ['hp', toDisplayHp(R.hp || 0), toDisplayHp(R.maxHp || 100)],
+      ['mana', R.mana || 0, R.maxMana || 100],
+      ['stamina', R.stamina || 0, R.maxStamina || 100],
+    ];
+    const bars = (thick, w, gap) => (
+      <div data-gear-bars="" style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap }}>
+        {vitals.map(([k, c, m]) => bar(k, c, m, thick, w))}
+      </div>
+    );
+    /* thin lines: the bar alone, its numbers in its title (arrangement 3) */
+    const lines = (
+      <div data-gear-bars="" style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {vitals.map(([k, c, m]) => (
+          <div key={k} data-vital={k} title={`${VITAL_LABEL[k]} ${Math.ceil(c)}/${Math.ceil(m)}`} style={{ display: 'flex' }}>
+            <VitalBar kind={k} cur={c} max={m} thick={4} />
+          </div>
+        ))}
+      </div>
+    );
+    const nameLine = (center) => (
+      <div data-gear-level={lvl} style={{ flex: 'none', display: 'flex', alignItems: 'baseline', justifyContent: center ? 'center' : 'flex-start', gap: 5, minWidth: 0 }}>
+        <span data-gear-who="" style={{ minWidth: 0, fontSize: 13, fontWeight: 800, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
+        <span style={{ flex: 'none', fontSize: 12, fontWeight: 800, color: COL.accent, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
+      </div>
+    );
+    /* the figure: CharacterView's compact crop (its window 52% of the size),
+       as large as `bw` x `bh` allows */
+    const figure = (bw, bh) => {
+      const size = Math.max(24, Math.floor(Math.min(bh, bw / 0.52)));
+      return (
+        <div data-gear-figure="" data-size={size} style={{ flex: 'none', width: bw, height: bh, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', overflow: 'hidden' }}>
+          <CharacterView size={size} weapon={handWpn} shield={R.shield} dir="southwest" crop />
+        </div>
+      );
+    };
+    let inner;
+    if (short) {
+      const fw = Math.max(28, Math.round(ch * 0.52) + 4);
+      inner = (
+        <div style={{ display: 'flex', gap: 6, height: '100%', alignItems: 'stretch' }}>
+          {figure(fw, ch)}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
+            {nameLine(false)}
+            {bars(13, cw - fw - 6, 2)}
+          </div>
+        </div>
+      );
+    } else if (GEAR_VIEW === 2) {
+      const fw = Math.floor(cw * 0.5);
+      const rw = cw - fw - 5;
+      inner = (
+        <div style={{ display: 'flex', gap: 5, height: '100%', alignItems: 'stretch' }}>
+          {figure(fw, ch)}
+          <div style={{ width: rw, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6 }}>
+            <div data-gear-level={lvl} style={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0 }}>
+              <span data-gear-who="" style={{ fontSize: 13, fontWeight: 800, color: COL.text, lineHeight: 1.15, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{who}</span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: COL.accent, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
+            </div>
+            {bars(16, rw, 4)}
+          </div>
+        </div>
+      );
+    } else if (GEAR_VIEW === 3) {
+      const lh = 3 * 4 + 2 * 2;
+      inner = (
+        <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {figure(cw, ch - lh - 3)}
+          {lines}
+          {/* the name and level, a small badge over the figure's corner */}
+          <div data-gear-level={lvl} style={{
+            position: 'absolute', left: 0, top: 0, maxWidth: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'baseline', gap: 4,
+            padding: '2px 6px', borderRadius: 7, background: 'rgba(11, 22, 27, 0.82)', border: `1px solid ${COL.edgeWarm}`,
+          }}>
+            <span data-gear-who="" style={{ minWidth: 0, fontSize: 12, fontWeight: 800, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
+            <span style={{ flex: 'none', fontSize: 11, fontWeight: 800, color: COL.accent, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
+          </div>
+        </div>
+      );
+    } else {
+      const nh = 16, bh = 3 * 16 + 2 * 3;
+      inner = (
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {nameLine(true)}
+          {figure(cw, ch - nh - bh - 6)}
+          {bars(16, cw, 3)}
+        </div>
+      );
+    }
     body = (
-      <div data-gear-stats="mine" style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 4, height: '100%', boxSizing: 'border-box' }}>
-        <div data-gear-level={lvl} style={{ flex: 'none', display: short ? 'none' : 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 5, minWidth: 0 }}>
-          <span data-gear-who="" style={{ minWidth: 0, fontSize: 13, fontWeight: 800, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
-          <span style={{ flex: 'none', fontSize: 12, fontWeight: 800, color: COL.accent, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
-        </div>
-        {short ? null : rule}
-        <div data-gear-bars="" style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
-          {bar('hp', toDisplayHp(R.hp || 0), toDisplayHp(R.maxHp || 100))}
-          {bar('mana', R.mana || 0, R.maxMana || 100)}
-          {bar('stamina', R.stamina || 0, R.maxStamina || 100)}
-        </div>
-        <div data-gear-skills="" style={{ flex: '1 1 0', minHeight: short ? 18 : 44, display: 'flex', gap: short ? 3 : 4 }}>
-          {open ? xpWide(open) : skills.map(tile)}
-        </div>
+      <div data-gear-stats="mine" data-gear-arrangement={short ? 'short' : GEAR_VIEW} style={{ height: '100%', boxSizing: 'border-box' }}>
+        {inner}
       </div>
     );
   }
@@ -849,11 +882,6 @@ export const GearTab = ({ R: Rin, desk }) => {
               <div style={{ flex: 'none', display: 'flex', gap: rg, justifyContent: 'center' }}>{inventory}{equipment}</div>
               {broPane}
             </>
-          )}
-          {desk && (
-            <div data-dash-desk-combat="" style={{ flex: 'none', marginTop: 'auto' }}>
-              <WeaponBar R={Rin} row />
-            </div>
           )}
         </>
       )}
