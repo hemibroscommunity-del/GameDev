@@ -74,12 +74,20 @@ Claude Docs project `b91fd0a8-77d6-4fdc-accd-15ef8172499b`, tab body node `3e889
 - **Still needs measuring:** memory sizes and Pixi-internal claims need `mp-membudget`,
   `mp-gpuaudit` or `mp-memledger`; reading code cannot settle them.
 
-## Status
+## Status (2026-11-03, end of the session)
 
-The sweep and verification are done. Still to do:
+Done:
 
-- the plan review;
-- the doc's lead and "What to do next" section;
-- two diagrams (the duel, a player's session).
+- the sweep (42 slices) and verification (25 clusters);
+- the plan's review (`reviews/R1-R3.md`), giving `PLAN.md`;
+- the owner's doc: the lead, the definition, the ranked 25-cluster table, "What to do next", the
+  catalogue and the three attachments.
 
-This file is updated as each lands.
+Still open for a later session:
+
+1. Draw two diagrams in the doc, the duel (V6) and a player's session (V3). Their "Diagram edges"
+   are in `verified/V6.md` and `verified/V3.md`.
+2. Turn this folder into one short curated page (for example `docs/STATE-MACHINES.md`), then close
+   or merge this pull request.
+3. Start the work in `PLAN.md`: before Thursday, then Wave 1 by honest-player harm, one system per
+   PR.
