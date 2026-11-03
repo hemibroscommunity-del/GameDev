@@ -161,7 +161,7 @@ export class WheelGround {
     /* v2.3.3452: every piece the view touches laid and the view inside the
        world -- the tile layer's black under the ground is not drawn (update) */
     this.coversView = false;
-    this.pieces = new Map();   /* "i,j" -> { i, j, sprite, ready, popped } */
+    this.pieces = new Map();   /* "i,j" -> { i, j, sprite, ready, popped, ahead } */
     this.inFlight = 0;
     /* v2.3.2959: pieces laid short of a picture (ground-worker.js,
        DOWNLOADS THAT CANNOT STOP THE GROUND) show what they have, plan
@@ -277,7 +277,10 @@ export class WheelGround {
       if (!rec) {
         const dx = (i + 0.5) * cs - mx, dy = (j + 0.5) * cs - my;
         want.push({ i, j, on: onScreen ? 0 : 1, d: dx * dx + dy * dy });
-      } else if (!jumped && !rec.ready && !rec.popped && onScreen) {
+      } else if (!jumped && !rec.ready && !rec.popped && !rec.ahead && onScreen) {
+        /* v2.3.4094: not `ahead`: one taken from the zone gate's fill while
+           still being laid is under the overlay, which waits on that fill
+           (wheelTrial.js wheelWarm, THE GROUND THAT CAME EARLY) */
         rec.popped = true;
         wheelStats.popIns++;
       }
@@ -318,7 +321,7 @@ export class WheelGround {
   _load(i, j, info, onScreen) {
     const key = i + ',' + j;
     const warm = wheelIsWarm(i, j);
-    const rec = { i, j, sprite: null, ready: false, popped: false };
+    const rec = { i, j, sprite: null, ready: false, popped: false, ahead: warm };   /* v2.3.4094: + ahead */
     if (onScreen && !warm) { rec.popped = true; wheelStats.popIns++; }
     this.pieces.set(key, rec);
     if (!warm) this.inFlight++;
