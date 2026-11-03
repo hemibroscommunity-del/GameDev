@@ -44,7 +44,8 @@ export function tourOn(S) {
 
 /** The button on a giver's line for `quest` at `status`, or null:
  *  { kind: 'race' | 'open' | 'shop', label, plot? } -- `npc` the townsperson
- *  whose line it is (the quest panel's npcRef) */
+ *  whose line it is (the quest panel's npcRef); 'shop' only for a quest that
+ *  says `shopBuy` (v2.3.3924) */
 export function questAction(quest, status, S, npc) {
   if (!quest || status !== 'active' || !S) return null;
   if (questObjectiveDone(quest, S)) return null;
@@ -59,7 +60,17 @@ export function questAction(quest, status, S, npc) {
      (the owner: "tap only instead of proximity based"), and a tap on him is
      his quest's line until it is handed in -- so the line carries the way to
      his shop, as the forge's and the bench's carry theirs. */
-  if (npc && npc.shop) return { kind: 'shop', label: 'Open the shop' };
+  /* ═══ v2.3.3924: ...ONLY WHEN HIS QUEST IS BUYING FROM HIM ═══
+     The owner: "Diego quest line 'open the shop' option is confusing when
+     accepting his first quest".  His "how's it going" line is exactly what
+     shows right after Accept, and his fish_1 is fish caught and cooked, not
+     bought (his shelf, DIEGO_SHELF, is empty anyway), so the button sent a
+     new player into a shop with nothing to do there.  Every giver checked:
+     Diego is the only townsperson who keeps a shop (gameDisplay.js `shop`)
+     and fish_1 his only quest.  So the button now asks the QUEST: one whose
+     task is buying from its giver says `shopBuy: true` (none does today);
+     his shop stays a tap on him once his quest is in. */
+  if (npc && npc.shop && quest.shopBuy) return { kind: 'shop', label: 'Open the shop' };
   return null;
 }
 

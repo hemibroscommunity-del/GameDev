@@ -38,6 +38,11 @@ past one opened his window in front of you.
   carries an **Open the shop** button, as the forge's and the bench's carry
   theirs (game/tour.js `questAction`, kind `shop`, for any giver who keeps a
   shop). While his quest is only on offer, a tap shows the offer, as before.
+  **v2.3.3924: taken off again.** The owner: "Diego quest line 'open the
+  shop' option is confusing when accepting his first quest". That line is
+  what shows right after Accept, and fish_1 buys nothing from him, so the
+  button now asks the quest (`shopBuy`, which none says); his shop is a tap
+  on him once his quest is in (docs/specs/demo-quest-line.md).
 - **The words:**
   - the quest page's "ready" note said "Walk up to him in town and he'll open
     the conversation himself". It now says "Find him in town and tap him to
@@ -65,7 +70,8 @@ Unchanged:
   8. a ready quest's turn-in opens only on a tap;
   9. `?npcprox` brings walking up back;
   10. with Diego's quest under way, his line carries "Open the shop", and it
-      opens his shop.
+      opens his shop (v2.3.3924: now that it carries NO shop button, and no
+      shop opens).
 - The harness's `approachNpc` ends with the stick's tap (`talkToNpc`), as a
   player's approach now must. Every scenario that uses it is unchanged
   otherwise, `mp-questline` (CI's "playable") among them.

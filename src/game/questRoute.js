@@ -27,7 +27,7 @@ import { TOWN_EXITS, WORLDVIEW_EXITS } from '@/data/effects.js';
 import { TILE } from '@/data/constants.js';
 import { ZONES, isWorldViewZone, zoneHomes, wheelLandAt /* v2.3.3320 */ } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel'; v2.3.2990: its lands */
 import { trackedQuestId } from './trackedQuest.js';   /* v2.3.3522: the quest you track leads */
-import { routeOrder, wheelWay } from './questWays.js';   /* v2.3.3522: where each quest leads in the Wheel */
+import { routeOrder, wheelWay, waitsOnLevel, levelWaitsLast /* v2.3.3924: a quest above your level waits */ } from './questWays.js';   /* v2.3.3522: where each quest leads in the Wheel */
 import { wheelTownDoors } from './wheelTownDoors.js';   /* v2.3.3522: the buildings' doors, for the quests that need one */
 import { wheelDungeonDoorsOpen } from './wheelDungeons.js';   /* v2.3.3540: the dungeons' mouths, for "Clear any dungeon" */
 
@@ -77,7 +77,12 @@ function _routeQuests(rpg, S) {
     try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
     list.push({ qid, q, done, zone: q.zone || null });
   }
-  return routeOrder(list, trackedQuestId());
+  /* v2.3.3924: a quest you are below the level of (its `recLevel`: the
+     Mayor's "Dungeon Delver") leads LAST, unless you track it or it is done
+     -- its giver says "Not level 10 yet?  Do the town's quests first", so the
+     road follows the town's quest you took for that (questWays.js) */
+  const tracked = trackedQuestId();
+  return levelWaitsLast(routeOrder(list, tracked), tracked, rpg);
 }
 
 /** The zone the player's ACTIVE Mayor Bro step points at, or null.
@@ -380,7 +385,19 @@ function _wantNpc(rpg, S) {
 export function tourOffer(rpg, S) {
   const quests = (rpg && rpg._quests) || null;
   if (!quests || !Object.keys(quests).length) return null;
-  for (const k of Object.keys(quests)) if (quests[k] === QUEST_STATUS.active) return null;
+  /* v2.3.3924: ...except a quest you are below the level of (the Mayor's
+     "Dungeon Delver", [Lv 10+ recommended]), not done and not tracked: its
+     giver sends you to the town's quests first, and so does this, from the
+     next step of the tour on offer (the Woodworker's first, after the
+     snowmen) -- so the gold road leads somewhere a level 6 can do */
+  for (const k of Object.keys(quests)) {
+    if (quests[k] !== QUEST_STATUS.active) continue;
+    const q = QUEST_CHAINS[k];
+    if (!waitsOnLevel(q, rpg) || k === trackedQuestId()) return null;
+    let done = false;
+    try { done = !!(q.check && q.check(rpg, S)); } catch (e) { done = false; }
+    if (done) return null;
+  }
   /* only a giver who stands here (the tour's two new ones stand only against
      a worker that knows the tour) */
   const here = (name) => !(S && Array.isArray(S.npcs)) || S.npcs.some((n) => n && n.name === name);
