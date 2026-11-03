@@ -427,12 +427,14 @@ Only rungs 0–5 have resources, art and a place in the world today (Part 7). Ru
 
 **Quality grades**, rolled once at the forge or the drop and never changed:
 
-| Grade | Odds per mint | Weapon: whole hit × | Armour: tier × and the damage-reduction cap raised by |
-|---|---|---|---|
-| Normal | ~90.1% | 1.00 | +0 |
-| Rare | 9% | 1.30 | +2.5% |
-| Elite | 0.9% | 1.75 | +5% |
-| Godly | 1 in 2,000,000 | 5.00 | +10% |
+| Grade | Odds at the forge (and the daily chest) | Odds on a monster drop (v2.3.3952) | Weapon: whole hit × | Armour: tier × and the damage-reduction cap raised by |
+|---|---|---|---|---|
+| Normal | ~90.1% | ~99.0% | 1.00 | +0 |
+| Rare | 9% | 0.9% | 1.30 | +2.5% |
+| Elite | 0.9% | 0.09% | 1.75 | +5% |
+| Godly | 1 in 2,000,000 | 1 in 2,000,000 | 5.00 | +10% |
+
+Since v2.3.3952 a monster drop rolls its own grade, 10x rarer than the forge's (the owner: "Smithing it has 10x more unlikely at same tier drop chance"; `hardening.js` `_rollDropQuality`; the live flag `dropgrades: false` brings the forge's odds back on drops).
 
 The owner's brief for Godly was "literally one in millions so make it basically game breaking good". Worn armour draws its grade as an edge colour (rare blue, elite orange, godly rainbow), so a grade is visible to other players.
 
@@ -679,7 +681,7 @@ No telegraphed hit, burst or boss ability ever exceeds 50% of the victim's max H
 | 112–1,111 | the land's Shard | 1 in 10 |
 | 1,112–10,000 | nothing more | — |
 
-Every weapon or armour drop rolls its grade (Rare 9%, Elite 0.9%, Godly 1 in 2,000,000). The roll is shown over the monster ("7,431" in grey, "640 Frost Shard" in gold), and the codex prints the same bands. The random weapon off a kill was removed on the owner's word; the raw gem off a kill was replaced by shard cracking.
+Every weapon or armour drop rolls its grade (Rare 0.9%, Elite 0.09%, Godly 1 in 2,000,000 since v2.3.3952; the forge stays at 9% / 0.9%). The roll is shown over the monster ("7,431" in grey, "640 Frost Shard" in gold), and the codex prints the same bands. The random weapon off a kill was removed on the owner's word; the raw gem off a kill was replaced by shard cracking.
 
 ### 6.7 The Monster Codex
 

@@ -3903,8 +3903,9 @@ export class GameRoom {
          has now extended the ladder to armour.  Same roller, deliberately:
          one distribution means normal/rare/elite/godly mean the same thing on
          a breastplate as on a blade, and there is one place to retune. */
+      /* v2.3.3952: a drop's own roll, 10x rarer than the forge's (hardening.js) */
       out.push({ name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult,
-        quality: this._rollWeaponQuality() });
+        quality: this._rollDropQuality() });
     }
     return out.length ? out : null;
   }
@@ -3941,8 +3942,9 @@ export class GameRoom {
       reforgeBonus: null,
       hardenBonus: null,
       /* Rolled, like the forge's and like the ordinary drop's — which also
-         hands this the pile's hidden-until-pickup reveal for free. */
-      quality: this._rollWeaponQuality(),
+         hands this the pile's hidden-until-pickup reveal for free.
+         v2.3.3952: a drop's own roll now, 10x rarer than the forge's. */
+      quality: this._rollDropQuality(),
       hardness: 0,
       temper: 0,
     };
