@@ -387,7 +387,7 @@ export const monsterMoveMethods = {
       /* round the monster where it stands (an area's ring, telegraph.js
          v2.3.3634: what the ring shows is what it reaches) */
       m._mvAim = { x: m.x, y: m.y };   /* proto-ok: fixed-field point */
-      ex.radius = mv.radius;
+      ex.radius = mv.radius; ex.shape = 'ring';   /* a ring with the moves' dark edge (telegraphShapes.js) */
       if (mv.kind === 'stomp') { ex.ms = mv.windupMs + mv.gapMs; ex.shape = 'rings'; ex.r0 = mv.r0; ex.gap = mv.gapMs; }
     } else if (mv.kind === 'charge') {
       /* the lane: through its target and on past them */

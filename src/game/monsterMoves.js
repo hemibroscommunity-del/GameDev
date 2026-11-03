@@ -82,6 +82,7 @@ const num = (v, lo, hi, d) => {
  *    fan    a volley: from (ax, ay), n balls at `len` along `ang` +- span/2,
  *           each a ring of br
  *    rings  a two-step slam: r0, then the ring's own radius
+ *    ring   an area slam's one ring (the moves' dark edge on it)
  *    follow a combo's ring, round the monster wherever it is shoved */
 export function moveGeometry(p) {
   if (!p || !movesCapOn() || MOVE_KINDS.indexOf(p.ability) < 0) return null;
@@ -94,6 +95,7 @@ export function moveGeometry(p) {
       n: Math.round(num(p.n, 1, 5, 3)), br: num(p.br, 8, 120, 44) };
   }
   if (p.shape === 'rings') return { shape: 'rings', r0: num(p.r0, 8, 400, 90) };
+  if (p.shape === 'ring') return { shape: 'ring' };
   if (p.follow && p.monsterId != null) return { shape: 'follow', mid: p.monsterId };
   return null;
 }

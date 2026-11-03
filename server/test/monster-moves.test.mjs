@@ -374,7 +374,7 @@ const nearest = (ps, id) => ({ id, x: ps.x, y: ps.y, extracting: false });
   fresh(Q, m2.x - 100, m2.y + 60);
   room._maybeStartMove(WHEEL_ZONE, m2, nearest(P, 'p1'), NOW);
   const qt = abil('quake', 'telegraph')[0];
-  check('7. the quake: one ring round it, wound up ' + Qk.windupMs + ' ms', !!qt && qt.radius === Qk.radius && qt.ms === Qk.windupMs && !qt.shape);
+  check('7. the quake: one ring round it, wound up ' + Qk.windupMs + ' ms', !!qt && qt.radius === Qk.radius && qt.ms === Qk.windupMs && qt.shape === 'ring' && qt.ax === Math.round(m2.x));
   runMove(m2);
   check('7. ...everyone in its ring is hit, its target and the one behind it', hitsOn('p1').length === 1 && hitsOn('p2').length === 1 && hitsOn('p1')[0].dmg === Math.ceil(30 * Qk.dmgMult));
 }
@@ -513,7 +513,7 @@ const nearest = (ps, id) => ({ id, x: ps.x, y: ps.y, extracting: false });
   const g3 = moveGeometry({ ability: 'stomp', shape: 'rings', r0: 90 });
   const g4 = moveGeometry({ ability: 'combo', follow: 1, monsterId: 'wm-x' });
   check('13. a lane, a fan, two rings and a ring that follows, every number clamped', g1.shape === 'line' && g1.w === 120 && g2.shape === 'fan' && g2.len === 600 && g2.n === 5 && g3.r0 === 90 && g4.shape === 'follow' && g4.mid === 'wm-x');
-  check('13. a kit\'s plain ring and an unknown kind are no shape', moveGeometry({ ability: 'slam' }) === null && moveGeometry({ ability: 'quake' }) === null && moveGeometry({ ability: '__proto__', shape: 'line', bx: 1, by: 1 }) === null);
+  check('13. a kit\'s plain ring and an unknown kind are no shape; an area slam\'s ring is one', moveGeometry({ ability: 'slam', shape: 'ring' }) === null && moveGeometry({ ability: 'quake', shape: 'ring' }).shape === 'ring' && moveGeometry({ ability: '__proto__', shape: 'line', bx: 1, by: 1 }) === null);
   const balls = volleyBalls({ ability: 'volley', release: true, ax: 0, ay: 0, pts: [[10, 0], [0, 10], ['x', 1], [5, 5], [1, 1], [2, 2], [3, 3]] });
   check('13. a volley\'s balls from its release: well-formed ones, at most five', balls.length === 4 && balls[0].tx === 10 && balls.every((b) => b.x === 0 && b.y === 0), balls);
   noteMoveCaps(null);
