@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "2f546b03fe15106f65547297e95eccaabc03ba40",
+  "tree": "47a3af908c295a1ca4ad5f2bf2956c31f4ecd6aa",
+  "committedAt": "2026-11-03T13:46:41-08:00",
+  "subject": "Merge pull request #1419 from hemibroscommunity-del/claude/coach-minimap-laptop",
+  "files": 7567,
+  "bytes": 860587208,
+  "listingSha256": "dcfe1e3ccea2b55e15595038290c872643edcbaf2301f0d3e0cac17520ed06ac",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

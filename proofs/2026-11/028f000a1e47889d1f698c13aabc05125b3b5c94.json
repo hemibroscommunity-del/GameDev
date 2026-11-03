@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "028f000a1e47889d1f698c13aabc05125b3b5c94",
+  "tree": "04601481a42f86990632500b5821c05b35f5ca9f",
+  "committedAt": "2026-11-03T13:46:34-08:00",
+  "subject": "Merge pull request #1420 from hemibroscommunity-del/claude/desk-key-bow-slot",
+  "files": 7565,
+  "bytes": 860574006,
+  "listingSha256": "8f966d728fae380b22913c6ea25a6af7462718e2958cd1b7fb59a00851b8234b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
