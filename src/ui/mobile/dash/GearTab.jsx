@@ -12,17 +12,17 @@ import { weaponRows, shieldRows, armourRows, compareRows, charLevel } from './ge
 import { combatSkillByKey, combatSkillState, WEAPON_SKILLS } from './combatSkill.js';
 import { WeaponBar } from './WeaponBar.jsx';
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
-import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4141: the overview's bars, the Character page's own */
+import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4151: the overview's bars, the Character page's own */
 import { shopBus } from '../shopBus.js';
 import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
 import { WEAPON_STASH_MAX, toDisplayHp } from '../../../data/gameSystems.js';
 import { gemCutKey, gemIcon, gemElementName } from '@/data/gems.js';
-import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.4141: the coins beside the filter */
-import { barNumber } from '@/game/barNumbers.js';   /* v2.3.4141: the coins' badge says a big purse short, as the top bar does */
-import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4141: a "?" piece's mark, as on its card */
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.4151: the coins beside the filter */
+import { barNumber } from '@/game/barNumbers.js';   /* v2.3.4151: the coins' badge says a big purse short, as the top bar does */
+import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151: a "?" piece's mark, as on its card */
 
-/* ═══ v2.3.4141: THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
+/* ═══ v2.3.4151: THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
  *
  * The owner's design (2026-11-02): three panels, "inventory on left with
  * filter on top ... the furthest right tab has all the equipped items
@@ -50,7 +50,7 @@ import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4141:
  *           buttons at the foot;
  *   RIGHT   "Equipped" over Sword Bow Staff / Chest Legs Cape / Shield Amulet
  *           Gem.
- * v2.3.4141, the owner: "Make equipped slots as big as the slots you're using
+ * v2.3.4151, the owner: "Make equipped slots as big as the slots you're using
  * for inventory" -- one size `t` for both grids; "connect the middle panel
  * ... to whatever the active attention item is (blue outline)" -- the card
  * wears the pick's blue (GEAR_SEL_BLUE, the ring's own colour) while
@@ -175,7 +175,7 @@ function cellContent(R, id, slots) {
       rows: [] };
   }
   if (id === 'amulet') {
-    /* v2.3.4141: NO Unequip -- the worker's unequip_request for the amulet
+    /* v2.3.4151: NO Unequip -- the worker's unequip_request for the amulet
        slot nulls it with no bag to put it in (gear.js _handleUnequipRequest:
        "armor/shield/amulet just null out"), so the button would destroy it */
     const card = getEquipContribs(R).cards.amulet;
@@ -199,7 +199,7 @@ const actBtn = (tone, off) => ({
   touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
 });
 
-/* v2.3.4141: the mockup's small pictures, drawn inline (no new picture files:
+/* v2.3.4151: the mockup's small pictures, drawn inline (no new picture files:
    the memory law) -- the filter's funnel and its chevron */
 const Funnel = ({ size, color }) => (
   <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" style={{ flex: 'none', display: 'block' }}>
@@ -212,7 +212,7 @@ const Chevron = ({ size, color, up }) => (
   </svg>
 );
 
-/* v2.3.4141: gear's numbers in the card -- short words, two to a row, the
+/* v2.3.4151: gear's numbers in the card -- short words, two to a row, the
    change against what you wear inline (green better, red worse) */
 const STAT_WORD = { Damage: 'DMG', DPS: 'DPS', Speed: 'SPD', Range: 'RANGE', Block: 'BLOCK', Stamina: 'EN', Defence: 'DEF', 'Damage cut': 'CUT' };
 const StatGrid = ({ rows, cmp, line }) => (
@@ -282,7 +282,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   const W = Math.max(0, box.w), H = Math.max(0, box.h);
   const footH = desk ? 48 + GAP : 0;   /* the computer's weapon bar, under the three */
   let t, sideH, broW, broH;
-  /* v2.3.4141: SHORT -- a box too short for three rows of 34 px squares (the
+  /* v2.3.4151: SHORT -- a box too short for three rows of 34 px squares (the
      one band open on a sideways phone, Lane B's ~78 px row: PR #1410).  Both
      grids lie in ONE row of nine (the bag's nine in view, the nine cells in
      their order), and the card goes compact (shortCard below), so nothing is
@@ -369,7 +369,7 @@ export const GearTab = ({ R: Rin, desk }) => {
               fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
             }}>{'×'}</button>
         )}
-        {/* v2.3.4141, the owner: "Make gold icon as big as it can fit in that
+        {/* v2.3.4151, the owner: "Make gold icon as big as it can fit in that
             space and just put a badge over the number of gold (or whatever
             you currently do for item quantities)" -- the coins as a bag slot
             is: the picture filling its box, the amount the slots' own count
@@ -810,7 +810,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     );
   }
 
-  /* the card: data-gear-pane="bro" since v2.3.4141's first layout (mp-revealbag
+  /* the card: data-gear-pane="bro" since v2.3.4151's first layout (mp-revealbag
      reads a "?" piece's Reveal in it).  While something is picked it wears
      the pick's own blue (GEAR_SEL_BLUE, the ring's colour) and a faint blue
      wash -- the owner's link between the blue outline and the card. */

@@ -1,4 +1,4 @@
-/* ═══ mp-gearshots (v2.3.4141): THE GEAR TAB'S PICTURES FOR THE DOCS ═══
+/* ═══ mp-gearshots (v2.3.4151): THE GEAR TAB'S PICTURES FOR THE DOCS ═══
  *
  * The owner's second mockup (2026-11-03): the bag (three by three, the coins
  * beside "All Items") | ONE card | "Equipped".  This scenario plays the real
@@ -166,7 +166,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }
 
-  /* ══ v2.3.4141: inside the one band (Lane B's PR #1410, here by its
+  /* ══ v2.3.4151: inside the one band (Lane B's PR #1410, here by its
      ?oneband=1): a computer with the band open, and a sideways phone with
      the band opened by a tap -- the short band, both grids one row of nine ══ */
   for (const o of [

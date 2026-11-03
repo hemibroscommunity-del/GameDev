@@ -137,7 +137,7 @@ async function openBag(P, view) {
   await evalIn(P, () => { if (window.__broDashPanelBus) window.__broDashPanelBus.toBar(); });
   return unfoldBand(P);
 }
-/* v2.3.4141: the Gear tab is the band at rest (sideways the dashboard
+/* v2.3.4151: the Gear tab is the band at rest (sideways the dashboard
    column): openBag's way, with nothing picked and no filter, so each Gear
    state starts from the same tab */
 async function gearReset(P) {
@@ -712,7 +712,7 @@ export const STATES = [
     },
   },
   {
-    /* v2.3.4141: a bag tap no longer opens the card (the Gear tab shows the
+    /* v2.3.4151: a bag tap no longer opens the card (the Gear tab shows the
        item in its middle panel); the card is where Sell and Drop go on to */
     id: 'item-card', group: 'Dashboard', title: 'An item card',
     about: 'The item card, as the Gear tab\'s Sell opens it: the item\'s picture and name over the Auction House\'s price sheet (how many, your price, Put it up / Back).',
@@ -729,10 +729,10 @@ export const STATES = [
     },
     after: async ({ P }) => { await gearReset(P); },
   },
-  /* ═══ v2.3.4141: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
+  /* ═══ v2.3.4151: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
   {
     id: 'gear-tab', group: 'Dashboard', title: 'The Gear tab',
-    about: 'The resting dashboard as the owner\'s second mockup and notes (v2.3.4141): the bag ("All Items" with a funnel and a chevron, the coins beside it -- the coin picture with the amount as a count badge, as on a bag slot -- three square slots a row and three rows in view, the rest by scrolling) | ONE card, no tabs or figure, which never scrolls: "<name> Lv N", the HP, MP and EN bars (stamina is the game\'s energy: one bar), then Melee, Bow and Magic as three tiles, each its big picture and "Lv N" (a tap turns a tile into its XP bar for 4 s) | "Equipped" over Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem, its cells the bag\'s squares\' size (the weapon in hand gold). Too narrow for three across (sideways) the bag and the gear sit side by side over the card; a computer adds the weapon bar (1 2 3) at the foot.',
+    about: 'The resting dashboard as the owner\'s second mockup and notes (v2.3.4151): the bag ("All Items" with a funnel and a chevron, the coins beside it -- the coin picture with the amount as a count badge, as on a bag slot -- three square slots a row and three rows in view, the rest by scrolling) | ONE card, no tabs or figure, which never scrolls: "<name> Lv N", the HP, MP and EN bars (stamina is the game\'s energy: one bar), then Melee, Bow and Magic as three tiles, each its big picture and "Lv N" (a tap turns a tile into its XP bar for 4 s) | "Equipped" over Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem, its cells the bag\'s squares\' size (the weapon in hand gold). Too narrow for three across (sideways) the bag and the gear sit side by side over the card; a computer adds the weapon bar (1 2 3) at the foot.',
     run: async ({ P, view, wsPort, myId }) => {
       await gearKit(P, wsPort, myId);
       const e = await openGear(P, view);
@@ -795,7 +795,7 @@ export const STATES = [
       const e0 = await openBag(P, view);
       if (e0) return e0;
       await wait(P, 800);
-      /* v2.3.4141: the Gear tab's bag shows nine and scrolls the rest: bring
+      /* v2.3.4151: the Gear tab's bag shows nine and scrolls the rest: bring
          the fish into its view first, as a thumb would */
       await evalIn(P, () => { const t = document.querySelector('[data-bag-key="i-fish_trout_albino"]'); if (t) t.scrollIntoView({ block: 'nearest' }); });
       await wait(P, 300);

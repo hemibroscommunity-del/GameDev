@@ -1,6 +1,6 @@
-/* ═══ mp-geartab (v2.3.4141): THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
+/* ═══ mp-geartab (v2.3.4151): THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
  *
- * v2.3.4141: the owner's second mockup (2026-11-03) -- the bag three square
+ * v2.3.4151: the owner's second mockup (2026-11-03) -- the bag three square
  * slots a row, nine in view (bigger than 34 px), the coins beside "All Items";
  * the middle ONE card, no tabs and no figure: the overview ("<name> Lv N",
  * the HP, MP and EN bars, DEF DODGE RESIST | DMG SPD CRIT RANGE, no "Combat
@@ -63,11 +63,11 @@ const look = (P) => P.page.evaluate(() => {
     rows: [...document.querySelectorAll('[data-gear-filter-row]')].map((r) => ({ id: r.getAttribute('data-gear-filter-row'), n: Number(r.getAttribute('data-count')) })),
     empty: (q('[data-gear-empty]') || {}).textContent || null,
     tabs: [...document.querySelectorAll('[data-gear-tab-btn]')].map((b) => b.getAttribute('data-gear-tab-btn') + ':' + b.getAttribute('aria-pressed')),
-    /* v2.3.4141: the card's view and its parts, the bag's squares */
+    /* v2.3.4151: the card's view and its parts, the bag's squares */
     who: (q('[data-gear-who]') || {}).textContent || null,
     bars: [...document.querySelectorAll('[data-gear-bars] [data-vital]')].map((b) => b.getAttribute('data-vital')),
     skills: [...document.querySelectorAll('[data-gear-skill]')].map((b) => ({ id: b.getAttribute('data-gear-skill'), lvl: Number(b.getAttribute('data-lvl')), open: b.hasAttribute('data-gear-xpopen'), img: !!b.querySelector('img'), xpbar: !!b.querySelector('[data-xpbar]'), num: (b.querySelector('[data-gear-xpnum]') || {}).textContent || null, text: b.textContent, box: vis(b) })),
-    /* v2.3.4141: the card never scrolls, nothing in it under 11 px, its
+    /* v2.3.4151: the card never scrolls, nothing in it under 11 px, its
        border the pick's blue while something is picked; the two grids one size */
     fit: (() => {
       const c = q('[data-gear-pane="bro"]');
@@ -159,7 +159,7 @@ async function seed(P, wsPort, rec, tag) {
   return id;
 }
 
-/* v2.3.4141: the owner's "without needing to do any scrolling" -- the card's
+/* v2.3.4151: the owner's "without needing to do any scrolling" -- the card's
    fit, its 11 px floor, its blue link, the grids' one size, at one state */
 const BLUE = 'rgb(79, 143, 222)';   /* GEAR_SEL_BLUE */
 function fitOk(rec, tag, s, picked) {
@@ -198,9 +198,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
           && s1.panes.inv.l < s1.panes.bro.l && s1.panes.bro.l < s1.panes.equip.l, { layout: s1.layout, panes: s1.panes });
       rec.ok('[390x844] the equipment grid in the mockup\'s order: Sword Bow Staff / Chest Legs Cape / Shield Amulet Gem, every cell 34 px or more',
         cellsOk && s1.cells.map((c) => c.id).join() === 'sword,bow,staff,chest,legs,cape,shield,amulet,gem', s1.cells.map((c) => [c.id, c.box && c.box.w]));
-      /* v2.3.4141: the mockup's bag -- four square slots a row, never under
+      /* v2.3.4151: the mockup's bag -- four square slots a row, never under
          34 px, every square in view a slot (the rest empty squares) */
-      /* v2.3.4141: the owner's "9 visible slots" -- three by three, bigger */
+      /* v2.3.4151: the owner's "9 visible slots" -- three by three, bigger */
       rec.ok('[390x844] the bag: three square slots a row, nine in view, each 34 px or more, empty squares filling the view',
         !!s1.squares && s1.squares.cols === 3 && s1.squares.minW >= 34 && s1.squares.minH >= 34 && s1.squares.inView === 9
           && s1.squares.n % 3 === 0, s1.squares);
@@ -297,7 +297,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(300);
       rec.ok('[390x844] the menu\'s ✕ wears data-esc and shuts it', esc && !(await look(P)).menu);
 
-      /* v2.3.4141: a stack -- its card, then the same piece again or the
+      /* v2.3.4151: a stack -- its card, then the same piece again or the
          empty bag puts it down */
       const fishKey = s8.bag.find((k) => /^i-fish_/.test(k));
       await tapEl(P, `[data-gear-bag] [data-bag-key="${fishKey}"]`);
@@ -321,7 +321,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         s12.view === 'item' && s12.statsFor === 'bow' && /Bows/.test(s12.pill || '')
           && s13.view === 'overview' && /All items/i.test(s13.pill || '') && !s13.cells.some((c) => c.sel), { s12: [s12.view, s12.statsFor, s12.pill], s13: [s13.view, s13.pill] });
 
-      /* v2.3.4141: the same at 360 x 780 -- the narrow phone pays for its
+      /* v2.3.4151: the same at 360 x 780 -- the narrow phone pays for its
          34 px squares out of the card, which still fits every state */
       await P.page.setViewportSize({ width: 360, height: 780 });
       await P.page.waitForTimeout(1500);

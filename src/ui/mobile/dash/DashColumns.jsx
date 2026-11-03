@@ -3,7 +3,7 @@ import { GearTab } from './GearTab.jsx';
 import { WeaponBar } from './WeaponBar.jsx';
 import { combatSkillLevel as _combatSkillLevel } from './combatSkill.js';
 
-/* ═══ v2.3.4141: THE RESTING DASHBOARD IS THE GEAR TAB ═══
+/* ═══ v2.3.4151: THE RESTING DASHBOARD IS THE GEAR TAB ═══
    This row held, since v2.3.1636, the bag (v2.3.1653: "the resting dashboard
    IS the bag", its five filter chips over it) beside the three combat-skill
    pills (Melee / Bow / Magic, v2.3.1648), in three shapes: the upright band
@@ -27,7 +27,7 @@ import { combatSkillLevel as _combatSkillLevel } from './combatSkill.js';
                         over BRO | EQUIPMENT narrower.
    The props are kept so BottomDashboard (another lane's file) is untouched:
    `desk` adds the weapon bar at the foot; `stacked` and `vwBasis` are read
-   no more (the box decides).  v2.3.4141: nor is `box`, the one band's
+   no more (the box decides).  v2.3.4151: nor is `box`, the one band's
    measured box (?oneband=1, OneBandColumns.jsx, v2.3.4072) -- the Gear tab
    measures the same box itself. */
 export const DashColumns = ({ R, desk }) => <GearTab R={R} desk={!!desk} />;
