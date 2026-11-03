@@ -983,20 +983,36 @@ export async function coveringElement(P, locator) {
  * throwing, so a scenario that legitimately has no chat can carry on and fail
  * on its own assertion instead of on this.
  */
+/* ═══ v2.3.3941: ...AND THE BELL IS IN MORE NOW ═══
+ * The owner moved the bell off the play screen ("The notification bell could
+ * also move to More, retaining an unread badge"): shut, the feed draws nothing
+ * at all, and More -> Notifications' "Show on screen" is what opens it.  So
+ * this walks the player's path: the More button, the Notifications tile, the
+ * button, then the page put away (the feed sits above the resting band).
+ * Still "until it says it is open", and still false rather than a throw. */
 export async function openWorldChat(P, { timeout = 8000 } = {}) {
   const t0 = Date.now();
   while (Date.now() - t0 < timeout) {
-    const state = await P.page.evaluate(() => {
+    const st = await P.page.evaluate(() => {
       const b = document.querySelector('[data-world-chat-toggle]');
-      return b ? b.getAttribute('aria-expanded') : null;
+      const S = window._gameState && window._gameState.current;
+      return { open: b ? b.getAttribute('aria-expanded') : null, lines: (S && S.chatLog && S.chatLog.length) || 0 };
     });
-    if (state === 'true') return true;
-    if (state === 'false') {
-      await P.page.click('[data-world-chat-toggle]').catch(() => {});
-      await P.page.waitForTimeout(350);
-      continue;
-    }
+    if (st.open === 'true') return true;
+    if (!st.lines) { await P.page.waitForTimeout(250); continue; }
+    const side = await P.page.evaluate(() => !!document.querySelector('.bt-land-sheet, .bt-land-navdock'));
+    const scope = side ? '.bt-land-sheet' : '.bt-dashboard';
+    await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b) b.open('more'); });
+    await P.page.waitForTimeout(500);
+    await P.page.evaluate((sc) => {
+      const t = document.querySelector(sc + ' [data-more-tile="notifications"]');
+      if (t) t.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    }, scope);
+    await P.page.waitForTimeout(450);
+    await P.page.click(scope + ' [data-notif-onscreen="off"]', { timeout: 2000 }).catch(() => {});
     await P.page.waitForTimeout(250);
+    await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b) b.toBar(); });
+    await P.page.waitForTimeout(400);
   }
   return false;
 }
@@ -1162,7 +1178,18 @@ async function tapTop(page, selector, timeout) {
  *  the same two taps a player makes.  Still a UI path end to end: nothing
  *  here calls the bus, so a broken rail or a missing tile fails the test.
  */
+/* v2.3.3941: the owner's five buttons renamed three things a scenario may
+   still ask for by its old word: Character is Bro (and a scenario written for
+   the Character page meant its Equipment tab, the one it opened on: Bro opens
+   on Me now, so that tab is chosen for it), Dashboard is Gear, and More's
+   Friends tile is Social. */
+const DEST_RENAMED = { Character: 'Bro', Dashboard: 'Gear', Friends: 'Social' };
 export async function openDest(P, label, { timeout = 6000 } = {}) {
+  const asked = label;
+  label = DEST_RENAMED[label] || label;
+  if (asked === 'Character') {
+    await P.page.evaluate(() => { if (window.__btHeroSection) window.__btHeroSection.request('Overview'); });
+  }
   const railSel = `.bt-navrail [aria-label="${label}"]`;
   if (await P.page.locator(railSel).first().isVisible().catch(() => false)) {
     await tapTop(P.page, railSel, timeout);

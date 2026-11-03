@@ -418,7 +418,7 @@ const LESSONS = [
     shape: 'rect',
     anchors: [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
-        body: 'Your bag, your gear and your stats live down here. Tap OPEN.' },
+        body: 'Your bag, your gear and your stats live down here. Tap the handle.' },   /* v2.3.3941: the grip replaced OPEN */
       { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         /* v2.3.3793: an arrow both ways now -- a phone on its side its chip,
            a computer the folded strip's arrow (BottomDashboard; the owner
@@ -554,7 +554,7 @@ const LESSONS = [
     shape: 'rect',
     anchors: [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
-        body: 'Mayor Bro paid you in gear. Tap OPEN to find it.' },
+        body: 'Mayor Bro paid you in gear. Tap the handle to find it.' },   /* v2.3.3941 */
       { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: 'Mayor Bro paid you in gear. Open the dashboard to find it.' },
       { sel: '[data-nav="dashboard"]', reach: '[data-nav="dashboard"]',
@@ -890,7 +890,8 @@ const LESSONS = [
     anchors: [{ sel: '[data-more-tile="account"]', reach: '[data-more-tile="account"]',
                 body: 'Your Login Key is the ONLY way back to this character. Open it and save it somewhere.' },
               { sel: '.bt-navrail [aria-label="More"]', reach: '.bt-navrail [aria-label="More"]',
-                body: 'More > Login Key. It is the only way back to this character — save it somewhere.' }],
+                /* v2.3.3941: the tile is Account now, the key on its page */
+                body: 'More > Account. Your Login Key is the only way back to this character — save it somewhere.' }],
     label: 'Save your Login Key',
     /* Gated on having got through the fight lessons: a key is meaningless to
        someone who has not yet decided they want to keep the character, and the

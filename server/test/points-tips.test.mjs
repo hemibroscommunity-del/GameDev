@@ -77,16 +77,16 @@ const levelled = () => ({ prog3: { pool: 3, shared: 3, alloc: {}, atk: { sword: 
 /* ── 4. the words ── */
 {
   const R = levelled();
-  check('4: OPEN', PT.pointsTipWords('fold', R) === 'You have 6 points to spend. Tap OPEN.', PT.pointsTipWords('fold', R));
+  check('4: the handle (v2.3.3941: the grip replaced OPEN)', PT.pointsTipWords('fold', R) === 'You have 6 points to spend. Tap the handle.', PT.pointsTipWords('fold', R));
   check('4: the sideways dashboard', PT.pointsTipWords('side', R) === 'You have 6 points to spend. Open your dashboard.');
-  check('4: Character', PT.pointsTipWords('nav', R) === 'You have 6 points to spend. Tap Character.');
+  check('4: Bro (v2.3.3941: the button\'s new name)', PT.pointsTipWords('nav', R) === 'You have 6 points to spend. Tap Bro.');
   check('4: the Points tab', PT.pointsTipWords('tab', R) === 'Your 6 points are on the Points tab.');
   const g = PT.pointsTipWords('grid', R);
   check('4: the grid says what the two rows are and to tap a stat',
     g === "Top row: 3 weapon points for your weapon's stats. Bottom row: 3 shared points for any stat there. Tap a stat to see what it does.", g);
   const one = { prog3: { pool: 1, shared: 0 } };
   check('4: singular', PT.pointsTipWords('tab', one) === 'Your 1 point is on the Points tab.'
-    && PT.pointsTipWords('nav', one) === 'You have 1 point to spend. Tap Character.', [PT.pointsTipWords('tab', one), PT.pointsTipWords('nav', one)]);
+    && PT.pointsTipWords('nav', one) === 'You have 1 point to spend. Tap Bro.', [PT.pointsTipWords('tab', one), PT.pointsTipWords('nav', one)]);
   check('4: ...on the grid too', PT.pointsTipWords('grid', one).startsWith('Top row: 1 weapon point for') && PT.pointsTipWords('grid', one).includes('0 shared points'));
   const all = ['fold', 'side', 'nav', 'tab', 'grid'].map((w) => PT.pointsTipWords(w, R)).join(' ');
   check('4: never names a weapon or a stat to pick', !/\b(melee|sword|bow|staff|magic|power|luck|defen[cs]e|dodge|max hp)\b/i.test(all), all);
@@ -130,8 +130,9 @@ const coach = readFileSync(new URL('../../src/ui/mobile/QuestCoach.jsx', import.
   const hero = readFileSync(new URL('../../src/ui/mobile/sheet/HeroExpanded.jsx', import.meta.url), 'utf8');
   const dash = readFileSync(new URL('../../src/ui/mobile/BottomDashboard.jsx', import.meta.url), 'utf8');
   check('6: the grid\'s top row and its head cell are there', /data-prog3-band="lane"/.test(hero) && /data-prog3-lane=\{isLane \? buildCat : 'shared'\}/.test(hero));
-  check('6: the Points tab is the "Build" section', /const SECTIONS = \['Overview', 'Build'\]/.test(hero) && /data-section=\{s\}/.test(hero));
-  check('6: Character is the "hero" destination', /\{ id: 'hero',\s+label: 'Character'/.test(dash));
+  /* v2.3.3941: Bro's five tabs (Me, Points, Skills, Achievements, Equipment) */
+  check('6: the Points tab is the "Build" section', /const SECTIONS_ALL = \['Me', 'Build', 'Skills', 'Achievements', 'Overview'\]/.test(hero) && /data-section=\{s\}/.test(hero));
+  check('6: Bro is the "hero" destination', /\{ id: 'hero',\s+label: 'Bro'/.test(dash));
   check('6: the stat window shows the hint under "points spent"', /spentHint: spentN > 0 \? firstSpendHint\(/.test(hero));
   const pop = readFileSync(new URL('../../src/ui/mobile/InfoPopup.jsx', import.meta.url), 'utf8');
   check('6: ...and InfoPopup draws it', /cur\.spentNote && cur\.spentHint/.test(pop) && /data-infopopup-spent-hint/.test(pop));

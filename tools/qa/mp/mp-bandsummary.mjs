@@ -263,9 +263,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const leaves = [...dash.querySelectorAll('*')]
       .filter((el) => !el.children.length && (el.textContent || '').trim())
       .map((el) => (el.textContent || '').trim());
-    /* The identity row is the absolute row that owns the fold chip. */
-    const fold = dash.querySelector('[data-dash-fold]');
-    const row = fold ? fold.parentElement : null;
+    /* The identity row is the absolute row that owns the nav rail (v2.3.3941:
+       the fold left it for the grip on the band's top edge). */
+    const nav = dash.querySelector('.bt-navrail');
+    const row = nav ? nav.parentElement && nav.parentElement.parentElement : null;
     const r = row ? row.getBoundingClientRect() : null;
     return {
       dash: true,
@@ -280,9 +281,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   rec.ok('...and no gold count is left anywhere in the band',
     inBand.dash && inBand.gold.length === 0, inBand.gold);
-  rec.ok('...the identity row now holds the CLOSE pill and the rail, nothing else',
-    !!inBand.kids && inBand.kids.length === 2
-      && inBand.kids[0] === 'CLOSE' && inBand.kids[1] === 'rail', inBand.kids);
+  /* v2.3.3941: the CLOSE pill became the grip on the band's edge (the owner:
+     "remove the large OPEN/CLOSE button taking up a full navigation slot") */
+  rec.ok('...the identity row now holds the rail, nothing else',
+    !!inBand.kids && inBand.kids.length === 1 && inBand.kids[0] === 'rail', inBand.kids);
   /* The overflow check the old block did on the strip, done on the ROW — which
      is the thing that was actually overflowing.  With the purse in here the
      row's children came to 486 inside 382 and the rail hung off the phone. */

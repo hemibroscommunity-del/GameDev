@@ -99,7 +99,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(400);
 
     /* ── 3. the menu's bow: the Equipment slot and the weapon button ── */
-    await A.page.evaluate(() => { try { window.__broDashPanelBus.open('hero'); } catch (e) { /* no bus */ } });
+    await A.page.evaluate(() => { try { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); } catch (e) { /* no bus */ } });
     const hero = await H.waitFor(A, async () => {
       const imgs = Array.from(document.querySelectorAll('img')).filter((i) => /\/icons\/(ui\/equip-bow|items\/bow)\.webp/.test(i.getAttribute('src') || '')
         && i.getBoundingClientRect().width > 0);

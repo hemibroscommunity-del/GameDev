@@ -159,7 +159,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     hadAction && !(await pop(P)), { hadAction, wentThrough });
 
   /* ── 5. THE HERO SHEET'S STAT LABELS ── */
-  await P.page.evaluate(() => { try { window.__broDashPanelBus.open('hero'); } catch (e) {} });
+  await P.page.evaluate(() => { try { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); } catch (e) {} });
   await P.page.waitForTimeout(1000);
   /* ONTO OVERVIEW, WHICH IS WHERE THE STAT ROWS LIVE.  The first cut of this
      file skipped here and blamed the feature: the action button just above

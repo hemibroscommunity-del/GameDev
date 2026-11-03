@@ -85,9 +85,10 @@ export function pointsTipWords(where, rpg) {
   }
   if (where === 'tab') return 'Your ' + pts + (n === 1 ? ' is' : ' are') + ' on the Points tab.';
   /* the card's own title says "Level up!" (the lesson's label) */
-  if (where === 'nav') return 'You have ' + pts + ' to spend. Tap Character.';
+  /* v2.3.3941: the button is Bro now, and the fold a handle, not OPEN */
+  if (where === 'nav') return 'You have ' + pts + ' to spend. Tap Bro.';
   if (where === 'side') return 'You have ' + pts + ' to spend. Open your dashboard.';
-  return 'You have ' + pts + ' to spend. Tap OPEN.';
+  return 'You have ' + pts + ' to spend. Tap the handle.';
 }
 
 /** After a Spend: say the free reset is there, on the first spend only --

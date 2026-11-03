@@ -313,8 +313,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Every destination opened in one pass. A menu that renders a black panel
      is the display bug the owner named, and it would never show up in a
      scenario that only ever looks at the world. */
-  for (const dest of ['quests', 'skills', 'social', 'clan', 'guild',
-                      'journey', 'encyclopedia', 'leaderboard', 'settings', 'account']) {
+  /* v2.3.3941: More's tiles as the owner's five buttons left them (Quests,
+     Life Skills and the Codex have other doors now: the first and last their
+     own buttons, Life Skills Bro's tab) */
+  for (const dest of ['social', 'clan', 'guild', 'journey', 'leaderboard',
+                      'settings', 'account', 'notifications', 'feedback', 'about']) {
     await A.page.evaluate(() => window.__broDashPanelBus.open('more'));
     await A.page.waitForTimeout(250);
     const ok = await A.page.evaluate((d) => {

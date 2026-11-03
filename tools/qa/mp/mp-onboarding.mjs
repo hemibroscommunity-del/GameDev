@@ -49,7 +49,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     null, { timeout: 15000, polling: 200 }).then(() => true).catch(() => false);
   rec.ok('the intro clip lifts on its own (never traps the player)', lifted);
 
-  const railTappable = await page.locator('.bt-navrail [aria-label="Character"]').first()
+  const railTappable = await page.locator('.bt-navrail [data-nav="hero"]').first()
     .click({ timeout: 8000 }).then(() => true).catch(() => false);
   rec.ok('the nav rail is usable as soon as the intro lifts', railTappable);
 

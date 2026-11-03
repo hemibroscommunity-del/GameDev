@@ -33,7 +33,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }, { s: slot, w: wpn });
 
   await equip('melee', SWORD);
-  await P.page.evaluate(() => { window.__broDashPanelBus.open('hero'); });
+  await P.page.evaluate(() => { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); });
   await P.page.waitForTimeout(1500);
 
   /* A fingerprint of the drawn figure. Reading the canvas back is the only way

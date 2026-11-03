@@ -50,7 +50,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Overview/Build/Records — there is no 'Stats' tab), and heroSectionBus is
      not on window, so the tab is tapped the way a finger taps it. */
   await P.page.evaluate(() => {
-    if (window.__broDashPanelBus) { window.__broDashPanelBus.open('hero'); window.__broDashPanelBus.expand(); }
+    if (window.__broDashPanelBus) { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); }
   });
   await P.page.waitForTimeout(700);
   /* The section tabs are ICON-ONLY — no text node to match on.  v2.3.2013:

@@ -6,6 +6,7 @@ import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
 import { chatLaneOf, CHAT_LANE_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's chat-lane pictures */
 import { chatNameColor } from '../../game/chatColor.js';   /* v2.3.3391: a name's colour you can read */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3812: "Tap to close" reads "Click to close" on a computer */
+import { notifBus } from './notifBus.js';   /* v2.3.3941: the bell moved into More; shut and seen are shared with its page */
 
 /* ═══ v2.3.2037: WORLD CHAT, AS ITS OWN SECTION ═══
  *
@@ -98,21 +99,23 @@ const KEEP = 40;
  * This changes what four scenarios see on boot (the list only exists while
  * open), and they are updated to press the bell rather than the default being
  * bent back to suit them. */
-const SHUT_KEY = 'bt_worldchat_shut';
-const readShut = () => {
-  try { return localStorage.getItem(SHUT_KEY) !== '0'; } catch (e) { return true; }
-};
-const writeShut = (v) => {
-  try { localStorage.setItem(SHUT_KEY, v ? '1' : '0'); } catch (e) { /* private window */ }
-};
+/* ═══ v2.3.3941: ...AND THE BELL IS IN MORE NOW ═══
+ * The owner, adopting the review of his dashboard: "The notification bell
+ * could also move to More, retaining an unread badge."  So SHUT draws nothing
+ * in this corner at all: the unread count rides the More button and More ->
+ * Notifications (dash/NotificationsPanel.jsx), whose "Show on screen" opens
+ * this feed again.  The shut flag (the same bt_worldchat_shut key) and the
+ * seen mark moved to notifBus.js so the page and the feed read one copy.
+ * Open, the feed is what it was: the lines, and a tap anywhere on it folds it
+ * away (v2.3.2325) -- into More now, not into a bell. */
 
 export function WorldChatFeed() {
   const [, setV] = useState(0);
   const listRef = useRef(null);
-  const [shut, setShut] = useState(readShut);
-  /* The newest ts the player has been shown. 0 until the first paint marks it,
-     so a first-ever open does not claim a backlog of unread. */
-  const seenRef = useRef(0);
+  /* v2.3.3941: the shut flag and the seen mark are notifBus's (shared with
+     More -> Notifications); this component re-renders when either moves */
+  const [shut, setShutState] = useState(() => notifBus.shut);
+  useEffect(() => notifBus.subscribe(() => setShutState(notifBus.shut)), []);
   /* v2.3.2175: the bell's tap origin.  Declared HERE, with the other hooks
      and above this component's early `return null` -- the first cut put it
      down beside the handler that uses it and turned a quiet corner into
@@ -183,10 +186,8 @@ export function WorldChatFeed() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [lines.length]);
 
-  /* Newer than the mark = unread. Own lines count as read the moment they are
-     shown, which the mark handles for free: the effect below runs on the same
-     render that paints them. */
-  const unread = shut ? lines.filter((m) => (m.ts || 0) > seenRef.current).length : 0;
+  /* v2.3.3941: the unread count is drawn on the More button and its
+     Notifications tile now (notifBus notifUnread); open, there is none. */
 
   /* Open means you have seen the newest line.
      KEYED ON THE NEWEST TIMESTAMP, NOT ON lines.length. The log is capped at
@@ -198,17 +199,14 @@ export function WorldChatFeed() {
      the fortieth message. */
   const newestTs = lines.length ? (lines[lines.length - 1].ts || 0) : 0;
   useEffect(() => {
-    if (!shut && newestTs) seenRef.current = Math.max(seenRef.current, newestTs);
+    if (!shut && newestTs) notifBus.markSeen(newestTs);
   }, [shut, newestTs]);
 
+  /* v2.3.3941: this feed only ever CLOSES itself now (shut, it is not drawn);
+     More -> Notifications is what opens it.  Read when the finger lifts. */
   const toggle = () => {
-    setShut((wasShut) => {
-      const next = !wasShut;
-      /* Opening clears the badge in the same act that reveals the lines. */
-      if (!next && newestTs) seenRef.current = Math.max(seenRef.current, newestTs);
-      writeShut(next);
-      return next;
-    });
+    if (newestTs) notifBus.markSeen(newestTs);
+    notifBus.setShut(!notifBus.shut);
   };
 
   /* ═══ v2.3.2325: TAP THE FEED ANYWHERE TO PUT IT AWAY ═══
@@ -297,6 +295,8 @@ export function WorldChatFeed() {
      thing the owner asked for; the 260px board it replaces is the thing
      they asked to remove (v2.3.2117). */
   if (!lines.length && !ticketChip) return null;
+  /* v2.3.3941: shut is More's now -- nothing in the corner, no bell */
+  if (shut) return null;
 
   /* ═══ v2.3.2175: A FINGER THAT MOVES 4px IS STILL A TAP ═══
      Owner: "Make it so when you tap on the alert bell it pops back up with
@@ -517,51 +517,10 @@ export function WorldChatFeed() {
           touchAction: 'manipulation',
         }}
       >
-        {shut ? (
-          /* The bell is INLINE SVG, like the chevron below it and for the same
-             reason: a texture that loads on first use is the regression
-             CLAUDE.md names by name, and this one would load the first time a
-             player was ever notified of anything -- exactly the moment it must
-             already be there. */
-          <>
-            <svg width="21" height="21" viewBox="0 0 20 20" aria-hidden="true"
-              style={{ display: 'block' }}>
-              <path
-                d="M10 2.6a4.6 4.6 0 0 0-4.6 4.6v2.5L4.1 12.4a.7.7 0 0 0 .6 1.05h10.6a.7.7 0 0 0 .6-1.05L14.6 9.7V7.2A4.6 4.6 0 0 0 10 2.6Z"
-                fill="none" stroke={unread > 0 ? 'var(--ui-brass, #D8AA58)' : '#8FA3A0'}
-                strokeWidth="1.5" strokeLinejoin="round" />
-              <path d="M8.2 15.2a1.9 1.9 0 0 0 3.6 0"
-                fill="none" stroke={unread > 0 ? 'var(--ui-brass, #D8AA58)' : '#8FA3A0'}
-                strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            {unread > 0 ? (
-              /* Overlapping the bell's shoulder rather than sitting beside it:
-                 the whole point of the shut state is that it is 36px wide, and
-                 a badge on a row would spend that back. */
-              <span
-                data-world-chat-unread={unread}
-                style={{
-                  /* v2.3.2155b: 16px and overlapping at -3 put a 25px pill
-                     across a 36px button and hid the bell behind its own
-                     count -- the first render of this read as a brass blob.
-                     14px, and pushed clear of the corner, so the glyph is
-                     what you see and the number is what you check. */
-                  position: 'absolute', top: -5, right: -5,
-                  minWidth: 14, height: 14, padding: '0 3px',
-                  borderRadius: 999,
-                  background: 'var(--ui-brass, #D8AA58)',
-                  color: '#20170D',
-                  fontSize: 11, fontWeight: 800, lineHeight: '14px',
-                  textAlign: 'center', fontVariantNumeric: 'tabular-nums',
-                  boxShadow: '0 0 0 2px rgba(13,22,27,.92)',
-                }}
-              >
-                {unread > 99 ? '99+' : unread}
-              </span>
-            ) : null}
-          </>
-        ) : (
-          <>
+        {/* v2.3.3941: the shut state's 36px bell (v2.3.2155) is gone from here:
+            shut, this feed draws nothing and the count is on More.  What is
+            left is the open header, as it was. */}
+        <>
 
           <span style={{
             fontSize: 11,
@@ -578,27 +537,8 @@ export function WorldChatFeed() {
           }}>
             World Chat
           </span>
-          {unread > 0 ? (
-            <span
-              data-world-chat-unread={unread}
-              style={{
-                flex: '0 0 auto',
-                minWidth: 18,
-                height: 18,
-                padding: '0 5px',
-                borderRadius: 999,
-                background: 'var(--ui-brass, #D8AA58)',
-                color: '#20170D',
-                fontSize: 11,
-                fontWeight: 800,
-                lineHeight: '18px',
-                textAlign: 'center',
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {unread > 99 ? '99+' : unread}
-            </span>
-          ) : null}
+          {/* v2.3.3941: no unread badge on the open header: open, every line is
+              seen (it was always 0 here); the count lives on More. */}
           {/* ═══ v2.3.2325: THE ARROW IS GONE, THE WHOLE PANEL IS THE BUTTON ═══
               Owner: "you can remove the tiny down arrow minimizing button."
               He is right that it had stopped earning its 10px.  The chevron
@@ -628,7 +568,6 @@ export function WorldChatFeed() {
             {deskWords('Tap to close')}
           </span>
           </>
-        )}
       </button>
       ) : null}
       {(!lines.length || shut) ? null : (

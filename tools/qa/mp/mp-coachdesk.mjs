@@ -133,7 +133,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!key && !crosses(key, hud4) && key.l >= 0 && key.r <= key.vw && key.t >= 0 && key.b <= key.vh, { key, hud4 });
 
       /* 5. the chat's header */
-      await P.page.evaluate(() => { const b = document.querySelector('[data-world-chat-toggle]'); if (b) b.click(); });
+      await H.openWorldChat(P).catch(() => false);   /* v2.3.3941: the feed opens from More -> Notifications */
       await P.page.waitForTimeout(600);
       const hint = await P.page.evaluate(() => { const h = document.querySelector('[data-world-chat-hint]'); return h ? h.textContent.trim() : null; });
       rec.ok(`${V.id} 5. the chat's header says "${hint}"`, hint == null || (V.desk ? /^Click to close$/i.test(hint) : /^Tap to close$/i.test(hint)), hint);

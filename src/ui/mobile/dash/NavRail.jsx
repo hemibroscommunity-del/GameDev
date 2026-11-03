@@ -2,6 +2,7 @@ import React from 'react';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2639: the tab-tap sound */
 import { COL } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { dashMinBus } from '../dashMinBus.js'; /* v2.3.3897 (B1): the bag button unfolds the band; v2.3.3941 kept */
 import { playIsLandscape } from '../playViewport.js'; /* v2.3.2158: the tap decides by shape */
 import { navButtonSize } from '../sheet/sheetGeometry.js';
 import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, shown on a computer */
@@ -35,6 +36,13 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
    and it is how you switch destinations or get out.  A rail that hid with
    the rest of the band would leave an open panel with no navigation. */
 
+/* ═══ v2.3.3941: FIVE BUTTONS -- GEAR, BRO, QUESTS, CODEX, MORE ═══
+   The owner's consolidation ("limit lots of buttons to switch between
+   different context"): the Skills button went inside Bro (its Skills tab), and
+   the CLOSE / OPEN pill left the row for a grip on the band's top edge
+   (BandGrip.jsx), so the five share the whole row (sheetGeometry
+   navButtonSize).  Still icon-only: the words are the aria-label and title
+   (Gear, Bro, Quests, Codex, More), with the key cap on a computer. */
 export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW, fill, landLit, btnH, iconPx }) => {
   /* v2.3.2166: `btnW` narrows the buttons for the landscape dock — the
      five of them must fit inside the side container's width (owner: the
@@ -179,6 +187,16 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                   return;
                 }
                 dashboardPanelBus.toBar();
+                /* v2.3.3897 (B1, claude/bag-unfold): UPRIGHT, THE BAG BUTTON
+                   UNFOLDS A FOLDED BAND.  Owner: "If you try to tap the bag
+                   dashboard button while playing with the menu minimized it
+                   doesn't expand the dashboard into the bag.  It should.  All
+                   the other buttons do."  toBar() at rest returns at once, so
+                   the fold stayed.  It only unfolds -- never a fold (the I key
+                   toggles; the grip folds).
+                   v2.3.3941: kept for Gear, the same button renamed, so the
+                   grip is not the only way back to the bag. */
+                if (!playIsLandscape()) dashMinBus.set(false);
                 return;
               }
               dashboardPanelBus.open(d.id);

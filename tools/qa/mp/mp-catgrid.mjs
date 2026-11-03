@@ -211,7 +211,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        pre-existing knowledge.  Landscape opens the panel through the bus
        directly, exactly as the pre-v2.3.2683 file did. */
     if (land) {
-      await P.page.evaluate(() => window.__broDashPanelBus && window.__broDashPanelBus.open('hero'));
+      await P.page.evaluate(() => window.__broDashPanelBus && (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
       await P.page.waitForTimeout(900);
       await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
         .first().click({ timeout: 8000 }).catch(() => {});

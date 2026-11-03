@@ -277,7 +277,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await key(P, 'p', 900);
     const sP = await sheet(P);
     const pagesP = await box(P, '.bt-land-sheet');
-    rec.ok('P opens the Character page in the column', !!sP && sP.mode === 'expanded' && sP.root === 'hero' && !!pagesP && pagesP.l <= 1, { sP, pagesP });
+    rec.ok('P opens the Bro page (v2.3.3941: the Character page) in the column', !!sP && sP.mode === 'expanded' && sP.root === 'hero' && !!pagesP && pagesP.l <= 1, { sP, pagesP });
     await key(P, 'p', 900);
     const sP2 = await sheet(P);
     rec.ok('...and P again shuts it', !!sP2 && sP2.mode === 'bar', sP2);

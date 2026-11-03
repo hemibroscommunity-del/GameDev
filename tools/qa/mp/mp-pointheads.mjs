@@ -58,7 +58,7 @@ async function openPoints(P, land) {
   for (let i = 0; i < 3; i++) {
     if (await grid.isVisible().catch(() => false)) return true;
     if (!(await tab.isVisible().catch(() => false))) {
-      if (land) await P.page.evaluate(() => window.__broDashPanelBus && window.__broDashPanelBus.open('hero'));
+      if (land) await P.page.evaluate(() => window.__broDashPanelBus && (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
       else await H.openDest(P, 'Character').catch(() => {});
       await tab.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     }

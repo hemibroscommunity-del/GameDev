@@ -485,7 +485,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      the crimson cape is the only deep red on the figure, so "red pixels on the
      preview canvas" separates a drawn cape from a missing one exactly. */
   const portrait = await P.page.evaluate(async () => {
-    window.__broDashPanelBus.open('hero');
+    (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero'));
     await new Promise((r) => setTimeout(r, 1800));
     const cvs = Array.from(document.querySelectorAll('canvas'))
       .filter((c) => c.width > 40 && c.height > 40 && c.getContext('2d'));

@@ -16,6 +16,8 @@ import { codexCounts, codexFreshCount } from '@/game/monsterCodex.js';   /* v2.3
 import { clanPartyOn } from '@/game/alliance.js';   /* v2.3.3481: the Clan tile's tooltip, once clans are parties */
 import { achvLive, achvSummary } from '@/game/achievements.js';   /* v2.3.3527: Journey's tile becomes Achievements */
 import { ACHV_MEDAL_SRC } from '@/data/achievements.js';   /* v2.3.3527: its medal, the owner's */
+import { openWorldMap } from '../../WorldMapOverlay.jsx';   /* v2.3.3941: More -> Map opens the World map */
+import { notifUnread } from '../notifBus.js';               /* v2.3.3941: the bell's count, on its tile */
 
 // v2.3.1224: swapped to the UI Bible icon set (docs/UI-BIBLE.md Part 4,
 // sliced by tools/process_icon_sheets.py); every tile has a real icon.
@@ -58,8 +60,12 @@ export const TILES = [
      where it has to, and only there (sideways the tile is wide enough). */
   { id: 'achievements', src: ACHV_MEDAL_SRC,                               label: 'Achievements', soft: 'Achieve\u00ADments', glyph: '🏆', group: 'Progress', iconScale: 1 },
   { id: 'encyclopedia', src: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224', label: 'Codex',  glyph: '📚', group: 'Progress',  iconScale: 1 },
-  { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Ranks',    glyph: '🏆', group: 'Progress',  iconScale: 1 },
-  { id: 'social',      src: '/icons/ui/nav-friends.webp?v=2.3.1224',      label: 'Friends',  glyph: '👥', group: 'Community', iconScale: 1 },
+  /* v2.3.3941: "Leaderboards", the owner's More list's word, broken
+     "Leader-boards" where six across has no room (Achievements' v2.3.3527 way) */
+  { id: 'leaderboard', src: '/icons/ui/panel-leaderboard.webp?v=2.3.1224', label: 'Leaderboards', soft: 'Leader\u00ADboards', glyph: '🏆', group: 'Progress',  iconScale: 1 },
+  /* v2.3.3941: "Social", the owner's word for More's friends row (the page is
+     your friends and their messages; the party is its Party tile beside it) */
+  { id: 'social',      src: '/icons/ui/nav-friends.webp?v=2.3.1224',      label: 'Social',   glyph: '👥', group: 'Community', iconScale: 1 },
   { id: 'clan',        src: '/icons/ui/panel-clan.webp?v=2.3.1224',        label: 'Clan',     glyph: '🛡', group: 'Community', iconScale: 1 },
   { id: 'guild',       src: '/icons/ui/panel-guild.webp?v=2.3.1224',       label: 'Guild',    glyph: '⚒', group: 'Community', iconScale: 1 },
   { id: 'settings',    src: '/icons/ui/panel-settings.webp?v=2.3.1224',    label: 'Settings', glyph: '⚙', group: 'System',    iconScale: 1, iconFilter: 'brightness(1.18) contrast(1.05)' },
@@ -79,7 +85,20 @@ export const TILES = [
 
      It costs no row: the grid is 5 across and the roster was nine, so this
      lands in the empty tenth cell and nothing above it moves. */
-  { id: 'account',     src: '/icons/ui/panel-account.webp?v=2.3.2038',     label: 'Login Key', glyph: '🔑', group: 'System',    iconScale: 1 },
+  /* v2.3.3941: "Account" -- Log out / Switch character first, then the Login
+     Key (the owner's review: "Switch character / logout: More → Account") */
+  { id: 'account',     src: '/icons/ui/panel-account.webp?v=2.3.2038',     label: 'Account',  glyph: '🔑', group: 'System',    iconScale: 1 },
+  /* ═══ v2.3.3941: THE OWNER'S MORE: MAP, NOTIFICATIONS, FEEDBACK, ABOUT ═══
+     His list: "More: map, social features, settings, account, character
+     switching", and from the review "The notification bell could also move to
+     More, retaining an unread badge".  Map opens the World map (the minimap's,
+     WorldMapOverlay); Notifications is what the bell held; Feedback and About
+     were rows inside Settings and get tiles of their own (the brief's list).
+     The bell and About are drawn, not pictures (`svg`): nothing to load. */
+  { id: 'map',         src: '/icons/ui/nav-map.webp?v=2.3.1224',          label: 'Map',      glyph: '🗺', group: 'World',     iconScale: 1 },
+  { id: 'notifications', svg: 'bell',                                     label: 'Notifications', soft: 'Notifi\u00ADcations', glyph: '🔔', group: 'System', iconScale: 1 },
+  { id: 'feedback',    src: '/icons/ui/panel-feedback.webp?v=2.3.1232',   label: 'Feedback', glyph: '📝', group: 'System',    iconScale: 1 },
+  { id: 'about',       svg: 'about',                                      label: 'About',    glyph: 'ℹ', group: 'System',    iconScale: 1 },
   /* v2.3.3120: the Pets page (docs/PET-TRAPPING-PLAN.md: "More -> Pets, with
      the paw-print icon"), beside Life Skills, whose Trapping it belongs to */
   /* v2.3.3526: the owner's sheet's orange paw ("Go recommended on everything":
@@ -168,9 +187,17 @@ function statusFor(id, S) {
     case 'settings': return 'Sound · Controls · Login Key · Feedback · Privacy';   /* v2.3.2820: + volume sliders and the About page */
     /* v2.3.2038: real state, like every line above -- a guest tab genuinely
        has no key, and saying "save it somewhere safe" there would be a lie. */
+    /* v2.3.3941 */
+    case 'map': return 'The world map: the lands, the town, your quest';
+    case 'notifications': {
+      const n = notifUnread(S);
+      return n > 0 ? `${n} new` : 'World chat and the game\u2019s news';
+    }
+    case 'feedback': return 'Tell the developer what you think';
+    case 'about': return 'About the game, privacy, rules and credits';
     case 'account': {
-      try { return getBtPassphrase() ? 'Save it — it is your only way back' : 'Guest tab — no key'; }
-      catch (_e) { return 'Save it — it is your only way back'; }
+      try { return getBtPassphrase() ? 'Log out · switch bro · save your Login Key' : 'Log out · guest tab, no key'; }
+      catch (_e) { return 'Log out · switch bro · save your Login Key'; }
     }
     default: return '';
   }
@@ -202,7 +229,27 @@ const cardBase = {
   padding: '10px 10px',
 };
 
-const Icon = ({ t, px }) => t.src ? (
+/* v2.3.3941: the two tiles with no picture on disk are drawn (inline SVG,
+   as the old bell was: nothing to load on first use) */
+const SVG_ICON = {
+  bell: (
+    <>
+      <path d="M10 2.6a4.6 4.6 0 0 0-4.6 4.6v2.5L4.1 12.4a.7.7 0 0 0 .6 1.05h10.6a.7.7 0 0 0 .6-1.05L14.6 9.7V7.2A4.6 4.6 0 0 0 10 2.6Z"
+        fill="#2B3F46" stroke="#D8AA58" strokeWidth="1.4" strokeLinejoin="round" />
+      <path d="M8.2 15.2a1.9 1.9 0 0 0 3.6 0" fill="none" stroke="#D8AA58" strokeWidth="1.4" strokeLinecap="round" />
+    </>
+  ),
+  about: (
+    <>
+      <circle cx="10" cy="10" r="7.6" fill="#2B3F46" stroke="#D8AA58" strokeWidth="1.4" />
+      <circle cx="10" cy="6.3" r="1.15" fill="#F4F0E7" />
+      <path d="M10 9v5.4" stroke="#F4F0E7" strokeWidth="1.8" strokeLinecap="round" />
+    </>
+  ),
+};
+const Icon = ({ t, px }) => t.svg ? (
+  <svg width={px} height={px} viewBox="0 0 20 20" aria-hidden="true" style={{ display: 'block', flex: 'none' }}>{SVG_ICON[t.svg]}</svg>
+) : t.src ? (
   <img src={t.src} alt="" draggable={false}
     style={{
       width: Math.round(px * (t.iconScale || 1)),
@@ -218,7 +265,17 @@ const Icon = ({ t, px }) => t.src ? (
    at once, the tabs pinned over a stage that fits under them), and a drill's
    "◂ CODEX" header would take 32 px of it. */
 const OWN_BUTTON = new Set(['encyclopedia']);
-const open = (id) => (OWN_BUTTON.has(id) ? dashboardPanelBus.open(id) : dashboardPanelBus.push(id));
+/* v2.3.3941: Map is the World map over the game (the minimap's), so the
+   dashboard steps aside for it; where there is no world map (an old land, no
+   overlay mounted) it opens the Map page as it always could */
+const open = (id) => {
+  if (id === 'map') {
+    dashboardPanelBus.toBar();
+    if (!openWorldMap()) dashboardPanelBus.open('map');
+    return;
+  }
+  return OWN_BUTTON.has(id) ? dashboardPanelBus.open(id) : dashboardPanelBus.push(id);
+};
 const tile = (id) => TILES.find(t => t.id === id);
 /* v2.3.3526 (the owner, of the 2026-10-19 review's leftovers: "Go recommended
    on everything" -- rename More's Clan tile to Party): once clans are parties
@@ -309,10 +366,22 @@ export const MorePanel = () => {
             the more/other apps menus").  Twelve tiles: two full rows of six
             upright, six rows of two sideways and on a computer, so the
             eleventh tile's row is filled rather than a row added. */}
-        {['quests', 'skills', 'pets', 'social', 'clan', 'guild',
-          ...(achvLive(S) ? ['achievements'] : []), 'journey', 'encyclopedia', 'leaderboard', 'settings', 'account'].map(id => {
+        {/* ═══ v2.3.3941: TWELVE TILES, THE OWNER'S MORE ═══
+            Quests, Codex, Life Skills and Achievements left: Quests and the
+            Codex have their own buttons, Life Skills and Achievements are
+            Bro's tabs (the owner's five buttons).  In came Map, Notifications
+            (the bell), Feedback and About (rows of Settings until now): the
+            owner's list, "map, social features, settings, account".  Pets,
+            the Guild and Journey stay, having no other door.  Twelve: two
+            full rows of six upright, six rows of two sideways and on a
+            computer, as before. */}
+        {['map', 'social', 'clan', 'guild', 'pets', 'journey',
+          'leaderboard', 'settings', 'account', 'notifications', 'feedback', 'about'].map(id => {
           const t = tile(id);
           if (!t) return null;
+          /* v2.3.3941: the bell's unread count rides its tile, as on the More
+             button (the owner: "retaining an unread badge") */
+          const badge = id === 'notifications' ? notifUnread(S) : 0;
           return (
             <button key={id} className="bt-more-card"
               /* v2.3.2038: a hook that is the destination ID, not the label.
@@ -328,8 +397,18 @@ export const MorePanel = () => {
                 flexDirection: 'column', gap: desk ? 6 : 2, padding: narrow ? '2px 2px' : (desk ? '8px 8px' : '4px 2px'),
                 justifyContent: 'center',
                 minWidth: 0,
+                position: 'relative',   /* v2.3.3941: the unread badge's corner */
               }}>
               <Icon t={t} px={narrow ? 24 : (desk ? 52 : 30)} />
+              {badge > 0 ? (
+                <span data-more-badge={badge} aria-hidden="true" style={{
+                  position: 'absolute', top: 3, right: 3,
+                  minWidth: 14, height: 14, padding: '0 3px', borderRadius: 7,
+                  background: COL.accent, color: COL.onAccent,
+                  fontSize: 11, fontWeight: 900, lineHeight: '14px', textAlign: 'center',
+                  fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+                }}>{badge > 99 ? '99+' : badge}</span>
+              ) : null}
               <span style={{
                 fontSize: desk ? 14 : 11, fontWeight: 700, color: COL.text,
                 lineHeight: 1.1, textAlign: 'center',

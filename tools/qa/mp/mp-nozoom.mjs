@@ -65,7 +65,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* three sword-lane points to spend (prog3.js prog3Pool / prog3PoolBy) */
       R.prog3.pool = 3;
       R.prog3.poolBy = { sword: 3 };
-      try { window.__broDashPanelBus.open('hero'); window.__broDashPanelBus.expand(); } catch (e) {}
+      try { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}
     });
     await P.page.waitForTimeout(900);
     await tapSel(P, '[role="button"][data-section="Build"]');

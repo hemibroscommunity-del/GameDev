@@ -161,7 +161,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!R.prog3) R.prog3 = {};
     R.prog3.sk = { ...(R.prog3.sk || {}), sword: { level: 8, xp: 0 }, bow: { level: 6, xp: 0 }, staff: { level: 4, xp: 0 } };
     R.prog3.pool = { ...(R.prog3.pool || {}), unspent: 3 };
-    try { window.__broDashPanelBus.open('hero'); window.__broDashPanelBus.expand(); } catch (e) {}
+    try { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}
   });
   await P.page.waitForTimeout(900);
   await tapSel(P, '[role="button"][data-section="Build"]');

@@ -151,10 +151,12 @@ const headerGeom = (P) => P.page.evaluate(() => {
    row for the panel's own header (the owner's choice), which pays for most of
    the sixth: 44 at 390 still, 39 at 360 where five were 40. */
 const PHONES = [
-  { width: 390, height: 844, tag: 'iPhone 13/14/15', minW: 44 },
-  { width: 360, height: 780, tag: 'small Android', minW: 39 },
+  /* v2.3.3941: five buttons and no CLOSE pill (the grip is on the band's
+     edge): the row is theirs, 70 at 390 and 64 at 360 */
+  { width: 390, height: 844, tag: 'iPhone 13/14/15', minW: 64 },
+  { width: 360, height: 780, tag: 'small Android', minW: 60 },
 ];
-const RAIL_N = 6;
+const RAIL_N = 5;   /* v2.3.3941: Gear, Bro, Quests, Codex, More */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const ph of PHONES) await onePhone({ browser, wsPort, webPort, rec }, ph);
@@ -195,7 +197,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     counts.length === 1 && counts[0].where === 'zone-header', counts);
 
   const rail = await railGeom(P);
-  rec.ok(T + 'all six nav buttons are there', rail.length === RAIL_N, rail.map((b) => b.id));
+  rec.ok(T + 'all five nav buttons are there', rail.length === RAIL_N, rail.map((b) => b.id));
   /* 44x44 is docs/UI-BIBLE's floor for anything tappable.  The WIDTH is what
      the owner asked for and what this change buys; the height is derived from
      identityRowHeight and is 40 on a <=720-tall phone, which is why only the

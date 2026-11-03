@@ -80,10 +80,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(900);
   /* Open the feed, or its shut state is a 36x36 bell and the overlap the
      question is about does not exist. */
-  await A.page.evaluate(() => {
-    const b = document.querySelector('[data-world-chat-toggle]');
-    if (b && b.getAttribute('aria-expanded') === 'false') b.click();
-  });
+  /* v2.3.3941: shut, the feed is More's (More -> Notifications, "Show on
+     screen"): the harness walks that path */
+  await H.openWorldChat(A);
   await A.page.waitForTimeout(600);
   const feedUp = await A.page.evaluate(() => {
     const f = document.querySelector('[data-world-chat]');

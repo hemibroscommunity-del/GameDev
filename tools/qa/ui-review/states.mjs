@@ -488,11 +488,24 @@ export const STATES = [
   },
 
   /* ═══ THE DASHBOARD ═══ */
-  /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page) */
-  dash('hero', 'Character', 'Your character page, two tabs (Equipment and Points): equipment slots, the figure, your stats as pills (offense, player, vitals).'),
+  /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page).
+     v2.3.3941: the Character page is Bro, five tabs (Me, Points, Skills,
+     Achievements, Equipment): each its own screen here, under dash-bro-* */
+  Object.assign(dash('hero', 'Bro: Me', 'The Bro page on Me, the tab it opens on: your portrait, name, title, level, "Achievement Points: N" (a tap opens Achievements), your three combat skills and your core stats.'), { id: 'dash-bro' }),
   {
-    id: 'dash-hero-points', group: 'Dashboard', title: 'Character: Points',
-    about: 'The Character page on its Points tab: spending points on each weapon skill and on the character.',
+    id: 'dash-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment',
+    about: 'The Bro page on its last tab, Equipment: equipment slots, the figure, your stats as pills (offense, player, vitals). The Gear button takes these once it is built.',
+    run: async ({ P }) => {
+      await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Overview'); });
+      const e = await bus(P, 'open', 'hero');
+      if (e) return e;
+      await wait(P, 900);
+      if (!(await has(P, '[data-section="Overview"][aria-pressed="true"]'))) return 'the Equipment tab is not the one up';
+    },
+  },
+  {
+    id: 'dash-bro-points', group: 'Dashboard', title: 'Bro: Points',
+    about: 'The Bro page on its Points tab: spending points on each weapon skill and on the character.',
     run: async ({ P }) => {
       await bus(P, 'open', 'hero');
       /* v2.3.3481 (the 2026-10-19 UI review): the computer's picture showed
@@ -519,9 +532,10 @@ export const STATES = [
       if (!ok) return 'no quest row to open';
     },
   },
-  dash('skills', 'Life Skills', 'Your life skills (mining, woodcutting, fishing, cooking, farming...) and their levels.'),
+  /* v2.3.3941: Life Skills are Bro's Skills tab (the bus sends 'skills' there) */
+  Object.assign(dash('skills', 'Bro: Skills (life skills)', 'Bro\'s Skills tab: your life skills (mining, woodcutting, fishing, cooking, farming...) and their levels.'), { id: 'dash-bro-skills' }),
   {
-    id: 'dash-skill-detail', group: 'Dashboard', title: 'A life skill in detail',
+    id: 'dash-bro-skill-detail', group: 'Dashboard', title: 'Bro: a life skill in detail',
     about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.',
     /* v2.3.3481: the 2026-10-19 UI review -- the laptop's picture was the
        ten-skill list, not the detail: the press went in while the band was
@@ -556,7 +570,7 @@ export const STATES = [
       if (!ok) return 'no monster card to open';
     },
   },
-  dash('more', 'More', 'The More page: tiles for everything else (settings, pets, ranks, friends, login key, about...).'),
+  dash('more', 'More', 'The More page: twelve tiles (map, social, party, guild, pets, journey, leaderboards, settings, account, notifications with its unread count, feedback, about).'),
   /* v2.3.3736: a rare window whose script cannot come (src/ui/lazyPanel.js):
      a tab left open across a deploy is answered with the page itself.  The
      Settings page's script answered so here; its own state, next, opens it
@@ -581,8 +595,8 @@ export const STATES = [
   },
   more('settings', 'Settings', 'Settings: sound, graphics, controls and the rest.'),
   more('pets', 'Pets', 'Your pets: the ones you caught, the one out with you, the journal of kinds.'),
-  more('leaderboard', 'Ranks (leaderboard)', 'The leaderboard.'),
-  more('social', 'Friends', 'Friends: your friends list and messages.'),
+  more('leaderboard', 'Leaderboards', 'The leaderboards.'),
+  more('social', 'Social', 'Social: your friends list and messages.'),
   /* v2.3.3527: Journey's tile is Achievements while the server grants them
      (the review's own worker does); the Journey page stays the fallback.
      Two common ones are earned first by the owner's lever (/dev/achv: no
@@ -590,14 +604,15 @@ export const STATES = [
      page) and one worn as the title, so the picture has earned rows, a title
      and the locked super-rares together -- a new character's page is 23
      locked rows */
-  Object.assign(more('achievements', 'Achievements', 'Your achievements: all 23, which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
+  /* v2.3.3941: Bro's Achievements tab (moved from More; the bus sends
+     'achievements' there) */
+  Object.assign(more('achievements', 'Bro: Achievements', 'Bro\'s Achievements tab: all 23, which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
+    id: 'dash-bro-achievements', group: 'Dashboard',
     run: async ({ P, wsPort, myId }) => {
       for (const id of ['first_blood', 'combat_10']) await H.devOp(wsPort, 'achv', myId, { id }).catch(() => {});
       await wait(P, 600);
-      const e = await bus(P, 'open', 'more');
+      const e = await bus(P, 'open', 'achievements');
       if (e) return e;
-      await wait(P, 300);
-      await bus(P, 'push', 'achievements');
       await P.page.waitForSelector('[data-achv-panel]', { timeout: 6000 }).catch(() => {});
       const state = await evalIn(P, () => { const p = document.querySelector('[data-achv-panel]'); return p ? p.dataset.achvPanel : null; });
       if (state !== '1') return 'the Achievements page is ' + (state ? '"' + state + '"' : 'not there');
@@ -608,7 +623,26 @@ export const STATES = [
   }),
   /* v2.3.3773: Journey is its own page under More, the Character page's old records tab moved here */
   more('journey', 'Journey', 'Your journey: kills, deaths, lifetime gold and XP, duels won and the deepest zone (the Character page\'s old third tab).'),
-  more('account', 'Login Key', 'Your Login Key: how to carry this character to another device.'),
+  /* v2.3.3941: Account -- Log out / Switch character, then the Login Key */
+  more('account', 'Account', 'Your account: Log out (or Switch character, with more than one bro on the device), then your Login Key: how to carry this character to another device.'),
+  /* v2.3.3941: what the bell in the world's corner held, with a few lines in it */
+  Object.assign(more('notifications', 'Notifications', 'Notifications: world chat and the game\'s news, newest first (the bell that was in the world\'s corner), with Show on screen.'), {
+    run: async ({ P }) => {
+      await evalIn(P, () => {
+        const S = window._gameState && window._gameState.current;
+        if (!S) return;
+        S.chatLog = S.chatLog || [];
+        const now = Date.now();
+        [['Sandy', 'anyone up for the frost dungeon?'], ['Moss', 'selling pine logs at the market'], ['', 'Rival Bro reached level 10!'], ['Rival Bro', 'gg everyone']]
+          .forEach(([name, text], i) => S.chatLog.push({ name, text, ts: now + i, color: name ? '#8FD3FF' : undefined }));
+        try { window.__broChatLogBus && window.__broChatLogBus.bump(); } catch (e) { /* no bus */ }
+      });
+      const e = await bus(P, 'open', 'more');
+      if (e) return e;
+      await wait(P, 300);
+      await bus(P, 'push', 'notifications');
+    },
+  }),
   more('about', 'About & privacy', 'About the game, privacy, rules and credits.'),
   more('feedback', 'Feedback', 'Sending feedback to the developer.'),
   {

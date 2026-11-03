@@ -124,7 +124,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Two assertions rather than one because those are two separate mistakes
      that happened to add up: the sheet's SIZE, and what the panel RESERVES
      inside it. */
-  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.evaluate(() => (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
   await P.page.waitForTimeout(900);
   const openGeom = (P2) => P2.page.evaluate(() => {
     const band = document.querySelector('.bt-dashboard');

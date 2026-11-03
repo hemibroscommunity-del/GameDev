@@ -227,7 +227,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      and what the law protects is a button moving under the thumb that is
      about to tap it again. */
   const navAfter = await navRect(P);
-  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.evaluate(() => (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
   await P.page.waitForTimeout(700);
   const navOther = await navRect(P);
   rec.ok('...and switching destination does not move the nav buttons (v2.3.1637b)',
@@ -450,7 +450,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      clipped at every earlier width.  It must lay out vertically with no
      horizontal overflow, per the owner's "align some of the panes
      vertically ... put stats beneath that". */
-  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.evaluate(() => (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
   await P.page.waitForTimeout(1000);
   const heroFit = await P.page.evaluate(() => {
     const sh = document.querySelector('.bt-land-sheet');
@@ -553,7 +553,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     if (S) S._serverCaps = Object.assign({}, S._serverCaps, { prog3Chan: true });
   });
-  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.evaluate(() => (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
   await P.page.waitForTimeout(900);
   /* v2.3.3773: the records are More's Journey page now, not Hero's third
      tab, so the third screen of this walk is that page, opened the way its

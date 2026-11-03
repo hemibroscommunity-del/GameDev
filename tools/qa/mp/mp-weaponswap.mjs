@@ -160,14 +160,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { btn: a.btn, disc: a.disc });
   rec.ok('...clear of the iOS edge guard (the leftmost 18px eat every touch)', !!a.btn && a.btn.x >= 18, a.btn);
   rec.ok('a finger at its centre lands on IT (nothing on top of it)', a.hit === true, a);
-  rec.ok('the bell is still bottom-left, one place to the right of the button',
-    !!a.bell && !!a.btn && a.bell.x >= a.btn.r && a.bell.r < a.vw / 2 && !overlaps(a.bell, a.btn),
-    { bell: a.bell, btn: a.btn });
-  rec.ok(`...with air between their faces (${a.bell && a.face ? a.bell.x - a.face.r : '?'}px)`,
-    !!a.bell && !!a.face && a.bell.x - a.face.r >= 4 && a.bell.x - a.face.r <= 12, { bell: a.bell, face: a.face });
-  rec.ok('...on one line: the face and the bell share a centre (within 2px)',
-    !!a.bell && !!a.face && Math.abs(centre(a.bell).y - centre(a.face).y) <= 2, { bell: a.bell, face: a.face });
-  rec.ok('...and the bell is fully clear of the edge guard now too', !!a.bell && a.bell.x >= 18, a.bell);
+  /* v2.3.3941: the bell left the corner for More -> Notifications (the
+     owner: "The notification bell could also move to More, retaining an
+     unread badge"), so beside the button there is nothing to collide with */
+  rec.ok('the corner beside the button holds no bell now (it is More -> Notifications)', !a.bell, { bell: a.bell, btn: a.btn });
 
   /* ── 2. WHAT ── */
   const cellSrc = await P.page.evaluate(() => {
@@ -246,7 +242,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
 
   /* ── 6a. IT RIDES ABOVE AN OPEN SHEET ── */
-  try { await P.page.evaluate(() => { window.__broDashPanelBus.open('hero'); }); } catch (e) { /* bus missing: the guard below says so */ }
+  try { await P.page.evaluate(() => { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); }); } catch (e) { /* bus missing: the guard below says so */ }
   await P.page.waitForTimeout(900);
   const sheet = await look(P);
   rec.ok(`with a sheet open it rides above it, still beneath the disc (band ${Math.round(sheet.dashH)}px)`,
@@ -268,7 +264,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     && centre(land.btn).x > land.disc.x - 30 && centre(land.btn).x < land.disc.r + 30, { btn: land.btn, disc: land.disc });
   rec.ok('...a finger lands on it', land.hit === true, land);
   rec.ok('...clear of the resting fold chip', !fold || !overlaps(fold, land.btn), { fold, btn: land.btn });
-  rec.ok('...and the bell is still beside it, not on it', !!land.bell && land.bell.x >= land.btn.r && !overlaps(land.bell, land.btn), { bell: land.bell, btn: land.btn });
+  rec.ok('...and no bell beside it (v2.3.3941: the bell is in More)', !land.bell, { bell: land.bell, btn: land.btn });
   const lc = centre(land.btn);
   await touch(P, lc.x, lc.y);
   await caughtUp(P, { melee: 'ranged', ranged: 'staff', staff: 'melee' }[land.slot] || null);

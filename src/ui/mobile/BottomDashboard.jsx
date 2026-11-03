@@ -65,6 +65,9 @@ import { GuildPanel }        from './dash/GuildPanel.jsx';
 import { AboutPanel }        from './dash/AboutPanel.jsx';   /* v2.3.2820 */
 /* v2.3.1143: account panel -- Login Key display + device transfer. */
 import { AccountPanel }      from './dash/AccountPanel.jsx';
+import { NotificationsPanel } from './dash/NotificationsPanel.jsx';   /* v2.3.3941: the bell's page */
+import { notifUnread } from './notifBus.js';                         /* v2.3.3941: the bell's unread count on More */
+import { BandGrip } from './dash/BandGrip.jsx';                      /* v2.3.3941: the slim handle that replaced CLOSE / OPEN */
 import { QuestsPanel }        from './dash/QuestsPanel.jsx';
 import { QuestDetailPanel }   from './dash/QuestDetailPanel.jsx'; /* v2.3.1298 */
 import { T2Panel, requestT2Category } from './dash/T2Panel.jsx';
@@ -453,7 +456,8 @@ const PANELS = {
   /* v2.3.1291 (ChatGPT round-3 §1): the tab says Friends, so the header
      says Friends — one name everywhere (the panel id stays 'social' on
      the wire-free client side; renaming ids resets nothing). */
-  social:       { title: 'Friends',     Component: SocialPanel },
+  /* v2.3.3941: 'Social', its More tile's word now (v2.3.2038's rule) */
+  social:       { title: 'Social',      Component: SocialPanel },
   more:         { title: 'More',        Component: MorePanel },
   /* v2.3.3120: the Pets page (dash/PetsPanel.jsx): More -> Pets, and the
      farm's Pet House (docs/PET-TRAPPING-PLAN.md) */
@@ -471,7 +475,10 @@ const PANELS = {
      "Leaderboard" is too long for a six-across tile.  The Town Hall's row
      and the profile's button still say Leaderboard: they describe the
      board, and renaming them is the owner's taste. */
-  leaderboard:  { title: 'Ranks',       Component: LeaderboardPanel },
+  /* v2.3.3941: 'Leaderboards', the word in the owner's More list (its tile
+     breaks "Leader-boards" where six across has no room, as Achievements'
+     did) -- one name for the tile and the page, v2.3.2038's rule */
+  leaderboard:  { title: 'Leaderboards', Component: LeaderboardPanel },
   /* v2.3.3526: headed as its More tile is labelled -- Party once clans are
      parties (caps.clanparty), Clan under the kill switch (MorePanel
      `labelFor`; v2.3.2038's rule: what you tap and what opens carry one name) */
@@ -482,7 +489,12 @@ const PANELS = {
   /* v2.3.1143: Login Key display + device transfer. */
   /* v2.3.2038: titled 'Login Key' to match the More tile that now opens it
      directly -- what you tap and what opens should carry one name. */
-  account:      { title: 'Login Key',   Component: AccountPanel },
+  /* v2.3.3941: More -> Account: Log out / Switch character, then the key
+     (the owner's review: "Switch character / logout: More → Account") */
+  account:      { title: 'Account',     Component: AccountPanel },
+  /* v2.3.3941: what the bell in the world's corner showed (the owner: "The
+     notification bell could also move to More, retaining an unread badge") */
+  notifications: { title: 'Notifications', Component: NotificationsPanel },
   /* v2.3.235 (Phase 5): Tier 2 spec allocation panel. */
   /* v2.3.1236: owner feedback — stat screen shows the six combat skills;
      Weapons menu renamed Build (display string only; the t2 id and
@@ -494,7 +506,7 @@ const PANELS = {
      More launcher; their PANELS entries stay only so stale drill ids
      in old sessions don't render a blank sheet. */
   bag:          { title: 'Bag',         Component: InventoryPanel },
-  hero:         { title: 'Hero',        Component: HeroExpanded },
+  hero:         { title: 'Bro',         Component: HeroExpanded },   /* v2.3.3941: the Bro page */
   /* ═══ v2.3.2163: THE DASHBOARD, AS A DESTINATION — LANDSCAPE ONLY ═══
      Owner: "I can see 8 slots playing in [portrait] view (plus space for
      combat skills) so this should translate to 8 slots of space viewable
@@ -532,7 +544,9 @@ let _deskOpened = false;
 
 const DESTINATIONS = [
   { id: 'bag',    label: 'Bag',     icon: '/icons/ui/nav-inventory.webp?v=2.3.1224' },
-  { id: 'hero',   label: 'Character', icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
+  /* v2.3.3941: "Bro" -- the owner's word for the page that is you (the id
+     stays 'hero': tests, hooks and the guide arrow key on it, TRAPS §29) */
+  { id: 'hero',   label: 'Bro',     icon: '/icons/ui/panel-self.webp?v=2.3.1224' },
   /* v2.3.1331 (owner art drop): dedicated life-skills crest replaces
      the borrowed panel-skills art (magenta knocked out, 256px webp). */
   { id: 'skills', label: 'Skills',  icon: '/icons/ui/nav-lifeskills.webp?v=2.3.1331' },
@@ -609,9 +623,21 @@ const DESTINATIONS = [
    as Quests and Life Skills do.  The width it needed came from the drill's
    back chip, which left this row for the panel's own header (the owner's
    choice: sheetGeometry IDENTITY_MIN_LINE). */
-const RAIL_ORDER = ['hero', 'quests', 'skills', 'encyclopedia', 'more'];
+/* ═══ v2.3.3941: FIVE -- GEAR, BRO, QUESTS, CODEX, MORE ═══
+   The owner: "I want to consolidate the dashboard area as much as possible
+   (limit lots of buttons to switch between different context)", with his
+   table: Gear (the bag, the figure, what you wear, stats, gold), Bro (you:
+   your picture and card, combat stats and skills, points, achievements),
+   Codex, and More (the map, social, settings, account).  Asked, he kept
+   Quests on its own button ("the quest journal is the main 'what do I do
+   next' help for new players, so it stays one tap away") and moved Life
+   Skills inside Bro (its Skills tab; the bus sends 'skills' there, and L
+   opens it).  The ids stay what they were -- 'dashboard' is Gear, 'hero' is
+   Bro -- because tests, the coach and the guide arrow key on them; only the
+   words changed (aria-label and title: the buttons stay icon-only). */
+const RAIL_ORDER = ['hero', 'quests', 'encyclopedia', 'more'];
 const RAIL_ITEMS = [
-  { id: 'dashboard', label: 'Dashboard', icon: '/icons/ui/nav-dashboard.png?v=2.3.3784' },   /* v2.3.3784: the bag and its three fights */
+  { id: 'dashboard', label: 'Gear', icon: '/icons/ui/nav-dashboard.png?v=2.3.3784' },   /* v2.3.3784: the bag and its three fights; v2.3.3941: "Gear" */
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
 ];
 
@@ -1023,13 +1049,19 @@ export const BottomDashboard = () => {
      social: pending requests + unread DMs, else an online dot.  The Bag's
      circle dot was removed at v2.3.1315 (owner) — the pickup pulse and
      the in-bag sparkles stay. */
+  /* v2.3.3941: Life Skills are Bro's tab now, so an unseen level-up marks
+     Bro (a plain dot when there are no points to count) and More carries the
+     bell's unread count (More -> Notifications) */
+  const _skillsNew = hasUnseenLevelUps((Sb && Sb.rpg) || {});
+  const _pts = unspentPointsTotal(Sb && Sb.rpg);
   const dots = {
-    skills: hasUnseenLevelUps((Sb && Sb.rpg) || {}),
+    skills: _skillsNew,
     /* v2.3.3140: ...or a season tier waiting to be claimed (dailyRewards.js).
        Only a reward that is really there -- not the free spin, which would
        light the dot every day for players who never gamble. */
     quests: readyQuestCount(Sb) > 0 || rewardsWaiting(Sb) > 0,
-    hero: unspentPointsTotal(Sb && Sb.rpg),
+    hero: _pts > 0 ? _pts : (_skillsNew ? true : 0),
+    more: notifUnread(Sb),
     /* v2.3.3215: the monsters whose codex page has something you have not
        looked at yet -- the cards' NEW (game/monsterCodex.js), counted */
     encyclopedia: codexFreshCount(Sb),
@@ -1459,6 +1491,10 @@ export const BottomDashboard = () => {
         touchAction: 'none',
       }}
     >
+      {/* v2.3.3941: the fold's grip on the band's top edge (dash/BandGrip.jsx).
+          Upright only: sideways the band is not drawn (the fold chip is in
+          the dock), and a computer plays sideways. */}
+      {!land ? <BandGrip min={dashMin} expanded={mode === 'expanded'} /> : null}
       {/* v2.3.1307/1311: the top-edge drag handle is gone — band-wide
           swipes are retired (owner: too ambiguous over interactive
           menus; a handle with no gesture behind it is a lie).  Resizing
@@ -1699,6 +1735,8 @@ export const BottomDashboard = () => {
            cell to align to, there is nothing left for the tracks to keep
            in register — see IdentityStrip. */
         display: 'flex', alignItems: 'center', gap: DASH_GAP,
+        /* v2.3.3941: the five buttons centred in the row the pill left */
+        justifyContent: 'center',
         borderBottom: mode === 'expanded' ? 'none' : `1px solid ${COL.divider}`,
       }}>
         {/* v2.3.1650 (owner: "put player HUD in same spot when the 'more
@@ -1743,60 +1781,17 @@ export const BottomDashboard = () => {
             closed the effect has nothing to say.  Opening any tab still
             unfolds (that effect is unchanged) — the chip stays put, its
             meaning flips with the glyph. */}
-        <button
-          onPointerUp={(e) => {
-            e.stopPropagation();
-            /* v2.3.3481: the 2026-10-19 UI review -- on a computer a click left
-               the chip focused, and the next game key (W, Esc...) switched the
-               browser to keyboard focus, so CLOSE wore .bt-chisel's gold
-               :focus-visible ring for the rest of play.  Let go of the focus:
-               the chip's job is done once it is pressed. */
-            try { e.currentTarget.blur(); } catch (_) {}
-            if (mode === 'expanded') { dashboardPanelBus.toBar(); dashMinBus.set(true); }
-            else dashMinBus.set(!dashMinBus.min);
-          }}
-          className="bt-chisel bt-chisel--chip"
-          aria-label={dashMin ? 'Expand dashboard' : 'Minimize dashboard'}
-          aria-expanded={!dashMin}
-          data-dash-fold={dashMin ? 'min' : 'open'}
-          /* ═══ v2.3.2266: A PILL THAT SAYS WHAT IT DOES ═══
-             Owner: "the down arrow to hide the entire dashboard is a little too
-             subtle.  Make it a pill that says CLOSE."
-
-             A 15px glyph in a 34px box, on a row that also carries the gold
-             readout and five nav chips, is the smallest thing on the busiest
-             strip -- and it hides the whole dashboard, which is the largest
-             thing it could do.  A word is the fix; it also removes the arrow's
-             own ambiguity, which is the same complaint he made about the world
-             chat's chevron in the same breath.
-
-             OPEN / CLOSE rather than a single label, because the control is a
-             toggle and a pill reading CLOSE while the dashboard is already
-             closed would be worse than the arrow.  Caption type from the
-             Lantern Slate scale (11/800 uppercase, .08em) so it matches the
-             other chrome, and `width: auto` with real padding so it sizes to its
-             word -- chipStyle's fixed 34px square would clip it.  The 44px
-             touch rule the row is built to (see the note above) is unaffected:
-             the box only gets wider.
-
-             NOT A LITERAL PILL, and that is deliberate rather than an
-             oversight: .bt-chisel draws its shape from a 9-sliced border-image
-             (game.css), so border-radius on this element paints nothing at all
-             -- the frame art owns the corners.  Forcing a true capsule would
-             mean dropping that frame and inventing a shape no other control in
-             the game wears.  What the owner asked for is a labelled button
-             instead of a subtle glyph, and this is that, in the house chrome
-             every neighbouring chip is already wearing. */
-          style={{
-            ...chipStyle,
-            width: 'auto',
-            minWidth: 34,
-            padding: '0 10px',
-            fontSize: 11,
-            fontWeight: 800,
-            letterSpacing: '.08em',
-          }}
-        >{dashMin ? 'OPEN' : 'CLOSE'}</button>
+        {/* ═══ v2.3.3941: THE CLOSE / OPEN PILL LEFT THIS ROW ═══
+            The owner, adopting the review: "remove the large OPEN/CLOSE button
+            taking up a full navigation slot.  A slim, centered handle at the
+            top of the dashboard would communicate that the panel can be
+            expanded or collapsed."  The fold is BandGrip now, on the band's
+            top edge (below, a child of the band itself), with the same tap
+            and the same data-dash-fold hook; this row is the five buttons'.
+            The v2.3.2266 reasons for a word (a subtle 15px glyph) do not
+            apply to a handle: a grip is the one fold control every phone's
+            sheets already teach.  Sideways and on a computer the fold chip
+            stays until B3 unifies the layouts. */}
         {/* v2.3.3215: the drill's back chip USED to stand here (v2.3.1922).
             It is in the panel's own header now, beside the title ("◂
             SETTINGS", the drill branch above) -- the owner's choice when a

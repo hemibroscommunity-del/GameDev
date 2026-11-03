@@ -25,6 +25,7 @@
 // combat chrome rides above the open sheet keyed off --sheet-h.
 
 import { playIsLandscape } from './playViewport.js'; /* v2.3.2173: the bag-pane tourniquet below */
+import { heroSectionBus } from './sheet/heroSectionBus.js'; /* v2.3.3941: Life Skills and Achievements live in Bro */
 
 const listeners = new Set();
 const emit = () => {
@@ -68,6 +69,17 @@ const landSafe = (id) => {
   } catch (e) { /* pre-boot: no viewport to ask */ }
   return id;
 };
+
+/* ═══ v2.3.3941: LIFE SKILLS AND ACHIEVEMENTS ARE BRO'S SUB-TABS ═══
+   The owner's five buttons (Gear, Bro, Quests, Codex, More): "Lifeskills
+   move inside Bro", and Achievements leave More for Bro too.  Every road
+   that still asks for the old pages -- the L key, the top bar's AP medal
+   (open('more') then push('achievements')), a test, an old call site --
+   lands on Bro with that sub-tab chosen, so there is one home for each and
+   no second copy of either page to drift.  The section ids are
+   HeroExpanded's (heroSectionBus.request, consumed on its next render). */
+const BRO_TABS = { skills: 'Skills', achievements: 'Achievements' };
+const broTab = (id) => (Object.prototype.hasOwnProperty.call(BRO_TABS, id) ? BRO_TABS[id] : null);
 
 export const dashboardPanelBus = {
   state: { stack: ['bag'], mode: 'bar' },
@@ -116,6 +128,8 @@ export const dashboardPanelBus = {
   },
 
   open(id) {
+    const tab = broTab(id);   /* v2.3.3941 */
+    if (tab) { heroSectionBus.request(tab); id = 'hero'; }
     this.state.stack = [landSafe(id)];
     this.state.mode = 'expanded';
     haptic();
@@ -168,6 +182,7 @@ export const dashboardPanelBus = {
 
   // Legacy toggle kept for old call sites (InventoryPreview tap etc.).
   toggle(id) {
+    if (broTab(id)) { this.open(id); return; }   /* v2.3.3941 */
     if (this.current() === id) {
       this.clear();
     } else {
@@ -180,6 +195,8 @@ export const dashboardPanelBus = {
   // Push a child panel onto the stack — used by launcher tiles and the
   // Hero -> Build jump.  Drill children render expanded.
   push(id) {
+    /* v2.3.3941: a drill to Life Skills or Achievements opens Bro on it */
+    if (broTab(id)) { this.open(id); return; }
     this.state.stack = [...this.state.stack, landSafe(id)];
     this.state.mode = 'expanded';
     emit();

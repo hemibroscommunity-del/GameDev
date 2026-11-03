@@ -66,17 +66,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
   });
   rec.ok('the More destination opens from the nav rail', more.n > 0, more);
-  rec.ok('...and carries a top-level Login Key tile', more.hasKey, more);
-  rec.ok('...labelled the thing a player would look for, not "Account"',
-    more.label === 'Login Key', more);
+  /* v2.3.3941: the owner's review, "Switch character / logout: More →
+     Account": the tile is Account now, its page the door first and then the
+     key, and its tooltip still names the key */
+  rec.ok('...and carries a top-level Account tile', more.hasKey, more);
+  rec.ok('...labelled "Account", with the Login Key named in its tooltip',
+    more.label === 'Account' && /Login Key/.test(more.tip || ''), more);
   rec.ok('...fully on screen without scrolling (it is the last cell)',
     more.onScreen, more);
   /* v2.3.3357: "displaced none" is "it is the LAST tile": the list it was
      checked against named the nine of its day, and the Pets tile (v2.3.3120)
      has stood third since -- so it failed with nothing displaced */
-  rec.ok('...and it displaced none of the tiles that were already there (it is the last)',
-    more.order.length >= 10 && more.order.indexOf('account') === more.order.length - 1
-      && more.order[0] === 'quests',
+  /* v2.3.3941: the owner's More (map, social, ... settings, account,
+     notifications, feedback, about): Account beside Settings, Map first */
+  rec.ok('...in the owner\'s More, beside Settings',
+    more.order.length === 12 && more.order.indexOf('account') === more.order.indexOf('settings') + 1
+      && more.order[0] === 'map',
     more.order);
 
   await A.page.evaluate(() => {
@@ -130,13 +135,39 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const header = await A.page.evaluate(() => {
     const el = [...document.querySelectorAll('*')].find(e =>
       e.children.length === 0
-      && (e.textContent || '').trim() === 'Login Key'
+      && (e.textContent || '').trim() === 'Account'
       && getComputedStyle(e).textTransform === 'uppercase');
     if (!el) return null;
     return { w: Math.round(el.clientWidth), sw: Math.round(el.scrollWidth) };
   });
-  rec.ok('the panel that opens is titled "Login Key" too, not "Account"',
+  rec.ok('the panel that opens is titled "Account" too (v2.3.3941)',
     !!header, header);
+
+  /* ── v2.3.3941: THE DOOR, AT THE TOP OF ACCOUNT ──
+     The same confirm window as the top bar's door, with the same one-bro
+     rule: this device holds one bro, so it reads "Log out" and asks "Leave
+     the world?".  Cancel closes it and nothing leaves. */
+  const door = await A.page.evaluate(() => {
+    const b = document.querySelector('[data-account-door]');
+    return b ? { kind: b.getAttribute('data-account-door'), text: (b.textContent || '').trim() } : null;
+  });
+  rec.ok('Account starts with the door: "Log out" (this device holds one bro)', !!door && door.kind === 'logout' && door.text === 'Log out', door);
+  await A.page.click('[data-account-door]').catch(() => {});
+  await A.page.waitForTimeout(400);
+  const ask = await A.page.evaluate(() => {
+    const c = document.querySelector('[data-account-confirm]');
+    const go = c && c.querySelector('[data-account-leave]');
+    return c ? { kind: c.getAttribute('data-account-confirm'), text: (c.textContent || '').replace(/\s+/g, ' ').trim(), go: go ? go.textContent.trim() : null } : null;
+  });
+  rec.ok('...which asks first, in the top bar door\'s words ("Leave the world?", Cancel / Log Out)',
+    !!ask && ask.kind === 'logout' && /Leave the world\?/.test(ask.text) && /Cancel/.test(ask.text) && ask.go === 'Log Out', ask);
+  await A.page.evaluate(() => {
+    const b = [...document.querySelectorAll('[data-account-confirm] button')].find((x) => /Cancel/.test(x.textContent || ''));
+    if (b) { b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); }
+  });
+  await A.page.waitForTimeout(400);
+  const after = await A.page.evaluate(() => ({ confirm: !!document.querySelector('[data-account-confirm]'), href: location.href, card: !!document.querySelector('[data-bt="account-keycard"]') }));
+  rec.ok('...and Cancel closes it with nothing left behind', !after.confirm && after.card && !/login=1/.test(after.href), after);
   rec.ok('...and the title fits the header without being cut to an ellipsis',
     !!header && header.sw <= header.w, header);
 
@@ -152,6 +183,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
   });
   await A.page.waitForTimeout(500);
+  /* v2.3.3941: the Settings page's script arrives when it is first opened
+     (lazyPanels), so wait for its row rather than a flat half second */
+  await A.page.waitForFunction(() => [...document.querySelectorAll('button')].some((x) => /Login Key —/.test(x.textContent || '')),
+    null, { timeout: 10000, polling: 200 }).catch(() => {});
   const row = await A.page.evaluate(() => {
     const b = [...document.querySelectorAll('button')].find(x =>
       /Login Key —/.test(x.textContent || ''));

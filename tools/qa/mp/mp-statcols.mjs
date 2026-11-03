@@ -72,7 +72,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       viewport: { width: S.w, height: S.h }, touch: true, dpr: 3 });
     await H.enterWorld(P);
     await P.page.waitForTimeout(1200);
-    await P.page.locator('[aria-label="Character"]').first().click({ timeout: 6000 }).catch(() => {});
+    await P.page.locator('[data-nav="hero"]').first().click({ timeout: 6000 }).catch(() => {});
     await P.page.waitForTimeout(900);
     /* v2.3.1972's three spellings: the tab is "Points" with an empty pool and
        "Build — N points" with a badge, and it was "Build" before that. */

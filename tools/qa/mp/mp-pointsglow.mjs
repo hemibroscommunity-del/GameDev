@@ -150,7 +150,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4. SIDEWAYS ── */
   await P.page.setViewportSize({ width: 844, height: 390 });
   await P.page.waitForTimeout(1200);
-  await P.page.evaluate(() => { try { window.__broDashPanelBus.open('hero'); } catch (e) {} });
+  await P.page.evaluate(() => { try { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); } catch (e) {} });
   await P.page.waitForTimeout(900);
   const land = await look(P);
   rec.ok('sideways, the dashboard\'s Character tab glows too', !!land.navGlow, land);
@@ -161,7 +161,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* A rotation closes the sheet (BottomDashboard's land watcher), so open it
      again on the Points section: the lights are checked going out where the
      player would be watching them. */
-  await P.page.evaluate(() => { try { window.__broDashPanelBus.open('hero'); } catch (e) {} });
+  await P.page.evaluate(() => { try { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); } catch (e) {} });
   await P.page.waitForTimeout(900);
   await P.page.evaluate(() => {
     const t = document.querySelector('[data-section="Build"]');

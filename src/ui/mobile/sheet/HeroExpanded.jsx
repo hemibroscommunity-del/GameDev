@@ -45,6 +45,12 @@ import { deskWideActive } from '../../deskWide.js';                             
 import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
 import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS, pointsResetOn } from '../../../game/pointsReset.js'; /* v2.3.3541: the free points reset */
 import { firstSpendHint } from '../../../game/pointsTips.js'; /* v2.3.3551: after a first spend, the free reset named */
+import { BroMe } from './BroMe.jsx';                                          /* v2.3.3941: Bro -> Me, the player card */
+import { SkillsPanel } from '../dash/SkillsPanel.jsx';                        /* v2.3.3941: Bro -> Skills (the life skills, moved in) */
+import { DashAchievementsPanel as AchievementsPanel } from '../../lazyPanels.js'; /* v2.3.3941: Bro -> Achievements (moved from More) */
+import { achvLive } from '@/game/achievements.js';                            /* v2.3.3941: the tab only where the worker grants them */
+import { hasUnseenLevelUps } from './skillsModel.js';                         /* v2.3.3941: the Skills tab's dot */
+import { NAV_KEYS } from '@/game/deskKeys.js';                                /* v2.3.3941: L, worn by the Skills tab */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -85,8 +91,23 @@ import { firstSpendHint } from '../../../game/pointsTips.js'; /* v2.3.3551: afte
    stand out further as just two tabs."  The 'Records' section (Journey) is
    More's Journey page now (dash/JourneyPanel.jsx, its cards moved whole), and
    a request for it, from anything older, opens Equipment (KNOWN below). */
-const SECTIONS = ['Overview', 'Build'];
-const KNOWN = new Set(SECTIONS);
+/* ═══ v2.3.3941: THE BRO PAGE -- ME, POINTS, SKILLS, ACHIEVEMENTS, EQUIPMENT ═══
+   The owner's five buttons: the Character page becomes Bro (his table: "PFP,
+   playercard (titles, etc), combat stats and combat skills, point allocation,
+   quests completed, achievements, achievement points"), Life Skills move in
+   ("Lifeskills move inside Bro") and Achievements leave More for it.  So five
+   tabs: Me (the player card, BroMe.jsx: the page opens on it), Points (the
+   'Build' section, unchanged), Skills (the life skills page, SkillsPanel,
+   whole), Achievements (AchievementsPanel, whole; only against a worker that
+   grants them, as its More tile was), and Equipment ('Overview') LAST: the
+   Gear button's lane (v2.3.3940) takes the equipment, and once it is on main
+   this tab goes.  The section ids that were there keep their names (tests,
+   the coach and the guide arrow find 'Build' by data-section).  The dashboard
+   bus sends open('skills') / open('achievements') here (dashboardPanelBus). */
+const SECTIONS_ALL = ['Me', 'Build', 'Skills', 'Achievements', 'Overview'];
+const KNOWN = new Set(SECTIONS_ALL);
+/* the three that are other pages, mounted whole under the tabs */
+const PAGE_SECTIONS = new Set(['Me', 'Skills', 'Achievements']);
 /* ═══ v2.3.1847: THE TABS SAY WHAT THEY ARE ═══
  * Owner: "for the 3 tabs on the character menu I think I'd prefer text.  So
  * just equipment, build, and journey."
@@ -109,6 +130,9 @@ const KNOWN = new Set(SECTIONS);
  * owner's art, and deleting art on a text change is not this commit's call.
  */
 const SECTION_LABEL = {
+  Me: 'Me',                /* v2.3.3941: the player card */
+  Skills: 'Skills',        /* v2.3.3941: the life skills */
+  Achievements: 'Achievements',   /* v2.3.3941 */
   Overview: 'Equipment',   /* what the section actually shows: the worn six */
   /* v2.3.1849 (owner: "instead of build name it points").  The tab already
      carries a count badge of unspent POINTS, and "Build" named the activity
@@ -120,10 +144,11 @@ const SECTION_LABEL = {
    the destination (module-scoped, session-only).  v2.3.1311: reset to
    Overview when Hero is closed all the way to the toolbar — a NEXT
    open is a fresh visit (owner spec); a dip to compact keeps it. */
-let _lastSection = 'Overview';
+/* v2.3.3941: a fresh visit opens on Me, Bro's first tab */
+let _lastSection = 'Me';
 let _lastFam = null;   /* v2.3.3605: the stat family open (HeroExpanded famOpen) */
 dashboardPanelBus.subscribe(() => {
-  if (dashboardPanelBus.state.mode === 'bar') _lastSection = 'Overview';
+  if (dashboardPanelBus.state.mode === 'bar') _lastSection = 'Me';
 });
 
 /* ═══ v2.3.2592: THE FOUR COLUMNS OF THE POINTS SCREEN ═══
@@ -174,7 +199,7 @@ const STAY_WAIT_MS = 3000;
 export const HeroExpanded = () => {
   const [, force] = useState(0);
   const [eqSel, setEqSel] = useState(null);
-  const [section, setSectionState] = useState(_lastSection);
+  const [sectionState, setSectionState] = useState(_lastSection);   /* v2.3.3941: `section` below is this, checked against the tabs there are */
   /* v2.3.1668: which combat type the Build grid is allocating into.
      Defaults to whatever you are actually holding, so opening Build
      mid-fight lands on the weapon you were just swinging. */
@@ -272,6 +297,8 @@ export const HeroExpanded = () => {
     const id = setInterval(() => force(v => v + 1), 400);
     return () => clearInterval(id);
   }, []);
+  /* v2.3.3941: which tab is up, for the L key's second press (deskKeys) */
+  useEffect(() => () => { heroSectionBus.shown = null; }, []);
 
   /* v2.3.1668: consume a pending "open Hero on this section" request
      from the band's COMBAT pills.  One-shot (take() clears it), so a
@@ -299,6 +326,17 @@ export const HeroExpanded = () => {
 
   const S = getState();
   const R = (S && S.rpg) || {};
+  /* v2.3.3941: the tabs this worker has (Achievements only where it grants
+     them), and the one on screen: a tab that is not there shows Me */
+  const SECTIONS = SECTIONS_ALL.filter((x) => x !== 'Achievements' || achvLive(S));
+  const section = SECTIONS.includes(sectionState) ? sectionState : 'Me';
+  heroSectionBus.shown = section;
+  /* v2.3.3941: five words do not fit the skinny sideways column (~238 px):
+     there the tab row WRAPS onto two lines (the column is the screen's height,
+     so 32 px costs it least), and everything pinned under the row reads this
+     height rather than one tab's */
+  const tabsWrap = playIsLandscape() && panelVw() < 330;
+  const tabBankH = tabsWrap ? 2 * HERO_TAB_H + DASH_GAP : HERO_TAB_H;
   const d = deriveHeroStats(R);
   /* ═══ v2.3.3687: ON A COMPUTER THE COLUMN IS TALL ═══
      The owner: "Every menu needs to look like it fits the space."  A computer
@@ -727,7 +765,7 @@ export const HeroExpanded = () => {
         /* The header's offset inside the scroller, minus whatever is pinned
            above it (the section tab bank is sticky at top 0). */
         const top = head.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
-        const want = Math.max(0, top - HERO_TAB_H - 4);
+        const want = Math.max(0, top - tabBankH - 4);   /* v2.3.3941: the row may be two lines */
         if (Math.abs(sc.scrollTop - want) > 2) sc.scrollTop = want;
       } catch (e) { /* a convenience scroll must never take the panel down */ }
     });
@@ -844,6 +882,178 @@ export const HeroExpanded = () => {
     </div>
   );
 
+  /* ═══ v2.3.3941: THE TAB ROW, SHARED BY THE PAGE'S TWO SHAPES ═══
+     Points and Equipment scroll inside this panel under the sticky row, as
+     they always have; Me, Skills and Achievements are pages of their own
+     (BroMe, SkillsPanel, AchievementsPanel), each with its own scroller, so
+     for them the row stands over the page in a column that does not scroll
+     (below).  One row, the same in both. */
+  const skillsNew = hasUnseenLevelUps(R);
+  const tabBank = (
+      <div style={{
+        /* ═══ v2.3.2600: THE 4px BAND ABOVE THIS ROW ═══
+           Owner: "make sure the cells don't slide above the headers."  A sticky
+           offset is measured from the scrollport's PADDING box, and panelStyle
+           gives every panel `padding: 4px 6px 4px`.  So `top: 0` pinned this
+           row 4px BELOW the scroller's own top edge, and the stat cells scrolled
+           visibly through that 4px strip — measured: scroller top 653, row top
+           657.  Small, and exactly the thing being complained about.
+           `top: -4` pins the row's border box over the strip and `paddingTop: 4`
+           puts its contents back where they were, so nothing moves and the
+           background now covers the band.  `marginTop: -4` keeps the flow
+           height unchanged, because the padding would otherwise push every row
+           below it down by 4.
+           The panelStyle padding itself is NOT touched — every panel in the
+           dashboard shares it.
+           HEIGHT + 4, not height: this app is box-sizing: border-box, so adding
+           padding to a fixed height SHRINKS the tabs instead of growing the row
+           — measured, the row ended at 681 and opened a 4px strip between it
+           and the card header, i.e. the same bug moved rather than fixed. */
+        position: 'sticky', top: -4, zIndex: 2,
+        marginTop: -4, paddingTop: 4,
+        display: 'flex', gap: DASH_GAP,
+        height: tabBankH + 4, flex: '0 0 auto',   /* v2.3.3941: two lines when it wraps */
+        /* v2.3.2214: 4 -> 2. Every pixel above the open lane pushes its last
+           stat toward the bottom of the phone; the lane headers' sticky
+           offset below must move with this or they pin in the wrong place. */
+        marginBottom: 2,
+        background: COL.bg, /* sticky: keep opaque so content scrolls UNDER */
+        /* v2.3.3941: five words do not fit the skinny sideways column (~238
+           px): there the row wraps onto a second line instead of cutting them */
+        ...(tabsWrap ? { flexWrap: 'wrap', rowGap: DASH_GAP } : null),
+      }}>
+        {SECTIONS.map(s => {
+          const on = section === s;
+          const badge = s === 'Build' && totalUnspent > 0 ? totalUnspent : 0;
+          /* v2.3.3941: the Skills tab's dot, an unseen life-skill level-up
+             (what the Skills button's dot was) */
+          const dot = s === 'Skills' && skillsNew;
+          return (
+            <div key={s}
+              role="button"
+              aria-label={badge ? `Build — ${badge} points` : (SECTION_LABEL[s] || s)}
+              aria-pressed={on} title={SECTION_LABEL[s] || s}
+              /* v2.3.2013: the section's ID, which does not move.  `title` and
+                 `aria-label` both carry the LABEL, and the label is display
+                 copy the owner renames -- v2.3.1849 turned Build into
+                 "Points", which silently broke mp-statpeek's
+                 `[title="Build"]` and took five assertions with it: the
+                 section never opened, so every reading below it came back
+                 empty.  Same contract as bt-quest-turnin on the claim button,
+                 and for the same reason. */
+              data-section={s}
+              /* v2.3.3941: L opens this tab on a computer, so it wears the key */
+              data-key={s === 'Skills' ? NAV_KEYS.skills : undefined}
+              data-key-at={s === 'Skills' ? 'inline' : undefined}   /* after the word: a tab is too small for a corner cap */
+              /* v2.3.2326: through scrollTap, like everything else in this
+                 scroller -- a tab tap that drifts 16px was being confiscated
+                 for a scroll that never happened.  See scrollTap.js. */
+              {...scrollTap(() => setSection(s))}
+              style={{
+                position: 'relative',
+                /* v2.3.2173: sideways the tabs share by CONTENT — equal
+                   thirds starved the longest word and "Equipment" rendered
+                   "Equipm…" in the skinny column; Points and Journey cede
+                   what they don't need.  Portrait keeps equal thirds. */
+                /* v2.3.3941: five tabs share by CONTENT everywhere now --
+                   equal fifths would starve "Achievements" and "Equipment"
+                   while "Me" sat in 70 px of air; sideways, where even that
+                   does not fit, the row wraps (below) rather than cut a
+                   word */
+                flex: '1 1 auto', minWidth: 0, height: HERO_TAB_H,
+                /* v2.3.2176b: 4px, not 5.  Measured sideways, the three
+                   words plus 5px cheeks come to 192 in a 191px strip -- so
+                   the strip was one pixel from ellipsising all three even
+                   with no badge on it.  A 6px margin is the difference
+                   between a layout that fits and one that happens to. */
+                padding: '0 6px',   /* v2.3.3941: content-sized tabs, one cheek each side */
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: on ? COL.accentFill : COL.wellSoft,
+                border: `1px solid ${on ? COL.accent : COL.tileBor}`,
+                borderRadius: 7,
+                cursor: 'pointer', touchAction: 'manipulation',
+                boxSizing: 'border-box',
+              }}>
+              <span style={{
+                /* v2.3.2172: one point down in the skinny landscape column —
+                   "Equipment" ellipsised to "Equip…" at 11px in a 65px tab. */
+                fontSize: landPane ? 10 : 11, fontWeight: 800, letterSpacing: '.03em',
+                color: on ? COL.accent : COL.text2,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                pointerEvents: 'none',
+                /* The Build tab carries a count badge at top/right 2 — keep
+                   the word clear of it so "Build" and "3" never overlap. */
+                /* v2.3.2176b: sideways the badge costs the WORD nothing.
+                   Owner, twice: "labels that are still cut off".  This
+                   reserve is why -- 12px off a 50px tab pushed the row over
+                   its 191, every tab shrank, and all three ellipsised
+                   ("Equipm…", "Poi…", "Journ…") the moment the player had a
+                   point to spend.  Sideways the count becomes a dot (below)
+                   and the reserve goes with it. */
+                paddingRight: badge > 0 && !landPane ? 12 : 0,
+              }}>{SECTION_LABEL[s] || s}</span>
+              {/* ═══ v2.3.3004: ...AND SO DOES THE POINTS TAB ═══
+                  The other half of the owner's ask ("and the points section
+                  light flashing effect until all points are spent").  Keyed
+                  on the same badge, so it stops on the tap that spends the
+                  last point.  It keeps glowing while the section is open:
+                  "until all points are spent" is the rule, and the lane cells
+                  inside carry their own bt-build-flash for WHERE to spend.
+                  Before the count so the number paints over the light. */}
+              {badge > 0 && (
+                <span className="bt-pts-glow" data-pts-glow="tab" aria-hidden="true" />
+              )}
+              {dot ? (
+                <span data-skills-dot="" aria-hidden="true" style={{
+                  position: 'absolute', top: 3, right: 3,
+                  width: 6, height: 6, borderRadius: 999,
+                  background: COL.accent, pointerEvents: 'none',
+                }} />
+              ) : null}
+              {badge > 0 && (landPane ? (
+                /* v2.3.2176b: sideways, a DOT.  The digits need a 13px pill
+                   and 12px of clearance in a column that has neither, and
+                   the number is not lost -- it rides this tab's aria-label,
+                   the hero nav button's own badge two rows down, and each
+                   weapon lane's "N PTS" chip inside the screen.  What the
+                   tab has to say here is "there is something to spend",
+                   and a dot says it in 6px. */
+                <span aria-hidden="true" style={{
+                  position: 'absolute', top: 3, right: 3,
+                  width: 6, height: 6, borderRadius: 999,
+                  background: COL.accent, pointerEvents: 'none',
+                }} />
+              ) : (
+                <span aria-hidden="true" style={{
+                  position: 'absolute', top: 2, right: 2,
+                  minWidth: 13, height: 13, padding: '0 3px',
+                  borderRadius: 7, background: COL.accent, color: COL.onAccent,
+                  fontSize: 11, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
+                  fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
+                }}>{badge > 9 ? '9+' : badge}</span>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+  );
+
+  if (PAGE_SECTIONS.has(section)) {
+    return (
+      <div data-bro-page={section} style={{
+        ...panelStyle, overflow: 'hidden', display: 'flex', flexDirection: 'column', paddingBottom: 0,
+        WebkitMaskImage: 'none', maskImage: 'none',
+      }}>
+        {tabBank}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', margin: '0 -6px' }}>
+          {section === 'Me' ? <BroMe onAchievements={() => setSection('Achievements')} /> : null}
+          {section === 'Skills' ? <SkillsPanel /> : null}
+          {section === 'Achievements' ? <AchievementsPanel /> : null}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       ...panelStyle, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 10,
@@ -882,131 +1092,7 @@ export const HeroExpanded = () => {
           tops an overflow:auto panel where a negative overhang clips.  The
           count also rides the Build chip's aria-label, so nothing the text
           carried is lost to a screen reader. */}
-      <div style={{
-        /* ═══ v2.3.2600: THE 4px BAND ABOVE THIS ROW ═══
-           Owner: "make sure the cells don't slide above the headers."  A sticky
-           offset is measured from the scrollport's PADDING box, and panelStyle
-           gives every panel `padding: 4px 6px 4px`.  So `top: 0` pinned this
-           row 4px BELOW the scroller's own top edge, and the stat cells scrolled
-           visibly through that 4px strip — measured: scroller top 653, row top
-           657.  Small, and exactly the thing being complained about.
-           `top: -4` pins the row's border box over the strip and `paddingTop: 4`
-           puts its contents back where they were, so nothing moves and the
-           background now covers the band.  `marginTop: -4` keeps the flow
-           height unchanged, because the padding would otherwise push every row
-           below it down by 4.
-           The panelStyle padding itself is NOT touched — every panel in the
-           dashboard shares it.
-           HEIGHT + 4, not height: this app is box-sizing: border-box, so adding
-           padding to a fixed height SHRINKS the tabs instead of growing the row
-           — measured, the row ended at 681 and opened a 4px strip between it
-           and the card header, i.e. the same bug moved rather than fixed. */
-        position: 'sticky', top: -4, zIndex: 2,
-        marginTop: -4, paddingTop: 4,
-        display: 'flex', gap: DASH_GAP,
-        height: HERO_TAB_H + 4, flex: '0 0 auto',
-        /* v2.3.2214: 4 -> 2. Every pixel above the open lane pushes its last
-           stat toward the bottom of the phone; the lane headers' sticky
-           offset below must move with this or they pin in the wrong place. */
-        marginBottom: 2,
-        background: COL.bg, /* sticky: keep opaque so content scrolls UNDER */
-      }}>
-        {SECTIONS.map(s => {
-          const on = section === s;
-          const badge = s === 'Build' && totalUnspent > 0 ? totalUnspent : 0;
-          return (
-            <div key={s}
-              role="button"
-              aria-label={badge ? `Build — ${badge} points` : (SECTION_LABEL[s] || s)}
-              aria-pressed={on} title={SECTION_LABEL[s] || s}
-              /* v2.3.2013: the section's ID, which does not move.  `title` and
-                 `aria-label` both carry the LABEL, and the label is display
-                 copy the owner renames -- v2.3.1849 turned Build into
-                 "Points", which silently broke mp-statpeek's
-                 `[title="Build"]` and took five assertions with it: the
-                 section never opened, so every reading below it came back
-                 empty.  Same contract as bt-quest-turnin on the claim button,
-                 and for the same reason. */
-              data-section={s}
-              /* v2.3.2326: through scrollTap, like everything else in this
-                 scroller -- a tab tap that drifts 16px was being confiscated
-                 for a scroll that never happened.  See scrollTap.js. */
-              {...scrollTap(() => setSection(s))}
-              style={{
-                position: 'relative',
-                /* v2.3.2173: sideways the tabs share by CONTENT — equal
-                   thirds starved the longest word and "Equipment" rendered
-                   "Equipm…" in the skinny column; Points and Journey cede
-                   what they don't need.  Portrait keeps equal thirds. */
-                flex: landPane ? '1 1 auto' : '1 1 0', minWidth: 0, height: '100%',
-                /* v2.3.2176b: 4px, not 5.  Measured sideways, the three
-                   words plus 5px cheeks come to 192 in a 191px strip -- so
-                   the strip was one pixel from ellipsising all three even
-                   with no badge on it.  A 6px margin is the difference
-                   between a layout that fits and one that happens to. */
-                padding: landPane ? '0 4px' : 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: on ? COL.accentFill : COL.wellSoft,
-                border: `1px solid ${on ? COL.accent : COL.tileBor}`,
-                borderRadius: 7,
-                cursor: 'pointer', touchAction: 'manipulation',
-                boxSizing: 'border-box',
-              }}>
-              <span style={{
-                /* v2.3.2172: one point down in the skinny landscape column —
-                   "Equipment" ellipsised to "Equip…" at 11px in a 65px tab. */
-                fontSize: landPane ? 10 : 11, fontWeight: 800, letterSpacing: '.03em',
-                color: on ? COL.accent : COL.text2,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                pointerEvents: 'none',
-                /* The Build tab carries a count badge at top/right 2 — keep
-                   the word clear of it so "Build" and "3" never overlap. */
-                /* v2.3.2176b: sideways the badge costs the WORD nothing.
-                   Owner, twice: "labels that are still cut off".  This
-                   reserve is why -- 12px off a 50px tab pushed the row over
-                   its 191, every tab shrank, and all three ellipsised
-                   ("Equipm…", "Poi…", "Journ…") the moment the player had a
-                   point to spend.  Sideways the count becomes a dot (below)
-                   and the reserve goes with it. */
-                paddingRight: badge > 0 && !landPane ? 12 : 0,
-              }}>{SECTION_LABEL[s] || s}</span>
-              {/* ═══ v2.3.3004: ...AND SO DOES THE POINTS TAB ═══
-                  The other half of the owner's ask ("and the points section
-                  light flashing effect until all points are spent").  Keyed
-                  on the same badge, so it stops on the tap that spends the
-                  last point.  It keeps glowing while the section is open:
-                  "until all points are spent" is the rule, and the lane cells
-                  inside carry their own bt-build-flash for WHERE to spend.
-                  Before the count so the number paints over the light. */}
-              {badge > 0 && (
-                <span className="bt-pts-glow" data-pts-glow="tab" aria-hidden="true" />
-              )}
-              {badge > 0 && (landPane ? (
-                /* v2.3.2176b: sideways, a DOT.  The digits need a 13px pill
-                   and 12px of clearance in a column that has neither, and
-                   the number is not lost -- it rides this tab's aria-label,
-                   the hero nav button's own badge two rows down, and each
-                   weapon lane's "N PTS" chip inside the screen.  What the
-                   tab has to say here is "there is something to spend",
-                   and a dot says it in 6px. */
-                <span aria-hidden="true" style={{
-                  position: 'absolute', top: 3, right: 3,
-                  width: 6, height: 6, borderRadius: 999,
-                  background: COL.accent, pointerEvents: 'none',
-                }} />
-              ) : (
-                <span aria-hidden="true" style={{
-                  position: 'absolute', top: 2, right: 2,
-                  minWidth: 13, height: 13, padding: '0 3px',
-                  borderRadius: 7, background: COL.accent, color: COL.onAccent,
-                  fontSize: 11, fontWeight: 900, lineHeight: '13px', textAlign: 'center',
-                  fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-                }}>{badge > 9 ? '9+' : badge}</span>
-              ))}
-            </div>
-          );
-        })}
-      </div>
+      {tabBank}
 
       {section === 'Overview' && (
         <>
@@ -3187,7 +3273,7 @@ export const HeroExpanded = () => {
                        marginBottom, and pinning the card header 2px lower left
                        a 2px strip of scrolling cells between the two headers
                        (measured: tabs end 685, header pinned 687).  Flush. */
-                    position: 'sticky', top: HERO_TAB_H, zIndex: 1, flex: 'none',
+                    position: 'sticky', top: tabBankH, zIndex: 1, flex: 'none',   /* v2.3.3941: tabBankH, the row may be two lines */
                     display: 'flex', alignItems: 'center', gap: landPane ? 5 : 8,
                     padding: landPane ? '5px 6px' : '6px 8px',
                     background: COL.bg, borderBottom: `1px solid ${COL.tileBor}`,
