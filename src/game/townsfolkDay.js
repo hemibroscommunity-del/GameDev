@@ -41,7 +41,7 @@ function giversOf(chains) {
 }
 
 /* the last frame's work, for the probe and the step */
-const _frame = { on: false, at: 0, allowed: null, near: 0, walkers: 0, held: 0 };
+const _frame = { on: false, at: 0, allowed: null, near: 0, walkers: 0, held: 0 };   /* walkers: moved this frame near the screen */
 
 /**
  * Once a frame, before the NPC pass.  ctx:
@@ -129,7 +129,7 @@ export function townsfolkStep(S, npc, dtMs) {
         return true;
       }
     }
-    if (moved) _frame.walkers++;
+    if (moved && day.near) _frame.walkers++;   /* the cap's count: near the screen (far off he has no figure) */
     npc._folkWork = null;
     npc._folkFace = null;
     return true;
