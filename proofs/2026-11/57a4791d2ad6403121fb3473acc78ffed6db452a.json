@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "57a4791d2ad6403121fb3473acc78ffed6db452a",
+  "tree": "e99ca74106cdc8c14185778044641367bebfe8a0",
+  "committedAt": "2026-11-02T20:14:14-08:00",
+  "subject": "Merge pull request #1390 from hemibroscommunity-del/claude/living-town",
+  "files": 7473,
+  "bytes": 848464027,
+  "listingSha256": "2ce454243f186d3fa9d8967594bf0b14a9b226aebec869bb8d80ff0bba768f25",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
