@@ -2742,5 +2742,21 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       && CG.gemCount(ps, 'flame', false) === 3, [CG.gemCount(ps, 'flame', false), SG.gemCount(ps, 'flame', false)]);
 }
 
+/* ═══ v2.3.3944: THE POINTS A QUEST PAYS ═══
+   The quest journal says "+5 Achievement Points" on every quest and adds them
+   up ("Achievement Points from quests: 40") from the phone's QUEST_AP_REWARD
+   (src/data/items.js), which the hand-in's prediction already read
+   (src/game/quests.js).  The worker's is the GameRoom's own
+   (server/src/index.js this.QUEST_AP_REWARD, paid in quests.js): held here,
+   so the page can never promise a number the worker does not pay. */
+{
+  const CI = await import('../../src/data/items.js');
+  const apRoom = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {} }, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  check('quest AP: the points the journal shows for a quest are the ones the worker pays at its hand-in',
+    typeof CI.QUEST_AP_REWARD === 'number' && CI.QUEST_AP_REWARD > 0 && CI.QUEST_AP_REWARD === apRoom.QUEST_AP_REWARD,
+    { phone: CI.QUEST_AP_REWARD, worker: apRoom.QUEST_AP_REWARD });
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);
