@@ -7,9 +7,9 @@ This plan comes from an overnight study of the code and of how other 2D games
 do height. The full notes, with sources, are in
 `docs/research/ELEVATION-RESEARCH.md`.
 
-**Since v2.3.3955 the first slice is built**, behind `?climb=1`: the Lagoon
+**Since v2.3.3986 the first slice is built**, behind `?climb=1`: the Lagoon
 Islet off the Water Caves, swum to, its terrace climbed by vines and its ledge
-reached by the flip. See "v2.3.3955" at the end, with the next PRs (the
+reached by the flip. See "v2.3.3986" at the end, with the next PRs (the
 worker's face table, the chest's reward, diving, BroTown on a hill).
 
 ## The short answer
@@ -142,7 +142,7 @@ Optionally, standing stones from the Object Studio, about 130 game px tall.
 - **CLAUDE.md said the near-camera "foreground" layer is missing.** It
   exists (`pixiApp.js`, since v2.3.2655). Corrected.
 
-## v2.3.3955: the first slice — a lagoon islet you swim to, climb and flip up to (`?climb=1`)
+## v2.3.3986: the first slice — a lagoon islet you swim to, climb and flip up to (`?climb=1`)
 
 > The owner, 2026-11-02: *"Make a portion of the game that you need to swim
 > in (maybe add a dive feature) and also a portion of the game that you need

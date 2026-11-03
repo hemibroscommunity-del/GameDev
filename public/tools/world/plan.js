@@ -396,7 +396,7 @@ const BASE_PLAN = {
     { id: 'bro-pond', name: 'Bro Pond', at: [-1.30, 1.90], r: 200, paint: 'a wide clear pond with reeds, flat stones and a wooden fishing jetty' },
   ],
 
-  /* ═══ v2.3.3955: THE LAGOON ISLET -- the first slice of elevation ═══
+  /* ═══ v2.3.3986: THE LAGOON ISLET -- the first slice of elevation ═══
      The owner: "Make a portion of the game that you need to swim in ... and
      also a portion of the game that you need to climb ... and double jump to
      get to the next part.  Maybe this is part of the 'elevation' addition".

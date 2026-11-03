@@ -19,7 +19,7 @@ import { jumpAirborne } from '@/game/jump.js';   /* v2.3.3017: nor in the air */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3105: a swing meets a prop at the swinger's boots */
 import { isDazed, isStaggered, isFrozen } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed; v2.3.3264: nor while a parry has you staggered */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
-import { climbRefused } from '@/game/climbActions.js';   /* v2.3.3955: nor on the vines */
+import { climbRefused } from '@/game/climbActions.js';   /* v2.3.3986: nor on the vines */
 import { noteBlow } from '@/game/deathBlow.js';   /* v2.3.3985: your own blow at its contact, for the monster's own death */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
@@ -745,7 +745,7 @@ export function isPlayerDead(S) {
    wheelSwim's NOTE_MS, so a held button does not stack them.  Next to
    isPlayerDead because it is the same kind of gate on the same paths. */
 export function swimRefused(S) {
-  /* v2.3.3955: on the vines (game/climbActions.js) your hands are on the
+  /* v2.3.3986: on the vines (game/climbActions.js) your hands are on the
      rock: refused the same, saying "Climbing!" as often as "Swimming!" */
   if (climbRefused(S, function (t) {
     var now = Date.now();

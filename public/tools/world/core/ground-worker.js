@@ -83,7 +83,7 @@ import { mapPixels, nearestIn, ownPalette, coloursOf } from '../../style/process
 import { wheelMap, whereWords } from './wheelmap.js';
 import { stepOf, cleanSteps } from './footsteps.js';
 import { placeObjects, mayorSpot, doorSpots, objectFootprints, placingOpts } from './placing.js';
-import { riseMessage, risePaint } from './rises.js';   /* v2.3.3955: the rises (`?climb=1`) */
+import { riseMessage, risePaint } from './rises.js';   /* v2.3.3986: the rises (`?climb=1`) */
 
 const TILE = PIXEL.groundTile;                                    /* 1024 px a swatch */
 /* v2.3.2982: the plan this worker lays -- the plan itself, or the big-town
@@ -466,7 +466,7 @@ function blocksIn(m) {
    without a re-bake still build the whole Wheel for their objects and
    overview, as before -- and lay their ground from blocks like the rest. */
 
-/* v2.3.3955: `climb=1` in the address -- the rises (core/rises.js) */
+/* v2.3.3986: `climb=1` in the address -- the rises (core/rises.js) */
 function climbOn(search) {
   return /(^|[?&])climb=(1|on|true)(&|$)/.test(search || '');
 }
@@ -543,7 +543,7 @@ async function init(m) {
     /* v2.3.3190: and whether to send each piece as colour numbers (the game
        draws pictures so where it can: rendering/paletteTex.js) */
     palette: !!(m && m.palette),
-    /* v2.3.3955: the rises -- faces, rims, vines and the chest -- laid and
+    /* v2.3.3986: the rises -- faces, rims, vines and the chest -- laid and
        sent only with `climb=1` in the address while they are new (core/
        rises.js; docs/ELEVATION-PLAN.md).  Without it the islet is sand. */
     climb: climbOn(search) };
@@ -593,7 +593,7 @@ async function init(m) {
       px: set.detail.cells * F.S * WPA, tile: set.detail.tile,
       cols: set.detail.cols, rows: set.detail.rows, w: set.detail.w, h: set.detail.h, fill: set.detail.fill.slice(),
     } : null,
-    /* v2.3.3955: the rises' cells and boxes (core/rises.js riseMessage; null
+    /* v2.3.3986: the rises' cells and boxes (core/rises.js riseMessage; null
        without `?climb=1`, or on a Wheel with none) -- what the walk grid shuts
        and src/game/climb.js climbs and jumps */
     rises: W.climb ? riseMessage(PLAN) : null,
@@ -980,7 +980,7 @@ async function chunk(m) {
   }
   /* v2.3.3019: and the piece's water field, for the water's motion */
   const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, blends, waterField: W.waves ? { rivers: W.rivers } : null });
-  /* v2.3.3955: the rises painted over it (`?climb=1`: core/rises.js) */
+  /* v2.3.3986: the rises painted over it (`?climb=1`: core/rises.js) */
   if (W.climb) risePaint(PLAN, out.data, out.w, out.h, Math.round(rect.x), Math.round(rect.y), K);
   const under = underOf(out.mat, out.w);
   /* v2.3.3717: how many pictures this piece kept (DIET) */

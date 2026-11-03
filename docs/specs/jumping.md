@@ -905,7 +905,7 @@ The owner: *"Also spacebar I think should be jump."* Space is the jump now and
 X the dodge roll (the swap is in `docs/specs/desktop-keys.md`, "v2.3.3844").
 The "X on a keyboard" lines above are history: read Space there.
 
-## v2.3.3955: jumping up a face, and the flip's first job (`?climb=1`)
+## v2.3.3986: jumping up a face, and the flip's first job (`?climb=1`)
 
 The props' crossing (`overLow`, the latch) now has a twin for the faces of
 raised ground (`docs/ELEVATION-PLAN.md`, the Lagoon Islet off the Water

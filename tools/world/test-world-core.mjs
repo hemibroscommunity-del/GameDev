@@ -4566,14 +4566,14 @@ console.log('the Wheel five times longer (v2.3.3315)');
     reads >= 10 && bad.length === 0, bad);
 }
 
-/* ── v2.3.3955: the lagoon islet and its rises (plan.js `islets`, `rises`;
+/* ── v2.3.3986: the lagoon islet and its rises (plan.js `islets`, `rises`;
    core/rises.js) ──
    The owner: "Make a portion of the game that you need to swim in ... and
    also a portion of the game that you need to climb ... and double jump to
    get to the next part."  An islet off the Water Caves' coast, reached only
    by swimming its shallows, touching no pass and no other spoke, nothing
    placed on it but its rises (docs/ELEVATION-PLAN.md). */
-console.log('the lagoon islet (v2.3.3955)');
+console.log('the lagoon islet (v2.3.3986)');
 {
   const fs = await import('node:fs');
   const { PLAN5 } = await import('../../public/tools/world/plan.js');
@@ -4700,12 +4700,12 @@ console.log('the lagoon islet (v2.3.3955)');
     /climb: climbOn\(search\)/.test(gw) && /rises: W\.climb \? riseMessage\(PLAN\) : null/.test(gw) && /if \(W\.climb\) risePaint\(/.test(gw));
 }
 
-/* ── v2.3.3955: climbing, and jumping up a face (src/game/climb.js) ──
+/* ── v2.3.3986: climbing, and jumping up a face (src/game/climb.js) ──
    The rules, on the real rises: the vines climbed up and down only; a face
    crossed going north by a jump high enough, judged where it comes down --
    the terrace's 72 px by a sprinting jump, the ledge's 144 px only by the
    flip, a miss dropping you back; down off a top with a jump south. */
-console.log('climbing (v2.3.3955)');
+console.log('climbing (v2.3.3986)');
 {
   const { PLAN5 } = await import('../../public/tools/world/plan.js');
   const { riseMessage } = await import('../../public/tools/world/core/rises.js');

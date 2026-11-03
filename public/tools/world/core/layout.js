@@ -47,7 +47,7 @@ export const C = Object.freeze(Object.fromEntries(CLASS_IDS.map((k, i) => [k, i]
 /* A region's stages (its looks, one per twenty levels), as `band` stores
    them: 0-based. */
 export const STAGES = 4;
-/* v2.3.3955: how far an islet's shore wanders from its rounded box (planFeatures isletAt) */
+/* v2.3.3986: how far an islet's shore wanders from its rounded box (planFeatures isletAt) */
 const ISLET_WANDER = 0.35;
 const TOWN_CLASSES = new Set([C.street, C.boardwalk, C.plaza]);
 
@@ -562,7 +562,7 @@ export function planFeatures(plan) {
   const spokes = W.spokes.map((sp) => ({ ...sp, rid: R[sp.id] }));
   const passes = [];
   for (const [pa, pb] of W.pairs) for (const t of plan.wheel.passes) passes.push({ a: pa, b: pb, r: W.tierMid(t), half: (plan.wheel.passZones * W.Z) / 2 });
-  /* v2.3.3955: the plan's ISLETS (plan.js `islets`), placed below once pass
+  /* v2.3.3986: the plan's ISLETS (plan.js `islets`), placed below once pass
      1 can say where each one's coast is -- empty until then, so the coast it
      is measured from is the spoke's own */
   const islets = [];
@@ -618,7 +618,7 @@ export function planFeatures(plan) {
         if (Math.abs(r - p.r) < p.half + passWob * cn && between(p.a, p.b, x, y)) { land = true; break; }
       }
     }
-    /* v2.3.3955: an islet's land, its spoke's own */
+    /* v2.3.3986: an islet's land, its spoke's own */
     const isl = !land && islets.length ? isletAt(bx, by) : -1;
     if (isl >= 0) land = true;
     /* the region: of the two nearest axes, the one nearer the warped point */
@@ -650,7 +650,7 @@ export function planFeatures(plan) {
   };
   const landAt = (c) => c !== C.ocean && c !== C.anchor;
 
-  /* ═══ v2.3.3955: THE ISLETS, PLACED ═══
+  /* ═══ v2.3.3986: THE ISLETS, PLACED ═══
      Each islet in plan.js `islets` (only on the long Wheel when it says
      `long`): on a compass spoke running north or south, at `tier` along its
      road, `gap` cells out from the coast on its `side` -- the coast measured
@@ -722,7 +722,7 @@ export function planFeatures(plan) {
             if (Math.abs(r - p.r) < p.half + passWob * cn && between(p.a, p.b, x, y)) { land = true; break; }
           }
         }
-        /* v2.3.3955: an islet's land (pass1At's rule) */
+        /* v2.3.3986: an islet's land (pass1At's rule) */
         const isl = !land && islets.length ? isletAt(bx, by) : -1;
         if (isl >= 0) land = true;
         const wx = x + warp.amount * warpX(gx, gy), wy = y + warp.amount * warpY(gx, gy);
@@ -848,7 +848,7 @@ export function planFeatures(plan) {
     const v = pass1Point(bx, by);
     let cl = v & 31;
     if (cl !== C.ground) return cl;
-    if (onIslet(bx, by)) return cl;   /* v2.3.3955: no feature on an islet */
+    if (onIslet(bx, by)) return cl;   /* v2.3.3986: no feature on an islet */
     const ax = artX(bx), ay = artY(by);
     for (const G of featsOf[(v >> 5) & 31]) {
       if (G.order > F.order) break;
@@ -875,7 +875,7 @@ export function planFeatures(plan) {
     if (was !== undefined) return was;
     let ok = false;
     const v = pass1Point(c.cbx, c.cby);
-    if (((v >> 5) & 31) === F.rid && (v & 31) === C.ground && (!F.bandOk || F.bandOk.has((v >> 15) & 7)) && !onIslet(c.cbx, c.cby)) {   /* v2.3.3955: none stands on an islet */
+    if (((v >> 5) & 31) === F.rid && (v & 31) === C.ground && (!F.bandOk || F.bandOk.has((v >> 15) & 7)) && !onIslet(c.cbx, c.cby)) {   /* v2.3.3986: none stands on an islet */
       ok = !(F.f.clear && tooNear(c.px, c.py, c.r * S * 1.35 + F.f.clear)) && classBefore(c.cbx, c.cby, F, c.j, c.i) === C.ground;
     }
     F.memo.set(key, ok);
@@ -1164,7 +1164,7 @@ export function planFeatures(plan) {
     artX, artY, cellX, cellY, sqx, sqy, toArt, windowFields, pass1At, pass1Point, pass1Rect, landAt,
     T, TS, feats, candidate, stands, shapeHits, latticeRange, rivers, ponds, roads, rails, marks,
     pois, routes, lots, decks,
-    /* v2.3.3955: the islets, in cells from the whole blueprint's corner (core/rises.js) */
+    /* v2.3.3986: the islets, in cells from the whole blueprint's corner (core/rises.js) */
     islets, isletAt, onIslet,
     /* start the remembered answers again when they have grown past STANDS_KEEP */
     trim() {
@@ -1279,7 +1279,7 @@ export function buildBlueprint(plan, rect) {
   const ax0 = x0 + rx0 * S, ay0 = y0 + ry0 * S, ax1 = x0 + rx1 * S, ay1 = y0 + ry1 * S;
   for (const Fe of F.feats) {
     const rid = Fe.rid, k = Fe.k;
-    /* v2.3.3955: ...and never onto an islet (planFeatures classBefore says the same) */
+    /* v2.3.3986: ...and never onto an islet (planFeatures classBefore says the same) */
     const can = (c, i) => reg[i] === rid && (c === C.ground || c === C.obstacle) && !F.onIslet(rx0 + i % bw, ry0 + ((i / bw) | 0));
     const q = F.latticeRange(Fe, ax0, ay0, ax1, ay1);
     for (let j = q.j0; j <= q.j1; j++) for (let i = q.i0; i <= q.i1; i++) {

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3955: CLIMBING, AND JUMPING UP A FACE — the rules ═══
+/* ═══ v2.3.3986: CLIMBING, AND JUMPING UP A FACE — the rules ═══
  *
  * The owner, 2026-11-02: "Make a portion of the game that you need to swim in
  * (maybe add a dive feature) and also a portion of the game that you need to

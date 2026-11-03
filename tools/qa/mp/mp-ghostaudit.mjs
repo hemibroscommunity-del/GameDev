@@ -47,7 +47,7 @@
  *   BT_GHOST_ONLY=flip BT_GHOST_DIRS=east,south,north BT_GHOST_HAT=top-hat
  *   BT_GHOST_HAIR=wavy BT_GHOST_LOOK=plain (the game's own colours)
  *   BT_GHOST_SKIN=ebony BT_GHOST_SPECIES=alien (v2.3.3738: the skin the head wears)
- *   v2.3.3955, the climb on the Lagoon Islet's vines (family `climb`, not in the
+ *   v2.3.3986, the climb on the Lagoon Islet's vines (family `climb`, not in the
  *   default run): BT_GHOST_ONLY=climb BT_GHOST_QUERY=climb=1
  */
 import * as H from './harness.mjs';
@@ -686,7 +686,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await end(outfit, 'flip');
         }
       }
-      /* ── v2.3.3955: the climb (src/game/climb.js): on the Lagoon Islet's
+      /* ── v2.3.3986: the climb (src/game/climb.js): on the Lagoon Islet's
          vines, the jog's back-facing frames at the climb's own steps.  Only
          when named (BT_GHOST_ONLY=climb), with the rises in the address
          (BT_GHOST_QUERY=climb=1); one facing, north (the climb has no
@@ -813,7 +813,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await travel(P, wsPort, myId, spot.x, spot.y);
         await page.waitForTimeout(1000);
       }
-      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'flip' /* v2.3.3738 */, 'climb' /* v2.3.3955 */, 'mine', 'chop', 'fire', 'cook', 'fish']) {
+      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'flip' /* v2.3.3738 */, 'climb' /* v2.3.3986 */, 'mine', 'chop', 'fire', 'cook', 'fish']) {
         if (!want(fam)) continue;
         const s = summary[`${outfit}/${fam}`] || (summary[`${outfit}/${fam}`] = {});
         s.frames = count(outfit, fam);

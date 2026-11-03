@@ -1,4 +1,4 @@
-/* ═══ THE LAGOON ISLET: SWIM TO IT, CLIMB IT, FLIP UP TO ITS LEDGE (v2.3.3955) ═══
+/* ═══ THE LAGOON ISLET: SWIM TO IT, CLIMB IT, FLIP UP TO ITS LEDGE (v2.3.3986) ═══
  *
  * The owner, 2026-11-02: "Make a portion of the game that you need to swim in
  * ... and also a portion of the game that you need to climb (explore

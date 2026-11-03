@@ -187,7 +187,7 @@ export function wheelWaterAt(x, y) {
   return c ? !!c.water : null;
 }
 export function wheelWalkGrid() { return _grid; }
-/* v2.3.3955: the rises -- raised ground, its faces, vines and chest -- the
+/* v2.3.3986: the rises -- raised ground, its faces, vines and chest -- the
    ground worker sent with its 'ready' (`?climb=1`; null without, or before
    it is ready): core/rises.js riseMessage, read by game/climbActions.js */
 export function wheelRises() { return (_info && _info.rises) || null; }
@@ -569,7 +569,7 @@ export function wheelStop() {
    one you cannot see yet, and walls that stopped you at the edge of what has
    been built would be walls nobody drew.  A row made before its block came
    is made again (`_rowsMade`, unmade by the block). */
-/* v2.3.3955: `rises`, the ground worker's rises (`?climb=1`: core/rises.js
+/* v2.3.3986: `rises`, the ground worker's rises (`?climb=1`: core/rises.js
    riseMessage) -- their faces, rims, vines and chests are walls too, over
    whatever the block's bits say (the islet's sand under them); a top is the
    ground it is.  What lets a climber or a jump through them is
@@ -595,7 +595,7 @@ function lazyGrid(cols, rows, B, swimOn, rises) {
         r[b.x + x] = !(bits[k >> 3] & m) || !!(swim && (swim[k >> 3] & m)) ? 1 : 0;
       }
     }
-    /* v2.3.3955: the rises' walls (their kinds 1-4: face, rim, climb, chest) */
+    /* v2.3.3986: the rises' walls (their kinds 1-4: face, rim, climb, chest) */
     if (rises && rises.cells && y >= rises.y0 && y < rises.y0 + rises.h) {
       const o = (y - rises.y0) * rises.w;
       for (let x = 0; x < rises.w; x++) {

@@ -20,7 +20,7 @@
  *   6. the OPEN SEA past the shallows is still a wall: swimming out to it
  *      stops his boots at its line;
  *   7. another player in the same water is drawn swimming too;
- *   8. v2.3.3955: the Lagoon Islet off the Water Caves (plan.js `islets`) is
+ *   8. v2.3.3986: the Lagoon Islet off the Water Caves (plan.js `islets`) is
  *      swum to through its shallows, and the open sea past it is a wall;
  *   9. no page errors, and the look costs the frame next to nothing.
  * Speeds are the game's own per-frame ones (S.player.vy): the test machine
@@ -361,7 +361,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await Q.ctx.close().catch(() => {});
     }
   }
-  /* ── 8. v2.3.3955: the Lagoon Islet (plan.js `islets`): a swim from the
+  /* ── 8. v2.3.3986: the Lagoon Islet (plan.js `islets`): a swim from the
      Water Caves' coast through its shallows, the open sea a wall past it.
      The walk grid's own answer along the row through its middle, the blocks
      there asked for first; mp-lagoonclimb swims it for real ── */
