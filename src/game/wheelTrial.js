@@ -187,6 +187,10 @@ export function wheelWaterAt(x, y) {
   return c ? !!c.water : null;
 }
 export function wheelWalkGrid() { return _grid; }
+/* v2.3.3955: the rises -- raised ground, its faces, vines and chest -- the
+   ground worker sent with its 'ready' (`?climb=1`; null without, or before
+   it is ready): core/rises.js riseMessage, read by game/climbActions.js */
+export function wheelRises() { return (_info && _info.rises) || null; }
 export function wheelOverview() { return _overview; }
 /* v2.3.3024: the Wheel's overview with each land one flat colour, its water
    as drawn (src/data/wheelLands.js; null before the worker is ready, or when
@@ -336,7 +340,7 @@ function onMessage(m, resolveInit, rejectInit) {
   }
   if (m.type === 'ready') {
     _info = m;
-    _grid = lazyGrid(m.walk.cols, m.walk.rows, m.walk.block, wheelSwimOn());
+    _grid = lazyGrid(m.walk.cols, m.walk.rows, m.walk.block, wheelSwimOn(), m.rises || null);
     _overview = overviewCanvas(m.overview);
     _overviewLands = landsCanvas(m.overview, m.overviewLands);
     /* v2.3.3717: `?heaplean` -- the overview's pixels let go once both
@@ -565,7 +569,12 @@ export function wheelStop() {
    one you cannot see yet, and walls that stopped you at the edge of what has
    been built would be walls nobody drew.  A row made before its block came
    is made again (`_rowsMade`, unmade by the block). */
-function lazyGrid(cols, rows, B, swimOn) {
+/* v2.3.3955: `rises`, the ground worker's rises (`?climb=1`: core/rises.js
+   riseMessage) -- their faces, rims, vines and chests are walls too, over
+   whatever the block's bits say (the islet's sand under them); a top is the
+   ground it is.  What lets a climber or a jump through them is
+   game/climbActions.js riseSolidAt, asked by isSolid before this grid. */
+function lazyGrid(cols, rows, B, swimOn, rises) {
   const made = new Map();
   _rowsMade = made;
   const rowAt = (y) => {
@@ -584,6 +593,14 @@ function lazyGrid(cols, rows, B, swimOn) {
       for (let x = 0, k = (y - b.y) * b.w; x < b.w; x++, k++) {
         const m = 1 << (k & 7);
         r[b.x + x] = !(bits[k >> 3] & m) || !!(swim && (swim[k >> 3] & m)) ? 1 : 0;
+      }
+    }
+    /* v2.3.3955: the rises' walls (their kinds 1-4: face, rim, climb, chest) */
+    if (rises && rises.cells && y >= rises.y0 && y < rises.y0 + rises.h) {
+      const o = (y - rises.y0) * rises.w;
+      for (let x = 0; x < rises.w; x++) {
+        const v = rises.cells[o + x];
+        if (v && (v & 7) !== 0 && rises.x0 + x >= 0 && rises.x0 + x < cols) r[rises.x0 + x] = 0;
       }
     }
     made.set(y, r);

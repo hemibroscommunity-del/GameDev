@@ -38,7 +38,7 @@ import { PLAN, PLAN5, WHEEL_LONG } from '../../public/tools/world/plan.js';
 import { buildBlueprint, C } from '../../public/tools/world/core/layout.js';
 import { wheelInfo, axisDist } from '../../public/tools/world/core/wheel.js';
 import { gridInfo } from '../../public/tools/world/core/grid.js';
-import { placeObjects, footprintOf, MOUTH_CLEAR } from '../../public/tools/world/core/placing.js';
+import { placeObjects, footprintOf, MOUTH_CLEAR, islBoxes } from '../../public/tools/world/core/placing.js';
 import { objectCatalog } from '../../public/tools/objects/catalog.js';
 import { materialMap, walkBits, composeGround } from '../../public/tools/world/core/ground.js';   /* v2.3.3012: the game's own walk grid; v2.3.3401: and its drawn shore */
 import { PIXEL } from '../../public/tools/style/bible.js';
@@ -150,7 +150,15 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
   };
   const HAZ = new Set([C.ocean, C.river, C.water, C.cliff, C.lava]);
   const ROAD = new Set([C.path, C.rail, C.bridge, C.street]);
-  const dHaz = dist((i) => HAZ.has(bp.cls[i]));
+  /* v2.3.3955: an islet and its keep-out (plan.js `islets`) are a hazard to
+     every place here -- no monster stands, and no vein, tree or fishing spot
+     is put, on or near it: its rises are all it holds ("no monsters in the
+     challenge area in v1") */
+  const islMark = new Uint8Array(n);
+  for (const b of islBoxes(plan, bp)) {
+    for (let y = Math.max(0, b.y0); y < Math.min(bp.h, b.y1); y++) for (let x = Math.max(0, b.x0); x < Math.min(bp.w, b.x1); x++) islMark[y * bp.w + x] = 1;
+  }
+  const dHaz = dist((i) => HAZ.has(bp.cls[i]) || islMark[i] === 1);
   const dRoad = dist((i) => ROAD.has(bp.cls[i]));
   const dCommons = dist((i) => bp.reg[i] === ri.commons || bp.reg[i] === ri.town);
   /* v2.3.3013: for the deeper stretches -- from the plots out in the country
@@ -355,7 +363,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
      angler sat in a pond. */
   const mm = materialMap(plan, bp);
   const walk = walkBits(bp, mm);
-  const blocked = (i) => !!(walk[i >> 3] & (1 << (i & 7)));
+  const blocked = (i) => !!(walk[i >> 3] & (1 << (i & 7))) || islMark[i] === 1;   /* v2.3.3955: + an islet's keep-out */
   /* v2.3.3401: and the water as the game draws it, for the fishing seats */
   const drawnWater = drawnWaterOf(plan, bp, mm);
   /* v2.3.3540: the dungeons' mouths -- every landmark with a tier, at its

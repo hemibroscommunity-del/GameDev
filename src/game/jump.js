@@ -260,6 +260,7 @@ export function jumpRefusal(S, now, extra) {
   if (S._dodgeRoll) return 'rolling';
   if (S._bashDash) return 'dashing';
   if (S._wheelSwim && S._wheelSwim.on) return 'swimming';
+  if (S._climb || S._climbDrop) return 'climbing';   /* v2.3.3955: on the vines, or dropping back (game/climb.js) */
   if (S._extraction || S._firemaking || S._farmWork) return 'harvesting';   /* v2.3.3136: kneeling at a bed too */
   if (S._lootFreezeUntil && now < S._lootFreezeUntil) return 'busy';
   if (S._sled || S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold) return 'busy';   /* v2.3.3136: + the farm's hold */
@@ -274,6 +275,9 @@ export function startJump(S, now, dx, dy) {
   const len = Math.sqrt((dx || 0) * (dx || 0) + (dy || 0) * (dy || 0));
   const k = len > 1 ? 1 / len : 1;
   S._jump = { t0: now, dur: JUMP_MS, peak: JUMP_PEAK, dx: (dx || 0) * k, dy: (dy || 0) * k };
+  /* v2.3.3955: where it took off -- a face's missed crossing drops you back
+     here (game/climb.js faceLanding) */
+  if (S.player) { S._jump.x0 = S.player.x; S._jump.y0 = S.player.y; }
   return S._jump;
 }
 
@@ -530,6 +534,9 @@ export function startFlip(j, now, opts) {
     ang: Number.isFinite(o.ang) ? o.ang : (j.ang || 0),
     basePeak: ph.peak, baseDur: ph.dur,
     over: j.over || null,   /* a fence it was already crossing stays crossed */
+    /* v2.3.3955: ...and a face too (its latch is in `over`), and where the
+       jump took off: a missed flip up a face drops you back there */
+    x0: j.x0, y0: j.y0,
   };
 }
 
