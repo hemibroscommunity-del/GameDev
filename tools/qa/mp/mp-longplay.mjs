@@ -145,11 +145,13 @@ const ARC = [
   { id: 'smith_1', npc: 'blacksmith_bro', give: { invKey: 'ore_copper_ore', count: 5 } },
   { id: 'smith_2', npc: 'blacksmith_bro', count: 1 },
   { id: 'fish_1', npc: 'shopkeeper_bro', give: { invKey: 'cooked_fish_minnow', count: 2 } },
+  /* v2.3.3924: Farmer Bro's carrots before the snowmen (tut_2's `after`) */
+  { id: 'farm_1', npc: 'farmer_bro', count: 3 },
   { id: 'tut_2', npc: 'mayor_bro', give: { invKey: 'snowman', count: 4 } },
   { id: 'tut_3', npc: 'mayor_bro', give: { invKey: 'skeleton-remnants', count: 5 } },
   { id: 'tut_4', npc: 'mayor_bro', give: { invKey: 'fire-goblin-remnants', count: 6 } },
 ];
-const NAME_OF = { mayor_bro: 'mayor bro', blacksmith_bro: 'blacksmith bro', shopkeeper_bro: 'diego' };
+const NAME_OF = { mayor_bro: 'mayor bro', blacksmith_bro: 'blacksmith bro', shopkeeper_bro: 'diego', farmer_bro: 'farmer bro' /* v2.3.3924 */ };
 /* where a harvester stands from a resource (mp-deskharvest) */
 const STAND = { oreVein: [0, -70], tree: [0, -130], fishSpot: [52, -43] };
 const FOOT_DY = 52;   /* a body's middle to its boots on the farm */

@@ -43,6 +43,10 @@
  * -- iron plate, greaves and sword put three shining pieces of metal a bot on
  * the phone's screen -- and each row says how many the shine drew
  * (`shine`: drawn in the pass, in passes of their own).
+ *
+ * v2.3.3953: BT_CROWD_GRADE (two letters, the worker's `eqg`: 're' a rare
+ * torso over elite greaves) has the bots WEAR those grades on the worker, so
+ * with BT_CROWD_LOOK in iron every bot's armour is a graded glow on the phone.
  */
 import * as H from './harness.mjs';
 import { fork } from 'node:child_process';
@@ -84,6 +88,10 @@ function startBots(wsPort) {
          '{"eqc":"ironplate","eql":"irongreaves","wpnType":"sword","wpnMat":"iron"}'
          dresses every bot in iron, each piece a shine on the phone's screen */
       look: process.env.BT_CROWD_LOOK ? JSON.parse(process.env.BT_CROWD_LOOK) : null,
+      /* v2.3.3953: BT_CROWD_GRADE, e.g. 're' -- the bots' iron torso and
+         greaves worn in those grades (bots.mjs), so the phone draws each
+         bot's grade glow: with BT_CROWD_LOOK in iron, the cost of a graded crowd */
+      grade: process.env.BT_CROWD_GRADE || null,
     } });
     groups.push(g);
   }
@@ -203,7 +211,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           work: a.map((s) => s.workMs || 0), entity: a.map((s) => s.entityMs || 0),
           /* v2.3.3453: the metal shine this frame -- pieces drawn in the pass
              (`batched`) and in passes of their own (`lit`, a filter each) */
-          shine: g ? { targets: g.targets, lit: g.lit, batched: g.batched || 0 } : null,
+          shine: g ? { targets: g.targets, lit: g.lit, batched: g.batched || 0, graded: g.graded || 0 } : null,   /* v2.3.3953: + graded, the pieces wearing a grade's glow */
           switches: window.__bfCount || 0,
         };
       });

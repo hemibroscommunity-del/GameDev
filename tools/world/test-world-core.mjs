@@ -3583,20 +3583,20 @@ console.log("the buildings' doors (v2.3.3032)");
   /* v2.3.3259: the twelfth of today's buildings, the Enchanter, has no door of its own: it is the Gem Works' second tab */
   /* v2.3.3539: the Hotel is a fifth hall (its rest the worker's, rest.js),
      shut only against a worker that does not rest (WHEEL_HALL_CAPS) */
-  ok('...eleven of today\'s buildings have a door (none twice; the twelfth, the Enchanter, is the Gem Works\' second tab), and the other five plots are accounted for, none left over: five halls of the Wheel\'s own (the plan\'s four "(new: ...)" buildings, and the Town Hall, Mayor Bro\'s), none shut',
+  ok('...eleven of today\'s buildings have a door (none twice; the twelfth, the Enchanter, is the Gem Works\' second tab), and the other five plots are accounted for, none left over: four halls of the Wheel\'s own (the plan\'s four "(new: ...)" buildings), none shut, and the Town Hall, Mayor Bro\'s steps, a door with nothing behind it (v2.3.3899: its board is on the square\'s noticeboard, game/wheelNoticeboard.js)',
     new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 11 && tbIds.filter((id) => id !== 'enchanting').every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
     && tbIds.includes('enchanting') && !Object.values(WHEEL_BUILDING_DOORS).includes('enchanting') && WHEEL_BUILDING_DOORS.gemcutter === 'gemcutter'
-    && hallIds.length === 5 && closedIds.length === 0
+    && hallIds.length === 4 && closedIds.length === 0 && !hallIds.includes('townhall') && !openIds.includes('townhall')
     && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k))
     && hallIds.concat(closedIds).filter((k) => k !== 'townhall').every((k) => /^\(new:/.test(todayOf[k])) && todayOf.townhall === 'mayor (NPC)'
     && !hallIds.some((k) => closedIds.includes(k))
-    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).length === 0,
+    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id).join() === 'townhall',
     { halls: hallIds, closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id) });
   /* (v2.3.3539: a hall's picture is any .webp in public/, the Hotel's the
      owner's bed from the right stick, public/ui/controls/) */
   ok('...each hall has its window\'s name and picture, and opens a panel of its own, never one of today\'s buildings\' (no `buildingPanel` value twice)',
     hallIds.every((k) => { const h = WHEEL_HALLS[WHEEL_HALL_DOORS[k]]; return h && h.title && h.sub && /^\/(icons|ui)\/.+\.webp(\?v=[0-9.]+)?$/.test(h.icon) && fs.existsSync(new URL('../../public' + h.icon.split('?')[0], import.meta.url)); })
-    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 5 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
+    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 4 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
   /* v2.3.3539: a hall that waits for its worker's cap is shut until then, and
      the worker's REST.HOTEL is the Hotel's door as the ground worker places it */
   {
@@ -3953,8 +3953,8 @@ console.log("the buildings' insides (v2.3.3258)");
   const wrong = [];
   for (const [plot, bid] of Object.entries(WHEEL_BUILDING_DOORS)) if (R.BUILDING_ROOMS[panelOf(bid)] !== plot) wrong.push([plot, panelOf(bid), R.BUILDING_ROOMS[panelOf(bid)]]);
   for (const [plot, panel] of Object.entries(WHEEL_HALL_DOORS)) if (R.BUILDING_ROOMS[panel] !== plot) wrong.push([plot, panel, R.BUILDING_ROOMS[panel]]);
-  ok('every door that opens a window opens the window of its own room: the eleven buildings (through their `action`) and the five halls (v2.3.3539: + the Hotel), each picture named for the plot it shows; the Enchanter\'s tab (v2.3.3259) is the Gem Works\' own room',
-    Object.keys(WHEEL_BUILDING_DOORS).length === 11 && Object.keys(WHEEL_HALL_DOORS).length === 5 && wrong.length === 0 && R.BUILDING_ROOMS.enchant === 'gemcutter' && R.BUILDING_ROOMS.gemcut === 'gemcutter', wrong);
+  ok('every door that opens a window opens the window of its own room: the eleven buildings (through their `action`) and the four halls (v2.3.3539: + the Hotel; v2.3.3899: - the Town Hall, its board on the noticeboard), each picture named for the plot it shows; the Enchanter\'s tab (v2.3.3259) is the Gem Works\' own room',
+    Object.keys(WHEEL_BUILDING_DOORS).length === 11 && Object.keys(WHEEL_HALL_DOORS).length === 4 && wrong.length === 0 && R.BUILDING_ROOMS.enchant === 'gemcutter' && R.BUILDING_ROOMS.gemcut === 'gemcutter', wrong);
   const windows = Object.values(R.BUILDING_ROOMS);
   const rooms = [...new Set(windows)];   /* v2.3.3259: the Gem Works' two tabs are one room */
   /* v2.3.3539: the Hotel's picture has its window, so no picture waits */
@@ -4011,7 +4011,7 @@ console.log("the buildings' insides (v2.3.3258)");
        board hands them its openers (and the hall two more: onDash, onClose) */
     const footSrc = read('../../src/ui/panels/buildings/TownBoardPage.jsx');
     ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
-      !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
+      !!th && th.title === 'Town Board' && !Object.prototype.hasOwnProperty.call(WHEEL_HALL_DOORS, 'townhall') /* v2.3.3899: opened from the noticeboard, not the hall's door */ && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
         /* v2.3.3804: since v2.3.3766 the two rows are two buttons at the foot of
            the Town Hall's board (TownBoard.jsx), still data-hall-row
            "leaderboard" and "map" on the same icons and the same openers; the
@@ -4074,10 +4074,10 @@ console.log("the keepers (v2.3.3258)");
   const fs = await import('node:fs');
   const { WHEEL_KEEPERS, WHEEL_TOWNSFOLK, WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS } = await import('../../src/data/wheelBuildingDoors.js');
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-  const bad = Object.entries(WHEEL_KEEPERS).filter(([name, plot]) => !((name === 'Mayor Bro' || WHEEL_TOWNSFOLK.some((f) => f.name === name && f.door === plot))
+  const bad = Object.entries(WHEEL_KEEPERS).filter(([name, plot]) => !((WHEEL_TOWNSFOLK.some((f) => f.name === name && f.door === plot))
     && (own(WHEEL_BUILDING_DOORS, plot) || own(WHEEL_HALL_DOORS, plot))));
-  ok('each keeper stands at the very building he opens (Mayor Bro on the Town Hall\'s steps, the rest a WHEEL_TOWNSFOLK row at that door), and it is one with a window -- a building or a hall: Blacksmith Bro the forge, Mayor Bro the Town Hall, and the tour\'s Woodworker Bro the bench and Farmer Bro the Feed & Seed (v2.3.3525)',
-    Object.keys(WHEEL_KEEPERS).length === 14 && WHEEL_KEEPERS['Blacksmith Bro'] === 'blacksmith' && WHEEL_KEEPERS['Mayor Bro'] === 'townhall'
+  ok('each keeper stands at the very building he opens (a WHEEL_TOWNSFOLK row at that door), and it is one with a window -- a building or a hall: Blacksmith Bro the forge, and the tour\'s Woodworker Bro the bench and Farmer Bro the Feed & Seed (v2.3.3525); Mayor Bro keeps nothing since v2.3.3899 (he says the next step, game/mayorTalk.js)',
+    Object.keys(WHEEL_KEEPERS).length === 13 && WHEEL_KEEPERS['Blacksmith Bro'] === 'blacksmith' && !own(WHEEL_KEEPERS, 'Mayor Bro')
       && WHEEL_KEEPERS['Woodworker Bro'] === 'woodworker' && WHEEL_KEEPERS['Farmer Bro'] === 'feedseed' && bad.length === 0, bad);
   /* v2.3.3833: the new cast's ten keepers, one to each door that had nobody, and no building with two */
   const plots = Object.values(WHEEL_KEEPERS);
@@ -4099,6 +4099,23 @@ console.log("the keepers (v2.3.3258)");
       && /return enterWheelDoor\(stateRef\.current, door, \{ setBuildingPanel: setBuildingPanel \}\);/.test(bt)
       && /export function enterWheelDoor\(S, door, deps\)/.test(it) && /if \(door\.index >= 0\) return _openBuilding\(S, door\.index, deps\.setBuildingPanel\);/.test(it)
       && /if \(kd\) n\.keeperOf = plot;/.test(bt) && /d\.id === plot && \(d\.index >= 0 \|\| d\.hall\)/.test(bt), { tapAt, questAt, flipAt, eAt, eQuest });
+  /* v2.3.3899: the owner: "Remove the town hall menu for now ... move the menu to the sign post to the left of the town hall near
+     the 3 street lamps", and the Mayor "I couldn't talk to him" -- the board opens from the square's noticeboard (found by its
+     kind at runtime, never a coordinate), and a Mayor with nothing of his own says the next step */
+  {
+    const nbSrc = fs.readFileSync(new URL('../../src/game/wheelNoticeboard.js', import.meta.url), 'utf8');
+    const mtSrc = fs.readFileSync(new URL('../../src/game/mayorTalk.js', import.meta.url), 'utf8');
+    const saysAt = bt.indexOf("if (mayorSaysNext(S, npc)) return _mark('says');"), nothingAt = bt.indexOf("return _mark('nothing');");
+    ok('the town board opens from the square\'s noticeboard (v2.3.3899): found by its kind (`noticeboard`) in the worker\'s objects, nearest the Town Hall\'s door, a door whose hall is the board\'s (`townhall`) -- the prompt ("Read"), E and a tap on its picture; Mayor Bro with nothing to offer says the next step (tourOffer) in his bubble, on a tap and on E, before "has nothing for you"',
+      /objects\.kinds\.indexOf\('noticeboard'\)/.test(nbSrc) && /hall: BOARD_HALL/.test(nbSrc) && /export const BOARD_HALL = 'townhall';/.test(nbSrc)
+        && !/\b\d{4,}\s*,\s*\d{4,}\b/.test(nbSrc)
+        && /S\._nearWheelBuilding = noticeboardAt\(S\);/.test(bt) && /var _nbTap = noticeboardAtCss\(S, cssX, cssY\);/.test(bt)
+        && /enterWheelDoor\(S, _nbTap\.board, \{ setBuildingPanel: setBuildingPanel \}\);/.test(bt)
+        && /if \(noticeboardAtCss\(stateRef\.current, cssX, cssY\)\) return 'talk';/.test(bt)
+        && saysAt > 0 && saysAt < nothingAt
+        && /if \(!mayorSaysNext\(S, npc\) && deps\.pushNpcMsg\)/.test(dc)
+        && /tourOffer\(rpg, S\)/.test(mtSrc) && /npc\.chatBubble = \{ text: line, ts: now \};/.test(mtSrc), { saysAt, nothingAt });
+  }
   /* the owner: "the gladiator arena is showing 'saloon' behind it" -- the Saloon's door opened the arena (PartyPanel, named for parties) */
   const R = await import('../../src/data/buildingRooms.js');
   ok('the Saloon\'s door opens the Saloon (SaloonPanel: your party, Invite a player) on its room, and the Gladiator Arena is a window of its own, \'arena\', opened from the Sheriff\'s Office with no room behind it',
@@ -4547,6 +4564,226 @@ console.log('the Wheel five times longer (v2.3.3315)');
   }
   ok(`every read of the object index's per-picture sizes goes through the object's piece number, ix.pk (${reads} reads in src/)`,
     reads >= 10 && bad.length === 0, bad);
+}
+
+/* ── v2.3.3994: the lagoon islet and its rises (plan.js `islets`, `rises`;
+   core/rises.js) ──
+   The owner: "Make a portion of the game that you need to swim in ... and
+   also a portion of the game that you need to climb ... and double jump to
+   get to the next part."  An islet off the Water Caves' coast, reached only
+   by swimming its shallows, touching no pass and no other spoke, nothing
+   placed on it but its rises (docs/ELEVATION-PLAN.md). */
+console.log('the lagoon islet (v2.3.3994)');
+{
+  const fs = await import('node:fs');
+  const { PLAN5 } = await import('../../public/tools/world/plan.js');
+  const { planFeatures } = await import('../../public/tools/world/core/layout.js');
+  const { swimBits } = await import('../../public/tools/world/core/ground.js');
+  const { riseLayout, riseMessage, risePaint, RISE_PALETTE, RISE_KIND } = await import('../../public/tools/world/core/rises.js');
+  const { decodePlaced } = await import('../../public/tools/world/core/placedfile.js');
+  const { tierAt } = await import('../../public/tools/world/core/wheel.js');
+  const F1 = planFeatures(PLAN), F5 = planFeatures(PLAN5);
+  ok('the short Wheel has no islet (no room between its spokes at tiers 2-3) and its plan has no rises laid', F1.islets.length === 0 && riseLayout(PLAN) === null);
+  const I = F5.islets[0];
+  ok('the long Wheel has the Lagoon Islet, the Water Caves\' land, on the spoke\'s east side', F5.islets.length === 1 && I && I.id === 'lagoon-islet' && I.region === 'tidal' && I.xdir === 1, I);
+  const M = 40;
+  const rect = { x: I.x0 - M, y: I.y0 - M, w: I.x1 - I.x0 + 2 * M, h: I.y1 - I.y0 + 2 * M };
+  const bp = buildBlueprint(PLAN5, rect), mm = materialMap(PLAN5, bp);
+  const wk = walkBits(bp, mm), sw = swimBits(bp, mm, (PLAN5.seed | 0) + 900, wk);
+  const N = bp.w * bp.h, bit = (a, i) => (a[i >> 3] >> (i & 7)) & 1;
+  const tidal = bp.regionIds.indexOf('tidal');
+  const isl = (i) => F5.onIslet(rect.x + (i % bp.w), rect.y + ((i / bp.w) | 0));
+  let nIsl = 0, allTidal = true, allGround = true, mats = new Set();
+  for (let i = 0; i < N; i++) if (isl(i)) { nIsl++; if (bp.reg[i] !== tidal) allTidal = false; if (bp.cls[i] !== C.ground) allGround = false; mats.add(mm.ids[mm.mat[i]]); }
+  ok(`its ${nIsl} cells are plain ground of the Water Caves, drawn in its own first stage's sand (never a pass's border land), nothing of pass 2 on them`,
+    nIsl > 300 && allTidal && allGround && mats.size === 1 && mats.has('tidal-1'), { nIsl, mats: [...mats] });
+  const W5 = wheelInfo(PLAN5), g5 = gridInfo(PLAN5);
+  const midR = Math.hypot(((I.cx * F5.S + F5.x0) - g5.cx) / g5.P, ((I.cy * F5.S + F5.y0) - g5.cy) / g5.P);
+  ok(`in tier 2 (levels 6-10) of the long Wheel (its middle at tier ${tierAt(W5, midR)})`, tierAt(W5, midR) === 2, { midR });
+  /* reached ONLY by swimming: over walkable cells alone the islet reaches no
+     other land; over walkable and swimmable ones, the spoke's own */
+  const flood = (pass) => {
+    const seen = new Uint8Array(N), q = [];
+    for (let i = 0; i < N; i++) if (isl(i) && !bit(wk, i)) { seen[i] = 1; q.push(i); }
+    while (q.length) {
+      const i = q.pop(), x = i % bp.w, y = (i / bp.w) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const X = x + dx, Y = y + dy;
+        if (X < 0 || Y < 0 || X >= bp.w || Y >= bp.h) continue;
+        const j = Y * bp.w + X;
+        if (!seen[j] && pass(j)) { seen[j] = 1; q.push(j); }
+      }
+    }
+    return seen;
+  };
+  const walkOnly = flood((j) => !bit(wk, j));
+  let walkOut = 0;
+  for (let i = 0; i < N; i++) if (walkOnly[i] && !isl(i)) walkOut++;
+  const swimToo = flood((j) => !bit(wk, j) || bit(sw, j));
+  let reachedLand = 0, otherLand = 0;
+  for (let i = 0; i < N; i++) if (swimToo[i] && !isl(i) && bp.cls[i] !== C.ocean && !bit(wk, i)) { reachedLand++; if (bp.reg[i] !== tidal) otherLand++; }
+  ok(`you cannot walk to it (its walkable ground reaches ${walkOut} cells off it), but you can swim to it from the Water Caves (${reachedLand} cells of its land reached through the shallows, none of another land)`,
+    walkOut === 0 && reachedLand > 1000 && otherLand === 0, { walkOut, reachedLand, otherLand });
+  /* ...and no other spoke, pass or land within the shallows' reach of it */
+  let nearest = Infinity;
+  const R2 = 110;
+  for (let by = I.y0 - R2; by < I.y1 + R2; by += 1) for (let bx = I.x0 - R2; bx < I.x1 + R2; bx += 1) {
+    const v = F5.pass1Point(bx, by), c = v & 31, rg = (v >> 5) & 31;
+    if (c === C.ocean || c === C.anchor || rg === F5.R.tidal) continue;
+    const dx = bx < I.x0 ? I.x0 - bx : bx >= I.x1 ? bx - I.x1 + 1 : 0, dy = by < I.y0 ? I.y0 - by : by >= I.y1 ? by - I.y1 + 1 : 0;
+    nearest = Math.min(nearest, Math.hypot(dx, dy));
+  }
+  const passes = F5.pois.filter((p) => p.kind === 'pass');
+  const nearPass = Math.min(...passes.map((p) => Math.hypot(p.x / F5.S - F5.x0 / F5.S - I.cx, p.y / F5.S - F5.y0 / F5.S - I.cy) - p.r / F5.S));
+  ok(`no other land within ${R2} cells of it (nearest: ${nearest === Infinity ? 'none' : nearest.toFixed(0)}), nor a pass (the nearest's edge ${nearPass.toFixed(0)} cells off): a dead end that skips no gate`,
+    nearest > 2 * 8 + 10 && nearPass > 60, { nearest, nearPass });
+  /* nothing placed, standing or growing on it */
+  const ob = decodePlaced(fs.readFileSync(new URL('../../public/world/placed5/objects.bin', import.meta.url)));
+  const cg = F5.S * PLAN5.worldPxPerArtPx, k = I.keepOut;
+  const inKeep = (x, y) => x >= (I.x0 - k) * cg && x < (I.x1 + k) * cg && y >= (I.y0 - k) * cg && y < (I.y1 + k) * cg;
+  let objs = 0;
+  for (let i = 0; i < ob.n; i++) if (inKeep(ob.x[i], ob.y[i])) objs++;
+  const live = await import('../../server/src/wheelspawns.js');
+  const pts = [];
+  for (const h of Object.keys(live.WHEEL_SPAWNS)) {
+    const L = live.WHEEL_SPAWNS[h];
+    for (const p of L.points || []) pts.push(p);
+    for (const d of L.deeper || []) for (const p of d.points || []) pts.push(p);
+  }
+  const nodes = [];
+  for (const h of Object.keys(live.WHEEL_NODES || {})) for (const nd of live.WHEEL_NODES[h] || []) nodes.push(nd);
+  const mons = pts.filter((p) => inKeep(p[0], p[1])).length;
+  const nds = nodes.filter((nd) => Array.isArray(nd) && inKeep(nd[1], nd[2])).length;
+  ok(`nothing is placed on it or within ${k} cells: no object (of ${ob.n}), no monster's place (of ${pts.length}), no vein, tree or fishing spot (of ${nodes.length})`,
+    objs === 0 && mons === 0 && nds === 0 && pts.length > 1000 && nodes.length > 100, { objs, mons, nds });
+  /* the rises on it */
+  const L = riseLayout(PLAN5), msg = riseMessage(PLAN5);
+  const [T, Lg] = L ? L.list : [];
+  ok('two rises: the terrace (a 72 px face, vines down it) and the ledge on its top (a 144 px face, the chest on it)',
+    L && L.list.length === 2 && T.id === 'lagoon-terrace' && T.h === 72 && T.climb && !T.chest && Lg.id === 'lagoon-ledge' && Lg.h === 144 && Lg.chest && !Lg.climb
+    && Lg.x0 > T.x0 && Lg.x1 < T.x1 && Lg.y1 <= T.faceY0, L && L.list);
+  let onLand = true;
+  for (let y = L.y0; y < L.y0 + L.h; y++) for (let x = L.x0; x < L.x0 + L.w; x++) if (L.cells[(y - L.y0) * L.w + x - L.x0] && !F5.onIslet(x, y)) onLand = false;
+  const kindAt = (x, y) => { const v = L.cells[(y - L.y0) * L.w + x - L.x0]; return v ? v & 7 : -1; };
+  const sx = T.climb.x0;
+  ok('every rise cell is on the islet\'s land, with the vines\' foot and a beach below the terrace\'s face',
+    onLand && F5.onIslet(sx, T.y1) && F5.onIslet(sx, T.y1 + 2) && kindAt(sx, T.y1) === -1);
+  ok('a rise is its face (south rows), its rim (the other edges), its top; the vines through the terrace\'s face; the chest on the ledge\'s top; the ledge stands on the terrace',
+    kindAt(T.x0 + 1, T.y1 - 1) === RISE_KIND.face && kindAt(sx, T.faceY0) === RISE_KIND.climb && kindAt(T.x0, T.y0 + 3) === RISE_KIND.rim && kindAt(T.x1 - 1, T.y0 + 3) === RISE_KIND.rim
+      && kindAt(T.x0 + 2, T.faceY0 - 1) === RISE_KIND.top && kindAt(Lg.chest.x0, Lg.chest.y0) === RISE_KIND.chest && kindAt(Lg.x0 + 1, Lg.y1 - 1) === RISE_KIND.face
+      && kindAt(Lg.x0 + 2, Lg.y1) === RISE_KIND.top && kindAt(Lg.x0 + 2, Lg.y0 + 1) === RISE_KIND.top && ((L.cells[(Lg.y1 - 1 - L.y0) * L.w + Lg.x0 + 1 - L.x0] >> 3) === 2));
+  ok('the game is sent them in game px, a cell 24 (riseMessage)', msg && msg.cell === 24 && msg.list[1].face.y1 - msg.list[1].face.y0 === 144 && msg.list[0].climb.x1 - msg.list[0].climb.x0 === 48
+    && msg.cells.length === L.w * L.h, msg && msg.list);
+  /* the face picture: its own palette (well under 256), the same pixel in two pieces */
+  const K = 3, X0 = F5.x0 + (T.x0 - 2) * F5.S, Y0 = F5.y0 + (Lg.y0 - 2) * F5.S;
+  const ow = (T.x1 - T.x0 + 4) * F5.S * K, oh = (T.y1 - Lg.y0 + 6) * F5.S * K;
+  const buf = new Uint8ClampedArray(ow * oh * 4);
+  const painted = risePaint(PLAN5, buf, ow, oh, X0, Y0, K);
+  const pal = new Set();
+  for (const k2 of Object.keys(RISE_PALETTE)) { const v = RISE_PALETTE[k2]; for (const c of (Array.isArray(v[0]) ? v : [v])) pal.add(c.join()); }
+  const used = new Set();
+  for (let i = 0; i < buf.length; i += 4) if (buf[i + 3]) used.add(`${buf[i]},${buf[i + 1]},${buf[i + 2]}`);
+  const off = [...used].filter((c) => !pal.has(c));
+  /* a second piece, offset by an odd number of art px, over the same ground */
+  const ox = 37, oy = 53, ow2 = ow - ox * K, oh2 = oh - oy * K;
+  const buf2 = new Uint8ClampedArray(ow2 * oh2 * 4);
+  risePaint(PLAN5, buf2, ow2, oh2, X0 + ox, Y0 + oy, K);
+  let diff = 0;
+  for (let y = 0; y < oh2; y++) for (let x = 0; x < ow2; x++) {
+    const a = ((y + oy * K) * ow + x + ox * K) * 4, b = (y * ow2 + x) * 4;
+    if (buf[a] !== buf2[b] || buf[a + 1] !== buf2[b + 1] || buf[a + 2] !== buf2[b + 2] || buf[a + 3] !== buf2[b + 3]) diff++;
+  }
+  ok(`the faces, rims, vines and chest are drawn in ${used.size} colours, all the rises' own (${pal.size}: a piece stays far under 256), and every pixel the same in two pieces laid apart`,
+    painted > 50000 && off.length === 0 && pal.size <= 40 && used.size >= 20 && diff === 0, { off: off.slice(0, 5), diff });
+  const gw = fs.readFileSync(new URL('../../public/tools/world/core/ground-worker.js', import.meta.url), 'utf8');
+  ok('...laid and sent by the ground worker only with climb=1 in the address',
+    /climb: climbOn\(search\)/.test(gw) && /rises: W\.climb \? riseMessage\(PLAN\) : null/.test(gw) && /if \(W\.climb\) risePaint\(/.test(gw));
+}
+
+/* ── v2.3.3994: climbing, and jumping up a face (src/game/climb.js) ──
+   The rules, on the real rises: the vines climbed up and down only; a face
+   crossed going north by a jump high enough, judged where it comes down --
+   the terrace's 72 px by a sprinting jump, the ledge's 144 px only by the
+   flip, a miss dropping you back; down off a top with a jump south. */
+console.log('climbing (v2.3.3994)');
+{
+  const { PLAN5 } = await import('../../public/tools/world/plan.js');
+  const { riseMessage } = await import('../../public/tools/world/core/rises.js');
+  const CL = await import('../../src/game/climb.js');
+  const J = await import('../../src/game/jump.js');
+  const R = riseMessage(PLAN5);
+  const [T, Lg] = R.list, h = CL.FEET_HS;
+  const midX = (T.climb.x0 + T.climb.x1) / 2;
+  ok('a cell\'s kind at a point: the terrace\'s face, its vines, its rim, its top; the ledge\'s face and chest; nothing off them',
+    CL.riseCellAt(R, T.face.x0 + 5, T.face.y1 - 5).kind === 'face' && CL.riseCellAt(R, midX, T.face.y0 + 30).kind === 'climb'
+      && CL.riseCellAt(R, T.box.x0 + 3, T.box.y0 + 100).kind === 'rim' && CL.riseCellAt(R, T.box.x0 + 40, T.face.y0 - 10).kind === 'top'
+      && CL.riseCellAt(R, Lg.face.x0 + 30, Lg.face.y0 + 60).r.id === 'lagoon-ledge' && CL.riseCellAt(R, Lg.chest.x0 + 5, Lg.chest.y0 + 5).kind === 'chest'
+      && CL.riseCellAt(R, T.box.x0 - 30, T.box.y0) === null && CL.riseShuts('face') && CL.riseShuts('rim') && CL.riseShuts('climb') && CL.riseShuts('chest') && !CL.riseShuts('top'));
+  const foot = T.face.y1 + h + 1;
+  ok('at the vines\' foot pushing north (or their top pushing south) a climb starts; not pushing sideways, nor off the strip, nor at a bare face',
+    CL.climbStartAt(R, midX, foot, 0, -1) === T && CL.climbStartAt(R, midX - 20, foot, 0.2, -0.9) === T
+      && CL.climbStartAt(R, midX, foot, 1, -0.5) === null && CL.climbStartAt(R, midX, foot, 0, 1) === null
+      && CL.climbStartAt(R, midX, T.face.y0 - h - 1, 0, 1) === T && CL.climbStartAt(R, midX, T.face.y0 - h - 1, 0, -1) === null
+      && CL.climbStartAt(R, T.climb.x1 + 2, foot, 0, -1) === null && CL.climbStartAt(R, T.face.x0 + 30, foot, 0, -1) === null);
+  ok('climbing is straight up or down, at 0.4 of the walk; out at the top on it, out at the foot off it',
+    CL.CLIMB_MULT === 0.4 && CL.climbWay(-1) === -1 && CL.climbWay(0.9) === 1 && CL.climbWay(0.1) === 0
+      && CL.climbOut(T, T.face.y0 - h) === 'top' && CL.climbOut(T, T.face.y1 + h) === 'foot' && CL.climbOut(T, (T.face.y0 + T.face.y1) / 2) === null);
+  const seq = []; for (let d = 0; d < CL.CLIMB_PX * CL.CLIMB_FRAMES.length * 2; d += CL.CLIMB_PX) seq.push(CL.climbFrame(d, 23));
+  ok('the climb is drawn in the jog\'s own back-facing frames (north, 23 of them), one every CLIMB_PX px climbed, the cycle repeating',
+    seq.every((f) => f >= 0 && f < 23) && new Set(seq).size === CL.CLIMB_FRAMES.length && seq[0] === seq[CL.CLIMB_FRAMES.length] && CL.climbFrame(0, 23) === CL.climbFrame(CL.CLIMB_PX - 0.1, 23));
+  /* a jump at the foot going north: entered once high enough; not sideways, not low */
+  const t0 = 1000, j = { t0, dur: J.JUMP_MS, peak: J.JUMP_PEAK };
+  const low = t0 + 10, high = t0 + J.JUMP_MS / 2;
+  ok('a jump enters a face going north once high enough (the low props\' own threshold), never sideways or still low; going south off its top it drops',
+    CL.faceEntry(T, j, high, midX, foot, 0, -2) === 'N' && CL.faceEntry(T, j, low, midX, foot, 0, -2) === null && CL.faceEntry(T, j, high, midX, foot, 2, -0.3) === null
+      && CL.faceEntry(T, j, high, midX, T.face.y0 - h, 0, 2) === 'S' && CL.faceEntry(T, j, high, midX, T.face.y0 - h, 0, -2) === null && CL.faceEntry(T, null, high, midX, foot, 0, -2) === null);
+  ok('judged where it comes down: on the terrace\'s top, up; in its face, back; the ledge\'s top without a flip, back, with one, up; down, to the foot',
+    CL.faceLanding(T, 'N', false, midX, T.face.y0 - h - 1) === 'top' && CL.faceLanding(T, 'N', false, midX, T.face.y0 + 10) === 'back'
+      && CL.faceLanding(Lg, 'N', false, Lg.face.x0 + 50, Lg.face.y0 - h - 1) === 'back' && CL.faceLanding(Lg, 'N', true, Lg.face.x0 + 50, Lg.face.y0 - h - 1) === 'top'
+      && CL.faceLanding(Lg, 'S', false, Lg.face.x0 + 50, Lg.face.y0 + 30) === 'foot' && CL.faceLanding(T, 'N', false, midX, foot + 40) === 'clear');
+  /* the crossing, simulated frame by frame with the jump's own rules: feet at
+     the face's foot, the stick held north, the walk at `v` px a ms; entered
+     when the face lets it (faceEntry), the flip pressed at phase `flipAt` */
+  const cross = (r, v, flipAt, sprint) => {
+    let jj = { t0: 0, dur: J.JUMP_MS, peak: J.JUMP_PEAK, dx: 0, dy: -1, sprint: !!sprint }, flipped = false, inFace = false;
+    let fy = r.face.y1 + h + 0.01;
+    const fx = (r.face.x0 + r.face.x1) / 2;
+    for (let t = 0; t < 3000; t += 16) {
+      if (!J.jumpActive(jj, t)) break;
+      if (!flipped && flipAt != null && J.jumpPhase(jj, t) >= flipAt) { const f = J.startFlip(jj, t, { sprint }); if (f) { jj = f; flipped = true; } }
+      const step = v * 16 * J.flipBoost(jj, t);
+      const ny = fy - step;
+      if (!inFace && ny - h < r.face.y1) {
+        if (CL.faceEntry(r, jj, t, fx, fy, 0, -step)) inFace = true;
+        else continue;   /* the face stops the feet, as the walk test does */
+      }
+      fy = ny;
+      if (fy + h < r.face.y0 - 60) fy = r.face.y0 - 60 - h;   /* the back rim stops them */
+    }
+    return inFace ? CL.faceLanding(r, 'N', flipped, fx, fy) : 'never';
+  };
+  const WALK = 2.5 * 60 / 1000, SPR = WALK * 1.33;
+  const res = { walk72: cross(T, WALK), sprint72: cross(T, SPR), walk144: cross(Lg, WALK), sprint144: cross(Lg, SPR),
+    flipWalk: cross(Lg, WALK, J.FLIP_SWEET), flipSprint: cross(Lg, SPR, J.FLIP_SWEET, true), early: cross(Lg, WALK, 0.2), earlySprint: cross(Lg, SPR, 0.2, true),
+    fastJump: cross(Lg, WALK * 2.2, null, true) };
+  ok('the terrace\'s 72 px: a walking jump falls short and drops back, a sprinting one gets up',
+    res.walk72 === 'back' && res.sprint72 === 'top', res);
+  ok('the ledge\'s 144 px: no plain jump, walking, sprinting or however fast; a flip at the sweet spot, walking or sprinting; never an early flip',
+    res.walk144 === 'back' && res.sprint144 === 'back' && res.fastJump === 'back' && res.flipWalk === 'top' && res.flipSprint === 'top' && res.early === 'back' && res.earlySprint === 'back', res);
+  /* the take-off is where a miss drops you back */
+  const S = { player: { x: 11, y: 22 }, rpg: { hp: 10 } };
+  const jt = J.startJump(S, 5000, 0, -1), ft = J.startFlip(jt, 5000 + J.JUMP_MS * 0.8, {});
+  ok('a jump keeps where it took off, and its flip carries it on; a drop back is a short fall there',
+    jt.x0 === 11 && jt.y0 === 22 && ft && ft.x0 === 11 && ft.y0 === 22 && (() => {
+      const d = CL.startDrop(100, 0, 11, 22, 0, 'back');
+      const a = CL.dropAt(d, 0), m = CL.dropAt(d, d.dur / 2), e = CL.dropAt(d, d.dur + 5);
+      return a.x === 100 && !a.done && m.x < 100 && m.x > 11 && e.done && e.x === 11 && e.y === 22 && d.dur >= CL.DROP_MIN_MS;
+    })());
+  ok('no jump on the vines or while a drop carries you',
+    J.jumpRefusal({ player: {}, rpg: { hp: 5 }, _climb: {} }, 1, {}) === 'climbing' && J.jumpRefusal({ player: {}, rpg: { hp: 5 }, _climbDrop: {} }, 1, {}) === 'climbing');
+  ok('the chest opens from its front, on the ledge, within reach -- empty for now, saying the reward comes next',
+    CL.atChest(Lg, (Lg.chest.x0 + Lg.chest.x1) / 2, Lg.chest.y1 + h + 4) && !CL.atChest(Lg, (Lg.chest.x0 + Lg.chest.x1) / 2, Lg.chest.y1 + h + 60) && !CL.atChest(T, 0, 0)
+      && /reward comes next/.test(CL.CHEST_NOTE));
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

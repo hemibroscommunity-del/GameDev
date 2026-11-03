@@ -19,6 +19,8 @@ import { jumpAirborne } from '@/game/jump.js';   /* v2.3.3017: nor in the air */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3105: a swing meets a prop at the swinger's boots */
 import { isDazed, isStaggered, isFrozen } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed; v2.3.3264: nor while a parry has you staggered */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
+import { climbRefused } from '@/game/climbActions.js';   /* v2.3.3994: nor on the vines */
+import { noteBlow } from '@/game/deathBlow.js';   /* v2.3.3985: your own blow at its contact, for the monster's own death */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -743,6 +745,15 @@ export function isPlayerDead(S) {
    wheelSwim's NOTE_MS, so a held button does not stack them.  Next to
    isPlayerDead because it is the same kind of gate on the same paths. */
 export function swimRefused(S) {
+  /* v2.3.3994: on the vines (game/climbActions.js) your hands are on the
+     rock: refused the same, saying "Climbing!" as often as "Swimming!" */
+  if (climbRefused(S, function (t) {
+    var now = Date.now();
+    if (S._climbNoteAt && now - S._climbNoteAt < 1200) return;
+    S._climbNoteAt = now;
+    pushDmgPopup(S, S.player.x, S.player.y - 70, t, SWIM_NOTE_COLOR, { ts: now + 1 });
+    cue('denied');
+  })) return true;
   if (!isWheelSwimming(S)) return false;
   var at = swimNote(S, Date.now());
   if (at) { pushDmgPopup(S, at.x, at.y, SWIM_NOTE, SWIM_NOTE_COLOR, { ts: Date.now() + 1 }); cue('denied'); }   /* v2.3.3462: said and heard */
@@ -893,6 +904,10 @@ export function spawnHitDebris(S, m, angle, opts) {
      now flies on into the body before its burst (projectiles.js), and a mummy's
      first hit turns it into a skeleton in between: the wrappings that hit tore
      are ash and linen, not bone. */
+  /* v2.3.3985: your own swing or shot at its contact (`mine`) writes the
+     blow down for the monster's death: the swing's or the shot's direction,
+     and big for a special (game/deathBlow.js) -- before the queue's cap */
+  if (o.mine) noteBlow(m, { ang: angle, big: !!o.big, by: S.myId || null, mine: true, aim: true });
   var arch = o.arch || m.archetype || m.type;
   var mat = hitMaterialOf(arch);
   if (!S._debrisBursts) S._debrisBursts = [];

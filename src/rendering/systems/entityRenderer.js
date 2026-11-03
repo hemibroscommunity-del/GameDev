@@ -28,6 +28,7 @@ import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
 import { STUN_STARS, STUN_SPIN_MS, BLOCK_BARS, BLOCK_GEOM, blocksFor } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring; v2.3.2300: his 5-block resource strips */
 import { jogWaistRow } from '../jogWaist.js'; /* v2.3.1341: stable waist band */
+import { fullsetSplitY } from '../lightfx/gradeSplit.js'; /* v2.3.3953: a full set's waist, for its two grades' glow */
 import { getFrame as getSlimeBaseFrame, hasState as hasSlimeState, frameCount as slimeFrameCount, SLIME_BASE_ROW, SLIME_FRAME_PX } from '../slimeSprites.js';
 import { getRecoloredFrame, hasRecoloredState } from '../monsterRecolor.js'; /* v2.3.1534; v2.3.1573 generalised */
 
@@ -117,6 +118,8 @@ import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
 import { flipHeadAt } from '../flipHead.js';   /* v2.3.3738: the head pieces ride the tumble's head */
 import { headCrown } from '../headCrowns.js';   /* v2.3.3880: the flinch's crown on the head, not the fist */
+import { climbFrame } from '@/game/climb.js';   /* v2.3.3994: on the vines, the jog's back-facing frames at the climb's own cadence */
+import { riseClimbingAt } from '@/game/climbActions.js';   /* v2.3.3994: ...another player's too, by where their feet are */
 import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase; v2.3.3682: a flip, the roll's tumble */
 import { rideLook } from '@/game/ride.js';   /* v2.3.3776: a rider stands sideways, and pushes now and then */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
@@ -139,7 +142,7 @@ import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { standInReady, farmFigureReady, peerStandInReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made; v2.3.3314: a peer's, once made in their colours */
 import { parseFarmEx } from '@/game/farmWork.js';   /* v2.3.3439: a peer working a bed of their farm, off their `ex` */
 import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
-import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
+import { SMALL_TEX, elemSmallKey } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { QUEST_PIN, QUEST_PIN_WORLD } from '@/data/ownerIcons.js';   /* v2.3.3481: the owner's quest pins over a townsperson */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
 import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3313: an alliance member's plate says [TAG] before the name */
@@ -7289,6 +7292,14 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
   partyBadge.visible = false;
   pill.addChild(partyBadge);
   container._partyBadge = partyBadge;
+  /* v2.3.3906: a monster's element after its name (the owner: "After name of
+     monster on nameplate it lists elemental icon type"), a 64 px small icon
+     (SMALL_TEX 'elem-*'), laid out with the plate on a _pillKey change only */
+  const elemBadge = new Sprite();
+  elemBadge.anchor.set(0.5, 0.5);
+  elemBadge.visible = false;
+  pill.addChild(elemBadge);
+  container._elemBadge = elemBadge;
 
   pill.visible = false;
   (host || container).addChild(pill);
@@ -7571,13 +7582,14 @@ function _fitPlateToZoom(display) {
    is: the rounded rect is rebuilt only when the key changes, so a colour
    written outside it would be written once and then never again -- and a band
    moves every time the PLAYER levels up, not only when the monster does. */
-function _updateNamePill(display, name, level, visible, broId, alarm, band, party, boss) {
+function _updateNamePill(display, name, level, visible, broId, alarm, band, party, boss, elem) {
   if (!display || !display._namePill) return;
   _fitPlateToZoom(display);
   /* v2.3.3279: + `party`, the owner's party badge (a party member's plate);
      v2.3.3556: + `boss`, a dungeon's boss (its deep red) */
   const key = name + '|' + level + '|' + (broId ? 'v' : '') + (alarm ? '|!' : '')
-    + (band ? '|' + band : '') + (party ? '|p' : '') + (boss ? '|b' : '');
+    + (band ? '|' + band : '') + (party ? '|p' : '') + (boss ? '|b' : '')
+    + (elem ? '|e' + elem : '');   /* v2.3.3906: the element's icon (a SMALL_TEX key) */
   if (display._pillKey !== key) {
     display._pillKey = key;
     display._pillName.text = name;
@@ -7592,8 +7604,9 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band, part
        branch is on the argument rather than on a flag so no caller can ask for
        a badge and pass it a word to put in the circle. */
     if (display._partyBadge && !(band && typeof level !== 'string')) display._partyBadge.visible = false;
+    if (display._elemBadge && !(band && typeof level !== 'string')) display._elemBadge.visible = false;   /* v2.3.3906 */
     if (band && typeof level !== 'string') {
-      _drawPlateCapsule(display, level, broId, alarm, band, party, boss);
+      _drawPlateCapsule(display, level, broId, alarm, band, party, boss, elem);
       display._pillAlarm = !!alarm;
       display._pillBand = band;
       display._pillBoss = !!boss;   /* v2.3.3556: for the QA probe */
@@ -7678,7 +7691,7 @@ function _setPillType(display, fill, weight) {
    The origin is the pill's TOP CENTRE, the same convention the two-line rect
    used, so nothing that positions a plate (pill.y at every call site) has to
    move. */
-function _drawPlateCapsule(display, level, broId, alarm, band, party, boss) {
+function _drawPlateCapsule(display, level, broId, alarm, band, party, boss, elem) {
   const N = display._pillCss || 15;
   const h = Math.round(N * PLATE_H_RATIO);
   const padL = Math.round(N * PLATE_PAD_L_RATIO);
@@ -7738,7 +7751,11 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party, boss) {
   /* The digits are measured, not reserved: the width is what this level
      actually sets, which is the whole point of dropping the disc. */
   const lvlW = lvlNum ? Math.ceil(lvlNum.width) : 0;
-  const w = padL + partyPad + broPad + Math.ceil(nameT.width) + gap + lvlW + padR;
+  /* v2.3.3906: [name][gap][element][gap][level] -- the plate grows by the
+     icon and one gap; a plate with no element is exactly as it was */
+  const elemD = elem ? Math.max(11, Math.round(h * 0.8)) : 0;
+  const elemPad = elem ? elemD + gap : 0;
+  const w = padL + partyPad + broPad + Math.ceil(nameT.width) + gap + elemPad + lvlW + padR;
   /* x runs from -w/2; the name centres in the space its neighbours leave. */
   const left = -w / 2;
   const nameLeft = left + padL + partyPad + broPad;
@@ -7746,7 +7763,22 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party, boss) {
   nameT.y = h / 2;
   /* The digits sit on the name's baseline-ish centre line, a `gap` after it --
      one line, the mock's "Snowman 3". */
-  if (lvlNum) { lvlNum.x = nameLeft + nameT.width + gap + lvlW / 2; lvlNum.y = h / 2; }
+  if (lvlNum) { lvlNum.x = nameLeft + nameT.width + gap + elemPad + lvlW / 2; lvlNum.y = h / 2; }
+  const eb = display._elemBadge;
+  if (eb) {
+    eb.visible = !!elem;
+    if (elem) {
+      /* another element on the same display (never, for a monster: but a
+         stale picture must not survive a key change) */
+      if (eb._elemK !== elem) { eb._elemK = elem; eb.texture = Texture.EMPTY; }
+      eb._smallW = elemD;
+      _bindSmallTex(eb, elem);
+      eb.width = eb.height = elemD;
+      eb.x = nameLeft + Math.ceil(nameT.width) + gap + elemD / 2;
+      eb.y = h / 2;
+    }
+  }
+  display._pillElem = elem || null;   /* v2.3.3906: for the QA probe */
   if (bro) {
     bro.visible = !!broId;
     if (broId) {
@@ -11293,7 +11325,11 @@ export class EntityRenderer {
         /* v2.3.3556: a dungeon's boss says so: "Boss Amethyst Golem", on its
            own deep red (_drawPlateCapsule's `boss`) */
         _updateNamePill(_plateUi, (m.boss ? 'Boss ' : '') + wheelStageName(m, monsterDisplayName(m.archetype || m.type)),   /* v2.3.3093: "Glacier Snowman" past level 20 */
-          m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand, false, !!m.boss);
+          m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand, false, !!m.boss,
+          elemSmallKey(m.element));   /* v2.3.3906: its element's icon after the name */
+        /* v2.3.3906: a plate laid out before its icon's texture was in binds it
+           the first frame it can (a cheap look; a no-op once bound) */
+        if (_plateUi && _plateUi._elemBadge && _plateUi._elemBadge.visible) _bindSmallTex(_plateUi._elemBadge, _plateUi._elemBadge._elemK);
         /* ═══ v2.3.2571: THE PLATE SITS WHERE THE BAR SITS ═══
            Centred on `_plateBandY`, the bar's own centre line, so the two
            states occupy one spot and the transition reads as the plate
@@ -11388,6 +11424,15 @@ export class EntityRenderer {
              `hidden` says the plate was deliberately taken down for D4's first
              rule rather than merely absent. */
           band: _pui ? (_pui._pillBand || null) : null,
+          /* v2.3.3906: the element icon the plate wears (its SMALL_TEX key),
+             whether it is shown and bound, and the capsule's width */
+          elem: _pui ? (_pui._pillElem || null) : null,
+          elemShown: !!(_pui && _pui._elemBadge && _pui._elemBadge.visible && _pui._elemBadge.texture
+            && _pui._elemBadge.texture !== Texture.EMPTY),
+          elemX: _pui && _pui._elemBadge ? Math.round(_pui._elemBadge.x * 10) / 10 : null,
+          nameRight: _pui && _pui._pillName ? Math.round((_pui._pillName.x + _pui._pillName.width / 2) * 10) / 10 : null,
+          lvlX: _pui && _pui._pillLvlNum ? Math.round(_pui._pillLvlNum.x * 10) / 10 : null,
+          pillW: _pui ? (_pui._pillW || null) : null,
           /* v2.3.2530: the softening values the capsule actually painted with
              -- fill/border alpha, the band colour it stroked, the name's ink
              and weight.  Reported for the same reason `band` is: none of it
@@ -12503,6 +12548,10 @@ export class EntityRenderer {
       /* v2.3.3017: their jump (the `player_jump` relay, game events), drawn as
          yours is: the leaping frame of the jog, held, lifted by jumpFx.js */
       const _rJump = other._jump && jumpActive(other._jump, now) ? other._jump : null;
+      /* v2.3.3994: on the vines, by the same test at their feet as swimming's
+         (nothing new on the wire): the climb's frames, stepped by where they
+         are on the strip */
+      const _rClimb = !_rJump && S.currentZone === 'wheel' && riseClimbingAt(other.x, other.y + playerGroundDy(S.currentZone, other.x, other.y));
       /* v2.3.3682: ...and their flip, the roll's somersault, as yours is */
       const _rFlip = _rJump && _rJump.flip ? { angle: _rJump.ang || 0, startTime: _rJump.t0, durMs: _rJump.dur, kind: 'flip' } : null;
       const _rDodge = other._dodgeRoll || _rFlip || null;
@@ -12561,10 +12610,11 @@ export class EntityRenderer {
           /* v2.3.3017: mid-jump, the leaping frame, held (as the local branch);
              no footfall dust in the air */
           if (_rJump) { frameIdx = jumpFrame(dir, fc, jumpPhase(_rJump, now)); _rJogPhase = (frameIdx + 0.5) / fc; }   /* v2.3.3499: the stride's four frames, by the jump's phase */
+          else if (_rClimb) { frameIdx = climbFrame(Math.abs(other.y), fc); _rJogPhase = (frameIdx + 0.5) / fc; }   /* v2.3.3994 */
           /* ...and kicks up dust at each footfall of it, on its own foot-plant
              frames (the ground's colour is yours to look up only under your
              own boots: a peer's is the dirt's) */
-          if (!_rJump && display._prevJogFrame !== frameIdx) {
+          if (!_rJump && !_rClimb && display._prevJogFrame !== frameIdx) {
             const _rPlant = _jogPlantCrossed(JOG_FOOT_FRAMES[dir] || JOG_FOOT_FRAMES.south, display._prevJogFrame, frameIdx, fc, false,
               now - (display._prevJogAt || 0), _rCyc);
             /* ═══ v2.3.3343: ...AND IS HEARD AT EVERY FOOTFALL ═══
@@ -12828,6 +12878,7 @@ export class EntityRenderer {
             if (spriteBody.tint !== _fsTintR) spriteBody.tint = _fsTintR;
           }
           display._fullsetOn = !!_fsR;   /* v2.3.2864: see the local path */
+          display._fullsetWaist = _fsR ? fullsetSplitY(dir, frameIdx, _rJogPhase) : 0;   /* v2.3.3953: see the local path */
           /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).
              v2.3.1116: guarded (see local path) -- a throw here must not freeze the loop. */
           try {
@@ -12973,10 +13024,27 @@ export class EntityRenderer {
       const oSpriteBody = display._spriteBody;
       const oWeaponSprite = display._weaponSprite;
       if (oWpnType && !oIsShielding && !_rDodge) {   /* v2.3.2925: not in a roll -- see the local twin */
-        const wpnIconTex = hasWeapon(oWpnType) ? getWeaponTexture(oWpnType) : null;
+        /* ═══ v2.3.3980: A PEER'S GREATSWORD IS THE ONE IN YOUR HAND ═══
+           The owner: "'Copper great sword' when Smithed looks gray".  Another
+           player's greatsword was drawn from the BARE greatsword sheet (the
+           one-handed Sword1 icon, every facing) -- the per-facing art the
+           local player carries (v2.3.942) was never used here.  So a carried
+           greatsword, in its metal, is the per-facing sheet for the canonical
+           `dir`, its grip and its widened fit height (weaponFitH), drawn as
+           the local carry draws it (the mirror rule, the south tilt).  Those
+           sheets load behind the loading screen (loadWeaponSprites, the
+           preload law); until one has, the bare sheet stands in as before.
+           The texture changes only when the facing does (TRAPS §218).  A
+           swing keeps the bare sheet: the effectsRenderer stand-in draws the
+           peer mid-swing, and this branch's swing rotation is for that sheet. */
+        const { dir, mirror } = resolveDirection(facing);
+        const _oMat = (other && other.wpnMat) || undefined;
+        const _oGsDir = (oWpnType === 'greatsword' && !oSwingActive && hasWeapon(oWpnType, _oMat, dir)) ? dir : null;
+        const wpnIconTex = hasWeapon(oWpnType, _oMat, _oGsDir) ? getWeaponTexture(oWpnType, _oMat, _oGsDir) : null;
+        display._oWpnArt = wpnIconTex ? (oWpnType + (_oGsDir ? '-' + _oGsDir : '')) : null;   /* v2.3.3980: QA probe (__btPeerSword.art) */
         if (wpnIconTex) {
           if (oWeaponSprite.texture !== wpnIconTex) oWeaponSprite.texture = wpnIconTex;
-          const handle = getWeaponHandle(oWpnType);
+          const handle = getWeaponHandle(oWpnType, _oMat, _oGsDir);
           const tw = wpnIconTex.width || 64;
           const th = wpnIconTex.height || 64;
           if (handle) oWeaponSprite.anchor.set(handle[0] / tw, handle[1] / th);
@@ -12984,7 +13052,6 @@ export class EntityRenderer {
 
           /* Per-frame hand anchor — same math as local. */
           const SHEET_W = 256;
-          const { dir, mirror } = resolveDirection(facing);
           /* v2.3.163: baseline halved from 1.0 -> 0.5 to match the
              spriteBody scale change above (also 0.5).  Keeps the
              weapon anchored to the visual hand position rather than
@@ -13013,11 +13080,11 @@ export class EntityRenderer {
           oWeaponSprite.x = wpnX;
           oWeaponSprite.y = wpnY;
 
-          const targetH = oWpnType === 'greatsword' ? 36
+          const targetH = oWpnType === 'greatsword' ? (_oGsDir ? 48 : 36)   /* v2.3.3980: the local carry's 48 */
                          : oWpnType === 'staff'      ? 34
                          : oWpnType === 'bow'        ? 28
                          :                              26;
-          const fitScale = targetH / Math.max(8, th);
+          const fitScale = targetH / Math.max(8, _oGsDir ? weaponFitH(oWpnType, _oMat, _oGsDir, th) : th);
           /* v2.3.1786: carried blade points UP, same as the local player below —
              other bros have to hold their sword the way you hold yours. */
           let _oBladeUp = false;
@@ -13025,14 +13092,19 @@ export class EntityRenderer {
             oWeaponSprite.rotation = oSwingAng;
             oWeaponSprite.scale.x = fitScale;
           } else {
-            const weaponMirror = facingIdx >= 3 && facingIdx <= 6;
+            /* v2.3.3980: the per-facing art flips as the local carry's does
+               (resolveDirection's mirror, plus south and north: v2.3.1821,
+               v2.3.2925), and the south blade keeps its tilt off the face */
+            const weaponMirror = _oGsDir
+              ? (mirror || _oGsDir === 'south' || _oGsDir === 'north')
+              : (facingIdx >= 3 && facingIdx <= 6);
             /* v2.3.2841: a peer's staff kicks on THEIR cast (gameEvents stamps
                _staffCastAt from their bolt).  Their cooldown is not on the
                wire, so a peer gets the kick without the charge-up dip. */
             oWeaponSprite.rotation = (oWpnType === 'staff')
               ? staffCastPose(now, other._staffCastAt, other._staffCastAng, 0, 0, weaponMirror, undefined,
                 !!other._staffCastBig && other._staffCastBig === other._staffCastAt)   /* v2.3.2842: their one-bolt special kicks harder */
-              : carryWobble(now, isMoving, oWpnType);   /* v2.3.2925: their blade wobbles with their run, as yours does */
+              : ((_oGsDir === 'south' ? SOUTH_IDLE_TILT : 0) + carryWobble(now, isMoving, oWpnType));   /* v2.3.2925: their blade wobbles with their run, as yours does */
             oWeaponSprite.scale.x = (weaponMirror ? -1 : 1) * fitScale;
             _oBladeUp = oWpnType !== 'staff';   /* v2.3.2841: a staff stands head-up -- see the local path */
           }
@@ -13050,7 +13122,11 @@ export class EntityRenderer {
              is a foreign string: materialTint answers native white for anything
              it does not know, so a forged or stale id cannot paint a peer an
              arbitrary colour. */
-          oWeaponSprite.tint = materialTint(other && other.wpnMat);
+          /* v2.3.3980: weaponTint, as your own blade: a melee weapon only, and
+             black steel's `steel` key reaches its metal (BASE_MATERIAL) -- a
+             peer's black steel greatsword drew bright steel through the bare
+             materialTint. */
+          oWeaponSprite.tint = weaponTint(oWpnType, _oMat);
           _lastPeerWeaponSprite = oWeaponSprite; /* v2.3.1760: QA probe */
           oWeaponSprite.visible = true;
 
@@ -13174,6 +13250,7 @@ export class EntityRenderer {
             gearChestVis: !!(display._gearChest && display._gearChest.visible),
             gearChestIdx: display._gearChest ? display.getChildIndex(display._gearChest) : -1,
             bladeUp: display._weaponSprite ? display._weaponSprite.scale.y < 0 : null,
+            art: display._oWpnArt || null,   /* v2.3.3980: which sheet ('greatsword-east', or the bare 'greatsword') */
           };
         } catch (e) { /* never breaks the frame */ }
       }
@@ -14156,6 +14233,9 @@ export class EntityRenderer {
          player happened to be facing when they swiped. */
       const sector = Math.round((_rollSrc.angle || 0) / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8]; facedAng = _rollSrc.angle || 0;
+    } else if (S._climb) {
+      /* v2.3.3994: on the vines you face the rock (game/climb.js) */
+      facing = 'north'; S._facingSrc = 'climb';
     } else if (bashPose) {
       /* v2.3.1735: the bash owns the body for its window, exactly as the
          dodge roll above does.  Placed ahead of the shield/aim branches so
@@ -14212,6 +14292,9 @@ export class EntityRenderer {
        body is doing) and whether or not it moves: a standing jump still
        leaps. */
     const jumping = !!S._jump && jumpActive(S._jump, now);
+    /* v2.3.3994: climbing -- the jog's north frames, held still when you
+       are, stepping one every CLIMB_PX px climbed (game/climb.js) */
+    const climbing = !!S._climb;
     /* v2.3.188: pickup pose during the loot-pickup freeze.  Takes
        priority over hit because the freeze already blocks combat.
        v2.3.236: attack pose plays through the 250 ms swing window —
@@ -14271,7 +14354,7 @@ export class EntityRenderer {
               ? 'fish'
               : (dodging
                   ? 'dodge'
-                  : (jumping
+                  : ((jumping || climbing)
                       ? 'jog'
                       : (isHit
                           ? 'hit'
@@ -14405,6 +14488,14 @@ export class EntityRenderer {
           display._prevJogFrame = frameIdx;
           display._prevJogAt = now;
           display._jogAir = true;
+        } else if (climbing) {
+          /* v2.3.3994: no footstep on the vines (as in the air) */
+          frameIdx = climbFrame(S._climb.dist, fc);
+          _jogPhase = (frameIdx + 0.5) / fc;
+          display._prevJogFrame = frameIdx;
+          display._prevJogAt = now;
+          display._jogAir = true;
+          S._climbFrame = frameIdx;   /* QA (__btClimb) */
         } else if (display._jogAir) {
           /* the touch-down frame: the loop picks up where the clock says, and
              the plants it passed in the air were not steps (v2.3.3015's
@@ -14415,6 +14506,7 @@ export class EntityRenderer {
           display._prevJogAt = now;
         }
         display._jumpFrameIdx = jumping ? frameIdx : null;   /* QA (__btJumpFx) */
+        if (!climbing && S._climbFrame != null) S._climbFrame = null;   /* v2.3.3994 */
         /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each
            direction's jog loop, so the sound lands exactly when a foot hits the
            ground -- a fixed timer never lined up because the per-direction
@@ -14721,6 +14813,8 @@ export class EntityRenderer {
           const _fsTint = _fsT ? _fullsetTint(getEquip('chest')) : 0xffffff;
           if (spriteBody.tint !== _fsTint) spriteBody.tint = _fsTint;
           display._fullsetOn = !!_fsT;   /* v2.3.2864: the metal shine finds the armour on the body sprite */
+          /* v2.3.3953: ...and the waist, where its glow turns from the torso's grade to the greaves' (glint.js) */
+          display._fullsetWaist = _fsT ? fullsetSplitY(dir, frameIdx, _jogPhase) : 0;
         } catch (e) { _bodyTex = tex; display._fullsetOn = false; }
         if (spriteBody.texture !== _bodyTex) spriteBody.texture = _bodyTex;
         /* v2.3.1055: pickup head overlay (drawn above gear in _orderTraitsAndWeapon).

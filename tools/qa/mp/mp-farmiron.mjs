@@ -36,7 +36,7 @@
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { FARM_BEDS } from '../../../src/data/farmLayout.js';
+import { FARM_BEDS, FARM_KNEEL_DX, FARM_KNEEL_DY } from '../../../src/data/farmLayout.js';
 import { FARM_STEP_ANIM, FARM_ANIM_TURN, FARM_WORK_MS } from '../../../src/game/farmWork.js';
 
 const PHONE = { width: 390, height: 844 };
@@ -267,6 +267,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the farmer works the bed (guard)', !!F0 && F0.visible, F0 && { frame: F0.frame, anim: F0.anim });
     if (!F0 || !F0.visible) return;
     await letGo();
+    /* v2.3.3960: that first step is the dig, which now stands mid-bed
+       (farmLayout.js farmDigSpot): back to the bed's back, where this was
+       measured and the other moves are worked, the walker and every move
+       pictured there as before (mid-bed the copper hoe's plate reads ~5%
+       brighter against the walker at the same spot: the PR says so) */
+    await P.page.evaluate(({ x, y, FOOT_DY }) => {
+      const S = window._gameState.current;
+      S.player.x = x; S.player.y = y - FOOT_DY;
+      S.player.vx = 0; S.player.vy = 0;
+    }, { x: B0.x + B0.w / 2 + FARM_KNEEL_DX, y: B0.y + FARM_KNEEL_DY, FOOT_DY });
     await P.page.waitForTimeout(600);
 
     /* the metal's passing sweep held off everywhere: a picture would catch it

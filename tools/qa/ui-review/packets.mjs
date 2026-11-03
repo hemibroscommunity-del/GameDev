@@ -30,7 +30,8 @@ export const PACKETS = [
   { slug: 'arriving-and-the-world', title: 'Arriving, the world screen and talking to Mayor Bro',
     screens: ['welcome', 'desktop-window', 'hud', 'hud-pvp', 'nml-popup', 'hud-outlaw', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
   { slug: 'dashboard-character-bag', title: 'Dashboard: your character, your quests and the bag',
-    screens: ['dash-hero', 'dash-hero-points', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card'] },
+    /* v2.3.3999: + your portrait as a Hemi Bro, twice */
+    screens: ['guide-arrow', 'dash-hero', 'dash-hero-points', 'hemi-portrait', 'hemi-portrait-dressed', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card'] },
   /* v2.3.3995: the Gear tab, the resting dashboard's three panels */
   { slug: 'gear-tab', title: 'The Gear tab: your bag, your bro and your gear',
     screens: ['gear-tab', 'gear-slot-selected', 'gear-compare', 'gear-filter-open', 'gear-filter-empty'] },

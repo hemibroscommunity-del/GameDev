@@ -55,6 +55,7 @@ import { NML_RED, nmlHere, nmlCanAttack, nmlLockedOut } from '@/game/noMansLand.
 import { nmlAskCurrent, nmlAskSubscribe, nmlAskAnswer, nmlAskClose, nmlAskMs, nmlHitBack } from '@/game/nmlAsk.js';
 import { NmlSkull, openNmlInfo } from './NmlBadge.jsx';
 import { infoPopupBus } from './infoPopupBus.js';
+import { wheelMiniBox } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: the minimap's side, twice as big on a computer */
 
 /* the small "i" on the skull's corner */
 function InfoDot({ size = 13 }) {
@@ -111,7 +112,7 @@ export function cardPlace() {
   if (m && typeof m.left === 'number' && typeof m.top === 'number') {
     const room = m.left - f.left;
     if (room - 16 >= w) return clearOfTopCards(clearOfYou({ top: Math.round(m.top), left: Math.round(f.left + (room - w) / 2), w, at: 'beside' }, f));
-    return clearOfTopCards({ top: Math.round(m.top + (m.h || 132) + 8), left: Math.round(f.left + (f.width - w) / 2), w, at: 'below' });
+    return clearOfTopCards({ top: Math.round(m.top + (m.h || wheelMiniBox()) + 8), left: Math.round(f.left + (f.width - w) / 2), w, at: 'below' });
   }
   return clearOfTopCards({ top: Math.round(f.top + 96), left: Math.round(f.left + (f.width - w) / 2), w, at: 'top' });
 }

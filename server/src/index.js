@@ -62,6 +62,7 @@ import { arenaMethods } from './gladiator.js';
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster hit on a player */
+import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.4011: the tiers' moves (combo, charge, volley, slams, enrage) */
 import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
@@ -167,6 +168,7 @@ import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled b
 import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
 import { pointsResetMethods } from './pointsreset.js'; /* v2.3.3541: the free points reset -- every placed point back */
 import { swordConvertMethods } from './swordconvert.js'; /* v2.3.3895: old one-handed swords become greatswords -- the kill switch */
+import { gsCopperMethods } from './gscopper.js'; /* v2.3.3980: old wooden greatswords become copper -- the kill switch */
 import { bankMethods } from './bank.js'; /* v2.3.3785: the Bank's vault -- bag items and gold the worker holds, out of a death's reach */
 import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
 import { heapBurnMethods } from './heapburn.js'; /* v2.3.3748: a burning heap sets you on fire */
@@ -2027,6 +2029,9 @@ export class GameRoom {
                spawn 6-19 s later, half a hit and a 130 px shove.  Found by the
                review of v2.3.3621.  The cooldown stays, as the burrow's. */
             m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null; m._tgRadius = 0;
+            /* v2.3.4011: and a move (monstermoves.js), for the same reason: a
+               fresh life with nothing in flight, nothing cooling, not enraged */
+            this._clearMonsterMove(m);
             /* v2.3.3120: and its trap marks (trapping.js): a mark is on THIS
                life of the monster, and the kill path clears it -- this is the
                belt and braces dmgByPlayer has above. */
@@ -2117,6 +2122,10 @@ export class GameRoom {
            mid-cast used to strand the monster in a pending telegraph
            forever — see the note on _resolveMonsterTelegraph. */
         if (this._resolveMonsterTelegraph(zoneId, m, now)) continue;
+        /* v2.3.4011: and a move of the tiers past the first (monstermoves.js:
+           a combo's strikes, a charge's dash, a volley in the air), for the
+           same reason and in the same place */
+        if (this._resolveMonsterMove(zoneId, m, now)) continue;
         /* v2.3.2215: and the basic swing's wind-up, for the same reason and
            in the same place — before target acquisition, so a player who
            walks away cannot strand a pending swing that fires stale later. */
@@ -2500,7 +2509,7 @@ export class GameRoom {
                (and its aim point, frozen at release) is created by
                _resolveBasicWindup — travelMs remains the dodge window, this
                just puts a tell in front of it. */
-            this._startBasicWindup(zoneId, m, nearest.id, now, 'throw', _rangedCfg.cd);
+            this._startBasicWindup(zoneId, m, nearest.id, now, 'throw', this._monsterSwingCd(m, _rangedCfg.cd));   /* v2.3.4011: ...and throws faster */
           }
 
           /* v2.3.2221: START the snow-pile burrow — ABOVE the telegraph kits
@@ -2522,6 +2531,13 @@ export class GameRoom {
              branch); only starting one needs a live target.
              Gated on ccMoveMult like the swing below: a frozen or rooted
              monster cannot begin a cast either (v2.3.1139's rule). */
+          /* v2.3.4011: START a move of its tier (monstermoves.js), ABOVE the
+             kits for the reason the kits sit above the swing: one special at
+             a time, never two on one tick.  Tier 1 has none. */
+          if (ccMoveMult > 0 && this._maybeStartMove(zoneId, m, nearest, now)) {
+            continue;
+          }
+
           if (ccMoveMult > 0 && this._maybeStartTelegraph(zoneId, m, nearest, attackDist, now)) {
             continue;
           }
@@ -2550,7 +2566,8 @@ export class GameRoom {
                block arc, the parry window, the stamina cost and the thorns
                reflect are all evaluated at IMPACT — which is what lets a
                player raise their shield DURING the tell and have it count. */
-            this._startBasicWindup(zoneId, m, nearest.id, now, 'swing', this.MONSTER_ATTACK_CD);
+            /* v2.3.4011: an enraged elder swings faster (monstermoves.js) */
+            this._startBasicWindup(zoneId, m, nearest.id, now, 'swing', this._monsterSwingCd(m, this.MONSTER_ATTACK_CD));
             continue;
           }
         } else {
@@ -2897,6 +2914,10 @@ export class GameRoom {
       m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null;
       m._tgNextAt = now + this.PARRY_STAGGER_MS;
     }
+    /* v2.3.4011: and a move of the tiers past the first: a parried combo
+       loses its second strike, a parried charge stops on the shield
+       (monstermoves.js) */
+    if (m._mvPhase) this._breakMove(m, now);
     if (typeof ps.stamina === 'number') {
       ps.stamina = Math.min(ps.maxStamina || 100, ps.stamina + this.PARRY_STAMINA_REWARD);
     }
@@ -3902,8 +3923,9 @@ export class GameRoom {
          has now extended the ladder to armour.  Same roller, deliberately:
          one distribution means normal/rare/elite/godly mean the same thing on
          a breastplate as on a blade, and there is one place to retune. */
+      /* v2.3.3952: a drop's own roll, 10x rarer than the forge's (hardening.js) */
       out.push({ name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult,
-        quality: this._rollWeaponQuality() });
+        quality: this._rollDropQuality() });
     }
     return out.length ? out : null;
   }
@@ -3940,8 +3962,9 @@ export class GameRoom {
       reforgeBonus: null,
       hardenBonus: null,
       /* Rolled, like the forge's and like the ordinary drop's — which also
-         hands this the pile's hidden-until-pickup reveal for free. */
-      quality: this._rollWeaponQuality(),
+         hands this the pile's hidden-until-pickup reveal for free.
+         v2.3.3952: a drop's own roll now, 10x rarer than the forge's. */
+      quality: this._rollDropQuality(),
       hardness: 0,
       temper: 0,
     };
@@ -6566,6 +6589,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, hitMethods); /* v2.3.3296 */
+Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.4011 */
 Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
@@ -6654,6 +6678,7 @@ Object.assign(GameRoom.prototype, pointsResetMethods); /* v2.3.3541 */
 Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
 Object.assign(GameRoom.prototype, bankMethods); /* v2.3.3785 */
 Object.assign(GameRoom.prototype, swordConvertMethods); /* v2.3.3895 */
+Object.assign(GameRoom.prototype, gsCopperMethods); /* v2.3.3980 */
 Object.assign(GameRoom.prototype, safeHealMethods); /* v2.3.3569 */
 Object.assign(GameRoom.prototype, heapBurnMethods); /* v2.3.3748 */
 Object.assign(GameRoom.prototype, statCapMethods); /* v2.3.3578 */

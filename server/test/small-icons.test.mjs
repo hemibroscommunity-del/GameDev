@@ -44,7 +44,8 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
   check(`2a every DOM icon is a file in public/ (${dom.length}: the party's four, the chat's three, nine buffs)`, dom.length === 16 && missing.length === 0, missing);
   const tex = Object.values(SI.SMALL_TEX).filter((u) => !existsSync(pub(u)));
   /* v2.3.3770: + the rematch's sword clash (No man's land's lock), the canvas's only */
-  check('2b the canvas\'s four too, and the page never warms those three as <img>', Object.keys(SI.SMALL_TEX).length === 4 && tex.length === 0
+  /* v2.3.3906: + the ten elements' plate icons (14) */
+  check('2b the canvas\'s fourteen too (four marks, ten elements), and the page never warms those three as <img>', Object.keys(SI.SMALL_TEX).length === 14 && tex.length === 0
     && dom.indexOf(SI.SMALL_ICON.threatSkull) < 0 && dom.indexOf(SI.SMALL_ICON.npcTalk) < 0 && dom.indexOf(SI.SMALL_ICON.nmlAskDuel) < 0, tex);
   /* each cut at the size it is drawn (cut-small-icons.py size_of): the webp's own header */
   const dims = (u) => { const b = readFileSync(pub(u)); const i = b.indexOf('VP8'); if (b[i + 3] === 0x58) return [1 + b.readUIntLE(i + 12, 3), 1 + b.readUIntLE(i + 15, 3)];
@@ -105,6 +106,19 @@ const src = (p) => readFileSync(new URL(p, root), 'utf8');
     /React\.createElement\(BlockFace, \{ size: size, grey: onCd \}\)/.test(sb) && !/'\/sprites\/shields\/wood-shield/.test(cs)
       && /\.concat\(\[blockArtUrl\(false\), blockArtUrl\(true\)\]\)/.test(cs) && /'\/ui\/controls\/abil-block'/.test(cs)
       && !/ICON_URL\.shield/.test(cp + sb));
+}
+
+/* ── v2.3.3906: a monster's element after its name on its plate ── */
+{
+  check('E1 every element has its 64 px plate icon in SMALL_TEX, keyed elem-<name>',
+    SI.PLATE_ELEMENTS.length === 10 && SI.PLATE_ELEMENTS.every((e) => /\/icons\/ui\/elem-[a-z]+-64\.webp/.test(SI.SMALL_TEX['elem-' + e] || '')));
+  check('E2 elemSmallKey: an element its key; none, an unknown one or __proto__ none',
+    SI.elemSmallKey('frost') === 'elem-frost' && SI.elemSmallKey('stone') === 'elem-stone' && SI.elemSmallKey(null) === null
+    && SI.elemSmallKey('') === null && SI.elemSmallKey('plasma') === null && SI.elemSmallKey('__proto__') === null);
+  const er = src('src/rendering/systems/entityRenderer.js');
+  check('E3 the monster plate passes its element, the element is in the plate\'s key (laid out once, never per frame: TRAPS §218), and the icon sits between the name and the level',
+    /elemSmallKey\(m\.element\)/.test(er) && /\(elem \? '\|e' \+ elem : ''\)/.test(er)
+    && /lvlNum\.x = nameLeft \+ nameT\.width \+ gap \+ elemPad/.test(er));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
