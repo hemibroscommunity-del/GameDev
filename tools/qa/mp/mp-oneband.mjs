@@ -261,7 +261,7 @@ async function gearChecks(P, rec, label, shotPath, computer) {
   /* a bag piece picked: the card still fits */
   const key = await P.page.evaluate(() => { const t = document.querySelector('[data-one-band-cols] [data-gear-bag] [data-bag-key]'); return t ? t.getAttribute('data-bag-key') : null; });
   if (key) {
-    await P.page.evaluate((k) => { const t = document.querySelector(`[data-one-band-cols] [data-gear-bag] [data-bag-key="${k}"]`); if (t) t.click(); }, key);
+    await P.page.evaluate((k) => { const t = document.querySelector(`[data-one-band-cols] [data-gear-bag] [data-bag-key="${k}"]`); if (t) t.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); }, key);   /* v2.3.4152: the tile answers a finger's lift (ItemTile onPointerUp), never a click -- this was a no-op until the sideways run put a fish in the bag */
     await P.page.waitForTimeout(600);
     const g1 = await gearFit(P);
     rec.ok(`${label}: ...a bag piece picked, the card still fits (no scrolling, nothing under 11 px)`,
