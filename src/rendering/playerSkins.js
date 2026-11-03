@@ -1460,14 +1460,14 @@ function _standInBake(img, skinT, targetH, opts, apart) {
      stand-in whose face/torso/arms were fitted by hand (standInInk.js).  Only
      the three SKIN canvases: these figures keep their painted trousers (the
      recolour here is skin-only for the reasons above), so a trouser print would
-     have no garment of the player's to sit on.  (v2.3.3961: they wear yours
+     have no garment of the player's to sit on.  (v2.3.4029: they wear yours
      now, and the trouser print with them -- `garb`, below, not `art`.) */
   const ink = (o.art && o.regions && (artHasInk(o.art.tattooFace) || artHasInk(o.art.tattoo)
     || artHasInk(o.art.tattooArm))) ? o.art : null;
   /* v2.3.3146: and your trousers and boots (_standInClothes) */
   const pantsT = o.pantsT || null, shoesT = o.shoesT || null;
   const clothesFW = o.frameW || (o.regions && o.regions.fw) || 0;
-  /* v2.3.3961: and your trouser and shoe patterns and your trouser print
+  /* v2.3.4029: and your trouser and shoe patterns and your trouser print
      (`garb`, standInGarb.js: the owner, "Shoes and patterns aren't showing
      while hoeing"), their cells scaled to the figure by `patK` */
   const garb = o.garb || null;
@@ -1539,7 +1539,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
     }
     if (o.glowLegs) _standInGlowLegs(d, w, h, clothesFW, clothes.legs, label, keptId);
   }
-  /* v2.3.3961: where the patterns and the print go, measured now, while `d` is
+  /* v2.3.4029: where the patterns and the print go, measured now, while `d` is
      still the art as painted (the walking bake measures on its `base` copy):
      the lit fabric only, so the trousers' shaded rim keeps rounding the legs
      under a pattern (litFabricMask, the owner's "keep it contained within the
@@ -1576,7 +1576,7 @@ function _standInBake(img, skinT, targetH, opts, apart) {
       }
     } catch (e) { /* a probe never breaks a bake */ }
   }
-  /* v2.3.3961: the patterns and the print, as the walking bake has them --
+  /* v2.3.4029: the patterns and the print, as the walking bake has them --
      pattern first, the print over it, then the shoes -- after the retint (a
      pattern is colour ON the fabric) and before the drawings, so the split
      bake's ink layer still holds only the drawings: these are the figure's,
@@ -1766,7 +1766,7 @@ function _standInLegless(d, w, h, legs, boots, label, keptId) {
   return gone;
 }
 
-/* ═══ v2.3.3961: THE TROUSER AND SHOE PATTERNS AND THE TROUSER PRINT ON A STAND-IN ═══
+/* ═══ v2.3.4029: THE TROUSER AND SHOE PATTERNS AND THE TROUSER PRINT ON A STAND-IN ═══
    The walking bake's three stamps (recolorBodyToCanvas, above), on the masks
    _standInBake measured: the trouser pattern and the print on the legs, the
    shoe pattern on the boots.  `k` scales the patterns' cells to the figure

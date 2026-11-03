@@ -174,7 +174,7 @@ over trousers): a misfit between the sheets shows in the mixed ones.
 gathering figure is, in this order:
 
 1. his skin, trousers and boots are repainted in yours (`recolorStandInSkin`,
-   the lumberjack's repaint), and since v2.3.3961 your trouser and shoe
+   the lumberjack's repaint), and since v2.3.4029 your trouser and shoe
    patterns and your trouser print are stamped on them at his scale (the
    owner: "Shoes and patterns aren't showing while hoeing";
    docs/specs/gathering-look.md section 8). Under greaves, the body cut for
@@ -260,7 +260,7 @@ Their screens draw your farmer from it (effectsRenderer `_drawPeerFarmer`):
 - in your colours and with your drawings: their own farmer when you wear
   their colours and neither of you has drawings, else one baked for yours
   (`_peerFarmFigure`, `_peerFigFrames`, one per colours and drawings), under
-  greaves the body cut for them; (v2.3.3961) your trouser and shoe patterns
+  greaves the body cut for them; (v2.3.4029) your trouser and shoe patterns
   and trouser print are among the colours (`_standInColourKey`);
 - your greaves, shirt (with its print) and plate in their metal, the hoe or
   the can, your hair, hat and beard, in that order;

@@ -19,7 +19,7 @@ are sections 5 to 7.
 | Lighting a fire (the fire-lighter) | the painted trousers and boots | your trousers and boots |
 | All three figures | 76% (lumberjack), 88% of your head (cook), 108% (fire-lighter) of your size | your size |
 | All three figures, and a sword swing or a bow shot | your shirt's colour, without its print or pattern | your shirt's colour, print and pattern |
-| All three, and the farmer (v2.3.3961) | your trousers' and boots' colours, without their patterns or the trouser print | their patterns and the print too (section 8) |
+| All three, and the farmer (v2.3.4029) | your trousers' and boots' colours, without their patterns or the trouser print | their patterns and the print too (section 8) |
 
 ## How the bro is drawn while gathering
 
@@ -246,7 +246,7 @@ and no crack was heard.
   Timed on main and on this branch alike: every miss followed a gap of 981 ms
   or more, every crack a gap of 892 ms or less.
 
-## 8. Your trouser and shoe patterns, and your trouser print (v2.3.3961)
+## 8. Your trouser and shoe patterns, and your trouser print (v2.3.4029)
 
 > The owner, 2026-11-03: *"Shoes and patterns aren't showing while hoeing."*
 

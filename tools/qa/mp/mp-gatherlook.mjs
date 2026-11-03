@@ -16,7 +16,7 @@
  *      ROD still wood;
  *   3. the LUMBERJACK, the COOK and the FIRE-LIGHTER wear his trousers and
  *      boots: the bake's own reading (window.__btStandInClothes) is blue legs
- *      and red boots on each; (v2.3.3961) and his trouser and shoe
+ *      and red boots on each; (v2.3.4029) and his trouser and shoe
  *      PATTERNS (aqua checks, white stripes): pixels of each on the legs and
  *      the boots;
  *   4. (the owner's "Yes fix all") the three are HIS SIZE: the lumberjack and
@@ -78,7 +78,7 @@ const LOOK = `try {
   let art = '';
   for (let i = 0; i < 256; i++) { const x = i % 16, y = (i / 16) | 0; art += (x >= 5 && x <= 10 && y >= 4 && y <= 9) ? 'a' : '0'; }
   localStorage.setItem('bt-shirtart', art);
-  /* v2.3.3961: aqua checks on the trousers (ART_PALETTE 15) and white
+  /* v2.3.4029: aqua checks on the trousers (ART_PALETTE 15) and white
      stripes on the boots (2), in the character's record from the start: set
      mid-run (__btSetPattern), the record's look put back on the next sync
      undid them (characterRecord.js), so the figures never saw them */
@@ -377,7 +377,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`standing: his walking tee is striped and printed, its stripes ${walkShirt && walkShirt.worldPeriod} world px apart (guard)`,
       !!walkShirt && walkShirt.yellow > 20 && walkShirt.purple > 5, walkShirt);
     /* each stand-in's dressed shirt, against it */
-    /* v2.3.3961: his trouser and shoe patterns on the figure, which the
+    /* v2.3.4029: his trouser and shoe patterns on the figure, which the
        stand-in bake never stamped (TRAPS §73; the owner, "Shoes and patterns
        aren't showing while hoeing"): pixels of the trousers' aqua checks on
        the legs and of the boots' white stripes on the boots, counted on the
