@@ -2,9 +2,9 @@ import React from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashMinBus } from '../dashMinBus.js';
 import { swallowTapClick } from '../../swallowTapClick.js';
-import { BAND_CLOSE_W } from '../sheet/sheetGeometry.js';   /* v2.3.4142: CLOSE's width, kept by the row */
+import { BAND_CLOSE_W } from '../sheet/sheetGeometry.js';   /* v2.3.4152: CLOSE's width, kept by the row */
 
-/* ═══ v2.3.4142: THE SLIM HANDLE ON THE BAND'S TOP EDGE ═══
+/* ═══ v2.3.4152: THE SLIM HANDLE ON THE BAND'S TOP EDGE ═══
    The owner adopted this from the review of his dashboard: "remove the large
    OPEN/CLOSE button taking up a full navigation slot.  A slim, centered handle
    at the top of the dashboard would communicate that the panel can be expanded
@@ -95,7 +95,7 @@ export const BandGrip = ({ min, expanded }) => (
   </button>
 );
 
-/* ═══ v2.3.4142: AND CLOSE AT THE ROW'S LEFT, AS THE OWNER DREW IT ═══
+/* ═══ v2.3.4152: AND CLOSE AT THE ROW'S LEFT, AS THE OWNER DREW IT ═══
    His drawing of the Bro page (D474F679-...png) and of the row
    (61C354F2-...png): CLOSE at the left, then the five buttons.  So the word
    comes back beside them on the upright phone too -- the grip above stays

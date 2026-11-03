@@ -1,4 +1,4 @@
-/* ═══ mp-brocard (v2.3.4142): THE BRO PAGE, AS THE OWNER DREW IT ═══
+/* ═══ mp-brocard (v2.3.4152): THE BRO PAGE, AS THE OWNER DREW IT ═══
  *
  * The owner, of the first cut (your own Inspect card): "it reads like an old
  * PC menu".  Then a drawing (D474F679-...png in the repo root) and: "One
@@ -282,7 +282,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const c4 = await card(P);
     rec.ok('...its close comes back to the card, the Bow still picked', c4.there && !(await popup(P)) && c4.weapon === 'bow', { there: c4.there, weapon: c4.weapon });
 
-    /* v2.3.4142: since the Gear tab (v2.3.4151) the Equipment door opens
+    /* v2.3.4152: since the Gear tab (v2.3.4151) the Equipment door opens
        Gear -- the band at rest, unfolded, its three panels */
     await touch(P, '[data-bro-row="equipment"]');
     await P.page.waitForTimeout(1500);

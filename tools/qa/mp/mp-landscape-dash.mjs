@@ -558,11 +558,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3773: the records are More's Journey page now, not Hero's third
      tab, so the third screen of this walk is that page, opened the way its
      More tile opens it, swept by the same rule */
-  /* v2.3.4142: Bro is one card (its own sweep), Equipment and Points windows
+  /* v2.3.4152: Bro is one card (its own sweep), Equipment and Points windows
      over it: Points from the card's Points row, Equipment by name */
   for (const sec of ['Card', 'Overview', 'Build', 'Journey']) {
     if (sec !== 'Journey') {
-      /* v2.3.4142: the Equipment window is reached by name (the card's
+      /* v2.3.4152: the Equipment window is reached by name (the card's
          Equipment door opens the Gear tab since v2.3.4151) */
       await P.page.evaluate((s) => { window.__btHeroSection.request(s === 'Overview' ? 'Overview' : 'Card'); window.__broDashPanelBus.open('hero'); }, sec);
       await P.page.waitForTimeout(700);
