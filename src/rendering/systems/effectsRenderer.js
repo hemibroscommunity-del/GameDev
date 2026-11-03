@@ -245,7 +245,8 @@ function _bakeChopStrip(img, keyMask, skinT, art, statKey, keepCanvas, clothes) 
   const FW = 240, FH = 220, COUNT = 12;
   /* v2.3.3146: + `clothes` ({ pantsT, shoesT }): your trousers and boots
      (playerSkins _standInClothes) */
-  const cv = recolorStandInSkin(img, skinT, FH, { minBlob: CHOP_MIN_BLOB, art, regions: CHOP_INK_REGIONS, frameW: FW, ...(clothes || {}) });
+  /* v2.3.4037: + `clothes.garb`, the patterns and print, at his scale (patK) */
+  const cv = recolorStandInSkin(img, skinT, FH, { minBlob: CHOP_MIN_BLOB, art, regions: CHOP_INK_REGIONS, frameW: FW, patK: STANDIN_GARB_K.chop, ...(clothes || {}) });
   recolorToolKeyCanvas(cv, TOOL_SPECS.axe, 1, keyMask);
   /* v2.3.2775: every stand-in bake is cropped to its art and the full canvas
      released -- see _sliceStandIn.  `keepCanvas` for a caller that still has
@@ -283,7 +284,9 @@ function _loadStandInImg(url, ms) {
 function _bakeCookSplit(img, skinT, art, clothes) {
   /* v2.3.3146: + `clothes` ({ pantsT, shoesT }): your trousers and boots,
      the pan kept out of them by where it is (playerSkins _standInClothes) */
-  return recolorStandInSkinSplit(img, skinT, COOK_FH, { keepX: COOK_KEEP_X, art, regions: COOK_INK_REGIONS, frameW: COOK_FW, ...(clothes || {}) });
+  /* v2.3.4037: + `clothes.garb`, the patterns and print, at his scale (patK):
+     in the figure, not the drawings' layer, as his colours are */
+  return recolorStandInSkinSplit(img, skinT, COOK_FH, { keepX: COOK_KEEP_X, art, regions: COOK_INK_REGIONS, frameW: COOK_FW, patK: STANDIN_GARB_K.cook, ...(clothes || {}) });
 }
 import { ELEMENTS } from '@/data/elements.js';
 import { ZONES, zonePlayerScale, depthK /* v2.3.2790 */ } from '@/data/zones.js';
@@ -340,6 +343,7 @@ import { getShirtColor, shirtFill, onShirtColorChange } from '../traits/shirtCol
 import { recolorBodyToCanvas, recolorStandInSkin, recolorStandInSkinSplit, DEFAULT_SKIN_TARGET, bodyArtSeg, skinTarget, pantsTarget, shoesTarget, getSkin, getPants, getShoes, onSkinChange, onPantsChange, onShoesChange, localBodyArt, artForFacing } from '../playerSkins.js'; /* v2.3.1710: + the skin-only stand-in recolour (the cook); v2.3.2429: + the player's own drawings; v2.3.2856: + the split bake (the cook's drawings on a layer) */
 import { onArtChange, artHasInk, artIsSymmetric, artHash, sanitizeShirtArt, sideForDir, getShirtArt } from '../traits/playerArt.js';   /* v2.3.3146: + the shirt's sides, for the dressed stand-in shirts */   /* v2.3.2429; v2.3.2431 the symmetry gate; v2.3.2855 a peer's drawings on the lumberjack */
 import { onPatternChange, parsePattern, getPattern, sanitizePattern } from '../traits/patternCatalog.js';   /* v2.3.3146: + the shirt's pattern, yours and a peer's */
+import { STANDIN_GARB_K, localGarb, peerGarb, garbKey, onGarbChange } from '../standInGarb.js';   /* v2.3.4037: the trouser and shoe patterns and the trouser print on every stand-in */
 import { composeShirt } from '../playerDecal.js';   /* v2.3.3146: the walking shirt's own dressing, on the stand-ins' strips */   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame, packTrimmed, registerGearSource, unregisterGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips; v2.3.3074: + its release */
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074: a canvas-made texture let go of for good (TRAPS §139) */
@@ -939,8 +943,9 @@ function _bakeFireSplit(img, skinT, art, clothes, opts) {
   /* v2.3.3684: + `glowLegs`, the trousers on the glow's side of frames 6-7
      (playerSkins _standInGlowLegs), and `clothes.legless`, the body under
      greaves (_standInLegless; FIRE_LEGLESS) */
+  /* v2.3.4037: + `clothes.garb`, the patterns and print, at his scale (patK) */
   const out = recolorStandInSkinSplit(img, skinT, FIRE_FH, { ...FIRE_SKIN_OPTS, frameW: FIRE_FW,
-    keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS, glowLegs: true,
+    keepBoxes: FIRE_KEEP_BOXES, art, regions: FIRE_INK_REGIONS, glowLegs: true, patK: STANDIN_GARB_K.fire,
     ...(clothes ? { ...clothes, pantsWide: true, legless: !!clothes.legless && !FIRE_LEGLESS_OFF } : {}) });
   if (opts && opts.beforeWood) opts.beforeWood(out.cv);
   if (!FIRE_LOG_OFF && !(opts && opts.noWood)) _fireLogToBark(img, out.cv);   /* v2.3.3660 */
@@ -959,7 +964,7 @@ const STANDIN_INK = Object.freeze({
     const A = FARM_ANIMS[a];
     return ['farm' + a, { fw: A.fw, fh: A.fh, url: (under) => (under ? A.under : A.url),
       bake: (img, skinT, art, clothes) => ({ cv: recolorStandInSkin(img, skinT, A.fh,
-        { frameW: A.fw, minBlob: FARM_MIN_BLOB, art, regions: A.ink, ...(clothes || {}) }), ink: null }) }];
+        { frameW: A.fw, minBlob: FARM_MIN_BLOB, art, regions: A.ink, patK: STANDIN_GARB_K.farm, ...(clothes || {}) }), ink: null }) }];   /* v2.3.4037: + patK */
   })),
 });
 
@@ -1020,20 +1025,24 @@ const PEER_GREAVES_WAIT_MS = 3000;
 /** The colours a gathering figure is baked in, as one key: the skin (the
  *  'default' pick is the explicit tan, as every stand-in bake has it), the
  *  trousers and the boots ('-': the art's own). */
-function _standInColourKey(skinT, pantsT, shoesT) {
+/* v2.3.4037: + the garb (standInGarb.js): the trouser and shoe patterns and
+   the trouser print are baked into the figure now, so a figure is handed only
+   to a player wearing the same ones (TRAPS §189) */
+function _standInColourKey(skinT, pantsT, shoesT, garb) {
   return (skinT || DEFAULT_SKIN_TARGET).join(',') + '|' + (pantsT ? pantsT.join(',') : '-')
-    + '|' + (shoesT ? shoesT.join(',') : '-');
+    + '|' + (shoesT ? shoesT.join(',') : '-') + '|' + garbKey(garb);
 }
 /** A peer's colours as their own screen bakes them -- through the gates every
  *  recolour passes (skinTarget & co.), from the ids relayed on the wire. */
 function _peerStandInColours(o) {
   const skinT = skinTarget(o && o.skin) || DEFAULT_SKIN_TARGET;
   const pantsT = pantsTarget(o && o.pants), shoesT = shoesTarget(o && o.shoes);
-  return { skinT, pantsT, shoesT, key: _standInColourKey(skinT, pantsT, shoesT) };
+  const garb = peerGarb(o);   /* v2.3.4037 */
+  return { skinT, pantsT, shoesT, garb, key: _standInColourKey(skinT, pantsT, shoesT, garb) };
 }
 /** Yours as you wear them now -- the stores, not the last bake. */
 function _localStandInColourKey() {
-  return _standInColourKey(skinTarget(getSkin()) || DEFAULT_SKIN_TARGET, pantsTarget(getPants()), shoesTarget(getShoes()));
+  return _standInColourKey(skinTarget(getSkin()) || DEFAULT_SKIN_TARGET, pantsTarget(getPants()), shoesTarget(getShoes()), localGarb());   /* v2.3.4037: + the garb */
 }
 /** What a baked figure holds on the graphics chip (its one shared source). */
 function _figBytes(arr) {
@@ -4956,7 +4965,7 @@ export class EffectsRenderer {
     this._offs.push(onSkinChange(() => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } }));   /* v2.3.3074: kept for destroy() */
     /* v2.3.3146: and the trousers and boots, which it wears now */
     const _rechop = () => { try { this._bakeChopStrips(); } catch (e) { /* never break a menu */ } };
-    this._offs.push(onPantsChange(_rechop), onShoesChange(_rechop));
+    this._offs.push(onPantsChange(_rechop), onShoesChange(_rechop), onGarbChange(_rechop));   /* v2.3.4037: + the patterns and print */
     /* v2.3.2855: and when one of the three drawings the lumberjack carries
        changes.  The designer commits every STROKE through setArt, so this waits
        for the strokes to stop rather than rebaking both strips per stroke; the
@@ -5006,7 +5015,7 @@ export class EffectsRenderer {
     const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
     /* v2.3.3146: and your trousers and boots (null: the art's own, which is
        the default pick's colour) */
-    const _clothes = { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()) };
+    const _clothes = { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()), garb: localGarb() };   /* v2.3.4037: + the garb */
     /* v2.3.2855: the figure faces east in its source (the trait crown is
        composited 'east' too), so it takes the FRONT drawings. */
     const _base = localBodyArt(false);
@@ -5029,13 +5038,18 @@ export class EffectsRenderer {
          changes no blob and costs half the canvas.  (v2.3.2761: _chopSrc holds
          the played frames already cropped -- see the loader.) */
       const _keyMask = _chopKeyMask(img);
+      /* v2.3.4037: the legless strip (under greaves) wears no garb: its
+         trousers are gone, and what the trouser test still finds there is
+         specks along the armour's edges, which a pattern lit up
+         (mp-ghostaudit BT_GHOST_GARB=1) */
+      const _cl = key === '_chopSkinFrames' ? _clothes : { ..._clothes, garb: null };
       /* v2.3.2775: cropped (_sliceStandIn), the full bake kept only until the
          probe below has read it. */
       const _plain = _bakeChopStrip(img, _keyMask, skinT, _art ? { ..._art, mirror: false } : null, key, true,
-        { ..._clothes, probe: key === '_chopSkinFrames' ? 'chop' : 'chop-legless' });   /* v2.3.3146: the probe's name (QA) */
+        { ..._cl, probe: key === '_chopSkinFrames' ? 'chop' : 'chop-legless' });   /* v2.3.3146: the probe's name (QA) */
       this[key] = this._own(_plain.arr);   /* v2.3.3074: owned */
       this[key + 'Flip'] = _twin
-        ? this._gpuOnly(this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false, _clothes).arr)) : null;   /* v2.3.2855: see above; v2.3.3150: _gpuOnly */
+        ? this._gpuOnly(this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false, _cl).arr)) : null;   /* v2.3.2855: see above; v2.3.3150: _gpuOnly */
       /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
          bow bakes publish -- see _probeStandInSkin. */
       _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', _plain.cv);
@@ -5046,7 +5060,7 @@ export class EffectsRenderer {
        (_peerFigure) -- only while it carries no drawings of yours, which no
        peer's figure may wear; null otherwise. */
     const _inked = !!_art && CHOP_INK_KEYS.some((k) => artHasInk(_art[k]));
-    this._chopLook = _inked ? null : _standInColourKey(skinT, _clothes.pantsT, _clothes.shoesT);
+    this._chopLook = _inked ? null : _standInColourKey(skinT, _clothes.pantsT, _clothes.shoesT, _clothes.garb);
     /* v2.3.3314: ...and so a peer's lumberjack may be drawn from these too */
     const _sprites = [this.chopSprite];
     if (this._remoteSkillSprites) for (const ent of this._remoteSkillSprites.values()) if (ent.chop) _sprites.push(ent.chop);
@@ -5117,7 +5131,7 @@ export class EffectsRenderer {
       if (this._destroyed) return;   /* v2.3.3074 */
       try {
         const baked = _bakeChopStrip(img, _chopKeyMask(img), c.skinT, art ? { ...art, mirror: m } : null, null, false,
-          { pantsT: c.pantsT, shoesT: c.shoesT });   /* v2.3.3146: their trousers and boots */
+          { pantsT: c.pantsT, shoesT: c.shoesT, garb: legless ? null : c.garb });   /* v2.3.3146: their trousers and boots; v2.3.4037: + their patterns and print (none on the legless strip: _bakeChopStrips) */
         const arr = this._own(baked.arr);   /* v2.3.3074: owned */
         cache.set(key, { arr, used: Date.now(), bytes: _figBytes(arr) });   /* v2.3.3314: + its size, for the allowance */
         this._gpuOnly(arr);   /* v2.3.3150 */
@@ -5176,7 +5190,8 @@ export class EffectsRenderer {
        way the sword/bow stand-ins do (_rebakeBodies, v2.3.975). */
     this._offs.push(onSkinChange(() => { this._fetchAndBakeCook(); }));   /* v2.3.3074: kept for destroy() */
     /* v2.3.3146: and the trousers and boots, which it wears now */
-    this._offs.push(onPantsChange(() => { this._fetchAndBakeCook(); }), onShoesChange(() => { this._fetchAndBakeCook(); }));
+    this._offs.push(onPantsChange(() => { this._fetchAndBakeCook(); }), onShoesChange(() => { this._fetchAndBakeCook(); }),
+      onGarbChange(() => { this._fetchAndBakeCook(); }));   /* v2.3.4037: + the patterns and print */
     /* v2.3.2856: and the drawings' layer when one of the three drawings the
        cook carries changes -- once the strokes stop, as the lumberjack does
        (the designer commits every stroke; the cook is not on screen while you
@@ -5248,7 +5263,7 @@ export class EffectsRenderer {
        v2.3.3314: and a peer's cook is drawn from it only when they wear your
        colours (_peerFigure, against _cookLook below); it was every peer's
        cook, in your skin, trousers and boots (the SPEC note's old trade). */
-    const _clothes = { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()) };
+    const _clothes = { pantsT: pantsTarget(getPants()), shoesT: shoesTarget(getShoes()), garb: localGarb() };   /* v2.3.4037: + the garb */
     const FW = COOK_FW, FH = COOK_FH;
     /* v2.3.2856: the cook faces the camera and is never drawn flipped, so his
        drawings are the FRONT ones, as painted -- no mirrored twin. */
@@ -5260,7 +5275,7 @@ export class EffectsRenderer {
     if (!inkOnly) this._cookLook = null;
     for (const [key, img] of [['_cookFrames', bodyImg], ['_cookLeglessFrames', leglessImg]]) {
       const { cv, ink } = _bakeCookSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
-        { ..._clothes, probe: key === '_cookFrames' ? 'cook' : 'cook-legless' });   /* v2.3.3146: the probe's name (QA) */
+        { ..._clothes, garb: key === '_cookFrames' ? _clothes.garb : null, probe: key === '_cookFrames' ? 'cook' : 'cook-legless' });   /* v2.3.4037: no garb on the legless strip (_bakeChopStrips) */   /* v2.3.3146: the probe's name (QA) */
       const n = Math.max(1, Math.round(cv.width / FW));
       if (!inkOnly) {
         _old.push(this[key]);
@@ -5277,7 +5292,7 @@ export class EffectsRenderer {
     }
     /* v2.3.3314: the colours the figure now wears -- a peer in the same ones
        is drawn from it (_peerFigure).  A drawing's re-bake leaves it alone. */
-    if (!inkOnly) this._cookLook = _standInColourKey(skinT, _clothes.pantsT, _clothes.shoesT);
+    if (!inkOnly) this._cookLook = _standInColourKey(skinT, _clothes.pantsT, _clothes.shoesT, _clothes.garb);
     /* v2.3.2856: the textures these replace, released once nothing draws them
        -- a rebake follows every pause while you draw, so leaving each old pair
        to Pixi's idle collector would stack them up.  Other players' cooks draw
@@ -5394,7 +5409,7 @@ export class EffectsRenderer {
       /* v2.3.3684: the fire-lighter's `legless` is a bake of the one strip
          (the cook's is a strip of its own, spec.url) */
       const { cv } = spec.bake(img, c.skinT, art ? { ...art, mirror: false } : null,
-        { pantsT: c.pantsT, shoesT: c.shoesT, ...(kind === 'fire' && legless ? { legless: true } : {}) });
+        { pantsT: c.pantsT, shoesT: c.shoesT, garb: legless ? null : c.garb, ...(kind === 'fire' && legless ? { legless: true } : {}) });   /* v2.3.4037: + their garb, none under greaves (_bakeChopStrips) */
       const n = Math.max(1, Math.round(cv.width / spec.fw));
       const arr = this._own(_sliceStandIn(cv, spec.fw, spec.fh, n, null, false));
       cache.set(key, { arr, used: Date.now(), bytes: _figBytes(arr) });
@@ -5618,7 +5633,8 @@ export class EffectsRenderer {
        cook does (_loadCookStrips, v2.3.1710). */
     this._offs.push(onSkinChange(() => { this._fetchAndBakeFire(); }));   /* v2.3.3074: kept for destroy() */
     /* v2.3.3146: and the trousers and boots, which it wears now */
-    this._offs.push(onPantsChange(() => { this._fetchAndBakeFire(); }), onShoesChange(() => { this._fetchAndBakeFire(); }));
+    this._offs.push(onPantsChange(() => { this._fetchAndBakeFire(); }), onShoesChange(() => { this._fetchAndBakeFire(); }),
+      onGarbChange(() => { this._fetchAndBakeFire(); }));   /* v2.3.4037: + the patterns and print */
     /* v2.3.3684: and the greaves, put on or taken off -- under them he is
        baked without legs (FIRE_LEGLESS_OFF's header).  The store tells a
        change only, and a change of metal keeps the bake. */
@@ -5675,13 +5691,14 @@ export class EffectsRenderer {
       const _art = _base ? artForFacing(_base, 'south') : null;
       /* v2.3.3146: and your trousers and boots (the cook's, above) */
       const _pantsT = pantsTarget(getPants()), _shoesT = shoesTarget(getShoes());
+      const _garb = localGarb();   /* v2.3.4037: and your patterns and trouser print */
       /* v2.3.3684: legless under greaves (FIRE_LEGLESS_OFF's header) */
       const _legless = !inkOnly && this._fireWantLegless();
       /* v2.3.3660: the skin probe reads the figure before its log is wood (the
          bark's middle tones pass the skin window); a drawings-only rebake
          throws the figure away and leaves its log */
       const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
-        { pantsT: _pantsT, shoesT: _shoesT, probe: 'fire', legless: _legless },
+        { pantsT: _pantsT, shoesT: _shoesT, garb: _legless ? null : _garb, probe: 'fire', legless: _legless },   /* v2.3.4037: none under greaves (_bakeChopStrips) */
         inkOnly ? { noWood: true } : { beforeWood: (c) => _probeStandInSkin('/sprites/skills/firemaking-strip.webp', c, FIRE_SKIN_OPTS) });
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
       const _old = [];
@@ -5691,7 +5708,7 @@ export class EffectsRenderer {
         this._fireFrames = arr;
         /* v2.3.3314: the colours it wears -- a peer in the same ones is drawn
            from it (_peerFigure), as the cook's _cookLook */
-        this._fireLook = _standInColourKey(skinT, _pantsT, _shoesT);
+        this._fireLook = _standInColourKey(skinT, _pantsT, _shoesT, _garb);
         /* v2.3.3684: and whether it has legs (a peer's greaves must match) */
         this._fireLegless = _legless;
         this._fireLeglessGone = _legless ? (cv.__btLegless | 0) : 0;
@@ -16991,7 +17008,7 @@ export class EffectsRenderer {
     /* the character menu can change what he wears mid-visit: re-bake the
        bodies as the fire-lighter's are (onSkinChange etc.), only while made */
     const _refarm = () => { if (this._farmFrames) this._bakeFarmBodies(this._farmGen).catch(() => {}); };
-    this._offs.push(onSkinChange(_refarm), onPantsChange(_refarm), onShoesChange(_refarm));
+    this._offs.push(onSkinChange(_refarm), onPantsChange(_refarm), onShoesChange(_refarm), onGarbChange(_refarm));   /* v2.3.4037: + the patterns and print */
     /* v2.3.3439: and his drawings, once the strokes stop, as the lumberjack's
        (the designer commits every stroke) */
     let _farmArtT = 0;
@@ -17026,6 +17043,7 @@ export class EffectsRenderer {
       if (gen !== this._farmGen || this._destroyed || seq !== this._farmBakeSeq) return;
       const skinT = skinTarget(getSkin()) || DEFAULT_SKIN_TARGET;
       const pantsT = pantsTarget(getPants()), shoesT = shoesTarget(getShoes());
+      const garb = localGarb();   /* v2.3.4037: and your trouser and shoe patterns and trouser print */
       /* v2.3.3439: and your drawings -- face, chest and arms -- where the
          tool measured each on each frame (FARM_ANIMS[a].ink).  He faces you
          and is never drawn flipped, so the FRONT drawings, as the cook's. */
@@ -17037,7 +17055,7 @@ export class EffectsRenderer {
       const frames = Object.create(null);
       names.forEach((a, i) => {
         const A = FARM_ANIMS[a];
-        const cv = recolorStandInSkin(imgs[i], skinT, A.fh, { frameW: A.fw, minBlob: FARM_MIN_BLOB, pantsT, shoesT, probe: 'farm-' + a, art, regions: A.ink });
+        const cv = recolorStandInSkin(imgs[i], skinT, A.fh, { frameW: A.fw, minBlob: FARM_MIN_BLOB, pantsT, shoesT, garb: under ? null : garb, patK: STANDIN_GARB_K.farm, probe: 'farm-' + a, art, regions: A.ink });
         _probeStandInSkin('farm-' + a, cv);
         const arr = this._own(_sliceStandIn(cv, A.fw, A.fh, A.n, 'farm-' + a, false));
         try { arr[0].source.label = 'farm-' + a + ' (baked)'; } catch (e) { /* the label is QA-only */ }
@@ -17046,7 +17064,7 @@ export class EffectsRenderer {
       const old = this._farmFrames;
       this._farmFrames = frames;
       this._farmUnder = under;
-      this._farmLook = _standInColourKey(skinT, pantsT, shoesT);
+      this._farmLook = _standInColourKey(skinT, pantsT, shoesT, garb);
       this._farmInked = inked;
       if (old) this._letGo(Object.keys(old).map((a) => old[a]));
       /* QA (mp-farmwalk): which body the last bake made, so a test that puts

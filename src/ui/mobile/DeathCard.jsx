@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { deathCardView } from '@/game/deathCard.js';
+import { deathCardView, deathStripWords, deathStripOneLine } from '@/game/deathCard.js';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';
-import { cardPlace } from './NmlAskCard.jsx';
+import { deathStripPlace } from './deathStripPlace.js';   /* v2.3.4035: under the top bar, across the play column */
 
 /* ═══ v2.3.3817: "YOU DIED", AND WHAT KILLED YOU, FOR THE FIVE SECONDS ═══
  *
@@ -33,6 +33,17 @@ import { cardPlace } from './NmlAskCard.jsx';
  * Every number there is the screen's own, so it is PORTALLED to the body at
  * the same layer (Z_ABOVE_DASH_PROMPT), still never taking a tap.  It comes
  * in quickly (150 ms, fading and settling down) so the eye goes to it.
+  *
+ * ═══ v2.3.4035: A STRIP ACROSS THE TOP, NOT A STAMP ═══
+ * The owner: "The you died by snowman message should span the entire top strip
+ * of the game screen.  It looks a bit silly as a stamp-like screen near the
+ * top."  The 264 px rounded card beside or under the minimap is now a band
+ * right under the top bar, across the whole play column (deathStripPlace):
+ * "YOU DIED · killed by a Snowman · back in BroTown in 5" on one line, two on
+ * a narrow phone (game/deathCard.js deathStripWords), a dark red flat fill with
+ * a thin lighter edge, sliding down in 150 ms.  Still never over you (the
+ * band ends far above your head: about 40-60 px under the top bar), still no
+ * taps, still flat fills over the canvas.
  */
 export default function DeathCard({ stateRef }) {
   const [view, setView] = useState(null);
@@ -44,10 +55,10 @@ export default function DeathCard({ stateRef }) {
     const id = setInterval(() => {
       let v = null;
       try { v = deathCardView(stateRef && stateRef.current, Date.now()); } catch (e) { v = null; }
-      /* v2.3.3841: its place, read while it shows (a turned phone, a resized window) */
+      /* its place, read while it shows (a turned phone, a resized window) */
       if (v) {
         let p = null;
-        try { p = cardPlace(); } catch (e) { p = null; }
+        try { p = deathStripPlace(); } catch (e) { p = null; }
         const q = placeRef.current;
         if (p && (!q || q.top !== p.top || q.left !== p.left || q.w !== p.w)) { placeRef.current = p; setPlace(p); }
       }
@@ -56,7 +67,7 @@ export default function DeathCard({ stateRef }) {
     }, 250);
     return () => clearInterval(id);
   }, [stateRef]);
-  /* v2.3.3841: the quick entrance -- drawn once at its start, then let go */
+  /* the quick entrance -- drawn once at its start, then let go */
   const up = !!view;
   useEffect(() => {
     if (!up) { setShown(false); return undefined; }
@@ -68,22 +79,39 @@ export default function DeathCard({ stateRef }) {
     try { window.__btDeathCard = () => (view ? { ...view } : null); } catch (e) { /* no window */ }
   }, [view]);
   if (!view || typeof document === 'undefined') return null;
-  const pl = place || placeRef.current || { top: 96, left: 0, w: 264, at: 'top' };
+  const pl = place || placeRef.current || { top: 50, left: 0, w: (typeof window !== 'undefined' && window.innerWidth) || 390, at: 'window' };
+  const words = deathStripWords(view);
+  const one = deathStripOneLine(words, pl.w);
+  const SEP = ' \u00b7 ';
+  /* two lines: the head and who, then the rest */
+  const line2 = one ? null : words.parts.slice(1).join(SEP);
   return createPortal(
-    <div data-death-card="" data-death-at={pl.at || ''} aria-live="polite" style={{
+    <div data-death-card="" data-death-strip="" data-death-at={pl.at || ''} data-death-lines={one ? '1' : '2'} aria-live="polite" style={{
       position: 'fixed', left: pl.left, top: pl.top, width: pl.w, boxSizing: 'border-box',
-      pointerEvents: 'none', zIndex: Z_ABOVE_DASH_PROMPT,
-      padding: '10px 16px 10px',
-      background: '#1A1315', border: '1px solid rgba(217,92,84,0.55)',   /* solid: the plates under it showed through at 0.86 (the UI review) */
-      borderRadius: 12, textAlign: 'center', color: '#F4F0E7',
-      boxShadow: '0 6px 18px rgba(0,0,0,0.45)',
-      opacity: shown ? 1 : 0, transform: shown ? 'none' : 'translateY(-8px) scale(0.96)',
+      pointerEvents: 'none', zIndex: Z_ABOVE_DASH_PROMPT, overflow: 'hidden',
+      padding: one ? '9px 16px' : '7px 12px',
+      /* a dark red band, its lower edge a thin lighter line; flat fills only
+         (over the WebGL canvas: TRAPS section 42) */
+      background: '#4A1517', borderBottom: '1px solid #C85A50', borderTop: '1px solid rgba(232,102,92,0.35)',
+      textAlign: 'center', color: '#F4F0E7', fontSize: 15, fontWeight: 700, lineHeight: 1.3,
+      whiteSpace: one ? 'nowrap' : 'normal',
+      opacity: shown ? 1 : 0, transform: shown ? 'none' : 'translateY(-40%)',   /* slides down out of the bar's edge */
       transition: 'opacity 150ms ease-out, transform 150ms ease-out',
     }}>
-      <div data-death-title="" style={{ fontSize: 22, fontWeight: 900, letterSpacing: 1.5, color: '#E8665C', textTransform: 'uppercase', lineHeight: 1.15 }}>{view.title}</div>
-      {view.by && <div data-death-by="" style={{ marginTop: 4, fontSize: 15, fontWeight: 700, lineHeight: 1.25 }}>{view.by}</div>}
-      {view.note && <div data-death-note="" style={{ marginTop: 3, fontSize: 13, fontWeight: 600, color: '#D9B98A' }}>{view.note}</div>}
-      <div data-death-back="" style={{ marginTop: 6, fontSize: 13, fontWeight: 700, color: '#AFC0BC' }}>{view.back}</div>
+      {one ? (
+        <span data-death-line="">
+          <span data-death-title="" style={{ fontWeight: 900, letterSpacing: 1.5, color: '#FF8A7E' }}>{words.head}</span>
+          {words.parts.map((t, i) => <span key={i} data-death-part={i}>{SEP}{t}</span>)}
+        </span>
+      ) : (
+        <>
+          <div data-death-line="1">
+            <span data-death-title="" style={{ fontWeight: 900, letterSpacing: 1.5, color: '#FF8A7E' }}>{words.head}</span>
+            {words.parts.length ? <span data-death-part="0">{SEP}{words.parts[0]}</span> : null}
+          </div>
+          {line2 ? <div data-death-line="2" style={{ fontSize: 13, color: '#E6CFC6' }}>{line2}</div> : null}
+        </>
+      )}
     </div>,
     document.body,
   );

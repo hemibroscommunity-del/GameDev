@@ -384,6 +384,7 @@ Screens: near-mayor
   - The small map in today's town, the farm and the dungeons marks a waiting quest in the same grey, so the map and the world agree.
   - A giver whose whole chain is handed in wears no quest badge. The old green done-badge was retired because green now means "hand it in".
 - Every townsperson wears the same name plate as a player, below the feet, with a gold role line where a player's level goes: Mayor, Kid, Gambler, Shopkeeper, Blacksmith, Beastmaster ("Make every persons name or title as a consistent name plate", v2.3.2071; "Also call him the gambler", v2.3.2617). The plate is a step smaller than the monsters' so the town does not shout over the field (v2.3.2513). No health bar: on a townsperson it would read as an invitation to fight him.
+- **The townsfolk go by nicknames** (v2.3.4048). The owner: "Instead of names like 'gavel Greg' it would be more humorous to just have them go by nicknames. I didn't mean to remake all the NPCs to be like gavel Greg. The way their appearance looks now is fine." So the eight with a job-and-first-name name read as a nickname everywhere a player sees one (the plate, a dialogue's title, a map pin, a quest's "Talk to ...", the computer's "E Talk to ..."), the way Ace, Slim, Glint, Bean and Sterling always have: Going-Going (Gavel Greg), Fish Tales (Old Man Reel), Selfie (Tourist Terry), Badge (Sheriff Buck), Tryhard (Guildmaster Gary), Swampy (Deed Dave), Snail Mail (Postmaster Pete), Sizzle (Chef Blaze). Their looks did not change. The old names stay the keys in the code; the map is `src/data/folkNames.js`, one line a nickname.
 - Walking up to a quest giver (within 90 px) opens his dialogue by itself ("Created a new character and first quest didn't trigger by walking up to mayor bro. It should activate by proximity.", v2.3.1886); walking up to Diego opens his shop (v2.3.2050). A tap on him, E on a computer or a tap on the right stick (which then shows a speech bubble) opens it too.
 - Ace opens only on a tap ("you have to tap on the joker to open up his dialog window", v2.3.2620): his window is a bet, and walking past a man who takes your gold should not put the stake screen in front of you.
 - Beastmaster Bro opens by himself only to offer or pay a quest. His "how it's going" line waits for a tap, because his quests send you past him to the Woodworker's door again and again (v2.3.3121). Since v2.3.3525 Blacksmith Bro and Diego do the same: the tour gives them quests, and their doors are right behind them.
@@ -414,7 +415,7 @@ Screens: near-mayor
 - Beastmaster Bro's, Woodworker Bro's and Farmer Bro's pictures are stand-ins made by a script until the owner's own.
 - Whether the Auction House's clerk (already drawn, inside its room) should also stand outside is the owner's call.
 
-Sources: CLAUDE.md, docs/specs/quest-guidance.md, docs/specs/small-icons.md, docs/specs/owner-icons.md, docs/specs/building-rooms.md, docs/specs/wheel-doors.md, docs/specs/emote-moves.md, docs/FUN-SOCIAL-PLAN.md, src/data/wheelBuildingDoors.js, src/data/gameDisplay.js, src/data/ownerIcons.js, src/rendering/systems/entityRenderer.js, src/game/townsfolkReact.js, src/game/desktopControls.js, src/ui/BroTown.jsx
+Sources: CLAUDE.md, docs/specs/quest-guidance.md, docs/specs/small-icons.md, docs/specs/owner-icons.md, docs/specs/building-rooms.md, docs/specs/wheel-doors.md, docs/specs/emote-moves.md, docs/FUN-SOCIAL-PLAN.md, src/data/wheelBuildingDoors.js, src/data/gameDisplay.js, src/data/folkNames.js, src/data/ownerIcons.js, src/rendering/systems/entityRenderer.js, src/game/townsfolkReact.js, src/game/desktopControls.js, src/ui/BroTown.jsx
 
 ## Talking to characters and taking quests
 Screens: mayor-dialogue, quest-offer, quest-accepted, guide-arrow
@@ -823,7 +824,7 @@ Screens: dash-encyclopedia, dash-codex-monster
 - **The list fits without scrolling** (v2.3.3215, owner: "is there a way to display more data without needing to scroll down so much?"): nine small cards (picture, name, land, kill count), three across, two sideways. The Codex's other tabs (Codex / Materials / Zones) stay hidden while they are empty, as they are today; they are kept, not deleted.
 - **A page follows the owner's mockup** ("This is just a mockup with fake items but the structure is correct"): a short header (portrait, name, kills, and badges for levels, element and creature type), then three tabs, Drops, Info and Locations.
 - **Creature type is by body** (owner: "more along the lines of humanoid, beast, (some word along those lines that means flying creature, bug-like creature, swimming creature)"): Humanoid, Beast, Aquatic, Ooze. They replaced Elemental, Goblin, Undead, Golem, Slime, Aquatic and Spirit. The snowman is a Beast (v2.3.3908, the owner: "Change snowman from humanoid to beast"); it was a Humanoid.
-- **The buttons ride the name's row** (v2.3.3972, the owner: "Move the 'all monsters, drops, info, and locations' row of buttons to be in the same row it talks about the monster title (In this case 'Fire goblin') that will give much more room on mobile to see more of the drop table etc."): the pinned bar is ‹ All, the monster's name, then Drops, Info and Where, each an icon and a short word, 40 px tall. Under it, a shorter header: portrait, kills and badges. Where the bar is narrow (a 320 px phone, the sideways column) the buttons are their icons alone so the name keeps its room; a long name wraps to two lines in the bar.
+- **The buttons ride the name's row** (v2.3.4035, the owner: "Move the 'all monsters, drops, info, and locations' row of buttons to be in the same row it talks about the monster title (In this case 'Fire goblin') that will give much more room on mobile to see more of the drop table etc."): the pinned bar is ‹ All, the monster's name, then Drops, Info and Where, each an icon and a short word, 40 px tall. Under it, a shorter header: portrait, kills and badges. Where the bar is narrow (a 320 px phone, the sideways column) the buttons are their icons alone so the name keeps its room; a long name wraps to two lines in the bar.
 - **Short, and it scrolls** (owner: "Stay short and scroll"). The tabs stay pinned, with "‹ All monsters" as their first button. A page opens at its top, a tab's content lands just under the tabs, and closing an item card brings back the row you tapped.
 - **The drop table has a near-black panel** (owner: "The drops table needs a different background so the information can stand out more from the dashboard background. Maybe black?", then "Make the codex section that has the table more readable with the background"), with striped rows, a heading band, bigger type, and long names that wrap instead of being cut.
 - **The bars get the room, each a share of 100%** (owner: "Wrap text for the item name and increase the usable area for the bar size. Looks like the chance column reserves too much space"; "All drop chances should be a single value. Also make the percentage bars out of 100%. The 10% bar almost looks as long as the 100%").
@@ -957,7 +958,7 @@ Sources: CLAUDE.md, docs/specs/trapping.md, docs/PET-TRAPPING-PLAN.md, docs/spec
 ## Achievements
 Screens: more-achievements
 
-**What it is for:** Points for completing the game (v2.3.3527). The owner: "Achievement points are something I'd like in the game. You get it by completing the game. Some of them are through super rare achievements. Although not as rare, an arena winner should be included in that." Twenty-three achievements, each earned once: seven common, nine rare, the arena's one and six super-rare, 7,470 achievement points (AP) in all. The server decides every one; the page only shows what it says. The owner answered the plan's six questions "Go recommended on everything" (docs/specs/achievements.md "Decided").
+**What it is for:** Points for completing the game (v2.3.3527). The owner: "Achievement points are something I'd like in the game. You get it by completing the game. Some of them are through super rare achievements. Although not as rare, an arena winner should be included in that." Twenty-three achievements, each earned once: seven common, nine rare, the arena's one and six super-rare, 7,470 achievement points (AP) in all. v2.3.4036 added ten more, the rare fish eaten (see "Rare fish"): an albino of each of the five fish, common, 5 AP, and a large one, rare, 10 AP -- each row's own points, as no tier pays 5 -- so 33 and 7,545 AP. The server decides every one; the page only shows what it says. The owner answered the plan's six questions "Go recommended on everything" (docs/specs/achievements.md "Decided").
 
 **Decisions, and why:**
 - **A tier's points: common 10 AP, rare 100, super-rare 1,000, and the arena's 500 between them** ("although not as rare"). Each tier wears the armour's grade colours (v2.3.3142): common grey, rare blue, the arena orange, super-rare a rainbow, as the edge and words of its points pill, never a fill.
@@ -996,6 +997,33 @@ Screens: more-achievements
 - What the Journey page becomes: nothing writes a journey, and with achievements on its tile is gone.
 
 Sources: docs/specs/achievements.md, server/src/achievements.js, src/data/achievements.js, src/game/achievements.js, tools/ui/cut-achievement-badges.py, src/ui/mobile/dash/AchievementsPanel.jsx, src/ui/panels/AchievementBanner.jsx, src/ui/mobile/dash/MorePanel.jsx, src/ui/mobile/dash/LeaderboardPanel.jsx, src/ui/panels/buildings/PartyPanel.jsx, src/ui/panels/PlayerProfilePanel.jsx
+
+## Rare fish: the weigh-in card and Biggest fish
+Screens: fish-weigh, fish-board
+
+**What it is for:** Rare catches and a reason to weigh them (v2.3.4036). The owner: "Add a 1% chance of catching an albino version of whatever fish you're trying to catch. Consuming adds a one time 5 achievement point bonus. Also add a 0.1% chance of catching 'large' whatever fish you're fishing. Consuming adds 10 achievement points (one time). It also heals double. Doing an 'inspect' will roll for finding the weight of the fish. Include leaderboards for largest caught types of fish (triggered by inspection)." The server rolls the catch, the weight and the boards (docs/specs/fish-variants.md); these screens only say what it decided.
+
+**Decisions, and why:**
+- **The catch says it, in the popup over your head:** "An albino Trout!" (pale pink) or "A LARGE Salmon!" (gold), with the collect chime, beside the usual "+Trout". A plain fish says nothing new.
+- **A rare fish is its own item, so it never hides in a stack:** "Albino Trout" and "Large Trout" are separate tiles from the plain trout, and stay so cooked ("Cooked Albino Trout"). They sit under the bag's Fish chip like any fish.
+- **No new art (the owner's lane decision).** In the bag an albino is the species' own picture washed pale with a little pink (a CSS filter on the bag tile only), and a large one wears a small brass "L" in the tile's top-left corner (the anchor owns top-right, the count bottom-right). The item card and the weigh-in card are drawn over the world, where a CSS filter is the iPhone grain hazard (TRAPS §42), so there the name says "Albino" and the picture is plain. The ten achievements wear their fish's bag picture until the owner paints badges.
+- **Inspect is one more button on the item card** (beside Eat on a cooked fish, Sell and Drop), a quiet secondary button, on any fish, raw or cooked, only against a server that weighs (caps.fishweigh). Lane A is rebuilding the card around one shared action list: Inspect belongs in it.
+- **Each caught fish can be weighed once.** A fish you bought or were given has no catch to weigh, and the card says so plainly: "You've weighed all your Trout." A cooked fish weighs its raw catch. Weights are the owner's ranges in kilograms (Minnow 0.05-0.2, Clownfish 0.1-0.4, Trout 0.5-3, Salmon 2-8, Pike 2-12; a large one 3 to 5 times the biggest plain one); under a kilo they read "0.12 kg", above it "2.4 kg".
+- **The weigh-in card sits where the achievement banner does** (centred on the world, under the minimap upright, near the top sideways), so it never covers the stick or the attack buttons, and passes every touch but its own. "This Trout weighs 2.4 kg", then "Your heaviest Trout yet!" or "Your best: 3.1 kg", "· #3 on the board" in gold when it took a place, and "· 2 more to weigh". It stays about nine seconds, or until its ✕ (Esc on a computer) or Records. 44 px targets: the ✕ and Records stack at the card's right edge.
+- **Records opens More, Ranks, on the Biggest fish tab at that species.** The boards are a chip of Ranks, the last one, only against a server that weighs, rather than a page of their own: they are rankings, and Ranks is where rankings are. Five species chips; the ten heaviest each, one row a player (their best), "#1 Name Albino 2.4 kg", your own row highlighted, the top three ranks brass, as every board on the page.
+
+**Tried before, and changed:**
+- (New in v2.3.4036.)
+
+**Please don't suggest:**
+- A weight for every fish shown without Inspect: the weigh-in is the owner's "triggered by inspection".
+- Weighing the same catch again, or a fish that was bought: one catch, one roll, or the boards are a reroll machine.
+- A CSS filter on anything drawn over the world.
+
+**Still open:**
+- Painted badges for the ten rare-fish achievements, and painted albino and large pictures (both would replace the filter and the "L").
+
+Sources: docs/specs/fish-variants.md, server/src/fishlog.js, src/data/fishVariants.js, src/game/fishWeigh.js, src/ui/panels/FishWeighCard.jsx, src/ui/mobile/dash/FishBoard.jsx
 
 ## A window that could not open
 Screens: lazy-cantopen
@@ -1726,12 +1754,14 @@ Screens: death-card
 **Decisions, and why:**
 - **A card, for the five seconds** (v2.3.3817). A judge's pass on a computer: a level-1 bro died in the first quest's slimes and "just reappeared in BroTown"; none of the captures showed a death. A death showed only things that pass: the body's fall, a shake, a half-second dark flash, the sound and a floating "YOU DIED" like a hit number. Now a small card in the middle of the play area says "You died", "Killed by Blue Slime" (the monster's name as its plate says it; in No man's land the player's name, and what they took once the worker says so), and "Back in BroTown in 5" counting down.
 - **At the top, never over you** (v2.3.3841). The owner: "The 'you got killed by' placard needs to be positioned in a different spot (maybe towards the top) because I totally missed my exploding skeleton death." In the middle it covered exactly where the bro bursts into bones. It now takes the place of No man's land's "Attack?" window (cardPlace): beside the minimap on a computer and a sideways phone, under it, centred, on an upright phone; slid off the middle when it would come down near your head. It comes in quickly (150 ms, fading and settling) so the eye goes to it.
+- **A strip across the top, not a stamp** (v2.3.4035). The owner: "The you died by snowman message should span the entire top strip of the game screen. It looks a bit silly as a stamp-like screen near the top." It is a dark red band directly under the top bar, as wide as the top bar (the play column: the whole phone upright, the world's own width sideways and on a computer), with a thin lighter edge, sliding down out of the bar in 150 ms: "YOU DIED · killed by a Snowman · back in BroTown in 5" on one line where it fits, two on a narrow phone and a computer's column (the head and who, then the rest). It covers the top of the minimap for those five seconds; the bro, in the middle, stays clear, so the bone burst is seen.
 - **It never takes a tap or a click**, and has nothing to close: a notice, not a window. A dying player's thumbs are still on the controls, and the card goes by itself with the respawn.
 - **One line in the chat once you are back** ("You were killed by Blue Slime, and came back in BroTown."), so a glance away, or a screenshot that missed the five seconds, still finds it.
 - **"BroTown"**, never "town" or "the Wheel": the place you come back to, as the top bar names it.
 
 **Tried before, and changed:**
 - In the middle of the play area (v2.3.3817): it hid the death itself.
+- A 264 px rounded card beside or under the minimap (v2.3.3841): "a bit silly as a stamp-like screen" (v2.3.4035).
 - The floating "YOU DIED" over the body alone (kept: it is the death's moment; the card says the rest).
 
 **Still open:**

@@ -17,6 +17,7 @@ import { QUEST_AP_REWARD } from '../../../data/items.js';
 import { ZONES } from '../../../data/zones.js';
 import { TILE } from '../../../data/constants.js';
 import { TOUR_MEET } from '../../../game/tour.js';
+import { folkDisplayName } from '../../../data/folkNames.js';   /* v2.3.4048: the giver's nickname */
 import { tourOffer } from '../../../game/questRoute.js';
 import { isWheelTrialZone } from '../../../game/worldTrial.js';
 import { deriveQuestLog, deriveQuestOffers, trackedQuestId } from './questModel.js';
@@ -165,7 +166,7 @@ export function questJournalList(S, ctx) {
       if (cur) line = cur.label;
       const n = journalCount(quest, R);
       if (n) line += ' (' + countText(quest, n) + ')';
-    } else line = 'Ready: hand it in to ' + quest.npc;
+    } else line = 'Ready: hand it in to ' + folkDisplayName(quest.npc);
     return { id: quest.id, title: quest.title, ready, tracked: quest.id === tracked, line };
   });
   /* the worker's order, so "newest" is the last one taken */

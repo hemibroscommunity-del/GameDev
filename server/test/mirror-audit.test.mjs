@@ -794,7 +794,9 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   /* v2.3.3260: every fish both ways -- the new ladder (data.js FISH_HEAL,
      the page's copy read once the worker says caps.fishheal) and, with the
      kill switch thrown, the old 92 + 8 x level on both sides. */
-  const fishKeys = FISHING_TIERS.map((t) => 'cooked_fish_' + t.name.toLowerCase().replace(/\s+/g, '_')).concat(['cooked_fish_nonesuch', 'fish_trout']);
+  const fishKeys = FISHING_TIERS.map((t) => 'cooked_fish_' + t.name.toLowerCase().replace(/\s+/g, '_')).concat(['cooked_fish_nonesuch', 'fish_trout'])
+    /* v2.3.4036: and the rare fish -- an albino heals as its species, a large one double */
+    .concat(FISHING_TIERS.flatMap((t) => ['albino', 'large'].map((v) => 'cooked_fish_' + t.name.toLowerCase() + '_' + v)), ['fish_pike_large']);
   const fishBad = [];
   for (const [on, flags] of [[true, {}], [false, { fishheal: false }]]) {
     clientSetFishHeal(on);
@@ -2686,6 +2688,31 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       && Object.keys(C.ACHV_TIERS).length === Object.keys(ACHV.TIER_AP).length,
     { phone: Object.fromEntries(Object.entries(C.ACHV_TIERS).map(([k, v]) => [k, v.ap])), worker: ACHV.TIER_AP });
   check('achievements: every row has words and a picture', C.ACHIEVEMENTS.every((a) => a.name && a.how && a.icon && a.glyph));
+  /* v2.3.4036: and every row's POINTS, a row's own `ap` included (the rare
+     fish's 5 and 10, server fishlog.js) -- the page's pill and its banner say
+     what the worker pays */
+  const { achvAp: srvAp } = await import('../src/achievements.js');
+  const apBad = C.ACHIEVEMENTS.filter((a) => C.achvAp(a.id) !== srvAp(a.id)).map((a) => [a.id, C.achvAp(a.id), srvAp(a.id)]);
+  check('achievements: every row pays on the page what the worker pays (a row\'s own ap included)', apBad.length === 0, apBad);
+  check('achievements: the rare fish pay 5 (albino) and 10 (large), once each',
+    ['minnow', 'clownfish', 'trout', 'salmon', 'pike'].every((sp) => srvAp('albino_' + sp) === 5 && srvAp('large_' + sp) === 10
+      && C.achvById('albino_' + sp) && !C.achvById('albino_' + sp).count && C.achvById('large_' + sp) && !C.achvById('large_' + sp).count));
+}
+
+/* ═══ v2.3.4036: THE RARE FISH (src/data/fishVariants.js vs server/src/fishlog.js) ═══
+   The weights, the odds and the species the phone names are the worker's; and
+   a large fish heals double on both sides (the heal checks above). */
+{
+  const C = await import('../../src/data/fishVariants.js');
+  const { FISHLOG } = await import('../src/fishlog.js');
+  check('fish variants: the species, in the ladder\'s order', JSON.stringify(C.FISH_SPECIES.map((f) => f.id)) === JSON.stringify(FISHLOG.SPECIES),
+    { phone: C.FISH_SPECIES.map((f) => f.id), worker: FISHLOG.SPECIES });
+  check('fish variants: each species\' weights (grams) are the worker\'s', JSON.stringify(C.FISH_WEIGHTS) === JSON.stringify(FISHLOG.WEIGHTS),
+    { phone: C.FISH_WEIGHTS, worker: FISHLOG.WEIGHTS });
+  check('fish variants: the odds and a large fish\'s range are the worker\'s',
+    C.FISH_ODDS.large === FISHLOG.LARGE_ODDS && C.FISH_ODDS.albino === FISHLOG.ALBINO_ODDS
+      && C.FISH_LARGE.min === FISHLOG.LARGE_MIN && C.FISH_LARGE.max === FISHLOG.LARGE_MAX,
+    { phone: [C.FISH_ODDS, C.FISH_LARGE], worker: [FISHLOG.LARGE_ODDS, FISHLOG.ALBINO_ODDS, FISHLOG.LARGE_MIN, FISHLOG.LARGE_MAX] });
 }
 
 /* ═══ v2.3.3513: A WEAPON'S GEM RULES ARE THE WORKER'S ═══
