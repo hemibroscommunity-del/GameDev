@@ -141,6 +141,19 @@ const Q_RARE = 0.09;
 /* v2.3.3209: the same three, for the monster codex's drop table to print
    (src/data/codexDrops.js CODEX_GRADE_ODDS, held to these by mirror-audit) */
 export const WEAPON_QUALITY_ODDS = Object.freeze({ rare: Q_RARE, elite: Q_ELITE, godly: Q_GODLY });
+/* ═══ v2.3.3952: A MONSTER'S DROP GRADES 10x RARER THAN THE FORGE'S ═══
+   The owner, 2026-11-02: "Double check rarity tier drop rates. Seems too
+   high. Smithing it has 10x more unlikely at same tier drop chance."  Since
+   v2.3.1131 ONE roll (above) served the forge, the daily chest and every
+   monster drop.  His pick (of four, asked in the orchestrator session): drops
+   get their own roll, rare and elite each 10x rarer than the forge's, godly
+   left at its 1 in 2,000,000; the forge and the daily chest keep the roll
+   above.  The live flag `dropgrades: false` brings back the forge's odds on
+   drops (_rollDropQuality).  The codex prints these (src/data/codexDrops.js
+   CODEX_GRADE_ODDS, held to them by mirror-audit): it is a monster's page. */
+const DQ_ELITE = Q_ELITE / 10;   /* 0.09% */
+const DQ_RARE = Q_RARE / 10;     /* 0.9% */
+export const DROP_QUALITY_ODDS = Object.freeze({ rare: DQ_RARE, elite: DQ_ELITE, godly: Q_GODLY });
 
 export const hardeningMethods = {
   _rollWeaponQuality() {
@@ -148,6 +161,18 @@ export const hardeningMethods = {
     if (r < Q_GODLY) return 'godly';
     if (r < Q_GODLY + Q_ELITE) return 'elite';
     if (r < Q_GODLY + Q_ELITE + Q_RARE) return 'rare';
+    return 'normal';
+  },
+
+  /* v2.3.3952: a monster drop's grade (DROP_QUALITY_ODDS above); the switch
+     `dropgrades: false` in the live flags rolls the forge's odds instead */
+  _rollDropQuality() {
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'dropgrades') && !f.dropgrades) return this._rollWeaponQuality();
+    const r = Math.random();
+    if (r < Q_GODLY) return 'godly';
+    if (r < Q_GODLY + DQ_ELITE) return 'elite';
+    if (r < Q_GODLY + DQ_ELITE + DQ_RARE) return 'rare';
     return 'normal';
   },
 

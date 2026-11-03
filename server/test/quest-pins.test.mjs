@@ -48,12 +48,13 @@ const done = (...ids) => { const q = Object.create(null); for (const id of ids) 
     && offers(done('tut_1', 'wood_1'), 'Woodworker Bro') === 'wood_2' && offers(done('tut_1', 'beast_1'), 'Beastmaster Bro') === 'beast_2');
   /* v2.3.3533: the snowmen wait on Blacksmith Bro's ore and Diego's fish, no
      longer on every giver's last step */
+  /* v2.3.3924: and on Farmer Bro's carrots (farming before the snowmen) */
   const ends = QUEST_CHAINS.tut_2.after;
   const short = ends.filter((q) => offers(done('tut_1', ...ends.filter((x) => x !== q)), 'Mayor Bro') !== null);
-  check('the Mayor\'s snowmen are not offered while either the ore or the fish is left', ends.join() === 'smith_1,fish_1' && short.length === 0, { ends, short });
-  check('...and are once both are in, the rest of the town still to do', offers(done('tut_1', ...ends), 'Mayor Bro') === 'tut_2', offers(done('tut_1', ...ends), 'Mayor Bro'));
-  check('the suggested order is the page\'s tour steps: the Mayor first, his snowmen fifth, after their two steps',
-    QUEST_TOUR[0] === 'tut_1' && QUEST_TOUR.indexOf('tut_2') === 4 && ends.every((q) => QUEST_TOUR.indexOf(q) > 0 && QUEST_TOUR.indexOf(q) < 4)
+  check('the Mayor\'s snowmen are not offered while the ore, the fish or the carrots are left (v2.3.3924)', ends.join() === 'smith_1,fish_1,farm_1' && short.length === 0, { ends, short });
+  check('...and are once all three are in, the rest of the town still to do', offers(done('tut_1', ...ends), 'Mayor Bro') === 'tut_2', offers(done('tut_1', ...ends), 'Mayor Bro'));
+  check('the suggested order is the page\'s tour steps: the Mayor first, his snowmen sixth, after their three steps (v2.3.3924)',
+    QUEST_TOUR[0] === 'tut_1' && QUEST_TOUR.indexOf('tut_2') === 5 && ends.every((q) => QUEST_TOUR.indexOf(q) > 0 && QUEST_TOUR.indexOf(q) < 5)
       && QUEST_TOUR.slice(1).every((q) => QUEST_CHAINS[q] && QUEST_CHAINS[q].tour), QUEST_TOUR);
 }
 

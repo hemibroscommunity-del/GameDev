@@ -207,3 +207,33 @@ off the rendered bag tile as a picture rather than a fallback glyph.
 is driven directly with the payload the worker emits — and that payload's
 shape is pinned by the server suite, so the two together cover the join
 neither covers alone.
+
+## v2.3.3952: a drop's grade is 10x rarer than the forge's
+
+The owner, 2026-11-02: "Double check rarity tier drop rates. Seems too high.
+Smithing it has 10x more unlikely at same tier drop chance." Until now ONE
+roll (`hardening.js` `_rollWeaponQuality`) graded the forge, the armour forge,
+the daily chest and every monster drop. Offered four options, the owner picked
+"drops 10x rarer":
+
+| Grade | Before (drops and forge) | Monster drops now | Forge and daily chest now |
+|---|---|---|---|
+| Rare | 9% | **0.9%** | 9% |
+| Elite | 0.9% | **0.09%** | 0.9% |
+| Godly | 1 in 2,000,000 | 1 in 2,000,000 | 1 in 2,000,000 |
+
+- **Code:** `_rollDropQuality` (`hardening.js`, odds `DROP_QUALITY_ODDS`),
+  called by the two drop paths in `index.js` (`_rollArmorDropsForKill`,
+  `_rollIronWeaponForKill`). The forge (`gear.js`, `armorforge.js`) and the
+  daily chest (`dailychest.js`) still call `_rollWeaponQuality`.
+- **Kill switch:** `dropgrades: false` in the live flags rolls the forge's
+  odds on drops again (as before).
+- **The codex** prints the drop odds (`src/data/codexDrops.js`
+  `CODEX_GRADE_ODDS`, held to `DROP_QUALITY_ODDS` by `mirror-audit`). With the
+  switch thrown the codex still prints the new odds (display only).
+- **Not changed:** the drop-line WORDS (Normal / Uncommon / Rare / Very rare)
+  are about how often an ITEM drops, not its grade (`dropLines.js`); a
+  mystery piece's line still says "Rare" (the grade it promises).
+- **Tests:** `drops.test` §9 (each threshold either side, both drop paths,
+  the forge unchanged, the switch, a 400,000-roll share check),
+  `mirror-audit` (the codex's odds).

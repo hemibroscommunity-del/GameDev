@@ -8,6 +8,8 @@
  *     over the three weapons; 2 swaps, it goes ('swap') and never returns;
  *   phone upright: "Tap a weapon to swap" over the weapon chip; left alone it
  *     goes after about 8 s ('time') and never returns.
+ *   v2.3.3921: the chip is the weapon triangle beside the attack disc
+ *     (WeaponTriangle.jsx), and the phone's words "Tap a weapon to switch".
  * Pictures: tools/qa/mp/out/swaphint-{desk,phone}.png.
  */
 import * as H from './harness.mjs';
@@ -20,7 +22,7 @@ const look = (P) => P.page.evaluate(() => {
   const r = el ? el.getBoundingClientRect() : null;
   const q = window.__btSwapHint || {};
   const at = (sel) => [...document.querySelectorAll(sel)].map((e) => e.getBoundingClientRect()).filter((b) => b.width > 0);
-  const anchors = ['[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]', '[data-weapon-chip]'].map(at).find((l) => l.length) || [];
+  const anchors = ['[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]', '[data-weapon-tri]', '[data-weapon-chip]'].map(at).find((l) => l.length) || [];
   const top = anchors.length ? Math.min(...anchors.map((b) => b.top)) : null;
   const S = window._gameState.current;
   return { text: el ? el.textContent : null, box: r ? { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom) } : null,
@@ -81,8 +83,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const two = await secondWeapon(A, wsPort, id);
     const v1 = await waitHint(A, 6000);
     await A.page.screenshot({ path: join(OUT, 'swaphint-phone.png') }).catch(() => {});
-    rec.ok(`phone: the callout "${v1.text}" stands over the weapon chip (its foot ${v1.box && v1.box.b}, the chip's top ${v1.anchorTop})`,
-      two && /Tap a weapon to swap/.test(v1.text || '') && !!v1.box && v1.anchorTop != null && v1.box.b <= v1.anchorTop, v1);
+    rec.ok(`phone: the callout "${v1.text}" stands over the weapon triangle (its foot ${v1.box && v1.box.b}, the triangle's top ${v1.anchorTop})`,
+      two && /Tap a weapon to switch/.test(v1.text || '') && !!v1.box && v1.anchorTop != null && v1.box.b <= v1.anchorTop, v1);
     const t0 = Date.now();
     let v2 = await look(A);
     while (v2.text && Date.now() - t0 < 14000) { await A.page.waitForTimeout(250); v2 = await look(A); }

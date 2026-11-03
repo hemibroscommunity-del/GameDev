@@ -66,7 +66,7 @@ import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the att
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
-import { WeaponSwapButton } from './panels/WeaponSwapButton.jsx'; /* v2.3.3005: the weapon in your hand, under the movement stick -- a tap swaps */
+import { WeaponTriangle } from './panels/WeaponTriangle.jsx'; /* v2.3.3921: the weapon triangle beside the attack disc (it was v2.3.3005's chip under the movement stick) */
 import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
@@ -531,6 +531,8 @@ import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/whe
 import { wheelObjectsInfo, wheelWaterAt } from '@/game/wheelTrial.js';
 import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch */
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
+import { noticeboardAt, noticeboardAtCss } from '@/game/wheelNoticeboard.js';   /* v2.3.3899: the town board is on the square's noticeboard */
+import { mayorSaysNext } from '@/game/mayorTalk.js';   /* v2.3.3899: Mayor Bro always talks */
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
@@ -949,8 +951,8 @@ function _spawnWheelNpcs(S) {
   });
   /* ═══ v2.3.3258: THE KEEPERS ═══
      A townsperson who keeps a building opens its window when you talk to him
-     (data/wheelBuildingDoors.js WHEEL_KEEPERS: Blacksmith Bro the forge, Mayor
-     Bro the Town Hall) -- `keeperOf`, the plot, only where that building
+     (data/wheelBuildingDoors.js WHEEL_KEEPERS: Blacksmith Bro the forge; Mayor
+     Bro the Town Hall until v2.3.3899) -- `keeperOf`, the plot, only where that building
      stands with something to open.  This copy is the Wheel's own, so today's
      town's townsfolk (_spawnTownNpcs) never carry it. */
   out.forEach(function (n) {
@@ -5949,6 +5951,11 @@ export var BroTown = function BroTown(_ref0) {
           if (_wtd) {
             S._nearWheelBuilding = _wtd;
             if (_wtd.index >= 0) S.nearBuilding = _wtd.index;
+          } else {
+            /* v2.3.3899: the square's noticeboard, a door to the town board
+               (game/wheelNoticeboard.js): its hall is the Town Hall's, so the
+               prompt ("Read THE TOWN BOARD"), E and the stick just work */
+            S._nearWheelBuilding = noticeboardAt(S);
           }
         }
 
@@ -10461,10 +10468,21 @@ export var BroTown = function BroTown(_ref0) {
       if (r === 'quest' || r === 'flip' || r === 'shop' || r === 'pets') { try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ } }
       /* v2.3.3462: and he answers in his own voice (game/npcVoices.js) -- a
          quest's is the QuestPanel's, as it opens however you reached him */
-      if (npc && (r === 'flip' || r === 'shop' || r === 'pets' || r === 'opens' || r === 'nothing')) npcSpeaks(S, npc);   /* v2.3.3664: a keeper opening his building too */
+      if (npc && (r === 'flip' || r === 'shop' || r === 'pets' || r === 'opens' || r === 'says' || r === 'nothing')) npcSpeaks(S, npc);   /* v2.3.3899: + the Mayor's next step */   /* v2.3.3664: a keeper opening his building too */
       return r !== 'miss';
     };
-    if (!npc) return _mark('miss');
+    if (!npc) {
+      /* v2.3.3899: the square's noticeboard opens the town board, as the
+         Town Hall did (game/wheelNoticeboard.js) */
+      var _nbTap = noticeboardAtCss(S, cssX, cssY);
+      if (!_nbTap) return _mark('miss');
+      if (_nbTap.far) {
+        pushDmgPopup(S, _nbTap.board.x, _nbTap.board.y - 150, 'Too far away!', '#D8A94D');
+        return _mark('board-far');
+      }
+      enterWheelDoor(S, _nbTap.board, { setBuildingPanel: setBuildingPanel });
+      return _mark('board');
+    }
     var P = S.player;
     var _d = Math.sqrt(Math.pow(npc.x - P.x, 2) + Math.pow(npc.y - P.y, 2));
     /* Out of reach is answered, not ignored. A tap that does nothing at all
@@ -10511,6 +10529,9 @@ export var BroTown = function BroTown(_ref0) {
       try { dashboardPanelBus.open('pets'); } catch (_e) {}
       return _mark('pets');
     }
+    /* v2.3.3899: Mayor Bro, with nothing of his own, says the next step
+       (game/mayorTalk.js) -- he opened the Town Hall's board until now */
+    if (mayorSaysNext(S, npc)) return _mark('says');
     pushDmgPopup(S, npc.x, npc.y - 30, npc.name + ' has nothing for you right now', '#B6C1BE');
     return _mark('nothing');
   };
@@ -10624,6 +10645,7 @@ export var BroTown = function BroTown(_ref0) {
   var _deskPressTarget = function (cssX, cssY) {
     if (monsterAtCss(cssX, cssY)) return null;
     if (npcAtCss(cssX, cssY)) return 'talk';
+    if (noticeboardAtCss(stateRef.current, cssX, cssY)) return 'talk';   /* v2.3.3899: the town board's noticeboard */
     if (otherPlayerAtCss(cssX, cssY)) return null;
     if (_harvestNodeAtCss(cssX, cssY)) return 'gather';
     var _bed = _farmBedAtCss(cssX, cssY);
@@ -14054,7 +14076,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "Skip tutorial"))), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      top: 44,
+      top: 'var(--bt-hud-top, 44px)', /* v2.3.3974: the status chips start under the player frame (was 44) */
       left: 8,
       zIndex: 18,
       fontSize: 11,
@@ -14973,7 +14995,7 @@ export var BroTown = function BroTown(_ref0) {
     style: { display: 'block' }
   }, /*#__PURE__*/React.createElement("span", {
     style: { display: 'block', fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase', opacity: .7 }
-  }, " Enter "), /*#__PURE__*/React.createElement("span", {
+  }, " " + ((stateRef.current._nearWheelBuilding && stateRef.current._nearWheelBuilding.verb) || 'Enter') + " "   /* v2.3.3899: "Read" at the noticeboard */), /*#__PURE__*/React.createElement("span", {
     style: { display: 'block' }
   }, nearDoorLabel)) : " Enter ", nearDoorLabel ? null : nearBuilding !== null ? BUILDINGS[nearBuilding].label : WHEEL_HALLS[nearHall].title), nearShutDoor && buildingPanel === null && /*#__PURE__*/React.createElement("div", {
     /* ═══ v2.3.3032: A SHUT DOOR SAYS SO ═══
@@ -15669,7 +15691,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3005: the weapon button under the movement stick -- a tap runs the same swap as the double tap and the desktop key (WeaponSwapButton.jsx). */ /*#__PURE__*/React.createElement(WeaponSwapButton, { stateRef: stateRef, onCycle: _desktopCycleWeapon })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3921: the weapon triangle in the right-hand cluster -- a tap on a weapon runs the same swap as the double tap and the desktop key (WeaponTriangle.jsx; it was v2.3.3005's chip). */ /*#__PURE__*/React.createElement(WeaponTriangle, { stateRef: stateRef, onCycle: _desktopCycleWeapon, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one
