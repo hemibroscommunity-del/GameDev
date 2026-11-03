@@ -1,4 +1,4 @@
-/* ═══ mp-gearshots (v2.3.4101): THE GEAR TAB'S PICTURES FOR THE DOCS ═══
+/* ═══ mp-gearshots (v2.3.4121): THE GEAR TAB'S PICTURES FOR THE DOCS ═══
  *
  * The owner's second mockup (2026-11-03): the bag (three by three, the coins
  * beside "All Items") | ONE card | "Equipped".  This scenario plays the real

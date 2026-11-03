@@ -1,6 +1,6 @@
-/* ═══ mp-geartab (v2.3.4101): THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
+/* ═══ mp-geartab (v2.3.4121): THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
  *
- * v2.3.4101: the owner's second mockup (2026-11-03) -- the bag three square
+ * v2.3.4121: the owner's second mockup (2026-11-03) -- the bag three square
  * slots a row, nine in view (bigger than 34 px), the coins beside "All Items";
  * the middle ONE card, no tabs and no figure: the overview ("<name> Lv N",
  * the HP, MP and EN bars, DEF DODGE RESIST | DMG SPD CRIT RANGE, no "Combat
@@ -63,7 +63,7 @@ const look = (P) => P.page.evaluate(() => {
     rows: [...document.querySelectorAll('[data-gear-filter-row]')].map((r) => ({ id: r.getAttribute('data-gear-filter-row'), n: Number(r.getAttribute('data-count')) })),
     empty: (q('[data-gear-empty]') || {}).textContent || null,
     tabs: [...document.querySelectorAll('[data-gear-tab-btn]')].map((b) => b.getAttribute('data-gear-tab-btn') + ':' + b.getAttribute('aria-pressed')),
-    /* v2.3.4101: the card's view and its parts, the bag's squares */
+    /* v2.3.4121: the card's view and its parts, the bag's squares */
     who: (q('[data-gear-who]') || {}).textContent || null,
     bars: [...document.querySelectorAll('[data-gear-bars] [data-vital]')].map((b) => b.getAttribute('data-vital')),
     pills: [...document.querySelectorAll('[data-gear-skillpill]')].map((b) => ({ id: b.getAttribute('data-gear-skillpill'), lvl: Number(b.getAttribute('data-lvl')), unspent: Number(b.getAttribute('data-unspent')), glow: b.getAttribute('data-glow') === '1', xpbar: !!b.querySelector('[data-xpbar]'), text: b.textContent, box: vis(b) })),
@@ -154,9 +154,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
           && s1.panes.inv.l < s1.panes.bro.l && s1.panes.bro.l < s1.panes.equip.l, { layout: s1.layout, panes: s1.panes });
       rec.ok('[390x844] the equipment grid in the mockup\'s order: Sword Bow Staff / Chest Legs Cape / Shield Amulet Gem, every cell 34 px or more',
         cellsOk && s1.cells.map((c) => c.id).join() === 'sword,bow,staff,chest,legs,cape,shield,amulet,gem', s1.cells.map((c) => [c.id, c.box && c.box.w]));
-      /* v2.3.4101: the mockup's bag -- four square slots a row, never under
+      /* v2.3.4121: the mockup's bag -- four square slots a row, never under
          34 px, every square in view a slot (the rest empty squares) */
-      /* v2.3.4101: the owner's "9 visible slots" -- three by three, bigger */
+      /* v2.3.4121: the owner's "9 visible slots" -- three by three, bigger */
       rec.ok('[390x844] the bag: three square slots a row, nine in view, each 38 px or more, empty squares filling the view',
         !!s1.squares && s1.squares.cols === 3 && s1.squares.minW >= 38 && s1.squares.minH >= 38 && s1.squares.inView === 9
           && s1.squares.n % 3 === 0, s1.squares);
@@ -238,7 +238,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(300);
       rec.ok('[390x844] the menu\'s ✕ wears data-esc and shuts it', esc && !(await look(P)).menu);
 
-      /* v2.3.4101: a stack -- its card, then the same piece again or the
+      /* v2.3.4121: a stack -- its card, then the same piece again or the
          empty bag puts it down */
       const fishKey = s8.bag.find((k) => /^i-fish_/.test(k));
       await tapEl(P, `[data-gear-bag] [data-bag-key="${fishKey}"]`);
@@ -261,7 +261,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         s12.view === 'item' && s12.statsFor === 'bow' && /Bows/.test(s12.pill || '')
           && s13.view === 'overview' && /All items/i.test(s13.pill || '') && !s13.cells.some((c) => c.sel), { s12: [s12.view, s12.statsFor, s12.pill], s13: [s13.view, s13.pill] });
 
-      /* v2.3.4101: a level-up's points light their pill gold; a tap opens
+      /* v2.3.4121: a level-up's points light their pill gold; a tap opens
          the Points window on it, and its ✕ comes back to the Gear tab */
       await H.devOp(wsPort, 'kit', await H.readState(P, (S) => S.myId), { what: 'levels' }).catch(() => null);
       let sp = null;

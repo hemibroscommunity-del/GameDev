@@ -42,7 +42,7 @@ const read = (P) => P.page.evaluate(() => {
   const o = window.__btOneBand ? window.__btOneBand() : null;
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width > 0 ? { x: Math.round(b.left), y: Math.round(b.top), r: Math.round(b.right), b: Math.round(b.bottom), w: Math.round(b.width), h: Math.round(b.height) } : null; };
   const cols = document.querySelector('[data-one-band-cols]');
-  /* v2.3.4101: the resting row is the Gear tab (GearTab.jsx): its bag pane
+  /* v2.3.4121: the resting row is the Gear tab (GearTab.jsx): its bag pane
      and its gear pane stand where the Bag panel and the Combat cards stood */
   const bag = cols && (cols.querySelector('[aria-label="Bag"]') || cols.querySelector('[data-gear-pane="inv"]'));
   const combat = cols && (cols.querySelector('[aria-label="Combat"]') || cols.querySelector('[data-gear-pane="equip"]'));
@@ -112,7 +112,7 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
     !!L && !!o.cols && L.w === Math.floor(o.cols.w) && L.h === Math.floor(o.cols.h) && L.tile >= MIN_TILE
       && L.cols * (L.tile + 4) <= o.cols.w + 4,
     { layout: L, cols: o.cols });
-  /* v2.3.4101: the Gear tab lays its bag out from the same box itself (three
+  /* v2.3.4121: the Gear tab lays its bag out from the same box itself (three
      square slots a row, nine in view, never under 34 px -- the owner's second
      mockup), so its first row is its own three */
   const row1g = g.gearTab ? g.tiles.slice(0, 3).filter(Boolean) : row1;

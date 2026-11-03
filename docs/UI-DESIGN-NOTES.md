@@ -624,7 +624,7 @@ Sources: CLAUDE.md, docs/specs/chat-lanes.md, docs/specs/chat-moderation.md, doc
 ## The dashboard: band, six buttons and pages
 Screens: hud-band, dash-*, more-*
 
-**What it is for:** The band at the bottom of the screen is the game's one menu. At rest it is the Gear tab (since v2.3.4101; **The Gear tab** below): your bag, your bro and your gear side by side. Its row of six buttons opens every page inside the band, while the world keeps playing above it.
+**What it is for:** The band at the bottom of the screen is the game's one menu. At rest it is the Gear tab (since v2.3.4121; **The Gear tab** below): your bag, your bro and your gear side by side. Its row of six buttons opens every page inside the band, while the world keeps playing above it.
 
 **Decisions, and why:**
 - **Never more than a third of the screen** (owner directive, v2.3.1258). The painted world stays the brightest thing on screen; the band is a quiet slate tray.
@@ -873,7 +873,7 @@ Sources: CLAUDE.md, docs/specs/monster-codex.md
 ## The bag and item cards
 Screens: dash-bag, item-card
 
-**What it is for:** Everything you carry and are not wearing, shown on the band at rest. Since v2.3.4101 the bag is the left panel of **The Gear tab**: a tap picks an item and the middle panel shows it; the card below is where its Sell and Drop sheets open.
+**What it is for:** Everything you carry and are not wearing, shown on the band at rest. Since v2.3.4121 the bag is the left panel of **The Gear tab**: a tap picks an item and the middle panel shows it; the card below is where its Sell and Drop sheets open.
 
 **Decisions, and why:**
 - **The bag lives on the band; there is no bag page** (since v2.3.1653–1654). Sideways, the owner called the old small-slot bag page "a legacy view that needs to retire" (v2.3.2173).
@@ -912,7 +912,7 @@ Sources: CLAUDE.md, docs/specs/landscape-mode.md, docs/specs/bag-icons.md, docs/
 ## The Gear tab
 Screens: gear-*
 
-**What it is for:** The resting dashboard, what the bag button opens: your bag, one card about you or what you tapped, and your gear side by side, so you can see what you carry, what you wear and what a change would do without opening anything (v2.3.4101: the owner's design of 2026-11-02, laid out as the owner's second mockup of 2026-11-03). Pictures: docs/shots/gear-tab-overview.webp, gear-tab-item.webp, gear-tab-slot.webp (an upright phone) and gear-tab-desk.webp (a computer), made by `node tools/qa/mp/run.mjs gearshots`.
+**What it is for:** The resting dashboard, what the bag button opens: your bag, one card about you or what you tapped, and your gear side by side, so you can see what you carry, what you wear and what a change would do without opening anything (v2.3.4121: the owner's design of 2026-11-02, laid out as the owner's second mockup of 2026-11-03). Pictures: docs/shots/gear-tab-overview.webp, gear-tab-item.webp, gear-tab-slot.webp (an upright phone) and gear-tab-desk.webp (a computer), made by `node tools/qa/mp/run.mjs gearshots`.
 
 **Decisions, and why:**
 - **Three panels: the bag | one card | "Equipped", left to right, as the second mockup draws them** (owner, 2026-11-02: "inventory on left with filter on top ... the furthest right tab has all the equipped items"; 2026-11-03: "I uploaded a different mockup for the gear menu"). Dark slate panels with thin borders and rounded corners, the card framed in brass. Laid out from the box the tab is given, never the device: across, the gear takes 26% (never under three 34 px cells), the card 33% (never under 120 px), the bag the rest; a box too narrow for that (the sideways ~238 px column) puts the bag on top with the card and the gear side by side under it.
@@ -930,7 +930,7 @@ Screens: gear-*
 - **Your coins sit beside the filter**, as the mockup draws them. With a filter on in a narrow bag, the coins keep only their picture (the number in its tooltip), so the filter's word always fits: the filter is the one thing that row must always say. The weapon bag's "weapons 3/8" heads the filter menu.
 - **On a computer the three weapons at the foot are a weapon bar** (the playtest: "The weapon equipping system is confusing... make a hotbar here for left hand weapon, armor, right hand etc"): a click takes that weapon up (the 1, 2 and 3 keys' own pick, which the worker now hears), each wears its key, the one in hand is gold, and each keeps its level. A click on an empty one opens the Gear tab on that cell. Phones switch weapons with the button under the movement stick, as before.
 
-- **A "?" piece (see A mystery piece in the bag) is the same here:** tapped, the card shows its name, "Rare or better" and Reveal / Equip from the one action list, and no comparison, because its numbers would give its grade away (v2.3.4101).
+- **A "?" piece (see A mystery piece in the bag) is the same here:** tapped, the card shows its name, "Rare or better" and Reveal / Equip from the one action list, and no comparison, because its numbers would give its grade away (v2.3.4121).
 
 **This reverses, on the owner's new design of 2026-11-02:**
 - "a Bag button" (in **The dashboard** and **The bag and item cards**): the bag button opens this tab, and the bag is one of its three panels.
@@ -939,7 +939,7 @@ Screens: gear-*
 - The five filter chips, the 2-across sideways bag and the item card on every bag tap: the bag's tap now picks the item and the card shows it; the item card is still where Sell's price sheet and Drop's how-many open.
 
 **Tried before, and changed:**
-- The first mockup's middle (v2.3.4101, 2026-11-03 morning): LOOK | STATS | DETAILS tabs, your bro in LOOK, and a STATS page of Character Stats and the weapon in hand's box. The owner's second mockup made it one card without tabs or a figure.
+- The first mockup's middle (v2.3.4121, 2026-11-03 morning): LOOK | STATS | DETAILS tabs, your bro in LOOK, and a STATS page of Character Stats and the weapon in hand's box. The owner's second mockup made it one card without tabs or a figure.
 - Four bag squares a row at 34 px: "too cramped".
 
 **Please don't suggest:**

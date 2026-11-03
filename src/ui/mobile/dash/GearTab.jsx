@@ -14,18 +14,18 @@ import { WeaponBar } from './WeaponBar.jsx';
 import { requestT2Category } from './T2Panel.jsx';
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
 import { heroSectionBus } from '../sheet/heroSectionBus.js';
-import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4101: the overview's bars, the Character page's own */
+import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4121: the overview's bars, the Character page's own */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { shopBus } from '../shopBus.js';
 import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
 import { WEAPON_STASH_MAX, toDisplayHp } from '../../../data/gameSystems.js';
 import { gemCutKey, gemIcon, gemElementName } from '@/data/gems.js';
-import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.4101: the coins beside the filter */
-import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4101: a "?" piece's mark, as on its card */
+import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.4121: the coins beside the filter */
+import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4121: a "?" piece's mark, as on its card */
 import { deskWords } from '@/game/deskWords.js';
 
-/* ═══ v2.3.4101: THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
+/* ═══ v2.3.4121: THE GEAR TAB -- YOUR BAG, ONE CARD, YOUR GEAR ═══
  *
  * The owner's design (2026-11-02): three panels, "inventory on left with
  * filter on top ... the furthest right tab has all the equipped items
@@ -84,7 +84,7 @@ const TG = 4;       /* between the bag's squares (the mockup's wider gutter) */
 const EP = 3;       /* the equipment panel's padding */
 const CELL_MIN = 34;   /* the floor for an equipment cell */
 const TILE_MIN = 34;   /* ...and for a bag square */
-const BAG_COLS = 3;    /* v2.3.4101: the owner's "9 visible slots": three by three */
+const BAG_COLS = 3;    /* v2.3.4121: the owner's "9 visible slots": three by three */
 const BAG_ROWS = 3;
 const MID_MIN = 120;   /* the card: three bars and two columns of numbers */
 const BAG_MIN = BAG_COLS * TILE_MIN + (BAG_COLS - 1) * TG + 2 * PAD;
@@ -171,7 +171,7 @@ function cellContent(R, id, slots) {
       rows: [] };
   }
   if (id === 'amulet') {
-    /* v2.3.4101: NO Unequip -- the worker's unequip_request for the amulet
+    /* v2.3.4121: NO Unequip -- the worker's unequip_request for the amulet
        slot nulls it with no bag to put it in (gear.js _handleUnequipRequest:
        "armor/shield/amulet just null out"), so the button would destroy it */
     const card = getEquipContribs(R).cards.amulet;
@@ -226,7 +226,7 @@ const actBtn = (tone, off) => ({
   touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
 });
 
-/* v2.3.4101: the mockup's small pictures, drawn inline (no new picture files:
+/* v2.3.4121: the mockup's small pictures, drawn inline (no new picture files:
    the memory law) -- the filter's funnel and its chevron */
 const Funnel = ({ size, color }) => (
   <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" style={{ flex: 'none', display: 'block' }}>
@@ -280,7 +280,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   const footH = desk ? 48 + GAP : 0;   /* the computer's weapon bar, under the three */
   let invW, broW, eqW, cell, invH, lowH, cg;
   if (wide) {
-    /* v2.3.4101: the gear 26%, the card 33%, the bag the rest -- each never
+    /* v2.3.4121: the gear 26%, the card 33%, the bag the rest -- each never
        under its floor; on a 390 px phone the bag is ~139 px, three ~41 px
        squares across */
     const inner = W - 2 * PAD - 2 * GAP;
@@ -305,7 +305,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     lowH = EQ_HEAD + 3 * cell + 2 * cg + 2 * EP;
     invH = H > 0 ? Math.max(120, H - 2 * PAD - GAP - lowH - footH) : 200;
   }
-  /* v2.3.4101: three across and three down in view -- as big as both allow */
+  /* v2.3.4121: three across and three down in view -- as big as both allow */
   const gridH = invH - 2 * PAD - HDR_H - TG;
   const byTW = Math.floor((invW - 2 * PAD - (BAG_COLS - 1) * TG) / BAG_COLS);
   const byTH = Math.floor((gridH - (BAG_ROWS - 1) * TG) / BAG_ROWS);
@@ -327,13 +327,13 @@ export const GearTab = ({ R: Rin, desk }) => {
   const hdrW = invW - 2 * PAD;
   const coins = Number(R.coins || 0);
   const roomy = hdrW >= 128;   /* room for the chevron beside the coins */
-  /* v2.3.4101: with a filter on in a narrow head, the coins keep their
+  /* v2.3.4121: with a filter on in a narrow head, the coins keep their
      picture and give their number's room to the filter's word (the number
      in its title) -- the filter is the one thing the head must always say */
   const coinWords = fid === 'all' || hdrW >= 170;
   const inventory = (
     <div data-gear-pane="inv" style={panel({ width: invW, height: invH })}>
-      {/* v2.3.4101: the mockup's head -- "All Items" (or the filter on, with
+      {/* v2.3.4121: the mockup's head -- "All Items" (or the filter on, with
           its ×) and your coins beside it */}
       <div style={{ height: HDR_H, flex: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
         <button type="button" data-gear-filter={fid} aria-expanded={st.menu} aria-label={'Filter: ' + filterWord}
@@ -380,7 +380,7 @@ export const GearTab = ({ R: Rin, desk }) => {
             style={{ ...actBtn(undefined, false), width: 'auto', padding: '4px 14px' }}>Show all</button>
         </div>
       ) : (
-        /* v2.3.4101: nine in view, the rest by scrolling; a tap on an empty
+        /* v2.3.4121: nine in view, the rest by scrolling; a tap on an empty
            square (or the space round them) puts the pick down */
         <div data-gear-bag=""
           onClick={(e) => { if (!(e.target && e.target.closest && e.target.closest('[data-bag-key]'))) gearTabBus.deselect(); }}
@@ -519,7 +519,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   const gridW = 3 * cell + 2 * cg;
   const equipment = (
     <div data-gear-pane="equip" style={panel({ width: eqW, height: wide ? invH : lowH, padding: EP, alignItems: 'center', justifyContent: 'flex-start' })}>
-      {/* v2.3.4101: the mockup's "Equipped" head */}
+      {/* v2.3.4121: the mockup's "Equipped" head */}
       <div data-gear-eqhead="" style={{ height: EQ_HEAD, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11.5, fontWeight: 800, color: COL.text, letterSpacing: '.02em' }}>Equipped</div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(3, ${cell}px)`, gridAutoRows: `${cell}px`, gap: cg, width: gridW, marginTop: wide ? Math.max(0, Math.min(6, Math.floor((invH - 2 * EP - EQ_HEAD - 3 * cell - 2 * cg) / 2))) : 0 }}>
         {GEAR_CELLS.map(cellEl)}
@@ -530,7 +530,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   /* ═════ THE CARD ═════ */
   const goPoints = (s) => {
     const k = combatSkillState(R, s);
-    /* v2.3.4101: pushed over the dashboard page, not opened in its place, so
+    /* v2.3.4121: pushed over the dashboard page, not opened in its place, so
        the Points window's back chip comes back to the Gear tab.  At rest (the
        upright band, mode 'bar') there is no page under it yet: the dashboard
        page (PANELS.dashboard, this tab) goes first -- a page pushed over the
@@ -545,7 +545,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   );
   const sentence = (t, color) => t ? <div data-gear-info="" style={{ fontSize: 10.5, color: color || COL.text2, lineHeight: 1.3 }}>{t}</div> : null;
   const rule = <div aria-hidden="true" style={{ height: 1, flex: 'none', background: `linear-gradient(90deg, transparent, ${COL.edgeWarm}, transparent)` }} />;
-  /* v2.3.4101: the pick's picture in a frame (the item card's own well) */
+  /* v2.3.4121: the pick's picture in a frame (the item card's own well) */
   const art = (thumb, glyph, hidden) => (
     <div data-gear-art="" style={{
       width: 40, height: 40, flex: 'none', position: 'relative', boxSizing: 'border-box', borderRadius: 8,
@@ -680,7 +680,7 @@ export const GearTab = ({ R: Rin, desk }) => {
             onClick={(e) => { e.stopPropagation(); press(lead); }}
             style={actBtn(lead.tone, false)}>{lead.label}</button>
         )}
-        {/* v2.3.4101: the rest small under the main one (Sell, Drop, Pin,
+        {/* v2.3.4121: the rest small under the main one (Sell, Drop, Pin,
             Inspect...), each greyed with its reason where it cannot */}
         {rest.length > 0 && (
           <div data-gear-more="" style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
@@ -708,7 +708,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       </div>
     );
   } else {
-    /* v2.3.4101: the overview -- "<name> Lv N", the combat resource bars,
+    /* v2.3.4121: the overview -- "<name> Lv N", the combat resource bars,
        then the three combat skills.  The owner (2026-11-03): "the gear tab
        just having the compact version just combat resource bars ... the 3
        primary combat skill pills might sit well there too ... leveling up
@@ -735,7 +735,7 @@ export const GearTab = ({ R: Rin, desk }) => {
           )} />
       </div>
     );
-    /* v2.3.4101: a combat skill's pill (32 px tall, the UI review's floor for
+    /* v2.3.4121: a combat skill's pill (32 px tall, the UI review's floor for
        a finger) -- its picture, its name, "Lv N" and
        the XP to the next level (combatSkill.js, the numbers the weapon cells
        and the old band pills read; xpLanding's count-up and data-xpbar, so a
@@ -794,7 +794,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     );
   }
 
-  /* the card: data-gear-pane="bro" since v2.3.4101's first layout (mp-revealbag
+  /* the card: data-gear-pane="bro" since v2.3.4121's first layout (mp-revealbag
      reads a "?" piece's Reveal in it) */
   const broPane = (
     <div ref={bro} data-gear-pane="bro" data-gear-view={view}
