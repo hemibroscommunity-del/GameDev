@@ -1702,11 +1702,28 @@ function _hatHairFit(hatId, meta, hairId, pose, dir, mirror) {
    the three trait placements.  This is a pure function of its arguments: two
    calls with the same arguments cannot disagree, and it costs a handful of
    table lookups on a path that already does far more per frame. */
+/* ═══ v2.3.3915: ONE LOOK'S OWN HAT NUDGE ═══
+   The owner: "Make farmer bro hat lower to match the portrait pic of him."
+   His portrait wears the bucket hat down on his brow; the shared
+   STAND_HAT_TUNE row would move EVERY player's bucket hat, so a townsperson's
+   look carries its own lift (NPC_LOOKS `hatDy256`, 256-space, down-positive)
+   and _drawFolk sets it here for the length of his own draw only.  Read in
+   _hatTune, so the hat AND the hair mask cut to it (_clipHairToHat) move
+   together.  `_qaHatDy256` is the photographs' (tools/qa/npc-looks.mjs sets
+   it through window.__btHatNudge256 while it photographs that look), so the
+   ?lookfolk=0 pictures match the live figure. */
+let _folkHatDy256 = 0;
+let _qaHatDy256 = 0;
+if (typeof window !== 'undefined') {
+  window.__btHatNudge256 = (v) => { _qaHatDy256 = +v || 0; };
+}
 function _hatTune(hatId, meta, hairId, pose, dir, mirror) {
   let tune = hatPoseTune(hatId, pose, dir); /* v2.3.1353/1354 */
+  const nudge = _folkHatDy256 + _qaHatDy256;   /* v2.3.3915 */
+  if (nudge) tune = { ...(tune || {}), dy256: ((tune && tune.dy256) || 0) + nudge };
   const fit = _hatHairFit(hatId, meta, hairId, pose, dir, mirror);
   /* v2.3.1561: dy256 is a 256-space lift, so it scales with the body. */
-  if (fit.dy256) tune = { ...(tune || {}), dy256: fit.dy256 };
+  if (fit.dy256) tune = { ...(tune || {}), dy256: ((tune && tune.dy256) || 0) + fit.dy256 };   /* v2.3.3915: adds to a look's nudge */
   /* v2.3.1943: mulX is HORIZONTAL only — the band stays where it sat. */
   if (fit.mulX !== 1) tune = { ...(tune || {}), mulX: fit.mulX };
   return tune;
@@ -17426,12 +17443,14 @@ export class EntityRenderer {
     _hideBodyRegions(folk);
     if (folk._shirtSprite) folk._shirtSprite.visible = false;
     _placeCape(folk, look.cape, pose, dir, mirror, frameIdx);
+    _folkHatDy256 = look.hatDy256 || 0;   /* v2.3.3915: his own hat nudge, for his draw only */
     _placeHeadwear(folk, look.headwear, look.hatColor, pose, dir, mirror, frameIdx, sizeMul, look.hair);
     _placeFacialHair(folk, look.facialhair, look.facialHairColor, pose, dir, mirror, frameIdx, sizeMul);
     _placeSpecies(folk, look.species, look.skin, pose, dir, mirror, frameIdx, sizeMul);
     _placeEyeStyle(folk, look.eyeStyle, look.eyeColor, pose, dir, mirror, frameIdx, sizeMul);
     _placeEyewear(folk, look.eyewear, look.eyewearColor, pose, dir, mirror, frameIdx, sizeMul);
-    _placeHair(folk, look.hair, look.hairColor, look.headwear, pose, dir, mirror, frameIdx, sizeMul);
+    try { _placeHair(folk, look.hair, look.hairColor, look.headwear, pose, dir, mirror, frameIdx, sizeMul); }
+    finally { _folkHatDy256 = 0; }   /* v2.3.3915: the hair's mask is cut to the same nudged hat */
     _orderTraitsAndWeapon(folk, SECTORS.indexOf(facing), look.headwear);
     if (HEAD_FRAMES_ON) folk._btHeadAt = { pose, dir, mirror, frameIdx, now,   /* v2.3.3860: the head-frame count (headFrames.js, `?headframes` only) */
       worn: { headwear: look.headwear, hair: look.hair, facialhair: look.facialhair, eyewear: look.eyewear, eyestyle: look.eyeStyle } };
