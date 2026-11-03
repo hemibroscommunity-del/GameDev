@@ -160,9 +160,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         clicksOnHim === 1 && claimed && st2 === 'turnedIn', log);
 
       /* 3. his bubble while it was ready: the cue, never his hand-in line
-         ("You're back, mostly standing! ...") */
+         ("You're back, mostly standing! ...", "You made it back! ..." since
+         v2.3.4025) */
       rec.ok(`${V.id} 3. his bubble while the quest was ready: "${bubble}"`,
-        !!bubble && !/mostly standing/i.test(bubble) && (touch ? /tap me/i.test(bubble) : /click me/i.test(bubble)), bubble);
+        !!bubble && !/mostly standing|You made it back/i.test(bubble) && (touch ? /tap me/i.test(bubble) : /click me/i.test(bubble)), bubble);
       /* 5. v2.3.3899: the owner, after this very hand-in: "it wasn't apparent
          what to do next. I tried tapping on mayor bro and kept opening the
          town hall door ... apparently I couldn't talk to him".  With nothing of

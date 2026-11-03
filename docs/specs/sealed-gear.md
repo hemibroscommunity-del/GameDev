@@ -1,5 +1,12 @@
 # Sealed gear: rare-or-better pieces stay a "?" until you open them (PLAN, v2.3.3749)
 
+> **v2.3.4012: the reveal half is built** (`docs/specs/reveal-in-bag.md`):
+> a rare-or-better pickup waits in the bag as a "?" with a Reveal button, its
+> mark `unrevealed: 1` (this plan's `sealed: 1`), and Equip reveals first (the
+> owner's newer word, 2026-11-01, in place of "can't wear sealed"). Selling and
+> trading a "?", and the store, trade and salvage doors below, are still this
+> plan's, not built.
+>
 > **Status: a plan, not built.** Docs only. Building waits until after the
 > showing and the owner's yes. The lane that builds it reads this whole file
 > first, then `docs/specs/rarity-reveal.md`, `docs/specs/gear-provenance.md`,
