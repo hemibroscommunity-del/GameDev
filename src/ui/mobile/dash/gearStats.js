@@ -11,7 +11,7 @@
  * weapon card's reach (equipModel getEquipContribs: WEAPON_TYPES.range
  * through the lane's multiplier, clamped at 250 px, in tiles), getArmorPieceDr
  * for armour (its damage cut) and calcBlockReduction for a shield (its block),
- * deriveHeroStats for the character.  So the comparison and the card cannot
+ * deriveHeroStats and combinedDamageCut for the character.  So the comparison and the card cannot
  * disagree about the same piece.
  *
  * Pure: relative imports of src/data and heroModel only, so a node test reads
@@ -24,7 +24,8 @@ import {
 } from '../../../data/gameSystems.js';
 import { getShieldStats } from '../../../data/items.js';
 import { TILE } from '../../../data/constants.js';
-import { PROG3, prog3Live, prog3MoveMult } from '../../../data/prog3.js';
+import { prog3Live, prog3MoveMult } from '../../../data/prog3.js';
+import { combinedDamageCut } from '../sheet/heroStatPills.js';
 import { deriveHeroStats } from '../sheet/heroModel.js';
 
 const fmt1 = (n) => {
@@ -37,21 +38,10 @@ const pct1 = (v) => {
 };
 const safe = (fn, dflt) => { try { const v = fn(); return v == null ? dflt : v; } catch (e) { return dflt; } };
 
-/* ═══ THE DAMAGE CUT ═══
-   v2.3.3940: MIRRORS combinedDamageCut in heroStatPills.js on PR #1350
-   (claude/defense-number, v2.3.3896, not on main yet): what of a hit gets
-   through your Defense (never below PROG3.FLOOR of the base, the floor
-   widened by Dodge) and then your armour.  Fold this into that function once
-   #1350 merges -- two copies of one formula is how a screen comes to say two
-   numbers (kept here only so the two PRs do not touch the same file). */
-export function damageCut(defPct, armorDr, dodgePct) {
-  const f = (v) => { const n = Number(v); return n > 0 ? Math.min(n, 1) : 0; };
-  const def = f(defPct), arm = f(armorDr), dodge = f(dodgePct);
-  const floor = (PROG3 && PROG3.FLOOR) || 0;
-  const defMult = Math.max(1 - def, floor > 0 ? floor / Math.max(0.01, 1 - dodge) : 0);
-  const through = Math.min(1, defMult) * (1 - arm);
-  return 1 - through;
-}
+/* v2.3.3940: the damage cut is heroStatPills' combinedDamageCut (PR #1350,
+   v2.3.3896: what of a hit gets through your Defense -- never below
+   PROG3.FLOOR of the base, the floor widened by Dodge -- and then your
+   armour), imported, so the Gear tab and the Character page say one number. */
 
 /* A weapon's reach in tiles, the weapon card's own rule (equipModel). */
 function reachTiles(R, wpn) {
@@ -144,7 +134,7 @@ export function myStatRows(R) {
   const wr = d.wpn ? weaponRows(R, d.wpn) : [];
   const w = Object.create(null);
   for (const r of wr) w[r.k] = r.v;
-  const cut = damageCut(d.defPct, d.armorDr != null ? d.armorDr : safe(() => getArmorDrPct(R), 0), d.dodge);
+  const cut = combinedDamageCut(d.defPct, d.armorDr != null ? d.armorDr : safe(() => getArmorDrPct(R), 0), d.dodge);
   const move = safe(() => (prog3Live(R) ? prog3MoveMult(R) : 1), 1);
   return [
     { key: 'cut', k: 'Damage cut', v: '−' + pct1(cut) + '%' },

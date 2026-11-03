@@ -143,15 +143,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* the column's order, top to bottom */
     const dock = await box(P, '.bt-land-navdock');
     const combat = await box(P, '[data-dash-desk-combat]');
-    const filters = await P.page.evaluate(() => {
-      const c = [...document.querySelectorAll('[data-dash-desk] .bt-bagchip')].map((n) => n.getBoundingClientRect());
-      return c.length ? { n: c.length, t: Math.round(Math.min(...c.map((r) => r.top))), b: Math.round(Math.max(...c.map((r) => r.bottom))) } : null;
-    });
-    const bag = await box(P, '[data-dash-desk-bag]');
-    rec.ok('down the pages: the dashboard\'s buttons the top row, then the bag\'s filters, then the bag, and the three weapons at the foot',
+    /* v2.3.3940: the Gear tab -- the five chips are one filter pill over the
+       bag (GearTab.jsx), the three weapons the weapon bar at the foot */
+    const filters = await box(P, '[data-dash-desk] [data-gear-filter]');
+    const bag = await box(P, '[data-dash-desk] [data-gear-bag]');
+    rec.ok('down the pages: the dashboard\'s buttons the top row, then the Gear tab (the bag\'s filter pill, then the bag), and the three weapons at the foot',
       !!dock && !!combat && !!filters && !!bag && dock.t <= 8 && dock.l <= 8
-        && filters.t >= dock.b - 1 && filters.t - dock.b <= 16 && bag.t >= filters.b - 1 && combat.t >= bag.b - 1
-        && combat.b <= DESK.height && DESK.height - combat.b <= 16 && filters.n === 5,
+        && filters.t >= dock.b - 1 && filters.t - dock.b <= 40 && bag.t >= filters.b - 1 && combat.t >= bag.b - 1
+        && combat.b <= DESK.height && DESK.height - combat.b <= 16,
       { dock, combat, filters, bag });
     /* the buttons' pictures, and the chip's word */
     const nav = await P.page.evaluate(() => {

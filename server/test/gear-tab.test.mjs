@@ -19,9 +19,8 @@
  *   4. gearStats: the comparison's "old → new", green up, red down, '=' level,
  *      a stat only the old piece had red; a weapon's rows are the item card's
  *      own numbers (calcDisplayDmgRange / calcDisplayDps); armour by its damage
- *      cut, a shield by its block; damageCut mirrors PR #1350's
- *      combinedDamageCut (the Defense floor widened by Dodge, then armour);
- *      your own rows never print NaN;
+ *      cut, a shield by its block; the damage cut is heroStatPills'
+ *      combinedDamageCut itself; your own rows never print NaN;
  *   5. the one action list: the item card draws its buttons from
  *      itemActionList and runs them through runItemAction (no inline Equip or
  *      Drink of its own any more), and the Gear tab runs the same two.
@@ -170,13 +169,15 @@ const TR = await import('../../src/data/trapping.js');
       && Math.abs(parseFloat(ac[0].now) - GS.getArmorPieceDr(iron, 'chest') * 100) < 0.06, ac);
   const sr = G.shieldRows({ name: 'Pine Shield', gearBase: 'wood', tierMult: 1 });
   check('4e a shield by its block (calcBlockReduction)', sr[0].k === 'Block' && sr[0].n === Math.round(GS.calcBlockReduction(0, { name: 'Pine Shield', gearBase: 'wood', tierMult: 1 }) * 100), sr);
-  /* PR #1350's combinedDamageCut, by hand: 1 - max(1-def, FLOOR/(1-dodge)) * (1-armour) */
-  const { PROG3 } = await import('../../src/data/prog3.js');
-  const by1350 = (d, a, o) => 1 - Math.min(1, Math.max(1 - d, PROG3.FLOOR / Math.max(0.01, 1 - o))) * (1 - a);
-  const cases = [[0, 0, 0], [0.5, 0.3, 0.2], [0.95, 0.4, 0.5], [0.2, 0, 0.9], [1.5, 2, -1]];
-  check('4f damageCut mirrors PR #1350\'s combinedDamageCut (the Defense floor widened by Dodge, then armour; inputs clamped)',
-    cases.slice(0, 4).every(([d, a, o]) => Math.abs(G.damageCut(d, a, o) - by1350(d, a, o)) < 1e-9) && G.damageCut(1.5, 2, -1) === 1,
-    cases.map(([d, a, o]) => [G.damageCut(d, a, o), by1350(d, a, o)]));
+  /* the damage cut is the Character page's own (heroStatPills combinedDamageCut, PR #1350) */
+  const HP = await import('../../src/ui/mobile/sheet/heroStatPills.js');
+  const HM = await import('../../src/ui/mobile/sheet/heroModel.js');
+  const d = HM.deriveHeroStats({ ...R, armor: iron });
+  const cutRow = G.myStatRows({ ...R, armor: iron }).find((r) => r.key === 'cut');
+  const want = HP.combinedDamageCut(d.defPct, d.armorDr, d.dodge) * 100;
+  check('4f the damage cut row is heroStatPills\' combinedDamageCut, not a copy of its formula',
+    !/function damageCut|PROG3\.FLOOR \|\|/.test(src('src/ui/mobile/dash/gearStats.js')) && /combinedDamageCut/.test(src('src/ui/mobile/dash/gearStats.js'))
+      && Math.abs(parseFloat(cutRow.v.replace('\u2212', '')) - want) < 0.6, { cutRow, want });
   const mine = G.myStatRows(R);
   check('4g your own rows: the damage cut, HP, Energy, Mana, the weapon\'s damage, speed, range, crit, dodge, move -- no NaN',
     mine.map((r) => r.key).join() === 'cut,hp,energy,mana,damage,speed,range,crit,dodge,move' && mine.every((r) => !/NaN|undefined/.test(r.v)), mine);

@@ -8,8 +8,9 @@ import { farmCropHeal } from '@/data/farmCrops.js';   /* v2.3.3537: every crop i
 import { parseGemKey, gemElementName } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 import { SHARD_GEM_ELEMENT, RAW_PER_GEM, shardCrackChance } from '@/data/shards.js';   /* v2.3.3516: a shard may hold its land's raw gem */
 import { isWeaponGem, weaponGemEffect, weaponGemEdge } from '@/data/weaponGems.js';   /* v2.3.3516: what a gem does on a weapon; v2.3.3518: + what it beats */
-import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3260: in any fight) */
-import { pushDmgPopup, offlineRefused /* v2.3.3473: Drop never into a dead socket */ } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
+/* v2.3.3940: fightFood's one-bite rule, the firemaking, eat and chest buses
+   went with Light / Eat / Drink / Claim to itemActions.js */
+import { offlineRefused /* v2.3.3473: Drop never into a dead socket */ } from '@/game/combatHelpers.js'; /* v2.3.3133: ...and say how long */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a listing heard */
 import { dropSupported, dropBlockedWhy, sendItemDrop } from '@/game/itemDrop.js'; /* v2.3.3473: Drop */
 import { ITEM_NAMES, isTicketKey, isCapeItemKey, isPotionKey, isChestKey } from './InventoryPanel.jsx';   /* v2.3.2820: + isChestKey */   /* v2.3.2054; isTicketKey v2.3.2103; isCapeItemKey v2.3.2107 */
@@ -27,15 +28,12 @@ import {
 } from './inventoryLocks.js';
 import { thumbFor, iconFor, classify } from './InventoryPanel.jsx';
 import { lifeKindFor } from './bagLife.js'; /* v2.3.2815: the portrait's small motion */
-import { firemakingBus } from '../firemakingBus.js';
-import { chestRevealBus } from '../ChestReveal.jsx';   /* v2.3.2820: the daily chest's claim window */
 import { storeEnabled, storeGearEnabled, storeGearRefEnabled, storeList } from '@/ui/storeApi.js'; /* v2.3.2476: the auction house; v2.3.2531: gear; v2.3.2551: naming a piece by its id */
-import { eatBus } from '../eatBus.js';
 import { CATEGORIES } from './bagFilterBus.js';   /* v2.3.3130: the caption is the chip's own word */
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
 import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason.js'; /* v2.3.2551: and WHY it cannot be sold */
-import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
+import { unequipArmorDirect, unequipLegsDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
 import { resolveStashIdx } from './equipActions.js';   /* v2.3.3940: moved there, with the three equips */
 import { itemActionList, runItemAction } from './itemActions.js';   /* v2.3.3940: the one action list, shared with the Gear tab */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
