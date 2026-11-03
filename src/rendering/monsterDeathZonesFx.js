@@ -67,7 +67,9 @@ const MAT_COL = {
 const MAT_TINT = { snow: 0xe8f4ff, bone: 0xe6ddc8, stone: 0x8a8a8a, wood: 0x6b4a2b, cloth: 0xd8cdb4, flame: 0xea580c };
 
 const OVERLAP = 1;         /* texels a rectangle piece takes of each inside neighbour (TRAPS §114) */
-const SLUMP_MS = 300, SINK_MS = 760, GUTTER_MS = 460, FLOP_MS = 240;
+const SLUMP_MS = 300, SINK_MS = 1000, GUTTER_MS = 460, FLOP_MS = 240;
+const VY_MAX = 4.2;        /* the fastest up, in body heights a second (~0.6 s in the air) */
+const BOUNCES = 2;         /* then it lies down, whatever it is made of */
 
 /* ── the live ones, for the cap and for letting go ── */
 const _live = new Set();
@@ -157,6 +159,18 @@ export function buildZoneDeath(K, display, m, now, ctx) {
   const whole = K.bodyOf(cov, sx, sy, [[fL, fT], [fR, fT], [fR, fB], [fL, fB]]);
   const cx = whole ? whole.com[0] : x0 + W / 2;
   const gy = y1;
+  /* the body's feet: the outermost of its lowest points each side (as
+     setHinge finds a piece's) -- what a crumpling body leans over */
+  const footAt = (side) => {
+    if (!whole) return side > 0 ? x1 : x0;
+    let lo = -Infinity, fx = null;
+    for (const p of whole.hull) if (p[1] > lo) lo = p[1];
+    for (const p of whole.hull) {
+      if (p[1] < lo - Math.max(3, H * 0.04)) continue;
+      if (fx == null || (side > 0 ? p[0] > fx : p[0] < fx)) fx = p[0];
+    }
+    return fx;
+  };
 
   const root = K.deathRoot(display, sb);
   const under = new Graphics();      /* a puddle, under everything */
@@ -215,6 +229,11 @@ export function buildZoneDeath(K, display, m, now, ctx) {
     };
     /* how it comes off -- every number from the death's seeded roll */
     const mk = Math.sqrt(Math.max(0.2, z.mass || 1));
+    /* up is weighed more gently than across, and capped: everything must be
+       down and still before the fade (FADE_FROM_MS) -- a hat thrown up at a
+       light piece's full speed was still in the air when the corpse faded */
+    const mv = Math.pow(Math.max(0.2, z.mass || 1), 0.25);
+    const upCap = (v) => Math.max(-H * VY_MAX, v);
     const push = z.push != null ? z.push : 1, lift = z.lift != null ? z.lift : 1;
     const away = bd.com[0] < cx ? -1 : 1;
     if (off === 'fly' || off === 'pop' || off === 'crumble') {
@@ -222,26 +241,27 @@ export function buildZoneDeath(K, display, m, now, ctx) {
       if (off === 'fly') {
         const dir = z.dir || away;
         pc.vx = dir * H * (1.4 + rand() * 1.0) * push / mk;
-        pc.vy = -H * (2.2 + rand() * 1.0) * lift / mk;
+        pc.vy = upCap(-H * (2.2 + rand() * 1.0) * lift / mv);
         pc.spin = dir * (6 + rand() * 6) / mk;
       } else if (off === 'pop') {
         const dir = z.dir || (rand() < 0.5 ? -1 : 1);
         pc.vx = dir * H * (0.5 + rand() * 0.7) * push / mk;
-        pc.vy = -H * (3.4 + rand() * 0.9) * lift / mk;
+        pc.vy = upCap(-H * (3.4 + rand() * 0.9) * lift / mv);
         pc.spin = dir * (5 + rand() * 5) / mk;
       } else {
         const dir = z.dir || away;
         pc.vx = dir * H * (0.25 + rand() * 0.45) * push / mk;
-        pc.vy = -H * (0.2 + rand() * 0.6) * lift / mk;
+        pc.vy = upCap(-H * (0.2 + rand() * 0.6) * lift / mv);
         pc.spin = dir * (1.5 + rand() * 2.5) / mk;
       }
     } else if (off === 'slump') {
       /* every slump piece of a death about ONE point, so they sag as one: under
          the body's middle -- or, for one that leans as it crumples, its foot on
          the side it leans to (turning about the middle would sink the other
-         foot through the ground) */
+         foot through the ground; about the box's corner, which is an arm or
+         an ear as often as a foot, lifted the whole body off it) */
       const lean = (z.lean || 0) * leanSide;
-      const px = lean > 0 ? x1 : lean < 0 ? x0 : cx;
+      const px = lean !== 0 ? footAt(lean > 0 ? 1 : -1) : cx;
       pc.slump = { px, py: gy, squash: z.squash != null ? z.squash : 0.45, lean, sink: z.sink || 0 };
       if (pc.slump.sink > 0) {
         if (!clip) {
@@ -314,7 +334,10 @@ function matTint(mat, ctx, kind) {
 export function stepZoneDeath(K, st, now) {
   /* the cuts' FIXED SUBSTEPS (monsterDeathFx step): <= 1/60 s, at most a
      quarter second a frame */
-  let left = Math.min(0.25, Math.max(0, (now - st.last) / 1000)) / st.slow;
+  /* (the cap on the SIMULATED time: under QA's slow motion a slow test
+     machine's frames would otherwise each lose most of theirs, and the
+     pieces would still be in the air at the fade) */
+  let left = Math.min(0.25, Math.max(0, (now - st.last) / 1000) / st.slow);
   st.last = now;
   const tEnd = (now - st.born) / st.slow;
   let tSim = tEnd - left * 1000;
@@ -373,7 +396,7 @@ function physics(K, st, t, dt) {
         c.position.y -= (lo - gy);
         if (!pc.rest) {
           const bounce = pc.z.bounce || 0;
-          if (pc.vy > H * 0.9 && bounce > 0.02) {
+          if (pc.vy > H * 0.9 && bounce > 0.02 && (pc.bounces = (pc.bounces || 0) + 1) <= BOUNCES) {
             pc.vy = -pc.vy * bounce;
             pc.vx *= 0.7;
             pc.spin *= 0.5;

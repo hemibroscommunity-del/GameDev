@@ -42,7 +42,10 @@ import { deathZonesFor, MAX_PIECES, MAX_LIVE } from '../../../src/data/monsterDe
 
 const PHONE = { width: 390, height: 844 };
 const OUT = `${H.REPO}/tools/qa/mp/out/deathzones`;
-const SLOW = 5;
+/* slow motion (window.__btDeathSlow): this box draws a few frames a second
+   and a screenshot stalls it, so a 5x death (mp-deathcut's) could be over
+   before the probes had read it (TRAPS §200) */
+const SLOW = 12;
 const LOOKS = [
   { key: 'slime', arch: 'fodder', variant: null, look: 'slime', zk: 'fodder' },
   { key: 'blueslime', arch: 'fodder', variant: 'blueSlime', look: 'slime', zk: 'blueSlime' },
@@ -120,6 +123,24 @@ const kill = (P, ids, kind) => P.page.evaluate(async ([mids, k]) => {
   for (const m of ms) { m._hitFlash = t + 1e6; m._hitAnimStart = t - 40000; m._hitAnimEnd = t + 60000; }
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   for (const m of ms) { m.curHp = 0; m.alive = false; m.respawnAt = Date.now() + 120000; }
+  /* watched from the page, frame by frame (by the renderer's own frames, not
+     a test's clock: TRAPS §200): the first death each one drew, and whether
+     any frame showed the beat's flash */
+  const W = window.__dzWatch = window.__dzWatch || {};
+  for (const m of ms) W[m.id] = { first: null, flash: false, frames: 0 };
+  let n = 0;
+  const look = () => {
+    for (const m of ms) {
+      const w = W[m.id];
+      const d = window.__btMonsterDeath ? window.__btMonsterDeath(m.id) : null;
+      if (!d || !d.kind) continue;
+      w.frames++;
+      if (!w.first) w.first = { kind: d.kind, pieces: d.pieces, own: d.own };
+      if (d.own && d.own.flash) w.flash = true;
+    }
+    if (++n < 400) requestAnimationFrame(look);
+  };
+  requestAnimationFrame(look);
   return true;
 }, [ids, kind]);
 
@@ -171,7 +192,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await enter(P, wsPort);
 
     /* ── 1-5. every look's own death ── */
-    for (const L of LOOKS) {
+    /* DZ_LOOKS=snowman,rock: only those (a quicker look at one) */
+    const only = (process.env.DZ_LOOKS || '').split(',').filter(Boolean);
+    for (const L of LOOKS.filter((x) => !only.length || only.indexOf(x.key) >= 0)) {
       const zones = deathZonesFor(L.zk, L.east ? 'east' : 'south');
       const view = L.east ? 'side' : 'front';
       const h = await hold(P, [{ id: `dz-${L.key}-${Date.now()}`, arch: L.arch, variant: L.variant, dx: L.east ? -40 : 70, dy: 6, noTransform: L.noTransform }]);
@@ -187,24 +210,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await kill(P, [mid], 'own');
       const t0 = Date.now();
       const at = async (simMs) => { const w = t0 + simMs * SLOW - Date.now(); if (w > 0) await P.page.waitForTimeout(w); };
-      /* the first dead frame, and the beat */
-      let first = null, sawFlash = false;
-      for (let i = 0; i < 30; i++) {
-        const s = await state(P, mid);
-        if (s.d && s.d.kind) { first = first || s; if (s.d.own && s.d.own.flash) sawFlash = true; if (s.d.own && s.d.own.parted) break; }
-        await P.page.waitForTimeout(80);
-      }
-      const d0 = first && first.d;
+      /* the first dead frame, and the beat (the page's watcher) */
+      await at(150);
+      const w0 = await P.page.evaluate((id) => (window.__dzWatch || {})[id] || null, mid);
+      const d0 = w0 && w0.first, sawFlash = !!(w0 && w0.flash);
       rec.ok(`2. ${L.key}: dies its own death -- ${L.look}'s, ${view} view, a piece a zone (${zones.length})`,
         !!(d0 && d0.kind === 'own' && d0.own && d0.own.look === L.zk && d0.own.view === view
           && d0.pieces >= Math.max(1, zones.length - 1) && d0.pieces <= Math.min(MAX_PIECES, zones.length)), d0 && { kind: d0.kind, pieces: d0.pieces, own: d0.own });
       rec.ok(`2. ${L.key}: ...opening on the beat (the flash over it) before the pieces part`, sawFlash, d0 && d0.own);
-      await at(150);
       if (box) await P.page.screenshot({ path: `${OUT}/${L.key}-1-beat.png`, clip: box }).catch(() => {});
       await at(420);
       if (box) await P.page.screenshot({ path: `${OUT}/${L.key}-2-parting.png`, clip: box }).catch(() => {});
       const mid1 = await state(P, mid);
       const d1 = mid1.d;
+      if (!d1 && process.env.DZ_DEBUG) {
+        console.log('DEBUG', JSON.stringify(await P.page.evaluate((id) => {
+          const S = window._gameState.current;
+          return { zone: S.currentZone, server: S._serverMonsters, mons: (S.monsters || []).map((m) => [m.id, m.alive, m._slimeDeathStart, m._snowmanDeathStart, m.respawnAt]),
+            q: window.__qaDZ && window.__qaDZ.list.length, spr: window.__btMonsterSprite(id), z: window.__btDeathZones() };
+        }, mid)), P.logs.slice(-8));
+      }
       rec.ok(`3. ${L.key}: the pieces wear its own colour, never the blow's red, at its own shape (no squash left)`,
         !!(d1 && Array.isArray(d1.tints) && d1.tints.every((t) => t != null && t !== 0xff8080)
           && Array.isArray(d1.scale) && Math.abs(Math.abs(d1.scale[0]) - Math.abs(d1.scale[1])) < 1e-3
@@ -221,7 +246,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const ds = settled.d;
       rec.ok(`4. ${L.key}: the pieces come down and lie still`, !!(ds && ds.rest && ds.rest.every(Boolean)), ds);
       rec.ok(`4. ${L.key}: ...on the ground, not above or through it (a sinking piece under it)`,
-        !!(ds && ds.ground && ds.own && ds.ground.every((g, i) => (ds.own.sinks[i] ? g > 0.2 : Math.abs(g) < 0.06))), ds && { ground: ds.ground, offs: ds.own && ds.own.offs, sinks: ds.own && ds.own.sinks });
+        /* a sagging piece sags with the others (a goblin's flame stays on his
+           head): it is the group's lowest point that is on the ground */
+        !!(ds && ds.ground && ds.own && ds.ground.every((g, i) => (ds.own.sinks[i] ? g > 0.2 : ds.own.offs[i] === 'slump' ? g < 0.06 : Math.abs(g) < 0.06))
+          && (!ds.own.offs.some((o, i) => o === 'slump' && !ds.own.sinks[i])
+            || Math.max(...ds.ground.filter((g, i) => ds.own.offs[i] === 'slump' && !ds.own.sinks[i])) > -0.06)),
+        ds && { ground: ds.ground, offs: ds.own && ds.own.offs, sinks: ds.own && ds.own.sinks });
       if (box) await P.page.screenshot({ path: `${OUT}/${L.key}-4-lying.png`, clip: box }).catch(() => {});
       await at(1900);
       await P.page.waitForTimeout(500);
@@ -241,13 +271,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       for (const i of ids) await drawn(P, i, 15000);
       await P.page.evaluate((k) => { window.__btDeathSlow = k; }, SLOW);
       await kill(P, ids, 'own');
-      await P.page.waitForTimeout(1500);
-      const kinds = [];
-      for (const i of ids) { const s = await state(P, i); kinds.push(s.d ? s.d.kind : null); }
+      await P.page.waitForTimeout(2500);
+      const W = await P.page.evaluate(() => window.__dzWatch || {});
+      const kinds = ids.map((i) => (W[i] && W[i].first ? W[i].first.kind : null));
       const own = kinds.filter((k) => k === 'own').length;
       rec.ok(`6. ten slimes killed together: at most ${MAX_LIVE} play their own death, the rest today's (${own} own)`,
         own > 0 && own <= MAX_LIVE && kinds.every((k) => k != null) && kinds.filter((k) => k !== 'own').length === kinds.length - own && own === Math.min(MAX_LIVE, ids.length), kinds);
-      await P.page.waitForTimeout(1900 * SLOW);
+      await P.page.waitForTimeout(1900 * SLOW + 1000);
       const z = await P.page.evaluate(() => (window.__btDeathZones ? window.__btDeathZones() : null));
       rec.ok('6. ...and every one let go once over', !!(z && z.live === 0 && z.made === z.freed), z);
       await release(P);
@@ -263,9 +293,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.evaluate(() => { const m = window.__qaDZ.list[0]; m.x = Math.round(m.x); m.y = Math.round(m.y); m.renderX = m.x; m.renderY = m.y; window.__qaDZspot = window.__qaDZspot || [m.x, m.y]; m.x = window.__qaDZspot[0]; m.y = window.__qaDZspot[1]; m.renderX = m.x; m.renderY = m.y; });
         await drawn(P, h.ids[0], 15000);
         await kill(P, [sid], null);
-        await P.page.waitForTimeout(700);
-        const s = await state(P, sid);
-        kinds.push(s.d ? s.d.kind : null);
+        await P.page.waitForTimeout(1200);
+        const W = await P.page.evaluate(() => window.__dzWatch || {});
+        kinds.push(W[sid] && W[sid].first ? W[sid].first.kind : null);
         await P.page.waitForTimeout(2200);
         await release(P);
         await P.page.waitForTimeout(400);
@@ -291,9 +321,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const h = await hold(Q, [{ id: `dz-q-${Date.now()}`, arch: 'snowman', variant: null, dx: 70, dy: 6 }]);
       const ok = await drawn(Q, h.ids[0]);
       await kill(Q, h.ids, null);
-      let s = null;
-      for (let i = 0; i < 20; i++) { await Q.page.waitForTimeout(150); s = await state(Q, h.ids[0]); if (s.d && s.d.kind) break; }
-      rec.ok(`8. ${label}`, !!(ok && ok.s && s && s.d && s.d.kind === want), s && s.d);
+      await Q.page.waitForTimeout(1500);
+      const W = await Q.page.evaluate(() => window.__dzWatch || {});
+      const f = W[h.ids[0]] && W[h.ids[0]].first;
+      rec.ok(`8. ${label}`, !!(ok && ok.s && f && f.kind === want), f);
       await release(Q);
     } finally {
       stop();
