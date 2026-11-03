@@ -28,6 +28,9 @@ heavier bottom edge so it reads as a key) on each button that has a key:
 
 The interact prompts at doors, beds and dungeons already wore **E**, and the
 harvest's button says "Drag ↔ or hold E" (v2.3.3407, desktop-harvest.md).
+v2.3.4105: E never talks to anyone (docs/specs/tap-to-talk.md): the keys
+list says `Click  Talk` and `E  Use` (it said `E  Interact`), and a door's
+button always wears E, whoever stands beside it.
 The keys strip in the corner lists the rest (WASD, Shift, Space, X, Q, R, F,
 G, V, C, H, Tab) and now **1-3** (each weapon straight to hand), the one
 weapon key no button on a computer wears.
