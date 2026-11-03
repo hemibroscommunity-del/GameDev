@@ -432,7 +432,7 @@ export function DungeonCreatorPanel(props) {
           display: 'inline-flex',
           opacity: bossBeaten ? 1 : .35
         }
-      }, lsIcon('/icons/ui/elem-' + key + '.webp?v=2.3.1232', '●', 14)), key, !bossBeaten && /*#__PURE__*/React.createElement("span", {
+      }, lsIcon('/icons/ui/elem-' + key + '.webp?v=2.3.3907' /* v2.3.3907: redrawn as the element alone */, '●', 14)), key, !bossBeaten && /*#__PURE__*/React.createElement("span", {
         style: {
           fontSize: 11
         }
