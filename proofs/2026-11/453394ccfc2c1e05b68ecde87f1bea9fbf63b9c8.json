@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "453394ccfc2c1e05b68ecde87f1bea9fbf63b9c8",
+  "tree": "d9f8e20bcc1adeb4ffd8c2cb06cfbf5e40af55f7",
+  "committedAt": "2026-11-02T17:53:44-08:00",
+  "subject": "Merge pull request #1381 from hemibroscommunity-del/claude/top-bar-place",
+  "files": 7347,
+  "bytes": 843811698,
+  "listingSha256": "7911160017b68fa5cc34b621f73132e72337bdf20ef0f7aa8107942d7411caab",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
