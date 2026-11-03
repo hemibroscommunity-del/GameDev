@@ -46,6 +46,14 @@ editor's ops replay to, as it always did.
   all-outline design swaps that. It used to set an `i` replay never read: a
   dead tap of Undo.
 
+## Layout
+
+The Select row grows a column (Copy) and the layer row a fifth button
+(Delete). Both use `minmax(0, 1fr)` tracks: with plain `1fr` the held row's
+four labels beside Mirror outgrew the panel's width, so picking something up
+widened the whole panel by ~10 px and slid the drawing under the finger holding
+it. At a zero minimum "Keep shape" wraps onto two lines instead.
+
 ## Old looks
 
 Nothing stored changed shape. An old one-design op list loads as it is (the
@@ -57,8 +65,12 @@ no op list (any look restored from the worker) becomes the base, as before.
 - `node tools/qa/mp/run.mjs manydesigns` (world: 'wheel', a phone): two flames on
   the pants, both kept and both separately pickable; Copy makes an identical
   one; Undo/Redo; recolour and Delete; the bro wears both in BroTown (the
-  world's bake input `__btArtForFacing`, the worker's record, flame red on his
-  figure against a plain control); after a reload too; an old one-design look.
+  world's bake input `__btArtForFacing`, and flame red on him against a plain
+  control on the same spot); after a reload; on a SECOND phone with the same
+  Login Key, from his record (saved); an old one-design look.
+  `H.figureBox` alone frames only his head and shirt in the Wheel at this zoom
+  (the flames sat below its bottom edge), so the read widens it by its own
+  scale and lets the control take the ground back out.
 - `mp-designs`: its "re-applying changes nothing" check now asserts the
   opposite (a second design is added; one Undo takes only it).
 - UI review: `creator-paint-designs` (two flames, the second held).
