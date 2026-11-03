@@ -41,11 +41,9 @@ export const CLIENT_SAVERS = Object.freeze([
   /* v2.3.3809: the townsfolk drawn live from their looks, not their
      photographs (rendering/lookFolk.js); off brings the photographs back */
   Object.freeze({ id: 'lookfolk', words: 'Townsfolk drawn live', live: true }),
-  /* v2.3.3999: your portrait as a Hemi Bros bust (rendering/hemiBust.js); off
-     brings back the game's own headshot, from each phone's next load.  Not a
-     memory saver: the owner's new look, kept switchable the same way */
-  Object.freeze({ id: 'hemiface', words: 'Your portrait as a Hemi Bro', live: false }),
-  /* v2.3.4033: a big drawing's building lists let go once it is drawn
+  /* v2.3.4049: the Hemi Bro portrait's row (v2.3.3999) went when the portrait
+     went off by default: `?hemiface=1` turns it on for one tab */
+  /* v2.3.4080: a big drawing's building lists let go once it is drawn
      (rendering/gfxLean.js: the minimap's roads, ~1 MB of the heap) */
   Object.freeze({ id: 'gfxlean', words: 'Big drawings kept once', live: false }),
 ]);

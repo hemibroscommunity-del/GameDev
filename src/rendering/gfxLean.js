@@ -1,4 +1,4 @@
-/* ═══ v2.3.4033: A BIG DRAWING'S BUILDING LISTS LET GO ONCE IT IS BUILT (`?gfxlean`) ═══
+/* ═══ v2.3.4080: A BIG DRAWING'S BUILDING LISTS LET GO ONCE IT IS BUILT (`?gfxlean`) ═══
  *
  * The owner, 2026-11-03: "Raise to 38 MB + trim" (the memory check's heap
  * line; docs/specs/heap-trim-2026-11-03.md).  Heap snapshots of the check's

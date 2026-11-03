@@ -5,6 +5,7 @@ import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
+import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4072: the one dashboard, to try */
 
 /* v2.3.3525: the tour's steps, in order, for "Tour: jump to" (the worker's
    /dev/tour checks each is one) */
@@ -229,6 +230,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
+  'fishvariants' /* v2.3.4036: albino and large fish */, 'fishweigh' /* v2.3.4036: Inspect weighs a fish; the Biggest fish boards */,
   'monstermoves' /* v2.3.4011: the monster moves (monstermoves.js) */, 'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3732: the message diet's path */, 'pathall' /* v2.3.3732: ...for every phone */, 'clientoff' /* v2.3.3755: the memory savers turned off (a list) */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
@@ -840,6 +842,21 @@ export const DevPanel = ({ onClose }) => {
           Open the sound studio
         </button>
 
+        {/* ═══ v2.3.4072: ONE DASHBOARD ON EVERY SCREEN, TO TRY ═══
+            Keyless and this device only (src/ui/oneBand.js): the installed
+            app has no address bar for ?oneband=1, so this row is how the
+            owner tries it on a sideways phone.  The page reloads into it. */}
+        <div style={label}>One dashboard (to try)</div>
+        <div style={{ color: COL.muted, fontSize: 12, marginBottom: 7, lineHeight: 1.4 }}>
+          Every screen uses the upright layout: the dashboard along the bottom, at most a third of the
+          screen, its slots counted from the room it has. For trying sideways and on a computer; the
+          game reloads, and this device keeps the choice until you switch it off here.
+        </div>
+        <button type="button" style={btn(oneBandActive())} data-dev-one-band={oneBandActive() ? 'on' : 'off'}
+          onClick={() => setOneBand(!oneBandActive())}>
+          {oneBandActive() ? 'Switch the one dashboard off' : 'Switch the one dashboard on'}
+        </button>
+
         {!key && (
           <>
             <div style={label}>Admin key</div>
@@ -1015,6 +1032,36 @@ export const DevPanel = ({ onClose }) => {
                   onClick={() => { if (onClose) onClose(); setTimeout(() => { call('/dev/achv', { playerId: myId, id: 'gladiator' }); }, 400); }}>
                   Show a banner (Gladiator, no points)
                 </button>
+              </>
+            )}
+
+            {/* ═══ v2.3.4036: RARE FISH ═══
+                The owner's lever (server devtools.js /dev/fish -> fishlog.js
+                _fishDev): the NEXT fish you catch is albino or large (one fish,
+                gone on a deploy), or one of each put in your bag as a catch
+                (so it can be weighed) -- a cooked albino trout to eat for the
+                +5 AP, a cooked large trout for the +10 and the double heal. */}
+            <div style={label}>Rare fish</div>
+            {!(S && S._serverCaps && S._serverCaps.fishvariants) ? (
+              <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }} data-fish-dev-off="1">
+                This server does not roll rare fish yet -- it needs the deploy that ships them.
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 4 }}>
+                  {[['albino', 'Next fish: albino'], ['large', 'Next fish: large']].map(([v, words]) => (
+                    <button key={v} type="button" style={chip} disabled={busy || !myId} data-dev-fish-next={v}
+                      onClick={async () => { const j = await call('/dev/fish', { playerId: myId, next: v }); if (j && j.ok) setMsg('The next fish you catch is ' + v + '.'); else if (j && j.error) setMsg(j.error); }}>
+                      {words}
+                    </button>
+                  ))}
+                  {[['cooked_fish_trout_albino', 'Cooked albino trout'], ['cooked_fish_trout_large', 'Cooked large trout'], ['fish_trout_albino', 'Albino trout (to weigh)'], ['fish_pike_large', 'Large pike (to weigh)']].map(([k, words]) => (
+                    <button key={k} type="button" style={chip} disabled={busy || !myId} data-dev-fish-give={k}
+                      onClick={async () => { const j = await call('/dev/fish', { playerId: myId, give: k, n: 1 }); if (j && j.ok) setMsg(words + ' is in your bag.'); else if (j && j.error) setMsg(j.error); }}>
+                      {words}
+                    </button>
+                  ))}
+                </div>
               </>
             )}
 

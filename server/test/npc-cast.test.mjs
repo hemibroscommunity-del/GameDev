@@ -15,11 +15,17 @@
  *      ten keepers each opening the building he stands at, no building with
  *      two; their looks are NPC_LOOKS rows; their pictures on disk;
  *   5. talking is a tap: none of them opens anything by walking up.
+ *   6. (v2.3.4025) plain words: the owner, "a simple and easy to understand
+ *      personality and directions.  No cryptic jokes or anything that could
+ *      confuse someone" -- no townsperson's chatter brings back the old
+ *      jokes' slang, and the eight who go by a nickname on screen say it
+ *      (their keys and names stay; docs/specs/plain-words.md).
  */
 import fs from 'fs';
 import { NPC_DATA } from '../../src/data/gameDisplay.js';
 import { QUEST_CHAINS } from '../../src/data/gameSystems.js';
 import { WHEEL_TOWNSFOLK, WHEEL_KEEPERS, WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS } from '../../src/data/wheelBuildingDoors.js';
+import { FOLK_DAYS } from '../../src/game/townsfolkWalk.js';   /* v2.3.4058: their days */
 
 let passed = 0, failed = 0;
 function check(name, cond, detail) {
@@ -38,6 +44,7 @@ const LOOK = { Sterling: 'banker', Slim: 'barkeep', 'Chef Blaze': 'chef', Glint:
   'Deed Dave': 'realtor', Benny: 'bellhop', 'Guildmaster Gary': 'guildmaster', 'Sheriff Buck': 'sheriff', 'Gavel Greg': 'auctioneer',
   'Old Man Reel': 'fisher', Bean: 'streamer', 'Tourist Terry': 'tourist' };
 const row = (n) => NPC_DATA.find((r) => r.name === n);
+const GIVERS = new Set(Object.values(QUEST_CHAINS).map((q) => q && q.npc).filter(Boolean));   /* v2.3.4058 */
 
 /* ── 1. every townsperson's lines ─────────────────────────────────────────── */
 {
@@ -51,8 +58,14 @@ const row = (n) => NPC_DATA.find((r) => r.name === n);
 {
   const missing = CAST.filter((n) => !row(n));
   check('2a all thirteen are NPC_DATA rows', missing.length === 0, missing);
-  const notWheel = CAST.filter((n) => row(n) && (row(n).wheelOnly !== true || row(n).noHp !== true || row(n).pathRadius !== 0));
-  check('2b each the Wheel\'s only, with no health bar, standing still (P5\'s walking will move them)', notWheel.length === 0, notWheel);
+  /* v2.3.4058: they walk now -- the owner: "Make NPCs walk around and do stuff
+     now since it doesn't make much memory anymore."  Each walks a day of his
+     own (game/townsfolkWalk.js FOLK_DAYS), so the old wander (pathRadius)
+     leaves them be; a quest giver is tethered to his spot, the rest walk a
+     loop by theirs (server/test/townsfolk-walk.test.mjs) */
+  const notWheel = CAST.filter((n) => row(n) && (row(n).wheelOnly !== true || row(n).noHp !== true || row(n).pathRadius !== 0
+    || !own(FOLK_DAYS, n) || !!FOLK_DAYS[n].tether !== GIVERS.has(n) || (!GIVERS.has(n) && FOLK_DAYS[n].stops.length < 3)));
+  check('2b each the Wheel\'s only, with no health bar, the old wander off (pathRadius 0), walking his own day: a loop by his spot, a quest giver tethered to it (v2.3.4058)', notWheel.length === 0, notWheel);
   const counts = CAST.map((n) => [n, row(n) ? row(n).phrases.length : 0]);
   check(`2c four to six lines each (${counts.map((c) => c[1]).join(', ')})`, counts.every((c) => c[1] >= 4 && c[1] <= 6), counts);
   const lines = CAST.flatMap((n) => (row(n) ? row(n).phrases.map((p) => [n, p]) : []));
@@ -113,6 +126,22 @@ const row = (n) => NPC_DATA.find((r) => r.name === n);
 {
   const walkUp = CAST.filter((n) => row(n) && (row(n).proximity || row(n).opener || row(n).shop || row(n).canFollow));
   check('5a none opens anything by walking up, follows you, or keeps a shop (talking is a tap)', walkUp.length === 0, walkUp);
+}
+
+/* ── 6. v2.3.4025: plain words ────────────────────────────────────────────── */
+{
+  /* the satire scripts' in-jokes and slang (quest-lines §5c holds the quests') */
+  const SLANG = /\baura\b|skill issue|\bGG\b|\bEZ\b|hacker|montage|retrograde|tetanus|futures|spreadsheet|\bKEVIN\b|telegraph|shifty|danger zone|stay frosty|potholes|strong word|don't look it up|no refunds|blood pressure|\bchat is\b/i;
+  const slang = NPC_DATA.flatMap((r) => r.phrases.filter((p) => SLANG.test(p)).map((p) => [r.name, p]));
+  check(`6a no townsperson's chatter (${NPC_DATA.length}) brings back the old jokes' slang`, slang.length === 0, slang);
+  /* the owner's nicknames (the display-name map is lane O's; the rows keep
+     their names, which quests and keepers key on) */
+  const NICK = { 'Gavel Greg': 'Going-Going', 'Old Man Reel': 'Fish Tales', 'Tourist Terry': 'Selfie', 'Sheriff Buck': 'Badge',
+    'Guildmaster Gary': 'Tryhard', 'Deed Dave': 'Swampy', 'Postmaster Pete': 'Snail Mail', 'Chef Blaze': 'Sizzle' };
+  const noNick = Object.entries(NICK).filter(([n, k]) => !(row(n) && row(n).phrases.some((p) => p.includes("I'm " + k))));
+  check('6b the eight with nicknames introduce themselves by them ("I\'m Fish Tales")', noNick.length === 0, noNick);
+  const oldName = Object.keys(NICK).filter((n) => NPC_DATA.some((r) => r.phrases.some((p) => p.includes(n) || p.includes(n.split(' ').pop() + '!'))));
+  check('6c ...and no line says the name he no longer goes by', oldName.length === 0, oldName);
 }
 
 console.log(`\nnpc-cast: ${passed} passed, ${failed} failed`);

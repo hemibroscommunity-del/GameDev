@@ -105,13 +105,12 @@ import { wheelOverviewLands, wheelMapInfo, wheelHere, wheelObjectsInfo, wheelLoc
 import { wheelTownDoors } from '@/game/wheelTownDoors.js';   /* v2.3.3146: the town's buildings */
 import { questRoutePoint } from '@/game/questRoute.js';   /* v2.3.2990: the quest's way */
 import { starCue } from '@/ui/starCue.js';                 /* v2.3.3872: a new star, shown */
-import { DROP_PIN, dropPinAt, dropPinOn } from '@/game/dropPin.js';   /* v2.3.3879: your own pin */
 import { hasGatherTool } from '@/data/lifeSkills.js';      /* v2.3.3012: a node is marked as the world draws it */
 import { peerDotAt } from '@/game/peerDot.js';             /* v2.3.3243: a player's dot where they are now */
 import { PARTY_MARK, partyIdsOf, clampToBox } from '@/game/partyMarks.js';   /* v2.3.3277: your party, blue, and on the box's edge when off it */
 import { questPinsOf, MAP_PIN } from '@/game/questPins.js';   /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '@/data/ownerIcons.js';              /* v2.3.3525: ...in the owner's own pictures */
-import { loadPins, pinsOf, PIN_KEYS, PIN_COLORS } from '@/game/mapPins.js';   /* v2.3.3766: the Town Hall board's red and blue pins */
+import { loadPins, PIN_SLOTS, PIN_COLORS, pinOf, pinPlace, mapPinsOn } from '@/game/pinSlots.js';   /* v2.3.3766: the Town Hall board's red and blue pins; v2.3.4045: one store with the dropped ones */
 import { boardPlaceAt } from '@/game/mapPinPlaces.js';
 import { boardPinnable } from '@/data/townBoard.js';
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
@@ -122,7 +121,7 @@ import { landLook } from '@/data/wheelLands.js';           /* v2.3.3108: the pla
 import { landIconTexture, holdLandIcons, releaseLandIcons } from '../wheelSignposts.js';   /* v2.3.3108: the plate's icon */
 import { wheelBuildingIconTexture, holdBuildingIcons, releaseBuildingIcons } from '../wheelBuildingIcons.js';   /* v2.3.3522: each building's picture */
 import { WHEEL_MINI_PX, wheelMiniK, WHEEL_MINI_WINDOW, WHEEL_MINI_DESK_WINDOW } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: twice as big on a computer */
-import { leanGraphics } from '../gfxLean.js';   /* v2.3.4033: the lines' building lists let go once drawn (~1 MB of the heap) */
+import { leanGraphics } from '../gfxLean.js';   /* v2.3.4080: the lines' building lists let go once drawn (~1 MB of the heap) */
 
 /* v2.3.3986: every size below is in the box's own units, a phone's CSS px; on
    a computer the root is scaled by K (ui/wheelMiniSize.js), so the box is
@@ -174,6 +173,11 @@ const EXPAND_MARK = Object.freeze({ x: FRAME + 3, y: MAP_BOT - 19, w: 16, h: 16 
 const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = FRAME + 9;
 /* v2.3.3766: the board's pins, CSS px (a quest pin's 14 x 17; smaller on the edge) */
 const MAP_PIN_PX = 18, MAP_PIN_EDGE_PX = 13;
+/* v2.3.4045: the line to each pin -- its width and its dark casing, where it
+   starts clear of your chevron (the gold road's), how short is not drawn, and
+   the arrow past an edge pin, toward it: its tip and base out from the pin's
+   middle and its half width (inside the QUEST_EDGE - FRAME px to the frame) */
+const PIN_LINE_W = 2, PIN_LINE_CASE = 4.5, PIN_ARROW_TIP = 9, PIN_ARROW_BASE = 4.5, PIN_ARROW_HALF = 3.5;
 /* v2.3.2992: the gold road -- its width and its dark casing, CSS px; it
    starts clear of your chevron and is not drawn when the spot is this close */
 const ROAD_W = 2.5, ROAD_CASE = 5, ROAD_FROM = 8, ROAD_MIN = 12, C_ROAD_CASE = 0x0b161b;
@@ -308,6 +312,11 @@ export class WheelMinimap {
        under every line and mark; drawn once a map (_build), and held over the window as it pans */
     this.wash = new Graphics();
     this.pan.addChild(this.wash, this.lines, this.buildings, this.townIcons, this.places, this.townMark, this.road, this.marks, this.partyRims);
+    /* v2.3.4045: the lines to the pins (update: redrawn when they move), over
+       the gold road, under every mark */
+    this.pinLines = new Graphics();
+    this.pan.addChildAt(this.pinLines, this.pan.getChildIndex(this.marks));
+    this._pinSig = '';
     this.player = new Sprite(this.icons.self || this.dotTex);
     this.player.anchor.set(0.5);
     this.player.width = 15; this.player.height = 15;
@@ -935,18 +944,30 @@ export class WheelMinimap {
        place (found where it stands this frame: game/mapPinPlaces.js); off the
        box, smaller, riding its edge on the line to it, as your party does --
        so the box always says which way.  Pooled marks like every other: a
-       pin is a sprite's texture, tint and place, never a Graphics change. */
+       pin is a sprite's texture, tint and place, never a Graphics change.
+       (v2.3.3879 drew your own purple pin the same way.)
+       ═══ v2.3.4045: TWO PINS, AND A LINE TO EACH ═══
+       The owner: "Add a line path when you drop pins on your minimap".  The
+       pins are one pair now, blue and red, each a board row or a place
+       (game/pinSlots.js); from you to each a SOLID line in its colour, cased
+       dark like the gold road, to its point -- or, off the box, to its edge
+       mark, with a small arrow past it pointing on.  The lines are one
+       Graphics (pinLines), redrawn only when one moved, came or went
+       (pinSig, as the road's roadSig: TRAPS §218).  `?mappin=0`: the board's
+       pins only, no lines, as before. */
     const mapPins = [];
+    let pinSig = '';
+    const pinSegs = [];
     {
       loadPins(S, null, boardPinnable);
-      const pins = pinsOf(S);
+      const linesOn = mapPinsOn();
+      const resolve = (id) => boardPlaceAt(S, id);
       const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
       const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE, hiY = MAP_BOT - (QUEST_EDGE - FRAME);
-      for (const k of PIN_KEYS) {
-        const id = pins[k];
-        if (!id) continue;
-        let at = null;
-        try { at = boardPlaceAt(S, id); } catch (e) { at = null; }
+      for (const k of PIN_SLOTS) {
+        const pin = pinOf(S, k);
+        if (!pin || (!linesOn && !pin.id)) continue;
+        const at = pinPlace(S, k, resolve);
         if (!at) continue;
         let x = at.x, y = at.y, edge = false;
         if (!inBox(x, y)) {
@@ -956,28 +977,37 @@ export class WheelMinimap {
         const px = edge ? MAP_PIN_EDGE_PX : MAP_PIN_PX;
         /* its point on the place: the glyph's tip is its box's bottom */
         this._mark(x, y - (edge ? 0 : px / 2 / SCALE), 'mappin', PIN_COLORS[k], px);
-        mapPins.push({ color: k, id, edge, x: Math.round(x * SCALE + this.pan.x), y: Math.round(y * SCALE + this.pan.y) });
+        /* the line, in the pan's own px (as the road) */
+        let line = null;
+        if (linesOn) {
+          const x1 = x * SCALE, y1 = y * SCALE, dx = x1 - P.x * SCALE, dy = y1 - P.y * SCALE, L = Math.hypot(dx, dy);
+          if (L > ROAD_MIN) {
+            const ux = dx / L, uy = dy / L;
+            const x0 = P.x * SCALE + ux * ROAD_FROM, y0 = P.y * SCALE + uy * ROAD_FROM;
+            pinSegs.push({ k, x0, y0, x1, y1, ux, uy, edge });
+            pinSig += k + Math.round(x0 * 100) + ',' + Math.round(y0 * 100) + ',' + Math.round(x1 * 100) + ',' + Math.round(y1 * 100) + (edge ? 'e' : '') + ';';
+            line = { x0: Math.round(x0 + this.pan.x), y0: Math.round(y0 + this.pan.y), x1: Math.round(x1 + this.pan.x), y1: Math.round(y1 + this.pan.y), arrow: edge };
+          }
+        }
+        mapPins.push({ color: k, id: pin.id, edge, x: Math.round(x * SCALE + this.pan.x), y: Math.round(y * SCALE + this.pan.y), line });
       }
     }
-    /* ═══ v2.3.3879: YOUR OWN PIN (game/dropPin.js) ═══
-       Dropped on the World map; drawn as the board's pins are, in purple, on
-       the box's edge on the line to it when it is off the box -- however far,
-       so the box always says which way. */
-    let dropPin = null;
-    if (dropPinOn()) {
-      const at = dropPinAt(S);
-      if (at) {
-        const pbx = P.x * SCALE + this.pan.x, pby = P.y * SCALE + this.pan.y;
-        const lo = QUEST_EDGE, hi = WHEEL_BOX - QUEST_EDGE, hiY = MAP_BOT - (QUEST_EDGE - FRAME);
-        let x = at.x, y = at.y, edge = false;
-        if (!inBox(x, y)) {
-          const c = clampToBox(pbx, pby, x * SCALE + this.pan.x, y * SCALE + this.pan.y, lo, hi, hiY);
-          x = (c.x - this.pan.x) / SCALE; y = (c.y - this.pan.y) / SCALE; edge = true;
+    if (pinSig !== this._pinSig) {
+      const G = this.pinLines;
+      G.clear();
+      for (const q of pinSegs) {
+        G.moveTo(q.x0, q.y0).lineTo(q.x1, q.y1).stroke({ width: PIN_LINE_CASE, color: C_ROAD_CASE, alpha: 0.55, cap: 'round' });
+        G.moveTo(q.x0, q.y0).lineTo(q.x1, q.y1).stroke({ width: PIN_LINE_W, color: PIN_COLORS[q.k], alpha: 0.95, cap: 'round' });
+        if (q.edge) {
+          /* the arrow past the edge mark, on toward the pin */
+          const tx = q.x1 + q.ux * PIN_ARROW_TIP, ty = q.y1 + q.uy * PIN_ARROW_TIP;
+          const bx = q.x1 + q.ux * PIN_ARROW_BASE, by = q.y1 + q.uy * PIN_ARROW_BASE;
+          G.poly([tx, ty, bx - q.uy * PIN_ARROW_HALF, by + q.ux * PIN_ARROW_HALF, bx + q.uy * PIN_ARROW_HALF, by - q.ux * PIN_ARROW_HALF])
+            .fill(PIN_COLORS[q.k]).stroke({ width: 1, color: C_ROAD_CASE, alpha: 0.8 });
         }
-        const px = edge ? MAP_PIN_EDGE_PX : MAP_PIN_PX;
-        this._mark(x, y - (edge ? 0 : px / 2 / SCALE), 'mappin', DROP_PIN.COLOR, px);
-        dropPin = { edge, x: Math.round(x * SCALE + this.pan.x), y: Math.round(y * SCALE + this.pan.y) };
       }
+      this._pinSig = pinSig;
+      this._pinDraws = (this._pinDraws || 0) + 1;   /* the probe's: a redraw, never a frame's */
     }
     /* v2.3.2990: the quest's way (above the bros and monsters: drawn last) */
     let quest = null;
@@ -1058,7 +1088,7 @@ export class WheelMinimap {
 
     /* where you are, in words: v2.3.3108 on the plate again (the top bar had
        them from v2.3.3009) */
-    /* v2.3.4033: the roads, river and railway of the whole Wheel (and the
+    /* v2.3.4080: the roads, river and railway of the whole Wheel (and the
        town's buildings and the places), drawn once: once Pixi has made their
        own buffers, the three lists it built them from are let go
        (rendering/gfxLean.js; ~1 MB of the page's heap, the same pixels) */
@@ -1121,7 +1151,6 @@ export class WheelMinimap {
         plate: plate ? { ...plate, y: plate.y * K, h: plate.h * K, titlePx: plate.titlePx * K, subPx: plate.subPx * K, rect: this._plateRect || null } : null,
         /* v2.3.3522: + whose road it is and where it leads (game/questWays.js) */
         star: this._starAt ? { x: Math.round(this._starAt.x * K), y: Math.round(this._starAt.y * K) } : null,   /* v2.3.3872: the star in the box (mp-starcue) */
-        dropPin: kp(dropPin),   /* v2.3.3879: your own pin in the box (mp-mappin) */
         /* v2.3.3986: the monsters' marks -- dots (one a cell), how many cells
            hold two or more (groups) and three or more (big), the bosses'
            skulls, the live monsters in the box, and the marks' sizes */
@@ -1150,7 +1179,10 @@ export class WheelMinimap {
         /* v2.3.3525: the quest pins drawn (who, which, where in the box, and
            whether in the owner's picture) */
         questPins: K === 1 ? questPins : questPins.map(kp),
-        mapPins: K === 1 ? mapPins : mapPins.map(kp),   /* v2.3.3766 */
+        /* v2.3.3766; v2.3.4045: both pins, board rows (id) or places (id null),
+           each with its line, in CSS px like every place here (v2.3.3986) */
+        mapPins: K === 1 ? mapPins : mapPins.map((m) => ({ ...kp(m), line: m.line ? { ...m.line, x0: m.line.x0 * K, y0: m.line.y0 * K, x1: m.line.x1 * K, y1: m.line.y1 * K } : null })),
+        pinLineDraws: this._pinDraws || 0,   /* v2.3.4045: how often the pins' lines were redrawn (mp-mappin: not while you stand) */
       };
     } catch (e) { /* never breaks the frame */ }
   }

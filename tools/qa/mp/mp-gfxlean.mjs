@@ -1,4 +1,4 @@
-/* ═══ A BIG DRAWING'S LISTS LET GO, THE SAME PIXELS (v2.3.4033) ═══
+/* ═══ A BIG DRAWING'S LISTS LET GO, THE SAME PIXELS (v2.3.4080) ═══
  *
  * `?gfxlean` (src/rendering/gfxLean.js): once Pixi has made a big, unbatched
  * Graphics' own vertex buffers, the three plain arrays it built them from are

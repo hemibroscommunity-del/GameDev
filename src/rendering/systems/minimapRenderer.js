@@ -386,7 +386,7 @@ export class MinimapRenderer {
     } catch (e) {
       return Texture.WHITE;   /* square dots beat no minimap */
     } finally {
-      /* v2.3.4033: photographed, so let go (_mintIcon's note) */
+      /* v2.3.4080: photographed, so let go (_mintIcon's note) */
       try { g.destroy(); } catch (e) { /* gone */ }
     }
   }
@@ -428,7 +428,7 @@ export class MinimapRenderer {
     } catch (e) {
       tex = this._dotTex;
     }
-    /* v2.3.4033: the glyph is photographed into its texture at once, and
+    /* v2.3.4080: the glyph is photographed into its texture at once, and
        nothing draws or reads the Graphics again -- yet it was never
        destroyed: each of the ~18 glyphs (and the dot) kept its shapes and
        the triangles Pixi built them into, ~0.3 MB of the page's heap for the

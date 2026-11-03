@@ -59,7 +59,7 @@
  * Whether the page's heap should grow over a long session at all is the
  * soak's question (docs/specs/long-play-soak.md: 7-14 MB an hour of play).
  *
- * v2.3.4033, the trim v2.3.4005 promised: `heap` 38 -> 36 -- LOWERED, the
+ * v2.3.4080, the trim v2.3.4005 promised: `heap` 38 -> 36 -- LOWERED, the
  * saving locked in (docs/specs/heap-trim-2026-11-03.md).  What grew it: the
  * 13 merges of ~02:40 UTC added ~0.4 MB on arrival (bisected, three readings
  * a build: the element icons on the plates with the quest order +0.2, the
@@ -165,16 +165,32 @@
  * 16.8; QA_MB_QUERY=onecopy=0&picnumbers=0).
  * (v2.3.3728: this note corrected: it said "off by default".)
  */
+/* v2.3.4058, the townsfolk walk around and work (docs/specs/living-town.md):
+ * `gpu` 105 -> 115 -- RAISED, approved by the owner, 2026-11-03 ("Approve
+ * walking").  (The heap line's 38 is main's own, the owner's
+ * choice of 2026-11-03, which this walk's reading fits).  The same build, the check's
+ * trip, walking off (`QA_MB_QUERY=folkwalk=0`, the town as on main) against
+ * on, two and four runs: the chip's highest (trip 2, home again) 106.2 / 104.2
+ * off -- main's own reading already at its line of 105 -- against 113.9,
+ * 110.4, 112.7 on (110.2 / 111.4 with their work poses off, `folkwork=0`: the
+ * work is not it); at trip 3's home 91 off, 96-101 on.  The heap's highest
+ * (the third fight) 36.2 / 35.8 off, 37.3 / 37.4 on: about 1 MB, the walkers
+ * bringing more townsfolk's figures near the screen (each some 45 display
+ * objects, v2.3.3809).  In the town alone, 100 s at four places, the chip held
+ * 0-2 MB more walking (what was drawn in the last minute: every facing of
+ * the shared head pieces and tees).  Nothing new is loaded: the walk is the
+ * jog and the work the player's own sheets (folkPose.js).  Lower the line
+ * again if it is trimmed. */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 112, measured: 102.2,   /* v2.3.3702: 156 -> 112, see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
-  gpu: { name: 'textures on the graphics chip', mb: 105, measured: 95.0,
+  gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4058: 105 -> 115, approved by the owner 2026-11-03, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
   canvases: { name: 'pictures the game draws itself', mb: 56, measured: 49.7,   /* v2.3.3699: 96 -> 88; v2.3.3702: 88 -> 56, see the header */
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 29, measured: 27.0,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 36, measured: 34.5,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4033: 38 -> 36, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 36, measured: 34.5,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38; v2.3.4080: 38 -> 36, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 22, measured: 20.4,   /* v2.3.3703: 24 -> 22, see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },

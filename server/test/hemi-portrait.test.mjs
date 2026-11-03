@@ -16,7 +16,7 @@
  *      colour ramps the trait, the default keeps the collection's colours;
  *   5. the background is one of the collection's, the same for the same look;
  *   6. the bust is scaled by whole numbers, nearest neighbour: 6 x 6 blocks;
- *   7. the switch: `?hemiface=0` off, the Test panel's row off, else on;
+ *   7. the switch (v2.3.4049): off by default, `?hemiface=1` on for one tab;
  *   8. the atlas, its index and the fixture are what the tool makes now.
  */
 import fs from 'node:fs';
@@ -244,10 +244,11 @@ const layersOf = (r) => ['bro', r.eyes, r.hair && r.hair.name, r.headwear && r.h
 
 /* ── 7. the switch ───────────────────────────────────────────────────── */
 {
-  check('7a. on by default', hemiFaceChoice('', false).on === true);
-  check('7b. ?hemiface=0 brings back the game\'s headshot for the tab', hemiFaceChoice('?hemiface=0', false).on === false && hemiFaceChoice('?a=1&hemiface=0', false).on === false);
-  check('7c. the Test panel\'s row turns it off for every phone; ?hemiface=1 turns it back on for one', hemiFaceChoice('', true).on === false && hemiFaceChoice('?hemiface=1', true).on === true);
-  check('7d. the row is on the Test panel ("Memory savers"), from the next load', CLIENT_SAVERS.some((c) => c.id === 'hemiface' && c.live === false));
+  /* v2.3.4049: OFF by default (owner: "Sorry but I don't like the pfp") */
+  check('7a. off by default: the game\'s own headshot', hemiFaceChoice('').on === false && hemiFaceChoice('?hemiface=0').on === false);
+  check('7b. ?hemiface=1 turns it on for one tab', hemiFaceChoice('?hemiface=1').on === true && hemiFaceChoice('?a=1&hemiface=1').on === true);
+  check('7c. nothing else turns it on', hemiFaceChoice('?hemiface=yes').on === false && hemiFaceChoice('?hemiface').on === false);
+  check('7d. no Test panel row is left (there is nothing for it to turn off)', !CLIENT_SAVERS.some((c) => c.id === 'hemiface'));
   const src = read('src/rendering/characterPortrait.js').toString();
   check('7e. the headshot path asks for the Hemi Bro first and falls through to the game\'s own', /if \(headshot\) \{\s*const hemi = await hemiBustUrl\(opts\);\s*if \(hemi\) return hemi;/.test(src));
   const pre = read('src/rendering/preloadAnimations.js').toString();
