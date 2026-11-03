@@ -399,33 +399,34 @@ export const STATES = [
   },
   {
     id: 'hud', group: 'The world (HUD)', title: 'BroTown, nothing open',
-    about: 'The resting game screen in the town square: top bar (the place, its green Safe chip, coins), the player frame top-left (the level beside the HP and energy bars, no picture: v2.3.4093), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
+    about: 'The resting game screen in the town square: top bar (the door, the achievement points and the coins; since v2.3.4103 nothing in its centre: the place and "safe" are on the minimap\'s name plate), the player frame top-left (the level beside the HP and energy bars, no picture: v2.3.4093), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
     run: async ({ P }) => { await wait(P, 600); },
   },
   /* v2.3.3974: the top bar's place chip in its other two states (staged with
      window.__btPlaceHold: the chip and its window only, the worker never
-     told), its window, and the player frame top-left */
+     told), its window, and the player frame top-left.  v2.3.4103: the chip
+     left the top bar; the minimap's name plate says it and takes the tap */
   {
-    id: 'hud-pvp', group: 'The world (HUD)', title: 'Top bar: No man\'s land (PvP)',
-    about: 'The place chip in No man\'s land: amber, "PvP · Lv 6–8", the character levels that can attack you here. Nothing is said or played on the way in; the chip and the red line along the band show it. The player frame top-left: your level beside your HP and energy bars (no picture); a tap opens your Bro page.',
+    id: 'hud-pvp', group: 'The world (HUD)', title: 'No man\'s land on the minimap',
+    about: 'In No man\'s land the minimap\'s name plate says "No man\'s land 1" in red under the land\'s name (the top bar\'s centre is clear since v2.3.4103: the owner, "Remove name of town and "safe" or other designation from top bar"). Nothing is said or played on the way in; the plate and the red line along the band show it, and a tap on the plate says who can attack you. The player frame top-left: your level beside your HP and energy bars (no picture); a tap opens your Bro page.',
     run: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = { nml: 1, red: 0 }; }); await wait(P, 700); },
     after: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = null; }).catch(() => {}); await wait(P, 400); },
   },
   {
-    id: 'nml-popup', group: 'The world (HUD)', title: 'Top bar: the chip\'s window (PvP)',
-    about: 'A tap on the PvP chip: who can attack you here and exactly what a player kill would take ("your 2,550 gold and the 12 things in your bag"), the Bank to keep things safe, then the rules.',
+    id: 'nml-popup', group: 'The world (HUD)', title: 'The minimap plate\'s window (No man\'s land)',
+    about: 'A tap on the minimap\'s name plate in No man\'s land: who can attack you here and exactly what a player kill would take ("your 2,550 gold and the 12 things in your bag"), the Bank to keep things safe, then the rules.',
     run: async ({ P }) => {
       await evalIn(P, () => { window.__btPlaceHold = { nml: 1, red: 0 }; });
       await wait(P, 600);
-      await evalIn(P, () => { const b = document.querySelector('[data-place-chip]'); if (b) b.click(); });
+      await evalIn(P, () => { const b = document.querySelector('[data-plate-tap]'); if (b) b.click(); });
       await wait(P, 700);
-      if (!(await has(P, '[data-place-lead]'))) return 'the chip\'s window did not open';
+      if (!(await has(P, '[data-place-lead]'))) return 'the plate\'s window did not open';
     },
     after: async ({ P }) => { await evalIn(P, () => { if (window.__btInfoPopup) window.__btInfoPopup.close(); window.__btPlaceHold = null; }).catch(() => {}); await wait(P, 400); },
   },
   {
-    id: 'hud-outlaw', group: 'The world (HUD)', title: 'Top bar: outlaw (red skull)',
-    about: 'The place chip while you carry the red skull (you attacked a player first): red, the skull, "Outlaw". The skull means outlaw only; a tap says the minutes left and that a player kill now takes everything, worn gear too.',
+    id: 'hud-outlaw', group: 'The world (HUD)', title: 'Outlaw, on the minimap',
+    about: 'While you carry the red skull (you attacked a player first) the minimap\'s name plate says "Outlaw · 18 min" in red; a tap on it says the minutes left and that a player kill now takes everything, worn gear too.',
     run: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = { nml: 1, red: 18 }; }); await wait(P, 700); },
     after: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = null; }).catch(() => {}); await wait(P, 400); },
   },

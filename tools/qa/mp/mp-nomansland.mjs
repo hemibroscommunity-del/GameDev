@@ -300,14 +300,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
              after the dwell, so read whichever nml-* banner has played */
           ...(() => { let at = 0, k = 0; for (let n = 1; zb && zb.shownAt && n <= 200; n++) { const a = zb.shownAt('nml-' + n); if (a > at) { at = a; k = n; } } return { banner: at, bannerLvl: k }; })(),
           chat: (S.chatLog || []).filter((l) => /No man's land \d/.test(l.text || '')).map((l) => l.text),
-          bar: sub ? sub.textContent : null,
+          bar: sub ? sub.textContent : null, barRed: sub ? sub.red : null,
           /* v2.3.3765: the top bar's title, right of which the badge stands */
           title: (() => { const q = document.querySelector('[data-zone-title]'); const x = q && q.getBoundingClientRect(); return x ? { l: Math.round(x.left), r: Math.round(x.right) } : null; })(),
           header: (() => { const q = document.querySelector('.bt-zone-header'); const x = q && q.getBoundingClientRect(); return x ? { t: Math.round(x.top), b: Math.round(x.bottom) } : null; })(),
           /* v2.3.3629: the minimap's box and its name plate, beside which the badge stood */
           mini: window.__btWheelMini ? { l: window.__btWheelMini.left, t: window.__btWheelMini.top } : null,
           plateBox: window.__btWheelPlate ? { t: window.__btWheelPlate.top, b: window.__btWheelPlate.top + window.__btWheelPlate.height } : null,
-          badge: b ? { n: b.getAttribute('data-nml-badge'), text: b.textContent, kind: b.getAttribute('data-place-chip'), lv: (S.rpg && S.rpg.level) || 1, mid: Math.round(r.left + r.width / 2 - innerWidth / 2),
+          badge: b ? { n: b.getAttribute('data-nml-badge'), text: b.textContent, kind: b.getAttribute('data-plate-tap'), at: b.getAttribute('data-nml-at'), lv: (S.rpg && S.rpg.level) || 1, mid: Math.round(r.left + r.width / 2 - innerWidth / 2),
             /* v2.3.3268: how far its right edge stops short of the middle (2 px:
                it sat on the shield button, whose left edge is the middle) */
             short: Math.round(innerWidth / 2 - r.right),
@@ -326,9 +326,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [who, t] of [['the raider', tA], ['the wanderer', tB]]) {
     rec.ok(`1. ${who} is told by the badge alone: no banner (v2.3.3853), no chat line (v2.3.3887: ${t && t.chat.length}) and the badge (skull ${t && t.badge && t.badge.text}, ${t && t.badge && t.badge.w} px wide)`,
       !!t && t.lvl >= 1 && t.lvl <= 5 && t.banner === 0 && t.chat.length === 0   /* v2.3.3887: and no chat line (the owner) */ && !!t.badge && t.badge.n === String(t.lvl)
-        /* v2.3.3974: the place chip, amber, the levels that can attack you
-           ("PvP · Lv 1-3", or "Lv 1-3" on a narrow bar: game/placeSafety.js) */
-        && t.badge.kind === 'pvp' && new RegExp(`Lv ${Math.max(1, t.badge.lv - t.lvl)}(\u2013${t.badge.lv + t.lvl})?$`).test(t.badge.text.trim()) && t.badge.w <= 150, t);
+        /* v2.3.4103: the minimap's plate says it and takes the tap (the top
+           bar's chip of v2.3.3974 is gone: NmlBadge.jsx PlateTap) */
+        && t.badge.kind === 'pvp' && t.badge.at === 'plate', t);
     /* v2.3.3268: just LEFT of the middle -- centred, it sat on the shield
        button (the shield's left edge is the middle, ShieldButton.jsx
        ctlColumn) and a tap on the shield's middle opened the badge; it stops
@@ -345,11 +345,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3765: IN THE TOP BAR, just right of the title (the owner: "just
        to the right of the Brotown name at the top"), a target the bar's height
        (34 px, as the AP's; mp-nmltopbar measures every width) */
-    const tb = t && t.badge;
-    rec.ok(`1. ...the badge in the top bar just right of the title (${t && t.title && tb ? tb.l - t.title.r : '?'} px from it), a ${tb && tb.h} px target`,
-      !!tb && !!t.title && !!t.header && tb.l >= t.title.r && tb.l - t.title.r <= 14 && tb.t >= t.header.t && tb.bt <= t.header.b
-        && tb.h >= 34 && tb.l >= 0, { tb, title: t && t.title, header: t && t.header });
-    rec.ok(`1. ...and the minimap's name plate shows the level band, the badge saying No man's land ("${t && t.bar}")`, !!t && t.bar === BAND, t && t.bar);
+    /* v2.3.4103: ON THE MINIMAP'S PLATE (the owner: "Remove name of town and
+       "safe" or other designation from top bar ... The minimap label area
+       already does this"): the plate's second line says "No man's land N" in
+       red, and the tap lies over the plate, on the screen */
+    const tb = t && t.badge, pb = t && t.plateBox;
+    rec.ok(`1. ...the tap over the minimap's name plate (${tb ? tb.t + '-' + tb.bt : '?'} on ${pb ? pb.t + '-' + pb.b : '?'}), and the plate says "${t && t.bar}" in red`,
+      !!tb && !!pb && Math.abs(tb.t - pb.t) <= 1 && Math.abs(tb.bt - pb.b) <= 1 && tb.l >= 0
+        && t.bar === `No man's land ${t.lvl}` && t.barRed === true, { tb, pb, bar: t && t.bar });
   }
   await shot(A, '1-told');
 
@@ -418,9 +421,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const own = await A.page.evaluate(() => {
     const b = document.querySelector('[data-nml-badge]');
     if (!b) return undefined;
-    /* v2.3.3974: a red skull IS the chip now (red, "Outlaw"); the corner mark is the white one's */
+    /* v2.3.3974: a red skull IS the chip (red, "Outlaw"); v2.3.4103: the plate's tap says which */
     const o = b.querySelector('[data-nml-own-skull]');
-    const kind = b.getAttribute('data-place-chip');
+    const kind = b.getAttribute('data-plate-tap');
     b.click();
     return kind === 'outlaw' ? 'red' : (o ? o.getAttribute('data-nml-own-skull') : null);
   });

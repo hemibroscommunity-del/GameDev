@@ -2281,31 +2281,16 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
    own colour, ZoneHeader.jsx landTint) -- no filters over the canvas (TRAPS §42) */
 .bt-zone-header__elem{display:inline-block;width:16px;height:16px;margin:0 4px 0 0;
   vertical-align:-3px;pointer-events:none}
-/* ═══ v2.3.3974: THE PLACE CHIP (NmlBadge.jsx PlaceChip) ═══
-   The pill above, always up now: green Safe, amber "PvP · Lv 6-8" in No
-   man's land, red skull and Outlaw while you carry the red skull.  It keeps
-   the pill's box and its cut-away under the XP bar; only the face changes. */
-.bt-place-chip__body{gap:4px;padding:2px 9px 2px 5px;border-color:var(--pc-c,#6FCF7F);background:var(--pc-bg,rgba(10,24,14,.9))}
-.bt-place-chip--safe{--pc-c:#6FCF7F;--pc-bg:rgba(10,24,14,.9)}
-.bt-place-chip--pvp{--pc-c:#E5B45C;--pc-bg:rgba(30,22,8,.92)}
-.bt-place-chip--outlaw{--pc-c:#FF6B5E;--pc-bg:rgba(22,10,10,.92)}
-.bt-place-chip__icon{display:block;line-height:0}
-.bt-place-chip__icon svg{width:calc(15px * var(--zk));height:calc(15px * var(--zk))}
-.bt-place-chip__words{color:var(--pc-c);white-space:nowrap;
-  font:800 calc(13px * var(--zk))/1 'Source Sans 3',sans-serif;letter-spacing:.02em;
-  font-variant-numeric:tabular-nums}
-/* (an iPhone SE, 320 px: the shield's and the blades' icons give way, never
-   the place's name -- mp-topbar's rich purse in a land; the outlaw keeps
-   its skull) */
-@media (max-width:359px){
-  .bt-place-chip--safe .bt-place-chip__icon,.bt-place-chip--pvp .bt-place-chip__icon,
-  .bt-zone-header__mid:has(> .bt-zone-header__test) .bt-place-chip__icon{display:none}
-}
-@media (max-width:374px){
-  .bt-place-chip__body{gap:3px;padding:1px 6px 1px 4px}
-  .bt-place-chip__words{font-size:calc(11.5px * var(--zk))}
-  .bt-place-chip__icon svg{width:calc(13px * var(--zk));height:calc(13px * var(--zk))}
-}
+/* ═══ v2.3.4103: IN THE WORLD THE TOP BAR'S CENTRE IS CLEAR ═══
+   The owner, 2026-11-03: "Remove name of town and "safe" or other
+   designation from top bar (currently centered). The minimap label area
+   already does this."  The place chip of v2.3.3974 is gone (the minimap's
+   plate says No man's land and Outlaw, game/plateSafety.js); the title stays
+   in the page, drawn clear, so the owner's 1.2 s hold on the centre still
+   opens the Test panel and the scenarios still read "BroTown" (ZoneHeader.jsx).
+   Off the Wheel the zone's name is drawn as before. */
+.bt-zone-header__title--clear{color:transparent;text-shadow:none}
+.bt-zone-header__title--clear.is-arriving{animation:none}
 /* ═══ v2.3.3974: YOUR FRAME, TOP-LEFT (ui/PlayerFrame.jsx) ═══
    The owner, 2026-11-02: "Yes, always on: compact: your face, level, an HP
    bar and an energy bar at the top-left; the quest card moves just under it."

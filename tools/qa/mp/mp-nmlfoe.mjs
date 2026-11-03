@@ -818,9 +818,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
        "just to the right of the Brotown name at the top"), at every width and
        sideways (mp-nmltopbar measures the bar itself) */
     const side = r.orient === 'landscape';
-    const beside = !!r.badge && r.seen && r.at === 'bar' && !!r.title && !!r.header && r.badge.l >= r.title.r && r.badge.l - r.title.r <= 14
-      && r.badge.t >= r.header.t && r.badge.b <= r.header.b && r.badge.r <= r.vw;
-    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) in the top bar just right of the title (${r.title ? r.title.l + '-' + r.title.r : 'none'})${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
+    /* v2.3.4103: on the minimap's name plate (the owner: "Remove name of
+       town and "safe" or other designation from top bar ... The minimap
+       label area already does this"): the plate's tap lies inside the
+       minimap's box, at its foot, on top, on the screen */
+    const beside = !!r.badge && r.seen && r.at === 'plate' && !!r.mini
+      && r.badge.l >= r.mini.l - 1 && r.badge.r <= r.mini.r + 1 && r.badge.t >= r.mini.t - 1 && r.badge.b <= r.mini.b + 1 && r.badge.r <= r.vw;
+    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) on the minimap's name plate (the box ${r.mini ? r.mini.l + '-' + r.mini.r + ', ' + r.mini.t + '-' + r.mini.b : 'none'})${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
       beside && !!r.shield && !r.hitShield && r.top === 'shield' && !r.hitOthers.length, r);
   }
 
