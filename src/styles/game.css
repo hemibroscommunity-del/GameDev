@@ -2380,60 +2380,16 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
    Off the Wheel the zone's name is drawn as before. */
 .bt-zone-header__title--clear{color:transparent;text-shadow:none}
 .bt-zone-header__title--clear.is-arriving{animation:none}
-/* ═══ v2.3.3974: YOUR FRAME, TOP-LEFT (ui/PlayerFrame.jsx) ═══
-   The owner, 2026-11-02: "Yes, always on: compact: your face, level, an HP
-   bar and an energy bar at the top-left; the quest card moves just under it."
-   Just under the top bar (whose bottom is 46 px + its growth + the notch),
-   at the play area's left edge.  --bt-pf-k sizes it: 1 on a phone (150 x 44),
-   larger on a computer's play column.  --bt-hud-top is its bottom plus a
-   gap: the quest card and the status chips start there.  Flat fills, the
-   bars scaled (never re-laid out): it is over the WebGL canvas (TRAPS §42). */
-/* ═══ v2.3.4093: NO PICTURE: THE LEVEL, THEN THE BARS ═══
-   The owner, 2026-11-03: "Remove the character pfp in the top left corner
-   if you haven't already".  The face (v2.3.3974's 64 / 96 px box) is gone
-   on every layout; the level is a round gold badge beside the bars, and the
-   frame is as tall as the bars need -- 40 px on a phone, still a fair thumb
-   -- so --bt-hud-top, and the quest card under it, come up with it.  The
-   whole frame keeps its tap (the Bro page).  Its width gives way on a narrow
-   phone so it never reaches the minimap (132 px + its margin, top-right). */
-html{--bt-pf-k:1;
-  --bt-pf-top:calc(50px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,0px));
-  --bt-pf-h:calc(40px * var(--bt-pf-k));
-  --bt-hud-top:calc(var(--bt-pf-top) + var(--bt-pf-h) + 6px)}
-@media (pointer:fine) and (min-width:1000px){ html.bt-desk-wide{--bt-pf-k:1.5} }
-.bt-pf{position:fixed;z-index:19;top:var(--bt-pf-top);left:8px;
-  width:min(calc(166px * var(--bt-pf-k)), calc(100vw - 152px));height:var(--bt-pf-h);box-sizing:border-box;
-  display:flex;align-items:center;gap:calc(6px * var(--bt-pf-k));margin:0;
-  padding:calc(3px * var(--bt-pf-k)) calc(8px * var(--bt-pf-k)) calc(3px * var(--bt-pf-k)) calc(5px * var(--bt-pf-k));
-  border-radius:calc(9px * var(--bt-pf-k));border:1px solid rgba(216,169,77,.4);
-  background:rgba(17,25,29,.86);box-shadow:0 2px 6px rgba(0,0,0,.35);
-  cursor:pointer;pointer-events:auto;touch-action:manipulation;
-  -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;text-align:left}
-html[data-orient="landscape"] .bt-pf{left:calc(var(--world-x,0px) + var(--world-pad-l,0px) + 8px);
-  width:calc(166px * var(--bt-pf-k))}
-.bt-pf__lv{flex:none;min-width:calc(26px * var(--bt-pf-k));height:calc(26px * var(--bt-pf-k));padding:0 4px;box-sizing:border-box;
-  border-radius:999px;background:#1A2328;box-shadow:0 0 0 1.5px #EAC675;
-  display:flex;align-items:center;justify-content:center;
-  color:#F2D58C;font:900 calc(13px * var(--bt-pf-k))/1 'Source Sans 3',sans-serif;font-variant-numeric:tabular-nums}
-.bt-pf__bars{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:calc(4px * var(--bt-pf-k))}
-.bt-pf--mp .bt-pf__bars{gap:calc(3px * var(--bt-pf-k))}
-.bt-pf__bar{position:relative;height:calc(8px * var(--bt-pf-k));border-radius:4px;background:#0C1316;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);overflow:hidden}
-.bt-pf__bar--hp{height:calc(14px * var(--bt-pf-k))}
-.bt-pf--mp .bt-pf__bar--hp{height:calc(12px * var(--bt-pf-k))}
-.bt-pf--mp .bt-pf__bar--en,.bt-pf--mp .bt-pf__bar--mp{height:calc(6px * var(--bt-pf-k))}
-.bt-pf__fill{position:absolute;left:1px;right:1px;top:1px;bottom:1px;border-radius:3px;transform-origin:0 50%;
-  transition:transform 200ms linear}
-.bt-pf__bar--hp .bt-pf__fill{background:#D9534F}
-.bt-pf__bar--en .bt-pf__fill{background:#E8C547}
-.bt-pf__bar--mp .bt-pf__fill{background:#4F8FDE}
-.bt-pf__num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;white-space:nowrap;
-  color:#FFF8E6;font:800 calc(10px * var(--bt-pf-k))/1 'Source Sans 3',sans-serif;font-variant-numeric:tabular-nums;
-  text-shadow:-1px 0 0 #10171B,1px 0 0 #10171B,0 -1px 0 #10171B,0 1px 0 #10171B}
-.bt-pf__of{opacity:.8}
-.bt-pf.is-dead{opacity:.6}
-html.bt-calm .bt-pf__fill{transition:none}
-@media (prefers-reduced-motion: reduce){ .bt-pf__fill{transition:none} }
+/* ═══ v2.3.4163: NO PLAYER FRAME; THE QUEST CARD UNDER THE TOP BAR ═══
+   The owner, 2026-11-03: "No remove them from the game screen: they're
+   already seeing it on the dashboard and whenever they enter combat or have
+   any resource depletion it appears above their character head anyway".  The
+   top-left player frame of v2.3.3974-v2.3.4093 (the level, HP and energy;
+   ui/PlayerFrame.jsx) is gone on every layout.  --bt-hud-top, where the quest
+   card and the status chips start, is just under the top bar again: its
+   bottom (46 px + its growth + the notch) and a 10 px gap, the card's old 56
+   px, now following the bar as it grows. */
+html{--bt-hud-top:calc(56px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,0px))}
 /* v2.3.2320: was `width:38px;height:1px` — a pure optical spacer.  min-width
    holds the old 38px so the title stays centred on the SCREEN while the
    purse is narrow, which is the property the spacer existed for. */
@@ -7020,10 +6976,9 @@ html.bt-one-band:not(.bt-band-side) .bt-dashboard{
 html.bt-one-band, html.bt-one-band body{background:#070D11}
 /* v2.3.4152: the one band is the default, so what is fixed OUTSIDE the wrap
    and pinned to the window's left edge moves in with the world, as the
-   sideways layout's own rules do: the player frame (left 8 px: over the bar
-   on a computer and a sideways phone) and, on a computer, the controls' ⌨
-   and its strip (left 52 / 100 px, beside the bell, which rides the wrap) */
-html.bt-one-band .bt-pf{left:calc(max(var(--world-x,0px), var(--world-pad-l,0px)) + 8px)}
+   sideways layout's own rules do: on a computer the controls' ⌨ and its
+   strip (left 52 / 100 px, beside the bell, which rides the wrap).  (The
+   player frame had its rule here too until v2.3.4163 took it away.) */
 html.bt-one-band .bt-kb-chip:not(.bt-kb-side *){left:calc(var(--world-x,0px) + 52px)}
 html.bt-one-band .bt-kb-hints[data-beside]:not(.bt-kb-side *){left:calc(var(--world-x,0px) + 100px);max-width:min(310px,calc(var(--play-w,100%) - 112px))}
 /* ═══ v2.3.4152: THE BAND'S CONTENT, CENTRED ON A WIDE SCREEN ═══

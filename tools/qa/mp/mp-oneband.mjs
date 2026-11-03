@@ -138,13 +138,14 @@ async function sidewaysChecks(P, rec, { label, viewport }) {
     { fold: rest.fold, side: rest.side, stored: rest.stored, band: o.band });
   const names = rest.ctl.map((c) => c.name);
   rec.ok(`${label}: guard: the fight's controls are on screen to be measured (the stick, the disc, Sprint, Jump, the weapon pill, Block, Special)`,
-    ['stick', 'disc', 'sprint', 'jump', 'tri', 'shield', 'special'].every((n) => names.includes(n)) && !!rest.pf && !!rest.mini && !!rest.plate,
+    /* v2.3.4163: no player frame any more (the owner took it off the game screen) */
+    ['stick', 'disc', 'sprint', 'jump', 'tri', 'shield', 'special'].every((n) => names.includes(n)) && !rest.pf && !!rest.mini && !!rest.plate,
     { names, pf: rest.pf, mini: rest.mini, plate: rest.plate });
   const top = o.band ? o.band.y : Hh;
   const x0 = (o.worldX || 0), x1 = x0 + (o.playW || W);
   const bad = rest.ctl.filter((c) => c.b > top + 1 || c.x < x0 - 1 || c.r > x1 + 1 || c.y < 0
     || meets(c, rest.pf) || meets(c, rest.mini) || meets(c, rest.plate));
-  rec.ok(`${label}: folded, every control sits above the button row inside the world, clear of the player frame, the minimap and its plate`,
+  rec.ok(`${label}: folded, every control sits above the button row inside the world, clear of the minimap and its plate`,
     rest.ctl.length >= 7 && bad.length === 0, { bad, top, world: [x0, x1], pf: rest.pf, mini: rest.mini, plate: rest.plate });
   rec.ok(`${label}: folded, every control is shown and a tap at its middle reaches it (nothing over it)`,
     rest.ctl.filter((c) => c.name !== 'stick' && c.name !== 'pie').every((c) => c.vis === 'visible' && c.hit),
