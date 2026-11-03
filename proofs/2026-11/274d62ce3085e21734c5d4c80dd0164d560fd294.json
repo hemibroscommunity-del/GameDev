@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "274d62ce3085e21734c5d4c80dd0164d560fd294",
+  "tree": "4709001c62bcc059b8bc6cd577550875a0dc6de9",
+  "committedAt": "2026-11-02T23:31:21-08:00",
+  "subject": "Merge pull request #1400 from hemibroscommunity-del/claude/frame-no-portrait",
+  "files": 7489,
+  "bytes": 848751764,
+  "listingSha256": "d84618201f55415acc1d972ef14f66c25f9d3f1712d427f7abf5a1f874709db6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
