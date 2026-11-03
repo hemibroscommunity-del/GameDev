@@ -403,6 +403,70 @@ export const STATES = [
     },
   },
 
+  /* v2.3.4167: the drawing editor with MORE THAN ONE ready-made design on a
+     canvas -- the owner's two flames on the pants -- the second held, so the
+     Select row shows its Copy button and the layer row its Delete.  Undone on
+     the way out, so the rest of the review's bro wears plain trousers. */
+  {
+    id: 'creator-paint-designs', group: 'Before the game', pre: true, title: 'Creator: two designs on the pants',
+    about: 'The Pants editor with two ready-made Flame designs placed on the trousers, the second still held: Keep shape, Copy, Place and Cancel in the Select row; the layer row (To back, Back, Forward, To front, Delete) says "Layer 2 of 2 \u00b7 design".',
+    run: async ({ P }) => {
+      await evalIn(P, () => {
+        const b = Array.from(document.querySelectorAll('button.bt-cc-tab')).find((x) => /pants/i.test((x.innerText || '').trim()));
+        if (b) b.click();
+      });
+      await wait(P, 800);
+      const ok = await evalIn(P, () => {
+        const b = document.querySelector('.bt-cc-ink button');
+        if (!b) return false;
+        b.click();
+        return true;
+      });
+      if (!ok) return 'no drawing card on the Pants tab';
+      await wait(P, 1600);
+      await evalIn(P, () => {
+        const b = Array.from(document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')).find((x) => /draw/i.test(x.textContent || ''));
+        if (b) b.click();
+      });
+      await wait(P, 1600);
+      for (let n = 0; n < 2; n++) {
+        const opened = await evalIn(P, () => {
+          const b = Array.from(document.querySelectorAll('.bt-paint-note button')).find((x) => /designs/i.test(x.textContent || ''));
+          if (!b) return false;
+          b.click();
+          return true;
+        });
+        if (!opened) return 'no Designs button in the Pants editor';
+        await wait(P, 700);
+        const picked = await evalIn(P, () => {
+          const s = Array.from(document.querySelectorAll('.bt-modal-scrim'));
+          const g = s[s.length - 1];
+          const t = g && Array.from(g.querySelectorAll('button')).find((b) => b.querySelector('canvas') && (b.textContent || '').trim() === 'Flame');
+          if (!t) return false;
+          t.click();
+          return true;
+        });
+        if (!picked) return 'no Flame in the design gallery';
+        await wait(P, 1000);
+      }
+    },
+    after: async ({ P }) => {
+      /* both flames off again (one Undo each), then the editor's own Done */
+      for (let n = 0; n < 2; n++) {
+        await evalIn(P, () => {
+          const u = Array.from(document.querySelectorAll('.bt-paint button')).find((x) => /^undo$/i.test((x.innerText || '').trim()));
+          if (u) u.click();
+        });
+        await wait(P, 500);
+      }
+      await evalIn(P, () => {
+        const d = Array.from(document.querySelectorAll('button')).find((x) => /^done$/i.test((x.innerText || '').trim()));
+        if (d) d.click();
+      });
+      await wait(P, 900);
+    },
+  },
+
   /* ═══ ARRIVING ═══ */
   {
     id: 'welcome', group: 'Arriving in BroTown', title: 'Welcome, first seconds in the world',
@@ -426,16 +490,16 @@ export const STATES = [
   },
   {
     id: 'hud', group: 'The world (HUD)', title: 'BroTown, nothing open',
-    about: 'The resting game screen in the town square: top bar (the door, the achievement points and the coins; since v2.3.4113 nothing in its centre: the place and "safe" are on the minimap\'s name plate), the player frame top-left (the level beside the HP and energy bars, no picture: v2.3.4093), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
+    about: 'The resting game screen in the town square: top bar (the door, the achievement points and the coins; since v2.3.4113 nothing in its centre: the place and "safe" are on the minimap\'s name plate), the quest card just under the top bar (since v2.3.4163 no player frame: your HP and energy show over your bro\'s head and on the dashboard), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
     run: async ({ P }) => { await wait(P, 600); },
   },
   /* v2.3.3974: the top bar's place chip in its other two states (staged with
      window.__btPlaceHold: the chip and its window only, the worker never
-     told), its window, and the player frame top-left.  v2.3.4113: the chip
+     told), its window, and (until v2.3.4163) the player frame top-left.  v2.3.4113: the chip
      left the top bar; the minimap's name plate says it and takes the tap */
   {
     id: 'hud-pvp', group: 'The world (HUD)', title: 'No man\'s land on the minimap',
-    about: 'In No man\'s land the minimap\'s name plate says "No man\'s land 1" in red under the land\'s name (the top bar\'s centre is clear since v2.3.4113: the owner, "Remove name of town and "safe" or other designation from top bar"). Nothing is said or played on the way in; the plate and the red line along the band show it, and a tap on the plate says who can attack you. The player frame top-left: your level beside your HP and energy bars (no picture); a tap opens your Bro page.',
+    about: 'In No man\'s land the minimap\'s name plate says "No man\'s land 1" in red under the land\'s name (the top bar\'s centre is clear since v2.3.4113: the owner, "Remove name of town and "safe" or other designation from top bar"). Nothing is said or played on the way in; the plate and the red line along the band show it, and a tap on the plate says who can attack you.',
     run: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = { nml: 1, red: 0 }; }); await wait(P, 700); },
     after: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = null; }).catch(() => {}); await wait(P, 400); },
   },

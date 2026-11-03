@@ -1195,3 +1195,9 @@ says the exact cost.
 - QA: `window.__btPlaceHold = { nml, red }` stages the chip (the UI review's
   hud-pvp, nml-popup, hud-outlaw); `window.__btPlayerFrame()`; mp-topbarplace;
   `node tools/dev/test-place-safety.mjs`.
+
+**v2.3.4163:** the player frame is gone from the game screen (the owner: "No
+remove them from the game screen: they're already seeing it on the dashboard
+and whenever they enter combat or have any resource depletion it appears above
+their character head anyway"). `ui/PlayerFrame.jsx` is deleted; `--bt-hud-top`
+is just under the top bar again (game.css).
