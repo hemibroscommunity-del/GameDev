@@ -104,6 +104,11 @@ function check(name, cond, detail) {
 const SHORT = { wheel5x: false };   /* v2.3.3315 */
 const room = new GameRoom(mockState, mockEnv);
 room._liveFlags = { ...SHORT };
+/* v2.3.4049: a caught fish rolls 1% albino and 0.1% large (fishlog.js,
+   v2.3.4036), and these checks ask for the plain fish by name: the dice are
+   pinned above both odds, so the catch is always plain (PR #1395's CI drew
+   an albino minnow and went red) */
+room._fishRand = () => 0.5;
 const CENTRE = [21504, 21504];
 
 // ── 1. THE SPAWN ──────────────────────────────────────────────────────────

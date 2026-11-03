@@ -87,6 +87,11 @@ function check(name, cond, detail) {
    zone's nodes forced alive. */
 async function setup(liveflags) {
   const room = new GameRoom(makeState(liveflags), env);
+  /* v2.3.4049: a caught fish rolls 1% albino and 0.1% large (fishlog.js,
+     v2.3.4036), and these checks ask for the plain fish by name: the dice are
+     pinned above both odds, so the catch is always plain (PR #1395's CI drew
+     an albino minnow and went red) */
+  room._fishRand = () => 0.5;
   const ws = fakeWs('g');
   room.sessions.set(ws, { id: null, name: 'Anon', data: {}, rtt: 80, lastPing: 0, lastRecv: Date.now() });
   await room.webSocketMessage(ws, JSON.stringify({
