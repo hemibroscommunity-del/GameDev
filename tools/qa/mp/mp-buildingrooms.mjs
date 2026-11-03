@@ -33,7 +33,8 @@
  *      and the menu is as it was, and a picture that cannot be loaded leaves
  *      the window as it was;
  *   7. THE KEEPERS: a tap on Blacksmith Bro opens the forge on its room, E
- *      beside him too, and a tap on Mayor Bro, his quests done, the Town Hall;
+ *      beside him too, and a tap on Mayor Bro, his quests done, the Town Hall
+ *      (v2.3.3899: no window now: he says something);
  *      the Saloon's window is the Saloon's own (parties), and the Gladiator
  *      Arena is a window of its own with no room behind it;
  *   8. walking away lets the held picture go; all sixteen were asked for; no
@@ -93,8 +94,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     return false;
   };
   const enterBtn = () => P.page.evaluate(() => {
-    const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || ''));
-    return { at: window.__btWheelTownDoors.at(), btn: b ? (b.textContent || '').trim() : null };
+    const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /(Enter|Read) /.test(q.textContent || ''));
+    /* v2.3.3899: the board's window opens at the square's noticeboard ("Read"), counted as the Town Hall's window */
+    return { at: window.__btWheelTownDoors.at() || (window.__btNoticeboard && window.__btNoticeboard.at() ? 'townhall' : null), btn: b ? (b.textContent || '').trim() : null };
   });
   const settle = async (want, ms = 4000) => {
     let r = null;
@@ -110,7 +112,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { const b = document.querySelector('.bt-inspect-close'); if (b) b.click(); });
     await P.page.waitForTimeout(350);
   };
-  const tapEnter = () => P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || '')); if (b) b.click(); });
+  const tapEnter = () => P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /(Enter|Read) /.test(q.textContent || '')); if (b) b.click(); });
 
   /* what the window shows of its room, in numbers */
   const measure = () => P.page.evaluate(() => {
@@ -170,7 +172,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (doors.length < 16) await P.page.waitForTimeout(500);
   }
   const byId = Object.fromEntries(doors.map((d) => [d.id, d]));
-  const windows = doors.filter((d) => d.index >= 0 || d.hall);
+  /* v2.3.3899: fifteen doors and the square's noticeboard, which opens the
+     Town Hall's window, the town board (game/wheelNoticeboard.js) -- stood
+     30 px south of its foot */
+  const nbW = await P.page.evaluate(() => (window.__btNoticeboard ? window.__btNoticeboard.where() : null));
+  const windows = doors.filter((d) => d.index >= 0 || d.hall).concat(nbW ? [{ id: 'townhall', hall: 'townhall', index: -1, x: nbW.x, y: nbW.y + 30 }] : []);
   const warmBefore = await P.page.evaluate(() => ({ held: window.__btRoomWarm.held(), pre: window.__btRoomWarm.prefetched() }));
   rec.ok(`on a phone in the Wheel's Brotown: ${windows.length} doors open a window, and before the first door nothing is decoded or prefetched`,
     z0 === 'wheel' && doors.length === 16 && windows.length === 16 && warmBefore.held === null && warmBefore.pre === false, { z0, n: doors.length, windows: windows.length, warmBefore });
@@ -438,9 +444,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (let i = 0; i < 12 && !eKey; i++) { await P.page.waitForTimeout(250); eKey = await panelKey(); }
   await closePanel();
   rec.ok(`...E beside him opens it too, with no door in reach (near ${nearE.npc || 'nobody'}, door ${nearE.door}: ${eKey || 'nothing'})`, nearE.npc === 'Blacksmith Bro' && nearE.door === null && eKey === 'forge', { nearE, eKey });
+  /* v2.3.3899: the owner: "I tried tapping on mayor bro and kept opening the
+     town hall door which was confusing" -- he keeps nothing now: his quests
+     done, a tap and he SAYS something (game/mayorTalk.js), no window */
   const mayor = await tapKeeper('Mayor Bro', 60, 'mayor');
-  rec.ok(`a tap on Mayor Bro, his quests done, opens the Town Hall on its room (${mayor.key || 'NOTHING'}): the leaderboard and the world map`,
-    mayor.keeperOf === 'townhall' && !!mayor.tap && mayor.tap.npc === 'Mayor Bro' && mayor.tap.result === 'opens' && mayor.key === 'townhall' && mayor.room === 'townhall' && mayor.sits, mayor);
+  const mayorSaid = await P.page.evaluate(() => (window.__btMayorSaid ? window.__btMayorSaid.text : null));
+  rec.ok(`a tap on Mayor Bro, his quests done, opens no window (${mayor.key || 'none'}): he says "${mayorSaid}" (v2.3.3899)`,
+    !mayor.keeperOf && !!mayor.tap && mayor.tap.npc === 'Mayor Bro' && mayor.tap.result === 'says' && !mayor.key && !!mayorSaid, { mayor, mayorSaid });
 
   /* ── 7b. the Saloon is the Saloon, and the arena is its own window (the owner: "the gladiator arena is showing 'saloon' behind it") ── */
   const look = async (panel, label) => {
@@ -470,7 +480,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     arenaW.key === 'arena' && !arenaW.room && arenaW.rooms === 0 && arenaW.arena && !arenaW.saloon, arenaW);
 
   /* ── 8. walking away, every room asked for, no errors ── */
-  await standAt(byId.townhall.x, byId.townhall.y + 330);   /* the square, 330 px south of the Town Hall's door: clear of every door (the Town Hall is one since v2.3.3258) */
+  await standAt(byId.townhall.x, byId.townhall.y + 330);   /* the square, 330 px south of the Town Hall's door: clear of every door (the Town Hall was one v2.3.3258-v2.3.3898) */
   await P.page.waitForTimeout(1200);
   const away = await P.page.evaluate(() => window.__btRoomWarm.held());
   const wantAsked = [...new Set(Object.values(R.BUILDING_ROOMS))];

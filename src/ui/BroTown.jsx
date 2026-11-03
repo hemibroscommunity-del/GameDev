@@ -530,6 +530,8 @@ import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/whe
 import { wheelObjectsInfo, wheelWaterAt } from '@/game/wheelTrial.js';
 import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch */
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
+import { noticeboardAt, noticeboardAtCss } from '@/game/wheelNoticeboard.js';   /* v2.3.3899: the town board is on the square's noticeboard */
+import { mayorSaysNext } from '@/game/mayorTalk.js';   /* v2.3.3899: Mayor Bro always talks */
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
@@ -948,8 +950,8 @@ function _spawnWheelNpcs(S) {
   });
   /* ═══ v2.3.3258: THE KEEPERS ═══
      A townsperson who keeps a building opens its window when you talk to him
-     (data/wheelBuildingDoors.js WHEEL_KEEPERS: Blacksmith Bro the forge, Mayor
-     Bro the Town Hall) -- `keeperOf`, the plot, only where that building
+     (data/wheelBuildingDoors.js WHEEL_KEEPERS: Blacksmith Bro the forge; Mayor
+     Bro the Town Hall until v2.3.3899) -- `keeperOf`, the plot, only where that building
      stands with something to open.  This copy is the Wheel's own, so today's
      town's townsfolk (_spawnTownNpcs) never carry it. */
   out.forEach(function (n) {
@@ -5926,6 +5928,11 @@ export var BroTown = function BroTown(_ref0) {
           if (_wtd) {
             S._nearWheelBuilding = _wtd;
             if (_wtd.index >= 0) S.nearBuilding = _wtd.index;
+          } else {
+            /* v2.3.3899: the square's noticeboard, a door to the town board
+               (game/wheelNoticeboard.js): its hall is the Town Hall's, so the
+               prompt ("Read THE TOWN BOARD"), E and the stick just work */
+            S._nearWheelBuilding = noticeboardAt(S);
           }
         }
 
@@ -10438,10 +10445,21 @@ export var BroTown = function BroTown(_ref0) {
       if (r === 'quest' || r === 'flip' || r === 'shop' || r === 'pets') { try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ } }
       /* v2.3.3462: and he answers in his own voice (game/npcVoices.js) -- a
          quest's is the QuestPanel's, as it opens however you reached him */
-      if (npc && (r === 'flip' || r === 'shop' || r === 'pets' || r === 'opens' || r === 'nothing')) npcSpeaks(S, npc);   /* v2.3.3664: a keeper opening his building too */
+      if (npc && (r === 'flip' || r === 'shop' || r === 'pets' || r === 'opens' || r === 'says' || r === 'nothing')) npcSpeaks(S, npc);   /* v2.3.3899: + the Mayor's next step */   /* v2.3.3664: a keeper opening his building too */
       return r !== 'miss';
     };
-    if (!npc) return _mark('miss');
+    if (!npc) {
+      /* v2.3.3899: the square's noticeboard opens the town board, as the
+         Town Hall did (game/wheelNoticeboard.js) */
+      var _nbTap = noticeboardAtCss(S, cssX, cssY);
+      if (!_nbTap) return _mark('miss');
+      if (_nbTap.far) {
+        pushDmgPopup(S, _nbTap.board.x, _nbTap.board.y - 150, 'Too far away!', '#D8A94D');
+        return _mark('board-far');
+      }
+      enterWheelDoor(S, _nbTap.board, { setBuildingPanel: setBuildingPanel });
+      return _mark('board');
+    }
     var P = S.player;
     var _d = Math.sqrt(Math.pow(npc.x - P.x, 2) + Math.pow(npc.y - P.y, 2));
     /* Out of reach is answered, not ignored. A tap that does nothing at all
@@ -10488,6 +10506,9 @@ export var BroTown = function BroTown(_ref0) {
       try { dashboardPanelBus.open('pets'); } catch (_e) {}
       return _mark('pets');
     }
+    /* v2.3.3899: Mayor Bro, with nothing of his own, says the next step
+       (game/mayorTalk.js) -- he opened the Town Hall's board until now */
+    if (mayorSaysNext(S, npc)) return _mark('says');
     pushDmgPopup(S, npc.x, npc.y - 30, npc.name + ' has nothing for you right now', '#B6C1BE');
     return _mark('nothing');
   };
@@ -10601,6 +10622,7 @@ export var BroTown = function BroTown(_ref0) {
   var _deskPressTarget = function (cssX, cssY) {
     if (monsterAtCss(cssX, cssY)) return null;
     if (npcAtCss(cssX, cssY)) return 'talk';
+    if (noticeboardAtCss(stateRef.current, cssX, cssY)) return 'talk';   /* v2.3.3899: the town board's noticeboard */
     if (otherPlayerAtCss(cssX, cssY)) return null;
     if (_harvestNodeAtCss(cssX, cssY)) return 'gather';
     var _bed = _farmBedAtCss(cssX, cssY);
@@ -14950,7 +14972,7 @@ export var BroTown = function BroTown(_ref0) {
     style: { display: 'block' }
   }, /*#__PURE__*/React.createElement("span", {
     style: { display: 'block', fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase', opacity: .7 }
-  }, " Enter "), /*#__PURE__*/React.createElement("span", {
+  }, " " + ((stateRef.current._nearWheelBuilding && stateRef.current._nearWheelBuilding.verb) || 'Enter') + " "   /* v2.3.3899: "Read" at the noticeboard */), /*#__PURE__*/React.createElement("span", {
     style: { display: 'block' }
   }, nearDoorLabel)) : " Enter ", nearDoorLabel ? null : nearBuilding !== null ? BUILDINGS[nearBuilding].label : WHEEL_HALLS[nearHall].title), nearShutDoor && buildingPanel === null && /*#__PURE__*/React.createElement("div", {
     /* ═══ v2.3.3032: A SHUT DOOR SAYS SO ═══
