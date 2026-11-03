@@ -266,7 +266,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 2 ── */
     await clickRow(A, '[data-bro-row="achievements"]');
-    const up = await A.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
+    /* v2.3.4152: 20 s -- on this box the page came up after 8 (2d's chips found it) */
+    const up = await A.page.waitForSelector('[data-achv-panel="1"]', { timeout: 20000 }).then(() => true).catch(() => false);
     const p0 = up ? await pageLook(A) : null;
     rec.ok(`2a the row opens the Achievements page under Bro: ${p0 && p0.rows} rows, "${p0 && p0.count}", the worker's AP (${p0 && p0.apTotal})`,
       !!p0 && p0.rows === 33 && /^0\/33$/.test(p0.count.trim()) && p0.apTotal === s0.ap && p0.got.length === 0, p0);
