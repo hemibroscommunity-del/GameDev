@@ -1,4 +1,4 @@
-/* ═══ v2.3.4103: WHERE YOU ARE AND WHETHER YOU ARE SAFE, ON THE MINIMAP ═══
+/* ═══ v2.3.4113: WHERE YOU ARE AND WHETHER YOU ARE SAFE, ON THE MINIMAP ═══
  *
  * The owner, 2026-11-03: "Remove name of town and "safe" or other
  * designation from top bar (currently centered). The minimap label area

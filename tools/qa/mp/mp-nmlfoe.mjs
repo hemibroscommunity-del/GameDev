@@ -818,7 +818,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        "just to the right of the Brotown name at the top"), at every width and
        sideways (mp-nmltopbar measures the bar itself) */
     const side = r.orient === 'landscape';
-    /* v2.3.4103: on the minimap's name plate (the owner: "Remove name of
+    /* v2.3.4113: on the minimap's name plate (the owner: "Remove name of
        town and "safe" or other designation from top bar ... The minimap
        label area already does this"): the plate's tap lies inside the
        minimap's box, at its foot, on top, on the screen */

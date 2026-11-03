@@ -115,7 +115,7 @@ import { boardPlaceAt } from '@/game/mapPinPlaces.js';
 import { boardPinnable } from '@/data/townBoard.js';
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
-import { plateSafety } from '@/game/plateSafety.js';         /* v2.3.4103: No man's land and Outlaw on the plate (the top bar's chip moved here) */
+import { plateSafety } from '@/game/plateSafety.js';         /* v2.3.4113: No man's land and Outlaw on the plate (the top bar's chip moved here) */
 import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and its music */
 import { BT_AUDIO } from '@/data/gameDisplay.js';
 import { landLook } from '@/data/wheelLands.js';           /* v2.3.3108: the plate's land colour */
@@ -487,7 +487,7 @@ export class WheelMinimap {
        script two bytes a character (vite.config.js, docs/specs/ascii-script.md) */
     const lv = /Lv \d+[\u2013-]\d+/.exec(sub);
     if (lv) sub = lv[0];
-    /* ═══ v2.3.4103: THE TOP BAR'S SAFETY CHIP, HERE NOW ═══
+    /* ═══ v2.3.4113: THE TOP BAR'S SAFETY CHIP, HERE NOW ═══
        The owner: "Remove name of town and "safe" or other designation from
        top bar ... The minimap label area already does this."  In No man's
        land the second line is "No man's land 12" in red, and while you carry
@@ -521,7 +521,7 @@ export class WheelMinimap {
     T.x = Math.round(x0 + iconW); T.y = Math.round(y1);
     U.x = Math.round(P.x + P.w / 2); U.y = Math.round(y2);
     this._plateOut = { title: T.text, sub: U.text, land: at ? at.region : null, icon: !!icon, red: !!safety,
-      safety: safety ? safety.kind : null,   /* v2.3.4103 */
+      safety: safety ? safety.kind : null,   /* v2.3.4113 */
       color: '#' + Number(T.style.fill).toString(16).padStart(6, '0'),
       titlePx: px, subPx: SUB_PX, squeezed: T.scale.x < 1 || U.scale.x < 1,
       fits: rowW <= avail + 0.5 && U.width <= avail + 0.5, y: P.y, h: P.h };
@@ -1107,7 +1107,7 @@ export class WheelMinimap {
     const w = here && here.words;
     let plate = null;
     let safety = null;
-    try { safety = plateSafety(S); } catch (e) { safety = null; }   /* v2.3.4103 */
+    try { safety = plateSafety(S); } catch (e) { safety = null; }   /* v2.3.4113 */
     try { plate = this._plate(w, here ? here.region : null, safety); } catch (e) { plate = null; }
     /* v2.3.3024: crossing into an elemental land plays its banner
        (zoneBannerOverlay.js noteWheelLand; this frame is the one that asks

@@ -1,4 +1,4 @@
-/* ═══ v2.3.4103: NO MAN'S LAND IS ON THE MINIMAP'S PLATE, NOT THE TOP BAR ═══
+/* ═══ v2.3.4113: NO MAN'S LAND IS ON THE MINIMAP'S PLATE, NOT THE TOP BAR ═══
  * The owner, 2026-11-03: "Remove name of town and "safe" or other
  * designation from top bar (currently centered). The minimap label area
  * already does this."  This scenario now holds the other side of what it
@@ -37,7 +37,7 @@ import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 
-/* v2.3.4103: the top bar's centre no longer carries No man's land (the owner:
+/* v2.3.4113: the top bar's centre no longer carries No man's land (the owner:
    "Remove name of town and "safe" or other designation from top bar"): the
    minimap's plate says it and an invisible button over the plate takes the
    tap (NmlBadge.jsx PlateTap).  The bar's pieces and the plate's, in CSS px,

@@ -2281,7 +2281,7 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
    own colour, ZoneHeader.jsx landTint) -- no filters over the canvas (TRAPS §42) */
 .bt-zone-header__elem{display:inline-block;width:16px;height:16px;margin:0 4px 0 0;
   vertical-align:-3px;pointer-events:none}
-/* ═══ v2.3.4103: IN THE WORLD THE TOP BAR'S CENTRE IS CLEAR ═══
+/* ═══ v2.3.4113: IN THE WORLD THE TOP BAR'S CENTRE IS CLEAR ═══
    The owner, 2026-11-03: "Remove name of town and "safe" or other
    designation from top bar (currently centered). The minimap label area
    already does this."  The place chip of v2.3.3974 is gone (the minimap's

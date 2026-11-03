@@ -6,13 +6,13 @@
  * One real player against a real worker, IN THE WORLD (`world: 'wheel'`), in
  * three layouts -- a phone upright (390 x 844), sideways (844 x 390), and a
  * computer playing wide (1440 x 900):
- *   1. (v2.3.4103) nothing of the place or its safety in the top bar --
+ *   1. (v2.3.4113) nothing of the place or its safety in the top bar --
  *      "BroTown" kept in the page, drawn clear -- and the minimap's plate
  *      says "safe"; no day/night icon;
  *   2. the frame: under the bar, at the play area's left, the level and the
  *      worker's HP and energy, clear of the minimap; --bt-hud-top (where the
  *      quest card starts) at or under its bottom;
- *   3. (v2.3.4103) the other states on the plate (staged, __btPlaceHold):
+ *   3. (v2.3.4113) the other states on the plate (staged, __btPlaceHold):
  *      "No man's land 2" and "Outlaw · 18 min" in red; a tap on the plate
  *      opens the window with the gold and the bag count in plain words;
  *   4. a tap on the frame opens the Bro page (the dashboard's 'hero');
@@ -34,7 +34,7 @@ const VIEWS = [
 const look = (P) => P.page.evaluate(() => {
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return { l: Math.round(b.left), t: Math.round(b.top), r: Math.round(b.right), b: Math.round(b.bottom), w: Math.round(b.width), h: Math.round(b.height) }; };
   const S = window._gameState && window._gameState.current;
-  /* v2.3.4103: the chip left the bar for the minimap's plate; `chip` is now
+  /* v2.3.4113: the chip left the bar for the minimap's plate; `chip` is now
      what the plate says and its tap (NmlBadge.jsx PlateTap) */
   const tap = document.querySelector('[data-plate-tap]');
   const pl = window.__btMinimap && window.__btMinimap.plate;
@@ -151,7 +151,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(600);
       const t = (await look(P)).titleBox;
       const at = { x: Math.round((t.l + t.r) / 2), y: Math.round((t.t + t.b) / 2) };
-      /* what a finger there reaches (v2.3.4103: the name is drawn clear, and
+      /* what a finger there reaches (v2.3.4113: the name is drawn clear, and
          must still take the hold) */
       const under = await P.page.evaluate(({ x, y }) => { const e = document.elementFromPoint(x, y); return e ? (e.className || e.tagName) + (e.hasAttribute && e.hasAttribute('data-zone-title') ? ' [title]' : '') : null; }, at);
       /* a real finger (hit-tested: TRAPS section 67), as on the owner's iPhone */

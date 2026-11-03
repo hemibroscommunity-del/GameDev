@@ -87,7 +87,7 @@
  * red skull; a tap opens the window with your own numbers in plain words
  * (game/placeSafety.js).  Still nothing said or played on the way in or out.
  *
- * ═══ v2.3.4103: THE CHIP LEAVES THE TOP BAR ═══
+ * ═══ v2.3.4113: THE CHIP LEAVES THE TOP BAR ═══
  * The owner, 2026-11-03: "Remove name of town and "safe" or other
  * designation from top bar (currently centered). The minimap label area
  * already does this."  The chip is gone; the minimap's name plate says "No
@@ -103,8 +103,8 @@ import { infoPopupBus } from './infoPopupBus.js';
 import { nmlExplainHit, _nmlForget } from '@/game/nmlExplainOnce.js';
 import { placeState, placeLines, bagRiskCount } from '@/game/placeSafety.js';   /* v2.3.3974: Safe / PvP / Outlaw */
 import { placeName } from './placeName.js';
-import { createPortal } from 'react-dom';                                                 /* v2.3.4103: the plate's tap, over the minimap */
-import { nmlSkullLeft, plateRisk } from '@/game/plateSafety.js';                         /* v2.3.4103 */                                              /* v2.3.3974 */
+import { createPortal } from 'react-dom';                                                 /* v2.3.4113: the plate's tap, over the minimap */
+import { nmlSkullLeft, plateRisk } from '@/game/plateSafety.js';                         /* v2.3.4113 */                                              /* v2.3.3974 */
 
 /* a skull, drawn rather than the emoji (every phone draws 💀 its own way) */
 export function NmlSkull({ size = 18, color = NML_RED }) {
@@ -132,7 +132,7 @@ export function nmlLevels(n, first = 1) {
 /* your own skull, minutes of play left (applyNmlSkull keeps {red, white, at}:
    the worker's milliseconds when it said so; the clock runs only online,
    and you are online while you read this) */
-/* v2.3.4103: moved to game/plateSafety.js (the minimap's plate reads it too) */
+/* v2.3.4113: moved to game/plateSafety.js (the minimap's plate reads it too) */
 export { nmlSkullLeft };
 
 function Line({ children }) {
@@ -213,7 +213,7 @@ export function openPlaceInfo(S, lvl) {
   });
 }
 
-/* ═══ v2.3.4103: THE CHIP LEAVES THE TOP BAR; THE PLATE TAKES THE TAP ═══
+/* ═══ v2.3.4113: THE CHIP LEAVES THE TOP BAR; THE PLATE TAKES THE TAP ═══
    The owner, 2026-11-03: "Remove name of town and "safe" or other
    designation from top bar (currently centered). The minimap label area
    already does this."  The place chip of v2.3.3974 (Safe / PvP · Lv a-b /
@@ -225,7 +225,7 @@ export function openPlaceInfo(S, lvl) {
    window, as a tap on the chip did; elsewhere the box opens the world map as
    before.  `data-nml-badge` carries the No man's land number while you are
    in it: the scenarios find it by that. */
-/* v2.3.4103: never over a thumb's control.  On a short sideways screen
+/* v2.3.4113: never over a thumb's control.  On a short sideways screen
    (667 x 320) the attack disc reaches up under the minimap's box (v2.3.3629's
    note; mp-nmlfoe 10): the plate's tap gives way -- its foot trimmed to above
    the control, or its right edge to the control's left, or, with too little
@@ -286,7 +286,7 @@ function PlateTap({ getS, risk }) {
    line along the band, on its own clock, while you are in No man's land */
 export default function NmlBadge({ stateRef }) {
   const [lvl, setLvl] = useState(0);
-  /* v2.3.4103: what the plate says (No man's land, your red skull), for its tap */
+  /* v2.3.4113: what the plate says (No man's land, your red skull), for its tap */
   const [risk, setRisk] = useState({ nml: 0, redMin: 0, own: null });
   useEffect(() => {
     let last = 0;
@@ -329,7 +329,7 @@ export default function NmlBadge({ stateRef }) {
     try { window.__btNmlOnce = { forget: () => { const S = stateRef && stateRef.current; if (S && S.myId) _nmlForget(S.myId); } }; } catch (e) { /* no window */ }
   }, [stateRef]);
   /* QA handle, the house style (__btInfoPopup, __btCtlTut): No man's land's
-     number, your skull, and since v2.3.4103 `at: 'plate'` (the top bar's
+     number, your skull, and since v2.3.4113 `at: 'plate'` (the top bar's
      chip, v2.3.3765-v2.3.3974, is gone) */
   useEffect(() => {
     try {

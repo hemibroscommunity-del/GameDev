@@ -92,7 +92,7 @@ const MEASURE = (P) => P.page.evaluate(() => {
     titleW: title ? Math.round(title.getBoundingClientRect().width) : 0,   /* v2.3.3974 */
     purseText: purse ? purse.textContent : null, apText: ap ? ap.textContent : null,
     hits, out, xpOver, xpOn,
-    /* v2.3.4103: nothing of No man's land (or the place chip) in the bar, and
+    /* v2.3.4113: nothing of No man's land (or the place chip) in the bar, and
        in the world its centre's name drawn clear (the minimap's plate says it) */
     barClean: document.querySelectorAll('.bt-zone-header [data-nml-badge], .bt-zone-header [data-place-chip], .bt-zone-header .bt-nml-pill').length === 0,
     titleClear: !!title && /rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(title).color),
@@ -107,7 +107,7 @@ const MEASURE = (P) => P.page.evaluate(() => {
    on an upright phone with this rich a purse and AP may end in "..." but
    keeps at least 50 px (its whole name is on the minimap's plate just under
    it) -- until the door, the AP and the gold leave the bar (Lane C2) */
-/* v2.3.4103: ...and in the world the name is drawn clear (the owner: "Remove
+/* v2.3.4113: ...and in the world the name is drawn clear (the owner: "Remove
    name of town and "safe" or other designation from top bar"), so its width
    is only the Test panel's hold area: in it, never cut matters no more */
 const titleOk = (m) => !!m.titleText && (m.titleClear || !m.titleCut || (m.titleText !== 'BroTown' && m.titleW >= 50));

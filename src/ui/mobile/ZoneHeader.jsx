@@ -18,7 +18,7 @@ import { barNarrow, barNumber, BAR_GOLD_SHORT, BAR_AP_SHORT } from '../../game/b
    v2.3.2892 put a day/night icon beside the zone name (the owner: "Add a time
    of day icon next to current map name").  Night is off and the icon took no
    tap, so it said nothing a player could use; v2.3.3974 gave its room to
-   the place chip, which itself left for the minimap's plate in v2.3.4103. */
+   the place chip, which itself left for the minimap's plate in v2.3.4113. */
 
 /* v2.3.1333: zone header rail (owner + ChatGPT spec).  The floating
    zone label kept getting lost against bright world art, and the
@@ -242,7 +242,7 @@ export const ZoneHeader = ({ onExit }) => {
         )}
         </div>
         <div className={'bt-zone-header__mid' + (xpOn ? ' bt-zone-header__mid--xp' : '')}>
-        {/* ═══ v2.3.4103: IN THE WORLD THE NAME IS NOT DRAWN HERE ═══
+        {/* ═══ v2.3.4113: IN THE WORLD THE NAME IS NOT DRAWN HERE ═══
             The owner, 2026-11-03: "Remove name of town and "safe" or other
             designation from top bar (currently centered). The minimap label
             area already does this."  In the Wheel the title is drawn clear
@@ -272,7 +272,7 @@ export const ZoneHeader = ({ onExit }) => {
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         >{placeName(S) /* v2.3.3974: the land, or BroTown (v2.3.3039: never "The Wheel") */}</div>
         {/* v2.3.3765-v2.3.3974: No man's land's pill, then the place chip
-            (Safe / PvP / Outlaw), stood here; since v2.3.4103 the minimap's
+            (Safe / PvP / Outlaw), stood here; since v2.3.4113 the minimap's
             plate says it (game/plateSafety.js) and takes the tap
             (NmlBadge.jsx PlateTap). */}
         {/* ═══ v2.3.3430: TEST MODE, SAID WHERE IT IS ALWAYS SEEN ═══
