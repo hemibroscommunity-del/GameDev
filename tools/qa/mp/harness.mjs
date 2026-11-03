@@ -988,7 +988,7 @@ export async function coveringElement(P, locator) {
  * throwing, so a scenario that legitimately has no chat can carry on and fail
  * on its own assertion instead of on this.
  */
-/* ═══ v2.3.3941: ...AND THE BELL IS IN MORE NOW ═══
+/* ═══ v2.3.4021: ...AND THE BELL IS IN MORE NOW ═══
  * The owner moved the bell off the play screen ("The notification bell could
  * also move to More, retaining an unread badge"): shut, the feed draws nothing
  * at all, and More -> Notifications' "Show on screen" is what opens it.  So
@@ -1183,7 +1183,7 @@ async function tapTop(page, selector, timeout) {
  *  the same two taps a player makes.  Still a UI path end to end: nothing
  *  here calls the bus, so a broken rail or a missing tile fails the test.
  */
-/* v2.3.3941: the owner's five buttons renamed three things a scenario may
+/* v2.3.4021: the owner's five buttons renamed three things a scenario may
    still ask for by its old word: Character is Bro (and a scenario written for
    the Character page meant its Equipment tab, the one it opened on: Bro opens
    on Me now, so that tab is chosen for it), Dashboard is Gear, and More's

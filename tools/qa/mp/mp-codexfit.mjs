@@ -14,12 +14,12 @@
  * buttons were 46 px wide and stepped 38 px right whenever a drill opened.
  *
  * Asserted here:
- *   1. the dashboard's row has FIVE buttons (v2.3.3941; six until then), the
+ *   1. the dashboard's row has FIVE buttons (v2.3.4021; six until then), the
  *      Codex fourth, More last, each 64 px+ wide at 390 (60 at 360), on the screen, apart, answering at their
  *      own centres -- and in the SAME places at rest, with the Codex open and
  *      on a drilled screen;
  *   2. the Codex button opens the codex as its own destination, lit; More's
- *      More has no Codex tile now (v2.3.3941: it is the Codex's own button);
+ *      More has no Codex tile now (v2.3.4021: it is the Codex's own button);
  *   3. on a drilled screen (More -> Settings) the way back is the panel's own
  *      header, "◂ SETTINGS", a real target, and it goes back to More;
  *   4. the monster list: all nine cards whole without scrolling, their names
@@ -36,7 +36,7 @@ import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-/* v2.3.3941: FIVE -- Gear, Bro, Quests, Codex, More (the owner's
+/* v2.3.4021: FIVE -- Gear, Bro, Quests, Codex, More (the owner's
    consolidation: Life Skills into Bro, the CLOSE pill a grip on the band's
    edge, the freed width the buttons'): 70 px at 390, 64 at 360 */
 const ORDER = ['dashboard', 'hero', 'quests', 'encyclopedia', 'more'];
@@ -130,7 +130,7 @@ const measureTab = (P, keepScroll) => P.page.evaluate((keep) => {
 
 async function portrait(P, rec, OUT, vw, result) {
   const T = vw + 'w: ';
-  const minW = vw >= 390 ? 64 : 60;   /* v2.3.3941: was 44 / 39 with six and the pill */
+  const minW = vw >= 390 ? 64 : 60;   /* v2.3.4021: was 44 / 39 with six and the pill */
 
   const rest = await rail(P);
   rec.ok(T + `five buttons, the Codex fourth and More last, each ${minW}+ px wide, on screen, apart, each answering at its centre`,
@@ -213,12 +213,12 @@ async function portrait(P, rec, OUT, vw, result) {
   const backUp = await P.page.waitForSelector('[data-cx-grid]', { timeout: 4000 }).then(() => true).catch(() => false);
   rec.ok('the bar\'s ‹ goes back to the monsters', backUp);
 
-  /* v2.3.3941: More's Codex tile is gone -- the Codex has its own button,
+  /* v2.3.4021: More's Codex tile is gone -- the Codex has its own button,
      and the owner's More is the map, social, settings and account */
   await P.page.evaluate(() => window.__broDashPanelBus.open('more'));
   await P.page.waitForTimeout(600);
   const moreTiles = await P.page.evaluate(() => [...document.querySelectorAll('[data-more-tile]')].map((t) => t.dataset.moreTile));
-  rec.ok('More carries no Codex tile now: the Codex is its own button (v2.3.3941)',
+  rec.ok('More carries no Codex tile now: the Codex is its own button (v2.3.4021)',
     moreTiles.length === 12 && !moreTiles.includes('encyclopedia'), moreTiles);
   await P.page.evaluate(() => window.__broDashPanelBus.toBar());
   return { rest, open };
@@ -227,7 +227,7 @@ async function portrait(P, rec, OUT, vw, result) {
 /* the drilled screen: the back arrow beside the title, and the row unmoved */
 async function drilled(P, rec, OUT, vw, rest) {
   const T = vw + 'w: ';
-  const minW = vw >= 390 ? 64 : 60;   /* v2.3.3941: was 44 / 39 with six and the pill */
+  const minW = vw >= 390 ? 64 : 60;   /* v2.3.4021: was 44 / 39 with six and the pill */
   await P.page.evaluate(() => window.__broDashPanelBus.open('more'));
   await P.page.waitForTimeout(600);
   await P.page.evaluate(() => { const b = document.querySelector('[data-more-tile="settings"]'); if (b) b.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })); });
@@ -281,7 +281,7 @@ async function landscape({ browser, wsPort, webPort, rec, OUT }) {
       const btns = [...dock.querySelectorAll('[data-nav]')].map((b) => { const r = b.getBoundingClientRect(); return { id: b.dataset.nav, x: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width) }; });
       return { sheet: { x: Math.round(s.left), r: Math.round(s.right), w: Math.round(s.width) }, dock: { x: Math.round(d.left), r: Math.round(d.right) }, btns };
     });
-    rec.ok('LANDSCAPE: five buttons in the dock (v2.3.3941), the Codex among them, inside the side container',
+    rec.ok('LANDSCAPE: five buttons in the dock (v2.3.4021), the Codex among them, inside the side container',
       !!m && m.btns.length === 5 && m.btns.some((b) => b.id === 'encyclopedia')
         && m.btns.every((b) => b.x >= m.sheet.x - 1 && b.r <= m.sheet.r + 1 && b.w >= 24), m);
     rec.ok(`LANDSCAPE: the container stays in the width it had (${m && m.sheet.w} px, 205-245)`, !!m && m.sheet.w >= 205 && m.sheet.w <= 245, m && m.sheet);

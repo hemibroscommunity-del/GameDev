@@ -151,12 +151,12 @@ const headerGeom = (P) => P.page.evaluate(() => {
    row for the panel's own header (the owner's choice), which pays for most of
    the sixth: 44 at 390 still, 39 at 360 where five were 40. */
 const PHONES = [
-  /* v2.3.3941: five buttons and no CLOSE pill (the grip is on the band's
+  /* v2.3.4021: five buttons and no CLOSE pill (the grip is on the band's
      edge): the row is theirs, 70 at 390 and 64 at 360 */
   { width: 390, height: 844, tag: 'iPhone 13/14/15', minW: 64 },
   { width: 360, height: 780, tag: 'small Android', minW: 60 },
 ];
-const RAIL_N = 5;   /* v2.3.3941: Gear, Bro, Quests, Codex, More */
+const RAIL_N = 5;   /* v2.3.4021: Gear, Bro, Quests, Codex, More */
 
 export async function run({ browser, wsPort, webPort, rec }) {
   for (const ph of PHONES) await onePhone({ browser, wsPort, webPort, rec }, ph);

@@ -36,7 +36,7 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
    and it is how you switch destinations or get out.  A rail that hid with
    the rest of the band would leave an open panel with no navigation. */
 
-/* ═══ v2.3.3941: FIVE BUTTONS -- GEAR, BRO, QUESTS, CODEX, MORE ═══
+/* ═══ v2.3.4021: FIVE BUTTONS -- GEAR, BRO, QUESTS, CODEX, MORE ═══
    The owner's consolidation ("limit lots of buttons to switch between
    different context"): the Skills button went inside Bro (its Skills tab), and
    the CLOSE / OPEN pill left the row for a grip on the band's top edge
@@ -197,7 +197,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                    bag tiles never showed.  Unfold here too.  It only unfolds
                    -- a tap on an unfolded band is a no-op as before, never a
                    fold (the I key toggles; the grip folds).
-                   v2.3.3941: kept for Gear, the same button renamed. */
+                   v2.3.4021: kept for Gear, the same button renamed. */
                 if (!playIsLandscape()) dashMinBus.set(false);
                 return;
               }

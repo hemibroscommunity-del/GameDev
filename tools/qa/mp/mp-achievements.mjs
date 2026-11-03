@@ -46,7 +46,7 @@
  *    10. sideways (844 x 390): More's tile whole, the page in the ~238 px
  *        side column, chips two by two, no sideways scroll, nothing cut;
  *    11. no page errors.
- * v2.3.3941 (the owner's five buttons): the page is Bro's Achievements tab,
+ * v2.3.4021 (the owner's five buttons): the page is Bro's Achievements tab,
  * not a More tile; Bro -> Me's "Achievement Points: N" opens it, and every
  * old road to it (the card's title chip, the top bar's medal) lands there.
  * As a tab it has no drilled header, so its summary is its first line.
@@ -189,7 +189,7 @@ async function inWheel(P) {
 
 /* More -> the tile -> the page, by real taps (upright and on a computer; this
    box draws a few frames a second, so each step waits for what it opened) */
-/* v2.3.3941: Achievements are Bro's tab now (the owner's five buttons), so:
+/* v2.3.4021: Achievements are Bro's tab now (the owner's five buttons), so:
    Bro -> the Achievements tab, by real taps */
 async function openPage(P) {
   /* a first join arrives with the band folded (v2.3.2495) */
@@ -232,7 +232,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .then(() => achv(A)).catch(() => achv(A));
     rec.ok('1a the worker grants achievements (caps.achievements) and sent the record at the join: nothing earned yet',
       s0.caps && s0.known && !s0.unavailable && s0.got.length === 0 && typeof s0.ap === 'number', s0);
-    /* v2.3.3941: the owner's five buttons -- Achievements are Bro's tab, and
+    /* v2.3.4021: the owner's five buttons -- Achievements are Bro's tab, and
        Bro -> Me says "Achievement Points: N" (the review he adopted), a tap on
        it the way to the page; Journey keeps its own More tile */
     await H.unfoldBand(A).catch(() => {});
@@ -258,7 +258,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`2a the AP line opens the Achievements tab: ${p0 && p0.rows} rows, "${p0 && p0.count}", the worker's AP (${p0 && p0.apTotal})`,
       !!p0 && p0.rows === 23 && /^0\/23$/.test(p0.count.trim()) && p0.apTotal === s0.ap && p0.got.length === 0, p0);
     /* the owner's ChatGPT review: the page showed ONE row as it opened.
-       v2.3.3941: as Bro's tab it has no drilled header to ride, so the
+       v2.3.4021: as Bro's tab it has no drilled header to ride, so the
        summary is the page's first line (the root-page form it always had)
        under Bro's tabs; a row at least in view, the rest a scroll */
     rec.ok(`2a2 the AP and the count are the page's first line ("${p0 && p0.summaryAt}"), and ${p0 && p0.inView} whole rows are in view as it opens`,
@@ -377,7 +377,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       tab: window.__btHeroSection ? window.__btHeroSection.shown : null,
       stack: window.__broDashPanelBus ? window.__broDashPanelBus.state.stack.slice() : null,
     }))).catch(() => null);
-    /* v2.3.3941: it asks for More -> Achievements as it always did
+    /* v2.3.4021: it asks for More -> Achievements as it always did
        (InspectPlayerPanel); the dashboard sends that to Bro's tab */
     rec.ok(`6b the card's title chip opens the page: Bro, on its Achievements tab (${fromCard && fromCard.stack})`,
       !!fromCard && !fromCard.card && fromCard.tab === 'Achievements' && !!fromCard.stack && fromCard.stack.join() === 'hero', fromCard);
@@ -436,7 +436,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const col = await B.page.evaluate(() => { const r = document.getElementById('root').getBoundingClientRect(); return { x: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width) }; });
     rec.ok(`9a on a computer the page is in the game's column (${col.x}-${col.r}), no sideways scroll, 23 rows of 48 px and up, type 12 px and up, two rows in view`,
       !!pb && pb.rows === 23 && pb.box.x >= col.x - 1 && pb.box.r <= col.r + 1 && pb.sideScroll <= 0 && pb.minRowH >= 47 && pb.minFont >= 12 && pb.cut.length === 0
-        && pb.summaryAt === 'page' && pb.inView >= 1, { pb, col });   /* v2.3.3941: Bro's tab: the summary its first line */
+        && pb.summaryAt === 'page' && pb.inView >= 1, { pb, col });   /* v2.3.4021: Bro's tab: the summary its first line */
     await B.page.screenshot({ path: join(OUT, 'achievements-5-computer.png') });
     await H.devOp(wsPort, 'achv', bId, { id: 'golden_giant' }).catch(() => {});
     const bb = await B.page.waitForSelector('[data-achv-banner="golden_giant"]', { timeout: 15000 }).then(() => bannerLook(B)).catch(() => null);
@@ -456,7 +456,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForSelector('[data-land-fold="open"]', { timeout: 6000 }).catch(() => {});
     }
     await A.page.waitForSelector('.bt-navrail [data-nav="more"]', { timeout: 6000 }).catch(() => {});
-    /* v2.3.3941: Bro on the dock, then its Achievements tab (the tab row
+    /* v2.3.4021: Bro on the dock, then its Achievements tab (the tab row
        scrolls sideways in the skinny column rather than cut a word) */
     await pointerUp(A, '.bt-navrail [data-nav="hero"]');
     const sideTile = await A.page.waitForSelector('.bt-land-sheet [data-section="Achievements"]', { timeout: 8000 }).then(() => A.page.evaluate(() => {

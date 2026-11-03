@@ -529,7 +529,7 @@ export const STATES = [
 
   /* ═══ THE DASHBOARD ═══ */
   /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page).
-     v2.3.3941: the Character page is Bro, five tabs (Me, Points, Skills,
+     v2.3.4021: the Character page is Bro, five tabs (Me, Points, Skills,
      Achievements, Equipment): each its own screen here, under dash-bro-* */
   Object.assign(dash('hero', 'Bro: Me', 'The Bro page on Me, the tab it opens on: your portrait, name, title, level, "Achievement Points: N" (a tap opens Achievements), your three combat skills and your core stats.'), { id: 'dash-bro' }),
   {
@@ -581,7 +581,7 @@ export const STATES = [
       if (!(await has(P, '[data-journal-page]')) || (await has(P, '[data-journal-focus]'))) return 'the quest\'s page did not open';
     },
   },
-  /* v2.3.3941: Life Skills are Bro's Skills tab (the bus sends 'skills' there) */
+  /* v2.3.4021: Life Skills are Bro's Skills tab (the bus sends 'skills' there) */
   Object.assign(dash('skills', 'Bro: Skills (life skills)', 'Bro\'s Skills tab: your life skills (mining, woodcutting, fishing, cooking, farming...) and their levels.'), { id: 'dash-bro-skills' }),
   {
     id: 'dash-bro-skill-detail', group: 'Dashboard', title: 'Bro: a life skill in detail',
@@ -653,7 +653,7 @@ export const STATES = [
      page) and one worn as the title, so the picture has earned rows, a title
      and the locked super-rares together -- a new character's page is 23
      locked rows */
-  /* v2.3.3941: Bro's Achievements tab (moved from More; the bus sends
+  /* v2.3.4021: Bro's Achievements tab (moved from More; the bus sends
      'achievements' there) */
   Object.assign(more('achievements', 'Bro: Achievements', 'Bro\'s Achievements tab: all 23, which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
     id: 'dash-bro-achievements', group: 'Dashboard',
@@ -672,9 +672,9 @@ export const STATES = [
   }),
   /* v2.3.3773: Journey is its own page under More, the Character page's old records tab moved here */
   more('journey', 'Journey', 'Your journey: kills, deaths, lifetime gold and XP, duels won and the deepest zone (the Character page\'s old third tab).'),
-  /* v2.3.3941: Account -- Log out / Switch character, then the Login Key */
+  /* v2.3.4021: Account -- Log out / Switch character, then the Login Key */
   more('account', 'Account', 'Your account: Log out (or Switch character, with more than one bro on the device), then your Login Key: how to carry this character to another device.'),
-  /* v2.3.3941: what the bell in the world's corner held, with a few lines in it */
+  /* v2.3.4021: what the bell in the world's corner held, with a few lines in it */
   Object.assign(more('notifications', 'Notifications', 'Notifications: world chat and the game\'s news, newest first (the bell that was in the world\'s corner), with Show on screen.'), {
     run: async ({ P }) => {
       await evalIn(P, () => {

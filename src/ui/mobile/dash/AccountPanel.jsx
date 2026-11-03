@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { COL, panelStyle } from './common.js';
 import { AccountKeyCard } from '../../account/AccountKeyCard.jsx';
 import { AccountLoginForm } from '../../account/AccountLoginForm.jsx';
-import { rosterCount } from '../../../networking/charRoster.js';   /* v2.3.3941: one bro or more, as the top bar's door asks */
-import { keptQuery } from '../../keepSwitches.js';                 /* v2.3.3941: the door's address, as GameApp's */
+import { rosterCount } from '../../../networking/charRoster.js';   /* v2.3.4021: one bro or more, as the top bar's door asks */
+import { keptQuery } from '../../keepSwitches.js';                 /* v2.3.4021: the door's address, as GameApp's */
 import { swallowTapClick } from '../../swallowTapClick.js';
 
 /* v2.3.1143: Account panel (More -> Account).  Two jobs: show this
@@ -16,7 +16,7 @@ import { swallowTapClick } from '../../swallowTapClick.js';
    (docs/LANTERN-SLATE-SPEC.md: no full cards around groupable
    content).  The shared account components own their own copy. */
 
-/* ═══ v2.3.3941: LOG OUT / SWITCH CHARACTER, AT THE TOP OF ACCOUNT ═══
+/* ═══ v2.3.4021: LOG OUT / SWITCH CHARACTER, AT THE TOP OF ACCOUNT ═══
    The owner, adopting the review of his dashboard: "Switch character /
    logout: More → Account".  The top bar's door (ZoneHeader.jsx) does this
    today and comes off the bar once this is on main (the top-bar lane), so

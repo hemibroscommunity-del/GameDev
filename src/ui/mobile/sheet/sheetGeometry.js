@@ -433,11 +433,11 @@ export function identityRowHeight(vw, vh) {
    button?"): SIX -- the Codex, between Life Skills and More.  It costs the
    others almost nothing because the drill back chip left this row in the same
    change (IDENTITY_MIN_LINE below): 44 at 390, where the five were 46. */
-/* ═══ v2.3.3941: FIVE -- Gear, Bro, Quests, Codex, More ═══
+/* ═══ v2.3.4021: FIVE -- Gear, Bro, Quests, Codex, More ═══
    The owner: "I want to consolidate the dashboard area as much as possible
    (limit lots of buttons to switch between different context)", and asked,
    five buttons: Life Skills moved inside Bro (its Skills tab). */
-export const RAIL_COUNT = 5; /* v2.3.1651: Quests; v2.3.1655: Life Skills; v2.3.3215: Codex; v2.3.3941: Life Skills into Bro */
+export const RAIL_COUNT = 5; /* v2.3.1651: Quests; v2.3.1655: Life Skills; v2.3.3215: Codex; v2.3.4021: Life Skills into Bro */
 const NAV_GAP = 4;
 
 /* v2.3.1642 (owner: "put the rail buttons on the top to the left of the
@@ -518,7 +518,7 @@ export function navButtonSize(vw, vh) {
      a rounded rectangle the box IS the target, so the two pixels the old 44
      ceiling was clipping are two real pixels rather than corners nobody could
      hit.  Wider screens take what their row actually has: 54 at 430. */
-  /* ═══ v2.3.3941: THE ROW IS THE BUTTONS' ═══
+  /* ═══ v2.3.4021: THE ROW IS THE BUTTONS' ═══
      The owner, from the review: "remove the large OPEN/CLOSE button taking up
      a full navigation slot" -- the fold is a slim grip on the band's top edge
      now (BottomDashboard), so the pill's 84 px and the sixth button's share
@@ -574,7 +574,7 @@ export function navButtonSize(vw, vh) {
    very move the one-position rule (v2.3.1637b) is about.  84 is the pill
    (75.9) and its two 4 px gaps: six buttons at 44 on a 390 phone (the five
    were 46), 41 at 375, 39 at 360, 51 at 430. */
-/* v2.3.3941: 0 -- the CLOSE pill left this row for the grip on the band's
+/* v2.3.4021: 0 -- the CLOSE pill left this row for the grip on the band's
    top edge (BottomDashboard), and nothing else stands beside the buttons */
 const IDENTITY_MIN_LINE = 0; /* was 84: the CLOSE pill and its gaps (v2.3.3215: the back chip moved out) */
 function navGroupLeftLimit(vw) {
@@ -711,7 +711,7 @@ export function navGroupWidth(vw, vh) {
    grown 32 px, all of it out of the world.  26 is portrait's own floor (a 24
    px icon and its borders) and grows the container 18 px instead; the
    buttons still flex into the row's slack (`fill`). */
-/* v2.3.3941: 26 -> 31 with five buttons, not six: the dock row is six slots
+/* v2.3.4021: 26 -> 31 with five buttons, not six: the dock row is six slots
    (the fold chip and five), and 6 x 31 + 5 gaps + 8 is the 214 that seven at
    26 made, to the pixel -- so landscapeNavGroupW, the sideways column's width
    (landscapeDashColW takes the wider of it and the bag) and the canvas beside

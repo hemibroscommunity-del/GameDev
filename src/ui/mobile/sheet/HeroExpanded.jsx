@@ -45,12 +45,12 @@ import { deskWideActive } from '../../deskWide.js';                             
 import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
 import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS, pointsResetOn } from '../../../game/pointsReset.js'; /* v2.3.3541: the free points reset */
 import { firstSpendHint } from '../../../game/pointsTips.js'; /* v2.3.3551: after a first spend, the free reset named */
-import { BroMe } from './BroMe.jsx';                                          /* v2.3.3941: Bro -> Me, the player card */
-import { SkillsPanel } from '../dash/SkillsPanel.jsx';                        /* v2.3.3941: Bro -> Skills (the life skills, moved in) */
-import { DashAchievementsPanel as AchievementsPanel } from '../../lazyPanels.js'; /* v2.3.3941: Bro -> Achievements (moved from More) */
-import { achvLive } from '@/game/achievements.js';                            /* v2.3.3941: the tab only where the worker grants them */
-import { hasUnseenLevelUps } from './skillsModel.js';                         /* v2.3.3941: the Skills tab's dot */
-import { NAV_KEYS } from '@/game/deskKeys.js';                                /* v2.3.3941: L, worn by the Skills tab */
+import { BroMe } from './BroMe.jsx';                                          /* v2.3.4021: Bro -> Me, the player card */
+import { SkillsPanel } from '../dash/SkillsPanel.jsx';                        /* v2.3.4021: Bro -> Skills (the life skills, moved in) */
+import { DashAchievementsPanel as AchievementsPanel } from '../../lazyPanels.js'; /* v2.3.4021: Bro -> Achievements (moved from More) */
+import { achvLive } from '@/game/achievements.js';                            /* v2.3.4021: the tab only where the worker grants them */
+import { hasUnseenLevelUps } from './skillsModel.js';                         /* v2.3.4021: the Skills tab's dot */
+import { NAV_KEYS } from '@/game/deskKeys.js';                                /* v2.3.4021: L, worn by the Skills tab */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -91,7 +91,7 @@ import { NAV_KEYS } from '@/game/deskKeys.js';                                /*
    stand out further as just two tabs."  The 'Records' section (Journey) is
    More's Journey page now (dash/JourneyPanel.jsx, its cards moved whole), and
    a request for it, from anything older, opens Equipment (KNOWN below). */
-/* ═══ v2.3.3941: THE BRO PAGE -- ME, POINTS, SKILLS, ACHIEVEMENTS, EQUIPMENT ═══
+/* ═══ v2.3.4021: THE BRO PAGE -- ME, POINTS, SKILLS, ACHIEVEMENTS, EQUIPMENT ═══
    The owner's five buttons: the Character page becomes Bro (his table: "PFP,
    playercard (titles, etc), combat stats and combat skills, point allocation,
    quests completed, achievements, achievement points"), Life Skills move in
@@ -130,9 +130,9 @@ const PAGE_SECTIONS = new Set(['Me', 'Skills', 'Achievements']);
  * owner's art, and deleting art on a text change is not this commit's call.
  */
 const SECTION_LABEL = {
-  Me: 'Me',                /* v2.3.3941: the player card */
-  Skills: 'Skills',        /* v2.3.3941: the life skills */
-  Achievements: 'Achievements',   /* v2.3.3941 */
+  Me: 'Me',                /* v2.3.4021: the player card */
+  Skills: 'Skills',        /* v2.3.4021: the life skills */
+  Achievements: 'Achievements',   /* v2.3.4021 */
   Overview: 'Equipment',   /* what the section actually shows: the worn six */
   /* v2.3.1849 (owner: "instead of build name it points").  The tab already
      carries a count badge of unspent POINTS, and "Build" named the activity
@@ -144,7 +144,7 @@ const SECTION_LABEL = {
    the destination (module-scoped, session-only).  v2.3.1311: reset to
    Overview when Hero is closed all the way to the toolbar — a NEXT
    open is a fresh visit (owner spec); a dip to compact keeps it. */
-/* v2.3.3941: a fresh visit opens on Me, Bro's first tab */
+/* v2.3.4021: a fresh visit opens on Me, Bro's first tab */
 let _lastSection = 'Me';
 let _lastFam = null;   /* v2.3.3605: the stat family open (HeroExpanded famOpen) */
 dashboardPanelBus.subscribe(() => {
@@ -199,7 +199,7 @@ const STAY_WAIT_MS = 3000;
 export const HeroExpanded = () => {
   const [, force] = useState(0);
   const [eqSel, setEqSel] = useState(null);
-  const [sectionState, setSectionState] = useState(_lastSection);   /* v2.3.3941: `section` below is this, checked against the tabs there are */
+  const [sectionState, setSectionState] = useState(_lastSection);   /* v2.3.4021: `section` below is this, checked against the tabs there are */
   /* v2.3.1668: which combat type the Build grid is allocating into.
      Defaults to whatever you are actually holding, so opening Build
      mid-fight lands on the weapon you were just swinging. */
@@ -297,7 +297,7 @@ export const HeroExpanded = () => {
     const id = setInterval(() => force(v => v + 1), 400);
     return () => clearInterval(id);
   }, []);
-  /* v2.3.3941: which tab is up, for the L key's second press (deskKeys) */
+  /* v2.3.4021: which tab is up, for the L key's second press (deskKeys) */
   useEffect(() => () => { heroSectionBus.shown = null; }, []);
 
   /* v2.3.1668: consume a pending "open Hero on this section" request
@@ -326,12 +326,12 @@ export const HeroExpanded = () => {
 
   const S = getState();
   const R = (S && S.rpg) || {};
-  /* v2.3.3941: the tabs this worker has (Achievements only where it grants
+  /* v2.3.4021: the tabs this worker has (Achievements only where it grants
      them), and the one on screen: a tab that is not there shows Me */
   const SECTIONS = SECTIONS_ALL.filter((x) => x !== 'Achievements' || achvLive(S));
   const section = SECTIONS.includes(sectionState) ? sectionState : 'Me';
   heroSectionBus.shown = section;
-  /* v2.3.3941: five words do not fit the skinny sideways column (~238 px):
+  /* v2.3.4021: five words do not fit the skinny sideways column (~238 px):
      there the tab row WRAPS onto two lines (the column is the screen's height,
      so 32 px costs it least), and everything pinned under the row reads this
      height rather than one tab's */
@@ -770,7 +770,7 @@ export const HeroExpanded = () => {
         /* The header's offset inside the scroller, minus whatever is pinned
            above it (the section tab bank is sticky at top 0). */
         const top = head.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
-        const want = Math.max(0, top - tabBankH - 4);   /* v2.3.3941: the row may be two lines */
+        const want = Math.max(0, top - tabBankH - 4);   /* v2.3.4021: the row may be two lines */
         if (Math.abs(sc.scrollTop - want) > 2) sc.scrollTop = want;
       } catch (e) { /* a convenience scroll must never take the panel down */ }
     });
@@ -887,7 +887,7 @@ export const HeroExpanded = () => {
     </div>
   );
 
-  /* ═══ v2.3.3941: THE TAB ROW, SHARED BY THE PAGE'S TWO SHAPES ═══
+  /* ═══ v2.3.4021: THE TAB ROW, SHARED BY THE PAGE'S TWO SHAPES ═══
      Points and Equipment scroll inside this panel under the sticky row, as
      they always have; Me, Skills and Achievements are pages of their own
      (BroMe, SkillsPanel, AchievementsPanel), each with its own scroller, so
@@ -917,20 +917,20 @@ export const HeroExpanded = () => {
         position: 'sticky', top: -4, zIndex: 2,
         marginTop: -4, paddingTop: 4,
         display: 'flex', gap: DASH_GAP,
-        height: tabBankH + 4, flex: '0 0 auto',   /* v2.3.3941: two lines when it wraps */
+        height: tabBankH + 4, flex: '0 0 auto',   /* v2.3.4021: two lines when it wraps */
         /* v2.3.2214: 4 -> 2. Every pixel above the open lane pushes its last
            stat toward the bottom of the phone; the lane headers' sticky
            offset below must move with this or they pin in the wrong place. */
         marginBottom: 2,
         background: COL.bg, /* sticky: keep opaque so content scrolls UNDER */
-        /* v2.3.3941: five words do not fit the skinny sideways column (~238
+        /* v2.3.4021: five words do not fit the skinny sideways column (~238
            px): there the row wraps onto a second line instead of cutting them */
         ...(tabsWrap ? { flexWrap: 'wrap', rowGap: DASH_GAP } : null),
       }}>
         {SECTIONS.map(s => {
           const on = section === s;
           const badge = s === 'Build' && totalUnspent > 0 ? totalUnspent : 0;
-          /* v2.3.3941: the Skills tab's dot, an unseen life-skill level-up
+          /* v2.3.4021: the Skills tab's dot, an unseen life-skill level-up
              (what the Skills button's dot was) */
           const dot = s === 'Skills' && skillsNew;
           return (
@@ -947,7 +947,7 @@ export const HeroExpanded = () => {
                  empty.  Same contract as bt-quest-turnin on the claim button,
                  and for the same reason. */
               data-section={s}
-              /* v2.3.3941: L opens this tab on a computer, so it wears the key */
+              /* v2.3.4021: L opens this tab on a computer, so it wears the key */
               data-key={s === 'Skills' ? NAV_KEYS.skills : undefined}
               data-key-at={s === 'Skills' ? 'inline' : undefined}   /* after the word: a tab is too small for a corner cap */
               /* v2.3.2326: through scrollTap, like everything else in this
@@ -960,7 +960,7 @@ export const HeroExpanded = () => {
                    thirds starved the longest word and "Equipment" rendered
                    "Equipm…" in the skinny column; Points and Journey cede
                    what they don't need.  Portrait keeps equal thirds. */
-                /* v2.3.3941: five tabs share by CONTENT everywhere now --
+                /* v2.3.4021: five tabs share by CONTENT everywhere now --
                    equal fifths would starve "Achievements" and "Equipment"
                    while "Me" sat in 70 px of air; sideways, where even that
                    does not fit, the row wraps (below) rather than cut a
@@ -971,7 +971,7 @@ export const HeroExpanded = () => {
                    the strip was one pixel from ellipsising all three even
                    with no badge on it.  A 6px margin is the difference
                    between a layout that fits and one that happens to. */
-                padding: '0 6px',   /* v2.3.3941: content-sized tabs, one cheek each side */
+                padding: '0 6px',   /* v2.3.4021: content-sized tabs, one cheek each side */
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 background: on ? COL.accentFill : COL.wellSoft,
                 border: `1px solid ${on ? COL.accent : COL.tileBor}`,
@@ -3278,7 +3278,7 @@ export const HeroExpanded = () => {
                        marginBottom, and pinning the card header 2px lower left
                        a 2px strip of scrolling cells between the two headers
                        (measured: tabs end 685, header pinned 687).  Flush. */
-                    position: 'sticky', top: tabBankH, zIndex: 1, flex: 'none',   /* v2.3.3941: tabBankH, the row may be two lines */
+                    position: 'sticky', top: tabBankH, zIndex: 1, flex: 'none',   /* v2.3.4021: tabBankH, the row may be two lines */
                     display: 'flex', alignItems: 'center', gap: landPane ? 5 : 8,
                     padding: landPane ? '5px 6px' : '6px 8px',
                     background: COL.bg, borderBottom: `1px solid ${COL.tileBor}`,

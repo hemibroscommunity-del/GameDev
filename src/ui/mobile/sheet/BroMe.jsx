@@ -10,7 +10,7 @@ import { deskWords } from '@/game/deskWords.js';
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 
-/* ═══ v2.3.3941: BRO -> ME, THE PLAYER CARD ═══
+/* ═══ v2.3.4021: BRO -> ME, THE PLAYER CARD ═══
  * The owner's table for the Bro button: "PFP, playercard (titles, etc),
  * combat stats and combat skills, point allocation, quests completed,
  * achievements, achievement points", and from the review he adopted:

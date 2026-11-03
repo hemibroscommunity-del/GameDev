@@ -29,7 +29,7 @@ export const PACKETS = [
     screens: ['creator-tab-eyewear', 'creator-tab-beard', 'creator-tab-shirt', 'creator-tab-pants', 'creator-tab-shoes', 'creator-paint'] },
   { slug: 'arriving-and-the-world', title: 'Arriving, the world screen and talking to Mayor Bro',
     screens: ['welcome', 'desktop-window', 'hud', 'hud-pvp', 'nml-popup', 'hud-outlaw', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
-  /* v2.3.3941: the owner's five buttons -- Bro's five tabs are a packet of
+  /* v2.3.4021: the owner's five buttons -- Bro's five tabs are a packet of
      their own; Quests, the bag, the Codex and More share the next */
   { slug: 'dashboard-bro', title: 'Dashboard: Bro (Me, Points, Skills, Achievements, Equipment)',
     screens: ['guide-arrow', 'dash-bro', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment'] },
@@ -37,7 +37,7 @@ export const PACKETS = [
     screens: ['dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',
     /* v2.3.3527: + the Achievements page, the ninth (MAX_PICTURES);
-       v2.3.3941: Achievements went to Bro, Notifications (the bell) came in */
+       v2.3.4021: Achievements went to Bro, Notifications (the bell) came in */
     screens: ['more-settings', 'more-pets', 'more-leaderboard', 'more-social', 'more-journey', 'more-account', 'more-notifications', 'more-about', 'more-feedback'] },
   { slug: 'doors-and-crafts', title: 'Building doors and the craft buildings',
     screens: ['near-door', 'building-forge', 'building-woodwork', 'building-gemcut', 'building-enchant', 'building-cook'] },

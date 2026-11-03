@@ -202,7 +202,7 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   const more = src('src/ui/mobile/dash/MorePanel.jsx');
   /* v2.3.3773: Journey keeps a tile of its own beside it (the owner: "journey
      ... its own icon in the more/other apps menus") */
-  /* v2.3.3941: the owner's five buttons -- Achievements left More for Bro's
+  /* v2.3.4021: the owner's five buttons -- Achievements left More for Bro's
      own tab (only where the worker grants them), and the medal's AP line on
      Bro -> Me opens it; Journey keeps its tile in More */
   const hero = src('src/ui/mobile/sheet/HeroExpanded.jsx'), me = src('src/ui/mobile/sheet/BroMe.jsx');

@@ -80,7 +80,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.waitForTimeout(900);
   /* Open the feed, or its shut state is a 36x36 bell and the overlap the
      question is about does not exist. */
-  /* v2.3.3941: shut, the feed is More's (More -> Notifications, "Show on
+  /* v2.3.4021: shut, the feed is More's (More -> Notifications, "Show on
      screen"): the harness walks that path */
   await H.openWorldChat(A);
   await A.page.waitForTimeout(600);

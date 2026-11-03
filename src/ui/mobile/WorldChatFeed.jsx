@@ -6,7 +6,7 @@ import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
 import { chatLaneOf, CHAT_LANE_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's chat-lane pictures */
 import { chatNameColor } from '../../game/chatColor.js';   /* v2.3.3391: a name's colour you can read */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3812: "Tap to close" reads "Click to close" on a computer */
-import { notifBus } from './notifBus.js';   /* v2.3.3941: the bell moved into More; shut and seen are shared with its page */
+import { notifBus } from './notifBus.js';   /* v2.3.4021: the bell moved into More; shut and seen are shared with its page */
 
 /* ═══ v2.3.2037: WORLD CHAT, AS ITS OWN SECTION ═══
  *
@@ -99,7 +99,7 @@ const KEEP = 40;
  * This changes what four scenarios see on boot (the list only exists while
  * open), and they are updated to press the bell rather than the default being
  * bent back to suit them. */
-/* ═══ v2.3.3941: ...AND THE BELL IS IN MORE NOW ═══
+/* ═══ v2.3.4021: ...AND THE BELL IS IN MORE NOW ═══
  * The owner, adopting the review of his dashboard: "The notification bell
  * could also move to More, retaining an unread badge."  So SHUT draws nothing
  * in this corner at all: the unread count rides the More button and More ->
@@ -112,7 +112,7 @@ const KEEP = 40;
 export function WorldChatFeed() {
   const [, setV] = useState(0);
   const listRef = useRef(null);
-  /* v2.3.3941: the shut flag and the seen mark are notifBus's (shared with
+  /* v2.3.4021: the shut flag and the seen mark are notifBus's (shared with
      More -> Notifications); this component re-renders when either moves */
   const [shut, setShutState] = useState(() => notifBus.shut);
   useEffect(() => notifBus.subscribe(() => setShutState(notifBus.shut)), []);
@@ -186,7 +186,7 @@ export function WorldChatFeed() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [lines.length]);
 
-  /* v2.3.3941: the unread count is drawn on the More button and its
+  /* v2.3.4021: the unread count is drawn on the More button and its
      Notifications tile now (notifBus notifUnread); open, there is none. */
 
   /* Open means you have seen the newest line.
@@ -202,7 +202,7 @@ export function WorldChatFeed() {
     if (!shut && newestTs) notifBus.markSeen(newestTs);
   }, [shut, newestTs]);
 
-  /* v2.3.3941: this feed only ever CLOSES itself now (shut, it is not drawn);
+  /* v2.3.4021: this feed only ever CLOSES itself now (shut, it is not drawn);
      More -> Notifications is what opens it.  Read when the finger lifts. */
   const toggle = () => {
     if (newestTs) notifBus.markSeen(newestTs);
@@ -295,7 +295,7 @@ export function WorldChatFeed() {
      thing the owner asked for; the 260px board it replaces is the thing
      they asked to remove (v2.3.2117). */
   if (!lines.length && !ticketChip) return null;
-  /* v2.3.3941: shut is More's now -- nothing in the corner, no bell */
+  /* v2.3.4021: shut is More's now -- nothing in the corner, no bell */
   if (shut) return null;
 
   /* ═══ v2.3.2175: A FINGER THAT MOVES 4px IS STILL A TAP ═══
@@ -517,7 +517,7 @@ export function WorldChatFeed() {
           touchAction: 'manipulation',
         }}
       >
-        {/* v2.3.3941: the shut state's 36px bell (v2.3.2155) is gone from here:
+        {/* v2.3.4021: the shut state's 36px bell (v2.3.2155) is gone from here:
             shut, this feed draws nothing and the count is on More.  What is
             left is the open header, as it was. */}
         <>
@@ -537,7 +537,7 @@ export function WorldChatFeed() {
           }}>
             World Chat
           </span>
-          {/* v2.3.3941: no unread badge on the open header: open, every line is
+          {/* v2.3.4021: no unread badge on the open header: open, every line is
               seen (it was always 0 here); the count lives on More. */}
           {/* ═══ v2.3.2325: THE ARROW IS GONE, THE WHOLE PANEL IS THE BUTTON ═══
               Owner: "you can remove the tiny down arrow minimizing button."

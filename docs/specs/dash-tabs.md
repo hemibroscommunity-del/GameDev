@@ -1,4 +1,4 @@
-# Five dashboard buttons: Gear, Bro, Quests, Codex, More (v2.3.3941)
+# Five dashboard buttons: Gear, Bro, Quests, Codex, More (v2.3.4021)
 
 The owner, 2026-11-02: "I want to consolidate the dashboard area as much as
 possible (limit lots of buttons to switch between different context) I have
