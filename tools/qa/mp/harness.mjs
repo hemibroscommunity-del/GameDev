@@ -546,7 +546,8 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
     };
   }
   await page.goto(`http://${host}:${webPort}/${_q ? '?' + _q : ''}`, { waitUntil: 'domcontentloaded' });
-  return { ctx, page, logs, name, seeded: !!phrase, oldMap: _oldMap };
+  /* v2.3.4105: `touch` kept, so talkToNpc taps on a phone and clicks on a computer */
+  return { ctx, page, logs, name, seeded: !!phrase, oldMap: _oldMap, touch: !!touch };
 }
 
 /** Drive character creation and wait until the world is live. */
@@ -2154,9 +2155,13 @@ export async function leaveNpc(P, id = 'mayor_bro') {
 /* v2.3.3583: ...and TALK to him.  A townsperson opens on a tap only now (the
    owner: "tap only instead of proximity based"; BroTown NPC_PROX_OPENS), so
    standing beside him opens nothing and the approach ends the way a player's
-   does: the right stick's tap, the E key's own chain with the character first
-   (desktopControls runInteract via S._interactNow).  It waits for the game to
-   call him the one you stand with (S._nearNpc), as the stick's picture does. */
+   does.  It waits for the game to call him the one you stand with
+   (S._nearNpc).
+   v2.3.4105: ...with a TAP ON HIM (a phone) or a CLICK ON HIM (a computer),
+   as CLAUDE.md §6 asks -- never the right stick's tap or E, which never talk
+   now (the owner: "Make talking to a npc player and entering a building
+   always two different things"; desktopControls.js).  Until then it called
+   the stick's chain, `S._interactNow({ npcFirst: true })`. */
 export async function approachNpc(P, id = 'mayor_bro') {
   await leaveNpc(P, id);
   await _placeByNpc(P, id, 0, 34);
@@ -2165,21 +2170,70 @@ export async function approachNpc(P, id = 'mayor_bro') {
   return npcDialogueOpen(P);
 }
 
-/** The right stick's tap beside a townsperson: true when it talked.  Waits
- *  (up to `waitMs`) for him to be the one you stand with first. */
-export async function talkToNpc(P, id = 'mayor_bro', { waitMs = 4000 } = {}) {
+/** v2.3.4105: where a thumb (or the pointer) lands on him: his torso in CSS
+ *  px, 30 game px over his feet (BroTown npcAtCss raises its scan 26 px and
+ *  takes 44 px round that). */
+function _npcOnPage(P, id) {
+  return P.page.evaluate((who) => {
+    const S = window._gameState && window._gameState.current;
+    const cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas');
+    const n = ((S && S.npcs) || []).find((q) => q && q.id === who);
+    if (!S || !cv || !n || !S.camera) return null;
+    const r = cv.getBoundingClientRect();
+    const x = Math.round(r.left + (n.x - S.camera.x) * (S._worldScaleX || 1));
+    const y = Math.round(r.top + (n.y - 30 - S.camera.y) * (S._worldScaleY || 1));
+    const top = document.elementFromPoint(x, y);
+    return { x, y, name: n.name, top: top ? top.tagName + (top.className && typeof top.className === 'string' ? '.' + top.className.split(' ')[0] : '') : null };
+  }, id);
+}
+
+/** A tap (a phone) or a click (a computer) ON a townsperson: true when it
+ *  talked -- the game's tap scan found him in reach (window.__btNpcTap: not
+ *  'miss', not 'far').  Waits (up to `waitMs`) for him to be the one you stand
+ *  with first; three tries, as a frame drawn between a touch's start and end
+ *  on this slow box can make a tap a hold (mp-handin1's note).
+ *  `{ touch }` overrides the page's own kind (newPlayer's `touch`). */
+export async function talkToNpc(P, id = 'mayor_bro', { waitMs = 4000, touch } = {}) {
   const end = Date.now() + waitMs;
   for (;;) {
-    const r = await P.page.evaluate((who) => {
+    const near = await P.page.evaluate((who) => {
       const S = window._gameState && window._gameState.current;
-      if (!S || typeof S._interactNow !== 'function') return 'no-interact';
-      if (!S._nearNpc || S._nearNpc.id !== who) return 'not-near';
-      return S._interactNow({ npcFirst: true }) ? 'talked' : 'nothing';
+      return !!(S && S._nearNpc && S._nearNpc.id === who);
     }, id);
-    if (r === 'talked') return true;
-    if (r !== 'not-near' || Date.now() > end) return false;
+    if (near) break;
+    if (Date.now() > end) return false;
     await P.page.waitForTimeout(150);
   }
+  const onTouch = touch != null ? !!touch : !!P.touch;
+  let last = null;
+  for (let k = 0; k < 3; k++) {
+    /* the camera slides after a hop: wait (3 s at most) until it stands
+       still, or the finger lands where he was (mp-questprox's settle) */
+    for (let i = 0, prev = null; i < 12; i++) {
+      const c = await P.page.evaluate(() => { const S = window._gameState && window._gameState.current; return S && S.camera ? [S.camera.x, S.camera.y] : null; });
+      if (c && prev && Math.hypot(c[0] - prev[0], c[1] - prev[1]) < 0.5) break;
+      prev = c;
+      await P.page.waitForTimeout(250);
+    }
+    const at = await _npcOnPage(P, id);
+    if (!at) return false;
+    const t0 = await P.page.evaluate(() => Date.now());
+    if (onTouch) await P.page.touchscreen.tap(at.x, at.y);
+    else await P.page.mouse.click(at.x, at.y, { delay: 60 });
+    for (let i = 0; i < 6; i++) {
+      await P.page.waitForTimeout(150);
+      const r = await P.page.evaluate((t) => { const x = window.__btNpcTap; return x && x.ts >= t - 50 ? { result: x.result, npc: x.npc } : null; }, t0);
+      /* him, in reach -- not a neighbour nearer the finger, not "Too far":
+         anything else is tried again */
+      if (r) { last = r; break; }
+    }
+    if (last && last.npc === at.name && last.result !== 'miss' && last.result !== 'far') return true;
+    /* a miss only once the scan has spoken: a tap that talked to a neighbour
+       is not taken back, so a second would talk twice -- say so */
+    if (last && last.npc && last.npc !== at.name) { console.log(`   [talkToNpc] the tap on ${id} found ${last.npc} (${last.result}) -- at ${JSON.stringify(at)}`); return false; }
+    last = null;
+  }
+  return false;
 }
 
 export async function npcDialogueOpen(P) {

@@ -55,6 +55,7 @@ let _overviewLands = null;     /* v2.3.3024: the same, each land one flat colour
 let _seq = 0;
 const _pending = new Map();    /* request id -> { resolve, reject } */
 const _warm = new Map();       /* "i,j" -> a piece laid ahead by the zone gate, not yet shown */
+const _filling = new Map();    /* v2.3.4094: "i,j" -> the zone gate's piece still being laid (wheelWarm) */
 let _here = null;              /* the swatch under your feet: { q, x, y } */
 let _hereAsked = null;
 const _gotFns = new Set();     /* v2.3.2959: told when a picture some piece went without has come */
@@ -392,6 +393,10 @@ export function wheelOnGot(fn) {
 export function wheelChunk(i, j, relay) {
   const warm = relay ? null : _warm.get(i + ',' + j);
   if (warm) { _warm.delete(i + ',' + j); return Promise.resolve(warm); }
+  /* v2.3.4094: one the zone gate is still laying is taken as it is -- the
+     same job, not a second one (wheelWarm, THE GROUND THAT CAME EARLY) */
+  const filling = relay ? null : _filling.get(i + ',' + j);
+  if (filling) { _filling.delete(i + ',' + j); return filling; }
   if (!_w || !_info) return Promise.reject(new Error('not ready'));
   const id = ++_seq;
   return new Promise((resolve, reject) => {
@@ -441,10 +446,26 @@ export async function wheelWarm(x, y, rx, ry) {
   const cs = info.chunk.gamePx;
   const i0 = Math.max(0, Math.floor((x - rx) / cs)), i1 = Math.min(info.chunk.cols - 1, Math.floor((x + rx) / cs));
   const j0 = Math.max(0, Math.floor((y - ry) / cs)), j1 = Math.min(info.chunk.rows - 1, Math.floor((y + ry) / cs));
+  /* ═══ v2.3.4094: THE GROUND THAT CAME EARLY ═══
+     The ground can be made, and draw, while this fill is still laying (on a
+     slow box ten seconds of it: mp-zoomout's 0.64 view, about 5 runs in 8).
+     Its first frame took the pieces laid so far, and any still being laid
+     were neither laid ahead (wheelIsWarm) nor its own: each was counted a
+     pop-in and asked of the worker a second time, queued behind the rest of
+     the fill -- so it could come after the overlay lifted, the duplicate
+     work for nothing (the fill's copy then waited out WARM_KEEP_MS).  So a
+     piece being laid here is in _filling until it comes: the ground takes
+     THAT job (wheelChunk), counts it laid ahead, and the overlay, which
+     waits on this whole fill, still covers it until it is there. */
   const jobs = [];
   for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-    if (_warm.has(i + ',' + j)) continue;
-    jobs.push(wheelChunk(i, j).then((m) => { _warm.set(i + ',' + j, m); }).catch(() => {}));
+    const k = i + ',' + j;
+    if (_warm.has(k) || _filling.has(k)) continue;
+    const p = wheelChunk(i, j);
+    _filling.set(k, p);
+    /* taken while being laid: the ground holds it now, not _warm */
+    jobs.push(p.then((m) => { if (_filling.get(k) === p) { _filling.delete(k); _warm.set(k, m); } },
+      () => { if (_filling.get(k) === p) _filling.delete(k); }));
   }
   await Promise.all(jobs);
   _warmGen++;   /* v2.3.3823: a new fill -- the ground lets it go WARM_KEEP_MS from now */
@@ -455,7 +476,7 @@ export async function wheelWarm(x, y, rx, ry) {
    good (mp-heapdiff: about 14 pieces, 1.1 MB, a trip to a fight and back). */
 let _warmGen = 0;
 export function wheelWarmGen() { return _warmGen; }
-export function wheelIsWarm(i, j) { return _warm.has(i + ',' + j); }
+export function wheelIsWarm(i, j) { const k = i + ',' + j; return _warm.has(k) || _filling.has(k); }   /* v2.3.4094: + still being laid */
 /* The readout's counts start again on each way in: they describe this visit. */
 export function wheelResetCounts() {
   Object.assign(wheelStats, { loads: 0, lastMs: 0, maxMs: 0, sumMs: 0, popIns: 0, failures: 0, lastFailure: null, partial: 0, relaid: 0, mended: 0 });
@@ -539,6 +560,7 @@ export function wheelStop() {
   for (const p of _pending.values()) p.reject(new Error('stopped'));
   _pending.clear();
   _warm.clear();
+  _filling.clear();   /* v2.3.4094 */
   _under.clear();
   _here = null;
   _hereAsked = null;

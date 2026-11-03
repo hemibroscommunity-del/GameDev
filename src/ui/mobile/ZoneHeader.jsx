@@ -1,7 +1,6 @@
 import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, getState } from './dash/common.js';
-import { rosterCount } from '../../networking/charRoster.js'; /* v2.3.2421 */
 import { calm as lifeCalm } from './dash/bagLife.js'; /* v2.3.2815: the purse's coin flip */
 import { placeName } from './placeName.js'; /* v2.3.3974: the land you stand in, or BroTown (was the Wheel's name, v2.3.3009) */
 import { testModeOn } from '../../game/testMode.js'; /* v2.3.3430: the owner's test mode tag */
@@ -12,14 +11,13 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';            /* v2.3.3
 import { onXpBar, xpBarShown, xpGainWords, xpToNextWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
 import { XpTrack } from './XpTrack.jsx';                                  /* v2.3.3739: its white gain bar and "45 / 120" */
 import { XP_BAR_ICONS, XP_BAR_LABELS } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
-import { PlaceChip } from './NmlBadge.jsx';                             /* v2.3.3765: No man's land's pill, right of the title; v2.3.3974: the place chip, always */
 import { barNarrow, barNumber, BAR_GOLD_SHORT, BAR_AP_SHORT } from '../../game/barNumbers.js';   /* v2.3.3765: big numbers short on a narrow bar */
 
 /* ═══ v2.3.2892 -> v2.3.3974: THE HOUR'S ICON IS GONE ═══
    v2.3.2892 put a day/night icon beside the zone name (the owner: "Add a time
    of day icon next to current map name").  Night is off and the icon took no
-   tap, so it said nothing a player could use; v2.3.3974 gives its room to
-   the place chip (NmlBadge.jsx PlaceChip). */
+   tap, so it said nothing a player could use; v2.3.3974 gave its room to
+   the place chip, which itself left for the minimap's plate in v2.3.4113. */
 
 /* v2.3.1333: zone header rail (owner + ChatGPT spec).  The floating
    zone label kept getting lost against bright world art, and the
@@ -85,12 +83,14 @@ const V = '?v=2.3.1333c'; /* v2.3.1333c: bigger logout glyph */
 export const ZoneHeader = ({ onExit }) => {
   const [, force] = useState(0);
   const [confirming, setConfirming] = useState(false);
-  /* v2.3.2421: does this device actually hold more than one bro?  Guarded
-     because charRoster reads localStorage, which throws in a private window
-     rather than returning empty -- and a header that throws takes the whole
-     world chrome with it. */
-  let _many = false;
-  try { _many = rosterCount() > 1; } catch (e) { _many = false; }
+  /* ═══ v2.3.4123: THE DOOR ALWAYS LOGS OUT ═══
+     The owner, 2026-11-03: "Change just the exit door icon on top left to
+     "logout" (bring to splash screen) not switch character".  v2.3.2421 made
+     this chip read "Switch Bro" (and open the list of bros) whenever the
+     device held more than one; now it always logs out to the splash screen,
+     however many bros the device holds, behind the same confirm.  A device
+     with several bros still picks another there: the splash screen's
+     Continue opens the list (LoginScreen.jsx, v2.3.2447). */
   /* v2.3.2240: the owner's test panel opens on a 1.2s press of the zone
      name (src/ui/panels/DevPanel.jsx).  Here rather than in a HUD button
      because the header is always on screen in the world and nobody
@@ -202,13 +202,9 @@ export const ZoneHeader = ({ onExit }) => {
       dim.appendChild(lbl);
       document.body.appendChild(dim);
     } catch (e) {}
-    /* v2.3.2447: the door no longer opens the character list by itself
-       (owner: "Player should need to tap continue or create a character").
-       This button, when it reads "Switch Bro", promises "You'll go to your
-       list of bros" -- and the tap on it IS the tap.  So it hands the door a
-       one-shot note to open the list; "Log Out" (one bro, nothing to switch
-       to) lands on the plain door.  LoginScreen consumes the note on mount. */
-    if (_many) { try { sessionStorage.setItem('bt_open_list', '1'); } catch (e) {} }
+    /* v2.3.2447 handed the splash screen a one-shot note to open the list
+       when this read "Switch Bro"; since v2.3.4123 it always logs out, so it
+       lands on the plain splash screen (Continue / Create) every time. */
     requestAnimationFrame(() => setTimeout(onExit, 30));
   };
 
@@ -219,7 +215,8 @@ export const ZoneHeader = ({ onExit }) => {
         <button
           type="button"
           className="bt-chisel bt-chisel--chip bt-zone-header__logout"
-          aria-label={_many ? 'Switch bro, or log out' : 'Log out to the character screen'}
+          aria-label="Log out"
+          title="Log out"   /* v2.3.4123: always (the owner: "logout ... not switch character") */
           onClick={() => setConfirming(true)}
         >
           <img src={`/icons/ui/logout-door-icon.svg${V}`} alt="" draggable={false} />
@@ -243,8 +240,20 @@ export const ZoneHeader = ({ onExit }) => {
         )}
         </div>
         <div className={'bt-zone-header__mid' + (xpOn ? ' bt-zone-header__mid--xp' : '')}>
+        {/* ═══ v2.3.4113: IN THE WORLD THE NAME IS NOT DRAWN HERE ═══
+            The owner, 2026-11-03: "Remove name of town and "safe" or other
+            designation from top bar (currently centered). The minimap label
+            area already does this."  In the Wheel the title is drawn clear
+            (game.css bt-zone-header__title--clear) but stays in the page with
+            its words: the owner's 1.2 s hold on the bar's centre still opens
+            the Test panel there (an invisible hit area where the name was),
+            and every scenario that knows the live world by "BroTown" (TRAPS
+            §244) still reads it.  A land's banner docks into the minimap's
+            plate there (zoneBannerOverlay.js titleRect, since v2.3.3108).
+            Off the Wheel -- a dungeon, a room -- there is no plate, so the
+            zone's name is still drawn here, and its banner docks here. */}
         <div
-          className="bt-zone-header__title"
+          className={'bt-zone-header__title' + (S.currentZone === 'wheel' ? ' bt-zone-header__title--clear' : '')}
           /* v2.3.2596: the zone-entry banner's DOCK TARGET.  A data hook rather
              than the class name because the class is a style handle that a
              restyle is free to rename, and the banner measures this box from
@@ -260,17 +269,10 @@ export const ZoneHeader = ({ onExit }) => {
           onContextMenu={(e) => e.preventDefault()}
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         >{placeName(S) /* v2.3.3974: the land, or BroTown (v2.3.3039: never "The Wheel") */}</div>
-        {/* ═══ v2.3.3765: NO MAN'S LAND, JUST RIGHT OF THE TITLE ═══
-            The owner: "I think the no man's land pill would work better just to
-            the right of the Brotown name at the top (you can cut it away same as
-            when earning xp in a weapon)".  Beside the title, never inside it
-            ([data-zone-title] is the banner's dock target); cut away with the
-            title while the XP bar is up (game.css bt-zone-header__mid--xp).  Its
-            own 250 ms clock (NmlBadge.jsx NmlPill). */}
-        {/* ═══ v2.3.3974: ...AND IT IS THE PLACE CHIP NOW, ALWAYS UP ═══
-            Safe / PvP · Lv 6-8 / Outlaw (NmlBadge.jsx PlaceChip); a tap
-            opens the window with your own numbers. */}
-        <PlaceChip getS={getState} />
+        {/* v2.3.3765-v2.3.3974: No man's land's pill, then the place chip
+            (Safe / PvP / Outlaw), stood here; since v2.3.4113 the minimap's
+            plate says it (game/plateSafety.js) and takes the tap
+            (NmlBadge.jsx PlateTap). */}
         {/* ═══ v2.3.3430: TEST MODE, SAID WHERE IT IS ALWAYS SEEN ═══
             The owner's switch (Test panel; server/src/testmode.js): while the
             worker has the honesty checks off for this character, the top bar
@@ -381,11 +383,9 @@ export const ZoneHeader = ({ onExit }) => {
               textAlign: 'center',
             }}
           >
-            <div style={{ fontSize: 15, fontWeight: 700, color: COL.text }}>{_many ? 'Switch bro?' : 'Leave the world?'}</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: COL.text }}>Leave the world?</div>
             <div style={{ fontSize: 12, color: COL.text2, marginTop: 4 }}>
-              {_many
-                ? 'You\u2019ll go to your list of bros. This one is saved.'
-                : 'You\u2019ll return to the character screen.'}
+              {'You\u2019ll log out to the title screen. Your bro is saved.'}
             </div>
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
               <button
@@ -398,16 +398,13 @@ export const ZoneHeader = ({ onExit }) => {
               </button>
               <button
                 type="button"
-                /* v2.3.2421: --danger only when it reads as an exit.  That red
-                   is the game's destroy colour (forge salvage, Leave Clan);
-                   on a switch nothing is destroyed and the bro is saved, so
-                   wearing it here is the control lying twice. */
-                className={_many ? 'bt-chisel bt-chisel--chip' : 'bt-chisel bt-chisel--danger'}
-                style={{ flex: 1, minHeight: 40, fontSize: 13, fontWeight: 800,
-                  color: _many ? COL.text : undefined }}
+                /* v2.3.2421: --danger because it reads as an exit (since
+                   v2.3.4123 it always is one) */
+                className="bt-chisel bt-chisel--danger"
+                style={{ flex: 1, minHeight: 40, fontSize: 13, fontWeight: 800 }}
                 onClick={doExit}
               >
-                {_many ? 'Switch Bro' : 'Log Out'}
+                Log Out
               </button>
             </div>
           </div>

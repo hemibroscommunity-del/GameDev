@@ -14,17 +14,17 @@ now, and three locals live in town. That makes 21 townsfolk with Mayor Bro.
 | --- | --- | --- | --- | --- |
 | Sterling | Sterling | the Bank's door, west of the steps | the Bank | `banker` |
 | Slim | Slim | the Saloon's door | the Saloon | `barkeep` |
-| Chef Blaze | Sizzle | the Cookhouse's door | the Cookhouse | `chef` |
+| Chef Blaze | Chef Blaze | the Cookhouse's door | the Cookhouse | `chef` |
 | Glint | Glint | the Gem Works' door | the Gem Works | `gemguru` |
-| Postmaster Pete | Snail Mail | the Post Office's door | the Post Office | `postman` |
-| Deed Dave | Swampy | the Land Office's door | the Land Office | `realtor` |
+| Postmaster Pete | Postmaster Pete | the Post Office's door | the Post Office | `postman` |
+| Deed Dave | Deed Dave | the Land Office's door | the Land Office | `realtor` |
 | Benny | Benny | the Hotel's door | the Hotel (once the halls are open, as its door) | `bellhop` |
-| Guildmaster Gary | Tryhard | the Guild Hall's door | the Guild Hall | `guildmaster` |
-| Sheriff Buck | Badge | the Sheriff's Office's door | the Sheriff's Office | `sheriff` |
-| Gavel Greg | Going-Going | the Auction House's door | the Auction House | `auctioneer` |
+| Guildmaster Gary | Guildmaster Gary | the Guild Hall's door | the Guild Hall | `guildmaster` |
+| Sheriff Buck | Sheriff Buck | the Sheriff's Office's door | the Sheriff's Office | `sheriff` |
+| Gavel Greg | Gavel Greg | the Auction House's door | the Auction House | `auctioneer` |
 | Bean | Bean | the square, east of where you arrive (Lil Bro has the west) | nothing | `streamer` |
-| Old Man Reel | Fish Tales | the town's south-west edge, past the General Store, by the river | nothing | `fisher` |
-| Tourist Terry | Selfie | the square, below the Town Hall's steps | nothing | `tourist` |
+| Old Man Reel | Old Man Reel | the town's south-west edge, past the General Store, by the river | nothing | `fisher` |
+| Tourist Terry | Tourist Terry | the square, below the Town Hall's steps | nothing | `tourist` |
 
 **Nicknames (v2.3.4048).** The owner: *"Instead of names like 'gavel Greg' it
 would be more humorous to just have them go by nicknames. I didn't mean to
@@ -34,6 +34,8 @@ is fine."* The "Who" column stays the key every table and test reads
 as" is what a player reads, from `src/data/folkNames.js` (`FOLK_NICKNAMES`,
 `folkDisplayName`: one line a nickname, held by `server/test/folk-names.test.mjs`).
 Their looks are untouched.
+
+**The old names are back (v2.3.4088).** The owner, 2026-11-03: *"Revert the nicknames and go back to the other names, I liked them better other way."* So "Shown as" is each one's own name again: `FOLK_NICKNAMES` is empty, and the eight say their own names when they introduce themselves ("I'm Gavel Greg"). **Do not bring nicknames back unless the owner asks.** The helper stays, so a shown name still goes through one door.
 
 - Each keeper stands west of his steps, as Diego and Ace do, 100 px down the
   street (60 at the Post Office and the Guild Hall, whose porches reach
@@ -79,11 +81,7 @@ word is in capitals, never `*stars*`.
 
 **v2.3.4025: plain words** (`docs/specs/plain-words.md`). The owner: "No
 cryptic jokes or anything that could confuse someone." Each says who he is
-and what his building does, in plain words. Eight go by nicknames on screen
-and say them: Sizzle (Chef Blaze), Snail Mail (Postmaster Pete), Swampy (Deed
-Dave), Tryhard (Guildmaster Gary), Badge (Sheriff Buck), Going-Going (Gavel
-Greg), Fish Tales (Old Man Reel) and Selfie (Tourist Terry). Their keys and
-`name` fields are unchanged (lane O's display names).
+and what his building does, in plain words. Eight went by nicknames on screen from v2.3.4048 until v2.3.4088, when the owner asked for their own names back (above): they now say their own names.
 
 ## Their pictures
 

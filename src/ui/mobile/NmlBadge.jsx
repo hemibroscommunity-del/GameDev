@@ -86,17 +86,25 @@
  * "PvP · Lv 6-8" in No man's land, red skull and Outlaw while you carry the
  * red skull; a tap opens the window with your own numbers in plain words
  * (game/placeSafety.js).  Still nothing said or played on the way in or out.
+ *
+ * ═══ v2.3.4113: THE CHIP LEAVES THE TOP BAR ═══
+ * The owner, 2026-11-03: "Remove name of town and "safe" or other
+ * designation from top bar (currently centered). The minimap label area
+ * already does this."  The chip is gone; the minimap's name plate says "No
+ * man's land 12" or "Outlaw · 18 min" in red (game/plateSafety.js) and a tap
+ * on it opens the same window (PlateTap below).  This file's default export
+ * keeps the red line along the band, the hit that closes the window, and the
+ * QA handle (__btNmlBadge, `at: 'plate'`).
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { nmlHere, nmlFirst, nmlSteps, NML_RED } from '@/game/noMansLand.js';   /* v2.3.3690: + nmlFirst, where it starts */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
 import { nmlExplainHit, _nmlForget } from '@/game/nmlExplainOnce.js';
-import { placeState, placeLines, chipWords, bagRiskCount } from '@/game/placeSafety.js';   /* v2.3.3974: Safe / PvP / Outlaw */
-import { barNarrow } from '@/game/barNumbers.js';   /* v2.3.3974 */
-import { deskWideActive } from '../deskWide.js';      /* v2.3.3974 */
-import { testModeOn } from '@/game/testMode.js';     /* v2.3.3974 */
-import { placeName } from './placeName.js';                                              /* v2.3.3974 */
+import { placeState, placeLines, bagRiskCount } from '@/game/placeSafety.js';   /* v2.3.3974: Safe / PvP / Outlaw */
+import { placeName } from './placeName.js';
+import { createPortal } from 'react-dom';                                                 /* v2.3.4113: the plate's tap, over the minimap */
+import { nmlSkullLeft, plateRisk } from '@/game/plateSafety.js';                         /* v2.3.4113 */                                              /* v2.3.3974 */
 
 /* a skull, drawn rather than the emoji (every phone draws 💀 its own way) */
 export function NmlSkull({ size = 18, color = NML_RED }) {
@@ -124,15 +132,8 @@ export function nmlLevels(n, first = 1) {
 /* your own skull, minutes of play left (applyNmlSkull keeps {red, white, at}:
    the worker's milliseconds when it said so; the clock runs only online,
    and you are online while you read this) */
-export function nmlSkullLeft(S, now) {
-  const o = S && S._nmlSelf;
-  if (!o) return null;
-  const gone = Math.max(0, now - (o.at || now));
-  const red = Math.max(0, (Number(o.red) || 0) - gone), white = Math.max(0, (Number(o.white) || 0) - gone);
-  if (red > 0) return { type: 'red', min: Math.ceil(red / 60000) };
-  if (white > 0) return { type: 'white', min: Math.ceil(white / 60000) };
-  return null;
-}
+/* v2.3.4113: moved to game/plateSafety.js (the minimap's plate reads it too) */
+export { nmlSkullLeft };
 
 function Line({ children }) {
   return <li style={{ marginBottom: 6 }}>{children}</li>;
@@ -206,141 +207,90 @@ export function openPlaceInfo(S, lvl) {
       <div data-place-info={plain.st.kind}>
         <div data-place-lead="" style={{ marginBottom: 6, fontWeight: 800, color: plain.st.kind === 'outlaw' ? NML_RED : '#8FD89A' }}>{plain.lead}</div>
         {plain.more && <div data-place-risk="" style={{ marginBottom: 8 }}>{plain.more}</div>}
-        <div>Out past the safe ground is No man's land, where other players can attack you. The chip up here turns amber there and says which levels.</div>
+        <div>Out past the safe ground is No man's land, where other players can attack you. The minimap's name plate says so there, in red; tap it for who can attack you.</div>
       </div>
     ),
   });
 }
 
-/* ═══ v2.3.3974: THE PLACE CHIP: SAFE, PVP, OUTLAW ═══
-   The pill of v2.3.3765 (the skull and No man's land's number) becomes the
-   chip that says whether you are safe where you stand, ALWAYS shown, right of
-   the place name:
-     green  "Safe"             the town, the commons, the safe ground, every
-                               zone off the Wheel (no player fights there);
-     amber  "PvP · Lv 6-8"     No man's land: the levels that can attack you
-                               (game/placeSafety.js pvpRange, the worker's rule);
-     red    skull + "Outlaw"   while YOU carry the red skull (you attacked
-                               first): the skull means outlaw only now.
-   The over-head skulls are unchanged.  `data-nml-badge` still carries the
-   No man's land number while you are in it (the scenarios find it by that),
-   and nothing else.  ITS OWN CLOCK, as before: the state read every 250 ms,
-   a re-render only when what it shows changes.  A tap opens the window.
-   Flat fills only: the bar is over the WebGL canvas (TRAPS section 42). */
-function ChipIcon({ kind }) {
-  if (kind === 'outlaw') return <NmlSkull size={18} />;
-  if (kind === 'pvp') {
-    /* two crossed blades */
-    return (
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={{ display: 'block', flex: 'none' }}>
-        <g stroke="#1A1206" strokeWidth="3.2" strokeLinecap="round"><path d="M3 3l10 10M13 3L3 13" /></g>
-        <g stroke="#E5B45C" strokeWidth="1.7" strokeLinecap="round"><path d="M3 3l10 10M13 3L3 13" /></g>
-      </svg>
-    );
-  }
-  /* a shield */
-  return (
-    <svg width="15" height="16" viewBox="0 0 15 16" aria-hidden="true" style={{ display: 'block', flex: 'none' }}>
-      <path d="M7.5 1.2L13 3.2v4.3c0 3.4-2.3 5.9-5.5 7.3C4.3 13.4 2 10.9 2 7.5V3.2z" fill="#6FCF7F" stroke="#0E1F12" strokeWidth="1.2" strokeLinejoin="round" />
-      <path d="M5 8l1.8 1.8L10.2 6.2" fill="none" stroke="#0E1F12" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+/* ═══ v2.3.4113: THE CHIP LEAVES THE TOP BAR; THE PLATE TAKES THE TAP ═══
+   The owner, 2026-11-03: "Remove name of town and "safe" or other
+   designation from top bar (currently centered). The minimap label area
+   already does this."  The place chip of v2.3.3974 (Safe / PvP · Lv a-b /
+   Outlaw) is gone from the bar; the minimap's name plate says "No man's land
+   12" or "Outlaw · 18 min" in red (game/plateSafety.js, wheelMinimap.js
+   _plate).  While it does, this invisible button lies over the plate
+   (window.__btWheelPlate, the window's numbers: portalled to the body, as the
+   world map's button over the rest of the box is) and a tap opens the rules
+   window, as a tap on the chip did; elsewhere the box opens the world map as
+   before.  `data-nml-badge` carries the No man's land number while you are
+   in it: the scenarios find it by that. */
+/* v2.3.4113: never over a thumb's control.  On a short sideways screen
+   (667 x 320) the attack disc reaches up under the minimap's box (v2.3.3629's
+   note; mp-nmlfoe 10): the plate's tap gives way -- its foot trimmed to above
+   the control, or its right edge to the control's left, or, with too little
+   left to aim at, no tap there (the plate still says it). */
+const THUMBS = ['[data-ricon]', '[data-sprint]', '[data-quickeat]', '.bt-special-btn', '.bt-ability-btn', '.bt-burst-btn'];
+function clearOfThumbs(p) {
+  let l = p.left, t = p.top, r = p.left + p.width, b = p.top + p.height;
+  try {
+    for (const sel of THUMBS) {
+      const n = document.querySelector(sel);
+      const q = n && n.getBoundingClientRect();
+      if (!q || !(q.width > 0 && q.height > 0)) continue;
+      if (q.right <= l || q.left >= r || q.bottom <= t || q.top >= b) continue;
+      if (q.top - t >= 14) b = q.top;
+      else if (q.left - l >= 40) r = q.left;
+      else return null;
+    }
+  } catch (e) { /* the plate as it is */ }
+  return { left: l, top: t, width: r - l, height: b - t };
 }
 
-/* QA (ui-review's chip states): `window.__btPlaceHold = { nml, red }` shows
-   the chip as if you stood in No man's land `nml` / carried `red` minutes of
-   red skull.  The chip and its window only; the worker is never told. */
-function heldPlace() {
-  try { const h = typeof window !== 'undefined' ? window.__btPlaceHold : null; return h && typeof h === 'object' ? h : null; } catch (e) { return null; }
-}
-
-function readChip(S) {
-  const hold = heldPlace();
-  let l = 0;
-  try { l = nmlHere(S); } catch (e) { l = 0; }
-  if (hold && Number(hold.nml) >= 0) l = Math.floor(Number(hold.nml)) || 0;
-  const sk = nmlSkullLeft(S, Date.now());
-  let redMin = sk && sk.type === 'red' ? sk.min : 0;
-  if (hold && Number(hold.red) >= 0) redMin = Number(hold.red) || 0;
-  const R = S && S.rpg;
-  return { lvl: l, own: sk ? sk.type : null, st: placeState({ nml: l, myLv: R && R.level, redMin }) };
-}
-
-export function PlaceChip({ getS }) {
-  const [view, setView] = useState(null);
-  const getRef = useRef(getS);
-  getRef.current = getS;
+function PlateTap({ getS, risk }) {
+  const [rect, setRect] = useState(null);
   useEffect(() => {
-    let last = '';
-    const tick = () => {
-      const S = getRef.current ? getRef.current() : null;
-      if (!S) return;
-      const v = readChip(S);
-      /* v2.3.3974: "PvP" said only on a wide bar: upright under 430 px it cut
-         the place's name (the UI review at 390).  Read on the clock, so a
-         turned phone re-says it. */
-      const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
-      v.narrow = (barNarrow(vw) || (testModeOn(S) && vw < 480 /* the owner's TEST MODE tag beside it: mp-nmltopbar at 430 */))
-        && !deskWideActive();   /* (the class is a switch, on in a phone-sized window too) */
-      const sig = [v.lvl, v.own, v.st.kind, v.st.lo, v.st.hi, v.narrow].join('|');
-      if (sig !== last) { last = sig; setView(v); }
-    };
-    tick();
-    const id = setInterval(tick, 250);
+    const id = setInterval(() => {
+      let p = null;
+      try { p = window.__btWheelPlate || null; } catch (e) { p = null; }
+      if (p) p = clearOfThumbs(p);
+      setRect((o) => (o && p && o.left === p.left && o.top === p.top && o.width === p.width && o.height === p.height ? o : p));
+    }, 300);
     return () => clearInterval(id);
   }, []);
-  /* QA handle, the house style (__btInfoPopup, __btCtlTut); `at` the place it
-     stands (v2.3.3765: always the bar); v2.3.3974: + `chip`, what it says */
-  useEffect(() => {
-    try {
-      window.__btNmlBadge = () => ({
-        lvl: view ? view.lvl : 0, skull: view ? view.own : null, at: view && view.lvl ? 'bar' : null,
-        chip: view ? view.st.kind : null, lo: view ? view.st.lo : null, hi: view ? view.st.hi : null,
-      });
-    } catch (e) { /* no window */ }
-  }, [view]);
-  if (!view) return null;
-  const { lvl, own, st, narrow } = view;
-  const words = chipWords(st, narrow);
+  if (!rect || !(rect.width > 8) || typeof document === 'undefined') return null;
   const open = (e) => {
     e.preventDefault();
     e.stopPropagation();
     try { if (e.currentTarget && e.currentTarget.blur) e.currentTarget.blur(); } catch (_e) { /* fine */ }
-    openPlaceInfo(getRef.current ? getRef.current() : null, lvl);
+    openPlaceInfo(getS ? getS() : null, risk.nml);
   };
-  const say = st.kind === 'outlaw' ? `Outlaw: you attacked a player first, ${st.redMin} minutes left.`
-    : st.kind === 'pvp' ? `No man's land ${lvl}: players level ${st.lo} to ${st.hi} can attack you here.`
-      : 'Safe: no one can attack you here.';
-  return (
-    <button type="button" className={'bt-nml-pill bt-place-chip bt-place-chip--' + st.kind}
-      data-place-chip={st.kind}
-      {...(lvl ? { 'data-nml-badge': lvl, 'data-nml-at': 'bar' } : {})}
-      aria-label={`${say} ${deskWords('Tap')} for what it means.`}
-      onClick={open}>
-      <span className="bt-nml-pill__body bt-place-chip__body">
-        <span className="bt-place-chip__icon"><ChipIcon kind={st.kind} /></span>
-        <span className="bt-place-chip__words" data-place-words="">{words}</span>
-        {/* v2.3.3268: a white skull (you were attacked) on the chip's corner,
-            as a count sits on a bell; a red one IS the chip now */}
-        {own === 'white' && st.kind !== 'outlaw' && (
-          <span className="bt-nml-pill__own" data-nml-own-skull="white" title="white skull"
-            style={{ borderColor: '#F2F2F2' }}>
-            <NmlSkull size={10} color="#F2F2F2" />
-          </span>
-        )}
-      </span>
-    </button>
+  const kind = risk.redMin > 0 ? 'outlaw' : 'pvp';
+  return createPortal(
+    <button type="button" data-plate-tap={kind}
+      {...(risk.nml ? { 'data-nml-badge': risk.nml, 'data-nml-at': 'plate' } : {})}
+      aria-label={kind === 'outlaw'
+        ? `Outlaw: you attacked a player first, ${risk.redMin} minutes left. ${deskWords('Tap')} for what it means.`
+        : `No man's land ${risk.nml}: players can attack you here. ${deskWords('Tap')} for what it means.`}
+      onPointerDown={(e) => e.stopPropagation()}
+      onTouchStart={(e) => e.stopPropagation()}
+      onClick={open}
+      style={{ position: 'fixed', left: rect.left, top: rect.top, width: rect.width, height: rect.height, zIndex: 46,
+        background: 'transparent', border: 0, padding: 0, margin: 0, cursor: 'pointer', touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent' }} />,
+    document.body,
   );
 }
-/* the v2.3.3765 name, kept for anything that still imports it */
-export const NmlPill = PlaceChip;
 
 /* v2.3.3765: the badge itself moved to the top bar (NmlPill); this keeps the
    line along the band, on its own clock, while you are in No man's land */
 export default function NmlBadge({ stateRef }) {
   const [lvl, setLvl] = useState(0);
+  /* v2.3.4113: what the plate says (No man's land, your red skull), for its tap */
+  const [risk, setRisk] = useState({ nml: 0, redMin: 0, own: null });
   useEffect(() => {
     let last = 0;
+    let lastRisk = '';
     /* v2.3.3825: the HP when the explainer was seen open, to close it on a hit */
     let openHp = null;
     const id = setInterval(() => {
@@ -348,6 +298,11 @@ export default function NmlBadge({ stateRef }) {
       let l = 0;
       try { l = nmlHere(S); } catch (e) { l = 0; }
       if (l !== last) { last = l; setLvl(l); }
+      try {
+        const r = S && S.currentZone === 'wheel' ? plateRisk(S, Date.now()) : { nml: 0, redMin: 0, own: null };
+        const sig = r.nml + '|' + r.redMin + '|' + r.own;
+        if (sig !== lastRisk) { lastRisk = sig; setRisk(r); }
+      } catch (e) { /* the plate still says it */ }
       /* ═══ v2.3.3825: ONCE, AT THE LINE; AND A HIT CLOSES IT ═══
          (game/nmlExplainOnce.js): a judge died reading the explainer among
          the first quest's slimes.  It comes up by itself once per character
@@ -373,15 +328,27 @@ export default function NmlBadge({ stateRef }) {
   useEffect(() => {
     try { window.__btNmlOnce = { forget: () => { const S = stateRef && stateRef.current; if (S && S.myId) _nmlForget(S.myId); } }; } catch (e) { /* no window */ }
   }, [stateRef]);
-  if (!lvl) return null;
-  return (
-    /* v2.3.3600: A SLOWLY BLINKING RED LINE along the top of the band while
+  /* QA handle, the house style (__btInfoPopup, __btCtlTut): No man's land's
+     number, your skull, and since v2.3.4113 `at: 'plate'` (the top bar's
+     chip, v2.3.3765-v2.3.3974, is gone) */
+  useEffect(() => {
+    try {
+      window.__btNmlBadge = () => ({ lvl: risk.nml, skull: risk.own, at: risk.nml ? 'plate' : null,
+        chip: risk.redMin > 0 ? 'outlaw' : risk.nml ? 'pvp' : 'safe' });
+    } catch (e) { /* no window */ }
+  }, [risk]);
+  const getS = () => (stateRef && stateRef.current) || null;
+  const tap = (risk.nml > 0 || risk.redMin > 0) ? <PlateTap getS={getS} risk={risk} /> : null;
+  if (!lvl) return tap;
+  return (<>
+    {tap}
+    {/* v2.3.3600: A SLOWLY BLINKING RED LINE along the top of the band while
        you are in No man's land -- the owner: "some kind of slightly blinking
-       red line" (game.css bt-nml-line; still under calm motion) */
+       red line" (game.css bt-nml-line; still under calm motion) */}
     <div data-nml-line="" aria-hidden="true" className="bt-nml-line" style={{
       position: 'fixed', left: 0, right: 0, height: 3, pointerEvents: 'none', zIndex: 33,
       bottom: 'calc(var(--sheet-h, var(--dash-h)) - 1px)', background: NML_RED,
       boxShadow: `0 0 8px ${NML_RED}`,
     }} />
-  );
+  </>);
 }

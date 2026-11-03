@@ -1,4 +1,14 @@
-/* ═══ NO MAN'S LAND'S PILL, IN THE TOP BAR RIGHT OF "BroTown" (v2.3.3765) ═══
+/* ═══ v2.3.4113: NO MAN'S LAND IS ON THE MINIMAP'S PLATE, NOT THE TOP BAR ═══
+ * The owner, 2026-11-03: "Remove name of town and "safe" or other
+ * designation from top bar (currently centered). The minimap label area
+ * already does this."  This scenario now holds the other side of what it
+ * held: at every width (and with TEST MODE on), nothing of No man's land in
+ * the top bar and its centre drawn clear; the plate's second line "No man's
+ * land N" in red; the plate's tap over the plate, on top; the XP bar no
+ * longer hides it; a real tap opens the explainer; a computer the same.
+ * (What it held before, v2.3.3765, below.)
+ *
+ * ═══ NO MAN'S LAND'S PILL, IN THE TOP BAR RIGHT OF "BroTown" (v2.3.3765) ═══
  *
  * The owner: "I think the no man's land pill would work better just to the
  * right of the Brotown name at the top (you can cut it away same as when
@@ -27,42 +37,50 @@ import { join } from 'node:path';
 
 const PHONE = { width: 390, height: 844 };
 
-/* the bar's pieces, in CSS px, and what a tap at the pill's middle reaches */
+/* v2.3.4113: the top bar's centre no longer carries No man's land (the owner:
+   "Remove name of town and "safe" or other designation from top bar"): the
+   minimap's plate says it and an invisible button over the plate takes the
+   tap (NmlBadge.jsx PlateTap).  The bar's pieces and the plate's, in CSS px,
+   and what a tap at the plate's middle reaches */
 const bar = (P) => P.page.evaluate(() => {
   const box = (sel) => {
-    const n = document.querySelector(sel);
+    const n = typeof sel === 'string' ? document.querySelector(sel) : sel;
     if (!n) return null;
     const q = n.getBoundingClientRect();
     if (!(q.width > 0 && q.height > 0)) return null;
     return { l: Math.round(q.left), r: Math.round(q.right), t: Math.round(q.top), b: Math.round(q.bottom) };
   };
   const pillEl = document.querySelector('[data-nml-badge]');
-  const pill = box('[data-nml-badge] .bt-nml-pill__body');
+  const pill = box(pillEl);
   const title = document.querySelector('[data-zone-title]');
   let top = null;
   if (pill) {
     const el = document.elementFromPoint((pill.l + pill.r) / 2, (pill.t + pill.b) / 2);
     top = !!el && !!pillEl && (el === pillEl || pillEl.contains(el));
   }
+  const pr = window.__btWheelPlate || null;
+  const mm = window.__btMinimap && window.__btMinimap.plate;
   return {
     vw: innerWidth, vh: innerHeight, orient: document.documentElement.getAttribute('data-orient'),
     pill, top, at: pillEl ? pillEl.getAttribute('data-nml-at') : null,
-    opacity: pillEl ? +getComputedStyle(pillEl).opacity : null,
+    inBar: document.querySelectorAll('.bt-zone-header [data-nml-badge], .bt-zone-header [data-place-chip], .bt-zone-header .bt-nml-pill').length,
+    plate: pr ? { l: Math.round(pr.left), r: Math.round(pr.left + pr.width), t: Math.round(pr.top), b: Math.round(pr.top + pr.height) } : null,
+    plateSub: mm ? mm.sub : null, plateRed: mm ? !!mm.red : null,
     header: box('.bt-zone-header'), title: box('[data-zone-title]'),
     titleText: title ? title.textContent : null,
-    titleCut: title ? title.scrollWidth > title.clientWidth + 1 : null,
+    titleColor: title ? getComputedStyle(title).color : null,
     purse: box('[data-purse]'), ap: box('[data-ap-chip]'), door: box('.bt-zone-header__logout'),
     test: box('[data-test-mode-tag]'), xp: !!document.querySelector('.bt-zone-header__mid--xp'),
   };
 });
-const overlaps = (a, b) => !!a && !!b && !(a.r <= b.l || a.l >= b.r || a.b <= b.t || a.t >= b.b);
-/* right of the title, close by (the TEST MODE tag stands after it), in the
-   bar, on top, nothing of the bar under it, the title and the purse whole */
-const placed = (L) => !!L.pill && !!L.title && !!L.header && L.top === true && L.at === 'bar'
-  && L.pill.l >= L.title.r && L.pill.l - L.title.r <= 14
-  && L.pill.t >= L.header.t && L.pill.b <= L.header.b && L.pill.r <= L.vw
-  && !overlaps(L.pill, L.purse) && !overlaps(L.pill, L.ap) && !overlaps(L.pill, L.door) && !overlaps(L.pill, L.test)
-  && !!L.titleText && (L.titleCut === false || (L.titleText !== 'BroTown' && L.title.r - L.title.l >= 50)) /* v2.3.3974: the land's name there, or BroTown (whole); a land's may end in "..." on the owner's TEST MODE bar at 320 */ && !!L.purse && L.purse.r <= L.vw;
+const near = (a, b) => !!a && !!b && Math.abs(a.l - b.l) <= 1 && Math.abs(a.r - b.r) <= 1 && Math.abs(a.t - b.t) <= 1 && Math.abs(a.b - b.b) <= 1;
+const clear = (c) => /rgba\(0, 0, 0, 0\)|transparent/.test(c || '');
+/* nothing of No man's land in the bar, its centre's name drawn clear; the
+   plate says "No man's land N" in red and the tap lies over it, on top */
+const placed = (L) => L.inBar === 0 && clear(L.titleColor) && !!L.title && !!L.header
+  && !!L.pill && L.top === true && L.at === 'plate' && near(L.pill, L.plate)
+  && /^No man's land \d+$/.test(L.plateSub || '') && L.plateRed === true
+  && L.pill.r <= L.vw && L.pill.b <= L.vh && !!L.purse && L.purse.r <= L.vw;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
@@ -110,7 +128,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.waitForTimeout(1600);
         const L = await bar(P);
         const side = L.orient === 'landscape';
-        rec.ok(`1${tag}. ${w} x ${h}${side ? ' (sideways)' : ''}: the pill (${L.pill ? L.pill.l + '-' + L.pill.r + ', ' + L.pill.t + '-' + L.pill.b : 'none'}) in the top bar just right of "${L.titleText}" (${L.title ? L.title.l + '-' + L.title.r : 'none'})${L.top ? '' : ' UNDER SOMETHING'}, the title whole (${L.titleCut ? 'CUT' : 'yes'}), the purse whole, clear of the door, the AP${tag ? ' and TEST MODE (' + (L.test ? L.test.l + '-' + L.test.r : 'none') + ')' : ''}`,
+        rec.ok(`1${tag}. ${w} x ${h}${side ? ' (sideways)' : ''}: nothing of No man's land in the top bar (${L.inBar}), its centre drawn clear; the plate says "${L.plateSub}" and its tap (${L.pill ? L.pill.l + '-' + L.pill.r + ', ' + L.pill.t + '-' + L.pill.b : 'none'}) lies over it${L.top ? '' : ' UNDER SOMETHING'}${tag ? '; TEST MODE still on the bar (' + (L.test ? L.test.l + '-' + L.test.r : 'none') + ')' : ''}`,
           placed(L) && (!tag || !!L.test), L);
         if (w === 320 || w === 568) await P.page.screenshot({ path: join(OUT, `nmltopbar-${w}${tag ? '-test' : ''}.png`), clip: { x: 0, y: 0, width: w, height: 60 } }).catch(() => {});
       }
@@ -135,25 +153,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
       S._xpBar = { cat: 'sword', level: 4, xp: 45, need: 120, frac: 0.375, gain: 3, gainAt: Date.now(), seq: 1, at: Date.now(), up: false, fromLevel: 4, fromFrac: 0.35 };
     });
     const xpUp = await H.waitFor(P, () => !!document.querySelector('.bt-zone-header__mid--xp'), (v) => v, { timeout: 4000, label: 'the XP bar' }).catch(() => false);
-    /* the fade (220 ms) as this slow box draws it */
-    await H.waitFor(P, () => { const b = document.querySelector('[data-nml-badge]'); return b ? +getComputedStyle(b).opacity : null; }, (v) => v === 0, { timeout: 5000, label: 'faded' }).catch(() => null);
     const L1 = await bar(P);
     await P.page.screenshot({ path: join(OUT, 'nmltopbar-xp.png'), clip }).catch(() => {});
-    rec.ok(`2. while the XP bar is up the pill is cut away with the title (opacity ${L1.opacity}, a tap at its middle ${L1.top ? 'REACHES it' : 'does not reach it'})`,
-      !!xpUp && L1.xp && L1.opacity === 0 && L1.top === false, L1);
+    rec.ok(`2. while the XP bar holds the bar's centre the plate still says it and its tap still works (${L1.top ? 'reaches it' : 'DOES NOT reach it'})`,
+      !!xpUp && L1.xp && placed({ ...L1, titleColor: 'transparent' }), L1);
     await P.page.evaluate(() => { window.__btXpHold = false; window._gameState.current._xpBar = null; });
     await H.waitFor(P, () => !document.querySelector('.bt-zone-header__mid--xp'), (v) => v, { timeout: 4000, label: 'the bar gone' }).catch(() => null);
-    await H.waitFor(P, () => { const b = document.querySelector('[data-nml-badge]'); return b ? +getComputedStyle(b).opacity : null; }, (v) => v === 1, { timeout: 5000, label: 'back' }).catch(() => null);
     const L2 = await bar(P);
     await P.page.screenshot({ path: join(OUT, 'nmltopbar-after.png'), clip }).catch(() => {});
-    rec.ok(`2. ...and back when the bar goes (opacity ${L2.opacity}), where it was`, placed(L2) && L2.opacity === 1 && !!L0.pill && L2.pill.l === L0.pill.l, { L0: L0.pill, L2 });
+    rec.ok(`2. ...and after the bar goes, the same, where it was`, placed(L2) && !!L0.pill && L2.pill.l === L0.pill.l, { L0: L0.pill, L2 });
 
     /* ── 3. a tap opens the explainer; the red line is up ── */
     const c = L2.pill ? { x: (L2.pill.l + L2.pill.r) / 2, y: (L2.pill.t + L2.pill.b) / 2 } : null;
     if (c) await P.page.touchscreen.tap(c.x, c.y);
     const info = await H.waitFor(P, () => { const n = document.querySelector('[data-nml-info]'); return n ? n.getAttribute('data-nml-info') : null; }, (v) => !!v, { timeout: 4000, label: 'the explainer' }).catch(() => null);
     const line = await P.page.evaluate(() => !!document.querySelector('[data-nml-line]'));
-    rec.ok(`3. a real tap on the pill opens the explainer (No man's land ${info}), and the red line along the band is up`, !!info && line, { info, line });
+    rec.ok(`3. a real tap on the plate opens the explainer (No man's land ${info}), and the red line along the band is up`, !!info && line, { info, line });
 
     /* ── 4. a computer's wide layout ── */
     D = await H.newPlayer(browser, { name: 'Deskbro', wsPort, webPort, viewport: { width: 1440, height: 900 }, wide: true, guest: true, world: 'wheel' });
@@ -167,7 +182,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await D.page.waitForTimeout(800);
     const LD = await bar(D);
     await D.page.screenshot({ path: join(OUT, 'nmltopbar-desk.png'), clip: { x: 0, y: 0, width: 1440, height: 80 } }).catch(() => {});
-    rec.ok(`4. on a computer (the wide layout) the pill is right of the title too (${LD.pill ? LD.pill.l + '-' + LD.pill.r : 'none'})`, dl > 0 && placed(LD), LD);
+    rec.ok(`4. on a computer (the wide layout) the same: the plate says it and takes the tap (${LD.pill ? LD.pill.l + '-' + LD.pill.r : 'none'})`, dl > 0 && placed(LD), LD);
 
     rec.ok(`5. no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   } finally {
