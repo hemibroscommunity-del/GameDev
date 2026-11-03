@@ -305,7 +305,7 @@ export const AchievementsHead = ({ side }) => {
 
 export const AchievementsPanel = () => {
   const [filter, setFilter] = useState('all');
-  /* v2.3.4153: the Bro page's Titles row opens the page on the row you pick
+  /* v2.3.4162: the Bro page's Titles row opens the page on the row you pick
      a title from (game/achievements.js takeTitlePicker), brought into view */
   const [open, setOpen] = useState(() => takeTitlePicker(getState()));
   useEffect(() => {

@@ -136,7 +136,7 @@ async function waitForShot(P, ms = 12000) {
   return null;
 }
 
-/* v2.3.4153: the Bro card's doors (Points, Equipment) and its
+/* v2.3.4162: the Bro card's doors (Points, Equipment) and its
    windows' close are buttons: a click */
 const clickSel = (P, sel) => P.page.evaluate((s) => { const el = document.querySelector(s); if (!el) return false; el.click(); return true; }, sel);
 
@@ -165,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!R.prog3) R.prog3 = {};
     R.prog3.sk = { ...(R.prog3.sk || {}), sword: { level: 8, xp: 0 }, bow: { level: 6, xp: 0 }, staff: { level: 4, xp: 0 } };
     R.prog3.pool = { ...(R.prog3.pool || {}), unspent: 3 };
-    try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}   /* v2.3.4153: the Bro card, whose Points row opens Points */
+    try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}   /* v2.3.4162: the Bro card, whose Points row opens Points */
   });
   await P.page.waitForTimeout(900);
   await clickSel(P, '[data-section="Build"]');
@@ -823,10 +823,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 5. THE EQUIPMENT FIGURE IS UNTOUCHED ── */
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(400);
-  /* v2.3.4153: Points is a window over the Bro card: its close, then the
+  /* v2.3.4162: Points is a window over the Bro card: its close, then the
      Equipment window, by name */
   if (await clickSel(P, '[data-bro-popup-close]')) await P.page.waitForTimeout(600);
-  /* v2.3.4153: the Equipment window is reached by name (the card's Equipment
+  /* v2.3.4162: the Equipment window is reached by name (the card's Equipment
      door opens the Gear tab since v2.3.4151) */
   await P.page.evaluate(() => { window.__btHeroSection.request('Overview'); window.__broDashPanelBus.open('hero'); });
   await P.page.waitForTimeout(1000);

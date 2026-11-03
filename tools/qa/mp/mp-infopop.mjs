@@ -52,7 +52,7 @@ const tapSel = (P, sel) => P.page.evaluate((s) => {
   return true;
 }, sel);
 
-/* v2.3.4153: the Bro card's doors (Points, Equipment) and its
+/* v2.3.4162: the Bro card's doors (Points, Equipment) and its
    windows' close are buttons: a click */
 const clickSel = (P, sel) => P.page.evaluate((s) => { const el = document.querySelector(s); if (!el) return false; el.click(); return true; }, sel);
 
@@ -163,7 +163,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     hadAction && !(await pop(P)), { hadAction, wentThrough });
 
   /* ── 5. THE HERO SHEET'S STAT LABELS ── */
-  /* v2.3.4153: onto the Bro card; its six slots are the door to Equipment */
+  /* v2.3.4162: onto the Bro card; its six slots are the door to Equipment */
   await P.page.evaluate(() => { try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); } catch (e) {} });
   await P.page.waitForTimeout(1000);
   /* ONTO OVERVIEW, WHICH IS WHERE THE STAT ROWS LIVE.  The first cut of this
@@ -185,7 +185,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           opened.  v2.3.2013 added data-section for exactly this, and its note
           says so.
      Both times the rows were fine and the test was in the wrong room. */
-  /* v2.3.4153: the Equipment window is reached by name (the card's Equipment
+  /* v2.3.4162: the Equipment window is reached by name (the card's Equipment
      door opens the Gear tab since v2.3.4151) */
   await P.page.evaluate(() => { window.__btHeroSection.request('Overview'); window.__broDashPanelBus.open('hero'); });
   await P.page.waitForTimeout(900);

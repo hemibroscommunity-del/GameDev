@@ -1,4 +1,4 @@
-/* ═══ mp-brocard (v2.3.4153): THE BRO PAGE, AS THE OWNER DREW IT ═══
+/* ═══ mp-brocard (v2.3.4162): THE BRO PAGE, AS THE OWNER DREW IT ═══
  *
  * The owner, of the first cut (your own Inspect card): "it reads like an old
  * PC menu".  Then a drawing (D474F679-...png in the repo root) and: "One
@@ -180,7 +180,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   P.page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
   try {
     await H.enterWorld(P);
-    /* v2.3.4153: a real keystroke every 20 s -- two quiet minutes log the
+    /* v2.3.4162: a real keystroke every 20 s -- two quiet minutes log the
        page out (wsClient idleLogout), and most of this walk is evaluate */
     stopP = H.keepAlive(P);
     await P.page.waitForTimeout(2500);
@@ -286,7 +286,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const c4 = await card(P);
     rec.ok('...its close comes back to the card, the Bow still picked', c4.there && !(await popup(P)) && c4.weapon === 'bow', { there: c4.there, weapon: c4.weapon });
 
-    /* v2.3.4153: since the Gear tab (v2.3.4151) the Equipment door opens
+    /* v2.3.4162: since the Gear tab (v2.3.4151) the Equipment door opens
        Gear -- the band at rest, unfolded, its three panels */
     await touch(P, '[data-bro-row="equipment"]');
     await P.page.waitForTimeout(1500);
@@ -365,7 +365,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1500);
     await P.page.evaluate(() => { window.__btHeroSection.request('Card'); window.__broDashPanelBus.open('hero'); });
     await P.page.waitForTimeout(1500);
-    /* v2.3.4153: the one band is the default (#1410): on its side the band
+    /* v2.3.4162: the one band is the default (#1410): on its side the band
        stays at the bottom, the card laid out from its width; the old side
        column (?oneband=0) is one column at ~220 px, its chip CLOSE / OPEN */
     const side = await card(P);
@@ -394,7 +394,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`a computer: P opens Bro, the card in the column (${d1.cols} columns at ${d1.w} px), nothing cut`,
       d1.there && d1.cols >= 2 && d1.cut.length === 0 && d1.past === 0, { cols: d1.cols, w: d1.w, cut: d1.cut });
     const rd = await row(D);
-    /* v2.3.4153: CLOSE in the row (the one band), or the old column's chip */
+    /* v2.3.4162: CLOSE in the row (the one band), or the old column's chip */
     const chipD = (rd.close && rd.close.text) || await D.page.evaluate(() => { const c = document.querySelector('[data-land-fold]'); return c ? (c.textContent || '').trim() : null; });
     rec.ok(`...the row: CLOSE (${chipD}), the five with their words (${rd.words}: ${rd.btns.map((b) => b.word).join(' ')})`,
       chipD === 'CLOSE' && rd.words !== 'icon' && rd.btns.length === 5 && rd.btns.every((b) => b.word === WORDS[b.id] && !b.cut), rd.btns);

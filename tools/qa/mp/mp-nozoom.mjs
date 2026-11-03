@@ -43,7 +43,7 @@ const tapSel = (P, sel) => P.page.evaluate((s) => {
   return true;
 }, sel);
 
-/* v2.3.4153: the Bro card's doors (Points, Equipment) and its
+/* v2.3.4162: the Bro card's doors (Points, Equipment) and its
    windows' close are buttons: a click */
 const clickSel = (P, sel) => P.page.evaluate((s) => { const el = document.querySelector(s); if (!el) return false; el.click(); return true; }, sel);
 
@@ -69,7 +69,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* three sword-lane points to spend (prog3.js prog3Pool / prog3PoolBy) */
       R.prog3.pool = 3;
       R.prog3.poolBy = { sword: 3 };
-      try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}   /* v2.3.4153: the Bro card, whose Points row opens Points */
+      try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}   /* v2.3.4162: the Bro card, whose Points row opens Points */
     });
     await P.page.waitForTimeout(900);
     await clickSel(P, '[data-section="Build"]');

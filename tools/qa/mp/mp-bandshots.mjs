@@ -1,4 +1,4 @@
-/* ═══ mp-bandshots (v2.3.4153): THE BAND OPEN ON GEAR AND ON BRO, EVERY SCREEN ═══
+/* ═══ mp-bandshots (v2.3.4162): THE BAND OPEN ON GEAR AND ON BRO, EVERY SCREEN ═══
  *
  * The one band is the default on every screen (#1410, src/ui/oneBand.js):
  * the band at the bottom, its content centred in [data-band-box] on a

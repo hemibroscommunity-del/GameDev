@@ -1994,7 +1994,7 @@ button.bt-pin-drop{color:inherit;margin:0}
   .bt-pin-cmd .is-long{display:none}
   .bt-pin-cmd .is-short{display:inline}
 }
-/* ═══ v2.3.4153: THE BRO PAGE, AS THE OWNER DREW IT (sheet/BroCard.jsx) ═══
+/* ═══ v2.3.4162: THE BRO PAGE, AS THE OWNER DREW IT (sheet/BroCard.jsx) ═══
    Three panels -- you, the weapon's combat stats, the doors -- in the Inspect
    card's palette (#1C2F3C tiles, #3B5366 edges, #A0BACE ink, gold for what is
    yours and what to act on).  The shape is the page's own width
@@ -5761,7 +5761,7 @@ body:has([data-trade-drawer]) [data-coach]{display:none}
   [data-key-at="end"]::after { bottom:auto; right:14px; top:50%; transform:translateY(-50%); }
   [data-key-at="inline"]::after { position:relative; display:inline-flex; right:auto; bottom:auto; margin-left:8px; vertical-align:1px; }
   [data-key-at="xy"]::after { right:auto; bottom:auto; left:var(--key-x,0px); top:var(--key-y,0px); }
-  /* v2.3.4153: the dashboard's buttons wear their words now (NavRail
+  /* v2.3.4162: the dashboard's buttons wear their words now (NavRail
      navLabelMode), along the bottom or the right: the cap goes to the top-left
      corner, where it covers neither the word nor the count badge (top-right) */
   .bt-navrail[data-nav-words="stack"] [data-key]::after,

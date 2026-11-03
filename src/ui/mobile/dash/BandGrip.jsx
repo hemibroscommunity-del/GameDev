@@ -2,9 +2,9 @@ import React from 'react';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashMinBus } from '../dashMinBus.js';
 import { swallowTapClick } from '../../swallowTapClick.js';
-import { BAND_CLOSE_W } from '../sheet/sheetGeometry.js';   /* v2.3.4153: CLOSE's width, kept by the row */
+import { BAND_CLOSE_W } from '../sheet/sheetGeometry.js';   /* v2.3.4162: CLOSE's width, kept by the row */
 
-/* ═══ v2.3.4153: THE SLIM HANDLE ON THE BAND'S TOP EDGE ═══
+/* ═══ v2.3.4162: THE SLIM HANDLE ON THE BAND'S TOP EDGE ═══
    The owner adopted this from the review of his dashboard: "remove the large
    OPEN/CLOSE button taking up a full navigation slot.  A slim, centered handle
    at the top of the dashboard would communicate that the panel can be expanded
@@ -29,7 +29,7 @@ import { BAND_CLOSE_W } from '../sheet/sheetGeometry.js';   /* v2.3.4153: CLOSE'
    The band moves its top edge when a page opens, so after a tap that closes a
    page the finger is over the world: the click that follows is eaten
    (swallowTapClick, TRAPS §247), or it would land on the game. */
-/* ═══ v2.3.4153: ...AND NOW ONLY THE TAB ITSELF ═══
+/* ═══ v2.3.4162: ...AND NOW ONLY THE TAB ITSELF ═══
    With CLOSE back in the row (BandClose below: the 44 px fold control the
    owner drew), the grip's tap area shrinks to the tab it draws, 64 x 20 --
    16 px above the band's edge and its 4 px of air.  The 44 px patch over the
@@ -104,7 +104,7 @@ export const BandGrip = ({ min, expanded }) => (
   </button>
 );
 
-/* ═══ v2.3.4153: AND CLOSE AT THE ROW'S LEFT, AS THE OWNER DREW IT ═══
+/* ═══ v2.3.4162: AND CLOSE AT THE ROW'S LEFT, AS THE OWNER DREW IT ═══
    His drawing of the Bro page (D474F679-...png) and of the row
    (61C354F2-...png): CLOSE at the left, then the five buttons.  So the word
    comes back beside them on the upright phone too -- the grip above stays
