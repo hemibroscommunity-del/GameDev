@@ -8,7 +8,7 @@
  *     over the three weapons; 2 swaps, it goes ('swap') and never returns;
  *   phone upright: "Tap a weapon to swap" over the weapon chip; left alone it
  *     goes after about 8 s ('time') and never returns.
- *   v2.3.3919: the chip is the weapon triangle beside the attack disc
+ *   v2.3.3921: the chip is the weapon triangle beside the attack disc
  *     (WeaponTriangle.jsx), and the phone's words "Tap a weapon to switch".
  * Pictures: tools/qa/mp/out/swaphint-{desk,phone}.png.
  */

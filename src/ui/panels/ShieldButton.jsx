@@ -741,10 +741,10 @@ export function combatBandTopPx(isLandscape) {
     jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */
     discBottom(isLandscape) + discR,           /* the attack disc (v2.3.3740: its own height upright) */
     LBTN.bottom + discL,                       /* the movement disc */
-    weaponTriAnchor(isLandscape).bottomPx + weaponTriAnchor(isLandscape).h);   /* v2.3.3919: the weapon triangle */
+    weaponTriAnchor(isLandscape).bottomPx + weaponTriAnchor(isLandscape).h);   /* v2.3.3921: the weapon triangle */
 }
 
-/* ═══ v2.3.3919: THE WEAPON TRIANGLE, OVER THE MOVEMENT STICK ═══
+/* ═══ v2.3.3921: THE WEAPON TRIANGLE, OVER THE MOVEMENT STICK ═══
  * The owner: "I need a button on screen for switching between weapons.  Maybe
  * a triangle or wheel where the active weapon is highlighted on top and the
  * others are greyed out" (WeaponTriangle.jsx).  Three round buttons in one

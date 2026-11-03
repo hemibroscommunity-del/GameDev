@@ -11,7 +11,7 @@ weapon buttons, in the minimap star cue's family (docs/specs/star-cue.md):
 - on a computer, over the three weapons at the dashboard's foot: "Swap weapons:
   1 Melee, 2 Bow, 3 Staff" (the keys in the keys column);
 - on a phone, over the weapon chip: "Tap a weapon to swap" (through deskWords).
-  Since v2.3.3919, over the weapon triangle beside the attack disc: "Tap a
+  Since v2.3.3921, over the weapon triangle beside the attack disc: "Tap a
   weapon to switch" (docs/specs/weapon-triangle.md).
 
 It waits while a talk or a building's window is up, goes on the first swap or

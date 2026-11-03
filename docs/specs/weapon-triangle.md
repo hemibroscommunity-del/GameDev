@@ -1,4 +1,4 @@
-# The weapon triangle (v2.3.3919)
+# The weapon triangle (v2.3.3921)
 
 The owner, playtesting: "I need a button on screen for switching between
 weapons. Maybe a triangle or wheel where the active weapon is highlighted on top

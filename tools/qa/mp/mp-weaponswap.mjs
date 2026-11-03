@@ -1,4 +1,4 @@
-/* ═══ mp-weaponswap (v2.3.3919): THE WEAPON TRIANGLE OVER THE MOVEMENT STICK ═══
+/* ═══ mp-weaponswap (v2.3.3921): THE WEAPON TRIANGLE OVER THE MOVEMENT STICK ═══
  *
  * The owner: "I need a button on screen for switching between weapons.  Maybe
  * a triangle or wheel where the active weapon is highlighted on top and the
@@ -170,7 +170,7 @@ function checkLayout(rec, L, label) {
     { top: top.box, left: left.box, right: right.box });
   rec.ok(`${label}: a finger at each centre lands on that weapon`, all.every((b) => b.hit), all.map((b) => b.hit));
   const tri = L.tri;
-  /* v2.3.3919: the left thumb's side, by the owner's choice */
+  /* v2.3.3921: the left thumb's side, by the owner's choice */
   rec.ok(`${label}: in the left half, the movement stick's side (right edge ${Math.round(tri.r)} of ${L.vw / 2}), clear of the iOS edge guard (left ${Math.round(tri.x)}), over the dashboard (foot ${Math.round(tri.b)}, band top ${Math.round(L.vh - L.dashH)})`,
     tri.r <= L.vw / 2 && tri.x >= 18 && tri.b <= L.vh - L.dashH + 0.5, tri);
   /* every slot of the cluster, drawn or not */
@@ -255,7 +255,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     for (let i = 0; i < 8; i++) S.chatLog.push({ name: 'Crowd' + (i % 3), text: 'a line of world chat that runs long enough to wrap ' + i, ts: Date.now() + i });
     try { window.__broChatLogBus && window.__broChatLogBus.bump(); } catch (e) {}
   });
-  const opened = await H.openWorldChat(P).catch(() => false);
+  /* the feed itself drawn, not the helper's word: on this box a frame can take
+     longer than its 350 ms wait, and its second click shuts what the first opened */
+  const feedUp = () => P.page.waitForFunction(() => { const f = document.querySelector('[data-world-chat]'); return !!f && f.getBoundingClientRect().width > 0; }, null, { timeout: 6000, polling: 250 }).then(() => true).catch(() => false);
+  await H.openWorldChat(P).catch(() => false);
+  let opened = await feedUp();
+  if (!opened) { await P.page.click('[data-world-chat-toggle]').catch(() => {}); opened = await feedUp(); }
   await P.page.waitForTimeout(600);
   const feed = await P.page.evaluate(() => {
     const s = document.querySelector('[data-world-chat]');

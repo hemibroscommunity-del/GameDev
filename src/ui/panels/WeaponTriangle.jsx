@@ -6,7 +6,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { weaponTriAnchor, WTRI, ctlBottom, LBTN, leftCluster, LCTL_SLOT } from './ShieldButton.jsx';
 import { Skin } from './controlSkin.jsx';
 
-/* ═══ v2.3.3919: THE WEAPON TRIANGLE, OVER THE MOVEMENT STICK ═══
+/* ═══ v2.3.3921: THE WEAPON TRIANGLE, OVER THE MOVEMENT STICK ═══
  *
  * The owner, playtesting: "I need a button on screen for switching between
  * weapons.  Maybe a triangle or wheel where the active weapon is highlighted
