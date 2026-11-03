@@ -26,7 +26,7 @@ import { classify, CAPE_ITEM_PREFIX } from './InventoryPanel.jsx';
 import { lockedKeysInOrder } from './inventoryLocks.js';
 /* v2.3.2143: the WORN cape leaves the bag -- see wornCapeKey() below. */
 import { getCape } from '@/rendering/traits/capeCatalog.js';
-/* v2.3.4041: the Gear tab's finer kinds (its filter menu): one function for
+/* v2.3.4031: the Gear tab's finer kinds (its filter menu): one function for
    every item id, node-tested (itemCategory.js) */
 import { entryCategory } from './itemCategory.js';
 
@@ -130,7 +130,7 @@ export function getBagEntries(rpg) {
      quest_reward_stashed handler in wsClient.js). */
   pushStash(rpg.legsStash,   'stashLegs',   'armor',  'stashLegs');
   pushStash(rpg.gearStash,   'stashGear',   'armor',  'stashGear');
-  /* v2.3.4041: each entry's Gear-tab kind ('sword', 'fish', 'ore'...), beside
+  /* v2.3.4031: each entry's Gear-tab kind ('sword', 'fish', 'ore'...), beside
      the five chips' `cat` -- the auction house still files under `cat`. */
   for (const e of entries) e.gcat = entryCategory(e);
 
@@ -170,5 +170,5 @@ if (typeof window !== 'undefined') {
      to ask which chip, not just whether it is there at all. */
   window.__btBagCats = (rpg) => getBagEntries(rpg)
     .filter((e) => e.kind === 'item')
-    .map((e) => ({ key: e.key, cat: e.cat, gcat: e.gcat }));   /* v2.3.4041: + the Gear tab's kind */
+    .map((e) => ({ key: e.key, cat: e.cat, gcat: e.gcat }));   /* v2.3.4031: + the Gear tab's kind */
 }

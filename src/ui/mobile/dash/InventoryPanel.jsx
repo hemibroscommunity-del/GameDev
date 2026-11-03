@@ -501,7 +501,7 @@ const ShopQuoteBadge = ({ ikey }) => {
   );
 };
 
-/* v2.3.4041: `onSelect` -- the Gear tab's bag (GearTab.jsx): a tap SELECTS
+/* v2.3.4031: `onSelect` -- the Gear tab's bag (GearTab.jsx): a tap SELECTS
    the tile (its blue ring, `selected`) and the middle panel shows it, instead
    of opening the item card.  The shop's and the trade's taps still come first:
    while either window is open the bag is half of it, as before. */
@@ -536,7 +536,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride, onSelect, selected
        windows about one item, one of them covering the bag the trade is
        built on, is the "don't open another inventory" that was ruled out. */
     if (tradeBagBus.open && tradeBagBus.tap(ikey)) return;
-    if (onSelect) { onSelect(); return; }   /* v2.3.4041: the Gear tab */
+    if (onSelect) { onSelect(); return; }   /* v2.3.4031: the Gear tab */
     itemDetailBus.open({ kind: 'inventory', key: ikey, count: count || 0, anchor });
   };
   const locked = itemIsLocked(ikey);
@@ -552,7 +552,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride, onSelect, selected
       width: '100%', aspectRatio: '1 / 1',
       background: (shopSel || tradeStaged) ? 'rgba(234,198,117,.16)' : COL.tile,
       border: (shopSel || tradeStaged) ? '1px solid #EAC675' : `1px solid ${color}`,
-      ...(selected ? { boxShadow: GEAR_SEL_RING } : null),   /* v2.3.4041: the Gear tab's tap */
+      ...(selected ? { boxShadow: GEAR_SEL_RING } : null),   /* v2.3.4031: the Gear tab's tap */
       borderRadius: 6,
       display: 'flex',
       alignItems: 'center',
@@ -1351,7 +1351,7 @@ export const BagTile = ({ entry, style, onSelect, selected }) => {
   return <StashTile kind={entry.kind} obj={entry.obj} index={entry.index} style={style} onSelect={onSelect} selected={selected} />;
 };
 
-/* v2.3.4041: the Gear tab's blue ring -- "tapping on an item highlights it in
+/* v2.3.4031: the Gear tab's blue ring -- "tapping on an item highlights it in
    blue to show active press" (the owner) -- OUTSIDE the tile's own edge, so a
    rare piece keeps its rarity border inside it.  The mana blue, no new hue. */
 export const GEAR_SEL_RING = '0 0 0 2px #4F8FDE, 0 0 8px rgba(79,143,222,.55)';
@@ -1376,7 +1376,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride, onSelect, selected 
     /* v2.3.4012: ...but never a "?": it is revealed before it is traded
        (game/revealBag.js), so its card opens instead */
     if (kind === 'stashWeapon' && tradeBagBus.open && !shownUnrevealed(kind, index, obj) && tradeBagBus.tapWeapon(index, obj)) return;
-    if (onSelect) { onSelect(); return; }   /* v2.3.4041: the Gear tab */
+    if (onSelect) { onSelect(); return; }   /* v2.3.4031: the Gear tab */
     if (kind === 'stashShield') {
       itemDetailBus.open({ kind: 'stashShield', shield: obj, index, anchor });
     } else if (kind === 'stashArmor') {
@@ -1463,7 +1463,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride, onSelect, selected 
       width: '100%', aspectRatio: '1 / 1',
       background: COL.tile,
       border: `${edgeWidth}px solid ${color}`,
-      ...(selected ? { boxShadow: GEAR_SEL_RING } : null),   /* v2.3.4041 */
+      ...(selected ? { boxShadow: GEAR_SEL_RING } : null),   /* v2.3.4031 */
       borderRadius: 6,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       position: 'relative',

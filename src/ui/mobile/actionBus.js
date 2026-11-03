@@ -12,7 +12,7 @@
    returns its own unregister. */
 
 let _cycleWeapon = null;
-/* v2.3.4041: the 1/2/3 keys' direct pick (_desktopSelectSlot), for the
+/* v2.3.4031: the 1/2/3 keys' direct pick (_desktopSelectSlot), for the
    computer's weapon bar (WeaponBar.jsx): a click on a weapon is the key. */
 let _selectSlot = null;
 
