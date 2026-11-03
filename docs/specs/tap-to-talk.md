@@ -152,7 +152,7 @@ Test: `mp-mayordoor` step 1:
 `mp-questprox` step 6: beside the Mayor in the door's reach, the prompt says
 "Talk to Mayor Bro" and E talks to him.
 
-## v2.3.4085: talking and entering are always two different things
+## v2.3.4105: talking and entering are always two different things
 
 The owner, 2026-11-03: *"Make talking to a npc player and entering a building
 always two different things."*

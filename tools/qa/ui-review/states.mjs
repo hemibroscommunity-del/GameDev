@@ -485,7 +485,7 @@ export const STATES = [
     run: async ({ P }) => {
       const open = await H.approachNpc(P, 'mayor_bro').catch(() => false);
       if (!open) {
-        /* a second tap (a phone) or click (a computer) on him -- v2.3.4085:
+        /* a second tap (a phone) or click (a computer) on him -- v2.3.4105:
            never E or the right stick's tap, which never talk now */
         await H.talkToNpc(P, 'mayor_bro').catch(() => false);
         await wait(P, 900);

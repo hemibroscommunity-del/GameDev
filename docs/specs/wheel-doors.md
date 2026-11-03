@@ -56,7 +56,7 @@ forge all work from anywhere — the server never asked which zone you were in).
   Den's steps, Blacksmith Bro east of the forge's, and Lil Bro on the square,
   260 px west of where you arrive (Mayor Bro is on the east), so you meet him
   on arrival. **Tap Ace and his coin flip opens** (on a keyboard, E beside him
-  did too until v2.3.4085: E never talks now, docs/specs/tap-to-talk.md; a
+  did too until v2.3.4105: E never talks now, docs/specs/tap-to-talk.md; a
   click on him opens it). It opens only from him, so while he stood in today's town nobody
   could play it. The blacksmith and Lil Bro are townsfolk to look at and tap,
   as in the old town ("… has nothing for you right now"). Like Diego, they
@@ -155,7 +155,7 @@ forge all work from anywhere — the server never asked which zone you were in).
   - Lil Bro on screen where you arrive;
   - each drawn a man's height, facing the street;
   - a tap on Ace opening his coin flip, and a flip there settled by the worker;
-  - E beside him opening it too (v2.3.4085: opening NOTHING, and saying how to
+  - E beside him opening it too (v2.3.4105: opening NOTHING, and saying how to
     talk to him);
   - a tap on Lil Bro answering;
   - no page errors.

@@ -3,7 +3,7 @@
  * nicknames and go back to the other names, I liked them better other way."
  * So every check below now reads the OWN name: the plate "Gavel Greg", the
  * tourist's "Tourist Terry has nothing for you right now", and never a
- * nickname.  (v2.3.4085: the computer's button at his door is the door's
+ * nickname.  (v2.3.4105: the computer's button at his door is the door's
  * "Enter AUCTION HOUSE", never a "Talk to": E never talks.)
  *
  * As it was written for v2.3.4048:
@@ -18,7 +18,7 @@
  *   2. a tap on the tourist, a local with nothing for you, floats "Selfie has
  *      nothing for you right now" -- his nickname, never "Tourist Terry";
  *   3. on a computer (the sideways layout): beside the auctioneer, in his
- *      door's reach, the prompt reads "Talk to Going-Going" (v2.3.4085: the
+ *      door's reach, the prompt reads "Talk to Going-Going" (v2.3.4105: the
  *      door's "Enter AUCTION HOUSE" -- E never talks); and the Mayor's
  *      dialogue title (the same helper, a name with no nickname) still reads
  *      "Mayor Bro";
@@ -150,7 +150,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await C.page.addStyleTag({ content: HIDE }).catch(() => {});
       await walkTo(C, 'auctioneer');
       /* beside him, in his door's reach: searched round him (mp-mayordoor's way).
-         v2.3.4085: the button there is the door's, "Enter AUCTION HOUSE" --
+         v2.3.4105: the button there is the door's, "Enter AUCTION HOUSE" --
          never v2.3.3868's "Talk to Going-Going" (E never talks: the owner,
          "Make talking to a npc player and entering a building always two
          different things"); his nickname is on his plate */
@@ -175,8 +175,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await shot(C, 'computer-talk-prompt');
       if (cAt) await shot(C, 'computer-plate', clipAround(C, cAt, 420, 320));
       const cPlate = await plateOf(C, 'auctioneer');
-      rec.ok(`3. on a computer, beside the auctioneer in his door's reach (${JSON.stringify(spot)}): the button reads "${prompt}" (the door's, never "Talk to": v2.3.4085), his plate "${cPlate}"`,
-        !!prompt && /enter/i.test(prompt) && /auction/i.test(prompt) && !/talk/i.test(prompt) && talkPrompt === false && cPlate === 'Gavel Greg' /* v2.3.4088: his own name again */, { prompt, talkPrompt, spot, cPlate });
+      rec.ok(`3. on a computer, beside the auctioneer in his door's reach (${JSON.stringify(spot)}): the button reads "${prompt}" (the door's, never "Talk to": v2.3.4105), his plate "${cPlate}"`,
+        !!prompt && /enter/i.test(prompt) && /auction/i.test(prompt) && !/talk/i.test(prompt) && talkPrompt === false && cPlate === 'Gavel Greg' /* (his own name again) */, { prompt, talkPrompt, spot, cPlate });
 
       const open = await H.approachNpc(C, 'mayor_bro').catch(() => false);
       const title = await C.page.evaluate(() => { const t = document.querySelector('.bt-npcdlg-name'); return t ? t.textContent.trim() : null;   /* the words, not their CSS capitals */ });

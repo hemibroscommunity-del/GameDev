@@ -543,7 +543,7 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
     };
   }
   await page.goto(`http://${host}:${webPort}/${_q ? '?' + _q : ''}`, { waitUntil: 'domcontentloaded' });
-  /* v2.3.4085: `touch` kept, so talkToNpc taps on a phone and clicks on a computer */
+  /* v2.3.4105: `touch` kept, so talkToNpc taps on a phone and clicks on a computer */
   return { ctx, page, logs, name, seeded: !!phrase, oldMap: _oldMap, touch: !!touch };
 }
 
@@ -2154,7 +2154,7 @@ export async function leaveNpc(P, id = 'mayor_bro') {
    standing beside him opens nothing and the approach ends the way a player's
    does.  It waits for the game to call him the one you stand with
    (S._nearNpc).
-   v2.3.4085: ...with a TAP ON HIM (a phone) or a CLICK ON HIM (a computer),
+   v2.3.4105: ...with a TAP ON HIM (a phone) or a CLICK ON HIM (a computer),
    as CLAUDE.md §6 asks -- never the right stick's tap or E, which never talk
    now (the owner: "Make talking to a npc player and entering a building
    always two different things"; desktopControls.js).  Until then it called
@@ -2167,7 +2167,7 @@ export async function approachNpc(P, id = 'mayor_bro') {
   return npcDialogueOpen(P);
 }
 
-/** v2.3.4085: where a thumb (or the pointer) lands on him: his torso in CSS
+/** v2.3.4105: where a thumb (or the pointer) lands on him: his torso in CSS
  *  px, 30 game px over his feet (BroTown npcAtCss raises its scan 26 px and
  *  takes 44 px round that). */
 function _npcOnPage(P, id) {

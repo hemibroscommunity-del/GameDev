@@ -4,7 +4,7 @@
    keydown/keyup on window and returns the teardown the effect cleanup
    calls. Closure captures made explicit:
    - BT_AUDIO / getNpcQuest imported below (the `typeof getNpcQuest`
-     guard in the E-handler is kept verbatim; v2.3.4085: gone with E's
+     guard in the E-handler is kept verbatim; v2.3.4105: gone with E's
      talk);
    - the _desktop* useCallback helpers, React setters, chatInputRef and
      the chatOpen value arrive via `deps` (destructured to the original
@@ -13,7 +13,7 @@
      original inline closure (the effect's dep array is unchanged).
    S is stateRef.current; S.keys feeds the movement code that stayed in
    the game loop. */
-import { BT_AUDIO, calcDisplayHeal } from '@/data/index.js';   /* v2.3.4085: getNpcQuest no longer (E never talks) */
+import { BT_AUDIO, calcDisplayHeal } from '@/data/index.js';   /* v2.3.4105: getNpcQuest no longer (E never talks) */
 import { quickEatView } from '@/game/quickEat.js';   /* v2.3.3260: V eats */
 import { eatBus } from '@/ui/mobile/eatBus.js';   /* v2.3.3260: ...through the bag's own Eat */
 import { triggerJump } from '@/game/jumpActions.js';   /* v2.3.3017: X jumps; v2.3.3844: Space does */
@@ -29,9 +29,9 @@ import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
 import { dblTapRoll, tapDir } from '@/game/deskCombos.js';   /* v2.3.3711: a direction key tapped twice rolls */
 import { openRiseChest } from '@/game/climbActions.js';   /* v2.3.3994: E (or the right stick's tap) at the lagoon's chest */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.4085: E beside someone says "Click <name> to talk" */
-import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4085: ...by the name his plate wears */
-/* v2.3.4085: aceFlipBus, shopBus, npcSpeaks and mayorSaysNext left with E's
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.4105: E beside someone says "Click <name> to talk" */
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4105: ...by the name his plate wears */
+/* v2.3.4105: aceFlipBus, shopBus, npcSpeaks and mayorSaysNext left with E's
    talk (runTalk): a tap on him answers each (BroTown.jsx tapNpcAtCss) */
 
 /* v2.3.3711: `?dbltap=0` -- the double tap's roll off, for a tab (the owner's
@@ -45,7 +45,7 @@ function dblTapOn() {
  * (BroTown's resolver): 'door' (a building, a hall, the Workshop, a dungeon's
  * mouth, the Pet House), 'sleep' (the farm's bed), 'gather' (a resource --
  * the stick's own harvest owns that), or null.  The same order as
- * runInteract.  v2.3.4085: never 'talk' -- E and the stick never talk (the
+ * runInteract.  v2.3.4105: never 'talk' -- E and the stick never talk (the
  * note below); the stick's `{ npcFirst: true }` is retired with it.
  */
 export function interactKind(S) {
@@ -63,7 +63,7 @@ export function interactKind(S) {
   return null;
 }
 
-/* ═══ v2.3.4085: TALKING AND ENTERING ARE ALWAYS TWO DIFFERENT THINGS ═══
+/* ═══ v2.3.4105: TALKING AND ENTERING ARE ALWAYS TWO DIFFERENT THINGS ═══
    The owner, 2026-11-03: "Make talking to a npc player and entering a
    building always two different things."  Three versions had flipped ONE
    control between the two by who stood where, and each fixed the last one's
@@ -100,7 +100,7 @@ export function setupDesktopControls(S, deps) {
     _desktopSleep = deps._desktopSleep,
     _desktopOpenWorkshop = deps._desktopOpenWorkshop,
     _desktopGather = deps._desktopGather,
-    /* v2.3.4085: _desktopNpcQuest no longer read (E never talks) */
+    /* v2.3.4105: _desktopNpcQuest no longer read (E never talks) */
     _desktopShieldOff = deps._desktopShieldOff,
     _desktopCycleWeapon = deps._desktopCycleWeapon,
     _desktopSelectSlot = deps._desktopSelectSlot,
@@ -119,11 +119,11 @@ export function setupDesktopControls(S, deps) {
        represents the action like this current jump, the sword for attack,
        etc. so maybe chat bubble for speaking [to NPCs], door for entering
        door".  What E does beside a door, a bed or a dungeon's mouth (a
-       character too, until v2.3.4085) is what a tap on the stick does there now (BroTown's rE asks
+       character too, until v2.3.4105) is what a tap on the stick does there now (BroTown's rE asks
        S._interactNow), and interactKind() below names it for the stick's
        picture -- one chain, so the picture can never promise one thing and
        the tap do another.  Returns true when it did something. */
-    /* 4. v2.3.4085: runTalk -- the character beside you (his quest, a
+    /* 4. v2.3.4105: runTalk -- the character beside you (his quest, a
        keeper's building, Ace's flip, Diego's shop, the Pets page, "has
        nothing for you") -- is gone from this chain: E and the stick never
        talk (the note over setupDesktopControls).  Each of those answers is
@@ -171,7 +171,7 @@ export function setupDesktopControls(S, deps) {
         _desktopGather();
         return true;
       }
-      /* 4. Nearby NPC -- v2.3.4085: never; a tap or a click on him talks */
+      /* 4. Nearby NPC -- v2.3.4105: never; a tap or a click on him talks */
       return false;
     };
     S._interactNow = runInteract;
@@ -344,7 +344,7 @@ export function setupDesktopControls(S, deps) {
           if (S._extraction && S._harvestKeys) S._harvestKeys.down();
           return;
         }
-        /* ═══ v2.3.4085: E BESIDE SOMEONE SAYS HOW TO TALK TO HIM ═══
+        /* ═══ v2.3.4105: E BESIDE SOMEONE SAYS HOW TO TALK TO HIM ═══
            E never talks (the note over setupDesktopControls; the owner: "Make
            talking to a npc player and entering a building always two
            different things").  With nothing else to do here and a

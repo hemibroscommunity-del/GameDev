@@ -7,7 +7,7 @@
  *      does what the prompt says (desktopControls.js doorPromptUp): the Town
  *      Hall opens; a step away from the door, the prompt gone, E talks to him
  *      (his quest before a door, v2.3.3583, everywhere else).
- *      v2.3.4085 (the owner: "Make talking to a npc player and entering a
+ *      v2.3.4105 (the owner: "Make talking to a npc player and entering a
  *      building always two different things"): E never talks -- beside the
  *      Mayor no prompt and E opens nothing (it says how to talk to him), and
  *      at every open door, a townsperson beside it or not, the button is the
@@ -90,7 +90,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        actually open the door to the building right next to him (town hall)."
        A townsperson in talk range came before a door (desktopControls.js
        talkBeforeDoor), and the computer's prompt said "Talk to <name>" --
-       until v2.3.4085, when E stopped talking at all.
+       until v2.3.4105, when E stopped talking at all.
        Each door's spot: in its reach (__btWheelTownDoors.at) and out of
        every townsperson's (S._nearNpc null) -- searched round its foot. */
     const doorSpot = (doorId) => A.page.evaluate(async (id) => {
@@ -120,7 +120,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await place(A, 'mayor_bro', dx, dy);
       await A.page.waitForTimeout(400);
       const h = await here(A);
-      if (h.npc === 'mayor_bro' && !h.up) { besideAt = [dx, dy]; break; }   /* v2.3.3899: no door's reach to be in; v2.3.4085: nor the noticeboard's */
+      if (h.npc === 'mayor_bro' && !h.up) { besideAt = [dx, dy]; break; }   /* v2.3.3899: no door's reach to be in; v2.3.4105: nor the noticeboard's */
     }
     const h0 = await settled((h) => h.prompt === null || /talk|town hall/i.test(h.prompt), 2500);
     await shot(A, '1-beside-mayor');
@@ -132,11 +132,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot(A, '1-e-beside-mayor');
     /* v2.3.3899: the Town Hall's door opens nothing now (its board is on the
        square's noticeboard), so beside him there is no door's prompt.
-       v2.3.4085: the owner, "Make talking to a npc player and entering a
+       v2.3.4105: the owner, "Make talking to a npc player and entering a
        building always two different things" -- E never talks: no "Talk to"
        prompt, and E opens nothing, saying how to talk to him ("Click Mayor
        Bro to talk"); a click on him talks (mp-talkenter) */
-    rec.ok(`1. next to Mayor Bro (${JSON.stringify(besideAt)}): no prompt ("${h0.prompt}": never Talk to, never Enter Town Hall), and E opens NOTHING -- no dialogue, no window -- but says how to talk to him (v2.3.4085)`,
+    rec.ok(`1. next to Mayor Bro (${JSON.stringify(besideAt)}): no prompt ("${h0.prompt}": never Talk to, never Enter Town Hall), and E opens NOTHING -- no dialogue, no window -- but says how to talk to him (v2.3.4105)`,
       h0.npc === 'mayor_bro' && h0.prompt === null && !h1.dialogue && !h1.building && hints1 === hints0 + 1, { h0, h1, hints0, hints1 });
     await H.closeNpcDialogue(A).catch(() => {});
     await A.page.waitForTimeout(600);
@@ -191,7 +191,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* every open door: a spot at it out of everyone's range shows its
        button; and beside each townsperson whose range reaches its doorstep
        the button, where a door's reach puts one up, is still the door's
-       Enter -- never v2.3.3868's "Talk to" (v2.3.4085: E never talks) */
+       Enter -- never v2.3.3868's "Talk to" (v2.3.4105: E never talks) */
     const doors = await A.page.evaluate(() => {
       const S = window._gameState.current;
       return window.__btWheelTownDoors.doors().filter((d) => d.index >= 0 || d.hall).map((d) => ({
@@ -207,18 +207,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await place(A, id, 0, 30);
         await A.page.waitForTimeout(300);
         /* settled: out of the door's reach with no prompt left, or in it
-           with the door's Enter up (v2.3.4085: never a Talk prompt) */
+           with the door's Enter up (v2.3.4105: never a Talk prompt) */
         const h = await settled((x) => (!x.up && x.prompt === null) || (x.up && !!x.prompt && /enter/i.test(x.prompt)));
         people.push({ id, near: h.npc, up: h.up, prompt: h.prompt });
       }
       checks.push({ door: d.id, spot, button: at && at.prompt, people });
     }
     /* beside a townsperson the prompt (if a door's reach puts one up) says
-       Enter, never Talk (v2.3.4085; until then Talk, never Enter) */
+       Enter, never Talk (v2.3.4105; until then Talk, never Enter) */
     const bad = checks.filter((c) => !c.spot || !c.button || !/enter/i.test(c.button)
       || c.people.some((p) => !p.near || (p.prompt !== null && (/talk/i.test(p.prompt) || !/enter/i.test(p.prompt))) || (p.up && p.prompt === null)));
     const inReach = checks.reduce((n, c) => n + c.people.filter((p) => p.up).length, 0);
-    rec.ok(`1. every open door (${checks.length}): out of everyone's range its Enter button is up; beside each townsperson near it (${checks.reduce((n, c) => n + c.people.length, 0)}, ${inReach} of them in the door's reach) the button is the door's Enter, never Talk (v2.3.4085)`,
+    rec.ok(`1. every open door (${checks.length}): out of everyone's range its Enter button is up; beside each townsperson near it (${checks.reduce((n, c) => n + c.people.length, 0)}, ${inReach} of them in the door's reach) the button is the door's Enter, never Talk (v2.3.4105)`,
       checks.length >= 5 && bad.length === 0, { bad, checks: checks.map((c) => [c.door, !!c.spot, c.button, c.people.map((p) => p.id + ':' + (p.prompt === null ? 'none' : p.prompt)).join(' ')]) });
 
     /* BT_MAYORDOOR_ONLY=1: step 1 alone (the E and door rules), for a quick

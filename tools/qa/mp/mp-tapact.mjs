@@ -9,7 +9,7 @@
  *   1. at the foot of the bank's steps the stick shows a DOOR, and a tap on
  *      the stick's zone opens the bank -- no jump;
  *   2. beside Ace it shows a speech BUBBLE, and a tap opens his coin flip --
- *      no jump; v2.3.4085: NO bubble beside him and the stick's tap opens no
+ *      no jump; v2.3.4105: NO bubble beside him and the stick's tap opens no
  *      flip (the stick never talks: "Make talking to a npc player and
  *      entering a building always two different things"), a tap ON him does;
  *   3. out on the commons with nothing about, it shows the weapon in hand
@@ -119,10 +119,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
 
     /* ── 2. a character: Ace (his coin flip opens only when you speak to him) ──
-       v2.3.4085: the owner, "Make talking to a npc player and entering a
+       v2.3.4105: the owner, "Make talking to a npc player and entering a
        building always two different things" -- the stick never talks: beside
        Ace it wears no bubble (the weapon in hand) and its tap opens no flip;
-       a tap ON him opens it.  Until v2.3.4085 the stick showed the bubble
+       a tap ON him opens it.  Until v2.3.4105 the stick showed the bubble
        and its tap spoke to him (npcFirst). */
     const ace = await P.page.evaluate(() => { const S = window._gameState.current; const n = (S.npcs || []).find((q) => q.name === 'Ace'); return n ? { x: n.x, y: n.y, id: n.id } : null; });
     rec.ok('Ace stands in the Wheel\'s Brotown (guard)', !!ace, ace);
@@ -134,7 +134,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const seen = new Set();
       for (let i = 0; i < 8; i++) { seen.add(await icon(P)); await P.page.waitForTimeout(200); }
       await shot('talk');
-      rec.ok(`beside Ace the right stick wears NO speech bubble (${[...seen].join(', ')}; v2.3.4085: the stick never talks)`,
+      rec.ok(`beside Ace the right stick wears NO speech bubble (${[...seen].join(', ')}; v2.3.4105: the stick never talks)`,
         !!near && !seen.has('talk'), { near, seen: [...seen] });
       await closeDialogs(P);
       const j0 = await jumps(P);
@@ -144,7 +144,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`...and a tap on the stick does not speak to him: no coin flip, no jump`, flip !== true && j1 === j0, { flip, j0, j1 });
       const tapped = ace.id ? await H.talkToNpc(P, ace.id) : false;
       const flip2 = await H.waitFor(P, () => !!(window.__btAceFlipBus && window.__btAceFlipBus.open), (v) => v, { timeout: 4000, label: 'the flip' }).catch(() => false);
-      rec.ok(`...a tap ON him does: his coin flip opens (v2.3.4085)`, tapped && flip2 === true, { tapped, flip2 });
+      rec.ok(`...a tap ON him does: his coin flip opens (v2.3.4105)`, tapped && flip2 === true, { tapped, flip2 });
       await P.page.evaluate(() => { try { window.__btAceFlipBus && window.__btAceFlipBus.setOpen && window.__btAceFlipBus.setOpen(false); } catch (e) { /* closed anyway */ } });
       await P.page.waitForTimeout(400);
     }

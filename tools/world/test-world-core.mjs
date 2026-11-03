@@ -3184,18 +3184,18 @@ console.log('the tap on the right stick (v2.3.3105 jumped; v2.3.3712 attacks)');
       && /if \(S\._atkHoldUntil && Date\.now\(\) < S\._atkHoldUntil\) _flickWait = true;/.test(fs.readFileSync(new URL('../../src/game/monsterCombat.js', import.meta.url), 'utf8')));
   ok('a swing meets a prop at the swinger\'s boots (playerGroundDy), not the chest',
     /py = py \+ playerGroundDy\(S\.currentZone, px, py\);\s*var c = propSwingContact/.test(fs.readFileSync(new URL('../../src/game/combatHelpers.js', import.meta.url), 'utf8')));
-  ok('the stick\'s picture names the tap\'s act: a door, the bed, else none -- the weapon, v2.3.3712 (a resource is the stick\'s own harvest); never a character\'s bubble (v2.3.4085: the stick never talks)',
+  ok('the stick\'s picture names the tap\'s act: a door, the bed, else none -- the weapon, v2.3.3712 (a resource is the stick\'s own harvest); never a character\'s bubble (v2.3.4105: the stick never talks)',
     TJ.tapActIcon('door') === 'door' && TJ.tapActIcon('talk') === null && TJ.tapActIcon('sleep') === 'sleep'
       && TJ.tapActIcon('farm-plant') === 'farm-plant'
       && TJ.tapActIcon('gather') === null && TJ.tapActIcon(null) === null);
   {
     const dc = fs.readFileSync(new URL('../../src/game/desktopControls.js', import.meta.url), 'utf8');
-    /* v2.3.4085: the owner, "Make talking to a npc player and entering a
+    /* v2.3.4105: the owner, "Make talking to a npc player and entering a
        building always two different things" -- the chain names no character
        (no npcFirst, no talkBeforeDoor, no runTalk), so neither E nor the
        stick's tap ever talks; a tap or a click on him does */
     const btSrc = fs.readFileSync(new URL('../../src/ui/BroTown.jsx', import.meta.url), 'utf8');
-    ok('...from the E key\'s own chain, which never talks (v2.3.4085: no npcFirst, talkBeforeDoor or runTalk; the computer\'s door button never swapped for "Talk to"), and the tap runs that chain',
+    ok('...from the E key\'s own chain, which never talks (v2.3.4105: no npcFirst, talkBeforeDoor or runTalk; the computer\'s door button never swapped for "Talk to"), and the tap runs that chain',
       !/npcFirst|talkBeforeDoor|questWaits|runTalk|return 'talk'/.test(dc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''))
         && /if \(runInteract\(\)\) \{/.test(dc)   /* v2.3.3546: since v2.3.3407 it also holds a harvest's press on */
         && /tapActIcon\(interactKind\(S\)\)/.test(btSrc) && /_tjS\._interactNow\(\)/.test(btSrc)
@@ -4131,11 +4131,11 @@ console.log("the keepers (v2.3.3258)");
   /* v2.3.3678: the keeper's line may say something as he opens it (v2.3.3664's
      hum: `{ npcSpeaks(S, npc); return true; }`) -- read as a pattern, as the
      exact text failed this check on main from #1151 on */
-  /* v2.3.4085: E and the right stick's tap no longer talk (the owner: "Make
+  /* v2.3.4105: E and the right stick's tap no longer talk (the owner: "Make
      talking to a npc player and entering a building always two different
      things"), so only the tap on him (or a click) opens a keeper's building */
   const eAt = dc.indexOf('_desktopOpenKeeper'), eQuest = dc.indexOf('_desktopNpcQuest(npc, npcQ);');
-  ok('...a tap on him opens it, AFTER his quest (the Mayor\'s chain untouched) and before anything else he answers -- never E or the stick (v2.3.4085); it is the door\'s own path (enterWheelDoor: the same window, the same visit counted), and `keeperOf` is set only in the Wheel, only where that building stands with something to open',
+  ok('...a tap on him opens it, AFTER his quest (the Mayor\'s chain untouched) and before anything else he answers -- never E or the stick (v2.3.4105); it is the door\'s own path (enterWheelDoor: the same window, the same visit counted), and `keeperOf` is set only in the Wheel, only where that building stands with something to open',
     tapAt > questAt && questAt > 0 && (flipAt < 0 || tapAt < flipAt) && eAt < 0 && eQuest < 0
       && /return enterWheelDoor\(stateRef\.current, door, \{ setBuildingPanel: setBuildingPanel \}\);/.test(bt)
       && /export function enterWheelDoor\(S, door, deps\)/.test(it) && /if \(door\.index >= 0\) return _openBuilding\(S, door\.index, deps\.setBuildingPanel\);/.test(it)
@@ -4147,14 +4147,14 @@ console.log("the keepers (v2.3.3258)");
     const nbSrc = fs.readFileSync(new URL('../../src/game/wheelNoticeboard.js', import.meta.url), 'utf8');
     const mtSrc = fs.readFileSync(new URL('../../src/game/mayorTalk.js', import.meta.url), 'utf8');
     const saysAt = bt.indexOf("if (mayorSaysNext(S, npc)) return _mark('says');"), nothingAt = bt.indexOf("return _mark('nothing');");
-    ok('the town board opens from the square\'s noticeboard (v2.3.3899): found by its kind (`noticeboard`) in the worker\'s objects, nearest the Town Hall\'s door, a door whose hall is the board\'s (`townhall`) -- the prompt ("Read"), E and a tap on its picture; Mayor Bro with nothing to offer says the next step (tourOffer) in his bubble, on a tap (v2.3.4085: never on E), before "has nothing for you"',
+    ok('the town board opens from the square\'s noticeboard (v2.3.3899): found by its kind (`noticeboard`) in the worker\'s objects, nearest the Town Hall\'s door, a door whose hall is the board\'s (`townhall`) -- the prompt ("Read"), E and a tap on its picture; Mayor Bro with nothing to offer says the next step (tourOffer) in his bubble, on a tap (v2.3.4105: never on E), before "has nothing for you"',
       /objects\.kinds\.indexOf\('noticeboard'\)/.test(nbSrc) && /hall: BOARD_HALL/.test(nbSrc) && /export const BOARD_HALL = 'townhall';/.test(nbSrc)
         && !/\b\d{4,}\s*,\s*\d{4,}\b/.test(nbSrc)
         && /S\._nearWheelBuilding = noticeboardAt\(S\);/.test(bt) && /var _nbTap = noticeboardAtCss\(S, cssX, cssY\);/.test(bt)
         && /enterWheelDoor\(S, _nbTap\.board, \{ setBuildingPanel: setBuildingPanel \}\);/.test(bt)
         && /if \(noticeboardAtCss\(stateRef\.current, cssX, cssY\)\) return 'talk';/.test(bt)
         && saysAt > 0 && saysAt < nothingAt
-        && !/mayorSaysNext/.test(dc.replace(/\/\*[\s\S]*?\*\//g, ''))   /* v2.3.4085: E never talks */
+        && !/mayorSaysNext/.test(dc.replace(/\/\*[\s\S]*?\*\//g, ''))   /* v2.3.4105: E never talks */
         && /tourOffer\(rpg, S\)/.test(mtSrc) && /npc\.chatBubble = \{ text: line, ts: now \};/.test(mtSrc), { saysAt, nothingAt });
   }
   /* the owner: "the gladiator arena is showing 'saloon' behind it" -- the Saloon's door opened the arena (PartyPanel, named for parties) */

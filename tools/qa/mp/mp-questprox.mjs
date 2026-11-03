@@ -13,10 +13,10 @@
  *   2. walking through him and on past opens nothing;
  *   3. a tap on him, where a thumb lands, opens his window;
  *   4. closed while standing there, it stays closed;
- *   5. the right stick's tap opens it (v2.3.4085: NOTHING, and the stick wears
+ *   5. the right stick's tap opens it (v2.3.4105: NOTHING, and the stick wears
  *      no speech bubble -- the owner: "Make talking to a npc player and
  *      entering a building always two different things");
- *   6. (v2.3.4085: E beside him opens NOTHING, and says how to talk to him;
+ *   6. (v2.3.4105: E beside him opens NOTHING, and says how to talk to him;
  *      the history this step tested follows)
  *      E on a keyboard opens it, his quest coming before a door (desktopControls
  *      questWaits) -- v2.3.3834: except where the door's prompt is up, where E
@@ -124,7 +124,7 @@ const everOpen = async (P, ms) => {
   return seen;
 };
 
-/* v2.3.4085: a real finger's tap on the right stick's zone (mp-tapact's) */
+/* v2.3.4105: a real finger's tap on the right stick's zone (mp-tapact's) */
 const tapStick = (P, id) => P.page.evaluate((tid) => {
   const z = document.querySelector('[data-joyzone="R"]');
   if (!z) return null;
@@ -180,11 +180,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const opened4 = await everOpen(P, 2500);
   rec.ok('4: closed while standing beside him, it stays closed', !opened4);
 
-  /* ── 5. the right stick's tap: NOTHING (v2.3.4085) ──
+  /* ── 5. the right stick's tap: NOTHING (v2.3.4105) ──
      The owner: "Make talking to a npc player and entering a building always
      two different things" -- the stick never talks: beside him it wears no
      speech bubble, and its tap opens no window (it swings, as anywhere with
-     nothing to do).  Until v2.3.4085 it talked to him (npcFirst). */
+     nothing to do).  Until v2.3.4105 it talked to him (npcFirst). */
   await place(P, 'mayor_bro', 0, 34);
   await settle(P);
   const ricons5 = new Set();
@@ -195,12 +195,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const n5 = await near(P);
   await tapStick(P, 91);
   const opened5 = await everOpen(P, 2000);
-  rec.ok('5: beside him the right stick wears no speech bubble, and its tap opens NOTHING (v2.3.4085: the stick never talks)',
+  rec.ok('5: beside him the right stick wears no speech bubble, and its tap opens NOTHING (v2.3.4105: the stick never talks)',
     n5.npc === 'mayor_bro' && !ricons5.has('talk') && !opened5, { near: n5, ricons: [...ricons5], opened: opened5 });
   await close();
   await P.page.waitForTimeout(400);
 
-  /* ── 6. E on a keyboard: NOTHING beside him (v2.3.4085) ──
+  /* ── 6. E on a keyboard: NOTHING beside him (v2.3.4105) ──
      E never talks, whoever stands beside a door (v2.3.3583-v2.3.3868 put him
      before a door by turns; the owner's rule above ends the order): beside
      him E opens no window and says how to talk to him ("Click Mayor Bro to
@@ -213,7 +213,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const opened6 = await everOpen(P, 1800);
   const hints1 = await H.readState(P, (S) => S._eTalkHints || 0);
   const b6 = await P.page.evaluate(() => ({ building: !!document.querySelector('[data-building-panel]'), talkPrompt: !!document.querySelector('[data-talk-prompt]') }));
-  rec.ok('6: beside him E opens NOTHING -- no dialogue, no window -- and says how to talk to him instead (v2.3.4085)',
+  rec.ok('6: beside him E opens NOTHING -- no dialogue, no window -- and says how to talk to him instead (v2.3.4105)',
     n6.npc === 'mayor_bro' && !opened6 && !b6.building && !b6.talkPrompt && hints1 === hints0 + 1, { near: n6, opened: opened6, b6, hints0, hints1 });
   await close();
   await P.page.waitForTimeout(400);

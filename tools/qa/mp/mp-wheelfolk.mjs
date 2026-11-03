@@ -19,7 +19,7 @@
  *   5. a TAP on Ace opens his coin flip, and a flip there is settled by the
  *      worker (the coins move by three times the stake, either way);
  *   6. E beside him opens it too (it said "has nothing for you");
- *      v2.3.4085: NOT any more -- E opens nothing beside him and says how to
+ *      v2.3.4105: NOT any more -- E opens nothing beside him and says how to
  *      talk to him (E never talks: "Make talking to a npc player and
  *      entering a building always two different things");
  *   7. a tap on Lil Bro answers ("has nothing for you right now"), so he is a
@@ -271,12 +271,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { if (window.__btAceFlipBus) window.__btAceFlipBus.setOpen(false); });
     await P.page.waitForTimeout(500);
 
-    /* ── 6. E beside him opens NOTHING (v2.3.4085) ──
+    /* ── 6. E beside him opens NOTHING (v2.3.4105) ──
        The owner: "Make talking to a npc player and entering a building always
        two different things" -- E is the door's, never a talk: beside him (from
        his WEST side, out of the den's door's reach) E opens no flip and no
        window, and says how to talk to him instead (desktopControls.js
-       _eTalkHints).  Until v2.3.4085 it opened his flip ("it said 'Ace has
+       _eTalkHints).  Until v2.3.4105 it opened his flip ("it said 'Ace has
        nothing for you right now'" before v2.3.3067); the tap of 5 is the way. */
     /* v2.3.4058: Ace walks his day: stand beside him again until he is the one near */
     let nearE = null;
@@ -290,7 +290,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const eOpen = await H.waitFor(P, () => !!(window.__btAceFlipBus && window.__btAceFlipBus.open), (v) => v, { timeout: 3000, label: 'E opens the flip' }).catch(() => false);
     const eElse = await P.page.evaluate(() => { const c = document.querySelector('.bt-inspect-card'); return c ? c.getAttribute('data-building-panel') || 'a panel' : null; });
     const hints1 = await H.readState(P, (S) => S._eTalkHints || 0);
-    rec.ok('E beside him opens nothing -- no flip, no window (v2.3.4085: a tap on him talks, never E)',
+    rec.ok('E beside him opens nothing -- no flip, no window (v2.3.4105: a tap on him talks, never E)',
       !!nearE && nearE.npc === 'Ace' && eOpen !== true && !eElse, { nearE, eOpen, eElse, hints0, hints1 });
     /* the hint is not required here: Ace walks his day (v2.3.4058), and where
        he stands E may have something else to do (a resource in reach); the

@@ -338,9 +338,9 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const cut = src('tools/ui/cut-owner-icons.py');
   check('7f the party leader\'s crown is the owner\'s T112.2 (sheet 3\'s), not the first sheet\'s',
     /name='icons\/ui\/party-crown', src='brotown-rpg-ui-icon-sheet-2\.png', mode='alpha',\s*box=\(1160, 540, 1256, 620\)/.test(cut));
-  /* v2.3.4085: seven -- the talk bubble is no longer asked for (the stick never talks) */
+  /* v2.3.4105: seven -- the talk bubble is no longer asked for (the stick never talks) */
   const rd = ['door', 'sleep', 'farm-dig', 'farm-plant', 'farm-water', 'farm-feed', 'farm-harvest'];
-  check('7g the right stick\'s seven pictures are asked for at a new address, and the talk bubble not at all (v2.3.4085)', rd.every((n) => cs.indexOf("'/ui/controls/" + n + ".webp?v=2.3.3526'") >= 0)
+  check('7g the right stick\'s seven pictures are asked for at a new address, and the talk bubble not at all (v2.3.4105)', rd.every((n) => cs.indexOf("'/ui/controls/" + n + ".webp?v=2.3.3526'") >= 0)
     && cs.indexOf("'/ui/controls/talk.webp") < 0);
 }
 

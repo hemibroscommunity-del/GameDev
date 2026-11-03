@@ -333,7 +333,7 @@ export const RDISC_ICONS = [
      at the farm's bed (desktopControls interactKind) -- the owner: "chat
      bubble for speaking [to NPCs], door for entering door"; drawn in the
      JUMP arrow's white-and-outline style */
-  /* v2.3.4085: 'talk' gone -- the stick never talks now (desktopControls.js:
+  /* v2.3.4105: 'talk' gone -- the stick never talks now (desktopControls.js:
      the owner, "Make talking to a npc player and entering a building always
      two different things"), so its bubble was put in the DOM and warmed for
      nothing (v2.3.3721's rule for the jump's); the file stays on disk */

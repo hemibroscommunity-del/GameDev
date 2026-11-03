@@ -435,7 +435,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`a tap on Blacksmith Bro opens the forge on its own room (${smith.key || 'NOTHING'}, room ${smith.room || '-'}): he keeps it now, where he used to have "nothing for you"`,
     smith.keeperOf === 'blacksmith' && !!smith.tap && smith.tap.npc === 'Blacksmith Bro' && smith.tap.result === 'opens' && smith.key === 'forge' && smith.room === 'blacksmith' && smith.sits, smith);
   /* E beside him: the keyboard's road to the same window (desktopControls
-     runTalk) -- v2.3.4085: no more; E never talks (the owner: "Make talking
+     runTalk) -- v2.3.4105: no more; E never talks (the owner: "Make talking
      to a npc player and entering a building always two different things"),
      so beside him with no door in reach E opens nothing, and the tap above is
      the way to his forge */
@@ -447,7 +447,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   let eKey = null;
   for (let i = 0; i < 12 && !eKey; i++) { await P.page.waitForTimeout(250); eKey = await panelKey(); }
   await closePanel();
-  rec.ok(`...E beside him opens NOTHING, with no door in reach (near ${nearE.npc || 'nobody'}, door ${nearE.door}: ${eKey || 'nothing'}) -- v2.3.4085: a tap on him talks, never E`, nearE.npc === 'Blacksmith Bro' && nearE.door === null && !eKey, { nearE, eKey });
+  rec.ok(`...E beside him opens NOTHING, with no door in reach (near ${nearE.npc || 'nobody'}, door ${nearE.door}: ${eKey || 'nothing'}) -- v2.3.4105: a tap on him talks, never E`, nearE.npc === 'Blacksmith Bro' && nearE.door === null && !eKey, { nearE, eKey });
   /* v2.3.3899: the owner: "I tried tapping on mayor bro and kept opening the
      town hall door which was confusing" -- he keeps nothing now: his quests
      done, a tap and he SAYS something (game/mayorTalk.js), no window */

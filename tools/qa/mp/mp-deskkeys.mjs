@@ -313,7 +313,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
 
     /* ── 6. Enter AND Esc IN MAYOR BRO'S DIALOGUE ── */
     const talking = await H.approachNpc(P, 'mayor_bro').catch(() => false)
-      || await H.talkToNpc(P, 'mayor_bro').then(() => P.page.waitForTimeout(800)).then(() => false).catch(() => false)   /* v2.3.4085: a second click on him (E never talks) */
+      || await H.talkToNpc(P, 'mayor_bro').then(() => P.page.waitForTimeout(800)).then(() => false).catch(() => false)   /* v2.3.4105: a second click on him (E never talks) */
       || await H.npcDialogueOpen(P);
     rec.ok('Mayor Bro\'s dialogue is up (guard)', !!talking);
     const mUnder = await capOf(P, '[data-world-map-open]');

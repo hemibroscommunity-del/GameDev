@@ -150,7 +150,7 @@ export function DeskKeysList({ side = 'right' } = {}) {
     style: { '--kn': groups.reduce((n, g) => n + g.rows.length, 0) || 1, '--kgn': groups.length || 1 } },
     groups.map((g) => React.createElement('div', { className: 'bt-desk-keys-group', key: g.id, 'data-desk-keys-group': g.id },
       React.createElement('div', { className: 'bt-desk-keys-group-head' }, g.label),
-      g.rows.map(([k, label]) => React.createElement('div', { className: 'bt-desk-key', key: k + ' ' + label },   /* v2.3.4085: Click twice (Attack, Talk) */
+      g.rows.map(([k, label]) => React.createElement('div', { className: 'bt-desk-key', key: k + ' ' + label },   /* v2.3.4105: Click twice (Attack, Talk) */
         React.createElement('kbd', null, k), React.createElement('span', null, label)))))));
 }
 
@@ -262,7 +262,7 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     role: 'button',
     'aria-label': 'Hide keyboard controls',
   }, rows.map(([k, label]) => React.createElement('span', {
-    className: 'bt-kb-key', key: k + ' ' + label,   /* v2.3.4085: Click twice (Attack, Talk) */
+    className: 'bt-kb-key', key: k + ' ' + label,   /* v2.3.4105: Click twice (Attack, Talk) */
   }, React.createElement('kbd', null, k), ' ' + label)));
 
   /* v2.3.3526: in the margin, the ⌨ under the rows (game.css .bt-kb-side:

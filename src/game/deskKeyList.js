@@ -92,7 +92,7 @@ export const DESK_KEY_ROWS = [
   ['1', 'Melee', null, 'fight'],
   ['2', 'Bow', null, 'fight'],
   ['3', 'Staff', null, 'fight'],
-  /* v2.3.4085: the owner, "Make talking to a npc player and entering a
+  /* v2.3.4105: the owner, "Make talking to a npc player and entering a
      building always two different things" -- a click on a person talks, and
      E never does: it was "Interact", which is what told the owner to press it
      beside Mayor Bro ("the instructions say 'E' is interact"), and it opened

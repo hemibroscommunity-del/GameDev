@@ -109,10 +109,10 @@ const names = NPC_DATA.map((r) => r.name);
   const wm = read('../../src/ui/WorldMapOverlay.jsx');
   check('4h the world map\'s quest pin is labelled with it', /\[folkDisplayName\(p\.name\)\]/.test(wm));
   const bt = read('../../src/ui/BroTown.jsx');
-  /* v2.3.4085: the computer's "E  Talk to <name>" prompt is gone (E never
+  /* v2.3.4105: the computer's "E  Talk to <name>" prompt is gone (E never
      talks); E beside him says "Click <name> to talk" by his nickname instead */
   const dc = read('../../src/game/desktopControls.js');
-  check('4i E\'s "Click <name> to talk" and the "has nothing for you" line read it (v2.3.4085: no "Talk to" prompt)',
+  check('4i E\'s "Click <name> to talk" and the "has nothing for you" line read it (v2.3.4105: no "Talk to" prompt)',
     /deskWords\('Tap ' \+ \(folkDisplayName\(S\._nearNpc\.name\) \|\| 'them'\) \+ ' to talk'\)/.test(dc) && !/deskTalkPick/.test(bt.replace(/\/\*[\s\S]*?\*\//g, ''))
     && /folkDisplayName\(npc\.name\) \+ ' has nothing for you right now'/.test(bt));
   const qc = read('../../src/ui/QuestCard.jsx');

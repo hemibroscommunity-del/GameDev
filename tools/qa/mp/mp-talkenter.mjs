@@ -1,4 +1,4 @@
-/* ═══ TALKING AND ENTERING ARE ALWAYS TWO DIFFERENT THINGS (v2.3.4085) ═══
+/* ═══ TALKING AND ENTERING ARE ALWAYS TWO DIFFERENT THINGS (v2.3.4105) ═══
  *
  * The owner, 2026-11-03: "Make talking to a npc player and entering a
  * building always two different things."  TALK is a tap (a phone) or a click
