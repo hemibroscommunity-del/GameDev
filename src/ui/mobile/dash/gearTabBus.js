@@ -1,4 +1,4 @@
-/* ═══ v2.3.4061: THE GEAR TAB'S STATE -- WHAT IS PICKED, WHAT IS FILTERED ═══
+/* ═══ v2.3.4081: THE GEAR TAB'S STATE -- WHAT IS PICKED, WHAT IS FILTERED ═══
  *
  * The owner's design (2026-11-02): "when you tap on an equip slot your
  * inventory gets filtered to whatever item category was tapped on (sword gets
@@ -20,7 +20,7 @@
  * a session.  The middle panel's tab (LOOK | STATS) is remembered per device
  * (localStorage, inside try/catch).  window.__btGearTab reads it for QA.
  *
- * v2.3.4061: THE OWNER'S MOCKUP (2026-11-03) -- the middle panel is LOOK |
+ * v2.3.4081: THE OWNER'S MOCKUP (2026-11-03) -- the middle panel is LOOK |
  * STATS | DETAILS and exactly ONE shows ("it's supposed to be one or the
  * other").  `view` is the one showing: a tap on a cell or a bag piece shows
  * DETAILS; putting the pick down (tapped again, Equip, Unequip) goes back to
@@ -36,7 +36,7 @@ function readTab() {
 }
 
 const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, tab: readTab() };
-state.view = state.tab;   /* v2.3.4061: 'look' | 'stats' | 'details' -- the one the middle shows */
+state.view = state.tab;   /* v2.3.4081: 'look' | 'stats' | 'details' -- the one the middle shows */
 const subs = new Set();
 const emit = () => { subs.forEach((fn) => { try { fn(state); } catch (_e) { /* a listener's own problem */ } }); };
 
@@ -95,7 +95,7 @@ export const gearTabBus = {
     state.menu = !!open;
     emit();
   },
-  /** v2.3.4061: a tap on the middle's segmented row.  LOOK and STATS are
+  /** v2.3.4081: a tap on the middle's segmented row.  LOOK and STATS are
    *  remembered (the pick, if any, stays picked); DETAILS is never
    *  remembered -- it is the pick's, or the plain "tap something" line. */
   setTab(t) {

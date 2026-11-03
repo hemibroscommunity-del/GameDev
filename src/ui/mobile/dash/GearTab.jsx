@@ -15,17 +15,17 @@ import { requestT2Category } from './T2Panel.jsx';
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
 import { CharacterView } from '../sheet/CharacterView.jsx';
 import { heroSectionBus } from '../sheet/heroSectionBus.js';
-import { HERO_PILL_ICON } from '../sheet/heroStatPills.js';   /* v2.3.4061: the stats' pictures, the Character page's own files */
+import { HERO_PILL_ICON } from '../sheet/heroStatPills.js';   /* v2.3.4081: the stats' pictures, the Character page's own files */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { shopBus } from '../shopBus.js';
 import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
 import { WEAPON_STASH_MAX } from '../../../data/gameSystems.js';
 import { gemCutKey, gemIcon, gemElementName } from '@/data/gems.js';
-import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4061: a "?" piece's mark, as on its card */
-import { deskWords } from '@/game/deskWords.js';   /* v2.3.4061: DETAILS' empty line says "click" on a computer */
+import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4081: a "?" piece's mark, as on its card */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.4081: DETAILS' empty line says "click" on a computer */
 
-/* ═══ v2.3.4061: THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR, SIDE BY SIDE ═══
+/* ═══ v2.3.4081: THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR, SIDE BY SIDE ═══
  *
  * The owner's design (2026-11-02): three panels, "inventory on left with
  * filter on top, character in the middle with tabs that can change between
@@ -39,7 +39,7 @@ import { deskWords } from '@/game/deskWords.js';   /* v2.3.4061: DETAILS' empty 
  * (ResizeObserver): wide enough (WIDE_AT) and the three panels sit across;
  * narrower (the sideways ~238 px column) and the bag takes the top, BRO and
  * EQUIPMENT side by side under it.  So a wider band (Lane B's ?oneband=1)
- * just works.  v2.3.4061: across, the bag and the gear take 31% and 27% or
+ * just works.  v2.3.4081: across, the bag and the gear take 31% and 27% or
  * their floors (four 34 px squares, three 34 px cells), the middle the rest;
  * a taller band shows more of the bag's rows and a bigger bro.
  *
@@ -61,7 +61,7 @@ import { deskWords } from '@/game/deskWords.js';   /* v2.3.4061: DETAILS' empty 
  * (docs/UI-DESIGN-NOTES.md, "The Gear tab").  The Character page keeps its
  * Equipment tab until Lane B rebuilds that page.
  *
- * v2.3.4061: AS THE OWNER'S MOCKUP DRAWS IT (2026-11-03: "See mockup for the
+ * v2.3.4081: AS THE OWNER'S MOCKUP DRAWS IT (2026-11-03: "See mockup for the
  * 3 panel layout I wanted ... it shows the character and stats at the same
  * time (it's supposed to be one or the other)"):
  *   LEFT    "Filter: All Items" (a funnel, the words, a chevron) over a grid
@@ -79,14 +79,14 @@ import { deskWords } from '@/game/deskWords.js';   /* v2.3.4061: DETAILS' empty 
  * the gold); the fill now heads the filter menu.
  */
 
-/* v2.3.4061: 3 px paddings and gaps (were 4): across, every pixel the floors
+/* v2.3.4081: 3 px paddings and gaps (were 4): across, every pixel the floors
    do not take is the middle's, and on a computer's column it is ~95 px */
 const PAD = 3;      /* the panels' own padding, and the tab's */
 const GAP = 3;      /* between the panels */
 const TG = 3;       /* between the bag's tiles */
 const EP = 3;       /* the equipment panel's padding */
 const CELL_MIN = 34;   /* the brief's floor for an equipment cell */
-/* v2.3.4061: THE OWNER'S MOCKUP (2026-11-03).  Across, the bag never under
+/* v2.3.4081: THE OWNER'S MOCKUP (2026-11-03).  Across, the bag never under
    four 34 px squares a row and the gear never under three 34 px cells; the
    middle takes what is left, never under MID_MIN -- below that (the sideways
    ~238 px column) the bag goes on top.  The upright phone's 390 and the
@@ -97,7 +97,7 @@ const MID_MIN = 84;
 const BAG_MIN = BAG_COLS * TILE_MIN + (BAG_COLS - 1) * TG + 2 * PAD;
 const EQ_MIN = 3 * CELL_MIN + 2 * 3 + 2 * EP;
 const WIDE_AT = BAG_MIN + EQ_MIN + MID_MIN + 2 * PAD + 2 * GAP;
-/* v2.3.4061: the tabs and the pill 32 px tall (the UI review's floor for a
+/* v2.3.4081: the tabs and the pill 32 px tall (the UI review's floor for a
    finger; the 44 px guide does not fit three tabs in a ~107 px middle) */
 const TAB_H = 35;
 const PILL_H = 34;
@@ -180,7 +180,7 @@ function cellContent(R, id, slots) {
       rows: [] };
   }
   if (id === 'amulet') {
-    /* v2.3.4061: NO Unequip -- the worker's unequip_request for the amulet
+    /* v2.3.4081: NO Unequip -- the worker's unequip_request for the amulet
        slot nulls it with no bag to put it in (gear.js _handleUnequipRequest:
        "armor/shield/amulet just null out"), so the button would destroy it */
     const card = getEquipContribs(R).cards.amulet;
@@ -235,7 +235,7 @@ const actBtn = (tone, off) => ({
   touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
 });
 
-/* v2.3.4061: the mockup's small pictures, drawn inline (no new picture files:
+/* v2.3.4081: the mockup's small pictures, drawn inline (no new picture files:
    the memory law) -- the filter's funnel and its chevron */
 const Funnel = ({ size, color }) => (
   <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" style={{ flex: 'none', display: 'block' }}>
@@ -248,7 +248,7 @@ const Chevron = ({ size, color, up }) => (
   </svg>
 );
 
-/* v2.3.4061: each stat's picture -- the Character page's own files (heroStatPills
+/* v2.3.4081: each stat's picture -- the Character page's own files (heroStatPills
    HERO_PILL_ICON), so the browser shares them */
 const STAT_ICON = {
   hp: HERO_PILL_ICON.hp, mana: HERO_PILL_ICON.mana, stam: HERO_PILL_ICON.stam, def: HERO_PILL_ICON.def,
@@ -257,7 +257,7 @@ const STAT_ICON = {
   range: HERO_PILL_ICON.range, elem: HERO_PILL_ICON.elem,
 };
 
-/* v2.3.4061: one stat line of STATS -- its picture, its short word, its number */
+/* v2.3.4081: one stat line of STATS -- its picture, its short word, its number */
 const StatLine = ({ row, icon }) => (
   <div data-gear-stat={row.key} title={row.title || undefined}
     style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, minHeight: 14 }}>
@@ -300,7 +300,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     selEntry = allEntries.find((e) => (st.sel.obj ? e.obj === st.sel.obj : (e.kind === 'item' && 'i-' + e.key === st.sel.bag))) || null;
   }
   const selCell = st.sel && st.sel.cell ? st.sel.cell : null;
-  /* v2.3.4061: exactly one of LOOK | STATS | DETAILS (gearTabBus `view`) */
+  /* v2.3.4081: exactly one of LOOK | STATS | DETAILS (gearTabBus `view`) */
   const view = st.view === 'details' || st.view === 'look' ? st.view : 'stats';
 
   /* ── geometry ── */
@@ -309,7 +309,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   const footH = desk ? 48 + GAP : 0;   /* the computer's weapon bar, under the three */
   let invW, broW, eqW, cell, invH, lowH, cg, cols;
   if (wide) {
-    /* v2.3.4061: the mockup's 31% | the rest | 27%, the bag and the gear never
+    /* v2.3.4081: the mockup's 31% | the rest | 27%, the bag and the gear never
        under their floors -- the middle pays on a narrow phone */
     const inner = W - 2 * PAD - 2 * GAP;
     invW = Math.max(BAG_MIN, Math.round(inner * 0.31));
@@ -332,7 +332,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     cols = Math.max(BAG_COLS, Math.floor((invW - 2 * PAD + TG) / (44 + TG)));
   }
   const tile = Math.max(30, Math.min(64, Math.floor((invW - 2 * PAD - (cols - 1) * TG) / cols)));
-  /* v2.3.4061: the rows in view, a part-row counted -- every square you can
+  /* v2.3.4081: the rows in view, a part-row counted -- every square you can
      see is a slot, filled or empty, as the mockup draws the bag */
   const gridH = invH - 2 * PAD - PILL_H - TG;
   const visRows = Math.max(1, Math.ceil((gridH + TG) / (tile + TG)));
@@ -348,7 +348,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   const filterWord = fid === 'all' ? 'All Items' : ((GEAR_FILTERS[fid] || {}).pill || 'Filter');
   const inventory = (
     <div data-gear-pane="inv" style={panel({ width: invW, height: invH })}>
-      {/* v2.3.4061: the mockup's pill -- a funnel, "Filter: All Items", a
+      {/* v2.3.4081: the mockup's pill -- a funnel, "Filter: All Items", a
           chevron; a filter on reads "Filter: Swords" with its × beside */}
       <div style={{ height: PILL_H, flex: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
         <button type="button" data-gear-filter={fid} aria-expanded={st.menu} aria-label={'Filter: ' + filterWord}
@@ -414,7 +414,7 @@ export const GearTab = ({ R: Rin, desk }) => {
         }}>
           <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px 2px 8px', borderBottom: `1px solid ${COL.divider}` }}>
             <span style={{ flex: 'none', fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: COL.muted }}>Show</span>
-            {/* v2.3.4061: the bag's fill, moved here from the panel's old head
+            {/* v2.3.4081: the bag's fill, moved here from the panel's old head
                 -- no cap on the bag (only the weapon bag has one) */}
             <span data-gear-fill="" style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 10, fontWeight: 700, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontVariantNumeric: 'tabular-nums' }}>
               weapons {weaponsHeld}/{WEAPON_STASH_MAX}
@@ -466,7 +466,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     const blue = selCell === c.id;
     const gold = !!(c.active && c.active === hand && filled);
     const edge = rarityEdge(ct.quality);
-    /* v2.3.4061: the weapon in hand gold-edged and glowing, as the mockup
+    /* v2.3.4081: the weapon in hand gold-edged and glowing, as the mockup
        draws it (a ring inside, so a rarity edge and the blue pick ring
        outside can both still show) */
     const ring = [gold ? `inset 0 0 0 2px ${COL.focus}` : null, gold && !blue ? '0 0 9px rgba(234, 198, 117, 0.55)' : null, blue ? GEAR_SEL_RING : null].filter(Boolean).join(', ');
@@ -529,7 +529,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   );
 
   /* ═════ BRO: LOOK | STATS | DETAILS ═════ */
-  /* v2.3.4061: the mockup's segmented row, the one showing gold; its words
+  /* v2.3.4081: the mockup's segmented row, the one showing gold; its words
      a half point smaller and unspaced in a computer's ~90 px middle, so
      "DETAILS" is never cut */
   const tight = broW - 2 * PAD < 104;
@@ -631,7 +631,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       cmp = compareRows(armourRows(cur, slot), armourRows(o, slot));
       vs = cur ? 'vs your ' + (cur.name || slot) : 'Your ' + slot + ' slot is empty';
     }
-    /* v2.3.4061: a "?" piece (v2.3.4012's mystery reveal) shows its card's
+    /* v2.3.4081: a "?" piece (v2.3.4012's mystery reveal) shows its card's
        name and no comparison -- its numbers would give its grade away */
     const hidden = !!card.unrevealed;
     if (hidden) cmp = null;
@@ -682,7 +682,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       </div>
     );
   } else {
-    /* v2.3.4061: DETAILS with nothing picked says how to fill it */
+    /* v2.3.4081: DETAILS with nothing picked says how to fill it */
     detailsBody = (
       <div data-gear-stats="none" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: '8px 4px', textAlign: 'center', boxSizing: 'border-box' }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: COL.text2, lineHeight: 1.35 }}>{deskWords('Tap an item or a gear slot to see it here.')}</span>
@@ -695,7 +695,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   const broInnerH = Math.max(40, (wide ? invH : lowH) - 2 * PAD - TAB_H);
   const handWpn = R[HAND_FIELD[hand]] || null;
 
-  /* v2.3.4061: STATS as the mockup draws it -- "Level N", Character Stats,
+  /* v2.3.4081: STATS as the mockup draws it -- "Level N", Character Stats,
      the weapon in hand's gold box; side by side when the middle is wide
      enough (a taller, wider band), one over the other on a phone */
   const twoCol = broInnerW >= 230;
@@ -752,7 +752,7 @@ export const GearTab = ({ R: Rin, desk }) => {
         </div>
       ) : (
         <>
-          {/* v2.3.4061: the foot fades, so a STATS or DETAILS that runs past the
+          {/* v2.3.4081: the foot fades, so a STATS or DETAILS that runs past the
               panel (the gold box under Character Stats on a phone) reads as
               "more below" (the dashboard's own scroll-edge fade, common.js) */}
           <div data-gear-scroll="" style={{

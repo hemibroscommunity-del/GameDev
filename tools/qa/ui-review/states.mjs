@@ -137,7 +137,7 @@ async function openBag(P, view) {
   await evalIn(P, () => { if (window.__broDashPanelBus) window.__broDashPanelBus.toBar(); });
   return unfoldBand(P);
 }
-/* v2.3.4061: the Gear tab is the band at rest (sideways the dashboard
+/* v2.3.4081: the Gear tab is the band at rest (sideways the dashboard
    column): openBag's way, with nothing picked and no filter, so each Gear
    state starts from the same tab */
 async function gearReset(P) {
@@ -695,7 +695,7 @@ export const STATES = [
     },
   },
   {
-    /* v2.3.4061: a bag tap no longer opens the card (the Gear tab shows the
+    /* v2.3.4081: a bag tap no longer opens the card (the Gear tab shows the
        item in its middle panel); the card is where Sell and Drop go on to */
     id: 'item-card', group: 'Dashboard', title: 'An item card',
     about: 'The item card, as the Gear tab\'s Sell opens it: the item\'s picture and name over the Auction House\'s price sheet (how many, your price, Put it up / Back).',
@@ -712,10 +712,10 @@ export const STATES = [
     },
     after: async ({ P }) => { await gearReset(P); },
   },
-  /* ═══ v2.3.4061: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
+  /* ═══ v2.3.4081: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
   {
     id: 'gear-tab', group: 'Dashboard', title: 'The Gear tab',
-    about: 'The resting dashboard, laid out as the owner\'s mockup (v2.3.4061): the bag ("Filter: All Items" with a funnel and a chevron, four square slots a row, the rows in view filled out with empty squares) | your bro (LOOK | STATS | DETAILS, exactly one showing, the one on gold; STATS: "Level N", Character Stats HP MP STAM DEF DODGE RESIST, and the weapon in hand\'s gold box "Sword (Active)" DMG SPD CRIT RANGE ELEM -- no "Combat Power", which the game does not have) | your gear (Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem; the weapon in hand gold-edged, each weapon its skill\'s level in a corner). Too narrow for three across (sideways) the bag sits over the other two; a computer adds the weapon bar (1 2 3) at the foot.',
+    about: 'The resting dashboard, laid out as the owner\'s mockup (v2.3.4081): the bag ("Filter: All Items" with a funnel and a chevron, four square slots a row, the rows in view filled out with empty squares) | your bro (LOOK | STATS | DETAILS, exactly one showing, the one on gold; STATS: "Level N", Character Stats HP MP STAM DEF DODGE RESIST, and the weapon in hand\'s gold box "Sword (Active)" DMG SPD CRIT RANGE ELEM -- no "Combat Power", which the game does not have) | your gear (Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem; the weapon in hand gold-edged, each weapon its skill\'s level in a corner). Too narrow for three across (sideways) the bag sits over the other two; a computer adds the weapon bar (1 2 3) at the foot.',
     run: async ({ P, view, wsPort, myId }) => {
       await gearKit(P, wsPort, myId);
       const e = await openGear(P, view);

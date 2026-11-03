@@ -1,4 +1,4 @@
-/* ═══ v2.3.4061: A COMBAT SKILL'S LEVEL, XP AND POINTS, IN ONE PLACE ═══
+/* ═══ v2.3.4081: A COMBAT SKILL'S LEVEL, XP AND POINTS, IN ONE PLACE ═══
  * The band's three combat-skill pills (Melee / Bow / Magic) left it for the
  * Gear tab's weapon cells, each wearing its skill's level as a corner badge
  * ("Lv 7", or "+2" with points to spend), and for the computer's weapon bar.

@@ -1,4 +1,4 @@
-/* ═══ v2.3.4061: THE GEAR TAB'S NUMBERS ═══
+/* ═══ v2.3.4081: THE GEAR TAB'S NUMBERS ═══
  *
  * The middle panel's STATS (GearTab.jsx): what one piece of gear is worth, a
  * comparison of a bag piece against what is in its slot now -- the owner's
@@ -25,7 +25,7 @@ import {
 import { getShieldStats } from '../../../data/items.js';
 import { TILE } from '../../../data/constants.js';
 import { prog3Live, prog3MoveMult, prog3CharLevel, prog3EresPct } from '../../../data/prog3.js';
-import { gemElementName } from '../../../data/gems.js';   /* v2.3.4061: the active weapon's element */
+import { gemElementName } from '../../../data/gems.js';   /* v2.3.4081: the active weapon's element */
 import { combinedDamageCut } from '../sheet/heroStatPills.js';
 import { deriveHeroStats } from '../sheet/heroModel.js';
 
@@ -39,7 +39,7 @@ const pct1 = (v) => {
 };
 const safe = (fn, dflt) => { try { const v = fn(); return v == null ? dflt : v; } catch (e) { return dflt; } };
 
-/* v2.3.4061: the damage cut is heroStatPills' combinedDamageCut (PR #1350,
+/* v2.3.4081: the damage cut is heroStatPills' combinedDamageCut (PR #1350,
    v2.3.3896: what of a hit gets through your Defense -- never below
    PROG3.FLOOR of the base, the floor widened by Dodge -- and then your
    armour), imported, so the Gear tab and the Character page say one number. */
@@ -151,7 +151,7 @@ export function myStatRows(R) {
   ];
 }
 
-/* ═══ v2.3.4061: STATS AS THE OWNER'S MOCKUP DRAWS IT (2026-11-03) ═══
+/* ═══ v2.3.4081: STATS AS THE OWNER'S MOCKUP DRAWS IT (2026-11-03) ═══
  * "Level N", then "Character Stats" (HP, MP, STAM, DEF, DODGE, RESIST), then a
  * gold box for the weapon in your hand ("Sword (Active)": DMG, SPD, CRIT,
  * RANGE, ELEM).  Every number is the game's own, read as above: NO "Combat

@@ -1,4 +1,4 @@
-/* ═══ v2.3.4061: THE GEAR TAB'S RULES (src/ui/mobile/dash/GearTab.jsx) ═══
+/* ═══ v2.3.4081: THE GEAR TAB'S RULES (src/ui/mobile/dash/GearTab.jsx) ═══
  *
  *   1. itemCategory (itemCategory.js): EVERY item id the tables in src/data
  *      name -- the woods, fish and ores each tier drops, the cooked fish, the
@@ -25,7 +25,7 @@
  *      itemActionList and runs them through runItemAction (no inline Equip or
  *      Drink of its own any more), and the Gear tab runs the same two.
  *
- * v2.3.4061 (the owner's mockup, 2026-11-03): the cells Sword Bow Staff /
+ * v2.3.4081 (the owner's mockup, 2026-11-03): the cells Sword Bow Staff /
  * Chest Legs Cape / Shield Amulet Gem (2c); the middle's ONE view (3h-3k: a
  * pick shows DETAILS, putting it down the remembered LOOK or STATS, a tap on
  * LOOK keeps the pick); STATS' rows the game's own and no "Combat Power"
@@ -149,7 +149,7 @@ const TR = await import('../../src/data/trapping.js');
   B.clearFilter(); B.afterChange(); B.setTab('look');
   check('3g the tab is remembered (here, with no localStorage, for the session)', B.state.tab === 'look');
   B.setTab('stats');
-  /* v2.3.4061: exactly one view */
+  /* v2.3.4081: exactly one view */
   check('3h the middle shows STATS at rest', B.state.view === 'stats');
   B.tapCell('sword'); const v1 = B.state.view;
   B.tapCell('sword'); const v2 = B.state.view;
@@ -202,7 +202,7 @@ const TR = await import('../../src/data/trapping.js');
   check('4g your own rows: the damage cut, HP, Energy, Mana, the weapon\'s damage, speed, range, crit, dodge, move -- no NaN',
     mine.map((r) => r.key).join() === 'cut,hp,energy,mana,damage,speed,range,crit,dodge,move' && mine.every((r) => !/NaN|undefined/.test(r.v)), mine);
   check('4h ...and an empty blob never throws or prints NaN', G.myStatRows({}).every((r) => !/NaN|undefined/.test(r.v)) && G.weaponRows({}, null).length === 0);
-  /* v2.3.4061: STATS as the mockup draws it, from the game's own numbers */
+  /* v2.3.4081: STATS as the mockup draws it, from the game's own numbers */
   const cs = G.charStatRows({ ...R, armor: iron });
   check('4i Character Stats: HP MP STAM DEF DODGE RESIST, DEF the damage cut (combinedDamageCut), HP the display pool',
     cs.map((r) => r.key).join() === 'hp,mana,stam,def,dodge,eres' && cs.map((r) => r.k).join() === 'HP,MP,STAM,DEF,DODGE,RESIST'

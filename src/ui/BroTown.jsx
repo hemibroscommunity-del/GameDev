@@ -8392,7 +8392,7 @@ export var BroTown = function BroTown(_ref0) {
        the left-stick double-tap and the keyboard shortcut use — one swap
        path, not three (see actionBus.js). */
     var unregCycleWeapon = actionBus.registerCycleWeapon(_desktopCycleWeapon);
-    var unregSelectSlot = actionBus.registerSelectSlot(_desktopSelectSlot);   /* v2.3.4061: the computer's weapon bar */
+    var unregSelectSlot = actionBus.registerSelectSlot(_desktopSelectSlot);   /* v2.3.4081: the computer's weapon bar */
     var teardownDesktopControls = setupDesktopControls(S, {
       triggerContextualDodge: triggerContextualDodge,
       _desktopEnterBuilding: _desktopEnterBuilding,
@@ -8428,7 +8428,7 @@ export var BroTown = function BroTown(_ref0) {
     return function () {
       cancelAnimationFrame(frameRef.current);
       unregCycleWeapon(); /* v2.3.1562 */
-      unregSelectSlot(); /* v2.3.4061 */
+      unregSelectSlot(); /* v2.3.4081 */
       teardownDesktopControls();
       window.removeEventListener('resize', resize);
       window.removeEventListener('orientationchange', _orientResize);
@@ -9945,7 +9945,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.2472: and the desktop's direct pick keeps the guard too -- same
        rule as the cycle above. */
     S2.rpg.activeSlot = slot;
-    /* v2.3.4061: ...and tells the worker, latched, as the cycle above does.
+    /* v2.3.4081: ...and tells the worker, latched, as the cycle above does.
        The 1/2/3 keys never sent set_active_slot, so the next player_state
        carrying the worker's activeSlot put the old weapon back in the hand;
        the computer's weapon bar (WeaponBar.jsx) runs this same pick. */

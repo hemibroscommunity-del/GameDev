@@ -1,4 +1,4 @@
-/* ═══ v2.3.4061: WHAT YOU CAN DO WITH AN ITEM, IN ONE LIST ═══
+/* ═══ v2.3.4081: WHAT YOU CAN DO WITH AN ITEM, IN ONE LIST ═══
  *
  * The Gear tab (GearTab.jsx) shows a tapped bag item in its middle panel with
  * that item's buttons; the item card (ItemDetailPopup.jsx) shows the same
@@ -20,7 +20,7 @@ import { dishFor } from '@/data/dishes.js';
 import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js';
-import { askFishWeigh } from '@/game/fishWeigh.js';   /* v2.3.4061: v2.3.4036's Inspect, joined to the list */
+import { askFishWeigh } from '@/game/fishWeigh.js';   /* v2.3.4081: v2.3.4036's Inspect, joined to the list */
 import { getState } from './common.js';
 import { eatBus } from '../eatBus.js';
 import { firemakingBus } from '../firemakingBus.js';
@@ -29,7 +29,7 @@ import { lock as lockItem, unlock as unlockItem, isLocked as itemIsLocked } from
 import {
   unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect,
   equipArmorFromStash, equipLegsFromStash, equipStashWeapon, equipStashShield, equipStashGear,
-  revealFromBag, targetUnrevealed,   /* v2.3.4012's Reveal, joined to the list at v2.3.4061 */
+  revealFromBag, targetUnrevealed,   /* v2.3.4012's Reveal, joined to the list at v2.3.4081 */
 } from './equipActions.js';
 
 /** A bag entry (bagModel) as the item card's target -- the same shapes
@@ -62,7 +62,7 @@ export function itemActionList(target, card) {
   if (a.openChest) add('openChest', 'Claim', 'primary', { attrs: { 'data-open-chest': '' } });
   if (a.drink) add('drink', 'Drink', 'primary');
   /* v2.3.4036: Inspect a fish -- the worker weighs one catch (the weigh-in
-     card); v2.3.4061: through the one list, so the Gear tab has it too */
+     card); v2.3.4081: through the one list, so the Gear tab has it too */
   if (a.inspect) add('inspect', 'Inspect', undefined, { attrs: { 'data-fish-inspect': (target && target.key) || '' } });
   if (a.capeOn) add('capeOn', 'Equip', 'primary');
   if (a.capeOff) add('capeOff', 'Unequip', 'danger');

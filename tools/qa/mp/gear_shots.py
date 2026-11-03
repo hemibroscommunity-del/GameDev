@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.4061: the Gear tab's doc pictures (mp-gearshots.mjs) at 256 colours.
+"""v2.3.4081: the Gear tab's doc pictures (mp-gearshots.mjs) at 256 colours.
 
 Each PNG is cut to 256 colours (the memory law's ceiling, CLAUDE.md section 7)
 and saved as LOSSLESS webp beside the other docs pictures: the webp encoder

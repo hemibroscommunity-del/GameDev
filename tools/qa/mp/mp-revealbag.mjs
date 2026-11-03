@@ -104,7 +104,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.locator('[data-unrevealed][data-bag-key^="stashArmor-"]').first().tap();
     await P.page.waitForTimeout(700);
     const card = await P.page.evaluate(() => {
-      /* v2.3.4061: in the Gear tab a bag tap shows the piece in its middle
+      /* v2.3.4081: in the Gear tab a bag tap shows the piece in its middle
          panel (GearTab.jsx), the same card and the same action list */
       const c = document.querySelector('[data-item-card]') || document.querySelector('[data-gear-pane="bro"]');
       if (!c) return null;

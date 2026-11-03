@@ -1,6 +1,6 @@
-/* ═══ mp-geartab (v2.3.4061): THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR ═══
+/* ═══ mp-geartab (v2.3.4081): THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR ═══
  *
- * v2.3.4061: the owner's mockup (2026-11-03) -- the middle is LOOK | STATS |
+ * v2.3.4081: the owner's mockup (2026-11-03) -- the middle is LOOK | STATS |
  * DETAILS, exactly one showing (STATS: "Level N", Character Stats, the weapon
  * in hand's gold box, no "Combat Power"); a tap on a cell or a piece shows
  * DETAILS, putting it down goes back to the remembered LOOK or STATS; the
@@ -63,7 +63,7 @@ const look = (P) => P.page.evaluate(() => {
     rows: [...document.querySelectorAll('[data-gear-filter-row]')].map((r) => ({ id: r.getAttribute('data-gear-filter-row'), n: Number(r.getAttribute('data-count')) })),
     empty: (q('[data-gear-empty]') || {}).textContent || null,
     tabs: [...document.querySelectorAll('[data-gear-tab-btn]')].map((b) => b.getAttribute('data-gear-tab-btn') + ':' + b.getAttribute('aria-pressed')),
-    /* v2.3.4061: the middle's one view, STATS' parts, the bag's squares */
+    /* v2.3.4081: the middle's one view, STATS' parts, the bag's squares */
     view: (q('[data-gear-pane="bro"]') || { getAttribute: () => null }).getAttribute('data-gear-view'),
     shown: ['[data-gear-look]', '[data-gear-stats]'].filter((x) => !!q(x)).length,
     level: (q('[data-gear-level]') || {}).textContent || null,
@@ -147,7 +147,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           && s1.panes.inv.l < s1.panes.bro.l && s1.panes.bro.l < s1.panes.equip.l, { layout: s1.layout, panes: s1.panes });
       rec.ok('[390x844] the equipment grid in the mockup\'s order: Sword Bow Staff / Chest Legs Cape / Shield Amulet Gem, every cell 34 px or more',
         cellsOk && s1.cells.map((c) => c.id).join() === 'sword,bow,staff,chest,legs,cape,shield,amulet,gem', s1.cells.map((c) => [c.id, c.box && c.box.w]));
-      /* v2.3.4061: the mockup's bag -- four square slots a row, never under
+      /* v2.3.4081: the mockup's bag -- four square slots a row, never under
          34 px, every square in view a slot (the rest empty squares) */
       rec.ok('[390x844] the bag: four square slots a row, each 34 px or more, the visible rows filled out with empty squares',
         !!s1.squares && s1.squares.cols === 4 && s1.squares.minW >= 34 && s1.squares.minH >= 34 && s1.squares.empties >= 1
@@ -234,7 +234,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await tapEl(P, '[data-gear-cell="bow"]');
       const s10 = await look(P);
       rec.ok('[390x844] picking a cell shows DETAILS (the bow), LOOK put away', s10.stats === 'cell' && s10.statsFor === 'bow' && s10.view === 'details' && !(await P.page.$('[data-gear-look]')), s10);
-      /* v2.3.4061: LOOK with a pick keeps the pick; DETAILS brings it back */
+      /* v2.3.4081: LOOK with a pick keeps the pick; DETAILS brings it back */
       await tapEl(P, '[data-gear-tab-btn="look"]');
       const s10b = await look(P);
       await tapEl(P, '[data-gear-tab-btn="details"]');

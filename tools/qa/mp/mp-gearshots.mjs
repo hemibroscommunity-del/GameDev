@@ -1,4 +1,4 @@
-/* ═══ mp-gearshots (v2.3.4061): THE GEAR TAB'S PICTURES FOR THE DOCS ═══
+/* ═══ mp-gearshots (v2.3.4081): THE GEAR TAB'S PICTURES FOR THE DOCS ═══
  *
  * The owner's mockup (2026-11-03): three panels, the bag | LOOK, STATS or
  * DETAILS | the gear.  This scenario plays the real tab in the Wheel's
