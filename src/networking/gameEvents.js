@@ -3101,7 +3101,7 @@ export function processGameEvent(type, payload, S, deps) {
                      like anything".  Legacy (non-prog3) players still get it:
                      for them the number is real. */
                   if (!prog3Live(R)) {
-                    pushHudPopup(S, { target: 'xpBar', text: '+' + killXp + ' XP', color: '#60a5fa' });
+                    pushHudPopup(S, { target: 'xpBar', text: '+' + Math.round(killXp) + ' XP' /* v2.3.3902: never a decimal */, color: '#60a5fa' });
                   } else {
                     /* v2.3.3893: ...a prog3 kill's "+N XP" is the worker's skill
                        XP the bar took for it, flown from here to the bar (game/

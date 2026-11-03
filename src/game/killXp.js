@@ -41,6 +41,27 @@ export const KILL_XP_LINES_AFTER_MS = 500;
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
+/* ═══ v2.3.3902: A KILL ALWAYS HAS A WHOLE NUMBER TO FLY ═══
+   The bar's "+N" is whole now (game/xpBar.js noteProg3Xp: a fraction is held
+   for the next gain, the owner's "don't include any decimals in numbers for
+   xp"), so a killing blow worth 0.6 XP made a quiet gain (bar.gain 0) and the
+   kill flew nothing.  A kill takes what is held instead: "+1 XP" (never "+0"),
+   the 0.4 it ran ahead of what was earned taken off the next gain (the carry
+   goes below 0), so the numbers shown still add up to the worker's.
+   The kill's gain: the bar's "+N", or the held fraction made a whole 1; 0 when
+   there is nothing held either. */
+function killGain(S, bar, t) {
+  if (!bar) return 0;
+  if (bar.gain > 0) return bar.gain;
+  const c = S._xpCarry ? num(S._xpCarry[bar.cat]) : 0;
+  if (!(c > 0)) return 0;
+  S._xpCarry[bar.cat] = c - 1;
+  bar.gain = 1;
+  bar.gainAt = t;
+  bar.seq = num(bar.seq) + 1;
+  return 1;
+}
+
 /** Is the kill's fly on?  `search` is location.search; off with ?xpfly=0. */
 export function killXpOn(search) {
   return !/[?&]xpfly=0(?:&|$)/.test(String(search || ''));
@@ -59,7 +80,7 @@ export function killXpOnKill(S, kill, now) {
      monster_kill), start after the XP (game/dropLines.js pushGroup) */
   S._dropLinesAt = t + KILL_XP_LINES_AFTER_MS;
   const bar = S._xpBar;
-  if (bar && bar.gain > 0 && t - num(bar.at) <= KILL_XP_FRESH_MS && bar.at !== S._killXpFlewAt) {
+  if (bar && t - num(bar.at) <= KILL_XP_FRESH_MS && bar.at !== S._killXpFlewAt && killGain(S, bar, t) > 0) {
     S._killXpWait = null;
     S._killXpFlewAt = bar.at;
     return { x: num(kill.x), y: num(kill.y), monsterId: kill.monsterId, cat: bar.cat, gain: bar.gain };
@@ -71,11 +92,12 @@ export function killXpOnKill(S, kill, now) {
 /** The bar just took a gain (`bar`, from noteProg3Xp) at `now`: the flight of
  *  a kill waiting for it, or null. */
 export function killXpOnGain(S, bar, now) {
-  if (!S || !bar || !(bar.gain > 0)) return null;
+  if (!S || !bar) return null;
   const w = S._killXpWait;
   if (!w) return null;
+  if (num(now) - w.at > KILL_XP_WAIT_MS) { S._killXpWait = null; return null; }
+  if (!(killGain(S, bar, num(now)) > 0)) return null;   /* v2.3.3902: + the held fraction */
   S._killXpWait = null;
-  if (num(now) - w.at > KILL_XP_WAIT_MS) return null;
   S._killXpFlewAt = bar.at;
   return { x: w.x, y: w.y, monsterId: w.monsterId, cat: bar.cat, gain: bar.gain };
 }

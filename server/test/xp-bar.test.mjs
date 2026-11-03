@@ -6,6 +6,7 @@ import { skillXpGain, xpGainWords, noteProg3Xp, onXpBar, xpBarShown,
   xpNumWords, xpToNextWords, xpFillSteps, XP_FILL_DELAY_MS, XP_FILL_MS, XP_WRAP_MS,
   xpEase, xpCountAt, xpShowMs, XP_BAR_UP_SHOW_MS } from '../../src/game/xpBar.js';
 import { prog3XpRequired } from '../src/prog3.js';
+import { xpPopAt, XP_POP_FROM, XP_POP_PEAK } from '../../src/game/xpPop.js';
 
 let pass = 0, fail = 0;
 const check = (name, ok, detail) => {
@@ -31,10 +32,11 @@ check('1f: nothing for a missing side or curve', skillXpGain(null, { level: 1, x
 check('1g: the client and the worker share one curve (prog3XpRequired, mirror-audit)', req(1) === 280 && req(2) === 325, [req(1), req(2)]);
 
 // §2 the words
-check('2a: "+3 XP", "+1.4 XP", "+12 XP", "+1,250 XP"',
-  xpGainWords(3) === '+3 XP' && xpGainWords(1.44) === '+1.4 XP' && xpGainWords(12.4) === '+12 XP' && xpGainWords(1250) === '+1,250 XP',
+check('2a: v2.3.3902: whole numbers only: "+3 XP", "+1 XP", "+12 XP", "+1,250 XP"',
+  xpGainWords(3) === '+3 XP' && xpGainWords(1.44) === '+1 XP' && xpGainWords(12.4) === '+12 XP' && xpGainWords(1250) === '+1,250 XP',
   [xpGainWords(3), xpGainWords(1.44), xpGainWords(12.4), xpGainWords(1250)]);
-check('2b: nothing for no gain', xpGainWords(0) === '' && xpGainWords(-2) === '' && xpGainWords('x') === '');
+check('2b: nothing for no gain, and never "+0 XP" for one under 1', xpGainWords(0) === '' && xpGainWords(-2) === '' && xpGainWords('x') === ''
+  && xpGainWords(0.6) === '' && xpGainWords(0.9999999999) === '+1 XP');
 
 // §3 the bar
 {
@@ -73,16 +75,44 @@ check('2b: nothing for no gain', xpGainWords(0) === '' && xpGainWords(-2) === ''
       && bar5.fromLevel === 1 && Math.abs(bar5.fromFrac - 6 / req(1)) < 1e-9, [bar3, bar5]);
 }
 
+// §3m v2.3.3902: a fraction is held for the next gain; a gain under 1 pops nothing
+{
+  const S = {};
+  const s0 = blob({ level: 1, xp: 0 }, { level: 1, xp: 0 }, { level: 1, xp: 0 });
+  const s1 = blob({ level: 1, xp: 0.6 }, { level: 1, xp: 0 }, { level: 1, xp: 0 });
+  const b1 = noteProg3Xp(S, s0, s1, req, 1000);
+  check('3m: 0.6 XP: the bar moves, but no pop (gain 0, no new seq), 0.6 held',
+    !!b1 && b1.gain === 0 && b1.seq === 0 && xpGainWords(b1.gain) === '' && Math.abs(S._xpCarry.sword - 0.6) < 1e-9 && Math.abs(b1.xp - 0.6) < 1e-9, b1);
+  const s2 = blob({ level: 1, xp: 1.2 }, { level: 1, xp: 0 }, { level: 1, xp: 0 });
+  const b2 = noteProg3Xp(S, s1, s2, req, 1100);
+  check('3n: the next 0.6 makes "+1 XP" with what was held, 0.2 left', b2.gain === 1 && b2.seq === 1 && Math.abs(S._xpCarry.sword - 0.2) < 1e-9, [b2, S._xpCarry]);
+  const s3 = blob({ level: 1, xp: 4.0 }, { level: 1, xp: 0 }, { level: 1, xp: 0 });
+  const b3 = noteProg3Xp(S, s2, s3, req, 1200);
+  check('3o: in the same pop, 2.8 + 0.2 held: "+4 XP" (whole all the way), nothing left', b3.gain === 4 && b3.seq === 1 && S._xpCarry.sword < 1e-9, [b3, S._xpCarry]);
+  let total = 0, st = s3, xp = 4;
+  for (let i = 0; i < 50; i++) { const nx = blob({ level: 1, xp: +(xp + 0.37).toFixed(4) }, { level: 1, xp: 0 }, { level: 1, xp: 0 }); const g = noteProg3Xp(S, st, nx, req, 10000 + i * 2000); total += g.gain; st = nx; xp += 0.37; }
+  check('3p: 50 gains of 0.37 (18.5 XP): the pops add up to 18, every one whole', total === 18, total);
+}
+
+// §3q v2.3.3902: a kill's "+N" starts small, pops past its size, settles
+{
+  const a = xpPopAt(0), b = xpPopAt(0.3), c = xpPopAt(0.55), d = xpPopAt(1);
+  check('3q: 0.6 -> 1.15 -> 1, fading in', a.scale === XP_POP_FROM && XP_POP_FROM === 0.6 && Math.abs(b.scale - XP_POP_PEAK) < 1e-9 && XP_POP_PEAK === 1.15
+    && c.scale === 1 && d.scale === 1 && a.opacity === 0 && b.opacity === 1, [a, b, c, d]);
+  let up = true; for (let k = 0; k < 0.3; k += 0.01) if (xpPopAt(k + 0.01).scale < xpPopAt(k).scale - 1e-12) up = false;
+  check('3r: it only grows to the peak (no jitter)', up);
+}
+
 // §4 v2.3.3739: "45 / 120" on the bar (the owner: "show the number of xp needed for the next level")
 check('4a: whole numbers from 10, rounded down (never "120 / 120" a hair early)',
   xpNumWords(45) === '45' && xpNumWords(119.9) === '119' && xpNumWords(10) === '10', [xpNumWords(119.9)]);
-check('4b: one decimal where the XP is fractional below 10, none when whole',
-  xpNumWords(1.44) === '1.4' && xpNumWords(9.99) === '9.9' && xpNumWords(3) === '3' && xpNumWords(0) === '0' && xpNumWords(0.2 * 3) === '0.6',
+check('4b: v2.3.3902: no decimals below 10 either, rounded down',
+  xpNumWords(1.44) === '1' && xpNumWords(9.99) === '9' && xpNumWords(3) === '3' && xpNumWords(0) === '0' && xpNumWords(0.2 * 3) === '0',
   [xpNumWords(1.44), xpNumWords(9.99), xpNumWords(0.6)]);
 check('4c: a thousands separator from 1,000', xpNumWords(999) === '999' && xpNumWords(1000) === '1,000' && xpNumWords(12345.6) === '12,345');
 check('4d: nothing odd from a bad number', xpNumWords(-5) === '0' && xpNumWords('x') === '0' && xpNumWords(null) === '0');
-check('4e: "45 / 120", "1.4 / 280", "1,250 / 2,400"',
-  xpToNextWords(45, 120) === '45 / 120' && xpToNextWords(1.44, req(1)) === '1.4 / 280' && xpToNextWords(1250, 2400) === '1,250 / 2,400',
+check('4e: "45 / 120", "1 / 280", "1,250 / 2,400"',
+  xpToNextWords(45, 120) === '45 / 120' && xpToNextWords(1.44, req(1)) === '1 / 280' && xpToNextWords(1250, 2400) === '1,250 / 2,400',
   [xpToNextWords(45, 120), xpToNextWords(1.44, req(1)), xpToNextWords(1250, 2400)]);
 check('4f: never "/ 0"', xpToNextWords(3, 0) === '3 / 1');
 

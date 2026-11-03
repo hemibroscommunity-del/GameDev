@@ -98,5 +98,18 @@ check('5c: ?xpfly=01 is not the off-ramp', killXpOn('?xpfly=01'));
   check('6i: reset (no kill label left anywhere) lets everything go', !held && H.count() === 0);
 }
 
+// §7 v2.3.3902: a killing blow worth under 1 XP still flies a whole "+1"
+{
+  const S = { _xpCarry: { sword: 0.6, bow: 0, staff: 0 }, _xpBar: { cat: 'sword', gain: 0, seq: 4, at: 1000, gainAt: 0 } };
+  const f = killXpOnKill(S, { x: 5, y: 6, monsterId: 'm1' }, 1100);
+  check('7a: a quiet bar (gain 0) with 0.6 held: the kill flies "+1"', !!f && f.gain === 1 && S._xpBar.gain === 1 && S._xpBar.seq === 5, f);
+  check('7b: ...and the 0.4 it ran ahead is owed by the next gain (the carry below 0)', Math.abs(S._xpCarry.sword - -0.4) < 1e-9, S._xpCarry);
+  const S2 = { _xpCarry: { sword: 0, bow: 0, staff: 0 }, _xpBar: { cat: 'sword', gain: 0, seq: 1, at: 1000 } };
+  check('7c: nothing held either: nothing flies (never "+0"), the kill waits', killXpOnKill(S2, { x: 0, y: 0 }, 1100) === null && !!S2._killXpWait);
+  S2._xpCarry.sword = 0.3; S2._xpBar = { cat: 'sword', gain: 0, seq: 1, at: 1200 };
+  const g = killXpOnGain(S2, S2._xpBar, 1250);
+  check('7d: a waiting kill takes the held fraction at the next (quiet) gain', !!g && g.gain === 1 && !S2._killXpWait, g);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail) process.exit(1);
