@@ -21,8 +21,9 @@
  *   3. Delete takes one off and Undo puts it back; recolour swaps a design's
  *      main colour (and Undo)
  *   4. the bro wears both in the world: the world's own bake input
- *      (__btArtForFacing), the worker's record, and red on his figure
- *   5. a reload (the same device coming back): still both, ops and all
+ *      (__btArtForFacing), and flame red on him against the control
+ *   5. a reload (the same device coming back): still both, ops and all; and
+ *      the same Login Key on a SECOND phone gets both back from his record
  *   6. an OLD look -- the one-design op list the previous editor wrote, over a
  *      drawn base -- still loads whole and takes a second design on top
  *
@@ -49,10 +50,14 @@ const COACH_OFF = `try {
   localStorage.setItem('bt_coach_v1', JSON.stringify(d));
 } catch (e) {}`;
 
-/* Flame red (200,64,47) and orange (226,128,58): red far above both other
-   channels.  The margins keep it off BroTown's gold cobbles (~230,190,90) and
-   off skin (~205,134,75) -- mp-facingside's isRed, widened for the orange. */
-const isFlame = (r, g, b) => r > 150 && r - g > 85 && r - b > 100;
+/* Flame red (200,64,47) and orange (226,128,58) as the world lights them --
+   measured on his trousers in BroTown as (169,66,46) and (188,121,57): red
+   well above green AND far above blue.  The green margin keeps it off the
+   sand round the spawn (~194,141,89 and ~242,193,78: red only ~50 over
+   green).  It is not unique to the flames (his own skin and the gold of the
+   quest marker pass it too), which is why the claim is a DIFFERENCE against
+   the plain control standing on the same spot in the same look. */
+const isFlame = (r, g, b) => r > 140 && r - g >= 62 && r - b >= 110;
 
 const openCreator = async (P) => {
   await P.page.waitForSelector('[data-tut="login-create"]', { timeout: 30000 });
@@ -189,29 +194,29 @@ async function sizeAndPlace(P, idx, tx, ty) {
   return ops[idx] ? ops[idx].a.slice() : null;
 }
 
+/* The crop is H.figureBox WIDENED by its own scale on every side.  The bare
+   box was calibrated for the old map's zoom and anchor; in the Wheel at this
+   zoom it frames his head and shirt and stops above his trousers (measured:
+   the flames sat 8-25 px below its bottom edge), so it read 0 on him and 0 on
+   the control alike.  The widened crop takes in the whole bro and some ground,
+   and the control below takes the ground back out. */
 async function figureRead(P, tag) {
   let best = null;
-  for (let i = 0; i < 6; i++) {
-    const box = await H.figureBox(P).catch(() => null);
-    if (box) {
-      const px = await H.screenshotPixels(P, box);
+  for (let i = 0; i < 4; i++) {
+    const b = await H.figureBox(P, { pad: 0 }).catch(() => null);
+    if (b) {
+      const pad = Math.round(40 * (b.k || 1));
+      const clip = { x: Math.max(0, b.x - pad), y: Math.max(0, b.y - pad),
+        width: b.width + pad * 2, height: b.height + pad * 2 };
+      const px = await H.screenshotPixels(P, clip);
       const n = px.count(isFlame);
-      if (!best || n > best.n) best = { n, box };
-      if (n > 0 && i >= 1) break;
+      if (!best || n > best.n) best = { n, clip };
     }
     await P.page.waitForTimeout(900);
   }
-  if (best && tag) {
-    const b = best.box;
-    const pad = Math.round(40 * (b.k || 1));
-    const clip = { x: Math.max(0, b.x - pad), y: Math.max(0, b.y - pad),
-      width: b.width + pad * 2, height: b.height + pad * 2 };
-    await P.page.screenshot({ path: `${SHOTS}-${tag}.png`, clip }).catch(() => {});
-  }
+  if (best && tag) await P.page.screenshot({ path: `${SHOTS}-${tag}.png`, clip: best.clip }).catch(() => {});
   return best;
 }
-
-const holdsArt = (obj, art) => JSON.stringify(obj || {}).includes(art);
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const tag = 'manydesigns';
@@ -251,8 +256,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await C.ctx.close();
 
   /* ── 1. TWO FLAMES ON THE PANTS ── */
+  /* A Login Key of its own, so section 5 can bring the character back on a
+     SECOND device (mp-lookrestore's road) -- the honest test that the two
+     flames were saved in his record, not just left in this phone's storage. */
+  const phrase = 'qa-manydesigns-' + webPort;
   const P = await H.newPlayer(browser, { name: 'Flames', wsPort, webPort, viewport: PHONE,
-    touch: true, dpr: 2, world: 'wheel', init: COACH_OFF });
+    touch: true, dpr: 2, world: 'wheel', init: COACH_OFF, phrase });
   await openCreator(P);
   rec.ok(`${tag}: the Pants editor opens on its Draw screen, on the trousers (guard)`,
     await openPantsEditor(P));
@@ -361,6 +370,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4. THE WORLD ── */
   await clickIn(P, '.bt-paint-btn button', /^done$/);
   await P.page.waitForTimeout(800);
+  /* the key has no character behind it yet: enterWorld takes the creator's
+     road (name, ENTER), not a returning player's (harness: `seeded`) */
+  P.seeded = false;
   await H.enterWorld(P);
   await P.page.waitForTimeout(3500);
   const me = await P.page.evaluate(() => ({
@@ -375,8 +387,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`${tag}: his trousers are still the two-flame drawing`, me.art === two);
   rec.ok(`${tag}: ...and that is what the world's body bake paints on him (__btArtForFacing)`,
     !!me.bake && me.bake.pants === two, me.bake && { pants: (me.bake.pants || '').slice(0, 32) });
-  const admin = await H.adminPlayer(wsPort, me.myId).catch(() => null);
-  rec.ok(`${tag}: the worker's record holds the two-flame drawing (saved)`, holdsArt(admin, two));
   const worn = await figureRead(P, 'world-two-flames');
   rec.ok(`${tag}: the flames are ON HIM in the world -- ${worn && worn.n} px of flame red on his `
     + `figure against ${plain && plain.n} on the plain control`,
@@ -402,6 +412,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const errs = P.logs.filter((l) => String(l).startsWith('pageerror'));
   rec.ok(`${tag}: no page errors`, errs.length === 0, errs.slice(0, 3));
   await P.ctx.close();
+
+  /* ── 5b. SAVED: the same Login Key on a NEW phone, with empty storage ── */
+  const D = await H.newPlayer(browser, { name: 'Flames', wsPort, webPort, viewport: PHONE,
+    touch: true, dpr: 2, world: 'wheel', init: COACH_OFF, phrase });
+  rec.ok(`${tag}: the second phone starts with no trouser drawing (guard)`,
+    (await D.page.evaluate(() => localStorage.getItem('bt-pantsart'))) === null);
+  await H.enterWorld(D);
+  await D.page.waitForTimeout(3500);
+  const d2 = await D.page.evaluate(() => ({
+    art: localStorage.getItem('bt-pantsart'),
+    bake: window.__btArtForFacing ? window.__btArtForFacing('south') : null,
+  }));
+  rec.ok(`${tag}: on a second phone the character comes back from the worker's record wearing `
+    + `BOTH flames, byte for byte (saved)`, d2.art === two && !!d2.bake && d2.bake.pants === two,
+    { got: (d2.art || '').slice(0, 24) });
+  await D.ctx.close();
 
   /* ── 6. AN OLD LOOK STILL LOADS ──
      The form the previous editor wrote: ONE design op over a base (here a drawn

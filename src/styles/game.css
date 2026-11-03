@@ -4312,7 +4312,7 @@ html.bt-calm .bt-pf__fill{transition:none}
   opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 /* v2.3.4157: five -- the four layer steps and Delete (PlayerPaint deleteSel) */
-.bt-paint-layer-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.bt-paint-layer-btns{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
 .bt-paint-layer-btns .bt-paint-size{padding:4px 2px;min-height:38px}
 .bt-paint-layer-btns .bt-paint-tool-label{font-size:11px;line-height:1.15;text-align:center}
 
