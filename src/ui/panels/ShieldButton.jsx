@@ -741,7 +741,56 @@ export function combatBandTopPx(isLandscape) {
     spr.bottomPx + spr.size,                   /* Sprint, over the attack disc (v2.3.3006; v2.3.3106 moved it) */
     jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */
     discBottom(isLandscape) + discR,           /* the attack disc (v2.3.3740: its own height upright) */
-    LBTN.bottom + discL);                      /* the movement disc */
+    LBTN.bottom + discL,                       /* the movement disc */
+    weaponTriAnchor(isLandscape).bottomPx + weaponTriAnchor(isLandscape).h);   /* v2.3.3921: the weapon triangle */
+}
+
+/* ═══ v2.3.3921: THE WEAPON TRIANGLE, OVER THE MOVEMENT STICK ═══
+ * The owner: "I need a button on screen for switching between weapons.  Maybe
+ * a triangle or wheel where the active weapon is highlighted on top and the
+ * others are greyed out" (WeaponTriangle.jsx).  Three round buttons in one
+ * box: the weapon in hand on top (WTRI.top), the other two below it to either
+ * side (WTRI.side), WTRI.air between the rings.
+ *
+ * WHERE: the LEFT thumb's side, by the owner's choice on the PR: "Do you think
+ * the weapon triangle should move besides the left joystick instead?  I'm
+ * thinking the right joystick is already crowded with buttons and weapon
+ * swapping won't need to occur as often."  (The first cut stood over the
+ * right-hand cluster.)  It is the left cluster's third place (leftCluster:
+ * Element Burst, Quick eat), toward the screen's middle:
+ *   UPRIGHT, over Quick eat: its left edge on Quick eat's, its foot WTRI_CLEAR
+ *     over Quick eat's top, its right edge never past 4 px short of the
+ *     middle (a 320 px phone slides it left, still over Quick eat).  On a 390 x
+ *     844 phone that is x 90-178, y 461-545: under the quest card, over the
+ *     bell and the dashboard.
+ *   SIDEWAYS, right of the movement disc at its foot: a row higher would
+ *     reach the top bar on a 390 px-tall screen, and level with Quick eat it
+ *     lies on the quest card.  WTRI_CLEAR right of the disc's box, its foot
+ *     level with the disc's, WTRI_CLEAR right of nothing else: Quick eat's
+ *     place is 54 px over its top.
+ * combatBandTopPx counts it (the coach card's lift), as it counts every
+ * slot. */
+export const WTRI = { top: 46, side: 40, air: 4 };
+export const WTRI_CLEAR = 10;
+export function weaponTriBox() {
+  var rT = WTRI.top / 2, rS = WTRI.side / 2;
+  var w = WTRI.side * 2 + 8;   /* the two lower buttons, 8 px apart */
+  var dx = w / 2 - rS;
+  var dy = Math.ceil(Math.sqrt(Math.max(0, Math.pow(rT + rS + WTRI.air, 2) - dx * dx)));
+  var h = rT + dy + rS;
+  /* the three centres, px from the box's top-left: top, lower-left, lower-right */
+  return { w: w, h: h, top: { x: w / 2, y: rT }, left: { x: rS, y: h - rS }, right: { x: w - rS, y: h - rS } };
+}
+/* { left: px in from the screen's left, bottomPx: px over the band } */
+export function weaponTriAnchor(isLandscape) {
+  var box = weaponTriBox();
+  if (isLandscape) {
+    return { w: box.w, h: box.h, box: box, left: LBTN.leftLand + LBTN.wLand + WTRI_CLEAR, bottomPx: LBTN.bottom };
+  }
+  var l = leftCluster(false);
+  var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+  var left = Math.max(EDGE_GUARD_PX, Math.min(l.leftPx(LCTL_SLOT.eat), Math.floor(vw / 2) - 4 - box.w));
+  return { w: box.w, h: box.h, box: box, left: left, bottomPx: l.bottomPx(LCTL_SLOT.eat) + l.size + WTRI_CLEAR };
 }
 
 export function ctlBottom(px) {

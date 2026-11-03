@@ -80,13 +80,20 @@ function check(name, cond, detail) {
     ['src/ui/BroTown.jsx', /deskWords\(questMsg\.sub\)/],
     ['src/ui/panels/NpcDialogue.jsx', /deskWords\(chunks\[i\]\)/],
     ['src/ui/panels/QuestOfferPanel.jsx', /deskWords\(quest\.desc\)/],
-    ['src/ui/mobile/dash/QuestDetailPanel.jsx', /deskWords\(quest\.desc\)/],
+    /* v2.3.3944: the quest journal -- a quest's page draws its words through
+       QuestJournalPage (the objective, its steps, NEXT); QuestDetailPanel keeps
+       the Track button's */
+    ['src/ui/mobile/dash/QuestJournalPage.jsx', /deskWords\(now\.text\)/],
+    ['src/ui/mobile/dash/QuestJournalPage.jsx', /deskWords\(now\.goal\)/],
+    ['src/ui/mobile/dash/QuestJournalPage.jsx', /deskWords\(st\.label\)/],
+    ['src/ui/mobile/dash/QuestJournalPage.jsx', /deskWords\(next\.text\)/],
+    ['src/ui/mobile/dash/QuestDetailPanel.jsx', /deskWords\('★ Tracked — tap to untrack'\)/],
     ['src/ui/mobile/dash/QuestsPanel.jsx', /deskWords\(/],
     ['src/ui/mobile/QuestCoach.jsx', /deskWords\(view\.body\)/],
     ['src/ui/panels/NewMonsterCard.jsx', /deskWords\('Tap to see it in the Codex/],
     ['src/ui/panels/ChatPanel.jsx', /deskWords\("Tap to type/],
     /* found by mp-deskwords, which reads every page and window on a computer */
-    ['src/ui/mobile/dash/QuestDetailPanel.jsx', /deskWords\(`Find \$\{quest\.npc\} in town and tap him/],
+    /* (v2.3.3944: the ready banner's "Find him in town and tap him" is the journal's NOW now: "You have it all: hand it in to ...") */
     ['src/ui/mobile/dash/SocialPanel.jsx', /deskWords\('Tap another player/],
     ['src/ui/mobile/dash/ClanPanel.jsx', /deskWords\('Make a party: pick a player and tap/],
     ['src/ui/mobile/dash/PetsPanel.jsx', /deskWords\('No pets yet\./],

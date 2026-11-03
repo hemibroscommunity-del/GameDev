@@ -8,7 +8,9 @@
  *
  * In the world's BroTown, a 390 x 844 phone held upright, then a computer
  * (wide: the sideways layout):
- *   1. at the Town Hall's door, "Enter" opens the BOARD: tiles under their
+ *   1. (v2.3.3899: at the square's noticeboard -- a tap on it on the phone,
+ *      its "Read THE TOWN BOARD" prompt on the computer -- not the Town
+ *      Hall's door, which opens nothing now) opens the BOARD: tiles under their
  *      headings, the dungeons, the arena, the forge and the Gambling Den among
  *      them, and the Leaderboard and World map at its foot;
  *      v2.3.3779: the Dungeons under their own heading, every tile its own
@@ -101,18 +103,45 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     return doors;
   };
-  /* the Town Hall's board: to its door, Enter */
+  /* ═══ v2.3.3899: the board is on the square's noticeboard ═══
+     The owner: "Remove the town hall menu for now ... move the menu to the
+     sign post to the left of the town hall near the 3 street lamps" (game/
+     wheelNoticeboard.js).  Stood just south of it: the phone TAPS its picture
+     (a real touch), the computer CLICKS its prompt ("Read THE TOWN BOARD") */
   const openBoard = async (P, th, wide) => {
     await closeCard(P);
-    await standAt(P, th.x, th.y + 30);
+    const nb = await P.page.evaluate(() => (window.__btNoticeboard ? window.__btNoticeboard.where() : null));
+    if (!nb) return { btn: null, open: false, wide };
+    await standAt(P, nb.x, nb.y + 110);   /* in the prompt's reach (140), the bro clear of the board's picture */
     let btn = null;
     for (let i = 0; i < 20 && !btn; i++) {
-      btn = await P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || '')); return b ? (b.textContent || '').trim() : null; });
+      btn = await P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Read /.test(q.textContent || '')); return b ? (b.textContent || '').replace(/\s+/g, ' ').trim() : null; });
       if (!btn) await P.page.waitForTimeout(250);
     }
-    await P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || '')); if (b) b.click(); });
+    if (wide) {
+      await P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Read /.test(q.textContent || '')); if (b) b.click(); });
+    } else {
+      /* tapped until the world's scan has RUN (window.__btNpcTap stamped),
+         three tries at most: on this box a frame drawn between a touch's
+         start and end can make it a hold (mp-buildingrooms' note, v2.3.3465) */
+      const t0 = await P.page.evaluate(() => Date.now());
+      for (let k = 0; k < 3; k++) {
+        const at = await P.page.evaluate(() => {
+          const t = window.__btNoticeboard.tapPoint();
+          const cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas');
+          if (!t || !cv) return null;
+          const r = cv.getBoundingClientRect();
+          return { x: Math.round(r.left + t.x), y: Math.round(r.top + t.y) };
+        });
+        if (at) await P.page.touchscreen.tap(at.x, at.y);
+        await P.page.waitForTimeout(400);
+        if (await P.page.evaluate((t) => !!(window.__btNpcTap && window.__btNpcTap.ts >= t - 50), t0)) break;
+      }
+      btn = (btn || 'no prompt') + ' / a tap on the noticeboard';
+    }
     const open = await waitSel(P, '[data-wheel-hall="townhall"] [data-town-board]');
-    return { btn, open, wide };
+    const tap = await P.page.evaluate(() => (window.__btNpcTap ? window.__btNpcTap.result : null));
+    return { btn, open, wide, tap };
   };
   const board = (P) => P.page.evaluate(() => {
     const b = document.querySelector('[data-town-board]');
@@ -216,7 +245,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await skipTutorial(A);
     const doors = await doorsOf(A);
     const th = doors.find((d) => d.id === 'townhall');
-    rec.ok('the Town Hall is a door of the world\'s BroTown (guard)', !!th && th.hall === 'townhall', th);
+    rec.ok('the Town Hall is a door of the world\'s BroTown (guard), and opens no board itself (v2.3.3899: hall null)', !!th && !th.hall, th);
     if (!th) return;
 
     /* 1. the board */
@@ -226,8 +255,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const b1 = await board(A);
     await shot(A, '1-board');
     const ids = b1 ? b1.tiles.map((t) => t.id) : [];
-    rec.ok(`1. at the Town Hall's door, "${o1.btn}" opens the board: ${ids.length} tiles under ${b1 ? b1.groups.length : 0} headings, the Leaderboard, World map, Codex and Journey at its foot`,
-      o1.open && !!b1 && ids.length >= 20 && ['goo-grotto', 'arena', 'nomansland', 'forge', 'gambling', 'woodworker', 'land-verdant'].every((id) => ids.includes(id))
+    rec.ok(`1. at the square's noticeboard, "${o1.btn}" (${o1.tap}) opens the board: ${ids.length} tiles under ${b1 ? b1.groups.length : 0} headings, the Leaderboard, World map, Codex and Journey at its foot`,
+      o1.open && o1.tap === 'board' && !!b1 && ids.length >= 20 && ['goo-grotto', 'arena', 'nomansland', 'forge', 'gambling', 'woodworker', 'land-verdant'].every((id) => ids.includes(id))
         && b1.groups.join() === 'quests,lands,dungeons,fight,make,money,gambling,people' && b1.foot.join() === 'leaderboard,map,codex,journey',
       { btn: o1.btn, open: o1.open, n: ids.length, groups: b1 && b1.groups, foot: b1 && b1.foot });
     /* v2.3.3779, the owner: "classified by 'dungeon' not by 'fight' ... Also use better icons for each one" */

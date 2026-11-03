@@ -35,7 +35,16 @@
  * wood.  KILL SWITCH: `hardenedwood: false` in liveflags refuses every make
  * and un-advertises the cap, with no deploy -- and bows and staffs go back to
  * hardening for gold alone (hardening.js), so nothing asks for a material
- * that can no longer be made.  Logs and hardened wood held are untouched. */
+ * that can no longer be made.  Logs and hardened wood held are untouched.
+ *
+ * v2.3.3981: ONE LOG MAKES ONE HARDENED WOOD.  The owner: "I just want 5 raw
+ * to turn into 5 processed.  So still wood to hardened wood but only require
+ * 5 instead of 25."  A bow or a staff still takes five hardened wood, so it is
+ * five logs now.  RECIPES is one log a piece, each piece's XP the old one's
+ * divided by five (80 to 240), so Woodworking levels at the same pace per log
+ * cut; FIVE is the old five-to-one, laid back over it by `onetoone: false`
+ * (smelting.js _oneToOneOff, the same switch the bars, Diego's prices and the
+ * daily smelt quest follow).  The worker settles from _hardenedWoodRecipe. */
 
 export const HARDENED_WOOD = {
   /* hardened invKey -> recipe.  `log` is the exact key gathering.js
@@ -46,12 +55,23 @@ export const HARDENED_WOOD = {
      carried on two more steps for the two woods past them.  The names are the
      owner's "hardened (name) wood", the tree's own bag name in the middle:
      Softwood and Hardwood already say wood. */
+  /* v2.3.3981: one log a piece (the header); the XP a fifth of the old */
   RECIPES: {
-    hardened_pine: { log: 'wood_pine_log', logCost: 5, minLvl: 1, xp: 400, tier: 'pine', name: 'Hardened Pine Wood' },
-    hardened_softwood: { log: 'wood_softwood', logCost: 5, minLvl: 5, xp: 600, tier: 'softwood', name: 'Hardened Softwood' },
-    hardened_hardwood: { log: 'wood_hardwood', logCost: 5, minLvl: 10, xp: 800, tier: 'hardwood', name: 'Hardened Hardwood' },
-    hardened_cedar: { log: 'wood_cedar_wood', logCost: 5, minLvl: 15, xp: 1000, tier: 'cedar', name: 'Hardened Cedar Wood' },
-    hardened_maple: { log: 'wood_maple_wood', logCost: 5, minLvl: 20, xp: 1200, tier: 'maple', name: 'Hardened Maple Wood' },
+    hardened_pine: { log: 'wood_pine_log', logCost: 1, minLvl: 1, xp: 80, tier: 'pine', name: 'Hardened Pine Wood' },
+    hardened_softwood: { log: 'wood_softwood', logCost: 1, minLvl: 5, xp: 120, tier: 'softwood', name: 'Hardened Softwood' },
+    hardened_hardwood: { log: 'wood_hardwood', logCost: 1, minLvl: 10, xp: 160, tier: 'hardwood', name: 'Hardened Hardwood' },
+    hardened_cedar: { log: 'wood_cedar_wood', logCost: 1, minLvl: 15, xp: 200, tier: 'cedar', name: 'Hardened Cedar Wood' },
+    hardened_maple: { log: 'wood_maple_wood', logCost: 1, minLvl: 20, xp: 240, tier: 'maple', name: 'Hardened Maple Wood' },
+  },
+  /* v2.3.3981: the rows `onetoone: false` lays over RECIPES -- the old
+     five-to-one, as they were until v2.3.3981 (the game's
+     HARDENED_WOOD_FIVE, mirror-audit) */
+  FIVE: {
+    hardened_pine: { logCost: 5, xp: 400 },
+    hardened_softwood: { logCost: 5, xp: 600 },
+    hardened_hardwood: { logCost: 5, xp: 800 },
+    hardened_cedar: { logCost: 5, xp: 1000 },
+    hardened_maple: { logCost: 5, xp: 1200 },
   },
   MAX_PER_REQUEST: 50,
 };
@@ -65,6 +85,15 @@ export const hardenedWoodMethods = {
     return !!(f && typeof f === 'object' && has(f, 'hardenedwood') && !f.hardenedwood);
   },
 
+  /* v2.3.3981: the recipe a make is settled from -- one log a piece, or the
+     old five with `onetoone: false` (smelting.js _oneToOneOff).  null for a
+     key that is not the table's own. */
+  _hardenedWoodRecipe(key) {
+    if (!has(HARDENED_WOOD.RECIPES, key)) return null;
+    const r = HARDENED_WOOD.RECIPES[key];
+    return this._oneToOneOff() ? { ...r, ...HARDENED_WOOD.FIVE[key] } : r;
+  },
+
   _handleMakeHardenedWood(session, payload) {
     if (!session || !session.id) return null;
     const ws = this._wsBySessionId(session.id);
@@ -73,8 +102,8 @@ export const hardenedWoodMethods = {
     if (this._hardenedWoodOff()) { reply({ error: 'off', key }); return null; }
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return null;
-    if (!has(HARDENED_WOOD.RECIPES, key)) { reply({ error: 'bad-key' }); return null; }
-    const r = HARDENED_WOOD.RECIPES[key];
+    const r = this._hardenedWoodRecipe(key);   /* v2.3.3981 */
+    if (!r) { reply({ error: 'bad-key' }); return null; }
 
     const ls = ps.lifeSkills && typeof ps.lifeSkills === 'object' ? ps.lifeSkills : null;
     const lvl = (ls && has(ls, 'woodworking') && ls.woodworking && ls.woodworking.level) || 1;

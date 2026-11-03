@@ -31,9 +31,11 @@ import { join } from 'node:path';   /* v2.3.3251: the grey plate's picture */
    driven in its own sub-test below by raising the PLAYER rather than by adding
    a level-0 monster, which does not exist. */
 const CAST = [
-  { arch: 'fodder', level: 1, expect: 'Slime', band: 'near' },
-  { arch: 'brute', level: 7, expect: 'Brute', band: 'danger' },
-  { arch: 'snowman', level: 42, expect: 'Snowman', band: 'danger' },
+  { arch: 'fodder', level: 1, expect: 'Slime', band: 'near', element: 'water' },
+  { arch: 'brute', level: 7, expect: 'Brute', band: 'danger', element: 'stone' },
+  /* v2.3.3906: one with no element: its plate wears no icon */
+  { arch: 'snowman', level: 42, expect: 'Snowman', band: 'danger', element: 'frost' },
+  { arch: 'fodder', level: 1, expect: 'Slime', band: 'near', element: null },
 ];
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -53,7 +55,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       renderX: S.player.x - 60 + i * 60, renderY: S.player.y - 40,
       spawnX: S.player.x - 60 + i * 60, spawnY: S.player.y - 40,
       targetX: S.player.x - 60 + i * 60, targetY: S.player.y - 40,
-      hp: 500, curHp: 500, maxHp: 500, dmg: 0, level: c.level, gold: 0,
+      hp: 500, curHp: 500, maxHp: 500, dmg: 0, level: c.level, gold: 0, element: c.element || undefined,
       alive: true, statuses: {}, _hitThisSwing: false, _atkCd: 0, _stunUntil: 0,
       respawnAt: 0, moveTimer: 0, _stuckArrows: [],
     }));
@@ -93,6 +95,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...carrying the real level, not a placeholder',
     CAST.every((c) => seen.plates.some((p) => p.badge === String(c.level))),
     { got: seen.plates.map((p) => p.badge), want: CAST.map((c) => String(c.level)) });
+
+  /* ═══ v2.3.3906: ITS ELEMENT AFTER ITS NAME ═══
+     The owner: "After name of monster on nameplate it lists elemental icon
+     type."  Read off the renderer: which icon the plate laid out, that it is
+     shown with its picture bound, and that it sits between the name and the
+     level digits. */
+  const byId = (i) => seen.plates.find((p) => p.id === 'qa_plate_' + i);
+  rec.ok('each monster\'s plate wears its own element\'s icon',
+    CAST.every((c, i) => { const p = byId(i); return p && (c.element ? p.elem === 'elem-' + c.element && p.elemShown : !p.elem && !p.elemShown); }),
+    seen.plates.map((p) => ({ id: p.id, elem: p.elem, shown: p.elemShown })));
+  rec.ok('...between the name and the level, and the plate grew by it',
+    CAST.every((c, i) => { const p = byId(i); if (!c.element) return true;
+      return p && p.elemX > p.nameRight && p.elemX < p.lvlX; })
+    && (() => { const a = byId(0), b = byId(3); return a && b && a.pillW > b.pillW; })(),
+    seen.plates.map((p) => ({ id: p.id, nameRight: p.nameRight, elemX: p.elemX, lvlX: p.lvlX, w: p.pillW })));
 
   /* ═══ v2.3.2571: ABOVE THE HEAD, ON THE HP BAR'S OWN LINE ═══
      Owner: "I want them to be above the head."  This assertion is INVERTED
