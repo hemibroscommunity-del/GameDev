@@ -1565,13 +1565,14 @@ Screens: harvest-near, harvest-windup, harvest-ready
 - The gesture's length: about 3 s (v2.3.2760, the owner's "require about 3 seconds"), doubled (owner: "Double the amount of time", v2.3.2761), then cut to a quarter (v2.3.3036).
 - At "ready" the body used to loop a demo of the motion by itself (v2.3.2384). That went against the owner's freeze, and the teaching moved onto the button (v2.3.2760).
 - "Need Mining Lv 5" and a beep (v2.3.3038) became the visible try with zeros (v2.3.3059). "Too far away!" and "You need a tool for that" are gone: such a tap is now a tap on the ground (v2.3.3145).
+- "Too far away" came back in v2.3.3990, at the owner's ask ("There needs to be a message that you're too far away if you can't mine and are tapping on the ore. Too far away message should also be with any resource."): a word floating over the resource (any resource, and a farm bed), once a second each, "Too far away: walk closer" on a computer. Unlike the old one it takes nothing: the tap still goes on to whatever it did before, which is why v2.3.3145 removed the old one.
 
 **Please don't suggest:**
 - A harvest button in the middle of the screen, or a phone gesture anywhere but on the right button.
 - Keeping the character moving while it waits for the gesture (TRAPS §107: the freeze is the owner's design), or a time limit on it.
 - A progress bar over the player's head, showing your own name plate and HP bar during a harvest, or moving the rock's or campfire's bar above them.
 - Names and levels on every resource, a rod icon over fishing spots, or a splash or sound on every nibble.
-- Making the gesture longer again, or bringing back "Too far away!" messages.
+- Making the gesture longer again, or a "Too far away" that takes the tap (v2.3.3145; the word since v2.3.3990 only floats).
 
 **Still open:**
 - The lumberjack, cook and fire-lighter are separate paintings, so their drawing style differs; eye colour is not on the mining, fishing or those three figures; a cape is left off the three on purpose (it would hang into the ground on a crouch).
