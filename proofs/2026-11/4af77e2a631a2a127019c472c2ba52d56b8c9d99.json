@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4af77e2a631a2a127019c472c2ba52d56b8c9d99",
+  "tree": "a99b744d02953a61f1d093eb1f6c78e4210edd53",
+  "committedAt": "2026-11-02T19:54:43-08:00",
+  "subject": "Merge pull request #1393 from hemibroscommunity-del/claude/standin-patterns",
+  "files": 7462,
+  "bytes": 848377548,
+  "listingSha256": "d66686e008ec9f4c56bf527f8b4dcbbfcdfe92b34e10b1f3b94620cbdf2d15ad",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
