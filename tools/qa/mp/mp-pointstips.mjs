@@ -18,6 +18,8 @@
  *   4. a stat's [+] and Spend, all real fingers: "✓ 1 point spent" and, under
  *      it, the free reset named; a second Spend says no more about it;
  *   5. done for good: no card while points still wait, `done.points`;
+ *   v2.3.3925: and the big arrow (ui/guideArrow.js) points at Character (2),
+ *   moves to the Points tab (3), and is gone once a point is spent (5);
  *   B, past the Mayor's tutorial, a fresh browser (nothing seeded):
  *   6. the first level-up brings this card ALONE (the coach is closed to
  *      every other lesson), and a tap on it puts it away for good;
@@ -54,6 +56,27 @@ const coach = (P) => P.page.evaluate(() => {
   };
 });
 const probe = (P) => P.page.evaluate(() => (window.__btCoach ? window.__btCoach() : null));
+/* v2.3.3925: the big arrow (ui/guideArrow.js): its lesson, what it names, and
+   whether its tip is over that control's middle at its edge */
+const arrowAt = (P) => P.page.evaluate(() => {
+  const g = window.__btGuideArrow;
+  if (!g) return null;
+  let on = false;
+  if (g.sel && g.rect) {
+    const el = Array.from(document.querySelectorAll(g.sel)).find((e) => { const q = e.getBoundingClientRect(); return q.width > 0 && q.height > 0; });
+    if (el) {
+      const r = el.getBoundingClientRect(), tipX = g.rect.left + g.rect.w / 2;
+      const edge = g.side === 'above' ? Math.abs(g.rect.top + g.rect.h - r.top) : Math.abs(g.rect.top - r.bottom);
+      on = Math.abs(tipX - (r.left + r.width / 2)) <= Math.max(6, r.width / 2) && edge <= 14;
+    }
+  }
+  return { lesson: g.lesson, sel: g.sel, on, el: !!document.querySelector('[data-guide-arrow]'), done: g.done };
+});
+async function waitArrowOn(P, want, ms = 8000) {
+  let a = null;
+  for (const t0 = Date.now(); Date.now() - t0 < ms;) { a = await arrowAt(P); if (want(a)) return a; await P.page.waitForTimeout(250); }
+  return a;
+}
 const rectOf = (P, sel) => P.page.evaluate((s) => {
   const el = document.querySelector(s);
   if (!el) return null;
@@ -140,6 +163,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`2: the coach rings Character, on the folded band, and says "${c1 && c1.text}"`,
     !!c1 && c1.id === 'points' && /^×?\s*Level up!/i.test(c1.text) && c1.text.includes('You have ' + many + ' to spend. Tap Character.')
       && ringOn(c1, nav1), { c1, nav1, folded });
+  /* v2.3.3925: and the big arrow points at Character */
+  const ar1 = await waitArrowOn(A, (a) => !!a && a.lesson === 'points' && a.sel === '[data-nav="hero"]' && a.on);
+  rec.ok('2: the big arrow points at Character (v2.3.3925)', !!ar1 && ar1.lesson === 'points' && ar1.sel === '[data-nav="hero"]' && ar1.on && ar1.el, ar1);
   /* a blow dealt: it steps aside for the fight, and comes back after */
   await A.page.evaluate(() => { const S = window._gameState.current; S._dealtAt = Date.now(); });
   const cFight = await waitCoach(A, (c) => !c || c.id !== 'points', 4000);
@@ -157,6 +183,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const tab = await rectOf(A, '[data-section="Build"]');
     rec.ok(`3: Character open on another tab, it rings Points: "${c3.text}"`,
       c3.text.includes('Your ' + many + ' are on the Points tab.') && ringOn(c3, tab), { c3, tab });
+    const ar3 = await waitArrowOn(A, (a) => !!a && a.sel === '[data-section="Build"]' && a.on);
+    rec.ok('3: ...and the big arrow moves to the Points tab (v2.3.3925)', !!ar3 && ar3.sel === '[data-section="Build"]' && ar3.on, ar3);
     await finger(A, '[data-section="Build"]');
   }
   const c4 = await waitCoach(A, (c) => !!c && c.id === 'points' && /Top row:/.test(c.text));
@@ -218,6 +246,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const g5 = await probe(A);
   const left = await pts(A);
   await shot('after');
+  const ar5 = await arrowAt(A);
+  rec.ok('5: ...and the big arrow is gone, the points lesson marked done (v2.3.3925)', !!ar5 && !ar5.el && !!ar5.done && ar5.done.points === 1, ar5);
   rec.ok(`5: done for good: no card though ${left && (left.pool + left.shared)} points still wait, and the lesson marked done`,
     (!c5 || c5.id !== 'points') && !!g5 && g5.done && g5.done.points === true && !!left && left.pool + left.shared > 0,
     { c5, done: g5 && g5.done, left });
