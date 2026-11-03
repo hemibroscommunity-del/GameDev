@@ -248,7 +248,8 @@ const gearFit = (P) => P.page.evaluate(() => {
       const a = g.getBoundingClientRect(), b = row.getBoundingClientRect(), x = box ? box.getBoundingClientRect() : null;
       return { w: Math.round(a.width), left: Math.round(a.left - b.left), right: Math.round(b.right - a.right), layout: g.getAttribute('data-gear-layout'),
         win: window.innerWidth, box: x ? { w: Math.round(x.width), left: Math.round(x.left), right: Math.round(window.innerWidth - x.right) } : null,
-        fills: !!x && Math.abs(a.left - x.left) <= 1 && Math.abs(a.right - x.right) <= 1 };
+        fills: !!x && Math.abs(a.left - x.left) <= 1 && Math.abs(a.right - x.right) <= 1,
+        panes: ['inv', 'bro', 'equip'].map((k) => { const e = g.querySelector(`[data-gear-pane="${k}"]`); return e ? Math.round(e.getBoundingClientRect().width) : 0; }) };
     })(),
   };
 });
@@ -261,6 +262,12 @@ async function gearChecks(P, rec, label, shotPath, computer) {
   if (computer) {
     rec.ok(`${label}: the Gear tab fills the band's one assembly (data-band-box, at most 840 px), the assembly centred in the window (its margins equal within 2 px)`,
       !!g0 && !!g0.root && !!g0.root.box && g0.root.fills && g0.root.box.w <= 841 && Math.abs(g0.root.box.left - g0.root.box.right) <= 2, g0 && g0.root);
+    /* ...and its three panels balanced in it (v2.3.4191: equal thirds once
+       the card would be more than twice a grid panel -- not a 530 px card
+       between two 149 px panels) */
+    const pw = (g0 && g0.root && g0.root.panes) || [];
+    rec.ok(`${label}: the Gear tab's three panels balanced in the assembly (${pw.join(' | ')} px: the card at most 1.25x a grid panel)`,
+      pw.length === 3 && pw[0] > 0 && Math.abs(pw[0] - pw[2]) <= 1 && pw[1] <= 1.25 * pw[0], pw);
   }
   rec.ok(`${label}: the Gear tab's card fits the band -- no scrolling, nothing past its edge, nothing under 11 px; the bag's squares and the Equipped cells one size (34 px or more), all nine cells inside their panel`,
     !!g0 && g0.view === 'overview' && g0.over <= 1 && g0.scOver <= 1 && g0.outside === 0 && g0.small.length === 0

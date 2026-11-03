@@ -342,6 +342,7 @@ export const GearTab = ({ R: Rin, desk }) => {
      weapon switcher on every layout, the owner's choice */
   const footH = 0;
   let t, sideH, broW, broH;
+  let padX = 0;   /* v2.3.4191: the two grid panels' extra side padding in a wide block (below) */
   /* v2.3.4151: SHORT -- a box too short for three rows of 34 px squares (the
      one band open on a sideways phone, Lane B's ~78 px row: PR #1410).  Both
      grids lie in ONE row of nine (the bag's nine in view, the nine cells in
@@ -374,6 +375,18 @@ export const GearTab = ({ R: Rin, desk }) => {
     t = Math.max(SQ_MIN, Math.min(tW, tH, 64));
     broW = inner - 2 * side(t);
     broH = sideH;
+    /* v2.3.4191: THREE EQUAL PANELS IN A WIDE BLOCK.  The squares are held by
+       the row's height (three rows: ~45 px in the band's 191 px), so in Lane
+       B's 840 px assembly (PR #1424) the card alone took the rest -- 530 px
+       beside two 149 px panels, the bro small in a long box, the bars long
+       strips.  Once the card would be more than twice a grid panel, the
+       three share the width equally (the Bro tab's own thirds, ~276 px each),
+       each grid centred in its panel at its own size; a phone (the card
+       ~134 px) is untouched. */
+    if (broW > 2 * side(t)) {
+      padX = Math.max(0, Math.floor((Math.floor(inner / 3) - side(t)) / 2));
+      broW = inner - 2 * (side(t) + 2 * padX);
+    }
   } else {
     /* the sideways column: the bag and the gear side by side on top, the
        card the full width under them */
@@ -383,7 +396,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     broW = inner;
     broH = H > 0 ? Math.max(120, H - 2 * rp - footH - sideH - rg) : 160;
   }
-  const sideW = side(t);
+  const sideW = side(t) + 2 * padX;
   const gridH = sideH - 2 * pp - 2 - hdr - gg;
   const rowsIn = Math.max(1, Math.min(rows, Math.floor((gridH + gg) / (t + gg))));
   const viewH = rowsIn * t + (rowsIn - 1) * gg;
@@ -397,11 +410,11 @@ export const GearTab = ({ R: Rin, desk }) => {
 
   /* ═════ INVENTORY ═════ */
   const filterWord = fid === 'all' ? 'All Items' : ((GEAR_FILTERS[fid] || {}).pill || 'Filter');
-  const hdrW = sideW - 2 * pp - 2;
+  const hdrW = side(t) - 2 * pp - 2;   /* the grid's own width: the head lines up with the squares */
   const coins = Number(R.coins || 0);
   const roomy = hdrW >= 128;   /* room for the chevron beside the coins */
   const inventory = (
-    <div data-gear-pane="inv" style={panel({ width: sideW, height: sideH, flex: 'none', padding: pp })}>
+    <div data-gear-pane="inv" style={panel({ width: sideW, height: sideH, flex: 'none', padding: `${pp}px ${pp + padX}px` })}>
       {/* the mockup's head -- "All Items" (or the filter on, with its ×) and
           the coins beside it */}
       <div style={{ height: hdr, flex: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -479,7 +492,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       {/* the menu: down over the bag panel only */}
       {st.menu && (
         <div data-gear-menu="" style={{
-          position: 'absolute', left: pp, right: pp, top: pp + hdr, bottom: pp, zIndex: 6,
+          position: 'absolute', left: pp + padX, right: pp + padX, top: pp + hdr, bottom: pp, zIndex: 6,
           background: COL.bg, border: `1px solid ${COL.borderStrong}`, borderRadius: 8,
           boxShadow: '0 8px 18px rgba(4,7,9,.45)', display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>
@@ -576,7 +589,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     );
   };
   const equipment = (
-    <div data-gear-pane="equip" style={panel({ width: sideW, height: sideH, flex: 'none', padding: pp, alignItems: 'center', justifyContent: 'flex-start' })}>
+    <div data-gear-pane="equip" style={panel({ width: sideW, height: sideH, flex: 'none', padding: `${pp}px ${pp + padX}px`, alignItems: 'center', justifyContent: 'flex-start' })}>
       {/* the mockup's "Equipped" head */}
       <div data-gear-eqhead="" style={{ height: EQ_HEAD, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11.5, fontWeight: 800, color: COL.text, letterSpacing: '.02em' }}>Equipped</div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${t}px)`, gridAutoRows: `${t}px`, gap: gg, marginTop: Math.max(0, Math.min(hdr + gg - EQ_HEAD, Math.floor((sideH - 2 * pp - 2 - EQ_HEAD - 3 * t - 2 * gg) / 2))) }}>
