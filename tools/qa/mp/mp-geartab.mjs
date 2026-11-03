@@ -174,7 +174,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         { who: s1.who, level: s1.level, bars: s1.bars, columns: s1.columns, power: s1.power });
       rec.ok('[390x844] ...then the three combat skill pills, Melee Bow Magic: each "Lv N" and an XP bar, nothing glowing with no points',
         s1.pills.length === 3 && s1.pills.map((p) => p.text.replace(/Lv.*$/, '').trim()).join() === 'Melee,Bow,Magic'
-          && s1.pills.every((p) => p.lvl >= 1 && new RegExp('Lv ' + p.lvl + '$').test(p.text) && p.xpbar && p.box && p.box.h >= 28)
+          && s1.pills.every((p) => p.lvl >= 1 && new RegExp('Lv ' + p.lvl + '$').test(p.text) && p.xpbar && p.box && p.box.h >= 32)
           && s1.pills.every((p) => p.glow === (p.unspent > 0)), s1.pills);
 
       /* 2. tap Sword */

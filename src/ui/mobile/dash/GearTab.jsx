@@ -90,7 +90,7 @@ const MID_MIN = 120;   /* the card: three bars and two columns of numbers */
 const BAG_MIN = BAG_COLS * TILE_MIN + (BAG_COLS - 1) * TG + 2 * PAD;
 const EQ_MIN = 3 * CELL_MIN + 2 * 3 + 2 * EP;
 const WIDE_AT = BAG_MIN + EQ_MIN + MID_MIN + 2 * PAD + 2 * GAP;
-const HDR_H = 32;      /* the bag's filter-and-coins row (its controls 30 px) */
+const HDR_H = 34;      /* the bag's filter-and-coins row (its controls 32 px: the UI review's floor for a finger) */
 const EQ_HEAD = 18;    /* "Equipped" */
 
 const CELL_SKILL = { sword: 'power', bow: 'agility', staff: 'mind' };
@@ -721,7 +721,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     const lvl = charLevel(R);
     const bar = (kind, cur, max) => (
       <div key={kind} data-vital={kind} title={VITAL_LABEL[kind]} style={{ display: 'flex' }}>
-        <VitalBar kind={kind} cur={cur} max={max} thick={14}
+        <VitalBar kind={kind} cur={cur} max={max} thick={13}
           inset={(
             <div style={{
               width: '100%', minWidth: 0, display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px 0 3px', boxSizing: 'border-box',
@@ -735,7 +735,8 @@ export const GearTab = ({ R: Rin, desk }) => {
           )} />
       </div>
     );
-    /* v2.3.4101: a combat skill's pill -- its picture, its name, "Lv N" and
+    /* v2.3.4101: a combat skill's pill (32 px tall, the UI review's floor for
+       a finger) -- its picture, its name, "Lv N" and
        the XP to the next level (combatSkill.js, the numbers the weapon cells
        and the old band pills read; xpLanding's count-up and data-xpbar, so a
        kill's flying XP lands here); gold and glowing with points to spend.
@@ -753,7 +754,7 @@ export const GearTab = ({ R: Rin, desk }) => {
           ref={k.p3cat ? ((el) => { if (el) registerXpCard(k.p3cat, el.getBoundingClientRect()); }) : undefined}
           onClick={(e) => { e.stopPropagation(); goPoints(s); }}
           style={{
-            width: '100%', minHeight: 28, boxSizing: 'border-box', padding: '2px 6px 3px', borderRadius: 8,
+            width: '100%', minHeight: 32, boxSizing: 'border-box', padding: '3px 6px 4px', borderRadius: 8,
             display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, fontFamily: 'inherit', textAlign: 'left',
             border: `1px solid ${glow ? COL.accent : COL.borderStrong}`, background: glow ? COL.accentFill : COL.wellSoft,
             boxShadow: glow ? '0 0 9px rgba(216, 170, 88, 0.55)' : undefined,
@@ -775,7 +776,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       );
     };
     body = (
-      <div data-gear-stats="mine" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <div data-gear-stats="mine" style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         <div data-gear-level={lvl} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 5, minWidth: 0, padding: '1px 0' }}>
           <span data-gear-who="" style={{ minWidth: 0, fontSize: 13, fontWeight: 800, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
           <span style={{ flex: 'none', fontSize: 11.5, fontWeight: 800, color: COL.accent, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
@@ -786,7 +787,7 @@ export const GearTab = ({ R: Rin, desk }) => {
           {bar('mana', R.mana || 0, R.maxMana || 100)}
           {bar('stamina', R.stamina || 0, R.maxStamina || 100)}
         </div>
-        <div data-gear-skills="" style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <div data-gear-skills="" style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 1 }}>
           {WEAPON_SKILLS.map(pill)}
         </div>
       </div>

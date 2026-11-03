@@ -778,6 +778,10 @@ export const STATES = [
       const e0 = await openBag(P, view);
       if (e0) return e0;
       await wait(P, 800);
+      /* v2.3.4101: the Gear tab's bag shows nine and scrolls the rest: bring
+         the fish into its view first, as a thumb would */
+      await evalIn(P, () => { const t = document.querySelector('[data-bag-key="i-fish_trout_albino"]'); if (t) t.scrollIntoView({ block: 'nearest' }); });
+      await wait(P, 300);
       const e = await tapSel(P, '[data-bag-key="i-fish_trout_albino"]');
       if (e) return e;
       await wait(P, 600);
