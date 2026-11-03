@@ -34,8 +34,8 @@
 import { WORLD_ZOOM, TILE } from '@/data/constants.js';
 import { renderDpr } from './renderRes.js'; /* v2.3.3339 */
 import { ZONES } from '@/data/zones.js'; /* v2.3.2247: the per-zone zoom ceiling */
-import { capViewScale, viewCapChoice } from './viewCap.js'; /* v2.3.4054: one visible area for every screen */
-import { clientOff } from './clientOff.js'; /* v2.3.4054: the Test panel's row turns the cap off */
+import { capViewScale, viewCapChoice } from './viewCap.js'; /* v2.3.4074: one visible area for every screen */
+import { clientOff } from './clientOff.js'; /* v2.3.4074: the Test panel's row turns the cap off */
 
 /* The design target, in WORLD px: a 390px-wide iPhone Safari viewport times
    WORLD_ZOOM.  390 is the width playViewport.js falls back to and the one the
@@ -278,7 +278,7 @@ export const VIEW_OUT = readViewOut();
    expression so the parity survives the next change to WORLD_ZOOM too. */
 export const REF_VIEW_H = Math.round(320 * WORLD_ZOOM);   /* 960 at WORLD_ZOOM 3 */
 
-/* v2.3.4054: the view cap's switch -- the address read once (it cannot change
+/* v2.3.4074: the view cap's switch -- the address read once (it cannot change
    without a load), the Test panel's word every call (a Set lookup: it follows
    the worker live, `live: true` in clientOff.js) */
 const VIEW_CAP_SEARCH = (() => {
@@ -293,7 +293,7 @@ export function viewCapOn() {
 /** The logical world viewport for a canvas, plus the world->CSS scale.
  *  W/H are WORLD px — what the camera centres and clamps against, and what the
  *  projectile sim measures screen edges in. */
-export function worldViewport(canvas, zoneId, opts) {   /* v2.3.4054: + opts.cap === false, the probe's "without the cap" */
+export function worldViewport(canvas, zoneId, opts) {   /* v2.3.4074: + opts.cap === false, the probe's "without the cap" */
   const dpr = renderDpr();   /* v2.3.3339: as the canvas was sized (renderRes.js) */
   const cssW = (canvas ? canvas.width : 0) / dpr;
   const cssH = (canvas ? canvas.height : 0) / dpr;
@@ -442,7 +442,7 @@ export function worldViewport(canvas, zoneId, opts) {   /* v2.3.4054: + opts.cap
      v2.3.2997: the three character-size floors are VIEW_OUT of what they
      were; the zone's own no-void floor above is not (see VIEW_OUT). */
   scale = Math.max(scale, FIGURE_SCALE_FLOOR * VIEW_OUT);
-  /* ═══ v2.3.4054: ...AND NO SCREEN SEES MORE AREA THAN AN UPRIGHT PHONE ═══
+  /* ═══ v2.3.4074: ...AND NO SCREEN SEES MORE AREA THAN AN UPRIGHT PHONE ═══
      Owner, on a design review's "a consistent maximum gameplay visibility
      range regardless of screen dimensions": "Cap it for everyone now".  A
      wide screen is zoomed in until it sees about an upright phone's area,
@@ -470,7 +470,7 @@ export function worldViewport(canvas, zoneId, opts) {   /* v2.3.4054: + opts.cap
    make. Read-only, in the house style (__btWorldProps, __btCoach,
    __btMonsterPlates), and it computes nothing the game does not. */
 if (typeof window !== 'undefined') {
-  /* v2.3.4054: `{ cap: false }` answers what this canvas would see without
+  /* v2.3.4074: `{ cap: false }` answers what this canvas would see without
      the view cap -- the before and after on one page (mp-landscape-view) */
   window.__btWorldView = function (zoneId, opts) {
     try {
@@ -479,7 +479,7 @@ if (typeof window !== 'undefined') {
       const v = worldViewport(c, zoneId, opts);
       return { zone: zoneId || null, scale: +v.scale.toFixed(4),
         W: Math.round(v.W), H: Math.round(v.H), viewOut: VIEW_OUT,   /* v2.3.2997: + the zoom-out in force */
-        viewCap: viewCapOn() };   /* v2.3.4054: + whether the view cap is in force */
+        viewCap: viewCapOn() };   /* v2.3.4074: + whether the view cap is in force */
     } catch (_e) { return null; }
   };
 }
