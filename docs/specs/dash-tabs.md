@@ -72,7 +72,12 @@ the top-bar lane once this is on main; one layout on every screen is B3.
     (`achvSummary`) and Lifetime Kills (`profileFromSelf`).
   - **the weapon's stats** (`sheet/broStats.js` `broWeaponStats(R, cat)`,
     pure, `server/test/bro-stats.test.mjs`): Sword | Bow | Staff, starting on
-    `prog3ActiveCat`, kept while the page is visited.  Thirteen rows: Damage
+    `prog3ActiveCat`, kept while the page is visited.  v2.3.4162, the owner
+    on #1386: *"Make the weapon icons above the combat stats larger and just
+    reuse the icons used on the 3 primary combat skills"*: the buttons wear
+    the Gear tab's skill-tile pictures (heroModel `COMBAT_SKILLS` Melee, Bow,
+    Magic: `BRO_WEAPONS` reads them from that table, no new art) at 32 px
+    (26 in one column, word under), the word beside, the button 44 px tall.  Thirteen rows: Damage
     and DPS (`calcDisplayDmgRange` / `calcDisplayDps` for that slot's weapon),
     Attack Speed (1000 / `statSim.autoSwingMs`, "/s"), Range
     (`statSim.reachOf`, tiles), then `heroStatPills` worked out with
@@ -159,7 +164,11 @@ None: a client-only layout change, no wire, no server behaviour.
 - `bandshots` (new): the band open on Gear and on Bro on a computer
   (1280 x 720 and 1920 x 1080, wide), a phone on its side and upright: Gear's
   tab at rest (never the old bag page), the Bro card filling the centred
-  `data-band-box` and no more, CLOSE first in the row.  Pictures:
+  `data-band-box` and no more, CLOSE first in the row; v2.3.4162: on a
+  computer the band's edges are the world canvas's within 1 px (the bars run
+  black under it, nothing over the world moved: one-band.md), upright and
+  sideways the screen's width, the selector's pictures the Gear tab's and
+  at least 44 px tall.  Pictures:
   `docs/shots/band-{gear,bro}-{desk,side,up}.webp`.
 - `server/test/bro-stats` (new): the thirteen rows, one reader with the
   Equipment window's pills, a lane's own points, an empty slot, the start,

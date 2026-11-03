@@ -70,9 +70,26 @@ Decided (owner-approved), and built:
    6 : 1, each of three panels about 400 px (the mockup's panel at a
    computer's 63 px tile), and it is what a 1280 px laptop window nearly
    fills. Measured: 1056 px at 1280 x 720 (the world's width there), 1200 at
-   1920 x 1080. The band's background stays the window's width. Every tab
-   inherits the box: Lane A's Gear tab and the Bro tab draw inside the page
-   box, so they need nothing of their own.
+   1920 x 1080. Every tab inherits the box: Lane A's Gear tab and the Bro
+   tab draw inside the page box, so they need nothing of their own.
+   **v2.3.4162: the band stops where the bars begin.** The owner on #1386:
+   *"Make the edge of the dashboard stop at the black bars width (hopefully
+   that's an easy change and won't mess up anything)"*. Until then the band's
+   background was the window's width under a narrower world. Now, wherever
+   the world has bars (`barW` > 0), `.bt-dashboard`'s left is `--world-x`
+   and its right `--world-r` (game.css, `html.bt-one-band:not(.bt-band-side)
+   .bt-dashboard`): the two numbers resize() already stamps for
+   `.brotown-wrap`, so the band and the world share one edge and nothing
+   over the world moves. The bars run in the page's colour to the bottom of
+   the screen. No bars (an upright phone, a tablet whose world fits): both
+   are 0, the full width as before. A phone on its side is left out on
+   purpose: its open band (844 px) is wider than its 572 px world so its
+   slots keep the screen's width; one selector widens the rule if the owner
+   wants it there too. `mp-bandshots` measures it: band edges = the world
+   canvas's within 1 px at 1280 x 720 and 1920 x 1080, the bar under the
+   band the same colour as above it, and the weapon pill, keys, chat bar,
+   player frame and minimap at the same boxes with the old full-width band
+   forced back.
 5. **Upright phones unchanged.** The Test panel's "Side column (old layout)"
    row stays the off-ramp.
 
