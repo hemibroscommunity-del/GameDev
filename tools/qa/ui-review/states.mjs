@@ -403,6 +403,70 @@ export const STATES = [
     },
   },
 
+  /* v2.3.4167: the drawing editor with MORE THAN ONE ready-made design on a
+     canvas -- the owner's two flames on the pants -- the second held, so the
+     Select row shows its Copy button and the layer row its Delete.  Undone on
+     the way out, so the rest of the review's bro wears plain trousers. */
+  {
+    id: 'creator-paint-designs', group: 'Before the game', pre: true, title: 'Creator: two designs on the pants',
+    about: 'The Pants editor with two ready-made Flame designs placed on the trousers, the second still held: Keep shape, Copy, Place and Cancel in the Select row; the layer row (To back, Back, Forward, To front, Delete) says "Layer 2 of 2 \u00b7 design".',
+    run: async ({ P }) => {
+      await evalIn(P, () => {
+        const b = Array.from(document.querySelectorAll('button.bt-cc-tab')).find((x) => /pants/i.test((x.innerText || '').trim()));
+        if (b) b.click();
+      });
+      await wait(P, 800);
+      const ok = await evalIn(P, () => {
+        const b = document.querySelector('.bt-cc-ink button');
+        if (!b) return false;
+        b.click();
+        return true;
+      });
+      if (!ok) return 'no drawing card on the Pants tab';
+      await wait(P, 1600);
+      await evalIn(P, () => {
+        const b = Array.from(document.querySelectorAll('.bt-paint-tabs .bt-cc-tab')).find((x) => /draw/i.test(x.textContent || ''));
+        if (b) b.click();
+      });
+      await wait(P, 1600);
+      for (let n = 0; n < 2; n++) {
+        const opened = await evalIn(P, () => {
+          const b = Array.from(document.querySelectorAll('.bt-paint-note button')).find((x) => /designs/i.test(x.textContent || ''));
+          if (!b) return false;
+          b.click();
+          return true;
+        });
+        if (!opened) return 'no Designs button in the Pants editor';
+        await wait(P, 700);
+        const picked = await evalIn(P, () => {
+          const s = Array.from(document.querySelectorAll('.bt-modal-scrim'));
+          const g = s[s.length - 1];
+          const t = g && Array.from(g.querySelectorAll('button')).find((b) => b.querySelector('canvas') && (b.textContent || '').trim() === 'Flame');
+          if (!t) return false;
+          t.click();
+          return true;
+        });
+        if (!picked) return 'no Flame in the design gallery';
+        await wait(P, 1000);
+      }
+    },
+    after: async ({ P }) => {
+      /* both flames off again (one Undo each), then the editor's own Done */
+      for (let n = 0; n < 2; n++) {
+        await evalIn(P, () => {
+          const u = Array.from(document.querySelectorAll('.bt-paint button')).find((x) => /^undo$/i.test((x.innerText || '').trim()));
+          if (u) u.click();
+        });
+        await wait(P, 500);
+      }
+      await evalIn(P, () => {
+        const d = Array.from(document.querySelectorAll('button')).find((x) => /^done$/i.test((x.innerText || '').trim()));
+        if (d) d.click();
+      });
+      await wait(P, 900);
+    },
+  },
+
   /* ═══ ARRIVING ═══ */
   {
     id: 'welcome', group: 'Arriving in BroTown', title: 'Welcome, first seconds in the world',

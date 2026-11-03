@@ -10,6 +10,7 @@ import {
 import {
   getDoc, saveDoc, appendToDoc, copyDoc, replay, opCells,
   BOX_LO, BOX_HI_X, BOX_HI_Y,   /* v2.3.2463 */
+  copyOfOp, sameOp, recolorDesign,   /* v2.3.4167: many designs, Copy, Delete */
 } from '@/rendering/traits/artOps.js';   /* v2.3.1967: the canvas is an op list */
 /* v2.3.2444: the ready-made designs, and the gallery that picks one. */
 import { designOps } from '@/rendering/traits/designCatalog.js';
@@ -1375,35 +1376,56 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      of Undo puts the old drawing back.
      Anything held mid-gesture is dropped first: a pending shape and a
      selection both index into the op list that is about to be replaced, and
-     carrying either across would point them at someone else's cells. */
+     carrying either across would point them at someone else's cells.
+
+     ═══ v2.3.4167: IT ADDS NOW -- THE REPLACE ABOVE IS RETIRED ═══
+     Owner: "I wasn't able to put two flames on the pants it would erase the
+     previous one when I tried to add another one."  The reasoning above was
+     about MERGING PIXELS into a flat drawing, and since v2.3.2455 a design is
+     not pixels: it is one op with its own box, which the Select tool picks up,
+     moves, resizes and re-layers on its own.  So a second design is simply
+     another op on top of the list -- nothing under it is merged, erased or
+     flattened, and each one stays separately selectable.  Still ONE undo entry
+     (pushHist banks the whole doc), and Undo takes away just the new one.
+     Whatever was held is PLACED first (left where it is) rather than dropped:
+     it is the player's, and the new design goes on top of it.
+     The append goes through appendToDoc, so the MAX_OPS collapse rule holds
+     for designs as for every other op. */
   const applyDesign = (d) => {
     const id = artIdRef.current;
-    /* v2.3.2445: tapping the design that is ALREADY on the canvas changes
-       nothing you can see, so it must not cost a tap of Undo that visibly does
-       nothing -- the same standard `unbank` above holds the shape tools to. */
-    if (d.art === art) { setShowDesigns(false); return; }
-    /* v2.3.2445: no pieces means no ink, and writing that would REPLACE the
-       player's drawing with a blank canvas rather than refuse.  The catalogue
-       gate makes it unreachable today; the guard is here because the caller a
-       share code or a "last design" restore would add is the one that could
-       hand this an unvetted string. */
-    const ops = designOps(d.art);
-    if (!ops.length) { setShowDesigns(false); return; }
+    /* v2.3.2445: no pieces means no ink, and writing that would put a blank
+       op on the canvas rather than refuse.  The catalogue gate makes it
+       unreachable today; the guard is here because the caller a share code or
+       a "last design" restore would add is the one that could hand this an
+       unvetted string.
+       v2.3.4167: the v2.3.2445 "tapping the design already on the canvas is
+       a no-op" guard is gone -- tapping Flame again is now exactly how you get
+       a second flame. */
+    const pieces = designOps(d.art);
+    if (!pieces.length) { setShowDesigns(false); return; }
     const cur = docRef.current.id === id ? docRef.current : { id, ...getDoc(id) };
-    pushHist(cur);
     /* ═══ v2.3.2455: IT LANDS IN YOUR HAND, NOT ON THE FLOOR ═══
        Owner: "after first placing the predesigns it's still selected (you can
        move it around) and also resize it with the corner grab handle."
        So it goes down as ONE design op covering the whole grid -- the same
        picture as v2.3.2442's colour-per-op version, and `designOps` above is
        still called first because its emptiness check is the guard that stops a
-       blank design replacing a real drawing. */
-    const nd = { id, base: emptyArt(), ops: [{ k: 'd', art: d.art, a: [0, 0, ART_W - 1, ART_H - 1] }] };
+       blank design landing. */
+    let op = { k: 'd', art: d.art, a: [0, 0, ART_W - 1, ART_H - 1] };
+    /* v2.3.4167: the SAME design already lying exactly there (the second flame
+       of the owner's report, before the first was moved) would land invisibly
+       on top of it and read as "nothing happened".  It steps aside the way a
+       Copy does, so the second one is plainly a second one. */
+    const taken = (c) => cur.ops.some((o) => sameOp(o, c));
+    if (taken(op)) op = copyOfOp(op, taken) || op;
+    pushHist(cur);
+    const next = appendToDoc(cur, op);
+    const nd = { id, base: next.base, ops: next.ops };
     /* v2.3.2445: the reset effect clears BOTH of these together, and for the
-       same reason it does: each one holds an INDEX into the op list that is
-       being replaced.  A stroke still under a finger when the design lands
-       would go on appending cells into one of the design's colour layers, and
-       drop that whole layer on lift if it never registered a cell. */
+       same reason it does: each one holds an INDEX into the op list.  A stroke
+       still under a finger when the design lands would go on appending cells
+       into whichever op it was collecting, and drop it on lift if it never
+       registered a cell. */
     pendRef.current = null;
     strokeRef.current = null;
     setLiveIdx(-1);
@@ -1416,13 +1438,70 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        AND THE TOOL GOES TO SELECT.  The design is under your finger now, and
        the select tool is the one whose drag moves what is held -- landing armed
        with the pen would mean your first drag drew on the design instead of
-       moving it. */
+       moving it.
+       v2.3.4167: the selection is the NEW op -- the last one -- not index 0,
+       which is now whatever was already on the canvas. */
     pendRef.current = { isNew: true, orig: null, ratio: ART_W / ART_H,
       hist: histRef.current[histRef.current.length - 1] };
     setTool('select');
-    setSel(0);
+    setSel(next.ops.length - 1);
     setBodyTick((t) => t + 1);
     setShowDesigns(false);
+  };
+
+  /* ═══ v2.3.4167: COPY WHAT YOU ARE HOLDING ═══
+     Owner: "Also a copy button (for selected design) would be great".
+     The held op is placed where it is, and a copy of it lands COPY_STEP cells
+     away (artOps copyOfOp: the direction that keeps most of it on the grid,
+     never on top of an identical one) at the TOP of the list, and becomes the
+     selection -- so the next drag moves the copy, not the original, and the
+     row under your thumb is the copy's.  One undo entry, banked like a new
+     shape's, and `isNew`: Cancel takes the copy away again.
+     Anything with a box copies -- a design, a shape, a letter.  A freehand
+     stroke and a fill have no box to step aside with, so the button is not
+     offered for them (`canCopy`). */
+  const canCopy = (op) => !!(op && (op.k === 's' || op.k === 't' || op.k === 'd'));
+  const copySel = () => {
+    const i = selRef.current;
+    const d = docRef.current;
+    const op = i >= 0 ? d.ops[i] : null;
+    if (!canCopy(op)) return;
+    const c = copyOfOp(op, (x) => d.ops.some((o) => sameOp(o, x)));
+    if (!c) return;
+    pendRef.current = null;
+    pushHist(d);
+    const next = appendToDoc(d, c);
+    const nd = { id: d.id, base: next.base, ops: next.ops };
+    docRef.current = nd;
+    setDoc(nd);
+    const w = c.a ? Math.abs(c.a[2] - c.a[0]) + 1 : 1, h = c.a ? Math.abs(c.a[3] - c.a[1]) + 1 : 1;
+    pendRef.current = { isNew: true, orig: null, ratio: w / h,
+      hist: histRef.current[histRef.current.length - 1] };
+    setSel(next.ops.length - 1);
+    setBodyTick((t) => t + 1);
+  };
+
+  /* ═══ v2.3.4167: AND THROW AWAY THE ONE YOU ARE HOLDING ═══
+     Once a canvas holds several designs, taking ONE of them off is the move
+     you need, and nothing did it: Cancel removes a thing only while it is
+     brand new, the eraser punches pixels through every layer under it, and the
+     bin empties the whole canvas.  One undo entry; the rest of the list is
+     untouched. */
+  const deleteSel = () => {
+    const i = selRef.current;
+    const d = docRef.current;
+    if (i < 0 || i >= d.ops.length) return;
+    const p = pendRef.current;
+    /* A pick-up that banked an entry for its own adjustments has already saved
+       the doc as it was before them; reuse it rather than banking a second
+       entry that Undo would step through with nothing visibly changing. */
+    if (!(p && p.hist && histRef.current[histRef.current.length - 1] === p.hist)) pushHist(d);
+    const nd = { ...d, ops: d.ops.filter((o, k) => k !== i) };
+    pendRef.current = null;
+    docRef.current = nd;
+    setDoc(nd);
+    setSel(-1);
+    setBodyTick((t) => t + 1);
   };
 
   /* Persist as you draw: the character updates live behind the panel, which is
@@ -1848,7 +1927,18 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
   const recolorSel = (idx) => {
     const i = selRef.current;
     const op = i >= 0 ? docRef.current.ops[i] : null;
-    if (!op || op.i === idx) return false;
+    if (!op) return false;
+    /* v2.3.4167: a design has no `i` -- it brings its own colours, and this
+       used to set one that replay never read (a dead tap of Undo).  It swaps
+       the design's main colour instead (artOps recolorDesign). */
+    if (op.k === 'd') {
+      const next = recolorDesign(op, idx);
+      if (next === op) return false;
+      bankPend();
+      setOp(i, next);
+      return true;
+    }
+    if (op.i === idx) return false;
     bankPend();
     setOp(i, { ...op, i: idx });
     return true;
@@ -2515,7 +2605,12 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                    a key test, because the legacy letter form is NOT resizable
                    and would otherwise be offered a lock over a handle that only
                    moves it. */
-                style={{ gridTemplateColumns: 'repeat(' + (selResizable ? 3 : selOp.k === 't' ? 2 : 1) + ', 1fr)' }}>
+                /* v2.3.4167: plus one column for Copy, on anything that copies.
+                   minmax(0, 1fr) so a label wraps rather than pushing its
+                   track wider; the row asks the panel for no width of its own
+                   (.bt-paint-opts-main width:0 -- the reason is there), so
+                   picking something up never resizes the panel. */
+                style={{ gridTemplateColumns: 'repeat(' + ((selResizable ? 3 : selOp.k === 't' ? 2 : 1) + (canCopy(selOp) ? 1 : 0)) + ', minmax(0, 1fr))' }}>
                 {selResizable && (
                   <button type="button" onClick={() => setLockRatio((v) => !v)}
                     aria-pressed={lockRatio}
@@ -2526,6 +2621,20 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                     <span className="bt-paint-tool-label">
                       {lockRatio ? '\u2713 Keep shape' : 'Free size'}
                     </span>
+                  </button>
+                )}
+                {/* ═══ v2.3.4167: COPY (owner: "a copy button (for selected
+                    design) would be great") ═══
+                    Beside Place rather than in the layer row: it is a thing
+                    you do to what you are holding, and it hands you the copy
+                    to hold, so it belongs with the controls that appear
+                    exactly when you are holding something.  copySel says
+                    where the copy lands and why. */}
+                {canCopy(selOp) && (
+                  <button type="button" onClick={copySel} className="bt-paint-size"
+                    data-paint-copy="1"
+                    title="Make a copy of this one beside it, and hold the copy">
+                    <span className="bt-paint-tool-label">Copy</span>
                   </button>
                 )}
                 <button type="button" onClick={placePending}
@@ -2649,6 +2758,16 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   </button>
                 );
               })}
+              {/* v2.3.4167: Delete, the fifth -- taking one layer off is the
+                  layer row's business, and with several designs on a canvas it
+                  is the move you need (deleteSel).  Dimmed with nothing held,
+                  for the same reason the four steps are. */}
+              <button type="button" className="bt-paint-size" disabled={!selOp}
+                data-paint-delete="1"
+                style={!selOp ? { opacity: 0.38, cursor: 'default' } : undefined}
+                onClick={deleteSel} title="Take this one off the drawing">
+                <span className="bt-paint-tool-label">Delete</span>
+              </button>
             </div>
           </div>
         )}
