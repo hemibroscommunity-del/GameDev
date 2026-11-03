@@ -34,6 +34,10 @@
  *   8. a mystery gear piece (the real loot_drop handler, a pile shaped as the
  *      worker's) is a rare-blue line and a rare-blue shine; its pickup reveal
  *      climbs to elite's orange (the reveal's own seam).
+ * v2.3.3916, the owner: "Instead of the glow I just want it to be thin beams of
+ * vertical light shining upwards": in 7 and 8 the shine is now the pile's
+ * beams -- they RISE as it lands and then stay (no glow): one white beam on a
+ * coins-and-remains pile, two rare-blue beams on a mystery piece's.
  * BT_QA_SIDEWAYS=1 plays the phone sideways (its pictures end -sideways).
  * Pictures: tools/qa/mp/out/droplines-*.png. */
 import * as H from './harness.mjs';
@@ -133,7 +137,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const tick = () => {
         if (window.__qaShine !== w) return;
         const r = (window.__btLootShine ? window.__btLootShine() : []).find((x) => x.lootId && x.lootId.indexOf(w.pre) === 0);
-        if (r && r.ageMs != null) w.seen.push({ age: r.ageMs, alpha: r.alpha, px: r.px, color: r.color, tint: r.tint, lootId: r.lootId });
+        if (r && r.ageMs != null) w.seen.push({ age: r.ageMs, alpha: r.alpha, px: r.px, n: r.n, color: r.color, tint: r.tint, lootId: r.lootId });
         if (performance.now() - t0 < 9000) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -236,13 +240,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     rec.ok(`5. a kill off your screen (${far}) shows its lines over you (${over && over.over})`, !!k5 && !!over && over.over === 'you', { k5, over });
 
-    /* ── 7 ── v2.3.3746: your pile shines, then glows */
+    /* ── 7 ── v2.3.3746: your pile shines.  v2.3.3916: its beams rise, then stay */
     const sh1 = await P.page.evaluate(() => (window.__qaShine ? window.__qaShine.seen : []));
-    const peak = sh1.filter((x) => x.age < 400).reduce((m, x) => Math.max(m, x.alpha), 0);
+    const rising = sh1.filter((x) => x.age < 300);
     const settled = sh1.filter((x) => x.age > 1500);
     const lastA = settled.length ? settled[settled.length - 1] : null;
-    rec.ok(`7. your pile shines bright as it lands (${peak}) and settles to a steady glow (${lastA && lastA.alpha}, ${lastA && lastA.px} px)`,
-      peak >= 0.75 && !!lastA && lastA.alpha >= 0.5 && lastA.alpha <= 0.8 && settled.every((x) => Math.abs(x.alpha - lastA.alpha) < 0.05) && lastA.px < (sh1[0] ? sh1[0].px : 0),
+    rec.ok(`7. your pile's beam rises as it lands (${rising.map((x) => x.px).join(',')} px) and stays (${lastA && lastA.alpha}, ${lastA && lastA.px} px, ${lastA && lastA.n} beam)`,
+      !!lastA && lastA.n === 1 && lastA.alpha >= 0.5 && lastA.alpha <= 0.9 && settled.every((x) => x.px >= 170 && x.alpha >= 0.5) && (!rising.length || rising[0].px < lastA.px),
       { first: sh1[0], lastA, n: sh1.length });
     rec.ok(`7. ...white for coins and remains (${lastA && lastA.tint}), the colour of its best line`, !!lastA && lastA.color === '#FFFFFF' && lastA.tint === '#FFFFFF', lastA);
     const shardPile = await P.page.evaluate((mid) => (window.__btLootShine() || []).find((x) => x.lootId && x.lootId.indexOf('mk-' + mid + '-') === 0) || null, m2 ? m2.id : '');
@@ -289,14 +293,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (mp && mp.ageMs > 200 && mLine) break;
       await P.page.waitForTimeout(60);
     }
-    rec.ok(`8. a mystery gear piece: its line "${mLine && mLine.text}" in ${mLine && mLine.color}, its pile's shine ${mp && mp.tint} (rare blue)`,
-      !!mp && !!mLine && mLine.color === '#5B99DE' && mp.tint === '#5B99DE' && mp.color === '#5B99DE', { myst, mp, mLine });
-    /* the shine at its brightest, the page's clock held at the landing */
+    rec.ok(`8. a mystery gear piece: its line "${mLine && mLine.text}" in ${mLine && mLine.color}, its pile's ${mp && mp.n} beams ${mp && mp.tint} (rare blue)`,
+      !!mp && !!mLine && mLine.color === '#5B99DE' && mp.tint === '#5B99DE' && mp.color === '#5B99DE' && mp.n === 2, { myst, mp, mLine });
+    /* the beams, landed again (v2.3.3916: they rise over 0.35 s, then stand) */
     await P.page.evaluate((id) => {
       const l = (window._gameState.current.groundLoot || []).find((x) => x && x.lootId === id);
       if (l && l._shine) { l._shine.at = Date.now(); }
     }, myst.lootId);
-    await P.page.waitForTimeout(150);   /* a frame or two of it, near its peak (no held clock: the shine reads the frame's) */
+    await P.page.waitForTimeout(600);   /* risen and standing (no held clock: the beams read the frame's) */
     await P.page.screenshot({ path: join(OUT, PIC('droplines-8-shine-mystery.png')) });
     /* ...and it is DRAWN: the screen round it, with the shine and with it
        switched off (window.__btShineOff, alpha only) */
@@ -320,7 +324,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       return { r, frac: +(ch / Math.max(1, n)).toFixed(2) };
     })();
-    rec.ok(`8. ...the shine is drawn (${Math.round(seen.frac * 100)}% of the screen round the pile changes with it switched off)`, seen.frac >= 0.25, seen);
+    /* v2.3.3916: thin beams cover less of their box than the round shine did */
+    rec.ok(`8. ...the beams are drawn (${Math.round(seen.frac * 100)}% of the screen round them changes with them switched off)`, seen.frac >= 0.12, seen);
     /* the reveal climbs past the line's promise: elite, orange */
     await P.page.evaluate(() => window.__btReveal && window.__btReveal.push([{ ladder: ['rare', 'elite'], quality: 'elite', name: 'Iron Torso', slot: 'armor', mat: 'iron', kind: 'armor' }]));
     const rv = await H.waitFor(P, () => {

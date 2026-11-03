@@ -7464,6 +7464,7 @@ export const QUEST_CHAINS = {
     npc: 'Mayor Bro',
     title: 'Into the Wild',
     desc: 'Kill 5 monsters in any zone.',
+    need: { progress: true, n: 5 },   /* v2.3.3918: the card's "3/5" (the worker's count, quests.js) */
     check: function check(rpg, S) {
       var _rpg$_questKills;
       return (((_rpg$_questKills = rpg._questKills) === null || _rpg$_questKills === void 0 ? void 0 : _rpg$_questKills.mayor_2) || 0) >= 5;

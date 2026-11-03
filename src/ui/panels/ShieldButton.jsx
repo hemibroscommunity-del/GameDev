@@ -462,7 +462,14 @@ export function sprintAnchor(isLandscape) {
  * lived left of the disc make room: TRAP and Shield Bash stack over Jump
  * (ctlColumn), Block stays diagonal below and left (blockAnchor).
  * Sideways (and on a computer) it is v2.3.3721's place, under the disc. */
-export const JUMP_SIZE = { up: 60, land: 64 };
+/* v2.3.3920: 64/68 (it was 60/64) -- the design review the owner adopted:
+   "Slightly enlarge the button and preserve its lower-right position near
+   the aiming thumb".  Still on the disc's ring (jumpAnchor), its ring 10 px
+   off the disc's; Block steps 4 px left with it (blockAnchor); TRAP and Shield
+   Bash stay put, standing on JUMP_SPOT_UP_SIZE, the size Jump had when they
+   were placed over it (v2.3.3740), not on this. */
+export const JUMP_SIZE = { up: 64, land: 68 };
+export const JUMP_SPOT_UP_SIZE = 60;
 export const JUMP_BLOCK_AIR = 24;
 export const JUMP_DISC_AIR = 18;   /* v2.3.3740: upright, the disc's left edge <-> Jump */
 export const JUMP_FOOT_UP = 72;    /* v2.3.3740: upright, Jump's foot over the band */
@@ -489,7 +496,7 @@ export const RCTL_JUMP_AIR = 8;    /* v2.3.3799: sideways, Shield Bash's foot <-
 /* v2.3.3799: where Jump stood upright before (v2.3.3740), which TRAP and
    Shield Bash still stand on (ctlColumn) */
 export function jumpSpotUp() {
-  var size = Math.max(CTL_MIN_SIZE, JUMP_SIZE.up);
+  var size = Math.max(CTL_MIN_SIZE, JUMP_SPOT_UP_SIZE);   /* v2.3.3920: the old size, so TRAP and Bash keep their pixels */
   return { size: size, right: discRight(false) + RBTN.w + JUMP_DISC_AIR, bottomPx: JUMP_FOOT_UP };
 }
 export function jumpAnchor(isLandscape) {
