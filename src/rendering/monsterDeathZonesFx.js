@@ -90,8 +90,8 @@ const VY_MAX = 4.2;        /* the fastest up, in body heights a second (~0.6 s i
 /* v2.3.3954: the blow's push, in body heights a second (x the piece's
    lightness, at most REACH_MAX), across and along the ground; a crumbling
    piece takes half */
-const PUSH_X = { big: 2.2, calm: 1.3 }, PUSH_Z = { big: 1.3, calm: 0.75 };
-const REACH_MAX = 1.8;
+const PUSH_X = { big: 1.2, calm: 0.6 }, PUSH_Z = { big: 0.8, calm: 0.45 };
+const REACH_MAX = 1.4;
 const GZ_MAX = 1.2;        /* how far along the ground a piece may go, in body heights */
 /* the explosion throws harder, the collapse gentler (x the seeded speeds) */
 const SPEED = { big: { x: 1.3, y: 1.1 }, calm: { x: 0.85, y: 0.9 } };
@@ -303,6 +303,9 @@ export function buildZoneDeath(K, display, m, now, ctx) {
          piece the farther (an eye, a hat, an arm), a heavy stone barely,
          across the screen and along the ground; it spins the way it goes */
       if (blow) {
+        /* a piece the seeded throw sends back toward the killer goes only a
+           little that way: the blow carries the whole body off it */
+        if (pc.vx * bx < 0) pc.vx *= 1 - 0.7 * Math.min(1, Math.abs(bx));
         const reach = Math.min(REACH_MAX, 1 / mk) * (off === 'crumble' ? 0.5 : 1);
         pc.vx += bx * H * (big ? PUSH_X.big : PUSH_X.calm) * reach;
         pc.vz = bz * H * (big ? PUSH_Z.big : PUSH_Z.calm) * reach;
@@ -410,6 +413,7 @@ export function stepZoneDeath(K, st, now) {
   let left = Math.min(0.25, Math.max(0, (now - st.last) / 1000) / st.slow);
   st.last = now;
   const tEnd = (now - st.born) / st.slow;
+  st.tNow = tEnd;   /* v2.3.3954: the probe's clock (the death's own, TRAPS §200) */
   let tSim = tEnd - left * 1000;
   while (left > 1e-6) {
     const dt = Math.min(1 / 60, left);
@@ -611,6 +615,7 @@ export function zoneDeathProbe(st) {
        y down the screen: along the ground) */
     big: !!st.big,
     blow: st.blow,
+    t: st.tNow != null ? Math.round(st.tNow) : null,
     thrown: st.pieces.filter((p) => p.off === 'fly' || p.off === 'pop').length,
     eyes: st.pieces.filter((p) => p.eye).length,
     drift: driftOf(st),

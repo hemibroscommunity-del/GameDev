@@ -31,6 +31,20 @@
  *      death both times (every phone sees the same);
  *   8. `?deathkind=own` on the address plays the own death with no QA
  *      override; `?deathzones=0` turns it off (today's death plays instead);
+ *  10. v2.3.3954, THE OWNER'S REFINEMENTS ("premade sections like head,
+ *      eyes, arms, torso, legs, etc. that can separate and simulate physics
+ *      based on the direction they're hit in"), on a sample of looks (the
+ *      snowman, the fire goblin, the skeleton, the rock monster, the fishman
+ *      and the slime), each killed by a REAL monster_hit from you through
+ *      the game's own handler (window.__btDispatch: game/deathBlow.js writes
+ *      the blow down), the monster on your right:
+ *        - an ordinary kill (a plain hit) is the gentler collapse, a crit the
+ *          explosion: big on the probe, more pieces thrown than the ordinary;
+ *        - its eyes are pieces of their own where its face shows;
+ *        - the pieces travel AWAY from you: their mean moves right; and with
+ *          the monster on your LEFT (two of them), left;
+ *        - and every one let go once over;
+ *  11. `?deathbig=1` makes an unforced kill the big one (the owner's switch);
  *   9. nothing threw.
  * Pictures for the owner's eyes: tools/qa/mp/out/deathzones/.
  *
@@ -114,7 +128,7 @@ const walkEast = (P, id) => P.page.evaluate((mid) => new Promise((resolve) => {
   requestAnimationFrame(step);
 }), id);
 
-const kill = (P, ids, kind) => P.page.evaluate(async ([mids, k]) => {
+const kill = (P, ids, kind, hit) => P.page.evaluate(async ([mids, k, hit]) => {
   if (k) window.__btDeathKind = k; else delete window.__btDeathKind;
   const ms = window.__qaDZ.list.filter((x) => mids.indexOf(x.id) >= 0);
   /* the killing blow lands first -- its red flash and squash on the living
@@ -122,6 +136,12 @@ const kill = (P, ids, kind) => P.page.evaluate(async ([mids, k]) => {
   const t = Date.now();
   for (const m of ms) { m._hitFlash = t + 1e6; m._hitAnimStart = t - 40000; m._hitAnimEnd = t + 60000; }
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  /* v2.3.3954: `hit` -- the killing blow as the worker reports it, through
+     the game's own monster_hit handler (it writes the blow down) */
+  if (hit) {
+    const S = window._gameState.current;
+    for (const m of ms) window.__btDispatch({ type: 'monster_hit', payload: Object.assign({ monsterId: m.id, zone: S.currentZone, dmg: 7, attackerId: S.myId, slot: 'melee', hpPct: 0 }, hit) });
+  }
   for (const m of ms) { m.curHp = 0; m.alive = false; m.respawnAt = Date.now() + 120000; }
   /* watched from the page, frame by frame (by the renderer's own frames, not
      a test's clock: TRAPS §200): the first death each one drew, and whether
@@ -136,13 +156,16 @@ const kill = (P, ids, kind) => P.page.evaluate(async ([mids, k]) => {
       if (!d || !d.kind) continue;
       w.frames++;
       if (!w.first) w.first = { kind: d.kind, pieces: d.pieces, own: d.own };
+      /* v2.3.3954: where its pieces had got to, a second into the death
+         (by the death's own clock: the renderer's frames, TRAPS §200) */
+      if (d.own && d.own.drift && d.own.t != null && d.own.t >= 1000 && !w.at1s) w.at1s = { drift: d.own.drift, t: d.own.t };
       if (d.own && d.own.flash) w.flash = true;
     }
     if (++n < 400) requestAnimationFrame(look);
   };
   requestAnimationFrame(look);
   return true;
-}, [ids, kind]);
+}, [ids, kind, hit || null]);
 
 const state = (P, id) => P.page.evaluate((mid) => ({
   d: window.__btMonsterDeath ? window.__btMonsterDeath(mid) : 'no-probe',
@@ -302,6 +325,70 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       rec.ok(`7. unforced, the same slime at the same spot dies the same death twice (${kinds.join(', ')})`, kinds[0] != null && kinds[0] === kinds[1], kinds);
     }
+    /* ── 10. v2.3.3954: the blow -- big or ordinary, its eyes, which way ── */
+    /* DZ_BLOW=snowman,rock: only those looks here (a quicker look) */
+    const onlyB = (process.env.DZ_BLOW || '').split(',').filter(Boolean);
+    const SAMPLE = LOOKS.filter((x) => ['slime', 'snowman', 'goblin', 'skeleton', 'rock', 'fishman'].indexOf(x.key) >= 0
+      && (!onlyB.length || onlyB.indexOf(x.key) >= 0));
+    const BSLOW = 6;
+    const blowDeath = async (L, big, side) => {
+      const zones = deathZonesFor(L.zk, 'south');
+      const h = await hold(P, [{ id: `dz-b-${L.key}-${big ? 'big' : 'calm'}-${side}-${Date.now()}`, arch: L.arch, variant: L.variant, dx: side * 70, dy: 6, noTransform: L.noTransform }]);
+      if (h.err) return { err: h.err };
+      const mid = h.ids[0];
+      const alive = await drawn(P, mid);
+      if (!(alive && alive.s && alive.s.visible)) { await release(P); return { err: 'not drawn' }; }
+      await P.page.evaluate((k) => { window.__btDeathSlow = k; delete window.__btDeathBig; }, BSLOW);
+      /* a wider picture than the per-look ones: the pieces go a body or two
+         away (the hero in it, so the owner sees which way they went) */
+      const b0 = await boxOf(P, mid);
+      const box = b0 && { x: Math.max(0, b0.x - 70 - (side < 0 ? 40 : 0)), y: b0.y, width: 360, height: b0.height };
+      await kill(P, [mid], 'own', big ? { isCrit: true } : {});
+      const t0 = Date.now();
+      const tag = `${L.key}-${big ? 'big' : 'ordinary'}${side < 0 ? '-left' : ''}`;
+      await P.page.waitForTimeout(300 * BSLOW);
+      if (box) await P.page.screenshot({ path: `${OUT}/blow-${tag}-1.png`, clip: box }).catch(() => {});
+      await P.page.waitForTimeout(Math.max(0, 750 * BSLOW - (Date.now() - t0)));
+      if (box) await P.page.screenshot({ path: `${OUT}/blow-${tag}-2.png`, clip: box }).catch(() => {});
+      /* until a second of its own clock has gone (the watcher keeps it) */
+      let w = null;
+      for (let i = 0; i < 40; i++) {
+        w = await P.page.evaluate((id) => (window.__dzWatch || {})[id] || null, mid);
+        if (w && w.at1s) break;
+        await P.page.waitForTimeout(500);
+      }
+      if (box) await P.page.screenshot({ path: `${OUT}/blow-${tag}-3.png`, clip: box }).catch(() => {});
+      const left = 1900 * BSLOW + 600 - (Date.now() - t0);
+      if (left > 0) await P.page.waitForTimeout(left);
+      const z = await P.page.evaluate(() => (window.__btDeathZones ? window.__btDeathZones() : null));
+      await release(P);
+      await P.page.waitForTimeout(250);
+      return { first: w && w.first, at1s: w && w.at1s, zones, z };
+    };
+    for (const L of SAMPLE) {
+      const calm = await blowDeath(L, false, 1);
+      const big = await blowDeath(L, true, 1);
+      const c = calm.first && calm.first.own, b = big.first && big.first.own;
+      const eyesWant = calm.zones.filter((z) => z.part === 'eyes').length;
+      rec.ok(`10. ${L.key}: a plain hit from you is the ordinary death, a crit the big one (the blow written down by the real monster_hit, from your side)`,
+        !!(c && b && calm.first.kind === 'own' && big.first.kind === 'own' && c.big === false && b.big === true
+          && c.blow && b.blow && c.blow.dx > 0.9 && b.blow.dx > 0.9), { calm: c && { big: c.big, blow: c.blow }, big: b && { big: b.big, blow: b.blow }, err: calm.err || big.err });
+      const one = L.key === 'fishman';
+      rec.ok(`10. ${L.key}: ...the big one throws ${one ? 'no fewer' : 'more'} pieces than the ordinary (${c && c.thrown} -> ${b && b.thrown})`,
+        !!(c && b && (one ? b.thrown >= c.thrown : b.thrown > c.thrown)), { calm: c && c.offs, big: b && b.offs });
+      rec.ok(`10. ${L.key}: ...its eyes are pieces of their own (${eyesWant})`, !!(c && b && c.eyes === eyesWant && b.eyes === eyesWant), { calm: c && c.eyes, big: b && b.eyes, zones: c && c.zones });
+      const dc = calm.at1s && calm.at1s.drift, db = big.at1s && big.at1s.drift;
+      rec.ok(`10. ${L.key}: ...the pieces travel away from you (you on its left: their mean goes right, ${dc && dc.x} / ${db && db.x} px)`,
+        !!(dc && db && dc.x > 1 && db.x > 1), { calm: calm.at1s, big: big.at1s });
+      rec.ok(`10. ${L.key}: ...and everything let go once over`, !!(big.z && big.z.live === 0 && big.z.made === big.z.freed), big.z);
+    }
+    for (const L of SAMPLE.filter((x) => x.key === 'snowman' || x.key === 'skeleton')) {
+      const r = await blowDeath(L, true, -1);
+      const d = r.at1s && r.at1s.drift, o = r.first && r.first.own;
+      rec.ok(`10. ${L.key}, on your LEFT: the blow comes from the right and the pieces go left (${d && d.x} px)`,
+        !!(o && o.blow && o.blow.dx < -0.9 && d && d.x < -1), { blow: o && o.blow, at1s: r.at1s, err: r.err });
+    }
+
     const thrown = errors.concat(P.logs.filter((l) => /pageerror|threw/.test(l)));
     rec.ok('9. nothing threw (the phone)', thrown.length === 0, { thrown: thrown.slice(0, 3) });
   } finally {
@@ -310,9 +397,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   }
 
   /* ── 8. the address switches, each on a page of its own ── */
-  for (const [query, want, label] of [
-    ['deathkind=own', 'own', '?deathkind=own plays the own death with no QA override'],
-    ['deathzones=0&deathkind=own', 'normal', '?deathzones=0 turns it off: today\'s death plays (a snowman\'s strip)'],
+  for (const [query, want, label, wantBig] of [
+    ['deathkind=own', 'own', '?deathkind=own plays the own death with no QA override', false],
+    ['deathzones=0&deathkind=own', 'normal', '?deathzones=0 turns it off: today\'s death plays (a snowman\'s strip)', null],
+    /* v2.3.3954: the owner's switch for the explosion -- an unforced kill
+       (no kind asked) is the big own death */
+    ['deathbig=1', 'own', '11. ?deathbig=1 makes an unforced kill the big one, its own death', true],
   ]) {
     const Q = await H.newPlayer(browser, { name: 'Watcher', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, query });
     const stop = H.keepAlive(Q, 20000);
@@ -324,7 +414,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await Q.page.waitForTimeout(1500);
       const W = await Q.page.evaluate(() => window.__dzWatch || {});
       const f = W[h.ids[0]] && W[h.ids[0]].first;
-      rec.ok(`8. ${label}`, !!(ok && ok.s && f && f.kind === want), f);
+      rec.ok(/^\d/.test(label) ? label : `8. ${label}`, !!(ok && ok.s && f && f.kind === want && (wantBig == null || !!(f.own && f.own.big) === wantBig)), f);
       await release(Q);
     } finally {
       stop();

@@ -26,8 +26,9 @@
  * (a spark, a snowflake) still goes with its zone.
  *
  * THE ZONES OF A VIEW TILE THE BOX: every point of it in exactly one zone
- * (server/test/death-zones.test.mjs samples it), so the pieces together are
- * the whole picture, drawn once.  At most MAX_PIECES zones a view.
+ * (server/test/death-zones.test.mjs samples it, every facing), so the pieces
+ * together are the whole picture, drawn once.  At most MAX_PIECES zones a
+ * facing, its eyes included.
  *
  * A ZONE:
  *   id      its name, unique in its view
@@ -62,11 +63,21 @@
  *   fx      the burst it throws, where its material's is not the one
  *           (hitMaterialFx's kinds: snow, goo, bone, stone, wood, leaf, ash,
  *           ember, goblin)
+ *   big     (v2.3.3954) how it comes off in a BIG death (a crit, an ability,
+ *           an Element Burst, a special: the explosion), where bigOff()'s
+ *           default is not it -- `off` is the ORDINARY death's
+ *   cut     (v2.3.3954) ids of zones that are holes in this one (its eyes),
+ *           each wholly inside it, clear of its edge
+ *   faces   (v2.3.3954) the facings it exists in (an eye where the face
+ *           shows); elsewhere the zone it was cut from keeps its pixels
  *
  * A LOOK may also say: blob (a slime-sheet body: the cut deaths treat it as
  * one), puddle (a pool of its colour spreads under it), and a `side` view for
  * when it faces east or west (its `front` view otherwise: north, south and
- * the diagonals).
+ * the diagonals); v2.3.3954: bigFx (the bursts of its material a big death
+ * throws) and flip (the facings drawn from a file that is its front picture
+ * mirrored: every zone mirrored there).  deathZonesFor() resolves a view for
+ * one facing.
  *
  * No imports: the server's suites test this in node.
  */
@@ -114,7 +125,7 @@ const WEST_FILE = Object.freeze(['west', 'northwest', 'southwest']);
 
 /* An eye: a little piece of its own that pops out and bounces (the owner:
    "premade sections like head, eyes, arms, torso, legs"). */
-const eye = (id, rect, mat, dir, more) => Object.assign({ id, part: 'eyes', rect, mat, off: 'pop', big: 'fly', mass: 0.2, bounce: 0.6, roll: 0.5, lift: 0.8, delay: 10 }, dir ? { dir } : null, more || null);
+const eye = (id, rect, mat, dir, more) => Object.assign({ id, part: 'eyes', rect, mat, off: 'pop', big: 'fly', mass: 0.2, bounce: 0.45, roll: 0.5, lift: 0.7, delay: 10 }, dir ? { dir } : null, more || null);
 
 /* Measured from each look's frames (slime-idle-v5; snowman/snowman-s, -n,
    -sw, -e and snowman-hit; fire-goblin walk-s, -n, -sw, -e and hit-s;
