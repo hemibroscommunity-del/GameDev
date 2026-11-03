@@ -41,6 +41,22 @@
  * EVERY CLIENT SEES THE SAME DEATH: every speed, side and spin comes from a
  * PRNG seeded on the monster's id and where it died (as the cuts' roll).
  *
+ * v2.3.3954, THE BLOW (the owner: "premade sections like head, eyes, arms,
+ * torso, legs, etc. that can separate and simulate physics based on the
+ * direction they're hit in").  `ctx.blow` is the killing blow's direction
+ * (game/deathBlow.js: from the killer toward the monster), and every piece
+ * is pushed along it on top of its seeded throw -- a light one (an eye, an
+ * arm, a hat, a chip) the farther, a heavy one barely -- across the screen
+ * AND along the ground (a piece thrown away from the camera lands higher on
+ * the screen: its own ground line, `gz`); a sagging body leans and a
+ * toppling one falls that way.  The push adds to the seeded numbers and
+ * draws none of its own, so a phone that does not know who struck (a player
+ * off its screen) plays the same death with the seeded direction only.
+ * `ctx.big`: the explosion -- each zone's `big` way off (monsterDeathZones
+ * bigOff), thrown harder, twice the spray, a burst of what the look is made
+ * of thrown along the blow (`bigFx`: snow, smoke, dust, bone, splash,
+ * leaves) and a harder beat; an ordinary kill is the gentler collapse.
+ *
  * `?deathzones=0` turns it off for one phone (the cuts and the normal deaths
  * play exactly as before).
  *
@@ -48,7 +64,7 @@
  * as `K` by monsterDeathFx, so this file imports nothing of it (no cycle).
  */
 import { Container, Sprite, Graphics, Texture, Rectangle } from 'pixi.js';
-import { BEAT_MS, MAX_LIVE, MAX_PIECES } from '@/data/monsterDeathZones.js';
+import { BEAT_MS, MAX_LIVE, MAX_PIECES, zoneOff } from '@/data/monsterDeathZones.js';
 
 const _off = (() => {
   try { return typeof location !== 'undefined' && /[?&]deathzones=0(?:&|$)/.test(location.search || ''); } catch (e) { return false; }
@@ -63,12 +79,22 @@ const MAT_COL = {
   snow: [0xeef6ff, 0xa3bfe2], bone: [0xe6ddc8, 0xb39e78], stone: [0x8a8a8a, 0x5b5b5b],
   wood: [0x6b4a2b, 0x3f2a17], cloth: [0xd8cdb4, 0x8f8778], flame: [0xffb02e, 0xea580c],
 };
+/* a burst kind's material (a look's bigFx tinted as its material) */
+const FX_MAT = { snow: 'snow', bone: 'bone', stone: 'stone', wood: 'wood', leaf: 'wood', ash: 'cloth', ember: 'flame' };
 /* the burst's tint, where the material is not the look's own */
 const MAT_TINT = { snow: 0xe8f4ff, bone: 0xe6ddc8, stone: 0x8a8a8a, wood: 0x6b4a2b, cloth: 0xd8cdb4, flame: 0xea580c };
 
 const OVERLAP = 1;         /* texels a rectangle piece takes of each inside neighbour (TRAPS §114) */
 const SLUMP_MS = 300, SINK_MS = 1000, GUTTER_MS = 460, FLOP_MS = 240;
 const VY_MAX = 4.2;        /* the fastest up, in body heights a second (~0.6 s in the air) */
+/* v2.3.3954: the blow's push, in body heights a second (x the piece's
+   lightness, at most REACH_MAX), across and along the ground; a crumbling
+   piece takes half */
+const PUSH_X = { big: 2.2, calm: 1.3 }, PUSH_Z = { big: 1.3, calm: 0.75 };
+const REACH_MAX = 1.8;
+const GZ_MAX = 1.2;        /* how far along the ground a piece may go, in body heights */
+/* the explosion throws harder, the collapse gentler (x the seeded speeds) */
+const SPEED = { big: { x: 1.3, y: 1.1 }, calm: { x: 0.85, y: 0.9 } };
 const BOUNCES = 2;         /* then it lies down, whatever it is made of */
 
 /* ── the live ones, for the cap and for letting go ── */
@@ -122,11 +148,14 @@ function rectSprite(tex, sb, lx0, ly0, lx1, ly1) {
 }
 
 /* A polygon of the sprite's local space as the whole frame under a mask. */
-function maskSprite(sb, poly) {
+function maskSprite(sb, poly, holes) {
   const s = new Sprite(sb.texture);
   s.anchor.set(sb.anchor.x, sb.anchor.y);
   const mg = new Graphics();
   mg.poly(poly.flat()).fill({ color: 0xffffff });
+  /* v2.3.3954: its holes (each wholly inside it: the table's check), one
+     path cut once */
+  if (holes && holes.length) { for (const h of holes) mg.poly(h.flat()); mg.cut(); }
   s.mask = mg;
   return { spr: s, mask: mg };
 }
@@ -155,6 +184,10 @@ export function buildZoneDeath(K, display, m, now, ctx) {
   const X = (v) => (v <= 0 ? fL : v >= 1 ? fR : x0 + v * W);
   const Y = (v) => (v <= 0 ? fT : v >= 1 ? fB : y0 + v * H);
   const rand = K.rng(K.hash32(`${m.id}|${Math.round(m.x)}|${Math.round(m.y)}|z`));
+  /* v2.3.3954: the blow, in the picture's own space (the root mirrors a
+     monster facing left, so a world direction is mirrored into it) */
+  const big = !!ctx.big;
+  const blow = ctx.blow && ctx.blow.known ? ctx.blow : null;
 
   const whole = K.bodyOf(cov, sx, sy, [[fL, fT], [fR, fT], [fR, fB], [fL, fB]]);
   const cx = whole ? whole.com[0] : x0 + W / 2;
@@ -173,6 +206,11 @@ export function buildZoneDeath(K, display, m, now, ctx) {
   };
 
   const root = K.deathRoot(display, sb);
+  const mir = (root.scale.x < 0 ? -1 : 1) * ((display.scale && display.scale.x < 0) ? -1 : 1);
+  const bx = blow ? blow.dx * mir : 0, bz = blow ? blow.dy : 0;
+  /* the blow's side, where it has one worth leaning to */
+  const bSide = blow && Math.abs(bx) > 0.15 ? (bx > 0 ? 1 : -1) : 0;
+  const SP = big ? SPEED.big : SPEED.calm;
   const under = new Graphics();      /* a puddle, under everything */
   const body = new Container();      /* the pieces: squashed as one in the beat */
   body.pivot.set(cx, gy); body.position.set(cx, gy);
@@ -184,7 +222,8 @@ export function buildZoneDeath(K, display, m, now, ctx) {
   const tint = sb._btBaseTint != null ? sb._btBaseTint : sb.tint;
   const subTex = [];
   const pieces = [];
-  const leanSide = rand() < 0.5 ? -1 : 1;
+  const leanSide0 = rand() < 0.5 ? -1 : 1;
+  const leanSide = bSide || leanSide0;   /* v2.3.3954: a crumpling body goes over the way it was hit */
   let clip = null;                   /* a sinking piece's ground (one Graphics, the stencil) */
   const zones = ctx.zones.slice(0, MAX_PIECES);
   for (const z of zones) {
@@ -193,7 +232,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
       ? [[X(b[0]), Y(b[1])], [X(b[2]), Y(b[1])], [X(b[2]), Y(b[3])], [X(b[0]), Y(b[3])]]
       : z.poly.map((p) => [X(p[0]), Y(p[1])]);
     let bd = K.bodyOf(cov, sx, sy, poly);
-    let off = z.off;
+    let off = zoneOff(z, big);   /* v2.3.3954: the explosion's way off, or the collapse's */
     if (!bd) {
       /* a zone with (almost) none of the body in it this frame: kept where
          it is, so whatever faint pixels it holds do not vanish */
@@ -203,14 +242,19 @@ export function buildZoneDeath(K, display, m, now, ctx) {
       off = 'stays';
     }
     let made = null;
-    if (b) {
+    /* v2.3.3954: a zone with holes cut in it (the eyes in a head) is the
+       frame under a mask: the holes are the mask's (a Graphics, TRAPS §221) */
+    const holes = (z.cutZones || []).map((cz) => (cz.rect
+      ? [[X(cz.rect[0]), Y(cz.rect[1])], [X(cz.rect[2]), Y(cz.rect[1])], [X(cz.rect[2]), Y(cz.rect[3])], [X(cz.rect[0]), Y(cz.rect[3])]]
+      : cz.poly.map((p) => [X(p[0]), Y(p[1])])));
+    if (b && !holes.length) {
       /* + a texel into each inside neighbour (an outside edge is the frame's) */
       const ex0 = b[0] > 0 ? OVERLAP : 0, ey0 = b[1] > 0 ? OVERLAP : 0, ex1 = b[2] < 1 ? OVERLAP : 0, ey1 = b[3] < 1 ? OVERLAP : 0;
       made = rectSprite(tex, sb, poly[0][0] - ex0, poly[0][1] - ey0, poly[2][0] + ex1, poly[2][1] + ey1);
       if (made && made.empty) continue;
     }
     let mask = null;
-    if (!made) { made = maskSprite(sb, poly); mask = made.mask; }
+    if (!made) { made = maskSprite(sb, poly, holes); mask = made.mask; }
     else subTex.push(made.tex);
     const spr = made.spr;
     spr.tint = tint;
@@ -226,6 +270,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
       free: false, vx: 0, vy: 0, spin: 0, rest: false, delay: z.delay || 0,
       hinge: null, hdir: 0, hdelay: 0, hmax: Math.PI / 2, hAt: null, flop: 0, flopK: -1,
       slump: null, gutter: z.mat === 'flame', sinks: false,
+      gz: 0, vz: 0, eye: z.part === 'eyes',   /* v2.3.3954: its own ground line, thrown along the ground */
     };
     /* how it comes off -- every number from the death's seeded roll */
     const mk = Math.sqrt(Math.max(0.2, z.mass || 1));
@@ -240,19 +285,28 @@ export function buildZoneDeath(K, display, m, now, ctx) {
       pc.free = true;
       if (off === 'fly') {
         const dir = z.dir || away;
-        pc.vx = dir * H * (1.4 + rand() * 1.0) * push / mk;
-        pc.vy = upCap(-H * (2.2 + rand() * 1.0) * lift / mv);
+        pc.vx = dir * H * (1.4 + rand() * 1.0) * push / mk * SP.x;
+        pc.vy = upCap(-H * (2.2 + rand() * 1.0) * lift / mv * SP.y);
         pc.spin = dir * (6 + rand() * 6) / mk;
       } else if (off === 'pop') {
         const dir = z.dir || (rand() < 0.5 ? -1 : 1);
-        pc.vx = dir * H * (0.5 + rand() * 0.7) * push / mk;
-        pc.vy = upCap(-H * (3.4 + rand() * 0.9) * lift / mv);
+        pc.vx = dir * H * (0.5 + rand() * 0.7) * push / mk * SP.x;
+        pc.vy = upCap(-H * (3.4 + rand() * 0.9) * lift / mv * SP.y);
         pc.spin = dir * (5 + rand() * 5) / mk;
       } else {
         const dir = z.dir || away;
         pc.vx = dir * H * (0.25 + rand() * 0.45) * push / mk;
         pc.vy = upCap(-H * (0.2 + rand() * 0.6) * lift / mv);
         pc.spin = dir * (1.5 + rand() * 2.5) / mk;
+      }
+      /* v2.3.3954: the blow's push, on top of the seeded throw: a light
+         piece the farther (an eye, a hat, an arm), a heavy stone barely,
+         across the screen and along the ground; it spins the way it goes */
+      if (blow) {
+        const reach = Math.min(REACH_MAX, 1 / mk) * (off === 'crumble' ? 0.5 : 1);
+        pc.vx += bx * H * (big ? PUSH_X.big : PUSH_X.calm) * reach;
+        pc.vz = bz * H * (big ? PUSH_Z.big : PUSH_Z.calm) * reach;
+        if (off === 'fly' && pc.vx * pc.spin < 0) pc.spin = -pc.spin;
       }
     } else if (off === 'slump') {
       /* every slump piece of a death about ONE point, so they sag as one: under
@@ -273,7 +327,8 @@ export function buildZoneDeath(K, display, m, now, ctx) {
         pc.sinks = true;
       }
     } else if (off === 'hinge') {
-      K.setHinge(pc, z.dir || leanSide, 0, Math.PI / 2 * (0.85 + rand() * 0.15));
+      /* v2.3.3954: a heavy body topples the way it was hit */
+      K.setHinge(pc, bSide || z.dir || leanSide, 0, Math.PI / 2 * (0.85 + rand() * 0.15));
       pc.flop = z.flop || 0;
     } else {
       pc.rest = true;   /* stays */
@@ -294,18 +349,33 @@ export function buildZoneDeath(K, display, m, now, ctx) {
   const matBursts = [];
   const seen = new Set();
   const movers = pieces.filter((p) => p.off !== 'stays').sort((a, b) => (b.z.mass || 1) - (a.z.mass || 1));
+  /* v2.3.3954: along the blow where it is known (the burst keeps that way),
+     else out from the body's middle as before */
+  const bdx = (p) => (blow ? bx : (p.com[0] < cx ? -1 : 1)), bdy = blow ? bz : -0.3;
   for (const p of movers) {
     const kind = p.z.fx || matFx(p.z.mat, ctx);
     if (seen.has(kind) || matBursts.length >= 3) continue;
     seen.add(kind);
-    matBursts.push({ at: BEAT_MS, piece: p, x: p.com[0], y: p.com[1], dx: p.com[0] < cx ? -1 : 1, dy: -0.3,
+    matBursts.push({ at: BEAT_MS, piece: p, x: p.com[0], y: p.com[1], dx: bdx(p), dy: bdy, blow: !!blow,
       weapon: 'splash', big: true, kind, tint: matTint(p.z.mat, ctx, kind) });
+  }
+  /* v2.3.3954: the explosion throws what the look is made of, a blast from
+     its middle (bigFx: a snowman's snow, a goblin's smoke, a rock's dust and
+     pebbles, a skeleton's bone, a fishman's splash, a shambler's leaves) */
+  if (big) {
+    for (const kind of (ctx.look && ctx.look.bigFx) || []) {
+      if (matBursts.length >= 5) break;
+      const tint = (kind === 'goo' || kind === ctx.matKind) ? ctx.tint : (MAT_TINT[FX_MAT[kind]] != null ? MAT_TINT[FX_MAT[kind]] : ctx.tint);
+      matBursts.push({ at: BEAT_MS, piece: null, x: cx, y: gy - H * 0.45, dx: blow ? bx : 0, dy: blow ? bz : -1, blow: true,
+        weapon: 'bolt', big: true, kind, tint });
+    }
   }
 
   const main = (movers[0] || pieces[0]).z.mat;
   const [col, colD] = matCols(main, ctx);
   const st = {
     own: true, kind: 'own', root, body, under, fx, flash, clip, pieces, subTex, look: ctx.key, view: ctx.view,
+    big, blow: blow ? { dx: +blow.dx.toFixed(3), dy: +blow.dy.toFixed(3) } : null, mir, bSide,   /* v2.3.3954 */
     puddle: !!(ctx.look && ctx.look.puddle), cx, H, W, groundY: gy, rand, col, colD, ctx,
     runs: [], spurt: null, parts: [], born: now, last: now, sprayAcc: 0, slow: K.qaSlow(), burst: true,
     parted: false, matBursts, matKind: ctx.matKind, style: null, freed: false,
@@ -350,10 +420,19 @@ export function stepZoneDeath(K, st, now) {
   draw(K, st, tEnd);
 }
 
+/* v2.3.3954: a puff of dust where a piece lands on its own ground line (the
+   cuts' puff, its drops moved down to that line) */
+function puffAt(K, st, x, gz, n) {
+  const i0 = st.parts.length;
+  K.puff(st, x, st.groundY + gz, n);
+  for (let i = i0; i < st.parts.length; i++) st.parts[i].gy += gz;
+}
+
 function spray(K, st, pc, n) {
   const [col, colD] = matCols(pc.z.mat, st.ctx);
   const r = st.rand;
-  const away = pc.com[0] < st.cx ? -1 : 1;
+  /* v2.3.3954: the way the blow went, where it is known */
+  const away = st.bSide || (pc.com[0] < st.cx ? -1 : 1);
   for (let i = 0; i < n; i++) {
     const a = -Math.PI / 2 + away * (0.2 + r() * 0.9) + (r() - 0.5) * 0.6;
     const v = st.H * (1.0 + r() * 2.2);
@@ -367,7 +446,9 @@ function physics(K, st, t, dt) {
   const tp = t - BEAT_MS;   /* time since the pieces parted */
   if (!st.parted) {
     st.parted = true;
-    for (const pc of st.pieces) if (pc.off !== 'stays') spray(K, st, pc, pc.off === 'slump' || pc.off === 'hinge' ? 5 : 3);
+    for (const pc of st.pieces) if (pc.off !== 'stays') spray(K, st, pc, (pc.off === 'slump' || pc.off === 'hinge' ? 5 : 3) * (st.big ? 2 : 1));
+    /* v2.3.3954: the explosion's ring of its material at its feet */
+    if (st.big) K.puff(st, st.cx, gy, 8);
   }
   const g = K.G * H;
   for (const pc of st.pieces) {
@@ -385,25 +466,29 @@ function physics(K, st, t, dt) {
     }
     if (pc.free) {
       if (tp < pc.delay) continue;
+      /* v2.3.3954: thrown along the ground too (the blow's depth), so its
+         own ground line moves with it */
       if (!pc.rest) {
         pc.vy += g * dt;
         c.position.x += pc.vx * dt;
-        c.position.y += pc.vy * dt;
+        c.position.y += (pc.vy + pc.vz) * dt;
+        pc.gz += pc.vz * dt;
         c.rotation += pc.spin * dt;
       }
       const lo = K.lowestY(pc);
-      if (lo > gy) {
-        c.position.y -= (lo - gy);
+      if (lo > gy + pc.gz) {
+        c.position.y -= (lo - gy - pc.gz);
         if (!pc.rest) {
           const bounce = pc.z.bounce || 0;
           if (pc.vy > H * 0.9 && bounce > 0.02 && (pc.bounces = (pc.bounces || 0) + 1) <= BOUNCES) {
             pc.vy = -pc.vy * bounce;
             pc.vx *= 0.7;
+            pc.vz *= 0.7;
             pc.spin *= 0.5;
-            K.puff(st, c.position.x, gy, 2);
+            puffAt(K, st, c.position.x, pc.gz, 2);
           } else {
             pc.vy = 0; pc.rest = true;
-            K.puff(st, c.position.x, gy, 3);
+            puffAt(K, st, c.position.x, pc.gz, 3);
           }
         }
       }
@@ -411,8 +496,12 @@ function physics(K, st, t, dt) {
         /* a round thing rolls on (a snowman's head), the rest stops and
            lies down on a face */
         const roll = pc.z.roll || 0;
-        pc.vx *= Math.pow(0.02 + 0.55 * roll, dt);
+        const fr = Math.pow(0.02 + 0.55 * roll, dt);
+        pc.vx *= fr;
+        pc.vz *= fr;
         c.position.x += pc.vx * dt;
+        pc.gz += pc.vz * dt;
+        c.position.y += pc.vz * dt;
         if (roll >= 0.4 && Math.abs(pc.vx) > H * 0.12) {
           let lo2 = Infinity, hi2 = -Infinity;
           for (const p of pc.hull) { if (p[0] < lo2) lo2 = p[0]; if (p[0] > hi2) hi2 = p[0]; }
@@ -421,7 +510,13 @@ function physics(K, st, t, dt) {
           const want = K.flatTarget(pc);
           c.rotation += (want - c.rotation) * Math.min(1, dt * 14);
         }
-        c.position.y -= (K.lowestY(pc) - gy);
+        c.position.y -= (K.lowestY(pc) - gy - pc.gz);
+      }
+      if (Math.abs(pc.gz) > H * GZ_MAX) {
+        /* not off into the distance: it stops at the edge of the splash */
+        const lim = Math.sign(pc.gz) * H * GZ_MAX;
+        c.position.y -= (pc.gz - lim);
+        pc.gz = lim; pc.vz = 0;
       }
     } else if (pc.hinge) {
       const ht = (tp - pc.hdelay) / 1000;
@@ -472,8 +567,9 @@ function draw(K, st, t) {
   /* the beat: squashed about its feet, and flashed */
   if (t < BEAT_MS) {
     const k = Math.sin(Math.PI * Math.max(0, t) / BEAT_MS);
-    st.body.scale.set(1 + 0.1 * k, 1 - 0.12 * k);
-    if (st.flash) st.flash.alpha = 0.7 * (1 - Math.max(0, t) / BEAT_MS);
+    /* (v2.3.3954: the explosion's beat lands harder) */
+    st.body.scale.set(1 + (st.big ? 0.16 : 0.1) * k, 1 - (st.big ? 0.18 : 0.12) * k);
+    if (st.flash) st.flash.alpha = (st.big ? 0.9 : 0.7) * (1 - Math.max(0, t) / BEAT_MS);
   } else {
     if (st.body.scale.x !== 1 || st.body.scale.y !== 1) st.body.scale.set(1, 1);
     if (st.flash) { st.flash.destroy(); st.flash = null; }
@@ -509,6 +605,31 @@ export function zoneDeathProbe(st) {
     sinks: st.pieces.map((p) => !!p.sinks),
     bodyScale: st.body && !st.body.destroyed ? [+st.body.scale.x.toFixed(3), +st.body.scale.y.toFixed(3)] : null,
     flash: !!st.flash,
+    /* v2.3.3954: big or ordinary, the blow it knew, how many pieces were
+       thrown, its eyes, and where the pieces have got to: the mean of each
+       moving piece's centre from where it started, in world px (x right,
+       y down the screen: along the ground) */
+    big: !!st.big,
+    blow: st.blow,
+    thrown: st.pieces.filter((p) => p.off === 'fly' || p.off === 'pop').length,
+    eyes: st.pieces.filter((p) => p.eye).length,
+    drift: driftOf(st),
     stats: zoneDeathStats(),
   };
+}
+
+function driftOf(st) {
+  if (!st.root || st.root.destroyed) return null;
+  let sx = 0, sz = 0, n = 0;
+  for (const p of st.pieces) {
+    if (p.off === 'stays') continue;
+    const c = p.c, cos = Math.cos(c.rotation), sin = Math.sin(c.rotation);
+    const lx = (p.com[0] - c.pivot.x) * c.scale.x, ly = (p.com[1] - c.pivot.y) * c.scale.y;
+    sx += c.position.x + cos * lx - sin * ly - p.com[0];
+    sz += p.gz || 0;
+    n++;
+  }
+  if (!n) return null;
+  const k = st.root.scale, ds = (st.root.parent && st.root.parent.scale) || { x: 1, y: 1 };
+  return { x: +(sx / n * k.x * ds.x).toFixed(2), z: +(sz / n * k.y * ds.y).toFixed(2), n };
 }

@@ -19,6 +19,7 @@ import { jumpAirborne } from '@/game/jump.js';   /* v2.3.3017: nor in the air */
 import { playerGroundDy } from '@/rendering/systems/entityRenderer.js';   /* v2.3.3105: a swing meets a prop at the swinger's boots */
 import { isDazed, isStaggered, isFrozen } from '@/game/elemHits.js';   /* v2.3.3014: nor while a rock monster has you dazed; v2.3.3264: nor while a parry has you staggered */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
+import { noteBlow } from '@/game/deathBlow.js';   /* v2.3.3954: your own blow at its contact, for the monster's own death */
 
 /* ═══ v2.3.1979: WHERE A LOCKED TARGET ACTUALLY IS, FOR AIMING ═══
    Owner: "Tap to lock on enemy sometimes does not hit the target.  I was
@@ -893,6 +894,10 @@ export function spawnHitDebris(S, m, angle, opts) {
      now flies on into the body before its burst (projectiles.js), and a mummy's
      first hit turns it into a skeleton in between: the wrappings that hit tore
      are ash and linen, not bone. */
+  /* v2.3.3954: your own swing or shot at its contact (`mine`) writes the
+     blow down for the monster's death: the swing's or the shot's direction,
+     and big for a special (game/deathBlow.js) -- before the queue's cap */
+  if (o.mine) noteBlow(m, { ang: angle, big: !!o.big, by: S.myId || null, mine: true, aim: true });
   var arch = o.arch || m.archetype || m.type;
   var mat = hitMaterialOf(arch);
   if (!S._debrisBursts) S._debrisBursts = [];

@@ -192,6 +192,7 @@ import { nmlJoinFight } from '@/game/nmlAsk.js'; /* v2.3.3530: one of a group wh
 import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance's moments on party_state */
 import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's bones rattle as it sheds */
 import { noteLootDrop, notePileShine } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
+import { noteHitBlow } from '@/game/deathBlow.js'; /* v2.3.3954: the killing blow's direction and size, for the monster's own death */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -2652,6 +2653,8 @@ export function processGameEvent(type, payload, S, deps) {
               if (S.monsters) {
                 var hitM = S.monsters.find(function(m) { return m.id === payload.monsterId; });
                 if (hitM) {
+                  /* v2.3.3954: the blow, for the death's direction and size (game/deathBlow.js) */
+                  noteHitBlow(S, payload, hitM);
                   /* Update curHp from the server's authoritative hpPct,
                      but DON'T touch hitM.hp — that's the spawn-time
                      max-HP reference the HP bar uses as its denominator.
