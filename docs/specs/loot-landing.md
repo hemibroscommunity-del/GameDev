@@ -65,3 +65,15 @@ Labels draw above all items. The ground rings stay underneath.
   heights, and the RARE DROP! state.
 * `tools/qa/mp/mp-lootland.mjs` (14 checks) covers a fresh rare pile, a fresh
   ordinary pile and an old synced pile.
+
+## v2.3.4124: out of the monster's body, one bounce
+
+The owner: "Monster deaths to loot drops need more of a transition." Each item
+now leaves the monster's body (44 world px above the pile, where the body
+stood), hops up a little, arcs out to its spot in the circle and bounces once:
+`lootPop` in `effectsRenderer.js`, about 0.55 s (`POP_DELAY_S` 0.08 between
+items, `POP_ARC_S` 0.32, `POP_BOUNCE_S` 0.15). The remains slump from lower
+and stay in the middle. It still leans in the air and lands level. Your own
+fresh pile is timed from when it reached your phone (`landAgeOf`, see
+`loot-shine.md`); its beam rises once it is down. `?lootpop=0` brings back the
+fall and two hops above, for one phone.
