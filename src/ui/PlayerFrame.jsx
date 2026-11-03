@@ -17,9 +17,17 @@
  * (top-right), the stick and every button (all at the bottom).  Its bottom is
  * published as `--bt-hud-top` on <html>, so the quest card and the status
  * chips start just under it (game.css; Lane F's quest card reads the same
- * variable).  The face is a WHOLE multiple of 32 px, pixelated: 64 on a
- * phone, 96 on a computer (the owner's Hemi Bro bust is 32 x 32), and the
- * frame is sized round it (game.css --bt-pf-face; never the window, TRAPS §214).
+ * variable).  Sized by --bt-pf-k (game.css; never the window, TRAPS §214).
+ * (v2.3.3974 drew the face at 64 / 96 px for the Hemi Bro bust; gone since
+ * v2.3.4093, below.)
+ *
+ * ═══ v2.3.4093: NO PICTURE ═══
+ * The owner, 2026-11-03: "Remove the character pfp in the top left corner if
+ * you haven't already".  The face is gone on every layout (upright, sideways,
+ * a computer); the level is a round badge beside the bars, the HP and energy
+ * bars stay, and the whole frame keeps its tap to the Bro page.  Nothing is
+ * made or held for it: no portrait read, no store subscribed (the nav rail's
+ * Character button still wears the portrait, portraitStore.js).
  *
  * ITS OWN CLOCK: the game state read every 250 ms, a re-render only when a
  * number it shows changes; the bars are scaled, never re-laid out.  Flat
@@ -28,7 +36,6 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { getState } from './mobile/dash/common.js';
-import { portraitStore, portraitSrc } from './mobile/sheet/portraitStore.js';
 import { dashboardPanelBus } from './mobile/dashboardPanelBus.js';
 import { deskWords } from '@/game/deskWords.js';
 
@@ -61,7 +68,6 @@ function Bar({ kind, v, max, label }) {
 
 export function PlayerFrame() {
   const [view, setView] = useState(() => frameView(getState()));
-  const [face, setFace] = useState(() => portraitSrc(getState()));
   const ref = useRef(null);
   useEffect(() => {
     let last = '';
@@ -70,13 +76,10 @@ export function PlayerFrame() {
       const v = frameView(S);
       const sig = v ? [v.lv, v.hp, v.maxHp, v.en, v.maxEn, v.mp, v.maxMp].join('|') : '';
       if (sig !== last) { last = sig; setView(v); }
-      const f = portraitSrc(S);
-      setFace((cur) => (cur === f ? cur : f));
     };
     tick();
     const id = setInterval(tick, 250);
-    const off = portraitStore.subscribe(tick);
-    return () => { clearInterval(id); off(); };
+    return () => clearInterval(id);
   }, []);
   /* QA (mp-playerframe, the UI review): what it shows and where */
   useEffect(() => {
@@ -103,10 +106,8 @@ export function PlayerFrame() {
          v2.3.1714 note) */
       onPointerDown={(e) => e.stopPropagation()}
       onClick={open}>
-      <span className="bt-pf__face">
-        <img src={face} alt="" draggable={false} />
-        <span className="bt-pf__lv" data-pf-lv={view.lv}>{view.lv}</span>
-      </span>
+      {/* v2.3.4093: the level beside the bars, no picture behind it */}
+      <span className="bt-pf__lv" data-pf-lv={view.lv}>{view.lv}</span>
       <span className="bt-pf__bars">
         <Bar kind="hp" v={view.hp} max={view.maxHp} label="Health" />
         <Bar kind="en" v={view.en} max={view.maxEn} label="Energy" />

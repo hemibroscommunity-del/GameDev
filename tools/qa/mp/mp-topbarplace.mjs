@@ -2,7 +2,7 @@
  *
  * The owner, 2026-11-02: "The top bar is underwhelming (says 'brotown')" and
  * the desktop playtest's "player status not showing"; he chose an always-on
- * frame (face, level, HP, energy) top-left, and a Safe / PvP / Outlaw chip.
+ * frame (level, HP, energy; no picture since v2.3.4093) top-left, and a Safe / PvP / Outlaw chip.
  * One real player against a real worker, IN THE WORLD (`world: 'wheel'`), in
  * three layouts -- a phone upright (390 x 844), sideways (844 x 390), and a
  * computer playing wide (1440 x 900):
@@ -48,6 +48,10 @@ const look = (P) => P.page.evaluate(() => {
     chip: chip ? { kind: chip.getAttribute('data-place-chip'), words: (chip.querySelector('[data-place-words]') || {}).textContent, box: r(chip), nml: chip.getAttribute('data-nml-badge') } : null,
     header: r(document.querySelector('.bt-zone-header')),
     frame: r(document.querySelector('[data-player-frame]')),
+    /* v2.3.4093: no picture in the frame; the level badge left of the bars, level with them */
+    framePics: document.querySelectorAll('[data-player-frame] img, [data-player-frame] canvas').length,
+    lvBox: r(document.querySelector('[data-player-frame] [data-pf-lv]')),
+    barsBox: r(document.querySelector('[data-player-frame] .bt-pf__bars')),
     view: pf && pf.view,
     rpg: S && S.rpg ? { lv: S.rpg.level, hp: Math.round(S.rpg.hp), maxHp: Math.round(S.rpg.maxHp), en: Math.round(S.rpg.stamina), maxEn: Math.round(S.rpg.maxStamina), coins: S.rpg.coins } : null,
     mini: window.__btWheelMini ? { l: Math.round(window.__btWheelMini.left), t: Math.round(window.__btWheelMini.top) } : null,
@@ -83,6 +87,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(T + `2: the frame (${f && f.w} x ${f && f.h}) sits under the bar at the left, clear of the minimap, and the quest card starts under it (--bt-hud-top ${a && a.hudTop})`,
       !!f && f.t >= a.header.b - 2 && f.l >= 0 && f.l < a.vw * 0.5 && f.w >= 140 && f.h >= 40
         && (!a.mini || f.r <= a.mini.l) && a.hudTop >= f.b, a);
+    rec.ok(T + `2: ...no picture in it (${a && a.framePics}), the level badge beside the bars (v2.3.4093: the owner, "Remove the character pfp in the top left corner")`,
+      !!a && a.framePics === 0 && !!a.lvBox && !!a.barsBox && a.lvBox.r <= a.barsBox.l + 1
+        && a.lvBox.t < a.barsBox.b && a.lvBox.b > a.barsBox.t, a);
     rec.ok(T + `2: ...it shows the worker's level ${a && a.view && a.view.lv}, HP ${a && a.view && a.view.hp}/${a && a.view && a.view.maxHp} and energy ${a && a.view && a.view.en}/${a && a.view && a.view.maxEn}`,
       !!a && !!a.view && !!a.rpg && a.view.lv === Math.max(1, Math.floor(a.rpg.lv || 1)) && a.view.hp === a.rpg.hp && a.view.maxHp === a.rpg.maxHp
         && a.view.en === a.rpg.en && a.view.maxEn === a.rpg.maxEn && a.view.maxHp > 0, a);
