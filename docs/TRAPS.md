@@ -3058,6 +3058,17 @@ steel (mp-ghostaudit). Same rule, wider: whatever the walking figure is taught
 about what shows under its gear, the stand-ins are a second figure that has to
 be taught it too (`_clampLegsUnder`, mp-standinlegs).
 
+**A fifth time, on the gathering stand-ins (v2.3.3961).** The owner: "Shoes
+and patterns aren't showing while hoeing." The farmer, the lumberjack, the
+cook and the fire-lighter are baked by `_standInBake` (playerSkins), not by
+`recolorBodyToCanvas`, and when v2.3.3146 taught them your trouser and boot
+COLOURS it stopped there: the trouser pattern, the shoe pattern and the
+trouser print stayed on the walking body only. Grep `recolorStandInSkin` too.
+And whatever a stand-in's bake carries is part of the figure, so it joins the
+figure's key (`_standInColourKey`) or a peer is handed somebody else's
+patterns (§189). (docs/specs/gathering-look.md section 8; mp-farmanim,
+mp-gatherlook.)
+
 ## 74. Reading a live server monster's health as the whole answer (v2.3.2435)
 
 **Tempting:** in a server zone the client never touches monster health — every

@@ -42,6 +42,7 @@
  *   BT_GHOST_ONLY=stand,jog   only those families
  *   BT_GHOST_OUTFITS=full     only that outfit (full, plate, greaves; bare, no armour, only when named)
  *   BT_GHOST_SHIRT=print      v2.3.3696: the tee striped and printed
+ *   BT_GHOST_GARB=1           v2.3.3961: patterns and a print on the trousers and boots, in their ghost colours
  *   BT_GHOST_DIRS=east,south  v2.3.3750: only those facings, every family (a sample)
  *   v2.3.3738, the double jump's flip (family `flip`, not in the default run):
  *   BT_GHOST_ONLY=flip BT_GHOST_DIRS=east,south,north BT_GHOST_HAT=top-hat
@@ -92,6 +93,17 @@ const LOOK = `try {
     let art = '';
     for (let i = 0; i < 256; i++) { const x = i % 16, y = (i / 16) | 0; art += (x >= 5 && x <= 10 && y >= 4 && y <= 9) ? 'a' : '0'; }
     localStorage.setItem('bt-shirtart', art);
+  }
+  /* v2.3.3961: BT_GHOST_GARB=1 -- the trousers striped and printed in pink
+     (ART_PALETTE 11, the report's trousers colour) and the boots checked in
+     blue (8, its boots colour), so a pattern the stand-ins now stamp that
+     shows where the armour should cover it is counted as a leak */
+  if (${JSON.stringify(process.env.BT_GHOST_GARB || '')} === '1') {
+    localStorage.setItem('bt-pantspat', 'stripe-v:11');
+    localStorage.setItem('bt-shoespat', 'check:8');
+    let art = '';
+    for (let i = 0; i < 256; i++) { const x = i % 16, y = (i / 16) | 0; art += (x >= 4 && x <= 11 && y >= 4 && y <= 11) ? 'b' : '0'; }
+    localStorage.setItem('bt-pantsart', art);
   }
 } catch (e) {}`;
 
