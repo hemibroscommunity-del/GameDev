@@ -388,7 +388,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     && /obj\.type === 'bow'\s*\? `\/icons\/items\/bow\.webp\$\{ITEMS_V\}`/.test(bag)
     && /if \(wpn\.type === 'bow'\)\s*return `\/icons\/items\/bow\.webp\$\{ITEMS_V\}`/.test(card)
     && /r\.itemType === 'bow' \? '\/icons\/items\/bow\.webp'/.test(reveal) && /bow: '\/icons\/items\/bow\.webp'/.test(loot)
-    && src('src/ui/panels/WeaponSwapButton.jsx').indexOf('wpnIconSrc(R, wpn)') >= 0);
+    && src('src/ui/panels/WeaponTriangle.jsx').indexOf('wpnIconSrc(R, w)') >= 0);
 }
 
 /* ── 9. v2.3.3609: the element icons as the element itself ── */
