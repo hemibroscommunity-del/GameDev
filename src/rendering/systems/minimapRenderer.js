@@ -510,6 +510,27 @@ export class MinimapRenderer {
       g.rect(13.5, 22.5, 1.6, 5).fill(0x0b161b);              /* teeth */
       g.rect(17, 22.5, 1.6, 5).fill(0x0b161b);
     });
+    /* ═══ v2.3.3986: THE WHEEL'S MONSTERS, A SMALL DOT; ITS BOSSES, A HORNED SKULL ═══
+       The owner, on the Wheel's minimap: "smaller enemy markers, potentially
+       grouped at low zoom, to eliminate the current clusters of oversized red
+       skulls", and its danger marks "visually distinct from the skull used
+       for outlaw status" (No man's land's skull, NmlBadge.jsx).  The Wheel's
+       box (wheelMinimap.js) draws a monster as this dot, a group of them as
+       one, ~5 px with a dark edge; a boss as the horned skull below -- horns
+       the outlaws' plain skull never has.  The skull above stays the
+       dungeons' and the farm's box's. */
+    this._mintIcon('mdot', (g) => {
+      g.circle(C, C, 10).fill(0xffffff).stroke({ width: 5, color: 0x0b161b, alpha: 1 });   /* the edge a fifth of it: ~1 px at 5 */
+    });
+    this._mintIcon('bossSkull', (g) => {
+      g.poly([9, 12, 3, 2, 14, 8]).fill(0xffffff).stroke(KL);     /* horns */
+      g.poly([23, 12, 29, 2, 18, 8]).fill(0xffffff).stroke(KL);
+      g.circle(C, 15, 9).fill(0xffffff).stroke(KL);               /* cranium */
+      g.roundRect(11.5, 21, 9, 7, 2).fill(0xffffff).stroke(KL);   /* jaw */
+      g.circle(12.6, 15, 3).fill(0x0b161b);                       /* sockets */
+      g.circle(19.4, 15, 3).fill(0x0b161b);
+      g.poly([C, 17.5, 17.8, 20.5, 14.2, 20.5]).fill(0x0b161b);   /* nose */
+    });
     /* ═══ v2.3.1810: ANOTHER BRO IS AN ARROW IN A RING ═══
        It was head-and-shoulders, which is the SAME silhouette as the plain
        townsfolk glyph a few lines down — 20px wide against 18, identical at
