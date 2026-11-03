@@ -33,7 +33,7 @@
  *      its size from the server's own marks (crit, ability, burst,
  *      collision), your own swing's or shot's contact winning on direction;
  *      and the wiring that writes it down and the death that reads it.
- *   9. (v2.3.4127) A SLIME SPLATS: flat and fading, never in chunks.
+ *   9. (v2.3.4147) A SLIME SPLATS: flat and fading, never in chunks.
  */
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
@@ -303,7 +303,7 @@ function readPng(rel) {
   check('8k a hole is cut in a Graphics mask, never a Sprite one', /mg\.cut\(\)/.test(zf) && !/\.mask = new Sprite/.test(zf));
 }
 
-/* ── 9. v2.3.4127: a slime splats, never in chunks ──
+/* ── 9. v2.3.4147: a slime splats, never in chunks ──
    The owner: "remove the chunks form the electric slime death (and any other
    chunks like that from slime deaths - doesn't match the art aesthetic." */
 {

@@ -45,7 +45,7 @@
  *          the monster on your LEFT (two of them), left;
  *        - and every one let go once over;
  *  11. `?deathbig=1` makes an unforced kill the big one (the owner's switch);
- *  12. v2.3.4127, A SLIME SPLATS (the owner: "remove the chunks form the
+ *  12. v2.3.4147, A SLIME SPLATS (the owner: "remove the chunks form the
  *      electric slime death (and any other chunks like that from slime
  *      deaths - doesn't match the art aesthetic."): sections 1-11 run with
  *      the splat off (window.__btSlimeSplat = false, as ?slimesplat=0), so
@@ -171,7 +171,7 @@ const kill = (P, ids, kind, hit) => P.page.evaluate(async ([mids, k, hit]) => {
          (by the death's own clock: the renderer's frames, TRAPS §200) */
       if (d.own && d.own.drift && d.own.t != null && d.own.t >= 1000 && !w.at1s) w.at1s = { drift: d.own.drift, t: d.own.t };
       if (d.own && d.own.flash) w.flash = true;
-      /* v2.3.4127: a slime's splat -- how flat it got, and if it ever had a piece */
+      /* v2.3.4147: a slime's splat -- how flat it got, and if it ever had a piece */
       if (d.kind === 'splat') {
         w.splat = true;
         if (d.flat) w.minFlat = Math.min(w.minFlat == null ? 9 : w.minFlat, d.flat[1]);
@@ -197,7 +197,7 @@ const boxOf = (P, id, tight) => P.page.evaluate(([mid, tight]) => {
   const c = document.querySelector('canvas').getBoundingClientRect();
   const kx = S._worldScaleX || 1, ky = S._worldScaleY || 1;
   const cx = c.left + (m.x - S.camera.x) * kx, cy = c.top + (m.y - 40 - S.camera.y) * ky;
-  /* v2.3.4127: `tight` -- a slime's picture, close round its body (the
+  /* v2.3.4147: `tight` -- a slime's picture, close round its body (the
      world is drawn small: a slime is a couple of dozen px across) */
   if (tight) {
     const fy = c.top + (m.y - S.camera.y) * ky;
@@ -237,7 +237,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const stopAlive = H.keepAlive(P, 20000);
   try {
     await enter(P, wsPort);
-    /* v2.3.4127: the splat off for 1-11 (section 12 turns it back on) */
+    /* v2.3.4147: the splat off for 1-11 (section 12 turns it back on) */
     await P.page.evaluate(() => { window.__btSlimeSplat = false; });
 
     /* ── 1-5. every look's own death ── */
@@ -326,7 +326,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const own = kinds.filter((k) => k === 'own').length;
       rec.ok(`6. ten slimes killed together: at most ${MAX_LIVE} play their own death, the rest today's (${own} own)`,
         own > 0 && own <= MAX_LIVE && kinds.every((k) => k != null) && kinds.filter((k) => k !== 'own').length === kinds.length - own && own === Math.min(MAX_LIVE, ids.length), kinds);
-      /* v2.3.4127: until they are over by their own clocks (this box can
+      /* v2.3.4147: until they are over by their own clocks (this box can
          draw ten deaths far slower than one: a fixed wait came up short) */
       let z = null;
       const tz = Date.now();
@@ -422,7 +422,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!(o && o.blow && o.blow.dx < -0.9 && d && d.x < -1), { blow: o && o.blow, at1s: r.at1s, err: r.err });
     }
 
-    /* ── 12. v2.3.4127: a slime splats, never in chunks ── */
+    /* ── 12. v2.3.4147: a slime splats, never in chunks ── */
     {
       await P.page.evaluate(() => { delete window.__btSlimeSplat; delete window.__btDeathBig; });
       const cutBursts = (mid) => P.page.evaluate((id) => {

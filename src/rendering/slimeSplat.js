@@ -1,5 +1,5 @@
 /**
- * slimeSplat.js -- v2.3.4127: A SLIME DIES AS A SPLAT, NEVER IN CHUNKS.
+ * slimeSplat.js -- v2.3.4147: A SLIME DIES AS A SPLAT, NEVER IN CHUNKS.
  *
  * The owner (2026-11-03): "remove the chunks form the electric slime death
  * (and any other chunks like that from slime deaths - doesn't match the art
@@ -34,7 +34,7 @@ const _on = (() => {
     return v !== '0';
   } catch (e) { return true; }
 })();
-/** v2.3.4127: on unless `?slimesplat=0` (or QA's window.__btSlimeSplat = false). */
+/** v2.3.4147: on unless `?slimesplat=0` (or QA's window.__btSlimeSplat = false). */
 export function slimeSplatOn() {
   try {
     if (typeof window !== 'undefined' && window.__btSlimeSplat === false) return false;
@@ -82,7 +82,7 @@ export function buildSlimeSplat(kit, display, m, now) {
   return st;
 }
 
-/* Its own clock.  v2.3.4127: QA's window.__btSplatHold = ms holds every
+/* Its own clock.  v2.3.4147: QA's window.__btSplatHold = ms holds every
    splat at that moment (mp-deathzones' pictures: this box takes seconds a
    screenshot, longer than the whole splat). */
 function splatT(st, now) {

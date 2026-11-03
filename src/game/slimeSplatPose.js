@@ -1,5 +1,5 @@
 /**
- * slimeSplatPose.js -- v2.3.4127: the shape of a slime's splat over time
+ * slimeSplatPose.js -- v2.3.4147: the shape of a slime's splat over time
  * (src/rendering/slimeSplat.js draws it; server/test/death-zones.test.mjs
  * reads it).  No imports, so node can test it.
  *

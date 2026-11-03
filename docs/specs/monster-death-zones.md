@@ -18,7 +18,7 @@ own picture:
 
 | Look | An ordinary kill (the gentler collapse) | A big finishing blow (the explosion) |
 |---|---|---|
-| Slime (and every look on its sheets: the Storm Slime and the other stage slimes, the moss slime, blue slime and mire wisp) | **v2.3.4127:** it squashes flat where it sat, in its own pixels and colour, spreads a little and fades: about half a second, no pieces, no debris (see "A slime splats" below) | the same splat: a slime never comes apart |
+| Slime (and every look on its sheets: the Storm Slime and the other stage slimes, the moss slime, blue slime and mire wisp) | **v2.3.4147:** it squashes flat where it sat, in its own pixels and colour, spreads a little and fades: about half a second, no pieces, no debris (see "A slime splats" below) | the same splat: a slime never comes apart |
 | Snowman | his hat and head pop off and the head **rolls**, his coal eyes pop out and bounce, his twig arms drop off, his body sags into a heap of snow, the drift he stands in stays | hat, head and eyes thrown high, the twig arms fly, the body bursts and tumbles away in a burst of snow |
 | Fire goblin | he lets his torch fall, crumples where he stands, his yellow eyes pop, and the flame of his hair gutters out | the torch flung in embers, the flame leaps off his head guttering, he topples over the way he was hit, in smoke |
 | Skeleton | its bones come down in a heap: the skull pops and rolls, arms, ribs, pelvis and legs clatter down where it stood | every bone goes its own way in a spray of bone chips |
@@ -106,7 +106,7 @@ the zone round it (`cut`), so that zone becomes a masked piece with holes; where
 the face is not shown (`faces`), the eye is not a zone and its pixels stay
 with the head.
 
-## A slime splats, never in chunks (v2.3.4127)
+## A slime splats, never in chunks (v2.3.4147)
 
 The owner (2026-11-03): *"remove the chunks form the electric slime death (and
 any other chunks like that from slime deaths - doesn't match the art
@@ -303,13 +303,13 @@ sprite as it stood on its last living frame, as the cuts are.
   with a mirrored file (6); a big blow throws more than an ordinary kill, every
   look and facing (7); the blow's direction and size from you, a seen player or
   nobody, the contact winning, a stale blow none, and the push drawing nothing
-  from the seeded roll (8); (9, v2.3.4127) a slime's splat: its shape over
+  from the seeded roll (8); (9, v2.3.4147) a slime's splat: its shape over
   time, first before any roll, no bursts, no Graphics, one sprite, let go, a
   burst ends in it, `?slimesplat=0`.
 - `node tools/qa/mp/run.mjs deathzones` (the world, a phone): every look's own
   death, front and side; the beat; its own colour; down and still on the
   ground; gone and let go afterwards; the cap of 8; the same death every phone;
-  `?deathkind=own` and `?deathzones=0`; (12, v2.3.4127, sections 1-11 run
+  `?deathkind=own` and `?deathzones=0`; (12, v2.3.4147, sections 1-11 run
   with the splat off) every slime-sheet look, unforced, forced and by a crit,
   and a blue slime's burst, splats flat with no pieces and no bursts and is
   let go, a skeleton beside it still in pieces, and the before / after pictures
