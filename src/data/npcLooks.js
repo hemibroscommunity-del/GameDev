@@ -46,6 +46,11 @@ export const NPC_LOOKS = {
     hat: 'bucket-hat', hatColor: 'green', eyewear: 'none', eyes: 'wtf',
     shirt: 'tshirt', shirtColor: 'yellow', pants: 'brown', shoes: 'brown',
     patterns: { shirt: 'chevron:11' },
+    /* v2.3.3915: the owner: "Make farmer bro hat lower to match the portrait
+       pic of him" -- his portrait wears it down on his brow.  256-space px,
+       down-positive, his alone (entityRenderer _hatTune: the shared bucket-hat
+       row would move every player's) */
+    hatDy256: 6,
     still: 'farmer-bro',
   },
   woodworker: {
@@ -212,6 +217,7 @@ export function npcLookAsPeer(L) {
     shirt: L.shirt, shirtColor: L.shirtColor,
     shirtPattern: p.shirt || null, pantsPattern: p.pants || null, shoesPattern: p.shoes || null,
     species: null, cape: false,
+    hatDy256: +L.hatDy256 || 0,   /* v2.3.3915: his own hat nudge (_drawFolk) */
     equip: { shirt: L.shirt === 'none' ? 'none' : 'tshirt', chest: 'none', legs: 'none', shoulders: 'none' },
   };
 }

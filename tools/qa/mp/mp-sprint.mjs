@@ -68,7 +68,13 @@ const LAYOUT = (P) => P.page.evaluate(() => {
     }
   }
   return { vw: innerWidth, vh: innerHeight, btn: r(btn), label: r(lab), ring: ringEl ? +ringEl.getAttribute('stroke-width') : null,
-    state: btn ? btn.getAttribute('data-sprint') : null, disc: r(disc), stick: r(stick), others };
+    state: btn ? btn.getAttribute('data-sprint') : null, disc: r(disc), stick: r(stick), others,
+    /* v2.3.3920: on | off | tired, the glow ring, the stamina arc (its lit
+       share) and its track's colour */
+    sstate: btn ? btn.getAttribute('data-sprint-state') : null,
+    glow: !!(btn && btn.querySelector('.bt-sprint-glow')),
+    arc: btn && btn.querySelector('[data-sprint-arc]') ? +btn.querySelector('[data-sprint-arc]').getAttribute('data-sprint-arc') : null,
+    track: btn && btn.querySelector('[data-sprint-arc] circle') ? btn.querySelector('[data-sprint-arc] circle').getAttribute('stroke') : null };
 });
 const overlaps = (a, b, pad) => a.l < b.r + pad && a.r > b.l - pad && a.t < b.b + pad && a.b > b.t - pad;
 
@@ -216,12 +222,17 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const on = await sprintState(P);
     const L2 = await LAYOUT(P);
     rec.ok('a tap turns it on (lit)', !!(on.btn && on.btn.armed) && L2.state === 'on', { btn: on.btn, state: L2.state });
+    rec.ok(`...its state reads on (${L2.sstate}), the gold glow ring drawn (${L2.glow}), the stamina arc round it lit (${L2.arc})`,
+      L2.sstate === 'on' && L2.glow && L2.arc > 0.3, { sstate: L2.sstate, glow: L2.glow, arc: L2.arc });   /* v2.3.3920 */
     rec.ok('...and is only a tap: no roll, no walk, no aim, swing or jump from the attack half underneath',
       !on.roll && on.stick === 0 && !on.aim && !on.auto && on.jumps === 0, on);
     await P.page.touchscreen.tap(c.x, c.y);
     await P.page.waitForTimeout(250);
     const off = await sprintState(P);
     rec.ok('a second tap turns it off', !!off.btn && !off.btn.armed && off.btn.why === 'tap', off.btn);
+    const L3 = await LAYOUT(P);
+    rec.ok(`...off: its state reads off (${L3.sstate}), no glow (${L3.glow}), the arc still shows the stamina (${L3.arc})`,
+      L3.sstate === 'off' && !L3.glow && L3.arc > 0.3, { sstate: L3.sstate, glow: L3.glow, arc: L3.arc });   /* v2.3.3920 */
   }
 
   /* ── 3/4. the speed, and the bill ── */
@@ -395,6 +406,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`run dry it ends on its own (from ${s0.st != null ? s0.st.toFixed(0) : '?'} stamina, after ${(end.t / 1000).toFixed(1)} s), the worker's bar down to ${srvMin}`,
       !!end.btn && !end.btn.armed && end.btn.why === 'empty' && srvMin <= 1, { end: end.btn, srvMin, now: srv && srv.stamina });
     rec.ok('...the button fades', L.state === 'tired', L.state);
+    rec.ok(`...unmistakably tired: its state reads tired (${L.sstate}), the arc empty (${L.arc}) on a red track (${L.track}), no glow`,
+      L.sstate === 'tired' && L.arc === 0 && /226,74,58/.test(L.track || '') && !L.glow, { sstate: L.sstate, arc: L.arc, track: L.track });   /* v2.3.3920 */
     /* v2.3.3455: running dry is heard once, as the owner's grunt worn out
        (the cue sprintOut: their recording, lower and slower), decoded on the
        loading screen like every sound */

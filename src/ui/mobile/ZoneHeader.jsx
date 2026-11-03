@@ -2,10 +2,8 @@ import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, getState } from './dash/common.js';
 import { rosterCount } from '../../networking/charRoster.js'; /* v2.3.2421 */
-import { zoneTitle } from './zoneTitle.js'; /* v2.3.2596: shared with the zone-entry banner */
 import { calm as lifeCalm } from './dash/bagLife.js'; /* v2.3.2815: the purse's coin flip */
-import { dayPhase, lightingAt, zoneHasSky } from '../../game/timeOfDay.js'; /* v2.3.2892: the hour beside the zone name */
-import { ZONES } from '../../data/zones.js'; /* v2.3.3009: the Wheel's name, before its first words come */
+import { placeName } from './placeName.js'; /* v2.3.3974: the land you stand in, or BroTown (was the Wheel's name, v2.3.3009) */
 import { testModeOn } from '../../game/testMode.js'; /* v2.3.3430: the owner's test mode tag */
 import { achvLive, achvApTotal } from '../../game/achievements.js';   /* v2.3.3553: your AP on the bar */
 import { ACHV_MEDAL_SRC } from '../../data/achievements.js';         /* v2.3.3553: the owner's medal */
@@ -14,82 +12,14 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';            /* v2.3.3
 import { onXpBar, xpBarShown, xpGainWords, xpToNextWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
 import { XpTrack } from './XpTrack.jsx';                                  /* v2.3.3739: its white gain bar and "45 / 120" */
 import { XP_BAR_ICONS, XP_BAR_LABELS } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
-import { NmlPill } from './NmlBadge.jsx';                               /* v2.3.3765: No man's land's pill, right of the title */
+import { PlaceChip } from './NmlBadge.jsx';                             /* v2.3.3765: No man's land's pill, right of the title; v2.3.3974: the place chip, always */
 import { barNarrow, barNumber, BAR_GOLD_SHORT, BAR_AP_SHORT } from '../../game/barNumbers.js';   /* v2.3.3765: big numbers short on a narrow bar */
 
-/* ═══ v2.3.2892: WHAT TIME IT IS, NEXT TO WHERE YOU ARE ═══
-   Owner: "Add a time of day icon next to current map name."  The hour is
-   the world's own (timeOfDay.js -- the same wall-clock phase the lighting
-   draws, and the ?tod= / window.__btTod preview moves it too), read on the
-   rail's 500 ms repaint, so no timer of its own.
-   Drawn as flat inline SVG: the rail sits over the WebGL canvas, and CSS
-   filters there are the iOS compositing trap (TRAPS section 42).
-   BESIDE the title, never inside it: [data-zone-title] is the zone-entry
-   banner's dock target and mp-zonebanner reads its text exactly.
-   Indoors and in dungeons the world ignores the hour, so the icon dims
-   rather than vanishing -- the clock still runs. */
-const TOD_ICON = {
-  day: (
-    <>
-      <circle cx="8" cy="8" r="3.4" fill="#FFD66B" />
-      <g stroke="#FFD66B" strokeWidth="1.5" strokeLinecap="round">
-        <path d="M8 1.2v1.6M8 13.2v1.6M1.2 8h1.6M13.2 8h1.6M3.2 3.2l1.1 1.1M11.7 11.7l1.1 1.1M3.2 12.8l1.1-1.1M11.7 4.3l1.1-1.1" />
-      </g>
-    </>
-  ),
-  golden: (
-    <>
-      <circle cx="8" cy="9" r="3.6" fill="#FFB347" />
-      <g stroke="#FFB347" strokeWidth="1.5" strokeLinecap="round">
-        <path d="M8 2.4v1.4M2.6 9h1.4M12 9h1.4M3.9 4.9l1 1M12.1 4.9l-1 1" />
-      </g>
-      <path d="M1.5 14h13" stroke="#E08A3C" strokeWidth="1.5" strokeLinecap="round" />
-    </>
-  ),
-  dawn: (
-    <>
-      <path d="M3.6 12a4.4 4.4 0 0 1 8.8 0z" fill="#F7A9A0" />
-      <g stroke="#F7A9A0" strokeWidth="1.4" strokeLinecap="round">
-        <path d="M8 3.6v1.4M2.6 7.2l1 .8M13.4 7.2l-1 .8" />
-      </g>
-      <path d="M1.5 12.6h13" stroke="#C98BB0" strokeWidth="1.5" strokeLinecap="round" />
-    </>
-  ),
-  dusk: (
-    <>
-      <path d="M3.6 12a4.4 4.4 0 0 1 8.8 0z" fill="#E98A6B" />
-      <path d="M1.5 12.6h13" stroke="#8E6BB0" strokeWidth="1.5" strokeLinecap="round" />
-      <circle cx="3" cy="4" r=".8" fill="#DDE6FF" />
-      <circle cx="12.6" cy="3.2" r=".7" fill="#DDE6FF" />
-    </>
-  ),
-  night: (
-    <>
-      <path d="M10.6 2.1a6 6 0 1 0 3.3 9.6A5 5 0 0 1 10.6 2.1z" fill="#DDE6FF" />
-      <circle cx="3.2" cy="3.4" r=".8" fill="#DDE6FF" />
-      <circle cx="5.6" cy="1.8" r=".55" fill="#DDE6FF" />
-    </>
-  ),
-};
-
-function TodIcon({ S, faded }) {
-  const tod = lightingAt(dayPhase(Date.now())).name;
-  const sky = zoneHasSky(S.currentZone, S);
-  return (
-    <svg
-      className="bt-zone-header__tod"
-      data-tod={tod}
-      data-sky={sky ? '1' : '0'}
-      viewBox="0 0 16 16"
-      width="16"
-      height="16"
-      aria-hidden="true"
-      /* v2.3.3695: `faded` under the XP bar (its opacity is set here, so the
-         stylesheet's fade cannot reach it) */
-      style={{ opacity: faded ? 0 : (sky ? 1 : 0.45), transition: 'opacity 220ms linear' }}
-    >{TOD_ICON[tod] || TOD_ICON.day}</svg>
-  );
-}
+/* ═══ v2.3.2892 -> v2.3.3974: THE HOUR'S ICON IS GONE ═══
+   v2.3.2892 put a day/night icon beside the zone name (the owner: "Add a time
+   of day icon next to current map name").  Night is off and the icon took no
+   tap, so it said nothing a player could use; v2.3.3974 gives its room to
+   the place chip (NmlBadge.jsx PlaceChip). */
 
 /* v2.3.1333: zone header rail (owner + ChatGPT spec).  The floating
    zone label kept getting lost against bright world art, and the
@@ -313,7 +243,6 @@ export const ZoneHeader = ({ onExit }) => {
         )}
         </div>
         <div className={'bt-zone-header__mid' + (xpOn ? ' bt-zone-header__mid--xp' : '')}>
-        <TodIcon S={S} faded={xpOn} />
         <div
           className="bt-zone-header__title"
           /* v2.3.2596: the zone-entry banner's DOCK TARGET.  A data hook rather
@@ -330,7 +259,7 @@ export const ZoneHeader = ({ onExit }) => {
              text, which would cover the panel the moment it opened. */
           onContextMenu={(e) => e.preventDefault()}
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
-        >{S.currentZone === 'wheel' ? ((ZONES.wheel && ZONES.wheel.name) || 'BroTown' /* v2.3.3039 */) : zoneTitle(S)}</div>
+        >{placeName(S) /* v2.3.3974: the land, or BroTown (v2.3.3039: never "The Wheel") */}</div>
         {/* ═══ v2.3.3765: NO MAN'S LAND, JUST RIGHT OF THE TITLE ═══
             The owner: "I think the no man's land pill would work better just to
             the right of the Brotown name at the top (you can cut it away same as
@@ -338,7 +267,10 @@ export const ZoneHeader = ({ onExit }) => {
             ([data-zone-title] is the banner's dock target); cut away with the
             title while the XP bar is up (game.css bt-zone-header__mid--xp).  Its
             own 250 ms clock (NmlBadge.jsx NmlPill). */}
-        <NmlPill getS={getState} />
+        {/* ═══ v2.3.3974: ...AND IT IS THE PLACE CHIP NOW, ALWAYS UP ═══
+            Safe / PvP · Lv 6-8 / Outlaw (NmlBadge.jsx PlaceChip); a tap
+            opens the window with your own numbers. */}
+        <PlaceChip getS={getState} />
         {/* ═══ v2.3.3430: TEST MODE, SAID WHERE IT IS ALWAYS SEEN ═══
             The owner's switch (Test panel; server/src/testmode.js): while the
             worker has the honesty checks off for this character, the top bar

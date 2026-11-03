@@ -16,7 +16,7 @@ drawn twice your height, with four wave slimes' worth of health.
 1. Its HP bar wears three thin dark marks, at 75%, 50% and 25%: where it will
    burst.
 2. When its health reaches a mark it **swells** for 1.6 s, the same warning a
-   blue slime gives before it bursts. (Until v2.3.3909 "BURSTING!" showed over
+   blue slime gives before it bursts. (Until v2.3.3998 "BURSTING!" showed over
    it; the owner, 2026-11-02: "Remove all text announcing what attacks or
    things the monsters are doing. It's lame." -- the swell and its sound say
    it, as on an ordinary blue slime, v2.3.3568.) It can't be
