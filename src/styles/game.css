@@ -7177,8 +7177,13 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
   80%{transform:translateX(2px)}
 }
 .bt-sprint-nope{animation:bt-sprint-nope .42s ease-out 1}
+/* v2.3.3920: while the sprint is on, its gold glow breathes slowly (opacity
+   only: the shadow is drawn once, never a filter) */
+@keyframes bt-sprint-glow{0%,100%{opacity:1}50%{opacity:.45}}
+.bt-sprint-glow{animation:bt-sprint-glow 1.6s ease-in-out infinite}
 @media (prefers-reduced-motion: reduce){
   .bt-sprint-nope{animation:none}
+  .bt-sprint-glow{animation:none}
 }
 
 /* ═══ v2.3.3018: THE CONTROLS' SKIN (src/ui/panels/controlSkin.jsx) ═══
@@ -7272,24 +7277,31 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 .bt-rjoy-base[data-rstate="ghost"] .bt-skin-sheen{opacity:0}
 .bt-rjoy-base[data-pressed="1"] .bt-skin .bt-skin-ringc{stroke:url(#btSkinPress) #B67C35}
 .bt-rjoy-icon{display:none}
-.bt-rjoy-base[data-ricon="melee"] .bt-rjoy-icon[data-ricon-img="melee"],
-.bt-rjoy-base[data-ricon="ranged"] .bt-rjoy-icon[data-ricon-img="ranged"],
-.bt-rjoy-base[data-ricon="staff"] .bt-rjoy-icon[data-ricon-img="staff"],
 .bt-rjoy-base[data-ricon="mining"] .bt-rjoy-icon[data-ricon-img="mining"],
 .bt-rjoy-base[data-ricon="woodcutting"] .bt-rjoy-icon[data-ricon-img="woodcutting"],
 .bt-rjoy-base[data-ricon="fishing"] .bt-rjoy-icon[data-ricon-img="fishing"],
 .bt-rjoy-base[data-ricon="cooking"] .bt-rjoy-icon[data-ricon-img="cooking"]{display:block}
-/* v2.3.3105: the weapon in your hand, its bag picture (controlSkin weaponDiscIcon) */
-.bt-rjoy-base[data-ricon="w-sword"] .bt-rjoy-icon[data-ricon-img="w-sword"],
-.bt-rjoy-base[data-ricon="w-sword-copper"] .bt-rjoy-icon[data-ricon-img="w-sword-copper"],
-.bt-rjoy-base[data-ricon="w-sword-iron"] .bt-rjoy-icon[data-ricon-img="w-sword-iron"],
-.bt-rjoy-base[data-ricon="w-sword-blacksteel"] .bt-rjoy-icon[data-ricon-img="w-sword-blacksteel"],
-.bt-rjoy-base[data-ricon="w-great-sword"] .bt-rjoy-icon[data-ricon-img="w-great-sword"],
-.bt-rjoy-base[data-ricon="w-great-sword-copper"] .bt-rjoy-icon[data-ricon-img="w-great-sword-copper"],
-.bt-rjoy-base[data-ricon="w-great-sword-iron"] .bt-rjoy-icon[data-ricon-img="w-great-sword-iron"],
-.bt-rjoy-base[data-ricon="w-great-sword-blacksteel"] .bt-rjoy-icon[data-ricon-img="w-great-sword-blacksteel"],
-.bt-rjoy-base[data-ricon="w-bow"] .bt-rjoy-icon[data-ricon-img="w-bow"],
-.bt-rjoy-base[data-ricon="w-staff"] .bt-rjoy-icon[data-ricon-img="w-staff"]{display:block}
+/* v2.3.3105: the weapon in your hand, its bag picture (controlSkin weaponDiscIcon).
+   v2.3.3920: an attack wears the aiming reticle instead, whichever weapon
+   data-ricon names (controlSkin AimReticle; the weapon is the triangle's) */
+.bt-rjoy-base[data-ricon="melee"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="ranged"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="staff"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-sword"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-sword-copper"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-sword-iron"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-sword-blacksteel"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-great-sword"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-great-sword-copper"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-great-sword-iron"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-great-sword-blacksteel"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-bow"] .bt-rjoy-aim,
+.bt-rjoy-base[data-ricon="w-staff"] .bt-rjoy-aim{display:block}
+/* v2.3.3920: a thumb on the stick: the reticle and its rod (the pointer) light */
+.bt-rjoy-aim .bt-aim-ring,.bt-rjoy-aim .bt-aim-tick{transition:stroke 90ms linear}
+.bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-ring,.bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-tick{stroke:#FFF3C4}
+.bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-dot{fill:#FFD86A}
+.bt-rjoy-base[data-pressed="1"] [data-rod]{background:linear-gradient(180deg,rgba(255,214,106,.62) 0%,rgba(240,176,72,.5) 100%);box-shadow:inset 0 0 0 1px rgba(255,236,170,.75)}
 /* v2.3.3105: the JUMP arrow over the disc as it is, see-through -- the owner:
    "a semi transparent overlay on the existing disc" (controlSkin RDISC_ICONS) */
 /* v2.3.3721: the stick's JUMP face went with the tap's jump (v2.3.3712) */
