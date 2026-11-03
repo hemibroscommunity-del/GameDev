@@ -30,7 +30,25 @@
  *
  * DEPLOY ORDER (rule 19).  caps.smelting gates the client's Smelting rows.
  * KILL SWITCH: `smelting: false` in liveflags refuses every smelt and
- * un-advertises the cap, with no deploy; ore and bars are untouched. */
+ * un-advertises the cap, with no deploy; ore and bars are untouched.
+ *
+ * ═══ v2.3.3912: ONE ORE MAKES ONE BAR ═══
+ * The owner, 2026-11-02 (his "yes" to the Oct 26 list's row 11): "Remove all
+ * references to 5 resources requiring 25 of its inputs.  I just want 5 raw to
+ * turn into 5 processed.  So still wood to hardened wood but only require 5
+ * instead of 25."  A gear piece still takes five bars, so it is five ore now,
+ * not twenty-five.  RECIPES is the one-to-one table; each bar's XP is the
+ * old bar's divided by five (80 / 120 / 160), so Smithing levels at the same
+ * pace per ore mined (docs/OWNER-LIST-2026-10-26.md: "keep each bar's XP tied
+ * to the ore it took").  FIVE is the old five-to-one rows, brought back by
+ * `onetoone: false` in liveflags (_oneToOneOff), which also takes back
+ * caps.onetoone (join.js spreads the flags over the caps) so the game draws
+ * the old rows too; hardened wood (hardenedwood.js), Diego's prices
+ * (shop.js) and the daily smelt quest (dailyrewards.js) follow the same
+ * switch.  The worker settles from _smeltRecipe, never from the phone's
+ * numbers: an old phone that still thinks five ore a bar asks for fewer bars
+ * than the ore pays for and is given exactly what it asked
+ * (docs/specs/smelting.md "One ore, one bar"). */
 
 export const SMELT = {
   /* bar invKey -> recipe.  `ore` is the exact inventory key gathering.js
@@ -42,15 +60,24 @@ export const SMELT = {
      armour is forged from its own bars (armorforge.js).  Smithing 5 and 10:
      the owner's "levels of 5" (the ores' own Mining gates, gathering.js
      GATHER_REQ_LVL), each bar paying more as its metal gets harder to reach. */
+  /* v2.3.3912: one ore a bar (the header); the XP a fifth of the old bar's */
   RECIPES: {
-    bar_copper: { ore: 'ore_copper_ore', oreCost: 5, minLvl: 1, xp: 400 },
-    bar_iron: { ore: 'ore_iron_ore', oreCost: 5, minLvl: 5, xp: 600 },
-    bar_black_steel: { ore: 'ore_black_steel_ore', oreCost: 5, minLvl: 10, xp: 800 },
+    bar_copper: { ore: 'ore_copper_ore', oreCost: 1, minLvl: 1, xp: 80 },
+    bar_iron: { ore: 'ore_iron_ore', oreCost: 1, minLvl: 5, xp: 120 },
+    bar_black_steel: { ore: 'ore_black_steel_ore', oreCost: 1, minLvl: 10, xp: 160 },
   },
-  /* One smelt pays `xp` Smithing XP.  400 for five ore: a cooked fish pays
-     200 for one catch (cooking.js), and a bar is five trips to a rock.  At
-     400 a player reaches the copper forge tier (Smithing 6, ~2,900 XP) in
-     eight bars -- forty copper ore -- instead of hundreds of wood crafts. */
+  /* One smelt pays `xp` Smithing XP.  It was 400 for five ore: a cooked fish
+     pays 200 for one catch (cooking.js), and a bar was five trips to a rock.
+     At 400 a player reached the copper forge tier (Smithing 6, ~2,900 XP) in
+     eight bars -- forty copper ore -- instead of hundreds of wood crafts.
+     v2.3.3912: 80 for one ore, the same forty ore to the same level.
+     FIVE: the rows `onetoone: false` lays over RECIPES (the old five-to-one,
+     as they were until v2.3.3912; the game's SMELT_FIVE, mirror-audit). */
+  FIVE: {
+    bar_copper: { oreCost: 5, xp: 400 },
+    bar_iron: { oreCost: 5, xp: 600 },
+    bar_black_steel: { oreCost: 5, xp: 800 },
+  },
   MAX_PER_REQUEST: 50,
 };
 
@@ -61,12 +88,29 @@ export const smeltingMethods = {
     return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'smelting') && !f.smelting);
   },
 
+  /* v2.3.3912: the one-to-one switch (the header).  On unless written false,
+     read the same way; shared by hardenedwood.js, shop.js and
+     dailyrewards.js, whose rows it also puts back. */
+  _oneToOneOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'onetoone') && !f.onetoone);
+  },
+
+  /* v2.3.3912: the recipe the worker settles a smelt from -- RECIPES, or with
+     the switch off the old five-to-one rows laid over it.  null for a key
+     that is not the table's own. */
+  _smeltRecipe(barKey) {
+    if (typeof barKey !== 'string' || !Object.prototype.hasOwnProperty.call(SMELT.RECIPES, barKey)) return null;
+    const r = SMELT.RECIPES[barKey];
+    return this._oneToOneOff() ? { ...r, ...SMELT.FIVE[barKey] } : r;
+  },
+
   _handleSmeltBar(session, payload) {
     if (!session || !session.id) return null;
     if (this._smeltOff()) return null;
     const { barKey } = payload || {};
-    if (typeof barKey !== 'string' || !Object.prototype.hasOwnProperty.call(SMELT.RECIPES, barKey)) return null;
-    const r = SMELT.RECIPES[barKey];
+    const r = this._smeltRecipe(barKey);   /* v2.3.3912: one ore a bar, or five with onetoone off */
+    if (!r) return null;
     const ps = this.playerState[session.id];
     if (!ps || ps.dying || ps.dead || ps.disconnected) return null;
     if (!ps.inventory) return null;

@@ -141,9 +141,11 @@ mirrors the same structure. Also for the number required and gold too".
     and bars or raw logs never pay for a bow.
   - The first cut of v2.3.3139 put bows and staffs on bars by their wood's
     tier; the owner's answer replaced it with hardened wood.
-- **Hardened wood** is made at the Woodworker: five logs of one tree make one,
-  as five ore make a bar (`server/src/hardenedwood.js`, its own spec:
-  `docs/specs/hardened-wood.md`).
+- **Hardened wood** is made at the Woodworker: one log of a tree makes one,
+  as one ore makes a bar (since v2.3.3912, the owner's one-to-one; it was
+  five each, and `onetoone: false` brings that back) (`server/src/hardenedwood.js`,
+  its own spec: `docs/specs/hardened-wood.md`). So the n bars or hardened wood
+  an attempt at H(n) takes are n ore or logs now, five times cheaper.
 - **Order of the checks**: the Smithing gate, then the gold (`no-gold`),
   then the material (`no-materials`, "Need 3 Iron Bars", "Need 1 Hardened
   Pine Wood"), then gold and material come off together and the roll happens

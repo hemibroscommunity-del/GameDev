@@ -7119,7 +7119,8 @@ export const QUEST_CHAINS = {
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
       start: "So you're the new hero. Huh. I was told you'd be bigger. I'd mine it myself, but I hurt my back picking up a protein shake. Take my spare pickaxe and mine 5 Copper Ore from the orange rocks outside the gates, and I'll turn it into 5 Copper Bars.",
       progress: "5 Copper Ore from the orange rocks outside the gates, bro! Every swing's a rep, and I'm counting them from right here. Sitting down. Doctor's orders.",
-      complete: "Five ore, five bars. That's normally twenty-five ore, so you got the skinny-guy discount. Don't tell the other bros. They don't qualify. Now let's hit the anvil.",
+      /* v2.3.3912: one ore a bar now (smelting.js), so no "twenty-five ore" discount */
+      complete: "Five ore, five bars. One ore makes one bar, so that's a fair trade. Now let's hit the anvil.",
     },
   },
   smith_2: {

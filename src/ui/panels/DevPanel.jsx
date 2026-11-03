@@ -291,6 +291,7 @@ const CAP_GATES = [
   'pethouse' /* v2.3.3123: more room in the Pet House for gold -- lower case, a kill switch */,
   'hardenmats' /* v2.3.3139: hardening takes a material (bars, or a bow's hardened wood) and a doubling gold ladder -- lower case, a kill switch */,
   'hardenedwood' /* v2.3.3139: five logs into one hardened wood at the Woodworker -- lower case, a kill switch */,
+  'onetoone' /* v2.3.3912: one ore a bar, one log a hardened wood, their XP a fifth, Diego's bar 48 and hardened wood 29 (server smelting.js, hardenedwood.js, shop.js) -- lower case, a kill switch: off brings back five on both sides */,
   'hardenwoodskill' /* v2.3.3481: a bow's or staff's hardening is gated on Woodworking, a sword's still on Blacksmithing (the owner: "Do woodworking") -- lower case, a kill switch */,
   'hardenkeep' /* v2.3.3529: a failed hardening keeps the weapon's level, the gold and material still spent (server hardening.js; the owner: "the worst that can happen is you just stay at hardening 2 and lose resources") -- lower case, a kill switch */,
   'forgeladder' /* v2.3.3524: the forge's ladder -- no wood tier, copper Smithing 1 / iron 5 / black steel 10, the forge's Melee gate the wear gate, hardening by the level that makes the tier (server/src/forgeladder.js) -- lower case, a kill switch */,

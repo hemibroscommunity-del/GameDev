@@ -29,6 +29,8 @@
  *      (they wrote 200 and ~250);
  *  10. v2.3.3513: a gem set into a weapon writes the record once, and a
  *      refused ask writes nothing (weapongem.js);
+ *  11. v2.3.3912: one ore a bar -- smelting or hardening all writes the
+ *      record once, and an ask with nothing to pay writes nothing;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
  */
@@ -441,6 +443,38 @@ const FAST = 110;
   }
   const refused = mine(state, 'cg_gem', w1);
   check(`10. ...and 100 refused asks in ~1 s write ${refused.length} rows (none)`, refused.length === 0, byPrefix(refused));
+}
+
+/* ── 11. one ore a bar, one log a hardened wood (v2.3.3912) ────────────── */
+/* The one-to-one makes five times the bars from the same ore, never five
+   times the rows: "All" is one message and one row however many it makes
+   (smelting.js, hardenedwood.js), and an ask the bag cannot pay for writes
+   nothing, however fast. */
+{
+  const { room, state } = await makeRoom();
+  const p = await join(room, 'cg_smelt');
+  const ps = room.playerState.cg_smelt;
+  ps.inventory.ore_copper_ore = 50;
+  ps.inventory.wood_pine_log = 50;
+  NOW += 50;
+  let w0 = state.writes.length;
+  await send(room, p, { type: 'smelt_bar', payload: { barKey: 'bar_copper', count: 50 } });
+  const smelt = mine(state, 'cg_smelt', w0);
+  check(`11. smelting all 50 ore into 50 bars writes the record once (${smelt.length} row(s): ${smelt.join(', ')})`,
+    ps.inventory.bar_copper === 50 && smelt.filter((k) => k.startsWith('rpg:')).length === 1 && smelt.length <= 1, { inv: ps.inventory, smelt });
+  NOW += 50;
+  w0 = state.writes.length;
+  await send(room, p, { type: 'make_hardened_wood', payload: { key: 'hardened_pine', count: 50 } });
+  const hw = mine(state, 'cg_smelt', w0);
+  check(`11. ...and 50 logs into 50 hardened pine the same (${hw.length} row(s))`,
+    ps.inventory.hardened_pine === 50 && hw.filter((k) => k.startsWith('rpg:')).length === 1 && hw.length <= 1, { inv: ps.inventory, hw });
+  const w1 = state.writes.length;
+  for (let i = 0; i < 100; i++) {
+    NOW += 9;
+    await send(room, p, { type: i % 2 ? 'smelt_bar' : 'make_hardened_wood', payload: i % 2 ? { barKey: 'bar_copper' } : { key: 'hardened_pine' } });
+  }
+  const refused = mine(state, 'cg_smelt', w1);
+  check(`11. ...and 100 asks with no ore or logs left write ${refused.length} rows (none)`, refused.length === 0, byPrefix(refused));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

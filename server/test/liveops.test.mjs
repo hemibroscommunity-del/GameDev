@@ -440,6 +440,12 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('8l. `swordconvert` is a name POST /flags takes', flagNameOk('swordconvert'));
   { const was = room._liveFlags; room._liveFlags = { swordconvert: false }; const off = room._swordConvertOff(); room._liveFlags = {}; const on = room._swordConvertOff(); room._liveFlags = was;
     check('8l. `swordconvert: false` switches the heals off, and nothing set leaves them on', off === true && on === false); }
+  // 8m. v2.3.3912: the one-to-one's switch (smelting.js _oneToOneOff) -- one
+  //     ore a bar and one log a hardened wood; off only when written false,
+  //     which brings back five on both sides (smelting / hardenedwood suites)
+  check('8m. `onetoone` is a name POST /flags takes', flagNameOk('onetoone'));
+  { const was = room._liveFlags; room._liveFlags = { onetoone: false }; const off = room._oneToOneOff(); room._liveFlags = {}; const on = room._oneToOneOff(); room._liveFlags = was;
+    check('8m. `onetoone: false` switches the one-to-one off, and nothing set leaves it on', off === true && on === false); }
   // 8h. v2.3.3732: the message diet's two lower-case switches (movepath.js):
   //     v2.3.3744: every phone is on it by default, `pathall: false` leaves
   //     only ?diet=1 phones, `movepath: false` kills it, each through the

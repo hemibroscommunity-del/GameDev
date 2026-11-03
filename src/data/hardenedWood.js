@@ -7,20 +7,46 @@
  * field): the worker settles every make from its own copy; this one only
  * draws the Woodworker's Harden tab (logs, level, XP), names the bag's
  * pieces and tells the Harden rows which wood a bow takes.  `logName` is the
- * tree's own bag name (gathering.js TREE), for the rows' "5 Pine Logs each".
+ * tree's own bag name (gathering.js TREE), for the rows' "5 Pine Logs each"
+ * (v2.3.3912: logWord, "1 Pine Log").
+ *
+ * v2.3.3912: ONE LOG A PIECE (the owner: "still wood to hardened wood but
+ * only require 5 instead of 25"), each piece's XP a fifth of the old.  Only
+ * against a worker that says caps.onetoone: otherwise (an old worker, or
+ * `onetoone: false`) the old five-to-one, HARDENED_WOOD_FIVE laid over the
+ * table -- read every cost and XP through hardenedWoodRecipe(key,
+ * caps.onetoone).
  *
  * No '@/' imports: mirror-audit loads this file in node.
  */
 import { WOODWORKING_TIERS } from './gameSystems.js';
 
 export const HARDENED_WOOD_RECIPES = Object.freeze({
-  hardened_pine: Object.freeze({ log: 'wood_pine_log', logCost: 5, minLvl: 1, xp: 400, tier: 'pine', name: 'Hardened Pine Wood', logName: 'Pine Log', logPlural: 'Pine Logs' }),
-  hardened_softwood: Object.freeze({ log: 'wood_softwood', logCost: 5, minLvl: 5, xp: 600, tier: 'softwood', name: 'Hardened Softwood', logName: 'Softwood', logPlural: 'Softwood' }),
-  hardened_hardwood: Object.freeze({ log: 'wood_hardwood', logCost: 5, minLvl: 10, xp: 800, tier: 'hardwood', name: 'Hardened Hardwood', logName: 'Hardwood', logPlural: 'Hardwood' }),
-  hardened_cedar: Object.freeze({ log: 'wood_cedar_wood', logCost: 5, minLvl: 15, xp: 1000, tier: 'cedar', name: 'Hardened Cedar Wood', logName: 'Cedar Wood', logPlural: 'Cedar Wood' }),
-  hardened_maple: Object.freeze({ log: 'wood_maple_wood', logCost: 5, minLvl: 20, xp: 1200, tier: 'maple', name: 'Hardened Maple Wood', logName: 'Maple Wood', logPlural: 'Maple Wood' }),
+  hardened_pine: Object.freeze({ log: 'wood_pine_log', logCost: 1, minLvl: 1, xp: 80, tier: 'pine', name: 'Hardened Pine Wood', logName: 'Pine Log', logPlural: 'Pine Logs' }),
+  hardened_softwood: Object.freeze({ log: 'wood_softwood', logCost: 1, minLvl: 5, xp: 120, tier: 'softwood', name: 'Hardened Softwood', logName: 'Softwood', logPlural: 'Softwood' }),
+  hardened_hardwood: Object.freeze({ log: 'wood_hardwood', logCost: 1, minLvl: 10, xp: 160, tier: 'hardwood', name: 'Hardened Hardwood', logName: 'Hardwood', logPlural: 'Hardwood' }),
+  hardened_cedar: Object.freeze({ log: 'wood_cedar_wood', logCost: 1, minLvl: 15, xp: 200, tier: 'cedar', name: 'Hardened Cedar Wood', logName: 'Cedar Wood', logPlural: 'Cedar Wood' }),
+  hardened_maple: Object.freeze({ log: 'wood_maple_wood', logCost: 1, minLvl: 20, xp: 240, tier: 'maple', name: 'Hardened Maple Wood', logName: 'Maple Wood', logPlural: 'Maple Wood' }),
 });
 export const HARDENED_WOOD_MAX_PER_REQUEST = 50;
+/* v2.3.3912: the old five-to-one (server hardenedwood.js HARDENED_WOOD.FIVE;
+   mirror-audit) */
+export const HARDENED_WOOD_FIVE = Object.freeze({
+  hardened_pine: Object.freeze({ logCost: 5, xp: 400 }),
+  hardened_softwood: Object.freeze({ logCost: 5, xp: 600 }),
+  hardened_hardwood: Object.freeze({ logCost: 5, xp: 800 }),
+  hardened_cedar: Object.freeze({ logCost: 5, xp: 1000 }),
+  hardened_maple: Object.freeze({ logCost: 5, xp: 1200 }),
+});
+/* v2.3.3912: the row the worker will settle -- one log a piece against a
+   worker that advertises caps.onetoone, five without it.  null for a key not
+   the table's own. */
+export function hardenedWoodRecipe(key, oneToOne) {
+  if (typeof key !== 'string' || !Object.prototype.hasOwnProperty.call(HARDENED_WOOD_RECIPES, key)) return null;
+  return oneToOne ? HARDENED_WOOD_RECIPES[key] : { ...HARDENED_WOOD_RECIPES[key], ...HARDENED_WOOD_FIVE[key] };
+}
+/* v2.3.3912: "1 Pine Log", "5 Pine Logs" */
+export const logWord = (r, n) => (r ? (n === 1 ? r.logName : r.logPlural) : '');
 
 /* The hardened wood each WOODWORKING_TIERS wood takes, in that table's order
    (the worker's HARDEN_WOOD_BY_TIER): pine, softwood, hardwood, cedar, maple. */

@@ -1,12 +1,12 @@
 import React from 'react';
-import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_MAX_PER_REQUEST } from '@/data/hardenedWood.js';
+import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_MAX_PER_REQUEST, hardenedWoodRecipe } from '@/data/hardenedWood.js';
 import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 
 /* ═══ v2.3.3139: THE WOODWORKER'S HARDEN TAB ═══
  * The owner: "Maybe 5 logs of the raw material can make one 'hardened (name)
  * wood' raw material so it mirrors the same structure."  The Blacksmith's
  * Smelt tab, at the Woodworker: one row a wood, five of its logs make one
- * hardened wood and pay Woodworking XP, each wood at its own Woodworking
+ * (v2.3.3912: one log, with caps.onetoone) hardened wood and pay Woodworking XP, each wood at its own Woodworking
  * level.  A bow or a staff is hardened with its own wood's (the Bow and Staff
  * views' Harden button).
  *
@@ -69,7 +69,8 @@ export function HardenedWoodTab({ rpgState, stateRef }) {
   return (
     <div data-hw-tab="1">
       {Object.keys(HARDENED_WOOD_RECIPES).map((key) => {
-        const r = HARDENED_WOOD_RECIPES[key];
+        /* v2.3.3912: one log a piece against a worker that says so, five without */
+        const r = hardenedWoodRecipe(key, !!(S._serverCaps && S._serverCaps.onetoone));
         const logs = Math.floor(Number(inv[r.log]) || 0);
         const have = Math.floor(Number(inv[key]) || 0);
         const locked = lvl < r.minLvl;
