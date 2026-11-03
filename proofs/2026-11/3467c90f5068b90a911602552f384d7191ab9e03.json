@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3467c90f5068b90a911602552f384d7191ab9e03",
+  "tree": "34d7626353a9ebbb3f592323fd7e66523a188754",
+  "committedAt": "2026-11-02T17:29:25-08:00",
+  "subject": "Merge pull request #1380 from hemibroscommunity-del/claude/bestiary-row",
+  "files": 7341,
+  "bytes": 843751207,
+  "listingSha256": "0d13bb8723c15450c1de54edd61c49eb176fd5cb5c9edda5174f77b2f6c2fbc1",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
