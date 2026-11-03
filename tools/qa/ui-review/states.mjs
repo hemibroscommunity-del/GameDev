@@ -486,6 +486,19 @@ export const STATES = [
     },
     after: async ({ P }) => { await H.closeNpcDialogue(P).catch(() => {}); await H.leaveNpc(P, 'mayor_bro').catch(() => {}); },
   },
+  /* v2.3.3925: the big arrow the first time a weapon is handed over (ui/guideArrow.js) */
+  {
+    id: 'guide-arrow', group: 'Talking to characters', title: 'The big arrow, the first weapon',
+    about: 'Just after the first quest hands over the sword and shield: a big gold arrow points at where to go to wear them (the fold handle, the Gear button or the weapon\'s tile), with a short line beside it.',
+    settle: 600,
+    run: async ({ P }) => {
+      for (let i = 0; i < 40; i++) {
+        if (await has(P, '[data-guide-arrow]')) return undefined;
+        await wait(P, 250);
+      }
+      return 'no arrow showed (the sword and shield not in the bag, or already worn)';
+    },
+  },
 
   /* ═══ THE DASHBOARD ═══ */
   /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page) */
