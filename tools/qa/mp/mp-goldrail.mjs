@@ -243,8 +243,9 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     !!more && more.answers === 'self' && more.cx < phone.width, more);
   /* The purse does not come back on a drilled screen either. */
   const dCounts = await goldCounts(P, GOLD_TXT);
-  rec.ok(T + 'DRILLED: still exactly one gold count, still the rail\'s',
-    dCounts.length === 1 && dCounts[0].where === 'zone-header', dCounts);
+  /* v2.3.4173: and none comes back into the rail on a drilled screen */
+  rec.ok(T + 'DRILLED: still no gold count in the top bar',
+    dCounts.every((c) => c.where !== 'zone-header'), dCounts);
 
   await P.ctx.close();
 }
