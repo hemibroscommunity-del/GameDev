@@ -11,7 +11,7 @@ import { peerShare, cue } from '@/game/eventSounds.js';   /* v2.3.3343: another 
 import { sparkZigzag } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn as a bolt */
 import { recordCrash } from '@/debug/crashTrap.js';   /* v2.3.3689: crowns.json's failure, logged */
 import { Assets, BitmapFont, BitmapText, Cache, CanvasTextMetrics, Container, FillGradient, Graphics, Matrix, Rectangle, Sprite, Text, Texture, TextStyle } from 'pixi.js';
-import { LockReticle } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
+import { LockReticle, nearestInMeleeReach } from '@/rendering/lockReticle.js';   /* v2.3.3876: the lock you chose wears a reticle */
 import { keepOnGpuOnly, emptyOnceDrawn } from '../gpuOnly.js';   /* v2.3.3088: pictures kept on the graphics chip only; v2.3.3698: or once drawn */
 import { emptyHeldOnceDrawn } from '../heldNumbers.js';   /* v2.3.3699: the monsters' strips, held as colour numbers once drawn */
 import { readbackFrames } from '../photoSheet.js';   /* v2.3.2987: the stat scene's photographs, one readback */
@@ -8748,7 +8748,17 @@ export class EffectsRenderer {
           const x = m.renderX != null ? m.renderX : m.x, y = m.renderY != null ? m.renderY : m.y;
           const off = (monsterBodyOffsetY(m.arch || m.archetype || m.type) || 23) * bossSizeK(m);
           return { cx: x, cy: y - off, hw: Math.max(20, off) + 10, hh: off + 18 };   /* room round the body, clear of it */
-        });
+        }, (S.rpg && (S.rpg.activeSlot === 'ranged' || S.rpg.activeSlot === 'staff')) || !S.player ? null : () => nearestInMeleeReach(S, (m) => {
+          /* v2.3.3973: with a melee weapon in hand, the nearest monster inside
+             your melee reach wears the reticle too, softer -- the reach ring's
+             own sum above (your reach x your depth + its hit radius x its
+             depth and a boss's size, to its body centre) */
+          const fy = m.renderY != null ? m.renderY : m.y;
+          const arch = m.arch || m.archetype || m.type;
+          const mk = depthK(S.currentZone, fy) * bossSizeK(m);
+          return { x: m.renderX != null ? m.renderX : m.x, y: fy - (monsterBodyOffsetY(arch) || 23) * mk,
+            r: GS_OUTER_RADIUS * meleeRangeMult(S.rpg) * depthK(S.currentZone, S.player.y) + (monsterMeleeHitRadius(arch) || 24) * mk };
+        }));
       }
       if (typeof window !== 'undefined' && !window.__btAtkMark) {
         const _self = this;
@@ -15438,7 +15448,7 @@ export class EffectsRenderer {
          wire field — it was simply never applied to the swing stand-in. */
       if (set.legs) set.legs.tint = gearTint(eq.legs);
       if (set.chest) set.chest.tint = gearTint(eq.chest);
-      if (set.weapon) set.weapon.tint = materialTint(o && o.wpnMat);
+      if (set.weapon) set.weapon.tint = weaponTint(o && o.wpnType, o && o.wpnMat);   /* v2.3.3980: weaponTint -- a peer's black steel is its metal, as your own swing's */
       /* v2.3.1047: north swings hold the blade on the far side -> behind body.
          v2.3.2516: and southwest, for the owner's D7 reason -- resolved from the
          peer's own swing ANGLE to the full 8 sectors, because dir4 above is a

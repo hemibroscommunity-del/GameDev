@@ -25,7 +25,8 @@ import { QUEST_REWARDS, QUEST_TOUR } from '../../../server/src/data.js';
    (QUEST_TOUR: the town opens at once after tut_1, so no `next` walk reaches
    them).  v2.3.3533: the snowmen after three steps now, Blacksmith Bro's ore
    and forge and Diego's fish (QUEST_TOUR's order; tut_2 waits on the ore and
-   the fish). */
+   the fish).  v2.3.3924: and Farmer Bro's carrots, the fifth step (the
+   slice below takes it in by itself). */
 const TOUR = QUEST_TOUR.slice(0, QUEST_TOUR.indexOf('tut_2'));
 const done = (ids) => Object.fromEntries(ids.map((id) => [id, 'turnedIn']));
 const step = (id, title, prior) => ({ id, title, key: QUEST_REWARDS[id].objective.invKey, n: QUEST_REWARDS[id].objective.count, prior });

@@ -1,8 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BT_AUDIO, COOKING_RECIPES } from '@/data/index.js'; /* v2.3.2637: ui-equip tick; v2.3.3130: the recipe rows (caps.cookRows) */
-import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
+import { SMELT_RECIPES, smeltRecipe } from '@/data/items.js';   /* v2.3.2822; v2.3.3981: smeltRecipe */
 import { essenceInfo } from '@/data/salvage.js';   /* v2.3.3141: what an essence does */
-import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood.js';   /* v2.3.3139 */
+import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG, hardenedWoodRecipe, logWord } from '@/data/hardenedWood.js';   /* v2.3.3139; v2.3.3981: the cap's rows */
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { farmCropHeal } from '@/data/farmCrops.js';   /* v2.3.3537: every crop is food */
 import { parseGemKey, gemElementName } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
@@ -267,25 +267,26 @@ function resolveTarget(target) {
     /* v2.3.3139: a log the Woodworker hardens says so, as ore says where it
        smelts -- and hardened wood says what it is for */
     else if (isLog && SR && SR._serverCaps && SR._serverCaps.hardenedwood && HARDENED_WOOD_BY_LOG[key]) {
-      const hw = HARDENED_WOOD_RECIPES[HARDENED_WOOD_BY_LOG[key]];
+      /* v2.3.3981: one log a piece with caps.onetoone, five without */
+      const hw = hardenedWoodRecipe(HARDENED_WOOD_BY_LOG[key], !!SR._serverCaps.onetoone);
       info = 'Light a campfire, or harden ' + hw.logCost + ' into ' + hw.name + ' at the Woodworker';
     }
     else if (isLog) info = 'Light a campfire to cook at';
     else if (Object.prototype.hasOwnProperty.call(HARDENED_WOOD_RECIPES, key)) {
-      const hw = HARDENED_WOOD_RECIPES[key];
+      const hw = hardenedWoodRecipe(key, !!(SR && SR._serverCaps && SR._serverCaps.onetoone));   /* v2.3.3981 */
       info = (SR && SR._serverCaps && SR._serverCaps.hardenmats)
         ? 'Hardens a ' + hw.logName.replace(/ (Log|Wood)$/, '').toLowerCase() + ' bow or staff at the Woodworker'
-        : 'Made from ' + hw.logCost + ' ' + hw.logPlural;
+        : 'Made from ' + hw.logCost + ' ' + logWord(hw, hw.logCost);
     }
     /* v2.3.2822: say where the ore goes and where the bar came from -- the
        smelt lives in the Blacksmith, which nothing in the bag pointed at. */
     else if (SR && SR._serverCaps && SR._serverCaps.smelting && SMELT_ORE_TO_BAR[key]) {
-      const r = SMELT_RECIPES[SMELT_ORE_TO_BAR[key]];
+      const r = smeltRecipe(SMELT_ORE_TO_BAR[key], !!SR._serverCaps.onetoone);   /* v2.3.3981: one ore a bar with the cap */
       info = 'Smelt ' + r.oreCost + ' into a ' + r.name + ' at the Blacksmith';
     }
     /* v2.3.3092: and where a bar goes -- the Blacksmith's Armor tab */
     else if (SMELT_RECIPES[key] && SR && SR._serverCaps && SR._serverCaps.armorforge) info = 'Forge into armor at the Blacksmith';
-    else if (SMELT_RECIPES[key]) info = 'Smelted from ' + SMELT_RECIPES[key].oreCost + ' ' + SMELT_RECIPES[key].oreName;
+    else if (SMELT_RECIPES[key]) { const r = smeltRecipe(key, !!(SR && SR._serverCaps && SR._serverCaps.onetoone)); info = 'Smelted from ' + r.oreCost + ' ' + r.oreName; }   /* v2.3.3981 */
     /* v2.3.3141: an essence -- where it is used, and on what */
     else if (essenceInfo(key) && SR && SR._serverCaps && SR._serverCaps.salvage) info = essenceInfo(key);
     /* v2.3.3516: what a shard, a raw gem, a gem and the Rare Gem are for --

@@ -19,8 +19,15 @@
  *      the next call to action.  You should understand the npc's specific
  *      personality from just one message" -- and the call to action is still
  *      in that one message: every offer and progress line names its count
+ *   6. (v2.3.3924) the questline's order, said: Diego's hand-in sends you to
+ *      Farmer Bro, Farmer Bro's back to the Mayor (farming before the
+ *      snowmen); Diego says plainly who he is and what to do; the Mayor's
+ *      dungeon says "[Lv 10+ recommended]" and the town's quests first,
+ *      starting with Woodworker Bro -- and his first hand-in still says no
+ *      level (the owner had it taken off, v2.3.3869); the tour's and the
+ *      Mayor's lines are ASCII
  */
-import { QUEST_CHAINS, lilBroRaceLine, setGrottoParty } from '../../src/data/gameSystems.js';
+import { QUEST_CHAINS, lilBroRaceLine, setGrottoParty, GROTTO_REC_LEVEL, QUEST_TOUR } from '../../src/data/gameSystems.js';
 import { WHEEL_DUNGEON_PARTY } from '../../src/data/wheelDungeons.js';
 
 let failures = 0;
@@ -86,6 +93,30 @@ check('4c. no line sends you to a "gold !"', !all.some((t) => /gold !/.test(t)))
   const bare = ['tut_1', 'smith_1', 'wood_1', 'fish_1', 'farm_1', 'race_1', 'beast_1']
     .filter((id) => String(QUEST_CHAINS[id].dialogue.start || '').length < 160);
   check('5b. the tour\'s first offers carry a zinger before the job (160+ characters, one tap)', bare.length === 0, bare);
+}
+
+// ── 6. v2.3.3924: the order, said; Diego plainly; the dungeon's level ──
+{
+  const D = (id) => QUEST_CHAINS[id].dialogue;
+  const at = (id) => QUEST_TOUR.indexOf(id);
+  check('6a the tour goes Diego, Farmer Bro\'s carrots, then the Mayor\'s snowmen', at('farm_1') === at('fish_1') + 1 && at('tut_2') === at('farm_1') + 1, QUEST_TOUR);
+  check('6b Diego\'s hand-in sends you to Farmer Bro at the Feed & Seed', /Next, go see Farmer Bro at the Feed & Seed\./.test(D('fish_1').complete), D('fish_1').complete);
+  check('6c Farmer Bro\'s hand-in sends you back to Mayor Bro', /go see Mayor Bro at the Town Hall/.test(D('farm_1').complete) && !/Diego/.test(D('farm_1').complete), D('farm_1').complete);
+  check('6d Diego says who he is, then exactly what to do: catch 2 fish, cook them on a campfire, bring them to him',
+    /^Hi, I'm Diego!/.test(D('fish_1').start) && /Catch 2 fish at a fishing spot, cook them on a campfire, and bring them to me\./.test(D('fish_1').start)
+      && /tap a log in your Bag/.test(D('fish_1').start), D('fish_1').start);
+  const tag = '[Lv ' + GROTTO_REC_LEVEL + '+ recommended]';
+  const m3 = QUEST_CHAINS.mayor_3;
+  check(`6e the Mayor's dungeon says "${tag}" on its quest and its offer and progress lines`,
+    GROTTO_REC_LEVEL === 10 && m3.desc.includes(tag) && D('mayor_3').start.includes(tag) && D('mayor_3').progress.includes(tag), [m3.desc, D('mayor_3').start]);
+  check('6f ...and sends a lower level to the town\'s quests first, starting with Woodworker Bro',
+    ['start', 'progress'].every((k) => /Not level 10 yet\? Do the town's quests first, starting with Woodworker Bro/.test(D('mayor_3')[k])), D('mayor_3').progress);
+  setGrottoParty(null);
+  check('6g ...and the Mayor\'s first hand-in still says no level (v2.3.3869)', !/\blevel\b|\bLv\b/i.test(D('tut_1').complete), D('tut_1').complete);
+  /* the tour's and the Mayor's (the dormant givers' old lines are not read) */
+  const live = new Set([...QUEST_TOUR, 'tut_3', 'tut_4', 'mayor_2', 'mayor_3']);
+  const nonAscii = lines.filter((l) => live.has(l.id) && /[^\x00-\x7f]/.test(String(l.t || ''))).map((l) => `${l.id}.${l.k}`);
+  check('6h the tour\'s and the Mayor\'s lines are ASCII (CLAUDE.md: the game\'s script is ASCII)', nonAscii.length === 0, nonAscii);
 }
 
 if (failures) { console.log(`\n${failures} FAILURE(S)`); process.exit(1); }

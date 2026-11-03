@@ -257,8 +257,11 @@ const bodyHp = (land, lvl) => room._makeZoneMonster(land, ZONES[land], lastKind(
   check('words: ...the phone asks with it, both lines', /dungeonLevelsLine\(wheelDungeonParty\(S, id\), levels, recOf\(id\)\)/.test(gw)
     && /dungeonDoorLine\(wheelDungeonParty\(S, id\), recOf\(id\)\)/.test(gw));
   const gs = readFileSync(new URL('../../src/data/gameSystems.js', import.meta.url), 'utf8');
+  /* v2.3.3924: exported (and declared above QUEST_CHAINS: mayor_3 says it
+     too, "[Lv 10+ recommended]"), so read as the value it is */
+  const { GROTTO_REC_LEVEL } = await import('../../src/data/gameSystems.js');
   check('words: ...and the Mayor\'s line says the same level as the map (GROTTO_REC_LEVEL = WHEEL_DUNGEON_REC.verdant)',
-    new RegExp(`var GROTTO_REC_LEVEL = ${r};`).test(gs));
+    GROTTO_REC_LEVEL === r && new RegExp(`export const GROTTO_REC_LEVEL = ${r};`).test(gs), { GROTTO_REC_LEVEL, r });
 }
 
 if (failures) { console.log(`\n${failures} TEST(S) FAILED`); process.exit(1); }

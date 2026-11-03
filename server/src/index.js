@@ -168,6 +168,7 @@ import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item droppe
 import { pointsResetMethods } from './pointsreset.js'; /* v2.3.3541: the free points reset -- every placed point back */
 import { swordConvertMethods } from './swordconvert.js'; /* v2.3.3895: old one-handed swords become greatswords -- the kill switch */
 import { revealBagMethods, revealPublic, isUnrevealed } from './revealbag.js'; /* v2.3.3951: a mystery piece waits in the bag until its owner reveals it */
+import { gsCopperMethods } from './gscopper.js'; /* v2.3.3980: old wooden greatswords become copper -- the kill switch */
 import { bankMethods } from './bank.js'; /* v2.3.3785: the Bank's vault -- bag items and gold the worker holds, out of a death's reach */
 import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
 import { heapBurnMethods } from './heapburn.js'; /* v2.3.3748: a burning heap sets you on fire */
@@ -3908,8 +3909,9 @@ export class GameRoom {
          has now extended the ladder to armour.  Same roller, deliberately:
          one distribution means normal/rare/elite/godly mean the same thing on
          a breastplate as on a blade, and there is one place to retune. */
+      /* v2.3.3952: a drop's own roll, 10x rarer than the forge's (hardening.js) */
       out.push({ name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult,
-        quality: this._revealBagDevGrade() || this._rollWeaponQuality() });   /* v2.3.3951: the test lever's grade, once (revealbag.js) */
+        quality: this._revealBagDevGrade() || this._rollDropQuality() });   /* v2.3.3951: the test lever's grade, once (revealbag.js); v2.3.3952: else a drop's own roll */
     }
     return out.length ? out : null;
   }
@@ -3946,8 +3948,9 @@ export class GameRoom {
       reforgeBonus: null,
       hardenBonus: null,
       /* Rolled, like the forge's and like the ordinary drop's — which also
-         hands this the pile's hidden-until-pickup reveal for free. */
-      quality: this._revealBagDevGrade() || this._rollWeaponQuality(),   /* v2.3.3951: the test lever's grade, once (revealbag.js) */
+         hands this the pile's hidden-until-pickup reveal for free.
+         v2.3.3952: a drop's own roll now, 10x rarer than the forge's. */
+      quality: this._revealBagDevGrade() || this._rollDropQuality(),   /* v2.3.3951: the test lever's grade, once (revealbag.js) */
       hardness: 0,
       temper: 0,
     };
@@ -6687,6 +6690,7 @@ Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
 Object.assign(GameRoom.prototype, bankMethods); /* v2.3.3785 */
 Object.assign(GameRoom.prototype, swordConvertMethods); /* v2.3.3895 */
 Object.assign(GameRoom.prototype, revealBagMethods); /* v2.3.3951 */
+Object.assign(GameRoom.prototype, gsCopperMethods); /* v2.3.3980 */
 Object.assign(GameRoom.prototype, safeHealMethods); /* v2.3.3569 */
 Object.assign(GameRoom.prototype, heapBurnMethods); /* v2.3.3748 */
 Object.assign(GameRoom.prototype, statCapMethods); /* v2.3.3578 */
