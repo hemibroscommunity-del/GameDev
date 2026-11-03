@@ -121,6 +121,7 @@ import { landLook } from '@/data/wheelLands.js';           /* v2.3.3108: the pla
 import { landIconTexture, holdLandIcons, releaseLandIcons } from '../wheelSignposts.js';   /* v2.3.3108: the plate's icon */
 import { wheelBuildingIconTexture, holdBuildingIcons, releaseBuildingIcons } from '../wheelBuildingIcons.js';   /* v2.3.3522: each building's picture */
 import { WHEEL_MINI_PX, wheelMiniK, WHEEL_MINI_WINDOW, WHEEL_MINI_DESK_WINDOW } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: twice as big on a computer */
+import { leanGraphics } from '../gfxLean.js';   /* v2.3.4080: the lines' building lists let go once drawn (~1 MB of the heap) */
 
 /* v2.3.3986: every size below is in the box's own units, a phone's CSS px; on
    a computer the root is scaled by K (ui/wheelMiniSize.js), so the box is
@@ -1087,6 +1088,11 @@ export class WheelMinimap {
 
     /* where you are, in words: v2.3.3108 on the plate again (the top bar had
        them from v2.3.3009) */
+    /* v2.3.4080: the roads, river and railway of the whole Wheel (and the
+       town's buildings and the places), drawn once: once Pixi has made their
+       own buffers, the three lists it built them from are let go
+       (rendering/gfxLean.js; ~1 MB of the page's heap, the same pixels) */
+    leanGraphics(this.lines); leanGraphics(this.buildings); leanGraphics(this.places);
     const here = wheelHere(P.x, P.y);
     const w = here && here.words;
     let plate = null;
