@@ -150,7 +150,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
   };
   const HAZ = new Set([C.ocean, C.river, C.water, C.cliff, C.lava]);
   const ROAD = new Set([C.path, C.rail, C.bridge, C.street]);
-  /* v2.3.3986: an islet and its keep-out (plan.js `islets`) are a hazard to
+  /* v2.3.3994: an islet and its keep-out (plan.js `islets`) are a hazard to
      every place here -- no monster stands, and no vein, tree or fishing spot
      is put, on or near it: its rises are all it holds ("no monsters in the
      challenge area in v1") */
@@ -363,7 +363,7 @@ export function bakeWheelSpawns(plan = PLAN, rules = SPAWN_RULES, nodeRules = NO
      angler sat in a pond. */
   const mm = materialMap(plan, bp);
   const walk = walkBits(bp, mm);
-  const blocked = (i) => !!(walk[i >> 3] & (1 << (i & 7))) || islMark[i] === 1;   /* v2.3.3986: + an islet's keep-out */
+  const blocked = (i) => !!(walk[i >> 3] & (1 << (i & 7))) || islMark[i] === 1;   /* v2.3.3994: + an islet's keep-out */
   /* v2.3.3401: and the water as the game draws it, for the fishing seats */
   const drawnWater = drawnWaterOf(plan, bp, mm);
   /* v2.3.3540: the dungeons' mouths -- every landmark with a tier, at its

@@ -29,7 +29,7 @@ import { rideButtonWanted, toggleRide } from '@/game/ride.js';   /* v2.3.3776: Z
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3407: I P J L K O, M, Enter, Esc */
 import { toggleWorldMap } from '@/ui/WorldMapOverlay.jsx';   /* v2.3.3407: M */
 import { dblTapRoll, tapDir } from '@/game/deskCombos.js';   /* v2.3.3711: a direction key tapped twice rolls */
-import { openRiseChest } from '@/game/climbActions.js';   /* v2.3.3986: E (or the right stick's tap) at the lagoon's chest */
+import { openRiseChest } from '@/game/climbActions.js';   /* v2.3.3994: E (or the right stick's tap) at the lagoon's chest */
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { mayorSaysNext } from '@/game/mayorTalk.js';   /* v2.3.3899: Mayor Bro always talks */
 
@@ -57,7 +57,7 @@ export function interactKind(S, opts) {
   /* v2.3.3136: a bed's next step on your farm -- 'farm-dig', 'farm-plant',
      'farm-water', 'farm-feed' or 'farm-harvest', each its own picture */
   if (S._nearBed && S._nearBed.step) return 'farm-' + S._nearBed.step;
-  /* v2.3.3986: a rise's chest (game/climbActions.js), opened like a door */
+  /* v2.3.3994: a rise's chest (game/climbActions.js), opened like a door */
   if (S._nearChest) return 'door';
   var gn = S._nearNode || S._proxNode;
   if (gn && gn.alive) return 'gather';
@@ -234,7 +234,7 @@ export function setupDesktopControls(S, deps) {
       /* 2d. v2.3.3136: a bed on your farm -- its next step, kneeling there
          (game/farmWalk.js) */
       if (S._nearBed && S._nearBed.step && startFarmStep(S, S._nearBed.i)) return true;
-      /* 2e. v2.3.3986: the chest on a rise you stand at (game/climbActions.js) */
+      /* 2e. v2.3.3994: the chest on a rise you stand at (game/climbActions.js) */
       if (S._nearChest && openRiseChest(S, function (x, y, t) { pushDmgPopup(S, x, y, t, '#f3d77a', { ttl: 2800 }); })) return true;
       /* 3. Gather node.  v2.3.1448: the shell now only opens on a TAP
          (S._nearNode), but the desktop E key keeps its proximity

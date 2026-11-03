@@ -4105,7 +4105,7 @@ Other players are drawn swimming too. `?noswim` closes every drop of water
 again. Details are in `docs/specs/wheel-swimming.md`; tests are `mp-wheelswim`
 and test-world-core "swimming".
 
-### Islets and rises: the first elevation (v2.3.3986)
+### Islets and rises: the first elevation (v2.3.3994)
 
 > The owner: *"Make a portion of the game that you need to swim in ... and
 > also a portion of the game that you need to climb ... and double jump to get

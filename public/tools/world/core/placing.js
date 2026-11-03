@@ -699,7 +699,7 @@ const KEEP_CLEAR = (() => {
   return s;
 })();
 
-/* v2.3.3986: each islet's keep-out (plan.js `islets`: its box and `keepOut`
+/* v2.3.3994: each islet's keep-out (plan.js `islets`: its box and `keepOut`
    cells round it), in this blueprint's cells -- empty on a plan with none */
 export function islBoxes(plan, bp) {
   if (!plan.islets || !plan.islets.length) return [];
@@ -740,7 +740,7 @@ export function placeObjects(plan, bp, opts = {}) {
      cells (capped at 6): two sweeps of a city-block distance */
   const clear = new Uint8Array(N);
   for (let i = 0; i < N; i++) clear[i] = KEEP_CLEAR[bp.cls[i]] || bp.reg[i] === townR ? 0 : 6;
-  /* v2.3.3986: nothing stands on an islet, nor within its `keepOut` cells
+  /* v2.3.3994: nothing stands on an islet, nor within its `keepOut` cells
      (plan.js `islets`: its rises are the only things on it) */
   const isl = islBoxes(plan, bp);
   for (const b of isl) {
@@ -806,7 +806,7 @@ export function placeObjects(plan, bp, opts = {}) {
   const put = (id, x, y, piece, flip, r = 30) => {
     const e = byId[id];
     if (!e) return false;
-    /* v2.3.3986: ...and no foot in an islet's keep-out, whatever placed it */
+    /* v2.3.3994: ...and no foot in an islet's keep-out, whatever placed it */
     for (const b of isl) if (x >= b.x0 * cellPx && x < b.x1 * cellPx && y >= b.y0 * cellPx && y < b.y1 * cellPx) return false;
     out.kind.push(e.k);
     out.piece.push(((piece | 0) % (e.count || 1) + (e.count || 1)) % (e.count || 1));

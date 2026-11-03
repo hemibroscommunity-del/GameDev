@@ -1,4 +1,4 @@
-/* ═══ v2.3.3986: CLIMBING AND JUMPING UP A FACE — the part that touches the game ═══
+/* ═══ v2.3.3994: CLIMBING AND JUMPING UP A FACE — the part that touches the game ═══
  *
  * game/climb.js has the rules (pure, node-tested); this is the part that
  * reads the rises the ground worker sent (wheelTrial.js wheelRises, only with
