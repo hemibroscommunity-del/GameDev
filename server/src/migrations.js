@@ -52,6 +52,7 @@ import { prog3FromLegacy, prog3SplitAtk, prog3GrantRetroPoints, prog3MoveElemToA
   prog3FoldLuck, prog3GrantSharedPoints /* v2.3.2592 */, prog3Redeal /* v2.3.3538 */ } from './prog3.js';
 import { normalizeGearStashes } from './gearstash.js';
 import { convertRecordSwords } from './swordconvert.js';   /* v2.3.3895: v19, swords become greatswords */
+import { convertRecordGreatswords } from './gscopper.js';   /* v2.3.3947: v20, old wooden greatswords become copper */
 
 /* v2.3.2523: 16, appended above the attributes restructure's v15
  * (v2.3.2512), which merged while this slice was in flight.  Migration
@@ -60,7 +61,7 @@ import { convertRecordSwords } from './swordconvert.js';   /* v2.3.3895: v19, sw
 /* v2.3.2592: 17 — the four-column points redesign (luck fold + shared pool). */
 /* v2.3.3538: 18 — one level (the highest skill): every character's points
    dealt again once (prog3Redeal). */
-export const RPG_SCHEMA_VERSION = 19;   /* v2.3.3895: 18 -> 19, swords-become-greatswords */
+export const RPG_SCHEMA_VERSION = 20;   /* v2.3.3895: 18 -> 19, swords-become-greatswords; v2.3.3947: 19 -> 20, wooden-greatswords-become-copper */
 
 /* Pure version of the v2.3.769 heal (was GameRoom._healLifeSkills):
  * records bootstrapped from pre-fix clients carry lifeSkills with
@@ -705,6 +706,28 @@ export const MIGRATIONS = [
     run(blob) {
       if (!blob || typeof blob !== 'object') return false;
       return convertRecordSwords(blob);
+    },
+  },
+  {
+    v: 20,
+    name: 'wooden-greatswords-become-copper',
+    /* v2.3.3947 (owner: "'Copper great sword' when Smithed looks gray in
+       color like iron.  Fix that.  Also just remove any of the 'wooden'
+       swords"; spec docs/specs/greatsword-copper.md).  Every greatsword the
+       record holds at gearBase 'wood' -- the old starter grant, which v12
+       renamed "Copper Great Sword" by name only and left wood, so it drew in
+       grey steel; the old Forge's wood tier -- and every one with no gearBase
+       no stronger than copper (the old drops' "Great Sword") becomes a copper
+       greatsword: tierMult 1.12, the game's names rebuilt, its grade,
+       hardening and gems kept, marked `was` (gscopper.js, the one function
+       every door uses).  The three slots and the bag, as v12 and v19 walk
+       them; no shield is read (the Pine Shield stays wood).  Idempotent: a
+       copper greatsword is never touched again.  The post and the shelves,
+       which this never sees, convert at their own boundaries (inbox.js,
+       store.js, market.js). */
+    run(blob) {
+      if (!blob || typeof blob !== 'object') return false;
+      return convertRecordGreatswords(blob);
     },
   },
 ];
