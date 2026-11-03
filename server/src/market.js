@@ -31,7 +31,8 @@
  * price history (the matcher already skips same-player orders). */
 
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's order is rewritten once as a greatsword */
-import { oldGreatswordToCopper } from './gscopper.js';   /* v2.3.3980: ...and a wooden greatsword's as a copper one */
+import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword's as a metal one */
+import { BLACKSMITH_TIER_LABELS } from './data.js';   /* v2.3.3980: a converted sell order's tier label */
 export const MARKET = {
   ORDER_EXPIRY: 86400000,       // 24h
   MAX_ORDERS_PER_PLAYER: 10,
@@ -140,7 +141,15 @@ export const marketMethods = {
   _mktGsCopper(o) {
     if (!o || typeof o !== 'object') return false;
     let changed = false;
-    if (o.item && oldGreatswordToCopper(o.item)) changed = true;
+    /* v2.3.3980: a sell's converted weapon files the order under its new
+       metal (copper, or the metal a strong base-less one became) */
+    if (o.item && oldGreatswordToMetal(o.item)) {
+      changed = true;
+      const gb = o.item.gearBase;
+      if (o.subtype === 'greatsword' && typeof gb === 'string' && o.tierKey !== gb) { o.tierKey = gb; o.tierLabel = BLACKSMITH_TIER_LABELS[gb] || gb; }
+    }
+    /* a buy names no tierMult: only 'wood' maps (to copper); a buy under an
+       old drop's rarity key ('common', 'elemental'...) is left as it is */
     if (o.subtype === 'greatsword' && o.tierKey === 'wood') { o.tierKey = 'copper'; o.tierLabel = 'Copper'; changed = true; }
     return changed;
   },

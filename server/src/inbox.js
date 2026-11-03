@@ -1,7 +1,7 @@
 import { GEAR_STASH_CAP } from './gearstash.js';                      /* v2.3.2536 */
 import { isGearStashField, slotForGearField, PROV_MINTED, PROV_LEGACY } from './gearprov.js'; /* v2.3.2536 */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword in the post arrives a greatsword */
-import { oldGreatswordToCopper } from './gscopper.js';   /* v2.3.3980: ...and a wooden greatsword a copper one */
+import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword a metal one */
 
 /* ═══ v2.3.1117: INBOX + ESCROW PRIMITIVES (PR2 of the heavy-systems
  * plan; spec in docs/specs/inbox-escrow.md) ═══
@@ -443,7 +443,7 @@ export const inboxMethods = {
       if (!(this._swordConvertOff && this._swordConvertOff())) swordToGreatsword(w);
       /* v2.3.3980: and a wooden (or base-less) greatsword arrives a copper
          one (gscopper.js, migration v20's boundary heal), on the same save */
-      if (!(this._gsCopperOff && this._gsCopperOff())) oldGreatswordToCopper(w);
+      if (!(this._gsCopperOff && this._gsCopperOff())) oldGreatswordToMetal(w);
       if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
       if (ps.weaponStash.length >= this.WEAPON_STASH_CAP) return false;
       ps.weaponStash.push(w);

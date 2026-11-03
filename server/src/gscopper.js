@@ -20,17 +20,25 @@
  * first weapon, COPPER (tierMult 1.12 against wood's 1.00: a small gift, the
  * v19 rule).
  *
- * THE ONE LIMIT: never a weapon made weaker.  A drop with no gearBase whose
- * tierMult is ABOVE copper's (the old Elemental 1.50, Fusion 2.25 and Shift
- * 3.00 rolls, data.js RARITY_TIERS) is not a wooden sword, and as copper it
- * would lose up to two thirds of its damage -- or keep its damage under a
- * copper name and copper's equip gate (rung 0), wearable at level 1.  So it
- * is left exactly as it is (the smaller, safer choice; the spec asks the
- * owner).
+ * NEVER A WEAPON MADE WEAKER.  v2.3.3980 (the owner's intent, through the
+ * orchestrator: "just remove any of the 'wooden' swords.  Right now it's just
+ * called 'great sword'" -- yes, the strong ones too): a drop with no gearBase
+ * whose tierMult is ABOVE copper's (the old Elemental 1.50, Fusion 2.25 and
+ * Shift 3.00 rolls, data.js RARITY_TIERS) becomes the METAL whose tier
+ * multiplier is the closest one not above its own (never wood: 1.50 -> Black
+ * Steel 1.40, 2.25 -> Diamond 2.16, 3.00 -> Shadowsteel 2.98) and KEEPS its
+ * own tierMult, so its damage and sell value do not move.  The wear gate it
+ * then meets is that metal's rung (gear.js _prog3EquipOk: 5 a rung above
+ * copper, iron free), never more than the tierMult curve it met with no
+ * gearBase (round((tierMult - 1) x 6) x 5, measured from rung 0) -- so nobody
+ * loses the right to a sword they wear; and the gate is asked only at equip
+ * time (prog3.js _prog3GearOk), so nothing is ever taken off a player.
  *
- * WHAT CHANGES: `gearBase` -> 'copper', `tierMult` -> 1.12, and a name the
- * GAME gave is rebuilt as the copper one ("Copper Great Sword", a gem's
- * "Copper Flame Great Sword" through weaponGemName).  Everything else stays:
+ * WHAT CHANGES: a wood one, or a base-less one no stronger than copper:
+ * `gearBase` -> 'copper', `tierMult` -> 1.12.  A base-less one stronger than
+ * copper: `gearBase` -> its metal (above), `tierMult` kept.  A name the GAME
+ * gave is rebuilt for the metal ("Copper Great Sword", "Black Steel Great
+ * Sword", a gem's "Diamond Flame Great Sword" through weaponGemName).  Everything else stays:
  * the grade (`quality`), hardness, temper, the reforge and harden bonuses, the
  * gems.  A name given by hand is kept (v19's owner call 3).  `was` records
  * what it was (v19's owner call 4), once.
@@ -57,14 +65,26 @@ const has = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnPro
 const COPPER_MULT = BLACKSMITH_TIERS.copper.tierMult;   /* 1.12 */
 
 /* Is this a greatsword the conversion is for?  A wood one, or one with no
-   gearBase that is no stronger than copper.  Anything else is left alone. */
+   gearBase at all.  Anything else (a metal one, any other weapon) is left
+   alone. */
 export function isOldGreatsword(w) {
   if (!w || typeof w !== 'object' || Array.isArray(w)) return false;
   if (w.type !== 'greatsword') return false;
   if (w.gearBase === 'wood') return true;
-  if (has(w, 'gearBase') && w.gearBase !== null && w.gearBase !== undefined && w.gearBase !== '') return false;
-  const tm = (typeof w.tierMult === 'number' && w.tierMult > 0) ? w.tierMult : 1;
-  return tm <= COPPER_MULT;
+  return !has(w, 'gearBase') || w.gearBase === null || w.gearBase === undefined || w.gearBase === '';
+}
+
+/* v2.3.3980: the metal a base-less greatsword of tierMult `tm` becomes: the
+   forge tier whose multiplier is the closest one NOT above `tm`, never wood
+   (and so never below copper). */
+export function metalForTierMult(tm) {
+  let best = 'copper';
+  for (const k of Object.keys(BLACKSMITH_TIERS)) {
+    if (k === 'wood') continue;
+    const m = BLACKSMITH_TIERS[k].tierMult;
+    if (typeof m === 'number' && m <= tm && m > BLACKSMITH_TIERS[best].tierMult) best = k;
+  }
+  return best;
 }
 
 /* The names the game gave a greatsword like this one, so a name in this set
@@ -88,18 +108,25 @@ function gameNamesFor(w) {
   return out;
 }
 
-/** Convert one weapon blob, in place, if it is an old wooden (or base-less,
- *  no-stronger-than-copper) greatsword.  Returns true when it changed.  Never
- *  throws on junk.  Idempotent: a copper greatsword is never touched. */
-export function oldGreatswordToCopper(w) {
+/** Convert one weapon blob, in place, if it is an old wooden or base-less
+ *  greatsword: a metal at last, never weaker.  Returns true when it changed.
+ *  Never throws on junk.  Idempotent: a greatsword with a metal is never
+ *  touched again.  (v2.3.3980: was oldGreatswordToCopper.) */
+export function oldGreatswordToMetal(w) {
   if (!isOldGreatsword(w)) return false;
   const was = { t: 'greatsword', name: typeof w.name === 'string' ? w.name : null, gearBase: has(w, 'gearBase') ? w.gearBase : null };
   if (has(w, 'tierMult')) was.tierMult = w.tierMult;
   const gameNamed = typeof w.name !== 'string' || !w.name || gameNamesFor(w).has(w.name);
-  w.gearBase = 'copper';
-  w.tierMult = COPPER_MULT;
-  if (gameNamed) w.name = weaponGemName(w);                     /* "Copper Great Sword", "Copper Flame Great Sword" */
-  else if (/^Wood(en)?\s/.test(w.name)) w.name = w.name.replace(/^Wood(en)?\s/, 'Copper ');
+  const tm = (typeof w.tierMult === 'number' && w.tierMult > 0) ? w.tierMult : 1;
+  if (w.gearBase !== 'wood' && tm > COPPER_MULT) {
+    w.gearBase = metalForTierMult(tm);                          /* its tierMult KEPT: never weaker */
+  } else {
+    w.gearBase = 'copper';
+    w.tierMult = COPPER_MULT;                                   /* wood's 1.00 and the common drop's: the small gift */
+  }
+  const metal = BLACKSMITH_TIER_LABELS[w.gearBase] || 'Copper';
+  if (gameNamed) w.name = weaponGemName(w);                     /* "Copper Great Sword", "Black Steel Flame Great Sword" */
+  else if (/^Wood(en)?\s/.test(w.name)) w.name = w.name.replace(/^Wood(en)?\s/, metal + ' ');
   if (!w.was) w.was = was;
   return true;
 }
@@ -110,10 +137,10 @@ export function convertRecordGreatswords(blob) {
   if (!blob || typeof blob !== 'object') return false;
   let changed = false;
   for (const slot of ['weapon', 'rangedWeapon', 'staffWeapon']) {
-    if (oldGreatswordToCopper(blob[slot])) changed = true;
+    if (oldGreatswordToMetal(blob[slot])) changed = true;
   }
   if (Array.isArray(blob.weaponStash)) {
-    for (const w of blob.weaponStash) if (oldGreatswordToCopper(w)) changed = true;
+    for (const w of blob.weaponStash) if (oldGreatswordToMetal(w)) changed = true;
   }
   return changed;
 }
