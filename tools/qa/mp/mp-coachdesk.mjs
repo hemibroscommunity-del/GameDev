@@ -11,7 +11,8 @@
  *
  * A computer playing wide at 1440 x 900 and at 1280 x 720, then an upright
  * phone (390 x 844) to show nothing moved there:
- *   1. the WELCOME plate: its words name the map's gold line; on a computer
+ *   1. the WELCOME plate (v2.3.4106: one short line, "Your adventure starts
+ *      here."; its words named the map's gold line until then); on a computer
  *      clear of Mayor Bro; upright where it always was (its top at
  *      max(26%, 150 px));
  *   2. Mayor Bro's first quest taken (the pinned quest card shows);
@@ -30,7 +31,8 @@ const VIEWS = [
   { id: 'phone', viewport: { width: 390, height: 844 }, desk: false },
 ];
 /* every lesson before the login key, done (QuestCoach.jsx LESSONS) */
-const BEFORE_KEY = ['openDash', 'move', 'equip', 'dashAfterTurnIn', 'equipAll', 'cycle', 'blockRanged', 'attack', 'special', 'points', 'chatTap'];
+const BEFORE_KEY = ['openDash', 'move', 'equip', 'dashAfterTurnIn', 'equipAll', 'cycle', 'blockRanged', 'attack', 'special', 'points', 'chatTap',
+  'mayor', 'minimap', 'questPill'];   /* v2.3.4106: + the first steps (the Login Key waits for them and the first hand-in) */
 
 const rectOf = (P, sel) => P.page.evaluate((s) => {
   const el = document.querySelector(s);
@@ -90,8 +92,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (!wel) await P.page.waitForTimeout(250);
       }
       await shot('1-welcome');
-      rec.ok(`${V.id} 1. the WELCOME plate names the map's gold line ("${wel && wel.text}")`,
-        !!wel && /gold line on your map/.test(wel.text) && !/gold road/.test(wel.text) && (V.desk ? /click him/.test(wel.text) : /tap him/.test(wel.text)), wel);
+      /* v2.3.4106: one short card, the first steps' first (the Mayor is the
+         next step's, which points at him) */
+      rec.ok(`${V.id} 1. the WELCOME plate, one short line ("${wel && wel.text}")`,
+        !!wel && /BroTown/.test(wel.text) && /Your adventure starts here/.test(wel.text) && !/\b(tap|click)\b/i.test(wel.text.replace(/Skip tutorial/i, '')), wel);
       if (V.desk) {
         rec.ok(`${V.id} 1. ...clear of Mayor Bro (plate ${fmt(wel && wel.plate)}, Mayor ${fmt(wel && wel.mayor)})`,
           !!wel && !!wel.mayor && !crosses(wel.plate, wel.mayor), wel);
@@ -125,6 +129,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.reload();
       await H.enterWorld(P).catch(() => null);
       await H.waitFor(P, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 120000, label: 'world again' }).catch(() => null);
+      /* v2.3.4106: the first quest handed in (the dev lever finishes the line; the key is an anytime lesson) */
+      await H.devOp(wsPort, 'quests', me).catch(() => {});
+      await P.page.waitForTimeout(1500);
       await P.page.evaluate(() => { const S = window._gameState.current; if (S && S.rpg && !S.rpg.shield) S.rpg.shield = { name: 'Pine Shield', type: 'shield', gearBase: 'pine' }; });
       const key = await cardFor(P, /login key/i, 40000);
       const hud4 = await rectOf(P, '[data-quest-hud]');

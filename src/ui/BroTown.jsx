@@ -228,8 +228,11 @@ export var QUEST_MSG_WELCOME_MS = 9000;
    fight or harvest to do: a speech bubble beside a character, a door at a
    building's steps, the moon at the farm's bed, else the jump (tapJump.js
    tapActIcon; desktopControls interactKind, the character before the door).
-   v2.3.3712: ...else null: the tap attacks, and the stick wears the weapon */
-function _tapActIcon(S) { return tapActIcon(interactKind(S, { npcFirst: true })); }
+   v2.3.3712: ...else null: the tap attacks, and the stick wears the weapon.
+   v2.3.4105: never the speech bubble, and no `npcFirst`: the stick never
+   talks (the owner: "Make talking to a npc player and entering a building
+   always two different things"); a tap on the person does */
+function _tapActIcon(S) { return tapActIcon(interactKind(S)); }
 
 /* ═══ v2.3.3871: HIS HAND-IN LINE IS SAID ONCE, IN THE WINDOW THAT PAYS ═══
    The owner, before the showing: "don't make your character click on mayor
@@ -401,7 +404,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { interactKind, talkBeforeDoor } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.3868: + a townsperson in range before a door */
+import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.4105: talkBeforeDoor retired (E never talks) */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
 import DeathCard from '@/ui/mobile/DeathCard.jsx';   /* v2.3.3817: "You died", what killed you, back in BroTown in N */
@@ -903,7 +906,8 @@ var NPC_TAP_REACH = 300;
    finicky right now needing to tap him".  What made the tap finicky then is
    gone -- the right stick's tap talks to whoever stands beside you, its
    picture a speech bubble (v2.3.3105), E does on a keyboard, and a tap on
-   him reaches NPC_PROX_OPEN (v2.3.2305) -- and in the Wheel's BroTown the
+   him reaches NPC_PROX_OPEN (v2.3.2305; v2.3.4105: only the tap, or a click,
+   is left -- the stick and E never talk) -- and in the Wheel's BroTown the
    townsfolk stand where everyone walks: the race's square, the shops' steps.
    Diego's shop with them: walking past him opened his drawer the same way
    (v2.3.2050).  Ace was tap-only already (v2.3.2620).  `?npcprox` brings the
@@ -1650,13 +1654,9 @@ export var BroTown = function BroTown(_ref0) {
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],
     setNearBuilding = _useState6[1];
-  /* v2.3.3868: on a computer, E would talk (a townsperson in range,
-     desktopControls.js talkBeforeDoor): the townsperson's name, and the
-     door's Enter prompt says "Talk to <name>" meanwhile, so it never says one
-     thing while E does another */
-  var _useDeskTalkPick = useState(null),
-    deskTalkPick = _useDeskTalkPick[0],
-    setDeskTalkPick = _useDeskTalkPick[1];
+  /* v2.3.4105: deskTalkPick (v2.3.3868: the computer's door button swapped
+     for "E  Talk to <name>" while a townsperson stood in range) is gone: E
+     never talks, so a door's Enter button is always the door's */
   var _useState7 = useState(false),
     _useState8 = _slicedToArray(_useState7, 2),
     showPlayerList = _useState8[0],
@@ -4558,66 +4558,30 @@ export var BroTown = function BroTown(_ref0) {
        outer try/catch swallowed it silently, no rendering ever
        happened.  The earlier resize() at line ~2810 (guarded) plus
        its listeners cover the same job. */
-    /* v2.3.1794: how close you can get to a townsperson before they block.
-       14px against a ~24px-wide drawn figure — see the note in isSolid. */
-    var NPC_BLOCK_R2 = 14 * 14;
     var isSolid = function isSolid(px, py) {
       var _S$map;
       var zone = ZONES[S.currentZone];
       var tx = Math.floor(px / TILE),
         ty = Math.floor(py / TILE);
       if (tx < 0 || tx >= zone.w || ty < 0 || ty >= zone.h) return true;
+      /* ═══ v2.3.4098: TOWNSFOLK NEVER BLOCK YOU ═══
+         The owner (2026-11-03): "I walked into Npc who walked into me and I
+         got stuck."  From v2.3.1794 a townsperson was solid here: a 14 px
+         radius about his feet, tested at each corner of your box, with a
+         never-trap pass read at your box's CENTRE.  Once they walk
+         (v2.3.4058), one who stopped 22 px off your feet (his bump,
+         townsfolkDay.js) had a corner of yours inside his radius while your
+         centre was outside it, so every step of yours, any way, was solid,
+         and his own next step was a bump: both of you held for good.
+         So no townsperson is solid, walking or standing: you pass through,
+         and a walker pauses before he steps into you (townsfolkDay.js
+         folkStepBumps).  This walk test reads no townsperson (townsfolk-walk.test
+         holds it).  docs/specs/living-town.md, "Townsfolk never block you". */
       /* Tiled-map walkability grid (if loaded for this zone). When a
          grid is present it is AUTHORITATIVE: cells flagged false block,
          everything else is walkable. The legacy TILE_SOLID check is
          skipped because the procedural S.map still has old building
          tiles (3, etc.) underneath the new Tiled render. */
-      /* ═══ v2.3.1794: NPCs ARE OBJECTS TOO ═══
-         Owner: "only make the objects (like each house and NPC) unwalkable
-         areas."  Buildings block through the props grid; townsfolk block here
-         instead, as a live radius test, because a grid would be a lie the
-         moment one of them moved and because the NPC list is already the
-         authority on where they are.  Five of them in town, so this is five
-         distance checks on a movement step that already does more work than
-         that.
-
-         The radius is deliberately smaller than the sprite: you should be able
-         to stand shoulder to shoulder with the blacksmith to use his anvil,
-         and a blocker as wide as the drawn figure makes talking to anyone feel
-         like bumping into furniture.  Dead NPCs and any without a position do
-         not block at all. */
-      var _npcs = S.npcs;
-      if (_npcs && _npcs.length) {
-        var _pp = S.player;
-        /* ═══ v2.3.2748: HIS FEET AGAINST YOURS ═══
-           An NPC's position is his feet; yours is your body's CENTRE, ~52 px
-           above your boots (playerGroundDy).  Measured centre-to-feet, walking
-           up behind the blacksmith stopped your waist at his feet -- your boots
-           ended up past his, in front of him -- and the depth pass, which now
-           reads your feet, would draw you over a man you walked into from
-           behind.  Feet to feet, the radius means what it says. */
-        var _nfdy = playerGroundDy(S.currentZone, px, py);
-        for (var _ni = 0; _ni < _npcs.length; _ni++) {
-          var _n = _npcs[_ni];
-          if (!_n || _n.alive === false || _n.x == null || _n.y == null) continue;
-          var _ndx = px - _n.x, _ndy = py + _nfdy - _n.y;
-          if (_ndx * _ndx + _ndy * _ndy >= NPC_BLOCK_R2) continue;
-          /* NEVER TRAP SOMEONE ALREADY INSIDE.  A pure position test would seal
-             a player who ends up within the radius by any route that skips
-             collision — a teleport, a spawn, a quest hand-in that repositions
-             them, or an NPC that walks onto them — because then EVERY
-             candidate step is solid and there is no direction out.  Found the
-             hard way: mp-townmap put the player at the foot of the steps, 5px
-             from Mayor Bro, and he could not move at all.
-             So the block only applies from OUTSIDE: if you are already inside,
-             every step is allowed and you simply walk free. */
-          if (_pp) {
-            var _cdx = _pp.x - _n.x, _cdy = _pp.y + _nfdy - _n.y;
-            if (_cdx * _cdx + _cdy * _cdy < NPC_BLOCK_R2) continue;
-          }
-          return true;
-        }
-      }
       var _wgrid = (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null;
       if (_wgrid && _wgrid.length) {
         /* The walkability grid uses its OWN resolution (set by the
@@ -4664,10 +4628,8 @@ export var BroTown = function BroTown(_ref0) {
                that ever tightens has the same failure.
                A player OUTSIDE the geometry is blocked normally, so this
                cannot be used to walk through a wall -- only out of one. */
-            /* S.player directly, NOT the `_pp` the NPC branch above sets:
-               that one is only assigned inside `if (_npcs && _npcs.length)`,
-               and the World View -- the zone this exists for -- has no NPCs at
-               all, so it would be undefined in exactly the place it matters. */
+            /* S.player directly (the NPC branch whose `_pp` this once
+               avoided is gone, v2.3.4098) */
             var _me = S.player;
             if (_cellSolid && _me) {
               var _pgx = Math.floor(_me.x * _gw / _mw);
@@ -4772,7 +4734,8 @@ export var BroTown = function BroTown(_ref0) {
     };
     if (typeof window !== 'undefined') window.__btPropFeetBlocked = (cx, cy, px, py) => propFeetBlocked(cx, cy, px, py, 10);
     /* v2.3.3806: where a fetching pet may not step (game/petFetch.js): the
-       walk's own walls (isSolid: the zone's edge, the walk grid, townsfolk),
+       walk's own walls (isSolid: the zone's edge, the walk grid; townsfolk
+       none since v2.3.4098),
        the Wheel's water, and an object's footprint (a building, a rock, a
        tree, a bush), read at one point, the pet's feet: it is small.  It goes
        round these; it never sets off across the water (_petWaterAt). */
@@ -6188,7 +6151,9 @@ export var BroTown = function BroTown(_ref0) {
                interactKind, the E key's own chain) */
             /* v2.3.3712: ...and with no act here, no JUMP arrow any more: the
                tap attacks, so the stick wears the weapon in your hand below
-               (the owner: "maybe just an attack in its place") */
+               (the owner: "maybe just an attack in its place")
+               v2.3.4105: and never the speech bubble -- the stick never
+               talks; a tap on the person does */
             else if (_tapFree && (_icAct = _tapActIcon(S))) _icWant = _icAct;
             else {
               /* v2.3.3105: the weapon in that slot, its bag picture -- the
@@ -8398,8 +8363,8 @@ export var BroTown = function BroTown(_ref0) {
       _desktopSleep: _desktopSleep,
       _desktopOpenWorkshop: _desktopOpenWorkshop,
       _desktopGather: _desktopGather,
-      _desktopNpcQuest: _desktopNpcQuest,
-      _desktopOpenKeeper: openKeeper,   /* v2.3.3258: E beside a keeper opens his building */
+      /* v2.3.4105: _desktopNpcQuest and _desktopOpenKeeper (v2.3.3258: E
+         beside a keeper opened his building) left with E's talk */
       _desktopShieldOn: _desktopShieldOn,
       _desktopShieldOff: _desktopShieldOff,
       _desktopCycleWeapon: _desktopCycleWeapon,
@@ -8949,12 +8914,6 @@ export var BroTown = function BroTown(_ref0) {
       var nb = S.nearBuilding;
       setNearBuilding(function (prev) {
         return prev === nb ? prev : nb;
-      });
-      /* v2.3.3868: a computer's door button follows E (talkBeforeDoor) */
-      var dtp = S._isDesktop && (nb !== null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) && talkBeforeDoor(S)
-        ? (S._nearNpc.name || 'them') : null;
-      setDeskTalkPick(function (prev) {
-        return prev === dtp ? prev : dtp;
       });
       /* v2.3.3032: and the Wheel's building door you stand at (game/wheelTownDoors.js) */
       var nwb = S._nearWheelBuilding || null;
@@ -9869,19 +9828,10 @@ export var BroTown = function BroTown(_ref0) {
     if (!dungeonCreator) setDungeonCreator(createDefaultDungeonConfig());
     BT_AUDIO.enterBuilding();
   }, [dungeonCreator]);
-  var _desktopNpcQuest = useCallback(function (npc, npcQ) {
-    /* v2.3.1701: the E-key door arms the proximity latch too (see the tap
-       handler) — the desktop player is standing next to him by definition. */
-    /* v2.3.1884: same shape as the proximity door — { npc, ready }.  A bare
-       npc here would crash the loop's `_latched.npc.x` read. */
-    stateRef.current._npcProxLatch = { npc: npc, ready: _npcQuestReady(stateRef.current, npcQ) };
-    setQuestPanel({
-      npc: npc.name,
-      quest: npcQ.quest,
-      status: npcQ.status,
-      npcRef: npc
-    });
-  }, []);
+  /* v2.3.4105: _desktopNpcQuest (E's road to a quest giver's window, since
+     v2.3.1701) is gone: E never talks -- a tap or a click on him opens it
+     (tapNpcAtCss), the owner: "Make talking to a npc player and entering a
+     building always two different things" (desktopControls.js) */
   var _desktopShieldOn = useCallback(function () {
     doShield();
   }, [doShield]);
@@ -11401,10 +11351,11 @@ export var BroTown = function BroTown(_ref0) {
              speaking [to NPCs], door for entering door".  The stick wears that
              picture (_tapActIcon), and the tap does it: the E key's own chain
              (desktopControls runInteract) -- a building, a hall, a dungeon's
-             mouth, the farm's bed, then the character beside you. */
+             mouth, the farm's bed (the character beside you until v2.3.4105:
+             a tap on him talks, never the stick). */
           var _tjAct = _tapActIcon(_tjS);
           if (_tjAct && typeof _tjS._interactNow === 'function') {
-            try { if (_tjS._interactNow({ npcFirst: true })) _tjS._tapActs = (_tjS._tapActs || 0) + 1; } catch (err) { /* the door's own refusals speak */ }
+            try { if (_tjS._interactNow()) _tjS._tapActs = (_tjS._tapActs || 0) + 1; } catch (err) { /* the door's own refusals speak */ }   /* v2.3.4105: no npcFirst -- the stick never talks */
           } else if (!_tjAct) {
             /* ═══ v2.3.3712: ...AND OTHERWISE IT ATTACKS ONCE -- IT NEVER JUMPS ═══
                The owner: "the contextual jump button gives the jumps only to
@@ -14953,26 +14904,12 @@ export var BroTown = function BroTown(_ref0) {
        tapped, so it stops rendering. Walking away and back re-arms it
        normally -- nearBuilding is untouched, which keeps the desktop E key
        (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
-    /* ═══ v2.3.3868: AT A DOOR WITH A TOWNSPERSON IN RANGE, THE PROMPT SAYS TALK ═══
-       The owner, on a computer: "When you're next to mayor bro ... you would
-       actually open the door to the building right next to him."  E talks to
-       him now (desktopControls.js talkBeforeDoor), and the prompt says so --
-       "E  Talk to Mayor Bro" -- in the door prompt's place; a click on it
-       talks, as E does.  A step out of his range and the door's prompt is
-       back.  A phone never shows it: there the door's button stays as it was
-       and a tap on a person talks. */
-    buildingPanel === null && deskTalkPick && (nearBuilding !== null || nearHall) && /*#__PURE__*/React.createElement("button", {
-      className: "bt-interact-prompt",
-      "data-talk-prompt": deskTalkPick,
-      onClick: function onClick(e) {
-        e.preventDefault();
-        var S2 = stateRef.current;
-        if (S2 && S2._interactNow) S2._interactNow();
-      }
-    }, /*#__PURE__*/React.createElement("kbd", {
-      style: { background: 'rgba(255,255,255,.2)', padding: '1px 5px', borderRadius: 3, fontSize: 11, marginRight: 4 }
-    }, "E"), "Talk to ", folkDisplayName(deskTalkPick)),   /* v2.3.4048 */
-    buildingPanel === null && !deskTalkPick /* v2.3.3868 */ && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
+    /* v2.3.4105: v2.3.3868's "E  Talk to <name>" in the door prompt's place
+       is gone -- E never talks, so at a door the button is ALWAYS the
+       door's, whoever stands beside it (the owner: "Make talking to a npc
+       player and entering a building always two different things").  A tap
+       or a click on the person talks. */
+    buildingPanel === null && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
        Sheriff's Office): the same button, its own picture and name */

@@ -55,7 +55,6 @@ const MEASURE = (P) => P.page.evaluate(() => {
     ap: r(document.querySelector('[data-ap-chip]')),
     tod: xpOn ? null : r(document.querySelector('.bt-zone-header__tod')),
     title: xpOn ? null : r(title),
-    pill: xpOn ? null : r(document.querySelector('[data-nml-badge] .bt-nml-pill__body')),
     purse: r(document.querySelector('[data-purse]')),
     xp: xpOn ? r(document.querySelector('.bt-xp-bar.is-on')) : null,
   };
@@ -92,7 +91,12 @@ const MEASURE = (P) => P.page.evaluate(() => {
     titleCut: xpOn ? false : cut(title), titleText: title ? title.textContent : null,
     titleW: title ? Math.round(title.getBoundingClientRect().width) : 0,   /* v2.3.3974 */
     purseText: purse ? purse.textContent : null, apText: ap ? ap.textContent : null,
-    hits, out, xpOver, xpOn, pill: !!pieces.pill || xpOn,
+    hits, out, xpOver, xpOn,
+    /* v2.3.4113: nothing of No man's land (or the place chip) in the bar, and
+       in the world its centre's name drawn clear (the minimap's plate says it) */
+    barClean: document.querySelectorAll('.bt-zone-header [data-nml-badge], .bt-zone-header [data-place-chip], .bt-zone-header .bt-nml-pill').length === 0,
+    titleClear: !!title && /rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(title).color),
+    pill: !!document.querySelector('[data-nml-badge]'),
     mini: window.__btWheelMini ? window.__btWheelMini.top : null, hdrB: h ? h.b : null,
   };
 });
@@ -103,9 +107,12 @@ const MEASURE = (P) => P.page.evaluate(() => {
    on an upright phone with this rich a purse and AP may end in "..." but
    keeps at least 50 px (its whole name is on the minimap's plate just under
    it) -- until the door, the AP and the gold leave the bar (Lane C2) */
-const titleOk = (m) => !!m.titleText && (!m.titleCut || (m.titleText !== 'BroTown' && m.titleW >= 50));
+/* v2.3.4113: ...and in the world the name is drawn clear (the owner: "Remove
+   name of town and "safe" or other designation from top bar"), so its width
+   is only the Test panel's hold area: in it, never cut matters no more */
+const titleOk = (m) => !!m.titleText && (m.titleClear || !m.titleCut || (m.titleText !== 'BroTown' && m.titleW >= 50));
 const fits = (m) => titleOk(m) && m.hits.length === 0 && m.out.length === 0 && !m.xpOver
-  && m.purseText === (m.vw < 430 ? '2.55M' : '2,550,000') && (m.apText === (m.vw < 430 ? '12.4K' : '12,400') || (m.xpOn && m.vw < 430 && m.apText == null)) && m.pill;
+  && m.purseText === (m.vw < 430 ? '2.55M' : '2,550,000') && (m.apText === (m.vw < 430 ? '12.4K' : '12,400') || (m.xpOn && m.vw < 430 && m.apText == null)) && m.pill && m.barClean && m.titleClear;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');

@@ -1,4 +1,14 @@
-/* DOES THE DOOR SAY WHAT IT DOES?  (v2.3.2421)
+/* ═══ v2.3.4123: THE DOOR ALWAYS LOGS OUT ═══
+ * The owner, 2026-11-03: "Change just the exit door icon on top left to
+ * "logout" (bring to splash screen) not switch character".  This scenario
+ * now holds the new rule, IN THE WORLD (`world: 'wheel'`): with ONE bro and
+ * with TWO on the device the door is labelled "Log out" and asks "Leave the
+ * world?" with a red Log Out; pressing it lands on the splash screen with the
+ * list CLOSED (Continue / Create); and Continue there opens the list of bros,
+ * so a device with several still picks another.  (What it held before,
+ * v2.3.2421, below.)
+ *
+ * DOES THE DOOR SAY WHAT IT DOES?  (v2.3.2421)
  *
  * Owner: "the level 0 I saw when I logged in was from an old save that somehow
  * was the DEFAULT I logged into (it was an old character I'd made that I
@@ -57,7 +67,7 @@ async function readConfirm(P) {
   await P.page.waitForTimeout(450);
   return P.page.evaluate(() => {
     const btns = Array.from(document.querySelectorAll('button'));
-    const act = btns.find((b) => /Switch Bro|Log Out/i.test(b.textContent || ''));
+    const act = btns.find((b) => /^(Switch Bro|Log Out)$/i.test((b.textContent || '').trim()));
     if (!act) return { noDialog: true };
     const box = act.closest('div').parentElement;
     const txt = (box && box.textContent) || '';
@@ -68,6 +78,7 @@ async function readConfirm(P) {
       danger: /bt-chisel--danger/.test(act.className || ''),
       chipLabel: (document.querySelector('.bt-zone-header__logout') || {}).ariaLabel
         || (document.querySelector('.bt-zone-header__logout') || {}).getAttribute?.('aria-label') || '',
+      chipTitle: (document.querySelector('.bt-zone-header__logout') || { getAttribute: () => '' }).getAttribute('title') || '',
     };
   });
 }
@@ -79,7 +90,7 @@ const dismiss = (P) => P.page.evaluate(() => {
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Switcher', wsPort, webPort,
-    viewport: { width: 390, height: 844 }, touch: true });
+    viewport: { width: 390, height: 844 }, touch: true, world: 'wheel' });
   await H.enterWorld(P);
   await P.page.waitForTimeout(2200);
 
@@ -103,7 +114,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     one.danger === true, one);
   await dismiss(P);
 
-  /* ── TWO BROS: now it has something to switch to ────────────────────── */
+  /* ── TWO BROS: v2.3.4123, the door still only logs out ─────────────────── */
   /* ONE extra, beside the playing bro's own key. */
   await seedExtra(P, 1);
   await P.page.reload({ waitUntil: 'domcontentloaded' });
@@ -113,34 +124,42 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the device really holds TWO bros (fixture guard)', twoN === 2, { rosterCount: twoN });
   const two = await readConfirm(P);
   console.log('    two bros on the device: ' + JSON.stringify(two));
-  rec.ok('with TWO bros the door asks Switch bro?', two.title === 'switch', two);
-  rec.ok('...and its button says Switch Bro', /^Switch Bro$/i.test(two.action || ''), two);
-  rec.ok('...and it DROPS the danger red -- nothing is destroyed by switching',
-    two.danger === false, two);
-  rec.ok('...and says the bro you are leaving is saved',
-    /saved/i.test(two.body || ''), two);
-  rec.ok('...and the chip itself announces the switch to a screen reader',
-    /switch bro/i.test(two.chipLabel || ''), two);
+  rec.ok('with TWO bros the door still asks Leave the world? (v2.3.4123: never "Switch bro?")', two.title === 'leave', two);
+  rec.ok('...its button says Log Out, in the danger red', /^Log Out$/i.test(two.action || '') && two.danger === true, two);
+  rec.ok('...and the chip is labelled "Log out" (its spoken label and its tooltip)',
+    /^Log out$/i.test(two.chipLabel || '') && /^Log out$/i.test(two.chipTitle || ''), two);
 
-  /* ── THE ROAD, not just the words ───────────────────────────────────── */
-  const btn = await P.page.$('.bt-chisel--chip');
+  /* ── THE ROAD: the splash screen, then Continue opens the list ───────── */
   const acted = await P.page.evaluate(() => {
-    const b = Array.from(document.querySelectorAll('button')).find((x) => /^Switch Bro$/i.test((x.textContent || '').trim()));
+    const b = Array.from(document.querySelectorAll('button')).find((x) => /^Log Out$/i.test((x.textContent || '').trim()));
     if (!b) return false;
     b.click();
     return true;
   });
-  rec.ok('the Switch Bro button is pressable (guard)', acted === true, { acted, hadChip: !!btn });
+  rec.ok('the Log Out button is pressable (guard)', acted === true, { acted });
   await P.page.waitForTimeout(3500);
   const landed = await P.page.evaluate(() => ({
     url: location.search,
     picker: !!document.querySelector('[data-tut="char-picker"]'),
+    door: !!document.querySelector('[data-tut="login-key"]') && !!document.querySelector('[data-tut="login-create"]'),
   }));
   console.log('    after pressing it: ' + JSON.stringify(landed));
-  rec.ok('...and pressing it lands on login=1, the door (guard)',
-    /login=1/.test(landed.url || ''), landed);
-  rec.ok('THE COPY IS NOT A LIE: the character list is actually open there',
-    landed.picker === true, landed);
+  rec.ok('...it lands on the splash screen (login=1): Continue and Create, the list CLOSED',
+    /login=1/.test(landed.url || '') && landed.door && !landed.picker, landed);
+  let picked = null;
+  for (let i = 0; i < 20 && !(picked && picked.picker); i++) {
+    if (i === 0) await P.page.evaluate(() => { const b = document.querySelector('[data-tut="login-key"]'); if (b && !b.disabled) b.click(); });
+    await P.page.waitForTimeout(300);
+    picked = await P.page.evaluate(() => ({
+      picker: !!document.querySelector('[data-tut="char-picker"]'),
+      rows: document.querySelectorAll('[data-tut="char-picker"] [data-char-row], [data-tut="char-picker"] button').length,
+      text: ((document.querySelector('[data-tut="char-picker"]') || {}).textContent || '').replace(/\s+/g, ' ').slice(0, 160),
+    }));
+    if (!picked.picker && i % 5 === 4) await P.page.evaluate(() => { const b = document.querySelector('[data-tut="login-key"]'); if (b && !b.disabled) b.click(); });
+  }
+  console.log('    after Continue: ' + JSON.stringify(picked));
+  rec.ok('...and Continue there opens the list of bros, so another can be picked',
+    !!picked && picked.picker === true, picked);
 
   await P.ctx.close().catch(() => {});
 }

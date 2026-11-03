@@ -3486,6 +3486,15 @@ town's stairs as usual.
   blueprint and swatch map the World Builder and the Ground Studio build,
   about a second's work. The zone-loading overlay holds until that and the
   first screen of ground are done.
+- **The ground can start before that first screen is laid** (v2.3.4094). On
+  a slow machine the ground is made, and asks for pieces, while the way in is
+  still laying the first screen (ten seconds of it on the test box). It used
+  to take only the pieces laid so far, count each one still being laid as a
+  pop-in, and ask the worker for it a second time, behind the rest of the
+  first screen, so it could come after the overlay lifted (`mp-zoomout`'s
+  wider 0.64 view, about 5 runs in 8). Now a piece still being laid by the way
+  in is handed to the ground as that same job (`wheelTrial.js` `wheelWarm`,
+  `_filling`), counted as laid ahead, and the overlay still waits for it.
 - **It lays the ground a piece at a time** — 192 × 192 game px, at the
   swatches' own sharpness (2 px a game px) — with the same
   `composeGround` the Ground Studio's preview uses, so what the studio shows

@@ -106,9 +106,11 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
      is who opens it.  (Straight-in on load went the same way in BroTown's
      boot check, same version.) */
   const [showPicker, setShowPicker] = React.useState(function () {
-    /* One exception, one-shot: the in-world "Switch Bro" button promises the
-       list (ZoneHeader sets bt_open_list before it navigates here).  Consumed
-       on read so the next plain landing is the plain door again. */
+    /* One exception, one-shot: the in-world "Switch Bro" button promised the
+       list (ZoneHeader set bt_open_list before it navigated here).  Consumed
+       on read so the next plain landing is the plain door again.
+       v2.3.4123: the in-world door always logs out now and sets nothing, so
+       this is only ever false; a stale note left in the tab is still eaten. */
     var note = false;
     try {
       note = sessionStorage.getItem('bt_open_list') === '1';
