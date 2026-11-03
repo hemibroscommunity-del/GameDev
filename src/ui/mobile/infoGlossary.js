@@ -138,10 +138,13 @@ export const STAT_INFO = _mk({
     body: 'How fast you walk and run.',
     note: 'Movement, not damage — but getting to the fight, and out of it, faster is its own kind of power.',
   },
+  /* v2.3.3896: the Defense family's head is the combined cut (Defense points,
+     then armour); the old note ("Comes from what you are wearing") was wrong --
+     Defense is your Defense points, armour is the chest and legs */
   Defense: {
     title: 'Defense',
-    body: 'Cuts the damage that gets through to you.',
-    note: 'Comes from what you are wearing, not from your level.',
+    body: 'How much less damage an ordinary hit does to you. Your Defense points cut it first, then your chest and leg armour cut what is left, so the two multiply.',
+    note: 'Defense points fade against monsters above your level (gone at five levels up); armour never fades. Elemental hits use Resist instead of Defense points, but armour still applies.',
   },
   Dodge: {
     title: 'Dodge',
