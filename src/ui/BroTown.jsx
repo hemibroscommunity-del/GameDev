@@ -412,6 +412,7 @@ import { TrapButton } from '@/ui/panels/TrapButton.jsx';   /* v2.3.3120: the TRA
 import { TrapCatchCard } from '@/ui/panels/TrapCatchCard.jsx';   /* v2.3.3120: a new pet's card */
 import { NewMonsterCard } from '@/ui/panels/NewMonsterCard.jsx';   /* v2.3.3336: NEW MONSTER, a tap opens its codex page */
 import { AchievementBanner } from '@/ui/panels/AchievementBanner.jsx';   /* v2.3.3527: a big achievement's banner, outside the wrap beside QuestCoach */
+import { FishWeighCard } from '@/ui/panels/FishWeighCard.jsx';   /* v2.3.4036: a fish's weigh-in, at the banner's spot */
 import { activePet } from '@/game/petBook.js';   /* v2.3.3120: the pet out with you is the record's */
 import { beastmasterOn } from '@/game/trapping.js';   /* v2.3.3121: Beastmaster Bro stands only against a worker that knows his quests */
 /* v2.3.819: swing/special/shield action bodies extracted; component keeps thin useCallback wrappers. */
@@ -540,12 +541,14 @@ import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4048: the townsfolk's nicknames, where a player reads one */
 import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '@/data/wheelBuildingDoors.js';   /* v2.3.3032: the Wheel's buildings have doors; v2.3.3066: + its halls; v2.3.3258: + its keepers; v2.3.3522: + each one's picture */
 import { heapBurnStep } from '@/game/heapBurn.js'; /* v2.3.3748: a burning heap sets you on fire */
 import { burningAt } from '@/rendering/buildingFire.js'; /* v2.3.3748: ...where its pieces burn */
 import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
 import { deskWords, onComputer } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { tooFarWord, tooFarPlace } from '@/game/tooFar.js';   /* v2.3.3990: "Too far away" over a resource out of reach */
+import { idleChatMay, idleChatTimer, inTownAt } from '@/game/townChatter.js';   /* v2.3.4040: the townsfolk's idle lines: in town, near, rarely */
 import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
@@ -7318,6 +7321,7 @@ export var BroTown = function BroTown(_ref0) {
           grid: (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null, worldW: _fwZone ? _fwZone.w * TILE : 0, worldH: _fwZone ? _fwZone.h * TILE : 0,
           boxes: zoneBlockers(S.currentZone) });
         /* Update NPCs — §19.1 companion follow + quest interaction + wander */
+        var _npcTown = null;   /* v2.3.4040: the safe ground, read once a frame when an idle line asks */
         if (S.npcs) {
           S.npcs.forEach(function (npc) {
             var _npc$followZones;
@@ -7430,7 +7434,10 @@ export var BroTown = function BroTown(_ref0) {
                     ts: Date.now(),
                     isQuest: true
                   };
-                } else {
+                } else if (idleChatMay(S, distToPlayer, inTownAt(isWheelTrialZone(S.currentZone) ? 'wheel' : S.currentZone,
+                  (_npcTown || (_npcTown = rideGround(S))).centre, _npcTown.safeR, P.x, P.y), Date.now())) {
+                  /* v2.3.4040: an idle line only in town, near him, one
+                     town-wide every 20 s (game/townChatter.js) */
                   npc.chatBubble = {
                     text: npc.phrases[Math.floor(Math.random() * npc.phrases.length)],
                     ts: Date.now()
@@ -7439,7 +7446,12 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.3664: no hum as his line pops up -- the owner: the hums
                    "should play when you begin talking to someone or taking a
                    quest"; in town one came every few seconds (game/npcVoices.js) */
-                npc.chatTimer = 8000 + Math.random() * 15000;
+                /* v2.3.4040: 30-60 s between his idle turns ("Way too much town
+                   chatter idle while exploring the world"); one with a quest
+                   to offer or take in keeps the old 8-23 s, so his hint above
+                   comes as often as it did */
+                npc.chatTimer = npcQuest && (npcQuest.status === 'available' || _npcQuestReady(S, npcQuest))
+                  ? 8000 + Math.random() * 15000 : idleChatTimer();
               }
             }
             /* v2.3.1771: same exponential-approach shape as the camera and
@@ -10570,7 +10582,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.3899: Mayor Bro, with nothing of his own, says the next step
        (game/mayorTalk.js) -- he opened the Town Hall's board until now */
     if (mayorSaysNext(S, npc)) return _mark('says');
-    pushDmgPopup(S, npc.x, npc.y - 30, npc.name + ' has nothing for you right now', '#B6C1BE');
+    pushDmgPopup(S, npc.x, npc.y - 30, folkDisplayName(npc.name) + ' has nothing for you right now', '#B6C1BE');   /* v2.3.4048 */
     return _mark('nothing');
   };
   /* ═══ v2.3.3470: ON A COMPUTER, A PRESS ON SOMETHING YOU USE IS NOT A SWING ═══
@@ -14957,7 +14969,7 @@ export var BroTown = function BroTown(_ref0) {
       }
     }, /*#__PURE__*/React.createElement("kbd", {
       style: { background: 'rgba(255,255,255,.2)', padding: '1px 5px', borderRadius: 3, fontSize: 11, marginRight: 4 }
-    }, "E"), "Talk to ", deskTalkPick),
+    }, "E"), "Talk to ", folkDisplayName(deskTalkPick)),   /* v2.3.4048 */
     buildingPanel === null && !deskTalkPick /* v2.3.3868 */ && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
@@ -15748,5 +15760,5 @@ export var BroTown = function BroTown(_ref0) {
   /* v2.3.3527: a rare, arena or super-rare achievement's banner -- here, out
      of the wrap with QuestCoach for the same reason, so its fixed layer is the
      game's column on a computer (ui/panels/AchievementBanner.jsx) */
-  /*#__PURE__*/React.createElement(AchievementBanner, { stateRef: stateRef }), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
+  /*#__PURE__*/React.createElement(AchievementBanner, { stateRef: stateRef }), /*#__PURE__*/React.createElement(FishWeighCard, null), ((_window$matchMedia = (_window = window).matchMedia) === null || _window$matchMedia === void 0 || (_window$matchMedia = _window$matchMedia.call(_window, '(pointer:fine)')) === null || _window$matchMedia === void 0 ? void 0 : _window$matchMedia.matches) && /*#__PURE__*/React.createElement(KeyboardHintsPanel, { hidden: kbHintsOff, onToggle: toggleKbHints }), staleBuild && /*#__PURE__*/React.createElement(UpdateBanner, { info: staleBuild, onReload: function () { try { window.location.reload(); } catch (e) {} }, onDismiss: function () { setStaleBuild(null); } }), chatOpen && /*#__PURE__*/React.createElement(ChatPanel, { chatInput: chatInput, chatInputRef: chatInputRef, chatInputValRef: chatInputValRef, sendChat: sendChat, setChatInput: setChatInput, setChatOpen: setChatOpen }));
 };

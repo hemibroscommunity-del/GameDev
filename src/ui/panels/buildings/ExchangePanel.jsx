@@ -580,6 +580,7 @@ export function ExchangePanel(props) {
     }
   }, (rpgState.weaponStash || []).map(function (sw, i) {
     var _WEAPON_TYPES$sw$type;
+    if (sw && sw.unrevealed) return null; /* v2.3.4012: a "?" is revealed before it is sold (game/revealBag.js) */
     var sel = mktSellItem === i;
     return /*#__PURE__*/React.createElement("button", {
       key: i,

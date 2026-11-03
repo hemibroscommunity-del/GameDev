@@ -229,12 +229,13 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
+  'fishvariants' /* v2.3.4036: albino and large fish */, 'fishweigh' /* v2.3.4036: Inspect weighs a fish; the Biggest fish boards */,
   'monstermoves' /* v2.3.4011: the monster moves (monstermoves.js) */, 'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3732: the message diet's path */, 'pathall' /* v2.3.3732: ...for every phone */, 'clientoff' /* v2.3.3755: the memory savers turned off (a list) */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'partykeep' /* v2.3.3284: a party that lasts (party.js) */, 'alliance' /* v2.3.3313: a party of 20 active members (alliance.js) */, 'clanparty' /* v2.3.3321: clans are parties now (clanparty.js) */, 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3shared' /* v2.3.2592 */, 'prog3rel' /* v2.3.2680 */, 'gearq' /* v2.3.2664 */, 'prog3x', 'questTrack', 'sponsor', 'store',
-  'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeChat' /* v2.3.2621 */, 'storeOffer' /* v2.3.2623 */,
+  'revealbag' /* v2.3.4012: a mystery piece waits in the bag (revealbag.js) */, 'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeChat' /* v2.3.2621 */, 'storeOffer' /* v2.3.2623 */,
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
   'trade2Weapons', 'weaponDrops', 'whisper', 'zoneDepth' /* v2.3.2790 */, 'bowvolley' /* v2.3.2848 */, 'dailyChest' /* v2.3.2820 */, 'smelting' /* v2.3.2822 */, 'whirlWindup' /* v2.3.2824 */, 'gatherhits' /* v2.3.2956 */,
   'wheelmonsters' /* v2.3.2978: lower case, a kill switch */,
@@ -1015,6 +1016,36 @@ export const DevPanel = ({ onClose }) => {
                   onClick={() => { if (onClose) onClose(); setTimeout(() => { call('/dev/achv', { playerId: myId, id: 'gladiator' }); }, 400); }}>
                   Show a banner (Gladiator, no points)
                 </button>
+              </>
+            )}
+
+            {/* ═══ v2.3.4036: RARE FISH ═══
+                The owner's lever (server devtools.js /dev/fish -> fishlog.js
+                _fishDev): the NEXT fish you catch is albino or large (one fish,
+                gone on a deploy), or one of each put in your bag as a catch
+                (so it can be weighed) -- a cooked albino trout to eat for the
+                +5 AP, a cooked large trout for the +10 and the double heal. */}
+            <div style={label}>Rare fish</div>
+            {!(S && S._serverCaps && S._serverCaps.fishvariants) ? (
+              <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }} data-fish-dev-off="1">
+                This server does not roll rare fish yet -- it needs the deploy that ships them.
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7, marginBottom: 4 }}>
+                  {[['albino', 'Next fish: albino'], ['large', 'Next fish: large']].map(([v, words]) => (
+                    <button key={v} type="button" style={chip} disabled={busy || !myId} data-dev-fish-next={v}
+                      onClick={async () => { const j = await call('/dev/fish', { playerId: myId, next: v }); if (j && j.ok) setMsg('The next fish you catch is ' + v + '.'); else if (j && j.error) setMsg(j.error); }}>
+                      {words}
+                    </button>
+                  ))}
+                  {[['cooked_fish_trout_albino', 'Cooked albino trout'], ['cooked_fish_trout_large', 'Cooked large trout'], ['fish_trout_albino', 'Albino trout (to weigh)'], ['fish_pike_large', 'Large pike (to weigh)']].map(([k, words]) => (
+                    <button key={k} type="button" style={chip} disabled={busy || !myId} data-dev-fish-give={k}
+                      onClick={async () => { const j = await call('/dev/fish', { playerId: myId, give: k, n: 1 }); if (j && j.ok) setMsg(words + ' is in your bag.'); else if (j && j.error) setMsg(j.error); }}>
+                      {words}
+                    </button>
+                  ))}
+                </div>
               </>
             )}
 

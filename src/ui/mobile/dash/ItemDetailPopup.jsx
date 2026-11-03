@@ -35,11 +35,14 @@ import { CATEGORIES } from './bagFilterBus.js';   /* v2.3.3130: the caption is t
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
 import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason.js'; /* v2.3.2551: and WHY it cannot be sold */
-import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
+import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash, revealFromBag, targetUnrevealed } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin; v2.3.4012: Reveal */
+import { revealCardFor } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's card */
+import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx'; /* v2.3.4012: its "?" */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { playVw } from '../playViewport.js';
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470: the card layer's box -- a computer's is the game's column (TRAPS §232) */
+import { canInspectFish, askFishWeigh } from '@/game/fishWeigh.js'; /* v2.3.4036: Inspect weighs a fish (server fishlog.js) */
 import {
   WEAPON_TYPES,
   calcDisplayDmgRange,
@@ -343,6 +346,9 @@ function resolveTarget(target) {
            would look like it had vanished.  Same shape as `open` and
            `drink` above -- the worker takes the goods out of ITS copy of
            the bag and holds them, so nothing here is credited locally. */
+        /* v2.3.4036: Inspect -- one catch of this fish weighed (game/fishWeigh.js,
+           caps.fishweigh read there); raw or cooked */
+        inspect: count > 0 && canInspectFish(SR, key),
         sell: count > 0 && storeEnabled(),
         /* v2.3.3473: Drop -- out of the bag and onto the ground at your feet,
            yours alone for a minute, then anyone's (server itemdrop.js).  Gated
@@ -1414,7 +1420,8 @@ export const ItemDetailPopup = () => {
     );
   }
 
-  const resolved = resolveTarget(target);
+  /* v2.3.4012: a piece still a "?" gets its own card (game/revealBag.js) */
+  const resolved = revealCardFor(target, resolveTarget(target), getState());
   if (!resolved) return null;
   const { lockKey, thumb, glyph, name, info, delta, desc, actions, sellWhy, dropWhy } = resolved;
   const locked = itemIsLocked(lockKey);
@@ -1764,7 +1771,17 @@ export const ItemDetailPopup = () => {
     else if (target.kind === 'gear')   onUnequipGear();
     else                                onUnequipWeapon();
   };
+  /* v2.3.4012: Reveal -- the card closes so the ceremony is seen; Equip on
+     a "?" reveals first and puts the piece on once its grade has landed */
+  const onReveal = () => {
+    revealFromBag(target);
+    itemDetailBus.close();
+  };
   const onEquip = () => {
+    if (targetUnrevealed(target) && revealFromBag(target, () => onEquipNow())) { itemDetailBus.close(); return; }
+    onEquipNow();
+  };
+  const onEquipNow = () => {
     if (target.kind === 'stashShield')      onEquipStashShield();
     else if (target.kind === 'stashArmor')  onEquipStashArmor();
     else if (target.kind === 'stashLegs')   onEquipStashLegs();
@@ -1877,8 +1894,11 @@ export const ItemDetailPopup = () => {
           }}>
             {thumb
               ? <img src={thumb} alt={name} draggable={false} className="bt-bag-art bt-card-art" data-life={cardLife || undefined}
-                  style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
+                  style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto',
+                    /* v2.3.4012: a "?" is its silhouette, as in the reveal (RevealOverlay) */
+                    ...(resolved.unrevealed ? { filter: 'brightness(0) opacity(.55)' } : null) }} />
               : <span className="bt-bag-art bt-card-art" data-life={cardLife || undefined} style={{ display: 'inline-block' }}>{glyph}</span>}
+            {resolved.unrevealed && <UnrevealedMark size={40} />}
             <span className="bt-bag-fx" aria-hidden="true" />
           </div>
           {locked && (
@@ -1906,7 +1926,7 @@ export const ItemDetailPopup = () => {
         {/* v2.3.1232: stat line lives in a recessed well-soft cell, tabular numerals */}
         {info && (
           <div style={{
-            fontSize: 12, color: COL.text, fontVariantNumeric: 'tabular-nums',
+            fontSize: 12, color: resolved.infoColor || COL.text, fontVariantNumeric: 'tabular-nums',   /* v2.3.4012: a "?"'s "Rare or better" in the rare blue */
             textAlign: 'center',
             padding: '5px 0',
             background: '#19252A',
@@ -1945,9 +1965,12 @@ export const ItemDetailPopup = () => {
           {actions.open     && <button onClick={onOpenTicket} className={buttonClass('primary')} style={buttonStyle('primary')}>Open Golden Ticket</button>}
           {actions.openChest && <button onClick={onOpenChest} data-open-chest="" className={buttonClass('primary')} style={buttonStyle('primary')}>Claim</button>}
           {actions.drink    && <button onClick={onDrink} className={buttonClass('primary')} style={buttonStyle('primary')}>Drink</button>}
+          {/* v2.3.4036: Inspect a fish -- the worker weighs one catch (the weigh-in card) */}
+          {actions.inspect  && <button onClick={() => { askFishWeigh(getState(), target.key); itemDetailBus.close(); }} data-fish-inspect={target.key} className={buttonClass()} style={buttonStyle()}>Inspect</button>}
           {actions.capeOn   && <button onClick={onCapeOn}  className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}
-          {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
+          {actions.reveal   && <button onClick={onReveal} data-reveal="" className={buttonClass('primary')} style={buttonStyle('primary')}>Reveal</button>}
+          {actions.equip    && <button onClick={onEquip}   className={buttonClass(actions.reveal ? undefined : 'primary')} style={buttonStyle(actions.reveal ? undefined : 'primary')}>Equip</button>}
           {actions.unequip  && <button onClick={onUnequip} className={buttonClass('danger')} style={buttonStyle('danger')}>Unequip</button>}
           {/* v2.3.2551: a piece this browser already knows is unsellable keeps
               its button and loses its hope, rather than losing its button.

@@ -33,6 +33,8 @@ import { carryMonsterState } from '@/game/monsterCarry.js'; /* v2.3.3558: a re-p
 import { onTrapArmed, onTrapResult, onPetsState, onMakeTrapsResult, onPetXp } from '@/game/trapping.js'; /* v2.3.3120: pet trapping's answers; v2.3.3121: + a pet's XP */
 import { onCodexState, onCodexKill } from '@/game/monsterCodex.js'; /* v2.3.3209: the monster codex's counts (server/src/codex.js) */
 import { onAchvState, noteServerAp } from '@/game/achievements.js'; /* v2.3.3527: the achievements the worker granted (server/src/achievements.js) */
+import { onFishWeight, onFishBoard } from '@/game/fishWeigh.js'; /* v2.3.4036: a weigh-in and the biggest-fish boards (server/src/fishlog.js) */
+import { fishCatchWords } from '@/data/fishVariants.js'; /* v2.3.4036: "An albino Trout!" */
 import { onRaceState, onRaceCheckpoint, onRaceEnd } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js) */
 import { onBankState } from '@/game/bank.js'; /* v2.3.3785: the Bank's vault (server/src/bank.js) */
 import { rideApply, clearRide } from '@/game/ride.js'; /* v2.3.3776: the skateboard (server/src/ride.js) */
@@ -193,6 +195,7 @@ import { wheelStageName } from '@/data/wheelStageLooks.js'; /* v2.3.3817: ...wit
 import { nmlJoinFromBys } from '@/game/nmlAsk.js'; /* v2.3.3530: one who chose to attack you joins a fight you chose */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
+import { applyItemReveal, afterReveal } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece opened in the bag */
 import { onPointsResetResult } from '@/game/pointsReset.js'; /* v2.3.3541: the free points reset's answer */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
 import { applyWeaponGemResult, noteWeaponsArrived } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
@@ -627,6 +630,11 @@ export function setupWebSocket(ctx) {
              the worker keeps a phone that does not draw the one it plays out
              of harm.  Old workers ignore it. */
           ws: wheelSizesDrawn(),
+          /* v2.3.4012: this phone can show a mystery piece waiting in the bag
+             as a "?" and open it (game/revealBag.js): the worker keeps a
+             rare-or-better pickup unrevealed only for a phone that says so
+             (server/src/revealbag.js).  Old workers ignore it. */
+          rb: 1,
           /* v2.3.1178: declare we attach the per-session state_sync
              token (x-bt-auth header) to mutating economy POSTs, so the
              worker ENFORCES it for this session. Old workers ignore
@@ -2013,6 +2021,15 @@ export function setupWebSocket(ctx) {
               }
               break;
             }
+          case 'item_reveal':
+            {
+              /* v2.3.4012: the worker opened a mystery piece in the bag
+                 (revealbag.js): the piece's grade goes onto the bag's copy and
+                 its ladder onto the overlay's queue (game/revealBag.js).
+                 Server-only (PRIVILEGED_EVENTS); a relay never carries it. */
+              if (!msg.from) applyItemReveal(S, msg.payload, saveRpgSoon);
+              break;
+            }
           case 'item_drop_result':
             {
               /* v2.3.3473: the worker's answer to Drop (itemdrop.js): the bag
@@ -2102,7 +2119,17 @@ export function setupWebSocket(ctx) {
              caps gate: a crown paid by the mail is granted before state_sync
              (game/achievements.js holds its banner until the world shows). */
           case 'achv_state':
-            { if (msg.from) break; try { onAchvState(S, msg.payload); } catch (_ae) { /* display only */ } break; }
+            /* v2.3.4012: held while a bag reveal plays (game/revealBag.js):
+               the grade's achievement comes right behind its answer */
+            { if (msg.from) break; var _achvP = msg.payload; afterReveal(function () { try { onAchvState(S, _achvP); } catch (_ae) { /* display only */ } }); break; }
+          /* v2.3.4036: a weigh-in and the biggest-fish boards (server
+             fishlog.js), private and PRIVILEGED there; here, not the default
+             branch, for codex_state's reason, and a relayed copy (`from`) is
+             never taken, as achv_state's. */
+          case 'fish_weight':
+            { if (msg.from) break; try { onFishWeight(S, msg.payload); } catch (_fe) { /* display only */ } break; }
+          case 'fish_board':
+            { if (msg.from) break; try { onFishBoard(S, msg.payload); } catch (_fe) { /* display only */ } break; }
           case 'make_traps_result':
             { try { onMakeTrapsResult(S, msg.payload); } catch (_te) { /* display only */ } break; }
           /* ═══ v2.3.3525: LIL BRO'S RACE (server/src/race.js) ═══
@@ -3232,6 +3259,13 @@ export function setupWebSocket(ctx) {
                 var _pickedHShard = shardByKey(hc.shard);
                 pushDmgPopup(S, S.player.x, S.player.y - 54, '+ ' + (_pickedHShard ? _pickedHShard.label : 'Shard'), (_pickedHShard && _pickedHShard.color) || '#cce6ff');
               }
+              /* v2.3.4036: a rare fish says so -- "An albino Trout!", "A LARGE
+                 Salmon!" (server fishlog.js rolls it; the bag's echo carries
+                 the key) -- against a worker that rolls them */
+              if (hc.fish && hc.fish.v && S._serverCaps && S._serverCaps.fishvariants) {
+                var _fw = fishCatchWords(hc.fish.v, hc.fish.sp);
+                if (_fw) { pushDmgPopup(S, S.player.x, S.player.y - 62, _fw, hc.fish.v === 'large' ? '#F2C14E' : '#F6D9E4'); try { BT_AUDIO.collect(); } catch (e) {} }
+              }
               if (hc.leveled && hc.skillName) {
                 var _sklEmoji = hc.skillName === 'fishing' ? '🎣' : hc.skillName === 'woodcutting' ? '🪓' : '⛏';
                 var _sklLabel = hc.skillName.charAt(0).toUpperCase() + hc.skillName.slice(1);
@@ -4105,6 +4139,10 @@ export function setupWebSocket(ctx) {
                  stats — the same class of bug as v2.3.1758 dropping `mat`
                  and rendering iron as steel. */
               quality: typeof _pc.quality === 'string' ? _pc.quality : undefined,
+              /* v2.3.4012: ...or, a rare-or-better piece waiting in the bag,
+                 no grade and the worker's mark that it is still a "?"
+                 (game/revealBag.js): Reveal on its card opens it */
+              unrevealed: _pc.unrevealed ? true : undefined,
               /* ═══ v2.3.3545: AND THE WORKER'S MARK THAT IT MINTED IT ═══
                  Rebuilt from a list of fields, the piece lost `prov`, so the
                  bag's card read a Copper Torso forged a second ago as
@@ -4118,7 +4156,8 @@ export function setupWebSocket(ctx) {
                  own ledger. */
               prov: _pc.prov === 'minted' ? 'minted' : undefined });
             _gotArmor++;
-            pushDmgPopup(S, S.player.x, S.player.y - 46 - _ai * 14, 'BAG: ' + _pcName, '#f5c542', { ts: Date.now() + 2 + _ai });
+            /* v2.3.4012: a "?" says so, in the rare blue it promises */
+            pushDmgPopup(S, S.player.x, S.player.y - 46 - _ai * 14, 'BAG: ' + _pcName + (_pc.unrevealed ? ' ?' : ''), _pc.unrevealed ? '#5B99DE' : '#f5c542', { ts: Date.now() + 2 + _ai });
           }
           if (_gotArmor > 0) {
             try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -4136,8 +4175,11 @@ export function setupWebSocket(ctx) {
           var _wColor = (RARITY_TIERS[_wTier] && RARITY_TIERS[_wTier].color) || '#8B9695' /* v2.3.1233: Lantern common grey (was navy-palette #8890b8) */;
           var _wQual = payload.weapon.quality;
           var _wQualTag = (_wQual && _wQual !== 'normal') ? ' [' + String(_wQual).toUpperCase() + ']' : '';
+          /* v2.3.4012: a blade waiting in the bag as a "?" (game/revealBag.js) */
+          var _wHidden = !!payload.weapon.unrevealed;
+          if (_wHidden) _wQualTag = ' ?';
           if (payload.weaponStashed) {
-            pushDmgPopup(S, S.player.x, S.player.y - 34, 'STASHED: ' + (payload.weapon.name || 'Weapon') + _wQualTag, (_wQual && _wQual !== 'normal') ? '#f5c542' : _wColor, { ts: Date.now() + 1 });
+            pushDmgPopup(S, S.player.x, S.player.y - 34, 'STASHED: ' + (payload.weapon.name || 'Weapon') + _wQualTag, _wHidden ? '#5B99DE' : (_wQual && _wQual !== 'normal') ? '#f5c542' : _wColor, { ts: Date.now() + 1 });
           } else if (payload.weaponSoldFor) {
             pushDmgPopup(S, S.player.x, S.player.y - 34, '+' + payload.weaponSoldFor + 'G (sold, stash full)', '#f5c542', { ts: Date.now() + 1 });
             /* ═══ v2.3.2606: ...AND THE AUTO-SALE RINGS TOO ═══
@@ -5612,6 +5654,12 @@ export function setupWebSocket(ctx) {
           wsOut(msg);
           return;
         }
+        /* v2.3.4012: Reveal on a mystery piece's card (game/revealBag.js) ->
+           revealbag.js.  TRAPS #18: without this the ask never leaves. */
+        if (msg.type === 'reveal_item') {
+          wsOut(msg);
+          return;
+        }
         /* v2.3.3091: the shield on the arm (game/shieldWear.js) -> shieldwear.js.
            TRAPS #18: without this line the report never leaves the browser. */
         if (msg.type === 'shield_wear') {
@@ -5644,6 +5692,13 @@ export function setupWebSocket(ctx) {
            the ask never leaves the browser and "Use as title" waits for an
            answer that never comes. */
         if (msg.type === 'achv_title') {
+          wsOut(msg);
+          return;
+        }
+        /* v2.3.4036: Inspect on a fish and the biggest-fish boards
+           (game/fishWeigh.js) -> fishlog.js.  TRAPS #18: without these the
+           asks never leave the browser and the weigh-in card waits forever. */
+        if (msg.type === 'fish_inspect' || msg.type === 'fish_board_request') {
           wsOut(msg);
           return;
         }

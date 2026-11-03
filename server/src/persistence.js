@@ -22,6 +22,7 @@
 import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migrations.js';
 import { GEAR_STASH_CAP } from './gearstash.js';
 import { cleanApOnce } from './inbox.js';   /* v2.3.3488: the once-a-character prize marks */
+import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012: a piece waiting in the bag goes out without its grade */
 
 /* v2.3.2523: one bound for the five gear stashes, applied at BOTH the
    save and the echo below.  Handoff rule 3's warning is why it is a
@@ -522,6 +523,11 @@ export const persistenceMethods = {
        (a flush would write the old counts straight back). */
     try { await this.state.storage.delete('codex:' + pid); } catch (e) { /* best-effort, as above */ }
     this._codexForget(pid);
+    /* v2.3.4036: and the fish log (fishlog.js): a restarted character has
+       caught nothing to weigh.  Its rows on the biggest-fish boards stay --
+       a record is a record of a moment, as the Ace board's are. */
+    try { await this.state.storage.delete('fishlog:' + pid); } catch (e) { /* best-effort, as above */ }
+    this._fishlogForget(pid);
     /* v2.3.3527: and the achievements (achievements.js): a restarted character
        has earned none -- its AP went with the rpg blob above */
     try { await this.state.storage.delete('achv:' + pid); } catch (e) { /* best-effort, as above */ }
@@ -645,15 +651,22 @@ export const persistenceMethods = {
           _buffs: ps._buffs || {},
           // Equipment slots.  Worker is authoritative for ownership;
           // client renders from these on player_state arrival.
-          weapon: ps.weapon || null,
-          rangedWeapon: ps.rangedWeapon || null,
-          staffWeapon: ps.staffWeapon || null,
+          /* v2.3.4012: every piece below goes out through revealPublic
+             (revealbag.js): a piece still waiting in the bag as a "?" goes
+             without its grade, marked `unrevealed`.  A worn slot is never
+             marked (wearing opens it); passing it through anyway costs one
+             test and means no door is left to remember.  The v2 delta below
+             compares these PUBLIC forms, so an opened piece counts as a
+             change and goes out. */
+          weapon: revealPublic(ps.weapon) || null,
+          rangedWeapon: revealPublic(ps.rangedWeapon) || null,
+          staffWeapon: revealPublic(ps.staffWeapon) || null,
           activeSlot: ps.activeSlot || 'melee',
-          armor: ps.armor || null,
-          legsArmor: ps.legsArmor || null,   /* v2.3.1679: echoed with armor */
+          armor: revealPublic(ps.armor) || null,
+          legsArmor: revealPublic(ps.legsArmor) || null,   /* v2.3.1679: echoed with armor */
           shield: ps.shield || null,
           amulet: ps.amulet || null,
-          weaponStash: Array.isArray(ps.weaponStash) ? ps.weaponStash.slice(0, this.WEAPON_STASH_CAP) : [],
+          weaponStash: Array.isArray(ps.weaponStash) ? revealPublicList(ps.weaponStash.slice(0, this.WEAPON_STASH_CAP)) : [],
           /* v2.3.2523: the gear stashes echo beside the weapon one, so a
              client that has adopted them can render the server's copy
              instead of its localStorage one (a device switch or a
@@ -665,8 +678,8 @@ export const persistenceMethods = {
              makes echoing them BEFORE any client reads them safe in
              both deploy directions (rule 19/20).  Nothing is taken away
              from the player's own stash by this echo. */
-          armorStash: capStash(ps.armorStash),
-          legsStash: capStash(ps.legsStash),
+          armorStash: revealPublicList(capStash(ps.armorStash)),   /* v2.3.4012: see the slots above */
+          legsStash: revealPublicList(capStash(ps.legsStash)),
           shieldStash: capStash(ps.shieldStash),
           gearStash: capStash(ps.gearStash),
           amuletStash: capStash(ps.amuletStash),

@@ -33,6 +33,7 @@ const BREW_BUFF_KEYS = ['damage', 'damageMul', 'mana', 'manaFlat', 'spd', 'spdMu
 import { PROG3 } from './prog3.js';        /* v2.3.2062: the special's mana cost */
 import { REGEN_TICKS } from './tick.js';   /* v2.3.2062: the regen cadence */
 import { cropHealFor } from './farm.js';  /* v2.3.3537: every crop is food */
+import { fishKeyInfo } from './fishlog.js';   /* v2.3.4036: an albino or a large fish eaten */
 
 /* v2.3.3036: _cookRateOk's cooks a minute, 20 -> 45.  20 ("one per 3 s ...
    well above legit play") held while the pan's gesture alone took 4.8 s or
@@ -61,7 +62,13 @@ export const cookingMethods = {
   // decrement still gets stomped on the next player_state.  Mirrors
   // FISHING_TIERS from src/data/lifeSkills.js -- keep in sync if new
   // fish tiers ship to the client.
+  /* v2.3.4036: a LARGE fish heals double (the owner: "It also heals
+     double"), raw or cooked, on either ladder (fishlog.js) */
   _fishHealAmount(invKey) {
+    const base = this._fishHealBase(invKey);
+    return typeof invKey === 'string' && /^(cooked_)?fish_[a-z]+_large$/.test(invKey) ? base * 2 : base;
+  },
+  _fishHealBase(invKey) {
     if (typeof invKey !== 'string') return 0;
     if (!invKey.startsWith('cooked_fish_') && !invKey.startsWith('fish_')) return 0;
     // Strip 'fish_' or 'cooked_fish_' prefix to get the species name.
@@ -176,6 +183,10 @@ export const cookingMethods = {
     if (typeof ps.maxHp !== 'number') ps.maxHp = 100;
     if (typeof ps.hp !== 'number') ps.hp = ps.maxHp;
     ps.hp = Math.min(ps.maxHp, ps.hp + heal);
+    /* v2.3.4036: the first albino (5 AP) and the first large (10 AP) of each
+       species eaten is an achievement (achievements.js), however it came to
+       the bag -- in this run, before the save that carries its points */
+    try { const fi = fishKeyInfo(invKey); if (fi && fi.v) this._achvGrant(session.id, ps, fi.v + '_' + fi.sp); } catch (e) { /* never breaks the meal */ }
     this._saveRpg(session.id, ps);
     const ws = this._wsBySessionId(session.id);
     if (ws) this._sendPlayerState(ws, session.id);

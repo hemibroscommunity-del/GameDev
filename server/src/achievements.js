@@ -125,6 +125,13 @@ const LIST = Object.freeze([
   { id: 'house_limit', tier: 'superrare', count: true },
   { id: 'combat_100', tier: 'superrare' },
   { id: 'godly', tier: 'superrare', count: true },
+  /* v2.3.4036: THE RARE FISH, EATEN (fishlog.js; the owner: "Consuming adds
+     a one time 5 achievement point bonus" for an albino, "10 achievement
+     points (one time)" for a large one).  One row a species, each once --
+     a row's own `ap` over its tier's (no tier pays 5).  An albino is 1 in
+     100 catches, common; a large 1 in 1,000, rare (its banner). */
+  ...['minnow', 'clownfish', 'trout', 'salmon', 'pike'].map((sp) => ({ id: 'albino_' + sp, tier: 'common', ap: 5 })),
+  ...['minnow', 'clownfish', 'trout', 'salmon', 'pike'].map((sp) => ({ id: 'large_' + sp, tier: 'rare', ap: 10 })),
 ].map((a) => Object.freeze({ count: false, ...a })));
 
 /* The story is done when the LAST quest of every live chain is handed in:
@@ -172,8 +179,14 @@ export const ACHV = Object.freeze({
   RARITY: Object.freeze([
     'tempered', 'godly', 'elite_iron', 'house_limit', 'golden_giant', 'combat_100',
     'gladiator',
-    'natural_one', 'dungeons_all', 'elder_all', 'elite_piece', 'iron_blade', 'golden_pet',
+    'natural_one', 'dungeons_all', 'elder_all', 'elite_piece',
+    /* v2.3.4036: a large fish, 1 in 1,000 catches -- rarer than an Iron
+       Great Sword's 1 in 500; the deeper water's first */
+    'large_pike', 'large_salmon', 'large_trout', 'large_clownfish', 'large_minnow',
+    'iron_blade', 'golden_pet',
     'combat_50', 'codex_all', 'story_done',
+    /* v2.3.4036: an albino, 1 in 100 catches, first of the commons */
+    'albino_pike', 'albino_salmon', 'albino_trout', 'albino_clownfish', 'albino_minnow',
     'nml_kill', 'first_duel', 'first_dungeon', 'first_order', 'first_pet', 'combat_10', 'first_blood',
   ]),
 });
@@ -197,9 +210,13 @@ const BY_ID = Object.create(null);
 for (const a of LIST) BY_ID[a.id] = a;
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
-/** An achievement's points (0 for an id this worker does not know). */
+/** An achievement's points (0 for an id this worker does not know): its
+ *  row's own `ap` when it has one (v2.3.4036: the rare fish's 5 and 10),
+ *  else its tier's. */
 export function achvAp(id) {
-  return has(BY_ID, id) ? TIER_AP[BY_ID[id].tier] : 0;
+  if (!has(BY_ID, id)) return 0;
+  const a = BY_ID[id];
+  return typeof a.ap === 'number' ? a.ap : TIER_AP[a.tier];
 }
 
 /** A stored record, made safe to grant into: `{rec, locked}`.  Locked when a
@@ -452,16 +469,24 @@ export const achievementMethods = {
   /* A piece of gear made yours: picked up off a kill (`from` 'kill': the
      Iron Great Sword is a kill's only weapon), forged, or out of a chest.
      Elite is elite or better; Godly is godly. */
-  _achvOnPiece(pid, ps, piece, from) {
-    if (this._achvOff() || !piece || typeof piece !== 'object') return;
+  /* v2.3.4012: `opts` is handed to each grant (`quiet`: the reveal tells the
+     phone after its own answer, revealbag.js), and the ids newly earned come
+     back, so a quiet caller can send them. */
+  _achvOnPiece(pid, ps, piece, from, opts) {
+    const got = [];
+    if (this._achvOff() || !piece || typeof piece !== 'object') return got;
     const q = piece.quality;
     const eliteUp = q === 'elite' || q === 'godly';
-    if (from === 'kill' && piece.type && typeof piece.gearBase === 'string') {
-      this._achvGrant(pid, ps, 'iron_blade');
-      if (eliteUp) this._achvGrant(pid, ps, 'elite_iron');
+    const grant = (id) => { if (this._achvGrant(pid, ps, id, opts) === 'new') got.push(id); };
+    /* v2.3.4012: 'reveal' -- a piece off a kill opened in the bag
+       (revealbag.js): the blade was counted at its pickup, its grade now */
+    if ((from === 'kill' || from === 'reveal') && piece.type && typeof piece.gearBase === 'string') {
+      if (from === 'kill') grant('iron_blade');
+      if (eliteUp) grant('elite_iron');
     }
-    if (eliteUp) this._achvGrant(pid, ps, 'elite_piece');
-    if (q === 'godly') this._achvGrant(pid, ps, 'godly');
+    if (eliteUp) grant('elite_piece');
+    if (q === 'godly') grant('godly');
+    return got;
   },
 
   /* A weapon hardened to the top (hardening.js, a success at HARDEN.MAX). */
