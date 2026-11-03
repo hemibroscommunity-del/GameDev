@@ -116,7 +116,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const i = document.querySelector('[data-weapon-chip] img');
       return i ? { slot: i.closest('[data-weapon-chip]').getAttribute('data-weapon-chip'), src: i.getAttribute('src'), ok: i.complete && i.naturalWidth > 0 } : null;
     }, (v) => !!v && v.ok, { timeout: 8000, label: 'the weapon button' }).catch(() => null);
-    /* v2.3.4100: the weapon pill's lit well wears the Character sheet's bow
+    /* v2.3.4130: the weapon pill's lit well wears the Character sheet's bow
        (the owner's pill picture), no longer the Equipment slot's */
     rec.ok(`3b. the weapon pill, the bow in hand, lights its bow well with the Character sheet's bow (its small copy) (${chip ? chip.slot + ' ' + file(chip.src) : 'no pill'})`,
       !!chip && chip.slot === 'ranged' && file(chip.src) === '/ui/controls/wpn-ranged.webp', chip);

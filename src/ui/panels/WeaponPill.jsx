@@ -6,7 +6,7 @@ import { weaponPillAnchor, WPILL, ctlBottom, RBTN, LBTN, discRight, discBottom, 
   ctlColumn, CTL_SLOT, rightCluster, RCTL_SLOT, leftCluster, LCTL_SLOT } from './ShieldButton.jsx';
 import { WPN_PILL_ICONS } from './controlSkin.jsx';
 
-/* ═══ v2.3.4100: THE WEAPON PILL, CENTRED AT THE FOOT OF THE WORLD ═══
+/* ═══ v2.3.4130: THE WEAPON PILL, CENTRED AT THE FOOT OF THE WORLD ═══
  *
  * The owner, 2026-11-03, sending a picture of it: "I uploaded ... different
  * pill shape weapon swap type bar.  Put it centered bottom of screen area."
@@ -22,7 +22,8 @@ import { WPN_PILL_ICONS } from './controlSkin.jsx';
  *             filter: the iOS grain), the Character sheet's own coloured
  *             picture of that weapon (hero/melee, bow, magic), baked small
  *             (ui/controls/wpn-*.webp: one is on screen always).  It carries
- *             data-weapon-chip, the hook SwapHint and the tests point at.
+ *             data-weapon-chip, the hook the tests point at (the guide arrow's swap
+ *             lesson points at the whole pill, [data-weapon-pill]).
  *   HELD      the same picture baked grey (ui/controls/wpn-*-grey.webp,
  *             tools/ui/draw-control-icons.py: the game never filters a
  *             picture on screen, TRAPS §42).  A tap takes it in hand.
@@ -323,7 +324,7 @@ export function WeaponPill(props) {
       },
     };
     if (x.on) {
-      /* the hook SwapHint, mp-weaponswap and the button audits point at */
+      /* the hook mp-weaponswap and the button audits point at */
       attrs['data-weapon-chip'] = x.slot;
       attrs['data-weapon-owned'] = view.owned.length;
     }

@@ -61,7 +61,7 @@ export function controlsPreloadUrls() {
   const urls = RDISC_ICONS.map((ic) => ic[1]);
   /* v2.3.3522: the wood shield sprite is no longer the Block button's picture
      (the owner's painted shield is, warmed in ABILITY_ART_URLS below) */
-  /* v2.3.4100: Sprint and Jump wear our drawings of the owner's winged foot
+  /* v2.3.4130: Sprint and Jump wear our drawings of the owner's winged foot
      and leaping figure (the winged boot no longer: it stays the Character
      sheet's, loaded with its window); and the weapon pill's six pictures, the
      three weapons in colour and in grey (WeaponPill.jsx) -- the pill is on

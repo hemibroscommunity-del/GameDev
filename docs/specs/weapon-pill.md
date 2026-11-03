@@ -1,4 +1,4 @@
-# The weapon pill (v2.3.4100)
+# The weapon pill (v2.3.4130)
 
 The owner, 2026-11-03, with a picture of it: "I uploaded ... different pill
 shape weapon swap type bar. Put it centered bottom of screen area. Also
@@ -47,6 +47,13 @@ dashboard band, in every layout.
 - While it is drawn `html[data-wpill-shown]` lifts the doors' Enter prompt over
   it sideways and on a computer (game.css; upright the prompt already stands
   over Jump).
+
+## Taught by the big arrow (v2.3.4130)
+
+After the first quest's hand-in, once a second weapon is in hand, the guide
+arrow points at the pill: "Tap a weapon to switch" ("Click a weapon or press
+1 2 3" on a computer), until the first switch, once (docs/specs/guide-arrow.md).
+It replaced the SwapHint callout.
 
 ## The other icons in the same ask
 

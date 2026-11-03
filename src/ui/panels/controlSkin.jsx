@@ -280,21 +280,21 @@ export const ICON_URL = {
   ranged: '/icons/ui/hero/bow.webp?v=2.3.1311',
   staff: '/icons/ui/hero/magic.webp?v=2.3.1311',
   boot: '/icons/ui/hero/move-speed.webp?v=2.3.3006',
-  /* v2.3.4100: the owner's "different icons for jump, sprint": our own
+  /* v2.3.4130: the owner's "different icons for jump, sprint": our own
      drawings of their references (tools/ui/draw-control-icons.py, 256
      colours), a light figure on the dark button */
-  jump: '/ui/controls/ctl-jump.webp?v=2.3.4100',
-  sprint: '/ui/controls/ctl-sprint.webp?v=2.3.4100',
+  jump: '/ui/controls/ctl-jump.webp?v=2.3.4130',
+  sprint: '/ui/controls/ctl-sprint.webp?v=2.3.4130',
 };
-/* v2.3.4100: the weapon pill's pictures (WeaponPill.jsx): the Character
+/* v2.3.4130: the weapon pill's pictures (WeaponPill.jsx): the Character
    sheet's own sword, bow and staff in colour for the weapon in hand, and
    their baked grey copies for the others (draw-control-icons.py; never a CSS
    filter, TRAPS §42), all 96 px (36 KB decoded each, MEMORY-MAP's UI icon;
    the sheet's own are 256 px).  Warmed on the loading screen (controlsPreload.js). */
 export const WPN_PILL_ICONS = {
-  melee: { on: '/ui/controls/wpn-melee.webp?v=2.3.4100', off: '/ui/controls/wpn-melee-grey.webp?v=2.3.4100' },
-  ranged: { on: '/ui/controls/wpn-ranged.webp?v=2.3.4100', off: '/ui/controls/wpn-ranged-grey.webp?v=2.3.4100' },
-  staff: { on: '/ui/controls/wpn-staff.webp?v=2.3.4100', off: '/ui/controls/wpn-staff-grey.webp?v=2.3.4100' },
+  melee: { on: '/ui/controls/wpn-melee.webp?v=2.3.4130', off: '/ui/controls/wpn-melee-grey.webp?v=2.3.4130' },
+  ranged: { on: '/ui/controls/wpn-ranged.webp?v=2.3.4130', off: '/ui/controls/wpn-ranged-grey.webp?v=2.3.4130' },
+  staff: { on: '/ui/controls/wpn-staff.webp?v=2.3.4130', off: '/ui/controls/wpn-staff-grey.webp?v=2.3.4130' },
 };
 /* The pictures the attack disc can wear (TouchControls), all in the DOM from
    the start and warmed on the loading screen (controlsPreload.js), so a
@@ -329,7 +329,7 @@ export function weaponDiscIcon(slot, weapon) {
 /* v2.3.3920: no weapon pictures on the disc any more: an attack (data-ricon
    melee / ranged / staff / w-*, still the weapon in hand, weaponDiscIcon) wears
    the aiming reticle drawn in code (AimReticle), and the weapon in hand is the
-   weapon pill's lit well (WeaponPill.jsx, v2.3.4100; it was v2.3.3921's
+   weapon pill's lit well (WeaponPill.jsx, v2.3.4130; it was v2.3.3921's
    weapon triangle).  Their eleven
    pictures are no longer put in the DOM or warmed for the disc. */
 export const RDISC_WEAPON_KEYS = ['melee', 'ranged', 'staff'].concat(WEAPON_ART.map(function (f) { return 'w-' + f; }));
@@ -386,7 +386,7 @@ export const RDISC_ICONS = [
  * never greyed); while a thumb is on the stick (data-pressed) it and the rod
  * it rides on, the direction pointer, brighten (game.css).  Drawn in SVG: no
  * file, nothing to preload or free. */
-/* ═══ v2.3.4100: THE OWNER'S RETICLE ═══
+/* ═══ v2.3.4130: THE OWNER'S RETICLE ═══
  * The owner sent a reticle with "different icons for jump, sprint, and
  * reticle": a thin grey circle broken into four arcs (gaps at north, east,
  * south and west) and a small white cross in the middle whose four strokes
@@ -544,7 +544,7 @@ export function jumpGlyphKind(search) {
   try {
     var q = search != null ? search : ((typeof window !== 'undefined' && window.location && window.location.search) || '');
     var m = /(?:^|[?&])jumpicon=([a-z]+)/.exec(q);
-    /* v2.3.4100: no ?jumpicon= is the owner's leaping figure, a picture
+    /* v2.3.4130: no ?jumpicon= is the owner's leaping figure, a picture
        (ICON_URL.jump; JumpButton), so null; a drawn mark only when asked */
     return m && JUMP_MARKS[m[1]] ? m[1] : null;
   } catch (e) {

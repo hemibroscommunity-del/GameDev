@@ -466,7 +466,7 @@ export const STATES = [
       return { release: async () => { await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }).catch(() => {}); } };
     },
   },
-  /* v2.3.4100: the weapon pill with all three weapons held, the bow in hand
+  /* v2.3.4130: the weapon pill with all three weapons held, the bow in hand
      (written on the page: the picture, not the worker's say) */
   {
     id: 'hud-weapons', group: 'The world (HUD)', title: 'The weapon pill: three weapons, the bow in hand',

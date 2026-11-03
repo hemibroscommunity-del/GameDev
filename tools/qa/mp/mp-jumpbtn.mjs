@@ -142,7 +142,7 @@ async function onePhone({ browser, wsPort, webPort, rec, errors, OUT }, ph) {
     const jcy = (a.jump.t + a.jump.b) / 2, dcy = (a.disc.t + a.disc.b) / 2;
     const ang = Math.round(Math.atan2(jcy - dcy, dcx - jcx) * 180 / Math.PI);
     const ring = Math.round(Math.hypot(jcx - dcx, jcy - dcy) - (a.jump.r - a.jump.l) / 2 - dw / 2);
-    /* v2.3.4100: upright, turned west on the ring (~12 deg below west) to
+    /* v2.3.4130: upright, turned west on the ring (~12 deg below west) to
        stand over the weapon pill centred at the band's top (the owner: "Put it
        centered bottom of screen area"); still on the ring, still down-left */
     const sw = a.vw > a.vh ? ang > 0 && ang < 90 : ang >= 5 && ang <= 65;

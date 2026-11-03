@@ -1,4 +1,4 @@
-/* ═══ mp-weaponswap (v2.3.4100): THE WEAPON PILL AT THE FOOT OF THE WORLD ═══
+/* ═══ mp-weaponswap (v2.3.4130): THE WEAPON PILL AT THE FOOT OF THE WORLD ═══
  *
  * The owner, 2026-11-03: "different pill shape weapon swap type bar.  Put it
  * centered bottom of screen area" (WeaponPill.jsx; it was v2.3.3921's

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v2.3.4100: the jump and sprint buttons' pictures, and the weapon pill's
+"""v2.3.4130: the jump and sprint buttons' pictures, and the weapon pill's
 greyed weapons, drawn here.
 
 The owner, 2026-11-03: "I uploaded ... different pill shape weapon swap type

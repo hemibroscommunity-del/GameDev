@@ -1,5 +1,7 @@
 # "Swap weapons", said once (v2.3.3877)
 
+> **Replaced at v2.3.4130 by the guide arrow's swap lesson** (docs/specs/guide-arrow.md): the owner, "Weapon swap instruction from tutorial should only become relevant after receiving new weapons from turning in first quest ... I like the big arrows to teach where things are on screen."  `SwapHint.jsx` is gone; `mp-swaphint` tests the lesson.  What follows is the callout's history.
+
 The owner, playtesting: "it might be good somehow to bring more attention to how
 to swap weapons because I completely forgot about it and nothing said anything
 to me about swapping weapons".

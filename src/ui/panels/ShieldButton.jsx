@@ -269,7 +269,7 @@ export function blockAnchor(isLandscape) {
   var right = jl.right + jl.size + BLOCK_JUMP_SIDE;
   if (isLandscape) return { size: col.size, right: right, bottomPx: BLOCK_BAND_BOTTOM - col.size - CTL_GAP };
   var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
-  /* ═══ v2.3.4100: UPRIGHT, BESIDE JUMP AT ITS FOOT, OVER THE WEAPON PILL ═══
+  /* ═══ v2.3.4130: UPRIGHT, BESIDE JUMP AT ITS FOOT, OVER THE WEAPON PILL ═══
      Jump turned west over the weapon pill (jumpAnchor); Block stays beside it
      on its left, BLOCK_JUMP_SIDE of air, their feet level -- WPILL_AIR over
      the pill's top, where its old place (14 px over the band) lay on the
@@ -520,7 +520,7 @@ export function jumpAnchor(isLandscape) {
     var bashFoot = ctlColumn(true).bottomPx(CTL_SLOT.bash);
     down = Math.min(ring, Math.max(down, cB + size / 2 - (bashFoot - RCTL_JUMP_AIR)));
   }
-  /* ═══ v2.3.4100: UPRIGHT, WEST ENOUGH TO STAND OVER THE WEAPON PILL ═══
+  /* ═══ v2.3.4130: UPRIGHT, WEST ENOUGH TO STAND OVER THE WEAPON PILL ═══
      The owner put the weapon pill "centered bottom of screen area"; south-west
      of the disc, Jump's foot was 23 px over the band, across the pill's right
      end.  So upright Jump turns west on the same ring until its foot stands
@@ -758,10 +758,10 @@ export function combatBandTopPx(isLandscape) {
     jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */
     discBottom(isLandscape) + discR,           /* the attack disc (v2.3.3740: its own height upright) */
     LBTN.bottom + discL,                       /* the movement disc */
-    weaponPillTopPx(isLandscape));             /* v2.3.4100: the weapon pill, centred at the band's top */
+    weaponPillTopPx(isLandscape));             /* v2.3.4130: the weapon pill, centred at the band's top */
 }
 
-/* ═══ v2.3.4100: THE WEAPON PILL, CENTRED AT THE FOOT OF THE WORLD ═══
+/* ═══ v2.3.4130: THE WEAPON PILL, CENTRED AT THE FOOT OF THE WORLD ═══
  * The owner, 2026-11-03: "different pill shape weapon swap type bar.  Put it
  * centered bottom of screen area" (WeaponPill.jsx).  Three wells in a row,
  * WPILL.well (40 px of touch each) WPILL.gap apart inside WPILL.pad of pill:

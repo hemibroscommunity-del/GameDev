@@ -132,7 +132,7 @@ function judge(rec, tag, st, d, upright) {
   const cj = ctr(j), cd = ctr(disc);
   const ang = Math.round(Math.atan2(cj.y - cd.y, cd.x - cj.x) * 180 / Math.PI);   /* 0 = west, 90 = south */
   const ring = gapOf(j, disc);
-  /* v2.3.4100: upright Jump turns west on its ring to stand over the weapon
+  /* v2.3.4130: upright Jump turns west on its ring to stand over the weapon
      pill centred at the band's top (ShieldButton jumpAnchor): ~12 deg */
   const sw = upright ? ang >= 5 && ang <= 65 : ang > 0 && ang < 90;
   rec.ok(`${tag} ${st}: Jump orbits the disc south-west -- ${ang} deg below west (${upright ? '5-65, over the weapon pill' : 'between west and south'}), ${ring} px off its ring, both round (${j.round}, ${disc.round})`,
@@ -293,7 +293,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const back = await doorAt();
       const dashB = calm.dash;
       if (upright) {
-        /* v2.3.4100: with Jump gone it stands over the weapon pill (68 px,
+        /* v2.3.4130: with Jump gone it stands over the weapon pill (68 px,
            game.css html[data-wpill-shown]), no longer down in the pill's strip */
         rec.ok(`${tag}: Jump gone, the Enter button stands over the weapon pill (its foot ${dashB - gone.b} px over the band, flag ${gone.flag}); Jump back, it rises over Jump (${dashB - back.b} px)`,
           !gone.jump && gone.flag == null && dashB - gone.b >= 60 && dashB - gone.b <= 76 && back.jump && back.flag != null && dashB - back.b > 60, { gone, back, dashB });

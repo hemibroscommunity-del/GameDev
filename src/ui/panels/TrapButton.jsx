@@ -199,7 +199,7 @@ export function TrapButton({ stateRef, isLandscape }) {
       {...handlers}
       style={{
         left: 'calc(50% - 10px)',
-        /* v2.3.4100: over the weapon pill, centred at the band's top (WeaponPill:
+        /* v2.3.4130: over the weapon pill, centred at the band's top (WeaponPill:
            its top 56 px over the band), as the doors' Enter prompt now stands
            (game.css html[data-wpill-shown]); raised over that prompt at a door.
            It was 24, and 76 at a door. */

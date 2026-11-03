@@ -5426,7 +5426,7 @@ body.bt-intro-up .bt-zone-loading{visibility:hidden}
 @media (pointer:fine) {
   :root { --bt-wpn-slot: 0px; }
 }
-/* v2.3.4100: a tap on a weapon you do not have yet shakes its empty well
+/* v2.3.4130: a tap on a weapon you do not have yet shakes its empty well
    (WeaponPill.jsx; v2.3.3921's triangle shook its dashed circle).  transform
    only -- never a filter over the WebGL canvas (iOS grain).  A press pushes the
    well in, as every control's does. */
@@ -5444,7 +5444,7 @@ body.bt-intro-up .bt-zone-loading{visibility:hidden}
   .bt-wpill-nope { animation: none; }
   .bt-wpill-well { transition: none; }
 }
-/* v2.3.4100: the doors' Enter prompt (no bottom of its own) sits centred just
+/* v2.3.4130: the doors' Enter prompt (no bottom of its own) sits centred just
    over the band, where the weapon pill now is: while the pill is drawn it
    stands over the pill instead (upright, html[data-jump-clear] places it over
    Jump, a stronger rule).  48 px pill + 8 px foot + 12 px air. */
@@ -7450,7 +7450,7 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 /* v2.3.3920: a thumb on the stick: the reticle and its rod (the pointer) light */
 .bt-rjoy-aim .bt-aim-ring,.bt-rjoy-aim .bt-aim-tick{transition:stroke 90ms linear}
 .bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-ring,.bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-tick{stroke:#FFF3C4}
-/* v2.3.4100: the reticle has no centre dot now (its small white cross: controlSkin AimReticle) */
+/* v2.3.4130: the reticle has no centre dot now (its small white cross: controlSkin AimReticle) */
 .bt-rjoy-base[data-pressed="1"] [data-rod]{background:linear-gradient(180deg,rgba(255,214,106,.62) 0%,rgba(240,176,72,.5) 100%);box-shadow:inset 0 0 0 1px rgba(255,236,170,.75)}
 /* v2.3.3105: the JUMP arrow over the disc as it is, see-through -- the owner:
    "a semi transparent overlay on the existing disc" (controlSkin RDISC_ICONS) */
