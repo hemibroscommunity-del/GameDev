@@ -1,0 +1,543 @@
+[
+ {
+  "id": "R11-1",
+  "title": "The Wheel objects' sprite-sheet pages (wanted, loading, ready, failed, dropped)",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Each object sprite sheet streamed in near the view, kept as colour numbers or a picture, dropped when far.",
+  "topConcern": "A failed page is never retried while you stay near: its buildings and trees stay invisible and walk-through until you go 1000 px away.",
+  "modes": [
+   "stuck",
+   "race",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/wheelObjects.js:315-355",
+   "src/rendering/wheelObjects.js:483-500",
+   "src/rendering/wheelObjects.js:225-279",
+   "src/rendering/wheelObjects.js:401-423",
+   "src/rendering/png8Worker.js:35-58"
+  ],
+  "linked": [
+   "R11-2",
+   "R11-4",
+   "R11-7",
+   "R11-23",
+   "src/game/wheelTrial.js wheelOnStop",
+   "tools/qa/mp/mp-wheelobjects.mjs"
+  ]
+ },
+ {
+  "id": "R11-2",
+  "title": "A Wheel object's hit, break and mending as drawn (shake, rubble, fade back)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per object: whole, shaking, broken (shards, no footprint), mending (fade); driven by wheelBreak's lossy event buffer.",
+  "topConcern": "The 64-event buffer drops its oldest; a slime blast (40 objects) or a hidden tab overflows it, leaving rubble under mended objects.",
+  "modes": [
+   "combo",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/wheelObjects.js:636-675",
+   "src/rendering/wheelObjects.js:464-469",
+   "src/game/wheelBreak.js:83-86",
+   "src/game/wheelBreak.js:166-183",
+   "src/game/wheelBreak.js:200-240"
+  ],
+  "linked": [
+   "src/game/wheelBreak.js",
+   "R11-3",
+   "R11-4",
+   "R11-5",
+   "buildingFire.js",
+   "src/game/slimeBlast.js",
+   "src/networking/gameEvents.js:1421"
+  ]
+ },
+ {
+  "id": "R11-3",
+  "title": "Shatter heaps (cut, flying, bounced, lying, fading, gone)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "A broken object's shards: falling, bouncing, lying in a heap until mended or pushed out by the pixel cap.",
+  "topConcern": "A heap has no expiry of its own; a lost 'repair' leaves it lying until the cap or leaving the Wheel.",
+  "modes": [
+   "stuck",
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/wheelShatter.js:246-335",
+   "src/rendering/wheelShatter.js:338-356",
+   "src/rendering/wheelShatter.js:358-410",
+   "src/rendering/buildingFire.js:482"
+  ],
+  "linked": [
+   "R11-2",
+   "buildingFire.js",
+   "gpuOnly.js"
+  ]
+ },
+ {
+  "id": "R11-4",
+  "title": "The walk test's footprints and the one zone-blocker hook (Wheel, farm, arena)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Which footprints stop your boots: the Wheel's live list rebuilt on several triggers, or the farm's or arena's.",
+  "topConcern": "Rebuilds key on the COUNT of ready pages: a drop plus a load between frames leaves a stale list until you move.",
+  "modes": [
+   "divergence",
+   "combo",
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/wheelObjects.js:592-619",
+   "src/rendering/wheelObjects.js:438",
+   "src/rendering/wheelObjects.js:452-456",
+   "src/data/worldProps.js:848-861",
+   "src/rendering/pixiRenderer.js:516-523"
+  ],
+  "linked": [
+   "R11-1",
+   "R11-2",
+   "R11-6",
+   "R11-10",
+   "R11-11",
+   "src/data/worldProps.js zoneBlockers"
+  ]
+ },
+ {
+  "id": "R11-5",
+  "title": "A tree you stand behind going see-through, and a mended object fading in",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per drawn sprite: eased see-through alpha under a crown, times the mend fade-in alpha.",
+  "topConcern": "A repair whose break event was lost fades a never-removed tree in from zero: a blink.",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/wheelObjects.js:736-770",
+   "src/rendering/wheelObjects.js:710-717",
+   "src/rendering/wheelObjects.js:95-100"
+  ],
+  "linked": [
+   "R11-2",
+   "monsterSilhouette.js",
+   "tools/qa/mp/mp-canopy.mjs"
+  ]
+ },
+ {
+  "id": "R11-6",
+  "title": "A dungeon mouth: its picture (loading, ready, failed, far, freed) and its display",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Each mouth's picture loaded near, freed 10 s after far; drawn in code until the picture is ready.",
+  "topConcern": "Pictures are freed only by update() calls that stop after a renderer rebuild outside the Wheel: ~2 MB held until you return.",
+  "modes": [
+   "leak",
+   "race",
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/wheelDoors.js:93-128",
+   "src/rendering/wheelDoors.js:215-268",
+   "src/rendering/wheelDoors.js:314-335",
+   "src/rendering/systems/effectsRenderer.js:12046-12051"
+  ],
+  "linked": [
+   "R11-4",
+   "grottoFx.js",
+   "src/game/wheelDungeons.js wheelDungeonDoorsOpen"
+  ]
+ },
+ {
+  "id": "R11-7",
+  "title": "The Wheel's ground pieces (wanted, laying, laid, short, re-laying, freed) and the overview under them",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per 192 px ground piece: asked of the worker, laid, re-laid when a missing picture comes, freed when far.",
+  "topConcern": "A worker job has no timeout; a silent worker leaves three slots in flight and nothing new laid.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/wheelGround.js:200-319",
+   "src/rendering/wheelGround.js:321-341",
+   "src/rendering/wheelGround.js:434-472",
+   "src/rendering/wheelGround.js:474-490",
+   "src/game/wheelTrial.js:393-475"
+  ],
+  "linked": [
+   "src/game/wheelTrial.js",
+   "R11-8",
+   "R11-1",
+   "worldTrial.js"
+  ]
+ },
+ {
+  "id": "R11-8",
+  "title": "The moving water: the program (untried, built, cannot) and a quad per piece hiding the ground under open sea",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Whether this device draws moving water, and each ground piece's water quad hiding open-sea ground.",
+  "topConcern": "The built/cannot answer is decided against the first renderer only; a rebuilt one compiles the program on its first water frame.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/wheelWater.js:538-566",
+   "src/rendering/wheelWater.js:665-694",
+   "src/rendering/wheelWater.js:698-788"
+  ],
+  "linked": [
+   "R11-7",
+   "src/game/worldTrial.js:434",
+   "setWheelWaterMoves"
+  ]
+ },
+ {
+  "id": "R11-9",
+  "title": "The farm's pictures (loading, ready, freed) under a generation stamp",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "The farm's art set loaded behind the farm trip's hold and freed on leaving, stamped by generation.",
+  "topConcern": "A farm picture landing after you left is neither kept nor unloaded: up to ~9 MB stays in Pixi's cache until the next visit.",
+  "modes": [
+   "leak",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/farmWorld.js:122-156",
+   "src/rendering/farmWorld.js:159-173",
+   "src/game/farmTrip.js:25-80",
+   "src/rendering/preloadAnimations.js:193-196",
+   "src/rendering/preloadAnimations.js:308-311"
+  ],
+  "linked": [
+   "R11-10",
+   "src/game/farmTrip.js",
+   "src/game/zoneTransitions.js",
+   "R8-1 standIns farm pose"
+  ]
+ },
+ {
+  "id": "R11-10",
+  "title": "Your farm's beds as drawn: soil, crop stage, label, the ripe chime and the work's flying bits",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Each bed's soil, crop stage and label redrawn from the worker's farm_state; a ripe chime edge; work beats.",
+  "topConcern": "Label words come from the client's copy of the worker's rules (bedNext); drift shows a step the worker refuses.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/farmWorld.js:242-289",
+   "src/rendering/farmWorld.js:291-411",
+   "src/rendering/farmWorld.js:414-477",
+   "src/rendering/farmWorld.js:479-509"
+  ],
+  "linked": [
+   "server/src/farm.js",
+   "src/ui/mobile/farmBus.js",
+   "src/game/farmWork.js",
+   "src/game/farmWalk.js",
+   "R11-9"
+  ]
+ },
+ {
+  "id": "R11-11",
+  "title": "A dungeon arena's furnishings and the boss's chest (dropping, shut, open, glinting)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "The arena's things and life built once; the clear's chest drops, opens and glints by the reward's stamp.",
+  "topConcern": "The lid's moment is a copy of the card's timing (CHEST_OPEN_MS); changing one splits them.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/arenaWorld.js:177-199",
+   "src/rendering/arenaWorld.js:201-269",
+   "src/rendering/arenaWorld.js:295-315",
+   "src/game/dungeonClear.js:30-63"
+  ],
+  "linked": [
+   "src/ui/mobile/DungeonClearHud.jsx",
+   "server/src/dungeonreward.js",
+   "R11-4",
+   "arenaWalls.js"
+  ]
+ },
+ {
+  "id": "R11-12",
+  "title": "The dropped-item picture cache (loading, ready, failed, unheld, gone) with hold counts",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per bag picture: loading, ready, failed or trimmed, held by piles and drop lines, at most 24 unheld kept.",
+  "topConcern": "A failed picture is never fetched again while its entry lives: that item stays a stand-in mark.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/dropIcons.js:32-103",
+   "src/rendering/systems/effectsRenderer.js:10019",
+   "src/rendering/systems/effectsRenderer.js:10047-10052",
+   "src/rendering/dropLines.js:101"
+  ],
+  "linked": [
+   "R11-13",
+   "effectsRenderer loot piles",
+   "game/dropLook.js"
+  ]
+ },
+ {
+  "id": "R11-13",
+  "title": "A kill's drop lines (built, staggered in, rising, fading, gone) over a list two sides write",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Each kill's drop group: built, rebuilt when a late line arrives, lines staggered in and faded, pruned by both sides.",
+  "topConcern": "A throw part-way through building a group leaves earlier lines' picture holds never released.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/dropLines.js:128-176",
+   "src/rendering/dropLines.js:180-184",
+   "src/game/dropLines.js:222-256"
+  ],
+  "linked": [
+   "src/game/dropLines.js",
+   "R11-12"
+  ]
+ },
+ {
+  "id": "R11-14",
+  "title": "The preloaded icon sets: coin piles, rare-loot icons, the resource tools",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Three memoised load-once icon tables behind the global loading gate; a failure is permanent with a stand-in.",
+  "topConcern": "",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/coinPileArt.js:23-51",
+   "src/rendering/lootIcons.js:49-69",
+   "src/rendering/nodeLabels.js:114-141"
+  ],
+  "linked": [
+   "preloadAnimations.js preloadWorldAnimations",
+   "R11-15"
+  ]
+ },
+ {
+  "id": "R11-15",
+  "title": "A resource's label (built, tool alone, full pill, hidden, killed)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per drawn gather node: its tool alone, or name and level for the nearest; killed with the node's display.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/rendering/nodeLabels.js:188-259",
+   "src/rendering/nodeLabels.js:294-354",
+   "src/rendering/systems/effectsRenderer.js:11771-11776",
+   "src/rendering/systems/effectsRenderer.js:12021"
+  ],
+  "linked": [
+   "R11-14",
+   "R11-16",
+   "entityRenderer self band"
+  ]
+ },
+ {
+  "id": "R11-16",
+  "title": "A Wheel resource near the view: drawn or not, its ore break 'played', and its fish",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Per Wheel gather node: near/far with hysteresis, a break-played flag written in two files, a swimming school.",
+  "topConcern": "The tool filter short-circuits the near test, so stale hysteresis replays a vein's break animation mined while you were away.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/wheelNodes.js:55-74",
+   "src/rendering/systems/effectsRenderer.js:11755-11756",
+   "src/rendering/systems/effectsRenderer.js:11786-11803",
+   "src/rendering/wheelNodes.js:203-268"
+  ],
+  "linked": [
+   "server/src/wheelzone.js",
+   "R11-15",
+   "entityRenderer FAR_MARGIN"
+  ]
+ },
+ {
+  "id": "R11-17",
+  "title": "The Wheel's small map pictures: building icons and land icons",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Building and land icons loaded behind the Wheel's screen, freed on leaving after their holders are cleared.",
+  "topConcern": "No generation stamp: icons decoding at the free write themselves back; WheelSignposts never leaves the holder set.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/wheelBuildingIcons.js:129-183",
+   "src/rendering/wheelSignposts.js:55-111",
+   "src/rendering/wheelSignposts.js:143-148",
+   "src/rendering/preloadAnimations.js:159-164",
+   "src/rendering/preloadAnimations.js:298-306"
+  ],
+  "linked": [
+   "src/rendering/systems/wheelMinimap.js",
+   "R11-18",
+   "WorldMapOverlay.jsx"
+  ]
+ },
+ {
+  "id": "R11-18",
+  "title": "BroTown's signpost plates (far, popping up, shown, fading, dropped) and their knock",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per gate signpost: plates fade and pop up with your distance, a knock once each time they come up.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/rendering/wheelSignposts.js:213-251",
+   "src/rendering/wheelSignposts.js:114-133",
+   "src/rendering/systems/effectsRenderer.js:12052-12059"
+  ],
+  "linked": [
+   "R11-17",
+   "src/data/wheelSignposts.js"
+  ]
+ },
+ {
+  "id": "R11-19",
+  "title": "Lil Bro's race flags (none, made, later / next / done, dropped)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "The race course's flags drawn from S._race; each flag later, next or done, pennant redrawn on change only.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/rendering/raceFlags.js:83-102",
+   "src/game/race.js:134-163",
+   "src/rendering/systems/effectsRenderer.js:12062-12064"
+  ],
+  "linked": [
+   "src/game/race.js",
+   "server/src/race.js"
+  ]
+ },
+ {
+  "id": "R11-20",
+  "title": "A zone's footprint strip (none, loading, sliced, freed)",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "The snow-print strip per zone: loaded behind the zone's overlay, sliced, slices dropped before the unload on leaving.",
+  "topConcern": "Leaving mid-load lets slices of the destroyed picture be stored; the next visit trusts them: no prints for the session.",
+  "modes": [
+   "race",
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/footprintSprites.js:71-112",
+   "src/rendering/zoneTextures.js:65-70",
+   "src/rendering/zoneTextures.js:166-177",
+   "src/rendering/preloadAnimations.js:179"
+  ],
+  "linked": [
+   "src/rendering/zoneTextures.js",
+   "wheelStepAt"
+  ]
+ },
+ {
+  "id": "R11-21",
+  "title": "How each drawn Wheel object casts its shadow (waiting, columns, billboard, building)",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "A per-sprite caster record switching from billboard to columns once its picture's bases are read.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "src/rendering/wheelObjects.js:847-925",
+   "src/rendering/wheelObjects.js:295-312"
+  ],
+  "linked": [
+   "lightfx/shadows.js",
+   "R11-1",
+   "farmCasters",
+   "wheelDoorCasters"
+  ]
+ },
+ {
+  "id": "R11-22",
+  "title": "The old map's prop ground profile (unmeasured, measured, unreadable)",
+  "area": "rendering",
+  "verdict": "retired",
+  "oneLine": "A measure-once ground profile on each old-map prop sprite; only 'town' and 'frost' props, both retired.",
+  "topConcern": "",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/propGround.js:141-165",
+   "src/rendering/systems/entityRenderer.js:17296-17303",
+   "src/data/worldProps.js:698-700"
+  ],
+  "linked": [
+   "src/rendering/depthSort.js",
+   "readArtBottoms (live, pure)"
+  ]
+ },
+ {
+  "id": "R11-23",
+  "title": "The buildings' life on the Wheel, lost after a black-screen rebuild",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Building life textures made by the way-in warm only, freed by every WheelObjects destroy, read at sprite creation.",
+  "topConcern": "After a rebuild in the Wheel nothing re-warms them: BroTown's smoke, lamps and flags are gone until you leave and re-enter.",
+  "modes": [
+   "stuck"
+  ],
+  "confidence": "high",
+  "files": [
+   "src/rendering/wheelObjects.js:387-398",
+   "src/rendering/wheelObjects.js:401-416",
+   "src/rendering/wheelObjects.js:544-551",
+   "src/rendering/wheelLife.js:137-192",
+   "src/rendering/wheelGround.js:474-490"
+  ],
+  "linked": [
+   "src/rendering/wheelLife.js",
+   "src/game/worldTrial.js preloadWheel",
+   "landAuras.js landAurasWarm",
+   "R11-8",
+   "tools/qa/mp/mp-palette.mjs"
+  ]
+ }
+]

@@ -1,0 +1,390 @@
+[
+{
+"id": "M2-1",
+"title": "The weapon loadout: the phone moves the weapon first, the worker's echo corrects it",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Three weapon slots, the weapon bag and the hand, predicted on the phone and settled by the worker's echo.",
+"topConcern": "The Hero page's loadout picker unequips at 8 weapons with no cap check; the worker refuses silently, so the weapon vanishes from the phone.",
+"modes": [
+"guard-drift",
+"divergence",
+"race",
+"authority"
+],
+"confidence": "high",
+"files": [
+"src/ui/mobile/dash/ItemDetailPopup.jsx:927-938",
+"src/ui/mobile/dash/equipActions.js:64-112",
+"src/ui/mobile/dash/equipActions.js:374-401",
+"server/src/gear.js:663-776",
+"server/src/store.js:684-693"
+],
+"linked": [
+"server gear.js equip handlers",
+"wsClient player_state adoption and _userCycledSlot latch (U2)",
+"M2-3 store listing",
+"M2-6 trade weapon lane",
+"M2-9 bag stamps",
+"revealBag blade reveal by idx"
+]
+},
+{
+"id": "M2-2",
+"title": "Body armour, shield and the worn layers: a worn slot the worker owns over a bag only the phone keeps",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Chest, legs and shield worn slots, their phone-only bags, and the renderer's derived and cosmetic chest/legs layers.",
+"topConcern": "An equip dropped on a dead socket is repaired at rejoin by name+tierMult only, turning a Rare torso into a second Normal one.",
+"modes": [
+"divergence",
+"persistence",
+"combo"
+],
+"confidence": "medium",
+"files": [
+"src/networking/wsClient.js:156-195",
+"src/ui/mobile/dash/equipActions.js:274-313",
+"server/src/grids.js:87-107",
+"server/src/grids.js:1061-1072",
+"src/ui/mobile/dash/ItemDetailPopup.jsx:1030-1120"
+],
+"linked": [
+"server grids.js _gridsApplyArmor",
+"gearprov.js _gearProvPieceByRef",
+"gear-stash.md M3 problem",
+"M2-3",
+"M2-11",
+"gearCatalog syncArmorLayers"
+]
+},
+{
+"id": "M2-3",
+"title": "Selling from the item card: price sheet, one listing in flight, and the local splice on ok",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "One auction-house listing asked from the open item card, guarded by an in-flight ref, spliced locally on ok.",
+"topConcern": "No fetch timeout (TRAPS \u00a777); the guard resets on target change so a late answer clears another card's guard; lost answers leave ghost gear.",
+"modes": [
+"stuck",
+"race",
+"persistence",
+"divergence"
+],
+"confidence": "high",
+"files": [
+"src/ui/mobile/dash/ItemDetailPopup.jsx:1495-1585",
+"src/ui/mobile/dash/ItemDetailPopup.jsx:776-806",
+"src/ui/storeApi.js:130-140",
+"src/ui/mobile/dash/gearSellLocal.js:78-93",
+"server/src/gearprov.js:879-890"
+],
+"linked": [
+"server store.js /api/store/list",
+"storegear.js _stGearEscrow",
+"M2-1",
+"M2-2",
+"M2-4",
+"TRAPS \u00a777"
+]
+},
+{
+"id": "M2-4",
+"title": "The item card's life: open on a target, flow, placement, close",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "The one item card's open/target/flow/position and its drop sheet, driven by itemDetailBus.",
+"topConcern": "The open card never re-reads the bag, so a stack's count and the sell/drop maximum are the values from the tap.",
+"modes": [
+"race",
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/dash/itemDetailBus.js:12-30",
+"src/ui/mobile/dash/ItemDetailPopup.jsx:790-863",
+"src/ui/mobile/dash/ItemDetailPopup.jsx:1478-1494",
+"src/ui/mobile/dash/InventoryPanel.jsx:522-545"
+],
+"linked": [
+"M2-3",
+"M2-8",
+"HeroExpanded loadout picker opener",
+"BottomDashboard seen badges"
+]
+},
+{
+"id": "M2-5",
+"title": "Shopkeeper Bro's window bus: open, selection, quote, busy, settled, rejoined",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "The shop window's open state, picked item, quote, pending ask (busy), settle and rejoin counters.",
+"topConcern": "setStock clears busy and shop_state is broadcast after anyone's sale, re-enabling Buy/Sell mid-ask so a double tap trades twice.",
+"modes": [
+"race",
+"persistence"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/shopBus.js:80-88",
+"server/src/index.js:5444-5446",
+"src/ui/panels/ShopkeeperPanel.jsx:293-312",
+"src/networking/gameEvents.js:385-499"
+],
+"linked": [
+"server shop.js",
+"M2-6",
+"ShopkeeperPanel",
+"BottomDashboard shop/trade flag"
+]
+},
+{
+"id": "M2-6",
+"title": "Who a bag tap belongs to: the shop, a live trade, the Gear tab, or the item card",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "The bag tile's tap mode, decided by which windows are open, and the trade's attach/detach hold on the bag.",
+"topConcern": "Item and weapon tiles route in different orders: with the shop open, a weapon tap opens a card whose Sell lists it at auction.",
+"modes": [
+"guard-drift",
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/dash/InventoryPanel.jsx:522-545",
+"src/ui/mobile/dash/InventoryPanel.jsx:1377-1405",
+"src/ui/mobile/tradeBagBus.js:28-83",
+"src/ui/panels/TradeWindowPanel.jsx:844-866"
+],
+"linked": [
+"M2-5",
+"M2-8",
+"TradeWindowPanel trade2 protocol"
+]
+},
+{
+"id": "M2-7",
+"title": "Pins (the anchor): in-memory locks that order the bag",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "Pinned bag entries and their pin times, ordering the bag oldest pin first; session-only by design.",
+"topConcern": "Gear pins are keyed by bag index, so equipping or selling an earlier piece moves the pin onto a neighbouring piece.",
+"modes": [
+"combo",
+"leak"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/dash/inventoryLocks.js:15-41",
+"src/ui/mobile/dash/bagModel.js:116-148",
+"src/ui/mobile/dash/InventoryPanel.jsx:1376",
+"src/ui/mobile/dash/ItemDetailPopup.jsx:419"
+],
+"linked": [
+"M2-9",
+"itemActions lock toggle"
+]
+},
+{
+"id": "M2-8",
+"title": "The Gear tab's pick, filter, menu and skill-XP tile",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "The Gear tab's picked cell or bag piece, its automatic or sticky filter, the filter menu and the XP tile.",
+"topConcern": "A picked bag weapon is held by object identity; a weapon echo drops the card to overview while the bus still reports a pick.",
+"modes": [
+"divergence",
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"src/ui/mobile/dash/gearTabBus.js:30-101",
+"src/ui/mobile/dash/GearTab.jsx:269-285",
+"src/ui/mobile/dash/GearTab.jsx:606-686",
+"src/ui/mobile/dash/WeaponBar.jsx:51-57"
+],
+"linked": [
+"M2-1",
+"M2-4",
+"M2-6",
+"mp-geartab"
+]
+},
+{
+"id": "M2-9",
+"title": "The bag's order: recency stamps behind one module clock",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "Recency stamps per inventory key and per stash object that order every bag surface, newest first after pins.",
+"topConcern": "Stash stamps key on object identity and the weapon echo replaces the objects, so every equip sends all weapons to the front.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/dash/bagModel.js:33-70",
+"src/ui/mobile/dash/bagModel.js:116-148",
+"src/networking/wsClient.js:2931"
+],
+"linked": [
+"M2-7",
+"M2-8",
+"BottomDashboard arrival watcher"
+]
+},
+{
+"id": "M2-10",
+"title": "The bag's small motions: one ref-counted scheduler and attribute one-shots",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "A ref-counted idle-motion timer and stamped one-shot tile attributes for arrivals, bumps and glints.",
+"topConcern": "",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/dash/bagLife.js:105-165",
+"src/ui/mobile/dash/bagLife.js:173-211",
+"src/ui/mobile/BottomDashboard.jsx:725-760"
+],
+"linked": [
+"BottomDashboard arrival watcher (M1)",
+"game.css",
+"mp-liveness"
+]
+},
+{
+"id": "M2-11",
+"title": "Equip reveals first: an equip parked until a mystery piece's ceremony lands",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "An Equip press on a '?' piece parked as a run-once callback until the worker's reveal answer and ceremony.",
+"topConcern": "An Equip lost to a dead socket stays parked with no expiry and fires on a later plain Reveal, equipping the piece unasked.",
+"modes": [
+"race",
+"leak"
+],
+"confidence": "medium",
+"files": [
+"src/game/revealBag.js:131-138",
+"src/game/revealBag.js:174-198",
+"src/ui/mobile/dash/itemActions.js:142-156",
+"src/ui/mobile/dash/equipActions.js:266-299"
+],
+"linked": [
+"server revealbag.js",
+"wsClient item_reveal",
+"M2-1",
+"M2-2",
+"reveal-in-bag.md"
+]
+},
+{
+"id": "M2-12",
+"title": "One-shot item asks from the action list (eat, drink, light, open ticket, claim chest, inspect, cape on/off)",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Single send-and-close asks from an item's buttons, settled and echoed by the worker.",
+"topConcern": "Drink notes the fight's bite before a send that a dead socket drops, so the next bite is refused for nothing.",
+"modes": [
+"persistence"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/dash/itemActions.js:55-174",
+"src/ui/mobile/dash/ItemDetailPopup.jsx:304-368",
+"server/src/eventcapes.js:541-580"
+],
+"linked": [
+"eatBus",
+"firemakingBus",
+"chestRevealBus",
+"fightFood",
+"cooking.js _pvpHealWait"
+]
+},
+{
+"id": "M2-13",
+"title": "The old full-screen inventory surface and its bus",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "The unmounted legacy inventory surface's open/tab/items/equipped/shortcuts/layers bus and salvage toast.",
+"topConcern": "GameApp still subscribes a bridge that writes chest/legs layers from this bus; debug 'inv mock' dresses the character in unearned armour.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/inventoryBus.js:22-132",
+"src/ui/GameApp.jsx:367-409",
+"src/ui/GameApp.jsx:754-756",
+"src/ui/mobile/ItemTooltip.jsx:28-98"
+],
+"linked": [
+"M2-2 layer stores",
+"wheelBus"
+]
+},
+{
+"id": "M2-14",
+"title": "The expanded Bag page's dormant Equipped tab and the item card's retired layer pickers",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "An equipped-cards tab pinned off and two loadout card kinds with no opener.",
+"topConcern": "If revived, the chestLayers toggle skips the level gate and reveal rule; the tab's Unequip takes off the held weapon's slot.",
+"modes": [
+"guard-drift"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/dash/InventoryPanel.jsx:640-724",
+"src/ui/mobile/dash/InventoryPanel.jsx:877-1133",
+"src/ui/mobile/dash/ItemDetailPopup.jsx:1247-1432"
+],
+"linked": [
+"HeroExpanded equipped pane",
+"M2-2"
+]
+},
+{
+"id": "M2-15",
+"title": "The Bag page's category chips (bagFilterBus)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "A five-value module-scoped filter choice for the expanded Bag page, kept across leaving the page.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/mobile/dash/bagFilterBus.js:23-37",
+"src/ui/mobile/dash/BagFilterChips.jsx:48-185",
+"src/ui/mobile/dash/InventoryPanel.jsx:681-682"
+],
+"linked": [
+"StorePanel roster",
+"dashboardPanelBus (Bag page nearly retired)"
+]
+},
+{
+"id": "M2-16",
+"title": "The Gear tab's XP count-up frame loop and its skill-tile landing points",
+"area": "rendering",
+"verdict": "fine",
+"oneLine": "A mount-scoped rAF loop re-rendering while xpLanding counts, and skill tiles registered as XP landing points.",
+"topConcern": "",
+"modes": [
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/ui/mobile/dash/GearTab.jsx:259-266",
+"src/ui/mobile/dash/GearTab.jsx:733-766",
+"src/ui/xpLanding.js:63-79"
+],
+"linked": [
+"XpFlyOverlay / xpLanding",
+"BottomDashboard 200 ms force"
+]
+}
+]

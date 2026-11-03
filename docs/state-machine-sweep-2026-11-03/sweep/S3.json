@@ -1,0 +1,649 @@
+[
+ {
+  "id": "S3-1",
+  "title": "The room's tick loop: start, pace, stop",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "The 45 Hz heartbeat's handle, pacer re-arms and stop on the last close, across index.js, tick.js, tickpace.js.",
+  "topConcern": "Party tick, regen, flush, AFK sweep and the whole send loop run outside the per-system guard; one repeating throw silences the room.",
+  "modes": [
+   "stuck",
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/tick.js:226",
+   "server/src/tick.js:435",
+   "server/src/tickpace.js:109",
+   "server/src/index.js:4937",
+   "server/src/index.js:6454"
+  ],
+  "linked": [
+   "S3-2",
+   "index.js webSocketClose (S1)",
+   "party.js _tickParties (S8)"
+  ]
+ },
+ {
+  "id": "S3-2",
+  "title": "Idle (AFK) and never-joined socket eviction",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "A session's activity clock, stamped by move signature, swept every ~3 s with close 4006.",
+  "topConcern": "",
+  "modes": [
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/tick.js:160",
+   "server/src/index.js:5103",
+   "server/src/index.js:4935"
+  ],
+  "linked": [
+   "S3-1",
+   "linger.js (S1)",
+   "wsClient onclose 4006"
+  ]
+ },
+ {
+  "id": "S3-3",
+  "title": "The dead/dying pair, with the phone writing dead on every move",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Worker's dying/respawn plus the phone's dead flag, overwritten by every accepted move and trusted by targeting.",
+  "topConcern": "A phone sending dead:true while alive is skipped by every monster and PvP hit loop yet still attacks monsters: god mode.",
+  "modes": [
+   "authority",
+   "combo"
+  ],
+  "confidence": "high",
+  "files": [
+   "server/src/movement.js:796",
+   "server/src/index.js:1941",
+   "server/src/combat.js:2321",
+   "server/src/combat.js:1202",
+   "src/networking/wsClient.js:6046"
+  ],
+  "linked": [
+   "index.js _handlePlayerDeath/_tickPlayerRespawn (S1)",
+   "combat.js (S4)",
+   "TRAPS §233",
+   "S3-14",
+   "S3-27"
+  ]
+ },
+ {
+  "id": "S3-4",
+  "title": "The shield: down, raised (parry window), held, guard-broken",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Phone-written blocking, the server-stamped raise time that opens the parry window, and the guard-break latch.",
+  "topConcern": "Toggling blocking every move re-arms the 250 ms parry window endlessly: near-every blocked blow parried, free, stamina back, attacker staggered.",
+  "modes": [
+   "authority",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/movement.js:779",
+   "server/src/index.js:2904",
+   "server/src/combat.js:2420",
+   "server/src/hits.js:331",
+   "server/src/index.js:3756"
+  ],
+  "linked": [
+   "stamina regen tick (S1)",
+   "combat.js PvP block (S4)",
+   "pvpextras.js",
+   "S3-13"
+  ]
+ },
+ {
+  "id": "S3-5",
+  "title": "The move budget: first move, judged, followed, way back into the Wheel",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Anti-teleport budget, the tick's follow, and the way-back/arrival holders deciding where a move is judged from.",
+  "topConcern": "A follow moves the copy with no race or ride check; many holders and two kill switches decide judging.",
+  "modes": [
+   "divergence",
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/movement.js:140",
+   "server/src/movement.js:560",
+   "server/src/movement.js:252",
+   "server/src/lastplace.js:179",
+   "server/src/index.js:3541"
+  ],
+  "linked": [
+   "lastplace.js (S2)",
+   "S3-6",
+   "S3-9",
+   "S3-10",
+   "docs/specs/move-budget.md"
+  ]
+ },
+ {
+  "id": "S3-6",
+  "title": "The glide (message diet): a steady walk moved between moves",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "ps._mp glide between a phone's pd:1 moves, stopped by any foreign write, rewound before the next judge.",
+  "topConcern": "A ride ended by a hit clears the glide without rewinding, so one move is judged from the glided spot.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/movepath.js:120",
+   "server/src/movepath.js:153",
+   "server/src/movement.js:558",
+   "server/src/tick.js:254"
+  ],
+  "linked": [
+   "src/game/moveDiet.js",
+   "S3-5",
+   "S3-7",
+   "S3-9"
+  ]
+ },
+ {
+  "id": "S3-7",
+  "title": "Steady movers: a walker's update held for the next tick",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Per-player last-sent record deciding hold-or-send of a Wheel walker's update each tick.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "server/src/steadymovers.js:81",
+   "server/src/steadymovers.js:122",
+   "server/src/tick.js:595"
+  ],
+  "linked": [
+   "S3-6",
+   "S3-16",
+   "client dead reckoning (visualSystems.js)"
+  ]
+ },
+ {
+  "id": "S3-8",
+  "title": "Sprint: a step the worker pays for, a run, the grace after",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "Per-move sprint step, run continuity, stamina billing, grace and wire/regen windows from five underscore fields.",
+  "topConcern": "With the diet's 200 ms gaps, the stretch before a non-sprint stop goes unbilled; small and by design.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/sprint.js:96",
+   "server/src/sprint.js:112",
+   "server/src/sprint.js:135",
+   "server/src/movement.js:552"
+  ],
+  "linked": [
+   "src/game/sprint.js",
+   "S3-4",
+   "S3-9",
+   "S3-6"
+  ]
+ },
+ {
+  "id": "S3-9",
+  "title": "The skateboard ride",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "ps._ride on/off with toggle cooldown, ended by edge, zone, death, hit, fighting, duel, kill switch, ask.",
+  "topConcern": "Ride ends only on an accepted move; glide and follow can carry a rider past the safe edge still drawn on the board.",
+  "modes": [
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/ride.js:110",
+   "server/src/ride.js:173",
+   "server/src/movement.js:548",
+   "server/src/movepath.js:153",
+   "server/src/combat.js:490"
+  ],
+  "linked": [
+   "src/game/ride.js",
+   "S3-5",
+   "S3-6",
+   "duel.js _makeDuel"
+  ]
+ },
+ {
+  "id": "S3-10",
+  "title": "Lil Bro's race",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "ps._race countdown, false start, five flags along each step, win/lose, ended only from accepted moves.",
+  "topConcern": "No sweep ends a stale race (ride refused 'busy'); a death does not end it while the phone's copy keeps its own clock.",
+  "modes": [
+   "stuck",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/race.js:122",
+   "server/src/race.js:152",
+   "server/src/movement.js:805",
+   "server/src/safeheal.js:68"
+  ],
+  "linked": [
+   "src/game/race.js (explicit phase)",
+   "quests.js race objective",
+   "S3-5",
+   "S3-9"
+  ]
+ },
+ {
+  "id": "S3-11",
+  "title": "Rest and Well Rested",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "A gated rest filling pools and stamping the saved Well Rested buff, with a memory-only minute gap.",
+  "topConcern": "A reconnect lets one rest through early (documented, costs one row).",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/rest.js:104",
+   "server/src/rest.js:86"
+  ],
+  "linked": [
+   "cooking.js buffs",
+   "prog3 XP bonus",
+   "S3-18 fight stamps"
+  ]
+ },
+ {
+  "id": "S3-12",
+  "title": "The paid roll window",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Phone's dodging counts only inside the window a charged dodge/lunge/retreat opened (1000 ms).",
+  "topConcern": "Monster-blow i-frames ignore a daze or freeze while both player-blow readers refuse a dazed roll.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/movement.js:303",
+   "server/src/movement.js:333",
+   "server/src/index.js:3281",
+   "server/src/hits.js:320",
+   "server/src/combat.js:2387"
+  ],
+  "linked": [
+   "src/game/dodge.js",
+   "S3-13",
+   "S3-27",
+   "pvplunge.js _pvpDazed"
+  ]
+ },
+ {
+  "id": "S3-13",
+  "title": "A player's elemental statuses from monster hits",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Chill, freeze, stuck, daze, soak and gust-room windows stamped by the worker, mostly carried out by the phone.",
+  "topConcern": "Of a daze's 'no walk, swing, roll or shield' the worker enforces only PvP swings, PvP rolls and ability strikes.",
+  "modes": [
+   "authority",
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/monsterstatus.js:278",
+   "server/src/monsterstatus.js:445",
+   "server/src/pvpextras.js:348",
+   "server/src/pvplunge.js:110"
+  ],
+  "linked": [
+   "src/game/elemHits.js",
+   "combatHelpers.dazeRefused",
+   "S3-4",
+   "S3-12"
+  ]
+ },
+ {
+  "id": "S3-14",
+  "title": "Burns, poisons and stings on a player",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Per-player DOT Maps refreshed by hits and swept every tick by every exit.",
+  "topConcern": "Put-out reads the phone-written ps.dead (part of S3-3).",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/monsterstatus.js:475",
+   "server/src/monsterstatus.js:504"
+  ],
+  "linked": [
+   "S3-3",
+   "hits.js burn/poison rows",
+   "firetrail.js"
+  ]
+ },
+ {
+  "id": "S3-15",
+  "title": "Zone change and the zone-entry grace",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Phone-chosen zone per move: snapshot, per-zone resets and a 500 ms damage-immunity grace on each entry.",
+  "topConcern": "A two-move bundle wheel→dungeon:x→wheel re-arms the grace at no position cost; repeated, permanent immunity (monsters and PvP).",
+  "modes": [
+   "authority",
+   "leak"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/movement.js:822",
+   "server/src/movement.js:381",
+   "server/src/movement.js:563",
+   "server/src/combat.js:430",
+   "server/src/index.js:1877"
+  ],
+  "linked": [
+   "bundle.js",
+   "dungeon.js instances (S5)",
+   "gathering.js _tickNodes (S7)",
+   "TRAPS §13",
+   "S3-5",
+   "S3-21"
+  ]
+ },
+ {
+  "id": "S3-16",
+  "title": "Who a phone is sent about: far players, the slim roster, presence v2",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Room and session holders deciding whole, slim, skipped or hidden player entries in each phone's tick.",
+  "topConcern": "Four kill switches, two dormant paths and per-session flags must agree across both tick builders.",
+  "modes": [
+   "opacity"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/tick.js:641",
+   "server/src/tick.js:691",
+   "server/src/tick.js:1263",
+   "server/src/tick.js:938"
+  ],
+  "linked": [
+   "presence2.js (S1)",
+   "src/game/presence2.js",
+   "tick-share.test.mjs",
+   "S3-7"
+  ]
+ },
+ {
+  "id": "S3-17",
+  "title": "The Wheel's monster interest per phone",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Per-session seen/entered monster sets with in/out hysteresis, forgotten outside the Wheel.",
+  "topConcern": "A target dropped out of reach never reaches the phone, so the next notice of you shows no '!' cue.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/wheelzone.js:519",
+   "server/src/tick.js:1184",
+   "server/src/tick.js:816",
+   "src/networking/wsClient.js:1256"
+  ],
+  "linked": [
+   "wheelnear.js mw (S2)",
+   "S3-16",
+   "index.js _tgLost (S1)"
+  ]
+ },
+ {
+  "id": "S3-18",
+  "title": "Wheel monsters awake or resting, and the safe ground's shelter vs provoke",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Per-tick rest test for far monsters and the safe ground's shelter unless the player provoked the monster.",
+  "topConcern": "The 'nothing in flight' list is hand-written in three places; each new monster phase must join all three.",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/wheelzone.js:291",
+   "server/src/wheelzone.js:259",
+   "server/src/wheelzone.js:270",
+   "server/src/hits.js:247"
+  ],
+  "linked": [
+   "S3-19",
+   "S3-20",
+   "index.js respawn reset (S1)",
+   "aggrogrid.js"
+  ]
+ },
+ {
+  "id": "S3-19",
+  "title": "Which Wheel the room plays and a phone in or out of step",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Room latches long/short Wheel once; each player in or out of step by the sizes its phone declared.",
+  "topConcern": "A phone declaring ws:[1] (or none) is never a monster's target or hit, yet may attack monsters freely.",
+  "modes": [
+   "authority",
+   "stuck"
+  ],
+  "confidence": "high",
+  "files": [
+   "server/src/wheeltables.js:49",
+   "server/src/join.js:848",
+   "server/src/wheelzone.js:274",
+   "server/src/lastplace.js:176",
+   "server/src/hits.js:247"
+  ],
+  "linked": [
+   "src/game/wheelSize.js",
+   "nomansland.js _nmlLevelOf",
+   "safeheal.js",
+   "S3-5",
+   "S3-18"
+  ]
+ },
+ {
+  "id": "S3-20",
+  "title": "Monster moves past tier 1",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "Per-monster wind-up, strike, dash, flight, cooldowns, enrage and live stat step in thirteen _mv fields.",
+  "topConcern": "A monster killed mid-volley drops balls the phone was told to land; reset lists kept by hand.",
+  "modes": [
+   "divergence",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/monstermoves.js:375",
+   "server/src/monstermoves.js:459",
+   "server/src/monstermoves.js:287",
+   "server/src/index.js:2548",
+   "server/src/index.js:2045"
+  ],
+  "linked": [
+   "telegraph.js kits (S4)",
+   "src/game/monsterMoves.js",
+   "S3-18",
+   "hits.js rows"
+  ]
+ },
+ {
+  "id": "S3-21",
+  "title": "Population-scaled spawns",
+  "area": "server",
+  "verdict": "retired",
+  "oneLine": "Held zone population with instant rise and slow decay growing and trimming scaled monsters and nodes.",
+  "topConcern": "Runs only for zones with a config; the Wheel has none, so only the closed old lands reach it.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/spawnscale.js:191",
+   "server/src/spawnscale.js:256",
+   "server/src/spawnscale.js:351"
+  ],
+  "linked": [
+   "S3-15 minted dungeon keys",
+   "monsterSnapWire (live)"
+  ]
+ },
+ {
+  "id": "S3-22",
+  "title": "Threats: countdown, guards or consent",
+  "area": "server",
+  "verdict": "retired",
+  "oneLine": "Threat pairs with countdown, guards fine and gear lock, consent window and bounty payout.",
+  "topConcern": "Dormant: OPEN_PVP is false; gearlock storage keys are never deleted.",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/threat.js:76",
+   "server/src/threat.js:172",
+   "server/src/threat.js:248",
+   "server/src/index.js:1493"
+  ],
+  "linked": [
+   "duel.js _pvpAllowed",
+   "grids.js equip gate",
+   "docs/specs/threats.md"
+  ]
+ },
+ {
+  "id": "S3-23",
+  "title": "Cadence: the login streak and the weekly jackpot",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Stored login streak with freezes and the lazily settled, opId-stamped weekly jackpot draw.",
+  "topConcern": "A retry after a restart re-rolls the winner: payment is dup-safe but the announcement names the wrong player.",
+  "modes": [
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/cadence.js:110",
+   "server/src/cadence.js:198",
+   "server/src/cadence.js:219",
+   "server/src/tick.js:402"
+  ],
+  "linked": [
+   "dailyrewards.js",
+   "inbox.js _creditPlayer"
+  ]
+ },
+ {
+  "id": "S3-24",
+  "title": "stats_update: the legacy skill tracks' level-up full restore",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Phone-reported legacy weapon/defence skill levels; any increase fills HP, stamina and mana.",
+  "topConcern": "Under prog3 honest phones never raise these tracks, so each forged +1 is a free full heal, ~400 per character.",
+  "modes": [
+   "authority",
+   "guard-drift"
+  ],
+  "confidence": "high",
+  "files": [
+   "server/src/grids.js:823",
+   "server/src/grids.js:731",
+   "server/src/grids.js:297",
+   "src/data/gameSystems.js:3853"
+  ],
+  "linked": [
+   "prog3.js",
+   "grids.test.mjs:486-536",
+   "gearprov.js legacy armour lane (S7)",
+   "S3-25"
+  ]
+ },
+ {
+  "id": "S3-25",
+  "title": "Legacy build points, T2 allocation and the pre-prog3 level",
+  "area": "server",
+  "verdict": "retired",
+  "oneLine": "Build points to level, T2 spend, bench-priced t2Flat and the 1000-point ceiling, all off under prog3.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "server/src/grids.js:144",
+   "server/src/grids.js:215",
+   "server/src/grids.js:453",
+   "server/src/grids.js:632"
+  ],
+  "linked": [
+   "prog3.js",
+   "migrations.js computeCanonicalPools",
+   "S3-24"
+  ]
+ },
+ {
+  "id": "S3-26",
+  "title": "The harvest activity code (ex) and the cook/fire shield it arms",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "Phone-written ex whose null-to-active edge anchors the cook/fire harvest shield that monsters respect.",
+  "topConcern": "Swing, then ex:null and ex:'cook' in one bundle re-arms the shield before any tick: monsters never fight back.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/movement.js:744",
+   "server/src/gathering.js:931",
+   "server/src/gathering.js:974",
+   "server/src/index.js:1948",
+   "server/src/hits.js:246"
+  ],
+  "linked": [
+   "gathering.js _extractionShielded (S7)",
+   "bundle.js",
+   "S3-3",
+   "S3-4"
+  ]
+ },
+ {
+  "id": "S3-27",
+  "title": "The lag-compensation history",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Per-player ring of 14 reused tick snapshots read by the PvP rewind, deleted on every way out.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "server/src/tick.js:258",
+   "server/src/combat.js:2331",
+   "server/src/join.js:895"
+  ],
+  "linked": [
+   "S3-3",
+   "S3-12"
+  ]
+ }
+]

@@ -1,0 +1,498 @@
+[
+{
+"id": "P2-1",
+"title": "The two-sided trade window's one client slot (trade2) against the server's session machine",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Invite, waiting, open, ready, review, accepted, done-watch, receipt, failed: one client slot mirroring trade2.js invites and sessions.",
+"topConcern": "After a deploy or a seen drop the window survives as a phantom no button can close, hijacking bag taps and hiding chat until reload.",
+"modes": [
+"stuck",
+"persistence",
+"race",
+"divergence",
+"combo"
+],
+"confidence": "high",
+"files": [
+"src/networking/gameEvents.js:4908",
+"src/ui/panels/TradeWindowPanel.jsx:1243",
+"server/src/trade2.js:124",
+"server/src/trade2.js:403",
+"src/networking/wsClient.js:1647"
+],
+"linked": [
+"server/src/trade2.js",
+"src/ui/mobile/tradeBagBus.js",
+"src/ui/mobile/modalGuardBus.js",
+"P2-2",
+"P2-3",
+"P2-7 (party slot is cleared on state_sync)",
+"InspectPlayerPanel openTrade"
+]
+},
+{
+"id": "P2-2",
+"title": "The trade window's local edit state (staging mirror, gold sign, leave ask, big-gold ack, offer-changed notice, bag hand-off)",
+"area": "ui",
+"verdict": "watch",
+"oneLine": "Client-only phases beside the server snapshot: staged offer mirror, gold add/subtract, leave strip, big-gold ack, offer-changed notice.",
+"topConcern": "The offer-changed notice watches confirm flags, but two-stage edits reset ready flags, so a last-second swap after you readied shows no warning.",
+"modes": [
+"guard-drift",
+"divergence",
+"combo",
+"opacity"
+],
+"confidence": "medium",
+"files": [
+"src/ui/panels/TradeWindowPanel.jsx:722",
+"src/ui/panels/TradeWindowPanel.jsx:743",
+"src/ui/panels/TradeWindowPanel.jsx:856",
+"src/ui/mobile/tradeBagBus.js:44",
+"server/src/trade.js:76"
+],
+"linked": [
+"P2-1",
+"server/src/trade2.js _handleTrade2Set",
+"ShopkeeperPanel shopBus (same bag hand-off)"
+]
+},
+{
+"id": "P2-3",
+"title": "The trade receipt's beats (both piles, fold, toss to the bag, auto-close)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Timed receipt: both piles, fold at 1.1 s, clones fly to the bag at 1.4 s, closed at 4.2 s.",
+"topConcern": "A weapon-only or pet-only trade always waits the full 1.5 s done-watch fallback before the receipt shows.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/TradeWindowPanel.jsx:788",
+"src/ui/panels/TradeWindowPanel.jsx:557",
+"src/ui/panels/TradeWindowPanel.jsx:763",
+"src/networking/gameEvents.js:4980"
+],
+"linked": [
+"P2-1",
+"dash InventoryPanel data-inv-key tiles"
+]
+},
+{
+"id": "P2-4",
+"title": "The legacy one-way gift trade (TradePanel offer, IncomingTradePanel accept/decline)",
+"area": "wire (both)",
+"verdict": "retired",
+"oneLine": "Gift offer composed, relayed and held 2 min server-side, accepted or declined on an incoming card; only without caps.trade2.",
+"topConcern": "trade_offer skips the v2.3.3526 block filter, so a blocked player on an old or modified page can still raise the Incoming Trade card.",
+"modes": [
+"guard-drift",
+"stuck"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/TradePanel.jsx:271",
+"src/ui/panels/IncomingTradePanel.jsx:194",
+"src/networking/gameEvents.js:3997",
+"server/src/trade.js:103",
+"server/src/relay.js:65"
+],
+"linked": [
+"P2-1",
+"docs/specs/trading.md"
+]
+},
+{
+"id": "P2-5",
+"title": "The duel challenge card and the accepter's optimistic duel flag",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Challenge card, accept/decline, the accepter's S._inDuel and lock, server challenge TTL and duel record, duel_end.",
+"topConcern": "Accepting an expired (2 min) or refused challenge sets S._inDuel forever: no duel_end comes, so diet, No man's land asks and taps stay wrong.",
+"modes": [
+"stuck",
+"authority",
+"guard-drift",
+"race"
+],
+"confidence": "high",
+"files": [
+"src/ui/panels/DuelRequestPanel.jsx:189",
+"server/src/duel.js:142",
+"src/networking/gameEvents.js:4787",
+"src/networking/gameEvents.js:5220",
+"src/ui/panels/InspectPlayerPanel.jsx:278"
+],
+"linked": [
+"server/src/duel.js",
+"src/game/duelLock.js",
+"src/game/nmlAsk.js",
+"wsClient moveDietOn/movePathOn",
+"arena_match_start",
+"tools/qa/mp/mp-blockasks.mjs"
+]
+},
+{
+"id": "P2-6",
+"title": "The kill-threat card (Ignore / Call Guards) and its countdown",
+"area": "wire (both)",
+"verdict": "retired",
+"oneLine": "Threat card with a countdown, responded flag, skull marks; dormant while OPEN_PVP is false.",
+"topConcern": "An answered threat is hidden, not cleared, so _uiBusy stays true for the session (no quest dialogue, no tutorial banner) once PvP returns.",
+"modes": [
+"stuck"
+],
+"confidence": "medium",
+"files": [
+"src/ui/panels/ThreatIncomingPanel.jsx:80",
+"src/networking/gameEvents.js:4792",
+"src/networking/gameEvents.js:4886",
+"src/ui/BroTown.jsx:3339",
+"server/src/threat.js:98"
+],
+"linked": [
+"server/src/threat.js",
+"P2-5",
+"BroTown _anyPanelOpen"
+]
+},
+{
+"id": "P2-7",
+"title": "The party slot: invite card, roster strip, chip fold and two-tap leave/kick",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "Party invite stub with identity-checked TTL, server roster renderer cleared on state_sync, folded chip and two-tap arms.",
+"topConcern": "The state_sync clear also drops an invite card the server still holds up to 60 s; a newer invite replaces an older one unannounced.",
+"modes": [
+"persistence",
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/PartyHUD.jsx:62",
+"src/networking/gameEvents.js:5055",
+"src/networking/gameEvents.js:5091",
+"src/networking/wsClient.js:1647",
+"server/src/party.js:370"
+],
+"linked": [
+"server/src/party.js",
+"server/src/alliance.js",
+"src/game/partyChip.js",
+"P2-1"
+]
+},
+{
+"id": "P2-8",
+"title": "Legacy clans: invite card, membership cache, logo editor and the client-clocked clan war",
+"area": "wire (both)",
+"verdict": "retired",
+"oneLine": "Clan create/join/leave cache, invite card, logo painting and a war each phone clocks itself; live only with clanparty off.",
+"topConcern": "Each war member's phone ends the war on its own clock and picks a winner from its own relayed score copy.",
+"modes": [
+"divergence",
+"persistence",
+"stuck",
+"race"
+],
+"confidence": "medium",
+"files": [
+"src/ui/panels/ClanPanel.jsx:185",
+"src/ui/BroTown.jsx:7665",
+"src/networking/gameEvents.js:3848",
+"src/ui/panels/WarBanner.jsx:21",
+"src/ui/panels/ClanInviteCard.jsx:20"
+],
+"linked": [
+"server/src/clans.js",
+"server/src/clanparty.js",
+"server/src/alliance.js",
+"P2-7"
+]
+},
+{
+"id": "P2-9",
+"title": "The life-skill guild quest ladder (which rung you are on)",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "Per-skill ladder rung: the panel's device-local _guildProgress versus the server's guild_claims count, met only on a paid turn-in.",
+"topConcern": "On a second device the panel restarts at rung 0 and offers Claim for rungs already paid; the server refuses naming another rung, repeatedly.",
+"modes": [
+"divergence",
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"src/ui/panels/GuildPanel.jsx:286",
+"src/data/gameSystems.js:1910",
+"server/src/guilds.js:34",
+"src/networking/gameEvents.js:1843",
+"docs/specs/guild-quests.md"
+],
+"linked": [
+"server/src/guilds.js",
+"bt_rpg warm-start cache"
+]
+},
+{
+"id": "P2-10",
+"title": "The computer's chat composer (closed / composing, with a kept draft)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "C opens the composer; Enter sends and closes, Send stays open, Esc keeps the draft, the X clears it.",
+"topConcern": "chatInputValRef is described as the canvas loop's mirror but nothing reads it any more.",
+"modes": [
+"opacity"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/ChatPanel.jsx:107",
+"src/game/desktopControls.js:430",
+"src/game/desktopControls.js:504",
+"src/ui/BroTown.jsx:3157"
+],
+"linked": [
+"ChatBubble (phone composer)",
+"sendChatMessage"
+]
+},
+{
+"id": "P2-11",
+"title": "The legacy feedback window's fetch-per-filter and vote toggle",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "Render-time fetch keyed by S._fbLastFilter, vote toggles, submit; only behind the hidden MenuBar.",
+"topConcern": "Votes are toggles keyed by a client-named playerId with no session check; a double-tap un-votes. Shared with the live dashboard page.",
+"modes": [
+"race",
+"stuck",
+"authority"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/FeedbackPanel.jsx:166",
+"src/ui/panels/FeedbackPanel.jsx:300",
+"src/ui/panels/FeedbackPanel.jsx:566",
+"server/src/feedback.js:148"
+],
+"linked": [
+"server/src/feedback.js",
+"src/ui/mobile/dash/FeedbackPanel.jsx",
+"P2-12"
+]
+},
+{
+"id": "P2-12",
+"title": "The legacy leaderboard window's fetch-per-tab cache",
+"area": "ui",
+"verdict": "retired",
+"oneLine": "Render-time fetch per tab into S._lbServerData with a peers fallback; only behind the hidden MenuBar.",
+"topConcern": "A late answer for the previous tab overwrites the data under the current tab and is sorted by its key.",
+"modes": [
+"race"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/LeaderboardPanel.jsx:164",
+"src/ui/panels/LeaderboardPanel.jsx:181",
+"src/ui/panels/MenuBar.jsx:67"
+],
+"linked": [
+"Leaderboard DO /api/leaderboard/top",
+"P2-11"
+]
+},
+{
+"id": "P2-13",
+"title": "The quest giver's dialogue flow over the predicted quest record",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Talk, offer or claim, Rewards claimed, next quest; the phone predicts accept and turn-in payouts before the worker answers.",
+"topConcern": "Turn-in refusals for unmet objective, non-active quest or missing XP skill send no echo, so the predicted payout and next quest stand uncorrected.",
+"modes": [
+"divergence",
+"race",
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"src/ui/panels/QuestPanel.jsx:377",
+"src/game/quests.js:121",
+"server/src/quests.js:306",
+"server/src/quests.js:279",
+"src/data/gameSystems.js:8155"
+],
+"linked": [
+"server/src/quests.js",
+"P2-14",
+"P2-15",
+"QuestOfferPanel",
+"QuestDetailPanel (quest log)",
+"BroTown _npcProxLatch"
+]
+},
+{
+"id": "P2-14",
+"title": "NpcDialogue's line pager",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Index over authored speech chunks, reset when the text changes, optional locked backdrop and action button.",
+"topConcern": "The reset runs in an effect, so a new shorter speech can render one frame on the old index with last=true.",
+"modes": [
+"race",
+"stuck"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/NpcDialogue.jsx:65",
+"src/ui/panels/NpcDialogue.jsx:74",
+"src/ui/panels/NpcDialogue.jsx:81"
+],
+"linked": [
+"P2-13"
+]
+},
+{
+"id": "P2-15",
+"title": "The quest banner: one slot, a 3-deep queue, per-kind hold times",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "QUEST ACCEPTED/COMPLETE/REWARD/WELCOME banner; player-caused preempt, system notices queue, waits behind loading screens.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/panels/QuestBannerLayer.jsx:33",
+"src/ui/BroTown.jsx:2201",
+"src/ui/BroTown.jsx:9040",
+"src/ui/BroTown.jsx:257",
+"src/game/quests.js:83"
+],
+"linked": [
+"P2-13",
+"quest_reward_stashed",
+"onboardingPace"
+]
+},
+{
+"id": "P2-16",
+"title": "The achievement banner's moments queue",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Big achievements queued (max 6, dropped after 120 s), each shown 3.2 s once the world and icon are ready.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"src/ui/panels/AchievementBanner.jsx:77",
+"src/game/achievements.js:375",
+"src/game/achievements.js:165"
+],
+"linked": [
+"server/src/achievements.js",
+"monster codex card"
+]
+},
+{
+"id": "P2-17",
+"title": "The stale-build watch and its New version available banner",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Polls version.json; on a mismatch stops, reloads on pre-game screens, else shows a dismissible banner.",
+"topConcern": "Once dismissed the watch is already stopped, so a later deploy in the same session is never announced (deliberate).",
+"modes": [
+"stuck"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/UpdateBanner.jsx:33",
+"src/game/buildWatch.js:34",
+"src/ui/BroTown.jsx:1590"
+],
+"linked": [
+"vite __BUILD_SHA__ / dist/version.json"
+]
+},
+{
+"id": "P2-18",
+"title": "The player card's own sub-states (card / Inspect card, report row, async portrait)",
+"area": "ui",
+"verdict": "fine",
+"oneLine": "Panel-local card/profile toggle, report reason row, generated portrait with an alive guard; reset by unmount.",
+"topConcern": "reportSent is per mount, so reopening the card offers Report again (deliberate; the worker limits).",
+"modes": [
+"guard-drift"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/InspectPlayerPanel.jsx:152",
+"src/ui/panels/InspectPlayerPanel.jsx:172",
+"src/ui/panels/InspectPlayerPanel.jsx:691",
+"src/ui/panels/PlayerProfilePanel.jsx:107"
+],
+"linked": [
+"P2-19",
+"P2-1",
+"P2-5",
+"P2-7",
+"server/src/chatmod.js"
+]
+},
+{
+"id": "P2-19",
+"title": "Friend and block relationships: a stale React copy the live player card reads and writes back",
+"area": "client",
+"verdict": "needs-thought",
+"oneLine": "friendsList/blockedList seeded once from localStorage; dashboard and server friendships change underneath; the card shows and rewrites the stale copy.",
+"topConcern": "Block P on the dashboard, then block Q on a player card: the card writes its old copy plus Q, silently unblocking P's requests.",
+"modes": [
+"persistence",
+"divergence",
+"guard-drift"
+],
+"confidence": "high",
+"files": [
+"src/ui/BroTown.jsx:2089",
+"src/ui/panels/InspectPlayerPanel.jsx:486",
+"src/ui/panels/InspectPlayerPanel.jsx:653",
+"src/ui/mobile/sheet/friendsModel.js:141",
+"src/networking/gameEvents.js:627"
+],
+"linked": [
+"server/src/friends.js",
+"src/game/chatMute.js (mutes subscribe, the model to copy)",
+"src/ui/mobile/dash/SocialPanel.jsx",
+"src/ui/panels/SocialPanel.jsx",
+"P2-4",
+"P2-5"
+]
+},
+{
+"id": "P2-20",
+"title": "Diego's shop drawer: selection, debounced quote, busy guard, list re-asks and the rejoin reset",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "Select, quote (140 ms debounce), busy, settle; bag key list re-asked every 700 ms; reset on rejoin.",
+"topConcern": "Anyone's sale broadcast clears busy, and the button's total is never re-quoted when his pile moves, though settlement takes no expected price.",
+"modes": [
+"race",
+"divergence"
+],
+"confidence": "low",
+"files": [
+"src/ui/panels/ShopkeeperPanel.jsx:209",
+"src/ui/panels/ShopkeeperPanel.jsx:234",
+"src/ui/panels/ShopkeeperPanel.jsx:305",
+"src/ui/mobile/shopBus.js:77",
+"server/src/index.js:5410"
+],
+"linked": [
+"server/src/shop.js",
+"src/ui/mobile/shopBus.js",
+"dash InventoryPanel tiles",
+"P2-2"
+]
+}
+]

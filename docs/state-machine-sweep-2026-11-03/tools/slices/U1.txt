@@ -1,0 +1,4 @@
+# slice U1: 3 files, 8707 lines (paths relative to /home/user/GameDev)
+src/ui/BroTown.jsx:1-7860
+src/main.jsx  (58 lines)
+src/ui/GameApp.jsx  (789 lines)

@@ -1,0 +1,7 @@
+# slice U2: 6 files, 8388 lines (paths relative to /home/user/GameDev)
+src/ui/BroTown.jsx:7861-15722
+src/ui/keepSwitches.js  (33 lines)
+src/ui/lazyPanel.js  (151 lines)
+src/ui/lazyPanels.js  (57 lines)
+src/ui/loadingGate.js  (112 lines)
+src/ui/onboardingPace.js  (173 lines)

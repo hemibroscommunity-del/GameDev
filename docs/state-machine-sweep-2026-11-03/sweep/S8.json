@@ -1,0 +1,556 @@
+[
+{
+"id": "S8-1",
+"title": "Party invite handshake (invite, accept, decline, expire)",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "A pending party invite: one timestamp per inviter>target pair, checked at accept, swept after 60 s.",
+"topConcern": "Docs say per-sender-session; the key is the stable player id pair, so an invite survives the inviter's reconnect (harmless).",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"server/src/party.js:370-421",
+"server/src/party.js:423-493",
+"server/src/party.js:618-623",
+"src/networking/gameEvents.js:5055-5090"
+],
+"linked": [
+"S8-2",
+"client PartyHUD invite card",
+"PARTY_INVITE_TTL_MS"
+]
+},
+{
+"id": "S8-2",
+"title": "Party membership and the stored roster",
+"area": "server",
+"verdict": "needs-thought",
+"oneLine": "Who is in which party, across _parties, _partyByPlayer, _partyUnknownIds and party:/party_by_player: storage, under three live switches.",
+"topConcern": "Turning partykeep off leaves stored parties' offline members without awaySince, so the old grace sweep never removes them; they show 'away' forever.",
+"modes": [
+"stuck",
+"combo",
+"leak",
+"opacity"
+],
+"confidence": "medium",
+"files": [
+"server/src/party.js:218-276",
+"server/src/party.js:521-546",
+"server/src/party.js:564-614",
+"server/src/party.js:627-632",
+"server/src/clanparty.js:108-178"
+],
+"linked": [
+"S8-3",
+"S8-4",
+"S8-5",
+"S8-9",
+"persistence.js _resetCharacterData",
+"client PartyHUD.jsx",
+"dungeon.js _dungeonPullPartyMembers"
+]
+},
+{
+"id": "S8-3",
+"title": "Party leader succession (leave, restart, idle hand-on)",
+"area": "server",
+"verdict": "needs-thought",
+"oneLine": "Who leads a party: oldest member on a leave, first online member after the leader is unseen for 7 days.",
+"topConcern": "The idle hand-on needs seen > 0; converted clans give offline members seen 0, so a never-returning former clan leader leads forever.",
+"modes": [
+"stuck"
+],
+"confidence": "high",
+"files": [
+"server/src/party.js:588-596",
+"server/src/clanparty.js:145",
+"server/src/clanparty.js:158",
+"server/src/party.js:542",
+"server/test/party-keep.test.mjs:258-277"
+],
+"linked": [
+"S8-9",
+"S8-5",
+"alliance name/war leader checks"
+]
+},
+{
+"id": "S8-4",
+"title": "Party member presence: online, away, offline, last seen",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "A member's awaySince and seen stamps, derived away/off/dead flags, and the 2 s roster re-echo while anyone is on.",
+"topConcern": "The disconnect's seen is memory-only and joins write it at most every 6 h, so after a deploy last-seen can be hours early.",
+"modes": [
+"persistence",
+"authority"
+],
+"confidence": "low",
+"files": [
+"server/src/party.js:548-558",
+"server/src/party.js:574-598",
+"server/src/party.js:96-130",
+"server/src/party.js:618-648"
+],
+"linked": [
+"S8-2",
+"S8-5",
+"client partyChip attention"
+]
+},
+{
+"id": "S8-5",
+"title": "Alliance status hysteresis, board row and lazy index",
+"area": "server",
+"verdict": "watch",
+"oneLine": "Whether a party is an alliance (20 active to become, 15 to stay), its board row, and the lazy index.",
+"topConcern": "A party in memory that nobody is on is never re-counted; the board trusts its stale on while row-only parties apply DROP.",
+"modes": [
+"divergence",
+"opacity"
+],
+"confidence": "low",
+"files": [
+"server/src/alliance.js:176-187",
+"server/src/alliance.js:548-578",
+"server/src/alliance.js:132-138",
+"server/src/alliance.js:242-286",
+"server/src/party.js:634-646"
+],
+"linked": [
+"S8-6",
+"S8-7",
+"S8-8",
+"S8-9",
+"client src/game/alliance.js"
+]
+},
+{
+"id": "S8-6",
+"title": "Alliance name and tag with a 24 h rename wait",
+"area": "server",
+"verdict": "fine",
+"oneLine": "An alliance's name, tag and renamedAt: first naming free, then once a day, unique across alliances and clans.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"server/src/alliance.js:307-339",
+"server/src/alliance.js:291-303",
+"server/src/clans.js:141-161"
+],
+"linked": [
+"S8-5",
+"S8-9",
+"Saloon AlliancePart.jsx"
+]
+},
+{
+"id": "S8-7",
+"title": "Alliance war: declare, score, resolve and pay, cooldown",
+"area": "server",
+"verdict": "fine",
+"oneLine": "A 30-minute war between two alliances, scored by No man's land kills, paid by opId, then an hour's rest.",
+"topConcern": "Docs say a war 'stands still' under alliance:false, but endTime is absolute: the clock runs and it resolves the moment the switch is back.",
+"modes": [
+"divergence",
+"persistence"
+],
+"confidence": "low",
+"files": [
+"server/src/alliance.js:378-443",
+"server/src/alliance.js:449-474",
+"server/src/alliance.js:482-545",
+"server/src/alliance.js:264-275"
+],
+"linked": [
+"S8-5",
+"nomansland.js kill rule",
+"S8-10 clan wars"
+]
+},
+{
+"id": "S8-8",
+"title": "Alliance tag as worn (state, session data, peers)",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "The allyTag a player wears, mirrored on ps, session data and every phone, re-asserted at roster changes, joins and echoes.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"server/src/alliance.js:204-235",
+"server/src/party.js:491",
+"server/src/party.js:612",
+"server/src/party.js:644"
+],
+"linked": [
+"S8-5",
+"S8-18",
+"clans.js _clanUntag",
+"index.js PEER_PUBLIC_KEYS"
+]
+},
+{
+"id": "S8-9",
+"title": "Clans become parties (one-way conversion pass)",
+"area": "server",
+"verdict": "watch",
+"oneLine": "Each stored clan turned into a stored party, or dissolved, at the first join after a deploy.",
+"topConcern": "Offline members get seen 0, so the party's idle-leader hand-on never fires for a converted clan's absent leader (S8-3).",
+"modes": [
+"stuck",
+"divergence",
+"race"
+],
+"confidence": "medium",
+"files": [
+"server/src/clanparty.js:63-91",
+"server/src/clanparty.js:108-178",
+"server/src/clans.js:67-96",
+"server/src/clans.js:476-503",
+"server/src/join.js:1620"
+],
+"linked": [
+"S8-2",
+"S8-3",
+"S8-5",
+"S8-10"
+]
+},
+{
+"id": "S8-10",
+"title": "Clan registry, invites and wars (pre-alliance clans)",
+"area": "server",
+"verdict": "retired",
+"oneLine": "The old clan membership, pending clan invites and lawless-zone clan wars, live only under clanparty:false.",
+"topConcern": "Retired: clan creation debits 500 gold then awaits two separate puts; a restart between keeps the debit with no clan.",
+"modes": [
+"persistence",
+"stuck"
+],
+"confidence": "low",
+"files": [
+"server/src/clans.js:67-96",
+"server/src/clans.js:134-179",
+"server/src/clans.js:329-374",
+"server/src/clans.js:447-504"
+],
+"linked": [
+"S8-9",
+"client clan windows (caps.clans)"
+]
+},
+{
+"id": "S8-11",
+"title": "Friend requests and friendships (stored handshake)",
+"area": "wire (both)",
+"verdict": "needs-thought",
+"oneLine": "Stored friends:<pid> docs with list, incoming and outgoing requests; request, accept, decline, remove.",
+"topConcern": "No withdraw and no expiry for an outgoing request: requests to players who never answer fill the 25 slots for good (too-many-requests).",
+"modes": [
+"stuck",
+"combo",
+"persistence"
+],
+"confidence": "high",
+"files": [
+"server/src/friends.js:114-150",
+"server/src/friends.js:154-169",
+"server/src/friends.js:177-207",
+"src/ui/mobile/dash/SocialPanel.jsx:305-320"
+],
+"linked": [
+"S8-12",
+"legacy localStorage bt_friends",
+"client friendsSync.js"
+]
+},
+{
+"id": "S8-12",
+"title": "Offline DM backlog",
+"area": "server",
+"verdict": "fine",
+"oneLine": "A capped mailbox of DMs to an offline friend, delivered once at their next join and deleted.",
+"topConcern": "Delivered-once: a backlog sent into a closing socket is lost (deliberate).",
+"modes": [
+"persistence"
+],
+"confidence": "low",
+"files": [
+"server/src/friends.js:212-251",
+"server/src/friends.js:101-112"
+],
+"linked": [
+"S8-11",
+"S8-14",
+"client friend_dm_backlog"
+]
+},
+{
+"id": "S8-13",
+"title": "Chat guard per connection: social allowance and repeat memory",
+"area": "server",
+"verdict": "fine",
+"oneLine": "session.chatGuard: token allowance for room chat, emotes and party chat, and a 30 s repeat memory for room/area lines.",
+"topConcern": "Room chat spends its token before cleaning and the repeat check; party chat only once the line is real (minor drift).",
+"modes": [
+"guard-drift",
+"persistence"
+],
+"confidence": "low",
+"files": [
+"server/src/chatguard.js:207-251",
+"server/src/index.js:6274-6304",
+"server/src/index.js:4964-4977",
+"server/src/party.js:342-349"
+],
+"linked": [
+"S8-14",
+"relay bucket session.relayTokens",
+"docs/specs/chat-guard.md"
+]
+},
+{
+"id": "S8-14",
+"title": "Chat lane bucket (area chat, whispers, friend DMs)",
+"area": "server",
+"verdict": "watch",
+"oneLine": "A per-player token bucket shared by area chat, whispers and friend DMs, in memory.",
+"topConcern": "_laneBuckets is never pruned (one entry per player id for the worker's life) and drops the fractional refill unlike the other buckets.",
+"modes": [
+"leak",
+"guard-drift"
+],
+"confidence": "medium",
+"files": [
+"server/src/chatlanes.js:83-96",
+"server/src/chatlanes.js:113-147",
+"server/src/chatlanes.js:150-192",
+"server/src/friends.js:223-226"
+],
+"linked": [
+"S8-13",
+"flood.js _paceBucket"
+]
+},
+{
+"id": "S8-15",
+"title": "Server mute list (stored, cached, paced writes)",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "A muter's chat_mute doc: cached at join for the fan-out, edits written at a pace, flushed at close.",
+"topConcern": "A change past the burst waits in a timer up to 10 s; a deploy inside that window loses it.",
+"modes": [
+"persistence"
+],
+"confidence": "low",
+"files": [
+"server/src/chatmod.js:116-137",
+"server/src/chatmod.js:247-266",
+"server/src/chatmod.js:268-297",
+"server/src/flood.js:244-279"
+],
+"linked": [
+"S8-16",
+"client bt_muted fallback",
+"tick.js mute key"
+]
+},
+{
+"id": "S8-16",
+"title": "Abuse reports (context ring, rate gate, stored report)",
+"area": "server",
+"verdict": "fine",
+"oneLine": "A chat report: the server's copy of recent lines, a per-reporter rate gate, stored until dismissed or 30 days old.",
+"topConcern": "_chatReportLog trims only on the same reporter's next report (tiny, deliberate in-memory budget).",
+"modes": [
+"leak"
+],
+"confidence": "low",
+"files": [
+"server/src/chatmod.js:190-212",
+"server/src/chatmod.js:299-357",
+"server/src/chatmod.js:367-418"
+],
+"linked": [
+"S8-15",
+"DevPanel Chat reports",
+"admin.js /freeze /kick"
+]
+},
+{
+"id": "S8-17",
+"title": "Held pose (sit, sleep, dance) and the emote relay",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "ps.po on the server and S._pose on the phone: a held pose until a real move or a stand-up message.",
+"topConcern": "No server path clears ps.po at a death or respawn; a hidden-tab sleeper killed keeps po and peers keep snoring at the corpse.",
+"modes": [
+"stuck",
+"divergence"
+],
+"confidence": "medium",
+"files": [
+"server/src/poses.js:48-74",
+"server/src/movement.js:796-799",
+"server/src/tick.js:570",
+"src/game/interactions.js:68-129",
+"src/game/moveSounds.js:99"
+],
+"linked": [
+"client emoteMoves.js",
+"emoteFx.js",
+"S8-13 social allowance",
+"chatmod MUTABLE_RELAY_TYPES"
+]
+},
+{
+"id": "S8-18",
+"title": "Look relay baseline (whole, deltas, whole every minute)",
+"area": "wire (both)",
+"verdict": "fine",
+"oneLine": "session._look: what every phone was last told of a player's look, so a track relays only what changed.",
+"topConcern": "",
+"modes": [],
+"confidence": "high",
+"files": [
+"server/src/lookrelay.js:95-135",
+"server/src/lookrelay.js:146-171",
+"server/src/clans.js:315-320"
+],
+"linked": [
+"S8-8",
+"wsClient.js player_update merge",
+"nearjoin.js",
+"look-relay.test.mjs"
+]
+},
+{
+"id": "S8-19",
+"title": "Feedback board: rate windows, vote toggle, crash ring",
+"area": "server",
+"verdict": "watch",
+"oneLine": "Per-claimed-id hourly windows, a ticket's per-voter up/down toggle, and a 200-report crash ring in the Feedback DO.",
+"topConcern": "Public route takes playerId from the body: anyone votes as any id (unlimited) and the hourly limit is per claimed id.",
+"modes": [
+"authority",
+"leak",
+"combo"
+],
+"confidence": "medium",
+"files": [
+"server/src/feedback.js:106-146",
+"server/src/feedback.js:148-173",
+"server/src/feedback.js:78-104",
+"server/src/index.js:387-389"
+],
+"linked": [
+"client Feedback panel",
+"crashTrap.js"
+]
+},
+{
+"id": "S8-20",
+"title": "Leaderboard rows and the room's report throttle",
+"area": "server",
+"verdict": "fine",
+"oneLine": "session._lbSig/_lbAt decide when the room re-posts a player's row; rows older than 7 days drop off the answer.",
+"topConcern": "player: rows are never deleted and every public GET /top lists all of them.",
+"modes": [
+"persistence",
+"leak"
+],
+"confidence": "low",
+"files": [
+"server/src/index.js:6467-6570",
+"server/src/leaderboard.js:38-54",
+"server/src/leaderboard.js:84-102",
+"server/src/join.js:1904"
+],
+"linked": [
+"chain-score series",
+"public /api/leaderboard"
+]
+},
+{
+"id": "S8-21",
+"title": "Bot fingerprint record: hydrate, score, caps, flag, put, evict",
+"area": "server",
+"verdict": "needs-thought",
+"oneLine": "Per-identity anti-bot record in a 128-slot map: hydrated at join, decaying score, hour caps, flags, paced botstat: writes.",
+"topConcern": "An evicted online player's record is recreated fresh by the next hit and its next put overwrites stored flags, counters, hour count and sig.",
+"modes": [
+"persistence",
+"stuck"
+],
+"confidence": "high",
+"files": [
+"server/src/botfp.js:289-305",
+"server/src/botfp.js:197-212",
+"server/src/botfp.js:550-575",
+"server/src/botsig.js:230-235",
+"server/src/index.js:5335"
+],
+"linked": [
+"S8-22",
+"gathering.js HARVEST_PROOF",
+"cooking.js",
+"hidden.js",
+"DevPanel Bot flags"
+]
+},
+{
+"id": "S8-22",
+"title": "Server bot signals and the optional Turnstile re-check",
+"area": "server",
+"verdict": "watch",
+"oneLine": "rec.sig: walk, gesture, cook, reflex, rooted, streak and route measures, a score, a flag, and a re-check owed.",
+"topConcern": "reverify is re-armed at every evaluation while the score stands, so a flagged player is asked at every join, not once a flag (switch off).",
+"modes": [
+"divergence",
+"race",
+"persistence"
+],
+"confidence": "medium",
+"files": [
+"server/src/botsig.js:451-473",
+"server/src/botsig.js:481-496",
+"server/src/botsig.js:311-339",
+"server/src/join.js:683",
+"docs/specs/server-botsig.md:72-76"
+],
+"linked": [
+"S8-21",
+"botstats.js histograms",
+"verify.js Turnstile",
+"telegraph.js wind-ups"
+]
+},
+{
+"id": "S8-23",
+"title": "Guild quest ladder (stored rung per skill)",
+"area": "wire (both)",
+"verdict": "watch",
+"oneLine": "guild_claims:<pid> counts the rungs paid per life skill; the phone's _guildProgress copies it only from a result.",
+"topConcern": "The server's rung is never sent at join; after a character restart (claims kept) the panel offers a rung already paid.",
+"modes": [
+"divergence"
+],
+"confidence": "low",
+"files": [
+"server/src/guilds.js:34-68",
+"server/src/data.js:1312-1331",
+"src/networking/gameEvents.js:1843-1880",
+"src/ui/panels/GuildPanel.jsx:290-310"
+],
+"linked": [
+"client GuildPanel",
+"mirror GUILD_QUESTS",
+"persistence.js restart"
+]
+}
+]

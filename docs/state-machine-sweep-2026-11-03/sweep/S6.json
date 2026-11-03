@@ -1,0 +1,405 @@
+[
+ {
+  "id": "S6-1",
+  "title": "The gift trade (trade_offer / trade_accept relay)",
+  "area": "server",
+  "verdict": "needs-thought",
+  "oneLine": "One in-memory single-shot gift offer per sender>target, validated and settled at accept, swept at 120 s.",
+  "topConcern": "Gift lane never got trade2's v2.3.3183 fight lock: a modified phone losing a PvP fight gifts its bag to a friend, emptying the killer's pile.",
+  "modes": [
+   "guard-drift",
+   "divergence",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/trade.js:103",
+   "server/src/trade.js:203",
+   "server/src/index.js:6313",
+   "server/src/relay.js:66",
+   "server/src/nomansland.js:234"
+  ],
+  "linked": [
+   "S6-2 trade2",
+   "nomansland.js _bagLockedByFight",
+   "src/ui/panels/TradePanel.jsx",
+   "src/ui/panels/IncomingTradePanel.jsx"
+  ]
+ },
+ {
+  "id": "S6-2",
+  "title": "The two-sided trade window (trade2 session)",
+  "area": "wire (both)",
+  "verdict": "needs-thought",
+  "oneLine": "In-memory session: invite, offer stage, review stage, confirms, commit; staged weapons escrowed in trade2wpn: rows.",
+  "topConcern": "Weapon deliveries are awaited after the one-write commit; a restart between them lets the join sweep refund the weapons while gold/items already moved.",
+  "modes": [
+   "persistence",
+   "combo",
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/trade2.js:214",
+   "server/src/trade2.js:329",
+   "server/src/trade2.js:356",
+   "server/src/trade2.js:650",
+   "server/src/trade2.js:203"
+  ],
+  "linked": [
+   "src/ui/panels/TradeWindowPanel.jsx",
+   "src/networking/gameEvents.js trade2_state",
+   "S6-4 inbox",
+   "petbook.js",
+   "nomansland.js _bagLockedByFight"
+  ]
+ },
+ {
+  "id": "S6-3",
+  "title": "The order book's order (mkt_order: rest, match, cancel, expire)",
+  "area": "server",
+  "verdict": "needs-thought",
+  "oneLine": "Escrowed buy/sell orders in the GameRoom's bucket book, settled credit-first, converged by settle/refund stamps at wake.",
+  "topConcern": "A crossing placement is four write batches; a restart can drop the taker's escrow, or the rebuild deletes a half-settled order unpaid.",
+  "modes": [
+   "persistence",
+   "stuck",
+   "guard-drift"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/market.js:327",
+   "server/src/market.js:379",
+   "server/src/market.js:101",
+   "server/src/market.js:88",
+   "server/src/market.js:473"
+  ],
+  "linked": [
+   "S6-5 auction listing",
+   "S6-4 inbox oplog",
+   "src/ui/panels/buildings/ExchangePanel.jsx",
+   "TRAPS 184/147/146"
+  ]
+ },
+ {
+  "id": "S6-4",
+  "title": "A credit's life: live, parked in the mailbox, drained at the join (inbox + oplog)",
+  "area": "server",
+  "verdict": "watch",
+  "oneLine": "The one payout funnel: in-flight set, 48 h oplog stamps, per-box serial chain, join drain, paged prune job.",
+  "topConcern": "Idempotency is a 48 h journal while store listings (7 d) and market orders converge on it lazily; leftovers converged late go the wrong way.",
+  "modes": [
+   "persistence",
+   "stuck",
+   "race"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/inbox.js:243",
+   "server/src/inbox.js:274",
+   "server/src/inbox.js:519",
+   "server/src/inbox.js:567",
+   "server/src/inbox.js:173"
+  ],
+  "linked": [
+   "every economy machine in S6",
+   "TRAPS 146/147/184",
+   "join.js drain"
+  ]
+ },
+ {
+  "id": "S6-5",
+  "title": "An Auction House listing (store_listing: rest, bid, sale, release)",
+  "area": "server",
+  "verdict": "needs-thought",
+  "oneLine": "Listing record with sale/pendBid/pendOffer/releasing intent markers, converged by oplog reads at a lazy wake rebuild.",
+  "topConcern": "Item listings take the stack in one batch and write the record in the next; a restart between leaves goods gone with nothing naming them.",
+  "modes": [
+   "persistence",
+   "guard-drift",
+   "stuck",
+   "combo"
+  ],
+  "confidence": "medium",
+  "files": [
+   "server/src/store.js:673",
+   "server/src/store.js:789",
+   "server/src/store.js:466",
+   "server/src/store.js:821",
+   "server/src/storegear.js:448"
+  ],
+  "linked": [
+   "S6-6 offers",
+   "S6-7 thread",
+   "S6-3 order book",
+   "gearprov.js ledger",
+   "petbook.js"
+  ]
+ },
+ {
+  "id": "S6-6",
+  "title": "An escrowed offer on a listing",
+  "area": "server",
+  "verdict": "needs-thought",
+  "oneLine": "A buyer's gold escrowed against a listing: pending, live, think, accepted, refunded or expired after 48 h.",
+  "topConcern": "The offer-expiry pass counts every record and stops at the first 20 with no cursor, so offers on later listings never expire in 48 h.",
+  "modes": [
+   "stuck",
+   "persistence",
+   "leak"
+  ],
+  "confidence": "high",
+  "files": [
+   "server/src/store.js:1061",
+   "server/src/storeoffer.js:197",
+   "server/src/storeoffer.js:137",
+   "server/src/storeoffer.js:256",
+   "docs/specs/store-offers.md:64"
+  ],
+  "linked": [
+   "S6-5 listing",
+   "server/test/storeoffer.test.mjs:230",
+   "store_offer_state"
+  ]
+ },
+ {
+  "id": "S6-7",
+  "title": "A listing's haggle thread (store_thread:)",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Per-listing buyer threads created on first line and dropped at every listing end, before the record.",
+  "topConcern": "",
+  "modes": [
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/storechat.js:222",
+   "server/src/storechat.js:160",
+   "server/src/store.js:847"
+  ],
+  "linked": [
+   "S6-5 listing",
+   "chatmod.js"
+  ]
+ },
+ {
+  "id": "S6-8",
+  "title": "Diego's public pile (shop_stock)",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "One global per-key stock count, seeded once, setting his buy price; sales save purse and pile together.",
+  "topConcern": "",
+  "modes": [
+   "guard-drift"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/shop.js:441",
+   "server/src/shop.js:623",
+   "server/src/shop.js:696",
+   "server/src/shop.js:160"
+  ],
+  "linked": [
+   "quests.js quest states (tool shelf)",
+   "server/src/index.js:5410"
+  ]
+ },
+ {
+  "id": "S6-9",
+  "title": "The bank vault (bank:<pid>, cached per session)",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Versioned vault record with a load-once cache, failed/newer states, and opId ring; moves written with the bag.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "server/src/bank.js:144",
+   "server/src/bank.js:212",
+   "server/src/index.js:6402",
+   "server/src/linger.js:136"
+  ],
+  "linked": [
+   "persistence.js character restart",
+   "bank_state"
+  ]
+ },
+ {
+  "id": "S6-10",
+  "title": "The gambling tables (Hall roll, Ace coin flip, Ace item wager, hall of fame)",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Single-event settles gated by in-memory per-player cooldown stamps; silent refusals; client panel's 6 s fallback.",
+  "topConcern": "No fight or place gate: a modified phone can wager its bag mid-PvP-fight; client mirror of the bounds is unpinned.",
+  "modes": [
+   "guard-drift",
+   "divergence",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/gamble.js:159",
+   "server/src/gamble.js:226",
+   "server/src/gamble.js:264",
+   "src/ui/panels/AceFlipPanel.jsx:227",
+   "src/data/items.js:180"
+  ],
+  "linked": [
+   "nomansland.js _bagLockedByFight",
+   "src/ui/mobile/aceFlipBus.js",
+   "GamblePanel.jsx"
+  ]
+ },
+ {
+  "id": "S6-11",
+  "title": "The /roll and /flip cadence (dice)",
+  "area": "wire (both)",
+  "verdict": "fine",
+  "oneLine": "One in-memory 5 s stamp per player; the roll is a placed event; pinned client mirror.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "low",
+  "files": [
+   "server/src/dice.js:71",
+   "server/test/mirror-audit.test.mjs:2653"
+  ],
+  "linked": [
+   "src/game/dice.js"
+  ]
+ },
+ {
+  "id": "S6-12",
+  "title": "A mystery piece in the bag (unrevealed to revealed)",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "Server-owned unrevealed mark on every server copy of a piece, cleared by reveal, wear or join.",
+  "topConcern": "Seven writers across six files; trade/market/store/salvage doors deliberately ignore the mark and ship the grade to the other party.",
+  "modes": [
+   "opacity",
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/revealbag.js:155",
+   "server/src/revealbag.js:321",
+   "server/src/index.js:4684",
+   "server/src/grids.js:97",
+   "server/src/gear.js:129"
+  ],
+  "linked": [
+   "S6-13 salvage",
+   "S6-2",
+   "S6-3",
+   "S6-5",
+   "gearprov.js",
+   "RevealOverlay.jsx"
+  ]
+ },
+ {
+  "id": "S6-13",
+  "title": "Salvage and the grade ladder (normal to godly)",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "A piece's quality raised only by a same-metal essence; salvage turns it into bars; 250 ms per-player stamp.",
+  "topConcern": "",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/salvage.js:212",
+   "server/src/salvage.js:273",
+   "server/src/gearprov.js:927"
+  ],
+  "linked": [
+   "S6-12 reveal bag",
+   "src/data/salvage.js weaponSig",
+   "gearstash.js healGradeFromClaim"
+  ]
+ },
+ {
+  "id": "S6-14",
+  "title": "The wooden-greatsword conversion (old to metal)",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Idempotent rewrite of weapon blobs by migration v20 plus heals at the post and the shelves' rebuilds.",
+  "topConcern": "",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/gscopper.js:115",
+   "server/src/migrations.js:732",
+   "server/src/inbox.js:446",
+   "server/src/store.js:450"
+  ],
+  "linked": [
+   "swordconvert.js",
+   "docs/specs/greatsword-copper.md"
+  ]
+ },
+ {
+  "id": "S6-15",
+  "title": "A score checkpoint on the chain (sign, nonce, broadcast, receipt)",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Attestation pipeline with a bounded receipt poll; the in-flight lane and DO-wide queue live in chainscore.js.",
+  "topConcern": "",
+  "modes": [
+   "race",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/chainwriter.js:335",
+   "server/src/chainwriter.js:315",
+   "server/src/chainscore.js:230",
+   "server/src/chainscore.js:164"
+  ],
+  "linked": [
+   "chainscore.js",
+   "onchain.js (stateless)",
+   "broverify.js wallet challenge"
+  ]
+ },
+ {
+  "id": "S6-16",
+  "title": "The old global Marketplace DO's order book",
+  "area": "server",
+  "verdict": "retired",
+  "oneLine": "Unsettled bucket book kept only for its wrangler binding; nothing routes to it.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "server/src/marketplace.js:13",
+   "server/src/index.js:328"
+  ],
+  "linked": [
+   "S6-3 order book"
+  ]
+ },
+ {
+  "id": "S6-17",
+  "title": "Once-a-character prize marks (aponce:<pid>)",
+  "area": "server",
+  "verdict": "fine",
+  "oneLine": "Marks read at join before the mail, written with the points in the blob's save, fail closed when unread.",
+  "topConcern": "",
+  "modes": [
+   "persistence"
+  ],
+  "confidence": "low",
+  "files": [
+   "server/src/inbox.js:63",
+   "server/src/inbox.js:396",
+   "server/src/persistence.js:256"
+  ],
+  "linked": [
+   "achievements.js",
+   "gladiator.js"
+  ]
+ }
+]

@@ -1,0 +1,501 @@
+[
+ {
+  "id": "R10-1",
+  "title": "A building's fire: face, rubble, going out, gone",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "A hit building's fire through face, rubble and out modes, split across a fires Map and a going list.",
+  "topConcern": "Self-timeout and heap-gone exits leave an 'out' fire in the Map, swallowing new hits on that building for up to 4.2 s.",
+  "modes": [
+   "divergence",
+   "stuck",
+   "leak",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/buildingFire.js:372",
+   "src/rendering/buildingFire.js:511",
+   "src/rendering/buildingFire.js:640",
+   "src/rendering/wheelObjects.js:472",
+   "src/game/wheelBreak.js:256"
+  ],
+  "linked": [
+   "game/wheelBreak.js event queue",
+   "rendering/wheelShatter.js heaps",
+   "game/heapBurn.js + server heapburn.js",
+   "game/ambientBeds.js burningNow",
+   "R10-2"
+  ]
+ },
+ {
+  "id": "R10-2",
+  "title": "A figure on fire (PersonFire): lit, dying down, hidden, kept",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "The building's flames on a burning figure: made once, lit, dying down, hidden and reused; peers released when done.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/buildingFire.js:782",
+   "src/rendering/systems/effectsRenderer.js:13525",
+   "src/rendering/systems/effectsRenderer.js:13547",
+   "src/game/heapBurn.js:35"
+  ],
+  "linked": [
+   "R10-1",
+   "game/heapBurn.js",
+   "game/elemHits.js _burnUntil"
+  ]
+ },
+ {
+  "id": "R10-3",
+  "title": "A campfire on screen: light catching, adopted, burning down, dying, gone",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "One campfire Fire through light, adoption by its campfire record, fuse burn-down and dying, fed by four record sources.",
+  "topConcern": "A peer's light is adopted only if campfire_lit lands before their 'fire' code stops being drawn; reordered, two fires show.",
+  "modes": [
+   "race",
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/campfireFx.js:173",
+   "src/rendering/campfireFx.js:446",
+   "src/rendering/campfireFx.js:409",
+   "src/ui/BroTown.jsx:6664",
+   "src/rendering/systems/effectsRenderer.js:14385"
+  ],
+  "linked": [
+   "S._campfire / S._firemaking (BroTown.jsx)",
+   "S._peerCampfires (gameEvents.js campfire_lit)",
+   "effectsRenderer _peerLights",
+   "game/ambientBeds.js",
+   "R10-1"
+  ]
+ },
+ {
+  "id": "R10-4",
+  "title": "A monster's wind-up look (the phone's copy of the worker's telegraph)",
+  "area": "wire (both)",
+  "verdict": "watch",
+  "oneLine": "The phone's copy of a monster's wind-up window, drawn as its element's swirl and a body throb.",
+  "topConcern": "Shield Bash and parry cancel the worker's wind-up, but nothing clears the phone's _tgUntil; the warning plays on up to 1.2 s.",
+  "modes": [
+   "divergence",
+   "guard-drift",
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/elemWindup.js:135",
+   "src/rendering/systems/entityRenderer.js:10236",
+   "src/networking/gameEvents.js:1526",
+   "src/networking/gameEvents.js:1589",
+   "server/src/abilities.js:953"
+  ],
+  "linked": [
+   "server/src/telegraph.js _tgPhase/_tgUntil",
+   "server _bwUntil basic wind-up",
+   "data/elemWindup.js",
+   "game/elemWindup.js",
+   "docs/specs/elem-windup.md"
+  ]
+ },
+ {
+  "id": "R10-5",
+  "title": "A swimmer drawn in the water: wading in, swimming or treading, climbing out",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "A figure sinking into the water, swimming or treading, and climbing out, with hysteresis and teleport snaps for peers.",
+  "topConcern": "A peer's swim is decided from this screen's drawn ground; where it is not laid yet, they are drawn standing in the water.",
+  "modes": [
+   "divergence",
+   "opacity"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/swimFx.js:123",
+   "src/rendering/swimFx.js:205",
+   "src/rendering/swimFx.js:188",
+   "src/game/wheelSwim.js:70",
+   "src/game/wheelSwim.js:83"
+  ],
+  "linked": [
+   "game/wheelSwim.js",
+   "R10-8"
+  ]
+ },
+ {
+  "id": "R10-6",
+  "title": "A jumper drawn in the air, and the touch-down squash",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "A jumper lifted, stretched and leaned in the air, then squashed on landing; peers' spent jumps cleared here.",
+  "topConcern": "A draw pass ends a peer's jump state, only for peers with a display; every reader checks the time, so harmless.",
+  "modes": [
+   "authority"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/jumpFx.js:68",
+   "src/rendering/jumpFx.js:154",
+   "src/rendering/jumpFx.js:199",
+   "src/game/jump.js:156",
+   "src/game/jumpActions.js:154"
+  ],
+  "linked": [
+   "game/jump.js",
+   "game/jumpActions.js",
+   "R10-7",
+   "R10-8"
+  ]
+ },
+ {
+  "id": "R10-7",
+  "title": "The skateboard under a rider: on, view, rolling, bump, off",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "The skateboard sprite hung under a rider, its view, turning wheel spots, and bumps that borrow the jump's record.",
+  "topConcern": "The bump sets _jumpY, so emoteFx thinks a rider is airborne: a cheer or flex flickers on each bump; tilting moves cancel bumps.",
+  "modes": [
+   "combo"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/rideFx.js:121",
+   "src/rendering/rideFx.js:159",
+   "src/rendering/rideFx.js:233",
+   "src/game/ride.js:77",
+   "server/src/ride.js:76"
+  ],
+  "linked": [
+   "game/ride.js",
+   "server/src/ride.js RIDE_ENDS_ON",
+   "rendering/emoteFx.js",
+   "R10-6",
+   "R10-8"
+  ]
+ },
+ {
+  "id": "R10-8",
+  "title": "A figure's borrowed transform each frame: swim, jump, board, emote",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Swim, jump, board and emote passes each patch and restore the same figure transform every frame, in a fixed order.",
+  "topConcern": "Order-dependent write-and-restore across four passes with cross-read marks; the board bump already breaks emotes, and reordering risks stuck tilts.",
+  "modes": [
+   "combo",
+   "opacity",
+   "authority",
+   "persistence"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/pixiRenderer.js:800",
+   "src/rendering/emoteFx.js:117",
+   "src/rendering/emoteFx.js:240",
+   "src/rendering/emoteFx.js:270",
+   "src/game/interactions.js:113"
+  ],
+  "linked": [
+   "server/src/poses.js ps.po",
+   "server/src/movement.js:799",
+   "game/interactions.js sendMove",
+   "game/townsfolkReact.js",
+   "R10-5",
+   "R10-6",
+   "R10-7"
+  ]
+ },
+ {
+  "id": "R10-9",
+  "title": "A trap drawn: the mark, then a spring's drop, shakes, snap or break",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "The trap's mark ring and each spring's drop, shakes, snap or break, timed beside trapping.js's setTimeout beats.",
+  "topConcern": "Mark and springs carry no zone and S._trap survives a zone change; a door taken within 15 s draws the ring in the dungeon.",
+  "modes": [
+   "stuck",
+   "guard-drift",
+   "race"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/trapFx.js:113",
+   "src/rendering/trapFx.js:296",
+   "src/game/trapping.js:175",
+   "src/game/trapping.js:203",
+   "src/rendering/systems/effectsRenderer.js:12068"
+  ],
+  "linked": [
+   "game/trapping.js",
+   "server trapping (trap_arm/trap_result)",
+   "rendering/wheelShatter.js",
+   "TrapCatchCard.jsx"
+  ]
+ },
+ {
+  "id": "R10-10",
+  "title": "Soot marks from a slime's blast: queued, live and fading, gone",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Ten pooled soot marks from slime blasts, live and fading for a minute, ended on leaving their zone.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/sootMarks.js:161",
+   "src/rendering/sootMarks.js:182",
+   "src/game/slimeBlast.js:20",
+   "src/rendering/systems/effectsRenderer.js:12246"
+  ],
+  "linked": [
+   "game/slimeBlast.js",
+   "R10-1"
+  ]
+ },
+ {
+  "id": "R10-11",
+  "title": "The shared fx strips: loading at import, ready, or failed for good",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Global effect strips loading at import, ready or failed for good; every reader falls back while frames are empty.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/fxStrips.js:113",
+   "src/rendering/fxStrips.js:194",
+   "src/rendering/preloadAnimations.js:359"
+  ],
+  "linked": [
+   "preloadWorldAnimations",
+   "entityRenderer stun stars",
+   "tileRenderer portal beam"
+  ]
+ },
+ {
+  "id": "R10-12",
+  "title": "The white-hot bow special: in flight, struck, smouldering, burnt out or flaring",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "The bow special's white-hot look: flight, strike, a throb per chip tick, then burning out or flaring for a blast.",
+  "topConcern": "LIFE_MS and TICK_MS are unpinned hand copies of projectiles.js's stuck-arrow timing, so the drawn throbs could drift.",
+  "modes": [
+   "divergence"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/hotArrowFx.js:589",
+   "src/rendering/hotArrowFx.js:125",
+   "src/rendering/hotArrowFx.js:184"
+  ],
+  "linked": [
+   "projectiles.js stuck arrows",
+   "game/bowVolley.js BURN_MS",
+   "R10-20"
+  ]
+ },
+ {
+  "id": "R10-13",
+  "title": "The staff cast: charging, release, the bolt easing off the crystal, the crash and burst",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "The staff crystal's charge, release flash, bolt easing off the crystal, and crash burst, edge-detected from cast stamps.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/staffCastFx.js:579",
+   "src/rendering/staffCastFx.js:150",
+   "src/rendering/staffCastFx.js:485",
+   "src/game/combatHelpers.js:1069",
+   "src/game/playerActions.js:585"
+  ],
+  "linked": [
+   "projectiles.js _fxResX/_fxResY",
+   "entityRenderer staff tip",
+   "R10-20"
+  ]
+ },
+ {
+  "id": "R10-14",
+  "title": "The Goo Grotto's moving bits: drips, bubbles, torch fires, spores, ferns",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "The Goo Grotto's drips, bubbles, glints, torch fires and spores, each with explicit wait-grow-fall phases on timers.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/grottoFx.js:185",
+   "src/rendering/grottoFx.js:270",
+   "src/rendering/grottoFx.js:115",
+   "src/rendering/wheelDoors.js:120",
+   "src/rendering/arenaWorld.js:295"
+  ],
+  "linked": [
+   "rendering/wheelDoors.js",
+   "rendering/arenaWorld.js",
+   "game/dungeonArt.js",
+   "R10-19",
+   "R10-3"
+  ]
+ },
+ {
+  "id": "R10-15",
+  "title": "Each land's trees and rocks wearing their element",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Per-resource element speck pools near the view, born and gone by alpha alone, with drips hanging then falling.",
+  "topConcern": "",
+  "modes": [],
+  "confidence": "high",
+  "files": [
+   "src/rendering/landAuras.js:365",
+   "src/rendering/landAuras.js:294",
+   "src/rendering/landAuras.js:522",
+   "src/rendering/landAuras.js:156",
+   "src/rendering/landAuras.js:246"
+  ],
+  "linked": [
+   "data/landAuras.js",
+   "game/worldTrial.js preloadWheel",
+   "R10-16",
+   "R10-20"
+  ]
+ },
+ {
+  "id": "R10-16",
+  "title": "A building's life: smoke, lamps, sparks, glints, chaff, and the Town Hall's cut flag",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Chimney smoke, lamps, sparks, glints and chaff on Wheel buildings, and the Town Hall flag cut out of its page.",
+  "topConcern": "Particles are born and killed by visible toggles and addChild in the big objects layer: the TRAPS §218 cost landAuras already fixed.",
+  "modes": [
+   "guard-drift",
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/wheelLife.js:308",
+   "src/rendering/wheelLife.js:79",
+   "src/rendering/wheelLife.js:241",
+   "src/rendering/wheelObjects.js:544",
+   "src/rendering/worldLife.js:585"
+  ],
+  "linked": [
+   "rendering/wheelObjects.js",
+   "rendering/paletteTex.js",
+   "R10-15",
+   "R10-19",
+   "R10-20"
+  ]
+ },
+ {
+  "id": "R10-17",
+  "title": "The sky by the hour: plain day, golden-hour tint, or a night light map",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Plain day, golden-hour tint or a rendered night light map, chosen each frame; held at midday on the Wheel.",
+  "topConcern": "Night is dormant on the Wheel by the owner's call; it runs only on the farm and the retired old lands.",
+  "modes": [
+   "retired"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/worldFx.js:382",
+   "src/rendering/worldFx.js:450",
+   "src/game/timeOfDay.js:107",
+   "src/game/worldTrial.js:525"
+  ],
+  "linked": [
+   "game/timeOfDay.js",
+   "R10-19"
+  ]
+ },
+ {
+  "id": "R10-18",
+  "title": "Dust prints, take-off and landing puffs, motes, and blood",
+  "area": "rendering",
+  "verdict": "watch",
+  "oneLine": "Dust prints and puffs per walker, take-off and landing puffs via an in-air set, motes, and blood bursts.",
+  "topConcern": "_inAir empties only on a landing this pass sees; landing in dust-free land, dying mid-air or leaving mid-jump makes phantom landing puffs later.",
+  "modes": [
+   "stuck",
+   "leak"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/worldFx.js:697",
+   "src/rendering/worldFx.js:759",
+   "src/rendering/worldFx.js:876",
+   "src/rendering/worldFx.js:995"
+  ],
+  "linked": [
+   "game/jump.js",
+   "gameEvents monster_attack (queueBlood)",
+   "R10-6",
+   "R10-20"
+  ]
+ },
+ {
+  "id": "R10-19",
+  "title": "The world's small motions: sway springs, chop kicks, breathing, ore glints",
+  "area": "rendering",
+  "verdict": "fine",
+  "oneLine": "Sway springs with chop kicks, NPC and monster breathing, and ore glint riders; the old town's building riders are retired.",
+  "topConcern": "Building riders, prop sway and canopies run only for old-map props, and no prop exists on the Wheel.",
+  "modes": [
+   "retired"
+  ],
+  "confidence": "low",
+  "files": [
+   "src/rendering/worldLife.js:414",
+   "src/rendering/worldLife.js:491",
+   "src/rendering/worldLife.js:1158",
+   "src/rendering/worldLife.js:1235",
+   "src/rendering/worldLife.js:797"
+  ],
+  "linked": [
+   "wheelObjects forEachWheelSwayer/forEachWheelFlag",
+   "grottoFx forEachGrottoSwayer",
+   "R10-14",
+   "R10-16",
+   "R10-17"
+  ]
+ },
+ {
+  "id": "R10-20",
+  "title": "The slice's code-drawn pictures: minted once on a canvas and kept",
+  "area": "rendering",
+  "verdict": "needs-thought",
+  "oneLine": "Ten code-drawn effect pictures minted once on canvases and kept; only elemWindup and sootMarks are kept as images.",
+  "topConcern": "Eight kept canvases skip keepAsImage (TRAPS §253); after Safari empties canvases or a rebuild, fires, blood, dust, auras and smoke can draw blank.",
+  "modes": [
+   "persistence",
+   "stuck"
+  ],
+  "confidence": "medium",
+  "files": [
+   "src/rendering/campfireFx.js:146",
+   "src/rendering/hotArrowFx.js:427",
+   "src/rendering/worldFxTextures.js:362",
+   "src/rendering/elemWindup.js:77",
+   "src/rendering/sootMarks.js:132"
+  ],
+  "linked": [
+   "rendering/keepAsImage.js",
+   "rendering/canvasWitness.js",
+   "TRAPS §250",
+   "TRAPS §253",
+   "R10-1",
+   "R10-12",
+   "R10-15",
+   "R10-16"
+  ]
+ }
+]
