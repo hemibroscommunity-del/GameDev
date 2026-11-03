@@ -2367,7 +2367,7 @@ export function updateMonsterCombat(S, deps) {
                    flung off the edge of the swing (hitMaterialFx), heavier off
                    a greatsword, bigger on a crit or a special. */
                 spawnHitDebris(S, m, baseAngle, {
-                  mine: true,   /* v2.3.3954: your blow, written down for its death (deathBlow.js) */
+                  mine: true,   /* v2.3.3985: your blow, written down for its death (deathBlow.js) */
                   weapon: 'sword', crit: !!isCrit, big: !!S._specialAttack,
                   heavy: (_activeWpn && _activeWpn.type) === 'greatsword',
                   elem: (_activeWpn && _activeWpn.element1) || null,

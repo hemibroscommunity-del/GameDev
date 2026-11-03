@@ -392,7 +392,7 @@ function _projImpactFx(S, a, m, fx, tx, ty) {
   /* v2.3.2843: AN ARROW PUNCHES, A BOLT BLASTS -- the material leaves from
      where the shot landed; the pieces that come down are the ground mark */
   spawnHitDebris(S, m, a.ang, {
-    mine: true,   /* v2.3.3954: your shot's travel, written down for its death (deathBlow.js) */
+    mine: true,   /* v2.3.3985: your shot's travel, written down for its death (deathBlow.js) */
     weapon: fx.bolt ? 'bolt' : 'arrow', big: fx.big, elem: fx.elem, arch: arch,
     hitX: tx + vdx, hitY: ty + vdy,
   });

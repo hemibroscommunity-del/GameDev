@@ -1,4 +1,4 @@
-/* ═══ v2.3.3954: A MONSTER DIES IN PIECES THAT FIT IT ═══
+/* ═══ v2.3.3985: A MONSTER DIES IN PIECES THAT FIT IT ═══
  *
  * The owner: "Make actual monster death animations", and "Death animation
  * idea label zones for each monster that can apply physics and effects for."
@@ -41,7 +41,7 @@
  * EVERY CLIENT SEES THE SAME DEATH: every speed, side and spin comes from a
  * PRNG seeded on the monster's id and where it died (as the cuts' roll).
  *
- * v2.3.3954, THE BLOW (the owner: "premade sections like head, eyes, arms,
+ * v2.3.3985, THE BLOW (the owner: "premade sections like head, eyes, arms,
  * torso, legs, etc. that can separate and simulate physics based on the
  * direction they're hit in").  `ctx.blow` is the killing blow's direction
  * (game/deathBlow.js: from the killer toward the monster), and every piece
@@ -87,7 +87,7 @@ const MAT_TINT = { snow: 0xe8f4ff, bone: 0xe6ddc8, stone: 0x8a8a8a, wood: 0x6b4a
 const OVERLAP = 1;         /* texels a rectangle piece takes of each inside neighbour (TRAPS §114) */
 const SLUMP_MS = 300, SINK_MS = 1000, GUTTER_MS = 460, FLOP_MS = 240;
 const VY_MAX = 4.2;        /* the fastest up, in body heights a second (~0.6 s in the air) */
-/* v2.3.3954: the blow's push, in body heights a second (x the piece's
+/* v2.3.3985: the blow's push, in body heights a second (x the piece's
    lightness, at most REACH_MAX), across and along the ground; a crumbling
    piece takes half */
 const PUSH_X = { big: 1.2, calm: 0.6 }, PUSH_Z = { big: 0.8, calm: 0.45 };
@@ -153,7 +153,7 @@ function maskSprite(sb, poly, holes) {
   s.anchor.set(sb.anchor.x, sb.anchor.y);
   const mg = new Graphics();
   mg.poly(poly.flat()).fill({ color: 0xffffff });
-  /* v2.3.3954: its holes (each wholly inside it: the table's check), one
+  /* v2.3.3985: its holes (each wholly inside it: the table's check), one
      path cut once */
   if (holes && holes.length) { for (const h of holes) mg.poly(h.flat()); mg.cut(); }
   s.mask = mg;
@@ -184,7 +184,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
   const X = (v) => (v <= 0 ? fL : v >= 1 ? fR : x0 + v * W);
   const Y = (v) => (v <= 0 ? fT : v >= 1 ? fB : y0 + v * H);
   const rand = K.rng(K.hash32(`${m.id}|${Math.round(m.x)}|${Math.round(m.y)}|z`));
-  /* v2.3.3954: the blow, in the picture's own space (the root mirrors a
+  /* v2.3.3985: the blow, in the picture's own space (the root mirrors a
      monster facing left, so a world direction is mirrored into it) */
   const big = !!ctx.big;
   const blow = ctx.blow && ctx.blow.known ? ctx.blow : null;
@@ -223,7 +223,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
   const subTex = [];
   const pieces = [];
   const leanSide0 = rand() < 0.5 ? -1 : 1;
-  const leanSide = bSide || leanSide0;   /* v2.3.3954: a crumpling body goes over the way it was hit */
+  const leanSide = bSide || leanSide0;   /* v2.3.3985: a crumpling body goes over the way it was hit */
   let clip = null;                   /* a sinking piece's ground (one Graphics, the stencil) */
   const zones = ctx.zones.slice(0, MAX_PIECES);
   for (const z of zones) {
@@ -232,7 +232,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
       ? [[X(b[0]), Y(b[1])], [X(b[2]), Y(b[1])], [X(b[2]), Y(b[3])], [X(b[0]), Y(b[3])]]
       : z.poly.map((p) => [X(p[0]), Y(p[1])]);
     let bd = K.bodyOf(cov, sx, sy, poly);
-    let off = zoneOff(z, big);   /* v2.3.3954: the explosion's way off, or the collapse's */
+    let off = zoneOff(z, big);   /* v2.3.3985: the explosion's way off, or the collapse's */
     if (!bd) {
       /* a zone with (almost) none of the body in it this frame: kept where
          it is, so whatever faint pixels it holds do not vanish */
@@ -242,7 +242,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
       off = 'stays';
     }
     let made = null;
-    /* v2.3.3954: a zone with holes cut in it (the eyes in a head) is the
+    /* v2.3.3985: a zone with holes cut in it (the eyes in a head) is the
        frame under a mask: the holes are the mask's (a Graphics, TRAPS §221) */
     const holes = (z.cutZones || []).map((cz) => (cz.rect
       ? [[X(cz.rect[0]), Y(cz.rect[1])], [X(cz.rect[2]), Y(cz.rect[1])], [X(cz.rect[2]), Y(cz.rect[3])], [X(cz.rect[0]), Y(cz.rect[3])]]
@@ -270,7 +270,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
       free: false, vx: 0, vy: 0, spin: 0, rest: false, delay: z.delay || 0,
       hinge: null, hdir: 0, hdelay: 0, hmax: Math.PI / 2, hAt: null, flop: 0, flopK: -1,
       slump: null, gutter: z.mat === 'flame', sinks: false,
-      gz: 0, vz: 0, eye: z.part === 'eyes',   /* v2.3.3954: its own ground line, thrown along the ground */
+      gz: 0, vz: 0, eye: z.part === 'eyes',   /* v2.3.3985: its own ground line, thrown along the ground */
     };
     /* how it comes off -- every number from the death's seeded roll */
     const mk = Math.sqrt(Math.max(0.2, z.mass || 1));
@@ -299,7 +299,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
         pc.vy = upCap(-H * (0.2 + rand() * 0.6) * lift / mv);
         pc.spin = dir * (1.5 + rand() * 2.5) / mk;
       }
-      /* v2.3.3954: the blow's push, on top of the seeded throw: a light
+      /* v2.3.3985: the blow's push, on top of the seeded throw: a light
          piece the farther (an eye, a hat, an arm), a heavy stone barely,
          across the screen and along the ground; it spins the way it goes */
       if (blow) {
@@ -330,7 +330,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
         pc.sinks = true;
       }
     } else if (off === 'hinge') {
-      /* v2.3.3954: a heavy body topples the way it was hit */
+      /* v2.3.3985: a heavy body topples the way it was hit */
       K.setHinge(pc, bSide || z.dir || leanSide, 0, Math.PI / 2 * (0.85 + rand() * 0.15));
       pc.flop = z.flop || 0;
     } else {
@@ -352,7 +352,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
   const matBursts = [];
   const seen = new Set();
   const movers = pieces.filter((p) => p.off !== 'stays').sort((a, b) => (b.z.mass || 1) - (a.z.mass || 1));
-  /* v2.3.3954: along the blow where it is known (the burst keeps that way),
+  /* v2.3.3985: along the blow where it is known (the burst keeps that way),
      else out from the body's middle as before */
   const bdx = (p) => (blow ? bx : (p.com[0] < cx ? -1 : 1)), bdy = blow ? bz : -0.3;
   for (const p of movers) {
@@ -362,7 +362,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
     matBursts.push({ at: BEAT_MS, piece: p, x: p.com[0], y: p.com[1], dx: bdx(p), dy: bdy, blow: !!blow,
       weapon: 'splash', big: true, kind, tint: matTint(p.z.mat, ctx, kind) });
   }
-  /* v2.3.3954: the explosion throws what the look is made of, a blast from
+  /* v2.3.3985: the explosion throws what the look is made of, a blast from
      its middle (bigFx: a snowman's snow, a goblin's smoke, a rock's dust and
      pebbles, a skeleton's bone, a fishman's splash, a shambler's leaves) */
   if (big) {
@@ -378,7 +378,7 @@ export function buildZoneDeath(K, display, m, now, ctx) {
   const [col, colD] = matCols(main, ctx);
   const st = {
     own: true, kind: 'own', root, body, under, fx, flash, clip, pieces, subTex, look: ctx.key, view: ctx.view,
-    big, blow: blow ? { dx: +blow.dx.toFixed(3), dy: +blow.dy.toFixed(3) } : null, mir, bSide,   /* v2.3.3954 */
+    big, blow: blow ? { dx: +blow.dx.toFixed(3), dy: +blow.dy.toFixed(3) } : null, mir, bSide,   /* v2.3.3985 */
     puddle: !!(ctx.look && ctx.look.puddle), cx, H, W, groundY: gy, rand, col, colD, ctx,
     runs: [], spurt: null, parts: [], born: now, last: now, sprayAcc: 0, slow: K.qaSlow(), burst: true,
     parted: false, matBursts, matKind: ctx.matKind, style: null, freed: false,
@@ -413,7 +413,7 @@ export function stepZoneDeath(K, st, now) {
   let left = Math.min(0.25, Math.max(0, (now - st.last) / 1000) / st.slow);
   st.last = now;
   const tEnd = (now - st.born) / st.slow;
-  st.tNow = tEnd;   /* v2.3.3954: the probe's clock (the death's own, TRAPS §200) */
+  st.tNow = tEnd;   /* v2.3.3985: the probe's clock (the death's own, TRAPS §200) */
   let tSim = tEnd - left * 1000;
   while (left > 1e-6) {
     const dt = Math.min(1 / 60, left);
@@ -424,7 +424,7 @@ export function stepZoneDeath(K, st, now) {
   draw(K, st, tEnd);
 }
 
-/* v2.3.3954: a puff of dust where a piece lands on its own ground line (the
+/* v2.3.3985: a puff of dust where a piece lands on its own ground line (the
    cuts' puff, its drops moved down to that line) */
 function puffAt(K, st, x, gz, n) {
   const i0 = st.parts.length;
@@ -435,7 +435,7 @@ function puffAt(K, st, x, gz, n) {
 function spray(K, st, pc, n) {
   const [col, colD] = matCols(pc.z.mat, st.ctx);
   const r = st.rand;
-  /* v2.3.3954: the way the blow went, where it is known */
+  /* v2.3.3985: the way the blow went, where it is known */
   const away = st.bSide || (pc.com[0] < st.cx ? -1 : 1);
   for (let i = 0; i < n; i++) {
     const a = -Math.PI / 2 + away * (0.2 + r() * 0.9) + (r() - 0.5) * 0.6;
@@ -451,7 +451,7 @@ function physics(K, st, t, dt) {
   if (!st.parted) {
     st.parted = true;
     for (const pc of st.pieces) if (pc.off !== 'stays') spray(K, st, pc, (pc.off === 'slump' || pc.off === 'hinge' ? 5 : 3) * (st.big ? 2 : 1));
-    /* v2.3.3954: the explosion's ring of its material at its feet */
+    /* v2.3.3985: the explosion's ring of its material at its feet */
     if (st.big) K.puff(st, st.cx, gy, 8);
   }
   const g = K.G * H;
@@ -470,7 +470,7 @@ function physics(K, st, t, dt) {
     }
     if (pc.free) {
       if (tp < pc.delay) continue;
-      /* v2.3.3954: thrown along the ground too (the blow's depth), so its
+      /* v2.3.3985: thrown along the ground too (the blow's depth), so its
          own ground line moves with it */
       if (!pc.rest) {
         pc.vy += g * dt;
@@ -571,7 +571,7 @@ function draw(K, st, t) {
   /* the beat: squashed about its feet, and flashed */
   if (t < BEAT_MS) {
     const k = Math.sin(Math.PI * Math.max(0, t) / BEAT_MS);
-    /* (v2.3.3954: the explosion's beat lands harder) */
+    /* (v2.3.3985: the explosion's beat lands harder) */
     st.body.scale.set(1 + (st.big ? 0.16 : 0.1) * k, 1 - (st.big ? 0.18 : 0.12) * k);
     if (st.flash) st.flash.alpha = (st.big ? 0.9 : 0.7) * (1 - Math.max(0, t) / BEAT_MS);
   } else {
@@ -609,7 +609,7 @@ export function zoneDeathProbe(st) {
     sinks: st.pieces.map((p) => !!p.sinks),
     bodyScale: st.body && !st.body.destroyed ? [+st.body.scale.x.toFixed(3), +st.body.scale.y.toFixed(3)] : null,
     flash: !!st.flash,
-    /* v2.3.3954: big or ordinary, the blow it knew, how many pieces were
+    /* v2.3.3985: big or ordinary, the blow it knew, how many pieces were
        thrown, its eyes, and where the pieces have got to: the mean of each
        moving piece's centre from where it started, in world px (x right,
        y down the screen: along the ground) */

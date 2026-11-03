@@ -1,4 +1,4 @@
-/* ═══ v2.3.3954: MONSTERS DIE IN PIECES THAT FIT THEM (src/data/monsterDeathZones.js) ═══
+/* ═══ v2.3.3985: MONSTERS DIE IN PIECES THAT FIT THEM (src/data/monsterDeathZones.js) ═══
  *
  * The owner: "Make actual monster death animations", and "Death animation
  * idea label zones for each monster that can apply physics and effects for."

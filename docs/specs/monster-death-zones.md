@@ -1,4 +1,4 @@
-# Monsters die in pieces that fit them (v2.3.3954)
+# Monsters die in pieces that fit them (v2.3.3985)
 
 The owner: *"Make actual monster death animations"*, and *"Death animation
 idea label zones for each monster that can apply physics and effects for."*
@@ -112,7 +112,7 @@ with the head.
   (this phone only). `?deathkind=slice`, `decap`, `leg`, `topple` or `normal`
   play that one instead.
 - `?deathzones=0` turns the zone deaths off for one phone: everything dies as
-  it did before v2.3.3954 (the cuts back on their guessed lines too).
+  it did before v2.3.3985 (the cuts back on their guessed lines too).
 - `?deathbig=1` makes every kill's own death the **big** one (the explosion),
   `?deathbig=0` the **ordinary** one, whatever the blow was: so
   `?deathkind=own&deathbig=1` watches every look explode and
@@ -185,7 +185,7 @@ by eye: `slime-idle-v5` frame 0; the snowman's `snowman-s`, `-n`, `-sw`, `-e`
 and the hit strip; the fire goblin's `walk-s`, `-n`, `-sw`, `-e` and `hit-s`;
 the skeleton's `run-s`, `-sw` (frames 0 and 4), `-w`; the mummy's `walk-s`,
 `-w`; the fishman's and the rock monster's single pose (`walk-south`,
-the same picture every direction). v2.3.3954's eyes were measured the same
+the same picture every direction). v2.3.3985's eyes were measured the same
 way under a 5% grid, and each look's eye pixels found by their colour on every
 frame of its strip (the snowman's and the mummy's red, the goblin's yellow,
 the fishman's red iris, the rock monster's red glow); the rock monster's

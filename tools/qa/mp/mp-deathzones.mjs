@@ -1,4 +1,4 @@
-/* ═══ v2.3.3954: MONSTERS DIE IN PIECES THAT FIT THEM ═══
+/* ═══ v2.3.3985: MONSTERS DIE IN PIECES THAT FIT THEM ═══
  *
  * The owner: "Make actual monster death animations", and "Death animation
  * idea label zones for each monster that can apply physics and effects for."
@@ -31,7 +31,7 @@
  *      death both times (every phone sees the same);
  *   8. `?deathkind=own` on the address plays the own death with no QA
  *      override; `?deathzones=0` turns it off (today's death plays instead);
- *  10. v2.3.3954, THE OWNER'S REFINEMENTS ("premade sections like head,
+ *  10. v2.3.3985, THE OWNER'S REFINEMENTS ("premade sections like head,
  *      eyes, arms, torso, legs, etc. that can separate and simulate physics
  *      based on the direction they're hit in"), on a sample of looks (the
  *      snowman, the fire goblin, the skeleton, the rock monster, the fishman
@@ -136,7 +136,7 @@ const kill = (P, ids, kind, hit) => P.page.evaluate(async ([mids, k, hit]) => {
   const t = Date.now();
   for (const m of ms) { m._hitFlash = t + 1e6; m._hitAnimStart = t - 40000; m._hitAnimEnd = t + 60000; }
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  /* v2.3.3954: `hit` -- the killing blow as the worker reports it, through
+  /* v2.3.3985: `hit` -- the killing blow as the worker reports it, through
      the game's own monster_hit handler (it writes the blow down) */
   if (hit) {
     const S = window._gameState.current;
@@ -156,7 +156,7 @@ const kill = (P, ids, kind, hit) => P.page.evaluate(async ([mids, k, hit]) => {
       if (!d || !d.kind) continue;
       w.frames++;
       if (!w.first) w.first = { kind: d.kind, pieces: d.pieces, own: d.own };
-      /* v2.3.3954: where its pieces had got to, a second into the death
+      /* v2.3.3985: where its pieces had got to, a second into the death
          (by the death's own clock: the renderer's frames, TRAPS §200) */
       if (d.own && d.own.drift && d.own.t != null && d.own.t >= 1000 && !w.at1s) w.at1s = { drift: d.own.drift, t: d.own.t };
       if (d.own && d.own.flash) w.flash = true;
@@ -325,7 +325,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       rec.ok(`7. unforced, the same slime at the same spot dies the same death twice (${kinds.join(', ')})`, kinds[0] != null && kinds[0] === kinds[1], kinds);
     }
-    /* ── 10. v2.3.3954: the blow -- big or ordinary, its eyes, which way ── */
+    /* ── 10. v2.3.3985: the blow -- big or ordinary, its eyes, which way ── */
     /* DZ_BLOW=snowman,rock: only those looks here (a quicker look) */
     const onlyB = (process.env.DZ_BLOW || '').split(',').filter(Boolean);
     const SAMPLE = LOOKS.filter((x) => ['slime', 'snowman', 'goblin', 'skeleton', 'rock', 'fishman'].indexOf(x.key) >= 0
@@ -400,7 +400,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [query, want, label, wantBig] of [
     ['deathkind=own', 'own', '?deathkind=own plays the own death with no QA override', false],
     ['deathzones=0&deathkind=own', 'normal', '?deathzones=0 turns it off: today\'s death plays (a snowman\'s strip)', null],
-    /* v2.3.3954: the owner's switch for the explosion -- an unforced kill
+    /* v2.3.3985: the owner's switch for the explosion -- an unforced kill
        (no kind asked) is the big own death */
     ['deathbig=1', 'own', '11. ?deathbig=1 makes an unforced kill the big one, its own death', true],
   ]) {

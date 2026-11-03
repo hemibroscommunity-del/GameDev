@@ -1,4 +1,4 @@
-/* ═══ v2.3.3954: MONSTERS DIE IN PIECES THAT FIT THEM ═══
+/* ═══ v2.3.3985: MONSTERS DIE IN PIECES THAT FIT THEM ═══
  *
  * The owner: "Make actual monster death animations", and "Death animation
  * idea label zones for each monster that can apply physics and effects for."
@@ -63,18 +63,18 @@
  *   fx      the burst it throws, where its material's is not the one
  *           (hitMaterialFx's kinds: snow, goo, bone, stone, wood, leaf, ash,
  *           ember, goblin)
- *   big     (v2.3.3954) how it comes off in a BIG death (a crit, an ability,
+ *   big     (v2.3.3985) how it comes off in a BIG death (a crit, an ability,
  *           an Element Burst, a special: the explosion), where bigOff()'s
  *           default is not it -- `off` is the ORDINARY death's
- *   cut     (v2.3.3954) ids of zones that are holes in this one (its eyes),
+ *   cut     (v2.3.3985) ids of zones that are holes in this one (its eyes),
  *           each wholly inside it, clear of its edge
- *   faces   (v2.3.3954) the facings it exists in (an eye where the face
+ *   faces   (v2.3.3985) the facings it exists in (an eye where the face
  *           shows); elsewhere the zone it was cut from keeps its pixels
  *
  * A LOOK may also say: blob (a slime-sheet body: the cut deaths treat it as
  * one), puddle (a pool of its colour spreads under it), and a `side` view for
  * when it faces east or west (its `front` view otherwise: north, south and
- * the diagonals); v2.3.3954: bigFx (the bursts of its material a big death
+ * the diagonals); v2.3.3985: bigFx (the bursts of its material a big death
  * throws) and flip (the facings drawn from a file that is its front picture
  * mirrored: every zone mirrored there).  deathZonesFor() resolves a view for
  * one facing.
@@ -96,7 +96,7 @@ export const BEAT_MS = 120;
 
 /* ── the rock monster's break (the thorn shambler wears the same frames) ──
    Five stones off an egg of rock and the dust it stands in, the breaks
-   ragged so they read as a fracture and not a grid.  v2.3.3954 (the eyes):
+   ragged so they read as a fracture and not a grid.  v2.3.3985 (the eyes):
    the crack between the two middle stones runs down between the eyes and
    the cap's break passes over them, so each glowing eye sits wholly inside
    one stone (a zone's `cut` is a hole in it: never across its edge). */
@@ -131,7 +131,7 @@ const eye = (id, rect, mat, dir, more) => Object.assign({ id, part: 'eyes', rect
    -sw, -e and snowman-hit; fire-goblin walk-s, -n, -sw, -e and hit-s;
    skeleton run-s, -sw, -w; mummy walk-s, -w; fishman and rockmonster
    walk-south): each frame cropped to its body box and laid under a 10% grid
-   (the spec, "How the zones were measured"); v2.3.3954's eyes under a 5%
+   (the spec, "How the zones were measured"); v2.3.3985's eyes under a 5%
    one, and each look's eye pixels found by colour on every frame of its
    strip (the snowman's and the mummy's red, the goblin's yellow).
    `off` is the ORDINARY death's (the gentler collapse); `big` the off in a
@@ -347,7 +347,7 @@ function shapeHas(z, x, y) {
 const mirrorZone = (z) => Object.assign({}, z, z.rect ? { rect: [1 - z.rect[2], z.rect[1], 1 - z.rect[0], z.rect[3]] } : { poly: z.poly.map((p) => [1 - p[0], p[1]]) },
   z.dir ? { dir: -z.dir } : null);
 
-/* v2.3.3954: a view as it is facing `facing` -- the zones seen that way
+/* v2.3.3985: a view as it is facing `facing` -- the zones seen that way
    (an eye only where the picture shows the face: `faces`), each `cut` (a
    hole: the eyes in a head) only of the zones that are there, and mirrored
    where the facing is drawn from a mirrored file (`flip`).  Made once a look
@@ -372,7 +372,7 @@ function resolveView(lookKey, look, view, facing) {
   return zs;
 }
 
-/** The zones a dying `key` facing `facing` comes apart in, or null (v2.3.3954:
+/** The zones a dying `key` facing `facing` comes apart in, or null (v2.3.3985:
  *  resolved for that facing: its eyes where its face shows, mirrored where
  *  its file is). */
 export function deathZonesFor(key, facing) {
@@ -382,7 +382,7 @@ export function deathZonesFor(key, facing) {
   return resolveView(k, look, deathZoneView(look, facing), DEATH_FACINGS.indexOf(facing) >= 0 ? facing : 'south');
 }
 
-/* ═══ v2.3.3954: ORDINARY OR BIG ═══
+/* ═══ v2.3.3985: ORDINARY OR BIG ═══
    The owner: "Death animations are just fun part of the game loop".  An
    ordinary kill is the gentler collapse (each zone's own `off`); a big
    finishing blow (a crit, an ability, an Element Burst, a special or a
