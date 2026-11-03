@@ -176,9 +176,13 @@ const WORDS = { dashboard: 'Gear', hero: 'Bro', quests: 'Quests', encyclopedia: 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Cardbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel' });
   const errs = [];
+  let stopP = () => {};
   P.page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
   try {
     await H.enterWorld(P);
+    /* v2.3.4153: a real keystroke every 20 s -- two quiet minutes log the
+       page out (wsClient idleLogout), and most of this walk is evaluate */
+    stopP = H.keepAlive(P);
     await P.page.waitForTimeout(2500);
     await H.closeNpcDialogue(P).catch(() => {});
     const zone = await H.readState(P, (S) => S.currentZone);
@@ -371,13 +375,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`...and CLOSE first in its row ("${rSide.close && rSide.close.text}")`, !!rSide.close && rSide.close.text === 'CLOSE' && rSide.btns.length === 5 && rSide.close.r <= rSide.btns[0].l, rSide);
   } finally {
     rec.ok(`no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));
+    stopP();
     await P.page.context().close().catch(() => {});
   }
 
   /* ── 8. a computer playing wide ── */
+  let stopD = () => {};
   const D = await H.newPlayer(browser, { name: 'Deskcard', wsPort, webPort, viewport: { width: 1440, height: 900 }, world: 'wheel', wide: true });
   try {
     await H.enterWorld(D);
+    stopD = H.keepAlive(D);
     await D.page.waitForTimeout(2500);
     await H.closeNpcDialogue(D).catch(() => {});
     await D.page.mouse.click(720, 300).catch(() => {});
@@ -411,6 +418,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const l2 = await bus(D);
     rec.ok('...and L again closes it', !!l2 && l2.mode === 'bar', l2);
   } finally {
+    stopD();
     await D.page.context().close().catch(() => {});
   }
 }

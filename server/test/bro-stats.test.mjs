@@ -1,4 +1,4 @@
-/* v2.3.4152: THE BRO PAGE'S COMBAT STATS, ONE WEAPON AT A TIME
+/* v2.3.4153: THE BRO PAGE'S COMBAT STATS, ONE WEAPON AT A TIME
  * (src/ui/mobile/sheet/broStats.js, the middle panel of the owner's drawing:
  * Sword | Bow | Staff over "Combat Stats"), and the Titles row's ask
  * (src/game/achievements.js askTitlePicker / takeTitlePicker).

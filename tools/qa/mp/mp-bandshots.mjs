@@ -77,10 +77,12 @@ async function both(P, tag, rec) {
 export async function run({ browser, wsPort, webPort, rec }) {
   const errs = [];
   /* a computer, 1280 x 720 then 1920 x 1080 */
+  let stopD = () => {};
   const D = await H.newPlayer(browser, { name: 'Bandbro', wsPort, webPort, viewport: { width: 1280, height: 720 }, world: 'wheel', wide: true });
   D.page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
   try {
     await H.enterWorld(D);
+    stopD = H.keepAlive(D);   /* two quiet minutes log the page out */
     await D.page.waitForTimeout(2500);
     await H.closeNpcDialogue(D).catch(() => {});
     const id = await H.readState(D, (S) => S.myId);
@@ -96,6 +98,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`desk1080: the box stays centred and capped (${d2.page && d2.page.w} px of 1920, left ${d2.page && d2.page.l})`,
       !!d2.page && d2.page.w <= 1200 && Math.abs((d2.page.l + d2.page.r) / 2 - 960) < 120, d2.page);
   } finally {
+    stopD();
     await D.page.context().close().catch(() => {});
   }
 
@@ -105,6 +108,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     P.page.on('pageerror', (e) => errs.push(String((e && e.message) || e)));
     try {
       await H.enterWorld(P);
+      const stopP = H.keepAlive(P);
+      P.stopKeep = stopP;
       await P.page.waitForTimeout(2500);
       await H.closeNpcDialogue(P).catch(() => {});
       const id = await H.readState(P, (S) => S.myId);
@@ -116,6 +121,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (tag === 'side') rec.ok(`side: the card at ${b.card && b.card.w} px is ${b.cols} columns (from its own width)`, b.cols === 3, { cols: b.cols });
       else rec.ok(`up: the card at ${b.card && b.card.w} px is 2 columns (you | the doors, the stats under them)`, b.cols === 2, { cols: b.cols });
     } finally {
+      if (P.stopKeep) P.stopKeep();
       await P.page.context().close().catch(() => {});
     }
   }
