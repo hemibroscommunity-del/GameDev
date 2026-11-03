@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8ce3414d1ac770990ab55ecd960c9bdd12fd1cc2",
+  "tree": "4c7cd3b2a2a62b846deb8cdc3785c455a6823b5d",
+  "committedAt": "2026-11-02T23:45:17-08:00",
+  "subject": "Merge pull request #1402 from hemibroscommunity-del/claude/zoomout-popin",
+  "files": 7489,
+  "bytes": 848756631,
+  "listingSha256": "673a0b6f8169c64965ae00e1a617daad58d28c7e2bd613899c644d51b5722a51",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
