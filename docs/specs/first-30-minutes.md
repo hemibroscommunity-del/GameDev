@@ -23,6 +23,14 @@ At a steady pace, following the gold road, a new player finishes the whole
 | ~28 | Lil Bro's race |
 | ~31 | The Beastmaster's traps, the tour's last step |
 
+**v2.3.3924: the farm before the snowmen.** The owner: "I wanna make sure
+the first play of the game includes an experience with farming." Farmer
+Bro's carrots (about 3 minutes: the trip to your farm, dig, plant and water
+three beds) now come between Diego's fish and the Mayor's snowmen, so the
+snowmen land at about **19** minutes instead of 16, and the 20-minute row is
+the Woodworker's pine alone. The total is unchanged: the same twelve steps,
+one moved (docs/specs/demo-quest-line.md).
+
 They will **not** reach a dungeon on the tour in 30 minutes. The Goo Grotto's
 mouth is about 2,200 px past the first slimes, off the tour's path, and the
 Mayor's "Clear any dungeon" comes after his last story quest.

@@ -751,7 +751,7 @@ The long Wheel bakes 1,222 resources (486 veins, 486 trees, 250 fishing spots; t
 
 Tabs: Smelt, Forge, Armor, Upgrade, Amulet, Salvage. Blacksmith Bro opens it after his quests; the smith works at the painted anvil while anything forges.
 
-- **Smelt**: 5 ore → 1 bar; Copper Bar at Smithing 1 (400 XP), Iron Bar at 5 (600), Black Steel Bar at 10 (800). Diego values a bar at 240 against its ore's 200. No bar exists for titanium or obsidian; those weapons still take raw ore.
+- **Smelt**: 1 ore → 1 bar (since v2.3.3981, the owner's "5 raw to turn into 5 processed"; it was 5 → 1, so a 5-bar piece was 25 ore and is 5 now); Copper Bar at Smithing 1 (80 XP), Iron Bar at 5 (120), Black Steel Bar at 10 (160), the old bar's XP a fifth, so Smithing levels at the same pace per ore. Diego values a bar at 48 against its ore's 40. `onetoone: false` in the live flags brings back 5 → 1, the old XP (400 / 600 / 800) and 240, and takes back `caps.onetoone` (docs/specs/smelting.md). No bar exists for titanium or obsidian; those weapons still take raw ore.
 - **Forge**: greatswords only (the one-handed tab was removed; since v2.3.3895 every sword already owned became a greatsword of its metal, a wood one copper, its grade, hardening and gems kept: docs/specs/sword-to-greatsword.md). Copper (Smithing 1, 5 bars, 20 gold, 1,000 XP), Iron (5, 5 bars, 35, 1,500), Black Steel (10, 5 bars, 55, 2,000), then Titanium (15, 5 ore, 85) and Obsidian (20, 6 ore, 120); every rung past that asks ore that grows nowhere. To forge a blade you need what wearing it needs (black steel Melee 10, titanium 15…). The weapon in hand goes into the **weapon bag** (8 spares); a full bag refuses the forge.
 - **Armor**: a torso or greaves in copper (Smithing 1), iron (5) or black steel (10), **5 bars each, no gold**, 1,000 / 1,500 / 2,000 XP. Armour is on its own ladder of whole steps: a torso stops 30% + 7.5% a step, greaves 20% + 5%, multiplying to 44% (copper), 53% (iron), 61.5% (black steel), capped at 75% plus grade lifts; black steel asks level 5 to wear (5 allocated Defense points before v2.3.3544), copper and iron nothing. Armour adds no HP. A kill drops Iron Torso, Iron Greaves or an Iron Great Sword at 1 in 500 each.
 - **Upgrade** is hardening (Part 5.2): H1–H5 at 80 / 20 / 5 / 1 / 0.5%, 500 × 2^(n−1) gold plus n bars, a failure keeping the level.
@@ -763,7 +763,7 @@ Tabs: Smelt, Forge, Armor, Upgrade, Amulet, Salvage. Blacksmith Bro opens it aft
 
 Tabs: Bow, Staff, Traps, Harden. Woodworker Bro opens it after his quests (his second quest swaps your pine bow or staff for a softwood one at the hand-in).
 
-- **Hardened wood**: 5 logs → 1 hardened wood; pine at Woodworking 1 (400 XP), softwood 5 (600), hardwood 10 (800), cedar 15 (1,000), maple 20 (1,200). Diego values it at 144 against its logs' 120.
+- **Hardened wood**: 1 log → 1 hardened wood (since v2.3.3981; it was 5 → 1); pine at Woodworking 1 (80 XP), softwood 5 (120), hardwood 10 (160), cedar 15 (200), maple 20 (240), a fifth of the old. Diego values it at 29 against its log's 24. `onetoone: false` brings back 5 → 1, 400 to 1,200 XP and 144.
 - **Bows and staffs**: 5 hardened wood of the tier and a little gold (pine 8, softwood 20, hardwood 35, cedar 55, maple 85), 1,000 / 1,500 / 2,000 / 2,500 / 3,000 XP; ironbark and beyond ask logs that grow nowhere. Pine and softwood are free to wear; hardwood asks Bow or Magic 10, cedar 15, maple 20.
 - **Box traps**: one log of any kind each, 40 XP.
 
@@ -783,7 +783,7 @@ One building, two tabs, the owner's choice ("one gem building is enough"): **Cut
 - **The Bank** stores nothing ("Your gold and what you wear. Nothing can be stored here yet."). Gold is kept on death unless a player kills you in No man's land or you die with a red skull.
 - **Dropping**: any bag item (never gear), yours alone for 60 s, anyone's after a minute, flashing at two, gone at 130 s.
 
-**Diego's prices** (he pays half the base into an empty pile, less as his pile grows; he sells at the base, flat): ore 40, logs 24, raw fish 28, bars 240, hardened wood 144, shards 110, remains 18 (a snowman's 26), raw gem 1,200, gem 4,000, Rare Gem 4,000, essences 1,500 / 8,000 / 250,000, box traps 20; seeds, crops and compost at the farm's prices. He sells no food, drink or gear and buys no cooked food or dish.
+**Diego's prices** (he pays half the base into an empty pile, less as his pile grows; he sells at the base, flat): ore 40, logs 24, raw fish 28, bars 48, hardened wood 29 (v2.3.3981; 240 and 144 with `onetoone: false`), shards 110, remains 18 (a snowman's 26), raw gem 1,200, gem 4,000, Rare Gem 4,000, essences 1,500 / 8,000 / 250,000, box traps 20; seeds, crops and compost at the farm's prices. He sells no food, drink or gear and buys no cooked food or dish.
 
 ### 7.6 Not built, put away, open
 
@@ -956,16 +956,16 @@ The design document that sizes the free spin says "an hour of fighting earns ~1�
 | Race Day | Lil Bro | beat Lil Bro round the square | 50 g | — | tut_1 |
 | Box Traps | Beastmaster Bro | make 3 box traps | 40 g | 3 pine logs / 2 traps | tut_1 |
 | Set and Spring | Beastmaster Bro | spring 3 traps | 100 g | 5 traps | beast_1 |
-| Cold Reception | Mayor Bro | bring 4 Snowman Remains from Frost Ridge (the finale: four ordinary snowmen and their burrow; there is no snowman boss) | 200 g, 50 XP | — | Heavy Metal and Something Fishy (v2.3.3533) |
+| Cold Reception | Mayor Bro | bring 4 Snowman Remains from Frost Ridge (the finale: four ordinary snowmen and their burrow; there is no snowman boss) | 200 g, 50 XP | — | Heavy Metal, Something Fishy and Carrot Comeback (v2.3.3533; the carrots since v2.3.3924: "I wanna make sure the first play of the game includes an experience with farming") |
 | Bad Wind | Mayor Bro | 5 Skeleton Remains from the Wind Dunes | 150 g, 53 XP | — | tut_2 |
 | Bro Ascendant | Mayor Bro | 6 Fire Goblin Remains from the Flame Fields | 400 g, 105 XP | Copper Greaves | tut_3 |
 | A Trapper's Eye | Beastmaster Bro | reach Trapping 6 | 250 g | 10 traps | tut_2 |
 | Your Own Beast | Beastmaster Bro | catch a pet | 500 g | 15 traps | beast_3 |
-| Into the Wild / Dungeon Delver | Mayor Bro | kill 5 monsters / clear a dungeon (the gold road leads to the Goo Grotto, v2.3.3540; a party dungeon since v2.3.3573) | 100 / 300 g | — | the Mayor's legacy line after tut_4 (its first step, Welcome Home, "visit 3 buildings", was retired in v2.3.3550) |
+| Into the Wild / Dungeon Delver | Mayor Bro | kill 5 monsters / clear a dungeon (the gold road leads to the Goo Grotto, v2.3.3540; a party dungeon since v2.3.3573; "[Lv 10+ recommended]" since v2.3.3924, and below level 10 the Mayor and the road send you to the town's quests first, starting with Woodworker Bro's) | 100 / 300 g | — | the Mayor's legacy line after tut_4 (its first step, Welcome Home, "visit 3 buildings", was retired in v2.3.3550) |
 
 Twenty-two quests for seven givers who are not in the world (a trader, an enchantress, a scout, a second blacksmith, a healer, a second beastmaster, a veteran) are dormant in the table. Three old Mayor quests are retired: the tools' two old errands, and Welcome Home (v2.3.3550).
 
-**Guidance**: a gold "!" over a giver with a quest, a grey "?" while his quest waits, a green check when it is ready, the same pins on both maps; **the gold road** on the minimap to the giver, to the quest's land's level-1 monsters, to the nearest needed resource, to the right building's door, to Lil Bro for the race; the pinned card ("Next: … (2/4)", or with nothing in hand "Next: <quest> / Talk to <him> <where>" and "+N more: look for a gold ! on your map"); gear tiles that flash until worn; the quest windows in the owner's painted art (a NEW QUEST offer with the items pictured, a claim window only when XP must be placed, otherwise "Claim reward" and coins flying to the purse). A giver's "how's it going" line carries a button that opens his building.
+**Guidance**: a gold "!" over a giver with a quest, a grey "?" while his quest waits, a green check when it is ready, the same pins on both maps; **the gold road** on the minimap to the giver, to the quest's land's level-1 monsters, to the nearest needed resource, to the right building's door, to Lil Bro for the race; the pinned card ("Next: … (2/4)", or with nothing in hand "Next: <quest> / Talk to <him> <where>" and "+N more: look for a gold ! on your map"); gear tiles that flash until worn; the quest windows in the owner's painted art (a NEW QUEST offer with the items pictured, a claim window only when XP must be placed, otherwise "Claim reward" and coins flying to the purse). A giver's "how's it going" line carries a button that opens his building (never Diego's shop on his fish quest, which buys nothing from him: v2.3.3924).
 
 **Lil Bro's race**: four flags round the Town Hall's square and back, judged on every accepted move (80 px to touch a flag, in order), a 3-second countdown, a false start called; Lil Bro runs at 165 px/s (a walk at 150 loses by ~1.6 s; a sprint or Zoom Juice wins); "Race again".
 

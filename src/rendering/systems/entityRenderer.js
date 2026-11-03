@@ -139,7 +139,7 @@ import { fishRodAt, hasFishRodMask, fishRodMaskData } from '../toolRecolor.js';
 import { standInReady, farmFigureReady, peerStandInReady } from '../standIns.js';   /* v2.3.3077: a gathering pose hides the body only once it is made; v2.3.3314: a peer's, once made in their colours */
 import { parseFarmEx } from '@/game/farmWork.js';   /* v2.3.3439: a peer working a bed of their farm, off their `ex` */
 import { CROWD_K, crowdPick, crowdFromSearch } from '../../game/crowdCap.js';   /* v2.3.3241: at most K other players drawn in full */
-import { SMALL_TEX } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
+import { SMALL_TEX, elemSmallKey } from '@/data/smallIcons.js';   /* v2.3.3279: the owner's party badge, threat skull and talk bubble */
 import { QUEST_PIN, QUEST_PIN_WORLD } from '@/data/ownerIcons.js';   /* v2.3.3481: the owner's quest pins over a townsperson */
 import { broBadgeOf } from '../../networking/broWallet.js';   /* v2.3.3255: the Hemi Bro checkmark -- the worn Bro verified, or a wallet holding one or more */
 import { plateNameWithTag, myAllyTag } from '../../game/alliance.js';   /* v2.3.3313: an alliance member's plate says [TAG] before the name */
@@ -7289,6 +7289,14 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
   partyBadge.visible = false;
   pill.addChild(partyBadge);
   container._partyBadge = partyBadge;
+  /* v2.3.3906: a monster's element after its name (the owner: "After name of
+     monster on nameplate it lists elemental icon type"), a 64 px small icon
+     (SMALL_TEX 'elem-*'), laid out with the plate on a _pillKey change only */
+  const elemBadge = new Sprite();
+  elemBadge.anchor.set(0.5, 0.5);
+  elemBadge.visible = false;
+  pill.addChild(elemBadge);
+  container._elemBadge = elemBadge;
 
   pill.visible = false;
   (host || container).addChild(pill);
@@ -7571,13 +7579,14 @@ function _fitPlateToZoom(display) {
    is: the rounded rect is rebuilt only when the key changes, so a colour
    written outside it would be written once and then never again -- and a band
    moves every time the PLAYER levels up, not only when the monster does. */
-function _updateNamePill(display, name, level, visible, broId, alarm, band, party, boss) {
+function _updateNamePill(display, name, level, visible, broId, alarm, band, party, boss, elem) {
   if (!display || !display._namePill) return;
   _fitPlateToZoom(display);
   /* v2.3.3279: + `party`, the owner's party badge (a party member's plate);
      v2.3.3556: + `boss`, a dungeon's boss (its deep red) */
   const key = name + '|' + level + '|' + (broId ? 'v' : '') + (alarm ? '|!' : '')
-    + (band ? '|' + band : '') + (party ? '|p' : '') + (boss ? '|b' : '');
+    + (band ? '|' + band : '') + (party ? '|p' : '') + (boss ? '|b' : '')
+    + (elem ? '|e' + elem : '');   /* v2.3.3906: the element's icon (a SMALL_TEX key) */
   if (display._pillKey !== key) {
     display._pillKey = key;
     display._pillName.text = name;
@@ -7592,8 +7601,9 @@ function _updateNamePill(display, name, level, visible, broId, alarm, band, part
        branch is on the argument rather than on a flag so no caller can ask for
        a badge and pass it a word to put in the circle. */
     if (display._partyBadge && !(band && typeof level !== 'string')) display._partyBadge.visible = false;
+    if (display._elemBadge && !(band && typeof level !== 'string')) display._elemBadge.visible = false;   /* v2.3.3906 */
     if (band && typeof level !== 'string') {
-      _drawPlateCapsule(display, level, broId, alarm, band, party, boss);
+      _drawPlateCapsule(display, level, broId, alarm, band, party, boss, elem);
       display._pillAlarm = !!alarm;
       display._pillBand = band;
       display._pillBoss = !!boss;   /* v2.3.3556: for the QA probe */
@@ -7678,7 +7688,7 @@ function _setPillType(display, fill, weight) {
    The origin is the pill's TOP CENTRE, the same convention the two-line rect
    used, so nothing that positions a plate (pill.y at every call site) has to
    move. */
-function _drawPlateCapsule(display, level, broId, alarm, band, party, boss) {
+function _drawPlateCapsule(display, level, broId, alarm, band, party, boss, elem) {
   const N = display._pillCss || 15;
   const h = Math.round(N * PLATE_H_RATIO);
   const padL = Math.round(N * PLATE_PAD_L_RATIO);
@@ -7738,7 +7748,11 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party, boss) {
   /* The digits are measured, not reserved: the width is what this level
      actually sets, which is the whole point of dropping the disc. */
   const lvlW = lvlNum ? Math.ceil(lvlNum.width) : 0;
-  const w = padL + partyPad + broPad + Math.ceil(nameT.width) + gap + lvlW + padR;
+  /* v2.3.3906: [name][gap][element][gap][level] -- the plate grows by the
+     icon and one gap; a plate with no element is exactly as it was */
+  const elemD = elem ? Math.max(11, Math.round(h * 0.8)) : 0;
+  const elemPad = elem ? elemD + gap : 0;
+  const w = padL + partyPad + broPad + Math.ceil(nameT.width) + gap + elemPad + lvlW + padR;
   /* x runs from -w/2; the name centres in the space its neighbours leave. */
   const left = -w / 2;
   const nameLeft = left + padL + partyPad + broPad;
@@ -7746,7 +7760,22 @@ function _drawPlateCapsule(display, level, broId, alarm, band, party, boss) {
   nameT.y = h / 2;
   /* The digits sit on the name's baseline-ish centre line, a `gap` after it --
      one line, the mock's "Snowman 3". */
-  if (lvlNum) { lvlNum.x = nameLeft + nameT.width + gap + lvlW / 2; lvlNum.y = h / 2; }
+  if (lvlNum) { lvlNum.x = nameLeft + nameT.width + gap + elemPad + lvlW / 2; lvlNum.y = h / 2; }
+  const eb = display._elemBadge;
+  if (eb) {
+    eb.visible = !!elem;
+    if (elem) {
+      /* another element on the same display (never, for a monster: but a
+         stale picture must not survive a key change) */
+      if (eb._elemK !== elem) { eb._elemK = elem; eb.texture = Texture.EMPTY; }
+      eb._smallW = elemD;
+      _bindSmallTex(eb, elem);
+      eb.width = eb.height = elemD;
+      eb.x = nameLeft + Math.ceil(nameT.width) + gap + elemD / 2;
+      eb.y = h / 2;
+    }
+  }
+  display._pillElem = elem || null;   /* v2.3.3906: for the QA probe */
   if (bro) {
     bro.visible = !!broId;
     if (broId) {
@@ -11293,7 +11322,11 @@ export class EntityRenderer {
         /* v2.3.3556: a dungeon's boss says so: "Boss Amethyst Golem", on its
            own deep red (_drawPlateCapsule's `boss`) */
         _updateNamePill(_plateUi, (m.boss ? 'Boss ' : '') + wheelStageName(m, monsterDisplayName(m.archetype || m.type)),   /* v2.3.3093: "Glacier Snowman" past level 20 */
-          m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand, false, !!m.boss);
+          m.level == null ? 1 : m.level, _plateShow, null, _plateAlarm, _plateBand, false, !!m.boss,
+          elemSmallKey(m.element));   /* v2.3.3906: its element's icon after the name */
+        /* v2.3.3906: a plate laid out before its icon's texture was in binds it
+           the first frame it can (a cheap look; a no-op once bound) */
+        if (_plateUi && _plateUi._elemBadge && _plateUi._elemBadge.visible) _bindSmallTex(_plateUi._elemBadge, _plateUi._elemBadge._elemK);
         /* ═══ v2.3.2571: THE PLATE SITS WHERE THE BAR SITS ═══
            Centred on `_plateBandY`, the bar's own centre line, so the two
            states occupy one spot and the transition reads as the plate
@@ -11388,6 +11421,15 @@ export class EntityRenderer {
              `hidden` says the plate was deliberately taken down for D4's first
              rule rather than merely absent. */
           band: _pui ? (_pui._pillBand || null) : null,
+          /* v2.3.3906: the element icon the plate wears (its SMALL_TEX key),
+             whether it is shown and bound, and the capsule's width */
+          elem: _pui ? (_pui._pillElem || null) : null,
+          elemShown: !!(_pui && _pui._elemBadge && _pui._elemBadge.visible && _pui._elemBadge.texture
+            && _pui._elemBadge.texture !== Texture.EMPTY),
+          elemX: _pui && _pui._elemBadge ? Math.round(_pui._elemBadge.x * 10) / 10 : null,
+          nameRight: _pui && _pui._pillName ? Math.round((_pui._pillName.x + _pui._pillName.width / 2) * 10) / 10 : null,
+          lvlX: _pui && _pui._pillLvlNum ? Math.round(_pui._pillLvlNum.x * 10) / 10 : null,
+          pillW: _pui ? (_pui._pillW || null) : null,
           /* v2.3.2530: the softening values the capsule actually painted with
              -- fill/border alpha, the band colour it stroked, the name's ink
              and weight.  Reported for the same reason `band` is: none of it
