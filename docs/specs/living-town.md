@@ -69,6 +69,51 @@ test's footprints (`zoneBlockers`) and the walk grid's walls and water; a step
 into one, or into you, waits (`folkGroundBlocked`). The Wheel's plan and
 placing are not changed, so nothing is re-baked.
 
+## Townsfolk never block you (v2.3.4098)
+
+The owner, 2026-11-03: *"I walked into Npc who walked into me and I got
+stuck."*
+
+**The rule: no townsperson ever stops you.** Walking or standing, keeper,
+local or quest giver, you walk through him. He is the one who waits.
+
+**Why you got stuck.** From v2.3.1794 (when the townsfolk stood still) a
+townsperson was solid to your walk: `BroTown.jsx` `isSolid` treated a 14 px
+circle round his feet as a wall, tested at each corner of your 20 px box,
+with a "never trap someone already inside" pass read at your box's centre.
+Once they walked, a walker stopped 22 px from your feet (his bump, so as not
+to walk into you). There a corner of your box was inside his circle while
+your centre was outside it: every step you tried, any way, was "solid", and
+his own next step was a bump too. Both of you held for good.
+
+**How it is done** (client only: the worker never knew where a townsperson
+stands, so it refuses no move for one, and nothing ships to it):
+
+- `isSolid` reads no townsperson at all (`townsfolk-walk.test` §5a holds it);
+  your walk, a dash, a slide, a gust and a pet's fetch all go through it.
+- A walker whose next step would take him into you pauses that frame
+  (`townsfolkWalk.js` `folkStepBumps`, used by `townsfolkDay.js`): his step
+  is read along its length, not just at its end, so a long frame on a slow
+  phone cannot hop him through you; and if you have walked into him, a step
+  that heads away from your feet is let be, so he walks out of you rather
+  than freezing there. Once you have moved on he walks again and catches up
+  with his loop. So in the common case you do not see the two of you walk
+  through each other.
+- Quest givers stay tethered and still stop and face you within 200 px, as
+  before. A tap on a walking townsperson still talks to him.
+- On the retired old map the rule is the same (the walk test is shared);
+  `mp-townmap`'s old "he still blocks you" check is turned round.
+- On a computer that draws the townsfolk from photographs (Windows, a Mac:
+  `lookPaletteChoice.js`) they stand at their spots; they do not block there
+  either.
+
+**Checked by** `townsfolk-walk.test` §5 and `mp-folkpass`: on a phone (the
+joystick) and a computer (held keys, the sideways layout), you walk head-on
+into a walking keeper and across his way; you keep moving and are past him
+within a second of meeting him (scaled for a page that draws slowly), never
+standing still beside him, and he never steps into you. With the old
+`isSolid` put back, `mp-folkpass` goes red: you stop 24 px from him.
+
 ## Memory: nothing new
 
 - The walk is the jog the live townsfolk already used (v2.3.3809).
@@ -127,11 +172,13 @@ before.
 
 - `server/test/townsfolk-walk.test.mjs`: the loop, who does what, a frame
   (givers stop for you, the cap, no walking into a footprint, the water or
-  you), the wiring.
+  you), the wiring; §5 townsfolk never block you (v2.3.4098).
 - `server/test/npc-cast.test.mjs` §2b: each of the new cast walks his own day,
   a quest giver tethered.
 - `tools/world/test-world-core.mjs`: every loop on the town's ground, through
   no footprint.
+- `mp-folkpass` (v2.3.4098): you walk into a walking townsperson, head-on
+  and sideways, on a phone and a computer, and keep moving past him.
 - `mp-folkwalk`: on a phone, the townsfolk move along their loops, a keeper
   works, at most six walk near the screen, a giver stops and faces you, and a
   tap on a moving keeper opens his window.

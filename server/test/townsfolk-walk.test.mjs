@@ -18,6 +18,12 @@
  *   4. the wiring, read from the source: the game loop's hook, the renderer's
  *      work poses (no bake: the palette's pose, the tee's colour without its
  *      print), the poses' sheets warmed behind the loading screen.
+ *   5. v2.3.4098, townsfolk never block you (the owner, 2026-11-03: "I walked
+ *      into Npc who walked into me and I got stuck"): the player's walk test
+ *      (BroTown isSolid) reads no townsperson, and a walker whose step would
+ *      take him into you waits (folkStepBumps: along the step, never held
+ *      inside you), then walks on once you have moved on.  The phone half is
+ *      tools/qa/mp/mp-folkpass.mjs.
  * The loops' ground and footprints are walked by tools/world/test-world-core.mjs
  * on both Wheels.
  */
@@ -153,7 +159,12 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   S = mk();
   const sc = S.npcs[1];
   sc.x = 3000 + W.folkAt(st, seed, tw).dx; sc.y = 1000 + W.folkAt(st, seed, tw).dy;
-  D.townsfolkFrame(S, tw + 400, ctx({ feetX: sc.x, feetY: sc.y + 5 }));
+  /* v2.3.4098: your feet 5 px ahead of him on his way (he would step deeper
+     into you); one behind him he walks out of you (§5e) */
+  const cg = { x: sc.x, y: sc.y };
+  W.folkStep(cg, 3000 + W.folkAt(st, seed, tw + 400).dx, 1000 + W.folkAt(st, seed, tw + 400).dy, 100);
+  const cl = Math.hypot(cg.x - sc.x, cg.y - sc.y) || 1;
+  D.townsfolkFrame(S, tw + 400, ctx({ feetX: sc.x + (cg.x - sc.x) / cl * 5, feetY: sc.y + (cg.y - sc.y) / cl * 5 }));
   const c0 = [sc.x, sc.y];
   D.townsfolkStep(S, sc, 100);
   check(`...nor into you (within ${W.FOLK_BUMP_PX} px of your feet he waits)`, sc.x === c0[0] && sc.y === c0[1]);
@@ -188,6 +199,45 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
   const fp = src('src/rendering/folkPose.js');
   check('4d ...only a pose the look palette has in numbers (else he stands: no bake of his look)', /return \(w && !_workOff && WORK\.has\(w\) && lookPose\(w\)\) \? w : null;/.test(fp));
   check('4e the far-off rule stands: a townsperson past the view has no figure (v2.3.3809)', /display\._folk\.destroy\(\{ children: true \}\);/.test(er));
+}
+
+/* ── 5. v2.3.4098: townsfolk never block you ──────────────────────────────── */
+{
+  const bt = src('src/ui/BroTown.jsx');
+  const a = bt.indexOf('var isSolid = function isSolid(px, py) {');
+  const b = a < 0 ? -1 : bt.indexOf('window.__btIsSolid', a);
+  const body = a >= 0 && b > a ? bt.slice(a, b) : '';
+  check('5a your walk test (BroTown isSolid) reads no townsperson: none is solid to you, walking or standing',
+    body.length > 500 && !/S\.npcs|_npcs/.test(body) && !/NPC_BLOCK/.test(bt), { found: a, len: body.length });
+  const r = W.FOLK_BUMP_PX;
+  check(`5b a step that ends within ${r} px of your feet: he waits`, W.folkStepBumps(0, 0, 2, 0, 2 + r - 1, 0) === true);
+  check('5c a step that stays clear: he walks', W.folkStepBumps(0, 0, 2, 0, 2 + r + 5, 0) === false && W.folkStepBumps(0, 0, 2, 0, 0, r + 1) === false);
+  check('5d read along the step: a long frame cannot hop him through you', W.folkStepBumps(0, 0, 100, 0, 50, 3) === true);
+  check('5e already inside you (you walked into him): a step away is let be, a step deeper is held',
+    W.folkStepBumps(0, 0, 2, 0, -5, 0) === false && W.folkStepBumps(0, 0, 2, 0, 5, 0) === true && W.folkStepBumps(5, 0, 5, 0, 5, 0) === true
+    && W.folkStepBumps(0, 0, 10, 0, 4, 0) === true /* a step across your feet is deeper, not away */);
+  check('5f no feet (NaN): nothing to bump', W.folkStepBumps(0, 0, 2, 0, NaN, NaN) === false && W.folkStepBumps(0, 0, 2, 0, null, 0) === false);
+  /* a frame: he walks his leg toward you; you stand in his way, then move on */
+  const st = W.FOLK_DAYS.Sterling.stops, seed = W.folkSeed('Sterling');
+  let tw = 0;
+  while (!W.folkAt(st, seed, tw).walking) tw += 100;
+  const S = { npcs: [{ id: 'banker', name: 'Sterling', x: 0, y: 0, spawnX: 3000, spawnY: 1000, alive: true }], camera: { x: 0, y: 0 }, _viewW: 4000, _viewH: 2000 };
+  const n = S.npcs[0];
+  const at = W.folkAt(st, seed, tw), at2 = W.folkAt(st, seed, tw + 400);
+  n.x = 3000 + at.dx; n.y = 1000 + at.dy;
+  const ux = (at2.dx - at.dx), uy = (at2.dy - at.dy), ul = Math.hypot(ux, uy) || 1;
+  const inWay = { feetX: n.x + ux / ul * (r + 4), feetY: n.y + uy / ul * (r + 4) };   /* just ahead of him on his way */
+  const ctx = (o) => Object.assign({ on: true, chains: QUEST_CHAINS, feetX: -9999, feetY: -9999, talking: false, grid: null, worldW: 0, worldH: 0, boxes: [] }, o);
+  D.townsfolkFrame(S, tw + 400, ctx(inWay));
+  const p0 = [n.x, n.y];
+  D.townsfolkStep(S, n, 100);
+  check('5g you in his way: he pauses rather than walk into you', n.x === p0[0] && n.y === p0[1], { p0, n: [n.x, n.y], inWay });
+  D.townsfolkFrame(S, tw + 500, ctx({ feetX: inWay.feetX - uy / ul * 200, feetY: inWay.feetY + ux / ul * 200 }));   /* you stepped aside */
+  D.townsfolkStep(S, n, 100);
+  check('5h you moved on: he walks on', n.x !== p0[0] || n.y !== p0[1], { p0, n: [n.x, n.y] });
+  const day = src('src/game/townsfolkDay.js');
+  check('5i the frame\'s step asks folkStepBumps, and the probe counts the pauses (bumpsTotal, mp-folkpass)',
+    /const bump = folkStepBumps\(ox, oy, npc\.x, npc\.y,/.test(day) && /bumpsTotal: _bumpsTotal/.test(day));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
