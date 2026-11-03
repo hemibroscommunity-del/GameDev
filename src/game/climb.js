@@ -150,13 +150,18 @@ export function footOf(r, fx, h = FEET_HS) {
  */
 export function climbStartAt(R, fx, fy, dx, dy, h = FEET_HS) {
   if (!R || Math.abs(dx) > Math.abs(dy)) return null;
-  const c = dy < -0.3 ? riseCellAt(R, fx, fy - h - 2) : dy > 0.3 ? riseCellAt(R, fx, fy + h + 2) : null;
+  const c = dy < -0.3 ? riseCellAt(R, fx, fy - h - CLIMB_REACH) : dy > 0.3 ? riseCellAt(R, fx, fy + h + CLIMB_REACH) : null;
   if (!c || c.kind !== 'climb' || !c.r.climb) return null;
   const s = c.r.climb;
   /* the feet over the strip (the box within it once put on its middle) */
   if (fx < s.x0 || fx >= s.x1) return null;
   return c.r;
 }
+/* how near the strip the feet box must be to get on it (px): a walk stops
+   the box short of a wall by up to a step -- three 60 fps frames at a
+   sprint's pace and a speed food's (BroTown's _dtScale cap) -- so "at the
+   foot" reaches that far */
+export const CLIMB_REACH = 16;
 /** The climb's way this frame from the stick: up (-1), down (1) or still (0). */
 export function climbWay(dy) { return dy < -0.3 ? -1 : dy > 0.3 ? 1 : 0; }
 /** Out of the climb?  'top' (the feet box wholly above the band), 'foot'

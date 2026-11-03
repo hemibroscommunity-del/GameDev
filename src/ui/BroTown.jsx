@@ -5800,6 +5800,9 @@ export var BroTown = function BroTown(_ref0) {
            drops you back), a drop under way, the chest (game/climbActions.js) */
         if (S.currentZone === 'wheel') {
           climbTick(S, Date.now(), playerGroundDy(S.currentZone, P.x, P.y), function (x, y, t) { pushDmgPopup(S, x, y, t, '#f3d77a', { ttl: 2800 }); });
+        } else if (S._climb || S._climbDrop || S._riseCross || S._nearChest) {
+          /* off the Wheel (a door, a dungeon): nothing of a climb comes along */
+          S._climb = null; S._climbDrop = null; S._riseCross = null; S._nearChest = null;
         }
         /* ═══ v2.3.3748: A BURNING HEAP SETS YOU ON FIRE ═══
            Your boots in a burning piece of a fallen building's heap, on this

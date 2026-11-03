@@ -5,8 +5,12 @@
 
 This plan comes from an overnight study of the code and of how other 2D games
 do height. The full notes, with sources, are in
-`docs/research/ELEVATION-RESEARCH.md`. Nothing here is built yet. It needs
-your choices, below.
+`docs/research/ELEVATION-RESEARCH.md`.
+
+**Since v2.3.3955 the first slice is built**, behind `?climb=1`: the Lagoon
+Islet off the Water Caves, swum to, its terrace climbed by vines and its ledge
+reached by the flip. See "v2.3.3955" at the end, with the next PRs (the
+worker's face table, the chest's reward, diving, BroTown on a hill).
 
 ## The short answer
 

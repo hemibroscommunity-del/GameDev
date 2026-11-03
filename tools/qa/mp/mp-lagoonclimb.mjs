@@ -124,7 +124,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* the row through the terrace's middle: the islet's land begins at its
        west edge; west of it the shallows, then the Water Caves' coast */
     const rowY = (T.box.y0 + T.face.y0) / 2;
-    await H.glideTo(P, I.x0 * cg - 400, rowY - feetDy, { speed: 2400, timeoutMs: 240000 });
+    /* (under the worker's move budget, 500 px a second: harness.glideTo) */
+    await H.glideTo(P, I.x0 * cg - 400, rowY - feetDy, { speed: 450, timeoutMs: 300000 });
     if (await P.page.evaluate(() => !!window.__btWheelBlocks)) await P.page.evaluate(({ x, y }) => window.__btWheelBlocks(x, y, 1200), { x: I.x0 * cg, y: rowY });
     await P.page.waitForTimeout(2500);
     /* the coast: the last cell west of the islet a body may stand on dry */

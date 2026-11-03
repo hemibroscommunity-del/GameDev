@@ -20,7 +20,9 @@
  *   6. the OPEN SEA past the shallows is still a wall: swimming out to it
  *      stops his boots at its line;
  *   7. another player in the same water is drawn swimming too;
- *   8. no page errors, and the look costs the frame next to nothing.
+ *   8. v2.3.3955: the Lagoon Islet off the Water Caves (plan.js `islets`) is
+ *      swum to through its shallows, and the open sea past it is a wall;
+ *   9. no page errors, and the look costs the frame next to nothing.
  * Speeds are the game's own per-frame ones (S.player.vy): the test machine
  * draws a few frames a second, and below 20 the game's clock runs slow
  * (BroTown's _dtScale cap), so speeds off the wall clock would mislead.
@@ -357,6 +359,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     } finally {
       await Q.ctx.close().catch(() => {});
+    }
+  }
+  /* ── 8. v2.3.3955: the Lagoon Islet (plan.js `islets`): a swim from the
+     Water Caves' coast through its shallows, the open sea a wall past it.
+     The walk grid's own answer along the row through its middle, the blocks
+     there asked for first; mp-lagoonclimb swims it for real ── */
+  {
+    const G = await H.wheelGeom();
+    const I = G.F.islets && G.F.islets[0];
+    if (G.long > 1) rec.ok('the long Wheel has the Lagoon Islet (guard)', !!I, null);
+    if (I) {
+      const row = await P.page.evaluate(async ({ x0, x1, y, cell }) => {
+        const S = window._gameState.current, g = S._tiledWalkable && S._tiledWalkable.wheel, at = window.__btSwimAt;
+        if (window.__btWheelBlocks) await window.__btWheelBlocks((x0 + x1) / 2, y, 60 * cell);
+        const r = Math.floor(y / cell);
+        const kind = (c) => { const v = g[r][c]; if (v === 0 || v === false) return '#'; return at((c + 0.5) * cell, y).swim ? '~' : '.'; };
+        const c0 = Math.floor(x0 / cell), c1 = Math.floor(x1 / cell);
+        /* west from the islet: its channel, swum, to the coast; east of it, the shallows, then the wall */
+        let west = '', east = '';
+        for (let c = c0 - 1; c >= c0 - 40; c--) { const k = kind(c); west += k; if (k === '.' && west.length > 2) break; }
+        for (let c = c1; c < c1 + 30; c++) { const k = kind(c); east += k; if (k === '#') break; }
+        let mid = '';
+        for (let c = c0; c < c1; c++) mid += kind(c);
+        return { west, mid, east };
+      }, { x0: I.x0 * G.cellG, x1: I.x1 * G.cellG, y: (I.y0 + I.y1) / 2 * G.cellG, cell: G.cellG });
+      console.log(`    the islet's row: ${JSON.stringify(row)}`);
+      rec.ok(`the Lagoon Islet is swum to: from it west to the Water Caves' coast every cell is water to swim in, never a wall (${row.west})`,
+        /^[~.]*~+\.$/.test(row.west) && !row.west.includes('#') && row.west.includes('~'), row);
+      rec.ok(`...and past it east the open sea is a wall after its shallows (${row.east})`, /^[.~]*~#$/.test(row.east) && row.east.length <= 14, row);
     }
   }
   const cost = await swimState(P);
