@@ -23,7 +23,7 @@ unread badge"; "Achievement points: ... an explicit 'Achievement Points: 40'
 ... in player profiles".
 
 This PR is the shell (the dashboard lane's B2).  Gear's own contents are the
-Gear-tab lane's (v2.3.3940); the top bar's door, medal and gold come off in
+Gear-tab lane's (v2.3.4151, #1388, on main); the top bar's door, medal and gold come off in
 the top-bar lane once this is on main; one layout on every screen is B3.
 
 ## What changed
