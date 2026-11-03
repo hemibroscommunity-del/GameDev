@@ -29,6 +29,8 @@ import { QuestPanel } from './panels/QuestPanel.jsx';
 import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3525: Lil Bro's race on the screen */
 import DungeonClearHud from './mobile/DungeonClearHud.jsx'; /* v2.3.3556: after a dungeon's clear, 30 s to pick up the loot */
 import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js judges it) */
+import { townsfolkFrame, townsfolkStep, folkWalkWanted } from '@/game/townsfolkDay.js';   /* v2.3.4058: the townsfolk walk around and work */
+import { lookFolkOn } from '@/rendering/lookFolk.js';   /* v2.3.4058: only while they are drawn live */
 import { restOn, requestRest, wellRestedLeft } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
 import { QuestBannerLayer } from './panels/QuestBannerLayer.jsx'; /* v2.3.3030: the quest banners in the owner's art */
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
@@ -7311,6 +7313,13 @@ export var BroTown = function BroTown(_ref0) {
         /* v2.3.3525: Lil Bro's race -- the countdown's beats, the gun, the end
            (game/race.js) */
         raceTick(S, Date.now());
+        /* v2.3.4058: the townsfolk's day in the Wheel's BroTown -- where each is
+           on his loop, by the clock (game/townsfolkDay.js) */
+        var _fwZone = ZONES[S.currentZone];
+        townsfolkFrame(S, Date.now(), { on: isWheelTrialZone(S.currentZone) && folkWalkWanted() && lookFolkOn(), chains: QUEST_CHAINS,
+          feetX: P.x, feetY: P.y + playerGroundDy(S.currentZone, P.x, P.y), talking: !!S._uiBusy,
+          grid: (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null, worldW: _fwZone ? _fwZone.w * TILE : 0, worldH: _fwZone ? _fwZone.h * TILE : 0,
+          boxes: zoneBlockers(S.currentZone) });
         /* Update NPCs — §19.1 companion follow + quest interaction + wander */
         var _npcTown = null;   /* v2.3.4040: the safe ground, read once a frame when an idle line asks */
         if (S.npcs) {
@@ -7380,9 +7389,11 @@ export var BroTown = function BroTown(_ref0) {
               }
             } else {
               /* Normal wander behavior */
+              /* v2.3.4058: or his day's walk, in the Wheel's BroTown (game/townsfolkDay.js) */
+              var _folkWalked = townsfolkStep(S, npc, 16.7 * _npcDt);
               npc.moveTimer -= 16.7 * _npcDt;
               var distToTarget = Math.sqrt(Math.pow(npc.x - npc.targetX, 2) + Math.pow(npc.y - npc.targetY, 2));
-              if (distToTarget < 4 || npc.moveTimer <= 0) {
+              if (!_folkWalked && (distToTarget < 4 || npc.moveTimer <= 0)) {
                 var angle = Math.random() * Math.PI * 2;
                 var dist = Math.random() * npc.pathRadius;
                 npc.targetX = npc.spawnX + Math.cos(angle) * dist;
@@ -7400,7 +7411,7 @@ export var BroTown = function BroTown(_ref0) {
               var nDx = npc.targetX - npc.x,
                 nDy = npc.targetY - npc.y;
               var nDist = Math.sqrt(nDx * nDx + nDy * nDy);
-              if (nDist > 2) {
+              if (!_folkWalked && nDist > 2) {
                 npc.x += nDx / nDist * 0.8 * _npcDt;
                 npc.y += nDy / nDist * 0.8 * _npcDt;
                 if (Math.abs(nDx) > Math.abs(nDy)) npc._facing = nDx > 0 ? 'right' : 'left';else npc._facing = nDy > 0 ? 'down' : 'up';
