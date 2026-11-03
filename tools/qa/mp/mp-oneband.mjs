@@ -49,15 +49,19 @@ const read = (P) => P.page.evaluate(() => {
   const o = window.__btOneBand ? window.__btOneBand() : null;
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width > 0 ? { x: Math.round(b.left), y: Math.round(b.top), r: Math.round(b.right), b: Math.round(b.bottom), w: Math.round(b.width), h: Math.round(b.height) } : null; };
   const cols = document.querySelector('[data-one-band-cols]');
-  const bag = cols && cols.querySelector('[aria-label="Bag"]');
-  const combat = cols && cols.querySelector('[aria-label="Combat"]');
+  /* v2.3.4151: the resting row is the Gear tab (GearTab.jsx): its bag pane
+     and its gear pane stand where the Bag panel and the Combat cards stood */
+  const bag = cols && (cols.querySelector('[aria-label="Bag"]') || cols.querySelector('[data-gear-pane="inv"]'));
+  const combat = cols && (cols.querySelector('[aria-label="Combat"]') || cols.querySelector('[data-gear-pane="equip"]'));
+  const gearTab = !!(cols && cols.querySelector('[data-gear-tab]'));
   /* the bag's grid: the element whose children are the tiles */
   const grid = bag && Array.from(bag.querySelectorAll('div')).find((d) => getComputedStyle(d).display === 'grid');
+  const tileMin = gearTab && grid ? Math.round(Math.min(...Array.from(grid.children).map((c) => c.getBoundingClientRect().width))) : null;
   const tiles = grid ? Array.from(grid.children).map(r) : [];
   const joy = ['.bt-joystick-base', '.bt-rjoy-base'].map((s) => r(document.querySelector(s)));
   const desk = window.__btDeskWide ? window.__btDeskWide() : null;
   return {
-    o, bag: r(bag), combat: r(combat), tiles, joy, desk,
+    o, bag: r(bag), combat: r(combat), tiles, joy, desk, gearTab, tileMin,
     navs: Array.from(document.querySelectorAll('.bt-dashboard [data-nav]')).map((n) => ({ id: n.getAttribute('data-nav'), key: n.getAttribute('data-key'), box: r(n) })),
     landSheet: !!document.querySelector('.bt-land-sheet'),
     keysStrip: r(document.querySelector('.bt-desk-keys')),
@@ -204,6 +208,69 @@ async function screen(browser, wsPort, webPort, rec, { label, viewport, touch, w
   }
 }
 
+/* v2.3.4151: the Gear tab inside the one band -- the owner, of PR #1410: "The
+   new universal dashboard system will need to adapt to the new redesign we're
+   adding for 'gear'".  Its card never scrolls, nothing in it under 11 px, and
+   the bag's squares and the Equipped cells one size; in each state (nothing
+   picked, a bag piece picked) */
+const gearFit = (P) => P.page.evaluate(() => {
+  const c = document.querySelector('[data-one-band-cols] [data-gear-pane="bro"]');
+  if (!c) return null;
+  const cr = c.getBoundingClientRect();
+  const sc = c.querySelector('[data-gear-scroll]');
+  const small = [];
+  c.querySelectorAll('*').forEach((el) => {
+    if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0 && parseFloat(getComputedStyle(el).fontSize) < 11) small.push(el.textContent.trim().slice(0, 16));
+  });
+  const outside = [...c.querySelectorAll('button, [data-gear-grid] > *')].filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && (r.right > cr.right + 0.5 || r.bottom > cr.bottom + 0.5); }).length;
+  const b = document.querySelector('[data-one-band-cols] [data-gear-bag] [data-bag-key], [data-one-band-cols] [data-gear-bag] [data-gear-slot-empty]');
+  const e = document.querySelector('[data-one-band-cols] [data-gear-cell]');
+  const cells = [...document.querySelectorAll('[data-one-band-cols] [data-gear-cell]')].map((x) => x.getBoundingClientRect());
+  const eq = document.querySelector('[data-one-band-cols] [data-gear-pane="equip"]');
+  const er = eq ? eq.getBoundingClientRect() : null;
+  return {
+    over: c.scrollHeight - c.clientHeight, scOver: sc ? sc.scrollHeight - sc.clientHeight : 0, small, outside,
+    bag: b ? Math.round(b.getBoundingClientRect().width * 10) / 10 : null, cell: e ? Math.round(e.getBoundingClientRect().width * 10) / 10 : null,
+    cellsIn: !!er && cells.length === 9 && cells.every((r) => r.bottom <= er.bottom + 0.5 && r.right <= er.right + 0.5),
+    view: c.getAttribute('data-gear-view'),
+    /* v2.3.4151: the tab's own width, and its margins in the band's row */
+    root: (() => {
+      const g = document.querySelector('[data-one-band-cols] [data-gear-tab]');
+      const row = document.querySelector('[data-one-band-cols]');
+      if (!g || !row) return null;
+      const a = g.getBoundingClientRect(), b = row.getBoundingClientRect();
+      return { w: Math.round(a.width), left: Math.round(a.left - b.left), right: Math.round(b.right - a.right), layout: g.getAttribute('data-gear-layout') };
+    })(),
+  };
+});
+async function gearChecks(P, rec, label, shotPath, computer) {
+  const g0 = await gearFit(P);
+  /* v2.3.4151, the owner: "The stretched middle panel looks silly on
+     computer" -- across a wide band the tab is at most 560 px (GearTab
+     GEAR_MAX_W) and centred */
+  if (computer) {
+    rec.ok(`${label}: the Gear tab never stretches -- at most 560 px wide, centred in the band (its margins equal within 2 px)`,
+      !!g0 && !!g0.root && g0.root.w <= 561 && Math.abs(g0.root.left - g0.root.right) <= 2, g0 && g0.root);
+  }
+  rec.ok(`${label}: the Gear tab's card fits the band -- no scrolling, nothing past its edge, nothing under 11 px; the bag's squares and the Equipped cells one size (34 px or more), all nine cells inside their panel`,
+    !!g0 && g0.view === 'overview' && g0.over <= 1 && g0.scOver <= 1 && g0.outside === 0 && g0.small.length === 0
+      && g0.bag && g0.cell && Math.abs(g0.bag - g0.cell) <= 1 && g0.cell >= 34 && g0.cellsIn, g0);
+  if (shotPath) await P.page.screenshot({ path: shotPath }).catch(() => {});
+  /* a bag piece picked: the card still fits */
+  const key = await P.page.evaluate(() => { const t = document.querySelector('[data-one-band-cols] [data-gear-bag] [data-bag-key]'); return t ? t.getAttribute('data-bag-key') : null; });
+  if (key) {
+    await P.page.evaluate((k) => { const t = document.querySelector(`[data-one-band-cols] [data-gear-bag] [data-bag-key="${k}"]`); if (t) t.click(); }, key);
+    await P.page.waitForTimeout(600);
+    const g1 = await gearFit(P);
+    rec.ok(`${label}: ...a bag piece picked, the card still fits (no scrolling, nothing under 11 px)`,
+      !!g1 && g1.view === 'item' && g1.over <= 1 && g1.scOver <= 1 && g1.outside === 0 && g1.small.length === 0, g1);
+    await P.page.evaluate(() => { const g = window.__btGearTab; if (g) g.bus.afterChange(); });
+    await P.page.waitForTimeout(300);
+  }
+}
+
 async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
   const W = viewport.width, Hh = viewport.height;
   const third = Math.round(Hh / 3);
@@ -235,13 +302,19 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
     !!L && !!o.cols && L.w === Math.floor(o.cols.w) && L.h === Math.floor(o.cols.h) && L.tile >= MIN_TILE
       && L.cols * (L.tile + 4) <= o.cols.w + 4,
     { layout: L, cols: o.cols });
+  /* v2.3.4151: the Gear tab lays its bag out from the same box itself (three
+     square slots a row, nine in view, never under 34 px -- the owner's second
+     mockup), so its first row is its own three */
+  const row1g = g.gearTab ? g.tiles.slice(0, 3).filter(Boolean) : row1;
   rec.ok(`${label}: the first row of tiles inside the bag panel, the panel and the combat cards inside the row`,
-    !!g.bag && !!g.combat && row1.length === (L ? L.cols : -1)
-      && row1.every((t) => t.x >= g.bag.x && t.r <= g.bag.r && t.y >= g.bag.y && Math.abs(t.w - L.tile) <= 1)
+    !!g.bag && !!g.combat && (g.gearTab ? row1g.length === 3 && g.tileMin >= 34 : row1.length === (L ? L.cols : -1))
+      && row1g.every((t) => t.x >= g.bag.x && t.r <= g.bag.r && t.y >= g.bag.y && (g.gearTab || Math.abs(t.w - L.tile) <= 1))
       && g.bag.x >= o.cols.x - 1 && g.combat.r <= o.cols.x + o.cols.w + 1
       && g.bag.b <= o.cols.y + o.cols.h + 1 && g.combat.b <= o.cols.y + o.cols.h + 1
       && g.bag.r <= g.combat.x,
-    { bag: g.bag, combat: g.combat, row1, cols: o.cols });
+    { bag: g.bag, combat: g.combat, row1: row1g, gearTab: g.gearTab, tileMin: g.tileMin, cols: o.cols });
+  try { mkdirSync(OUT, { recursive: true }); } catch (e) { /* the pictures only */ }
+  await gearChecks(P, rec, label, join(OUT, 'oneband-gear-' + label.replace(/[^a-z]+/gi, '-') + '.png'), computer);
   /* responsive density: a wider box holds more slots than the upright four */
   if (!upright) {
     rec.ok(`${label}: the wider box holds more slots across than the upright four`,

@@ -139,6 +139,31 @@ async function openBag(P, view) {
   await evalIn(P, () => { if (window.__broDashPanelBus) window.__broDashPanelBus.toBar(); });
   return unfoldBand(P);
 }
+/* v2.3.4151: the Gear tab is the band at rest (sideways the dashboard
+   column): openBag's way, with nothing picked and no filter, so each Gear
+   state starts from the same tab */
+async function gearReset(P) {
+  await evalIn(P, () => {
+    const g = window.__btGearTab;
+    if (!g) return;
+    g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false); if (g.bus.showXp) g.bus.showXp(null);
+  });
+}
+async function openGear(P, view) {
+  await gearReset(P);
+  const e = await openBag(P, view);
+  if (e) return e;
+  await wait(P, 700);
+  if (!(await has(P, '[data-gear-tab]'))) return 'no Gear tab on screen';
+  return null;
+}
+/* the test kit's three weapons (a spare greatsword in the bag beside the one in
+   hand) and its shield, for the compare picture */
+async function gearKit(P, wsPort, myId) {
+  if (!wsPort || !myId) return;
+  await H.devOp(wsPort, 'kit', myId, { what: 'weapons' }).catch(() => {});
+  await wait(P, 1200);
+}
 const S_ = (P, fn) => H.readState(P, fn);
 
 /* Stand somewhere in the Wheel by walking there in hops the worker accepts
@@ -690,18 +715,75 @@ export const STATES = [
     },
   },
   {
+    /* v2.3.4151: a bag tap no longer opens the card (the Gear tab shows the
+       item in its middle panel); the card is where Sell and Drop go on to */
     id: 'item-card', group: 'Dashboard', title: 'An item card',
-    about: 'A bag item opened: its picture, what it is, and its buttons (use, equip, sell, drop...).',
+    about: 'The item card, as the Gear tab\'s Sell opens it: the item\'s picture and name over the Auction House\'s price sheet (how many, your price, Put it up / Back).',
     run: async ({ P, view }) => {
-      const e0 = await openBag(P, view);
+      const e0 = await openGear(P, view);
       if (e0) return e0;
-      await wait(P, 700);
-      const e = await tapSel(P, '[data-bag-key]');
+      const e = await tapSel(P, '[data-gear-bag] [data-bag-key]');
       if (e) return e;
       await wait(P, 600);
-      const ok = await has(P, '[data-item-detail], .bt-item-detail, .bt-idp, [data-idp]');
-      if (!ok) return null;   /* the card's class is not pinned: the picture says whether it opened */
+      if (!(await has(P, '[data-gear-act="sell"]'))) return 'no Sell for the first bag item (the store is off)';
+      const e2 = await tapSel(P, '[data-gear-act="sell"]');
+      if (e2) return e2;
+      await wait(P, 600);
     },
+    after: async ({ P }) => { await gearReset(P); },
+  },
+  /* ═══ v2.3.4151: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
+  {
+    id: 'gear-tab', group: 'Dashboard', title: 'The Gear tab',
+    about: 'The resting dashboard as the owner\'s second mockup and notes (v2.3.4151): the bag ("All Items" with a funnel and a chevron, the coins beside it -- the coin picture with the amount as a count badge, as on a bag slot -- three square slots a row and three rows in view, the rest by scrolling) | ONE card, no tabs or figure, which never scrolls: "<name> Lv N", the HP, MP and EN bars (stamina is the game\'s energy: one bar), then Melee, Bow and Magic as three tiles, each its big picture and "Lv N" (a tap turns a tile into its XP bar for 4 s) | "Equipped" over Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem, its cells the bag\'s squares\' size (the weapon in hand gold). Too narrow for three across (sideways) the bag and the gear sit side by side over the card; a computer adds the weapon bar (1 2 3) at the foot.',
+    run: async ({ P, view, wsPort, myId }) => {
+      await gearKit(P, wsPort, myId);
+      const e = await openGear(P, view);
+      if (e) return e;
+    },
+  },
+  {
+    id: 'gear-slot-selected', group: 'Dashboard', title: 'Gear tab: a slot tapped',
+    about: 'The Sword slot tapped: its blue ring, the bag filtered to swords (the pill reads "Swords" with an × beside it that clears it), and the card, wearing the same blue, showing the sword: its picture beside its name in its grade\'s colour, "Sword · Equipped", its numbers two to a row (DMG, DPS, SPD, RANGE, ELEM), and one button, Unequip, at the card\'s foot.',
+    run: async ({ P, view }) => {
+      const e = await openGear(P, view);
+      if (e) return e;
+      return tapSel(P, '[data-gear-cell="sword"]');
+    },
+    after: async ({ P }) => { await gearReset(P); },
+  },
+  {
+    id: 'gear-compare', group: 'Dashboard', title: 'Gear tab: a bag weapon compared',
+    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the card (wearing the same blue) showing it -- its picture, name and kind, then its numbers two to a row with the change against the sword in its slot inline in green (better) or red (worse), and ONE row of buttons at its foot: Equip (wider), Sell, and "⋯" for the item card\'s other actions. Tapping it again, or the bag\'s empty space, brings the overview back.',
+    run: async ({ P, view }) => {
+      const e = await openGear(P, view);
+      if (e) return e;
+      const e1 = await tapSel(P, '[data-gear-cell="sword"]');
+      if (e1) return e1;
+      await wait(P, 500);
+      return tapSel(P, '[data-gear-bag] [data-bag-key^="stashWeapon-"]');
+    },
+    after: async ({ P }) => { await gearReset(P); },
+  },
+  {
+    id: 'gear-filter-open', group: 'Dashboard', title: 'Gear tab: the filter menu',
+    about: 'The filter pill tapped: a menu drops down over the bag panel only (the other two panels stay put), its rows in groups (Weapons: Swords, Bows, Staffs; Armour: Chest, Legs, Capes, Shields, Amulets; Gems & shards, Ore & bars, Wood, Crops & seeds, Fish, Food & drinks, Potions, Quest items, Other), each with its count, a group you hold nothing of greyed; its ✕ (Esc) closes it.',
+    run: async ({ P, view }) => {
+      const e = await openGear(P, view);
+      if (e) return e;
+      return tapSel(P, '[data-gear-filter]');
+    },
+    after: async ({ P }) => { await gearReset(P); },
+  },
+  {
+    id: 'gear-filter-empty', group: 'Dashboard', title: 'Gear tab: a filter with nothing in it',
+    about: 'Potions picked from the menu with none in the bag: never a mysterious empty bag -- "No potions in your bag" and a Show all button; the pill reads "Filter: Potions" with its ×.',
+    run: async ({ P, view }) => {
+      const e = await openGear(P, view);
+      if (e) return e;
+      await evalIn(P, () => { const g = window.__btGearTab; if (g) g.bus.pickFilter('potion'); });
+    },
+    after: async ({ P }) => { await gearReset(P); },
   },
   /* v2.3.4036: the rare fish (server fishlog.js): two albino trout put in the
      bag as catches by the owner's lever (/dev/fish give), one opened and
@@ -716,6 +798,10 @@ export const STATES = [
       const e0 = await openBag(P, view);
       if (e0) return e0;
       await wait(P, 800);
+      /* v2.3.4151: the Gear tab's bag shows nine and scrolls the rest: bring
+         the fish into its view first, as a thumb would */
+      await evalIn(P, () => { const t = document.querySelector('[data-bag-key="i-fish_trout_albino"]'); if (t) t.scrollIntoView({ block: 'nearest' }); });
+      await wait(P, 300);
       const e = await tapSel(P, '[data-bag-key="i-fish_trout_albino"]');
       if (e) return e;
       await wait(P, 600);
