@@ -58,7 +58,7 @@ async function prepare(P) {
 /* the real hand-in: the quest's items granted, then quest_turn_in (xpCat is
    required: every character is on the prog3 track) */
 async function handIn(P, wsPort, id) {
-  await H.grant(wsPort, id, 'item', { invKey: 'snowman', count: 4 });
+  await H.grant(wsPort, id, 'item', { invKey: 'slime-remnants', count: 4 });   /* tut_1's objective (data.js) */
   await P.page.waitForTimeout(900);
   await P.page.evaluate(() => { const S = window._gameState.current; if (S.channel) S.channel.send({ type: 'quest_turn_in', payload: { questId: 'tut_1', xpCat: 'sword' } }); });
   return H.waitFor(P, (S) => (S.rpg && S.rpg._quests && S.rpg._quests.tut_1) || null, (v) => v === 'turnedIn', { timeout: 15000, label: 'tut_1 handed in' }).catch(() => null);
