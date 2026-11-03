@@ -1363,13 +1363,17 @@ export function torsoAnchors(isOn, W, H, fw) {
   return { frames: out, bh };
 }
 
-export function stampPattern(d, w, h, frameW, mask, pat, mirror, anchors) {
+/* v2.3.3961: `cellK` scales the tile's cell for a figure drawn at another size
+   than the walking body's 256 sheet (a stand-in: standInGarb.js
+   STANDIN_GARB_K), rounded to whole pixels so every stripe is as wide as the
+   next; omitted, the cell is the tile's own. */
+export function stampPattern(d, w, h, frameW, mask, pat, mirror, anchors, cellK) {
   if (!pat) return 0;
   const tile = pat.tile;
   const R = parseInt(pat.color.slice(1, 3), 16);
   const G = parseInt(pat.color.slice(3, 5), 16);
   const B = parseInt(pat.color.slice(5, 7), 16);
-  const cell = Math.max(1, tile.cell);
+  const cell = Math.max(1, cellK > 0 ? Math.round(tile.cell * cellK) : tile.cell);
   const tw = tile.w * cell, th = tile.h * cell;
   const frames = Math.max(1, Math.floor(w / frameW));
   /* The garment's centroid in each frame, in that frame's own space.  A frame

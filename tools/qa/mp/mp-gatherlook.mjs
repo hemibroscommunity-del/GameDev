@@ -16,7 +16,8 @@
  *      ROD still wood;
  *   3. the LUMBERJACK, the COOK and the FIRE-LIGHTER wear his trousers and
  *      boots: the bake's own reading (window.__btStandInClothes) is blue legs
- *      and red boots on each;
+ *      and red boots on each; (v2.3.3961) and, put on after the mining, his
+ *      trouser and shoe PATTERNS: pixels of each on the legs and the boots;
  *   4. (the owner's "Yes fix all") the three are HIS SIZE: the lumberjack and
  *      the fire-lighter as tall as his walking figure from head to boots (they
  *      were 76% and 108%), the crouching cook's head as big as his (88%) --
@@ -369,6 +370,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`standing: his walking tee is striped and printed, its stripes ${walkShirt && walkShirt.worldPeriod} world px apart (guard)`,
       !!walkShirt && walkShirt.yellow > 20 && walkShirt.purple > 5, walkShirt);
     /* each stand-in's dressed shirt, against it */
+    /* v2.3.3961: his trouser and shoe patterns on the figure, which the
+       stand-in bake never stamped (TRAPS §73; the owner, "Shoes and patterns
+       aren't showing while hoeing"): pixels of the trousers' aqua checks on
+       the legs and of the boots' white stripes on the boots, counted on the
+       baked strip after every stamp (the probe's `garb`) */
+    const garbOk = (c, who) => {
+      const g = (c && c.garb) || {};
+      const lp = (g.legs && g.legs.px) || 0, bp = (g.boots && g.boots.px) || 0;
+      rec.ok(`...and ${who} wears his patterns: ${lp} px of aqua checks on his trousers, ${bp} px of white stripes on his boots (cells x${g.k && g.k.toFixed(2)})`,
+        !!g.legs && g.legs.color === '#6fd6e0' && lp > 50 && lp > (c.legs ? c.legs.n : 0) * 0.01
+          && !!g.boots && g.boots.color === '#ffffff' && bp > 12, { garb: g, legsN: c && c.legs && c.legs.n, bootsN: c && c.boots && c.boots.n });
+    };
     const dressedOk = async (key, who) => {
       let r = null;
       for (let i = 0; i < 40; i++) {
@@ -425,6 +438,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const c = await P.page.evaluate(() => (window.__btStandInClothes || {}).chop || null);
         rec.ok(`the lumberjack wears his trousers and boots: legs ${c && c.legs.rgb}, boots ${c && c.boots.rgb} (the bake's reading)`,
           !!c && isBlue(c.legs) && isRed(c.boots), c);
+        garbOk(c, 'the lumberjack');
         /* v2.3.3146: and he is your size (CHOP_STANDIN_H 104.5 -> 136.8) */
         const z = sizeOf('chop', await P.page.evaluate(() => (window.__btChopFigure ? window.__btChopFigure() : null)));
         rec.ok(`the lumberjack is his size: ${z && z.up.toFixed(1)} px from head to boots upright against his ${walk && walk.up.toFixed(1)} (${pct1(z && z.up, walk && walk.up)}, was 76%), his head ${z && z.head.toFixed(1)} against ${walk && walk.head.toFixed(1)}`,
@@ -440,6 +454,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await shot(`4-${type}-after`);
     };
     await work('oreVein');
+    /* v2.3.3961: patterns on from here to the cook (set now, so the figures'
+       re-bake on a pattern change is what puts them on the lumberjack, made
+       for the ore's walk already), off again before fishing, whose colour
+       reading takes the means of the trousers and boots as drawn */
+    await P.page.evaluate(() => { window.__btSetPattern('pants', 'check:15'); window.__btSetPattern('shoes', 'stripe-v:2'); });
+    await H.waitFor(P, () => { const c = (window.__btStandInClothes || {}).chop; return !window.__btStandIns || window.__btStandIns().chop.state !== 'ready' || !!(c && c.garb); },
+      (v) => v, { timeout: 15000, label: 'the lumberjack re-baked in his patterns' }).catch(() => null);
     await work('tree');
 
     /* a fire, then a cook -- on dry ground, south of the tree's chopping spot
@@ -466,6 +487,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const fc = await H.waitFor(P, () => (window.__btStandInClothes || {}).fire || null, (v) => !!v, { timeout: 15000, label: 'the fire-lighter baked' }).catch(() => null);
     rec.ok(`the fire-lighter wears his trousers and boots: legs ${fc && fc.legs.rgb}, boots ${fc && fc.boots.rgb} (the bake's reading)`,
       !!fc && isBlue(fc.legs) && isRed(fc.boots), fc);
+    garbOk(fc, 'the fire-lighter');
     /* v2.3.3146: and he is your size (FIRE_STANDIN_H 154 -> 142): his head
        runs a little big in his painting, so it is held to 5% */
     const zf = sizeOf('fire', await P.page.evaluate(() => (window.__btFireFigure ? window.__btFireFigure() : null)));
@@ -501,6 +523,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cc = await P.page.evaluate(() => (window.__btStandInClothes || {}).cook || null);
       rec.ok(`the cook wears his trousers and boots: legs ${cc && cc.legs.rgb}, boots ${cc && cc.boots.rgb} (the bake's reading)`,
         !!cc && isBlue(cc.legs) && isRed(cc.boots), cc);
+      garbOk(cc, 'the cook');
       /* v2.3.3146: and he is your size (COOK_STANDIN_H 65.1 -> 73.9): he
          crouches, so it is his head that is held to yours */
       const zc = sizeOf('cook', await P.page.evaluate(() => (window.__btCookFigure ? window.__btCookFigure() : null)));
@@ -512,6 +535,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* fishing last: its seat is by the water, and the walk away from it can
        end in the river */
+    await P.page.evaluate(() => { window.__btSetPattern('pants', ''); window.__btSetPattern('shoes', ''); });   /* v2.3.3961: see above */
     await work('fishSpot');
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));
   } finally {
