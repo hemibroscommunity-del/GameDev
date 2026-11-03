@@ -267,7 +267,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('the farmer works the bed (guard)', !!F0 && F0.visible, F0 && { frame: F0.frame, anim: F0.anim });
     if (!F0 || !F0.visible) return;
     await letGo();
-    /* v2.3.3913: that first step is the dig, which now stands mid-bed
+    /* v2.3.3960: that first step is the dig, which now stands mid-bed
        (farmLayout.js farmDigSpot): back to the bed's back, where this was
        measured and the other moves are worked, the walker and every move
        pictured there as before (mid-bed the copper hoe's plate reads ~5%

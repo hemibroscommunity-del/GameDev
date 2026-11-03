@@ -31,7 +31,7 @@
 import { BT_AUDIO } from '@/data/index.js';
 import { FARM, FARM_CROP_ORDER } from '@/data/farmCrops.js';
 import { FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX, FARM_ANIM_HEAD_WORLD, farmDigSpot } from '@/data/farmLayout.js';
-import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3913: the hoe's reach */
+import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3960: the hoe's reach */
 import { zonePlayerScale } from '@/data/zones.js';
 import { farmBus } from '@/ui/mobile/farmBus.js';
 import { bedNext, bedAt, farmClock, farmWorkBeats, FARM_WORK_MS, farmBeatPlay, seedToPlant, seedsInHand } from '@/game/farmWork.js';
@@ -180,7 +180,7 @@ export function startFarmStep(S, i) {
      us: the can's water lands to your right, over the bed (farmLayout.js
      FARM_KNEEL_DX) */
   const P = S.player;
-  /* v2.3.3913: digging stands so the hoe lands in the bed's middle (the
+  /* v2.3.3960: digging stands so the hoe lands in the bed's middle (the
      owner: "plow in middle center of square plot not at the very edge";
      farmLayout.js farmDigSpot) -- the figure's scale as effectsRenderer
      _updateFarmWork draws him, his boots at the spot */

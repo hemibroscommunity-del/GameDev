@@ -55,15 +55,15 @@ export const FARM_BED_REACH = 46;
    left of its middle -- the hands go in at your feet, on
    the bed's edge, and the watering can's water lands to your right, over its
    middle (effectsRenderer _updateFarmWork, v2.3.3439; the cook's crouch and
-   the crate where its pan was, v2.3.3136, stood here too).  v2.3.3913: but not the hoe: digging has its own spot, farmDigSpot below. */
+   the crate where its pan was, v2.3.3136, stood here too).  v2.3.3960: but not the hoe: digging has its own spot, farmDigSpot below. */
 export const FARM_KNEEL_DY = 12;
 export const FARM_KNEEL_DX = -19;
-/* v2.3.3913: the farmer's head is drawn this wide, world px (his strips'
+/* v2.3.3960: the farmer's head is drawn this wide, world px (his strips'
    FARM_ANIM_HEAD px): his scale is this over FARM_ANIM_HEAD, times the
    zone's player scale.  Here, not in effectsRenderer (which re-exports it,
    with the why of 31.25), so the work spots below can read his reach.  */
 export const FARM_ANIM_HEAD_WORLD = 31.25;
-/* v2.3.3913: the owner, 2026-11-02: "Make the character plow in middle
+/* v2.3.3960: the owner, 2026-11-02: "Make the character plow in middle
    center of square plot not at the very edge move the effects there
    centered too".  Digging has a spot of its own: your boots placed so the
    hoe's blade (its strip's `work` point, measured from its `foot`) lands on

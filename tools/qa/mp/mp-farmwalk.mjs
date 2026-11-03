@@ -262,7 +262,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await shot('tended');
     rec.ok(`the prompt's button ("Fertilize") composts it (${v3 && v3[0]}): the soil worked and wet, the timer alone over it (${w5 && w5.beds[0].label})`,
       v3 && v3[0] === 'planted:carrot+w+f' && w5 && w5.beds[0].soil === 'bed-wetfed' && /^\d+m( \d+s)?$/.test(w5.beds[0].label[0]), { v3, w5: w5 && w5.beds[0] });
-    /* v2.3.3913: the owner, "Make fertilized dirt even darker like almost
+    /* v2.3.3960: the owner, "Make fertilized dirt even darker like almost
        black": the fed soil tinted near black, the plain earth not */
     rec.ok(`...the fertilized soil near black (tint ${w5 && w5.beds[0].soilTint != null ? '0x' + w5.beds[0].soilTint.toString(16) : w5 && w5.beds[0].soilTint}; the other beds' ${w5 && w5.beds[1].soilTint})`,
       w5 && w5.beds[0].soilTint === 0x404040 && w5.beds[1].soilTint === 0xFFFFFF, { w5: w5 && w5.beds.map((b) => [b.soil, b.soilTint]) });

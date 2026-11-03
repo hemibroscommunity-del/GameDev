@@ -52,7 +52,7 @@ take the steps, and what you see, has changed.
 4. **You work it.** You stand at the bed's back, a little left of its
    middle, facing the screen, and work it in the owner's own moves (below,
    "The farmer's own moves"). **Digging** stands you further in, so the hoe
-   lands on the bed's middle (v2.3.3913, the owner: *"Make the character plow
+   lands on the bed's middle (v2.3.3960, the owner: *"Make the character plow
    in middle center of square plot not at the very edge move the effects
    there centered too"*): `farmLayout.js` `farmDigSpot` works your boots out
    from the hoe strip's `work` and `foot` points (about the bed's centre
@@ -568,7 +568,7 @@ two pictures still to come.
   farm of your own -- a zone per player, or the other players hidden there --
   is the plan's Phase 4 question, with visiting.
 
-## The fed soil (v2.3.3913)
+## The fed soil (v2.3.3960)
 
 The owner, 2026-11-02: *"Make fertilized dirt even darker like almost black.
 This is a better visual cue for what stage the farm plot is in."* The fed

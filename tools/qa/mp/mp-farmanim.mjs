@@ -222,7 +222,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const F = v && v.fig;
         if (F) await shot(`${step}-${f}`, F);
         const P0 = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-        frames.push({ f, ok: !!F && F.frame === f, anim: F && F.anim, foot: F && F.foot, feetY: F && F.figure.feetY, px: P0.x, work: v && v.work, made: v && v.made, hit: F && F.work /* v2.3.3913: where the work lands */,
+        frames.push({ f, ok: !!F && F.frame === f, anim: F && F.anim, foot: F && F.foot, feetY: F && F.figure.feetY, px: P0.x, work: v && v.work, made: v && v.made, hit: F && F.work /* v2.3.3960: where the work lands */,
           body: v && v.body, shirt: F && F.shirt, prop: F && F.prop, order: F && F.order, crown: F && F.crown, h: F && F.figure.drawnH, headW: F && F.headW });
       }
       await P.page.evaluate(() => { clearInterval(window.__pinT); window.__pinNow = null; window.__btFarmHoldFrame = null; const w = window._gameState.current._farmWork; if (w) { w.startedAt = Date.now() - 50; w.doneAt = Date.now() + 120; } });
@@ -234,7 +234,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${step}: the ${anim}, all ${A.n} frames shown one by one (${started ? 'started' : 'NOT started'})`, !!started && allShown, frames.map((x) => x.f + ':' + x.anim + ':' + x.ok).join(' '));
       rec.ok(`...his boots on yours in every frame, the walking body put away`, onBoots && frames.every((x) => x.body), frames.map((x) => x.foot && [+(x.foot.x - x.px).toFixed(2), +(x.foot.y - x.feetY).toFixed(2)]));
       if (step === 'dig') {
-        /* v2.3.3913: the owner, "plow in middle center of square plot not at
+        /* v2.3.3960: the owner, "plow in middle center of square plot not at
            the very edge": the hoe lands on the bed's middle (farmDigSpot) */
         const B0m = { x: FARM_BEDS[0].x + FARM_BEDS[0].w / 2, y: FARM_BEDS[0].y + FARM_BEDS[0].h / 2 };
         const offs = frames.map((x) => x.hit && [+(x.hit.x - B0m.x).toFixed(1), +(x.hit.y - B0m.y).toFixed(1)]);

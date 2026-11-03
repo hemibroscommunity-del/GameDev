@@ -50,7 +50,7 @@ import {
 import {
   FARM_ZONE, FARM_GROUND, FARM_BEDS, FARM_BED_REACH, FARM_KNEEL_DY, FARM_KNEEL_DX, FARM_CROP_FOOT_DY, FARM_SPOTS, FARM_GATE,
   FARM_ARRIVE, FARM_FROM_WORKSHOP, FARM_THINGS, FARM_EDGE, farmBlockers,
-  FARM_ANIM_HEAD_WORLD, farmDigSpot,   /* v2.3.3913 */
+  FARM_ANIM_HEAD_WORLD, farmDigSpot,   /* v2.3.3960 */
 } from '../../src/data/farmLayout.js';
 import { FARM_ART } from '../../src/data/farmArt.js';
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '../../src/data/farmAnims.js';
@@ -494,7 +494,7 @@ const inBox = (x, y, half) => blockers.find((b) => x + half > b.x0 && x - half <
   const kneels = FARM_BEDS.map((b, i) => ({ i, x: b.x + b.w / 2 + FARM_KNEEL_DX, y: b.y + FARM_KNEEL_DY, in: inBox(b.x + b.w / 2 + FARM_KNEEL_DX, b.y + FARM_KNEEL_DY, 10) }));
   check('each bed\'s kneel spot (your boots just inside its back edge, left of its middle) is open ground, inside the bed', kneels.every((k, i) => !k.in && k.x > FARM_BEDS[i].x && k.x < FARM_BEDS[i].x + FARM_BEDS[i].w), kneels.filter((k) => k.in));
   check('what grows stands inside its bed', FARM_BEDS.every((b) => FARM_CROP_FOOT_DY > 0 && FARM_CROP_FOOT_DY < b.h));
-  /* v2.3.3913: the owner, "plow in middle center of square plot not at the
+  /* v2.3.3960: the owner, "plow in middle center of square plot not at the
      very edge": digging stands so the hoe's blade lands on the bed's middle
      (farmDigSpot, from the hoe strip's work and foot points), boots inside
      the bed and on open ground */

@@ -30,7 +30,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { FARM_BEDS, FARM_GATE } from '../../../src/data/farmLayout.js';
 import { FARM_ANIMS } from '../../../src/data/farmAnims.js';
-import { FARM_BEAT_SOUND } from '../../../src/game/farmWork.js';   /* v2.3.3913: the dig's sound */
+import { FARM_BEAT_SOUND } from '../../../src/game/farmWork.js';   /* v2.3.3960: the dig's sound */
 
 const PHONE = { width: 390, height: 844 };
 const FOOT_DY = 52;   /* a body's middle to its boots on the farm */
@@ -191,7 +191,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok(`...dressed as he is: his greaves (in his copper, ${copper}), his tee over them, the hoe over both, his cap on top`,
       on.length > 0 && dressed.length === on.length && on.every((v) => v.farmer.tints.legs === copper), on.slice(0, 3).map((v) => [v.farmer.order, v.farmer.tints]));
-    /* v2.3.3913: the dig's own sound (FARM_BEAT_SOUND.dig: the owner's hoe
+    /* v2.3.3960: the dig's own sound (FARM_BEAT_SOUND.dig: the owner's hoe
        since v2.3.3664; this still listened for the old footstep) */
     const sounds = await W.page.evaluate((key) => (window.__qaSounds || []).filter((s) => s.k === key), FARM_BEAT_SOUND.dig.key);
     rec.ok(`the hoe is heard where it strikes on Watcher's screen (${sounds.length} strike${sounds.length === 1 ? '' : 's'}, at ${sounds.map((s) => s.vol && s.vol.toFixed(2)).join(', ')})`,
