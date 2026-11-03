@@ -15,6 +15,7 @@ import { mayorScreenRect } from '@/ui/mayorScreen.js';
 import { worldReady } from '@/ui/loadingGate.js'; /* v2.3.4136: no card while a loading screen is up */ /* v2.3.4106: the first steps' step 2 rings him */
 import { pointsTipWanted, pointsTipDone, pointsTipWords, POINTS_TIP_SNOOZE_AFTER_MS, POINTS_TIP_SNOOZE_MS, POINTS_TIP_MAX_SNOOZES } from '@/game/pointsTips.js'; /* v2.3.3551: the first points, shown */
 import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'; /* v2.3.2246 */
+import { coachMarkTooBig } from '@/game/coachMarkSize.js'; /* v2.3.4155: the size rule, pure (node tests it), and the minimap's exemption */
 /* v2.3.2495: the two facts the dashboard lessons are about -- is the band
    folded, and is the dashboard the thing on screen.  Both are module-scope
    buses already (dashMinBus's own note explains why the fold is not component
@@ -156,11 +157,10 @@ function saveDone(done) {
    Circle marks are held to both a size cap and a squareness test, because
    every round control in this UI is square and the joyzone oval failed both.
    Rect marks get a looser cap -- a More tile is a full-width row -- but still
-   cannot be a full-height layer. */
-const MARK_CIRCLE_MIN_CAP = 160;   /* .bt-rjoy-base is 108 at its largest */
-const MARK_CIRCLE_VP_FRAC = 0.42;  /* ...or this much of the short axis, whichever is kinder */
-const MARK_RECT_W_FRAC = 0.92;
-const MARK_RECT_H_FRAC = 0.35;
+   cannot be a full-height layer.
+   v2.3.4155: the numbers and the answer are game/coachMarkSize.js now, where
+   node tests them, with the one lesson they never refuse (`noSizeRule`, the
+   minimap's: the renderer's own box, never a measurement). */
 /* Module scope rather than a ref: there is one coach on screen, and measure()
    is a free function the probe can still report from. */
 let _oversize = { n: 0, id: null, w: 0, h: 0 };
@@ -173,17 +173,9 @@ const CARD_TAP_SLOP_PX = 12;
 function _markTooBig(L, r) {
   const vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
   const vh = (typeof window !== 'undefined' && window.innerHeight) || 844;
-  const w = r.width, h = r.height;
-  let bad = false;
-  if (L && L.shape === 'circle') {
-    const cap = Math.max(MARK_CIRCLE_MIN_CAP, Math.min(vw, vh) * MARK_CIRCLE_VP_FRAC);
-    const ar = (w > 0 && h > 0) ? (w / h) : 0;
-    bad = (w > cap || h > cap || ar < 0.55 || ar > 1.8);
-  } else {
-    bad = (w > vw * MARK_RECT_W_FRAC || h > vh * MARK_RECT_H_FRAC);
-  }
+  const bad = coachMarkTooBig(L, r, vw, vh);   /* v2.3.4155: game/coachMarkSize.js */
   if (bad) _oversize = { n: _oversize.n + 1, id: (L && L.id) || null,
-                         w: Math.round(w), h: Math.round(h) };
+                         w: Math.round(r.width), h: Math.round(r.height) };
   return bad;
 }
 
@@ -474,7 +466,7 @@ const LESSONS = [
     shape: 'rect',
     anchors: [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
-        body: 'Your bag, your gear and your stats live down here. Tap OPEN.' },
+        body: 'Your bag, your gear and your stats live down here. Tap the handle.' },   /* v2.3.4172: the grip replaced OPEN */
       { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         /* v2.3.3793: an arrow both ways now -- a phone on its side its chip,
            a computer the folded strip's arrow (BottomDashboard; the owner
@@ -620,6 +612,18 @@ const LESSONS = [
     anchors: [{ body: 'Your map. The gold star is where your quest leads.' }],
     worldRect: function () { return minimapScreenRect(); },
     noReach: true,
+    /* ═══ v2.3.4155: NEVER REFUSED FOR ITS SIZE ═══
+       The v2.3.2495 rule (game/coachMarkSize.js) refuses a mark taller than
+       0.35 of the window, as a selector gone wrong.  This box is no selector:
+       the renderer publishes it.  But 264 px (a computer's side column,
+       `oneband=0`) is more than that on a window 754 px tall or less (a
+       1366 x 768 laptop's, less the browser's bars), and 132 (everywhere
+       else) at 377 or less, a phone on its side in Safari, so this card was
+       refused on every tick and the quest card and the Login Key, which wait
+       for it, never came (the state-machine sweep, V15 M1-1).  This lesson
+       alone: the Mayor's world rect is worked out from the camera, and keeps
+       the rule. */
+    noSizeRule: true,
     label: 'Your map',
     live: function (rpg) { return inTutorial(rpg) && firstGearOn(rpg); },
     done: null,     /* shown, then timed -- see the info tracker below */
@@ -669,7 +673,7 @@ const LESSONS = [
     shape: 'rect',
     anchors: [
       { sel: '[data-dash-fold="min"]', reach: '[data-dash-fold]',
-        body: 'Mayor Bro paid you in gear. Tap OPEN to find it.' },
+        body: 'Mayor Bro paid you in gear. Tap the handle to find it.' },   /* v2.3.4172 */
       { sel: '[data-land-fold="min"]', reach: '[data-land-fold], [data-desk-foldstrip]',
         body: 'Mayor Bro paid you in gear. Open the dashboard to find it.' },
       { sel: '[data-nav="dashboard"]', reach: '[data-nav="dashboard"]',
@@ -1008,7 +1012,8 @@ const LESSONS = [
     anchors: [{ sel: '[data-more-tile="account"]', reach: '[data-more-tile="account"]',
                 body: 'Your Login Key is the ONLY way back to this character. Open it and save it somewhere.' },
               { sel: '.bt-navrail [aria-label="More"]', reach: '.bt-navrail [aria-label="More"]',
-                body: 'More > Login Key. It is the only way back to this character — save it somewhere.' }],
+                /* v2.3.4172: the tile is Account now, the key on its page */
+                body: 'More > Account. Your Login Key is the only way back to this character — save it somewhere.' }],
     label: 'Save your Login Key',
     /* Gated on having got through the fight lessons: a key is meaningless to
        someone who has not yet decided they want to keep the character, and the
@@ -1317,6 +1322,12 @@ export function QuestCoach(props) {
       }
       if (!rpg || tutorialSkipped() || (!tut && !anyTimeWanted)) {
         if (viewRef.current) { viewRef.current = null; setView(null); }
+        /* v2.3.4155: ...and tell the referee, as the loading screen's branch
+           below does: a card up at this instant (the points card, put away by
+           the first point placed past the tutorial) left onboardingPace's
+           _coachUp true, and the iPhone's PLAY FULL SCREEN card waited on it
+           for the rest of the session (V15 M1-1) */
+        noteCoach(false, now);
         /* v2.3.2246: the coach retired — let go of the discs. */
         if (discHoldRef.current.sides.length) {
           for (const sd of discHoldRef.current.sides) releaseDisc(sd, 'coach');

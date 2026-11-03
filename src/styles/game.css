@@ -1994,6 +1994,95 @@ button.bt-pin-drop{color:inherit;margin:0}
   .bt-pin-cmd .is-long{display:none}
   .bt-pin-cmd .is-short{display:inline}
 }
+/* ═══ v2.3.4172: THE BRO PAGE, AS THE OWNER DREW IT (sheet/BroCard.jsx) ═══
+   Three panels -- you, the weapon's combat stats, the doors -- in the Inspect
+   card's palette (#1C2F3C tiles, #3B5366 edges, #A0BACE ink, gold for what is
+   yours and what to act on).  The shape is the page's own width
+   (data-bro-cols, measured by BroCard): 3 side by side, each its own scroller;
+   2 (you | the doors, the stats under them) and 1 (all stacked), the page one
+   scroller.  The band's height is today's: a taller box shows more. */
+.bt-bro2{flex:1 1 auto;min-height:0;display:grid;gap:6px;padding:4px 4px 6px;box-sizing:border-box;align-content:start;
+  overflow-x:hidden;overflow-y:auto;touch-action:pan-y;color:#EDF6FA;text-align:left;scrollbar-width:none}
+.bt-bro2::-webkit-scrollbar,.bt-bro2-panel::-webkit-scrollbar{display:none}
+.bt-bro2[data-bro-cols="3"]{grid-template-columns:minmax(0,.92fr) minmax(0,1.16fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);
+  grid-template-areas:"id stats rows";overflow:hidden;align-content:stretch}
+.bt-bro2[data-bro-cols="3"]>.bt-bro2-panel{min-height:0;overflow-y:auto;overflow-x:hidden;touch-action:pan-y;scrollbar-width:none}
+.bt-bro2[data-bro-cols="2"]{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"id rows" "stats stats"}
+.bt-bro2[data-bro-cols="1"]{grid-template-columns:minmax(0,1fr);grid-template-areas:"id" "rows" "stats"}
+.bt-bro2-id{grid-area:id}
+.bt-bro2-stats{grid-area:stats}
+.bt-bro2-rows{grid-area:rows}
+.bt-bro2-panel{min-width:0;box-sizing:border-box;padding:7px;border:1px solid #36526A;border-radius:12px;
+  background:linear-gradient(180deg,#1A2B36 0%,#16252F 100%);box-shadow:inset 0 0 0 1px rgba(12,22,30,.55)}
+.bt-bro2 button{font-family:inherit;margin:0;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.bt-bro2 button:active{filter:brightness(.88)}
+.bt-bro2 img{pointer-events:none}
+/* LEFT: you */
+.bt-bro2-id{display:flex;flex-direction:column;gap:6px}
+.bt-bro2-head{display:flex;align-items:center;gap:8px;min-width:0}
+.bt-bro2-face{flex:none;width:56px;height:56px;box-sizing:border-box;border:2px solid #C9973F;border-radius:10px;overflow:hidden;
+  background:#2A3E4C;box-shadow:0 0 0 1px #0B151B,inset 0 0 0 1px rgba(255,214,128,.15)}
+.bt-bro2-face img{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.bt-bro2-who{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.bt-bro2-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;font-weight:800;color:#FFFFFF}
+.bt-bro2-lv{font-size:15px;font-weight:800;color:#F2C45A;font-variant-numeric:tabular-nums}
+/* the title: a gold ribbon, its ends notched (two clipped layers: a border
+   would be clipped away) */
+.bt-bro2-ribbon{display:block;width:100%;min-height:36px;padding:2px;border:0;box-sizing:border-box;
+  background:linear-gradient(180deg,#F2D08A 0%,#C9973F 100%);
+  clip-path:polygon(0 0,100% 0,calc(100% - 10px) 50%,100% 100%,0 100%,10px 50%)}
+.bt-bro2-ribbon-in{display:flex;align-items:center;justify-content:center;gap:6px;min-height:32px;padding:0 16px;box-sizing:border-box;
+  background:linear-gradient(180deg,#3B301D 0%,#2A2014 100%);color:#F6D58A;font-size:14px;font-weight:800;
+  clip-path:polygon(0 0,100% 0,calc(100% - 9px) 50%,100% 100%,0 100%,9px 50%)}
+.bt-bro2-ribbon-in img{flex:none;width:20px;height:20px;object-fit:contain}
+.bt-bro2-ribbon-in span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-bro2-notitle{display:block;width:100%;min-height:34px;padding:0 8px;box-sizing:border-box;border:1px solid #2E4556;border-radius:8px;
+  background:transparent;color:#8D9B98;font-size:13px;font-weight:600;text-align:center}
+.bt-bro2-line{display:flex;align-items:center;gap:8px;width:100%;min-height:38px;padding:0 8px;box-sizing:border-box;
+  border:1px solid #3B5366;border-radius:8px;background:#1C2F3C;color:#FFFFFF;font-size:14px;font-weight:700;text-align:left}
+.bt-bro2-line img{flex:none;width:22px;height:22px;object-fit:contain}
+.bt-bro2-line>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-bro2-line em{font-style:normal;color:#F2C45A}
+.bt-bro2-line .is-none{color:#A0BACE;font-weight:600}
+.bt-bro2-star{flex:none;width:22px;text-align:center;color:#F2C45A;font-size:19px;line-height:1}
+.bt-bro2-line.is-ap b{color:#F2C45A;font-variant-numeric:tabular-nums}
+.bt-bro2-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.bt-bro2-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:0;min-height:62px;padding:5px 3px;
+  box-sizing:border-box;border:1px solid #3B5366;border-radius:8px;background:#1C2F3C;color:#FFFFFF;text-align:center}
+.bt-bro2-tile img{width:24px;height:24px;object-fit:contain}
+.bt-bro2-tile span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#A0BACE;font-size:11px;font-weight:700}
+.bt-bro2-tile b{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+/* MIDDLE: the three combat skills, then the picked weapon's stats.
+   v2.3.4172: the owner on #1386, "Move the 3 primary combat skills out of
+   the gear menu and put them into the bro menu" -- the Gear tab's Melee /
+   Bow / Magic tiles (dash/SkillTiles.jsx, inline-styled there: "Lv N" above
+   the picture, the picked one's gold edge, a tap its XP bar for 4 s) replace
+   the Sword | Bow | Staff buttons; each tile 72-80 px tall, a third of the
+   panel wide (66 px at the narrowest, a phone on its side). */
+.bt-bro2-skills{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.bt-bro2-sec{display:flex;align-items:center;gap:6px;margin:7px 2px 3px;color:#F2D08A;font-size:13px;font-weight:800;white-space:nowrap}
+.bt-bro2-sec i{flex:1;height:1px;background:linear-gradient(90deg,rgba(226,184,102,0),rgba(226,184,102,.7))}
+.bt-bro2-sec i:last-child{background:linear-gradient(90deg,rgba(226,184,102,.7),rgba(226,184,102,0))}
+.bt-bro2-none{margin:0 2px 2px;color:#8D9B98;font-size:12px;font-weight:600}
+.bt-bro2-list{display:flex;flex-direction:column}
+.bt-bro2-stat{display:flex;align-items:center;gap:6px;width:100%;min-height:27px;padding:2px 3px;box-sizing:border-box;border:0;
+  border-bottom:1px solid rgba(59,83,102,.55);background:transparent;color:#FFFFFF;text-align:left}
+.bt-bro2-stat:last-child{border-bottom:0}
+.bt-bro2-stat img{flex:none;width:17px;height:17px;object-fit:contain}
+.bt-bro2-statl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#CFDCE6;font-size:11.5px;font-weight:700;letter-spacing:.02em}
+.bt-bro2-stat b{flex:none;font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+/* RIGHT: the doors */
+.bt-bro2-rows{display:flex;flex-direction:column;gap:5px}
+.bt-bro2-row{position:relative;display:flex;align-items:center;gap:7px;width:100%;min-height:46px;padding:3px 4px 3px 5px;box-sizing:border-box;
+  border:1px solid #3B5366;border-radius:10px;background:#1C2F3C;color:#FFFFFF;text-align:left}
+.bt-bro2-rowic{flex:none;width:28px;height:28px;object-fit:contain}
+.bt-bro2-rowt{flex:1;min-width:0;display:flex;flex-direction:column;gap:0}
+.bt-bro2-rowt b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:800}
+.bt-bro2-rowt>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#E2B866;font-size:12px;font-weight:600}
+.bt-bro2-row.is-live{border-color:#C9973F;background:linear-gradient(180deg,#3B301D,#2A2417);box-shadow:inset 0 0 0 1px rgba(255,214,128,.08)}
+.bt-bro2-row.is-live .bt-bro2-rowt>span{color:#F6D58A}
+.bt-bro2-chev{flex:none;color:#A0BACE;font-size:22px;line-height:1;padding:0 2px}
+.bt-bro2-dot{position:absolute;top:5px;right:5px;width:7px;height:7px;border-radius:999px;background:#D8AA58;pointer-events:none}
 /* v2.3.1333: zone header rail — replaces the bt-exit-fab back arrow
    AND the floating zone label (both retired; see ZoneHeader.jsx).
    Recessed navy 9-slice face, deliberately shallower than the bottom
@@ -5631,6 +5720,11 @@ body:has([data-trade-drawer]) [data-coach]{display:none}
   [data-key-at="end"]::after { bottom:auto; right:14px; top:50%; transform:translateY(-50%); }
   [data-key-at="inline"]::after { position:relative; display:inline-flex; right:auto; bottom:auto; margin-left:8px; vertical-align:1px; }
   [data-key-at="xy"]::after { right:auto; bottom:auto; left:var(--key-x,0px); top:var(--key-y,0px); }
+  /* v2.3.4172: the dashboard's buttons wear their words now (NavRail
+     navLabelMode), along the bottom or the right: the cap goes to the top-left
+     corner, where it covers neither the word nor the count badge (top-right) */
+  .bt-navrail[data-nav-words="stack"] [data-key]::after,
+  .bt-navrail[data-nav-words="beside"] [data-key]::after { right:auto; bottom:auto; left:3px; top:3px; }
   /* ═══ v2.3.3813: A ✕'S "Esc" BESIDE IT, NOT UNDER IT ═══
      The judge pass on a computer: hung under the ✕ (top right of a window),
      the cap fell into the words below it -- Mayor Bro's "Blue slimes explode,
@@ -6841,6 +6935,8 @@ html[data-orient="landscape"] .bt-dashboard{
        contain:paint carries every fixed HUD child -- the joysticks, the
        banners -- along), and the zone header, a sibling, is told the same
        numbers.  The band stays the screen's width: it is not world.
+       (v2.3.4172: no longer -- the owner wants it to stop at the bars;
+       THE BAND STOPS WHERE THE BARS BEGIN below.)
      - THE ISLAND.  Sideways the Dynamic Island and the rounded corners inset
        both long edges; the band steps in by them (--world-pad-l/r, resize()'s
        probe, 0 upright and in every headless run), so no nav button or slot
@@ -6865,6 +6961,26 @@ html.bt-one-band .bt-dashboard{
   left:var(--world-pad-l,0px)!important;   /* the band's left/right are inline styles */
   right:var(--world-pad-r,0px)!important;
 }
+/* ═══ v2.3.4172: THE BAND STOPS WHERE THE BARS BEGIN ═══
+   The owner on #1386: "Make the edge of the dashboard stop at the black bars
+   width (hopefully that's an easy change and won't mess up anything)".  Where
+   the world has bars at its sides (a computer, a tablet: sheetGeometry
+   oneBandFootprint's barW), the band is exactly the world's width: its left
+   is --world-x and its right --world-r, the two numbers resize() already
+   stamps for .brotown-wrap, so the band and the world share one edge and
+   nothing in the world moves (the weapon pill, the controls, the keys, the
+   chat bar, the player frame and the minimap all ride the wrap or
+   --world-x).  The bars run on to the bottom of the screen in the page's
+   colour (#070D11, below).  With no bars both are 0: an upright phone and a
+   tablet whose world fits keep the full width.  The Island's insets still
+   win where they are larger.  Not a phone on its side (bt-band-side): its
+   open band is wider than its world ON PURPOSE (a 572 px world over an
+   844 px band: the slots keep the screen's width; the content box note
+   below) -- one selector away if the owner wants it there too. */
+html.bt-one-band:not(.bt-band-side) .bt-dashboard{
+  left:max(var(--world-pad-l,0px), var(--world-x,0px))!important;
+  right:max(var(--world-pad-r,0px), var(--world-r,0px))!important;
+}
 html.bt-one-band, html.bt-one-band body{background:#070D11}
 /* v2.3.4152: the one band is the default, so what is fixed OUTSIDE the wrap
    and pinned to the window's left edge moves in with the world, as the
@@ -6887,7 +7003,9 @@ html.bt-one-band .bt-kb-hints[data-beside]:not(.bt-kb-side *){left:calc(var(--wo
    the mockup's at a computer's 63 px tile), and the size a 1280 px laptop
    window, the judges' commonest, nearly fills.  The band's own background
    stays the screen's width.  Every tab inherits it (Lane A's Gear tab and the
-   Bro tab draw inside the page box).  Not sideways: a phone on its side
+   Bro tab draw inside the page box).  (v2.3.4172: the band's background
+   is the world's width now, the bars' rule above; the box inside it is
+   unchanged.)  Not sideways: a phone on its side
    keeps the screen's width for its slots (the world there is narrower than
    the band on purpose: 2.2 : 1 over a short world). */
 html.bt-one-band:not(.bt-band-side) [data-band-box]{

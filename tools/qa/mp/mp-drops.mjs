@@ -156,7 +156,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     S.rpg.weapon = blade;
     S.rpg.activeSlot = 'melee';
   }, IRON_BLADE);
-  await P.page.evaluate(() => { window.__broDashPanelBus.open('hero'); });
+  await P.page.evaluate(() => { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); });
   await P.page.waitForTimeout(1100);
 
   const seen = await P.page.evaluate(() => {

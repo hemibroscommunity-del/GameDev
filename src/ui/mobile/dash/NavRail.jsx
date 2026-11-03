@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { BT_AUDIO } from '@/data/index.js'; /* v2.3.2639: the tab-tap sound */
 import { COL } from './common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
@@ -36,6 +36,27 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
    and it is how you switch destinations or get out.  A rail that hid with
    the rest of the band would leave an open panel with no navigation. */
 
+/* ═══ v2.3.4172: FIVE BUTTONS -- GEAR, BRO, QUESTS, CODEX, MORE ═══
+   The owner's consolidation ("limit lots of buttons to switch between
+   different context"): the Skills button went inside Bro (a page under it).
+   Then his drawing of the row (61C354F2-...png and D474F679-...png in the
+   repo root): CLOSE at the left, then each button its picture AND its word,
+   the open one gold-bordered -- "Keep the 5 buttons".  So the words come
+   back, wherever they fit at 11 px (navLabelMode, from each button's real
+   width, measured: the side dock's buttons flex):
+     beside  86 px and wider: the picture, then the word (the drawing; a
+             tablet, a computer's one band);
+     stack   46 px and wider: the word under the picture (an upright phone,
+             58 px at 390: "Quests" beside its picture needs ~70);
+     icon    narrower (a 320 px phone, 44 px; a phone on its side, ~30):
+             the picture alone, the word its aria-label and title.
+   The key cap stays on a computer. */
+export const NAV_WORDS_BESIDE = 86;
+export const NAV_WORDS_STACK = 46;
+export function navLabelMode(btnW) {
+  if (!(btnW > 0)) return 'icon';
+  return btnW >= NAV_WORDS_BESIDE ? 'beside' : btnW >= NAV_WORDS_STACK ? 'stack' : 'icon';
+}
 export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, btnW, fill, landLit, btnH, iconPx }) => {
   /* v2.3.2166: `btnW` narrows the buttons for the landscape dock — the
      five of them must fit inside the side container's width (owner: the
@@ -53,9 +74,30 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
   /* v2.3.3687: a computer's buttons are taller, their pictures nearly twice a
      phone's (`btnH`, `iconPx`: sheetGeometry DESK_NAV_BTN_H / DESK_NAV_ICON) */
   const size = btnW ? { w: btnW, h: btnH || base.h } : base;
-  const icon = iconPx || 24;
+  /* v2.3.4172: each button's real width -- `fill` flexes them past btnW --
+     measured from the group, so the words show wherever they fit */
+  const railRef = useRef(null);
+  const [realW, setRealW] = useState(0);
+  useLayoutEffect(() => {
+    const el = railRef.current;
+    if (!el) return undefined;
+    const n = Math.max(1, items.length);
+    const measure = () => {
+      const w = Math.floor((el.clientWidth - 8 - 4 * (n - 1)) / n);
+      if (w > 0) setRealW(w);
+    };
+    measure();
+    let ro = null;
+    try { ro = new ResizeObserver(measure); ro.observe(el); } catch (e) { ro = null; }
+    return () => { try { if (ro) ro.disconnect(); } catch (e) { /* gone */ } };
+  }, [items.length]);
+  const words = navLabelMode(fill ? (realW || size.w) : size.w);
+  /* stacked, the picture gives the word its line (the row's height is
+     today's); beside, a little smaller than alone */
+  const icon0 = iconPx || 24;
+  const icon = words === 'stack' ? Math.max(18, Math.min(icon0, size.h - 22)) : words === 'beside' ? Math.min(icon0, Math.max(24, size.h - 20)) : icon0;
   return (
-    <div className="bt-navrail" style={{
+    <div className="bt-navrail" ref={railRef} data-nav-words={words} style={{
       /* v2.3.1642: a ROW at the band's top-left, in its own bordered
          section, with the identity strip beside it. */
       /* v2.3.1644 (owner: "make the buttons fill in the extra space").
@@ -189,7 +231,8 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                    returns at once, so the fold (bt_dash_min) stayed and the
                    bag tiles never showed.  Unfold here too.  It only unfolds
                    -- a tap on an unfolded band is a no-op as before, never a
-                   fold (the I key toggles; the grip folds). */
+                   fold (the I key toggles; the grip folds).
+                   v2.3.4172: kept for Gear, the same button renamed. */
                 if (!playIsLandscape()) dashMinBus.set(false);
                 return;
               }
@@ -207,6 +250,11 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
               ...(fill ? { flex: '1 1 0', minWidth: size.w } : { width: size.w, flex: 'none' }),
               height: size.h,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              /* v2.3.4172: the word under the picture, or beside it */
+              flexDirection: words === 'stack' ? 'column' : 'row',
+              gap: words === 'stack' ? 1 : words === 'beside' ? 6 : 0,
+              boxSizing: 'border-box', minWidth: 0,
+              padding: words === 'beside' ? '0 6px' : 0,
               /* ═══ v2.3.2176: A LIT BUTTON IS NOT A TRANSPARENT ONE ═══
                  Owner, of the landscape dock: "the main dashboard button
                  (the chart) is transparent but should have the same
@@ -259,6 +307,16 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                   opacity: on ? 1 : 0.82, pointerEvents: 'none',
                 }} />
             )}
+            {/* v2.3.4172: the button's word (the owner's drawing), where it
+                fits (navLabelMode above); the open one's in gold */}
+            {words !== 'icon' ? (
+              <span className="bt-nav-word" data-nav-word={d.id} aria-hidden="true" style={{
+                display: 'block', minWidth: 0, maxWidth: '100%',
+                fontSize: words === 'beside' ? 13 : 11, lineHeight: 1.1, fontWeight: 700,
+                letterSpacing: '.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'clip',
+                color: on ? COL.accent : COL.text2, pointerEvents: 'none',
+              }}>{d.label}</span>
+            ) : null}
             {/* v2.3.1649 (owner: "on the active navigation button remove
                 the tiny arrow chip but leave the active gold/yellow
                 circle"): the chevron is gone.  It was a second active

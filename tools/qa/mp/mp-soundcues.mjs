@@ -12,7 +12,8 @@
  *      loading screen (nothing is fetched on first use);
  *   1. every cue in the table starts when asked;
  *   2. your own, through the keys: a jump's push-off and landing (Space; X until v2.3.3844), a weapon
- *      change (2, 1), the shield up and down (Q), a door (the bank's Enter);
+ *      change (2, 1; with a bow the worker armed: v2.3.4154, the key takes up only a weapon you hold),
+ *      the shield up and down (Q), a door (the bank's Enter);
  *   3. monsters, through the real handlers (window.__btDispatch): a snowball's,
  *      a fireball's and a glob's throw beside you and none 2,000 px off; a
  *      mummy's wrappings tearing; a blow on you dodged (the rush, never the
@@ -155,6 +156,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     (v) => v.up >= 1 && v.land >= 1, { timeout: 8000, label: 'the jump heard' }).catch(() => null);
   rec.ok('2a. a jump (Space): its push-off, then its landing', !!jump && jump.up === 1 && jump.land === 1, jump);
 
+  /* v2.3.4154: a bow first, the worker's own (H.armWorker, as
+     mp-monsternumbers does): the 2 key takes up only a weapon you hold
+     (weaponSlots.js pickSlot), and this new character has none (the
+     'quests' op pays no rewards).  armWorker leaves the bow in hand, so 1
+     takes melee back before the cues are counted. */
+  const armed = await H.armWorker(P, wsPort, myId, ['bow']).catch(() => []);
+  await P.page.keyboard.press('1');
+  await P.page.waitForTimeout(400);
   await P.page.evaluate(() => window.__btCues.reset());
   const slot0 = await H.readState(P, (S) => S.rpg && S.rpg.activeSlot);
   await P.page.keyboard.press('2');
@@ -163,8 +172,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(400);
   /* v2.3.3523: each weapon its own swap sound (the owner: "Change weapon switch sound") */
   const swap = await P.page.evaluate(() => { const p = window.__btCues.stats.played; return { bow: p.swapBow || 0, sword: p.swapSword || 0, staff: p.swapStaff || 0, slot: window._gameState.current.rpg.activeSlot }; });
-  rec.ok(`2b. a weapon changed and changed back (2, 1): the bow's sound, then the sword's (${swap.bow}, ${swap.sword})`,
-    slot0 === 'melee' && swap.bow === 1 && swap.sword === 1 && swap.staff === 0 && swap.slot === 'melee', { slot0, swap });
+  rec.ok(`2b. a weapon changed and changed back (2, 1): the bow's sound, then the sword's (${swap.bow}, ${swap.sword}; the worker's bow: ${armed.join(', ') || 'none'})`,
+    armed.includes('bow') && slot0 === 'melee' && swap.bow === 1 && swap.sword === 1 && swap.staff === 0 && swap.slot === 'melee', { slot0, swap, armed });
 
   /* the shield the admin panel hands out, worn as the bag's Equip wears it */
   await H.devOp(wsPort, 'kit', myId, { what: 'shield' });

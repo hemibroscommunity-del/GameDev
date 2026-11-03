@@ -23,7 +23,7 @@
 import * as H from './harness.mjs';
 
 const openHero = async (P) => {
-  await P.page.evaluate(() => { window.__broDashPanelBus.open('hero'); });
+  await P.page.evaluate(() => { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); });
   await P.page.waitForTimeout(1200);
 };
 /* Signature of what the canvas actually painted: opaque pixel count plus a

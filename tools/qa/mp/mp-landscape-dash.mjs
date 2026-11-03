@@ -232,7 +232,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      and what the law protects is a button moving under the thumb that is
      about to tap it again. */
   const navAfter = await navRect(P);
-  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.evaluate(() => (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
   await P.page.waitForTimeout(700);
   const navOther = await navRect(P);
   rec.ok('...and switching destination does not move the nav buttons (v2.3.1637b)',
@@ -455,7 +455,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      clipped at every earlier width.  It must lay out vertically with no
      horizontal overflow, per the owner's "align some of the panes
      vertically ... put stats beneath that". */
-  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.evaluate(() => (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
   await P.page.waitForTimeout(1000);
   const heroFit = await P.page.evaluate(() => {
     const sh = document.querySelector('.bt-land-sheet');
@@ -558,27 +558,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     if (S) S._serverCaps = Object.assign({}, S._serverCaps, { prog3Chan: true });
   });
-  await P.page.evaluate(() => window.__broDashPanelBus.open('hero'));
+  await P.page.evaluate(() => (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
   await P.page.waitForTimeout(900);
   /* v2.3.3773: the records are More's Journey page now, not Hero's third
      tab, so the third screen of this walk is that page, opened the way its
      More tile opens it, swept by the same rule */
-  for (const sec of ['Overview', 'Build', 'Journey']) {
+  /* v2.3.4172: Bro is one card (its own sweep), Equipment and Points windows
+     over it: Points from the card's Points row, Equipment by name */
+  for (const sec of ['Card', 'Overview', 'Build', 'Journey']) {
+    if (sec !== 'Journey') {
+      /* v2.3.4172: the Equipment window is reached by name (the card's
+         Equipment door opens the Gear tab since v2.3.4151) */
+      await P.page.evaluate((s) => { window.__btHeroSection.request(s === 'Overview' ? 'Overview' : 'Card'); window.__broDashPanelBus.open('hero'); }, sec);
+      await P.page.waitForTimeout(700);
+    }
     const fit = await P.page.evaluate((s) => {
       if (s === 'Journey') {
         window.__broDashPanelBus.open('more'); window.__broDashPanelBus.push('journey');
         return true;
       }
-      const tab = document.querySelector(`.bt-land-sheet [role="button"][data-section="${s}"]`);
-      if (tab) tab.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-      return !!tab;
+      if (s === 'Card') return !!document.querySelector('.bt-land-sheet [data-bro-page="Card"] [data-bro-card="v2"]');
+      if (s === 'Overview') return !!document.querySelector('.bt-land-sheet [data-bro-popup="Overview"]');
+      const door = document.querySelector(`.bt-land-sheet [data-section="${s}"]`);
+      if (door) door.click();
+      return !!door;
     }, sec);
     if (sec === 'Journey') {
       await P.page.waitForTimeout(650);
       const page = await P.page.evaluate(() => document.querySelectorAll('.bt-land-sheet [data-journey-page] [data-journey-card]').length);
       rec.ok('More\'s Journey page shows its six record cards in the side column', page === 6, { page });
     }
-    if (!fit) { rec.ok(`hero/${sec}: the section tab exists`, false, { sec }); continue; }
+    if (!fit) { rec.ok(`hero/${sec}: the card, or its door to the window, exists`, false, { sec }); continue; }
     await P.page.waitForTimeout(650);
     const clip = await P.page.evaluate(() => {
       const sh = document.querySelector('.bt-land-sheet');

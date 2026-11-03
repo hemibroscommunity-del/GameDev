@@ -306,6 +306,9 @@ export function QuestPanel(props) {
   var _speech = _isOffer
     ? questPanel.quest.dialogue.start
     : (_canTurnIn ? questPanel.quest.dialogue.complete : questPanel.quest.dialogue.progress);
+  /* v2.3.4166: just accepted (game/quests.js acceptQuest kept the window for
+     its button): no "I still need ..." -- the button alone */
+  if (questPanel.justAccepted && !_canTurnIn) _speech = '';
 
   /* A quest in progress has nothing to decide — he tells you how it is going
      and that is the end of it, so his last button closes rather than opening

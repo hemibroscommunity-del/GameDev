@@ -4,7 +4,7 @@ import { COL, panelStyle, getState, QUALITY_PRISM, qualityInk } from './common.j
 import { panelVw } from '../playViewport.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { ACHV_TIERS, ACHV_MEDAL_SRC } from '@/data/achievements.js';
-import { achvLive, achvSummary, achvRows, achvProgress, achvProgressShort, achvSplitWords, achvDateWords, ACHV_FILTERS, sendAchvTitle, achvTitleWaiting } from '@/game/achievements.js';
+import { achvLive, achvSummary, achvRows, achvProgress, achvProgressShort, achvSplitWords, achvDateWords, ACHV_FILTERS, sendAchvTitle, achvTitleWaiting, takeTitlePicker } from '@/game/achievements.js';
 import { achvById } from '@/data/achievements.js';
 
 /* ═══ v2.3.3527: THE ACHIEVEMENTS PAGE ═══
@@ -305,7 +305,21 @@ export const AchievementsHead = ({ side }) => {
 
 export const AchievementsPanel = () => {
   const [filter, setFilter] = useState('all');
-  const [open, setOpen] = useState(null);
+  /* v2.3.4172: the Bro page's Titles row opens the page on the row you pick
+     a title from (game/achievements.js takeTitlePicker), brought into view */
+  const [open, setOpen] = useState(() => takeTitlePicker(getState()));
+  useEffect(() => {
+    if (!open) return;
+    try {
+      /* its own scroller only (scrollIntoView would move the page too) */
+      const el = document.querySelector('[data-achv-row="' + open + '"]');
+      const box = el && el.closest('[data-achv-panel]');
+      if (box) {
+        const r = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+        if (r.top < b.top || r.bottom > b.bottom) box.scrollTop += r.top - b.top - 8;
+      }
+    } catch (e) { /* the row is where it is */ }
+  }, []);   /* once, on mount */
   useAchvClock(() => [panelVw() < 260 ? 1 : 0, drilled() ? 1 : 0].join(''));
   const S = getState();
   const narrow = panelVw() < 260;

@@ -78,7 +78,25 @@ function shownRect(el) {
   const vw = window.innerWidth || 0, vh = window.innerHeight || 0;
   if (r.bottom <= 0 || r.right <= 0 || r.top >= vh || r.left >= vw) return null;
   try { const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || Number(cs.opacity) === 0) return null; } catch (e) { /* drawn */ }
+  if (scrolledAway(el, r)) return null;
   return r;
+}
+/* ═══ v2.3.4172: ON THE SCREEN MEANS NOT SCROLLED OUT OF ITS BOX ═══
+   The Bro page scrolls (sheet/BroCard.jsx: its Points row is one of the
+   doors, no longer a button stuck to the card's foot), and a row scrolled
+   out of the page is still "in the window" -- above the band, under the world
+   -- so the arrow pointed at nothing there.  A box that clips (overflow other
+   than visible) and holds none of the element's middle hides it. */
+function scrolledAway(el, r) {
+  const mx = r.left + r.width / 2, my = r.top + r.height / 2;
+  for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+    let cs = null;
+    try { cs = getComputedStyle(p); } catch (e) { cs = null; }
+    if (!cs || (cs.overflowY === 'visible' && cs.overflowX === 'visible')) continue;
+    const b = p.getBoundingClientRect();
+    if (my < b.top || my > b.bottom || mx < b.left || mx > b.right) return true;
+  }
+  return false;
 }
 function firstShown(sels) {
   for (const sel of sels) {
@@ -87,6 +105,27 @@ function firstShown(sels) {
     for (const el of list) { const r = shownRect(el); if (r) return { sel, el, r }; }
   }
   return null;
+}
+
+/* ═══ v2.3.4166: NEVER OVER AN OPEN CARD ═══
+   The owner, 2026-11-03, of the Mayor's quest offer: "Remove the arrow in
+   the first screenshot" -- the arrow at Mayor Bro stood in the middle of the
+   NEW QUEST card, pointing at him behind it.  So before it is drawn, the
+   arrow asks whether its target is what a finger would hit at its middle
+   (the coach's own reachability rule, QuestCoach.jsx reachable): a control
+   must be on top there (it, or something inside it, or what holds it); a
+   townsperson must have the world on top (the canvas or the touch zones).
+   A dialogue, a quest offer, a building's window or any card over it: the
+   arrow waits until it closes.  The coach's own card and ring, and the arrow
+   itself (pointer-events none), are never in the way. */
+function onTop(r, el) {
+  if (typeof document === 'undefined' || !r) return false;
+  let top = null;
+  try { top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); } catch (e) { top = null; }
+  if (!top) return false;
+  try { if (top.closest('[data-coach], [data-guide-arrow]')) return true; } catch (e) { /* as below */ }
+  if (el) return top === el || el.contains(top) || top.contains(el);
+  try { return !!top.closest('canvas, [data-joyzone]'); } catch (e) { return false; }
 }
 
 /* ═══ v2.3.4130: THE THIRD LESSON -- SWAPPING WEAPONS, AT THE PILL ═══
@@ -123,6 +162,9 @@ export function guideTargets(id, rpg, shown) {
     return gearFlashSelectors(w, folded, tileOnScreen);
   }
   if (id === 'points') {
+    /* v2.3.4172: inside the Points window (over the Bro card) there is
+       nowhere left to go: no arrow (the coach's words say what the rows are) */
+    if (shown('[data-bro-popup="Build"]')) return [];
     return ['[data-section="Build"]', '[data-nav="hero"]', '[data-dash-fold="min"]', '[data-land-fold="min"]'];
   }
   if (id === 'swap') return ['[data-weapon-pill]'];   /* v2.3.4130: the pill */
@@ -138,7 +180,7 @@ export function guideWords(id, sel, computer) {
   else if (/data-nav="dashboard"/.test(sel)) s = 'Tap Gear';
   else if (/data-gear/.test(sel)) s = 'Tap to equip';
   else if (/data-nav="hero"/.test(sel)) s = 'Tap Bro: points to spend';
-  else if (/data-section="Build"/.test(sel)) s = 'Tap Points';
+  else if (/data-section="Build"/.test(sel)) s = 'Tap Points';   /* v2.3.4172: the Bro card's Points row */
   return deskWords(s, computer);
 }
 
@@ -325,7 +367,7 @@ function tick(getS) {
          at him on the page (a world rect, not a DOM element) */
       if (_pace.skipped() || _pace.plateUp(now)) continue;
       const mr = mayorScreenRect(S);
-      if (!mr) continue;
+      if (!mr || !onTop(mr, null)) continue;   /* v2.3.4166: not over an open card */
       if (_seen[id] === 0) qa.n++;
       _seen[id] += Math.max(1, dt);
       qa.lesson = id; qa.sel = 'mayor';
@@ -334,7 +376,7 @@ function tick(getS) {
     }
     const shown = (sel) => { try { return Array.from(document.querySelectorAll(sel)).some((el) => !!shownRect(el)); } catch (e) { return false; } };
     const hit = firstShown(guideTargets(id, rpg, shown));
-    if (!hit) continue;
+    if (!hit || !onTop(hit.r, hit.el)) continue;   /* v2.3.4166: not over an open card */
     if (_seen[id] === 0) { qa.n++; if (id === 'swap') _swapFrom = rpg.activeSlot || 'melee'; }
     _seen[id] += Math.max(1, dt);
     qa.lesson = id; qa.sel = hit.sel;

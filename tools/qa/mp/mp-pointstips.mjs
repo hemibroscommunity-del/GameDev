@@ -161,7 +161,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot('fold');
   const nav1 = await rectOf(A, '[data-nav="hero"]');
   rec.ok(`2: the coach rings Character, on the folded band, and says "${c1 && c1.text}"`,
-    !!c1 && c1.id === 'points' && /^×?\s*Level up!/i.test(c1.text) && c1.text.includes('You have ' + many + ' to spend. Tap Character.')
+    !!c1 && c1.id === 'points' && /^×?\s*Level up!/i.test(c1.text) && c1.text.includes('You have ' + many + ' to spend. Tap Bro.')   /* v2.3.4172: the button is Bro */
       && ringOn(c1, nav1), { c1, nav1, folded });
   /* v2.3.3925: and the big arrow points at Character */
   const ar1 = await waitArrowOn(A, (a) => !!a && a.lesson === 'points' && a.sel === '[data-nav="hero"]' && a.on);
@@ -176,15 +176,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 3. Character, tapped on the folded band, then the Points tab ── */
   await finger(A, '[data-nav="hero"]');
   let onTab = false;
-  const c3 = await waitCoach(A, (c) => !!c && c.id === 'points' && (/on the Points tab/.test(c.text) || /Top row:/.test(c.text)));
-  if (c3 && /on the Points tab/.test(c3.text)) {
+  /* v2.3.4172: the Points tab is the Bro card's Points row now */
+  const c3 = await waitCoach(A, (c) => !!c && c.id === 'points' && (/Tap Points\./.test(c.text) || /Top row:/.test(c.text)));
+  if (c3 && /Tap Points\./.test(c3.text)) {
     onTab = true;
     await shot('tab');
     const tab = await rectOf(A, '[data-section="Build"]');
-    rec.ok(`3: Character open on another tab, it rings Points: "${c3.text}"`,
-      c3.text.includes('Your ' + many + ' are on the Points tab.') && ringOn(c3, tab), { c3, tab });
+    rec.ok(`3: Bro open on its card, it rings the Points row: "${c3.text}"`,
+      c3.text.includes('Your ' + many + ' are waiting. Tap Points.') && ringOn(c3, tab), { c3, tab });
     const ar3 = await waitArrowOn(A, (a) => !!a && a.sel === '[data-section="Build"]' && a.on);
-    rec.ok('3: ...and the big arrow moves to the Points tab (v2.3.3925)', !!ar3 && ar3.sel === '[data-section="Build"]' && ar3.on, ar3);
+    rec.ok('3: ...and the big arrow moves to the Points row (v2.3.3925; v2.3.4172)', !!ar3 && ar3.sel === '[data-section="Build"]' && ar3.on, ar3);
     await finger(A, '[data-section="Build"]');
   }
   const c4 = await waitCoach(A, (c) => !!c && c.id === 'points' && /Top row:/.test(c.text));
@@ -272,7 +273,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const lvB = await levelUp(B, wsPort, bId);
   const cB1 = await waitCoach(B, (c) => !!c);
   rec.ok(`6: the first level-up brings the points card alone: "${cB1 && cB1.text}"`,
-    !!lvB.p && lvB.p.pool > 0 && !!cB1 && cB1.id === 'points' && /You have \d+ points? to spend\. Tap Character\./.test(cB1.text), { cB1, p: lvB.p });
+    !!lvB.p && lvB.p.pool > 0 && !!cB1 && cB1.id === 'points' && /You have \d+ points? to spend\. Tap Bro\./.test(cB1.text), { cB1, p: lvB.p });
   /* a tap on the card puts it away for good */
   await finger(B, '[data-coach-card]');
   await B.page.waitForTimeout(4000);

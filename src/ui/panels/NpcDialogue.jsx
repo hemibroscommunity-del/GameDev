@@ -78,7 +78,10 @@ export const NpcDialogue = (props) => {
 
   /* An empty dialogue would otherwise render a window with a picture and no
      words and no way past it. */
-  if (!chunks.length) { onDone && onDone(); return null; }
+  /* v2.3.4166: no words but a button (a quest just taken whose giver has
+     something to do at once: QuestPanel `justAccepted`) -- the card stays,
+     the button alone */
+  if (!chunks.length && !action) { onDone && onDone(); return null; }
 
   /* ═══ v2.3.1827: PORTALED, OR THE DASHBOARD EATS THE BUTTON ═══
      `.brotown-wrap` is position:fixed and therefore its own stacking

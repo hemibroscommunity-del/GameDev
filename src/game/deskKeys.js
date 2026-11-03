@@ -28,7 +28,10 @@ import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 import { dashMinBus } from '@/ui/mobile/dashMinBus.js';
 import { playIsLandscape } from '@/ui/mobile/playViewport.js';
 
-/** The dashboard's six buttons (BottomDashboard RAIL_ITEMS ids) -> a letter. */
+/** The dashboard's buttons (BottomDashboard RAIL_ITEMS ids) -> a letter.
+    v2.3.4172: five buttons (Gear, Bro, Quests, Codex, More); `skills` keeps
+    its L, which opens the Life Skills page under Bro (the owner: "Lifeskills
+    move inside Bro"), worn by the Bro card's Life Skills row (data-key). */
 export const NAV_KEYS = Object.freeze({
   dashboard: 'I', hero: 'P', quests: 'J', skills: 'L', encyclopedia: 'K', more: 'O',
 });
@@ -74,6 +77,14 @@ export function navKey(id) {
     }
     if (open) { bus.toBar(); dashMinBus.set(false); return; }
     dashMinBus.set(!dashMinBus.min);
+    return;
+  }
+  /* v2.3.4172: L opens the Life Skills page under Bro (the bus puts 'skills'
+     there), and pressed with that page showing closes it, as every page key
+     does */
+  if (id === 'skills') {
+    if (open && bus.current() === 'skills') bus.toBar();
+    else bus.open('skills');
     return;
   }
   if (open && bus.root() === id) bus.toBar();

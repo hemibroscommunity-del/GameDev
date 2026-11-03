@@ -105,8 +105,8 @@ export const DESK_KEY_ROWS = [
   ['C', 'Chat', null, 'other'],
   ['H', 'Hide this', null, 'other'],
   ['Esc', 'Close', null, 'other'],
-  ['I', 'Bag', null, 'menus'],
-  ['P', 'Character', null, 'menus'],
+  ['I', 'Gear', null, 'menus'],        /* v2.3.4172: the five buttons' words */
+  ['P', 'Bro', null, 'menus'],
   ['J', 'Quests', null, 'menus'],
   ['L', 'Skills', null, 'menus'],
   ['K', 'Codex', null, 'menus'],
