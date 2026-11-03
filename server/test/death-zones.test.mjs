@@ -33,6 +33,7 @@
  *      its size from the server's own marks (crit, ability, burst,
  *      collision), your own swing's or shot's contact winning on direction;
  *      and the wiring that writes it down and the death that reads it.
+ *   9. (v2.3.4147) A SLIME SPLATS: flat and fading, never in chunks.
  */
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
@@ -300,6 +301,35 @@ function readPng(rel) {
   check('8j the push draws no number of its own from the seeded roll (a phone that does not know who struck plays the same death, only without the push)',
     !/if \(blow\) \{[^}]*rand\(\)/.test(zf));
   check('8k a hole is cut in a Graphics mask, never a Sprite one', /mg\.cut\(\)/.test(zf) && !/\.mask = new Sprite/.test(zf));
+}
+
+/* ── 9. v2.3.4147: a slime splats, never in chunks ──
+   The owner: "remove the chunks form the electric slime death (and any other
+   chunks like that from slime deaths - doesn't match the art aesthetic." */
+{
+  const P = await import('../../src/game/slimeSplatPose.js');
+  const fx = src('src/rendering/monsterDeathFx.js'), sp = src('src/rendering/slimeSplat.js');
+  const er = src('src/rendering/systems/entityRenderer.js');
+  const at = (t) => P.splatPose(t);
+  check('9a the splat opens on the hit\'s squash, lies flat (wider, a third of its height) and fades out by its end, about half a second',
+    P.SPLAT_MS >= 400 && P.SPLAT_MS <= 700 && at(0).sy === 1 && at(60).sy < 1 && at(60).sx > 1
+    && at(P.SPLAT_FLAT_MS).sy < 0.4 && at(P.SPLAT_FLAT_MS).sx > 1.3 && at(P.SPLAT_FLAT_MS).a === 1
+    && at(P.SPLAT_MS).a === 0 && at(P.SPLAT_MS + 100).a === 0, [at(60), at(P.SPLAT_FLAT_MS), at(P.SPLAT_MS)]);
+  let mono = true;
+  for (let t = P.SPLAT_BEAT_MS; t < P.SPLAT_MS; t += 10) { if (at(t + 10).sy > at(t).sy + 1e-9 || at(t + 10).a > at(t).a + 1e-9) mono = false; }
+  check('9b once it starts to flatten it only gets flatter and fainter', mono);
+  check('9c a slime-sheet body (`blob`) never rolls a kind: the splat comes first, and with no body to flatten it is gone, never the strip',
+    /if \(blob && slimeSplatOn\(\)\)/.test(fx) && /kind: 'splat', splat: true, freed: true/.test(fx)
+    && fx.indexOf('if (blob && slimeSplatOn())') < fx.indexOf('let kind = rollDeathKind('));
+  check('9d no debris of any kind: the splat throws no material bursts, draws nothing by code (no Graphics), and is one sprite of the live picture',
+    /matBursts: null/.test(sp) && !/Graphics|_debrisBursts|new Texture/.test(sp) && /new Sprite\(tex\)/.test(sp));
+  check('9e it goes when it ends: its root destroyed with its child, never the picture',
+    /root\.destroy\(\{ children: true \}\)/.test(sp) && !/texture: true|destroy\(true\)/.test(sp)
+    && /if \(slimeSplatOver\(st, now\)\) \{ if \(st\.dispose\) st\.dispose\(\); return DEATH_DONE; \}/.test(fx)
+    && /return st\.freed \|\| splatT\(st, now\) >= st\.dur;/.test(sp));
+  check('9f a slime\'s burst (the blue slime) ends in the splat too; ?slimesplat=0 brings the old deaths back on one phone',
+    /\(isFodder && slimeSplatOn\(\)\)/.test(er) && /get\('slimesplat'\)/.test(sp) && /return v !== '0';/.test(sp));
+  check('9g the splat wears the slime\'s own colour, never the hit flash', /sb\._btBaseTint != null \? sb\._btBaseTint : sb\.tint/.test(sp));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
