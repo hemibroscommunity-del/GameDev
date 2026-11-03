@@ -396,6 +396,7 @@ import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: 
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
+import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
 import { interactKind, talkBeforeDoor } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.3868: + a townsperson in range before a door */
@@ -543,6 +544,7 @@ import { burningAt } from '@/rendering/buildingFire.js'; /* v2.3.3748: ...where 
 import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
 import { deskWords, onComputer } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { tooFarWord, tooFarPlace } from '@/game/tooFar.js';   /* v2.3.3990: "Too far away" over a resource out of reach */
+import { idleChatMay, idleChatTimer, inTownAt } from '@/game/townChatter.js';   /* v2.3.4040: the townsfolk's idle lines: in town, near, rarely */
 import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
@@ -4632,6 +4634,9 @@ export var BroTown = function BroTown(_ref0) {
              52 px short of the shore.  The never-trap rule below reads your
              boots too, so it keeps meaning "already standing in it". */
           var _gfd = _wgrid.atFeet ? playerGroundDy(S.currentZone, px, py) : 0;
+          /* v2.3.3994: a rise's face, rim, vines or chest -- or the way a
+             climb or a jump has through one (game/climbActions.js) */
+          if (_gfd && S.currentZone === 'wheel') { var _rsd = riseSolidAt(S, px, py + _gfd, _gfd); if (_rsd !== null) return _rsd; }
           var _gx = Math.floor(px * _gw / _mw);
           var _gy = Math.floor((py + _gfd) * _gh / _mh);
           /* boots past the world's last row: the sea's edge, read as its last row */
@@ -5585,6 +5590,17 @@ export var BroTown = function BroTown(_ref0) {
            the better its timing the more (game/jump.js flipBoost; the owner's
            "time it right to get maximum horizontal distance") */
         finalSpd *= flipBoost(S._jump, Date.now());
+        /* ═══ v2.3.3994: ON THE VINES ═══
+           At a strip of vines' foot, pushing north, you climb: straight up
+           and down at 0.4 of the walk, no weapon (game/climbActions.js); and
+           a jump that missed a face drops you back, the walk standing still */
+        if (S.currentZone === 'wheel') {
+          if (!_playerDead && !S._climb && climbBegin(S, dx, dy, playerGroundDy(S.currentZone, P.x, P.y))) dropShield(S, 'climb');
+          if (S._climb) S.autoAttack = false;   /* your hands are on the rock */
+          var _clS = climbSteer(S, dx, dy);
+          dx = _clS[0]; dy = _clS[1];
+          finalSpd *= climbSpeed(S, sprintMult(S));
+        }
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
         var ny = P.y + dy * _step;
@@ -5771,6 +5787,14 @@ export var BroTown = function BroTown(_ref0) {
             if (!isSolid(gx - hs, P.y - hs) && !isSolid(gx + hs, P.y + hs) && !_monBlock(P.x, P.y, gx, P.y) && !_nodeBlock(P.x, P.y, gx, P.y) && !propFeetBlocked(P.x, P.y, gx, P.y, hs)) P.x = gx;
             if (!isSolid(P.x - hs, gy - hs) && !isSolid(P.x + hs, gy + hs) && !_monBlock(P.x, P.y, P.x, gy) && !_nodeBlock(P.x, P.y, P.x, gy) && !propFeetBlocked(P.x, P.y, P.x, gy, hs)) P.y = gy;
           }
+        }
+        /* v2.3.3994: the climb's end, a face-crossing jump's landing (a miss
+           drops you back), a drop under way, the chest (game/climbActions.js) */
+        if (S.currentZone === 'wheel') {
+          climbTick(S, Date.now(), playerGroundDy(S.currentZone, P.x, P.y), function (x, y, t) { pushDmgPopup(S, x, y, t, '#f3d77a', { ttl: 2800 }); });
+        } else if (S._climb || S._climbDrop || S._riseCross || S._nearChest) {
+          /* off the Wheel (a door, a dungeon): nothing of a climb comes along */
+          S._climb = null; S._climbDrop = null; S._riseCross = null; S._nearChest = null;
         }
         /* ═══ v2.3.3748: A BURNING HEAP SETS YOU ON FIRE ═══
            Your boots in a burning piece of a fallen building's heap, on this
@@ -7286,6 +7310,7 @@ export var BroTown = function BroTown(_ref0) {
            (game/race.js) */
         raceTick(S, Date.now());
         /* Update NPCs — §19.1 companion follow + quest interaction + wander */
+        var _npcTown = null;   /* v2.3.4040: the safe ground, read once a frame when an idle line asks */
         if (S.npcs) {
           S.npcs.forEach(function (npc) {
             var _npc$followZones;
@@ -7396,7 +7421,10 @@ export var BroTown = function BroTown(_ref0) {
                     ts: Date.now(),
                     isQuest: true
                   };
-                } else {
+                } else if (idleChatMay(S, distToPlayer, inTownAt(isWheelTrialZone(S.currentZone) ? 'wheel' : S.currentZone,
+                  (_npcTown || (_npcTown = rideGround(S))).centre, _npcTown.safeR, P.x, P.y), Date.now())) {
+                  /* v2.3.4040: an idle line only in town, near him, one
+                     town-wide every 20 s (game/townChatter.js) */
                   npc.chatBubble = {
                     text: npc.phrases[Math.floor(Math.random() * npc.phrases.length)],
                     ts: Date.now()
@@ -7405,7 +7433,12 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.3664: no hum as his line pops up -- the owner: the hums
                    "should play when you begin talking to someone or taking a
                    quest"; in town one came every few seconds (game/npcVoices.js) */
-                npc.chatTimer = 8000 + Math.random() * 15000;
+                /* v2.3.4040: 30-60 s between his idle turns ("Way too much town
+                   chatter idle while exploring the world"); one with a quest
+                   to offer or take in keeps the old 8-23 s, so his hint above
+                   comes as often as it did */
+                npc.chatTimer = npcQuest && (npcQuest.status === 'available' || _npcQuestReady(S, npcQuest))
+                  ? 8000 + Math.random() * 15000 : idleChatTimer();
               }
             }
             /* v2.3.1771: same exponential-approach shape as the camera and

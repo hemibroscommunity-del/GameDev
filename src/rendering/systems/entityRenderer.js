@@ -118,6 +118,8 @@ import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.
 import { deathVol } from '@/game/hitSounds.js';   /* v2.3.3248: a far slime's splat heard by distance */
 import { flipHeadAt } from '../flipHead.js';   /* v2.3.3738: the head pieces ride the tumble's head */
 import { headCrown } from '../headCrowns.js';   /* v2.3.3880: the flinch's crown on the head, not the fist */
+import { climbFrame } from '@/game/climb.js';   /* v2.3.3994: on the vines, the jog's back-facing frames at the climb's own cadence */
+import { riseClimbingAt } from '@/game/climbActions.js';   /* v2.3.3994: ...another player's too, by where their feet are */
 import { jumpActive, jumpFrame, jumpPhase, flipFrame } from '@/game/jump.js';   /* v2.3.3017: a jump holds a leaping frame of the jog; v2.3.3499: four, by its phase; v2.3.3682: a flip, the roll's tumble */
 import { rideLook } from '@/game/ride.js';   /* v2.3.3776: a rider stands sideways, and pushes now and then */
 import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-sheet load-failure telemetry */
@@ -12546,6 +12548,10 @@ export class EntityRenderer {
       /* v2.3.3017: their jump (the `player_jump` relay, game events), drawn as
          yours is: the leaping frame of the jog, held, lifted by jumpFx.js */
       const _rJump = other._jump && jumpActive(other._jump, now) ? other._jump : null;
+      /* v2.3.3994: on the vines, by the same test at their feet as swimming's
+         (nothing new on the wire): the climb's frames, stepped by where they
+         are on the strip */
+      const _rClimb = !_rJump && S.currentZone === 'wheel' && riseClimbingAt(other.x, other.y + playerGroundDy(S.currentZone, other.x, other.y));
       /* v2.3.3682: ...and their flip, the roll's somersault, as yours is */
       const _rFlip = _rJump && _rJump.flip ? { angle: _rJump.ang || 0, startTime: _rJump.t0, durMs: _rJump.dur, kind: 'flip' } : null;
       const _rDodge = other._dodgeRoll || _rFlip || null;
@@ -12604,10 +12610,11 @@ export class EntityRenderer {
           /* v2.3.3017: mid-jump, the leaping frame, held (as the local branch);
              no footfall dust in the air */
           if (_rJump) { frameIdx = jumpFrame(dir, fc, jumpPhase(_rJump, now)); _rJogPhase = (frameIdx + 0.5) / fc; }   /* v2.3.3499: the stride's four frames, by the jump's phase */
+          else if (_rClimb) { frameIdx = climbFrame(Math.abs(other.y), fc); _rJogPhase = (frameIdx + 0.5) / fc; }   /* v2.3.3994 */
           /* ...and kicks up dust at each footfall of it, on its own foot-plant
              frames (the ground's colour is yours to look up only under your
              own boots: a peer's is the dirt's) */
-          if (!_rJump && display._prevJogFrame !== frameIdx) {
+          if (!_rJump && !_rClimb && display._prevJogFrame !== frameIdx) {
             const _rPlant = _jogPlantCrossed(JOG_FOOT_FRAMES[dir] || JOG_FOOT_FRAMES.south, display._prevJogFrame, frameIdx, fc, false,
               now - (display._prevJogAt || 0), _rCyc);
             /* ═══ v2.3.3343: ...AND IS HEARD AT EVERY FOOTFALL ═══
@@ -14226,6 +14233,9 @@ export class EntityRenderer {
          player happened to be facing when they swiped. */
       const sector = Math.round((_rollSrc.angle || 0) / (Math.PI / 4));
       facing = SECTORS[((sector % 8) + 8) % 8]; facedAng = _rollSrc.angle || 0;
+    } else if (S._climb) {
+      /* v2.3.3994: on the vines you face the rock (game/climb.js) */
+      facing = 'north'; S._facingSrc = 'climb';
     } else if (bashPose) {
       /* v2.3.1735: the bash owns the body for its window, exactly as the
          dodge roll above does.  Placed ahead of the shield/aim branches so
@@ -14282,6 +14292,9 @@ export class EntityRenderer {
        body is doing) and whether or not it moves: a standing jump still
        leaps. */
     const jumping = !!S._jump && jumpActive(S._jump, now);
+    /* v2.3.3994: climbing -- the jog's north frames, held still when you
+       are, stepping one every CLIMB_PX px climbed (game/climb.js) */
+    const climbing = !!S._climb;
     /* v2.3.188: pickup pose during the loot-pickup freeze.  Takes
        priority over hit because the freeze already blocks combat.
        v2.3.236: attack pose plays through the 250 ms swing window —
@@ -14341,7 +14354,7 @@ export class EntityRenderer {
               ? 'fish'
               : (dodging
                   ? 'dodge'
-                  : (jumping
+                  : ((jumping || climbing)
                       ? 'jog'
                       : (isHit
                           ? 'hit'
@@ -14475,6 +14488,14 @@ export class EntityRenderer {
           display._prevJogFrame = frameIdx;
           display._prevJogAt = now;
           display._jogAir = true;
+        } else if (climbing) {
+          /* v2.3.3994: no footstep on the vines (as in the air) */
+          frameIdx = climbFrame(S._climb.dist, fc);
+          _jogPhase = (frameIdx + 0.5) / fc;
+          display._prevJogFrame = frameIdx;
+          display._prevJogAt = now;
+          display._jogAir = true;
+          S._climbFrame = frameIdx;   /* QA (__btClimb) */
         } else if (display._jogAir) {
           /* the touch-down frame: the loop picks up where the clock says, and
              the plants it passed in the air were not steps (v2.3.3015's
@@ -14485,6 +14506,7 @@ export class EntityRenderer {
           display._prevJogAt = now;
         }
         display._jumpFrameIdx = jumping ? frameIdx : null;   /* QA (__btJumpFx) */
+        if (!climbing && S._climbFrame != null) S._climbFrame = null;   /* v2.3.3994 */
         /* v2.3.1105: footsteps fire on the actual FOOT-PLANT frames of each
            direction's jog loop, so the sound lands exactly when a foot hits the
            ground -- a fixed timer never lined up because the per-direction

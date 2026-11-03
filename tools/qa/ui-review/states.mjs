@@ -561,6 +561,63 @@ export const STATES = [
       if (!(await has(P, '[data-section="Build"][aria-pressed="true"]'))) return 'the Points tab did not take the press';
     },
   },
+  /* ═══ v2.3.3999: YOUR PORTRAIT IS A HEMI BRO (docs/specs/hemi-portrait.md) ═══
+     The headshot on the Character button and the identity strip is a 32 x 32
+     Hemi Bros bust of your look.  Two looks: the review's own character, and
+     one dressed (a hat over hair, a coloured beard, a patterned tee) -- put
+     back after, so the screens behind it keep the review's character. */
+  {
+    id: 'hemi-portrait', group: 'Dashboard', title: 'Bro: your portrait (a Hemi Bro)',
+    about: 'The Character page open: on the Character button and in the strip with your name, your portrait is a Hemi Bro -- a 32 x 32 pixel bust in the style of the Hemi Bros NFT collection the game is named for, built from the collection\'s own trait art in your look (skin, hair, hat, beard, eyes, eyewear, shirt and its pattern), on one of the collection\'s flat backgrounds.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'hero');
+      if (e) return e;
+      for (let i = 0; i < 30; i++) {
+        const st = await evalIn(P, () => (window.__btHemiFace ? window.__btHemiFace() : null));
+        if (!st) return 'no Hemi Bros portrait probe';
+        if (st.made > 0 || st.cached > 0) return;
+        await wait(P, 200);
+      }
+      return 'no Hemi Bros portrait was made';
+    },
+  },
+  {
+    id: 'hemi-portrait-dressed', group: 'Dashboard', title: 'Bro: your portrait, dressed',
+    about: 'The same page after a change of look -- a brown cowboy hat (the collection wears hair OR a hat, so the bust is bald under it, his ear below the brim), a long black beard, sleepy eyes, gold glasses and a green tee with yellow diagonals: the portrait follows the look at once.',
+    run: async ({ P }) => {
+      const was = await evalIn(P, () => {
+        const before = window.__btHemiFace ? window.__btHemiFace().made : 0;
+        const keys = ['bt-headwear', 'bt-hatcolor', 'bt-facialhair', 'bt-beardcolor', 'bt-eyestyle', 'bt-eyewear', 'bt-shirtcolor', 'bt-shirtpat'];
+        const old = {};
+        try { for (const k of keys) old[k] = localStorage.getItem(k); } catch (e) { /* private mode */ }
+        window.__btHemiReviewWas = old;
+        const set = (f, v) => { if (typeof window[f] === 'function') window[f](v); };
+        set('__btSetHeadwear', 'cowboy-hat'); set('__btSetFacialHair', 'beard'); set('__btSetFacialHairColor', 'black');
+        set('__btSetEyeStyle', 'sleepy'); set('__btSetEyewear', 'golden-glasses'); set('__btSetShirtColor', 'green');
+        if (typeof window.__btSetPattern === 'function') window.__btSetPattern('shirt', 'diag:5');
+        return before;
+      });
+      const e = await bus(P, 'open', 'hero');
+      if (e) return e;
+      for (let i = 0; i < 30; i++) {
+        const st = await evalIn(P, () => (window.__btHemiFace ? window.__btHemiFace() : null));
+        if (st && st.made > was && st.last && st.last.headwear === 'cowboyhat') return;
+        await wait(P, 200);
+      }
+      return 'the portrait did not follow the look';
+    },
+    after: async ({ P }) => {
+      await evalIn(P, () => {
+        const old = window.__btHemiReviewWas || {};
+        const set = (f, v) => { if (typeof window[f] === 'function') window[f](v); };
+        set('__btSetHeadwear', old['bt-headwear'] || 'none'); set('__btSetFacialHair', old['bt-facialhair'] || 'none');
+        set('__btSetFacialHairColor', old['bt-beardcolor'] || 'default'); set('__btSetEyeStyle', old['bt-eyestyle'] || 'none');
+        set('__btSetEyewear', old['bt-eyewear'] || 'none'); set('__btSetShirtColor', old['bt-shirtcolor'] || 'default');
+        if (typeof window.__btSetPattern === 'function') window.__btSetPattern('shirt', old['bt-shirtpat'] || '');
+      });
+      await wait(P, 400);
+    },
+  },
   /* v2.3.3944: the quest journal (dash/QuestsPanel.jsx): it opens on the
      quest you are on (a run has taken Into the Blue at quest-accepted) */
   dash('quests', 'Quests', 'The quest journal: the achievement points quests have paid, then the quest you are on in full (NOW with its count and bar, WHERE with Show on map, WHO you talked to, GIVEN TO YOU, REWARD with +5 Achievement Points, NEXT), then the log: Active with a Track star each, Available (who has one and where), Done with each quest\'s +5 AP.  The daily rewards card above.'),
@@ -718,6 +775,26 @@ export const STATES = [
     },
   },
 
+  /* v2.3.4012: a mystery piece waiting in the bag (game/revealBag.js): its
+     "?" tile and its card's Reveal button -- the piece put in the bag by the
+     test lever through the pickup's own credit (/dev/revealbag) */
+  {
+    id: 'bag-unrevealed', group: 'Dashboard', title: 'A mystery piece in the bag',
+    about: 'A rare-or-better drop waiting in the bag as a "?": its silhouette on the rare-blue edge, and its card with Reveal and Equip.',
+    run: async ({ P, view, wsPort, myId }) => {
+      if (!wsPort || !myId) return 'no test lever here';
+      await H.devOp(wsPort, 'revealbag', myId, { grade: 'elite', give: 'armor' }).catch(() => null);
+      await wait(P, 800);
+      const e0 = await openBag(P, view);
+      if (e0) return e0;
+      await wait(P, 700);
+      const e = await tapSel(P, '[data-unrevealed]');
+      if (e) return e;
+      await wait(P, 600);
+      if (!(await has(P, '[data-reveal]'))) return 'the card shows no Reveal button';
+    },
+  },
+
   /* ═══ BUILDINGS ═══ */
   {
     id: 'near-door', group: 'Buildings (BroTown)', title: 'At a building\'s door',
@@ -843,20 +920,80 @@ export const STATES = [
     after: async ({ P }) => { await evalIn(P, () => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); }); },
   },
   {
-    id: 'world-map-pin', group: 'Maps and chat', title: 'World map, your pin',
-    about: 'The world map with your own pin dropped (a tap on open ground drops it, a tap on it lifts it): the purple pin on the map, "Remove pin" at the top, "your pin" in the key; the minimap shows it too (v2.3.3879).',
+    id: 'world-map-pin', group: 'Maps and chat', title: 'World map, your pins',
+    about: 'The world map with both your pins up (a tap on open ground drops one, blue then red; a tap on one lifts it): the blue and the red pin on the map, a dashed line from you to each in its colour, "Remove blue" and "Remove red" at the top, "your pins" in the key; the minimap shows them too, with a solid line to each (v2.3.3879, v2.3.4045).',
     settle: 1600,
     run: async ({ P }) => {
       const ok = await evalIn(P, () => {
         const S = window._gameState && window._gameState.current;
         if (!window.__btMapPin || !window.__btWorldMapOpen || !S || !S.player) return false;
-        window.__btMapPin.set(S.player.x - 260, S.player.y - 180);
+        window.__btMapPin.set(S.player.x - 260, S.player.y - 180, 'blue');
+        window.__btMapPin.set(S.player.x + 300, S.player.y + 120, 'red');
         window.__btWorldMapOpen(true);
         return true;
       });
       if (!ok) return 'no map-pin probe';
     },
     after: async ({ P }) => { await evalIn(P, () => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); if (window.__btMapPin) window.__btMapPin.clear(); }); },
+  },
+  /* v2.3.4045: the pins' three cards (ui/PinCards.jsx) */
+  {
+    id: 'map-pin-replace', group: 'Maps and chat', title: 'World map, replace which pin?',
+    about: 'Both pins are up and you tap open ground on the world map: a small card under the top chips asks "Replace which pin?" with Blue, Red and Cancel (and a ✕), and a white ghost pin stands where you tapped (v2.3.4045).',
+    settle: 1600,
+    run: async ({ P }) => {
+      const ok = await evalIn(P, () => {
+        const S = window._gameState && window._gameState.current;
+        if (!window.__btMapPin || !window.__btWorldMapOpen || !S || !S.player) return false;
+        window.__btMapPin.set(S.player.x - 260, S.player.y - 180, 'blue');
+        window.__btMapPin.set(S.player.x + 300, S.player.y + 120, 'red');
+        window.__btWorldMapOpen(true);
+        return true;
+      });
+      if (!ok) return 'no map-pin probe';
+      await P.page.waitForTimeout(1200);
+      /* a tap on open ground, a little below the middle (clear of the pins and the key) */
+      const tapped = await evalIn(P, () => {
+        const cv = document.querySelector('[data-world-map-canvas]');
+        if (!cv) return false;
+        const r = cv.getBoundingClientRect(), x = r.left + r.width * 0.62, y = r.top + r.height * 0.42;
+        const ev = (t) => cv.dispatchEvent(new PointerEvent(t, { bubbles: true, pointerId: 9, isPrimary: true, button: 0, clientX: x, clientY: y }));
+        ev('pointerdown'); ev('pointerup');
+        return true;
+      });
+      if (!tapped) return 'no world-map canvas';
+    },
+    after: async ({ P }) => { await evalIn(P, () => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); if (window.__btMapPin) window.__btMapPin.clear(); }); },
+  },
+  {
+    id: 'map-pin-arrive', group: 'Maps and chat', title: 'You reached a pin',
+    about: 'Walking up to one of your pins (within about 160 game px), out of a fight and with no other card up: a small card beside or under the minimap, "You reached the blue pin. Remove it?" with Remove and Keep (and a ✕, which keeps it). Keep leaves the pin up and it never asks again (v2.3.4045).',
+    settle: 900,
+    run: async ({ P }) => {
+      const ok = await evalIn(P, () => {
+        const S = window._gameState && window._gameState.current;
+        if (!window.__btMapPin || !S || !S.player) return false;
+        window.__btMapPin.set(S.player.x + 90, S.player.y - 40, 'blue');
+        return window.__btMapPin.open('arrive', 'blue');
+      });
+      if (!ok) return 'no map-pin probe';
+    },
+    after: async ({ P }) => { await evalIn(P, () => { if (window.__btMapPin) window.__btMapPin.clear(); }); },
+  },
+  {
+    id: 'map-pin-remove', group: 'Maps and chat', title: 'Remove a pin (from the minimap)',
+    about: 'A tap on one of your pins on the minimap: instead of opening the world map, a small card beside or under the minimap asks "Remove the red pin?" with Remove and Cancel (and a ✕). A tap anywhere else on the minimap still opens the map (v2.3.4045).',
+    settle: 900,
+    run: async ({ P }) => {
+      const ok = await evalIn(P, () => {
+        const S = window._gameState && window._gameState.current;
+        if (!window.__btMapPin || !S || !S.player) return false;
+        window.__btMapPin.set(S.player.x + 600, S.player.y - 300, 'red');
+        return window.__btMapPin.open('remove', 'red');
+      });
+      if (!ok) return 'no map-pin probe';
+    },
+    after: async ({ P }) => { await evalIn(P, () => { if (window.__btMapPin) window.__btMapPin.clear(); }); },
   },
   {
     id: 'chat', group: 'Maps and chat', title: 'Chat',

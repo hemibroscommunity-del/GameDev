@@ -5,6 +5,7 @@ import { prog3HasSkills, prog3XpRequired, PROG3, PROG3_SKILL_META } from '@/data
 import { xpCardPoint, holdXp, landXp } from '@/ui/xpLanding.js'; /* v2.3.1874 */
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470 */
 import { xpGainWords } from '@/game/xpBar.js';  /* v2.3.3893 */
+import { xpPopAt, XP_POP_INK } from '@/game/xpPop.js';  /* v2.3.3992: the kill's "+N" pops, no pill */
 import { killXpOn, KILL_XP_LINES_AFTER_MS, killXpInbound } from '@/game/killXp.js';      /* v2.3.3893 */
 
 /* HudPopupOverlay — HUD-anchored "+N XP" / "+N G" feedback, plus the
@@ -292,6 +293,9 @@ const XpFlyToCard = ({ pop }) => {
     const k = age / LIFT_MS;
     y = sy - LIFT_PX * (1 - (1 - k) * (1 - k));
     scale = 1 + 0.18 * Math.sin(Math.PI * k);
+    /* v2.3.3992: a kill's starts small and pops (the owner: "Make the text
+       small then pop up"): 0.6 -> 1.15 -> 1 (game/xpPop.js) */
+    if (pop.toBar) { const pp = xpPopAt(k); scale = pp.scale; opacity = pp.opacity; }
   } else if (dest) {
     /* Stage 2 — the fall into the card. */
     const k = Math.min(1, (age - LIFT_MS) / FLY_MS);
@@ -339,11 +343,12 @@ const XpFlyToCard = ({ pop }) => {
       color: pop.color || COL.xp,
       textShadow: '0 2px 4px rgba(4,7,9,.95), 0 0 3px rgba(4,7,9,.9)',
       whiteSpace: 'nowrap', pointerEvents: 'none',
-      /* v2.3.3893: a kill's wears the bar's own "+N" pill (game.css
-         .bt-xp-gain), legible over snow and sand alike: the same number,
-         travelling to where it lands */
-      ...(pop.toBar ? { padding: '2px 7px', borderRadius: 6, background: '#1A2328',
-        boxShadow: '0 0 0 1px rgba(234,198,117,.75), 0 2px 6px rgba(0,0,0,.5)', textShadow: 'none' } : null),
+      /* v2.3.3893: a kill's wore the bar's own "+N" pill (game.css
+         .bt-xp-gain).  v2.3.3992: no pill, as the bar's has none now (the
+         owner: "Make the plus xp without the dark container background"):
+         the words with the bar's own flat dark outline round them, which
+         reads over snow and sand alike */
+      ...(pop.toBar ? { padding: '1px 2px', textShadow: XP_POP_INK } : null),
     }}>{pop.text}</div>
   );
 };
@@ -622,11 +627,13 @@ function flySlow() {
   const q = typeof window !== 'undefined' ? Number(window.__btXpFlySlow) : 0;
   return q > 1 ? q : 1;
 }
-/* the middle of the top bar's XP bar's picture, while the bar is up; null
-   when it is not (the label then holds over the spot and fades) */
+/* the middle of the top bar's XP bar's NUMBER ("45 / 120"), while the bar is
+   up; null when it is not (the label then holds over the spot and fades).
+   v2.3.3992: was the skill's picture (.bt-xp-bar__icon); the owner: "the
+   numbers do a jump to bag effect but just to the number on the xp bar" */
 function topBarXpPoint() {
   try {
-    const el = document.querySelector('[data-xp-bar][data-xp-shown="1"] .bt-xp-bar__icon');
+    const el = document.querySelector('[data-xp-bar][data-xp-shown="1"] [data-xp-num]');
     if (!el) return null;
     const r = el.getBoundingClientRect();
     return r.width > 0 ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null;

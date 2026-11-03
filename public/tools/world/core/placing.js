@@ -50,7 +50,7 @@
  * Each object's FOOTPRINT, the ground it stops you on, is footprintOf(id,
  * its picture's game size), worked out where the pictures are known.
  */
-import { C, townPlan, townGates, townSurfaces, townCellBox, TOWN_SURF } from './layout.js';
+import { C, townPlan, townGates, townSurfaces, townCellBox, TOWN_SURF, planFeatures } from './layout.js';
 import { hash2, fbm } from './rng.js';
 import { gridInfo } from './grid.js';
 import { wheelInfo } from './wheel.js';
@@ -699,6 +699,15 @@ const KEEP_CLEAR = (() => {
   return s;
 })();
 
+/* v2.3.3994: each islet's keep-out (plan.js `islets`: its box and `keepOut`
+   cells round it), in this blueprint's cells -- empty on a plan with none */
+export function islBoxes(plan, bp) {
+  if (!plan.islets || !plan.islets.length) return [];
+  const F = planFeatures(plan);
+  const ox = bp.ox || 0, oy = bp.oy || 0;
+  return F.islets.map((I) => ({ id: I.id, x0: I.x0 - I.keepOut - ox, y0: I.y0 - I.keepOut - oy, x1: I.x1 + I.keepOut - ox, y1: I.y1 + I.keepOut - oy }));
+}
+
 export function placeObjects(plan, bp, opts = {}) {
   const t0 = Date.now();
   const g = gridInfo(plan);
@@ -731,6 +740,12 @@ export function placeObjects(plan, bp, opts = {}) {
      cells (capped at 6): two sweeps of a city-block distance */
   const clear = new Uint8Array(N);
   for (let i = 0; i < N; i++) clear[i] = KEEP_CLEAR[bp.cls[i]] || bp.reg[i] === townR ? 0 : 6;
+  /* v2.3.3994: nothing stands on an islet, nor within its `keepOut` cells
+     (plan.js `islets`: its rises are the only things on it) */
+  const isl = islBoxes(plan, bp);
+  for (const b of isl) {
+    for (let y = Math.max(0, b.y0); y < Math.min(BH, b.y1); y++) for (let x = Math.max(0, b.x0); x < Math.min(BW, b.x1); x++) clear[y * BW + x] = 0;
+  }
   for (let y = 0; y < BH; y++) for (let x = 0; x < BW; x++) {
     const i = y * BW + x;
     let v = clear[i];
@@ -791,6 +806,8 @@ export function placeObjects(plan, bp, opts = {}) {
   const put = (id, x, y, piece, flip, r = 30) => {
     const e = byId[id];
     if (!e) return false;
+    /* v2.3.3994: ...and no foot in an islet's keep-out, whatever placed it */
+    for (const b of isl) if (x >= b.x0 * cellPx && x < b.x1 * cellPx && y >= b.y0 * cellPx && y < b.y1 * cellPx) return false;
     out.kind.push(e.k);
     out.piece.push(((piece | 0) % (e.count || 1) + (e.count || 1)) % (e.count || 1));
     out.flip.push(flip ? 1 : 0);
