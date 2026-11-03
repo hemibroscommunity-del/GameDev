@@ -39,7 +39,6 @@ const look = (P) => P.page.evaluate(() => {
   const tap = document.querySelector('[data-plate-tap]');
   const pl = window.__btMinimap && window.__btMinimap.plate;
   const tt = document.querySelector('[data-zone-title]');
-  const pf = window.__btPlayerFrame ? window.__btPlayerFrame() : null;
   const probe = document.createElement('div');
   probe.style.cssText = 'position:fixed;top:var(--bt-hud-top);left:0;width:1px;height:1px;pointer-events:none';
   document.body.appendChild(probe);
@@ -54,12 +53,8 @@ const look = (P) => P.page.evaluate(() => {
     inBar: document.querySelectorAll('.bt-zone-header [data-nml-badge], .bt-zone-header [data-place-chip], .bt-zone-header .bt-nml-pill').length,
     titleClear: !!tt && /rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(tt).color),
     header: r(document.querySelector('.bt-zone-header')),
-    frame: r(document.querySelector('[data-player-frame]')),
-    /* v2.3.4093: no picture in the frame; the level badge left of the bars, level with them */
-    framePics: document.querySelectorAll('[data-player-frame] img, [data-player-frame] canvas').length,
-    lvBox: r(document.querySelector('[data-player-frame] [data-pf-lv]')),
-    barsBox: r(document.querySelector('[data-player-frame] .bt-pf__bars')),
-    view: pf && pf.view,
+    /* v2.3.4163: the player frame is gone; any trace of it on the page */
+    frame: r(document.querySelector('[data-player-frame], .bt-pf')),
     rpg: S && S.rpg ? { lv: S.rpg.level, hp: Math.round(S.rpg.hp), maxHp: Math.round(S.rpg.maxHp), en: Math.round(S.rpg.stamina), maxEn: Math.round(S.rpg.maxStamina), coins: S.rpg.coins } : null,
     mini: window.__btWheelMini ? { l: Math.round(window.__btWheelMini.left), t: Math.round(window.__btWheelMini.top) } : null,
     hudTop, vw: innerWidth, vh: innerHeight,
@@ -91,7 +86,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 2. (v2.3.4163) no player frame; the quest card's line under the bar ── */
     rec.ok(T + `2: no player frame on the game screen (v2.3.4163: the owner, "No remove them from the game screen"), and the quest card's line (--bt-hud-top ${a && a.hudTop}) just under the top bar (${a && a.header && a.header.b})`,
-      !!a && !a.frame && !a.view && !!a.header && a.hudTop >= a.header.b && a.hudTop - a.header.b <= 16, a);
+      !!a && !a.frame && !!a.header && a.hudTop >= a.header.b && a.hudTop - a.header.b <= 16, a);
 
     /* ── 3. the other states, staged ── */
     await P.page.evaluate(() => { window.__btPlaceHold = { nml: 2, red: 0 }; });
