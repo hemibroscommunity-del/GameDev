@@ -28,7 +28,8 @@
  *
  * What IS testable while the town is bare: that the map and the zone actually
  * swapped and agree about their shape, that the two coordinates anchored to
- * that shape moved with it, that the one NPC left standing still blocks, and
+ * that shape moved with it, that the one NPC left standing never blocks you
+ * (v2.3.4098: he once did), and
  * that the switched-off buildings cannot come back without someone re-measuring
  * them (their v16 positions are off the new map entirely).
  */
@@ -211,8 +212,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await hold(P, 'w', 2500);
     const atN = await pos(P);
     const feetN = atN.y + drop;
-    rec.ok(`${npc.id} still blocks you — you cannot stand inside him (feet to feet)`,
-      feetN > npc.y + 8, { npc, stoppedAt: atN, feetY: Math.round(feetN), drop: +drop.toFixed(1) });
+    /* v2.3.4098: TURNED ROUND.  Townsfolk never block you (the owner,
+       2026-11-03: "I walked into Npc who walked into me and I got stuck";
+       docs/specs/living-town.md): the walk north goes through him and on. */
+    rec.ok(`${npc.id} never blocks you — you walk through him (feet to feet)`,
+      feetN < npc.y - 8, { npc, stoppedAt: atN, feetY: Math.round(feetN), drop: +drop.toFixed(1) });
   }
 
   /* ── 5. the buildings are off, and cannot come back half-done ──
