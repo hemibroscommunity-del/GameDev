@@ -10,8 +10,8 @@ import { itemDetailBus } from './itemDetailBus.js';
 import { weaponSlotFor, unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect } from './equipActions.js';
 import { weaponRows, shieldRows, armourRows, compareRows, charLevel } from './gearStats.js';
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
-import { CharacterView } from '../sheet/CharacterView.jsx';   /* v2.3.4181: the overview's full-body bro */
-import { HERO_PILL_ICON } from '../sheet/heroStatPills.js';   /* v2.3.4181: the item card's stat pictures, the Points window's own */
+import { CharacterView } from '../sheet/CharacterView.jsx';   /* v2.3.4191: the overview's full-body bro */
+import { HERO_PILL_ICON } from '../sheet/heroStatPills.js';   /* v2.3.4191: the item card's stat pictures, the Points window's own */
 import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4151: the overview's bars, the Character page's own */
 import { shopBus } from '../shopBus.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
@@ -38,7 +38,7 @@ import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151:
  *           coin picture, the amount a count badge as on a bag slot), over a
  *           bag of THREE square slots a row, three rows in view, the rest by
  *           scrolling;
- *   MIDDLE  ONE card.  v2.3.4181 (A4): nothing picked, the full-body bro
+ *   MIDDLE  ONE card.  v2.3.4191 (A4): nothing picked, the full-body bro
  *           wearing what is equipped (CharacterView), "<name> Lv N" above
  *           him and the HP, MP and EN bars below (the owner's arrangement 1;
  *           the three skill tiles moved to the Bro page).  Something picked:
@@ -78,8 +78,8 @@ import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151:
  *   Equip / Unequip  the automatic filter goes back to "All Items".
  * The weapon in your hand wears GOLD (its edge and a glow); the cell you
  * tapped the BLUE ring outside it; both can show.  v2.3.4151: the weapon
- * cells are plain (their level and XP: the Bro page's skill tiles, v2.3.4181).
- * Across a wide band the tab is at most GEAR_MAX_W and centred.
+ * cells are plain (their level and XP: the Bro page's skill tiles, v2.3.4191).
+ * Across a wide band it fills the band's centred assembly (840 px, PR #1424).
  *
  * This retires, for the bag, the notes "a Bag button", "Worn gear back on the
  * band" and "an item card that pushes the character or vitals around"
@@ -98,19 +98,13 @@ const WIDE_AT = 2 * (3 * SQ_MIN + 2 * G + 2 * PAD + 2) + MID_HARD + 2 * PAD + 2 
 const HDR_H = 34;      /* the bag's filter-and-coins row (its controls 32 px: the UI review's floor for a finger) */
 const EQ_HEAD = 18;    /* "Equipped" */
 const FONT_MIN = 11;   /* the owner's floor for anything in the card */
-/* v2.3.4151, the owner: "The stretched middle panel looks silly on computer"
-   -- across a wide band (a computer, Lane B's one band at 1280) the tab is at
-   most this wide and centred, so its three panels keep a phone's proportions
-   and the card is a tablet's width, not the window's.  The tab caps its OWN
-   width, so it looks right with or without the band's centring wrapper
-   (PR #1410).  Not the short band (the sideways phone, which the owner
-   likes as it is): its row of nines wants the width.
-   v2.3.4181: KEPT with Lane B's one centred box in (PR #1386).  That box is
-   the world's width up to 1200 px -- 1056 px at 1280 x 720 -- so without
-   this cap the card stretched to ~740 px, the bro small in it and the bars
-   long thin strips: the picture the owner called silly.  Centred inside the
-   centred box, the two agree. */
-const GEAR_MAX_W = 560;
+/* v2.3.4151 capped the tab at 560 px across a wide band (the owner: "The
+   stretched middle panel looks silly on computer").  v2.3.4191: Lane B's one
+   centred dashboard assembly (PR #1424: sheetGeometry BAND_ASSEMBLY_MAX_W,
+   840 px on a computer or a tablet, the button row spanning it) holds every
+   tab now, so the Gear tab fills that block as the Bro tab does and has no
+   cap of its own.  (Against #1386's 1056 px box the card had stretched to
+   ~740 px: the 840 px block is what makes dropping the cap right.) */
 
 const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
 
@@ -226,7 +220,7 @@ const Chevron = ({ size, color, up }) => (
   </svg>
 );
 
-/* ═══ v2.3.4181: THE ITEM CARD'S PILLS, STARS AND HARDNESS ═══
+/* ═══ v2.3.4191: THE ITEM CARD'S PILLS, STARS AND HARDNESS ═══
  * The owner (2026-11-03): "I want the item selection menu to look more like
  * this (larger pills) ... Remove the 'greatsword common' type subtitles ...
  * a simple star system in the place of the item subtitles (one star - white
@@ -318,7 +312,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   React.useEffect(() => gearTabBus.subscribe(() => tick()), []);
   React.useEffect(() => shopBus.subscribe(() => tick()), []);   /* v2.3.2059: the bag is half the shop */
   React.useEffect(() => itemDetailBus.subscribe(() => tick()), []);
-  /* v2.3.4181: no XP count-up here any more (the skills' tiles left for the
+  /* v2.3.4191: no XP count-up here any more (the skills' tiles left for the
      Bro page), so no frame loop either */
   const bro = React.useRef(null);
 
@@ -343,7 +337,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   /* ── geometry: one square size `t` for both grids ── */
   const wide = box.w >= WIDE_AT;
   const W = Math.max(0, box.w), H = Math.max(0, box.h);
-  /* v2.3.4181: the computer's weapon bar under the three is retired: since
+  /* v2.3.4191: the computer's weapon bar under the three is retired: since
      #1405 the weapon pill at the foot of the world (keys 1 2 3) is the one
      weapon switcher on every layout, the owner's choice */
   const footH = 0;
@@ -548,7 +542,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     const ring = [gold ? `inset 0 0 0 2px ${COL.focus}` : null, gold && !blue ? '0 0 9px rgba(234, 198, 117, 0.55)' : null, blue ? GEAR_SEL_RING : null].filter(Boolean).join(', ');
     /* v2.3.4151, the owner: "remove the points badges and thin xp lines from
        those" -- a weapon cell is its picture (and the hand's gold) only; the
-       level and the XP live on the Bro page's skill tiles (v2.3.4181) */
+       level and the XP live on the Bro page's skill tiles (v2.3.4191) */
     const pic = c.id === 'gem'
       ? null
       : (ct.icon || GHOST_SRC[c.id === 'sword' || c.id === 'bow' || c.id === 'staff' ? 'weapon' : c.id]);
@@ -618,7 +612,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       {hidden && <UnrevealedMark size={short ? 16 : 22} />}
     </div>
   );
-  /* v2.3.4181: the "⋯" top-right -- the card's other actions (Drop, Pin,
+  /* v2.3.4191: the "⋯" top-right -- the card's other actions (Drop, Pin,
      Inspect...), never Sell (the owner: "Just remove the 'sell' option for
      now. I don't think this is a good feature to have next to equip button") */
   const moreBtn = (has) => (has ? (
@@ -641,7 +635,7 @@ export const GearTab = ({ R: Rin, desk }) => {
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {nameEl(name, quality)}
           <div data-gear-kind="" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 1, minWidth: 0, whiteSpace: 'nowrap', fontSize: FONT_MIN, fontWeight: 700, color: COL.muted, lineHeight: 1.2 }}>
-            {/* v2.3.4181: it wraps, never clips -- "Qty 12" beside the star was cut to "Qty 1" in a 390 phone's card */}
+            {/* v2.3.4191: it wraps, never clips -- "Qty 12" beside the star was cut to "Qty 1" in a 390 phone's card */}
             {o.hidden ? <span style={{ color: o.infoColor || COL.text2 }}>{o.info}</span> : o.noStars ? null : <Stars q={quality} />}
             {o.qty > 1 && <span data-gear-qty={o.qty} style={{ color: COL.text, flex: 'none' }}>Qty {o.qty}</span>}
             {o.extra && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.extra}</span>}
@@ -651,7 +645,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       </div>
     );
   };
-  /* v2.3.4181: the owner's "basic number line hardness 0/5" -- the word,
+  /* v2.3.4191: the owner's "basic number line hardness 0/5" -- the word,
      five marks (the hardened ones gold) and "N/5", a row of its own under the
      head (beside the stars it was cut to "Hard..." on a 390 phone); the
      short band (one row, ~66 px) has no room for it */
@@ -778,7 +772,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       </div>
     );
   } else {
-    /* v2.3.4181: THE OVERVIEW IS YOUR BRO.  The owner (2026-11-03): "Move
+    /* v2.3.4191: THE OVERVIEW IS YOUR BRO.  The owner (2026-11-03): "Move
        the 3 primary combat skills out of the gear menu and put them into the
        bro menu", then "I want the character preview in the middle panel by
        default (actually showing what he's equipped) like how I had it in the
@@ -898,7 +892,7 @@ export const GearTab = ({ R: Rin, desk }) => {
         {body}
       </div>
       {footer && <div data-gear-foot="" style={{ flex: 'none', paddingTop: short ? 1 : 3 }}>{footer}</div>}
-      {/* v2.3.4181: the "⋯" list -- over the card, never beside it (the card
+      {/* v2.3.4191: the "⋯" list -- over the card, never beside it (the card
           never scrolls and keeps its size); its ✕ is the window's (data-esc) */}
       {st.more && moreList.length > 0 && morePress && (
         <div data-gear-more-menu="" role="menu"
@@ -941,7 +935,6 @@ export const GearTab = ({ R: Rin, desk }) => {
       {...(desk ? { 'data-dash-desk': '' } : null)}
       style={{
         height: '100%', minHeight: 0, width: '100%', boxSizing: 'border-box', padding: rp,
-        ...(wide && !short ? { maxWidth: GEAR_MAX_W, marginLeft: 'auto', marginRight: 'auto' } : null),
         display: 'flex', flexDirection: 'column', gap: rg,
       }}>
       {box.w === 0 ? null : (

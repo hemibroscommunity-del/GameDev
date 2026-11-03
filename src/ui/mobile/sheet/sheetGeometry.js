@@ -440,6 +440,8 @@ export function identityRowHeight(vw, vh) {
    five buttons: Life Skills moved inside Bro (a page under it). */
 export const RAIL_COUNT = 5; /* v2.3.1651: Quests; v2.3.1655: Life Skills; v2.3.3215: Codex; v2.3.4172: Life Skills into Bro */
 const NAV_GAP = 4;
+/* v2.3.4182: the nav buttons' ceiling (navButtonSize), named for navRowFills */
+export const NAV_BTN_MAX_W = 96;
 
 /* v2.3.1642 (owner: "put the rail buttons on the top to the left of the
    character in its own little section up there"): the LEFT RAIL becomes a
@@ -531,7 +533,35 @@ export function navButtonSize(vw, vh) {
      band (a tablet, a computer's one band) gives each the 86 its picture
      and word side by side need, as the owner drew them.  A phone's row
      decides below it: 58 at 390. */
-  return { w: Math.min(Math.max(w, 26), 96), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
+  return { w: Math.min(Math.max(w, 26), NAV_BTN_MAX_W), h: identityRowHeight(vw, vh) - 2 * NAV_GAP };
+}
+
+/* ═══ v2.3.4182: ONE DASHBOARD ASSEMBLY, ONE WIDTH ═══
+   The owner, at a computer: "look at where the dashboard buttons are relative
+   to the content area.  They're all shifted to the left.  They should be part
+   of the dashboard assembly the same way it appears on mobile".  On a phone
+   the button row (CLOSE and the five) and the open tab are one block, the
+   screen's width.  On a wider band they are one centred block too, of THIS
+   width (or the band's, when the band is narrower): the nav row, an open page
+   and the resting columns (BottomDashboard's [data-band-box], game.css), so
+   every tab -- Gear, Bro, Quests, Codex, More, the band at rest -- has the
+   same edges, and the row's CLOSE stands at the block's left edge with the
+   five buttons filling the rest, as on a phone (navRowFills).
+   840: the widest a sideways phone's band is (844 less its pads), the shape
+   the Bro card's three panels were laid out on (BroCard: three columns from
+   BRO_COLS_3, 600, so at 840 each panel is ~270 px and Melee / Bow / Magic
+   ~80 px tiles), and inside a 1280 x 720 laptop's 1056 px world with room
+   either side.  The Gear tab keeps its own 560 cap (GearTab GEAR_MAX_W)
+   centred inside the block until it gives that up for this.  BroTown's
+   resize() stamps it as --band-max-w for game.css. */
+export const BAND_ASSEMBLY_MAX_W = 840;
+/* ...and the row fills that block (CLOSE at its left, the five buttons taking
+   equal shares of the rest) wherever the buttons would otherwise stop at
+   their ceiling and leave the row's ends empty: a tablet, a computer.  A
+   phone's row is the derivation's own (the buttons under the ceiling, the
+   row already the block), so a phone is unchanged. */
+export function navRowFills(vw, vh) {
+  return navButtonSize(vw, vh).w >= NAV_BTN_MAX_W;
 }
 
 /* v2.3.1653: the leftmost x the nav group may start at.  It WAS the weapon

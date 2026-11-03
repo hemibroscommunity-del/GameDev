@@ -31,7 +31,7 @@
  * card's level the worker's (4i), no "Combat Power" (4l); Inspect (a fish)
  * in the one list (5e); no tabs, the bag three across (6).
  *
- * v2.3.4181 (A4, the owner 2026-11-03): the overview is the full-body bro
+ * v2.3.4191 (A4, the owner 2026-11-03): the overview is the full-body bro
  * (CharacterView, the owner's arrangement 1: name and Lv, the figure, the
  * bars) and the skill tiles left for the Bro page (6a, 6d); the item card's
  * stars by the game's grade table, "Hardness N/5", the large stat pills with
@@ -248,9 +248,8 @@ const TR = await import('../../src/data/trapping.js');
       && /border: `1px solid \$\{linked \? GEAR_SEL_BLUE/.test(code));
   check('6f one square size `t` for the bag and the gear (the bag\'s grid and the gear\'s grid both `${t}px`)',
     (code.match(/repeat\(\$\{cols\}, \$\{t\}px\)/g) || []).length === 2 && /const cols = short \? 9 : BAG_COLS/.test(code));
-  check('6i the weapon cells plain (no level or points badge, no XP line); the tab capped at GEAR_MAX_W and centred across a wide band, never in the short band',
-    !/data-gear-badge|bt-build-flash/.test(code) && /const GEAR_MAX_W = 560;/.test(gt)
-      && /wide && !short \? \{ maxWidth: GEAR_MAX_W, marginLeft: 'auto', marginRight: 'auto' \}/.test(code));
+  check('6i the weapon cells plain (no level or points badge, no XP line); no width cap of its own (v2.3.4191: the band\'s 840 px assembly holds every tab, PR #1424)',
+    !/data-gear-badge|bt-build-flash/.test(code) && !/GEAR_MAX_W|maxWidth: 560/.test(code));
   check('6g the card never scrolls (its body overflow hidden) and its text keeps the 11 px floor',
     /data-gear-scroll="" style=\{\{ flex: 1, minHeight: 0, overflow: 'hidden'/.test(code) && /const FONT_MIN = 11;/.test(gt));
 }

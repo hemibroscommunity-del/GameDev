@@ -236,24 +236,31 @@ const gearFit = (P) => P.page.evaluate(() => {
     bag: b ? Math.round(b.getBoundingClientRect().width * 10) / 10 : null, cell: e ? Math.round(e.getBoundingClientRect().width * 10) / 10 : null,
     cellsIn: !!er && cells.length === 9 && cells.every((r) => r.bottom <= er.bottom + 0.5 && r.right <= er.right + 0.5),
     view: c.getAttribute('data-gear-view'),
-    /* v2.3.4151: the tab's own width, and its margins in the band's row */
+    /* v2.3.4151: the tab's own width, and its margins in the band's row;
+       v2.3.4191: and the band's one assembly (data-band-box="cols", PR
+       #1424, at most 840 px), which the tab fills now in place of its own
+       560 px cap */
     root: (() => {
       const g = document.querySelector('[data-one-band-cols] [data-gear-tab]');
       const row = document.querySelector('[data-one-band-cols]');
       if (!g || !row) return null;
-      const a = g.getBoundingClientRect(), b = row.getBoundingClientRect();
-      return { w: Math.round(a.width), left: Math.round(a.left - b.left), right: Math.round(b.right - a.right), layout: g.getAttribute('data-gear-layout') };
+      const box = document.querySelector('[data-band-box="cols"]');
+      const a = g.getBoundingClientRect(), b = row.getBoundingClientRect(), x = box ? box.getBoundingClientRect() : null;
+      return { w: Math.round(a.width), left: Math.round(a.left - b.left), right: Math.round(b.right - a.right), layout: g.getAttribute('data-gear-layout'),
+        win: window.innerWidth, box: x ? { w: Math.round(x.width), left: Math.round(x.left), right: Math.round(window.innerWidth - x.right) } : null,
+        fills: !!x && Math.abs(a.left - x.left) <= 1 && Math.abs(a.right - x.right) <= 1 };
     })(),
   };
 });
 async function gearChecks(P, rec, label, shotPath, computer) {
   const g0 = await gearFit(P);
   /* v2.3.4151, the owner: "The stretched middle panel looks silly on
-     computer" -- across a wide band the tab is at most 560 px (GearTab
-     GEAR_MAX_W) and centred */
+     computer" -- v2.3.4191: the band's one assembly holds the tab (PR #1424,
+     at most 840 px), so the check reads the assembly: the Gear tab fills it,
+     and it is centred in the window */
   if (computer) {
-    rec.ok(`${label}: the Gear tab never stretches -- at most 560 px wide, centred in the band (its margins equal within 2 px)`,
-      !!g0 && !!g0.root && g0.root.w <= 561 && Math.abs(g0.root.left - g0.root.right) <= 2, g0 && g0.root);
+    rec.ok(`${label}: the Gear tab fills the band's one assembly (data-band-box, at most 840 px), the assembly centred in the window (its margins equal within 2 px)`,
+      !!g0 && !!g0.root && !!g0.root.box && g0.root.fills && g0.root.box.w <= 841 && Math.abs(g0.root.box.left - g0.root.box.right) <= 2, g0 && g0.root);
   }
   rec.ok(`${label}: the Gear tab's card fits the band -- no scrolling, nothing past its edge, nothing under 11 px; the bag's squares and the Equipped cells one size (34 px or more), all nine cells inside their panel`,
     !!g0 && g0.view === 'overview' && g0.over <= 1 && g0.scOver <= 1 && g0.outside === 0 && g0.small.length === 0
@@ -416,8 +423,11 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
 /* ═══ v2.3.4152: A COMPUTER: THE BAND'S CONTENT CENTRED ═══
    The nav row, an open page and the resting columns (BottomDashboard's
    data-band-box) are centred, as wide as the world above (--play-w) and at
-   most 1200 px; the band's own background the window's width (v2.3.4172: the world's width, the bars' edges). */
-const BAND_MAX_W = 1200;
+   most 1200 px; the band's own background the window's width (v2.3.4172: the world's width, the bars' edges).
+   v2.3.4182: one assembly, one width -- at most 840 px (sheetGeometry
+   BAND_ASSEMBLY_MAX_W; the owner: the buttons "should be part of the
+   dashboard assembly the same way it appears on mobile"). */
+const BAND_MAX_W = 840;
 const bandBoxes = (P) => P.page.evaluate(() => {
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width > 0 ? { x: Math.round(b.left), r: Math.round(b.right), w: Math.round(b.width) } : null; };
   const o = window.__btOneBand ? window.__btOneBand() : {};
@@ -456,7 +466,7 @@ async function centredChecks(P, rec, { label }) {
        (the owner on #1386: "Make the edge of the dashboard stop at the black
        bars width"; mp-bandshots measures its edges against the canvas) */
     const pw = rest.playW || w;
-    rec.ok(`${label} ${w}x${h}: the band's content is centred at ${want} px (the world's width, at most ${BAND_MAX_W}), the band itself the world's width (${pw} px)`,
+    rec.ok(`${label} ${w}x${h}: the band's content is centred at ${want} px (the band's width, at most ${BAND_MAX_W}), the band itself the world's width (${pw} px)`,
       !!rest.band && Math.abs(rest.band.w - pw) <= 2 && Math.abs(rest.band.x - (w - pw) / 2) <= 2 && ok(rest.nav, want, w) && ok(rest.cols, want, w) && ok(open.page, want, w) && ok(open.nav, want, w),
       { rest, open, want });
   }

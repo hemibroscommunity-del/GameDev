@@ -28,7 +28,7 @@
 import { gearCell } from './itemCategory.js';
 
 const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, more: false };
-/* v2.3.4181: `more` -- the item card's "⋯" open (its Drop, Pin, Inspect...);
+/* v2.3.4191: `more` -- the item card's "⋯" open (its Drop, Pin, Inspect...);
    it shuts with any new pick, put-down or filter.  (The skill tiles and their
    XP state left with the tiles, for the Bro page.) */
 const subs = new Set();
@@ -84,7 +84,7 @@ export const gearTabBus = {
     state.menu = false;
     emit();
   },
-  /** v2.3.4181: the item card's "⋯" (its other actions), open or shut. */
+  /** v2.3.4191: the item card's "⋯" (its other actions), open or shut. */
   setMore(open) {
     if (state.more === !!open) return;
     state.more = !!open;

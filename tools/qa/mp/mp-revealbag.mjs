@@ -111,7 +111,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { text: c.innerText, reveal: !!c.querySelector('[data-reveal]'), mark: !!c.querySelector('[data-unrevealed-mark]'),
         buttons: [...c.querySelectorAll('button')].map((b) => b.innerText.trim()).filter(Boolean) };
     });
-    /* v2.3.4181: the Gear tab's card has ONE gold button (Reveal here) and
+    /* v2.3.4191: the Gear tab's card has ONE gold button (Reveal here) and
        the rest behind its "⋯" -- read what that list offers too */
     if (card && await P.page.$('[data-gear-pane="bro"] [data-gear-act="more"]')) {
       await P.page.locator('[data-gear-pane="bro"] [data-gear-act="more"]').first().tap();
@@ -190,7 +190,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.locator(`[data-bag-key="stashWeapon-${wIdx}"]`).first().tap();
       await P.page.waitForTimeout(700);
       const before = await H.readState(P, (S) => (S.rpg.weapon && S.rpg.weapon.gearBase) || null);
-      /* v2.3.4181: in the Gear tab a "?" piece's Equip is behind "⋯" (Reveal is the gold one) */
+      /* v2.3.4191: in the Gear tab a "?" piece's Equip is behind "⋯" (Reveal is the gold one) */
       if (await P.page.$('[data-gear-pane="bro"] [data-gear-act="more"]')) {
         await P.page.locator('[data-gear-pane="bro"] [data-gear-act="more"]').first().tap().catch(() => {});
         await P.page.waitForTimeout(400);
