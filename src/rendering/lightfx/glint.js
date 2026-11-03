@@ -147,6 +147,16 @@ uniform float uRim;
    it, so it is a seam, not an outline); -1: greaves -- their top edge is not;
    0: the whole figure (a full set while jogging) */
 uniform float uRimSkip;
+/* v2.3.3953: a full set's figure (one picture on the body sprite while
+   jogging) wears TWO grades -- the torso's (uGrade, uPrism) above the waist
+   and the greaves' (uGrade2, uPrism2) below it; uSplitY the waist row in the
+   frame's 0-1 units (jogWaist.js), 0 for any other piece: one grade over it */
+uniform vec4 uGrade2;
+uniform float uPrism2;
+uniform float uSplitY;
+
+/* v2.3.3953: the glow's opacity at the art's edge (it fades out from there) */
+const float GLOW_A = 0.8;
 
 /* v2.3.2914: how far toward the metal's shine colour the sheen may take a
    pixel -- 0.92 of it, so steel tops out at a light grey (235), never white */
@@ -182,30 +192,65 @@ ${SHEEN_LIFT}    /* the sweep's band (only when pinned now -- see AUTO_SWEEP) st
            plate stays copper and gleams blue.
        Godly's colour is a rainbow laid diagonally across the piece -- about
        a whole spectrum from shoulder to boot, so every hue is on the figure
-       at once -- that drifts with time. */
-    if (uGrade.a > 0.0 && c.a > 0.0) {
-        vec3 gc = uPrism > 0.5 ? hueRgb(fract(uTime * 0.16 + p.x * 1.6 + p.y * 1.2)) : uGrade.rgb;
-        vec2 o = uInputSize.zw * uRim;
-        /* the edge: in any of eight directions the art is empty a rim away
-           AND still empty 2.6 rims away -- open space round the piece, not a
-           pinhole in it (the gaps at a gauntlet's fingers drew little rings) */
-        float rim = 0.0;
-        for (int i = 0; i < 8; i++) {
-            float a = float(i) * 0.785398;
-            vec2 dir = vec2(cos(a), sin(a));
-            if (uRimSkip > 0.5 && dir.y > 0.3) continue;
-            if (uRimSkip < -0.5 && dir.y < -0.3) continue;
-            float near = texture(uTexture, vTextureCoord + o * dir).a;
-            float far = texture(uTexture, vTextureCoord + o * dir * 2.6).a;
-            rim = max(rim, (1.0 - near) * (1.0 - far));
+       at once -- that drifts with time.
+       ═══ v2.3.3953: THE EDGE IS A SOFT GLOW, OUTSIDE THE ARMOUR ═══
+       The owner: "less of a hard outline and more of a tight glow.  But i
+       don't want it to eat into armor that's already there: it makes the
+       armor look too small otherwise."  The v2.3.3142 edge repainted the
+       art's own outer pixels at 92% of the grade's colour, so the plate read
+       a rim smaller all round.  Now NO pixel of the art changes shape or
+       colour for the edge: the glow is drawn in the open space round the
+       piece, UNDER the art (premultiplied art over glow), brightest against
+       the silhouette and fading out over about two game px.  It may lie
+       faintly over the neck and wrists the next layer owns -- the owner's
+       new words win over v2.3.3142's reason for keeping it inside.
+       The falloff from two rings of eight taps (1 and 2 rims out): a pixel
+       touching the art sees about three of each ring inside it, one a rim
+       out sees the far ring only, so the sums step down in four levels
+       (about 1, 0.7, 0.35, 0.15, then nothing) with no extra taps. */
+    vec4 outc = vec4(col * c.a, c.a);
+    if (uGrade.a > 0.0 || uGrade2.a > 0.0) {
+        /* v2.3.3953: which half of a full set's figure this pixel is in,
+           blended over a couple of rows at the waist */
+        float lo = uSplitY > 0.0 ? smoothstep(uSplitY - 0.012, uSplitY + 0.012, p.y) : 0.0;
+        float ga = mix(uGrade.a, uGrade2.a, lo);
+        vec3 rb = hueRgb(fract(uTime * 0.16 + p.x * 1.6 + p.y * 1.2));
+        vec3 g1 = uPrism > 0.5 ? rb : uGrade.rgb;
+        vec3 g2 = uPrism2 > 0.5 ? rb : uGrade2.rgb;
+        if (uGrade.a <= 0.0) g1 = g2;
+        if (uGrade2.a <= 0.0) g2 = g1;
+        vec3 gc = mix(g1, g2, lo);
+        if (c.a > 0.0) {
+            float l = dot(col, vec3(0.299, 0.587, 0.114));
+            vec3 lit = gc * clamp(l * 1.3 + 0.2, 0.0, 1.0);
+            col = mix(col, lit, hi * 0.6 * ga);
+            outc = vec4(col * c.a, c.a);
         }
-        rim = clamp(rim, 0.0, 1.0);
-        float l = dot(col, vec3(0.299, 0.587, 0.114));
-        vec3 lit = gc * clamp(l * 1.3 + 0.2, 0.0, 1.0);
-        col = mix(col, lit, hi * 0.6 * uGrade.a);
-        col = mix(col, mix(gc, vec3(1.0), 0.12), rim * 0.92 * uGrade.a);
+        if (c.a < 0.999 && ga > 0.0) {
+            vec2 o = uInputSize.zw * uRim;
+            float s1 = 0.0, s2 = 0.0, open = 0.0;
+            for (int i = 0; i < 8; i++) {
+                float a = float(i) * 0.785398;
+                vec2 dir = vec2(cos(a), sin(a));
+                float far = texture(uTexture, vTextureCoord + o * dir * 2.0).a;
+                /* open space round the piece, not a pinhole in it: some
+                   direction is still empty two rims out (the gaps at a
+                   gauntlet's fingers must not light up) */
+                open = max(open, 1.0 - far);
+                /* the seam: a torso's glow never reaches DOWN from its bottom
+                   edge over the greaves (a tap upward finds it), and the
+                   greaves' never UP over the torso */
+                if (uRimSkip > 0.5 && dir.y < -0.3) continue;
+                if (uRimSkip < -0.5 && dir.y > 0.3) continue;
+                s2 += far;
+                s1 += texture(uTexture, vTextureCoord + o * dir).a;
+            }
+            float glow = min(1.0, min(1.0, s1 * 0.45) * 0.8 + min(1.0, s2 * 0.45) * 0.35) * open;
+            float gA = glow * GLOW_A * ga * (1.0 - c.a);
+            outc += vec4(mix(gc, vec3(1.0), 0.12) * gA, gA);
+        }
     }
-    finalColor = vec4(col * c.a, c.a);
+    finalColor = outc;
 }
 `;
 const VERT = `
@@ -248,6 +293,9 @@ function makeGlintFilter() {
         uTime: { value: 0, type: 'f32' },
         uRim: { value: 1.5, type: 'f32' },
         uRimSkip: { value: 0, type: 'f32' },
+        uGrade2: { value: new Float32Array([0, 0, 0, 0]), type: 'vec4<f32>' },   /* v2.3.3953: a full set's greaves */
+        uPrism2: { value: 0, type: 'f32' },
+        uSplitY: { value: 0, type: 'f32' },
       },
     },
     /* at the SCREEN's resolution: the default (1 texel per CSS px) would
@@ -304,6 +352,7 @@ export function prewarmGlintPipe(renderer) {
     const u = f.resources.glintUniforms.uniforms;
     u.uProgress = 0.5; u.uSheen = 1;
     u.uGrade[3] = 1; u.uPrism = 1;   /* v2.3.3142: and the grade's look, so its branch is warmed too */
+    u.uGrade2[3] = 1; u.uSplitY = 0.5;   /* v2.3.3953: and a full set's two halves */
     spr.filters = [f];
     renderer.render({ container: spr });
     ok = true;
@@ -372,7 +421,25 @@ export const GRADE_LOOK = Object.assign(Object.create(null), {
   godly: { color: [1.0, 1.0, 1.0], k: 1, prism: 1 },
 });
 /* the edge's width, in CSS px at the figure's drawn size */
+/* v2.3.3953: now the glow's step, in GAME px (a frame px of the figure's
+   display-sized sheets: 2 art px a game px), turned into CSS px from each
+   piece's drawn size every frame (rimCss), so the glow keeps its size against
+   the armour at any zoom -- it reaches two steps out from the armour.  One
+   game px a step (the first cut) reached about 1 CSS px at the world's zoom
+   and read as a hairline, not a glow; two reach about 2 CSS px, the old
+   outline's 1.4 plus its fade.  GRADE_RIM is the fallback when a piece's
+   size cannot be read. */
 const GRADE_RIM = 1.4;
+const GRADE_GLOW_STEP = 2;
+/* v2.3.3953: one game px of a piece's frame in CSS px, as it is drawn this
+   frame (its frame's box through its transforms, frameBoxNow below) */
+function rimCss(spr) {
+  const t = spr && spr.texture;
+  const o = t && (t.orig || t.frame);
+  if (!o || !(o.height > 0) || !frameBoxNow(spr, _rimBox)) return GRADE_RIM;
+  const k = _rimBox[3] / o.height;
+  return k > 0 && k < 64 ? GRADE_GLOW_STEP * k : GRADE_RIM;
+}
 /* 'n' / 'r' / 'e' / 'g', the wire's letters (tick.js eqg), as grades */
 const GRADE_OF_LETTER = { n: 'normal', r: 'rare', e: 'elite', g: 'godly' };
 /** A worn piece's grade as it is SEEN: godly only on a piece the server
@@ -499,6 +566,7 @@ function unmaskedArea(spr) {
 const _frameM = new Matrix();
 const _chain = [];
 const _sprBox = new Float32Array(4);
+const _rimBox = new Float32Array(4);   /* v2.3.3953: rimCss */
 function frameBoxNow(spr, out) {
   const t = spr && spr.texture;
   const o = t && (t.orig || t.frame);
@@ -542,6 +610,7 @@ export class GlintSystem {
     this.sheenScale = null;      /* QA/pictures: multiply the sheen, to show a softer or stronger cut */
     this._bodies = new Set();    /* this frame's full-set body sprites, for the probe */
     this._fullBodies = new Set(); /* v2.3.3142: every full-set figure this frame (yours and others'), whose grade edge goes all round */
+    this._fullLegs = new Map();   /* v2.3.3953: a full-set figure's sprite -> its greaves' half { look2, grade2, split, key } */
     this._figBoxes = new Map();   /* v2.3.3321: a figure's body sprite -> its frame's box this frame (_figIn) */
     this._frameNo = 0;
     this._batched = new Set();    /* v2.3.3453: the pieces whose shine is drawn in the frame (sheenBatch.js) */
@@ -555,6 +624,7 @@ export class GlintSystem {
       if (!spr.destroyed && spr.filters && spr.filters.length === 1 && spr.filters[0] === f) spr.filters = null;
       if (!spr.destroyed && spr._btGlintArea && spr.filterArea === spr._btGlintArea) spr.filterArea = null;   /* v2.3.2887 */
     } catch (e) { /* a destroyed sprite has nothing to release */ }
+    f.clipToViewport = true;   /* v2.3.3953: as every filter is made */
     this._pool.push(f);
   }
 
@@ -576,6 +646,7 @@ export class GlintSystem {
     this._lastTargets = null;
     this._bodies.clear();
     this._fullBodies.clear();
+    this._fullLegs.clear();   /* v2.3.3953 */
     this._figBoxes.clear();   /* v2.3.3321 */
   }
 
@@ -596,6 +667,7 @@ export class GlintSystem {
     const out = [];
     this._bodies.clear();
     this._fullBodies.clear();
+    this._fullLegs.clear();   /* v2.3.3953 */
     const pd = er && er.playerDisplay;
     const rpg = S && S.rpg;
     /* v2.3.3003: no shine on armour under the water (swimFx.js) */
@@ -622,6 +694,13 @@ export class GlintSystem {
           this._fullBodies.add(pd._spriteBody);
           if (pd._handArmSprite) this._fullBodies.add(pd._handArmSprite);
           if (pd._handCapSprite) this._fullBodies.add(pd._handCapSprite);
+          /* v2.3.3953: ...wearing the GREAVES' grade below the waist.  The
+             figure is one picture of both pieces, and it sat in the chest
+             slot alone, so graded greaves under a plain torso showed no grade
+             on six of the eight jog facings (all but north-east / north-west,
+             which draw the pieces apart), and a rare torso over elite greaves
+             drew the whole figure rare.  The clones carry the same halves. */
+          this._fullHalf('self', seenGrade(rpg.legsArmor), pd._fullsetWaist, pd._spriteBody, pd._handArmSprite, pd._handCapSprite);
           /* v2.3.2887: ...and the body's two CLONES.  With a sword out, the
              arm is re-drawn over the slung shield on an east jog and the hand
              over the grip (entityRenderer, v2.3.200 / v2.3.185): each is the
@@ -695,7 +774,10 @@ export class GlintSystem {
         if (cm) {
           const s = [];
           if (d.visible) pushVisible(s, d._gearChest);
-          if (d.visible && d._fullsetOn) { pushVisible(s, d._spriteBody); this._fullBodies.add(d._spriteBody); }   /* v2.3.2864; v2.3.3142: a whole figure */
+          if (d.visible && d._fullsetOn) {
+            pushVisible(s, d._spriteBody); this._fullBodies.add(d._spriteBody);   /* v2.3.2864; v2.3.3142: a whole figure */
+            this._fullHalf(id, peerGrade(o._eqg, 1), d._fullsetWaist, d._spriteBody);   /* v2.3.3953: their greaves' grade below the waist */
+          }
           if (sw) pushVisible(s, sw.chest);
           if (bw) pushVisible(s, bw.chest);   /* v2.3.2887 */
           if (gg) pushVisible(s, gg.chest);
@@ -719,6 +801,15 @@ export class GlintSystem {
       }
     }
     return out;
+  }
+
+  /* v2.3.3953: a full-set figure's lower half -- the greaves' grade and the
+     waist row it starts at (the display's `_fullsetWaist`, set where the
+     figure is chosen: entityRenderer, gradeSplit.js) -- for each sprite that
+     shows the figure */
+  _fullHalf(key, grade2, split, ...sprites) {
+    const h = { look2: GRADE_LOOK[grade2] || null, grade2, split: split > 0 && split < 1 ? split : 0, key };
+    for (const spr of sprites) if (spr) this._fullLegs.set(spr, h);
   }
 
   /* v2.3.3321: where the figure's frame lies in this sprite's frame, in its
@@ -797,10 +888,19 @@ export class GlintSystem {
         if (into < t.g.dur) p = into / t.g.dur;
       }
       if (p >= 0) sweeping++;
-      if (p < 0 && !(sk > 0) && !t.look) continue;
-      if (t.look) graded++;
+      /* v2.3.3953: a full set's figure in a plain torso still wears its
+         greaves' grade below the waist */
+      let half = null;
+      for (let j = 0; j < t.sprites.length && !half; j++) { const h = this._fullLegs.get(t.sprites[j]); if (h && h.look2) half = h; }
+      if (p < 0 && !(sk > 0) && !t.look && !half) continue;
+      if (t.look || half) graded++;
       const w = { p, strength: p >= 0 ? t.g.strength : 0, color: t.color, sheen: sk * (t.g.sheen || 0), look: t.look, part: t.part, fig: t.fig || null };
-      for (let j = 0; j < t.sprites.length; j++) want.set(t.sprites[j], w);
+      for (let j = 0; j < t.sprites.length; j++) {
+        const spr = t.sprites[j];
+        const h = this._fullLegs.get(spr);
+        /* the figure's own copy of the slot's numbers, with its lower half */
+        want.set(spr, h ? (h.w = Object.assign(h.w || {}, w, { look2: h.look2, split: h.split })) : w);
+      }
     }
     /* the godly rainbow's clock: wrapped every 100 s, where 0.16 x 100 is a
        whole number of turns, so the drift never jumps (and a float far from
@@ -824,7 +924,7 @@ export class GlintSystem {
        filter's band; -1, every sweep held off, is how the game plays */
     const inFrame = sheenBatchOn() && (this.force == null || this.force < 0) && !!sheen;
     for (const [spr, w] of want) {
-      if (inFrame && w.p < 0 && !w.look && w.sheen > 0 && !spr.destroyed && isSharpPiece(spr)
+      if (inFrame && w.p < 0 && !w.look && !w.look2 && w.sheen > 0 && !spr.destroyed && isSharpPiece(spr)
         && !(spr.filters && spr.filters.length && !this._on.has(spr))) {
         const f0 = this._on.get(spr);
         if (f0) { this._release(spr, f0); this._on.delete(spr); }   /* the filter's going rebuilds the layer itself */
@@ -846,7 +946,7 @@ export class GlintSystem {
          sword (a masked clone, pinned above) must find the very same frame
          as the body under it -- the body's own, measured from its bounds,
          sat a step off, and the clone's godly arm read as a patch */
-      if (spr.mask || w.look) { const a = unmaskedArea(spr); if (a && spr.filterArea !== a) spr.filterArea = a; }
+      if (spr.mask || w.look || w.look2) { const a = unmaskedArea(spr); if (a && spr.filterArea !== a) spr.filterArea = a; }
       /* v2.3.2923: and dropped the frame the mask comes off.  It was only ever
          cleared on release, and a held weapon's shine is never released -- so
          the box a greatsword's E/SW/NE grip hole pinned kept clipping the south
@@ -861,7 +961,7 @@ export class GlintSystem {
         u.uSun[0] = sheen.sx; u.uSun[1] = sheen.sy;
         this._figIn(spr, w.fig, u.uFig);   /* v2.3.3321: the sun side across the figure */
       }
-      if (w.sheen > 0 || w.look) {
+      if (w.sheen > 0 || w.look || w.look2) {
         /* the tint this sprite is drawn with, read off the sprite itself, so
            the shader can find where the art was bright under any metal
            (v2.3.3142: the grade's highlights need it as the sheen does) */
@@ -869,14 +969,31 @@ export class GlintSystem {
         u.uTint[0] = ((tn >> 16) & 255) / 255; u.uTint[1] = ((tn >> 8) & 255) / 255; u.uTint[2] = (tn & 255) / 255;
       }
       /* v2.3.3142: the grade's look, or none */
-      if (w.look) {
-        u.uGrade[0] = w.look.color[0]; u.uGrade[1] = w.look.color[1]; u.uGrade[2] = w.look.color[2]; u.uGrade[3] = w.look.k;
-        u.uPrism = w.look.prism ? 1 : 0;
+      /* v2.3.3953: and on a full set's figure, the greaves' below the waist */
+      const l2 = w.look2 && this._fullBodies.has(spr) ? w.look2 : null;
+      if (w.look || l2) {
+        const l1 = w.look;
+        if (l1) { u.uGrade[0] = l1.color[0]; u.uGrade[1] = l1.color[1]; u.uGrade[2] = l1.color[2]; u.uGrade[3] = l1.k; } else u.uGrade[3] = 0;
+        u.uPrism = l1 && l1.prism ? 1 : 0;
+        if (l2) { u.uGrade2[0] = l2.color[0]; u.uGrade2[1] = l2.color[1]; u.uGrade2[2] = l2.color[2]; u.uGrade2[3] = l2.k; } else u.uGrade2[3] = 0;
+        u.uPrism2 = l2 && l2.prism ? 1 : 0;
+        /* a figure with no waist row known wears the torso's grade all over,
+           as before; with one, a plain torso is plain above it */
+        u.uSplitY = this._fullBodies.has(spr) && w.split > 0 ? w.split : 0;
+        if (!(u.uSplitY > 0) && !l1) u.uGrade2[3] = 0;
         u.uTime = tSec;
-        u.uRim = GRADE_RIM;
+        u.uRim = rimCss(spr);   /* v2.3.3953: one game px, as this piece is drawn */
         u.uRimSkip = this._fullBodies.has(spr) ? 0 : (w.part === 'c' ? 1 : w.part === 'l' ? -1 : 0);
+        /* v2.3.3953: the filter's area is the piece's WHOLE frame even where
+           the screen's edge cuts it (Pixi clips it to the screen otherwise),
+           so the waist row and the rainbow are read off the same frame on a
+           figure half off the screen as on one in the middle */
+        if (f.clipToViewport !== false) f.clipToViewport = false;
       } else {
         u.uGrade[3] = 0;
+        u.uGrade2[3] = 0;
+        u.uSplitY = 0;
+        if (f.clipToViewport !== true) f.clipToViewport = true;
       }
     }
     /* v2.3.3321: let go of the figures not drawn this frame */
@@ -908,6 +1025,25 @@ export class GlintSystem {
       /* v2.3.3472: the sprites that shine in each slot, by their labels (the
          farmer's are farmChest / farmLegs: mp-farmanim) */
       labels: Object.fromEntries(t.filter((x) => x.sprites.some(shines)).map((x) => [x.key, x.sprites.filter(shines).map((q) => q.label || '?')])),
+      /* v2.3.3953: the glow's step (uRim, CSS px) on each graded slot's first
+         filtered piece -- the test measures how far out the glow reaches */
+      rims: Object.fromEntries(t.map((x) => {
+        const spr = x.sprites.find((q) => this._on.has(q));
+        const u = spr && this._on.get(spr).resources.glintUniforms.uniforms;
+        return u && (u.uGrade[3] > 0 || u.uGrade2[3] > 0) ? [x.key, Math.round(u.uRim * 100) / 100] : null;
+      }).filter(Boolean)),
+      /* v2.3.3953: each full set's figure drawn this frame, by its chest key:
+         the grade above the waist, the grade below it and the waist (0-1 of
+         the frame) -- read off the filter the figure is drawn with */
+      figures: Object.fromEntries(t.map((x) => {
+        const spr = x.sprites.find((q) => this._fullLegs.has(q) && this._on.has(q));
+        if (!spr) return null;
+        const u = this._on.get(spr).resources.glintUniforms.uniforms;
+        const gr = (look) => (look ? Object.keys(GRADE_LOOK).find((g) => GRADE_LOOK[g] === look) : 'normal');
+        const h = this._fullLegs.get(spr);
+        return [x.key, { above: gr(x.look), below: gr(h.look2), split: Math.round(u.uSplitY * 1000) / 1000, rim: Math.round(u.uRim * 100) / 100,
+          clip: u.uGrade[3] > 0 || u.uGrade2[3] > 0 ? this._on.get(spr).clipToViewport : null }];
+      }).filter(Boolean)),
     };
   }
 }

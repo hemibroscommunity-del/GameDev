@@ -37,8 +37,8 @@ import { FORGE_LADDER as SRV_FORGE_LADDER, forgeLevelFor as srvForgeLevel, forge
 import { FORGE_LADDER as CLIENT_FORGE_LADDER, forgeLevelFor as clientForgeLevel, forgeOffered as clientForgeOffered, forgeStatReq as clientForgeStatReq } from '../../src/data/forgeLadder.js'; /* v2.3.3524 */
 import { hardenLevelFor as clientHardenLevel } from '../../src/data/hardenCosts.js'; /* v2.3.3524 */
 import { HARDEN_COSTS as CLIENT_HARDEN, HARDEN_MATERIAL_NAMES as CLIENT_HARDEN_NAMES, hardenGoldFor as clientHardenGold, hardenAmountFor as clientHardenAmount, hardenMaterialFor as clientHardenMat, hardenIsWood as clientHardenIsWood, hardenTierOf as clientHardenTier } from '../../src/data/hardenCosts.js'; /* v2.3.3139 */
-import { HARDENED_WOOD_RECIPES as CLIENT_HARDENED_WOOD, HARDENED_WOOD_MAX_PER_REQUEST as CLIENT_HW_MAX, HARDEN_WOOD_BY_TIER as CLIENT_HARDEN_WOOD_BY_TIER } from '../../src/data/hardenedWood.js'; /* v2.3.3139 */
-import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
+import { HARDENED_WOOD_RECIPES as CLIENT_HARDENED_WOOD, HARDENED_WOOD_MAX_PER_REQUEST as CLIENT_HW_MAX, HARDEN_WOOD_BY_TIER as CLIENT_HARDEN_WOOD_BY_TIER, HARDENED_WOOD_FIVE as CLIENT_HARDENED_WOOD_FIVE, hardenedWoodRecipe as clientHardenedWoodRecipe } from '../../src/data/hardenedWood.js'; /* v2.3.3139; v2.3.3981: the five-to-one rows */
+import { SMELT_RECIPES as CLIENT_SMELT, SMELT_FIVE as CLIENT_SMELT_FIVE, smeltRecipe as clientSmeltRecipe } from '../../src/data/items.js'; /* v2.3.2822; v2.3.3981: the five-to-one rows */
 import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield, CROP_HEAL as SRV_CROP_HEAL, cropHealFor as srvCropHeal } from '../src/farm.js'; /* v2.3.3127; v2.3.3537: what a crop heals */
 import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown, CROP_HEAL as CLIENT_CROP_HEAL, farmCropHeal as clientCropHeal } from '../../src/data/farmCrops.js'; /* v2.3.3127; v2.3.3537 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
@@ -90,7 +90,7 @@ import { CODEX_DROP_RATES as CLIENT_CODEX_DROP_RATES, CODEX_GRADE_ODDS as CLIENT
   CODEX_ROLL_SIDES as CLIENT_CODEX_ROLL_SIDES, codexRoll as clientCodexRoll,
   CODEX_ROLL_ORDER as CLIENT_CODEX_ROLL_ORDER, codexRollLayout as clientCodexRollLayout } from '../../src/data/codexDrops.js';
 import { KILL_ROLL as SRV_KILL_ROLL, KILL_ROLL_CHANCES as SRV_KILL_ROLL_CHANCES, killRollLayout as srvKillRollLayout } from '../src/killroll.js'; /* v2.3.3209: one roll a kill */
-import { WEAPON_QUALITY_ODDS as SRV_WEAPON_QUALITY_ODDS } from '../src/hardening.js';
+import { DROP_QUALITY_ODDS as SRV_WEAPON_QUALITY_ODDS } from '../src/hardening.js';   /* v2.3.3952: a drop's own grades, the codex's */
 import { WHEEL_ZONE as SRV_WHEEL_ZONE } from '../src/wheelzone.js';
 import { WHEEL_DOORS as SRV_WHEEL_DOORS } from '../src/wheelspawns.js';   /* v2.3.3209: a codex page's dungeon */
 import { CODEX_ROADS as CLIENT_CODEX_ROADS } from '../../src/data/monsterCodex.js';   /* v2.3.3209: ...and its way there */
@@ -387,8 +387,8 @@ const room = Object.create(GameRoom.prototype);
   const early = (SRV.QUEST_TOUR || []).filter((q, i) => listOf((SRV.QUEST_REWARDS[q] || {}).after).some((a) => {
     const j = SRV.QUEST_TOUR.indexOf(a); return j < 0 || j >= i;
   }));
-  check('QUEST_TOUR is the same twelve steps on both sides, a tour step each, in an order a player may follow (v2.3.3525; v2.3.3533: the snowmen fifth)',
-    tourS === tourC && tourS === 'tut_1,smith_1,smith_2,fish_1,tut_2,farm_1,wood_1,wood_2,farm_2,race_1,beast_1,beast_2'
+  check('QUEST_TOUR is the same twelve steps on both sides, a tour step each, in an order a player may follow (v2.3.3525; v2.3.3533: the snowmen fifth; v2.3.3924: the carrots fifth, the snowmen sixth)',
+    tourS === tourC && tourS === 'tut_1,smith_1,smith_2,fish_1,farm_1,tut_2,wood_1,wood_2,farm_2,race_1,beast_1,beast_2'
       && SRV.QUEST_TOUR.slice(1).every((q) => QUEST_CHAINS[q] && QUEST_CHAINS[q].tour === true) && early.length === 0,
     { server: tourS, client: tourC, early });
 }
@@ -1654,6 +1654,21 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     check('smelting: ' + k + ' ore / cost / level / xp match',
       a.ore === b.ore && a.oreCost === b.oreCost && a.minLvl === b.minLvl && a.xp === b.xp, { srv: a, cli: b });
   }
+  /* v2.3.3981: the five-to-one rows `onetoone: false` brings back (and an old
+     worker still settles) -- the game draws them when caps.onetoone is
+     absent, so they must be the worker's too, both ways through each side's
+     own reader */
+  check('smelting: the five-to-one rows match (SMELT.FIVE / SMELT_FIVE)', keys(SRV_SMELT.FIVE) === keys(CLIENT_SMELT_FIVE)
+    && Object.keys(SRV_SMELT.FIVE).every((k) => SRV_SMELT.FIVE[k].oreCost === CLIENT_SMELT_FIVE[k].oreCost && SRV_SMELT.FIVE[k].xp === CLIENT_SMELT_FIVE[k].xp),
+    { srv: SRV_SMELT.FIVE, cli: CLIENT_SMELT_FIVE });
+  const srvRead = (k, off) => { const was = room._liveFlags; room._liveFlags = off ? { onetoone: false } : {}; const r = room._smeltRecipe(k); room._liveFlags = was; return r; };
+  const sOff = [];
+  for (const k of Object.keys(SRV_SMELT.RECIPES)) for (const one of [true, false]) {
+    const a = srvRead(k, !one), b = clientSmeltRecipe(k, one);
+    if (!a || !b || a.ore !== b.ore || a.oreCost !== b.oreCost || a.minLvl !== b.minLvl || a.xp !== b.xp) sOff.push([k, one, a, b]);
+  }
+  check('smelting: the game\'s row with and without caps.onetoone is the one the worker settles with the switch on and off (1 ore / 5 ore)',
+    sOff.length === 0 && clientSmeltRecipe('bar_copper', true).oreCost === 1 && clientSmeltRecipe('bar_copper', false).oreCost === 5, sOff);
 }
 
 // ── THE FARM: the Feed & Seed window must promise what the worker settles ──
@@ -2322,6 +2337,21 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   }
   check('hardened wood: the Woodworker\'s Harden tab is the worker\'s table (log, logs a piece, level, XP, wood, name) and its "All" cap',
     hOff.length === 0 && CLIENT_HW_MAX === SRV_HARDENED_WOOD.MAX_PER_REQUEST && Object.keys(RC).length === 5, hOff);
+  /* v2.3.3981: the five-to-one rows, and each side's reader with the cap and the switch */
+  const hFive = [];
+  for (const k of new Set([...Object.keys(SRV_HARDENED_WOOD.FIVE), ...Object.keys(CLIENT_HARDENED_WOOD_FIVE), ...Object.keys(RC)])) {
+    const a = SRV_HARDENED_WOOD.FIVE[k], b = CLIENT_HARDENED_WOOD_FIVE[k];
+    if (!a || !b || a.logCost !== b.logCost || a.xp !== b.xp) hFive.push(['five', k, a, b]);
+    for (const one of [true, false]) {
+      const was = room._liveFlags; room._liveFlags = one ? {} : { onetoone: false };
+      const x = room._hardenedWoodRecipe(k); room._liveFlags = was;
+      const y = clientHardenedWoodRecipe(k, one);
+      if (!x || !y) { hFive.push(['reader', k, one]); continue; }
+      for (const f of ['log', 'logCost', 'minLvl', 'xp', 'tier', 'name']) if (x[f] !== y[f]) hFive.push([k, one, f, x[f], y[f]]);
+    }
+  }
+  check('hardened wood: the five-to-one rows match, and the game\'s row with and without caps.onetoone is the worker\'s with the switch on and off',
+    hFive.length === 0 && clientHardenedWoodRecipe('hardened_pine', true).logCost === 1 && clientHardenedWoodRecipe('hardened_pine', false).logCost === 5, hFive);
   check('hardened wood: the woods by tier read off the same table on both sides',
     JSON.stringify(CLIENT_HARDEN_WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER), { client: CLIENT_HARDEN_WOOD_BY_TIER, server: SRV_HARDEN_WOOD_BY_TIER });
 }
@@ -2737,6 +2767,22 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   check('gems: a count reads the bag and an old pouch on both sides alike',
     CG.gemCount(ps, 'flame', false) === SG.gemCount(ps, 'flame', false) && CG.gemCount(ps, 'flame', true) === SG.gemCount(ps, 'flame', true)
       && CG.gemCount(ps, 'flame', false) === 3, [CG.gemCount(ps, 'flame', false), SG.gemCount(ps, 'flame', false)]);
+}
+
+/* ═══ v2.3.3944: THE POINTS A QUEST PAYS ═══
+   The quest journal says "+5 Achievement Points" on every quest and adds them
+   up ("Achievement Points from quests: 40") from the phone's QUEST_AP_REWARD
+   (src/data/items.js), which the hand-in's prediction already read
+   (src/game/quests.js).  The worker's is the GameRoom's own
+   (server/src/index.js this.QUEST_AP_REWARD, paid in quests.js): held here,
+   so the page can never promise a number the worker does not pay. */
+{
+  const CI = await import('../../src/data/items.js');
+  const apRoom = new GameRoom({ storage: { get: async () => undefined, put: async () => {}, list: async () => new Map(), delete: async () => {} },
+    getWebSockets: () => [], acceptWebSocket: () => {} }, { LEADERBOARD: { idFromName: () => 'x', get: () => ({ fetch: async () => ({}) }) } });
+  check('quest AP: the points the journal shows for a quest are the ones the worker pays at its hand-in',
+    typeof CI.QUEST_AP_REWARD === 'number' && CI.QUEST_AP_REWARD > 0 && CI.QUEST_AP_REWARD === apRoom.QUEST_AP_REWARD,
+    { phone: CI.QUEST_AP_REWARD, worker: apRoom.QUEST_AP_REWARD });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

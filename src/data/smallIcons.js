@@ -60,6 +60,16 @@ export const BUFF_ICON = Object.freeze({
    bubble): the same 64 px files -- every small mark is cut at the size it is
    drawn (tools/ui/cut-small-icons.py size_of), and a bigger texture drawn at
    14-28 world px would only shimmer as the view slides. */
+/* v2.3.3906: the ten elements' 64 px plate icons */
+export const PLATE_ELEMENTS = Object.freeze(['flame', 'frost', 'water', 'venom', 'flora', 'stone', 'storm', 'wind', 'dark', 'light']);
+const ELEM_SMALL_TEX = Object.freeze(Object.fromEntries(PLATE_ELEMENTS.map((e) =>
+  ['elem-' + e, '/icons/ui/elem-' + e + '-64.webp?v=2.3.3906'])));
+/* the SMALL_TEX key a monster's element draws with, or null (no element, or
+   one without an icon: the plate then shows none) */
+export function elemSmallKey(element) {
+  return (typeof element === 'string' && PLATE_ELEMENTS.indexOf(element) >= 0) ? 'elem-' + element : null;
+}
+
 export const SMALL_TEX = Object.freeze({
   partyMember: SMALL_ICON.partyMember,
   threatSkull: SMALL_ICON.threatSkull,
@@ -70,6 +80,11 @@ export const SMALL_TEX = Object.freeze({
      small mark is (a 256 px texture drawn at 28 px only shimmers); loaded
      behind the loading screen with the rest of these */
   nmlAskDuel: SMALL_ICON.nmlAskDuel,
+  /* v2.3.3906: a monster's element after its name on its plate (the owner:
+     "After name of monster on nameplate it lists elemental icon type"), keyed
+     'elem-<element>' (elemSmallKey) -- 64 px copies of the element icons
+     (tools/ui/make-elem-small.py), never the 256 px popup ones */
+  ...ELEM_SMALL_TEX,
 });
 
 /* The popup mark's key and file (effectsRenderer POPUP_ICON_SRC) */

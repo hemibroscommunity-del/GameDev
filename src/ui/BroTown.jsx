@@ -30,8 +30,6 @@ import RaceHud from './mobile/RaceHud.jsx'; /* v2.3.3525: Lil Bro's race on the 
 import DungeonClearHud from './mobile/DungeonClearHud.jsx'; /* v2.3.3556: after a dungeon's clear, 30 s to pick up the loot */
 import { raceTick, raceHeld, raceDriveNpc } from '@/game/race.js'; /* v2.3.3525: Lil Bro's race (server/src/race.js judges it) */
 import { restOn, requestRest, wellRestedLeft } from '@/game/rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed (server/src/rest.js) */
-import { tourOffer } from '@/game/questRoute.js'; /* v2.3.3525: the tour's next step (where a step's door stands is game/questWays.js's since v2.3.3522) */
-import { TOUR_MEET } from '@/game/tour.js'; /* v2.3.3525 */
 import { QuestBannerLayer } from './panels/QuestBannerLayer.jsx'; /* v2.3.3030: the quest banners in the owner's art */
 import { InventoryPanel } from './panels/InventoryPanel.jsx';
 import { TradePanel } from './panels/TradePanel.jsx';
@@ -60,7 +58,7 @@ import { keptQuery } from './keepSwitches.js';   /* v2.3.3888: the address's swi
 import SwapHint from './SwapHint.jsx';   /* v2.3.3877: how to swap weapons, said once */
 import LevelUpBurstStack from './LevelUpBurstStack.jsx'; /* v2.3.2591: the owner's level-up art, replacing the gold text banner; v2.3.2615: up to two of them, side by side */
 import { startBuildWatch } from '@/game/buildWatch.js';
-import { trackedFirst, onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track */
+import { onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track (v2.3.3918: QuestCard.jsx reads it) */
 import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
 import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
@@ -68,7 +66,7 @@ import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the att
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
-import { WeaponSwapButton } from './panels/WeaponSwapButton.jsx'; /* v2.3.3005: the weapon in your hand, under the movement stick -- a tap swaps */
+import { WeaponTriangle } from './panels/WeaponTriangle.jsx'; /* v2.3.3921: the weapon triangle beside the attack disc (it was v2.3.3005's chip under the movement stick) */
 import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
@@ -533,6 +531,8 @@ import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/whe
 import { wheelObjectsInfo, wheelWaterAt } from '@/game/wheelTrial.js';
 import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch */
 import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
+import { noticeboardAt, noticeboardAtCss } from '@/game/wheelNoticeboard.js';   /* v2.3.3899: the town board is on the square's noticeboard */
+import { mayorSaysNext } from '@/game/mayorTalk.js';   /* v2.3.3899: Mayor Bro always talks */
 import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
@@ -542,8 +542,8 @@ import { WHEEL_TOWNSFOLK, WHEEL_HALLS, WHEEL_KEEPERS, wheelBuildingIcon } from '
 import { heapBurnStep } from '@/game/heapBurn.js'; /* v2.3.3748: a burning heap sets you on fire */
 import { burningAt } from '@/rendering/buildingFire.js'; /* v2.3.3748: ...where its pieces burn */
 import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
-import { QUEST_ART } from '@/ui/panels/questArt.jsx';   /* v2.3.3048: the painted check on the quest card when everything is in hand */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
+import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
  * The server holds the surge as a flat amount PER REGEN TICK (660 ms); this
@@ -951,8 +951,8 @@ function _spawnWheelNpcs(S) {
   });
   /* ═══ v2.3.3258: THE KEEPERS ═══
      A townsperson who keeps a building opens its window when you talk to him
-     (data/wheelBuildingDoors.js WHEEL_KEEPERS: Blacksmith Bro the forge, Mayor
-     Bro the Town Hall) -- `keeperOf`, the plot, only where that building
+     (data/wheelBuildingDoors.js WHEEL_KEEPERS: Blacksmith Bro the forge; Mayor
+     Bro the Town Hall until v2.3.3899) -- `keeperOf`, the plot, only where that building
      stands with something to open.  This copy is the Wheel's own, so today's
      town's townsfolk (_spawnTownNpcs) never carry it. */
   out.forEach(function (n) {
@@ -1631,17 +1631,7 @@ export var BroTown = function BroTown(_ref0) {
     window.addEventListener('bt-kb-hints-toggle', on);
     return function () { window.removeEventListener('bt-kb-hints-toggle', on); };
   }, [toggleKbHints]);
-  /* v2.3.1714: the top-left quest reminder collapses to its title on tap.
-     Owner: "some users might prefer that view to save screen space."
-     Read from storage in the INITIALISER, not in an effect — an effect would
-     paint the expanded card for one frame on every load and then snap it
-     shut, which looks like a glitch rather than a remembered preference. */
-  var _useQuestHudFold = useState(function () {
-    try { return localStorage.getItem('bt_quest_hud_collapsed') === '1'; } catch (e) { return false; }
-  }),
-    _useQuestHudFold2 = _slicedToArray(_useQuestHudFold, 2),
-    questHudFolded = _useQuestHudFold2[0],
-    setQuestHudFolded = _useQuestHudFold2[1];
+  /* v2.3.3918: the quest card's v2.3.1714 fold is retired (QuestCard.jsx: a tap opens the quest) */
   /* v2.3.3522: the pinned quest card follows the quest you TRACK (the quest
      page's Track button, game/trackedQuest.js): a change is told here, so the
      card re-renders at once rather than at the next unrelated update */
@@ -5939,6 +5929,11 @@ export var BroTown = function BroTown(_ref0) {
           if (_wtd) {
             S._nearWheelBuilding = _wtd;
             if (_wtd.index >= 0) S.nearBuilding = _wtd.index;
+          } else {
+            /* v2.3.3899: the square's noticeboard, a door to the town board
+               (game/wheelNoticeboard.js): its hall is the Town Hall's, so the
+               prompt ("Read THE TOWN BOARD"), E and the stick just work */
+            S._nearWheelBuilding = noticeboardAt(S);
           }
         }
 
@@ -10451,10 +10446,21 @@ export var BroTown = function BroTown(_ref0) {
       if (r === 'quest' || r === 'flip' || r === 'shop' || r === 'pets') { try { BT_AUDIO.uiClickNow(); } catch (_ce) { /* sound only */ } }
       /* v2.3.3462: and he answers in his own voice (game/npcVoices.js) -- a
          quest's is the QuestPanel's, as it opens however you reached him */
-      if (npc && (r === 'flip' || r === 'shop' || r === 'pets' || r === 'opens' || r === 'nothing')) npcSpeaks(S, npc);   /* v2.3.3664: a keeper opening his building too */
+      if (npc && (r === 'flip' || r === 'shop' || r === 'pets' || r === 'opens' || r === 'says' || r === 'nothing')) npcSpeaks(S, npc);   /* v2.3.3899: + the Mayor's next step */   /* v2.3.3664: a keeper opening his building too */
       return r !== 'miss';
     };
-    if (!npc) return _mark('miss');
+    if (!npc) {
+      /* v2.3.3899: the square's noticeboard opens the town board, as the
+         Town Hall did (game/wheelNoticeboard.js) */
+      var _nbTap = noticeboardAtCss(S, cssX, cssY);
+      if (!_nbTap) return _mark('miss');
+      if (_nbTap.far) {
+        pushDmgPopup(S, _nbTap.board.x, _nbTap.board.y - 150, 'Too far away!', '#D8A94D');
+        return _mark('board-far');
+      }
+      enterWheelDoor(S, _nbTap.board, { setBuildingPanel: setBuildingPanel });
+      return _mark('board');
+    }
     var P = S.player;
     var _d = Math.sqrt(Math.pow(npc.x - P.x, 2) + Math.pow(npc.y - P.y, 2));
     /* Out of reach is answered, not ignored. A tap that does nothing at all
@@ -10501,6 +10507,9 @@ export var BroTown = function BroTown(_ref0) {
       try { dashboardPanelBus.open('pets'); } catch (_e) {}
       return _mark('pets');
     }
+    /* v2.3.3899: Mayor Bro, with nothing of his own, says the next step
+       (game/mayorTalk.js) -- he opened the Town Hall's board until now */
+    if (mayorSaysNext(S, npc)) return _mark('says');
     pushDmgPopup(S, npc.x, npc.y - 30, npc.name + ' has nothing for you right now', '#B6C1BE');
     return _mark('nothing');
   };
@@ -10614,6 +10623,7 @@ export var BroTown = function BroTown(_ref0) {
   var _deskPressTarget = function (cssX, cssY) {
     if (monsterAtCss(cssX, cssY)) return null;
     if (npcAtCss(cssX, cssY)) return 'talk';
+    if (noticeboardAtCss(stateRef.current, cssX, cssY)) return 'talk';   /* v2.3.3899: the town board's noticeboard */
     if (otherPlayerAtCss(cssX, cssY)) return null;
     if (_harvestNodeAtCss(cssX, cssY)) return 'gather';
     var _bed = _farmBedAtCss(cssX, cssY);
@@ -14044,7 +14054,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "Skip tutorial"))), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      top: 44,
+      top: 'var(--bt-hud-top, 44px)', /* v2.3.3974: the status chips start under the player frame (was 44) */
       left: 8,
       zIndex: 18,
       fontSize: 11,
@@ -14222,177 +14232,7 @@ export var BroTown = function BroTown(_ref0) {
       fontWeight: 800,
       animation: 'pulse-dot 1s ease-in-out infinite'
     }
-  }, "\u2694\uFE0F DUEL")), rpgState && function () {
-    var activeQuests = Object.entries(rpgState._quests || {}).filter(function (_ref190) {
-      var _ref191 = _slicedToArray(_ref190, 2),
-        qid = _ref191[0],
-        status = _ref191[1];
-      return status === QUEST_STATUS.active;
-    }).map(function (_ref192) {
-      var _ref193 = _slicedToArray(_ref192, 1),
-        qid = _ref193[0];
-      return QUEST_CHAINS[qid];
-    }).filter(Boolean);
-    if (activeQuests.length === 0) {
-      /* ═══ v2.3.3525: BETWEEN TWO STEPS OF THE TOUR, WHO IS NEXT ═══
-         After a hand-in there is no quest in hand and this card stood empty --
-         the moment a reviewer most needs a line.  It says who gives the step
-         the tour suggests next and where he stands; the gold road leads to him
-         (questRoute.js tourOffer).  Takes no taps. */
-      var _to = null;
-      try { _to = tourOffer((stateRef.current && stateRef.current.rpg) || rpgState, stateRef.current); } catch (e) { _to = null; }
-      if (!_to) return null;
-      return /*#__PURE__*/React.createElement("div", {
-        'data-quest-hud': '1',
-        'data-quest-hud-next': _to.quest.id,
-        style: {
-          position: 'absolute', top: 56, left: 8, zIndex: 17, pointerEvents: 'none',
-          background: 'rgba(17,25,29,.85)', padding: '4px 10px', borderRadius: 6,
-          border: '1px solid rgba(216,169,77,.35)', maxWidth: 248
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: { fontSize: 13, fontWeight: 700, lineHeight: 1.25, display: 'flex', alignItems: 'center', gap: 6, color: '#D8A94D' }
-      }, /*#__PURE__*/React.createElement("img", {
-        src: '/icons/ui/panel-quests.webp', alt: 'Quest', draggable: false,
-        style: { width: 18, height: 18, flex: '0 0 auto', objectFit: 'contain' }
-      }), /*#__PURE__*/React.createElement("span", { style: { flex: 1, minWidth: 0 } }, 'Next: ' + _to.quest.title)),
-      /*#__PURE__*/React.createElement("div", {
-        style: { fontSize: 11, lineHeight: 1.3, marginTop: 1, color: 'rgba(255,255,255,.72)' }
-      }, 'Talk to ' + _to.npc + (TOUR_MEET[_to.npc] ? ' ' + TOUR_MEET[_to.npc] : '')),
-      /* v2.3.3525: the whole town opens after the Mayor's first quest, so this
-         is a suggestion -- say how many others have work too, and where they
-         show (the gold "!" over a head, on the minimap and the world map) */
-      _to.more > 0 && /*#__PURE__*/React.createElement("div", {
-        'data-quest-hud-more': _to.more,
-        style: { fontSize: 11, lineHeight: 1.3, marginTop: 1, color: 'rgba(216,169,77,.85)' }
-      }, '+' + _to.more + ' more: look for a gold ! on your map'));
-    }
-    /* v2.3.3522: the quest you TRACK (the quest page's "Track this quest"),
-       when it is one of these -- the owner tracked one and nothing outside the
-       quest list changed ("I tapped track quest in quest menu but no golden
-       stars were in minimap"); the card, the minimap's star and the world
-       map's road all follow it now.  Else the first, as before. */
-    activeQuests = trackedFirst(activeQuests.map(function (aq) { return { qid: aq.id, q: aq }; })).map(function (e) { return e.q; });
-    var q = activeQuests[0];
-    /* v2.3.1914: live rpg, not the snapshot — one answer everywhere. */
-    var done = DATA.questObjectiveDone(q, stateRef.current, rpgState);
-    return /*#__PURE__*/React.createElement("div", {
-      /* v2.3.3481: the 2026-10-19 UI review -- the quest coach's card finds
-         this card by it, to step right of it when held sideways
-         (QuestCoach.jsx, the card's `left`). */
-      'data-quest-hud': '1',
-      /* v2.3.1714: tap to fold the objective away, leaving just the title.
-         onPointerDown stops the tap BEFORE it reaches the canvas — a bare
-         onClick would fold the card and ALSO order the character to walk to
-         the top-left corner, because the world listens for taps underneath
-         this overlay (same reason the tour prompt does it). */
-      onPointerDown: function onPointerDown(e) { e.stopPropagation(); },
-      onClick: function onClick(e) {
-        e.stopPropagation();
-        setQuestHudFolded(function (v) {
-          var next = !v;
-          try { localStorage.setItem('bt_quest_hud_collapsed', next ? '1' : '0'); } catch (e2) { /* private mode */ }
-          return next;
-        });
-      },
-      title: questHudFolded ? 'Show the objective' : 'Hide the objective',
-      style: {
-        position: 'absolute',
-        top: 56,
-        left: 8,
-        zIndex: 17,
-        /* An ancestor turns pointer events off so the world stays tappable
-           through the HUD layer; this card has to opt back in to be tapped. */
-        pointerEvents: 'auto',
-        cursor: 'pointer',
-        WebkitTapHighlightColor: 'transparent',
-        background: 'rgba(17,25,29,.85)' /* v2.3.1233: was rgba(0,0,0,.6)+blur */,        padding: '4px 10px',
-        borderRadius: 6,
-        border: "1px solid ".concat(done ? 'rgba(61,220,151,.3)' : 'rgba(255,255,255,.1)'),
-        /* v2.3.1711: 200 -> 248.  The type below roughly doubled, so the old
-           width turned the objective into a four-line column pinned to the
-           left edge; this keeps it to one or two lines on a 390px iPhone. */
-        maxWidth: 248
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        /* v2.3.1711: was 8px.  Owner: "the text is a bit too small to be
-           legible."  8/7 sat below every step of the documented type scale
-           (11 caption / 13 body / 15 emphasized / 17 title, UI-BIBLE Part 2)
-           -- this HUD had simply never been measured against it.  Title takes
-           the BODY step and the objective the CAPTION step, so the two stay
-           distinguishable at a glance without inventing a new size. */
-        fontSize: 13,
-        fontWeight: 700,
-        lineHeight: 1.25,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        color: done ? '#59BF91' : '#D8A94D'
-      }
-    },
-    /* ═══ v2.3.3048: READY IS THE OWNER'S GREEN CHECK ═══
-       Owner: "Make the quest notification turn to a green checkmark if you
-       have everything you need to complete the quest."  The card led with a
-       scroll EMOJI and closed on a small text tick in the title's own green;
-       now it leads with a picture -- the Quests button's scroll while you
-       work, the quest windows' painted check (QUEST_ART.check, preloaded at
-       the gate) once everything is in hand -- the height of the title's line,
-       and it pops once as it turns (game.css bt-quest-hud-ready). */
-    /*#__PURE__*/React.createElement("img", {
-      src: done ? QUEST_ART.check : '/icons/ui/panel-quests.webp',
-      alt: done ? 'Ready to hand in' : 'Quest',
-      draggable: false,
-      'data-quest-hud-mark': done ? 'ready' : 'quest',
-      className: done ? 'bt-quest-hud-ready' : undefined,
-      style: { width: 18, height: 18, flex: '0 0 auto', objectFit: 'contain' }
-    }), /*#__PURE__*/React.createElement("span", {
-      style: { flex: 1, minWidth: 0 }
-    }, q.title),
-    /* v2.3.1714: the fold affordance.  Without it a collapsed card is just a
-       card that quietly lost its second line, with nothing on screen saying
-       the title can be tapped to get it back. */
-    /*#__PURE__*/React.createElement("span", {
-      style: { fontSize: 11, opacity: 0.55, flex: '0 0 auto' }
-    }, questHudFolded ? '▸' : '▾')),
-    /* v2.3.1714: FOLDED, the card is only ~26px tall, and UI-BIBLE Part 2 is
-       explicit — "44x44pt minimum for anything tappable.  Visuals may be
-       smaller; the hit area may not."  So the pill keeps its small look and
-       this invisible child carries the hit area down to 44.  Anchored at
-       top:0 and grown DOWNWARD on purpose: centring it would push 9px up
-       under the 46px ZoneHeader rail and start eating taps meant for the
-       rail.  Only rendered when folded — expanded, the card is 56px and
-       already clears the floor, and this would be a dead strip over the
-       world for nothing. */
-    questHudFolded && /*#__PURE__*/React.createElement("div", {
-      'aria-hidden': true,
-      style: { position: 'absolute', left: 0, right: 0, top: 0, height: 44 }
-    }), !questHudFolded && /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        lineHeight: 1.3,
-        marginTop: 1,
-        /* v2.3.1711: was 7px / .4 alpha.  Legibility is size AND contrast --
-           .4 white on the .85 slate is ~2.6:1.  .72 clears 4.5:1 while
-           staying visibly secondary to the title above it. */
-        color: 'rgba(255,255,255,.72)'
-      }
-    }, function () {
-      /* v2.3.2820: a quest with STEPS (life_1, the cooking quest) shows the
-         next one here instead of the objective again -- this pinned card is
-         the one line a stuck player reads (owner: "a lot of people get stuck
-         on the quest for cooking 2 fish").  Done quests keep their desc. */
-      if (done) return q.desc;
-      var _st = null;
-      try { _st = DATA.questSteps(q, rpgState, stateRef.current); } catch (e) { _st = null; }
-      var _cur = _st && _st.find(function (x) { return x.current; });
-      /* v2.3.3481: the 2026-10-19 UI review -- and how many you hold, " (2/4)"
-         (gameSystems questCountText), from the LIVE rpg that `done` above
-         reads, so the count and the green check agree. */
-      return _cur ? 'Next: ' + _cur.label
-        : q.desc + DATA.questCountText(q, (stateRef.current && stateRef.current.rpg) || rpgState);
-    }()));
-  }(), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
+  }, "\u2694\uFE0F DUEL")), /* v2.3.3918: the pinned quest card (src/ui/QuestCard.jsx) */ React.createElement(QuestCard, { rpgState: rpgState, live: stateRef.current }), null /* v2.3.1333: floating zone label retired — the zone name lives in the ZoneHeader rail (GameApp) */, function (_stateRef$current37, _ZONES$nearest$zone) {
     var dd = (_stateRef$current37 = stateRef.current) === null || _stateRef$current37 === void 0 ? void 0 : _stateRef$current37._deathDrops;
     if (!dd || dd.length === 0) return null;
     var active = dd.filter(function (d) {
@@ -15133,7 +14973,7 @@ export var BroTown = function BroTown(_ref0) {
     style: { display: 'block' }
   }, /*#__PURE__*/React.createElement("span", {
     style: { display: 'block', fontSize: 9, letterSpacing: '.08em', textTransform: 'uppercase', opacity: .7 }
-  }, " Enter "), /*#__PURE__*/React.createElement("span", {
+  }, " " + ((stateRef.current._nearWheelBuilding && stateRef.current._nearWheelBuilding.verb) || 'Enter') + " "   /* v2.3.3899: "Read" at the noticeboard */), /*#__PURE__*/React.createElement("span", {
     style: { display: 'block' }
   }, nearDoorLabel)) : " Enter ", nearDoorLabel ? null : nearBuilding !== null ? BUILDINGS[nearBuilding].label : WHEEL_HALLS[nearHall].title), nearShutDoor && buildingPanel === null && /*#__PURE__*/React.createElement("div", {
     /* ═══ v2.3.3032: A SHUT DOOR SAYS SO ═══
@@ -15829,7 +15669,7 @@ export var BroTown = function BroTown(_ref0) {
      and z-index 6 so they sit over the world canvas but under all HUD
      (z>=20).  bt-desktop-hide drops them on desktop so the mouse reaches the
      canvas. */
-  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3005: the weapon button under the movement stick -- a tap runs the same swap as the double tap and the desktop key (WeaponSwapButton.jsx). */ /*#__PURE__*/React.createElement(WeaponSwapButton, { stateRef: stateRef, onCycle: _desktopCycleWeapon })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
+  /*#__PURE__*/React.createElement(TouchControls, { stateRef: stateRef, lZoneRef: lZoneRef, rZoneRef: rZoneRef, joystickRef: joystickRef, lStickRef: lStickRef, knobRef: knobRef, lJoyPreviewRef: lJoyPreviewRef, rJoyRef: rJoyRef, rBodyRef: rBodyRef, rLabelRef: rLabelRef, rRingRef: rRingRef, rHintRef: rHintRef, rStickRef: rStickRef, rKnobRef: rKnobRef, lWrapRef: lWrapRef, rWrapRef: rWrapRef, isLandscape: isLandscape }), /* v2.3.1733: the two stamina-ability buttons ride with the touch controls — they self-hide until the worker advertises caps.abil (AbilityButtons.jsx; v2.3.2662: no level gate -- the milestone ladder is gone). */ /*#__PURE__*/React.createElement(AbilityButtons, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2242: the shield is a toggle button under the Attack button; it shows itself during combat (ShieldButton.jsx). */ /*#__PURE__*/React.createElement(ShieldButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.2542: ...and the Special button orbits the ATTACK disc, a second trigger for the flick (SpecialButton.jsx). */ /*#__PURE__*/React.createElement(SpecialButton, { stateRef: stateRef, isLandscape: isLandscape }), /* v2.3.3921: the weapon triangle in the right-hand cluster -- a tap on a weapon runs the same swap as the double tap and the desktop key (WeaponTriangle.jsx; it was v2.3.3005's chip). */ /*#__PURE__*/React.createElement(WeaponTriangle, { stateRef: stateRef, onCycle: _desktopCycleWeapon, isLandscape: isLandscape })), /* ═══ v2.3.1796: THE COACH MARKS LIVE OUTSIDE THE WRAP ═══
      Not a style choice — a hard requirement this cost a round of QA to
      find.  .brotown-wrap is position:fixed, and Chrome treats that as its
      own stacking context, so EVERY element inside it is confined to one

@@ -311,10 +311,13 @@ export function weaponDiscIcon(slot, weapon) {
   return WEAPON_KEYS[key] ? key : (WEAPON_KEYS['w-' + base] ? 'w-' + base : plain);
 }
 
+/* v2.3.3920: no weapon pictures on the disc any more: an attack (data-ricon
+   melee / ranged / staff / w-*, still the weapon in hand, weaponDiscIcon) wears
+   the aiming reticle drawn in code (AimReticle), and the weapon in hand is the
+   weapon triangle's top button (WeaponTriangle.jsx, v2.3.3921).  Their eleven
+   pictures are no longer put in the DOM or warmed for the disc. */
+export const RDISC_WEAPON_KEYS = ['melee', 'ranged', 'staff'].concat(WEAPON_ART.map(function (f) { return 'w-' + f; }));
 export const RDISC_ICONS = [
-  ['melee', ICON_URL.melee],
-  ['ranged', ICON_URL.ranged],
-  ['staff', ICON_URL.staff],
   ['mining', '/icons/ui/skill-mining.webp?v=2.3.1224'],
   ['woodcutting', '/icons/ui/skill-woodcutting.webp?v=2.3.1224'],
   ['fishing', '/icons/ui/skill-fishing.webp?v=2.3.1224'],
@@ -347,14 +350,45 @@ export const RDISC_ICONS = [
   ['farm-water', '/ui/controls/farm-water.webp?v=2.3.3526'],
   ['farm-feed', '/ui/controls/farm-feed.webp?v=2.3.3526'],
   ['farm-harvest', '/ui/controls/farm-harvest.webp?v=2.3.3526'],
-  /* v2.3.3105: while the tap ATTACKS, the weapon in your hand -- the owner:
-     "when attacking it should show the weapon type depending on what weapon
-     is used".  The bag's own pictures (InventoryPanel's thumb: a sword or a
-     greatsword in its metal, the bow, the staff, the same files and ?v=), all
-     ten in the DOM and warmed with the rest; melee / ranged / staff above stay
-     for an empty slot. */
-  ...WEAPON_ART.map(function (f) { return ['w-' + f, '/icons/items/' + f + '.webp?v=2.3.1774']; }),
+  /* v2.3.3105: while the tap ATTACKS, the weapon in your hand (the bag's own
+     pictures, all ten) -- until v2.3.3920, when the reticle took their place
+     (RDISC_WEAPON_KEYS above) */
 ];
+
+/* ═══ v2.3.3920: THE ATTACK DISC'S AIMING RETICLE ═══
+ * The owner: "The grayed out large staff button on the right hand side is used
+ * to rotate the character and point the direction of attacks when the joystick
+ * is held in a direction", and from the design review they adopted: "Use a
+ * neutral four-direction reticle or crosshair ... It should look like an
+ * aiming joystick, not a disabled button."  A thin parchment ring, four short
+ * ticks at north, east, south and west, and a gold centre dot, each on a dark
+ * edge so it reads over the slate, the warm fight face and the world through a
+ * ghosted disc.  Bright at every state of the disc (it is the stick's knob,
+ * never greyed); while a thumb is on the stick (data-pressed) it and the rod
+ * it rides on, the direction pointer, brighten (game.css).  Drawn in SVG: no
+ * file, nothing to preload or free. */
+const AIM_INK = '#F4E4BC', AIM_GOLD = '#F5C451', AIM_EDGE = '#1B1712';
+export function AimReticle(props) {
+  var s = props.size || 50;
+  var ticks = ['M50 6 L50 22', 'M94 50 L78 50', 'M50 94 L50 78', 'M6 50 L22 50'];
+  var kids = [
+    React.createElement('circle', { key: 're', cx: 50, cy: 50, r: 30, fill: 'none', stroke: AIM_EDGE, strokeWidth: 9 }),
+  ];
+  ticks.forEach(function (d, i) {
+    kids.push(React.createElement('path', { key: 'te' + i, d: d, fill: 'none', stroke: AIM_EDGE, strokeWidth: 11, strokeLinecap: 'round' }));
+  });
+  kids.push(React.createElement('circle', { key: 'de', cx: 50, cy: 50, r: 9, fill: AIM_EDGE }));
+  kids.push(React.createElement('circle', { key: 'r', className: 'bt-aim-ring', cx: 50, cy: 50, r: 30, fill: 'none', stroke: AIM_INK, strokeWidth: 4.5 }));
+  ticks.forEach(function (d, i) {
+    kids.push(React.createElement('path', { key: 't' + i, className: 'bt-aim-tick', d: d, fill: 'none', stroke: AIM_INK, strokeWidth: 6, strokeLinecap: 'round' }));
+  });
+  kids.push(React.createElement('circle', { key: 'd', className: 'bt-aim-dot', cx: 50, cy: 50, r: 6, fill: AIM_GOLD }));
+  return React.createElement('svg', {
+    className: props.className, 'data-ricon-img': 'aim', 'data-icon': 'aim',
+    viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
+    style: { width: s, height: s, pointerEvents: 'none', overflow: 'visible' },
+  }, kids);
+}
 
 /* ═══ v2.3.3279: THE OWNER'S OWN ABILITY PICTURES ═══
  * The owner, 2026-10-16, handed over a sheet of the five ability icons
@@ -440,8 +474,11 @@ export function AbilityFace(props) {
  * alike.  `kind` picks the mark; the alternatives were drawn for the owner to
  * choose from, and the owner chose the arrow ("I like option B for jump
  * better"); `?jumpicon=chevron|double|hop` wears another for a tab:
- * jumpGlyphKind).  `data-icon="jump"` as before, for the probes. */
-export const JUMP_GLYPHS = ['chevron', 'arrow', 'double', 'hop'];
+ * jumpGlyphKind).  v2.3.3920: the default is `leap`, a figure mid-leap over
+ * its motion arc (the design review the owner adopted: "a simple leaping
+ * silhouette or a motion arc with an airborne figure"); `?jumpicon=arrow`
+ * brings the arrow back for a tab.  `data-icon="jump"` as before, for the probes. */
+export const JUMP_GLYPHS = ['chevron', 'arrow', 'double', 'hop', 'leap'];   /* v2.3.3920: leap, the default */
 const JUMP_INK = '#F4E4BC', JUMP_GROUND = '#E6AE52', JUMP_EDGE = '#1B1712';
 const JUMP_MARKS = {
   /* one bold chevron over the ground (option A, the first default) */
@@ -452,31 +489,46 @@ const JUMP_MARKS = {
   double: { ink: ['M29 50 L50 30 L71 50', 'M29 68 L50 48 L71 68'], ground: 'M31 83 L69 83' },
   /* a hop's arc from the ground and back down */
   hop: { ink: ['M24 70 Q50 6 74 62', 'M62 60 L75 64 L79 50'], ground: 'M18 80 L82 80' },
+  /* ═══ v2.3.3920: THE DEFAULT -- A FIGURE MID-LEAP OVER ITS ARC ═══
+     The design review the owner adopted: "a simple leaping silhouette or a
+     motion arc with an airborne figure".  A parchment stick figure at the top
+     of its leap (arms up and forward, the back leg trailing, the front knee
+     tucked), the gold arc it rose along curving up from the ground behind it.
+     `head` is a filled circle (x, y, r); `ground` here is the arc. */
+  leap: {
+    ground: 'M10 88 Q16 60 38 54',
+    ink: ['M58 31 L50 54', 'M42 24 L57 35 L75 36', 'M50 54 L36 58 L28 71', 'M50 54 L64 63 L60 79'],
+    head: [66, 17, 8],
+    /* thinner than the arrow's 11 / 17, or the limbs run together at 44 px */
+    inkW: 9, edgeW: 15,
+  },
 };
 export function jumpGlyphKind(search) {
   try {
     var q = search != null ? search : ((typeof window !== 'undefined' && window.location && window.location.search) || '');
     var m = /(?:^|[?&])jumpicon=([a-z]+)/.exec(q);
-    return m && JUMP_MARKS[m[1]] ? m[1] : 'arrow';
+    return m && JUMP_MARKS[m[1]] ? m[1] : 'leap';   /* v2.3.3920: was 'arrow' */
   } catch (e) {
-    return 'arrow';
+    return 'leap';
   }
 }
 export function JumpGlyph(props) {
   var s = props.size || 36;
-  var mk = JUMP_MARKS[props.kind] || JUMP_MARKS.arrow;
+  var mk = JUMP_MARKS[props.kind] || JUMP_MARKS.leap;
   var kids = [];
   var line = function (d, col, w, k) {
     return React.createElement('path', { key: k, d: d, fill: 'none', stroke: col, strokeWidth: w, strokeLinecap: 'round', strokeLinejoin: 'round' });
   };
   /* the dark edges first, then the marks over them */
   kids.push(line(mk.ground, JUMP_EDGE, 11, 'ge'));
-  mk.ink.forEach(function (d, i) { kids.push(line(d, JUMP_EDGE, 17, 'ie' + i)); });
+  mk.ink.forEach(function (d, i) { kids.push(line(d, JUMP_EDGE, mk.edgeW || 17, 'ie' + i)); });
+  if (mk.head) kids.push(React.createElement('circle', { key: 'he', cx: mk.head[0], cy: mk.head[1], r: mk.head[2] + 3, fill: JUMP_EDGE }));
   kids.push(line(mk.ground, JUMP_GROUND, 6, 'g'));
-  mk.ink.forEach(function (d, i) { kids.push(line(d, JUMP_INK, 11, 'i' + i)); });
+  mk.ink.forEach(function (d, i) { kids.push(line(d, JUMP_INK, mk.inkW || 11, 'i' + i)); });
+  if (mk.head) kids.push(React.createElement('circle', { key: 'h', cx: mk.head[0], cy: mk.head[1], r: mk.head[2], fill: JUMP_INK }));
   return React.createElement('svg', {
     className: 'bt-skin-svg', viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
-    'data-icon': 'jump', 'data-jump-glyph': props.kind || 'arrow',
+    'data-icon': 'jump', 'data-jump-glyph': JUMP_MARKS[props.kind] ? props.kind : 'leap',
     style: { display: 'block', pointerEvents: 'none' },
   }, kids);
 }

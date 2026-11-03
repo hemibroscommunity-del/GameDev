@@ -135,7 +135,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        sword see-through over it */
     const paint = await P.page.evaluate(() => {
       const d = document.querySelector('.bt-rjoy-base');
-      const j = d && d.querySelector('.bt-rjoy-icon[data-ricon-img="w-sword-copper"]');
+      const j = d && d.querySelector('.bt-rjoy-aim');   /* v2.3.3920: the aiming reticle, not the sword's picture */
       const skin = d && d.querySelector('.bt-skin');
       let op = 1; for (let e = d; e; e = e.parentElement) op *= +getComputedStyle(e).opacity;
       return { op: +op.toFixed(2), jump: j ? getComputedStyle(j).display : null, jumpOp: j ? +getComputedStyle(j).opacity : null,

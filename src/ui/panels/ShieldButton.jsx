@@ -461,7 +461,14 @@ export function sprintAnchor(isLandscape) {
  * lived left of the disc make room: TRAP and Shield Bash stack over Jump
  * (ctlColumn), Block stays diagonal below and left (blockAnchor).
  * Sideways (and on a computer) it is v2.3.3721's place, under the disc. */
-export const JUMP_SIZE = { up: 60, land: 64 };
+/* v2.3.3920: 64/68 (it was 60/64) -- the design review the owner adopted:
+   "Slightly enlarge the button and preserve its lower-right position near
+   the aiming thumb".  Still on the disc's ring (jumpAnchor), its ring 10 px
+   off the disc's; Block steps 4 px left with it (blockAnchor); TRAP and Shield
+   Bash stay put, standing on JUMP_SPOT_UP_SIZE, the size Jump had when they
+   were placed over it (v2.3.3740), not on this. */
+export const JUMP_SIZE = { up: 64, land: 68 };
+export const JUMP_SPOT_UP_SIZE = 60;
 export const JUMP_BLOCK_AIR = 24;
 export const JUMP_DISC_AIR = 18;   /* v2.3.3740: upright, the disc's left edge <-> Jump */
 export const JUMP_FOOT_UP = 72;    /* v2.3.3740: upright, Jump's foot over the band */
@@ -488,7 +495,7 @@ export const RCTL_JUMP_AIR = 8;    /* v2.3.3799: sideways, Shield Bash's foot <-
 /* v2.3.3799: where Jump stood upright before (v2.3.3740), which TRAP and
    Shield Bash still stand on (ctlColumn) */
 export function jumpSpotUp() {
-  var size = Math.max(CTL_MIN_SIZE, JUMP_SIZE.up);
+  var size = Math.max(CTL_MIN_SIZE, JUMP_SPOT_UP_SIZE);   /* v2.3.3920: the old size, so TRAP and Bash keep their pixels */
   return { size: size, right: discRight(false) + RBTN.w + JUMP_DISC_AIR, bottomPx: JUMP_FOOT_UP };
 }
 export function jumpAnchor(isLandscape) {
@@ -733,7 +740,56 @@ export function combatBandTopPx(isLandscape) {
     spr.bottomPx + spr.size,                   /* Sprint, over the attack disc (v2.3.3006; v2.3.3106 moved it) */
     jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */
     discBottom(isLandscape) + discR,           /* the attack disc (v2.3.3740: its own height upright) */
-    LBTN.bottom + discL);                      /* the movement disc */
+    LBTN.bottom + discL,                       /* the movement disc */
+    weaponTriAnchor(isLandscape).bottomPx + weaponTriAnchor(isLandscape).h);   /* v2.3.3921: the weapon triangle */
+}
+
+/* ═══ v2.3.3921: THE WEAPON TRIANGLE, OVER THE MOVEMENT STICK ═══
+ * The owner: "I need a button on screen for switching between weapons.  Maybe
+ * a triangle or wheel where the active weapon is highlighted on top and the
+ * others are greyed out" (WeaponTriangle.jsx).  Three round buttons in one
+ * box: the weapon in hand on top (WTRI.top), the other two below it to either
+ * side (WTRI.side), WTRI.air between the rings.
+ *
+ * WHERE: the LEFT thumb's side, by the owner's choice on the PR: "Do you think
+ * the weapon triangle should move besides the left joystick instead?  I'm
+ * thinking the right joystick is already crowded with buttons and weapon
+ * swapping won't need to occur as often."  (The first cut stood over the
+ * right-hand cluster.)  It is the left cluster's third place (leftCluster:
+ * Element Burst, Quick eat), toward the screen's middle:
+ *   UPRIGHT, over Quick eat: its left edge on Quick eat's, its foot WTRI_CLEAR
+ *     over Quick eat's top, its right edge never past 4 px short of the
+ *     middle (a 320 px phone slides it left, still over Quick eat).  On a 390 x
+ *     844 phone that is x 90-178, y 461-545: under the quest card, over the
+ *     bell and the dashboard.
+ *   SIDEWAYS, right of the movement disc at its foot: a row higher would
+ *     reach the top bar on a 390 px-tall screen, and level with Quick eat it
+ *     lies on the quest card.  WTRI_CLEAR right of the disc's box, its foot
+ *     level with the disc's, WTRI_CLEAR right of nothing else: Quick eat's
+ *     place is 54 px over its top.
+ * combatBandTopPx counts it (the coach card's lift), as it counts every
+ * slot. */
+export const WTRI = { top: 46, side: 40, air: 4 };
+export const WTRI_CLEAR = 10;
+export function weaponTriBox() {
+  var rT = WTRI.top / 2, rS = WTRI.side / 2;
+  var w = WTRI.side * 2 + 8;   /* the two lower buttons, 8 px apart */
+  var dx = w / 2 - rS;
+  var dy = Math.ceil(Math.sqrt(Math.max(0, Math.pow(rT + rS + WTRI.air, 2) - dx * dx)));
+  var h = rT + dy + rS;
+  /* the three centres, px from the box's top-left: top, lower-left, lower-right */
+  return { w: w, h: h, top: { x: w / 2, y: rT }, left: { x: rS, y: h - rS }, right: { x: w - rS, y: h - rS } };
+}
+/* { left: px in from the screen's left, bottomPx: px over the band } */
+export function weaponTriAnchor(isLandscape) {
+  var box = weaponTriBox();
+  if (isLandscape) {
+    return { w: box.w, h: box.h, box: box, left: LBTN.leftLand + LBTN.wLand + WTRI_CLEAR, bottomPx: LBTN.bottom };
+  }
+  var l = leftCluster(false);
+  var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+  var left = Math.max(EDGE_GUARD_PX, Math.min(l.leftPx(LCTL_SLOT.eat), Math.floor(vw / 2) - 4 - box.w));
+  return { w: box.w, h: box.h, box: box, left: left, bottomPx: l.bottomPx(LCTL_SLOT.eat) + l.size + WTRI_CLEAR };
 }
 
 export function ctlBottom(px) {

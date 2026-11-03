@@ -4,7 +4,7 @@ import { SprintButton } from './SprintButton.jsx'; /* v2.3.3006 */
 import { RideButton } from './RideButton.jsx'; /* v2.3.3776: the skateboard */
 import { QuickEatButton } from './QuickEatButton.jsx'; /* v2.3.3260 */
 import { JumpButton } from './JumpButton.jsx'; /* v2.3.3017 */
-import { Skin, RDISC_ICONS } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control */
+import { Skin, RDISC_ICONS, AimReticle } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup -- one skin for every control */
 
 /* ═══ v2.3.3018: THE ATTACK DISC IS A GOLD-RINGED BUTTON WITH A PICTURE ═══
  * Owner: "Make the on screen buttons look more like the improved mockup."
@@ -484,7 +484,10 @@ export function TouchControls(props) {
       /* No filter: a drop-shadow over the WebGL canvas is the documented iOS
          "static" (v2.3.1236, CLAUDE.md). */
     }
-  }, RDISC_ICONS.map(function (ic) {
+  }, /* v2.3.3920: an attack wears the aiming reticle (controlSkin AimReticle),
+     not the weapon in hand -- that is the weapon triangle's now */
+  React.createElement(AimReticle, { key: 'aim', className: 'bt-rjoy-icon bt-rjoy-aim', size: rIcon }),
+  RDISC_ICONS.map(function (ic) {
     return React.createElement('img', {
       key: ic[0], className: 'bt-rjoy-icon', 'data-ricon-img': ic[0],
       src: ic[1], alt: '', draggable: false, width: rIcon, height: rIcon,

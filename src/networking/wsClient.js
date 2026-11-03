@@ -20,7 +20,7 @@ import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the 
 import { applyRewardsState, applyDailyProgress } from '@/game/dailyRewards.js'; /* v2.3.3140: the free spin, daily quests, the season */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
-import { HARDENED_WOOD_RECIPES } from '@/data/hardenedWood.js'; /* v2.3.3139: hardened wood's names */
+import { HARDENED_WOOD_RECIPES, logWord } from '@/data/hardenedWood.js'; /* v2.3.3139: hardened wood's names; v2.3.3981: logWord */
 import { farmBus } from '@/ui/mobile/farmBus.js'; /* v2.3.3127: the farm, the worker's */
 import { shopBus } from '@/ui/mobile/shopBus.js'; /* v2.3.3582: an open shop asks again after a rejoin */
 import { farmFeedback } from '@/game/farmFeedback.js'; /* v2.3.3127 */
@@ -2170,7 +2170,9 @@ export function setupWebSocket(ctx) {
               try {
                 if (_hw.error) {
                   var _hwr = HARDENED_WOOD_RECIPES[_hw.key];
-                  var _hwWhy = _hw.error === 'no-logs' && _hwr ? 'Need ' + _hwr.logCost + ' ' + _hwr.logPlural
+                  /* v2.3.3981: the worker's own count (`need`: one log a piece, or five), its own table's as before when absent */
+                  var _hwNeed = typeof _hw.need === 'number' && _hw.need > 0 ? _hw.need : (_hwr && _hwr.logCost);
+                  var _hwWhy = _hw.error === 'no-logs' && _hwr ? 'Need ' + _hwNeed + ' ' + logWord(_hwr, _hwNeed)
                     : _hw.error === 'skill' ? 'Requires Woodworking ' + (_hw.need || '')
                     : 'Cannot harden wood right now';
                   pushDmgPopup(S, S.player.x, S.player.y - 30, _hwWhy, '#ff5e6c');

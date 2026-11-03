@@ -39,8 +39,9 @@ render), "‹ All monsters" bringing them back.
   (`Lv 1–40`), its element with its icon, and its type of creature, by its
   body (`CODEX_TYPES`; the owner: *"more along the lines of humanoid, beast,
   (some word along those lines that means flying creature, bug-like creature,
-  swimming creature)"*): **Humanoid** (the snowman, the fire goblin, the
-  mummy), **Beast** (the rock monster, a boulder with a mouth), **Aquatic**
+  swimming creature)"*): **Humanoid** (the fire goblin, the mummy),
+  **Beast** (the rock monster, a boulder with a mouth, and the snowman since
+  v2.3.3908: the owner, *"Change snowman from humanoid to beast"*), **Aquatic**
   (the fishman, the bog lurker) and **Ooze** (the two slimes and the mire wisp,
   drawn as one -- the one word the owner's list did not have); **Winged** and
   **Insectoid** wait for a monster that flies or a bug. And how many you have
@@ -464,7 +465,7 @@ answer carries that monster's `layout`).
   a tab's content just under the pinned tabs; the stage's feet measured in
   screen px by its scale): the Monsters tab; a real kill opening the
   whole page on the sheet's own height, scrolling in it from its top, its
-  header badges (a Humanoid snowman) and tabs; its drop table; scrolled to
+  header badges (a Beast snowman, v2.3.3908) and tabs; its drop table; scrolled to
   its end, the Iron Great Sword's card opening at its top (Common, 0.2%, the
   four grades) and a shard's (no grades), the X back to the marked row in
   view; the table's near-black panel, darker than the sheet, its stripes and
