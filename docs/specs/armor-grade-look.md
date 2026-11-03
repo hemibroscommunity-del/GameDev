@@ -137,8 +137,16 @@ gives it back on release.
 
 **The cost.** The same pass per graded piece as before. The taps now run
 over the empty margin round the art as well as the art (16 a pixel, as the
-old outline's), on graded pieces only; mp-crowdbots with a graded
-`BT_CROWD_LOOK` reports the frame (below).
+old outline's), on graded pieces only. mp-crowdbots now takes `BT_CROWD_GRADE`
+(two letters, as `eqg`: the bots wear described iron pieces in those grades
+on the worker, bots.mjs), and the phone does receive each bot's `eqg`. But on
+this build the bots draw no armour on the phone at all, plain or graded: their
+`eqc` arrives as `ironplate` while `equip.chest`, which the renderer and the
+shine read, stays `none` (25 bots in iron: 0-2 armour slots drawn), so the
+crowd's frame cost of the glow could not be read from it. A finding for the
+crowd test's own lane (it predates this change); the cost per graded piece is
+one pass, as since v2.3.3142 (mp-sheenbatch: elite plate and greaves still
+passes of their own).
 
 ## Whose grade, and why it cannot claim more than the fight counts
 
