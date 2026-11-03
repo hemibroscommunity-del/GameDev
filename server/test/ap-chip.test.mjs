@@ -8,7 +8,7 @@
  *   2. a rise: only a real rise, only after the quiet start, never from a
  *      first reading;
  *   3. the "+N" words;
- *   4. the bar: the worker's number (achvApTotal), only against a worker that
+ *   4. (v2.3.4183: the medal left the bar) the bar: the worker's number (achvApTotal), only against a worker that
  *      grants achievements, a rise counted only once the worker's record has
  *      come, a tap opening the Achievements page under More, a flat fill (no
  *      filter over the canvas), and the bar's left column sized to fit it. */
@@ -38,21 +38,17 @@ check('3: the "+N" words', AP.apGainWords(10) === '+10' && AP.apGainWords(1000) 
 /* ── 4. the bar ── */
 const zh = readFileSync(new URL('../../src/ui/mobile/ZoneHeader.jsx', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../../src/styles/game.css', import.meta.url), 'utf8');
+/* v2.3.4183: the owner, 2026-11-03: "I don't like the placement of where the
+   gold count is (top right) and the placement of the achievement points (top
+   left)" -- the medal and the purse left the bar; your points are on the Bro
+   card, and a rise is a "+N AP" word under the bar's right end */
 check('4: the worker\'s number, only against a worker that grants achievements',
-  /const apOn = achvLive\(S\);/.test(zh) && /const ap = apOn \? achvApTotal\(S\) : 0;/.test(zh) && /\{apOn && \(/.test(zh));
+  /const apOn = achvLive\(S\);/.test(zh) && /const ap = apOn \? achvApTotal\(S\) : 0;/.test(zh));
 check('4: a rise is counted only once the worker\'s record has come', /if \(apOn && S\._achv && S\._achv\.known\) \{/.test(zh));
-check('4: ...and never under calm motion', /if \(g > 0 && !lifeCalm\(\)\)/.test(zh));
-check('4: a tap opens the Achievements page under More',
-  /dashboardPanelBus\.open\('more'\); dashboardPanelBus\.push\('achievements'\);/.test(zh) && /onClick=\{openAchievements\}/.test(zh));
-check('4: the owner\'s medal, and a hook for tests', /src=\{ACHV_MEDAL_SRC\}/.test(zh) && /data-ap-chip="1"/.test(zh) && /data-ap-gain=/.test(zh));
-check('4: it is in the bar\'s left column, after the door', zh.indexOf('className="bt-zone-header__left"') > 0
-  && zh.indexOf('bt-zone-header__logout') > zh.indexOf('className="bt-zone-header__left"')
-  && zh.indexOf('data-ap-chip') > zh.indexOf('bt-zone-header__logout', zh.indexOf('className="bt-zone-header__left"')));
-check('4: the bar\'s left column grows to fit it', /grid-template-columns:auto minmax\(0,1fr\) auto/.test(css) && /\.bt-zone-header__left\{min-width:calc\(38px \* var\(--zk\)\)/.test(css));   /* v2.3.3765: 38 px x the bar's scale */
-const apCss = (css.match(/\.bt-zone-header__ap\{[\s\S]*?\}/) || [''])[0] + (css.match(/\.bt-ap-gain\{[\s\S]*?\}/) || [''])[0];
-check('4: a flat fill: no filter over the canvas (TRAPS section 42), and it takes a touch', apCss.length > 0 && !/filter|backdrop/.test(apCss) && /pointer-events:auto/.test(apCss), apCss);
-check('4: the "+N" is still under calm motion', /html\.bt-calm \.bt-ap-gain\{animation:none;opacity:0\}/.test(css));
-check('4: the "+N" flies inside the bar\'s own box, beside the number', /\.bt-ap-gain\{position:absolute;left:100%;top:50%/.test(css));
+check('4: a rise is a "+N AP" word under the bar', /text: '\+' \+ g\.toLocaleString\('en-US'\) \+ ' AP'/.test(zh) && /target: 'goldIcon'/.test(zh));
+check('4: no medal and no purse on the bar; the door stays', !/data-ap-chip/.test(zh) && !/ACHV_MEDAL_SRC/.test(zh) && !/data-purse/.test(zh)
+  && zh.indexOf('bt-zone-header__logout') > zh.indexOf('className="bt-zone-header__left"'));
+check('4: the bar\'s left column still sized for the door', /grid-template-columns:auto minmax\(0,1fr\) auto/.test(css) && /\.bt-zone-header__left\{min-width:calc\(38px \* var\(--zk\)\)/.test(css));   /* v2.3.3765: 38 px x the bar's scale */
 
 if (failures) { console.log(`\n${failures} TEST(S) FAILED`); process.exit(1); }
 console.log('\nap-chip: all passed');

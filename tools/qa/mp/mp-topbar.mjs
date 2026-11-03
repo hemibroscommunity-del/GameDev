@@ -112,7 +112,7 @@ const MEASURE = (P) => P.page.evaluate(() => {
    is only the Test panel's hold area: in it, never cut matters no more */
 const titleOk = (m) => !!m.titleText && (m.titleClear || !m.titleCut || (m.titleText !== 'BroTown' && m.titleW >= 50));
 const fits = (m) => titleOk(m) && m.hits.length === 0 && m.out.length === 0 && !m.xpOver
-  /* v2.3.4173: the purse and the points left the bar (the owner: "I don't
+  /* v2.3.4183: the purse and the points left the bar (the owner: "I don't
      like the placement of where the gold count is (top right) and the
      placement of the achievement points (top left)") */
   && m.purseText == null && m.apText == null && m.pill && m.barClean && m.titleClear;

@@ -53,7 +53,7 @@ function shownRect(el) {
     the Character button, else the dashboard's fold handle.  The element, or
     null. */
 export var QUEST_FLY_TARGETS = {
-  /* v2.3.4173: the purse left the top bar: the coins in the Gear tab's header
+  /* v2.3.4183: the purse left the top bar: the coins in the Gear tab's header
      when the dashboard shows it, else its fold chip, else its button */
   gold: ['[data-purse="1"]', '[data-gear-gold]', '[data-dash-fold]', '[data-nav="dashboard"]'],
   item: ['[data-tut="coach-gear"]', '[data-dash-fold]', '[data-nav="dashboard"]'],
@@ -136,7 +136,7 @@ export function flyPicture(src, from, kind, opts) {
       var where = 'corner';
       if (toEl) {
         where = toEl.getAttribute('data-purse') ? 'purse'
-          : toEl.hasAttribute('data-gear-gold') ? 'gear-gold'   /* v2.3.4173: the Gear tab's coins */
+          : toEl.hasAttribute('data-gear-gold') ? 'gear-gold'   /* v2.3.4183: the Gear tab's coins */
           : toEl.getAttribute('data-section') ? 'section-' + toEl.getAttribute('data-section')   /* v2.3.4055 */
           : toEl.getAttribute('data-bro-popup-head') ? 'window-' + toEl.getAttribute('data-bro-popup-head')   /* v2.3.4172 */
           : toEl.getAttribute('data-tut') ? toEl.getAttribute('data-tut')

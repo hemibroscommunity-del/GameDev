@@ -403,7 +403,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const flip = P.page.evaluate(() => new Promise((res) => {
     const t0 = performance.now();
     const tick = () => {
-      /* v2.3.4173: the purse left the top bar: a gain is a "+N gold" word under it */
+      /* v2.3.4183: the purse left the top bar: a gain is a "+N gold" word under it */
       const S = window._gameState && window._gameState.current;
       if (((S && S._hudPopups) || []).some((p) => p && p.target === 'goldIcon' && /gold$|G$/.test(p.text || ''))) return res(true);
       if (performance.now() - t0 > 4000) return res(false);
@@ -412,7 +412,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     tick();
   }));
   await H.grant(wsPort, pid, 'gold', { amount: 25 }).catch(() => {});
-  rec.ok('purse: gold landing is said as a "+N gold" word under the top bar (v2.3.4173: the purse left the bar)', await flip, {});
+  rec.ok('purse: gold landing is said as a "+N gold" word under the top bar (v2.3.4183: the purse left the bar)', await flip, {});
 
   /* quiet: the calm switch, then the OS setting */
   await setCalm(P, true);

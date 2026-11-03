@@ -3,8 +3,8 @@ import { COL, getState } from './dash/common.js';
 import { placeName } from './placeName.js'; /* v2.3.3974: the land you stand in, or BroTown (was the Wheel's name, v2.3.3009) */
 import { testModeOn } from '../../game/testMode.js'; /* v2.3.3430: the owner's test mode tag */
 import { achvLive, achvApTotal } from '../../game/achievements.js';   /* v2.3.3553: your AP on the bar */
-import { apRise } from '../../game/apChip.js';  /* v2.3.3553; v2.3.4173: a rise is a word now */
-import { pushHudPopup } from '../XpFlyOverlay.jsx';  /* v2.3.4173: "+12 gold" / "+5 AP" under the bar */
+import { apRise } from '../../game/apChip.js';  /* v2.3.3553; v2.3.4183: a rise is a word now */
+import { pushHudPopup } from '../XpFlyOverlay.jsx';  /* v2.3.4183: "+12 gold" / "+5 AP" under the bar */
 import { onXpBar, xpBarShown, xpGainWords, xpToNextWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
 import { XpTrack } from './XpTrack.jsx';                                  /* v2.3.3739: its white gain bar and "45 / 120" */
 import { XP_BAR_ICONS, XP_BAR_LABELS } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
@@ -97,7 +97,7 @@ export const ZoneHeader = ({ onExit }) => {
      nothing, because every action it offers is an authenticated HTTP call
      (server/src/devtools.js). */
   const [showDev, setShowDev] = useState(false);
-  const goldSeen = useRef(null);   /* v2.3.2815: the purse's coin flip; v2.3.4173: the gain's word */
+  const goldSeen = useRef(null);   /* v2.3.2815: the purse's coin flip; v2.3.4183: the gain's word */
   /* v2.3.3553: the AP's rise, as the purse's (game/apChip.js) */
   const apSeen = useRef(null);
   const mountedAt = useRef(Date.now());
@@ -127,7 +127,7 @@ export const ZoneHeader = ({ onExit }) => {
   const S = getState();
   if (!S) return null;
 
-  /* ═══ v2.3.4173: THE GOLD AND THE ACHIEVEMENT POINTS LEAVE THE BAR ═══
+  /* ═══ v2.3.4183: THE GOLD AND THE ACHIEVEMENT POINTS LEAVE THE BAR ═══
      The owner, 2026-11-02: "I don't like the placement of where the gold count
      is (top right) and the placement of the achievement points (top left)".
      The purse (v2.3.2320) and the medal with your AP (v2.3.3553) are gone from
@@ -201,7 +201,7 @@ export const ZoneHeader = ({ onExit }) => {
         >
           <img src={`/icons/ui/logout-door-icon.svg${V}`} alt="" draggable={false} />
         </button>
-        {/* v2.3.3553-v2.3.4173: your AP and the owner's medal stood here; they
+        {/* v2.3.3553-v2.3.4183: your AP and the owner's medal stood here; they
             are on the Bro card now, and a rise is a "+5 AP" word under the
             bar's right end (above) */}
         </div>
@@ -223,8 +223,7 @@ export const ZoneHeader = ({ onExit }) => {
           /* v2.3.2596: the zone-entry banner's DOCK TARGET.  A data hook rather
              than the class name because the class is a style handle that a
              restyle is free to rename, and the banner measures this box from
-             outside React (the same arrangement `data-purse` already gives the
-             trade receipt's gold toss one rail over). */
+             outside React. */
           data-zone-title="1"
           onPointerDown={holdStart}
           onPointerUp={holdEnd}
@@ -280,44 +279,11 @@ export const ZoneHeader = ({ onExit }) => {
           </div>
         ) : null}
         </div>
-        {/* ═══ v2.3.2320: THE PURSE LIVES HERE NOW ═══
-            Owner: "Move gold amount display to very top right on the top bar
-            that lists the zone name."
-
-            This column was an EMPTY 38px spacer whose only job was optical —
-            match the logout chip so the title centred on the SCREEN rather
-            than in the leftover (the v2.3.1333 note above).  It is named
-            `__balance` because a balance is what it was always for; it just
-            never held one.  Now it does, and the symmetry it was protecting
-            is spent on the thing it was reserved for.
-
-            THIS IS A MOVE, NOT A COPY.  The band purse (IdentityStrip) and
-            the landscape chip (BottomDashboard's LandGoldChip) both retire in
-            the same change — the one-count rule that killed the v2.3.1563
-            floating chip ("two live gold counts on one screen disagree the
-            moment one of them lags") applies to this one exactly as hard, and
-            it is why the readout could not simply be added here.
-
-            NO `.bt-coin-glimmer` ON THIS COPY.  The band's number wore it and
-            the Hero strip still names it, and it is `background-clip:text` +
-            `-webkit-text-fill-color: transparent` under a 2.8s infinite
-            animation.  That was written for an opaque surface (the character
-            card), and every surface it has run on since has been opaque too.
-            This rail is `position:fixed` directly over the live WebGL canvas,
-            which is the compositing arrangement TRAPS §42 records as the iOS
-            grain hazard (the v2.3.948 charge pie, the v2.3.1236 joystick
-            bases).  A flat gold fill costs one shimmer and buys the primary
-            platform out of a known trap.
-
-            `data-purse` travels with the number, so the trade receipt's gold
-            toss still finds it (TradeWindowPanel's landingRect).  It flies UP
-            to the rail now instead of down into the band — the coins go to
-            where the coins are, which is the promise that animation makes.
-
-            pointer-events stays inherited-`none` from the rail: this is a
-            readout over the world, and anything here that took a touch would
-            steal it from the game underneath. */}
-        {/* v2.3.4173: the purse is gone (the gold is in the Gear tab's header);
+        {/* v2.3.2320 put the purse here (the owner: "Move gold amount display to
+            very top right"); v2.3.4183 took it away again (the owner: "I don't
+            like the placement of where the gold count is (top right)").  The
+            long note on it is in git history (docs/specs/ap-on-the-bar.md). */}
+        {/* v2.3.4183: the purse is gone (the gold is in the Gear tab's header);
             this column stays, empty, as wide as the door's, so the bar's
             centre (the XP bar, TEST MODE, the owner's hold) stays centred on
             the SCREEN -- what it was first made for (v2.3.1333) */}

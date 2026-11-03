@@ -1,4 +1,4 @@
-/* ═══ v2.3.4173: THE POINTS LEAVE THE TOP BAR; A RISE IS A WORD UNDER IT ═══
+/* ═══ v2.3.4183: THE POINTS LEAVE THE TOP BAR; A RISE IS A WORD UNDER IT ═══
  * The owner, 2026-11-02: "I don't like the placement of where the gold count
  * is (top right) and the placement of the achievement points (top left)".
  * This now holds, in the world (390 x 844, touch): no medal and no purse on
@@ -65,11 +65,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const zone = await H.readState(P, (S) => S.currentZone);
   const caps = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.achievements));
 
-  /* ── 1. (v2.3.4173) no medal and no purse on the bar; the door stays ── */
+  /* ── 1. (v2.3.4183) no medal and no purse on the bar; the door stays ── */
   let b0 = null;
   for (let i = 0; i < 30; i++) { b0 = await bar(P); if (b0.door) break; await P.page.waitForTimeout(300); }
   await shot('bar');
-  rec.ok(`1: in the world (zone "${zone}"), the bar has the door and NO medal or purse (v2.3.4173)`,
+  rec.ok(`1: in the world (zone "${zone}"), the bar has the door and NO medal or purse (v2.3.4183)`,
     zone === 'wheel' && caps && !!b0.door && !b0.chip && !b0.purse, b0);
   /* every "+N AP" / "+N gold" word the bar's corner says, recorded as it is said */
   await P.page.evaluate(() => {

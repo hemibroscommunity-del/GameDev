@@ -1,4 +1,4 @@
-/* ═══ v2.3.4173: THE PURSE LEAVES THE ZONE RAIL ═══
+/* ═══ v2.3.4183: THE PURSE LEAVES THE ZONE RAIL ═══
  * The owner, 2026-11-02: "I don't like the placement of where the gold count
  * is (top right)".  The purse is gone from the rail; the gold shows in the
  * Gear tab's header (dash/GearTab.jsx, data-gear-gold) and a gain is a "+12
@@ -183,9 +183,9 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   await P.page.waitForTimeout(700);
 
   const hd = await headerGeom(P);
-  /* v2.3.4173: the purse left the rail (the owner: "I don't like the
+  /* v2.3.4183: the purse left the rail (the owner: "I don't like the
      placement of where the gold count is (top right)") */
-  rec.ok(T + 'NO purse in the zone-name rail any more (v2.3.4173)',
+  rec.ok(T + 'NO purse in the zone-name rail any more (v2.3.4183)',
     !hd.hasPurse && !(hd.balanceText || '').length, { balance: hd.balance, text: hd.balanceText });
   rec.ok(T + '...and the rail takes NO touches where it was -- the world still answers under it',
     hd.pe === 'none' && hd.answersAtGold !== 'header', { pe: hd.pe, answers: hd.answersAtGold });
@@ -243,7 +243,7 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     !!more && more.answers === 'self' && more.cx < phone.width, more);
   /* The purse does not come back on a drilled screen either. */
   const dCounts = await goldCounts(P, GOLD_TXT);
-  /* v2.3.4173: and none comes back into the rail on a drilled screen */
+  /* v2.3.4183: and none comes back into the rail on a drilled screen */
   rec.ok(T + 'DRILLED: still no gold count in the top bar',
     dCounts.every((c) => c.where !== 'zone-header'), dCounts);
 
@@ -267,7 +267,7 @@ async function landscape({ browser, wsPort, webPort, rec }) {
 
   const hd = await headerGeom(P);
   const counts = await goldCounts(P, GOLD_TXT);
-  /* v2.3.4173: no purse in the rail sideways either, and no bottom-centre chip */
+  /* v2.3.4183: no purse in the rail sideways either, and no bottom-centre chip */
   rec.ok('LANDSCAPE: no purse in the rail, and no bottom-centre chip',
     !hd.hasPurse && !hd.landGold, { balance: hd.balance, landGold: hd.landGold });
   rec.ok('LANDSCAPE: no gold count in the top bar', counts.every((c) => c.where !== 'zone-header'), counts);

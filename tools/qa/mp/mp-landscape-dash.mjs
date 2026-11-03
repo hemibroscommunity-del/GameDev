@@ -152,7 +152,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      TOP, which is the pair of facts that distinguishes the new home from the
      old one — a check that only said "a gold readout exists" would have passed
      on either. */
-  /* v2.3.4173: the purse left the rail (the owner: "I don't like the
+  /* v2.3.4183: the purse left the rail (the owner: "I don't like the
      placement of where the gold count is (top right)"); its column stays,
      empty, at the rail's right end, and is still the ruler for the world's
      edge below -- with no number in it */

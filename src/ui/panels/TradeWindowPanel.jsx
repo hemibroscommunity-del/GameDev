@@ -598,7 +598,7 @@ function landingRect(key) {
   var el = null;
   try {
     if (key === '_gold') {
-      /* v2.3.4173: the purse left the top bar; the coins in the Gear tab's header */
+      /* v2.3.4183: the purse left the top bar; the coins in the Gear tab's header */
       el = document.querySelector('[data-purse]') || document.querySelector('[data-gear-gold]') || document.querySelector('.bt-land-gold');
     } else if (key && key.indexOf('w:') === 0) {
       el = document.querySelector('[data-loadout-slot], [data-weapon-slot]');

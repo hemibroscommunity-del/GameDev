@@ -64,7 +64,7 @@ ever seeing the number.
 - Your chosen **title under your name** over your head, for everyone to see.
 - A **"next achievement"** hint (the one nearest done) on the Achievements tile.
 
-## v2.3.4173: the points leave the bar
+## v2.3.4183: the points leave the bar
 
 The owner, 2026-11-02: "I don't like the placement of where the gold count is
 (top right) and the placement of the achievement points (top left)". The medal
