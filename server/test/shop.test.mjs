@@ -305,7 +305,7 @@ check('...and a huge one is capped', many.items.length < 100, many.items.length)
   check('a key that only CONTAINS a family has no price (was 250,000 for xessence_godly_..., a bar for crowbar_)',
     lookalikes.every((k) => room._shopBaseValue(k) === null), lookalikes.map((k) => [k, room._shopBaseValue(k)]));
   check('...while the families still price their own: a prefix, a remains suffix, a camelCase exact',
-    room._shopBaseValue('essence_godly_iron') === 250000 && room._shopBaseValue('bar_iron') === 240 && room._shopBaseValue('slime-remnants') === 18
+    room._shopBaseValue('essence_godly_iron') === 250000 && room._shopBaseValue('bar_iron') === 48 /* v2.3.3981: was 240 */ && room._shopBaseValue('slime-remnants') === 18
       && room._shopBaseValue('manaShard') === 18 && room._shopBaseValue('cooked_fish_trout') === 45 && room._shopBaseValue('crop_carrot') === 8);
 
   /* he neither buys nor sells what has no price */
@@ -689,6 +689,49 @@ check('a refused drink keeps the bottle and heals nothing',
   await send(T, 'shop_buy', { key: 'mining_pickaxe', qty: 1 });
   check('kill switch: toolshop:false takes them off his shelf and refuses a buy', !offList.items.some((i) => i.tool) && result().ok === false && !t.inventory.mining_pickaxe);
   room._liveFlags = keep;
+}
+
+/* ═══ v2.3.3981: ONE ORE A BAR, ONE LOG A HARDENED WOOD -- NO GOLD TAP ═══
+   The owner's one-to-one (smelting.js, hardenedwood.js) took a bar from five
+   ore to one, and Diego's bar from 240 to 48 (hardened wood 144 to 29).  At
+   the old prices a 40-coin ore smelted into a bar he paid 120 for.  For every
+   bar and every hardened wood, with the switch on and with `onetoone: false`
+   (five again, and the old prices with it):
+     - buying the raw items from him and selling him what they make LOSES
+       (his empty-pile offer for one is under his price for the raw it takes);
+     - making it before selling is still worth a little, never a loss (his
+       offer for one is above his offers for the raw it takes);
+     - and he never offers more for one than he asks for it. */
+{
+  const rows = [
+    ...Object.keys(SMELT.RECIPES).map((k) => ['smelt', k]),
+    ...Object.keys(HARDENED_WOOD.RECIPES).map((k) => ['hardened', k]),
+  ];
+  const was = room._liveFlags;
+  const bad = [];
+  const seen = [];
+  for (const off of [false, true]) {
+    room._liveFlags = off ? { onetoone: false } : {};
+    for (const [kind, k] of rows) {
+      const r = kind === 'smelt' ? room._smeltRecipe(k) : room._hardenedWoodRecipe(k);
+      const raw = kind === 'smelt' ? r.ore : r.log, n = kind === 'smelt' ? r.oreCost : r.logCost;
+      const offer = room._shopBuyPrice(k, 0), ask = room._shopSellPrice(k);
+      const rawAsk = room._shopSellPrice(raw), rawOffer = room._shopBuyPrice(raw, 0);
+      seen.push([off ? 'off' : 'on', k, n, ask, offer, rawAsk, rawOffer]);
+      if (!(offer < rawAsk * n)) bad.push(['buy raw, sell made: a profit', off, k, { offer, rawAsk, n }]);
+      if (!(offer > rawOffer * n)) bad.push(['making it is a loss', off, k, { offer, rawOffer, n }]);
+      if (!(ask > offer)) bad.push(['offer over ask', off, k, { ask, offer }]);
+    }
+  }
+  room._liveFlags = was;
+  check('no gold tap: for every bar and hardened wood, buying the ore or logs from Diego to sell him what they make loses, and making it before selling still earns a little (switch on and off)',
+    bad.length === 0 && seen.length === 2 * rows.length, bad.length ? bad : seen);
+  check('...the prices: a bar 48 and a hardened wood 29 at one ore or log each, 240 and 144 at five',
+    seen.filter((x) => x[0] === 'on').every((x) => x[2] === 1 && x[3] === (/^bar_/.test(x[1]) ? 48 : 29))
+      && seen.filter((x) => x[0] === 'off').every((x) => x[2] === 5 && x[3] === (/^bar_/.test(x[1]) ? 240 : 144)), seen);
+  check('...and the switch moves only those two families (an ore, a log, an essence keep their price)',
+    (() => { room._liveFlags = { onetoone: false }; const o = [room._shopBaseValue('ore_iron_ore'), room._shopBaseValue('wood_maple_wood'), room._shopBaseValue('essence_rare_copper'), room._shopBaseValue('crowbar_')]; room._liveFlags = was;
+      return o[0] === 40 && o[1] === 24 && o[2] === 1500 && o[3] === null; })());
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASS');

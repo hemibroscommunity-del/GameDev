@@ -18,7 +18,7 @@
 import { wheelTownDoors } from './wheelTownDoors.js';
 import { wheelDungeonDoors, wheelDungeonOpen, wheelDungeonBoardLine } from './wheelDungeons.js';
 import { wheelMapInfo } from './wheelTrial.js';
-import { WHEEL_TOWNSFOLK, WHEEL_KEEPERS } from '@/data/wheelBuildingDoors.js';
+import { WHEEL_TOWNSFOLK, WHEEL_KEEPERS, WHEEL_MAYOR_STEPS /* v2.3.3899 */ } from '@/data/wheelBuildingDoors.js';
 import { BOARD, boardEntry, landSub, boardLand, boardLandElement } from '@/data/townBoard.js';
 import { questPinsOf } from './questPins.js';   /* v2.3.3803: the gold "!" over a head */
 import { dailyRewardsBus, spinLive } from './dailyRewards.js';   /* v2.3.3803: the free daily spin */
@@ -132,6 +132,9 @@ export function boardPlaceAt(S, id) {
     if (d) return { x: d.x + row.dx, y: d.y + row.dy };
     /* v2.3.3788: Mayor Bro is placed by the town (placing.js mayorSpot), on
        his hall's steps: until he is spawned, the door he keeps */
+    /* v2.3.3899: he keeps no building now (WHEEL_KEEPERS): his steps are
+       WHEEL_MAYOR_STEPS */
+    if (at.npc === 'Mayor Bro') return doorAt(WHEEL_MAYOR_STEPS);
     return own(WHEEL_KEEPERS, at.npc) ? doorAt(WHEEL_KEEPERS[at.npc]) : null;
   }
   if (at.mouth) {

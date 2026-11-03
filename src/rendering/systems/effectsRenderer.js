@@ -295,6 +295,7 @@ import { isWheelBroken } from '@/game/wheelBreak.js';   /* v2.3.2995: a broken o
 import { freePropChips } from '../hitMaterialFx.js';    /* v2.3.2995 */
 import { ELEM_ICON_SRC } from '@/game/elemHits.js';   /* v2.3.2996: a monster's element on the number */
 import { emoteKind, EMOTE_POP_MS } from '@/game/emotes.js';   /* v2.3.3391: an emoji over the head */
+import { drawTelegraphShape } from './telegraphShapes.js';   /* v2.3.4011: the monster moves' warnings */
 
 /* v2.3.2654: how a print reads and how long it lasts.  PRINT_TTL_MS is
    mirrored by stateCleanup's filter -- the array and the drawer must expire on
@@ -310,6 +311,7 @@ const PRINT_ALPHA = 0.55;  /* pressed snow, not paint */
 import { GS_INNER_RADIUS, GS_OUTER_RADIUS, GS_FORWARD_ARC, BLOCK_ARC_HALF, cleaveArcBonus, hasGatherTool, gatherNodeHpFor /* v2.3.3035: a timer harvest's bar reads the node's HP; v2.3.3251: by its type */, TARGET_PERIMETER_PX /* v2.3.2243 */, monsterBodyOffsetY /* v2.3.2246: the attack caret clears the head */, monsterMeleeHitRadius /* v2.3.2251: sizes the ground ring to the body */, bossSizeK /* v2.3.3556: ...and a dungeon boss's, at its size */, BOW_RANGE_PX, bowRangeMult /* v2.3.2448: the sight stream ends where the arrow does */, meleeRangeMult /* v2.3.2592: the reach ring and the aim preview grow with the RANGE stat */ } from '@/data/index.js';
 import { farmWorkFrame, farmAnimOf, farmWorkBeats, parseFarmEx, farmBeatPlay } from '@/game/farmWork.js';   /* v2.3.3439: the farmer's own moves, frame by frame; and another player's, off their `ex` */
 import { FARM_ANIMS, FARM_ANIM_HEAD } from '@/data/farmAnims.js';   /* v2.3.3439: the owner's three farm animations, cut by tools/make_farm_anims.py */
+import { FARM_ANIM_HEAD_WORLD } from '@/data/farmLayout.js';   /* v2.3.3960 */
 import { treeArtSources, treeArtLevelFor, treeGeom, treeMarkY, treeChopOffset, behindTree, TREE_PX, TREE_FOOT_DY, TREE_FADE, TREE_SEE_ALPHA, TREE_SEE_MS } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree */
 import { oreArtSources, oreArtLevelFor, oreGeom, ORE_PX } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock */
 import { WheelShatter } from '../wheelShatter.js';
@@ -515,7 +517,8 @@ export const COOK_STANDIN_H = 73.9;
  * his head is 10% over yours, and your hair, hat and beard with
  * it: they are sized by FARM_ANIM_HEAD / 51 (_skillTraitMul), the
  * fire-lighter's rule (his 1.98 is his 101 px over 51). */
-export const FARM_ANIM_HEAD_WORLD = 31.25;
+/* v2.3.3960: defined in data/farmLayout.js now (the dig spot reads it) */
+export { FARM_ANIM_HEAD_WORLD };
 /* the body strip is the man alone (the hoe and the can are a strip of their
    own), so every skin-coloured island in it is his skin: the floor only drops
    lone specks */
@@ -6018,6 +6021,7 @@ export class EffectsRenderer {
         const age = (now - tz.ts) / (tz.duration || 800);
         if (age >= 1) { S._telegraphZones.splice(i, 1); continue; }
         const col = cssToHex(tz.color || '#fbbf24');
+        if (tz.geo && drawTelegraphShape(gfx, tz, age, col, S)) continue;   /* v2.3.4011: a move's lane, fan or rings (telegraphShapes.js) */
         gfx.circle(tz.x, tz.y, tz.r || 55);
         gfx.fill({ color: col, alpha: 0.10 + age * 0.22 });
         gfx.circle(tz.x, tz.y, tz.r || 55);
@@ -15448,7 +15452,7 @@ export class EffectsRenderer {
          wire field — it was simply never applied to the swing stand-in. */
       if (set.legs) set.legs.tint = gearTint(eq.legs);
       if (set.chest) set.chest.tint = gearTint(eq.chest);
-      if (set.weapon) set.weapon.tint = materialTint(o && o.wpnMat);
+      if (set.weapon) set.weapon.tint = weaponTint(o && o.wpnType, o && o.wpnMat);   /* v2.3.3980: weaponTint -- a peer's black steel is its metal, as your own swing's */
       /* v2.3.1047: north swings hold the blade on the far side -> behind body.
          v2.3.2516: and southwest, for the owner's D7 reason -- resolved from the
          peer's own swing ANGLE to the full 8 sectors, because dir4 above is a

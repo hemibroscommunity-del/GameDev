@@ -59,6 +59,19 @@
  * Whether the page's heap should grow over a long session at all is the
  * soak's question (docs/specs/long-play-soak.md: 7-14 MB an hour of play).
  *
+ * v2.3.4005, the owner's choice of 2026-11-03: `heap` 36 -> 38 -- RAISED,
+ * with a trim to follow.  After the 13 pull requests merged at ~02:42 UTC on
+ * 2026-11-03 (the quest journal, the guide arrow, the monster death zones,
+ * the town board on the noticeboard, the element icons on the name plates,
+ * the armour glow, the weapon triangle and the rest of that evening's
+ * lanes), main's own heap at the third trip's fight read 36.3 MB, twice,
+ * on two pull requests whose code never runs on the trip (#1368, a pop-up's
+ * removal; #1388): the same main on either side of the line, so every check
+ * failed by main and not by itself.  The owner, asked: "Raise to 38 MB +
+ * trim" -- 2 MB is under 1% of an iPhone's ~250 MB.  A trim lane bisects
+ * those merges for the biggest holder and lowers the line again when it is
+ * won back; until then 38 leaves ~1.7 MB of room.
+ *
  * v2.3.3807, main's own code at the line again: `heap` 34 -> 36 -- RAISED.
  * On 2026-10-29, between 00:20 and 00:55 UTC, pull requests whose code never
  * runs on the check's trip read the heap at the third trip's fight at 34.0
@@ -134,7 +147,8 @@
  * (v2.3.3728: this note corrected: it said "off by default".)
  */
 /* v2.3.3993, the townsfolk walk around and work (docs/specs/living-town.md):
- * `gpu` 105 -> 115 and `heap` 36 -> 38 -- RAISED.  The same build, the check's
+ * `gpu` 105 -> 115 -- RAISED (the heap line's 38 is main's own, v2.3.4005,
+ * which this walk's reading also fits).  The same build, the check's
  * trip, walking off (`QA_MB_QUERY=folkwalk=0`, the town as on main) against
  * on, two and four runs: the chip's highest (trip 2, home again) 106.2 / 104.2
  * off -- main's own reading already at its line of 105 -- against 113.9,
@@ -145,7 +159,7 @@
  * objects, v2.3.3809).  In the town alone, 100 s at four places, the chip held
  * 0-2 MB more walking (what was drawn in the last minute: every facing of
  * the shared head pieces and tees).  Nothing new is loaded: the walk is the
- * jog and the work the player's own sheets (folkPose.js).  Lower the lines
+ * jog and the work the player's own sheets (folkPose.js).  Lower the line
  * again if it is trimmed. */
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 112, measured: 102.2,   /* v2.3.3702: 156 -> 112, see the header */
@@ -156,7 +170,7 @@ export const MEMORY_BUDGET = {
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 29, measured: 27.0,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 38, measured: 34.7,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.3993: 36 -> 38, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 38, measured: 36.3,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.4005: 36 -> 38, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 22, measured: 20.4,   /* v2.3.3703: 24 -> 22, see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },
