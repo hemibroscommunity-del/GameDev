@@ -33,7 +33,7 @@ export const PACKETS = [
      it, the two pages under it) is a packet of its own; Quests, the bag, the
      Codex and More share the next */
   { slug: 'dashboard-bro', title: 'Dashboard: Bro (your card, Points, Equipment, Life Skills, Achievements)',
-    screens: ['guide-arrow', 'dash-bro', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment', 'hemi-portrait', 'hemi-portrait-dressed'] },
+    screens: ['guide-arrow', 'dash-bro', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment'] },
   { slug: 'dashboard-quests-bag-codex', title: 'Dashboard: the band, your quests, the bag, the Codex and More',
     screens: ['dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
   /* v2.3.4062: the rare fish's weigh-in card and Ranks' Biggest fish

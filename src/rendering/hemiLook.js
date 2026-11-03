@@ -226,14 +226,14 @@ export function hemiNearList() {
   return out;
 }
 
-/** The switch: `?hemiface=0` off for this tab, `?hemiface=1` on whatever the
- *  Test panel says, else off only where the panel turned it off for every
- *  phone (`offAtLoad`, clientOff.js), else ON (the house's off-ramp pattern). */
-export function hemiFaceChoice(search, offAtLoad) {
+/** The switch.  v2.3.4049: OFF by default (owner, 2026-11-03, of the player's
+ *  Hemi Bro portrait: "Sorry but I don't like the pfp"): the game's own
+ *  headshot everywhere again, as before v2.3.3999.  `?hemiface=1` turns it on
+ *  for one tab, so nothing is deleted.  The townsfolk's dialogue busts are a
+ *  different thing (npc-creator-looks.md) and stay Hemi Bros. */
+export function hemiFaceChoice(search) {
   let v = null;
   try { v = new URLSearchParams(search || '').get('hemiface'); } catch (e) { v = null; }
-  if (v === '0') return { on: false, why: 'address' };
   if (v === '1') return { on: true, why: 'address' };
-  if (offAtLoad) return { on: false, why: 'test panel' };
-  return { on: true, why: 'default' };
+  return { on: false, why: v === '0' ? 'address' : 'default' };
 }

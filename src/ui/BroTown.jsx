@@ -3791,13 +3791,15 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.3687: on a computer the controls' strip stands at the edge the
          panel does not take (deskWide.js), so with the panel on the right
          the world begins after the strip; --keys-w is its width (0 elsewhere) */
+      /* v2.3.4072: + barW, the one band's bar each side of a world wider than
+         the world rule (sheetGeometry oneBandFootprint; 0 everywhere else) */
       document.documentElement.style.setProperty('--world-x',
-        (_dashSide === 'left' ? _fp.sheetW : (_fp.keysW || 0)) + 'px');
+        (_dashSide === 'left' ? _fp.sheetW : (_fp.keysW || 0)) + (_fp.barW || 0) + 'px');
       document.documentElement.style.setProperty('--keys-w', (_fp.keysW || 0) + 'px');
       /* ...and where the world ENDS, from the right: what the panel or the
          strip takes there (0 on a phone with the panel on the left) */
       document.documentElement.style.setProperty('--world-r',
-        (_dashSide === 'left' ? (_fp.keysW || 0) : _fp.sheetW) + 'px');
+        (_dashSide === 'left' ? (_fp.keysW || 0) : _fp.sheetW) + (_fp.barW || 0) + 'px');
       /* ═══ v2.3.2178: THE HOME-INDICATOR INSET, AS A STAMP ═══
          resize() has measured this since v2.3.2163 (the probe exists
          because JS cannot read env()), but the band, the landscape dock and

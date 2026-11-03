@@ -45,6 +45,7 @@
    reused so a stale stylesheet cannot silently size the new row with the
    old row's number. */
 import { deskWideActive, deskKeysW, DESK_SHEET_W } from '../../deskWide.js';   /* v2.3.3687 */
+import { oneBandActive } from '../../oneBand.js';                                 /* v2.3.4072 */
 
 
 /* v2.3.1325 (owner: bigger toolbar): the bar height derives from the
@@ -810,7 +811,8 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
      the same two callers -- exactly how the fold resizes height.  320 is
      the floor a degenerate window bottoms out at rather than a zero-width
      world. */
-  if (vw > vh) {
+  /* v2.3.4072: the one band (?oneband=1) is the upright band on every shape */
+  if (vw > vh && !oneBandActive()) {
     /* v2.3.2165: `sheetOpen` carries the KIND now — false, 'dashboard', or
        'panel' — because the dashboard column and a pane column earn
        different widths (see landscapeSheetW). */
@@ -837,8 +839,12 @@ export function bandFootprint(vw, vh, folded, sheetOpen, bottomInset) {
              playW: Math.max(320, vw - sheetW - keysW), sheetW: sheetW, keysW: keysW };
   }
   var dashH = barHeight(vw, vh);
-  var colsH = columnsRowHeight(vw);
+  /* v2.3.4072: under the one band the columns row is what the third leaves
+     under the nav row (barHeight caps the band, the row pays) */
+  var one = oneBandActive();
+  var colsH = one ? Math.max(0, dashH - identityRowHeight(vw, vh)) : columnsRowHeight(vw);
   if (folded) { dashH = Math.max(0, dashH - colsH); colsH = 0; }
+  if (one) return oneBandFootprint(vw, vh, dashH + (bottomInset || 0), colsH);
   /* ═══ v2.3.2178: THE HOME INDICATOR IS PART OF THE BAND'S HEIGHT ═══
      Owner, on a screenshot of the installed web app: "the dashboard buttons
      float off the dashboard."  They did, by exactly the home-indicator
@@ -867,7 +873,91 @@ export function barHeight(vw, vh) {
      (52 identity + 178 columns), down from 272.  navShelfHeight and
      navSlotSize stay exported: the ribbon's buttons are retired but the
      slot algebra is still the compact bag grid's. */
-  return identityRowHeight(vw, vh) + columnsRowHeight(vw);
+  var h = identityRowHeight(vw, vh) + columnsRowHeight(vw);
+  /* v2.3.4072: the one band (?oneband=1) is at most a third of the screen --
+     the owner's "the 1/3 idea where the menu takes up that much of the
+     bottom of the screen even in layout orientation".  An upright phone's
+     band is under its third already (243 of 844), so it does not move;
+     sideways and on a computer the third binds.  expandedSheetHeight and
+     drillSheetHeight read this, so a page opens inside the band at the
+     same height, as upright. */
+  if (vh > 0 && oneBandActive()) h = Math.min(h, Math.round(vh / 3));
+  return h;
+}
+
+/* ═══ v2.3.4072: THE ONE BAND'S FOOTPRINT, AND THE WORLD'S BARS ═══
+   The upright footprint (the band across the bottom, the canvas above it,
+   DASH_OVERLAP under the band's rounded corners), with one addition: where
+   the world above the band would come out wider than the world rule allows,
+   its sides are bars.  The rule is game.css's for a computer's shell (`html.
+   bt-desk-wide #root`: "fair by height; past 2.2:1 the sides are bars"), here
+   for the world's own box, since the band is not world.  A sideways phone
+   (844x390: world 844x260, 3.2:1) keeps a 572 px world centred; a computer
+   at 1280x720 a 1056 px one.  worldViewport.js is not touched: it frames
+   whatever box it is given (Lane E owns the camera's own cap).
+   `barW` is ONE side's bar: BroTown's resize() adds it to --world-x and
+   --world-r, which centre .brotown-wrap (game.css's html.bt-one-band block). */
+export const ONE_BAND_WORLD_MAX_ASPECT = 2.2;
+function oneBandFootprint(vw, vh, dashH, colsH) {
+  var worldH = Math.max(1, vh - dashH);
+  var playW = Math.min(vw, Math.round(worldH * ONE_BAND_WORLD_MAX_ASPECT));
+  var barW = Math.max(0, Math.floor((vw - playW) / 2));
+  return { dashH: dashH, colsH: colsH, overlap: DASH_OVERLAP, playW: vw - 2 * barW, sheetW: 0, barW: barW };
+}
+
+/* ═══ v2.3.4072: THE ONE BAND'S CONTENTS, FROM THE BOX THEY GET ═══
+   The owner's "responsive density rather than uniform scaling ... Use the
+   available space to determine the number of inventory slots ... Maintain
+   minimum readable text and touch-target sizes."  The upright band counts
+   are fixed (BAG_VIEW_COLS 4, DASH_ROWS 2) because the upright band has one
+   shape; the one band has every shape, so the counts come from its measured
+   box (OneBandColumns.jsx measures it; DashColumns' `box` prop reads this):
+     columns = floor((w + gap) / (tile + gap)),  rows = floor((h + gap) / (tile + gap))
+   in the band's own algebra (the row's frame, the panels' borders and pads,
+   DASH_GAP everywhere -- the v2.3.1640 one-gap rule).  On an upright phone it
+   comes out at exactly the upright band (4 x 2 of dashTileSize, the filter
+   header, the peek, three combat cards down a 104 px column at 390); the
+   other shapes spend their room on more slots, never on bigger chrome:
+     - the tile is the upright tile for the box's width (dashTileSize, 40..76),
+       shrunk only to fit the band's height, never under ONE_BAND_TILE_MIN
+       (the 44 pt touch minimum, UI-BIBLE) while there is room for it;
+     - a band too short for the filter header and a row of tiles drops the
+       header (the chips are on the Bag pane's own header too), then the peek;
+     - one more row when it still leaves the tile three quarters of its size
+       (a computer's 192 px row: two rows of 63 rather than one of 76);
+     - the three combat cards stack down a narrow column while each is at
+       least ONE_BAND_PILL_MIN_H tall, else they sit side by side;
+     - the bag takes every whole column left after the combat column's floor,
+       the combat column the remainder (dashPanelWidths' own rule). */
+export const ONE_BAND_TILE_MIN = 44;
+export const ONE_BAND_PILL_MIN_H = 34;
+export const ONE_BAND_COMBAT_MIN_W = 78;   /* the upright combat column at 320, its narrowest */
+export const ONE_BAND_ROW_PILL_W = 94;     /* a combat card lying in a row: the upright card at 390 */
+export function oneBandLayout(w, h) {
+  var G = DASH_GAP;
+  /* a panel's inner height: the row less its pads, the panels' border and
+     pads and the row's hairline (columnsRowHeight's own sum, inverted) */
+  var ih = Math.max(0, h - (2 * G + 2 + 2 * G + 1));
+  var tPref = dashTileSize(w);
+  var header = BAG_HEADER_H + G, peek = BAG_PEEK_H;
+  if (ih - header - peek < ONE_BAND_TILE_MIN) header = 0;
+  if (ih - header - peek < ONE_BAND_TILE_MIN) peek = 0;
+  var gh = Math.max(0, ih - header - peek);
+  var fit = function (r) { return Math.floor((gh - (r - 1) * G) / r); };
+  var rows = Math.max(1, Math.floor((gh + G) / (tPref + G)));
+  if (fit(rows + 1) >= Math.max(ONE_BAND_TILE_MIN, Math.round(tPref * 0.75))) rows += 1;
+  var tile = Math.max(32, Math.min(tPref, fit(rows)));
+  var stackH = Math.floor((ih - 2 * G) / 3);
+  var pillsRow = stackH < ONE_BAND_PILL_MIN_H;
+  var avail = w - 3 * G;   /* two frame pads and the gap between the panels */
+  var combatMin = pillsRow ? 3 * ONE_BAND_ROW_PILL_W + 2 * G + 2 * G + 2 : ONE_BAND_COMBAT_MIN_W;
+  var cols = Math.max(2, Math.floor((avail - combatMin - 2 * G - 2 + G) / (tile + G)));
+  var wide = cols * tile + (cols - 1) * G + 2 * G + 2;
+  var narrow = Math.max(0, avail - wide);
+  var pillW = pillsRow ? Math.floor((narrow - 2 - 2 * G - 2 * G) / 3) : narrow - 2 - 2 * G;
+  var pillH = pillsRow ? ih : stackH;
+  return { tile: tile, cols: cols, rows: rows, header: header > 0, peek: peek > 0,
+           wide: wide, narrow: narrow, pillW: pillW, pillH: pillH, pillsRow: pillsRow };
 }
 /* v2.3.1271: the band's 14px rounded top corners cut out to the page
    background; the canvas runs 14px UNDER the band so the notches show
