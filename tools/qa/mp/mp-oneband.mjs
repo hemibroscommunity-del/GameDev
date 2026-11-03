@@ -168,14 +168,15 @@ async function sidewaysChecks(P, rec, { label, viewport }) {
       && back.ctl.filter((c) => c.name !== 'stick' && c.name !== 'pie').every((c) => c.vis === 'visible')
       && rest.ctl.every((c) => back.ctl.some((d) => d.name === c.name && Math.abs(d.x - c.x) <= 2 && Math.abs(d.y - c.y) <= 2)),
     { mode: back.mode, fold: back.fold, side: back.side });
-  /* a page closed by its own button again folds it too (not only CLOSE) */
+  /* a page that closes itself (the bus's toBar: a finished task, a panel's
+     own close) folds it too, not only CLOSE */
   await H.openDest(P, 'Quests');
   await P.page.waitForTimeout(800);
-  await H.openDest(P, 'Quests');
+  await P.page.evaluate(() => window.__broDashPanelBus.toBar());
   await P.page.waitForTimeout(900);
   const again = await controls(P);
-  rec.ok(`${label}: a page closed by its own button folds the band too (never resting on the columns with the controls away)`,
-    again.mode === 'bar' && again.fold === 'min', { mode: again.mode, fold: again.fold });
+  rec.ok(`${label}: a page that closes itself folds the band too (never resting on the columns with the controls away)`,
+    again.mode === 'bar' && again.fold === 'min' && again.side && again.side.open === false, { mode: again.mode, fold: again.fold, side: again.side });
   /* the bag's page, for the PR's picture */
   await P.page.evaluate(() => window.__broDashPanelBus.open('dashboard'));
   await P.page.waitForTimeout(1000);
@@ -291,6 +292,10 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
     for (const c of caps) {
       await P.page.keyboard.press(c.key.toLowerCase());
       await P.page.waitForTimeout(700);
+      /* v2.3.4152: a page's first mount can hold this slow box's main
+         thread past the band's 220 ms grow (seen once: Character at 48 px,
+         the folded row, 700 ms after P): wait for it, by the band itself */
+      await P.page.waitForFunction((h) => { const d = document.querySelector('.bt-dashboard'); return !!d && Math.abs(d.getBoundingClientRect().height - h) <= 1; }, rest.h, { timeout: 4000 }).catch(() => {});
       const k = await read(P);
       await P.page.keyboard.press('Escape');
       await P.page.waitForTimeout(600);

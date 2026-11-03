@@ -6957,6 +6957,9 @@ html.bt-band-side-open :is([data-joyzone], .bt-joystick-zone, .bt-rjoy-zone, [da
    Every touch target keeps 44 px (the disc 80, the cluster 54). */
 html.bt-band-side .bt-rjoy-zone{transform:scale(.85);transform-origin:50% 100%}
 html.bt-band-side :is(.bt-joystick-zone, [data-quickeat], [data-weapon-tri], .bt-burst-btn){margin-bottom:-20px!important}
+/* Element Burst is drawn outside the world's wrap (the screen is its box), so
+   it steps in by the world's bar itself, to stand where the cluster puts it */
+html.bt-band-side .bt-burst-btn{margin-left:var(--world-x,0px)!important}
 
 /* ═══ v2.3.2222: THE STAT SCENE — "a preview of what the effect does (exaggerated)" ═══
    One scene per stat in the ℹ️ window (StatDemo.jsx), built from the
