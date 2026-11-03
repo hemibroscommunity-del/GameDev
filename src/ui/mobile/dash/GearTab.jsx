@@ -97,8 +97,10 @@ const MID_MIN = 84;
 const BAG_MIN = BAG_COLS * TILE_MIN + (BAG_COLS - 1) * TG + 2 * PAD;
 const EQ_MIN = 3 * CELL_MIN + 2 * 3 + 2 * EP;
 const WIDE_AT = BAG_MIN + EQ_MIN + MID_MIN + 2 * PAD + 2 * GAP;
-const TAB_H = 30;
-const PILL_H = 30;
+/* v2.3.4061: the tabs and the pill 32 px tall (the UI review's floor for a
+   finger; the 44 px guide does not fit three tabs in a ~107 px middle) */
+const TAB_H = 35;
+const PILL_H = 34;
 
 const CELL_SKILL = { sword: 'power', bow: 'agility', staff: 'mind' };
 const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
@@ -419,7 +421,7 @@ export const GearTab = ({ R: Rin, desk }) => {
             </span>
             <button type="button" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the filter menu"
               onClick={(e) => { e.stopPropagation(); gearTabBus.setMenu(false); }}
-              style={{ position: 'relative', flex: 'none', width: 32, height: 28, padding: 0, border: 'none', background: 'transparent', color: COL.text, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>{'✕'}</button>
+              style={{ position: 'relative', flex: 'none', width: 34, height: 32, padding: 0, border: 'none', background: 'transparent', color: COL.text, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>{'✕'}</button>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', padding: 3 }}>
             {[{ id: 'all', label: 'All items', rows: ['all'] }].concat(GEAR_FILTER_GROUPS).map((g) => {
@@ -537,7 +539,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       <button type="button" data-gear-tab-btn={id} aria-pressed={on}
         onClick={(e) => { e.stopPropagation(); gearTabBus.setTab(id); }}
         style={{
-          flex: '1 1 auto', minWidth: 0, height: TAB_H - 4, padding: tight ? '0 1px' : '0 2px', borderRadius: 6,
+          flex: '1 1 auto', minWidth: tight || id === 'details' ? 0 : 32, height: TAB_H - 3, padding: tight ? '0 1px' : '0 2px', borderRadius: 6,
           border: `1px solid ${on ? COL.focus : COL.border}`,
           background: on ? `linear-gradient(180deg, ${COL.focus}, ${COL.accent})` : COL.wellSoft,
           color: on ? COL.onAccent : COL.text2, fontFamily: 'inherit', fontSize: tight ? 8.5 : 9, fontWeight: 900,
