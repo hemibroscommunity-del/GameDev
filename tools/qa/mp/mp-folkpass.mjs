@@ -18,7 +18,8 @@
  *      player keeps moving: past him (30 px beyond his feet, along the walk)
  *      within a second of meeting him (scaled up for a slow page by the
  *      walk speed this page measured), and never standing still beside him;
- *      the walker waited for you rather than walk into you (bumpsTotal);
+ *      the walker never stepped into you (within his 22 px bump of your feet,
+ *      a step of his toward you): he waited (bumpsTotal counts it);
  *   3. SIDEWAYS: walks across his way just ahead of him: the same;
  *   4. no page errors.
  * Placing the player before each walk is a write (hopTo, steps of 100 px a
@@ -33,7 +34,11 @@ import { join } from 'node:path';
 const PHONE = { width: 390, height: 844 };
 const WIDE = { width: 1280, height: 800 };
 const HIDE = '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }';
-const START_D = 110;      /* the player starts this far from where they meet (world px, feet) */
+/* the player starts this far from him (head-on: ahead on his way) or from his
+   way (sideways), world px, feet.  Close on purpose: this box walks the
+   player at 15-45 px a second (a few frames a second) while his loop's clock
+   walks him at 80, so from further off he has turned a corner first. */
+const START_D = { 'head-on': 40, sideways: 30 };
 const MEET_PX = 26;       /* feet to feet: met (the old block stopped you at 14-24) */
 const PAST_PX = 30;       /* past him: this far beyond his feet, along your walk */
 const TRIES = 5;
@@ -45,7 +50,9 @@ const q8 = (x, y) => { let best = DIRS8[0], bd = -Infinity; for (const d of DIRS
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
   mkdirSync(OUT, { recursive: true });
-  for (const kind of ['phone', 'computer']) {
+  /* BT_FOLKPASS_ONLY=phone|computer: one of the two (a rerun) */
+  const only = process.env.BT_FOLKPASS_ONLY || '';
+  for (const kind of ['phone', 'computer'].filter((k) => !only || k === only)) {
     const phone = kind === 'phone';
     const P = await H.newPlayer(browser, phone
       ? { name: 'Passbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true }
@@ -141,17 +148,26 @@ async function one(P, kind, phone, { wsPort, rec, OUT }) {
   /* the walk speed of this page, in clear ground (the slow box draws a few
      frames a second: the second's grace is scaled by it, TRAPS §200) */
   let speed = null;
+  const cal = { clear: [], samples: 0, frame: await H.hopGap(P).catch(() => null) };
   for (const a of DIRS8) {
     const me = await H.readState(P, (S) => ({ x: S.player.x, y: S.player.y }));
-    if (!(await clearLine(me.x, me.y + drop, a, 260))) continue;
-    const s = await walk(a, 1200, '__none__');
+    const ok = await clearLine(me.x, me.y + drop, a, 260);
+    cal.clear.push(ok ? 1 : 0);
+    if (!ok) continue;
+    await walk(a, 800, '__none__');   /* a first walk is slow while the ground round you streams in */
+    const s = await walk({ x: -a.x, y: -a.y }, 1500, '__none__');
     const mid = s.filter((q) => q.t > 300);
+    cal.samples = s.length; cal.dir = [+a.x.toFixed(2), +a.y.toFixed(2)];
     if (mid.length > 2) speed = Math.hypot(mid[mid.length - 1].px - mid[0].px, mid[mid.length - 1].py - mid[0].py) / ((mid[mid.length - 1].t - mid[0].t) / 1000);
     break;
   }
-  rec.ok(`${kind}: the walk works here (${speed ? Math.round(speed) : '?'} px a second)`, !!speed && speed > 20, speed);
+  cal.speed = speed;
+  /* a slow page walks slowly (this box: a few frames a second) -- only "it moves" here */
+  rec.ok(`${kind}: the walk works here (${speed ? Math.round(speed) : 0} px a second)`, !!speed && speed > 5, cal);
   if (!speed) return;
-  const graceMs = Math.max(1000, Math.round(2 * (MEET_PX + PAST_PX) / speed * 1000));
+  /* the second's grace, for a page this slow: twice the time to walk from
+     meeting him to past him */
+  const graceOf = (v) => Math.max(1000, Math.round(2 * (MEET_PX + PAST_PX) / v * 1000));
 
   const folk = () => P.page.evaluate(() => (window.__btFolkWalk ? window.__btFolkWalk() : null));
   const npcAt = (nid) => P.page.evaluate((nid) => { const S = window._gameState.current; const q = (S.npcs || []).find((m) => m && m.id === nid); return q ? { x: q.x, y: q.y } : null; }, nid);
@@ -183,16 +199,19 @@ async function one(P, kind, phone, { wsPort, rec, OUT }) {
          on his way, walking at him; sideways, beside his way where he will be
          as you reach it (his pace times the time to get there) */
       const startFor = (nAt, o) => {
-        const lead = way === 'head-on' ? 0 : v * (300 + START_D / speed * 1000);
+        /* the last hop's move gap; sideways, a little more: you reach his way
+           as he does (he pauses before he steps into you, so a near miss
+           still meets him) */
+        const lead = v * 300 + (way === 'sideways' ? 10 : 0);
         const meet = { x: nAt.x + u.x * lead, y: nAt.y + u.y * lead };
-        return { x: meet.x - o.x * START_D, y: meet.y - o.y * START_D };
+        return { x: meet.x - o.x * START_D[way], y: meet.y - o.y * START_D[way] };
       };
       const n0 = await npcAt(pick.id);
       let a = null, start = null;
       const options = way === 'head-on' ? [q8(-u.x, -u.y)] : [q8(-u.y, u.x), q8(u.y, -u.x)];
       for (const o of options) {
         const st = startFor(n0, o);
-        if (await clearLine(st.x, st.y, o, START_D + PAST_PX + 40)) { a = o; start = st; break; }
+        if (await clearLine(st.x, st.y, o, START_D[way] + PAST_PX + 40)) { a = o; start = st; break; }
       }
       if (!a) { lastWhy = `no clear line to ${pick.name}`; continue; }
       await H.hopTo(P, start.x, start.y - drop, { step: 100, gap: 260, tries: 30 });
@@ -200,14 +219,32 @@ async function one(P, kind, phone, { wsPort, rec, OUT }) {
          move gap) puts you where he is now */
       const n1 = await npcAt(pick.id);
       const st1 = startFor(n1, a);
-      if (Math.hypot(st1.x - start.x, st1.y - start.y) < 100 && await clearLine(st1.x, st1.y, a, START_D + PAST_PX + 40)) {
+      if (Math.hypot(st1.x - start.x, st1.y - start.y) < 100 && await clearLine(st1.x, st1.y, a, START_D[way] + PAST_PX + 40)) {
         await H.hopTo(P, st1.x, st1.y - drop, { step: 100, gap: 260, tries: 3 });
       }
-      const holdMs = Math.round((START_D + PAST_PX + 60) / speed * 1000) + graceMs;
+      const holdMs = Math.min(12000, Math.round((START_D[way] + PAST_PX + 40) / speed * 1000) + graceOf(speed));
       const s = await walk(a, holdMs, pick.id);
       /* the reading */
       const along = (q) => (q.px - q.nx) * a.x + (q.py - q.ny) * a.y;   /* + once you are past his feet */
       const iMeet = s.findIndex((q) => Math.hypot(q.px - q.nx, q.py - q.ny) < MEET_PX);
+      /* your pace on the way to him (after the first 300 ms), for the grace
+         and the next try's lead */
+      const app = s.filter((q, i) => q.t > 300 && (iMeet < 0 || i <= iMeet));
+      const vYou = app.length > 3 ? Math.hypot(app[app.length - 1].px - app[0].px, app[app.length - 1].py - app[0].py) / ((app[app.length - 1].t - app[0].t) / 1000) : speed;
+      if (vYou > 5) speed = vYou;
+      const graceMs = graceOf(speed);
+      /* a step of his INTO you: both samples within his bump of your feet,
+         and he moved toward your feet by half a px or more */
+      let into = 0;
+      for (let i = 1; i < s.length; i++) {
+        const p0 = s[i - 1], p1 = s[i];
+        const d0 = Math.hypot(p0.px - p0.nx, p0.py - p0.ny), d1 = Math.hypot(p1.px - p1.nx, p1.py - p1.ny);
+        if (!(d0 < 22 && d1 < 22)) continue;
+        /* toward where you were AND where you are (you walking past him
+           between two samples is not his step into you) */
+        const mx = p1.nx - p0.nx, my = p1.ny - p0.ny;
+        if ((mx * (p0.px - p0.nx) + my * (p0.py - p0.ny)) / (d0 || 1) >= 0.5 && (mx * (p1.px - p0.nx) + my * (p1.py - p0.ny)) / (Math.hypot(p1.px - p0.nx, p1.py - p0.ny) || 1) >= 0.5) into++;
+      }
       if (iMeet < 0) {
         const closest = Math.min(...s.map((q) => Math.hypot(q.px - q.nx, q.py - q.ny)).filter(Number.isFinite));
         lastWhy = `never met ${pick.name} (closest ${Math.round(closest)} px)`;
@@ -225,7 +262,7 @@ async function one(P, kind, phone, { wsPort, rec, OUT }) {
         if (w < 3) stall = Math.max(stall, s[j].t - s[i].t);
       }
       done = { who: pick.name, way, kind, meetAt: Math.round(s[iMeet].t), pastMs: iPast >= 0 ? Math.round(s[iPast].t - s[iMeet].t) : null,
-        stallMs: Math.round(stall), bumps: s[s.length - 1].b - s[0].b, walkedPx: Math.round(Math.hypot(s[s.length - 1].px - s[0].px, s[s.length - 1].py - s[0].py)),
+        stallMs: Math.round(stall), into, closest: Math.round(Math.min(...s.map((q) => Math.hypot(q.px - q.nx, q.py - q.ny)).filter(Number.isFinite))), speed: Math.round(speed), bumps: s[s.length - 1].b - s[0].b, walkedPx: Math.round(Math.hypot(s[s.length - 1].px - s[0].px, s[s.length - 1].py - s[0].py)),
         heWalked: Math.round(Math.hypot(s[s.length - 1].nx - s[0].nx, s[s.length - 1].ny - s[0].ny)), dir: [+a.x.toFixed(2), +a.y.toFixed(2)], his: [+u.x.toFixed(2), +u.y.toFixed(2)], graceMs, tries: k + 1 };
     }
     const tag = way === 'head-on' ? '2' : '3';
@@ -234,6 +271,6 @@ async function one(P, kind, phone, { wsPort, rec, OUT }) {
     rec.ok(`${kind}: ${tag}. ${way} into ${done.who}, walking: you keep moving, past him ${done.pastMs} ms after meeting him (within ${done.graceMs} ms)`,
       done.pastMs != null && done.pastMs <= done.graceMs, done);
     rec.ok(`${kind}: ...never standing still beside him (the longest stop ${done.stallMs} ms)`, done.stallMs < 400, done);
-    if (way === 'head-on') rec.ok(`${kind}: ...and he waited for you rather than walk into you (${done.bumps} frames held)`, done.bumps > 0, done);
+    rec.ok(`${kind}: ...and he never stepped into you: he waited (${done.bumps} frames held; closest ${done.closest} px)`, done.into === 0, done);
   }
 }
