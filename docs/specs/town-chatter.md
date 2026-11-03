@@ -1,4 +1,4 @@
-# The townsfolk's idle chatter: less, and only in town (v2.3.3901)
+# The townsfolk's idle chatter: less, and only in town (v2.3.3991)
 
 The owner, 2026-11-02: "Way too much town chatter idle while exploring the world."
 

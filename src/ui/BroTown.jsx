@@ -540,7 +540,7 @@ import { heapBurnStep } from '@/game/heapBurn.js'; /* v2.3.3748: a burning heap 
 import { burningAt } from '@/rendering/buildingFire.js'; /* v2.3.3748: ...where its pieces burn */
 import { playerGroundDy, preloadTraits } from '@/rendering/systems/entityRenderer.js'; /* v2.3.2748: how far below your position your boots are; v2.3.3689: + the head pieces' preload, again for the server's look */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
-import { idleChatMay, idleChatTimer, inTownAt } from '@/game/townChatter.js';   /* v2.3.3901: the townsfolk's idle lines: in town, near, rarely */
+import { idleChatMay, idleChatTimer, inTownAt } from '@/game/townChatter.js';   /* v2.3.3991: the townsfolk's idle lines: in town, near, rarely */
 import QuestCard from '@/ui/QuestCard.jsx';   /* v2.3.3918: the pinned quest card, top left */
 
 /* ═══ v2.3.2062: THE MANA DRAUGHT'S FLOOR, IN CLIENT FRAMES ═══
@@ -7279,7 +7279,7 @@ export var BroTown = function BroTown(_ref0) {
            (game/race.js) */
         raceTick(S, Date.now());
         /* Update NPCs — §19.1 companion follow + quest interaction + wander */
-        var _npcTown = null;   /* v2.3.3901: the safe ground, read once a frame when an idle line asks */
+        var _npcTown = null;   /* v2.3.3991: the safe ground, read once a frame when an idle line asks */
         if (S.npcs) {
           S.npcs.forEach(function (npc) {
             var _npc$followZones;
@@ -7392,7 +7392,7 @@ export var BroTown = function BroTown(_ref0) {
                   };
                 } else if (idleChatMay(S, distToPlayer, inTownAt(isWheelTrialZone(S.currentZone) ? 'wheel' : S.currentZone,
                   (_npcTown || (_npcTown = rideGround(S))).centre, _npcTown.safeR, P.x, P.y), Date.now())) {
-                  /* v2.3.3901: an idle line only in town, near him, one
+                  /* v2.3.3991: an idle line only in town, near him, one
                      town-wide every 20 s (game/townChatter.js) */
                   npc.chatBubble = {
                     text: npc.phrases[Math.floor(Math.random() * npc.phrases.length)],
@@ -7402,7 +7402,7 @@ export var BroTown = function BroTown(_ref0) {
                 /* v2.3.3664: no hum as his line pops up -- the owner: the hums
                    "should play when you begin talking to someone or taking a
                    quest"; in town one came every few seconds (game/npcVoices.js) */
-                /* v2.3.3901: 30-60 s between his idle turns ("Way too much town
+                /* v2.3.3991: 30-60 s between his idle turns ("Way too much town
                    chatter idle while exploring the world"); one with a quest
                    to offer or take in keeps the old 8-23 s, so his hint above
                    comes as often as it did */

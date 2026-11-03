@@ -1,4 +1,4 @@
-/* v2.3.3901: the townsfolk's idle lines (src/game/townChatter.js), run in
+/* v2.3.3991: the townsfolk's idle lines (src/game/townChatter.js), run in
  * node: only in town, only near, one town-wide every 20 s, each townsperson
  * 30-60 s; in town is the Wheel's safe ground. */
 import { idleChatMay, idleChatTimer, inTownAt, IDLE_REACH, IDLE_GAP_MS,

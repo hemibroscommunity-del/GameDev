@@ -1,4 +1,4 @@
-/* ═══ THE TOWNSFOLK CHATTER LESS, AND ONLY IN TOWN (v2.3.3901) ═══
+/* ═══ THE TOWNSFOLK CHATTER LESS, AND ONLY IN TOWN (v2.3.3991) ═══
  *
  * The owner, 2026-11-02: "Way too much town chatter idle while exploring the
  * world."  Before, each of the 21 townsfolk said an idle line every 8-23 s,
