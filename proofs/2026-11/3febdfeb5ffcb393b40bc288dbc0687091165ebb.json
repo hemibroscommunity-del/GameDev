@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3febdfeb5ffcb393b40bc288dbc0687091165ebb",
+  "tree": "4102c550eb855e705b7bcdbfd1f29558a7f3605c",
+  "committedAt": "2026-11-02T17:01:57-08:00",
+  "subject": "Merge pull request #1374 from hemibroscommunity-del/claude/portrait-frame",
+  "files": 7341,
+  "bytes": 843747202,
+  "listingSha256": "25fb6a64bc3210ff6aaa17226ed83455b8405b156fa2d193164fde3739673b8b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
