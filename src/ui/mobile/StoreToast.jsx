@@ -37,7 +37,7 @@ export const StoreToast = () => {
   if (!items.length) return null;
 
   return (
-    <div style={{
+    <div data-store-toast="" /* v2.3.4136: QA (mp-loadinggate) */ style={{
       position: 'fixed', left: '50%', transform: 'translateX(-50%)',
       bottom: 'calc(var(--dash-h) + 14px)',
       width: 'min(320px, calc(100vw - 28px))',

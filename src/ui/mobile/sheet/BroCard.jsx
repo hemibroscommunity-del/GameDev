@@ -1,6 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getState } from '../dash/common.js';
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
+import { dashMinBus } from '../dashMinBus.js';            /* Equipment: the Gear tab, unfolded */
+import { playIsLandscape } from '../playViewport.js';
 import { profileFromSelf, compactCount } from '../../panels/playerProfile.js';
 import { portraitSrc } from './portraitStore.js';
 import { BRO_WEAPONS, broStartWeapon, broWeaponStats } from './broStats.js';
@@ -35,8 +37,8 @@ import { statInfo } from '../infoGlossary.js';
  *            "Attributes" row: the game has no STR / AGI / INT, so the slot
  *            went to the page that moved under Bro), Points (glowing while a
  *            point waits: data-section="Build", where the guide arrow and
- *            the points bubbles aim), Equipment (the worn six, until the Gear
- *            button's lane takes them), Homestead, Pet, Titles, Clan.
+ *            the points bubbles aim), Equipment (the Gear button's own page,
+ *            v2.3.4151's Gear tab), Homestead, Pet, Titles, Clan.
  * No full-body figure.  The band keeps today's height (the owner: "No don't
  * change todays dashboard height"), so the page lays itself out from ITS box,
  * measured, never the window's (TRAPS §214):
@@ -96,6 +98,18 @@ function explain(key, value) {
 
 const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
 
+/* ═══ v2.3.4142: EQUIPMENT IS THE GEAR TAB ═══
+   The Gear button's own page (dash/GearTab.jsx, v2.3.4151: your bag, your
+   bro and your gear) is on main, so the Equipment door goes there -- the way
+   the Gear button itself goes (NavRail): upright (and on the one band) Gear
+   IS the band at rest, unfolded; sideways it is the side column's
+   'dashboard' page. */
+export function openGear() {
+  if (playIsLandscape()) { dashboardPanelBus.open('dashboard'); return; }
+  dashboardPanelBus.toBar();
+  dashMinBus.set(false);
+}
+
 function Row({ id, icon, title, sub, n, live, dot, chevron = true, onTap, extra }) {
   return (
     <button type="button" className={'bt-bro2-row' + (live ? ' is-live' : '')} data-bro-row={id}
@@ -114,7 +128,7 @@ function Row({ id, icon, title, sub, n, live, dot, chevron = true, onTap, extra 
   );
 }
 
-export const BroCard = ({ points, onPoints, onEquipment }) => {
+export const BroCard = ({ points, onPoints }) => {
   const S = getState();
   const R = (S && S.rpg) || {};
   const n = Math.max(0, Math.floor(Number(points) || 0));
@@ -278,9 +292,9 @@ export const BroCard = ({ points, onPoints, onEquipment }) => {
       <Row id="points" icon={ICON.points} title="Points" n={n} live={n > 0}
         sub={n > 0 ? `${fmt(n)} to spend` : 'All spent'} onTap={() => { if (onPoints) onPoints(); }}
         extra={{ 'data-section': 'Build', 'data-bro-spend': n }} />
+      {/* the Gear tab (openGear above): what you wear, and your bag beside it */}
       <Row id="equipment" icon={ICON.equip} title="Equipment" n={worn}
-        sub={`${worn} of ${slots} worn`} onTap={() => { if (onEquipment) onEquipment(); }}
-        extra={{ 'data-section': 'Overview' }} />
+        sub={`${worn} of ${slots} worn`} onTap={openGear} extra={{ 'data-bro-gear': '' }} />
       {/* no window for the farm away from it: the count, and a tap says where */}
       <Row id="homestead" icon={ICON.farm} title="Homestead" n={plots} chevron={false}
         sub={plots > 0 ? `${plots} plot${plots === 1 ? '' : 's'} ready` : 'Nothing ready'} onTap={farmInfo} />

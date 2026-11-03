@@ -54,8 +54,25 @@ check('4b the Points tab and Character have their own words', G.guideWords('poin
 
 /* 5 */
 check('5a a character that never took the first quest is owed the weapon lesson again', G.guideOwedAgain(fresh).includes('weapon'));
-check('5b ...and one with no points ever, the points lesson', G.guideOwedAgain({ _quests: { tut_1: 'active' }, prog3: { pool: 0, shared: 0, alloc: {} } }).join() === 'points');
-check('5c a character with points waiting or placed is owed nothing', G.guideOwedAgain(p3(2, 1)).length === 0 && G.guideOwedAgain(p3(0, 0, { hp: 1 })).length === 0);
+check('5b ...and one with no points ever, the points lesson', G.guideOwedAgain({ _quests: { tut_1: 'active' }, prog3: { pool: 0, shared: 0, alloc: {} } }).filter((x) => x !== 'swap').join() === 'points');   /* v2.3.4130: and swap, the first quest not handed in */
+check('5c a character with points waiting or placed is owed nothing', G.guideOwedAgain(p3(2, 1)).filter((x) => x !== 'swap').length === 0 && G.guideOwedAgain(p3(0, 0, { hp: 1 })).filter((x) => x !== 'swap').length === 0);   /* v2.3.4130: swap is owed by the first quest alone */
+
+/* 7: v2.3.4130 -- the swap lesson, at the weapon pill, only after the first
+   quest's hand-in and a second weapon in hand */
+const twoBefore = { _quests: { tut_1: 'active' }, weapon: { type: 'sword' }, rangedWeapon: { type: 'bow' } };
+const oneAfter = { _quests: { tut_1: 'turnedIn' }, weapon: { type: 'sword' }, weaponStash: [{ type: 'bow' }, { type: 'staff' }] };
+const twoAfter = { _quests: { tut_1: 'turnedIn' }, weapon: { type: 'sword' }, rangedWeapon: { type: 'bow' }, activeSlot: 'melee' };
+check('7a two weapons before the hand-in: not wanted', G.guideState('swap', twoBefore, null, 0, 0).want === false);
+check('7b handed in, the new weapons still in the bag: not wanted (an empty well is nothing to switch to)', G.guideState('swap', oneAfter, null, 0, 0).want === false);
+check('7c handed in and a second weapon in hand: wanted, not done', G.guideState('swap', twoAfter, null, 0, 0, null).want === true && G.guideState('swap', twoAfter, null, 0, 0, null).done === false);
+check('7d switched once since it showed: done', G.guideState('swap', Object.assign({}, twoAfter, { activeSlot: 'ranged' }), null, 400, 0, 'melee').done === true
+  && G.guideState('swap', twoAfter, null, 400, 0, 'melee').done === false);
+check('7e left alone: done after SWAP_MS shown', G.SWAP_MS === 10000 && G.guideState('swap', twoAfter, null, G.SWAP_MS, 0, 'melee').done === true);
+check('7f it points at the weapon pill', G.guideTargets('swap', twoAfter, () => true).join() === '[data-weapon-pill]');
+check('7g its words: a phone taps, a computer clicks or presses 1 2 3',
+  G.guideWords('swap', '[data-weapon-pill]', false) === 'Tap a weapon to switch' && G.guideWords('swap', '[data-weapon-pill]', true) === 'Click a weapon or press 1 2 3');
+check('7h owed again while the first quest is not handed in, never after', G.guideOwedAgain(twoBefore).includes('swap') && !G.guideOwedAgain(twoAfter).includes('swap'));
+check('7i the swap lesson comes after the weapon lesson, before the points (the Mayor last, v2.3.4106)', /for \(const id of \['weapon', 'swap', 'points', 'mayor'\]\)/.test(readFileSync(new URL('../../src/ui/guideArrow.js', import.meta.url), 'utf8')));
 
 /* 6 */
 const src = readFileSync(new URL('../../src/ui/guideArrow.js', import.meta.url), 'utf8');

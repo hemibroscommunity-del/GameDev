@@ -52,7 +52,10 @@ import { Skin, PaintedIcon, ICON_URL, pressOn, pressOff } from './controlSkin.js
  * On a keyboard, Shift is the sprint (held, not tapped: BroTown passes it to
  * updateSprint), and this button is hidden with the other touch controls
  * (bt-desktop-hide). */
-const ICON = ICON_URL.boot;   /* v2.3.3018: one copy of the URL, in controlSkin */
+/* v2.3.3018: one copy of the URL, in controlSkin.  v2.3.4130: the owner's
+   "different icons for ... sprint": our own winged foot (ICON_URL.sprint),
+   cream on the dark button, for the game's winged boot */
+const ICON = ICON_URL.sprint;
 
 /* A tap is a release within this far of the press, inside this long -- the
    weapon button's numbers; nothing else listens to this patch. */

@@ -93,9 +93,11 @@ import { BroCard } from './BroCard.jsx';                                      /*
    you, the weapon's combat stats, the doors).  So no tab row: the page is ONE
    card ('Card', BroCard.jsx), and the two screens that were tabs here open
    OVER it as windows with a title and a close: Points ('Build', from the
-   card's Points row) and Equipment ('Overview', from its Equipment row --
-   the Gear button's lane takes the equipment once it is on main).  Their
-   close comes back to the card.  Life Skills, Achievements, Pets and the clan
+   card's Points row) and Equipment ('Overview').  Since the Gear tab
+   (v2.3.4151) the card's Equipment door opens Gear, so the Equipment window
+   is reached only by name (heroSectionBus.request('Overview'): the stat
+   families, your figure and the item cards there are not on Gear yet, and
+   ten phone tests read them).  Their close comes back to the card.  Life Skills, Achievements, Pets and the clan
    are dashboard pages pushed under Bro (dashboardPanelBus: a back chip
    returns here).  The section ids keep their names (tests, the coach, the
    guide arrow and the points bubbles find 'Build' by data-section: the
@@ -890,9 +892,11 @@ export const HeroExpanded = () => {
         ...panelStyle, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: 0,
         WebkitMaskImage: 'none', maskImage: 'none',
       }}>
+        {/* v2.3.4142: the card's Equipment door opens the Gear tab now
+            (BroCard openGear); the Equipment window stays for the roads that
+            ask for it by name (heroSectionBus.request('Overview')) */}
         <BroCard points={totalUnspent}
-          onPoints={() => setSection('Build')}
-          onEquipment={() => setSection('Overview')} />
+          onPoints={() => setSection('Build')} />
       </div>
     );
   }

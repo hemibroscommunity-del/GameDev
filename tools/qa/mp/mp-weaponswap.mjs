@@ -1,27 +1,28 @@
-/* ═══ mp-weaponswap (v2.3.3921): THE WEAPON TRIANGLE OVER THE MOVEMENT STICK ═══
+/* ═══ mp-weaponswap (v2.3.4130): THE WEAPON PILL AT THE FOOT OF THE WORLD ═══
  *
- * The owner: "I need a button on screen for switching between weapons.  Maybe
- * a triangle or wheel where the active weapon is highlighted on top and the
- * others are greyed out" (WeaponTriangle.jsx; it was v2.3.3005's chip under
- * the movement stick, which this scenario tested until now).
+ * The owner, 2026-11-03: "different pill shape weapon swap type bar.  Put it
+ * centered bottom of screen area" (WeaponPill.jsx; it was v2.3.3921's
+ * triangle beside the movement stick and v2.3.3005's corner chip).
  *
- * Everything here is driven with REAL touches (CDP Input.dispatchTouchEvent),
- * which the browser hit-tests -- a dispatched DOM event cannot tell a reachable
- * button from one under another control (TRAPS 67).
+ * Phone touches are REAL (CDP Input.dispatchTouchEvent), which the browser
+ * hit-tests -- a dispatched DOM event cannot tell a reachable button from one
+ * under another control (TRAPS 67).
  *
- *   1. EMPTY HANDS: the top is your fists (the faint empty-slot picture), the
- *      bow and the staff dashed empty circles; a tap on the bow says "No bow
- *      yet" and changes nothing.
- *   2. WHERE (upright): in the left half, the left thumb's side (the owner's
- *      choice: "the right joystick is already crowded"), the top button 46 px,
- *      the two below it 40 px, Element Burst's, Quick eat's and the movement
- *      stick's places (drawn or not) and every other control on screen (the
- *      bell, the quest card, the dashboard...) 8 px or more away; a finger at
- *      each centre lands on it.
- *   3. A TAP ON EACH DIM WEAPON takes it in hand: it turns to the top, and the
- *      WORKER holds it too -- read back from its player_state.
- *   4. A DRAG that starts on a dim weapon does not swap.
+ *   1. EMPTY HANDS: the sword's well lit (fists), the bow's and staff's wells
+ *      empty; a tap on the bow's says "No bow yet" and changes nothing.
+ *   2. WHERE (upright): one pill, three 40 px wells sword | bow | staff,
+ *      centred on the screen, its foot just over the dashboard band, 8 px or
+ *      more from every control's place (drawn or not: Jump, Block, TRAP, the
+ *      sticks...) and every other control on screen; a finger at each well's
+ *      centre lands on it.  The well in hand ringed gold with the coloured
+ *      picture, the others grey.
+ *   3. A TAP ON EACH GREY WELL takes it in hand, and the WORKER holds it too
+ *      -- read back from its player_state.
+ *   4. A DRAG that starts on a well does not swap.
  *   5. SIDEWAYS: the same checks, and a tap swaps there too.
+ *   6. A COMPUTER (wide): the pill at the foot of the world column, centred,
+ *      its wells wearing 1 2 3; a click swaps (and walks nowhere), and the 3
+ *      key swaps with the pill following.
  */
 import * as H from './harness.mjs';
 import { mkdirSync } from 'node:fs';
@@ -50,33 +51,32 @@ const look = (P) => P.page.evaluate(() => {
     const r = el.getBoundingClientRect();
     return { x: r.left, y: r.top, w: r.width, h: r.height, r: r.right, b: r.bottom };
   };
-  const tri = document.querySelector('[data-weapon-tri]');
-  const btns = {};
-  for (const b of document.querySelectorAll('[data-wtri-slot]')) {
+  const pill = document.querySelector('[data-weapon-pill]');
+  const wells = {};
+  for (const b of document.querySelectorAll('[data-wpill-slot]')) {
     const r = box(b);
-    const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
-    const at = document.elementFromPoint(cx, cy);
+    const at = document.elementFromPoint(r.x + r.w / 2, r.y + r.h / 2);
     const img = b.querySelector('img');
-    btns[b.getAttribute('data-wtri-slot')] = {
-      box: r, role: b.getAttribute('data-wtri-role'), owned: b.getAttribute('data-wtri-owned') === '1',
-      chip: b.hasAttribute('data-weapon-chip'), src: img ? img.getAttribute('src') : null,
-      imgOp: img ? Number(getComputedStyle(img).opacity) : null,
-      dashed: !!b.querySelector('span[style*="dashed"]'),
-      shaking: !!b.querySelector('.bt-wtri-nope'),
-      hit: !!(at && at.closest && at.closest('[data-wtri-slot]') === b),
+    const cs = getComputedStyle(b);
+    wells[b.getAttribute('data-wpill-slot')] = {
+      box: r, on: b.getAttribute('data-wpill-on') === '1', owned: b.getAttribute('data-wpill-owned') === '1',
+      chip: b.hasAttribute('data-weapon-chip'), key: b.getAttribute('data-key'),
+      src: img ? img.getAttribute('src') : null, ring: /245, 197, 78|F5C54E/i.test(cs.boxShadow),
+      shaking: b.classList.contains('bt-wpill-nope'),
+      hit: !!(at && at.closest && at.closest('[data-wpill-slot]') === b),
     };
   }
   const S = window._gameState && window._gameState.current;
   const cs = getComputedStyle(document.documentElement);
   const dashH = parseFloat(cs.getPropertyValue('--sheet-h')) || parseFloat(cs.getPropertyValue('--dash-h')) || 0;
+  const wrap = document.querySelector('.brotown-wrap');
   /* every other control on screen: fixed, drawn, taking touches, not the
-     joystick zones and not a full-screen layer; plus the quest card, which
-     takes no touches but must not be covered */
+     joystick zones and not a full-screen layer; plus the quest card */
   const others = [];
-  if (tri) {
+  if (pill) {
     for (const el of document.querySelectorAll('body *')) {
-      if (tri.contains(el) || el.contains(tri)) continue;
-      if (el.closest('[data-joyzone]') || el.closest('.bt-joystick-zone')) continue;
+      if (pill.contains(el) || el.contains(pill)) continue;
+      if (el.closest('[data-joyzone]') || el.closest('.bt-joystick-zone') || el.closest('[data-disc]')) continue;
       const c = getComputedStyle(el);
       const q = el.hasAttribute('data-quest-hud');
       if (c.position !== 'fixed' && !q) continue;
@@ -88,11 +88,12 @@ const look = (P) => P.page.evaluate(() => {
     }
   }
   const land = innerWidth > innerHeight;
-  const q = window.__btWeaponTri;
+  const q = window.__btWeaponPill;
   return {
     vw: innerWidth, vh: innerHeight, dashH, land,
-    tri: box(tri), triSlot: tri ? tri.getAttribute('data-weapon-tri') : null, btns, others,
-    slots: q && q.boxes ? q.boxes(land) : null,
+    wrap: box(wrap),
+    pill: box(pill), pillSlot: pill ? pill.getAttribute('data-weapon-pill') : null, wells, others,
+    slots: q && q.slots ? q.slots(land, innerWidth) : null,
     notes: q ? q.notes.slice() : [],
     probe: window.__btWeaponChip ? window.__btWeaponChip() : null,
     slot: S && S.rpg ? (S.rpg.activeSlot || 'melee') : null,
@@ -100,20 +101,16 @@ const look = (P) => P.page.evaluate(() => {
     px: S && S.player ? Math.round(S.player.x) : null,
     py: S && S.player ? Math.round(S.player.y) : null,
     lock: !!(S && S.lockedTarget),
+    rootFlag: document.documentElement.getAttribute('data-wpill-shown'),
   };
 });
 
 const centre = (b) => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
 /* clear air between two boxes (negative: they overlap) */
 const air = (a, b) => Math.max(b.x - a.r, a.x - b.r, b.y - a.b, a.y - b.b);
-/* clear air between two round buttons' rings */
-const ringAir = (a, b) => {
-  const p = centre(a), q = centre(b);
-  return Math.hypot(p.x - q.x, p.y - q.y) - a.w / 2 - b.w / 2;
-};
 
-/* until the triangle has drawn what the game holds (it reads on a 200 ms
-   timer; a frame here takes 300-600 ms).  `slot`: waited for in the game first. */
+/* until the pill has drawn what the game holds (it reads on a 200 ms timer;
+   a frame here takes 300-600 ms).  `slot`: waited for in the game first. */
 const caughtUp = async (P, slot = null, ms = 10000) => {
   if (slot) {
     await P.page.waitForFunction((want) => {
@@ -122,14 +119,14 @@ const caughtUp = async (P, slot = null, ms = 10000) => {
     }, slot, { timeout: 5000, polling: 100 }).catch(() => {});
   }
   await P.page.waitForFunction(() => {
-    const t = document.querySelector('[data-weapon-tri]');
+    const t = document.querySelector('[data-weapon-pill]');
     const p = window.__btWeaponChip ? window.__btWeaponChip() : null;
     if (!t || !p) return false;
-    const top = document.querySelector('[data-wtri-role="top"]');
-    return t.getAttribute('data-weapon-tri') === p.slot && !!top && top.getAttribute('data-wtri-slot') === p.slot
-      && [...document.querySelectorAll('[data-wtri-owned="1"]')].length === (p.owned || []).length;
+    const on = document.querySelector('[data-wpill-on="1"]');
+    return t.getAttribute('data-weapon-pill') === p.slot && !!on && on.getAttribute('data-wpill-slot') === p.slot
+      && [...document.querySelectorAll('[data-wpill-owned="1"]')].length === (p.owned || []).length;
   }, null, { timeout: ms, polling: 200 }).catch(() => {});
-  await P.page.waitForTimeout(400);   /* the 150 ms turn, at this box's frame rate */
+  await P.page.waitForTimeout(400);
 };
 
 /* the worker's own word on the slot in hand: the activeSlot of the newest
@@ -137,58 +134,49 @@ const caughtUp = async (P, slot = null, ms = 10000) => {
 const workerSlot = async (P, wsPort, id, frames, want) => {
   const from = frames.length;
   await H.devOp(wsPort, 'vitals', id, {}).catch(() => null);
-  let got = null;
-  for (let i = 0; i < 40; i++) {
-    for (let j = frames.length - 1; j >= from; j--) {
+  const newest = (lo) => {
+    for (let j = frames.length - 1; j >= lo; j--) {
       const f = frames[j];
       if (f.indexOf('"player_state"') < 0 || f.indexOf('activeSlot') < 0) continue;
-      try { const m = JSON.parse(f); const a = m && m.payload && m.payload.activeSlot; if (a) { got = a; break; } } catch (e) { /* not ours */ }
+      try { const m = JSON.parse(f); const a = m && m.payload && m.payload.activeSlot; if (a) return a; } catch (e) { /* not ours */ }
     }
+    return null;
+  };
+  let got = null;
+  for (let i = 0; i < 40; i++) {
+    got = newest(from);
     if (got === want) return got;
     await P.page.waitForTimeout(250);
   }
   /* a v2 delta carries activeSlot only when it changed since the last send:
      with no carrier, the worker's last word before this is the answer */
-  if (!got) {
-    for (let j = frames.length - 1; j >= 0; j--) {
-      const f = frames[j];
-      if (f.indexOf('"player_state"') < 0 || f.indexOf('activeSlot') < 0) continue;
-      try { const m = JSON.parse(f); const a = m && m.payload && m.payload.activeSlot; if (a) { got = a; break; } } catch (e) { /* not ours */ }
-    }
-  }
-  return got;
+  return got || newest(0);
 };
 
 function checkLayout(rec, L, label) {
-  const B = L.btns;
-  const all = ['melee', 'ranged', 'staff'].map((s) => B[s]).filter(Boolean);
-  rec.ok(`${label}: three weapon buttons drawn (${all.length})`, all.length === 3, Object.keys(B));
-  if (all.length !== 3) return;
-  const top = all.find((b) => b.role === 'top'), left = all.find((b) => b.role === 'left'), right = all.find((b) => b.role === 'right');
-  rec.ok(`${label}: the weapon in hand on top (${Math.round(top.box.w)} px), the other two below it to either side (${Math.round(left.box.w)} / ${Math.round(right.box.w)} px)`,
-    top.box.w >= 44 && left.box.w >= 39.5 && right.box.w >= 39.5 && centre(top.box).y < centre(left.box).y - 20 && centre(left.box).x < centre(top.box).x && centre(right.box).x > centre(top.box).x,
-    { top: top.box, left: left.box, right: right.box });
-  rec.ok(`${label}: a finger at each centre lands on that weapon`, all.every((b) => b.hit), all.map((b) => b.hit));
-  const tri = L.tri;
-  /* v2.3.3921: the left thumb's side, by the owner's choice */
-  rec.ok(`${label}: in the left half, the movement stick's side (right edge ${Math.round(tri.r)} of ${L.vw / 2}), clear of the iOS edge guard (left ${Math.round(tri.x)}), over the dashboard (foot ${Math.round(tri.b)}, band top ${Math.round(L.vh - L.dashH)})`,
-    tri.r <= L.vw / 2 && tri.x >= 18 && tri.b <= L.vh - L.dashH + 0.5, tri);
-  /* every slot of the cluster, drawn or not */
+  const order = ['melee', 'ranged', 'staff'];
+  const all = order.map((s) => L.wells[s]).filter(Boolean);
+  rec.ok(`${label}: one pill, three wells sword | bow | staff left to right (${Object.keys(L.wells).join(' | ')})`,
+    !!L.pill && all.length === 3 && all[0].box.x < all[1].box.x && all[1].box.x < all[2].box.x, Object.keys(L.wells));
+  if (all.length !== 3 || !L.pill) return;
+  rec.ok(`${label}: each well 40 px or more (${all.map((w) => Math.round(w.box.w)).join(', ')}), a finger at each centre lands on it`,
+    all.every((w) => w.box.w >= 39.5 && w.box.h >= 39.5 && w.hit), all.map((w) => ({ w: w.box.w, hit: w.hit })));
+  const world = L.wrap && L.wrap.w > 0 ? L.wrap : { x: 0, r: L.vw };
+  const cx = centre(L.pill).x, wx = (world.x + world.r) / 2;
   const band = L.vh - L.dashH;
+  rec.ok(`${label}: centred in the world view (${Math.round(cx)} against ${Math.round(wx)}), its foot just over the band (foot ${Math.round(L.pill.b)}, band top ${Math.round(band)})`,
+    Math.abs(cx - wx) <= 1.5 && L.pill.b <= band + 0.5 && L.pill.b >= band - 14, { pill: L.pill, world, band });
   const slotHits = [];
   for (const [name, s] of Object.entries(L.slots || {})) {
-    if (name === 'tri') continue;
-    const b = { x: s.left, r: s.left + s.w, y: band - s.bottom - s.h, b: band - s.bottom, w: s.w, h: s.h };
-    const a = Math.min(...all.map((t) => air(t.box, b)));
-    slotHits.push({ name, air: Math.round(a * 10) / 10 });
+    const b = { x: s.x, r: s.r, y: band - s.b - s.h, b: band - s.b };
+    slotHits.push({ name, air: Math.round(air(L.pill, b) * 10) / 10 });
   }
   const close = slotHits.filter((h) => h.air < 8);
-  console.log(`    ${label}: tri ${JSON.stringify({ x: Math.round(tri.x), y: Math.round(tri.y), r: Math.round(tri.r), b: Math.round(tri.b) })} slots ${JSON.stringify(slotHits)}`);
-  rec.ok(`${label}: 8 px or more from Element Burst's, Quick eat's and the movement stick's places, drawn or not (nearest ${slotHits.length ? Math.min(...slotHits.map((h) => h.air)) : '?'} px)`,
-    slotHits.length >= 3 && close.length === 0, { close, slotHits });
-  const drawn = L.others.map((o) => ({ ...o, air: Math.round(Math.min(...all.map((t) => air(t.box, o))) * 10) / 10 })).filter((o) => o.air < 8);
-  rec.ok(`${label}: 8 px or more from every other control on screen (${L.others.length} checked: the minimap, the quest card, the top bar, the dashboard...)`,
-    drawn.length === 0, drawn);
+  console.log(`    ${label}: pill ${JSON.stringify({ x: Math.round(L.pill.x), y: Math.round(L.pill.y), r: Math.round(L.pill.r), b: Math.round(L.pill.b) })} slots ${JSON.stringify(slotHits)}`);
+  rec.ok(`${label}: 8 px or more from every touch control's place, drawn or not (nearest ${slotHits.length ? Math.min(...slotHits.map((h) => h.air)) : '?'} px: ${slotHits.slice().sort((a, b) => a.air - b.air).slice(0, 2).map((h) => h.name).join(', ')})`,
+    slotHits.length >= 10 && close.length === 0, { close, slotHits });
+  const drawn = L.others.map((o) => ({ ...o, air: Math.round(air(L.pill, o) * 10) / 10 })).filter((o) => o.air < 8);
+  rec.ok(`${label}: 8 px or more from every other control on screen (${L.others.length} checked)`, drawn.length === 0, drawn);
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -216,93 +204,63 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await caughtUp(P);
   const bare = await look(P);
-  rec.ok('the triangle is on screen with nothing in your hands', !!bare.tri && bare.triSlot === 'melee', bare.triSlot);
-  rec.ok('...the top is your fists: the Weapon cell\'s own empty-slot picture, faint, and it carries data-weapon-chip',
-    !!bare.btns.melee && bare.btns.melee.role === 'top' && bare.btns.melee.chip && /slot-weapon/.test(bare.btns.melee.src || '') && bare.btns.melee.imgOp < 0.6,
-    bare.btns.melee);
-  rec.ok('...the bow and the staff are dashed empty circles',
-    !!bare.btns.ranged && !!bare.btns.staff && !bare.btns.ranged.owned && !bare.btns.staff.owned && bare.btns.ranged.dashed && bare.btns.staff.dashed && !bare.btns.ranged.src,
-    { ranged: bare.btns.ranged, staff: bare.btns.staff });
-  if (bare.btns.ranged) {
-    const c = centre(bare.btns.ranged.box);
+  rec.ok(`the pill is on screen with nothing in your hands, html marked for the Enter prompt (${bare.rootFlag})`, !!bare.pill && bare.pillSlot === 'melee' && bare.rootFlag === '1', bare.pillSlot);
+  rec.ok('...the sword\'s well is lit (fists), ringed gold, its picture in colour, and carries data-weapon-chip',
+    !!bare.wells.melee && bare.wells.melee.on && bare.wells.melee.chip && bare.wells.melee.ring && /wpn-melee\.webp/.test(bare.wells.melee.src || ''), bare.wells.melee);
+  rec.ok('...the bow\'s and the staff\'s wells are empty',
+    !!bare.wells.ranged && !!bare.wells.staff && !bare.wells.ranged.owned && !bare.wells.staff.owned && !bare.wells.ranged.src && !bare.wells.staff.src,
+    { ranged: bare.wells.ranged, staff: bare.wells.staff });
+  if (bare.wells.ranged) {
+    const c = centre(bare.wells.ranged.box);
     await touch(P, c.x, c.y);
     await P.page.waitForTimeout(300);
     const no = await look(P);
-    rec.ok(`a tap on the empty bow says "No bow yet" (${JSON.stringify(no.notes)}) and shakes it`, no.notes.includes('No bow yet') && no.btns.ranged.shaking, { notes: no.notes, shaking: no.btns.ranged.shaking });
-    rec.ok('...and changes nothing', no.slot === 'melee' && no.triSlot === 'melee', { slot: no.slot });
+    rec.ok(`a tap on the empty bow well says "No bow yet" (${JSON.stringify(no.notes)}) and shakes it`, no.notes.includes('No bow yet') && no.wells.ranged.shaking, { notes: no.notes, shaking: no.wells.ranged.shaking });
+    rec.ok('...and changes nothing', no.slot === 'melee' && no.pillSlot === 'melee', { slot: no.slot });
   }
 
   /* ── 2. WHERE, UPRIGHT (three weapons, the worker's own: armWorker) ── */
   const armed = await H.armWorker(P, wsPort, id, ['bow', 'staff']);
   rec.ok(`the worker holds a bow and a staff (${armed.join(', ')}) (guard)`, armed.length === 2, armed);
-  /* and the kit's sword in hand (empty, melee is fists: the faint picture) */
   let sw = await H.equipWeapon(P, 'greatsword', 'weapon', 'melee').catch(() => null);
   if (!sw || !sw.ok) sw = await H.equipWeapon(P, 'sword', 'weapon', 'melee').catch(() => null);
   await P.page.waitForFunction(() => { const R = window._gameState.current.rpg; return !!(R && R.weapon); }, null, { timeout: 15000, polling: 250 }).catch(() => {});
   await caughtUp(P, 'melee');
   const a = await look(P);
-  rec.ok(`a sword in hand (${a.btns.melee && a.btns.melee.src}) (guard)`, !!a.btns.melee && !/slot-weapon/.test(a.btns.melee.src || ''), a.btns.melee);
   checkLayout(rec, a, 'upright');
-  rec.ok('the weapon in hand on top in full colour, the other two dimmed',
-    a.btns.melee.role === 'top' && a.btns.ranged.owned && a.btns.staff.owned && a.btns.ranged.imgOp < 0.6 && a.btns.staff.imgOp < 0.6 && !a.btns.ranged.dashed,
-    { melee: a.btns.melee, ranged: a.btns.ranged, staff: a.btns.staff });
-  await P.page.screenshot({ path: `${OUT}/weaponswap-upright.png`, clip: { x: 0, y: Math.max(0, a.tri.y - 60), width: a.vw / 2 + 20, height: a.vh - Math.max(0, a.tri.y - 60) } });
+  rec.ok('the sword in hand: its well ringed gold, its picture in colour; the bow and the staff grey',
+    a.wells.melee.on && a.wells.melee.ring && /wpn-melee\.webp/.test(a.wells.melee.src || '')
+      && /wpn-ranged-grey/.test(a.wells.ranged.src || '') && /wpn-staff-grey/.test(a.wells.staff.src || '') && !a.wells.ranged.ring,
+    { melee: a.wells.melee, ranged: a.wells.ranged, staff: a.wells.staff });
+  await P.page.screenshot({ path: `${OUT}/weaponpill-upright.png` });
 
-  /* ── 2b. THE OPEN CHAT FEED (the bell's) stays clear of it ── */
-  await P.page.evaluate(() => {
-    const S = window._gameState.current;
-    S.chatLog = S.chatLog || [];
-    for (let i = 0; i < 8; i++) S.chatLog.push({ name: 'Crowd' + (i % 3), text: 'a line of world chat that runs long enough to wrap ' + i, ts: Date.now() + i });
-    try { window.__broChatLogBus && window.__broChatLogBus.bump(); } catch (e) {}
-  });
-  /* the feed itself drawn, not the helper's word: on this box a frame can take
-     longer than its 350 ms wait, and its second click shuts what the first opened */
-  const feedUp = () => P.page.waitForFunction(() => { const f = document.querySelector('[data-world-chat]'); return !!f && f.getBoundingClientRect().width > 0; }, null, { timeout: 6000, polling: 250 }).then(() => true).catch(() => false);
-  await H.openWorldChat(P).catch(() => false);
-  let opened = await feedUp();
-  if (!opened) { await P.page.click('[data-world-chat-toggle]').catch(() => {}); opened = await feedUp(); }
-  await P.page.waitForTimeout(600);
-  const feed = await P.page.evaluate(() => {
-    const s = document.querySelector('[data-world-chat]');
-    const r = s && s.getBoundingClientRect();
-    return r && r.width > 0 ? { x: r.left, y: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height } : null;
-  });
-  const wf = await look(P);
-  const feedAir = feed && wf.tri ? air(wf.tri, feed) : null;
-  rec.ok(`the open chat feed (${opened ? 'opened' : 'not opened'}) stays 8 px or more off the triangle (${feedAir != null ? Math.round(feedAir) : '?'} px), and a finger on each weapon still lands on it`,
-    opened === true && !!feed && feedAir >= 8 && Object.values(wf.btns).every((b) => b.hit), { feed, tri: wf.tri, feedAir });
-  await P.page.screenshot({ path: `${OUT}/weaponswap-chat-open.png` });
-  await P.page.click('[data-world-chat-toggle]').catch(() => {});
-  await P.page.waitForTimeout(500);
-
-  /* ── 3. A TAP ON EACH DIM WEAPON ── */
+  /* ── 3. A TAP ON EACH GREY WELL ── */
   let prev = a;
-  for (const role of ['right', 'right', 'left', 'left']) {
-    const want = Object.entries(prev.btns).find(([, b]) => b.role === role)[0];
-    const c = centre(prev.btns[want].box);
+  for (const want of ['ranged', 'staff', 'melee', 'staff', 'ranged', 'melee']) {
+    const c = centre(prev.wells[want].box);
     await touch(P, c.x, c.y);
     await caughtUp(P, want);
     const now = await look(P);
     const ws = await workerSlot(P, wsPort, id, frames, want);
-    rec.ok(`a tap on the dim ${want} (lower ${role}) takes it in hand: ${prev.slot} -> ${now.slot}, the worker's player_state says ${ws}`,
+    rec.ok(`a tap on the grey ${want} well takes it in hand: ${prev.slot} -> ${now.slot}, the worker's player_state says ${ws}`,
       now.slot === want && ws === want, { slot: now.slot, worker: ws });
-    rec.ok(`...and the triangle turns it to the top (${now.btns[want] && now.btns[want].role}), wearing its picture`,
-      !!now.btns[want] && now.btns[want].role === 'top' && now.btns[want].chip && now.triSlot === want && now.btns[want].imgOp === 1, now.btns[want]);
+    rec.ok(`...its well lit gold with the coloured picture, the one before grey again`,
+      now.wells[want].on && now.wells[want].ring && now.wells[want].chip && !/grey/.test(now.wells[want].src || '')
+        && (prev.slot === want || /grey/.test(now.wells[prev.slot].src || '')), { now: now.wells[want], before: now.wells[prev.slot] });
     rec.ok('...the tap neither walked you nor locked a target',
       Math.abs(now.px - prev.px) <= 2 && Math.abs(now.py - prev.py) <= 2 && now.lock === prev.lock, { from: [prev.px, prev.py], to: [now.px, now.py] });
-    if (want === 'ranged') await P.page.screenshot({ path: `${OUT}/weaponswap-bow.png`, clip: { x: 0, y: Math.max(0, now.tri.y - 60), width: now.vw / 2 + 20, height: now.vh - Math.max(0, now.tri.y - 60) } });
+    if (want === 'ranged' && prev.slot === 'melee') await P.page.screenshot({ path: `${OUT}/weaponpill-bow.png`, clip: { x: 0, y: now.pill.y - 120, width: now.vw, height: now.vh - now.pill.y + 120 } });
     prev = now;
   }
   rec.ok('the swaps went through the real swap path (the session marked)', prev.cycled === true, prev.cycled);
 
-  /* ── 4. A DRAG ON A DIM WEAPON DOES NOT SWAP ── */
+  /* ── 4. A DRAG ON A WELL DOES NOT SWAP ── */
   const before = await look(P);
-  const dim = Object.values(before.btns).find((b) => b.role === 'right');
-  const c0 = centre(dim.box);
+  const c0 = centre(before.wells.staff.box);
   await touch(P, c0.x, c0.y, { dx: -40, dy: -40, holdMs: 200 });
   await P.page.waitForTimeout(500);
   const dragged = await look(P);
-  rec.ok('a drag that starts on a dim weapon does not change weapon', dragged.slot === before.slot, { before: before.slot, after: dragged.slot });
+  rec.ok('a drag that starts on a well does not change weapon', dragged.slot === before.slot, { before: before.slot, after: dragged.slot });
 
   /* ── 5. SIDEWAYS ── */
   await P.page.setViewportSize({ width: 844, height: 390 });
@@ -310,15 +268,48 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await caughtUp(P);
   const land = await look(P);
   checkLayout(rec, land, 'sideways');
-  const lw = Object.entries(land.btns).find(([, b]) => b.role === 'left');
-  if (lw) {
-    const lc = centre(lw[1].box);
+  const lw = land.slot === 'staff' ? 'ranged' : 'staff';
+  if (land.wells[lw]) {
+    const lc = centre(land.wells[lw].box);
     await touch(P, lc.x, lc.y);
-    await caughtUp(P, lw[0]);
+    await caughtUp(P, lw);
     const landTap = await look(P);
-    rec.ok(`sideways a tap swaps too (${land.slot} -> ${landTap.slot}, wanted ${lw[0]})`, landTap.slot === lw[0], { from: land.slot, to: landTap.slot });
+    rec.ok(`sideways a tap swaps too (${land.slot} -> ${landTap.slot}, wanted ${lw})`, landTap.slot === lw, { from: land.slot, to: landTap.slot });
   }
-  await P.page.screenshot({ path: `${OUT}/weaponswap-landscape.png` });
+  await P.page.screenshot({ path: `${OUT}/weaponpill-landscape.png` });
+  rec.ok('no page errors (phone)', errs.length === 0, errs.slice(0, 4));
+  await P.ctx.close().catch(() => {});
 
-  rec.ok('no page errors', errs.length === 0, errs.slice(0, 4));
+  /* ── 6. A COMPUTER ── */
+  const D = await H.newPlayer(browser, { name: 'DeskSwap', wsPort, webPort, world: 'wheel', viewport: { width: 1440, height: 900 }, wide: true });
+  const derrs = [];
+  D.page.on('pageerror', (e) => derrs.push(String(e && e.message || e)));
+  try {
+    await H.enterWorld(D);
+    await H.waitFor(D, (S) => ({ z: S.currentZone, l: !!S._zoneLoading }), (v) => v.z === 'wheel' && !v.l, { timeout: 150000, label: 'in the world' }).catch(() => null);
+    const did = await H.readState(D, (S) => S.myId);
+    await H.armWorker(D, wsPort, did, ['bow', 'staff']);
+    await H.equipWeapon(D, 'staff', 'staffWeapon', 'melee').catch(() => null);
+    await caughtUp(D, 'melee');
+    const d0 = await look(D);
+    const world = d0.wrap;
+    rec.ok(`computer: the pill at the foot of the world column, centred (${d0.pill && Math.round(centre(d0.pill).x)} against ${world && Math.round((world.x + world.r) / 2)}), foot ${d0.pill && Math.round(d0.pill.b)} of ${d0.vh}`,
+      !!d0.pill && !!world && Math.abs(centre(d0.pill).x - (world.x + world.r) / 2) <= 1.5 && d0.pill.b <= d0.vh && d0.pill.b >= d0.vh - d0.dashH - 20, { pill: d0.pill, world });
+    rec.ok(`computer: the wells wear their keys (${['melee', 'ranged', 'staff'].map((s) => d0.wells[s] && d0.wells[s].key).join(' ')})`,
+      ['1', '2', '3'].every((k, i) => d0.wells[['melee', 'ranged', 'staff'][i]] && d0.wells[['melee', 'ranged', 'staff'][i]].key === k), d0.wells);
+    const drawnD = d0.others.map((o) => ({ ...o, air: Math.round(air(d0.pill, o) * 10) / 10 })).filter((o) => o.air < 8);
+    rec.ok(`computer: 8 px or more from every other control on screen (${d0.others.length} checked)`, drawnD.length === 0, drawnD);
+    const cb = centre(d0.wells.ranged.box);
+    await D.page.mouse.click(cb.x, cb.y);
+    await caughtUp(D, 'ranged');
+    const d1 = await look(D);
+    rec.ok(`computer: a click on the bow well takes the bow (${d1.slot}) and walks nowhere`,
+      d1.slot === 'ranged' && d1.wells.ranged.on && Math.abs(d1.px - d0.px) <= 2 && Math.abs(d1.py - d0.py) <= 2, { slot: d1.slot, from: [d0.px, d0.py], to: [d1.px, d1.py] });
+    await D.page.keyboard.press('3');
+    await caughtUp(D, 'staff');
+    const d2 = await look(D);
+    rec.ok(`computer: the 3 key takes the staff and the pill follows (${d2.slot}, lit ${d2.pillSlot})`, d2.slot === 'staff' && d2.pillSlot === 'staff' && d2.wells.staff.on, { slot: d2.slot });
+    await D.page.screenshot({ path: `${OUT}/weaponpill-computer.png` });
+    rec.ok('no page errors (computer)', derrs.length === 0, derrs.slice(0, 4));
+  } finally { await D.ctx.close().catch(() => {}); }
 }

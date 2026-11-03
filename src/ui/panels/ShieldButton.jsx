@@ -269,9 +269,18 @@ export function blockAnchor(isLandscape) {
   var right = jl.right + jl.size + BLOCK_JUMP_SIDE;
   if (isLandscape) return { size: col.size, right: right, bottomPx: BLOCK_BAND_BOTTOM - col.size - CTL_GAP };
   var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
-  if (vw - right - col.size >= BELL_RIGHT_PX + BLOCK_JUMP_SIDE) {
-    return { size: col.size, right: right, bottomPx: JUMP_FOOT_UP - BLOCK_JUMP_DROP - col.size };
+  /* ═══ v2.3.4130: UPRIGHT, BESIDE JUMP AT ITS FOOT, OVER THE WEAPON PILL ═══
+     Jump turned west over the weapon pill (jumpAnchor); Block stays beside it
+     on its left, BLOCK_JUMP_SIDE of air, their feet level -- WPILL_AIR over
+     the pill's top, where its old place (14 px over the band) lay on the
+     pill.  Clear of the movement stick's box on the left from a 360 px phone
+     up; on a narrower one it takes the old fallback below. */
+  if (vw - right - col.size >= LBTN.left + LBTN.w + BLOCK_JUMP_SIDE) {
+    return { size: col.size, right: right, bottomPx: jl.bottomPx };
   }
+  /* narrower (a 320 px phone): under the attack disc at the band's foot, the
+     weapon pill standing left of it (weaponPillAnchor) */
+  if (pillNarrow(false)) return { size: col.size, right: discRight(false), bottomPx: WPILL_FOOT };
   return { size: col.size, right: right, bottomPx: col.bottomPx(CTL_SLOT.trap) - BLOCK_TRAP_DROP - col.size };
 }
 export const BLOCK_BAND_BOTTOM = 70;
@@ -511,6 +520,13 @@ export function jumpAnchor(isLandscape) {
     var bashFoot = ctlColumn(true).bottomPx(CTL_SLOT.bash);
     down = Math.min(ring, Math.max(down, cB + size / 2 - (bashFoot - RCTL_JUMP_AIR)));
   }
+  /* ═══ v2.3.4130: UPRIGHT, WEST ENOUGH TO STAND OVER THE WEAPON PILL ═══
+     The owner put the weapon pill "centered bottom of screen area"; south-west
+     of the disc, Jump's foot was 23 px over the band, across the pill's right
+     end.  So upright Jump turns west on the same ring until its foot stands
+     WPILL_AIR over the pill's top (about 15 degrees below west; it was 45):
+     still on the disc's ring, 10 px off it, still down and to its left. */
+  if (!isLandscape) down = Math.min(down, Math.max(0, cB - size / 2 - (weaponPillTopPx(false) + WPILL_AIR)));
   var left = Math.sqrt(Math.max(0, ring * ring - down * down));
   return {
     size: size,
@@ -742,55 +758,57 @@ export function combatBandTopPx(isLandscape) {
     jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */
     discBottom(isLandscape) + discR,           /* the attack disc (v2.3.3740: its own height upright) */
     LBTN.bottom + discL,                       /* the movement disc */
-    weaponTriAnchor(isLandscape).bottomPx + weaponTriAnchor(isLandscape).h);   /* v2.3.3921: the weapon triangle */
+    weaponPillTopPx(isLandscape));             /* v2.3.4130: the weapon pill, centred at the band's top */
 }
 
-/* ═══ v2.3.3921: THE WEAPON TRIANGLE, OVER THE MOVEMENT STICK ═══
- * The owner: "I need a button on screen for switching between weapons.  Maybe
- * a triangle or wheel where the active weapon is highlighted on top and the
- * others are greyed out" (WeaponTriangle.jsx).  Three round buttons in one
- * box: the weapon in hand on top (WTRI.top), the other two below it to either
- * side (WTRI.side), WTRI.air between the rings.
- *
- * WHERE: the LEFT thumb's side, by the owner's choice on the PR: "Do you think
- * the weapon triangle should move besides the left joystick instead?  I'm
- * thinking the right joystick is already crowded with buttons and weapon
- * swapping won't need to occur as often."  (The first cut stood over the
- * right-hand cluster.)  It is the left cluster's third place (leftCluster:
- * Element Burst, Quick eat), toward the screen's middle:
- *   UPRIGHT, over Quick eat: its left edge on Quick eat's, its foot WTRI_CLEAR
- *     over Quick eat's top, its right edge never past 4 px short of the
- *     middle (a 320 px phone slides it left, still over Quick eat).  On a 390 x
- *     844 phone that is x 90-178, y 461-545: under the quest card, over the
- *     bell and the dashboard.
- *   SIDEWAYS, right of the movement disc at its foot: a row higher would
- *     reach the top bar on a 390 px-tall screen, and level with Quick eat it
- *     lies on the quest card.  WTRI_CLEAR right of the disc's box, its foot
- *     level with the disc's, WTRI_CLEAR right of nothing else: Quick eat's
- *     place is 54 px over its top.
- * combatBandTopPx counts it (the coach card's lift), as it counts every
- * slot. */
-export const WTRI = { top: 46, side: 40, air: 4 };
-export const WTRI_CLEAR = 10;
-export function weaponTriBox() {
-  var rT = WTRI.top / 2, rS = WTRI.side / 2;
-  var w = WTRI.side * 2 + 8;   /* the two lower buttons, 8 px apart */
-  var dx = w / 2 - rS;
-  var dy = Math.ceil(Math.sqrt(Math.max(0, Math.pow(rT + rS + WTRI.air, 2) - dx * dx)));
-  var h = rT + dy + rS;
-  /* the three centres, px from the box's top-left: top, lower-left, lower-right */
-  return { w: w, h: h, top: { x: w / 2, y: rT }, left: { x: rS, y: h - rS }, right: { x: w - rS, y: h - rS } };
-}
-/* { left: px in from the screen's left, bottomPx: px over the band } */
-export function weaponTriAnchor(isLandscape) {
-  var box = weaponTriBox();
-  if (isLandscape) {
-    return { w: box.w, h: box.h, box: box, left: LBTN.leftLand + LBTN.wLand + WTRI_CLEAR, bottomPx: LBTN.bottom };
-  }
-  var l = leftCluster(false);
+/* ═══ v2.3.4130: THE WEAPON PILL, CENTRED AT THE FOOT OF THE WORLD ═══
+ * The owner, 2026-11-03: "different pill shape weapon swap type bar.  Put it
+ * centered bottom of screen area" (WeaponPill.jsx).  Three wells in a row,
+ * WPILL.well (40 px of touch each) WPILL.gap apart inside WPILL.pad of pill:
+ * 136 x 48 px, centred in the world view (the wrap: a phone's screen, a
+ * computer's world column), its foot WPILL_FOOT over the dashboard band, in
+ * every layout.  It replaces v2.3.3921's weapon triangle (over the movement
+ * stick) and its place in the left cluster.
+ * Upright the bottom of the screen is the thumbs': Jump stood south-west of
+ * the attack disc right over that spot, so Jump turns west on its ring until
+ * its foot is WPILL_AIR over the pill's top (jumpAnchor), and Block stands
+ * beside it as before (blockAnchor).  Sideways and on a computer the foot of
+ * the world is clear (Jump under the disc, the bell in the corner). */
+export const WPILL = { well: 40, gap: 4, pad: 4, icon: 28 };
+export const WPILL_FOOT = 8;   /* 8 px over the band: the controls' rule of air between two (mp-weaponswap) */
+export const WPILL_AIR = 8;
+/* ═══ ...AND ON A PHONE NARROWER THAN 360 px, BETWEEN THE BELL AND BLOCK ═══
+ * At 320 px a centred 136 px pill lies on the bell (WorldChatFeed, 66-102 px
+ * from the left at the band's foot), and Block, beside Jump at its foot, on
+ * the movement stick.  So there (upright, under PILL_NARROW_VW) Block goes
+ * under the attack disc at the band's foot (blockAnchor), and the pill fills
+ * what is left between the bell and Block, WPILL_AIR from each: its wells
+ * shrink to fit (34 px at 320, never under WPILL_MIN), and it stands there,
+ * not centred.  `left` is then px from the screen's left; null means centred. */
+export const PILL_NARROW_VW = 360;
+export const WPILL_MIN = 32;
+function pillNarrow(isLandscape) {
+  if (isLandscape) return false;
   var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
-  var left = Math.max(EDGE_GUARD_PX, Math.min(l.leftPx(LCTL_SLOT.eat), Math.floor(vw / 2) - 4 - box.w));
-  return { w: box.w, h: box.h, box: box, left: left, bottomPx: l.bottomPx(LCTL_SLOT.eat) + l.size + WTRI_CLEAR };
+  return vw < PILL_NARROW_VW;
+}
+export function weaponPillAnchor(isLandscape) {
+  var well = WPILL.well, left = null;
+  if (pillNarrow(isLandscape)) {
+    var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+    var col = ctlColumn(false);
+    left = BELL_RIGHT_PX + WPILL_AIR;
+    var right = vw - discRight(false) - col.size - WPILL_AIR;   /* Block's left edge, under the disc, less the air */
+    well = Math.max(WPILL_MIN, Math.min(WPILL.well, Math.floor((right - left - 2 * WPILL.pad - 2 * WPILL.gap) / 3)));
+  }
+  var w = 3 * well + 2 * WPILL.gap + 2 * WPILL.pad;
+  var h = well + 2 * WPILL.pad;
+  return { w: w, h: h, well: well, icon: Math.round(WPILL.icon * well / WPILL.well), left: left, bottomPx: WPILL_FOOT };
+}
+/* the pill's top, px over the band: what Jump and Block keep WPILL_AIR over */
+export function weaponPillTopPx(isLandscape) {
+  var a = weaponPillAnchor(isLandscape);
+  return a.bottomPx + a.h;
 }
 
 export function ctlBottom(px) {

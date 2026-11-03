@@ -5520,20 +5520,29 @@ body.bt-intro-up .bt-zone-loading{visibility:hidden}
 @media (pointer:fine) {
   :root { --bt-wpn-slot: 0px; }
 }
-/* v2.3.3921: a tap on a weapon you do not have yet shakes its dashed circle.
-   transform only -- never a filter over the WebGL canvas (iOS grain). */
-@keyframes bt-wtri-nope {
+/* v2.3.4130: a tap on a weapon you do not have yet shakes its empty well
+   (WeaponPill.jsx; v2.3.3921's triangle shook its dashed circle).  transform
+   only -- never a filter over the WebGL canvas (iOS grain).  A press pushes the
+   well in, as every control's does. */
+@keyframes bt-wpill-nope {
   0%, 100% { transform: translateX(0); }
   20% { transform: translateX(-4px); }
   40% { transform: translateX(4px); }
   60% { transform: translateX(-3px); }
   80% { transform: translateX(2px); }
 }
-.bt-wtri-nope { animation: bt-wtri-nope 300ms ease; }
+.bt-wpill-nope { animation: bt-wpill-nope 300ms ease; }
+.bt-wpill-well { transition: transform 90ms cubic-bezier(.2,.8,.2,1); }
+.bt-wpill-well[data-pressed="1"], .bt-wpill-well:active { transform: scale(.92); }
 @media (prefers-reduced-motion: reduce) {
-  .bt-wtri-nope { animation: none; }
-  .bt-wtri-btn { transition: none !important; }
+  .bt-wpill-nope { animation: none; }
+  .bt-wpill-well { transition: none; }
 }
+/* v2.3.4130: the doors' Enter prompt (no bottom of its own) sits centred just
+   over the band, where the weapon pill now is: while the pill is drawn it
+   stands over the pill instead (upright, html[data-jump-clear] places it over
+   Jump, a stronger rule).  48 px pill + 8 px foot + 12 px air. */
+html[data-wpill-shown] .bt-interact-prompt:not([style*="bottom"]){bottom:calc(var(--sheet-h, var(--dash-h)) + 68px)}
 /* v2.3.1715: bottom was a HARDCODED 140px, and --dash-h's own boot fallback
    is 145px — so this strip has been sitting INSIDE the dashboard band, under
    an opaque panel, at every viewport size.  Owner (desktop playtest) never
@@ -7540,7 +7549,7 @@ html[data-orient="landscape"] .bt-zone-banner .bt-zone-banner__name{font-size:14
 /* v2.3.3920: a thumb on the stick: the reticle and its rod (the pointer) light */
 .bt-rjoy-aim .bt-aim-ring,.bt-rjoy-aim .bt-aim-tick{transition:stroke 90ms linear}
 .bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-ring,.bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-tick{stroke:#FFF3C4}
-.bt-rjoy-base[data-pressed="1"] .bt-rjoy-aim .bt-aim-dot{fill:#FFD86A}
+/* v2.3.4130: the reticle has no centre dot now (its small white cross: controlSkin AimReticle) */
 .bt-rjoy-base[data-pressed="1"] [data-rod]{background:linear-gradient(180deg,rgba(255,214,106,.62) 0%,rgba(240,176,72,.5) 100%);box-shadow:inset 0 0 0 1px rgba(255,236,170,.75)}
 /* v2.3.3105: the JUMP arrow over the disc as it is, see-through -- the owner:
    "a semi transparent overlay on the existing disc" (controlSkin RDISC_ICONS) */

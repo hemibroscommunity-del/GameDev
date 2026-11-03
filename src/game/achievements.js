@@ -52,6 +52,7 @@
  * Relative imports, every one import-free, so node can read this file
  * (server/test/achievements-client.test.mjs). */
 import { ACHIEVEMENTS, ACHV_TIERS, ACHV_TOTAL_AP, achvById, achvAp, achvBig } from '../data/achievements.js';
+import { worldReady } from '../ui/loadingGate.js';   /* v2.3.4136: the loading gate (no imports of its own: node runs this) */
 import { chatLogBus } from '../ui/mobile/chatLogBus.js';
 import { CODEX_KINDS } from '../data/monsterCodex.js';   /* Know Thy Enemy's nine, for its row's progress */
 import { WHEEL_DUNGEON_HOMES } from '../data/wheelDungeons.js';   /* Delver's three (the worker's WHEEL_DUNGEON.LANDS, mirror-audit) */
@@ -385,7 +386,9 @@ export function achvDateWords(at, now) {
 /** Is the world in view -- the intro lifted, no zone or connection veil over
  *  it?  A banner waits for this (the daily toast's own test, gameEvents.js). */
 export function achvWorldShown(S) {
-  return !!(S && S.__introLiftedAt && !S._zoneLoading && !S._netHold);
+  /* v2.3.4136: + the loading gate (ui/loadingGate.js: no loading screen in
+     the page, and a breath since the last) */
+  return !!(S && S.__introLiftedAt && !S._zoneLoading && !S._netHold) && worldReady();
 }
 
 /** The banner's subject at `now`: {id, at, shownAt, until, started}, or null.
