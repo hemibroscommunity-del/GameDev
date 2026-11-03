@@ -22,7 +22,8 @@ const look = (P) => P.page.evaluate(() => {
   const r = el ? el.getBoundingClientRect() : null;
   const q = window.__btSwapHint || {};
   const at = (sel) => [...document.querySelectorAll(sel)].map((e) => e.getBoundingClientRect()).filter((b) => b.width > 0);
-  const anchors = ['[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]', '[data-weapon-tri]', '[data-weapon-chip]'].map(at).find((l) => l.length) || [];
+  /* v2.3.4092: + the band's buttons, a computer's anchor while the band (the default) is folded */
+  const anchors = ['[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]', '[data-weapon-tri]', '[data-weapon-chip]', '.bt-dashboard [data-nav]'].map(at).find((l) => l.length) || [];
   const top = anchors.length ? Math.min(...anchors.map((b) => b.top)) : null;
   const S = window._gameState.current;
   return { text: el ? el.textContent : null, box: r ? { l: Math.round(r.left), r: Math.round(r.right), t: Math.round(r.top), b: Math.round(r.bottom) } : null,

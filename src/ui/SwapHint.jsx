@@ -45,8 +45,9 @@ function offByUrl() {
 /* what it points at: the first of these on the screen */
 function anchorRect(desk) {
   /* a computer: the weapons at the foot of a page, or the dashboard's own row of them */
-  /* v2.3.4092: under the band (the default) a computer's weapons are the band's combat cards ([data-rail-weapon]) */
-  const sels = desk ? ['[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]', '[data-weapon-tri]', '[data-weapon-chip]']
+  /* v2.3.4092: under the band (the default) a computer's weapons are the band's combat cards ([data-rail-weapon]);
+     folded (a new bro arrives so) the band's own buttons, the hint being the keys 1 2 3 */
+  const sels = desk ? ['[data-desk-foot] [data-rail-weapon]', '[data-dash-desk-combat]', '[data-rail-weapon]', '[data-weapon-tri]', '[data-weapon-chip]', '.bt-dashboard [data-nav]']
     : ['[data-weapon-tri]', '[data-weapon-chip]'];   /* v2.3.3921: the whole triangle */
   for (const sel of sels) {
     const els = [...document.querySelectorAll(sel)].map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);

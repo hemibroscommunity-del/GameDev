@@ -288,7 +288,10 @@ async function landscape({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(700);
   const isl = await headerGeom(P);
   rec.ok('LANDSCAPE: an Island on the right pushes the purse clear of it',
-    !!isl.balance && !!isl.header && (isl.header.right - isl.balance.right) >= 55,
+    /* v2.3.4092: measured from the SCREEN's edge, where the Island is: under
+       the band (the default) the rail is the world's width, its bar already
+       part of the clearance (the old layout's rail ran to the edge) */
+    !!isl.balance && !!isl.header && (844 - isl.balance.right) >= 55,
     { header: isl.header, balance: isl.balance });
   await P.ctx.close();
 }
