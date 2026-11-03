@@ -280,6 +280,21 @@ export const ICON_URL = {
   ranged: '/icons/ui/hero/bow.webp?v=2.3.1311',
   staff: '/icons/ui/hero/magic.webp?v=2.3.1311',
   boot: '/icons/ui/hero/move-speed.webp?v=2.3.3006',
+  /* v2.3.4130: the owner's "different icons for jump, sprint": our own
+     drawings of their references (tools/ui/draw-control-icons.py, 256
+     colours), a light figure on the dark button */
+  jump: '/ui/controls/ctl-jump.webp?v=2.3.4130',
+  sprint: '/ui/controls/ctl-sprint.webp?v=2.3.4130',
+};
+/* v2.3.4130: the weapon pill's pictures (WeaponPill.jsx): the Character
+   sheet's own sword, bow and staff in colour for the weapon in hand, and
+   their baked grey copies for the others (draw-control-icons.py; never a CSS
+   filter, TRAPS §42), all 96 px (36 KB decoded each, MEMORY-MAP's UI icon;
+   the sheet's own are 256 px).  Warmed on the loading screen (controlsPreload.js). */
+export const WPN_PILL_ICONS = {
+  melee: { on: '/ui/controls/wpn-melee.webp?v=2.3.4130', off: '/ui/controls/wpn-melee-grey.webp?v=2.3.4130' },
+  ranged: { on: '/ui/controls/wpn-ranged.webp?v=2.3.4130', off: '/ui/controls/wpn-ranged-grey.webp?v=2.3.4130' },
+  staff: { on: '/ui/controls/wpn-staff.webp?v=2.3.4130', off: '/ui/controls/wpn-staff-grey.webp?v=2.3.4130' },
 };
 /* The pictures the attack disc can wear (TouchControls), all in the DOM from
    the start and warmed on the loading screen (controlsPreload.js), so a
@@ -314,7 +329,8 @@ export function weaponDiscIcon(slot, weapon) {
 /* v2.3.3920: no weapon pictures on the disc any more: an attack (data-ricon
    melee / ranged / staff / w-*, still the weapon in hand, weaponDiscIcon) wears
    the aiming reticle drawn in code (AimReticle), and the weapon in hand is the
-   weapon triangle's top button (WeaponTriangle.jsx, v2.3.3921).  Their eleven
+   weapon pill's lit well (WeaponPill.jsx, v2.3.4130; it was v2.3.3921's
+   weapon triangle).  Their eleven
    pictures are no longer put in the DOM or warmed for the disc. */
 export const RDISC_WEAPON_KEYS = ['melee', 'ranged', 'staff'].concat(WEAPON_ART.map(function (f) { return 'w-' + f; }));
 export const RDISC_ICONS = [
@@ -370,22 +386,40 @@ export const RDISC_ICONS = [
  * never greyed); while a thumb is on the stick (data-pressed) it and the rod
  * it rides on, the direction pointer, brighten (game.css).  Drawn in SVG: no
  * file, nothing to preload or free. */
-const AIM_INK = '#F4E4BC', AIM_GOLD = '#F5C451', AIM_EDGE = '#1B1712';
+/* ═══ v2.3.4130: THE OWNER'S RETICLE ═══
+ * The owner sent a reticle with "different icons for jump, sprint, and
+ * reticle": a thin grey circle broken into four arcs (gaps at north, east,
+ * south and west) and a small white cross in the middle whose four strokes
+ * stop short of the centre.  Drawn here as that, on a dark edge so it still
+ * reads over the warm fight face and the world through a ghosted disc: grey
+ * arcs, white cross, never greyed out as a whole.  While a thumb is on the
+ * stick the arcs and the cross light (game.css, bt-aim-ring / bt-aim-tick).
+ * (v2.3.3920's ring, four ticks and gold dot came before it.) */
+const AIM_ARC = '#9C9C9C', AIM_CROSS = '#F4F4F0', AIM_EDGE = '#14110D';
 export function AimReticle(props) {
   var s = props.size || 50;
-  var ticks = ['M50 6 L50 22', 'M94 50 L78 50', 'M50 94 L50 78', 'M6 50 L22 50'];
-  var kids = [
-    React.createElement('circle', { key: 're', cx: 50, cy: 50, r: 30, fill: 'none', stroke: AIM_EDGE, strokeWidth: 9 }),
-  ];
-  ticks.forEach(function (d, i) {
-    kids.push(React.createElement('path', { key: 'te' + i, d: d, fill: 'none', stroke: AIM_EDGE, strokeWidth: 11, strokeLinecap: 'round' }));
+  /* the four arcs of a circle of radius 30, each 64 degrees, centred on the
+     diagonals (the gaps at the compass points) */
+  var arcs = [45, 135, 225, 315].map(function (c) {
+    var a0 = (c - 32) * Math.PI / 180, a1 = (c + 32) * Math.PI / 180;
+    var x0 = 50 + 30 * Math.cos(a0), y0 = 50 + 30 * Math.sin(a0);
+    var x1 = 50 + 30 * Math.cos(a1), y1 = 50 + 30 * Math.sin(a1);
+    return 'M' + x0.toFixed(2) + ' ' + y0.toFixed(2) + ' A30 30 0 0 1 ' + x1.toFixed(2) + ' ' + y1.toFixed(2);
   });
-  kids.push(React.createElement('circle', { key: 'de', cx: 50, cy: 50, r: 9, fill: AIM_EDGE }));
-  kids.push(React.createElement('circle', { key: 'r', className: 'bt-aim-ring', cx: 50, cy: 50, r: 30, fill: 'none', stroke: AIM_INK, strokeWidth: 4.5 }));
-  ticks.forEach(function (d, i) {
-    kids.push(React.createElement('path', { key: 't' + i, className: 'bt-aim-tick', d: d, fill: 'none', stroke: AIM_INK, strokeWidth: 6, strokeLinecap: 'round' }));
+  var cross = ['M50 34 L50 43', 'M66 50 L57 50', 'M50 66 L50 57', 'M34 50 L43 50'];
+  var kids = [];
+  arcs.forEach(function (d, i) {
+    kids.push(React.createElement('path', { key: 'ae' + i, d: d, fill: 'none', stroke: AIM_EDGE, strokeWidth: 8.5, strokeLinecap: 'butt', opacity: 0.85 }));
   });
-  kids.push(React.createElement('circle', { key: 'd', className: 'bt-aim-dot', cx: 50, cy: 50, r: 6, fill: AIM_GOLD }));
+  cross.forEach(function (d, i) {
+    kids.push(React.createElement('path', { key: 'ce' + i, d: d, fill: 'none', stroke: AIM_EDGE, strokeWidth: 8, strokeLinecap: 'butt', opacity: 0.85 }));
+  });
+  arcs.forEach(function (d, i) {
+    kids.push(React.createElement('path', { key: 'a' + i, className: 'bt-aim-ring', d: d, fill: 'none', stroke: AIM_ARC, strokeWidth: 4, strokeLinecap: 'butt' }));
+  });
+  cross.forEach(function (d, i) {
+    kids.push(React.createElement('path', { key: 'c' + i, className: 'bt-aim-tick', d: d, fill: 'none', stroke: AIM_CROSS, strokeWidth: 3.6, strokeLinecap: 'butt' }));
+  });
   return React.createElement('svg', {
     className: props.className, 'data-ricon-img': 'aim', 'data-icon': 'aim',
     viewBox: '0 0 100 100', width: s, height: s, 'aria-hidden': 'true',
@@ -510,9 +544,11 @@ export function jumpGlyphKind(search) {
   try {
     var q = search != null ? search : ((typeof window !== 'undefined' && window.location && window.location.search) || '');
     var m = /(?:^|[?&])jumpicon=([a-z]+)/.exec(q);
-    return m && JUMP_MARKS[m[1]] ? m[1] : 'leap';   /* v2.3.3920: was 'arrow' */
+    /* v2.3.4130: no ?jumpicon= is the owner's leaping figure, a picture
+       (ICON_URL.jump; JumpButton), so null; a drawn mark only when asked */
+    return m && JUMP_MARKS[m[1]] ? m[1] : null;
   } catch (e) {
-    return 'leap';
+    return null;
   }
 }
 export function JumpGlyph(props) {
