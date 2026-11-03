@@ -124,6 +124,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await A.page.keyboard.down('Shift');
   await A.page.keyboard.down('d');
   let watch = null;
+  /* v2.3.4077: the legs' pace is read off a sample where the worker said they
+     sprint.  The loop runs on for the dust, and on a page drawing one frame a
+     second the worker's 600 ms flag can lapse between the runner's moves by
+     the time the first puff lands -- with the slower, ground-paced loops
+     (docs/specs/leg-sync.md) the first puff can come a sample later */
+  let watchSp = null;
   for (let i = 0; i < 16; i++) {
     await B.page.waitForTimeout(150);
     watch = await B.page.evaluate((id) => {
@@ -131,6 +137,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const c = (window.__btPeerJogCyc || {})[id] || null;
       return { sp: !!(o && o._sp), cyc: c, dust: window.__btPeerSprintDust || 0 };
     }, idA);
+    if (watch.sp && watch.cyc && watch.cyc.sp) watchSp = watch;
     if (watch.sp && watch.cyc && watch.cyc.sp && watch.dust > 0 && i >= 6) break;
   }
   watch.fps = await B.page.evaluate(fpsOf);
@@ -154,9 +161,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`watcher: the runner's sprint starting is heard as the same grunt, no louder (${gruntB[0] && gruntB[0].vol})`,
     gruntB.length >= 1 && gruntB[0].ok && gruntB[0].vol > 0 && gruntB[0].vol <= gA.vol + 1e-9 && !playsB.some((p) => p.key === 'arrow-fly'),
     { gruntB, others: playsB.filter((p) => p.key !== 'sprint-grunt').slice(0, 8) });
-  const ratio = watch && watch.cyc ? watch.cyc.base / watch.cyc.cyc : 0;
-  rec.ok(`watcher: the worker says the runner sprints, and their legs run ${ratio.toFixed(2)}x quicker (the loop ${watch && watch.cyc && Math.round(watch.cyc.cyc)} ms against ${watch && watch.cyc && Math.round(watch.cyc.base)})`,
-    !!watch && watch.sp && Math.abs(ratio - MULT) < 0.01, watch);
+  const wsp = watchSp || watch;
+  const ratio = wsp && wsp.cyc ? wsp.cyc.base / wsp.cyc.cyc : 0;
+  rec.ok(`watcher: the worker says the runner sprints, and their legs run ${ratio.toFixed(2)}x quicker (the loop ${wsp && wsp.cyc && Math.round(wsp.cyc.cyc)} ms against ${wsp && wsp.cyc && Math.round(wsp.cyc.base)})`,
+    !!wsp && wsp.sp && Math.abs(ratio - MULT) < 0.01, { at: wsp, last: watch });
   rec.ok(`watcher: ...kicking up dust at their footfalls (${watch && watch.dust} puffs)`, !!watch && watch.dust >= 1, watch);
 
   /* ── 3. walking again ── */

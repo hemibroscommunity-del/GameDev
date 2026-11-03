@@ -89,10 +89,10 @@ async function capsOf(flags) {
 
 /* ── 3. the panel's names ─────────────────────────────────────────────── */
 check('3a. every saver has plain words, a known kind, and a flag name the route takes',
-  CLIENT_SAVERS.length === 12 &&   /* v2.3.4049: - hemiface (the portrait is off by default) */
+  CLIENT_SAVERS.length === 13 &&   /* v2.3.4049: - hemiface (the portrait is off by default); v2.3.4080: + gfxlean */
    CLIENT_SAVERS.every((c) => typeof c.words === 'string' && c.words.length > 5 && typeof c.live === 'boolean' && flagNameOk('off_' + c.id)),
   CLIENT_SAVERS.map((c) => c.id));
-check('3b. the names are the owner\'s eight, the printed shirts (v2.3.3790), the sound gate (v2.3.3800), the armour (v2.3.3752), the townsfolk (v2.3.3809)', JSON.stringify(CLIENT_SAVERS.map((c) => c.id)) === JSON.stringify(['sfxcache', 'voicecap', 'onecopy', 'picnumbers', 'codelazy', 'groundlean', 'heaplean', 'lookpalette', 'lookshirt', 'soundgate', 'lookarmour', 'lookfolk']));
+check('3b. the names are the owner\'s eight, the printed shirts (v2.3.3790), the sound gate (v2.3.3800), the armour (v2.3.3752), the townsfolk (v2.3.3809) and the big drawings kept once (v2.3.4080)', JSON.stringify(CLIENT_SAVERS.map((c) => c.id)) === JSON.stringify(['sfxcache', 'voicecap', 'onecopy', 'picnumbers', 'codelazy', 'groundlean', 'heaplean', 'lookpalette', 'lookshirt', 'soundgate', 'lookarmour', 'lookfolk', 'gfxlean']));
 
 console.log(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
