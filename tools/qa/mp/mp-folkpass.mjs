@@ -165,9 +165,10 @@ async function one(P, kind, phone, { wsPort, rec, OUT }) {
   /* a slow page walks slowly (this box: a few frames a second) -- only "it moves" here */
   rec.ok(`${kind}: the walk works here (${speed ? Math.round(speed) : 0} px a second)`, !!speed && speed > 5, cal);
   if (!speed) return;
-  /* the second's grace, for a page this slow: twice the time to walk from
-     meeting him to past him */
-  const graceOf = (v) => Math.max(1000, Math.round(2 * (MEET_PX + PAST_PX) / v * 1000));
+  /* the second's grace, for a page this slow: three times the time to walk
+     from meeting him to past him at the pace of your walk there (two figures
+     overlapping draw a little slower on this box: seen 2.7 s against 3.1) */
+  const graceOf = (v) => Math.max(1000, Math.round(3 * (MEET_PX + PAST_PX) / v * 1000));
 
   const folk = () => P.page.evaluate(() => (window.__btFolkWalk ? window.__btFolkWalk() : null));
   const npcAt = (nid) => P.page.evaluate((nid) => { const S = window._gameState.current; const q = (S.npcs || []).find((m) => m && m.id === nid); return q ? { x: q.x, y: q.y } : null; }, nid);
