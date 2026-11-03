@@ -6065,7 +6065,7 @@ export const NPC_DATA = [{
   chatTimer: 8000,
   chatBubble: null,
   /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "Welcome to BroTown! I'm Mayor Bro, and I'm glad you're here.",
     "Anyone with a mark over their head has a job for you. Go and talk to them!",
@@ -6204,7 +6204,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
   /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "Bet you can't catch me!",
     "Race me around the town square! I'm super fast.",
@@ -6328,7 +6328,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
   /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Ace. Want to flip a coin for gold? Talk to me.",
     "Heads or tails? If you win, I pay you. If you lose, you pay me.",
@@ -6418,7 +6418,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
   /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Diego. My General Store buys and sells almost anything.",
     "Got extra loot? Sell it to me for gold, amigo.",
@@ -6514,7 +6514,7 @@ export const NPC_DATA = [{
   chatTimer: 11000,
   chatBubble: null,
   /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Blacksmith Bro. Bring me ore, and I'll help you make armor.",
     "Copper first. Then iron, when you're ready.",
@@ -6582,7 +6582,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
   /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Beastmaster Bro. I catch wild monsters with box traps.",
     "Make box traps at the Woodworker's bench, on the Traps tab.",
@@ -6642,7 +6642,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* REQUIRED -- the AI loop indexes this unguarded and an empty array throws. */
   /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Woodworker Bro. I make bows and staffs from wood.",
     "Measure twice, cut once. Then measure again, just to be sure.",
@@ -6679,7 +6679,7 @@ export const NPC_DATA = [{
   chatTimer: 14000,
   chatBubble: null,
   /* v2.3.3570: the owner's rewrite; v2.3.3575 its satire pass (docs/specs/npc-dialogue-v2.md) */
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Farmer Bro. I grow the food for the whole town.",
     "Water your crops, or they won't grow.",
@@ -6717,7 +6717,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Sterling, the banker. Talk to me to open the Bank.",
     "Items and gold in the Bank stay safe, even if you lose a fight.",
@@ -6751,7 +6751,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Slim. I run the Saloon. Talk to me to see your party.",
     "Want friends to adventure with? Start a party at the Saloon.",
@@ -6785,7 +6785,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
     "I'm Sizzle, the chef! Talk to me to open the Cookhouse and see the recipes.",
     "Cook your crops into meals and drinks that help you in a fight.",
@@ -6819,7 +6819,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Glint. I cut gems at the Gem Works. Talk to me to open it.",
     "Gems give your weapon a special element.",
@@ -6853,7 +6853,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
     "I'm Snail Mail, the postmaster. Talk to me to open the Post Office.",
     "Gold from things you sell comes to you in the mail.",
@@ -6887,7 +6887,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
     "I'm Swampy, the land agent. Talk to me to open the Land Office.",
     "The Land Office can take you to your farm.",
@@ -6921,7 +6921,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Benny. Welcome to the Hotel! Talk to me to rest.",
     "A rest fills up your health, stamina and mana, and it's free!",
@@ -6955,7 +6955,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
     "I'm Tryhard, the guildmaster. Talk to me to open the Guild Hall.",
     "There's a guild for each of the ten skills. Find the one you like best.",
@@ -6989,7 +6989,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
     "I'm Badge, the sheriff. Talk to me to open the Sheriff's Office.",
     "Want to test your skills? Duel another player at my office.",
@@ -7023,7 +7023,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
     "I'm Going-Going, the auctioneer. Talk to me to open the Auction House.",
     "Players sell their items here. Maybe you'll find something great!",
@@ -7057,7 +7057,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
     "I'm Fish Tales. Every fish I catch gets bigger when I tell the story.",
     "Catch fish at the fishing spots out in the lands.",
@@ -7092,7 +7092,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md) */
   phrases: [
     "I'm Bean! I'm streaming right now. Say hi!",
     "Today's stream is all about BroTown. It's the best town ever!",
@@ -7126,7 +7126,7 @@ export const NPC_DATA = [{
   targetX: 0, targetY: 0,
   chatTimer: 14000,
   chatBubble: null,
-  /* v2.3.4030: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
+  /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
     "I'm Selfie! I'm visiting BroTown, and I take pictures of everything.",
     "Can you take a picture of me in front of the Town Hall?",

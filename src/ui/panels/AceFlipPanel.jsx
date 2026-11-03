@@ -229,7 +229,7 @@ export function AceFlipPanel() {
     var id = setTimeout(function () {
       if (!aceFlipBus.pending) return;
       aceFlipBus.setPending(false);
-      /* v2.3.4030: Ace's words said plainly (docs/specs/plain-words.md) */
+      /* v2.3.4025: Ace's words said plainly (docs/specs/plain-words.md) */
       aceFlipBus.setNote('Ace shakes his head. "You don\'t have enough gold for that bet, friend. Try a smaller stake."');
     }, 6000);
     return function () { clearTimeout(id); };

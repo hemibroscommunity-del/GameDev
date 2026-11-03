@@ -37,7 +37,7 @@ export const REACT = Object.freeze({
 });
 
 /* v2.3.3575: the owner's satire pass (docs/specs/npc-dialogue-v2.md) */
-/* v2.3.4030: said plainly -- the owner, "a simple and easy to understand
+/* v2.3.4025: said plainly -- the owner, "a simple and easy to understand
    personality and directions.  No cryptic jokes or anything that could
    confuse someone" (docs/specs/plain-words.md).  Diego's first line stays
    (mp-joinin waits for it).  Ace no longer calls betting odds ("3 to 1"):
@@ -151,7 +151,7 @@ function ace(npc, ms, now) {
   npc._reactN = i + 1;
   const who = ds[i % ds.length];
   const pick = REACT_LINES.ace[i % REACT_LINES.ace.length];
-  /* v2.3.4030: "Dance-off! I think Mover will win! Who wants to join?" */
+  /* v2.3.4025: "Dance-off! I think Mover will win! Who wants to join?" */
   say(npc, 'Dance-off! I think ' + who.name + ' ' + pick + '! Who wants to join?', now);
 }
 

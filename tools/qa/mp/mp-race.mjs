@@ -21,7 +21,7 @@
  *   6. v2.3.3583: a LOST race -- the lap run behind him -- and his line after
  *      it, the owner's "acknowledge the race has been lost and to try again
  *      ... (but said in his personality)": "I wasn't even trying." (v2.3.3591:
- *      one dry tap; "GG EZ!" until then; v2.3.4030: plainly, "I won!"), still
+ *      one dry tap; "GG EZ!" until then; v2.3.4025: plainly, "I won!"), still
  *      ending on Race!.
  *      Before it, a false start is not a loss: his line is the dare as written.
  *
@@ -269,7 +269,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await walkUpToLil();
   const before6 = await lineText();
   rec.ok('6: after a false start his line is still the dare as written (a false start is not a loss)',
-    /^Ready to race\? (Tap|Click) Race!/.test(before6 || ''), before6);   /* "Click" where the pointer is fine (deskWords) */   /* v2.3.4030: "Ready to race? Tap Race! ..." (v2.3.3611: "Scared?! ...") */
+    /^Ready to race\? (Tap|Click) Race!/.test(before6 || ''), before6);   /* "Click" where the pointer is fine (deskWords) */   /* v2.3.4025: "Ready to race? Tap Race! ..." (v2.3.3611: "Scared?! ...") */
   const go6 = await toRaceGo();
   await H.clickSel(P, '[data-qa="race-go"]').catch(() => {});
   const gun6 = await H.waitFor(P, (S) => S._race && S._race.phase, (ph) => ph === 'run', { timeout: 9000, label: 'the gun' }).catch(() => null);
@@ -293,7 +293,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await walkUpToLil();
   const after6 = await lineText();
   rec.ok('6: ...and his line says plainly that he won ("I won!")',
-    /^I won( again)?!|wins for me!/.test(after6 || ''), after6);   /* v2.3.4030: "I won! Want a rematch?" (v2.3.3611: "GG EZ! I wasn't even trying.") */
+    /^I won( again)?!|wins for me!/.test(after6 || ''), after6);   /* v2.3.4025: "I won! Want a rematch?" (v2.3.3611: "GG EZ! I wasn't even trying.") */
   rec.ok('6: ...and still ends on Race! for the rematch', await toRaceGo());
 
   stopAlive();

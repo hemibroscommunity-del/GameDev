@@ -15,7 +15,7 @@
  *      ten keepers each opening the building he stands at, no building with
  *      two; their looks are NPC_LOOKS rows; their pictures on disk;
  *   5. talking is a tap: none of them opens anything by walking up.
- *   6. (v2.3.4030) plain words: the owner, "a simple and easy to understand
+ *   6. (v2.3.4025) plain words: the owner, "a simple and easy to understand
  *      personality and directions.  No cryptic jokes or anything that could
  *      confuse someone" -- no townsperson's chatter brings back the old
  *      jokes' slang, and the eight who go by a nickname on screen say it
@@ -120,7 +120,7 @@ const row = (n) => NPC_DATA.find((r) => r.name === n);
   check('5a none opens anything by walking up, follows you, or keeps a shop (talking is a tap)', walkUp.length === 0, walkUp);
 }
 
-/* ── 6. v2.3.4030: plain words ────────────────────────────────────────────── */
+/* ── 6. v2.3.4025: plain words ────────────────────────────────────────────── */
 {
   /* the satire scripts' in-jokes and slang (quest-lines §5c holds the quests') */
   const SLANG = /\baura\b|skill issue|\bGG\b|\bEZ\b|hacker|montage|retrograde|tetanus|futures|spreadsheet|\bKEVIN\b|telegraph|shifty|danger zone|stay frosty|potholes|strong word|don't look it up|no refunds|blood pressure|\bchat is\b/i;

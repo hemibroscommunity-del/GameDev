@@ -1,6 +1,6 @@
 # NPC dialogue, the owner's rewrite (v2.3.3570)
 
-> **Superseded in v2.3.4030** by plain words (`docs/specs/plain-words.md`):
+> **Superseded in v2.3.4025** by plain words (`docs/specs/plain-words.md`):
 > the owner, "No cryptic jokes or anything that could confuse someone." The
 > history below is kept; the lines it quotes are no longer the game's.
 
