@@ -48,7 +48,7 @@ const SRC = path.join(REPO, 'assets/portrait-source/hemi-bros');
 const ATLAS = path.join(REPO, 'public/portrait/hemi-bros-atlas.png');
 const INDEX = path.join(REPO, 'src/rendering/hemiAtlasIndex.js');
 const FIXTURE = path.join(REPO, 'server/test/fixtures/hemi-npc-busts.png');
-const VERSION = '2.3.3957';
+const VERSION = '2.3.3999';
 const COLS = 8, CELL = 32, SCALE = 6;
 const CHECK = process.argv.includes('--check');
 
