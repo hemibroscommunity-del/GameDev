@@ -193,7 +193,7 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
 /* ── 7. the wiring ── */
 {
   const ws = src('src/networking/wsClient.js');
-  /* v2.3.3951: held while a bag reveal plays (game/revealBag.js afterReveal:
+  /* v2.3.4012: held while a bag reveal plays (game/revealBag.js afterReveal:
      the grade's achievement comes right behind the reveal's answer), so the
      call is inside the hold -- still the direct switch, still never `from` */
   check('7a wsClient takes achv_state in its direct switch, never a relayed copy',

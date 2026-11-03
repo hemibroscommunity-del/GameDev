@@ -452,7 +452,7 @@ export const achievementMethods = {
   /* A piece of gear made yours: picked up off a kill (`from` 'kill': the
      Iron Great Sword is a kill's only weapon), forged, or out of a chest.
      Elite is elite or better; Godly is godly. */
-  /* v2.3.3951: `opts` is handed to each grant (`quiet`: the reveal tells the
+  /* v2.3.4012: `opts` is handed to each grant (`quiet`: the reveal tells the
      phone after its own answer, revealbag.js), and the ids newly earned come
      back, so a quiet caller can send them. */
   _achvOnPiece(pid, ps, piece, from, opts) {
@@ -461,7 +461,7 @@ export const achievementMethods = {
     const q = piece.quality;
     const eliteUp = q === 'elite' || q === 'godly';
     const grant = (id) => { if (this._achvGrant(pid, ps, id, opts) === 'new') got.push(id); };
-    /* v2.3.3951: 'reveal' -- a piece off a kill opened in the bag
+    /* v2.3.4012: 'reveal' -- a piece off a kill opened in the bag
        (revealbag.js): the blade was counted at its pickup, its grade now */
     if ((from === 'kill' || from === 'reveal') && piece.type && typeof piece.gearBase === 'string') {
       if (from === 'kill') grant('iron_blade');

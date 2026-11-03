@@ -226,7 +226,7 @@ export function stripProv(piece) {
   const out = { ...piece };
   delete out.gid;
   delete out.prov;
-  /* v2.3.3951: and the reveal mark (revealbag.js), which only the worker
+  /* v2.3.4012: and the reveal mark (revealbag.js), which only the worker
      writes: a claim with no id behind it has no row to hold its grade, so a
      "?" here would be a forged mystery (a Normal sold as one).  A claim WITH
      a recorded id never reaches this line: it is rebuilt from its row. */
@@ -278,7 +278,7 @@ export function normalizeProvLedger(rec) {
   return out;
 }
 
-/* ═══ v2.3.3951: THE CAP NEVER FORGETS A PIECE STILL WAITING TO BE REVEALED ═══
+/* ═══ v2.3.4012: THE CAP NEVER FORGETS A PIECE STILL WAITING TO BE REVEALED ═══
  * At GEAR_PROV_CAP the OLDEST row goes (the hole the cap's note above writes
  * down) -- but an unrevealed piece's row (revealbag.js, `p.unrevealed`) is
  * the ONLY copy of its grade: the phone's bag holds the piece without it.
@@ -413,7 +413,7 @@ export const gearProvMethods = {
        without an edit here — the rebuild is what makes a forged gid
        worthless, and it can only be as complete as this copy. */
     ledger.list.push({ id, slot, src: typeof src === 'string' ? src.slice(0, 24) : '', at: Date.now(), p: clonePiece(piece) });
-    capProvLedger(ledger);   /* v2.3.3951: an unrevealed row is never the one forgotten */
+    capProvLedger(ledger);   /* v2.3.4012: an unrevealed row is never the one forgotten */
     this._gearProvSave(playerId, ledger);
     piece.gid = id;
     piece.prov = PROV_MINTED;
@@ -967,7 +967,7 @@ export const gearProvMethods = {
     }
     if (findProvRow(ledger, row.id)) return true;   /* already ours: converge, do not duplicate */
     ledger.list.push({ id: row.id, slot: row.slot, src: typeof row.src === 'string' ? row.src.slice(0, 24) : '', at: typeof row.at === 'number' ? row.at : Date.now(), p: row.p });
-    capProvLedger(ledger);   /* v2.3.3951: an unrevealed row is never the one forgotten */
+    capProvLedger(ledger);   /* v2.3.4012: an unrevealed row is never the one forgotten */
     if (cached) this._gearProvMap().set(playerId, ledger);
     /* Awaited for an offline recipient: there is no output gate holding a
        message for them, so an unawaited put can be lost to eviction and

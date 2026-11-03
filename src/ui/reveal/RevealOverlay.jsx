@@ -80,7 +80,7 @@ export const RevealOverlay = () => {
   const [stage, setStage] = React.useState(0);
   const [flash, setFlash] = React.useState('rare');
   const [done, setDone] = React.useState(false);
-  /* v2.3.3951: the entry on screen, for the hold's end below (revealBus.done) */
+  /* v2.3.4012: the entry on screen, for the hold's end below (revealBus.done) */
   const itemRef = React.useRef(null);
   itemRef.current = item;
 
@@ -145,7 +145,7 @@ export const RevealOverlay = () => {
   React.useEffect(() => {
     if (!done) return undefined;
     const t = setTimeout(() => {
-      revealBus.done(itemRef.current);   /* v2.3.3951: what waited for this one (game/revealBag.js) */
+      revealBus.done(itemRef.current);   /* v2.3.4012: what waited for this one (game/revealBag.js) */
       setItem(null);
       setDone(false);
       setStage(0);

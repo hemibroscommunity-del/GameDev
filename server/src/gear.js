@@ -124,7 +124,7 @@ export const gearMethods = {
       delete out.quality;
       delete out.hardness;
       delete out.temper;
-      /* v2.3.3951: a weapon a phone describes was never ours to mark: only
+      /* v2.3.4012: a weapon a phone describes was never ours to mark: only
          the worker writes the reveal mark (revealbag.js), on its own copy */
       delete out.unrevealed;
     } else {
@@ -745,7 +745,7 @@ export const gearMethods = {
     // see _prog3EquipOk above.  Silent reject (the stat_allocate
     // posture); the client's own gate shows the requirement.
     if (!this._prog3EquipOk(ps, slot, stashItem)) return;
-    /* v2.3.3951: a blade still a "?" is opened as it goes on, with its
+    /* v2.3.4012: a blade still a "?" is opened as it goes on, with its
        ceremony (revealbag.js): a wielded grade is in every hit's numbers */
     this._revealBagOnWear(session.id, ps, slot, stashItem);
     const activeItem = ps[slot] || null;

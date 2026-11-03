@@ -234,7 +234,7 @@ const CAP_GATES = [
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
   'laststand', 'milestonesRetired' /* v2.3.2662 */, 'party', 'partyChat', 'partykeep' /* v2.3.3284: a party that lasts (party.js) */, 'alliance' /* v2.3.3313: a party of 20 active members (alliance.js) */, 'clanparty' /* v2.3.3321: clans are parties now (clanparty.js) */, 'petLoot', 'potionBag', 'prog3',   /* v2.3.3120: 'pets' gone with the 20% capture */
   'prog3Chan', 'prog3elem' /* v2.3.2512 */, 'prog3shared' /* v2.3.2592 */, 'prog3rel' /* v2.3.2680 */, 'gearq' /* v2.3.2664 */, 'prog3x', 'questTrack', 'sponsor', 'store',
-  'revealbag' /* v2.3.3951: a mystery piece waits in the bag (revealbag.js) */, 'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeChat' /* v2.3.2621 */, 'storeOffer' /* v2.3.2623 */,
+  'revealbag' /* v2.3.4012: a mystery piece waits in the bag (revealbag.js) */, 'storeGear' /* v2.3.2531 */, 'storeGearRef' /* v2.3.2551 */, 'storeChat' /* v2.3.2621 */, 'storeOffer' /* v2.3.2623 */,
   't2bench', 't2simple', 't2uniform', 'trade', 'trade2', 'trade2Review',
   'trade2Weapons', 'weaponDrops', 'whisper', 'zoneDepth' /* v2.3.2790 */, 'bowvolley' /* v2.3.2848 */, 'dailyChest' /* v2.3.2820 */, 'smelting' /* v2.3.2822 */, 'whirlWindup' /* v2.3.2824 */, 'gatherhits' /* v2.3.2956 */,
   'wheelmonsters' /* v2.3.2978: lower case, a kill switch */,

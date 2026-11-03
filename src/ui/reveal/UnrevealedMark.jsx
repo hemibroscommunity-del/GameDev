@@ -1,7 +1,7 @@
 import React from 'react';
 import { REVEAL_BLUE } from '@/game/revealBag.js';
 
-/* ═══ v2.3.3951: THE "?" OVER A MYSTERY PIECE IN THE BAG ═══
+/* ═══ v2.3.4012: THE "?" OVER A MYSTERY PIECE IN THE BAG ═══
  * The bag tile and the item card draw a piece still waiting to be revealed
  * (game/revealBag.js) as the reveal itself does (RevealOverlay.jsx): its own
  * picture as a dark silhouette, a question mark over it in the rare blue.

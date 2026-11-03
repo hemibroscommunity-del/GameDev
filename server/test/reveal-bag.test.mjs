@@ -1,4 +1,4 @@
-/* A MYSTERY PIECE WAITS IN YOUR BAG UNTIL YOU REVEAL IT (v2.3.3951;
+/* A MYSTERY PIECE WAITS IN YOUR BAG UNTIL YOU REVEAL IT (v2.3.4012;
  * spec docs/specs/reveal-in-bag.md, server/src/revealbag.js).
  *
  * The owner: "Mystery item launched automatically. Should go to inventory

@@ -1,4 +1,4 @@
-/* ═══ v2.3.3951: A MYSTERY PIECE WAITS IN YOUR BAG UNTIL YOU REVEAL IT ═══
+/* ═══ v2.3.4012: A MYSTERY PIECE WAITS IN YOUR BAG UNTIL YOU REVEAL IT ═══
  * Spec: docs/specs/reveal-in-bag.md
  *
  * The owner, 2026-11-01: "Mystery item launched automatically. Should go to

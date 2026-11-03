@@ -1,4 +1,4 @@
-/* ═══ A MYSTERY PIECE WAITS IN YOUR BAG, ON A PHONE (v2.3.3951) ═══
+/* ═══ A MYSTERY PIECE WAITS IN YOUR BAG, ON A PHONE (v2.3.4012) ═══
  *
  * The owner: "Mystery item launched automatically. Should go to inventory
  * then have reveal option."  (docs/specs/reveal-in-bag.md)
@@ -10,7 +10,7 @@
  * on is the real one.  The pile itself is server/test/reveal-bag.test.mjs's
  * (the real _handleLootPickup, no grade in any frame).
  *
- * WHY NOT A REAL KILL HERE (v2.3.3951, found writing this): on this box a
+ * WHY NOT A REAL KILL HERE (v2.3.4012, found writing this): on this box a
  * real Iron Torso pile in the Wheel (/dev/killroll on its numbers, the way
  * mp-killroll lands a roll) blacks the screen out about a second after it
  * lands ("the Wheel's ground gone, screen 6% lit"), the watchdog rebuilds the

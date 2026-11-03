@@ -848,7 +848,7 @@ Sources: CLAUDE.md, docs/specs/landscape-mode.md, docs/specs/bag-icons.md, docs/
 ## A mystery piece in the bag
 Screens: bag-unrevealed
 
-**What it is for:** A rare-or-better drop you have not opened yet. It waits in the bag as a "?" until you choose to reveal it (v2.3.3951, owner: "Mystery item launched automatically. Should go to inventory then have reveal option").
+**What it is for:** A rare-or-better drop you have not opened yet. It waits in the bag as a "?" until you choose to reveal it (v2.3.4012, owner: "Mystery item launched automatically. Should go to inventory then have reveal option").
 
 **Decisions, and why:**
 - **The tile is the reveal's own picture:** the item's painted art as a dark silhouette, a "?" over it in the rare blue, and the rare-blue 2 px edge. Rare blue because the pile only ever promised "rare or better", the same promise as the drop line and the pile's shine (v2.3.3746). No new art: a filter on the picture already loaded and one character of text, so it costs no memory.

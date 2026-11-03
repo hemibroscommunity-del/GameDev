@@ -684,7 +684,7 @@ export const STATES = [
     },
   },
 
-  /* v2.3.3951: a mystery piece waiting in the bag (game/revealBag.js): its
+  /* v2.3.4012: a mystery piece waiting in the bag (game/revealBag.js): its
      "?" tile and its card's Reveal button -- the piece put in the bag by the
      test lever through the pickup's own credit (/dev/revealbag) */
   {

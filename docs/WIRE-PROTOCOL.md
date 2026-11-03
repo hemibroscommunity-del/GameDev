@@ -756,7 +756,7 @@ field, gid|idx, essence, grade, metal, piece}`, or `{ok: false, reason}`
 no_essence, wrong_metal, not_lower, bad); a player_state follows each paid
 act. Full table: docs/specs/salvage.md.
 
-**A mystery piece waits in the bag (v2.3.3951, caps.revealbag):** the join
+**A mystery piece waits in the bag (v2.3.4012, caps.revealbag):** the join
 gains `rb: 1` (this phone can show a "?"; old workers ignore it). For such a
 phone a rare-or-better armour piece or Iron Great Sword picked up off a
 monster's pile arrives in `loot_credit` (`armor[]`, `weapon`) WITHOUT

@@ -16,7 +16,7 @@ import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rend
 import { recalcDerived, WEAPON_STASH_MAX, canEquipItem, getEquipReqLabel } from '../../../data/gameSystems.js'; /* v2.3.2664: + the armour Defense gate */
 import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.2123: say why a refusal happened */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns the arm */
-import { sendReveal, isUnrevealed, pieceOfTarget } from '@/game/revealBag.js'; /* v2.3.3951: a mystery piece's Reveal */
+import { sendReveal, isUnrevealed, pieceOfTarget } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's Reveal */
 
 function persist(R) {
   try { if (typeof window !== 'undefined') localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -263,7 +263,7 @@ function _armorBlocked(S, R, piece) {
   return true;
 }
 
-/* v2.3.3951: a "?" from ANY caller (the card, the loadout picker) is revealed
+/* v2.3.4012: a "?" from ANY caller (the card, the loadout picker) is revealed
    first and put on once its grade has landed (game/revealBag.js);
    `opts.revealed` is that second call, so a reveal is asked for once. */
 function _revealFirst(S, kind, piece, opts, again) {
@@ -296,7 +296,7 @@ export function equipLegsFromStash(piece, opts) {
   if (!S || !S.rpg || !piece) return false;
   const R = S.rpg;
   if (_armorBlocked(S, R, piece)) return false;  /* v2.3.2664: same gate, same slot key */
-  if (_revealFirst(S, 'stashLegs', piece, opts, () => equipLegsFromStash(piece, { revealed: true }))) return true;   /* v2.3.3951 */
+  if (_revealFirst(S, 'stashLegs', piece, opts, () => equipLegsFromStash(piece, { revealed: true }))) return true;   /* v2.3.4012 */
   _equipTick();
   if (!R.legsStash) R.legsStash = [];
   const idx = R.legsStash.indexOf(piece);
@@ -325,7 +325,7 @@ export function unequipGearDirect(slot) {
   persist(R);
 }
 
-/* ═══ v2.3.3951: REVEAL, AND "EQUIP REVEALS FIRST" ═══
+/* ═══ v2.3.4012: REVEAL, AND "EQUIP REVEALS FIRST" ═══
    The owner: "Mystery item launched automatically. Should go to inventory
    then have reveal option."  The item card's Reveal (game/revealBag.js): ask
    the worker to open the piece; its ceremony plays, and `then` -- the equip,

@@ -1576,7 +1576,7 @@ export function TradeWindowPanel(props) {
               Your weapons {myWpn.length >= T2_WPN_MAX ? '· max ' + T2_WPN_MAX : ''}
             </div>
             <div className="ls-scrollbody" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxHeight: 88, overflowY: 'auto' }}>
-              {stash.map((w, i) => (w && w.unrevealed) ? null /* v2.3.3951: a "?" is revealed before it is traded (game/revealBag.js) */ : (
+              {stash.map((w, i) => (w && w.unrevealed) ? null /* v2.3.4012: a "?" is revealed before it is traded (game/revealBag.js) */ : (
                 <button
                   key={i}
                   disabled={myWpn.length >= T2_WPN_MAX}

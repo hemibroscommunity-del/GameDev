@@ -24,7 +24,7 @@ export const revealBus = {
   },
   /* The overlay takes one at a time and plays it to the end. */
   take() { return _queue.length ? _queue.shift() : null; },
-  /* v2.3.3951: the overlay is done with one -- an entry may carry `onDone`
+  /* v2.3.4012: the overlay is done with one -- an entry may carry `onDone`
      (game/revealBag.js: the bag tile shows the grade, and an Equip that
      waited for the ceremony goes ahead).  Never throws into the overlay. */
   done(r) { if (r && typeof r.onDone === 'function') { try { r.onDone(); } catch (e) { /* the overlay goes on */ } } },

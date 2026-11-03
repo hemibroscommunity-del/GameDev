@@ -22,7 +22,7 @@
 import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migrations.js';
 import { GEAR_STASH_CAP } from './gearstash.js';
 import { cleanApOnce } from './inbox.js';   /* v2.3.3488: the once-a-character prize marks */
-import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.3951: a piece waiting in the bag goes out without its grade */
+import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012: a piece waiting in the bag goes out without its grade */
 
 /* v2.3.2523: one bound for the five gear stashes, applied at BOTH the
    save and the echo below.  Handoff rule 3's warning is why it is a
@@ -646,7 +646,7 @@ export const persistenceMethods = {
           _buffs: ps._buffs || {},
           // Equipment slots.  Worker is authoritative for ownership;
           // client renders from these on player_state arrival.
-          /* v2.3.3951: every piece below goes out through revealPublic
+          /* v2.3.4012: every piece below goes out through revealPublic
              (revealbag.js): a piece still waiting in the bag as a "?" goes
              without its grade, marked `unrevealed`.  A worn slot is never
              marked (wearing opens it); passing it through anyway costs one
@@ -673,7 +673,7 @@ export const persistenceMethods = {
              makes echoing them BEFORE any client reads them safe in
              both deploy directions (rule 19/20).  Nothing is taken away
              from the player's own stash by this echo. */
-          armorStash: revealPublicList(capStash(ps.armorStash)),   /* v2.3.3951: see the slots above */
+          armorStash: revealPublicList(capStash(ps.armorStash)),   /* v2.3.4012: see the slots above */
           legsStash: revealPublicList(capStash(ps.legsStash)),
           shieldStash: capStash(ps.shieldStash),
           gearStash: capStash(ps.gearStash),

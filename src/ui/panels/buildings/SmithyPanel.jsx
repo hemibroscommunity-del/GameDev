@@ -512,7 +512,7 @@ function carriedPieces(R) {
   for (const field of ['armorStash', LEGS]) {
     const list = Array.isArray(R[field]) ? R[field] : [];
     list.forEach((p, i) => {
-      if (!p || typeof p !== 'object' || p.unrevealed) return;   /* v2.3.3951: a "?" is revealed before it is salvaged (game/revealBag.js) */
+      if (!p || typeof p !== 'object' || p.unrevealed) return;   /* v2.3.4012: a "?" is revealed before it is salvaged (game/revealBag.js) */
       const metal = armourMetal(p);
       if (!metal) return;
       const legs = field === LEGS;
@@ -521,7 +521,7 @@ function carriedPieces(R) {
     });
   }
   (Array.isArray(R.weaponStash) ? R.weaponStash : []).forEach((w, i) => {
-    if (w && w.unrevealed) return;   /* v2.3.3951: as the armour above */
+    if (w && w.unrevealed) return;   /* v2.3.4012: as the armour above */
     const metal = weaponMetal(w);
     if (!metal) return;
     const ic = weaponIcon(w.type, w.gearBase);

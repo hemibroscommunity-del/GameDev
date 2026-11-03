@@ -167,7 +167,7 @@ import { diceMethods } from './dice.js'; /* v2.3.3393: /roll and /flip, rolled b
 import { itemDropMethods } from './itemdrop.js'; /* v2.3.3473: a bag item dropped at your feet -- yours a minute, then anyone's */
 import { pointsResetMethods } from './pointsreset.js'; /* v2.3.3541: the free points reset -- every placed point back */
 import { swordConvertMethods } from './swordconvert.js'; /* v2.3.3895: old one-handed swords become greatswords -- the kill switch */
-import { revealBagMethods, revealPublic, isUnrevealed } from './revealbag.js'; /* v2.3.3951: a mystery piece waits in the bag until its owner reveals it */
+import { revealBagMethods, revealPublic, isUnrevealed } from './revealbag.js'; /* v2.3.4012: a mystery piece waits in the bag until its owner reveals it */
 import { gsCopperMethods } from './gscopper.js'; /* v2.3.3980: old wooden greatswords become copper -- the kill switch */
 import { bankMethods } from './bank.js'; /* v2.3.3785: the Bank's vault -- bag items and gold the worker holds, out of a death's reach */
 import { restMethods } from './rest.js'; /* v2.3.3539: a real rest at the Hotel or your farm's bed -- full bars and Well Rested, +10% of a fight's XP */
@@ -515,7 +515,7 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.3473: the worker's answer to a drop (itemdrop.js).  Forged, one
      would tell a phone an item left its bag that never did. */
   'item_drop_result',
-  /* v2.3.3951: the worker's answer to a reveal (revealbag.js) -- the opened
+  /* v2.3.4012: the worker's answer to a reveal (revealbag.js) -- the opened
      piece and the ladder the overlay plays.  Forged, one would play a Godly
      ceremony on any phone, and tell it a piece in its bag is a grade it is
      not. */
@@ -3911,7 +3911,7 @@ export class GameRoom {
          a breastplate as on a blade, and there is one place to retune. */
       /* v2.3.3952: a drop's own roll, 10x rarer than the forge's (hardening.js) */
       out.push({ name: d.name, mat: d.mat, slot: d.slot, tierMult: d.tierMult,
-        quality: this._revealBagDevGrade() || this._rollDropQuality() });   /* v2.3.3951: the test lever's grade, once (revealbag.js); v2.3.3952: else a drop's own roll */
+        quality: this._revealBagDevGrade() || this._rollDropQuality() });   /* v2.3.4012: the test lever's grade, once (revealbag.js); v2.3.3952: else a drop's own roll */
     }
     return out.length ? out : null;
   }
@@ -3950,7 +3950,7 @@ export class GameRoom {
       /* Rolled, like the forge's and like the ordinary drop's — which also
          hands this the pile's hidden-until-pickup reveal for free.
          v2.3.3952: a drop's own roll now, 10x rarer than the forge's. */
-      quality: this._revealBagDevGrade() || this._rollDropQuality(),   /* v2.3.3951: the test lever's grade, once (revealbag.js) */
+      quality: this._revealBagDevGrade() || this._rollDropQuality(),   /* v2.3.4012: the test lever's grade, once (revealbag.js) */
       hardness: 0,
       temper: 0,
     };
@@ -4653,7 +4653,7 @@ export class GameRoom {
       weaponForMe = pile.weapon;
       if (!Array.isArray(ps.weaponStash)) ps.weaponStash = [];
       if (ps.weaponStash.length < this.WEAPON_STASH_CAP) {
-        /* v2.3.3951: a mystery grade waits in the bag, unrevealed, for a
+        /* v2.3.4012: a mystery grade waits in the bag, unrevealed, for a
            phone that can show it (revealbag.js); a blade sold for a full bag
            keeps today's at-once reveal (docs/specs/reveal-in-bag.md) */
         this._revealBagMark(session, weaponForMe);
@@ -4693,7 +4693,7 @@ export class GameRoom {
          business on a room-wide broadcast.  drops.test.mjs already pins
          that the public pile never carries `quality`; the same crop is what
          keeps it from carrying `gid`. */
-      /* v2.3.3951: marked BEFORE the record, so the ledger row -- the copy
+      /* v2.3.4012: marked BEFORE the record, so the ledger row -- the copy
          every inbound path rebuilds from -- holds the mark beside the grade
          (revealbag.js) */
       armorForMe = pile.armor.map((a) => this._gearProvRecord(
@@ -4738,7 +4738,7 @@ export class GameRoom {
     /* v2.3.3527: a piece off a kill is an achievement's fact -- the Iron Great
        Sword, an Elite or a Godly grade (achievements.js), riding this save */
     try {
-      /* v2.3.3951: an unrevealed piece earns only what its grade does not
+      /* v2.3.4012: an unrevealed piece earns only what its grade does not
          say (the Iron Great Sword itself); its Elite or Godly is earned at
          the reveal (revealbag.js _revealBagOpen), or "Elite piece!" would
          pop before the "?" was opened and peers would read the rarest */
@@ -4768,7 +4768,7 @@ export class GameRoom {
                client routes into its own armourStash / legsStash -- see the
                claim block above for why that store is the client's). */
             gem: gemForMe,
-            /* v2.3.3951: an unrevealed piece goes without its grade, marked
+            /* v2.3.4012: an unrevealed piece goes without its grade, marked
                `unrevealed` (revealbag.js revealPublic) */
             armor: armorForMe ? armorForMe.map(revealPublic) : armorForMe,
             /* ═══ v2.3.1925: THE REVEAL ═══
@@ -4779,13 +4779,13 @@ export class GameRoom {
                Supported anyway because "usually one" is not "only one", and a
                ceremony that silently dropped the second item's grade would
                hand the player an elite they never saw revealed. */
-            /* v2.3.3951: ...and only what is NOT waiting in the bag: an
+            /* v2.3.4012: ...and only what is NOT waiting in the bag: an
                unrevealed piece plays its ladder when its owner taps Reveal
                (item_reveal), never here */
             reveals: this._revealsFor(isUnrevealed(weaponForMe) ? null : weaponForMe,
               armorForMe ? armorForMe.filter((a) => !isUnrevealed(a)) : armorForMe),
             // v2.3.1141: full blob incl. quality -- the private reveal.
-            // v2.3.3951: without it while unrevealed (revealPublic)
+            // v2.3.4012: without it while unrevealed (revealPublic)
             weapon: revealPublic(weaponForMe),
             weaponStashed,
             weaponSoldFor,
@@ -5620,7 +5620,7 @@ export class GameRoom {
         break;
 
       case 'reveal_item':
-        /* v2.3.3951: open a mystery piece waiting in your bag (revealbag.js):
+        /* v2.3.4012: open a mystery piece waiting in your bag (revealbag.js):
            the phone names it, the worker clears its mark and answers
            item_reveal with the ladder to play.  Deny by default: this case
            is the only way the type is heard. */
@@ -6689,7 +6689,7 @@ Object.assign(GameRoom.prototype, pointsResetMethods); /* v2.3.3541 */
 Object.assign(GameRoom.prototype, restMethods); /* v2.3.3539 */
 Object.assign(GameRoom.prototype, bankMethods); /* v2.3.3785 */
 Object.assign(GameRoom.prototype, swordConvertMethods); /* v2.3.3895 */
-Object.assign(GameRoom.prototype, revealBagMethods); /* v2.3.3951 */
+Object.assign(GameRoom.prototype, revealBagMethods); /* v2.3.4012 */
 Object.assign(GameRoom.prototype, gsCopperMethods); /* v2.3.3980 */
 Object.assign(GameRoom.prototype, safeHealMethods); /* v2.3.3569 */
 Object.assign(GameRoom.prototype, heapBurnMethods); /* v2.3.3748 */

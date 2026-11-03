@@ -1,4 +1,4 @@
-/* ═══ v2.3.3951: A MYSTERY PIECE WAITS IN YOUR BAG (docs/specs/reveal-in-bag.md) ═══
+/* ═══ v2.3.4012: A MYSTERY PIECE WAITS IN YOUR BAG (docs/specs/reveal-in-bag.md) ═══
  *
  * The owner: "Mystery item launched automatically. Should go to inventory then
  * have reveal option."

@@ -39,7 +39,7 @@ import { COOKED_FISH_ICONS, COOKED_FISH_ICON_DEFAULT } from '@/data/foodIcons.js
 import { setDropThumbs } from '@/game/dropLook.js';   /* v2.3.3473: a dropped item is drawn on the ground as its bag picture */
 import { GEM_ELEMENTS, gemRawKey, gemCutKey, gemName, gemIcon, parseGemKey } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 import { shardByKey } from '@/data/shards.js';   /* v2.3.3861: only a shard the game has gets a picture */
-import { shownUnrevealed } from '@/game/revealBag.js';   /* v2.3.3951: a mystery piece waits in the bag as a "?" */
+import { shownUnrevealed } from '@/game/revealBag.js';   /* v2.3.4012: a mystery piece waits in the bag as a "?" */
 import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';
 
 // Light heuristic — classify an inventory key into one of the four
@@ -1362,7 +1362,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
     /* v2.3.3849: a live trade takes a WEAPON tile too, into the weapon lane
        (tradeBagBus.tapWeapon), as it takes an item tile into the offer.
        Armour and shields have no trade lane: their cards open as before. */
-    /* v2.3.3951: ...but never a "?": it is revealed before it is traded
+    /* v2.3.4012: ...but never a "?": it is revealed before it is traded
        (game/revealBag.js), so its card opens instead */
     if (kind === 'stashWeapon' && tradeBagBus.open && !shownUnrevealed(kind, index, obj) && tradeBagBus.tapWeapon(index, obj)) return;
     if (kind === 'stashShield') {
@@ -1417,7 +1417,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride }) => {
   /* v2.3.1228: edge from the item's REAL quality (weapons carry
      server-rolled quality; shields/armor have none -> common grey).
      Godly gets the conic ring class instead of a border color. */
-  /* v2.3.3951: a piece still waiting to be revealed (or whose reveal is
+  /* v2.3.4012: a piece still waiting to be revealed (or whose reveal is
      playing) is the reveal's own picture: its silhouette under a "?", on the
      rare-blue edge -- "rare or better" is all anyone knows yet, the pile's
      own promise (game/revealBag.js) */
