@@ -101,7 +101,7 @@ import { petbookMethods } from './petbook.js';
 /* v2.3.3209: the monster codex -- what each kill teaches you, codex:<pid>
    (codex.js).  docs/specs/monster-codex.md. */
 import { codexMethods } from './codex.js';
-import { fishlogMethods } from './fishlog.js';   /* v2.3.3987: the rare fish, weighed, with records */
+import { fishlogMethods } from './fishlog.js';   /* v2.3.4013: the rare fish, weighed, with records */
 import { achievementMethods } from './achievements.js';   /* v2.3.3527 */
 import { killRollMethods } from './killroll.js';   /* v2.3.3209: one roll a kill, each drop its own numbers */
 // v2.3.1131 (PR15): quality grades + hardening v1 -- the §4.6b/§4.6c
@@ -700,7 +700,7 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.3527: the achievements (achievements.js), server-sent and private.
      Forged, it would paint achievements never earned and play their banner. */
   'achv_state',
-  /* v2.3.3987: a weigh-in and the biggest-fish boards (fishlog.js),
+  /* v2.3.4013: a weigh-in and the biggest-fish boards (fishlog.js),
      server-sent and private.  Forged, `fish_weight` would show a weight the
      worker never rolled and `fish_board` names and kilos on a public record. */
   'fish_weight', 'fish_board',
@@ -6029,7 +6029,7 @@ export class GameRoom {
         }
         break;
 
-      /* v2.3.3987: Inspect on a fish in the bag -- one catch weighed once
+      /* v2.3.4013: Inspect on a fish in the bag -- one catch weighed once
          (fishlog.js); and the biggest-fish boards.  Handled on purpose (deny
          by default): an unknown key is answered with nothing. */
       case 'fish_inspect':
@@ -6326,7 +6326,7 @@ export class GameRoom {
     const session = this.sessions.get(ws);
     let _petsLeft = null;   /* v2.3.3120: see below */
     let _codexLeft = null;  /* v2.3.3209: the same, for the codex (codex.js) */
-    let _fishLeft = null;   /* v2.3.3987: and the catches to weigh (fishlog.js) */
+    let _fishLeft = null;   /* v2.3.4013: and the catches to weigh (fishlog.js) */
     if (session?.id) {
       /* ═══ v2.3.3260: LEAVING IN THE MIDDLE OF A FIGHT, THE BODY STAYS ═══
          A player who leaves within 10 s of a hit between them and another
@@ -6380,7 +6380,7 @@ export class GameRoom {
          copied out now and written at the end with the pets record */
       _codexLeft = this._codexDirtyCopy(session.id);
       this._codexForget(session.id);
-      /* v2.3.3987: the catches to weigh, the codex's way (fishlog.js) */
+      /* v2.3.4013: the catches to weigh, the codex's way (fishlog.js) */
       _fishLeft = this._fishlogDirtyCopy(session.id);
       this._fishlogForget(session.id);
       /* v2.3.3527: achievements hold nothing unwritten (achievements.js) */
@@ -6640,7 +6640,7 @@ Object.assign(GameRoom.prototype, raceMethods); /* v2.3.3525 */
 Object.assign(GameRoom.prototype, rideMethods); /* v2.3.3776 */
 Object.assign(GameRoom.prototype, petbookMethods); /* v2.3.3120 */
 Object.assign(GameRoom.prototype, codexMethods); /* v2.3.3209 */
-Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.3987 */
+Object.assign(GameRoom.prototype, fishlogMethods); /* v2.3.4013 */
 Object.assign(GameRoom.prototype, achievementMethods); /* v2.3.3527 */
 Object.assign(GameRoom.prototype, killRollMethods); /* v2.3.3209: the kill's one roll (killroll.js) */
 // v2.3.1131 (PR15): quality + hardening -- see hardening.js.

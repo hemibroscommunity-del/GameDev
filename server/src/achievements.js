@@ -125,7 +125,7 @@ const LIST = Object.freeze([
   { id: 'house_limit', tier: 'superrare', count: true },
   { id: 'combat_100', tier: 'superrare' },
   { id: 'godly', tier: 'superrare', count: true },
-  /* v2.3.3987: THE RARE FISH, EATEN (fishlog.js; the owner: "Consuming adds
+  /* v2.3.4013: THE RARE FISH, EATEN (fishlog.js; the owner: "Consuming adds
      a one time 5 achievement point bonus" for an albino, "10 achievement
      points (one time)" for a large one).  One row a species, each once --
      a row's own `ap` over its tier's (no tier pays 5).  An albino is 1 in
@@ -180,12 +180,12 @@ export const ACHV = Object.freeze({
     'tempered', 'godly', 'elite_iron', 'house_limit', 'golden_giant', 'combat_100',
     'gladiator',
     'natural_one', 'dungeons_all', 'elder_all', 'elite_piece',
-    /* v2.3.3987: a large fish, 1 in 1,000 catches -- rarer than an Iron
+    /* v2.3.4013: a large fish, 1 in 1,000 catches -- rarer than an Iron
        Great Sword's 1 in 500; the deeper water's first */
     'large_pike', 'large_salmon', 'large_trout', 'large_clownfish', 'large_minnow',
     'iron_blade', 'golden_pet',
     'combat_50', 'codex_all', 'story_done',
-    /* v2.3.3987: an albino, 1 in 100 catches, first of the commons */
+    /* v2.3.4013: an albino, 1 in 100 catches, first of the commons */
     'albino_pike', 'albino_salmon', 'albino_trout', 'albino_clownfish', 'albino_minnow',
     'nml_kill', 'first_duel', 'first_dungeon', 'first_order', 'first_pet', 'combat_10', 'first_blood',
   ]),
@@ -211,7 +211,7 @@ for (const a of LIST) BY_ID[a.id] = a;
 const has = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);
 
 /** An achievement's points (0 for an id this worker does not know): its
- *  row's own `ap` when it has one (v2.3.3987: the rare fish's 5 and 10),
+ *  row's own `ap` when it has one (v2.3.4013: the rare fish's 5 and 10),
  *  else its tier's. */
 export function achvAp(id) {
   if (!has(BY_ID, id)) return 0;

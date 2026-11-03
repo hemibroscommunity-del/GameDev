@@ -1,4 +1,4 @@
-/* ═══ v2.3.3987: THE WEIGH-IN AND THE BIGGEST-FISH BOARDS, ON THE PHONE ═══
+/* ═══ v2.3.4013: THE WEIGH-IN AND THE BIGGEST-FISH BOARDS, ON THE PHONE ═══
  *
  * The bag's Inspect on a fish asks the worker to weigh one catch of it
  * (`fish_inspect {key}`, server fishlog.js); the answer, `fish_weight`, is

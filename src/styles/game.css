@@ -368,7 +368,7 @@
   text-shadow:none;box-shadow:none;
   pointer-events:none;
 }
-/* v2.3.3987: a LARGE fish's badge in the bag (data/fishVariants.js): the
+/* v2.3.4013: a LARGE fish's badge in the bag (data/fishVariants.js): the
    species' own picture with a small brass "L", top-left -- the anchor owns
    top-right, the count bottom-right (no new art, the lane's decision) */
 .bt-fish-large{
@@ -7819,7 +7819,7 @@ html[data-orient="landscape"] .bt-achv-banner.is-low{top:calc(env(safe-area-inse
 @media (prefers-reduced-motion: reduce){
   .bt-achv-banner{animation:none!important}
 }
-/* v2.3.3987: the weigh-in card (ui/panels/FishWeighCard.jsx) sits where the
+/* v2.3.4013: the weigh-in card (ui/panels/FishWeighCard.jsx) sits where the
    achievement banner does, and takes its own touches (the layer passes the
    rest); it comes in, it never fades by itself (it closes) */
 .bt-fish-card{

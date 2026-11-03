@@ -39,7 +39,7 @@ import { COOKED_FISH_ICONS, COOKED_FISH_ICON_DEFAULT } from '@/data/foodIcons.js
 import { setDropThumbs } from '@/game/dropLook.js';   /* v2.3.3473: a dropped item is drawn on the ground as its bag picture */
 import { GEM_ELEMENTS, gemRawKey, gemCutKey, gemName, gemIcon, parseGemKey } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
 import { shardByKey } from '@/data/shards.js';   /* v2.3.3861: only a shard the game has gets a picture */
-import { fishPlainKey, fishArtStyle, fishVariantOf, FISH_VARIANT_NAMES } from '@/data/fishVariants.js';   /* v2.3.3987: the rare fish -- the species' picture, washed pale or badged L, and their names */
+import { fishPlainKey, fishArtStyle, fishVariantOf, FISH_VARIANT_NAMES } from '@/data/fishVariants.js';   /* v2.3.4013: the rare fish -- the species' picture, washed pale or badged L, and their names */
 
 // Light heuristic — classify an inventory key into one of the four
 // category filters.  Items the heuristic doesn't recognise fall through
@@ -207,7 +207,7 @@ const POTION_THUMBS = {
    the webp dropped in (v2.3.3861: a key shards.js does not name gets
    no picture) -- no new code in the inventory panel. */
 export const thumbFor = (key) => {
-  /* v2.3.3987: an albino or large fish is drawn as its species (no new art) */
+  /* v2.3.4013: an albino or large fish is drawn as its species (no new art) */
   const k = fishPlainKey((key || '').toLowerCase());
   /* v2.3.2104: FIRST. It matches no rule below and would fall to `null`, which
      is what sent it to the emoji fallback. */
@@ -327,7 +327,7 @@ export const ITEM_NAMES = Object.assign(Object.create(null), {
   /* v2.3.3139: hardened wood (server hardenedwood.js) -- prettyName would say
      "Hardened Pine"; the owner's "hardened (name) wood" */
   ...HARDENED_WOOD_NAMES,
-  /* v2.3.3987: "Albino Trout", "Cooked Large Pike" (data/fishVariants.js) */
+  /* v2.3.4013: "Albino Trout", "Cooked Large Pike" (data/fishVariants.js) */
   ...FISH_VARIANT_NAMES,
 });
 /* v2.3.3141: the nine essences salvage leaves (data/salvage.js): "Rare Iron
@@ -575,7 +575,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride }) => {
       })()}
       {/* v2.3.2815: the glint and the arrival ring draw here (game.css) */}
       <span className="bt-bag-fx" aria-hidden="true" />
-      {/* v2.3.3987: a large fish's "L", top-left (the anchor owns top-right) */}
+      {/* v2.3.4013: a large fish's "L", top-left (the anchor owns top-right) */}
       {fishVariantOf(ikey) === 'large' && <span className="bt-fish-large" data-fish-large="" aria-label="Large">L</span>}
       {/* v2.3.1249: owner-approved — the big uncontained 15px count becomes
           a compact contained badge (bottom-right, bare number, 2-digit max;

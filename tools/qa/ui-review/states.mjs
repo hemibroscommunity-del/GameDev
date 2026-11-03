@@ -696,7 +696,7 @@ export const STATES = [
      page) and one worn as the title, so the picture has earned rows, a title
      and the locked super-rares together -- a new character's page is 23
      locked rows */
-  Object.assign(more('achievements', 'Achievements', 'Your achievements: all 33 (v2.3.3987: + the ten rare fish), which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
+  Object.assign(more('achievements', 'Achievements', 'Your achievements: all 33 (v2.3.4013: + the ten rare fish), which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
     run: async ({ P, wsPort, myId }) => {
       for (const id of ['first_blood', 'combat_10']) await H.devOp(wsPort, 'achv', myId, { id }).catch(() => {});
       await wait(P, 600);
@@ -740,7 +740,7 @@ export const STATES = [
       if (!ok) return null;   /* the card's class is not pinned: the picture says whether it opened */
     },
   },
-  /* v2.3.3987: the rare fish (server fishlog.js): two albino trout put in the
+  /* v2.3.4013: the rare fish (server fishlog.js): two albino trout put in the
      bag as catches by the owner's lever (/dev/fish give), one opened and
      Inspected -- the weigh-in card over the world -- then Ranks' Biggest fish
      tab, on the trout, with that weigh-in on it */

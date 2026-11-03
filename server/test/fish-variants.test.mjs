@@ -1,4 +1,4 @@
-/* ═══ v2.3.3987: THE RARE FISH, WEIGHED, WITH RECORDS ═══
+/* ═══ v2.3.4013: THE RARE FISH, WEIGHED, WITH RECORDS ═══
  * (server/src/fishlog.js; spec docs/specs/fish-variants.md)
  *
  *   1. CAPS AND THE JOIN: caps.fishvariants and caps.fishweigh advertised; the

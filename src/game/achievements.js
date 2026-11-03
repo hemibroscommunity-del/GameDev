@@ -254,7 +254,7 @@ export function achvSummary(S) {
   const a = S && S._achv;
   let earned = 0, achvPts = 0;
   for (const def of ACHIEVEMENTS) {
-    if (a && has(a.got, def.id)) { earned++; achvPts += achvAp(def.id); }   /* v2.3.3987: a row's own ap */
+    if (a && has(a.got, def.id)) { earned++; achvPts += achvAp(def.id); }   /* v2.3.4013: a row's own ap */
   }
   const apTotal = achvApTotal(S);
   return { earned, total: ACHIEVEMENTS.length, apTotal, achvPts, otherPts: Math.max(0, apTotal - achvPts), maxPts: ACHV_TOTAL_AP };

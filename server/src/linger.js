@@ -138,7 +138,7 @@ export const lingerMethods = {
     this._petbookForget(id);
     const codex = this._codexDirtyCopy(id);
     this._codexForget(id);
-    const fish = this._fishlogDirtyCopy(id);   /* v2.3.3987: the catches to weigh (fishlog.js) */
+    const fish = this._fishlogDirtyCopy(id);   /* v2.3.4013: the catches to weigh (fishlog.js) */
     this._fishlogForget(id);
     delete this.stateHistory[id];
     /* v2.3.3322: the extraction record outlives the body, as it outlives a

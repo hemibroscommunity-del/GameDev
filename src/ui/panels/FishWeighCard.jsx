@@ -4,7 +4,7 @@ import { fishKeyInfo, fishKg } from '@/data/fishVariants.js';
 import { thumbFor } from '@/ui/mobile/dash/InventoryPanel.jsx';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
 
-/* ═══ v2.3.3987: THE WEIGH-IN CARD ═══
+/* ═══ v2.3.4013: THE WEIGH-IN CARD ═══
  * The bag's Inspect on a fish (game/fishWeigh.js) asks the worker to weigh
  * one catch (server fishlog.js); this card says the answer: "This Trout
  * weighs 2.4 kg", your best of the kind, a place on its board when it took

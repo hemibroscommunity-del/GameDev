@@ -522,7 +522,7 @@ export const persistenceMethods = {
        (a flush would write the old counts straight back). */
     try { await this.state.storage.delete('codex:' + pid); } catch (e) { /* best-effort, as above */ }
     this._codexForget(pid);
-    /* v2.3.3987: and the fish log (fishlog.js): a restarted character has
+    /* v2.3.4013: and the fish log (fishlog.js): a restarted character has
        caught nothing to weigh.  Its rows on the biggest-fish boards stay --
        a record is a record of a moment, as the Ace board's are. */
     try { await this.state.storage.delete('fishlog:' + pid); } catch (e) { /* best-effort, as above */ }

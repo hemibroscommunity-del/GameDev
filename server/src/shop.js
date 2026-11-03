@@ -171,7 +171,7 @@ export function toolEarned(quests, key) {
   return false;
 }
 
-/* v2.3.3987: what a rare fish is worth against its plain twin (fishlog.js) */
+/* v2.3.4013: what a rare fish is worth against its plain twin (fishlog.js) */
 export const SHOP_FISH_MULT = Object.freeze({ albino: 5, large: 10 });
 
 export const SHOP = {
@@ -410,7 +410,7 @@ export const shopMethods = {
     /* v2.3.3981: the five-to-one prices while the switch is off */
     if (fam && Object.prototype.hasOwnProperty.call(SHOP.FIVE_TO_ONE, fam)
       && typeof this._oneToOneOff === 'function' && this._oneToOneOff()) val = SHOP.FIVE_TO_ONE[fam];
-    /* v2.3.3987: a rare fish (fishlog.js) is worth more than its plain twin:
+    /* v2.3.4013: a rare fish (fishlog.js) is worth more than its plain twin:
        an albino x5, a large one x10 (the lane's decision) -- he still pays
        half and sells what he buys, so a flip is a loss as ever */
     if (val != null && /^(cooked_)?fish_[a-z]+_(albino|large)$/.test(k)) val *= SHOP_FISH_MULT[k.slice(k.lastIndexOf('_') + 1)];

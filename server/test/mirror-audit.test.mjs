@@ -795,7 +795,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
      the page's copy read once the worker says caps.fishheal) and, with the
      kill switch thrown, the old 92 + 8 x level on both sides. */
   const fishKeys = FISHING_TIERS.map((t) => 'cooked_fish_' + t.name.toLowerCase().replace(/\s+/g, '_')).concat(['cooked_fish_nonesuch', 'fish_trout'])
-    /* v2.3.3987: and the rare fish -- an albino heals as its species, a large one double */
+    /* v2.3.4013: and the rare fish -- an albino heals as its species, a large one double */
     .concat(FISHING_TIERS.flatMap((t) => ['albino', 'large'].map((v) => 'cooked_fish_' + t.name.toLowerCase() + '_' + v)), ['fish_pike_large']);
   const fishBad = [];
   for (const [on, flags] of [[true, {}], [false, { fishheal: false }]]) {
@@ -2683,7 +2683,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       && Object.keys(C.ACHV_TIERS).length === Object.keys(ACHV.TIER_AP).length,
     { phone: Object.fromEntries(Object.entries(C.ACHV_TIERS).map(([k, v]) => [k, v.ap])), worker: ACHV.TIER_AP });
   check('achievements: every row has words and a picture', C.ACHIEVEMENTS.every((a) => a.name && a.how && a.icon && a.glyph));
-  /* v2.3.3987: and every row's POINTS, a row's own `ap` included (the rare
+  /* v2.3.4013: and every row's POINTS, a row's own `ap` included (the rare
      fish's 5 and 10, server fishlog.js) -- the page's pill and its banner say
      what the worker pays */
   const { achvAp: srvAp } = await import('../src/achievements.js');
@@ -2694,7 +2694,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       && C.achvById('albino_' + sp) && !C.achvById('albino_' + sp).count && C.achvById('large_' + sp) && !C.achvById('large_' + sp).count));
 }
 
-/* ═══ v2.3.3987: THE RARE FISH (src/data/fishVariants.js vs server/src/fishlog.js) ═══
+/* ═══ v2.3.4013: THE RARE FISH (src/data/fishVariants.js vs server/src/fishlog.js) ═══
    The weights, the odds and the species the phone names are the worker's; and
    a large fish heals double on both sides (the heal checks above). */
 {
