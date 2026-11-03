@@ -1,4 +1,4 @@
-/* ═══ v2.3.3947: OLD WOODEN GREATSWORDS BECOME COPPER ═══
+/* ═══ v2.3.3980: OLD WOODEN GREATSWORDS BECOME COPPER ═══
  * Spec: docs/specs/greatsword-copper.md
  *
  * The owner, 2026-11-03: "'Copper great sword' when Smithed looks gray in

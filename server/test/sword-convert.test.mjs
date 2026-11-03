@@ -28,7 +28,7 @@
  *      sword under the switch).
  *   8. The switch's name is lower case and off only when written false.
  *
- * v2.3.3947 -- OLD WOODEN GREATSWORDS BECOME COPPER (docs/specs/
+ * v2.3.3980 -- OLD WOODEN GREATSWORDS BECOME COPPER (docs/specs/
  * greatsword-copper.md, server/src/gscopper.js, migration v20).  The owner:
  * "'Copper great sword' when Smithed looks gray in color like iron.  Fix that.
  * Also just remove any of the 'wooden' swords."
@@ -57,8 +57,8 @@
  *  16. The switch's name is lower case and off only when written false. */
 import { GameRoom } from '../src/index.js';
 import { swordToGreatsword, convertRecordSwords } from '../src/swordconvert.js';
-import { oldGreatswordToCopper, convertRecordGreatswords, isOldGreatsword } from '../src/gscopper.js';   /* v2.3.3947 */
-import { flagNameOk } from '../src/liveops.js';   /* v2.3.3947 */
+import { oldGreatswordToCopper, convertRecordGreatswords, isOldGreatsword } from '../src/gscopper.js';   /* v2.3.3980 */
+import { flagNameOk } from '../src/liveops.js';   /* v2.3.3980 */
 import { MIGRATIONS, RPG_SCHEMA_VERSION } from '../src/migrations.js';
 import { BLACKSMITH_TIERS } from '../src/data.js';
 
@@ -201,7 +201,7 @@ async function onFile(id) {
   check('2: the bag: the gemmed iron sword is an "Iron Flame Great Sword", "Bro\'s Sword" a "Copper Great Sword", the bow a bow',
     !!P && P.weaponStash.length === 3 && P.weaponStash[0].type === 'greatsword' && P.weaponStash[0].name === 'Iron Flame Great Sword' && P.weaponStash[0].element1 === 'flame'
       && P.weaponStash[1].name === 'Copper Great Sword' && P.weaponStash[1].gearBase === 'copper' && P.weaponStash[2].type === 'bow', P && P.weaponStash);
-  check('2: stored at _v ' + RPG_SCHEMA_VERSION + ' with no sword left in it', RPG_SCHEMA_VERSION >= 19 && stored._v === RPG_SCHEMA_VERSION   /* v2.3.3947: current, 20 since v20 */
+  check('2: stored at _v ' + RPG_SCHEMA_VERSION + ' with no sword left in it', RPG_SCHEMA_VERSION >= 19 && stored._v === RPG_SCHEMA_VERSION   /* v2.3.3980: current, 20 since v20 */
     && stored.weapon.type === 'greatsword' && stored.weaponStash.every((w) => w.type !== 'sword'), { v: stored._v });
   check('2: the record\'s conversion is written by the load\'s one re-put (and the join\'s own save), never one put a weapon',
     state._counts.rpgPuts - puts0 <= 2, state._counts.rpgPuts - puts0);
@@ -239,7 +239,7 @@ async function onFile(id) {
   await join(ws2, id);
   const P2 = room.playerState[id];
   check('3: mended, the next login converts them and the record is current',
-    P2.weapon.type === 'greatsword' && P2.weaponStash.every((w) => w.type !== 'sword') && state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION, P2.weapon);   /* v2.3.3947: current */
+    P2.weapon.type === 'greatsword' && P2.weaponStash.every((w) => w.type !== 'sword') && state._store.get('rpg:' + id)._v === RPG_SCHEMA_VERSION, P2.weapon);   /* v2.3.3980: current */
   await leave(ws2);
 }
 
@@ -339,7 +339,7 @@ async function onFile(id) {
   check('8: the switch\'s name is lower case', /^[a-z0-9_]+$/.test('swordconvert'));
 }
 
-/* ════ v2.3.3947: OLD WOODEN GREATSWORDS BECOME COPPER (gscopper.js, v20) ════ */
+/* ════ v2.3.3980: OLD WOODEN GREATSWORDS BECOME COPPER (gscopper.js, v20) ════ */
 
 /* a greatsword as the old Forge made one, at `base` */
 const forgeGs = (base, extra) => Object.assign({

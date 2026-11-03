@@ -31,7 +31,7 @@
  * price history (the matcher already skips same-player orders). */
 
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword's order is rewritten once as a greatsword */
-import { oldGreatswordToCopper } from './gscopper.js';   /* v2.3.3947: ...and a wooden greatsword's as a copper one */
+import { oldGreatswordToCopper } from './gscopper.js';   /* v2.3.3980: ...and a wooden greatsword's as a copper one */
 export const MARKET = {
   ORDER_EXPIRY: 86400000,       // 24h
   MAX_ORDERS_PER_PLAYER: 10,
@@ -109,7 +109,7 @@ export const marketMethods = {
          moves from 'sword' to 'greatsword' (a wood one's tier to copper), a
          buy's too, so it can still meet a seller.  One put, only for such an
          order. */
-      /* v2.3.3947: and an order for a wooden (or base-less) greatsword, as
+      /* v2.3.3980: and an order for a wooden (or base-less) greatsword, as
          the copper one it now is (gscopper.js) -- in the same one put */
       const _sw = !(this._swordConvertOff && this._swordConvertOff()) && this._mktSwordConvert(o);
       const _gs = !(this._gsCopperOff && this._gsCopperOff()) && this._mktGsCopper(o);
@@ -132,7 +132,7 @@ export const marketMethods = {
     return changed;
   },
 
-  /* v2.3.3947: one order out of the wooden greatsword, in place; true if it
+  /* v2.3.3980: one order out of the wooden greatsword, in place; true if it
      changed.  A sell's escrowed weapon becomes copper and the order's tier --
      part of its place in the book -- moves with it; a buy for a wood
      greatsword (gold only) is re-filed for copper, so it can still meet a
@@ -272,7 +272,7 @@ export const marketMethods = {
     if (subtype === 'sword' && !(this._swordConvertOff && this._swordConvertOff())) subtype = 'greatsword';
     let tierKey = this._mktField(body.tierKey);
     let _tierLabel = tierLabel;
-    /* v2.3.3947: and the wooden greatsword (gscopper.js): an order for one is
+    /* v2.3.3980: and the wooden greatsword (gscopper.js): an order for one is
        an order for copper */
     if (subtype === 'greatsword' && tierKey === 'wood' && !(this._gsCopperOff && this._gsCopperOff())) { tierKey = 'copper'; _tierLabel = 'Copper'; }
     if (!category || !subtype || !tierKey) return { ok: false, error: 'Missing fields' };
@@ -326,7 +326,7 @@ export const marketMethods = {
          name), so they are truncated rather than charset-gated -- but they
          ride into the same 128 KB `mkt_order:` value as everything else,
          and an unbounded one was the destructive half of the bug above. */
-      tierLabel: (typeof _tierLabel === 'string' && _tierLabel) ? _tierLabel.slice(0, 32) : tierKey,   /* v2.3.3947: _tierLabel */
+      tierLabel: (typeof _tierLabel === 'string' && _tierLabel) ? _tierLabel.slice(0, 32) : tierKey,   /* v2.3.3980: _tierLabel */
       playerName: (typeof playerName === 'string' && playerName) ? playerName.slice(0, 24) : 'Unknown',
       playerId,
       ts: Date.now(), expires: Date.now() + MARKET.ORDER_EXPIRY,

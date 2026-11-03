@@ -7,7 +7,7 @@
 > rebuilds (`store.js`, `market.js`), the Forge (`gear.js`). Tests:
 > `server/test/sword-convert.test.mjs`.
 >
-> **v2.3.3947:** the greatswords this left at wood (the old starter, the old
+> **v2.3.3980:** the greatswords this left at wood (the old starter, the old
 > Forge's wood tier) and the old base-less drops become copper too: migration
 > v20, through the same doors (docs/specs/greatsword-copper.md).
 
