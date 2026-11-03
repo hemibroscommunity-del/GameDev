@@ -2,20 +2,20 @@
  *
  * The owner, 2026-11-02: "The top bar is underwhelming (says 'brotown')" and
  * the desktop playtest's "player status not showing"; he chose an always-on
- * frame (level, HP, energy; no picture since v2.3.4093) top-left, and a Safe / PvP / Outlaw chip.
+ * frame (level, HP, energy; no picture since v2.3.4093; gone since v2.3.4163) top-left, and a Safe / PvP / Outlaw chip.
  * One real player against a real worker, IN THE WORLD (`world: 'wheel'`), in
  * three layouts -- a phone upright (390 x 844), sideways (844 x 390), and a
  * computer playing wide (1440 x 900):
  *   1. (v2.3.4113) nothing of the place or its safety in the top bar --
  *      "BroTown" kept in the page, drawn clear -- and the minimap's plate
  *      says "safe"; no day/night icon;
- *   2. the frame: under the bar, at the play area's left, the level and the
- *      worker's HP and energy, clear of the minimap; --bt-hud-top (where the
- *      quest card starts) at or under its bottom;
+ *   2. (v2.3.4163) no player frame on the game screen (the owner took it
+ *      away), and --bt-hud-top, where the quest card starts, just under the
+ *      top bar;
  *   3. (v2.3.4113) the other states on the plate (staged, __btPlaceHold):
  *      "No man's land 2" and "Outlaw · 18 min" in red; a tap on the plate
  *      opens the window with the gold and the bag count in plain words;
- *   4. a tap on the frame opens the Bro page (the dashboard's 'hero');
+ *   4. (gone with the frame, v2.3.4163: the Bro button opens the Bro page)
  *   5. (upright) a real 1.5 s hold on the place name opens the Test panel,
  *      and a short tap does not;
  *   6. no page errors.
@@ -83,23 +83,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 1. the place and its safety ── */
     let a = null;
-    for (let i = 0; i < 30; i++) { a = await look(P); if (a.chip && a.frame && a.view) break; await P.page.waitForTimeout(300); }
+    for (let i = 0; i < 30; i++) { a = await look(P); if (a.chip) break; await P.page.waitForTimeout(300); }
     await shot('safe');
     rec.ok(T + `1: in the world ("${a && a.title}" kept in the page, drawn clear), nothing of the place or its safety in the top bar; the minimap's plate says "${a && a.chip && a.chip.words}"`,
       !!a && a.zone === 'wheel' && a.title === 'BroTown' && a.titleClear && a.inBar === 0 && !!a.chip && a.chip.kind === 'safe'
         && /^safe/.test(a.chip.words || '') && !a.chip.red && !a.tod, a);
 
-    /* ── 2. the frame ── */
-    const f = a && a.frame;
-    rec.ok(T + `2: the frame (${f && f.w} x ${f && f.h}) sits under the bar at the left, clear of the minimap, and the quest card starts under it (--bt-hud-top ${a && a.hudTop})`,
-      !!f && f.t >= a.header.b - 2 && f.l >= 0 && f.l < a.vw * 0.5 && f.w >= 140 && f.h >= 40
-        && (!a.mini || f.r <= a.mini.l) && a.hudTop >= f.b, a);
-    rec.ok(T + `2: ...no picture in it (${a && a.framePics}), the level badge beside the bars (v2.3.4093: the owner, "Remove the character pfp in the top left corner")`,
-      !!a && a.framePics === 0 && !!a.lvBox && !!a.barsBox && a.lvBox.r <= a.barsBox.l + 1
-        && a.lvBox.t < a.barsBox.b && a.lvBox.b > a.barsBox.t, a);
-    rec.ok(T + `2: ...it shows the worker's level ${a && a.view && a.view.lv}, HP ${a && a.view && a.view.hp}/${a && a.view && a.view.maxHp} and energy ${a && a.view && a.view.en}/${a && a.view && a.view.maxEn}`,
-      !!a && !!a.view && !!a.rpg && a.view.lv === Math.max(1, Math.floor(a.rpg.lv || 1)) && a.view.hp === a.rpg.hp && a.view.maxHp === a.rpg.maxHp
-        && a.view.en === a.rpg.en && a.view.maxEn === a.rpg.maxEn && a.view.maxHp > 0, a);
+    /* ── 2. (v2.3.4163) no player frame; the quest card's line under the bar ── */
+    rec.ok(T + `2: no player frame on the game screen (v2.3.4163: the owner, "No remove them from the game screen"), and the quest card's line (--bt-hud-top ${a && a.hudTop}) just under the top bar (${a && a.header && a.header.b})`,
+      !!a && !a.frame && !a.view && !!a.header && a.hudTop >= a.header.b && a.hudTop - a.header.b <= 16, a);
 
     /* ── 3. the other states, staged ── */
     await P.page.evaluate(() => { window.__btPlaceHold = { nml: 2, red: 0 }; });
@@ -133,17 +125,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(T + `3: with the red skull the plate says "${c && c.chip && c.chip.words}"`, !!c && !!c.chip && c.chip.kind === 'outlaw' && c.chip.words === 'Outlaw \u00b7 18 min' && c.chip.red && c.inBar === 0, c);
     await P.page.evaluate(() => { window.__btPlaceHold = null; });
     await P.page.waitForTimeout(500);
-
-    /* ── 4. the frame opens the Bro page ── */
-    const fr = (await look(P)).frame;
-    if (fr) {
-      if (V.touch) await P.page.touchscreen.tap(Math.round((fr.l + fr.r) / 2), Math.round((fr.t + fr.b) / 2));
-      else await P.page.mouse.click(Math.round((fr.l + fr.r) / 2), Math.round((fr.t + fr.b) / 2));
-    }
-    let d = null;
-    for (let i = 0; i < 12; i++) { await P.page.waitForTimeout(250); d = await dash(P); if (d && d.root === 'hero' && d.mode === 'expanded') break; }
-    await shot('bro-page');
-    rec.ok(T + `4: a ${V.touch ? 'tap' : 'click'} on the frame opens the Bro page (${d && d.mode}, ${d && d.root})`, !!d && d.mode === 'expanded' && d.root === 'hero', d);
 
     /* ── 5. the place name still opens the Test panel on a hold ── */
     if (V.id === 'upright') {
