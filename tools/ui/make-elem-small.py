@@ -6,7 +6,7 @@ icon type."  The plate is drawn on the canvas at ~10-14 CSS px, and a 256 px
 texture shrunk that far shimmers as the view slides (src/data/smallIcons.js),
 so every small mark is its own 64 px copy: this writes
 public/icons/ui/elem-<name>-64.webp from the 256 px icons
-(tools/ui/draw-element-icons.py, v2.3.3907's clean ones), brought down
+(v2.3.3907: the owner's hand-made set, tools/ui/cut-element-sheet.mjs), brought down
 premultiplied (no dark fringe) and put on 256 colours or fewer by the game's
 own quant256.js (the memory law).
 
