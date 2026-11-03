@@ -4190,7 +4190,7 @@ html.bt-calm .bt-pf__fill{transition:none}
    The widths grid simply flexes 62px narrower, exactly as it already does when
    the alphabet strip swaps in, so no other row loses anything. */
 .bt-paint-opts{display:flex;gap:5px;min-width:0}
-/* v2.3.4157: width:0 -- this row FILLS what the panel gives it and never asks
+/* v2.3.4167: width:0 -- this row FILLS what the panel gives it and never asks
    for width of its own.  The panel is shrink-to-fit, and a grid of N equal
    tracks asks for N times its widest label: with Copy the held row's four
    (beside Mirror) asked for more than the rest of the panel, so picking a
@@ -4318,7 +4318,7 @@ html.bt-calm .bt-pf__fill{transition:none}
   font-size:11px;line-height:1.2;letter-spacing:.01em;color:var(--ui-text);
   opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-/* v2.3.4157: five -- the four layer steps and Delete (PlayerPaint deleteSel) */
+/* v2.3.4167: five -- the four layer steps and Delete (PlayerPaint deleteSel) */
 .bt-paint-layer-btns{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
 .bt-paint-layer-btns .bt-paint-size{padding:4px 2px;min-height:38px}
 .bt-paint-layer-btns .bt-paint-tool-label{font-size:11px;line-height:1.15;text-align:center}

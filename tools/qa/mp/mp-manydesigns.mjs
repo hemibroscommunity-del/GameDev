@@ -1,4 +1,4 @@
-/* TWO FLAMES ON THE PANTS (v2.3.4157).
+/* TWO FLAMES ON THE PANTS (v2.3.4167).
  *
  * Owner: "I'd like to be able to place more than one design on the character
  * during character creator I wasn't able to put two flames on the pants it

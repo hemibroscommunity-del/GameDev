@@ -10,7 +10,7 @@ import {
 import {
   getDoc, saveDoc, appendToDoc, copyDoc, replay, opCells,
   BOX_LO, BOX_HI_X, BOX_HI_Y,   /* v2.3.2463 */
-  copyOfOp, sameOp, recolorDesign,   /* v2.3.4157: many designs, Copy, Delete */
+  copyOfOp, sameOp, recolorDesign,   /* v2.3.4167: many designs, Copy, Delete */
 } from '@/rendering/traits/artOps.js';   /* v2.3.1967: the canvas is an op list */
 /* v2.3.2444: the ready-made designs, and the gallery that picks one. */
 import { designOps } from '@/rendering/traits/designCatalog.js';
@@ -1378,7 +1378,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
      selection both index into the op list that is about to be replaced, and
      carrying either across would point them at someone else's cells.
 
-     ═══ v2.3.4157: IT ADDS NOW -- THE REPLACE ABOVE IS RETIRED ═══
+     ═══ v2.3.4167: IT ADDS NOW -- THE REPLACE ABOVE IS RETIRED ═══
      Owner: "I wasn't able to put two flames on the pants it would erase the
      previous one when I tried to add another one."  The reasoning above was
      about MERGING PIXELS into a flat drawing, and since v2.3.2455 a design is
@@ -1398,7 +1398,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        unreachable today; the guard is here because the caller a share code or
        a "last design" restore would add is the one that could hand this an
        unvetted string.
-       v2.3.4157: the v2.3.2445 "tapping the design already on the canvas is
+       v2.3.4167: the v2.3.2445 "tapping the design already on the canvas is
        a no-op" guard is gone -- tapping Flame again is now exactly how you get
        a second flame. */
     const pieces = designOps(d.art);
@@ -1412,7 +1412,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        still called first because its emptiness check is the guard that stops a
        blank design landing. */
     let op = { k: 'd', art: d.art, a: [0, 0, ART_W - 1, ART_H - 1] };
-    /* v2.3.4157: the SAME design already lying exactly there (the second flame
+    /* v2.3.4167: the SAME design already lying exactly there (the second flame
        of the owner's report, before the first was moved) would land invisibly
        on top of it and read as "nothing happened".  It steps aside the way a
        Copy does, so the second one is plainly a second one. */
@@ -1439,7 +1439,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
        the select tool is the one whose drag moves what is held -- landing armed
        with the pen would mean your first drag drew on the design instead of
        moving it.
-       v2.3.4157: the selection is the NEW op -- the last one -- not index 0,
+       v2.3.4167: the selection is the NEW op -- the last one -- not index 0,
        which is now whatever was already on the canvas. */
     pendRef.current = { isNew: true, orig: null, ratio: ART_W / ART_H,
       hist: histRef.current[histRef.current.length - 1] };
@@ -1449,7 +1449,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     setShowDesigns(false);
   };
 
-  /* ═══ v2.3.4157: COPY WHAT YOU ARE HOLDING ═══
+  /* ═══ v2.3.4167: COPY WHAT YOU ARE HOLDING ═══
      Owner: "Also a copy button (for selected design) would be great".
      The held op is placed where it is, and a copy of it lands COPY_STEP cells
      away (artOps copyOfOp: the direction that keeps most of it on the grid,
@@ -1481,7 +1481,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     setBodyTick((t) => t + 1);
   };
 
-  /* ═══ v2.3.4157: AND THROW AWAY THE ONE YOU ARE HOLDING ═══
+  /* ═══ v2.3.4167: AND THROW AWAY THE ONE YOU ARE HOLDING ═══
      Once a canvas holds several designs, taking ONE of them off is the move
      you need, and nothing did it: Cancel removes a thing only while it is
      brand new, the eraser punches pixels through every layer under it, and the
@@ -1928,7 +1928,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
     const i = selRef.current;
     const op = i >= 0 ? docRef.current.ops[i] : null;
     if (!op) return false;
-    /* v2.3.4157: a design has no `i` -- it brings its own colours, and this
+    /* v2.3.4167: a design has no `i` -- it brings its own colours, and this
        used to set one that replay never read (a dead tap of Undo).  It swaps
        the design's main colour instead (artOps recolorDesign). */
     if (op.k === 'd') {
@@ -2605,7 +2605,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                    a key test, because the legacy letter form is NOT resizable
                    and would otherwise be offered a lock over a handle that only
                    moves it. */
-                /* v2.3.4157: plus one column for Copy, on anything that copies.
+                /* v2.3.4167: plus one column for Copy, on anything that copies.
                    minmax(0, 1fr) so a label wraps rather than pushing its
                    track wider; the row asks the panel for no width of its own
                    (.bt-paint-opts-main width:0 -- the reason is there), so
@@ -2623,7 +2623,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                     </span>
                   </button>
                 )}
-                {/* ═══ v2.3.4157: COPY (owner: "a copy button (for selected
+                {/* ═══ v2.3.4167: COPY (owner: "a copy button (for selected
                     design) would be great") ═══
                     Beside Place rather than in the layer row: it is a thing
                     you do to what you are holding, and it hands you the copy
@@ -2758,7 +2758,7 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                   </button>
                 );
               })}
-              {/* v2.3.4157: Delete, the fifth -- taking one layer off is the
+              {/* v2.3.4167: Delete, the fifth -- taking one layer off is the
                   layer row's business, and with several designs on a canvas it
                   is the move you need (deleteSel).  Dimmed with nothing held,
                   for the same reason the four steps are. */}

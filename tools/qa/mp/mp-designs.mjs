@@ -20,7 +20,7 @@
  *   2. applying one puts EXACTLY that design's string on the canvas
  *   3. it arrives as one piece per colour, so Select has something to pick up
  *   4. ONE tap of Undo puts back exactly what was there before
- *   3b. (v2.3.4157) picking a design again ADDS a second one; Undo takes only it
+ *   3b. (v2.3.4167) picking a design again ADDS a second one; Undo takes only it
  *   5. it survives closing and reopening the panel
  *   6. Cancel changes nothing
  */
@@ -376,8 +376,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`${tag}: re-applying it puts the catalogue's own version back`,
     (await art(P)) === target.art);
 
-  /* ── 3b. re-applying the SAME design ADDS a second one (v2.3.4157) ──
-     This block asserted the opposite until v2.3.4157 -- "re-applying the
+  /* ── 3b. re-applying the SAME design ADDS a second one (v2.3.4167) ──
+     This block asserted the opposite until v2.3.4167 -- "re-applying the
      design already on the canvas leaves it unchanged", because applyDesign
      REPLACED the canvas.  Owner: "I wasn't able to put two flames on the pants
      it would erase the previous one when I tried to add another one."  So the
@@ -397,7 +397,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.waitForTimeout(800);
   const twoOps = await ops(P);
   rec.ok(`${tag}: re-applying the design ADDS a second one -- two design ops, the first `
-    + `untouched (v2.3.4157)`,
+    + `untouched (v2.3.4167)`,
     twoOps.length === 2 && JSON.stringify(twoOps[0]) === JSON.stringify(firstOps[0])
     && twoOps[1].k === 'd' && twoOps[1].art === target.art, twoOps);
   rec.ok(`${tag}: ...and the second steps aside rather than landing invisibly on the first `

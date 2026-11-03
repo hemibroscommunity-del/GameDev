@@ -26,7 +26,7 @@ export const PACKETS = [
   { slug: 'door-and-creator', title: 'The door and the character creator',
     screens: ['login-door', 'creator', 'creator-tab-species', 'creator-tab-hair', 'creator-tab-hat', 'creator-tab-skin', 'creator-tab-eyes'] },
   { slug: 'creator-tabs', title: 'The creator\'s other tabs and the drawing editor',
-    screens: ['creator-tab-eyewear', 'creator-tab-beard', 'creator-tab-shirt', 'creator-tab-pants', 'creator-tab-shoes', 'creator-paint', 'creator-paint-designs'] },   /* v2.3.4157: +two designs */
+    screens: ['creator-tab-eyewear', 'creator-tab-beard', 'creator-tab-shirt', 'creator-tab-pants', 'creator-tab-shoes', 'creator-paint', 'creator-paint-designs'] },   /* v2.3.4167: +two designs */
   { slug: 'arriving-and-the-world', title: 'Arriving, the world screen and talking to Mayor Bro',
     screens: ['welcome', 'desktop-window', 'hud', 'hud-pvp', 'nml-popup', 'hud-outlaw', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
   { slug: 'dashboard-character-bag', title: 'Dashboard: your character, your quests and the bag',

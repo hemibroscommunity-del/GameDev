@@ -403,7 +403,7 @@ export const STATES = [
     },
   },
 
-  /* v2.3.4157: the drawing editor with MORE THAN ONE ready-made design on a
+  /* v2.3.4167: the drawing editor with MORE THAN ONE ready-made design on a
      canvas -- the owner's two flames on the pants -- the second held, so the
      Select row shows its Copy button and the layer row its Delete.  Undone on
      the way out, so the rest of the review's bro wears plain trousers. */

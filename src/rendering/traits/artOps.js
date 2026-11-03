@@ -222,7 +222,7 @@ export function designGroups(op) {
   return [...byInk.keys()].sort((p, q) => p - q).map((ink) => ({ ink, cells: byInk.get(ink) }));
 }
 
-/* ═══ v2.3.4157: MORE THAN ONE DESIGN, AND A COPY OF THE ONE YOU HOLD ═══
+/* ═══ v2.3.4167: MORE THAN ONE DESIGN, AND A COPY OF THE ONE YOU HOLD ═══
    Owner: "I'd like to be able to place more than one design on the character
    during character creator I wasn't able to put two flames on the pants it
    would erase the previous one when I tried to add another one. Also a copy
@@ -287,7 +287,7 @@ export function sameOp(p, q) {
   return JSON.stringify(p) === JSON.stringify(q);
 }
 
-/* ═══ v2.3.4157: RECOLOURING A DESIGN SWAPS ITS MAIN COLOUR ═══
+/* ═══ v2.3.4167: RECOLOURING A DESIGN SWAPS ITS MAIN COLOUR ═══
    Every other op is ONE ink, so the palette's recolour (v2.3.2427) is a
    one-field edit.  A design brings its own colours and `replay` never read an
    `i` on it, so a palette tap while holding one changed nothing and still cost
