@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "36e0c87ad01f18ee6e67144e0b635f49d473fa6e",
+  "tree": "5022e2f5aad6201c9b04282223f684c9bf6e9fd2",
+  "committedAt": "2026-11-02T20:43:30-08:00",
+  "subject": "Merge pull request #1395 from hemibroscommunity-del/claude/hemi-face-off",
+  "files": 7477,
+  "bytes": 848501759,
+  "listingSha256": "c8e9dbacb2229ad9bf6a61815e0dd1322a218c1bfe4e590847c285f1ce1c8ee4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
