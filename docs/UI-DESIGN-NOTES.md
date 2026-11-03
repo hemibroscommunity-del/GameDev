@@ -716,7 +716,10 @@ Screens: dash-hero, dash-hero-points
 Sources: CLAUDE.md, docs/specs/hero-sheet-pills.md, docs/specs/one-level.md, docs/specs/points-reset.md, docs/specs/levelup-tips.md, docs/specs/progression-v3.md, docs/specs/relative-points.md, docs/LANTERN-SLATE-SPEC.md, src/ui/mobile/sheet/HeroExpanded.jsx, src/styles/game.css
 
 ## Your portrait: a Hemi Bro
-Screens: hemi-portrait, hemi-portrait-dressed
+**OFF since v2.3.4049** (owner, 2026-11-03: "Sorry but I don't like the pfp"): your
+portrait is the game's own headshot again everywhere; `?hemiface=1` shows the
+Hemi Bro below for one tab. Its two review screens went with it. The
+townsfolk's dialogue busts are not this and stay Hemi Bros.
 
 **What it is for:** Your face on the Character button, in the strip with your name, in the level-up medallion and on every other player's card: who you are, at a glance.
 
