@@ -38,7 +38,10 @@ dashboard band, in every layout.
   the attack disc over that spot, so Jump turns west on the same ring until its
   foot is 8 px over the pill's top (about 12 degrees below west; it was 45),
   and Block stands beside it, their feet level (`jumpAnchor`, `blockAnchor`).
-  On a phone narrower than 360 px Block takes its old fallback under TRAP.
+  On a phone narrower than 360 px (320) a centred pill would lie on the
+  bell and Block on the movement stick, so there Block goes under the attack
+  disc at the band's foot and the pill fills the room between the bell and
+  Block, 8 px from each: not centred, its wells 34 px (never under 32).
 - **Sideways and on a computer** the foot of the world is clear (Jump under
   the disc, the bell in the corner); nothing else moves.
 - While it is drawn `html[data-wpill-shown]` lifts the doors' Enter prompt over

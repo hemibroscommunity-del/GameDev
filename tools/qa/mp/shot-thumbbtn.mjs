@@ -132,8 +132,10 @@ function judge(rec, tag, st, d, upright) {
   const cj = ctr(j), cd = ctr(disc);
   const ang = Math.round(Math.atan2(cj.y - cd.y, cd.x - cj.x) * 180 / Math.PI);   /* 0 = west, 90 = south */
   const ring = gapOf(j, disc);
-  const sw = upright ? ang >= 25 && ang <= 65 : ang > 0 && ang < 90;
-  rec.ok(`${tag} ${st}: Jump orbits the disc south-west -- ${ang} deg below west (${upright ? '45 +-20' : 'between west and south'}), ${ring} px off its ring, both round (${j.round}, ${disc.round})`,
+  /* v2.3.4100: upright Jump turns west on its ring to stand over the weapon
+     pill centred at the band's top (ShieldButton jumpAnchor): ~12 deg */
+  const sw = upright ? ang >= 5 && ang <= 65 : ang > 0 && ang < 90;
+  rec.ok(`${tag} ${st}: Jump orbits the disc south-west -- ${ang} deg below west (${upright ? '5-65, over the weapon pill' : 'between west and south'}), ${ring} px off its ring, both round (${j.round}, ${disc.round})`,
     sw && ring >= AIR && ring <= 14 && j.round && disc.round, { j, disc, ang, ring });
   const near = d.list.filter((q) => q !== j && q !== disc).map((q) => ({ n: q.n, g: gapOf(j, q) })).filter((q) => q.g < AIR);
   rec.ok(`${tag} ${st}: every other button (and a door's Enter) at least ${AIR} px clear of Jump${near.length ? ' -- ' + near.map((q) => q.n + ' ' + q.g).join(', ') : ''}`,
@@ -291,8 +293,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const back = await doorAt();
       const dashB = calm.dash;
       if (upright) {
-        rec.ok(`${tag}: Jump gone, the Enter button is back down in its strip (its foot ${dashB - gone.b} px over the band, flag ${gone.flag}); Jump back, it rises again (${dashB - back.b} px)`,
-          !gone.jump && gone.flag == null && dashB - gone.b >= 20 && dashB - gone.b <= 30 && back.jump && back.flag != null && dashB - back.b > 60, { gone, back, dashB });
+        /* v2.3.4100: with Jump gone it stands over the weapon pill (68 px,
+           game.css html[data-wpill-shown]), no longer down in the pill's strip */
+        rec.ok(`${tag}: Jump gone, the Enter button stands over the weapon pill (its foot ${dashB - gone.b} px over the band, flag ${gone.flag}); Jump back, it rises over Jump (${dashB - back.b} px)`,
+          !gone.jump && gone.flag == null && dashB - gone.b >= 60 && dashB - gone.b <= 76 && back.jump && back.flag != null && dashB - back.b > 60, { gone, back, dashB });
       } else {
         rec.ok(`${tag}: sideways the Enter button never rises (flag ${calm && back.flag})`, back.flag == null, { back });
       }

@@ -278,6 +278,9 @@ export function blockAnchor(isLandscape) {
   if (vw - right - col.size >= LBTN.left + LBTN.w + BLOCK_JUMP_SIDE) {
     return { size: col.size, right: right, bottomPx: jl.bottomPx };
   }
+  /* narrower (a 320 px phone): under the attack disc at the band's foot, the
+     weapon pill standing left of it (weaponPillAnchor) */
+  if (pillNarrow(false)) return { size: col.size, right: discRight(false), bottomPx: WPILL_FOOT };
   return { size: col.size, right: right, bottomPx: col.bottomPx(CTL_SLOT.trap) - BLOCK_TRAP_DROP - col.size };
 }
 export const BLOCK_BAND_BOTTOM = 70;
@@ -523,7 +526,7 @@ export function jumpAnchor(isLandscape) {
      end.  So upright Jump turns west on the same ring until its foot stands
      WPILL_AIR over the pill's top (about 15 degrees below west; it was 45):
      still on the disc's ring, 10 px off it, still down and to its left. */
-  if (!isLandscape) down = Math.min(down, Math.max(0, cB - size / 2 - (weaponPillTopPx() + WPILL_AIR)));
+  if (!isLandscape) down = Math.min(down, Math.max(0, cB - size / 2 - (weaponPillTopPx(false) + WPILL_AIR)));
   var left = Math.sqrt(Math.max(0, ring * ring - down * down));
   return {
     size: size,
@@ -755,7 +758,7 @@ export function combatBandTopPx(isLandscape) {
     jmp.bottomPx + jmp.size,                   /* Jump, under the attack disc (v2.3.3017) */
     discBottom(isLandscape) + discR,           /* the attack disc (v2.3.3740: its own height upright) */
     LBTN.bottom + discL,                       /* the movement disc */
-    weaponPillTopPx());                        /* v2.3.4100: the weapon pill, centred at the band's top */
+    weaponPillTopPx(isLandscape));             /* v2.3.4100: the weapon pill, centred at the band's top */
 }
 
 /* ═══ v2.3.4100: THE WEAPON PILL, CENTRED AT THE FOOT OF THE WORLD ═══
@@ -774,14 +777,37 @@ export function combatBandTopPx(isLandscape) {
 export const WPILL = { well: 40, gap: 4, pad: 4, icon: 28 };
 export const WPILL_FOOT = 8;   /* 8 px over the band: the controls' rule of air between two (mp-weaponswap) */
 export const WPILL_AIR = 8;
-export function weaponPillAnchor() {
-  var w = 3 * WPILL.well + 2 * WPILL.gap + 2 * WPILL.pad;
-  var h = WPILL.well + 2 * WPILL.pad;
-  return { w: w, h: h, bottomPx: WPILL_FOOT };
+/* ═══ ...AND ON A PHONE NARROWER THAN 360 px, BETWEEN THE BELL AND BLOCK ═══
+ * At 320 px a centred 136 px pill lies on the bell (WorldChatFeed, 66-102 px
+ * from the left at the band's foot), and Block, beside Jump at its foot, on
+ * the movement stick.  So there (upright, under PILL_NARROW_VW) Block goes
+ * under the attack disc at the band's foot (blockAnchor), and the pill fills
+ * what is left between the bell and Block, WPILL_AIR from each: its wells
+ * shrink to fit (34 px at 320, never under WPILL_MIN), and it stands there,
+ * not centred.  `left` is then px from the screen's left; null means centred. */
+export const PILL_NARROW_VW = 360;
+export const WPILL_MIN = 32;
+function pillNarrow(isLandscape) {
+  if (isLandscape) return false;
+  var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+  return vw < PILL_NARROW_VW;
+}
+export function weaponPillAnchor(isLandscape) {
+  var well = WPILL.well, left = null;
+  if (pillNarrow(isLandscape)) {
+    var vw = (typeof window !== 'undefined' && window.innerWidth) || 390;
+    var col = ctlColumn(false);
+    left = BELL_RIGHT_PX + WPILL_AIR;
+    var right = vw - discRight(false) - col.size - WPILL_AIR;   /* Block's left edge, under the disc, less the air */
+    well = Math.max(WPILL_MIN, Math.min(WPILL.well, Math.floor((right - left - 2 * WPILL.pad - 2 * WPILL.gap) / 3)));
+  }
+  var w = 3 * well + 2 * WPILL.gap + 2 * WPILL.pad;
+  var h = well + 2 * WPILL.pad;
+  return { w: w, h: h, well: well, icon: Math.round(WPILL.icon * well / WPILL.well), left: left, bottomPx: WPILL_FOOT };
 }
 /* the pill's top, px over the band: what Jump and Block keep WPILL_AIR over */
-export function weaponPillTopPx() {
-  var a = weaponPillAnchor();
+export function weaponPillTopPx(isLandscape) {
+  var a = weaponPillAnchor(isLandscape);
   return a.bottomPx + a.h;
 }
 

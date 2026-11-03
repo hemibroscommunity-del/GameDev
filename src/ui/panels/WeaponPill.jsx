@@ -252,7 +252,7 @@ export function WeaponPill(props) {
   var stop = function (e) { e.stopPropagation(); };
 
   var a = weaponPillAnchor(isLandscape);
-  var W = WPILL.well;
+  var W = a.well;   /* 40 px; less only on a phone narrower than 360 px (ShieldButton) */
 
   return React.createElement('div', {
     className: 'bt-wpill',
@@ -263,7 +263,7 @@ export function WeaponPill(props) {
     onPointerDown: stop,
     style: {
       position: 'fixed',
-      left: 'calc(50% - ' + (a.w / 2) + 'px)',
+      left: a.left != null ? a.left : 'calc(50% - ' + (a.w / 2) + 'px)',
       bottom: ctlBottom(a.bottomPx),
       width: a.w,
       height: a.h,
@@ -328,8 +328,8 @@ export function WeaponPill(props) {
       attrs['data-weapon-owned'] = view.owned.length;
     }
     return React.createElement('button', attrs, x.src ? React.createElement('img', {
-      src: x.src, alt: '', draggable: false, width: WPILL.icon, height: WPILL.icon,
-      style: { display: 'block', width: WPILL.icon, height: WPILL.icon, objectFit: 'contain', pointerEvents: 'none' },
+      src: x.src, alt: '', draggable: false, width: a.icon, height: a.icon,
+      style: { display: 'block', width: a.icon, height: a.icon, objectFit: 'contain', pointerEvents: 'none' },
     }) : null);
   }));
 }
