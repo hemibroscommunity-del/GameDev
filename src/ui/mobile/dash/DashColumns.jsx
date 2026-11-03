@@ -3,7 +3,7 @@ import { GearTab } from './GearTab.jsx';
 import { WeaponBar } from './WeaponBar.jsx';
 import { combatSkillLevel as _combatSkillLevel } from './combatSkill.js';
 
-/* ═══ v2.3.3940: THE RESTING DASHBOARD IS THE GEAR TAB ═══
+/* ═══ v2.3.3995: THE RESTING DASHBOARD IS THE GEAR TAB ═══
    This row held, since v2.3.1636, the bag (v2.3.1653: "the resting dashboard
    IS the bag", its five filter chips over it) beside the three combat-skill
    pills (Melee / Bow / Magic, v2.3.1648), in three shapes: the upright band

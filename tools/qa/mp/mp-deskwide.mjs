@@ -143,7 +143,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* the column's order, top to bottom */
     const dock = await box(P, '.bt-land-navdock');
     const combat = await box(P, '[data-dash-desk-combat]');
-    /* v2.3.3940: the Gear tab -- the five chips are one filter pill over the
+    /* v2.3.3995: the Gear tab -- the five chips are one filter pill over the
        bag (GearTab.jsx), the three weapons the weapon bar at the foot */
     const filters = await box(P, '[data-dash-desk] [data-gear-filter]');
     const bag = await box(P, '[data-dash-desk] [data-gear-bag]');

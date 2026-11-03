@@ -9,7 +9,7 @@ import { actionBus } from '../actionBus.js';
 import { getState } from './common.js';
 import { WEAPON_KEYS } from '@/game/deskKeys.js';
 
-/* ═══ v2.3.3940: THE COMPUTER'S WEAPON BAR ═══
+/* ═══ v2.3.3995: THE COMPUTER'S WEAPON BAR ═══
    The owner, playing on a computer: "The weapon equipping system is
    confusing... make a hotbar here for left hand weapon, armor, right hand etc".
    These three chips (DeskRailWeapons since v2.3.3769, at the foot of every

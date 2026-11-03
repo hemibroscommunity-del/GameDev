@@ -578,7 +578,7 @@ Sources: CLAUDE.md, docs/specs/chat-lanes.md, docs/specs/chat-moderation.md, doc
 ## The dashboard: band, six buttons and pages
 Screens: hud-band, dash-*, more-*
 
-**What it is for:** The band at the bottom of the screen is the game's one menu. At rest it is the Gear tab (since v2.3.3940; **The Gear tab** below): your bag, your bro and your gear side by side. Its row of six buttons opens every page inside the band, while the world keeps playing above it.
+**What it is for:** The band at the bottom of the screen is the game's one menu. At rest it is the Gear tab (since v2.3.3995; **The Gear tab** below): your bag, your bro and your gear side by side. Its row of six buttons opens every page inside the band, while the world keeps playing above it.
 
 **Decisions, and why:**
 - **Never more than a third of the screen** (owner directive, v2.3.1258). The painted world stays the brightest thing on screen; the band is a quiet slate tray.
@@ -796,7 +796,7 @@ Sources: CLAUDE.md, docs/specs/monster-codex.md
 ## The bag and item cards
 Screens: dash-bag, item-card
 
-**What it is for:** Everything you carry and are not wearing, shown on the band at rest. Since v2.3.3940 the bag is the left panel of **The Gear tab**: a tap picks an item and the middle panel shows it; the card below is where its Sell and Drop sheets open.
+**What it is for:** Everything you carry and are not wearing, shown on the band at rest. Since v2.3.3995 the bag is the left panel of **The Gear tab**: a tap picks an item and the middle panel shows it; the card below is where its Sell and Drop sheets open.
 
 **Decisions, and why:**
 - **The bag lives on the band; there is no bag page** (since v2.3.1653–1654). Sideways, the owner called the old small-slot bag page "a legacy view that needs to retire" (v2.3.2173).
@@ -835,7 +835,7 @@ Sources: CLAUDE.md, docs/specs/landscape-mode.md, docs/specs/bag-icons.md, docs/
 ## The Gear tab
 Screens: gear-*
 
-**What it is for:** The resting dashboard, what the bag button opens: your bag, your bro and your gear side by side, so you can see what you carry, what you wear and what a change would do without opening anything (v2.3.3940, the owner's design of 2026-11-02).
+**What it is for:** The resting dashboard, what the bag button opens: your bag, your bro and your gear side by side, so you can see what you carry, what you wear and what a change would do without opening anything (v2.3.3995, the owner's design of 2026-11-02).
 
 **Decisions, and why:**
 - **Three panels, INVENTORY | BRO | EQUIPMENT, left to right** (owner: "inventory on left with filter on top, character in the middle with tabs that can change between look and stats/details and the furthest right tab has all the equipped items"). Laid out from the box the tab is given, never the device: 330 px wide or more and the three sit across at about 46% | 24% | 30%; narrower (the sideways ~238 px column) and the bag sits on top with BRO and EQUIPMENT side by side under it. A wider band (Lane B's `?oneband=1`) just works.

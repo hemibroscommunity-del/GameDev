@@ -1,4 +1,4 @@
-/* ═══ v2.3.3940: WHAT KIND OF THING EVERY ITEM IS, FOR THE GEAR TAB'S FILTER ═══
+/* ═══ v2.3.3995: WHAT KIND OF THING EVERY ITEM IS, FOR THE GEAR TAB'S FILTER ═══
  *
  * The owner, of the bag's filter (design threads, 2026-11-02): "a tiny
  * accordion style pill button instead that just says 'filter' on it ... and
