@@ -1,4 +1,4 @@
-# Worn armour shows its grade (v2.3.3142)
+# Worn armour shows its grade (v2.3.3142; a soft glow outside it, on every facing, v2.3.3953)
 
 Owner: *"I also think the armor should be visibly different if you're
 wearing rare, elite, or godly. Wondering if you can change the outline hue or
@@ -7,13 +7,18 @@ blue, elite is orange, godly is prismatic"*.
 
 ![Copper, iron and steel sets in each grade: normal, rare, elite, godly](../shots/armorgrade-grid.webp)
 
+*(That picture is v2.3.3142's inner outline. Since v2.3.3953 the edge is a
+soft glow outside the armour, and jogging shows each piece's own grade on
+every facing: see "A soft glow outside the armour, on every facing" below.)*
+
 ## What it looks like
 
 The torso and greaves you wear keep their metal's own colour and get two
 things in the grade's colour:
 
-- **an outline**: the piece's edge, about 1.4 CSS px, drawn just inside its
-  silhouette;
+- **a glow** (v2.3.3953; until then an outline, about 1.4 CSS px, drawn just
+  inside the silhouette): soft, outside the piece, under it, brightest
+  against its edge and gone about 2 CSS px out;
 - **highlights**: where the steel art is bright (the same mask the metal
   sheen uses), the bright pixels are lit in the grade's colour at their own
   brightness. A copper plate stays copper and gleams blue at its highlights.
@@ -26,10 +31,11 @@ things in the grade's colour:
 
 - **Normal armour is unchanged.**
 - **A full set while jogging** is one picture on the body sprite
-  (entityRenderer `_fullsetFrame`), so its outline goes all the way round.
-  Standing, the torso and greaves are separate pictures; the torso's bottom
-  edge and the greaves' top edge are the seam between them and are not drawn
-  (`uRimSkip`), or a line would cross the waist.
+  (entityRenderer `_fullsetFrame`), so its glow goes all the way round, in
+  the torso's grade above the waist and the greaves' below it (v2.3.3953).
+  Standing, the torso and greaves are separate pictures; the torso's glow
+  never reaches down from its bottom edge and the greaves' never up from
+  their top (`uRimSkip`), or a band would cross the waist.
 - **Weapons are unchanged.** The ask was the armour. A godly weapon keeps its
   gold gleam (`GRADE_SHINE.godly.color`); godly armour shines in its own metal
   instead, because gold under a rainbow outline muddied both.
@@ -60,6 +66,79 @@ pass**:
   (`prewarmGlintPipe`), so the first graded piece does not compile a shader
   mid-play.
 - **No textures, no memory.** Five uniforms on a filter that already exists.
+
+## A soft glow outside the armour, on every facing (v2.3.3953)
+
+The owner: *"The outline effects of the rare, elite etc armor needs fixed. It
+doesn't show while jogging in some directions. I also want it to be less of a
+hard outline and more of a tight glow. But i don't want it to eat into armor
+that's already there: it makes the armor look too small otherwise."*
+
+![Jogging in all eight facings in iron: a plain torso over elite greaves, and a rare torso over elite greaves, before and after](armor-grade-look/jog-before-after.png)
+
+Standing, every metal in every grade: [before](armor-grade-look/standing-before.png),
+[after](armor-grade-look/standing-after.png).
+
+**Why it went missing jogging.** In a matched set, six of the eight jog
+facings (all but north-east and north-west) draw ONE full-set figure on the
+body sprite and hide the piece sprites (`_fullsetFrame`, `_placeGear`), and
+glint.js put that sprite in the chest slot only. So a plain torso over graded
+greaves showed no grade on six facings, and a rare torso over elite greaves
+drew the whole figure rare. mp-armorgrade only looked at standing frames and
+one east jog in a godly full set, both pieces the same grade, so it never saw
+it.
+
+**The fix, on the same single pass** (no new pass, no new texture, no new
+memory):
+
+- the figure's filter carries both grades: `uGrade` / `uPrism` the torso's,
+  `uGrade2` / `uPrism2` the greaves', and `uSplitY` the waist, as a fraction
+  of the frame. The waist is the jog frame's own pants-top row (jogWaist.js,
+  256-space, the row the bow's jog-legs composite cuts at), looked up by the
+  jog's phase, because the figure's sheet plays its own frame count on it
+  (`src/rendering/lightfx/gradeSplit.js`, set on the display as
+  `_fullsetWaist` where the figure is chosen, yours and every other
+  player's). Checked against the four figure sheets: the row falls on the top
+  of the chain belt. The two grades blend over a couple of rows there;
+- another player's figure is split the same way, from their `eqg`'s two
+  letters;
+- **NOT the layered path for mixed grades.** Drawing a mixed-grade set as its
+  pieces would bring back the masked bakes the full-set figure skips (the 25-64
+  MB story in look-armour.md and `_fullsetCoversBake`): TRAPS §261.
+
+**The glow.** The v2.3.3142 shader repainted the art's own outer pixels at
+92% of the grade's colour (`rim * 0.92`), so every graded piece read one rim
+smaller all round. Now no pixel of the art changes for the edge: the glow is
+drawn in the open space round the piece and laid UNDER it (premultiplied art
+over glow). Eight directions, two rings of taps (one and two steps out): a
+pixel touching the art sees about three taps of each ring inside it, one a
+step out sees the far ring only, so the sums fall in four levels (about 1,
+0.7, 0.35, 0.15 of `GLOW_A`, 0.8) with no extra taps. A pixel with no open
+space two steps out in any direction (a pinhole: between a gauntlet's
+fingers) gets none. The step is **two game px** (`GRADE_GLOW_STEP`), worked
+out into CSS px from each piece's drawn size every frame (`rimCss`), so the
+glow keeps its size against the armour at any zoom: about 1 CSS px a step at
+the world's zoom, 2 CSS px in all. The first cut (one game px a step) read as
+a hairline. The highlights (the art's bright pixels lit in the grade's
+colour) are unchanged: that was the owner's first ask, and it changes the
+art's colour, never its shape.
+
+**This reverses one v2.3.3142 decision on purpose.** The outline was drawn
+INSIDE the silhouette so it could not paint over the neck, wrists and waist
+the next layer owns. The owner now asks for the opposite, so his words win:
+the glow lies faintly over the neck and wrists (and standing, a sliver of the
+torso's glow at the hips lies over the greaves' sides), softly. The waist seam
+is still kept clear (`uRimSkip`).
+
+**Filter area.** Pixi clips a filter's area to the screen; the glow's waist
+row and godly's rainbow are read off that area, so a graded piece's filter
+sets `clipToViewport` false (its whole frame even half off the screen) and
+gives it back on release.
+
+**The cost.** The same pass per graded piece as before. The taps now run
+over the empty margin round the art as well as the art (16 a pixel, as the
+old outline's), on graded pieces only; mp-crowdbots with a graded
+`BT_CROWD_LOOK` reports the frame (below).
 
 ## Whose grade, and why it cannot claim more than the fight counts
 
@@ -123,6 +202,35 @@ with no id keeps the old guard.
 
 ## Checks
 
+**Since v2.3.3953** (`mp-armorgrade`, 27, in the world, `world: 'wheel'`;
+it was on the old map until then):
+
+- standing, every metal in every grade on one frozen frame per metal: the
+  armour's footprint found by drawing the frame with the pieces held back; the
+  glow OUTSIDE it blue / orange / at least five hues; nothing changed further
+  than two steps out; the art's outer band (2-3 device px in) changed no more
+  than its middle (main: 38-52% of the band against 2-3% of the middle; now
+  1-4% both); copper's highlights still red over blue (read 2+ px inside the
+  art, so by 20, not the old 40: a smaller figure at the world's zoom);
+- jogging, all eight facings, a full iron set: plain torso over elite
+  greaves (orange glow on every facing, 85%+ of it below the waist; main drew
+  none on any of them), rare over elite (blue above, orange below), the probe
+  (`figures`: above, below, the waist) and the art's band, every facing;
+- the arm clone over a sword in a godly full set: the same uniforms as the
+  body, now with `uGrade2`, `uPrism2`, `uSplitY` and the step;
+- another player: `'ne'` told by the worker and A's jogging figure drawn
+  plain above the waist and elite below; then `'ee'` standing;
+- the light effects off, the bag, no page errors.
+
+On main the new checks fail 11 of 27 (the run that made the before
+pictures).
+
+The server's `armorgrade` suite gains §6: the waist rows for every facing the
+figure ships, the phase lookup, and the shader read as text (no `rim * 0.92`,
+the glow weighted by `1 - c.a`, the three new uniforms declared).
+
+**Until v2.3.3953:**
+
 - **Server, `armorgrade` suite (19):** the letters (junk and `__proto__`
   read normal; godly only when minted); no `eqg` in plain armour; `'rn'` for
   a rare torso; a described godly torso with a forged `prov` goes out as
@@ -158,7 +266,9 @@ with no id keeps the old guard.
 | | where |
 |---|---|
 | the three colours | `GRADE_LOOK`, glint.js |
-| the outline's width (CSS px) | `GRADE_RIM`, glint.js |
-| how strong the highlights / outline are | `hi * 0.6` / `rim * 0.92` in `FRAG` |
+| the glow's step (game px; it reaches two) | `GRADE_GLOW_STEP`, glint.js (`GRADE_RIM`: the CSS px fallback) |
+| how strong the highlights / the glow are | `hi * 0.6` / `GLOW_A` in `FRAG` |
+| the glow's falloff | `s1 * 0.45 ... * 0.8 + s2 * 0.45 ... * 0.35` in `FRAG` |
+| where a full set turns from torso to greaves | `fullsetSplitY`, `lightfx/gradeSplit.js` (the rows: jogWaist.js) |
 | godly's spread and drift | `p.x * 1.6 + p.y * 1.2` and `uTime * 0.16` in `FRAG` |
 | the bag's colours | `QUALITY_COLOR`, `QUALITY_PRISM` (dash/common.js), `RARITY_*` (inventoryStyles.js), `.ls-slot--*` (game.css) |
