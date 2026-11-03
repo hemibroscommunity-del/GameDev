@@ -9,7 +9,7 @@ import {
   LEVELUP_NUM_H, LEVELUP_NUM_W, LEVELUP_NUM_URLS,
 } from '../data/levelUpBurst.js';
 import { BT_AUDIO } from '../data/index.js';
-import { flyPointsBubbles } from './pointsFly.js'; /* v2.3.3993: a weapon level-up's bubbles to your points */
+import { flyPointsBubbles } from './pointsFly.js'; /* v2.3.4042: a weapon level-up's bubbles to your points */
 import { playVw, playVh } from './mobile/playViewport.js'; /* v2.3.3470: the column on a computer, until the burst's own box is measured */
 import { POINTS_DIGIT_H, POINTS_DIGIT_W } from '../data/pointsHeadArt.js'; /* v2.3.3693: the owner's gold numerals' widths, the level in the medallion */
 
@@ -229,7 +229,7 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
     if (h > 0) setCapH(h);
   });
 
-  /* ═══ v2.3.3993: AS A WEAPON'S MEDALLION STARTS TO GO, BUBBLES FLY TO YOUR
+  /* ═══ v2.3.4042: AS A WEAPON'S MEDALLION STARTS TO GO, BUBBLES FLY TO YOUR
      POINTS ═══ (ui/pointsFly.js: the owner's "jump to bag" of bubbles to the
      Character button, or to its Points tab when that page is open).  Once a
      burst, by its own clock.  Where they leave from is read ONCE, while the

@@ -1,4 +1,4 @@
-/* v2.3.3993: the rules of a weapon level-up's bubbles (ui/pointsFly.js), with
+/* v2.3.4042: the rules of a weapon level-up's bubbles (ui/pointsFly.js), with
    no imports so node tests them (server/test/points-fly.test.mjs). */
 
 /* the three combat skills (prog3's keys): a life skill or the character sends

@@ -1,4 +1,4 @@
-# A weapon level-up sends bubbles to your points (v2.3.3993)
+# A weapon level-up sends bubbles to your points (v2.3.4042)
 
 The owner, 2026-11-02:
 
