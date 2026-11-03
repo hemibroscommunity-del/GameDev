@@ -290,7 +290,8 @@ async function body(P, wsPort, rec) {
   console.log('    QUESTWIN auto flights: ' + JSON.stringify(F1));
   rec.ok('the coins fly to the purse and the bow and staff to the bag (3 + 2 pictures), and all land',
     !!F1 && F1.flown >= 5 && F1.landed === F1.flown
-      && F1.last.some((l) => l.kind === 'gold' && l.to === 'purse') && F1.last.filter((l) => l.kind === 'item').length >= 2, F1);
+      /* v2.3.4173: the purse left the top bar: the coins fly to the Gear tab's coins, or the dashboard's fold / button */
+      && F1.last.some((l) => l.kind === 'gold' && /^(gear-gold|fold|dashboard)$/.test(l.to)) && F1.last.filter((l) => l.kind === 'item').length >= 2, F1);
   const paid1 = await srv();
   rec.ok('the WORKER turned it in and paid the gold, and no XP to any skill',
     !!paid1 && (paid1._quests || {}).tut_1 === 'turnedIn' && (paid1.coins || 0) - ((before && before.coins) || 0) === TUT1.gold
@@ -381,7 +382,7 @@ async function body(P, wsPort, rec) {
   console.log('    QUESTWIN flights: ' + JSON.stringify(F));
   rec.ok('the coins fly to the purse, and all land',
     !!F && !!F1 && F.flown >= F1.flown + 3 && F.landed === F.flown
-      && F.last.some((l) => l.kind === 'gold' && l.to === 'purse'), { F, F1 });
+      && F.last.some((l) => l.kind === 'gold' && /^(gear-gold|fold|dashboard)$/.test(l.to)), { F, F1 });
 
   /* and then his next quest */
   await P.page.waitForTimeout(1200);

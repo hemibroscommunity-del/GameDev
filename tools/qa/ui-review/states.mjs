@@ -490,7 +490,7 @@ export const STATES = [
   },
   {
     id: 'hud', group: 'The world (HUD)', title: 'BroTown, nothing open',
-    about: 'The resting game screen in the town square: top bar (the door, the achievement points and the coins; since v2.3.4113 nothing in its centre: the place and "safe" are on the minimap\'s name plate), the quest card just under the top bar (since v2.3.4163 no player frame: your HP and energy show over your bro\'s head and on the dashboard), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
+    about: 'The resting game screen in the town square: top bar (only the log-out door since v2.3.4173: the coins are in the Gear tab\'s header and the achievement points on the Bro card, a gain said as a "+12 gold" / "+5 AP" word under the bar; since v2.3.4113 nothing in its centre: the place and "safe" are on the minimap\'s name plate), the quest card just under the top bar (since v2.3.4163 no player frame: your HP and energy show over your bro\'s head and on the dashboard), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
     run: async ({ P }) => { await wait(P, 600); },
   },
   /* v2.3.3974: the top bar's place chip in its other two states (staged with

@@ -80,7 +80,7 @@ const clear = (c) => /rgba\(0, 0, 0, 0\)|transparent/.test(c || '');
 const placed = (L) => L.inBar === 0 && clear(L.titleColor) && !!L.title && !!L.header
   && !!L.pill && L.top === true && L.at === 'plate' && near(L.pill, L.plate)
   && /^No man's land \d+$/.test(L.plateSub || '') && L.plateRed === true
-  && L.pill.r <= L.vw && L.pill.b <= L.vh && !!L.purse && L.purse.r <= L.vw;
+  && L.pill.r <= L.vw && L.pill.b <= L.vh && !L.purse /* v2.3.4173: the purse left the bar */;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
