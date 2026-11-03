@@ -5,6 +5,7 @@ import { WORLDVIEW_EXITS } from '../../data/index.js';
 import { runSpeedTest } from '../../game/speedTest.js';   /* v2.3.3339: the speed test, measured on this phone */
 import { openSoundStudio } from '../../game/soundStudio.js';   /* v2.3.3523: every sound and where it plays */
 import { CLIENT_SAVERS, clientOffNow } from '../../game/clientOff.js';   /* v2.3.3755: the Memory savers row */
+import { expoAddressFlags, expoAddressWords } from '../../game/expoAddress.js';   /* v2.3.4158: the expo's one-Wi-Fi switch */
 import { oneBandActive, setOneBand } from '../oneBand.js';   /* v2.3.4072: the one dashboard (v2.3.4152: the row is its off switch) */
 
 /* v2.3.3525: the tour's steps, in order, for "Tour: jump to" (the worker's
@@ -559,6 +560,24 @@ export const DevPanel = ({ onClose }) => {
       if (j) setMsg('Message diet OFF for every phone, ?diet=1 too. Every phone switched back at once.');
     }
     if (j) setFlags(j.flags || {});
+  }, [call]);
+
+  /* ═══ v2.3.4158: THE EXPO'S ONE-WI-FI SWITCH ═══
+     Judges at the expo probably share one internet address; the server lets an
+     address hold 16 places and open 20 connections a minute (flood.js).  Two
+     buttons over the live flags `ip_sockets` and `ip_joins_min` (0 = no limit,
+     cleared = normal), so the owner never needs a terminal.  Live at once:
+     the socket path reads the flags before every check. */
+  const setExpoAddress = useCallback(async (on) => {
+    let j = null;
+    for (const c of expoAddressFlags(on)) {
+      j = await call(c.path, c.body, c.method);
+      if (!j) return;
+    }
+    if (j) {
+      setFlags(j.flags || {});
+      setMsg(on ? 'Expo mode ON: any number of players can come in from one Wi-Fi address.' : 'Back to normal: 16 places and 20 connections a minute from one address.');
+    }
   }, [call]);
 
   /* ═══ v2.3.3755: THE MEMORY SAVERS, ONE BY ONE ═══
@@ -1291,6 +1310,16 @@ export const DevPanel = ({ onClose }) => {
               <button type="button" style={btn(false)} disabled={busy} onClick={() => setDiet('all')}>On for everyone</button>
               <button type="button" style={btn(false)} disabled={busy} onClick={() => setDiet('one')}>Only ?diet=1 phones</button>
               <button type="button" style={btn(false)} disabled={busy} onClick={() => setDiet('kill')}>Off for everyone</button>
+            </div>
+
+            <div style={label}>Expo: many players on one Wi-Fi</div>
+            <div style={{ color: COL.text2, fontSize: 12, marginBottom: 8 }}>
+              Now: {expoAddressWords(flags)}. One address normally holds 16 places and opens 20 connections a minute; at the expo the judges may all share one. Takes effect at once, no reload.
+              The sign-in door has its own limit (20 checks a minute per address) with no switch.
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+              <button type="button" style={btn(false)} disabled={busy} onClick={() => setExpoAddress(true)}>Expo: let everyone on one Wi-Fi in</button>
+              <button type="button" style={btn(false)} disabled={busy} onClick={() => setExpoAddress(false)}>Back to normal</button>
             </div>
 
             <div style={label}>Live flags</div>
