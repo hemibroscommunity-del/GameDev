@@ -133,7 +133,7 @@
  * 16.8; QA_MB_QUERY=onecopy=0&picnumbers=0).
  * (v2.3.3728: this note corrected: it said "off by default".)
  */
-/* v2.3.3949, the townsfolk walk around and work (docs/specs/living-town.md):
+/* v2.3.3993, the townsfolk walk around and work (docs/specs/living-town.md):
  * `gpu` 105 -> 115 and `heap` 36 -> 38 -- RAISED.  The same build, the check's
  * trip, walking off (`QA_MB_QUERY=folkwalk=0`, the town as on main) against
  * on, two and four runs: the chip's highest (trip 2, home again) 106.2 / 104.2
@@ -150,13 +150,13 @@
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 112, measured: 102.2,   /* v2.3.3702: 156 -> 112, see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
-  gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.3949: 105 -> 115, see the header */
+  gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.3993: 105 -> 115, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
   canvases: { name: 'pictures the game draws itself', mb: 56, measured: 49.7,   /* v2.3.3699: 96 -> 88; v2.3.3702: 88 -> 56, see the header */
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
   sound: { name: 'decoded sound', mb: 29, measured: 27.0,   /* v2.3.3664: 30 -> 32; v2.3.3706: 32 -> 29, see the header */
     what: 'sound decoded into memory (music streams from its file and is not in it, v2.3.3073)' },
-  heap: { name: 'the page\'s JavaScript objects', mb: 38, measured: 34.7,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.3949: 36 -> 38, see the header */
+  heap: { name: 'the page\'s JavaScript objects', mb: 38, measured: 34.7,   /* v2.3.3595: 32 -> 33; v2.3.3657: 33 -> 34; v2.3.3807: 34 -> 36; v2.3.3993: 36 -> 38, see the header */
     what: 'the page\'s JavaScript objects' },
   buffers: { name: 'the page\'s raw data buffers', mb: 22, measured: 20.4,   /* v2.3.3703: 24 -> 22, see the header */
     what: 'the page\'s raw data buffers (ArrayBuffers), and the text of its scripts, which the same reading counts (v2.3.3703)' },

@@ -83,7 +83,7 @@ import { getLookShirtFrame } from '../lookShirtFrame.js';   /* v2.3.3751: the te
 import { getSkin, getPants, getShoes, getBodyFrame, getPickupHeadFrame, preloadBodyVariant, localBodyArt, getFishFrame, MIRRORED_SOURCE_DIRS, getLookBodyFrame, getLookBodyEntries } from '../playerSkins.js';   /* v2.3.1940: + the local player's drawn pants/tattoo; v2.3.2854: + the inked fish frame; v2.3.3716: + the look-palette frame */
 import { lookPaletteWanted, lookPaletteOn } from '../lookPalette.js';   /* v2.3.3716: on unless `?lookpalette=0`; v2.3.3809: + drawing now */
 import { lookFolkOn, folkFaceOverride } from '../lookFolk.js';   /* v2.3.3809: the townsfolk drawn live */
-import { folkWorkPose, folkWorkFrame, folkStandFacing } from '../folkPose.js';   /* v2.3.3949: the townsfolk at work */
+import { folkWorkPose, folkWorkFrame, folkStandFacing } from '../folkPose.js';   /* v2.3.3993: the townsfolk at work */
 import { npcLookAsPeer, npcLookByName } from '../../data/npcLooks.js';   /* v2.3.3809: their looks */
 import { lookArmourOn, lookArmourFrame, lookArmourPrewarm, lookArmourDecided, lookArmourJob, setLookArmourBaker, lookSheetForWorker } from '../lookArmour.js';   /* v2.3.3752: the body under armour from the numbers */
 import { lookBake } from '../lookBake.js';   /* v2.3.3752: the same bake on the page when there is no worker */
@@ -17374,7 +17374,7 @@ export class EntityRenderer {
     }
     /* a stride's last few px lands him on the stand, not frozen mid-step */
     const jogging = moving || (now - (display._folkMovedAt || -1e9)) < 120;
-    /* v2.3.3949: at a job of his day, one of the player's work poses; standing,
+    /* v2.3.3993: at a job of his day, one of the player's work poses; standing,
        his day's facing (toward you when he stops for you): rendering/folkPose.js */
     const work = (jogging || folkFaceOverride()) ? null : folkWorkPose(npc);
     const facing = work ? 'south' : (folkFaceOverride() || (jogging ? display._walkDir : folkStandFacing(npc, display._walkDir)) || 'south');   /* QA may turn him (lookFolk.js) */
@@ -17397,7 +17397,7 @@ export class EntityRenderer {
         for (const c of String(npc.id)) h = (h * 31 + c.charCodeAt(0)) % 9973;
         display._folkBeat = h * 7;
       }
-      frameIdx = work ? folkWorkFrame(work, now + display._folkBeat) : Math.floor(((now + display._folkBeat) / cyc) * fc) % fc;   /* v2.3.3949 */
+      frameIdx = work ? folkWorkFrame(work, now + display._folkBeat) : Math.floor(((now + display._folkBeat) / cyc) * fc) % fc;   /* v2.3.3993 */
     }
     const spriteBody = folk._spriteBody;
     const art = _remoteBodyArt(look, mirror);
@@ -17415,7 +17415,7 @@ export class EntityRenderer {
     spriteBody.visible = true;
     if (folk._body) folk._body.visible = false;
     const tint = shirtFill(look.shirt || 'tshirt', look.shirtColor);
-    /* v2.3.3949: at work, his tee's colour without its print (folkPose.js: no bake) */
+    /* v2.3.3993: at work, his tee's colour without its print (folkPose.js: no bake) */
     folk._shirtLook = work ? null : _shirtLook(null, null, sanitizePattern(look.shirtPattern, 'shirt'), tint);
     folk._shirtArtMirror = mirror;
     _placeGear(folk, { shirt: shirtEquip, legs: 'none', chest: 'none', shoulders: 'none', shirtTint: tint }, pose, dir, frameIdx);
@@ -17794,7 +17794,7 @@ export class EntityRenderer {
             height: _folkLive ? _folkBodyPx(display._folk, 'height') : fig.texture.height * fig.scale.y,
             width: _folkLive ? _folkBodyPx(display._folk, 'width') : fig.texture.width * fig.scale.x,
             live: _folkLive,
-            pose: _folkLive && display._folk ? display._folk._animPose || null : null,   /* v2.3.3949: stand, jog or a work pose (mp-folkwalk) */
+            pose: _folkLive && display._folk ? display._folk._animPose || null : null,   /* v2.3.3993: stand, jog or a work pose (mp-folkwalk) */
             /* world y of the figure's feet — anchor is the frame's foot row */
             footY: display.y,
             src: display._figSrc,

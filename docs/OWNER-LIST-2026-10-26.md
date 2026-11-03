@@ -202,7 +202,7 @@ judges do.
     move players have: hammering at the anvil, cooking at a fire, chopping,
     fishing, farming. They'd be made in the character creator, like the cast
     now. **L-XL**
-    *v2.3.3949: done on phones (docs/specs/living-town.md): keepers and locals
+    *v2.3.3993: done on phones (docs/specs/living-town.md): keepers and locals
     walk short loops and work in the player's own poses, quest givers keep
     their spots. A computer still shows the photographs, standing.*
 23. **Hair and clothes in the breeze.** Hair, capes and bandana tails sway a

@@ -24,7 +24,7 @@
  *   7b. (v2.3.3833) the new cast: all thirteen in 1, 2 and 4 (read off the
  *      table); a tap on Sterling opens the Bank, a tap on Bean answers;
  *   8. no page errors.
- * v2.3.3949: they walk their days (game/townsfolkWalk.js): 1 and 4 read his
+ * v2.3.3993: they walk their days (game/townsfolkWalk.js): 1 and 4 read his
  * spot and his place on his loop by it, and each walk-up goes to where he is.
  * v2.3.3809: drawn live from their looks by default (2 and 4b read so);
  * BT_WF_QUERY=lookfolk=0 checks the photographs.
@@ -38,7 +38,7 @@ const PHONE = { width: 390, height: 844 };
 /* v2.3.3809: BT_WF_QUERY=lookfolk=0 -- the townsfolk from their photographs */
 const QUERY = process.env.BT_WF_QUERY || '';
 const LIVE = !/(^|&)lookfolk=0(&|$)/.test(QUERY) && !/(^|&)lookpalette=0(&|$)/.test(QUERY);
-/* v2.3.3949: the furthest a townsperson's loop takes him from his spot (game/townsfolkWalk.js; 2d of its test) */
+/* v2.3.3993: the furthest a townsperson's loop takes him from his spot (game/townsfolkWalk.js; 2d of its test) */
 const FOLK_REACH = 262;
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -99,11 +99,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3580: the cast read off the table (the tour's Woodworker Bro and
        Farmer Bro, v2.3.3525, were missing from the old list) */
     const wantNames = ['Mayor Bro', ...WHEEL_TOWNSFOLK.map((f) => f.name)].sort().join(', ');
-    /* v2.3.3949: they walk their days now (game/townsfolkWalk.js): his spot is
+    /* v2.3.3993: they walk their days now (game/townsfolkWalk.js): his spot is
        where the table puts him, and he is on his loop by it (260 px at most) */
     const placedRight = WHEEL_TOWNSFOLK.every((f) => { const n = npc(f.name), w = where(f.name); return n && w && Math.abs(n.sx - w.x) < 1 && Math.abs(n.sy - w.y) < 1 && n.r === 0
       && Math.hypot(n.x - w.x, n.y - w.y) <= FOLK_REACH; });
-    rec.ok(`the Wheel's Brotown has its whole cast (${names}), each's spot where WHEEL_TOWNSFOLK puts him, and on his day's loop by it (v2.3.3949)`,
+    rec.ok(`the Wheel's Brotown has its whole cast (${names}), each's spot where WHEEL_TOWNSFOLK puts him, and on his day's loop by it (v2.3.3993)`,
       names === wantNames && placedRight && !!npc('Ace').flip,
       { names, placed: WHEEL_TOWNSFOLK.map((f) => [f.name, npc(f.name), where(f.name)]) });
 
@@ -151,7 +151,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!lilOnArrival && lilOnArrival.x > 8 && lilOnArrival.x < lilOnArrival.vw - 8 && lilOnArrival.y > 60 && lilOnArrival.y < lilOnArrival.vh - 60, lilOnArrival);
 
     /* ── 4. each one drawn, as Diego is ── */
-    /* v2.3.3949: beside where he IS (he walks his day), twice: he may have
+    /* v2.3.3993: beside where he IS (he walks his day), twice: he may have
        walked on while you came */
     const standNear = async (name, dx, dy) => {
       if (!where(name)) return false;
@@ -194,7 +194,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3809: drawn live, each stands on the player's own stand (every
        one of the cast live), facing the street; the photographs' stand cells
        are the photographs' */
-    /* v2.3.3949: walking his day, he faces the way he walks */
+    /* v2.3.3993: walking his day, he faces the way he walks */
     if (LIVE) rec.ok(`4b. drawn live, every one of the cast (${WHEEL_TOWNSFOLK.filter((f) => drawn[f.name] && drawn[f.name].live).length}/${WHEEL_TOWNSFOLK.length})`,
       WHEEL_TOWNSFOLK.every((f) => drawn[f.name] && drawn[f.name].live), WHEEL_TOWNSFOLK.map((f) => drawn[f.name]));
     else rec.ok(`4b. the walkers stand on their standing frames: ${['Ace', 'Lil Bro', 'Diego'].map((n) => n + ' ' + (drawn[n] ? drawn[n].frame : '?') + ' (his ' + standOf(n) + ')').join(', ')}`,
@@ -260,7 +260,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        From his WEST side: on the den's side your boots are within its door's
        reach, and E is the Enter button's key first (desktopControls.js: a
        door before a person), as it is at Diego's store. */
-    /* v2.3.3949: Ace walks his day: stand beside him again until he is the one near */
+    /* v2.3.3993: Ace walks his day: stand beside him again until he is the one near */
     let nearE = null;
     for (let k = 0; k < 4 && !(nearE && nearE.npc === 'Ace'); k++) {
       await standNear('Ace', -60, 16);
