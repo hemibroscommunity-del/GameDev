@@ -863,7 +863,7 @@ export function barHeight(vw, vh) {
      sideways and on a computer the third binds.  expandedSheetHeight and
      drillSheetHeight read this, so a page opens inside the band at the
      same height, as upright. */
-  if (oneBandActive()) h = Math.min(h, Math.round((vh || 0) / 3));
+  if (vh > 0 && oneBandActive()) h = Math.min(h, Math.round(vh / 3));
   return h;
 }
 
