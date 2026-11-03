@@ -1,4 +1,4 @@
-/* ═══ v2.3.4031: THE GEAR TAB'S RULES (src/ui/mobile/dash/GearTab.jsx) ═══
+/* ═══ v2.3.4061: THE GEAR TAB'S RULES (src/ui/mobile/dash/GearTab.jsx) ═══
  *
  *   1. itemCategory (itemCategory.js): EVERY item id the tables in src/data
  *      name -- the woods, fish and ores each tier drops, the cooked fish, the
@@ -24,6 +24,12 @@
  *   5. the one action list: the item card draws its buttons from
  *      itemActionList and runs them through runItemAction (no inline Equip or
  *      Drink of its own any more), and the Gear tab runs the same two.
+ *
+ * v2.3.4061 (the owner's mockup, 2026-11-03): the cells Sword Bow Staff /
+ * Chest Legs Cape / Shield Amulet Gem (2c); the middle's ONE view (3h-3k: a
+ * pick shows DETAILS, putting it down the remembered LOOK or STATS, a tap on
+ * LOOK keeps the pick); STATS' rows the game's own and no "Combat Power"
+ * (4i-4l); Inspect (a fish) in the one list (5e).
  */
 import { readFileSync } from 'node:fs';
 
@@ -97,10 +103,10 @@ const TR = await import('../../src/data/trapping.js');
   const kinds = Object.keys(IC.GEAR_FILTERS);
   check('2a every kind is one row of one group, in the owner\'s order',
     rows.length === kinds.length && kinds.every((k) => rows.filter((r) => r === k).length === 1)
-      && IC.GEAR_FILTER_GROUPS[0].rows.join() === 'sword,bow,staff' && IC.GEAR_FILTER_GROUPS[1].rows.join() === 'shield,chest,legs,cape,amulet', rows);
+      && IC.GEAR_FILTER_GROUPS[0].rows.join() === 'sword,bow,staff' && IC.GEAR_FILTER_GROUPS[1].rows.join() === 'chest,legs,cape,shield,amulet', rows);
   check('2b each kind has its pill word and its empty-bag words', kinds.every((k) => IC.GEAR_FILTERS[k].pill && IC.GEAR_FILTERS[k].none));
   check('2c the nine cells, the owner\'s 3 x 3, each filtering to its own kind',
-    IC.GEAR_CELLS.map((c) => c.id).join() === 'sword,bow,staff,shield,chest,legs,cape,amulet,gem'
+    IC.GEAR_CELLS.map((c) => c.id).join() === 'sword,bow,staff,chest,legs,cape,shield,amulet,gem'
       && IC.GEAR_CELLS.every((c) => c.filter === c.id && IC.GEAR_FILTERS[c.filter]), IC.GEAR_CELLS.map((c) => c.id));
   check('2d the weapon cells name their slot, their hand and their skill',
     IC.gearCell('sword').field === 'weapon' && IC.gearCell('bow').active === 'ranged' && IC.gearCell('staff').skill === 'mind');
@@ -143,6 +149,20 @@ const TR = await import('../../src/data/trapping.js');
   B.clearFilter(); B.afterChange(); B.setTab('look');
   check('3g the tab is remembered (here, with no localStorage, for the session)', B.state.tab === 'look');
   B.setTab('stats');
+  /* v2.3.4061: exactly one view */
+  check('3h the middle shows STATS at rest', B.state.view === 'stats');
+  B.tapCell('sword'); const v1 = B.state.view;
+  B.tapCell('sword'); const v2 = B.state.view;
+  check('3i a cell\'s tap shows DETAILS; tapped again, back to STATS (the remembered tab)', v1 === 'details' && v2 === 'stats', { v1, v2 });
+  B.setTab('look'); B.tapBag('i-fish_minnow', null); const v3 = B.state.view;
+  B.setTab('look'); const v4 = { view: B.state.view, sel: !!B.state.sel };
+  B.setTab('details'); const v5 = B.state.view;
+  B.afterChange(); const v6 = B.state.view;
+  check('3j a bag pick shows DETAILS; LOOK keeps the pick; DETAILS shows it again; Equip goes back to LOOK',
+    v3 === 'details' && v4.view === 'look' && v4.sel && v5 === 'details' && v6 === 'look', { v3, v4, v5, v6 });
+  B.setTab('details');
+  check('3k DETAILS is never the remembered tab', B.state.view === 'details' && B.state.tab === 'look');
+  B.setTab('stats');
 }
 
 /* ── 4. gearStats ── */
@@ -182,6 +202,23 @@ const TR = await import('../../src/data/trapping.js');
   check('4g your own rows: the damage cut, HP, Energy, Mana, the weapon\'s damage, speed, range, crit, dodge, move -- no NaN',
     mine.map((r) => r.key).join() === 'cut,hp,energy,mana,damage,speed,range,crit,dodge,move' && mine.every((r) => !/NaN|undefined/.test(r.v)), mine);
   check('4h ...and an empty blob never throws or prints NaN', G.myStatRows({}).every((r) => !/NaN|undefined/.test(r.v)) && G.weaponRows({}, null).length === 0);
+  /* v2.3.4061: STATS as the mockup draws it, from the game's own numbers */
+  const cs = G.charStatRows({ ...R, armor: iron });
+  check('4i Character Stats: HP MP STAM DEF DODGE RESIST, DEF the damage cut (combinedDamageCut), HP the display pool',
+    cs.map((r) => r.key).join() === 'hp,mana,stam,def,dodge,eres' && cs.map((r) => r.k).join() === 'HP,MP,STAM,DEF,DODGE,RESIST'
+      && cs[0].v === String(GS.toDisplayHp(200)) && cs[1].v === '100'
+      && Math.abs(parseFloat(cs[3].v) - want) < 0.6 && cs.every((r) => !/NaN|undefined/.test(r.v)), cs);
+  const wc = G.activeWeaponCard({ ...R, weapon: { ...R.weapon, element1: 'fire' } });
+  check('4j the weapon in hand\'s box: "Sword", DMG SPD CRIT RANGE ELEM, DMG the card\'s range, ELEM its gem',
+    wc && wc.word === 'Sword' && wc.hand === 'melee' && wc.rows.map((r) => r.k).join() === 'DMG,SPD,CRIT,RANGE,ELEM'
+      && wc.rows[0].v === card.text.replace('-', '–') && wc.rows[4].v === 'Fire' && G.activeWeaponCard(R).rows[4].v === 'None', wc && wc.rows);
+  check('4k ...a bow in hand reads "Bow"; nothing in hand, no box; an empty blob never throws',
+    G.activeWeaponCard({ ...R, activeSlot: 'ranged', rangedWeapon: { type: 'bow', gearBase: 'wood', tierMult: 1 } }).word === 'Bow'
+      && G.activeWeaponCard({ activeSlot: 'staff' }) === null && G.activeWeaponCard({}) === null
+      && G.charStatRows({}).every((r) => !/NaN|undefined/.test(r.v)) && G.charLevel({}) >= 1 && G.charLevel({ level: 7 }) === 7);
+  const gtSrc = src('src/ui/mobile/dash/GearTab.jsx') + src('src/ui/mobile/dash/gearStats.js');
+  check('4l no "Combat Power" anywhere it could be drawn (the game has no such number)',
+    !/['"`>][^'"`<]*Combat Power/i.test(gtSrc.replace(/\/\*[\s\S]*?\*\//g, '')));
 }
 
 /* ── 5. one action list ── */
@@ -194,6 +231,11 @@ const TR = await import('../../src/data/trapping.js');
   check('5b ...with no inline Equip / Drink / Eat of its own left', !/onEquipStashWeapon\s*=|const onDrink\s*=|const onEat\s*=|actions\.drink\s*&&\s*<button/.test(idp));
   check('5c the Gear tab runs the same two', /itemActionList\(target, card\)/.test(gt) && /runItemAction\(a\.id, target, card/.test(gt));
   check('5d the list is one function each: itemActionList and runItemAction', (ia.match(/export function itemActionList/g) || []).length === 1 && (ia.match(/export function runItemAction/g) || []).length === 1);
+  const { itemActionList } = await import('../../src/ui/mobile/dash/itemActions.js').catch(() => ({}));
+  const ins = itemActionList ? itemActionList({ kind: 'inventory', key: 'fish_minnow_albino' }, { actions: { inspect: true, sell: true } }) : null;
+  check('5e Inspect (a fish, v2.3.4036) is a line of the one list, with its test handle, and the card has no button of its own for it',
+    (ins ? ins[0].id === 'inspect' && ins[0].attrs['data-fish-inspect'] === 'fish_minnow_albino' : /add\('inspect'/.test(ia))
+      && /case 'inspect'/.test(ia) && !/actions\.inspect\s*&&\s*<button/.test(idp), ins);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

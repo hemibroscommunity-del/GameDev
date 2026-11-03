@@ -8,23 +8,24 @@ import { itemActionList, runItemAction, entryTarget } from './itemActions.js';
 import { resolveItemCard } from './ItemDetailPopup.jsx';
 import { itemDetailBus } from './itemDetailBus.js';
 import { weaponSlotFor, unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect } from './equipActions.js';
-import { weaponRows, shieldRows, armourRows, compareRows, myStatRows } from './gearStats.js';
+import { weaponRows, shieldRows, armourRows, compareRows, charLevel, charStatRows, activeWeaponCard } from './gearStats.js';
 import { combatSkillByKey, combatSkillState } from './combatSkill.js';
 import { WeaponBar } from './WeaponBar.jsx';
 import { requestT2Category } from './T2Panel.jsx';
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
 import { CharacterView } from '../sheet/CharacterView.jsx';
 import { heroSectionBus } from '../sheet/heroSectionBus.js';
+import { HERO_PILL_ICON } from '../sheet/heroStatPills.js';   /* v2.3.4061: the stats' pictures, the Character page's own files */
 import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { shopBus } from '../shopBus.js';
 import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
 import { WEAPON_STASH_MAX } from '../../../data/gameSystems.js';
 import { gemCutKey, gemIcon, gemElementName } from '@/data/gems.js';
-import { coinArtFor } from '@/game/coinArt.js';
-import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4031: a "?" piece's mark, as on its card */
+import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4061: a "?" piece's mark, as on its card */
+import { deskWords } from '@/game/deskWords.js';   /* v2.3.4061: DETAILS' empty line says "click" on a computer */
 
-/* ═══ v2.3.4031: THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR, SIDE BY SIDE ═══
+/* ═══ v2.3.4061: THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR, SIDE BY SIDE ═══
  *
  * The owner's design (2026-11-02): three panels, "inventory on left with
  * filter on top, character in the middle with tabs that can change between
@@ -35,10 +36,12 @@ import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4031:
  * band, the sideways phone's column, the computer's column.
  *
  * LAID OUT FROM ITS OWN BOX, NOT THE DEVICE.  The root measures itself
- * (ResizeObserver): 330 px wide or more and the three panels sit across at
- * 46% | 24% | 30%; narrower (the sideways ~238 px column) and the bag takes
- * the top, BRO and EQUIPMENT side by side under it.  So a wider band (Lane
- * B's ?oneband=1) just works.
+ * (ResizeObserver): wide enough (WIDE_AT) and the three panels sit across;
+ * narrower (the sideways ~238 px column) and the bag takes the top, BRO and
+ * EQUIPMENT side by side under it.  So a wider band (Lane B's ?oneband=1)
+ * just works.  v2.3.4061: across, the bag and the gear take 31% and 27% or
+ * their floors (four 34 px squares, three 34 px cells), the middle the rest;
+ * a taller band shows more of the bag's rows and a bigger bro.
  *
  * WHAT A TAP DOES (gearTabBus.js holds the state and the rules):
  *   a cell    blue ring; the bag filters to its kind ("Swords ×"); the middle
@@ -57,18 +60,45 @@ import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4031:
  * band" and "an item card that pushes the character or vitals around"
  * (docs/UI-DESIGN-NOTES.md, "The Gear tab").  The Character page keeps its
  * Equipment tab until Lane B rebuilds that page.
+ *
+ * v2.3.4061: AS THE OWNER'S MOCKUP DRAWS IT (2026-11-03: "See mockup for the
+ * 3 panel layout I wanted ... it shows the character and stats at the same
+ * time (it's supposed to be one or the other)"):
+ *   LEFT    "Filter: All Items" (a funnel, the words, a chevron) over a grid
+ *           of four square slots a row, each piece's count at its corner, the
+ *           visible rows filled out with empty squares;
+ *   MIDDLE  LOOK | STATS | DETAILS, the one showing gold, ONE at a time:
+ *           LOOK your bro; STATS "Level N", "Character Stats" (HP MP STAM DEF
+ *           DODGE RESIST) and the weapon in hand's gold box ("Sword
+ *           (Active)": DMG SPD CRIT RANGE ELEM) -- no "Combat Power", which
+ *           the mockup drew and the game does not have; DETAILS the pick.  A
+ *           tap on a cell or a piece shows DETAILS; putting it down goes back
+ *           to LOOK or STATS, whichever the player last chose (gearTabBus);
+ *   RIGHT   Sword Bow Staff / Chest Legs Cape / Shield Amulet Gem.
+ * The gold and the bag's fill line left the panel's head (the top bar carries
+ * the gold); the fill now heads the filter menu.
  */
 
-const PAD = 4;      /* the panels' own padding (DASH_GAP) */
-const GAP = 4;      /* between the panels */
+/* v2.3.4061: 3 px paddings and gaps (were 4): across, every pixel the floors
+   do not take is the middle's, and on a computer's column it is ~95 px */
+const PAD = 3;      /* the panels' own padding, and the tab's */
+const GAP = 3;      /* between the panels */
 const TG = 3;       /* between the bag's tiles */
 const EP = 3;       /* the equipment panel's padding */
-const CG = 2;       /* between the equipment cells */
 const CELL_MIN = 34;   /* the brief's floor for an equipment cell */
-const WIDE_AT = 330;
-const TAB_H = 28;
-const PILL_H = 28;
-const HEAD_H = 16;
+/* v2.3.4061: THE OWNER'S MOCKUP (2026-11-03).  Across, the bag never under
+   four 34 px squares a row and the gear never under three 34 px cells; the
+   middle takes what is left, never under MID_MIN -- below that (the sideways
+   ~238 px column) the bag goes on top.  The upright phone's 390 and the
+   computer's column are across. */
+const TILE_MIN = 34;
+const BAG_COLS = 4;
+const MID_MIN = 84;
+const BAG_MIN = BAG_COLS * TILE_MIN + (BAG_COLS - 1) * TG + 2 * PAD;
+const EQ_MIN = 3 * CELL_MIN + 2 * 3 + 2 * EP;
+const WIDE_AT = BAG_MIN + EQ_MIN + MID_MIN + 2 * PAD + 2 * GAP;
+const TAB_H = 30;
+const PILL_H = 30;
 
 const CELL_SKILL = { sword: 'power', bow: 'agility', staff: 'mind' };
 const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
@@ -148,7 +178,7 @@ function cellContent(R, id, slots) {
       rows: [] };
   }
   if (id === 'amulet') {
-    /* v2.3.4031: NO Unequip -- the worker's unequip_request for the amulet
+    /* v2.3.4061: NO Unequip -- the worker's unequip_request for the amulet
        slot nulls it with no bag to put it in (gear.js _handleUnequipRequest:
        "armor/shield/amulet just null out"), so the button would destroy it */
     const card = getEquipContribs(R).cards.amulet;
@@ -203,6 +233,38 @@ const actBtn = (tone, off) => ({
   touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
 });
 
+/* v2.3.4061: the mockup's small pictures, drawn inline (no new picture files:
+   the memory law) -- the filter's funnel and its chevron */
+const Funnel = ({ size, color }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" style={{ flex: 'none', display: 'block' }}>
+    <path d="M2 2.5h12l-4.6 5.6v4.6l-2.8 1.3V8.1z" fill="none" stroke={color} strokeWidth="1.6" strokeLinejoin="round" />
+  </svg>
+);
+const Chevron = ({ size, color, up }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" style={{ flex: 'none', display: 'block', transform: up ? 'rotate(180deg)' : undefined }}>
+    <path d="M3 6l5 5 5-5" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/* v2.3.4061: each stat's picture -- the Character page's own files (heroStatPills
+   HERO_PILL_ICON), so the browser shares them */
+const STAT_ICON = {
+  hp: HERO_PILL_ICON.hp, mana: HERO_PILL_ICON.mana, stam: HERO_PILL_ICON.stam, def: HERO_PILL_ICON.def,
+  dodge: HERO_PILL_ICON.dodge, eres: HERO_PILL_ICON.eres,
+  dmg: '/icons/ui/stat/dmg.png?v=2.3.2642', spd: HERO_PILL_ICON.aspd, crit: HERO_PILL_ICON.crit,
+  range: HERO_PILL_ICON.range, elem: HERO_PILL_ICON.elem,
+};
+
+/* v2.3.4061: one stat line of STATS -- its picture, its short word, its number */
+const StatLine = ({ row, icon }) => (
+  <div data-gear-stat={row.key} title={row.title || undefined}
+    style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, minHeight: 14 }}>
+    {icon && <img src={icon} alt="" draggable={false} style={{ width: 13, height: 13, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />}
+    <span style={{ flex: 1, minWidth: 0, fontSize: 9.5, fontWeight: 800, letterSpacing: '.04em', color: COL.text2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.k}</span>
+    <span style={{ flex: 'none', fontSize: 11.5, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{row.v}</span>
+  </div>
+);
+
 export const GearTab = ({ R: Rin, desk }) => {
   const R = Rin || {};
   const [rootRef, box] = useMeasure();
@@ -236,78 +298,78 @@ export const GearTab = ({ R: Rin, desk }) => {
     selEntry = allEntries.find((e) => (st.sel.obj ? e.obj === st.sel.obj : (e.kind === 'item' && 'i-' + e.key === st.sel.bag))) || null;
   }
   const selCell = st.sel && st.sel.cell ? st.sel.cell : null;
-  const showStats = !!(selCell || selEntry) || st.tab === 'stats';
+  /* v2.3.4061: exactly one of LOOK | STATS | DETAILS (gearTabBus `view`) */
+  const view = st.view === 'details' || st.view === 'look' ? st.view : 'stats';
 
   /* ── geometry ── */
   const wide = box.w >= WIDE_AT;
   const W = Math.max(0, box.w), H = Math.max(0, box.h);
   const footH = desk ? 48 + GAP : 0;   /* the computer's weapon bar, under the three */
-  const eqMinW = 3 * CELL_MIN + 2 * CG + 2 * EP;
-  let invW, broW, eqW, cell, invH, lowH;
+  let invW, broW, eqW, cell, invH, lowH, cg, cols;
   if (wide) {
-    /* 46% | 24% | 30% -- the equipment never under three 34 px cells across,
-       the bag paying for it on a narrow phone */
+    /* v2.3.4061: the mockup's 31% | the rest | 27%, the bag and the gear never
+       under their floors -- the middle pays on a narrow phone */
     const inner = W - 2 * PAD - 2 * GAP;
-    eqW = Math.max(Math.round(inner * 0.30), eqMinW);
-    broW = Math.round(inner * 0.24);
-    invW = inner - eqW - broW;
+    invW = Math.max(BAG_MIN, Math.round(inner * 0.31));
+    eqW = Math.max(EQ_MIN, Math.round(inner * 0.27));
+    broW = inner - invW - eqW;
     invH = H - 2 * PAD - footH;
-    const byW = Math.floor((eqW - 2 * EP - 2 * CG) / 3);
-    const byH = Math.floor((invH - 2 * EP - 2 * CG) / 3);
-    cell = Math.max(CELL_MIN, Math.min(byW, byH > 0 ? byH : byW, 60));
+    cg = eqW >= 150 ? 6 : 3;
+    const byW = Math.floor((eqW - 2 * EP - 2 * cg) / 3);
+    const byH = Math.floor((invH - 2 * EP - 2 * cg) / 3);
+    cell = Math.max(CELL_MIN, Math.min(byW, byH > 0 ? byH : byW, 64));
+    cols = BAG_COLS;
   } else {
     invW = W - 2 * PAD;
-    eqW = Math.max(Math.round((W - 2 * PAD - GAP) * 0.5), eqMinW);
+    cg = 3;
+    eqW = Math.max(Math.round((W - 2 * PAD - GAP) * 0.5), EQ_MIN);
     broW = W - 2 * PAD - GAP - eqW;
-    cell = Math.max(CELL_MIN, Math.min(Math.floor((eqW - 2 * EP - 2 * CG) / 3), 48));
-    lowH = 3 * cell + 2 * CG + 2 * EP;
+    cell = Math.max(CELL_MIN, Math.min(Math.floor((eqW - 2 * EP - 2 * cg) / 3), 48));
+    lowH = 3 * cell + 2 * cg + 2 * EP;
     invH = H > 0 ? Math.max(120, H - 2 * PAD - GAP - lowH - footH) : 200;
+    cols = Math.max(BAG_COLS, Math.floor((invW - 2 * PAD + TG) / (44 + TG)));
   }
-  const cols = Math.max(2, Math.floor((invW - 2 * PAD + TG) / (44 + TG)));
-  const tile = Math.max(30, Math.floor((invW - 2 * PAD - (cols - 1) * TG) / cols));
-  const visRows = Math.max(2, Math.floor((invH - HEAD_H - PILL_H - 2 * PAD - 2 * TG) / (tile + TG)));
-  const cellCount = Math.max(entries.length, fid === 'all' ? (visRows + 1) * cols : 0);
-  const fillTo = Math.ceil(cellCount / cols) * cols;
+  const tile = Math.max(30, Math.min(64, Math.floor((invW - 2 * PAD - (cols - 1) * TG) / cols)));
+  /* v2.3.4061: the rows in view, a part-row counted -- every square you can
+     see is a slot, filled or empty, as the mockup draws the bag */
+  const gridH = invH - 2 * PAD - PILL_H - TG;
+  const visRows = Math.max(1, Math.ceil((gridH + TG) / (tile + TG)));
+  const fillTo = Math.max(Math.ceil(entries.length / cols), visRows) * cols;
 
   const panel = (extra) => ({
-    background: COL.raised, border: `1px solid ${COL.border}`, borderRadius: 9,
+    background: COL.well, border: `1px solid ${COL.borderStrong}`, borderRadius: 10,
     boxSizing: 'border-box', padding: PAD, minWidth: 0, minHeight: 0, position: 'relative',
     display: 'flex', flexDirection: 'column', overflow: 'hidden', ...(extra || null),
   });
 
   /* ═════ INVENTORY ═════ */
-  const filterWord = fid === 'all' ? 'All items' : ((GEAR_FILTERS[fid] || {}).pill || 'Filter');
+  const filterWord = fid === 'all' ? 'All Items' : ((GEAR_FILTERS[fid] || {}).pill || 'Filter');
   const inventory = (
-    <div data-gear-pane="inv" style={panel(wide ? { width: invW, height: invH } : { width: invW, height: invH })}>
-      {/* the gold and the bag's fill -- no cap on the bag (only the weapon bag has one) */}
-      <div style={{ height: HEAD_H, flex: 'none', display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 2, minWidth: 0 }}>
-        <span data-gear-gold={R.coins || 0} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, flex: 'none' }}>
-          <img src={coinArtFor(R.coins || 0)} alt="" draggable={false} style={{ width: 14, height: 14, objectFit: 'contain' }} />
-          <span style={{ fontSize: 11, fontWeight: 800, color: COL.gold, fontVariantNumeric: 'tabular-nums' }}>{Number(R.coins || 0).toLocaleString()}</span>
-        </span>
-        <span data-gear-fill="" style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 10, fontWeight: 700, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontVariantNumeric: 'tabular-nums' }}>
-          {allEntries.length} item{allEntries.length === 1 ? '' : 's'} · weapons {weaponsHeld}/{WEAPON_STASH_MAX}
-        </span>
-      </div>
-      {/* the filter pill: "All items ▾", or the filter and its × */}
-      <div style={{ height: PILL_H, flex: 'none', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-        <button type="button" data-gear-filter={fid} aria-expanded={st.menu}
+    <div data-gear-pane="inv" style={panel({ width: invW, height: invH })}>
+      {/* v2.3.4061: the mockup's pill -- a funnel, "Filter: All Items", a
+          chevron; a filter on reads "Filter: Swords" with its × beside */}
+      <div style={{ height: PILL_H, flex: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+        <button type="button" data-gear-filter={fid} aria-expanded={st.menu} aria-label={'Filter: ' + filterWord}
           onClick={(e) => { e.stopPropagation(); gearTabBus.setMenu(!st.menu); }}
           style={{
-            flex: '1 1 auto', minWidth: 0, height: PILL_H - 2, padding: '0 10px', borderRadius: 999,
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
+            flex: '1 1 auto', minWidth: 0, height: PILL_H - 2, padding: '0 7px', borderRadius: 8,
+            display: 'flex', alignItems: 'center', gap: 5,
             border: `1px solid ${fid === 'all' ? COL.borderStrong : COL.accent}`,
             background: fid === 'all' ? COL.wellSoft : COL.accentFill, color: COL.text,
-            fontFamily: 'inherit', fontSize: 12, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
+            fontFamily: 'inherit', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
           }}>
-          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{filterWord}</span>
-          {fid === 'all' && <span aria-hidden="true" style={{ fontSize: 10, color: COL.muted }}>{st.menu ? '▴' : '▾'}</span>}
+          <Funnel size={13} color={fid === 'all' ? COL.text2 : COL.accent} />
+          <span style={{ flex: 1, minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <span style={{ color: COL.text2, fontWeight: 700 }}>Filter: </span>{filterWord}
+          </span>
+          {fid === 'all' && <Chevron size={13} color={COL.text2} up={st.menu} />}
         </button>
         {fid !== 'all' && (
           <button type="button" data-gear-filter-clear="" aria-label="Clear the filter"
             onClick={(e) => { e.stopPropagation(); gearTabBus.clearFilter(); }}
             style={{
-              flex: 'none', width: 34, height: PILL_H - 2, borderRadius: 999, padding: 0,
+              flex: 'none', width: 34, height: PILL_H - 2, borderRadius: 8, padding: 0,
               border: `1px solid ${COL.accent}`, background: COL.accentFill, color: COL.text,
               fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
             }}>{'×'}</button>
@@ -324,13 +386,12 @@ export const GearTab = ({ R: Rin, desk }) => {
       ) : (
         <div data-gear-bag="" style={{
           flex: 1, minHeight: 0, marginTop: TG, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch',
-          WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
-          maskImage: 'linear-gradient(180deg, #000 calc(100% - 9px), transparent)',
+          overscrollBehavior: 'contain',
         }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${tile}px)`, gridAutoRows: `${tile}px`, gap: TG, justifyContent: 'center', padding: 2 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${tile}px)`, gridAutoRows: `${tile}px`, gap: TG, justifyContent: 'center' }}>
             {Array.from({ length: fillTo }, (_, i) => {
               const e = entries[i];
-              if (!e) return <div key={'w' + i} aria-hidden="true" style={{ background: COL.well, border: `1px solid ${COL.tileBor}`, borderRadius: 6 }} />;
+              if (!e) return <div key={'w' + i} data-gear-slot-empty="" aria-hidden="true" style={{ background: COL.wellSoft, border: `1px solid ${COL.border}`, borderRadius: 7 }} />;
               const bagKey = e.kind === 'item' ? 'i-' + e.key : `${e.kind}-${e.index}`;
               const on = !!(selEntry && selEntry === e);
               return (
@@ -345,15 +406,20 @@ export const GearTab = ({ R: Rin, desk }) => {
       {/* the menu: down over the bag panel only */}
       {st.menu && (
         <div data-gear-menu="" style={{
-          position: 'absolute', left: PAD, right: PAD, top: PAD + HEAD_H + 2 + PILL_H, bottom: PAD, zIndex: 6,
+          position: 'absolute', left: PAD, right: PAD, top: PAD + PILL_H, bottom: PAD, zIndex: 6,
           background: COL.bg, border: `1px solid ${COL.borderStrong}`, borderRadius: 8,
           boxShadow: '0 8px 18px rgba(4,7,9,.45)', display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>
-          <div style={{ flex: 'none', display: 'flex', alignItems: 'center', padding: '2px 4px 2px 8px', borderBottom: `1px solid ${COL.divider}` }}>
-            <span style={{ flex: 1, fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: COL.muted }}>Show</span>
+          <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 4, padding: '2px 4px 2px 8px', borderBottom: `1px solid ${COL.divider}` }}>
+            <span style={{ flex: 'none', fontSize: 10, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: COL.muted }}>Show</span>
+            {/* v2.3.4061: the bag's fill, moved here from the panel's old head
+                -- no cap on the bag (only the weapon bag has one) */}
+            <span data-gear-fill="" style={{ flex: 1, minWidth: 0, textAlign: 'right', fontSize: 10, fontWeight: 700, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontVariantNumeric: 'tabular-nums' }}>
+              weapons {weaponsHeld}/{WEAPON_STASH_MAX}
+            </span>
             <button type="button" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the filter menu"
               onClick={(e) => { e.stopPropagation(); gearTabBus.setMenu(false); }}
-              style={{ position: 'relative', width: 32, height: 28, padding: 0, border: 'none', background: 'transparent', color: COL.text, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>{'✕'}</button>
+              style={{ position: 'relative', flex: 'none', width: 32, height: 28, padding: 0, border: 'none', background: 'transparent', color: COL.text, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', touchAction: 'manipulation' }}>{'✕'}</button>
           </div>
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', padding: 3 }}>
             {[{ id: 'all', label: 'All items', rows: ['all'] }].concat(GEAR_FILTER_GROUPS).map((g) => {
@@ -398,7 +464,10 @@ export const GearTab = ({ R: Rin, desk }) => {
     const blue = selCell === c.id;
     const gold = !!(c.active && c.active === hand && filled);
     const edge = rarityEdge(ct.quality);
-    const ring = [gold ? `inset 0 0 0 2px ${COL.focus}` : null, blue ? GEAR_SEL_RING : null].filter(Boolean).join(', ');
+    /* v2.3.4061: the weapon in hand gold-edged and glowing, as the mockup
+       draws it (a ring inside, so a rarity edge and the blue pick ring
+       outside can both still show) */
+    const ring = [gold ? `inset 0 0 0 2px ${COL.focus}` : null, gold && !blue ? '0 0 9px rgba(234, 198, 117, 0.55)' : null, blue ? GEAR_SEL_RING : null].filter(Boolean).join(', ');
     const sk = CELL_SKILL[c.id] ? combatSkillState(R, combatSkillByKey(CELL_SKILL[c.id])) : null;
     const pic = c.id === 'gem'
       ? null
@@ -414,7 +483,8 @@ export const GearTab = ({ R: Rin, desk }) => {
         onPointerUp={(e) => { e.stopPropagation(); gearTabBus.tapCell(c.id); }}
         style={{
           width: cell, height: cell, boxSizing: 'border-box', position: 'relative', flex: 'none',
-          background: COL.wellSoft, border: `${filled ? edge.w : 1}px solid ${filled ? edge.c : COL.tileBor}`, borderRadius: 7,
+          background: filled ? COL.slot : COL.wellSoft,
+          border: `${filled ? edge.w : 1}px solid ${gold ? COL.accent : filled ? edge.c : COL.border}`, borderRadius: 9,
           boxShadow: ring || undefined,
           display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', touchAction: 'manipulation',
         }}>
@@ -431,8 +501,8 @@ export const GearTab = ({ R: Rin, desk }) => {
         )}
         {sk && (
           <span data-gear-badge={c.id} aria-hidden="true" style={{
-            position: 'absolute', top: 1, right: 2, fontSize: 9, fontWeight: 900, lineHeight: 1,
-            color: sk.unspent > 0 ? COL.accent : COL.text, textShadow: '0 1px 2px rgba(9,14,17,.9)',
+            position: 'absolute', top: 1, right: 2, fontSize: 8.5, fontWeight: 900, lineHeight: 1,
+            color: sk.unspent > 0 ? COL.accent : COL.text2, textShadow: '0 1px 2px rgba(9,14,17,.9)',
             fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
           }}>{sk.unspent > 0 ? '+' + sk.unspent : 'Lv ' + sk.lvl}</span>
         )}
@@ -440,39 +510,39 @@ export const GearTab = ({ R: Rin, desk }) => {
           <span aria-hidden="true" data-xpbar={sk.p3cat || undefined}
             data-xpprog={sk.p3cat ? Math.round(displayXp(sk.p3cat, sk.xp.prog)) : undefined}
             data-xpthresh={sk.p3cat ? Math.round(sk.xp.thresh) : undefined}
-            style={{ position: 'absolute', left: 3, right: 3, bottom: 2, height: 3, borderRadius: 2, overflow: 'hidden', background: COL.wellDeep, pointerEvents: 'none' }}>
+            style={{ position: 'absolute', left: 4, right: 4, bottom: 2, height: 3, borderRadius: 2, overflow: 'hidden', background: COL.wellDeep, pointerEvents: 'none' }}>
             <span style={{ display: 'block', height: '100%', width: `${Math.min(100, (displayXp(sk.p3cat, sk.xp.prog) / sk.xp.thresh) * 100)}%`, background: '#8AA9F9' }} />
           </span>
         )}
       </div>
     );
   };
-  const gridW = 3 * cell + 2 * CG;
+  const gridW = 3 * cell + 2 * cg;
   const equipment = (
-    <div data-gear-pane="equip" style={panel({ width: eqW, ...(wide ? { height: invH } : { height: lowH }), padding: EP, alignItems: 'center', justifyContent: wide ? 'flex-start' : 'center' })}>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(3, ${cell}px)`, gridAutoRows: `${cell}px`, gap: CG, width: gridW }}>
+    <div data-gear-pane="equip" style={panel({ width: eqW, height: wide ? invH : lowH, padding: EP, alignItems: 'center', justifyContent: wide ? 'flex-start' : 'center' })}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(3, ${cell}px)`, gridAutoRows: `${cell}px`, gap: cg, width: gridW, marginTop: wide ? Math.max(0, Math.min(6, Math.floor((invH - 2 * EP - 3 * cell - 2 * cg) / 2))) : 0 }}>
         {GEAR_CELLS.map(cellEl)}
       </div>
     </div>
   );
 
-  /* ═════ BRO ═════ */
+  /* ═════ BRO: LOOK | STATS | DETAILS ═════ */
+  /* v2.3.4061: the mockup's segmented row, the one showing gold; its words
+     a half point smaller and unspaced in a computer's ~90 px middle, so
+     "DETAILS" is never cut */
+  const tight = broW - 2 * PAD < 104;
   const tabBtn = (id, word) => {
-    const on = id === 'stats' ? showStats : !showStats;
+    const on = view === id;
     return (
       <button type="button" data-gear-tab-btn={id} aria-pressed={on}
-        onClick={(e) => {
-          e.stopPropagation();
-          /* STATS while a pick shows is already STATS; LOOK puts the pick down */
-          if (id === 'stats' && (selCell || selEntry)) return;
-          if (selCell || selEntry) gearTabBus.deselect();
-          gearTabBus.setTab(id);
-        }}
+        onClick={(e) => { e.stopPropagation(); gearTabBus.setTab(id); }}
         style={{
-          flex: '1 1 0', minWidth: 0, height: TAB_H - 4, padding: 0, borderRadius: 7,
-          border: `1px solid ${on ? COL.accent : COL.border}`, background: on ? COL.accentFill : COL.wellSoft,
-          color: on ? COL.text : COL.text2, fontFamily: 'inherit', fontSize: 10.5, fontWeight: 800,
-          letterSpacing: '.08em', cursor: 'pointer', touchAction: 'manipulation',
+          flex: '1 1 auto', minWidth: 0, height: TAB_H - 4, padding: tight ? '0 1px' : '0 2px', borderRadius: 6,
+          border: `1px solid ${on ? COL.focus : COL.border}`,
+          background: on ? `linear-gradient(180deg, ${COL.focus}, ${COL.accent})` : COL.wellSoft,
+          color: on ? COL.onAccent : COL.text2, fontFamily: 'inherit', fontSize: tight ? 8.5 : 9, fontWeight: 900,
+          letterSpacing: tight ? 0 : '.02em', cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'clip',
         }}>{word}</button>
     );
   };
@@ -491,7 +561,7 @@ export const GearTab = ({ R: Rin, desk }) => {
      wide and ~150 tall): Unequip for a cell, the first of a bag piece's
      actions (Equip, Eat, Drink...) for a bag piece; the rest scroll. */
   let footer = null;
-  let statsBody;
+  let detailsBody;
   if (selCell) {
     const c = gearCell(selCell);
     const ct = cellContent(R, selCell, slots);
@@ -504,7 +574,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     }
     const sk = CELL_SKILL[selCell] ? combatSkillState(R, combatSkillByKey(CELL_SKILL[selCell])) : null;
     const word = c.label.toLowerCase();
-    statsBody = (
+    detailsBody = (
       <div data-gear-stats="cell" data-gear-stats-for={selCell} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {selCell === 'gem' ? (
           <>
@@ -559,7 +629,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       cmp = compareRows(armourRows(cur, slot), armourRows(o, slot));
       vs = cur ? 'vs your ' + (cur.name || slot) : 'Your ' + slot + ' slot is empty';
     }
-    /* v2.3.4031: a "?" piece (v2.3.4012's mystery reveal) shows its card's
+    /* v2.3.4061: a "?" piece (v2.3.4012's mystery reveal) shows its card's
        name and no comparison -- its numbers would give its grade away */
     const hidden = !!card.unrevealed;
     if (hidden) cmp = null;
@@ -586,7 +656,7 @@ export const GearTab = ({ R: Rin, desk }) => {
           style={actBtn(lead.tone, false)}>{lead.label}</button>
       );
     }
-    statsBody = (
+    detailsBody = (
       <div data-gear-stats="bag" data-gear-stats-for={selEntry.kind === 'item' ? 'i-' + selEntry.key : selEntry.kind} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {hidden ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -610,33 +680,88 @@ export const GearTab = ({ R: Rin, desk }) => {
       </div>
     );
   } else {
-    statsBody = (
-      <div data-gear-stats="mine" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <StatList rows={myStatRows(R)} />
+    /* v2.3.4061: DETAILS with nothing picked says how to fill it */
+    detailsBody = (
+      <div data-gear-stats="none" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100%', padding: '8px 4px', textAlign: 'center', boxSizing: 'border-box' }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: COL.text2, lineHeight: 1.35 }}>{deskWords('Tap an item or a gear slot to see it here.')}</span>
       </div>
     );
   }
+  if (view !== 'details') footer = null;
+
   const broInnerW = Math.max(40, broW - 2 * PAD);
   const broInnerH = Math.max(40, (wide ? invH : lowH) - 2 * PAD - TAB_H);
-  const figSize = Math.max(40, Math.min(broInnerH - 4, Math.floor((broInnerW - 4) / 0.52)));
   const handWpn = R[HAND_FIELD[hand]] || null;
-  const broPane = (
-    <div ref={bro} data-gear-pane="bro" style={panel({ width: broW, height: wide ? invH : lowH })}>
-      <div style={{ height: TAB_H, flex: 'none', display: 'flex', gap: 3, alignItems: 'flex-start' }}>
-        {tabBtn('look', 'LOOK')}
-        {tabBtn('stats', 'STATS')}
-      </div>
-      {showStats ? (
+
+  /* v2.3.4061: STATS as the mockup draws it -- "Level N", Character Stats,
+     the weapon in hand's gold box; side by side when the middle is wide
+     enough (a taller, wider band), one over the other on a phone */
+  const twoCol = broInnerW >= 230;
+  const wc = activeWeaponCard(R);
+  const statCard = (
+    <div data-gear-charstats="" style={{ flex: twoCol ? '1 1 0' : 'none', minWidth: 0, background: COL.wellSoft, border: `1px solid ${COL.border}`, borderRadius: 8, padding: '5px 6px', boxSizing: 'border-box' }}>
+      <div style={{ fontSize: 10.5, fontWeight: 800, color: COL.text, marginBottom: 2, lineHeight: 1.15 }}>Character Stats</div>
+      {charStatRows(R).map((r) => <StatLine key={r.key} row={r} icon={STAT_ICON[r.key]} />)}
+    </div>
+  );
+  const weaponCard = (
+    <div data-gear-weapon={wc ? wc.hand : 'none'} style={{ flex: twoCol ? '1 1 0' : 'none', minWidth: 0, background: COL.wellSoft, border: `1.5px solid ${COL.accent}`, borderRadius: 8, padding: '5px 6px', boxSizing: 'border-box', boxShadow: '0 0 8px rgba(216, 170, 88, 0.18)' }}>
+      {wc ? (
         <>
-          <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch', padding: '2px 2px 6px' }}>
-            {statsBody}
+          <div title={weaponDisplayName(wc.wpn)} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3, minWidth: 0 }}>
+            <img src={wpnIconSrc(R, wc.wpn)} alt="" draggable={false} style={{ width: 15, height: 15, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
+            <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, fontWeight: 800, color: COL.text, lineHeight: 1.15 }}>
+              {wc.word} <span style={{ color: COL.accent, fontWeight: 700, whiteSpace: 'nowrap' }}>(Active)</span>
+            </span>
           </div>
-          {footer && <div data-gear-foot="" style={{ flex: 'none', paddingTop: 3 }}>{footer}</div>}
+          {wc.rows.map((r) => (
+            <StatLine key={r.key} row={r}
+              icon={r.key === 'elem' && wc.els.length ? gemIcon(gemCutKey(wc.els[0])) : STAT_ICON[r.key]} />
+          ))}
         </>
       ) : (
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: COL.text2, lineHeight: 1.3 }}>Nothing in your hand.</div>
+      )}
+    </div>
+  );
+  const statsBody = (
+    <div data-gear-stats="mine" style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      <div data-gear-level={charLevel(R)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '1px 0 2px' }}>
+        <span style={{ fontSize: 13.5, fontWeight: 800, color: COL.text, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>Level {charLevel(R)}</span>
+        <span aria-hidden="true" style={{ display: 'block', width: '70%', height: 1, background: `linear-gradient(90deg, transparent, ${COL.accent}, transparent)` }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: twoCol ? 'row' : 'column', gap: 5, alignItems: 'stretch' }}>
+        {statCard}
+        {weaponCard}
+      </div>
+    </div>
+  );
+  const figSize = Math.max(40, Math.min(broInnerH - 4, Math.floor((broInnerW - 4) / 0.52)));
+  const broPane = (
+    <div ref={bro} data-gear-pane="bro" data-gear-view={view} style={panel({ width: broW, height: wide ? invH : lowH })}>
+      <div role="tablist" style={{ height: TAB_H, flex: 'none', display: 'flex', gap: tight ? 1 : 2, alignItems: 'flex-start' }}>
+        {tabBtn('look', 'LOOK')}
+        {tabBtn('stats', 'STATS')}
+        {tabBtn('details', 'DETAILS')}
+      </div>
+      {view === 'look' ? (
         <div data-gear-look="" style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
           <CharacterView size={figSize} weapon={handWpn} shield={R.shield} dir="southwest" crop />
         </div>
+      ) : (
+        <>
+          {/* v2.3.4061: the foot fades, so a STATS or DETAILS that runs past the
+              panel (the gold box under Character Stats on a phone) reads as
+              "more below" (the dashboard's own scroll-edge fade, common.js) */}
+          <div data-gear-scroll="" style={{
+            flex: 1, minHeight: 0, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain', padding: '2px 1px 8px',
+            WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 12px), transparent)',
+            maskImage: 'linear-gradient(180deg, #000 calc(100% - 12px), transparent)',
+          }}>
+            {view === 'details' ? detailsBody : statsBody}
+          </div>
+          {footer && <div data-gear-foot="" style={{ flex: 'none', paddingTop: 3 }}>{footer}</div>}
+        </>
       )}
     </div>
   );
@@ -653,7 +778,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       }}>
       {box.w === 0 ? null : desk ? (
         <>
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column', gap: GAP, alignItems: wide ? 'stretch' : 'stretch' }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: wide ? 'row' : 'column', gap: GAP, alignItems: 'stretch' }}>
             {inventory}
             {wide ? <>{broPane}{equipment}</> : <div style={{ display: 'flex', gap: GAP }}>{broPane}{equipment}</div>}
           </div>
@@ -672,4 +797,3 @@ export const GearTab = ({ R: Rin, desk }) => {
     </div>
   );
 };
-

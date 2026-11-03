@@ -1,4 +1,4 @@
-/* ═══ v2.3.4031: WHAT KIND OF THING EVERY ITEM IS, FOR THE GEAR TAB'S FILTER ═══
+/* ═══ v2.3.4061: WHAT KIND OF THING EVERY ITEM IS, FOR THE GEAR TAB'S FILTER ═══
  *
  * The owner, of the bag's filter (design threads, 2026-11-02): "a tiny
  * accordion style pill button instead that just says 'filter' on it ... and
@@ -30,7 +30,8 @@ import { remainsName } from '../../../data/remains.js';
    group of its own. */
 export const GEAR_FILTER_GROUPS = Object.freeze([
   { id: 'weapons', label: 'Weapons', rows: ['sword', 'bow', 'staff'] },
-  { id: 'armour', label: 'Armour', rows: ['shield', 'chest', 'legs', 'cape', 'amulet'] },
+  /* v2.3.4061: the armour in the grid's order (the owner's mockup) */
+  { id: 'armour', label: 'Armour', rows: ['chest', 'legs', 'cape', 'shield', 'amulet'] },
   { id: 'gem', label: 'Gems & shards', rows: ['gem'] },
   { id: 'ore', label: 'Ore & bars', rows: ['ore'] },
   { id: 'wood', label: 'Wood', rows: ['wood'] },
@@ -119,15 +120,17 @@ export function entryCategory(e) {
 /* The equipment grid, the owner's: "3 columns ... Sword, bow, and staff across
    the top ... no helmet ... 3 columns by 3 rows ... add gem slot".  Each cell's
    id, its word, the filter a tap sets, and (for a weapon) the rpg field and
-   the activeSlot it is. */
+   the activeSlot it is.
+   v2.3.4061: the rows in the owner's mockup (2026-11-03): Sword Bow Staff /
+   Chest Legs Cape / Shield Amulet Gem -- the body's three, then the hand's. */
 export const GEAR_CELLS = Object.freeze([
   { id: 'sword',  label: 'Sword',  filter: 'sword',  field: 'weapon',       active: 'melee',  skill: 'power' },
   { id: 'bow',    label: 'Bow',    filter: 'bow',    field: 'rangedWeapon', active: 'ranged', skill: 'agility' },
   { id: 'staff',  label: 'Staff',  filter: 'staff',  field: 'staffWeapon',  active: 'staff',  skill: 'mind' },
-  { id: 'shield', label: 'Shield', filter: 'shield' },
   { id: 'chest',  label: 'Chest',  filter: 'chest' },
   { id: 'legs',   label: 'Legs',   filter: 'legs' },
   { id: 'cape',   label: 'Cape',   filter: 'cape' },
+  { id: 'shield', label: 'Shield', filter: 'shield' },
   { id: 'amulet', label: 'Amulet', filter: 'amulet' },
   { id: 'gem',    label: 'Gem',    filter: 'gem' },
 ]);

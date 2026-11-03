@@ -137,7 +137,7 @@ async function openBag(P, view) {
   await evalIn(P, () => { if (window.__broDashPanelBus) window.__broDashPanelBus.toBar(); });
   return unfoldBand(P);
 }
-/* v2.3.4031: the Gear tab is the band at rest (sideways the dashboard
+/* v2.3.4061: the Gear tab is the band at rest (sideways the dashboard
    column): openBag's way, with nothing picked and no filter, so each Gear
    state starts from the same tab */
 async function gearReset(P) {
@@ -752,7 +752,7 @@ export const STATES = [
     },
   },
   {
-    /* v2.3.4031: a bag tap no longer opens the card (the Gear tab shows the
+    /* v2.3.4061: a bag tap no longer opens the card (the Gear tab shows the
        item in its middle panel); the card is where Sell and Drop go on to */
     id: 'item-card', group: 'Dashboard', title: 'An item card',
     about: 'The item card, as the Gear tab\'s Sell opens it: the item\'s picture and name over the Auction House\'s price sheet (how many, your price, Put it up / Back).',
@@ -769,10 +769,10 @@ export const STATES = [
     },
     after: async ({ P }) => { await gearReset(P); },
   },
-  /* ═══ v2.3.4031: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
+  /* ═══ v2.3.4061: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
   {
     id: 'gear-tab', group: 'Dashboard', title: 'The Gear tab',
-    about: 'The resting dashboard: INVENTORY (the gold and the bag\'s fill, one "All items" filter pill, the bag) | BRO (LOOK and STATS tabs; STATS with nothing picked shows your own numbers) | EQUIPMENT (Sword, Bow, Staff / Shield, Chest, Legs / Cape, Amulet, Gem; the weapon in hand ringed in gold, each weapon its skill\'s level). Narrower than 330 px (sideways) the bag sits over BRO and EQUIPMENT; a computer adds the weapon bar (1 2 3) at the foot.',
+    about: 'The resting dashboard, laid out as the owner\'s mockup (v2.3.4061): the bag ("Filter: All Items" with a funnel and a chevron, four square slots a row, the rows in view filled out with empty squares) | your bro (LOOK | STATS | DETAILS, exactly one showing, the one on gold; STATS: "Level N", Character Stats HP MP STAM DEF DODGE RESIST, and the weapon in hand\'s gold box "Sword (Active)" DMG SPD CRIT RANGE ELEM -- no "Combat Power", which the game does not have) | your gear (Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem; the weapon in hand gold-edged, each weapon its skill\'s level in a corner). Too narrow for three across (sideways) the bag sits over the other two; a computer adds the weapon bar (1 2 3) at the foot.',
     run: async ({ P, view, wsPort, myId }) => {
       await gearKit(P, wsPort, myId);
       const e = await openGear(P, view);
@@ -781,7 +781,7 @@ export const STATES = [
   },
   {
     id: 'gear-slot-selected', group: 'Dashboard', title: 'Gear tab: a slot tapped',
-    about: 'The Sword cell tapped: its blue ring, the bag filtered to swords (the pill reads "Swords ×", the × clears it), and the middle panel showing the sword: its name in its grade\'s colour, its stats, one sentence, the Melee level\'s XP, and one button, Unequip, at the panel\'s foot.',
+    about: 'The Sword cell tapped: its blue ring, the bag filtered to swords (the pill reads "Filter: Swords", the × beside it clears it), and the middle switched to DETAILS showing the sword: its name in its grade\'s colour, its stats, one sentence, the Melee level\'s XP, and one button, Unequip, at the panel\'s foot.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;
@@ -791,7 +791,7 @@ export const STATES = [
   },
   {
     id: 'gear-compare', group: 'Dashboard', title: 'Gear tab: a bag weapon compared',
-    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the middle panel comparing it against the sword in its slot, each stat "old → new" with the difference in green (better) or red (worse), then Equip at the panel\'s foot and its other buttons (Sell, Pin) above.',
+    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the middle\'s DETAILS comparing it against the sword in its slot, each stat "old → new" with the difference in green (better) or red (worse), then Equip at the panel\'s foot and its other buttons (Sell, Pin) above.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;
@@ -804,7 +804,7 @@ export const STATES = [
   },
   {
     id: 'gear-filter-open', group: 'Dashboard', title: 'Gear tab: the filter menu',
-    about: 'The filter pill tapped: a menu drops down over the bag panel only (the other two panels stay put), its rows in groups (Weapons: Swords, Bows, Staffs; Armour: Shields, Chest, Legs, Capes, Amulets; Gems & shards, Ore & bars, Wood, Crops & seeds, Fish, Food & drinks, Potions, Quest items, Other), each with its count, a group you hold nothing of greyed; its ✕ (Esc) closes it.',
+    about: 'The filter pill tapped: a menu drops down over the bag panel only (the other two panels stay put), its rows in groups (Weapons: Swords, Bows, Staffs; Armour: Chest, Legs, Capes, Shields, Amulets; Gems & shards, Ore & bars, Wood, Crops & seeds, Fish, Food & drinks, Potions, Quest items, Other), each with its count, a group you hold nothing of greyed; its ✕ (Esc) closes it.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;
@@ -814,7 +814,7 @@ export const STATES = [
   },
   {
     id: 'gear-filter-empty', group: 'Dashboard', title: 'Gear tab: a filter with nothing in it',
-    about: 'Potions picked from the menu with none in the bag: never a mysterious empty bag -- "No potions in your bag" and a Show all button; the pill reads "Potions ×".',
+    about: 'Potions picked from the menu with none in the bag: never a mysterious empty bag -- "No potions in your bag" and a Show all button; the pill reads "Filter: Potions" with its ×.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;

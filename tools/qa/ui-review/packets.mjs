@@ -33,7 +33,7 @@ export const PACKETS = [
     /* v2.3.4036: + the rare fish's weigh-in card and Ranks' Biggest fish */
     /* v2.3.3999: + your portrait as a Hemi Bro, twice */
     screens: ['guide-arrow', 'dash-hero', 'dash-hero-points', 'hemi-portrait', 'hemi-portrait-dressed', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'fish-weigh', 'fish-board'] },
-  /* v2.3.4031: the Gear tab, the resting dashboard's three panels */
+  /* v2.3.4061: the Gear tab, the resting dashboard's three panels */
   { slug: 'gear-tab', title: 'The Gear tab: your bag, your bro and your gear',
     screens: ['gear-tab', 'gear-slot-selected', 'gear-compare', 'gear-filter-open', 'gear-filter-empty'] },
   { slug: 'dashboard-skills-codex', title: 'Dashboard: life skills, the Codex and More',

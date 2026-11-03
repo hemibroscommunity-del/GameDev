@@ -1,4 +1,12 @@
-/* ═══ mp-geartab (v2.3.4031): THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR ═══
+/* ═══ mp-geartab (v2.3.4061): THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR ═══
+ *
+ * v2.3.4061: the owner's mockup (2026-11-03) -- the middle is LOOK | STATS |
+ * DETAILS, exactly one showing (STATS: "Level N", Character Stats, the weapon
+ * in hand's gold box, no "Combat Power"); a tap on a cell or a piece shows
+ * DETAILS, putting it down goes back to the remembered LOOK or STATS; the
+ * bag four square slots a row (34 px or more), the visible rows filled out
+ * with empty squares; the gear Sword Bow Staff / Chest Legs Cape / Shield
+ * Amulet Gem.
  *
  * The owner's design (2026-11-02): the resting dashboard is three panels,
  * INVENTORY | BRO | EQUIPMENT (src/ui/mobile/dash/GearTab.jsx).  In the Wheel's
@@ -9,7 +17,7 @@
  *     1. the band is the Gear tab, three across; the equipment grid's nine
  *        cells, each at least 34 px; the weapon cells wear their level badge
  *        ("Lv n" or "+n"); the sword cell the gold ring (in hand);
- *     2. tap Sword: its blue ring, the pill reads "Swords ×", STATS shows the
+ *     2. tap Sword: its blue ring, the pill reads "Swords ×", DETAILS shows the
  *        sword by name with ONE button, Unequip;
  *     3. tap the bag's spare greatsword: its blue ring, the comparison rows
  *        ("old → new") and its buttons from the action list (Equip first);
@@ -55,6 +63,22 @@ const look = (P) => P.page.evaluate(() => {
     rows: [...document.querySelectorAll('[data-gear-filter-row]')].map((r) => ({ id: r.getAttribute('data-gear-filter-row'), n: Number(r.getAttribute('data-count')) })),
     empty: (q('[data-gear-empty]') || {}).textContent || null,
     tabs: [...document.querySelectorAll('[data-gear-tab-btn]')].map((b) => b.getAttribute('data-gear-tab-btn') + ':' + b.getAttribute('aria-pressed')),
+    /* v2.3.4061: the middle's one view, STATS' parts, the bag's squares */
+    view: (q('[data-gear-pane="bro"]') || { getAttribute: () => null }).getAttribute('data-gear-view'),
+    shown: ['[data-gear-look]', '[data-gear-stats]'].filter((x) => !!q(x)).length,
+    level: (q('[data-gear-level]') || {}).textContent || null,
+    charStats: [...document.querySelectorAll('[data-gear-charstats] [data-gear-stat]')].map((r) => r.getAttribute('data-gear-stat')),
+    weapon: q('[data-gear-weapon]') ? { hand: q('[data-gear-weapon]').getAttribute('data-gear-weapon'), rows: [...document.querySelectorAll('[data-gear-weapon] [data-gear-stat]')].map((r) => r.getAttribute('data-gear-stat') + '=' + r.textContent), text: q('[data-gear-weapon]').textContent } : null,
+    power: /combat power/i.test((q('[data-gear-tab]') || {}).textContent || ''),
+    squares: (() => {
+      const g = q('[data-gear-bag]');
+      if (!g) return null;
+      const gr = g.getBoundingClientRect();
+      const all = [...g.querySelectorAll('[data-bag-key], [data-gear-slot-empty]')].map((t) => t.getBoundingClientRect());
+      const inView = all.filter((r) => r.top < gr.bottom - 2);
+      const lefts = new Set(all.map((r) => Math.round(r.left)));
+      return { n: all.length, empties: g.querySelectorAll('[data-gear-slot-empty]').length, cols: lefts.size, minW: Math.round(Math.min(...all.map((r) => r.width))), minH: Math.round(Math.min(...all.map((r) => r.height))), inView: inView.length };
+    })(),
     bar: [...document.querySelectorAll('[data-weapon-bar] [data-weapon-slot]')].map((b) => ({ slot: b.getAttribute('data-weapon-slot'), key: b.getAttribute('data-key'), on: b.getAttribute('data-weapon-on') === '1', box: vis(b) })),
   };
 });
@@ -121,20 +145,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('[390x844] the band is the Gear tab, three across: INVENTORY | BRO | EQUIPMENT, left to right',
         s1.layout === 'wide' && !!(s1.panes.inv && s1.panes.bro && s1.panes.equip)
           && s1.panes.inv.l < s1.panes.bro.l && s1.panes.bro.l < s1.panes.equip.l, { layout: s1.layout, panes: s1.panes });
-      rec.ok('[390x844] the equipment grid: Sword Bow Staff / Shield Chest Legs / Cape Amulet Gem, every cell 34 px or more',
-        cellsOk && s1.cells.map((c) => c.id).join() === 'sword,bow,staff,shield,chest,legs,cape,amulet,gem', s1.cells.map((c) => [c.id, c.box && c.box.w]));
+      rec.ok('[390x844] the equipment grid in the mockup\'s order: Sword Bow Staff / Chest Legs Cape / Shield Amulet Gem, every cell 34 px or more',
+        cellsOk && s1.cells.map((c) => c.id).join() === 'sword,bow,staff,chest,legs,cape,shield,amulet,gem', s1.cells.map((c) => [c.id, c.box && c.box.w]));
+      /* v2.3.4061: the mockup's bag -- four square slots a row, never under
+         34 px, every square in view a slot (the rest empty squares) */
+      rec.ok('[390x844] the bag: four square slots a row, each 34 px or more, the visible rows filled out with empty squares',
+        !!s1.squares && s1.squares.cols === 4 && s1.squares.minW >= 34 && s1.squares.minH >= 34 && s1.squares.empties >= 1
+          && s1.squares.n % 4 === 0, s1.squares);
       const badges = s1.cells.filter((c) => ['sword', 'bow', 'staff'].includes(c.id)).map((c) => c.badge);
       rec.ok('[390x844] each weapon cell wears its combat skill\'s level ("Lv n", or "+n" with points)',
         badges.length === 3 && badges.every((b) => /^(Lv \d+|\+\d+)$/.test(b || '')), badges);
-      rec.ok('[390x844] the sword cell (in hand) wears the gold ring; the pill reads "All items"; STATS on, your own numbers',
-        s1.cells.find((c) => c.id === 'sword').on && /All items/.test(s1.pill || '') && s1.stats === 'mine', { pill: s1.pill, stats: s1.stats, tabs: s1.tabs });
+      rec.ok('[390x844] the sword cell (in hand) wears the gold ring; the pill reads "Filter: All Items"; STATS on, your own numbers',
+        s1.cells.find((c) => c.id === 'sword').on && /Filter:\s*All items/i.test(s1.pill || '') && s1.stats === 'mine', { pill: s1.pill, stats: s1.stats, tabs: s1.tabs });
+      rec.ok('[390x844] the middle\'s tabs LOOK | STATS | DETAILS, STATS the one on and the only view showing',
+        s1.tabs.join() === 'look:false,stats:true,details:false' && s1.view === 'stats' && s1.shown === 1, { tabs: s1.tabs, view: s1.view, shown: s1.shown });
+      rec.ok('[390x844] STATS: "Level N", Character Stats (HP MP STAM DEF DODGE RESIST), the sword\'s gold box "Sword (Active)" (DMG SPD CRIT RANGE ELEM), and no "Combat Power"',
+        /^Level \d+$/.test(s1.level || '') && s1.charStats.join() === 'hp,mana,stam,def,dodge,eres'
+          && !!s1.weapon && s1.weapon.hand === 'melee' && /Sword\s*\(Active\)/.test(s1.weapon.text)
+          && s1.weapon.rows.map((r) => r.split('=')[0]).join() === 'dmg,spd,crit,range,elem'
+          && s1.weapon.rows.every((r) => !/NaN|undefined/.test(r)) && !s1.power, { level: s1.level, charStats: s1.charStats, weapon: s1.weapon, power: s1.power });
 
       /* 2. tap Sword */
       await tapEl(P, '[data-gear-cell="sword"]');
       const s2 = await look(P);
       await P.page.screenshot({ path: `${OUT}/phone-2-sword.png` });
-      rec.ok('[390x844] tap Sword: its blue ring, the pill "Swords ×", STATS the sword with ONE button, Unequip',
+      rec.ok('[390x844] tap Sword: its blue ring, the pill "Filter: Swords" with its ×, DETAILS the sword with ONE button, Unequip',
         s2.cells.find((c) => c.id === 'sword').sel && /Swords/.test(s2.pill || '') && s2.pillClear
+          && s2.view === 'details' && s2.tabs.includes('details:true') && s2.shown === 1
           && s2.stats === 'cell' && s2.statsFor === 'sword' && !!s2.name && s2.acts.filter((a) => a !== 'points').join() === 'unequip', s2);
       rec.ok('[390x844] ...and the bag shows swords only', s2.bag.length >= 1 && s2.bag.every((k) => /^stashWeapon-/.test(k)), s2.bag);
 
@@ -155,8 +192,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const after = await rpgOf(P);
       const srv = await H.adminPlayer(wsPort, await H.readState(P, (S) => S.myId));
       await P.page.screenshot({ path: `${OUT}/phone-4-equipped.png` });
-      rec.ok('[390x844] Equip: the pill back to "All items", nothing picked, STATS your own numbers again',
-        /All items/.test(s4.pill || '') && !s4.pillClear && s4.stats === 'mine' && s4.bagSel.length === 0 && !s4.cells.some((c) => c.sel), s4);
+      rec.ok('[390x844] Equip: the pill back to "All Items", nothing picked, STATS (the remembered tab) your own numbers again',
+        /All items/i.test(s4.pill || '') && !s4.pillClear && s4.stats === 'mine' && s4.view === 'stats' && s4.bagSel.length === 0 && !s4.cells.some((c) => c.sel), s4);
       rec.ok('[390x844] ...the worker took it: the hand still the sword slot, the bag the same count of weapons',
         after.active === 'melee' && after.stash.length === before.stash.length && !!(srv.live || srv.rpg), { before, after });
 
@@ -182,7 +219,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         /No potions in your bag/.test(s7.empty || '') && !!(await P.page.$('[data-gear-showall]')), s7);
       await tapEl(P, '[data-gear-showall]');
       const s8 = await look(P);
-      rec.ok('[390x844] Show all: "All items" and the whole bag back', /All items/.test(s8.pill || '') && s8.bag.length >= 3 && !s8.empty, s8);
+      rec.ok('[390x844] Show all: "All Items" and the whole bag back', /All items/i.test(s8.pill || '') && s8.bag.length >= 3 && !s8.empty, s8);
       /* the menu's ✕ is Esc's (data-esc) */
       await tapEl(P, '[data-gear-filter]');
       const esc = await P.page.evaluate(() => { const m = document.querySelector('[data-gear-menu] [data-esc]'); if (!m) return false; m.click(); return true; });
@@ -196,11 +233,25 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('[390x844] LOOK shows the bro (the character view)', !!(await P.page.$('[data-gear-look] canvas')) && s9.tabs.includes('look:true'), s9.tabs);
       await tapEl(P, '[data-gear-cell="bow"]');
       const s10 = await look(P);
-      rec.ok('[390x844] picking a cell shows STATS (the bow)', s10.stats === 'cell' && s10.statsFor === 'bow', s10);
+      rec.ok('[390x844] picking a cell shows DETAILS (the bow), LOOK put away', s10.stats === 'cell' && s10.statsFor === 'bow' && s10.view === 'details' && !(await P.page.$('[data-gear-look]')), s10);
+      /* v2.3.4061: LOOK with a pick keeps the pick; DETAILS brings it back */
+      await tapEl(P, '[data-gear-tab-btn="look"]');
+      const s10b = await look(P);
+      await tapEl(P, '[data-gear-tab-btn="details"]');
+      const s10c = await look(P);
+      rec.ok('[390x844] with the bow picked, LOOK shows the bro and keeps the pick (its ring, its filter); DETAILS shows the bow again',
+        s10b.view === 'look' && (s10b.cells.find((c) => c.id === 'bow') || {}).sel && /Bows/.test(s10b.pill || '') && s10b.shown === 1
+          && s10c.view === 'details' && s10c.statsFor === 'bow', { s10b: [s10b.view, s10b.pill], s10c: [s10c.view, s10c.statsFor] });
       await tapEl(P, '[data-gear-cell="bow"]');
       const s11 = await look(P);
       rec.ok('[390x844] tapped again, the bow is put down and the filter goes: back to LOOK, the remembered tab',
-        !s11.cells.some((c) => c.sel) && /All items/.test(s11.pill || '') && s11.tabs.includes('look:true'), s11);
+        !s11.cells.some((c) => c.sel) && /All items/i.test(s11.pill || '') && s11.tabs.includes('look:true') && s11.view === 'look', s11);
+      /* DETAILS with nothing picked says how to fill it */
+      await tapEl(P, '[data-gear-tab-btn="details"]');
+      const s12 = await look(P);
+      rec.ok('[390x844] DETAILS with nothing picked: "Tap an item or a gear slot to see it here."',
+        s12.view === 'details' && s12.stats === 'none'
+          && await P.page.evaluate(() => /Tap an item or a gear slot to see it here\./.test((document.querySelector('[data-gear-stats="none"]') || {}).textContent || '')), s12);
       await tapEl(P, '[data-gear-tab-btn="stats"]');
 
       /* sideways: the narrow column, the bag over BRO | EQUIPMENT */
@@ -219,7 +270,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const l2 = await look(P);
       await P.page.screenshot({ path: `${OUT}/side-2-shield.png` });
       const shieldTile = l2.bag.find((k) => /^stashShield-/.test(k));
-      rec.ok('[844x390] tap the empty Shield cell: "Shields ×", STATS "No shield yet. Pick one from your bag.", the bag the shield',
+      rec.ok('[844x390] tap the empty Shield cell: "Filter: Shields" with its ×, DETAILS "No shield yet. Pick one from your bag.", the bag the shield',
         /Shields/.test(l2.pill || '') && l2.statsFor === 'shield' && l2.acts.length === 0
           && await P.page.evaluate(() => /No shield yet\. Pick one from your bag\./.test((document.querySelector('[data-gear-stats]') || {}).textContent || ''))
           && !!shieldTile, l2);
@@ -233,7 +284,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await tapEl(P, '[data-gear-cell="shield"]');
         const l4 = await look(P);
         await P.page.screenshot({ path: `${OUT}/side-3-shield-on.png` });
-        rec.ok('[844x390] equipped: the Shield cell filled, STATS the shield with one button, Unequip',
+        rec.ok('[844x390] equipped: the Shield cell filled, DETAILS the shield with one button, Unequip',
           (l4.cells.find((c) => c.id === 'shield') || {}).sel && l4.statsFor === 'shield' && l4.acts.join() === 'unequip' && !!l4.name, l4);
       }
     } finally {

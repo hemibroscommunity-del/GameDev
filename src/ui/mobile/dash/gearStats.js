@@ -1,4 +1,4 @@
-/* ═══ v2.3.4031: THE GEAR TAB'S NUMBERS ═══
+/* ═══ v2.3.4061: THE GEAR TAB'S NUMBERS ═══
  *
  * The middle panel's STATS (GearTab.jsx): what one piece of gear is worth, a
  * comparison of a bag piece against what is in its slot now -- the owner's
@@ -24,7 +24,8 @@ import {
 } from '../../../data/gameSystems.js';
 import { getShieldStats } from '../../../data/items.js';
 import { TILE } from '../../../data/constants.js';
-import { prog3Live, prog3MoveMult } from '../../../data/prog3.js';
+import { prog3Live, prog3MoveMult, prog3CharLevel, prog3EresPct } from '../../../data/prog3.js';
+import { gemElementName } from '../../../data/gems.js';   /* v2.3.4061: the active weapon's element */
 import { combinedDamageCut } from '../sheet/heroStatPills.js';
 import { deriveHeroStats } from '../sheet/heroModel.js';
 
@@ -38,7 +39,7 @@ const pct1 = (v) => {
 };
 const safe = (fn, dflt) => { try { const v = fn(); return v == null ? dflt : v; } catch (e) { return dflt; } };
 
-/* v2.3.4031: the damage cut is heroStatPills' combinedDamageCut (PR #1350,
+/* v2.3.4061: the damage cut is heroStatPills' combinedDamageCut (PR #1350,
    v2.3.3896: what of a hit gets through your Defense -- never below
    PROG3.FLOOR of the base, the floor widened by Dodge -- and then your
    armour), imported, so the Gear tab and the Character page say one number. */
@@ -148,4 +149,67 @@ export function myStatRows(R) {
     { key: 'dodge', k: 'Dodge', v: pct1(d.dodge) + '%' },
     { key: 'move', k: 'Move', v: '+' + Math.round(((Number(move) || 1) - 1) * 100) + '%' },
   ];
+}
+
+/* ═══ v2.3.4061: STATS AS THE OWNER'S MOCKUP DRAWS IT (2026-11-03) ═══
+ * "Level N", then "Character Stats" (HP, MP, STAM, DEF, DODGE, RESIST), then a
+ * gold box for the weapon in your hand ("Sword (Active)": DMG, SPD, CRIT,
+ * RANGE, ELEM).  Every number is the game's own, read as above: NO "Combat
+ * Power" -- the mockup drew one, the game has no such number, and a made-up
+ * total would be the one number on the page nothing else agrees with.
+ * DEF is the damage cut (Defense and armour together, combinedDamageCut:
+ * the Character page's own number), not the Defense points alone, which the
+ * owner found misleading (PR #1350). */
+
+/** The character level: the worker's own rpg.level (prog3.js sets it to
+ *  _prog3CharLevel), the number the status frame's badge shows, so the two
+ *  never disagree; prog3CharLevel (its mirror) only for a blob without one. */
+export function charLevel(R) {
+  R = R || {};
+  const own = Math.floor(Number(R.level) || 0);
+  if (own >= 1) return own;
+  return safe(() => (prog3Live(R) ? prog3CharLevel(R) : 1), 1);
+}
+
+/** "Character Stats": [{ key, k (the mockup's short word), v, title }]. */
+export function charStatRows(R) {
+  R = R || {};
+  const d = safe(() => deriveHeroStats(R), {});
+  const cut = safe(() => combinedDamageCut(d.defPct, d.armorDr != null ? d.armorDr : getArmorDrPct(R), d.dodge), 0);
+  return [
+    { key: 'hp', k: 'HP', v: String(safe(() => toDisplayHp(Number(R.maxHp) || 100), 100)), title: 'Max health' },
+    { key: 'mana', k: 'MP', v: String(Math.round(Number(R.maxMana) || 100)), title: 'Max mana' },
+    { key: 'stam', k: 'STAM', v: String(Math.round(Number(R.maxStamina) || 100)), title: 'Max stamina (energy)' },
+    { key: 'def', k: 'DEF', v: pct1(cut) + '%', title: 'Damage cut: your Defense and armour together' },
+    { key: 'dodge', k: 'DODGE', v: pct1(d.dodge) + '%', title: 'Chance to take no damage' },
+    { key: 'eres', k: 'RESIST', v: pct1(safe(() => (prog3Live(R) ? prog3EresPct(R) : 0), 0)) + '%', title: 'Elemental resist' },
+  ];
+}
+
+const HAND_WORD = { melee: 'Sword', ranged: 'Bow', staff: 'Staff' };
+const HAND_OF = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
+
+/** The weapon in your hand, for its gold box: { hand, word ("Sword"), wpn,
+ *  rows: [{ key, k, v }] } -- DMG, SPD (swings a second), CRIT, RANGE
+ *  (tiles), ELEM (its gem's element, "None" without one).  Null with
+ *  nothing in the hand. */
+export function activeWeaponCard(R) {
+  R = R || {};
+  const hand = HAND_OF[R.activeSlot] ? R.activeSlot : 'melee';
+  const wpn = R[HAND_OF[hand]] || null;
+  if (!wpn) return null;
+  const d = safe(() => deriveHeroStats(R), {});
+  const w = Object.create(null);
+  for (const r of weaponRows(R, wpn)) w[r.k] = r.v;
+  const els = [wpn.element1, wpn.element2].filter((e) => typeof e === 'string' && e);
+  return {
+    hand, word: HAND_WORD[hand], wpn, els,
+    rows: [
+      { key: 'dmg', k: 'DMG', v: w.Damage || '\u2014' },
+      { key: 'spd', k: 'SPD', v: w.Speed || '\u2014' },
+      { key: 'crit', k: 'CRIT', v: pct1(d.crit) + '%' },
+      { key: 'range', k: 'RANGE', v: w.Range || '\u2014' },
+      { key: 'elem', k: 'ELEM', v: els.length ? els.map(gemElementName).join(' + ') : 'None' },
+    ],
+  };
 }
