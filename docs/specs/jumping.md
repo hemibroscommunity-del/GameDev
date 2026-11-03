@@ -905,6 +905,22 @@ The owner: *"Also spacebar I think should be jump."* Space is the jump now and
 X the dodge roll (the swap is in `docs/specs/desktop-keys.md`, "v2.3.3844").
 The "X on a keyboard" lines above are history: read Space there.
 
+## v2.3.3994: jumping up a face, and the flip's first job (`?climb=1`)
+
+The props' crossing (`overLow`, the latch) now has a twin for the faces of
+raised ground (`docs/ELEVATION-PLAN.md`, the Lagoon Islet off the Water
+Caves). A jump going north may enter a face's band once it is as high as a
+low prop needs (`JUMP_CLEAR` of the peak), and the face stays open for the rest
+of that jump **and its flip** (`src/game/climbActions.js riseSolidAt`). It is
+judged where you come down (`src/game/climb.js faceLanding`): clear of the
+band on top, and the face no taller than a plain jump's peak (the terrace's
+72 px, which takes a sprinting jump) or the jump a flip (the ledge's 144 px):
+you are up. Otherwise you drop back where you took off: `startJump` keeps
+that point (`x0`, `y0`) and `startFlip` carries it on. A jump going south off
+a top drops you to the face's foot. No jump on the vines (`jumpRefusal`
+'climbing'). Tested by test-world-core "climbing" (the distances worked out
+from these rules) and `mp-lagoonclimb`.
+
 ## v2.3.3920: a leaping figure, a little larger
 
 The owner: "The up arrow with the line beneath it is used to make the character

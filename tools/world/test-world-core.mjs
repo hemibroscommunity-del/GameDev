@@ -4566,5 +4566,225 @@ console.log('the Wheel five times longer (v2.3.3315)');
     reads >= 10 && bad.length === 0, bad);
 }
 
+/* ── v2.3.3994: the lagoon islet and its rises (plan.js `islets`, `rises`;
+   core/rises.js) ──
+   The owner: "Make a portion of the game that you need to swim in ... and
+   also a portion of the game that you need to climb ... and double jump to
+   get to the next part."  An islet off the Water Caves' coast, reached only
+   by swimming its shallows, touching no pass and no other spoke, nothing
+   placed on it but its rises (docs/ELEVATION-PLAN.md). */
+console.log('the lagoon islet (v2.3.3994)');
+{
+  const fs = await import('node:fs');
+  const { PLAN5 } = await import('../../public/tools/world/plan.js');
+  const { planFeatures } = await import('../../public/tools/world/core/layout.js');
+  const { swimBits } = await import('../../public/tools/world/core/ground.js');
+  const { riseLayout, riseMessage, risePaint, RISE_PALETTE, RISE_KIND } = await import('../../public/tools/world/core/rises.js');
+  const { decodePlaced } = await import('../../public/tools/world/core/placedfile.js');
+  const { tierAt } = await import('../../public/tools/world/core/wheel.js');
+  const F1 = planFeatures(PLAN), F5 = planFeatures(PLAN5);
+  ok('the short Wheel has no islet (no room between its spokes at tiers 2-3) and its plan has no rises laid', F1.islets.length === 0 && riseLayout(PLAN) === null);
+  const I = F5.islets[0];
+  ok('the long Wheel has the Lagoon Islet, the Water Caves\' land, on the spoke\'s east side', F5.islets.length === 1 && I && I.id === 'lagoon-islet' && I.region === 'tidal' && I.xdir === 1, I);
+  const M = 40;
+  const rect = { x: I.x0 - M, y: I.y0 - M, w: I.x1 - I.x0 + 2 * M, h: I.y1 - I.y0 + 2 * M };
+  const bp = buildBlueprint(PLAN5, rect), mm = materialMap(PLAN5, bp);
+  const wk = walkBits(bp, mm), sw = swimBits(bp, mm, (PLAN5.seed | 0) + 900, wk);
+  const N = bp.w * bp.h, bit = (a, i) => (a[i >> 3] >> (i & 7)) & 1;
+  const tidal = bp.regionIds.indexOf('tidal');
+  const isl = (i) => F5.onIslet(rect.x + (i % bp.w), rect.y + ((i / bp.w) | 0));
+  let nIsl = 0, allTidal = true, allGround = true, mats = new Set();
+  for (let i = 0; i < N; i++) if (isl(i)) { nIsl++; if (bp.reg[i] !== tidal) allTidal = false; if (bp.cls[i] !== C.ground) allGround = false; mats.add(mm.ids[mm.mat[i]]); }
+  ok(`its ${nIsl} cells are plain ground of the Water Caves, drawn in its own first stage's sand (never a pass's border land), nothing of pass 2 on them`,
+    nIsl > 300 && allTidal && allGround && mats.size === 1 && mats.has('tidal-1'), { nIsl, mats: [...mats] });
+  const W5 = wheelInfo(PLAN5), g5 = gridInfo(PLAN5);
+  const midR = Math.hypot(((I.cx * F5.S + F5.x0) - g5.cx) / g5.P, ((I.cy * F5.S + F5.y0) - g5.cy) / g5.P);
+  ok(`in tier 2 (levels 6-10) of the long Wheel (its middle at tier ${tierAt(W5, midR)})`, tierAt(W5, midR) === 2, { midR });
+  /* reached ONLY by swimming: over walkable cells alone the islet reaches no
+     other land; over walkable and swimmable ones, the spoke's own */
+  const flood = (pass) => {
+    const seen = new Uint8Array(N), q = [];
+    for (let i = 0; i < N; i++) if (isl(i) && !bit(wk, i)) { seen[i] = 1; q.push(i); }
+    while (q.length) {
+      const i = q.pop(), x = i % bp.w, y = (i / bp.w) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const X = x + dx, Y = y + dy;
+        if (X < 0 || Y < 0 || X >= bp.w || Y >= bp.h) continue;
+        const j = Y * bp.w + X;
+        if (!seen[j] && pass(j)) { seen[j] = 1; q.push(j); }
+      }
+    }
+    return seen;
+  };
+  const walkOnly = flood((j) => !bit(wk, j));
+  let walkOut = 0;
+  for (let i = 0; i < N; i++) if (walkOnly[i] && !isl(i)) walkOut++;
+  const swimToo = flood((j) => !bit(wk, j) || bit(sw, j));
+  let reachedLand = 0, otherLand = 0;
+  for (let i = 0; i < N; i++) if (swimToo[i] && !isl(i) && bp.cls[i] !== C.ocean && !bit(wk, i)) { reachedLand++; if (bp.reg[i] !== tidal) otherLand++; }
+  ok(`you cannot walk to it (its walkable ground reaches ${walkOut} cells off it), but you can swim to it from the Water Caves (${reachedLand} cells of its land reached through the shallows, none of another land)`,
+    walkOut === 0 && reachedLand > 1000 && otherLand === 0, { walkOut, reachedLand, otherLand });
+  /* ...and no other spoke, pass or land within the shallows' reach of it */
+  let nearest = Infinity;
+  const R2 = 110;
+  for (let by = I.y0 - R2; by < I.y1 + R2; by += 1) for (let bx = I.x0 - R2; bx < I.x1 + R2; bx += 1) {
+    const v = F5.pass1Point(bx, by), c = v & 31, rg = (v >> 5) & 31;
+    if (c === C.ocean || c === C.anchor || rg === F5.R.tidal) continue;
+    const dx = bx < I.x0 ? I.x0 - bx : bx >= I.x1 ? bx - I.x1 + 1 : 0, dy = by < I.y0 ? I.y0 - by : by >= I.y1 ? by - I.y1 + 1 : 0;
+    nearest = Math.min(nearest, Math.hypot(dx, dy));
+  }
+  const passes = F5.pois.filter((p) => p.kind === 'pass');
+  const nearPass = Math.min(...passes.map((p) => Math.hypot(p.x / F5.S - F5.x0 / F5.S - I.cx, p.y / F5.S - F5.y0 / F5.S - I.cy) - p.r / F5.S));
+  ok(`no other land within ${R2} cells of it (nearest: ${nearest === Infinity ? 'none' : nearest.toFixed(0)}), nor a pass (the nearest's edge ${nearPass.toFixed(0)} cells off): a dead end that skips no gate`,
+    nearest > 2 * 8 + 10 && nearPass > 60, { nearest, nearPass });
+  /* nothing placed, standing or growing on it */
+  const ob = decodePlaced(fs.readFileSync(new URL('../../public/world/placed5/objects.bin', import.meta.url)));
+  const cg = F5.S * PLAN5.worldPxPerArtPx, k = I.keepOut;
+  const inKeep = (x, y) => x >= (I.x0 - k) * cg && x < (I.x1 + k) * cg && y >= (I.y0 - k) * cg && y < (I.y1 + k) * cg;
+  let objs = 0;
+  for (let i = 0; i < ob.n; i++) if (inKeep(ob.x[i], ob.y[i])) objs++;
+  const live = await import('../../server/src/wheelspawns.js');
+  const pts = [];
+  for (const h of Object.keys(live.WHEEL_SPAWNS)) {
+    const L = live.WHEEL_SPAWNS[h];
+    for (const p of L.points || []) pts.push(p);
+    for (const d of L.deeper || []) for (const p of d.points || []) pts.push(p);
+  }
+  const nodes = [];
+  for (const h of Object.keys(live.WHEEL_NODES || {})) for (const nd of live.WHEEL_NODES[h] || []) nodes.push(nd);
+  const mons = pts.filter((p) => inKeep(p[0], p[1])).length;
+  const nds = nodes.filter((nd) => Array.isArray(nd) && inKeep(nd[1], nd[2])).length;
+  ok(`nothing is placed on it or within ${k} cells: no object (of ${ob.n}), no monster's place (of ${pts.length}), no vein, tree or fishing spot (of ${nodes.length})`,
+    objs === 0 && mons === 0 && nds === 0 && pts.length > 1000 && nodes.length > 100, { objs, mons, nds });
+  /* the rises on it */
+  const L = riseLayout(PLAN5), msg = riseMessage(PLAN5);
+  const [T, Lg] = L ? L.list : [];
+  ok('two rises: the terrace (a 72 px face, vines down it) and the ledge on its top (a 144 px face, the chest on it)',
+    L && L.list.length === 2 && T.id === 'lagoon-terrace' && T.h === 72 && T.climb && !T.chest && Lg.id === 'lagoon-ledge' && Lg.h === 144 && Lg.chest && !Lg.climb
+    && Lg.x0 > T.x0 && Lg.x1 < T.x1 && Lg.y1 <= T.faceY0, L && L.list);
+  let onLand = true;
+  for (let y = L.y0; y < L.y0 + L.h; y++) for (let x = L.x0; x < L.x0 + L.w; x++) if (L.cells[(y - L.y0) * L.w + x - L.x0] && !F5.onIslet(x, y)) onLand = false;
+  const kindAt = (x, y) => { const v = L.cells[(y - L.y0) * L.w + x - L.x0]; return v ? v & 7 : -1; };
+  const sx = T.climb.x0;
+  ok('every rise cell is on the islet\'s land, with the vines\' foot and a beach below the terrace\'s face',
+    onLand && F5.onIslet(sx, T.y1) && F5.onIslet(sx, T.y1 + 2) && kindAt(sx, T.y1) === -1);
+  ok('a rise is its face (south rows), its rim (the other edges), its top; the vines through the terrace\'s face; the chest on the ledge\'s top; the ledge stands on the terrace',
+    kindAt(T.x0 + 1, T.y1 - 1) === RISE_KIND.face && kindAt(sx, T.faceY0) === RISE_KIND.climb && kindAt(T.x0, T.y0 + 3) === RISE_KIND.rim && kindAt(T.x1 - 1, T.y0 + 3) === RISE_KIND.rim
+      && kindAt(T.x0 + 2, T.faceY0 - 1) === RISE_KIND.top && kindAt(Lg.chest.x0, Lg.chest.y0) === RISE_KIND.chest && kindAt(Lg.x0 + 1, Lg.y1 - 1) === RISE_KIND.face
+      && kindAt(Lg.x0 + 2, Lg.y1) === RISE_KIND.top && kindAt(Lg.x0 + 2, Lg.y0 + 1) === RISE_KIND.top && ((L.cells[(Lg.y1 - 1 - L.y0) * L.w + Lg.x0 + 1 - L.x0] >> 3) === 2));
+  ok('the game is sent them in game px, a cell 24 (riseMessage)', msg && msg.cell === 24 && msg.list[1].face.y1 - msg.list[1].face.y0 === 144 && msg.list[0].climb.x1 - msg.list[0].climb.x0 === 48
+    && msg.cells.length === L.w * L.h, msg && msg.list);
+  /* the face picture: its own palette (well under 256), the same pixel in two pieces */
+  const K = 3, X0 = F5.x0 + (T.x0 - 2) * F5.S, Y0 = F5.y0 + (Lg.y0 - 2) * F5.S;
+  const ow = (T.x1 - T.x0 + 4) * F5.S * K, oh = (T.y1 - Lg.y0 + 6) * F5.S * K;
+  const buf = new Uint8ClampedArray(ow * oh * 4);
+  const painted = risePaint(PLAN5, buf, ow, oh, X0, Y0, K);
+  const pal = new Set();
+  for (const k2 of Object.keys(RISE_PALETTE)) { const v = RISE_PALETTE[k2]; for (const c of (Array.isArray(v[0]) ? v : [v])) pal.add(c.join()); }
+  const used = new Set();
+  for (let i = 0; i < buf.length; i += 4) if (buf[i + 3]) used.add(`${buf[i]},${buf[i + 1]},${buf[i + 2]}`);
+  const off = [...used].filter((c) => !pal.has(c));
+  /* a second piece, offset by an odd number of art px, over the same ground */
+  const ox = 37, oy = 53, ow2 = ow - ox * K, oh2 = oh - oy * K;
+  const buf2 = new Uint8ClampedArray(ow2 * oh2 * 4);
+  risePaint(PLAN5, buf2, ow2, oh2, X0 + ox, Y0 + oy, K);
+  let diff = 0;
+  for (let y = 0; y < oh2; y++) for (let x = 0; x < ow2; x++) {
+    const a = ((y + oy * K) * ow + x + ox * K) * 4, b = (y * ow2 + x) * 4;
+    if (buf[a] !== buf2[b] || buf[a + 1] !== buf2[b + 1] || buf[a + 2] !== buf2[b + 2] || buf[a + 3] !== buf2[b + 3]) diff++;
+  }
+  ok(`the faces, rims, vines and chest are drawn in ${used.size} colours, all the rises' own (${pal.size}: a piece stays far under 256), and every pixel the same in two pieces laid apart`,
+    painted > 50000 && off.length === 0 && pal.size <= 40 && used.size >= 20 && diff === 0, { off: off.slice(0, 5), diff });
+  const gw = fs.readFileSync(new URL('../../public/tools/world/core/ground-worker.js', import.meta.url), 'utf8');
+  ok('...laid and sent by the ground worker only with climb=1 in the address',
+    /climb: climbOn\(search\)/.test(gw) && /rises: W\.climb \? riseMessage\(PLAN\) : null/.test(gw) && /if \(W\.climb\) risePaint\(/.test(gw));
+}
+
+/* ── v2.3.3994: climbing, and jumping up a face (src/game/climb.js) ──
+   The rules, on the real rises: the vines climbed up and down only; a face
+   crossed going north by a jump high enough, judged where it comes down --
+   the terrace's 72 px by a sprinting jump, the ledge's 144 px only by the
+   flip, a miss dropping you back; down off a top with a jump south. */
+console.log('climbing (v2.3.3994)');
+{
+  const { PLAN5 } = await import('../../public/tools/world/plan.js');
+  const { riseMessage } = await import('../../public/tools/world/core/rises.js');
+  const CL = await import('../../src/game/climb.js');
+  const J = await import('../../src/game/jump.js');
+  const R = riseMessage(PLAN5);
+  const [T, Lg] = R.list, h = CL.FEET_HS;
+  const midX = (T.climb.x0 + T.climb.x1) / 2;
+  ok('a cell\'s kind at a point: the terrace\'s face, its vines, its rim, its top; the ledge\'s face and chest; nothing off them',
+    CL.riseCellAt(R, T.face.x0 + 5, T.face.y1 - 5).kind === 'face' && CL.riseCellAt(R, midX, T.face.y0 + 30).kind === 'climb'
+      && CL.riseCellAt(R, T.box.x0 + 3, T.box.y0 + 100).kind === 'rim' && CL.riseCellAt(R, T.box.x0 + 40, T.face.y0 - 10).kind === 'top'
+      && CL.riseCellAt(R, Lg.face.x0 + 30, Lg.face.y0 + 60).r.id === 'lagoon-ledge' && CL.riseCellAt(R, Lg.chest.x0 + 5, Lg.chest.y0 + 5).kind === 'chest'
+      && CL.riseCellAt(R, T.box.x0 - 30, T.box.y0) === null && CL.riseShuts('face') && CL.riseShuts('rim') && CL.riseShuts('climb') && CL.riseShuts('chest') && !CL.riseShuts('top'));
+  const foot = T.face.y1 + h + 1;
+  ok('at the vines\' foot pushing north (or their top pushing south) a climb starts; not pushing sideways, nor off the strip, nor at a bare face',
+    CL.climbStartAt(R, midX, foot, 0, -1) === T && CL.climbStartAt(R, midX - 20, foot, 0.2, -0.9) === T
+      && CL.climbStartAt(R, midX, foot, 1, -0.5) === null && CL.climbStartAt(R, midX, foot, 0, 1) === null
+      && CL.climbStartAt(R, midX, T.face.y0 - h - 1, 0, 1) === T && CL.climbStartAt(R, midX, T.face.y0 - h - 1, 0, -1) === null
+      && CL.climbStartAt(R, T.climb.x1 + 2, foot, 0, -1) === null && CL.climbStartAt(R, T.face.x0 + 30, foot, 0, -1) === null);
+  ok('climbing is straight up or down, at 0.4 of the walk; out at the top on it, out at the foot off it',
+    CL.CLIMB_MULT === 0.4 && CL.climbWay(-1) === -1 && CL.climbWay(0.9) === 1 && CL.climbWay(0.1) === 0
+      && CL.climbOut(T, T.face.y0 - h) === 'top' && CL.climbOut(T, T.face.y1 + h) === 'foot' && CL.climbOut(T, (T.face.y0 + T.face.y1) / 2) === null);
+  const seq = []; for (let d = 0; d < CL.CLIMB_PX * CL.CLIMB_FRAMES.length * 2; d += CL.CLIMB_PX) seq.push(CL.climbFrame(d, 23));
+  ok('the climb is drawn in the jog\'s own back-facing frames (north, 23 of them), one every CLIMB_PX px climbed, the cycle repeating',
+    seq.every((f) => f >= 0 && f < 23) && new Set(seq).size === CL.CLIMB_FRAMES.length && seq[0] === seq[CL.CLIMB_FRAMES.length] && CL.climbFrame(0, 23) === CL.climbFrame(CL.CLIMB_PX - 0.1, 23));
+  /* a jump at the foot going north: entered once high enough; not sideways, not low */
+  const t0 = 1000, j = { t0, dur: J.JUMP_MS, peak: J.JUMP_PEAK };
+  const low = t0 + 10, high = t0 + J.JUMP_MS / 2;
+  ok('a jump enters a face going north once high enough (the low props\' own threshold), never sideways or still low; going south off its top it drops',
+    CL.faceEntry(T, j, high, midX, foot, 0, -2) === 'N' && CL.faceEntry(T, j, low, midX, foot, 0, -2) === null && CL.faceEntry(T, j, high, midX, foot, 2, -0.3) === null
+      && CL.faceEntry(T, j, high, midX, T.face.y0 - h, 0, 2) === 'S' && CL.faceEntry(T, j, high, midX, T.face.y0 - h, 0, -2) === null && CL.faceEntry(T, null, high, midX, foot, 0, -2) === null);
+  ok('judged where it comes down: on the terrace\'s top, up; in its face, back; the ledge\'s top without a flip, back, with one, up; down, to the foot',
+    CL.faceLanding(T, 'N', false, midX, T.face.y0 - h - 1) === 'top' && CL.faceLanding(T, 'N', false, midX, T.face.y0 + 10) === 'back'
+      && CL.faceLanding(Lg, 'N', false, Lg.face.x0 + 50, Lg.face.y0 - h - 1) === 'back' && CL.faceLanding(Lg, 'N', true, Lg.face.x0 + 50, Lg.face.y0 - h - 1) === 'top'
+      && CL.faceLanding(Lg, 'S', false, Lg.face.x0 + 50, Lg.face.y0 + 30) === 'foot' && CL.faceLanding(T, 'N', false, midX, foot + 40) === 'clear');
+  /* the crossing, simulated frame by frame with the jump's own rules: feet at
+     the face's foot, the stick held north, the walk at `v` px a ms; entered
+     when the face lets it (faceEntry), the flip pressed at phase `flipAt` */
+  const cross = (r, v, flipAt, sprint) => {
+    let jj = { t0: 0, dur: J.JUMP_MS, peak: J.JUMP_PEAK, dx: 0, dy: -1, sprint: !!sprint }, flipped = false, inFace = false;
+    let fy = r.face.y1 + h + 0.01;
+    const fx = (r.face.x0 + r.face.x1) / 2;
+    for (let t = 0; t < 3000; t += 16) {
+      if (!J.jumpActive(jj, t)) break;
+      if (!flipped && flipAt != null && J.jumpPhase(jj, t) >= flipAt) { const f = J.startFlip(jj, t, { sprint }); if (f) { jj = f; flipped = true; } }
+      const step = v * 16 * J.flipBoost(jj, t);
+      const ny = fy - step;
+      if (!inFace && ny - h < r.face.y1) {
+        if (CL.faceEntry(r, jj, t, fx, fy, 0, -step)) inFace = true;
+        else continue;   /* the face stops the feet, as the walk test does */
+      }
+      fy = ny;
+      if (fy + h < r.face.y0 - 60) fy = r.face.y0 - 60 - h;   /* the back rim stops them */
+    }
+    return inFace ? CL.faceLanding(r, 'N', flipped, fx, fy) : 'never';
+  };
+  const WALK = 2.5 * 60 / 1000, SPR = WALK * 1.33;
+  const res = { walk72: cross(T, WALK), sprint72: cross(T, SPR), walk144: cross(Lg, WALK), sprint144: cross(Lg, SPR),
+    flipWalk: cross(Lg, WALK, J.FLIP_SWEET), flipSprint: cross(Lg, SPR, J.FLIP_SWEET, true), early: cross(Lg, WALK, 0.2), earlySprint: cross(Lg, SPR, 0.2, true),
+    fastJump: cross(Lg, WALK * 2.2, null, true) };
+  ok('the terrace\'s 72 px: a walking jump falls short and drops back, a sprinting one gets up',
+    res.walk72 === 'back' && res.sprint72 === 'top', res);
+  ok('the ledge\'s 144 px: no plain jump, walking, sprinting or however fast; a flip at the sweet spot, walking or sprinting; never an early flip',
+    res.walk144 === 'back' && res.sprint144 === 'back' && res.fastJump === 'back' && res.flipWalk === 'top' && res.flipSprint === 'top' && res.early === 'back' && res.earlySprint === 'back', res);
+  /* the take-off is where a miss drops you back */
+  const S = { player: { x: 11, y: 22 }, rpg: { hp: 10 } };
+  const jt = J.startJump(S, 5000, 0, -1), ft = J.startFlip(jt, 5000 + J.JUMP_MS * 0.8, {});
+  ok('a jump keeps where it took off, and its flip carries it on; a drop back is a short fall there',
+    jt.x0 === 11 && jt.y0 === 22 && ft && ft.x0 === 11 && ft.y0 === 22 && (() => {
+      const d = CL.startDrop(100, 0, 11, 22, 0, 'back');
+      const a = CL.dropAt(d, 0), m = CL.dropAt(d, d.dur / 2), e = CL.dropAt(d, d.dur + 5);
+      return a.x === 100 && !a.done && m.x < 100 && m.x > 11 && e.done && e.x === 11 && e.y === 22 && d.dur >= CL.DROP_MIN_MS;
+    })());
+  ok('no jump on the vines or while a drop carries you',
+    J.jumpRefusal({ player: {}, rpg: { hp: 5 }, _climb: {} }, 1, {}) === 'climbing' && J.jumpRefusal({ player: {}, rpg: { hp: 5 }, _climbDrop: {} }, 1, {}) === 'climbing');
+  ok('the chest opens from its front, on the ledge, within reach -- empty for now, saying the reward comes next',
+    CL.atChest(Lg, (Lg.chest.x0 + Lg.chest.x1) / 2, Lg.chest.y1 + h + 4) && !CL.atChest(Lg, (Lg.chest.x0 + Lg.chest.x1) / 2, Lg.chest.y1 + h + 60) && !CL.atChest(T, 0, 0)
+      && /reward comes next/.test(CL.CHEST_NOTE));
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

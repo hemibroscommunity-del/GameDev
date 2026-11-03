@@ -396,6 +396,7 @@ import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: 
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
+import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
 import { interactKind, talkBeforeDoor } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.3868: + a townsperson in range before a door */
@@ -4632,6 +4633,9 @@ export var BroTown = function BroTown(_ref0) {
              52 px short of the shore.  The never-trap rule below reads your
              boots too, so it keeps meaning "already standing in it". */
           var _gfd = _wgrid.atFeet ? playerGroundDy(S.currentZone, px, py) : 0;
+          /* v2.3.3994: a rise's face, rim, vines or chest -- or the way a
+             climb or a jump has through one (game/climbActions.js) */
+          if (_gfd && S.currentZone === 'wheel') { var _rsd = riseSolidAt(S, px, py + _gfd, _gfd); if (_rsd !== null) return _rsd; }
           var _gx = Math.floor(px * _gw / _mw);
           var _gy = Math.floor((py + _gfd) * _gh / _mh);
           /* boots past the world's last row: the sea's edge, read as its last row */
@@ -5585,6 +5589,17 @@ export var BroTown = function BroTown(_ref0) {
            the better its timing the more (game/jump.js flipBoost; the owner's
            "time it right to get maximum horizontal distance") */
         finalSpd *= flipBoost(S._jump, Date.now());
+        /* ═══ v2.3.3994: ON THE VINES ═══
+           At a strip of vines' foot, pushing north, you climb: straight up
+           and down at 0.4 of the walk, no weapon (game/climbActions.js); and
+           a jump that missed a face drops you back, the walk standing still */
+        if (S.currentZone === 'wheel') {
+          if (!_playerDead && !S._climb && climbBegin(S, dx, dy, playerGroundDy(S.currentZone, P.x, P.y))) dropShield(S, 'climb');
+          if (S._climb) S.autoAttack = false;   /* your hands are on the rock */
+          var _clS = climbSteer(S, dx, dy);
+          dx = _clS[0]; dy = _clS[1];
+          finalSpd *= climbSpeed(S, sprintMult(S));
+        }
         var _step = finalSpd * (S._dtScale || 1);
         var nx = P.x + dx * _step;
         var ny = P.y + dy * _step;
@@ -5771,6 +5786,14 @@ export var BroTown = function BroTown(_ref0) {
             if (!isSolid(gx - hs, P.y - hs) && !isSolid(gx + hs, P.y + hs) && !_monBlock(P.x, P.y, gx, P.y) && !_nodeBlock(P.x, P.y, gx, P.y) && !propFeetBlocked(P.x, P.y, gx, P.y, hs)) P.x = gx;
             if (!isSolid(P.x - hs, gy - hs) && !isSolid(P.x + hs, gy + hs) && !_monBlock(P.x, P.y, P.x, gy) && !_nodeBlock(P.x, P.y, P.x, gy) && !propFeetBlocked(P.x, P.y, P.x, gy, hs)) P.y = gy;
           }
+        }
+        /* v2.3.3994: the climb's end, a face-crossing jump's landing (a miss
+           drops you back), a drop under way, the chest (game/climbActions.js) */
+        if (S.currentZone === 'wheel') {
+          climbTick(S, Date.now(), playerGroundDy(S.currentZone, P.x, P.y), function (x, y, t) { pushDmgPopup(S, x, y, t, '#f3d77a', { ttl: 2800 }); });
+        } else if (S._climb || S._climbDrop || S._riseCross || S._nearChest) {
+          /* off the Wheel (a door, a dungeon): nothing of a climb comes along */
+          S._climb = null; S._climbDrop = null; S._riseCross = null; S._nearChest = null;
         }
         /* ═══ v2.3.3748: A BURNING HEAP SETS YOU ON FIRE ═══
            Your boots in a burning piece of a fallen building's heap, on this
