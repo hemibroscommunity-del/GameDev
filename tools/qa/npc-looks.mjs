@@ -70,6 +70,9 @@ async function dress(page, L) {
       beard: call(w.__btSetFacialHair || f.setFacialHair, L.beard), beardColor: call(w.__btSetFacialHairColor, L.beardColor),
       eyewear: call(w.__btSetEyewear || f.setEyewear, L.eyewear), eyes: call(w.__btSetEyeStyle || f.setEyeStyle, L.eyes),
       shirt: call(w.__btSetShirt, L.shirt),
+      /* v2.3.3915: his own hat nudge (NPC_LOOKS `hatDy256`), so the photograph
+         wears the hat where the live figure does (0 puts it back) */
+      hatNudge: call(w.__btHatNudge256, L.hatDy256 || 0),
     };
     /* the pattern before the shirt's colour (the order the dashboard's
        headshot once needed; harmless) */
