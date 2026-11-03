@@ -1011,6 +1011,11 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const clientKinds = m ? (m[1].match(/(\w+)\s*:/g) || []).map((k) => k.replace(/\s*:$/, '')) : [];
   check('telegraph mirror: ...and the parse found something (guard: an empty list matches nothing)',
     clientKinds.length >= 2, clientKinds);
+  /* v2.3.3909: the tables stay the whitelist, but no word is shown from
+     them (the owner: "Remove all text announcing what attacks or things the
+     monsters are doing. It's lame.") */
+  check('telegraph words: no popup shows a monster\'s move (_maLabel / _dbaLabel) any more',
+    !/pushDmgPopup\([^;]*_(ma|dba)Label\b/.test(src), (src.match(/pushDmgPopup\([^;]*_(ma|dba)Label\b[^;]*/g) || []));
   /* v2.3.3621: and the kits by element (the mummies' roar) */
   const serverKinds = [...Object.values(SRV_TELEGRAPH.KITS), ...Object.values(SRV_TELEGRAPH.ELEM_KITS || {})].map((k) => k.kind);
   const missing = serverKinds.filter((k) => !clientKinds.includes(k));

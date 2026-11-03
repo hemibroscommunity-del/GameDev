@@ -9,7 +9,9 @@
  *   1. the boss comes: `bn: 3, bs: 0` on the wire, drawn x4.59 a wave slime;
  *   2. hurt far past its first mark (the QA op `hurt`: the real damage path),
  *      it stops at 75%, its bar wearing its three marks;
- *   3. it swells ("BURSTING!"), then goes off: 10 of the Grotto's slimes, it a
+ *   3. it swells (v2.3.3909: with no "BURSTING!" word over it -- the owner:
+ *      "Remove all text announcing what attacks or things the monsters are
+ *      doing"), then goes off: 10 of the Grotto's slimes, it a
  *      step smaller (x2.76), its bar two marks; watched every frame, it does
  *      not arrive again while its new slimes do (v2.3.3558: a re-push is not a
  *      new arrival -- game/monsterCarry.js);
@@ -192,20 +194,24 @@ export async function runAt({ browser, wsPort, webPort, rec }, land) {
     /* the swell (1.6 s) and its warning, watched while the pictures are taken:
        this box takes about a second a picture, so the swell's is asked for at
        once, and lands in it */
+    /* v2.3.3909: the swell is watched for, and every word over it the while:
+       none may name the move */
     let said = [];
     const swellP = poll(async () => {
       const b = await bossNow(boss.id);
-      const w = (await words()).filter((x) => /BURSTING/.test(x));
-      if (w.length) said = w;
-      return b && b.burstUntil > Date.now() && said.length ? b : null;
+      const w = (await words()).filter((x) => /BURST/i.test(x));
+      if (w.length) said = said.concat(w);
+      return b && b.burstUntil > Date.now() ? b : null;
     }, 4000, 100);
     if (i === 0) {
       await shot('swell');
       await shot('burst');
     }
     const swell = await swellP;
-    rec.ok(`${3 + Math.min(i, 2)}: split ${i + 1} -- it swells first ("${said[0] || '-'}" over it, its swell under way)`,
-      !!swell && said.length > 0, { swell, said, ms: Date.now() - tTell });
+    /* a moment more of the swell, for a word that comes late */
+    if (swell) { await P.page.waitForTimeout(400); said = said.concat((await words()).filter((x) => /BURST/i.test(x))); }
+    rec.ok(`${3 + Math.min(i, 2)}: split ${i + 1} -- it swells first, its swell under way, with no word over it (${said.length ? '"' + said[0] + '"' : 'none'})`,
+      !!swell && said.length === 0, { swell, said, ms: Date.now() - tTell });
     const tSplit = Date.now();
     const after = await poll(async () => { const b = await bossNow(boss.id); return b && b.bs === i + 1 ? b : null; }, 6000, 120);
     if (i === 0) await shot('split1');
