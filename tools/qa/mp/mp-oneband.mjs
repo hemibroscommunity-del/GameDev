@@ -240,10 +240,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const warns = [];
     P.page.on('console', (m) => { if (m.type() === 'warning' && m.text().includes('[canvas-watchdog]')) warns.push(m.text()); });
     try {
-      const look = async () => { const g = await read(P); return { orient: g.o.orient, dashH: g.o.dashH, band: g.o.band, canvas: g.o.canvas, cols: g.o.layout && g.o.layout.cols, rows: g.o.layout && g.o.layout.rows }; };
+      const look = async () => {
+        const g = await read(P);
+        const css = await P.page.evaluate(() => { const d = document.querySelector('.bt-dashboard'); return d ? { inline: d.style.height, computed: getComputedStyle(d).height, transition: getComputedStyle(d).transition } : null; });
+        return { orient: g.o.orient, dashH: g.o.dashH, band: g.o.band, canvas: g.o.canvas, cols: g.o.layout && g.o.layout.cols, rows: g.o.layout && g.o.layout.rows, mode: g.mode, css };
+      };
       const up0 = await look();
       await P.page.setViewportSize({ width: 844, height: 390 });
-      await P.page.waitForTimeout(1500);
+      await P.page.waitForTimeout(2500);
       const side = await look();
       await P.page.setViewportSize({ width: 390, height: 844 });
       await P.page.waitForTimeout(1500);

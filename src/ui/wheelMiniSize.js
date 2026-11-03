@@ -19,7 +19,12 @@
  * deskWideActive() asks a media query (a new MediaQueryList a call), so the
  * answer is kept for half a second: the minimap asks every frame.
  */
-import { deskBigActive } from './deskWide.js';   /* v2.3.4092: either computer layout (the band, the default, or the side column) */
+/* v2.3.4092: the side column's only (deskWideActive), not the band's: under
+   the one band (the default) the world above the band is a third shorter
+   (480 px at 1280 x 720), and a 264 px minimap and its plate took two thirds
+   of its height and lay over the skateboard's button (mp-oneband's picture).
+   The owner's "double the size" is kept for the old layout, ?oneband=0. */
+import { deskWideActive } from './deskWide.js';
 
 export const WHEEL_MINI_PX = 132;              /* CSS px a side on a phone (the box's own units) */
 export const WHEEL_MINI_DESK_K = 2;            /* ...times this on a computer */
@@ -34,7 +39,7 @@ export function wheelMiniK(now) {
   if (t - _at >= 500 || t < _at) {
     _at = t;
     let on = false;
-    try { on = deskBigActive(); } catch (e) { on = false; }
+    try { on = deskWideActive(); } catch (e) { on = false; }
     _k = on ? WHEEL_MINI_DESK_K : 1;
   }
   return _k;

@@ -6911,6 +6911,14 @@ html.bt-one-band .bt-dashboard{
   right:var(--world-pad-r,0px)!important;
 }
 html.bt-one-band, html.bt-one-band body{background:#070D11}
+/* v2.3.4092: the one band is the default, so what is fixed OUTSIDE the wrap
+   and pinned to the window's left edge moves in with the world, as the
+   sideways layout's own rules do: the player frame (left 8 px: over the bar
+   on a computer and a sideways phone) and, on a computer, the controls' ⌨
+   and its strip (left 52 / 100 px, beside the bell, which rides the wrap) */
+html.bt-one-band .bt-pf{left:calc(max(var(--world-x,0px), var(--world-pad-l,0px)) + 8px)}
+html.bt-one-band .bt-kb-chip:not(.bt-kb-side *){left:calc(var(--world-x,0px) + 52px)}
+html.bt-one-band .bt-kb-hints[data-beside]:not(.bt-kb-side *){left:calc(var(--world-x,0px) + 100px);max-width:min(310px,calc(var(--play-w,100%) - 112px))}
 
 /* ═══ v2.3.2222: THE STAT SCENE — "a preview of what the effect does (exaggerated)" ═══
    One scene per stat in the ℹ️ window (StatDemo.jsx), built from the

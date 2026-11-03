@@ -1,5 +1,11 @@
 # Landscape mode (optional view) — v2.3.2156 groundwork + v2.3.2157 dashboard
 
+> **v2.3.4092: the old layout.** The one band is the default on every device
+> (the owner, 2026-11-03: "Move the left side menu to the bottom of screen on
+> computer and all other devices"; docs/specs/one-band.md). What this spec
+> describes is reached with `?oneband=0` or the Test panel's "Side column (old
+> layout)" row, and tested by `landdash` with `?oneband=0`.
+
 > Owner: "Landscape would be an optional view. You can play in portrait or
 > landscape."
 

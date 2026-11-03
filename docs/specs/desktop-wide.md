@@ -1,5 +1,11 @@
 # A computer plays the sideways layout (v2.3.3687)
 
+> **v2.3.4092: the old layout.** The one band is the default on every device
+> (the owner, 2026-11-03: "Move the left side menu to the bottom of screen on
+> computer and all other devices"; docs/specs/one-band.md). What this spec
+> describes is reached with `?oneband=0` or the Test panel's "Side column (old
+> layout)" row, and tested by `deskwide` with `?oneband=0`.
+
 The owner, 2026-10-28:
 
 > Yes base desktop off the landscape mode but fix the menu sizes. Also find a

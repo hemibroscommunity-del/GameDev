@@ -109,9 +109,10 @@ export function deskBandActive() {
 
 /* v2.3.4092: a computer's window with room, in either layout -- the old side
    column (deskWideActive) or the band (deskBandActive).  For what is a
-   COMPUTER'S SIZE rather than the column's: the doubled minimap, the building
-   windows, the world map's key, the swap hint's key words, the coach card's
-   step aside.  The column's own geometry keeps asking deskWideActive. */
+   COMPUTER'S SIZE rather than the column's: the building windows, the world
+   map's key, the swap hint's key words, the coach card's step aside.  The
+   column's own geometry keeps asking deskWideActive, and so does the doubled
+   minimap (wheelMiniSize.js: the band's world is too short for it). */
 export function deskBigActive() {
   return deskWideActive() || deskBandActive();
 }

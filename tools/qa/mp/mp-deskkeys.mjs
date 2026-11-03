@@ -432,10 +432,14 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
         return { k: m.k, box: m.box, h: m.h, window: m.window, frame: m.frame, mapBottom: m.mapBottom, scale: m.scale, rect: r,
           btn: { l: Math.round(br.left), t: Math.round(br.top), w: Math.round(br.width), h: Math.round(br.height) }, canvasRight: Math.round(cr.right), plate: window.__btWheelPlate || null };
       }, null, { timeout: 30000, polling: 300 }).then((h) => h.jsonValue()).catch(() => null);
-      rec.ok(`8. the minimap is twice as big on a computer: ${mm && mm.box} x ${mm && mm.h} px (k ${mm && mm.k}), ${mm && mm.window} game px across, flush right in the canvas, the world map's button over it (${mm && mm.btn && mm.btn.w} x ${mm && mm.btn && mm.btn.h}), its plate inside it`,
-        !!mm && mm.k === 2 && mm.box === 264 && mm.h === 264 && mm.window === 4800 && mm.frame === 6 && Math.abs(mm.scale - 264 / 4800) < 1e-9
-          && Math.abs(mm.rect.left + mm.rect.w - mm.canvasRight) <= 1 && mm.rect.w === 264 && mm.rect.mark && mm.rect.mark.w === 32
-          && Math.abs(mm.btn.l - mm.rect.left) <= 1 && Math.abs(mm.btn.t - mm.rect.top) <= 1 && mm.btn.w === 264 && mm.btn.h === 264
+      /* v2.3.4092: twice as big in the side column's layout (?oneband=0);
+         under the band (the default) the world is a third shorter and the
+         minimap stays a phone's 132 px (wheelMiniSize.js) */
+      const K = lay.band ? 1 : 2, BOX = 132 * K, WIN = lay.band ? 3200 : 4800;
+      rec.ok(`8. the minimap is ${K === 2 ? 'twice as big on a computer' : 'a phone\'s size under the band'}: ${mm && mm.box} x ${mm && mm.h} px (k ${mm && mm.k}), ${mm && mm.window} game px across, flush right in the canvas, the world map's button over it (${mm && mm.btn && mm.btn.w} x ${mm && mm.btn && mm.btn.h}), its plate inside it`,
+        !!mm && mm.k === K && mm.box === BOX && mm.h === BOX && mm.window === WIN && Math.abs(mm.scale - BOX / WIN) < 1e-9
+          && Math.abs(mm.rect.left + mm.rect.w - mm.canvasRight) <= 1 && mm.rect.w === BOX && mm.rect.mark
+          && Math.abs(mm.btn.l - mm.rect.left) <= 1 && Math.abs(mm.btn.t - mm.rect.top) <= 1 && mm.btn.w === BOX && mm.btn.h === BOX
           && !!mm.plate && mm.plate.top >= mm.rect.top + mm.mapBottom && mm.plate.top + mm.plate.height <= mm.rect.top + mm.rect.h, mm);
       const r = mm && mm.rect;
       mkdirSync(OUT, { recursive: true });

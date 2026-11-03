@@ -151,7 +151,7 @@ Screens: all
 - Many buttons are smaller than Apple's 44 px guide; none is unreachable.
 - The NPC dialogue, the quest offer and the world map are drawn over the whole window on a computer.
 - Building windows on a computer are still the phone's 360 px card, low in the world; they fit, but are small on a big window (docs/specs/desktop-wide.md "Not done").
-- The pages other than the band's resting row (Character, Quests, Life Skills, Codex, More) lay out as on an upright phone on every screen; on a sideways phone they scroll inside a short band (docs/specs/one-band.md "Not done"). The computer's own sizes keyed to the side column (the doubled minimap, 470 px building windows, the map key's zoom) are not on under the band yet.
+- The pages other than the band's resting row (Character, Quests, Life Skills, Codex, More) lay out as on an upright phone on every screen; on a sideways phone they scroll inside a short band (docs/specs/one-band.md "Not done"). On a computer the doubled minimap stays the old layout's (under the band the world is a third shorter and the doubled map lay over the skateboard's button); sideways the right-hand controls reach up over the minimap's lower half (docs/specs/one-band.md "Not done").
 
 Sources: docs/specs/landscape-mode.md, docs/specs/view-cap.md, docs/specs/desktop-wide.md, docs/specs/one-band.md, docs/specs/desktop-keys.md, docs/specs/desktop-harvest.md, docs/specs/reach-every-button.md, docs/specs/ui-review.md, docs/specs/control-redesign.md, docs/TRAPS.md (§175, §210–§214), src/styles/game.css, src/game/worldViewport.js, src/ui/panels/KeyboardHintsPanel.jsx, src/ui/mobile/InstallHint.jsx, src/ui/mobile/dash/SettingsPanel.jsx, CLAUDE.md
 

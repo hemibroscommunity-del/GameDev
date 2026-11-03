@@ -30,6 +30,13 @@ the old `'1'` (a device that tried `?oneband=1`) both read **on**.
 `?oneband=0` and the row store `'0'`; `?oneband=1` and the row again remove
 it.
 
+**A computer's own sizes** (`deskWide.js` `deskBigActive`: the old column
+or the band): the 470 px building windows, the world map key's zoom, the
+swap hint's "Swap weapons: 1 Melee, 2 Bow, 3 Staff" and the coach card's step
+clear of the quest card hold under the band too. The player frame and the
+controls' ⌨ move in with the world past its bars (game.css's
+`html.bt-one-band` block), and the chat bar spans the world, not the bars.
+
 **A computer's controls list.** The keys strip is the side column's, so it
 goes; the nav buttons wear their key caps and I P J L K O and Esc work as
 before. The controls list (`KeyboardHintsPanel`) had come up over the world's
@@ -173,9 +180,15 @@ always had -- and only its size changes:
   the same box here).
 - The UI review's sideways and computer views now show the band (the
   default); it has no state for the old layout (the switch needs a reload).
-- A computer's sizes keyed to the side column (`deskWideActive`) are not on
-  under the band: the doubled minimap (`wheelMiniSize.js`), 470 px building
-  windows, the world map key's zoom, the swap hint's key words.
+- The doubled minimap on a computer (the owner's "double the size",
+  v2.3.3986) stays the old layout's: under the band the world is a third
+  shorter (480 px tall at 1280 x 720) and a 264 px minimap with its plate took
+  two thirds of it and lay over the skateboard's button, so the band keeps a
+  phone's 132 px (`wheelMiniSize.js`). The owner's call whether to bring it
+  back at some window height.
+- On a sideways phone the world above the band is 260 px tall: the right-hand
+  controls column (Sprint, the attack disc) reaches up over the minimap's
+  lower half (`docs/shots/oneband-default-sideways.webp`). Not moved here.
 - Dropping the old layout, if the owner never goes back to it: the side
   column, the dock and the keys strip
   (`landDockFootprint`, `landscapeSheetW`, DashColumns `stacked` / `desk`,
