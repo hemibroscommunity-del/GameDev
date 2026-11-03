@@ -111,6 +111,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { text: c.innerText, reveal: !!c.querySelector('[data-reveal]'), mark: !!c.querySelector('[data-unrevealed-mark]'),
         buttons: [...c.querySelectorAll('button')].map((b) => b.innerText.trim()).filter(Boolean) };
     });
+    /* v2.3.4171: the Gear tab's card has ONE gold button (Reveal here) and
+       the rest behind its "⋯" -- read what that list offers too */
+    if (card && await P.page.$('[data-gear-pane="bro"] [data-gear-act="more"]')) {
+      await P.page.locator('[data-gear-pane="bro"] [data-gear-act="more"]').first().tap();
+      await P.page.waitForTimeout(400);
+      card.more = await P.page.evaluate(() => [...document.querySelectorAll('[data-gear-more-menu] [role="menuitem"]')].map((b) => b.innerText.trim()));
+      card.buttons = card.buttons.concat(card.more);
+      await P.page.evaluate(() => { const b = document.querySelector('[data-gear-more-menu] [data-esc]'); if (b) b.click(); });
+      await P.page.waitForTimeout(300);
+    }
     rec.ok('3. its card says "Rare or better" and offers Reveal and Equip (no Sell, no Drop)',
       !!card && /Rare or better/.test(card.text) && card.reveal && card.mark && card.buttons.includes('Equip') && !card.buttons.includes('Sell') && !card.buttons.includes('Drop'), card);
     await P.page.screenshot({ path: join(OUT, 'revealbag-2-card.png') }).catch(() => {});
@@ -180,7 +190,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.locator(`[data-bag-key="stashWeapon-${wIdx}"]`).first().tap();
       await P.page.waitForTimeout(700);
       const before = await H.readState(P, (S) => (S.rpg.weapon && S.rpg.weapon.gearBase) || null);
-      const eq = P.page.locator('[data-item-card] button, [data-gear-pane="bro"] button', { hasText: 'Equip' }).first();
+      /* v2.3.4171: in the Gear tab a "?" piece's Equip is behind "⋯" (Reveal is the gold one) */
+      if (await P.page.$('[data-gear-pane="bro"] [data-gear-act="more"]')) {
+        await P.page.locator('[data-gear-pane="bro"] [data-gear-act="more"]').first().tap().catch(() => {});
+        await P.page.waitForTimeout(400);
+      }
+      const eq = P.page.locator('[data-item-card] button, [data-gear-pane="bro"] button', { hasText: /^Equip$/ }).first();
       await eq.tap().catch(() => {});
       const spin2 = await H.waitFor(P, () => document.querySelector('[data-tut="reveal-overlay"]') ? true : null, (v) => v, { timeout: 6000, label: 'the overlay (equip)' }).catch(() => null);
       const wornDuring = await H.readState(P, (S) => (S.rpg.weapon && S.rpg.weapon.gearBase) || null);

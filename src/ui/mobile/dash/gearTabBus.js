@@ -27,12 +27,10 @@
  */
 import { gearCell } from './itemCategory.js';
 
-const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, xp: null };
-/* v2.3.4151: the overview's skill tile showing its XP bar (a tap), held here
-   rather than in the component so a re-mount of the band never drops it;
-   back to the tiles after XP_HOLD_MS or a second tap */
-const XP_HOLD_MS = 4000;
-let xpTimer = 0;
+const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, more: false };
+/* v2.3.4171: `more` -- the item card's "⋯" open (its Drop, Pin, Inspect...);
+   it shuts with any new pick, put-down or filter.  (The skill tiles and their
+   XP state left with the tiles, for the Bro page.) */
 const subs = new Set();
 const emit = () => { subs.forEach((fn) => { try { fn(state); } catch (_e) { /* a listener's own problem */ } }); };
 
@@ -48,6 +46,7 @@ export const gearTabBus = {
     state.sel = { cell: id };
     state.filter = { id: c.filter, auto: true };
     state.menu = false;
+    state.more = false;
     emit();
   },
   /** Tap a bag piece: picked (the filter is left as it is). `bag` is its
@@ -56,17 +55,20 @@ export const gearTabBus = {
     if (state.sel && state.sel.bag === bag && (state.sel.obj || null) === (obj || null)) { gearTabBus.deselect(); return; }
     state.sel = { bag, obj: obj || null };
     state.menu = false;
+    state.more = false;
     emit();
   },
   deselect() {
     if (!state.sel && !state.filter.auto) return;
     state.sel = null;
+    state.more = false;
     if (state.filter.auto) state.filter = { id: 'all', auto: false };
     emit();
   },
   /** After an Equip or an Unequip: the automatic filter and the pick go. */
   afterChange() {
     state.sel = null;
+    state.more = false;
     if (state.filter.auto) state.filter = { id: 'all', auto: false };
     state.menu = false;
     emit();
@@ -82,11 +84,10 @@ export const gearTabBus = {
     state.menu = false;
     emit();
   },
-  /** v2.3.4151: a skill tile tapped -- `key` shows its XP bar, null the tiles. */
-  showXp(key) {
-    if (xpTimer) { clearTimeout(xpTimer); xpTimer = 0; }
-    state.xp = key || null;
-    if (state.xp) xpTimer = setTimeout(() => { xpTimer = 0; state.xp = null; emit(); }, XP_HOLD_MS);
+  /** v2.3.4171: the item card's "⋯" (its other actions), open or shut. */
+  setMore(open) {
+    if (state.more === !!open) return;
+    state.more = !!open;
     emit();
   },
   setMenu(open) {
@@ -98,7 +99,7 @@ export const gearTabBus = {
 
 if (typeof window !== 'undefined') {
   window.__btGearTab = {
-    state: () => ({ sel: state.sel ? { cell: state.sel.cell || null, bag: state.sel.bag || null } : null, filter: { ...state.filter }, menu: state.menu, xp: state.xp, view: state.sel ? 'item' : 'overview' }),
+    state: () => ({ sel: state.sel ? { cell: state.sel.cell || null, bag: state.sel.bag || null } : null, filter: { ...state.filter }, menu: state.menu, more: state.more, view: state.sel ? 'item' : 'overview' }),
     bus: gearTabBus,
   };
 }

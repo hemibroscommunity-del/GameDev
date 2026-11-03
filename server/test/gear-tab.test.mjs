@@ -29,8 +29,14 @@
  * Chest Legs Cape / Shield Amulet Gem (2c); the middle is ONE card, no tabs
  * (3a, 3h-3i: a pick shows the item, putting it down the overview); the
  * card's level the worker's (4i), no "Combat Power" (4l); Inspect (a fish)
- * in the one list (5e); no tabs, no figure, the bag three across, the three
- * combat skills in the overview (6).
+ * in the one list (5e); no tabs, the bag three across (6).
+ *
+ * v2.3.4171 (A4, the owner 2026-11-03): the overview is the full-body bro
+ * (CharacterView, the owner's arrangement 1: name and Lv, the figure, the
+ * bars) and the skill tiles left for the Bro page (6a, 6d); the item card's
+ * stars by the game's grade table, "Hardness N/5", the large stat pills with
+ * their pictures and the change, ONE gold button, the rest behind "⋯", no
+ * Sell (6j-6n, 6h).
  */
 import { readFileSync } from 'node:fs';
 
@@ -213,7 +219,7 @@ const TR = await import('../../src/data/trapping.js');
   check('5a the item card draws its buttons from itemActionList and runs them through runItemAction',
     /itemActionList\(target, resolved\)/.test(idp) && /runItemAction\(id, target, resolved/.test(idp));
   check('5b ...with no inline Equip / Drink / Eat of its own left', !/onEquipStashWeapon\s*=|const onDrink\s*=|const onEat\s*=|actions\.drink\s*&&\s*<button/.test(idp));
-  check('5c the Gear tab runs the same two', /itemActionList\(target, card\)/.test(gt) && /runItemAction\(a\.id, target, card/.test(gt));
+  check('5c the Gear tab runs the same two', /itemActionList\(target, card\)/.test(gt) && /runItemAction\(\w\.id, target, card/.test(gt));
   check('5d the list is one function each: itemActionList and runItemAction', (ia.match(/export function itemActionList/g) || []).length === 1 && (ia.match(/export function runItemAction/g) || []).length === 1);
   const { itemActionList } = await import('../../src/ui/mobile/dash/itemActions.js').catch(() => ({}));
   const ins = itemActionList ? itemActionList({ kind: 'inventory', key: 'fish_minnow_albino' }, { actions: { inspect: true, sell: true } }) : null;
@@ -226,15 +232,15 @@ const TR = await import('../../src/data/trapping.js');
 {
   const gt = src('src/ui/mobile/dash/GearTab.jsx');
   const code = gt.replace(/\/\*[\s\S]*?\*\//g, '');
-  check('6a the card has no tabs and no figure (no LOOK / STATS / DETAILS, no CharacterView)',
-    !/data-gear-tab-btn|CharacterView|'LOOK'|'DETAILS'/.test(code));
+  check('6a the card has no tabs (no LOOK / STATS / DETAILS) and ONE view, no ?gearview switch',
+    !/data-gear-tab-btn|'LOOK'|'DETAILS'/.test(code) && !/gearview|GEAR_VIEW/i.test(code));
   check('6b the bag is three across and three down in view (the owner\'s "9 visible slots")',
     /const BAG_COLS = 3;/.test(gt) && /const BAG_ROWS = 3;/.test(gt));
   check('6c one energy bar, the game\'s "EN" (stamina is the energy): HP, MP and stamina, no fourth bar',
-    (code.match(/bar\('(hp|mana|stamina)'/g) || []).length === 3 && !/bar\('energy'|STAM'/.test(code));
-  check('6d the overview\'s three combat skills (Melee, Bow, Magic) as tiles from combatSkill.js, a tap showing the XP bar (gearTabBus.showXp), no Points link or points badge on them; no stat columns',
-    /WEAPON_SKILLS\.map\(\(x\) => x\)|skills\.map\(tile\)/.test(code) && /combatSkillState\(R, s\)/.test(code) && /gearTabBus\.showXp\(s\.key\)/.test(code)
-      && !/heroSectionBus|dashboardPanelBus\.push\('hero'\)|data-gear-skillpill/.test(code) && !/data-gear-body|data-gear-attack|overviewStats/.test(code));
+    /const vitals = \[\s*\['hp',[^\n]*\n\s*\['mana',[^\n]*\n\s*\['stamina',[^\n]*\n\s*\];/.test(code) && !/\['energy'|bar\('energy'|STAM'/.test(code));
+  check('6d the overview is the full-body bro wearing what is equipped (CharacterView, its hand\'s weapon and the shield), name and Lv above, the bars below -- no skill tiles, no XP bar, no headshot',
+    /<CharacterView size=\{size\} weapon=\{handWpn\} shield=\{R\.shield\}/.test(code) && /\{nameLine\(true\)\}\s*\{figure\(/.test(code) && /\{figure\([^)]*\)\}\s*\{bars\(/.test(code)
+      && !/combatSkill|showXp|data-gear-skill|xpLanding|registerXpCard|HeroPortrait|Headshot/.test(code) && !/data-gear-body|data-gear-attack|overviewStats/.test(code));
   /* v2.3.4151: the owner's 11-03 notes -- one size for both grids, the blue link */
   const inv = src('src/ui/mobile/dash/InventoryPanel.jsx');
   check('6e the card\'s blue is the pick ring\'s own colour, one constant (GEAR_SEL_BLUE) both read',
@@ -249,11 +255,29 @@ const TR = await import('../../src/data/trapping.js');
     /data-gear-scroll="" style=\{\{ flex: 1, minHeight: 0, overflow: 'hidden'/.test(code) && /const FONT_MIN = 11;/.test(gt));
 }
 {
+  const gt = src('src/ui/mobile/dash/GearTab.jsx');
+  const code = gt.replace(/\/\*[\s\S]*?\*\//g, '');
+  const C = await import('../../src/ui/mobile/dash/common.js').catch(() => null);
+  check('6j the stars by the game\'s grade table: normal 1, rare 2, elite 3, godly 4, in QUALITY_COLOR',
+    /const STAR_COUNT = \{ normal: 1, rare: 2, elite: 3, godly: 4 \};/.test(gt) && /QUALITY_COLOR\[g\]/.test(code)
+      && (!C || (C.QUALITY_COLOR.rare && C.QUALITY_COLOR.elite && C.QUALITY_COLOR.godly)));
+  check('6k "Hardness N/5" for a weapon (0 to 5), a number line of five marks, no "Copper · Greatsword" subtitle (card.desc is not drawn)',
+    /const HARDNESS_MAX = 5;/.test(gt) && /<span>Hardness<\/span>/.test(code) && /\{n\}\/\{HARDNESS_MAX\}/.test(code) && /i < n \? COL\.accent/.test(code) && !/card\.desc|ct\.desc/.test(code));
+  check('6l the stat pills: two to a row, each its picture (HERO_PILL_ICON) and the change inside (▲ / ▼ / --)',
+    /gridTemplateColumns: '1fr 1fr'/.test(code) && /HERO_PILL_ICON\.dps/.test(code) && /data-gear-diff=/.test(code) && /'▲ '/.test(code) && /'▼ '/.test(code) && /'--'/.test(code));
+  check('6m ONE gold main button; the rest behind "⋯" (data-gear-act="more"), its list closed by a ✕ (data-esc)',
+    (code.match(/footer = goldBtn\(/g) || []).length === 2 && /data-gear-act="more"/.test(code) && /data-gear-more-menu/.test(code) && /data-esc=""/.test(code)
+      && /moreList = list\.filter\(\(x\) => x !== lead\)/.test(code));
+  check('6n no Sell in the Gear tab (the item window keeps its own)',
+    /itemActionList\(target, card\)\.filter\(\(x\) => x\.id !== 'sell'\)/.test(code)
+      && /add\('sell'/.test(src('src/ui/mobile/dash/itemActions.js')));
   const { gearTabBus: B } = await import('../../src/ui/mobile/dash/gearTabBus.js');
-  B.showXp('power'); const x1 = B.state.xp;
-  B.showXp(null); const x2 = B.state.xp;
-  check('6h a skill tile\'s XP bar: shown by a tap, gone by a second', x1 === 'power' && x2 === null, { x1, x2 });
-
+  B.afterChange(); B.tapBag('i-ore_copper', null); B.setMore(true); const m1 = B.state.more;
+  B.tapBag('i-ore_iron', null); const m2 = B.state.more;
+  B.setMore(true); B.deselect(); const m3 = B.state.more;
+  B.tapCell('sword'); B.setMore(true); B.afterChange(); const m4 = B.state.more;
+  check('6h the "⋯" list: opened on purpose, shut by a new pick, a put-down or an Equip; no skill XP state left',
+    m1 === true && m2 === false && m3 === false && m4 === false && !('xp' in B.state) && typeof B.showXp === 'undefined', { m1, m2, m3, m4 });
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
