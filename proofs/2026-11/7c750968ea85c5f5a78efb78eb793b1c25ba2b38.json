@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7c750968ea85c5f5a78efb78eb793b1c25ba2b38",
+  "tree": "9f2ce71dce31d0c4766a020b24a79b48a70f0dbb",
+  "committedAt": "2026-11-02T19:51:49-08:00",
+  "subject": "Merge pull request #1358 from hemibroscommunity-del/claude/quiet-town",
+  "files": 7447,
+  "bytes": 848135054,
+  "listingSha256": "4a320173c00f08a41f965d815f633e8a5658a287866f5a93785fc2164ed41933",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

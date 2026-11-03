@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "68cfb8bbd12eea1dcf9d60f9d29e3c1639deb10c",
+  "tree": "6213ab6d8fd77c5f9173b2d8eff0812419460cca",
+  "committedAt": "2026-11-02T19:51:53-08:00",
+  "subject": "Merge pull request #1392 from hemibroscommunity-del/claude/map-pins-two",
+  "files": 7449,
+  "bytes": 848193364,
+  "listingSha256": "231b45b316225fe49ed41777d90bf6f486850382c99cd8da852fe16506e1abfc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

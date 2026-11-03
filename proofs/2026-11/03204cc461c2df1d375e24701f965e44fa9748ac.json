@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "03204cc461c2df1d375e24701f965e44fa9748ac",
+  "tree": "6abc07709810ecf20b32ac21a8260312db64dd1f",
+  "committedAt": "2026-11-02T19:51:45-08:00",
+  "subject": "Merge pull request #1370 from hemibroscommunity-del/claude/xp-pop",
+  "files": 7443,
+  "bytes": 848121912,
+  "listingSha256": "857db20cd908f48101c584c18ffe24769fa6235bf83fdb370a8c1ad3d48f63d9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
