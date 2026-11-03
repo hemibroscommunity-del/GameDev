@@ -23,7 +23,7 @@ import { WEAPON_STASH_MAX } from '../../../data/gameSystems.js';
 import { gemCutKey, gemIcon, gemElementName } from '@/data/gems.js';
 import { coinArtFor } from '@/game/coinArt.js';
 
-/* ═══ v2.3.4020: THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR, SIDE BY SIDE ═══
+/* ═══ v2.3.4022: THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR, SIDE BY SIDE ═══
  *
  * The owner's design (2026-11-02): three panels, "inventory on left with
  * filter on top, character in the middle with tabs that can change between
@@ -147,7 +147,7 @@ function cellContent(R, id, slots) {
       rows: [] };
   }
   if (id === 'amulet') {
-    /* v2.3.4020: NO Unequip -- the worker's unequip_request for the amulet
+    /* v2.3.4022: NO Unequip -- the worker's unequip_request for the amulet
        slot nulls it with no bag to put it in (gear.js _handleUnequipRequest:
        "armor/shield/amulet just null out"), so the button would destroy it */
     const card = getEquipContribs(R).cards.amulet;
