@@ -132,7 +132,7 @@ const peer = (S, id, x, y, extra) => { S.others[id] = Object.assign({ id, name: 
   check('4a one dancer: no dance-off', !ace.chatBubble);
   peer(S, 'Rival', 40, -150, { _po: 'robot', _poAt: T0 });
   updateTownsfolkReactions(S, T0 + 100);
-  /* v2.3.3999: plainly, who he thinks will win (no betting odds) */
+  /* v2.3.4030: plainly, who he thinks will win (no betting odds) */
   check('4b two dancers: he calls a dance-off on one of them', !!ace.chatBubble && new RegExp('^Dance-off! I think (Mover|Rival) (' + REACT_LINES.ace.join('|') + ')! Who wants to join\\?$').test(ace.chatBubble.text), ace.chatBubble);
   const t = ace.chatBubble.ts;
   updateTownsfolkReactions(S, T0 + 2000);

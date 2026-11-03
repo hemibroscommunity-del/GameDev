@@ -1,4 +1,4 @@
-# Every townsperson speaks plainly (v2.3.3999)
+# Every townsperson speaks plainly (v2.3.4030)
 
 The owner: "Just make the characters (all of them all dialog) a simple and
 easy to understand personality and directions. No cryptic jokes or anything
