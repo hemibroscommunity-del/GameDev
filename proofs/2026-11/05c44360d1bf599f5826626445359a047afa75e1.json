@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "05c44360d1bf599f5826626445359a047afa75e1",
+  "tree": "b998613fd4e25ed85c75596aac587bb5d4770457",
+  "committedAt": "2026-11-02T18:40:23-08:00",
+  "subject": "Merge pull request #1372 from hemibroscommunity-del/claude/drop-grades",
+  "files": 7377,
+  "bytes": 844308173,
+  "listingSha256": "8e293788cc4974dbab4ed1d3b328cdd685f27c3020d78b554e33a657f0eb389b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

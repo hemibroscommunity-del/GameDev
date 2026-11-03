@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bc8f08583d7c20f66f00f9d002ce54c4de3cf5d3",
+  "tree": "7c339c1c7b4420e93ec5b87d972e07b2087960ce",
+  "committedAt": "2026-11-02T18:40:49-08:00",
+  "subject": "Merge pull request #1379 from hemibroscommunity-del/claude/guide-arrow",
+  "files": 7383,
+  "bytes": 844371521,
+  "listingSha256": "55c66de4042c69796c9a2bbd64c78d4ebf586bafc7eacfd3b1a5de59a473e693",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
