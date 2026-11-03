@@ -31,7 +31,7 @@
  * card's level the worker's (4i), no "Combat Power" (4l); Inspect (a fish)
  * in the one list (5e); no tabs, the bag three across (6).
  *
- * v2.3.4171 (A4, the owner 2026-11-03): the overview is the full-body bro
+ * v2.3.4181 (A4, the owner 2026-11-03): the overview is the full-body bro
  * (CharacterView, the owner's arrangement 1: name and Lv, the figure, the
  * bars) and the skill tiles left for the Bro page (6a, 6d); the item card's
  * stars by the game's grade table, "Hardness N/5", the large stat pills with

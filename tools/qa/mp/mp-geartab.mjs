@@ -4,7 +4,7 @@
  * slots a row, nine in view (bigger than 34 px), the coins beside "All Items";
  * the middle ONE card, no tabs; "Equipped" over Sword Bow Staff / Chest Legs
  * Cape / Shield Amulet Gem.
- * v2.3.4171 (A4): the card at rest is the full-body bro (CharacterView: a
+ * v2.3.4181 (A4): the card at rest is the full-body bro (CharacterView: a
  * canvas wearing what is equipped), "<name> Lv N" above, the HP, MP and EN
  * bars below (the owner's arrangement 1), no skill tiles; a pick's card the
  * framed picture, the name in its grade's colour, the grade's stars,
@@ -104,6 +104,8 @@ const look = (P) => P.page.evaluate(() => {
     pillBox: vis(q('[data-gear-filter]')),
     eqHead: (q('[data-gear-eqhead]') || {}).textContent || null,
     qty: (q('[data-gear-qty]') || { getAttribute: () => null }).getAttribute('data-gear-qty'),
+    /* v2.3.4181: "Qty 12" was clipped to "Qty 1" beside the star -- the count whole, inside its row */
+    qtyWhole: (() => { const e = q('[data-gear-qty]'); if (!e) return null; const r = e.getBoundingClientRect(), p = e.parentElement.getBoundingClientRect(); return r.right <= p.right + 0.5 && e.textContent === 'Qty ' + e.getAttribute('data-gear-qty'); })(),
     art: !!q('[data-gear-art] img'),
     figure: !!q('[data-gear-pane="bro"] canvas'),
     view: (q('[data-gear-pane="bro"]') || { getAttribute: () => null }).getAttribute('data-gear-view'),
@@ -118,10 +120,10 @@ const look = (P) => P.page.evaluate(() => {
       const lefts = new Set(all.map((r) => Math.round(r.left)));
       return { n: all.length, empties: g.querySelectorAll('[data-gear-slot-empty]').length, cols: lefts.size, minW: Math.round(Math.min(...all.map((r) => r.width))), minH: Math.round(Math.min(...all.map((r) => r.height))), inView: inView.length };
     })(),
-    /* v2.3.4171: no weapon bar in the tab any more (the keys 1 2 3 are the
+    /* v2.3.4181: no weapon bar in the tab any more (the keys 1 2 3 are the
        computer's) */
     bar: [...document.querySelectorAll('[data-gear-tab] [data-weapon-bar] [data-weapon-slot]')].map((b) => b.getAttribute('data-weapon-slot')),
-    /* v2.3.4171: the overview's bro, the item card's parts */
+    /* v2.3.4181: the overview's bro, the item card's parts */
     fig: (() => {
       const f = q('[data-gear-figure]');
       if (!f) return null;
@@ -185,7 +187,7 @@ async function seed(P, wsPort, rec, tag) {
   }
   await H.devOp(wsPort, 'kit', id, { what: 'shield' }).catch(() => null);
   await H.grant(wsPort, id, 'item', { invKey: 'fish_minnow', count: 2 }).catch(() => null);
-  await H.grant(wsPort, id, 'item', { invKey: 'ore_copper_ore', count: 3 }).catch(() => null);   /* v2.3.4171: a material's card */
+  await H.grant(wsPort, id, 'item', { invKey: 'ore_copper_ore', count: 3 }).catch(() => null);   /* v2.3.4181: a material's card */
   await P.page.waitForTimeout(2500);
   const r = await rpgOf(P);
   rec.ok(`[${tag}] seeded: a greatsword in hand, a bow and a staff on, a spare greatsword in the bag`,
@@ -255,7 +257,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('[390x844] the overview: "<name> Lv N", the HP, MP and EN bars (one energy bar: stamina is the energy), no stat columns, no "Combat Power"',
         s1.who === 'Geary' && Number(s1.level) >= 1 && s1.bars.join() === 'hp,mana,stamina' && !s1.columns && !s1.power,
         { who: s1.who, level: s1.level, bars: s1.bars, columns: s1.columns, power: s1.power });
-      /* v2.3.4171: the owner's arrangement 1 -- name and Lv above, the bro
+      /* v2.3.4181: the owner's arrangement 1 -- name and Lv above, the bro
          centred and drawn (a canvas), the bars below; no skill tiles, no
          headshot */
       rec.ok('[390x844] the overview is the full-body bro: a drawn figure (CharacterView\'s canvas, 60 px or more) centred, the name and Lv above it, the bars below',
@@ -294,7 +296,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           && !!(await P.page.$('[data-gear-foot] [data-gear-act="equip"]')), s3);
 
       fitOk(rec, '[390x844] a bag sword compared', s3, true);
-      /* v2.3.4171: the owner's item card */
+      /* v2.3.4181: the owner's item card */
       const STAR = { normal: 1, rare: 2, elite: 3, godly: 4 };
       rec.ok('[390x844] the item card: the grade\'s stars (normal 1, rare 2, elite 3, godly 4) in the name\'s colour, "Hardness N/5", no "Copper · Greatsword" subtitle',
         !!s3.stars && s3.stars.n === STAR[s3.stars.grade] && s3.stars.text === '★'.repeat(s3.stars.n)
@@ -371,7 +373,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       fitOk(rec, '[390x844] a material (the fish)', s9, true);
       await tapEl(P, `[data-gear-bag] [data-bag-key="${fishKey}"]`);
       const s10 = await look(P);
-      /* v2.3.4171: a material -- an ore: its picture, name, star, Qty and two
+      /* v2.3.4181: a material -- an ore: its picture, name, star, Qty and two
          lines of what it is for; nothing to do with it here, so no gold
          button, its Drop and Pin behind "⋯" */
       const oreKey0 = s8.bag.find((k) => /^i-ore_/.test(k));
@@ -380,7 +382,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const so = await look(P);
         await P.page.screenshot({ path: `${OUT}/phone-7b-ore.png` });
         rec.ok('[390x844] an ore: its picture, name, one white star, "Qty 3", what it is for (two lines at most), "⋯", no Sell',
-          so.view === 'item' && so.art && !!so.name && !!so.stars && so.stars.n === 1 && so.qty === '3' && !!so.info && so.more && !so.sell, so);
+          so.view === 'item' && so.art && !!so.name && !!so.stars && so.stars.n === 1 && so.qty === '3' && so.qtyWhole === true && !!so.info && so.more && !so.sell, so);
         fitOk(rec, '[390x844] an ore', so, true);
         await tapEl(P, `[data-gear-bag] [data-bag-key="${oreKey0}"]`);
       } else rec.ok('[390x844] the ore granted (guard)', false, s8.bag);
@@ -435,9 +437,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(1500);
       await P.page.evaluate(() => { try { window.__broDashPanelBus.open('dashboard'); } catch (e) { /* no sheet */ } });
       await P.page.waitForTimeout(1500);
-      const l1 = await look(P);
+      /* v2.3.4181: the band settles after it opens (PR #1386's grip): read
+         it once its squares stop changing size, not mid-slide */
+      let l1 = await look(P);
+      for (let i = 0; i < 10; i++) {
+        await P.page.waitForTimeout(500);
+        const again = await look(P);
+        const same = again.sizes && l1.sizes && again.sizes.bag === l1.sizes.bag && again.sizes.cell === l1.sizes.cell;
+        l1 = again;
+        if (same) break;
+      }
       await P.page.screenshot({ path: `${OUT}/side-1.png` });
-      /* v2.3.4171: sideways is Lane B's one band now (#1410, the default):
+      /* v2.3.4181: sideways is Lane B's one band now (#1410, the default):
          the short band, the bag | the card | the gear in one row; the old side
          column (?oneband=0) stacks the card under the two grids */
       const shortBand = l1.layout === 'wide' && !!(l1.panes.inv && l1.panes.bro && l1.panes.equip)

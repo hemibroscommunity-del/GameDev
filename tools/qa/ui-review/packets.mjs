@@ -40,7 +40,7 @@ export const PACKETS = [
      (v2.3.4036), a packet of their own: the two dashboard packets are full */
   { slug: 'dashboard-fish', title: 'Dashboard: the rare fish',
     screens: ['fish-weigh', 'fish-board'] },
-  /* v2.3.4151: the Gear tab, the resting dashboard's three panels; v2.3.4171: + the card's "⋯" and a material */
+  /* v2.3.4151: the Gear tab, the resting dashboard's three panels; v2.3.4181: + the card's "⋯" and a material */
   { slug: 'gear-tab', title: 'The Gear tab: your bag, your bro and your gear',
     screens: ['gear-tab', 'gear-slot-selected', 'gear-compare', 'gear-more', 'gear-material', 'gear-filter-open', 'gear-filter-empty'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',

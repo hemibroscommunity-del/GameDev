@@ -853,11 +853,11 @@ export const STATES = [
   {
     /* v2.3.4151: a bag tap no longer opens the card (the Gear tab shows the
        item in its middle panel); the card is where Sell and Drop go on to.
-       v2.3.4171: the Gear tab has no Sell any more (the owner: "Just remove
+       v2.3.4181: the Gear tab has no Sell any more (the owner: "Just remove
        the 'sell' option for now"), so the card's sell sheet is opened the
        way the Gear tab's Drop opens its own sheet: itemDetailBus with a flow */
     id: 'item-card', group: 'Dashboard', title: 'An item card',
-    about: 'The item card on its sell sheet: the item\'s picture and name over the Auction House\'s price sheet (how many, your price, Put it up / Back). The Gear tab offers no Sell (v2.3.4171); the card keeps its own.',
+    about: 'The item card on its sell sheet: the item\'s picture and name over the Auction House\'s price sheet (how many, your price, Put it up / Back). The Gear tab offers no Sell (v2.3.4181); the card keeps its own.',
     run: async ({ P, view }) => {
       const e0 = await openGear(P, view);
       if (e0) return e0;
@@ -879,7 +879,7 @@ export const STATES = [
   /* ═══ v2.3.4151: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
   {
     id: 'gear-tab', group: 'Dashboard', title: 'The Gear tab',
-    about: 'The resting dashboard as the owner\'s second mockup and notes (v2.3.4151, A4 v2.3.4171): the bag ("All Items" with a funnel and a chevron, the coins beside it -- the coin picture with the amount as a count badge, as on a bag slot -- three square slots a row and three rows in view, the rest by scrolling) | ONE card, no tabs, which never scrolls: "<name> Lv N" on top, your bro full-body in the middle wearing what is equipped (the Character page\'s own figure, facing southwest), the HP, MP and EN bars below (stamina is the game\'s energy: one bar) -- no skill tiles (they are on the Bro page) and no headshot | "Equipped" over Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem, its cells the bag\'s squares\' size (the weapon in hand gold). In the sideways one band the three sit in one short row (the figure at the card\'s left, the name and bars beside it); a computer switches weapons with its keys 1 2 3 (no weapon bar in the tab).',
+    about: 'The resting dashboard as the owner\'s second mockup and notes (v2.3.4151, A4 v2.3.4181): the bag ("All Items" with a funnel and a chevron, the coins beside it -- the coin picture with the amount as a count badge, as on a bag slot -- three square slots a row and three rows in view, the rest by scrolling) | ONE card, no tabs, which never scrolls: "<name> Lv N" on top, your bro full-body in the middle wearing what is equipped (the Character page\'s own figure, facing southwest), the HP, MP and EN bars below (stamina is the game\'s energy: one bar) -- no skill tiles (they are on the Bro page) and no headshot | "Equipped" over Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem, its cells the bag\'s squares\' size (the weapon in hand gold). In the sideways one band the three sit in one short row (the figure at the card\'s left, the name and bars beside it); a computer switches weapons with its keys 1 2 3 (no weapon bar in the tab).',
     run: async ({ P, view, wsPort, myId }) => {
       await gearKit(P, wsPort, myId);
       const e = await openGear(P, view);
@@ -909,7 +909,7 @@ export const STATES = [
     },
     after: async ({ P }) => { await gearReset(P); },
   },
-  /* v2.3.4171: the item card's "⋯" and a material's card */
+  /* v2.3.4181: the item card's "⋯" and a material's card */
   {
     id: 'gear-more', group: 'Dashboard', title: 'Gear tab: the card\'s "⋯" open',
     about: 'A spare sword in the bag picked, then the card\'s "⋯" (top-right) tapped: a list over the card, never beside it, of the actions that are not the gold one -- Pin, and Drop or Inspect where the piece has them, never Sell -- with a ✕ (Esc) that shuts it and keeps the pick.',

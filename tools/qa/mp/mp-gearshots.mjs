@@ -3,7 +3,7 @@
  * The owner's second mockup (2026-11-03): the bag (three by three, the coins
  * beside "All Items") | ONE card | "Equipped".  This scenario plays the real
  * tab in the Wheel's BroTown and saves the eight pictures
- * docs/UI-DESIGN-NOTES.md shows (v2.3.4171, A4: the bro preview at rest, the
+ * docs/UI-DESIGN-NOTES.md shows (v2.3.4181, A4: the bro preview at rest, the
  * new item card; the skill tiles' XP picture and the old column's computer
  * picture gone -- the one band is the computer's now):
  *
@@ -43,7 +43,7 @@ async function seed(P, wsPort) {
   if (!hasSword) { await H.equipWeapon(P, 'greatsword', 'weapon', 'melee'); await P.page.waitForTimeout(1500); }
   await P.page.evaluate(() => { const S = window._gameState.current; S.channel.send({ type: 'set_active_slot', payload: { slot: 'melee' } }); S.rpg.activeSlot = 'melee'; S._userCycledSlot = true; });
   await H.devOp(wsPort, 'kit', id, { what: 'shield' }).catch(() => null);
-  /* v2.3.4171: rare armour into the bag (the kit's own pieces, in a grade:
+  /* v2.3.4181: rare armour into the bag (the kit's own pieces, in a grade:
      devtools.js v2.3.3142) -- the item card's two blue stars */
   await H.devOp(wsPort, 'kit', id, { what: 'armor', quality: 'rare' }).catch(() => null);
   for (const [invKey, count] of [['ore_iron_ore', 27], ['ore_copper_ore', 12], ['bar_iron', 5], ['wood_pine_log', 24], ['fish_minnow', 7], ['gem_fire', 1], ['manaShard', 3], ['whetstone', 2]]) {
@@ -68,6 +68,7 @@ async function tapEl(P, sel) {
   const b = await P.page.evaluate((s) => {
     const e = document.querySelector(s);
     if (!e) return null;
+    e.scrollIntoView({ block: 'nearest' });   /* v2.3.4181: a bag piece past the nine in view (the ore, with the rare armour in) */
     const r = e.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }, sel);
@@ -127,7 +128,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       await shot('gear', 'item', 'a bag greatsword compared');
       if (spare) await tapEl(P, `[data-gear-bag] [data-bag-key="${spare}"]`);
-      /* v2.3.4171: a rare chest from the bag, against what is worn; then its
+      /* v2.3.4181: a rare chest from the bag, against what is worn; then its
          "⋯" open */
       const chest = await P.page.evaluate(() => {
         const t = [...document.querySelectorAll('[data-gear-bag] [data-bag-key^="stashArmor-"]')].find((x) => !x.hasAttribute('data-unrevealed'));
