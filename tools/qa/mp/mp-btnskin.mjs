@@ -243,7 +243,8 @@ async function body(P, rec) {
   rec.ok('...its face see-through (~0.45, v2.3.2263) and the sword at full strength',
     A.disc && A.disc.faceOp > 0.2 && A.disc.faceOp < 0.7 && A.disc.knobOp === 1, A.disc && { face: A.disc.faceOp, knob: A.disc.knobOp });
   /* v2.3.3105: the weapon in hand's own bag picture (controlSkin weaponDiscIcon) */
-  rec.ok('...the picture is the sword in hand, and only it', A.disc && /^w-(great-)?sword/.test(A.disc.ricon) && A.disc.iconShown.join() === A.disc.ricon, A.disc && A.disc.iconShown);
+  /* v2.3.3920: an attack wears the aiming reticle; data-ricon still names the weapon in hand */
+  rec.ok('...the sword in hand (data-ricon), and the picture is the aiming reticle, and only it', A.disc && /^w-(great-)?sword/.test(A.disc.ricon) && A.disc.iconShown.join() === 'aim', A.disc && A.disc.iconShown);
   rec.ok('...the label still SAYS "ATTACK" for anything reading the page, and is not shown',
     A.disc && A.disc.label === 'ATTACK' && A.disc.labelOp === 0, A.disc && { label: A.disc.label, op: A.disc.labelOp });
   rec.ok('...the glow is lit round it', A.disc && A.disc.glowOp === 1, A.disc && A.disc.glowOp);
@@ -409,7 +410,7 @@ async function body(P, rec) {
   await P.page.waitForTimeout(400);
   const E = await look(P);
   await shot(P, 'bow');
-  rec.ok('a bow in hand: the attack disc shows the bow', E.disc && E.disc.ricon === 'w-bow' && E.disc.iconShown.join() === 'w-bow', E.disc && E.disc.iconShown);
+  rec.ok('a bow in hand: the attack disc knows the bow and shows the aiming reticle (v2.3.3920)', E.disc && E.disc.ricon === 'w-bow' && E.disc.iconShown.join() === 'aim', E.disc && E.disc.iconShown);
   rec.ok('...and with a tapped lock it is on screen to press (guard for the picture)', E.disc && E.disc.wrapOp === 1, E.disc && E.disc.wrapOp);
 
   /* ── 6: a monster UNDER the disc ghosts it ── */
