@@ -60,9 +60,17 @@ const WATCH = () => {
   for (const k of ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED']) Wrapped[k] = Native[k];
   window.WebSocket = Wrapped;
   window.__fishPopups = [];
+  window.__fishAllPops = [];
+  window.__fishOut = [];
+  const send0 = Native.prototype.send;
+  Native.prototype.send = function (d) {
+    try { if (typeof d === 'string' && /eat_request/.test(d) && window.__fishOut.length < 20) window.__fishOut.push(d.slice(0, 300)); } catch (e) { /* */ }
+    return send0.call(this, d);
+  };
   setInterval(() => {
     const S = window._gameState && window._gameState.current;
     for (const p of (S && S.dmgNumbers) || []) if (p && typeof p.text === 'string' && /albino|LARGE/.test(p.text) && !window.__fishPopups.includes(p.text)) window.__fishPopups.push(p.text);
+    for (const p of (S && S.dmgNumbers) || []) if (p && typeof p.text === 'string' && !window.__fishAllPops.includes(p.text) && window.__fishAllPops.length < 60) window.__fishAllPops.push(p.text);
   }, 50);
 };
 
@@ -120,7 +128,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     stop = H.keepAlive(A);
     const me = await H.readState(A, (S) => S.myId);
     await H.grant(wsPort, me, 'item', { invKey: 'fishing_pole', count: 1 }).catch(() => {});
-    await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
+    await H.devOp(wsPort, 'vitals', me, { heal: true }).catch(() => {});   /* no god mode: it keeps HP full, and a full bar refuses the Eat */
     await A.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
 
     /* ── 1 ── */
@@ -215,12 +223,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cooked = await H.waitFor(A, (S) => ((S.rpg && S.rpg.inventory) || {}).cooked_fish_minnow_albino || 0, (n) => n >= 1, { timeout: 10000, label: 'cooked' }).catch(() => 0);
     rec.ok('6a cooked, it is cooked_fish_minnow_albino', cooked >= 1, { cooked });
     await H.devOp(wsPort, 'vitals', me, { hp: 10 }).catch(() => {});
-    await H.waitFor(A, (S) => S.rpg && S.rpg.hp, (h) => h > 0 && h <= 10, { timeout: 6000, label: 'hurt' }).catch(() => {});
+    const hurt = await H.waitFor(A, (S) => S.rpg && S.rpg.hp, (h) => h > 0 && h <= 10, { timeout: 6000, label: 'hurt' }).catch(() => null);
+    /* the lever's HP is the worker's; a page that has not heard it yet would
+       answer the Eat with "HP full" -- the worker's number, put on the page */
+    if (!hurt) await A.page.evaluate(() => { const S = window._gameState.current; if (S.rpg) S.rpg.hp = 10; });
     await openCard(A, 'cooked_fish_minnow_albino');
-    await H.clickText(A, 'Eat').catch((e) => rec.ok('6b (guard) an Eat on the card', false, String(e)));
+    /* the card's own Eat (a button whose words are exactly "Eat"), pressed
+       for real; the HP the page holds as it is pressed, for the record */
+    const eatAt = await A.page.evaluate(() => {
+      const S = window._gameState.current;
+      if (S.rpg && S.rpg.hp >= (S.rpg.maxHp || 100)) S.rpg.hp = 10;   /* the worker's lever said 10; the regen echo may not have */
+      const b = [...document.querySelectorAll('button')].find((x) => x.textContent.trim() === 'Eat' && x.getBoundingClientRect().width > 0);
+      if (!b) return null;
+      b.setAttribute('data-qa-eat', '1');
+      return { hp: S.rpg && S.rpg.hp };
+    });
+    rec.ok('6b the cooked albino minnow\'s card offers Eat', !!eatAt, eatAt);
+    if (eatAt) await tap(A, '[data-qa-eat="1"]').catch((e) => rec.ok('6b (guard) Eat pressed', false, String(e)));
     const s1 = await H.waitFor(A, (S) => !!(S._achv && S._achv.got && S._achv.got.albino_minnow), (v) => v, { timeout: 12000, label: 'Albino Minnow' })
       .then(() => H.readState(A, (S) => ({ ap: S._achv.ap, rpgAp: S.rpg.achievementPoints }))).catch(() => null);
-    rec.ok(`6c eating it: Albino Minnow, +5 AP (${ap0} -> ${s1 && s1.ap})`, !!s1 && s1.ap === ap0 + 5 && s1.rpgAp === s1.ap, { ap0, s1 });
+    const srv = s1 ? null : await H.adminPlayer(wsPort, me).catch(() => null);
+    const why = s1 ? null : await H.readState(A, (S) => ({ out: window.__fishOut, allPops: window.__fishAllPops.slice(-10), hp: S.rpg && S.rpg.hp, maxHp: S.rpg && S.rpg.maxHp, inv: Object.keys((S.rpg && S.rpg.inventory) || {}).filter((k) => /fish/.test(k)),
+      achv: S._achv ? Object.keys(S._achv.got || {}) : null, pops: (S.dmgNumbers || []).map((p) => p.text).slice(-6) }));
+    rec.ok(`6c eating it: Albino Minnow, +5 AP (${ap0} -> ${s1 && s1.ap})`, !!s1 && s1.ap === ap0 + 5 && s1.rpgAp === s1.ap, { ap0, s1, why, srv: srv && srv.live ? { hp: srv.live.hp, inv: Object.keys(srv.live.inventory || {}).filter((k) => /fish/.test(k)) } : srv && Object.keys(srv) });
     const line = await H.readState(A, (S) => (S.chatLog || []).map((l) => l && l.text).filter((t) => /Achievement: Albino Minnow/.test(t || '')));
     rec.ok(`6d ...said in the chat: "${line[0] || ''}"`, line.length === 1 && /\(\+5 AP\)/.test(line[0]), line);
     await A.page.waitForTimeout(1200);
