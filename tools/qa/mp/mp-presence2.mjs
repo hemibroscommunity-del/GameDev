@@ -220,6 +220,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const c4b = await copyOf(K.id);
   rec.ok(`...their walk reaches the watcher while the map is open (${n4} ticks in 3 s), the copy ending where they stopped`,
     n4 >= 2 && !!c4b && !c4b.away && Math.abs(c4b.x - K.x) <= 2, { n4, c4b, k: K.x });
+  /* v2.3.3898: at home the map opens on the town (never the whole Wheel):
+     zoomed out to its first zoom with its own − button, then one step in,
+     the view this check was written for (the walker far off the town) */
+  for (let i = 0; i < 30; i++) {
+    const z = await W.page.evaluate(() => { const m = window.__btWorldMap || {}; return m.open ? m.zoom : null; });
+    if (z != null && z < 1.01) break;
+    await W.page.evaluate(() => { const b = document.querySelector('[data-world-map-zoom-out]'); if (b) b.click(); });
+    await W.page.waitForTimeout(150);
+  }
   await W.page.evaluate(() => { const b = document.querySelector('[data-world-map-zoom-in]'); if (b) b.click(); });
   await W.page.waitForTimeout(600);
   const wm = await W.page.evaluate(() => { const m = window.__btWorldMap || {}; return { open: m.open, zoom: m.zoom, others: m.more ? m.more.others : null }; });

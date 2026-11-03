@@ -65,7 +65,8 @@ const KINDS = ['snowling', 'gobling', 'mumling', 'pebbling', 'sparklet', 'finlin
 const DUNGEONS = { pebbling: ['the Great Cave', 'Lv 26–30'], sparklet: ['the Foundry Dome', 'Lv 26–30'], mumling: ['the Buried City', 'Lv 41–45'] };
 const SPECIAL_PHASE = { snowling: 'pile', gobling: 'dash', mumling: 'unwrap', pebbling: 'slam', sparklet: 'dash', finling: 'slam', wisplet: 'dash', lurkling: 'slam', dewdrop: 'swell' };
 /* each kind's badge, by its body (src/data/monsterCodex.js CODEX_TYPES) */
-const TYPES = { snowling: 'Humanoid', gobling: 'Humanoid', mumling: 'Humanoid', pebbling: 'Beast', sparklet: 'Ooze', finling: 'Aquatic', wisplet: 'Ooze', lurkling: 'Aquatic', dewdrop: 'Ooze' };
+/* v2.3.3908: the snowman a Beast (the owner: "Change snowman from humanoid to beast") */
+const TYPES = { snowling: 'Beast', gobling: 'Humanoid', mumling: 'Humanoid', pebbling: 'Beast', sparklet: 'Ooze', finling: 'Aquatic', wisplet: 'Ooze', lurkling: 'Aquatic', dewdrop: 'Ooze' };
 
 /* every blob picture made and let go, counted from the page's start */
 const BLOB_INIT = () => {
@@ -364,7 +365,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`...its page keeps the sheet's own height (${sl0.h} px on the list, ${sl.h} on the page) and scrolls in it (${bx && bx.h} px of ${bx && bx.sh}), opened at its top though the list was scrolled down, the Codex's own tabs put away`,
       pg1 && sl0.h > 0 && Math.abs(sl.h - sl0.h) <= 1 && !!bx && bx.sh > bx.h + 100 && bx.top === 0 && bx.seen && !sl.chips, { sl0, sl, bx });
     rec.ok(`...its header says ${sl.level} / ${sl.element} / ${sl.type}, its tabs ${sl.tabs.join(' ')}`,
-      sl.level === 'Lv 1–40' && sl.element === 'Frost' && sl.type === 'Humanoid' && sl.tabs.join(' ') === 'drops* info locations', sl);
+      sl.level === 'Lv 1–40' && sl.element === 'Frost' && sl.type === 'Beast' /* v2.3.3908 */ && sl.tabs.join(' ') === 'drops* info locations', sl);
     /* v2.3.3209: the owner: "Remove 'a random weapon' drop.  All drop chances
        should be a single value" -- their dice, "Each drop's own roll": a
        kill's roll of 1 to 10,000 for it -- and then "Actually 'roll' column
