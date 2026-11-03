@@ -4146,7 +4146,14 @@ html{--bt-hud-top:calc(56px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,0
    The widths grid simply flexes 62px narrower, exactly as it already does when
    the alphabet strip swaps in, so no other row loses anything. */
 .bt-paint-opts{display:flex;gap:5px;min-width:0}
-.bt-paint-opts-main{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+/* v2.3.4167: width:0 -- this row FILLS what the panel gives it and never asks
+   for width of its own.  The panel is shrink-to-fit, and a grid of N equal
+   tracks asks for N times its widest label: with Copy the held row's four
+   (beside Mirror) asked for more than the rest of the panel, so picking a
+   design up widened the panel 11-17 px and slid the drawing under the finger
+   holding it (measured 398 -> 415 at 1000x780, 371 -> 382 at 390x844;
+   mp-shapelayer's "does not resize the panel"). */
+.bt-paint-opts-main{flex:1 1 auto;min-width:0;width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
 .bt-paint-mirror{flex:0 0 auto;width:62px}
 /* ═══ v2.3.1950: THE CONTROLS ARE ONE COLUMN IN BOTH LAYOUTS ═══
    They used to be four separate grid areas in the stacked layout and a flex
@@ -4267,7 +4274,8 @@ html{--bt-hud-top:calc(56px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,0
   font-size:11px;line-height:1.2;letter-spacing:.01em;color:var(--ui-text);
   opacity:.78;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.bt-paint-layer-btns{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+/* v2.3.4167: five -- the four layer steps and Delete (PlayerPaint deleteSel) */
+.bt-paint-layer-btns{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
 .bt-paint-layer-btns .bt-paint-size{padding:4px 2px;min-height:38px}
 .bt-paint-layer-btns .bt-paint-tool-label{font-size:11px;line-height:1.15;text-align:center}
 

@@ -222,6 +222,96 @@ export function designGroups(op) {
   return [...byInk.keys()].sort((p, q) => p - q).map((ink) => ({ ink, cells: byInk.get(ink) }));
 }
 
+/* ═══ v2.3.4167: MORE THAN ONE DESIGN, AND A COPY OF THE ONE YOU HOLD ═══
+   Owner: "I'd like to be able to place more than one design on the character
+   during character creator I wasn't able to put two flames on the pants it
+   would erase the previous one when I tried to add another one. Also a copy
+   button (for selected design) would be great".
+
+   The drawing never had a one-design limit -- a canvas is a list of ops and a
+   design is one op among them (v2.3.2455) -- the PANEL did: applyDesign
+   replaced the whole list.  It appends now, and these two helpers are what the
+   panel's new Copy button and a second copy of the same design need: where a
+   copy lands, and what "recolour" means for an op that brings its own colours.
+
+   Both stay EDITOR-ONLY, like everything in this file: what is saved and worn
+   is still the one 256-character string per canvas the ops replay to, so the
+   world, the wire and the worker see two flames as two flames' worth of pixels
+   and nothing new at all. */
+
+/** The op moved by (dx, dy), or null for a kind with no box to move (a
+ *  freehand stroke, a fill) or a legacy letter that would leave the grid. */
+export function shiftOp(op, dx, dy) {
+  if (!op) return null;
+  const box = (a) => [a[0] + dx, a[1] + dy, a[2] + dx, a[3] + dy];
+  if (op.k === 's' || op.k === 'd') return { ...op, a: box(op.a) };
+  if (op.k === 't') {
+    if (op.a) return { ...op, a: box(op.a), x: op.x + dx, y: op.y + dy };
+    const x = op.x + dx, y = op.y + dy;
+    if (x < 0 || y < 0 || x >= ART_W || y >= ART_H) return null;
+    return { ...op, x, y };
+  }
+  return null;
+}
+
+/* How far a copy steps from what it copies: far enough to SEE that there are
+   two (one cell on a 16-cell grid stretched over a trouser leg is a smudge),
+   near enough that the copy is plainly a copy of THAT one. */
+export const COPY_STEP = 2;
+
+/** Where a copy of `op` lands: COPY_STEP away, in the direction that keeps the
+ *  most of it on the grid (down-right first), never on a spot `taken` says an
+ *  identical op already holds -- so a third tap of Copy, or a third flame from
+ *  the gallery, does not land invisibly on the second.  Each candidate passes
+ *  the same gate a stored op does (sanitizeOp), so a copy can never be an op the
+ *  next page load would refuse.  null when nothing fits. */
+export function copyOfOp(op, taken) {
+  if (!op || !(op.k === 's' || op.k === 't' || op.k === 'd')) return null;
+  const DIRS = [[1, 1], [-1, -1], [1, -1], [-1, 1], [1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (let ring = 1; ring <= 3; ring++) {
+    let best = null, bestN = 0;
+    for (let k = 0; k < DIRS.length; k++) {
+      const c = shiftOp(op, DIRS[k][0] * COPY_STEP * ring, DIRS[k][1] * COPY_STEP * ring);
+      if (!c || !sanitizeOp(c) || (taken && taken(c))) continue;
+      const n = opCells(c, '').length;   /* '' -- only a fill reads the art */
+      if (n > bestN) { best = c; bestN = n; }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+
+/** Same op, same place?  What `taken` above is built from. */
+export function sameOp(p, q) {
+  if (!p || !q || p.k !== q.k) return false;
+  return JSON.stringify(p) === JSON.stringify(q);
+}
+
+/* ═══ v2.3.4167: RECOLOURING A DESIGN SWAPS ITS MAIN COLOUR ═══
+   Every other op is ONE ink, so the palette's recolour (v2.3.2427) is a
+   one-field edit.  A design brings its own colours and `replay` never read an
+   `i` on it, so a palette tap while holding one changed nothing and still cost
+   a tap of Undo.  With two flames on a pair of trousers, telling them apart is
+   the first thing you want, so the tap now repaints the design's MAIN colour:
+   the one it uses most, not counting the near-black outline (index 1) nearly
+   every design is drawn inside (designCatalog: the outline is what keeps a
+   design readable on every skin, so it is the one colour not to take).  A
+   design that is ALL outline (a music note, a tribal band) recolours that.
+   The art string travels in the op (designGroups), so this rewrites the op's
+   own copy and nothing in the catalogue. */
+export function recolorDesign(op, idx) {
+  if (!op || op.k !== 'd' || !isValidArt(op.art)) return op;
+  if (!(idx > 0 && idx < ART_PALETTE.length)) return op;
+  const count = new Array(16).fill(0);
+  for (let n = 0; n < op.art.length; n++) count[parseInt(op.art[n], 16)]++;
+  let main = -1;
+  for (let v = 2; v < ART_PALETTE.length; v++) if (count[v] > 0 && (main < 0 || count[v] > count[main])) main = v;
+  if (main < 0 && count[1] > 0) main = 1;
+  if (main < 0 || main === idx) return op;
+  const from = main.toString(16), to = idx.toString(16);
+  return { ...op, art: op.art.split(from).join(to) };
+}
+
 /** The cells one op paints, given the art built up to just before it.
  *  `art` matters only to the bucket fill, which is the one op whose result
  *  depends on what is already on the grid. */
