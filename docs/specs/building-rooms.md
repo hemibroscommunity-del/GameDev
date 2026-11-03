@@ -136,6 +136,11 @@ him opens it in each of the three ways you talk to anyone:
 - **a tap on the right stick** beside him (the stick asks for the character
   first).
 
+v2.3.4085: only the first is left -- a tap on him, or a click on a computer.
+E and the right stick's tap never talk now (the owner: "Make talking to a npc
+player and entering a building always two different things";
+docs/specs/tap-to-talk.md), so `runTalk` and `_desktopOpenKeeper` are gone.
+
 Each comes after his quest. The Mayor's chain is untouched, and he opens the
 Town Hall only when he has nothing to offer, ask about or pay for. It goes
 through the door's own path (`interactions.js` `enterWheelDoor`): the same
@@ -266,7 +271,8 @@ loading screen**:
     not loaded again on a tab change, each tab reachable by a finger;
   - a shorter phone (the stage held to 22vh), a sideways one (the panel as it
     was), and a picture that fails;
-  - a tap on Blacksmith Bro, and E beside him, open the forge; a tap on Mayor
+  - a tap on Blacksmith Bro, and E beside him, open the forge (v2.3.4085: E
+    beside him opens nothing); a tap on Mayor
     Bro, his quests done, opens the Town Hall;
   - walking away lets the held picture go.
   - Pictures: `tools/qa/mp/out/buildingrooms-*.png`.

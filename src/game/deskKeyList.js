@@ -92,7 +92,15 @@ export const DESK_KEY_ROWS = [
   ['1', 'Melee', null, 'fight'],
   ['2', 'Bow', null, 'fight'],
   ['3', 'Staff', null, 'fight'],
-  ['E', 'Interact', null, 'other'],
+  /* v2.3.4085: the owner, "Make talking to a npc player and entering a
+     building always two different things" -- a click on a person talks, and
+     E never does: it was "Interact", which is what told the owner to press it
+     beside Mayor Bro ("the instructions say 'E' is interact"), and it opened
+     the Town Hall.  E is the door's, the bed's, the chest's and the harvest's:
+     "Use".  'Click' is listed twice, an attack in the fight and a talk here
+     (the rows are told apart by their words: KeyboardHintsPanel's keys) */
+  ['Click', 'Talk', null, 'other'],
+  ['E', 'Use', null, 'other'],
   ['B', 'Emotes', null, 'other'],
   ['C', 'Chat', null, 'other'],
   ['H', 'Hide this', null, 'other'],

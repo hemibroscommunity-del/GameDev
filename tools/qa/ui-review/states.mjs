@@ -485,8 +485,9 @@ export const STATES = [
     run: async ({ P }) => {
       const open = await H.approachNpc(P, 'mayor_bro').catch(() => false);
       if (!open) {
-        /* E (a computer) or the right stick's tap (a phone) */
-        await evalIn(P, () => { const S = window._gameState.current; if (S._interactNow) S._interactNow({ npcFirst: true }); });
+        /* a second tap (a phone) or click (a computer) on him -- v2.3.4085:
+           never E or the right stick's tap, which never talk now */
+        await H.talkToNpc(P, 'mayor_bro').catch(() => false);
         await wait(P, 900);
       }
       if (!(await H.npcDialogueOpen(P))) return 'the dialogue did not open';

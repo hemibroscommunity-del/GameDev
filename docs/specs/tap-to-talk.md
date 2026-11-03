@@ -151,3 +151,58 @@ Test: `mp-mayordoor` step 1:
 
 `mp-questprox` step 6: beside the Mayor in the door's reach, the prompt says
 "Talk to Mayor Bro" and E talks to him.
+
+## v2.3.4085: talking and entering are always two different things
+
+The owner, 2026-11-03: *"Make talking to a npc player and entering a building
+always two different things."*
+
+The three sections above each flipped ONE control between talking and
+entering by who stood where (v2.3.3583 `questWaits`, v2.3.3834
+`doorPromptUp`, v2.3.3868 `talkBeforeDoor`), and on a phone the right stick's
+tap asked for the character first (`npcFirst`, v2.3.3105). Each fixed the
+last one's surprise with a new one. All of them are retired:
+
+- **TALK is a tap (a phone) or a click (a computer) ON the townsperson**
+  (BroTown.jsx `tapNpcAtCss`), from up to 300 px as before. Nothing else
+  talks: not E, not the right stick's tap, not a door's button, not walking up.
+- **ENTER is the door's own control:** its Enter button, E on a computer, the
+  right stick's tap on a phone. None of them ever talks, whoever stands beside
+  the door (Mayor Bro on the Town Hall's steps included).
+- **On a computer the door's Enter button always shows at a door.** v2.3.3868's
+  "E  Talk to <name>" in its place (BroTown `deskTalkPick`,
+  `data-talk-prompt`) is gone.
+- **The right stick never wears the speech bubble.** Beside a townsperson with
+  nothing else to do there, its tap attacks once, as anywhere with nothing to
+  do (v2.3.3712). The bubble's picture is no longer put in the disc or warmed
+  (controlSkin `RDISC_ICONS`); the file stays on disk.
+- **Everything else E and the stick did stays:** a door, a hall, the bed, a
+  rise's chest, a dungeon's mouth, the Workshop, the Pet House, a farm bed, a
+  harvest (desktopControls.js `runInteract`; its `runTalk` is gone).
+- **E beside a townsperson, with nothing else to do there, says how to talk to
+  him:** "Click Mayor Bro to talk" (his plate's name, `deskWords`), the
+  owner's own case ("the instructions say 'E' is interact"). It opens
+  nothing. QA counts it as `S._eTalkHints`.
+- **The keys list** says `Click  Talk` and `E  Use` (it said `E  Interact`,
+  which is what sent the owner to E beside the Mayor; `src/game/deskKeyList.js`).
+- A keeper's building (Blacksmith Bro's forge), Ace's flip, Diego's shop and
+  the Pets page open from a tap or click on him, as before; E beside him no
+  longer opens them.
+
+Unchanged: the tap's reach and answers, walking up opening nothing, `?npcprox`,
+no server change.
+
+Tests:
+- `mp-talkenter` (new): at a door with a townsperson beside it (the General
+  Store and Diego, found at runtime), on a computer the button is the door's
+  Enter, E enters and a click on him talks; beside Mayor Bro E opens nothing
+  and a click talks; on an upright phone the stick wears the door and its tap
+  enters, a tap on him talks; beside the Mayor the stick's tap opens nothing;
+  the stick's picture is never the bubble.
+- `mp-questprox` steps 5 and 6, `mp-mayordoor` step 1, `mp-tapact` step 2,
+  `mp-wheelfolk` step 6, `mp-buildingrooms` (E beside the smith), `mp-folknames`
+  step 3: each now asserts the new rule.
+- The harness's `approachNpc` / `talkToNpc` end with a real tap on him (a
+  phone) or a click (a computer), never `S._interactNow({ npcFirst: true })`.
+- Node: `desk-keys` 1f/1g, `folk-names` 4i, `owner-icons` 7g, `sound-cues`
+  11za, `test-world-core` (the stick's picture and the chain's source).

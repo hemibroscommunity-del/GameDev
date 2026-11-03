@@ -223,6 +223,10 @@ joystick".
   - The stick asks for the character FIRST (`npcFirst`). Ace and Diego stand
     by their doors, and a door has its own Enter button. The E key keeps its
     own order, door first.
+  - v2.3.4085: no longer. Neither the stick nor E ever talks, and the stick
+    never wears the speech bubble (the owner: "Make talking to a npc player
+    and entering a building always two different things";
+    docs/specs/tap-to-talk.md). A tap on the person talks.
   - The three pictures are SVGs in the JUMP arrow's white-and-outline style
     (`public/ui/controls/{talk,door,sleep}.svg`), see-through at 0.7 like it.
   - When the tap ATTACKS, the stick wears the WEAPON IN YOUR HAND, its bag

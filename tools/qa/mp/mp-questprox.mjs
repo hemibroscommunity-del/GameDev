@@ -13,8 +13,12 @@
  *   2. walking through him and on past opens nothing;
  *   3. a tap on him, where a thumb lands, opens his window;
  *   4. closed while standing there, it stays closed;
- *   5. the right stick's tap opens it;
- *   6. E on a keyboard opens it, his quest coming before a door (desktopControls
+ *   5. the right stick's tap opens it (v2.3.4085: NOTHING, and the stick wears
+ *      no speech bubble -- the owner: "Make talking to a npc player and
+ *      entering a building always two different things");
+ *   6. (v2.3.4085: E beside him opens NOTHING, and says how to talk to him;
+ *      the history this step tested follows)
+ *      E on a keyboard opens it, his quest coming before a door (desktopControls
  *      questWaits) -- v2.3.3834: except where the door's prompt is up, where E
  *      does what that prompt says (the judge pass: "E ENTER TOWN HALL" talked
  *      to the Mayor); so 6 finds a spot beside him with no door prompt (E
@@ -120,6 +124,20 @@ const everOpen = async (P, ms) => {
   return seen;
 };
 
+/* v2.3.4085: a real finger's tap on the right stick's zone (mp-tapact's) */
+const tapStick = (P, id) => P.page.evaluate((tid) => {
+  const z = document.querySelector('[data-joyzone="R"]');
+  if (!z) return null;
+  const b = z.getBoundingClientRect();
+  const x = b.left + b.width * 0.7, y = b.top + b.height * 0.3;
+  const el = document.elementFromPoint(x, y) || z;
+  const mk = (t) => new TouchEvent(t, { bubbles: true, cancelable: true,
+    touches: t === 'touchend' ? [] : [new Touch({ identifier: tid, target: el, clientX: x, clientY: y })],
+    changedTouches: [new Touch({ identifier: tid, target: el, clientX: x, clientY: y })] });
+  el.dispatchEvent(mk('touchstart')); el.dispatchEvent(mk('touchend'));
+  return el.tagName;
+}, id);
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Tapper', wsPort, webPort, world: 'wheel',
     viewport: PHONE, touch: true });
@@ -162,64 +180,43 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const opened4 = await everOpen(P, 2500);
   rec.ok('4: closed while standing beside him, it stays closed', !opened4);
 
-  /* ── 5. the right stick's tap ── */
-  const talked5 = await H.talkToNpc(P, 'mayor_bro');
-  await P.page.waitForTimeout(800);
-  rec.ok('5: the right stick\'s tap opens his window', talked5 && await open(), { talked5 });
+  /* ── 5. the right stick's tap: NOTHING (v2.3.4085) ──
+     The owner: "Make talking to a npc player and entering a building always
+     two different things" -- the stick never talks: beside him it wears no
+     speech bubble, and its tap opens no window (it swings, as anywhere with
+     nothing to do).  Until v2.3.4085 it talked to him (npcFirst). */
+  await place(P, 'mayor_bro', 0, 34);
+  await settle(P);
+  const ricons5 = new Set();
+  for (let i = 0; i < 8; i++) {
+    ricons5.add(await P.page.evaluate(() => { const d = document.querySelector('.bt-rjoy-base'); return d ? d.getAttribute('data-ricon') : null; }));
+    await P.page.waitForTimeout(150);
+  }
+  const n5 = await near(P);
+  await tapStick(P, 91);
+  const opened5 = await everOpen(P, 2000);
+  rec.ok('5: beside him the right stick wears no speech bubble, and its tap opens NOTHING (v2.3.4085: the stick never talks)',
+    n5.npc === 'mayor_bro' && !ricons5.has('talk') && !opened5, { near: n5, ricons: [...ricons5], opened: opened5 });
   await close();
   await P.page.waitForTimeout(400);
 
-  /* ── 6. E on a keyboard: his quest before a door, but never over the
-        door's own prompt (v2.3.3834) ── */
-  /* the door's prompt is up where desktopControls' doorPromptUp says so */
-  const promptUp = () => P.page.evaluate(() => {
-    const S = window._gameState && window._gameState.current;
-    return !!(S && (S.nearBuilding != null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)));
-  });
-  const SPOTS = [[0, 34], [70, 10], [-70, 10], [60, 50], [-60, 50], [0, 70], [40, -30], [-40, -30], [0, -40]];
-  let talkAt = null, doorAt = null;
-  for (const [dx, dy] of SPOTS) {
-    await place(P, 'mayor_bro', dx, dy);
-    await P.page.waitForTimeout(350);
-    const n = await near(P), up = await promptUp();
-    if (n.npc === 'mayor_bro' && !up && !talkAt) talkAt = [dx, dy];
-    if (n.npc === 'mayor_bro' && up && !doorAt) doorAt = [dx, dy];
-    if (talkAt && doorAt) break;
-  }
-  if (talkAt) await place(P, 'mayor_bro', talkAt[0], talkAt[1]);
-  await P.page.waitForTimeout(400);
+  /* ── 6. E on a keyboard: NOTHING beside him (v2.3.4085) ──
+     E never talks, whoever stands beside a door (v2.3.3583-v2.3.3868 put him
+     before a door by turns; the owner's rule above ends the order): beside
+     him E opens no window and says how to talk to him ("Click Mayor Bro to
+     talk", desktopControls _eTalkHints); a tap on him (3) is the way. */
+  await place(P, 'mayor_bro', 0, 34);
+  await P.page.waitForTimeout(500);
   const n6 = await near(P);
+  const hints0 = await H.readState(P, (S) => S._eTalkHints || 0);
   await P.page.keyboard.press('e');
-  await P.page.waitForTimeout(900);
-  const t6 = await P.page.evaluate(() => {
-    const n = document.querySelector('.bt-npcdlg-name');
-    return n ? (n.innerText || '').trim() : null;
-  });
-  rec.ok(`6: beside him with no door prompt up (${JSON.stringify(talkAt)}), E opens his window (his quest before a door)`,
-    !!talkAt && await open() && (t6 === null || /mayor/i.test(t6)), { talkAt, near: n6, dialogue: t6 });
+  const opened6 = await everOpen(P, 1800);
+  const hints1 = await H.readState(P, (S) => S._eTalkHints || 0);
+  const b6 = await P.page.evaluate(() => ({ building: !!document.querySelector('[data-building-panel]'), talkPrompt: !!document.querySelector('[data-talk-prompt]') }));
+  rec.ok('6: beside him E opens NOTHING -- no dialogue, no window -- and says how to talk to him instead (v2.3.4085)',
+    n6.npc === 'mayor_bro' && !opened6 && !b6.building && !b6.talkPrompt && hints1 === hints0 + 1, { near: n6, opened: opened6, b6, hints0, hints1 });
   await close();
   await P.page.waitForTimeout(400);
-  if (doorAt) {
-    await place(P, 'mayor_bro', doorAt[0], doorAt[1]);
-    await P.page.waitForTimeout(500);
-    const prompt6 = await P.page.evaluate(() => { const b = document.querySelector('.bt-interact-prompt'); return b ? b.innerText.replace(/\s+/g, ' ').trim() : null; });
-    await P.page.keyboard.press('e');
-    await P.page.waitForTimeout(1200);
-    const b6 = await P.page.evaluate(() => ({ building: !!document.querySelector('[data-building-panel]'), dialogue: !!document.querySelector('.bt-npcdlg-name') }));
-    /* v2.3.3868: the owner's "When you're next to mayor bro ... you would
-       actually open the door": a townsperson in range comes before a door,
-       and the prompt says so */
-    rec.ok(`6: ...and beside him in the door's reach, the prompt reads "${prompt6}" and E talks to him, not the door (v2.3.3868)`,
-      !!prompt6 && /talk to mayor/i.test(prompt6) && b6.dialogue && !b6.building, { doorAt, prompt6, b6 });
-    await close();
-    /* the Town Hall's window shut again, wholly, before Diego's taps */
-    await P.page.evaluate(() => { if (window._uiPanels && window._uiPanels.building) window._uiPanels.building(null); });
-    await P.page.waitForTimeout(800);
-    const shut6 = await P.page.evaluate(() => !document.querySelector('[data-building-panel]'));
-    rec.ok('6: ...and no Town Hall window left open (guard)', shut6, shut6);
-  } else {
-    rec.ok('6: (no spot beside him puts the door\'s prompt up: nothing to choose between)', true, { tried: SPOTS });
-  }
 
   /* ── 7. Diego: beside him no shop; a tap opens it ── */
   const dFar = await place(P, 'shopkeeper_bro', 420, 0);

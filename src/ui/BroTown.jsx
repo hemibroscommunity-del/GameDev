@@ -228,8 +228,11 @@ export var QUEST_MSG_WELCOME_MS = 9000;
    fight or harvest to do: a speech bubble beside a character, a door at a
    building's steps, the moon at the farm's bed, else the jump (tapJump.js
    tapActIcon; desktopControls interactKind, the character before the door).
-   v2.3.3712: ...else null: the tap attacks, and the stick wears the weapon */
-function _tapActIcon(S) { return tapActIcon(interactKind(S, { npcFirst: true })); }
+   v2.3.3712: ...else null: the tap attacks, and the stick wears the weapon.
+   v2.3.4085: never the speech bubble, and no `npcFirst`: the stick never
+   talks (the owner: "Make talking to a npc player and entering a building
+   always two different things"); a tap on the person does */
+function _tapActIcon(S) { return tapActIcon(interactKind(S)); }
 
 /* ═══ v2.3.3871: HIS HAND-IN LINE IS SAID ONCE, IN THE WINDOW THAT PAYS ═══
    The owner, before the showing: "don't make your character click on mayor
@@ -401,7 +404,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { interactKind, talkBeforeDoor } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.3868: + a townsperson in range before a door */
+import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.4085: talkBeforeDoor retired (E never talks) */
 import { jumpAirborne, overLow, jumpLatched, jumpLatch, landedOver, flipBoost } from '@/game/jump.js';         /* v2.3.3017: ...and the low things it clears; v2.3.3499: a crossing once begun stays begun */
 import NmlBadge from '@/ui/mobile/NmlBadge.jsx';   /* v2.3.3107: No man's land's badge (v2.3.3629: beside the minimap's name plate) */
 import DeathCard from '@/ui/mobile/DeathCard.jsx';   /* v2.3.3817: "You died", what killed you, back in BroTown in N */
@@ -903,7 +906,8 @@ var NPC_TAP_REACH = 300;
    finicky right now needing to tap him".  What made the tap finicky then is
    gone -- the right stick's tap talks to whoever stands beside you, its
    picture a speech bubble (v2.3.3105), E does on a keyboard, and a tap on
-   him reaches NPC_PROX_OPEN (v2.3.2305) -- and in the Wheel's BroTown the
+   him reaches NPC_PROX_OPEN (v2.3.2305; v2.3.4085: only the tap, or a click,
+   is left -- the stick and E never talk) -- and in the Wheel's BroTown the
    townsfolk stand where everyone walks: the race's square, the shops' steps.
    Diego's shop with them: walking past him opened his drawer the same way
    (v2.3.2050).  Ace was tap-only already (v2.3.2620).  `?npcprox` brings the
@@ -1650,13 +1654,9 @@ export var BroTown = function BroTown(_ref0) {
     _useState6 = _slicedToArray(_useState5, 2),
     nearBuilding = _useState6[0],
     setNearBuilding = _useState6[1];
-  /* v2.3.3868: on a computer, E would talk (a townsperson in range,
-     desktopControls.js talkBeforeDoor): the townsperson's name, and the
-     door's Enter prompt says "Talk to <name>" meanwhile, so it never says one
-     thing while E does another */
-  var _useDeskTalkPick = useState(null),
-    deskTalkPick = _useDeskTalkPick[0],
-    setDeskTalkPick = _useDeskTalkPick[1];
+  /* v2.3.4085: deskTalkPick (v2.3.3868: the computer's door button swapped
+     for "E  Talk to <name>" while a townsperson stood in range) is gone: E
+     never talks, so a door's Enter button is always the door's */
   var _useState7 = useState(false),
     _useState8 = _slicedToArray(_useState7, 2),
     showPlayerList = _useState8[0],
@@ -6188,7 +6188,9 @@ export var BroTown = function BroTown(_ref0) {
                interactKind, the E key's own chain) */
             /* v2.3.3712: ...and with no act here, no JUMP arrow any more: the
                tap attacks, so the stick wears the weapon in your hand below
-               (the owner: "maybe just an attack in its place") */
+               (the owner: "maybe just an attack in its place")
+               v2.3.4085: and never the speech bubble -- the stick never
+               talks; a tap on the person does */
             else if (_tapFree && (_icAct = _tapActIcon(S))) _icWant = _icAct;
             else {
               /* v2.3.3105: the weapon in that slot, its bag picture -- the
@@ -8398,8 +8400,8 @@ export var BroTown = function BroTown(_ref0) {
       _desktopSleep: _desktopSleep,
       _desktopOpenWorkshop: _desktopOpenWorkshop,
       _desktopGather: _desktopGather,
-      _desktopNpcQuest: _desktopNpcQuest,
-      _desktopOpenKeeper: openKeeper,   /* v2.3.3258: E beside a keeper opens his building */
+      /* v2.3.4085: _desktopNpcQuest and _desktopOpenKeeper (v2.3.3258: E
+         beside a keeper opened his building) left with E's talk */
       _desktopShieldOn: _desktopShieldOn,
       _desktopShieldOff: _desktopShieldOff,
       _desktopCycleWeapon: _desktopCycleWeapon,
@@ -8949,12 +8951,6 @@ export var BroTown = function BroTown(_ref0) {
       var nb = S.nearBuilding;
       setNearBuilding(function (prev) {
         return prev === nb ? prev : nb;
-      });
-      /* v2.3.3868: a computer's door button follows E (talkBeforeDoor) */
-      var dtp = S._isDesktop && (nb !== null || (S._nearWheelBuilding && S._nearWheelBuilding.hall)) && talkBeforeDoor(S)
-        ? (S._nearNpc.name || 'them') : null;
-      setDeskTalkPick(function (prev) {
-        return prev === dtp ? prev : dtp;
       });
       /* v2.3.3032: and the Wheel's building door you stand at (game/wheelTownDoors.js) */
       var nwb = S._nearWheelBuilding || null;
@@ -9869,19 +9865,10 @@ export var BroTown = function BroTown(_ref0) {
     if (!dungeonCreator) setDungeonCreator(createDefaultDungeonConfig());
     BT_AUDIO.enterBuilding();
   }, [dungeonCreator]);
-  var _desktopNpcQuest = useCallback(function (npc, npcQ) {
-    /* v2.3.1701: the E-key door arms the proximity latch too (see the tap
-       handler) — the desktop player is standing next to him by definition. */
-    /* v2.3.1884: same shape as the proximity door — { npc, ready }.  A bare
-       npc here would crash the loop's `_latched.npc.x` read. */
-    stateRef.current._npcProxLatch = { npc: npc, ready: _npcQuestReady(stateRef.current, npcQ) };
-    setQuestPanel({
-      npc: npc.name,
-      quest: npcQ.quest,
-      status: npcQ.status,
-      npcRef: npc
-    });
-  }, []);
+  /* v2.3.4085: _desktopNpcQuest (E's road to a quest giver's window, since
+     v2.3.1701) is gone: E never talks -- a tap or a click on him opens it
+     (tapNpcAtCss), the owner: "Make talking to a npc player and entering a
+     building always two different things" (desktopControls.js) */
   var _desktopShieldOn = useCallback(function () {
     doShield();
   }, [doShield]);
@@ -11401,10 +11388,11 @@ export var BroTown = function BroTown(_ref0) {
              speaking [to NPCs], door for entering door".  The stick wears that
              picture (_tapActIcon), and the tap does it: the E key's own chain
              (desktopControls runInteract) -- a building, a hall, a dungeon's
-             mouth, the farm's bed, then the character beside you. */
+             mouth, the farm's bed (the character beside you until v2.3.4085:
+             a tap on him talks, never the stick). */
           var _tjAct = _tapActIcon(_tjS);
           if (_tjAct && typeof _tjS._interactNow === 'function') {
-            try { if (_tjS._interactNow({ npcFirst: true })) _tjS._tapActs = (_tjS._tapActs || 0) + 1; } catch (err) { /* the door's own refusals speak */ }
+            try { if (_tjS._interactNow()) _tjS._tapActs = (_tjS._tapActs || 0) + 1; } catch (err) { /* the door's own refusals speak */ }   /* v2.3.4085: no npcFirst -- the stick never talks */
           } else if (!_tjAct) {
             /* ═══ v2.3.3712: ...AND OTHERWISE IT ATTACKS ONCE -- IT NEVER JUMPS ═══
                The owner: "the contextual jump button gives the jumps only to
@@ -14953,26 +14941,12 @@ export var BroTown = function BroTown(_ref0) {
        tapped, so it stops rendering. Walking away and back re-arms it
        normally -- nearBuilding is untouched, which keeps the desktop E key
        (desktopControls.js) and the mayor_1 visitedBuildings counter honest. */
-    /* ═══ v2.3.3868: AT A DOOR WITH A TOWNSPERSON IN RANGE, THE PROMPT SAYS TALK ═══
-       The owner, on a computer: "When you're next to mayor bro ... you would
-       actually open the door to the building right next to him."  E talks to
-       him now (desktopControls.js talkBeforeDoor), and the prompt says so --
-       "E  Talk to Mayor Bro" -- in the door prompt's place; a click on it
-       talks, as E does.  A step out of his range and the door's prompt is
-       back.  A phone never shows it: there the door's button stays as it was
-       and a tap on a person talks. */
-    buildingPanel === null && deskTalkPick && (nearBuilding !== null || nearHall) && /*#__PURE__*/React.createElement("button", {
-      className: "bt-interact-prompt",
-      "data-talk-prompt": deskTalkPick,
-      onClick: function onClick(e) {
-        e.preventDefault();
-        var S2 = stateRef.current;
-        if (S2 && S2._interactNow) S2._interactNow();
-      }
-    }, /*#__PURE__*/React.createElement("kbd", {
-      style: { background: 'rgba(255,255,255,.2)', padding: '1px 5px', borderRadius: 3, fontSize: 11, marginRight: 4 }
-    }, "E"), "Talk to ", folkDisplayName(deskTalkPick)),   /* v2.3.4048 */
-    buildingPanel === null && !deskTalkPick /* v2.3.3868 */ && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
+    /* v2.3.4085: v2.3.3868's "E  Talk to <name>" in the door prompt's place
+       is gone -- E never talks, so at a door the button is ALWAYS the
+       door's, whoever stands beside it (the owner: "Make talking to a npc
+       player and entering a building always two different things").  A tap
+       or a click on the person talks. */
+    buildingPanel === null && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
     /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
        Sheriff's Office): the same button, its own picture and name */

@@ -169,7 +169,7 @@ export function attackingNow(S, held, now) {
 /**
  * v2.3.3105: the right stick's picture (and the tap's act) for what the E
  * key's chain would do here (desktopControls interactKind): a door, the bed,
- * a character -- else the jump.  A resource is the stick's own harvest, so it
+ * a character (until v2.3.4085) -- else the jump.  A resource is the stick's own harvest, so it
  * is not one of these.
  * v2.3.3712: ...else NULL: no act here, so the tap attacks and the stick
  * wears the weapon in your hand (BroTown's resolver, controlSkin
@@ -177,7 +177,10 @@ export function attackingNow(S, held, now) {
  */
 export function tapActIcon(kind) {
   /* v2.3.3136: and a bed's step on your farm (desktopControls interactKind) */
-  return (kind === 'door' || kind === 'talk' || kind === 'sleep' || (typeof kind === 'string' && kind.indexOf('farm-') === 0)) ? kind : null;
+  /* v2.3.4085: never 'talk' -- the stick never talks (desktopControls.js:
+     the owner, "Make talking to a npc player and entering a building always
+     two different things"); a tap on the person does */
+  return (kind === 'door' || kind === 'sleep' || (typeof kind === 'string' && kind.indexOf('farm-') === 0)) ? kind : null;
 }
 
 /**

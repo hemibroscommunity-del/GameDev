@@ -9,7 +9,9 @@
  *   1. at the foot of the bank's steps the stick shows a DOOR, and a tap on
  *      the stick's zone opens the bank -- no jump;
  *   2. beside Ace it shows a speech BUBBLE, and a tap opens his coin flip --
- *      no jump;
+ *      no jump; v2.3.4085: NO bubble beside him and the stick's tap opens no
+ *      flip (the stick never talks: "Make talking to a npc player and
+ *      entering a building always two different things"), a tap ON him does;
  *   3. out on the commons with nothing about, it shows the weapon in hand
  *      (v2.3.3712: it showed the JUMP arrow), and a tap swings it once and
  *      never jumps -- the JUMP button jumps (the owner: "the contextual jump
@@ -116,21 +118,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(500);
     }
 
-    /* ── 2. a character: Ace (his coin flip opens only when you speak to him) ── */
-    const ace = await P.page.evaluate(() => { const S = window._gameState.current; const n = (S.npcs || []).find((q) => q.name === 'Ace'); return n ? { x: n.x, y: n.y } : null; });
+    /* ── 2. a character: Ace (his coin flip opens only when you speak to him) ──
+       v2.3.4085: the owner, "Make talking to a npc player and entering a
+       building always two different things" -- the stick never talks: beside
+       Ace it wears no bubble (the weapon in hand) and its tap opens no flip;
+       a tap ON him opens it.  Until v2.3.4085 the stick showed the bubble
+       and its tap spoke to him (npcFirst). */
+    const ace = await P.page.evaluate(() => { const S = window._gameState.current; const n = (S.npcs || []).find((q) => q.name === 'Ace'); return n ? { x: n.x, y: n.y, id: n.id } : null; });
     rec.ok('Ace stands in the Wheel\'s Brotown (guard)', !!ace, ace);
     if (ace) {
       await H.hopTo(P, ace.x + 40, ace.y + 30, { step: 100, gap: 260, tries: 90 });
       const near = await H.waitFor(P, (S) => ({ n: S._nearNpc ? S._nearNpc.name : null, nb: S.nearBuilding, ic: document.querySelector('.bt-rjoy-base').getAttribute('data-ricon') }),
-        (v) => v.n === 'Ace' && v.ic === 'talk', { timeout: 8000, label: 'the bubble' }).catch(() => null);
+        (v) => v.n === 'Ace' && !!v.ic && v.ic !== 'talk', { timeout: 8000, label: 'beside Ace' }).catch(() => null);
+      /* the picture, read a while beside him: never the bubble */
+      const seen = new Set();
+      for (let i = 0; i < 8; i++) { seen.add(await icon(P)); await P.page.waitForTimeout(200); }
       await shot('talk');
-      rec.ok(`beside Ace the right stick shows a speech BUBBLE (${near ? near.ic : await icon(P)})`, !!near, near || await H.readState(P, (S) => ({ n: S._nearNpc && S._nearNpc.name, nb: S.nearBuilding })));
+      rec.ok(`beside Ace the right stick wears NO speech bubble (${[...seen].join(', ')}; v2.3.4085: the stick never talks)`,
+        !!near && !seen.has('talk'), { near, seen: [...seen] });
       await closeDialogs(P);
       const j0 = await jumps(P);
       await tapStick(P, 82);
-      const flip = await H.waitFor(P, () => !!(window.__btAceFlipBus && window.__btAceFlipBus.open), (v) => v, { timeout: 4000, label: 'the flip' }).catch(() => false);
+      const flip = await H.waitFor(P, () => !!(window.__btAceFlipBus && window.__btAceFlipBus.open), (v) => v, { timeout: 3000, label: 'the flip' }).catch(() => false);
       const j1 = await jumps(P);
-      rec.ok(`...and a tap on the stick speaks to him: his coin flip opens, no jump`, !!flip && j1 === j0, { flip, j0, j1 });
+      rec.ok(`...and a tap on the stick does not speak to him: no coin flip, no jump`, flip !== true && j1 === j0, { flip, j0, j1 });
+      const tapped = ace.id ? await H.talkToNpc(P, ace.id) : false;
+      const flip2 = await H.waitFor(P, () => !!(window.__btAceFlipBus && window.__btAceFlipBus.open), (v) => v, { timeout: 4000, label: 'the flip' }).catch(() => false);
+      rec.ok(`...a tap ON him does: his coin flip opens (v2.3.4085)`, tapped && flip2 === true, { tapped, flip2 });
       await P.page.evaluate(() => { try { window.__btAceFlipBus && window.__btAceFlipBus.setOpen && window.__btAceFlipBus.setOpen(false); } catch (e) { /* closed anyway */ } });
       await P.page.waitForTimeout(400);
     }

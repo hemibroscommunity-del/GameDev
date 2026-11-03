@@ -11,7 +11,8 @@
  *   2. a tap on the tourist, a local with nothing for you, floats "Selfie has
  *      nothing for you right now" -- his nickname, never "Tourist Terry";
  *   3. on a computer (the sideways layout): beside the auctioneer, in his
- *      door's reach, the prompt reads "Talk to Going-Going"; and the Mayor's
+ *      door's reach, the prompt reads "Talk to Going-Going" (v2.3.4085: the
+ *      door's "Enter AUCTION HOUSE" -- E never talks); and the Mayor's
  *      dialogue title (the same helper, a name with no nickname) still reads
  *      "Mayor Bro";
  *   4. no page errors.
@@ -141,8 +142,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.devOp(wsPort, 'vitals', id, { god: true, godMinutes: 30 });
       await C.page.addStyleTag({ content: HIDE }).catch(() => {});
       await walkTo(C, 'auctioneer');
-      /* beside him, in his door's reach: searched round him (mp-mayordoor's way) */
-      let prompt = null, spot = null;
+      /* beside him, in his door's reach: searched round him (mp-mayordoor's way).
+         v2.3.4085: the button there is the door's, "Enter AUCTION HOUSE" --
+         never v2.3.3868's "Talk to Going-Going" (E never talks: the owner,
+         "Make talking to a npc player and entering a building always two
+         different things"); his nickname is on his plate */
+      let prompt = null, spot = null, talkPrompt = null;
       for (const [dx, dy] of [[30, -30], [50, -50], [0, 34], [40, 0], [60, -20], [20, -60], [70, -70], [-30, -30]]) {
         await C.page.evaluate(({ ox, oy }) => {
           const S = window._gameState.current, n = (S.npcs || []).find((q) => q.id === 'auctioneer');
@@ -150,10 +155,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }, { ox: dx, oy: dy });
         for (let k = 0; k < 8 && !prompt; k++) {
           await C.page.waitForTimeout(300);
-          prompt = await C.page.evaluate(() => {
-            const S = window._gameState.current, b = document.querySelector('[data-talk-prompt]');
-            return b && S._nearNpc && S._nearNpc.id === 'auctioneer' ? b.innerText.replace(/\s+/g, ' ').trim() : null;
+          const pr = await C.page.evaluate(() => {
+            const S = window._gameState.current, b = document.querySelector('.bt-interact-prompt');
+            return b && S._nearNpc && S._nearNpc.id === 'auctioneer' && S._nearWheelBuilding
+              ? { text: b.innerText.replace(/\s+/g, ' ').trim(), talk: !!document.querySelector('[data-talk-prompt]') } : null;
           });
+          if (pr) { prompt = pr.text; talkPrompt = pr.talk; }
         }
         if (prompt) { spot = [dx, dy]; break; }
       }
@@ -161,8 +168,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await shot(C, 'computer-talk-prompt');
       if (cAt) await shot(C, 'computer-plate', clipAround(C, cAt, 420, 320));
       const cPlate = await plateOf(C, 'auctioneer');
-      rec.ok(`3. on a computer, beside the auctioneer (${JSON.stringify(spot)}): the prompt reads "${prompt}", his plate "${cPlate}"`,
-        !!prompt && /Talk to Going-Going$/.test(prompt) && cPlate === 'Going-Going', { prompt, spot, cPlate });
+      rec.ok(`3. on a computer, beside the auctioneer in his door's reach (${JSON.stringify(spot)}): the button reads "${prompt}" (the door's, never "Talk to": v2.3.4085), his plate "${cPlate}"`,
+        !!prompt && /enter/i.test(prompt) && /auction/i.test(prompt) && !/talk/i.test(prompt) && talkPrompt === false && cPlate === 'Going-Going', { prompt, talkPrompt, spot, cPlate });
 
       const open = await H.approachNpc(C, 'mayor_bro').catch(() => false);
       const title = await C.page.evaluate(() => { const t = document.querySelector('.bt-npcdlg-name'); return t ? t.textContent.trim() : null;   /* the words, not their CSS capitals */ });
