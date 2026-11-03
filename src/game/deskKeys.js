@@ -38,6 +38,9 @@ export const MAP_KEY = 'M';
     BroTown's safe ground.  Z, free on the bottom row beside X (the jump;
     the roll since v2.3.3844). */
 export const RIDE_KEY = 'Z';
+/** v2.3.3940: the three weapons (desktopControls.js Digit1-3), worn by the
+    computer's weapon bar (WeaponBar.jsx): activeSlot -> its key. */
+export const WEAPON_KEYS = Object.freeze({ melee: '1', ranged: '2', staff: '3' });
 
 const NAV_BY_CODE = Object.create(null);
 Object.keys(NAV_KEYS).forEach(function (id) { NAV_BY_CODE['Key' + NAV_KEYS[id]] = id; });

@@ -12,6 +12,9 @@
    returns its own unregister. */
 
 let _cycleWeapon = null;
+/* v2.3.3940: the 1/2/3 keys' direct pick (_desktopSelectSlot), for the
+   computer's weapon bar (WeaponBar.jsx): a click on a weapon is the key. */
+let _selectSlot = null;
 
 export const actionBus = {
   /* BroTown registers on mount; the returned fn unregisters (and only
@@ -26,6 +29,16 @@ export const actionBus = {
   cycleWeapon() {
     if (typeof _cycleWeapon !== 'function') return false;
     try { _cycleWeapon(); } catch (_e) { return false; }
+    return true;
+  },
+  registerSelectSlot(fn) {
+    _selectSlot = fn;
+    return () => { if (_selectSlot === fn) _selectSlot = null; };
+  },
+  /* 'melee' | 'ranged' | 'staff'; false when the game is not mounted */
+  selectSlot(slot) {
+    if (typeof _selectSlot !== 'function') return false;
+    try { _selectSlot(slot); } catch (_e) { return false; }
     return true;
   },
 };

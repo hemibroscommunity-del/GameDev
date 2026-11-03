@@ -534,8 +534,10 @@ for (const p of files) {
   const eat = BTc.slice(BTc.indexOf('return eatBus.subscribe('), BTc.indexOf('return eatBus.subscribe(') + 5000);
   check('11s eating is heard (munch, a meal and a heal), "HP full" and a held bite refused (denied); no silent beep() left in it',
     (eat.match(/cue\('munch'\)/g) || []).length === 2 && (eat.match(/cue\('denied'\)/g) || []).length === 2 && !/BT_AUDIO\.beep\(/.test(eat));
-  const IDP = strip(src('src/ui/mobile/dash/ItemDetailPopup.jsx'));
-  const drink = IDP.slice(IDP.indexOf('const onDrink = () =>'), IDP.indexOf('const onOpenChest'));
+  /* v2.3.3940: the card's Drink moved, body unchanged, to the one action list
+     (itemActions.js runItemAction's 'drink' case), shared with the Gear tab */
+  const IA = strip(src('src/ui/mobile/dash/itemActions.js'));
+  const drink = IA.slice(IA.indexOf("case 'drink':"), IA.indexOf("case 'capeOn':"));
   check('11t drinking is heard (gulp), a held drink refused', /cue\('gulp'\)/.test(drink) && /cue\('denied'\)/.test(drink));
   check('11u the Cookhouse\'s Eat and the old bag\'s munch too',
     /cue\('munch'\)/.test(strip(src('src/ui/panels/buildings/CookPanel.jsx'))) && /cue\('munch'\)/.test(strip(src('src/ui/panels/InventoryPanel.jsx'))));

@@ -31,6 +31,9 @@ export const PACKETS = [
     screens: ['welcome', 'desktop-window', 'hud', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
   { slug: 'dashboard-character-bag', title: 'Dashboard: your character, your quests and the bag',
     screens: ['dash-hero', 'dash-hero-points', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card'] },
+  /* v2.3.3940: the Gear tab, the resting dashboard's three panels */
+  { slug: 'gear-tab', title: 'The Gear tab: your bag, your bro and your gear',
+    screens: ['gear-tab', 'gear-slot-selected', 'gear-compare', 'gear-filter-open', 'gear-filter-empty'] },
   { slug: 'dashboard-skills-codex', title: 'Dashboard: life skills, the Codex and More',
     screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',

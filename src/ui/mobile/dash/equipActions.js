@@ -313,3 +313,111 @@ export function unequipGearDirect(slot) {
   setEquip(slot, 'none');
   persist(R);
 }
+
+/* ═══ v2.3.3940: THE THREE EQUIPS THAT LIVED INSIDE THE ITEM CARD ═══
+   The Gear tab (GearTab.jsx) equips a bag piece from its middle panel, and
+   the item card (ItemDetailPopup) from its own button -- one shared action
+   list (itemActions.js) runs both, so these three left the card's component
+   closure for this file, the way the armour pair did at v2.3.1762.  Bodies
+   unchanged except where marked. */
+
+/* v2.3.2341 (moved from ItemDetailPopup.jsx at v2.3.3940): find a bag weapon
+   after the array was replaced under it.  Every player_state that carries
+   weaponStash replaces the client array wholesale (wsClient.js), so an object
+   a card or picker row captured on open stops being IN the bag by identity
+   the moment one lands -- even though the weapon itself is still sitting
+   there at the same index.  Identity first; then the index the tile was
+   opened from, accepted only if the entry there is the same weapon by
+   signature.  Anything else is -1: the caller must then do NOTHING, because
+   the equip_request is what moves the weapon on the worker. */
+export function sameWeapon(a, b) {
+  return !!a && !!b && a.name === b.name && a.type === b.type
+    && a.gearBase === b.gearBase && a.quality === b.quality;
+}
+export function resolveStashIdx(stash, wpn, hintIdx) {
+  if (!Array.isArray(stash) || !wpn) return -1;
+  const byRef = stash.indexOf(wpn);
+  if (byRef >= 0) return byRef;
+  const i = Number.isInteger(hintIdx) ? hintIdx : -1;
+  if (i >= 0 && i < stash.length && sameWeapon(stash[i], wpn)) return i;
+  return -1;
+}
+
+/* Which weapon slot does a `type` belong in. */
+export function weaponSlotFor(type) {
+  if (type === 'bow')   return 'rangedWeapon';
+  if (type === 'staff') return 'staffWeapon';
+  return 'weapon'; /* sword, greatsword */
+}
+const ACTIVE_FOR = { weapon: 'melee', rangedWeapon: 'ranged', staffWeapon: 'staff' };
+
+/* A bag weapon into its slot (the old one back into the bag).  v2.3.2341's
+   rule: a weapon the stash no longer holds is NOT equipped, before any local
+   move or send.
+   v2.3.3940: `opts.activate` -- the item card puts the weapon in your hand as
+   it always has (the default); the Gear tab passes false, the brief's "which
+   weapon is in hand stays the server's call": the slot fills, the hand stays
+   where it was, unless the hand is EMPTY (an activeSlot pointing at a slot
+   with nothing in it -- fists), where the new weapon is taken up so an equip
+   never leaves you swinging nothing. */
+export function equipStashWeapon(wpn, hintIdx, opts) {
+  const S = getState();
+  if (!S || !S.rpg || !wpn) return false;
+  const R = S.rpg;
+  const slot = weaponSlotFor(wpn.type);
+  if (!R.weaponStash) R.weaponStash = [];
+  const idx = resolveStashIdx(R.weaponStash, wpn, hintIdx);
+  if (idx < 0) return false;
+  _equipTick();
+  const live = R.weaponStash[idx];
+  R.weaponStash.splice(idx, 1);
+  const cur = R[slot];
+  if (cur) R.weaponStash.push(cur);
+  R[slot] = live;
+  const activate = !opts || opts.activate !== false;
+  const handField = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' }[R.activeSlot || 'melee'] || 'weapon';
+  const handEmpty = !R[handField];
+  /* v2.3.1159: server-sync -- pre-splice index, InventoryPanel convention;
+     the slot activation must reach the worker too or its
+     _computeAttackDamage keeps resolving the previous slot. */
+  syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: idx, slot } });
+  if (activate || handEmpty) {
+    R.activeSlot = ACTIVE_FOR[slot];
+    syncWeaponSlot({ type: 'set_active_slot', payload: { slot: R.activeSlot } });
+  }
+  persist(R);
+  return true;
+}
+
+export function equipStashShield(shield) {
+  const S = getState();
+  if (!S || !S.rpg || !shield) return false;
+  const R = S.rpg;
+  if (!R.shieldStash) R.shieldStash = [];
+  const idx = R.shieldStash.indexOf(shield);
+  if (idx >= 0) R.shieldStash.splice(idx, 1);
+  if (R.shield) R.shieldStash.push(R.shield);
+  R.shield = shield;
+  BT_AUDIO.uiEquip();   /* v2.3.2877: the equip sample, not the generic click */
+  persist(R);
+  syncShieldWorn(S);   /* v2.3.3091: the worker learns the arm (No man's land's spares) */
+  return true;
+}
+
+/* v2.3.685: worn gear (rendered steel chest/legs) back on from rpg.gearStash,
+   any piece worn there going into the stash; setEquip drives the renderer. */
+export function equipStashGear(g) {
+  const S = getState();
+  if (!S || !S.rpg || !g) return false;
+  const R = S.rpg;
+  if (!R.gearStash) R.gearStash = [];
+  const idx = R.gearStash.indexOf(g);
+  if (idx >= 0) R.gearStash.splice(idx, 1);
+  const cur = getEquip(g.slot);
+  if (cur && cur !== 'none') {
+    R.gearStash.push({ slot: g.slot, gearId: cur, name: gearName(g.slot, cur) });
+  }
+  setEquip(g.slot, g.gearId);
+  persist(R);
+  return true;
+}

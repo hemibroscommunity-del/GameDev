@@ -36,6 +36,8 @@ import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rend
 import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
 import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason.js'; /* v2.3.2551: and WHY it cannot be sold */
 import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
+import { resolveStashIdx } from './equipActions.js';   /* v2.3.3940: moved there, with the three equips */
+import { itemActionList, runItemAction } from './itemActions.js';   /* v2.3.3940: the one action list, shared with the Gear tab */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { playVw } from '../playViewport.js';
@@ -200,6 +202,10 @@ function capeIsWorn() {
     return !!(S && S.rpg && S.rpg._capeWorn);
   } catch (e) { return false; }
 }
+
+/* v2.3.3940: exported as resolveItemCard -- the Gear tab's middle panel shows
+   the same card (its name, its line, its actions) without opening this one. */
+export function resolveItemCard(target) { return resolveTarget(target); }
 
 function resolveTarget(target) {
   if (!target) return null;
@@ -783,9 +789,13 @@ export const ItemDetailPopup = () => {
   /* A half-typed price belongs to the item it was typed for: opening the
      card on something else (or closing it) starts over. */
   useEffect(() => {
-    setSellOpen(false); setSellPrice(''); setSellQty(1); setSellErr(''); setSellBusy(false);
+    /* v2.3.3940: `flow` opens the card straight onto its Sell or Drop sheet --
+       the Gear tab's Sell and Drop buttons hand over to this card (the price
+       and the how-many live here, itemActions.js) */
+    const flow = itemDetailBus.state.open && itemDetailBus.state.target ? itemDetailBus.state.target.flow : null;
+    setSellOpen(flow === 'sell'); setSellPrice(''); setSellQty(1); setSellErr(''); setSellBusy(false);
     sellInFlight.current = false;
-    setDropOpen(false); setDropQty(1); dropInFlight.current = false;   /* v2.3.3473 */
+    setDropOpen(flow === 'drop'); setDropQty(1); dropInFlight.current = false;   /* v2.3.3473 */
   }, [itemDetailBus.state.open, itemDetailBus.state.target]);
 
   /* Measure popup size after render, then reposition.  setLayoutEffect
@@ -1423,202 +1433,18 @@ export const ItemDetailPopup = () => {
     ? lifeKindFor(target.key, classify(target.key))
     : ((target.gearId === 'tshirt' || (target.gear && target.gear.gearId === 'tshirt')) ? null : 'glint');
 
-  /* v2.3.853: logs no longer cook directly -- they light a campfire.  Tapping a
-     lit campfire (with raw fish in the bag) starts the cooking interaction. */
-  const onLight = () => {
-    firemakingBus.open(target.key);
-    itemDetailBus.close();
-  };
-  const onEat = () => {
-    eatBus.open(target.key);
-    itemDetailBus.close();
-  };
-  /* v2.3.2103: SEND AND WAIT. The consume, the grant and the echo are all the
-     worker's -- an "opened" ticket that the client also decrements locally is
-     handed straight back by the next player_state echo, which is how one log
-     lit unlimited campfires (cooking.js:71). The opId makes a retry on a
-     flaky phone converge instead of redeeming twice. */
-  /* v2.3.2109: the worn state comes from the RENDERER's active cape, which is
-     fed by the worker's echo (wsClient) -- so it is the server's answer, not a
-     local guess that could disagree with what everyone else sees. */
-  const sendCapeWorn = (worn) => {
-    const S = getState();
-    if (!S || !S.channel) return;
-    try { S.channel.send({ type: 'cape_equip', payload: { worn } }); } catch (e) { /* socket gone */ }
-    itemDetailBus.close();
-  };
-  const onCapeOn = () => sendCapeWorn(true);
-  const onCapeOff = () => sendCapeWorn(false);
-  /* v2.3.2127: one bottle per press. The worker validates ownership, applies
-     the effect and echoes player_state -- the bag redraws off that echo, never
-     off a local decrement (cooking.js's firemaking note records what happens
-     when a client consumes an item the server still holds). */
-  const onDrink = () => {
-    const S = getState();
-    /* v2.3.3133: the old minnow bottle is a heal at once -- one bite at a
-       time in a fight with a player (fightFood.js), held back and said.  The
-       brews are no heal and never wait. */
-    if (S && isInstantHeal(target.key, dishFor(target.key))) {
-      const wait = pvpHealWaitMs(S);
-      if (wait > 0) {
-        const P = S.player;
-        if (P) pushDmgPopup(S, P.x, P.y - 30, pvpHealWaitText(wait), '#B9C1BF');
-        cue('denied');   /* v2.3.3462: a refusal is heard (the owner's "denied" tick) */
-        itemDetailBus.close();
-        return;
-      }
-      noteInstantHeal(S);
-    }
-    try { S.channel.send({ type: 'potion_drink', payload: { invKey: target.key } }); } catch (e) {}
-    cue('gulp');   /* v2.3.3462: the owner's gulp -- a drink was silent (a refusal answers with "denied") */
-    /* v2.3.3434: the window's own close.  This was a bare close(), which no
-       name here binds -- so it was the BROWSER's window.close(): the card
-       stayed open after a drink, and a tab the browser lets a script close
-       (one opened from a link, with no history) could have closed the game.
-       Found by the second sound audit (docs/SOUND-GAPS.md). */
-    itemDetailBus.close();
-  };
-  /* v2.3.2820: Claim opens the chest's claim window straight into the claim
-     (ChestReveal.jsx) -- it sends chest_open and plays the shake / open /
-     reveal; the worker takes the chest and rolls (the ticket's rule). */
-  const onOpenChest = () => {
-    chestRevealBus.open(true);
-    itemDetailBus.close();
-  };
-  const onOpenTicket = () => {
-    const S = getState();
-    if (!S || !S.channel) return;
-    const opId = target.key + ':' + (S.playerId || 'me') + ':' + Date.now();
-    try {
-      S.channel.send({ type: 'cape_redeem', payload: { invKey: target.key, opId } });
-    } catch (e) { /* the socket went away; the ticket is still in the bag */ }
-    itemDetailBus.close();
-  };
-  const onUnequipWeapon = () => {
-    unequipWeaponSlot(target.slot);
-    itemDetailBus.close();
-  };
-  const onUnequipShield = () => {
-    unequipShieldDirect();
-    itemDetailBus.close();
-  };
-  const onEquipStashWeapon = () => {
-    const S = getState();
-    if (!S || !S.rpg || !target.wpn) return;
-    const R = S.rpg;
-    const slot = slotFor(target.wpn.type);
-    /* Move target out of stash; swap any equipped weapon back into stash. */
-    if (!R.weaponStash) R.weaponStash = [];
-    /* ═══ v2.3.2341: A STALE POPUP MUST NOT EQUIP A WEAPON IT CANNOT FIND ═══
-       Owner: "I selected a weapon and nothing happened / it reverted."
-       This resolved the bag entry by OBJECT IDENTITY only, and wsClient.js
-       replaces the whole weaponStash array on any player_state that carries
-       one -- every rejoin (join.js sends the bootstrap sync in full), weapon
-       loot, quest mint, inbox claim, market return -- while this popup stays
-       open (only a dashboard mode change closes it).  After any of those the
-       indexOf was -1, the equip_request below was gated off, and EVERYTHING
-       ELSE still ran: the slot took the stale copy, activeSlot flipped, the
-       set_active_slot went out and persisted.  Bow in hand AND in the bag on
-       the client; on the worker activeSlot 'ranged' pointing at an EMPTY
-       rangedWeapon (its _handleSetActiveSlot has no null check -- that
-       belt-and-braces half belongs to a server PR), so the player swung
-       fists.  Now: identity first, then the tile's own index checked against
-       the weapon's signature (order survives a full echo), and if neither
-       resolves the popup just closes -- BEFORE any local mutation or send. */
-    const idx = resolveStashIdx(R.weaponStash, target.wpn, target.index);
-    if (idx < 0) { itemDetailBus.close(); return; }
-    const live = R.weaponStash[idx];
-    R.weaponStash.splice(idx, 1);
-    const cur = R[slot];
-    if (cur) R.weaponStash.push(cur);
-    R[slot] = live;
-    /* Activate this slot so the player swings the equipped weapon. */
-    R.activeSlot = slot === 'rangedWeapon' ? 'ranged'
-                 : slot === 'staffWeapon'  ? 'staff'
-                 :                            'melee';
-    /* v2.3.1159: server-sync — pre-splice index, InventoryPanel
-       convention; the slot activation must reach the worker too or its
-       _computeAttackDamage keeps resolving the previous slot. */
-    syncWeaponSlot({ type: 'equip_request', payload: { stashIdx: idx, slot } });
-    syncWeaponSlot({ type: 'set_active_slot', payload: { slot: R.activeSlot } });
-    persist(R);
-    itemDetailBus.close();
-  };
-  const onEquipStashShield = () => {
-    const S = getState();
-    if (!S || !S.rpg || !target.shield) return;
-    const R = S.rpg;
-    if (!R.shieldStash) R.shieldStash = [];
-    const idx = R.shieldStash.indexOf(target.shield);
-    if (idx >= 0) R.shieldStash.splice(idx, 1);
-    if (R.shield) R.shieldStash.push(R.shield);
-    R.shield = target.shield;
-    BT_AUDIO.uiEquip();   /* v2.3.2877: the equip sample, not the generic click (see the SHIELD picker row) */
-    persist(R);
-    syncShieldWorn(S);   /* v2.3.3091: the worker learns the arm (No man's land's spares) */
-    itemDetailBus.close();
-  };
-  /* v2.3.236: armor swap is HP-neutral.  Recompute maxHp from the
-     new armor; only CAP current HP to the new max (no delta-add or
-     delta-subtract).  Unequipping no longer secretly costs HP and
-     equipping no longer secretly heals -- matches the user's mental
-     model and stops the visible 120 -> 80 -> 100 hp drift on a
-     local-only armor cycle.
-     Also pushes the armor change into React state via the helper on
-     window._gameState (set by BroTown) so the stats_update useEffect
-     fires and the worker's ps.armor stays in sync.  Without that,
-     the worker's next player_state echo re-applies the old armor and
-     the local unequip silently undoes itself. */
-  const onUnequipArmor = () => {
-    unequipArmorDirect();
-    itemDetailBus.close();
-  };
-  /* v2.3.1762: the body of this moved to equipActions (equipArmorFromStash) so
-     the loadout picker's row can run the SAME code — see the note there. */
-  const onEquipStashArmor = () => {
-    if (!target.armor) return;
-    equipArmorFromStash(target.armor);
-    itemDetailBus.close();
-  };
-  /* v2.3.1701: the LEGS equip.  R.legsArmor is the field the LEGS card
-     reads (equipModel.js), the field the worker persists (persistence.js)
-     and the field the SERVER's per-hit reduction reads (combat.js
-     _armorDrMult) — so this is the only route that makes an equipped greave
-     mean anything.  syncArmorChange carries it to the worker with
-     `legs: true`; without that push ps.legsArmor stays null and the next
-     full player_state echo takes the piece straight back off. */
-  /* v2.3.1762: body moved to equipActions (equipLegsFromStash), shared with the
-     loadout picker's row. */
-  const onEquipStashLegs = () => {
-    if (!target.armor) return;
-    equipLegsFromStash(target.armor);
-    itemDetailBus.close();
-  };
-  /* v2.3.685: worn gear (rendered steel chest/legs) unequips into
-     rpg.gearStash -- the bag shows it as a stash tile, and Equip from there
-     puts it back on (swapping any currently-worn piece into the stash).
-     setEquip drives the renderer directly (same path as the Equipment menu),
-     so the armour visibly comes off/on and eqc/eql sync covers remotes. */
-  const onUnequipGear = () => {
-    unequipGearDirect(target.slot);
-    itemDetailBus.close();
-  };
-  const onEquipStashGear = () => {
-    const S = getState();
-    if (!S || !S.rpg || !target.gear) return;
-    const R = S.rpg;
-    const g = target.gear;
-    if (!R.gearStash) R.gearStash = [];
-    const idx = R.gearStash.indexOf(g);
-    if (idx >= 0) R.gearStash.splice(idx, 1);
-    const cur = getEquip(g.slot);
-    if (cur && cur !== 'none') {
-      R.gearStash.push({ slot: g.slot, gearId: cur, name: gearName(g.slot, cur) });
-    }
-    setEquip(g.slot, g.gearId);
-    persist(R);
-    itemDetailBus.close();
-  };
+  /* ═══ v2.3.3940: THE BUTTONS RUN FROM THE ONE LIST ═══
+     Light, Eat, Open, Claim, Drink, the cape's Equip/Unequip, Equip and
+     Unequip moved, bodies and notes unchanged, to itemActions.js (and the
+     three equips to equipActions.js), where the Gear tab's middle panel runs
+     the very same code.  This card keeps its own Sell and Drop sheets; the
+     list's sell and drop entries open them. */
+  const actionList = itemActionList(target, resolved).filter((x) => x.id !== 'lock');
+  const runAction = (id) => runItemAction(id, target, resolved, {
+    close: () => itemDetailBus.close(),
+    sell: () => { setSellOpen(true); setSellErr(''); },
+    drop: () => { setDropOpen(true); setSellOpen(false); },
+  });
   const onToggleLock = () => {
     if (locked) unlockItem(lockKey);
     else        lockItem(lockKey);
@@ -1754,21 +1580,6 @@ export const ItemDetailPopup = () => {
   const onClose = () => {
     BT_AUDIO.uiTick('ui-close', 0.5);
     itemDetailBus.close();
-  };
-
-  /* Final unequip handler: dispatch on target.kind. */
-  const onUnequip = () => {
-    if (target.kind === 'shield')      onUnequipShield();
-    else if (target.kind === 'armor')  onUnequipArmor();
-    else if (target.kind === 'gear')   onUnequipGear();
-    else                                onUnequipWeapon();
-  };
-  const onEquip = () => {
-    if (target.kind === 'stashShield')      onEquipStashShield();
-    else if (target.kind === 'stashArmor')  onEquipStashArmor();
-    else if (target.kind === 'stashLegs')   onEquipStashLegs();
-    else if (target.kind === 'stashGear')   onEquipStashGear();
-    else                                     onEquipStashWeapon();
   };
 
   return (
@@ -1939,35 +1750,18 @@ export const ItemDetailPopup = () => {
         )}
 
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-          {actions.light    && <button onClick={onLight}   className={buttonClass('primary')} style={buttonStyle('primary')}>Light fire</button>}
-          {actions.eat      && <button onClick={onEat}     className={buttonClass('primary')} style={buttonStyle('primary')}>Eat</button>}
-          {actions.open     && <button onClick={onOpenTicket} className={buttonClass('primary')} style={buttonStyle('primary')}>Open Golden Ticket</button>}
-          {actions.openChest && <button onClick={onOpenChest} data-open-chest="" className={buttonClass('primary')} style={buttonStyle('primary')}>Claim</button>}
-          {actions.drink    && <button onClick={onDrink} className={buttonClass('primary')} style={buttonStyle('primary')}>Drink</button>}
-          {actions.capeOn   && <button onClick={onCapeOn}  className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
-          {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}
-          {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
-          {actions.unequip  && <button onClick={onUnequip} className={buttonClass('danger')} style={buttonStyle('danger')}>Unequip</button>}
-          {/* v2.3.2551: a piece this browser already knows is unsellable keeps
-              its button and loses its hope, rather than losing its button.
-              A control that vanishes tells the player nothing; a greyed one
-              beside a sentence tells them whether to take it off, or that
-              outfits are simply not for sale.  `sellWhy` is only ever set
-              for the two PERMANENT answers -- everything else is left to the
-              worker, which answers with a reason of its own. */}
-          {actions.sell && !sellOpen && !dropOpen && !sellWhy && <button onClick={() => { setSellOpen(true); setSellErr(''); }} className={buttonClass()} style={buttonStyle()}>Sell</button>}
-          {actions.sell && !sellOpen && !dropOpen && !!sellWhy && (
-            <button disabled aria-disabled="true" className={buttonClass()} style={{ ...buttonStyle(), opacity: 0.45 }}>Sell</button>
-          )}
-          {/* v2.3.3473: Drop -- hidden while either sheet is open; greyed with
-              its reason where nothing can be dropped (dropWhy) */}
-          {actions.drop && !sellOpen && !dropOpen && !dropWhy && (
-            <button onClick={() => { setDropOpen(true); setSellOpen(false); }} data-item-drop=""
-              className={buttonClass()} style={buttonStyle()}>Drop</button>
-          )}
-          {actions.drop && !sellOpen && !dropOpen && !!dropWhy && (
-            <button disabled aria-disabled="true" data-item-drop="off" className={buttonClass()} style={{ ...buttonStyle(), opacity: 0.45 }}>Drop</button>
-          )}
+          {/* v2.3.3940: one list (itemActions.js), the Gear tab's too.  Sell and
+              Drop hide while either sheet is open; a greyed one keeps its
+              button and says why below (v2.3.2551, v2.3.3473). */}
+          {actionList.map((x) => {
+            if ((x.id === 'sell' || x.id === 'drop') && (sellOpen || dropOpen)) return null;
+            if (x.off) {
+              return <button key={x.id} disabled aria-disabled="true" {...(x.attrs || {})}
+                className={buttonClass(x.tone)} style={{ ...buttonStyle(x.tone), opacity: 0.45 }}>{x.label}</button>;
+            }
+            return <button key={x.id} onClick={() => runAction(x.id)} {...(x.attrs || {})}
+              className={buttonClass(x.tone)} style={buttonStyle(x.tone)}>{x.label}</button>;
+          })}
           {/* v2.3.3407: Esc presses it, and on a computer it says so after its
               X (game/deskKeys.js; game.css [data-key]) */}
           <button onClick={onClose} className={buttonClass()} style={buttonStyle()}
@@ -2125,29 +1919,7 @@ function syncWeaponSlot(msg) {
   }
 }
 
-/* ═══ v2.3.2341: FIND A BAG WEAPON AFTER THE ARRAY WAS REPLACED UNDER IT ═══
-   Every player_state that carries weaponStash replaces the client array
-   wholesale (wsClient.js), so an object a popup or picker row captured on
-   open stops being IN the bag by identity the moment one lands -- even
-   though the weapon itself is still sitting there at the same index.
-   Identity first (the common case, nothing arrived); then the index the
-   tile was opened from, accepted only if the entry there is the same
-   weapon by signature -- name/type/gearBase/quality are the fields a
-   minted weapon carries (quests.js _grantQuestItem) and the ones its art,
-   tier label and stats are read from.  Anything else is -1: the caller
-   must then do NOTHING, because the equip_request is what moves the
-   weapon on the worker, and a local move without it is the "in hand and
-   in the bag" duplicate the owner saw. */
-function sameWeapon(a, b) {
-  return !!a && !!b && a.name === b.name && a.type === b.type
-    && a.gearBase === b.gearBase && a.quality === b.quality;
-}
-function resolveStashIdx(stash, wpn, hintIdx) {
-  if (!Array.isArray(stash) || !wpn) return -1;
-  const byRef = stash.indexOf(wpn);
-  if (byRef >= 0) return byRef;
-  const i = Number.isInteger(hintIdx) ? hintIdx : -1;
-  if (i >= 0 && i < stash.length && sameWeapon(stash[i], wpn)) return i;
-  return -1;
-}
+/* v2.3.3940: sameWeapon and resolveStashIdx (v2.3.2341, "find a bag weapon
+   after the array was replaced under it") moved to equipActions.js with the
+   equips that use them. */
 

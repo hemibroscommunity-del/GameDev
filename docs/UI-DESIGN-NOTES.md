@@ -557,7 +557,7 @@ Sources: CLAUDE.md, docs/specs/chat-lanes.md, docs/specs/chat-moderation.md, doc
 ## The dashboard: band, six buttons and pages
 Screens: hud-band, dash-*, more-*
 
-**What it is for:** The band at the bottom of the screen is the game's one menu. At rest it shows your bag and your three combat skills. Its row of six buttons opens every page inside the band, while the world keeps playing above it.
+**What it is for:** The band at the bottom of the screen is the game's one menu. At rest it is the Gear tab (since v2.3.3940; **The Gear tab** below): your bag, your bro and your gear side by side. Its row of six buttons opens every page inside the band, while the world keeps playing above it.
 
 **Decisions, and why:**
 - **Never more than a third of the screen** (owner directive, v2.3.1258). The painted world stays the brightest thing on screen; the band is a quiet slate tray.
@@ -774,7 +774,7 @@ Sources: CLAUDE.md, docs/specs/monster-codex.md
 ## The bag and item cards
 Screens: dash-bag, item-card
 
-**What it is for:** Everything you carry and are not wearing, shown on the band at rest. A tap on any item opens a small card that says what it is and what you can do with it.
+**What it is for:** Everything you carry and are not wearing, shown on the band at rest. Since v2.3.3940 the bag is the left panel of **The Gear tab**: a tap picks an item and the middle panel shows it; the card below is where its Sell and Drop sheets open.
 
 **Decisions, and why:**
 - **The bag lives on the band; there is no bag page** (since v2.3.1653–1654). Sideways, the owner called the old small-slot bag page "a legacy view that needs to retire" (v2.3.2173).
@@ -809,6 +809,35 @@ Screens: dash-bag, item-card
 - The card is not yet laid out for a short sideways screen, and its content can spill below it. A code note says this stays "until this card is laid out to fit a short viewport, which is a different change" (v2.3.2612).
 
 Sources: CLAUDE.md, docs/specs/landscape-mode.md, docs/specs/bag-icons.md, docs/specs/crop-food.md, docs/specs/armor-grade-look.md, docs/specs/rarity-reveal.md, docs/specs/quest-guidance.md, docs/LANTERN-SLATE-SPEC.md, src/ui/mobile/dash/InventoryPanel.jsx, src/ui/mobile/dash/ItemDetailPopup.jsx, src/ui/mobile/dash/BagFilterChips.jsx, src/ui/mobile/dash/bagFilterBus.js, src/ui/mobile/dash/bagModel.js, src/ui/mobile/dash/bagLife.js, src/ui/mobile/dash/DashColumns.jsx, src/ui/mobile/dash/common.js, src/ui/mobile/sheet/HeroExpanded.jsx, src/ui/mobile/BottomDashboard.jsx
+
+## The Gear tab
+Screens: gear-*
+
+**What it is for:** The resting dashboard, what the bag button opens: your bag, your bro and your gear side by side, so you can see what you carry, what you wear and what a change would do without opening anything (v2.3.3940, the owner's design of 2026-11-02).
+
+**Decisions, and why:**
+- **Three panels, INVENTORY | BRO | EQUIPMENT, left to right** (owner: "inventory on left with filter on top, character in the middle with tabs that can change between look and stats/details and the furthest right tab has all the equipped items"). Laid out from the box the tab is given, never the device: 330 px wide or more and the three sit across at about 46% | 24% | 30%; narrower (the sideways ~238 px column) and the bag sits on top with BRO and EQUIPMENT side by side under it. A wider band (Lane B's `?oneband=1`) just works.
+- **The equipment is a 3 x 3 grid:** Sword, Bow, Staff / Shield, Chest, Legs / Cape, Amulet, Gem (owner: "3 columns ... Sword, bow, and staff across the top ... no helmet ... add gem slot (this will give your weapons elemental abilities)"). Boots, gauntlets, belts and rings do not exist in the game, so nothing was taken out. Each cell is at least 34 px; the bag gives up width for that on a 360 px phone. Each cell shows its piece with the grade's edge, or the faint silhouette when empty. The Gem cell shows the gem or gems set in the weapon in your hand, and follows you when you switch weapons.
+- **Blue is what you tapped, gold is what is on** (owner: "tapping on an item highlights it in blue to show active press but highlighted yellow shows what's 'on'"). The weapon in your hand wears a gold ring inside its cell, and the cell or bag piece you tapped a blue ring outside it, so both can show at once. The blue is the game's mana blue (no new hue).
+- **The three combat-skill cards left the band** for the weapon cells: each wears its skill's level ("Lv 7", or "+2" in brass with points to spend) and a thin XP bar along its foot, which the XP that flies in after a kill still lands on and counts up. The XP to the next level and a Spend points button are in STATS when you tap the cell.
+- **Tap a cell: the bag filters to what fits it, the middle shows what is in it** (owner: "when you tap on an equip slot your inventory gets filtered to whatever item category was tapped on ... The option window after tapping on an equipped item would just be unequip. The middle character pane can automatically change to display the stats of the highlighted weapon and maybe the name and description"). The name in its grade's colour, its stats, one plain sentence and ONE button, Unequip (the playtest: "just have one button for unequip instead of 'change'"). The cape's Unequip takes it off your back; the amulet has none (the worker's unequip for the amulet slot has nowhere to put it, so it would be lost), and the Gem cell says "Gems are set at the Gem Works". An empty cell says "No bow yet. Pick one from your bag." Tapped again, the cell is put down and its filter goes.
+- **Tap a bag piece: the middle compares it** (owner: "current versus prospective stats with green increases and red decreases before equipping it"): each stat "old → new" with the difference in green or red, armour by its damage cut, a shield by its block, read through the same numbers the item card and the Character page use. Its main button (Equip, Eat, Drink...) rides at the foot of the panel so a long comparison never pushes it out of reach; the rest (Sell, Drop, Pin) scroll above it. They are one list kept in one function (`itemActions.js`), shared with the item card. Equipping a weapon fills its slot; which weapon is in your hand stays as it was (unless your hand was empty).
+- **The filter is one pill, "All items ▾"** (owner: "a tiny accordion style pill button instead that just says 'filter' on it ... and expands downward into a bigger menu that includes things like sword, chest armor, leg armor, ore / metal bars, crops, fish, etc."). Its menu drops down over the bag panel only, the other two panels never move, in groups with a count each, a group you hold nothing of greyed. The rules adopted against getting stuck: the active filter always shows on the pill ("Fish ×") and its × clears it in one tap; a filter a cell set clears itself after an Equip or Unequip and when the cell is put down, while one you picked stays until you clear it; a filter with nothing in it says "No capes in your bag" with a Show all button; picking something never changes the filter.
+- **BRO opens on STATS** (the owner wants the numbers without an extra tap): your damage cut, HP, Energy, Mana, and the weapon in hand's damage, speed, range and crit, Dodge and Move. LOOK is your bro, facing southwest, the weapon in hand. Your last pick of tab is remembered on this device; picking anything shows STATS, and putting it down goes back to the tab you chose.
+- **A thin header over the bag:** your gold, and the bag's fill ("18 items · weapons 3/8": the bag has no limit, the weapon bag holds eight). The top bar's gold stays for now, so for a while there are two gold counts; the top bar's goes when the new player-status frame is built.
+- **On a computer the three weapons at the foot are a weapon bar** (the playtest: "The weapon equipping system is confusing... make a hotbar here for left hand weapon, armor, right hand etc"): a click takes that weapon up (the 1, 2 and 3 keys' own pick, which the worker now hears), each wears its key, the one in hand is gold, and each keeps its level. A click on an empty one opens the Gear tab on that cell. Phones switch weapons with the button under the movement stick, as before.
+
+**This reverses, on the owner's new design of 2026-11-02:**
+- "a Bag button" (in **The dashboard** and **The bag and item cards**): the bag button opens this tab, and the bag is one of its three panels.
+- "Worn gear ... back on the band" (in **The dashboard**): what you wear is the tab's right-hand panel.
+- "an item card that pushes the character or vitals around" (in **Your character and the Points window**): here the middle panel is meant to change to show what you tapped, beside the bag and the gear, and back again when you put it down.
+- The five filter chips, the 2-across sideways bag and the item card on every bag tap: the bag's tap now picks the item and the middle shows it; the item card is still where Sell's price sheet and Drop's how-many open.
+
+**Please don't suggest:**
+- A filter that changes the bag without saying so on the pill, or a filter row of icons again.
+- A bag tap that opens a card over the tab; Change in place of Unequip; a picker list of everything that fits a slot.
+
+Sources: src/ui/mobile/dash/GearTab.jsx, src/ui/mobile/dash/gearTabBus.js, src/ui/mobile/dash/itemCategory.js, src/ui/mobile/dash/gearStats.js, src/ui/mobile/dash/itemActions.js, src/ui/mobile/dash/WeaponBar.jsx, src/ui/mobile/dash/combatSkill.js, tools/qa/mp/mp-geartab.mjs
 
 ## The More page and its pages
 Screens: dash-more, more-settings, more-pets, more-leaderboard, more-social, more-journey, more-account, more-about, more-feedback
