@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4d06e9459097f0b09b46573f68bdbe36cecf91c9",
+  "tree": "4e57e6d804f9f6eeffa5cb9325ecd0c6b425a5c8",
+  "committedAt": "2026-11-02T20:35:17-08:00",
+  "subject": "Merge pull request #1396 from hemibroscommunity-del/claude/one-band",
+  "files": 7477,
+  "bytes": 848504131,
+  "listingSha256": "b4fb347929b00f160725a610130130e9f1202b69321263f1f2943eba3e0b92bd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
