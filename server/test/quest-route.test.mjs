@@ -318,8 +318,11 @@ const geomFor = (size) => {
   const qm = read('../../src/ui/mobile/sheet/questModel.js');
   check('7c the quest page and list keep their two calls, from the one module', /export \{ trackedQuestId, setTrackedQuest \} from '\.\.\/\.\.\/\.\.\/game\/trackedQuest\.js'/.test(qm) && !/localStorage/.test(qm.split('export { trackedQuestId')[0].slice(-400)));
   const bt = read('../../src/ui/BroTown.jsx');
-  check('7d the pinned quest card shows the tracked quest, and re-renders the moment it changes (BroTown.jsx)',
-    /import \{ trackedFirst, onTrackedQuest \} from '@\/game\/trackedQuest\.js'/.test(bt) && /activeQuests = trackedFirst\(activeQuests\.map/.test(bt)
+  /* v2.3.3918: the card is its own file (QuestCard.jsx); BroTown mounts it and re-renders it */
+  const qc = read('../../src/ui/QuestCard.jsx');
+  check('7d the pinned quest card shows the tracked quest, and re-renders the moment it changes (QuestCard.jsx, BroTown.jsx)',
+    /import \{ trackedFirst \} from '@\/game\/trackedQuest\.js'/.test(qc) && /active = trackedFirst\(active\.map/.test(qc)
+      && /React\.createElement\(QuestCard, \{ rpgState: rpgState, live: stateRef\.current \}\)/.test(bt)
       && /return onTrackedQuest\(function \(\) \{ setTrackTick\(/.test(bt));
   const mm = read('../../src/rendering/systems/wheelMinimap.js'), wm = read('../../src/ui/WorldMapOverlay.jsx');
   check('7e the minimap\'s star and the world map\'s road say whose road it is (their probes)', /qid: quest\.qid \|\| null, way: quest\.way \|\| null/.test(mm) && /qid: quest\.qid \|\| null, way: quest\.way \|\| null/.test(wm));
