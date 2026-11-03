@@ -118,7 +118,7 @@ const S0 = () => ({
   check('4f its words are BroTown\'s, never "Wheel" or "town" alone', !/Wheel|back in town/i.test(src('src/game/deathCard.js').split('\n').filter((l) => /'[^']*'/.test(l) && !/^\s*(\/\*|\*)/.test(l)).join('\n')));
 }
 
-// §5 v2.3.3972: a strip across the top (the owner: "should span the entire top strip of the game screen")
+// §5 v2.3.3994: a strip across the top (the owner: "should span the entire top strip of the game screen")
 {
   const v = { title: 'You died', by: 'Killed by Snowman', killer: 'Snowman', pvp: false, note: null, back: 'Back in BroTown in 5' };
   const w = D.deathStripWords(v);

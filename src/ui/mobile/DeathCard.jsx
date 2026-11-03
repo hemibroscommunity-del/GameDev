@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { deathCardView, deathStripWords, deathStripOneLine } from '@/game/deathCard.js';
 import { Z_ABOVE_DASH_PROMPT } from '@/ui/zLayers.js';
-import { deathStripPlace } from './deathStripPlace.js';   /* v2.3.3972: under the top bar, across the play column */
+import { deathStripPlace } from './deathStripPlace.js';   /* v2.3.3994: under the top bar, across the play column */
 
 /* ═══ v2.3.3817: "YOU DIED", AND WHAT KILLED YOU, FOR THE FIVE SECONDS ═══
  *
@@ -34,7 +34,7 @@ import { deathStripPlace } from './deathStripPlace.js';   /* v2.3.3972: under th
  * the same layer (Z_ABOVE_DASH_PROMPT), still never taking a tap.  It comes
  * in quickly (150 ms, fading and settling down) so the eye goes to it.
   *
- * ═══ v2.3.3972: A STRIP ACROSS THE TOP, NOT A STAMP ═══
+ * ═══ v2.3.3994: A STRIP ACROSS THE TOP, NOT A STAMP ═══
  * The owner: "The you died by snowman message should span the entire top strip
  * of the game screen.  It looks a bit silly as a stamp-like screen near the
  * top."  The 264 px rounded card beside or under the minimap is now a band
