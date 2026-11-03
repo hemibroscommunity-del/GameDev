@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "e161822781750ed13eeabfa1a38f78a5faf130f6",
+  "tree": "b96db023a03846b58c9bae59dc6012434767f812",
+  "committedAt": "2026-11-02T16:35:45-08:00",
+  "subject": "Merge pull request #1363 from hemibroscommunity-del/claude/snowman-beast",
+  "files": 7340,
+  "bytes": 843723742,
+  "listingSha256": "fc644eaff0ab0f891c474464ab91756f3242d4bc3152ac26db6841d66433ed1e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
