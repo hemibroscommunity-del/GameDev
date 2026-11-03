@@ -484,6 +484,10 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"ip_sockets","value":0}' "https://WORKER/api/admin/flags"
 ```
 (`ip_joins_min` is the other one, the connections a minute.)
+Since v2.3.4158 the Test panel has two buttons for this, no terminal: "Expo: let
+everyone on one Wi-Fi in" sets both to 0, "Back to normal" clears both. The
+sign-in door's own limit (20 checks a minute per address,
+`server/src/account.js`) has no switch.
 
 **A private room** for a playtest: the game only makes the rooms it is told
 to. Add the name to `ROOMS` in `server/wrangler.toml` (comma separated,
