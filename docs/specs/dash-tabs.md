@@ -31,10 +31,22 @@ the top-bar lane once this is on main; one layout on every screen is B3.
 - **The row** (`BottomDashboard.jsx` `RAIL_ITEMS`, `dash/NavRail.jsx`): Gear
   (id `dashboard`, I), Bro (id `hero`, P), Quests (`quests`, J), Codex
   (`encyclopedia`, K), More (`more`, O).  The ids stay (tests, the coach and
-  the guide arrow key on them; TRAPS §29); the words are the aria-label and
-  title, the buttons icon-only as before.  The Skills button is gone.  The
-  five share the row (`sheetGeometry` `RAIL_COUNT` 5, `IDENTITY_MIN_LINE` 0,
-  ceiling 80): 70 px at 390, 64 at 360.  Sideways the dock buttons go 26 → 31
+  the guide arrow key on them; TRAPS §29).  The Skills button is gone.
+  **CLOSE at the left, and the words** (the owner's drawing of the row,
+  `61C354F2-F323-4048-921E-654578D99AD6.png`, and of the Bro page,
+  `D474F679-6893-4890-823A-3BC96F817184.png`, in the repo root; "Keep the 5
+  buttons"): upright, `BandClose` (`dash/BandGrip.jsx`, `data-dash-close`,
+  56 px, `sheetGeometry` `BAND_CLOSE_W`) stands first in the row and does the
+  handle's tap (with a page open: close it and fold; at rest: fold; folded it
+  reads OPEN and unfolds).  The five share the rest (`RAIL_COUNT` 5,
+  `IDENTITY_MIN_LINE` 60, ceiling 96): 58 px at 390, 52 at 360, 44 at 320.
+  Each button wears its word where it fits at 11 px (`NavRail`
+  `navLabelMode`, from its real width, measured: the side dock's buttons
+  flex): beside the picture from 86 px (a tablet, a computer's one band),
+  under it from 46 (an upright phone, a computer's side column), the picture
+  alone below (a 320 px phone, a phone on its side); `data-nav-words` on the
+  rail says which.  Sideways the fold chip says CLOSE / OPEN on a phone too
+  (it showed ▾ / ▴).  Sideways the dock buttons go 26 → 31
   px so the dock (`landscapeNavGroupW`) and the side column stay 214 px, to
   the pixel.  A tap on Gear on a folded upright band unfolds it (B1's
   v2.3.3897 rule, carried here).
@@ -45,37 +57,46 @@ the top-bar lane once this is on main; one layout on every screen is B3.
   tests) lands there, with the page's drilled header and a back chip to the
   Bro card.  L opens Life Skills, and again (it showing) closes it
   (`deskKeys.navKey`: `bus.current() === 'skills'`).
-- **Bro is your own inspect card** (`sheet/BroCard.jsx`).  The owner, on the
-  first cut (five tabs): "I wanted the bro tab to be like what it looks like
-  when you inspect another player.  PFP clan, achievements, all the base
-  character stats, primary combat skills, place where you can tap to open
-  points spend window, etc".  So it is `ui/panels/PlayerProfilePanel.jsx`
-  (the Inspect card behind another player's portrait) drawn `embedded` in the
-  dashboard from `profileFromSelf` (with the level, the worker's AP and the
-  combat bars on top: `broProfile`), no tab row.  The card's own layout:
-  portrait, name, LV, AP (a door to Achievements), quests, leaderboard; title
-  and clan ("No Clan"; a door to the clan's page); Melee / Bow / Magic with a
-  bar each; the six worn slots (a door to Equipment); lifetime kills, rarest
-  achievement, the Homestead.  What only your card adds, through the card's
-  `slots`: your stats after the slots (HP, stamina, mana; the offense and
-  defense pills from `heroStatPills`, each its explainer), an Achievements row
-  (AP, "n of 33", the latest three badges; only with `caps.achievements`) and
-  a Life Skills row (total level, the unseen dot, L on a computer) after the
-  showcase, and **"Spend points (N)"** in the command dock's place (another
-  player's Party / Trade / Duel): sticky at the card's bottom edge, so on the
-  phone's ~190 px page it is always on screen; gold and glowing (`bt-pts-glow`)
-  while N > 0; `data-section="Build"`, so the coach, the guide arrow ("Tap
-  Spend points") and the points bubbles (`pointsFly.js`) aim at it.
-  "The five points stats" (Power, Vitality, Endurance, Agility, Mind) are the
-  retired tier-1 stats (StatScreenPanel v2.3.1236): the card shows what points
-  buy now.
-- **The card component, shared** (`PlayerProfilePanel`): five optional props,
-  none passed by an inspect window, which is unchanged: `embedded` (no ✕, the
-  frame from `.bt-pin.is-embedded`; the window's sideways two-column grid is
-  undone there), `slots` ({ afterTags, afterEquip, end, dock }), `onAp`,
-  `onClan`, `onEquipment`; and a profile's `combatPct` draws the bars.  The
-  coach's "stand down under a card" rule skips the embedded one
-  (`body:has(.bt-pcard:not(.is-embedded))`).
+- **Bro, as the owner drew it** (`sheet/BroCard.jsx`).  The first card was
+  your own inspect card (`PlayerProfilePanel` drawn `embedded`); the owner:
+  "I'll need to change the layout of the bro tab, it reads like an old PC
+  menu", then the drawing and "One different thing is the xp bar near
+  profile portrait (no general combat xp)", "No don't change todays dashboard
+  height", and of the portrait the top-left frame lost: "I'm wanting the
+  portrait in the bro section".  `PlayerProfilePanel` is back as on main.
+  Three panels (`data-bro-panel` id | stats | rows):
+  - **you**: `portraitSrc` in a gold frame, name, "Lv N" (`prog3CharLevel`),
+    no XP bar; the worn title (`S._achv.t`) as a gold ribbon or "No title";
+    the clan line (`[TAG]`, "No clan" / "No party"; a door to the clan); the
+    AP (`achvApTotal`; a door to Achievements); tiles Achievements n / total
+    (`achvSummary`) and Lifetime Kills (`profileFromSelf`).
+  - **the weapon's stats** (`sheet/broStats.js` `broWeaponStats(R, cat)`,
+    pure, `server/test/bro-stats.test.mjs`): Sword | Bow | Staff, starting on
+    `prog3ActiveCat`, kept while the page is visited.  Thirteen rows: Damage
+    and DPS (`calcDisplayDmgRange` / `calcDisplayDps` for that slot's weapon),
+    Attack Speed (1000 / `statSim.autoSwingMs`, "/s"), Range
+    (`statSim.reachOf`, tiles), then `heroStatPills` worked out with
+    `activeSlot` set to that weapon: Crit Chance, Crit Damage, Special Damage,
+    Element Power (the weapon's `element1`, then the lane's power), Defense,
+    Armor, Dodge, Resist, Move Speed.  An empty slot: "No bow equipped", the
+    weapon's four rows dashes.
+  - **the doors** (`data-bro-row`): Achievements, Life Skills (in the
+    drawing's "Attributes" place: no STR / AGI / INT exists), Points
+    (`data-section="Build"`, glowing while N > 0: the coach's "Tap Points",
+    the guide arrow and the points bubbles aim at it), Equipment (the window;
+    Gear's lane is not on main), Homestead (`farmPlotsReady`; no farm window
+    away from the farm, so a tap explains the Feed & Seed), Pet (More's Pets
+    page), Titles (`askTitlePicker`: the Achievements page opens on the row
+    you would pick a title from), Clan.
+  The shape is the box's width, measured (`data-bro-cols`): 3 side by side
+  from 600 px, each panel its own scroller; 2 (you | the doors, the stats
+  under them) from 340, one scroller: upright the Points door must be on
+  screen when the page opens; 1 below (sideways, ~220 px).  A taller box
+  shows more.  `window.__btBroCard` is QA's `{cols, weapon}`.
+- **The guide arrow and the bubbles skip what is scrolled away**
+  (`guideArrow.js` `scrolledAway`, `questFly.js` `shownRect`): an element
+  whose middle is outside a box that clips it is not "on the screen" (the
+  Points row scrolls with the page now).
 - **Points and Equipment are windows over the card** (`sheet/HeroExpanded.jsx`
   `SECTIONS = ['Card', 'Build', 'Overview']`): the same two screens in the
   same scroller, framed, under a title row (`data-bro-popup-head`, where the
@@ -83,7 +104,7 @@ the top-bar lane once this is on main; one layout on every screen is B3.
   `data-esc`) back to the card.  The card is not mounted under a window (one
   `data-section="Build"` on the page).  The Points title carries the glow
   while points wait (v2.3.3004's "until all points are spent").  Equipment
-  stays here, reached from the card's slots, until the Gear button's lane
+  stays here, reached from the card's Equipment row, until the Gear button's lane
   (v2.3.3940) is on main.  `heroSectionBus.shown` is 'Card', 'Build' or
   'Overview'; a request for 'Me' shows the card; `window.__btHeroSection` is
   QA's handle.
@@ -103,15 +124,15 @@ the top-bar lane once this is on main; one layout on every screen is B3.
   and the seen mark; `notifUnread(S)` is the count on the More button and the
   tile.  More → Notifications lists the lines newest first, marks them seen,
   and "Show on screen" opens the feed; a tap on the feed folds it (v2.3.2325).
-- **The handle** (`dash/BandGrip.jsx`): upright only, on the band's top edge,
+- **The handle** (`dash/BandGrip.jsx` `BandGrip`): upright only, on the band's top edge,
   a 36 x 5 bar on a 56 px tab, the tap area 64 x 44 from 40 px above the band
   to 4 px into it (the nav row's top air, so it never takes the middle
   button's press).  Same tap as CLOSE / OPEN, `data-dash-fold="open|min"`
   kept, `swallowTapClick` (TRAPS §247).  Sideways and on a computer the fold
-  chip stays (B3).
+  chip stays (B3).  CLOSE in the row does the same tap (above).
 - **Words**: the coach's "Tap OPEN" lines say "Tap the handle"; the points
-  tip says "Tap Bro", then "Your N points are waiting. Tap Spend points."; the
-  guide arrow "Tap Spend points"; the Login Key lesson says "More > Account";
+  tip says "Tap Bro", then "Your N points are waiting. Tap Points."; the
+  guide arrow "Tap Points"; the Login Key lesson says "More > Account";
   the keys list says Gear and Bro.
 
 ## Kill switch, caps
@@ -122,11 +143,18 @@ None: a client-only layout change, no wire, no server behaviour.
 
 - `notifbell` (rewritten): the corner empty while shut, the count on More and
   its tile, the page, Show on screen, a tap folds it, a new line counts.
-- `brocard` (new): the card (portrait, name, LV, AP, clan, three combat
-  skills with bars, the stats, the rows), Spend points lit and on screen after
-  a real level-up, its window and close, the slots' Equipment window, Life
-  Skills / Achievements / the clan under Bro, an old road, a computer (P, a
-  click, Esc).  Pictures: `docs/shots/bro-tab*.webp`.
+- `brocard` (new): the row (CLOSE first, the five with their words, none
+  cut, 44 x 44, touch-action), the card's three panels (portrait, name, Lv,
+  no XP bar, No title, No clan, AP, the tiles; the thirteen stats starting on
+  the weapon out, Bow changing them; the doors), Points lit and on screen
+  after a real level-up, every door to its page or window and back, the left
+  panel's doors, an old road, CLOSE folding and OPEN unfolding, a 320 px phone
+  (pictures alone), a tablet (three panels side by side), sideways (one
+  column, the chip's CLOSE), a computer (P, a click on Points, Esc, L and L).
+  Pictures: `docs/shots/bro-tab-v2*.webp`.
+- `server/test/bro-stats` (new): the thirteen rows, one reader with the
+  Equipment window's pills, a lane's own points, an empty slot, the start,
+  junk, the Titles ask.
 - `codexfit`, `goldrail`, `bandsummary`, `deskkeys`, `deskwide`,
   `achievements`, `loginkey` (Account and its confirm), `rehearsal`,
   `landscape-dash`, `weaponswap`, `chatlayer`, `coachdesk`, `pointstips`,
@@ -136,10 +164,10 @@ None: a client-only layout change, no wire, no server behaviour.
   window (`__btHeroSection.request('Overview')`); `H.openDest(P, 'Character')`
   does the same and maps Dashboard → Gear, Friends → Social.  Scenarios that
   wanted Points open Bro (`'Bro'`, or `request('Card')`) and press the card's
-  Spend points (`[data-section="Build"]`, a button: a click).
+  Points row (`[data-section="Build"]`, a button: a click).
   `H.openWorldChat` walks More → Notifications → Show on screen.
 - `server/test/points-tips`, `guide-arrow`, `achievements-client` hold the
-  words, the Spend points door and Achievements under Bro.
+  words, the Points door and Achievements under Bro.
 - UI review: `dash-bro` (the card), `dash-bro-points` and `dash-bro-equipment`
   (the windows), `dash-bro-skills`,
   `dash-bro-skill-detail`, `dash-bro-achievements`, `more-account`,

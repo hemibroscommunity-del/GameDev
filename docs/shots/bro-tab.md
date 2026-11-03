@@ -1,28 +1,33 @@
-# The Bro page is your own inspect card (v2.3.4142)
+# The Bro page, as the owner drew it (v2.3.4142)
 
-The owner: *"I wanted the bro tab to be like what it looks like when you
-inspect another player. PFP clan, achievements, all the base character stats,
-primary combat skills, place where you can tap to open points spend window,
-etc"*.
+The owner, of the first card (his own inspect card): *"I'll need to change the
+layout of the bro tab, it reads like an old PC menu."* Then: *"I added what I
+want bro tab layout to look like on GitHub. One different thing is the xp bar
+near profile portrait (no general combat xp)"* (the drawing:
+`D474F679-6893-4890-823A-3BC96F817184.png` in the repo root), *"Keep the 5
+buttons"* and *"No don't change todays dashboard height"*.
 
-Taken by `node tools/qa/mp/run.mjs brocard` (a phone at 390 x 844 upright, a
-computer at 1440 x 900 playing wide), after a real level-up, so points wait.
+Three panels: you (portrait, name, level, title, clan, AP, achievements,
+kills), the combat stats of the weapon picked in Sword | Bow | Staff, and the
+doors (Achievements, Life Skills, Points, Equipment, Homestead, Pet, Titles,
+Clan). The button row is CLOSE, then Gear, Bro, Quests, Codex and More with
+their words. The page lays itself out from its own width: side by side from
+600 px, you beside the doors with the stats under them on an upright phone,
+all stacked on a phone on its side.
+
+Taken by `node tools/qa/mp/run.mjs brocard` after a real level-up, so points
+wait (the Points door glows, and the coach and the arrow say "Tap Points").
 Every picture is on 256 colours.
 
-| The Bro page on a phone | Spend points opens the Points window |
+| An upright phone (390 x 844) | Bow picked, the stats scrolled to |
 |---|---|
-| ![card](bro-tab.webp) | ![points](bro-tab-points.webp) |
+| ![phone](bro-tab-v2.webp) | ![bow](bro-tab-v2-bow.webp) |
 
-The whole card (stood up over a tall screen for the picture: on a phone the
-page is about 190 px tall and the card scrolls under "Spend points"):
+A computer (1440 x 900, the side column: you beside the doors, the stats
+under them):
 
-![whole card](bro-tab-full.webp)
+![computer](bro-tab-v2-desk.webp)
 
-A phone on its side (the card in the ~220 px side column: one column of
-stats, the combat words left to their pictures):
+A tablet upright (820 x 1180): the three panels side by side, as drawn:
 
-![sideways](bro-tab-side.webp)
-
-On a computer:
-
-![computer](bro-tab-desk.webp)
+![tablet](bro-tab-v2-tablet.webp)

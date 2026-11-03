@@ -5752,6 +5752,11 @@ body:has([data-trade-drawer]) [data-coach]{display:none}
   [data-key-at="end"]::after { bottom:auto; right:14px; top:50%; transform:translateY(-50%); }
   [data-key-at="inline"]::after { position:relative; display:inline-flex; right:auto; bottom:auto; margin-left:8px; vertical-align:1px; }
   [data-key-at="xy"]::after { right:auto; bottom:auto; left:var(--key-x,0px); top:var(--key-y,0px); }
+  /* v2.3.4142: the dashboard's buttons wear their words now (NavRail
+     navLabelMode), along the bottom or the right: the cap goes to the top-left
+     corner, where it covers neither the word nor the count badge (top-right) */
+  .bt-navrail[data-nav-words="stack"] [data-key]::after,
+  .bt-navrail[data-nav-words="beside"] [data-key]::after { right:auto; bottom:auto; left:3px; top:3px; }
   /* ═══ v2.3.3813: A ✕'S "Esc" BESIDE IT, NOT UNDER IT ═══
      The judge pass on a computer: hung under the ✕ (top right of a window),
      the cap fell into the words below it -- Mayor Bro's "Blue slimes explode,

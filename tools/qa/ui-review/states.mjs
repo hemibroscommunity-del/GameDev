@@ -531,30 +531,51 @@ export const STATES = [
 
   /* ═══ THE DASHBOARD ═══ */
   /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page).
-     v2.3.4142: the Character page is Bro, ONE card -- your own Inspect card
-     (the owner: "like what it looks like when you inspect another player") --
-     with Points and Equipment as windows over it, Life Skills and
-     Achievements as pages under it: each its own screen here, dash-bro-* */
+     v2.3.4142: the Character page is Bro, ONE card -- the owner's drawing:
+     you, the weapon's combat stats, the doors (sheet/BroCard.jsx) -- with
+     Points and Equipment as windows over it, Life Skills and Achievements as
+     pages under it: each its own screen here, dash-bro-* */
   {
     id: 'dash-bro', group: 'Dashboard', title: 'Bro: your card',
-    about: 'The Bro page: your own Inspect card, the screen you get when you inspect another player, filled with your data -- portrait, name, level, Achievement Points, quests, your title and clan ("No Clan"), a gold "Spend points (N)" (glowing while N > 0), Melee / Bow / Magic with their levels and bars, your six worn slots (a tap opens Equipment), your stats (HP, stamina, mana, offense, defense), lifetime kills, rarest achievement, the Homestead, then an Achievements row and a Life Skills row.',
+    about: 'The Bro page, as the owner drew it: three panels, laid out from the page\'s own width (side by side from 600 px; on an upright phone you beside the doors, the stats under them; sideways stacked). You: your portrait in a gold frame, name, "Lv N" (no XP bar), your title as a gold ribbon ("No title"), your clan ("No clan"), your AP, and Achievements n / total and Lifetime Kills tiles. The combat stats of the weapon picked in Sword | Bow | Staff (starting on the one in your hand): thirteen rows, Damage to Move Speed. The doors, a chevron each: Achievements, Life Skills, Points (gold and glowing while points wait), Equipment, Homestead, Pet, Titles, Clan.',
     run: async ({ P }) => {
       await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
       const e = await bus(P, 'open', 'hero');
       if (e) return e;
       await wait(P, 900);
-      if (!(await has(P, '[data-bro-page="Card"] .bt-pin.is-embedded'))) return 'the card is not up';
+      if (!(await has(P, '[data-bro-page="Card"] [data-bro-card="v2"]'))) return 'the card is not up';
+    },
+  },
+  {
+    /* v2.3.4142: the weapon selector working */
+    id: 'dash-bro-bow', group: 'Dashboard', title: 'Bro: the Bow\'s combat stats',
+    about: 'The Bro page with Bow picked in Sword | Bow | Staff: the thirteen combat stats as the bow would fight (its damage, swings a second, reach in tiles, the Bow lane\'s crit, special and elemental power; the shared five the same under every weapon), "No bow equipped" and dashes when there is none.',
+    run: async ({ P }) => {
+      await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
+      const e = await bus(P, 'open', 'hero');
+      if (e) return e;
+      await wait(P, 900);
+      const t = await tapSel(P, '[data-bro-wsel="bow"]');
+      if (t) return t;
+      await wait(P, 400);
+      if (!(await has(P, '[data-bro-panel="stats"][data-bro-weapon="bow"]'))) return 'the Bow was not picked';
+      await evalIn(P, () => {
+        const c = document.querySelector('[data-bro-card="v2"]');
+        const st = c && c.querySelector('[data-bro-panel="stats"]');
+        if (c && st && c.scrollHeight > c.clientHeight) c.scrollTop += st.getBoundingClientRect().top - c.getBoundingClientRect().top - 4;
+      });
+      await wait(P, 300);
     },
   },
   {
     id: 'dash-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment (a window over the card)',
-    about: 'The Equipment window, opened from the card\'s six slots: equipment slots, the figure, your stats as pills (offense, player, vitals), under a title row with a close back to the card. The Gear button takes these once it is built.',
+    about: 'The Equipment window, opened from the card\'s Equipment row: equipment slots, the figure, your stats as pills (offense, player, vitals), under a title row with a close back to the card. The Gear button takes these once it is built.',
     run: async ({ P }) => {
       await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
       const e = await bus(P, 'open', 'hero');
       if (e) return e;
       await wait(P, 900);
-      const t = await tapSel(P, '.bt-pin-equip[data-section="Overview"]');
+      const t = await tapSel(P, '[data-bro-row="equipment"]');
       if (t) return t;
       await wait(P, 700);
       if (!(await has(P, '[data-bro-popup="Overview"]'))) return 'the Equipment window did not open';
@@ -562,7 +583,7 @@ export const STATES = [
   },
   {
     id: 'dash-bro-points', group: 'Dashboard', title: 'Bro: Points (a window over the card)',
-    about: 'The Points window, opened from the card\'s "Spend points (N)": spending points on each weapon skill and on the character, under a title row with a close back to the card.',
+    about: 'The Points window, opened from the card\'s Points row: spending points on each weapon skill and on the character, under a title row with a close back to the card.',
     run: async ({ P }) => {
       await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
       await bus(P, 'open', 'hero');
