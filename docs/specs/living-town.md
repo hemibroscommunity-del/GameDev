@@ -86,7 +86,17 @@ placing are not changed, so nothing is re-baked.
 - Far from the screen a townsperson still has no figure at all (v2.3.3809's
   rule: destroyed past the view's half-diagonal + 300 px).
 
-Measured: see the PR (mp-wheelfolk and mp-membudget, against main).
+Measured (mp-membudget's trip on the QA box, the same build with walking off,
+`QA_MB_QUERY=folkwalk=0`, against on): the graphics chip's highest reading
+106.2 / 104.2 MB off (main's own, already at its line of 105) against
+110.2-113.9 on; the page's heap's highest 35.8-36.2 off against 37.3-37.4 on.
+The work poses are not it (`folkwork=0`: 110.2 / 111.4). In the town alone the
+chip held 0-2 MB more walking: every facing of the shared head pieces and tees
+drawn within the last minute (Pixi lets a texture go after 60 s unused), and
+about 1 MB of heap for the townsfolk's figures that walking brings near the
+screen. So `tools/qa/mp/memory-budget.mjs` raises `gpu` 105 -> 115 and `heap`
+36 -> 38, said there. mp-wheelfolk: no photograph fetched or held (0 MB), as
+before.
 
 ## Where it is off
 
@@ -98,6 +108,7 @@ Measured: see the PR (mp-wheelfolk and mp-membudget, against main).
 - The Test panel's **"Townsfolk drawn live"** off (`clientOff` `lookfolk`) does
   the same on every phone, live.
 - `?folkwalk=0` keeps them at their spots on one phone.
+- `?folkwork=0` lets them walk but stand at their stops (no work poses), on one phone.
 
 ## The code
 

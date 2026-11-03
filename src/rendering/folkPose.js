@@ -28,10 +28,13 @@ const WORK = new Set(['mine', 'fish', 'pickup']);
 const WORK_MS = { pickup: 1600 };
 const WORK_FRAMES = { mine: 14, fish: 32, pickup: 29 };
 
+/* `?folkwork=0`: they walk, but stand at their stops (one phone) */
+const _workOff = (() => { try { return /(^|[?&])folkwork=0(&|$)/.test(window.location.search || ''); } catch (e) { return false; } })();
+
 /** The work pose he is at and can be drawn in, or null (stand or walk). */
 export function folkWorkPose(npc) {
   const w = npc && npc._folkWork;
-  return (w && WORK.has(w) && lookPose(w)) ? w : null;
+  return (w && !_workOff && WORK.has(w) && lookPose(w)) ? w : null;
 }
 
 /** That pose's frame at time `t` (ms, his own beat added). */

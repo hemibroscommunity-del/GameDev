@@ -186,7 +186,7 @@ const { WHEEL_TOWNSFOLK } = await import('../../src/data/wheelBuildingDoors.js')
     /const work = \(jogging \|\| folkFaceOverride\(\)\) \? null : folkWorkPose\(npc\);/.test(er) && /const pose = work \|\| \(jogging \? 'jog' : 'stand'\);/.test(er)
       && /folkWorkFrame\(work, now \+ display\._folkBeat\)/.test(er) && /folk\._shirtLook = work \? null : _shirtLook\(/.test(er));
   const fp = src('src/rendering/folkPose.js');
-  check('4d ...only a pose the look palette has in numbers (else he stands: no bake of his look)', /return \(w && WORK\.has\(w\) && lookPose\(w\)\) \? w : null;/.test(fp));
+  check('4d ...only a pose the look palette has in numbers (else he stands: no bake of his look)', /return \(w && !_workOff && WORK\.has\(w\) && lookPose\(w\)\) \? w : null;/.test(fp));
   check('4e the far-off rule stands: a townsperson past the view has no figure (v2.3.3809)', /display\._folk\.destroy\(\{ children: true \}\);/.test(er));
 }
 
