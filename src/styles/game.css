@@ -6944,7 +6944,8 @@ html.bt-one-band:not(.bt-band-side) [data-band-box="page"]{width:100%}
    not start a walk under a page you are reading.  Lane D's controls are not
    edited for this: each is found by the hook it already carries. */
 html.bt-band-side-open :is([data-joyzone], .bt-joystick-zone, .bt-rjoy-zone, [data-sprint], [data-ride], [data-quickeat],
-  [data-jump], [data-shield], [data-special], [data-weapon-tri], [data-ability], .bt-burst-btn, .bt-charge-pie, [data-trap-round]){
+  [data-jump], [data-shield], [data-special], [data-weapon-tri], [data-weapon-pill], [data-ability], .bt-burst-btn, .bt-charge-pie, [data-trap-round]){
+  /* v2.3.4152: + the weapon pill (v2.3.4130), the triangle's successor */
   visibility:hidden!important;
   pointer-events:none!important;
 }

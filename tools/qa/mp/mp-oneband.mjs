@@ -74,7 +74,7 @@ const read = (P) => P.page.evaluate(() => {
    the minimap and its plate. */
 const CTL_SELS = {
   stick: '.bt-joystick-zone', disc: '.bt-rjoy-zone', sprint: '[data-sprint]', ride: '[data-ride]', eat: '[data-quickeat]',
-  jump: '[data-jump]', shield: '[data-shield]', special: '[data-special]', tri: '[data-weapon-tri]', abil: '[data-ability]',
+  jump: '[data-jump]', shield: '[data-shield]', special: '[data-special]', tri: '[data-weapon-pill]'   /* v2.3.4152: the weapon pill replaced the triangle (v2.3.4130) */, abil: '[data-ability]',
   burst: '.bt-burst-btn', pie: '.bt-charge-pie', trap: '[data-trap-round]',
 };
 const controls = (P) => P.page.evaluate((sels) => {
@@ -133,7 +133,7 @@ async function sidewaysChecks(P, rec, { label, viewport }) {
     rest.fold === 'min' && !!rest.side && rest.side.side === true && rest.side.open === false && rest.stored !== '1' && !!o.band && o.band.h < 80,
     { fold: rest.fold, side: rest.side, stored: rest.stored, band: o.band });
   const names = rest.ctl.map((c) => c.name);
-  rec.ok(`${label}: guard: the fight's controls are on screen to be measured (the stick, the disc, Sprint, Jump, the triangle, Block, Special)`,
+  rec.ok(`${label}: guard: the fight's controls are on screen to be measured (the stick, the disc, Sprint, Jump, the weapon pill, Block, Special)`,
     ['stick', 'disc', 'sprint', 'jump', 'tri', 'shield', 'special'].every((n) => names.includes(n)) && !!rest.pf && !!rest.mini && !!rest.plate,
     { names, pf: rest.pf, mini: rest.mini, plate: rest.plate });
   const top = o.band ? o.band.y : Hh;
