@@ -1,4 +1,4 @@
-/* ═══ v2.3.4029: A STAND-IN WEARS YOUR TROUSER AND SHOE PATTERNS, AND YOUR TROUSER PRINT ═══
+/* ═══ v2.3.4031: A STAND-IN WEARS YOUR TROUSER AND SHOE PATTERNS, AND YOUR TROUSER PRINT ═══
  *
  * The owner: "Shoes and patterns aren't showing while hoeing."  The farmer,
  * like the lumberjack, the cook and the fire-lighter, is a stand-in: a painted
@@ -22,7 +22,7 @@ import { getArt, artHasInk, artHash, sanitizeShirtArt, onArtChange } from './tra
 import { getPattern, sanitizePattern, onPatternChange } from './traits/patternCatalog.js';
 import { FARM_ANIM_HEAD } from '../data/farmAnims.js';
 
-/* v2.3.4029: each stand-in's pixels against the walking body's.  The walking
+/* v2.3.4031: each stand-in's pixels against the walking body's.  The walking
    body is baked from 256 px sheets in which you stand 189 px from crown to
    boots, your head 51 px across (mp-gatherlook's ART table), and a pattern's
    `cell` is in those pixels.  A strip whose figure is bigger gets cells that

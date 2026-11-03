@@ -1363,7 +1363,7 @@ export function torsoAnchors(isOn, W, H, fw) {
   return { frames: out, bh };
 }
 
-/* v2.3.4029: `cellK` scales the tile's cell for a figure drawn at another size
+/* v2.3.4031: `cellK` scales the tile's cell for a figure drawn at another size
    than the walking body's 256 sheet (a stand-in: standInGarb.js
    STANDIN_GARB_K), rounded to whole pixels so every stripe is as wide as the
    next; omitted, the cell is the tile's own. */
