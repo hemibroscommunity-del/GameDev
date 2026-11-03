@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "481929cc4e5c6144520325c9f9361f95750560d7",
+  "tree": "4160b92291e323dfcc997ece752cb1145fbfd18d",
+  "committedAt": "2026-11-02T19:05:33-08:00",
+  "subject": "Merge pull request #1378 from hemibroscommunity-del/claude/hemi-portrait",
+  "files": 7428,
+  "bytes": 845504678,
+  "listingSha256": "c73435b2a8f3d7fed1724cbcc2efb2651246561655476acc7f5749764be1e630",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
