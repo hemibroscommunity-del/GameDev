@@ -10,7 +10,7 @@ import { itemDetailBus } from './itemDetailBus.js';
 import { weaponSlotFor, unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect } from './equipActions.js';
 import { weaponRows, shieldRows, armourRows, compareRows, charLevel } from './gearStats.js';
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
-import { CharacterView } from '../sheet/CharacterView.jsx';   /* v2.3.4161: the overview's full-body bro */
+import { CharacterView } from '../sheet/CharacterView.jsx';   /* v2.3.4171: the overview's full-body bro */
 import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4151: the overview's bars, the Character page's own */
 import { shopBus } from '../shopBus.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
@@ -102,7 +102,7 @@ const FONT_MIN = 11;   /* the owner's floor for anything in the card */
    (PR #1410).  Not the short band (the sideways phone, which the owner
    likes as it is): its row of nines wants the width. */
 const GEAR_MAX_W = 560;
-/* v2.3.4161: the overview's arrangement, for the owner to choose between
+/* v2.3.4171: the overview's arrangement, for the owner to choose between
    (?gearview=1|2|3, one tab): a temporary switch, gone once one is picked */
 const GEAR_VIEW = (() => {
   try { const v = new URLSearchParams(window.location.search).get('gearview'); return v === '2' ? 2 : v === '3' ? 3 : 1; } catch (e) { return 1; }
@@ -259,7 +259,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   React.useEffect(() => gearTabBus.subscribe(() => tick()), []);
   React.useEffect(() => shopBus.subscribe(() => tick()), []);   /* v2.3.2059: the bag is half the shop */
   React.useEffect(() => itemDetailBus.subscribe(() => tick()), []);
-  /* v2.3.4161: no XP count-up here any more (the skills' tiles left for the
+  /* v2.3.4171: no XP count-up here any more (the skills' tiles left for the
      Bro page), so no frame loop either */
   const bro = React.useRef(null);
 
@@ -284,7 +284,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   /* ── geometry: one square size `t` for both grids ── */
   const wide = box.w >= WIDE_AT;
   const W = Math.max(0, box.w), H = Math.max(0, box.h);
-  /* v2.3.4161: the computer's weapon bar under the three is retired: since
+  /* v2.3.4171: the computer's weapon bar under the three is retired: since
      #1405 the weapon pill at the foot of the world (keys 1 2 3) is the one
      weapon switcher on every layout, the owner's choice */
   const footH = 0;
@@ -695,7 +695,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       </div>
     );
   } else {
-    /* v2.3.4161: THE OVERVIEW IS YOUR BRO.  The owner (2026-11-03): "Move
+    /* v2.3.4171: THE OVERVIEW IS YOUR BRO.  The owner (2026-11-03): "Move
        the 3 primary combat skills out of the gear menu and put them into the
        bro menu", then "I want the character preview in the middle panel by
        default (actually showing what he's equipped) like how I had it in the

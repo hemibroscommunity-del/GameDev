@@ -1,4 +1,4 @@
-/* ═══ mp-gearviews (v2.3.4161): THE GEAR TAB'S THREE OVERVIEW ARRANGEMENTS ═══
+/* ═══ mp-gearviews (v2.3.4171): THE GEAR TAB'S THREE OVERVIEW ARRANGEMENTS ═══
  *
  * The owner (2026-11-03): "I want the character preview in the middle panel
  * by default (actually showing what he's equipped) ... Design a few different
