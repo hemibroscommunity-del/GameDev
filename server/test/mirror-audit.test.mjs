@@ -37,8 +37,8 @@ import { FORGE_LADDER as SRV_FORGE_LADDER, forgeLevelFor as srvForgeLevel, forge
 import { FORGE_LADDER as CLIENT_FORGE_LADDER, forgeLevelFor as clientForgeLevel, forgeOffered as clientForgeOffered, forgeStatReq as clientForgeStatReq } from '../../src/data/forgeLadder.js'; /* v2.3.3524 */
 import { hardenLevelFor as clientHardenLevel } from '../../src/data/hardenCosts.js'; /* v2.3.3524 */
 import { HARDEN_COSTS as CLIENT_HARDEN, HARDEN_MATERIAL_NAMES as CLIENT_HARDEN_NAMES, hardenGoldFor as clientHardenGold, hardenAmountFor as clientHardenAmount, hardenMaterialFor as clientHardenMat, hardenIsWood as clientHardenIsWood, hardenTierOf as clientHardenTier } from '../../src/data/hardenCosts.js'; /* v2.3.3139 */
-import { HARDENED_WOOD_RECIPES as CLIENT_HARDENED_WOOD, HARDENED_WOOD_MAX_PER_REQUEST as CLIENT_HW_MAX, HARDEN_WOOD_BY_TIER as CLIENT_HARDEN_WOOD_BY_TIER } from '../../src/data/hardenedWood.js'; /* v2.3.3139 */
-import { SMELT_RECIPES as CLIENT_SMELT } from '../../src/data/items.js'; /* v2.3.2822 */
+import { HARDENED_WOOD_RECIPES as CLIENT_HARDENED_WOOD, HARDENED_WOOD_MAX_PER_REQUEST as CLIENT_HW_MAX, HARDEN_WOOD_BY_TIER as CLIENT_HARDEN_WOOD_BY_TIER, HARDENED_WOOD_FIVE as CLIENT_HARDENED_WOOD_FIVE, hardenedWoodRecipe as clientHardenedWoodRecipe } from '../../src/data/hardenedWood.js'; /* v2.3.3139; v2.3.3981: the five-to-one rows */
+import { SMELT_RECIPES as CLIENT_SMELT, SMELT_FIVE as CLIENT_SMELT_FIVE, smeltRecipe as clientSmeltRecipe } from '../../src/data/items.js'; /* v2.3.2822; v2.3.3981: the five-to-one rows */
 import { FARM as SRV_FARM, farmGrowMs as srvFarmGrowMs, farmYield as srvFarmYield, CROP_HEAL as SRV_CROP_HEAL, cropHealFor as srvCropHeal } from '../src/farm.js'; /* v2.3.3127; v2.3.3537: what a crop heals */
 import { FARM as CLIENT_FARM, FARM_CROP_ORDER as CLIENT_FARM_ORDER, farmGrowMs as clientFarmGrowMs, farmYieldShown as clientFarmYieldShown, CROP_HEAL as CLIENT_CROP_HEAL, farmCropHeal as clientCropHeal } from '../../src/data/farmCrops.js'; /* v2.3.3127; v2.3.3537 */
 import { ARMOR_FORGE as SRV_ARMOR_FORGE } from '../src/armorforge.js'; /* v2.3.3092 */
@@ -1652,6 +1652,21 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
     check('smelting: ' + k + ' ore / cost / level / xp match',
       a.ore === b.ore && a.oreCost === b.oreCost && a.minLvl === b.minLvl && a.xp === b.xp, { srv: a, cli: b });
   }
+  /* v2.3.3981: the five-to-one rows `onetoone: false` brings back (and an old
+     worker still settles) -- the game draws them when caps.onetoone is
+     absent, so they must be the worker's too, both ways through each side's
+     own reader */
+  check('smelting: the five-to-one rows match (SMELT.FIVE / SMELT_FIVE)', keys(SRV_SMELT.FIVE) === keys(CLIENT_SMELT_FIVE)
+    && Object.keys(SRV_SMELT.FIVE).every((k) => SRV_SMELT.FIVE[k].oreCost === CLIENT_SMELT_FIVE[k].oreCost && SRV_SMELT.FIVE[k].xp === CLIENT_SMELT_FIVE[k].xp),
+    { srv: SRV_SMELT.FIVE, cli: CLIENT_SMELT_FIVE });
+  const srvRead = (k, off) => { const was = room._liveFlags; room._liveFlags = off ? { onetoone: false } : {}; const r = room._smeltRecipe(k); room._liveFlags = was; return r; };
+  const sOff = [];
+  for (const k of Object.keys(SRV_SMELT.RECIPES)) for (const one of [true, false]) {
+    const a = srvRead(k, !one), b = clientSmeltRecipe(k, one);
+    if (!a || !b || a.ore !== b.ore || a.oreCost !== b.oreCost || a.minLvl !== b.minLvl || a.xp !== b.xp) sOff.push([k, one, a, b]);
+  }
+  check('smelting: the game\'s row with and without caps.onetoone is the one the worker settles with the switch on and off (1 ore / 5 ore)',
+    sOff.length === 0 && clientSmeltRecipe('bar_copper', true).oreCost === 1 && clientSmeltRecipe('bar_copper', false).oreCost === 5, sOff);
 }
 
 // ── THE FARM: the Feed & Seed window must promise what the worker settles ──
@@ -2320,6 +2335,21 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   }
   check('hardened wood: the Woodworker\'s Harden tab is the worker\'s table (log, logs a piece, level, XP, wood, name) and its "All" cap',
     hOff.length === 0 && CLIENT_HW_MAX === SRV_HARDENED_WOOD.MAX_PER_REQUEST && Object.keys(RC).length === 5, hOff);
+  /* v2.3.3981: the five-to-one rows, and each side's reader with the cap and the switch */
+  const hFive = [];
+  for (const k of new Set([...Object.keys(SRV_HARDENED_WOOD.FIVE), ...Object.keys(CLIENT_HARDENED_WOOD_FIVE), ...Object.keys(RC)])) {
+    const a = SRV_HARDENED_WOOD.FIVE[k], b = CLIENT_HARDENED_WOOD_FIVE[k];
+    if (!a || !b || a.logCost !== b.logCost || a.xp !== b.xp) hFive.push(['five', k, a, b]);
+    for (const one of [true, false]) {
+      const was = room._liveFlags; room._liveFlags = one ? {} : { onetoone: false };
+      const x = room._hardenedWoodRecipe(k); room._liveFlags = was;
+      const y = clientHardenedWoodRecipe(k, one);
+      if (!x || !y) { hFive.push(['reader', k, one]); continue; }
+      for (const f of ['log', 'logCost', 'minLvl', 'xp', 'tier', 'name']) if (x[f] !== y[f]) hFive.push([k, one, f, x[f], y[f]]);
+    }
+  }
+  check('hardened wood: the five-to-one rows match, and the game\'s row with and without caps.onetoone is the worker\'s with the switch on and off',
+    hFive.length === 0 && clientHardenedWoodRecipe('hardened_pine', true).logCost === 1 && clientHardenedWoodRecipe('hardened_pine', false).logCost === 5, hFive);
   check('hardened wood: the woods by tier read off the same table on both sides',
     JSON.stringify(CLIENT_HARDEN_WOOD_BY_TIER) === JSON.stringify(SRV_HARDEN_WOOD_BY_TIER), { client: CLIENT_HARDEN_WOOD_BY_TIER, server: SRV_HARDEN_WOOD_BY_TIER });
 }
