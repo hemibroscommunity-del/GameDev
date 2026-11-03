@@ -206,10 +206,56 @@ export function SprintButton(props) {
   var lit = Math.max(0, Math.min(1, view.frac));
   var skinState = on ? 'on' : (view.tired ? 'disabled' : 'normal');
   var icon = Math.round(size * 0.7);
+  /* ═══ v2.3.3920: ON GLOWS, THE STAMINA IS AN ARC, TIRED IS UNMISTAKABLE ═══
+     The owner: "The boot with the wing button is tapped once to make the
+     character sprint until their energy runs out (or until the button is
+     tapped again)", and from the design review they adopted: "keep the artwork
+     concept but improve the state feedback.  When sprinting is active, give
+     its border a strong glow and perhaps a circular energy indicator.  When
+     stamina is depleted, show an unmistakable exhausted state."
+       on     a strong gold glow ring round the button (box-shadows, never a
+              CSS filter over the game: the iOS grain), pulsing slowly
+              (opacity only, bt-sprint-glow)
+       all    a clear 3 px stamina arc just outside the button, gold, running
+              down clockwise from the top as you run (the skin's dark meter on
+              the ring stays out: one meter, not two)
+       tired  the grey face (the skin's Disabled), the boot dimmed, the arc
+              empty and its track red; a tap still shakes and says "Not
+              enough energy!"
+     data-sprint-state on | off | tired, for the tests (data-sprint keeps its
+     four values, running included). */
+  var sState = on ? 'on' : (view.tired ? 'tired' : 'off');
+  var ARC_W = 3;
+  var arcR = size / 2 + 1 + ARC_W / 2;   /* 1 px of air off the ring */
+  var box = size + 2 * (arcR + ARC_W / 2 - size / 2);
+  var circ = 2 * Math.PI * arcR;
+  var arcSvg = React.createElement('svg', {
+    'aria-hidden': 'true', 'data-sprint-arc': fmt(view.tired ? 0 : lit),
+    width: box, height: box, viewBox: '0 0 ' + fmt(box) + ' ' + fmt(box),
+    style: { position: 'absolute', left: (size - box) / 2, top: (size - box) / 2, pointerEvents: 'none', overflow: 'visible' },
+  },
+  React.createElement('circle', {
+    cx: box / 2, cy: box / 2, r: arcR, fill: 'none', strokeWidth: ARC_W,
+    stroke: view.tired ? 'rgba(226,74,58,.92)' : 'rgba(12,16,20,.62)',
+  }),
+  !view.tired && lit > 0.001 ? React.createElement('circle', {
+    cx: box / 2, cy: box / 2, r: arcR, fill: 'none', strokeWidth: ARC_W, strokeLinecap: 'butt',
+    stroke: on ? '#FFD66B' : '#E6AE52',
+    strokeDasharray: fmt(lit * circ) + ' ' + fmt(circ),
+    transform: 'rotate(-90 ' + fmt(box / 2) + ' ' + fmt(box / 2) + ')',
+  }) : null);
+  var glow = on ? React.createElement('span', {
+    key: 'glow', className: 'bt-sprint-glow', 'aria-hidden': 'true',
+    style: {
+      position: 'absolute', inset: -2, borderRadius: '50%', pointerEvents: 'none',
+      boxShadow: '0 0 0 2px rgba(255,214,107,.95), 0 0 12px 5px rgba(255,190,70,.75)',
+    },
+  }) : null;
 
   return React.createElement('div', {
     className: 'bt-desktop-hide bt-sprint-btn',
     'data-sprint': on ? (view.running ? 'running' : 'on') : (view.tired ? 'tired' : 'off'),
+    'data-sprint-state': sState,   /* v2.3.3920: on | off | tired */
     'data-uisfx': 'off',   /* the menu click is not this control's sound */
     role: 'button',
     'aria-label': on ? 'Sprint on' : 'Sprint',
@@ -241,7 +287,9 @@ export function SprintButton(props) {
   /* No filter at any time (the iOS grain over the canvas, CLAUDE.md); the
      skin's meter keeps the charge pie's fixed-point dasharray (the v2.3.10
      incident). */
+  glow,
   React.createElement(Skin, {
-    size: size, tone: on ? 'warm' : 'slate', state: skinState, meter: lit,
-  }, React.createElement(PaintedIcon, { src: ICON, name: 'boot', size: icon, dim: view.tired }))));
+    size: size, tone: on ? 'warm' : 'slate', state: skinState,
+  }, React.createElement(PaintedIcon, { src: ICON, name: 'boot', size: icon, dim: view.tired })),
+  arcSvg));
 }

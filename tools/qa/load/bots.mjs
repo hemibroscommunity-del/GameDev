@@ -280,6 +280,20 @@ function startWalking(bot) {
   bot.state = 'walking';
   newTarget(bot);
   clearInterval(bot.timer);
+  /* v2.3.3953: CFG.grade -- two letters as the worker's `eqg` (torso, then
+     greaves: n / r / e / g): each bot wears an iron torso and greaves of those
+     grades, DESCRIBED (the legacy lane, grids.js), so the worker sends its
+     grade on the tick and a phone draws every bot's armour glowing
+     (mp-crowdbots BT_CROWD_GRADE: what the grade's pass costs a crowd) */
+  if (CFG.grade && !bot.gradeSent) {
+    const Q = { n: 'normal', r: 'rare', e: 'elite', g: 'godly' };
+    const q = (i) => Q[String(CFG.grade).charAt(i)] || 'normal';
+    bot.gradeSent = true;
+    send(bot, { type: 'stats_update', payload: {
+      armor: { name: 'Iron Torso', mat: 'iron', tierMult: 2, quality: q(0) },
+      legsArmor: { name: 'Iron Greaves', mat: 'iron', tierMult: 2, quality: q(1) },
+    } });
+  }
   /* --idle: everyone stands still (the client's 1 s keepalive only), the
      town square on a quiet evening */
   if (CFG.idle) bot.standUntil = Infinity;

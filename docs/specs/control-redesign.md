@@ -1377,6 +1377,9 @@ Owner, 2026-10-03:
 > dashboard but beneath left joystick. If you tap on it it switches to the
 > next equipped weapon.
 
+> **v2.3.3921: replaced by the weapon triangle beside the attack disc
+> (docs/specs/weapon-triangle.md).** What follows is the chip's history.
+
 `src/ui/panels/WeaponSwapButton.jsx`, mounted beside the other touch controls
 inside `.brotown-wrap` (so sideways it rides with the world like the discs).
 
@@ -1544,3 +1547,15 @@ Block — and writes the pictures (`tools/qa/mp/out/btnskin-*.png`). The
 mockup's button sheet, drawn by the game's own code, is
 `src/controls-harness.html` (`npx vite`, then `/controls-harness.html`;
 `node tools/qa/controls-sheet-shot.mjs` saves it).
+
+## v2.3.3920: the attack disc's aiming reticle
+
+The disc no longer wears the weapon in hand while a tap would attack: it wears a
+neutral aiming reticle drawn in code (controlSkin `AimReticle`: a thin ring,
+four ticks, a gold centre dot), bright at every state of the disc, lit with its
+rod while a thumb is on the stick. `data-ricon` still names the weapon (the
+resolver's stamp is unchanged; game.css maps every weapon key to the reticle),
+and the weapon's eleven pictures left `RDISC_ICONS`, so they are no longer in
+the disc or warmed for it. The weapon in hand is the weapon triangle's top
+button (docs/specs/weapon-triangle.md). The owner: "It should look like an
+aiming joystick, not a disabled button" (the design review).

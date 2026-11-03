@@ -3583,20 +3583,20 @@ console.log("the buildings' doors (v2.3.3032)");
   /* v2.3.3259: the twelfth of today's buildings, the Enchanter, has no door of its own: it is the Gem Works' second tab */
   /* v2.3.3539: the Hotel is a fifth hall (its rest the worker's, rest.js),
      shut only against a worker that does not rest (WHEEL_HALL_CAPS) */
-  ok('...eleven of today\'s buildings have a door (none twice; the twelfth, the Enchanter, is the Gem Works\' second tab), and the other five plots are accounted for, none left over: five halls of the Wheel\'s own (the plan\'s four "(new: ...)" buildings, and the Town Hall, Mayor Bro\'s), none shut',
+  ok('...eleven of today\'s buildings have a door (none twice; the twelfth, the Enchanter, is the Gem Works\' second tab), and the other five plots are accounted for, none left over: four halls of the Wheel\'s own (the plan\'s four "(new: ...)" buildings), none shut, and the Town Hall, Mayor Bro\'s steps, a door with nothing behind it (v2.3.3899: its board is on the square\'s noticeboard, game/wheelNoticeboard.js)',
     new Set(Object.values(WHEEL_BUILDING_DOORS)).size === 11 && tbIds.filter((id) => id !== 'enchanting').every((id) => Object.values(WHEEL_BUILDING_DOORS).includes(id))
     && tbIds.includes('enchanting') && !Object.values(WHEEL_BUILDING_DOORS).includes('enchanting') && WHEEL_BUILDING_DOORS.gemcutter === 'gemcutter'
-    && hallIds.length === 5 && closedIds.length === 0
+    && hallIds.length === 4 && closedIds.length === 0 && !hallIds.includes('townhall') && !openIds.includes('townhall')
     && hallIds.concat(closedIds).every((k) => lotIds.has(k) && !openIds.includes(k))
     && hallIds.concat(closedIds).filter((k) => k !== 'townhall').every((k) => /^\(new:/.test(todayOf[k])) && todayOf.townhall === 'mayor (NPC)'
     && !hallIds.some((k) => closedIds.includes(k))
-    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).length === 0,
+    && lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id).join() === 'townhall',
     { halls: hallIds, closed: closedIds, rest: lots.filter((l) => !openIds.includes(l.id) && !closedIds.includes(l.id) && !hallIds.includes(l.id)).map((l) => l.id) });
   /* (v2.3.3539: a hall's picture is any .webp in public/, the Hotel's the
      owner's bed from the right stick, public/ui/controls/) */
   ok('...each hall has its window\'s name and picture, and opens a panel of its own, never one of today\'s buildings\' (no `buildingPanel` value twice)',
     hallIds.every((k) => { const h = WHEEL_HALLS[WHEEL_HALL_DOORS[k]]; return h && h.title && h.sub && /^\/(icons|ui)\/.+\.webp(\?v=[0-9.]+)?$/.test(h.icon) && fs.existsSync(new URL('../../public' + h.icon.split('?')[0], import.meta.url)); })
-    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 5 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
+    && new Set(Object.values(WHEEL_HALL_DOORS)).size === 4 && Object.values(WHEEL_HALL_DOORS).every((v) => !actions.includes(v)), { halls: WHEEL_HALL_DOORS, actions });
   /* v2.3.3539: a hall that waits for its worker's cap is shut until then, and
      the worker's REST.HOTEL is the Hotel's door as the ground worker places it */
   {
@@ -3953,8 +3953,8 @@ console.log("the buildings' insides (v2.3.3258)");
   const wrong = [];
   for (const [plot, bid] of Object.entries(WHEEL_BUILDING_DOORS)) if (R.BUILDING_ROOMS[panelOf(bid)] !== plot) wrong.push([plot, panelOf(bid), R.BUILDING_ROOMS[panelOf(bid)]]);
   for (const [plot, panel] of Object.entries(WHEEL_HALL_DOORS)) if (R.BUILDING_ROOMS[panel] !== plot) wrong.push([plot, panel, R.BUILDING_ROOMS[panel]]);
-  ok('every door that opens a window opens the window of its own room: the eleven buildings (through their `action`) and the five halls (v2.3.3539: + the Hotel), each picture named for the plot it shows; the Enchanter\'s tab (v2.3.3259) is the Gem Works\' own room',
-    Object.keys(WHEEL_BUILDING_DOORS).length === 11 && Object.keys(WHEEL_HALL_DOORS).length === 5 && wrong.length === 0 && R.BUILDING_ROOMS.enchant === 'gemcutter' && R.BUILDING_ROOMS.gemcut === 'gemcutter', wrong);
+  ok('every door that opens a window opens the window of its own room: the eleven buildings (through their `action`) and the four halls (v2.3.3539: + the Hotel; v2.3.3899: - the Town Hall, its board on the noticeboard), each picture named for the plot it shows; the Enchanter\'s tab (v2.3.3259) is the Gem Works\' own room',
+    Object.keys(WHEEL_BUILDING_DOORS).length === 11 && Object.keys(WHEEL_HALL_DOORS).length === 4 && wrong.length === 0 && R.BUILDING_ROOMS.enchant === 'gemcutter' && R.BUILDING_ROOMS.gemcut === 'gemcutter', wrong);
   const windows = Object.values(R.BUILDING_ROOMS);
   const rooms = [...new Set(windows)];   /* v2.3.3259: the Gem Works' two tabs are one room */
   /* v2.3.3539: the Hotel's picture has its window, so no picture waits */
@@ -4011,7 +4011,7 @@ console.log("the buildings' insides (v2.3.3258)");
        board hands them its openers (and the hall two more: onDash, onClose) */
     const footSrc = read('../../src/ui/panels/buildings/TownBoardPage.jsx');
     ok('the Town Hall is a hall of the Wheel\'s own with a window: its name, a bell-tower icon on disk, and two rows -- the Leaderboard (the dashboard\'s own Ranks page, a ranking for every combat and life skill) and the World map (the Wheel\'s labelled map, opened by the overlay\'s own opener, not the QA hook)',
-      !!th && th.title === 'Town Hall' && WHEEL_HALL_DOORS.townhall === 'townhall' && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
+      !!th && th.title === 'Town Board' && !Object.prototype.hasOwnProperty.call(WHEEL_HALL_DOORS, 'townhall') /* v2.3.3899: opened from the noticeboard, not the hall's door */ && fs.existsSync(new URL('../../public' + th.icon, import.meta.url))
         /* v2.3.3804: since v2.3.3766 the two rows are two buttons at the foot of
            the Town Hall's board (TownBoard.jsx), still data-hall-row
            "leaderboard" and "map" on the same icons and the same openers; the
@@ -4074,10 +4074,10 @@ console.log("the keepers (v2.3.3258)");
   const fs = await import('node:fs');
   const { WHEEL_KEEPERS, WHEEL_TOWNSFOLK, WHEEL_BUILDING_DOORS, WHEEL_HALL_DOORS } = await import('../../src/data/wheelBuildingDoors.js');
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
-  const bad = Object.entries(WHEEL_KEEPERS).filter(([name, plot]) => !((name === 'Mayor Bro' || WHEEL_TOWNSFOLK.some((f) => f.name === name && f.door === plot))
+  const bad = Object.entries(WHEEL_KEEPERS).filter(([name, plot]) => !((WHEEL_TOWNSFOLK.some((f) => f.name === name && f.door === plot))
     && (own(WHEEL_BUILDING_DOORS, plot) || own(WHEEL_HALL_DOORS, plot))));
-  ok('each keeper stands at the very building he opens (Mayor Bro on the Town Hall\'s steps, the rest a WHEEL_TOWNSFOLK row at that door), and it is one with a window -- a building or a hall: Blacksmith Bro the forge, Mayor Bro the Town Hall, and the tour\'s Woodworker Bro the bench and Farmer Bro the Feed & Seed (v2.3.3525)',
-    Object.keys(WHEEL_KEEPERS).length === 14 && WHEEL_KEEPERS['Blacksmith Bro'] === 'blacksmith' && WHEEL_KEEPERS['Mayor Bro'] === 'townhall'
+  ok('each keeper stands at the very building he opens (a WHEEL_TOWNSFOLK row at that door), and it is one with a window -- a building or a hall: Blacksmith Bro the forge, and the tour\'s Woodworker Bro the bench and Farmer Bro the Feed & Seed (v2.3.3525); Mayor Bro keeps nothing since v2.3.3899 (he says the next step, game/mayorTalk.js)',
+    Object.keys(WHEEL_KEEPERS).length === 13 && WHEEL_KEEPERS['Blacksmith Bro'] === 'blacksmith' && !own(WHEEL_KEEPERS, 'Mayor Bro')
       && WHEEL_KEEPERS['Woodworker Bro'] === 'woodworker' && WHEEL_KEEPERS['Farmer Bro'] === 'feedseed' && bad.length === 0, bad);
   /* v2.3.3833: the new cast's ten keepers, one to each door that had nobody, and no building with two */
   const plots = Object.values(WHEEL_KEEPERS);
@@ -4099,6 +4099,23 @@ console.log("the keepers (v2.3.3258)");
       && /return enterWheelDoor\(stateRef\.current, door, \{ setBuildingPanel: setBuildingPanel \}\);/.test(bt)
       && /export function enterWheelDoor\(S, door, deps\)/.test(it) && /if \(door\.index >= 0\) return _openBuilding\(S, door\.index, deps\.setBuildingPanel\);/.test(it)
       && /if \(kd\) n\.keeperOf = plot;/.test(bt) && /d\.id === plot && \(d\.index >= 0 \|\| d\.hall\)/.test(bt), { tapAt, questAt, flipAt, eAt, eQuest });
+  /* v2.3.3899: the owner: "Remove the town hall menu for now ... move the menu to the sign post to the left of the town hall near
+     the 3 street lamps", and the Mayor "I couldn't talk to him" -- the board opens from the square's noticeboard (found by its
+     kind at runtime, never a coordinate), and a Mayor with nothing of his own says the next step */
+  {
+    const nbSrc = fs.readFileSync(new URL('../../src/game/wheelNoticeboard.js', import.meta.url), 'utf8');
+    const mtSrc = fs.readFileSync(new URL('../../src/game/mayorTalk.js', import.meta.url), 'utf8');
+    const saysAt = bt.indexOf("if (mayorSaysNext(S, npc)) return _mark('says');"), nothingAt = bt.indexOf("return _mark('nothing');");
+    ok('the town board opens from the square\'s noticeboard (v2.3.3899): found by its kind (`noticeboard`) in the worker\'s objects, nearest the Town Hall\'s door, a door whose hall is the board\'s (`townhall`) -- the prompt ("Read"), E and a tap on its picture; Mayor Bro with nothing to offer says the next step (tourOffer) in his bubble, on a tap and on E, before "has nothing for you"',
+      /objects\.kinds\.indexOf\('noticeboard'\)/.test(nbSrc) && /hall: BOARD_HALL/.test(nbSrc) && /export const BOARD_HALL = 'townhall';/.test(nbSrc)
+        && !/\b\d{4,}\s*,\s*\d{4,}\b/.test(nbSrc)
+        && /S\._nearWheelBuilding = noticeboardAt\(S\);/.test(bt) && /var _nbTap = noticeboardAtCss\(S, cssX, cssY\);/.test(bt)
+        && /enterWheelDoor\(S, _nbTap\.board, \{ setBuildingPanel: setBuildingPanel \}\);/.test(bt)
+        && /if \(noticeboardAtCss\(stateRef\.current, cssX, cssY\)\) return 'talk';/.test(bt)
+        && saysAt > 0 && saysAt < nothingAt
+        && /if \(!mayorSaysNext\(S, npc\) && deps\.pushNpcMsg\)/.test(dc)
+        && /tourOffer\(rpg, S\)/.test(mtSrc) && /npc\.chatBubble = \{ text: line, ts: now \};/.test(mtSrc), { saysAt, nothingAt });
+  }
   /* the owner: "the gladiator arena is showing 'saloon' behind it" -- the Saloon's door opened the arena (PartyPanel, named for parties) */
   const R = await import('../../src/data/buildingRooms.js');
   ok('the Saloon\'s door opens the Saloon (SaloonPanel: your party, Invite a player) on its room, and the Gladiator Arena is a window of its own, \'arena\', opened from the Sheriff\'s Office with no room behind it',

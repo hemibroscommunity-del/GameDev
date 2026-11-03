@@ -23,6 +23,8 @@
  */
 import { prog3Live, prog3ActiveCat, prog3RangeMult, prog3SpecialMult, prog3ElemPower,
   prog3EresPct, prog3MoveMult, prog3CharLevel, prog3Pts, prog3SkillLevel, PROG3 } from '../../../data/prog3.js';
+/* v2.3.3896: PROG3.FLOOR is the combined Dodge x Defense floor the server's
+   _applyDamage holds (combinedDamageCut below) */
 import { swingCooldownMultFor, toDisplayDamage, toDisplayHp } from '../../../data/gameSystems.js';
 import { healthAt, healthPerPoint, isOneFormulaEnabled } from '../../../data/oneFormula.js';
 
@@ -109,6 +111,29 @@ export function heroStatPills(R, d) {
   };
 }
 
+/* ═══ v2.3.3896: THE DAMAGE CUT, AS THE SERVER TAKES IT ═══
+ * The owner: "Defense reduction doesn't make sense. 64% redux from armor, 42%
+ * reduced from def points. It says '42%' as the aggregate defense in the
+ * little pill".  The pill was the Defense POINTS alone (prog3DefPct) -- armour
+ * left out.  The server's _applyDamage (combat.js) takes a normal hit in
+ * order: a held block takes 0; Dodge may miss it; Defense multiplies what is
+ * left by max(1 - def, FLOOR / (1 - dodge)) (the combined floor, v2.3.2680);
+ * armour multiplies by (1 - armour) (_armorDrMult, mirrored by
+ * getArmorDrPct).  The cuts MULTIPLY: 0.58 x 0.36 = 0.21 gets through, so
+ * "-79% damage".  This is that number for a same-level monster's normal hit
+ * (Defense fades above your level; elemental hits meet Resist instead of
+ * Defense -- the (i) says so).  Dodge only enters through the floor here: it
+ * is a chance to take nothing, not a cut of every hit, so it is its own row.
+ * Pure, inputs are fractions 0..1, never throws. */
+export function combinedDamageCut(defPct, armorDr, dodgePct) {
+  const f = (v) => { const n = Number(v); return n > 0 ? Math.min(n, 1) : 0; };
+  const def = f(defPct), arm = f(armorDr), dodge = f(dodgePct);
+  const floor = (PROG3 && PROG3.FLOOR) || 0;
+  const defMult = Math.max(1 - def, floor > 0 ? floor / Math.max(0.01, 1 - dodge) : 0);
+  const through = Math.min(1, defMult) * (1 - arm);
+  return 1 - through;
+}
+
 /* ═══ v2.3.3605: THE STATS IN FAMILIES, EACH SHOWING WHAT IT IS MADE OF ═══
  * The owner: "in char stat menu on inventory I want each major combat resource
  * grouped under families (damage could encompass damage range, DPS, crit,
@@ -188,9 +213,32 @@ export function heroStatFamilies(R, d) {
   return [
     { key: 'damage', label: 'Damage', tone: 'offense', icon: HERO_PILL_ICON.dps, head: pills.dps.value + ' DPS',
       rows: ['damage', 'aspd', 'crit', 'critDmg', 'special', 'elem', 'range'].map((k) => by[k]).filter(Boolean) },
-    { key: 'defense', label: 'Defense', tone: 'player', icon: HERO_PILL_ICON.def, head: by.def ? by.def.value : '—',
-      rows: ['def', 'armor', 'dodge', 'eres'].map((k) => by[k]).filter(Boolean) },
+    defenseFamily(R, d, by, p3),
     { key: 'health', label: 'Health', tone: 'player', icon: HERO_PILL_ICON.hp, head: toDisplayHp(maxHp) + ' HP', rows: health },
     { key: 'energy', label: 'Energy', tone: 'player', icon: HERO_PILL_ICON.stam, head: Math.round(maxSt) + ' / ' + Math.round(maxMp), rows: energy },
   ];
+}
+
+/* v2.3.3896: the Defense family -- its head the combined cut (combinedDamageCut,
+   the owner's "-79% damage"), its rows what it is made of: the Defense points'
+   cut, armour's cut, Dodge (a chance, not a cut) and Resist (elemental hits),
+   and one plain line saying how the two cuts stack. */
+function defenseFamily(R, d, by, p3) {
+  d = d || {};
+  const def = p3 ? (Number(d.defPct) || 0) : 0;
+  const arm = Number(d.armorDr) || 0;
+  let head = '—', cut = 0;
+  /* a cut reads "−42%"; nothing reads "0%", never "−0%" */
+  const minus = (v) => (pillPct(v) === '0' ? '0%' : '−' + pillPct(v) + '%');
+  try { cut = combinedDamageCut(def, arm, d.dodge); head = minus(cut) + ' damage'; } catch (e) { /* the dash */ }
+  const relabel = (p, label, value) => (p ? Object.assign({}, p, { label, value: value == null ? p.value : value }) : null);
+  const rows = [
+    relabel(by.def, 'Defense points', p3 ? minus(def) : '—'),
+    relabel(by.armor, 'Armour', minus(arm)),
+    relabel(by.dodge, 'Dodge', null),
+    by.eres || null,
+  ].filter(Boolean);
+  const note = 'Your Defense points block ' + pillPct(def) + '% of a hit, then your armour blocks '
+    + pillPct(arm) + '% of what\u2019s left.';
+  return { key: 'defense', label: 'Defense', tone: 'player', icon: HERO_PILL_ICON.def, head, cut, rows, note };
 }

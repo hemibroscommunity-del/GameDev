@@ -80,15 +80,21 @@ import { QUEST_REWARDS } from '../../../server/src/data.js';
    town.  The Mayor's lands (tut_3, tut_4) follow his snowmen here, as he offers
    each at the hand-in before (`next`), and the road then leads to the first
    town step still on offer, Farmer Bro's carrots. */
+/* v2.3.3924: FARMING BEFORE THE SNOWMEN (the owner: "I wanna make sure the
+   first play of the game includes an experience with farming"): Diego's fish,
+   then Farmer Bro's carrots, then the Mayor's snowmen and his lands; the road
+   then leads to the first town step still on offer, Woodworker Bro's logs.
+   Each hand-off is checked below as before: Diego to Farmer Bro, Farmer Bro
+   to the Mayor, the Mayor's lands to the Woodworker. */
 const ARC = [
   { id: 'tut_1', npc: 'mayor_bro', title: 'Into the Blue', give: { invKey: 'slime-remnants', count: 4 } },
   { id: 'smith_1', npc: 'blacksmith_bro', title: 'Heavy Metal', give: { invKey: 'ore_copper_ore', count: 5 } },
   { id: 'smith_2', npc: 'blacksmith_bro', count: 1 },
   { id: 'fish_1', npc: 'shopkeeper_bro', title: 'Something Fishy', give: { invKey: 'cooked_fish_minnow', count: 2 } },
+  { id: 'farm_1', npc: 'farmer_bro', title: 'Carrot Comeback', count: 3 },
   { id: 'tut_2', npc: 'mayor_bro', title: 'Cold Reception', give: { invKey: 'snowman', count: 4 } },
   { id: 'tut_3', npc: 'mayor_bro', give: { invKey: 'skeleton-remnants', count: 5 } },
   { id: 'tut_4', npc: 'mayor_bro', give: { invKey: 'fire-goblin-remnants', count: 6 } },
-  { id: 'farm_1', npc: 'farmer_bro', title: 'Carrot Comeback', count: 3 },
   { id: 'wood_1', npc: 'woodworker_bro', title: 'Knock on Wood', give: { invKey: 'wood_pine_log', count: 5 } },
   { id: 'wood_2', npc: 'woodworker_bro', count: 1, trade: 'bow' },
   { id: 'farm_2', npc: 'farmer_bro', title: 'Zoom Juice', count: 1 },
@@ -566,7 +572,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           return out;
         }, (v) => v && TOWN.every((n) => v[n] === '❗'), { timeout: 12000, label: 'the town\'s pins' }).catch(() => null);
         rec.ok('the Mayor\'s first quest in, all six townsfolk wear the gold "!" at once', !!heads, heads);
-        rec.ok('...and the Mayor none (his snowmen wait for the ore and the fish)', !!heads && !heads['Mayor Bro'], heads);
+        rec.ok('...and the Mayor none (his snowmen wait for the ore, the fish and the carrots)', !!heads && !heads['Mayor Bro'], heads);
         const mini = await H.waitFor(P, () => {
           const m = window.__btMinimap;
           return m && Array.isArray(m.questPins) ? m.questPins.map((q) => ({ name: q.name, state: q.state, art: q.art })) : null;
