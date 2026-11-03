@@ -7604,6 +7604,10 @@ export const QUEST_CHAINS = {
       var _rpg$_questKills2;
       return (((_rpg$_questKills2 = rpg._questKills) === null || _rpg$_questKills2 === void 0 ? void 0 : _rpg$_questKills2.trader_2) || 0) >= 3;
     },
+    /* v2.3.3945: the count on its card, "(1/3)" -- what the worker counts
+       for it (`gather`, gathering.js), as `check` reads: lane F's quest card
+       (PR #1359) left this one to the quest's words, below */
+    need: { progress: true, n: 3 },
     reward: {
       gold: 75,
       xp: 18
@@ -7612,7 +7616,8 @@ export const QUEST_CHAINS = {
     unlocks: 'farming',
     dialogue: {
       start: 'Gather from 3 resource nodes.',
-      progress: 'Hit nodes with your weapon.',
+      /* v2.3.3945: names its count (quest-lines §5a), plainly */
+      progress: 'Gather 3 times: chop a tree, mine a rock or catch a fish.',
       complete: 'Farm building unlocked! Grow your own ingredients.'
     }
   },

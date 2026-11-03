@@ -53,6 +53,12 @@ lane O adds the display-name map.
   kill quests' `need` fields are not touched.
 - Blacksmith Bro's hand-in says "one bar for each ore", ready for one ore a
   bar at the smelter.
+- Trader Tix's `trader_2` (a dormant giver's quest) gets
+  `need: {progress: true, n: 3}`, so its card shows "(1/3)" from what the
+  worker counts (every harvest: a tree, a rock or a fish), and a progress
+  line that names the 3: "Gather 3 times: chop a tree, mine a rock or catch
+  a fish." Lane F's quest card (PR #1359) left this quest's words to this
+  PR. Main already reads `need.progress` (`questCountText`).
 - Ace no longer calls betting odds at a dance-off ("3 to 1"). He says who he
   thinks will win: "Dance-off! I think Mover will win! Who wants to join?"
 - Ace's window says the odds as plain numbers: "I win 55% of flips, and you
