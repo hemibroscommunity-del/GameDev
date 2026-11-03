@@ -23,7 +23,7 @@ for (const el of Object.values(ELEMENTS || {})) {
   if (el && el.status) STATUS_TO_ELEMENT.set(el.status, el);
 }
 import { lookupCollision, PVP_THREAT_CONSENT_MS, toDisplayHp, DISPLAY_SCALE_K, bossSizeK, bossSplitShare /* v2.3.3558: the marks on a splitting boss's bar */, monsterBodyOffsetY as _bodyOffY, monsterMeleeHitRadius as _bodyR } from '@/data/gameSystems.js'; /* v2.3.3556: + a dungeon boss's size, and its body, for seeing through it */ /* v2.3.2520: the display damage scale; v2.3.2572: k, for the HP-read probe */
-import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir } from '../playerSprites.js';
+import { getFrame, resolveDirection, cycleMs, hasPose, frameCount as playerFrameCount, dodgeSheetDir, jogCycle, jogStride } from '../playerSprites.js';   /* v2.3.4077: jogCycle, jogStride -- the legs keep pace with the feet */
 import { getShieldFrame } from '../shieldSprites.js';
 import { backShieldPlacement, applyBackShield, BACK_SHIELD_PX, HELD_SHIELD_PX } from '../backShield.js'; /* v2.3.1784; HELD_ v2.3.1798 */
 import { STUN_STARS, STUN_SPIN_MS, BLOCK_BARS, BLOCK_GEOM, blocksFor } from '../fxStrips.js'; /* v2.3.1735: the owner's stun ring; v2.3.2300: his 5-block resource strips */
@@ -690,15 +690,17 @@ function npcStandFrame(npc) {
    then his stand.  So he steps as a player does: one cycle every
    cycleMs('jog', facing) at a walk's NPC_WALK_SPEED -- the player's stride --
    times his size (Lil Bro's legs are shorter: npcFigureSize).  Old art with no `cycle` keeps
-   the fixed NPC_WALK_PX_PER_FRAME. */
-const NPC_WALK_SPEED = 150;   /* a walk, world px a second (server/src/race.js) */
+   the fixed NPC_WALK_PX_PER_FRAME.
+   v2.3.4077: the stride is the player's MEASURED one now (playerSprites
+   jogStride, game/legSync.js JOG_STRIDE_PX): the walk x the tuned loop was
+   the player's old cadence, whose planted boot slid going east. */
 function npcWalkCell(npc, dir, phase) {
   const w = npc && npc.walk;
   const cycle = w && Number.isInteger(w.cycle) && w.cycle > 0 ? w.cycle : 0;
   if (!cycle) return Math.floor(phase / NPC_WALK_PX_PER_FRAME);
   const sheet = CAPTURE_SHEET[dir] || dir;
   const k = (NPC_SCALE_MULT[npc.sprite] || NPC_BRO_MULT) / PLAYER_SIZE_MULT * npcFigureSize(npc);
-  const stride = NPC_WALK_SPEED * ((cycleMs('jog', sheet) || 1000) / 1000) * k;
+  const stride = jogStride(sheet) * k;   /* v2.3.4077: the player's measured stride (playerSprites jogStride) */
   return Math.floor(phase / Math.max(1, stride / cycle)) % cycle;
 }
 
@@ -12596,7 +12598,12 @@ export class EntityRenderer {
              facing with a longer loop -- the stride carries on from where it
              was (the local player's v2.3.3006 rule), where `now / cycle`
              with a new cycle jumped to a random frame. */
-          const _rCyc = cycleMs('jog', dir, _arm) / (other._sp ? SPRINT_MULT : 1);
+          /* v2.3.4077: ...and at their speed (the move's own velocity, a
+             60th of a second's; game/legSync.js), as yours is */
+          const _rLp = jogCycle(display._legPace || (display._legPace = { q: 0 }), dir, _arm, {
+            speed: Math.hypot(other._vx || 0, other._vy || 0) * 60, mult: other._sp ? SPRINT_MULT : 1,
+            scale: Math.abs(display.scale.x || 1) / PLAYER_SIZE_MULT });
+          const _rCyc = _rLp.cyc;
           if (display._jogCyc !== _rCyc) {
             const _ph0 = display._jogCyc
               ? ((((now + (display._jogOff || 0)) / display._jogCyc) % 1) + 1) % 1 : null;
@@ -12645,7 +12652,7 @@ export class EntityRenderer {
           /* QA (mp-sprint), armed by the harness only: each peer's loop now */
           if (typeof window !== 'undefined' && window.__btProbe) {
             const _pc = window.__btPeerJogCyc || (window.__btPeerJogCyc = Object.create(null));
-            _pc[id] = { cyc: _rCyc, base: cycleMs('jog', dir, _arm), sp: !!other._sp };
+            _pc[id] = { cyc: _rCyc, base: _rLp.base, sp: !!other._sp };
           }
         } else if (pose === 'hit') {
           const hitT = (now - (other._hitFlash || 0)) / 250;
@@ -14449,10 +14456,18 @@ export class EntityRenderer {
         /* v2.3.603: armoured (chest+legs worn) keeps the slower NE/NW cadence;
            the naked body gets the +35% speed-up. */
         const _armCadence = getEquip('chest') !== 'none' && getEquip('legs') !== 'none';
-        const baseCycle = cycleMs('jog', dir, _armCadence);
         /* v2.3.3006: a sprint plays the stride SPRINT_MULT quicker, so the
-           legs keep up with the ground going by (game/sprint.js; 1 walking). */
-        const effectiveCycle = (useAimDirection ? baseCycle * 2 : baseCycle) / sprintMult(S);
+           legs keep up with the ground going by (game/sprint.js; 1 walking).
+           v2.3.4077: and the whole loop follows the ground under you -- your
+           speed this frame, the sprint's share of it, your size (the owner:
+           "Character animation speed and actual speed is not matching!";
+           playerSprites jogCycle, game/legSync.js).  `base` is the loop
+           unsped by the sprint; ?legsync=0 the fixed cadences, as before. */
+        const _lp = jogCycle(display._legPace || (display._legPace = { q: 0 }), dir, _armCadence, {
+          speed: Math.hypot(P.vx || 0, P.vy || 0) * 60, mult: sprintMult(S),
+          scale: Math.abs(display.scale.x || 1) / PLAYER_SIZE_MULT, aimSlow: useAimDirection });
+        const baseCycle = _lp.base;
+        const effectiveCycle = _lp.cyc;
         /* ...and when the cadence changes -- a sprint starting or ending, the
            aim's half speed, a turn to a direction with a longer loop -- the
            stride carries on from where it was.  `now / cycle` with a new
@@ -17476,7 +17491,7 @@ export class EntityRenderer {
     let frameIdx = 0;
     if (pose === 'jog') {
       const fc = playerFrameCount('jog', dir) || 24;
-      const stride = NPC_WALK_SPEED * ((cycleMs('jog', dir) || 1000) / 1000) * size;
+      const stride = jogStride(dir) * size;   /* v2.3.4077: the player's measured stride */
       frameIdx = Math.floor(((display._walkPhase || 0) / Math.max(1, stride)) * fc) % fc;
     } else {
       const fc = playerFrameCount('stand', dir) || 1;

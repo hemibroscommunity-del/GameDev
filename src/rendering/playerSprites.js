@@ -24,7 +24,7 @@ import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteSca
 import { sliceCropped } from './gearSheets.js';   /* v2.3.2791: the body sheets are cropped */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { recolorToolKeyCanvas, recordFishRodMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine */
-import { jogPace, legSyncOn } from '../game/legSync.js';   /* v2.3.4077: the legs keep pace with the feet */
+import { jogPace, legSyncOn, jogStridePx, LEG_WALK_SPEED } from '../game/legSync.js';   /* v2.3.4077: the legs keep pace with the feet */
 
 /* v2.3.166: bumped from 128 to 256 per user request.  256 source +
    plain Lanczos (no outline overlay) gives a more naturally-rendered
@@ -468,6 +468,15 @@ export function jogCycle(state, dir, armored, o) {
     speed: o && o.speed, mult: o && o.mult, scale: o && o.scale, aimSlow: !!(o && o.aimSlow),
     sync: LEG_SYNC,
   });
+}
+
+/* v2.3.4077: world px a loop of this facing's jog covers at the default
+   figure: the measured stride (north, south: the walk over the tuned loop).
+   The townsfolk step by distance on the player's jog (entityRenderer
+   npcWalkCell), so they read this; ?legsync=0 the old walk x tuned loop. */
+export function jogStride(dir) {
+  const fixed = cycleMs('jog', dir) || 1000;
+  return LEG_SYNC ? jogStridePx(dir, fixed) : LEG_WALK_SPEED * fixed / 1000;
 }
 
 /** Which authored dodge sheet a facing plays on, by dominant axis.
