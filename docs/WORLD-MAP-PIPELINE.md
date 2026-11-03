@@ -4105,6 +4105,30 @@ Other players are drawn swimming too. `?noswim` closes every drop of water
 again. Details are in `docs/specs/wheel-swimming.md`; tests are `mp-wheelswim`
 and test-world-core "swimming".
 
+### Islets and rises: the first elevation (v2.3.3994)
+
+> The owner: *"Make a portion of the game that you need to swim in ... and
+> also a portion of the game that you need to climb ... and double jump to get
+> to the next part."*
+
+- **`islets`** (plan.js): land in the sea beside a spoke, reached only by
+  swimming its shallows. `layout.js planFeatures` places each one `gap` cells
+  out from its spoke's outermost coast cell over the rows it spans, and pass 1
+  lays it as that spoke's land. No feature, object, monster or resource is put
+  on it (`placing.js islBoxes`, `bake-wheel-spawns.mjs`). Its ground is the
+  spoke's own stage, never a pass's border land (`ground.js materialMap`). The
+  one today, the Lagoon Islet, is the long Wheel's only (no room on the short
+  one's tiers 2-3).
+- **`rises`** (plan.js): raised ground drawn on the flat map, a face on the
+  south, a rim round the rest; `climb` vines, a `chest`. `core/rises.js` lays
+  their cells (`riseLayout`), and the ground worker paints them into each
+  piece in code (`risePaint`, 29 colours) and sends them with its `ready`
+  (`riseMessage`), only with `?climb=1` while they are new. The walk grid
+  shuts their cells (`wheelTrial.js lazyGrid`).
+- How you climb them and jump up them: `src/game/climb.js`. The design, the
+  numbers and the next PRs: `docs/ELEVATION-PLAN.md`. Tests: test-world-core
+  "the lagoon islet" and "climbing", `mp-lagoonclimb`, `mp-wheelswim` §8.
+
 ### On a slow connection (v2.3.2959)
 
 > Owner, 2026-10-01, walking the Wheel on a phone with their own 96 tiles in
