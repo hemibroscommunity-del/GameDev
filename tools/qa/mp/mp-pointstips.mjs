@@ -247,7 +247,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const left = await pts(A);
   await shot('after');
   const ar5 = await arrowAt(A);
-  rec.ok('5: ...and the big arrow is gone, the points lesson marked done (v2.3.3925)', !!ar5 && !ar5.el && !!ar5.done && ar5.done.points === 1, ar5);
+  /* v2.3.4106: this character never took the Mayor's quest, so the first
+     steps' arrow at him may come back once the points one is done */
+  rec.ok('5: ...and the points arrow is gone, the points lesson marked done (v2.3.3925)', !!ar5 && (!ar5.el || ar5.lesson === 'mayor') && !!ar5.done && ar5.done.points === 1, ar5);
   rec.ok(`5: done for good: no card though ${left && (left.pool + left.shared)} points still wait, and the lesson marked done`,
     (!c5 || c5.id !== 'points') && !!g5 && g5.done && g5.done.points === true && !!left && left.pool + left.shared > 0,
     { c5, done: g5 && g5.done, left });

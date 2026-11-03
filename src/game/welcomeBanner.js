@@ -116,7 +116,10 @@ export function maybeShowWelcome(getS) {
             /* v2.3.3812: lane A's judge pass -- "Follow the gold road" sent
                players looking for a road in the world; the gold line is on
                the map, so it says that */
-            sub: 'Find Mayor Bro — he wants a word. The gold line on your map leads to him; then tap him.',
+            /* v2.3.4106: the first steps' step 1, one short card (the owner:
+               "welcome to Brotown, talk to mayor bro, ..."); step 2 points at
+               the Mayor himself (QuestCoach `mayor`, the big arrow) */
+            sub: 'Your adventure starts here.',
             ts: Date.now(),
             /* queue: the player has caused nothing yet, so there is nothing
                to preempt, and if something did land first this should wait

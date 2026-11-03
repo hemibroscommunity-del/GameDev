@@ -98,7 +98,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
       /* 1. no weapon handed over: no arrow */
       const a1 = await arrow(P);
-      rec.ok(`${V.id} 1. a new character, no weapon handed over yet: no arrow`, !!a1 && !a1.lesson && !a1.el, a1);
+      /* v2.3.4106: the first steps' arrow at Mayor Bro may be up; never the weapon's */
+      rec.ok(`${V.id} 1. a new character, no weapon handed over yet: no weapon arrow (${a1 && a1.lesson})`, !!a1 && (!a1.lesson || a1.lesson === 'mayor') && a1.lesson !== 'weapon', a1);
 
       /* 2. the first quest taken: its sword and shield in the bag */
       await P.page.evaluate(() => { const S = window._gameState.current; if (S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } }); });

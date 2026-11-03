@@ -1,5 +1,5 @@
 import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js'; /* v2.3.2765 */
-import { coachMayShow, noteCoach, tutorialSkipped } from '@/ui/onboardingPace.js'; /* v2.3.2766; v2.3.2890 + the skip */
+import { coachMayShow, noteCoach, tutorialSkipped, plateUp, noteFirstSteps } from '@/ui/onboardingPace.js'; /* v2.3.2766; v2.3.2890 + the skip */
 import React from 'react';
 import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: how high the combat band reaches, from the same arithmetic the controls place themselves with */
 /* v2.3.1797: the special lesson has to know whether the ACTIVE slot holds a
@@ -11,6 +11,7 @@ import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: ho
 import { getActiveWeapon } from '@/data/gameSystems.js';
 import { prog3FreshLevel } from '@/data/prog3.js'; /* v2.3.3538: a new character's level (1 under one level) */
 import { startGuideArrow } from '@/ui/guideArrow.js'; /* v2.3.3925: the big arrow, the first time */
+import { mayorScreenRect } from '@/ui/mayorScreen.js'; /* v2.3.4106: the first steps' step 2 rings him */
 import { pointsTipWanted, pointsTipDone, pointsTipWords, POINTS_TIP_SNOOZE_AFTER_MS, POINTS_TIP_SNOOZE_MS, POINTS_TIP_MAX_SNOOZES } from '@/game/pointsTips.js'; /* v2.3.3551: the first points, shown */
 import { holdDisc, releaseDisc, discSideFor } from '@/game/controlVisibility.js'; /* v2.3.2246 */
 /* v2.3.2495: the two facts the dashboard lessons are about -- is the band
@@ -217,7 +218,13 @@ function measure(anchors, L, S) {
       const okR = { left: wr.left, top: wr.top, width: wr.width, height: wr.height,
         bottom: wr.top + wr.height };
       if (okR.bottom < 0 || okR.top > window.innerHeight) return null;
-      if (!reachable(el, okR, L.reach)) return null;
+      /* v2.3.4106: the minimap is drawn by the renderer, under whatever the
+         page lays over its middle: it asks only that no window is up */
+      /* v2.3.4106: ...and a body standing half under the minimap (Mayor Bro
+         at a computer's spawn, the box being large there) is reached at his
+         feet (`reachLow`, the bottom quarter) when his middle is covered */
+      const lowR = { left: wr.left, top: wr.top + wr.height * 0.75, width: wr.width, height: wr.height * 0.25 };
+      if (L.noReach ? windowUp() : !(reachable(el, okR, L.reach) || (L.reachLow && reachable(el, lowR, L.reach)))) return null;
       if (_markTooBig(L, wr)) return null;   /* v2.3.2495 */
       return { left: wr.left, top: wr.top, width: wr.width, height: wr.height, body: wr.body || (anchors[0] && anchors[0].body) };
     }
@@ -381,6 +388,53 @@ function _dashShowing() {
   } catch (_e) { return false; }
 }
 
+/* ═══ v2.3.4106: THE FIRST STEPS -- FIVE, AND NOTHING MORE ═══
+   The owner, 2026-11-03: "First sequence of events when first creating
+   character should be welcome to Brotown, talk to mayor bro, equip weapons,
+   see minimap with star marker and quest progress in top left pill. Don't
+   include the non-essential stuff anymore like tap to talk etc".
+   So a brand-new character's first minutes are exactly these, in order, each
+   once:
+     1. WELCOME, BroTown -- the plate (game/welcomeBanner.js);
+     2. `mayor`     -- talk to Mayor Bro (and the big arrow, guideArrow.js);
+     3. `equip`     -- the sword and shield on (the glow, gearFlash.js, and
+                       the arrow);
+     4. `minimap`   -- the map and its gold star;
+     5. `questPill` -- the quest card at the top left.
+   Every other lesson of the first minutes is RETIRED below (kept, with its
+   history, but never walked): the fold-and-OPEN ring, drag to move, the
+   reward's way to the bag, the bow and staff, swapping, the guard, attack,
+   the special, and tap yourself to chat.  The first points (`points`, a
+   level-up's) are a later moment and stay; the Login Key (`passkey`) waits
+   until the five are done and the first quest is handed in.
+   The five follow each other with a breath (FIRST_STEP_GAP_MS), not the
+   20 s between other cards (onboardingPace.js, v2.3.2888): the player is
+   doing each one, and a step that waited 20 s would leave them stood still.
+   The two last are one line each and go by themselves (FIRST_INFO_MS) or on
+   a tap. */
+const FIRST_STEPS = ['mayor', 'equip', 'minimap', 'questPill'];
+const RETIRED = new Set(['openDash', 'move', 'dashAfterTurnIn', 'equipAll', 'cycle', 'blockRanged', 'attack', 'special', 'chatTap']);
+const FIRST_STEP_GAP_MS = 1500;
+const FIRST_INFO_MS = 7000;
+/* is the first quest's gear on (a weapon and the shield)? */
+function firstGearOn(rpg) {
+  return !!rpg && !!rpg.shield && !!(rpg.weapon || rpg.rangedWeapon || rpg.staffWeapon);
+}
+/* the Wheel's minimap box on the page (wheelMinimap.js publishes it), or null */
+function minimapScreenRect() {
+  try {
+    const m = typeof window !== 'undefined' ? window.__btWheelMini : null;
+    if (!m || !(m.w > 0) || !(m.h > 0)) return null;
+    return { left: m.left, top: m.top, width: m.w, height: m.h };
+  } catch (_e) { return null; }
+}
+/* a window over the world (a building, a dialogue, the quest offer, the
+   world map): an info step waits for it to go */
+function windowUp() {
+  try { return !!document.querySelector('[data-building-panel], .bt-npcdlg-name, .bt-qoffer, [data-world-map], .bt-inspect-card'); }
+  catch (_e) { return false; }
+}
+
 /* ── The lessons ──
    `live(rpg)`  — is there anything to teach right now?
    `done(rpg)`  — has the player done it? (checked before `live`, so a
@@ -480,6 +534,31 @@ const LESSONS = [
     done: null,     /* watched live -- see the walked tracker below */
   },
   {
+    /* ═══ v2.3.4106: THE FIRST STEPS, STEP 2 -- TALK TO MAYOR BRO ═══
+       The owner, 2026-11-03: "First sequence of events when first creating
+       character should be welcome to Brotown, talk to mayor bro, equip
+       weapons, see minimap with star marker and quest progress in top left
+       pill. Don't include the non-essential stuff anymore like tap to talk
+       etc".  FIRST_STEPS below is that sequence; this is its second step,
+       after the WELCOME plate (game/welcomeBanner.js).  It rings Mayor Bro
+       himself (a world rect, as chatTap rang the bro), and the big arrow
+       points at him too (ui/guideArrow.js, its `mayor` lesson).  Done the
+       moment his dialogue is open (the tracker below), or once the first
+       quest has any record (he was talked to on another device). */
+    id: 'mayor',
+    shape: 'rect',
+    firstStep: true,
+    anchors: [{ body: 'He has your first quest.' }],
+    worldRect: function (S) { return mayorScreenRect(S); },
+    /* a finger over the play field lands on the touch zones; a mouse on the
+       canvas -- either is the honest reach (no modal over him) */
+    reach: '[data-joyzone], canvas',
+    reachLow: true,
+    label: 'Talk to Mayor Bro',
+    live: function (rpg, S) { return preTutorial(rpg) && !!mayorScreenRect(S); },
+    done: function (rpg) { const q = (rpg && rpg._quests) || {}; return !!q.tut_1; },
+  },
+  {
     id: 'equip',
     shape: 'rect',
     /* Two anchors, and the copy follows whichever one is on screen — on a
@@ -524,6 +603,40 @@ const LESSONS = [
     done: function (rpg) {
       return !!rpg.shield && !!(rpg.weapon || rpg.rangedWeapon || rpg.staffWeapon);
     },
+  },
+  {
+    /* ═══ v2.3.4106: THE FIRST STEPS, STEP 4 -- THE MINIMAP AND ITS STAR ═══
+       Right after the gear is on (step 3, `equip`): the box at the top
+       right, and the gold star on it that marks where the quest leads (the
+       big star of ui/starCue.js has already flown onto it).  The box is
+       drawn by the renderer, so it brings its own rect: the minimap
+       publishes its place as window.__btWheelMini.  One line, then it goes:
+       a tap on the card, or FIRST_INFO_MS on screen (the tracker below). */
+    id: 'minimap',
+    shape: 'rect',
+    firstStep: true,
+    info: true,
+    anchors: [{ body: 'Your map. The gold star is where your quest leads.' }],
+    worldRect: function () { return minimapScreenRect(); },
+    noReach: true,
+    label: 'Your map',
+    live: function (rpg) { return inTutorial(rpg) && firstGearOn(rpg); },
+    done: null,     /* shown, then timed -- see the info tracker below */
+  },
+  {
+    /* ═══ v2.3.4106: THE FIRST STEPS, STEP 5 -- THE QUEST CARD ═══
+       The card at the top left (ui/QuestCard.jsx, [data-quest-hud]): the
+       quest and how far along it is.  The last of the five; nothing of the
+       first sequence comes after it.  One line, then it goes, as the map's. */
+    id: 'questPill',
+    shape: 'rect',
+    firstStep: true,
+    info: true,
+    anchors: [{ sel: '[data-quest-hud]', reach: '[data-quest-hud]',
+                body: 'Your quest, and how far along you are.' }],
+    label: 'Your quest',
+    live: function (rpg) { return inTutorial(rpg) && firstGearOn(rpg); },
+    done: null,     /* shown, then timed -- see the info tracker below */
   },
   {
     /* ═══ v2.3.2495: AFTER THE TURN-IN, SAY WHERE THE REWARD WENT ═══
@@ -884,6 +997,9 @@ const LESSONS = [
   {
     id: 'passkey',
     shape: 'rect',
+    /* v2.3.4106: past the first steps and the first hand-in (the walk's gate),
+       so `anytime`: it may come after the Mayor's tutorial too */
+    anytime: true,
     /* The rail's More button, because it is on screen whatever panel you are
        on; the tile itself is the better ring once More is open, so it is
        listed first and the rail is the fallback -- the same anchor-then-
@@ -942,11 +1058,14 @@ export function QuestCoach(props) {
      the same reason as the others -- it ticks every frame and only its
      crossing of the finish line is worth a render. */
   const walkRef = React.useRef({ x: null, y: null, px: 0 });
+  /* v2.3.4106: which info step (the map, the quest card) is up, and since when */
+  const infoRef = React.useRef({ id: null, at: 0 });
 
   /* v2.3.3925: the big arrow, the first time a weapon is handed over and at
      the first points (ui/guideArrow.js): beside the coach it helps */
   React.useEffect(function () {
-    return startGuideArrow(function () { const S = stateRef && stateRef.current; return S && S._rpgFromServer ? S : null; });
+    return startGuideArrow(function () { const S = stateRef && stateRef.current; return S && S._rpgFromServer ? S : null; },
+      { plateUp: plateUp, skipped: tutorialSkipped });   /* v2.3.4106: the Mayor's arrow after the welcome, never past Skip tutorial */
   }, []);
 
   React.useEffect(function () {
@@ -1026,7 +1145,9 @@ export function QuestCoach(props) {
          it, a player who folded... unfolded... would be re-folded 60 times a
          second and the band would be unclosable.  (It is also why this does
          not re-run when `done.openDash` flips: the ref is already spent.) */
-      if (rpg && !done.openDash && !dashArmed.current.fold && preTutorial(rpg)) {
+      /* v2.3.4106: retired with the openDash lesson (RETIRED): a first join
+         keeps the band as it is, and the first steps start at the Mayor */
+      if (!RETIRED.has('openDash') && rpg && !done.openDash && !dashArmed.current.fold && preTutorial(rpg)) {
         dashArmed.current.fold = true;
         try { dashMinBus.set(true); } catch (_e) { /* a lesson must never break the frame */ }
       }
@@ -1043,6 +1164,25 @@ export function QuestCoach(props) {
          mid-harvest, cooldown, no weapon, no mana) has passed, so it cannot
          credit a swipe the game turned down. */
       if (S && S._hasUsedSwipe && !done.special) { done.special = true; saveDone(done); }
+      /* ═══ v2.3.4106: THE FIRST STEPS' FINISH LINES ═══
+         `mayor`: his dialogue is open (the step is "talk to him", so the
+         window opening IS it done, card or no card).  `minimap` and
+         `questPill`: shown for FIRST_INFO_MS (a tap on the card ends them
+         sooner, as every card's), counted only while shown. */
+      if (!done.mayor) {
+        try {
+          const nm = document.querySelector('.bt-npcdlg-name');
+          if (nm && /Mayor Bro/.test(nm.textContent || '')) { done.mayor = true; saveDone(done); }
+        } catch (_e) { /* a lesson must never break the frame */ }
+      }
+      {
+        const v0 = viewRef.current;
+        const ia = infoRef.current;
+        if (v0 && (v0.id === 'minimap' || v0.id === 'questPill') && !done[v0.id]) {
+          if (ia.id !== v0.id) { ia.id = v0.id; ia.at = now; }
+          else if (now - ia.at >= FIRST_INFO_MS) { done[v0.id] = true; saveDone(done); ia.id = null; }
+        }
+      }
       /* ═══ v2.3.2147: THE TWO NEW LESSONS, WATCHED THE SAME WAY ═══
          By POLLING a fact the game already keeps, never by a hook pushed into
          the control -- the design note at the top of this file explains why,
@@ -1163,6 +1303,8 @@ export function QuestCoach(props) {
          then only that lesson is walked (`tut` below), so nothing else comes
          back with it. */
       const tut = !!rpg && (inTutorial(rpg) || preTutorial(rpg));
+      /* v2.3.4106: the install card waits while a first step is still to come */
+      noteFirstSteps(tut && !tutorialSkipped() && FIRST_STEPS.some(function (id) { return !done[id]; }));
       let anyTimeWanted = false;
       if (rpg && !tut && !tutorialSkipped()) {
         const S0 = stateRef && stateRef.current;
@@ -1219,11 +1361,17 @@ export function QuestCoach(props) {
          painted or not. */
       const wantSides = [];
       for (const L of LESSONS) {
+        if (RETIRED.has(L.id)) continue;   /* v2.3.4106: the first steps are five (FIRST_STEPS) */
         if (done[L.id]) continue;
         if (L.done && L.done(rpg)) { done[L.id] = true; saveDone(done); continue; }
         if (!tut && !L.anytime) continue;   /* v2.3.3551: past the tutorial, the anytime lessons alone */
+        /* v2.3.4106: the first steps in their order -- one waits for the one
+           before it, whether or not that one could be drawn just now */
+        if (L.firstStep && FIRST_STEPS.slice(0, FIRST_STEPS.indexOf(L.id)).some(function (id) { return !done[id]; })) continue;
         if (!L.live(rpg, stateRef && stateRef.current)) continue;
         if (L.id === 'points' && now < pointsRef.current.until) continue;   /* v2.3.3551: snoozed */
+        /* v2.3.4106: the Login Key after the first steps and the first hand-in */
+        if (L.id === 'passkey' && (FIRST_STEPS.some(function (id) { return !done[id]; }) || ((rpg._quests || {}).tut_1 !== 'turnedIn'))) continue;
         /* Collected for EVERY live lesson the walk reaches, not just the
            first: the walk stops at the first one that MEASURES, and a lesson
            can be live and fail to measure for exactly the reason this hold
@@ -1245,7 +1393,9 @@ export function QuestCoach(props) {
            world-anchored lesson (chatTap) brings its own rect. */
         const rect = measure(L.anchors, L, stateRef && stateRef.current);
         if (!rect) continue;          /* off screen / covered / desktop — skip, don't block */
-        if (holdNew) break;           /* v2.3.2766: its turn, but not yet */
+        /* v2.3.2766: its turn, but not yet; v2.3.4106: a first step after a
+           breath (FIRST_STEP_GAP_MS), not the 20 s the other cards wait */
+        if (L.firstStep ? (!viewRef.current && !coachMayShow(now, FIRST_STEP_GAP_MS)) : holdNew) break;
         next = { id: L.id, label: L.label, body: rect.body, shape: L.shape, rect: rect };
         /* Arm the cycle counter the first time its mark is chosen, seeded with
            the slot the player is on so that one does not count as a swap. */
@@ -1333,6 +1483,9 @@ export function QuestCoach(props) {
       window.__btCoach = function () {
         const b = blockRef.current;
         return { done: Object.assign({}, doneRef.current), heldMs: Math.round(b.ms),
+                 /* v2.3.4106: the first steps in order, which are done, and the retired lessons */
+                 firstSteps: FIRST_STEPS.slice(), retired: Array.from(RETIRED),
+                 showing: viewRef.current ? viewRef.current.id : null,
                  raised: b.sectors === 1,   /* v2.3.2242 */
                  sectors: b.sectors, needMs: BLOCK_HOLD_MS, needSectors: BLOCK_SECTORS,
                  slots: Object.assign({}, seenSlots.current),
