@@ -3795,6 +3795,41 @@ console.log("the buildings' doors (v2.3.3032)");
       /* v2.3.3809: `live` leaves out those drawn live from a look (lookFolk.js) */
       /WHEEL_TOWNSFOLK\.map\(\(f\) => f\.name\)/.test(spriteSrc) && /export function wheelNpcSources\((live)?\) \{\s*return _wheelCast\((live)?\)/.test(spriteSrc)
         && /export function wheelWalkSources\((live)?\) \{\s*return _wheelCast\((live)?\)/.test(spriteSrc), {});
+    /* ═══ v2.3.3949: THE TOWNSFOLK WALK AROUND AND WORK ═══
+       The owner: "Make NPCs walk around and do stuff now since it doesn't
+       make much memory anymore."  Each walks a day of his own from his spot
+       (src/game/townsfolkWalk.js FOLK_DAYS, offsets from it): every stop on
+       the town's ground 24 px clear of any footprint, as a spot is; every leg
+       between two stops (the last back to the first) through no footprint,
+       sampled every 8 px with a body's half width round it, as Lil Bro's race
+       line is; and never within 110 px of another's spot, so a tap still
+       finds the one meant (a tap reaches ~73 world px).  The town is the same
+       ground on both Wheels (the five-times one's check, below). */
+    {
+      const { FOLK_DAYS } = await import('../../src/game/townsfolkWalk.js');
+      const all = [{ name: 'Mayor Bro', x: ms2.x, y: ms2.y }, ...sp];
+      const badDay = [];
+      for (const q of all) {
+        const st = FOLK_DAYS[q.name] && FOLK_DAYS[q.name].stops;
+        if (!st) { badDay.push([q.name, 'no day']); continue; }
+        for (let i = 0; i < st.length; i++) {
+          const a = st[i], b = st[(i + 1) % st.length];
+          const ax = q.x + a[0], ay = q.y + a[1];
+          if (hit(ax, ay, 24).length || dbp.regionIds[dbp.reg[cellG(ax, ay)]] !== 'town') badDay.push([q.name, 'stop', i, hit(ax, ay, 24)]);
+          const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 8));
+          let legBad = null;
+          for (let k = 0; k <= n && !legBad; k++) {
+            const x = ax + (b[0] - a[0]) * k / n, y = ay + (b[1] - a[1]) * k / n;
+            const h = hit(x, y, 14);
+            if (h.length || dbp.regionIds[dbp.reg[cellG(x, y)]] !== 'town') legBad = [q.name, 'leg', i, Math.round(x - q.x), Math.round(y - q.y), h];
+            for (const o of all) if (!legBad && o !== q && Math.hypot(o.x - x, o.y - y) < 110) legBad = [q.name, 'near', o.name, Math.round(Math.hypot(o.x - x, o.y - y))];
+          }
+          if (legBad) badDay.push(legBad);
+        }
+      }
+      ok(`the townsfolk's days (v2.3.3949): all ${all.length} walk their loops by their spots on the town's ground, through no footprint, never into another's reach`,
+        badDay.length === 0 && all.length === 21, badDay);
+    }
   }
   /* the worker ships them, the game reads them, the scan uses them */
   const readSrc = (u) => fs.readFileSync(new URL(u, import.meta.url), 'utf8');
