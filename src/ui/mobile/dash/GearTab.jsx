@@ -558,7 +558,11 @@ export const GearTab = ({ R: Rin, desk }) => {
       cmp = compareRows(armourRows(cur, slot), armourRows(o, slot));
       vs = cur ? 'vs your ' + (cur.name || slot) : 'Your ' + slot + ' slot is empty';
     }
-    const name = selEntry.kind === 'stashWeapon' && o ? weaponDisplayName(o) : (card.name || '');
+    /* v2.3.4022: a "?" piece (v2.3.4012's mystery reveal) shows its card's
+       name and no comparison -- its numbers would give its grade away */
+    const hidden = !!card.unrevealed;
+    if (hidden) cmp = null;
+    const name = !hidden && selEntry.kind === 'stashWeapon' && o ? weaponDisplayName(o) : (card.name || '');
     const list = itemActionList(target, card);
     const anchorOf = () => {
       try { const r = bro.current.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }; } catch (e) { return null; }
@@ -583,7 +587,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     }
     statsBody = (
       <div data-gear-stats="bag" data-gear-stats-for={selEntry.kind === 'item' ? 'i-' + selEntry.key : selEntry.kind} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {nameEl(name, o && o.quality)}
+        {nameEl(name, hidden ? null : o && o.quality)}
         {cmp && cmp.length > 0 && <div style={{ fontSize: 10, color: COL.muted }}>{vs}</div>}
         {cmp && cmp.length > 0 && <CompareList rows={cmp} />}
         {sentence(card.info || card.desc)}

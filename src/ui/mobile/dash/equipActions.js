@@ -16,6 +16,7 @@ import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rend
 import { recalcDerived, WEAPON_STASH_MAX, canEquipItem, getEquipReqLabel } from '../../../data/gameSystems.js'; /* v2.3.2664: + the armour Defense gate */
 import { pushDmgPopup } from '@/game/combatHelpers.js'; /* v2.3.2123: say why a refusal happened */
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns the arm */
+import { sendReveal, isUnrevealed, pieceOfTarget } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's Reveal */
 
 function persist(R) {
   try { if (typeof window !== 'undefined') localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
@@ -262,11 +263,20 @@ function _armorBlocked(S, R, piece) {
   return true;
 }
 
-export function equipArmorFromStash(piece) {
+/* v2.3.4012: a "?" from ANY caller (the card, the loadout picker) is revealed
+   first and put on once its grade has landed (game/revealBag.js);
+   `opts.revealed` is that second call, so a reveal is asked for once. */
+function _revealFirst(S, kind, piece, opts, again) {
+  if ((opts && opts.revealed) || !isUnrevealed(piece)) return false;
+  return sendReveal(S, { kind, armor: piece }, again);
+}
+
+export function equipArmorFromStash(piece, opts) {
   const S = getState();
   if (!S || !S.rpg || !piece) return false;
   const R = S.rpg;
   if (_armorBlocked(S, R, piece)) return false;
+  if (_revealFirst(S, 'stashArmor', piece, opts, () => equipArmorFromStash(piece, { revealed: true }))) return true;
   _equipTick();
   if (!R.armorStash) R.armorStash = [];
   const idx = R.armorStash.indexOf(piece);
@@ -281,11 +291,12 @@ export function equipArmorFromStash(piece) {
   return true;
 }
 
-export function equipLegsFromStash(piece) {
+export function equipLegsFromStash(piece, opts) {
   const S = getState();
   if (!S || !S.rpg || !piece) return false;
   const R = S.rpg;
   if (_armorBlocked(S, R, piece)) return false;  /* v2.3.2664: same gate, same slot key */
+  if (_revealFirst(S, 'stashLegs', piece, opts, () => equipLegsFromStash(piece, { revealed: true }))) return true;   /* v2.3.4012 */
   _equipTick();
   if (!R.legsStash) R.legsStash = [];
   const idx = R.legsStash.indexOf(piece);
@@ -420,4 +431,19 @@ export function equipStashGear(g) {
   setEquip(g.slot, g.gearId);
   persist(R);
   return true;
+}
+
+/* ═══ v2.3.4012: REVEAL, AND "EQUIP REVEALS FIRST" ═══
+   The owner: "Mystery item launched automatically. Should go to inventory
+   then have reveal option."  The item card's Reveal (game/revealBag.js): ask
+   the worker to open the piece; its ceremony plays, and `then` -- the equip,
+   when Equip was pressed on a "?" -- runs once the grade has landed.  True
+   when the ask went.  One entry of the card's action list, beside Equip. */
+export function revealFromBag(target, then) {
+  return sendReveal(getState(), target, then);
+}
+
+/* Is the card's piece still a "?" (Equip must reveal it first)? */
+export function targetUnrevealed(target) {
+  return isUnrevealed(pieceOfTarget(target));
 }

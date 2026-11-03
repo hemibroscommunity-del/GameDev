@@ -36,6 +36,8 @@ import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason
 import { unequipArmorDirect, unequipLegsDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
 import { resolveStashIdx } from './equipActions.js';   /* v2.3.4022: moved there, with the three equips */
 import { itemActionList, runItemAction } from './itemActions.js';   /* v2.3.4022: the one action list, shared with the Gear tab */
+import { revealCardFor } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's card */
+import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx'; /* v2.3.4012: its "?" */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { playVw } from '../playViewport.js';
@@ -203,7 +205,9 @@ function capeIsWorn() {
 
 /* v2.3.4022: exported as resolveItemCard -- the Gear tab's middle panel shows
    the same card (its name, its line, its actions) without opening this one. */
-export function resolveItemCard(target) { return resolveTarget(target); }
+/* v2.3.4022: the Gear tab's card, with v2.3.4012's "?" card over it, as the
+   item card itself draws it -- a mystery piece shows no grade on either */
+export function resolveItemCard(target) { return revealCardFor(target, resolveTarget(target), getState()); }
 
 function resolveTarget(target) {
   if (!target) return null;
@@ -1422,7 +1426,8 @@ export const ItemDetailPopup = () => {
     );
   }
 
-  const resolved = resolveTarget(target);
+  /* v2.3.4012: a piece still a "?" gets its own card (game/revealBag.js) */
+  const resolved = revealCardFor(target, resolveTarget(target), getState());
   if (!resolved) return null;
   const { lockKey, thumb, glyph, name, info, delta, desc, actions, sellWhy, dropWhy } = resolved;
   const locked = itemIsLocked(lockKey);
@@ -1581,6 +1586,8 @@ export const ItemDetailPopup = () => {
     itemDetailBus.close();
   };
 
+  /* v2.3.4022: v2.3.4012's Reveal and "Equip on a '?' reveals first" run
+     from the one action list too (itemActions.js 'reveal' / 'equip') */
   return (
     <div
       className="bt-noselect"
@@ -1686,8 +1693,11 @@ export const ItemDetailPopup = () => {
           }}>
             {thumb
               ? <img src={thumb} alt={name} draggable={false} className="bt-bag-art bt-card-art" data-life={cardLife || undefined}
-                  style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
+                  style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto',
+                    /* v2.3.4012: a "?" is its silhouette, as in the reveal (RevealOverlay) */
+                    ...(resolved.unrevealed ? { filter: 'brightness(0) opacity(.55)' } : null) }} />
               : <span className="bt-bag-art bt-card-art" data-life={cardLife || undefined} style={{ display: 'inline-block' }}>{glyph}</span>}
+            {resolved.unrevealed && <UnrevealedMark size={40} />}
             <span className="bt-bag-fx" aria-hidden="true" />
           </div>
           {locked && (
@@ -1715,7 +1725,7 @@ export const ItemDetailPopup = () => {
         {/* v2.3.1232: stat line lives in a recessed well-soft cell, tabular numerals */}
         {info && (
           <div style={{
-            fontSize: 12, color: COL.text, fontVariantNumeric: 'tabular-nums',
+            fontSize: 12, color: resolved.infoColor || COL.text, fontVariantNumeric: 'tabular-nums',   /* v2.3.4012: a "?"'s "Rare or better" in the rare blue */
             textAlign: 'center',
             padding: '5px 0',
             background: '#19252A',

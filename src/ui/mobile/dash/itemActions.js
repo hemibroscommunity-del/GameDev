@@ -28,6 +28,7 @@ import { lock as lockItem, unlock as unlockItem, isLocked as itemIsLocked } from
 import {
   unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipGearDirect,
   equipArmorFromStash, equipLegsFromStash, equipStashWeapon, equipStashShield, equipStashGear,
+  revealFromBag, targetUnrevealed,   /* v2.3.4012's Reveal, joined to the list at v2.3.4022 */
 } from './equipActions.js';
 
 /** A bag entry (bagModel) as the item card's target -- the same shapes
@@ -61,7 +62,10 @@ export function itemActionList(target, card) {
   if (a.drink) add('drink', 'Drink', 'primary');
   if (a.capeOn) add('capeOn', 'Equip', 'primary');
   if (a.capeOff) add('capeOff', 'Unequip', 'danger');
-  if (a.equip) add('equip', 'Equip', 'primary');
+  /* v2.3.4012: a "?" piece's Reveal leads, its Equip (which reveals first)
+     beside it, no longer the primary */
+  if (a.reveal) add('reveal', 'Reveal', 'primary', { attrs: { 'data-reveal': '' } });
+  if (a.equip) add('equip', 'Equip', a.reveal ? undefined : 'primary');
   if (a.unequip) add('unequip', 'Unequip', 'danger');
   if (a.sell) {
     const why = (card && card.sellWhy) || '';
@@ -128,7 +132,16 @@ export function runItemAction(id, target, card, ui, opts) {
     }
     case 'capeOn': sendCapeWorn(true); close(); return;
     case 'capeOff': sendCapeWorn(false); close(); return;
+    /* v2.3.4012: Reveal -- the screen closes so the ceremony is seen */
+    case 'reveal': revealFromBag(target); close(); return;
     case 'equip': {
+      /* v2.3.4012: Equip on a "?" reveals first and puts the piece on once
+         its grade has landed */
+      const now = () => runItemAction('equipNow', target, card, null, opts);
+      if (targetUnrevealed(target) && revealFromBag(target, now)) { close(); return; }
+      now(); close(); return;
+    }
+    case 'equipNow': {
       if (target.kind === 'stashShield') equipStashShield(target.shield);
       else if (target.kind === 'stashArmor') equipArmorFromStash(target.armor);
       else if (target.kind === 'stashLegs') equipLegsFromStash(target.armor);

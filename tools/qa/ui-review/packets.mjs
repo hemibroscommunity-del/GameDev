@@ -36,7 +36,8 @@ export const PACKETS = [
   { slug: 'gear-tab', title: 'The Gear tab: your bag, your bro and your gear',
     screens: ['gear-tab', 'gear-slot-selected', 'gear-compare', 'gear-filter-open', 'gear-filter-empty'] },
   { slug: 'dashboard-skills-codex', title: 'Dashboard: life skills, the Codex and More',
-    screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen'] },
+    /* v2.3.4012: + the bag's "?" piece (moved here: the bag's own packet is at MAX_PICTURES since the Hemi portraits) */
+    screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',
     /* v2.3.3527: + the Achievements page, the ninth (MAX_PICTURES) */
     screens: ['more-settings', 'more-pets', 'more-leaderboard', 'more-social', 'more-achievements', 'more-journey', 'more-account', 'more-about', 'more-feedback'] },
