@@ -189,7 +189,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.skip('a stat label on the hero sheet explains itself', 'no [data-statrow] on screen');
   } else {
     rec.ok('the hero sheet has tappable stat rows', rows.length >= 3, rows);
-    await tapSel(P, '[data-statrow="Defense"]');
+    await tapSel(P, '[data-statrow="Defense points"], [data-statrow="Defense"]'); /* v2.3.3896: the row is "Defense points" now */
     await P.page.waitForTimeout(450);
     const p2 = await pop(P);
     rec.ok('tapping "Defense" explains what defense is',
