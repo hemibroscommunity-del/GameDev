@@ -4712,9 +4712,8 @@ console.log('climbing (v2.3.3955)');
     CL.CLIMB_MULT === 0.4 && CL.climbWay(-1) === -1 && CL.climbWay(0.9) === 1 && CL.climbWay(0.1) === 0
       && CL.climbOut(T, T.face.y0 - h) === 'top' && CL.climbOut(T, T.face.y1 + h) === 'foot' && CL.climbOut(T, (T.face.y0 + T.face.y1) / 2) === null);
   const seq = []; for (let d = 0; d < CL.CLIMB_PX * CL.CLIMB_FRAMES.length * 2; d += CL.CLIMB_PX) seq.push(CL.climbFrame(d, 23));
-  ok('the climb is drawn in the jog\'s own back-facing frames (north, 23 of them), one every CLIMB_PX px climbed, the cycle repeating; a small bob',
-    seq.every((f) => f >= 0 && f < 23) && new Set(seq).size === CL.CLIMB_FRAMES.length && seq[0] === seq[CL.CLIMB_FRAMES.length] && CL.climbFrame(0, 23) === CL.climbFrame(CL.CLIMB_PX - 0.1, 23)
-      && [0, 3, 7, 11, 19].every((d) => CL.climbBob(d) >= 0 && CL.climbBob(d) <= CL.CLIMB_BOB));
+  ok('the climb is drawn in the jog\'s own back-facing frames (north, 23 of them), one every CLIMB_PX px climbed, the cycle repeating',
+    seq.every((f) => f >= 0 && f < 23) && new Set(seq).size === CL.CLIMB_FRAMES.length && seq[0] === seq[CL.CLIMB_FRAMES.length] && CL.climbFrame(0, 23) === CL.climbFrame(CL.CLIMB_PX - 0.1, 23));
   /* a jump at the foot going north: entered once high enough; not sideways, not low */
   const t0 = 1000, j = { t0, dur: J.JUMP_MS, peak: J.JUMP_PEAK };
   const low = t0 + 10, high = t0 + J.JUMP_MS / 2;

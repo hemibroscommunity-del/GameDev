@@ -208,9 +208,11 @@ cell over the islet's sand. Collision comes from the plan, never the picture.
 
 ### How you get up (src/game/climb.js, the rules; climbActions.js, the game)
 
-- **Climbing.** At the vines' foot, push north: you climb, at **0.4 of your
-  walk** (a sprint does not hurry it), **straight up and down only**, put on
-  the strip's middle. No swing, special, ability, roll, shield or harvest:
+- **Climbing.** At the vines' foot, push north (or at their top, push south):
+  you climb, at **0.4 of your walk** (a sprint does not hurry it), **straight
+  up and down only**, put on the strip's middle (you get on from up to
+  `CLIMB_REACH`, 16 px, away: a walk stops your feet short of a wall by up to
+  a step). No swing, special, ability, roll, shield or harvest:
   each says "Climbing!" (combatHelpers `swimRefused` asks `climbRefused`). No
   jump. Out at the top you are on the terrace; step off the bottom and you are
   off. The body is the **jog's own back-facing frames** (`CLIMB_FRAMES`, eight
@@ -252,8 +254,27 @@ cell over the islet's sand. Collision comes from the plan, never the picture.
   stick (which shows the door picture there) opens it: "Empty for now: the
   reward comes next", with the discovery chime. The real reward needs the
   worker's check (next PR, below).
-- **Other players** see you move up the face (your moves stream as ever);
-  nothing new goes over the wire.
+- **Other players** see you move up the face (your moves stream as ever),
+  drawn climbing by the same test at your feet that draws a swimmer
+  (`climbActions.riseClimbingAt`); nothing new goes over the wire.
+- **Off the Wheel** (a door, a dungeon) nothing of a climb comes along.
+
+### Smaller choices made while building it
+
+- The rises are laid by the ground worker (`riseLayout`) and sent ONCE with
+  its `ready` as one small grid of kinds for the islet (~400 bytes), not as a
+  byte a cell with every block: the walk grid stamps them over the block's
+  bits as it makes each row.
+- The crossing is judged where you come down, not predicted on the way up:
+  the flip comes mid-crossing, and a jump cannot know it will come.
+- The take-off point is kept on the jump itself (`startJump` `x0`, `y0`,
+  carried by `startFlip`), so "back where you jumped from" is exact.
+- A drop back or down is a short fall (`startDrop`, 0.6 px a ms, at least
+  180 ms) with the landing's thump, the walk standing still; never a jump cut.
+- The chest uses sounds already in the game (the discovery chime; a refusal's
+  "denied"; the landing's thump): no new sound, no Sound Studio label.
+- The islet's place is measured off the coast each time the plan is built, so
+  a coast that changes keeps its channel `gap` cells wide.
 
 ### Decisions made for this PR (the owner's open questions)
 

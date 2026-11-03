@@ -58,8 +58,6 @@ export const CLIMB_MULT = 0.4;
    follows the ground's speed) */
 export const CLIMB_FRAMES = Object.freeze([7, 9, 11, 15, 19, 21, 0, 4]);
 export const CLIMB_PX = 5;
-/* the body lifts this much (world px) as each hand pulls: a bob, drawn */
-export const CLIMB_BOB = 2;
 /* the feet box's half-size (the walk test's own `hs`) */
 export const FEET_HS = 10;
 /* a jump enters a face's band once it is this share of a jump's peak up --
@@ -176,11 +174,6 @@ export function climbFrame(dist, frameCount) {
   const n = frameCount > 0 ? frameCount : 23;
   const i = Math.floor(Math.max(0, dist) / CLIMB_PX) % CLIMB_FRAMES.length;
   return Math.min(n - 1, CLIMB_FRAMES[i]);
-}
-/** The body's lift (world px) on the climb at `dist`: up as a hand pulls. */
-export function climbBob(dist) {
-  const u = (Math.max(0, dist) / (CLIMB_PX * 4)) % 1;
-  return CLIMB_BOB * Math.abs(Math.sin(u * Math.PI));
 }
 
 /** A drop from (x0, y0) to (x1, y1): its record, timed by DROP_PX_MS. */
