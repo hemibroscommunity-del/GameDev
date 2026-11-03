@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "82a25cdb3b366a2e5b226bc3e4c13087ee044a89",
+  "tree": "eb6ea811aaa87e0bc87fd6c8cf112ed60e92dbff",
+  "committedAt": "2026-11-02T18:38:15-08:00",
+  "subject": "Merge pull request #1352 from hemibroscommunity-del/claude/plain-elements",
+  "files": 7348,
+  "bytes": 843851932,
+  "listingSha256": "b8afd78479a0894cc1d16ffaae6f0bb3877e5c7632a6fdfe2371a61cc3fb1c99",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
