@@ -206,8 +206,9 @@ using lighting or wobble just a bit whatever you think looks good"*.
 - **They turn with the ground covered**, about 2.5 turns a second at the
   board's 300 game px a second (`TURNS_PER_PX`). That reads as a roll, not a
   strobe. Rolling backward turns them back.
-- **The deck dips** half a game px (one picture px) once every 90 game px
-  rolled, as over the cobbles.
+- **The deck dipped** half a game px (one picture px) once every 90 game px
+  rolled, as over the cobbles (until v2.3.3995: the bumps below took its
+  place).
 - **Still when stopped:** a step under 0.3 game px is the settle after a stop,
   not a roll.
 - **The same for every rider:** yours, and every other player the tick says
@@ -220,6 +221,34 @@ using lighting or wobble just a bit whatever you think looks good"*.
 - **Proof** (`node tools/qa/mp/run.mjs boardwheels`, a computer): the turn
   grows and the spots move while rolling; it holds still when stopped; it is
   gone with the board. Pictures: `docs/shots/boardwheels.md`.
+
+## v2.3.3995: bumps in the road
+
+The owner: "Make snowboard bounce subtly up and down like going over small
+bumps in the road." (There is no snowboard: this is the skateboard.)
+
+- The old dip moved only the board, as an on/off step of 0.5 game px every
+  90 px; on a computer that is 0.3-0.45 CSS px, which whole-pixel rounding
+  mostly erased (TRAPS §231).
+- **Now the rider and board rise together** over a bump and settle again: a
+  smooth raised-cosine hump 24 px of travel long, 1-1.5 game px high, one in
+  each 70 px of ground covered, its place and height from a hash of the
+  stretch (`src/game/boardBumps.js boardBumpAt`), so the gaps run irregular
+  (about 30-110 px) and the same ride gives the same bumps.
+- **How it is drawn** (`src/rendering/rideFx.js bumpFigure`): the figure's
+  display is lifted after jumpFx, and the record is left in `d._jfx`, the
+  jump's own, so jumpFx's restore puts it back first thing next frame.
+  `S.player` is never written (TRAPS §231). `_jumpLift` takes the lift back off
+  for `figureFeetY`, so the shadow stays on the ground; the name plate and the
+  spend bars are let down by the same amount, so they hold still.
+- **The roll distance is measured where the rider stands**: a jump's lift
+  (`d._jfx.x0/y0`) is not a roll.
+- No bump in the air (a jump), on a figure drawn another way (tipped, hidden),
+  or when stopped.
+- `?boardroll=0` stays the off-ramp (no spots, no bumps).
+- **Proof**: `server/test/board-bumps.test.mjs` (height, smoothness, irregular
+  gaps); `mp-boardwheels` step 5 (rolling, the rider lifted up to about 1.3 px
+  in a third of the looks, never over 1.5; feet and plate still).
 
 ## v2.3.3875: the line says what you got off the board to do
 

@@ -73,7 +73,8 @@ function play(at, box) {
   qa.live = 1;
   /* it comes up over the middle of the box, a little above it, and flies onto the star */
   const fromX = box.left + box.w / 2 - at.x, fromY = Math.max(BIG_PX / 2 + 4, box.top - 8) - at.y;
-  const k = END_PX / BIG_PX;
+  /* v2.3.3986: the minimap's star is K times bigger on a computer (box.k, ui/wheelMiniSize.js) */
+  const k = (END_PX * (box.k > 0 ? box.k : 1)) / BIG_PX;
   qa.last = { from: { x: Math.round(at.x + fromX), y: Math.round(at.y + fromY) }, to: { x: Math.round(at.x), y: Math.round(at.y) }, at: Date.now(), calm: calm() };
   const done = () => {
     if (el.parentNode) el.parentNode.removeChild(el);

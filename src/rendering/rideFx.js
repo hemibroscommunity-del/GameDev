@@ -27,8 +27,9 @@
  * PRELOADING IS LAW: preloadRideArt is awaited by preloadWorldAnimations;
  * this file only LOOKS UP what it holds (never a first-use load). */
 import { Assets, Sprite, Texture } from 'pixi.js';
-import { figureFeetUnits } from './systems/entityRenderer.js';
+import { figureFeetUnits, figureFeetY } from './systems/entityRenderer.js';
 import { SKATEBOARD_ART } from '../data/skateboardArt.js';
+import { boardBumpAt } from '../game/boardBumps.js';   /* v2.3.3995: the bumps in the road */
 
 const V = '?v=2.3.3776';
 const URL_OF = {
@@ -91,11 +92,11 @@ const WHEELS = {
 const SPOTS = 4;                 /* sprites a board: side and angled 2 wheels x 2 spots, from above 4 wheels x 1 */
 const SPOT_TINT = 0xffe8de, SPOT_ALPHA = 0.75;
 const TURNS_PER_PX = 1 / 120;    /* how far the spots turn a game px rolled: ~2.5 turns a second at the board's 300 px -- read as a roll, not a strobe */
-const BOB_EVERY_PX = 90;         /* the deck dips this often... */
-const BOB_PX = 0.5;              /* ...by this much (one picture px) */
+/* (v2.3.3995: the deck's dip -- 0.5 px, a step every 90 px, the board alone --
+   is gone: the whole rider rides the bumps now, bumpFigure below) */
 const ROLL_MIN_PX = 0.3;         /* a frame's step that counts as rolling (the board covers ~5 px a frame) */
 /* `?boardroll=0` in the address: the board as it was, no spots and no dip
-   (one tab, to compare) */
+   (one tab, to compare; v2.3.3995: and no bumps) */
 const BOARD_ROLL = (() => {
   try { return !/(^|[?&])boardroll=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
 })();
@@ -133,6 +134,12 @@ export class RideFx {
       if (b) p.self = { view: pd._rideView.k, mirror: pd._rideView.m, y: +b.y.toFixed(1), feet: +figureFeetUnits(pd).toFixed(1),
         /* v2.3.3857: the wheels' turn so far, and their spots */
         turn: +(pd._rideTurn || 0).toFixed(3), spots: pd._rideSpots ? pd._rideSpots.length : 0,
+        /* v2.3.3995: the bump drawn this frame (game px), the ground covered */
+        bump: +(pd._rideBump || 0).toFixed(3), dist: pd._rideRoll ? +pd._rideRoll.dist.toFixed(1) : 0,
+        /* ...and, from where the figure stands (un-lifted), its name plate's
+           height and its feet's (both must hold still over a bump) */
+        plateOff: pd._uiLayer && pd._uiLayer.parent === pd ? +((pd.y + pd._uiLayer.position.y * pd.scale.y) - (pd._jfx ? pd._jfx.y0 : pd.y)).toFixed(2) : null,
+        feetOff: +(figureFeetY(pd) - (pd._jfx ? pd._jfx.y0 : pd.y)).toFixed(2),
         spot0: pd._rideSpots && pd._rideSpots[0] ? [+pd._rideSpots[0].x.toFixed(2), +pd._rideSpots[0].y.toFixed(2)] : null };
     }
     if (er.otherPlayerDisplays) {
@@ -186,23 +193,63 @@ export class RideFx {
     const fy = figureFeetUnits(d);
     /* v2.3.3857: the ground covered since the last frame, in game px (the
        figure's own place: yours and a peer's alike) -- the wheels' turn and
-       the deck's dip */
-    const roll = d._rideRoll || (d._rideRoll = { x: d.x, y: d.y, dist: 0 });
-    const step = Math.hypot(d.x - roll.x, d.y - roll.y);
-    roll.x = d.x; roll.y = d.y;
+       the deck's dip.  v2.3.3995: from where it STANDS -- a jump this frame
+       (jumpFx, before this) has lifted it, and its place before the lift is
+       the jump's record (d._jfx.x0/y0): a lift is not a roll */
+    const gx = d._jfx ? d._jfx.x0 : d.x, gy = d._jfx ? d._jfx.y0 : d.y;
+    const roll = d._rideRoll || (d._rideRoll = { x: gx, y: gy, dist: 0 });
+    const step = Math.hypot(gx - roll.x, gy - roll.y);
+    roll.x = gx; roll.y = gy;
     /* a step under ROLL_MIN_PX is the settle after a stop (a few tenths of a
        px), not a roll; one over 60 a place set, not rolled to */
     const rolling = step > ROLL_MIN_PX && step < 60;
     if (rolling) roll.dist += step;
-    const bob = BOARD_ROLL && rolling && Math.sin(roll.dist / BOB_EVERY_PX * Math.PI * 2) > 0.6 ? BOB_PX / sy : 0;
     if (b.x !== 0) b.x = 0;
-    if (b.y !== fy + bob) b.y = fy + bob;
+    if (b.y !== fy) b.y = fy;
     /* level against a lean or a flip of the figure (jumpFx) */
     const r = -(d.rotation || 0);
     if (b.rotation !== r) b.rotation = r;
     if (BOARD_ROLL) spots(d, b, view, roll.dist, v);
+    /* v2.3.3995: over the bumps in the road, the rider and board together */
+    d._rideBump = BOARD_ROLL && rolling ? bumpFigure(d, boardBumpAt(roll.dist)) : 0;
     return b;
   }
+}
+
+/* ═══ v2.3.3995: OVER A BUMP, THE WHOLE RIDER RISES ═══
+   The owner: "Make snowboard bounce subtly up and down like going over small
+   bumps in the road."  `lift` game px (game/boardBumps.js: 1-1.5 at a bump's
+   top, smooth), the figure and the board on it lifted together -- the board is
+   the figure's child -- through the JUMP's own lift-and-restore (jumpFx.js):
+   the figure's y is raised here, after jumpFx, and the record left in d._jfx
+   is the one jumpFx's _restore puts back first thing next frame (wherever
+   nothing has written the y since), so the lift never outlives its frame and
+   nothing here writes S.player (TRAPS section 231: a renderer never writes the
+   player's place).  `_jumpLift` takes it back off for figureFeetY, so the
+   shadow stays on the ground under the bump; the name plate and the spend
+   bars are let down by the same amount, so they hold still.  Only a figure
+   drawn the plain way (upright, not jumping: in the air there is no road),
+   and shown.  Returns the lift drawn. */
+function bumpFigure(d, lift) {
+  if (!(lift > 0.01) || d._jfx || !d.visible || d.rotation !== 0 || !(Math.abs(d.scale.y) > 1e-3)) return 0;
+  const rec = { x0: d.x, y0: d.y, sx0: d.scale.x, sy0: d.scale.y, held: [] };
+  d.y = rec.y0 - lift;
+  const down = lift / d.scale.y;   /* the same lift in the figure's own units */
+  for (const n of [d._uiLayer, d._resMpBlocks, d._resEnBlocks]) {
+    if (!n || n.destroyed || n.parent !== d) continue;
+    if (n.rotation !== 0 || n.skew.x !== 0 || n.skew.y !== 0) continue;
+    const y0 = n.position.y;
+    n.position.y = y0 + down;
+    rec.held.push({ n, x0: n.position.x, y0, sx0: n.scale.x, sy0: n.scale.y,
+      xw: n.position.x, yw: n.position.y, sxw: n.scale.x, syw: n.scale.y, rw: 0, kxw: 0, kyw: 0 });
+  }
+  rec.xw = d.x; rec.yw = d.y; rec.rw = 0; rec.sxw = d.scale.x; rec.syw = d.scale.y;
+  d._jfx = rec;
+  d._jumpY = d.y;
+  d._jumpLift = lift;
+  d._jumpXw = d.x;
+  d._jumpXFix = 0;
+  return lift;
 }
 
 /* v2.3.3857: the wheels' spots, placed on the board as it is drawn this

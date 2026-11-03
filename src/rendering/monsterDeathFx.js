@@ -54,6 +54,13 @@
  */
 import { Container, Sprite, Graphics, Rectangle } from 'pixi.js';
 import { hitMaterialOf, hitFxTintOf } from '@/data/monsterVariants.js';
+/* v2.3.3985: a look's own death, from its labelled zones (the owner: "label
+   zones for each monster that can apply physics and effects for") */
+import { deathZonesFor, deathZoneLook, deathZoneView, deathCutLines, MAX_LIVE } from '@/data/monsterDeathZones.js';
+import { deathZonesOn, buildZoneDeath, stepZoneDeath, zoneDeathProbe, zoneDeathsLive } from './monsterDeathZonesFx.js';
+/* v2.3.3985: the killing blow -- its direction and whether it was a big one
+   (the owner: "simulate physics based on the direction they're hit in") */
+import { deathBlowOf } from '@/game/deathBlow.js';
 
 export const DEATH_NONE = 0;   /* not handled: draw the normal death */
 export const DEATH_LIVE = 1;   /* drawn this frame: keep the display */
@@ -98,18 +105,65 @@ function rng(seed) {
   return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
 }
 
-export function rollDeathKind(m, blob, noStrip) {
+/* ═══ v2.3.3985: `?deathkind=<kind>` -- WATCH ONE DEATH ON EVERY KILL ═══
+   The owner's way to look at the deaths (docs/specs/monster-death-zones.md):
+   `?deathkind=own` plays every look's own zone death, `slice`, `decap`,
+   `leg`, `topple` or `normal` that one -- this phone only, as QA's
+   window.__btDeathKind does (which wins when both are set). */
+const DEATH_KINDS_ALL = ['own', 'normal', 'slice', 'decap', 'leg', 'topple'];
+const _urlKind = (() => {
+  try {
+    const k = typeof location !== 'undefined' ? new URLSearchParams(location.search || '').get('deathkind') : null;
+    return k && DEATH_KINDS_ALL.indexOf(k) >= 0 ? k : null;
+  } catch (e) { return null; }
+})();
+
+/* v2.3.3985: `?deathbig=1` makes every kill's own death the big one (the
+   explosion), `?deathbig=0` the ordinary one -- this phone only, as QA's
+   window.__btDeathBig (true / false) does (which wins when both are set). */
+const _urlBig = (() => {
+  try {
+    const v = typeof location !== 'undefined' ? new URLSearchParams(location.search || '').get('deathbig') : null;
+    return v === '1' ? true : v === '0' ? false : null;
+  } catch (e) { return null; }
+})();
+function forcedBig() {
+  let v = null;
+  try { v = (typeof window !== 'undefined') ? window.__btDeathBig : null; } catch (e) { v = null; }
+  return v === true || v === false ? v : _urlBig;
+}
+
+/* v2.3.3985: + `own` -- this look has its own zone death (monsterDeathZones):
+   it is rolled half the time (a bit of the hash the cuts' pick never reads),
+   the cuts and the normal death the other half, as before -- the owner's
+   variety ("include the normal death too for variety") kept.  + `bigOwn`:
+   a BIG killing blow on a look with zones is always its own death, the
+   explosion (the owner's "creative death explosions"); a forced kind still
+   wins. */
+export function rollDeathKind(m, blob, noStrip, own, bigOwn) {
   let forced = null;
   try { forced = (typeof window !== 'undefined') ? window.__btDeathKind : null; } catch (e) { forced = null; }
+  if (!forced) forced = _urlKind;
   /* v2.3.3499: a monster with no death strip never rolls `normal` (above) */
   const kinds = noStrip ? (blob ? KINDS_BLOB_NOSTRIP : KINDS_BODY_NOSTRIP) : (blob ? KINDS_BLOB : KINDS_BODY);
   const fall = noStrip ? 'topple' : 'normal';
+  /* v2.3.3985: forced `own` on a look with none is its simpler death */
+  if (forced === 'own') return own ? 'own' : fall;
   /* a forced kind this body cannot do (a slime's `leg`) is the normal death
      (v2.3.3499: or, with no strip to play it, the topple) */
   if (forced && (KINDS_BODY.indexOf(forced) >= 0 || forced === 'topple')) return kinds.indexOf(forced) >= 0 ? forced : fall;
   const h = hash32(`${m.id}|${Math.round(m.x)}|${Math.round(m.y)}`);
+  if (own && (bigOwn || ((h >>> 16) & 1) === 0)) return 'own';
   return kinds[h % kinds.length];
 }
+
+/* v2.3.3985: which look's zones a display is cut by (the snowman is not a
+   variant; a slime's is 'fodder'), and which way it was facing */
+function zoneKeyOf(display, m) {
+  if (display && display._isSnowman) return 'snowman';
+  return (display && display._variantKey) || (m && (m.archetype || m.type)) || null;
+}
+function zoneFacing(display) { return (display && display._lastFacing) || 'south'; }
 
 /* ── what the body really covers ──
    Read back once per texture (a monster reuses a handful of frames, so after
@@ -542,6 +596,19 @@ function deathRoot(display, sb) {
   return root;
 }
 
+/* the look's material and its spray's colours (v2.3.3985: shared with the
+   zone deaths) */
+function lookColours(display, m) {
+  const matKey = display._variantKey || (m && (m.arch || m.type));
+  const mat = hitMaterialOf(matKey) || {};
+  const matKind = mat.fx || mat.kind || 'goo';
+  const bloody = matKind === 'goblin' || matKind === 'ember';
+  /* hitFxTintOf follows a slime's recolour, so a blue slime bleeds blue */
+  const col = bloody ? BLOOD : (hitFxTintOf(matKey) || 0x5ca84c);
+  const colD = bloody ? BLOOD_D : shade(col, 0.6);
+  return { matKey, mat, matKind, bloody, col, colD };
+}
+
 /* ── build one death ── */
 function build(kind, display, m, blob, now) {
   const sb = display._spriteBody;
@@ -557,14 +624,12 @@ function build(kind, display, m, blob, now) {
   const W = x1 - x0, H = y1 - y0;
   if (W < 4 || H < 4) return null;
 
-  const matKey = display._variantKey || (m && (m.arch || m.type));
-  const mat = hitMaterialOf(matKey) || {};
-  const matKind = mat.fx || mat.kind || 'goo';
+  const { mat, matKind, col, colD } = lookColours(display, m);
   const splinter = mat.kind === 'bone';   /* v2.3.2928b: bone breaks in shards (splinterOffsets) */
-  const bloody = matKind === 'goblin' || matKind === 'ember';
-  /* hitFxTintOf follows a slime's recolour, so a blue slime bleeds blue */
-  const col = bloody ? BLOOD : (hitFxTintOf(matKey) || 0x5ca84c);
-  const colD = bloody ? BLOOD_D : shade(col, 0.6);
+  /* v2.3.3985: a look with labelled zones is cut where its parts really are:
+     the neck under its head, the hip over its legs (monsterDeathZones) --
+     the guesses below only for a look without */
+  const lines = deathZonesOn() ? deathCutLines(zoneKeyOf(display, m), zoneFacing(display)) : { neck: null, hip: null };
   const rand = rng(hash32(`${m.id}|${Math.round(m.x)}|${Math.round(m.y)}|p`));
   const side = rand() < 0.5 ? -1 : 1;
   const pad = 2;
@@ -617,14 +682,14 @@ function build(kind, display, m, blob, now) {
     /* normal (-dy, dx) points DOWN, so A is the top */
     spec = { top: k.A, bot: k.B, runs: k.runs, dx, dy, pts: k.pts, style: k.style };
   } else if (kind === 'decap') {
-    const neckY = y0 + H * ((blob ? 0.4 : 0.28) + rand() * 0.05);
+    const neckY = y0 + H * (lines.neck != null ? lines.neck - 0.02 + rand() * 0.04 : ((blob ? 0.4 : 0.28) + rand() * 0.05));   /* v2.3.3985: + the zones' neck */
     const tilt = (rand() - 0.5) * 0.45;                /* v2.3.2923: was +/-0.125 */
     const dx = Math.cos(tilt), dy = Math.sin(tilt);
     const k = cutBy(x0 + W / 2, neckY, dx, dy, true);  /* a neck is narrow: a calmer path */
     spec = { top: k.A, bot: k.B, runs: k.runs, dx, dy, pts: k.pts, style: k.style };
   } else if (kind === 'leg') {
     /* the leg: the lower third, on one side of the body's own middle */
-    const hipY = y0 + H * 0.68;
+    const hipY = y0 + H * (lines.hip != null ? lines.hip : 0.68);   /* v2.3.3985: + the zones' hip */
     const b = bodyOf(cov, sx, sy, [[x0 - pad, hipY], [x1 + pad, hipY], [x1 + pad, y1 + pad], [x0 - pad, y1 + pad]]);
     const mid = b ? b.com[0] : x0 + W / 2;
     /* v2.3.2928: both edges of the leg's cut are jagged too (they were two
@@ -925,9 +990,33 @@ export function drawMonsterDeath(m, display, deathKey, blob, now, S, noStrip) { 
        (no art yet, the cut misses the body) is the normal death --
        v2.3.3499: or, for a monster with no death strip of its own
        (`noStrip`), the topple: never a frozen frame. */
-    const kind = rollDeathKind(m, blob, noStrip);
+    /* v2.3.3985: a look with labelled zones may die its own way (`own`,
+       monsterDeathZonesFx); past the cap (or anything it cannot cut) it is
+       today's death, rolled as if it had none */
+    const zKey = zoneKeyOf(display, m), zFace = zoneFacing(display);
+    const zones = deathZonesOn() ? deathZonesFor(zKey, zFace) : null;
+    /* v2.3.3985: the blow that killed it (game/deathBlow.js): which way the
+       pieces go, and whether this is the explosion or the gentler collapse */
+    const blow = deathBlowOf(m, Date.now());
+    const fb = forcedBig();
+    const big = fb != null ? fb : blow.big;
+    let kind = rollDeathKind(m, blob, noStrip, !!zones, big);
     let built = null;
-    if (kind !== 'normal' && display._spriteBody && display._spriteBody.visible !== false) {
+    if (kind === 'own') {
+      if (display._spriteBody && display._spriteBody.visible !== false && zoneDeathsLive(now, KIT) < MAX_LIVE) {
+        const look = deathZoneLook(zKey);
+        const lc = lookColours(display, m);
+        try {
+          built = buildZoneDeath(KIT, display, m, now, {
+            key: zKey, view: deathZoneView(look, zFace), look, zones,
+            col: lc.col, colD: lc.colD, matKind: lc.matKind, bloody: lc.bloody, tint: hitFxTintOf(lc.matKey),
+            blow, big,   /* v2.3.3985 */
+          });
+        } catch (e) { built = null; }
+      }
+      if (!built) kind = rollDeathKind(m, blob, noStrip, false);
+    }
+    if (!built && kind !== 'normal' && kind !== 'own' && display._spriteBody && display._spriteBody.visible !== false) {
       try { built = build(kind, display, m, blob, now); } catch (e) { built = null; }
       if (!built && noStrip && kind !== 'topple') { try { built = build('topple', display, m, blob, now); } catch (e) { built = null; } }
     }
@@ -935,10 +1024,14 @@ export function drawMonsterDeath(m, display, deathKey, blob, now, S, noStrip) { 
   }
   if (st.none) return DEATH_NONE;
   if ((now - st.born) / st.slow >= DUR_MS) {
-    st.root.visible = false;
+    /* v2.3.3985: a zone death lets go of everything it made the moment it
+       ends (its sub-frame textures with it) */
+    if (st.dispose) st.dispose();
+    else st.root.visible = false;
     return DEATH_DONE;
   }
-  step(st, now);
+  if (st.own) stepZoneDeath(KIT, st, now);
+  else step(st, now);
   if (S && st.matBursts && st.matBursts.length) { try { flushMatBursts(st, m, display, S, now); } catch (e) { st.matBursts.length = 0; } }
   return DEATH_LIVE;
 }
@@ -973,14 +1066,16 @@ function flushMatBursts(st, m, display, S, now) {
     const w = toWorld(st, display, x, y);
     /* the root's mirror (a monster facing left) turns the cut's direction too */
     const mir = st.root.scale.x < 0 ? -1 : 1;
-    const ang = Math.atan2(b.dy, b.dx * mir) + (i % 2 ? Math.PI : 0);
+    /* (v2.3.3985: a burst thrown along the killing blow keeps its way) */
+    const ang = Math.atan2(b.dy, b.dx * mir) + (b.blow ? 0 : (i % 2 ? Math.PI : 0));
     S._debrisBursts.push({
       /* a key of its own per burst, so the renderer's per-monster 150 ms gap
          (which the killing hit has just used) does not swallow it */
-      monsterId: `${m.id}:cut:${i}:${st.born}`, kind: st.matKind,
-      tint: hitFxTintOf(display._variantKey || (m && (m.arch || m.type))),
+      /* v2.3.3985: a zone death's bursts each name their own material */
+      monsterId: `${m.id}:cut:${i}:${st.born}`, kind: b.kind || st.matKind,
+      tint: b.tint != null ? b.tint : hitFxTintOf(display._variantKey || (m && (m.arch || m.type))),
       x: w[0], y: w[1], gy, h: Math.max(8, gy - w[1]),
-      ang, t0: now, weapon: b.weapon, crit: true, big: !!b.big, heavy: false, elem: null,
+      ang, t0: now, weapon: b.weapon, crit: b.crit !== false, big: !!b.big, heavy: false, elem: null,
       hitX: w[0], hitY: w[1],
     });
   }
@@ -990,6 +1085,7 @@ function flushMatBursts(st, m, display, S, now) {
 function disposeFx(display) {
   const st = display._deathFx;
   display._deathFx = null;
+  if (st && st.dispose) { st.dispose(); return; }   /* v2.3.3985: a zone death, and its textures */
   if (st && st.root && !st.root.destroyed) {
     try { st.root.destroy({ children: true }); } catch (e) { /* gone with the display */ }
   }
@@ -1006,6 +1102,7 @@ export function monsterDeathState(display) {
   const st = display && display._deathFx;
   if (!st) return null;
   if (st.none) return { kind: st.kind, pieces: 0 };
+  if (st.freed) return { kind: st.kind, pieces: 0, done: true };   /* v2.3.3985: a zone death, over and let go */
   const gy = st.groundY;
   return {
     kind: st.kind,
@@ -1016,11 +1113,19 @@ export function monsterDeathState(display) {
     rot: st.pieces.map((p) => +p.c.rotation.toFixed(2)),
     /* how far each piece's lowest point is off the ground, in body heights:
        0 = standing or lying on it, negative = floating above it */
-    ground: st.pieces.map((p) => +((lowestY(p) - gy) / st.H).toFixed(3)),
+    /* (v2.3.3985: a zone death's piece thrown toward or away from you lands
+       on its own ground line, `gz` below or above the body's) */
+    ground: st.pieces.map((p) => +((lowestY(p) - gy - (p.gz || 0)) / st.H).toFixed(3)),
     /* v2.3.3499: each piece's tint (never the hit flash's red) and the root's
        scale (never the hit's squash) */
     tints: st.pieces.map((p) => (p.spr ? p.spr.tint : null)),
     scale: [+st.root.scale.x.toFixed(4), +st.root.scale.y.toFixed(4)],
     style: st.style || null,
+    /* v2.3.3985: a look's own death -- its zones, how each came off */
+    own: st.own ? zoneDeathProbe(st) : null,
   };
 }
+
+/* v2.3.3985: the cuts' own tools, handed to monsterDeathZonesFx (which
+   imports nothing of this file: no cycle) */
+const KIT = { coverage, bodyOf, deathRoot, setHinge, lowestY, flatTarget, qaSlow, rng, hash32, drop, puff, G, DUR_MS, FADE_FROM_MS };

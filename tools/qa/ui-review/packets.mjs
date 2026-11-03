@@ -28,11 +28,13 @@ export const PACKETS = [
   { slug: 'creator-tabs', title: 'The creator\'s other tabs and the drawing editor',
     screens: ['creator-tab-eyewear', 'creator-tab-beard', 'creator-tab-shirt', 'creator-tab-pants', 'creator-tab-shoes', 'creator-paint'] },
   { slug: 'arriving-and-the-world', title: 'Arriving, the world screen and talking to Mayor Bro',
-    screens: ['welcome', 'desktop-window', 'hud', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
+    screens: ['welcome', 'desktop-window', 'hud', 'hud-pvp', 'nml-popup', 'hud-outlaw', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
   { slug: 'dashboard-character-bag', title: 'Dashboard: your character, your quests and the bag',
-    screens: ['dash-hero', 'dash-hero-points', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card'] },
+    /* v2.3.3999: + your portrait as a Hemi Bro, twice */
+    screens: ['guide-arrow', 'dash-hero', 'dash-hero-points', 'hemi-portrait', 'hemi-portrait-dressed', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card'] },
   { slug: 'dashboard-skills-codex', title: 'Dashboard: life skills, the Codex and More',
-    screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen'] },
+    /* v2.3.4012: + the bag's "?" piece (moved here: the bag's own packet is at MAX_PICTURES since the Hemi portraits) */
+    screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',
     /* v2.3.3527: + the Achievements page, the ninth (MAX_PICTURES) */
     screens: ['more-settings', 'more-pets', 'more-leaderboard', 'more-social', 'more-achievements', 'more-journey', 'more-account', 'more-about', 'more-feedback'] },

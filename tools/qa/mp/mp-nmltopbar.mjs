@@ -62,7 +62,7 @@ const placed = (L) => !!L.pill && !!L.title && !!L.header && L.top === true && L
   && L.pill.l >= L.title.r && L.pill.l - L.title.r <= 14
   && L.pill.t >= L.header.t && L.pill.b <= L.header.b && L.pill.r <= L.vw
   && !overlaps(L.pill, L.purse) && !overlaps(L.pill, L.ap) && !overlaps(L.pill, L.door) && !overlaps(L.pill, L.test)
-  && L.titleCut === false && L.titleText === 'BroTown' && !!L.purse && L.purse.r <= L.vw;
+  && !!L.titleText && (L.titleCut === false || (L.titleText !== 'BroTown' && L.title.r - L.title.l >= 50)) /* v2.3.3974: the land's name there, or BroTown (whole); a land's may end in "..." on the owner's TEST MODE bar at 320 */ && !!L.purse && L.purse.r <= L.vw;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');

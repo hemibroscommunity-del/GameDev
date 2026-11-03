@@ -1,5 +1,8 @@
 # The tour: the Mayor's quest, then the whole town (v2.3.3525)
 
+(The order today is v2.3.3924's, the first section below; the older
+sections say how it got there.)
+
 The owner, a week before an exposé where reviewers give each game 20-30
 minutes:
 
@@ -11,6 +14,94 @@ minutes:
 > more diversified ... I also think the quest dialog could be better. Like
 > why is the character doing this? ... Keep the dialog witty and funny (it's
 > an unserious game bro)."
+
+## v2.3.3924: farming before the snowmen; the dungeon says Lv 10+; Diego plainly
+
+The owner's playtest list, 2026-11-02:
+
+> "Instead of the snowmen quest right after completing the 2 cooked fish
+> quest make them complete the farming quest first, just make it come from
+> mayor bro to talk to the farmer guy to start that quest as normal. Then
+> after that's done resume the snowman quest. I wanna make sure the first
+> play of the game includes an experience with farming."
+
+> "For the clear dungeon quest from mayor bro put a [lvl 10+ recommended]
+> and direct players to other quests around town, starting with the
+> woodworker quest."
+
+> "Diego quest line 'open the shop' option is confusing when accepting his
+> first quest, his dialog also doesn't make much sense either."
+
+**The new order of a first play**, in plain words: the Mayor's slimes;
+Blacksmith Bro's ore, then his forge; Diego's fish; **Farmer Bro's carrots**;
+then the Mayor's snowmen and his two lands; then the rest of the town
+(Woodworker Bro's logs and bench, Farmer Bro's Zoom Juice, Lil Bro's race,
+the Beastmaster's traps). Only the carrots moved: Zoom Juice (farm_2) stays
+where it was.
+
+| # | Giver | Quest |
+|---|---|---|
+| 1 | Mayor Bro | Into the Blue (the slimes) |
+| 2 | Blacksmith Bro | Heavy Metal (5 copper ore) |
+| 3 | Blacksmith Bro | Some Assembly Required |
+| 4 | Diego | Something Fishy (catch and cook 2 fish) |
+| 5 | Farmer Bro | Carrot Comeback (plant and water 3 carrots) |
+| 6 | Mayor Bro | Cold Reception (4 Snowman Remains) |
+| 7-12 | the town | Knock on Wood, Branching Out, Zoom Juice, Race Day, Box Traps, Set and Spring |
+
+- `tut_2` waits on `smith_1`, `fish_1` **and `farm_1`** (`after`, the
+  worker's `data.js` and the game's `gameSystems.js`, mirror-audit §5a), so
+  the Mayor cannot hand out the snowmen before the farm. `QUEST_TOUR` puts
+  `farm_1` fifth and `tut_2` sixth on both sides; the gold road, the quest
+  card's "Next:" and the Test panel's "Tour: jump to" follow it.
+- The words follow the order: Diego's hand-in ends "Next, go see Farmer Bro
+  at the Feed & Seed. He needs help with his crops." (he stands at the Feed &
+  Seed, not on your farm), and Farmer Bro's ends "Next, go see Mayor Bro at
+  the Town Hall. He has a job for you." The Mayor's first hand-in still says
+  "Blacksmith Bro and Diego have work for you" (both still come first).
+- **Diego, plainly** (the owner's lane G style: one friendly sentence of who
+  he is, then exactly what to do): "Hi, I'm Diego! I run the General Store,
+  and I'm writing a cookbook, but I've never cooked a fish. Here's a fishing
+  rod and 2 pine logs. Catch 2 fish at a fishing spot, cook them on a
+  campfire, and bring them to me. To light a campfire, tap a log in your
+  Bag." "A fishing spot", as his steps say: the world's town has no pond.
+- **No "Open the shop" on his quest line.** `game/tour.js` `questAction` gave
+  any giver who keeps a shop that button on his "how's it going" line, which
+  is exactly the line shown right after Accept, and his quest buys nothing
+  from him (his shelf, `DIEGO_SHELF`, is empty). Every giver checked: Diego is
+  the only townsperson who keeps a shop and fish_1 his only quest. The button
+  now asks the quest: one whose task is buying from its giver says
+  `shopBuy: true` (none does). His shop is a tap on him once his quest is in.
+- **Dungeon Delver** (mayor_3) says **"[Lv 10+ recommended]"** on the quest
+  and in his offer and progress lines (`GROTTO_REC_LEVEL`, now exported from
+  `gameSystems.js`), and "Not level 10 yet? Do the town's quests first,
+  starting with Woodworker Bro at the Woodworker." The sentence stays OFF
+  his first hand-in (the owner had it removed there in v2.3.3869). The quest
+  carries `recLevel: 10`, and below that level (`questWays.js waitsOnLevel`):
+  - `tourOffer` suggests the tour's next step past it (the Woodworker's
+    first, when the Mayor's line was rushed), so the road and the Mayor's
+    "next step" lead somewhere a low level can do;
+  - with another quest in hand it leads after the others
+    (`levelWaitsLast`), so taking the Woodworker's logs puts the road on the
+    trees, not the Grotto;
+  - never once it is done (its hand-in leads) or while you track it.
+- With no live players there is nothing to migrate, and no cap: the same
+  kind of change as v2.3.3533. Deploy order: a new game against the old
+  worker offers the snowmen only after the farm, which the old worker takes
+  (harmless); a game still open from before, against the new worker, offers
+  them before the farm and has the accept refused until the page reloads.
+- One thing to know: `tour: false` in the live flags hides Farmer Bro, and
+  with him the snowmen (they wait on his carrots), as it already hid Zoom
+  Juice. The switch is an emergency lever, not a mode.
+
+Tests: `tour` (§1 the order and the gate, §10 the snowmen refused with any
+one of the three missing and taken with all three, the town after them, §11
+"Tour: jump to", §12 no shop button on a quest that buys nothing),
+`quest-pins`, `mirror-audit` §5a, `quest-route` §8 (a quest above your level
+waits), `quest-lines` §6 (the lines say the order, Diego's plain words, the
+dungeon's level, none on the first hand-in); phone: `mp-questline` (CI's
+"playable") walks the new order, Diego handing on to Farmer Bro and Farmer
+Bro to the Mayor; `mp-questprox` §10 finds no shop button on Diego's line.
 
 ## v2.3.3533: the snowmen after two
 

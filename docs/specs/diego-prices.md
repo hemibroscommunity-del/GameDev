@@ -79,3 +79,16 @@ taken from the dead is no gold at his counter, and the v2.3.3184 rule above (a
 pickaxe neither bought nor sold out of his pile) still holds for the pile.
 Tested in `server/test/shop.test.mjs` "a lost tool, bought back" and
 `tools/qa/mp/mp-toolshelf.mjs`.
+
+## v2.3.3981: a bar 48, a hardened wood 29
+
+One ore makes one bar and one log one hardened wood now (docs/specs/smelting.md
+"One ore, one bar"), so the two families are priced on ONE raw item plus the
+fifth the bar always had over its ore: `bar_` 240 → 48 (ore 40), `hardened_`
+144 → 29 (log 24). Left at 240, a 40-coin ore would have smelted into a bar he
+pays 120 for. `SHOP.FIVE_TO_ONE` holds the old two, and `_shopBaseValue` lays
+them over the families while `onetoone: false` brings back five raw items a
+piece. The shop suite's "no gold tap" check walks every bar and hardened wood,
+switch on and off: his offer for one is under his price for the raw items it
+takes (buying them to sell him the result loses) and above his offers for them
+(making it before selling still earns a little).

@@ -48,6 +48,8 @@
  *   BT_GHOST_ONLY=flip BT_GHOST_DIRS=east,south,north BT_GHOST_HAT=top-hat
  *   BT_GHOST_HAIR=wavy BT_GHOST_LOOK=plain (the game's own colours)
  *   BT_GHOST_SKIN=ebony BT_GHOST_SPECIES=alien (v2.3.3738: the skin the head wears)
+ *   v2.3.3994, the climb on the Lagoon Islet's vines (family `climb`, not in the
+ *   default run): BT_GHOST_ONLY=climb BT_GHOST_QUERY=climb=1
  */
 import * as H from './harness.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
@@ -696,6 +698,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
           await end(outfit, 'flip');
         }
       }
+      /* ── v2.3.3994: the climb (src/game/climb.js): on the Lagoon Islet's
+         vines, the jog's back-facing frames at the climb's own steps.  Only
+         when named (BT_GHOST_ONLY=climb), with the rises in the address
+         (BT_GHOST_QUERY=climb=1); one facing, north (the climb has no
+         other).  Each frame held by the climb's own count (S._climb.dist),
+         not the clock: still on the vines, every one of CLIMB_FRAMES ── */
+      if (only && only.has('climb')) {
+        const { riseMessage } = await import(H.REPO + '/public/tools/world/core/rises.js');
+        const { CLIMB_FRAMES, CLIMB_PX } = await import(H.REPO + '/src/game/climb.js');
+        const Rm = riseMessage(G.plan), T = Rm && Rm.list[0];
+        summary[`${outfit}/climb`] = { frames: 0 };
+        if (T && T.climb) {
+          const vx = (T.climb.x0 + T.climb.x1) / 2, footY = T.face.y1 + 14 - 52;
+          await H.glideTo(P, vx, footY, { speed: 450, timeoutMs: 300000 });
+          await page.waitForTimeout(2500);
+          await H.hopTo(P, vx, footY, { tries: 10 });
+          await page.keyboard.down('w');
+          await H.waitFor(P, (S) => !!S._climb, (v) => v, { timeout: 8000, label: 'on the vines' }).catch(() => null);
+          await page.waitForTimeout(500);
+          await page.keyboard.up('w');
+          console.log(`    climb: ${JSON.stringify(await page.evaluate(({ vx, footY }) => {
+            const S = window._gameState.current, c = window.__btClimb ? window.__btClimb() : null;
+            return { at: [Math.round(S.player.x), Math.round(S.player.y)], want: [vx, footY], climbing: !!S._climb, on: c && c.on, stats: c && c.stats };
+          }, { vx, footY }))}`);
+          await begin();
+          for (let k = 0; k < CLIMB_FRAMES.length; k++) {
+            const on = await page.evaluate((d) => { const S = window._gameState.current; if (!S._climb) return false; S._climb.dist = d; return true; }, k * CLIMB_PX + 0.5);
+            if (!on) break;
+            await take(outfit, 'climb', 'north');
+          }
+          await end(outfit, 'climb');
+          /* off the vines (up onto the terrace) and back to the spot */
+          await page.keyboard.down('w');
+          await H.waitFor(P, (S) => !S._climb, (v) => v, { timeout: 30000, label: 'off the vines' }).catch(() => null);
+          await page.keyboard.up('w');
+          await H.glideTo(P, spot.x, spot.y, { speed: 450, timeoutMs: 300000 });
+        }
+      }
       /* ── the harvests: mining, chopping, fishing, a fire and a cook (the
          gathering figures and poses), on the nearest of each to the spot ── */
       if (outfit !== 'greaves') {
@@ -785,7 +825,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await travel(P, wsPort, myId, spot.x, spot.y);
         await page.waitForTimeout(1000);
       }
-      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'flip' /* v2.3.3738 */, 'mine', 'chop', 'fire', 'cook', 'fish']) {
+      for (const fam of ['stand', 'jog', 'hit', 'dodge', 'pickup', 'swing', 'bow', 'staff', 'jump', 'flip' /* v2.3.3738 */, 'climb' /* v2.3.3994 */, 'mine', 'chop', 'fire', 'cook', 'fish']) {
         if (!want(fam)) continue;
         const s = summary[`${outfit}/${fam}`] || (summary[`${outfit}/${fam}`] = {});
         s.frames = count(outfit, fam);

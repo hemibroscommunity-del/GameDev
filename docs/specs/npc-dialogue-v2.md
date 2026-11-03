@@ -1,5 +1,9 @@
 # NPC dialogue, the owner's rewrite (v2.3.3570)
 
+> **Superseded in v2.3.4025** by plain words (`docs/specs/plain-words.md`):
+> the owner, "No cryptic jokes or anything that could confuse someone." The
+> history below is kept; the lines it quotes are no longer the game's.
+
 The owner had every NPC line pulled into one manuscript, had it reviewed, and
 sent back a new script: "Here's the new script to swap in". This swaps it in
 word for word. Each townsperson now plays a sharper stereotype:
@@ -207,7 +211,7 @@ talking, then the job:
   him, the City Council "in a different hat", a parade "right after the bank
   and a guy named Steve".
 - **Blacksmith Bro**, the gym bro: he hurt his back picking up a protein shake,
-  "every swing's a rep", the "skinny-guy discount", a protein nap he doesn't
+  "every swing's a rep", the "skinny-guy discount" (gone in v2.3.3981: one ore makes one bar), a protein nap he doesn't
   skip.
 - **Woodworker Bro**, the scientist: "BroTown's most advanced woodworking lab,
   which is also the only one, which is also my garage", eleven years of pine,
@@ -232,3 +236,16 @@ logs, the 3 carrots, the 4 corner flags, the 3 Box Traps, and the rest.
 Tests: `quest-lines` §5 (every offer and progress line with a count still says
 it; the tour's first offers carry their joke), `mayor-grotto`, `mp-race` §6 and
 `mp-mayorgrotto` 2d read the new lines.
+
+**v2.3.3924: the first lines said plainly.** The owner: "Diego quest line ...
+his dialog also doesn't make much sense either." Diego's three fish_1 lines,
+Farmer Bro's carrots hand-in and the Mayor's "Dungeon Delver" offer and
+progress are now one friendly sentence of who he is, then the plain steps
+(no riddle, pun or slang a ten-year-old would not get): "Hi, I'm Diego! I run
+the General Store, and I'm writing a cookbook, but I've never cooked a fish.
+... Catch 2 fish at a fishing spot, cook them on a campfire, and bring them to
+me." The hand-ins say who is next (Diego to Farmer Bro, Farmer Bro to the
+Mayor: farming before the snowmen), and the dungeon says "[Lv 10+
+recommended]" and the town's quests first, starting with Woodworker Bro
+(docs/specs/demo-quest-line.md). The rest of the cast's lines are the later
+pass's. `quest-lines` §6 holds these.

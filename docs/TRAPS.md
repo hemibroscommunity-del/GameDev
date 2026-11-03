@@ -8686,3 +8686,26 @@ greatsword), walking and standing.
 
 **Receipt:** docs/specs/one-batch.md "Off by default (v2.3.3894)"; mp-onebatch's
 choice table.
+
+## 261. "A mixed-grade set can't be one figure, so draw it as its pieces" (v2.3.3953)
+
+**The move.** A matched set jogs as ONE full-set figure on the body sprite
+(entityRenderer `_fullsetFrame`, six of the eight facings), so it can wear
+only one grade's glow; a rare torso over elite greaves "obviously" needs the
+layered path, each piece on its own sprite with its own filter, as a
+mixed-METAL pair already does (v2.3.1761).
+
+**Why it is wrong.** The layered path is the masked-body path: every jog
+frame of that set baked with the body erased under the plate, the bakes the
+figure exists to skip (`_fullsetCoversBake`; the 25-64 MB of dead bakes that
+crash-looped an iPhone, look-armour.md). A grade is not a colour of the art,
+so it does not need its own picture: the figure's one filter takes both
+grades and the waist row and splits there.
+
+**The rule.** A grade never changes which path draws the armour. A per-piece
+look on the full-set figure is split at the jog frame's waist in its shader
+(glint.js `uGrade2` / `uPrism2` / `uSplitY`; `lightfx/gradeSplit.js`).
+
+**Receipt:** mp-armorgrade's eight-facing jog (plain over elite, rare over
+elite; main drew no grade on six facings); docs/specs/armor-grade-look.md
+"A soft glow outside the armour, on every facing".

@@ -1,8 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BT_AUDIO, COOKING_RECIPES } from '@/data/index.js'; /* v2.3.2637: ui-equip tick; v2.3.3130: the recipe rows (caps.cookRows) */
-import { SMELT_RECIPES } from '@/data/items.js';   /* v2.3.2822 */
+import { SMELT_RECIPES, smeltRecipe } from '@/data/items.js';   /* v2.3.2822; v2.3.3981: smeltRecipe */
 import { essenceInfo } from '@/data/salvage.js';   /* v2.3.3141: what an essence does */
-import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG } from '@/data/hardenedWood.js';   /* v2.3.3139 */
+import { HARDENED_WOOD_RECIPES, HARDENED_WOOD_BY_LOG, hardenedWoodRecipe, logWord } from '@/data/hardenedWood.js';   /* v2.3.3139; v2.3.3981: the cap's rows */
 import { dishFor } from '@/data/dishes.js';   /* v2.3.3130: the Cookhouse's meals and brews */
 import { farmCropHeal } from '@/data/farmCrops.js';   /* v2.3.3537: every crop is food */
 import { parseGemKey, gemElementName } from '@/data/gems.js';   /* v2.3.3516: gems are bag items */
@@ -35,7 +35,9 @@ import { CATEGORIES } from './bagFilterBus.js';   /* v2.3.3130: the caption is t
 import { GEAR_CATALOG, getEquip, setEquip, syncArmorLayers } from '../../../rendering/gearCatalog.js';
 import { GEAR_SELL, removeGearLocal } from './gearSellLocal.js'; /* v2.3.2531: which stash a gear card sells out of; v2.3.2532: and taking it out of ours */
 import { gearSellCheck, gearSellReasonText, gearSellGid } from './gearSellReason.js'; /* v2.3.2551: and WHY it cannot be sold */
-import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin */
+import { unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect, syncArmorChange, equipArmorFromStash, equipLegsFromStash, revealFromBag, targetUnrevealed } from './equipActions.js'; /* v2.3.1330: shared unequip cores; v2.3.1703 adds the legs twin; v2.3.4012: Reveal */
+import { revealCardFor } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece's card */
+import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx'; /* v2.3.4012: its "?" */
 import { setShirt } from '../../../rendering/traits/shirtCatalog.js';
 import { syncShieldWorn } from '@/game/shieldWear.js'; /* v2.3.3091: the worker learns which shield is on the arm */
 import { playVw } from '../playViewport.js';
@@ -265,25 +267,26 @@ function resolveTarget(target) {
     /* v2.3.3139: a log the Woodworker hardens says so, as ore says where it
        smelts -- and hardened wood says what it is for */
     else if (isLog && SR && SR._serverCaps && SR._serverCaps.hardenedwood && HARDENED_WOOD_BY_LOG[key]) {
-      const hw = HARDENED_WOOD_RECIPES[HARDENED_WOOD_BY_LOG[key]];
+      /* v2.3.3981: one log a piece with caps.onetoone, five without */
+      const hw = hardenedWoodRecipe(HARDENED_WOOD_BY_LOG[key], !!SR._serverCaps.onetoone);
       info = 'Light a campfire, or harden ' + hw.logCost + ' into ' + hw.name + ' at the Woodworker';
     }
     else if (isLog) info = 'Light a campfire to cook at';
     else if (Object.prototype.hasOwnProperty.call(HARDENED_WOOD_RECIPES, key)) {
-      const hw = HARDENED_WOOD_RECIPES[key];
+      const hw = hardenedWoodRecipe(key, !!(SR && SR._serverCaps && SR._serverCaps.onetoone));   /* v2.3.3981 */
       info = (SR && SR._serverCaps && SR._serverCaps.hardenmats)
         ? 'Hardens a ' + hw.logName.replace(/ (Log|Wood)$/, '').toLowerCase() + ' bow or staff at the Woodworker'
-        : 'Made from ' + hw.logCost + ' ' + hw.logPlural;
+        : 'Made from ' + hw.logCost + ' ' + logWord(hw, hw.logCost);
     }
     /* v2.3.2822: say where the ore goes and where the bar came from -- the
        smelt lives in the Blacksmith, which nothing in the bag pointed at. */
     else if (SR && SR._serverCaps && SR._serverCaps.smelting && SMELT_ORE_TO_BAR[key]) {
-      const r = SMELT_RECIPES[SMELT_ORE_TO_BAR[key]];
+      const r = smeltRecipe(SMELT_ORE_TO_BAR[key], !!SR._serverCaps.onetoone);   /* v2.3.3981: one ore a bar with the cap */
       info = 'Smelt ' + r.oreCost + ' into a ' + r.name + ' at the Blacksmith';
     }
     /* v2.3.3092: and where a bar goes -- the Blacksmith's Armor tab */
     else if (SMELT_RECIPES[key] && SR && SR._serverCaps && SR._serverCaps.armorforge) info = 'Forge into armor at the Blacksmith';
-    else if (SMELT_RECIPES[key]) info = 'Smelted from ' + SMELT_RECIPES[key].oreCost + ' ' + SMELT_RECIPES[key].oreName;
+    else if (SMELT_RECIPES[key]) { const r = smeltRecipe(key, !!(SR && SR._serverCaps && SR._serverCaps.onetoone)); info = 'Smelted from ' + r.oreCost + ' ' + r.oreName; }   /* v2.3.3981 */
     /* v2.3.3141: an essence -- where it is used, and on what */
     else if (essenceInfo(key) && SR && SR._serverCaps && SR._serverCaps.salvage) info = essenceInfo(key);
     /* v2.3.3516: what a shard, a raw gem, a gem and the Rare Gem are for --
@@ -1413,7 +1416,8 @@ export const ItemDetailPopup = () => {
     );
   }
 
-  const resolved = resolveTarget(target);
+  /* v2.3.4012: a piece still a "?" gets its own card (game/revealBag.js) */
+  const resolved = revealCardFor(target, resolveTarget(target), getState());
   if (!resolved) return null;
   const { lockKey, thumb, glyph, name, info, delta, desc, actions, sellWhy, dropWhy } = resolved;
   const locked = itemIsLocked(lockKey);
@@ -1763,7 +1767,17 @@ export const ItemDetailPopup = () => {
     else if (target.kind === 'gear')   onUnequipGear();
     else                                onUnequipWeapon();
   };
+  /* v2.3.4012: Reveal -- the card closes so the ceremony is seen; Equip on
+     a "?" reveals first and puts the piece on once its grade has landed */
+  const onReveal = () => {
+    revealFromBag(target);
+    itemDetailBus.close();
+  };
   const onEquip = () => {
+    if (targetUnrevealed(target) && revealFromBag(target, () => onEquipNow())) { itemDetailBus.close(); return; }
+    onEquipNow();
+  };
+  const onEquipNow = () => {
     if (target.kind === 'stashShield')      onEquipStashShield();
     else if (target.kind === 'stashArmor')  onEquipStashArmor();
     else if (target.kind === 'stashLegs')   onEquipStashLegs();
@@ -1876,8 +1890,11 @@ export const ItemDetailPopup = () => {
           }}>
             {thumb
               ? <img src={thumb} alt={name} draggable={false} className="bt-bag-art bt-card-art" data-life={cardLife || undefined}
-                  style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto' }} />
+                  style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto',
+                    /* v2.3.4012: a "?" is its silhouette, as in the reveal (RevealOverlay) */
+                    ...(resolved.unrevealed ? { filter: 'brightness(0) opacity(.55)' } : null) }} />
               : <span className="bt-bag-art bt-card-art" data-life={cardLife || undefined} style={{ display: 'inline-block' }}>{glyph}</span>}
+            {resolved.unrevealed && <UnrevealedMark size={40} />}
             <span className="bt-bag-fx" aria-hidden="true" />
           </div>
           {locked && (
@@ -1905,7 +1922,7 @@ export const ItemDetailPopup = () => {
         {/* v2.3.1232: stat line lives in a recessed well-soft cell, tabular numerals */}
         {info && (
           <div style={{
-            fontSize: 12, color: COL.text, fontVariantNumeric: 'tabular-nums',
+            fontSize: 12, color: resolved.infoColor || COL.text, fontVariantNumeric: 'tabular-nums',   /* v2.3.4012: a "?"'s "Rare or better" in the rare blue */
             textAlign: 'center',
             padding: '5px 0',
             background: '#19252A',
@@ -1946,7 +1963,8 @@ export const ItemDetailPopup = () => {
           {actions.drink    && <button onClick={onDrink} className={buttonClass('primary')} style={buttonStyle('primary')}>Drink</button>}
           {actions.capeOn   && <button onClick={onCapeOn}  className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
           {actions.capeOff  && <button onClick={onCapeOff} className={buttonClass('danger')}  style={buttonStyle('danger')}>Unequip</button>}
-          {actions.equip    && <button onClick={onEquip}   className={buttonClass('primary')} style={buttonStyle('primary')}>Equip</button>}
+          {actions.reveal   && <button onClick={onReveal} data-reveal="" className={buttonClass('primary')} style={buttonStyle('primary')}>Reveal</button>}
+          {actions.equip    && <button onClick={onEquip}   className={buttonClass(actions.reveal ? undefined : 'primary')} style={buttonStyle(actions.reveal ? undefined : 'primary')}>Equip</button>}
           {actions.unequip  && <button onClick={onUnequip} className={buttonClass('danger')} style={buttonStyle('danger')}>Unequip</button>}
           {/* v2.3.2551: a piece this browser already knows is unsellable keeps
               its button and loses its hope, rather than losing its button.
