@@ -185,7 +185,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
           opened.  v2.3.2013 added data-section for exactly this, and its note
           says so.
      Both times the rows were fine and the test was in the wrong room. */
-  await clickSel(P, '[data-section="Overview"]');
+  /* v2.3.4142: the Equipment window is reached by name (the card's Equipment
+     door opens the Gear tab since v2.3.4151) */
+  await P.page.evaluate(() => { window.__btHeroSection.request('Overview'); window.__broDashPanelBus.open('hero'); });
   await P.page.waitForTimeout(900);
   const rows = await P.page.evaluate(() =>
     [...document.querySelectorAll('[data-statrow]')].map((el) => el.getAttribute('data-statrow')));

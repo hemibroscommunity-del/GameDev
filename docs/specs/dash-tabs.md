@@ -83,8 +83,9 @@ the top-bar lane once this is on main; one layout on every screen is B3.
   - **the doors** (`data-bro-row`): Achievements, Life Skills (in the
     drawing's "Attributes" place: no STR / AGI / INT exists), Points
     (`data-section="Build"`, glowing while N > 0: the coach's "Tap Points",
-    the guide arrow and the points bubbles aim at it), Equipment (the window;
-    Gear's lane is not on main), Homestead (`farmPlotsReady`; no farm window
+    the guide arrow and the points bubbles aim at it), Equipment (the Gear tab, v2.3.4151, on
+    main since #1388: `openGear`, the Gear button's own road -- the band at
+    rest, unfolded; sideways the 'dashboard' page), Homestead (`farmPlotsReady`; no farm window
     away from the farm, so a tap explains the Feed & Seed), Pet (More's Pets
     page), Titles (`askTitlePicker`: the Achievements page opens on the row
     you would pick a title from), Clan.
@@ -104,8 +105,9 @@ the top-bar lane once this is on main; one layout on every screen is B3.
   `data-esc`) back to the card.  The card is not mounted under a window (one
   `data-section="Build"` on the page).  The Points title carries the glow
   while points wait (v2.3.3004's "until all points are spent").  Equipment
-  stays here, reached from the card's Equipment row, until the Gear button's lane
-  (v2.3.3940) is on main.  `heroSectionBus.shown` is 'Card', 'Build' or
+  stays here, reached only by name since the Gear tab (`request('Overview')`:
+  the stat families, the figure and the item cards are not on Gear yet, and
+  ten phone tests read them).  `heroSectionBus.shown` is 'Card', 'Build' or
   'Overview'; a request for 'Me' shows the card; `window.__btHeroSection` is
   QA's handle.
 - **More** (`dash/MorePanel.jsx`): Map (closes the dashboard, opens the World
@@ -143,7 +145,8 @@ None: a client-only layout change, no wire, no server behaviour.
 
 - `notifbell` (rewritten): the corner empty while shut, the count on More and
   its tile, the page, Show on screen, a tap folds it, a new line counts.
-- `brocard` (new): the row (CLOSE first, the five with their words, none
+- `brocard` (new; Equipment opens the Gear tab and the Bro button brings
+  the card back): the row (CLOSE first, the five with their words, none
   cut, 44 x 44, touch-action), the card's three panels (portrait, name, Lv,
   no XP bar, No title, No clan, AP, the tiles; the thirteen stats starting on
   the weapon out, Bow changing them; the doors), Points lit and on screen

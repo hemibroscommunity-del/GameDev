@@ -824,9 +824,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(400);
   /* v2.3.4142: Points is a window over the Bro card: its close, then the
-     card's six slots open Equipment */
+     Equipment window, by name */
   if (await clickSel(P, '[data-bro-popup-close]')) await P.page.waitForTimeout(600);
-  await clickSel(P, '[data-section="Overview"]');
+  /* v2.3.4142: the Equipment window is reached by name (the card's Equipment
+     door opens the Gear tab since v2.3.4151) */
+  await P.page.evaluate(() => { window.__btHeroSection.request('Overview'); window.__broDashPanelBus.open('hero'); });
   await P.page.waitForTimeout(1000);
   const eq = await P.page.evaluate(() => {
     /* every character canvas on the sheet EXCEPT the demo's (the popup is

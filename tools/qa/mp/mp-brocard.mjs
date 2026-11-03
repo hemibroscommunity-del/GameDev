@@ -21,8 +21,8 @@
  *      in the drawing's order; a tap on Bow changes them;
  *   4. a real level-up: the Points row reads the points waiting, glows, and
  *      is on screen without a scroll (the guide arrow aims at it);
- *   5. each door opens its page and comes back: Points and Equipment windows
- *      (their close), Life Skills, Achievements, Titles, Pet, Clan (pages
+ *   5. each door opens its page and comes back: the Points window (its
+ *      close), Equipment the Gear tab (the Bro button back), Life Skills, Achievements, Titles, Pet, Clan (pages
  *      under Bro, the back chip); Homestead says where the farm is; the left
  *      panel's clan, AP and title open theirs; an old road (More, then
  *      Achievements) lands under Bro;
@@ -282,13 +282,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const c4 = await card(P);
     rec.ok('...its close comes back to the card, the Bow still picked', c4.there && !(await popup(P)) && c4.weapon === 'bow', { there: c4.there, weapon: c4.weapon });
 
+    /* v2.3.4142: since the Gear tab (v2.3.4151) the Equipment door opens
+       Gear -- the band at rest, unfolded, its three panels */
     await touch(P, '[data-bro-row="equipment"]');
     await P.page.waitForTimeout(1500);
-    const w2 = await popup(P);
-    rec.ok('Equipment opens the Equipment window', !!w2 && w2.id === 'Overview' && /^Equipment/.test(w2.head || ''), w2);
-    await touch(P, '[data-bro-popup-close]');
-    await P.page.waitForTimeout(900);
-    rec.ok('...its close comes back to the card', (await card(P)).there);
+    const g1 = { bus: await bus(P), gear: await P.page.evaluate(() => { const g = document.querySelector('[data-gear-pane="inv"]'); return !!g && g.getBoundingClientRect().height > 0; }), popup: await popup(P) };
+    rec.ok('Equipment opens the Gear tab (the band at rest, unfolded: your bag, your bro and your gear)',
+      g1.bus.mode === 'bar' && g1.gear && !g1.popup, g1);
+    await touch(P, '[data-nav="hero"]');
+    await P.page.waitForTimeout(1200);
+    rec.ok('...and the Bro button brings the card back', (await card(P)).there);
 
     const pages = [['skills', 'hero/skills', 'Life Skills'], ['pet', 'hero/pets', 'Pet'], ['clan', 'hero/clan', 'Clan']];
     if (c1.caps) pages.unshift(['achievements', 'hero/achievements', 'Achievements'], ['titles', 'hero/achievements', 'Titles']);

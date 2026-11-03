@@ -559,10 +559,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
      tab, so the third screen of this walk is that page, opened the way its
      More tile opens it, swept by the same rule */
   /* v2.3.4142: Bro is one card (its own sweep), Equipment and Points windows
-     over it, opened from the card's Equipment and Points rows */
+     over it: Points from the card's Points row, Equipment by name */
   for (const sec of ['Card', 'Overview', 'Build', 'Journey']) {
     if (sec !== 'Journey') {
-      await P.page.evaluate(() => { window.__btHeroSection.request('Card'); window.__broDashPanelBus.open('hero'); });
+      /* v2.3.4142: the Equipment window is reached by name (the card's
+         Equipment door opens the Gear tab since v2.3.4151) */
+      await P.page.evaluate((s) => { window.__btHeroSection.request(s === 'Overview' ? 'Overview' : 'Card'); window.__broDashPanelBus.open('hero'); }, sec);
       await P.page.waitForTimeout(700);
     }
     const fit = await P.page.evaluate((s) => {
@@ -571,6 +573,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return true;
       }
       if (s === 'Card') return !!document.querySelector('.bt-land-sheet [data-bro-page="Card"] [data-bro-card="v2"]');
+      if (s === 'Overview') return !!document.querySelector('.bt-land-sheet [data-bro-popup="Overview"]');
       const door = document.querySelector(`.bt-land-sheet [data-section="${s}"]`);
       if (door) door.click();
       return !!door;

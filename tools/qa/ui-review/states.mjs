@@ -608,16 +608,13 @@ export const STATES = [
     },
   },
   {
-    id: 'dash-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment (a window over the card)',
-    about: 'The Equipment window, opened from the card\'s Equipment row: equipment slots, the figure, your stats as pills (offense, player, vitals), under a title row with a close back to the card. The Gear button takes these once it is built.',
+    id: 'dash-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment (a window, reached by name)',
+    about: 'The Equipment window over the Bro card: equipment slots, the figure, your stats as pills and families, under a title row with a close back to the card. Since the Gear tab the card\'s Equipment door opens Gear; this window is reached only by name (the roads that ask for it).',
     run: async ({ P }) => {
-      await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
+      await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Overview'); });
       const e = await bus(P, 'open', 'hero');
       if (e) return e;
       await wait(P, 900);
-      const t = await tapSel(P, '[data-bro-row="equipment"]');
-      if (t) return t;
-      await wait(P, 700);
       if (!(await has(P, '[data-bro-popup="Overview"]'))) return 'the Equipment window did not open';
     },
   },
