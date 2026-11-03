@@ -1,4 +1,4 @@
-/* ═══ v2.3.4072: THE ONE BAND'S COLUMNS ROW, LAID OUT FROM ITS OWN BOX ═══
+/* ═══ v2.3.4052: THE ONE BAND'S COLUMNS ROW, LAID OUT FROM ITS OWN BOX ═══
  *
  * Under the one band (?oneband=1, src/ui/oneBand.js) the band is every
  * screen's: an upright phone's 390 x 191 row, a sideways phone's 844 x 82, a
