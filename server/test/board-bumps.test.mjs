@@ -1,4 +1,4 @@
-/* v2.3.3973: the skateboard's bumps (src/game/boardBumps.js), run in node: their
+/* v2.3.3995: the skateboard's bumps (src/game/boardBumps.js), run in node: their
  * height, how smooth, how often and how irregular. */
 import { boardBumpAt, bumpHash, BUMP_EVERY, BUMP_WIDTH, BUMP_MIN, BUMP_MAX } from '../../src/game/boardBumps.js';
 

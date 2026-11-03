@@ -9,7 +9,7 @@
  *   2. stopped, the wheels hold still (the turn and the spots stay put);
  *   3. off the board (Z), the spots are gone with it;
  *   4. no page errors;
- *   5. v2.3.3973: rolling, the rider and board rise over small bumps (1-1.5
+ *   5. v2.3.3995: rolling, the rider and board rise over small bumps (1-1.5
  *      game px, now and then), the shadow's feet and the name plate still.
  * Pictures: tools/qa/mp/out/boardwheels-<label>-NN.png, the board every frame
  * or so while rolling (BOARDWHEELS_LABEL=before: the same build with
@@ -77,7 +77,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`1. rolling east the wheels turn (${turns.join(' -> ')}) and their spots move (${moved} places in ${roll.length} looks)`,
       roll.every((r) => r && r.spots === 4) && turns[turns.length - 1] > turns[0] && moved >= 3, roll);
 
-    /* ═══ v2.3.3973: OVER THE BUMPS IN THE ROAD ═══
+    /* ═══ v2.3.3995: OVER THE BUMPS IN THE ROAD ═══
        The owner: "Make snowboard bounce subtly up and down like going over
        small bumps in the road."  Rolling east, the rider and board rise 1-1.5
        game px over a bump now and then (window.__btRideFx().self.bump), the

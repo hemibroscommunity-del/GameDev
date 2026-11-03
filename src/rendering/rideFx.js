@@ -29,7 +29,7 @@
 import { Assets, Sprite, Texture } from 'pixi.js';
 import { figureFeetUnits, figureFeetY } from './systems/entityRenderer.js';
 import { SKATEBOARD_ART } from '../data/skateboardArt.js';
-import { boardBumpAt } from '../game/boardBumps.js';   /* v2.3.3973: the bumps in the road */
+import { boardBumpAt } from '../game/boardBumps.js';   /* v2.3.3995: the bumps in the road */
 
 const V = '?v=2.3.3776';
 const URL_OF = {
@@ -92,11 +92,11 @@ const WHEELS = {
 const SPOTS = 4;                 /* sprites a board: side and angled 2 wheels x 2 spots, from above 4 wheels x 1 */
 const SPOT_TINT = 0xffe8de, SPOT_ALPHA = 0.75;
 const TURNS_PER_PX = 1 / 120;    /* how far the spots turn a game px rolled: ~2.5 turns a second at the board's 300 px -- read as a roll, not a strobe */
-/* (v2.3.3973: the deck's dip -- 0.5 px, a step every 90 px, the board alone --
+/* (v2.3.3995: the deck's dip -- 0.5 px, a step every 90 px, the board alone --
    is gone: the whole rider rides the bumps now, bumpFigure below) */
 const ROLL_MIN_PX = 0.3;         /* a frame's step that counts as rolling (the board covers ~5 px a frame) */
 /* `?boardroll=0` in the address: the board as it was, no spots and no dip
-   (one tab, to compare; v2.3.3973: and no bumps) */
+   (one tab, to compare; v2.3.3995: and no bumps) */
 const BOARD_ROLL = (() => {
   try { return !/(^|[?&])boardroll=(0|off|false)(&|$)/.test(window.location.search || ''); } catch (e) { return true; }
 })();
@@ -134,7 +134,7 @@ export class RideFx {
       if (b) p.self = { view: pd._rideView.k, mirror: pd._rideView.m, y: +b.y.toFixed(1), feet: +figureFeetUnits(pd).toFixed(1),
         /* v2.3.3857: the wheels' turn so far, and their spots */
         turn: +(pd._rideTurn || 0).toFixed(3), spots: pd._rideSpots ? pd._rideSpots.length : 0,
-        /* v2.3.3973: the bump drawn this frame (game px), the ground covered */
+        /* v2.3.3995: the bump drawn this frame (game px), the ground covered */
         bump: +(pd._rideBump || 0).toFixed(3), dist: pd._rideRoll ? +pd._rideRoll.dist.toFixed(1) : 0,
         /* ...and, from where the figure stands (un-lifted), its name plate's
            height and its feet's (both must hold still over a bump) */
@@ -193,7 +193,7 @@ export class RideFx {
     const fy = figureFeetUnits(d);
     /* v2.3.3857: the ground covered since the last frame, in game px (the
        figure's own place: yours and a peer's alike) -- the wheels' turn and
-       the deck's dip.  v2.3.3973: from where it STANDS -- a jump this frame
+       the deck's dip.  v2.3.3995: from where it STANDS -- a jump this frame
        (jumpFx, before this) has lifted it, and its place before the lift is
        the jump's record (d._jfx.x0/y0): a lift is not a roll */
     const gx = d._jfx ? d._jfx.x0 : d.x, gy = d._jfx ? d._jfx.y0 : d.y;
@@ -210,13 +210,13 @@ export class RideFx {
     const r = -(d.rotation || 0);
     if (b.rotation !== r) b.rotation = r;
     if (BOARD_ROLL) spots(d, b, view, roll.dist, v);
-    /* v2.3.3973: over the bumps in the road, the rider and board together */
+    /* v2.3.3995: over the bumps in the road, the rider and board together */
     d._rideBump = BOARD_ROLL && rolling ? bumpFigure(d, boardBumpAt(roll.dist)) : 0;
     return b;
   }
 }
 
-/* ═══ v2.3.3973: OVER A BUMP, THE WHOLE RIDER RISES ═══
+/* ═══ v2.3.3995: OVER A BUMP, THE WHOLE RIDER RISES ═══
    The owner: "Make snowboard bounce subtly up and down like going over small
    bumps in the road."  `lift` game px (game/boardBumps.js: 1-1.5 at a bump's
    top, smooth), the figure and the board on it lifted together -- the board is
