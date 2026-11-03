@@ -15,8 +15,9 @@ Decided (owner-approved), and built:
    alone, `data-dash-fold="min"`, 48 px at 844 x 390), so the world above it
    is 342 px, not 260. A nav button opens its page, as upright (the band
    unfolds); CLOSE folds it again, and so does closing a page any other way
-   (its own button again, a panel closing itself) and Diego's drawer or a
-   trade shutting. `src/ui/mobile/bandSideways.js`.
+   (a panel closing itself, a window that clears the band) and Diego's
+   drawer or a trade shutting. The bag button pressed with a page open shows
+   the bag's columns, as upright (CLOSE then folds them). `src/ui/mobile/bandSideways.js`.
    - *Sideways* is: the one band on, the window wider than tall, at most
      500 px tall (`ONE_BAND_SIDE_MAX_H`: a phone is 320-430; an iPad on its
      side is 768+ and keeps the band open), and not a mouse (`pointer:fine`:
@@ -30,7 +31,8 @@ Decided (owner-approved), and built:
      upright gives the band back the upright's own remembered choice
      (`dashMinBus.stored()`), so sideways never changes how the band rests
      upright. A page open when the phone turns closes (the rotation rule
-     since v2.3.2157) and the band folds.
+     since v2.3.2157) and the band folds; Diego's drawer or a trade open
+     when it turns keeps the band open for its bag until the deal shuts.
 2. **While the band is open sideways the controls step aside**: the stick,
    the attack disc, Sprint, the skateboard, Quick eat, Jump, Block, Special,
    the weapon triangle, the abilities, Element Burst, the charge gauge, the

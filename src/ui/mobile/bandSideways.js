@@ -87,7 +87,9 @@ export function syncBandSideways() {
       /* sideways rests folded: a page already open closes to it (the
          rotation rule, BottomDashboard's v2.3.2157 note) */
       if (dashboardPanelBus.state.mode === 'expanded') dashboardPanelBus.toBar();
-      dashMinBus.set(true);
+      /* ...unless Diego's drawer or a trade is open: it sells from the bag's
+         tiles (it folds when the deal shuts, below) */
+      if (!shopBus.open && !tradeBagBus.open) dashMinBus.set(true);
     } else if (!first) {
       /* upright again: the upright's own remembered fold */
       dashMinBus.set(dashMinBus.stored());
@@ -109,9 +111,11 @@ export function startBandSideways() {
   window.addEventListener('orientationchange', syncBandSideways);
   dashMinBus.subscribe(stampOpen);
   /* CLOSING A PAGE SIDEWAYS FOLDS THE BAND.  The CLOSE chip already folds
-     (toBar, then set(true)); this is every other way a page closes (its own
-     nav button again, a panel closing itself), so the band never rests on
-     its columns with the controls away.  Synchronous, on the bus's own emit:
+     (toBar, then set(true)); this is every other way a page closes (a panel
+     closing itself, a window that clears the band), so the band does not
+     rest on its columns with the controls away.  (The bag button, pressed
+     with a page open, still shows the bag's columns, as upright: NavRail
+     unfolds after its toBar.)  Synchronous, on the bus's own emit:
      a caller that closes the page and then unfolds on purpose (StorePanel's
      "List an Item", toBar() then set(false)) has the last word.  Not while
      Diego's drawer or a trade is open: they work through the bag's tiles. */
