@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0a05f530aa940ee4dd75d8730bb9d7a483c10fca",
+  "tree": "b0a4d79fe0254937fc275129efe64f8c786ac160",
+  "committedAt": "2026-11-03T13:46:58-08:00",
+  "subject": "Merge pull request #1417 from hemibroscommunity-del/claude/expo-address-switch",
+  "files": 7571,
+  "bytes": 860616002,
+  "listingSha256": "6e7fd87e1df9060dbd8b342d384856c3f093075b7df6499852fcea5fd94f8232",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

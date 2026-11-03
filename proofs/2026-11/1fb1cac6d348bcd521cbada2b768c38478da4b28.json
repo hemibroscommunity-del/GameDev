@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "1fb1cac6d348bcd521cbada2b768c38478da4b28",
+  "tree": "dde804c0b26e2c503d57da0e66f58369f33203d8",
+  "committedAt": "2026-11-03T13:47:42-08:00",
+  "subject": "Merge pull request #1386 from hemibroscommunity-del/claude/dash-tabs",
+  "files": 7594,
+  "bytes": 863909291,
+  "listingSha256": "94c0dd4e09beb397b0b3c2c37b42a64ff9f6b77666b93c3eaa422c9fe4985bc2",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

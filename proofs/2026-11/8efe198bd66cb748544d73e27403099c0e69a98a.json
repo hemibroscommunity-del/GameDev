@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8efe198bd66cb748544d73e27403099c0e69a98a",
+  "tree": "93ecc1484e69f2680164b2a96df99068f8026f38",
+  "committedAt": "2026-11-03T13:47:07-08:00",
+  "subject": "Merge pull request #1416 from hemibroscommunity-del/claude/crash-ring-upload",
+  "files": 7573,
+  "bytes": 860618847,
+  "listingSha256": "03e4c70c8f0c9a7f620689c6eee4b249b356c01ff3f239c9f0ae7de9486ee397",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
