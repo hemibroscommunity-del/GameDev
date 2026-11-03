@@ -249,7 +249,13 @@ const elemRow = (wpn) => {
   return { k: 'ELEM', key: 'elem', v: els.length ? els.map(gemElementName).join(' + ') : 'None', now: els.length ? els.map(gemElementName).join(' + ') : 'None', diff: '', tone: 0 };
 };
 
-export const GearTab = ({ R: Rin, desk }) => {
+/* v2.3.4161: `barBeside` -- the computer's one band (DashColumns, deskBandActive):
+   a band ~191 px tall has no room for the weapon bar UNDER the three panels
+   (that left only one row of squares), but room to spare BESIDE them, so
+   there the bar stands upright at the right of the three, the three keeping
+   their GEAR_MAX_W. */
+const SIDE_BAR_W = 64;
+export const GearTab = ({ R: Rin, desk, barBeside }) => {
   const R = Rin || {};
   const [rootRef, box] = useMeasure();
   const [, tick] = React.useReducer((n) => (n + 1) % 1000000, 0);
@@ -286,8 +292,8 @@ export const GearTab = ({ R: Rin, desk }) => {
 
   /* ── geometry: one square size `t` for both grids ── */
   const wide = box.w >= WIDE_AT;
-  const W = Math.max(0, box.w), H = Math.max(0, box.h);
-  const footH = desk ? 48 + GAP : 0;   /* the computer's weapon bar, under the three */
+  const W = Math.max(0, box.w - (barBeside ? SIDE_BAR_W + GAP : 0)), H = Math.max(0, box.h);
+  const footH = desk && !barBeside ? 48 + GAP : 0;   /* the computer's weapon bar, under the three (beside them in the band: `barBeside`) */
   let t, sideH, broW, broH;
   /* v2.3.4151: SHORT -- a box too short for three rows of 34 px squares (the
      one band open on a sideways phone, Lane B's ~78 px row: PR #1410).  Both
@@ -746,6 +752,11 @@ export const GearTab = ({ R: Rin, desk }) => {
           border: `1px solid ${COL.borderStrong}`, background: COL.wellSoft, color: COL.text, fontFamily: 'inherit',
           cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
         }}>
+        {/* v2.3.4161: the level ABOVE the icon (beside it, first, in the short
+            band) -- the owner: "list the level of each weapon above the icon so
+            that way the user doesn't get confused into thinking it's just a
+            weapon in their inventory" */}
+        <span data-gear-skill-lv="" style={{ flex: 'none', fontSize: 12, fontWeight: 900, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>Lv {k.lvl}</span>
         {short ? (
           <img src={s.iconSrc} alt="" draggable={false} style={{ width: 16, height: 16, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
         ) : (
@@ -753,7 +764,6 @@ export const GearTab = ({ R: Rin, desk }) => {
             <img src={s.iconSrc} alt="" draggable={false} style={{ maxWidth: '100%', maxHeight: '100%', width: 40, height: 40, objectFit: 'contain', pointerEvents: 'none' }} />
           </span>
         )}
-        <span style={{ flex: 'none', fontSize: 12, fontWeight: 900, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>Lv {k.lvl}</span>
       </button>
     );
     const xpWide = ({ s, k }) => {
@@ -835,7 +845,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       {...(desk ? { 'data-dash-desk': '' } : null)}
       style={{
         height: '100%', minHeight: 0, width: '100%', boxSizing: 'border-box', padding: rp,
-        ...(wide && !short ? { maxWidth: GEAR_MAX_W, marginLeft: 'auto', marginRight: 'auto' } : null),
+        ...(wide && !short ? { maxWidth: GEAR_MAX_W + (barBeside ? SIDE_BAR_W + GAP : 0), marginLeft: 'auto', marginRight: 'auto' } : null),
         display: 'flex', flexDirection: 'column', gap: rg,
       }}>
       {box.w === 0 ? null : (
@@ -843,6 +853,11 @@ export const GearTab = ({ R: Rin, desk }) => {
           {wide ? (
             <div style={{ flex: 'none', display: 'flex', gap: GAP, justifyContent: 'center', alignItems: 'flex-start' }}>
               {inventory}{broPane}{equipment}
+              {barBeside && (
+                <div data-dash-desk-combat="" style={{ flex: 'none', width: SIDE_BAR_W, alignSelf: 'center' }}>
+                  <WeaponBar R={Rin} w={SIDE_BAR_W} />
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -850,7 +865,7 @@ export const GearTab = ({ R: Rin, desk }) => {
               {broPane}
             </>
           )}
-          {desk && (
+          {desk && !barBeside && (
             <div data-dash-desk-combat="" style={{ flex: 'none', marginTop: 'auto' }}>
               <WeaponBar R={Rin} row />
             </div>

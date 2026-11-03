@@ -241,7 +241,13 @@ const gearFit = (P) => P.page.evaluate(() => {
       const row = document.querySelector('[data-one-band-cols]');
       if (!g || !row) return null;
       const a = g.getBoundingClientRect(), b = row.getBoundingClientRect();
-      return { w: Math.round(a.width), left: Math.round(a.left - b.left), right: Math.round(b.right - a.right), layout: g.getAttribute('data-gear-layout') };
+      /* v2.3.4161: the three panels' own span (the weapon bar stands beside them on a computer) */
+      const ps = [...g.querySelectorAll('[data-gear-pane]')].map((e) => e.getBoundingClientRect());
+      const span = ps.length ? Math.round(Math.max(...ps.map((r) => r.right)) - Math.min(...ps.map((r) => r.left))) : null;
+      const bar = g.querySelector('[data-weapon-bar]');
+      return { w: Math.round(a.width), span, bar: bar ? (() => { const r = bar.getBoundingClientRect(); return { l: Math.round(r.left), t: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }; })() : null,
+        panesRight: ps.length ? Math.round(Math.max(...ps.map((r) => r.right))) : null,
+        left: Math.round(a.left - b.left), right: Math.round(b.right - a.right), layout: g.getAttribute('data-gear-layout') };
     })(),
   };
 });
@@ -251,8 +257,13 @@ async function gearChecks(P, rec, label, shotPath, computer) {
      computer" -- across a wide band the tab is at most 560 px (GearTab
      GEAR_MAX_W) and centred */
   if (computer) {
-    rec.ok(`${label}: the Gear tab never stretches -- at most 560 px wide, centred in the band (its margins equal within 2 px)`,
-      !!g0 && !!g0.root && g0.root.w <= 561 && Math.abs(g0.root.left - g0.root.right) <= 2, g0 && g0.root);
+    rec.ok(`${label}: the Gear tab never stretches -- its three panels at most 560 px across, the tab centred in the band (its margins equal within 2 px)`,
+      !!g0 && !!g0.root && g0.root.span != null && g0.root.span <= 561 && Math.abs(g0.root.left - g0.root.right) <= 2, g0 && g0.root);
+    /* v2.3.4161: the weapon bar (a click is the 1 / 2 / 3 pick) stands
+       beside the three, inside the band, upright */
+    rec.ok(`${label}: the weapon bar stands beside the three panels, inside the band`,
+      !!g0 && !!g0.root && !!g0.root.bar && g0.root.bar.l >= g0.root.panesRight - 1 && g0.root.bar.h > g0.root.bar.w,
+      g0 && g0.root);
   }
   rec.ok(`${label}: the Gear tab's card fits the band -- no scrolling, nothing past its edge, nothing under 11 px; the bag's squares and the Equipped cells one size (34 px or more), all nine cells inside their panel`,
     !!g0 && g0.view === 'overview' && g0.over <= 1 && g0.scOver <= 1 && g0.outside === 0 && g0.small.length === 0

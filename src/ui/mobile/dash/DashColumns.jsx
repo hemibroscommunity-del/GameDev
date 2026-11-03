@@ -2,6 +2,7 @@ import React from 'react';
 import { GearTab } from './GearTab.jsx';
 import { WeaponBar } from './WeaponBar.jsx';
 import { combatSkillLevel as _combatSkillLevel } from './combatSkill.js';
+import { deskBandActive } from '../../deskWide.js';   /* v2.3.4161 */
 
 /* ═══ v2.3.4151: THE RESTING DASHBOARD IS THE GEAR TAB ═══
    This row held, since v2.3.1636, the bag (v2.3.1653: "the resting dashboard
@@ -30,7 +31,15 @@ import { combatSkillLevel as _combatSkillLevel } from './combatSkill.js';
    no more (the box decides).  v2.3.4151: nor is `box`, the one band's
    measured box (?oneband=1, OneBandColumns.jsx, v2.3.4072) -- the Gear tab
    measures the same box itself. */
-export const DashColumns = ({ R, desk }) => <GearTab R={R} desk={!!desk} />;
+/* v2.3.4161: the one band on a computer (the default since v2.3.4152) mounts
+   this with no `desk` (OneBandColumns), and the computer's weapon bar -- a
+   click is the 1 / 2 / 3 pick -- went with it; the band itself says it is a
+   computer's (deskBandActive), and there the bar stands BESIDE the three
+   panels (GearTab `barBeside`). */
+export const DashColumns = ({ R, desk }) => {
+  const band = !desk && deskBandActive();
+  return <GearTab R={R} desk={!!desk || band} barBeside={band} />;
+};
 
 /* v2.3.3769's chips at the foot of every page on a computer, now the weapon
    bar (WeaponBar.jsx); the name stays for BottomDashboard. */

@@ -67,7 +67,9 @@ const look = (P) => P.page.evaluate(() => {
     /* v2.3.4151: the card's view and its parts, the bag's squares */
     who: (q('[data-gear-who]') || {}).textContent || null,
     bars: [...document.querySelectorAll('[data-gear-bars] [data-vital]')].map((b) => b.getAttribute('data-vital')),
-    skills: [...document.querySelectorAll('[data-gear-skill]')].map((b) => ({ id: b.getAttribute('data-gear-skill'), lvl: Number(b.getAttribute('data-lvl')), open: b.hasAttribute('data-gear-xpopen'), img: !!b.querySelector('img'), xpbar: !!b.querySelector('[data-xpbar]'), num: (b.querySelector('[data-gear-xpnum]') || {}).textContent || null, text: b.textContent, box: vis(b) })),
+    skills: [...document.querySelectorAll('[data-gear-skill]')].map((b) => ({ id: b.getAttribute('data-gear-skill'), lvl: Number(b.getAttribute('data-lvl')), open: b.hasAttribute('data-gear-xpopen'), img: !!b.querySelector('img'), xpbar: !!b.querySelector('[data-xpbar]'), num: (b.querySelector('[data-gear-xpnum]') || {}).textContent || null, text: b.textContent, box: vis(b),
+      /* v2.3.4161: the level label above the icon */
+      lvAbove: (() => { const l = b.querySelector('[data-gear-skill-lv]'), i = b.querySelector('img'); if (!l || !i) return null; return l.getBoundingClientRect().bottom <= i.getBoundingClientRect().top + 1; })() })),
     /* v2.3.4151: the card never scrolls, nothing in it under 11 px, its
        border the pick's blue while something is picked; the two grids one size */
     fit: (() => {
@@ -225,6 +227,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('[390x844] ...then Melee, Bow and Magic as three tiles side by side: each only its picture and "Lv N" (no XP bar, no points badge)',
         s1.skills.length === 3 && s1.skills.every((k) => !k.open && k.img && !k.xpbar && /^Lv \d+$/.test(k.text.trim()) && k.lvl >= 1)
           && s1.skills[0].box.t === s1.skills[1].box.t && s1.skills[1].box.l > s1.skills[0].box.l, s1.skills);
+      /* v2.3.4161, the owner: "list the level of each weapon above the icon" */
+      rec.ok('[390x844] ...each tile\'s "Lv N" sits above its icon',
+        s1.skills.length === 3 && s1.skills.every((k) => k.lvAbove === true), s1.skills.map((k) => [k.id, k.lvAbove]));
       /* a tap turns a tile into its XP bar; a second tap turns it back */
       await tapEl(P, `[data-gear-skill="${s1.skills[0].id}"]`);
       const sx = await look(P);
@@ -363,10 +368,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(1500);
       const l1 = await look(P);
       await P.page.screenshot({ path: `${OUT}/side-1.png` });
-      rec.ok('[844x390] sideways the column is narrow: the bag and the gear side by side on top, the card the full width under them',
-        l1.layout === 'stack' && !!(l1.panes.inv && l1.panes.bro && l1.panes.equip)
-          && l1.panes.inv.l < l1.panes.equip.l && Math.abs(l1.panes.inv.t - l1.panes.equip.t) <= 1
-          && l1.panes.bro.t >= l1.panes.inv.t + l1.panes.inv.h - 1, { panes: l1.panes });
+      /* v2.3.4161: since #1410 (v2.3.4152) a sideways phone opens the ONE
+         band, a short row: the bag | the card | the gear, side by side (the
+         stacked column -- the bag and the gear over the card -- is the band
+         switched off, ?oneband=0).  Either is the Gear tab laid out right. */
+      const stacked = l1.layout === 'stack' && !!(l1.panes.inv && l1.panes.bro && l1.panes.equip)
+        && l1.panes.inv.l < l1.panes.equip.l && Math.abs(l1.panes.inv.t - l1.panes.equip.t) <= 1
+        && l1.panes.bro.t >= l1.panes.inv.t + l1.panes.inv.h - 1;
+      const row = !!(l1.panes.inv && l1.panes.bro && l1.panes.equip)
+        && l1.panes.inv.l < l1.panes.bro.l && l1.panes.bro.l < l1.panes.equip.l
+        && Math.abs(l1.panes.inv.t - l1.panes.bro.t) <= 1 && Math.abs(l1.panes.bro.t - l1.panes.equip.t) <= 1;
+      rec.ok('[844x390] sideways: the one band\'s row (the bag | the card | the gear), or with the band off the column (the bag and the gear over the card)',
+        stacked || row, { panes: l1.panes, layout: l1.layout });
       sameSize(rec, '[844x390]', l1, 32);
       fitOk(rec, '[844x390] the overview', l1, false);
       /* the kit's shield is in the bag: an empty cell, then the shield on from the bag */
@@ -407,9 +420,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(1500);
       const d1 = await look(P);
       await P.page.screenshot({ path: `${OUT}/desk-1.png` });
-      rec.ok('[computer] the Gear tab in the column, three across, the weapon bar at its foot wearing 1 2 3, the sword in hand gold',
+      /* v2.3.4161: in the computer's one band (the default since #1410) the
+         bar stands BESIDE the three (GearTab barBeside); in the old column
+         it sat at their foot */
+      rec.ok('[computer] the Gear tab three across, the weapon bar (at its foot, or beside the three in the band) wearing 1 2 3, the sword in hand gold',
         d1.layout === 'wide' && d1.bar.map((b) => b.key).join() === '1,2,3' && (d1.bar.find((b) => b.slot === 'melee') || {}).on
-          && d1.bar.every((b) => b.box && d1.panes.inv && b.box.t >= d1.panes.inv.t + d1.panes.inv.h - 1), d1);
+          && d1.bar.every((b) => b.box && d1.panes.inv && d1.panes.equip
+            && (b.box.t >= d1.panes.inv.t + d1.panes.inv.h - 1 || b.box.l >= d1.panes.equip.l + d1.panes.equip.w - 1)), d1);
       sameSize(rec, '[computer]', d1);
       fitOk(rec, '[computer] the overview', d1, false);
       const b = d1.bar.find((x) => x.slot === 'ranged');
