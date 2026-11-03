@@ -503,7 +503,8 @@ Screens: world-map, world-map-pin
 - Far from you, zoomed in, the land is drawn as sharply as round you, with finer pieces loaded only while shown (v2.3.3319).
 - Dungeons and the farm still use the older 52 px box, sized by an earlier owner ask, "shrink the minimap size by 50% but increase the size of the icons on it", and "Make it 20% transparent." (v2.3.2247).
 - On a computer M opens and closes the world map; the minimap wears the M beside its tap-me mark (v2.3.3407).
-- **Your own pin** (v2.3.3879, the owner: "add the ability to drop a pin to the map for where you want to go after opening it ... You just need to also have an easy way to remove it afterwards"): a tap (a click) on open ground in the world map drops a purple pin there, a second tap elsewhere moves it; a tap on it, or "Remove pin" at the top of the map, lifts it. A plain tap did nothing on the map before, so it is safe; a drag, a pinch or a long press drops nothing. The minimap shows it, on its edge toward it when it is off the box, beside the quest's gold star. One pin a character, kept on this device, never sent to the server. Purple, not the quest's gold or the Town Hall board's red and blue pins (docs/specs/map-pin.md).
+- **Your own pin** (v2.3.3879, the owner: "add the ability to drop a pin to the map for where you want to go after opening it ... You just need to also have an easy way to remove it afterwards"): a tap (a click) on open ground in the world map drops a pin there; a tap on it, or "Remove pin" at the top of the map, lifts it. A plain tap did nothing on the map before, so it is safe; a drag, a pinch or a long press drops nothing. Kept on this device, never sent to the server (docs/specs/map-pin.md).
+- **Two pins, blue and red, with a line to each** (v2.3.4045, the owner: "Add a line path when you drop pins on your minimap ... If there's already 2 pins on map ask if you want to remove one of the pins (give choice of which to remove - blue or red)"). The purple pin and the Town Hall board's red and blue pins are ONE pair now: a dropped pin takes a free colour, blue first, and the board's "Red pin" / "Blue pin" buttons fill their own; with both up a tap asks "Replace which pin?" (the map-pin cards' section). A line runs from you to each in its colour: solid on the minimap, to the pin or, when it is off the box, to its mark on the edge with a small arrow past it; dashed on the world map (the quest's gold road is the dashed gold one, so a pin's line is never mistaken for it: different colours, and only the quest's has a star). One chip at the top of the map for each pin up ("Remove pin" for one, "Remove blue" and "Remove red" for two), and "your pin(s)" in the key in their colours.
 - On a computer the key is sized from the play column, not drawn at the phone's 11 px in a window-sized map (v2.3.3830, the judges' pass found it small at 1440 x 900): the column a computer gives the phone's layout over the phone's 390, so 1.26 times at 1440 x 900, 1.5 at 1920 x 1080, as before at 1280 x 720, never past twice; its words and pictures grow together. Phones never change (docs/specs/layout-nits.md).
 
 **Tried before, and changed:**
@@ -538,6 +539,28 @@ Screens: world-map, world-map-pin
 - The buildings' map pictures are the Enter button's small icons; a set drawn for a map (bolder shapes at 14 px) would read better.
 
 Sources: CLAUDE.md, docs/WORLD-MAP-PIPELINE.md, docs/specs/minimap-look.md, docs/specs/wheel-north.md, docs/specs/party-on-maps.md, docs/specs/desktop-keys.md, docs/specs/reach-every-button.md, docs/specs/owner-icons.md, src/rendering/systems/wheelMinimap.js, src/rendering/systems/minimapRenderer.js, src/ui/WorldMapOverlay.jsx, src/ui/zoneBannerOverlay.js, src/ui/landEmblem.js
+
+## The map pins' cards
+Screens: map-pin-replace, map-pin-arrive, map-pin-remove
+
+**What it is for:** Three small questions about your two map pins (blue and red): which one a new pin replaces, whether to lift one you have walked up to, and whether to lift one you tapped on the minimap.
+
+**Decisions, and why:**
+- The owner's words (v2.3.4045): "When you get near the pin (in game) make a window pop up asking if you want to remove pin. A no just makes it stay up until you drop a new pin and get close to it again. To turn off the pin just tap it on minimap and choose remove pin. If there's already 2 pins on map ask if you want to remove one of the pins (give choice of which to remove - blue or red)."
+- **Replace which pin?** Both pins up and a tap on open ground in the world map: a small card under the map's top chips with Blue and Red (each filled in its colour) and Cancel, and a white ghost pin where you tapped, so the card says what it is about. A second tap moves the ghost. The world map itself stays usable round it (no scrim).
+- **You reached the blue pin. Remove it?** Within about 160 game px of a pin: Remove (the brass primary button, Enter on a computer) and Keep (quiet). Keep, or the ✕, leaves the pin up and it never asks again; a new pin in that colour asks afresh ("A no just makes it stay up until you drop a new pin and get close to it again"). It asks only on the way IN: a pin dropped where you stand waits until you have walked off (past about 240 px) and come back. Never during a fight (a blow taken or landed in the last 5 seconds), never while the world map is open, and never over another card: it waits until they are gone, and steps aside if one comes up. Walking off without answering lets it go.
+- **Remove the red pin?** A tap on a pin on the minimap asks this instead of opening the world map (Remove, Cancel); a tap anywhere else on the minimap still opens the map, and M still opens it on a computer.
+- Placed as No man's land's "Attack?" window: beside the minimap where the strip to its left holds it (sideways, a computer), else under it, centred; out of the thumbs' way and never over the minimap. No scrim, no timer.
+- Every button acts on the finger's lift, and the tap's click that follows is eaten (TRAPS §247); Esc presses the ✕, Enter the main button; words that say "tap" say "click" on a computer.
+
+**Please don't suggest:**
+- Asking as you drop a pin near yourself: it asks only when you arrive.
+- A pathfinding route: the line is straight, as the quest's gold road is (no pathfinding exists).
+
+**Still open:**
+- The board's pin buttons (moving to the noticeboard) do not ask before replacing their own colour: a press there is already a choice of colour.
+
+Sources: docs/specs/map-pin.md, src/game/pinSlots.js, src/ui/PinCards.jsx, src/ui/worldMapPins.js, src/ui/WorldMapOverlay.jsx, src/rendering/systems/wheelMinimap.js, src/ui/mobile/NmlAskCard.jsx
 
 ## Chat, the bell and emotes
 Screens: chat
