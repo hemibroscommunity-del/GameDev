@@ -31,3 +31,15 @@ under them):
 A tablet upright (820 x 1180): the three panels side by side, as drawn:
 
 ![tablet](bro-tab-v2-tablet.webp)
+
+## The band open on Gear and on Bro, on every screen (the one band)
+
+Taken by `node tools/qa/mp/run.mjs bandshots` on main's one band (#1410) and
+Gear tab (#1388): a computer at 1280 x 720 (wide), a phone on its side at
+844 x 390 (opened from the folded band) and upright at 390 x 844.
+
+| | Gear | Bro |
+|---|---|---|
+| Computer | ![](band-gear-desk.webp) | ![](band-bro-desk.webp) |
+| On its side | ![](band-gear-side.webp) | ![](band-bro-side.webp) |
+| Upright | ![](band-gear-up.webp) | ![](band-bro-up.webp) |

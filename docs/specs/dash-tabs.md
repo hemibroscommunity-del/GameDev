@@ -155,6 +155,11 @@ None: a client-only layout change, no wire, no server behaviour.
   (pictures alone), a tablet (three panels side by side), sideways (one
   column, the chip's CLOSE), a computer (P, a click on Points, Esc, L and L).
   Pictures: `docs/shots/bro-tab-v2*.webp`.
+- `bandshots` (new): the band open on Gear and on Bro on a computer
+  (1280 x 720 and 1920 x 1080, wide), a phone on its side and upright: Gear's
+  tab at rest (never the old bag page), the Bro card filling the centred
+  `data-band-box` and no more, CLOSE first in the row.  Pictures:
+  `docs/shots/band-{gear,bro}-{desk,side,up}.webp`.
 - `server/test/bro-stats` (new): the thirteen rows, one reader with the
   Equipment window's pills, a lane's own points, an empty slot, the start,
   junk, the Titles ask.
