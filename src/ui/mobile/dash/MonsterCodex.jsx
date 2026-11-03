@@ -229,7 +229,7 @@ function Card({ kind, n, fresh, onOpen, wrap, big }) {
    first look was ALL header -- "‹ All monsters", this, and the tabs ended 172
    px down a box 167 px tall, so not one line of its tab showed.  The picture
    goes 60 -> 44, the count rides the name's line, the badges a size down. */
-/* v2.3.3910: the name went up into the pinned bar, beside the buttons (the
+/* v2.3.3972: the name went up into the pinned bar, beside the buttons (the
    owner: "Move the 'all monsters, drops, info, and locations' row of buttons
    to be in the same row it talks about the monster title ... that will give
    much more room on mobile to see more of the drop table"); here the
@@ -261,7 +261,7 @@ function Header({ kind, e, n, n2, elder }) {
    and "‹ All monsters", which was a 40 px row of its own above the header,
    is its first button.  `reveal` keeps what a tap brings up just under it. */
 const TABS = [['drops', 'Drops'], ['info', 'Info'], ['locations', 'Locations']];
-/* ═══ v2.3.3910: THE NAME AND THE BUTTONS ON ONE ROW ═══
+/* ═══ v2.3.3972: THE NAME AND THE BUTTONS ON ONE ROW ═══
    The owner: "Move the 'all monsters, drops, info, and locations' row of
    buttons to be in the same row it talks about the monster title (In this
    case 'Fire goblin') that will give much more room on mobile to see more of
@@ -294,7 +294,7 @@ function Tabs({ tab, setTab, onBack, name }) {
   return (
     <div data-cx-tabbar data-cx-tabwords={words ? 1 : 0} className="bt-cx-tabbar"
       style={{ position: 'sticky', top: -4, zIndex: 3, display: 'flex', alignItems: 'center', gap: 4,
-        /* v2.3.3910: 40 px buttons in a bar no taller than the old 34 px
+        /* v2.3.3972: 40 px buttons in a bar no taller than the old 34 px
            ones' (41 px): a tapped tab's first rows stay in view under it */
         padding: '1px 0 0', margin: 0 }}>
       <button onClick={onBack} data-cx-back aria-label="All monsters" title="All monsters"
@@ -745,7 +745,7 @@ function Page({ kind, S, onBack }) {
         <ItemCard kind={kind} e={e} r={open} onClose={() => setCard(null)} />
       ) : (
         <>
-          {/* v2.3.3910: the bar, with the name, first; the header under it */}
+          {/* v2.3.3972: the bar, with the name, first; the header under it */}
           <Tabs tab={tab} setTab={(id) => { setTab(id); setTabTap((v) => v + 1); }} onBack={onBack}
             name={elder && e.elder ? e.elder.name : e.name} />
           <Header kind={kind} e={e} n={n} n2={n2} elder={elder} />

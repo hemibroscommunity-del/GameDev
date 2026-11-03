@@ -162,7 +162,7 @@ async function portrait(P, rec, OUT, vw, result) {
   rec.ok(`the snowman's page: its first look shows its tab (${first && first.first.shown} px of the table; was none, it began 172 px down a 167 px box)`,
     !!first && first.first.contentTop != null && first.first.contentTop <= 110 && first.first.shown >= 60, first && first.first);
   await P.page.screenshot({ path: join(OUT, 'codexfit-page.png') });
-  /* v2.3.3910: the buttons ride the name's row (the owner: "Move the 'all
+  /* v2.3.3972: the buttons ride the name's row (the owner: "Move the 'all
      monsters, drops, info, and locations' row of buttons to be in the same
      row it talks about the monster title"): one pinned bar holding the way
      back, the name and the three tabs, side by side, each button 40+ px tall
