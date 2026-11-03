@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "31c1148bdf88186aa95019562dcd4c2295d6f6ad",
+  "tree": "f23aba830e9ae032b3d707684c8cf98a47cb8c77",
+  "committedAt": "2026-11-02T16:37:08-08:00",
+  "subject": "Merge pull request #1364 from hemibroscommunity-del/claude/control-looks",
+  "files": 7340,
+  "bytes": 843737265,
+  "listingSha256": "4c5ed617880278c268676a4ce6f220f00af275486b4a7674691c346d00dff778",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
