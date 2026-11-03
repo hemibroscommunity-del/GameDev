@@ -43,6 +43,9 @@ export const CLIENT_SAVERS = Object.freeze([
   Object.freeze({ id: 'lookfolk', words: 'Townsfolk drawn live', live: true }),
   /* v2.3.4049: the Hemi Bro portrait's row (v2.3.3999) went when the portrait
      went off by default: `?hemiface=1` turns it on for one tab */
+  /* v2.3.4080: a big drawing's building lists let go once it is drawn
+     (rendering/gfxLean.js: the minimap's roads, ~1 MB of the heap) */
+  Object.freeze({ id: 'gfxlean', words: 'Big drawings kept once', live: false }),
   /* v2.3.4074: every screen sees about an upright phone's area of world
      (game/viewCap.js).  Not a memory saver: the owner's fairness rule ("Cap
      it for everyone now"), kept switchable the same way; off, a wide screen

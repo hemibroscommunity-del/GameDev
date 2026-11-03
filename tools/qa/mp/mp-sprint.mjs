@@ -385,24 +385,62 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.3455: the run-out's sound, counted from here */
     const outs0 = await P.page.evaluate(() => (window.__btCues && window.__btCues.stats.played.sprintOut) || 0);
     const c = centre((await LAYOUT(P)).btn);
+    /* ═══ v2.3.4077: THE TAP WHILE HE IS STILL OUT OF BREATH ═══
+       The worker refills the bar a second after its last paid step (+17 on
+       the commons, every 670 ms after), so the window for "a tap then is
+       refused" is about a second from the run-out.  This box draws a frame
+       every 200-300 ms: polled from here (a state read and a worker read a
+       sample, ~0.5 s), then 200 ms, then the whole-page LAYOUT read
+       (getComputedStyle over every element), then the touch itself (two
+       frames to land), the tap came ~1.7 s after the run-out -- after the
+       refill on some runs, on main as on the leg-sync branch, and was rightly
+       taken (17 or 34 stamina).  So the page itself says when he runs dry
+       (a 20 ms watch on the sprint's own state) and the touch goes at once;
+       and the same watch photographs the button's DOM the moment it turns
+       tired, which is what the fade checks below read (a later read can
+       already show the refill). */
+    await P.page.evaluate(() => {
+      const S = window._gameState.current;
+      const W = window.__sprDry = { emptyAt: 0, L: null };
+      const id = setInterval(() => {
+        const sp = S && S._sprint;
+        if (!W.emptyAt && sp && !sp.on && sp.why === 'empty') W.emptyAt = performance.now();
+        const btn = document.querySelector('[data-sprint]');
+        if (W.emptyAt && !W.L && btn && btn.getAttribute('data-sprint') === 'tired') {
+          const b = btn.getBoundingClientRect();
+          const arcEl = btn.querySelector('[data-sprint-arc]');
+          const trk = btn.querySelector('[data-sprint-arc] circle');
+          W.L = { btn: { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height },
+            state: btn.getAttribute('data-sprint'), sstate: btn.getAttribute('data-sprint-state'),
+            glow: !!btn.querySelector('.bt-sprint-glow'), arc: arcEl ? +arcEl.getAttribute('data-sprint-arc') : null,
+            track: trk ? trk.getAttribute('stroke') : null, at: performance.now() };
+        }
+        if (W.L) clearInterval(id);
+      }, 20);
+    });
     await P.page.touchscreen.tap(c.x, c.y);
+    const readRefused = () => P.page.evaluate(() => {
+      const S = window._gameState.current;
+      const b = window.__btSprintBtn();
+      return { b, note: S.dmgNumbers.filter((p) => p.text === 'Not enough energy!').length, shake: !!document.querySelector('[data-sprint] .bt-sprint-nope') };
+    });
+    /* ...and what it did, read 150 ms after it (the note lives 1.5 s) */
+    const tapDry = P.page.waitForFunction(() => window.__sprDry && window.__sprDry.emptyAt > 0, null, { polling: 20, timeout: 14000 })
+      .then(async () => { await P.page.touchscreen.tap(c.x, c.y); await P.page.waitForTimeout(150); return readRefused(); })
+      .catch(() => null);
     /* the worker's own bar, every sample: it refills a second after the last
        paid step, so read once at the end it has already climbed again */
     let srvMin = Infinity;
     const dry = await hold(P, 'd', 12000, (o) => { const l = o[o.length - 1]; return !!(l.btn && !l.btn.armed); },
       async () => { const sv = await H.serverPlayer(wsPort, myId); if (sv && typeof sv.stamina === 'number') srvMin = Math.min(srvMin, sv.stamina); });
     const end = dry[dry.length - 1];
-    await P.page.waitForTimeout(200);   /* the button reads the state every 100 ms */
-    const L = await LAYOUT(P);
-    await P.page.touchscreen.tap(centre(L.btn).x, centre(L.btn).y);
-    await P.page.waitForTimeout(150);
-    const refused = await P.page.evaluate(() => {
-      const S = window._gameState.current;
-      const b = window.__btSprintBtn();
-      return { b, note: S.dmgNumbers.filter((p) => p.text === 'Not enough energy!').length, shake: !!document.querySelector('[data-sprint] .bt-sprint-nope') };
-    });
+    const refused = (await tapDry) || { b: null, note: 0, shake: false, untapped: true };
+    const tapped = !refused.untapped;
+    await P.page.waitForFunction(() => window.__sprDry && window.__sprDry.L, null, { polling: 20, timeout: 3000 }).catch(() => null);
+    const L = (await P.page.evaluate(() => window.__sprDry && window.__sprDry.L)) || await LAYOUT(P);
     const srv = await H.serverPlayer(wsPort, myId);
-    console.log(`    dry: ${JSON.stringify({ from: s0.st, end: end.btn, ms: end.t, stateAfter: L.state, refused, server: srv && srv.stamina })}`);
+    const lag = await P.page.evaluate(() => window.__sprDry && window.__sprDry.L ? Math.round(window.__sprDry.L.at - window.__sprDry.emptyAt) : null);
+    console.log(`    dry: ${JSON.stringify({ from: s0.st, end: end.btn, ms: end.t, stateAfter: L.state, tapped, tiredShownMs: lag, refused, server: srv && srv.stamina })}`);
     rec.ok(`run dry it ends on its own (from ${s0.st != null ? s0.st.toFixed(0) : '?'} stamina, after ${(end.t / 1000).toFixed(1)} s), the worker's bar down to ${srvMin}`,
       !!end.btn && !end.btn.armed && end.btn.why === 'empty' && srvMin <= 1, { end: end.btn, srvMin, now: srv && srv.stamina });
     rec.ok('...the button fades', L.state === 'tired', L.state);

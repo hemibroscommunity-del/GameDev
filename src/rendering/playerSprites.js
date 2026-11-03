@@ -24,6 +24,7 @@ import { upscaleToFrameHeight, bakeDisplayCanvas, DISPLAY_DS } from './spriteSca
 import { sliceCropped } from './gearSheets.js';   /* v2.3.2791: the body sheets are cropped */
 import { loadWebpOrPng } from './webpImage.js'; /* v2.3.1122: prefer lossless WebP, fall back to PNG */
 import { recolorToolKeyCanvas, recordFishRodMask, TOOL_SPECS } from './toolRecolor.js'; /* v2.3.2761: the fishing rod's pine */
+import { jogPace, legSyncOn, jogStridePx, LEG_WALK_SPEED } from '../game/legSync.js';   /* v2.3.4077: the legs keep pace with the feet */
 
 /* v2.3.166: bumped from 128 to 256 per user request.  256 source +
    plain Lanczos (no outline overlay) gives a more naturally-rendered
@@ -45,7 +46,12 @@ const ATTACK_FRAMES = 2;
    a slower gait than feels right.  (NW is a horizontal mirror of NE,
    so it shares NE's cycle.) */
 const JOG_DURATION_MS = 1000;
-const JOG_DURATION_BY_DIR = {
+/* v2.3.4077: exported -- these are now the FIXED cadences: the loop at the
+   walk on north and south, the whole loop with ?legsync=0, and what a caller
+   that wants a fixed beat reads (cycleMs, unchanged: a climb drawn from the
+   back-facing jog, a capture).  A walking or running bro's loop follows the
+   ground (jogCycle below, game/legSync.js). */
+export const JOG_DURATION_BY_DIR = {
   /* v2.3.535 pacing pass (armored run): N/S +50% speed (1400->933),
      NE/NW -50% speed (938->1876), SW/SE +15% speed (2000->1739),
      east unchanged (user: "east is perfect").  Mirror dirs share the
@@ -439,6 +445,38 @@ export function cycleMs(pose, dir, armored) {
   if (pose === 'fish') return FISH_DURATION_MS;
   if (pose === 'dodge') return DODGE_DURATION_MS;
   return 1000;
+}
+
+/* ═══ v2.3.4077: THE LEGS KEEP PACE WITH THE FEET ═══
+   The owner: "Character animation speed and actual speed is not matching!"
+   A jog loop lasts as long as the ground takes to go one measured stride by
+   (game/legSync.js JOG_STRIDE_PX, measured off these sheets by
+   tools/measure_jog_stride.py -- a re-cut sheet re-measures, and its
+   `--check` says when).  The renderer asks here for the bro it draws:
+     state   where the held quantised speed lives (his display)
+     dir     the sheet's facing (resolveDirection(...).dir)
+     armored the cadence's armour (cycleMs)
+     o       { speed (world px a second), mult (the sprint), scale (his size
+               against the default), aimSlow (the old half-speed rule) }
+   -> { cyc, base }: his loop now, and unsped by the sprint.  ?legsync=0 is
+   the fixed cadences, exactly as before. */
+export { JOG_STRIDE_PX } from '../game/legSync.js';
+export const LEG_SYNC = legSyncOn(typeof location !== 'undefined' ? location.search : '');
+export function jogCycle(state, dir, armored, o) {
+  return jogPace(state, {
+    dir, fixedMs: cycleMs('jog', dir, armored),
+    speed: o && o.speed, mult: o && o.mult, scale: o && o.scale, aimSlow: !!(o && o.aimSlow),
+    sync: LEG_SYNC,
+  });
+}
+
+/* v2.3.4077: world px a loop of this facing's jog covers at the default
+   figure: the measured stride (north, south: the walk over the tuned loop).
+   The townsfolk step by distance on the player's jog (entityRenderer
+   npcWalkCell), so they read this; ?legsync=0 the old walk x tuned loop. */
+export function jogStride(dir) {
+  const fixed = cycleMs('jog', dir) || 1000;
+  return LEG_SYNC ? jogStridePx(dir, fixed) : LEG_WALK_SPEED * fixed / 1000;
 }
 
 /** Which authored dodge sheet a facing plays on, by dominant axis.
