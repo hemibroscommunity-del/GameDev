@@ -16,6 +16,7 @@
  *   the owner can screenshot it.
  */
 
+import { ringUploadKey } from './crashRing.js';
 const KEY = 'bt-crashlog';
 
 function read() {
@@ -43,7 +44,9 @@ const _IMMEDIATE = new Set(['error', 'rejection', 'CONTEXT_LOST', 'pixi-init-fai
 const _QUIET = new Set(['resume', 'died', 'evicted', 'touch-stale', 'audio-kick']);
 let _flushTimer = null;
 let _flushAt = 0;
-let _lastSentLen = -1;
+/* v2.3.4156: the newest entry's key, not the ring's length (a full ring stays
+   at 16, so a new crash was never sent after the first upload; crashRing.js) */
+let _lastSentKey = '';
 function _apiBase() {
   try {
     return (window.BROTOWN_WS_URL || 'wss://api.brotown.net')
@@ -54,8 +57,9 @@ function _doFlush() {
   _flushTimer = null;
   try {
     const log = read();
-    if (!log.length || log.length === _lastSentLen) return;
-    _lastSentLen = log.length;
+    const key = ringUploadKey(log, _lastSentKey);
+    if (!key) return;
+    _lastSentKey = key;
     const payload = JSON.stringify({
       sid: _SID,
       /* v2.3.3481: the 2026-10-19 UI review -- every report said 2.3.2324,

@@ -6,7 +6,9 @@
  * include the non-essential stuff anymore like tap to talk etc".
  *
  * A brand-new character in the world's BroTown, on an upright phone (390 x
- * 844, touch), a phone on its side (844 x 390) and a computer (wide).  Every coach card and every big
+ * 844, touch), a phone on its side (844 x 390), a computer (wide), and
+ * (v2.3.4155) a laptop's short window, 1366 x 657, in the band and in the side
+ * column (`oneband=0`, the doubled 264 px minimap).  Every coach card and every big
  * arrow that comes up is recorded (sampled in the page every 200 ms):
  *   1. the WELCOME plate, "BroTown", first;
  *   2. the coach's "Talk to Mayor Bro" card ringing HIM, and the big arrow at
@@ -19,7 +21,7 @@
  *   6. the cards seen, in order, are exactly mayor, equip, minimap,
  *      questPill -- none of the retired ones (move, attack, chat, ...);
  *   7. no page errors.
- * BT_FS_ONLY=phone|sideways|computer runs one view.
+ * BT_FS_ONLY=phone|sideways|computer|laptop|laptopcol runs one view.
  * Pictures: tools/qa/mp/out/firststeps-<view>-<n>-<step>.png (the phone's
  * five are docs/shots/first-steps-*.webp).
  */
@@ -31,6 +33,15 @@ const VIEWS = [
   { id: 'phone', opts: { viewport: { width: 390, height: 844 }, touch: true } },
   { id: 'sideways', opts: { viewport: { width: 844, height: 390 }, touch: true } },
   { id: 'computer', opts: { viewport: { width: 1280, height: 800 }, wide: true } },
+  /* v2.3.4155: a laptop's window, a 1366 x 768 screen less the browser's bars
+     and the taskbar, in both computer layouts.  The side column's minimap is
+     264 px, more than 0.35 of a window this short, so until v2.3.4155 the
+     coach's size rule refused "Your map" on every tick and the steps behind it
+     never came; 1280 x 800 and 1366 x 768 pass the rule, which is why nothing
+     saw it (the state-machine sweep, V15 M1-1).  `box`: the minimap's side the
+     view must really have, so it cannot pass on the band's 132 px box. */
+  { id: 'laptop', opts: { viewport: { width: 1366, height: 657 }, wide: true } },
+  { id: 'laptopcol', opts: { viewport: { width: 1366, height: 657 }, wide: true, query: 'oneband=0' }, box: 264 },
 ];
 const WANT = ['mayor', 'equip', 'minimap', 'questPill'];
 
@@ -141,6 +152,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(600);
       await shot('4-minimap');
       rec.ok(`${V.id} 4. the gear on: "${c4 && c4.text}" rings the minimap`, !!c4 && c4.id === 'minimap' && /star/i.test(c4.text) && ringOn(c4, box), { c4, box });
+      /* v2.3.4155: ...a box taller than 0.35 of this window: the case the view is for */
+      if (V.box) rec.ok(`${V.id} 4. ...the minimap is ${V.box} px, more than 0.35 of this ${V.opts.viewport.height} px window`,
+        !!box && box.width === V.box && box.height === V.box && V.box > 0.35 * V.opts.viewport.height, box);
 
       /* 5. the quest card */
       const c5 = await waitCard(P, 'questPill', 20000);
@@ -157,7 +171,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`${V.id} 6. the cards, in order: ${seen.cards.join(' -> ')}; the arrows: ${seen.arrows.join(' -> ')}; then nothing`,
         seen.cards.join() === WANT.join() && !tail && seen.arrows[0] === 'mayor' && seen.arrows.every((a) => a === 'mayor' || a === 'weapon')
           && !!seen.coach && WANT.every((id) => seen.coach.done[id] === true),
-        { cards: seen.cards, arrows: seen.arrows, tail, done: seen.coach && seen.coach.done });
+        { cards: seen.cards, arrows: seen.arrows, tail, done: seen.coach && seen.coach.done,
+          oversize: seen.coach && seen.coach.oversize });   /* v2.3.4155: a mark refused for its size, named */
       rec.ok(`${V.id} 7. no page errors`, errors.length === 0, errors.slice(0, 3));
     } finally {
       await P.ctx.close().catch(() => {});

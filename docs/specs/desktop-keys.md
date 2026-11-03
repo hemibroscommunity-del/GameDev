@@ -255,3 +255,14 @@ weapon' just list which number represents which weapon (1 melee, 2 bow, 3
 staff, etc)"*. The list's `1-3 Weapon` row is three: `1 Melee`, `2 Bow`,
 `3 Staff`, always shown (every player's weapons row has the three slots;
 3 does nothing until you carry a staff, as before).
+
+**v2.3.4154: 2 the same.** The 2 key never asked for a bow, so a character
+with none pressed 2 into the empty bow slot: every attack refused, "undefined"
+over the head, and, since v2.3.4151 tells the worker, the slot saved and back
+on every join (the state-machine sweep of 2026-11-03, VB-1 G2-17). One rule
+now, the cycle's (`weaponSlots.js` `pickSlot`), asked in BroTown's
+`_desktopSelectSlot`, which the 1, 2 and 3 keys and the computer's weapon bar
+all run: 2 does nothing until you carry a bow, 3 until a staff. A slot saved
+before this is taken as melee when the phone joins (`healedSlot`, in
+wsClient's `player_state`), and the worker is told, so the save heals too.
+Test: `server/test/weapon-pick.test.mjs`.
