@@ -51,7 +51,7 @@ applyWorldTrial();
    shape. */
 applyDeskWide();
 
-/* v2.3.4072: one dashboard on every screen (src/ui/oneBand.js); v2.3.4092: the
+/* v2.3.4072: one dashboard on every screen (src/ui/oneBand.js); v2.3.4132: the
    default, `?oneband=0` the side column for one device.  BEFORE the render,
    for the same reason. */
 applyOneBand();

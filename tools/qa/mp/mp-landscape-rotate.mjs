@@ -35,7 +35,7 @@ const geom = (P) => P.page.evaluate(() => {
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
     name: 'Twirl', wsPort, webPort, touch: true, viewport: { width: 390, height: 844 }, dpr: 2,
-    /* v2.3.4092: the rotation into the side column is the old layout's (the
+    /* v2.3.4132: the rotation into the side column is the old layout's (the
        one band, the default, keeps the band; mp-oneband turns that phone) */
     query: 'oneband=0',
   });

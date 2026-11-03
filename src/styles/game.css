@@ -6893,7 +6893,7 @@ html.bt-one-band .bt-dashboard{
   right:var(--world-pad-r,0px)!important;
 }
 html.bt-one-band, html.bt-one-band body{background:#070D11}
-/* v2.3.4092: the one band is the default, so what is fixed OUTSIDE the wrap
+/* v2.3.4132: the one band is the default, so what is fixed OUTSIDE the wrap
    and pinned to the window's left edge moves in with the world, as the
    sideways layout's own rules do: the player frame (left 8 px: over the bar
    on a computer and a sideways phone) and, on a computer, the controls' ⌨

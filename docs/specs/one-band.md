@@ -1,6 +1,6 @@
-# One dashboard on every screen (`?oneband`) (v2.3.4072; the default since v2.3.4092)
+# One dashboard on every screen (`?oneband`) (v2.3.4072; the default since v2.3.4132)
 
-## v2.3.4092: the default, on every device
+## v2.3.4132: the default, on every device
 
 The owner, 2026-11-03:
 
@@ -23,7 +23,7 @@ address, or the Test panel's **Side column (old layout)** row (its button
 "Use the side column (old layout)", then "Back to the dashboard at the
 bottom"). The device keeps the choice.
 
-**The stored key.** Until v2.3.4092 `localStorage` `bt_oneband` held `'1'` for
+**The stored key.** Until v2.3.4132 `localStorage` `bt_oneband` held `'1'` for
 on and was removed for off, so "no key" meant off. Now it records only an
 explicit off, `'0'`: no key (a device that never asked, or an old "off") and
 the old `'1'` (a device that tried `?oneband=1`) both read **on**.
@@ -65,7 +65,7 @@ and the refinement he adopted:
 > and touch-target sizes.
 
 B3 (v2.3.4072, #1396) shipped it **off**, behind `?oneband=1` and the Test
-panel's "One dashboard (to try)" row, for the owner to try; B4 (v2.3.4092)
+panel's "One dashboard (to try)" row, for the owner to try; B4 (v2.3.4132)
 made it the default.
 
 ## What the one band does
@@ -83,7 +83,7 @@ always had -- and only its size changes:
   (they ride `--dash-h` / `--sheet-h`), and a key does what its button does.
   Whatever upright draws -- six buttons and the pill on main today, five and
   the grip once #1386 lands -- is what every screen draws.
-- **Today's height, never taller** (v2.3.4092, the owner: keep today's
+- **Today's height, never taller** (v2.3.4132, the owner: keep today's
   dashboard height on every layout, no taller band). An upright screen keeps
   exactly the band it has always had (`sheetGeometry.js` `barHeight`: 243 at
   390 x 844, 235 at 375 x 667, 269 on an upright tablet). A wider screen gets
@@ -146,9 +146,9 @@ always had -- and only its size changes:
   the header, the cards' row).
 - `src/ui/BroTown.jsx` -- resize() adds `barW` to `--world-x` / `--world-r`.
 - `src/styles/game.css` -- the `html.bt-one-band` block.
-- `src/ui/panels/DevPanel.jsx` -- the Test panel's row (v2.3.4092: "Side
+- `src/ui/panels/DevPanel.jsx` -- the Test panel's row (v2.3.4132: "Side
   column (old layout)", the off switch).
-- v2.3.4092: `src/ui/deskWide.js` `deskBandActive` and BroTown's
+- v2.3.4132: `src/ui/deskWide.js` `deskBandActive` and BroTown's
   `kbHintsOff` initialiser (the controls list folded on a computer playing the
   band).
 

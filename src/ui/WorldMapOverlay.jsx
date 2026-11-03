@@ -58,7 +58,7 @@ import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.331
 import { folkDisplayName } from '../data/folkNames.js';          /* v2.3.4048: a pin's name is his nickname */
 import { questPinsOf, MAP_PIN } from '../game/questPins.js';       /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525: ...in the owner's own pictures */
-import { deskBigActive } from './deskWide.js';                     /* v2.3.3830: the key sized from the column on a computer; v2.3.4092: either computer layout */
+import { deskBigActive } from './deskWide.js';                     /* v2.3.3830: the key sized from the column on a computer; v2.3.4132: either computer layout */
 import { GLYPHS, drawGlyph, glyphDetailColor } from './mapGlyphs.js';   /* v2.3.3780: each mark a little picture of what it is, the key the same */
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
 /* v2.3.4045: the two pins, blue and red -- the board's and the ones dropped

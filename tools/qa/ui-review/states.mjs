@@ -133,7 +133,7 @@ async function unfoldBand(P) {
    page, which no button opens (v2.3.1654) and which fits five across at 390
    px: the review read its five columns as the game's bag. */
 async function openBag(P, view) {
-  /* v2.3.4092: only the old side column (?oneband=0) has the dashboard page;
+  /* v2.3.4132: only the old side column (?oneband=0) has the dashboard page;
      the one band, the default, is the band at rest on every view */
   if (view.id === 'landscape' && await evalIn(P, () => document.documentElement.getAttribute('data-orient') === 'landscape')) return bus(P, 'open', 'dashboard');
   await evalIn(P, () => { if (window.__broDashPanelBus) window.__broDashPanelBus.toBar(); });
@@ -434,7 +434,7 @@ export const STATES = [
   },
   {
     id: 'hud-band', group: 'The world (HUD)', title: 'BroTown, dashboard band open',
-    about: 'The same screen with the dashboard band unfolded: the bag, what you have equipped and your combat skills at a glance (since v2.3.4092 the same band on every screen, sideways and on a computer too, its slots counted from the room it has).',
+    about: 'The same screen with the dashboard band unfolded: the bag, what you have equipped and your combat skills at a glance (since v2.3.4132 the same band on every screen, sideways and on a computer too, its slots counted from the room it has).',
     run: async ({ P }) => unfoldBand(P),
     after: async ({ P }) => {
       /* folded again, as a new player has it: the screens of the world after
@@ -447,7 +447,7 @@ export const STATES = [
     /* v2.3.3769: on a computer the dashboard's column folded to its strip --
        in the top bar's grey, an arrow at its middle (v2.3.3793: no OPEN) */
     id: 'hud-folded', group: 'The world (HUD)', title: 'BroTown, dashboard closed',
-    /* v2.3.4092: the one band is the default -- every view folds the band to its button row */
+    /* v2.3.4132: the one band is the default -- every view folds the band to its button row */
     about: 'The same screen with the dashboard closed: on every screen (upright, sideways, a computer) the band folds to its button row and the world takes the room; OPEN, or I on a computer, brings it back. (The old side column, ?oneband=0, folds to a strip at the edge.)',
     run: async ({ P }) => { await foldBand(P); await wait(P, 400); },
   },
@@ -462,7 +462,7 @@ export const STATES = [
       /* a real touch on the left half, held, while the picture is taken */
       const vp = view.viewport;
       const cdp = await P.ctx.newCDPSession(P.page);
-      const x = Math.round(vp.width * 0.18), y = Math.round(vp.height * (view.id === 'landscape' ? 0.45 : 0.66));   /* v2.3.4092: sideways the world is above the band (a third of 390) */
+      const x = Math.round(vp.width * 0.18), y = Math.round(vp.height * (view.id === 'landscape' ? 0.45 : 0.66));   /* v2.3.4132: sideways the world is above the band (a third of 390) */
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 41 }] });
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + 26, y: y - 10, id: 41 }] });
       await wait(P, 700);

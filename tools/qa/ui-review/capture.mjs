@@ -28,7 +28,7 @@
  * Views: portrait (an upright phone, 390 x 844), landscape (the same phone
  * sideways, 844 x 390) -- both TOUCH, so the game shows its phone controls --
  * and desktop (a 1440 x 900 window with a mouse: the window's width, the band
- * at the bottom since v2.3.4092, with the keyboard keys).  Pictures at 2x.
+ * at the bottom since v2.3.4132, with the keyboard keys).  Pictures at 2x.
  *
  * Usage (after `npm run build`; the server's npm install done):
  *   node tools/qa/ui-review/capture.mjs                     everything
@@ -71,7 +71,7 @@ export const VIEWS = {
   landscape: {
     id: 'landscape', short: 'the phone sideways (landscape)', title: 'Phone, sideways (landscape)',
     viewport: { width: 844, height: 390 }, touch: true, dpr: 2,
-    /* v2.3.4092: the one band is the default -- sideways is the upright layout, shorter */
+    /* v2.3.4132: the one band is the default -- sideways is the upright layout, shorter */
     about: 'The same phone held sideways (844 x 390 CSS px): the same dashboard along the bottom as upright, at most a third of the screen (130 px), its slots counted from the room it has, the world above it.',
   },
   /* not in the default run (the owner named three): --views=tablet */
@@ -83,7 +83,7 @@ export const VIEWS = {
   desktop: {
     id: 'desktop', short: 'a computer window (desktop)', title: 'Computer (mouse and keyboard)',
     viewport: { width: 1440, height: 900 }, touch: false, dpr: 2, clip: '#root',
-    /* v2.3.4092: the one band is the default -- the window's width, the band at the bottom */
+    /* v2.3.4132: the one band is the default -- the window's width, the band at the bottom */
     about: 'A computer\'s browser window (1440 x 900) with a mouse: the game fills the window with the same dashboard along the bottom as a phone, an upright phone\'s height (243 px), the world above it (bars at its sides past 2.2:1); the touch controls are hidden, the buttons wear their key letters and the keyboard does the controls\' jobs (WASD, E, Q, Space, X, Shift, F/right-click...).',
   },
   /* v2.3.3407: not in the default run either: --views=laptop.  The commonest
@@ -239,7 +239,7 @@ async function runView(browser, ports, view) {
     name: 'Reviewer', wsPort: ports.ws, webPort: ports.web, viewport: view.viewport,
     touch: !!view.touch, dpr: view.dpr, world: 'wheel',
     /* v2.3.3687: a computer's screens as players get them, never the phone
-       tests' upright column (v2.3.4092: the band at the bottom, the default) */
+       tests' upright column (v2.3.4132: the band at the bottom, the default) */
     wide: true,
     /* v2.3.3481: the 2026-10-19 UI review found GEAR UP's coach card in screen
        after screen of a review that "skipped the tutorial": the welcome's

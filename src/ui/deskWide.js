@@ -15,7 +15,7 @@
  * (`?deskwide=1` the wide layout again); the phone tests' computer pages ask
  * for it unless they pass `wide: true` (tools/qa/mp/harness.mjs).
  *
- * v2.3.4092: the one band is the default (src/ui/oneBand.js), so a computer
+ * v2.3.4132: the one band is the default (src/ui/oneBand.js), so a computer
  * plays the band at the bottom; this class still frees #root's aspect lock for
  * it, and the side column described above is the old layout, `?oneband=0`. */
 
@@ -82,7 +82,7 @@ export function deskWideActive() {
   try {
     if (typeof document === 'undefined' || typeof window === 'undefined') return false;
     if (!document.documentElement.classList.contains('bt-desk-wide')) return false;
-    /* v2.3.4072: the one band (the default since v2.3.4092) keeps the class -- it frees #root
+    /* v2.3.4072: the one band (the default since v2.3.4132) keeps the class -- it frees #root
        from the upright aspect lock (game.css) so the band is the window's
        width -- but a computer then plays the upright layout, not the side
        column and the keys strip (src/ui/oneBand.js) */
@@ -91,8 +91,8 @@ export function deskWideActive() {
   } catch (e) { return false; }
 }
 
-/* ═══ v2.3.4092: A COMPUTER PLAYING THE BAND ═══
-   The one band (the default since v2.3.4092, src/ui/oneBand.js) on a computer
+/* ═══ v2.3.4132: A COMPUTER PLAYING THE BAND ═══
+   The one band (the default since v2.3.4132, src/ui/oneBand.js) on a computer
    window the shell rule applies to: the class on, the frame query matching.
    The keys strip is gone there and the nav buttons wear their key caps, so
    the controls list (KeyboardHintsPanel) starts folded to its ⌨ -- it had
@@ -107,7 +107,7 @@ export function deskBandActive() {
   } catch (e) { return false; }
 }
 
-/* v2.3.4092: a computer's window with room, in either layout -- the old side
+/* v2.3.4132: a computer's window with room, in either layout -- the old side
    column (deskWideActive) or the band (deskBandActive).  For what is a
    COMPUTER'S SIZE rather than the column's: the building windows, the world
    map's key, the swap hint's key words, the coach card's step aside.  The

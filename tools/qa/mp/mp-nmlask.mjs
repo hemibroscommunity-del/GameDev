@@ -770,7 +770,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const d9 = a9 && a9.dom, m9 = a9 && a9.mini;
   const hit9 = (q) => !!d9 && !(q.r <= d9.l || q.l >= d9.r || q.b <= d9.t || q.t >= d9.b);
   rec.ok(`9. held sideways (${orient}) a tap asks, the window beside the minimap (${a9 && a9.at}), inside the world's window, nothing over it`,
-    /* v2.3.4092: no orient asked -- the one band (the default) keeps
+    /* v2.3.4132: no orient asked -- the one band (the default) keeps
        data-orient portrait sideways, the world a short wide box above it */
     !!d9 && a9.at === 'beside' && !!m9 && d9.r <= m9.l && !!geo9.wrap && d9.l >= geo9.wrap.l && d9.r <= geo9.wrap.r
       && !!tops9 && tops9.every((t) => t.ok), { orient, d9, at: a9 && a9.at, m9, wrap: geo9.wrap, tops9 });

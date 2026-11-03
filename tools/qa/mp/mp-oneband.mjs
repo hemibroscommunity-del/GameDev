@@ -1,11 +1,11 @@
-/* ═══ ONE DASHBOARD ON EVERY SCREEN (v2.3.4072; v2.3.4092: THE DEFAULT) ═══
+/* ═══ ONE DASHBOARD ON EVERY SCREEN (v2.3.4072; v2.3.4132: THE DEFAULT) ═══
  *
  * The owner: "unification of all different screen types ... to use the same
  * layout and just scale differences to screen size ... I like the 1/3 idea
  * where the menu takes up that much of the bottom of the screen even in
  * layout orientation", with "responsive density rather than uniform scaling
  * ... Use the available space to determine the number of inventory slots".
- * v2.3.4092, the owner: "Move the left side menu to the bottom of screen on
+ * v2.3.4132, the owner: "Move the left side menu to the bottom of screen on
  * computer and all other devices" -- ON by default, `?oneband=0` the side
  * column for one device (src/ui/oneBand.js, docs/specs/one-band.md).
  *
@@ -15,7 +15,7 @@
  *   - the upright layout draws (data-orient "portrait", the band at the
  *     bottom, the nav row in it, no side sheet, no keys strip);
  *   - the band is at most a third of the screen and never taller than an
- *     upright phone's 243 (v2.3.4092: today's height, the owner), and an
+ *     upright phone's 243 (v2.3.4132: today's height, the owner), and an
  *     upright phone's band is the upright band it always was;
  *   - the bag's tiles fit the box: every tile of the first row inside the bag
  *     panel, the panel and the combat cards inside the row, the tile at least
@@ -26,7 +26,7 @@
  *   - on a computer the nav buttons keep their key caps, every key (I P J L K
  *     O) opens its page inside the band and Esc closes it, the controls list
  *     starts folded to its ⌨ (no list over the world) and H opens it.
- * Then the device's choice (v2.3.4092): no key and the old "on" ('1') both
+ * Then the device's choice (v2.3.4132): no key and the old "on" ('1') both
  * read on; `?oneband=0` turns it off and the device keeps the off; `?oneband=1`
  * clears it.  And the old layout, still reachable: a sideways phone with
  * `?oneband=0` plays the side column (data-orient "landscape", no band) --
@@ -165,7 +165,7 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
     rec.ok(`${label}: the nav buttons keep their key caps (I P J L K O)`,
       ['dashboard', 'hero', 'quests', 'skills', 'encyclopedia', 'more'].every((id) => (g.navs.find((n) => n.id === id) || {}).key),
       g.navs.map((n) => ({ id: n.id, key: n.key })));
-    /* v2.3.4092: every page key opens its page inside the band, and Esc
+    /* v2.3.4132: every page key opens its page inside the band, and Esc
        closes it (deskKeys.js; the key each button wears is the key it obeys) */
     const caps = g.navs.filter((n) => n.key && n.id !== 'dashboard').map((n) => ({ id: n.id, key: n.key }));
     const keyed = [];
@@ -200,7 +200,7 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
       { mode: k.mode, root: k.root, band: k.o.band });
     await P.page.keyboard.press('j');
     await P.page.waitForTimeout(500);
-    /* v2.3.4092 (B3's rough edge): the controls list no longer comes up over
+    /* v2.3.4132 (B3's rough edge): the controls list no longer comes up over
        the world's bottom-left -- folded to its ⌨ until H or the ⌨ opens it */
     const kb = () => P.page.evaluate(() => ({ chip: !!document.querySelector('.bt-kb-chip'), rows: document.querySelectorAll('.bt-kb-hints .bt-kb-key').length }));
     const kb0 = await kb();
@@ -214,7 +214,7 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
   }
 }
 
-/* v2.3.4092: is the band on for this page load (html.bt-one-band, applied
+/* v2.3.4132: is the band on for this page load (html.bt-one-band, applied
    before the first render, so a bare load answers without entering the world) */
 async function loadAndRead(P, url) {
   await P.page.goto(url, { waitUntil: 'domcontentloaded' });
@@ -230,12 +230,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { label: 'computer', viewport: { width: 1280, height: 720 }, wide: true, computer: true },
   ];
   for (const s of screens) {
-    const P = await screen(browser, wsPort, webPort, rec, s);   /* v2.3.4092: nothing asked -- the default */
+    const P = await screen(browser, wsPort, webPort, rec, s);   /* v2.3.4132: nothing asked -- the default */
     try { await oneBandChecks(P, rec, s); }
     finally { await P.ctx.close().catch(() => {}); }
   }
 
-  /* ── v2.3.4092: a phone turned, live: the band re-lays itself both ways ── */
+  /* ── v2.3.4132: a phone turned, live: the band re-lays itself both ways ── */
   {
     const P = await screen(browser, wsPort, webPort, rec, { label: 'turned', viewport: { width: 390, height: 844 }, touch: true });
     const warns = [];
@@ -262,7 +262,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     } finally { await P.ctx.close().catch(() => {}); }
   }
 
-  /* ── v2.3.4092: the device's choice ── */
+  /* ── v2.3.4132: the device's choice ── */
   {
     const P = await H.newPlayer(browser, { name: 'OneKeys', wsPort, webPort, world: 'wheel', viewport: { width: 844, height: 390 }, touch: true });
     try {

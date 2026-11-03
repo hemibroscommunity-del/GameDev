@@ -525,7 +525,7 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      for; `wide: true` plays the layout players get (mp-deskwide).  A NEW
      scenario on a computer passes `wide: true` unless it is about the
      column.
-     v2.3.4092: the one band is the default (src/ui/oneBand.js), so `wide:
+     v2.3.4132: the one band is the default (src/ui/oneBand.js), so `wide:
      true` plays the whole window with the band at the bottom; the side
      column is the old layout, `query: 'oneband=0'`. */
   const _narrow = (!touch && !wide && !/(?:^|&)(?:narrow|deskwide=)/.test(query) && !/(?:^|&)(?:narrow|deskwide=)/.test(_env)) ? 'narrow' : '';
