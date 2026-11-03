@@ -1,4 +1,4 @@
-/* ═══ v2.3.3922: YOUR FRAME, TOP-LEFT, ALWAYS ON ═══
+/* ═══ v2.3.3974: YOUR FRAME, TOP-LEFT, ALWAYS ON ═══
  *
  * The desktop playtest: "player status not showing (pfp with stat bars
  * usually anchored at the top)".  Asked on 2026-11-02, the owner chose "Yes,

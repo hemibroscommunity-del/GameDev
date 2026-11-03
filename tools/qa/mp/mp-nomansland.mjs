@@ -326,7 +326,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   for (const [who, t] of [['the raider', tA], ['the wanderer', tB]]) {
     rec.ok(`1. ${who} is told by the badge alone: no banner (v2.3.3853), no chat line (v2.3.3887: ${t && t.chat.length}) and the badge (skull ${t && t.badge && t.badge.text}, ${t && t.badge && t.badge.w} px wide)`,
       !!t && t.lvl >= 1 && t.lvl <= 5 && t.banner === 0 && t.chat.length === 0   /* v2.3.3887: and no chat line (the owner) */ && !!t.badge && t.badge.n === String(t.lvl)
-        /* v2.3.3922: the place chip, amber, the levels that can attack you
+        /* v2.3.3974: the place chip, amber, the levels that can attack you
            ("PvP · Lv 1-3", or "Lv 1-3" on a narrow bar: game/placeSafety.js) */
         && t.badge.kind === 'pvp' && new RegExp(`Lv ${Math.max(1, t.badge.lv - t.lvl)}(\u2013${t.badge.lv + t.lvl})?$`).test(t.badge.text.trim()) && t.badge.w <= 150, t);
     /* v2.3.3268: just LEFT of the middle -- centred, it sat on the shield
@@ -418,7 +418,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const own = await A.page.evaluate(() => {
     const b = document.querySelector('[data-nml-badge]');
     if (!b) return undefined;
-    /* v2.3.3922: a red skull IS the chip now (red, "Outlaw"); the corner mark is the white one's */
+    /* v2.3.3974: a red skull IS the chip now (red, "Outlaw"); the corner mark is the white one's */
     const o = b.querySelector('[data-nml-own-skull]');
     const kind = b.getAttribute('data-place-chip');
     b.click();
@@ -437,7 +437,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`3b. the raider's chip says Outlaw, the red skull (${info && info.own})`, !!info && info.own === 'red', info);
   rec.ok(`3b. a tap on it says what No man's land means ("${info && info.title}"), with the skull's minutes ("${info && info.note}")`,
     !!info && /No man's land [1-5] · Lv [1-5] monsters/.test(info.title || '') && /attack/.test(info.body || '') && /red skull/.test(info.body || '') && /red skull: \d+ min/.test(info.note || '')
-      /* v2.3.3922: the plain words first, with the minutes */
+      /* v2.3.3974: the plain words first, with the minutes */
       && /you.re an outlaw for \d+ more minutes?/.test(info.body || '') && /drop everything/.test(info.body || ''), info);
 
   /* ── 4. the killing blow ── */

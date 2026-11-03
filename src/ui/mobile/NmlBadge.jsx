@@ -76,7 +76,7 @@
  * bar the pill is the smaller of its two sizes (game.css bt-nml-pill), so
  * the title and the purse never give way to it.
  *
- * ═══ v2.3.3922: THE PILL BECOMES THE PLACE CHIP ═══
+ * ═══ v2.3.3974: THE PILL BECOMES THE PLACE CHIP ═══
  * The owner, 2026-11-02: "The red skull with the 1 is supposed to mean your
  * character is in the wilderness ... But if you are the one to initiate an
  * attack on another player you get a red skull above your head".  He adopted
@@ -92,11 +92,11 @@ import { nmlHere, nmlFirst, nmlSteps, NML_RED } from '@/game/noMansLand.js';   /
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
 import { nmlExplainHit, _nmlForget } from '@/game/nmlExplainOnce.js';
-import { placeState, placeLines, chipWords, bagRiskCount } from '@/game/placeSafety.js';   /* v2.3.3922: Safe / PvP / Outlaw */
-import { barNarrow } from '@/game/barNumbers.js';   /* v2.3.3922 */
-import { deskWideActive } from '../deskWide.js';      /* v2.3.3922 */
-import { testModeOn } from '@/game/testMode.js';     /* v2.3.3922 */
-import { placeName } from './placeName.js';                                              /* v2.3.3922 */
+import { placeState, placeLines, chipWords, bagRiskCount } from '@/game/placeSafety.js';   /* v2.3.3974: Safe / PvP / Outlaw */
+import { barNarrow } from '@/game/barNumbers.js';   /* v2.3.3974 */
+import { deskWideActive } from '../deskWide.js';      /* v2.3.3974 */
+import { testModeOn } from '@/game/testMode.js';     /* v2.3.3974 */
+import { placeName } from './placeName.js';                                              /* v2.3.3974 */
 
 /* a skull, drawn rather than the emoji (every phone draws 💀 its own way) */
 export function NmlSkull({ size = 18, color = NML_RED }) {
@@ -141,7 +141,7 @@ function Line({ children }) {
 /* v2.3.3825: `opts.lead`, a line over the rules (the explainer coming up by
    itself at the line: game/nmlExplainOnce.js); every opening is marked `nml`,
    so a hit while it is open closes it (NmlBadge's clock, below).
-   ═══ v2.3.3922: PLAIN WORDS FIRST, WITH YOUR OWN NUMBERS ═══
+   ═══ v2.3.3974: PLAIN WORDS FIRST, WITH YOUR OWN NUMBERS ═══
    The owner adopted the review's "make the status tappable so players can
    view the exact death penalties", what is at risk "such as '2,306 gold and 8
    inventory items'".  The window opens with the place chip's state in two
@@ -167,7 +167,7 @@ export function openNmlInfo(S, lvl, opts) {
     body: (
       <div data-nml-info={n} data-place-info={plain.st.kind}>
         {lead && <div data-nml-lead="" style={{ marginBottom: 8, fontWeight: 800, color: NML_RED }}>{lead}</div>}
-        {/* v2.3.3922: the plain words, your numbers in them */}
+        {/* v2.3.3974: the plain words, your numbers in them */}
         <div data-place-lead="" style={{ marginBottom: 6, fontWeight: 800, color: plain.st.kind === 'outlaw' ? NML_RED : '#F2D58C' }}>{plain.lead}</div>
         {plain.more && <div data-place-risk="" style={{ marginBottom: 10 }}>{plain.more}</div>}
         <div style={{ marginBottom: 6, fontWeight: 700, opacity: 0.85 }}>The rules</div>
@@ -194,7 +194,7 @@ export function openNmlInfo(S, lvl, opts) {
   });
 }
 
-/* v2.3.3922: the chip's window off No man's land: safe at home, or an outlaw
+/* v2.3.3974: the chip's window off No man's land: safe at home, or an outlaw
    whose skull still runs in town */
 export function openPlaceInfo(S, lvl) {
   if (lvl > 0) { openNmlInfo(S, lvl); return; }
@@ -212,7 +212,7 @@ export function openPlaceInfo(S, lvl) {
   });
 }
 
-/* ═══ v2.3.3922: THE PLACE CHIP: SAFE, PVP, OUTLAW ═══
+/* ═══ v2.3.3974: THE PLACE CHIP: SAFE, PVP, OUTLAW ═══
    The pill of v2.3.3765 (the skull and No man's land's number) becomes the
    chip that says whether you are safe where you stand, ALWAYS shown, right of
    the place name:
@@ -276,7 +276,7 @@ export function PlaceChip({ getS }) {
       const S = getRef.current ? getRef.current() : null;
       if (!S) return;
       const v = readChip(S);
-      /* v2.3.3922: "PvP" said only on a wide bar: upright under 430 px it cut
+      /* v2.3.3974: "PvP" said only on a wide bar: upright under 430 px it cut
          the place's name (the UI review at 390).  Read on the clock, so a
          turned phone re-says it. */
       const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
@@ -290,7 +290,7 @@ export function PlaceChip({ getS }) {
     return () => clearInterval(id);
   }, []);
   /* QA handle, the house style (__btInfoPopup, __btCtlTut); `at` the place it
-     stands (v2.3.3765: always the bar); v2.3.3922: + `chip`, what it says */
+     stands (v2.3.3765: always the bar); v2.3.3974: + `chip`, what it says */
   useEffect(() => {
     try {
       window.__btNmlBadge = () => ({

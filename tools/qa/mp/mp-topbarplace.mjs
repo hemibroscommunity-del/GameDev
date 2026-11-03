@@ -1,4 +1,4 @@
-/* ═══ THE TOP BAR'S PLACE CHIP AND YOUR PLAYER FRAME (v2.3.3922) ═══
+/* ═══ THE TOP BAR'S PLACE CHIP AND YOUR PLAYER FRAME (v2.3.3974) ═══
  *
  * The owner, 2026-11-02: "The top bar is underwhelming (says 'brotown')" and
  * the desktop playtest's "player status not showing"; he chose an always-on

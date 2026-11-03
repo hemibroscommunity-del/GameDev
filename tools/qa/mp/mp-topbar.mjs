@@ -90,7 +90,7 @@ const MEASURE = (P) => P.page.evaluate(() => {
   return {
     vw: innerWidth, zk: hdr ? +getComputedStyle(hdr).getPropertyValue('--zk') || 1 : null, barH: h ? Math.round(h.b - h.t) : null,
     titleCut: xpOn ? false : cut(title), titleText: title ? title.textContent : null,
-    titleW: title ? Math.round(title.getBoundingClientRect().width) : 0,   /* v2.3.3922 */
+    titleW: title ? Math.round(title.getBoundingClientRect().width) : 0,   /* v2.3.3974 */
     purseText: purse ? purse.textContent : null, apText: ap ? ap.textContent : null,
     hits, out, xpOver, xpOn, pill: !!pieces.pill || xpOn,
     mini: window.__btWheelMini ? window.__btWheelMini.top : null, hdrB: h ? h.b : null,
@@ -98,11 +98,11 @@ const MEASURE = (P) => P.page.evaluate(() => {
 });
 /* on a narrow bar (an upright phone) the big numbers are said short
    (game/barNumbers.js), and while the XP bar is up the AP steps out */
-/* v2.3.3922: the bar names the land you stand in (ui/mobile/placeName.js),
+/* v2.3.3974: the bar names the land you stand in (ui/mobile/placeName.js),
    beside the always-on place chip: "BroTown" is always whole; a land's name
    on an upright phone with this rich a purse and AP may end in "..." but
    keeps at least 50 px (its whole name is on the minimap's plate just under
-   it) -- until the door, the AP and the gold leave the bar (v2.3.3943) */
+   it) -- until the door, the AP and the gold leave the bar (Lane C2) */
 const titleOk = (m) => !!m.titleText && (!m.titleCut || (m.titleText !== 'BroTown' && m.titleW >= 50));
 const fits = (m) => titleOk(m) && m.hits.length === 0 && m.out.length === 0 && !m.xpOver
   && m.purseText === (m.vw < 430 ? '2.55M' : '2,550,000') && (m.apText === (m.vw < 430 ? '12.4K' : '12,400') || (m.xpOn && m.vw < 430 && m.apText == null)) && m.pill;

@@ -2254,7 +2254,7 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
    own colour, ZoneHeader.jsx landTint) -- no filters over the canvas (TRAPS §42) */
 .bt-zone-header__elem{display:inline-block;width:16px;height:16px;margin:0 4px 0 0;
   vertical-align:-3px;pointer-events:none}
-/* ═══ v2.3.3922: THE PLACE CHIP (NmlBadge.jsx PlaceChip) ═══
+/* ═══ v2.3.3974: THE PLACE CHIP (NmlBadge.jsx PlaceChip) ═══
    The pill above, always up now: green Safe, amber "PvP · Lv 6-8" in No
    man's land, red skull and Outlaw while you carry the red skull.  It keeps
    the pill's box and its cut-away under the XP bar; only the face changes. */
@@ -2279,7 +2279,7 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
   .bt-place-chip__words{font-size:calc(11.5px * var(--zk))}
   .bt-place-chip__icon svg{width:calc(13px * var(--zk));height:calc(13px * var(--zk))}
 }
-/* ═══ v2.3.3922: YOUR FRAME, TOP-LEFT (ui/PlayerFrame.jsx) ═══
+/* ═══ v2.3.3974: YOUR FRAME, TOP-LEFT (ui/PlayerFrame.jsx) ═══
    The owner, 2026-11-02: "Yes, always on: compact: your face, level, an HP
    bar and an energy bar at the top-left; the quest card moves just under it."
    Just under the top bar (whose bottom is 46 px + its growth + the notch),
@@ -2287,7 +2287,7 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
    larger on a computer's play column.  --bt-hud-top is its bottom plus a
    gap: the quest card and the status chips start there.  Flat fills, the
    bars scaled (never re-laid out): it is over the WebGL canvas (TRAPS §42). */
-/* v2.3.3922: the face is drawn at a WHOLE multiple of 32 px, pixelated (the
+/* v2.3.3974: the face is drawn at a WHOLE multiple of 32 px, pixelated (the
    orchestrator, for the owner's "in the style of the original hemi bro NFT's"
    portrait: a 32 x 32 bust, Lane U) -- 64 px on a phone (2x), 96 px on a
    computer (3x), never 36 or 44, which smears pixel art; the frame is sized
