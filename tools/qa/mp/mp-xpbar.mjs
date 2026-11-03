@@ -265,7 +265,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        begun) */
     const bF = lay.t;
     rec.ok(`2. ...the title and the hour's icon faded under it (${bF.titleOpacity}, ${bF.todOpacity}) but still there, "${bF.title}"`,
-      bF.titleOpacity < 0.05 && (bF.todOpacity == null || bF.todOpacity < 0.05) && bF.title === 'BroTown', { t: bF.title, o: bF.titleOpacity, tod: bF.todOpacity, shown: bF.shown });
+      bF.titleOpacity < 0.05 && (bF.todOpacity == null || bF.todOpacity < 0.05) && !!bF.title /* v2.3.3921: the land's name out there (placeName.js), BroTown at home */, { t: bF.title, o: bF.titleOpacity, tod: bF.todOpacity, shown: bF.shown });
 
     /* 2b. v2.3.3796, the owner: "show the white bar longer ... make the fill
        up to that white portion slower.  Also instead of changing the whole

@@ -307,7 +307,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           /* v2.3.3629: the minimap's box and its name plate, beside which the badge stood */
           mini: window.__btWheelMini ? { l: window.__btWheelMini.left, t: window.__btWheelMini.top } : null,
           plateBox: window.__btWheelPlate ? { t: window.__btWheelPlate.top, b: window.__btWheelPlate.top + window.__btWheelPlate.height } : null,
-          badge: b ? { n: b.getAttribute('data-nml-badge'), text: b.textContent, mid: Math.round(r.left + r.width / 2 - innerWidth / 2),
+          badge: b ? { n: b.getAttribute('data-nml-badge'), text: b.textContent, kind: b.getAttribute('data-place-chip'), lv: (S.rpg && S.rpg.level) || 1, mid: Math.round(r.left + r.width / 2 - innerWidth / 2),
             /* v2.3.3268: how far its right edge stops short of the middle (2 px:
                it sat on the shield button, whose left edge is the middle) */
             short: Math.round(innerWidth / 2 - r.right),
@@ -325,7 +325,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const tA = await told(A), tB = await told(B);
   for (const [who, t] of [['the raider', tA], ['the wanderer', tB]]) {
     rec.ok(`1. ${who} is told by the badge alone: no banner (v2.3.3853), no chat line (v2.3.3887: ${t && t.chat.length}) and the badge (skull ${t && t.badge && t.badge.text}, ${t && t.badge && t.badge.w} px wide)`,
-      !!t && t.lvl >= 1 && t.lvl <= 5 && t.banner === 0 && t.chat.length === 0   /* v2.3.3887: and no chat line (the owner) */ && !!t.badge && t.badge.n === String(t.lvl) && t.badge.text.trim() === String(t.lvl) && t.badge.w <= 90, t);
+      !!t && t.lvl >= 1 && t.lvl <= 5 && t.banner === 0 && t.chat.length === 0   /* v2.3.3887: and no chat line (the owner) */ && !!t.badge && t.badge.n === String(t.lvl)
+        /* v2.3.3921: the place chip, amber, the levels that can attack you
+           ("PvP · Lv 1-3", or "Lv 1-3" on a narrow bar: game/placeSafety.js) */
+        && t.badge.kind === 'pvp' && new RegExp(`Lv ${Math.max(1, t.badge.lv - t.lvl)}(\u2013${t.badge.lv + t.lvl})?$`).test(t.badge.text.trim()) && t.badge.w <= 150, t);
     /* v2.3.3268: just LEFT of the middle -- centred, it sat on the shield
        button (the shield's left edge is the middle, ShieldButton.jsx
        ctlColumn) and a tap on the shield's middle opened the badge; it stops
@@ -415,9 +418,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const own = await A.page.evaluate(() => {
     const b = document.querySelector('[data-nml-badge]');
     if (!b) return undefined;
+    /* v2.3.3921: a red skull IS the chip now (red, "Outlaw"); the corner mark is the white one's */
     const o = b.querySelector('[data-nml-own-skull]');
+    const kind = b.getAttribute('data-place-chip');
     b.click();
-    return o ? o.getAttribute('data-nml-own-skull') : null;
+    return kind === 'outlaw' ? 'red' : (o ? o.getAttribute('data-nml-own-skull') : null);
   });
   await A.page.waitForTimeout(500);
   await shot(A, '3b-info');
@@ -429,9 +434,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (window.__btInfoPopup) window.__btInfoPopup.close();
     return out;
   }, own);
-  rec.ok(`3b. the raider's badge wears their red skull (${info && info.own})`, !!info && info.own === 'red', info);
+  rec.ok(`3b. the raider's chip says Outlaw, the red skull (${info && info.own})`, !!info && info.own === 'red', info);
   rec.ok(`3b. a tap on it says what No man's land means ("${info && info.title}"), with the skull's minutes ("${info && info.note}")`,
-    !!info && /No man's land [1-5] · Lv [1-5] monsters/.test(info.title || '') && /attack/.test(info.body || '') && /red skull/.test(info.body || '') && /red skull: \d+ min/.test(info.note || ''), info);
+    !!info && /No man's land [1-5] · Lv [1-5] monsters/.test(info.title || '') && /attack/.test(info.body || '') && /red skull/.test(info.body || '') && /red skull: \d+ min/.test(info.note || '')
+      /* v2.3.3921: the plain words first, with the minutes */
+      && /you.re an outlaw for \d+ more minutes?/.test(info.body || '') && /drop everything/.test(info.body || ''), info);
 
   /* ── 4. the killing blow ── */
   /* v2.3.3808: close in FIRST, then the 1 HP: set before the walk, the

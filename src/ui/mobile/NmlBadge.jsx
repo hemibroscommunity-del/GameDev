@@ -75,12 +75,28 @@
  * default export keeps the blinking red line along the band.  On a narrow
  * bar the pill is the smaller of its two sizes (game.css bt-nml-pill), so
  * the title and the purse never give way to it.
+ *
+ * ═══ v2.3.3921: THE PILL BECOMES THE PLACE CHIP ═══
+ * The owner, 2026-11-02: "The red skull with the 1 is supposed to mean your
+ * character is in the wilderness ... But if you are the one to initiate an
+ * attack on another player you get a red skull above your head".  He adopted
+ * "replace the top bar with a location and safety HUD ... Safe Zone /
+ * Wilderness / Outlaw ... reserve the red skull for the actual aggressor
+ * state".  So the pill (PlaceChip below) is always up: green Safe, amber
+ * "PvP · Lv 6-8" in No man's land, red skull and Outlaw while you carry the
+ * red skull; a tap opens the window with your own numbers in plain words
+ * (game/placeSafety.js).  Still nothing said or played on the way in or out.
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { nmlHere, nmlFirst, nmlSteps, NML_RED } from '@/game/noMansLand.js';   /* v2.3.3690: + nmlFirst, where it starts */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 import { infoPopupBus } from './infoPopupBus.js';
 import { nmlExplainHit, _nmlForget } from '@/game/nmlExplainOnce.js';
+import { placeState, placeLines, chipWords, bagRiskCount } from '@/game/placeSafety.js';   /* v2.3.3921: Safe / PvP / Outlaw */
+import { barNarrow } from '@/game/barNumbers.js';   /* v2.3.3921 */
+import { deskWideActive } from '../deskWide.js';      /* v2.3.3921 */
+import { testModeOn } from '@/game/testMode.js';     /* v2.3.3921 */
+import { placeName } from './placeName.js';                                              /* v2.3.3921 */
 
 /* a skull, drawn rather than the emoji (every phone draws 💀 its own way) */
 export function NmlSkull({ size = 18, color = NML_RED }) {
@@ -124,36 +140,49 @@ function Line({ children }) {
 
 /* v2.3.3825: `opts.lead`, a line over the rules (the explainer coming up by
    itself at the line: game/nmlExplainOnce.js); every opening is marked `nml`,
-   so a hit while it is open closes it (NmlBadge's clock, below) */
+   so a hit while it is open closes it (NmlBadge's clock, below).
+   ═══ v2.3.3921: PLAIN WORDS FIRST, WITH YOUR OWN NUMBERS ═══
+   The owner adopted the review's "make the status tappable so players can
+   view the exact death penalties", what is at risk "such as '2,306 gold and 8
+   inventory items'".  The window opens with the place chip's state in two
+   plain sentences (game/placeSafety.js placeLines: who can attack you here,
+   and what a player kill would take, from your live purse and bag), then the
+   rules as before, shorter.  Only here, on a tap: nothing is said on the way
+   in or out (v2.3.3853, v2.3.3887). */
+function liveLines(S, lvl) {
+  const R = (S && S.rpg) || null;
+  const sk = nmlSkullLeft(S, Date.now());
+  const st = placeState({ nml: lvl, myLv: R && R.level, redMin: sk && sk.type === 'red' ? sk.min : 0 });
+  return { st, ...placeLines(st, { gold: R ? R.coins : 0, things: bagRiskCount(R), place: placeName(S) }) };
+}
+
 export function openNmlInfo(S, lvl, opts) {
   const lead = opts && opts.lead;
   const skull = nmlSkullLeft(S, Date.now());
   const n = lvl;
   const lv = (k) => `${k} level${k === 1 ? '' : 's'}`;
+  const plain = liveLines(S, n);
   infoPopupBus.open({
     title: nmlSteps(S) ? `No man's land ${n} · Lv ${n + 5 * (nmlFirst(S) - 1)} monsters` : `No man's land ${n} · ${nmlLevels(n, nmlFirst(S))}`,   /* v2.3.3767: the number IS the monster level (caps.nmlsteps) */
     body: (
-      <div data-nml-info={n}>
+      <div data-nml-info={n} data-place-info={plain.st.kind}>
         {lead && <div data-nml-lead="" style={{ marginBottom: 8, fontWeight: 800, color: NML_RED }}>{lead}</div>}
-        <div style={{ marginBottom: 8 }}>
-          Other players can attack you here, and you can attack them.
-        </div>
+        {/* v2.3.3921: the plain words, your numbers in them */}
+        <div data-place-lead="" style={{ marginBottom: 6, fontWeight: 800, color: plain.st.kind === 'outlaw' ? NML_RED : '#F2D58C' }}>{plain.lead}</div>
+        {plain.more && <div data-place-risk="" style={{ marginBottom: 10 }}>{plain.more}</div>}
+        <div style={{ marginBottom: 6, fontWeight: 700, opacity: 0.85 }}>The rules</div>
         <ul style={{ margin: 0, paddingLeft: 18 }}>
           <Line><b>Who:</b> players within {lv(n)} of yours, while they stand in No man's land too. The lower of your two numbers counts, and it grows the further you go from town. Your party never.</Line>
-          {/* v2.3.3253: attacking is a choice (game/nmlAsk.js) */}
-          {/* v2.3.3316: a swing at them asks too, as a shot through them does */}
+          {/* v2.3.3253: attacking is a choice (game/nmlAsk.js); v2.3.3316: a
+              swing at them asks too, as a shot through them does */}
           <Line><b>How:</b> {deskWords('tap a player, or swing or shoot at them, and choose ')}<b>Attack</b>. Until you do, your blows never hurt them.</Line>
-          {/* v2.3.3316: the owner -- everything carried, the gold and the tools
-              too; a red skull a monster kills keeps what it wears */}
-          <Line><b>Killed by a player:</b> they get <b>everything you carry</b>: your bag, tools and ores too, your gold, and your spare weapons and armour. You keep what you wear. Diego sells a lost tool back.</Line>
           {/* v2.3.3530: the skulls come with the window's Attack (nomansland.js _handleNmlAttack) */}
-          <Line><b>Attack a player:</b> a <span style={{ color: NML_RED, fontWeight: 800 }}>red skull</span> for 20 minutes of play from the moment you choose Attack, starting over with every hit. Killed by a player with it, you lose <b>everything</b>, worn gear too; killed by a monster, everything but what you wear.</Line>
-          {/* v2.3.3528: hitting back goes through the window too (game/nmlAsk.js);
-              v2.3.3530: white the moment they choose, whether you fight back or
-              not, and one Attack answers a whole group */}
-          <Line><b>Get attacked:</b> a <b>white skull</b> the moment they choose to attack you, whether you fight back or not. {deskWords('To hit back, swing, shoot or tap them and choose ')}<b>Attack</b> once: hitting back anyone who attacked you gives you no red skull, and everyone attacking you is then yours to hit.</Line>
+          <Line><b>Attack first:</b> you become an <span style={{ color: NML_RED, fontWeight: 800 }}>outlaw</span> (a red skull) for 20 minutes of play, starting over with every hit. Beaten by a player then, you lose <b>everything</b>, worn gear too; killed by a monster, everything but what you wear.</Line>
+          {/* v2.3.3528/3530: hitting back goes through the window too, and gives no red skull */}
+          <Line><b>Get attacked:</b> a <b>white skull</b>. {deskWords('To hit back, swing, shoot or tap them and choose ')}<b>Attack</b> once: hitting back never makes you an outlaw.</Line>
+          <Line><b>Keep things safe:</b> the Bank in BroTown holds gold and things, out of reach of any death. Diego sells a lost tool back.</Line>
         </ul>
-        <div>Walk back toward BroTown to leave.</div>
+        <div style={{ marginTop: 6 }}>Walk back toward BroTown to leave.</div>
       </div>
     ),
     note: skull
@@ -165,63 +194,146 @@ export function openNmlInfo(S, lvl, opts) {
   });
 }
 
-/* ═══ v2.3.3765: THE PILL, IN THE TOP BAR ═══
-   Beside the title in ZoneHeader's middle column (see the header).  ITS OWN
-   CLOCK, as before: the game state read every 250 ms, a re-render only when
-   the level or your skull changes.  A tap opens the explainer.  Flat fills
-   only: the bar is over the WebGL canvas (TRAPS section 42). */
-export function NmlPill({ getS }) {
-  const [lvl, setLvl] = useState(0);
-  const [skull, setSkull] = useState(null);
+/* v2.3.3921: the chip's window off No man's land: safe at home, or an outlaw
+   whose skull still runs in town */
+export function openPlaceInfo(S, lvl) {
+  if (lvl > 0) { openNmlInfo(S, lvl); return; }
+  const plain = liveLines(S, 0);
+  const name = placeName(S);
+  infoPopupBus.open({
+    title: plain.st.kind === 'outlaw' ? 'Outlaw' : `${name} · Safe`,
+    body: (
+      <div data-place-info={plain.st.kind}>
+        <div data-place-lead="" style={{ marginBottom: 6, fontWeight: 800, color: plain.st.kind === 'outlaw' ? NML_RED : '#8FD89A' }}>{plain.lead}</div>
+        {plain.more && <div data-place-risk="" style={{ marginBottom: 8 }}>{plain.more}</div>}
+        <div>Out past the safe ground is No man's land, where other players can attack you. The chip up here turns amber there and says which levels.</div>
+      </div>
+    ),
+  });
+}
+
+/* ═══ v2.3.3921: THE PLACE CHIP: SAFE, PVP, OUTLAW ═══
+   The pill of v2.3.3765 (the skull and No man's land's number) becomes the
+   chip that says whether you are safe where you stand, ALWAYS shown, right of
+   the place name:
+     green  "Safe"             the town, the commons, the safe ground, every
+                               zone off the Wheel (no player fights there);
+     amber  "PvP · Lv 6-8"     No man's land: the levels that can attack you
+                               (game/placeSafety.js pvpRange, the worker's rule);
+     red    skull + "Outlaw"   while YOU carry the red skull (you attacked
+                               first): the skull means outlaw only now.
+   The over-head skulls are unchanged.  `data-nml-badge` still carries the
+   No man's land number while you are in it (the scenarios find it by that),
+   and nothing else.  ITS OWN CLOCK, as before: the state read every 250 ms,
+   a re-render only when what it shows changes.  A tap opens the window.
+   Flat fills only: the bar is over the WebGL canvas (TRAPS section 42). */
+function ChipIcon({ kind }) {
+  if (kind === 'outlaw') return <NmlSkull size={18} />;
+  if (kind === 'pvp') {
+    /* two crossed blades */
+    return (
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" style={{ display: 'block', flex: 'none' }}>
+        <g stroke="#1A1206" strokeWidth="3.2" strokeLinecap="round"><path d="M3 3l10 10M13 3L3 13" /></g>
+        <g stroke="#E5B45C" strokeWidth="1.7" strokeLinecap="round"><path d="M3 3l10 10M13 3L3 13" /></g>
+      </svg>
+    );
+  }
+  /* a shield */
+  return (
+    <svg width="15" height="16" viewBox="0 0 15 16" aria-hidden="true" style={{ display: 'block', flex: 'none' }}>
+      <path d="M7.5 1.2L13 3.2v4.3c0 3.4-2.3 5.9-5.5 7.3C4.3 13.4 2 10.9 2 7.5V3.2z" fill="#6FCF7F" stroke="#0E1F12" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M5 8l1.8 1.8L10.2 6.2" fill="none" stroke="#0E1F12" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/* QA (ui-review's chip states): `window.__btPlaceHold = { nml, red }` shows
+   the chip as if you stood in No man's land `nml` / carried `red` minutes of
+   red skull.  The chip and its window only; the worker is never told. */
+function heldPlace() {
+  try { const h = typeof window !== 'undefined' ? window.__btPlaceHold : null; return h && typeof h === 'object' ? h : null; } catch (e) { return null; }
+}
+
+function readChip(S) {
+  const hold = heldPlace();
+  let l = 0;
+  try { l = nmlHere(S); } catch (e) { l = 0; }
+  if (hold && Number(hold.nml) >= 0) l = Math.floor(Number(hold.nml)) || 0;
+  const sk = nmlSkullLeft(S, Date.now());
+  let redMin = sk && sk.type === 'red' ? sk.min : 0;
+  if (hold && Number(hold.red) >= 0) redMin = Number(hold.red) || 0;
+  const R = S && S.rpg;
+  return { lvl: l, own: sk ? sk.type : null, st: placeState({ nml: l, myLv: R && R.level, redMin }) };
+}
+
+export function PlaceChip({ getS }) {
+  const [view, setView] = useState(null);
   const getRef = useRef(getS);
   getRef.current = getS;
   useEffect(() => {
     let last = '';
-    const id = setInterval(() => {
+    const tick = () => {
       const S = getRef.current ? getRef.current() : null;
-      let l = 0;
-      try { l = nmlHere(S); } catch (e) { l = 0; }
-      const sk = l ? nmlSkullLeft(S, Date.now()) : null;
-      const sig = l + '|' + (sk ? sk.type : '');
-      if (sig !== last) { last = sig; setLvl(l); setSkull(sk); }
-    }, 250);
+      if (!S) return;
+      const v = readChip(S);
+      /* v2.3.3921: "PvP" said only on a wide bar: upright under 430 px it cut
+         the place's name (the UI review at 390).  Read on the clock, so a
+         turned phone re-says it. */
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
+      v.narrow = (barNarrow(vw) || (testModeOn(S) && vw < 480 /* the owner's TEST MODE tag beside it: mp-nmltopbar at 430 */))
+        && !deskWideActive();   /* (the class is a switch, on in a phone-sized window too) */
+      const sig = [v.lvl, v.own, v.st.kind, v.st.lo, v.st.hi, v.narrow].join('|');
+      if (sig !== last) { last = sig; setView(v); }
+    };
+    tick();
+    const id = setInterval(tick, 250);
     return () => clearInterval(id);
   }, []);
   /* QA handle, the house style (__btInfoPopup, __btCtlTut); `at` the place it
-     stands (v2.3.3765: always the bar) */
+     stands (v2.3.3765: always the bar); v2.3.3921: + `chip`, what it says */
   useEffect(() => {
     try {
-      window.__btNmlBadge = () => ({ lvl, skull: skull && skull.type, at: lvl ? 'bar' : null });
+      window.__btNmlBadge = () => ({
+        lvl: view ? view.lvl : 0, skull: view ? view.own : null, at: view && view.lvl ? 'bar' : null,
+        chip: view ? view.st.kind : null, lo: view ? view.st.lo : null, hi: view ? view.st.hi : null,
+      });
     } catch (e) { /* no window */ }
-  }, [lvl, skull]);
-  if (!lvl) return null;
+  }, [view]);
+  if (!view) return null;
+  const { lvl, own, st, narrow } = view;
+  const words = chipWords(st, narrow);
   const open = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    openNmlInfo(getRef.current ? getRef.current() : null, lvl);
+    try { if (e.currentTarget && e.currentTarget.blur) e.currentTarget.blur(); } catch (_e) { /* fine */ }
+    openPlaceInfo(getRef.current ? getRef.current() : null, lvl);
   };
+  const say = st.kind === 'outlaw' ? `Outlaw: you attacked a player first, ${st.redMin} minutes left.`
+    : st.kind === 'pvp' ? `No man's land ${lvl}: players level ${st.lo} to ${st.hi} can attack you here.`
+      : 'Safe: no one can attack you here.';
   return (
-    <button type="button" className="bt-nml-pill" data-nml-badge={lvl} data-nml-at="bar"
-      aria-label={`No man's land ${lvl}: players can attack you here. ${deskWords('Tap')} for what it means.`}
+    <button type="button" className={'bt-nml-pill bt-place-chip bt-place-chip--' + st.kind}
+      data-place-chip={st.kind}
+      {...(lvl ? { 'data-nml-badge': lvl, 'data-nml-at': 'bar' } : {})}
+      aria-label={`${say} ${deskWords('Tap')} for what it means.`}
       onClick={open}>
-      <span className="bt-nml-pill__body">
-        {/* the skull and the number only (the owner's "skull level"): the
-            land's name and its levels are on the minimap's plate, and a tap
-            says the rules */}
-        <span className="bt-nml-pill__skull"><NmlSkull size={20} /></span>
-        <span className="bt-nml-pill__num" data-nml-num="">{lvl}</span>
-        {/* v2.3.3268: your own skull on the pill's corner, as a count sits on
-            a bell, so the pill is no wider for it */}
-        {skull && (
-          <span className="bt-nml-pill__own" data-nml-own-skull={skull.type} title={`${skull.type} skull`}
-            style={{ borderColor: skull.type === 'red' ? NML_RED : '#F2F2F2' }}>
-            <NmlSkull size={10} color={skull.type === 'red' ? NML_RED : '#F2F2F2'} />
+      <span className="bt-nml-pill__body bt-place-chip__body">
+        <span className="bt-place-chip__icon"><ChipIcon kind={st.kind} /></span>
+        <span className="bt-place-chip__words" data-place-words="">{words}</span>
+        {/* v2.3.3268: a white skull (you were attacked) on the chip's corner,
+            as a count sits on a bell; a red one IS the chip now */}
+        {own === 'white' && st.kind !== 'outlaw' && (
+          <span className="bt-nml-pill__own" data-nml-own-skull="white" title="white skull"
+            style={{ borderColor: '#F2F2F2' }}>
+            <NmlSkull size={10} color="#F2F2F2" />
           </span>
         )}
       </span>
     </button>
   );
 }
+/* the v2.3.3765 name, kept for anything that still imports it */
+export const NmlPill = PlaceChip;
 
 /* v2.3.3765: the badge itself moved to the top bar (NmlPill); this keeps the
    line along the band, on its own clock, while you are in No man's land */

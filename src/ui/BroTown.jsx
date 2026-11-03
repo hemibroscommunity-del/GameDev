@@ -14043,7 +14043,7 @@ export var BroTown = function BroTown(_ref0) {
   }, "Skip tutorial"))), rpgState && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      top: 44,
+      top: 'var(--bt-hud-top, 44px)', /* v2.3.3921: the status chips start under the player frame (was 44) */
       left: 8,
       zIndex: 18,
       fontSize: 11,
@@ -14245,7 +14245,7 @@ export var BroTown = function BroTown(_ref0) {
         'data-quest-hud': '1',
         'data-quest-hud-next': _to.quest.id,
         style: {
-          position: 'absolute', top: 56, left: 8, zIndex: 17, pointerEvents: 'none',
+          position: 'absolute', top: 'calc(var(--bt-hud-top, 44px) + 12px)' /* v2.3.3921: under the player frame (was 56) */, left: 8, zIndex: 17, pointerEvents: 'none',
           background: 'rgba(17,25,29,.85)', padding: '4px 10px', borderRadius: 6,
           border: '1px solid rgba(216,169,77,.35)', maxWidth: 248
         }
@@ -14297,7 +14297,7 @@ export var BroTown = function BroTown(_ref0) {
       title: questHudFolded ? 'Show the objective' : 'Hide the objective',
       style: {
         position: 'absolute',
-        top: 56,
+        top: 'calc(var(--bt-hud-top, 44px) + 12px)', /* v2.3.3921: under the player frame (game.css --bt-hud-top; was 56) */
         left: 8,
         zIndex: 17,
         /* An ancestor turns pointer events off so the world stays tappable
