@@ -66,6 +66,12 @@ const bar = (P) => P.page.evaluate(() => {
     inBar: document.querySelectorAll('.bt-zone-header [data-nml-badge], .bt-zone-header [data-place-chip], .bt-zone-header .bt-nml-pill').length,
     plate: pr ? { l: Math.round(pr.left), r: Math.round(pr.left + pr.width), t: Math.round(pr.top), b: Math.round(pr.top + pr.height) } : null,
     plateSub: mm ? mm.sub : null, plateRed: mm ? !!mm.red : null,
+    /* a thumb's control reaching under the plate (a short sideways screen): the
+       plate's tap gives way to it (NmlBadge.jsx clearOfThumbs) */
+    thumbOnPlate: !!pr && ['[data-ricon]', '[data-sprint]', '[data-quickeat]', '.bt-special-btn', '.bt-ability-btn', '.bt-burst-btn'].some((sel) => {
+      const n = document.querySelector(sel); const q = n && n.getBoundingClientRect();
+      return !!q && q.width > 0 && q.height > 0 && !(q.right <= pr.left || q.left >= pr.left + pr.width || q.bottom <= pr.top || q.top >= pr.top + pr.height);
+    }),
     header: box('.bt-zone-header'), title: box('[data-zone-title]'),
     titleText: title ? title.textContent : null,
     titleColor: title ? getComputedStyle(title).color : null,
@@ -78,7 +84,11 @@ const clear = (c) => /rgba\(0, 0, 0, 0\)|transparent/.test(c || '');
 /* nothing of No man's land in the bar, its centre's name drawn clear; the
    plate says "No man's land N" in red and the tap lies over it, on top */
 const placed = (L) => L.inBar === 0 && clear(L.titleColor) && !!L.title && !!L.header
-  && !!L.pill && L.top === true && L.at === 'plate' && near(L.pill, L.plate)
+  /* v2.3.4173: where a thumb's control lies under the plate (the one band on a
+     short sideways screen, 667 x 375 and 568 x 320) the tap is trimmed clear
+     of it, or there is none -- the plate still says it */
+  && ((!!L.pill && L.top === true && L.at === 'plate' && near(L.pill, L.plate))
+    || (L.thumbOnPlate && (!L.pill || (L.top === true && L.pill.t >= L.plate.t - 1 && L.pill.b <= L.plate.b + 1))))
   && /^No man's land \d+$/.test(L.plateSub || '') && L.plateRed === true
   && L.pill.r <= L.vw && L.pill.b <= L.vh && !L.purse /* v2.3.4173: the purse left the bar */;
 
