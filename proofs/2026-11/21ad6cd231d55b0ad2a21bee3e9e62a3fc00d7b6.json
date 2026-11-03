@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "21ad6cd231d55b0ad2a21bee3e9e62a3fc00d7b6",
+  "tree": "fe2df242519b21ecdf9d85c8e2403e6b917726ae",
+  "committedAt": "2026-11-02T18:42:45-08:00",
+  "subject": "Merge pull request #1387 from hemibroscommunity-del/claude/death-zones",
+  "files": 7400,
+  "bytes": 845053598,
+  "listingSha256": "79e6d25047423939333bed919d06f9d6a287f32517dbf7c778cc55ff7191c4cf",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

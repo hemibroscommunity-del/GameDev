@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bbd75fa1f1e60781c2e3075f1497c70ed955879f",
+  "tree": "81337abc5fc296151a173b9d47ae67c94a725e8b",
+  "committedAt": "2026-11-02T18:41:49-08:00",
+  "subject": "Merge pull request #1376 from hemibroscommunity-del/claude/grade-glow",
+  "files": 7394,
+  "bytes": 844910601,
+  "listingSha256": "630bf5a3508365de1bf26e88912560a65500ebb99e0f4e9913ff7d618b0884fa",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
