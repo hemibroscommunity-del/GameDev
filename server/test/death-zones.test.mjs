@@ -311,9 +311,9 @@ function readPng(rel) {
   const fx = src('src/rendering/monsterDeathFx.js'), sp = src('src/rendering/slimeSplat.js');
   const er = src('src/rendering/systems/entityRenderer.js');
   const at = (t) => P.splatPose(t);
-  check('9a the splat opens on the hit\'s squash, lies flat (wider, a sixth of its height) and fades out by its end, about half a second',
+  check('9a the splat opens on the hit\'s squash, lies flat (wider, a third of its height) and fades out by its end, about half a second',
     P.SPLAT_MS >= 400 && P.SPLAT_MS <= 700 && at(0).sy === 1 && at(60).sy < 1 && at(60).sx > 1
-    && at(P.SPLAT_FLAT_MS).sy < 0.25 && at(P.SPLAT_FLAT_MS).sx > 1.3 && at(P.SPLAT_FLAT_MS).a === 1
+    && at(P.SPLAT_FLAT_MS).sy < 0.4 && at(P.SPLAT_FLAT_MS).sx > 1.3 && at(P.SPLAT_FLAT_MS).a === 1
     && at(P.SPLAT_MS).a === 0 && at(P.SPLAT_MS + 100).a === 0, [at(60), at(P.SPLAT_FLAT_MS), at(P.SPLAT_MS)]);
   let mono = true;
   for (let t = P.SPLAT_BEAT_MS; t < P.SPLAT_MS; t += 10) { if (at(t + 10).sy > at(t).sy + 1e-9 || at(t + 10).a > at(t).a + 1e-9) mono = false; }

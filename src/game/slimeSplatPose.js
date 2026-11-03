@@ -6,7 +6,8 @@
  * The owner: "remove the chunks form the electric slime death (and any other
  * chunks like that from slime deaths - doesn't match the art aesthetic."  The
  * slime opens on the hit's squash (as every death does), flattens about its
- * foot into a splat a third wider and a sixth of its height, and fades.
+ * foot into a puddle half again as wide and a third of its height, and
+ * fades (a sixth read as a sliver on a phone: the shots in the spec).
  */
 export const SPLAT_MS = 520;        /* the whole death, fade included */
 export const SPLAT_BEAT_MS = 110;   /* the hit's squash, as every death opens */
@@ -24,8 +25,8 @@ export function splatPose(t) {
   }
   if (t < SPLAT_FLAT_MS) {
     const k = ease((t - SPLAT_BEAT_MS) / (SPLAT_FLAT_MS - SPLAT_BEAT_MS));
-    return { sx: 1.16 + 0.34 * k, sy: 0.8 - 0.62 * k, a: 1 };
+    return { sx: 1.16 + 0.34 * k, sy: 0.8 - 0.46 * k, a: 1 };
   }
   const k = Math.min(1, (t - SPLAT_FLAT_MS) / (SPLAT_MS - SPLAT_FLAT_MS));
-  return { sx: 1.5 + 0.1 * k, sy: 0.18 - 0.04 * k, a: Math.max(0, 1 - k) };
+  return { sx: 1.5 + 0.1 * k, sy: 0.34 - 0.04 * k, a: Math.max(0, 1 - k) };
 }

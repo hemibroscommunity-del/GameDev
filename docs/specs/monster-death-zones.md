@@ -117,7 +117,8 @@ death strip (`slime-death-v10`, a cloud of goo flecks), the cuts (slice, decap)
 and its zone death above (two gobs). Now, whatever was rolled or forced, it
 **squashes flat and fades** (`src/rendering/slimeSplat.js`; its shape over
 time `src/game/slimeSplatPose.js`): the hit's squash (110 ms), flat by 300 ms
-(half again as wide, a sixth of its height, about its foot), faded by 520 ms.
+(half again as wide, a third of its height, about its foot: a sixth read
+as a sliver on a phone), faded by 520 ms.
 It is the last frame it lived in, so its own colour and recolour, never the
 blow's red; one sprite of the live picture (no new texture, no mask, no
 Graphics: nothing is drawn by code, the owner's v2.3.2226 "remove code drawn

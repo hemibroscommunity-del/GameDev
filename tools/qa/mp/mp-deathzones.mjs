@@ -445,7 +445,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
           if (o.off) {
             for (let i = 1; i <= 3; i++) await P.page.screenshot({ path: `${OUT}/${o.shot}-${i}.png`, clip: box }).catch(() => {});
           } else {
-            for (const [i, below] of [[1, 0.6], [2, 0.25]]) {
+            for (const [i, below] of [[1, 0.75], [2, 0.4]]) {
               for (let n = 0; n < 60; n++) {
                 const d = (await state(P, mid)).d;
                 if (d && d.flat && d.flat[1] < below) break;
@@ -484,7 +484,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const r = await splatDeath(key, variant, kind, o);
         const w = r.w;
         rec.ok(`12. ${label}: squashes flat and fades, no pieces (kind ${w && w.first && w.first.kind}, flattest ${w && w.minFlat})`,
-          !!(w && w.splat && w.first && w.first.kind === 'splat' && !w.chunks && w.minFlat != null && w.minFlat < 0.3), { w, err: r.err });
+          !!(w && w.splat && w.first && w.first.kind === 'splat' && !w.chunks && w.minFlat != null && w.minFlat < 0.45), { w, err: r.err });
         rec.ok(`12. ${label}: ...no debris of any kind (no material bursts), and let go once over`,
           !!(w && r.bursts === 0 && (r.after == null || r.after.done === true)), { bursts: r.bursts, after: r.after });
       }
