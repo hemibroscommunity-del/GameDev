@@ -548,65 +548,8 @@ export const STATES = [
       if (!(await has(P, '[data-section="Build"][aria-pressed="true"]'))) return 'the Points tab did not take the press';
     },
   },
-  /* ═══ v2.3.3999: YOUR PORTRAIT IS A HEMI BRO (docs/specs/hemi-portrait.md) ═══
-     The headshot on the Character button and the identity strip is a 32 x 32
-     Hemi Bros bust of your look.  Two looks: the review's own character, and
-     one dressed (a hat over hair, a coloured beard, a patterned tee) -- put
-     back after, so the screens behind it keep the review's character. */
-  {
-    id: 'hemi-portrait', group: 'Dashboard', title: 'Character: your portrait (a Hemi Bro)',
-    about: 'The Character page open: on the Character button and in the strip with your name, your portrait is a Hemi Bro -- a 32 x 32 pixel bust in the style of the Hemi Bros NFT collection the game is named for, built from the collection\'s own trait art in your look (skin, hair, hat, beard, eyes, eyewear, shirt and its pattern), on one of the collection\'s flat backgrounds.',
-    run: async ({ P }) => {
-      const e = await bus(P, 'open', 'hero');
-      if (e) return e;
-      for (let i = 0; i < 30; i++) {
-        const st = await evalIn(P, () => (window.__btHemiFace ? window.__btHemiFace() : null));
-        if (!st) return 'no Hemi Bros portrait probe';
-        if (st.made > 0 || st.cached > 0) return;
-        await wait(P, 200);
-      }
-      return 'no Hemi Bros portrait was made';
-    },
-  },
-  {
-    id: 'hemi-portrait-dressed', group: 'Dashboard', title: 'Character: your portrait, dressed',
-    about: 'The same page after a change of look -- a brown cowboy hat (the collection wears hair OR a hat, so the bust is bald under it, his ear below the brim), a long black beard, sleepy eyes, gold glasses and a green tee with yellow diagonals: the portrait follows the look at once.',
-    run: async ({ P }) => {
-      const was = await evalIn(P, () => {
-        const before = window.__btHemiFace ? window.__btHemiFace().made : 0;
-        const keys = ['bt-headwear', 'bt-hatcolor', 'bt-facialhair', 'bt-beardcolor', 'bt-eyestyle', 'bt-eyewear', 'bt-shirtcolor', 'bt-shirtpat'];
-        const old = {};
-        try { for (const k of keys) old[k] = localStorage.getItem(k); } catch (e) { /* private mode */ }
-        window.__btHemiReviewWas = old;
-        const set = (f, v) => { if (typeof window[f] === 'function') window[f](v); };
-        set('__btSetHeadwear', 'cowboy-hat'); set('__btSetFacialHair', 'beard'); set('__btSetFacialHairColor', 'black');
-        set('__btSetEyeStyle', 'sleepy'); set('__btSetEyewear', 'golden-glasses'); set('__btSetShirtColor', 'green');
-        if (typeof window.__btSetPattern === 'function') window.__btSetPattern('shirt', 'diag:5');
-        return before;
-      });
-      const e = await bus(P, 'open', 'hero');
-      if (e) return e;
-      for (let i = 0; i < 30; i++) {
-        const st = await evalIn(P, () => (window.__btHemiFace ? window.__btHemiFace() : null));
-        if (st && st.made > was && st.last && st.last.headwear === 'cowboyhat') return;
-        await wait(P, 200);
-      }
-      return 'the portrait did not follow the look';
-    },
-    after: async ({ P }) => {
-      await evalIn(P, () => {
-        const old = window.__btHemiReviewWas || {};
-        const set = (f, v) => { if (typeof window[f] === 'function') window[f](v); };
-        set('__btSetHeadwear', old['bt-headwear'] || 'none'); set('__btSetFacialHair', old['bt-facialhair'] || 'none');
-        set('__btSetFacialHairColor', old['bt-beardcolor'] || 'default'); set('__btSetEyeStyle', old['bt-eyestyle'] || 'none');
-        set('__btSetEyewear', old['bt-eyewear'] || 'none'); set('__btSetShirtColor', old['bt-shirtcolor'] || 'default');
-        if (typeof window.__btSetPattern === 'function') window.__btSetPattern('shirt', old['bt-shirtpat'] || '');
-      });
-      await wait(P, 400);
-    },
-  },
-  /* v2.3.3944: the quest journal (dash/QuestsPanel.jsx): it opens on the
-     quest you are on (a run has taken Into the Blue at quest-accepted) */
+  /* v2.3.4049: the Hemi Bro portrait's two screens (v2.3.3999) went with its
+     default: it is off unless `?hemiface=1` (docs/specs/hemi-portrait.md) */
   dash('quests', 'Quests', 'The quest journal: the achievement points quests have paid, then the quest you are on in full (NOW with its count and bar, WHERE with Show on map, WHO you talked to, GIVEN TO YOU, REWARD with +5 Achievement Points, NEXT), then the log: Active with a Track star each, Available (who has one and where), Done with each quest\'s +5 AP.  The daily rewards card above.'),
   {
     id: 'dash-quest-detail', group: 'Dashboard', title: 'A quest in detail',
