@@ -1,5 +1,8 @@
 # Your portrait is a Hemi Bro (v2.3.3999)
 
+> **OFF by default since v2.3.4049** (owner: *"Sorry but I don't like the
+> pfp"*): `?hemiface=1` turns it on for one tab. See "Off" below.
+
 > *"For profile picture art I want it in the style of the original hemi bro
 > NFT's as much as possible with the custom stuff added on to it. Is that
 > feasible?"* -- the owner, 2026-11-03
@@ -128,10 +131,19 @@ bust's grid), placed as the others are:
 
 ## Off
 
-- `?hemiface=0` brings back the game's own headshot for one tab
-  (`?hemiface=1` forces it on).
-- The Test panel's "Memory savers" row "Your portrait as a Hemi Bro" turns it
-  off for every phone from its next load (`off_hemiface`, clientOff.js).
+**Off by default since v2.3.4049.** The owner saw it on 2026-11-03 and said:
+*"Sorry but I don't like the pfp"*. So your portrait is the game's own
+headshot again everywhere, exactly as before v2.3.3999: the Character button,
+the player frame, the level-up medallion and every other player's portrait.
+Nothing is deleted:
+
+- `?hemiface=1` turns the Hemi Bro portrait on for one tab (`?hemiface=0`, or
+  no word at all, leaves it off). While it is off the atlas is not loaded.
+- The Test panel's row "Your portrait as a Hemi Bro" (v2.3.3999) went with
+  the default: there is nothing left for it to turn off.
+- The UI review's two portrait screens went too.
+- The townsfolk's dialogue portraits are a different thing
+  (`npc-creator-looks.md`) and stay Hemi Bros.
 
 ## Tests
 

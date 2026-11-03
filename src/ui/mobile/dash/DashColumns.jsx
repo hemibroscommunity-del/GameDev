@@ -27,7 +27,9 @@ import { combatSkillLevel as _combatSkillLevel } from './combatSkill.js';
                         over BRO | EQUIPMENT narrower.
    The props are kept so BottomDashboard (another lane's file) is untouched:
    `desk` adds the weapon bar at the foot; `stacked` and `vwBasis` are read
-   no more (the box decides). */
+   no more (the box decides).  v2.3.4081: nor is `box`, the one band's
+   measured box (?oneband=1, OneBandColumns.jsx, v2.3.4072) -- the Gear tab
+   measures the same box itself. */
 export const DashColumns = ({ R, desk }) => <GearTab R={R} desk={!!desk} />;
 
 /* v2.3.3769's chips at the foot of every page on a computer, now the weapon

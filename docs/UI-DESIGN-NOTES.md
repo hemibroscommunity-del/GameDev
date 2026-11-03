@@ -149,8 +149,9 @@ Screens: all
 - Many buttons are smaller than Apple's 44 px guide; none is unreachable.
 - The NPC dialogue, the quest offer and the world map are drawn over the whole window on a computer.
 - Building windows on a computer are still the phone's 360 px card, low in the world; they fit, but are small on a big window (docs/specs/desktop-wide.md "Not done").
+- **One dashboard on every screen, to try** (v2.3.4072, off by default: `?oneband=1` or the Test panel's "One dashboard (to try)"). The owner asked for "the same layout and just scale differences to screen size ... the menu takes up [a third] of the bottom of the screen even in layout orientation", with "responsive density rather than uniform scaling". With the switch every screen draws the upright band at the bottom, at most a third of the screen, its slots counted from its own box, the world above it (bars at its sides past 2.2:1). It reverses the sideways "no bottom bar" and the computer's sideways layout above, so it waits on the owner trying it on a sideways phone and a computer (docs/specs/one-band.md).
 
-Sources: docs/specs/landscape-mode.md, docs/specs/desktop-wide.md, docs/specs/desktop-keys.md, docs/specs/desktop-harvest.md, docs/specs/reach-every-button.md, docs/specs/ui-review.md, docs/specs/control-redesign.md, docs/TRAPS.md (§175, §210–§214), src/styles/game.css, src/game/worldViewport.js, src/ui/panels/KeyboardHintsPanel.jsx, src/ui/mobile/InstallHint.jsx, src/ui/mobile/dash/SettingsPanel.jsx, CLAUDE.md
+Sources: docs/specs/landscape-mode.md, docs/specs/desktop-wide.md, docs/specs/one-band.md, docs/specs/desktop-keys.md, docs/specs/desktop-harvest.md, docs/specs/reach-every-button.md, docs/specs/ui-review.md, docs/specs/control-redesign.md, docs/TRAPS.md (§175, §210–§214), src/styles/game.css, src/game/worldViewport.js, src/ui/panels/KeyboardHintsPanel.jsx, src/ui/mobile/InstallHint.jsx, src/ui/mobile/dash/SettingsPanel.jsx, CLAUDE.md
 
 ## The login door and your Login Key
 Screens: login-door, more-account
@@ -715,7 +716,10 @@ Screens: dash-hero, dash-hero-points
 Sources: CLAUDE.md, docs/specs/hero-sheet-pills.md, docs/specs/one-level.md, docs/specs/points-reset.md, docs/specs/levelup-tips.md, docs/specs/progression-v3.md, docs/specs/relative-points.md, docs/LANTERN-SLATE-SPEC.md, src/ui/mobile/sheet/HeroExpanded.jsx, src/styles/game.css
 
 ## Your portrait: a Hemi Bro
-Screens: hemi-portrait, hemi-portrait-dressed
+**OFF since v2.3.4049** (owner, 2026-11-03: "Sorry but I don't like the pfp"): your
+portrait is the game's own headshot again everywhere; `?hemiface=1` shows the
+Hemi Bro below for one tab. Its two review screens went with it. The
+townsfolk's dialogue busts are not this and stay Hemi Bros.
 
 **What it is for:** Your face on the Character button, in the strip with your name, in the level-up medallion and on every other player's card: who you are, at a glance.
 
