@@ -1617,12 +1617,14 @@ Screens: death-card
 **Decisions, and why:**
 - **A card, for the five seconds** (v2.3.3817). A judge's pass on a computer: a level-1 bro died in the first quest's slimes and "just reappeared in BroTown"; none of the captures showed a death. A death showed only things that pass: the body's fall, a shake, a half-second dark flash, the sound and a floating "YOU DIED" like a hit number. Now a small card in the middle of the play area says "You died", "Killed by Blue Slime" (the monster's name as its plate says it; in No man's land the player's name, and what they took once the worker says so), and "Back in BroTown in 5" counting down.
 - **At the top, never over you** (v2.3.3841). The owner: "The 'you got killed by' placard needs to be positioned in a different spot (maybe towards the top) because I totally missed my exploding skeleton death." In the middle it covered exactly where the bro bursts into bones. It now takes the place of No man's land's "Attack?" window (cardPlace): beside the minimap on a computer and a sideways phone, under it, centred, on an upright phone; slid off the middle when it would come down near your head. It comes in quickly (150 ms, fading and settling) so the eye goes to it.
+- **A strip across the top, not a stamp** (v2.3.3972). The owner: "The you died by snowman message should span the entire top strip of the game screen. It looks a bit silly as a stamp-like screen near the top." It is a dark red band directly under the top bar, as wide as the top bar (the play column: the whole phone upright, the world's own width sideways and on a computer), with a thin lighter edge, sliding down out of the bar in 150 ms: "YOU DIED · killed by a Snowman · back in BroTown in 5" on one line where it fits, two on a narrow phone and a computer's column (the head and who, then the rest). It covers the top of the minimap for those five seconds; the bro, in the middle, stays clear, so the bone burst is seen.
 - **It never takes a tap or a click**, and has nothing to close: a notice, not a window. A dying player's thumbs are still on the controls, and the card goes by itself with the respawn.
 - **One line in the chat once you are back** ("You were killed by Blue Slime, and came back in BroTown."), so a glance away, or a screenshot that missed the five seconds, still finds it.
 - **"BroTown"**, never "town" or "the Wheel": the place you come back to, as the top bar names it.
 
 **Tried before, and changed:**
 - In the middle of the play area (v2.3.3817): it hid the death itself.
+- A 264 px rounded card beside or under the minimap (v2.3.3841): "a bit silly as a stamp-like screen" (v2.3.3972).
 - The floating "YOU DIED" over the body alone (kept: it is the death's moment; the card says the rest).
 
 **Still open:**

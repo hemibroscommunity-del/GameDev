@@ -118,6 +118,26 @@ const S0 = () => ({
   check('4f its words are BroTown\'s, never "Wheel" or "town" alone', !/Wheel|back in town/i.test(src('src/game/deathCard.js').split('\n').filter((l) => /'[^']*'/.test(l) && !/^\s*(\/\*|\*)/.test(l)).join('\n')));
 }
 
+// §5 v2.3.3972: a strip across the top (the owner: "should span the entire top strip of the game screen")
+{
+  const v = { title: 'You died', by: 'Killed by Snowman', killer: 'Snowman', pvp: false, note: null, back: 'Back in BroTown in 5' };
+  const w = D.deathStripWords(v);
+  check('5a "YOU DIED", "killed by a Snowman", "back in BroTown in 5"', w.head === 'YOU DIED' && w.parts.join('|') === 'killed by a Snowman|back in BroTown in 5', w);
+  check('5b "an" before a vowel; a boss and "a burning heap" as they are',
+    D.deathStripWords({ ...v, killer: 'Ember Goblin' }).parts[0] === 'killed by an Ember Goblin'
+      && D.deathStripWords({ ...v, killer: 'Boss Bog Lurker' }).parts[0] === 'killed by Boss Bog Lurker'
+      && D.deathStripWords({ ...v, killer: 'a burning heap' }).parts[0] === 'killed by a burning heap');
+  check('5c a player: the card\'s own words', D.deathStripWords({ ...v, killer: 'Raider', pvp: true, by: 'Raider killed you in No man\'s land' }).parts[0] === 'Raider killed you in No man\'s land');
+  check('5d the note rides between', D.deathStripWords({ ...v, note: 'Your bag is safe' }).parts.join('|') === 'killed by a Snowman|Your bag is safe|back in BroTown in 5');
+  check('5e one line on a computer\'s column (800), two on an upright phone (390)', D.deathStripOneLine(w, 800) && !D.deathStripOneLine(w, 390));
+  check('5f nothing to say: null', D.deathStripWords(null) === null);
+  const live = D.deathCardView({ _deathCard: { at: 0, ms: 5000, killer: 'Snowman', pvp: false, keptBag: false, lost: null } }, 1000);
+  check('5g the view carries who (for the strip)', live.killer === 'Snowman' && live.pvp === false && live.back === 'Back in BroTown in 4', live);
+  const card = src('src/ui/mobile/DeathCard.jsx');
+  check('5h the strip is placed from the top bar\'s own box (the play column), never cardPlace', /deathStripPlace\(\)/.test(card) && !/import \{ cardPlace|cardPlace\(\)/.test(card)
+    && /\.bt-zone-header/.test(src('src/ui/mobile/deathStripPlace.js')) && !/innerWidth\s*[-*+]/.test(src('src/ui/mobile/deathStripPlace.js')));
+}
+
 console.log('\n' + passed + ' passed, ' + failed + ' failed');
 if (failed > 0) { console.log(failed + ' FAILURE(S)'); process.exit(1); }
 console.log('ALL PASS');

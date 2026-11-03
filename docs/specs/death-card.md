@@ -31,10 +31,21 @@ killed you or where you were going.
     carried and wore"; in a dungeon, "Your bag is safe";
   - "Back in BroTown in 5", counting down from the worker's `respawnInMs`.
   It sits at the top of the play area (v2.3.3841: in the middle it covered the
-  bro bursting into bones, and the owner missed his own death): beside the
-  minimap on a computer and a sideways phone, under it on an upright phone,
-  never over you (NmlAskCard.jsx `cardPlace`), portalled to the body at
-  `Z_ABOVE_DASH_PROMPT`; it comes in over 150 ms. It never takes a tap or a click (`pointer-events: none`) and
+  bro bursting into bones, and the owner missed his own death), never over
+  you, portalled to the body at `Z_ABOVE_DASH_PROMPT`.
+  **Since v2.3.3972 it is a strip, not a card** (the owner: "The you died by
+  snowman message should span the entire top strip of the game screen. It
+  looks a bit silly as a stamp-like screen near the top."): a dark red band
+  (`#4A1517`, a thin lighter edge `#C85A50`) directly under the top bar and as
+  wide as it (`src/ui/mobile/deathStripPlace.js`: the `.bt-zone-header`'s box,
+  which is the play column in every layout; never the window), sliding down out
+  of the bar over 150 ms. Its words (`deathStripWords`): "YOU DIED · killed by
+  a Snowman · back in BroTown in 5" (a monster with "a"/"an"; a player's, a
+  boss's and the heap's as the card said them; the No man's land or dungeon
+  note between), on one line when it fits (`deathStripOneLine`, an estimate
+  with no layout read), else two: the head and who, then the rest. It covers
+  the top of the minimap for the five seconds. (v2.3.3841-v2.3.3971: a 264 px
+  rounded card beside or under the minimap, NmlAskCard.jsx `cardPlace`.) It never takes a tap or a click (`pointer-events: none`) and
   has nothing to close.
 - **One line in the chat** once you are back (`src/game/respawn.js`, so the
   watchdog's respawn says it too): "You were killed by Blue Slime, and came
@@ -62,7 +73,9 @@ worker since v2.3.3556 sends.
   words and countdown, the losses, the chat's line, the wiring.
 - `tools/qa/mp/mp-deathcard.mjs`: an upright phone and a computer (sideways)
   die to a Flame Fields goblin; the card comes and names it, counts down,
-  never takes a tap, goes with the respawn, and the chat says it once.
+  never takes a tap, goes with the respawn, and the chat says it once;
+  v2.3.3972: it is a strip right under the top bar, exactly its width, with
+  "YOU DIED · killed by a Fire Goblin · back in BroTown in N".
 - The UI review's `death-card` screen.
 
 ![a computer, a real death](death-card/computer-fire-goblin.png)
