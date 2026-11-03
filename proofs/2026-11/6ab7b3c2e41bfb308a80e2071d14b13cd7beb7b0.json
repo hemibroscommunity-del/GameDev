@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6ab7b3c2e41bfb308a80e2071d14b13cd7beb7b0",
+  "tree": "1a75e418ddb21b103877388032b6c0530d2be427",
+  "committedAt": "2026-11-02T19:28:08-08:00",
+  "subject": "Merge pull request #1367 from hemibroscommunity-del/claude/plain-words",
+  "files": 7441,
+  "bytes": 845749040,
+  "listingSha256": "d936e748cb5f266dbfe5ffc5a3da2582ad48116e4361f35ae9d8b9a3a2413bf8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "48ce7b5515ecd530908d24368c131b78898290fc",
+  "tree": "76ce56f534cb13f5b769f3c477d4b49425545ad2",
+  "committedAt": "2026-11-02T19:28:01-08:00",
+  "subject": "Merge pull request #1368 from hemibroscommunity-del/claude/no-attack-words",
+  "files": 7440,
+  "bytes": 845732675,
+  "listingSha256": "d6cdd3f364d6ced3c81c19008eb0b50b4e70a9a24a2227b03603b2d28dd4ee9c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
