@@ -1,4 +1,4 @@
-/* ═══ v2.3.3994: WHERE THE "YOU DIED" STRIP GOES ═══
+/* ═══ v2.3.4035: WHERE THE "YOU DIED" STRIP GOES ═══
  * Directly under the top bar, across the whole play column (the owner: "should
  * span the entire top strip of the game screen").  The top bar
  * (.bt-zone-header) is itself the play column's width in every layout -- the

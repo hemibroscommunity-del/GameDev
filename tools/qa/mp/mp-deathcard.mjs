@@ -81,7 +81,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
             const c = cv ? cv.getBoundingClientRect() : null;
             mid = { box: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], hitsCard: !!(top && top.closest && top.closest('[data-death-card]')), pe: getComputedStyle(card).pointerEvents,
               at: card.getAttribute('data-death-at'), lines: card.getAttribute('data-death-lines'), setTop: Math.round(parseFloat(card.style.top)), text: card.innerText.split('\n').map((x) => x.trim()).filter(Boolean).join(' \u00b7 '),
-              /* v2.3.3994: the top bar's box (the play column's width) */
+              /* v2.3.4035: the top bar's box (the play column's width) */
               bar: (() => { const b = document.querySelector('.bt-zone-header'); const q = b && b.getBoundingClientRect(); return q ? [Math.round(q.left), Math.round(q.top), Math.round(q.width), Math.round(q.height)] : null; })(),
               play: c ? [Math.round(c.left), Math.round(c.top), Math.round(c.width), Math.round(c.height)] : null };
           }
@@ -121,7 +121,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       })();
       rec.ok(`5. ${cfg.key}: it sits at the top of the play area (${off && off.at}, its bottom ${off && off.bottomFrac} of the way down), never over you`,
         !!off && off.bottomFrac <= 0.42 && !off.overYou, { off, mid });
-      /* ═══ v2.3.3994: A STRIP ACROSS THE TOP ═══
+      /* ═══ v2.3.4035: A STRIP ACROSS THE TOP ═══
          The owner: "should span the entire top strip of the game screen.  It
          looks a bit silly as a stamp-like screen near the top."  Right under
          the top bar, as wide as it (the play column), its words on one line

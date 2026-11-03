@@ -33,7 +33,7 @@ killed you or where you were going.
   It sits at the top of the play area (v2.3.3841: in the middle it covered the
   bro bursting into bones, and the owner missed his own death), never over
   you, portalled to the body at `Z_ABOVE_DASH_PROMPT`.
-  **Since v2.3.3994 it is a strip, not a card** (the owner: "The you died by
+  **Since v2.3.4035 it is a strip, not a card** (the owner: "The you died by
   snowman message should span the entire top strip of the game screen. It
   looks a bit silly as a stamp-like screen near the top."): a dark red band
   (`#4A1517`, a thin lighter edge `#C85A50`) directly under the top bar and as
@@ -74,7 +74,7 @@ worker since v2.3.3556 sends.
 - `tools/qa/mp/mp-deathcard.mjs`: an upright phone and a computer (sideways)
   die to a Flame Fields goblin; the card comes and names it, counts down,
   never takes a tap, goes with the respawn, and the chat says it once;
-  v2.3.3994: it is a strip right under the top bar, exactly its width, with
+  v2.3.4035: it is a strip right under the top bar, exactly its width, with
   "YOU DIED · killed by a Fire Goblin · back in BroTown in N".
 - The UI review's `death-card` screen.
 

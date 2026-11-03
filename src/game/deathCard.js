@@ -90,13 +90,13 @@ export function deathCardView(S, now) {
     note: d.lost || (d.keptBag ? 'Your bag is safe' : null),
     back: 'Back in BroTown in ' + Math.max(0, Math.ceil(left / 1000)),
     secs: Math.max(0, Math.ceil(left / 1000)),
-    /* v2.3.3994: who, for the strip's own words (deathStripWords) */
+    /* v2.3.4035: who, for the strip's own words (deathStripWords) */
     killer: d.killer || null,
     pvp: !!d.pvp,
   };
 }
 
-/* ═══ v2.3.3994: THE STRIP'S WORDS ═══
+/* ═══ v2.3.4035: THE STRIP'S WORDS ═══
    The owner, 2026-11-02: "The you died by snowman message should span the
    entire top strip of the game screen.  It looks a bit silly as a stamp-like
    screen near the top."  One line across the play area (ui/mobile/
