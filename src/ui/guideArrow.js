@@ -42,6 +42,7 @@ import { pointsTipWanted, pointsTipDone } from '../game/pointsTips.js';
 import { deskWords, onComputer } from '../game/deskWords.js';
 import { ownedWeaponSlots } from '../game/weaponSlots.js';   /* v2.3.4130: the swap lesson */
 import { mayorScreenRect } from './mayorScreen.js';   /* v2.3.4106: the first steps' Mayor */
+import { worldReady } from './loadingGate.js';   /* v2.3.4136: nothing while a loading screen is up */
 /* v2.3.4106: the pacing referee's answers (onboardingPace.js: is a plate up,
    was the tutorial skipped) are handed in by the coach that starts this --
    that module imports through '@/', which node (the server's test) cannot */
@@ -304,7 +305,8 @@ function tick(getS) {
   let S = null;
   try { S = getS && getS(); } catch (e) { S = null; }
   const rpg = S && S.rpg;
-  if (!S || !rpg || !S.__introLiftedAt || S._zoneLoading) { hide(); return; }
+  /* v2.3.4136: and never while a loading screen is up (ui/loadingGate.js) */
+  if (!S || !rpg || !S.__introLiftedAt || S._zoneLoading || !worldReady(now)) { hide(); return; }
   const who = S.myId || null;
   if (!who) { hide(); return; }
   if (who !== _who) { _who = who; _done = loadDone(who); _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _swapFrom = null; }
