@@ -656,6 +656,26 @@ Screens: dash-hero, dash-hero-points
 
 Sources: CLAUDE.md, docs/specs/hero-sheet-pills.md, docs/specs/one-level.md, docs/specs/points-reset.md, docs/specs/levelup-tips.md, docs/specs/progression-v3.md, docs/specs/relative-points.md, docs/LANTERN-SLATE-SPEC.md, src/ui/mobile/sheet/HeroExpanded.jsx, src/styles/game.css
 
+## Your portrait: a Hemi Bro
+Screens: hemi-portrait, hemi-portrait-dressed
+
+**What it is for:** Your face on the Character button, in the strip with your name, in the level-up medallion and on every other player's card: who you are, at a glance.
+
+**Decisions, and why:**
+- **It is a Hemi Bro** (v2.3.3957, owner: "For profile picture art I want it in the style of the original hemi bro NFT's as much as possible with the custom stuff added on to it"). Hemi Bros, the NFT collection the game is named for, is 3,333 busts of 32 x 32 pixels turned to the viewer's left on a flat background. Your portrait is such a bust of your look, built from the collection's own trait art, by the same rules as the townsfolk's dialogue heads: your skin, hair, hat, beard, eyes, eyewear and shirt (its colour and pattern) are the collection's pieces recoloured or combined, never redrawn.
+- **Bald under a hat, the ear below the brim.** The collection wears hair OR a hat; a band (a bandana, the headphones) and what perches (ears, horns, a crown, the halo) sit on the hair.
+- **The background is one of the collection's seven flat colours**, the one furthest from your shirt colour, so the bust never melts into it.
+- **Crisp, never smoothed**: each of its 32 x 32 pixels is a flat block, drawn pixelated wherever it is shown.
+- **What the collection has not got wears the nearest piece** (wavy and long hair, the light bulb, the 3D and white glasses, one-eye, demon and alien eyes; docs/specs/hemi-portrait.md lists each with an art brief). The monkey keeps the game's own portrait. Worn armour is left out.
+
+**Please don't suggest:**
+- A drawn portrait of the 3D figure (the game's own headshot, before v2.3.3957): the owner asked for the collection's style. It is still one switch away (`?hemiface=0`, or the Test panel's "Your portrait as a Hemi Bro").
+
+**Still open:**
+- The art for the looks with no match yet.
+
+Sources: docs/specs/hemi-portrait.md, docs/specs/npc-creator-looks.md, src/rendering/hemiBust.js, src/rendering/hemiLook.js, src/rendering/hemiBustCore.js
+
 ## The quest log
 Screens: dash-quests, dash-quest-detail
 
