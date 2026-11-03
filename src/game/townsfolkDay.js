@@ -1,4 +1,4 @@
-/* ═══ v2.3.4020: THE TOWNSFOLK'S DAY, A FRAME AT A TIME ═══
+/* ═══ v2.3.4038: THE TOWNSFOLK'S DAY, A FRAME AT A TIME ═══
  *
  * The why, and the loops: game/townsfolkWalk.js.  This is the game loop's
  * side of it (BroTown.jsx, the NPC pass): once a frame, townsfolkFrame works

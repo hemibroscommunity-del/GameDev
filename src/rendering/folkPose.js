@@ -1,4 +1,4 @@
-/* ═══ v2.3.4020: A TOWNSPERSON AT WORK, IN THE PLAYER'S OWN POSES ═══
+/* ═══ v2.3.4038: A TOWNSPERSON AT WORK, IN THE PLAYER'S OWN POSES ═══
  *
  * The owner: "Make NPCs walk around and do stuff now since it doesn't make
  * much memory anymore."  When his day has him at a stop with a job
