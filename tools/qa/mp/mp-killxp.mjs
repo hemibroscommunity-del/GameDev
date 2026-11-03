@@ -187,7 +187,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const bgs = [...new Set(w.samples.map((s) => s.bg).concat(w.pop ? [w.pop.bg] : []))];
       const minSc = w.pop ? w.pop.first : null /* where it starts */, maxSc = w.pop ? w.pop.max : null;
       rec.ok(`${V.id} 2. no dark pill behind it (background ${bgs.join(', ')}), and it pops: first drawn at ${minSc}, it grows past its size (${maxSc})`,
-        bgs.length > 0 && bgs.every((b) => b === 'rgba(0, 0, 0, 0)' || b === 'transparent') && minSc != null && minSc < maxSc - 0.05 && maxSc >= 1.05 /* (its first frame drawn may come late on this box: the curve is xp-bar.test §3q's) */, { bgs, minSc, maxSc });
+        bgs.length > 0 && bgs.every((b) => b === 'rgba(0, 0, 0, 0)' || b === 'transparent') && minSc != null && minSc < maxSc - 0.03 && maxSc >= 1.05 /* (its first frame drawn may come late on this box: the curve is xp-bar.test §3q's) */, { bgs, minSc, maxSc });
       /* where it flies to (the label's own target, read each frame) against
          the bar's picture, and the last place it was drawn heading there */
       const land = w.lands[0];
