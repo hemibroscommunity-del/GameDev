@@ -132,3 +132,37 @@ so the first call after it loads makes the right overlay.
 The review also noted that `window.__btFishGripTrousers` forgets the overlays
 made so far without destroying them. That is on purpose: one may be on screen
 in that frame. The switch exists for this test's page alone.
+
+## v2.3.4157: an overlay pushed out is let go of for good
+
+The state-machine sweep of 2026-11-03 (V17b, R1-8) found the overlay cache
+leaking. Each overlay is made on a canvas with `Texture.from(canvas)`, which
+parks a texture in Pixi's Cache with the canvas as its key. When the cache was
+full, the least recently drawn overlay was destroyed with its source, but that
+Cache entry leaves only when the parked texture itself is destroyed (TRAPS
+§139), so its canvas stayed for the life of the page.
+
+The cast is 32 frames, so two anglers fill the 64 exactly and nothing is pushed
+out. Three anglers in different outfits on one screen want 96, and the cache
+turns over every frame: about 4,300 overlays a minute, each a 128 x 128 canvas,
+about 4 MB a second kept until an iPhone tab runs out of memory.
+
+Now an overlay pushed out is let go of in TRAPS §139's order
+(`src/rendering/fishTopEvict.js`):
+
+0. any head sprite still showing it points at `Texture.EMPTY` and is hidden. An
+   angler on screen draws its own overlay every frame, so this is for a
+   display the renderer skipped that frame, which would otherwise draw a freed
+   picture (TRAPS §49);
+1. the copy the cache held is destroyed, without its source;
+2. the source, Pixi's Cache entry and the canvas go through
+   `releaseCanvasSource`.
+
+This stops the leak, not the turnover: three anglers still make an overlay a
+frame each. Keying the overlay per outfit, or never pushing out one drawn this
+frame, is a design question for after the expo. The cap stays 64.
+
+**Test.** `server/test/fish-top-evict.test.mjs` replays three anglers fishing
+for a minute, running the renderer's own store statement against a stand-in
+of Pixi's Cache with the real `releaseCanvasSource`: before, 4,320 canvases
+(270 MB) stayed in the Cache; now 64 (4 MB), the ones still held.

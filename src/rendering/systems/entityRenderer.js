@@ -115,6 +115,8 @@ import { gearTint, gearArt, gearMaterial, gearIdFor } from '../gearVariants.js';
 import { materialTint, weaponTint } from '../traits/materialTints.js'; /* v2.3.1757: weapons share the metals table */
 import { getEquip, onEquipChange, isWearingArmor } from '../gearCatalog.js'; /* v2.3.1407: GEAR_CATALOG import dropped with the speculative all-states prewarm */
 import { wornSigOf, pickEvictKey } from '../maskedEvict.js';   /* v2.3.3704: the armour you wear is the last to go */
+import { storeFishTop, holdFishTop, releaseFishTop } from '../fishTopEvict.js';   /* v2.3.4157: a fishing overlay pushed out is let go of for good */
+import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.4157: ...its Cache entry and canvas too (TRAPS §139) */
 import { footstepSurface, groundStepAt } from '@/game/worldTrial.js';   /* v2.3.2967: each ground its own footstep (the Wheel); v2.3.3343: + under another player's boots */
 import { peerStepShare, peerShare } from '@/game/eventSounds.js';   /* v2.3.3343: another player's footsteps and pick, heard */
 import { sprintMult, isSprinting, sprintDust, SPRINT_MULT } from '@/game/sprint.js';   /* v2.3.3006: a sprint's stride is quicker; v2.3.3015: + its dust, and a peer's pace */
@@ -4700,6 +4702,18 @@ function _placePickupHead(display, sb, skinId, pantsId, shoesId, pose, dir, fram
    rod's magenta pixels are kept -- the bare torso/arms stay erased so the plate shows
    through.  Cached per body frame (uid). */
 const _fishTopCache = new Map();
+/* ═══ v2.3.4157: ONE PUSHED OUT IS LET GO OF FOR GOOD ═══
+   Past the cap the least recently drawn went with `destroy(true)`, which
+   left its canvas in Pixi's Cache for the life of the page (Texture.from
+   keys it by the canvas, TRAPS §139): three anglers in different outfits
+   on one screen turn the cache over every frame, about 4 MB a second
+   kept, until an iPhone tab died (the state-machine sweep, V17b R1-8).
+   Now it goes through releaseCanvasSource, after every sprite still
+   showing it -- the head sprites this list holds -- is pointed at
+   Texture.EMPTY (fishTopEvict.js, the why).  The cap is as it was. */
+const FISH_TOP_CAP = 64;
+const _fishTopShown = new Set();
+const _releaseFishTop = (t) => releaseFishTop(t, _fishTopShown, Texture.EMPTY, releaseCanvasSource);
 /* v2.3.3623: the worn chest from a worn list ({k: 'chest:<id>', tex}) as
    {tex, tint} -- its frame and its metal -- or null: the overlay keeps the grip
    off the plate and draws what it leaves bare as a gauntlet in its metal (THE
@@ -4997,8 +5011,9 @@ function _fishTopFrame(bodyTex, rodTex, plate) {
     }
     ctx.putImageData(img, 0, 0);
     const tex = new Texture({ source: Texture.from(cv).source });
-    _fishTopCache.set(key, tex);
-    if (_fishTopCache.size > 64) { const oldest = _fishTopCache.keys().next().value; const ot = _fishTopCache.get(oldest); _fishTopCache.delete(oldest); try { ot.destroy(true); } catch (e) {} }
+    /* v2.3.4157: kept, and the least recently drawn past the cap let go of
+       for good: off its sprites, then its source, Cache entry and canvas */
+    storeFishTop(_fishTopCache, key, tex, FISH_TOP_CAP, _releaseFishTop);
     return tex;
   } catch (e) { return null; }
 }
@@ -5010,7 +5025,8 @@ function _placeFishHead(display, sb, bodyTex, rodTex, plate) {
   if (!hd || !sb || !bodyTex) return;
   const t = _fishTopFrame(bodyTex, rodTex, plate);   /* v2.3.2854: rod found on the raw frame; v2.3.3623: + the plate's frame and metal */
   if (!t) return;
-  if (hd.texture !== t) hd.texture = t;
+  /* v2.3.4157: on the list an overlay let go of is taken off first */
+  if (hd.texture !== t) { hd.texture = t; holdFishTop(_fishTopShown, hd); }
   hd.x = sb.x; hd.y = sb.y;
   const _fw = (t.frame && t.frame.width) || 256;
   const _fh = (t.frame && t.frame.height) || 256;
