@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "c9f2ef9d37dcc65972d3bfc2eaa29b919cd88fcb",
+  "tree": "cb9cfe0ac94dad575a4c34862e2f530fc45f0dbb",
+  "committedAt": "2026-11-02T18:41:19-08:00",
+  "subject": "Merge pull request #1373 from hemibroscommunity-del/claude/farm-centre",
+  "files": 7384,
+  "bytes": 844392415,
+  "listingSha256": "6633f06e0be8194ee7cd344c2f074d44e00f99f9fc883d86c677542312c4da01",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "6798aca5f1bb6d18432430e7d7f1f876cdf73c57",
+  "tree": "6a059e1d65405deb9a84eaf9f233e65f2c63a49b",
+  "committedAt": "2026-11-02T18:41:34-08:00",
+  "subject": "Merge pull request #1375 from hemibroscommunity-del/claude/quest-journal",
+  "files": 7390,
+  "bytes": 844456930,
+  "listingSha256": "83fc554e40335a28ba80b8356f5ef77ae94b441e8b09af67d0e7d7899d1b5a18",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

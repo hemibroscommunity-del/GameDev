@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "44fac1e14f5f890865a3f8aec2908eecde2fc1af",
+  "tree": "7f93c6549b47b51f6b4f017505d34c8bc3d53f6f",
+  "committedAt": "2026-11-02T18:41:03-08:00",
+  "subject": "Merge pull request #1357 from hemibroscommunity-del/claude/weapon-triangle",
+  "files": 7384,
+  "bytes": 844384725,
+  "listingSha256": "477b2e76a0aad04758d0933b453d0ed80b2dadfa9da6ab59f68e5327255d4aea",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
