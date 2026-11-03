@@ -1,19 +1,23 @@
 /* ═══ mp-gearshots (v2.3.4101): THE GEAR TAB'S PICTURES FOR THE DOCS ═══
  *
- * The owner's mockup (2026-11-03): three panels, the bag | LOOK, STATS or
- * DETAILS | the gear.  This scenario plays the real tab in the Wheel's
- * BroTown and saves the four pictures docs/UI-DESIGN-NOTES.md shows:
+ * The owner's second mockup (2026-11-03): the bag (three by three, the coins
+ * beside "All Items") | ONE card | "Equipped".  This scenario plays the real
+ * tab in the Wheel's BroTown and saves the four pictures
+ * docs/UI-DESIGN-NOTES.md shows:
  *
- *   docs/shots/gear-tab-look.webp     upright phone (390 x 844, touch), LOOK
- *   docs/shots/gear-tab-stats.webp    ...STATS
- *   docs/shots/gear-tab-details.webp  ...a spare sword in the bag tapped (DETAILS)
- *   docs/shots/gear-tab-desk.webp     a computer playing wide (1280 x 800), STATS
+ *   docs/shots/gear-tab-overview.webp  upright phone (390 x 844, touch), nothing picked
+ *   docs/shots/gear-tab-item.webp      ...a stack in the bag tapped (the ore)
+ *   docs/shots/gear-tab-slot.webp      ...the Sword slot tapped (the bag filtered)
+ *   docs/shots/gear-tab-desk.webp      a computer playing wide (1280 x 800)
  *
- * Each the bottom of the screen (the band and a little of the world above),
- * cut to 256 colours and saved as lossless webp (the memory law's 256, and a
- * picture in the repo that is small) by tools/qa/mp/gear_shots.py.  The
- * character holds the test kit's weapons, a spare greatsword, a shield, and a
- * few stacks (ore, logs, fish, a gem, bottles), so the bag is not empty.
+ * The overview shows a pill glowing gold with points waiting (the dev kit's
+ * levels, through the worker's own XP path).
+ *
+ * Each phone picture is the band and a strip of world over it, cut to 256
+ * colours and saved as lossless webp (the memory law's 256, and a picture in
+ * the repo that is small) by tools/qa/mp/gear_shots.py.  The character holds
+ * the test kit's weapons, a spare greatsword, a shield, and a few stacks
+ * (ore, bars, logs, fish, a gem, bottles), so the bag is not empty.
  *
  *   npm run build && node tools/qa/mp/run.mjs gearshots
  */
@@ -33,7 +37,7 @@ async function seed(P, wsPort) {
   if (!hasSword) { await H.equipWeapon(P, 'greatsword', 'weapon', 'melee'); await P.page.waitForTimeout(1500); }
   await P.page.evaluate(() => { const S = window._gameState.current; S.channel.send({ type: 'set_active_slot', payload: { slot: 'melee' } }); S.rpg.activeSlot = 'melee'; S._userCycledSlot = true; });
   await H.devOp(wsPort, 'kit', id, { what: 'shield' }).catch(() => null);
-  for (const [invKey, count] of [['ore_copper_ore', 12], ['bar_iron', 5], ['wood_pine_log', 24], ['fish_minnow', 7], ['gem_fire', 1], ['manaShard', 3], ['whetstone', 2]]) {
+  for (const [invKey, count] of [['ore_iron_ore', 27], ['ore_copper_ore', 12], ['bar_iron', 5], ['wood_pine_log', 24], ['fish_minnow', 7], ['gem_fire', 1], ['manaShard', 3], ['whetstone', 2]]) {
     await H.grant(wsPort, id, 'item', { invKey, count }).catch(() => null);
   }
   await P.page.waitForTimeout(2500);
@@ -83,24 +87,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       await P.page.waitForTimeout(1200);
       const clip = await bandClip(P, 390, 844, 60);
-      for (const view of ['look', 'stats']) {
-        await tapEl(P, `[data-gear-tab-btn="${view}"]`);
-        await P.page.waitForTimeout(view === 'look' ? 1500 : 600);
-        const ok = await P.page.evaluate((v) => (document.querySelector('[data-gear-pane="bro"]') || {}).getAttribute?.('data-gear-view') === v, view);
-        const f = `${OUT}/gear-tab-${view}.png`;
+      const shot = async (name, want, tag) => {
+        await P.page.waitForTimeout(700);
+        const v = await P.page.evaluate(() => (document.querySelector('[data-gear-pane="bro"]') || { getAttribute: () => null }).getAttribute('data-gear-view'));
+        const f = `${OUT}/gear-tab-${name}.png`;
         await P.page.screenshot({ path: f, clip });
         shots.push(f);
-        rec.ok(`[390x844] ${view.toUpperCase()} shown and pictured`, ok);
+        rec.ok(`[390x844] ${tag}: the card shows the ${want}, pictured`, v === want, v);
+      };
+      /* a level-up, so a pill glows gold with points waiting */
+      await H.devOp(wsPort, 'kit', await H.readState(P, (S) => S.myId), { what: 'levels' }).catch(() => null);
+      for (let i = 0; i < 30; i++) {
+        await P.page.waitForTimeout(300);
+        if (await P.page.evaluate(() => !!document.querySelector('[data-gear-skillpill][data-glow="1"]'))) break;
       }
-      /* DETAILS: the Sword cell (the bag filtered to swords), then the spare */
+      await shot('overview', 'overview', 'nothing picked, a pill with points waiting');
+      /* a stack in the bag: the ore */
+      const ore = await P.page.evaluate(() => { const t = document.querySelector('[data-gear-bag] [data-bag-key^="i-ore_"]'); return t ? t.getAttribute('data-bag-key') : null; });
+      if (ore) await tapEl(P, `[data-gear-bag] [data-bag-key="${ore}"]`);
+      await shot('item', 'item', 'the ore tapped');
+      await tapEl(P, `[data-gear-bag] [data-bag-key="${ore}"]`);
+      /* the Sword slot: the bag filtered to swords, the card the sword */
       await tapEl(P, '[data-gear-cell="sword"]');
-      const spare = await P.page.evaluate(() => { const t = document.querySelector('[data-gear-bag] [data-bag-key^="stashWeapon-"]'); return t ? t.getAttribute('data-bag-key') : null; });
-      if (spare) await tapEl(P, `[data-gear-bag] [data-bag-key="${spare}"]`);
-      const det = await P.page.evaluate(() => (document.querySelector('[data-gear-pane="bro"]') || {}).getAttribute?.('data-gear-view'));
-      const f = `${OUT}/gear-tab-details.png`;
-      await P.page.screenshot({ path: f, clip });
-      shots.push(f);
-      rec.ok('[390x844] a bag sword tapped: DETAILS shown and pictured', !!spare && det === 'details', { spare, det });
+      await shot('slot', 'item', 'the Sword slot tapped');
     } finally {
       await P.ctx.close().catch(() => {});
     }
@@ -115,7 +124,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.evaluate(() => {
         try { window.__broDashPanelBus.open('dashboard'); } catch (e) { /* no sheet */ }
         const g = window.__btGearTab;
-        if (g) { g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false); g.bus.setTab('stats'); }
+        if (g) { g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false); }
       });
       await P.page.waitForTimeout(1800);
       const f = `${OUT}/gear-tab-desk.png`;

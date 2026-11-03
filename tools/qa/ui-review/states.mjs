@@ -144,7 +144,7 @@ async function gearReset(P) {
   await evalIn(P, () => {
     const g = window.__btGearTab;
     if (!g) return;
-    g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false); g.bus.setTab('stats');
+    g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false);
   });
 }
 async function openGear(P, view) {
@@ -715,7 +715,7 @@ export const STATES = [
   /* ═══ v2.3.4101: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
   {
     id: 'gear-tab', group: 'Dashboard', title: 'The Gear tab',
-    about: 'The resting dashboard, laid out as the owner\'s mockup (v2.3.4101): the bag ("Filter: All Items" with a funnel and a chevron, four square slots a row, the rows in view filled out with empty squares) | your bro (LOOK | STATS | DETAILS, exactly one showing, the one on gold; STATS: "Level N", Character Stats HP MP STAM DEF DODGE RESIST, and the weapon in hand\'s gold box "Sword (Active)" DMG SPD CRIT RANGE ELEM -- no "Combat Power", which the game does not have) | your gear (Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem; the weapon in hand gold-edged, each weapon its skill\'s level in a corner). Too narrow for three across (sideways) the bag sits over the other two; a computer adds the weapon bar (1 2 3) at the foot.',
+    about: 'The resting dashboard as the owner\'s second mockup (v2.3.4101): the bag ("All Items" with a funnel and a chevron, your coins beside it, three square slots a row and three rows in view, the rest by scrolling) | ONE card, no tabs or figure: with nothing picked "<name> Lv N", the HP, MP and EN bars (stamina is the game\'s energy: one bar), then DEF, DODGE, RESIST | DMG, SPD, CRIT, RANGE -- no "Combat Power", which the game does not have | "Equipped" over Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem (the weapon in hand gold, each weapon its skill\'s level in a corner). Too narrow for three across (sideways) the bag sits over the other two; a computer adds the weapon bar (1 2 3) at the foot.',
     run: async ({ P, view, wsPort, myId }) => {
       await gearKit(P, wsPort, myId);
       const e = await openGear(P, view);
@@ -724,7 +724,7 @@ export const STATES = [
   },
   {
     id: 'gear-slot-selected', group: 'Dashboard', title: 'Gear tab: a slot tapped',
-    about: 'The Sword cell tapped: its blue ring, the bag filtered to swords (the pill reads "Filter: Swords", the × beside it clears it), and the middle switched to DETAILS showing the sword: its name in its grade\'s colour, its stats, one sentence, the Melee level\'s XP, and one button, Unequip, at the panel\'s foot.',
+    about: 'The Sword slot tapped: its blue ring, the bag filtered to swords (the pill reads "Swords" with an × beside it that clears it), and the card showing the sword: its picture in a frame, its name in its grade\'s colour, "Sword · Equipped", its numbers, one sentence, the Melee level\'s XP, and one button, Unequip, at the card\'s foot.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;
@@ -734,7 +734,7 @@ export const STATES = [
   },
   {
     id: 'gear-compare', group: 'Dashboard', title: 'Gear tab: a bag weapon compared',
-    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the middle\'s DETAILS comparing it against the sword in its slot, each stat "old → new" with the difference in green (better) or red (worse), then Equip at the panel\'s foot and its other buttons (Sell, Pin) above.',
+    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the card showing it -- its picture, name and kind, then each stat against the sword in its slot, "old → new" with the difference in green (better) or red (worse), Equip at the card\'s foot and the rest (Sell, Pin) small under it. Tapping it again, or the bag\'s empty space, brings the overview back.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;

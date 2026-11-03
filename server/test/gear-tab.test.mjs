@@ -25,11 +25,12 @@
  *      itemActionList and runs them through runItemAction (no inline Equip or
  *      Drink of its own any more), and the Gear tab runs the same two.
  *
- * v2.3.4101 (the owner's mockup, 2026-11-03): the cells Sword Bow Staff /
- * Chest Legs Cape / Shield Amulet Gem (2c); the middle's ONE view (3h-3k: a
- * pick shows DETAILS, putting it down the remembered LOOK or STATS, a tap on
- * LOOK keeps the pick); STATS' rows the game's own and no "Combat Power"
- * (4i-4l); Inspect (a fish) in the one list (5e).
+ * v2.3.4101 (the owner's mockups, 2026-11-03): the cells Sword Bow Staff /
+ * Chest Legs Cape / Shield Amulet Gem (2c); the middle is ONE card, no tabs
+ * (3a, 3h-3i: a pick shows the item, putting it down the overview); the
+ * card's level the worker's (4i), no "Combat Power" (4l); Inspect (a fish)
+ * in the one list (5e); no tabs, no figure, the bag three across, the three
+ * combat skills in the overview (6).
  */
 import { readFileSync } from 'node:fs';
 
@@ -124,7 +125,8 @@ const TR = await import('../../src/data/trapping.js');
 {
   const { gearTabBus: B } = await import('../../src/ui/mobile/dash/gearTabBus.js');
   const st = () => ({ sel: B.state.sel && (B.state.sel.cell || B.state.sel.bag), f: B.state.filter.id, auto: B.state.filter.auto });
-  check('3a the middle panel opens on STATS', B.state.tab === 'stats');
+  const view = () => (globalThis.window && window.__btGearTab ? window.__btGearTab.state().view : (B.state.sel ? 'item' : 'overview'));
+  check('3a the card opens on the overview (no tab to remember)', view() === 'overview' && !('tab' in B.state) && typeof B.setTab === 'undefined');
   B.tapCell('sword');
   const a = st();
   B.tapCell('sword');
@@ -146,23 +148,16 @@ const TR = await import('../../src/data/trapping.js');
   check('3e the × clears in one tap', st().f === 'all' && !B.state.menu);
   B.setMenu(true); B.pickFilter('ore');
   check('3f picking from the menu shuts it', !B.state.menu && st().f === 'ore');
-  B.clearFilter(); B.afterChange(); B.setTab('look');
-  check('3g the tab is remembered (here, with no localStorage, for the session)', B.state.tab === 'look');
-  B.setTab('stats');
-  /* v2.3.4101: exactly one view */
-  check('3h the middle shows STATS at rest', B.state.view === 'stats');
-  B.tapCell('sword'); const v1 = B.state.view;
-  B.tapCell('sword'); const v2 = B.state.view;
-  check('3i a cell\'s tap shows DETAILS; tapped again, back to STATS (the remembered tab)', v1 === 'details' && v2 === 'stats', { v1, v2 });
-  B.setTab('look'); B.tapBag('i-fish_minnow', null); const v3 = B.state.view;
-  B.setTab('look'); const v4 = { view: B.state.view, sel: !!B.state.sel };
-  B.setTab('details'); const v5 = B.state.view;
-  B.afterChange(); const v6 = B.state.view;
-  check('3j a bag pick shows DETAILS; LOOK keeps the pick; DETAILS shows it again; Equip goes back to LOOK',
-    v3 === 'details' && v4.view === 'look' && v4.sel && v5 === 'details' && v6 === 'look', { v3, v4, v5, v6 });
-  B.setTab('details');
-  check('3k DETAILS is never the remembered tab', B.state.view === 'details' && B.state.tab === 'look');
-  B.setTab('stats');
+  B.clearFilter(); B.afterChange();
+  B.tapCell('sword'); const v1 = view();
+  B.tapCell('sword'); const v2 = view();
+  check('3h a cell\'s tap shows its item; tapped again, the overview', v1 === 'item' && v2 === 'overview', { v1, v2 });
+  B.tapBag('i-fish_minnow', null); const v3 = view();
+  B.tapBag('i-fish_minnow', null); const v4 = view();
+  B.tapBag('i-fish_minnow', null); B.deselect(); const v5 = view();
+  B.tapBag('i-fish_minnow', null); B.afterChange(); const v6 = view();
+  check('3i a bag pick shows its item; the same piece again, the empty bag (deselect) or Equip: the overview',
+    v3 === 'item' && v4 === 'overview' && v5 === 'overview' && v6 === 'overview', { v3, v4, v5, v6 });
 }
 
 /* ── 4. gearStats ── */
@@ -202,20 +197,9 @@ const TR = await import('../../src/data/trapping.js');
   check('4g your own rows: the damage cut, HP, Energy, Mana, the weapon\'s damage, speed, range, crit, dodge, move -- no NaN',
     mine.map((r) => r.key).join() === 'cut,hp,energy,mana,damage,speed,range,crit,dodge,move' && mine.every((r) => !/NaN|undefined/.test(r.v)), mine);
   check('4h ...and an empty blob never throws or prints NaN', G.myStatRows({}).every((r) => !/NaN|undefined/.test(r.v)) && G.weaponRows({}, null).length === 0);
-  /* v2.3.4101: STATS as the mockup draws it, from the game's own numbers */
-  const cs = G.charStatRows({ ...R, armor: iron });
-  check('4i Character Stats: HP MP STAM DEF DODGE RESIST, DEF the damage cut (combinedDamageCut), HP the display pool',
-    cs.map((r) => r.key).join() === 'hp,mana,stam,def,dodge,eres' && cs.map((r) => r.k).join() === 'HP,MP,STAM,DEF,DODGE,RESIST'
-      && cs[0].v === String(GS.toDisplayHp(200)) && cs[1].v === '100'
-      && Math.abs(parseFloat(cs[3].v) - want) < 0.6 && cs.every((r) => !/NaN|undefined/.test(r.v)), cs);
-  const wc = G.activeWeaponCard({ ...R, weapon: { ...R.weapon, element1: 'fire' } });
-  check('4j the weapon in hand\'s box: "Sword", DMG SPD CRIT RANGE ELEM, DMG the card\'s range, ELEM its gem',
-    wc && wc.word === 'Sword' && wc.hand === 'melee' && wc.rows.map((r) => r.k).join() === 'DMG,SPD,CRIT,RANGE,ELEM'
-      && wc.rows[0].v === card.text.replace('-', '–') && wc.rows[4].v === 'Fire' && G.activeWeaponCard(R).rows[4].v === 'None', wc && wc.rows);
-  check('4k ...a bow in hand reads "Bow"; nothing in hand, no box; an empty blob never throws',
-    G.activeWeaponCard({ ...R, activeSlot: 'ranged', rangedWeapon: { type: 'bow', gearBase: 'wood', tierMult: 1 } }).word === 'Bow'
-      && G.activeWeaponCard({ activeSlot: 'staff' }) === null && G.activeWeaponCard({}) === null
-      && G.charStatRows({}).every((r) => !/NaN|undefined/.test(r.v)) && G.charLevel({}) >= 1 && G.charLevel({ level: 7 }) === 7);
+  /* v2.3.4101: the overview's level is the worker's rpg.level */
+  check('4i the card\'s level: the worker\'s rpg.level, else its mirror, never under 1',
+    G.charLevel({}) >= 1 && G.charLevel({ level: 7 }) === 7 && G.charLevel({ level: 0 }) >= 1);
   const gtSrc = src('src/ui/mobile/dash/GearTab.jsx') + src('src/ui/mobile/dash/gearStats.js');
   check('4l no "Combat Power" anywhere it could be drawn (the game has no such number)',
     !/['"`>][^'"`<]*Combat Power/i.test(gtSrc.replace(/\/\*[\s\S]*?\*\//g, '')));
@@ -236,6 +220,21 @@ const TR = await import('../../src/data/trapping.js');
   check('5e Inspect (a fish, v2.3.4036) is a line of the one list, with its test handle, and the card has no button of its own for it',
     (ins ? ins[0].id === 'inspect' && ins[0].attrs['data-fish-inspect'] === 'fish_minnow_albino' : /add\('inspect'/.test(ia))
       && /case 'inspect'/.test(ia) && !/actions\.inspect\s*&&\s*<button/.test(idp), ins);
+}
+
+/* ── 6. v2.3.4101: the second mockup -- one card, nine in view ── */
+{
+  const gt = src('src/ui/mobile/dash/GearTab.jsx');
+  const code = gt.replace(/\/\*[\s\S]*?\*\//g, '');
+  check('6a the card has no tabs and no figure (no LOOK / STATS / DETAILS, no CharacterView)',
+    !/data-gear-tab-btn|CharacterView|'LOOK'|'DETAILS'/.test(code));
+  check('6b the bag is three across and three down in view (the owner\'s "9 visible slots")',
+    /const BAG_COLS = 3;/.test(gt) && /const BAG_ROWS = 3;/.test(gt));
+  check('6c one energy bar, the game\'s "EN" (stamina is the energy): HP, MP and stamina, no fourth bar',
+    (code.match(/bar\('(hp|mana|stamina)'/g) || []).length === 3 && !/bar\('energy'|STAM'/.test(code));
+  check('6d the overview\'s three combat skills (Melee, Bow, Magic) from combatSkill.js, a tap opening Points over the dashboard; no stat columns',
+    /WEAPON_SKILLS\.map\(pill\)/.test(code) && /combatSkillState\(R, s\)/.test(code) && /heroSectionBus\.request\('Build'/.test(code)
+      && /dashboardPanelBus\.push\('hero'\)/.test(code) && /dashboardPanelBus\.open\('dashboard'\)/.test(code) && !/data-gear-body|data-gear-attack|overviewStats/.test(code));
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
