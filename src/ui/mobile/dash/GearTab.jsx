@@ -22,6 +22,7 @@ import { getEquip } from '../../../rendering/gearCatalog.js';
 import { WEAPON_STASH_MAX } from '../../../data/gameSystems.js';
 import { gemCutKey, gemIcon, gemElementName } from '@/data/gems.js';
 import { coinArtFor } from '@/game/coinArt.js';
+import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4031: a "?" piece's mark, as on its card */
 
 /* ═══ v2.3.4031: THE GEAR TAB -- YOUR BAG, YOUR BRO AND YOUR GEAR, SIDE BY SIDE ═══
  *
@@ -587,7 +588,12 @@ export const GearTab = ({ R: Rin, desk }) => {
     }
     statsBody = (
       <div data-gear-stats="bag" data-gear-stats-for={selEntry.kind === 'item' ? 'i-' + selEntry.key : selEntry.kind} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {nameEl(name, hidden ? null : o && o.quality)}
+        {hidden ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ position: 'relative', width: 24, height: 24, flex: 'none' }}><UnrevealedMark size={22} /></div>
+            {nameEl(name, null)}
+          </div>
+        ) : nameEl(name, o && o.quality)}
         {cmp && cmp.length > 0 && <div style={{ fontSize: 10, color: COL.muted }}>{vs}</div>}
         {cmp && cmp.length > 0 && <CompareList rows={cmp} />}
         {sentence(card.info || card.desc)}

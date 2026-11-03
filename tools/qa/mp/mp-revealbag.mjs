@@ -104,7 +104,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.locator('[data-unrevealed][data-bag-key^="stashArmor-"]').first().tap();
     await P.page.waitForTimeout(700);
     const card = await P.page.evaluate(() => {
-      const c = document.querySelector('[data-item-card]');
+      /* v2.3.4031: in the Gear tab a bag tap shows the piece in its middle
+         panel (GearTab.jsx), the same card and the same action list */
+      const c = document.querySelector('[data-item-card]') || document.querySelector('[data-gear-pane="bro"]');
       if (!c) return null;
       return { text: c.innerText, reveal: !!c.querySelector('[data-reveal]'), mark: !!c.querySelector('[data-unrevealed-mark]'),
         buttons: [...c.querySelectorAll('button')].map((b) => b.innerText.trim()).filter(Boolean) };
@@ -140,7 +142,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       };
       requestAnimationFrame(tick);
     });
-    await P.page.locator('[data-item-card] [data-reveal]').first().tap();
+    await P.page.locator('[data-item-card] [data-reveal], [data-gear-pane="bro"] [data-reveal]').first().tap();
     const rv = await H.waitFor(P, () => (window.__qaReveal && window.__qaReveal.landed) || null, (v) => !!v, { timeout: 12000, label: 'the reveal lands' }).catch(() => null);
     const w4 = await P.page.evaluate(() => window.__qaReveal);
     rec.ok('4. Reveal closes the card and plays the reveal', !!w4 && w4.spin && w4.cardGone === true, w4);
@@ -178,7 +180,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.locator(`[data-bag-key="stashWeapon-${wIdx}"]`).first().tap();
       await P.page.waitForTimeout(700);
       const before = await H.readState(P, (S) => (S.rpg.weapon && S.rpg.weapon.gearBase) || null);
-      const eq = P.page.locator('[data-item-card] button', { hasText: 'Equip' }).first();
+      const eq = P.page.locator('[data-item-card] button, [data-gear-pane="bro"] button', { hasText: 'Equip' }).first();
       await eq.tap().catch(() => {});
       const spin2 = await H.waitFor(P, () => document.querySelector('[data-tut="reveal-overlay"]') ? true : null, (v) => v, { timeout: 6000, label: 'the overlay (equip)' }).catch(() => null);
       const wornDuring = await H.readState(P, (S) => (S.rpg.weapon && S.rpg.weapon.gearBase) || null);
