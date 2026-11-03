@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "9d5cc37b1bf9d54732447a58c3c1f7240bace332",
+  "tree": "4a18b98c33dd3a4417560ed4ce9d1ebde448ee11",
+  "committedAt": "2026-11-02T18:46:29-08:00",
+  "subject": "Merge pull request #1351 from hemibroscommunity-del/claude/too-far",
+  "files": 7404,
+  "bytes": 845069896,
+  "listingSha256": "e160e93867bdb148cd89d5561cc8ee93cc0160e7a6467fd0c951f3669265d32e",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
