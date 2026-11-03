@@ -309,8 +309,11 @@ export const GearTab = ({ R: Rin, desk }) => {
   const gridH = invH - 2 * PAD - HDR_H - TG;
   const byTW = Math.floor((invW - 2 * PAD - (BAG_COLS - 1) * TG) / BAG_COLS);
   const byTH = Math.floor((gridH - (BAG_ROWS - 1) * TG) / BAG_ROWS);
-  const tile = Math.max(Math.min(TILE_MIN, byTH > 0 ? byTH : TILE_MIN), Math.min(byTW, byTH > 0 ? byTH : byTW, 76));
-  const viewH = BAG_ROWS * tile + (BAG_ROWS - 1) * TG;
+  const tile = Math.max(TILE_MIN, Math.min(byTW, byTH > 0 ? byTH : byTW, 76));
+  /* a box too short for three rows of 34 px (the one band sideways, ~82 px)
+     shows the rows that fit and scrolls the rest -- never a square under 34 */
+  const rowsIn = Math.max(1, Math.min(BAG_ROWS, Math.floor((gridH + TG) / (tile + TG))));
+  const viewH = rowsIn * tile + (rowsIn - 1) * TG;
   const fillTo = Math.max(Math.ceil(entries.length / BAG_COLS), BAG_ROWS) * BAG_COLS;
 
   const panel = (extra) => ({

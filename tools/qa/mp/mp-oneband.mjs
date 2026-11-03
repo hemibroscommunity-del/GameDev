@@ -112,11 +112,12 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
     !!L && !!o.cols && L.w === Math.floor(o.cols.w) && L.h === Math.floor(o.cols.h) && L.tile >= MIN_TILE
       && L.cols * (L.tile + 4) <= o.cols.w + 4,
     { layout: L, cols: o.cols });
-  /* v2.3.4101: the Gear tab lays its bag out from the same box itself (four
-     square slots a row, never under 34 px), so its first row is its own four */
-  const row1g = g.gearTab ? g.tiles.slice(0, 4).filter(Boolean) : row1;
+  /* v2.3.4101: the Gear tab lays its bag out from the same box itself (three
+     square slots a row, nine in view, never under 34 px -- the owner's second
+     mockup), so its first row is its own three */
+  const row1g = g.gearTab ? g.tiles.slice(0, 3).filter(Boolean) : row1;
   rec.ok(`${label}: the first row of tiles inside the bag panel, the panel and the combat cards inside the row`,
-    !!g.bag && !!g.combat && (g.gearTab ? row1g.length === 4 && g.tileMin >= 34 : row1.length === (L ? L.cols : -1))
+    !!g.bag && !!g.combat && (g.gearTab ? row1g.length === 3 && g.tileMin >= 34 : row1.length === (L ? L.cols : -1))
       && row1g.every((t) => t.x >= g.bag.x && t.r <= g.bag.r && t.y >= g.bag.y && (g.gearTab || Math.abs(t.w - L.tile) <= 1))
       && g.bag.x >= o.cols.x - 1 && g.combat.r <= o.cols.x + o.cols.w + 1
       && g.bag.b <= o.cols.y + o.cols.h + 1 && g.combat.b <= o.cols.y + o.cols.h + 1
