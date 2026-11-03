@@ -40,6 +40,10 @@ the top-bar lane once this is on main; one layout on every screen is B3.
   handle's tap (with a page open: close it and fold; at rest: fold; folded it
   reads OPEN and unfolds).  The five share the rest (`RAIL_COUNT` 5,
   `IDENTITY_MIN_LINE` 60, ceiling 96): 58 px at 390, 52 at 360, 44 at 320.
+  v2.3.4182: on a tablet or a computer (the buttons at their ceiling) the
+  row fills the band's one centred block (`BAND_ASSEMBLY_MAX_W`, 840:
+  one-band.md), CLOSE at its left edge and the five sharing the rest, so the
+  row and the open tab are one assembly, as on a phone.
   Each button wears its word where it fits at 11 px (`NavRail`
   `navLabelMode`, from its real width, measured: the side dock's buttons
   flex): beside the picture from 86 px (a tablet, a computer's one band),
@@ -183,7 +187,13 @@ None: a client-only layout change, no wire, no server behaviour.
   sideways the screen's width; Bro's three combat-skill tiles ("Lv N" above
   each big picture, at least 44 x 44, inside their panel, one picked), a tap
   (a mouse click on a computer) on Bow picking the bow's stats and showing
-  its "N / M XP", the picture back ~4 s later.  Pictures:
+  its "N / M XP", the picture back ~4 s later; v2.3.4182 (the owner: the
+  buttons "should be part of the dashboard assembly the same way it appears
+  on mobile"): at 1280 x 720, 1440 x 900 and 1920 x 1080 the screen's
+  pixels just outside the world, the band's top down, are the bars' black,
+  and with Gear, Bro, Quests and More open the nav row's edges are the tab's
+  box's (min(840, the band), centred), CLOSE at its left edge, the fifth
+  button at its right; a phone's row is not filled.  Pictures:
   `docs/shots/band-{gear,bro}-{desk,side,up}.webp`.
 - `server/test/bro-stats` (new): the thirteen rows, one reader with the
   Equipment window's pills, a lane's own points, an empty slot, the start,

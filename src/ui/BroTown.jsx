@@ -526,7 +526,7 @@ const {
 
 import { _regenerator, _regeneratorDefine2, _asyncToGenerator, _typeof, _slicedToArray, _toConsumableArray, _objectSpread, _defineProperty, _toPropertyKey, _toPrimitive, ownKeys, _arrayWithHoles, _iterableToArrayLimit, _unsupportedIterableToArray, _arrayLikeToArray, _nonIterableRest, _arrayWithoutHoles, _iterableToArray, _nonIterableSpread, _createForOfIteratorHelper, asyncGeneratorStep } from '@/lib/babelHelpers.js';
 import { SpriteHpBar } from './SpriteHpBar.jsx'; /* v2.3.1273: owner's HP-bar art (desktop HUD row) */
-import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W, deskFoldStripW } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
+import { navSlotSize, bandFootprint, DASH_GAP, LAND_FOLD_CHIP_W, deskFoldStripW, BAND_ASSEMBLY_MAX_W } from './mobile/sheet/sheetGeometry.js'; /* v2.3.1283; v2.3.1290 bar-height canvas; v2.3.1325 slot-derived bar; v2.3.1560 two-row band; v2.3.1635 three-row band; v2.3.1636 columns row; v2.3.2156 one footprint for resize + watchdog */
 import { ctlLandscape } from './mobile/bandSideways.js'; /* v2.3.4152: the controls' sideways geometry over a folded band */
 import { playIsLandscape } from './mobile/playViewport.js'; /* v2.3.2156: the data-orient stamp + the isLandscape seed */
 import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.2177: which edge the landscape dashboard takes, and the player's pin */
@@ -3787,6 +3787,9 @@ export var BroTown = function BroTown(_ref0) {
          side sheet takes --sheet-w. */
       document.documentElement.style.setProperty('--play-w', _fp.playW + 'px');
       document.documentElement.style.setProperty('--sheet-w', _fp.sheetW + 'px');
+      /* v2.3.4182: the band's one centred block -- the nav row and the open
+         tab (sheetGeometry BAND_ASSEMBLY_MAX_W; game.css [data-band-box]) */
+      document.documentElement.style.setProperty('--band-max-w', BAND_ASSEMBLY_MAX_W + 'px');
       /* ═══ v2.3.2174: WHICH SIDE, AND WHERE THE WORLD STARTS ═══
          Stamped beside --play-w because they are the same fact seen from
          two ends: --play-w is how WIDE the world is, --world-x is where it

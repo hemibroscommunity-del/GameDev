@@ -90,6 +90,37 @@ Decided (owner-approved), and built:
    band the same colour as above it, and the weapon pill, keys, chat bar,
    player frame and minimap at the same boxes with the old full-width band
    forced back.
+   **v2.3.4182: one assembly, one width.** The owner, at a computer: *"I
+   noticed the gray dashboard still exceeds the black bars that I wanted
+   fixed. Also look at where the dashboard buttons are relative to the
+   content area. They're all shifted to the left. They should be part of the
+   dashboard assembly the same way it appears on mobile"*. The bars first:
+   measured on this branch's own build at 1280 x 720, 1366 x 768, 1440 x 900,
+   1920 x 1080, 2560 x 1440 and 1280 x 1024, at device pixel ratios 1, 1.25
+   and 2 (1440 x 789, 1536 x 730, 1512 x 860, 980 x 480), folded, with every
+   tab open and after a drag-resize, the band's box, every child and the
+   screen's own pixels past the world's edges: nothing gray is past the bars
+   anywhere (1440 x 900, 2560 x 1440 and 1280 x 1024 have no bars: their
+   world fits under 2.2 : 1). It did not reproduce: main before #1386 merged
+   drew the band the window's width, which is the likeliest picture the
+   owner saw; `mp-bandshots` now reads the screen's pixels outside the
+   world, so a gray edge cannot come back unseen. The assembly: the
+   `data-band-box` block is no longer min(1200 px, the world's width) but
+   min(**840 px**, the band's width) (`sheetGeometry` `BAND_ASSEMBLY_MAX_W`,
+   stamped by resize() as `--band-max-w`), the nav row, an open page and the
+   resting columns its three users, so every tab (Gear, Bro, Quests, Codex,
+   More, the band at rest) has the same two edges; and the row fills it, as
+   on a phone: CLOSE at the block's left edge, the five buttons taking equal
+   shares of the rest (`navRowFills`: wherever the buttons would stop at
+   their 96 px ceiling -- a tablet, a computer; BottomDashboard `navFill`,
+   `data-nav-fill`). Why 840: a sideways phone's band (844 px less its pads)
+   is the shape the Bro card's three panels were laid out on (three columns
+   from 600 px: ~270 px each, the Melee / Bow / Magic tiles ~80 px), and it
+   sits inside a 1280 x 720 laptop's 1056 px world with room either side.
+   The Gear tab keeps its own 560 px cap (GearTab `GEAR_MAX_W`), centred
+   inside the block, until Lane A drops it for this. A phone's row is as it
+   was (the buttons under the ceiling; a phone on its side is outside the
+   rule).
 5. **Upright phones unchanged.** The Test panel's "Side column (old layout)"
    row stays the off-ramp.
 
