@@ -167,8 +167,9 @@ const src = (p) => readFileSync(new URL('../../' + p, import.meta.url), 'utf8');
     Object.values(sites).every(Boolean), sites);
   check('4: ...its plate fitted back to the plates\' size on the screen', /_ui\._plateLift = _plateLiftAt\(S\.currentZone, ry\) \/ _bossK;/.test(er));
   check('4: the plate says "Boss <name>" and is drawn as a boss\'s (`boss`, in its key)',
-    /\(m\.boss \? 'Boss ' : ''\) \+ wheelStageName\(/.test(er) && /_plateAlarm, _plateBand, false, !!m\.boss\);/.test(er)
-      && /\+ \(boss \? '\|b' : ''\);/.test(er) && /_drawPlateCapsule\(display, level, broId, alarm, band, party, boss\);/.test(er));
+    /* v2.3.3906: + the monster's element after the boss flag (its icon on the plate) */
+    /\(m\.boss \? 'Boss ' : ''\) \+ wheelStageName\(/.test(er) && /_plateAlarm, _plateBand, false, !!m\.boss,\s*elemSmallKey\(m\.element\)\);/.test(er)
+      && /\+ \(boss \? '\|b' : ''\)/.test(er) && /_drawPlateCapsule\(display, level, broId, alarm, band, party, boss, elem\);/.test(er));
   const fill = (er.match(/const PLATE_BOSS_FILL = (0x[0-9A-Fa-f]{6});/) || [])[1];
   const alarm = (er.match(/const PLATE_ALARM_FILL = (0x[0-9A-Fa-f]{6});/) || [])[1];
   check(`4: on a deep red (${fill}) that is not the alarm's bright red (${alarm}), which still wins while it hits you`,

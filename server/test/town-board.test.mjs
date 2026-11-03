@@ -71,7 +71,8 @@ const { readFileSync } = await import('node:fs');
     const keys = Object.keys(a);
     if (keys.length !== 1) return true;
     if (a.door) return !plots.has(a.door);
-    if (a.npc) return !folk.has(a.npc) && !Object.prototype.hasOwnProperty.call(D.WHEEL_KEEPERS, a.npc);   /* v2.3.3788: + Mayor Bro, at the hall he keeps */
+    if (a.npc) return !folk.has(a.npc) && !Object.prototype.hasOwnProperty.call(D.WHEEL_KEEPERS, a.npc)   /* v2.3.3788: + Mayor Bro, at the hall he keeps */
+      && !(a.npc === 'Mayor Bro' && plots.has(D.WHEEL_MAYOR_STEPS));   /* v2.3.3899: he keeps none now; on its steps (WHEEL_MAYOR_STEPS) */
     if (a.mouth) return !W.WHEEL_DUNGEON_HOMES.includes(a.mouth);
     if (a.land) return !L.WHEEL_LANDS.includes(a.land);
     return true;

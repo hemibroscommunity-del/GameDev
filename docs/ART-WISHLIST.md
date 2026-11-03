@@ -1194,3 +1194,14 @@ Where did each sound come from: Pixabay or Freesound? If Freesound, which licenc
 - Footstep: mud: `step-mud.mp3`
 - Footstep: ash: `step-ash.mp3`
 - Footstep: wood: `step-wood.mp3`
+
+## The ten element icons, the element alone (v2.3.3907)
+
+The owner, 2026-11-02: "None of the elements should have shapes behind them. Just the element itself. Give prompt to redo the element icons."  **Done (2026-11-02):** the owner sent the sheet; it is kept at `assets/icons-source/owner-2026-11-02/element-icons-sheet.png` and cut by `tools/ui/cut-element-sheet.mjs`. The drawings in code (`tools/ui/draw-element-icons.py`) stay as the fallback.
+
+- **Attach:** `public/icons/ui/elem-stone.webp`, `elem-storm.webp` and `elem-wind.webp` as the style reference. Never the bro.
+- **How:** one landscape picture, sent in chat. A session keys out the magenta and cuts each icon by its own edge (`public/tools/style/process.js`: keyOut, splitObjects), fits it to 256 x 256 as `public/icons/ui/elem-<name>.webp` on 256 colours or fewer (quant256), and makes the 64 x 64 copies the name plates draw (`elem-<name>-64.webp`, v2.3.3906). The names stay the same, so every screen picks them up.
+
+```text
+Landscape image (wider than tall): a sheet of 10 element icons for BroTown, a 2D action RPG, in a 5x2 grid read like a page (each row left to right, rows top to bottom). Each icon sits centred in its own equal square cell, fills about three quarters of it, and touches nothing else. Row 1: 1 Flame -- a single tall flame, orange and yellow with a red edge. 2 Frost -- a six-armed snowflake, ice-white and pale blue. 3 Water -- one curling wave with a white crest, deep and light blue. 4 Venom -- a single dripping poison drop, acid green. 5 Flora -- a small sprig of three fresh green leaves on a short stem. Row 2: 6 Stone -- a chunky grey-brown boulder with hard faceted faces. 7 Storm -- one jagged yellow lightning bolt. 8 Wind -- three curling gusts of wind, white and pale blue. 9 Dark -- a swirl of dark purple-black smoke. 10 Light -- a bright golden burst of light rays. Each icon is ONLY the element itself: no shape behind it -- no disc, circle, gem, diamond, hexagon, shield, badge, frame, border, plate, leaf backing or tile -- and nothing around it. Style: exactly the attached icons: bold, chunky game icons with a thick dark outline in a darker shade of each icon's own colour, 3 to 5 flat tones per colour lit from the upper left, a small gloss highlight, bright and readable at 14 pixels. All 10 the same weight and about the same size. No words, letters or runes, no cell lines, no shadows and no glow. Background: ONE flat magenta colour (#FF00FF) everywhere, with no shading, gradient or texture, so it can be cut away cleanly. Nothing in the icons is magenta or bright pink (the dark swirl stays purple-black, not pink).
+```

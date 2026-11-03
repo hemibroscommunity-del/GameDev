@@ -399,8 +399,35 @@ export const STATES = [
   },
   {
     id: 'hud', group: 'The world (HUD)', title: 'BroTown, nothing open',
-    about: 'The resting game screen in the town square: top bar (place, coins), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
+    about: 'The resting game screen in the town square: top bar (the place, its green Safe chip, coins), the player frame top-left (face, level, HP, energy), the minimap with its name plate, the dashboard folded to its button row, and on a phone the controls appearing when touched (on a computer, the keyboard keys strip).',
     run: async ({ P }) => { await wait(P, 600); },
+  },
+  /* v2.3.3974: the top bar's place chip in its other two states (staged with
+     window.__btPlaceHold: the chip and its window only, the worker never
+     told), its window, and the player frame top-left */
+  {
+    id: 'hud-pvp', group: 'The world (HUD)', title: 'Top bar: No man\'s land (PvP)',
+    about: 'The place chip in No man\'s land: amber, "PvP · Lv 6–8", the character levels that can attack you here. Nothing is said or played on the way in; the chip and the red line along the band show it. The player frame top-left: your face, level, HP and energy; a tap opens your Bro page.',
+    run: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = { nml: 1, red: 0 }; }); await wait(P, 700); },
+    after: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = null; }).catch(() => {}); await wait(P, 400); },
+  },
+  {
+    id: 'nml-popup', group: 'The world (HUD)', title: 'Top bar: the chip\'s window (PvP)',
+    about: 'A tap on the PvP chip: who can attack you here and exactly what a player kill would take ("your 2,550 gold and the 12 things in your bag"), the Bank to keep things safe, then the rules.',
+    run: async ({ P }) => {
+      await evalIn(P, () => { window.__btPlaceHold = { nml: 1, red: 0 }; });
+      await wait(P, 600);
+      await evalIn(P, () => { const b = document.querySelector('[data-place-chip]'); if (b) b.click(); });
+      await wait(P, 700);
+      if (!(await has(P, '[data-place-lead]'))) return 'the chip\'s window did not open';
+    },
+    after: async ({ P }) => { await evalIn(P, () => { if (window.__btInfoPopup) window.__btInfoPopup.close(); window.__btPlaceHold = null; }).catch(() => {}); await wait(P, 400); },
+  },
+  {
+    id: 'hud-outlaw', group: 'The world (HUD)', title: 'Top bar: outlaw (red skull)',
+    about: 'The place chip while you carry the red skull (you attacked a player first): red, the skull, "Outlaw". The skull means outlaw only; a tap says the minutes left and that a player kill now takes everything, worn gear too.',
+    run: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = { nml: 1, red: 18 }; }); await wait(P, 700); },
+    after: async ({ P }) => { await evalIn(P, () => { window.__btPlaceHold = null; }).catch(() => {}); await wait(P, 400); },
   },
   {
     id: 'hud-band', group: 'The world (HUD)', title: 'BroTown, dashboard band open',
@@ -486,6 +513,19 @@ export const STATES = [
     },
     after: async ({ P }) => { await H.closeNpcDialogue(P).catch(() => {}); await H.leaveNpc(P, 'mayor_bro').catch(() => {}); },
   },
+  /* v2.3.3925: the big arrow the first time a weapon is handed over (ui/guideArrow.js) */
+  {
+    id: 'guide-arrow', group: 'Talking to characters', title: 'The big arrow, the first weapon',
+    about: 'Just after the first quest hands over the sword and shield: a big gold arrow points at where to go to wear them (the fold handle, the Gear button or the weapon\'s tile), with a short line beside it.',
+    settle: 600,
+    run: async ({ P }) => {
+      for (let i = 0; i < 40; i++) {
+        if (await has(P, '[data-guide-arrow]')) return undefined;
+        await wait(P, 250);
+      }
+      return 'no arrow showed (the sword and shield not in the bag, or already worn)';
+    },
+  },
 
   /* ═══ THE DASHBOARD ═══ */
   /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page) */
@@ -508,15 +548,24 @@ export const STATES = [
       if (!(await has(P, '[data-section="Build"][aria-pressed="true"]'))) return 'the Points tab did not take the press';
     },
   },
-  dash('quests', 'Quests', 'The quest log: active quests with progress, the daily rewards card.'),
+  /* v2.3.3944: the quest journal (dash/QuestsPanel.jsx): it opens on the
+     quest you are on (a run has taken Into the Blue at quest-accepted) */
+  dash('quests', 'Quests', 'The quest journal: the achievement points quests have paid, then the quest you are on in full (NOW with its count and bar, WHERE with Show on map, WHO you talked to, GIVEN TO YOU, REWARD with +5 Achievement Points, NEXT), then the log: Active with a Track star each, Available (who has one and where), Done with each quest\'s +5 AP.  The daily rewards card above.'),
   {
     id: 'dash-quest-detail', group: 'Dashboard', title: 'A quest in detail',
-    about: 'One quest opened from the log: its steps, rewards and where to go.',
+    about: 'One quest opened from the journal\'s list: the same six parts (NOW, WHERE, WHO with each step ticked, GIVEN TO YOU, REWARD, NEXT) and Track this quest.',
+    /* v2.3.3944: a row of the list by its own mark (an Active row, else an
+       Available one), scrolled into view under the page it opens on */
     run: async ({ P }) => {
       await bus(P, 'open', 'quests');
       await wait(P, 600);
-      const ok = await clickText(P, / pays |objective|remnant|bring|visit|talk/i, DASH).then((e) => !e);
-      if (!ok) return 'no quest row to open';
+      const sel = (await has(P, '[data-quest-row]')) ? '[data-quest-row]' : '[data-quest-offer-row]';
+      await evalIn(P, (s0) => { const el = document.querySelector(s0); if (el) el.scrollIntoView({ block: 'center' }); }, sel);
+      await wait(P, 300);
+      const e = await tapSel(P, sel);
+      if (e) return 'no quest row to open (' + e + ')';
+      await wait(P, 500);
+      if (!(await has(P, '[data-journal-page]')) || (await has(P, '[data-journal-focus]'))) return 'the quest\'s page did not open';
     },
   },
   dash('skills', 'Life Skills', 'Your life skills (mining, woodcutting, fishing, cooking, farming...) and their levels.'),
@@ -704,9 +753,10 @@ export const STATES = [
   building('post', 'Post Office', 'The Post Office: your mail and friends\' messages.'),
   building('sheriff', "Sheriff's Office", "The Sheriff's Office: the player list (duels start from a player's card) and the arena sign-up."),
   building('guildhall', 'Guild Hall', 'The Guild Hall: a row saying clans are parties now (made in the Saloon), and the skill guilds.'),
-  building('townhall', 'Town Hall', 'The Town Hall (v2.3.3766): the board of everything to do in the world, under eight headings (v2.3.3801: the owner\'s review\'s), a line under every tile, the leaderboard, the world map, the Codex and Journey at its foot.'),
+  /* v2.3.3899: the board opens from the square's noticeboard now, not the Town Hall's door (game/wheelNoticeboard.js); the window and its ids are the same */
+  building('townhall', 'Town Board', 'The town board (v2.3.3766; on the square\'s noticeboard since v2.3.3899, the Town Hall\'s door opens nothing): the board of everything to do in the world, under eight headings (v2.3.3801: the owner\'s review\'s), a line under every tile, the leaderboard, the world map, the Codex and Journey at its foot.'),
   /* v2.3.3766: a page of the board -- the arena's, with its two pins */
-  building('townhall', 'Town Hall: a page', 'A page of the Town Hall\'s board (v2.3.3766): what the arena is, where it is, and the Red pin and Blue pin buttons.', {
+  building('townhall', 'Town Board: a page', 'A page of the town board (v2.3.3766): what the arena is, where it is, and the Red pin and Blue pin buttons.', {
     id: 'building-townhall-page',
     run: async ({ P }) => {
       const ok = await evalIn(P, (p) => { if (!window.__btBuildingWindow) return false; window.__btBuildingWindow.open(p); return true; }, 'townhall');
@@ -719,7 +769,7 @@ export const STATES = [
     },
   }),
   /* v2.3.3801: a page with no one place -- Town Quests', with its one action, "Open Quests" */
-  building('townhall', 'Town Hall: a page with one action', 'A page of the Town Hall\'s board with no one place (v2.3.3801): Town Quests -- what they are, look for the gold "!", and one button, Open Quests, in place of the pins.', {
+  building('townhall', 'Town Board: a page with one action', 'A page of the town board with no one place (v2.3.3801): Town Quests -- what they are, look for the gold "!", and one button, Open Quests, in place of the pins.', {
     id: 'building-townhall-action',
     run: async ({ P }) => {
       const ok = await evalIn(P, (p) => { if (!window.__btBuildingWindow) return false; window.__btBuildingWindow.open(p); return true; }, 'townhall');

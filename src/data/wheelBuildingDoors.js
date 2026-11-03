@@ -71,7 +71,12 @@ export const WHEEL_HALL_DOORS = {
   guildhall: 'guildhall',
   post: 'post',
   sheriff: 'sheriff',
-  townhall: 'townhall',     /* v2.3.3258, below */
+  /* townhall: 'townhall' (v2.3.3258) until v2.3.3899 -- the owner: "Remove the
+     town hall menu for now. It's too confusing when trying to turn in mayor bro
+     quests. It keeps popping up".  Its board (WHEEL_HALLS.townhall, below,
+     still its window) opens from the square's noticeboard now
+     (game/wheelNoticeboard.js); the hall's door has nothing behind it, so
+     wheelTownDoorAt never offers it, as before v2.3.3258. */
   hotel: 'hotel',           /* v2.3.3539, below: a rest the worker pays, against a worker that says so (WHEEL_HALL_CAPS) */
 };
 
@@ -109,7 +114,9 @@ export const WHEEL_HALLS = {
      start with it showing -- it comes as you walk up to the Mayor. */
   /* v2.3.3766: the board of everything to do (ui/panels/buildings/TownBoard.jsx),
      the leaderboard and the world map at its foot */
-  townhall: { title: 'Town Hall', sub: 'Everything to do, and where', icon: '/icons/ui/bldg-townhall.webp', emoji: '🏛' },
+  /* v2.3.3899: called the Town Board, as it opens from the square's
+     noticeboard now, not the hall (game/wheelNoticeboard.js) */
+  townhall: { title: 'Town Board', sub: 'Everything to do, and where', icon: '/icons/ui/bldg-townhall.webp', emoji: '🏛' },
   /* v2.3.3539: the Hotel, a rest the worker pays (WHEEL_HALL_CAPS above); its
      picture the owner's bed, the right stick's sleep picture at its address
      (ui/panels/controlSkin.jsx), so the browser holds one copy */
@@ -228,16 +235,24 @@ export const WHEEL_TOWNSFOLK = [
    Townsperson NAME -> the plot whose window he opens when you talk to him (a
    tap, E or the right stick's tap): the same window, the same visit counted,
    as its door (game/interactions.js enterWheelDoor), with the room's picture
-   behind its menu (BuildingRoom.jsx).  A quest of his comes first: Mayor Bro
-   opens the Town Hall only when he has nothing to offer, ask about or pay
-   for.  Only the keepers whose picture exists: the other buildings keep their
+   behind its menu (BuildingRoom.jsx).  A quest of his comes first.  (Mayor
+   Bro opened the Town Hall when he had nothing to offer, ask about or pay
+   for, until v2.3.3899: he says the next step now, game/mayorTalk.js.)  Only the keepers whose picture exists: the other buildings keep their
    door until the owner's keeper is made (docs/ART-WISHLIST.md "The keepers"),
    and then a keeper is a row here and in WHEEL_TOWNSFOLK.  Diego (his shop)
    and Ace (his coin flip) keep their own windows.  Each door still opens too.
    MIRROR: every value is a plot of the town -- test-world-core checks it. */
+/* v2.3.3899: the plot whose steps Mayor Bro stands on (placing.js mayorSpot):
+   he kept it (WHEEL_KEEPERS) until v2.3.3899, and the board's Mayor pin finds
+   him at its door until he is spawned (game/mapPinPlaces.js) */
+export const WHEEL_MAYOR_STEPS = 'townhall';
+
 export const WHEEL_KEEPERS = {
   'Blacksmith Bro': 'blacksmith',   /* the forge, at whose steps he stands */
-  'Mayor Bro': 'townhall',          /* the Town Hall: its leaderboard and the world map */
+  /* 'Mayor Bro': 'townhall' until v2.3.3899 -- the owner, 2026-11-02: "I tried
+     tapping on mayor bro and kept opening the town hall door which was
+     confusing ... apparently I couldn't talk to him".  With no quest he says
+     the next step now (game/mayorTalk.js); the board is on the noticeboard. */
   'Woodworker Bro': 'woodworker',   /* v2.3.3525: the bench (bows, staffs, traps, hardened wood) */
   'Farmer Bro': 'feedseed',         /* v2.3.3525: the Feed & Seed (seeds, your farm, the orders) */  /* v2.3.3833: the new cast's ten keepers (docs/specs/npc-cast.md) */
   'Sterling': 'bank',

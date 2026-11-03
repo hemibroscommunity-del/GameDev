@@ -162,7 +162,9 @@ async function runDoors({ browser, wsPort, webPort, rec }) {
   const open = doors.filter((d) => d.index >= 0), shut = doors.filter((d) => d.index < 0 && d.closed), plain = doors.filter((d) => d.index < 0 && !d.closed && !d.hall);
   const halls = doors.filter((d) => d.hall);   /* v2.3.3066: the Wheel's own (mp-wheelhalls) */
   rec.ok(`the client knows the town's doors from the worker's answer: ${open.length} that open a building, ${halls.length} halls of the Wheel's own, ${shut.length} shut, and ${plain.map((d) => d.name).join(', ')}`,
-    z0 === 'wheel' && doors.length === 16 && open.length === 11 && halls.length === 4 && shut.length === 1 && plain.length === 0 && halls.some((d) => d.id === 'townhall')
+    /* v2.3.3899: the Town Hall's door is plain again (its board is on the
+       square's noticeboard, game/wheelNoticeboard.js): three halls open */
+    z0 === 'wheel' && doors.length === 16 && open.length === 11 && halls.length === 3 && shut.length === 1 && plain.length === 1 && plain[0].id === 'townhall' && !halls.some((d) => d.id === 'townhall')
       && Object.keys(WHEEL_BUILDING_DOORS).every((k) => byId[k] && byId[k].index >= 0 && actionOf[byId[k].index] === TOWN_BUILDINGS.find((b) => b.id === WHEEL_BUILDING_DOORS[k]).action)
       && WHEEL_SHUT_DOORS.every((k) => byId[k] && byId[k].closed === true && byId[k].index < 0)
       /* v2.3.3539: the shut one is the hall waiting for its worker (rest: false) */
