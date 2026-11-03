@@ -38,20 +38,25 @@ weapon's own sound plays. The double tap stays.
 
 ## Where
 
-`weaponTriAnchor` in `src/ui/panels/ShieldButton.jsx`, with the rest of the
-right-hand cluster. Every place beside the attack disc is already another
-button's (TRAP and Shield Bash over Jump, Block beside it, Sprint over the disc,
-Special and Whirlwind over Sprint), kept even while that button is hidden, so:
+`weaponTriAnchor` in `src/ui/panels/ShieldButton.jsx`. The LEFT thumb's side,
+by the owner's choice on the PR (the first cut stood over the right-hand
+cluster): "Do you think the weapon triangle should move besides the left
+joystick instead? I'm thinking the right joystick is already crowded with
+buttons and weapon swapping won't need to occur as often." It is the left
+cluster's third place (Element Burst, Quick eat), toward the middle:
 
-- **upright**: over the cluster, its right edge on the disc's, its foot 10 px
-  over Whirlwind's top. On a 390 x 844 phone, y 382-466: under the minimap,
-  right of the quest card.
-- **sideways**: the pocket left of Shield Bash (and TRAP, and the skateboard),
-  10 px over Block, 24 px under Special.
+- **upright**: over Quick eat, its left edge on Quick eat's, its foot 10 px over
+  Quick eat's top, never past 4 px short of the screen's middle. On a 390 x 844
+  phone, x 90-178, y 461-545: under the quest card, over the bell, its open feed
+  58 px away.
+- **sideways**: right of the movement stick, 10 px off its box, its foot level
+  with the stick's (a row higher reaches the top bar on a 390 px-tall screen;
+  level with Quick eat it lies on the quest card).
 
 The box is 88 x 84 px: the two lower buttons 8 px apart, 4 px of air between
-the top ring and each lower one. The coach card's lift (`combatBandTopPx`) does
-not count it (the card stands left, the triangle right).
+the top ring and each lower one. Like Quick eat it swallows its own touches, so
+a tap never starts a walk. `combatBandTopPx` counts it, so upright the coach
+card's lift rises 15 px.
 
 The notification bell stays where it was beside the old chip's corner
 (`--bt-wpn-slot`); it moves into More next.
@@ -60,8 +65,9 @@ The notification bell stays where it was beside the old chip's corner
 
 `node tools/qa/mp/run.mjs weaponswap`: empty hands (fists on top, the bow and
 staff dashed, "No bow yet"); upright and sideways, the three buttons' sizes, a
-finger at each centre lands on it, 8 px or more from every control slot of the
-cluster (drawn or not) and every other control on screen; a tap on each dim
+finger at each centre lands on it, in the left half, 8 px or more from Element
+Burst's, Quick eat's and the stick's places (drawn or not), every other control
+on screen and the open chat feed; a tap on each dim
 weapon takes it in hand, turns it to the top, and the worker's player_state
 says so; a drag does not swap. `swaphint`: the phone's callout over the
 triangle. QA: `window.__btWeaponChip()`, `window.__btWeaponTri` (taps, notes,

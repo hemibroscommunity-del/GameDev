@@ -3,11 +3,10 @@ import { getActiveWeapon } from '@/data/index.js';
 import { nextWeaponSlot, prevWeaponSlot, ownedWeaponSlots } from '@/game/weaponSlots.js';
 import { wpnIconSrc, weaponDisplayName, GHOST_SRC } from '@/ui/mobile/sheet/equipModel.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { weaponTriAnchor, WTRI, ctlBottom, RBTN, discRight, discBottom, sprintAnchor, jumpAnchor, blockAnchor,
-  ctlColumn, CTL_SLOT, rightCluster, RCTL_SLOT } from './ShieldButton.jsx';
+import { weaponTriAnchor, WTRI, ctlBottom, LBTN, leftCluster, LCTL_SLOT } from './ShieldButton.jsx';
 import { Skin } from './controlSkin.jsx';
 
-/* ═══ v2.3.3919: THE WEAPON TRIANGLE, BESIDE THE ATTACK BUTTON ═══
+/* ═══ v2.3.3919: THE WEAPON TRIANGLE, OVER THE MOVEMENT STICK ═══
  *
  * The owner, playtesting: "I need a button on screen for switching between
  * weapons.  Maybe a triangle or wheel where the active weapon is highlighted
@@ -42,14 +41,17 @@ import { Skin } from './controlSkin.jsx';
  * two the other one.  The worker hears set_active_slot, the name floats over
  * your head, the swap's own sound plays.  This file never moves a slot itself.
  *
- * WHERE: weaponTriAnchor (ShieldButton.jsx), with the rest of the right-hand
- * cluster's geometry.  A phone only: a computer swaps with 1/2/3 (bt-desktop-
+ * WHERE: weaponTriAnchor (ShieldButton.jsx): the left thumb's side, over the
+ * movement stick, by the owner's choice ("the right joystick is already
+ * crowded with buttons and weapon swapping won't need to occur as often").
+ * A phone only: a computer swaps with 1/2/3 (bt-desktop-
  * hide).  The movement side's double tap stays.
  *
- * IT SWALLOWS ITS OWN TOUCHES.  It sits on [data-joyzone="R"] (z6), where a
- * touch aims and a tap swings.  Every touch event is stopped here, and a swap
- * waits for a real TAP (a release near where it began), so a thumb sliding
- * over it on its way to ATTACK changes nothing.  touch-action: none, like the
+ * IT SWALLOWS ITS OWN TOUCHES, as Quick eat does.  It sits on
+ * [data-joyzone="L"] (z6), where a touch starts a walk and a quick release
+ * dodges.  Every touch event is stopped here, and a swap waits for a real TAP
+ * (a release near where it began), so a thumb that lands on it while starting
+ * to walk changes nothing.  touch-action: none, like the
  * other controls on the zones (TRAPS §229 names them). */
 
 export const WTRI_ORDER = ['melee', 'ranged', 'staff'];
@@ -123,24 +125,19 @@ function preloadIcons(R) {
   });
 }
 
-/* QA: every right-hand control's box, drawn or not (slots are kept whether or
-   not their control is up), in px in from the right edge / over the band --
-   so mp-weaponswap can hold the triangle clear of Special, Whirlwind, Bash,
-   TRAP and Block without starting a fight. */
+/* QA: the triangle's and every left-thumb control's box, drawn or not (slots
+   are kept whether or not their control is up), in px in from the LEFT edge /
+   over the band -- so mp-weaponswap can hold the triangle clear of Element
+   Burst and Quick eat without arming either. */
 function clusterBoxes(land) {
-  var dW = land ? RBTN.wLand : RBTN.w;
-  var col = ctlColumn(land), rc = rightCluster(land), sp = sprintAnchor(land), jp = jumpAnchor(land), bl = blockAnchor(land);
+  var dW = land ? LBTN.wLand : LBTN.w;
+  var lc = leftCluster(land);
   var t = weaponTriAnchor(land);
   return {
-    tri: { right: t.right, bottom: t.bottomPx, w: t.w, h: t.h },
-    disc: { right: discRight(land), bottom: discBottom(land), w: dW, h: dW },
-    sprint: { right: sp.right, bottom: sp.bottomPx, w: sp.size, h: sp.size },
-    jump: { right: jp.right, bottom: jp.bottomPx, w: jp.size, h: jp.size },
-    block: { right: bl.right, bottom: bl.bottomPx, w: bl.size, h: bl.size },
-    bash: { right: col.right, bottom: col.bottomPx(CTL_SLOT.bash), w: col.size, h: col.size },
-    trap: { right: col.right, bottom: col.bottomPx(CTL_SLOT.trap), w: col.size, h: col.size },
-    special: { right: rc.rightPx(RCTL_SLOT.special), bottom: rc.bottomPx(RCTL_SLOT.special), w: rc.size, h: rc.size },
-    whirl: { right: rc.rightPx(RCTL_SLOT.whirl), bottom: rc.bottomPx(RCTL_SLOT.whirl), w: rc.size, h: rc.size },
+    tri: { left: t.left, bottom: t.bottomPx, w: t.w, h: t.h },
+    stick: { left: land ? LBTN.leftLand : LBTN.left, bottom: LBTN.bottom, w: dW, h: dW },
+    burst: { left: lc.leftPx(LCTL_SLOT.burst), bottom: lc.bottomPx(LCTL_SLOT.burst), w: lc.size, h: lc.size },
+    eat: { left: lc.leftPx(LCTL_SLOT.eat), bottom: lc.bottomPx(LCTL_SLOT.eat), w: lc.size, h: lc.size },
   };
 }
 
@@ -268,14 +265,14 @@ export function WeaponTriangle(props) {
     'data-weapon-tri': view.slot,
     style: {
       position: 'fixed',
-      right: anchor.right,
+      left: anchor.left,
       bottom: ctlBottom(anchor.bottomPx),
       width: anchor.w,
       height: anchor.h,
       /* the box takes no touches: only its three round buttons do */
       pointerEvents: 'none',
-      /* the rung ShieldButton, SprintButton and the others sit on: over the
-         aiming zone (z6) and the discs' boxes (z30) */
+      /* the rung Quick eat, Element Burst and the others sit on: over the
+         movement zone (z6) and the discs' boxes (z30) */
       zIndex: 31,
     },
   }, view.slots.map(function (x) {

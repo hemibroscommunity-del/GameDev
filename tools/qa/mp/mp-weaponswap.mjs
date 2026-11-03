@@ -1,4 +1,4 @@
-/* ═══ mp-weaponswap (v2.3.3919): THE WEAPON TRIANGLE BESIDE THE ATTACK DISC ═══
+/* ═══ mp-weaponswap (v2.3.3919): THE WEAPON TRIANGLE OVER THE MOVEMENT STICK ═══
  *
  * The owner: "I need a button on screen for switching between weapons.  Maybe
  * a triangle or wheel where the active weapon is highlighted on top and the
@@ -12,11 +12,12 @@
  *   1. EMPTY HANDS: the top is your fists (the faint empty-slot picture), the
  *      bow and the staff dashed empty circles; a tap on the bow says "No bow
  *      yet" and changes nothing.
- *   2. WHERE (upright): in the right half, the top button 46 px, the two below
- *      it 40 px, every control slot of the right-hand cluster (drawn or not:
- *      Special, Whirlwind, Bash, TRAP, Block, Sprint, Jump, the disc) and every
- *      other control on screen 8 px or more away, under the minimap and the
- *      quest card, over the dashboard; a finger at each centre lands on it.
+ *   2. WHERE (upright): in the left half, the left thumb's side (the owner's
+ *      choice: "the right joystick is already crowded"), the top button 46 px,
+ *      the two below it 40 px, Element Burst's, Quick eat's and the movement
+ *      stick's places (drawn or not) and every other control on screen (the
+ *      bell, the quest card, the dashboard...) 8 px or more away; a finger at
+ *      each centre lands on it.
  *   3. A TAP ON EACH DIM WEAPON takes it in hand: it turns to the top, and the
  *      WORKER holds it too -- read back from its player_state.
  *   4. A DRAG that starts on a dim weapon does not swap.
@@ -169,21 +170,22 @@ function checkLayout(rec, L, label) {
     { top: top.box, left: left.box, right: right.box });
   rec.ok(`${label}: a finger at each centre lands on that weapon`, all.every((b) => b.hit), all.map((b) => b.hit));
   const tri = L.tri;
-  rec.ok(`${label}: in the right half (left edge ${Math.round(tri.x)} of ${L.vw / 2}), over the dashboard (foot ${Math.round(tri.b)}, band top ${Math.round(L.vh - L.dashH)})`,
-    tri.x >= L.vw / 2 && tri.b <= L.vh - L.dashH + 0.5 && tri.r <= L.vw - 8, tri);
+  /* v2.3.3919: the left thumb's side, by the owner's choice */
+  rec.ok(`${label}: in the left half, the movement stick's side (right edge ${Math.round(tri.r)} of ${L.vw / 2}), clear of the iOS edge guard (left ${Math.round(tri.x)}), over the dashboard (foot ${Math.round(tri.b)}, band top ${Math.round(L.vh - L.dashH)})`,
+    tri.r <= L.vw / 2 && tri.x >= 18 && tri.b <= L.vh - L.dashH + 0.5, tri);
   /* every slot of the cluster, drawn or not */
   const band = L.vh - L.dashH;
   const slotHits = [];
   for (const [name, s] of Object.entries(L.slots || {})) {
     if (name === 'tri') continue;
-    const b = { x: L.vw - s.right - s.w, r: L.vw - s.right, y: band - s.bottom - s.h, b: band - s.bottom, w: s.w, h: s.h };
-    const a = Math.min(...all.map((t) => (name === 'disc' ? ringAir(t.box, b) : air(t.box, b))));
+    const b = { x: s.left, r: s.left + s.w, y: band - s.bottom - s.h, b: band - s.bottom, w: s.w, h: s.h };
+    const a = Math.min(...all.map((t) => air(t.box, b)));
     slotHits.push({ name, air: Math.round(a * 10) / 10 });
   }
   const close = slotHits.filter((h) => h.air < 8);
   console.log(`    ${label}: tri ${JSON.stringify({ x: Math.round(tri.x), y: Math.round(tri.y), r: Math.round(tri.r), b: Math.round(tri.b) })} slots ${JSON.stringify(slotHits)}`);
-  rec.ok(`${label}: 8 px or more from every control slot of the cluster, drawn or not (nearest ${slotHits.length ? Math.min(...slotHits.map((h) => h.air)) : '?'} px)`,
-    slotHits.length >= 8 && close.length === 0, { close, slotHits });
+  rec.ok(`${label}: 8 px or more from Element Burst's, Quick eat's and the movement stick's places, drawn or not (nearest ${slotHits.length ? Math.min(...slotHits.map((h) => h.air)) : '?'} px)`,
+    slotHits.length >= 3 && close.length === 0, { close, slotHits });
   const drawn = L.others.map((o) => ({ ...o, air: Math.round(Math.min(...all.map((t) => air(t.box, o))) * 10) / 10 })).filter((o) => o.air < 8);
   rec.ok(`${label}: 8 px or more from every other control on screen (${L.others.length} checked: the minimap, the quest card, the top bar, the dashboard...)`,
     drawn.length === 0, drawn);
@@ -244,7 +246,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the weapon in hand on top in full colour, the other two dimmed',
     a.btns.melee.role === 'top' && a.btns.ranged.owned && a.btns.staff.owned && a.btns.ranged.imgOp < 0.6 && a.btns.staff.imgOp < 0.6 && !a.btns.ranged.dashed,
     { melee: a.btns.melee, ranged: a.btns.ranged, staff: a.btns.staff });
-  await P.page.screenshot({ path: `${OUT}/weaponswap-upright.png`, clip: { x: a.vw / 2 - 20, y: Math.max(0, a.tri.y - 60), width: a.vw / 2 + 20, height: a.vh - Math.max(0, a.tri.y - 60) } });
+  await P.page.screenshot({ path: `${OUT}/weaponswap-upright.png`, clip: { x: 0, y: Math.max(0, a.tri.y - 60), width: a.vw / 2 + 20, height: a.vh - Math.max(0, a.tri.y - 60) } });
+
+  /* ── 2b. THE OPEN CHAT FEED (the bell's) stays clear of it ── */
+  await P.page.evaluate(() => {
+    const S = window._gameState.current;
+    S.chatLog = S.chatLog || [];
+    for (let i = 0; i < 8; i++) S.chatLog.push({ name: 'Crowd' + (i % 3), text: 'a line of world chat that runs long enough to wrap ' + i, ts: Date.now() + i });
+    try { window.__broChatLogBus && window.__broChatLogBus.bump(); } catch (e) {}
+  });
+  const opened = await H.openWorldChat(P).catch(() => false);
+  await P.page.waitForTimeout(600);
+  const feed = await P.page.evaluate(() => {
+    const s = document.querySelector('[data-world-chat]');
+    const r = s && s.getBoundingClientRect();
+    return r && r.width > 0 ? { x: r.left, y: r.top, r: r.right, b: r.bottom, w: r.width, h: r.height } : null;
+  });
+  const wf = await look(P);
+  const feedAir = feed && wf.tri ? air(wf.tri, feed) : null;
+  rec.ok(`the open chat feed (${opened ? 'opened' : 'not opened'}) stays 8 px or more off the triangle (${feedAir != null ? Math.round(feedAir) : '?'} px), and a finger on each weapon still lands on it`,
+    opened === true && !!feed && feedAir >= 8 && Object.values(wf.btns).every((b) => b.hit), { feed, tri: wf.tri, feedAir });
+  await P.page.screenshot({ path: `${OUT}/weaponswap-chat-open.png` });
+  await P.page.click('[data-world-chat-toggle]').catch(() => {});
+  await P.page.waitForTimeout(500);
 
   /* ── 3. A TAP ON EACH DIM WEAPON ── */
   let prev = a;
@@ -261,7 +285,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!now.btns[want] && now.btns[want].role === 'top' && now.btns[want].chip && now.triSlot === want && now.btns[want].imgOp === 1, now.btns[want]);
     rec.ok('...the tap neither walked you nor locked a target',
       Math.abs(now.px - prev.px) <= 2 && Math.abs(now.py - prev.py) <= 2 && now.lock === prev.lock, { from: [prev.px, prev.py], to: [now.px, now.py] });
-    if (want === 'ranged') await P.page.screenshot({ path: `${OUT}/weaponswap-bow.png`, clip: { x: now.vw / 2 - 20, y: Math.max(0, now.tri.y - 60), width: now.vw / 2 + 20, height: now.vh - Math.max(0, now.tri.y - 60) } });
+    if (want === 'ranged') await P.page.screenshot({ path: `${OUT}/weaponswap-bow.png`, clip: { x: 0, y: Math.max(0, now.tri.y - 60), width: now.vw / 2 + 20, height: now.vh - Math.max(0, now.tri.y - 60) } });
     prev = now;
   }
   rec.ok('the swaps went through the real swap path (the session marked)', prev.cycled === true, prev.cycled);
