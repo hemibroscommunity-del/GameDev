@@ -26,7 +26,7 @@ now, and three locals live in town. That makes 21 townsfolk with Mayor Bro.
 | Old Man Reel | Fish Tales | the town's south-west edge, past the General Store, by the river | nothing | `fisher` |
 | Tourist Terry | Selfie | the square, below the Town Hall's steps | nothing | `tourist` |
 
-**Nicknames (v2.3.4013).** The owner: *"Instead of names like 'gavel Greg' it
+**Nicknames (v2.3.4021).** The owner: *"Instead of names like 'gavel Greg' it
 would be more humorous to just have them go by nicknames. I didn't mean to
 remake all the NPCs to be like gavel Greg. The way their appearance looks now
 is fine."* The "Who" column stays the key every table and test reads

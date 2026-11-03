@@ -25,7 +25,7 @@ import {
 } from '@/data/gameSystems.js';
 import { tourOffer } from '@/game/questRoute.js';
 import { TOUR_MEET } from '@/game/tour.js';
-import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4013: the giver's nickname */
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4021: the giver's nickname */
 import { trackedFirst } from '@/game/trackedQuest.js';
 import { questCardWords } from '@/game/questCard.js';
 import { QUEST_ART } from '@/ui/panels/questArt.jsx';

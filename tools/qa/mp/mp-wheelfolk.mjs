@@ -21,7 +21,7 @@
  *   6. E beside him opens it too (it said "has nothing for you");
  *   7. a tap on Lil Bro answers ("has nothing for you right now"), so he is a
  *      man in the street and not a picture;
- *   4c. (v2.3.4013) each plate reads his nickname (data/folkNames.js) or
+ *   4c. (v2.3.4021) each plate reads his nickname (data/folkNames.js) or
  *       his own name;
  *   7b. (v2.3.3833) the new cast: all thirteen in 1, 2 and 4 (read off the
  *      table); a tap on Sterling opens the Bank, a tap on Bean answers;
@@ -44,7 +44,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
   const { WHEEL_TOWNSFOLK } = await import(H.REPO + '/src/data/wheelBuildingDoors.js');
   const { NPC_DATA } = await import(H.REPO + '/src/data/gameDisplay.js');
-  const { folkDisplayName } = await import(H.REPO + '/src/data/folkNames.js');   /* v2.3.4013: the nicknames */
+  const { folkDisplayName } = await import(H.REPO + '/src/data/folkNames.js');   /* v2.3.4021: the nicknames */
 
   const P = await H.newPlayer(browser, { name: 'Folkbro', wsPort, webPort, world: 'wheel', viewport: PHONE, touch: true, query: QUERY || undefined });
   const shot = (name) => P.page.screenshot({ path: join(OUT, `wheelfolk-${name}.png`) }).catch(() => {});
@@ -157,7 +157,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const drawnOf = (name) => P.page.evaluate((nm) => {
       const d = (window.__btNpcSprites ? window.__btNpcSprites() : []).find((n) => n.name === nm);
       return d ? { h: Math.round(d.height), w: Math.round(d.width), x: Math.round(d.x), y: Math.round(d.y), dir: d.walkDir, src: d.src, frame: d.frame, live: !!d.live,
-        plate: d.plate ? d.plate.name : null } : null;   /* v2.3.4013: what his plate reads */
+        plate: d.plate ? d.plate.name : null } : null;   /* v2.3.4021: what his plate reads */
     }, name);
     const drawn = {};
     for (const f of WHEEL_TOWNSFOLK) {
@@ -177,7 +177,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         && (LIVE || ['Ace', 'Lil Bro', 'Diego'].every((n) => /-walk-south\.webp$/.test(drawn[n].src || ''))) && dh > 100,
       drawn);
 
-    /* v2.3.4013: the owner: "Instead of names like 'gavel Greg' it would be
+    /* v2.3.4021: the owner: "Instead of names like 'gavel Greg' it would be
        more humorous to just have them go by nicknames" -- each plate reads
        the name a player reads (data/folkNames.js): Going-Going, never Gavel
        Greg; the rest their own names */

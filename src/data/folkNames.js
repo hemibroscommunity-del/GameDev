@@ -1,4 +1,4 @@
-/* ═══ v2.3.4013: THE TOWNSFOLK GO BY NICKNAMES ═══
+/* ═══ v2.3.4021: THE TOWNSFOLK GO BY NICKNAMES ═══
  *
  * The owner: "Instead of names like 'gavel Greg' it would be more humorous to
  * just have them go by nicknames. I didn't mean to remake all the NPCs to be

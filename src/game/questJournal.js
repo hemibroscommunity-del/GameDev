@@ -23,7 +23,7 @@
  * And the list: the achievement points quests have paid, then Active (the one
  * you track first), Available (who has one for you, and where), and Done.
  *
- * NO IMPORTS (but data/folkNames.js, itself import-free: v2.3.4013, a giver's
+ * NO IMPORTS (but data/folkNames.js, itself import-free: v2.3.4021, a giver's
  * name reads his nickname): server/test/quest-journal.test.mjs runs it in node with the real
  * quest table.  The page (ui/mobile/sheet/questJournalModel.js) hands it the
  * live game: the quest table, the bag, the steps, the land names, where each
@@ -33,7 +33,7 @@
  * is "BroTown", never the code's name for it.
  */
 
-import { folkDisplayName } from '../data/folkNames.js';   /* v2.3.4013: every giver's name here is the one a player reads */
+import { folkDisplayName } from '../data/folkNames.js';   /* v2.3.4021: every giver's name here is the one a player reads */
 
 /* the four states a quest's page can be in (the worker's 'complete' and a
    quest whose objective is met both read 'ready') */

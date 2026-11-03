@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { NPC_DATA } from '@/data/gameDisplay.js';
 import { npcArtUrl } from '@/rendering/npcSprites.js'; /* v2.3.1829: same cache-bust as the world figures */
-import { folkDisplayName } from '@/data/folkNames.js'; /* v2.3.4013: the title reads his nickname */
+import { folkDisplayName } from '@/data/folkNames.js'; /* v2.3.4021: the title reads his nickname */
 import { deskWords } from '@/game/deskWords.js'; /* v2.3.3615: "tap" reads "click" on a computer */
 
 /* ═══ v2.3.1820: HE TALKS TO YOU, ONE THING AT A TIME ═══

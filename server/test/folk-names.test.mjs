@@ -1,4 +1,4 @@
-/* The townsfolk go by nicknames -- v2.3.4013 (src/data/folkNames.js).
+/* The townsfolk go by nicknames -- v2.3.4021 (src/data/folkNames.js).
  *
  * The owner: "Instead of names like 'gavel Greg' it would be more humorous to
  * just have them go by nicknames. I didn't mean to remake all the NPCs to be

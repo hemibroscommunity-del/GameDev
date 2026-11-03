@@ -1,4 +1,4 @@
-/* v2.3.4013: THE TOWNSFOLK GO BY NICKNAMES -- photographed.
+/* v2.3.4021: THE TOWNSFOLK GO BY NICKNAMES -- photographed.
  *
  * The owner: "Instead of names like 'gavel Greg' it would be more humorous to
  * just have them go by nicknames. I didn't mean to remake all the NPCs to be
@@ -165,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!prompt && /Talk to Going-Going$/.test(prompt) && cPlate === 'Going-Going', { prompt, spot, cPlate });
 
       const open = await H.approachNpc(C, 'mayor_bro').catch(() => false);
-      const title = await C.page.evaluate(() => { const t = document.querySelector('.bt-npcdlg-name'); return t ? t.innerText.trim() : null; });
+      const title = await C.page.evaluate(() => { const t = document.querySelector('.bt-npcdlg-name'); return t ? t.textContent.trim() : null;   /* the words, not their CSS capitals */ });
       await shot(C, 'computer-mayor-dialogue');
       rec.ok(`3. ...and the Mayor's dialogue title (the same helper, a name with no nickname) reads "${title}"`, !!open && title === 'Mayor Bro', { open, title });
       await H.closeNpcDialogue(C).catch(() => {});

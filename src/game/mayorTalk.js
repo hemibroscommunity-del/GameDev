@@ -21,7 +21,7 @@ import { tourOffer } from './questRoute.js';
 import { TOUR_MEET } from './tour.js';
 import { QUEST_CHAINS, QUEST_STATUS } from '@/data/gameSystems.js';
 import { trackedQuestId } from './trackedQuest.js';
-import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4013: the giver he sends you to, by his nickname */
+import { folkDisplayName } from '@/data/folkNames.js';   /* v2.3.4021: the giver he sends you to, by his nickname */
 
 export const MAYOR = 'Mayor Bro';
 

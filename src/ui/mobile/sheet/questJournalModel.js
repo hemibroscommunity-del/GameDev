@@ -17,7 +17,7 @@ import { QUEST_AP_REWARD } from '../../../data/items.js';
 import { ZONES } from '../../../data/zones.js';
 import { TILE } from '../../../data/constants.js';
 import { TOUR_MEET } from '../../../game/tour.js';
-import { folkDisplayName } from '../../../data/folkNames.js';   /* v2.3.4013: the giver's nickname */
+import { folkDisplayName } from '../../../data/folkNames.js';   /* v2.3.4021: the giver's nickname */
 import { tourOffer } from '../../../game/questRoute.js';
 import { isWheelTrialZone } from '../../../game/worldTrial.js';
 import { deriveQuestLog, deriveQuestOffers, trackedQuestId } from './questModel.js';
