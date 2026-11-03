@@ -1,4 +1,4 @@
-/* ═══ v2.3.3993: THE TOWNSFOLK WALK AROUND AND WORK ═══
+/* ═══ v2.3.4020: THE TOWNSFOLK WALK AROUND AND WORK ═══
  *
  * The owner, 2026-11-02: "Make NPCs walk around and do stuff now since it
  * doesn't make much memory anymore."  (His list of 2026-10-26, item 22: "the

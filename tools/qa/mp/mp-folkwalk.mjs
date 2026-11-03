@@ -1,4 +1,4 @@
-/* ═══ v2.3.3993: THE TOWNSFOLK WALK AROUND AND WORK -- on a phone ═══
+/* ═══ v2.3.4020: THE TOWNSFOLK WALK AROUND AND WORK -- on a phone ═══
  *
  * The owner: "Make NPCs walk around and do stuff now since it doesn't make
  * much memory anymore." (docs/specs/living-town.md).  A phone (390 x 844,

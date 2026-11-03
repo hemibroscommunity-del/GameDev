@@ -1,4 +1,4 @@
-/* ═══ v2.3.3993: THE TOWNSFOLK WALK AROUND AND WORK ═══
+/* ═══ v2.3.4020: THE TOWNSFOLK WALK AROUND AND WORK ═══
  * (src/game/townsfolkWalk.js, src/game/townsfolkDay.js, src/rendering/folkPose.js)
  *
  * The owner: "Make NPCs walk around and do stuff now since it doesn't make

@@ -146,9 +146,9 @@
  * 16.8; QA_MB_QUERY=onecopy=0&picnumbers=0).
  * (v2.3.3728: this note corrected: it said "off by default".)
  */
-/* v2.3.3993, the townsfolk walk around and work (docs/specs/living-town.md):
- * `gpu` 105 -> 115 -- RAISED (the heap line's 38 is main's own, v2.3.4005,
- * which this walk's reading also fits).  The same build, the check's
+/* v2.3.4020, the townsfolk walk around and work (docs/specs/living-town.md):
+ * `gpu` 105 -> 115 -- RAISED (the heap line's 38 is main's own, the owner's
+ * choice of 2026-11-03, which this walk's reading fits).  The same build, the check's
  * trip, walking off (`QA_MB_QUERY=folkwalk=0`, the town as on main) against
  * on, two and four runs: the chip's highest (trip 2, home again) 106.2 / 104.2
  * off -- main's own reading already at its line of 105 -- against 113.9,
@@ -164,7 +164,7 @@
 export const MEMORY_BUDGET = {
   artCache: { name: 'art loaded from files', mb: 112, measured: 102.2,   /* v2.3.3702: 156 -> 112, see the header */
     what: 'pictures loaded from files, decoded (the asset cache, window.__btTex) -- its highest at the fight, the monsters\' looks loaded' },
-  gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.3993: 105 -> 115, see the header */
+  gpu: { name: 'textures on the graphics chip', mb: 115, measured: 95.0,   /* v2.3.4020: 105 -> 115, see the header */
     what: 'textures on the graphics chip (window.__btGpuTex) -- including what was drawn in the last minute, which Pixi unloads after 60 s unused' },
   canvases: { name: 'pictures the game draws itself', mb: 56, measured: 49.7,   /* v2.3.3699: 96 -> 88; v2.3.3702: 88 -> 56, see the header */
     what: 'pictures the game draws itself, held in 2D canvases (every one still reachable)' },
