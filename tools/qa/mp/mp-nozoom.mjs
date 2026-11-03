@@ -43,6 +43,10 @@ const tapSel = (P, sel) => P.page.evaluate((s) => {
   return true;
 }, sel);
 
+/* v2.3.4062: the Bro card's doors (Spend points, the six slots) and its
+   windows' close are buttons: a click */
+const clickSel = (P, sel) => P.page.evaluate((s) => { const el = document.querySelector(s); if (!el) return false; el.click(); return true; }, sel);
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
     name: 'Zoomless', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true,
@@ -65,10 +69,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* three sword-lane points to spend (prog3.js prog3Pool / prog3PoolBy) */
       R.prog3.pool = 3;
       R.prog3.poolBy = { sword: 3 };
-      try { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}
+      try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}   /* v2.3.4062: the Bro card, whose Spend points opens Points */
     });
     await P.page.waitForTimeout(900);
-    await tapSel(P, '[role="button"][data-section="Build"]');
+    await clickSel(P, '[role="button"][data-section="Build"]');
     await P.page.waitForTimeout(900);
     await H.openPointCols(P, ['sword']);
     const opened = await tapSel(P, '[data-prog3-row$=":luck"]');

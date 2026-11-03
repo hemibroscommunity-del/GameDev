@@ -558,22 +558,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3773: the records are More's Journey page now, not Hero's third
      tab, so the third screen of this walk is that page, opened the way its
      More tile opens it, swept by the same rule */
-  for (const sec of ['Overview', 'Build', 'Journey']) {
+  /* v2.3.4062: Bro is one card (its own sweep), Equipment and Points windows
+     over it, opened from the card's slots and its Spend points */
+  for (const sec of ['Card', 'Overview', 'Build', 'Journey']) {
+    if (sec !== 'Journey') {
+      await P.page.evaluate(() => { window.__btHeroSection.request('Card'); window.__broDashPanelBus.open('hero'); });
+      await P.page.waitForTimeout(700);
+    }
     const fit = await P.page.evaluate((s) => {
       if (s === 'Journey') {
         window.__broDashPanelBus.open('more'); window.__broDashPanelBus.push('journey');
         return true;
       }
-      const tab = document.querySelector(`.bt-land-sheet [role="button"][data-section="${s}"]`);
-      if (tab) tab.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
-      return !!tab;
+      if (s === 'Card') return !!document.querySelector('.bt-land-sheet [data-bro-page="Card"] .bt-pin');
+      const door = document.querySelector(`.bt-land-sheet [role="button"][data-section="${s}"]`);
+      if (door) door.click();
+      return !!door;
     }, sec);
     if (sec === 'Journey') {
       await P.page.waitForTimeout(650);
       const page = await P.page.evaluate(() => document.querySelectorAll('.bt-land-sheet [data-journey-page] [data-journey-card]').length);
       rec.ok('More\'s Journey page shows its six record cards in the side column', page === 6, { page });
     }
-    if (!fit) { rec.ok(`hero/${sec}: the section tab exists`, false, { sec }); continue; }
+    if (!fit) { rec.ok(`hero/${sec}: the card, or its door to the window, exists`, false, { sec }); continue; }
     await P.page.waitForTimeout(650);
     const clip = await P.page.evaluate(() => {
       const sh = document.querySelector('.bt-land-sheet');

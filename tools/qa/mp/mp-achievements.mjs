@@ -46,10 +46,11 @@
  *    10. sideways (844 x 390): More's tile whole, the page in the ~238 px
  *        side column, chips two by two, no sideways scroll, nothing cut;
  *    11. no page errors.
- * v2.3.4071 (the owner's five buttons): the page is Bro's Achievements tab,
- * not a More tile; Bro -> Me's "Achievement Points: N" opens it, and every
- * old road to it (the card's title chip, the top bar's medal) lands there.
- * As a tab it has no drilled header, so its summary is its first line.
+ * v2.3.4062 (the owner's five buttons): the page is not a More tile but a
+ * page under Bro: the Bro card's Achievements row ("Achievement Points: N")
+ * and its AP open it, with its drilled header (the back chip returns to the
+ * card), and every old road to it (a card's title chip, the top bar's medal)
+ * lands there.
  * Pictures in tools/qa/mp/out/achievements-*.png.
  */
 import * as H from './harness.mjs';
@@ -189,14 +190,14 @@ async function inWheel(P) {
 
 /* More -> the tile -> the page, by real taps (upright and on a computer; this
    box draws a few frames a second, so each step waits for what it opened) */
-/* v2.3.4071: Achievements are Bro's tab now (the owner's five buttons), so:
-   Bro -> the Achievements tab, by real taps */
+/* v2.3.4062: Achievements are a page under Bro now (the owner's five
+   buttons), so: Bro -> the card's Achievements row, by real taps */
 async function openPage(P) {
   /* a first join arrives with the band folded (v2.3.2495) */
   await H.unfoldBand(P).catch(() => {});
   await H.openDest(P, 'Bro');
-  await P.page.waitForSelector('[data-section="Achievements"]', { timeout: 8000 });
-  await P.page.click('[data-section="Achievements"]').catch(() => {});
+  await P.page.waitForSelector('[data-bro-achv]', { timeout: 8000 });
+  await P.page.click('[data-bro-achv]').catch(() => {});
   return P.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
 }
 
@@ -232,37 +233,35 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .then(() => achv(A)).catch(() => achv(A));
     rec.ok('1a the worker grants achievements (caps.achievements) and sent the record at the join: nothing earned yet',
       s0.caps && s0.known && !s0.unavailable && s0.got.length === 0 && typeof s0.ap === 'number', s0);
-    /* v2.3.4071: the owner's five buttons -- Achievements are Bro's tab, and
-       Bro -> Me says "Achievement Points: N" (the review he adopted), a tap on
-       it the way to the page; Journey keeps its own More tile */
+    /* v2.3.4062: the owner's five buttons -- Achievements are a page under
+       Bro, and the Bro card's row says "Achievement Points: N" (the review he
+       adopted), a tap on it the way to the page; Journey keeps its own More
+       tile */
     await H.unfoldBand(A).catch(() => {});
     await H.openDest(A, 'More');
     await A.page.waitForSelector('[data-more-tile]', { timeout: 8000 }).catch(() => {});
     const moreNow = await A.page.evaluate(() => ({ achv: !!document.querySelector('[data-more-tile="achievements"]'), journey: !!document.querySelector('[data-more-tile="journey"]') }));
     await H.openDest(A, 'Bro');
-    const tile = await A.page.waitForSelector('[data-bro-ap]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
-      const t = document.querySelector('[data-bro-ap]');
-      const tab = document.querySelector('[data-section="Achievements"]');
-      const sp = tab && tab.querySelector('span');
-      return { ap: Number(t.getAttribute('data-bro-ap')), text: (t.textContent || '').replace(/\s+/g, ' ').trim(), tab: sp ? sp.textContent : null,
-        whole: !!sp && sp.scrollWidth <= sp.clientWidth + 1,
+    const tile = await A.page.waitForSelector('[data-bro-achv]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
+      const t = document.querySelector('[data-bro-achv]');
+      const sub = t.querySelector('.bt-bro-rowt > span');
+      const ap = document.querySelector('[data-bro-ap]');
+      return { ap: ap ? Number(ap.getAttribute('data-bro-ap')) : null, text: (sub ? sub.textContent : '').replace(/\s+/g, ' ').trim(),
+        whole: !!sub && sub.scrollWidth <= sub.clientWidth + 1,
         icon: !!(t.querySelector('img') && /\/icons\/achievements\/achievements\.webp/.test(t.querySelector('img').src)) };
     })).catch(() => null);
-    rec.ok(`1b Bro -> Me: "${tile && tile.text}" with the owner's medal, an Achievements tab, whole; More has no Achievements tile and keeps Journey's`,
-      !!tile && tile.ap === s0.ap && /^Achievement Points: 0(?!\d)/.test(tile.text) && tile.icon && tile.tab === 'Achievements' && tile.whole && !moreNow.achv && moreNow.journey, { tile, moreNow });
+    rec.ok(`1b the Bro card: "${tile && tile.text}" with the owner's medal, whole, and its AP; More has no Achievements tile and keeps Journey's`,
+      !!tile && tile.ap === s0.ap && /^Achievement Points: 0(?!\d)/.test(tile.text) && /0 of 33/.test(tile.text) && tile.icon && tile.whole && !moreNow.achv && moreNow.journey, { tile, moreNow });
 
     /* ── 2 ── */
-    await A.page.click('[data-bro-ap]').catch(() => {});
+    await A.page.click('[data-bro-achv]').catch(() => {});
     const up = await A.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
     const p0 = up ? await pageLook(A) : null;
-    rec.ok(`2a the AP line opens the Achievements tab: ${p0 && p0.rows} rows, "${p0 && p0.count}", the worker's AP (${p0 && p0.apTotal})`,
+    rec.ok(`2a the row opens the Achievements page under Bro: ${p0 && p0.rows} rows, "${p0 && p0.count}", the worker's AP (${p0 && p0.apTotal})`,
       !!p0 && p0.rows === 33 && /^0\/33$/.test(p0.count.trim()) && p0.apTotal === s0.ap && p0.got.length === 0, p0);
-    /* the owner's ChatGPT review: the page showed ONE row as it opened.
-       v2.3.4071: as Bro's tab it has no drilled header to ride, so the
-       summary is the page's first line (the root-page form it always had)
-       under Bro's tabs; a row at least in view, the rest a scroll */
-    rec.ok(`2a2 the AP and the count are the page's first line ("${p0 && p0.summaryAt}"), and ${p0 && p0.inView} whole rows are in view as it opens`,
-      !!p0 && p0.summaryAt === 'page' && p0.inView >= 1, p0 && { summaryAt: p0.summaryAt, inView: p0.inView, box: p0.box });
+    /* the owner's ChatGPT review: the page showed ONE row as it opened */
+    rec.ok(`2a2 the AP and the count ride the header row ("${p0 && p0.summaryAt}"), and ${p0 && p0.inView} whole rows are in view as it opens (two at least)`,
+      !!p0 && p0.summaryAt === 'head@head' && p0.inView >= 2, p0 && { summaryAt: p0.summaryAt, inView: p0.inView, box: p0.box });
     rec.ok('2b the six super-rares are SHOWN before they are earned (decision 3): named, locked, never "???"',
       !!p0 && p0.superrare.length === 6 && p0.superrare.every((x) => x.got === '0' && x.lock && x.name && !/\?\?/.test(x.name)), p0 && p0.superrare);
     rec.ok('2c no row you have not earned offers "Use as title"', !!p0 && p0.useOnUnearned.length === 0, p0 && p0.useOnUnearned);
@@ -378,13 +377,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const fromCard = await A.page.waitForSelector('[data-achv-panel="1"]', { timeout: 8000 }).then(() => A.page.evaluate(() => ({
       card: !!document.querySelector('.bt-pin-title'),
       back: ((document.querySelector('[data-dash-back]') || {}).textContent || '').replace(/\s+/g, ' ').trim(),
-      tab: window.__btHeroSection ? window.__btHeroSection.shown : null,
+      head: !!document.querySelector('[data-dash-head] [data-achv-summary="head"]'),
       stack: window.__broDashPanelBus ? window.__broDashPanelBus.state.stack.slice() : null,
     }))).catch(() => null);
-    /* v2.3.4071: it asks for More -> Achievements as it always did
-       (InspectPlayerPanel); the dashboard sends that to Bro's tab */
-    rec.ok(`6b the card's title chip opens the page: Bro, on its Achievements tab (${fromCard && fromCard.stack})`,
-      !!fromCard && !fromCard.card && fromCard.tab === 'Achievements' && !!fromCard.stack && fromCard.stack.join() === 'hero', fromCard);
+    /* v2.3.4062: the dashboard keeps the page under Bro, whoever asks */
+    rec.ok(`6b the card's title chip opens the page under Bro ("${fromCard && fromCard.back}", ${fromCard && fromCard.stack}), the summary on its header`,
+      !!fromCard && !fromCard.card && /ACHIEVEMENTS/i.test(fromCard.back) && fromCard.head && !!fromCard.stack && fromCard.stack.join() === 'hero,achievements', fromCard);
     await H.closeDest(A).catch(() => {});
 
     /* ── 7 ── */
@@ -440,7 +438,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const col = await B.page.evaluate(() => { const r = document.getElementById('root').getBoundingClientRect(); return { x: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width) }; });
     rec.ok(`9a on a computer the page is in the game's column (${col.x}-${col.r}), no sideways scroll, 33 rows of 48 px and up, type 12 px and up, two rows in view`,
       !!pb && pb.rows === 33 && pb.box.x >= col.x - 1 && pb.box.r <= col.r + 1 && pb.sideScroll <= 0 && pb.minRowH >= 47 && pb.minFont >= 12 && pb.cut.length === 0
-        && pb.summaryAt === 'page' && pb.inView >= 1, { pb, col });   /* v2.3.4071: Bro's tab: the summary its first line */
+        && pb.summaryAt === 'head@head' && pb.inView >= 2, { pb, col });
     await B.page.screenshot({ path: join(OUT, 'achievements-5-computer.png') });
     await H.devOp(wsPort, 'achv', bId, { id: 'golden_giant' }).catch(() => {});
     const bb = await B.page.waitForSelector('[data-achv-banner="golden_giant"]', { timeout: 15000 }).then(() => bannerLook(B)).catch(() => null);
@@ -460,20 +458,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForSelector('[data-land-fold="open"]', { timeout: 6000 }).catch(() => {});
     }
     await A.page.waitForSelector('.bt-navrail [data-nav="more"]', { timeout: 6000 }).catch(() => {});
-    /* v2.3.4071: Bro on the dock, then its Achievements tab (the tab row
-       scrolls sideways in the skinny column rather than cut a word) */
+    /* v2.3.4062: Bro on the dock, then its card's Achievements row */
     await pointerUp(A, '.bt-navrail [data-nav="hero"]');
-    const sideTile = await A.page.waitForSelector('.bt-land-sheet [data-section="Achievements"]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
-      const sp = document.querySelector('.bt-land-sheet [data-section="Achievements"] span');
-      return sp ? { text: sp.textContent, whole: sp.scrollWidth <= sp.clientWidth + 1 } : null;
+    const sideTile = await A.page.waitForSelector('.bt-land-sheet [data-bro-achv]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
+      const b = document.querySelector('.bt-land-sheet [data-bro-achv] .bt-bro-rowt b');
+      return b ? { text: b.textContent, whole: b.scrollWidth <= b.clientWidth + 1 } : null;
     })).catch(() => null);
-    rec.ok('10a sideways: Bro\'s tab reads Achievements, whole', !!sideTile && sideTile.text === 'Achievements' && sideTile.whole, sideTile);
-    await A.page.click('.bt-land-sheet [data-section="Achievements"]').catch(() => {});
+    rec.ok('10a sideways: the Bro card\'s row reads Achievements, whole', !!sideTile && sideTile.text === 'Achievements' && sideTile.whole, sideTile);
+    await A.page.click('.bt-land-sheet [data-bro-achv]').catch(() => {});
     const sUp = await A.page.waitForSelector('.bt-land-sheet [data-achv-panel="1"]', { timeout: 8000 }).then(() => true).catch(() => false);
     const ps = sUp ? await pageLook(A, '.bt-land-sheet') : null;
-    rec.ok(`10b sideways the page is in the side column (${ps && ps.box.w} px), the chips two by two, no sideways scroll, nothing cut, rows readable, the summary its first line`,
+    rec.ok(`10b sideways the page is in the side column (${ps && ps.box.w} px), the chips two by two, no sideways scroll, nothing cut, rows readable, the summary under the header`,
       !!ps && ps.rows === 33 && ps.box.w <= 270 && ps.sideScroll <= 0 && ps.cut.length === 0 && ps.minFont >= 11.5 && ps.minRowH >= 47
-        && !!ps.chipCols && ps.chipCols.split(' ').length === 2 && ps.summaryAt === 'page', ps);
+        && !!ps.chipCols && ps.chipCols.split(' ').length === 2 && ps.summaryAt === 'head@head', ps);
     await A.page.screenshot({ path: join(OUT, 'achievements-7-sideways.png') });
 
     /* ── 11 ── */

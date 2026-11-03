@@ -45,7 +45,9 @@ function shownRect(el) {
 export var QUEST_FLY_TARGETS = {
   gold: ['[data-purse="1"]'],
   item: ['[data-tut="coach-gear"]', '[data-dash-fold]', '[data-nav="dashboard"]'],
-  points: ['[data-section="Build"]', '[data-nav="hero"]', '[data-dash-fold]'],
+  /* v2.3.4062: the Bro card's Spend points, or the Points window's title when
+     that window is open over the card */
+  points: ['[data-section="Build"]', '[data-bro-popup-head="Build"]', '[data-nav="hero"]', '[data-dash-fold]'],
 };
 export function questFlyTarget(kind) {
   if (typeof document === 'undefined') return null;
@@ -123,6 +125,7 @@ export function flyPicture(src, from, kind, opts) {
       if (toEl) {
         where = toEl.getAttribute('data-purse') ? 'purse'
           : toEl.getAttribute('data-section') ? 'section-' + toEl.getAttribute('data-section')   /* v2.3.4055 */
+          : toEl.getAttribute('data-bro-popup-head') ? 'window-' + toEl.getAttribute('data-bro-popup-head')   /* v2.3.4062 */
           : toEl.getAttribute('data-tut') ? toEl.getAttribute('data-tut')
             : toEl.hasAttribute('data-dash-fold') ? 'fold'
               : (toEl.getAttribute('data-nav') || 'el');

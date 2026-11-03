@@ -49,7 +49,8 @@ const look = (P) => P.page.evaluate(() => {
     nav: navR ? { x: navR.left + navR.width / 2, y: navR.top + navR.height / 2, w: navR.width } : null,
     navGlow: glow('[data-nav="hero"] [data-pts-glow="nav"]'),
     navBadge: navBadge ? navBadge.textContent.trim() : null,
-    tabGlow: glow('[data-section="Build"] [data-pts-glow="tab"]'),
+    /* v2.3.4062: the Bro card's Spend points, or the Points window's title over it */
+    tabGlow: glow('[data-section="Build"] [data-pts-glow="tab"]') || glow('[data-bro-popup-head="Build"] [data-pts-glow="tab"]'),
     tabs,
     mode: window.__broDashPanelBus && window.__broDashPanelBus.state.mode,
     stack: window.__broDashPanelBus && window.__broDashPanelBus.state.stack,
@@ -129,10 +130,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await crop(P, '[data-section="Build"]', 'pointsglow-tab', 14);
   await P.page.screenshot({ path: `${OUT}/pointsglow-sheet.png` }).catch(() => {});
   /* Into the Points section: still lit, because points are still waiting. */
-  await P.page.evaluate(() => {
-    const t = document.querySelector('[data-section="Build"]');
-    if (t) for (const type of ['pointerdown', 'pointerup']) t.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: 'touch' }));
-  });
+  /* v2.3.4062: the Bro card's Spend points, a button (a click opens the window) */
+  await P.page.evaluate(() => { const t = document.querySelector('[data-section="Build"]'); if (t) t.click(); });
   await P.page.waitForTimeout(600);
   const inPts = await look(P);
   rec.ok('...and it stays lit with the Points section open, while points wait',
@@ -150,7 +149,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 4. SIDEWAYS ── */
   await P.page.setViewportSize({ width: 844, height: 390 });
   await P.page.waitForTimeout(1200);
-  await P.page.evaluate(() => { try { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); } catch (e) {} });
+  await P.page.evaluate(() => { try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); } catch (e) {} });
   await P.page.waitForTimeout(900);
   const land = await look(P);
   rec.ok('sideways, the dashboard\'s Character tab glows too', !!land.navGlow, land);
@@ -161,12 +160,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* A rotation closes the sheet (BottomDashboard's land watcher), so open it
      again on the Points section: the lights are checked going out where the
      player would be watching them. */
-  await P.page.evaluate(() => { try { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); } catch (e) {} });
+  await P.page.evaluate(() => { try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); } catch (e) {} });
   await P.page.waitForTimeout(900);
-  await P.page.evaluate(() => {
-    const t = document.querySelector('[data-section="Build"]');
-    if (t) for (const type of ['pointerdown', 'pointerup']) t.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 8, pointerType: 'touch' }));
-  });
+  await P.page.evaluate(() => { const t = document.querySelector('[data-section="Build"]'); if (t) t.click(); });
   await P.page.waitForTimeout(600);
   const back = await look(P);
   rec.ok('back upright, the Points section is open with its tab lit (guard)',

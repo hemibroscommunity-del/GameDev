@@ -206,13 +206,14 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   const more = src('src/ui/mobile/dash/MorePanel.jsx');
   /* v2.3.3773: Journey keeps a tile of its own beside it (the owner: "journey
      ... its own icon in the more/other apps menus") */
-  /* v2.3.4071: the owner's five buttons -- Achievements left More for Bro's
-     own tab (only where the worker grants them), and the medal's AP line on
-     Bro -> Me opens it; Journey keeps its tile in More */
-  const hero = src('src/ui/mobile/sheet/HeroExpanded.jsx'), me = src('src/ui/mobile/sheet/BroMe.jsx');
-  check('7d Bro: an Achievements tab against a worker that grants them, Me\'s "Achievement Points: N" opens it, and Journey keeps its More tile',
-    /SECTIONS_ALL\.filter\(\(x\) => x !== 'Achievements' \|\| achvLive\(S\)\)/.test(hero) && /section === 'Achievements' \? <AchievementsPanel \/>/.test(hero)
-      && /Achievement Points: <b/.test(me) && /onAchievements=\{\(\) => setSection\('Achievements'\)\}/.test(hero)
+  /* v2.3.4062: the owner's five buttons -- Achievements left More: it is a
+     page under Bro (dashboardPanelBus BRO_PAGES), opened from the Bro card's
+     Achievements row and its AP (only where the worker grants them); Journey
+     keeps its tile in More */
+  const bus = src('src/ui/mobile/dashboardPanelBus.js'), card = src('src/ui/mobile/sheet/BroCard.jsx');
+  check('7d Bro: Achievements is a page under Bro, the card\'s "Achievement Points: N" row and AP open it (only where granted), and Journey keeps its More tile',
+    /const BRO_PAGES = \{ skills: 1, achievements: 1 \}/.test(bus) && /broPage\(id\) \? \['hero', id\]/.test(bus)
+      && /Achievement Points: <em>/.test(card) && /go\('achievements'\)/.test(card) && /apOn \? \(/.test(card)
       && !/'achievements', 'journey'|\['achievements'\] : \[\]/.test(more) && /'pets', 'journey'/.test(more)
       && /id: 'journey', +src: '\/icons\/ui\/journey\.webp/.test(more));
   check('7e the dashboard knows the page, with its Head', /achievements: \{ title: 'Achievements', Component: AchievementsPanel, Head: AchievementsHead \}/.test(src('src/ui/mobile/BottomDashboard.jsx')));

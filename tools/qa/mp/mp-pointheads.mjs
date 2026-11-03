@@ -54,12 +54,12 @@ const COACH_DONE = "try { if (!localStorage.getItem('bt_coach_v1')) localStorage
    (TRAPS §200: this box draws a few frames a second). */
 async function openPoints(P, land) {
   const grid = P.page.locator('[data-prog3-grid]').first();
-  const tab = P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first();
+  const tab = P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first();
   for (let i = 0; i < 3; i++) {
     if (await grid.isVisible().catch(() => false)) return true;
     if (!(await tab.isVisible().catch(() => false))) {
-      if (land) await P.page.evaluate(() => window.__broDashPanelBus && (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
-      else await H.openDest(P, 'Character').catch(() => {});
+      if (land) await P.page.evaluate(() => window.__broDashPanelBus && (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')));   /* v2.3.4062: the Bro card, whose Spend points opens Points */
+      else await H.openDest(P, 'Bro').catch(() => {});
       await tab.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     }
     await tab.click({ timeout: 8000 }).catch(() => {});

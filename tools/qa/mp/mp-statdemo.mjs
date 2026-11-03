@@ -136,6 +136,10 @@ async function waitForShot(P, ms = 12000) {
   return null;
 }
 
+/* v2.3.4062: the Bro card's doors (Spend points, the six slots) and its
+   windows' close are buttons: a click */
+const clickSel = (P, sel) => P.page.evaluate((s) => { const el = document.querySelector(s); if (!el) return false; el.click(); return true; }, sel);
+
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, {
     name: 'Pointer', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true,
@@ -161,10 +165,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!R.prog3) R.prog3 = {};
     R.prog3.sk = { ...(R.prog3.sk || {}), sword: { level: 8, xp: 0 }, bow: { level: 6, xp: 0 }, staff: { level: 4, xp: 0 } };
     R.prog3.pool = { ...(R.prog3.pool || {}), unspent: 3 };
-    try { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}
+    try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}   /* v2.3.4062: the Bro card, whose Spend points opens Points */
   });
   await P.page.waitForTimeout(900);
-  await tapSel(P, '[role="button"][data-section="Build"]');
+  await clickSel(P, '[role="button"][data-section="Build"]');
   await P.page.waitForTimeout(900);
   /* v2.3.2593: the Points screen's four columns start CLOSED (owner), and
      every scene below is opened from a cell's ℹ️ inside one of them.
@@ -819,7 +823,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 5. THE EQUIPMENT FIGURE IS UNTOUCHED ── */
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(400);
-  await tapSel(P, '[role="button"][data-section="Overview"]');
+  /* v2.3.4062: Points is a window over the Bro card: its close, then the
+     card's six slots open Equipment */
+  if (await clickSel(P, '[data-bro-popup-close]')) await P.page.waitForTimeout(600);
+  await clickSel(P, '[role="button"][data-section="Overview"]');
   await P.page.waitForTimeout(1000);
   const eq = await P.page.evaluate(() => {
     /* every character canvas on the sheet EXCEPT the demo's (the popup is

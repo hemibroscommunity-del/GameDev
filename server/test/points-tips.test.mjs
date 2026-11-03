@@ -77,15 +77,16 @@ const levelled = () => ({ prog3: { pool: 3, shared: 3, alloc: {}, atk: { sword: 
 /* ── 4. the words ── */
 {
   const R = levelled();
-  check('4: the handle (v2.3.4071: the grip replaced OPEN)', PT.pointsTipWords('fold', R) === 'You have 6 points to spend. Tap the handle.', PT.pointsTipWords('fold', R));
+  check('4: the handle (v2.3.4062: the grip replaced OPEN)', PT.pointsTipWords('fold', R) === 'You have 6 points to spend. Tap the handle.', PT.pointsTipWords('fold', R));
   check('4: the sideways dashboard', PT.pointsTipWords('side', R) === 'You have 6 points to spend. Open your dashboard.');
-  check('4: Bro (v2.3.4071: the button\'s new name)', PT.pointsTipWords('nav', R) === 'You have 6 points to spend. Tap Bro.');
-  check('4: the Points tab', PT.pointsTipWords('tab', R) === 'Your 6 points are on the Points tab.');
+  check('4: Bro (v2.3.4062: the button\'s new name)', PT.pointsTipWords('nav', R) === 'You have 6 points to spend. Tap Bro.');
+  /* v2.3.4062: the Points tab is the Bro card's "Spend points" */
+  check('4: the Spend points button', PT.pointsTipWords('tab', R) === 'Your 6 points are waiting. Tap Spend points.', PT.pointsTipWords('tab', R));
   const g = PT.pointsTipWords('grid', R);
   check('4: the grid says what the two rows are and to tap a stat',
     g === "Top row: 3 weapon points for your weapon's stats. Bottom row: 3 shared points for any stat there. Tap a stat to see what it does.", g);
   const one = { prog3: { pool: 1, shared: 0 } };
-  check('4: singular', PT.pointsTipWords('tab', one) === 'Your 1 point is on the Points tab.'
+  check('4: singular', PT.pointsTipWords('tab', one) === 'Your 1 point is waiting. Tap Spend points.'
     && PT.pointsTipWords('nav', one) === 'You have 1 point to spend. Tap Bro.', [PT.pointsTipWords('tab', one), PT.pointsTipWords('nav', one)]);
   check('4: ...on the grid too', PT.pointsTipWords('grid', one).startsWith('Top row: 1 weapon point for') && PT.pointsTipWords('grid', one).includes('0 shared points'));
   const all = ['fold', 'side', 'nav', 'tab', 'grid'].map((w) => PT.pointsTipWords(w, R)).join(' ');
@@ -130,8 +131,11 @@ const coach = readFileSync(new URL('../../src/ui/mobile/QuestCoach.jsx', import.
   const hero = readFileSync(new URL('../../src/ui/mobile/sheet/HeroExpanded.jsx', import.meta.url), 'utf8');
   const dash = readFileSync(new URL('../../src/ui/mobile/BottomDashboard.jsx', import.meta.url), 'utf8');
   check('6: the grid\'s top row and its head cell are there', /data-prog3-band="lane"/.test(hero) && /data-prog3-lane=\{isLane \? buildCat : 'shared'\}/.test(hero));
-  /* v2.3.4071: Bro's five tabs (Me, Points, Skills, Achievements, Equipment) */
-  check('6: the Points tab is the "Build" section', /const SECTIONS_ALL = \['Me', 'Build', 'Skills', 'Achievements', 'Overview'\]/.test(hero) && /data-section=\{s\}/.test(hero));
+  /* v2.3.4062: Bro is one card; Points ('Build') a window over it, opened by
+     the card's Spend points, which wears data-section="Build" */
+  const broCard = readFileSync(new URL('../../src/ui/mobile/sheet/BroCard.jsx', import.meta.url), 'utf8');
+  check('6: the Points window is the "Build" section, the card\'s Spend points its door', /const SECTIONS = \['Card', 'Build', 'Overview'\]/.test(hero)
+    && /onPoints=\{\(\) => setSection\('Build'\)\}/.test(hero) && /data-section="Build"/.test(broCard));
   check('6: Bro is the "hero" destination', /\{ id: 'hero',\s+label: 'Bro'/.test(dash));
   check('6: the stat window shows the hint under "points spent"', /spentHint: spentN > 0 \? firstSpendHint\(/.test(hero));
   const pop = readFileSync(new URL('../../src/ui/mobile/InfoPopup.jsx', import.meta.url), 'utf8');

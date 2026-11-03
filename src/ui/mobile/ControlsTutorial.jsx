@@ -80,7 +80,7 @@ const STEPS = [
      the thing being described; the rail button is the fallback for when the
      player is on some other panel and the grid is not up. */
   { key: 'dashboard', shape: 'rect',
-    /* v2.3.4071: by the button's id, not its word (it is "Gear" now;
+    /* v2.3.4062: by the button's id, not its word (it is "Gear" now;
        TRAPS §29: a renamed label is a selector that silently finds nothing) */
     sels: ['[data-tut="coach-gear"]', '.bt-navrail [data-nav="dashboard"]'],
     label: 'Bag', body: 'Your items and gear live here. Tap one to equip it.' },

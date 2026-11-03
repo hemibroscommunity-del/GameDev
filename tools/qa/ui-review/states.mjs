@@ -529,24 +529,40 @@ export const STATES = [
 
   /* ═══ THE DASHBOARD ═══ */
   /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page).
-     v2.3.4071: the Character page is Bro, five tabs (Me, Points, Skills,
-     Achievements, Equipment): each its own screen here, under dash-bro-* */
-  Object.assign(dash('hero', 'Bro: Me', 'The Bro page on Me, the tab it opens on: your portrait, name, title, level, "Achievement Points: N" (a tap opens Achievements), your three combat skills and your core stats.'), { id: 'dash-bro' }),
+     v2.3.4062: the Character page is Bro, ONE card -- your own Inspect card
+     (the owner: "like what it looks like when you inspect another player") --
+     with Points and Equipment as windows over it, Life Skills and
+     Achievements as pages under it: each its own screen here, dash-bro-* */
   {
-    id: 'dash-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment',
-    about: 'The Bro page on its last tab, Equipment: equipment slots, the figure, your stats as pills (offense, player, vitals). The Gear button takes these once it is built.',
+    id: 'dash-bro', group: 'Dashboard', title: 'Bro: your card',
+    about: 'The Bro page: your own Inspect card, the screen you get when you inspect another player, filled with your data -- portrait, name, level, Achievement Points, quests, your title and clan ("No Clan"), a gold "Spend points (N)" (glowing while N > 0), Melee / Bow / Magic with their levels and bars, your six worn slots (a tap opens Equipment), your stats (HP, stamina, mana, offense, defense), lifetime kills, rarest achievement, the Homestead, then an Achievements row and a Life Skills row.',
     run: async ({ P }) => {
-      await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Overview'); });
+      await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
       const e = await bus(P, 'open', 'hero');
       if (e) return e;
       await wait(P, 900);
-      if (!(await has(P, '[data-section="Overview"][aria-pressed="true"]'))) return 'the Equipment tab is not the one up';
+      if (!(await has(P, '[data-bro-page="Card"] .bt-pin.is-embedded'))) return 'the card is not up';
     },
   },
   {
-    id: 'dash-bro-points', group: 'Dashboard', title: 'Bro: Points',
-    about: 'The Bro page on its Points tab: spending points on each weapon skill and on the character.',
+    id: 'dash-bro-equipment', group: 'Dashboard', title: 'Bro: Equipment (a window over the card)',
+    about: 'The Equipment window, opened from the card\'s six slots: equipment slots, the figure, your stats as pills (offense, player, vitals), under a title row with a close back to the card. The Gear button takes these once it is built.',
     run: async ({ P }) => {
+      await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
+      const e = await bus(P, 'open', 'hero');
+      if (e) return e;
+      await wait(P, 900);
+      const t = await tapSel(P, '.bt-pin-equip[data-section="Overview"]');
+      if (t) return t;
+      await wait(P, 700);
+      if (!(await has(P, '[data-bro-popup="Overview"]'))) return 'the Equipment window did not open';
+    },
+  },
+  {
+    id: 'dash-bro-points', group: 'Dashboard', title: 'Bro: Points (a window over the card)',
+    about: 'The Points window, opened from the card\'s "Spend points (N)": spending points on each weapon skill and on the character, under a title row with a close back to the card.',
+    run: async ({ P }) => {
+      await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
       await bus(P, 'open', 'hero');
       /* v2.3.3481 (the 2026-10-19 UI review): the computer's picture showed
          the Equipment tab.  Opening from the folded band is two renders and a
@@ -558,7 +574,7 @@ export const STATES = [
       const e = await tapSel(P, '[data-section="Build"]');
       if (e) return e;
       await wait(P, 400);
-      if (!(await has(P, '[data-section="Build"][aria-pressed="true"]'))) return 'the Points tab did not take the press';
+      if (!(await has(P, '[data-bro-popup="Build"]'))) return 'the Points window did not open';
     },
   },
   /* ═══ v2.3.3999: YOUR PORTRAIT IS A HEMI BRO (docs/specs/hemi-portrait.md) ═══
@@ -638,8 +654,9 @@ export const STATES = [
       if (!(await has(P, '[data-journal-page]')) || (await has(P, '[data-journal-focus]'))) return 'the quest\'s page did not open';
     },
   },
-  /* v2.3.4071: Life Skills are Bro's Skills tab (the bus sends 'skills' there) */
-  Object.assign(dash('skills', 'Bro: Skills (life skills)', 'Bro\'s Skills tab: your life skills (mining, woodcutting, fishing, cooking, farming...) and their levels.'), { id: 'dash-bro-skills' }),
+  /* v2.3.4062: Life Skills are a page under Bro (the card's Life Skills row;
+     the bus puts 'skills' there, its back chip returning to the card) */
+  Object.assign(dash('skills', 'Bro: Life Skills', 'The Life Skills page, under Bro (the card\'s Life Skills row opens it; back returns to the card): your life skills (mining, woodcutting, fishing, cooking, farming...) and their levels.'), { id: 'dash-bro-skills' }),
   {
     id: 'dash-bro-skill-detail', group: 'Dashboard', title: 'Bro: a life skill in detail',
     about: 'One life skill opened: what it unlocks at each level, the XP it pays, each hit\'s odds.',
@@ -710,9 +727,9 @@ export const STATES = [
      page) and one worn as the title, so the picture has earned rows, a title
      and the locked super-rares together -- a new character's page is 23
      locked rows */
-  /* v2.3.4071: Bro's Achievements tab (moved from More; the bus sends
-     'achievements' there) */
-  Object.assign(more('achievements', 'Bro: Achievements', 'Bro\'s Achievements tab: all 33 (v2.3.4036: + the ten rare fish), which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
+  /* v2.3.4062: a page under Bro (moved from More; the card's Achievements
+     row and AP open it, and the bus puts 'achievements' there) */
+  Object.assign(more('achievements', 'Bro: Achievements', 'The Achievements page, under Bro (the card\'s Achievements row and its AP open it): all 33 (v2.3.4036: + the ten rare fish), which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
     id: 'dash-bro-achievements', group: 'Dashboard',
     run: async ({ P, wsPort, myId }) => {
       for (const id of ['first_blood', 'combat_10']) await H.devOp(wsPort, 'achv', myId, { id }).catch(() => {});
@@ -729,9 +746,9 @@ export const STATES = [
   }),
   /* v2.3.3773: Journey is its own page under More, the Character page's old records tab moved here */
   more('journey', 'Journey', 'Your journey: kills, deaths, lifetime gold and XP, duels won and the deepest zone (the Character page\'s old third tab).'),
-  /* v2.3.4071: Account -- Log out / Switch character, then the Login Key */
+  /* v2.3.4062: Account -- Log out / Switch character, then the Login Key */
   more('account', 'Account', 'Your account: Log out (or Switch character, with more than one bro on the device), then your Login Key: how to carry this character to another device.'),
-  /* v2.3.4071: what the bell in the world's corner held, with a few lines in it */
+  /* v2.3.4062: what the bell in the world's corner held, with a few lines in it */
   Object.assign(more('notifications', 'Notifications', 'Notifications: world chat and the game\'s news, newest first (the bell that was in the world\'s corner), with Show on screen.'), {
     run: async ({ P }) => {
       await evalIn(P, () => {

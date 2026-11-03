@@ -90,7 +90,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      inside the two-column block that holds them — which keeps the two things
      the assertions were actually for (the number is real, nothing is
      clipped) while letting the layout be whatever the owner last drew. */
-  await H.openDest(P, 'Character');
+  await H.openDest(P, 'Bro');
   await P.page.waitForTimeout(700);
   /* v2.3.3053: the stats are PILLS now (owner mockup) -- an icon, the name,
      the value -- found by their data-pill key; the seven became fourteen. */
@@ -130,7 +130,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      below it went red at once while the screen was fine.  All three spellings
      are listed rather than swapped, so the file survives the rename going
      either way. */
-  await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first()
+  await P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first()
     .click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(500);
   /* ═══════════════════════════════════════════════════════════

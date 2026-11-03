@@ -103,8 +103,25 @@ const dash = (v) => (v == null ? '–' : v);
  * onClose     close everything
  * onOpen      (panelId) open a dashboard destination -- 'leaderboard', 'encyclopedia'
  * dock        { party: {state:'invite'|'member', onClick} | null, trade, duel } | null
+ *
+ * v2.3.4062: YOUR OWN CARD IS THE BRO PAGE (sheet/BroCard.jsx).  The owner:
+ * "I wanted the bro tab to be like what it looks like when you inspect
+ * another player."  So this card is drawn there too, with five more, all
+ * optional (an inspect window passes none of them and is unchanged):
+ * embedded    drawn in the dashboard's page, not as a window: no ✕, and the
+ *             frame's look comes from .bt-pin.is-embedded (game.css)
+ * slots       { afterTags, afterEquip, end, dock }: the rows only your own
+ *             card has (your stats, Achievements, Life Skills) where they
+ *             belong in the card's order, and `dock`: what stands in the
+ *             command dock's place -- stuck to the body's bottom edge, so it
+ *             never leaves the screen however short the page (Spend points)
+ * onAp        the AP becomes a button (to the Achievements page)
+ * onClan      the clan box becomes a button (to the clan's page)
+ * onEquipment the six slots become one button (to the Equipment window)
+ * and a profile's `combatPct` ({melee, bow, staff}: 0-100) draws a bar under
+ * each combat level.
  */
-export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOpen, dock }) {
+export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOpen, dock, embedded, slots, onAp, onClan, onEquipment }) {
   const [, setTick] = React.useState(0);
   React.useEffect(() => {
     const id = setInterval(() => setTick((n) => (n + 1) % 1e6), 1000);
@@ -122,17 +139,23 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
   const rarest = p.showcase.rarest;
   const plots = p.homestead.plotsReady;
   const open = (id) => () => { if (onOpen) onOpen(id); };
+  const sl = slots || {};   /* v2.3.4062 */
+  const pct = p.combatPct || null;
+  /* v2.3.4062: a tap on a box that is a door, kept from the page behind */
+  const tapThen = (fn) => (e) => { e.stopPropagation(); fn(); };
 
   return (
     <div
-      className={'bt-inspect-card bt-pcard bt-pin' + (self ? ' is-self' : '')}
+      className={(embedded ? 'bt-pcard bt-pin is-embedded' : 'bt-inspect-card bt-pcard bt-pin') + (self ? ' is-self' : '') + (self && sl.dock ? ' has-dock' : '')}
       data-profile={self ? 'self' : 'player'}
       data-loaded={p.loaded ? '1' : '0'}
-      onClick={(e) => e.stopPropagation()}
+      onClick={embedded ? undefined : (e) => e.stopPropagation()}   /* v2.3.4062: a window keeps its taps from the scrim; the page has none */
     >
-      <button className="bt-inspect-close" aria-label="Close" onClick={onClose}>
-        <img src="/icons/ui/soc-close.webp" alt="" draggable={false} />
-      </button>
+      {!embedded && (
+        <button className="bt-inspect-close" aria-label="Close" onClick={onClose}>
+          <img src="/icons/ui/soc-close.webp" alt="" draggable={false} />
+        </button>
+      )}
 
       <div className="bt-pin-body ls-scrollbody">
         {/* ═══ HEAD ═══ */}
@@ -164,9 +187,18 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
                   <Ic className="bt-pcard-ic" src="/icons/ui/soc-friend.webp" glyph="🙂" />Friend
                 </span>
               )}
-              <span className="bt-pin-ap" title="Achievement points" data-stat="ap">
-                <Star />{p.achievementPoints == null ? '–' : compactCount(p.achievementPoints)} AP
-              </span>
+              {onAp ? (
+                <button type="button" className="bt-pin-ap is-btn" title="Achievement points" data-stat="ap"
+                  data-bro-ap={p.achievementPoints == null ? '' : p.achievementPoints}
+                  aria-label={'Achievement points: ' + compactCount(p.achievementPoints) + '. Open Achievements'}
+                  onClick={tapThen(onAp)}>
+                  <Star />{p.achievementPoints == null ? '–' : compactCount(p.achievementPoints)} AP
+                </button>
+              ) : (
+                <span className="bt-pin-ap" title="Achievement points" data-stat="ap">
+                  <Star />{p.achievementPoints == null ? '–' : compactCount(p.achievementPoints)} AP
+                </span>
+              )}
               {/* v2.3.3255: how many Hemi Bros their verified wallet holds -- the
                   owner: "It would be cool to list the number of hemi bros owned
                   somewhere on their profile".  The worker's count only
@@ -203,7 +235,13 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
               <span>{title.text}</span>
             </button>
           )}
-          <span className={'bt-pin-clan' + (p.clan ? '' : ' is-none')} data-stat="clan">
+          {/* v2.3.4062: on your own card the clan box is a door to the clan */}
+          {React.createElement(onClan ? 'button' : 'span', {
+            className: 'bt-pin-clan' + (p.clan ? '' : ' is-none') + (onClan ? ' is-btn' : ''),
+            'data-stat': 'clan',
+            'data-clan': p.clan ? p.clan.tag : 'none',
+            ...(onClan ? { type: 'button', onClick: tapThen(onClan), 'aria-label': p.clan ? 'Clan: ' + (p.clan.name || p.clan.tag) + '. Open' : 'No clan. Open' } : null),
+          }, <>
             <Ic className="bt-pin-clanic" src="/icons/ui/clan.webp" glyph="👥" />
             <span className="bt-pin-clannm">
               {p.clan ? (p.clan.name || '[' + p.clan.tag + ']') : 'No Clan'}
@@ -216,22 +254,38 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
                 <span>{p.clan.tag}</span>
               </span>
             )}
-          </span>
+          </>)}
         </div>
+
+        {sl.afterTags || null}
 
         <div className="bt-pcard-rule" aria-hidden="true" />
 
         {/* ═══ COMBAT + EQUIPMENT ═══ */}
         <div className="bt-pin-combat">
           {COMBAT.map(([k, label, src]) => (
-            <div className="bt-pin-cb" key={k} data-skill={k}>
+            <div className={'bt-pin-cb' + (pct ? ' has-bar' : '')} key={k} data-skill={k}
+              data-level={p.combat && p.combat[k] != null ? p.combat[k] : undefined}>
               <Ic src={src} glyph="⚔" />
               <span className="bt-pin-cbl">{label}</span>
               <b>{dash(p.combat && p.combat[k])}</b>
+              {/* v2.3.4062: your own card: how far to the next level */}
+              {pct && (
+                <i className="bt-pin-cbbar" aria-hidden="true" data-pct={Math.round(pct[k] || 0)}>
+                  <i style={{ width: Math.max(0, Math.min(100, pct[k] || 0)) + '%' }} />
+                </i>
+              )}
             </div>
           ))}
         </div>
-        <div className="bt-pin-equip" role="list" aria-label="Equipment">
+        {/* v2.3.4062: on your own card the six are one door, to the Equipment
+            window (data-section="Overview": the section it opens) */}
+        <div className={'bt-pin-equip' + (onEquipment ? ' is-btn' : '')}
+          {...(onEquipment ? {
+            role: 'button', tabIndex: 0, 'data-section': 'Overview', 'aria-label': 'Equipment: open',
+            title: 'Equipment', onClick: tapThen(onEquipment),
+            onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onEquipment(); } },
+          } : { role: 'list', 'aria-label': 'Equipment' })}>
           {p.equipment.map((s) => (
             <div key={s.slot} role="listitem" data-slot={s.slot}
               className={'bt-pin-slot' + (s.ghost ? ' is-empty' : '')}
@@ -241,6 +295,8 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
             </div>
           ))}
         </div>
+
+        {sl.afterEquip || null}
 
         <div className="bt-pcard-rule" aria-hidden="true" />
 
@@ -306,6 +362,12 @@ export function PlayerProfilePanel({ getProfile, face, onPortrait, onClose, onOp
             </div>
           </div>
         </div>
+
+        {sl.end || null}
+
+        {/* v2.3.4062: your own card's dock (Spend points), in the dock's
+            place and its sticky footing */}
+        {self && sl.dock && <div className="bt-pin-dock is-own">{sl.dock}</div>}
 
         {/* ═══ THE COMMAND DOCK ═══
             Inside the scrolling body, stuck to its bottom edge (game.css

@@ -83,9 +83,10 @@ export function pointsTipWords(where, rpg) {
     const shared = w.shared + ' shared point' + (w.shared === 1 ? '' : 's');
     return 'Top row: ' + lane + ' for your weapon\'s stats. Bottom row: ' + shared + ' for any stat there. Tap a stat to see what it does.';
   }
-  if (where === 'tab') return 'Your ' + pts + (n === 1 ? ' is' : ' are') + ' on the Points tab.';
+  /* v2.3.4062: the Points tab is the Bro card's "Spend points" button now */
+  if (where === 'tab') return 'Your ' + pts + (n === 1 ? ' is' : ' are') + ' waiting. Tap Spend points.';
   /* the card's own title says "Level up!" (the lesson's label) */
-  /* v2.3.4071: the button is Bro now, and the fold a handle, not OPEN */
+  /* v2.3.4062: the button is Bro now, and the fold a handle, not OPEN */
   if (where === 'nav') return 'You have ' + pts + ' to spend. Tap Bro.';
   if (where === 'side') return 'You have ' + pts + ' to spend. Open your dashboard.';
   return 'You have ' + pts + ' to spend. Tap the handle.';

@@ -44,9 +44,9 @@ async function allocate(P, cat, stat, n) {
 }
 
 async function openPoints(P) {
-  await H.openDest(P, 'Character');
+  await H.openDest(P, 'Bro');
   await P.page.waitForTimeout(600);
-  await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
+  await P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
     .first().click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(700);
 }

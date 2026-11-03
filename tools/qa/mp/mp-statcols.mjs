@@ -76,7 +76,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(900);
     /* v2.3.1972's three spellings: the tab is "Points" with an empty pool and
        "Build — N points" with a badge, and it was "Build" before that. */
-    await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
+    await P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
       .first().click({ timeout: 8000 }).catch(() => {});
     await P.page.waitForTimeout(900);
     /* ═══ v2.3.2593: THE CLOSED STRIP IS THE NARROWEST THING ON THIS SCREEN ═══

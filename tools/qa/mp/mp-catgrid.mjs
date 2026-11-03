@@ -170,9 +170,9 @@ async function answerConfirm(P, which, settle) {
 }
 
 async function openPoints(P) {
-  await H.openDest(P, 'Character');
+  await H.openDest(P, 'Bro');
   await P.page.waitForTimeout(600);
-  await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
+  await P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
     .first().click({ timeout: 8000 }).catch(() => {});
   await P.page.waitForTimeout(700);
 }
@@ -211,9 +211,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
        pre-existing knowledge.  Landscape opens the panel through the bus
        directly, exactly as the pre-v2.3.2683 file did. */
     if (land) {
-      await P.page.evaluate(() => window.__broDashPanelBus && (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')));
+      await P.page.evaluate(() => window.__broDashPanelBus && (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')));   /* v2.3.4062: the Bro card, whose Spend points opens Points */
       await P.page.waitForTimeout(900);
-      await P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
+      await P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]')
         .first().click({ timeout: 8000 }).catch(() => {});
       await P.page.waitForTimeout(700);
     } else {
