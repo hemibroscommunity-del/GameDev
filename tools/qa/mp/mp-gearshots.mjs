@@ -2,16 +2,18 @@
  *
  * The owner's second mockup (2026-11-03): the bag (three by three, the coins
  * beside "All Items") | ONE card | "Equipped".  This scenario plays the real
- * tab in the Wheel's BroTown and saves the four pictures
+ * tab in the Wheel's BroTown and saves the six pictures
  * docs/UI-DESIGN-NOTES.md shows:
  *
  *   docs/shots/gear-tab-overview.webp  upright phone (390 x 844, touch), nothing picked
+ *   docs/shots/gear-tab-xp.webp        ...a skill tile tapped (its XP bar)
  *   docs/shots/gear-tab-item.webp      ...a stack in the bag tapped (the ore)
+ *   docs/shots/gear-tab-gear.webp      ...a bag weapon, compared against the one worn
  *   docs/shots/gear-tab-slot.webp      ...the Sword slot tapped (the bag filtered)
  *   docs/shots/gear-tab-desk.webp      a computer playing wide (1280 x 800)
  *
- * The overview shows a pill glowing gold with points waiting (the dev kit's
- * levels, through the worker's own XP path).
+ * The character is levelled through the worker's own XP path (the dev kit's
+ * levels) so the skill tiles read a played character's levels.
  *
  * Each phone picture is the band and a strip of world over it, cut to 256
  * colours and saved as lossless webp (the memory law's 256, and a picture in
@@ -95,18 +97,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
         shots.push(f);
         rec.ok(`[390x844] ${tag}: the card shows the ${want}, pictured`, v === want, v);
       };
-      /* a level-up, so a pill glows gold with points waiting */
+      /* a level-up through the worker's own XP path, so the levels read
+         as a played character's */
       await H.devOp(wsPort, 'kit', await H.readState(P, (S) => S.myId), { what: 'levels' }).catch(() => null);
-      for (let i = 0; i < 30; i++) {
-        await P.page.waitForTimeout(300);
-        if (await P.page.evaluate(() => !!document.querySelector('[data-gear-skillpill][data-glow="1"]'))) break;
-      }
-      await shot('overview', 'overview', 'nothing picked, a pill with points waiting');
+      await P.page.waitForTimeout(2500);
+      await shot('overview', 'overview', 'nothing picked');
+      /* a skill tile tapped: its XP bar (through the bus the tap calls: the
+         level-up's coach may lie over the band here; mp-geartab taps it) */
+      await P.page.evaluate(() => window.__btGearTab.bus.showXp('power'));
+      await shot('xp', 'overview', 'the Melee tile tapped (its XP bar)');
+      await P.page.evaluate(() => window.__btGearTab.bus.showXp(null));
       /* a stack in the bag: the ore */
       const ore = await P.page.evaluate(() => { const t = document.querySelector('[data-gear-bag] [data-bag-key^="i-ore_"]'); return t ? t.getAttribute('data-bag-key') : null; });
       if (ore) await tapEl(P, `[data-gear-bag] [data-bag-key="${ore}"]`);
       await shot('item', 'item', 'the ore tapped');
       await tapEl(P, `[data-gear-bag] [data-bag-key="${ore}"]`);
+      /* a weapon from the bag, compared against the one worn: the spare
+         greatsword (its key off the bag's own probe) */
+      const spare = await P.page.evaluate(() => {
+        const R = window._gameState.current.rpg || {};
+        const i = (R.weaponStash || []).findIndex((w) => w && w.type === 'greatsword');
+        return i >= 0 ? 'stashWeapon-' + i : null;
+      });
+      if (spare) {
+        await P.page.evaluate((k) => { const t = document.querySelector(`[data-gear-bag] [data-bag-key="${k}"]`); if (t) t.scrollIntoView({ block: 'nearest' }); }, spare);
+        await tapEl(P, `[data-gear-bag] [data-bag-key="${spare}"]`);
+      }
+      await shot('gear', 'item', 'a bag greatsword compared');
+      if (spare) await tapEl(P, `[data-gear-bag] [data-bag-key="${spare}"]`);
       /* the Sword slot: the bag filtered to swords, the card the sword */
       await tapEl(P, '[data-gear-cell="sword"]');
       await shot('slot', 'item', 'the Sword slot tapped');
@@ -141,8 +159,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   try {
     const out = execFileSync('python3', [`${H.REPO}/tools/qa/mp/gear_shots.py`, DOCS, ...shots], { encoding: 'utf8' });
     console.log(out.trim());
-    rec.ok('the four pictures saved to docs/shots at 256 colours', /saved 4/.test(out), out.trim());
+    rec.ok('the six pictures saved to docs/shots at 256 colours', /saved 6/.test(out), out.trim());
   } catch (e) {
-    rec.ok('the four pictures saved to docs/shots at 256 colours', false, String(e).slice(0, 300));
+    rec.ok('the six pictures saved to docs/shots at 256 colours', false, String(e).slice(0, 300));
   }
 }

@@ -144,7 +144,7 @@ async function gearReset(P) {
   await evalIn(P, () => {
     const g = window.__btGearTab;
     if (!g) return;
-    g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false);
+    g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false); if (g.bus.showXp) g.bus.showXp(null);
   });
 }
 async function openGear(P, view) {
@@ -717,7 +717,7 @@ export const STATES = [
   /* ═══ v2.3.4121: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
   {
     id: 'gear-tab', group: 'Dashboard', title: 'The Gear tab',
-    about: 'The resting dashboard as the owner\'s second mockup (v2.3.4121): the bag ("All Items" with a funnel and a chevron, your coins beside it, three square slots a row and three rows in view, the rest by scrolling) | ONE card, no tabs or figure: with nothing picked "<name> Lv N", the HP, MP and EN bars (stamina is the game\'s energy: one bar), then DEF, DODGE, RESIST | DMG, SPD, CRIT, RANGE -- no "Combat Power", which the game does not have | "Equipped" over Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem (the weapon in hand gold, each weapon its skill\'s level in a corner). Too narrow for three across (sideways) the bag sits over the other two; a computer adds the weapon bar (1 2 3) at the foot.',
+    about: 'The resting dashboard as the owner\'s second mockup and notes (v2.3.4121): the bag ("All Items" with a funnel and a chevron, the coins beside it -- the coin picture with the amount as a count badge, as on a bag slot -- three square slots a row and three rows in view, the rest by scrolling) | ONE card, no tabs or figure, which never scrolls: "<name> Lv N", the HP, MP and EN bars (stamina is the game\'s energy: one bar), then Melee, Bow and Magic as three tiles, each its big picture and "Lv N" (a tap turns a tile into its XP bar for 4 s) | "Equipped" over Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem, its cells the bag\'s squares\' size (the weapon in hand gold). Too narrow for three across (sideways) the bag and the gear sit side by side over the card; a computer adds the weapon bar (1 2 3) at the foot.',
     run: async ({ P, view, wsPort, myId }) => {
       await gearKit(P, wsPort, myId);
       const e = await openGear(P, view);
@@ -726,7 +726,7 @@ export const STATES = [
   },
   {
     id: 'gear-slot-selected', group: 'Dashboard', title: 'Gear tab: a slot tapped',
-    about: 'The Sword slot tapped: its blue ring, the bag filtered to swords (the pill reads "Swords" with an × beside it that clears it), and the card showing the sword: its picture in a frame, its name in its grade\'s colour, "Sword · Equipped", its numbers, one sentence, the Melee level\'s XP, and one button, Unequip, at the card\'s foot.',
+    about: 'The Sword slot tapped: its blue ring, the bag filtered to swords (the pill reads "Swords" with an × beside it that clears it), and the card, wearing the same blue, showing the sword: its picture beside its name in its grade\'s colour, "Sword · Equipped", its numbers two to a row (DMG, DPS, SPD, RANGE, ELEM), and one button, Unequip, at the card\'s foot.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;
@@ -736,7 +736,7 @@ export const STATES = [
   },
   {
     id: 'gear-compare', group: 'Dashboard', title: 'Gear tab: a bag weapon compared',
-    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the card showing it -- its picture, name and kind, then each stat against the sword in its slot, "old → new" with the difference in green (better) or red (worse), Equip at the card\'s foot and the rest (Sell, Pin) small under it. Tapping it again, or the bag\'s empty space, brings the overview back.',
+    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the card (wearing the same blue) showing it -- its picture, name and kind, then its numbers two to a row with the change against the sword in its slot inline in green (better) or red (worse), and ONE row of buttons at its foot: Equip (wider), Sell, and "⋯" for the item card\'s other actions. Tapping it again, or the bag\'s empty space, brings the overview back.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;

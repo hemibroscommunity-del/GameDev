@@ -66,7 +66,32 @@ const look = (P) => P.page.evaluate(() => {
     /* v2.3.4121: the card's view and its parts, the bag's squares */
     who: (q('[data-gear-who]') || {}).textContent || null,
     bars: [...document.querySelectorAll('[data-gear-bars] [data-vital]')].map((b) => b.getAttribute('data-vital')),
-    pills: [...document.querySelectorAll('[data-gear-skillpill]')].map((b) => ({ id: b.getAttribute('data-gear-skillpill'), lvl: Number(b.getAttribute('data-lvl')), unspent: Number(b.getAttribute('data-unspent')), glow: b.getAttribute('data-glow') === '1', xpbar: !!b.querySelector('[data-xpbar]'), text: b.textContent, box: vis(b) })),
+    skills: [...document.querySelectorAll('[data-gear-skill]')].map((b) => ({ id: b.getAttribute('data-gear-skill'), lvl: Number(b.getAttribute('data-lvl')), open: b.hasAttribute('data-gear-xpopen'), img: !!b.querySelector('img'), xpbar: !!b.querySelector('[data-xpbar]'), num: (b.querySelector('[data-gear-xpnum]') || {}).textContent || null, text: b.textContent, box: vis(b) })),
+    /* v2.3.4121: the card never scrolls, nothing in it under 11 px, its
+       border the pick's blue while something is picked; the two grids one size */
+    fit: (() => {
+      const c = q('[data-gear-pane="bro"]');
+      if (!c) return null;
+      const sc = c.querySelector('[data-gear-scroll]');
+      const cr = c.getBoundingClientRect();
+      const fonts = [];
+      c.querySelectorAll('*').forEach((el) => {
+        if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return;
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) fonts.push({ f: parseFloat(getComputedStyle(el).fontSize), t: el.textContent.trim().slice(0, 16) });
+      });
+      const small = fonts.filter((x) => x.f < 11);
+      const out = [...c.querySelectorAll('button, [data-gear-grid] > *')].filter((b) => { const r = b.getBoundingClientRect(); return r.width > 0 && (r.right > cr.right + 0.5 || r.bottom > cr.bottom + 0.5); }).length;
+      return { over: c.scrollHeight - c.clientHeight, scOver: sc ? sc.scrollHeight - sc.clientHeight : 0, small, outside: out,
+        border: getComputedStyle(c).borderTopColor, linked: c.getAttribute('data-gear-linked') === '1' };
+    })(),
+    ringOf: (() => { const el = q('[data-gear-sel="1"]'); return el ? getComputedStyle(el).boxShadow : null; })(),
+    sizes: (() => {
+      const b = q('[data-gear-bag] [data-bag-key], [data-gear-bag] [data-gear-slot-empty]');
+      const c = q('[data-gear-cell]');
+      return { bag: b ? Math.round(b.getBoundingClientRect().width * 10) / 10 : null, cell: c ? Math.round(c.getBoundingClientRect().width * 10) / 10 : null };
+    })(),
+    goldBadge: (q('[data-gear-gold-badge]') || {}).textContent || null,
     columns: !!q('[data-gear-body], [data-gear-attack]'),
     gold: q('[data-gear-gold]') ? { n: Number(q('[data-gear-gold]').getAttribute('data-gear-gold')), box: vis(q('[data-gear-gold]')) } : null,
     pillBox: vis(q('[data-gear-filter]')),
@@ -134,6 +159,25 @@ async function seed(P, wsPort, rec, tag) {
   return id;
 }
 
+/* v2.3.4121: the owner's "without needing to do any scrolling" -- the card's
+   fit, its 11 px floor, its blue link, the grids' one size, at one state */
+const BLUE = 'rgb(79, 143, 222)';   /* GEAR_SEL_BLUE */
+function fitOk(rec, tag, s, picked) {
+  const f = s.fit || {};
+  rec.ok(`${tag}: the card fits -- no scrolling (scrollHeight <= clientHeight + 1), nothing past its edge, nothing under 11 px`,
+    f.over <= 1 && f.scOver <= 1 && f.outside === 0 && f.small && f.small.length === 0, f);
+  rec.ok(`${tag}: ${picked ? 'the card wears the pick\'s blue (the ring\'s own colour)' : 'nothing picked: the card\'s own border, not the blue'}`,
+    picked ? (f.border === BLUE && f.linked && /rgb\(79, 143, 222\)/.test(s.ringOf || '')) : (f.border !== BLUE && !f.linked), { border: f.border, ring: s.ringOf });
+}
+/* `floor`: 34 px, except the sideways column (~222 px), where two grids of
+   three side by side cannot both be 34 px and the brief's rule is "shrink both
+   grids equally rather than make them differ" -- 32 px there */
+function sameSize(rec, tag, s, floor) {
+  const f = floor || 34;
+  rec.ok(`${tag}: the Equipped cells are the bag's squares' size (within 1 px), ${f} px or more`,
+    s.sizes && s.sizes.bag && s.sizes.cell && Math.abs(s.sizes.bag - s.sizes.cell) <= 1 && s.sizes.cell >= f, s.sizes);
+}
+
 export async function run({ browser, wsPort, webPort, rec }) {
   mkdirSync(OUT, { recursive: true });
 
@@ -157,12 +201,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       /* v2.3.4121: the mockup's bag -- four square slots a row, never under
          34 px, every square in view a slot (the rest empty squares) */
       /* v2.3.4121: the owner's "9 visible slots" -- three by three, bigger */
-      rec.ok('[390x844] the bag: three square slots a row, nine in view, each 38 px or more, empty squares filling the view',
-        !!s1.squares && s1.squares.cols === 3 && s1.squares.minW >= 38 && s1.squares.minH >= 38 && s1.squares.inView === 9
+      rec.ok('[390x844] the bag: three square slots a row, nine in view, each 34 px or more, empty squares filling the view',
+        !!s1.squares && s1.squares.cols === 3 && s1.squares.minW >= 34 && s1.squares.minH >= 34 && s1.squares.inView === 9
           && s1.squares.n % 3 === 0, s1.squares);
-      rec.ok('[390x844] the coins beside the filter pill, on its row, the pill "All Items"',
+      rec.ok('[390x844] the coins beside the filter pill, on its row (the coin picture, the amount a count badge), the pill "All Items"',
         !!s1.gold && !!s1.pillBox && s1.gold.box && s1.gold.box.l > s1.pillBox.l && Math.abs(s1.gold.box.t + s1.gold.box.h / 2 - (s1.pillBox.t + s1.pillBox.h / 2)) <= 3
-          && /All items/i.test(s1.pill || ''), { gold: s1.gold, pill: s1.pill, pillBox: s1.pillBox });
+          && s1.goldBadge === (s1.gold.n >= 10000 ? s1.goldBadge : s1.gold.n.toLocaleString('en-US')) && !!s1.goldBadge
+          && /All items/i.test(s1.pill || ''), { gold: s1.gold, badge: s1.goldBadge, pill: s1.pill, pillBox: s1.pillBox });
+      sameSize(rec, '[390x844]', s1);
+      fitOk(rec, '[390x844] the overview', s1, false);
       const badges = s1.cells.filter((c) => ['sword', 'bow', 'staff'].includes(c.id)).map((c) => c.badge);
       rec.ok('[390x844] "Equipped" over the grid; each weapon cell wears its combat skill\'s level ("Lv n", or "+n" with points)',
         s1.eqHead === 'Equipped' && badges.length === 3 && badges.every((b) => /^(Lv \d+|\+\d+)$/.test(b || '')), { head: s1.eqHead, badges });
@@ -172,10 +219,19 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('[390x844] the overview: "<name> Lv N", the HP, MP and EN bars (one energy bar: stamina is the energy), no stat columns, no "Combat Power"',
         s1.who === 'Geary' && Number(s1.level) >= 1 && s1.bars.join() === 'hp,mana,stamina' && !s1.columns && !s1.power,
         { who: s1.who, level: s1.level, bars: s1.bars, columns: s1.columns, power: s1.power });
-      rec.ok('[390x844] ...then the three combat skill pills, Melee Bow Magic: each "Lv N" and an XP bar, nothing glowing with no points',
-        s1.pills.length === 3 && s1.pills.map((p) => p.text.replace(/Lv.*$/, '').trim()).join() === 'Melee,Bow,Magic'
-          && s1.pills.every((p) => p.lvl >= 1 && new RegExp('Lv ' + p.lvl + '$').test(p.text) && p.xpbar && p.box && p.box.h >= 32)
-          && s1.pills.every((p) => p.glow === (p.unspent > 0)), s1.pills);
+      rec.ok('[390x844] ...then Melee, Bow and Magic as three tiles side by side: each only its picture and "Lv N" (no XP bar, no points badge)',
+        s1.skills.length === 3 && s1.skills.every((k) => !k.open && k.img && !k.xpbar && /^Lv \d+$/.test(k.text.trim()) && k.lvl >= 1)
+          && s1.skills[0].box.t === s1.skills[1].box.t && s1.skills[1].box.l > s1.skills[0].box.l, s1.skills);
+      /* a tap turns a tile into its XP bar; a second tap turns it back */
+      await tapEl(P, `[data-gear-skill="${s1.skills[0].id}"]`);
+      const sx = await look(P);
+      await P.page.screenshot({ path: `${OUT}/phone-1b-xp.png` });
+      rec.ok('[390x844] tap Melee: its tile turns into its XP bar, "current / next XP" (the top bar\'s numbers)',
+        sx.skills.length === 1 && sx.skills[0].open && sx.skills[0].xpbar && /^[\d,]+ \/ [\d,]+ XP$|^Fully levelled$/.test(sx.skills[0].num || ''), sx.skills);
+      fitOk(rec, '[390x844] the overview, an XP bar open', sx, false);
+      await tapEl(P, '[data-gear-xpopen]');
+      const sx2 = await look(P);
+      rec.ok('[390x844] ...a second tap turns it back into the three tiles', sx2.skills.length === 3 && sx2.skills.every((k) => !k.open), sx2.skills);
 
       /* 2. tap Sword */
       await tapEl(P, '[data-gear-cell="sword"]');
@@ -185,6 +241,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         s2.cells.find((c) => c.id === 'sword').sel && /Swords/.test(s2.pill || '') && s2.pillClear
           && s2.view === 'item' && s2.art
           && s2.stats === 'cell' && s2.statsFor === 'sword' && !!s2.name && s2.acts.filter((a) => a !== 'points').join() === 'unequip', s2);
+      fitOk(rec, '[390x844] the Sword slot', s2, true);
       rec.ok('[390x844] ...and the bag shows swords only', s2.bag.length >= 1 && s2.bag.every((k) => /^stashWeapon-/.test(k)), s2.bag);
 
       /* 3. tap the spare greatsword in the bag */
@@ -192,9 +249,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await tapEl(P, `[data-gear-bag] [data-bag-key="${spare}"]`);
       const s3 = await look(P);
       await P.page.screenshot({ path: `${OUT}/phone-3-compare.png` });
-      rec.ok('[390x844] tap a bag sword: its blue ring, the comparison rows (old → new), Equip at the panel\'s foot (the action list\'s first)',
-        s3.bagSel.join() === spare && s3.stats === 'bag' && s3.cmp.length >= 2 && s3.cmp.every((r) => /→/.test(r.text)) && s3.acts.includes('equip')
+      rec.ok('[390x844] tap a bag sword: its blue ring, its numbers against the sword worn (the change inline, green / red), Equip at the card\'s foot (the action list\'s first)',
+        s3.bagSel.join() === spare && s3.stats === 'bag' && s3.cmp.length >= 2 && s3.cmp.every((r) => Number.isFinite(r.tone)) && s3.acts.includes('equip')
           && !!(await P.page.$('[data-gear-foot] [data-gear-act="equip"]')), s3);
+
+      fitOk(rec, '[390x844] a bag sword compared', s3, true);
 
       /* 4. Equip */
       const before = await rpgOf(P);
@@ -246,6 +305,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.screenshot({ path: `${OUT}/phone-7-item.png` });
       rec.ok('[390x844] tap the fish: the card shows it -- its picture, its name, "Qty: 2", its buttons from the one list (Inspect where the worker weighs)',
         s9.view === 'item' && s9.stats === 'bag' && s9.art && !!s9.name && s9.qty === '2' && s9.bagSel.join() === fishKey, s9);
+      fitOk(rec, '[390x844] a material (the fish)', s9, true);
       await tapEl(P, `[data-gear-bag] [data-bag-key="${fishKey}"]`);
       const s10 = await look(P);
       rec.ok('[390x844] the fish again: back to the overview', s10.view === 'overview' && s10.stats === 'mine' && s10.bagSel.length === 0, s10);
@@ -261,26 +321,37 @@ export async function run({ browser, wsPort, webPort, rec }) {
         s12.view === 'item' && s12.statsFor === 'bow' && /Bows/.test(s12.pill || '')
           && s13.view === 'overview' && /All items/i.test(s13.pill || '') && !s13.cells.some((c) => c.sel), { s12: [s12.view, s12.statsFor, s12.pill], s13: [s13.view, s13.pill] });
 
-      /* v2.3.4121: a level-up's points light their pill gold; a tap opens
-         the Points window on it, and its ✕ comes back to the Gear tab */
-      await H.devOp(wsPort, 'kit', await H.readState(P, (S) => S.myId), { what: 'levels' }).catch(() => null);
-      let sp = null;
-      for (let i = 0; i < 30; i++) { await P.page.waitForTimeout(300); sp = await look(P); if (sp.pills.some((p) => p.glow)) break; }
-      await P.page.screenshot({ path: `${OUT}/phone-8-points.png` });
-      const lit = sp.pills.find((p) => p.glow);
-      rec.ok('[390x844] a level-up: a pill with points waiting glows gold and says "+n"; the levels went up',
-        !!lit && lit.unspent > 0 && /\+\d+/.test(lit.text) && sp.pills.every((p) => p.glow === (p.unspent > 0)), sp.pills);
-      if (lit) await tapEl(P, `[data-gear-skillpill="${lit.id}"]`);
+      /* v2.3.4121: the same at 360 x 780 -- the narrow phone pays for its
+         34 px squares out of the card, which still fits every state */
+      await P.page.setViewportSize({ width: 360, height: 780 });
+      await P.page.waitForTimeout(1500);
+      await P.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) { /* at rest */ } const g = window.__btGearTab; if (g) { g.bus.afterChange(); g.bus.clearFilter(); } });
       await P.page.waitForTimeout(800);
-      const pts = await P.page.evaluate(() => !!document.querySelector('[data-points-frame]'));
-      await P.page.screenshot({ path: `${OUT}/phone-9-pointswin.png` });
-      rec.ok('[390x844] ...a tap on it opens the Points window', pts, { pts });
-      /* the Points window is a page pushed over the dashboard: its back
-         chip (data-dash-back) pops it */
-      const shut = await tapEl(P, '[data-dash-back]');
-      await P.page.waitForTimeout(900);
-      const back = await look(P);
-      rec.ok('[390x844] ...and its back chip comes back to the Gear tab', shut && !!back.root && back.view === 'overview' && back.pills.length === 3, { shut, view: back.view });
+      const n1 = await look(P);
+      await P.page.screenshot({ path: `${OUT}/narrow-1-overview.png` });
+      rec.ok('[360x780] three across still', n1.layout === 'wide', n1.layout);
+      sameSize(rec, '[360x780]', n1);
+      fitOk(rec, '[360x780] the overview', n1, false);
+      await tapEl(P, `[data-gear-skill="${(n1.skills[1] || {}).id}"]`);
+      fitOk(rec, '[360x780] the overview, an XP bar open', await look(P), false);
+      await tapEl(P, '[data-gear-xpopen]');
+      const oreKey = n1.bag.find((k) => /^i-fish_/.test(k));
+      await tapEl(P, `[data-gear-bag] [data-bag-key="${oreKey}"]`);
+      fitOk(rec, '[360x780] a material', await look(P), true);
+      await tapEl(P, `[data-gear-bag] [data-bag-key="${oreKey}"]`);
+      await tapEl(P, '[data-gear-cell="sword"]');
+      const n2 = await look(P);
+      await P.page.screenshot({ path: `${OUT}/narrow-2-slot.png` });
+      fitOk(rec, '[360x780] the Sword slot', n2, true);
+      const spare2 = n2.bag.find((k) => /^stashWeapon-/.test(k));
+      if (spare2) await tapEl(P, `[data-gear-bag] [data-bag-key="${spare2}"]`);
+      const n3 = await look(P);
+      await P.page.screenshot({ path: `${OUT}/narrow-3-compare.png` });
+      rec.ok('[360x780] a bag sword compared (guard)', n3.stats === 'bag' && n3.cmp.length >= 2, { stats: n3.stats, cmp: n3.cmp.length });
+      fitOk(rec, '[360x780] a bag sword compared', n3, true);
+      await P.page.evaluate(() => { const g = window.__btGearTab; if (g) { g.bus.afterChange(); g.bus.clearFilter(); } });
+      await P.page.setViewportSize({ width: 390, height: 844 });
+      await P.page.waitForTimeout(1200);
 
       /* sideways: the narrow column, the bag over BRO | EQUIPMENT */
       await P.page.setViewportSize({ width: 844, height: 390 });
@@ -289,10 +360,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.waitForTimeout(1500);
       const l1 = await look(P);
       await P.page.screenshot({ path: `${OUT}/side-1.png` });
-      rec.ok('[844x390] sideways the column is narrow: the bag on top, BRO | EQUIPMENT side by side under it',
+      rec.ok('[844x390] sideways the column is narrow: the bag and the gear side by side on top, the card the full width under them',
         l1.layout === 'stack' && !!(l1.panes.inv && l1.panes.bro && l1.panes.equip)
-          && l1.panes.bro.t >= l1.panes.inv.t + l1.panes.inv.h - 1 && l1.panes.bro.l < l1.panes.equip.l
-          && l1.cells.every((c) => c.box && c.box.w >= 34), { panes: l1.panes, cells: l1.cells.map((c) => c.box && c.box.w) });
+          && l1.panes.inv.l < l1.panes.equip.l && Math.abs(l1.panes.inv.t - l1.panes.equip.t) <= 1
+          && l1.panes.bro.t >= l1.panes.inv.t + l1.panes.inv.h - 1, { panes: l1.panes });
+      sameSize(rec, '[844x390]', l1, 32);
+      fitOk(rec, '[844x390] the overview', l1, false);
       /* the kit's shield is in the bag: an empty cell, then the shield on from the bag */
       await tapEl(P, '[data-gear-cell="shield"]');
       const l2 = await look(P);
@@ -307,6 +380,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const l3 = await look(P);
         rec.ok('[844x390] the bag\'s shield: its comparison (Block, against an empty slot) and Equip at the card\'s foot',
           l3.stats === 'bag' && l3.cmp.some((r) => r.k === 'Block') && !!(await P.page.$('[data-gear-foot] [data-gear-act="equip"]')), l3);
+        fitOk(rec, '[844x390] the bag\'s shield compared', l3, true);
         await tapEl(P, '[data-gear-act="equip"]');
         await P.page.waitForTimeout(1200);
         await tapEl(P, '[data-gear-cell="shield"]');
@@ -333,6 +407,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('[computer] the Gear tab in the column, three across, the weapon bar at its foot wearing 1 2 3, the sword in hand gold',
         d1.layout === 'wide' && d1.bar.map((b) => b.key).join() === '1,2,3' && (d1.bar.find((b) => b.slot === 'melee') || {}).on
           && d1.bar.every((b) => b.box && d1.panes.inv && b.box.t >= d1.panes.inv.t + d1.panes.inv.h - 1), d1);
+      sameSize(rec, '[computer]', d1);
+      fitOk(rec, '[computer] the overview', d1, false);
       const b = d1.bar.find((x) => x.slot === 'ranged');
       await P.page.mouse.click(b.box.l + b.box.w / 2, b.box.t + b.box.h / 2);
       await P.page.waitForTimeout(1500);

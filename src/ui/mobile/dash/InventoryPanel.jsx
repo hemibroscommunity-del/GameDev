@@ -1360,7 +1360,12 @@ export const BagTile = ({ entry, style, onSelect, selected }) => {
 /* v2.3.4121: the Gear tab's blue ring -- "tapping on an item highlights it in
    blue to show active press" (the owner) -- OUTSIDE the tile's own edge, so a
    rare piece keeps its rarity border inside it.  The mana blue, no new hue. */
-export const GEAR_SEL_RING = '0 0 0 2px #4F8FDE, 0 0 8px rgba(79,143,222,.55)';
+/* v2.3.4121: its colour one constant, so the Gear tab's middle card wears the
+   SAME blue while something is picked (the owner: "connect the middle panel
+   ... to whatever the active attention item is (blue outline)") */
+export const GEAR_SEL_BLUE = '#4F8FDE';
+export const GEAR_SEL_TINT = 'rgba(79, 143, 222, 0.10)';
+export const GEAR_SEL_RING = `0 0 0 2px ${GEAR_SEL_BLUE}, 0 0 8px rgba(79,143,222,.55)`;
 
 /* Stash tile for an unequipped weapon or shield.  Opens the popup
    with the stashWeapon / stashShield kind so the Equip action wires

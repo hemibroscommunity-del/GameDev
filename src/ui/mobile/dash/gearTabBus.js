@@ -27,7 +27,12 @@
  */
 import { gearCell } from './itemCategory.js';
 
-const state = { sel: null, filter: { id: 'all', auto: false }, menu: false };
+const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, xp: null };
+/* v2.3.4121: the overview's skill tile showing its XP bar (a tap), held here
+   rather than in the component so a re-mount of the band never drops it;
+   back to the tiles after XP_HOLD_MS or a second tap */
+const XP_HOLD_MS = 4000;
+let xpTimer = 0;
 const subs = new Set();
 const emit = () => { subs.forEach((fn) => { try { fn(state); } catch (_e) { /* a listener's own problem */ } }); };
 
@@ -77,6 +82,13 @@ export const gearTabBus = {
     state.menu = false;
     emit();
   },
+  /** v2.3.4121: a skill tile tapped -- `key` shows its XP bar, null the tiles. */
+  showXp(key) {
+    if (xpTimer) { clearTimeout(xpTimer); xpTimer = 0; }
+    state.xp = key || null;
+    if (state.xp) xpTimer = setTimeout(() => { xpTimer = 0; state.xp = null; emit(); }, XP_HOLD_MS);
+    emit();
+  },
   setMenu(open) {
     if (state.menu === !!open) return;
     state.menu = !!open;
@@ -86,7 +98,7 @@ export const gearTabBus = {
 
 if (typeof window !== 'undefined') {
   window.__btGearTab = {
-    state: () => ({ sel: state.sel ? { cell: state.sel.cell || null, bag: state.sel.bag || null } : null, filter: { ...state.filter }, menu: state.menu, view: state.sel ? 'item' : 'overview' }),
+    state: () => ({ sel: state.sel ? { cell: state.sel.cell || null, bag: state.sel.bag || null } : null, filter: { ...state.filter }, menu: state.menu, xp: state.xp, view: state.sel ? 'item' : 'overview' }),
     bus: gearTabBus,
   };
 }

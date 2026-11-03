@@ -232,9 +232,25 @@ const TR = await import('../../src/data/trapping.js');
     /const BAG_COLS = 3;/.test(gt) && /const BAG_ROWS = 3;/.test(gt));
   check('6c one energy bar, the game\'s "EN" (stamina is the energy): HP, MP and stamina, no fourth bar',
     (code.match(/bar\('(hp|mana|stamina)'/g) || []).length === 3 && !/bar\('energy'|STAM'/.test(code));
-  check('6d the overview\'s three combat skills (Melee, Bow, Magic) from combatSkill.js, a tap opening Points over the dashboard; no stat columns',
-    /WEAPON_SKILLS\.map\(pill\)/.test(code) && /combatSkillState\(R, s\)/.test(code) && /heroSectionBus\.request\('Build'/.test(code)
-      && /dashboardPanelBus\.push\('hero'\)/.test(code) && /dashboardPanelBus\.open\('dashboard'\)/.test(code) && !/data-gear-body|data-gear-attack|overviewStats/.test(code));
+  check('6d the overview\'s three combat skills (Melee, Bow, Magic) as tiles from combatSkill.js, a tap showing the XP bar (gearTabBus.showXp), no Points link or points badge on them; no stat columns',
+    /WEAPON_SKILLS\.map\(\(x\) => x\)|skills\.map\(tile\)/.test(code) && /combatSkillState\(R, s\)/.test(code) && /gearTabBus\.showXp\(s\.key\)/.test(code)
+      && !/heroSectionBus|dashboardPanelBus\.push\('hero'\)|data-gear-skillpill/.test(code) && !/data-gear-body|data-gear-attack|overviewStats/.test(code));
+  /* v2.3.4121: the owner's 11-03 notes -- one size for both grids, the blue link */
+  const inv = src('src/ui/mobile/dash/InventoryPanel.jsx');
+  check('6e the card\'s blue is the pick ring\'s own colour, one constant (GEAR_SEL_BLUE) both read',
+    /export const GEAR_SEL_BLUE = '#4F8FDE'/.test(inv) && /GEAR_SEL_RING = `0 0 0 2px \$\{GEAR_SEL_BLUE\}/.test(inv)
+      && /border: `1px solid \$\{linked \? GEAR_SEL_BLUE/.test(code));
+  check('6f one square size `t` for the bag and the gear (the bag\'s grid and the gear\'s grid both `${t}px`)',
+    (code.match(/repeat\(\$\{BAG_COLS\}, \$\{t\}px\)/g) || []).length === 1 && (code.match(/repeat\(3, \$\{t\}px\)/g) || []).length === 1);
+  check('6g the card never scrolls (its body overflow hidden) and its text keeps the 11 px floor',
+    /data-gear-scroll="" style=\{\{ flex: 1, minHeight: 0, overflow: 'hidden'/.test(code) && /const FONT_MIN = 11;/.test(gt));
+}
+{
+  const { gearTabBus: B } = await import('../../src/ui/mobile/dash/gearTabBus.js');
+  B.showXp('power'); const x1 = B.state.xp;
+  B.showXp(null); const x2 = B.state.xp;
+  check('6h a skill tile\'s XP bar: shown by a tap, gone by a second', x1 === 'power' && x2 === null, { x1, x2 });
+
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
