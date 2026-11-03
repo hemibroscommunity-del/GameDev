@@ -2,6 +2,7 @@ import React from 'react';
 import { TARGET_PERIMETER_PX } from '@/data/index.js';
 import { toggleShield, shieldButtonLive } from '@/game/shieldToggle.js';
 import { Skin, BlockFace, pressOn, pressOff, useReadyFlash } from './controlSkin.jsx'; /* v2.3.3018: the owner's mockup; v2.3.3522: the owner's shield on Block */
+import { WHEEL_MINI_PX } from '@/ui/wheelMiniSize.js';   /* v2.3.3986: the minimap's side on a phone, in one place */
 
 /* ═══ v2.3.2242: THE SHIELD BUTTON ═══
  *
@@ -406,7 +407,7 @@ export function leftCluster(isLandscape) {
  * edge is SPRINT_MAP_CLEAR in from the screen's -- the minimap's width and
  * 8px -- still at the disc's top, up and to the left of it.  (The Special
  * button lay under the minimap there before v2.3.3106 too.) */
-export const SPRINT_MAP_CLEAR = 132 + 8;
+export const SPRINT_MAP_CLEAR = WHEEL_MINI_PX + 8;   /* v2.3.3986: the phone's box (ui/wheelMiniSize.js); Sprint is hidden on a computer (bt-desktop-hide), where the box is twice as big */
 
 export function sprintAnchor(isLandscape) {
   var size = Math.max(CTL_MIN_SIZE, isLandscape ? 54 : 48);
