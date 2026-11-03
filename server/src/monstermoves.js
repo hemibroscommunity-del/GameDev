@@ -124,7 +124,9 @@ export const MONSTER_MOVES = Object.freeze({
      is over in 3 to 5 seconds, one or two moves.  So each tier past the
      first adds HP_K to a monster's health and DMG_K to its hit, at spawn
      (wheelzone.js; 1.1x and 1.08x at tier 2, 1.7x and 1.56x at tier 8).
-     `monstermoves: false` leaves a monster spawned after it as it was. */
+     `monstermoves: false` takes it back off every live monster at once, and
+     setting it back puts it on (liveops.js -> _monsterMovesFlagChanged),
+     each keeping how hurt it was. */
   STEP: Object.freeze({ HP_K: 0.10, DMG_K: 0.08 }),
   /* tiers 7-8: every cooldown (a move's, a kit's) 20% shorter */
   ELDER_TIER: 7,
@@ -276,7 +278,36 @@ export const monsterMoveMethods = {
     m.hp = m.maxHp;
     m.dmg = Math.max(1, Math.ceil(m.dmg * kd));
     m._mvStepped = true;
+    m._mvStepK = [kh, kd];
     return m;
+  },
+  /* The switch thrown while the room runs (liveops.js): every monster with a
+     tier gets its step, or loses it, now -- each as hurt as it was (a share
+     of its bar), and marked for the phones. */
+  _monsterMovesFlagChanged() {
+    const on = this._monsterMovesOn();
+    const zones = this.monsters || {};
+    for (const zid of Object.keys(zones)) {
+      const list = zones[zid];
+      if (!Array.isArray(list)) continue;
+      for (const m of list) {
+        if (!m || moveTier(m) < 2) continue;
+        const max0 = m.maxHp, share = max0 > 0 ? Math.max(0, m.hp) / max0 : 1;
+        if (on && !m._mvStepped) {
+          const hp0 = m.hp;
+          this._moveTierStep(m);
+          m.hp = m.alive && hp0 > 0 ? Math.max(1, Math.round(m.maxHp * share)) : hp0;
+        } else if (!on && m._mvStepped) {
+          const [kh, kd] = m._mvStepK || [1, 1];
+          m.maxHp = Math.max(1, Math.round(max0 / kh));
+          m.hp = m.alive && m.hp > 0 ? Math.max(1, Math.round(m.maxHp * share)) : m.hp;
+          m.dmg = Math.max(1, Math.round(m.dmg / kd));
+          m._mvStepped = false; m._mvStepK = null;
+        } else continue;
+        if (!on) this._clearMonsterMove(m);
+        if (typeof this._markMonsterDirty === 'function') this._markMonsterDirty(zid, m.id);
+      }
+    }
   },
 
   /* ── enrage and the elder tiers' cooldowns ── */

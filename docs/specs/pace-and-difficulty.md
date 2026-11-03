@@ -150,3 +150,17 @@ pays half what it did, as asked.
   - `MONSTER_DMG_CURVE` and `monsterHpFlat` at every level 1–100;
   - §5's quest table, both directions.
 - `dungeon.test`: the boss's flat is its level's.
+
+## Harder from level 6: moves and a step a tier (v2.3.3946)
+
+The owner, 2026-11-02: "Make next tier monsters noticeably harder." A Wheel
+monster's tier (five levels of its spoke) now brings moves (a combo from level
+6, a charge, a volley or a two-step slam from 11, an area slam from 21, enrage
+from 31) and **+10% HP and +8% damage a tier past the first**, at spawn
+(`server/src/monstermoves.js` `MONSTER_MOVES.STEP`). Levels 1-5 are unchanged.
+The tables, measured with the fight simulator's open-world mode
+(`tools/dungeon-sim/open-world.mjs`), are in
+[monster-moves.md](monster-moves.md): at tier 2 a lightly built player takes
+30-47% more damage and nobody dies; at tiers 7-8 a player with no points spent
+loses to one monster almost every time. `monstermoves: false` puts every tier
+back as it was.

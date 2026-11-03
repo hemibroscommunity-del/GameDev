@@ -442,6 +442,20 @@ const nearest = (ps, id) => ({ id, x: ps.x, y: ps.y, extracting: false });
   room._moveTierStep(bo);
   room._liveFlags = {};
   check('9. `monstermoves: false`: a monster built after it is unchanged', bo.maxHp === ho);
+  /* the switch thrown while the room runs: off every live monster at once, back on again, each as hurt as it was */
+  room.monsters[WHEEL_ZONE] = wheel;   /* the whole Wheel again (stage() left one) */
+  const w = wheel.find((x) => x.tier === 4);
+  const max4 = w.maxHp, dmg4 = w.dmg;
+  w.alive = true; w.hp = Math.round(max4 / 2);
+  room._liveFlags = { monstermoves: false };
+  room._monsterMovesFlagChanged();
+  const offMax = w.maxHp, offHp = w.hp, offDmg = w.dmg;
+  room._liveFlags = {};
+  room._monsterMovesFlagChanged();
+  check('9. the switch thrown live takes the step off every Wheel monster (half hurt stays half hurt), and setting it back puts it on',
+    Math.abs(offMax - max4 / 1.3) <= 1 && Math.abs(offHp - offMax / 2) <= 1 && Math.abs(offDmg - dmg4 / 1.24) <= 1 && Math.abs(w.maxHp - max4) <= 1 && Math.abs(w.dmg - dmg4) <= 1 && Math.abs(w.hp - w.maxHp / 2) <= 1,
+    { max4, offMax, offHp, offDmg, back: [w.maxHp, w.hp, w.dmg], dmg4 });
+  w.hp = w.maxHp;
 }
 
 // ── 10. The switches and the cap ──

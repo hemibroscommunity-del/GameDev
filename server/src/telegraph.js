@@ -77,6 +77,12 @@
  * ranged/snowball path (travelMs, aim point, per-projectile block at
  * impact) rather than this melee-shaped resolve, which is a different
  * enough shape to deserve its own change.
+ *
+ *   ── v2.3.3946: BUILT, as one of the tiers' moves (monstermoves.js: the
+ *   Snow Volley from tier 3, its balls landing where its fan drew them, each
+ *   through the door's `volley` row).  The kits here are untouched; the
+ *   moves come on top from tier 2, and an elder's (tiers 7-8) cooldowns,
+ *   kits' too, are shorter (_moveCdK).
  */
 
 /* v2.3.3296: the block costs and the safe ground moved to the one door with
