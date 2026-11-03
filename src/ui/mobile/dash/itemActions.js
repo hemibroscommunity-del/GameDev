@@ -1,4 +1,4 @@
-/* ═══ v2.3.3995: WHAT YOU CAN DO WITH AN ITEM, IN ONE LIST ═══
+/* ═══ v2.3.4020: WHAT YOU CAN DO WITH AN ITEM, IN ONE LIST ═══
  *
  * The Gear tab (GearTab.jsx) shows a tapped bag item in its middle panel with
  * that item's buttons; the item card (ItemDetailPopup.jsx) shows the same

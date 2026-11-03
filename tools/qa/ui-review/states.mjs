@@ -137,7 +137,7 @@ async function openBag(P, view) {
   await evalIn(P, () => { if (window.__broDashPanelBus) window.__broDashPanelBus.toBar(); });
   return unfoldBand(P);
 }
-/* v2.3.3995: the Gear tab is the band at rest (sideways the dashboard
+/* v2.3.4020: the Gear tab is the band at rest (sideways the dashboard
    column): openBag's way, with nothing picked and no filter, so each Gear
    state starts from the same tab */
 async function gearReset(P) {
@@ -752,7 +752,7 @@ export const STATES = [
     },
   },
   {
-    /* v2.3.3995: a bag tap no longer opens the card (the Gear tab shows the
+    /* v2.3.4020: a bag tap no longer opens the card (the Gear tab shows the
        item in its middle panel); the card is where Sell and Drop go on to */
     id: 'item-card', group: 'Dashboard', title: 'An item card',
     about: 'The item card, as the Gear tab\'s Sell opens it: the item\'s picture and name over the Auction House\'s price sheet (how many, your price, Put it up / Back).',
@@ -769,7 +769,7 @@ export const STATES = [
     },
     after: async ({ P }) => { await gearReset(P); },
   },
-  /* ═══ v2.3.3995: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
+  /* ═══ v2.3.4020: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
   {
     id: 'gear-tab', group: 'Dashboard', title: 'The Gear tab',
     about: 'The resting dashboard: INVENTORY (the gold and the bag\'s fill, one "All items" filter pill, the bag) | BRO (LOOK and STATS tabs; STATS with nothing picked shows your own numbers) | EQUIPMENT (Sword, Bow, Staff / Shield, Chest, Legs / Cape, Amulet, Gem; the weapon in hand ringed in gold, each weapon its skill\'s level). Narrower than 330 px (sideways) the bag sits over BRO and EQUIPMENT; a computer adds the weapon bar (1 2 3) at the foot.',

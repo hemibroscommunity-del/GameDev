@@ -1,4 +1,4 @@
-/* ═══ v2.3.3995: THE GEAR TAB'S RULES (src/ui/mobile/dash/GearTab.jsx) ═══
+/* ═══ v2.3.4020: THE GEAR TAB'S RULES (src/ui/mobile/dash/GearTab.jsx) ═══
  *
  *   1. itemCategory (itemCategory.js): EVERY item id the tables in src/data
  *      name -- the woods, fish and ores each tier drops, the cooked fish, the

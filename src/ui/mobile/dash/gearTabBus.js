@@ -1,4 +1,4 @@
-/* ═══ v2.3.3995: THE GEAR TAB'S STATE -- WHAT IS PICKED, WHAT IS FILTERED ═══
+/* ═══ v2.3.4020: THE GEAR TAB'S STATE -- WHAT IS PICKED, WHAT IS FILTERED ═══
  *
  * The owner's design (2026-11-02): "when you tap on an equip slot your
  * inventory gets filtered to whatever item category was tapped on (sword gets
