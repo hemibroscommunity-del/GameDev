@@ -1,5 +1,14 @@
 /* The townsfolk go by nicknames -- v2.3.4048 (src/data/folkNames.js).
+ * v2.3.4088: NO LONGER.  The owner, 2026-11-03: "Revert the nicknames and go
+ * back to the other names, I liked them better other way."  The map is empty
+ * and every townsperson shows his own name; the screens keep asking the
+ * helper (one door for a shown name).  What this suite holds now:
+ *   1. the map is empty: everyone shows his own name, and the names are unique;
+ *   2-3. as below;
+ *   4. the screens ask the helper, and so read the OLD names
+ *      ("Talk to Gavel Greg").
  *
+ * As it was written for v2.3.4048:
  * The owner: "Instead of names like 'gavel Greg' it would be more humorous to
  * just have them go by nicknames. I didn't mean to remake all the NPCs to be
  * like gavel Greg. The way their appearance looks now is fine."
@@ -44,21 +53,16 @@ const KEEP = ['Mayor Bro', 'Farmer Bro', 'Blacksmith Bro', 'Woodworker Bro', 'Be
   'Diego', 'Ace', 'Sterling', 'Slim', 'Glint', 'Bean', 'Benny'];
 const names = NPC_DATA.map((r) => r.name);
 
-// ── 1. the map ──
+// ── 1. the map (v2.3.4088: empty, the owner's names back) ──
 {
-  const keys = Object.keys(FOLK_NICKNAMES);
-  const stray = keys.filter((k) => names.indexOf(k) < 0);
-  check(`1a every nickname's key is a real NPC_DATA name (${keys.length})`, stray.length === 0, stray);
-  check('1b the eight, as the owner was shown them', keys.length === 8 && Object.keys(OWNER).every((k) => FOLK_NICKNAMES[k] === OWNER[k]) && Object.isFrozen(FOLK_NICKNAMES),
-    FOLK_NICKNAMES);
-  const moved = KEEP.filter((n) => names.indexOf(n) < 0 || folkDisplayName(n) !== n);
-  check(`1c everyone else (${KEEP.length}) keeps his own name`, moved.length === 0, moved);
-  const rest = names.filter((n) => !(n in OWNER)).filter((n) => folkDisplayName(n) !== n);
-  check(`1d ...and so does every other NPC_DATA row (${names.length} in all)`, rest.length === 0, rest);
+  check('1a the map is empty and frozen: no nicknames (the owner: "go back to the other names")',
+    Object.keys(FOLK_NICKNAMES).length === 0 && Object.isFrozen(FOLK_NICKNAMES), FOLK_NICKNAMES);
+  const moved = Object.keys(OWNER).concat(KEEP).filter((n) => names.indexOf(n) < 0 || folkDisplayName(n) !== n);
+  check(`1b the eight and everyone else (${KEEP.length}) show their own names`, moved.length === 0, moved);
+  const rest = names.filter((n) => folkDisplayName(n) !== n);
+  check(`1c ...and so does every NPC_DATA row (${names.length} in all)`, rest.length === 0, rest);
   const shown = names.map(folkDisplayName);
-  check('1e the names a player reads are unique (no nickname is another\'s name)', new Set(shown).size === shown.length, shown);
-  check('1f every nickname is short plain ASCII (the game\'s script is ASCII; it fits a plate)',
-    Object.values(FOLK_NICKNAMES).every((v) => typeof v === 'string' && /^[\x20-\x7e]{2,16}$/.test(v) && v.trim() === v), FOLK_NICKNAMES);
+  check('1d the names a player reads are unique', new Set(shown).size === shown.length, shown);
 }
 
 // ── 2. the helper ──
@@ -89,15 +93,15 @@ const names = NPC_DATA.map((r) => r.name);
 {
   const q = { id: 'x_1', title: 'A test', npc: 'Gavel Greg', desc: 'Do the thing.' };
   const who = whoLines(q, JOURNAL_STATUS.available, null);
-  check('4a the journal names a giver by his nickname ("Talk to Going-Going")', who.npc === 'Going-Going' && /^Talk to Going-Going /.test(who.todo), who);
+  check('4a the journal names a giver by his own name again ("Talk to Gavel Greg")', who.npc === 'Gavel Greg' && /^Talk to Gavel Greg /.test(who.todo), who);
   const now = nowLine(q, JOURNAL_STATUS.ready, null, null);
-  check('4b ...hand-ins too', /hand it in to Going-Going/.test(now.text) && /^Tap Going-Going /.test(now.goal), now);
-  check('4c ...and the offer\'s "who and where", where still found by his key',
-    offerWhere(q, { meet: { 'Gavel Greg': 'at the Auction House' } }) === 'Going-Going, at the Auction House');
+  check('4b ...hand-ins too', /hand it in to Gavel Greg/.test(now.text) && /^Tap Gavel Greg /.test(now.goal), now);
+  check('4c ...and the offer\'s "who and where"',
+    offerWhere(q, { meet: { 'Gavel Greg': 'at the Auction House' } }) === 'Gavel Greg, at the Auction House');
   const card = questCardWords(q, { done: true });
-  check('4d the pinned card says "Go back to Going-Going"', card && /Go back to Going-Going/.test(card.line), card);
+  check('4d the pinned card says "Go back to Gavel Greg"', card && /Go back to Gavel Greg/.test(card.line), card);
   const er = read('../../src/rendering/systems/entityRenderer.js');
-  check('4e his name plate reads the nickname', /_updateNamePill\(display, folkDisplayName\(npc\.name\), '', true, null\)/.test(er));
+  check('4e his name plate asks the helper (his own name now)', /_updateNamePill\(display, folkDisplayName\(npc\.name\), '', true, null\)/.test(er));
   check('4f ...and the QA probe says what the plate reads (__btNpcSprites plate.name)', /name: display\._pillName \? display\._pillName\.text : null/.test(er));
   const nd = read('../../src/ui/panels/NpcDialogue.jsx');
   check('4g the dialogue\'s title reads it (its portrait still found by the key)',

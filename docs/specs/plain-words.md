@@ -23,9 +23,13 @@ win. The history stays in `docs/specs/npc-dialogue-v2.md`.
 
 ## Nicknames
 
-The owner gave eight of the new cast nicknames. They say them, including when
-they introduce themselves. Their keys and `name` fields stay as they are;
-lane O adds the display-name map.
+v2.3.4088: **the nicknames are gone.** The owner, 2026-11-03: *"Revert the nicknames and go back to the other names, I liked them better other way."*
+Each of the eight says and shows his own name again ("I'm Gavel Greg"); the
+table below is history. Do not bring nicknames back unless the owner asks.
+
+(As written for v2.3.4025:) The owner gave eight of the new cast nicknames.
+They say them, including when they introduce themselves. Their keys and
+`name` fields stay as they are; lane O adds the display-name map.
 
 | On screen | Row name |
 | --- | --- |

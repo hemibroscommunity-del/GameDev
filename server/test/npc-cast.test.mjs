@@ -134,14 +134,16 @@ const GIVERS = new Set(Object.values(QUEST_CHAINS).map((q) => q && q.npc).filter
   const SLANG = /\baura\b|skill issue|\bGG\b|\bEZ\b|hacker|montage|retrograde|tetanus|futures|spreadsheet|\bKEVIN\b|telegraph|shifty|danger zone|stay frosty|potholes|strong word|don't look it up|no refunds|blood pressure|\bchat is\b/i;
   const slang = NPC_DATA.flatMap((r) => r.phrases.filter((p) => SLANG.test(p)).map((p) => [r.name, p]));
   check(`6a no townsperson's chatter (${NPC_DATA.length}) brings back the old jokes' slang`, slang.length === 0, slang);
-  /* the owner's nicknames (the display-name map is lane O's; the rows keep
-     their names, which quests and keepers key on) */
+  /* v2.3.4088: the nicknames are gone (the owner, 2026-11-03: "Revert the
+     nicknames and go back to the other names, I liked them better other
+     way").  The eight introduce themselves by their own names again, and no
+     line says a nickname. */
   const NICK = { 'Gavel Greg': 'Going-Going', 'Old Man Reel': 'Fish Tales', 'Tourist Terry': 'Selfie', 'Sheriff Buck': 'Badge',
     'Guildmaster Gary': 'Tryhard', 'Deed Dave': 'Swampy', 'Postmaster Pete': 'Snail Mail', 'Chef Blaze': 'Sizzle' };
-  const noNick = Object.entries(NICK).filter(([n, k]) => !(row(n) && row(n).phrases.some((p) => p.includes("I'm " + k))));
-  check('6b the eight with nicknames introduce themselves by them ("I\'m Fish Tales")', noNick.length === 0, noNick);
-  const oldName = Object.keys(NICK).filter((n) => NPC_DATA.some((r) => r.phrases.some((p) => p.includes(n) || p.includes(n.split(' ').pop() + '!'))));
-  check('6c ...and no line says the name he no longer goes by', oldName.length === 0, oldName);
+  const noName = Object.keys(NICK).filter((n) => !(row(n) && row(n).phrases.some((p) => p.includes("I'm " + n))));
+  check('6b the eight introduce themselves by their own names ("I\'m Old Man Reel")', noName.length === 0, noName);
+  const nickSaid = Object.entries(NICK).filter(([, k]) => NPC_DATA.some((r) => r.phrases.some((p) => p.includes(k))));
+  check('6c ...and no line says a nickname', nickSaid.length === 0, nickSaid);
 }
 
 console.log(`\nnpc-cast: ${passed} passed, ${failed} failed`);
