@@ -110,7 +110,7 @@ import { peerDotAt } from '@/game/peerDot.js';             /* v2.3.3243: a playe
 import { PARTY_MARK, partyIdsOf, clampToBox } from '@/game/partyMarks.js';   /* v2.3.3277: your party, blue, and on the box's edge when off it */
 import { questPinsOf, MAP_PIN } from '@/game/questPins.js';   /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '@/data/ownerIcons.js';              /* v2.3.3525: ...in the owner's own pictures */
-import { loadPins, PIN_SLOTS, PIN_COLORS, pinOf, pinPlace, mapPinsOn } from '@/game/pinSlots.js';   /* v2.3.3766: the Town Hall board's red and blue pins; v2.3.4027: one store with the dropped ones */
+import { loadPins, PIN_SLOTS, PIN_COLORS, pinOf, pinPlace, mapPinsOn } from '@/game/pinSlots.js';   /* v2.3.3766: the Town Hall board's red and blue pins; v2.3.4045: one store with the dropped ones */
 import { boardPlaceAt } from '@/game/mapPinPlaces.js';
 import { boardPinnable } from '@/data/townBoard.js';
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
@@ -172,7 +172,7 @@ const EXPAND_MARK = Object.freeze({ x: FRAME + 3, y: MAP_BOT - 19, w: 16, h: 16 
 const C_QUEST_STAR = 0xf5ce3c, QUEST_STAR_PX = 17, QUEST_EDGE = FRAME + 9;
 /* v2.3.3766: the board's pins, CSS px (a quest pin's 14 x 17; smaller on the edge) */
 const MAP_PIN_PX = 18, MAP_PIN_EDGE_PX = 13;
-/* v2.3.4027: the line to each pin -- its width and its dark casing, where it
+/* v2.3.4045: the line to each pin -- its width and its dark casing, where it
    starts clear of your chevron (the gold road's), how short is not drawn, and
    the arrow past an edge pin, toward it: its tip and base out from the pin's
    middle and its half width (inside the QUEST_EDGE - FRAME px to the frame) */
@@ -311,7 +311,7 @@ export class WheelMinimap {
        under every line and mark; drawn once a map (_build), and held over the window as it pans */
     this.wash = new Graphics();
     this.pan.addChild(this.wash, this.lines, this.buildings, this.townIcons, this.places, this.townMark, this.road, this.marks, this.partyRims);
-    /* v2.3.4027: the lines to the pins (update: redrawn when they move), over
+    /* v2.3.4045: the lines to the pins (update: redrawn when they move), over
        the gold road, under every mark */
     this.pinLines = new Graphics();
     this.pan.addChildAt(this.pinLines, this.pan.getChildIndex(this.marks));
@@ -945,7 +945,7 @@ export class WheelMinimap {
        so the box always says which way.  Pooled marks like every other: a
        pin is a sprite's texture, tint and place, never a Graphics change.
        (v2.3.3879 drew your own purple pin the same way.)
-       ═══ v2.3.4027: TWO PINS, AND A LINE TO EACH ═══
+       ═══ v2.3.4045: TWO PINS, AND A LINE TO EACH ═══
        The owner: "Add a line path when you drop pins on your minimap".  The
        pins are one pair now, blue and red, each a board row or a place
        (game/pinSlots.js); from you to each a SOLID line in its colour, cased
@@ -1173,10 +1173,10 @@ export class WheelMinimap {
         /* v2.3.3525: the quest pins drawn (who, which, where in the box, and
            whether in the owner's picture) */
         questPins: K === 1 ? questPins : questPins.map(kp),
-        /* v2.3.3766; v2.3.4027: both pins, board rows (id) or places (id null),
+        /* v2.3.3766; v2.3.4045: both pins, board rows (id) or places (id null),
            each with its line, in CSS px like every place here (v2.3.3986) */
         mapPins: K === 1 ? mapPins : mapPins.map((m) => ({ ...kp(m), line: m.line ? { ...m.line, x0: m.line.x0 * K, y0: m.line.y0 * K, x1: m.line.x1 * K, y1: m.line.y1 * K } : null })),
-        pinLineDraws: this._pinDraws || 0,   /* v2.3.4027: how often the pins' lines were redrawn (mp-mappin: not while you stand) */
+        pinLineDraws: this._pinDraws || 0,   /* v2.3.4045: how often the pins' lines were redrawn (mp-mappin: not while you stand) */
       };
     } catch (e) { /* never breaks the frame */ }
   }

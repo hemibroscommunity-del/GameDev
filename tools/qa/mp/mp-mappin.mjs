@@ -1,5 +1,5 @@
 /* ═══ v2.3.3879: YOUR OWN PIN ON THE MAP ═══
- * ═══ v2.3.4027: TWO PINS, BLUE AND RED, WITH A LINE TO EACH ═══
+ * ═══ v2.3.4045: TWO PINS, BLUE AND RED, WITH A LINE TO EACH ═══
  *
  * The owner: "Add a line path when you drop pins on your minimap. When you
  * get near the pin (in game) make a window pop up asking if you want to remove
@@ -141,7 +141,7 @@ async function device(P, label, touch, rec) {
       !!mb && !mb.edge && !!mb.line && !mb.line.arrow && !!mr && mr.edge && !!mr.line && mr.line.arrow && d0 > 0 && d1 === d0, { mb, mr, d0, d1 });
     /* 7 */
     const R = s.mini0;
-    /* v2.3.4027: the probe's places are CSS px already (v2.3.3986 scaled
+    /* v2.3.4045: the probe's places are CSS px already (v2.3.3986 scaled
        them on a computer's 2x box); only the pin's height grows with it */
     const head = mb ? { x: R.left + mb.x, y: R.top + mb.y - 9 * (R.k || 1) } : null;
     if (head) await tapAt(P, touch, head.x, head.y);

@@ -1,4 +1,4 @@
-# Your own pins on the map (v2.3.3879; two pins and their lines, v2.3.4027)
+# Your own pins on the map (v2.3.3879; two pins and their lines, v2.3.4045)
 
 The owner: "It would also be good to add the ability to drop a pin to the map
 for where you want to go after opening it. It can be confusing trying to
@@ -39,7 +39,7 @@ starts the count afresh.
 
 ![the pin on a phone and a computer, the map and the minimap](map-pin/pin.png)
 
-## Two pins, blue and red, with a line to each (v2.3.4027)
+## Two pins, blue and red, with a line to each (v2.3.4045)
 
 The owner: "Add a line path when you drop pins on your minimap. When you get
 near the pin (in game) make a window pop up asking if you want to remove pin.
@@ -99,7 +99,7 @@ of which to remove - blue or red)."
 
 ## Checks
 
-- `node tools/qa/mp/run.mjs mappin` (v2.3.4027), on an upright phone and a
+- `node tools/qa/mp/run.mjs mappin` (v2.3.4045), on an upright phone and a
   computer: a drag drops nothing; taps drop blue then red, a dashed line to
   each, a chip for each; a third asks "Replace which pin?" (Cancel / Esc keep
   them, Red moves red); a tap on the blue pin and red's chip lift them; the

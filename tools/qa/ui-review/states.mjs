@@ -887,7 +887,7 @@ export const STATES = [
   },
   {
     id: 'world-map-pin', group: 'Maps and chat', title: 'World map, your pins',
-    about: 'The world map with both your pins up (a tap on open ground drops one, blue then red; a tap on one lifts it): the blue and the red pin on the map, a dashed line from you to each in its colour, "Remove blue" and "Remove red" at the top, "your pins" in the key; the minimap shows them too, with a solid line to each (v2.3.3879, v2.3.4027).',
+    about: 'The world map with both your pins up (a tap on open ground drops one, blue then red; a tap on one lifts it): the blue and the red pin on the map, a dashed line from you to each in its colour, "Remove blue" and "Remove red" at the top, "your pins" in the key; the minimap shows them too, with a solid line to each (v2.3.3879, v2.3.4045).',
     settle: 1600,
     run: async ({ P }) => {
       const ok = await evalIn(P, () => {
@@ -902,10 +902,10 @@ export const STATES = [
     },
     after: async ({ P }) => { await evalIn(P, () => { if (window.__btWorldMapOpen) window.__btWorldMapOpen(false); if (window.__btMapPin) window.__btMapPin.clear(); }); },
   },
-  /* v2.3.4027: the pins' three cards (ui/PinCards.jsx) */
+  /* v2.3.4045: the pins' three cards (ui/PinCards.jsx) */
   {
     id: 'map-pin-replace', group: 'Maps and chat', title: 'World map, replace which pin?',
-    about: 'Both pins are up and you tap open ground on the world map: a small card under the top chips asks "Replace which pin?" with Blue, Red and Cancel (and a ✕), and a white ghost pin stands where you tapped (v2.3.4027).',
+    about: 'Both pins are up and you tap open ground on the world map: a small card under the top chips asks "Replace which pin?" with Blue, Red and Cancel (and a ✕), and a white ghost pin stands where you tapped (v2.3.4045).',
     settle: 1600,
     run: async ({ P }) => {
       const ok = await evalIn(P, () => {
@@ -933,7 +933,7 @@ export const STATES = [
   },
   {
     id: 'map-pin-arrive', group: 'Maps and chat', title: 'You reached a pin',
-    about: 'Walking up to one of your pins (within about 160 game px), out of a fight and with no other card up: a small card beside or under the minimap, "You reached the blue pin. Remove it?" with Remove and Keep (and a ✕, which keeps it). Keep leaves the pin up and it never asks again (v2.3.4027).',
+    about: 'Walking up to one of your pins (within about 160 game px), out of a fight and with no other card up: a small card beside or under the minimap, "You reached the blue pin. Remove it?" with Remove and Keep (and a ✕, which keeps it). Keep leaves the pin up and it never asks again (v2.3.4045).',
     settle: 900,
     run: async ({ P }) => {
       const ok = await evalIn(P, () => {
@@ -948,7 +948,7 @@ export const STATES = [
   },
   {
     id: 'map-pin-remove', group: 'Maps and chat', title: 'Remove a pin (from the minimap)',
-    about: 'A tap on one of your pins on the minimap: instead of opening the world map, a small card beside or under the minimap asks "Remove the red pin?" with Remove and Cancel (and a ✕). A tap anywhere else on the minimap still opens the map (v2.3.4027).',
+    about: 'A tap on one of your pins on the minimap: instead of opening the world map, a small card beside or under the minimap asks "Remove the red pin?" with Remove and Cancel (and a ✕). A tap anywhere else on the minimap still opens the map (v2.3.4045).',
     settle: 900,
     run: async ({ P }) => {
       const ok = await evalIn(P, () => {
