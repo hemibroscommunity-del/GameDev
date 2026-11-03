@@ -17,7 +17,7 @@
  * apart, N the LOWER of the two No man's land numbers.  From your side the
  * widest that can be is your own number, so the chip says the levels within
  * it -- "Lv 6-8" for a level-7 bro in No man's land 1 -- and never promises a
- * fight the worker would refuse.  ui/mobile/NmlBadge.jsx (PlaceChip) reads
+ * fight the worker would refuse.  ui/mobile/NmlBadge.jsx (the plate's window) reads
  * the game's state into these. */
 
 /** The character levels that may attack a level `myLv` bro standing in No
