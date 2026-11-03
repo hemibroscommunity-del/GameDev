@@ -57,6 +57,8 @@ import { hitMaterialOf, hitFxTintOf } from '@/data/monsterVariants.js';
 /* v2.3.3985: a look's own death, from its labelled zones (the owner: "label
    zones for each monster that can apply physics and effects for") */
 import { deathZonesFor, deathZoneLook, deathZoneView, deathCutLines, MAX_LIVE } from '@/data/monsterDeathZones.js';
+/* v2.3.4127: a slime dies as a splat, never in chunks (the owner) */
+import { slimeSplatOn, buildSlimeSplat, stepSlimeSplat, slimeSplatProbe } from './slimeSplat.js';
 import { deathZonesOn, buildZoneDeath, stepZoneDeath, zoneDeathProbe, zoneDeathsLive } from './monsterDeathZonesFx.js';
 /* v2.3.3985: the killing blow -- its direction and whether it was a big one
    (the owner: "simulate physics based on the direction they're hit in") */
@@ -993,6 +995,22 @@ export function drawMonsterDeath(m, display, deathKey, blob, now, S, noStrip) { 
     /* v2.3.3985: a look with labelled zones may die its own way (`own`,
        monsterDeathZonesFx); past the cap (or anything it cannot cut) it is
        today's death, rolled as if it had none */
+    /* ═══ v2.3.4127: A SLIME SPLATS ═══
+       The owner: "remove the chunks form the electric slime death (and any
+       other chunks like that from slime deaths - doesn't match the art
+       aesthetic."  A slime-sheet body (`blob`) never rolls: it flattens and
+       fades (slimeSplat.js) -- no strip, no cut, no zone pieces.  With no
+       body to flatten it is simply gone (DEATH_DONE below), never the
+       strip's flecks. */
+    if (blob && slimeSplatOn()) {
+      let sp = null;
+      if (display._spriteBody && display._spriteBody.visible !== false) {
+        try { sp = buildSlimeSplat(KIT, display, m, now); } catch (e) { sp = null; }
+      }
+      st = display._deathFx = sp ? Object.assign(sp, { key: deathKey }) : { key: deathKey, kind: 'splat', splat: true, freed: true, born: now, slow: 1, dur: 0 };
+    }
+  }
+  if (!st) {
     const zKey = zoneKeyOf(display, m), zFace = zoneFacing(display);
     const zones = deathZonesOn() ? deathZonesFor(zKey, zFace) : null;
     /* v2.3.3985: the blow that killed it (game/deathBlow.js): which way the
@@ -1023,6 +1041,12 @@ export function drawMonsterDeath(m, display, deathKey, blob, now, S, noStrip) { 
     st = display._deathFx = built ? Object.assign(built, { key: deathKey }) : { key: deathKey, kind: 'normal', none: true };
   }
   if (st.none) return DEATH_NONE;
+  /* v2.3.4127: a splat is shorter, and lets go of its sprite when it ends */
+  if (st.splat) {
+    if (st.freed || (now - st.born) / st.slow >= st.dur) { if (st.dispose) st.dispose(); return DEATH_DONE; }
+    stepSlimeSplat(st, now);
+    return DEATH_LIVE;
+  }
   if ((now - st.born) / st.slow >= DUR_MS) {
     /* v2.3.3985: a zone death lets go of everything it made the moment it
        ends (its sub-frame textures with it) */
@@ -1102,6 +1126,7 @@ export function monsterDeathState(display) {
   const st = display && display._deathFx;
   if (!st) return null;
   if (st.none) return { kind: st.kind, pieces: 0 };
+  if (st.splat) return slimeSplatProbe(st);   /* v2.3.4127 */
   if (st.freed) return { kind: st.kind, pieces: 0, done: true };   /* v2.3.3985: a zone death, over and let go */
   const gy = st.groundY;
   return {

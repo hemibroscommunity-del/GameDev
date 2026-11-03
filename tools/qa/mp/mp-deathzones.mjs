@@ -45,6 +45,17 @@
  *          the monster on your LEFT (two of them), left;
  *        - and every one let go once over;
  *  11. `?deathbig=1` makes an unforced kill the big one (the owner's switch);
+ *  12. v2.3.4127, A SLIME SPLATS (the owner: "remove the chunks form the
+ *      electric slime death (and any other chunks like that from slime
+ *      deaths - doesn't match the art aesthetic."): sections 1-11 run with
+ *      the splat off (window.__btSlimeSplat = false, as ?slimesplat=0), so
+ *      the slime's zone death they check is still the off-ramp's; here it
+ *      is on, and every slime-sheet body -- the slime, the blue, moss and
+ *      mire-wisp looks, unforced, forced `own`, `slice` or `normal`, a crit,
+ *      and a blue slime's burst -- squashes flat and fades in about half a
+ *      second: kind `splat`, no pieces, no material bursts, then let go; a
+ *      skeleton killed beside it still dies in its pieces.  The before and
+ *      after pictures: docs/shots/slime-death-before.webp / -after.webp;
  *   9. nothing threw.
  * Pictures for the owner's eyes: tools/qa/mp/out/deathzones/.
  *
@@ -160,6 +171,13 @@ const kill = (P, ids, kind, hit) => P.page.evaluate(async ([mids, k, hit]) => {
          (by the death's own clock: the renderer's frames, TRAPS §200) */
       if (d.own && d.own.drift && d.own.t != null && d.own.t >= 1000 && !w.at1s) w.at1s = { drift: d.own.drift, t: d.own.t };
       if (d.own && d.own.flash) w.flash = true;
+      /* v2.3.4127: a slime's splat -- how flat it got, and if it ever had a piece */
+      if (d.kind === 'splat') {
+        w.splat = true;
+        if (d.flat) w.minFlat = Math.min(w.minFlat == null ? 9 : w.minFlat, d.flat[1]);
+        if (d.pieces || d.chunks) w.chunks = (w.chunks || 0) + d.pieces + d.chunks;
+        if (d.done) w.done = true;
+      }
     }
     if (++n < 400) requestAnimationFrame(look);
   };
@@ -213,6 +231,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const stopAlive = H.keepAlive(P, 20000);
   try {
     await enter(P, wsPort);
+    /* v2.3.4127: the splat off for 1-11 (section 12 turns it back on) */
+    await P.page.evaluate(() => { window.__btSlimeSplat = false; });
 
     /* ── 1-5. every look's own death ── */
     /* DZ_LOOKS=snowman,rock: only those (a quicker look at one) */
@@ -387,6 +407,67 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const d = r.at1s && r.at1s.drift, o = r.first && r.first.own;
       rec.ok(`10. ${L.key}, on your LEFT: the blow comes from the right and the pieces go left (${d && d.x} px)`,
         !!(o && o.blow && o.blow.dx < -0.9 && d && d.x < -1), { blow: o && o.blow, at1s: r.at1s, err: r.err });
+    }
+
+    /* ── 12. v2.3.4127: a slime splats, never in chunks ── */
+    {
+      await P.page.evaluate(() => { delete window.__btSlimeSplat; delete window.__btDeathBig; });
+      const cutBursts = (mid) => P.page.evaluate((id) => {
+        const S = window._gameState.current;
+        return (S._debrisBursts || []).filter((b) => String(b.monsterId).indexOf(id + ':cut:') === 0).length;
+      }, mid);
+      const SP = 8;   /* slow motion: 520 ms is over in a few of this box's frames */
+      const splatDeath = async (key, variant, kind, opts) => {
+        const o = opts || {};
+        const h = await hold(P, [{ id: `dz-sp-${key}-${kind || 'roll'}-${Date.now()}`, arch: o.arch || 'fodder', variant, dx: 70, dy: 6 }]);
+        if (h.err) return { err: h.err };
+        const mid = h.ids[0];
+        const alive = await drawn(P, mid);
+        if (!(alive && alive.s && alive.s.visible)) { await release(P); return { err: 'not drawn' }; }
+        await P.page.evaluate(([k, off]) => { window.__btDeathSlow = k; if (off) window.__btSlimeSplat = false; else delete window.__btSlimeSplat; }, [SP, !!o.off]);
+        if (o.burst) await P.page.evaluate((id) => { const m = window.__qaDZ.list.find((x) => x.id === id); m._burstPeakFrom = Date.now(); m._burstScale = 1.6; }, mid);
+        const box = await boxOf(P, mid);
+        await kill(P, [mid], kind, o.hit || null);
+        const t0 = Date.now();
+        if (o.shot && box) {
+          await P.page.waitForTimeout(o.shotAt * SP);
+          await P.page.screenshot({ path: `${OUT}/${o.shot}.png`, clip: box }).catch(() => {});
+        }
+        let bursts = 0;
+        while (Date.now() - t0 < (o.off ? 1900 : 700) * SP + 1500) {
+          bursts = Math.max(bursts, await cutBursts(mid));
+          await P.page.waitForTimeout(400);
+        }
+        const w = await P.page.evaluate((id) => (window.__dzWatch || {})[id] || null, mid);
+        const after = await state(P, mid);
+        await P.page.evaluate(() => { delete window.__btSlimeSplat; });
+        await release(P);
+        await P.page.waitForTimeout(250);
+        return { w, bursts, after: after.d };
+      };
+      /* the picture for the owner: the old death (the strip's flecks), then the splat */
+      const before = await splatDeath('slime', null, 'normal', { off: true, shot: 'slime-death-before', shotAt: 330 });
+      rec.ok('12. (the old death, for the before picture: ?slimesplat=0 plays the strip)', !!(before.w && before.w.first && before.w.first.kind === 'normal'), before.w && before.w.first);
+      const CASES = [
+        ['slime', null, null, {}, 'a slime, unforced'],
+        ['slime', null, 'own', { shot: 'slime-death-after', shotAt: 260 }, 'a slime, its own death forced'],
+        ['slime', null, 'slice', {}, 'a slime, sliced forced'],
+        ['slime', null, 'normal', { hit: { isCrit: true } }, 'a slime, the strip forced, by a crit'],
+        ['blueslime', 'blueSlime', null, {}, 'a blue slime'],
+        ['mossslime', 'mossSlime', null, {}, 'a moss slime'],
+        ['mirewisp', 'mireWisp', null, {}, 'a mire wisp'],
+        ['burst', 'blueSlime', null, { burst: true }, 'a blue slime going off (its burst)'],
+      ];
+      for (const [key, variant, kind, o, label] of CASES) {
+        const r = await splatDeath(key, variant, kind, o);
+        const w = r.w;
+        rec.ok(`12. ${label}: squashes flat and fades, no pieces (kind ${w && w.first && w.first.kind}, flattest ${w && w.minFlat})`,
+          !!(w && w.splat && w.first && w.first.kind === 'splat' && !w.chunks && w.minFlat != null && w.minFlat < 0.3), { w, err: r.err });
+        rec.ok(`12. ${label}: ...no debris of any kind (no material bursts), and let go once over`,
+          !!(w && r.bursts === 0 && (r.after == null || r.after.done === true)), { bursts: r.bursts, after: r.after });
+      }
+      const sk = await splatDeath('skeleton', 'skeleton', 'own', {});
+      rec.ok('12. a skeleton beside them still dies in its pieces', !!(sk.w && sk.w.first && sk.w.first.kind === 'own' && sk.w.first.pieces > 1), sk.w && sk.w.first);
     }
 
     const thrown = errors.concat(P.logs.filter((l) => /pageerror|threw/.test(l)));

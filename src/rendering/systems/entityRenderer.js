@@ -67,7 +67,8 @@ import { wheelArtTick, wheelArtOn, wheelArtReady, wheelArtWaiting } from '../whe
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
 import { deathCrumble } from '../deathCrumble.js';   /* v2.3.2712: the crumbling corpse */
-import { drawMonsterDeath, clearMonsterDeath, monsterDeathState, DEATH_LIVE, DEATH_DONE } from '../monsterDeathFx.js';   /* v2.3.2913: sliced / beheaded / legless deaths */
+import { drawMonsterDeath, clearMonsterDeath, monsterDeathState, DEATH_LIVE, DEATH_DONE } from '../monsterDeathFx.js';
+import { slimeSplatOn } from '../slimeSplat.js';   /* v2.3.4127: a slime dies as a splat */   /* v2.3.2913: sliced / beheaded / legless deaths */
 import { getWeaponTexture, hasWeapon, weaponFitH } from '../weaponSprites.js';
 import { getAnchor, getJogForwardHand, getWeaponHandle, getHeadAnchor } from '../playerAnchors.js';
 import { FIST_MASKS } from '../fistMasks.js';   /* v2.3.2925: the grip hole drawn as the fist itself */
@@ -9876,7 +9877,8 @@ export class EntityRenderer {
            or a mummy being shredded into a skeleton (that has its own
            animation and is still, as far as the player is concerned, alive). */
         const _dfxKey = m._slimeDeathStart != null ? m._slimeDeathStart : m._snowmanDeathStart;
-        if (_dfxKey != null && !m._burstPeakFrom && !m._burstFrom
+        /* v2.3.4127: a slime's burst ends in its splat too (slimeSplat.js) */
+        if (_dfxKey != null && ((!m._burstPeakFrom && !m._burstFrom) || (isFodder && slimeSplatOn()))
             && !(m._transformStart && now - m._transformStart < 5000)) {
           const _dfxD = this.monsterDisplays.get(m.id);
           /* v2.3.3499: a look with no death strip of its own never plays the
