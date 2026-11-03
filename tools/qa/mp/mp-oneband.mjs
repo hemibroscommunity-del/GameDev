@@ -42,15 +42,19 @@ const read = (P) => P.page.evaluate(() => {
   const o = window.__btOneBand ? window.__btOneBand() : null;
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width > 0 ? { x: Math.round(b.left), y: Math.round(b.top), r: Math.round(b.right), b: Math.round(b.bottom), w: Math.round(b.width), h: Math.round(b.height) } : null; };
   const cols = document.querySelector('[data-one-band-cols]');
-  const bag = cols && cols.querySelector('[aria-label="Bag"]');
-  const combat = cols && cols.querySelector('[aria-label="Combat"]');
+  /* v2.3.4081: the resting row is the Gear tab (GearTab.jsx): its bag pane
+     and its gear pane stand where the Bag panel and the Combat cards stood */
+  const bag = cols && (cols.querySelector('[aria-label="Bag"]') || cols.querySelector('[data-gear-pane="inv"]'));
+  const combat = cols && (cols.querySelector('[aria-label="Combat"]') || cols.querySelector('[data-gear-pane="equip"]'));
+  const gearTab = !!(cols && cols.querySelector('[data-gear-tab]'));
   /* the bag's grid: the element whose children are the tiles */
   const grid = bag && Array.from(bag.querySelectorAll('div')).find((d) => getComputedStyle(d).display === 'grid');
+  const tileMin = gearTab && grid ? Math.round(Math.min(...Array.from(grid.children).map((c) => c.getBoundingClientRect().width))) : null;
   const tiles = grid ? Array.from(grid.children).map(r) : [];
   const joy = ['.bt-joystick-base', '.bt-rjoy-base'].map((s) => r(document.querySelector(s)));
   const desk = window.__btDeskWide ? window.__btDeskWide() : null;
   return {
-    o, bag: r(bag), combat: r(combat), tiles, joy, desk,
+    o, bag: r(bag), combat: r(combat), tiles, joy, desk, gearTab, tileMin,
     navs: Array.from(document.querySelectorAll('.bt-dashboard [data-nav]')).map((n) => ({ id: n.getAttribute('data-nav'), key: n.getAttribute('data-key'), box: r(n) })),
     landSheet: !!document.querySelector('.bt-land-sheet'),
     keysStrip: r(document.querySelector('.bt-desk-keys')),
@@ -108,13 +112,16 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
     !!L && !!o.cols && L.w === Math.floor(o.cols.w) && L.h === Math.floor(o.cols.h) && L.tile >= MIN_TILE
       && L.cols * (L.tile + 4) <= o.cols.w + 4,
     { layout: L, cols: o.cols });
+  /* v2.3.4081: the Gear tab lays its bag out from the same box itself (four
+     square slots a row, never under 34 px), so its first row is its own four */
+  const row1g = g.gearTab ? g.tiles.slice(0, 4).filter(Boolean) : row1;
   rec.ok(`${label}: the first row of tiles inside the bag panel, the panel and the combat cards inside the row`,
-    !!g.bag && !!g.combat && row1.length === (L ? L.cols : -1)
-      && row1.every((t) => t.x >= g.bag.x && t.r <= g.bag.r && t.y >= g.bag.y && Math.abs(t.w - L.tile) <= 1)
+    !!g.bag && !!g.combat && (g.gearTab ? row1g.length === 4 && g.tileMin >= 34 : row1.length === (L ? L.cols : -1))
+      && row1g.every((t) => t.x >= g.bag.x && t.r <= g.bag.r && t.y >= g.bag.y && (g.gearTab || Math.abs(t.w - L.tile) <= 1))
       && g.bag.x >= o.cols.x - 1 && g.combat.r <= o.cols.x + o.cols.w + 1
       && g.bag.b <= o.cols.y + o.cols.h + 1 && g.combat.b <= o.cols.y + o.cols.h + 1
       && g.bag.r <= g.combat.x,
-    { bag: g.bag, combat: g.combat, row1, cols: o.cols });
+    { bag: g.bag, combat: g.combat, row1: row1g, gearTab: g.gearTab, tileMin: g.tileMin, cols: o.cols });
   /* responsive density: a wider box holds more slots than the upright four */
   if (!upright) {
     rec.ok(`${label}: the wider box holds more slots across than the upright four`,

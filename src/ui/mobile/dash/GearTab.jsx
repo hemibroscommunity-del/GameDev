@@ -319,7 +319,11 @@ export const GearTab = ({ R: Rin, desk }) => {
     cg = eqW >= 150 ? 6 : 3;
     const byW = Math.floor((eqW - 2 * EP - 2 * cg) / 3);
     const byH = Math.floor((invH - 2 * EP - 2 * cg) / 3);
-    cell = Math.max(CELL_MIN, Math.min(byW, byH > 0 ? byH : byW, 64));
+    /* v2.3.4081: a box too short for three 34 px rows (the one band on a
+       sideways phone gives this row ~82 px) shrinks the cells to fit rather
+       than cutting the bottom row off */
+    const floor = byH > 0 && byH < CELL_MIN ? Math.max(20, byH) : CELL_MIN;
+    cell = Math.max(floor, Math.min(byW, byH > 0 ? byH : byW, 64));
     cols = BAG_COLS;
   } else {
     invW = W - 2 * PAD;
