@@ -67,7 +67,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('...and on the minimap, his pin alone', Array.isArray(m0) && m0.join() === 'Mayor Bro:offer', m0);
 
   /* ── 2. the Mayor's first quest in: the whole town ── */
-  /* v2.3.3945: jump to the tour's SECOND step, so only the Mayor's first quest is
+  /* v2.3.3999: jump to the tour's SECOND step, so only the Mayor's first quest is
      handed in. `at: 'farm_1'` meant "the Mayor's first quest only" when farm_1 came
      second; the tour order changed since (v2.3.3533 and v2.3.3924) and it handed in
      the smith's, Diego's and the snowmen too, so the Blacksmith and Diego lost their

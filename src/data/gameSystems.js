@@ -6791,7 +6791,7 @@ export const QUEST_CHAINS = {
          trash talk, the Beastmaster's danger zone behind the bakery -- and the
          job in the same tap, its counts, places and hand-overs as before
          (quest-lines §5 checks every count is still said). */
-      /* ═══ v2.3.3945: EVERY TOWNSPERSON SPEAKS PLAINLY ═══
+      /* ═══ v2.3.3999: EVERY TOWNSPERSON SPEAKS PLAINLY ═══
          The owner: "Just make the characters (all of them all dialog) a
          simple and easy to understand personality and directions.  No
          cryptic jokes or anything that could confuse someone."  This undoes
@@ -6862,7 +6862,7 @@ export const QUEST_CHAINS = {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3533: said after two townsfolk, not the whole town */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "Snowmen on Frost Ridge are scaring people away, and I want everyone to feel safe there. Go to Frost Ridge and bring me 4 Snowman Remains. Be careful: these snowmen hide under the snow, so if the snow under your feet starts to move, step away fast.",
       progress: "I still need 4 Snowman Remains from Frost Ridge. If the snow under your feet starts to move, a snowman is hiding there, so step away fast.",
       /* v2.3.3533: the rest of the town comes after him now */
@@ -6882,7 +6882,7 @@ export const QUEST_CHAINS = {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3525: "remains", and a reason, as the tour's lines have */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "The Wind Dunes are full of mummies. Hit a mummy hard and its wrappings fall off, and a faster skeleton comes out. Go to the Wind Dunes, defeat the skeletons, and bring me 5 Skeleton Remains.",
       progress: "I still need 5 Skeleton Remains from the Wind Dunes. Hit the mummies until their wrappings fall off, then defeat the skeletons inside.",
       complete: "Five Skeleton Remains, thank you! The Wind Dunes are safer now. I have one more land for you to help: the Flame Fields.",
@@ -6913,7 +6913,7 @@ export const QUEST_CHAINS = {
       /* v2.3.3525: "remains", and a reason; "the tour" is the town's walk
          round its townsfolk now (tut_1 .. tut_2), so he no longer calls the
          lands that */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "The last land on my list is the Flame Fields. The fire goblins there are fast and never stand still, so keep moving too. Go to the Flame Fields and bring me 6 Fire Goblin Remains.",
       progress: "I still need 6 Fire Goblin Remains from the Flame Fields. Keep moving while you fight, because the goblins never stand still.",
       complete: "Six Fire Goblin Remains! Great work. Here are some Copper Greaves: wear them to protect your legs. I have two more jobs for you.",
@@ -7119,7 +7119,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "Hi, I'm Farmer Bro! I grow the food for the whole town, but a slime ruined my carrots. Here are 3 carrot seeds and 3 compost. Open my shop, the Feed & Seed, and tap Visit Your Farm. Then dig, plant and water 3 beds. Watered carrots grow in about six minutes.",
       progress: "Plant and water 3 carrots on your farm. To get there, open the Feed & Seed and tap Visit Your Farm. Then come back to me.",
       /* v2.3.3533: true whether or not Diego's fish_1 is in yet */
@@ -7153,7 +7153,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note; one ore a bar (v2.3.3981, smelting.js) */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note; one ore a bar now (smelting.js) */
       start: "Hey, I'm Blacksmith Bro! I love lifting weights almost as much as I love making armor. Here's a pickaxe. Mine 5 Copper Ore from the orange rocks outside town and bring it to me, and I'll turn it into 5 Copper Bars.",
       progress: "I still need 5 Copper Ore. Mine the orange rocks outside town with your pickaxe, then bring the ore to me at the forge.",
       complete: "Great work! Here are your 5 Copper Bars, one bar for each ore. Now let's make something with them at my forge.",
@@ -7170,7 +7170,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "Now let's get you some real gear. Use my forge to make a greatsword, a chest plate or greaves. Each one takes 5 Copper Bars, and you have exactly 5.",
       progress: "Use my forge to make one thing: a greatsword, a chest plate or greaves. Then come back and talk to me.",
       complete: "Looking strong! You made your first piece of gear. Next, go see Diego at the General Store. He has a job for you.",
@@ -7200,7 +7200,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "Hi, I'm Woodworker Bro! I study wood all day, and pine is my favorite. Here's an axe. Chop 5 Pine Logs from the trees outside town and bring them to me, and I'll make them into 5 Hardened Pine.",
       progress: "I still need 5 Pine Logs. Chop the pine trees outside town with your axe, then bring the logs to me at the Woodworker.",
       complete: "Thank you! Here are 5 Hardened Pine. Hardened wood is stronger, so it makes better weapons. Now let's use it at my bench.",
@@ -7224,7 +7224,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "Use my bench to make a Pine Bow or a Pine Staff with your 5 Hardened Pine. Then bring it to me, and I'll trade you a better Softwood one for it. I like to study what new makers build.",
       progress: "Make a Pine Bow or a Pine Staff at my bench, then bring it to me. I'll trade you a Softwood one for it.",
       complete: "Thank you! I'll study your pine weapon, and here's your new Softwood one. Next, go see Farmer Bro at the Feed & Seed. Your carrots should be ready to pick.",
@@ -7301,7 +7301,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "Your carrots should be grown now! Visit your farm and pick all 3 carrots, then cook them into Zoom Juice at the Cookhouse. Zoom Juice makes you run 25% faster for 5 minutes.",
       progress: "Pick 3 carrots on your farm, then cook them into Zoom Juice at the Cookhouse. Then come back to me.",
       complete: "You made Zoom Juice! Drink it from your Bag right before you race Lil Bro, and it will help you win. Lil Bro is waiting for you on the town square.",
@@ -7323,7 +7323,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "Hi, I'm Lil Bro, and I'm the fastest kid in BroTown! Race me around the town square, and if you win, you get 50 gold. Touch all 4 corner flags, then get back here before me. Tip: sprint the whole way.",
       /* v2.3.3583: a getter -- once he has beaten you he says so and dares
          you again (lilBroRaceLine, below; the races lost: data/raceTally.js) */
@@ -7381,7 +7381,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "Hi, I'm Beastmaster Bro. I catch wild monsters and keep them as pets. Take these 3 Pine Logs to the Woodworker's bench next to me, open the Traps tab, and make 3 Box Traps.",
       progress: "Make 3 Box Traps at the Woodworker's bench, on the Traps tab. Then come back to me.",
       complete: "Nice traps! Here are 2 more from me. Now let's go and catch something.",
@@ -7418,7 +7418,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "Time to use your traps. Out in the lands, target a monster and tap TRAP to put a box under it, then defeat it within 15 seconds. Do this 3 times. Most boxes break, and that's okay.",
       progress: "Spring 3 traps: target a monster, tap TRAP, then defeat it within 15 seconds. Then come back to me.",
       complete: "Three traps sprung, well done! Here are 5 more Box Traps. Talk to me again when you want to learn more about trapping.",
@@ -7442,7 +7442,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "A trap can't hold a monster whose level is higher than your Trapping level. Get your Trapping to level 6 by springing traps on monsters. Every trap you spring counts, even the ones that break.",
       progress: "Get your Trapping to level 6. Keep springing traps on monsters, then come back to me.",
       complete: "Trapping level 6, great job! Now your traps work on monsters up to level 6. Here are 10 more Box Traps.",
@@ -7460,7 +7460,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "Now let's catch you a pet. Only about 1 box in 100 holds a monster, so you'll need patience. The TRAP button shows your chance. Keep trapping until a box holds one, then come back to me.",
       progress: "Keep trapping monsters until a box holds one. Every box you spring still gives you Trapping XP.",
       complete: "You caught a pet! It grows stronger as your Trapping level goes up. Here is 500 gold, and 15 Box Traps too.",
@@ -7531,7 +7531,7 @@ export const QUEST_CHAINS = {
     dialogue: {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
-      /* v2.3.3945: said plainly -- tut_1's v2.3.3945 note */
+      /* v2.3.3999: said plainly -- tut_1's v2.3.3999 note */
       start: "BroTown needs brave heroes, and you're one of the best. Defeat 5 monsters, any kind, in any land. Then come back and tell me.",
       progress: "Defeat 5 monsters, any kind, in any land. Then come back to me at the Town Hall.",
       /* v2.3.3570: the owner asked to reword this: the script said "Life Skills are officially uncapped past Lv10!", which no code does */
@@ -7628,7 +7628,7 @@ export const QUEST_CHAINS = {
       var _rpg$_questKills2;
       return (((_rpg$_questKills2 = rpg._questKills) === null || _rpg$_questKills2 === void 0 ? void 0 : _rpg$_questKills2.trader_2) || 0) >= 3;
     },
-    /* v2.3.3945: the count on its card, "(1/3)" -- what the worker counts
+    /* v2.3.3999: the count on its card, "(1/3)" -- what the worker counts
        for it (`gather`, gathering.js), as `check` reads: lane F's quest card
        (PR #1359) left this one to the quest's words, below */
     need: { progress: true, n: 3 },
@@ -7640,7 +7640,7 @@ export const QUEST_CHAINS = {
     unlocks: 'farming',
     dialogue: {
       start: 'Gather from 3 resource nodes.',
-      /* v2.3.3945: names its count (quest-lines §5a), plainly */
+      /* v2.3.3999: names its count (quest-lines §5a), plainly */
       progress: 'Gather 3 times: chop a tree, mine a rock or catch a fish.',
       complete: 'Farm building unlocked! Grow your own ingredients.'
     }
@@ -8280,7 +8280,7 @@ export function setGrottoParty(row) {
  * again, each still saying what to do (tap Race!, the 4 corner flags, back
  * to him) and what helps (sprinting, Farmer Bro's Zoom Juice: race_1's own
  * start line names both).
- * v2.3.3945: said plainly (the owner: "No cryptic jokes or anything that
+ * v2.3.3999: said plainly (the owner: "No cryptic jokes or anything that
  * could confuse someone"): he says he won, and how to try again -- tap
  * Race!, the 4 corner flags, sprinting and Zoom Juice -- with no slang. */
 export function lilBroRaceLine(lost) {
