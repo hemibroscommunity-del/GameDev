@@ -6423,11 +6423,22 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
   background:var(--ui-sheet);border:1px solid var(--ui-line-strong);
   border-radius:14px;box-shadow:0 14px 30px rgba(4,7,9,.38);
   padding:12px;cursor:pointer;
+  /* v2.3.3915: its TOP is pinned (a little above the screen's middle) and a
+     long message grows it downward.  Centred, a message a line longer moved
+     the whole card -- and the portrait in it -- half a line up the screen. */
+  align-self:flex-start;margin-top:max(0px, calc(50vh - 116px));
 }
 /* The picture gets a fixed share rather than hugging its content, so the text
-   column never reflows as he changes pose or a different NPC speaks. */
+   column never reflows as he changes pose or a different NPC speaks.
+   v2.3.3915: the owner: "Fix all the portrait pics from slightly moving around
+   from one NPC message to the next."  The frame stretched to the card's
+   HEIGHT (the card's align-items:stretch), and the card grows with each
+   message's words, so the cover-fitted head was cropped and zoomed afresh on
+   every message.  Now a SQUARE sized from the card's width alone, pinned to
+   the card's top: the same box for every message and every townsperson. */
 .bt-npcdlg-art{
   flex:0 0 38%;max-width:190px;min-width:104px;
+  align-self:flex-start;aspect-ratio:1 / 1;height:auto;
   display:flex;align-items:flex-end;justify-content:center;
   background:var(--ui-well,#16232a);border:1px solid var(--ui-line);
   border-radius:10px;overflow:hidden;
@@ -6442,6 +6453,9 @@ html.bt-calm .bt-card-art,html.bt-calm .bt-purse-flip,html.bt-calm .bt-purse-bum
    for a full figure (feet on the ground) and wrong for a face, which it
    pushes to the bottom edge leaving a band of empty above the hat. */
 .bt-npcdlg-img--head{object-fit:cover;object-position:center top}
+/* v2.3.3915: in the square frame the whole head shows, anchored centre-bottom
+   (his shoulders on the frame's floor): nothing is cropped, so nothing moves */
+.bt-npcdlg-art .bt-npcdlg-img--head{object-fit:contain;object-position:center bottom}
 .bt-npcdlg-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:6px}
 .bt-npcdlg-name{
   font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
