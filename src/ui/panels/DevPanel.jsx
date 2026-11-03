@@ -229,7 +229,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
-  'fishvariants' /* v2.3.4032: albino and large fish */, 'fishweigh' /* v2.3.4032: Inspect weighs a fish; the Biggest fish boards */,
+  'fishvariants' /* v2.3.4036: albino and large fish */, 'fishweigh' /* v2.3.4036: Inspect weighs a fish; the Biggest fish boards */,
   'monstermoves' /* v2.3.4011: the monster moves (monstermoves.js) */, 'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3732: the message diet's path */, 'pathall' /* v2.3.3732: ...for every phone */, 'clientoff' /* v2.3.3755: the memory savers turned off (a list) */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
@@ -1019,7 +1019,7 @@ export const DevPanel = ({ onClose }) => {
               </>
             )}
 
-            {/* ═══ v2.3.4032: RARE FISH ═══
+            {/* ═══ v2.3.4036: RARE FISH ═══
                 The owner's lever (server devtools.js /dev/fish -> fishlog.js
                 _fishDev): the NEXT fish you catch is albino or large (one fish,
                 gone on a deploy), or one of each put in your bag as a catch

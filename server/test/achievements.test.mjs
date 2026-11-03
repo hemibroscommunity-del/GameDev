@@ -124,14 +124,14 @@ const aMonster = () => wheel.find((m) => m.home === 'frost' && !m.tier) || wheel
 /* ── 0. the list ─────────────────────────────────────────────────────────── */
 {
   const ids = ACHV.LIST.map((a) => a.id);
-  /* v2.3.4032: + the ten rare fish (fishlog.js): an albino of each species, common, and a large one, rare */
+  /* v2.3.4036: + the ten rare fish (fishlog.js): an albino of each species, common, and a large one, rare */
   check('0a 33 achievements, ids unique', ids.length === 33 && new Set(ids).size === 33, ids);
   const byTier = {};
   for (const a of ACHV.LIST) byTier[a.tier] = (byTier[a.tier] || 0) + 1;
   check('0b the tiers: 12 common, 14 rare, the arena, 6 super-rare', byTier.common === 12 && byTier.rare === 14 && byTier.arena === 1 && byTier.superrare === 6, byTier);
   check('0c the points: common 10, rare 100, arena 500, super-rare 1,000 (the owner\'s "Go recommended")',
     ACHV.TIER_AP.common === 10 && ACHV.TIER_AP.rare === 100 && ACHV.TIER_AP.arena === 500 && ACHV.TIER_AP.superrare === 1000 && achvAp('gladiator') === 500);
-  /* v2.3.4032: a row's own `ap` over its tier's -- the rare fish, 5 an albino and 10 a large one (+75) */
+  /* v2.3.4036: a row's own `ap` over its tier's -- the rare fish, 5 an albino and 10 a large one (+75) */
   const total = ACHV.LIST.reduce((n, a) => n + achvAp(a.id), 0);
   check('0d every achievement is worth 7,545 AP in all', total === 7545, total);
   check('0e the rare fish pay their own points, not their tier\'s: albino 5, large 10',
@@ -326,7 +326,7 @@ const gotC = (id) => !!(rec('bp_av_c') && rec('bp_av_c').got && rec('bp_av_c').g
   const r0 = rec('bp_av_c'), ap0 = apOf('bp_av_c');
   for (const a of ACHV.LIST) room._achvGrant('bp_av_c', C, a.id);
   const r1 = rec('bp_av_c');
-  const paidFor = ACHV.LIST.filter((a) => !r0.got[a.id]).reduce((n, a) => n + achvAp(a.id), 0);   /* v2.3.4032: a row's own ap */
+  const paidFor = ACHV.LIST.filter((a) => !r0.got[a.id]).reduce((n, a) => n + achvAp(a.id), 0);   /* v2.3.4036: a row's own ap */
   check('4a granting all 33 again pays only the ones not had yet', apOf('bp_av_c') === ap0 + paidFor, { ap: apOf('bp_av_c'), ap0, paidFor });
   room._achvGrant('bp_av_c', C, 'first_blood');
   room._achvGrant('bp_av_c', C, 'gladiator');
@@ -624,7 +624,7 @@ const gotC = (id) => !!(rec('bp_av_c') && rec('bp_av_c').got && rec('bp_av_c').g
 {
   const ids = ACHV.LIST.map((a) => a.id);
   check('11a the rarest\'s order names every achievement once', ACHV.RARITY.length === ids.length && new Set(ACHV.RARITY).size === ids.length && ids.every((id) => ACHV.RARITY.includes(id)), ACHV.RARITY);
-  /* v2.3.4032: by TIER (a row's own ap is not its rarity: a large fish is a rare row paying 10) */
+  /* v2.3.4036: by TIER (a row's own ap is not its rarity: a large fish is a rare row paying 10) */
   const aps = ACHV.RARITY.map((id) => ACHV.TIER_AP[ACHV.LIST.find((a) => a.id === id).tier]);
   check('11b ...rarest first: super-rare, then the arena, rare, common', aps.every((v, i) => i === 0 || v <= aps[i - 1]), aps);
   const g = (...have) => { const o = Object.create(null); for (const id of have) o[id] = 1; return { got: o }; };

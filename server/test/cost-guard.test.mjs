@@ -31,7 +31,7 @@
  *      refused ask writes nothing (weapongem.js);
  *  11. v2.3.3981: one ore a bar -- smelting or hardening all writes the
  *      record once, and an ask with nothing to pay writes nothing;
- *  12. v2.3.4032: fishing writes the fish log (the catches to weigh) at most
+ *  12. v2.3.4036: fishing writes the fish log (the catches to weigh) at most
  *      once a SAVE_MS, and tapping Inspect writes no more rows than the fish
  *      caught (fishlog.js) -- a refused one writes nothing;
  * A line here may move when a feature really needs the rows: say so in the
@@ -480,7 +480,7 @@ const FAST = 110;
   check(`11. ...and 100 asks with no ore or logs left write ${refused.length} rows (none)`, refused.length === 0, byPrefix(refused));
 }
 
-/* ── 12. v2.3.4032: the rare fish (fishlog.js) ─────────────────────────── */
+/* ── 12. v2.3.4036: the rare fish (fishlog.js) ─────────────────────────── */
 {
   const { FISHLOG, FISHLOG_KEY } = await import('../src/fishlog.js');
   const { room, state } = await makeRoom();

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { BT_API_BASE } from '@/networking/index.js';
-import { FishBoard } from './FishBoard.jsx';   /* v2.3.4032: the Biggest fish tab (server fishlog.js) */
+import { FishBoard } from './FishBoard.jsx';   /* v2.3.4036: the Biggest fish tab (server fishlog.js) */
 import { takeFishBoardWant, subscribeFishWeigh } from '@/game/fishWeigh.js';
 
 /* v2.3.1671: a TRADITIONAL HISCORES BOARD — one ranking per skill.
@@ -51,7 +51,7 @@ const CATS = [
    after Kills.  Its rows carry `ap`, not `value`; a 0 is left off, as the
    per-skill boards leave off a skill nobody trained. */
 const AP_CAT = { id: 'ap', label: 'AP' };
-/* v2.3.4032: and BIGGEST FISH, the heaviest of each species weighed (the
+/* v2.3.4036: and BIGGEST FISH, the heaviest of each species weighed (the
    rare-fish lane: FishBoard.jsx), its own board from the room, not this
    page's fetch -- last, against a worker that says caps.fishweigh */
 const FISH_CAT = { id: 'fish', label: 'Biggest fish' };
@@ -101,7 +101,7 @@ const chip = (active) => ({
 });
 
 export const LeaderboardPanel = () => {
-  /* v2.3.4032: the weigh-in card's Records opens this on the fish tab */
+  /* v2.3.4036: the weigh-in card's Records opens this on the fish tab */
   const [fishWant, setFishWant] = useState(() => takeFishBoardWant());
   const [cat, setCat] = useState(() => (fishWant ? 'fish' : 'combat'));
   /* ...and when it is already open (a Records tap with Ranks up) */
@@ -118,7 +118,7 @@ export const LeaderboardPanel = () => {
      from a fetch response, and a plain {} silently no-ops on '__proto__'
      (CLAUDE.md — three incidents in one day). */
   useEffect(() => {
-    if (cat === 'fish') { setLoading(false); return undefined; }   /* v2.3.4032: FishBoard asks the room itself */
+    if (cat === 'fish') { setLoading(false); return undefined; }   /* v2.3.4036: FishBoard asks the room itself */
     let alive = true;
     const load = () => {
       fetch(BT_API_BASE + '/api/leaderboard/top?category=' + encodeURIComponent(cat) + '&limit=50')

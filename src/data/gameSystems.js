@@ -1216,7 +1216,7 @@ import { farmCropHeal as _farmCropHeal } from './farmCrops.js';   /* v2.3.3537: 
 
 /* §18 Fish Healing — fish must be COOKED via minigame to become edible */
 /* Raw fish → cooking minigame → cooked fish (heals) or burnt fish (wasted) */
-/* v2.3.4032: a LARGE fish heals double, raw or cooked, on either ladder
+/* v2.3.4036: a LARGE fish heals double, raw or cooked, on either ladder
    (server cooking.js _fishHealAmount; mirror-audit) */
 export function getFishHealAmount(fishKey) {
   var base = _fishHealBase(fishKey);

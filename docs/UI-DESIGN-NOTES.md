@@ -934,7 +934,7 @@ Sources: CLAUDE.md, docs/specs/trapping.md, docs/PET-TRAPPING-PLAN.md, docs/spec
 ## Achievements
 Screens: more-achievements
 
-**What it is for:** Points for completing the game (v2.3.3527). The owner: "Achievement points are something I'd like in the game. You get it by completing the game. Some of them are through super rare achievements. Although not as rare, an arena winner should be included in that." Twenty-three achievements, each earned once: seven common, nine rare, the arena's one and six super-rare, 7,470 achievement points (AP) in all. v2.3.4032 added ten more, the rare fish eaten (see "Rare fish"): an albino of each of the five fish, common, 5 AP, and a large one, rare, 10 AP -- each row's own points, as no tier pays 5 -- so 33 and 7,545 AP. The server decides every one; the page only shows what it says. The owner answered the plan's six questions "Go recommended on everything" (docs/specs/achievements.md "Decided").
+**What it is for:** Points for completing the game (v2.3.3527). The owner: "Achievement points are something I'd like in the game. You get it by completing the game. Some of them are through super rare achievements. Although not as rare, an arena winner should be included in that." Twenty-three achievements, each earned once: seven common, nine rare, the arena's one and six super-rare, 7,470 achievement points (AP) in all. v2.3.4036 added ten more, the rare fish eaten (see "Rare fish"): an albino of each of the five fish, common, 5 AP, and a large one, rare, 10 AP -- each row's own points, as no tier pays 5 -- so 33 and 7,545 AP. The server decides every one; the page only shows what it says. The owner answered the plan's six questions "Go recommended on everything" (docs/specs/achievements.md "Decided").
 
 **Decisions, and why:**
 - **A tier's points: common 10 AP, rare 100, super-rare 1,000, and the arena's 500 between them** ("although not as rare"). Each tier wears the armour's grade colours (v2.3.3142): common grey, rare blue, the arena orange, super-rare a rainbow, as the edge and words of its points pill, never a fill.
@@ -977,7 +977,7 @@ Sources: docs/specs/achievements.md, server/src/achievements.js, src/data/achiev
 ## Rare fish: the weigh-in card and Biggest fish
 Screens: fish-weigh, fish-board
 
-**What it is for:** Rare catches and a reason to weigh them (v2.3.4032). The owner: "Add a 1% chance of catching an albino version of whatever fish you're trying to catch. Consuming adds a one time 5 achievement point bonus. Also add a 0.1% chance of catching 'large' whatever fish you're fishing. Consuming adds 10 achievement points (one time). It also heals double. Doing an 'inspect' will roll for finding the weight of the fish. Include leaderboards for largest caught types of fish (triggered by inspection)." The server rolls the catch, the weight and the boards (docs/specs/fish-variants.md); these screens only say what it decided.
+**What it is for:** Rare catches and a reason to weigh them (v2.3.4036). The owner: "Add a 1% chance of catching an albino version of whatever fish you're trying to catch. Consuming adds a one time 5 achievement point bonus. Also add a 0.1% chance of catching 'large' whatever fish you're fishing. Consuming adds 10 achievement points (one time). It also heals double. Doing an 'inspect' will roll for finding the weight of the fish. Include leaderboards for largest caught types of fish (triggered by inspection)." The server rolls the catch, the weight and the boards (docs/specs/fish-variants.md); these screens only say what it decided.
 
 **Decisions, and why:**
 - **The catch says it, in the popup over your head:** "An albino Trout!" (pale pink) or "A LARGE Salmon!" (gold), with the collect chime, beside the usual "+Trout". A plain fish says nothing new.
@@ -989,7 +989,7 @@ Screens: fish-weigh, fish-board
 - **Records opens More, Ranks, on the Biggest fish tab at that species.** The boards are a chip of Ranks, the last one, only against a server that weighs, rather than a page of their own: they are rankings, and Ranks is where rankings are. Five species chips; the ten heaviest each, one row a player (their best), "#1 Name Albino 2.4 kg", your own row highlighted, the top three ranks brass, as every board on the page.
 
 **Tried before, and changed:**
-- (New in v2.3.4032.)
+- (New in v2.3.4036.)
 
 **Please don't suggest:**
 - A weight for every fish shown without Inspect: the weigh-in is the owner's "triggered by inspection".

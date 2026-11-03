@@ -1,4 +1,4 @@
-/* ═══ v2.3.4032: RARE FISH, WEIGHED, WITH RECORDS ═══
+/* ═══ v2.3.4036: RARE FISH, WEIGHED, WITH RECORDS ═══
  *
  * The owner, 2026-11-02: "Add a 1% chance of catching an albino version of
  * whatever fish you're trying to catch. Consuming adds a one time 5
@@ -87,7 +87,7 @@ export const FISHLOG_KEY = (playerId) => 'fishlog:' + playerId;
 /* The species, in the fishing ladder's order (data.js FISH_TIERS). */
 const SPECIES = Object.freeze(FISH_TIERS.map((t) => t.name));
 
-/* v2.3.4032: what each species weighs, in GRAMS (the owner's table, in kg:
+/* v2.3.4036: what each species weighs, in GRAMS (the owner's table, in kg:
    Minnow 0.05-0.2, Clownfish 0.1-0.4, Trout 0.5-3, Salmon 2-8, Pike 2-12).
    A large one is LARGE_MIN to LARGE_MAX times the plain fish's biggest; an
    albino weighs what a plain one does.  Mirrored in src/data/fishVariants.js

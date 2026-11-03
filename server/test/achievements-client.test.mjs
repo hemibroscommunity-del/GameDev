@@ -142,7 +142,7 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   check('4f a row the owner\'s lever lit pays nothing: the rest reads 0, never below', A.achvSummary(S2).otherPts === 0);
   const ids = (f) => A.achvRows(S, f).map((r) => r.def.id);
   check('4g All is the whole table in its order', ids('all').join() === D.ACHIEVEMENTS.map((a) => a.id).join() && ids('nonsense').length === 33);
-  /* v2.3.4032: + the rare fish, five albino commons and five large rares */
+  /* v2.3.4036: + the rare fish, five albino commons and five large rares */
   check('4h Common 12, Rare 15 with the arena\'s row, Super-rare 6', ids('common').length === 12 && ids('rare').length === 15 && ids('rare').includes('gladiator') && ids('superrare').length === 6,
     { c: ids('common').length, r: ids('rare').length, s: ids('superrare').length });
   check('4i the filters cover every tier', D.ACHIEVEMENTS.every((a) => A.ACHV_FILTERS.some((f) => f.tiers && f.tiers.includes(a.tier))));
@@ -278,7 +278,7 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
     if (kind === 'VP8 ') return [b.readUInt16LE(26) & 0x3fff, b.readUInt16LE(28) & 0x3fff];
     return null;
   };
-  /* v2.3.4032: the ten rare-fish rows (fishlog.js) wear their fish's own bag
+  /* v2.3.4036: the ten rare-fish rows (fishlog.js) wear their fish's own bag
      picture until the owner paints their badges (the lane was "no new art"):
      held below to exactly that picture; every other row to its badge */
   const FISH_ROW = /^(albino|large)_(minnow|clownfish|trout|salmon|pike)$/;
