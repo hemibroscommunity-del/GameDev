@@ -41,6 +41,13 @@ Web Animations (still under prefers-reduced-motion) and glides 0.2 s between
 targets (never in from the corner: no glide on its first spot). Its words are
 kept 4 px inside the screen. Never two at once (`sweepStrays`).
 
+**Never over an open card (v2.3.4156).** The owner: "Remove the arrow in the
+first screenshot" -- it stood on the Mayor's NEW QUEST offer, pointing at him
+behind it. Before it is drawn, the arrow asks what a finger would hit at its
+target's middle (`onTop`): a control must be on top there (or something
+inside it, or what holds it), a townsperson the world (the canvas or the touch
+zones). The coach's own card and ring do not count. Otherwise it waits.
+
 Only the stable hooks are aimed at: `data-dash-fold`, `data-land-fold`,
 `data-nav="dashboard"`, `data-gear`, `data-nav="hero"`,
 `data-section="Build"`.

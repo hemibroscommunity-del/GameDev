@@ -89,6 +89,27 @@ function firstShown(sels) {
   return null;
 }
 
+/* ═══ v2.3.4156: NEVER OVER AN OPEN CARD ═══
+   The owner, 2026-11-03, of the Mayor's quest offer: "Remove the arrow in
+   the first screenshot" -- the arrow at Mayor Bro stood in the middle of the
+   NEW QUEST card, pointing at him behind it.  So before it is drawn, the
+   arrow asks whether its target is what a finger would hit at its middle
+   (the coach's own reachability rule, QuestCoach.jsx reachable): a control
+   must be on top there (it, or something inside it, or what holds it); a
+   townsperson must have the world on top (the canvas or the touch zones).
+   A dialogue, a quest offer, a building's window or any card over it: the
+   arrow waits until it closes.  The coach's own card and ring, and the arrow
+   itself (pointer-events none), are never in the way. */
+function onTop(r, el) {
+  if (typeof document === 'undefined' || !r) return false;
+  let top = null;
+  try { top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); } catch (e) { top = null; }
+  if (!top) return false;
+  try { if (top.closest('[data-coach], [data-guide-arrow]')) return true; } catch (e) { /* as below */ }
+  if (el) return top === el || el.contains(top) || top.contains(el);
+  try { return !!top.closest('canvas, [data-joyzone]'); } catch (e) { return false; }
+}
+
 /* ═══ v2.3.4130: THE THIRD LESSON -- SWAPPING WEAPONS, AT THE PILL ═══
  * The owner, 2026-11-03: "Weapon swap instruction from tutorial should only
  * become relevant after receiving new weapons from turning in first quest.
@@ -325,7 +346,7 @@ function tick(getS) {
          at him on the page (a world rect, not a DOM element) */
       if (_pace.skipped() || _pace.plateUp(now)) continue;
       const mr = mayorScreenRect(S);
-      if (!mr) continue;
+      if (!mr || !onTop(mr, null)) continue;   /* v2.3.4156: not over an open card */
       if (_seen[id] === 0) qa.n++;
       _seen[id] += Math.max(1, dt);
       qa.lesson = id; qa.sel = 'mayor';
@@ -334,7 +355,7 @@ function tick(getS) {
     }
     const shown = (sel) => { try { return Array.from(document.querySelectorAll(sel)).some((el) => !!shownRect(el)); } catch (e) { return false; } };
     const hit = firstShown(guideTargets(id, rpg, shown));
-    if (!hit) continue;
+    if (!hit || !onTop(hit.r, hit.el)) continue;   /* v2.3.4156: not over an open card */
     if (_seen[id] === 0) { qa.n++; if (id === 'swap') _swapFrom = rpg.activeSlot || 'melee'; }
     _seen[id] += Math.max(1, dt);
     qa.lesson = id; qa.sel = hit.sel;
