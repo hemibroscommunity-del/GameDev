@@ -2216,21 +2216,35 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
    game/xpBar.js XP_GAIN_MS). */
 .bt-xp-bar__gainslot{flex:none;min-width:46px;height:20px;display:flex;
   align-items:center;justify-content:flex-end}
-.bt-xp-gain{pointer-events:none;white-space:nowrap;
-  padding:1px 5px;border-radius:5px;background:#1A2328;color:#F2D58C;
-  font:800 12px/1.1 'Source Sans 3',sans-serif;box-shadow:0 0 0 1px rgba(234,198,117,.65);
+/* v2.3.3992: the words alone, no dark pill (the owner: "Make the plus xp
+   without the dark container background.  Make the text small then pop up
+   before fading"): a flat dark shadow round the letters keeps them legible
+   over the bar's dark rail and a bright land alike; it starts small, pops
+   past its size, settles, then fades (bt-xp-gain) */
+.bt-xp-gain{pointer-events:none;white-space:nowrap;display:inline-block;
+  padding:1px 2px;color:#F2D58C;
+  font:800 12px/1.1 'Source Sans 3',sans-serif;
+  text-shadow:-1px 0 0 #10171B,1px 0 0 #10171B,0 -1px 0 #10171B,0 1px 0 #10171B,0 1px 2px rgba(0,0,0,.6);
+  transform-origin:100% 50%;
   opacity:0;animation:bt-xp-gain 1200ms cubic-bezier(.2,.8,.2,1) 1 forwards}
 /* v2.3.3893: a kill's "+N XP" in the air on its way to the bar (ui/
    XpFlyOverlay.jsx flyKillXp): the bar's own "+N" holds at its first, unseen
    frame and pops as it lands; the landing pulses the skill's picture */
 html[data-xp-inbound] .bt-xp-gain{animation-play-state:paused;visibility:hidden}
-html[data-xp-land="a"] .bt-xp-bar__icon{animation:bt-xp-land-a 420ms cubic-bezier(.2,.8,.2,1) 1}
-html[data-xp-land="b"] .bt-xp-bar__icon{animation:bt-xp-land-b 420ms cubic-bezier(.2,.8,.2,1) 1}
+/* v2.3.3992: the kill's number lands on the bar's NUMBER ("45 / 120"), not
+   the skill's picture (the owner: "the numbers do a jump to bag effect but
+   just to the number on the xp bar (keep all the icons at the top of the bar
+   as it is now)"), so it is the number that pulses; the picture stays still */
+html[data-xp-land="a"] .bt-xp-bar__num{animation:bt-xp-land-a 420ms cubic-bezier(.2,.8,.2,1) 1}
+html[data-xp-land="b"] .bt-xp-bar__num{animation:bt-xp-land-b 420ms cubic-bezier(.2,.8,.2,1) 1}
 @keyframes bt-xp-land-a{0%{transform:scale(1)}35%{transform:scale(1.35);filter:brightness(1.5)}100%{transform:scale(1)}}
 @keyframes bt-xp-land-b{0%{transform:scale(1)}35%{transform:scale(1.35);filter:brightness(1.5)}100%{transform:scale(1)}}
+/* v2.3.3992: small (0.6), a pop past its size (1.15), settled (1), then up
+   and gone */
 @keyframes bt-xp-gain{
-  0%{opacity:0;transform:translateY(25%) scale(.9)}
-  15%{opacity:1;transform:translateY(0) scale(1.08)}
+  0%{opacity:0;transform:translateY(10%) scale(.6)}
+  12%{opacity:1;transform:translateY(0) scale(1.15)}
+  24%{opacity:1;transform:translateY(0) scale(1)}
   75%{opacity:1;transform:translateY(-8%) scale(1)}
   100%{opacity:0;transform:translateY(-30%) scale(.95)}}
 /* a phone 320 px across (an iPhone SE upright): the gap and the words give,
@@ -2238,7 +2252,7 @@ html[data-xp-land="b"] .bt-xp-bar__icon{animation:bt-xp-land-b 420ms cubic-bezie
 @media (max-width:359px){
   .bt-xp-bar{gap:3px}
   .bt-xp-bar__gainslot{min-width:36px}
-  .bt-xp-gain{padding:1px 3px;font-size:10.5px}
+  .bt-xp-gain{padding:1px 1px;font-size:10.5px}
   .bt-xp-bar__icon{width:19px;height:19px}
   .bt-xp-bar__lv{font-size:11.5px}
 }
