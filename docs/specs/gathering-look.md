@@ -290,8 +290,12 @@ inherit the first one's arguments. The boots' COLOUR was already right
 - **No new memory.** The same bakes, the same figures; only peers in different
   patterns get figures of their own, within the one allowance every peer
   figure shares (`PEER_FIG_BUDGET`), as peers in different colours already did.
-- **Under greaves** the figure is the `under` or legless cut, its trousers and
-  boots gone (the armour covers them), so nothing is stamped there.
+- **Under greaves, no garb.** The figure is then the `under` or legless cut,
+  its trousers and boots gone (the armour covers them), and what the trouser
+  test still finds on it is specks along the armour's edges: stamped, they lit
+  up pink beside the plate (`mp-ghostaudit` with `BT_GHOST_GARB=1`, the
+  lumberjack, 8 px a frame on 3 frames). So the legless and `under` strips are
+  baked without it, yours and a peer's alike.
 - **Not done:** a lumberjack drawn flipped (a tree on your left) shows the
   trouser print mirrored, as his twin bake is made only for an asymmetric
   face, chest or arm drawing (`_chopArtAsymmetric`): a twin for the print

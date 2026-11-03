@@ -5035,13 +5035,18 @@ export class EffectsRenderer {
          changes no blob and costs half the canvas.  (v2.3.2761: _chopSrc holds
          the played frames already cropped -- see the loader.) */
       const _keyMask = _chopKeyMask(img);
+      /* v2.3.3961: the legless strip (under greaves) wears no garb: its
+         trousers are gone, and what the trouser test still finds there is
+         specks along the armour's edges, which a pattern lit up
+         (mp-ghostaudit BT_GHOST_GARB=1) */
+      const _cl = key === '_chopSkinFrames' ? _clothes : { ..._clothes, garb: null };
       /* v2.3.2775: cropped (_sliceStandIn), the full bake kept only until the
          probe below has read it. */
       const _plain = _bakeChopStrip(img, _keyMask, skinT, _art ? { ..._art, mirror: false } : null, key, true,
-        { ..._clothes, probe: key === '_chopSkinFrames' ? 'chop' : 'chop-legless' });   /* v2.3.3146: the probe's name (QA) */
+        { ..._cl, probe: key === '_chopSkinFrames' ? 'chop' : 'chop-legless' });   /* v2.3.3146: the probe's name (QA) */
       this[key] = this._own(_plain.arr);   /* v2.3.3074: owned */
       this[key + 'Flip'] = _twin
-        ? this._gpuOnly(this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false, _clothes).arr)) : null;   /* v2.3.2855: see above; v2.3.3150: _gpuOnly */
+        ? this._gpuOnly(this._own(_bakeChopStrip(img, _keyMask, skinT, { ..._art, mirror: true }, key + 'Flip', false, _cl).arr)) : null;   /* v2.3.2855: see above; v2.3.3150: _gpuOnly */
       /* v2.3.2500: the mp-standinskin probe, the same reading the sword and
          bow bakes publish -- see _probeStandInSkin. */
       _probeStandInSkin('/sprites/skills/chop' + (key === '_chopSkinFrames' ? '' : '-legless') + '-strip.webp', _plain.cv);
@@ -5123,7 +5128,7 @@ export class EffectsRenderer {
       if (this._destroyed) return;   /* v2.3.3074 */
       try {
         const baked = _bakeChopStrip(img, _chopKeyMask(img), c.skinT, art ? { ...art, mirror: m } : null, null, false,
-          { pantsT: c.pantsT, shoesT: c.shoesT, garb: c.garb });   /* v2.3.3146: their trousers and boots; v2.3.3961: + their patterns and print */
+          { pantsT: c.pantsT, shoesT: c.shoesT, garb: legless ? null : c.garb });   /* v2.3.3146: their trousers and boots; v2.3.3961: + their patterns and print (none on the legless strip: _bakeChopStrips) */
         const arr = this._own(baked.arr);   /* v2.3.3074: owned */
         cache.set(key, { arr, used: Date.now(), bytes: _figBytes(arr) });   /* v2.3.3314: + its size, for the allowance */
         this._gpuOnly(arr);   /* v2.3.3150 */
@@ -5267,7 +5272,7 @@ export class EffectsRenderer {
     if (!inkOnly) this._cookLook = null;
     for (const [key, img] of [['_cookFrames', bodyImg], ['_cookLeglessFrames', leglessImg]]) {
       const { cv, ink } = _bakeCookSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
-        { ..._clothes, probe: key === '_cookFrames' ? 'cook' : 'cook-legless' });   /* v2.3.3146: the probe's name (QA) */
+        { ..._clothes, garb: key === '_cookFrames' ? _clothes.garb : null, probe: key === '_cookFrames' ? 'cook' : 'cook-legless' });   /* v2.3.3961: no garb on the legless strip (_bakeChopStrips) */   /* v2.3.3146: the probe's name (QA) */
       const n = Math.max(1, Math.round(cv.width / FW));
       if (!inkOnly) {
         _old.push(this[key]);
@@ -5401,7 +5406,7 @@ export class EffectsRenderer {
       /* v2.3.3684: the fire-lighter's `legless` is a bake of the one strip
          (the cook's is a strip of its own, spec.url) */
       const { cv } = spec.bake(img, c.skinT, art ? { ...art, mirror: false } : null,
-        { pantsT: c.pantsT, shoesT: c.shoesT, garb: c.garb, ...(kind === 'fire' && legless ? { legless: true } : {}) });   /* v2.3.3961: + their garb */
+        { pantsT: c.pantsT, shoesT: c.shoesT, garb: legless ? null : c.garb, ...(kind === 'fire' && legless ? { legless: true } : {}) });   /* v2.3.3961: + their garb, none under greaves (_bakeChopStrips) */
       const n = Math.max(1, Math.round(cv.width / spec.fw));
       const arr = this._own(_sliceStandIn(cv, spec.fw, spec.fh, n, null, false));
       cache.set(key, { arr, used: Date.now(), bytes: _figBytes(arr) });
@@ -5690,7 +5695,7 @@ export class EffectsRenderer {
          bark's middle tones pass the skin window); a drawings-only rebake
          throws the figure away and leaves its log */
       const { cv, ink } = _bakeFireSplit(img, skinT, _art ? { ..._art, mirror: false } : null,
-        { pantsT: _pantsT, shoesT: _shoesT, garb: _garb, probe: 'fire', legless: _legless },
+        { pantsT: _pantsT, shoesT: _shoesT, garb: _legless ? null : _garb, probe: 'fire', legless: _legless },   /* v2.3.3961: none under greaves (_bakeChopStrips) */
         inkOnly ? { noWood: true } : { beforeWood: (c) => _probeStandInSkin('/sprites/skills/firemaking-strip.webp', c, FIRE_SKIN_OPTS) });
       const n = Math.max(1, Math.round(cv.width / FIRE_FW));
       const _old = [];
@@ -17036,7 +17041,7 @@ export class EffectsRenderer {
       const frames = Object.create(null);
       names.forEach((a, i) => {
         const A = FARM_ANIMS[a];
-        const cv = recolorStandInSkin(imgs[i], skinT, A.fh, { frameW: A.fw, minBlob: FARM_MIN_BLOB, pantsT, shoesT, garb, patK: STANDIN_GARB_K.farm, probe: 'farm-' + a, art, regions: A.ink });
+        const cv = recolorStandInSkin(imgs[i], skinT, A.fh, { frameW: A.fw, minBlob: FARM_MIN_BLOB, pantsT, shoesT, garb: under ? null : garb, patK: STANDIN_GARB_K.farm, probe: 'farm-' + a, art, regions: A.ink });
         _probeStandInSkin('farm-' + a, cv);
         const arr = this._own(_sliceStandIn(cv, A.fw, A.fh, A.n, 'farm-' + a, false));
         try { arr[0].source.label = 'farm-' + a + ' (baked)'; } catch (e) { /* the label is QA-only */ }
