@@ -201,6 +201,7 @@ import { applyShardCrackResult, applyGemCombineResult } from '@/game/shardCrack.
 import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's death heard by distance */
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
+import { noteMoveCaps } from '@/game/monsterMoves.js';   /* v2.3.4011 */
 /* v2.3.3689: what your head wears and its colours, as one string -- the
    state_sync record apply tells BroTown when it changed (the 'bt-own-look'
    event: the new pieces prepared, the veil waiting for them) */
@@ -1538,6 +1539,7 @@ export function setupWebSocket(ctx) {
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
               _capsHere = true;
+              noteMoveCaps(S._serverCaps);   /* v2.3.4011: the monster moves' warnings and enrage, against a worker that has them (caps.monstermoves) */
               /* v2.3.3776: a fresh join is off the board (the worker forgot it
                  too: ride.js stores nothing) */
               try { clearRide(S); } catch (e) { /* on foot either way */ }   /* v2.3.3254: this socket's caps (the quiet phone's bundles) */
