@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3cf523fec1ecfd8ff2934957856e947cd866d1eb",
+  "tree": "433a3b7c9ebf8137645d6e0e3f4bd3840d2da124",
+  "committedAt": "2026-11-02T20:08:04-08:00",
+  "subject": "Merge pull request #1377 from hemibroscommunity-del/claude/points-bubbles",
+  "files": 7467,
+  "bytes": 848398295,
+  "listingSha256": "a9fc39ac610a1bb4aca81323c37a2807937ad4b36f47ffe3921adc811c0b3561",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
