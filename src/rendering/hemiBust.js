@@ -17,9 +17,10 @@
  * colour numbers (png8Decode.js), never drawn: the page keeps 59 small layers
  * of 4 KB, and each portrait is made on a 192 px canvas let go at once.
  *
- * Default ON.  `?hemiface=0` brings back the game's own headshot for one tab
- * (`?hemiface=1` forces it on); the Test panel's row "Your portrait as a Hemi
- * Bro" turns it off for every phone from their next load (clientOff.js).  A
+ * v2.3.4049: default OFF (owner, 2026-11-03: "Sorry but I don't like the pfp"):
+ * the game's own headshot everywhere, as before v2.3.3999, and the atlas is not
+ * even loaded.  `?hemiface=1` turns it on for one tab (the Test panel's row
+ * went with the default: there is nothing left for it to turn off).  A
  * look the collection has no bro for (the monkey) keeps the game's headshot,
  * and so does any failure here: '' means "draw the old one".
  *
@@ -34,7 +35,6 @@ import { hemiRecipe, hemiFaceChoice } from './hemiLook.js';
 import { decodePng8 } from './png8Decode.js';
 import { skinTarget } from './playerSkins.js';
 import { getPattern } from './traits/patternCatalog.js';
-import { clientOffAtLoad } from '../game/clientOff.js';
 
 export const HEMI_SCALE = 6;          /* 32 x 6 = 192, the townsfolk's heads' size */
 const CACHE_CAP = 24;                 /* data URLs kept, newest last (a cache has a cap) */
@@ -49,12 +49,12 @@ function choice() {
   if (_choice) return _choice;
   let search = '';
   try { search = (typeof window !== 'undefined' && window.location && window.location.search) || ''; } catch (e) { search = ''; }
-  _choice = hemiFaceChoice(search, clientOffAtLoad('hemiface'));
+  _choice = hemiFaceChoice(search);
   _stats.wanted = _choice.on; _stats.why = _choice.why;
   return _choice;
 }
 
-/** Is the headshot a Hemi Bro on this page? (`?hemiface=0`: no) */
+/** Is the headshot a Hemi Bro on this page? (v2.3.4049: only with `?hemiface=1`) */
 export function hemiFaceWanted() { return choice().on; }
 
 /* the atlas's numbers to RGBA; a browser with no DecompressionStream (iOS
