@@ -62,7 +62,7 @@ import { arenaMethods } from './gladiator.js';
 import { dungeonMethods } from './dungeon.js';
 import { telegraphMethods } from './telegraph.js'; /* v2.3.1730 */
 import { hitMethods } from './hits.js'; /* v2.3.3296: one door for every monster hit on a player */
-import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.3946: the tiers' moves (combo, charge, volley, slams, enrage) */
+import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.4011: the tiers' moves (combo, charge, volley, slams, enrage) */
 import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
@@ -2029,7 +2029,7 @@ export class GameRoom {
                spawn 6-19 s later, half a hit and a 130 px shove.  Found by the
                review of v2.3.3621.  The cooldown stays, as the burrow's. */
             m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null; m._tgRadius = 0;
-            /* v2.3.3946: and a move (monstermoves.js), for the same reason: a
+            /* v2.3.4011: and a move (monstermoves.js), for the same reason: a
                fresh life with nothing in flight, nothing cooling, not enraged */
             this._clearMonsterMove(m);
             /* v2.3.3120: and its trap marks (trapping.js): a mark is on THIS
@@ -2122,7 +2122,7 @@ export class GameRoom {
            mid-cast used to strand the monster in a pending telegraph
            forever — see the note on _resolveMonsterTelegraph. */
         if (this._resolveMonsterTelegraph(zoneId, m, now)) continue;
-        /* v2.3.3946: and a move of the tiers past the first (monstermoves.js:
+        /* v2.3.4011: and a move of the tiers past the first (monstermoves.js:
            a combo's strikes, a charge's dash, a volley in the air), for the
            same reason and in the same place */
         if (this._resolveMonsterMove(zoneId, m, now)) continue;
@@ -2509,7 +2509,7 @@ export class GameRoom {
                (and its aim point, frozen at release) is created by
                _resolveBasicWindup — travelMs remains the dodge window, this
                just puts a tell in front of it. */
-            this._startBasicWindup(zoneId, m, nearest.id, now, 'throw', this._monsterSwingCd(m, _rangedCfg.cd));   /* v2.3.3946: ...and throws faster */
+            this._startBasicWindup(zoneId, m, nearest.id, now, 'throw', this._monsterSwingCd(m, _rangedCfg.cd));   /* v2.3.4011: ...and throws faster */
           }
 
           /* v2.3.2221: START the snow-pile burrow — ABOVE the telegraph kits
@@ -2531,7 +2531,7 @@ export class GameRoom {
              branch); only starting one needs a live target.
              Gated on ccMoveMult like the swing below: a frozen or rooted
              monster cannot begin a cast either (v2.3.1139's rule). */
-          /* v2.3.3946: START a move of its tier (monstermoves.js), ABOVE the
+          /* v2.3.4011: START a move of its tier (monstermoves.js), ABOVE the
              kits for the reason the kits sit above the swing: one special at
              a time, never two on one tick.  Tier 1 has none. */
           if (ccMoveMult > 0 && this._maybeStartMove(zoneId, m, nearest, now)) {
@@ -2566,7 +2566,7 @@ export class GameRoom {
                block arc, the parry window, the stamina cost and the thorns
                reflect are all evaluated at IMPACT — which is what lets a
                player raise their shield DURING the tell and have it count. */
-            /* v2.3.3946: an enraged elder swings faster (monstermoves.js) */
+            /* v2.3.4011: an enraged elder swings faster (monstermoves.js) */
             this._startBasicWindup(zoneId, m, nearest.id, now, 'swing', this._monsterSwingCd(m, this.MONSTER_ATTACK_CD));
             continue;
           }
@@ -2914,7 +2914,7 @@ export class GameRoom {
       m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null;
       m._tgNextAt = now + this.PARRY_STAGGER_MS;
     }
-    /* v2.3.3946: and a move of the tiers past the first: a parried combo
+    /* v2.3.4011: and a move of the tiers past the first: a parried combo
        loses its second strike, a parried charge stops on the shield
        (monstermoves.js) */
     if (m._mvPhase) this._breakMove(m, now);
@@ -6587,7 +6587,7 @@ Object.assign(GameRoom.prototype, dungeonMethods);
 // v2.3.1730: telegraphed standard-zone attacks -- see telegraph.js.
 Object.assign(GameRoom.prototype, telegraphMethods);
 Object.assign(GameRoom.prototype, hitMethods); /* v2.3.3296 */
-Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.3946 */
+Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.4011 */
 Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */

@@ -41,7 +41,7 @@
  *      block's event says the bar, only three files price a hit on a player,
  *      and an unknown row hits nobody.
  *
- * v2.3.3946: + the moves of tiers 2-8 (monstermoves.js), each its own row and
+ * v2.3.4011: + the moves of tiers 2-8 (monstermoves.js), each its own row and
  * measured through its own resolve: a combo's strike, a charge's dash, a
  * volley's ball landing, an area slam's ring.
  */
@@ -159,7 +159,7 @@ function play(src, where, setup) {
   m._burPhase = null; m._burUntil = 0; m._burTarget = null; m._burCd = now + 1e9; m._invulnUntil = 0;
   m._burstUntil = 0; m._burstR = 0; m._burstKiller = null; m._burstDone = false;
   m._projImpactAt = 0; m._projTargetId = null;
-  m.tier = undefined; room._clearMonsterMove(m);   /* v2.3.3946: tier 1, no move in flight */
+  m.tier = undefined; room._clearMonsterMove(m);   /* v2.3.4011: tier 1, no move in flight */
   freshPlayer(P, at.zone, at.px, at.py);
   freshPlayer(Q, at.zone, at.px + 60, at.py);
   if (room._burns) room._burns.clear();
@@ -215,7 +215,7 @@ const SOURCES = {
     m._tgPhase = 'telegraph'; m._tgUntil = now - 1; m._tgTarget = 'p1'; m._tgRadius = 400;
     room._resolveMonsterTelegraph(at.zone, m, now);
   },
-  /* ═══ v2.3.3946: the tiers' moves, each through _resolveMonsterMove ═══ */
+  /* ═══ v2.3.4011: the tiers' moves, each through _resolveMonsterMove ═══ */
   /* a rock monster's combo strike, at the ring drawn at its target's feet */
   combo(m, now, at) {
     m.arch = 'brute'; m.tier = 2;
@@ -282,7 +282,7 @@ const SOURCES = {
   },
 };
 
-/* v2.3.3946: where the charge was when it reached you (it moves as it hits) */
+/* v2.3.4011: where the charge was when it reached you (it moves as it hits) */
 let chargeAt = null;
 const MOVES_K = (await import('../src/monstermoves.js')).MOVE_DEFS;
 
@@ -293,7 +293,7 @@ const RAW = {
   slam: () => Math.min(Math.ceil(30 * TELEGRAPH.KITS.brute.dmgMult), Math.floor(MAX_HP * TELEGRAPH.MAX_HIT_PCT)),
   lunge: () => Math.min(Math.ceil(30 * TELEGRAPH.KITS.fodder.dmgMult), Math.floor(MAX_HP * TELEGRAPH.MAX_HIT_PCT)),
   burst: () => Math.min(Math.ceil(SLIME_BURST.DMG * hitK(5)), Math.floor(MAX_HP * TELEGRAPH.MAX_HIT_PCT)),
-  /* v2.3.3946: each move's multiple of the monster's own damage, on the kits' rail */
+  /* v2.3.4011: each move's multiple of the monster's own damage, on the kits' rail */
   combo: () => Math.min(Math.ceil(30 * MOVES_K.combo.dmgMult), Math.floor(MAX_HP * TELEGRAPH.MAX_HIT_PCT)),
   charge: () => Math.min(Math.ceil(30 * MOVES_K.charge.dmgMult), Math.floor(MAX_HP * TELEGRAPH.MAX_HIT_PCT)),
   volley: () => Math.min(Math.ceil(30 * MOVES_K.volley.dmgMult), Math.floor(MAX_HP * TELEGRAPH.MAX_HIT_PCT)),
@@ -310,14 +310,14 @@ const RAW = {
 const TAG = {
   swing: {}, snowball: {}, burrow: {}, boss: {},
   slam: { ability: 'slam' }, lunge: { ability: 'lunge' }, burst: { ability: 'burst' },
-  /* v2.3.3946: the charge is a fishman's here (a family with a charge), so
+  /* v2.3.4011: the charge is a fishman's here (a family with a charge), so
      its blow soaks you as a water monster's does */
   combo: { ability: 'combo' }, charge: { ability: 'charge', elem: 'water' }, volley: { ability: 'volley' }, quake: { ability: 'quake' },
   fire: { ability: 'firetrail', elem: 'flame' }, shock: { ability: 'shock', elem: 'storm' },
   burn: { ability: 'burn', elem: 'flame' }, poison: { ability: 'poison', elem: 'venom' },
 };
 const ALL = Object.keys(SOURCES);
-const BLOCKABLE = ['swing', 'snowball', 'burrow', 'slam', 'lunge', 'burst', 'boss', 'combo', 'charge', 'volley', 'quake'];   /* v2.3.3946: + the moves */
+const BLOCKABLE = ['swing', 'snowball', 'burrow', 'slam', 'lunge', 'burst', 'boss', 'combo', 'charge', 'volley', 'quake'];   /* v2.3.4011: + the moves */
 const face = (toward) => ({ m, ps }) => {
   ps.blocking = true; ps.blockStartT = Date.now() - 5000;
   const a = Math.atan2(m.y - ps.y, m.x - ps.x);
@@ -339,7 +339,7 @@ for (const src of ALL) {
 {
   const at = place('out');
   const want = { swing: [at.mx, at.my], snowball: [at.px, at.py], burrow: [at.mx, at.my], slam: [at.mx, at.my], lunge: [at.mx, at.my], burst: [at.mx, at.my], boss: [at.mx, at.my], fire: [at.px, at.py], shock: [at.px + 60, at.py], burn: [at.px, at.py], poison: [at.px, at.py],
-    /* v2.3.3946: the moves from the monster (a volley's ball from its thrower; a charge from where it reached you) */
+    /* v2.3.4011: the moves from the monster (a volley's ball from its thrower; a charge from where it reached you) */
     combo: [at.mx, at.my], charge: chargeAt || [NaN, NaN], volley: [at.mx, at.my], quake: [at.mx, at.my] };
   for (const src of ALL) {
     const e = landed[src].ev;
@@ -356,7 +356,7 @@ for (const src of ALL) {
    grinds after you as long as you stand in it; fire, a storm's arc and a tick
    are no blow to slip. */
 const ROLLS = { swing: true, snowball: true, burrow: false, slam: true, lunge: true, burst: true, boss: true, fire: false, shock: false, burn: false, poison: false,
-  combo: true, charge: true, volley: true, quake: true };   /* v2.3.3946: every move is seen coming */
+  combo: true, charge: true, volley: true, quake: true };   /* v2.3.4011: every move is seen coming */
 const rolling = (kind) => ({ ps, now }) => { ps.dodging = true; room._rollStamp(ps, now, kind); };
 for (const src of ALL) {
   const r = play(src, 'out', rolling('dodge'));
@@ -404,7 +404,7 @@ for (const src of ALL) {
 
 // ── 3. The shield, facing it, held (v2.3.3300: decision 1, the two 15s are 10) ──
 const COST = { swing: BLOCK_STAMINA_COST, snowball: 0, burrow: BLOCK_STAMINA_COST, slam: BLOCK_STAMINA_COST, lunge: BLOCK_STAMINA_COST, burst: BLOCK_STAMINA_COST, boss: BLOCK_STAMINA_COST,
-  combo: BLOCK_STAMINA_COST, charge: BLOCK_STAMINA_COST, volley: 0, quake: BLOCK_STAMINA_COST };   /* v2.3.3946: a volley's ball is a snowball's: free */
+  combo: BLOCK_STAMINA_COST, charge: BLOCK_STAMINA_COST, volley: 0, quake: BLOCK_STAMINA_COST };   /* v2.3.4011: a volley's ball is a snowball's: free */
 for (const src of ALL) {
   const r = play(src, 'out', face(true));
   if (!BLOCKABLE.includes(src)) {
@@ -427,7 +427,7 @@ for (const src of ALL) {
 }
 
 // ── 4. The shield, raised in time: the parry (v2.3.3300: decision 5, the pile and a boss too) ──
-const PARRIES = { swing: true, snowball: false, burrow: true, slam: true, lunge: true, burst: true, boss: true, combo: true, charge: true, volley: false, quake: true };   /* v2.3.3946 */
+const PARRIES = { swing: true, snowball: false, burrow: true, slam: true, lunge: true, burst: true, boss: true, combo: true, charge: true, volley: false, quake: true };   /* v2.3.4011 */
 for (const src of BLOCKABLE) {
   const r = play(src, 'out', ({ m, ps, now }) => {
     face(true)({ m, ps });
@@ -514,7 +514,7 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
 // ── 9. The one-hit rail and death; a block that counts; thorns; curse; element ──
 {
   const CAP = { slam: TELEGRAPH.MAX_HIT_PCT, lunge: TELEGRAPH.MAX_HIT_PCT, burst: TELEGRAPH.MAX_HIT_PCT, boss: BOSS_ABILITIES.MAX_HIT_PCT, fire: 0.5, shock: SHOCK.MAX_HP_PCT, burn: BURN.MAX_HP_PCT, poison: POISON.MAX_HP_PCT,
-    combo: TELEGRAPH.MAX_HIT_PCT, charge: TELEGRAPH.MAX_HIT_PCT, volley: TELEGRAPH.MAX_HIT_PCT, quake: TELEGRAPH.MAX_HIT_PCT };   /* v2.3.3946: the moves keep the no-one-shot rail */
+    combo: TELEGRAPH.MAX_HIT_PCT, charge: TELEGRAPH.MAX_HIT_PCT, volley: TELEGRAPH.MAX_HIT_PCT, quake: TELEGRAPH.MAX_HIT_PCT };   /* v2.3.4011: the moves keep the no-one-shot rail */
   for (const src of ALL) {
     /* a huge blow on a small bar: the rail decides who lives */
     deaths.length = 0;
@@ -583,7 +583,7 @@ for (const src of ALL.filter((s) => s !== 'boss')) {
   /* v2.3.3748: + the heap, which no monster deals: measured in §11 below and
      in its own suite (heap-burn), not in the monster table of §1-§9 */
   const ROW_OF = { swing: 'swing', snowball: 'snowball', burrow: 'pile', slam: 'kit', lunge: 'kit', burst: 'burst', boss: 'boss', fire: 'fire', shock: 'shock', burn: 'burn', poison: 'poison', heap: 'heap',
-    combo: 'combo', charge: 'charge', volley: 'volley', quake: 'quake' };   /* v2.3.3946: the moves, a row each */
+    combo: 'combo', charge: 'charge', volley: 'volley', quake: 'quake' };   /* v2.3.4011: the moves, a row each */
   const rows = Object.keys(MONSTER_HITS);
   check('10a. each source above has its row in MONSTER_HITS', ALL.every((src) => rows.includes(ROW_OF[src])), { rows });
   check('10a. ...and each row of MONSTER_HITS is measured above', rows.every((r) => Object.values(ROW_OF).includes(r)), { rows });

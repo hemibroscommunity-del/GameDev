@@ -224,7 +224,7 @@ const deep = wheel.filter((m) => m.tier);
   for (const m of deep) {
     const z = ZONES[m.home], sp = z.spawns.find((q) => q.arch === m.arch);
     const ref = room._makeZoneMonster(m.home, z, sp, 'ref', 10, 10, m.level);
-    /* v2.3.3946: + its tier's stat step (monstermoves.js _moveTierStep) */
+    /* v2.3.4011: + its tier's stat step (monstermoves.js _moveTierStep) */
     ref.tier = m.tier; room._moveTierStep(ref);
     for (const k of ['level', 'hp', 'maxHp', 'dmg', 'xp', 'gold', 'spd', 'variant', 'element', 'arch']) {
       if (ref[k] !== m[k]) { same = false; why3 = { id: m.id, k, got: m[k], want: ref[k] }; }

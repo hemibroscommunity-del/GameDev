@@ -154,7 +154,7 @@ export const MONSTER_HITS = Object.freeze({
     block: block({ cost: BLOCK_STAMINA_COST, parry: true }),
     rail: TELEGRAPH.MAX_HIT_PCT, own: 'elem', soak: true,
   }),
-  /* ═══ v2.3.3946: THE MOVES OF TIERS 2-8 (monstermoves.js) ═══
+  /* ═══ v2.3.4011: THE MOVES OF TIERS 2-8 (monstermoves.js) ═══
      Each move its own row, so the fight simulator and a later change can
      tell them apart; three are the kit's cells exactly (you see them coming,
      the shield and its parry, a roll, a rock, the one-hit rail, the

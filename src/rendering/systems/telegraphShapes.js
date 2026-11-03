@@ -1,4 +1,4 @@
-/* ═══ v2.3.3946: THE MOVES' WARNINGS, DRAWN (a lane, a fan, two rings) ═══
+/* ═══ v2.3.4011: THE MOVES' WARNINGS, DRAWN (a lane, a fan, two rings) ═══
  * (spec: docs/specs/monster-moves.md)
  *
  * effectsRenderer.js draws every kit's warning as a ring that fills as the

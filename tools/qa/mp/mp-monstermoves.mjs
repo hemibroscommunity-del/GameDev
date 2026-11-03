@@ -1,4 +1,4 @@
-/* ═══ A TIER-2 MONSTER'S MOVE, SEEN COMING, ON A PHONE (v2.3.3946) ═══
+/* ═══ A TIER-2 MONSTER'S MOVE, SEEN COMING, ON A PHONE (v2.3.4011) ═══
  * (spec: docs/specs/monster-moves.md; the worker: server/src/monstermoves.js)
  *
  * The owner, 2026-11-02: "Make next tier monsters noticeably harder.  Develop

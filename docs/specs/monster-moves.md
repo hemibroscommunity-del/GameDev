@@ -1,4 +1,4 @@
-# Tougher monsters from level 6: combos, charges, slams and enrage (v2.3.3946)
+# Tougher monsters from level 6: combos, charges, slams and enrage (v2.3.4011)
 
 The owner, 2026-11-02:
 

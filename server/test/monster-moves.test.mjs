@@ -1,4 +1,4 @@
-/* MONSTER MOVES -- v2.3.3946 (server/src/monstermoves.js; spec
+/* MONSTER MOVES -- v2.3.4011 (server/src/monstermoves.js; spec
  * docs/specs/monster-moves.md).
  *
  * The owner, 2026-11-02: "Make next tier monsters noticeably harder.  Develop

@@ -78,7 +78,7 @@
  * impact) rather than this melee-shaped resolve, which is a different
  * enough shape to deserve its own change.
  *
- *   ── v2.3.3946: BUILT, as one of the tiers' moves (monstermoves.js: the
+ *   ── v2.3.4011: BUILT, as one of the tiers' moves (monstermoves.js: the
  *   Snow Volley from tier 3, its balls landing where its fan drew them, each
  *   through the door's `volley` row).  The kits here are untouched; the
  *   moves come on top from tier 2, and an elder's (tiers 7-8) cooldowns,
@@ -409,7 +409,7 @@ export const telegraphMethods = {
       m._tgUntil = 0;
       m._tgAim = null;
       m._tgTarget = null;
-      /* v2.3.3946: an elder's cooldowns are shorter (monstermoves.js
+      /* v2.3.4011: an elder's cooldowns are shorter (monstermoves.js
          _moveCdK: 1 below tier 7), and the next move waits its gap */
       m._tgNextAt = now + Math.round(kit.cooldownMs * this._moveCdK(m));
       this._noteSpecialEnded(m, now);
@@ -476,7 +476,7 @@ export const telegraphMethods = {
     const kit = this._kitFor(m);   /* v2.3.3621: an archetype's kit, else an element's */
     if (!kit || m._tgPhase) return false;
     if (now < (m._tgNextAt || 0)) return false;
-    /* v2.3.3946: never over a move in flight, nor straight after one */
+    /* v2.3.4011: never over a move in flight, nor straight after one */
     if (m._mvPhase || now < (m._mvGapAt || 0)) return false;
     if (now <= m.atkCd) return false;              /* respect the basic-swing cadence */
     /* v2.3.2790: the cast range and the ring shrink with the caster on a

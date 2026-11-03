@@ -76,8 +76,8 @@ import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the 
 import { achvMailPhrase } from '@/game/achievements.js';   /* v2.3.3527: an achievement in the mail (the arena's crown) */
 import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
 import { sparkLine } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn */
-import { moveGeometry } from '@/game/monsterMoves.js';   /* v2.3.3946: the moves' warnings' shapes */
-import { monsterMoveEvent, moveColor } from '@/networking/monsterMoveEvents.js';   /* v2.3.3946: an enrage, a volley's balls */
+import { moveGeometry } from '@/game/monsterMoves.js';   /* v2.3.4011: the moves' warnings' shapes */
+import { monsterMoveEvent, moveColor } from '@/networking/monsterMoveEvents.js';   /* v2.3.4011: an enrage, a volley's balls */
 
 /* ═══ v2.3.2232: THE DAMAGE NUMBER NAMES THE WEAPON THAT DEALT IT ═══
  *
@@ -1323,10 +1323,10 @@ export function processGameEvent(type, payload, S, deps) {
                  Softer orange than the brute's amber and a smaller shake
                  below: the tell should read as "here it comes", not as
                  "you are in trouble". */
-              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!', lunge: 'LUNGE!', roar: 'ROAR!', combo: '!', charge: '!', volley: '!', stomp: '!', quake: '!' };   /* v2.3.3621: the mummy's roar; v2.3.3946: the tiers' moves, no words */
+              var _maLabels = { slam: 'SLAM!', pounce: 'POUNCE!', lunge: 'LUNGE!', roar: 'ROAR!', combo: '!', charge: '!', volley: '!', stomp: '!', quake: '!' };   /* v2.3.3621: the mummy's roar; v2.3.4011: the tiers' moves, no words */
               var _maColors = { slam: '#f5c542', pounce: '#2C3E50', lunge: '#E8955A', roar: '#E6D3A8', combo: '#f0a050', charge: '#ea580c', volley: '#9fd8ff', stomp: '#c8a070', quake: '#f5c542' };
               var _maShake = { slam: 8, pounce: 5, lunge: 3, roar: 6, combo: 4, charge: 7, volley: 3, stomp: 7, quake: 9 };
-              /* v2.3.3946: a move's own parts (src/networking/monsterMoveEvents.js):
+              /* v2.3.4011: a move's own parts (src/networking/monsterMoveEvents.js):
                  an elder's enrage, a volley's balls; then its warning's
                  shape rides the ring below */
               if (monsterMoveEvent(S, payload)) break;
@@ -1567,8 +1567,8 @@ export function processGameEvent(type, payload, S, deps) {
                   S._telegraphZones.push({
                     x: payload.ax, y: payload.ay, r: payload.radius || 55,
                     ts: Date.now(), duration: payload.ms || 800,
-                    color: moveColor(S, payload, _maColors[payload.ability] || '#fbbf24'),   /* v2.3.3946: a move's in its monster's element colour */
-                    geo: moveGeometry(payload),   /* v2.3.3946: a lane, a fan, two rings (telegraphShapes.js); null for a ring */
+                    color: moveColor(S, payload, _maColors[payload.ability] || '#fbbf24'),   /* v2.3.4011: a move's in its monster's element colour */
+                    geo: moveGeometry(payload),   /* v2.3.4011: a lane, a fan, two rings (telegraphShapes.js); null for a ring */
                   });
                 }
                 /* ═══ v2.3.1811: AND MARK THE MONSTER ITSELF ═══
@@ -1601,7 +1601,7 @@ export function processGameEvent(type, payload, S, deps) {
                    lunge (SOUND-GAPS). */
                 /* v2.3.3621: a mummy's roar is its roar (the owner's dragon,
                    higher and shorter: data/eventSounds.js mummyRoar) */
-                if (_tgK > 0) cue(payload.ability === 'slam' || payload.ability === 'stomp' || payload.ability === 'quake' ? 'windSlam' : payload.ability === 'roar' ? 'mummyRoar' : 'windLunge', _tgK);   /* v2.3.3946: the slams' swell */
+                if (_tgK > 0) cue(payload.ability === 'slam' || payload.ability === 'stomp' || payload.ability === 'quake' ? 'windSlam' : payload.ability === 'roar' ? 'mummyRoar' : 'windLunge', _tgK);   /* v2.3.4011: the slams' swell */
                 break;
               }
               /* execute — a landed hit shakes, a whiff deliberately does
@@ -1633,14 +1633,14 @@ export function processGameEvent(type, payload, S, deps) {
                   /* v2.3.3343: the landing HEARD (this was a beep(), silent):
                      a slam's thud on the ground; a lunge's rush (the blow on
                      whoever it caught is their own monster_attack's sound) */
-                  if (payload.ability === 'slam' || payload.ability === 'stomp' || payload.ability === 'quake') cue('slamHit', _exK);   /* v2.3.3946: + the moves' slams */
+                  if (payload.ability === 'slam' || payload.ability === 'stomp' || payload.ability === 'quake') cue('slamHit', _exK);   /* v2.3.4011: + the moves' slams */
                   else cue('lungeMiss', 0.6 * _exK);
                 }
               } else {
                 pushDmgPopup(S, _maX, _maY - 30, 'MISS', '#8FD6A0');
                 /* v2.3.3343: a slam still hits the ground; a lunge whooshes
                    past (a beep(), silent) */
-                if (_exK > 0) cue(payload.ability === 'slam' || payload.ability === 'stomp' || payload.ability === 'quake' ? 'slamHit' : 'lungeMiss', _exK);   /* v2.3.3946: + the moves' slams */
+                if (_exK > 0) cue(payload.ability === 'slam' || payload.ability === 'stomp' || payload.ability === 'quake' ? 'slamHit' : 'lungeMiss', _exK);   /* v2.3.4011: + the moves' slams */
               }
             }
             break;

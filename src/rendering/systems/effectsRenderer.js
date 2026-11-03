@@ -295,7 +295,7 @@ import { isWheelBroken } from '@/game/wheelBreak.js';   /* v2.3.2995: a broken o
 import { freePropChips } from '../hitMaterialFx.js';    /* v2.3.2995 */
 import { ELEM_ICON_SRC } from '@/game/elemHits.js';   /* v2.3.2996: a monster's element on the number */
 import { emoteKind, EMOTE_POP_MS } from '@/game/emotes.js';   /* v2.3.3391: an emoji over the head */
-import { drawTelegraphShape } from './telegraphShapes.js';   /* v2.3.3946: the monster moves' warnings */
+import { drawTelegraphShape } from './telegraphShapes.js';   /* v2.3.4011: the monster moves' warnings */
 
 /* v2.3.2654: how a print reads and how long it lasts.  PRINT_TTL_MS is
    mirrored by stateCleanup's filter -- the array and the drawer must expire on
@@ -6019,7 +6019,7 @@ export class EffectsRenderer {
         const age = (now - tz.ts) / (tz.duration || 800);
         if (age >= 1) { S._telegraphZones.splice(i, 1); continue; }
         const col = cssToHex(tz.color || '#fbbf24');
-        if (tz.geo && drawTelegraphShape(gfx, tz, age, col, S)) continue;   /* v2.3.3946: a move's lane, fan or rings (telegraphShapes.js) */
+        if (tz.geo && drawTelegraphShape(gfx, tz, age, col, S)) continue;   /* v2.3.4011: a move's lane, fan or rings (telegraphShapes.js) */
         gfx.circle(tz.x, tz.y, tz.r || 55);
         gfx.fill({ color: col, alpha: 0.10 + age * 0.22 });
         gfx.circle(tz.x, tz.y, tz.r || 55);

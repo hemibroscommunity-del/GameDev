@@ -1,4 +1,4 @@
-/* ═══ v2.3.3946: MONSTER MOVES -- TOUGHER MONSTERS FROM LEVEL 6 ═══
+/* ═══ v2.3.4011: MONSTER MOVES -- TOUGHER MONSTERS FROM LEVEL 6 ═══
  * (spec: docs/specs/monster-moves.md; pinned by server/test/monster-moves.test.mjs)
  *
  * The owner, 2026-11-02: "Make next tier monsters noticeably harder.  Develop

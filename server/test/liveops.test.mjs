@@ -446,7 +446,7 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('8m. `onetoone` is a name POST /flags takes', flagNameOk('onetoone'));
   { const was = room._liveFlags; room._liveFlags = { onetoone: false }; const off = room._oneToOneOff(); room._liveFlags = {}; const on = room._oneToOneOff(); room._liveFlags = was;
     check('8m. `onetoone: false` switches the one-to-one off, and nothing set leaves it on', off === true && on === false); }
-  // 8n. v2.3.3946: the monster moves' switches (monstermoves.js) -- all of
+  // 8n. v2.3.4011: the monster moves' switches (monstermoves.js) -- all of
   //     them, and one a kind; each off only when written false
   for (const name of ['monstermoves', 'monstercombo', 'monstercharge', 'monstervolley', 'monsterslam', 'monsterenrage']) {
     check('8n. `' + name + '` is a name POST /flags takes', flagNameOk(name));

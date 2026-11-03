@@ -25,7 +25,7 @@
  * Keyed by the look (the archetype once its zone variant is applied: a sky
  * stalker is drawn as a `mummy`).  A look not listed wears STAGE_DEFAULT.
  * Stages past the second are not made yet (null: drawn as they are).  One
- * import, itself import-free (v2.3.3946: the enrage's pulse), so node can
+ * import, itself import-free (v2.3.4011: the enrage's pulse), so node can
  * test it. */
 import { enrageTint } from '../game/monsterMoves.js';
 
@@ -70,7 +70,7 @@ export function wheelStageLook(m) {
 }
 
 /** The body's tint: the stage's in place of the look's own `base`.
- *  v2.3.3946: ...and an enraged elder's red pulse on top (monsterMoves.js:
+ *  v2.3.4011: ...and an enraged elder's red pulse on top (monsterMoves.js:
  *  every monster's body tint is read here, so all three draw paths have it) */
 export function wheelStageTint(m, base) {
   const s = wheelStageLook(m);

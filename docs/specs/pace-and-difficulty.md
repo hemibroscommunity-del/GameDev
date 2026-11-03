@@ -151,7 +151,7 @@ pays half what it did, as asked.
   - §5's quest table, both directions.
 - `dungeon.test`: the boss's flat is its level's.
 
-## Harder from level 6: moves and a step a tier (v2.3.3946)
+## Harder from level 6: moves and a step a tier (v2.3.4011)
 
 The owner, 2026-11-02: "Make next tier monsters noticeably harder." A Wheel
 monster's tier (five levels of its spoke) now brings moves (a combo from level

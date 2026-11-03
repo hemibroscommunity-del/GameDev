@@ -29,9 +29,9 @@ import { PROG3 as SRV_PROG3 } from '../src/prog3.js';
 /* v2.3.1812: check 13 compares telegraph kit kinds against the client's
    render whitelist — see the block at the bottom for why it reads text. */
 import { TELEGRAPH as SRV_TELEGRAPH, BASIC_WINDUP as SRV_BASIC_WINDUP, BURROW_ARCH as SRV_BURROW_ARCH, SLIME_BURST as SRV_SLIME_BURST } from '../src/telegraph.js'; /* v2.3.2221; v2.3.2224 */
-import { MOVE_KINDS as SRV_MOVE_KINDS, MONSTER_MOVES as SRV_MONSTER_MOVES } from '../src/monstermoves.js'; /* v2.3.3946 */
-import { MOVE_KINDS as CLI_MOVE_KINDS, MOVE_ENRAGE as CLI_MOVE_ENRAGE } from '../../src/game/monsterMoves.js'; /* v2.3.3946 */
-import { CODEX_SPECIAL_LABEL as CODEX_SPECIAL_LABEL_M } from '../../src/data/codexStage.js'; /* v2.3.3946 */
+import { MOVE_KINDS as SRV_MOVE_KINDS, MONSTER_MOVES as SRV_MONSTER_MOVES } from '../src/monstermoves.js'; /* v2.3.4011 */
+import { MOVE_KINDS as CLI_MOVE_KINDS, MOVE_ENRAGE as CLI_MOVE_ENRAGE } from '../../src/game/monsterMoves.js'; /* v2.3.4011 */
+import { CODEX_SPECIAL_LABEL as CODEX_SPECIAL_LABEL_M } from '../../src/data/codexStage.js'; /* v2.3.4011 */
 import { FIRE_TRAIL as SRV_FIRE_TRAIL } from '../src/firetrail.js'; /* v2.3.2238 */
 import { SMELT as SRV_SMELT } from '../src/smelting.js'; /* v2.3.2822 */
 import { HARDEN as SRV_HARDEN, HARDEN_BAR_BY_TIER as SRV_HARDEN_BAR_BY_TIER, HARDEN_WOOD_BY_TIER as SRV_HARDEN_WOOD_BY_TIER, HARDEN_MATERIAL_NAMES as SRV_HARDEN_NAMES, hardenGoldFor as srvHardenGold, hardenAmountFor as srvHardenAmount, hardenMaterialFor as srvHardenMat, hardenIsWood as srvHardenIsWood } from '../src/hardening.js'; /* v2.3.3139 */
@@ -1014,7 +1014,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   const clientKinds = m ? (m[1].match(/(\w+)\s*:/g) || []).map((k) => k.replace(/\s*:$/, '')) : [];
   check('telegraph mirror: ...and the parse found something (guard: an empty list matches nothing)',
     clientKinds.length >= 2, clientKinds);
-  /* v2.3.3621: and the kits by element (the mummies' roar); v2.3.3946: and
+  /* v2.3.3621: and the kits by element (the mummies' roar); v2.3.4011: and
      the moves of the tiers past the first (monstermoves.js MOVE_KINDS) */
   const serverKinds = [...Object.values(SRV_TELEGRAPH.KITS), ...Object.values(SRV_TELEGRAPH.ELEM_KITS || {})].map((k) => k.kind).concat(SRV_MOVE_KINDS);
   const missing = serverKinds.filter((k) => !clientKinds.includes(k));
@@ -1030,7 +1030,7 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
       serverKinds.every((k) => keys.includes(k)), { table, keys, serverKinds });
   }
 
-  /* ═══ v2.3.3946: THE MOVES, BOTH SIDES ═══
+  /* ═══ v2.3.4011: THE MOVES, BOTH SIDES ═══
      The phone draws a move's shape (src/game/monsterMoves.js MOVE_KINDS) and
      pulses an enraged elder from the worker's own rule (MOVE_ENRAGE), and the
      bestiary names each kind (codexStage.js CODEX_SPECIAL_LABEL). */

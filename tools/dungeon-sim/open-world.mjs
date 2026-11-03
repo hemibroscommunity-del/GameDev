@@ -1,4 +1,4 @@
-/* ═══ v2.3.3946: THE OPEN WORLD'S FIGHTS, TIER BY TIER ═══
+/* ═══ v2.3.4011: THE OPEN WORLD'S FIGHTS, TIER BY TIER ═══
  * (docs/specs/monster-moves.md: the tables, and what they decided)
  *
  * One sword player at each tier's middle level, in that level's gear, against

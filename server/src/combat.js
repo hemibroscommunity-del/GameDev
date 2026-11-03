@@ -1600,7 +1600,7 @@ export const combatMethods = {
        a DEBT the monster walks off at extra pace while chasing — see
        _tickMonsters.  The player still gets their moment of space; the
        monster is no longer permanently exiled by landing in its face. */
-    /* v2.3.3946: a monster BRACED for a move of its tier (monstermoves.js
+    /* v2.3.4011: a monster BRACED for a move of its tier (monstermoves.js
        _moveBraced: winding it up or mid-combo) is not shoved: the ring it
        drew is where the blow lands, and a sword's shoves had pushed every
        combo out of reach of the player chasing it (measured: the first cut's

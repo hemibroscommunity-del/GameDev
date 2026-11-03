@@ -115,7 +115,7 @@ export const CODEX_SPECIAL_LABEL = Object.freeze({
   burrow: { text: 'BURROW!', color: '#cfe8ff' },
   unwrap: { text: 'UNWRAPPED!', color: '#ffd27a' },
   burst: { text: 'BURST!', color: '#7fb6ff' },
-  /* v2.3.3946: the moves of the tiers past the first (server/src/monstermoves.js
+  /* v2.3.4011: the moves of the tiers past the first (server/src/monstermoves.js
      FAMILY_MOVES has each family's names for them) */
   combo: { text: 'COMBO!', color: '#f0a050' },
   charge: { text: 'CHARGE!', color: '#ea580c' },

@@ -187,7 +187,7 @@ async function addPlayer(world, spec, i) {
   ps.legsArmor = gear.armour ? { name: 'Sim Greaves', mat: spec.gear || 'iron', tierMult: gear.armour, quality: 'normal' } : null;
   room._prog3Recompute(ps);
   const pts = POINTS[spec.points || 'balanced'];
-  /* v2.3.3946: `pointsK` scales the level-10 split to another level (the
+  /* v2.3.4011: `pointsK` scales the level-10 split to another level (the
      open-world fights, one per tier); the handler stops a stat at its bound */
   const pk = spec.pointsK || 1;
   for (const [stat, n] of pts.lane) for (let k = 0; k < Math.round(n * pk); k++) room._handleProg3Allocate(session, { stat, cat: LANE[style] });
@@ -459,7 +459,7 @@ async function keepAlive(world, p, ps, zone) {
 
 export const _realNow = realNow;
 
-/* ═══ v2.3.3946: THE OPEN WORLD -- ONE PLAYER AGAINST ONE OR TWO MONSTERS ═══
+/* ═══ v2.3.4011: THE OPEN WORLD -- ONE PLAYER AGAINST ONE OR TWO MONSTERS ═══
  * (docs/specs/monster-moves.md has the tables; tools/dungeon-sim/open-world.mjs
  * prints them.)  The owner's "make next tier monsters noticeably harder", and
  * item 18 of the list of 2026-10-26: measure it, and do not make the first

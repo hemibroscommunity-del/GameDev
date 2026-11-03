@@ -1,4 +1,4 @@
-/* ═══ v2.3.3946: A MONSTER MOVE'S OWN PARTS, ON THE PHONE ═══
+/* ═══ v2.3.4011: A MONSTER MOVE'S OWN PARTS, ON THE PHONE ═══
  * (spec: docs/specs/monster-moves.md; the worker: server/src/monstermoves.js)
  *
  * gameEvents.js's `monster_ability` case draws every telegraphed attack the
