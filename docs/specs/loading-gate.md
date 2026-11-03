@@ -1,4 +1,4 @@
-# Nothing for the world while a loading screen is up (v2.3.4126)
+# Nothing for the world while a loading screen is up (v2.3.4136)
 
 > The owner, 2026-11-03: *"Before the loading screen is finished I'm seeing pop
 > up messages meant for the main screen area (like the star on minimap etc).
@@ -10,7 +10,7 @@ Client only. `src/ui/loadingGate.js`.
 
 The loading screen (the ocean clip, `IntroVideo.jsx`, `.bt-intro`) sits at
 `z-index` 100. Anything drawn higher showed through it: the minimap's big
-star (`starCue.js`, 9100) and the weapon-swap hint (9050). Anything lower
+star (`starCue.js`, 9100) and the big arrow (9050). Anything lower
 played its seconds out unseen under it: a banner or a toast that came while
 loading was over before the world appeared. A zone's veil
 (`zoneTransitions.js`, `.bt-zone-loading`: a building, a dungeon, a land) hid
@@ -35,13 +35,12 @@ screen, in the order asked.
 | Surface | How it waits |
 |---|---|
 | The coach's cards (`QuestCoach.jsx`), the first steps among them | no card while loading; one up when a veil comes goes, and returns in its order |
-| The big arrow (`guideArrow.js`), and whatever rides it (the weapon-swap hint) | hidden while loading |
+| The big arrow (`guideArrow.js`), its weapon-swap lesson among them | hidden while loading |
 | The minimap's big star (`starCue.js`) | its target is kept until it can be shown |
 | Quest banners and the WELCOME plate (`window._setQuestMsg`), level-up banners (`window._setLevelUpMsg`) | held, then shown with a fresh clock |
 | Toasts (`storeToastBus.push`) | held, then shown for their full time |
 | Achievements (`achievements.js` `achvWorldShown`) | the gate added to its own check |
 | The NEW MONSTER card | its clock held while loading |
-| The weapon-swap hint (`SwapHint.jsx`) | waits, as it does for a dialogue |
 
 ## Tests
 

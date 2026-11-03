@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { codexEntry } from '@/data/monsterCodex.js';
 import { codexAnnouncement, codexAnnounceDone, codexOpenPage, ANNOUNCE_MS } from '@/game/monsterCodex.js';
 import { dashboardPanelBus } from '@/ui/mobile/dashboardPanelBus.js';
-import { worldReady } from '@/ui/loadingGate.js';   /* v2.3.4126: not while a loading screen is up */
+import { worldReady } from '@/ui/loadingGate.js';   /* v2.3.4136: not while a loading screen is up */
 import { PetPortrait } from '@/ui/petPortrait.jsx';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
 
@@ -42,7 +42,7 @@ export function NewMonsterCard({ stateRef }) {
     const id = setInterval(() => {
       const S = stateRef && stateRef.current;
       let a = S ? codexAnnouncement(S) : null;
-      /* v2.3.4126: while a loading screen is up its clock waits (the card
+      /* v2.3.4136: while a loading screen is up its clock waits (the card
          comes, its whole stay, once the world is on screen: ui/loadingGate.js) */
       if (a && !worldReady()) { a.at = Date.now(); a = null; }
       const k = a ? a.at : null;
@@ -62,7 +62,7 @@ export function NewMonsterCard({ stateRef }) {
 
   const S = stateRef && stateRef.current;
   const a = S ? codexAnnouncement(S) : null;
-  if (!a || typeof document === 'undefined' || !worldReady()) return null;   /* v2.3.4126 */
+  if (!a || typeof document === 'undefined' || !worldReady()) return null;   /* v2.3.4136 */
   const e = codexEntry(a.kind);
   const name = e ? e.name : 'A new monster';
   const sideways = typeof window !== 'undefined' && window.innerHeight < 460;

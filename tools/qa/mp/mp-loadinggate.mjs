@@ -1,4 +1,4 @@
-/* ═══ NOTHING FOR THE WORLD WHILE A LOADING SCREEN IS UP (v2.3.4126) ═══
+/* ═══ NOTHING FOR THE WORLD WHILE A LOADING SCREEN IS UP (v2.3.4136) ═══
  *
  * The owner, 2026-11-03: "Before the loading screen is finished I'm seeing pop
  * up messages meant for the main screen area (like the star on minimap etc).

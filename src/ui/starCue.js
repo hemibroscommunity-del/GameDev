@@ -18,7 +18,7 @@
  * prefers-reduced-motion it appears on the star and fades, with no flight.
  * `?starcue=0` turns it off for one tab.  QA: window.__btStarCue.
  */
-import { worldReady } from './loadingGate.js';   /* v2.3.4126 */
+import { worldReady } from './loadingGate.js';   /* v2.3.4136 */
 const TARGET_PX = 96;          /* game px: a target that moves less is the same target */
 const SHRINK_MS = 1000;
 const BIG_PX = 64;             /* the minimap's star is 17 px */
@@ -48,7 +48,7 @@ const STAR_SVG = '<svg viewBox="-12 -12 24 24" width="100%" height="100%" aria-h
 export function starCue(target, at, box) {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
   if (!target || typeof target.x !== 'number' || typeof target.y !== 'number') return;
-  /* v2.3.4126: not while a loading screen is up (the owner: "Before the
+  /* v2.3.4136: not while a loading screen is up (the owner: "Before the
      loading screen is finished I'm seeing pop up messages meant for the main
      screen area (like the star on minimap etc)") -- the target is kept, so
      it plays once the world is on screen (ui/loadingGate.js) */
