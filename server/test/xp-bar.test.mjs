@@ -32,7 +32,7 @@ check('1f: nothing for a missing side or curve', skillXpGain(null, { level: 1, x
 check('1g: the client and the worker share one curve (prog3XpRequired, mirror-audit)', req(1) === 280 && req(2) === 325, [req(1), req(2)]);
 
 // §2 the words
-check('2a: v2.3.3902: whole numbers only: "+3 XP", "+1 XP", "+12 XP", "+1,250 XP"',
+check('2a: v2.3.3992: whole numbers only: "+3 XP", "+1 XP", "+12 XP", "+1,250 XP"',
   xpGainWords(3) === '+3 XP' && xpGainWords(1.44) === '+1 XP' && xpGainWords(12.4) === '+12 XP' && xpGainWords(1250) === '+1,250 XP',
   [xpGainWords(3), xpGainWords(1.44), xpGainWords(12.4), xpGainWords(1250)]);
 check('2b: nothing for no gain, and never "+0 XP" for one under 1', xpGainWords(0) === '' && xpGainWords(-2) === '' && xpGainWords('x') === ''
@@ -75,7 +75,7 @@ check('2b: nothing for no gain, and never "+0 XP" for one under 1', xpGainWords(
       && bar5.fromLevel === 1 && Math.abs(bar5.fromFrac - 6 / req(1)) < 1e-9, [bar3, bar5]);
 }
 
-// §3m v2.3.3902: a fraction is held for the next gain; a gain under 1 pops nothing
+// §3m v2.3.3992: a fraction is held for the next gain; a gain under 1 pops nothing
 {
   const S = {};
   const s0 = blob({ level: 1, xp: 0 }, { level: 1, xp: 0 }, { level: 1, xp: 0 });
@@ -94,7 +94,7 @@ check('2b: nothing for no gain, and never "+0 XP" for one under 1', xpGainWords(
   check('3p: 50 gains of 0.37 (18.5 XP): the pops add up to 18, every one whole', total === 18, total);
 }
 
-// §3q v2.3.3902: a kill's "+N" starts small, pops past its size, settles
+// §3q v2.3.3992: a kill's "+N" starts small, pops past its size, settles
 {
   const a = xpPopAt(0), b = xpPopAt(0.3), c = xpPopAt(0.55), d = xpPopAt(1);
   check('3q: 0.6 -> 1.15 -> 1, fading in', a.scale === XP_POP_FROM && XP_POP_FROM === 0.6 && Math.abs(b.scale - XP_POP_PEAK) < 1e-9 && XP_POP_PEAK === 1.15
@@ -106,7 +106,7 @@ check('2b: nothing for no gain, and never "+0 XP" for one under 1', xpGainWords(
 // §4 v2.3.3739: "45 / 120" on the bar (the owner: "show the number of xp needed for the next level")
 check('4a: whole numbers from 10, rounded down (never "120 / 120" a hair early)',
   xpNumWords(45) === '45' && xpNumWords(119.9) === '119' && xpNumWords(10) === '10', [xpNumWords(119.9)]);
-check('4b: v2.3.3902: no decimals below 10 either, rounded down',
+check('4b: v2.3.3992: no decimals below 10 either, rounded down',
   xpNumWords(1.44) === '1' && xpNumWords(9.99) === '9' && xpNumWords(3) === '3' && xpNumWords(0) === '0' && xpNumWords(0.2 * 3) === '0',
   [xpNumWords(1.44), xpNumWords(9.99), xpNumWords(0.6)]);
 check('4c: a thousands separator from 1,000', xpNumWords(999) === '999' && xpNumWords(1000) === '1,000' && xpNumWords(12345.6) === '12,345');

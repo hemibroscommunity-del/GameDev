@@ -1,4 +1,4 @@
-/* ═══ v2.3.3902: A KILL'S "+N XP" STARTS SMALL AND POPS ═══
+/* ═══ v2.3.3992: A KILL'S "+N XP" STARTS SMALL AND POPS ═══
    The owner, 2026-11-02: "Make the plus xp without the dark container
    background.  Make the text small then pop up before fading and the numbers
    do a jump to bag effect but just to the number on the xp bar".

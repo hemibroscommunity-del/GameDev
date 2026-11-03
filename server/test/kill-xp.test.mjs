@@ -98,7 +98,7 @@ check('5c: ?xpfly=01 is not the off-ramp', killXpOn('?xpfly=01'));
   check('6i: reset (no kill label left anywhere) lets everything go', !held && H.count() === 0);
 }
 
-// §7 v2.3.3902: a killing blow worth under 1 XP still flies a whole "+1"
+// §7 v2.3.3992: a killing blow worth under 1 XP still flies a whole "+1"
 {
   const S = { _xpCarry: { sword: 0.6, bow: 0, staff: 0 }, _xpBar: { cat: 'sword', gain: 0, seq: 4, at: 1000, gainAt: 0 } };
   const f = killXpOnKill(S, { x: 5, y: 6, monsterId: 'm1' }, 1100);

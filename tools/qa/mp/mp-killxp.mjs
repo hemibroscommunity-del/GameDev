@@ -13,9 +13,9 @@
  *      300 ms after it; and before the pickup's lines ("+6 G", a shard, a
  *      bag line);
  *   2. its words are the bar's own gain, the worker's number, whole
- *      ("+2 XP"; v2.3.3902: never a decimal); no dark pill behind them, and
- *      it starts small and pops past its size (v2.3.3902);
- *   3. it lands on the top bar's XP bar's NUMBER (v2.3.3902: was the skill's
+ *      ("+2 XP"; v2.3.3992: never a decimal); no dark pill behind them, and
+ *      it starts small and pops past its size (v2.3.3992);
+ *   3. it lands on the top bar's XP bar's NUMBER (v2.3.3992: was the skill's
  *      picture) and the bar pulses (data-xp-land);
  *   4. with ?xpfly=0 a kill flies nothing (the off-ramp);
  *   5. no page errors.
@@ -64,7 +64,7 @@ const watch = (P) => P.page.evaluate(() => {
   if (window.__kxWatch) clearInterval(window.__kxWatch.id);
   const W = window.__kxWatch = { kills: [], deaths: [], flies: [], drops: [], loot: [], lands: [], samples: [], t0: Date.now() };
   const alive = new Map(), seen = new Set();
-  let popEl = null;   /* v2.3.3902: the first label (its pop) */
+  let popEl = null;   /* v2.3.3992: the first label (its pop) */
   const LOOT = /^\+ |^BAG: |RARE GEM| G$/;
   let killAt = S._killXpKillAt || 0;
   /* times are the game's own stamps (Date.now when each was made), never
@@ -90,11 +90,11 @@ const watch = (P) => P.page.evaluate(() => {
     const el = document.querySelector('[data-xpfly-kill]');
     if (el) {
       const r = el.getBoundingClientRect();
-      const ic = document.querySelector('[data-xp-bar][data-xp-shown="1"] [data-xp-num]');   /* v2.3.3902: the number, not the picture */
+      const ic = document.querySelector('[data-xp-bar][data-xp-shown="1"] [data-xp-num]');   /* v2.3.3992: the number, not the picture */
       const ib = ic ? ic.getBoundingClientRect() : null;
       const to = (el.getAttribute('data-xpfly-to') || '').split(',').map(Number);
       const sc = /scale\(([\d.]+)\)/.exec(el.style.transform || '');
-      /* v2.3.3902: the first label's pop, kept apart from the samples (which
+      /* v2.3.3992: the first label's pop, kept apart from the samples (which
          drop their oldest past 400) */
       if (sc && W.pop == null) W.pop = { el: el.getAttribute('data-xpfly-to') || '?', first: +sc[1], max: +sc[1], bg: getComputedStyle(el).backgroundColor };
       else if (sc && W.pop && !W.pop.done) { if (popEl && popEl !== el) W.pop.done = true; else W.pop.max = Math.max(W.pop.max, +sc[1]); }
@@ -183,7 +183,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         !!fly && !!kill && fly.t - kill.t <= 1000 && (!loot.length || fly.t <= loot[0].t), { kill, fly, loot });
       rec.ok(`${V.id} 2. its words are the bar's gain, the worker's number, whole ("${fly && fly.text}", the bar's +${fly && fly.bar})`,
         !!fly && /^\+[\d,]+ XP$/.test(fly.text) && parseInt(fly.text.slice(1).replace(/,/g, ''), 10) === fly.bar, fly);
-      /* v2.3.3902: the words alone, starting small and popping */
+      /* v2.3.3992: the words alone, starting small and popping */
       const bgs = [...new Set(w.samples.map((s) => s.bg).concat(w.pop ? [w.pop.bg] : []))];
       const minSc = w.pop ? w.pop.first : null /* where it starts */, maxSc = w.pop ? w.pop.max : null;
       rec.ok(`${V.id} 2. no dark pill behind it (background ${bgs.join(', ')}), and it pops: first drawn at ${minSc}, it grows past its size (${maxSc})`,

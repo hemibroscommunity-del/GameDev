@@ -2216,7 +2216,7 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
    game/xpBar.js XP_GAIN_MS). */
 .bt-xp-bar__gainslot{flex:none;min-width:46px;height:20px;display:flex;
   align-items:center;justify-content:flex-end}
-/* v2.3.3902: the words alone, no dark pill (the owner: "Make the plus xp
+/* v2.3.3992: the words alone, no dark pill (the owner: "Make the plus xp
    without the dark container background.  Make the text small then pop up
    before fading"): a flat dark shadow round the letters keeps them legible
    over the bar's dark rail and a bright land alike; it starts small, pops
@@ -2231,7 +2231,7 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
    XpFlyOverlay.jsx flyKillXp): the bar's own "+N" holds at its first, unseen
    frame and pops as it lands; the landing pulses the skill's picture */
 html[data-xp-inbound] .bt-xp-gain{animation-play-state:paused;visibility:hidden}
-/* v2.3.3902: the kill's number lands on the bar's NUMBER ("45 / 120"), not
+/* v2.3.3992: the kill's number lands on the bar's NUMBER ("45 / 120"), not
    the skill's picture (the owner: "the numbers do a jump to bag effect but
    just to the number on the xp bar (keep all the icons at the top of the bar
    as it is now)"), so it is the number that pulses; the picture stays still */
@@ -2239,7 +2239,7 @@ html[data-xp-land="a"] .bt-xp-bar__num{animation:bt-xp-land-a 420ms cubic-bezier
 html[data-xp-land="b"] .bt-xp-bar__num{animation:bt-xp-land-b 420ms cubic-bezier(.2,.8,.2,1) 1}
 @keyframes bt-xp-land-a{0%{transform:scale(1)}35%{transform:scale(1.35);filter:brightness(1.5)}100%{transform:scale(1)}}
 @keyframes bt-xp-land-b{0%{transform:scale(1)}35%{transform:scale(1.35);filter:brightness(1.5)}100%{transform:scale(1)}}
-/* v2.3.3902: small (0.6), a pop past its size (1.15), settled (1), then up
+/* v2.3.3992: small (0.6), a pop past its size (1.15), settled (1), then up
    and gone */
 @keyframes bt-xp-gain{
   0%{opacity:0;transform:translateY(10%) scale(.6)}

@@ -6,7 +6,7 @@ The owner, 2026-10-28:
 > primary combat skill you're earning Xp in someplace at the bottom (or maybe
 > top) depending on what works best. Then disappears again.
 
-## No pill, a pop, into the number, no decimals (v2.3.3902)
+## No pill, a pop, into the number, no decimals (v2.3.3992)
 
 The owner, 2026-11-02:
 
@@ -62,7 +62,7 @@ So, three changes:
   with a dark outline so it reads over the dark track, the gold and the white.
   A thousands separator from 1,000; one decimal where the XP is fractional
   below 10 ("1.4 / 280", as the worker's XP is 0.2 of the damage; whole since
-  v2.3.3902, below); rounded
+  v2.3.3992, below); rounded
   down, so it never reads "280 / 280" a hair before the level. The track grew
   from 9 to 14 px to carry it, and is never narrower than 66 px.
 
@@ -132,7 +132,7 @@ The moment a hit earns combat XP, the middle of the top bar becomes the XP bar:
 - **The gain**: "+3 XP" pops left of the picture (v2.3.3739; it was over the
   bar), rises a little and goes. A flurry
   of hits within 1.2 s is one number ("+9 XP"), not three pops on top of each
-  other. Whole numbers only since v2.3.3902 (below).
+  other. Whole numbers only since v2.3.3992 (below).
 - 3 seconds after the last XP the bar fades and "BroTown" is back.
 - If two skills earn at once, the bar shows the one that earned more.
 

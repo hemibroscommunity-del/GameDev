@@ -5,7 +5,7 @@ import { prog3HasSkills, prog3XpRequired, PROG3, PROG3_SKILL_META } from '@/data
 import { xpCardPoint, holdXp, landXp } from '@/ui/xpLanding.js'; /* v2.3.1874 */
 import { fixedBox } from '@/ui/fixedBox.js'; /* v2.3.3470 */
 import { xpGainWords } from '@/game/xpBar.js';  /* v2.3.3893 */
-import { xpPopAt, XP_POP_INK } from '@/game/xpPop.js';  /* v2.3.3902: the kill's "+N" pops, no pill */
+import { xpPopAt, XP_POP_INK } from '@/game/xpPop.js';  /* v2.3.3992: the kill's "+N" pops, no pill */
 import { killXpOn, KILL_XP_LINES_AFTER_MS, killXpInbound } from '@/game/killXp.js';      /* v2.3.3893 */
 
 /* HudPopupOverlay — HUD-anchored "+N XP" / "+N G" feedback, plus the
@@ -293,7 +293,7 @@ const XpFlyToCard = ({ pop }) => {
     const k = age / LIFT_MS;
     y = sy - LIFT_PX * (1 - (1 - k) * (1 - k));
     scale = 1 + 0.18 * Math.sin(Math.PI * k);
-    /* v2.3.3902: a kill's starts small and pops (the owner: "Make the text
+    /* v2.3.3992: a kill's starts small and pops (the owner: "Make the text
        small then pop up"): 0.6 -> 1.15 -> 1 (game/xpPop.js) */
     if (pop.toBar) { const pp = xpPopAt(k); scale = pp.scale; opacity = pp.opacity; }
   } else if (dest) {
@@ -344,7 +344,7 @@ const XpFlyToCard = ({ pop }) => {
       textShadow: '0 2px 4px rgba(4,7,9,.95), 0 0 3px rgba(4,7,9,.9)',
       whiteSpace: 'nowrap', pointerEvents: 'none',
       /* v2.3.3893: a kill's wore the bar's own "+N" pill (game.css
-         .bt-xp-gain).  v2.3.3902: no pill, as the bar's has none now (the
+         .bt-xp-gain).  v2.3.3992: no pill, as the bar's has none now (the
          owner: "Make the plus xp without the dark container background"):
          the words with the bar's own flat dark outline round them, which
          reads over snow and sand alike */
@@ -629,7 +629,7 @@ function flySlow() {
 }
 /* the middle of the top bar's XP bar's NUMBER ("45 / 120"), while the bar is
    up; null when it is not (the label then holds over the spot and fades).
-   v2.3.3902: was the skill's picture (.bt-xp-bar__icon); the owner: "the
+   v2.3.3992: was the skill's picture (.bt-xp-bar__icon); the owner: "the
    numbers do a jump to bag effect but just to the number on the xp bar" */
 function topBarXpPoint() {
   try {

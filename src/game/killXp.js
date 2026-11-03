@@ -41,7 +41,7 @@ export const KILL_XP_LINES_AFTER_MS = 500;
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
-/* ═══ v2.3.3902: A KILL ALWAYS HAS A WHOLE NUMBER TO FLY ═══
+/* ═══ v2.3.3992: A KILL ALWAYS HAS A WHOLE NUMBER TO FLY ═══
    The bar's "+N" is whole now (game/xpBar.js noteProg3Xp: a fraction is held
    for the next gain, the owner's "don't include any decimals in numbers for
    xp"), so a killing blow worth 0.6 XP made a quiet gain (bar.gain 0) and the
@@ -96,7 +96,7 @@ export function killXpOnGain(S, bar, now) {
   const w = S._killXpWait;
   if (!w) return null;
   if (num(now) - w.at > KILL_XP_WAIT_MS) { S._killXpWait = null; return null; }
-  if (!(killGain(S, bar, num(now)) > 0)) return null;   /* v2.3.3902: + the held fraction */
+  if (!(killGain(S, bar, num(now)) > 0)) return null;   /* v2.3.3992: + the held fraction */
   S._killXpWait = null;
   S._killXpFlewAt = bar.at;
   return { x: w.x, y: w.y, monsterId: w.monsterId, cat: bar.cat, gain: bar.gain };

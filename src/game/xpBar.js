@@ -66,7 +66,7 @@ export function skillXpGain(prev, next, req) {
   return g + Math.max(0, num(next.xp));
 }
 
-/** "+3 XP", "+120 XP": whole numbers only.  v2.3.3902 (the owner: "Also
+/** "+3 XP", "+120 XP": whole numbers only.  v2.3.3992 (the owner: "Also
  *  don't include any decimals in numbers for xp"): the gain is whole by the
  *  time it gets here (noteProg3Xp carries the fraction to the next gain), and
  *  anything under 1 says nothing -- never "+0 XP". */
@@ -76,7 +76,7 @@ export function xpGainWords(gain) {
   return '+' + (v >= 1000 ? v.toLocaleString('en-US') : String(v)) + ' XP';
 }
 
-/** v2.3.3739: an XP number as the bar prints it: whole (v2.3.3902: the
+/** v2.3.3739: an XP number as the bar prints it: whole (v2.3.3992: the
  *  owner's "don't include any decimals in numbers for xp"; it was one decimal
  *  below 10, the worker's XP being 0.2 of the damage), a thousands separator
  *  from 1,000.  Rounded DOWN, so the bar never reads "120 / 120" a hair
@@ -156,7 +156,7 @@ export function noteProg3Xp(S, prevP3, nextP3, req, now) {
     if (g > 0 && (!best || g > best.gain)) best = { cat, gain: g };
   }
   if (!best) return null;
-  /* ═══ v2.3.3902: THE "+N" IS WHOLE; A FRACTION WAITS FOR THE NEXT GAIN ═══
+  /* ═══ v2.3.3992: THE "+N" IS WHOLE; A FRACTION WAITS FOR THE NEXT GAIN ═══
      Combat XP is a fifth of the damage, so one hit can be worth 0.6 XP.  The
      owner: "don't include any decimals in numbers for xp".  The whole part of
      this gain (with what was carried) is the pop's number; the rest is held
@@ -179,8 +179,8 @@ export function noteProg3Xp(S, prevP3, nextP3, req, now) {
   const fromNeed = Math.max(1, num(req(fromLevel)));
   const fromFrac = Math.max(0, Math.min(1, fromXp / fromNeed));
   const was = S._xpBar;
-  const same = !!(was && was.cat === best.cat && was.gain > 0 && t - was.gainAt < XP_GAIN_MS);   /* v2.3.3902: + a pop to add into */
-  /* v2.3.3902: under 1 and no pop running to add into: no new pop */
+  const same = !!(was && was.cat === best.cat && was.gain > 0 && t - was.gainAt < XP_GAIN_MS);   /* v2.3.3992: + a pop to add into */
+  /* v2.3.3992: under 1 and no pop running to add into: no new pop */
   const quiet = !same && whole < 1;
   S._xpBar = {
     cat: best.cat,
@@ -190,7 +190,7 @@ export function noteProg3Xp(S, prevP3, nextP3, req, now) {
     frac: Math.max(0, Math.min(1, xp / need)),
     /* this pop's number: the gains since it started */
     gain: same ? was.gain + whole : (quiet ? 0 : whole),
-    gainAt: same ? was.gainAt : (quiet ? t - XP_GAIN_MS : t),   /* v2.3.3902: a quiet one opens no pop's window */
+    gainAt: same ? was.gainAt : (quiet ? t - XP_GAIN_MS : t),   /* v2.3.3992: a quiet one opens no pop's window */
     /* a new pop each time the number restarts (its key) */
     seq: (was ? was.seq : 0) + (same || quiet ? 0 : 1),
     at: t,
