@@ -58,7 +58,7 @@ async function openPoints(P, land) {
   for (let i = 0; i < 3; i++) {
     if (await grid.isVisible().catch(() => false)) return true;
     if (!(await tab.isVisible().catch(() => false))) {
-      if (land) await P.page.evaluate(() => window.__broDashPanelBus && (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')));   /* v2.3.4062: the Bro card, whose Spend points opens Points */
+      if (land) await P.page.evaluate(() => window.__broDashPanelBus && (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')));   /* v2.3.4082: the Bro card, whose Spend points opens Points */
       else await H.openDest(P, 'Bro').catch(() => {});
       await tab.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     }

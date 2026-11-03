@@ -55,7 +55,7 @@ const DESK = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
 /* src/game/deskKeys.js NAV_KEYS -- held to it in step 1 by what the page
    wears, so a change there that this file missed fails here */
-/* v2.3.4062: five buttons (Gear, Bro, Quests, Codex, More); L opens the
+/* v2.3.4082: five buttons (Gear, Bro, Quests, Codex, More); L opens the
    Life Skills page under Bro, and the Bro card's Life Skills row wears it
    (checked in step 2) */
 const NAV = { dashboard: 'I', hero: 'P', quests: 'J', encyclopedia: 'K', more: 'O' };
@@ -72,7 +72,7 @@ const shown = (c) => !!c && c.content && c.content !== 'none' && c.content !== '
 const sheet = (P) => P.page.evaluate(() => {
   const b = window.__broDashPanelBus;
   const f = document.querySelector('[data-dash-fold]');
-  /* v2.3.4062: + what Bro shows (heroSectionBus.shown: its card or a window) */
+  /* v2.3.4082: + what Bro shows (heroSectionBus.shown: its card or a window) */
   const h = window.__btHeroSection;
   return b ? { mode: b.state.mode, root: b.state.stack[0], top: b.current(), fold: f ? f.getAttribute('data-dash-fold') : null, tab: h ? h.shown : null } : null;
 });
@@ -105,7 +105,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
     /* ── 1. THE LETTERS ── */
     const caps = {};
     for (const id of Object.keys(NAV)) caps[id] = await capOf(P, `[data-nav="${id}"]`);
-    rec.ok('the dashboard\'s five buttons wear I P J K O (v2.3.4062)',
+    rec.ok('the dashboard\'s five buttons wear I P J K O (v2.3.4082)',
       Object.keys(NAV).every((id) => shown(caps[id]) && caps[id].key === NAV[id]), caps);
     const mapCap = await capOf(P, '[data-world-map-open]');
     const mark = await P.page.evaluate(() => (window.__btWheelMini && window.__btWheelMini.mark) || null);
@@ -187,7 +187,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
       const off = await sheet(P);
       rec.ok(`${k} opens ${id}, and ${k} again closes it`, !!on && on.mode === 'expanded' && on.root === id && !!off && off.mode === 'bar', { on, off });
     }
-    /* v2.3.4062: L is the Life Skills page under Bro (the owner: "Lifeskills
+    /* v2.3.4082: L is the Life Skills page under Bro (the owner: "Lifeskills
        move inside Bro"); the Bro card's Life Skills row wears the L; L again
        closes it */
     await key(P, 'KeyP', 900);

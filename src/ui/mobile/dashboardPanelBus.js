@@ -69,7 +69,7 @@ const landSafe = (id) => {
   return id;
 };
 
-/* ═══ v2.3.4062: LIFE SKILLS AND ACHIEVEMENTS ARE PAGES UNDER BRO ═══
+/* ═══ v2.3.4082: LIFE SKILLS AND ACHIEVEMENTS ARE PAGES UNDER BRO ═══
    The owner's five buttons (Gear, Bro, Quests, Codex, More): "Lifeskills
    move inside Bro", and Achievements leave More for Bro too.  Bro is one card
    now (sheet/BroCard.jsx, the owner: "like what it looks like when you inspect
@@ -131,7 +131,7 @@ export const dashboardPanelBus = {
   },
 
   open(id) {
-    /* v2.3.4062: Life Skills and Achievements open under Bro */
+    /* v2.3.4082: Life Skills and Achievements open under Bro */
     this.state.stack = broPage(id) ? ['hero', id] : [landSafe(id)];
     this.state.mode = 'expanded';
     haptic();
@@ -184,7 +184,7 @@ export const dashboardPanelBus = {
 
   // Legacy toggle kept for old call sites (InventoryPreview tap etc.).
   toggle(id) {
-    /* v2.3.4062: under Bro, and the same press again closes it */
+    /* v2.3.4082: under Bro, and the same press again closes it */
     if (broPage(id)) { if (this.state.mode === 'expanded' && this.current() === id) this.toBar(); else this.open(id); return; }
     if (this.current() === id) {
       this.clear();
@@ -198,7 +198,7 @@ export const dashboardPanelBus = {
   // Push a child panel onto the stack — used by launcher tiles and the
   // Hero -> Build jump.  Drill children render expanded.
   push(id) {
-    /* v2.3.4062: a drill to Life Skills or Achievements goes under Bro
+    /* v2.3.4082: a drill to Life Skills or Achievements goes under Bro
        (on top of the page there if Bro is the one open) */
     if (broPage(id) && !(this.state.mode === 'expanded' && this.root() === 'hero')) { this.open(id); return; }
     if (broPage(id) && this.current() === id) return;   /* already on it */

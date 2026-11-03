@@ -50,7 +50,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Overview/Build/Records — there is no 'Stats' tab), and heroSectionBus is
      not on window, so the tab is tapped the way a finger taps it. */
   await P.page.evaluate(() => {
-    /* v2.3.4062: the Bro card, whose Spend points opens the Points window */
+    /* v2.3.4082: the Bro card, whose Spend points opens the Points window */
     if (window.__broDashPanelBus) { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); }
   });
   await P.page.waitForTimeout(700);
@@ -66,7 +66,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const openSection = (name) => P.page.evaluate((n) => {
     const t = document.querySelector(`[role="button"][data-section="${n}"]`);
     if (!t) return false;
-    t.click();   /* v2.3.4062: the card's doors are buttons (click) */
+    t.click();   /* v2.3.4082: the card's doors are buttons (click) */
     return true;
   }, name);
   const onBuild = await openSection('Build');
@@ -283,7 +283,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
      player. */
   /* The character equip menu is Hero's OVERVIEW section — the same
      getEquipContribs totals grid the owner is looking at. */
-  /* v2.3.4062: Points is a window over the Bro card: closed first, then the
+  /* v2.3.4082: Points is a window over the Bro card: closed first, then the
      card's six slots open Equipment */
   await P.page.evaluate(() => { const c = document.querySelector('[data-bro-popup-close]'); if (c) c.click(); });
   await P.page.waitForTimeout(600);

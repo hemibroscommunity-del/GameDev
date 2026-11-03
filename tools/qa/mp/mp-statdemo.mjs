@@ -136,7 +136,7 @@ async function waitForShot(P, ms = 12000) {
   return null;
 }
 
-/* v2.3.4062: the Bro card's doors (Spend points, the six slots) and its
+/* v2.3.4082: the Bro card's doors (Spend points, the six slots) and its
    windows' close are buttons: a click */
 const clickSel = (P, sel) => P.page.evaluate((s) => { const el = document.querySelector(s); if (!el) return false; el.click(); return true; }, sel);
 
@@ -165,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (!R.prog3) R.prog3 = {};
     R.prog3.sk = { ...(R.prog3.sk || {}), sword: { level: 8, xp: 0 }, bow: { level: 6, xp: 0 }, staff: { level: 4, xp: 0 } };
     R.prog3.pool = { ...(R.prog3.pool || {}), unspent: 3 };
-    try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}   /* v2.3.4062: the Bro card, whose Spend points opens Points */
+    try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); window.__broDashPanelBus.expand(); } catch (e) {}   /* v2.3.4082: the Bro card, whose Spend points opens Points */
   });
   await P.page.waitForTimeout(900);
   await clickSel(P, '[role="button"][data-section="Build"]');
@@ -823,7 +823,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 5. THE EQUIPMENT FIGURE IS UNTOUCHED ── */
   await P.page.keyboard.press('Escape');
   await P.page.waitForTimeout(400);
-  /* v2.3.4062: Points is a window over the Bro card: its close, then the
+  /* v2.3.4082: Points is a window over the Bro card: its close, then the
      card's six slots open Equipment */
   if (await clickSel(P, '[data-bro-popup-close]')) await P.page.waitForTimeout(600);
   await clickSel(P, '[role="button"][data-section="Overview"]');

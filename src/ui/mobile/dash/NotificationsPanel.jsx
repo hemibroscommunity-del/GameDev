@@ -6,7 +6,7 @@ import { chatLaneOf, CHAT_LANE_ICON } from '../../../data/smallIcons.js';
 import { chatNameColor } from '../../../game/chatColor.js';
 import { deskWords } from '@/game/deskWords.js';
 
-/* ═══ v2.3.4062: MORE -> NOTIFICATIONS, WHERE THE BELL WENT ═══
+/* ═══ v2.3.4082: MORE -> NOTIFICATIONS, WHERE THE BELL WENT ═══
  * The owner, adopting the review of his dashboard: "The notification bell
  * could also move to More, retaining an unread badge."  The bell in the
  * world's lower-left corner (WorldChatFeed's shut state, v2.3.2155: "collapse

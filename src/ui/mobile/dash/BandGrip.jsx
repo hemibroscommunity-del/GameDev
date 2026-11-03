@@ -3,7 +3,7 @@ import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { dashMinBus } from '../dashMinBus.js';
 import { swallowTapClick } from '../../swallowTapClick.js';
 
-/* ═══ v2.3.4062: THE SLIM HANDLE ON THE BAND'S TOP EDGE ═══
+/* ═══ v2.3.4082: THE SLIM HANDLE ON THE BAND'S TOP EDGE ═══
    The owner adopted this from the review of his dashboard: "remove the large
    OPEN/CLOSE button taking up a full navigation slot.  A slim, centered handle
    at the top of the dashboard would communicate that the panel can be expanded

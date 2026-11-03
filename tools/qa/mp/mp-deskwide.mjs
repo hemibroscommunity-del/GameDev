@@ -163,7 +163,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         inside: btns.every((r) => r.left >= 0 && r.right <= 392),
         chip: chip ? { text: chip.textContent.trim(), w: Math.round(cr.width), h: Math.round(cr.height), cut: chip.scrollWidth > chip.clientWidth + 1 } : null };
     });
-    /* v2.3.4062: five buttons (Gear, Bro, Quests, Codex, More) */
+    /* v2.3.4082: five buttons (Gear, Bro, Quests, Codex, More) */
     rec.ok(`the buttons' pictures nearly twice a phone's 24 px (${nav.icons.join(', ')}), all five buttons in the column`,
       nav.icons.length === 5 && nav.icons.every((w) => w >= NAV_ICON - 1) && nav.n === 5 && nav.inside, nav);
     rec.ok(`...and the chip that folds the pages says CLOSE ("${nav.chip && nav.chip.text}"), not an arrow, its word whole`,
@@ -278,7 +278,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await key(P, 'p', 900);
     const sP = await sheet(P);
     const pagesP = await box(P, '.bt-land-sheet');
-    rec.ok('P opens the Bro page (v2.3.4062: the Character page) in the column', !!sP && sP.mode === 'expanded' && sP.root === 'hero' && !!pagesP && pagesP.l <= 1, { sP, pagesP });
+    rec.ok('P opens the Bro page (v2.3.4082: the Character page) in the column', !!sP && sP.mode === 'expanded' && sP.root === 'hero' && !!pagesP && pagesP.l <= 1, { sP, pagesP });
     await key(P, 'p', 900);
     const sP2 = await sheet(P);
     rec.ok('...and P again shuts it', !!sP2 && sP2.mode === 'bar', sP2);

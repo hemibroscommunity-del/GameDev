@@ -45,7 +45,7 @@ import { deskWideActive } from '../../deskWide.js';                             
 import { StatCaption, STAT_CAPTION_SHORT } from './StatCaption.jsx';            /* v2.3.3324: a stat's name whole or short, never cut */
 import { showPointsReset, requestPointsReset, POINTS_RESET_CONFIRM_MS, pointsResetOn } from '../../../game/pointsReset.js'; /* v2.3.3541: the free points reset */
 import { firstSpendHint } from '../../../game/pointsTips.js'; /* v2.3.3551: after a first spend, the free reset named */
-import { BroCard } from './BroCard.jsx';                                      /* v2.3.4062: Bro is your own inspect card */
+import { BroCard } from './BroCard.jsx';                                      /* v2.3.4082: Bro is your own inspect card */
 
 /* v2.3.1286: Hero expanded — the detailed character sheet.
    v2.3.1295 (ChatGPT round-4, owner-approved): no longer one long
@@ -86,7 +86,7 @@ import { BroCard } from './BroCard.jsx';                                      /*
    stand out further as just two tabs."  The 'Records' section (Journey) is
    More's Journey page now (dash/JourneyPanel.jsx, its cards moved whole), and
    a request for it, from anything older, opens Equipment (KNOWN below). */
-/* ═══ v2.3.4062: THE BRO PAGE IS YOUR OWN INSPECT CARD ═══
+/* ═══ v2.3.4082: THE BRO PAGE IS YOUR OWN INSPECT CARD ═══
    The owner, 2026-11-03: "I wanted the bro tab to be like what it looks like
    when you inspect another player.  PFP clan, achievements, all the base
    character stats, primary combat skills, place where you can tap to open
@@ -104,7 +104,7 @@ import { BroCard } from './BroCard.jsx';                                      /*
    shows the card. */
 const SECTIONS = ['Card', 'Build', 'Overview'];
 const KNOWN = new Set(SECTIONS);
-const SECTION_ALIAS = { Me: 'Card' };   /* v2.3.4062 */
+const SECTION_ALIAS = { Me: 'Card' };   /* v2.3.4082 */
 /* ═══ v2.3.1847: THE TABS SAY WHAT THEY ARE ═══
  * Owner: "for the 3 tabs on the character menu I think I'd prefer text.  So
  * just equipment, build, and journey."
@@ -127,7 +127,7 @@ const SECTION_ALIAS = { Me: 'Card' };   /* v2.3.4062 */
  * owner's art, and deleting art on a text change is not this commit's call.
  */
 const SECTION_LABEL = {
-  Card: 'Bro',             /* v2.3.4062: the card */
+  Card: 'Bro',             /* v2.3.4082: the card */
   Overview: 'Equipment',   /* what the section actually shows: the worn six */
   /* v2.3.1849 (owner: "instead of build name it points").  The tab already
      carries a count badge of unspent POINTS, and "Build" named the activity
@@ -139,7 +139,7 @@ const SECTION_LABEL = {
    the destination (module-scoped, session-only).  v2.3.1311: reset to
    Overview when Hero is closed all the way to the toolbar — a NEXT
    open is a fresh visit (owner spec); a dip to compact keeps it. */
-/* v2.3.4062: a fresh visit opens on the card */
+/* v2.3.4082: a fresh visit opens on the card */
 let _lastSection = 'Card';
 let _lastFam = null;   /* v2.3.3605: the stat family open (HeroExpanded famOpen) */
 dashboardPanelBus.subscribe(() => {
@@ -194,7 +194,7 @@ const STAY_WAIT_MS = 3000;
 export const HeroExpanded = () => {
   const [, force] = useState(0);
   const [eqSel, setEqSel] = useState(null);
-  const [sectionState, setSectionState] = useState(_lastSection);   /* v2.3.4062: `section` below is this, checked */
+  const [sectionState, setSectionState] = useState(_lastSection);   /* v2.3.4082: `section` below is this, checked */
   /* v2.3.1668: which combat type the Build grid is allocating into.
      Defaults to whatever you are actually holding, so opening Build
      mid-fight lands on the weapon you were just swinging. */
@@ -292,7 +292,7 @@ export const HeroExpanded = () => {
     const id = setInterval(() => force(v => v + 1), 400);
     return () => clearInterval(id);
   }, []);
-  /* v2.3.4062: which of the card and its two windows is up (QA reads it:
+  /* v2.3.4082: which of the card and its two windows is up (QA reads it:
      window.__btHeroSection.shown); null while the page is shut */
   useEffect(() => () => { heroSectionBus.shown = null; }, []);
 
@@ -301,7 +301,7 @@ export const HeroExpanded = () => {
      later manual visit to Hero isn't dragged back to Build. */
   const _req = heroSectionBus.take();
   if (_req) {
-    const _want = SECTION_ALIAS[_req.section] || _req.section;   /* v2.3.4062: 'Me' is the card */
+    const _want = SECTION_ALIAS[_req.section] || _req.section;   /* v2.3.4082: 'Me' is the card */
     if (_want && KNOWN.has(_want) && _want !== _lastSection) { _lastSection = _want; setSectionState(_want); }   /* v2.3.3773: KNOWN */
     /* v2.3.2315: and re-open, or a COMBAT pill would deep-link you to a lane
        that stays collapsed -- the request means "show me this", and honouring
@@ -323,7 +323,7 @@ export const HeroExpanded = () => {
 
   const S = getState();
   const R = (S && S.rpg) || {};
-  /* v2.3.4062: the card, or the window open over it */
+  /* v2.3.4082: the card, or the window open over it */
   const section = KNOWN.has(sectionState) ? sectionState : 'Card';
   heroSectionBus.shown = section;
   const d = deriveHeroStats(R);
@@ -876,7 +876,7 @@ export const HeroExpanded = () => {
     </div>
   );
 
-  /* ═══ v2.3.4062: THE CARD, AND THE WINDOW OVER IT ═══
+  /* ═══ v2.3.4082: THE CARD, AND THE WINDOW OVER IT ═══
      The page is the card (BroCard: your own Inspect card).  Points and
      Equipment are WINDOWS over it: the same two screens as before, in the same
      scroller, under a title row with a close where the tab row stood (the
@@ -945,7 +945,7 @@ export const HeroExpanded = () => {
   return (
     <div data-bro-popup={section} role="dialog" aria-label={popupLabel} style={{
       ...panelStyle, overflowY: 'auto', display: 'flex', flexDirection: 'column', paddingBottom: 10,
-      /* v2.3.4062: a window over the card: framed, a step off the sheet */
+      /* v2.3.4082: a window over the card: framed, a step off the sheet */
       margin: '2px 0 0', border: `1px solid ${COL.tileBor}`, borderRadius: 12,
       boxShadow: '0 8px 20px rgba(0, 0, 0, 0.35)',
       /* v2.3.1311d (owner: "the last row is faded at the bottom"): the

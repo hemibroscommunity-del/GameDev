@@ -1,4 +1,4 @@
-/* THE BELL MOVED INTO MORE (v2.3.4062; the corner's bell was v2.3.2155).
+/* THE BELL MOVED INTO MORE (v2.3.4082; the corner's bell was v2.3.2155).
  *
  * The owner, adopting the review of his dashboard: "The notification bell
  * could also move to More, retaining an unread badge."  The bell was the World

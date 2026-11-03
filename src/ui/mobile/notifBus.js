@@ -1,4 +1,4 @@
-/* ═══ v2.3.4062: THE BELL MOVED INTO MORE -- notifBus ═══
+/* ═══ v2.3.4082: THE BELL MOVED INTO MORE -- notifBus ═══
  *
  * The owner, adopting the review of his dashboard: "The notification bell
  * could also move to More, retaining an unread badge."  The bell was the

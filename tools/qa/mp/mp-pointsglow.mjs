@@ -49,7 +49,7 @@ const look = (P) => P.page.evaluate(() => {
     nav: navR ? { x: navR.left + navR.width / 2, y: navR.top + navR.height / 2, w: navR.width } : null,
     navGlow: glow('[data-nav="hero"] [data-pts-glow="nav"]'),
     navBadge: navBadge ? navBadge.textContent.trim() : null,
-    /* v2.3.4062: the Bro card's Spend points, or the Points window's title over it */
+    /* v2.3.4082: the Bro card's Spend points, or the Points window's title over it */
     tabGlow: glow('[data-section="Build"] [data-pts-glow="tab"]') || glow('[data-bro-popup-head="Build"] [data-pts-glow="tab"]'),
     tabs,
     mode: window.__broDashPanelBus && window.__broDashPanelBus.state.mode,
@@ -130,7 +130,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await crop(P, '[data-section="Build"]', 'pointsglow-tab', 14);
   await P.page.screenshot({ path: `${OUT}/pointsglow-sheet.png` }).catch(() => {});
   /* Into the Points section: still lit, because points are still waiting. */
-  /* v2.3.4062: the Bro card's Spend points, a button (a click opens the window) */
+  /* v2.3.4082: the Bro card's Spend points, a button (a click opens the window) */
   await P.page.evaluate(() => { const t = document.querySelector('[data-section="Build"]'); if (t) t.click(); });
   await P.page.waitForTimeout(600);
   const inPts = await look(P);

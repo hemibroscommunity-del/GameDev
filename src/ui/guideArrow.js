@@ -100,7 +100,7 @@ export function guideTargets(id, rpg, shown) {
     return gearFlashSelectors(w, folded, tileOnScreen);
   }
   if (id === 'points') {
-    /* v2.3.4062: inside the Points window (over the Bro card) there is
+    /* v2.3.4082: inside the Points window (over the Bro card) there is
        nowhere left to go: no arrow (the coach's words say what the rows are) */
     if (shown('[data-bro-popup="Build"]')) return [];
     return ['[data-section="Build"]', '[data-nav="hero"]', '[data-dash-fold="min"]', '[data-land-fold="min"]'];
@@ -115,7 +115,7 @@ export function guideWords(id, sel, computer) {
   else if (/data-nav="dashboard"/.test(sel)) s = 'Tap Gear';
   else if (/data-gear/.test(sel)) s = 'Tap to equip';
   else if (/data-nav="hero"/.test(sel)) s = 'Tap Bro: points to spend';
-  else if (/data-section="Build"/.test(sel)) s = 'Tap Spend points';   /* v2.3.4062: the Bro card's button */
+  else if (/data-section="Build"/.test(sel)) s = 'Tap Spend points';   /* v2.3.4082: the Bro card's button */
   return deskWords(s, computer);
 }
 

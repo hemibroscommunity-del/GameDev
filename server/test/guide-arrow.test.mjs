@@ -44,13 +44,13 @@ check('2c open, tiles showing: the weapon\'s tiles', G.guideTargets('weapon', ha
 const p3 = (pool, shared, alloc) => ({ _quests: { tut_1: 'active' }, prog3: { pool, shared, alloc: alloc || {} } });
 check('3a points waiting, none placed, calm: wanted', G.guideState('points', p3(2, 1), { lastDamageTaken: 0, _dealtAt: 0 }, 0, Date.now()).want === true);
 check('3b a point placed: done', G.guideState('points', p3(1, 1, { hp: 1 }), {}, 300, Date.now()).done === true);
-check('3c2 inside the Points window (v2.3.4062: over the Bro card) no arrow', G.guideTargets('points', p3(1, 1), (s) => s === '[data-bro-popup="Build"]').length === 0);
+check('3c2 inside the Points window (v2.3.4082: over the Bro card) no arrow', G.guideTargets('points', p3(1, 1), (s) => s === '[data-bro-popup="Build"]').length === 0);
 check('3c the targets, the Points tab first', G.guideTargets('points', p3(1, 1), () => false)[0] === '[data-section="Build"]' && G.guideTargets('points', p3(1, 1), () => false)[1] === '[data-nav="hero"]');
 check('3d kept for later: done after POINTS_MS shown', G.guideState('points', p3(2, 1), {}, G.POINTS_MS, Date.now()).done === true);
 
 /* 4 */
 check('4a a phone reads Tap, a computer Click', /^Tap/.test(G.guideWords('weapon', '[data-dash-fold="min"]', false)) && /^Click/.test(G.guideWords('weapon', '[data-dash-fold="min"]', true)));
-check('4b the Points tab and Character have their own words', G.guideWords('points', '[data-section="Build"]', false) === 'Tap Spend points' /* v2.3.4062 */ && /Bro/.test(G.guideWords('points', '[data-nav="hero"]', false)));
+check('4b the Points tab and Character have their own words', G.guideWords('points', '[data-section="Build"]', false) === 'Tap Spend points' /* v2.3.4082 */ && /Bro/.test(G.guideWords('points', '[data-nav="hero"]', false)));
 
 /* 5 */
 check('5a a character that never took the first quest is owed the weapon lesson again', G.guideOwedAgain(fresh).includes('weapon'));

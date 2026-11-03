@@ -77,10 +77,10 @@ const levelled = () => ({ prog3: { pool: 3, shared: 3, alloc: {}, atk: { sword: 
 /* ── 4. the words ── */
 {
   const R = levelled();
-  check('4: the handle (v2.3.4062: the grip replaced OPEN)', PT.pointsTipWords('fold', R) === 'You have 6 points to spend. Tap the handle.', PT.pointsTipWords('fold', R));
+  check('4: the handle (v2.3.4082: the grip replaced OPEN)', PT.pointsTipWords('fold', R) === 'You have 6 points to spend. Tap the handle.', PT.pointsTipWords('fold', R));
   check('4: the sideways dashboard', PT.pointsTipWords('side', R) === 'You have 6 points to spend. Open your dashboard.');
-  check('4: Bro (v2.3.4062: the button\'s new name)', PT.pointsTipWords('nav', R) === 'You have 6 points to spend. Tap Bro.');
-  /* v2.3.4062: the Points tab is the Bro card's "Spend points" */
+  check('4: Bro (v2.3.4082: the button\'s new name)', PT.pointsTipWords('nav', R) === 'You have 6 points to spend. Tap Bro.');
+  /* v2.3.4082: the Points tab is the Bro card's "Spend points" */
   check('4: the Spend points button', PT.pointsTipWords('tab', R) === 'Your 6 points are waiting. Tap Spend points.', PT.pointsTipWords('tab', R));
   const g = PT.pointsTipWords('grid', R);
   check('4: the grid says what the two rows are and to tap a stat',
@@ -131,7 +131,7 @@ const coach = readFileSync(new URL('../../src/ui/mobile/QuestCoach.jsx', import.
   const hero = readFileSync(new URL('../../src/ui/mobile/sheet/HeroExpanded.jsx', import.meta.url), 'utf8');
   const dash = readFileSync(new URL('../../src/ui/mobile/BottomDashboard.jsx', import.meta.url), 'utf8');
   check('6: the grid\'s top row and its head cell are there', /data-prog3-band="lane"/.test(hero) && /data-prog3-lane=\{isLane \? buildCat : 'shared'\}/.test(hero));
-  /* v2.3.4062: Bro is one card; Points ('Build') a window over it, opened by
+  /* v2.3.4082: Bro is one card; Points ('Build') a window over it, opened by
      the card's Spend points, which wears data-section="Build" */
   const broCard = readFileSync(new URL('../../src/ui/mobile/sheet/BroCard.jsx', import.meta.url), 'utf8');
   check('6: the Points window is the "Build" section, the card\'s Spend points its door', /const SECTIONS = \['Card', 'Build', 'Overview'\]/.test(hero)

@@ -46,7 +46,7 @@
  *    10. sideways (844 x 390): More's tile whole, the page in the ~238 px
  *        side column, chips two by two, no sideways scroll, nothing cut;
  *    11. no page errors.
- * v2.3.4062 (the owner's five buttons): the page is not a More tile but a
+ * v2.3.4082 (the owner's five buttons): the page is not a More tile but a
  * page under Bro: the Bro card's Achievements row ("Achievement Points: N")
  * and its AP open it, with its drilled header (the back chip returns to the
  * card), and every old road to it (a card's title chip, the top bar's medal)
@@ -190,7 +190,7 @@ async function inWheel(P) {
 
 /* More -> the tile -> the page, by real taps (upright and on a computer; this
    box draws a few frames a second, so each step waits for what it opened) */
-/* v2.3.4062: Achievements are a page under Bro now (the owner's five
+/* v2.3.4082: Achievements are a page under Bro now (the owner's five
    buttons), so: Bro -> the card's Achievements row, by real taps */
 async function openPage(P) {
   /* a first join arrives with the band folded (v2.3.2495) */
@@ -233,7 +233,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       .then(() => achv(A)).catch(() => achv(A));
     rec.ok('1a the worker grants achievements (caps.achievements) and sent the record at the join: nothing earned yet',
       s0.caps && s0.known && !s0.unavailable && s0.got.length === 0 && typeof s0.ap === 'number', s0);
-    /* v2.3.4062: the owner's five buttons -- Achievements are a page under
+    /* v2.3.4082: the owner's five buttons -- Achievements are a page under
        Bro, and the Bro card's row says "Achievement Points: N" (the review he
        adopted), a tap on it the way to the page; Journey keeps its own More
        tile */
@@ -380,7 +380,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       head: !!document.querySelector('[data-dash-head] [data-achv-summary="head"]'),
       stack: window.__broDashPanelBus ? window.__broDashPanelBus.state.stack.slice() : null,
     }))).catch(() => null);
-    /* v2.3.4062: the dashboard keeps the page under Bro, whoever asks */
+    /* v2.3.4082: the dashboard keeps the page under Bro, whoever asks */
     rec.ok(`6b the card's title chip opens the page under Bro ("${fromCard && fromCard.back}", ${fromCard && fromCard.stack}), the summary on its header`,
       !!fromCard && !fromCard.card && /ACHIEVEMENTS/i.test(fromCard.back) && fromCard.head && !!fromCard.stack && fromCard.stack.join() === 'hero,achievements', fromCard);
     await H.closeDest(A).catch(() => {});
@@ -458,7 +458,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await A.page.waitForSelector('[data-land-fold="open"]', { timeout: 6000 }).catch(() => {});
     }
     await A.page.waitForSelector('.bt-navrail [data-nav="more"]', { timeout: 6000 }).catch(() => {});
-    /* v2.3.4062: Bro on the dock, then its card's Achievements row */
+    /* v2.3.4082: Bro on the dock, then its card's Achievements row */
     await pointerUp(A, '.bt-navrail [data-nav="hero"]');
     const sideTile = await A.page.waitForSelector('.bt-land-sheet [data-bro-achv]', { timeout: 8000 }).then(() => A.page.evaluate(() => {
       const b = document.querySelector('.bt-land-sheet [data-bro-achv] .bt-bro-rowt b');

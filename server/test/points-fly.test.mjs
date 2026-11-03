@@ -17,7 +17,7 @@ const counts = [1, 2, 3, 4, 5, 10, 50, 0, -3, 'x'].map(pointsBubbleCount);
 check('2a: 5-7 bubbles a level-up', counts.every((n) => n >= 5 && n <= 7), counts);
 check('2b: the same level, the same number', pointsBubbleCount(7) === pointsBubbleCount(7) && pointsBubbleCount(2) !== pointsBubbleCount(3));
 const T = QUEST_FLY_TARGETS.points;
-/* v2.3.4062: the Bro card's Spend points, or the Points window's title over it */
+/* v2.3.4082: the Bro card's Spend points, or the Points window's title over it */
 check('3a: Spend points first, the Points window\'s title, then the Bro button, then the fold handle',
   T[0] === '[data-section="Build"]' && T[1] === '[data-bro-popup-head="Build"]' && T[2] === '[data-nav="hero"]' && T[3] === '[data-dash-fold]' && T.length === 4, T);
 check('3b: the rewards\' own targets unchanged', QUEST_FLY_TARGETS.gold.join() === '[data-purse="1"]'

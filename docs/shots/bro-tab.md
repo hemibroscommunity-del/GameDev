@@ -1,4 +1,4 @@
-# The Bro page is your own inspect card (v2.3.4062)
+# The Bro page is your own inspect card (v2.3.4082)
 
 The owner: *"I wanted the bro tab to be like what it looks like when you
 inspect another player. PFP clan, achievements, all the base character stats,

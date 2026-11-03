@@ -17,7 +17,7 @@ import { NAV_KEYS } from '@/game/deskKeys.js';   /* L, worn by the Life Skills r
 import { infoPopupBus } from '../infoPopupBus.js';
 import { statInfo } from '../infoGlossary.js';
 
-/* ═══ v2.3.4062: THE BRO PAGE -- YOUR OWN INSPECT CARD ═══
+/* ═══ v2.3.4082: THE BRO PAGE -- YOUR OWN INSPECT CARD ═══
  * The owner, 2026-11-03: "I wanted the bro tab to be like what it looks like
  * when you inspect another player.  PFP clan, achievements, all the base
  * character stats, primary combat skills, place where you can tap to open

@@ -161,7 +161,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot('fold');
   const nav1 = await rectOf(A, '[data-nav="hero"]');
   rec.ok(`2: the coach rings Character, on the folded band, and says "${c1 && c1.text}"`,
-    !!c1 && c1.id === 'points' && /^×?\s*Level up!/i.test(c1.text) && c1.text.includes('You have ' + many + ' to spend. Tap Bro.')   /* v2.3.4062: the button is Bro */
+    !!c1 && c1.id === 'points' && /^×?\s*Level up!/i.test(c1.text) && c1.text.includes('You have ' + many + ' to spend. Tap Bro.')   /* v2.3.4082: the button is Bro */
       && ringOn(c1, nav1), { c1, nav1, folded });
   /* v2.3.3925: and the big arrow points at Character */
   const ar1 = await waitArrowOn(A, (a) => !!a && a.lesson === 'points' && a.sel === '[data-nav="hero"]' && a.on);
@@ -176,7 +176,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 3. Character, tapped on the folded band, then the Points tab ── */
   await finger(A, '[data-nav="hero"]');
   let onTab = false;
-  /* v2.3.4062: the Points tab is the Bro card's "Spend points" now */
+  /* v2.3.4082: the Points tab is the Bro card's "Spend points" now */
   const c3 = await waitCoach(A, (c) => !!c && c.id === 'points' && (/Tap Spend points/.test(c.text) || /Top row:/.test(c.text)));
   if (c3 && /Tap Spend points/.test(c3.text)) {
     onTab = true;
@@ -185,7 +185,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`3: Bro open on its card, it rings Spend points: "${c3.text}"`,
       c3.text.includes('Your ' + many + ' are waiting. Tap Spend points.') && ringOn(c3, tab), { c3, tab });
     const ar3 = await waitArrowOn(A, (a) => !!a && a.sel === '[data-section="Build"]' && a.on);
-    rec.ok('3: ...and the big arrow moves to Spend points (v2.3.3925; v2.3.4062)', !!ar3 && ar3.sel === '[data-section="Build"]' && ar3.on, ar3);
+    rec.ok('3: ...and the big arrow moves to Spend points (v2.3.3925; v2.3.4082)', !!ar3 && ar3.sel === '[data-section="Build"]' && ar3.on, ar3);
     await finger(A, '[data-section="Build"]');
   }
   const c4 = await waitCoach(A, (c) => !!c && c.id === 'points' && /Top row:/.test(c.text));

@@ -52,7 +52,7 @@ const tapSel = (P, sel) => P.page.evaluate((s) => {
   return true;
 }, sel);
 
-/* v2.3.4062: the Bro card's doors (Spend points, the six slots) and its
+/* v2.3.4082: the Bro card's doors (Spend points, the six slots) and its
    windows' close are buttons: a click */
 const clickSel = (P, sel) => P.page.evaluate((s) => { const el = document.querySelector(s); if (!el) return false; el.click(); return true; }, sel);
 
@@ -163,7 +163,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     hadAction && !(await pop(P)), { hadAction, wentThrough });
 
   /* ── 5. THE HERO SHEET'S STAT LABELS ── */
-  /* v2.3.4062: onto the Bro card; its six slots are the door to Equipment */
+  /* v2.3.4082: onto the Bro card; its six slots are the door to Equipment */
   await P.page.evaluate(() => { try { (window.__btHeroSection && window.__btHeroSection.request('Card'), window.__broDashPanelBus.open('hero')); } catch (e) {} });
   await P.page.waitForTimeout(1000);
   /* ONTO OVERVIEW, WHICH IS WHERE THE STAT ROWS LIVE.  The first cut of this

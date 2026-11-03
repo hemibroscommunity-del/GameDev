@@ -27,14 +27,14 @@ export const heroSectionBus = {
   /** Read-and-clear.  Consumed by HeroExpanded on render. */
   take() { const p = _pending; _pending = null; return p; },
   peek() { return _pending; },
-  /* v2.3.4062: what the Bro page shows right now -- 'Card' (your inspect
+  /* v2.3.4082: what the Bro page shows right now -- 'Card' (your inspect
      card), or the window open over it ('Build': Points, 'Overview':
      Equipment); HeroExpanded writes it each render, null while the page is
      shut.  QA reads it (window.__btHeroSection.shown). */
   shown: null,
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 };
-/* v2.3.4062: QA's handle on it (as __broDashPanelBus is the dashboard's): a
+/* v2.3.4082: QA's handle on it (as __broDashPanelBus is the dashboard's): a
    scenario written for the old Character page, which opened on Equipment,
    asks for that window ('Overview') before opening Bro, which opens on its
    card now */

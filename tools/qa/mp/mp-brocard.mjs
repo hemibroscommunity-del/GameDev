@@ -1,4 +1,4 @@
-/* ═══ mp-brocard (v2.3.4062): THE BRO PAGE IS YOUR OWN INSPECT CARD ═══
+/* ═══ mp-brocard (v2.3.4082): THE BRO PAGE IS YOUR OWN INSPECT CARD ═══
  *
  * The owner, 2026-11-03: "I wanted the bro tab to be like what it looks like
  * when you inspect another player.  PFP clan, achievements, all the base

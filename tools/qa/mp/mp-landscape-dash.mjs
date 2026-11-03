@@ -558,7 +558,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3773: the records are More's Journey page now, not Hero's third
      tab, so the third screen of this walk is that page, opened the way its
      More tile opens it, swept by the same rule */
-  /* v2.3.4062: Bro is one card (its own sweep), Equipment and Points windows
+  /* v2.3.4082: Bro is one card (its own sweep), Equipment and Points windows
      over it, opened from the card's slots and its Spend points */
   for (const sec of ['Card', 'Overview', 'Build', 'Journey']) {
     if (sec !== 'Journey') {

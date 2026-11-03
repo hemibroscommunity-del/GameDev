@@ -1744,7 +1744,7 @@ div.bt-pcard-face{cursor:default}
    which is why nothing noticed.)  Same shape as the keyboard-hints rule for
    every .bt-inspect panel.  Lessons finish on game state, never on time on
    screen, so a lesson hidden here is shown again when the card closes. */
-/* v2.3.4062: ...a window's card only: the Bro page draws the Inspect card
+/* v2.3.4082: ...a window's card only: the Bro page draws the Inspect card
    too (.is-embedded), and the coach's lessons must still show there */
 body:has(.bt-pcard:not(.is-embedded)) [data-coach]{display:none}
 /* ═══ THE INSPECT CARD (PlayerProfilePanel -- the owner's second mockup) ═══
@@ -1996,7 +1996,7 @@ button.bt-pin-drop{color:inherit;margin:0}
   .bt-pin-cmd .is-long{display:none}
   .bt-pin-cmd .is-short{display:inline}
 }
-/* ═══ v2.3.4062: THE BRO PAGE -- YOUR OWN INSPECT CARD, IN THE DASHBOARD ═══
+/* ═══ v2.3.4082: THE BRO PAGE -- YOUR OWN INSPECT CARD, IN THE DASHBOARD ═══
    The owner: "I wanted the bro tab to be like what it looks like when you
    inspect another player."  PlayerProfilePanel `embedded` (sheet/BroCard.jsx):
    the same card, its frame drawn here because it is not inside .bt-inspect --

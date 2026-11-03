@@ -206,7 +206,7 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   const more = src('src/ui/mobile/dash/MorePanel.jsx');
   /* v2.3.3773: Journey keeps a tile of its own beside it (the owner: "journey
      ... its own icon in the more/other apps menus") */
-  /* v2.3.4062: the owner's five buttons -- Achievements left More: it is a
+  /* v2.3.4082: the owner's five buttons -- Achievements left More: it is a
      page under Bro (dashboardPanelBus BRO_PAGES), opened from the Bro card's
      Achievements row and its AP (only where the worker grants them); Journey
      keeps its tile in More */

@@ -529,7 +529,7 @@ export const STATES = [
 
   /* ═══ THE DASHBOARD ═══ */
   /* v2.3.3773: two tabs, Equipment and Points (Journey is More's page).
-     v2.3.4062: the Character page is Bro, ONE card -- your own Inspect card
+     v2.3.4082: the Character page is Bro, ONE card -- your own Inspect card
      (the owner: "like what it looks like when you inspect another player") --
      with Points and Equipment as windows over it, Life Skills and
      Achievements as pages under it: each its own screen here, dash-bro-* */
@@ -599,7 +599,7 @@ export const STATES = [
       if (!(await has(P, '[data-journal-page]')) || (await has(P, '[data-journal-focus]'))) return 'the quest\'s page did not open';
     },
   },
-  /* v2.3.4062: Life Skills are a page under Bro (the card's Life Skills row;
+  /* v2.3.4082: Life Skills are a page under Bro (the card's Life Skills row;
      the bus puts 'skills' there, its back chip returning to the card) */
   Object.assign(dash('skills', 'Bro: Life Skills', 'The Life Skills page, under Bro (the card\'s Life Skills row opens it; back returns to the card): your life skills (mining, woodcutting, fishing, cooking, farming...) and their levels.'), { id: 'dash-bro-skills' }),
   {
@@ -672,7 +672,7 @@ export const STATES = [
      page) and one worn as the title, so the picture has earned rows, a title
      and the locked super-rares together -- a new character's page is 23
      locked rows */
-  /* v2.3.4062: a page under Bro (moved from More; the card's Achievements
+  /* v2.3.4082: a page under Bro (moved from More; the card's Achievements
      row and AP open it, and the bus puts 'achievements' there) */
   Object.assign(more('achievements', 'Bro: Achievements', 'The Achievements page, under Bro (the card\'s Achievements row and its AP open it): all 33 (v2.3.4036: + the ten rare fish), which you have and when, each tier\'s points, the six super-rares shown before they are earned, and the one you wear as your title.'), {
     id: 'dash-bro-achievements', group: 'Dashboard',
@@ -691,9 +691,9 @@ export const STATES = [
   }),
   /* v2.3.3773: Journey is its own page under More, the Character page's old records tab moved here */
   more('journey', 'Journey', 'Your journey: kills, deaths, lifetime gold and XP, duels won and the deepest zone (the Character page\'s old third tab).'),
-  /* v2.3.4062: Account -- Log out / Switch character, then the Login Key */
+  /* v2.3.4082: Account -- Log out / Switch character, then the Login Key */
   more('account', 'Account', 'Your account: Log out (or Switch character, with more than one bro on the device), then your Login Key: how to carry this character to another device.'),
-  /* v2.3.4062: what the bell in the world's corner held, with a few lines in it */
+  /* v2.3.4082: what the bell in the world's corner held, with a few lines in it */
   Object.assign(more('notifications', 'Notifications', 'Notifications: world chat and the game\'s news, newest first (the bell that was in the world\'s corner), with Show on screen.'), {
     run: async ({ P }) => {
       await evalIn(P, () => {
