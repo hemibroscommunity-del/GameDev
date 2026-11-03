@@ -799,7 +799,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const L = await layout(A);
     const hitShield = overlaps(L.badge, L.shield);
     const hitOthers = L.others.filter((q) => overlaps(L.badge, q)).map((q) => q.sel);
-    rows.push({ w, h, orient: L.orient, badge: L.badge, shield: L.shield, top: L.top, hitShield, hitOthers, mini: L.mini, plate: L.plate, vw: L.vw, at: L.at, seen: L.seen, title: L.title, header: L.header });
+    rows.push({ w, h, orient: L.orient, badge: L.badge, shield: L.shield, top: L.top, hitShield, hitOthers, mini: L.mini, plate: L.plate, vw: L.vw, at: L.at, seen: L.seen, title: L.title, header: L.header, others: L.others });
     if (w === 360 || w === 844 || w === 667) await shot(A, `10-${w}`);
   }
   await A.page.setViewportSize(PHONE);
@@ -818,9 +818,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
        "just to the right of the Brotown name at the top"), at every width and
        sideways (mp-nmltopbar measures the bar itself) */
     const side = r.orient === 'landscape';
-    const beside = !!r.badge && r.seen && r.at === 'bar' && !!r.title && !!r.header && r.badge.l >= r.title.r && r.badge.l - r.title.r <= 14
-      && r.badge.t >= r.header.t && r.badge.b <= r.header.b && r.badge.r <= r.vw;
-    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) in the top bar just right of the title (${r.title ? r.title.l + '-' + r.title.r : 'none'})${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
+    /* v2.3.4113: on the minimap's name plate (the owner: "Remove name of
+       town and "safe" or other designation from top bar ... The minimap
+       label area already does this"): the plate's tap lies inside the
+       minimap's box, at its foot, on top, on the screen */
+    /* ...and where a thumb's control reaches under the plate (667 x 320
+       sideways: the attack disc), the tap gives way (NmlBadge.jsx
+       clearOfThumbs): trimmed clear of it, or none at all -- the plate still
+       says it -- never over the control */
+    const plateBox = r.mini && r.plate ? { l: r.mini.l, r: r.mini.r, t: r.plate.t, b: r.plate.b } : null;
+    const thumbOnPlate = !!plateBox && r.others.some((q) => overlaps(q, plateBox));
+    const onPlate = !!r.badge && r.seen && r.at === 'plate' && !!r.mini
+      && r.badge.l >= r.mini.l - 1 && r.badge.r <= r.mini.r + 1 && r.badge.t >= r.mini.t - 1 && r.badge.b <= r.mini.b + 1 && r.badge.r <= r.vw;
+    const beside = onPlate || (!r.badge && thumbOnPlate);
+    rec.ok(`10. ${r.w} x ${r.h}${side ? ' (sideways)' : ''}: the badge (${r.badge ? r.badge.l + '-' + r.badge.r + ', ' + r.badge.t + '-' + r.badge.b : 'none'}) on the minimap's name plate (the box ${r.mini ? r.mini.l + '-' + r.mini.r + ', ' + r.mini.t + '-' + r.mini.b : 'none'})${r.seen ? '' : ' UNDER SOMETHING'}, clear of the shield (${r.shield ? r.shield.l + '-' + r.shield.r : 'none'}), a tap on the shield's middle reaching it (${r.top})${r.hitOthers.length ? ', over ' + r.hitOthers.join(', ') : ', and of the bell, the weapon button and the disc'}`,
       beside && !!r.shield && !r.hitShield && r.top === 'shield' && !r.hitOthers.length, r);
   }
 

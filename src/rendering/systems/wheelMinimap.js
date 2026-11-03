@@ -115,6 +115,7 @@ import { boardPlaceAt } from '@/game/mapPinPlaces.js';
 import { boardPinnable } from '@/data/townBoard.js';
 import { noteWheelLand } from '@/ui/zoneBannerOverlay.js';  /* v2.3.3024: a land's banner as you cross into it */
 import { noteNoMansLand } from '@/game/noMansLand.js';       /* v2.3.3058: No man's land's banner */
+import { plateSafety } from '@/game/plateSafety.js';         /* v2.3.4113: No man's land and Outlaw on the plate (the top bar's chip moved here) */
 import { noteWheelMusic } from '@/game/wheelMusic.js';      /* v2.3.3064: ...and its music */
 import { BT_AUDIO } from '@/data/gameDisplay.js';
 import { landLook } from '@/data/wheelLands.js';           /* v2.3.3108: the plate's land colour */
@@ -473,7 +474,7 @@ export class WheelMinimap {
      ui/mobile/NmlBadge.jsx; since v2.3.3629 just left of this box, level
      with this plate, so the place, its levels and the skull read together),
      so the plate keeps the level band there too. */
-  _plate(w, region) {
+  _plate(w, region, safety) {
     if (w && w.title) this._lastWords = { title: w.title, sub: w.sub || '', region: region || null };
     const at = this._lastWords;
     const look = at ? landLook(at.region) : null;
@@ -486,7 +487,15 @@ export class WheelMinimap {
        script two bytes a character (vite.config.js, docs/specs/ascii-script.md) */
     const lv = /Lv \d+[\u2013-]\d+/.exec(sub);
     if (lv) sub = lv[0];
-    const key = at ? `${at.title}|${sub}|${at.region}|${icon ? 1 : 0}` : '';
+    /* ═══ v2.3.4113: THE TOP BAR'S SAFETY CHIP, HERE NOW ═══
+       The owner: "Remove name of town and "safe" or other designation from
+       top bar ... The minimap label area already does this."  In No man's
+       land the second line is "No man's land 12" in red, and while you carry
+       the red skull "Outlaw · 18 min" (game/plateSafety.js); a tap on the
+       plate then opens the rules (NmlBadge.jsx PlateTap). */
+    const subFill = safety ? safety.color : C_SUB;
+    if (safety) sub = safety.text;
+    const key = at ? `${at.title}|${sub}|${subFill}|${at.region}|${icon ? 1 : 0}` : '';
     if (key === this._plateKey) return this._plateOut;
     this._plateKey = key;
     const P = this._plateBox, avail = P.w - 8;
@@ -494,7 +503,7 @@ export class WheelMinimap {
     T.text = at ? at.title : '';
     T.style.fill = look && look.element ? landTintHex(look.color) : C_TITLE;
     U.text = sub;
-    U.style.fill = C_SUB;
+    U.style.fill = subFill;
     I.visible = !!icon;
     if (icon) { I.texture = icon; I.width = ICON_PX; I.height = ICON_PX; }
     /* fit: a long name ("Electric Foundry") steps down to the 11 px floor,
@@ -511,7 +520,8 @@ export class WheelMinimap {
     I.x = Math.round(x0); I.y = Math.round(y1);
     T.x = Math.round(x0 + iconW); T.y = Math.round(y1);
     U.x = Math.round(P.x + P.w / 2); U.y = Math.round(y2);
-    this._plateOut = { title: T.text, sub: U.text, land: at ? at.region : null, icon: !!icon, red: false,
+    this._plateOut = { title: T.text, sub: U.text, land: at ? at.region : null, icon: !!icon, red: !!safety,
+      safety: safety ? safety.kind : null,   /* v2.3.4113 */
       color: '#' + Number(T.style.fill).toString(16).padStart(6, '0'),
       titlePx: px, subPx: SUB_PX, squeezed: T.scale.x < 1 || U.scale.x < 1,
       fits: rowW <= avail + 0.5 && U.width <= avail + 0.5, y: P.y, h: P.h };
@@ -1096,7 +1106,9 @@ export class WheelMinimap {
     const here = wheelHere(P.x, P.y);
     const w = here && here.words;
     let plate = null;
-    try { plate = this._plate(w, here ? here.region : null); } catch (e) { plate = null; }
+    let safety = null;
+    try { safety = plateSafety(S); } catch (e) { safety = null; }   /* v2.3.4113 */
+    try { plate = this._plate(w, here ? here.region : null, safety); } catch (e) { plate = null; }
     /* v2.3.3024: crossing into an elemental land plays its banner
        (zoneBannerOverlay.js noteWheelLand; this frame is the one that asks
        where you are every frame) */
