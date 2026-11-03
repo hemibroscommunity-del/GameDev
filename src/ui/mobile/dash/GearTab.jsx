@@ -9,7 +9,7 @@ import { resolveItemCard } from './ItemDetailPopup.jsx';
 import { itemDetailBus } from './itemDetailBus.js';
 import { weaponSlotFor, unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect } from './equipActions.js';
 import { weaponRows, shieldRows, armourRows, compareRows, charLevel } from './gearStats.js';
-import { combatSkillByKey, combatSkillState, WEAPON_SKILLS } from './combatSkill.js';
+import { combatSkillState, WEAPON_SKILLS } from './combatSkill.js';
 import { WeaponBar } from './WeaponBar.jsx';
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4151: the overview's bars, the Character page's own */
@@ -75,9 +75,9 @@ import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151:
  *   the bag's empty space, or the picked piece again: back to the overview;
  *   Equip / Unequip  the automatic filter goes back to "All Items".
  * The weapon in your hand wears GOLD (its edge and a glow); the cell you
- * tapped the BLUE ring outside it; both can show.  Each weapon cell wears its
- * combat skill's level ("Lv 7", or "+2" with points to spend) small in its
- * corner and a thin XP bar along its foot (xpLanding's count-up).
+ * tapped the BLUE ring outside it; both can show.  v2.3.4151: the weapon
+ * cells are plain -- their level and XP live on the card's skill tiles.
+ * Across a wide band the tab is at most GEAR_MAX_W and centred.
  *
  * This retires, for the bag, the notes "a Bag button", "Worn gear back on the
  * band" and "an item card that pushes the character or vitals around"
@@ -96,8 +96,15 @@ const WIDE_AT = 2 * (3 * SQ_MIN + 2 * G + 2 * PAD + 2) + MID_HARD + 2 * PAD + 2 
 const HDR_H = 34;      /* the bag's filter-and-coins row (its controls 32 px: the UI review's floor for a finger) */
 const EQ_HEAD = 18;    /* "Equipped" */
 const FONT_MIN = 11;   /* the owner's floor for anything in the card */
+/* v2.3.4151, the owner: "The stretched middle panel looks silly on computer"
+   -- across a wide band (a computer, Lane B's one band at 1280) the tab is at
+   most this wide and centred, so its three panels keep a phone's proportions
+   and the card is a tablet's width, not the window's.  The tab caps its OWN
+   width, so it looks right with or without the band's centring wrapper
+   (PR #1410).  Not the short band (the sideways phone, which the owner
+   likes as it is): its row of nines wants the width. */
+const GEAR_MAX_W = 560;
 
-const CELL_SKILL = { sword: 'power', bow: 'agility', staff: 'mind' };
 const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
 
 /* what each slot is, in one plain sentence */
@@ -480,7 +487,9 @@ export const GearTab = ({ R: Rin, desk }) => {
        ring inside, so a rarity edge and the blue pick ring outside can both
        still show) */
     const ring = [gold ? `inset 0 0 0 2px ${COL.focus}` : null, gold && !blue ? '0 0 9px rgba(234, 198, 117, 0.55)' : null, blue ? GEAR_SEL_RING : null].filter(Boolean).join(', ');
-    const sk = CELL_SKILL[c.id] ? combatSkillState(R, combatSkillByKey(CELL_SKILL[c.id])) : null;
+    /* v2.3.4151, the owner: "remove the points badges and thin xp lines from
+       those" -- a weapon cell is its picture (and the hand's gold) only; the
+       level and the XP live on the card's skill tiles */
     const pic = c.id === 'gem'
       ? null
       : (ct.icon || GHOST_SRC[c.id === 'sword' || c.id === 'bow' || c.id === 'staff' ? 'weapon' : c.id]);
@@ -488,10 +497,9 @@ export const GearTab = ({ R: Rin, desk }) => {
       <div key={c.id} data-eqslot={c.id} data-gear-cell={c.id}
         data-gear-sel={blue ? '1' : undefined} data-gear-active={gold ? '1' : undefined}
         data-gear-filled={filled ? '1' : '0'}
-        className={[edge.cls, sk && sk.unspent > 0 ? 'bt-build-flash' : ''].filter(Boolean).join(' ') || undefined}
+        className={edge.cls || undefined}
         role="button" aria-pressed={blue} aria-label={c.label + (filled ? ': ' + ct.name : ', empty')}
         title={c.label + (filled ? ' — ' + ct.name : '')}
-        ref={sk && sk.p3cat ? ((el) => { if (el) registerXpCard(sk.p3cat, el.getBoundingClientRect()); }) : undefined}
         onPointerUp={(e) => { e.stopPropagation(); gearTabBus.tapCell(c.id); }}
         style={{
           width: t, height: t, boxSizing: 'border-box', position: 'relative', flex: 'none',
@@ -510,21 +518,6 @@ export const GearTab = ({ R: Rin, desk }) => {
           )
         ) : (
           <img src={pic} alt="" draggable={false} style={{ width: '78%', height: '78%', objectFit: 'contain', opacity: filled ? 1 : 0.3, pointerEvents: 'none' }} />
-        )}
-        {sk && (
-          <span data-gear-badge={c.id} aria-hidden="true" style={{
-            position: 'absolute', top: 1, right: 2, fontSize: 8.5, fontWeight: 900, lineHeight: 1,
-            color: sk.unspent > 0 ? COL.accent : COL.text2, textShadow: '0 1px 2px rgba(9,14,17,.9)',
-            fontVariantNumeric: 'tabular-nums', pointerEvents: 'none',
-          }}>{sk.unspent > 0 ? '+' + sk.unspent : 'Lv ' + sk.lvl}</span>
-        )}
-        {sk && sk.xp && (
-          <span aria-hidden="true" data-xpbar={sk.p3cat || undefined}
-            data-xpprog={sk.p3cat ? Math.round(displayXp(sk.p3cat, sk.xp.prog)) : undefined}
-            data-xpthresh={sk.p3cat ? Math.round(sk.xp.thresh) : undefined}
-            style={{ position: 'absolute', left: 4, right: 4, bottom: 2, height: 3, borderRadius: 2, overflow: 'hidden', background: COL.wellDeep, pointerEvents: 'none' }}>
-            <span style={{ display: 'block', height: '100%', width: `${Math.min(100, (displayXp(sk.p3cat, sk.xp.prog) / sk.xp.thresh) * 100)}%`, background: '#8AA9F9' }} />
-          </span>
         )}
       </div>
     );
@@ -739,6 +732,11 @@ export const GearTab = ({ R: Rin, desk }) => {
        reads (combatSkill.js) -- until a second tap or 4 s (gearTabBus.showXp) */
     const tile = ({ s, k }) => (
       <button type="button" key={s.key} data-gear-skill={k.p3cat || s.key} data-lvl={k.lvl}
+        /* v2.3.4151: the skill's XP numbers as data (nothing drawn), the
+           XP-fly's count-up readers' hook since the weapon cells went plain */
+        data-xpbar={k.p3cat || undefined}
+        data-xpprog={k.p3cat && k.xp ? Math.round(displayXp(k.p3cat, k.xp.prog)) : undefined}
+        data-xpthresh={k.p3cat && k.xp ? Math.round(k.xp.thresh) : undefined}
         aria-label={`${s.label} level ${k.lvl}: show its XP`}
         ref={k.p3cat ? ((el) => { if (el) registerXpCard(k.p3cat, el.getBoundingClientRect()); }) : undefined}
         onClick={(e) => { e.stopPropagation(); gearTabBus.showXp(s.key); }}
@@ -837,6 +835,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       {...(desk ? { 'data-dash-desk': '' } : null)}
       style={{
         height: '100%', minHeight: 0, width: '100%', boxSizing: 'border-box', padding: rp,
+        ...(wide && !short ? { maxWidth: GEAR_MAX_W, marginLeft: 'auto', marginRight: 'auto' } : null),
         display: 'flex', flexDirection: 'column', gap: rg,
       }}>
       {box.w === 0 ? null : (

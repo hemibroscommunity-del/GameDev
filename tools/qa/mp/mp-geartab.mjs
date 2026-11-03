@@ -15,8 +15,8 @@
  *
  *   upright phone (390 x 844, touch):
  *     1. the band is the Gear tab, three across; the equipment grid's nine
- *        cells, each at least 34 px; the weapon cells wear their level badge
- *        ("Lv n" or "+n"); the sword cell the gold ring (in hand);
+ *        cells, each at least 34 px; the weapon cells plain (v2.3.4151: no
+ *        badge, no XP line); the sword cell the gold ring (in hand);
  *     2. tap Sword: its blue ring, the pill reads "Swords ×", the card shows the
  *        sword by name with ONE button, Unequip;
  *     3. tap the bag's spare greatsword: its blue ring, the comparison rows
@@ -43,6 +43,7 @@ const look = (P) => P.page.evaluate(() => {
   const cells = [...document.querySelectorAll('[data-gear-cell]')].map((c) => ({
     id: c.getAttribute('data-gear-cell'), box: vis(c), sel: c.getAttribute('data-gear-sel') === '1', on: c.getAttribute('data-gear-active') === '1',
     badge: (c.querySelector('[data-gear-badge]') || {}).textContent || null,
+    xpline: !!c.querySelector('[data-xpbar]'), text: c.textContent.trim(),
   }));
   const stats = q('[data-gear-stats]');
   return {
@@ -211,8 +212,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       sameSize(rec, '[390x844]', s1);
       fitOk(rec, '[390x844] the overview', s1, false);
       const badges = s1.cells.filter((c) => ['sword', 'bow', 'staff'].includes(c.id)).map((c) => c.badge);
-      rec.ok('[390x844] "Equipped" over the grid; each weapon cell wears its combat skill\'s level ("Lv n", or "+n" with points)',
-        s1.eqHead === 'Equipped' && badges.length === 3 && badges.every((b) => /^(Lv \d+|\+\d+)$/.test(b || '')), { head: s1.eqHead, badges });
+      /* v2.3.4151, the owner: "remove the points badges and thin xp lines from those" */
+      const wcells = s1.cells.filter((c) => ['sword', 'bow', 'staff'].includes(c.id));
+      rec.ok('[390x844] "Equipped" over the grid; the weapon cells plain -- their picture only, no level or points badge, no XP line',
+        s1.eqHead === 'Equipped' && wcells.length === 3 && wcells.every((c) => !c.badge && !c.xpline && c.text === ''), { head: s1.eqHead, cells: wcells.map((c) => [c.id, c.badge, c.xpline, c.text]) });
       rec.ok('[390x844] the sword cell (in hand) gold; the card the overview: no tabs, no figure',
         s1.cells.find((c) => c.id === 'sword').on && s1.stats === 'mine' && s1.view === 'overview' && s1.tabs.length === 0 && !s1.figure,
         { stats: s1.stats, view: s1.view, tabs: s1.tabs, figure: s1.figure });

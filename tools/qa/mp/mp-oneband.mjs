@@ -108,10 +108,25 @@ const gearFit = (P) => P.page.evaluate(() => {
     bag: b ? Math.round(b.getBoundingClientRect().width * 10) / 10 : null, cell: e ? Math.round(e.getBoundingClientRect().width * 10) / 10 : null,
     cellsIn: !!er && cells.length === 9 && cells.every((r) => r.bottom <= er.bottom + 0.5 && r.right <= er.right + 0.5),
     view: c.getAttribute('data-gear-view'),
+    /* v2.3.4151: the tab's own width, and its margins in the band's row */
+    root: (() => {
+      const g = document.querySelector('[data-one-band-cols] [data-gear-tab]');
+      const row = document.querySelector('[data-one-band-cols]');
+      if (!g || !row) return null;
+      const a = g.getBoundingClientRect(), b = row.getBoundingClientRect();
+      return { w: Math.round(a.width), left: Math.round(a.left - b.left), right: Math.round(b.right - a.right), layout: g.getAttribute('data-gear-layout') };
+    })(),
   };
 });
-async function gearChecks(P, rec, label, shotPath) {
+async function gearChecks(P, rec, label, shotPath, computer) {
   const g0 = await gearFit(P);
+  /* v2.3.4151, the owner: "The stretched middle panel looks silly on
+     computer" -- across a wide band the tab is at most 560 px (GearTab
+     GEAR_MAX_W) and centred */
+  if (computer) {
+    rec.ok(`${label}: the Gear tab never stretches -- at most 560 px wide, centred in the band (its margins equal within 2 px)`,
+      !!g0 && !!g0.root && g0.root.w <= 561 && Math.abs(g0.root.left - g0.root.right) <= 2, g0 && g0.root);
+  }
   rec.ok(`${label}: the Gear tab's card fits the band -- no scrolling, nothing past its edge, nothing under 11 px; the bag's squares and the Equipped cells one size (34 px or more), all nine cells inside their panel`,
     !!g0 && g0.view === 'overview' && g0.over <= 1 && g0.scOver <= 1 && g0.outside === 0 && g0.small.length === 0
       && g0.bag && g0.cell && Math.abs(g0.bag - g0.cell) <= 1 && g0.cell >= 34 && g0.cellsIn, g0);
@@ -172,7 +187,7 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
       && g.bag.r <= g.combat.x,
     { bag: g.bag, combat: g.combat, row1: row1g, gearTab: g.gearTab, tileMin: g.tileMin, cols: o.cols });
   try { mkdirSync(OUT, { recursive: true }); } catch (e) { /* the pictures only */ }
-  await gearChecks(P, rec, label, join(OUT, 'oneband-gear-' + label.replace(/[^a-z]+/gi, '-') + '.png'));
+  await gearChecks(P, rec, label, join(OUT, 'oneband-gear-' + label.replace(/[^a-z]+/gi, '-') + '.png'), computer);
   /* responsive density: a wider box holds more slots than the upright four */
   if (!upright) {
     rec.ok(`${label}: the wider box holds more slots across than the upright four`,
