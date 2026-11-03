@@ -212,9 +212,6 @@ export const QuestsPanel = () => {
 
   return (
     <div ref={boxRef} style={{ ...panelStyle, overflowY: 'auto' }}>
-      {/* v2.3.3140: the daily quests and the season, one line above the
-          story quests -- renders nothing against a worker without them */}
-      <DailyRewardsCard />
       {/* v2.3.3944: the points every hand-in pays (server quests.js
           QUEST_AP_REWARD), added up -- shown nowhere before */}
       <div data-journal-ap={L.apTotal} style={{ padding: '8px 4px 2px', fontSize: 16, fontWeight: 800, color: COL.text }}>
@@ -227,10 +224,20 @@ export const QuestsPanel = () => {
       {wide ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', columnGap: 20, alignItems: 'start', paddingBottom: 26 }}>
           <div style={{ minWidth: 0 }}>{focusCard}</div>
-          <div style={{ minWidth: 0 }}>{log}</div>
+          <div style={{ minWidth: 0 }}>
+          {/* v2.3.3140: the daily quests and the season, one line -- renders
+          nothing against a worker without them.  v2.3.3944: under the quest
+          page, above the list, so the page opens on the quest you're on */}
+          <DailyRewardsCard />
+          {log}</div>
         </div>
       ) : (
-        <div style={{ paddingBottom: 26 }}>{focusCard}{log}</div>
+        <div style={{ paddingBottom: 26 }}>{focusCard}
+          {/* v2.3.3140: the daily quests and the season, one line -- renders
+          nothing against a worker without them.  v2.3.3944: under the quest
+          page, above the list, so the page opens on the quest you're on */}
+          <DailyRewardsCard />
+          {log}</div>
       )}
     </div>
   );

@@ -31,14 +31,15 @@ Accept, no Turn In on these pages: v2.3.1704, v2.3.2195).
 
 Top to bottom:
 
-1. The **Daily rewards** card (unchanged, v2.3.3140).
-2. **"Achievement Points from quests: N"**: every quest handed in (`rpg._quests`
+1. **"Achievement Points from quests: N"**: every quest handed in (`rpg._quests`
    `turnedIn`, only ids that are quests) times `QUEST_AP_REWARD` (5).
-3. **The quest you are on**, in full (the six parts below), headed "Your quest ·
+2. **The quest you are on**, in full (the six parts below), headed "Your quest ·
    In progress". Which quest: the tracked one while it is in hand, else the
    newest one in hand (the last in the worker's `_quests` order, the order they
    were taken), else the first offer ("Your next quest · Available": the tour's
    suggestion first). With none, a line: look for a gold ! in BroTown.
+3. The **Daily rewards** card (v2.3.3140; under the quest page since v2.3.3944,
+   so the page opens on the quest you are on).
 4. **Active**: every quest in hand, the tracked one first, then the ready ones,
    then the rest. A row is its title and its current step or objective with its
    count ("(0/4 Slime Remains)"), or "Ready: hand it in to Mayor Bro"; a 48 px
