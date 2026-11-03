@@ -35,7 +35,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.enterWorld(P);
       if (vp.width !== 390) { await P.page.setViewportSize(vp); await P.page.waitForTimeout(1500); }
       await P.page.waitForTimeout(1500);
-      await P.page.evaluate(() => { window.__broDashPanelBus.open('hero'); });
+      await P.page.evaluate(() => { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); });
       await P.page.waitForTimeout(1500);
       const s0 = await state(P);
       rec.ok(`[${tag}] shut: the Damage and Defense pills, the HP and EN bars the Health and Energy families' (a tap opens them), each fully in view (the figure and gear, unchanged, run 9 px past the 191 px tab upright)`,

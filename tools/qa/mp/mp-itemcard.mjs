@@ -27,7 +27,7 @@
 import * as H from './harness.mjs';
 
 const openHero = async (P) => {
-  await P.page.evaluate(() => { window.__broDashPanelBus.open('hero'); });
+  await P.page.evaluate(() => { (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero')); });
   await P.page.waitForTimeout(900);
 };
 const closeHero = async (P) => {
@@ -222,7 +222,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
        would take, rather than poking the DOM. */
     window.__broDashPanelBus.open(null);
     await new Promise((r) => setTimeout(r, 250));
-    window.__broDashPanelBus.open('hero');
+    (window.__btHeroSection && window.__btHeroSection.request('Overview'), window.__broDashPanelBus.open('hero'));
     await new Promise((r) => setTimeout(r, 700));
     const cell = document.querySelector('[role="button"][aria-label="Weapon"]');
     if (cell) cell.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));

@@ -29,18 +29,24 @@ export const PACKETS = [
     screens: ['creator-tab-eyewear', 'creator-tab-beard', 'creator-tab-shirt', 'creator-tab-pants', 'creator-tab-shoes', 'creator-paint', 'creator-paint-designs'] },   /* v2.3.4167: +two designs */
   { slug: 'arriving-and-the-world', title: 'Arriving, the world screen and talking to Mayor Bro',
     screens: ['welcome', 'desktop-window', 'hud', 'hud-pvp', 'nml-popup', 'hud-outlaw', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
-  { slug: 'dashboard-character-bag', title: 'Dashboard: your character, your quests and the bag',
-    /* v2.3.4036: + the rare fish's weigh-in card and Ranks' Biggest fish */
-    screens: ['guide-arrow', 'dash-hero', 'dash-hero-points', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'fish-weigh', 'fish-board'] },
+  /* v2.3.4172: the owner's five buttons -- Bro (its card, the two windows over
+     it, the two pages under it) is a packet of its own; Quests, the bag, the
+     Codex and More share the next */
+  { slug: 'dashboard-bro', title: 'Dashboard: Bro (your card, Points, Equipment, Life Skills, Achievements)',
+    screens: ['guide-arrow', 'dash-bro', 'dash-bro-bow', 'dash-bro-points', 'dash-bro-skills', 'dash-bro-skill-detail', 'dash-bro-achievements', 'dash-bro-equipment'] },
+  { slug: 'dashboard-quests-bag-codex', title: 'Dashboard: the band, your quests, the bag, the Codex and More',
+    screens: ['dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
+  /* v2.3.4172: the rare fish's weigh-in card and Ranks' Biggest fish
+     (v2.3.4036), a packet of their own: the two dashboard packets are full */
+  { slug: 'dashboard-fish', title: 'Dashboard: the rare fish',
+    screens: ['fish-weigh', 'fish-board'] },
   /* v2.3.4151: the Gear tab, the resting dashboard's three panels */
   { slug: 'gear-tab', title: 'The Gear tab: your bag, your bro and your gear',
     screens: ['gear-tab', 'gear-slot-selected', 'gear-compare', 'gear-filter-open', 'gear-filter-empty'] },
-  { slug: 'dashboard-skills-codex', title: 'Dashboard: life skills, the Codex and More',
-    /* v2.3.4012: + the bag's "?" piece (moved here: the bag's own packet is at MAX_PICTURES since the Hemi portraits) */
-    screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
   { slug: 'dashboard-more-pages', title: 'Dashboard: More\'s pages',
-    /* v2.3.3527: + the Achievements page, the ninth (MAX_PICTURES) */
-    screens: ['more-settings', 'more-pets', 'more-leaderboard', 'more-social', 'more-achievements', 'more-journey', 'more-account', 'more-about', 'more-feedback'] },
+    /* v2.3.3527: + the Achievements page, the ninth (MAX_PICTURES);
+       v2.3.4172: Achievements went to Bro, Notifications (the bell) came in */
+    screens: ['more-settings', 'more-pets', 'more-leaderboard', 'more-social', 'more-journey', 'more-account', 'more-notifications', 'more-about', 'more-feedback'] },
   { slug: 'doors-and-crafts', title: 'Building doors and the craft buildings',
     screens: ['near-door', 'building-forge', 'building-woodwork', 'building-gemcut', 'building-enchant', 'building-cook'] },
   { slug: 'games-farm-money', title: 'The Gambling Den, the farm and the money buildings',

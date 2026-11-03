@@ -206,8 +206,15 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   const more = src('src/ui/mobile/dash/MorePanel.jsx');
   /* v2.3.3773: Journey keeps a tile of its own beside it (the owner: "journey
      ... its own icon in the more/other apps menus") */
-  check('7d More: an Achievements tile against a worker that grants them (the owner\'s medal its picture), and Journey\'s own tile always',
-    /\.\.\.\(achvLive\(S\) \? \['achievements'\] : \[\]\), 'journey'/.test(more) && /id: 'achievements', src: ACHV_MEDAL_SRC, +label: 'Achievements'[^\n]*iconScale: 1 \}/.test(more)
+  /* v2.3.4172: the owner's five buttons -- Achievements left More: it is a
+     page under Bro (dashboardPanelBus BRO_PAGES), opened from the Bro card's
+     Achievements row, its tile and its AP (the row only where the worker
+     grants them); Journey keeps its tile in More */
+  const bus = src('src/ui/mobile/dashboardPanelBus.js'), card = src('src/ui/mobile/sheet/BroCard.jsx');
+  check('7d Bro: Achievements is a page under Bro, the card\'s Achievements row and AP open it (the row only where granted), and Journey keeps its More tile',
+    /const BRO_PAGES = \{ skills: 1, achievements: 1 \}/.test(bus) && /broPage\(id\) \? \['hero', id\]/.test(bus)
+      && /<Row id="achievements"/.test(card) && /const openAchv = \(\) => go\('achievements'\)/.test(card) && /data-bro-ap=/.test(card) && /apOn \? \(/.test(card)
+      && !/'achievements', 'journey'|\['achievements'\] : \[\]/.test(more) && /'pets', 'journey'/.test(more)
       && /id: 'journey', +src: '\/icons\/ui\/journey\.webp/.test(more));
   check('7e the dashboard knows the page, with its Head', /achievements: \{ title: 'Achievements', Component: AchievementsPanel, Head: AchievementsHead \}/.test(src('src/ui/mobile/BottomDashboard.jsx')));
   check('7f the chat\'s mail line names an achievement', /_e\.kind === 'achv' \? achvMailPhrase\(_ep\)/.test(src('src/networking/gameEvents.js')));

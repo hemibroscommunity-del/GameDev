@@ -52,11 +52,11 @@ const CLICK_LOG = "window.__qaClicks = []; document.addEventListener('DOMContent
 
 async function openPoints(P) {
   const grid = P.page.locator('[data-prog3-grid]').first();
-  const tab = P.page.locator('[aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first();
+  const tab = P.page.locator('[data-section="Build"], [aria-label="Build"], [aria-label^="Build —"], [aria-label="Points"]').first();
   for (let i = 0; i < 3; i++) {
     if (await grid.isVisible().catch(() => false)) return true;
     if (!(await tab.isVisible().catch(() => false))) {
-      await H.openDest(P, 'Character').catch(() => {});
+      await H.openDest(P, 'Bro').catch(() => {});
       await tab.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
     }
     await tab.click({ timeout: 8000 }).catch(() => {});

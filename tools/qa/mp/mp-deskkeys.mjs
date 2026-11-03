@@ -56,7 +56,10 @@ const DESK = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
 /* src/game/deskKeys.js NAV_KEYS -- held to it in step 1 by what the page
    wears, so a change there that this file missed fails here */
-const NAV = { dashboard: 'I', hero: 'P', quests: 'J', skills: 'L', encyclopedia: 'K', more: 'O' };
+/* v2.3.4172: five buttons (Gear, Bro, Quests, Codex, More); L opens the
+   Life Skills page under Bro, and the Bro card's Life Skills row wears it
+   (checked in step 2) */
+const NAV = { dashboard: 'I', hero: 'P', quests: 'J', encyclopedia: 'K', more: 'O' };
 
 /** The key cap a control wears: its ::after (or ::before) as computed. */
 const capOf = (P, sel, pseudo = '::after') => P.page.evaluate(([s, ps]) => {
@@ -70,7 +73,9 @@ const shown = (c) => !!c && c.content && c.content !== 'none' && c.content !== '
 const sheet = (P) => P.page.evaluate(() => {
   const b = window.__broDashPanelBus;
   const f = document.querySelector('[data-dash-fold]');
-  return b ? { mode: b.state.mode, root: b.state.stack[0], top: b.current(), fold: f ? f.getAttribute('data-dash-fold') : null } : null;
+  /* v2.3.4172: + what Bro shows (heroSectionBus.shown: its card or a window) */
+  const h = window.__btHeroSection;
+  return b ? { mode: b.state.mode, root: b.state.stack[0], top: b.current(), fold: f ? f.getAttribute('data-dash-fold') : null, tab: h ? h.shown : null } : null;
 });
 const mapOpen = (P) => P.page.evaluate(() => !!(window.__btWorldMap && window.__btWorldMap.open) && !!document.querySelector('[data-world-map]'));
 const key = async (P, k, ms = 450) => { await P.page.keyboard.press(k); await P.page.waitForTimeout(ms); };
@@ -101,7 +106,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
     /* ── 1. THE LETTERS ── */
     const caps = {};
     for (const id of Object.keys(NAV)) caps[id] = await capOf(P, `[data-nav="${id}"]`);
-    rec.ok('the dashboard\'s six buttons wear I P J L K O',
+    rec.ok('the dashboard\'s five buttons wear I P J K O (v2.3.4172)',
       Object.keys(NAV).every((id) => shown(caps[id]) && caps[id].key === NAV[id]), caps);
     const mapCap = await capOf(P, '[data-world-map-open]');
     const mark = await P.page.evaluate(() => (window.__btWheelMini && window.__btWheelMini.mark) || null);
@@ -176,17 +181,29 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
       kbNarrow.strip && !kbNarrow.side && kbNarrow.placed && kbWide.strip && kbWide.side && kbWide.placed, { kbNarrow, kbWide });
 
     /* ── 2. EACH KEY ITS PAGE, AND AGAIN TO CLOSE IT ── */
-    for (const [id, k] of [['quests', 'J'], ['hero', 'P'], ['skills', 'L'], ['encyclopedia', 'K'], ['more', 'O']]) {
+    for (const [id, k] of [['quests', 'J'], ['hero', 'P'], ['encyclopedia', 'K'], ['more', 'O']]) {
       await key(P, 'Key' + k);
       const on = await sheet(P);
       await key(P, 'Key' + k);
       const off = await sheet(P);
       rec.ok(`${k} opens ${id}, and ${k} again closes it`, !!on && on.mode === 'expanded' && on.root === id && !!off && off.mode === 'bar', { on, off });
     }
+    /* v2.3.4172: L is the Life Skills page under Bro (the owner: "Lifeskills
+       move inside Bro"); the Bro card's Life Skills row wears the L; L again
+       closes it */
+    await key(P, 'KeyP', 900);
+    const lCap = await capOf(P, '[data-bro-row="skills"]');
+    await key(P, 'KeyP');
+    await key(P, 'KeyL');
+    const lOn = await sheet(P);
+    await key(P, 'KeyL');
+    const lOff = await sheet(P);
+    rec.ok('L opens the Life Skills page under Bro (the card\'s Life Skills row wears the L), and L again closes it',
+      !!lOn && lOn.mode === 'expanded' && lOn.root === 'hero' && lOn.top === 'skills' && shown(lCap) && lCap.key === 'L' && !!lOff && lOff.mode === 'bar', { lOn, lCap, lOff });
     await key(P, 'KeyJ');
     await key(P, 'KeyL');
     const swapped = await sheet(P);
-    rec.ok('J then L: the Quests page gives way to Life Skills', !!swapped && swapped.mode === 'expanded' && swapped.root === 'skills', swapped);
+    rec.ok('J then L: the Quests page gives way to Life Skills, under Bro', !!swapped && swapped.mode === 'expanded' && swapped.root === 'hero' && swapped.top === 'skills', swapped);
     await key(P, 'KeyI');
     const toBag = await sheet(P);
     rec.ok('I with a page open: back to the band at rest, where the bag is', !!toBag && toBag.mode === 'bar' && toBag.fold === 'open', toBag);

@@ -78,7 +78,25 @@ function shownRect(el) {
   const vw = window.innerWidth || 0, vh = window.innerHeight || 0;
   if (r.bottom <= 0 || r.right <= 0 || r.top >= vh || r.left >= vw) return null;
   try { const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || Number(cs.opacity) === 0) return null; } catch (e) { /* drawn */ }
+  if (scrolledAway(el, r)) return null;
   return r;
+}
+/* ═══ v2.3.4172: ON THE SCREEN MEANS NOT SCROLLED OUT OF ITS BOX ═══
+   The Bro page scrolls (sheet/BroCard.jsx: its Points row is one of the
+   doors, no longer a button stuck to the card's foot), and a row scrolled
+   out of the page is still "in the window" -- above the band, under the world
+   -- so the arrow pointed at nothing there.  A box that clips (overflow other
+   than visible) and holds none of the element's middle hides it. */
+function scrolledAway(el, r) {
+  const mx = r.left + r.width / 2, my = r.top + r.height / 2;
+  for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+    let cs = null;
+    try { cs = getComputedStyle(p); } catch (e) { cs = null; }
+    if (!cs || (cs.overflowY === 'visible' && cs.overflowX === 'visible')) continue;
+    const b = p.getBoundingClientRect();
+    if (my < b.top || my > b.bottom || mx < b.left || mx > b.right) return true;
+  }
+  return false;
 }
 function firstShown(sels) {
   for (const sel of sels) {
@@ -123,6 +141,9 @@ export function guideTargets(id, rpg, shown) {
     return gearFlashSelectors(w, folded, tileOnScreen);
   }
   if (id === 'points') {
+    /* v2.3.4172: inside the Points window (over the Bro card) there is
+       nowhere left to go: no arrow (the coach's words say what the rows are) */
+    if (shown('[data-bro-popup="Build"]')) return [];
     return ['[data-section="Build"]', '[data-nav="hero"]', '[data-dash-fold="min"]', '[data-land-fold="min"]'];
   }
   if (id === 'swap') return ['[data-weapon-pill]'];   /* v2.3.4130: the pill */
@@ -138,7 +159,7 @@ export function guideWords(id, sel, computer) {
   else if (/data-nav="dashboard"/.test(sel)) s = 'Tap Gear';
   else if (/data-gear/.test(sel)) s = 'Tap to equip';
   else if (/data-nav="hero"/.test(sel)) s = 'Tap Bro: points to spend';
-  else if (/data-section="Build"/.test(sel)) s = 'Tap Points';
+  else if (/data-section="Build"/.test(sel)) s = 'Tap Points';   /* v2.3.4172: the Bro card's Points row */
   return deskWords(s, computer);
 }
 
