@@ -3058,7 +3058,7 @@ steel (mp-ghostaudit). Same rule, wider: whatever the walking figure is taught
 about what shows under its gear, the stand-ins are a second figure that has to
 be taught it too (`_clampLegsUnder`, mp-standinlegs).
 
-**A fifth time, on the gathering stand-ins (v2.3.4031).** The owner: "Shoes
+**A fifth time, on the gathering stand-ins (v2.3.4037).** The owner: "Shoes
 and patterns aren't showing while hoeing." The farmer, the lumberjack, the
 cook and the fire-lighter are baked by `_standInBake` (playerSkins), not by
 `recolorBodyToCanvas`, and when v2.3.3146 taught them your trouser and boot

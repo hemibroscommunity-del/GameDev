@@ -11,7 +11,7 @@
  *   1. the farmer's moves are made behind the farm's loading screen (the
  *      'farm' pose ready when it lifts), in HIS colours: the bake's own
  *      reading of each strip is his deep skin, blue legs and red boots;
- *      (v2.3.4031) and HIS PATTERNS: yellow stripes and a purple print on
+ *      (v2.3.4037) and HIS PATTERNS: yellow stripes and a purple print on
  *      the trousers, white checks on the boots -- the pixels of each the
  *      bake laid on the legs and the boots (the probe's `garb`);
  *   2. each step plays its own -- dig the hoe, plant the kneel, water the can,
@@ -66,7 +66,7 @@ const LOOK = `try {
   localStorage.setItem('bt-shirtcolor', 'green');
   localStorage.setItem('bt-pants', 'blue');
   localStorage.setItem('bt-shoes', 'red');
-  /* v2.3.4031: yellow stripes on the trousers (ART_PALETTE 5), white checks
+  /* v2.3.4037: yellow stripes on the trousers (ART_PALETTE 5), white checks
      on the boots (2), and a purple block printed on the trousers (10, a 8 x 8
      in the 16 x 16 drawing) -- the owner, "Shoes and patterns aren't showing
      while hoeing" */
@@ -177,7 +177,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cl = made.clothes['farm-' + a] || {}, sk = made.skin['farm-' + a] || {};
       rec.ok(`...the ${a} in his colours: skin ${JSON.stringify(sk.rgb)} (deep), trousers ${JSON.stringify(cl.legs && cl.legs.rgb)} (blue), boots ${JSON.stringify(cl.boots && cl.boots.rgb)} (red)`,
         !!sk.rgb && sk.n > 500 && sk.rgb[0] < 150 && blue(cl.legs) && (a === 'kneel' || red(cl.boots)), { skin: sk, clothes: cl });
-      /* v2.3.4031: and his trouser and shoe patterns and trouser print, which
+      /* v2.3.4037: and his trouser and shoe patterns and trouser print, which
          the stand-in bake never stamped (TRAPS §73): pixels of the stripes'
          yellow on the legs, of the checks' white on the boots (the kneel
          shows none), and pixels the print changed, each counted on the baked
