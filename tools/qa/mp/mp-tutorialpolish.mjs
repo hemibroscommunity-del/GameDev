@@ -1,4 +1,4 @@
-/* ═══ THE MAYOR'S FIRST QUEST, TAKEN CLEANLY (v2.3.4156) ═══
+/* ═══ THE MAYOR'S FIRST QUEST, TAKEN CLEANLY (v2.3.4166) ═══
  *
  * The owner, 2026-11-03, playing the live game: "Remove the arrow in the
  * first screenshot. In the second screenshot (after accepting the quest)
@@ -16,7 +16,12 @@
  *   3. once the card has closed, the next step comes: the big arrow at the
  *      gear (the weapon lesson) and the coach's Gear up card;
  *   4. talking to him again later gives his progress line (it is not lost);
- *   5. no page errors.
+ *   5. a giver with something to do AT ONCE for his quest keeps the window on
+ *      Accept, that button alone and no "I still need ..." above it (the
+ *      orchestrator's refinement): Lil Bro's Race Day (Race!) and Blacksmith
+ *      Bro's Some Assembly Required (Open the forge), each reached by the
+ *      operator's /dev/tour jump;
+ *   6. no page errors.
  * Pictures: tools/qa/mp/out/tutorialpolish-<view>-*.png.
  */
 import * as H from './harness.mjs';
@@ -108,7 +113,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       rec.ok(`${V.id} 4. talking to him again gives his progress line ("${(line || '').slice(0, 60)}")`, !!line && /I still need/.test(line), line);
       await H.closeNpcDialogue(P).catch(() => {});
-      rec.ok(`${V.id} 5. no page errors`, errors.length === 0, errors.slice(0, 3));
+
+      /* 5. givers with a button for their quest at once: it stays, alone */
+      const myId = await H.readState(P, (S) => S.myId);
+      for (const G of [{ q: 'race_1', npc: 'lil_bro', qa: 'race-go', label: 'Race!' }, { q: 'smith_2', npc: 'blacksmith_bro', qa: 'quest-open', label: 'Open the forge' }]) {
+        const jumped = await H.devOp(wsPort, 'tour', myId, { at: G.q }).catch(() => null);
+        await P.page.waitForTimeout(1500);
+        await H.closeNpcDialogue(P).catch(() => {});
+        await H.approachNpc(P, G.npc);
+        const landed = await H.advanceNpcDialogue(P, { max: 14 }).catch(() => null);
+        await H.confirmQuestOffer(P).catch(() => null);
+        const seen = [];
+        for (let i = 0; i < 10; i++) {
+          seen.push(await P.page.evaluate((G) => {
+            const b = document.querySelector(`[data-qa="${G.qa}"]`), t = document.querySelector('.bt-npcdlg-text');
+            return { dlg: !!document.querySelector('.bt-npcdlg'), offer: !!document.querySelector('.bt-qoffer'), btn: b ? b.innerText.trim() : null,
+              text: t ? (t.textContent || '').trim() : '', st: (window._gameState.current.rpg._quests || {})[G.q] || null };
+          }, G));
+          await P.page.waitForTimeout(250);
+        }
+        await shot(`5-${G.q}`);
+        const fin = seen[seen.length - 1];
+        rec.ok(`${V.id} 5. ${G.q}: ACCEPT keeps the window with "${fin.btn}" alone (text "${fin.text.slice(0, 40)}"), never "I still need"`,
+          !!jumped && jumped.ok === true && landed === 'offer' && fin.st === 'active' && fin.dlg && !fin.offer && fin.btn === G.label && !fin.text && seen.every((a) => !/I still need/.test(a.text)),
+          { jumped, landed, fin, sawNeed: seen.some((a) => /I still need/.test(a.text)) });
+        await H.closeNpcDialogue(P).catch(() => {});
+      }
+      rec.ok(`${V.id} 6. no page errors`, errors.length === 0, errors.slice(0, 3));
     } finally {
       await P.ctx.close().catch(() => {});
     }

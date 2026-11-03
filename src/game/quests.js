@@ -17,6 +17,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { pushHudPopup } from '@/ui/XpFlyOverlay.jsx'; /* v2.3.1874: quest XP flies to its skill card */
 import { flyQuestRewards } from '@/game/questFly.js'; /* v2.3.3030: the coins and items fly home */
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a quest taken, heard */
+import { questAction } from '@/game/tour.js'; /* v2.3.4166: a giver with something to do at once keeps his window on Accept */
 export function acceptQuest(S, questPanel, deps) {
   var setRpgState = deps.setRpgState,
     setQuestPanel = deps.setQuestPanel;
@@ -54,7 +55,7 @@ export function acceptQuest(S, questPanel, deps) {
   try {
     localStorage.setItem('bt_rpg', JSON.stringify(R));
   } catch (e) {}
-  /* ═══ v2.3.4156: ACCEPTING CLOSES THE DIALOGUE ═══
+  /* ═══ v2.3.4166: ACCEPTING CLOSES THE DIALOGUE ═══
      The owner, 2026-11-03: "after accepting the quest mayor bro says again to
      kill the slimes (this message is unnecessary they already know they just
      accepted his quest)".  The card flipped to `active` here (v2.3.1828: "so
@@ -62,7 +63,13 @@ export function acceptQuest(S, questPanel, deps) {
      "I still need ..." progress line the instant you took the quest.  Now
      the window closes on Accept -- QUEST ACCEPTED! says it, over the world --
      and the progress line is his answer only when you talk to him again. */
-  setQuestPanel(null);
+  /* ...unless the giver has something for this quest to do AT ONCE (Lil Bro's
+     Race!, "Open the forge": game/tour.js questAction) -- an Accept must not
+     cost a tap for that, so the window stays with that button alone, no
+     "I still need ..." above it (QuestPanel `justAccepted`) */
+  var _actNow = null;
+  try { _actNow = questAction(questPanel.quest, QUEST_STATUS.active, S, questPanel.npcRef); } catch (e) { _actNow = null; }
+  setQuestPanel(_actNow ? _objectSpread(_objectSpread({}, questPanel), {}, { status: 'active', justAccepted: true }) : null);
   pushDmgPopup(S, S.player.x, S.player.y - 40, 'Quest Accepted: ' + questPanel.quest.title, '#5b52ff');
   /* v2.3.3343: the old fanfare's first bars -- collect() is a beep(), silent,
      though the note below calls it the one thing the player could get */

@@ -89,7 +89,7 @@ function firstShown(sels) {
   return null;
 }
 
-/* ═══ v2.3.4156: NEVER OVER AN OPEN CARD ═══
+/* ═══ v2.3.4166: NEVER OVER AN OPEN CARD ═══
    The owner, 2026-11-03, of the Mayor's quest offer: "Remove the arrow in
    the first screenshot" -- the arrow at Mayor Bro stood in the middle of the
    NEW QUEST card, pointing at him behind it.  So before it is drawn, the
@@ -346,7 +346,7 @@ function tick(getS) {
          at him on the page (a world rect, not a DOM element) */
       if (_pace.skipped() || _pace.plateUp(now)) continue;
       const mr = mayorScreenRect(S);
-      if (!mr || !onTop(mr, null)) continue;   /* v2.3.4156: not over an open card */
+      if (!mr || !onTop(mr, null)) continue;   /* v2.3.4166: not over an open card */
       if (_seen[id] === 0) qa.n++;
       _seen[id] += Math.max(1, dt);
       qa.lesson = id; qa.sel = 'mayor';
@@ -355,7 +355,7 @@ function tick(getS) {
     }
     const shown = (sel) => { try { return Array.from(document.querySelectorAll(sel)).some((el) => !!shownRect(el)); } catch (e) { return false; } };
     const hit = firstShown(guideTargets(id, rpg, shown));
-    if (!hit || !onTop(hit.r, hit.el)) continue;   /* v2.3.4156: not over an open card */
+    if (!hit || !onTop(hit.r, hit.el)) continue;   /* v2.3.4166: not over an open card */
     if (_seen[id] === 0) { qa.n++; if (id === 'swap') _swapFrom = rpg.activeSlot || 'melee'; }
     _seen[id] += Math.max(1, dt);
     qa.lesson = id; qa.sel = hit.sel;
