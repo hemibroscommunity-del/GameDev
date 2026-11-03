@@ -21,6 +21,11 @@ first.
   **Copper Great Sword** the next time the player logs in: copper's damage
   (1.12, up from wood's 1.00), its grade (Rare, Elite...), its hardening and
   its gems kept.
+- An old drop with no metal that is **stronger** than copper (the old
+  Elemental, Fusion and Shift rolls) gets the metal that matches its strength
+  (v2.3.3980): 1.50 becomes **Black Steel**, 2.25 **Diamond**, 3.00
+  **Shadowsteel**. It keeps its own damage exactly, and its grade, hardening
+  and gems. No metal-less greatsword is left.
 - The Forge already makes no wood greatsword (since v2.3.3524); that is
   unchanged.
 - Another player's greatsword is drawn with the same per-facing blade you hold
@@ -38,7 +43,7 @@ every drawing of your own blade tints by gearBase through `weaponTint`
 |---|---|---|
 | The old starter grant (v2.3.1681-1759) | a greatsword at gearBase **wood**; migration v12 renamed it "Copper Great Sword" by its NAME only, so it said copper and was wood. Wood has no metal (`weaponMaterial` returns none), so the blade drew in the native grey steel | migration v20 |
 | A greatsword from the old Forge's wood tier | the same: wood, no metal | migration v20 |
-| An old random drop (v2.3.1141-v2.3.3209) | no gearBase at all: named "Great Sword" (data.js `WEAPON_TYPE_LABELS`), drawn native grey | migration v20, when no stronger than copper |
+| An old random drop (v2.3.1141-v2.3.3209) | no gearBase at all: named "Great Sword" (data.js `WEAPON_TYPE_LABELS`), drawn native grey | migration v20: copper, or the metal of its strength (v2.3.3980) |
 | Another player's greatsword | drawn from the BARE greatsword sheet (the one-handed `Sword1` icon) at every facing, tinted with `materialTint` (which also drew black steel bright) | the per-facing art and `weaponTint` (section 4) |
 | Another player's swing (the stand-in) | `materialTint(wpnMat)`: black steel drew bright | `weaponTint(wpnType, wpnMat)` |
 
@@ -53,25 +58,43 @@ icon the grey steel one. So the grey "Copper Great Sword" the owner saw is
 most likely the old starter: named copper by v12, wood underneath. Copper on
 the greatsword sheet reads as copper, so its tint is not deepened.
 
-## 2. The mapping (`oldGreatswordToCopper`, gscopper.js)
+## 2. The mapping (`oldGreatswordToMetal`, gscopper.js)
 
 One pure function used by every door, so they can never disagree.
 
 | Field | Change |
 |---|---|
-| which | `type === 'greatsword'` AND (`gearBase === 'wood'` OR no gearBase with `tierMult` at most copper's 1.12). Nothing else: no shield, no bow, no staff, no one-handed sword (v19's) |
-| `gearBase`, `tierMult` | `'copper'`, 1.12 |
+| which | `type === 'greatsword'` AND (`gearBase === 'wood'` OR no gearBase). Nothing else: no shield, no bow, no staff, no one-handed sword (v19's), no greatsword that already has a metal |
+| `gearBase`, `tierMult` | wood, or no gearBase at tierMult up to copper's 1.12: `'copper'`, 1.12. No gearBase above 1.12: the metal (below), `tierMult` KEPT |
 | `quality`, `hardness`, `temper`, `reforgeBonus`, `hardenBonus`, `element1`, `element2`, `isVolatile`, `tier` | unchanged |
-| `name` | a name the game gave ("Great Sword", "Copper Great Sword", "Bro's Sword", "Wood Great Sword", the Forge's "wood greatsword", a gem's name through `weaponGemName`) becomes `weaponGemName` of the copper blade: "Copper Great Sword", "Copper Flame Great Sword". A name given by hand is kept; one starting "Wood"/"Wooden" says "Copper" instead |
+| `name` | a name the game gave ("Great Sword", "Copper Great Sword", "Bro's Sword", "Wood Great Sword", the Forge's "wood greatsword", a gem's name through `weaponGemName`) becomes `weaponGemName` of the converted blade: "Copper Great Sword", "Black Steel Flame Great Sword". A name given by hand is kept; one starting "Wood"/"Wooden" says the metal instead |
 | `was` | `{ t: 'greatsword', name, gearBase, tierMult }`, what it was (null gearBase for an old drop), set once |
 
-**Never a weapon made weaker.** An old drop with no gearBase and a tierMult
-ABOVE copper's (the old Elemental 1.50, Fusion 2.25 and Shift 3.00 rolls,
-data.js `RARITY_TIERS`) is left exactly as it is. As copper it would lose up to
-two thirds of its damage, or keep its damage under a copper name and copper's
-equip gate (rung 0, wearable at level 1). **Question for the owner:** should
-these become the metal of their strength instead (1.50 is between black steel
-and titanium), or stay as they are?
+**The metal of a strong drop (v2.3.3980).** The owner's intent ("just remove
+any of the 'wooden' swords. Right now it's just called 'great sword'") covers
+the strong drops too. A greatsword with no gearBase and a tierMult ABOVE
+copper's becomes the forge tier (`BLACKSMITH_TIERS`, never wood) whose
+multiplier is the closest one NOT above its own (`metalForTierMult`), and keeps
+its own tierMult, so its damage and sell value never drop:
+
+| Its tierMult | Its metal (the metal's own multiplier) |
+|---|---|
+| 1.13 to 1.24 | Copper (1.12) |
+| 1.25 (exact), 1.30 | Iron (1.25) |
+| 1.50 (the old Elemental roll) | Black Steel (1.40) |
+| 2.16 (exact), 2.25 (the old Fusion roll) | Diamond (2.16) |
+| 3.00 (the old Shift roll) | Shadowsteel (2.98) |
+
+**The wear gate.** A weapon's melee gate is its metal's rung (`_prog3EquipOk`:
+5 a rung above copper, iron free). With no gearBase it was the tierMult curve
+(`round((tierMult - 1) x 6) x 5`, from rung 0), which is never lower than the
+metal's rung, so no one loses the right to wear a sword they wear today: the
+gate can only get easier (the old Shift roll asked melee 60, as Shadowsteel 45;
+the Elemental roll 15, as Black Steel 10). The gate is asked at equip time only
+(prog3.js `_prog3GearOk`), so nothing is taken off anyone either way.
+`sword-convert.test` 9b checks it for every band. On the server a converted
+drop has as many gem slots as before or more (one for a metal-less weapon,
+the metal's own from Mythril on), and its gems are kept as they are.
 
 ## 3. When it runs
 
@@ -83,9 +106,11 @@ and titanium), or stay as they are?
 - **Boundary heals**, as v19's: the post's weapon credit (a market refund, an
   Auction House sale, a trade, No man's land); the Auction House's wake-time
   rebuild (a listing escrowing one is rewritten once, weapon and `disp`); the
-  Marketplace's (a sell order's weapon and its `tierKey` wood -> copper, a buy
-  order for a wood greatsword re-filed for copper; a new order for one is
-  placed for copper).
+  Marketplace's (a sell order's weapon converted and the order re-filed under
+  its new metal's `tierKey`; a buy order for a wood greatsword re-filed for
+  copper; a new order for one placed for copper). A BUY order under an old
+  drop's rarity key ('common', 'elemental', 'fusion'...) is left as it is: it
+  holds gold and names no tierMult, so no metal can be chosen for it safely.
 - **The Forge is not changed.** It has made no wood greatsword since
   v2.3.3524 (the wood tier is `forge: false`). `forgeladder: false`, the
   operator's rollback of that ladder, still forges one (forge-ladder.test §7c
@@ -110,8 +135,10 @@ sheet drawn.
 
 ## 5. Safety
 
-- **Kill switch** `gscopper: false` (live flags, lower case): stops the
-  boundary heals, the shelves' rewrites and the Marketplace's mapping. The migration is not switchable (v19's reason).
+- **Kill switch** `gscopper: false` (live flags, lower case), for every
+  metal-less greatsword (the wood ones and the base-less drops, weak or
+  strong): stops the boundary heals, the shelves' rewrites and the
+  Marketplace's mapping. The migration is not switchable (v19's reason).
 - **No cap**: the client change draws what the relay already carries
   (`wpnType`, `wpnMat`) and is safe against either worker; nothing on the
   client gates on the conversion.

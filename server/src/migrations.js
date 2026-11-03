@@ -720,7 +720,9 @@ export const MIGRATIONS = [
        no stronger than copper (the old drops' "Great Sword") becomes a copper
        greatsword: tierMult 1.12, the game's names rebuilt, its grade,
        hardening and gems kept, marked `was` (gscopper.js, the one function
-       every door uses).  The three slots and the bag, as v12 and v19 walk
+       every door uses).  v2.3.3980: and a base-less one STRONGER than copper
+       becomes the metal whose multiplier is the closest not above its own
+       (1.50 Black Steel, 2.25 Diamond, 3.00 Shadowsteel), its tierMult kept.  The three slots and the bag, as v12 and v19 walk
        them; no shield is read (the Pine Shield stays wood).  Idempotent: a
        copper greatsword is never touched again.  The post and the shelves,
        which this never sees, convert at their own boundaries (inbox.js,
