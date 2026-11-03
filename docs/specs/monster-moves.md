@@ -229,7 +229,19 @@ Messages: one small event per warning and per strike, as a kit's.
   draw list is rebuilt (TRAPS §218), and no memory.
 - The bestiary: each kind in `CODEX_SPECIAL_LABEL` (`src/data/codexStage.js`).
 
-No new art, sound or texture: **no memory line moves**.
+No new art, sound or texture: **no memory line moves** (`mp-membudget`, run
+once on this branch: every line held, the heap's 35.4 of 36 MB its usual
+closest).
+
+## Capacity (`tools/qa/load/load.mjs --steps 25,50 --hold 20`, sampled)
+
+| Players | Server thread, main → this | Ticks/s | Tick delay p95 | Messages a player a second |
+|---|---|---|---|---|
+| 25 | 21.0% → 22.6% | 41.6 → 42 | 22 → 12 ms | 42.5 → 42.6 |
+| 50 | 38.6% → 40.7% | 41.8 → 41.8 | 23 → 19 ms | 43.7 → 43.6 |
+
+Within a run's noise: the bots fight near BroTown (tier 1), where a monster
+asks one cheap question a tick (has it a move in flight?).
 
 ## Tests
 
