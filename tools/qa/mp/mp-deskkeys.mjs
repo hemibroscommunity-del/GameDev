@@ -542,6 +542,9 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(600);
     const r2 = await look(P);
     const bashSent = r2.sent.slice(r1.sent.length);
+    /* what the pointer is over after the bash (a failure below names it) */
+    const atUp = await P.page.evaluate(([x, y]) => { const t = document.elementFromPoint(x, y); return t ? t.tagName.toLowerCase() + (typeof t.className === 'string' && t.className ? '.' + t.className.trim().split(/\s+/).join('.') : '') + Array.from(t.attributes || []).filter((a) => a.name.startsWith('data-')).map((a) => '[' + a.name + ']').join('') : null; }, [upPt.x, upPt.y]);
+    console.log('    8c: over the pointer after the bash: ' + atUp + ' at ' + JSON.stringify(upPt));
     /* the press was the bash's (kind 'bash' is set before the swing's path,
        which it returns ahead of); the bash's own pose moves swingTimer, so
        that clock says nothing here */

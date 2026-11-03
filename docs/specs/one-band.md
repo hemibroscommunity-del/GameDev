@@ -83,11 +83,15 @@ always had -- and only its size changes:
   (they ride `--dash-h` / `--sheet-h`), and a key does what its button does.
   Whatever upright draws -- six buttons and the pill on main today, five and
   the grip once #1386 lands -- is what every screen draws.
-- **At most a third of the screen.** The band's height is
-  `min(the upright band, round(screen height / 3))` (`sheetGeometry.js`
-  `barHeight`). An upright phone's band is already under its third (243 of
-  844 at 390 x 844), so it does not move; a sideways phone (844 x 390) gets
-  130, a computer at 1280 x 720 gets 240. The nav row keeps its upright height
+- **Today's height, never taller** (v2.3.4092, the owner: keep today's
+  dashboard height on every layout, no taller band). An upright screen keeps
+  exactly the band it has always had (`sheetGeometry.js` `barHeight`: 243 at
+  390 x 844, 235 at 375 x 667, 269 on an upright tablet). A wider screen gets
+  `min(ONE_BAND_MAX_H, round(screen height / 3))`, where `ONE_BAND_MAX_H` is
+  the upright phone's band, 243: a sideways phone (844 x 390) gets 130, a
+  computer at 1280 x 720 240, at 1440 x 900 or 1920 x 1080 243 (B3's rule gave
+  269 there, the upright formula for a wide box; and it capped short upright
+  phones at a third, 222 at 375 x 667). The nav row keeps its upright height
   and the columns row is what is left (`bandFootprint`).
 - **A page opens inside the band at the same height**, as upright
   (`expandedSheetHeight` and `drillSheetHeight` read `barHeight`).

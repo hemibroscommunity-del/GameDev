@@ -14,8 +14,9 @@
  * a computer playing wide (1280 x 720, `wide: true`).  On each:
  *   - the upright layout draws (data-orient "portrait", the band at the
  *     bottom, the nav row in it, no side sheet, no keys strip);
- *   - the band is at most a third of the screen, and an upright phone's band
- *     is the upright band it always was;
+ *   - the band is at most a third of the screen and never taller than an
+ *     upright phone's 243 (v2.3.4092: today's height, the owner), and an
+ *     upright phone's band is the upright band it always was;
  *   - the bag's tiles fit the box: every tile of the first row inside the bag
  *     panel, the panel and the combat cards inside the row, the tile at least
  *     the touch minimum, the counts as many as the box holds;
@@ -93,7 +94,7 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
   rec.ok(`${label}: the switch is on, and the upright layout draws (data-orient portrait, no side sheet)`,
     o.on === true && o.orient === 'portrait' && !g.landSheet, { on: o.on, orient: o.orient, landSheet: g.landSheet });
   rec.ok(`${label}: the band is at the screen's foot, at most a third of it (${third} px)`,
-    !!o.band && o.band.h <= third + 1 && Math.abs(o.band.y + o.band.h - Hh) <= 1 && o.dashH <= third + 1,
+    !!o.band && o.band.h <= third + 1 && o.band.h <= 243 + 1 && Math.abs(o.band.y + o.band.h - Hh) <= 1 && o.dashH <= third + 1,
     { band: o.band, dashH: o.dashH, third });
   if (upright) {
     /* the upright band it always was: 52 + 191 at 390 x 844 (sheetGeometry

@@ -863,9 +863,21 @@ export function barHeight(vw, vh) {
      sideways and on a computer the third binds.  expandedSheetHeight and
      drillSheetHeight read this, so a page opens inside the band at the
      same height, as upright. */
-  if (vh > 0 && oneBandActive()) h = Math.min(h, Math.round(vh / 3));
+  /* v2.3.4092: TODAY'S HEIGHT, NEVER TALLER.  The one band is the default
+     on every device now, and the owner: keep today's dashboard height on
+     every layout, no taller band.  So an UPRIGHT screen keeps exactly the
+     band it has always had (no third: a short phone's band does not shrink
+     either), and a wider one gets at most the upright phone's band
+     (ONE_BAND_MAX_H, 243 at 390 x 844) -- a computer's 1440 px width no
+     longer earns the 269 px the upright formula gives a wide box -- and at
+     most a third of its height, which is what makes a sideways phone work
+     (130 of 390). */
+  if (vh > 0 && vw > vh && oneBandActive()) h = Math.min(h, ONE_BAND_MAX_H, Math.round(vh / 3));
   return h;
 }
+/* v2.3.4092: the upright phone's band (390 x 844: the identity row and the
+   columns row), the tallest the one band is on a wider screen */
+export const ONE_BAND_MAX_H = 52 + columnsRowHeight(390);
 
 /* ═══ v2.3.4072: THE ONE BAND'S FOOTPRINT, AND THE WORLD'S BARS ═══
    The upright footprint (the band across the bottom, the canvas above it,

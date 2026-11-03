@@ -27,8 +27,9 @@
  *     (deskWide.js) answers "no", so every screen takes the UPRIGHT path --
  *     the band at the bottom, its nav row and fold pill, pages opening inside
  *     it, the controls above it -- exactly what an upright phone renders;
- *   - the band's height is min(the upright band, a third of the screen)
- *     (sheetGeometry.js barHeight), its contents laid out from the box they
+ *   - the band's height is today's upright band, and on a wider screen at
+ *     most the upright phone's 243 and a third of the screen (v2.3.4092:
+ *     never taller than today; sheetGeometry.js barHeight), its contents laid out from the box they
  *     get (oneBandLayout, OneBandColumns.jsx), and a world wider than the
  *     world rule allows gets bars at its sides (bandFootprint's barW).
  * `html.bt-desk-wide` stays on a computer: it is what frees #root from the
