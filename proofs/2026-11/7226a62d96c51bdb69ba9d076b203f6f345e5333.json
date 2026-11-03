@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7226a62d96c51bdb69ba9d076b203f6f345e5333",
+  "tree": "45923517e7d382f3f71c2d87f991c3c14c892179",
+  "committedAt": "2026-11-03T13:24:36-08:00",
+  "subject": "Merge pull request #1423 from hemibroscommunity-del/claude/creator-many-designs",
+  "files": 7564,
+  "bytes": 860556506,
+  "listingSha256": "20bb144a3ccf482c0d46efaec233fa3d272f426ddce94a2847ec1bf1ec8c3658",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
