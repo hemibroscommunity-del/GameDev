@@ -6,6 +6,35 @@ The owner, 2026-10-28:
 > primary combat skill you're earning Xp in someplace at the bottom (or maybe
 > top) depending on what works best. Then disappears again.
 
+## No pill, a pop, into the number, no decimals (v2.3.3992)
+
+The owner, 2026-11-02:
+
+> Make the plus xp without the dark container background. Make the text small
+> then pop up before fading and the numbers do a jump to bag effect but just to
+> the number on the xp bar (keep all the icons at the top of the bar as it is
+> now) - I mean leave everything else the same.
+>
+> Also don't include any decimals in numbers for xp.
+
+- **"+3 XP" is the words alone** (game.css `.bt-xp-gain`): no dark pill, a flat
+  dark outline round the letters (the bar number's ink) so they read over the
+  dark rail and a bright land alike. It starts at 0.6 of its size, pops to 1.15,
+  settles at 1, then rises and fades (`@keyframes bt-xp-gain`).
+- **A kill's "+N XP"** (`ui/XpFlyOverlay.jsx` `flyKillXp`) is the same: no pill,
+  the outline, and the same pop as it lifts over the monster
+  (`game/xpPop.js xpPopAt`); then it drops into the bar's NUMBER ("45 / 120",
+  `[data-xp-num]`), which pulses as it lands. It flew to the skill's picture
+  before, and the picture pulsed; the pictures are untouched now.
+- **No decimals anywhere on the bar.** `xpNumWords` is whole, rounded down. The
+  "+N" is the whole part of the gain: `noteProg3Xp` holds the fraction for that
+  skill's next gain (`S._xpCarry`), so the pops still add up to what the worker
+  paid, and a gain under 1 pops nothing (never "+0 XP"; the bar still moves).
+  A kill whose blow was worth under 1 takes what is held as "+1 XP"
+  (`game/killXp.js killGain`) and the next gain pays the difference back (the
+  carry goes below 0), so a kill always shows its XP. The old kill popup for a
+  character before prog3 rounds too.
+
 ## The polish (v2.3.3739)
 
 The owner, 2026-10-28, testing the night before the judges:
@@ -32,7 +61,8 @@ So, three changes:
   needs, the worker's numbers (`sk.xp`, `prog3XpRequired(sk.level)`), cream
   with a dark outline so it reads over the dark track, the gold and the white.
   A thousands separator from 1,000; one decimal where the XP is fractional
-  below 10 ("1.4 / 280", as the worker's XP is 0.2 of the damage); rounded
+  below 10 ("1.4 / 280", as the worker's XP is 0.2 of the damage; whole since
+  v2.3.3992, below); rounded
   down, so it never reads "280 / 280" a hair before the level. The track grew
   from 9 to 14 px to carry it, and is never narrower than 66 px.
 
@@ -102,8 +132,7 @@ The moment a hit earns combat XP, the middle of the top bar becomes the XP bar:
 - **The gain**: "+3 XP" pops left of the picture (v2.3.3739; it was over the
   bar), rises a little and goes. A flurry
   of hits within 1.2 s is one number ("+9 XP"), not three pops on top of each
-  other. Below 10 it has one decimal ("+1.4 XP"), as the worker's XP is 0.2
-  of the damage dealt.
+  other. Whole numbers only since v2.3.3992 (below).
 - 3 seconds after the last XP the bar fades and "BroTown" is back.
 - If two skills earn at once, the bar shows the one that earned more.
 

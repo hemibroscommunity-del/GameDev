@@ -30,7 +30,8 @@ export const PACKETS = [
   { slug: 'arriving-and-the-world', title: 'Arriving, the world screen and talking to Mayor Bro',
     screens: ['welcome', 'desktop-window', 'hud', 'hud-pvp', 'nml-popup', 'hud-outlaw', 'hud-band', 'hud-controls', 'near-mayor', 'mayor-dialogue', 'quest-offer', 'quest-accepted'] },
   { slug: 'dashboard-character-bag', title: 'Dashboard: your character, your quests and the bag',
-    screens: ['guide-arrow', 'dash-hero', 'dash-hero-points', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card'] },
+    /* v2.3.4036: + the rare fish's weigh-in card and Ranks' Biggest fish */
+    screens: ['guide-arrow', 'dash-hero', 'dash-hero-points', 'dash-quests', 'dash-quest-detail', 'dash-bag', 'item-card', 'fish-weigh', 'fish-board'] },
   { slug: 'dashboard-skills-codex', title: 'Dashboard: life skills, the Codex and More',
     /* v2.3.4012: + the bag's "?" piece (moved here: the bag's own packet is at MAX_PICTURES since the Hemi portraits) */
     screens: ['dash-skills', 'dash-skill-detail', 'dash-encyclopedia', 'dash-codex-monster', 'dash-more', 'lazy-cantopen', 'bag-unrevealed'] },
