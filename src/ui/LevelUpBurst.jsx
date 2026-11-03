@@ -241,9 +241,22 @@ export default function LevelUpBurst({ msg, col = 0, cols = 1, onDone }) {
   const bubblesRef = React.useRef({ ts: null, rect: null, sent: false });
   const fireBubbles = () => {
     const b = bubblesRef.current;
-    if (b.sent || !b.rect) return;
+    if (b.sent) return;
+    /* never read (a frame hitch stepped from before the hold straight past
+       the end): where the medallion is pinned -- the middle of the game's
+       column, LEVELUP_PIN_Y_FRAC down it (#root's box: the column on a
+       computer, the screen on a phone) */
+    let r = b.rect;
+    if (!r) {
+      try {
+        const root = document.getElementById('root');
+        const q = root && root.getBoundingClientRect();
+        if (q && q.width > 0) r = { left: q.left + q.width / 2 - 20, top: q.top + q.height * LEVELUP_PIN_Y_FRAC - 20, width: 40, height: 40 };
+      } catch (e) { r = null; }
+    }
+    if (!r) return;
     b.sent = true;
-    flyPointsBubbles(b.rect, msg.skill, msg.skillLevel);
+    flyPointsBubbles(r, msg.skill, msg.skillLevel);
   };
   React.useEffect(() => {
     const b = bubblesRef.current;

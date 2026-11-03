@@ -29,7 +29,9 @@ On a slow phone the 250 ms fade can fall between two drawn frames: the next
 render is past the end and draws nothing, and the stack can take the burst away
 on its last frame with no render at all. So the medallion's rect is read once
 while it holds (one layout read a burst), and the bubbles fly from it at the
-fade, or from the unmount if no frame of the fade came.
+fade, or from the unmount if no frame of the fade came. And if a frame hitch stepped from before the hold straight past the end (the
+place never read), they leave from where the medallion is pinned: the middle of
+the game's column, `LEVELUP_PIN_Y_FRAC` down it (v2.3.4042).
 
 ## Where
 `src/ui/pointsFly.js` (the flight), `src/game/pointsBubbles.js` (the rules, no
