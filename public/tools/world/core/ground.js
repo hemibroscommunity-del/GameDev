@@ -92,7 +92,7 @@
  */
 import { valueNoise, fbm, hash2 } from './rng.js';
 import { gridInfo } from './grid.js';
-import { C, hexToRgb, townSurfaces, TOWN_SURF } from './layout.js';
+import { C, hexToRgb, townSurfaces, TOWN_SURF, planFeatures } from './layout.js';
 import { axisDist } from './wheel.js';
 
 /* the id of the sea and every other water: one material, all of it (the walk
@@ -512,6 +512,11 @@ export function materialMap(plan, bp) {
   const ox = (bp.ox || 0) - (bp.nox || 0), oy = (bp.oy || 0) - (bp.noy || 0);
   /* v2.3.3031: the town's grass between its blocks and its paved cross */
   const surf = townSurfaces(plan, bp);
+  /* v2.3.3994: an islet's ground is its spoke's own stage, never the border
+     land of a pass -- which its place, out past the spoke's half-width,
+     would otherwise make it (layout.js planFeatures `islets`) */
+  const isl = (plan.islets && plan.islets.length) ? planFeatures(plan) : null;
+  const onIslet = isl && isl.islets.length ? (bx, by) => isl.onIslet((bp.ox || 0) + bx, (bp.oy || 0) + by) : null;
   for (let by = 0; by < bp.h; by++) {
     const y = (bp.y0 + (by + 0.5) * S - g.cy) / P;
     for (let bx = 0; bx < bp.w; bx++) {
@@ -550,7 +555,8 @@ export function materialMap(plan, bp) {
              halfway between two spokes at their bases -- that line's band
              wobbles, so the border land comes and goes in patches too */
           const dd = d2 - d1;
-          if (d1 > W.half || dd < BORDER_BAND - 0.2 || (dd < BORDER_BAND + 0.2 && dd < BORDER_BAND + 0.2 * fbm((ox + bx) / 5 + 31.7, (oy + by) / 5 - 17.3, seed + 5, 3))) {
+          if (onIslet && onIslet(bx, by)) { /* v2.3.3994: its own land */ }
+          else if (d1 > W.half || dd < BORDER_BAND - 0.2 || (dd < BORDER_BAND + 0.2 && dd < BORDER_BAND + 0.2 * fbm((ox + bx) / 5 + 31.7, (oy + by) / 5 - 17.3, seed + 5, 3))) {
             const b = borderOf[k1 * NS + k2];
             if (b >= 0) m = b;
           }

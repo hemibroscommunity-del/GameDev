@@ -446,6 +446,13 @@ await req('DELETE', '/api/admin/flags?name=disable_threats');
   check('8m. `onetoone` is a name POST /flags takes', flagNameOk('onetoone'));
   { const was = room._liveFlags; room._liveFlags = { onetoone: false }; const off = room._oneToOneOff(); room._liveFlags = {}; const on = room._oneToOneOff(); room._liveFlags = was;
     check('8m. `onetoone: false` switches the one-to-one off, and nothing set leaves it on', off === true && on === false); }
+  // 8n. v2.3.4011: the monster moves' switches (monstermoves.js) -- all of
+  //     them, and one a kind; each off only when written false
+  for (const name of ['monstermoves', 'monstercombo', 'monstercharge', 'monstervolley', 'monsterslam', 'monsterenrage']) {
+    check('8n. `' + name + '` is a name POST /flags takes', flagNameOk(name));
+  }
+  { const was = room._liveFlags; room._liveFlags = { monstermoves: false }; const off = !room._monsterMovesOn(); room._liveFlags = { monsterslam: false }; const kind = !room._moveKindOn('monsterslam') && room._monsterMovesOn(); room._liveFlags = {}; const on = room._monsterMovesOn() && room._moveKindOn('monsterslam'); room._liveFlags = was;
+    check('8n. `monstermoves: false` switches the moves off, `monsterslam: false` one kind, and nothing set leaves them on', off && kind && on); }
   // 8h. v2.3.3732: the message diet's two lower-case switches (movepath.js):
   //     v2.3.3744: every phone is on it by default, `pathall: false` leaves
   //     only ?diet=1 phones, `movepath: false` kills it, each through the

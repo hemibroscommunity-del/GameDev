@@ -68,6 +68,14 @@ you who is talking. Chatter only: none gives a quest yet, so none has the
 one-line wisecrack before an offer. Bubbles print plain text, so a stressed
 word is in capitals, never `*stars*`.
 
+**v2.3.4025: plain words** (`docs/specs/plain-words.md`). The owner: "No
+cryptic jokes or anything that could confuse someone." Each says who he is
+and what his building does, in plain words. Eight go by nicknames on screen
+and say them: Sizzle (Chef Blaze), Snail Mail (Postmaster Pete), Swampy (Deed
+Dave), Tryhard (Guildmaster Gary), Badge (Sheriff Buck), Going-Going (Gavel
+Greg), Fish Tales (Old Man Reel) and Selfie (Tourist Terry). Their keys and
+`name` fields are unchanged (lane O's display names).
+
 ## Their pictures
 
 - **In the world**: each is his `NPC_LOOKS` row in `tools/qa/npc-looks.mjs`,
