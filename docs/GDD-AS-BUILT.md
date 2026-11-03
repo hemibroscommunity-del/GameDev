@@ -597,7 +597,7 @@ Every monster is an **archetype** (the stat template the AI runs against) dresse
 
 | Kind | Home land (element) | Archetype | HP × / Dmg × / Speed × | Speed (px/s) | Body type | Level 21–40 recolour |
 |---|---|---|---|---|---|---|
-| Snowman | Frost Ridge (frost) | snowman | 1.3 / 1.1 / 0.8 | 18 | Humanoid | Glacier Snowman |
+| Snowman | Frost Ridge (frost) | snowman | 1.3 / 1.1 / 0.8 | 18 | Beast (v2.3.3908) | Glacier Snowman |
 | Fire Goblin | Flame Fields (flame) | fodder | 0.6 / 0.8 / 1.0 | 67 | Humanoid | Cinder Goblin |
 | Mummy → Skeleton | Wind Dunes (wind) | fodder, stalker (0.7/1.2/1.3), hexer (0.9/0.8/1.0), volatile (0.8/1.0/1.0) | — | 18 → 79 as a skeleton | Humanoid | Gilded Mummy |
 | Rock Monster | Stone Hollows (stone) | brute | 1.5 / 1.3 / 0.7 | 16 | Beast | Amethyst Golem |
