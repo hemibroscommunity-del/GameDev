@@ -23,8 +23,8 @@
  *   - a page (Quests) opens INSIDE the band, at the band's own height;
  *   - the world's canvas sits above the band, no wider than 2.2:1 (bars at
  *     its sides past that), and on a phone the two joysticks sit above it;
- *   - on a computer the nav buttons keep their key caps, every key (I P J L K
- *     O) opens its page inside the band and Esc closes it, the controls list
+ *   - on a computer the nav buttons keep their key caps, every key (I P J K
+ *     O; v2.3.4153: L is Bro's Life Skills page, no button) opens its page inside the band and Esc closes it, the controls list
  *     starts folded to its ⌨ (no list over the world) and H opens it.
  * Then the device's choice (v2.3.4152): no key and the old "on" ('1') both
  * read on; `?oneband=0` turns it off and the device keeps the off; `?oneband=1`
@@ -292,7 +292,7 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
   }
   const navTop = g.navs.filter((n) => n.box);
   rec.ok(`${label}: the nav row is in the band, every button on the screen`,
-    navTop.length >= 6 && navTop.every((n) => n.box.y >= o.band.y - 1 && n.box.b <= Hh + 1 && n.box.x >= -1 && n.box.r <= W + 1),
+    navTop.length >= 5 /* v2.3.4153: the owner's five buttons */ && navTop.every((n) => n.box.y >= o.band.y - 1 && n.box.b <= Hh + 1 && n.box.x >= -1 && n.box.r <= W + 1),
     navTop.map((n) => ({ id: n.id, box: n.box })));
 
   /* ── the bag's tiles fit the box ── */
@@ -355,8 +355,9 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
     rec.ok(`${label}: a computer plays the upright layout -- no side column, no keys strip (the class still frees the shell)`,
       !!g.desk && g.desk.on === true && g.desk.active === false && !g.keysStrip,
       { desk: g.desk, keysStrip: g.keysStrip });
-    rec.ok(`${label}: the nav buttons keep their key caps (I P J L K O)`,
-      ['dashboard', 'hero', 'quests', 'skills', 'encyclopedia', 'more'].every((id) => (g.navs.find((n) => n.id === id) || {}).key),
+    /* v2.3.4153: five buttons (Life Skills went inside Bro: L opens its page) */
+    rec.ok(`${label}: the nav buttons keep their key caps (I P J K O)`,
+      ['dashboard', 'hero', 'quests', 'encyclopedia', 'more'].every((id) => (g.navs.find((n) => n.id === id) || {}).key),
       g.navs.map((n) => ({ id: n.id, key: n.key })));
     /* v2.3.4152: every page key opens its page inside the band, and Esc
        closes it (deskKeys.js; the key each button wears is the key it obeys) */
@@ -376,7 +377,7 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
       keyed.push({ ...c, mode: k.mode, root: k.root, h: k.o && k.o.band && k.o.band.h, after: e.mode });
     }
     rec.ok(`${label}: each page key opens its page inside the band at the band's height, and Esc closes it`,
-      caps.length >= 5 && keyed.every((k) => k.mode === 'expanded' && Math.abs((k.h || 0) - rest.h) <= 1 && k.after === 'bar'),
+      caps.length >= 4 && keyed.every((k) => k.mode === 'expanded' && Math.abs((k.h || 0) - rest.h) <= 1 && k.after === 'bar'),
       keyed);
     /* I is the bag: at rest it folds the band away and brings it back (the
        fold control's job, deskKeys.js navKey) */
