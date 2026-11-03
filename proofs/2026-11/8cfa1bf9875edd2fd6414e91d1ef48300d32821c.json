@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8cfa1bf9875edd2fd6414e91d1ef48300d32821c",
+  "tree": "b1323054a03fe29e0631088eb6287a50f83a5660",
+  "committedAt": "2026-11-03T05:44:58-08:00",
+  "subject": "Merge pull request #1414 from hemibroscommunity-del/claude/slime-no-chunks",
+  "files": 7537,
+  "bytes": 858026148,
+  "listingSha256": "95543d7ad06b816454f638e20503593aeec8a56924cf8e59bb2803ff231b501b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
