@@ -142,7 +142,7 @@ mirrors the same structure. Also for the number required and gold too".
   - The first cut of v2.3.3139 put bows and staffs on bars by their wood's
     tier; the owner's answer replaced it with hardened wood.
 - **Hardened wood** is made at the Woodworker: one log of a tree makes one,
-  as one ore makes a bar (since v2.3.3912, the owner's one-to-one; it was
+  as one ore makes a bar (since v2.3.3981, the owner's one-to-one; it was
   five each, and `onetoone: false` brings that back) (`server/src/hardenedwood.js`,
   its own spec: `docs/specs/hardened-wood.md`). So the n bars or hardened wood
   an attempt at H(n) takes are n ore or logs now, five times cheaper.

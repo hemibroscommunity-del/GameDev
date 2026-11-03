@@ -212,7 +212,7 @@ export const SHOP = {
     /* v2.3.2822: smelted bars (smelting.js). Five ore go into one, so a bar
        is priced above the five ore it cost (5 x 40 = 200) -- smelting before
        selling is worth a little, never a loss.
-       v2.3.3912: ONE ore goes into one (the owner's one-to-one), so 48: the
+       v2.3.3981: ONE ore goes into one (the owner's one-to-one), so 48: the
        ore's 40 and the same fifth on top (240 / 200).  At 240 a 40-coin ore
        became a 240-coin bar -- buy his ore, smelt, sell him the bar (120) --
        a gold tap.  He pays 24 for a bar and asks 48, the ore 20 and 40:
@@ -233,7 +233,7 @@ export const SHOP = {
        the bar's margin -- hardening before selling is worth a little, never a
        loss.  Its keys are `hardened_<tier>`, never `wood_`, so no log price
        reaches it.
-       v2.3.3912: one log goes into one, so 29: the log's 24 and the bar's
+       v2.3.3981: one log goes into one, so 29: the log's 24 and the bar's
        fifth on top (28.8, rounded up).  He pays 14 and asks 29, a log 12 and
        24 -- the same rule as the bar's.  `onetoone: false` puts back 144. */
     hardened_: 29,
@@ -288,9 +288,9 @@ export const SHOP = {
      quest, the old daily chest paid more to open than 20.  Kept as the
      number the three keys above were held to. */
   BASE_DEFAULT: 20,
-  /* v2.3.3912: the two families' prices while `onetoone: false` brings back
+  /* v2.3.3981: the two families' prices while `onetoone: false` brings back
      five ore a bar and five logs a hardened wood (smelting.js _oneToOneOff):
-     the prices they had until v2.3.3912, priced on five raw items each.
+     the prices they had until v2.3.3981, priced on five raw items each.
      _shopBaseValue lays these over BASE, so a bar is never sold at its
      one-to-one price while it costs five ore to make, nor bought at its
      five-to-one price while it costs one. */
@@ -404,7 +404,7 @@ export const shopMethods = {
     for (const pre in SHOP.BASE) {
       if (pre.length > best && shopFamilyMatch(k, pre)) { best = pre.length; val = SHOP.BASE[pre]; fam = pre; }
     }
-    /* v2.3.3912: the five-to-one prices while the switch is off */
+    /* v2.3.3981: the five-to-one prices while the switch is off */
     if (fam && Object.prototype.hasOwnProperty.call(SHOP.FIVE_TO_ONE, fam)
       && typeof this._oneToOneOff === 'function' && this._oneToOneOff()) val = SHOP.FIVE_TO_ONE[fam];
     return val;

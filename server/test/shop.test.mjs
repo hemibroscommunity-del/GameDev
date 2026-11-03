@@ -305,7 +305,7 @@ check('...and a huge one is capped', many.items.length < 100, many.items.length)
   check('a key that only CONTAINS a family has no price (was 250,000 for xessence_godly_..., a bar for crowbar_)',
     lookalikes.every((k) => room._shopBaseValue(k) === null), lookalikes.map((k) => [k, room._shopBaseValue(k)]));
   check('...while the families still price their own: a prefix, a remains suffix, a camelCase exact',
-    room._shopBaseValue('essence_godly_iron') === 250000 && room._shopBaseValue('bar_iron') === 48 /* v2.3.3912: was 240 */ && room._shopBaseValue('slime-remnants') === 18
+    room._shopBaseValue('essence_godly_iron') === 250000 && room._shopBaseValue('bar_iron') === 48 /* v2.3.3981: was 240 */ && room._shopBaseValue('slime-remnants') === 18
       && room._shopBaseValue('manaShard') === 18 && room._shopBaseValue('cooked_fish_trout') === 45 && room._shopBaseValue('crop_carrot') === 8);
 
   /* he neither buys nor sells what has no price */
@@ -691,7 +691,7 @@ check('a refused drink keeps the bottle and heals nothing',
   room._liveFlags = keep;
 }
 
-/* ═══ v2.3.3912: ONE ORE A BAR, ONE LOG A HARDENED WOOD -- NO GOLD TAP ═══
+/* ═══ v2.3.3981: ONE ORE A BAR, ONE LOG A HARDENED WOOD -- NO GOLD TAP ═══
    The owner's one-to-one (smelting.js, hardenedwood.js) took a bar from five
    ore to one, and Diego's bar from 240 to 48 (hardened wood 144 to 29).  At
    the old prices a 40-coin ore smelted into a bar he paid 120 for.  For every

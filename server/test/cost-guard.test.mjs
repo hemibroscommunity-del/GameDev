@@ -29,7 +29,7 @@
  *      (they wrote 200 and ~250);
  *  10. v2.3.3513: a gem set into a weapon writes the record once, and a
  *      refused ask writes nothing (weapongem.js);
- *  11. v2.3.3912: one ore a bar -- smelting or hardening all writes the
+ *  11. v2.3.3981: one ore a bar -- smelting or hardening all writes the
  *      record once, and an ask with nothing to pay writes nothing;
  * A line here may move when a feature really needs the rows: say so in the
  * PR, in plain words, as the memory budget asks (CLAUDE.md).
@@ -445,7 +445,7 @@ const FAST = 110;
   check(`10. ...and 100 refused asks in ~1 s write ${refused.length} rows (none)`, refused.length === 0, byPrefix(refused));
 }
 
-/* ── 11. one ore a bar, one log a hardened wood (v2.3.3912) ────────────── */
+/* ── 11. one ore a bar, one log a hardened wood (v2.3.3981) ────────────── */
 /* The one-to-one makes five times the bars from the same ore, never five
    times the rows: "All" is one message and one row however many it makes
    (smelting.js, hardenedwood.js), and an ask the bag cannot pay for writes

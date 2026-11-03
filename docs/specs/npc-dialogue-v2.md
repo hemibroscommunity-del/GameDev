@@ -207,7 +207,7 @@ talking, then the job:
   him, the City Council "in a different hat", a parade "right after the bank
   and a guy named Steve".
 - **Blacksmith Bro**, the gym bro: he hurt his back picking up a protein shake,
-  "every swing's a rep", the "skinny-guy discount" (gone in v2.3.3912: one ore makes one bar), a protein nap he doesn't
+  "every swing's a rep", the "skinny-guy discount" (gone in v2.3.3981: one ore makes one bar), a protein nap he doesn't
   skip.
 - **Woodworker Bro**, the scientist: "BroTown's most advanced woodworking lab,
   which is also the only one, which is also my garage", eleven years of pine,

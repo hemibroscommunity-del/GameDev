@@ -4,10 +4,10 @@
  * each time you smelt it into a bar."
  *
  * A real client against a real worker, through the real door:
- *   1. Walk to the Blacksmith's door in the Wheel's BroTown (v2.3.3912: it
+ *   1. Walk to the Blacksmith's door in the Wheel's BroTown (v2.3.3981: it
  *      played the retired old map until then), enter -- the Smelting rows
  *      are there.
- *   2. Smelt takes 1 copper ore (v2.3.3912, the owner's one-to-one; it was 5)
+ *   2. Smelt takes 1 copper ore (v2.3.3981, the owner's one-to-one; it was 5)
  *      and gives 1 Copper Bar, and Smithing XP goes up by the row's promised
  *      amount (80).
  *   3. Smelt all makes every bar the ore pays for, in one request.
@@ -39,7 +39,7 @@ const waitBag = (P, pred, ms = 6000) => P.page.waitForFunction((src) => {
 }, pred, { timeout: ms }).then(() => true).catch(() => false);
 
 export async function run({ browser, wsPort, webPort, rec }) {
-  /* v2.3.3912: in the Wheel, a phone (it played the retired old map) */
+  /* v2.3.3981: in the Wheel, a phone (it played the retired old map) */
   const P = await H.newPlayer(browser, { name: 'Smith', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, world: 'wheel' });
   await H.enterWorld(P);
   const inWheel = await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }), (v) => v.zone === 'wheel' && !v.loading,
@@ -52,7 +52,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   const caps = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.smelting));
   rec.ok('the worker advertises caps.smelting', caps);
-  /* v2.3.3912: and one ore a bar (caps.onetoone) */
+  /* v2.3.3981: and one ore a bar (caps.onetoone) */
   const one1 = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.onetoone));
   rec.ok('the worker advertises caps.onetoone', one1);
 

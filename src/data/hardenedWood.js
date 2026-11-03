@@ -8,9 +8,9 @@
  * draws the Woodworker's Harden tab (logs, level, XP), names the bag's
  * pieces and tells the Harden rows which wood a bow takes.  `logName` is the
  * tree's own bag name (gathering.js TREE), for the rows' "5 Pine Logs each"
- * (v2.3.3912: logWord, "1 Pine Log").
+ * (v2.3.3981: logWord, "1 Pine Log").
  *
- * v2.3.3912: ONE LOG A PIECE (the owner: "still wood to hardened wood but
+ * v2.3.3981: ONE LOG A PIECE (the owner: "still wood to hardened wood but
  * only require 5 instead of 25"), each piece's XP a fifth of the old.  Only
  * against a worker that says caps.onetoone: otherwise (an old worker, or
  * `onetoone: false`) the old five-to-one, HARDENED_WOOD_FIVE laid over the
@@ -29,7 +29,7 @@ export const HARDENED_WOOD_RECIPES = Object.freeze({
   hardened_maple: Object.freeze({ log: 'wood_maple_wood', logCost: 1, minLvl: 20, xp: 240, tier: 'maple', name: 'Hardened Maple Wood', logName: 'Maple Wood', logPlural: 'Maple Wood' }),
 });
 export const HARDENED_WOOD_MAX_PER_REQUEST = 50;
-/* v2.3.3912: the old five-to-one (server hardenedwood.js HARDENED_WOOD.FIVE;
+/* v2.3.3981: the old five-to-one (server hardenedwood.js HARDENED_WOOD.FIVE;
    mirror-audit) */
 export const HARDENED_WOOD_FIVE = Object.freeze({
   hardened_pine: Object.freeze({ logCost: 5, xp: 400 }),
@@ -38,14 +38,14 @@ export const HARDENED_WOOD_FIVE = Object.freeze({
   hardened_cedar: Object.freeze({ logCost: 5, xp: 1000 }),
   hardened_maple: Object.freeze({ logCost: 5, xp: 1200 }),
 });
-/* v2.3.3912: the row the worker will settle -- one log a piece against a
+/* v2.3.3981: the row the worker will settle -- one log a piece against a
    worker that advertises caps.onetoone, five without it.  null for a key not
    the table's own. */
 export function hardenedWoodRecipe(key, oneToOne) {
   if (typeof key !== 'string' || !Object.prototype.hasOwnProperty.call(HARDENED_WOOD_RECIPES, key)) return null;
   return oneToOne ? HARDENED_WOOD_RECIPES[key] : { ...HARDENED_WOOD_RECIPES[key], ...HARDENED_WOOD_FIVE[key] };
 }
-/* v2.3.3912: "1 Pine Log", "5 Pine Logs" */
+/* v2.3.3981: "1 Pine Log", "5 Pine Logs" */
 export const logWord = (r, n) => (r ? (n === 1 ? r.logName : r.logPlural) : '');
 
 /* The hardened wood each WOODWORKING_TIERS wood takes, in that table's order

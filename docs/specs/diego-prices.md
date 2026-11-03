@@ -80,7 +80,7 @@ pickaxe neither bought nor sold out of his pile) still holds for the pile.
 Tested in `server/test/shop.test.mjs` "a lost tool, bought back" and
 `tools/qa/mp/mp-toolshelf.mjs`.
 
-## v2.3.3912: a bar 48, a hardened wood 29
+## v2.3.3981: a bar 48, a hardened wood 29
 
 One ore makes one bar and one log one hardened wood now (docs/specs/smelting.md
 "One ore, one bar"), so the two families are priced on ONE raw item plus the

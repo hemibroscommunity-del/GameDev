@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   AMULET_TIERS, BLACKSMITH_TIERS, BT_AUDIO, LIFE_SKILL_XP, NUGGETS_PER_BAR,
-  SMELT_RECIPES, smeltRecipe /* v2.3.3912: one ore a bar, with caps.onetoone */, WEAPON_STASH_MAX, gemExtractCost, /* v2.3.3524: getGearStatReq moved into data/forgeLadder.js forgeStatReq */
+  SMELT_RECIPES, smeltRecipe /* v2.3.3981: one ore a bar, with caps.onetoone */, WEAPON_STASH_MAX, gemExtractCost, /* v2.3.3524: getGearStatReq moved into data/forgeLadder.js forgeStatReq */
   ARMOR_FORGE_RECIPES, getArmorPieceDr, armorDefReq, /* v2.3.3092: bars into armor */
 } from '@/data/index.js';
 import { armorIconFor } from '@/rendering/gearVariants.js'; /* v2.3.3092: each metal's plate and greaves */
@@ -206,7 +206,7 @@ function SmeltTab({ S, inv, lvl, ask, busy }) {
   return (
     <div data-smelt-section="1">
       {Object.keys(SMELT_RECIPES).map((key) => {
-        /* v2.3.3912: one ore a bar against a worker that says so, five without */
+        /* v2.3.3981: one ore a bar against a worker that says so, five without */
         const r = smeltRecipe(key, !!(S._serverCaps && S._serverCaps.onetoone));
         const ore = Math.floor(inv[r.ore] || 0);
         const can = Math.floor(ore / r.oreCost);

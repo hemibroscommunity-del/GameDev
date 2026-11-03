@@ -7,17 +7,17 @@
  *
  *   1. caps.hardenedwood is advertised; the table is five woods, five logs
  *      each, smelting's levels and XP carried on.
- *   2. One make takes exactly 1 Pine Log (v2.3.3912; was 5), gives one Hardened Pine Wood and
+ *   2. One make takes exactly 1 Pine Log (v2.3.3981; was 5), gives one Hardened Pine Wood and
  *      pays Woodworking XP, and answers hardened_wood_result + player_state.
  *   3. "All" makes only what the logs pay for, and pays XP per piece.
  *   4. Refusals, each with a reason and nothing taken: short of logs, below
  *      the wood's Woodworking level, a junk / inherited key, a forged count.
  *   5. The keys are never logs: no `wood_` key, so the campfire, the bag's
  *      log rules and the log price never reach them.
- *   6. It sells to the vendor for more than the log it cost (v2.3.3912; was
+ *   6. It sells to the vendor for more than the log it cost (v2.3.3981; was
  *      five), and buying his logs to sell it back loses.
  *   7. The kill switch refuses and un-advertises.
- *   8. v2.3.3912: ONE LOG A PIECE (the owner: "still wood to hardened wood
+ *   8. v2.3.3981: ONE LOG A PIECE (the owner: "still wood to hardened wood
  *      but only require 5 instead of 25").  caps.onetoone is advertised;
  *      `onetoone: false` brings back five logs a piece, the old XP and the old
  *      price, and takes the cap back.
@@ -75,14 +75,14 @@ const ww = () => (ps().lifeSkills && ps().lifeSkills.woodworking) || { level: 1,
 {
   const sync = ws.sent.find((m) => m.type === 'state_sync' && m.caps);
   check('caps.hardenedwood is advertised', !!sync && sync.caps.hardenedwood === true);
-  check('five woods, one log each (v2.3.3912: the owner\'s one-to-one), each from its own tree\'s log',
+  check('five woods, one log each (v2.3.3981: the owner\'s one-to-one), each from its own tree\'s log',
     Object.keys(RC).join() === 'hardened_pine,hardened_softwood,hardened_hardwood,hardened_cedar,hardened_maple'
       && Object.values(RC).every((r) => r.logCost === 1)
       && Object.values(RC).map((r) => r.log).join() === 'wood_pine_log,wood_softwood,wood_hardwood,wood_cedar_wood,wood_maple_wood', RC);
   check('...each the hardening material of its own WOODWORKING_TIERS wood, in that table\'s order',
     Object.values(RC).every((r) => Object.prototype.hasOwnProperty.call(WOODWORKING_TIERS, r.tier) && 'wood_' + WOODWORKING_TIERS[r.tier].wood === r.log)
       && Object.values(RC).map((r) => Object.keys(WOODWORKING_TIERS).indexOf(r.tier)).join() === '0,1,2,3,4');
-  check('...at the bars\' levels and XP carried on (Woodworking 1/5/10/15/20, 80 to 240 XP: v2.3.3912, a fifth of 400 to 1,200)',
+  check('...at the bars\' levels and XP carried on (Woodworking 1/5/10/15/20, 80 to 240 XP: v2.3.3981, a fifth of 400 to 1,200)',
     Object.values(RC).map((r) => r.minLvl).join() === '1,5,10,15,20' && Object.values(RC).map((r) => r.xp).join() === '80,120,160,200,240');
   check('...named "hardened (name) wood", the tree\'s own name in the middle',
     Object.values(RC).map((r) => r.name).join() === 'Hardened Pine Wood,Hardened Softwood,Hardened Hardwood,Hardened Cedar Wood,Hardened Maple Wood');
@@ -103,7 +103,7 @@ const ww = () => (ps().lifeSkills && ps().lifeSkills.woodworking) || { level: 1,
 
 // ── 3. All ──
 {
-  ps().inventory.wood_pine_log = 20;          /* v2.3.3912: 20 pieces, no log left (was 23 logs -> 4) */
+  ps().inventory.wood_pine_log = 20;          /* v2.3.3981: 20 pieces, no log left (was 23 logs -> 4) */
   delete ps().inventory.hardened_pine;
   ps().lifeSkills.woodworking = { level: 1, xp: 0 };
   const r = await make(ws, { key: 'hardened_pine', count: 50 });
@@ -166,7 +166,7 @@ const ww = () => (ps().lifeSkills && ps().lifeSkills.woodworking) || { level: 1,
   const hw = room._shopBaseValue('hardened_pine');
   const log = room._shopBaseValue('wood_pine_log');
   check('hardened wood is worth more to the vendor than the log it cost', hw > log * R.logCost, { hw, log });
-  /* v2.3.3912: and not so much more that buying his logs to sell him
+  /* v2.3.3981: and not so much more that buying his logs to sell him
      hardened wood pays (he buys at half his price) */
   check('...but his offer for it is under what he asks for its log (no buying logs to sell hardened wood): 29 vs 24',
     hw === 29 && room._shopBuyPrice('hardened_pine', 0) < room._shopSellPrice('wood_pine_log') * R.logCost, { hw, log, offer: room._shopBuyPrice('hardened_pine', 0) });
@@ -187,7 +187,7 @@ const ww = () => (ps().lifeSkills && ps().lifeSkills.woodworking) || { level: 1,
   room._liveFlags = {};
 }
 
-// ── 8. v2.3.3912: one log a piece, and its switch ──
+// ── 8. v2.3.3981: one log a piece, and its switch ──
 {
   room._liveFlags = {};
   const ws3 = fakeWs();

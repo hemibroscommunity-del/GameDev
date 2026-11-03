@@ -704,7 +704,7 @@ export const dailyRewardsMethods = {
       const fire = tool('woodcutting') || this._dqHolds(ps, 'wood_') >= 1;
       return fish && fire;
     }
-    /* v2.3.3912: the ore its bars take -- one a bar, five with `onetoone:
+    /* v2.3.3981: the ore its bars take -- one a bar, five with `onetoone:
        false` (smelting.js _smeltRecipe) */
     if (id === 'smelt') {
       const r = typeof this._smeltRecipe === 'function' ? this._smeltRecipe('bar_copper') : null;

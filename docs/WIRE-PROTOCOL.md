@@ -855,7 +855,7 @@ up to 450 px from you and asks from there (docs/specs/pet-fetch.md).
 `petfetch: false` in the live flags un-advertises the cap and puts every pile
 back on 240.
 
-**One ore a bar (v2.3.3912, caps.onetoone):** no new message types.
+**One ore a bar (v2.3.3981, caps.onetoone):** no new message types.
 `smelt_bar` takes one ore a bar and `make_hardened_wood` one log a piece (a
 `no-logs` refusal's `need` is 1), paying a fifth of the old XP; the game draws
 its rows from its one-to-one tables only with the cap, and the old five

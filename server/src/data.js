@@ -921,7 +921,7 @@ export const QUEST_REWARDS = {
       /* Five copper ore, which he smelts into FIVE bars (five ore made one at
          the bench: smelting.js) -- the owner: "making 5 bars on your own by
          mining the ore would be too time consuming for the demo".
-         v2.3.3912: one ore makes one bar at the bench now, so it is a fair
+         v2.3.3981: one ore makes one bar at the bench now, so it is a fair
          swap, as his line says. */
       smith_1: {gold:20,  xp:0, next:'smith_2', after:'tut_1',
                 objective:{type:'collect', invKey:'ore_copper_ore', count:5, consume:true},
@@ -933,7 +933,7 @@ export const QUEST_REWARDS = {
       smith_2: {gold:60,  xp:0, next:null, after:'smith_1',
                 objective:{type:'craft', what:'smith', count:1}},
       /* Five pine logs, which he hardens into FIVE hardened pine (five logs
-         made one at the bench: hardenedwood.js; v2.3.3912: one log one). */
+         made one at the bench: hardenedwood.js; v2.3.3981: one log one). */
       wood_1:  {gold:20,  xp:0, next:'wood_2', after:'tut_1',
                 objective:{type:'collect', invKey:'wood_pine_log', count:5, consume:true},
                 grantOnAccept:[{kind:'inv', key:'woodcutting_axe', n:1, max:1}],
@@ -1210,7 +1210,7 @@ export const BLACKSMITH_TIERS = {
          with them: a sword, a greatsword, a torso and greaves take FIVE bars
          (was four; armorforge.js the same), a bow and a staff five hardened
          wood (WOODWORKING_TIERS below) -- 25 ore or 25 logs a piece then
-         (v2.3.3912: five, one ore a bar and one log a hardened wood, the
+         (v2.3.3981: five, one ore a bar and one log a hardened wood, the
          owner's "5 raw to turn into 5 processed"), and the
          tour's five copper bars and five hardened pine make exactly one each.
          The pay moves with the bars, as v2.3.3141's did: 200 / 300 / 400 a

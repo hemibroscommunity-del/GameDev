@@ -11,7 +11,7 @@
  * doors:
  *   1. the worker advertises caps.hardenmats (and caps.harden);
  *   2. twelve copper ore smelted at the Blacksmith (Smithing 5, twelve bars;
- *      v2.3.3912: one ore a bar, was sixty),
+ *      v2.3.3981: one ore a bar, was sixty),
  *      a wooden greatsword forged into the hand -- the wood tier, so copper
  *      bars;  v2.3.3524: a COPPER greatsword from four of them (the wood tier
  *      is not forged any more -- the owner: "'wood greatsword' is not an
@@ -115,7 +115,7 @@ async function body({ P, wsPort, rec, errors }) {
   await H.devOp(wsPort, 'quests', me, {});
   await P.page.waitForFunction(() => { const q = (window._gameState.current.rpg || {})._quests || {}; return q.tut_1 === 'turnedIn'; }, null, { timeout: 8000 }).catch(() => {});
   await H.closeNpcDialogue(P).catch(() => {});
-  /* v2.3.3912: one ore a bar (caps.onetoone): twelve ore for the twelve bars,
+  /* v2.3.3981: one ore a bar (caps.onetoone): twelve ore for the twelve bars,
      and Smithing 5 set (the admin lever, as Woodworking is below) -- twelve
      bars at 80 XP no longer reach it, as sixty ore at five a bar did */
   await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 12 });
@@ -347,11 +347,11 @@ async function body({ P, wsPort, rec, errors }) {
     make: (() => { const b = el.querySelector('[data-hw-make]'); return b ? { t: b.textContent.trim(), d: b.disabled } : null; })() })));
   const pineRow = tab0.find((r) => r.key === 'hardened_pine') || null;
   const softRow = tab0.find((r) => r.key === 'hardened_softwood') || null;
-  /* v2.3.3912: one log a piece (caps.onetoone), 80 XP */
+  /* v2.3.3981: one log a piece (caps.onetoone), 80 XP */
   rec.ok(`the Hardened tab: five woods, each its own picture; Hardened Pine Wood wants 1 Pine Log (+80 XP), Softwood waits on Woodworking 5 ("${pineRow && pineRow.text}" / "${softRow && softRow.text}")`,
     tab0.length === 5 && tab0.every((r) => r.img) && !!pineRow && /Hardened Pine Wood/.test(pineRow.text) && /0\/1/.test(pineRow.text) && /\+80 XP/.test(pineRow.text)
       && pineRow.make && pineRow.make.d && !!softRow && /Woodworking 5/.test(softRow.text) && softRow.make && softRow.make.d, tab0);
-  await H.grant(wsPort, me, 'item', { invKey: 'wood_pine_log', count: 2 });   /* v2.3.3912: two logs, two pieces (was twelve) */
+  await H.grant(wsPort, me, 'item', { invKey: 'wood_pine_log', count: 2 });   /* v2.3.3981: two logs, two pieces (was twelve) */
   await P.page.waitForFunction(() => ((window._gameState.current.rpg.inventory || {}).wood_pine_log || 0) >= 2, null, { timeout: 8000 }).catch(() => {});
   await P.page.waitForSelector('[data-hw-all="hardened_pine"]', { timeout: 4000 }).catch(() => {});
   const allTxt = await P.page.$eval('[data-hw-all="hardened_pine"]', (b) => b.textContent.trim()).catch(() => null);

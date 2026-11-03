@@ -26,7 +26,7 @@ export const NUGGETS_PER_BAR = 5;
    server/src/smelting.js SMELT.RECIPES -- the worker settles every smelt from
    its own copy; this one only draws the Smelting rows (cost, XP, level).
    mirror-audit pins the two together.
-   v2.3.3912: ONE ORE A BAR (the owner: "I just want 5 raw to turn into 5
+   v2.3.3981: ONE ORE A BAR (the owner: "I just want 5 raw to turn into 5
    processed"), each bar's XP a fifth of the old one's.  A worker says so in
    caps.onetoone; against one that does not (an old worker, or `onetoone:
    false`) the rows are the old five-to-one, SMELT_FIVE laid over these --
@@ -37,13 +37,13 @@ export const SMELT_RECIPES = {
   bar_iron: { ore: 'ore_iron_ore', oreCost: 1, minLvl: 5, xp: 120, name: 'Iron Bar', oreName: 'Iron Ore' },
   bar_black_steel: { ore: 'ore_black_steel_ore', oreCost: 1, minLvl: 10, xp: 160, name: 'Black Steel Bar', oreName: 'Black Steel Ore' },
 };
-/* v2.3.3912: the old five-to-one (server smelting.js SMELT.FIVE; mirror-audit) */
+/* v2.3.3981: the old five-to-one (server smelting.js SMELT.FIVE; mirror-audit) */
 export const SMELT_FIVE = {
   bar_copper: { oreCost: 5, xp: 400 },
   bar_iron: { oreCost: 5, xp: 600 },
   bar_black_steel: { oreCost: 5, xp: 800 },
 };
-/* v2.3.3912: the row the worker will settle -- one ore a bar against a worker
+/* v2.3.3981: the row the worker will settle -- one ore a bar against a worker
    that advertises caps.onetoone, five without it.  null for a key not the
    table's own. */
 export function smeltRecipe(key, oneToOne) {

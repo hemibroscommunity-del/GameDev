@@ -16,7 +16,7 @@ Server: `server/src/hardenedwood.js` (`HARDENED_WOOD`). Game's copy:
 `src/ui/panels/buildings/HardenedWoodTab.jsx`. Tests: `server/test/hardenedwood.test.mjs`,
 `hardening` suite §8c, `mp-hardenbars`.
 
-**Since v2.3.3912 one log makes one hardened wood** (the owner: "So still
+**Since v2.3.3981 one log makes one hardened wood** (the owner: "So still
 wood to hardened wood but only require 5 instead of 25"): the table below
 shows the numbers now, the old five-to-one in brackets. The switch and the
 either-side-first rule are smelting's: docs/specs/smelting.md "One ore, one
@@ -35,7 +35,7 @@ bar".
 - **Mirrors the bars**: five of the raw material each, the levels five apart
   (smelting is Smithing 1 / 5 / 10), and the XP the bars pay (400 / 600 / 800)
   carried on two more steps: each log earns 80 XP when it is hardened, as each
-  ore does when it is smelted. (v2.3.3912: one log each, and still 80 XP a
+  ore does when it is smelted. (v2.3.3981: one log each, and still 80 XP a
   pine log: the XP a piece is a fifth of what it was.)
 - **Names**: the owner's "hardened (name) wood", the tree's own bag name in the
   middle; Softwood and Hardwood already say wood.
@@ -47,7 +47,7 @@ bar".
 
 The Woodworker has a fourth choice beside Bow, Staff and Traps: **Harden**
 (the four go two by two on a phone). Its tab lists the five woods: the picture,
-how many you hold, your logs against the one needed (five before v2.3.3912), the XP, or the
+how many you hold, your logs against the one needed (five before v2.3.3981), the XP, or the
 Woodworking level it waits on; **Make** makes one and **All n** as many as the
 logs pay for (up to 50).
 
@@ -63,7 +63,7 @@ logs pay for (up to 50).
   `__proto__` and friends make nothing; `count` is clamped to 1-50 and then to
   what the logs on hand pay for.
 - The game says it over your head: "+2 Hardened Pine Wood", "+160
-  Woodworking XP" (v2.3.3912; +800 at five logs a piece), a level's
+  Woodworking XP" (v2.3.3981; +800 at five logs a piece), a level's
   celebration; a refusal's reason ("Need 1 Pine Log", the worker's own
   count, "Need 5 Pine Logs" at five; "Requires Woodworking 5").
 
@@ -73,9 +73,9 @@ logs pay for (up to 50).
   (`public/icons/items/hardened-<wood>.webp`, made from the tree's own log
   picture by `tools/make_hardened_wood_icons.py`: the sprigs taken off, the
   wood darkened, two iron bands round it). A log's card says "Light a
-  campfire, or harden 1 into Hardened Pine Wood at the Woodworker" (5 before v2.3.3912); a hardened
+  campfire, or harden 1 into Hardened Pine Wood at the Woodworker" (5 before v2.3.3981); a hardened
   wood's says "Hardens a pine bow or staff at the Woodworker".
-- **Shop**: the `hardened_` family at 29 (v2.3.3912; 144 before, and with
+- **Shop**: the `hardened_` family at 29 (v2.3.3981; 144 before, and with
   `onetoone: false`), above the log it cost (24) by the bar's margin over its
   ore. He pays 14 for one and asks 24 for a log, so buying his logs to sell
   him hardened wood loses (the shop suite's "no gold tap").
@@ -87,7 +87,7 @@ logs pay for (up to 50).
 
 - `caps.hardenedwood` gates the Harden tab and, with `caps.hardenmats`, a bow's
   or a staff's hardening material.
-- `onetoone: false` (v2.3.3912) brings back five logs a piece, the old XP
+- `onetoone: false` (v2.3.3981) brings back five logs a piece, the old XP
   and 144, and un-advertises `caps.onetoone`; the Harden tab draws five again
   (`hardenedWoodRecipe(key, caps.onetoone)`, `HARDENED_WOOD_FIVE`).
 - `hardenedwood: false` in liveflags refuses every make (`off`), un-advertises

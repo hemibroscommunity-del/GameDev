@@ -14,7 +14,7 @@ bars smelt too (Smithing 5 and 10, 600 and 800 XP a bar), and the Blacksmith's
 Armor tab forges a torso or greaves in each metal. See
 docs/specs/armor-forge.md.
 
-**Since v2.3.3912 one ore makes one bar** (the owner: "Remove all references
+**Since v2.3.3981 one ore makes one bar** (the owner: "Remove all references
 to 5 resources requiring 25 of its inputs. I just want 5 raw to turn into 5
 processed"). See "One ore, one bar" below; the numbers in this spec are the
 one-to-one ones, with the old five-to-one beside them.
@@ -23,13 +23,13 @@ one-to-one ones, with the old five-to-one beside them.
 
 - The Blacksmith panel (the door in town) has a **Smelting** section at the
   top: the Copper Bar, how many you hold, `ore/1 Copper Ore → 1 bar · +80
-  Smithing XP` (v2.3.3912; `ore/5`, +400 before, and still against a worker
+  Smithing XP` (v2.3.3981; `ore/5`, +400 before, and still against a worker
   without `caps.onetoone`), and **Smelt** / **Smelt all (n)**.
 - Short of ore, the button reads "Need N more ore" and does nothing.
 - Smelting shows "+1 Copper Bar" and "+80 Smithing XP" over the player with the
   collect chime, and a Smithing level-up gets the usual life-skill celebration.
 - In the bag the bar is "Copper Bar" with its own picture. Copper ore's detail
-  line says "Smelt 1 into a Copper Bar at the Blacksmith" (5 before v2.3.3912).
+  line says "Smelt 1 into a Copper Bar at the Blacksmith" (5 before v2.3.3981).
 - The vendor buys a bar for more than the ore it cost (base 48 vs 40; it was
   240 vs 5 × 40).
 
@@ -37,14 +37,14 @@ one-to-one ones, with the old five-to-one beside them.
 
 | | |
 |---|---|
-| Ore per bar | 1 `ore_copper_ore` (5 until v2.3.3912) |
-| XP per bar | 80 Smithing XP, paid per bar (400 until v2.3.3912) |
+| Ore per bar | 1 `ore_copper_ore` (5 until v2.3.3981) |
+| XP per bar | 80 Smithing XP, paid per bar (400 until v2.3.3981) |
 | Level needed | Smithing 1 |
 | Smelt all | up to 50 bars per request, clamped to the ore on hand |
 
 400 XP: a cooked fish pays 200 for one catch, and a bar was five trips to a
 rock. Eight bars (forty ore) took Smithing from 1 to the copper forge tier (6).
-Since v2.3.3912 a bar is one ore and 80 XP, so the same forty ore (forty bars)
+Since v2.3.3981 a bar is one ore and 80 XP, so the same forty ore (forty bars)
 reach the same level.
 Every number is one line in `SMELT.RECIPES` (server) and its mirror
 `SMELT_RECIPES` (client, `src/data/items.js`); the mirror-audit suite fails if
@@ -85,7 +85,7 @@ its `METALS` table plus one line in `BAR_THUMBS` (`InventoryPanel.jsx`).
   the Blacksmith door, presses E, smelts, smelts all, double-taps, and checks
   the short-of-ore state and the art.
 
-## One ore, one bar (v2.3.3912)
+## One ore, one bar (v2.3.3981)
 
 The owner, 2026-11-02, his "yes" to row 11 of docs/OWNER-LIST-2026-10-26.md:
 

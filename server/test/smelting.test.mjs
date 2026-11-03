@@ -4,14 +4,14 @@
  * smelt it into a bar."
  *
  *   1. caps.smelting is advertised.
- *   2. One smelt takes exactly 1 copper ore (v2.3.3912; was 5), gives one Copper Bar and pays
+ *   2. One smelt takes exactly 1 copper ore (v2.3.3981; was 5), gives one Copper Bar and pays
  *      Smithing XP, and answers smelt_result + player_state.
  *   3. "Smelt all" smelts only what the ore pays for, and pays XP per bar.
  *   4. Refusals: short of ore, a junk / inherited key, a forged huge count.
- *   5. A bar sells to the vendor for more than the ore it cost (v2.3.3912;
+ *   5. A bar sells to the vendor for more than the ore it cost (v2.3.3981;
  *      was five), and buying his ore to sell him bars loses.
  *   6. The kill switch refuses and un-advertises.
- *   7. v2.3.3912: ONE ORE A BAR (the owner: "I just want 5 raw to turn into 5
+ *   7. v2.3.3981: ONE ORE A BAR (the owner: "I just want 5 raw to turn into 5
  *      processed").  caps.onetoone is advertised; `onetoone: false` brings
  *      back five ore a bar, the old XP and the old bar price, and takes the
  *      cap back; an old phone that still counts five ore a bar is given the
@@ -59,7 +59,7 @@ const smelt = async (ws, payload) => {
 };
 
 const R = SMELT.RECIPES.bar_copper;
-/* v2.3.3912: one ore (the owner's "5 raw to turn into 5 processed"), and a
+/* v2.3.3981: one ore (the owner's "5 raw to turn into 5 processed"), and a
    fifth of the old bar's 400 XP, so Smithing levels at the same pace per ore */
 check('a copper bar costs 1 copper ore (the owner\'s one-to-one) and pays 80 Smithing XP', R.oreCost === 1 && R.ore === 'ore_copper_ore' && R.xp === 80, R);
 
@@ -88,7 +88,7 @@ const smith = () => (ps().lifeSkills && ps().lifeSkills.blacksmithing) || { leve
 
 // ── 3. Smelt all ──
 {
-  ps().inventory.ore_copper_ore = 20;          /* v2.3.3912: 20 bars, no ore left (was 23 ore -> 4 bars) */
+  ps().inventory.ore_copper_ore = 20;          /* v2.3.3981: 20 bars, no ore left (was 23 ore -> 4 bars) */
   delete ps().inventory.bar_copper;
   ps().lifeSkills.blacksmithing = { level: 1, xp: 0 };
   const r = await smelt(ws, { barKey: 'bar_copper', count: 50 });
@@ -134,7 +134,7 @@ const smith = () => (ps().lifeSkills && ps().lifeSkills.blacksmithing) || { leve
   const bar = room._shopBaseValue('bar_copper');
   const ore = room._shopBaseValue('ore_copper_ore');
   check('a bar is worth more to the vendor than the ore it cost', bar > ore * R.oreCost, { bar, ore });
-  /* v2.3.3912: and not so much more that buying his ore to sell him bars
+  /* v2.3.3981: and not so much more that buying his ore to sell him bars
      pays: he sells at the base and buys at half of it (SHOP.BUY_RATE) */
   check('...but his offer for a bar is under what he asks for its ore (no buying ore to sell bars): 48 vs 40',
     bar === 48 && room._shopBuyPrice('bar_copper', 0) < room._shopSellPrice('ore_copper_ore') * R.oreCost, { bar, ore, offer: room._shopBuyPrice('bar_copper', 0) });
@@ -143,7 +143,7 @@ const smith = () => (ps().lifeSkills && ps().lifeSkills.blacksmithing) || { leve
 // ── 5b. v2.3.3092: iron and black steel, the armor forge's other metals ──
 {
   const I = SMELT.RECIPES.bar_iron, B = SMELT.RECIPES.bar_black_steel;
-  check('iron and black steel bars: one of their own ore each (v2.3.3912), Smithing 5 and 10, 120 and 160 XP',
+  check('iron and black steel bars: one of their own ore each (v2.3.3981), Smithing 5 and 10, 120 and 160 XP',
     !!I && !!B && I.ore === 'ore_iron_ore' && B.ore === 'ore_black_steel_ore' && I.oreCost === 1 && B.oreCost === 1
     && I.minLvl === 5 && B.minLvl === 10 && I.xp === 120 && B.xp === 160, { I, B });
   ps().lifeSkills.blacksmithing = { level: 4, xp: 0 };
@@ -175,7 +175,7 @@ const smith = () => (ps().lifeSkills && ps().lifeSkills.blacksmithing) || { leve
   check('...and the next join is told smelting is off', !!sync && sync.caps.smelting === false);
 }
 
-// ── 7. v2.3.3912: one ore a bar, and its switch ──
+// ── 7. v2.3.3981: one ore a bar, and its switch ──
 {
   room._liveFlags = {};
   const ws3 = fakeWs();

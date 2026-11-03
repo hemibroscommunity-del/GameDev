@@ -78,7 +78,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* v2.3.3524: 25 ore -- five bars: four for the copper greatsword, one for
      its first hardening (there is no wood tier to forge from logs any more).
      v2.3.3525: 30 ore, six bars -- the tour made it FIVE a piece.
-     v2.3.3912: 6 ore, still six bars -- one ore a bar (caps.onetoone) */
+     v2.3.3981: 6 ore, still six bars -- one ore a bar (caps.onetoone) */
   await H.grant(wsPort, me, 'item', { invKey: 'ore_copper_ore', count: 6 });
   await H.grant(wsPort, me, 'gold', { amount: 600 });
   await P.page.waitForTimeout(1200);
