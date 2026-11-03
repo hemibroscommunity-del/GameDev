@@ -416,8 +416,11 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
 /* ═══ v2.3.4152: A COMPUTER: THE BAND'S CONTENT CENTRED ═══
    The nav row, an open page and the resting columns (BottomDashboard's
    data-band-box) are centred, as wide as the world above (--play-w) and at
-   most 1200 px; the band's own background the window's width (v2.3.4172: the world's width, the bars' edges). */
-const BAND_MAX_W = 1200;
+   most 1200 px; the band's own background the window's width (v2.3.4172: the world's width, the bars' edges).
+   v2.3.4182: one assembly, one width -- at most 840 px (sheetGeometry
+   BAND_ASSEMBLY_MAX_W; the owner: the buttons "should be part of the
+   dashboard assembly the same way it appears on mobile"). */
+const BAND_MAX_W = 840;
 const bandBoxes = (P) => P.page.evaluate(() => {
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width > 0 ? { x: Math.round(b.left), r: Math.round(b.right), w: Math.round(b.width) } : null; };
   const o = window.__btOneBand ? window.__btOneBand() : {};
@@ -456,7 +459,7 @@ async function centredChecks(P, rec, { label }) {
        (the owner on #1386: "Make the edge of the dashboard stop at the black
        bars width"; mp-bandshots measures its edges against the canvas) */
     const pw = rest.playW || w;
-    rec.ok(`${label} ${w}x${h}: the band's content is centred at ${want} px (the world's width, at most ${BAND_MAX_W}), the band itself the world's width (${pw} px)`,
+    rec.ok(`${label} ${w}x${h}: the band's content is centred at ${want} px (the band's width, at most ${BAND_MAX_W}), the band itself the world's width (${pw} px)`,
       !!rest.band && Math.abs(rest.band.w - pw) <= 2 && Math.abs(rest.band.x - (w - pw) / 2) <= 2 && ok(rest.nav, want, w) && ok(rest.cols, want, w) && ok(open.page, want, w) && ok(open.nav, want, w),
       { rest, open, want });
   }

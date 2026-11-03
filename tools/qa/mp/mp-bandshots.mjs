@@ -2,7 +2,8 @@
  *
  * The one band is the default on every screen (#1410, src/ui/oneBand.js):
  * the band at the bottom, its content centred in [data-band-box] on a
- * computer or tablet (min(1200 px, the world's width)), a phone on its side
+ * computer or tablet (v2.3.4182: min(840 px, the band's width): sheetGeometry
+ * BAND_ASSEMBLY_MAX_W; it was min(1200 px, the world's width)), a phone on its side
  * resting folded.  The Gear tab (#1388) is the band at rest; the Bro card
  * (sheet/BroCard.jsx) lays itself out from the box it gets.  This takes the
  * PR's pictures and checks, on each screen:
@@ -33,6 +34,15 @@
  *     touch-action: manipulation, inside its panel, one picked; a tap (a
  *     mouse click on a computer) on Bow picks the bow's stats and shows its
  *     "N / M XP", and ~4 s later the picture is back, Bow still picked.
+ * v2.3.4182, the owner at a computer: "the gray dashboard still exceeds the
+ * black bars" and the buttons "should be part of the dashboard assembly the
+ * same way it appears on mobile".  So also, at 1280 x 720, 1440 x 900 (no
+ * bars: the world fits) and 1920 x 1080: the screen's pixels just outside the
+ * world, from the band's top down, are the bars' black; and with Gear, Bro,
+ * Quests and More open the nav row's edges are the tab's box's, the box
+ * min(--band-max-w, the band) and centred, CLOSE at its left edge and the
+ * fifth button at its right.  On a phone the row is as it was (no
+ * data-nav-fill).
  * Pictures: tools/qa/mp/out/band-{gear,bro}-{desk,desk1080,side,up}.png
  * (docs/shots/ has them on 256 colours).
  */
@@ -98,6 +108,85 @@ const skillTiles = (P) => P.page.evaluate(() => [...document.querySelectorAll('[
 const OUT = join(H.REPO, 'tools/qa/mp/out');
 const shot = async (P, name) => { try { mkdirSync(OUT, { recursive: true }); await P.page.screenshot({ path: join(OUT, `${name}.png`) }); } catch (e) { /* a picture only */ } };
 
+/* ═══ v2.3.4182: NO GRAY PAST THE BARS, AND ONE ASSEMBLY ═══
+   The owner, at a computer: "I noticed the gray dashboard still exceeds the
+   black bars that I wanted fixed.  Also look at where the dashboard buttons
+   are relative to the content area.  They're all shifted to the left.  They
+   should be part of the dashboard assembly the same way it appears on
+   mobile".  Two reads:
+     - the screen's own PIXELS just outside the world's left and right edges,
+       from the band's top to the screen's bottom: every one the bars' black
+       (#070D11, within a few levels), so no part of the band -- a child, a
+       shadow, a corner, a pseudo-element -- is drawn past the world;
+     - the nav row's edges against the open tab's box ([data-band-box]: the
+       resting columns for Gear, the page for Bro, Quests and More): the same
+       two edges, the box min(--band-max-w, the band's width) and centred in
+       the band, CLOSE at its left edge and the fifth button at its right. */
+const barPixels = async (P) => {
+  const g = await P.page.evaluate(() => {
+    const r = (e) => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, t: b.top, b: b.bottom }; };
+    const c = document.querySelector('.brotown-wrap canvas'); const d = document.querySelector('.bt-dashboard');
+    return c && d ? { c: r(c), d: r(d), vw: innerWidth, vh: innerHeight, dpr: devicePixelRatio } : null;
+  });
+  if (!g || g.c.l < 4) return { bars: false, g };
+  const png = await P.page.screenshot();
+  const res = await P.page.evaluate(async ({ b64, g }) => {
+    const im = new Image();
+    await new Promise((ok, no) => { im.onload = ok; im.onerror = no; im.src = 'data:image/png;base64,' + b64; });
+    const cv = document.createElement('canvas'); cv.width = im.width; cv.height = im.height;
+    const cx = cv.getContext('2d'); cx.drawImage(im, 0, 0);
+    const k = im.width / g.vw;
+    const bar = Math.min(g.c.l, g.vw - g.c.r);
+    const xs = [g.c.l - 1.5, g.c.l - Math.min(8, bar / 2), 1, g.c.r + 1, g.c.r + Math.min(8, bar / 2), g.vw - 1.5];
+    let n = 0; const bad = [];
+    for (const x of xs) for (let y = Math.max(0, g.d.t - 16); y < g.vh - 1; y += 3) {
+      const px = cx.getImageData(Math.floor(x * k), Math.floor(y * k), 1, 1).data;
+      n += 1;
+      /* the bars' #070D11 (7, 13, 17), a few levels either way */
+      if (Math.abs(px[0] - 7) > 8 || Math.abs(px[1] - 13) > 8 || Math.abs(px[2] - 17) > 8) bad.push([Math.round(x), Math.round(y), px[0], px[1], px[2]]);
+    }
+    return { n, bad: bad.slice(0, 6), nBad: bad.length };
+  }, { b64: png.toString('base64'), g });
+  return { bars: true, g, ...res };
+};
+
+const assemblyBoxes = (P) => P.page.evaluate(() => {
+  const r = (e) => { if (!e) return null; const b = e.getBoundingClientRect(); if (b.width < 1 || b.height < 1) return null; return { l: Math.round(b.left * 10) / 10, r: Math.round(b.right * 10) / 10, w: Math.round(b.width * 10) / 10 }; };
+  const dash = r(document.querySelector('.bt-dashboard'));
+  const nav = r(document.querySelector('[data-band-box="nav"]'));
+  const page = r(document.querySelector('[data-band-box="page"]'));
+  const cols = r(document.querySelector('[data-band-box="cols"]'));
+  const close = r(document.querySelector('[data-dash-close]'));
+  const btns = [...document.querySelectorAll('[data-band-box="nav"] [data-nav]')].map(r).filter(Boolean);
+  const maxW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--band-max-w')) || 0;
+  const b = window.__broDashPanelBus;
+  return { dash, nav, page, cols, close, first: btns[0] || null, last: btns[btns.length - 1] || null, n: btns.length, maxW,
+    words: (document.querySelector('[data-band-box="nav"] .bt-navrail') || { getAttribute: () => null }).getAttribute('data-nav-words'),
+    mode: b && b.state.mode, cur: b && b.current && b.current() };
+});
+
+/* one tab open: the nav row and that tab's box are one centred block */
+async function assembly(P, tag, tab, rec) {
+  if (tab === 'gear') {
+    await P.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) { /* no band */ } });
+    await P.page.waitForTimeout(500);
+    await H.unfoldBand(P).catch(() => {});
+  } else {
+    await P.page.evaluate((t) => { if (t === 'hero') { try { window.__btHeroSection.request('Card'); } catch (e) { /* older card */ } } window.__broDashPanelBus.open(t); }, tab);
+  }
+  await P.page.waitForTimeout(1200);
+  const a = await assemblyBoxes(P);
+  const box = tab === 'gear' ? a.cols : a.page;
+  const want = a.dash ? Math.min(a.maxW, a.dash.w) : 0;
+  const ok = !!a.nav && !!box && !!a.dash && !!a.close && !!a.last && a.n === 5 && a.maxW > 0
+    && Math.abs(a.nav.l - box.l) <= 1 && Math.abs(a.nav.r - box.r) <= 1
+    && Math.abs(box.w - want) <= 1
+    && Math.abs((box.l - a.dash.l) - (a.dash.r - box.r)) <= 1
+    && a.close.l - box.l <= 6 && box.r - a.last.r <= 10;
+  rec.ok(`${tag}: ${tab} open -- the nav row and the tab are one centred block (nav ${a.nav && a.nav.l}..${a.nav && a.nav.r}, ${tab === 'gear' ? 'columns' : 'page'} ${box && box.l}..${box && box.r}, ${box && box.w} px = min(${a.maxW}, band ${a.dash && a.dash.w}); CLOSE at ${a.close && a.close.l}, the fifth button ends ${a.last && a.last.r})`, ok, a);
+  return a;
+}
+
 const look = (P) => P.page.evaluate(() => {
   const vis = (e) => !!e && e.getBoundingClientRect().width > 0 && e.getBoundingClientRect().height > 0;
   const box = (e) => { if (!e) return null; const r = e.getBoundingClientRect(); return { l: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width), t: Math.round(r.top), h: Math.round(r.height) }; };
@@ -129,27 +218,41 @@ const look = (P) => P.page.evaluate(() => {
 
 /* v2.3.4172: on a computer, the band at rest: its edges are the world's, the
    bars run black to the bottom, and nothing over the world moved for it */
-async function deskEdges(D, tag, rec) {
+async function deskEdges(D, tag, rec, bars = true) {
   await D.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) { /* no band */ } });
   await D.page.waitForTimeout(600);
   await H.unfoldBand(D).catch(() => {});
   await D.page.waitForTimeout(1200);
   const e = await edges(D);
   rec.ok(`${tag}: the band stops where the bars begin (band ${e.dash && e.dash.l}..${e.dash && e.dash.r}, world ${e.canvas && e.canvas.l}..${e.canvas && e.canvas.r}, ${e.vw} px wide)`,
-    !!e.dash && !!e.canvas && e.canvas.l >= 4 && Math.abs(e.dash.l - e.canvas.l) <= 1 && Math.abs(e.dash.r - e.canvas.r) <= 1, e);
-  rec.ok(`${tag}: under the band the bar is the page's colour, as above it (below ${e.below && e.below.tag} ${e.below && e.below.bg}, above ${e.above && e.above.tag} ${e.above && e.above.bg})`,
+    !!e.dash && !!e.canvas && (bars ? e.canvas.l >= 4 : true) && Math.abs(e.dash.l - e.canvas.l) <= 1 && Math.abs(e.dash.r - e.canvas.r) <= 1, e);
+  /* v2.3.4182: a screen whose world fits (1440 x 900: 657 px of world is
+     wider than 2.2 : 1 allows only past 1445) has no bars to look under */
+  if (bars) rec.ok(`${tag}: under the band the bar is the page's colour, as above it (below ${e.below && e.below.tag} ${e.below && e.below.bg}, above ${e.above && e.above.tag} ${e.above && e.above.bg})`,
     !!e.below && !!e.above && !e.below.inBand && e.below.tag !== 'canvas' && e.below.bg === e.above.bg, { below: e.below, above: e.above });
+  /* v2.3.4182: the screen's own pixels past the world's edges, the band's
+     height to the bottom: the bars' black, never the band's gray */
+  const px = await barPixels(D);
+  rec.ok(`${tag}: no gray past the world's edges (${px.bars ? `${px.n} pixels sampled outside ${px.g.c.l}..${px.g.c.r} from y ${Math.round(px.g.d.t) - 16}, ${px.nBad} not the bars' black` : `no bars at ${px.g && px.g.vw} x ${px.g && px.g.vh}: the world is the screen's width`})`,
+    !px.bars ? (!!px.g && Math.abs(px.g.c.l) <= 1 && Math.abs(px.g.d.l) <= 1 && Math.abs(px.g.d.r - px.g.vw) <= 1) : px.nBad === 0, px);
   /* the old full-width band forced back for a moment: the world's furniture
      must be where it is now */
   await D.page.evaluate((css) => { const st = document.createElement('style'); st.id = 'qa-old-band'; st.textContent = css; document.head.appendChild(st); }, OLD_BAND_CSS);
   await D.page.waitForTimeout(1200);
   const o = await edges(D);
+  /* v2.3.4182: ...and the pixel read sees that old band's gray past the
+     world (so its "none" above is a reading, not a blind spot) */
+  if (bars) {
+    const pxOld = await barPixels(D);
+    rec.ok(`${tag}: the pixel read does see a band drawn past the bars (the old full-width band: ${pxOld.nBad} of ${pxOld.n} not black)`, pxOld.bars && pxOld.nBad > 20, { bad: pxOld.bad });
+  }
   await D.page.evaluate(() => { const st = document.getElementById('qa-old-band'); if (st) st.remove(); });
   await D.page.waitForTimeout(1200);
   const moved = Object.keys(e.hud).filter((k) => JSON.stringify(e.hud[k]) !== JSON.stringify(o.hud[k]));
   const seen = Object.keys(e.hud).filter((k) => e.hud[k]);
   rec.ok(`${tag}: nothing over the world moved for it (the old full-width band was ${o.dash && o.dash.l}..${o.dash && o.dash.r}; measured: ${seen.join(', ')}; moved: ${moved.join(', ') || 'none'})`,
-    !!o.dash && Math.abs(o.dash.l) <= 1 && moved.length === 0 && seen.includes('pill') && seen.includes('pf') && seen.includes('mini'), { now: e.hud, old: o.hud });
+    /* v2.3.4182: not the player frame -- main's #1422 (v2.3.4163) took it off the game screen */
+    !!o.dash && Math.abs(o.dash.l) <= 1 && moved.length === 0 && seen.includes('pill') && seen.includes('mini'), { now: e.hud, old: o.hud });
   await shot(D, `band-edge-${tag}`);
 }
 
@@ -213,14 +316,22 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.equipWeapon(D, 'greatsword', 'weapon', 'melee').catch(() => null);
     await D.page.waitForTimeout(1500);
     await deskEdges(D, 'desk', rec);
+    for (const t of ['gear', 'hero', 'quests', 'more']) await assembly(D, 'desk', t, rec);
     const d = await both(D, 'desk', rec);
     rec.ok(`desk: the one band (the default) and three panels side by side in its centred box`, d.oneBand && d.cols === 3, { oneBand: d.oneBand, cols: d.cols });
+    /* v2.3.4182: a 1440 x 900 window (the world fits: no bars) */
+    await D.page.setViewportSize({ width: 1440, height: 900 });
+    await D.page.waitForTimeout(2000);
+    await deskEdges(D, 'desk900', rec, false);
+    for (const t of ['gear', 'hero', 'quests', 'more']) await assembly(D, 'desk900', t, rec);
     await D.page.setViewportSize({ width: 1920, height: 1080 });
     await D.page.waitForTimeout(2000);
     await deskEdges(D, 'desk1080', rec);
+    for (const t of ['gear', 'hero', 'quests', 'more']) await assembly(D, 'desk1080', t, rec);
     const d2 = await both(D, 'desk1080', rec);
+    /* v2.3.4182: the block is sheetGeometry's BAND_ASSEMBLY_MAX_W (was min(1200, the world)) */
     rec.ok(`desk1080: the box stays centred and capped (${d2.page && d2.page.w} px of 1920, left ${d2.page && d2.page.l})`,
-      !!d2.page && d2.page.w <= 1200 && Math.abs((d2.page.l + d2.page.r) / 2 - 960) < 120, d2.page);
+      !!d2.page && d2.page.w <= 840 && Math.abs((d2.page.l + d2.page.r) / 2 - 960) <= 1, d2.page);
   } finally {
     stopD();
     await D.page.context().close().catch(() => {});
@@ -248,6 +359,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const e = await edges(P);
       rec.ok(`${tag}: the band spans the screen (${e.dash && e.dash.l}..${e.dash && e.dash.r} of ${e.vw} px; world ${e.canvas && e.canvas.l}..${e.canvas && e.canvas.r})`,
         !!e.dash && Math.abs(e.dash.l) <= 1 && Math.abs(e.dash.r - e.vw) <= 1, e);
+      /* v2.3.4182: a phone's row is the derivation's own, not the filled block */
+      const fill = await P.page.evaluate(() => !!document.querySelector('[data-nav-fill]'));
+      rec.ok(`${tag}: the nav row is a phone's (not filled to a block)`, !fill, { fill });
       const b = await both(P, tag, rec);
       if (tag === 'side') rec.ok(`side: the card at ${b.card && b.card.w} px is ${b.cols} columns (from its own width)`, b.cols === 3, { cols: b.cols });
       else rec.ok(`up: the card at ${b.card && b.card.w} px is 2 columns (you | the doors, the stats under them)`, b.cols === 2, { cols: b.cols });
