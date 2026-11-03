@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ea49f60548f9724ff336a8ae7187b424d0feb462",
+  "tree": "2c14f73fe836050846c1ec76ae3f110a08816911",
+  "committedAt": "2026-11-02T19:07:52-08:00",
+  "subject": "Merge pull request #1369 from hemibroscommunity-del/claude/lagoon-climb",
+  "files": 7432,
+  "bytes": 845615586,
+  "listingSha256": "8e6a3d09f3fb292360fe517f2b75c89457cdb50f4e26bf6e47fc8c77ce11b92b",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
