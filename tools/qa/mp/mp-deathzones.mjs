@@ -191,14 +191,20 @@ const state = (P, id) => P.page.evaluate((mid) => ({
   z: window.__btDeathZones ? window.__btDeathZones() : null,
 }), id);
 
-const boxOf = (P, id) => P.page.evaluate((mid) => {
+const boxOf = (P, id, tight) => P.page.evaluate(([mid, tight]) => {
   const S = window._gameState.current, m = (S.monsters || []).find((x) => x.id === mid);
   if (!m || !S.camera) return null;
   const c = document.querySelector('canvas').getBoundingClientRect();
   const kx = S._worldScaleX || 1, ky = S._worldScaleY || 1;
   const cx = c.left + (m.x - S.camera.x) * kx, cy = c.top + (m.y - 40 - S.camera.y) * ky;
+  /* v2.3.4127: `tight` -- a slime's picture, close round its body (the
+     world is drawn small: a slime is a couple of dozen px across) */
+  if (tight) {
+    const fy = c.top + (m.y - S.camera.y) * ky;
+    return { x: Math.max(0, Math.round(cx - 45)), y: Math.max(0, Math.round(fy - 50)), width: 90, height: 64 };
+  }
   return { x: Math.max(0, Math.round(cx - 110)), y: Math.max(0, Math.round(cy - 110)), width: 220, height: 170 };
-}, id);
+}, [id, !!tight]);
 
 /* until its look is in and the living body is drawn (a Wheel monster whose
    look is not ready is not drawn at all) */
@@ -427,18 +433,27 @@ export async function run({ browser, wsPort, webPort, rec }) {
         if (!(alive && alive.s && alive.s.visible)) { await release(P); return { err: 'not drawn' }; }
         await P.page.evaluate(([k, off]) => { window.__btDeathSlow = k; if (off) window.__btSlimeSplat = false; else delete window.__btSlimeSplat; }, [o.shot && !o.off ? 40 : SP, !!o.off]);
         if (o.burst) await P.page.evaluate((id) => { const m = window.__qaDZ.list.find((x) => x.id === id); m._burstPeakFrom = Date.now(); m._burstScale = 1.6; }, mid);
-        const box = await boxOf(P, mid);
+        const box = await boxOf(P, mid, !!o.shot);
+        if (o.shot && box) await P.page.screenshot({ path: `${OUT}/${o.shot}-0-alive.png`, clip: box }).catch(() => {});
         await kill(P, [mid], kind, o.hit || null);
         const t0 = Date.now();
         if (o.shot && box) {
           /* by the death's own clock (TRAPS §200): the splat once it lies
              flat, the strip a while into its flecks */
-          for (let i = 0; i < 60; i++) {
-            const d = (await state(P, mid)).d;
-            if (o.off ? Date.now() - t0 > o.shotAt * SP : (d && d.flat && d.flat[1] < 0.3)) break;
-            await P.page.waitForTimeout(250);
+          /* the strip plays by the wall clock (no slow motion): three
+             pictures as it goes; the splat half-flat, then flat */
+          if (o.off) {
+            for (let i = 1; i <= 3; i++) await P.page.screenshot({ path: `${OUT}/${o.shot}-${i}.png`, clip: box }).catch(() => {});
+          } else {
+            for (const [i, below] of [[1, 0.6], [2, 0.25]]) {
+              for (let n = 0; n < 60; n++) {
+                const d = (await state(P, mid)).d;
+                if (d && d.flat && d.flat[1] < below) break;
+                await P.page.waitForTimeout(200);
+              }
+              await P.page.screenshot({ path: `${OUT}/${o.shot}-${i}.png`, clip: box }).catch(() => {});
+            }
           }
-          await P.page.screenshot({ path: `${OUT}/${o.shot}.png`, clip: box }).catch(() => {});
         }
         let bursts = 0;
         while (Date.now() - t0 < (o.off ? 1900 * SP : 700 * (o.shot ? 40 : SP)) + 1500) {
@@ -453,11 +468,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
         return { w, bursts, after: after.d };
       };
       /* the picture for the owner: the old death (the strip's flecks), then the splat */
-      const before = await splatDeath('slime', null, 'normal', { off: true, shot: 'slime-death-before', shotAt: 330 });
+      const before = await splatDeath('slime', null, 'normal', { off: true, shot: 'slime-death-before' });
       rec.ok('12. (the old death, for the before picture: ?slimesplat=0 plays the strip)', !!(before.w && before.w.first && before.w.first.kind === 'normal'), before.w && before.w.first);
       const CASES = [
         ['slime', null, null, {}, 'a slime, unforced'],
-        ['slime', null, 'own', { shot: 'slime-death-after', shotAt: 260 }, 'a slime, its own death forced'],
+        ['slime', null, 'own', { shot: 'slime-death-after' }, 'a slime, its own death forced'],
         ['slime', null, 'slice', {}, 'a slime, sliced forced'],
         ['slime', null, 'normal', { hit: { isCrit: true } }, 'a slime, the strip forced, by a crit'],
         ['blueslime', 'blueSlime', null, {}, 'a blue slime'],
