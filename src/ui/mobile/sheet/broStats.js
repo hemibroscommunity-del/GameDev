@@ -33,16 +33,22 @@
 import { calcDisplayDmgRange, calcDisplayDps, weaponForCat } from '../../../data/gameSystems.js';
 import { TILE } from '../../../data/constants.js';
 import { prog3ActiveCat } from '../../../data/prog3.js';
-import { deriveHeroStats } from './heroModel.js';
+import { deriveHeroStats, COMBAT_SKILLS } from './heroModel.js';
 import { heroStatPills, HERO_PILL_ICON } from './heroStatPills.js';
 import { autoSwingMs, reachOf } from './statSim.js';
 
 /* the selector's three, in the mockup's order: the prog3 category, the
-   rpg's activeSlot that means it, the button's word and picture */
+   rpg's activeSlot that means it, the button's word and picture.
+   v2.3.4162: the picture is the Gear tab's own combat-skill tile's (heroModel
+   COMBAT_SKILLS: Melee, Bow, Magic -- GearTab.jsx's WEAPON_SKILLS), the
+   owner on #1386: "Make the weapon icons above the combat stats larger and
+   just reuse the icons used on the 3 primary combat skills".  Read from that
+   one table, so the two never drift apart; no new art. */
+const SKILL_ICON = (key) => (COMBAT_SKILLS.find((s) => s.key === key) || {}).iconSrc;
 export const BRO_WEAPONS = Object.freeze([
-  Object.freeze({ cat: 'sword', slot: 'melee', label: 'Sword', icon: '/icons/ui/combat-melee.webp' }),
-  Object.freeze({ cat: 'bow', slot: 'ranged', label: 'Bow', icon: '/icons/ui/combat-bow.webp' }),
-  Object.freeze({ cat: 'staff', slot: 'staff', label: 'Staff', icon: '/icons/ui/combat-magic.webp' }),
+  Object.freeze({ cat: 'sword', slot: 'melee', label: 'Sword', icon: SKILL_ICON('power') }),
+  Object.freeze({ cat: 'bow', slot: 'ranged', label: 'Bow', icon: SKILL_ICON('agility') }),
+  Object.freeze({ cat: 'staff', slot: 'staff', label: 'Staff', icon: SKILL_ICON('mind') }),
 ]);
 const SLOT_OF = Object.freeze({ sword: 'melee', bow: 'ranged', staff: 'staff' });
 

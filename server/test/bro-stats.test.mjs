@@ -3,7 +3,8 @@
  * Sword | Bow | Staff over "Combat Stats"), and the Titles row's ask
  * (src/game/achievements.js askTitlePicker / takeTitlePicker).
  *
- *   1. thirteen rows in the drawing's order, each with a picture and an explainer
+ *   1. thirteen rows in the drawing's order, each with a picture and an explainer;
+ *      the selector's pictures are the Gear tab's combat-skill tiles'
  *   2. the weapon out reads what the Equipment window's pills read (one reader)
  *   3. another weapon reads ITS lane: crit points on the bow move the Bow
  *      column only; the shared stats are the same under every weapon
@@ -16,6 +17,7 @@ import { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, setProg3RelEn
 import { BRO_STAT_ROWS, BRO_WEAPONS, broWeaponStats, broStartWeapon } from '../../src/ui/mobile/sheet/broStats.js';
 import { heroStatPills } from '../../src/ui/mobile/sheet/heroStatPills.js';
 import { deriveHeroStats } from '../../src/ui/mobile/sheet/heroModel.js';
+import { WEAPON_SKILLS } from '../../src/ui/mobile/dash/combatSkill.js';
 import { askTitlePicker, takeTitlePicker } from '../../src/game/achievements.js';
 
 let failures = 0;
@@ -42,6 +44,11 @@ check('thirteen rows, the drawing\'s order', s1.rows.map((r) => r.label).join('|
 check('each has a picture and an explainer key', s1.rows.every((r) => r.icon && r.info), s1.rows.filter((r) => !r.icon || !r.info));
 check('three weapons: Sword, Bow, Staff', BRO_WEAPONS.map((w) => w.label).join(',') === 'Sword,Bow,Staff');
 check('BRO_STAT_ROWS is the list', BRO_STAT_ROWS.length === 13);
+/* v2.3.4162: the owner on #1386, "just reuse the icons used on the 3 primary
+   combat skills": the selector's pictures are the Gear tab's skill tiles' */
+check('the selector wears the Gear tab\'s combat-skill pictures (Melee, Bow, Magic)',
+  BRO_WEAPONS.map((w) => w.icon).join('|') === WEAPON_SKILLS.map((s) => s.iconSrc).join('|') && BRO_WEAPONS.every((w) => w.icon),
+  { bro: BRO_WEAPONS.map((w) => w.icon), gear: WEAPON_SKILLS.map((s) => s.iconSrc) });
 
 console.log('2. one reader');
 {

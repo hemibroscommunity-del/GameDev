@@ -415,7 +415,7 @@ async function oneBandChecks(P, rec, { label, viewport, upright, computer }) {
 /* ═══ v2.3.4152: A COMPUTER: THE BAND'S CONTENT CENTRED ═══
    The nav row, an open page and the resting columns (BottomDashboard's
    data-band-box) are centred, as wide as the world above (--play-w) and at
-   most 1200 px; the band's own background the window's width. */
+   most 1200 px; the band's own background the window's width (v2.3.4162: the world's width, the bars' edges). */
 const BAND_MAX_W = 1200;
 const bandBoxes = (P) => P.page.evaluate(() => {
   const r = (el) => { if (!el) return null; const b = el.getBoundingClientRect(); return b.width > 0 ? { x: Math.round(b.left), r: Math.round(b.right), w: Math.round(b.width) } : null; };
@@ -451,8 +451,12 @@ async function centredChecks(P, rec, { label }) {
   for (const [w, h] of [[1920, 1080], [1280, 720]]) {
     const { rest, open } = await at(w, h);
     const want = Math.min(BAND_MAX_W, rest.playW || w);
-    rec.ok(`${label} ${w}x${h}: the band's content is centred at ${want} px (the world's width, at most ${BAND_MAX_W}), the band itself the window's width`,
-      !!rest.band && rest.band.w >= w - 2 && ok(rest.nav, want, w) && ok(rest.cols, want, w) && ok(open.page, want, w) && ok(open.nav, want, w),
+    /* v2.3.4162: the band itself is the WORLD's width now, centred with it
+       (the owner on #1386: "Make the edge of the dashboard stop at the black
+       bars width"; mp-bandshots measures its edges against the canvas) */
+    const pw = rest.playW || w;
+    rec.ok(`${label} ${w}x${h}: the band's content is centred at ${want} px (the world's width, at most ${BAND_MAX_W}), the band itself the world's width (${pw} px)`,
+      !!rest.band && Math.abs(rest.band.w - pw) <= 2 && Math.abs(rest.band.x - (w - pw) / 2) <= 2 && ok(rest.nav, want, w) && ok(rest.cols, want, w) && ok(open.page, want, w) && ok(open.nav, want, w),
       { rest, open, want });
   }
 }
