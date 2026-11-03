@@ -173,6 +173,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const L = await H.newPlayer(browser, {
     name: 'InstalledL', wsPort, webPort, viewport: { width: 844, height: 390 },
     touch: true, dpr: 2, guest: true,
+    query: 'oneband=0',   /* v2.3.4152: the side column's dock is the old layout (the one band is the default) */
   });
   await H.enterWorld(L);
   await L.page.waitForTimeout(1200);

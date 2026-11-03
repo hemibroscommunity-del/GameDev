@@ -1537,7 +1537,10 @@ export const BottomDashboard = () => {
               wrote up as "the band paid for the toolbar TWICE", arriving by
               a new road: 34px of dead space above every panel on an
               installed phone, and 34px of panel falling off the bottom. */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
+          {/* v2.3.4152: data-band-box -- the band's content box (the page, the nav
+              row, the resting columns), centred at the world's width and at
+              most 1200 px on a wide screen (game.css html.bt-one-band block) */}
+          <div data-band-box="page" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', marginTop: 'calc(var(--dash-h, 145px) - var(--cols-h, 93px) - var(--sab, 0px))' }}>
             {/* ═══ v2.3.2320b: THE DRILL TITLE COMES BACK DOWN HERE ═══
                 v2.3.1922 moved it UP into the toolbar row, and its reasoning
                 was sound at the time: the 44px header it replaced sat in the
@@ -1677,7 +1680,7 @@ export const BottomDashboard = () => {
           and right-aligns, which is the "all the way to the right" ask and
           also frees the LEFT of this row — where the bag's filter chips now
           go while the Bag is open. */}
-      <div style={{
+      <div data-band-box="nav" style={{
         position: 'absolute',
         left: 0, right: 0,
         bottom: 'calc(var(--sab, 0px) + var(--cols-h, 93px))',
@@ -1868,7 +1871,7 @@ export const BottomDashboard = () => {
           destination already shows all of this at full size, and the
           panel keeps its height. */}
       {mode !== 'expanded' && !dashMin && !land && (
-        <div style={{
+        <div data-band-box="cols" style={{
           position: 'absolute',
           left: 0, right: 0,
           bottom: 'var(--sab, 0px)',

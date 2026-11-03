@@ -58,7 +58,7 @@ import { mapDetailFor, freeMapDetail } from './worldMapDetail.js';   /* v2.3.331
 import { folkDisplayName } from '../data/folkNames.js';          /* v2.3.4048: a pin's name is his nickname */
 import { questPinsOf, MAP_PIN } from '../game/questPins.js';       /* v2.3.3525: the townsfolk's quest pins */
 import { QUEST_PIN } from '../data/ownerIcons.js';                 /* v2.3.3525: ...in the owner's own pictures */
-import { deskWideActive } from './deskWide.js';                    /* v2.3.3830: the key sized from the column on a computer */
+import { deskBigActive } from './deskWide.js';                     /* v2.3.3830: the key sized from the column on a computer; v2.3.4152: either computer layout */
 import { GLYPHS, drawGlyph, glyphDetailColor } from './mapGlyphs.js';   /* v2.3.3780: each mark a little picture of what it is, the key the same */
 import { wheelBuildingIconCanvas } from '../rendering/wheelBuildingIcons.js';   /* v2.3.3522: each building's picture at its door */
 /* v2.3.4045: the two pins, blue and red -- the board's and the ones dropped
@@ -507,7 +507,7 @@ function WorldMap({ stateRef, onClose }) {
      layout is the size it is drawn; its widths are divided by it to stay
      where they were (the margin left of the Wheel sideways).  Phones never:
      the computer's wide layout only (deskWide.js). */
-  let keyK = deskWideActive() && cvBox && cvBox.oh
+  let keyK = deskBigActive() && cvBox && cvBox.oh
     ? Math.max(1, Math.min(2, Math.min(cvBox.ow, cvBox.oh * 390 / 715) / 390))
     : 1;
   if (keyK < 1.05) keyK = 1;   /* a step too small to see only blurs the words */

@@ -1,4 +1,13 @@
-/* ═══ v2.3.4072: ONE DASHBOARD ON EVERY SCREEN, TO TRY (?oneband=1) ═══
+/* ═══ v2.3.4072: ONE DASHBOARD ON EVERY SCREEN (v2.3.4152: THE DEFAULT) ═══
+ *
+ * v2.3.4152: THE DEFAULT, ON EVERY DEVICE.  The owner, 2026-11-03: "Move the
+ * left side menu to the bottom of screen on computer and all other devices if
+ * this isn't already being worked on".  That supersedes his earlier words the
+ * side column was built on -- sideways, "No I don't want an overlay over the
+ * world" (v2.3.2157) and "You can actually remove that whole bottom length bar
+ * now" (v2.3.2168); a computer, "base desktop off the landscape mode"
+ * (v2.3.3687).  The side column stays reachable for one device: `?oneband=0`,
+ * or the Test panel's "Side column (old layout)" row (docs/specs/one-band.md).
  *
  * The owner, 2026-11-02: "unification of all different screen types (mobile
  * landscape, portrait) desktop, tablet, etc to use the same layout and just
@@ -12,21 +21,15 @@
  * to determine the number of inventory slots ... Maintain minimum readable
  * text and touch-target sizes."
  *
- * THIS REVERSES EARLIER DECISIONS of his (sideways: "No I don't want an
- * overlay over the world", v2.3.2157; "You can actually remove that whole
- * bottom length bar now", v2.3.2168; a computer: "base desktop off the
- * landscape mode", v2.3.3687), so it ships OFF, behind this switch, for him to
- * try on a sideways phone and a computer before it becomes the default
- * (docs/specs/one-band.md).
- *
  * What the switch does, in two moves, both made where the layout already asks
  * its one question:
  *   - playIsLandscape() (playViewport.js) answers "no" and deskWideActive()
  *     (deskWide.js) answers "no", so every screen takes the UPRIGHT path --
  *     the band at the bottom, its nav row and fold pill, pages opening inside
  *     it, the controls above it -- exactly what an upright phone renders;
- *   - the band's height is min(the upright band, a third of the screen)
- *     (sheetGeometry.js barHeight), its contents laid out from the box they
+ *   - the band's height is today's upright band, and on a wider screen at
+ *     most the upright phone's 243 and a third of the screen (v2.3.4152:
+ *     never taller than today; sheetGeometry.js barHeight), its contents laid out from the box they
  *     get (oneBandLayout, OneBandColumns.jsx), and a world wider than the
  *     world rule allows gets bars at its sides (bandFootprint's barW).
  * `html.bt-desk-wide` stays on a computer: it is what frees #root from the
@@ -34,9 +37,11 @@
  * width; with the switch nothing in the JS reads it as the side column.
  *
  * The choice is the DEVICE's (localStorage), not the tab's, unlike ?deskwide:
- * the owner tries it from the installed app on his phone, which has no
- * address bar to type ?oneband=1 into -- the Test panel's row sets it, and
- * ?oneband=0 (or the row again) clears it. */
+ * the installed app has no address bar, so the Test panel's row sets it too.
+ * v2.3.4152: the stored key now records only an explicit OFF ('0').  Until
+ * v2.3.4152 '1' meant on and no key meant off; now no key (never asked, or an
+ * old "off", which was a removed key) and the old '1' both read ON, so a
+ * device that tried ?oneband=1 stays on and every other device moves over. */
 
 const KEY = 'bt_oneband';
 const CLS = 'bt-one-band';
@@ -45,15 +50,17 @@ export function oneBandWanted(search) {
   let q;
   try { q = new URLSearchParams(search != null ? search : (typeof location !== 'undefined' ? location.search : '')); } catch (e) { q = null; }
   const v = q ? q.get('oneband') : null;
+  /* v2.3.4152: on is the default, so ?oneband=1 clears the stored off and
+     ?oneband=0 stores it; only a stored '0' is off */
   if (v === '1' || v === 'on' || v === 'true') {
-    try { localStorage.setItem(KEY, '1'); } catch (e) { /* no storage: this load only */ }
+    try { localStorage.removeItem(KEY); } catch (e) { /* no storage: on anyway */ }
     return true;
   }
   if (v === '0' || v === 'off' || v === 'false') {
-    try { localStorage.removeItem(KEY); } catch (e) { /* nothing kept */ }
+    try { localStorage.setItem(KEY, '0'); } catch (e) { /* no storage: this load only */ }
     return false;
   }
-  try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; }
+  try { return localStorage.getItem(KEY) !== '0'; } catch (e) { return true; }
 }
 
 /* Is the one band on right now.  A class read, as deskWideActive is: cheap,
@@ -75,9 +82,10 @@ export function applyOneBand() {
 
 /* The Test panel's row: set the device's choice and reload into it.  The
    address's own ?oneband= is rewritten too, or a reload of a page opened with
-   ?oneband=1 would turn it straight back on. */
+   ?oneband=0 would turn it straight back off. */
 export function setOneBand(on) {
-  try { if (on) localStorage.setItem(KEY, '1'); else localStorage.removeItem(KEY); } catch (e) { /* the address carries it */ }
+  /* v2.3.4152: only the off is stored (on is the default) */
+  try { if (on) localStorage.removeItem(KEY); else localStorage.setItem(KEY, '0'); } catch (e) { /* the address carries it */ }
   try {
     const u = new URL(location.href);
     u.searchParams.set('oneband', on ? '1' : '0');

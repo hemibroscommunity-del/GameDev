@@ -13,7 +13,11 @@
  * media query as the lock, so a phone and a narrow window never see it.
  * `?narrow` (or `?deskwide=0`) is the upright column as it was, for the tab
  * (`?deskwide=1` the wide layout again); the phone tests' computer pages ask
- * for it unless they pass `wide: true` (tools/qa/mp/harness.mjs). */
+ * for it unless they pass `wide: true` (tools/qa/mp/harness.mjs).
+ *
+ * v2.3.4152: the one band is the default (src/ui/oneBand.js), so a computer
+ * plays the band at the bottom; this class still frees #root's aspect lock for
+ * it, and the side column described above is the old layout, `?oneband=0`. */
 
 import { oneBandActive } from './oneBand.js';   /* v2.3.4072 */
 
@@ -78,13 +82,39 @@ export function deskWideActive() {
   try {
     if (typeof document === 'undefined' || typeof window === 'undefined') return false;
     if (!document.documentElement.classList.contains('bt-desk-wide')) return false;
-    /* v2.3.4072: the one band (?oneband=1) keeps the class -- it frees #root
+    /* v2.3.4072: the one band (the default since v2.3.4152) keeps the class -- it frees #root
        from the upright aspect lock (game.css) so the band is the window's
        width -- but a computer then plays the upright layout, not the side
        column and the keys strip (src/ui/oneBand.js) */
     if (oneBandActive()) return false;
     return !!(window.matchMedia && window.matchMedia(FRAME_QUERY).matches);
   } catch (e) { return false; }
+}
+
+/* ═══ v2.3.4152: A COMPUTER PLAYING THE BAND ═══
+   The one band (the default since v2.3.4152, src/ui/oneBand.js) on a computer
+   window the shell rule applies to: the class on, the frame query matching.
+   The keys strip is gone there and the nav buttons wear their key caps, so
+   the controls list (KeyboardHintsPanel) starts folded to its ⌨ -- it had
+   come up over the world's bottom-left, above the band (B3's rough edge) --
+   until the player opens it (the ⌨ or H, kept in 'bt_kb_hints_off'). */
+export function deskBandActive() {
+  try {
+    if (typeof document === 'undefined' || typeof window === 'undefined') return false;
+    if (!document.documentElement.classList.contains('bt-desk-wide')) return false;
+    if (!oneBandActive()) return false;
+    return !!(window.matchMedia && window.matchMedia(FRAME_QUERY).matches);
+  } catch (e) { return false; }
+}
+
+/* v2.3.4152: a computer's window with room, in either layout -- the old side
+   column (deskWideActive) or the band (deskBandActive).  For what is a
+   COMPUTER'S SIZE rather than the column's: the building windows, the world
+   map's key, the swap hint's key words, the coach card's step aside.  The
+   column's own geometry keeps asking deskWideActive, and so does the doubled
+   minimap (wheelMiniSize.js: the band's world is too short for it). */
+export function deskBigActive() {
+  return deskWideActive() || deskBandActive();
 }
 
 export function applyDeskWide() {

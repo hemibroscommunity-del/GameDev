@@ -6902,6 +6902,74 @@ html.bt-one-band .bt-dashboard{
   right:var(--world-pad-r,0px)!important;
 }
 html.bt-one-band, html.bt-one-band body{background:#070D11}
+/* v2.3.4152: the one band is the default, so what is fixed OUTSIDE the wrap
+   and pinned to the window's left edge moves in with the world, as the
+   sideways layout's own rules do: the player frame (left 8 px: over the bar
+   on a computer and a sideways phone) and, on a computer, the controls' ⌨
+   and its strip (left 52 / 100 px, beside the bell, which rides the wrap) */
+html.bt-one-band .bt-pf{left:calc(max(var(--world-x,0px), var(--world-pad-l,0px)) + 8px)}
+html.bt-one-band .bt-kb-chip:not(.bt-kb-side *){left:calc(var(--world-x,0px) + 52px)}
+html.bt-one-band .bt-kb-hints[data-beside]:not(.bt-kb-side *){left:calc(var(--world-x,0px) + 100px);max-width:min(310px,calc(var(--play-w,100%) - 112px))}
+/* ═══ v2.3.4152: THE BAND'S CONTENT, CENTRED ON A WIDE SCREEN ═══
+   The owner: the dashboard "will need to adapt to the new redesign we're
+   adding for "gear" and "bro"".  Those mockups (the repo root's Gear and Bro
+   pictures) are three panels side by side at about 3.4 : 1, drawn for a
+   phone's width; stretched across a 1920 px window they would be three thin
+   strips with the pictures lost in the middle.  So on a computer or a tablet
+   the band's content box -- the nav row, an open page, the resting columns
+   (BottomDashboard's `data-band-box`) -- is centred, as wide as the world
+   above it (--play-w: its edges line up with the world's, bars and all) and
+   never wider than 1200 px: the widest a 191 px tall body stays a band of
+   three readable panels (a little over 6 : 1, each panel about the width of
+   the mockup's at a computer's 63 px tile), and the size a 1280 px laptop
+   window, the judges' commonest, nearly fills.  The band's own background
+   stays the screen's width.  Every tab inherits it (Lane A's Gear tab and the
+   Bro tab draw inside the page box).  Not sideways: a phone on its side
+   keeps the screen's width for its slots (the world there is narrower than
+   the band on purpose: 2.2 : 1 over a short world). */
+html.bt-one-band:not(.bt-band-side) [data-band-box]{
+  max-width:min(var(--band-max-w,1200px), var(--play-w,100%));
+  margin-left:auto!important;
+  margin-right:auto!important;
+}
+html.bt-one-band:not(.bt-band-side) [data-band-box="page"]{width:100%}
+/* ═══ v2.3.4152: A PHONE ON ITS SIDE: THE CONTROLS STEP ASIDE FOR AN OPEN BAND ═══
+   The owner's decision (bandSideways.js): sideways the band rests folded to
+   its button row; while it is OPEN (a page, or the resting columns) the world
+   above it is 260 px tall and the joysticks and the combat buttons would sit
+   on the player frame, the minimap and the band's own page, so they step
+   aside -- hidden and not touchable (visibility: a hidden box is never hit,
+   and it keeps its rect for the coach and the QA probes) -- and come back
+   the moment it folds.  The two touch zones go too: a drag on the world does
+   not start a walk under a page you are reading.  Lane D's controls are not
+   edited for this: each is found by the hook it already carries. */
+html.bt-band-side-open :is([data-joyzone], .bt-joystick-zone, .bt-rjoy-zone, [data-sprint], [data-ride], [data-quickeat],
+  [data-jump], [data-shield], [data-special], [data-weapon-tri], [data-weapon-pill], [data-ability], .bt-burst-btn, .bt-charge-pie, [data-trap-round]){
+  /* v2.3.4152: + the weapon pill (v2.3.4130), the triangle's successor */
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+/* ...and folded, they take the sideways geometry (bandSideways.js
+   ctlLandscape: the side column's world was short too).  They are already
+   inside the world's box: .brotown-wrap's `contain:paint` is the containing
+   block of every fixed control in it, so past 2.2 : 1 they stand in from the
+   bars with the world.  That geometry was laid out for a 390 px world; over
+   the folded row the world is 342 px (844 x 390), so two things meet that
+   never did, measured (mp-oneband):
+     - the attack disc's top corner and the minimap's plate (13 px): the disc
+       is drawn at 0.85 (80 px, its foot where it was: Jump, Block and Shield
+       Bash below and beside it keep their places), so its box ends under the
+       minimap's;
+     - Quick eat (the left cluster's top) and the player frame's foot (13
+       px): the left thumb's cluster -- the stick, Element Burst, Quick eat,
+       the weapon triangle -- sits 20 px lower (the stick's foot 50 px over
+       the row, the triangle's 50: both over the world, never the row).
+   Every touch target keeps 44 px (the disc 80, the cluster 54). */
+html.bt-band-side .bt-rjoy-zone{transform:scale(.85);transform-origin:50% 100%}
+html.bt-band-side :is(.bt-joystick-zone, [data-quickeat], [data-weapon-tri], .bt-burst-btn){margin-bottom:-20px!important}
+/* Element Burst is drawn outside the world's wrap (the screen is its box), so
+   it steps in by the world's bar itself, to stand where the cluster puts it */
+html.bt-band-side .bt-burst-btn{margin-left:var(--world-x,0px)!important}
 
 /* ═══ v2.3.2222: THE STAT SCENE — "a preview of what the effect does (exaggerated)" ═══
    One scene per stat in the ℹ️ window (StatDemo.jsx), built from the
