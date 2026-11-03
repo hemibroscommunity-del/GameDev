@@ -20,6 +20,42 @@ Owner, 2026-08-20:
 > to swap through the weapons and just a little message to use what you
 > like best
 
+## v2.3.4106: the first steps -- five, and nothing more
+
+> The owner, 2026-11-03: *"First sequence of events when first creating
+> character should be welcome to Brotown, talk to mayor bro, equip weapons,
+> see minimap with star marker and quest progress in top left pill. Don't
+> include the non-essential stuff anymore like tap to talk etc"*
+
+A brand-new character's first minutes are exactly these, in order, each once:
+
+| # | Step | Where | Ends |
+|---|---|---|---|
+| 1 | WELCOME / BroTown / "Your adventure starts here." (Skip tutorial) | `game/welcomeBanner.js` | after its hold (9 s), or Skip |
+| 2 | `mayor`: "Talk to Mayor Bro: He has your first quest.", ringing him, and the big arrow at him (`ui/guideArrow.js` `mayor`) | `ui/mayorScreen.js` (his rect, shared) | his dialogue opens (or the first quest has a record) |
+| 3 | `equip`: "Gear up: Tap each glowing item, then Equip." with the glow (`gearFlash.js`) and the arrow (`weapon`) | the bag's tiles | a weapon and the shield worn |
+| 4 | `minimap`: "Your map: The gold star is where your quest leads." | `window.__btWheelMini` | 7 s on screen (`FIRST_INFO_MS`), or a tap |
+| 5 | `questPill`: "Your quest: Your quest, and how far along you are." | `[data-quest-hud]` | 7 s, or a tap |
+
+- `FIRST_STEPS` holds a step until the steps before it are done; the five
+  follow each other `FIRST_STEP_GAP_MS` (1.5 s) apart, not the 20 s
+  (`onboardingPace.js` `coachMayShow(now, gapMs)`).
+- `RETIRED`: openDash (and the first-join fold), move, dashAfterTurnIn,
+  equipAll, cycle, blockRanged, attack, special, chatTap -- kept in the file
+  with their history, never walked. `points` (the first level-up) is a later
+  moment and stays; `passkey` (the Login Key) waits until the five are done
+  and the first quest is handed in (`anytime`, so it may come after the
+  Mayor's tutorial).
+- The iPhone install card waits while a first step is to come
+  (`noteFirstSteps`, `installMayShow`).
+- Not cards, and unchanged: the gear's glow, the minimap's star cue, the
+  townsfolk's bubbles, the "Speak to Mayor Bro first" refusal at the edge of
+  town; after the first steps, the weapon-swap hint (first hand-in) and the
+  NEW MONSTER card (a first kill).
+- Tests: `server/test/first-steps.test.mjs`; `tools/qa/mp/mp-firststeps.mjs`
+  (upright phone, sideways phone, computer: the cards seen are exactly
+  mayor, equip, minimap, questPill). Pictures: `docs/shots/first-steps-*.webp`.
+
 `src/ui/mobile/QuestCoach.jsx`, mounted in `BroTown.jsx` as a sibling of
 `.brotown-wrap`. Tested by `tools/qa/mp/mp-questcoach.mjs` (31
 assertions).

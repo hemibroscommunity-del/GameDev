@@ -491,6 +491,21 @@ export const STATES = [
       return { release: async () => { await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }).catch(() => {}); } };
     },
   },
+  /* v2.3.4130: the weapon pill with all three weapons held, the bow in hand
+     (written on the page: the picture, not the worker's say) */
+  {
+    id: 'hud-weapons', group: 'The world (HUD)', title: 'The weapon pill: three weapons, the bow in hand',
+    about: 'The weapon pill centred at the foot of the world (the owner: "Put it centered bottom of screen area"): sword, bow and staff in three wells, the one in hand ringed in glowing gold in colour, the others grey. A tap or click on a grey well takes that weapon; on a computer the wells wear 1, 2 and 3.',
+    run: async ({ P }) => {
+      await evalIn(P, () => {
+        const R = window._gameState.current.rpg;
+        R.rangedWeapon = R.rangedWeapon || { type: 'bow', tier: 'common', gearBase: 'ww_pine', name: 'Pine Bow', quality: 'normal' };
+        R.staffWeapon = R.staffWeapon || { type: 'staff', tier: 'common', gearBase: 'ww_pine', name: 'Pine Staff', quality: 'normal' };
+        R.activeSlot = 'ranged';
+      });
+      await wait(P, 900);
+    },
+  },
   {
     id: 'near-mayor', group: 'The world (HUD)', title: 'Next to Mayor Bro',
     about: 'Walking up to a character with a quest to give: the ! badge over his head and the name plates.  A step closer and his dialogue opens by itself (a tap on him, or E on a computer, opens it too).',

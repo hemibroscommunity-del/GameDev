@@ -56,3 +56,29 @@ Only the stable hooks are aimed at: `data-dash-fold`, `data-land-fold`,
 - `tools/qa/mp/mp-pointstips.mjs` steps 2, 3, 5: Character, the Points tab,
   gone once a point is spent.
 - UI review: `guide-arrow`.
+
+## v2.3.4130: the third lesson, swapping weapons at the pill
+
+The owner, 2026-11-03: "Weapon swap instruction from tutorial should only
+become relevant after receiving new weapons from turning in first quest.
+Instructions will need to change to accommodate the new pill design. I like the
+big arrows to teach where things are on screen."
+
+- **When**: Mayor Bro's first quest (`tut_1`) is turned in (its hand-in pays the
+  bow and the staff, into the bag) AND a second weapon is in your hand
+  (`swapWanted`): the moment the worker's reward is equipped, never on a timer.
+  Before the hand-in, two weapons do not bring it; after it, the bag's glow
+  (gearFlash) leads you to equip them first, as an empty well in the pill is
+  nothing to switch to.
+- **Where**: the weapon pill (`[data-weapon-pill]`, WeaponPill.jsx), one line:
+  "Tap a weapon to switch"; a computer, "Click a weapon or press 1 2 3".
+- **Until**: the first switch (the slot in hand no longer the one it showed
+  on) or `SWAP_MS` (10 s), once a character; owed again only while the first
+  quest is not handed in (a character started over).
+- Order: weapon, then swap, then points.
+- It replaces SwapHint.jsx's callout (v2.3.3877, docs/specs/swap-hint.md).
+
+Checks: `server/test/guide-arrow.test.mjs` §7; `node tools/qa/mp/run.mjs
+swaphint` (a fresh character: no lesson with two weapons before the hand-in,
+the arrow at the pill right after a real hand-in, a switch ends it, never again
+after a reload; a computer's words and a key).

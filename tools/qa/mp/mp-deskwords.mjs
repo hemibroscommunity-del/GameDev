@@ -6,14 +6,15 @@
  * "Follow the gold road on your map, then tap him.")  game/deskWords.js swaps
  * the word as it is shown, under a mouse only (docs/specs/desktop-words.md).
  * On a real page, 1440 x 900 with a mouse:
- *   1. the WELCOME plate says "then click him.";
+ *   1. the WELCOME plate says no "tap" (v2.3.4106: one short line now; it
+ *      said "then click him." on a computer);
  *   2. the coach's first card, past the welcome, says no "tap";
  *   3. Mayor Bro's lines, each one through Next, and his quest offer: no "tap";
  *   4. the dashboard's six pages (I P J L K O), the quest's own page, every
  *      page under More and every building's window: no "tap" in anything
  *      shown, a tooltip or a box's placeholder;
- *   5. on a phone the WELCOME plate still says "then tap him." -- a phone's
- *      words are as written;
+ *   5. on a phone the Gear up card still says "Tap each glowing item" -- a
+ *      phone's words are as written (v2.3.4106: the welcome has no "tap" now);
  *   6. no page errors.
  * "TAP" in capitals (the trap button's own name) is not the word.
  */
@@ -55,7 +56,7 @@ const welcomeText = (P) => P.page.evaluate(() => {
 async function waitWelcome(P, ms = 30000) {
   for (const t0 = Date.now(); Date.now() - t0 < ms;) {
     const t = await welcomeText(P);
-    if (t && /gold line/.test(t)) return t;   /* v2.3.3812: was "gold road" */
+    if (t && /BroTown/.test(t)) return t;   /* v2.3.3812: was "gold road"; v2.3.4106: one short line now */
     await P.page.waitForTimeout(150);
   }
   return welcomeText(P);
@@ -72,8 +73,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 1. THE WELCOME ── */
     const w = await waitWelcome(P);
     const mouse = await P.page.evaluate(() => matchMedia('(pointer:fine)').matches);
-    rec.ok(`1. a computer (a mouse: ${mouse}); the WELCOME plate says "click him" ("${w}")`,
-      mouse && !!w && /then click him\./.test(w) && !/\btap\b/i.test(w), w);
+    /* v2.3.4106: the first steps' welcome is one short line with no
+       instruction in it (the Mayor's step points at him) -- no "tap" */
+    rec.ok(`1. a computer (a mouse: ${mouse}); the WELCOME plate says no "tap" ("${w}")`,
+      mouse && !!w && /Your adventure starts here/.test(w) && !/\btap\b/i.test(w), w);
 
     await H.waitFor(P, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),
       (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'into the world' }).catch(() => null);
@@ -176,10 +179,20 @@ export async function run({ browser, wsPort, webPort, rec }) {
   Q.page.on('pageerror', (e) => qErrors.push(String((e && e.message) || e).slice(0, 200)));
   try {
     await H.enterWorld(Q);
-    const w = await waitWelcome(Q);
+    await waitWelcome(Q);
     const coarse = await Q.page.evaluate(() => !matchMedia('(pointer:fine)').matches);
-    rec.ok(`5. a phone (no mouse: ${coarse}); the WELCOME plate still says "tap him" ("${w}")`,
-      coarse && !!w && /then tap him\./.test(w), w);
+    /* v2.3.4106: the welcome has no "tap" in it now; the first card that does
+       is the Gear up step, once the Mayor's quest is taken */
+    await H.waitFor(Q, (S) => ({ zone: S.currentZone, loading: !!S._zoneLoading }),
+      (v) => v.zone === 'wheel' && !v.loading, { timeout: 150000, label: 'the phone into the world' }).catch(() => null);
+    await Q.page.evaluate(() => { const S = window._gameState.current; if (S.channel) S.channel.send({ type: 'quest_accept', payload: { questId: 'tut_1' } }); });
+    let w = null;
+    for (const t0 = Date.now(); Date.now() - t0 < 40000 && !w;) {
+      w = await Q.page.evaluate(() => { const c = document.querySelector('[data-coach="equip"]'); return c ? c.innerText.replace(/\s+/g, ' ').trim() : null; });
+      if (!w) await Q.page.waitForTimeout(300);
+    }
+    rec.ok(`5. a phone (no mouse: ${coarse}); the Gear up card still says "Tap" ("${w}")`,
+      coarse && !!w && /Tap each glowing item/.test(w), w);
     rec.ok('6. no page errors (the phone)', qErrors.length === 0, qErrors.slice(0, 3));
   } finally {
     await Q.ctx.close().catch(() => {});
