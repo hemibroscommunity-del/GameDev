@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "58872bccfd77980f9aa90c0acdcc868ed9a070b5",
+  "tree": "67b021cb48df02c9266fe69c7be08ed26adb5e41",
+  "committedAt": "2026-11-03T02:54:12-08:00",
+  "subject": "Merge pull request #1407 from hemibroscommunity-del/claude/folknames-test",
+  "files": 7497,
+  "bytes": 855168764,
+  "listingSha256": "2dbf11819e7b5ca9fd6bbb7c520c8aeadc372387ca690ee6c99294479ae00ede",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
