@@ -4190,7 +4190,14 @@ html.bt-calm .bt-pf__fill{transition:none}
    The widths grid simply flexes 62px narrower, exactly as it already does when
    the alphabet strip swaps in, so no other row loses anything. */
 .bt-paint-opts{display:flex;gap:5px;min-width:0}
-.bt-paint-opts-main{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+/* v2.3.4157: width:0 -- this row FILLS what the panel gives it and never asks
+   for width of its own.  The panel is shrink-to-fit, and a grid of N equal
+   tracks asks for N times its widest label: with Copy the held row's four
+   (beside Mirror) asked for more than the rest of the panel, so picking a
+   design up widened the panel 11-17 px and slid the drawing under the finger
+   holding it (measured 398 -> 415 at 1000x780, 371 -> 382 at 390x844;
+   mp-shapelayer's "does not resize the panel"). */
+.bt-paint-opts-main{flex:1 1 auto;min-width:0;width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
 .bt-paint-mirror{flex:0 0 auto;width:62px}
 /* ═══ v2.3.1950: THE CONTROLS ARE ONE COLUMN IN BOTH LAYOUTS ═══
    They used to be four separate grid areas in the stacked layout and a flex

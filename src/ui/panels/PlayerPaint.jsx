@@ -2605,12 +2605,11 @@ export function PlayerPaint({ target = 'shirt', onClose, look = null }) {
                    a key test, because the legacy letter form is NOT resizable
                    and would otherwise be offered a lock over a handle that only
                    moves it. */
-                /* v2.3.4157: plus one column for Copy, on anything that copies --
-                   and minmax(0, 1fr), not 1fr: a bare 1fr track will not go
-                   below its label's longest word, and four of them beside
-                   Mirror outgrew the panel's width, so picking something up
-                   widened the whole panel and slid the grid under the finger
-                   that was holding it.  At zero minimum a label wraps instead. */
+                /* v2.3.4157: plus one column for Copy, on anything that copies.
+                   minmax(0, 1fr) so a label wraps rather than pushing its
+                   track wider; the row asks the panel for no width of its own
+                   (.bt-paint-opts-main width:0 -- the reason is there), so
+                   picking something up never resizes the panel. */
                 style={{ gridTemplateColumns: 'repeat(' + ((selResizable ? 3 : selOp.k === 't' ? 2 : 1) + (canCopy(selOp) ? 1 : 0)) + ', minmax(0, 1fr))' }}>
                 {selResizable && (
                   <button type="button" onClick={() => setLockRatio((v) => !v)}

@@ -49,10 +49,15 @@ editor's ops replay to, as it always did.
 ## Layout
 
 The Select row grows a column (Copy) and the layer row a fifth button
-(Delete). Both use `minmax(0, 1fr)` tracks: with plain `1fr` the held row's
-four labels beside Mirror outgrew the panel's width, so picking something up
-widened the whole panel by ~10 px and slid the drawing under the finger holding
-it. At a zero minimum "Keep shape" wraps onto two lines instead.
+(Delete). The panel is shrink-to-fit, and a grid of N equal tracks asks for N
+times its widest label, so the held row's four buttons beside Mirror asked for
+more width than the rest of the panel: picking a design up widened the panel
+(398 -> 415 px at 1000x780, 371 -> 382 at 390x844) and slid the drawing under
+the finger holding it, which `mp-shapelayer`'s "does not resize the panel"
+caught. `.bt-paint-opts-main` now has `width:0` (it fills what the panel gives
+it and asks for nothing), and its tracks are `minmax(0, 1fr)`, so "Keep shape"
+wraps onto two lines instead. Measured after: the panel's box is the same
+before and after a pick-up at all three sizes, as on main.
 
 ## Old looks
 
