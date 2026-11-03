@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4d01beef4d20f9da78fde38001d9f21579403bfe",
+  "tree": "9f64d4ec3063b1078bb210ef5500aeb1c426b4cc",
+  "committedAt": "2026-11-03T03:44:44-08:00",
+  "subject": "Merge pull request #1404 from hemibroscommunity-del/claude/first-steps",
+  "files": 7510,
+  "bytes": 856254258,
+  "listingSha256": "67881987074af1614bb33cdae5a322267f7bbdbe350d14821eb03ce5c9d2dbd6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
