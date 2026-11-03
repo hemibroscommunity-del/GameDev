@@ -20,6 +20,7 @@
  *   2. applying one puts EXACTLY that design's string on the canvas
  *   3. it arrives as one piece per colour, so Select has something to pick up
  *   4. ONE tap of Undo puts back exactly what was there before
+ *   3b. (v2.3.4157) picking a design again ADDS a second one; Undo takes only it
  *   5. it survives closing and reopening the panel
  *   6. Cancel changes nothing
  */
@@ -375,12 +376,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok(`${tag}: re-applying it puts the catalogue's own version back`,
     (await art(P)) === target.art);
 
-  /* ── 3b. re-applying the SAME design must bank nothing ──
-     v2.3.2445: a pre-merge review found applyDesign always banked a history
-     entry, so an accidental double-tap on a tile left one tap of Undo that
-     visibly did nothing -- what `unbank` exists to prevent for the shape
-     tools.  The proof is the Undo assertion immediately below: if this second
-     apply banked, one tap would land on the design again, not on blank. */
+  /* ── 3b. re-applying the SAME design ADDS a second one (v2.3.4157) ──
+     This block asserted the opposite until v2.3.4157 -- "re-applying the
+     design already on the canvas leaves it unchanged", because applyDesign
+     REPLACED the canvas.  Owner: "I wasn't able to put two flames on the pants
+     it would erase the previous one when I tried to add another one."  So the
+     second tap is a second design: the first stays exactly where it was, the
+     new one steps aside (it would otherwise land invisibly on the first), and
+     ONE tap of Undo takes away only the new one. */
+  const firstOps = await ops(P);
   await openGallery(P);
   await P.page.waitForTimeout(500);
   await P.page.evaluate((name) => {
@@ -391,10 +395,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
     if (t) t.click();
   }, target.name);
   await P.page.waitForTimeout(800);
-  rec.ok(`${tag}: re-applying the design already on the canvas leaves it unchanged`,
-    (await art(P)) === target.art);
+  const twoOps = await ops(P);
+  rec.ok(`${tag}: re-applying the design ADDS a second one -- two design ops, the first `
+    + `untouched (v2.3.4157)`,
+    twoOps.length === 2 && JSON.stringify(twoOps[0]) === JSON.stringify(firstOps[0])
+    && twoOps[1].k === 'd' && twoOps[1].art === target.art, twoOps);
+  rec.ok(`${tag}: ...and the second steps aside rather than landing invisibly on the first `
+    + `(${twoOps[1] && twoOps[1].a.join(',')})`,
+    twoOps.length === 2 && twoOps[1].a.join(',') !== twoOps[0].a.join(',')
+    && (await art(P)) !== target.art, twoOps[1] || null);
+  rec.ok(`${tag}: ...and the NEW one is what is held (the layer row names layer 2 of 2)`,
+    /layer\s*2\s*of\s*2/i.test(await P.page.textContent('.bt-paint-layer-at').catch(() => '')));
 
-  /* ── 4. ONE undo, not one per piece ── */
+  await P.page.evaluate(() => {
+    const b = [...document.querySelectorAll('.bt-paint-btn button, .bt-paint button')]
+      .find((x) => /^undo$/i.test((x.textContent || '').trim()));
+    if (b) b.click();
+  });
+  await P.page.waitForTimeout(700);
+  rec.ok(`${tag}: ONE tap of Undo takes away only the second design -- the first is back `
+    + `on its own, exactly as the catalogue draws it`,
+    (await art(P)) === target.art && (await ops(P)).length === 1);
+
+  /* ── 4. ...and one more puts back exactly what was there before ── */
   await P.page.evaluate(() => {
     const b = [...document.querySelectorAll('.bt-paint-btn button, .bt-paint button')]
       .find((x) => /^undo$/i.test((x.textContent || '').trim()));
@@ -402,8 +425,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await P.page.waitForTimeout(700);
   const undone = await art(P);
-  rec.ok(`${tag}: ONE tap of Undo restores exactly what was there before, though the `
-    + `design was applied twice -- the second apply banked no dead history entry`,
+  rec.ok(`${tag}: one more Undo restores exactly what was there before -- each placement `
+    + `is one entry, not one per piece`,
     undone === before);
 
   /* ── 5. it persists across a panel close and reopen ── */
