@@ -6,6 +6,8 @@ import { playIsLandscape } from '../playViewport.js';
 import { profileFromSelf, compactCount } from '../../panels/playerProfile.js';
 import { portraitSrc } from './portraitStore.js';
 import { BRO_WEAPONS, broStartWeapon, broWeaponStats } from './broStats.js';
+import { SkillTile, SKILL_XP_HOLD_MS } from '../dash/SkillTiles.jsx';   /* v2.3.4162: the combat skills, moved here from Gear */
+import { combatSkillState, WEAPON_SKILLS } from '../dash/combatSkill.js';
 import { SKILL_ROSTER, hasUnseenLevelUps } from './skillsModel.js';
 import { prog3Live, prog3CharLevel } from '../../../data/prog3.js';
 import { achvLive, achvApTotal, achvSummary, askTitlePicker } from '@/game/achievements.js';
@@ -29,10 +31,16 @@ import { statInfo } from '../infoGlossary.js';
  *            ("No title" plainly), your clan (castle, name [TAG], "No clan";
  *            a tap opens it), your AP with the star (a tap: Achievements),
  *            and two tiles: Achievements n / total, Lifetime Kills;
- *   MIDDLE   Sword | Bow | Staff (starting on the weapon out), then "Combat
+ *   MIDDLE   the weapon picker (starting on the weapon out), then "Combat
  *            Stats" for that weapon, a row a stat (broStats.js: the game's
  *            own readers, per weapon); the list scrolls when the band is
- *            shorter than it;
+ *            shorter than it.  v2.3.4162, the owner on #1386: "Move the 3
+ *            primary combat skills out of the gear menu and put them into
+ *            the bro menu" -- the picker IS the three combat-skill tiles
+ *            (Melee, Bow, Magic: dash/SkillTiles.jsx, the Gear tab's own),
+ *            "Lv N" above each big picture (so it does not read as a weapon
+ *            in the bag); a tap picks that weapon's stats (the gold edge)
+ *            AND shows the tile's XP ("68 / 455 XP") for 4 s;
  *   RIGHT    doors, a chevron each: Achievements, Life Skills (the drawing's
  *            "Attributes" row: the game has no STR / AGI / INT, so the slot
  *            went to the page that moved under Bro), Points (glowing while a
@@ -137,6 +145,18 @@ export const BroCard = ({ points, onPoints }) => {
   const [cols, setCols] = useState(2);
   const [weapon, setWeaponState] = useState(() => _pick || broStartWeapon(R));
   const setWeapon = (c) => { _pick = c; setWeaponState(c); };
+  /* v2.3.4162: the skill tile showing its XP (one at a time), back to its
+     picture after SKILL_XP_HOLD_MS or a second tap */
+  const [xpCat, setXpCat] = useState(null);
+  const xpTimer = useRef(0);
+  const tapSkill = (cat) => {
+    if (xpTimer.current) { clearTimeout(xpTimer.current); xpTimer.current = 0; }
+    setWeapon(cat);
+    if (xpCat === cat) { setXpCat(null); return; }
+    setXpCat(cat);
+    xpTimer.current = setTimeout(() => { xpTimer.current = 0; setXpCat(null); }, SKILL_XP_HOLD_MS);
+  };
+  useEffect(() => () => { if (xpTimer.current) clearTimeout(xpTimer.current); }, []);
 
   /* the shape from the box (ResizeObserver: the band, the side column and the
      one band all resize it without a window resize) */
@@ -151,8 +171,8 @@ export const BroCard = ({ points, onPoints }) => {
   }, []);
   /* QA: the shape and the weapon (window.__btBroCard) */
   useEffect(() => {
-    try { window.__btBroCard = { cols, weapon }; } catch (e) { /* no window */ }
-  }, [cols, weapon]);
+    try { window.__btBroCard = { cols, weapon, xp: xpCat }; } catch (e) { /* no window */ }
+  }, [cols, weapon, xpCat]);
   useEffect(() => () => { try { window.__btBroCard = null; } catch (e) { /* no window */ } }, []);
 
   let p = null;
@@ -192,6 +212,7 @@ export const BroCard = ({ points, onPoints }) => {
   };
 
   const stats = broWeaponStats(R, weapon);
+  const skills = WEAPON_SKILLS.map((sk) => ({ s: sk, k: combatSkillState(R, sk) }));
   const clanWords = clan ? `${clan.name || clan.tag} [${clan.tag}]` : (party ? 'No party' : 'No clan');
   const wLabel = (BRO_WEAPONS.find((w) => w.cat === stats.cat) || BRO_WEAPONS[0]).label;
 
@@ -250,14 +271,28 @@ export const BroCard = ({ points, onPoints }) => {
   /* ── MIDDLE: the weapon's combat stats ── */
   const middle = (
     <section className="bt-bro2-panel bt-bro2-stats" data-bro-panel="stats" data-bro-weapon={stats.cat} data-bro-has={stats.has ? 1 : 0}>
-      <div className="bt-bro2-wsel" role="group" aria-label="Weapon">
-        {BRO_WEAPONS.map((w) => (
-          <button key={w.cat} type="button" className="bt-bro2-wbtn" data-bro-wsel={w.cat}
-            aria-pressed={w.cat === stats.cat} onClick={stop(() => setWeapon(w.cat))}>
-            <img src={w.icon} alt="" draggable={false} />
-            <span>{w.label}</span>
-          </button>
-        ))}
+      {/* the three combat skills (v2.3.4162, above): a tile picks its
+          weapon; the picked one wears the gold edge (aria-pressed) */}
+      <div className="bt-bro2-skills" role="group" aria-label="Combat skills">
+        {skills.map(({ s: sk, k }) => {
+          const cat = k.cat || 'sword';
+          const on = cat === stats.cat;
+          const open = cat === xpCat;
+          const xp = open ? (k.xp ? { prog: Math.round(k.xp.prog), thresh: Math.round(k.xp.thresh) } : 'max') : null;
+          return (
+            <SkillTile key={sk.key} s={sk} k={k} lvAbove selected={on} iconPx={cols === 1 ? 40 : 46} xp={xp}
+              attrs={{
+                className: 'bt-bro2-skill', 'data-bro-skill': cat, 'data-lvl': k.lvl,
+                'data-bro-xpopen': open ? '' : undefined,
+                'data-bro-xpnum': open && k.xp ? `${Math.round(k.xp.prog)}/${Math.round(k.xp.thresh)}` : undefined,
+                'aria-label': `${sk.label} level ${k.lvl}`
+                  + (k.xp ? `, ${Math.round(k.xp.prog)} of ${Math.round(k.xp.thresh)} XP` : ', fully levelled')
+                  + `: show ${(BRO_WEAPONS.find((w) => w.cat === cat) || BRO_WEAPONS[0]).label} stats`,
+              }}
+              style={{ minHeight: cols === 1 ? 72 : 80, padding: '5px 3px 4px', gap: 3 }}
+              onTap={() => tapSkill(cat)} />
+          );
+        })}
       </div>
       <div className="bt-bro2-sec" aria-hidden="true"><i /><span>Combat Stats</span><i /></div>
       {stats.has ? null : (

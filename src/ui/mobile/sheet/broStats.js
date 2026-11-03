@@ -1,7 +1,8 @@
 /* ═══ v2.3.4162: THE BRO PAGE'S COMBAT STATS, ONE WEAPON AT A TIME ═══
  *
  * The owner drew the Bro page (D474F679-...png in the repo root): a Sword |
- * Bow | Staff selector over "Combat Stats", one row a stat -- an icon, the
+ * Bow | Staff selector (v2.3.4162: the Melee / Bow / Magic skill tiles) over
+ * "Combat Stats", one row a stat -- an icon, the
  * stat's name in capitals, its value at the right: Damage, DPS, Attack Speed,
  * Range, Crit Chance, Crit Damage, Special Damage, Element Power, Defense,
  * Armor, Dodge, Resist, Move Speed.
@@ -33,22 +34,22 @@
 import { calcDisplayDmgRange, calcDisplayDps, weaponForCat } from '../../../data/gameSystems.js';
 import { TILE } from '../../../data/constants.js';
 import { prog3ActiveCat } from '../../../data/prog3.js';
-import { deriveHeroStats, COMBAT_SKILLS } from './heroModel.js';
+import { deriveHeroStats } from './heroModel.js';
 import { heroStatPills, HERO_PILL_ICON } from './heroStatPills.js';
 import { autoSwingMs, reachOf } from './statSim.js';
 
-/* the selector's three, in the mockup's order: the prog3 category, the
-   rpg's activeSlot that means it, the button's word and picture.
-   v2.3.4162: the picture is the Gear tab's own combat-skill tile's (heroModel
-   COMBAT_SKILLS: Melee, Bow, Magic -- GearTab.jsx's WEAPON_SKILLS), the
-   owner on #1386: "Make the weapon icons above the combat stats larger and
-   just reuse the icons used on the 3 primary combat skills".  Read from that
-   one table, so the two never drift apart; no new art. */
-const SKILL_ICON = (key) => (COMBAT_SKILLS.find((s) => s.key === key) || {}).iconSrc;
+/* the three weapons, in the mockup's order: the prog3 category, the rpg's
+   activeSlot that means it, the word ("No bow equipped"), and the combat
+   skill whose tile picks it (heroModel COMBAT_SKILLS' key: STAT_TO_WEAPON_CAT).
+   v2.3.4162: the owner on #1386, "Move the 3 primary combat skills out of the
+   gear menu and put them into the bro menu" -- the Gear tab's Melee / Bow /
+   Magic tiles (dash/SkillTiles.jsx) ARE the picker now, so the old Sword |
+   Bow | Staff buttons and their pictures are gone; a tile names its weapon
+   through `skill`. */
 export const BRO_WEAPONS = Object.freeze([
-  Object.freeze({ cat: 'sword', slot: 'melee', label: 'Sword', icon: SKILL_ICON('power') }),
-  Object.freeze({ cat: 'bow', slot: 'ranged', label: 'Bow', icon: SKILL_ICON('agility') }),
-  Object.freeze({ cat: 'staff', slot: 'staff', label: 'Staff', icon: SKILL_ICON('mind') }),
+  Object.freeze({ cat: 'sword', slot: 'melee', label: 'Sword', skill: 'power' }),
+  Object.freeze({ cat: 'bow', slot: 'ranged', label: 'Bow', skill: 'agility' }),
+  Object.freeze({ cat: 'staff', slot: 'staff', label: 'Staff', skill: 'mind' }),
 ]);
 const SLOT_OF = Object.freeze({ sword: 'melee', bow: 'ranged', staff: 'staff' });
 

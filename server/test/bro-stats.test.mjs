@@ -4,7 +4,7 @@
  * (src/game/achievements.js askTitlePicker / takeTitlePicker).
  *
  *   1. thirteen rows in the drawing's order, each with a picture and an explainer;
- *      the selector's pictures are the Gear tab's combat-skill tiles'
+ *      the picker is the Gear tab's combat-skill tiles (v2.3.4162)
  *   2. the weapon out reads what the Equipment window's pills read (one reader)
  *   3. another weapon reads ITS lane: crit points on the bow move the Bow
  *      column only; the shared stats are the same under every weapon
@@ -17,7 +17,8 @@ import { setProg3Enabled, setProg3XEnabled, setProg3SharedEnabled, setProg3RelEn
 import { BRO_STAT_ROWS, BRO_WEAPONS, broWeaponStats, broStartWeapon } from '../../src/ui/mobile/sheet/broStats.js';
 import { heroStatPills } from '../../src/ui/mobile/sheet/heroStatPills.js';
 import { deriveHeroStats } from '../../src/ui/mobile/sheet/heroModel.js';
-import { WEAPON_SKILLS } from '../../src/ui/mobile/dash/combatSkill.js';
+import { WEAPON_SKILLS, combatSkillState } from '../../src/ui/mobile/dash/combatSkill.js';
+import { STAT_TO_WEAPON_CAT } from '../../src/data/gameSystems.js';
 import { askTitlePicker, takeTitlePicker } from '../../src/game/achievements.js';
 
 let failures = 0;
@@ -44,11 +45,15 @@ check('thirteen rows, the drawing\'s order', s1.rows.map((r) => r.label).join('|
 check('each has a picture and an explainer key', s1.rows.every((r) => r.icon && r.info), s1.rows.filter((r) => !r.icon || !r.info));
 check('three weapons: Sword, Bow, Staff', BRO_WEAPONS.map((w) => w.label).join(',') === 'Sword,Bow,Staff');
 check('BRO_STAT_ROWS is the list', BRO_STAT_ROWS.length === 13);
-/* v2.3.4162: the owner on #1386, "just reuse the icons used on the 3 primary
-   combat skills": the selector's pictures are the Gear tab's skill tiles' */
-check('the selector wears the Gear tab\'s combat-skill pictures (Melee, Bow, Magic)',
-  BRO_WEAPONS.map((w) => w.icon).join('|') === WEAPON_SKILLS.map((s) => s.iconSrc).join('|') && BRO_WEAPONS.every((w) => w.icon),
-  { bro: BRO_WEAPONS.map((w) => w.icon), gear: WEAPON_SKILLS.map((s) => s.iconSrc) });
+/* v2.3.4162: the owner on #1386, "Move the 3 primary combat skills out of
+   the gear menu and put them into the bro menu": the Gear tab's Melee / Bow /
+   Magic tiles pick the weapon -- each names the weapon whose stats it shows */
+check('the three combat-skill tiles (Melee, Bow, Magic) pick Sword, Bow, Staff, in order',
+  BRO_WEAPONS.map((w) => w.skill).join('|') === WEAPON_SKILLS.map((s) => s.key).join('|')
+    && BRO_WEAPONS.every((w) => STAT_TO_WEAPON_CAT[w.skill] === w.cat)
+    && WEAPON_SKILLS.every((s) => combatSkillState(base(), s).cat === BRO_WEAPONS[WEAPON_SKILLS.indexOf(s)].cat),
+  { bro: BRO_WEAPONS.map((w) => [w.cat, w.skill]), gear: WEAPON_SKILLS.map((s) => s.key) });
+check('no selector pictures left (the tiles wear the skills\' own)', BRO_WEAPONS.every((w) => !('icon' in w)));
 
 console.log('2. one reader');
 {

@@ -580,7 +580,7 @@ export const STATES = [
      pages under it: each its own screen here, dash-bro-* */
   {
     id: 'dash-bro', group: 'Dashboard', title: 'Bro: your card',
-    about: 'The Bro page, as the owner drew it: three panels, laid out from the page\'s own width (side by side from 600 px; on an upright phone you beside the doors, the stats under them; sideways stacked). You: your portrait in a gold frame, name, "Lv N" (no XP bar), your title as a gold ribbon ("No title"), your clan ("No clan"), your AP, and Achievements n / total and Lifetime Kills tiles. The combat stats of the weapon picked in Sword | Bow | Staff (starting on the one in your hand): thirteen rows, Damage to Move Speed. The doors, a chevron each: Achievements, Life Skills, Points (gold and glowing while points wait), Equipment, Homestead, Pet, Titles, Clan.',
+    about: 'The Bro page, as the owner drew it: three panels, laid out from the page\'s own width (side by side from 600 px; on an upright phone you beside the doors, the stats under them; sideways stacked). You: your portrait in a gold frame, name, "Lv N" (no XP bar), your title as a gold ribbon ("No title"), your clan ("No clan"), your AP, and Achievements n / total and Lifetime Kills tiles. Over the combat stats, the three combat skills (Melee, Bow, Magic: the Gear tab\'s tiles, "Lv N" above each big picture), the one whose weapon the stats show gold-edged (starting on the one in your hand): thirteen rows, Damage to Move Speed. The doors, a chevron each: Achievements, Life Skills, Points (gold and glowing while points wait), Equipment, Homestead, Pet, Titles, Clan.',
     run: async ({ P }) => {
       await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
       const e = await bus(P, 'open', 'hero');
@@ -590,15 +590,16 @@ export const STATES = [
     },
   },
   {
-    /* v2.3.4162: the weapon selector working */
+    /* v2.3.4162: a combat-skill tile tapped (the owner: "Move the 3 primary
+       combat skills out of the gear menu and put them into the bro menu") */
     id: 'dash-bro-bow', group: 'Dashboard', title: 'Bro: the Bow\'s combat stats',
-    about: 'The Bro page with Bow picked in Sword | Bow | Staff: the thirteen combat stats as the bow would fight (its damage, swings a second, reach in tiles, the Bow lane\'s crit, special and elemental power; the shared five the same under every weapon), "No bow equipped" and dashes when there is none.',
+    about: 'The Bro page with Bow\'s skill tile just tapped: the tile gold-edged and showing its XP bar ("N / M XP", for 4 s, then its picture again), and the thirteen combat stats as the bow would fight (its damage, swings a second, reach in tiles, the Bow lane\'s crit, special and elemental power; the shared five the same under every weapon), "No bow equipped" and dashes when there is none.',
     run: async ({ P }) => {
       await evalIn(P, () => { if (window.__btHeroSection) window.__btHeroSection.request('Card'); });
       const e = await bus(P, 'open', 'hero');
       if (e) return e;
       await wait(P, 900);
-      const t = await tapSel(P, '[data-bro-wsel="bow"]');
+      const t = await tapSel(P, '[data-bro-skill="bow"]');
       if (t) return t;
       await wait(P, 400);
       if (!(await has(P, '[data-bro-panel="stats"][data-bro-weapon="bow"]'))) return 'the Bow was not picked';

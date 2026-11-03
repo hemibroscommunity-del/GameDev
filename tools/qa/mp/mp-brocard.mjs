@@ -17,8 +17,14 @@
  *      NO XP bar, "No title" plainly, "No clan", the AP, the Achievements and
  *      Lifetime Kills tiles; the doors: Achievements (where granted), Life
  *      Skills, Points, Equipment, Homestead, Pet, Titles, Clan;
- *   3. the stats: Sword | Bow | Staff starting on the weapon out, thirteen rows
- *      in the drawing's order; a tap on Bow changes them;
+ *   3. the stats: v2.3.4162, the owner on #1386, "Move the 3 primary combat
+ *      skills out of the gear menu and put them into the bro menu" -- the
+ *      Melee / Bow / Magic tiles over them (the Gear tab's pictures, "Lv N"
+ *      ABOVE each, at least 44 px, touch-action: manipulation), the one for
+ *      the weapon out gold-edged; thirteen rows in the drawing's order; a tap
+ *      on Bow picks the bow's rows (Bow's tile gold, the others not) AND turns
+ *      Bow's tile into its XP bar, "N / M XP" (its numbers the game's), for
+ *      ~4 s, then its picture again, still picked;
  *   4. a real level-up: the Points row reads the points waiting, glows, and
  *      is on screen without a scroll (the guide arrow aims at it);
  *   5. each door opens its page and comes back: the Points window (its
@@ -33,9 +39,10 @@
  *      its width, no word cut, CLOSE first in the row;
  *   8. a computer playing wide (wide: true): P opens the card, the row's words
  *      show, a click on Points opens the window, Esc closes it, L opens Life
- *      Skills and L again closes it.
+ *      Skills and L again closes it; a mouse click on a skill tile picks it
+ *      and shows its XP.
  * Pictures: tools/qa/mp/out/bro-tab-v2.png (points waiting),
- * bro-tab-v2-bow.png (Bow selected), bro-tab-v2-desk.png, bro-tab-v2-tablet.png
+ * bro-tab-v2-bow.png (Bow's tile picked, its stats), bro-tab-v2-desk.png, bro-tab-v2-tablet.png
  * (docs/shots/ has them on 256 colours).
  */
 import * as H from './harness.mjs';
@@ -134,7 +141,19 @@ const card = (P) => P.page.evaluate(() => {
       kills: q('[data-bro-tile="kills"]') ? txt(q('[data-bro-tile="kills"] b')) : null },
     weapon: q('[data-bro-panel="stats"]') ? q('[data-bro-panel="stats"]').getAttribute('data-bro-weapon') : null,
     has: q('[data-bro-panel="stats"]') ? q('[data-bro-panel="stats"]').getAttribute('data-bro-has') : null,
-    wsel: [...c.querySelectorAll('[data-bro-wsel]')].map((e) => ({ k: e.getAttribute('data-bro-wsel'), on: e.getAttribute('aria-pressed') === 'true', text: txt(e) })),
+    /* v2.3.4162: the three combat-skill tiles (SkillTiles.jsx) */
+    skills: [...c.querySelectorAll('[data-bro-skill]')].map((e) => {
+      const r = e.getBoundingClientRect(); const img = e.querySelector('img'); const ir = img ? img.getBoundingClientRect() : null;
+      const lv = [...e.querySelectorAll('span')].find((x) => /^Lv \d+$/.test((x.textContent || '').trim()));
+      const lr = lv ? lv.getBoundingClientRect() : null;
+      const num = e.querySelector('[data-skill-xpnum]');
+      return { k: e.getAttribute('data-bro-skill'), on: e.getAttribute('aria-pressed') === 'true', lvl: Number(e.getAttribute('data-lvl')),
+        lv: lv ? lv.textContent.trim() : null, lvAbove: !!lr && !!ir && lr.bottom <= ir.top + 1,
+        src: img ? img.getAttribute('src') : null, iw: ir ? Math.round(ir.width) : 0,
+        xpOpen: e.hasAttribute('data-bro-xpopen'), xpData: e.getAttribute('data-bro-xpnum'), xpText: num ? (num.textContent || '').replace(/\s+/g, ' ').trim() : null,
+        w: Math.round(r.width), h: Math.round(r.height), ta: getComputedStyle(e).touchAction, border: getComputedStyle(e).borderTopColor };
+    }),
+    xpKey: window.__btBroCard ? window.__btBroCard.xp : undefined,
     stats: [...c.querySelectorAll('[data-bro-stat]')].map((e) => ({ k: e.getAttribute('data-bro-stat'), label: txt(e.querySelector('.bt-bro2-statl')), v: e.getAttribute('data-v') })),
     rows: [...c.querySelectorAll('[data-bro-row]')].map((e) => e.getAttribute('data-bro-row')),
     caps: !!(S && S._serverCaps && S._serverCaps.achievements),
@@ -223,8 +242,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 3. the stats ── */
     const startCat = { melee: 'sword', ranged: 'bow', staff: 'staff' }[c1.active] || 'sword';
-    rec.ok(`the stats start on the weapon out (${c1.weapon}; activeSlot ${c1.active}), Sword | Bow | Staff`,
-      c1.weapon === startCat && c1.wsel.map((w) => w.text).join('|') === 'Sword|Bow|Staff' && (c1.wsel.find((w) => w.on) || {}).k === startCat, c1.wsel);
+    rec.ok(`the stats start on the weapon out (${c1.weapon}; activeSlot ${c1.active}), its tile of Melee | Bow | Magic picked`,
+      c1.weapon === startCat && c1.skills.map((w) => w.k).join('|') === 'sword|bow|staff' && c1.skills.filter((w) => w.on).map((w) => w.k).join() === startCat, c1.skills);
+    rec.ok(`...each tile the Gear tab's big picture with "Lv N" ABOVE it (${c1.skills.map((w) => `${w.lv} ${w.iw}px`).join(', ')}), none showing XP yet`,
+      c1.skills.length === 3 && c1.skills.every((w) => /\/icons\/ui\/hero\/(melee|bow|magic)\.webp/.test(w.src || '') && w.iw >= 36 && w.lvAbove && w.lv === `Lv ${w.lvl}` && !w.xpOpen), c1.skills);
+    rec.ok(`...each at least 44 x 44 (${c1.skills.map((w) => w.w + 'x' + w.h).join(' ')}), touch-action: manipulation; the picked one gold-edged`,
+      c1.skills.every((w) => w.w >= 44 && w.h >= 44 && w.ta === 'manipulation')
+      && c1.skills.every((w) => /226, 184, 102/.test(w.border) === w.on), c1.skills.map((w) => ({ k: w.k, w: w.w, h: w.h, ta: w.ta, border: w.border })));
     rec.ok(`...thirteen rows in the drawing's order (${c1.stats.map((s) => s.label + ' ' + s.v).join(', ')})`,
       c1.stats.map((s) => s.k).join() === ORDER.join() && c1.stats.every((s) => s.v && !/NaN|undefined/.test(s.v)), c1.stats);
 
@@ -239,12 +263,26 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const cs = await card(P);
     rec.ok(`with a sword worn, the Sword column reads it (${cs.stats.slice(0, 4).map((s) => s.label + ' ' + s.v).join(', ')}) (equip: ${eq1 && eq1.ok}, ${eq2 && eq2.ok})`,
       cs.weapon === 'sword' && cs.has === '1' && cs.stats.slice(0, 4).every((s) => s.v !== '\u2014'), { eq1, eq2, stats: cs.stats });
-    await touch(P, '[data-bro-wsel="bow"]');
+    await touch(P, '[data-bro-skill="bow"]');
     await P.page.waitForTimeout(700);
     const c2 = await card(P);
     const diff = c2.stats.filter((s, i) => cs.stats[i] && s.v !== cs.stats[i].v).map((s) => s.k);
-    rec.ok(`a tap on Bow shows the bow's (a bow worn: ${c2.has === '1'}; changed: ${diff.join(', ')})`,
-      c2.weapon === 'bow' && (c2.wsel.find((w) => w.on) || {}).k === 'bow' && c2.has === '1' && diff.length > 0, { weapon: c2.weapon, has: c2.has, stats: c2.stats });
+    rec.ok(`a tap on Bow's tile shows the bow's stats (a bow worn: ${c2.has === '1'}; changed: ${diff.join(', ')}), Bow's tile the gold one`,
+      c2.weapon === 'bow' && c2.skills.filter((w) => w.on).map((w) => w.k).join() === 'bow' && c2.has === '1' && diff.length > 0
+      && /226, 184, 102/.test((c2.skills.find((w) => w.k === 'bow') || {}).border || ''), { weapon: c2.weapon, has: c2.has, stats: c2.stats, skills: c2.skills });
+    /* the XP the game holds for the bow, as the top bar reads it */
+    const bowXp = await H.readState(P, (S) => { const sk = S.rpg && S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.bow; return sk ? Math.floor(sk.xp || 0) : null; });
+    const bw = c2.skills.find((w) => w.k === 'bow') || {};
+    const [xpP, xpT] = String(bw.xpData || '').split('/').map(Number);
+    rec.ok(`...and the tile turns into its XP bar: "${bw.xpText}" (the bow's XP ${bowXp}), the others their pictures`,
+      bw.xpOpen && c2.xpKey === 'bow' && /^[\d,.K]+ \/ [\d,.K]+ XP$/.test(bw.xpText || '') && xpT > 0 && (bowXp == null || xpP === Math.min(bowXp, xpT))
+      && bw.xpText === `${xpP.toLocaleString('en-US')} / ${xpT.toLocaleString('en-US')} XP`
+      && c2.skills.filter((w) => w.k !== 'bow').every((w) => !w.xpOpen && w.iw > 0), { bow: bw, bowXp, xpKey: c2.xpKey });
+    await P.page.waitForTimeout(4200);
+    const c2b = await card(P);
+    const bw2 = c2b.skills.find((w) => w.k === 'bow') || {};
+    rec.ok(`...about 4 s later its picture again ("${bw2.lv}" over it), still picked`,
+      !bw2.xpOpen && bw2.iw >= 36 && bw2.lvAbove && bw2.on && c2b.weapon === 'bow' && !c2b.xpKey, { bow: bw2, xpKey: c2b.xpKey });
 
     /* ── 4. points to spend ── */
     const kit = await H.devOp(wsPort, 'kit', myId, { what: 'levels' });
@@ -409,6 +447,34 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await D.page.keyboard.press('Escape');
     await D.page.waitForTimeout(800);
     rec.ok('...and Esc closes it, back to the card', !(await popup(D)) && (await card(D)).there);
+    /* v2.3.4162: a mouse on the skill tiles: a click picks the weapon and
+       shows its XP; a second click puts the picture back */
+    await D.page.click('[data-bro-skill="staff"]').catch(() => {});
+    await D.page.waitForTimeout(600);
+    const dm = await card(D);
+    const st = dm.skills.find((w) => w.k === 'staff') || {};
+    rec.ok(`...a click on Magic's tile picks the staff's stats and shows its XP ("${st.xpText}")`,
+      dm.weapon === 'staff' && st.on && st.xpOpen && /XP$|^Fully levelled$/.test(st.xpText || ''), { weapon: dm.weapon, staff: st });
+    /* the second click: straight at the tile's centre (page.click waits for
+       the element to hold still, and on this box that wait can outlast the
+       4 s, the tile closing by itself first: TRAPS §200).  The tile's state
+       AT the click is read in the capture phase, before React's handler: an
+       open tile closes, a closed one (it timed out first) opens again */
+    const tb = await D.page.evaluate(() => {
+      const e = document.querySelector('[data-bro-skill="staff"]');
+      if (!e) return null;
+      window.__qaSkillAtClick = null;
+      e.addEventListener('click', () => { window.__qaSkillAtClick = e.hasAttribute('data-bro-xpopen') ? 'open' : 'shut'; }, { capture: true, once: true });
+      const r = e.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    });
+    if (tb) await D.page.mouse.click(tb.x, tb.y).catch(() => {});
+    await D.page.waitForTimeout(600);
+    const atClick = await D.page.evaluate(() => window.__qaSkillAtClick);
+    const dm2 = await card(D);
+    const st2 = dm2.skills.find((w) => w.k === 'staff') || {};
+    rec.ok(`...and a second click (on the tile ${atClick}) ${atClick === 'shut' ? 'opens it again (it had timed out first)' : 'puts its picture back'}, the staff still picked`,
+      (atClick === 'open' ? (!st2.xpOpen && st2.iw > 0) : (atClick === 'shut' && st2.xpOpen)) && st2.on && dm2.weapon === 'staff', { atClick, staff: st2 });
     await D.page.keyboard.press('l');
     await D.page.waitForTimeout(900);
     const l1 = await bus(D);

@@ -2052,24 +2052,14 @@ button.bt-pin-drop{color:inherit;margin:0}
 .bt-bro2-tile img{width:24px;height:24px;object-fit:contain}
 .bt-bro2-tile span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#A0BACE;font-size:11px;font-weight:700}
 .bt-bro2-tile b{font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
-/* MIDDLE: Sword | Bow | Staff, then the weapon's stats */
-.bt-bro2-wsel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
-/* v2.3.4162: the owner on #1386, "Make the weapon icons above the combat
-   stats larger and just reuse the icons used on the 3 primary combat
-   skills": the Gear tab's Melee / Bow / Magic pictures (broStats.js), 32 px
-   (20 before; the Gear tile's are 40, in a taller tile), the word beside, the
-   button 44 px tall -- a touch target without the ::after's 2 px. */
-.bt-bro2-wbtn{position:relative;display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:44px;padding:0 4px;
-  box-sizing:border-box;border:1px solid #3B5366;border-radius:8px;background:#1C2F3C;color:#A0BACE;font-size:13px;font-weight:700}
-.bt-bro2-wbtn::after{content:'';position:absolute;inset:-2px 0}
-.bt-bro2-wbtn img{flex:none;width:32px;height:32px;object-fit:contain}
-.bt-bro2-wbtn span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* one column (a phone on its side, ~220 px): the word under the picture, or
-   "Sword" is cut (v2.3.4162: the picture 26 px, the button 52) */
-.bt-bro2[data-bro-cols="1"] .bt-bro2-wbtn{flex-direction:column;gap:1px;min-height:52px;font-size:11.5px}
-.bt-bro2[data-bro-cols="1"] .bt-bro2-wbtn img{width:26px;height:26px}
-.bt-bro2-wbtn[aria-pressed="true"]{border-color:#E2B866;background:linear-gradient(0deg,rgba(216,170,88,.18),rgba(216,170,88,.18)),#1C2F3C;color:#F6D58A;
-  box-shadow:inset 0 0 0 1px rgba(255,214,128,.12)}
+/* MIDDLE: the three combat skills, then the picked weapon's stats.
+   v2.3.4162: the owner on #1386, "Move the 3 primary combat skills out of
+   the gear menu and put them into the bro menu" -- the Gear tab's Melee /
+   Bow / Magic tiles (dash/SkillTiles.jsx, inline-styled there: "Lv N" above
+   the picture, the picked one's gold edge, a tap its XP bar for 4 s) replace
+   the Sword | Bow | Staff buttons; each tile 72-80 px tall, a third of the
+   panel wide (66 px at the narrowest, a phone on its side). */
+.bt-bro2-skills{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
 .bt-bro2-sec{display:flex;align-items:center;gap:6px;margin:7px 2px 3px;color:#F2D08A;font-size:13px;font-weight:800;white-space:nowrap}
 .bt-bro2-sec i{flex:1;height:1px;background:linear-gradient(90deg,rgba(226,184,102,0),rgba(226,184,102,.7))}
 .bt-bro2-sec i:last-child{background:linear-gradient(90deg,rgba(226,184,102,.7),rgba(226,184,102,0))}

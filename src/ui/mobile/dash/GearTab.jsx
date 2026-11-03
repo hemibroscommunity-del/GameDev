@@ -11,6 +11,7 @@ import { weaponSlotFor, unequipWeaponSlot, unequipShieldDirect, unequipArmorDire
 import { weaponRows, shieldRows, armourRows, compareRows, charLevel } from './gearStats.js';
 import { combatSkillState, WEAPON_SKILLS } from './combatSkill.js';
 import { WeaponBar } from './WeaponBar.jsx';
+import { SkillTile, SkillXpWide } from './SkillTiles.jsx';   /* v2.3.4162: the tiles, shared with the Bro page */
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
 import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4151: the overview's bars, the Character page's own */
 import { shopBus } from '../shopBus.js';
@@ -730,63 +731,34 @@ export const GearTab = ({ R: Rin, desk }) => {
        after a kill still lands here, xpLanding); a tap turns it into its XP
        bar across the row -- "68 / 455 XP", the numbers the top bar's XP bar
        reads (combatSkill.js) -- until a second tap or 4 s (gearTabBus.showXp) */
+    /* v2.3.4162: the tile and its open bar live in SkillTiles.jsx (the Bro
+       page draws the same tile); this is their v2.3.4151 use, unchanged --
+       the same elements, styles and hooks */
     const tile = ({ s, k }) => (
-      <button type="button" key={s.key} data-gear-skill={k.p3cat || s.key} data-lvl={k.lvl}
-        /* v2.3.4151: the skill's XP numbers as data (nothing drawn), the
-           XP-fly's count-up readers' hook since the weapon cells went plain */
-        data-xpbar={k.p3cat || undefined}
-        data-xpprog={k.p3cat && k.xp ? Math.round(displayXp(k.p3cat, k.xp.prog)) : undefined}
-        data-xpthresh={k.p3cat && k.xp ? Math.round(k.xp.thresh) : undefined}
-        aria-label={`${s.label} level ${k.lvl}: show its XP`}
-        ref={k.p3cat ? ((el) => { if (el) registerXpCard(k.p3cat, el.getBoundingClientRect()); }) : undefined}
-        onClick={(e) => { e.stopPropagation(); gearTabBus.showXp(s.key); }}
-        style={{
-          flex: '1 1 0', minWidth: 0, minHeight: 0, boxSizing: 'border-box', padding: short ? '0 3px' : '3px 2px', borderRadius: short ? 6 : 8,
-          display: 'flex', flexDirection: short ? 'row' : 'column', alignItems: 'center', justifyContent: 'center', gap: short ? 4 : 2,
-          border: `1px solid ${COL.borderStrong}`, background: COL.wellSoft, color: COL.text, fontFamily: 'inherit',
-          cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
-        }}>
-        {short ? (
-          <img src={s.iconSrc} alt="" draggable={false} style={{ width: 16, height: 16, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-        ) : (
-          <span style={{ flex: '1 1 0', minHeight: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <img src={s.iconSrc} alt="" draggable={false} style={{ maxWidth: '100%', maxHeight: '100%', width: 40, height: 40, objectFit: 'contain', pointerEvents: 'none' }} />
-          </span>
-        )}
-        <span style={{ flex: 'none', fontSize: 12, fontWeight: 900, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>Lv {k.lvl}</span>
-      </button>
+      <SkillTile key={s.key} s={s} k={k} short={short}
+        attrs={{
+          'data-gear-skill': k.p3cat || s.key, 'data-lvl': k.lvl,
+          /* v2.3.4151: the skill's XP numbers as data (nothing drawn), the
+             XP-fly's count-up readers' hook since the weapon cells went plain */
+          'data-xpbar': k.p3cat || undefined,
+          'data-xpprog': k.p3cat && k.xp ? Math.round(displayXp(k.p3cat, k.xp.prog)) : undefined,
+          'data-xpthresh': k.p3cat && k.xp ? Math.round(k.xp.thresh) : undefined,
+          'aria-label': `${s.label} level ${k.lvl}: show its XP`,
+          ref: k.p3cat ? ((el) => { if (el) registerXpCard(k.p3cat, el.getBoundingClientRect()); }) : undefined,
+        }}
+        onTap={() => gearTabBus.showXp(s.key)} />
     );
     const xpWide = ({ s, k }) => {
       const prog = k.xp ? Math.round(displayXp(k.p3cat, k.xp.prog)) : 0;
       const thresh = k.xp ? Math.round(k.xp.thresh) : 0;
       return (
-        <button type="button" key={s.key} data-gear-skill={k.p3cat || s.key} data-lvl={k.lvl} data-gear-xpopen=""
-          aria-label={`${s.label} level ${k.lvl}: ${k.xp ? prog + ' of ' + thresh + ' XP' : 'fully levelled'}`}
-          ref={k.p3cat ? ((el) => { if (el) registerXpCard(k.p3cat, el.getBoundingClientRect()); }) : undefined}
-          onClick={(e) => { e.stopPropagation(); gearTabBus.showXp(null); }}
-          style={{
-            flex: '1 1 0', minWidth: 0, minHeight: 0, boxSizing: 'border-box', padding: short ? '0 6px' : '4px 8px', borderRadius: short ? 6 : 8,
-            display: 'flex', flexDirection: short ? 'row' : 'column', alignItems: short ? 'center' : undefined, justifyContent: 'center', gap: short ? 5 : 4,
-            border: `1px solid ${COL.borderStrong}`, background: COL.wellSoft, color: COL.text, fontFamily: 'inherit', textAlign: 'left',
-            cursor: 'pointer', touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent',
-          }}>
-          {short ? (
-            <img src={s.iconSrc} alt="" draggable={false} style={{ width: 16, height: 16, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-          ) : (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5, width: '100%', minWidth: 0 }}>
-              <img src={s.iconSrc} alt="" draggable={false} style={{ width: 20, height: 20, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-              <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</span>
-              <span style={{ flex: 'none', fontSize: 12, fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>Lv {k.lvl}</span>
-            </span>
-          )}
-          <span aria-hidden="true" data-xpbar={k.p3cat || undefined} data-xpprog={k.xp ? prog : undefined} data-xpthresh={k.xp ? thresh : undefined}
-            style={{ display: 'block', width: short ? 'auto' : '100%', flex: short ? '1 1 0' : undefined, minWidth: 0, height: 7, borderRadius: 4, overflow: 'hidden', background: COL.wellDeep }}>
-            <span style={{ display: 'block', height: '100%', width: `${k.xp && thresh > 0 ? Math.min(100, (prog / thresh) * 100) : 100}%`, background: '#8AA9F9' }} />
-          </span>
-          <span data-gear-xpnum="" style={{ fontSize: FONT_MIN, fontWeight: 700, color: COL.text2, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-            {k.xp ? (short ? `${prog.toLocaleString()}/${thresh.toLocaleString()}` : `${prog.toLocaleString()} / ${thresh.toLocaleString()} XP`) : 'Fully levelled'}
-          </span>
-        </button>
+        <SkillXpWide key={s.key} s={s} k={k} short={short} prog={prog} thresh={thresh}
+          attrs={{
+            'data-gear-skill': k.p3cat || s.key, 'data-lvl': k.lvl, 'data-gear-xpopen': '',
+            'aria-label': `${s.label} level ${k.lvl}: ${k.xp ? prog + ' of ' + thresh + ' XP' : 'fully levelled'}`,
+            ref: k.p3cat ? ((el) => { if (el) registerXpCard(k.p3cat, el.getBoundingClientRect()); }) : undefined,
+          }}
+          onTap={() => gearTabBus.showXp(null)} />
       );
     };
     body = (

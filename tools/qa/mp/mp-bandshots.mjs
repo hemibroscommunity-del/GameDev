@@ -26,8 +26,13 @@
  *   - upright the band is the screen's full width (no bars); on its side it
  *     keeps the screen's width (game.css: its open band is wider than its
  *     world on purpose);
- *   - Bro's Sword | Bow | Staff wear the Gear tab's combat-skill pictures
- *     (/icons/ui/hero/), at least 28 px, each button at least 44 px tall.
+ *   - (v2.3.4162, the owner: "Move the 3 primary combat skills out of the
+ *     gear menu and put them into the bro menu") Bro's middle panel has the
+ *     Melee / Bow / Magic tiles (the Gear tab's pictures, /icons/ui/hero/, at
+ *     least 36 px) with "Lv N" ABOVE each picture, each at least 44 x 44,
+ *     touch-action: manipulation, inside its panel, one picked; a tap (a
+ *     mouse click on a computer) on Bow picks the bow's stats and shows its
+ *     "N / M XP", and ~4 s later the picture is back, Bow still picked.
  * Pictures: tools/qa/mp/out/band-{gear,bro}-{desk,desk1080,side,up}.png
  * (docs/shots/ has them on 256 colours).
  */
@@ -76,10 +81,18 @@ const edges = (P) => P.page.evaluate(() => {
   };
 });
 
-/* Bro's selector: each button's picture and height */
-const wsel = (P) => P.page.evaluate(() => [...document.querySelectorAll('[data-bro-wsel]')].map((b) => {
+/* v2.3.4162: Bro's three combat-skill tiles (SkillTiles.jsx): each one's
+   picture, its "Lv N" (above the picture?), its box, picked, its XP words */
+const skillTiles = (P) => P.page.evaluate(() => [...document.querySelectorAll('[data-bro-skill]')].map((b) => {
   const r = b.getBoundingClientRect(); const img = b.querySelector('img'); const ir = img ? img.getBoundingClientRect() : null;
-  return { k: b.getAttribute('data-bro-wsel'), h: Math.round(r.height), src: img ? img.getAttribute('src') : null, iw: ir ? Math.round(ir.width) : 0, ih: ir ? Math.round(ir.height) : 0 };
+  const lv = [...b.querySelectorAll('span')].find((x) => /^Lv \d+$/.test((x.textContent || '').trim()));
+  const lr = lv ? lv.getBoundingClientRect() : null;
+  const num = b.querySelector('[data-skill-xpnum]');
+  return { k: b.getAttribute('data-bro-skill'), w: Math.round(r.width), h: Math.round(r.height), src: img ? img.getAttribute('src') : null,
+    iw: ir ? Math.round(ir.width) : 0, ih: ir ? Math.round(ir.height) : 0, lvAbove: !!lr && !!ir && lr.bottom <= ir.top + 1,
+    on: b.getAttribute('aria-pressed') === 'true', ta: getComputedStyle(b).touchAction,
+    xp: b.hasAttribute('data-bro-xpopen'), xpText: num ? (num.textContent || '').replace(/\s+/g, ' ').trim() : null,
+    inPanel: (() => { const p = b.closest('[data-bro-panel]'); if (!p) return false; const pr = p.getBoundingClientRect(); return r.left >= pr.left - 1 && r.right <= pr.right + 1; })() };
 }));
 
 const OUT = join(H.REPO, 'tools/qa/mp/out');
@@ -158,11 +171,28 @@ async function both(P, tag, rec) {
     b.mode === 'expanded' && inBox && b.cut.length === 0, b);
   rec.ok(`${tag}: CLOSE first in the row ("${b.close && b.close.text}"), then the five (words: ${b.words})`,
     !!b.close && b.close.text === 'CLOSE' && !!b.first && b.first.id === 'dashboard' && b.close.r <= b.first.l, { close: b.close, first: b.first });
-  /* v2.3.4162: the selector's pictures, the Gear tab's skill tiles' */
-  const ws = await wsel(P);
-  rec.ok(`${tag}: Sword | Bow | Staff wear the Gear tab's combat-skill pictures, big (${ws.map((w) => `${w.k} ${w.iw}px in ${w.h}px`).join(', ')})`,
-    ws.length === 3 && ws.every((w) => /\/icons\/ui\/hero\/(melee|bow|magic)\.webp/.test(w.src || '') && w.iw >= 26 && w.ih >= 26 && w.h >= 44), ws);
+  /* v2.3.4162: the owner on #1386, "Move the 3 primary combat skills out of
+     the gear menu and put them into the bro menu": Melee / Bow / Magic over
+     the stats, "Lv N" above each big picture, the weapon out's gold */
+  const ws = await skillTiles(P);
+  rec.ok(`${tag}: the three combat skills over the stats, "Lv N" above each big picture (${ws.map((w) => `${w.k} ${w.iw}px in ${w.w}x${w.h}`).join(', ')}), one picked`,
+    ws.map((w) => w.k).join() === 'sword,bow,staff' && ws.every((w) => /\/icons\/ui\/hero\/(melee|bow|magic)\.webp/.test(w.src || '') && w.iw >= 36 && w.ih >= 36
+      && w.lvAbove && w.w >= 44 && w.h >= 44 && w.ta === 'manipulation' && w.inPanel && !w.xp) && ws.filter((w) => w.on).length === 1, ws);
   await shot(P, `band-bro-${tag}`);
+  /* a tap (a click on a computer) on Bow: its stats, and its XP for ~4 s */
+  const desk = !(await P.page.evaluate(() => 'ontouchstart' in window || navigator.maxTouchPoints > 0));
+  if (desk) await P.page.click('[data-bro-skill="bow"]').catch(() => {});
+  else await P.page.tap('[data-bro-skill="bow"]').catch(() => {});
+  await P.page.waitForTimeout(600);
+  const t1 = await skillTiles(P);
+  const w1 = await P.page.evaluate(() => { const s = document.querySelector('[data-bro-panel="stats"]'); return s ? s.getAttribute('data-bro-weapon') : null; });
+  const bw = t1.find((w) => w.k === 'bow') || {};
+  rec.ok(`${tag}: a ${desk ? 'click' : 'tap'} on Bow picks the bow's stats and shows its XP ("${bw.xpText}")`,
+    w1 === 'bow' && bw.on && bw.xp && /^[\d,.K]+ \/ [\d,.K]+ XP$|^Fully levelled$/.test(bw.xpText || '') && t1.filter((w) => w.on).length === 1 && bw.inPanel, { weapon: w1, tiles: t1 });
+  await P.page.waitForTimeout(4000);
+  const t2 = await skillTiles(P);
+  const bw2 = t2.find((w) => w.k === 'bow') || {};
+  rec.ok(`${tag}: ...and ~4 s later its picture again, Bow still picked`, !bw2.xp && bw2.iw >= 36 && bw2.on, bw2);
   return b;
 }
 
