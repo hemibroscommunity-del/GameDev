@@ -6787,7 +6787,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
-    "I'm Sizzle, the chef! Talk to me to open the Cookhouse and see the recipes.",
+    "I'm Chef Blaze! Talk to me to open the Cookhouse and see the recipes.",
     "Cook your crops into meals and drinks that help you in a fight.",
     "To cook a fish, light a campfire with a log from your Bag.",
     "I LOVE cooking! The kitchen is my happy place.",
@@ -6855,7 +6855,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
-    "I'm Snail Mail, the postmaster. Talk to me to open the Post Office.",
+    "I'm Postmaster Pete. Talk to me to open the Post Office.",
     "Gold from things you sell comes to you in the mail.",
     "Friends can send you messages. Read them at the Post Office.",
     "I do everything slowly and carefully. Every letter gets there in the end.",
@@ -6889,7 +6889,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
-    "I'm Swampy, the land agent. Talk to me to open the Land Office.",
+    "I'm Deed Dave, the land agent. Talk to me to open the Land Office.",
     "The Land Office can take you to your farm.",
     "Every bro gets a free farm with six beds to plant in.",
     "I love land! Wet land, dry land, any land at all.",
@@ -6957,7 +6957,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
-    "I'm Tryhard, the guildmaster. Talk to me to open the Guild Hall.",
+    "I'm Guildmaster Gary. Talk to me to open the Guild Hall.",
     "There's a guild for each of the ten skills. Find the one you like best.",
     "I practice every single day. I always try my hardest!",
     "Train a skill a little every day, and you'll get better fast.",
@@ -6991,7 +6991,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
-    "I'm Badge, the sheriff. Talk to me to open the Sheriff's Office.",
+    "I'm Sheriff Buck. Talk to me to open the Sheriff's Office.",
     "Want to test your skills? Duel another player at my office.",
     "Join the arena for 100 gold. Win every match to take the prize.",
     "I keep BroTown safe. Monsters can't hurt you in town.",
@@ -7025,7 +7025,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
-    "I'm Going-Going, the auctioneer. Talk to me to open the Auction House.",
+    "I'm Gavel Greg, the auctioneer. Talk to me to open the Auction House.",
     "Players sell their items here. Maybe you'll find something great!",
     "Sell an item from your Bag, and it goes up for sale here.",
     "Going once, going twice, sold! I love saying that.",
@@ -7059,7 +7059,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
-    "I'm Fish Tales. Every fish I catch gets bigger when I tell the story.",
+    "I'm Old Man Reel. Every fish I catch gets bigger when I tell the story.",
     "Catch fish at the fishing spots out in the lands.",
     "Cook your fish on a campfire, then eat it when you're hurt.",
     "Fishing takes patience, kid. Don't give up.",
@@ -7128,7 +7128,7 @@ export const NPC_DATA = [{
   chatBubble: null,
   /* v2.3.4025: said plainly -- the owner, "a simple and easy to understand personality and directions" (docs/specs/plain-words.md); he goes by his nickname on screen, so he says it */
   phrases: [
-    "I'm Selfie! I'm visiting BroTown, and I take pictures of everything.",
+    "I'm Tourist Terry! I'm visiting BroTown, and I take pictures of everything.",
     "Can you take a picture of me in front of the Town Hall?",
     "Open the World map to see the whole world and where everything is.",
     "Is there a gift shop here? I want a BroTown souvenir!",

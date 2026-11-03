@@ -2314,36 +2314,33 @@ html.bt-calm .bt-xp-gain{animation:none;opacity:1;transform:none}
    larger on a computer's play column.  --bt-hud-top is its bottom plus a
    gap: the quest card and the status chips start there.  Flat fills, the
    bars scaled (never re-laid out): it is over the WebGL canvas (TRAPS §42). */
-/* v2.3.3974: the face is drawn at a WHOLE multiple of 32 px, pixelated (the
-   orchestrator, for the owner's "in the style of the original hemi bro NFT's"
-   portrait: a 32 x 32 bust, Lane U) -- 64 px on a phone (2x), 96 px on a
-   computer (3x), never 36 or 44, which smears pixel art; the frame is sized
-   round it (about 70 px tall on a phone).  Its width gives way on a narrow
+/* ═══ v2.3.4093: NO PICTURE: THE LEVEL, THEN THE BARS ═══
+   The owner, 2026-11-03: "Remove the character pfp in the top left corner
+   if you haven't already".  The face (v2.3.3974's 64 / 96 px box) is gone
+   on every layout; the level is a round gold badge beside the bars, and the
+   frame is as tall as the bars need -- 40 px on a phone, still a fair thumb
+   -- so --bt-hud-top, and the quest card under it, come up with it.  The
+   whole frame keeps its tap (the Bro page).  Its width gives way on a narrow
    phone so it never reaches the minimap (132 px + its margin, top-right). */
-html{--bt-pf-k:1;--bt-pf-face:64px;
+html{--bt-pf-k:1;
   --bt-pf-top:calc(50px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,0px));
-  --bt-pf-h:calc(var(--bt-pf-face) + 6px * var(--bt-pf-k));
+  --bt-pf-h:calc(40px * var(--bt-pf-k));
   --bt-hud-top:calc(var(--bt-pf-top) + var(--bt-pf-h) + 6px)}
-@media (pointer:fine) and (min-width:1000px){ html.bt-desk-wide{--bt-pf-k:1.5;--bt-pf-face:96px} }
+@media (pointer:fine) and (min-width:1000px){ html.bt-desk-wide{--bt-pf-k:1.5} }
 .bt-pf{position:fixed;z-index:19;top:var(--bt-pf-top);left:8px;
-  width:min(calc(var(--bt-pf-face) + 126px * var(--bt-pf-k)), calc(100vw - 152px));height:var(--bt-pf-h);box-sizing:border-box;
+  width:min(calc(166px * var(--bt-pf-k)), calc(100vw - 152px));height:var(--bt-pf-h);box-sizing:border-box;
   display:flex;align-items:center;gap:calc(6px * var(--bt-pf-k));margin:0;
-  padding:calc(2px * var(--bt-pf-k)) calc(8px * var(--bt-pf-k)) calc(2px * var(--bt-pf-k)) calc(2px * var(--bt-pf-k));
+  padding:calc(3px * var(--bt-pf-k)) calc(8px * var(--bt-pf-k)) calc(3px * var(--bt-pf-k)) calc(5px * var(--bt-pf-k));
   border-radius:calc(9px * var(--bt-pf-k));border:1px solid rgba(216,169,77,.4);
   background:rgba(17,25,29,.86);box-shadow:0 2px 6px rgba(0,0,0,.35);
   cursor:pointer;pointer-events:auto;touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;user-select:none;text-align:left}
 html[data-orient="landscape"] .bt-pf{left:calc(var(--world-x,0px) + var(--world-pad-l,0px) + 8px);
-  width:calc(var(--bt-pf-face) + 126px * var(--bt-pf-k))}
-.bt-pf__face{position:relative;flex:none;width:var(--bt-pf-face);height:var(--bt-pf-face);
-  border-radius:calc(7px * var(--bt-pf-k));background:#0C1316;box-shadow:inset 0 0 0 1px rgba(234,198,117,.55)}
-.bt-pf__face img{width:100%;height:100%;display:block;object-fit:cover;border-radius:inherit;pointer-events:none;
-  image-rendering:pixelated}
-.bt-pf__lv{position:absolute;left:calc(-3px * var(--bt-pf-k));bottom:calc(-3px * var(--bt-pf-k));
-  min-width:calc(17px * var(--bt-pf-k));height:calc(17px * var(--bt-pf-k));padding:0 3px;box-sizing:border-box;
+  width:calc(166px * var(--bt-pf-k))}
+.bt-pf__lv{flex:none;min-width:calc(26px * var(--bt-pf-k));height:calc(26px * var(--bt-pf-k));padding:0 4px;box-sizing:border-box;
   border-radius:999px;background:#1A2328;box-shadow:0 0 0 1.5px #EAC675;
   display:flex;align-items:center;justify-content:center;
-  color:#F2D58C;font:900 calc(11px * var(--bt-pf-k))/1 'Source Sans 3',sans-serif;font-variant-numeric:tabular-nums}
+  color:#F2D58C;font:900 calc(13px * var(--bt-pf-k))/1 'Source Sans 3',sans-serif;font-variant-numeric:tabular-nums}
 .bt-pf__bars{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:calc(4px * var(--bt-pf-k))}
 .bt-pf--mp .bt-pf__bars{gap:calc(3px * var(--bt-pf-k))}
 .bt-pf__bar{position:relative;height:calc(8px * var(--bt-pf-k));border-radius:4px;background:#0C1316;

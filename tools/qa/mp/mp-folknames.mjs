@@ -1,5 +1,12 @@
 /* v2.3.4048: THE TOWNSFOLK GO BY NICKNAMES -- photographed.
+ * v2.3.4088: THE OLD NAMES ARE BACK.  The owner, 2026-11-03: "Revert the
+ * nicknames and go back to the other names, I liked them better other way."
+ * So every check below now reads the OWN name: the plate "Gavel Greg", the
+ * tourist's "Tourist Terry has nothing for you right now", and never a
+ * nickname.  (v2.3.4085: the computer's button at his door is the door's
+ * "Enter AUCTION HOUSE", never a "Talk to": E never talks.)
  *
+ * As it was written for v2.3.4048:
  * The owner: "Instead of names like 'gavel Greg' it would be more humorous to
  * just have them go by nicknames. I didn't mean to remake all the NPCs to be
  * like gavel Greg. The way their appearance looks now is fine."
@@ -103,7 +110,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const at = await onScreen(P, 'auctioneer');
       if (at) await shot(P, 'phone-plate', clipAround(P, at, 300, 300));
       await shot(P, 'phone-auctioneer');
-      rec.ok(`1. beside the auctioneer his plate reads "${plate}" (Going-Going, never Gavel Greg)`, plate === 'Going-Going', { plate, at });
+      rec.ok(`1. beside the auctioneer his plate reads "${plate}" (Gavel Greg, his own name: v2.3.4088)`, plate === 'Gavel Greg', { plate, at });
 
       const tap = await tapOn(P, 'auctioneer');
       const opened = await H.waitFor(P, () => { const c = document.querySelector('[data-building-panel]'); return c ? c.getAttribute('data-building-panel') : null; },
@@ -122,7 +129,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const tAt = await onScreen(P, 'tourist');
       if (tAt) await shot(P, 'phone-tourist', clipAround(P, tAt, 340, 320));
       rec.ok(`2. the tourist's plate reads "${tPlate}" and a tap on him floats "${said[said.length - 1] || '?'}"`,
-        tPlate === 'Selfie' && !!tTap && tTap.result === 'nothing' && said.some((t) => t === 'Selfie has nothing for you right now') && !said.some((t) => /Tourist Terry/.test(t)),
+        tPlate === 'Tourist Terry' && !!tTap && tTap.result === 'nothing' && said.some((t) => t === 'Tourist Terry has nothing for you right now') && !said.some((t) => /Selfie/.test(t)),   /* v2.3.4088: his own name again */
         { tPlate, tTap, said });
     }
   } finally {
@@ -169,7 +176,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (cAt) await shot(C, 'computer-plate', clipAround(C, cAt, 420, 320));
       const cPlate = await plateOf(C, 'auctioneer');
       rec.ok(`3. on a computer, beside the auctioneer in his door's reach (${JSON.stringify(spot)}): the button reads "${prompt}" (the door's, never "Talk to": v2.3.4085), his plate "${cPlate}"`,
-        !!prompt && /enter/i.test(prompt) && /auction/i.test(prompt) && !/talk/i.test(prompt) && talkPrompt === false && cPlate === 'Going-Going', { prompt, talkPrompt, spot, cPlate });
+        !!prompt && /enter/i.test(prompt) && /auction/i.test(prompt) && !/talk/i.test(prompt) && talkPrompt === false && cPlate === 'Gavel Greg' /* v2.3.4088: his own name again */, { prompt, talkPrompt, spot, cPlate });
 
       const open = await H.approachNpc(C, 'mayor_bro').catch(() => false);
       const title = await C.page.evaluate(() => { const t = document.querySelector('.bt-npcdlg-name'); return t ? t.textContent.trim() : null;   /* the words, not their CSS capitals */ });
