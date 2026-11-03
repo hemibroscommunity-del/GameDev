@@ -11,6 +11,14 @@
   - Tap it and it lights up. While you move, you run **1.33 times** your walk.
   - **The button's rim is your stamina**: lit round the edge for what is
     left, dark for what is spent, so you can watch it run down.
+  - **v2.3.3920** (the design review the owner adopted: "When sprinting is
+    active, give its border a strong glow and perhaps a circular energy
+    indicator. When stamina is depleted, show an unmistakable exhausted
+    state"): the stamina is a clear 3 px gold arc just outside the button,
+    emptying clockwise from the top; switched on, a strong gold glow ring
+    breathes slowly round it; tired (too little stamina to start), the face
+    goes grey, the boot dims and the arc's track turns red and empty. The
+    button carries `data-sprint-state` (`on`, `off`, `tired`).
   - Tap it again to stop.
   - It works with a thumb already on the stick: tap it with the other hand
     and keep running.

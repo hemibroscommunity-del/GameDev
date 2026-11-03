@@ -904,3 +904,20 @@ button."*
 The owner: *"Also spacebar I think should be jump."* Space is the jump now and
 X the dodge roll (the swap is in `docs/specs/desktop-keys.md`, "v2.3.3844").
 The "X on a keyboard" lines above are history: read Space there.
+
+## v2.3.3920: a leaping figure, a little larger
+
+The owner: "The up arrow with the line beneath it is used to make the character
+jump. I'm not a huge fan of the icon art and I'm not sure the button is large
+enough or have ideal placement"; from the design review they adopted: "a simple
+leaping silhouette or a motion arc with an airborne figure ... Slightly enlarge
+the button and preserve its lower-right position near the aiming thumb".
+
+- The button wears a parchment figure at the top of its leap over the gold arc
+  it rose along (controlSkin `JUMP_MARKS.leap`, drawn in SVG: no file). The
+  arrow stays for a tab: `?jumpicon=arrow`.
+- 64 px upright, 68 sideways (was 60 and 64), still south-west on the attack
+  disc's ring, 10 px off it. Block steps 4 px left with it; TRAP and Shield Bash
+  keep their pixels (they stand on `JUMP_SPOT_UP_SIZE`, the size Jump had when
+  they were placed). `jumpbtn` holds the sizes, the ring, the air to Block and
+  the overlaps.

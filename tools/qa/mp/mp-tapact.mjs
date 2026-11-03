@@ -199,7 +199,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }, { slot, w });
       /* v2.3.3712: the weapon is worn at rest too now, so wait for THIS one */
       return H.waitFor(P, () => document.querySelector('.bt-rjoy-base').getAttribute('data-ricon'), (v) => v === want, { timeout: 3000, label: 'the attack face' })
-        .then(async (ic) => ({ ic, shown: await P.page.evaluate((ic) => { const im = document.querySelector(`.bt-rjoy-icon[data-ricon-img="${ic}"]`); return !!im && getComputedStyle(im).display !== 'none' && im.complete && im.naturalWidth > 0; }, ic) }))
+        .then(async (ic) => ({ ic, shown: await P.page.evaluate((ic) => { /* v2.3.3920: an attack wears the aiming reticle (drawn, no picture to decode) */ if (/^(melee|ranged|staff|w-)/.test(ic || '')) { const a = document.querySelector('.bt-rjoy-aim'); return !!a && getComputedStyle(a).display !== 'none'; } const im = document.querySelector(`.bt-rjoy-icon[data-ricon-img="${ic}"]`); return !!im && getComputedStyle(im).display !== 'none' && im.complete && im.naturalWidth > 0; }, ic) }))
         .catch(() => ({ ic: null, shown: false }));
     };
     const cases = [
@@ -212,7 +212,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     ];
     for (const [slot, w, want, words] of cases) {
       const got = await wear(slot, w, want);
-      rec.ok(`attacking with ${words}, the stick wears ${want} (${got.ic})`, got.ic === want && got.shown, got);
+      rec.ok(`attacking with ${words}, the stick knows ${want} (${got.ic}) and wears the aiming reticle`, got.ic === want && got.shown, got);
     }
     await P.page.evaluate(() => { window._gameState.current._rBtnPressUntil = 0; });
 
