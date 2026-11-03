@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7f259c71c377e92a21767cc1ed7c377a0d78d144",
+  "tree": "42c1bdb52acef5b6a6e71303837837fafc106d57",
+  "committedAt": "2026-11-02T19:00:49-08:00",
+  "subject": "Merge pull request #1384 from hemibroscommunity-del/claude/minimap-look",
+  "files": 7414,
+  "bytes": 845230531,
+  "listingSha256": "eedf5611f625119ed6886f87a9bdb54507edc57ff2cd1a5a1478b747aeca5555",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
