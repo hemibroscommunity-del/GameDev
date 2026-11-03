@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a2d57d633b55091a3bbe10ba4d626ae8e3cbabcf",
+  "tree": "458d59b4071c326ed9752710198083f54abbc1a9",
+  "committedAt": "2026-11-03T04:40:19-08:00",
+  "subject": "Merge pull request #1411 from hemibroscommunity-del/claude/popups-after-loading",
+  "files": 7526,
+  "bytes": 857229392,
+  "listingSha256": "7c927b12cd8439ed791f6139893ad84c3aabdc6afadf85a93c33ec757696b6d8",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
