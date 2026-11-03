@@ -161,7 +161,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await shot('fold');
   const nav1 = await rectOf(A, '[data-nav="hero"]');
   rec.ok(`2: the coach rings Character, on the folded band, and says "${c1 && c1.text}"`,
-    !!c1 && c1.id === 'points' && /^×?\s*Level up!/i.test(c1.text) && c1.text.includes('You have ' + many + ' to spend. Tap Character.')
+    !!c1 && c1.id === 'points' && /^×?\s*Level up!/i.test(c1.text) && c1.text.includes('You have ' + many + ' to spend. Tap Bro.')   /* v2.3.4062: the button is Bro */
       && ringOn(c1, nav1), { c1, nav1, folded });
   /* v2.3.3925: and the big arrow points at Character */
   const ar1 = await waitArrowOn(A, (a) => !!a && a.lesson === 'points' && a.sel === '[data-nav="hero"]' && a.on);
@@ -271,7 +271,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const lvB = await levelUp(B, wsPort, bId);
   const cB1 = await waitCoach(B, (c) => !!c);
   rec.ok(`6: the first level-up brings the points card alone: "${cB1 && cB1.text}"`,
-    !!lvB.p && lvB.p.pool > 0 && !!cB1 && cB1.id === 'points' && /You have \d+ points? to spend\. Tap Character\./.test(cB1.text), { cB1, p: lvB.p });
+    !!lvB.p && lvB.p.pool > 0 && !!cB1 && cB1.id === 'points' && /You have \d+ points? to spend\. Tap Bro\./.test(cB1.text), { cB1, p: lvB.p });
   /* a tap on the card puts it away for good */
   await finger(B, '[data-coach-card]');
   await B.page.waitForTimeout(4000);
