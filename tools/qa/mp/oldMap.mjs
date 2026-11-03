@@ -63,7 +63,7 @@ export const OLD_MAP_LEGACY = Object.freeze(new Set([
   'hpscale', 'hubspawn', 'hudface', 'idleface', 'infopop', 'inkback',
   'inkframes', 'inkplace', 'inkreach', 'inkreset', 'introfit', 'itemcard',
   'jetstream', 'jogsides', 'joinflicker', 'joingate', 'joyfade', 'keylogin',
-  'landdash', 'landrotate', 'landview', 'layer', 'lifeskill', 'lightfx',
+  'landdash', 'landrotate', 'layer', 'lifeskill', 'lightfx',
   'lilbro', 'listingdm', 'listingoffer', 'listweek', 'liveness', 'lockaim',
   'lockchip', 'lockrings', 'loginkey', 'logout', 'lookrestore', 'lootbob',
   'lootcue', 'lootland', 'lootmagnet', 'lootsize', 'lootzone', 'market',

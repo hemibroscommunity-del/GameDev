@@ -45,6 +45,11 @@ export const CLIENT_SAVERS = Object.freeze([
      brings back the game's own headshot, from each phone's next load.  Not a
      memory saver: the owner's new look, kept switchable the same way */
   Object.freeze({ id: 'hemiface', words: 'Your portrait as a Hemi Bro', live: false }),
+  /* v2.3.4054: every screen sees about an upright phone's area of world
+     (game/viewCap.js).  Not a memory saver: the owner's fairness rule ("Cap
+     it for everyone now"), kept switchable the same way; off, a wide screen
+     sees its old wider view at once */
+  Object.freeze({ id: 'viewcap', words: 'Same view for every screen', live: true }),
 ]);
 
 const KEY = 'bt_clientoff';
