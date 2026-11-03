@@ -947,6 +947,32 @@ export const STATES = [
       await wait(P, 1000);
     },
   },
+  /* v2.3.3973: the lock you chose wears a thin pulsing reticle (the owner:
+     "Thin the reticle when you lock on target so it's just a thin larger line
+     that grows and shrinks while on target"), at Frost Ridge's first snowmen */
+  {
+    id: 'lock-reticle', group: 'Fighting', title: 'A monster you locked on',
+    about: 'A snowman you clicked or tapped to lock on: four thin orange corner lines round it, slowly growing and shrinking, with the orange chip over its head.  With a sword in hand and no lock, the same lines, softer, come up on a monster as soon as it is inside your swing\'s reach.',
+    settle: 1500,
+    run: async ({ P, wsPort, myId }) => {
+      await H.devOp(wsPort, 'vitals', myId, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
+      const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
+      const at = WHEEL_SPAWNS.frost && WHEEL_SPAWNS.frost.points[0];
+      if (!at) return 'no Frost Ridge spawn';
+      await H.hopTo(P, at[0] + 150, at[1] + 220, { tries: 260 });
+      await wait(P, 2500);
+      const ok = await evalIn(P, () => {
+        const S = window._gameState.current, p = S.player;
+        const m = (S.monsters || []).filter((q) => q && q.alive !== false && (q.curHp == null || q.curHp > 0))
+          .sort((a, b) => Math.hypot(a.x - p.x, a.y - p.y) - Math.hypot(b.x - p.x, b.y - p.y))[0];
+        if (!m) return false;
+        S.lockedTarget = { type: 'monster', id: m.id, ref: m, src: 'tap' };   /* as a click or a tap locks it */
+        return true;
+      });
+      if (!ok) return 'no monster near';
+    },
+    after: async ({ P }) => { await evalIn(P, () => { const S = window._gameState.current; if (S) S.lockedTarget = null; }).catch(() => {}); await wait(P, 300); },
+  },
   {
     /* v2.3.3817: the death card, staged (a real death's is mp-deathcard's),
        then let go */
