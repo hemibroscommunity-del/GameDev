@@ -4558,66 +4558,30 @@ export var BroTown = function BroTown(_ref0) {
        outer try/catch swallowed it silently, no rendering ever
        happened.  The earlier resize() at line ~2810 (guarded) plus
        its listeners cover the same job. */
-    /* v2.3.1794: how close you can get to a townsperson before they block.
-       14px against a ~24px-wide drawn figure — see the note in isSolid. */
-    var NPC_BLOCK_R2 = 14 * 14;
     var isSolid = function isSolid(px, py) {
       var _S$map;
       var zone = ZONES[S.currentZone];
       var tx = Math.floor(px / TILE),
         ty = Math.floor(py / TILE);
       if (tx < 0 || tx >= zone.w || ty < 0 || ty >= zone.h) return true;
+      /* ═══ v2.3.4098: TOWNSFOLK NEVER BLOCK YOU ═══
+         The owner (2026-11-03): "I walked into Npc who walked into me and I
+         got stuck."  From v2.3.1794 a townsperson was solid here: a 14 px
+         radius about his feet, tested at each corner of your box, with a
+         never-trap pass read at your box's CENTRE.  Once they walk
+         (v2.3.4058), one who stopped 22 px off your feet (his bump,
+         townsfolkDay.js) had a corner of yours inside his radius while your
+         centre was outside it, so every step of yours, any way, was solid,
+         and his own next step was a bump: both of you held for good.
+         So no townsperson is solid, walking or standing: you pass through,
+         and a walker pauses before he steps into you (townsfolkDay.js
+         folkStepBumps).  This walk test reads no townsperson (townsfolk-walk.test
+         holds it).  docs/specs/living-town.md, "Townsfolk never block you". */
       /* Tiled-map walkability grid (if loaded for this zone). When a
          grid is present it is AUTHORITATIVE: cells flagged false block,
          everything else is walkable. The legacy TILE_SOLID check is
          skipped because the procedural S.map still has old building
          tiles (3, etc.) underneath the new Tiled render. */
-      /* ═══ v2.3.1794: NPCs ARE OBJECTS TOO ═══
-         Owner: "only make the objects (like each house and NPC) unwalkable
-         areas."  Buildings block through the props grid; townsfolk block here
-         instead, as a live radius test, because a grid would be a lie the
-         moment one of them moved and because the NPC list is already the
-         authority on where they are.  Five of them in town, so this is five
-         distance checks on a movement step that already does more work than
-         that.
-
-         The radius is deliberately smaller than the sprite: you should be able
-         to stand shoulder to shoulder with the blacksmith to use his anvil,
-         and a blocker as wide as the drawn figure makes talking to anyone feel
-         like bumping into furniture.  Dead NPCs and any without a position do
-         not block at all. */
-      var _npcs = S.npcs;
-      if (_npcs && _npcs.length) {
-        var _pp = S.player;
-        /* ═══ v2.3.2748: HIS FEET AGAINST YOURS ═══
-           An NPC's position is his feet; yours is your body's CENTRE, ~52 px
-           above your boots (playerGroundDy).  Measured centre-to-feet, walking
-           up behind the blacksmith stopped your waist at his feet -- your boots
-           ended up past his, in front of him -- and the depth pass, which now
-           reads your feet, would draw you over a man you walked into from
-           behind.  Feet to feet, the radius means what it says. */
-        var _nfdy = playerGroundDy(S.currentZone, px, py);
-        for (var _ni = 0; _ni < _npcs.length; _ni++) {
-          var _n = _npcs[_ni];
-          if (!_n || _n.alive === false || _n.x == null || _n.y == null) continue;
-          var _ndx = px - _n.x, _ndy = py + _nfdy - _n.y;
-          if (_ndx * _ndx + _ndy * _ndy >= NPC_BLOCK_R2) continue;
-          /* NEVER TRAP SOMEONE ALREADY INSIDE.  A pure position test would seal
-             a player who ends up within the radius by any route that skips
-             collision — a teleport, a spawn, a quest hand-in that repositions
-             them, or an NPC that walks onto them — because then EVERY
-             candidate step is solid and there is no direction out.  Found the
-             hard way: mp-townmap put the player at the foot of the steps, 5px
-             from Mayor Bro, and he could not move at all.
-             So the block only applies from OUTSIDE: if you are already inside,
-             every step is allowed and you simply walk free. */
-          if (_pp) {
-            var _cdx = _pp.x - _n.x, _cdy = _pp.y + _nfdy - _n.y;
-            if (_cdx * _cdx + _cdy * _cdy < NPC_BLOCK_R2) continue;
-          }
-          return true;
-        }
-      }
       var _wgrid = (S._tiledWalkable && S._tiledWalkable[S.currentZone]) || null;
       if (_wgrid && _wgrid.length) {
         /* The walkability grid uses its OWN resolution (set by the
@@ -4664,10 +4628,8 @@ export var BroTown = function BroTown(_ref0) {
                that ever tightens has the same failure.
                A player OUTSIDE the geometry is blocked normally, so this
                cannot be used to walk through a wall -- only out of one. */
-            /* S.player directly, NOT the `_pp` the NPC branch above sets:
-               that one is only assigned inside `if (_npcs && _npcs.length)`,
-               and the World View -- the zone this exists for -- has no NPCs at
-               all, so it would be undefined in exactly the place it matters. */
+            /* S.player directly (the NPC branch whose `_pp` this once
+               avoided is gone, v2.3.4098) */
             var _me = S.player;
             if (_cellSolid && _me) {
               var _pgx = Math.floor(_me.x * _gw / _mw);
@@ -4772,7 +4734,8 @@ export var BroTown = function BroTown(_ref0) {
     };
     if (typeof window !== 'undefined') window.__btPropFeetBlocked = (cx, cy, px, py) => propFeetBlocked(cx, cy, px, py, 10);
     /* v2.3.3806: where a fetching pet may not step (game/petFetch.js): the
-       walk's own walls (isSolid: the zone's edge, the walk grid, townsfolk),
+       walk's own walls (isSolid: the zone's edge, the walk grid; townsfolk
+       none since v2.3.4098),
        the Wheel's water, and an object's footprint (a building, a rock, a
        tree, a bush), read at one point, the pet's feet: it is small.  It goes
        round these; it never sets off across the water (_petWaterAt). */
