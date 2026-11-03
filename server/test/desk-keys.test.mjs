@@ -50,7 +50,13 @@ check('1d every requirement is one the column works out', DESK_KEY_ROWS.every((r
   DESK_KEY_ROWS.filter((r) => r[2] !== null && !NEEDS.includes(r[2])));
 const hint = src('src/ui/panels/KeyboardHintsPanel.jsx');
 check('1e ...each of them read by deskKeyHave', NEEDS.every((k) => new RegExp('\\b' + k + ':\\s').test(hint)), NEEDS.filter((k) => !new RegExp('\\b' + k + ':\\s').test(hint)));
-check('1f no key twice', new Set(DESK_KEY_ROWS.map((r) => r[0])).size === DESK_KEY_ROWS.length);
+/* v2.3.4105: a key may be listed twice for two jobs (Click: Attack, and
+   Talk), never the same row twice (the panel keys a row by both) */
+check('1f no row twice (key and words)', new Set(DESK_KEY_ROWS.map((r) => r[0] + ' ' + r[1])).size === DESK_KEY_ROWS.length);
+check('1g v2.3.4105: a click on a person talks, and E never does -- "Use", not "Interact" (the owner: "Make talking to a npc player and entering a building always two different things")',
+  DESK_KEY_ROWS.some((r) => r[0] === 'Click' && r[1] === 'Talk' && r[2] === null)
+  && DESK_KEY_ROWS.filter((r) => r[0] === 'E').length === 1 && DESK_KEY_ROWS.find((r) => r[0] === 'E')[1] === 'Use'
+  && !DESK_KEY_ROWS.some((r) => r[0] !== 'Click' && /talk|interact/i.test(r[1])), DESK_KEY_ROWS.filter((r) => r[0] === 'E' || /talk/i.test(r[1])));
 
 /* ── 2. only while it works ── */
 const none = deskKeyRows({});

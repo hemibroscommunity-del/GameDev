@@ -19,6 +19,9 @@
  *   5. a TAP on Ace opens his coin flip, and a flip there is settled by the
  *      worker (the coins move by three times the stake, either way);
  *   6. E beside him opens it too (it said "has nothing for you");
+ *      v2.3.4105: NOT any more -- E opens nothing beside him and says how to
+ *      talk to him (E never talks: "Make talking to a npc player and
+ *      entering a building always two different things");
  *   7. a tap on Lil Bro answers ("has nothing for you right now"), so he is a
  *      man in the street and not a picture;
  *   4c. (v2.3.4048) each plate reads his nickname (data/folkNames.js) or
@@ -268,10 +271,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { if (window.__btAceFlipBus) window.__btAceFlipBus.setOpen(false); });
     await P.page.waitForTimeout(500);
 
-    /* ── 6. E beside him opens it too ──
-       From his WEST side: on the den's side your boots are within its door's
-       reach, and E is the Enter button's key first (desktopControls.js: a
-       door before a person), as it is at Diego's store. */
+    /* ── 6. E beside him opens NOTHING (v2.3.4105) ──
+       The owner: "Make talking to a npc player and entering a building always
+       two different things" -- E is the door's, never a talk: beside him (from
+       his WEST side, out of the den's door's reach) E opens no flip and no
+       window, and says how to talk to him instead (desktopControls.js
+       _eTalkHints).  Until v2.3.4105 it opened his flip ("it said 'Ace has
+       nothing for you right now'" before v2.3.3067); the tap of 5 is the way. */
     /* v2.3.4058: Ace walks his day: stand beside him again until he is the one near */
     let nearE = null;
     for (let k = 0; k < 4 && !(nearE && nearE.npc === 'Ace'); k++) {
@@ -279,10 +285,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       nearE = await H.waitFor(P, (S) => ({ npc: S._nearNpc ? S._nearNpc.name : null, door: S._nearWheelBuilding ? S._nearWheelBuilding.id : null }),
         (v) => v.npc === 'Ace' && !v.door, { timeout: 4000, label: 'near Ace, no door' }).catch((e) => String(e.message).slice(-120));
     }
+    const hints0 = await H.readState(P, (S) => S._eTalkHints || 0);
     await P.page.keyboard.press('e');
-    const eOpen = await H.waitFor(P, () => !!(window.__btAceFlipBus && window.__btAceFlipBus.open), (v) => v, { timeout: 4000, label: 'E opens the flip' }).catch(() => false);
+    const eOpen = await H.waitFor(P, () => !!(window.__btAceFlipBus && window.__btAceFlipBus.open), (v) => v, { timeout: 3000, label: 'E opens the flip' }).catch(() => false);
     const eElse = await P.page.evaluate(() => { const c = document.querySelector('.bt-inspect-card'); return c ? c.getAttribute('data-building-panel') || 'a panel' : null; });
-    rec.ok('E beside him opens it too (it said "Ace has nothing for you right now")', !!nearE && nearE.npc === 'Ace' && eOpen === true, { nearE, eOpen, eElse });
+    const hints1 = await H.readState(P, (S) => S._eTalkHints || 0);
+    rec.ok('E beside him opens nothing -- no flip, no window (v2.3.4105: a tap on him talks, never E)',
+      !!nearE && nearE.npc === 'Ace' && eOpen !== true && !eElse, { nearE, eOpen, eElse, hints0, hints1 });
+    /* the hint is not required here: Ace walks his day (v2.3.4058), and where
+       he stands E may have something else to do (a resource in reach); the
+       hint's own checks are mp-talkenter's, mp-questprox's and mp-mayordoor's */
     await P.page.evaluate(() => {
       if (window.__btAceFlipBus) window.__btAceFlipBus.setOpen(false);
       const b = document.querySelector('.bt-inspect-close'); if (b) b.click();

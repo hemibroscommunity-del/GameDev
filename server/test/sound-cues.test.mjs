@@ -581,10 +581,10 @@ for (const p of files) {
      the quest and its status, so taking it is a new subject -- and a keeper
      opening his building; NOT a line popping up over him (the owner: "should
      play when you begin talking to someone or taking a quest") */
-  check('11za each townsperson answers in his own hum: a talk opened (the quest panel, a tap, E, a keeper\'s building), a quest taken; never as his line pops up -- npcChat()\'s silent beep() gone',
+  check('11za each townsperson answers in his own hum: a talk opened (the quest panel, a tap, a keeper\'s building; E never talks since v2.3.4105), a quest taken; never as his line pops up -- npcChat()\'s silent beep() gone',
     /npcSpeaks\(stateRef\.current, questPanel\.npc\)/.test(src('src/ui/panels/QuestPanel.jsx'))
     && /var _subject = questPanel\.quest\.id \+ ':' \+ questPanel\.status;/.test(src('src/ui/panels/QuestPanel.jsx'))
-    && (strip(src('src/game/desktopControls.js')).match(/npcSpeaks\(S, npc\)/g) || []).length === 5
+    && (strip(src('src/game/desktopControls.js')).match(/npcSpeaks\(S, npc\)/g) || []).length === 0   /* v2.3.4105: E never talks (5 until then) */
     && /npcSpeaks\(S, _pn\)/.test(BTc) && /r === 'opens'/.test(BTc) && !/npcChatter/.test(BTc) && !/BT_AUDIO\.npcChat\(/.test(BTc)
     && !/npcChatter|CHATTER_/.test(strip(NV)));
   /* v2.3.3664: Lil Bro's own "hmm", the owner's recording -- not a hum */

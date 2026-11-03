@@ -12,14 +12,13 @@ import { dashboardPanelBus } from './dashboardPanelBus.js';            /* v2.3.3
 import { onXpBar, xpBarShown, xpGainWords, xpToNextWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
 import { XpTrack } from './XpTrack.jsx';                                  /* v2.3.3739: its white gain bar and "45 / 120" */
 import { XP_BAR_ICONS, XP_BAR_LABELS } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
-import { PlaceChip } from './NmlBadge.jsx';                             /* v2.3.3765: No man's land's pill, right of the title; v2.3.3974: the place chip, always */
 import { barNarrow, barNumber, BAR_GOLD_SHORT, BAR_AP_SHORT } from '../../game/barNumbers.js';   /* v2.3.3765: big numbers short on a narrow bar */
 
 /* ═══ v2.3.2892 -> v2.3.3974: THE HOUR'S ICON IS GONE ═══
    v2.3.2892 put a day/night icon beside the zone name (the owner: "Add a time
    of day icon next to current map name").  Night is off and the icon took no
-   tap, so it said nothing a player could use; v2.3.3974 gives its room to
-   the place chip (NmlBadge.jsx PlaceChip). */
+   tap, so it said nothing a player could use; v2.3.3974 gave its room to
+   the place chip, which itself left for the minimap's plate in v2.3.4113. */
 
 /* v2.3.1333: zone header rail (owner + ChatGPT spec).  The floating
    zone label kept getting lost against bright world art, and the
@@ -243,8 +242,20 @@ export const ZoneHeader = ({ onExit }) => {
         )}
         </div>
         <div className={'bt-zone-header__mid' + (xpOn ? ' bt-zone-header__mid--xp' : '')}>
+        {/* ═══ v2.3.4113: IN THE WORLD THE NAME IS NOT DRAWN HERE ═══
+            The owner, 2026-11-03: "Remove name of town and "safe" or other
+            designation from top bar (currently centered). The minimap label
+            area already does this."  In the Wheel the title is drawn clear
+            (game.css bt-zone-header__title--clear) but stays in the page with
+            its words: the owner's 1.2 s hold on the bar's centre still opens
+            the Test panel there (an invisible hit area where the name was),
+            and every scenario that knows the live world by "BroTown" (TRAPS
+            §244) still reads it.  A land's banner docks into the minimap's
+            plate there (zoneBannerOverlay.js titleRect, since v2.3.3108).
+            Off the Wheel -- a dungeon, a room -- there is no plate, so the
+            zone's name is still drawn here, and its banner docks here. */}
         <div
-          className="bt-zone-header__title"
+          className={'bt-zone-header__title' + (S.currentZone === 'wheel' ? ' bt-zone-header__title--clear' : '')}
           /* v2.3.2596: the zone-entry banner's DOCK TARGET.  A data hook rather
              than the class name because the class is a style handle that a
              restyle is free to rename, and the banner measures this box from
@@ -260,17 +271,10 @@ export const ZoneHeader = ({ onExit }) => {
           onContextMenu={(e) => e.preventDefault()}
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         >{placeName(S) /* v2.3.3974: the land, or BroTown (v2.3.3039: never "The Wheel") */}</div>
-        {/* ═══ v2.3.3765: NO MAN'S LAND, JUST RIGHT OF THE TITLE ═══
-            The owner: "I think the no man's land pill would work better just to
-            the right of the Brotown name at the top (you can cut it away same as
-            when earning xp in a weapon)".  Beside the title, never inside it
-            ([data-zone-title] is the banner's dock target); cut away with the
-            title while the XP bar is up (game.css bt-zone-header__mid--xp).  Its
-            own 250 ms clock (NmlBadge.jsx NmlPill). */}
-        {/* ═══ v2.3.3974: ...AND IT IS THE PLACE CHIP NOW, ALWAYS UP ═══
-            Safe / PvP · Lv 6-8 / Outlaw (NmlBadge.jsx PlaceChip); a tap
-            opens the window with your own numbers. */}
-        <PlaceChip getS={getState} />
+        {/* v2.3.3765-v2.3.3974: No man's land's pill, then the place chip
+            (Safe / PvP / Outlaw), stood here; since v2.3.4113 the minimap's
+            plate says it (game/plateSafety.js) and takes the tap
+            (NmlBadge.jsx PlateTap). */}
         {/* ═══ v2.3.3430: TEST MODE, SAID WHERE IT IS ALWAYS SEEN ═══
             The owner's switch (Test panel; server/src/testmode.js): while the
             worker has the honesty checks off for this character, the top bar
