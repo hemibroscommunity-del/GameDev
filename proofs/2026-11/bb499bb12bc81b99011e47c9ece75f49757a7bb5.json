@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "bb499bb12bc81b99011e47c9ece75f49757a7bb5",
+  "tree": "da2ca9174033ae7cd7fba5afaaf7a084be1b5d70",
+  "committedAt": "2026-11-03T03:11:45-08:00",
+  "subject": "Merge pull request #1408 from hemibroscommunity-del/claude/topbar-no-place",
+  "files": 7502,
+  "bytes": 855489362,
+  "listingSha256": "3edee1d0fedb9bf2596f0e5900c346ef5da71d76fa5bf82eeed3b2cae618d665",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
