@@ -997,13 +997,31 @@ export async function coveringElement(P, locator) {
  * Still "until it says it is open", and still false rather than a throw. */
 export async function openWorldChat(P, { timeout = 8000 } = {}) {
   const t0 = Date.now();
+  /* v2.3.4021: opening More unfolds a folded band (a page opens it), and a
+     caller that measured the screen before (mp-weaponswap: the triangle sits
+     on the band) found its buttons moved.  So the band is put back as it was:
+     the walk to More is this helper's business, not the scenario's. */
+  const foldWas = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-dash-fold]');
+    return b ? b.getAttribute('data-dash-fold') : null;
+  }).catch(() => null);
+  const refold = async () => {
+    if (foldWas !== 'min') return;
+    const now = await P.page.evaluate(() => {
+      const b = document.querySelector('[data-dash-fold]');
+      return b ? b.getAttribute('data-dash-fold') : null;
+    }).catch(() => null);
+    if (now !== 'open') return;
+    await tapTop(P.page, '[data-dash-fold="open"]', 2000).catch(() => {});
+    await P.page.waitForTimeout(600);
+  };
   while (Date.now() - t0 < timeout) {
     const st = await P.page.evaluate(() => {
       const b = document.querySelector('[data-world-chat-toggle]');
       const S = window._gameState && window._gameState.current;
       return { open: b ? b.getAttribute('aria-expanded') : null, lines: (S && S.chatLog && S.chatLog.length) || 0 };
     });
-    if (st.open === 'true') return true;
+    if (st.open === 'true') { await refold(); return true; }
     if (!st.lines) { await P.page.waitForTimeout(250); continue; }
     const side = await P.page.evaluate(() => !!document.querySelector('.bt-land-sheet, .bt-land-navdock'));
     const scope = side ? '.bt-land-sheet' : '.bt-dashboard';
@@ -1014,11 +1032,21 @@ export async function openWorldChat(P, { timeout = 8000 } = {}) {
       if (t) t.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
     }, scope);
     await P.page.waitForTimeout(450);
-    await P.page.click(scope + ' [data-notif-onscreen="off"]', { timeout: 2000 }).catch(() => {});
+    /* v2.3.4021: tapTop, not page.click -- on this box Playwright never
+       found the button "stable" (the band settling under it), so the click
+       timed out and the feed never opened; tapTop still fails a covered one */
+    await tapTop(P.page, scope + ' [data-notif-onscreen="off"]', 2000).catch(() => {});
     await P.page.waitForTimeout(250);
     await P.page.evaluate(() => { const b = window.__broDashPanelBus; if (b) b.toBar(); });
     await P.page.waitForTimeout(400);
   }
+  /* v2.3.4021: the walk is longer than the bell's one tap, and on this box the
+     last pass can open the feed just as the time runs out: look once more */
+  const last = await P.page.evaluate(() => {
+    const b = document.querySelector('[data-world-chat-toggle]');
+    return b ? b.getAttribute('aria-expanded') : null;
+  }).catch(() => null);
+  if (last === 'true') { await refold(); return true; }
   return false;
 }
 

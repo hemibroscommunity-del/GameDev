@@ -6,6 +6,7 @@ import { capeStatusBus } from './capeStatusBus.js'; /* v2.3.2118 */
 import { chatLaneOf, CHAT_LANE_ICON } from '../../data/smallIcons.js';   /* v2.3.3279: the owner's chat-lane pictures */
 import { chatNameColor } from '../../game/chatColor.js';   /* v2.3.3391: a name's colour you can read */
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3812: "Tap to close" reads "Click to close" on a computer */
+import { swallowTapClick } from '../swallowTapClick.js';   /* v2.3.4021: shut, the feed leaves the page (TRAPS §247) */
 import { notifBus } from './notifBus.js';   /* v2.3.4021: the bell moved into More; shut and seen are shared with its page */
 
 /* ═══ v2.3.2037: WORLD CHAT, AS ITS OWN SECTION ═══
@@ -274,6 +275,7 @@ export function WorldChatFeed() {
       if ((dx * dx + dy * dy) > (12 * 12)) return;        /* a drag: the pad's */
       if (!inShell(e.clientX, e.clientY)) return;         /* finished off the feed */
       if (guardActive()) return;
+      swallowTapClick(e);   /* v2.3.4021: the same, for a tap on the feed */
       toggle();
     };
     const off = () => { from = null; };
@@ -326,6 +328,11 @@ export function WorldChatFeed() {
     const dx = e.clientX - s.x, dy = e.clientY - s.y;
     if ((dx * dx + dy * dy) > (12 * 12)) return;   /* a drag: leave it to the pad */
     e.stopPropagation();
+    /* v2.3.4021: shut is NOTHING on the page now (the bell is More's), so
+       this lift takes the control away and its click would land on what was
+       under it -- the world, or a weapon button (mp-weaponswap caught a
+       swap eaten that way).  Eat that click (TRAPS §247). */
+    swallowTapClick(e);
     toggle();
   };
 
