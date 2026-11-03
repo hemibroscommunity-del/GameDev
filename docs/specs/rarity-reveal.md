@@ -7,6 +7,13 @@ see if it reaches the next tier. Once the roll is complete it's a short
 celebration message. The item is identified in font color of its rarity
 tier."*
 
+> **v2.3.4012: the reveal no longer plays at pickup** for a phone that can
+> show a "?" (the owner: "Mystery item launched automatically. Should go to
+> inventory then have reveal option"). The piece waits in the bag as a
+> silhouette under a "?", and the same overlay plays when its owner taps
+> Reveal (or Equip). The ladder, the colours and the overlay are unchanged.
+> See `docs/specs/reveal-in-bag.md`.
+
 ## The ladder (unchanged — it already existed)
 
 | Grade | Multiplier | Rate | Colour |

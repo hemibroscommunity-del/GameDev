@@ -722,6 +722,7 @@ export const devToolsMethods = {
     else if (path === '/dev/spar') result = this._sparDev(playerId, body);   /* v2.3.3265: {add | skill | clear} -- sparring clones of yourself (spar.js) */
     else if (path === '/dev/testmode') result = await this._testModeSet(playerId, body.on === true);   /* v2.3.3430: {on} -- the honesty checks off for this character (testmode.js) */
     else if (path === '/dev/dropage') result = this._dropDevAge(playerId, body);   /* v2.3.3473: {ms} -- this player's drops that much older (itemdrop.js) */
+    else if (path === '/dev/revealbag') result = this._revealBagDev(playerId, body);   /* v2.3.4012: {grade} the next mystery drop's grade, or {grade, give} a "?" in the bag now (revealbag.js) */
     else return null;
 
     /* Same audit trail as every other mutating admin op: the owner can see

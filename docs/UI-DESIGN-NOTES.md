@@ -438,6 +438,7 @@ Screens: mayor-dialogue, quest-offer, quest-accepted, guide-arrow
 - A brand-new player gets one welcome line ("Find Mayor Bro — he wants a word. Follow the gold road on your map.") with a Skip tutorial button: "add just a 'skip tutorial' button on the very first dialog box when you join the game. No pop ups should be scheduled after that." (v2.3.2890). Onboarding speaks one voice at a time, because "The tutorial onboarding is too heavy on window pop ups right after you join the game" (v2.3.2766).
 - On a computer, Enter presses Next, Continue and Accept Quest, and Esc is Not now or the ✕; each button wears its key (v2.3.3407).
 - THE TOUR (v2.3.3525): the Mayor's slimes are the only quest a new player is offered; once they are in, six townsfolk offer theirs AT ONCE, each wearing the gold "!" over his head, on the minimap and on the world map ("Maybe mayor bro is the only quest available for the first quest then after completing that other NPCs begin having quest icons appear above their head", then "Make the quest icons appear on the minimap and map too"). Each giver's second quest follows his first; the Mayor's snowmen wait for the whole town. Every line says why he wants it ("Keep the dialog witty and funny (it's an unserious game bro)") and works in any order. With nothing in hand the gold road still suggests ONE giver, in the tour's order, and the pinned card says "Next: <quest>", "Talk to <him> <where>" and "+5 more: look for a gold ! on your map". A giver with nothing more to offer puts his window away after the claim.
+- PLAIN WORDS (v2.3.4025): the owner, "Just make the characters (all of them all dialog) a simple and easy to understand personality and directions. No cryptic jokes or anything that could confuse someone." This replaces the "witty and funny" ask above. Each townsperson says who he is in one friendly sentence, then the job: what, how many, where, and who to bring it to. The eight with nicknames (Sizzle, Snail Mail, Swampy, Tryhard, Badge, Going-Going, Fish Tales, Selfie) say them. docs/specs/plain-words.md.
 - A step done at a giver's own building puts a button on his "how's it going" line that opens it (Open the forge, Open the bench, Open the Feed & Seed), the brass button beside a quiet Close; Lil Bro's says Race!. The same window and the same counted visit as walking to the door.
 - Woodworker Bro's swap (a pine bow or staff remade in softwood) asks which one on the claim window when you hold both, the way the XP choice is asked, and the claim waits until one is picked.
 - Lil Bro's race: a big 3, 2, 1, GO! in the middle of the play area that takes no taps (you are held on the line through it), then a slim pill at the top with the flags touched, your clock and his, then a small result card in the same place with both times, a hint on a loss and Race again; OK (Esc on a computer) or a few seconds closes it. At the top, under the minimap, where the "Attack <name>?" card goes: out of the thumbs' way. The flags stand in the world, the next one gold, touched ones green, the finish chequered, and the gold road leads to the next.
@@ -869,6 +870,26 @@ Screens: dash-bag, item-card
 - The card is not yet laid out for a short sideways screen, and its content can spill below it. A code note says this stays "until this card is laid out to fit a short viewport, which is a different change" (v2.3.2612).
 
 Sources: CLAUDE.md, docs/specs/landscape-mode.md, docs/specs/bag-icons.md, docs/specs/crop-food.md, docs/specs/armor-grade-look.md, docs/specs/rarity-reveal.md, docs/specs/quest-guidance.md, docs/LANTERN-SLATE-SPEC.md, src/ui/mobile/dash/InventoryPanel.jsx, src/ui/mobile/dash/ItemDetailPopup.jsx, src/ui/mobile/dash/BagFilterChips.jsx, src/ui/mobile/dash/bagFilterBus.js, src/ui/mobile/dash/bagModel.js, src/ui/mobile/dash/bagLife.js, src/ui/mobile/dash/DashColumns.jsx, src/ui/mobile/dash/common.js, src/ui/mobile/sheet/HeroExpanded.jsx, src/ui/mobile/BottomDashboard.jsx
+
+## A mystery piece in the bag
+Screens: bag-unrevealed
+
+**What it is for:** A rare-or-better drop you have not opened yet. It waits in the bag as a "?" until you choose to reveal it (v2.3.4012, owner: "Mystery item launched automatically. Should go to inventory then have reveal option").
+
+**Decisions, and why:**
+- **The tile is the reveal's own picture:** the item's painted art as a dark silhouette, a "?" over it in the rare blue, and the rare-blue 2 px edge. Rare blue because the pile only ever promised "rare or better", the same promise as the drop line and the pile's shine (v2.3.3746). No new art: a filter on the picture already loaded and one character of text, so it costs no memory.
+- **You know what it is, not how good it is.** The tile and the card keep the item's name and kind (an Iron Torso is an Iron Torso); only the grade is hidden, as on the ground (rarity-reveal.md).
+- **The card says "Rare or better" in blue and has two buttons: Reveal (the brass one) and Equip.** No damage or "% damage reduced" line, because that number would read the piece as a Normal. No Sell, Drop or Salvage until it is revealed.
+- **Reveal closes the card,** so the reveal is seen. It is the same short, non-modal reveal as before (2 s a stage): the world keeps playing.
+- **Equip reveals first,** then puts the piece on when the grade lands. What you wear is never a secret: your armour's grade shows on your body.
+- **The tile stays a "?" until the reveal lands,** even though the bag already knows the answer, so the grade never shows under the spin.
+
+**Please don't suggest:**
+- Revealing on pickup again (that is the switch `revealbag: false`, for emergencies), or a modal reveal.
+- A different colour for the "?" than the rare blue, or the word "Rare" on the tile.
+- Selling or trading a "?" from this card: that is a separate plan (docs/specs/sealed-gear.md).
+
+Sources: docs/specs/reveal-in-bag.md, docs/specs/rarity-reveal.md, docs/specs/sealed-gear.md, src/game/revealBag.js, src/ui/reveal/UnrevealedMark.jsx, src/ui/reveal/RevealOverlay.jsx, src/ui/mobile/dash/InventoryPanel.jsx, src/ui/mobile/dash/ItemDetailPopup.jsx
 
 ## The More page and its pages
 Screens: dash-more, more-settings, more-pets, more-leaderboard, more-social, more-journey, more-account, more-about, more-feedback
@@ -1646,6 +1667,7 @@ Screens: spar-fight, lock-reticle
 - **Monster name plates** came from the owner: "Give monsters a name plate with their name and level beneath it similar to how the player has their name plate" (v2.3.1918). They were rebuilt to the owner's mockup (v2.3.2513), then softened because the owner found them "too harsh -- the contrast is too high" (v2.3.2530) and "a bit too large and distracting" (v2.3.2590). The plate sits over the head and turns INTO the HP bar for the monster you fight. Owner: "I want them to be above the head and disappear (change to hp bar) when taking damage ... This makes it way less distracting" (v2.3.2571).
 - **The plate's ring colour is the danger:** the monster's level against the skill of the weapon in your hand. Green Low, yellow Near, orange High, red Danger, and GREY when it pays reduced XP, 5+ levels under (owner: "I like the idea of gray nameplate for reduced xp add that", v2.3.3251).
 - **The monster's element after its name** (v2.3.3906, the owner: "After name of monster on nameplate it lists elemental icon type."): name, the element's icon, then the level, the plate growing by the icon. The icon is a 64 px copy of the element icon (`elem-<name>-64.webp`, `tools/ui/make-elem-small.py`), never the 256 px one, which shimmers when shrunk to plate size; it loads behind the loading screen with the other small marks. A monster with no element shows no icon.
+- **No words announce a monster's move** (v2.3.4026, the owner: "Remove all text announcing what attacks or things the monsters are doing. It's lame."): no SLAM!, POUNCE!, LUNGE!, ROAR!, CHARGE!, SWEEP!, ENRAGED!, DRAIN!, Summon! or BURSTING! over a monster or a boss. The ground ring, the wind-up, the shake and the sound still tell you. What happens to YOU still shows (a miss, IMMUNE, "Dazed!", "Frozen!"), and the bestiary's stage still names its moves: it is a reference page.
 - **A monster hitting you fills its plate bright red** (decision D4), so you can tell WHICH one is hitting you. That warning was deliberately left loud when the rest of the plate was softened. A brief "!" pops over a monster that notices you (owner: "put a brief exclamation point over their head to cue you in that you're being targeted", v2.3.2295).
 - **A dungeon's boss is marked** (v2.3.3556). The owner had never played a dungeon ("This will probably need work to get right"). The tour found the boss looked exactly like the monsters before it, with the same picture, size and name, and about their health. Now:
   - it is HUGE, about twice your height, its HP bar with it (owner: "Make boss slime huge"; the first cut was half again as big); you hit it where it is drawn, and it turns see-through while you stand behind it;
@@ -1653,7 +1675,7 @@ Screens: spar-fight, lock-reticle
   - the deep red is darker than the alarm's bright red, which still takes over while the boss hits you, so the two never mean the same thing.
 - **The Goo Grotto's giant slime splits** (v2.3.3558). Owner: "a giant slime that explodes and spawns small (normal size slimes) like 8-10 maybe but shrinks in size afterwards ... 3 rounds of that before it finally just becomes a normal slime then after you kill that you defeat the dungeon". On screen:
   - its HP bar wears a thin dark mark at each split still to come (75%, 50%, 25%), so you can see where it will burst;
-  - at a mark it swells for 1.6 s, a blue slime's own warning, with "BURSTING!" over it (the giant's words alone: an ordinary blue slime swells with none, below), and can't be hit; then it goes off with the blue slime's shockwave and sound, and 10, then 9, then 8 slimes fly out of it in an arc;
+  - at a mark it swells for 1.6 s, a blue slime's own warning, with no words over it (v2.3.4026: "BURSTING!" went with every monster's move words, below), and can't be hit; then it goes off with the blue slime's shockwave and sound, and 10, then 9, then 8 slimes fly out of it in an arc;
   - it shrinks a step each time (x4.59, x2.76, x1.66 a slime), so its last form is a normal slime's size that still wears its "Boss" plate;
   - killing that last form is the win: every slime it threw out that still stands pops with it, with one splat sound for them all, and the clear card comes up.
 - **An ordinary blue slime warns you only by swelling** (v2.3.3568). It swells for 1.6 s before it goes off, with no words over it. Offered "BURSTING!" over it, as the giant slime shows, the owner: "No warning for the bursting I think it's more fun to discover that".
@@ -1691,7 +1713,7 @@ Screens: spar-fight, lock-reticle
 - Muting the red "attacking you" plate, putting plates back under the feet, or bringing back the amber pointer.
 - Painting a boss's resting plate the bright alarm red: that red means "hitting you right now".
 - A separate health bar for each of the giant slime's forms: its one bar and its marks show the whole fight (v2.3.3558).
-- Words over an ordinary blue slime as it swells ("BURSTING!" is the giant slime's alone): finding it out is the fun (v2.3.3568).
+- Words over an ordinary blue slime as it swells: finding it out is the fun (v2.3.3568). Or over any monster's move, the giant slime's included (v2.3.4026).
 - Shrinking other players' HP bars, or making the staff's special steadier.
 
 **Still open:**

@@ -194,8 +194,11 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
 /* ── 7. the wiring ── */
 {
   const ws = src('src/networking/wsClient.js');
+  /* v2.3.4012: held while a bag reveal plays (game/revealBag.js afterReveal:
+     the grade's achievement comes right behind the reveal's answer), so the
+     call is inside the hold -- still the direct switch, still never `from` */
   check('7a wsClient takes achv_state in its direct switch, never a relayed copy',
-    /case 'achv_state':\s*\{\s*if \(msg\.from\) break;\s*try \{ onAchvState\(S, msg\.payload\); \}/.test(ws));
+    /case 'achv_state':(?:\s*\/\*[\s\S]*?\*\/)?\s*\{\s*if \(msg\.from\) break;\s*var _achvP = msg\.payload;\s*afterReveal\(function \(\) \{ try \{ onAchvState\(S, _achvP\); \}/.test(ws));
   const shimFrom = ws.indexOf('var channelShim = {'), shimTo = ws.indexOf('track: function track(', shimFrom);
   check('7b the channel lets achv_title through to the worker (TRAPS #18)',
     shimFrom > 0 && /if \(msg\.type === 'achv_title'\) \{\s*wsOut\(msg\);\s*return;\s*\}/.test(ws.slice(shimFrom, shimTo)));

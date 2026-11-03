@@ -760,6 +760,22 @@ field, gid|idx, essence, grade, metal, piece}`, or `{ok: false, reason}`
 no_essence, wrong_metal, not_lower, bad); a player_state follows each paid
 act. Full table: docs/specs/salvage.md.
 
+**A mystery piece waits in the bag (v2.3.4012, caps.revealbag):** the join
+gains `rb: 1` (this phone can show a "?"; old workers ignore it). For such a
+phone a rare-or-better armour piece or Iron Great Sword picked up off a
+monster's pile arrives in `loot_credit` (`armor[]`, `weapon`) WITHOUT
+`quality` and with `unrevealed: true`, and the credit's `reveals` leaves it
+out; `player_state`'s `weaponStash` / `armorStash` / `legsStash` strip the
+grade of a marked entry the same way. New c→s case `reveal_item {field:
+'armorStash'|'legsStash', gid}` or `{field: 'weaponStash', idx, name}`; new
+s→c type (PRIVILEGED, private) `item_reveal {ok, field, gid|idx, name, piece,
+reveals, already}` (`reveals` is loot_credit's own shape, the ladder to play)
+or `{ok: false, reason}` (busy, bad, not_held, changed). Equipping a marked
+piece (stats_update, equip_request) opens it and sends `item_reveal` too; a
+join opens anything worn that is marked, and everything marked for a phone
+without `rb` or under `revealbag: false`, sending each `item_reveal` after
+`player_state`. Full table: docs/specs/reveal-in-bag.md.
+
 **Shield gems (v2.3.3187, caps.shieldgem):** new c→s case `shield_gem {gem,
 gid}` or `{gem, sig}` (a polished gem into the shield the worker holds for
 you, named by its ledger id or, with no id, by its signature

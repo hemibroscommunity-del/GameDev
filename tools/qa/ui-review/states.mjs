@@ -783,6 +783,26 @@ export const STATES = [
     },
   },
 
+  /* v2.3.4012: a mystery piece waiting in the bag (game/revealBag.js): its
+     "?" tile and its card's Reveal button -- the piece put in the bag by the
+     test lever through the pickup's own credit (/dev/revealbag) */
+  {
+    id: 'bag-unrevealed', group: 'Dashboard', title: 'A mystery piece in the bag',
+    about: 'A rare-or-better drop waiting in the bag as a "?": its silhouette on the rare-blue edge, and its card with Reveal and Equip.',
+    run: async ({ P, view, wsPort, myId }) => {
+      if (!wsPort || !myId) return 'no test lever here';
+      await H.devOp(wsPort, 'revealbag', myId, { grade: 'elite', give: 'armor' }).catch(() => null);
+      await wait(P, 800);
+      const e0 = await openBag(P, view);
+      if (e0) return e0;
+      await wait(P, 700);
+      const e = await tapSel(P, '[data-unrevealed]');
+      if (e) return e;
+      await wait(P, 600);
+      if (!(await has(P, '[data-reveal]'))) return 'the card shows no Reveal button';
+    },
+  },
+
   /* ═══ BUILDINGS ═══ */
   {
     id: 'near-door', group: 'Buildings (BroTown)', title: 'At a building\'s door',
