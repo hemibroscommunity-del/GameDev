@@ -419,22 +419,29 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const SP = 8;   /* slow motion: 520 ms is over in a few of this box's frames */
       const splatDeath = async (key, variant, kind, opts) => {
         const o = opts || {};
-        const h = await hold(P, [{ id: `dz-sp-${key}-${kind || 'roll'}-${Date.now()}`, arch: o.arch || 'fodder', variant, dx: 70, dy: 6 }]);
+        /* (a picture's slime stands clear of the Mayor's name plate) */
+        const h = await hold(P, [{ id: `dz-sp-${key}-${kind || 'roll'}-${Date.now()}`, arch: o.arch || 'fodder', variant, dx: o.shot ? -60 : 70, dy: o.shot ? 110 : 6 }]);
         if (h.err) return { err: h.err };
         const mid = h.ids[0];
         const alive = await drawn(P, mid);
         if (!(alive && alive.s && alive.s.visible)) { await release(P); return { err: 'not drawn' }; }
-        await P.page.evaluate(([k, off]) => { window.__btDeathSlow = k; if (off) window.__btSlimeSplat = false; else delete window.__btSlimeSplat; }, [SP, !!o.off]);
+        await P.page.evaluate(([k, off]) => { window.__btDeathSlow = k; if (off) window.__btSlimeSplat = false; else delete window.__btSlimeSplat; }, [o.shot && !o.off ? 40 : SP, !!o.off]);
         if (o.burst) await P.page.evaluate((id) => { const m = window.__qaDZ.list.find((x) => x.id === id); m._burstPeakFrom = Date.now(); m._burstScale = 1.6; }, mid);
         const box = await boxOf(P, mid);
         await kill(P, [mid], kind, o.hit || null);
         const t0 = Date.now();
         if (o.shot && box) {
-          await P.page.waitForTimeout(o.shotAt * SP);
+          /* by the death's own clock (TRAPS §200): the splat once it lies
+             flat, the strip a while into its flecks */
+          for (let i = 0; i < 60; i++) {
+            const d = (await state(P, mid)).d;
+            if (o.off ? Date.now() - t0 > o.shotAt * SP : (d && d.flat && d.flat[1] < 0.3)) break;
+            await P.page.waitForTimeout(250);
+          }
           await P.page.screenshot({ path: `${OUT}/${o.shot}.png`, clip: box }).catch(() => {});
         }
         let bursts = 0;
-        while (Date.now() - t0 < (o.off ? 1900 : 700) * SP + 1500) {
+        while (Date.now() - t0 < (o.off ? 1900 * SP : 700 * (o.shot ? 40 : SP)) + 1500) {
           bursts = Math.max(bursts, await cutBursts(mid));
           await P.page.waitForTimeout(400);
         }
