@@ -1,4 +1,4 @@
-/* ═══ v2.3.4121: THE GEAR TAB'S NUMBERS ═══
+/* ═══ v2.3.4141: THE GEAR TAB'S NUMBERS ═══
  *
  * The middle panel's STATS (GearTab.jsx): what one piece of gear is worth, a
  * comparison of a bag piece against what is in its slot now -- the owner's
@@ -38,7 +38,7 @@ const pct1 = (v) => {
 };
 const safe = (fn, dflt) => { try { const v = fn(); return v == null ? dflt : v; } catch (e) { return dflt; } };
 
-/* v2.3.4121: the damage cut is heroStatPills' combinedDamageCut (PR #1350,
+/* v2.3.4141: the damage cut is heroStatPills' combinedDamageCut (PR #1350,
    v2.3.3896: what of a hit gets through your Defense -- never below
    PROG3.FLOOR of the base, the floor widened by Dodge -- and then your
    armour), imported, so the Gear tab and the Character page say one number. */
@@ -150,7 +150,7 @@ export function myStatRows(R) {
   ];
 }
 
-/* v2.3.4121: the Gear tab's overview card heads itself "<name> Lv N". */
+/* v2.3.4141: the Gear tab's overview card heads itself "<name> Lv N". */
 /** The character level: the worker's own rpg.level (prog3.js sets it to
  *  _prog3CharLevel), the number the status frame's badge shows, so the two
  *  never disagree; prog3CharLevel (its mirror) only for a blob without one. */

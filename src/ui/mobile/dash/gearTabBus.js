@@ -1,4 +1,4 @@
-/* ═══ v2.3.4121: THE GEAR TAB'S STATE -- WHAT IS PICKED, WHAT IS FILTERED ═══
+/* ═══ v2.3.4141: THE GEAR TAB'S STATE -- WHAT IS PICKED, WHAT IS FILTERED ═══
  *
  * The owner's design (2026-11-02): "when you tap on an equip slot your
  * inventory gets filtered to whatever item category was tapped on (sword gets
@@ -19,7 +19,7 @@
  * Module-scoped, the bagFilterBus shape: it survives leaving the page within
  * a session.  window.__btGearTab reads it for QA.
  *
- * v2.3.4121: THE OWNER'S SECOND MOCKUP (2026-11-03) -- the middle is ONE card,
+ * v2.3.4141: THE OWNER'S SECOND MOCKUP (2026-11-03) -- the middle is ONE card,
  * no tabs: the overview with nothing picked, the pick's card with something
  * picked.  So there is no tab to remember: `view` is 'item' while something is
  * picked and 'overview' otherwise (the LOOK | STATS | DETAILS tabs of the first
@@ -28,7 +28,7 @@
 import { gearCell } from './itemCategory.js';
 
 const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, xp: null };
-/* v2.3.4121: the overview's skill tile showing its XP bar (a tap), held here
+/* v2.3.4141: the overview's skill tile showing its XP bar (a tap), held here
    rather than in the component so a re-mount of the band never drops it;
    back to the tiles after XP_HOLD_MS or a second tap */
 const XP_HOLD_MS = 4000;
@@ -82,7 +82,7 @@ export const gearTabBus = {
     state.menu = false;
     emit();
   },
-  /** v2.3.4121: a skill tile tapped -- `key` shows its XP bar, null the tiles. */
+  /** v2.3.4141: a skill tile tapped -- `key` shows its XP bar, null the tiles. */
   showXp(key) {
     if (xpTimer) { clearTimeout(xpTimer); xpTimer = 0; }
     state.xp = key || null;
