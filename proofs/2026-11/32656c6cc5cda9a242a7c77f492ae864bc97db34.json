@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "32656c6cc5cda9a242a7c77f492ae864bc97db34",
+  "tree": "168ed08b948b6a5a4d1cbe72ae92556a0090841e",
+  "committedAt": "2026-11-02T19:54:37-08:00",
+  "subject": "Merge pull request #1394 from hemibroscommunity-del/claude/folk-nicknames",
+  "files": 7460,
+  "bytes": 848345854,
+  "listingSha256": "557f1f4349c7b8abbd202e221d16ef915aebabb6e049d83920bba2e561726e6c",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

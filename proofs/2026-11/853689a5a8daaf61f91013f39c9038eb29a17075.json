@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "853689a5a8daaf61f91013f39c9038eb29a17075",
+  "tree": "fc24948385987866448a265f720242c77ab21d0f",
+  "committedAt": "2026-11-02T19:54:34-08:00",
+  "subject": "Merge pull request #1366 from hemibroscommunity-del/claude/fish-variants",
+  "files": 7457,
+  "bytes": 848321438,
+  "listingSha256": "e358200bd0321324d57fc3d5a1d6ee90db019fa09ac7102f0d2559d2003f84bc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}

@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0558aed5b549165799254add1fa481f8d0a5c955",
+  "tree": "975d8310ea043f91105a0c2925e8a37340741232",
+  "committedAt": "2026-11-02T19:54:40-08:00",
+  "subject": "Merge pull request #1382 from hemibroscommunity-del/claude/death-strip",
+  "files": 7461,
+  "bytes": 848356188,
+  "listingSha256": "8e3b6c34794e9f0eda71c6e9886616c2be2bd83578cd0b142f3d54e19daef2ab",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
