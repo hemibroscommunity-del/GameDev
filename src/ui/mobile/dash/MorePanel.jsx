@@ -167,7 +167,7 @@ function statusFor(id, S) {
       if (clanPartyOn(S)) {
         const p = S && S._party && S._party.state === 'open' ? S._party : null;
         const n = p && Array.isArray(p.members) ? p.members.length : 0;
-        return p ? `Your party · ${n} member${n === 1 ? '' : 's'}` : 'Clans are parties now';
+        return p ? `Your party · ${n} member${n === 1 ? '' : 's'}` : 'Make a party in the Saloon';   /* v2.3.4217: the owner: "clans are parties now" meant nothing to players */
       }
       const c = S?._clanData;
       return c && (c.name || c.tag) ? (c.name || c.tag) : 'Not joined · player clans';

@@ -35,7 +35,7 @@ import { allyName, allyTagOk } from './alliance.js';
 
 export const CLAN_PARTY = {
   /* the refusal every clan request gets now (clan_error's `text`) */
-  REFUSE: 'Clans are parties now: make a party in the Saloon',
+  REFUSE: 'Make a party in the Saloon'   /* v2.3.4217: no "clans are parties now" -- players never knew the step */,
 };
 
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
