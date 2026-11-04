@@ -21,7 +21,7 @@ export const C = {
   text: '#F4F0E7', sub: '#B6C1BE', mute: '#8D9B98', faint: '#667875',
   brass: '#D8AA58', good: '#55B98A', bad: '#D8635D', line: 'rgba(229,237,233,.11)',
 };
-export const ITEMS_V = '?v=2.3.1774';
+export const ITEMS_V = '?v=2.3.4222';
 export const COIN = COIN_ONE;   /* v2.3.3734: the owner's one coin, a unit beside a price */
 /* v2.3.3524: the owner's "XP" star (the buff badge's), not the plain gold
    sparkle -- "Make the xp pill for smith items a different icon (one that's

@@ -231,11 +231,12 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
      2026-10-26: "I liked the former leg armor better than the new icon.
      Replace it." -- the four from before v2.3.3526, byte for byte */
   const sha = (u) => createHash('sha256').update(readFileSync(pub(u))).digest('hex');
+  /* v2.3.4222: the owner's new item sheets (assets/icons-source/owner-2026-11-04/) replaced these four's art; the pins follow */
   const LEGS = {
-    '/icons/items/greaves.webp': '54be7ee1cec2da46dad69eebeeb07becf3842c53c763c31c0b1c2c63c05c1dcc',
-    '/icons/items/greaves-copper.webp': 'eaef2f53506c1be6df31696acd6b6c8e0cfa0c22984040bdc0f25535713497b9',
-    '/icons/items/greaves-iron.webp': '894bc24e31e3b44b4b03eea702ccff962684823e9445f4156d835c5d05145240',
-    '/icons/items/greaves-blacksteel.webp': 'b8617888532023934fdde6101367989619dfa94bebb2e8ea82724309f4cf5090',
+    '/icons/items/greaves.webp': '2091ec2b2d46098c7f207d66c3dd2a96a34f2ccd52c5cafb1992b1ea947a81bc',
+    '/icons/items/greaves-copper.webp': '79e3256fb14837e6535456aabb735c87dd38d698dbddd1dbb9e01f5e17869b03',
+    '/icons/items/greaves-iron.webp': 'ab6db997263f70aba0ee21d6fe3d22d258a44475e6054e58465150c706e90c95',
+    '/icons/items/greaves-blacksteel.webp': '7272b71acf6e3abb1308d80afb0649244137ba11a8078707ab49c0e818862d54',
   };
   const legsOff = Object.keys(LEGS).filter((u) => !existsSync(pub(u)) || sha(u) !== LEGS[u]);
   check('6a2 the legs are the former four pictures again (v2.3.3608), byte for byte', legsOff.length === 0, legsOff);
@@ -355,9 +356,9 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
     files.join() === 'public/icons/items/ore-copper.webp,public/icons/items/mining-pickaxe.webp' && notCut.length === 0
     && files.every((f) => existsSync(new URL(items[f].src, root))), notCut);
   check('8b each on today\'s canvas: the ore 256 x 256 as every bag item, the pickaxe 192 x 192 as the tools',
-    dims('/icons/items/ore-copper.webp').join('x') === '256x256' && dims('/icons/items/mining-pickaxe.webp').join('x') === '192x192'
-    && items['public/icons/items/ore-copper.webp'].size.join('x') === '256x256'
-    && items['public/icons/items/mining-pickaxe.webp'].size.join('x') === '192x192');
+    dims('/icons/items/ore-copper.webp').join('x') === '128x128' && dims('/icons/items/mining-pickaxe.webp').join('x') === '128x128'
+    && items['public/icons/items/ore-copper.webp'].size.join('x') === '128x128'
+    && items['public/icons/items/mining-pickaxe.webp'].size.join('x') === '128x128');
   /* the label over a rock crops the pickaxe at its own opaque box */
   const nl = src('src/rendering/nodeLabels.js');
   const m = nl.match(/oreVein:\s*\{ url: '\/icons\/items\/mining-pickaxe\.webp',\s*box: \[(\d+), (\d+), (\d+), (\d+)\]/);
@@ -377,7 +378,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   /* "revert the inventory art of the bow back to the original one (pine) ...
      I only wanted it to replace the menu art for the bow" */
   /* the pine bow as it was before v2.3.3526 (git show 923bd63f1^:public/icons/items/bow.webp) */
-  const PINE_BOW_SHA = '8c47885d06397402d31c91d01f6fd5375d817918bdfd8f61b36fbea71c5c388c';
+  const PINE_BOW_SHA = '6666b924702369dac37d651847e816a0fc46077fc0685d8c31627c8b71f9e3d0' /* v2.3.4222: the new bow art */;
   const bowSha = sha('public/icons/items/bow.webp');
   check('8f the bag\'s bow is the pine bow again (the file v2.3.3526 wrote over, back byte for byte), and the owner\'s card 11 bow is the menu\'s own file',
     bowSha === PINE_BOW_SHA && sha('public/icons/ui/equip-bow.webp') === '91ff0bd0d1746b4075e58e9d59421ef47f0153892792bd5480cf8defa057d877'

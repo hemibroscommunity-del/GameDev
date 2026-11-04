@@ -45,7 +45,7 @@ export const GHOST_SRC = {
    render and fetches the real chest-plate torso art (owner: "it's an emoji
    vest").  Lives in THREE files — keep them in lockstep or one surface serves
    stale thumbnails while its neighbour serves fresh ones. */
-const ITEMS_V = '?v=2.3.1774'; /* v2.3.1774: pine shield icon */
+const ITEMS_V = '?v=2.3.4222'; /* v2.3.1774: pine shield icon */
 /* v2.3.1845: THE ICON IS THE WEAPON'S, NOT THE SLOT'S.
    Owner: "when you only have sword (no bow or staff) it still shows bow icon
    when you double tap to switch weapons on the character's weapon slot."

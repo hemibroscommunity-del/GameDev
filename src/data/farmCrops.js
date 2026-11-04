@@ -125,7 +125,7 @@ export const FARM_ITEM_NAMES = FARM_CROP_ORDER.reduce((m, id) => {
    compost its sack.  public/icons/items/seed-<crop>.webp, crop-<crop>.webp
    (the crop's id with '-' for '_'), compost.webp.  A crop a newer worker grows
    with no picture yet falls to its glyph where the <img> fails. */
-export const FARM_ICON_V = '?v=2.3.3281';
+export const FARM_ICON_V = '?v=2.3.4222';
 const farmIcon = (name) => '/icons/items/' + name + '.webp' + FARM_ICON_V;
 export const farmSeedIcon = (id) => farmIcon('seed-' + String(id).replace(/_/g, '-'));
 export const farmCropIcon = (id) => farmIcon('crop-' + String(id).replace(/_/g, '-'));

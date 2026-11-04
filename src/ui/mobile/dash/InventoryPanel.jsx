@@ -95,7 +95,7 @@ export const classify = (key) => {
    render and fetches the real chest-plate torso art (owner: "it's an emoji
    vest").  Lives in THREE files — keep them in lockstep or one surface serves
    stale thumbnails while its neighbour serves fresh ones. */
-const ITEMS_V = '?v=2.3.1774'; /* v2.3.1774: pine shield icon */
+const ITEMS_V = '?v=2.3.4222'; /* v2.3.1774: pine shield icon */
 const WOOD_THUMB = `/icons/items/wood-log.webp${ITEMS_V}`;
 const BURNT_DUST_THUMB = `/icons/items/burnt-dust.webp${ITEMS_V}`;
 const SLIME_REMNANTS_THUMB = `/icons/items/remnants-slime.webp${ITEMS_V}`;
@@ -578,7 +578,7 @@ export const ItemTile = ({ ikey, count, style: styleOverride, onSelect, selected
         const raw = !!(parseGemKey(ikey) || {}).raw;
         return thumb
           ? <img src={thumb} alt={ikey} draggable={false} className="bt-bag-art" data-life={life || undefined}
-              style={{ width: raw ? '68%' : '85%', height: raw ? '68%' : '85%', objectFit: 'contain', imageRendering: 'auto', ...(raw ? { opacity: 0.78 } : null), ...fishArtStyle(ikey) }} />
+              style={{ width: raw ? '68%' : '94%', height: raw ? '68%' : '94%', objectFit: 'contain', imageRendering: 'auto', ...(raw ? { opacity: 0.78 } : null), ...fishArtStyle(ikey) }} />
           : <span className="bt-bag-art" data-life={life || undefined} style={{ display: 'inline-block' }}>{iconFor(ikey)}</span>;
       })()}
       {/* v2.3.2815: the glint and the arrival ring draw here (game.css) */}
@@ -1494,7 +1494,7 @@ const StashTile = ({ kind, obj, index, style: styleOverride, onSelect, selected 
       {thumb
         ? <img src={thumb} alt="" draggable={false} className="bt-bag-art"
             data-life={hidden ? undefined : (lifeKindForGear(kind, obj) || undefined)} data-life-q={!hidden && q && q !== 'normal' ? '1' : undefined}
-            style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto',
+            style={{ width: '94%', height: '94%', objectFit: 'contain', imageRendering: 'auto', /* v2.3.4222: the new item art fills the slot */
               ...(hidden ? { filter: 'brightness(0) opacity(.55)' } : null) }} />
         : <span className="bt-bag-art" data-life={lifeKindForGear(kind, obj) || undefined}
             style={{ fontSize: 18, display: 'inline-block' }}>{fallbackGlyph}</span>}

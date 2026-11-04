@@ -1,7 +1,7 @@
 /* ═══ v2.3.3281: THE OWNER'S BAG ICONS (tools/ui/cut-bag-icons.py) ═══
  *
  *   1. every item the five sheets drew has its file in public/icons/items, at
- *      the item set's 256 x 256: a seed packet and a crop for EVERY crop the
+ *      the item set's 128 x 128: a seed packet and a crop for EVERY crop the
  *      farm grows (data/farmCrops.js), compost, the five dishes
  *      (data/dishes.js `icon`), the box trap, the nine essences (every grade
  *      and metal data/salvage.js names) and the five hardened woods (every
@@ -41,14 +41,14 @@ const dims = (u) => {
   if (b[i + 3] === 0x4c) { const v = b.readUInt32LE(i + 9); return [1 + (v & 0x3fff), 1 + ((v >> 14) & 0x3fff)]; }
   return [b.readUInt16LE(i + 14) & 0x3fff, b.readUInt16LE(i + 16) & 0x3fff];
 };
-const is256 = (u) => existsSync(pub(u)) && dims(u).join('x') === '256x256';
+const is256 = (u) => existsSync(pub(u)) && dims(u).join('x') === '128x128';
 
 /* ── 1. the files ── */
 {
   const ids = Object.keys(FC.FARM.CROPS);
   const seeds = ids.map((id) => FC.farmIconFor(FC.FARM.CROPS[id].seed));
   const crops = ids.map((id) => FC.farmIconFor(FC.FARM.CROPS[id].item));
-  check(`1a a seed packet for every crop the farm grows (${ids.length}), 256 x 256`, ids.length === 16 && seeds.every(is256), seeds.filter((u) => !is256(u)));
+  check(`1a a seed packet for every crop the farm grows (${ids.length}), 128 x 128`, ids.length === 16 && seeds.every(is256), seeds.filter((u) => !is256(u)));
   check('1b ...and the crop itself for every one', crops.every(is256), crops.filter((u) => !is256(u)));
   check('1c compost\'s sack', is256(FC.FARM_COMPOST_ICON));
   const dishes = Object.keys(DI.DISHES).map((k) => DI.DISHES[k].icon);
@@ -73,7 +73,7 @@ const is256 = (u) => existsSync(pub(u)) && dims(u).join('x') === '256x256';
 {
   const f = FC.farmIconFor;
   check('2a a seed is its packet, a crop the crop, compost its sack',
-    /\/icons\/items\/seed-rock-vine\.webp\?v=2\.3\.3281$/.test(f('seed_rock_vine')) && /\/crop-thunder-pepper\.webp/.test(f('herb_thunder_pepper'))
+    /\/icons\/items\/seed-rock-vine\.webp\?v=2\.3\.4222$/.test(f('seed_rock_vine')) && /\/crop-thunder-pepper\.webp/.test(f('herb_thunder_pepper'))
       && /\/crop-carrot\.webp/.test(f('crop_carrot')) && /\/compost\.webp/.test(f('compost')), [f('seed_rock_vine'), f('herb_thunder_pepper')]);
   check('2b nothing else: another item, an empty key, a key the other player chose',
     f('wood_pine') === null && f('') === null && f(undefined) === null && f('__proto__') === null && f('constructor') === null && f('seed_') === null);
@@ -95,7 +95,7 @@ const is256 = (u) => existsSync(pub(u)) && dims(u).join('x') === '256x256';
   check('4a the bag\'s thumbFor draws the farm\'s goods and the dishes', /farmIconFor\(k\)/.test(tf) && /dishPic\.icon/.test(tf));
   const cp = src('src/rendering/controlsPreload.js');
   check('4b the TRAP pop-up, the bag and the Traps tab share the owner\'s box trap, warmed on the loading screen',
-    /TRAP_ICON_URL = '\/icons\/items\/trap-box\.webp\?v=2\.3\.3281'/.test(cp) && /urls\.push\(TRAP_ICON_URL\)/.test(cp));
+    /TRAP_ICON_URL = '\/icons\/items\/trap-box\.webp\?v=2\.3\.4222'/.test(cp) && /urls\.push\(TRAP_ICON_URL\)/.test(cp));
   const fs = src('src/ui/panels/buildings/FeedSeedPanel.jsx');
   check('4c the Feed & Seed window sells seeds as packets and compost as its sack, a locked crop as the crop',
     /icon=\{farmSeedIcon\(id\)\}/.test(fs) && /icon=\{FARM_COMPOST_ICON\} name="Compost"/.test(fs) && /<ItemPic src=\{farmCropIcon\(id\)\}/.test(fs));

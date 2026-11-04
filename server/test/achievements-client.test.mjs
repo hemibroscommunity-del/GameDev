@@ -291,7 +291,7 @@ const freshS = (extra) => Object.assign({ chatLog: [] }, extra || {});
   const FISH_ROW = /^(albino|large)_(minnow|clownfish|trout|salmon|pike)$/;
   const fishRows = D.ACHIEVEMENTS.filter((a) => FISH_ROW.test(a.id));
   check('9f the rare fish wear their species\' bag picture, ten rows',
-    fishRows.length === 10 && fishRows.every((a) => a.icon === '/icons/items/fish-' + a.id.replace(FISH_ROW, '$2') + '.webp?v=2.3.1774'), fishRows.map((a) => [a.id, a.icon]));
+    fishRows.length === 10 && fishRows.every((a) => a.icon === '/icons/items/fish-' + a.id.replace(FISH_ROW, '$2') + '.webp?v=2.3.4222'), fishRows.map((a) => [a.id, a.icon]));
   const ids = D.ACHIEVEMENTS.filter((a) => !FISH_ROW.test(a.id)).map((a) => a.id);
   check('9a every achievement wears its own badge, /icons/achievements/<id>.webp at the badges\' cache key',
     D.ACHIEVEMENTS.filter((a) => !FISH_ROW.test(a.id)).every((a) => a.icon === '/icons/achievements/' + a.id + '.webp?v=' + D.ACHV_BADGE_V && a.icon === D.achvBadgeSrc(a.id))

@@ -73,7 +73,7 @@ export function rollHarvestShard(zoneId) {
 /* Public asset path for a shard key.  Matches the layout produced by
    tools/shards/build_shards.py. */
 export function shardIconPath(shardKey) {
-  return shardKey ? `/icons/shards/${shardKey}.webp` : null;
+  return shardKey ? `/icons/shards/${shardKey}.webp?v=2.3.4222`  /* v2.3.4222: new shard art */ : null;
 }
 
 /* ═══ v2.3.3516: A SHARD MAY HOLD ITS LAND'S RAW GEM (the worker's
