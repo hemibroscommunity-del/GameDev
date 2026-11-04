@@ -163,6 +163,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await shot('5-quest');
       rec.ok(`${V.id} 5. then "${c5 && c5.text}" rings the quest card at the top left`, !!c5 && c5.id === 'questPill' && ringOn(c5, pill) && !!pill && pill.top < 200, { c5, pill });
 
+      /* v2.3.4207: a tap on the quest card folds it to its title, a second one opens it again */
+      const foldState = () => P.page.evaluate(() => { const e = document.querySelector('[data-quest-hud-folded]'); return e ? { f: e.getAttribute('data-quest-hud-folded'), line: !!e.querySelector('[data-quest-hud-line]') } : null; });
+      const f0 = await foldState();
+      await P.page.click('[data-quest-hud-folded]');
+      await P.page.waitForTimeout(400);
+      const f1 = await foldState();
+      await shot('5b-folded');
+      await P.page.click('[data-quest-hud-folded]');
+      await P.page.waitForTimeout(400);
+      const f2 = await foldState();
+      rec.ok(`${V.id} 5b. a tap folds the quest card to its title, a second tap opens it`, !!f0 && f0.f === '0' && f0.line && !!f1 && f1.f === '1' && !f1.line && !!f2 && f2.f === '0' && f2.line, { f0, f1, f2 });
+
       /* then quiet */
       await P.page.waitForTimeout(25000);
       const tail = await card(P);

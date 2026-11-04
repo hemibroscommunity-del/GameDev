@@ -19,7 +19,7 @@
  * Placed at top: var(--bt-hud-top, 56px), so a frame above it (the top bar's
  * player status) can push it down by setting the variable.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import {
   QUEST_CHAINS, QUEST_STATUS, questObjectiveDone, questSteps,
 } from '@/data/gameSystems.js';
@@ -49,11 +49,21 @@ const boxStyle = (extra) => ({
 });
 const markStyle = { width: 18, height: 18, flex: '0 0 auto', objectFit: 'contain' };
 const titleRow = (color) => ({
-  fontSize: 13, fontWeight: 700, lineHeight: 1.25,
+  fontSize: 14,   /* v2.3.4207: a smidge larger (was 13) -- the owner */ fontWeight: 700, lineHeight: 1.25,
   display: 'flex', alignItems: 'center', gap: 6, color,
 });
 /* v2.3.1711: .72 white clears 4.5:1 on the slate */
 const subLine = { fontSize: 11, lineHeight: 1.3, marginTop: 1, color: 'rgba(255,255,255,.72)' };
+/* v2.3.4207: the next step reads at a glance -- bold and fully white */
+const stepLine = { ...subLine, fontWeight: 700, color: '#fff' };
+
+/* v2.3.4207: THE TAP-TO-FOLD IS BACK (the owner: "bring back the feature where
+   if you tap the top left active quest it minimizes a bit to just show the
+   title").  v2.3.3918 had retired it for a tap that opens the quest page; that
+   page now opens from the small arrow on the expanded card.  Remembered under
+   the old key. */
+const FOLD_KEY = 'bt_quest_hud_collapsed';
+function readFold() { try { return localStorage.getItem(FOLD_KEY) === '1'; } catch (e) { return false; } }
 
 /* v2.3.3918: the card's tap -- the quest's own page in the quest screens.
    One place, so a move of the quest pages (under the "Bro" tab) changes it
@@ -67,6 +77,7 @@ export function openQuestPage(qid) {
 }
 
 export default function QuestCard({ rpgState, live }) {
+  const [folded, setFolded] = useState(readFold);
   if (!rpgState) return null;
   const liveRpg = (live && live.rpg) || rpgState;
   let active = Object.entries(rpgState._quests || {})
@@ -114,11 +125,17 @@ export default function QuestCard({ rpgState, live }) {
       data-quest-hud-quest={q.id}
       data-quest-hud-ready={done ? '1' : '0'}
       role="button"
-      title="Open this quest"
+      title={folded ? 'Show this quest' : 'Fold this quest'}
+      data-quest-hud-folded={folded ? '1' : '0'}
       /* v2.3.1714: the world listens for taps under the HUD; stop the press
          here or the tap also walks the bro to the top-left corner */
       onPointerDown={(e) => e.stopPropagation()}
-      onClick={(e) => { e.stopPropagation(); openQuestPage(q.id); }}
+      onClick={(e) => {
+        e.stopPropagation();
+        const next = !folded;
+        setFolded(next);
+        try { localStorage.setItem(FOLD_KEY, next ? '1' : '0'); } catch (e2) { /* private mode */ }
+      }}
       style={boxStyle({
         /* an ancestor turns pointer events off so the world stays tappable */
         pointerEvents: 'auto',
@@ -149,9 +166,20 @@ export default function QuestCard({ rpgState, live }) {
           </span>
         )}
       </div>
-      <div data-quest-hud-line="1" style={done ? { ...subLine, color: GREEN, fontWeight: 700 } : subLine}>
-        {w.line}
-      </div>
+      {!folded && (
+        <div data-quest-hud-line="1" style={done ? { ...stepLine, color: GREEN } : stepLine}>
+          {w.line}
+        </div>
+      )}
+      {!folded && (
+        <div
+          data-quest-hud-open="1" role="button" aria-label="Open this quest's page"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => { e.stopPropagation(); openQuestPage(q.id); }}
+          style={{ ...subLine, color: GOLD, textAlign: 'right', touchAction: 'manipulation', padding: '2px 0' }}>
+          {'Open quest \u203A'}
+        </div>
+      )}
     </div>
   );
 }
