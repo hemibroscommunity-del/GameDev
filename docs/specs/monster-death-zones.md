@@ -323,3 +323,8 @@ sprite as it stood on its last living frame, as the cuts are.
   `tools/qa/mp/out/deathzones/` (`blow-<look>-<ordinary|big>[-left]-1..3.png`
   for the blow sample).
 - `mp-deathcut` (the old map, frozen) still holds the cut deaths.
+
+
+## v2.3.4197: the old eruption is back
+
+The owner only meant the small circle of rock-like bits left on the ground, not the whole death. `slimeSplatOn()` is now OFF by default (`?slimesplat=1` plays the squash). A dying slime's goo burst (`hitMaterialFx` `rec.death`) no longer draws landed pieces, so nothing lies there afterwards. The element flash is untouched.

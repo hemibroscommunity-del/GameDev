@@ -424,7 +424,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 12. v2.3.4147: a slime splats, never in chunks ── */
     {
-      await P.page.evaluate(() => { delete window.__btSlimeSplat; delete window.__btDeathBig; });
+      await P.page.evaluate(() => { window.__btSlimeSplat = true; delete window.__btDeathBig; });
       const cutBursts = (mid) => P.page.evaluate((id) => {
         const S = window._gameState.current;
         return (S._debrisBursts || []).filter((b) => String(b.monsterId).indexOf(id + ':cut:') === 0).length;
@@ -438,7 +438,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const mid = h.ids[0];
         const alive = await drawn(P, mid);
         if (!(alive && alive.s && alive.s.visible)) { await release(P); return { err: 'not drawn' }; }
-        await P.page.evaluate(([k, off]) => { window.__btDeathSlow = k; if (off) window.__btSlimeSplat = false; else delete window.__btSlimeSplat; }, [o.shot && !o.off ? 40 : SP, !!o.off]);
+        await P.page.evaluate(([k, off]) => { window.__btDeathSlow = k; if (off) window.__btSlimeSplat = false; else window.__btSlimeSplat = true; }, [o.shot && !o.off ? 40 : SP, !!o.off]);
         if (o.burst) await P.page.evaluate((id) => { const m = window.__qaDZ.list.find((x) => x.id === id); m._burstPeakFrom = Date.now(); m._burstScale = 1.6; }, mid);
         const box = await boxOf(P, mid, !!o.shot);
         if (o.shot && box) await P.page.screenshot({ path: `${OUT}/${o.shot}-0-alive.png`, clip: box }).catch(() => {});
@@ -474,7 +474,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         }
         const w = await P.page.evaluate((id) => (window.__dzWatch || {})[id] || null, mid);
         const after = await state(P, mid);
-        await P.page.evaluate(() => { delete window.__btSlimeSplat; });
+        await P.page.evaluate(() => { window.__btSlimeSplat = true; });
         await release(P);
         await P.page.waitForTimeout(250);
         return { w, bursts, after: after.d };
