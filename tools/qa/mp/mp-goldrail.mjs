@@ -1,4 +1,12 @@
-/* ═══ THE PURSE MOVES TO THE ZONE RAIL, AND THE BUTTONS TAKE ITS ROOM (v2.3.2320) ═══
+/* ═══ v2.3.4183: THE PURSE LEAVES THE ZONE RAIL ═══
+ * The owner, 2026-11-02: "I don't like the placement of where the gold count
+ * is (top right)".  The purse is gone from the rail; the gold shows in the
+ * Gear tab's header (dash/GearTab.jsx, data-gear-gold) and a gain is a "+12
+ * gold" word under the bar.  This now holds: NO gold count in the rail, in
+ * portrait and landscape; the rest (the nav buttons, their hit areas, the
+ * rail taking no touches) as it was.
+ *
+ * ═══ THE PURSE MOVES TO THE ZONE RAIL, AND THE BUTTONS TAKE ITS ROOM (v2.3.2320) ═══
  *
  * Owner, in one message: "Make the 5 dashboard navigation buttons wider to
  * increase tap surface you can just center the button icon images.  Move gold
@@ -175,26 +183,14 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
   await P.page.waitForTimeout(700);
 
   const hd = await headerGeom(P);
-  rec.ok(T + 'the purse is IN the zone-name rail, printing the real balance',
-    !!hd.balance && hd.hasPurse && (hd.balanceText || '').indexOf(GOLD_TXT) !== -1, hd.balance);
-  rec.ok(T + '...at the rail\'s right end, not floating in the middle of it',
-    !!hd.balance && !!hd.header && (hd.header.right - hd.balance.right) <= 14
-      && hd.balance.left > hd.header.left + hd.header.w / 2,
-    { header: hd.header, balance: hd.balance });
-  rec.ok(T + '...clear of the zone title, which still has the middle',
-    !!hd.title && !!hd.balance && hd.title.right <= hd.balance.left + 1
-      && (hd.titleText || '').length > 0,
-    { title: hd.title, titleText: hd.titleText, balance: hd.balance });
-  /* The rail floats over the live world.  A readout that took a touch would
-     take it from the game, which is why the rail is pointer-events:none and
-     only the logout chip opts back in. */
-  rec.ok(T + '...and takes NO touches -- the world still answers under it',
-    hd.pe === 'none' && hd.answersAtGold !== 'header',
-    { pe: hd.pe, answers: hd.answersAtGold });
-
+  /* v2.3.4183: the purse left the rail (the owner: "I don't like the
+     placement of where the gold count is (top right)") */
+  rec.ok(T + 'NO purse in the zone-name rail any more (v2.3.4183)',
+    !hd.hasPurse && !(hd.balanceText || '').length, { balance: hd.balance, text: hd.balanceText });
+  rec.ok(T + '...and the rail takes NO touches where it was -- the world still answers under it',
+    hd.pe === 'none' && hd.answersAtGold !== 'header', { pe: hd.pe, answers: hd.answersAtGold });
   const counts = await goldCounts(P, GOLD_TXT);
-  rec.ok(T + 'exactly ONE gold count on the screen, and it is the rail\'s',
-    counts.length === 1 && counts[0].where === 'zone-header', counts);
+  rec.ok(T + 'no gold count in the top bar', counts.every((c) => c.where !== 'zone-header'), counts);
 
   const rail = await railGeom(P);
   rec.ok(T + 'all five nav buttons are there', rail.length === RAIL_N, rail.map((b) => b.id));
@@ -247,8 +243,9 @@ async function onePhone({ browser, wsPort, webPort, rec }, phone) {
     !!more && more.answers === 'self' && more.cx < phone.width, more);
   /* The purse does not come back on a drilled screen either. */
   const dCounts = await goldCounts(P, GOLD_TXT);
-  rec.ok(T + 'DRILLED: still exactly one gold count, still the rail\'s',
-    dCounts.length === 1 && dCounts[0].where === 'zone-header', dCounts);
+  /* v2.3.4183: and none comes back into the rail on a drilled screen */
+  rec.ok(T + 'DRILLED: still no gold count in the top bar',
+    dCounts.every((c) => c.where !== 'zone-header'), dCounts);
 
   await P.ctx.close();
 }
@@ -270,30 +267,11 @@ async function landscape({ browser, wsPort, webPort, rec }) {
 
   const hd = await headerGeom(P);
   const counts = await goldCounts(P, GOLD_TXT);
-  rec.ok('LANDSCAPE: the purse is in the rail, and the bottom-centre chip is gone',
-    !!hd.balance && hd.hasPurse && !hd.landGold, { balance: hd.balance, landGold: hd.landGold });
-  rec.ok('LANDSCAPE: exactly one gold count, in the rail',
-    counts.length === 1 && counts[0].where === 'zone-header', counts);
-
-  /* ═══ THE ISLAND ═══
-   * Sideways the rail takes the notch as PADDING (game.css's landscape block)
-   * and the purse is the element that padding protects -- it is the thing at
-   * the edge the Island eats.  mp-landscape-dash fakes the notch on the LEFT;
-   * the purse needs the right. */
-  await P.page.evaluate(() => {
-    const st = document.createElement('style');
-    st.id = 'bt-fake-island';
-    st.textContent = ':root{--world-pad-r:59px!important}';
-    document.head.appendChild(st);
-    window.dispatchEvent(new Event('resize'));
-  });
-  await P.page.waitForTimeout(700);
-  const isl = await headerGeom(P);
-  rec.ok('LANDSCAPE: an Island on the right pushes the purse clear of it',
-    /* v2.3.4152: measured from the SCREEN's edge, where the Island is: under
-       the band (the default) the rail is the world's width, its bar already
-       part of the clearance (the old layout's rail ran to the edge) */
-    !!isl.balance && !!isl.header && (844 - isl.balance.right) >= 55,
-    { header: isl.header, balance: isl.balance });
+  /* v2.3.4183: no purse in the rail sideways either, and no bottom-centre chip */
+  rec.ok('LANDSCAPE: no purse in the rail, and no bottom-centre chip',
+    !hd.hasPurse && !hd.landGold, { balance: hd.balance, landGold: hd.landGold });
+  rec.ok('LANDSCAPE: no gold count in the top bar', counts.every((c) => c.where !== 'zone-header'), counts);
+  /* (v2.3.2320-v2.3.4152 also held the purse clear of a right-hand Island;
+     with no purse there is nothing at the rail's right end to hold clear) */
   await P.ctx.close();
 }

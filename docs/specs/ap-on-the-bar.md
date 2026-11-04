@@ -63,3 +63,13 @@ ever seeing the number.
 
 - Your chosen **title under your name** over your head, for everyone to see.
 - A **"next achievement"** hint (the one nearest done) on the Achievements tile.
+
+## v2.3.4183: the points leave the bar
+
+The owner, 2026-11-02: "I don't like the placement of where the gold count is
+(top right) and the placement of the achievement points (top left)". The medal
+and the number are gone from the top bar (`ui/mobile/ZoneHeader.jsx`); your
+points are on the Bro card (`sheet/BroCard.jsx`, `data-bro-ap`), and a rise is
+a "+5 AP" word under the bar's right end (`ui/XpFlyOverlay.jsx` HudPopup), as a
+gold gain is a "+12 gold" word there. `game/apChip.js` `apRise` still decides
+what counts as a rise. mp-apchip holds it.

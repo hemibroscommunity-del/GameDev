@@ -112,7 +112,10 @@ const MEASURE = (P) => P.page.evaluate(() => {
    is only the Test panel's hold area: in it, never cut matters no more */
 const titleOk = (m) => !!m.titleText && (m.titleClear || !m.titleCut || (m.titleText !== 'BroTown' && m.titleW >= 50));
 const fits = (m) => titleOk(m) && m.hits.length === 0 && m.out.length === 0 && !m.xpOver
-  && m.purseText === (m.vw < 430 ? '2.55M' : '2,550,000') && (m.apText === (m.vw < 430 ? '12.4K' : '12,400') || (m.xpOn && m.vw < 430 && m.apText == null)) && m.pill && m.barClean && m.titleClear;
+  /* v2.3.4183: the purse and the points left the bar (the owner: "I don't
+     like the placement of where the gold count is (top right) and the
+     placement of the achievement points (top left)") */
+  && m.purseText == null && m.apText == null && m.pill && m.barClean && m.titleClear;
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const OUT = join(H.REPO, 'tools/qa/mp/out');
@@ -189,7 +192,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await P.page.waitForTimeout(900);
         const m = await MEASURE(P);
         await P.page.screenshot({ path: join(OUT, `topbar-${w}x${h}${xp ? '-xp' : ''}.png`), clip: { x: 0, y: 0, width: w, height: Math.min(h, 90) } }).catch(() => {});
-        rec.ok(`1${xp ? '/2' : ''}. ${tag}${xp ? ', the XP bar up' : ''}: at --zk ${m.zk} (the bar ${m.barH} px) nothing cut off${m.titleCut ? ' (THE TITLE)' : ''} or overlapping (${m.hits.join(', ') || 'none'}), all of it in the bar (${m.out.join(', ') || 'yes'}) -- "${m.titleText}", ${m.purseText} gold, ${m.apText} AP`,
+        rec.ok(`1${xp ? '/2' : ''}. ${tag}${xp ? ', the XP bar up' : ''}: at --zk ${m.zk} (the bar ${m.barH} px) nothing cut off${m.titleCut ? ' (THE TITLE)' : ''} or overlapping (${m.hits.join(', ') || 'none'}), all of it in the bar (${m.out.join(', ') || 'yes'}) -- "${m.titleText}", no purse (${m.purseText}), no AP (${m.apText})`,
           fits(m), m);
         if (!xp) rec.ok(`3. ${tag}: larger than before where it fits (--zk ${m.zk}), and the minimap's box starts below the bar (${m.mini} vs ${m.hdrB && Math.round(m.hdrB)})`,
           m.zk >= 1 && (m.mini == null || m.mini >= m.hdrB - 1), m);

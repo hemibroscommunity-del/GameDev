@@ -1,17 +1,13 @@
-import { coinArtFor } from '@/game/coinArt.js';   /* v2.3.3734: the owner's coin piles */
 import React, { useEffect, useRef, useState } from 'react';
 import { COL, getState } from './dash/common.js';
-import { calm as lifeCalm } from './dash/bagLife.js'; /* v2.3.2815: the purse's coin flip */
 import { placeName } from './placeName.js'; /* v2.3.3974: the land you stand in, or BroTown (was the Wheel's name, v2.3.3009) */
 import { testModeOn } from '../../game/testMode.js'; /* v2.3.3430: the owner's test mode tag */
 import { achvLive, achvApTotal } from '../../game/achievements.js';   /* v2.3.3553: your AP on the bar */
-import { ACHV_MEDAL_SRC } from '../../data/achievements.js';         /* v2.3.3553: the owner's medal */
-import { apRise, apWords, apGainWords } from '../../game/apChip.js';  /* v2.3.3553 */
-import { dashboardPanelBus } from './dashboardPanelBus.js';            /* v2.3.3553: the AP opens its page */
+import { apRise } from '../../game/apChip.js';  /* v2.3.3553; v2.3.4183: a rise is a word now */
+import { pushHudPopup } from '../XpFlyOverlay.jsx';  /* v2.3.4183: "+12 gold" / "+5 AP" under the bar */
 import { onXpBar, xpBarShown, xpGainWords, xpToNextWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
 import { XpTrack } from './XpTrack.jsx';                                  /* v2.3.3739: its white gain bar and "45 / 120" */
 import { XP_BAR_ICONS, XP_BAR_LABELS } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
-import { barNarrow, barNumber, BAR_GOLD_SHORT, BAR_AP_SHORT } from '../../game/barNumbers.js';   /* v2.3.3765: big numbers short on a narrow bar */
 
 /* ═══ v2.3.2892 -> v2.3.3974: THE HOUR'S ICON IS GONE ═══
    v2.3.2892 put a day/night icon beside the zone name (the owner: "Add a time
@@ -101,12 +97,9 @@ export const ZoneHeader = ({ onExit }) => {
      nothing, because every action it offers is an authenticated HTTP call
      (server/src/devtools.js). */
   const [showDev, setShowDev] = useState(false);
-  const goldSeen = useRef(null);   /* v2.3.2815: the purse's coin flip */
-  const goldFlips = useRef(0);
+  const goldSeen = useRef(null);   /* v2.3.2815: the purse's coin flip; v2.3.4183: the gain's word */
   /* v2.3.3553: the AP's rise, as the purse's (game/apChip.js) */
   const apSeen = useRef(null);
-  const apRises = useRef(0);
-  const apGain = useRef(0);
   const mountedAt = useRef(Date.now());
   const [DevPanelC, setDevPanelC] = useState(null);
   const holdRef = useRef(null);
@@ -134,56 +127,43 @@ export const ZoneHeader = ({ onExit }) => {
   const S = getState();
   if (!S) return null;
 
-  /* v2.3.2320: the same field, read the same way as every other readout in
-     the game — `S.rpg.coins`, live, never cached here.  Under protocol v2
-     `coins` arrives only in the ticks where it CHANGED (wsClient's
-     present-gated write), so a component that kept its own copy would show a
-     stale purse forever.  The 500ms force-render above already repaints this
-     rail, so the number is at most half a second behind settlement. */
+  /* ═══ v2.3.4183: THE GOLD AND THE ACHIEVEMENT POINTS LEAVE THE BAR ═══
+     The owner, 2026-11-02: "I don't like the placement of where the gold count
+     is (top right) and the placement of the achievement points (top left)".
+     The purse (v2.3.2320) and the medal with your AP (v2.3.3553) are gone from
+     the bar: the gold shows in the Gear tab's header (dash/GearTab.jsx, the
+     coins beside the filter), the points on the Bro card (sheet/BroCard.jsx).
+     What earning shows here now is a word: "+12 gold" or "+5 AP", rising and
+     fading just under the bar's right end, where the purse was (ui/
+     XpFlyOverlay.jsx HudPopup, the "+N G" a pickup already put there).  Read
+     the same way as before -- `S.rpg.coins` live, the WORKER's AP once its
+     record has come -- and never in the first moments (the record loading,
+     not a payday).  A pickup that already said "+N G" in the last 1.5 s is
+     not said twice. */
   const gold = (S.rpg && (S.rpg.coins || 0)) || 0;
-  /* v2.3.2815: gold landing spins the coin and bumps the number, once per
-     rise (the key change below remounts both, which replays the one-shot).
-     Transform only -- this rail is over the WebGL canvas (see below). */
-  /* (not in the first seconds: that rise is the purse loading, not a payday) */
-  if (goldSeen.current != null && gold > goldSeen.current && !lifeCalm()
-    && Date.now() - mountedAt.current > 2500) goldFlips.current++;
+  if (goldSeen.current != null && gold > goldSeen.current && Date.now() - mountedAt.current > 2500) {
+    const now = Date.now();
+    const said = (S._hudPopups || []).some((p) => p && p.target === 'goldIcon' && /G$|gold$/.test(p.text || '') && now - (p.ts || 0) < 1500);
+    if (!said) {
+      try { pushHudPopup(S, { target: 'goldIcon', text: '+' + (gold - goldSeen.current).toLocaleString('en-US') + ' gold', color: '#D8A94D' }); } catch (e) { /* feedback only */ }
+    }
+  }
   goldSeen.current = gold;
-  const flip = goldFlips.current;
-
-  /* ═══ v2.3.3553: YOUR ACHIEVEMENT POINTS, ALWAYS IN SIGHT ═══
-     The owner: "Achievement points should be a prominent part of the
-     experience in brotown."  The medal and your AP ride the bar, left of the
-     zone name, opposite the gold -- the WORKER's number (achvApTotal), only
-     against a worker that grants achievements (caps.achievements).  A rise
-     flies a "+N" up into it and bumps the number (game/apChip.js), never in
-     the first moments (the record loading) or under calm motion.  A tap
-     opens the Achievements page under More, as every other way to it does
-     (SkillsPanel's AP, a card's title). */
+  /* the points: the worker's number, only against a worker that grants them */
   const apOn = achvLive(S);
   const ap = apOn ? achvApTotal(S) : 0;
-  /* a rise counts only once the worker's record has come (achv_state): the
-     number that arrives with it is where you stand, never "+1,240" at login */
   if (apOn && S._achv && S._achv.known) {
     const g = apRise(apSeen.current, ap, Date.now() - mountedAt.current);
-    if (g > 0 && !lifeCalm()) { apRises.current++; apGain.current = g; }
+    if (g > 0) {
+      try { pushHudPopup(S, { target: 'goldIcon', text: '+' + g.toLocaleString('en-US') + ' AP', color: '#F2D58C' }); } catch (e) { /* feedback only */ }
+    }
     apSeen.current = ap;
   }
-  const apBump = apRises.current;
-  /* v2.3.3765: on a narrow bar (an upright phone) a big number is said short,
-     so the larger bar still holds the title (game/barNumbers.js) */
-  const narrow = barNarrow(typeof window !== 'undefined' ? window.innerWidth : 0);
   /* v2.3.3695: the XP bar -- the skill that last earned, while it is up */
   const xb = S._xpBar || null;
   /* (QA only: `window.__btXpHold` keeps it up while a slow box takes its
      picture, as __btLevelUpFreeze pins the level-up burst; mp-xpbar) */
   const xpOn = xpBarShown(xb, Date.now()) || (!!xb && typeof window !== 'undefined' && window.__btXpHold === true);
-  const openAchievements = (e) => {
-    if (e) e.stopPropagation();
-    /* no focus ring left on it once the page is open (a key pressed next
-       would draw one) */
-    try { if (e && e.currentTarget && e.currentTarget.blur) e.currentTarget.blur(); } catch (_e) { /* fine */ }
-    try { dashboardPanelBus.open('more'); dashboardPanelBus.push('achievements'); } catch (_e) { /* no dashboard */ }
-  };
 
   const doExit = () => {
     /* v2.3.785/786 lineage (moved from the retired bt-exit-fab):
@@ -221,23 +201,9 @@ export const ZoneHeader = ({ onExit }) => {
         >
           <img src={`/icons/ui/logout-door-icon.svg${V}`} alt="" draggable={false} />
         </button>
-        {/* v2.3.3553: your AP, the owner's medal before it; a tap opens the
-            Achievements page.  A flat fill and text-shadow only: the rail is
-            over the WebGL canvas (TRAPS section 42). */}
-        {apOn && (
-          <button type="button" className="bt-zone-header__ap" data-ap-chip="1" data-ap={ap}
-            aria-label={`${apWords(ap)} achievement points. Open Achievements`}
-            onClick={openAchievements}>
-            <img key={'m' + apBump} className={apBump ? 'bt-purse-flip' : undefined}
-              src={ACHV_MEDAL_SRC} alt="" draggable={false} />
-            <span key={'a' + apBump} className={apBump ? 'bt-purse-bump' : undefined}>{narrow ? barNumber(ap, true, BAR_AP_SHORT) : apWords(ap)}</span>
-            {apBump && apGain.current > 0 ? (
-              <span key={'g' + apBump} className="bt-ap-gain" data-ap-gain={apGain.current} aria-hidden="true">
-                {apGainWords(apGain.current)}
-              </span>
-            ) : null}
-          </button>
-        )}
+        {/* v2.3.3553-v2.3.4183: your AP and the owner's medal stood here; they
+            are on the Bro card now, and a rise is a "+5 AP" word under the
+            bar's right end (above) */}
         </div>
         <div className={'bt-zone-header__mid' + (xpOn ? ' bt-zone-header__mid--xp' : '')}>
         {/* ═══ v2.3.4113: IN THE WORLD THE NAME IS NOT DRAWN HERE ═══
@@ -257,8 +223,7 @@ export const ZoneHeader = ({ onExit }) => {
           /* v2.3.2596: the zone-entry banner's DOCK TARGET.  A data hook rather
              than the class name because the class is a style handle that a
              restyle is free to rename, and the banner measures this box from
-             outside React (the same arrangement `data-purse` already gives the
-             trade receipt's gold toss one rail over). */
+             outside React. */
           data-zone-title="1"
           onPointerDown={holdStart}
           onPointerUp={holdEnd}
@@ -314,49 +279,15 @@ export const ZoneHeader = ({ onExit }) => {
           </div>
         ) : null}
         </div>
-        {/* ═══ v2.3.2320: THE PURSE LIVES HERE NOW ═══
-            Owner: "Move gold amount display to very top right on the top bar
-            that lists the zone name."
-
-            This column was an EMPTY 38px spacer whose only job was optical —
-            match the logout chip so the title centred on the SCREEN rather
-            than in the leftover (the v2.3.1333 note above).  It is named
-            `__balance` because a balance is what it was always for; it just
-            never held one.  Now it does, and the symmetry it was protecting
-            is spent on the thing it was reserved for.
-
-            THIS IS A MOVE, NOT A COPY.  The band purse (IdentityStrip) and
-            the landscape chip (BottomDashboard's LandGoldChip) both retire in
-            the same change — the one-count rule that killed the v2.3.1563
-            floating chip ("two live gold counts on one screen disagree the
-            moment one of them lags") applies to this one exactly as hard, and
-            it is why the readout could not simply be added here.
-
-            NO `.bt-coin-glimmer` ON THIS COPY.  The band's number wore it and
-            the Hero strip still names it, and it is `background-clip:text` +
-            `-webkit-text-fill-color: transparent` under a 2.8s infinite
-            animation.  That was written for an opaque surface (the character
-            card), and every surface it has run on since has been opaque too.
-            This rail is `position:fixed` directly over the live WebGL canvas,
-            which is the compositing arrangement TRAPS §42 records as the iOS
-            grain hazard (the v2.3.948 charge pie, the v2.3.1236 joystick
-            bases).  A flat gold fill costs one shimmer and buys the primary
-            platform out of a known trap.
-
-            `data-purse` travels with the number, so the trade receipt's gold
-            toss still finds it (TradeWindowPanel's landingRect).  It flies UP
-            to the rail now instead of down into the band — the coins go to
-            where the coins are, which is the promise that animation makes.
-
-            pointer-events stays inherited-`none` from the rail: this is a
-            readout over the world, and anything here that took a touch would
-            steal it from the game underneath. */}
-        <div className="bt-zone-header__balance" data-purse="1"
-          aria-label={`${gold} gold`}>
-          <img key={'c' + flip} className={flip ? 'bt-purse-flip' : undefined}
-            src={coinArtFor(gold)} alt="" draggable={false} />{/* v2.3.3734: the owner's pile for your gold */}
-          <span key={'n' + flip} className={flip ? 'bt-purse-bump' : undefined}>{narrow ? barNumber(gold, true, BAR_GOLD_SHORT) : Number(gold).toLocaleString()}</span>
-        </div>
+        {/* v2.3.2320 put the purse here (the owner: "Move gold amount display to
+            very top right"); v2.3.4183 took it away again (the owner: "I don't
+            like the placement of where the gold count is (top right)").  The
+            long note on it is in git history (docs/specs/ap-on-the-bar.md). */}
+        {/* v2.3.4183: the purse is gone (the gold is in the Gear tab's header);
+            this column stays, empty, as wide as the door's, so the bar's
+            centre (the XP bar, TEST MODE, the owner's hold) stays centred on
+            the SCREEN -- what it was first made for (v2.3.1333) */}
+        <div className="bt-zone-header__balance" aria-hidden="true" />
       </header>
 
       {showDev && DevPanelC && <DevPanelC onClose={() => setShowDev(false)} />}

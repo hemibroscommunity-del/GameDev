@@ -20,7 +20,9 @@ const T = QUEST_FLY_TARGETS.points;
 /* v2.3.4172: the Bro card's Points row, or the Points window's title over it */
 check('3a: the Points row first, the Points window\'s title, then the Bro button, then the fold handle',
   T[0] === '[data-section="Build"]' && T[1] === '[data-bro-popup-head="Build"]' && T[2] === '[data-nav="hero"]' && T[3] === '[data-dash-fold]' && T.length === 4, T);
-check('3b: the rewards\' own targets unchanged', QUEST_FLY_TARGETS.gold.join() === '[data-purse="1"]'
+/* v2.3.4183: the purse left the top bar; gold flies to the Gear tab's gold
+   line, or the dashboard's fold handle / button that opens it */
+check('3b: the rewards\' own targets', QUEST_FLY_TARGETS.gold.join() === '[data-purse="1"],[data-gear-gold],[data-dash-fold],[data-nav="dashboard"]'
   && QUEST_FLY_TARGETS.item.join() === '[data-tut="coach-gear"],[data-dash-fold],[data-nav="dashboard"]');
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -1,4 +1,13 @@
-/* ═══ YOUR ACHIEVEMENT POINTS ON THE TOP BAR (v2.3.3553, docs/specs/ap-on-the-bar.md) ═══
+/* ═══ v2.3.4183: THE POINTS LEAVE THE TOP BAR; A RISE IS A WORD UNDER IT ═══
+ * The owner, 2026-11-02: "I don't like the placement of where the gold count
+ * is (top right) and the placement of the achievement points (top left)".
+ * This now holds, in the world (390 x 844, touch): no medal and no purse on
+ * the bar (the door stays); a first kill's worker-granted 10 AP shows as a
+ * "+10 AP" word under the bar's right end (ui/XpFlyOverlay.jsx HudPopup) and
+ * the Bro card reads 10 (sheet/BroCard.jsx); no page errors.  (What it held
+ * before, v2.3.3553, below.)
+ *
+ * ═══ YOUR ACHIEVEMENT POINTS ON THE TOP BAR (v2.3.3553, docs/specs/ap-on-the-bar.md) ═══
  *
  * The owner, 2026-10-21: "Achievement points should be a prominent part of
  * the experience in brotown."  One real player against a real worker, on a
@@ -56,15 +65,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const zone = await H.readState(P, (S) => S.currentZone);
   const caps = await H.readState(P, (S) => !!(S._serverCaps && S._serverCaps.achievements));
 
-  /* ── 1. the medal and 0, beside the zone name ── */
+  /* ── 1. (v2.3.4183) no medal and no purse on the bar; the door stays ── */
   let b0 = null;
-  for (let i = 0; i < 30; i++) { b0 = await bar(P); if (b0.chip && b0.medal) break; await P.page.waitForTimeout(300); }
+  for (let i = 0; i < 30; i++) { b0 = await bar(P); if (b0.door) break; await P.page.waitForTimeout(300); }
   await shot('bar');
-  rec.ok(`1: in the world (zone "${zone}", "${b0 && b0.titleText}"), the bar shows the medal and "${b0 && b0.text}" AP`,
-    zone === 'wheel' && caps && !!b0.chip && b0.medal && b0.ap === 0 && b0.text === '0', b0);
-  rec.ok('1: ...left of the zone name, right of the door, clear of the gold, a thumb\'s height',
-    apart(b0.door, b0.chip) && b0.door.right <= b0.chip.left + 0.5 && apart(b0.chip, b0.title) && b0.chip.right <= b0.title.left + 0.5
-      && apart(b0.chip, b0.purse) && b0.chip.h >= 34 && b0.chip.w >= 44, b0);
+  rec.ok(`1: in the world (zone "${zone}"), the bar has the door and NO medal or purse (v2.3.4183)`,
+    zone === 'wheel' && caps && !!b0.door && !b0.chip && !b0.purse, b0);
+  /* every "+N AP" / "+N gold" word the bar's corner says, recorded as it is said */
+  await P.page.evaluate(() => {
+    window.__apWords = [];
+    const seenIds = new Set();
+    setInterval(() => {
+      const S = window._gameState && window._gameState.current;
+      for (const p of (S && S._hudPopups) || []) {
+        if (p && p.target === 'goldIcon' && !seenIds.has(p.id)) { seenIds.add(p.id); window.__apWords.push({ text: p.text, at: Date.now() }); }
+      }
+    }, 40);
+  });
 
   /* ── 2. a first kill: First Blood, +10 AP ── */
   let killed = null;
@@ -75,87 +92,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
     if (killed) break;
   }
-  let b1 = null, gained = null, seen = null;
-  const look = () => P.page.evaluate(() => {
-    const g = document.querySelector('[data-ap-gain]');
-    if (!g) return null;
-    const cs = getComputedStyle(g), r = g.getBoundingClientRect();
-    /* inside the bar's own box (the world draws over anything below it) */
-    const hb = document.querySelector('.bt-zone-header').getBoundingClientRect();
-    return { opacity: Number(cs.opacity), anim: cs.animationName, top: Math.round(r.top), bottom: Math.round(r.bottom), barBottom: Math.round(hb.bottom),
-      calm: document.documentElement.classList.contains('bt-calm') };
-  });
-  for (let i = 0; i < 40; i++) {
-    b1 = await bar(P);
-    if (b1.gain && !gained) {
-      gained = b1.gain;
-      /* how it is drawn while it flies (it is gone in 1.4 s): the most
-         visible moment, and its picture then */
-      for (let k = 0; k < 12; k++) {
-        const v = await look();
-        if (v && (!seen || v.opacity > seen.opacity)) seen = v;
-        if (v && v.opacity > 0.6) {
-          /* this box draws a few frames a second, so by the time a picture
-             is taken the 1.4 s flight is over: play it again, held at its
-             middle, for the picture of how it is drawn */
-          await P.page.evaluate(() => {
-            const g = document.querySelector('[data-ap-gain]');
-            if (!g) return;
-            g.style.animation = 'none';
-            void g.offsetWidth;
-            g.style.animation = 'bt-ap-gain 1400ms cubic-bezier(.2,.8,.2,1) -0.5s 1 forwards paused';
-          });
-          await P.page.waitForTimeout(400);
-          await shot('gain');
-          await P.page.evaluate(() => { const g = document.querySelector('[data-ap-gain]'); if (g) g.style.animation = ''; });
-          break;
-        }
-        await P.page.waitForTimeout(60);
-      }
-    }
-    if (b1.ap === 10 && gained) break;
-    await P.page.waitForTimeout(100);
+  let words = [], apNow = null;
+  for (let i = 0; i < 60; i++) {
+    await P.page.waitForTimeout(250);
+    words = await P.page.evaluate(() => window.__apWords || []);
+    apNow = await H.readState(P, (S) => { try { return (S._achv && S._achv.ap) != null ? S._achv.ap : null; } catch (e) { return null; } });
+    if (words.some((w) => w.text === '+10 AP')) break;
   }
-  if (!seen || seen.opacity <= 0.6) await shot('gain');
+  await shot('gain');
   const line = await P.page.evaluate(() => ((window._gameState.current.chatLog || []).map((l) => l.text).find((t) => /First Blood/.test(t || '')) || null));
-  rec.ok(`2: a first kill (${killed}): the worker's 10 AP on the bar ("${b1 && b1.text}"), a "${gained && gained.text}" flying into it, and the chat line "${line}"`,
-    !!killed && !!b1 && b1.ap === 10 && b1.text === '10' && !!gained && gained.n === 10 && gained.text === '+10' && !!line,
-    { killed, b1, gained, line });
-  rec.ok(`2: ...and the "+10" is drawn inside the bar as it flies (opacity ${seen && seen.opacity.toFixed(2)}, ${seen && seen.top}-${seen && seen.bottom} px, the bar to ${seen && seen.barBottom})`,
-    !!seen && seen.opacity > 0.6 && seen.top >= 0 && seen.bottom <= seen.barBottom && !seen.calm, seen);
+  rec.ok(`2: a first kill (${killed}): the worker's 10 AP said as a "+10 AP" word under the bar (${JSON.stringify(words.map((w) => w.text))}), and the chat line "${line}"`,
+    !!killed && words.some((w) => w.text === '+10 AP') && !!line, { killed, words, apNow, line });
 
-  /* ── 3. a tap opens the Achievements page ── */
-  const c = b1.chip;
-  await P.page.touchscreen.tap(Math.round(c.left + c.w / 2), Math.round(c.top + c.h / 2));
-  let page = null;
+  /* ── 3. the Bro card reads the points ── */
+  await P.page.evaluate(() => { try { window.__broDashPanelBus.open('hero'); } catch (e) { /* */ } });
+  let card = null;
   for (let i = 0; i < 30; i++) {
-    page = await P.page.evaluate(() => {
-      const t = document.querySelector('[data-achv-ap-total]');
-      const row = document.querySelector('[data-achv-row="first_blood"]');
-      return t ? { total: Number(t.getAttribute('data-achv-ap-total')), firstBlood: row ? row.getAttribute('data-achv-got') : null } : null;
-    });
-    if (page) break;
+    card = await P.page.evaluate(() => { const e = document.querySelector('[data-bro-ap]'); return e ? Number(e.getAttribute('data-bro-ap')) : null; });
+    if (card === 10) break;
     await P.page.waitForTimeout(200);
   }
-  await P.page.waitForTimeout(400);
-  await shot('page');
-  rec.ok(`3: a tap opens the Achievements page, reading the same ${page && page.total} AP, First Blood earned`,
-    !!page && page.total === 10 && page.firstBlood === '1', page);
-
-  /* ── 4. narrow and sideways ── */
-  await P.page.keyboard.press('Escape').catch(() => {});
-  await P.page.setViewportSize({ width: 320, height: 640 });
-  await P.page.waitForTimeout(1500);
-  const b2 = await bar(P);
-  await shot('narrow');
-  await P.page.setViewportSize({ width: 844, height: 390 });
-  await P.page.waitForTimeout(2000);
-  const b3 = await bar(P);
-  await shot('side');
-  const fits = (b) => !!b && !!b.chip && apart(b.door, b.chip) && apart(b.chip, b.title) && apart(b.chip, b.purse) && apart(b.title, b.purse)
-    && b.chip.left >= 0 && b.purse.right <= b.vw + 0.5;
-  rec.ok(`4: it fits at 320 px upright ("${b2 && b2.titleText}" kept whole: ${b2 && b2.title && Math.round(b2.title.w)} px) and sideways`,
-    fits(b2) && fits(b3), { b2, b3 });
+  await shot('bro-card');
+  rec.ok(`3: the Bro card reads the same ${card} AP`, card === 10, { card });
 
   rec.ok(`5: no page errors (${errors.length})`, errors.length === 0, errors.slice(0, 5));
   await P.ctx.close().catch(() => {});

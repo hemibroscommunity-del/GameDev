@@ -152,9 +152,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
      TOP, which is the pair of facts that distinguishes the new home from the
      old one — a check that only said "a gold readout exists" would have passed
      on either. */
-  rec.ok('...gold reads out at the TOP RIGHT of the zone rail, and the bottom chip is gone',
+  /* v2.3.4183: the purse left the rail (the owner: "I don't like the
+     placement of where the gold count is (top right)"); its column stays,
+     empty, at the rail's right end, and is still the ruler for the world's
+     edge below -- with no number in it */
+  rec.ok('...the zone rail\'s right column at the TOP RIGHT, holding no gold count now, and the bottom chip is gone',
     !!rest.gold && !rest.chip && rest.gold.top < 60
-      && rest.gold.right >= rest.playW - 20 && /\d/.test(rest.gold.text),
+      && rest.gold.right >= rest.playW - 20 && !/\d/.test(rest.gold.text),
     { gold: rest.gold, chip: rest.chip, playW: rest.playW });
   /* ═══ v2.3.2174: THE PANEL TAKES THE CLEAR EDGE ═══
      Owner: "The iPhone has a punch hole that's awkward since it goes right
