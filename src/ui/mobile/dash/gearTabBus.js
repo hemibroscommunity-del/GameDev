@@ -58,6 +58,15 @@ export const gearTabBus = {
     state.more = false;
     emit();
   },
+  /** v2.3.4233: tap the coins: picked like any other object (the card says
+   *  what gold is); tapped again, put down. */
+  tapGold() {
+    if (state.sel && state.sel.gold) { gearTabBus.deselect(); return; }
+    state.sel = { gold: true };
+    state.menu = false;
+    state.more = false;
+    emit();
+  },
   deselect() {
     if (!state.sel && !state.filter.auto) return;
     state.sel = null;
