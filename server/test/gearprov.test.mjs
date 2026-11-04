@@ -30,6 +30,7 @@
  */
 import { GameRoom } from '../src/index.js';
 import * as gearstashExports from '../src/gearstash.js';   /* v2.3.2552: §10 asserts what it no longer exports */
+import { gearStashCap } from '../src/gearstash.js';   /* v2.3.4224 */
 import { STORE_GEAR } from '../src/storegear.js';          /* v2.3.2552: ...and what it no longer names */
 import {
   GEAR_PROV_KEY, GEAR_PROV_CAP, GEAR_PROV_V, PROV_MINTED, PROV_LEGACY,
@@ -733,13 +734,13 @@ let amuletGid = null;
 
   /* ── a FULL stash keeps the delivery queued rather than eating it
         (handoff rule 3 -- _saveRpg truncates these lists at the cap) ── */
-  psB.legsStash = Array.from({ length: 32 }, (_, i) => ({ name: 'Filler ' + i, tierMult: 1 }));
+  psB.legsStash = Array.from({ length: gearStashCap() }, (_, i) => ({ name: 'Filler ' + i, tierMult: 1 }));
   const full = await room._creditPlayer(BUYER, {
     opId: 'store:test2:goods', source: 'market', kind: 'gear',
     payload: { field: 'legsStash', piece: { name: 'Greaves', tierMult: 1 } }, note: 'bought',
   });
   check('a delivery into a FULL stash stays queued instead of being destroyed', full === 'inboxed', full);
-  check('...and the full list did not grow past its cap', psB.legsStash.length === 32, psB.legsStash.length);
+  check('...and the full list did not grow past its cap', psB.legsStash.length === gearStashCap(), psB.legsStash.length);
 
   /* ── a piece with no row arrives legacy rather than being refused ── */
   psB.shieldStash = [];
@@ -852,7 +853,7 @@ let amuletGid = null;
     check('guard: the greaves are taken into a listing', !!taken);
 
     /* Their legs stash is full, so the delivery cannot land. */
-    psM.legsStash = Array.from({ length: 32 }, (_, i) => ({ name: 'Filler ' + i, tierMult: 1 }));
+    psM.legsStash = Array.from({ length: gearStashCap() }, (_, i) => ({ name: 'Filler ' + i, tierMult: 1 }));
     const r = await room._creditPlayer(PIDM, {
       opId: 'store:mailtest:goods', source: 'market', kind: 'gear',
       payload: { field: 'legsStash', piece: taken.piece, row: taken.row }, note: 'bought back',
@@ -863,7 +864,7 @@ let amuletGid = null;
     check('...so it cannot be sold while it is sitting in the post',
       room._gearSellable(PIDM, 'legsArmor', mailGid).reason === 'in_mail',
       room._gearSellable(PIDM, 'legsArmor', mailGid));
-    check('...and the full list did not grow past its cap', psM.legsStash.length === 32, psM.legsStash.length);
+    check('...and the full list did not grow past its cap', psM.legsStash.length === gearStashCap(), psM.legsStash.length);
 
     /* Make room and reconnect: NOW the piece and its record arrive together. */
     psM.legsStash = [];

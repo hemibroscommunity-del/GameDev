@@ -229,7 +229,7 @@
  * so blobs shed it on the next join rather than needing a migration.
  */
 
-import { GEAR_STASH_FIELDS, GEAR_STASH_CAP, stashSig, sanitizeGearPiece, sanitizeCosmeticEntry } from './gearstash.js';
+import { GEAR_STASH_FIELDS, gearStashCap, stashSig, sanitizeGearPiece, sanitizeCosmeticEntry } from './gearstash.js';
 /* v2.3.2551: the custody layer (#650).  `slotForGearField` turns the
    request's list name into the ledger's slot name; the gate and the take
    are methods on the room (gearProvMethods), so they are called through
@@ -490,7 +490,7 @@ export const storeGearMethods = {
     const piece = this._stGearSanitize(field, payload.piece, false);
     if (!piece) return true;
     if (!Array.isArray(ps[field])) ps[field] = [];
-    if (ps[field].length >= GEAR_STASH_CAP) return false;
+    if (ps[field].length >= gearStashCap()) return false;
     /* v2.3.2552: this used to stamp `_sv: true` here -- "the server is the
        one writing it, so it is corroborated by construction".  The mark is
        retired.  What corroborates a delivered piece now is its ledger ROW,

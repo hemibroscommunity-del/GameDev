@@ -77,6 +77,8 @@ function boxEntries(box) {
   return Array.isArray(box) ? box.length : 0;
 }
 
+import { setGearStashCap, GEAR_STASH_CAP, GEAR_STASH_CAP_LEGACY, WEAPON_STASH_CAP_NEW, WEAPON_STASH_CAP_LEGACY } from './gearstash.js';   /* v2.3.4224 */
+
 export const LIVEOPS = {
   XP_MULT_MIN: 1,
   XP_MULT_MAX: 4,
@@ -115,7 +117,19 @@ export const liveopsMethods = {
   async _liveFlagsEnsure() {
     if (this._liveFlags) return this._liveFlags;
     this._liveFlags = (await this.state.storage.get('liveflags')) || {};
+    this._syncBagCaps();
     return this._liveFlags;
+  },
+
+  /* v2.3.4224: the bag limits (weapons 140, each gear list 48; gearstash.js)
+     follow the live flag `disable_bigbags`, which puts 8 / 32 back.  Called
+     whenever the flags load or change; state_sync.caps (join.js) advertises
+     the result so the phone's own copy follows. */
+  _bagWeaponsNow() { return this.WEAPON_STASH_CAP; },
+  _syncBagCaps() {
+    const old = !!(this._liveFlags && this._liveFlags.disable_bigbags);
+    this.WEAPON_STASH_CAP = old ? WEAPON_STASH_CAP_LEGACY : WEAPON_STASH_CAP_NEW;
+    setGearStashCap(old ? GEAR_STASH_CAP_LEGACY : GEAR_STASH_CAP);
   },
 
   // Synchronous by design (hot paths).  Fail-open before the first
@@ -344,6 +358,7 @@ export const liveopsMethods = {
       if (name === 'monstermoves' && typeof this._monsterMovesFlagChanged === 'function') this._monsterMovesFlagChanged();   /* v2.3.4011: the tiers' stat step on or off every live monster (monstermoves.js) */
       /* v2.3.3755: a memory saver turned off or on for every phone (clientoff.js) */
       if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();
+      if (name === 'disable_bigbags') this._syncBagCaps();   /* v2.3.4224 */
       return json({ ok: true, flags });
     }
     if (request.method === 'DELETE' && path === '/flags') {
@@ -357,6 +372,7 @@ export const liveopsMethods = {
         if ((name === 'movepath' || name === 'pathall') && typeof this._movePathFlagChanged === 'function') this._movePathFlagChanged();   /* v2.3.3732 */
         if (name === 'monstermoves' && typeof this._monsterMovesFlagChanged === 'function') this._monsterMovesFlagChanged();   /* v2.3.4011 */
         if (name.startsWith('off_') && typeof this._clientOffChanged === 'function') this._clientOffChanged();   /* v2.3.3755 */
+        if (name === 'disable_bigbags') this._syncBagCaps();   /* v2.3.4224 */
       }
       return json({ ok: true, flags });
     }
