@@ -22,6 +22,7 @@ export { Feedback } from './feedback.js';
 
 // v2.3.1114: server-authoritative elemental model (statuses / DoT /
 // collisions) -- see elemental.js header for what is and isn't ported.
+import { WEAPON_STASH_CAP_NEW } from './gearstash.js';   /* v2.3.4224 */
 import { tickElementStatuses, elementMoveMult, thornRecoil } from './elemental.js';
 // v2.3.1115 (P4 slice 2): embedded data tables moved to data.js -- the
 // lookup methods stay (call sites unchanged); only the literals moved.
@@ -1109,7 +1110,7 @@ export class GameRoom {
        keep arriving.  10x margin on that sweep; do not raise past ~7 s
        without revisiting the sweep window in wsClient.js. */
     this.PRESENCE_REFRESH_TICKS = 45;
-    this.WEAPON_STASH_CAP = 8; // mirrors WEAPON_STASH_MAX in src/data/gameSystems.js
+    this.WEAPON_STASH_CAP = WEAPON_STASH_CAP_NEW; // mirrors WEAPON_STASH_MAX in src/data/gameSystems.js (v2.3.4224: 140; _syncBagCaps puts 8 back under disable_bigbags)
     /* v2.3.1704: the free-block flag, mirrored onto the room so dungeon.js
        can read it through `this`.  Importing the module constant there would
        close an index.js <-> dungeon.js cycle (index mixes dungeonMethods in),

@@ -2263,6 +2263,13 @@ labelMirror('WEAPON_TYPE', SRV.WEAPON_TYPE_LABELS, WEAPON_TYPES);
   }
   check('pets: the same XP to the next level at every level to 120, and the same levelling to the Trapping cap', xpOff.length === 0, xpOff);
   /* v2.3.3122: the trade window's pet limit the phone shows is the worker's */
+  /* v2.3.4224: the phone's DEFAULT weapon bag (what an older worker gets) is the worker's legacy number; the new one rides caps.bagWeapons */
+  { const gs = await import('../src/gearstash.js'); const gm = await import('../../src/data/gameSystems.js');
+    check('bag: the client default weapon bag is the worker legacy cap (8)', gm.WEAPON_STASH_MAX === gs.WEAPON_STASH_CAP_LEGACY, { client: gm.WEAPON_STASH_MAX, server: gs.WEAPON_STASH_CAP_LEGACY });
+    gm.setWeaponStashMax(gs.WEAPON_STASH_CAP_NEW);
+    check('bag: the client follows the worker (setWeaponStashMax(140))', gm.WEAPON_STASH_MAX === 140);
+    gm.setWeaponStashMax(undefined);
+    check('bag: no cap from an older worker is 8 again', gm.WEAPON_STASH_MAX === 8); }
   check('pets: the same pets-a-trade limit (PETBOOK.TRADE_MAX)', CLIENT_PET_TRADE_MAX === SRV_PETBOOK.TRADE_MAX, { client: CLIENT_PET_TRADE_MAX, server: SRV_PETBOOK.TRADE_MAX });
   /* ...and every refusal of a pet changing hands has words on the phone */
   const tradeCodes = ['legacy', 'active', 'too-new', 'pets-max', 'pet-gone', 'pets-full', 'no-pet', 'off', 'pets-unavailable'];

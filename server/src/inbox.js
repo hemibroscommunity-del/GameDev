@@ -1,4 +1,4 @@
-import { GEAR_STASH_CAP } from './gearstash.js';                      /* v2.3.2536 */
+import { gearStashCap } from './gearstash.js';                      /* v2.3.2536 */
 import { isGearStashField, slotForGearField, PROV_MINTED, PROV_LEGACY } from './gearprov.js'; /* v2.3.2536 */
 import { swordToGreatsword } from './swordconvert.js';   /* v2.3.3895: a sword in the post arrives a greatsword */
 import { oldGreatswordToMetal } from './gscopper.js';   /* v2.3.3980: ...and a wooden or base-less greatsword a metal one */
@@ -303,7 +303,7 @@ export const inboxMethods = {
        the argument that an offline recipient has no output gate holding a
        message for them.  That argument is right about durability and wrong
        about ordering: `_applyCreditToPs` also declines when the target
-       stash is at GEAR_STASH_CAP, and that happens while the player is
+       stash is at gearStashCap(), and that happens while the player is
        ONLINE -- so the ledger claimed they held a piece that was sitting in
        their inbox, and they could sell a rebuilt copy of it and then
        receive the real one on reconnect.  Two pairs of greaves.  (Review of
@@ -344,7 +344,7 @@ export const inboxMethods = {
     const p = entry.payload || {};
     if (!isGearStashField(p.field)) return true;   /* malformed: "fits", so it is consumed and dropped */
     const list = ps[p.field];
-    return !Array.isArray(list) || list.length < GEAR_STASH_CAP;
+    return !Array.isArray(list) || list.length < gearStashCap();
   },
 
   /* Mark / unmark a parked gear entry's id in the pending-mail set. */

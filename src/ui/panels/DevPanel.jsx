@@ -231,7 +231,7 @@ const label = { color: COL.muted, font: '600 11px system-ui, sans-serif', letter
  * the very system the owner is chasing was switched off.
  */
 const CAP_GATES = [
-  'fishvariants' /* v2.3.4036: albino and large fish */, 'fishweigh' /* v2.3.4036: Inspect weighs a fish; the Biggest fish boards */,
+  'bagWeapons' /* v2.3.4224: a number, never a switch */, 'fishvariants' /* v2.3.4036: albino and large fish */, 'fishweigh' /* v2.3.4036: Inspect weighs a fish; the Biggest fish boards */,
   'monstermoves' /* v2.3.4011: the monster moves (monstermoves.js) */, 'abil', 'aceFlip' /* v2.3.2618 */, 'aceItems' /* v2.3.2619 */, 'amuletForge', 'areaChat', 'arena', 'bigorb' /* v2.3.2842; v2.3.2849: lower case, a kill switch */, 'blockScale', 'botfp', 'movepath' /* v2.3.3732: the message diet's path */, 'pathall' /* v2.3.3732: ...for every phone */, 'clientoff' /* v2.3.3755: the memory savers turned off (a list) */, 'broVerify', 'broCount' /* v2.3.3255: the wallet's Hemi Bro count */,
   'charLock', 'chatMute', 'clans', 'dungeon', 'elemBurst', 'eventCapes', 'friends',
   'gamble', 'gearRef' /* v2.3.2535 */, 'gemExtract', 'gems', 'guilds', 'harden', 'hpEndGrids', 'jackpot',
@@ -379,6 +379,7 @@ const CAP_NOTES = {
   farm: 'the farm: the Feed & Seed window digs, plants, waters, fertilizes and harvests beds the worker owns, on its clock, and sells seeds and compost (v2.3.3127; without it: the old browser-only plots, which never kept anything)',
   meals: 'meals and brews you carry: the Cookhouse cooks a dish into the bag to eat or drink later, one meal and one brew at a time, and brews the three tonics Diego no longer sells (v2.3.3130; off: a cook is eaten at once instead of carried, nobody can brew a tonic, and dishes already in bags still eat and drink)',
   cookRows: 'how many Cookhouse recipes the worker cooks: the Cookhouse, the campfire and the bag offer only those (v2.3.3130; without it, the old three)',
+  bagWeapons: 'how many spare weapons the bag holds: 140, or 8 on a worker without it (v2.3.4224; the Gear tab and every full-bag check read it)',
   farmCrops: 'how many crops the worker grows: the Feed & Seed window offers only those (v2.3.3131; without it, the first four)',
   pvpbrew: 'damage brews in duels and player fights: every hit (swings, shots, the bow volley, the staff special) gets the Fury Tonic or Firebloom Tea the worker says you drank (v2.3.3133; off: pages that join afterwards claim the old way, where the volley and the staff special had no brew; pages already playing get no brew in a duel until they reload)',
   pvpheal: 'one bite at a time in a duel or a fight with a player: a Garden Stew, cooked fish or minnow bottle every 15 s (v2.3.3133; off: eat as fast as you can tap)',

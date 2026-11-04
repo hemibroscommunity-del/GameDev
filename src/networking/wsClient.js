@@ -78,7 +78,7 @@ import { nearJoinOn, parkFar, applyPeerLooks } from '@/game/nearJoin.js'; /* v2.
 import { revealBus } from '@/ui/reveal/revealBus.js'; /* v2.3.1925 */
 import { applyCharacterRecord, hasStoredCharacter, publishCharRecord } from '@/game/characterRecord.js'; /* v2.3.1814: the stored name+look */
 import { toDisplayDamage } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale */
-import { setGrottoParty } from '@/data/gameSystems.js'; /* v2.3.3579: the Mayor's Goo Grotto aside */
+import { setGrottoParty, setWeaponStashMax } from '@/data/gameSystems.js'; /* v2.3.3579: the Mayor's Goo Grotto aside */
 import { WHEEL_DUNGEON_PARTY } from '@/data/wheelDungeons.js'; /* v2.3.3579 */
 import { setOneFormulaEnabled, setOneLevelEnabled, setGearOnLevel } from '@/data/oneFormula.js'; /* v2.3.3260: one formula for every fight; v2.3.3538: one level; v2.3.3544: gear on level */
 import { createGatherNode, spawnMonstersForZone, BT_AUDIO, ZONES, TILE, RARITY_TIERS, ZONE_RESOURCES, createDefaultCompStats, generateZoneMap, recalcDerived, updateZoneDimensions, setGridCapsEnabled, setT2SimpleEnabled, setT2BenchEnabled, setProg3Enabled, setProg3XEnabled, setProg3ElemEnabled /* v2.3.2512 */, setProg3SharedEnabled /* v2.3.2592 */, setProg3RelEnabled /* v2.3.2680 */, setStatCapFree /* v2.3.3578 */, setGearQEnabled /* v2.3.2664 */, setFishHealEnabled /* v2.3.3260 */, setAbilitiesEnabled, abilityRejectText, setElemBurstEnabled, setBlockScaleEnabled, setMilestonesRetired /* v2.3.2662 */, PROG3_SKILL_META, setZoneDepthLive /* v2.3.2790 */ } from '@/data/index.js';
@@ -780,7 +780,7 @@ export function setupWebSocket(ctx) {
                server ledger, then the stored copy wins forever. */
             rpgGoldNuggets: (S.rpg && typeof S.rpg.goldNuggets === 'number') ? S.rpg.goldNuggets : 0,
             rpgGoldBars: (S.rpg && typeof S.rpg.goldBars === 'number') ? S.rpg.goldBars : 0,
-            rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash : [],
+            rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash.slice(0, 8) : [],   /* v2.3.4224: the JOIN seed stays the first 8 (what the bag held before): the bag is 140 now (~37 KB) and the whole join frame is 16 KB (MAX_INBOUND_BYTES) -- a full bag would have been dropped silently.  The worker's stored copy wins at join anyway. */
             /* v2.3.2523 (gear stash): the four stashes that have only
                ever existed on this device -- armour, legs, shields and
                cosmetic gear -- are spread in here by _stashSeed above.
@@ -1542,6 +1542,7 @@ export function setupWebSocket(ctx) {
                  only run when the server hasn't claimed the job. */
               S._serverCaps = msg.caps || {};
               _capsHere = true;
+              setWeaponStashMax(S._serverCaps.bagWeapons);   /* v2.3.4224: the weapon bag's size follows the worker (caps.bagWeapons; absent = 8) */
               noteMoveCaps(S._serverCaps);   /* v2.3.4011: the monster moves' warnings and enrage, against a worker that has them (caps.monstermoves) */
               /* v2.3.3776: a fresh join is off the board (the worker forgot it
                  too: ride.js stores nothing) */

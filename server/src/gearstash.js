@@ -70,7 +70,22 @@ import { QUALITY_GRADES } from './data.js';   /* v2.3.2527 -- see sanitizeGearPi
    player_state echo bounded.  A list past the cap keeps its FIRST 32
    server-side; the player's own copy is untouched and still shows
    everything (this slice does not take the client's stash away). */
-export const GEAR_STASH_CAP = 32;
+export const GEAR_STASH_CAP_LEGACY = 32;
+/* v2.3.4224: THE BAG LIMITS (owner, 2026-11-04: "I don't really want there to
+   be a limit ... maybe make the cap equal to the number of different items in
+   the game (140ish)").  Weapons go 8 -> 140 and each gear list 32 -> 48.  Gear
+   is NOT 140 on purpose: every list rides the ONE `rpg:<id>` value (128 KiB at
+   most per Durable Object value); measured worst case (a max-name, max-grade
+   piece is 225 B, a weapon 265 B): 140 weapons = 36 KiB, five gear lists at
+   140 = 154 KiB (190 KiB total: does NOT fit), at 48 = 53 KiB (89 KiB total
+   with the weapons, ~39 KiB of margin for the rest of the record).  The
+   kill switch `disable_bigbags` puts 8 / 32 back (liveops.js _syncBagCaps). */
+export const GEAR_STASH_CAP = 48;
+export const WEAPON_STASH_CAP_NEW = 140;
+export const WEAPON_STASH_CAP_LEGACY = 8;
+let _gearCap = GEAR_STASH_CAP;
+export function gearStashCap() { return _gearCap; }
+export function setGearStashCap(n) { _gearCap = Number.isFinite(n) && n > 0 ? Math.floor(n) : GEAR_STASH_CAP; }
 
 /* The five fields, in one place, because three files have to agree on
    them: the fixed field list (_saveRpg), the echo (_sendPlayerState)
@@ -86,7 +101,7 @@ export const GEAR_STASH_FIELDS = ['armorStash', 'legsStash', 'shieldStash', 'gea
    that absence is the point.  It has no client stash to adopt from (no
    unequip flow exists), so no honest client can ever send a claim for
    it -- but v2.3.2523 still READ `rpgAmuletStash`, which meant a
-   modified client could mint itself up to GEAR_STASH_CAP amulets that
+   modified client could mint itself up to gearStashCap() amulets that
    came out the far side VALIDATED by _sanitizeAmulet, i.e. legitimate
    top-tier ones, the most expensive thing in the forge.  Nothing reads
    the list today so nothing was lost, but a seed key for a list with no
@@ -159,7 +174,7 @@ export function normalizeGearStashes(blob) {
       changed = true;
       continue;
     }
-    const clean = cur.filter((e) => e && typeof e === 'object' && !Array.isArray(e)).slice(0, GEAR_STASH_CAP);
+    const clean = cur.filter((e) => e && typeof e === 'object' && !Array.isArray(e)).slice(0, gearStashCap());
     if (clean.length !== cur.length) { blob[f] = clean; changed = true; }
   }
   return changed;
@@ -268,8 +283,8 @@ export function sanitizeStashList(field, arr, strict, amuletSanitizer, report) {
      NOT truncation: junk is not a piece of gear, and treating it as one
      would leave a player with a single malformed row permanently
      unstamped for no gain. */
-  if (report && arr.length > GEAR_STASH_CAP) report.truncated = true;
-  const cap = arr.slice(0, GEAR_STASH_CAP);
+  if (report && arr.length > gearStashCap()) report.truncated = true;
+  const cap = arr.slice(0, gearStashCap());
   const out = [];
   for (const src of cap) {
     let piece;
@@ -372,7 +387,7 @@ function healGradeFromClaim(field, heldPiece, claimedPiece) {
 }
 
 export function mergeStashLists(field, held, claimed, report) {
-  const out = Array.isArray(held) ? held.slice(0, GEAR_STASH_CAP) : [];
+  const out = Array.isArray(held) ? held.slice(0, gearStashCap()) : [];
   if (!Array.isArray(claimed) || !claimed.length) return out;
   /* Signature -> the indexes in `out` holding it, in order.  An index
      list rather than a bare count (v2.3.2527) because a matched pair
@@ -388,7 +403,7 @@ export function mergeStashLists(field, held, claimed, report) {
   for (const g of claimed) {
     /* v2.3.2527: the cap cut the claim short -- the caller must not
        stamp this capture complete (review finding 1c). */
-    if (out.length >= GEAR_STASH_CAP) { if (report) report.truncated = true; break; }
+    if (out.length >= gearStashCap()) { if (report) report.truncated = true; break; }
     const s = stashSig(field, g);
     const taken = takenCounts.get(s) || 0;
     const idxs = heldIdx.get(s);
@@ -397,7 +412,7 @@ export function mergeStashLists(field, held, claimed, report) {
     else healGradeFromClaim(field, out[idxs[taken]], g);
     takenCounts.set(s, taken + 1);
   }
-  return out.slice(0, GEAR_STASH_CAP);
+  return out.slice(0, gearStashCap());
 }
 
 /* Which provenance slot each stash list belongs to (gearprov.js).  Written
@@ -431,7 +446,7 @@ export const gearStashMethods = {
          plates and a shield gone from the server's record for good.
        - Same ending when the client's shared seed budget ran out
          part-way down the four lists, or when a list overflowed
-         GEAR_STASH_CAP: a partial capture, stamped done.
+         gearStashCap(): a partial capture, stamped done.
 
      That is the #615 shape after all -- a broken record that LOOKS
      healthy on the next wake, so nothing ever retries it.  The crash
@@ -491,7 +506,7 @@ export const gearStashMethods = {
       const strictSan = (g) => sanitizeStashList(f, [g], true, amuletSan)[0] || null;
       const ownSan = (g) => sanitizeStashList(f, [g], false, amuletSan)[0] || null;
       const own = stored ? stored[f] : ps[f];
-      ps[f] = this._gearProvResolveList(playerId, slot, Array.isArray(own) ? own.slice(0, GEAR_STASH_CAP) : [], ownSan, !!stored);
+      ps[f] = this._gearProvResolveList(playerId, slot, Array.isArray(own) ? own.slice(0, gearStashCap()) : [], ownSan, !!stored);
       /* GEAR_STASH_SEED_KEYS has no amuletStash entry on purpose
          (v2.3.2527 finding 3), so that list simply has no claim to read. */
       const key = GEAR_STASH_SEED_KEYS[f];
@@ -508,8 +523,8 @@ export const gearStashMethods = {
            `gid` BEFORE the sanitizer runs, since _sanitizeAmulet and
            sanitizeCosmeticEntry rebuild a whitelisted object and would drop
            it.  Same predicate, same place in the flow, same effect. */
-        if (raw.length > GEAR_STASH_CAP) report.truncated = true;
-        claimed.set(f, this._gearProvResolveList(playerId, slot, raw.slice(0, GEAR_STASH_CAP), strictSan));
+        if (raw.length > gearStashCap()) report.truncated = true;
+        claimed.set(f, this._gearProvResolveList(playerId, slot, raw.slice(0, gearStashCap()), strictSan));
       }
     }
     let took = 0;

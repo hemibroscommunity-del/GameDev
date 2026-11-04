@@ -2532,7 +2532,8 @@ export const RESPAWN_MAX = 15000; /* 15s max respawn */
 export const DEATH_SCATTER_RECOVERY = 30000; /* 30s to recover scattered items */
 export const DEATH_GOLD_PENALTY = 0.10; /* lose 10% gold */
 /* §4 Weapon stash — hold dropped weapons for compare/swap */
-export const WEAPON_STASH_MAX = 8;
+export let WEAPON_STASH_MAX = 8; /* v2.3.4224: a LIVE binding -- the worker's caps.bagWeapons (140; an older worker says nothing, so 8) sets it, every importer follows */
+export function setWeaponStashMax(n) { WEAPON_STASH_MAX = (typeof n === 'number' && n >= 1 && n <= 1000) ? Math.floor(n) : 8; }
 
 /* Legacy BUILDINGS array mapped from TOWN_BUILDINGS for render code */
 export const BUILDINGS = TOWN_BUILDINGS.map(function (b) {
