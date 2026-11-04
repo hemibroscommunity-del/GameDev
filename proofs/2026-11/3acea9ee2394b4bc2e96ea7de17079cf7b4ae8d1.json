@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3acea9ee2394b4bc2e96ea7de17079cf7b4ae8d1",
+  "tree": "57f0eeca381f78d540f711915dd9857f4d3b25b7",
+  "committedAt": "2026-11-04T15:04:42-08:00",
+  "subject": "Merge pull request #1438 from hemibroscommunity-del/claude/bag-scroll-gold",
+  "files": 7654,
+  "bytes": 888348088,
+  "listingSha256": "1357ab2bca6498d9a0ec970a6b9639b8e5a18a6128a588a751f7b69e5a60a41d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
