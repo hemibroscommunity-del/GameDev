@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a04a4bf4545b0221dae45cf48247dbcf59613d45",
+  "tree": "a4d5c412ff01a0ad6e639d04a94e10719153fdd8",
+  "committedAt": "2026-11-03T19:21:50-08:00",
+  "subject": "Merge pull request #1428 from hemibroscommunity-del/claude/tutorial-polish-2",
+  "files": 7602,
+  "bytes": 864750632,
+  "listingSha256": "59ec22d8b9490b6687c8caa1781a2beda82e45d9286745e49287a00e12ac9837",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
