@@ -60,6 +60,7 @@ check('1g v2.3.4105: a click on a person talks, and E never does -- "Use", not "
 
 /* ── 2. only while it works ── */
 const none = deskKeyRows({});
+check("2z essentials: the default-off list is a short subset", deskKeyRows({}, false).length <= 11 && deskKeyRows({}, false).length < none.length && deskKeyRows({}, false).every((r) => none.includes(r)));
 const all = deskKeyRows(Object.fromEntries(NEEDS.map((k) => [k, true])));
 check('2a with nothing met, no row with a requirement', none.every((r) => r[2] === null) && none.length === DESK_KEY_ROWS.filter((r) => r[2] === null).length);
 check('2b with everything met, every row', all.length === DESK_KEY_ROWS.length);
