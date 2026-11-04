@@ -554,7 +554,12 @@ export function navButtonSize(vw, vh) {
    either side.  The Gear tab keeps its own 560 cap (GearTab GEAR_MAX_W)
    centred inside the block until it gives that up for this.  BroTown's
    resize() stamps it as --band-max-w for game.css. */
-export const BAND_ASSEMBLY_MAX_W = 840;
+/* v2.3.4243 (owner at a computer: "fix the proportions on the desktop view.
+   Simply make the container areas smaller (like they appear on mobile) they
+   don't need a bunch of extra dark space to make them appear wider"): 480, a
+   big phone's width, not 840 -- the panels hug their cells as on a phone, the
+   nav row and the panels one block, centred. */
+export const BAND_ASSEMBLY_MAX_W = 480;
 /* ...and the row fills that block (CLOSE at its left, the five buttons taking
    equal shares of the rest) wherever the buttons would otherwise stop at
    their ceiling and leave the row's ends empty: a tablet, a computer.  A
