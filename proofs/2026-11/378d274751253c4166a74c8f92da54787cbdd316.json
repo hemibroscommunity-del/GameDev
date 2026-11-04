@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "378d274751253c4166a74c8f92da54787cbdd316",
+  "tree": "095f6c41dedf9b0e652e8d533184714087ae6b3d",
+  "committedAt": "2026-11-03T19:52:25-08:00",
+  "subject": "Merge pull request #1432 from hemibroscommunity-del/claude/equip-placeholders",
+  "files": 7618,
+  "bytes": 869658891,
+  "listingSha256": "d29923e081ad4679448b951de43415162bf3dad632f1838f66ab376ecd89cce9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
