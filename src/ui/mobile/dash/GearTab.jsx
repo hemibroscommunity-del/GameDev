@@ -241,9 +241,9 @@ const PILL_ICON = {
   Damage: '/icons/ui/stat/dmg.png?v=2.3.2642', DPS: HERO_PILL_ICON.dps, Speed: HERO_PILL_ICON.aspd, Range: HERO_PILL_ICON.range,
   Block: HERO_PILL_ICON.def, Stamina: HERO_PILL_ICON.stam, Defence: HERO_PILL_ICON.def, 'Damage cut': HERO_PILL_ICON.armor,
 };
-const PILL_WORD = { Damage: 'DAMAGE', DPS: 'DPS', Speed: 'SPEED', Range: 'RANGE', Block: 'BLOCK', Stamina: 'ENERGY', Defence: 'DEFENCE', 'Damage cut': 'DMG CUT' };
+const PILL_WORD = { Damage: 'DAMAGE', DPS: 'DPS', Speed: 'SPEED', Range: 'RANGE', Block: 'BLOCK', Stamina: 'ENERGY', Defence: 'DEFENCE', 'Damage cut': 'ARMOR' };   /* v2.3.4191: the owner, of 'CUT': "ARMOR" (42% = you take 42% less damage) */
 /* a narrow pill (the 390 phone's ~58 px): three letters, the picture beside them says the rest */
-const PILL_SHORT = { Damage: 'DMG', DPS: 'DPS', Speed: 'SPD', Range: 'RNG', Block: 'BLK', Stamina: 'EN', Defence: 'DEF', 'Damage cut': 'CUT' };
+const PILL_SHORT = { Damage: 'DMG', DPS: 'DPS', Speed: 'SPD', Range: 'RNG', Block: 'BLK', Stamina: 'EN', Defence: 'DEF', 'Damage cut': 'ARMOR' };
 const STAR_COUNT = { normal: 1, rare: 2, elite: 3, godly: 4 };
 const GEAR_MORE_ONLY = { drop: 1, lock: 1, inspect: 1 };   /* never the gold button: always behind "⋯" */
 const HARDNESS_MAX = 5;   /* weapon.hardness is an int 0-5 (hardening.js) */
@@ -278,13 +278,16 @@ const StatPills = ({ rows, cmp, w, line }) => {
   }
   return (
     <div data-gear-grid="" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
-      {rows.slice(0, 4).map((r) => {
+      {rows.slice(0, 4).map((r, i, all) => {
         const up = cmp && r.tone > 0, down = cmp && r.tone < 0;
-        const change = !cmp ? null : r.old == null || r.old === '—' ? null : (r.diff === '=' || !r.diff) ? '--' : (up ? '▲ ' : down ? '▼ ' : '') + r.diff;
+        /* v2.3.4191, the owner: no "--" -- equal, or nothing to compare, shows nothing under the value */
+        const change = !cmp ? null : r.old == null || r.old === '—' ? null : (r.diff === '=' || !r.diff) ? null : (up ? '▲ ' : down ? '▼ ' : '') + r.diff;
         return (
           <div key={r.k} {...(cmp ? { 'data-gear-cmp': r.k, 'data-tone': r.tone } : { 'data-gear-stat': r.key || r.k })}
             title={cmp && r.old != null ? `${r.k}: ${r.old} → ${r.now}` : r.k}
             style={{
+              /* v2.3.4191: a lone pill (armour's one ARMOR) spans the row, so its word is whole */
+              ...(all.length === 1 ? { gridColumn: '1 / -1' } : null),
               minWidth: 0, boxSizing: 'border-box', padding: '1px 5px', borderRadius: 8,
               background: COL.wellSoft, border: `1px solid ${COL.border}`,
               display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 1.1, overflow: 'hidden',
@@ -816,6 +819,12 @@ export const GearTab = ({ R: Rin, desk }) => {
     morePress = press;
     /* the foot: the gold button and, beside it, "⋯" (alone when there is no
        main action) */
+    /* v2.3.4191, the owner: a piece you can wear (a weapon, a shield, armour)
+       has NO "⋯" -- its gold Equip alone, the full width; "⋯" stays on what
+       has more to do (materials, potions...) and on a "?" piece, whose Equip
+       sits behind it beside the gold Reveal */
+    const wearable = /^stash(Weapon|Shield|Armor|Legs|Gear)$/.test(selEntry.kind) && !hidden;
+    if (wearable) moreList = [];
     if (lead || moreList.length) footer = (<>{lead ? goldBtn(lead.id, lead.label, () => press(lead), lead.attrs) : <span style={{ flex: 1 }} />}{moreBtn(moreList.length > 0)}</>);
     const q = !hidden && o ? o.quality : null;
     body = (

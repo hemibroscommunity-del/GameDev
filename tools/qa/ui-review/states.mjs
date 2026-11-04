@@ -912,11 +912,11 @@ export const STATES = [
   /* v2.3.4191: the item card's "⋯" and a material's card */
   {
     id: 'gear-more', group: 'Dashboard', title: 'Gear tab: the card\'s "⋯" open',
-    about: 'A spare sword in the bag picked, then the card\'s "⋯" (at its foot, beside the gold button) tapped: a list over the card, never beside it, of the actions that are not the gold one -- Pin, and Drop or Inspect where the piece has them, never Sell -- with a ✕ (Esc) that shuts it and keeps the pick.',
+    about: 'A material in the bag picked, then the card\'s "⋯" (at its foot) tapped: a list over the card, never beside it, of what the piece can do besides its gold button -- Pin, Drop, Inspect where it has them, never Sell -- with a ✕ (Esc) that shuts it and keeps the pick.  A piece you can wear has no "⋯" (v2.3.4191, the owner): its gold Equip alone.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;
-      const e1 = await tapSel(P, '[data-gear-bag] [data-bag-key^="stashWeapon-"]');
+      const e1 = await tapSel(P, '[data-gear-bag] [data-bag-key^="i-"]');
       if (e1) return e1;
       await wait(P, 500);
       return tapSel(P, '[data-gear-pane="bro"] [data-gear-act="more"]');

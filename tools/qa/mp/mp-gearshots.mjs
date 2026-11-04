@@ -11,7 +11,7 @@
  *   docs/shots/gear-tab-item.webp      ...a material in the bag tapped (the ore)
  *   docs/shots/gear-tab-gear.webp      ...a bag weapon, compared against the one worn
  *   docs/shots/gear-tab-armour.webp    ...a rare chest from the bag (two blue stars), compared
- *   docs/shots/gear-tab-more.webp      ...its "⋯" open (Drop, Pin)
+ *   docs/shots/gear-tab-more.webp      a material's "⋯" open (Drop, Pin)
  *   docs/shots/gear-tab-slot.webp      ...the Sword slot tapped (the bag filtered)
  *   docs/shots/gear-tab-desk.webp      a computer (1280 x 800), the band open
  *   docs/shots/gear-tab-oneband-desk.webp      the one band, a computer (1280 x 720), open
@@ -143,6 +143,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       const stars = await P.page.evaluate(() => (document.querySelector('[data-gear-stars]') || { getAttribute: () => null }).getAttribute('data-gear-stars'));
       await shot('armour', 'item', `a bag chest (${stars} stars) compared`);
+      /* v2.3.4191: a piece you can wear has no "⋯" (the owner), so the "⋯"
+         picture is a material's */
+      if (chest) await tapEl(P, `[data-gear-bag] [data-bag-key="${chest}"]`);
+      const mat = await P.page.evaluate(() => { const t = document.querySelector('[data-gear-bag] [data-bag-key^="i-"]'); return t ? t.getAttribute('data-bag-key') : null; });
+      if (mat) await tapEl(P, `[data-gear-bag] [data-bag-key="${mat}"]`);
       await tapEl(P, '[data-gear-pane="bro"] [data-gear-act="more"]');
       {
         await P.page.waitForTimeout(500);

@@ -360,25 +360,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
           && (!['rare', 'elite'].includes(s3.stars.grade) || s3.stars.color === s3.nameColor)
           && !!s3.hard && /^Hardness\s*[0-5]\/5$/.test(s3.hard.text) && !/·|Greatsword|Common|Normal/.test(s3.kindText || ''),
         { stars: s3.stars, nameColor: s3.nameColor, hard: s3.hard, kind: s3.kindText });
-      rec.ok('[390x844] ...the stat pills two to a row, each its picture, the change against the worn sword inside (▲ +N green, ▼ -N red, or --)',
+      /* v2.3.4191, the owner: no "--" -- an equal stat shows nothing under its value */
+      rec.ok('[390x844] ...the stat pills two to a row, each its picture, the change against the worn sword inside (▲ +N green, ▼ -N red, nothing when equal)',
         s3.pills.length >= 2 && s3.pills.length <= 4 && s3.pills.every((p) => p.img && p.box) && s3.pills[0].box.t === s3.pills[1].box.t
-          && s3.pills.every((p) => ['up', 'down', 'same'].includes(p.diff)) && s3.pills.every((p) => p.diff !== 'up' || /^▲ \+/.test(p.dtext)) && s3.pills.every((p) => p.diff !== 'down' || /^▼ /.test(p.dtext)) && s3.pills.every((p) => p.diff !== 'same' || p.dtext === '--'),
+          && s3.pills.every((p) => p.diff === null || ['up', 'down'].includes(p.diff)) && s3.pills.every((p) => p.diff !== 'up' || /^▲ \+/.test(p.dtext)) && s3.pills.every((p) => p.diff !== 'down' || /^▼ /.test(p.dtext)),
         s3.pills);
-      rec.ok('[390x844] ...the same sword as the one worn: every change "--" (equal is never a gain)',
-        s3.pills.length >= 2 && s3.pills.every((p) => p.diff === 'same' && p.dtext === '--'), s3.pills);
-      rec.ok('[390x844] ...ONE gold button, Equip, and "⋯" beside it at the foot (not in the head, where it cut the name); no Sell anywhere in the tab',
-        s3.foot.length === 2 && s3.foot[0].act === 'equip' && /gradient/.test(s3.foot[0].bg) && s3.foot[1].act === 'more' && s3.more && !s3.sell, { foot: s3.foot, more: s3.more, sell: s3.sell });
+      rec.ok('[390x844] ...the same sword as the one worn: nothing under any value (equal is never a gain, and never "--")',
+        s3.pills.length >= 2 && s3.pills.every((p) => p.diff === null && p.dtext === null), s3.pills);
+      /* v2.3.4191, the owner: a piece you can wear has no "⋯" -- its gold Equip alone, full width */
+      rec.ok('[390x844] ...ONE gold button, Equip, alone at the foot (no "⋯" on a piece you can wear); no Sell anywhere in the tab',
+        s3.foot.length === 1 && s3.foot[0].act === 'equip' && /gradient/.test(s3.foot[0].bg) && !s3.more && !s3.sell, { foot: s3.foot, more: s3.more, sell: s3.sell });
       rec.ok('[390x844] ...the name whole on one card row: "Copper Greatsword", not "Copper Grea..."',
         s3.name === 'Copper Greatsword' && await P.page.evaluate(() => { const e = document.querySelector('[data-gear-pane="bro"] [data-gear-name]'); return !!e && e.scrollWidth <= e.clientWidth + 0.5 && e.scrollHeight <= e.clientHeight + 1; }), s3.name);
-      await tapEl(P, '[data-gear-pane="bro"] [data-gear-act="more"]');
-      const s3m = await look(P);
-      await P.page.screenshot({ path: `${OUT}/phone-3b-more.png` });
-      rec.ok('[390x844] "⋯" opens the rest over the card: Pin (and Drop where the piece can be dropped) -- never Sell, never the gold one again',
-        Array.isArray(s3m.moreMenu) && s3m.moreMenu.includes('lock') && !s3m.moreMenu.includes('sell') && !s3m.moreMenu.includes('equip'), s3m.moreMenu);
-      fitOk(rec, '[390x844] the "⋯" list open', s3m, true);
-      const escd = await P.page.evaluate(() => { const b = document.querySelector('[data-gear-more-menu] [data-esc]'); if (!b) return false; b.click(); return true; });
-      await P.page.waitForTimeout(300);
-      rec.ok('[390x844] ...its ✕ wears data-esc and shuts it, the pick kept', escd && (await look(P)).moreMenu === null && (await look(P)).view === 'item');
 
       /* 4. Equip */
       const before = await rpgOf(P);
@@ -512,9 +505,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.screenshot({ path: `${OUT}/narrow-3-compare.png` });
       rec.ok('[360x780] a bag sword compared (guard)', n3.stats === 'bag' && n3.cmp.length >= 2, { stats: n3.stats, cmp: n3.cmp.length });
       fitOk(rec, '[360x780] a bag sword compared', n3, true);
-      rec.ok('[360x780] ...its pills keep their pictures, the change inside', n3.pills.length >= 2 && n3.pills.every((p) => p.img && p.diff), n3.pills);
+      rec.ok('[360x780] ...its pills keep their pictures', n3.pills.length >= 2 && n3.pills.every((p) => p.img), n3.pills);
+      /* v2.3.4191: "⋯" lives on what has more to do than be worn -- a material */
+      await P.page.evaluate(() => { const g = window.__btGearTab; if (g) { g.bus.afterChange(); g.bus.clearFilter(); } });
+      await P.page.waitForTimeout(400);
+      const matKey = (await look(P)).bag.find((k) => /^i-/.test(k));
+      if (matKey) await tapEl(P, `[data-gear-bag] [data-bag-key="${matKey}"]`);
       await tapEl(P, '[data-gear-pane="bro"] [data-gear-act="more"]');
-      fitOk(rec, '[360x780] the "⋯" list open', await look(P), true);
+      const n3m = await look(P);
+      await P.page.screenshot({ path: `${OUT}/narrow-3b-more.png` });
+      rec.ok('[360x780] a material\'s "⋯" opens the rest over the card (Pin, Drop...) -- never Sell, never the gold one again',
+        !!matKey && Array.isArray(n3m.moreMenu) && n3m.moreMenu.includes('lock') && !n3m.moreMenu.includes('sell'), { matKey, menu: n3m.moreMenu });
+      fitOk(rec, '[360x780] the "⋯" list open', n3m, true);
+      const escd = await P.page.evaluate(() => { const b = document.querySelector('[data-gear-more-menu] [data-esc]'); if (!b) return false; b.click(); return true; });
+      await P.page.waitForTimeout(300);
+      rec.ok('[360x780] ...its ✕ wears data-esc and shuts it, the pick kept', escd && (await look(P)).moreMenu === null && (await look(P)).view === 'item');
       await P.page.evaluate(() => { const g = window.__btGearTab; if (g) { g.bus.afterChange(); g.bus.clearFilter(); } });
       /* v2.3.4191: and at 375 (an iPhone's mini / SE width) */
       await P.page.setViewportSize({ width: 375, height: 812 });
