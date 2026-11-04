@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "f94f272075592333d1c54b87691f1da6892b2cf5",
+  "tree": "71aab3680ce833d44a13d92e15ad6aca0b2d432b",
+  "committedAt": "2026-11-04T13:35:20-08:00",
+  "subject": "Merge pull request #1435 from hemibroscommunity-del/claude/item-art",
+  "files": 7646,
+  "bytes": 888086270,
+  "listingSha256": "8e5e2c25d95432125991b16d2b54f00b870d735bbaed5b07b92510502044ebfc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
