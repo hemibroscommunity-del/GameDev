@@ -137,6 +137,53 @@ export function deskFrameMode(search) {
   return v === 'over' ? 'over' : v === 'around' ? 'around' : DESKFRAME_DEFAULT;
 }
 
+/* v2.3.4220 (owner, on the previews: "just around the screen and UI area so it's
+   not a drastic screen play area to black difference on the sides"): AROUND does
+   NOT shrink the game.  A fixed, pointer-events-none box hugs the world and the
+   band as one block (the canvas's left/right, the world's top to the band's
+   foot) and its bezel is drawn into the dead space only: each side as thick as
+   the room there is, up to 26 px, none where there is none (the top and foot of
+   a window the game fills).  The slate picture matches the band's tray. */
+let _aroundOn = false;
+if (typeof window !== 'undefined') window.__btDeskFrameStart = () => startAroundFrame();   /* QA: the test flips the class by hand */
+function startAroundFrame() {
+  if (_aroundOn || typeof document === 'undefined') return;
+  _aroundOn = true;
+  const el = document.createElement('div');
+  el.setAttribute('data-deskframe', 'around');
+  el.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483000;box-sizing:border-box;display:none;border:0 solid transparent;border-image:url(/ui/deskframe-slate.png) 24 stretch';
+  document.body.appendChild(el);
+  let last = '';
+  const MAXT = 26, MINT = 8;
+  const tick = () => {
+    try {
+      if (!document.documentElement.classList.contains('bt-deskframe-around')) { el.style.display = 'none'; last = ''; return; }
+      const c = document.querySelector('canvas.brotown-canvas');
+      const cr = c && c.getBoundingClientRect();
+      if (!cr || cr.width < 50) { el.style.display = 'none'; return; }
+      const d = document.querySelector('.bt-dashboard');
+      const dr = d && d.getBoundingClientRect();
+      const W = window.innerWidth, Hh = window.innerHeight;
+      const l = Math.round(cr.left), r = Math.round(cr.right), t = Math.round(cr.top);
+      const b = Math.round(dr && dr.width > 0 ? Math.max(dr.bottom, cr.bottom) : cr.bottom);
+      const side = (room) => (room >= MINT ? Math.min(MAXT, Math.floor(room)) : 0);
+      const tl = side(l), tr = side(W - r), tt = side(t), tb = side(Hh - b);
+      const key = [l, r, t, b, tl, tr, tt, tb].join();
+      if (key === last) return;
+      last = key;
+      const st = el.style;
+      st.display = (tl || tr || tt || tb) ? 'block' : 'none';
+      st.left = (l - tl) + 'px'; st.top = (t - tt) + 'px';
+      st.width = (r - l + tl + tr) + 'px'; st.height = (b - t + tt + tb) + 'px';
+      st.borderWidth = tt + 'px ' + tr + 'px ' + tb + 'px ' + tl + 'px';
+      st.borderImageWidth = tt + 'px ' + tr + 'px ' + tb + 'px ' + tl + 'px';
+    } catch (e) { /* no frame this tick */ }
+  };
+  setInterval(tick, 400);   /* a rect read; it writes only when the block moved */
+  window.addEventListener('resize', tick);
+  tick();
+}
+
 export function applyDeskWide() {
   if (typeof document === 'undefined') return false;
   const on = deskWideWanted();
@@ -145,6 +192,7 @@ export function applyDeskWide() {
     const m = on ? deskFrameMode() : null;
     document.documentElement.classList.toggle('bt-deskframe-around', m === 'around');
     document.documentElement.classList.toggle('bt-deskframe-over', m === 'over');
+    if (m === 'around') startAroundFrame();
   } catch (e) { /* no frame */ }
   return on;
 }

@@ -21,16 +21,22 @@ async function setMode(P, mode) {
 const ring = (P) => P.page.evaluate(() => {
   const html = document.documentElement;
   const on = html.classList.contains('bt-deskframe-around') || html.classList.contains('bt-deskframe-over');
-  const t = on ? parseFloat(getComputedStyle(html).getPropertyValue('--bt-frame-t')) || 0 : 0;
+  const fe = document.querySelector('[data-deskframe]');
+  const around = html.classList.contains('bt-deskframe-around') && fe && getComputedStyle(fe).display !== 'none';
+  const fr = around ? fe.getBoundingClientRect() : null;
+  const bw = around ? getComputedStyle(fe) : null;
+  const inner = fr ? { l: fr.left + parseFloat(bw.borderLeftWidth), r: fr.right - parseFloat(bw.borderRightWidth), t: fr.top + parseFloat(bw.borderTopWidth), b: fr.bottom - parseFloat(bw.borderBottomWidth) } : null;
+  const t = on && !around ? parseFloat(getComputedStyle(html).getPropertyValue('--bt-frame-t')) || 0 : 0;
   const t2 = on ? Math.round(parseFloat(getComputedStyle(document.body).paddingLeft) || 0) : 0;
   const W = innerWidth, Hh = innerHeight; const under = [];
   for (const e of document.querySelectorAll('#root button, #root [data-nav]')) {
     const r = e.getBoundingClientRect(); if (r.width < 4 || r.height < 4) continue;
     const cs = getComputedStyle(e); if (cs.visibility === 'hidden' || cs.display === 'none') continue;
-    if (on && (r.left < t - 1 || r.top < t - 1 || r.right > W - t + 1 || r.bottom > Hh - t + 1)) under.push((e.getAttribute('data-nav') || e.className || e.tagName).toString().slice(0, 30));
+    if (inner && (r.left < inner.l - 1 || r.top < inner.t - 1 || r.right > inner.r + 1 || r.bottom > inner.b + 1) && r.right > fr.left && r.left < fr.right) under.push((e.getAttribute('data-nav') || e.className || e.tagName).toString().slice(0, 30));
+    else if (!around && on && (r.left < t - 1 || r.top < t - 1 || r.right > W - t + 1 || r.bottom > Hh - t + 1)) under.push((e.getAttribute('data-nav') || e.className || e.tagName).toString().slice(0, 30));
   }
   const cs = getComputedStyle(html, '::after');
-  return { on, t, pad: t2, under, pe: cs.pointerEvents, content: cs.content };
+  return { on, around, inner, t, pad: t2, under, pe: cs.pointerEvents, content: cs.content };
 });
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -38,6 +44,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const D = await H.newPlayer(browser, { name: 'Framebro', wsPort, webPort, viewport: { width: 1280, height: 720 }, world: 'wheel', wide: true, query: 'deskframe=0' });
   let stop = () => {};
   try {
+    await D.page.evaluate(() => window.__btDeskFrameStart && window.__btDeskFrameStart());
     await H.enterWorld(D);
     stop = H.keepAlive(D);
     await D.page.waitForTimeout(2500);
@@ -53,8 +60,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await D.page.waitForTimeout(1800);
         const r = await ring(D);
         if (mode !== 'off') {
-          rec.ok(`${tag} ${mode}: the frame is on, no button under its ring (${r.under.join(',') || 'none'})`, r.on && r.under.length === 0, r);
-          rec.ok(`${tag} ${mode}: the ring lets clicks through (pointer-events ${r.pe})`, r.pe === 'none', r);
+          rec.ok(`${tag} ${mode}: the frame is on, no button under its ring (${r.under.join(',') || 'none'})`, r.on && (mode !== 'around' || r.around) && r.under.length === 0, r);
+          rec.ok(`${tag} ${mode}: the frame lets clicks through (${mode === 'around' ? 'its box has pointer-events none' : 'pointer-events ' + r.pe})`, mode === 'around' ? await D.page.evaluate(() => getComputedStyle(document.querySelector('[data-deskframe]')).pointerEvents === 'none') : r.pe === 'none', r);
         }
         const name = mode === 'off' ? 'desk-frame-before-1920' : `desk-frame-${mode}-${tag}`;
         const png = join(OUT, name + '.png');
