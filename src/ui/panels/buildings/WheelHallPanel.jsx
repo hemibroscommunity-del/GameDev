@@ -85,7 +85,7 @@ function guildHall(props) {
      so and opens the clan window's pointer to the Saloon */
   if (clanPartyOn(S)) {
     return [
-      row('clan', '/icons/ui/panel-clan.webp', '🏰', 'Clans are parties now', 'Make a party in the Saloon; at 20 active members it is an alliance', props.onClan, false),
+      row('clan', '/icons/ui/panel-clan.webp', '🏰', 'Party', 'Make a party in the Saloon; at 20 active members it is an alliance', props.onClan, false),
       row('guild', '/icons/ui/panel-guild.webp', '🏛', 'Skill guilds', 'Your rank in each life skill’s guild, and its quests', props.onGuild),
     ];
   }

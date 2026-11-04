@@ -191,9 +191,9 @@ export function ClanPanel(props) {
         style: Object.assign({}, LS_CARD, { width: 'min(360px, calc(100vw - 24px))', maxHeight: 'min(80vh, 100%)', overflowY: 'auto', padding: 16 })
       },
       React.createElement("button", { className: "bt-inspect-close", onClick: _closeCp }, "✕"),
-      lsTitleRow("Clans are parties now"),
+      lsTitleRow("Party"),
       React.createElement("div", { style: { fontSize: 13, color: '#B6C1BE', marginBottom: 14, lineHeight: 1.5 } },
-        "Every clan became a party, and its members keep its tag. A party stays together when you log out, and when 20 of its members have played in the last 7 days and are level 5 or more it becomes an alliance, with a name, a tag on every member, wars and a place on the alliance board. Your alliance is in the Saloon in BroTown."),
+        "A party stays together when you log out, and when 20 of its members have played in the last 7 days and are level 5 or more it becomes an alliance, with a name, a tag on every member, wars and a place on the alliance board. Your alliance is in the Saloon in BroTown."),
       React.createElement("button", {
         className: "button-primary", "data-clanparty-find": "",
         style: Object.assign({}, LS_PRIMARY, { marginBottom: 8 }),

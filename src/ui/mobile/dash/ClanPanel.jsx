@@ -55,7 +55,7 @@ function PartyNowPage({ S }) {
           <img src="/icons/ui/panel-clan.webp" alt="" draggable={false}
             style={{ width: 44, height: 44, objectFit: 'contain', opacity: 0.4, margin: '0 auto' }}
             onError={(e) => { e.currentTarget.replaceWith(document.createTextNode('🛡')); }} />
-          <div style={{ fontSize: 13, color: COL.text, marginTop: 6, fontWeight: 700 }}>Clans are parties now</div>
+          <div style={{ fontSize: 13, color: COL.text, marginTop: 6, fontWeight: 700 }}>No party yet</div>
         </div>
       )}
       <div style={{ fontSize: 12, color: COL.muted, lineHeight: 1.45, padding: '6px 12px 0' }}>

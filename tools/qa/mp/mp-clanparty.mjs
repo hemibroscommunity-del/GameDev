@@ -203,11 +203,11 @@ async function runIt({ browser, wsPort, webPort, rec }) {
   /* ── 5. the Guild Hall and the clan window ── */
   await A.page.evaluate(() => window.__btBuildingWindow && window.__btBuildingWindow.open('guildhall'));
   const row = await until(async () => txt(A, '[data-hall-row="clan"]'), 6000);
-  rec.ok(`5. the Guild Hall's clan row: "${row || '?'}"`, !!row && /Clans are parties now/.test(row) && /Saloon/.test(row), row);
+  rec.ok(`5. the Guild Hall's clan row: "${row || '?'}"`, !!row && /Party/.test(row) && /Saloon/.test(row), row);
   await shot(A, '5-guildhall');
   await tap(A, '[data-hall-row="clan"]');
   const win = await until(async () => txt(A, '[data-panel="clan"][data-clanparty]'), 6000);
-  rec.ok('5. ...its row opens the clan window, which says so too', !!win && /Clans are parties now/i.test(win) && /Saloon/.test(win), win);
+  rec.ok('5. ...its row opens the clan window, which says so too', !!win && /Party/i.test(win) && /Saloon/.test(win), win);
   await shot(A, '5-clanwindow');
   await tap(A, '[data-clanparty-find]');
   const plist2 = await until(async () => A.page.evaluate(() => !!document.querySelector('.bt-plist') && !document.querySelector('[data-panel="clan"]')), 6000);
@@ -218,7 +218,7 @@ async function runIt({ browser, wsPort, webPort, rec }) {
   M.got.length = 0;
   M.send({ type: 'clan_create', payload: { name: 'Another', tag: 'ANTR' } });
   const refused = await until(async () => M.got.find((m) => m.type === 'clan_error'), 5000);
-  rec.ok(`6. a clan_create is refused: "${refused && refused.payload && refused.payload.text}"`, !!refused && /Clans are parties now/.test(refused.payload.text || ''), refused && refused.payload);
+  rec.ok(`6. a clan_create is refused: "${refused && refused.payload && refused.payload.text}"`, !!refused && /Make a party in the Saloon/.test(refused.payload.text || ''), refused && refused.payload);
 
   /* ── 7 ── */
   rec.ok('7. no page errors', errs.length === 0, errs.slice(0, 3));
