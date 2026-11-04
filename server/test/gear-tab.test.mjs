@@ -276,10 +276,17 @@ const TR = await import('../../src/data/trapping.js');
   const GS2 = await import('../../src/ui/mobile/dash/gearStats.js');
   const iron = { mat: 'iron', tierMult: 2 };
   const g1 = GS2.gainRows([], GS2.armourRows(iron, 'chest'))[0];
-  const g2 = GS2.gainRows([{ k: 'Block', v: '10%', n: 10 }], [{ k: 'Block', v: '10%', n: 10 }, { k: 'Damage cut', v: '42%', n: 42, d: 1 }]);
+  const g2 = GS2.gainRows([{ k: 'Block', v: '10%', n: 10 }], [{ k: 'Block', v: '10%', n: 10 }, { k: 'Damage cut', v: '42%', n: 42, d: 1, u: '%' }]);
   check('6o the comparison: a stat the worn piece lacks, or an empty slot, is a green gain over 0 ("+N", tone 1); an equal stat "="',
-    g1 && g1.old === '0' && g1.tone === 1 && /^\+\d/.test(g1.diff) && g2[0].diff === '=' && g2[0].tone === 0 && g2[1].tone === 1 && g2[1].diff === '+42.0'
+    g1 && g1.old === '0' && g1.tone === 1 && /^\+\d/.test(g1.diff) && g2[0].diff === '=' && g2[0].tone === 0 && g2[1].tone === 1 && g2[1].diff === '+42%'
       && /gainRows\(/.test(code) && !/compareRows\(/.test(code) && /\(r\.diff === '=' \|\| !r\.diff\) \? '--'/.test(code), { g1, g2 });
+  /* v2.3.4191: the change reads like its value: its formatter and its unit */
+  const u1 = GS2.compareRows([{ k: 'Speed', v: '1.5/s', n: 1.5, d: 1, u: '/s' }, { k: 'DPS', v: '4', n: 4, d: 1 }, { k: 'Block', v: '10%', n: 10, u: '%' }],
+    [{ k: 'Speed', v: '1.7/s', n: 1.7, d: 1, u: '/s' }, { k: 'DPS', v: '5.2', n: 5.2, d: 1 }, { k: 'Block', v: '8%', n: 8, u: '%' }]);
+  const ub = Object.fromEntries(u1.map((r) => [r.k, r.diff]));
+  check('6q the change reads like its value (no ".0", the value\'s unit): a cut "+42%", a speed "+0.2/s", DPS "+1.2", a block "−2%"',
+    g2[1].diff === '+42%' && ub.Speed === '+0.2/s' && ub.DPS === '+1.2' && ub.Block === '−2%'
+      && GS2.armourRows(iron, 'chest')[0].u === '%' && GS2.shieldRows({ name: 'Pine Shield', gearBase: 'wood', tierMult: 1 })[0].u === '%', { g2: g2[1].diff, ub });
   check('6p the name is never cut: it takes the head row whole and shrinks (to NAME_FLOOR, 10 px) before any clamp; words never break inside',
     /const NAME_FLOOR = 10;/.test(gt) && /overflowWrap: 'normal'/.test(code) && !/overflowWrap: 'anywhere'/.test(code.slice(code.indexOf('const FitName'), code.indexOf('export const GearTab'))));
   const { gearTabBus: B } = await import('../../src/ui/mobile/dash/gearTabBus.js');

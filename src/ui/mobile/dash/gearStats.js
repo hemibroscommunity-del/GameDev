@@ -61,7 +61,7 @@ export function weaponRows(R, wpn) {
     { k: 'Damage', v: String(range.text).replace('-', '–'), n: (range.min + range.max) / 2 },
     { k: 'DPS', v: fmt1(safe(() => calcDisplayDps(R || {}, wpn), 0)), n: Number(safe(() => calcDisplayDps(R || {}, wpn), 0)) || 0, d: 1 },
   ];
-  if (range.cdMs) rows.push({ k: 'Speed', v: fmt1(1000 / range.cdMs) + '/s', n: 1000 / range.cdMs, d: 1 });
+  if (range.cdMs) rows.push({ k: 'Speed', v: fmt1(1000 / range.cdMs) + '/s', n: 1000 / range.cdMs, d: 1, u: '/s' });
   const reach = safe(() => reachTiles(R || {}, wpn), 0);
   if (reach) rows.push({ k: 'Range', v: fmt1(reach), n: reach, d: 1 });
   return rows;
@@ -72,7 +72,7 @@ export function shieldRows(sh) {
   if (!sh) return [];
   const ss = safe(() => getShieldStats(sh), null);
   const block = safe(() => calcBlockReduction(0, sh), 0);
-  const rows = [{ k: 'Block', v: Math.round(block * 100) + '%', n: Math.round(block * 100) }];
+  const rows = [{ k: 'Block', v: Math.round(block * 100) + '%', n: Math.round(block * 100), u: '%' }];
   if (ss && ss.staminaBonus) rows.push({ k: 'Stamina', v: '+' + ss.staminaBonus, n: ss.staminaBonus });
   if (ss && ss.flatDef) rows.push({ k: 'Defence', v: '+' + fmt1(ss.flatDef), n: ss.flatDef, d: 1 });
   return rows;
@@ -82,7 +82,7 @@ export function shieldRows(sh) {
 export function armourRows(piece, slot) {
   if (!piece) return [];
   const dr = safe(() => getArmorPieceDr(piece, slot), 0);
-  return [{ k: 'Damage cut', v: fmt1(dr * 100) + '%', n: dr * 100, d: 1 }];
+  return [{ k: 'Damage cut', v: fmt1(dr * 100) + '%', n: dr * 100, d: 1, u: '%' }];
 }
 
 /** The rows of whatever a Gear-tab target is.  `t` is one of
@@ -101,13 +101,13 @@ export function rowsFor(R, t) {
  *  against nothing ('—'). */
 /** v2.3.4191: the Gear tab's comparison -- compareRows, with a stat the worn
  *  piece lacks (or an empty slot) read as 0, so a gain over nothing shows as
- *  the gain it is ("+42.0", green), never as no change.  The orchestrator's
+ *  the gain it is ("+42%", green), never as no change.  The orchestrator's
  *  call (2026-11-04): "when the worn piece LACKS the stat, read it as 0 and
  *  SHOW the green ▲ +42%"; equal stays "=" ("--" on the pill). */
 export function gainRows(oldRows, newRows) {
   const have = Object.create(null);
   for (const r of oldRows || []) have[r.k] = 1;
-  const zeros = (newRows || []).filter((r) => !have[r.k] && Number.isFinite(r.n)).map((r) => ({ k: r.k, v: '0', n: 0, d: r.d }));
+  const zeros = (newRows || []).filter((r) => !have[r.k] && Number.isFinite(r.n)).map((r) => ({ k: r.k, v: '0', n: 0, d: r.d, u: r.u }));
   return compareRows([...(oldRows || []), ...zeros], newRows);
 }
 
@@ -123,7 +123,11 @@ export function compareRows(oldRows, newRows) {
     const step = dec ? 10 : 1;
     const diffN = o ? Math.round((r.n - o.n) * step) / step : null;
     const tone = diffN == null ? 0 : diffN > 0 ? 1 : diffN < 0 ? -1 : 0;
-    const mag = diffN == null ? '' : (dec ? Math.abs(diffN).toFixed(dec) : String(Math.abs(diffN)));
+    /* v2.3.4191: the change reads like its value -- the value's own
+       formatter (fmt1: no ".0") and its unit (`u`: '%', '/s'), so "42%"
+       shows "+42%", never "+42.0" */
+    const unit = r.u || (o && o.u) || '';
+    const mag = diffN == null ? '' : (dec ? fmt1(Math.abs(diffN)) : String(Math.abs(diffN))) + unit;
     out.push({
       k: r.k, old: o ? o.v : '—', now: r.v,
       diff: diffN == null ? '' : diffN === 0 ? '=' : (diffN > 0 ? '+' : '−') + mag,
