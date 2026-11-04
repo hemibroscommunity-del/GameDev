@@ -166,10 +166,16 @@ function cellContent(R, id, slots) {
   if (id === 'chest' || id === 'legs') {
     const piece = id === 'chest' ? R.armor : R.legsArmor;
     const gearId = getEquip(id);
-    const worn = !!(sl && sl.item);
+    /* v2.3.4199, the owner: "don't show the shirt in the chest slot. It's too
+       confusing ... It's intended for torso armor." The base shirt is a
+       cosmetic gear id (equip.shirt, no armour stat), so the chest cell is
+       worn only by the Iron-Torso-style piece or a chest gear layer. */
+    const worn = id === 'chest'
+      ? !!(piece || (sl && sl.item && sl.item.gearChestId && sl.item.gearChestId !== 'none'))
+      : !!(sl && sl.item);
     const unequip = piece ? () => (id === 'chest' ? unequipArmorDirect() : unequipLegsDirect())
       : (gearId && gearId !== 'none') ? () => unequipGearDirect(id) : null;
-    return { item: worn ? (piece || sl.item) : null, icon: sl && sl.iconSrc, quality: piece && piece.quality,
+    return { item: worn ? (piece || sl.item) : null, icon: worn ? (sl && sl.iconSrc) : null, quality: piece && piece.quality,
       name: (piece && piece.name) || (id === 'chest' ? 'Chest' : 'Legs'), unequip,
       rows: piece ? armourRows(piece, id) : [] };
   }
@@ -591,6 +597,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   );
 
   /* ═════ EQUIPMENT ═════ */
+  const EQ_TILE = ['sword', 'bow', 'staff', 'chest', 'legs', 'cape', 'shield', 'amulet', 'gem'];
   const hand = R.activeSlot || 'melee';
   const cellEl = (c) => {
     const ct = cellContent(R, c.id, slots);
@@ -608,6 +615,11 @@ export const GearTab = ({ R: Rin, desk }) => {
     const pic = c.id === 'gem'
       ? null
       : (ct.icon || GHOST_SRC[c.id === 'sword' || c.id === 'bow' || c.id === 'staff' ? 'weapon' : c.id]);
+    /* v2.3.4199, the owner's placeholder art: an EMPTY cell is its framed
+       tile (its own steel-and-gold frame is the cell's border, so no second
+       frame); 128 px webps, 256 colours, cut from the owner's sheet, loaded
+       as plain <img> like the slot-*.webp ghosts they replace */
+    const tile = (!filled || (c.id === 'gem' && !(ct.els && ct.els.length))) && EQ_TILE.includes(c.id) ? `/icons/bag/equip-${c.id}.webp?v=2.3.4199` : null;
     return (
       <div key={c.id} data-eqslot={c.id} data-gear-cell={c.id}
         data-gear-sel={blue ? '1' : undefined} data-gear-active={gold ? '1' : undefined}
@@ -618,12 +630,14 @@ export const GearTab = ({ R: Rin, desk }) => {
         onPointerUp={(e) => { e.stopPropagation(); gearTabBus.tapCell(c.id); }}
         style={{
           width: t, height: t, boxSizing: 'border-box', position: 'relative', flex: 'none',
-          background: filled ? COL.slot : COL.wellSoft,
-          border: `${filled ? edge.w : 1}px solid ${gold ? COL.accent : filled ? edge.c : COL.border}`, borderRadius: 8,
+          background: tile ? 'transparent' : filled ? COL.slot : COL.wellSoft,
+          border: tile ? 'none' : `${filled ? edge.w : 1}px solid ${gold ? COL.accent : filled ? edge.c : COL.border}`, borderRadius: tile ? 0 : 8,
           boxShadow: ring || undefined,
           display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', touchAction: 'manipulation',
         }}>
-        {c.id === 'gem' ? (
+        {tile ? (
+          <img src={tile} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} />
+        ) : c.id === 'gem' ? (
           ct.els && ct.els.length ? (
             <span style={{ display: 'flex', gap: 1, pointerEvents: 'none' }}>
               {ct.els.map((el, i) => <img key={el + i} src={gemIcon(gemCutKey(el))} alt="" draggable={false} style={{ width: ct.els.length > 1 ? t * 0.42 : t * 0.66, height: ct.els.length > 1 ? t * 0.42 : t * 0.66, objectFit: 'contain' }} />)}
