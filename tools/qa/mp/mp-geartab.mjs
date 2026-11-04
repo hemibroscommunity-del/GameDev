@@ -477,6 +477,60 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok('[390x844] the Bow cell: the card the bow and the bag filtered; tapped again, both go (the overview, "All Items")',
         s12.view === 'item' && s12.statsFor === 'bow' && /Bows/.test(s12.pill || '')
           && s13.view === 'overview' && /All items/i.test(s13.pill || '') && !s13.cells.some((c) => c.sel), { s12: [s12.view, s12.statsFor, s12.pill], s13: [s13.view, s13.pill] });
+      /* v2.3.4233, the owner: the bag scrolls inside its box with a soft shadow
+         below while more slots lie further down; the coins tap to a Gold card */
+      await P.page.evaluate(() => { const g = document.querySelector('[data-gear-bag]'); if (g) g.scrollTop = 0; });
+      /* this box draws a few frames a second: a scroll event waits for one */
+      await P.page.waitForFunction(() => { const e = document.querySelector('[data-gear-bag-shade="top"]'); return e && Number(getComputedStyle(e).opacity) < 0.5; }, null, { timeout: 8000 }).catch(() => {});
+      const sc0 = await P.page.evaluate(() => {
+        const g = document.querySelector('[data-gear-bag]');
+        const sh = (w) => { const e = document.querySelector(`[data-gear-bag-shade="${w}"]`); return e ? Number(getComputedStyle(e).opacity) : null; };
+        return g ? { scrollable: g.scrollHeight > g.clientHeight + 2, top: g.scrollTop, bot: sh('bot'), topShade: sh('top'), card: document.querySelector('[data-gear-pane="bro"]').scrollHeight <= document.querySelector('[data-gear-pane="bro"]').clientHeight + 1 } : null;
+      });
+      await P.page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-gear-bag-shade="bot"]')).opacity) > 0.5, null, { timeout: 8000 }).catch(() => {});
+      const sc1 = await P.page.evaluate(() => Number((document.querySelector('[data-gear-bag-shade="bot"]') || { style: {} }) && getComputedStyle(document.querySelector('[data-gear-bag-shade="bot"]')).opacity));
+      rec.ok('[390x844] the bag scrolls in its box (a spare empty row past the last item), the bottom shadow showing at the top of the list, the card never scrolling',
+        !!sc0 && sc0.scrollable && sc1 > 0.5 && sc0.card, { sc0, sc1 });
+      await P.page.evaluate(() => { const g = document.querySelector('[data-gear-bag]'); g.scrollTop = g.scrollHeight; });
+      await P.page.waitForFunction(() => Number(getComputedStyle(document.querySelector('[data-gear-bag-shade="bot"]')).opacity) < 0.5, null, { timeout: 8000 }).catch(() => {});
+      const sc2 = await P.page.evaluate(() => { const o = (w) => Number(getComputedStyle(document.querySelector(`[data-gear-bag-shade="${w}"]`)).opacity); return { top: o('top'), bot: o('bot') }; });
+      rec.ok('[390x844] scrolled to the end: the top shadow shows, the bottom one is gone', sc2.top > 0.5 && sc2.bot < 0.5, sc2);
+      await P.page.screenshot({ path: `${OUT}/phone-bag-scroll.png` });
+      await P.page.evaluate(() => { document.querySelector('[data-gear-bag]').scrollTop = 0; });
+      await tapEl(P, '[data-gear-gold]');
+      const gd = await P.page.evaluate(() => {
+        const c = document.querySelector('[data-gear-stats="gold"]'), b = document.querySelector('[data-gear-gold]');
+        return { card: !!c, text: c ? c.textContent : '', buttons: c ? c.querySelectorAll('button').length : -1, ring: b ? getComputedStyle(b).boxShadow : '', view: document.querySelector('[data-gear-pane="bro"]').getAttribute('data-gear-view'), imgs: c ? c.querySelectorAll('img').length : 0 };
+      });
+      rec.ok('[390x844] the coins tapped: blue ring, the card says Gold, the amount and what it is for (coin picture, no buttons)',
+        gd.card && /Gold/.test(gd.text) && /\d/.test(gd.text) && /buys gear/.test(gd.text) && gd.buttons === 0 && gd.imgs >= 1 && /rgb\(140, 196, 255\)/.test(gd.ring) && gd.view === 'item', gd);
+      await P.page.screenshot({ path: `${OUT}/phone-gold.png` });
+      await tapEl(P, '[data-gear-gold]');
+      const gd2 = await look(P);
+      rec.ok('[390x844] the coins tapped again: back to the overview', gd2.view === 'overview', { view: gd2.view });
+      /* v2.3.4233: a pick's card has a top-right ✕ (data-esc) that puts the pick down */
+      await tapEl(P, '[data-gear-gold]');
+      const cl0 = await P.page.evaluate(() => { const b = document.querySelector('[data-gear-card-close]'); const r = b && b.getBoundingClientRect(); return { has: !!b, w: r ? Math.round(r.width) : 0, esc: b ? b.hasAttribute('data-esc') : false, ta: b ? getComputedStyle(b).touchAction : '' }; });
+      await tapEl(P, '[data-gear-card-close]');
+      const cl1 = await look(P);
+      rec.ok('[390x844] the pick\'s card has a top-right ✕ (32 px, data-esc, touch-action manipulation) that clears the pick back to the bro',
+        cl0.has && cl0.w >= 30 && cl0.esc && cl0.ta === 'manipulation' && cl1.view === 'overview', { cl0, view: cl1.view });
+      /* v2.3.4233: identical spare armour is ONE cell with its count (the weapons never stack) */
+      const stk = await P.page.evaluate(async () => {
+        const R = window._gameState.current.rpg; const L = R.legsStash || (R.legsStash = []);
+        const a = L.find((x) => x && !x.unrevealed); if (!a) return null;
+        const before = document.querySelectorAll('[data-gear-bag] [data-bag-key^="stashLegs"]').length;
+        L.push({ ...a }, { ...a });
+        window.__qaStackN = L.length;
+        await new Promise((r) => setTimeout(r, 1500));
+        const cells = [...document.querySelectorAll('[data-gear-bag] [data-bag-key^="stashLegs"]')];
+        const n = cells.map((c) => (c.querySelector('[data-stash-count]') || {}).textContent || '');
+        return { before, after: cells.length, counts: n };
+      });
+      await P.page.screenshot({ path: `${OUT}/phone-stack.png` });
+      await P.page.evaluate(() => { const L = window._gameState.current.rpg.legsStash; if (L) { L.pop(); L.pop(); } });
+      rec.ok('[390x844] three identical spare greaves show as ONE cell with a x3 count (no new cell)',
+        !!stk && stk.after === stk.before && stk.counts.includes('3'), stk);
 
       /* v2.3.4151: the same at 360 x 780 -- the narrow phone pays for its
          34 px squares out of the card, which still fits every state */

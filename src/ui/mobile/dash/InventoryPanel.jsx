@@ -1354,7 +1354,7 @@ export const BagTile = ({ entry, style, onSelect, selected }) => {
   if (entry.kind === 'item') {
     return <ItemTile ikey={entry.key} count={entry.count} style={style} onSelect={onSelect} selected={selected} />;
   }
-  return <StashTile kind={entry.kind} obj={entry.obj} index={entry.index} style={style} onSelect={onSelect} selected={selected} />;
+  return <StashTile kind={entry.kind} obj={entry.obj} index={entry.index} count={entry.count} style={style} onSelect={onSelect} selected={selected} />;
 };
 
 /* v2.3.4151: the Gear tab's blue ring -- "tapping on an item highlights it in
@@ -1376,7 +1376,7 @@ export const GEAR_SEL_RING = `0 0 0 1px rgba(8, 14, 18, 0.95), 0 0 0 4px ${GEAR_
 /* Stash tile for an unequipped weapon or shield.  Opens the popup
    with the stashWeapon / stashShield kind so the Equip action wires
    it back into the matching loadout slot. */
-const StashTile = ({ kind, obj, index, style: styleOverride, onSelect, selected }) => {
+const StashTile = ({ kind, obj, index, count, style: styleOverride, onSelect, selected }) => {
   /* v2.3.1070: anchored stash items show the same ⚓ badge as inventory
      tiles -- the popup anchors them under the matching index-based key. */
   const locked = itemIsLocked(`${kind}_${index}`);
@@ -1499,6 +1499,8 @@ const StashTile = ({ kind, obj, index, style: styleOverride, onSelect, selected 
         : <span className="bt-bag-art" data-life={lifeKindForGear(kind, obj) || undefined}
             style={{ fontSize: 18, display: 'inline-block' }}>{fallbackGlyph}</span>}
       {hidden && <UnrevealedMark size={22} />}
+      {/* v2.3.4233: identical spare armour shows as one cell with its count (GearTab groupSpare) */}
+      {count > 1 && <span className="bt-item-qty" data-stash-count={count}>{count}</span>}
       <span className="bt-bag-fx" aria-hidden="true" />
       {locked && (
         <span style={{

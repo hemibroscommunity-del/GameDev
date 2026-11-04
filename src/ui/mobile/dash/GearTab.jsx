@@ -1,6 +1,7 @@
 import React from 'react';
 import { COL, getState, qualityInk, QUALITY_LABEL, QUALITY_COLOR } from './common.js';
 import { getBagEntries } from './bagModel.js';
+import { shownUnrevealed } from '@/game/revealBag.js';   /* v2.3.4233: a "?" piece never stacks */
 import { BagTile, GEAR_SEL_RING, GEAR_SEL_BLUE, GEAR_SEL_TINT } from './InventoryPanel.jsx';
 import { GEAR_FILTER_GROUPS, GEAR_FILTERS, GEAR_CELLS, gearCell } from './itemCategory.js';
 import { gearTabBus } from './gearTabBus.js';
@@ -105,6 +106,29 @@ const FONT_MIN = 11;   /* the owner's floor for anything in the card */
    tab now, so the Gear tab fills that block as the Bro tab does and has no
    cap of its own.  (Against #1386's 1056 px box the card had stretched to
    ~740 px: the 840 px block is what makes dropping the cap right.) */
+
+/* v2.3.4233, the owner: "Armor should be able to stack right? The only way it
+   comes different is if the rarity tier or the hardness tier is different."
+   Identical spare armour (same kind, material, quality, hardness, all
+   revealed) shows as ONE cell with its count, like ore.  Display only: the
+   server keeps every piece; the cell stands for the first of the group, so
+   Equip and Drop act on one piece.  Weapons never stack. */
+const PIECE_ID_KEY = /^(id|gid|uid|serial|stamp|seq|t|at|ts|time|created|acquired|slotIndex|index)/i;
+function groupSpare(entries) {
+  const seen = new Map();
+  const out = [];
+  for (const e of entries) {
+    if (!/^stash(Shield|Armor|Legs|Gear)$/.test(e.kind) || !e.obj || shownUnrevealed(e.kind, e.index, e.obj)) { out.push(e); continue; }
+    const sig = e.kind + '|' + Object.keys(e.obj).filter((k) => !PIECE_ID_KEY.test(k)).sort()
+      .map((k) => k + '=' + JSON.stringify(e.obj[k])).join('|');
+    const first = seen.get(sig);
+    if (first) { first.count = (first.count || 1) + 1; continue; }
+    const g = { ...e, count: 1 };
+    seen.set(sig, g);
+    out.push(g);
+  }
+  return out;
+}
 
 const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
 
@@ -370,9 +394,19 @@ export const GearTab = ({ R: Rin, desk }) => {
   /* v2.3.4191: no XP count-up here any more (the skills' tiles left for the
      Bro page), so no frame loop either */
   const bro = React.useRef(null);
+  /* v2.3.4233: the bag's scroll edges -- a soft shadow where more slots lie
+     above or below (set by the box's own onScroll and once on mount) */
+  const [bagEdge, setBagEdge] = React.useState({ top: false, bot: false });
+  const bagRef = React.useRef(null);
+  const readEdge = React.useCallback(() => {
+    const el = bagRef.current;
+    if (!el) return;
+    const top = el.scrollTop > 1, bot = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+    setBagEdge((e) => (e.top === top && e.bot === bot ? e : { top, bot }));
+  }, []);
 
   const st = gearTabBus.state;
-  const allEntries = getBagEntries(Rin);
+  const allEntries = groupSpare(getBagEntries(Rin));
   const fid = st.filter.id;
   const entries = fid === 'all' ? allEntries : allEntries.filter((e) => e.gcat === fid);
   const counts = Object.create(null);
@@ -387,7 +421,8 @@ export const GearTab = ({ R: Rin, desk }) => {
     selEntry = allEntries.find((e) => (st.sel.obj ? e.obj === st.sel.obj : (e.kind === 'item' && 'i-' + e.key === st.sel.bag))) || null;
   }
   const selCell = st.sel && st.sel.cell ? st.sel.cell : null;
-  const view = selCell || selEntry ? 'item' : 'overview';
+  const selGold = !!(st.sel && st.sel.gold) && !selCell && !selEntry;   /* v2.3.4233 */
+  const view = selCell || selEntry || selGold ? 'item' : 'overview';
 
   /* ── geometry: one square size `t` for both grids ── */
   const wide = box.w >= WIDE_AT;
@@ -455,7 +490,11 @@ export const GearTab = ({ R: Rin, desk }) => {
   const gridH = sideH - 2 * pp - 2 - hdr - gg;
   const rowsIn = Math.max(1, Math.min(rows, Math.floor((gridH + gg) / (t + gg))));
   const viewH = rowsIn * t + (rowsIn - 1) * gg;
-  const fillTo = Math.max(Math.ceil(entries.length / cols), rows) * cols;
+  /* v2.3.4233, the owner: "the shadowed effect for additional inventory slots
+     ... you should be able to scroll within the inventory container downwards":
+     every slot shows, empty ones too -- at least one empty row past the last
+     item, so there is always somewhere further down to scroll to */
+  const fillTo = Math.max(Math.ceil((entries.length + 1) / cols), rows + 1) * cols;
 
   const panel = (extra) => ({
     background: COL.well, border: `1px solid ${COL.borderStrong}`, borderRadius: 10,
@@ -503,14 +542,20 @@ export const GearTab = ({ R: Rin, desk }) => {
             is: the picture filling its box, the amount the slots' own count
             badge (.bt-item-qty), a big purse said short as the top bar says
             it (barNumber: "12.4K") */}
-        <span data-gear-gold={coins} title={coins.toLocaleString() + ' coins'} aria-label={coins.toLocaleString() + ' coins'} style={{
-          flex: 'none', width: hdr, height: hdr - 2, boxSizing: 'border-box', position: 'relative',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          borderRadius: 8, border: `1px solid ${COL.border}`, background: COL.wellSoft,
-        }}>
+        <button type="button" data-gear-gold={coins} data-gear-sel={selGold ? '1' : undefined} aria-pressed={selGold}
+          title={coins.toLocaleString() + ' coins'} aria-label={coins.toLocaleString() + ' coins'}
+          onClick={(e) => { e.stopPropagation(); gearTabBus.tapGold(); }}
+          style={{
+            flex: 'none', width: hdr, height: hdr - 2, boxSizing: 'border-box', position: 'relative', padding: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', fontFamily: 'inherit',
+            borderRadius: 8, border: `1px solid ${selGold ? GEAR_SEL_BLUE : COL.border}`, background: COL.wellSoft,
+            /* v2.3.4233: tapped, it wears the bag tiles' blue ring (a 2 px one: the head row clips a wider glow) */
+            ...(selGold ? { boxShadow: `0 0 0 2px ${GEAR_SEL_BLUE}` } : null),
+          }}>
           <img src={coinArtFor(coins)} alt="" draggable={false} style={{ width: '88%', height: '88%', objectFit: 'contain', pointerEvents: 'none' }} />
           <span className="bt-item-qty" data-gear-gold-badge="">{barNumber(coins, true, 10000)}</span>
-        </span>
+        </button>
       </div>
       {/* the bag */}
       {entries.length === 0 && fid !== 'all' ? (
@@ -523,10 +568,11 @@ export const GearTab = ({ R: Rin, desk }) => {
       ) : (
         /* nine in view, the rest by scrolling; a tap on an empty square (or
            the space round them) puts the pick down */
-        <div data-gear-bag=""
+        <div style={{ flex: 'none', height: viewH, marginTop: gg, position: 'relative' }}>
+        <div data-gear-bag="" ref={(el) => { bagRef.current = el; if (el) requestAnimationFrame(readEdge); }} onScroll={readEdge}
           onClick={(e) => { if (!(e.target && e.target.closest && e.target.closest('[data-bag-key]'))) gearTabBus.deselect(); }}
           style={{
-            flex: 'none', height: viewH, marginTop: gg, overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch',
+            height: '100%', overflowY: 'auto', touchAction: 'pan-y', WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
           }}>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${t}px)`, gridAutoRows: `${t}px`, gap: gg, justifyContent: 'center' }}>
@@ -542,6 +588,11 @@ export const GearTab = ({ R: Rin, desk }) => {
               );
             })}
           </div>
+        </div>
+        {/* v2.3.4233: the soft inner shadows: below while more slots lie
+            further down, above once scrolled down; they take no touches */}
+        <span data-gear-bag-shade="bot" aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 16, pointerEvents: 'none', borderRadius: '0 0 6px 6px', background: 'linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0))', opacity: bagEdge.bot ? 1 : 0, transition: 'opacity 120ms' }} />
+        <span data-gear-bag-shade="top" aria-hidden="true" style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 16, pointerEvents: 'none', borderRadius: '6px 6px 0 0', background: 'linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0))', opacity: bagEdge.top ? 1 : 0, transition: 'opacity 120ms' }} />
         </div>
       )}
       {/* the menu: down over the bag panel only */}
@@ -784,6 +835,17 @@ export const GearTab = ({ R: Rin, desk }) => {
         )}
       </div>
     );
+  } else if (selGold) {
+    /* v2.3.4233, the owner: "allow the gold amount to be tapped on to have its
+       own item detail in the second pane similar to how every other object can
+       be tapped on": the coin picture, the name, the amount, a line on what
+       gold is for; no buttons */
+    body = (
+      <div data-gear-stats="gold" data-gear-stats-for="gold" style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
+        {head(art(coinArtFor(coins), null, false), 'Gold', null, { noStars: true, extra: coins.toLocaleString() })}
+        {sentence('Gold buys gear and food at the shops.', null, short ? 1 : 2)}
+      </div>
+    );
   } else if (selEntry) {
     const target = entryTarget(selEntry);
     const card = (() => { try { return resolveItemCard(target); } catch (e) { return null; } })() || {};
@@ -845,7 +907,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       <div data-gear-stats="bag" data-gear-stats-for={selEntry.kind === 'item' ? 'i-' + selEntry.key : selEntry.kind} style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
         {head(art(card.thumb, card.glyph, hidden), name, q, {
           hidden, info: card.info, infoColor: card.infoColor,
-          qty: selEntry.kind === 'item' ? (selEntry.count || 0) : 0,
+          qty: selEntry.count || 0,
         })}
         {!short && hardLine(!hidden && selEntry.kind === 'stashWeapon' ? hardOf(o) : null)}
         {rows && rows.length > 0
@@ -968,6 +1030,19 @@ export const GearTab = ({ R: Rin, desk }) => {
         background: COL.wellDeep,
         ...(linked ? { backgroundImage: `linear-gradient(${GEAR_SEL_TINT}, ${GEAR_SEL_TINT})`, boxShadow: `inset 0 0 0 1px ${GEAR_SEL_BLUE}, 0 0 12px 1px rgba(140, 196, 255, 0.45)` } : null),
       })}>
+      {/* v2.3.4233, the owner: "add an 'X' close button on the top right corner of
+          the detail view ... that removes the active tap of it": clears the pick
+          (the blue ring goes, the card is the bro again); Esc does the same on a
+          computer (data-esc); a 32 px finger-sized box over the card's corner */}
+      {linked && (
+        <button type="button" data-gear-card-close="" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the details"
+          onClick={(e) => { e.stopPropagation(); gearTabBus.deselect(); }}
+          style={{
+            position: 'absolute', top: 0, right: 0, zIndex: 3, width: 32, height: 32, background: 'transparent',
+            border: 'none', color: COL.text2, fontFamily: 'inherit', fontSize: 11, fontWeight: 900, lineHeight: 1, cursor: 'pointer', textShadow: '0 0 3px #0B1216, 0 0 3px #0B1216',
+            touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '3px 4px 0 0',
+          }}>{'✕'}</button>
+      )}
       {/* never scrolls: every state is laid out to fit (mp-geartab measures
           scrollHeight against clientHeight at 390 and 360 px) */}
       <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '1px 2px 0' }}>
