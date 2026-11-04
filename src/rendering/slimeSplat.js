@@ -31,13 +31,13 @@ export { SPLAT_MS };
 const _on = (() => {
   try {
     const v = typeof location !== 'undefined' ? new URLSearchParams(location.search || '').get('slimesplat') : null;
-    return v !== '0';
-  } catch (e) { return true; }
+    return v === '1';   /* v2.3.4197: OFF by default, the old eruption is back; ?slimesplat=1 plays the squash */
+  } catch (e) { return false; }
 })();
-/** v2.3.4147: on unless `?slimesplat=0` (or QA's window.__btSlimeSplat = false). */
+/** v2.3.4197: off unless `?slimesplat=1` (QA's window.__btSlimeSplat = false still forces off). */
 export function slimeSplatOn() {
   try {
-    if (typeof window !== 'undefined' && window.__btSlimeSplat === false) return false;
+    if (typeof window !== 'undefined') { if (window.__btSlimeSplat === false) return false; if (window.__btSlimeSplat === true) return true; }
   } catch (e) { /* no window: node */ }
   return _on;
 }

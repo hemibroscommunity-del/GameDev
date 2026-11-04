@@ -1246,6 +1246,7 @@ export class HitMaterialFx {
       id: ++this._stats.bursts, t0: now, fx: b.kind || 'goo', gy,
       ex: 0, ey: 0, ez: 0, u: PIX, weapon: b.weapon || null,
       tint: b.tint, ang: dir, side: b.side, crit: !!b.crit, big: !!b.big, heavy: !!b.heavy, elem: b.elem || null,
+      death: b.kind === 'goo' && String(b.monsterId).indexOf(':cut:') > 0,   /* v2.3.4197: a slime's death burst */
       bld: !!b.bld,   /* v2.3.3471: one of the Wheel's buildings (A BUILDING SHOWS EVERY HIT) */
     };
     if (Number.isFinite(b.hitX) && Number.isFinite(b.hitY)) {
@@ -1519,6 +1520,9 @@ export class HitMaterialFx {
         sp.alpha = fade;
         continue;
       }
+      /* v2.3.4197: the owner: the small circle of rock-like bits left where the slime died.
+         A dying slime's goo lets go of its pieces on landing: nothing lies there afterwards. */
+      if (p.landed && b.death) continue;
       /* pieces: a shadow under anything in the air, then the piece */
       if (p.shadow && !p.landed && p.z > 1 && b.soft) {
         const sh = side.shadow.take(softShadow());
