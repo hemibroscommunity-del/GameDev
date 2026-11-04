@@ -333,6 +333,7 @@ check('forged trade2_state / trade2_invite dropped by deny-list', room.eventBuff
     !psA.weaponStash.some((w) => w.name === 'DeliveredBlade') && !state._store.get('trade2wpn:' + P('a') + ':8888'));
 
   // rule 3: a refund into a FULL stash parks the weapon in the inbox, never destroyed
+  room.WEAPON_STASH_CAP = 8;   /* v2.3.4224: this scenario is about a FULL bag; the bag is 140 now */
   psA.weaponStash = [mkW('f1'), mkW('f2'), mkW('f3'), mkW('f4'), mkW('f5'), mkW('f6'), mkW('f7'), mkW('f8')];
   await state.storage.put('trade2wpn:' + P('a') + ':7777', { pid: P('a'), sid: 'dead3', seq: 7777, weapon: mkW('OverflowBlade'), ts: Date.now() });
   room._lastT2WpnSweep = 0;

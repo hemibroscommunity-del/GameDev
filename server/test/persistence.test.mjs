@@ -128,7 +128,7 @@ check('runtime-only fields are NOT persisted (fixed-field rule)',
 check('_pruneBuffs: expired buff dropped, future buff kept', blob._buffs.regen === FUTURE && blob._buffs.damage === undefined, blob._buffs);
 
 // ── 4. stash cap truncation ──
-ps.weaponStash = Array.from({ length: 10 }, (_, i) => ({ type: 'sword', tierMult: 1, _idx: i }));
+ps.weaponStash = Array.from({ length: room.WEAPON_STASH_CAP + 2 }, (_, i) => ({ type: 'sword', tierMult: 1, _idx: i }));
 await room._saveRpg('bp_pt_a', ps);
 const blob2 = state._store.get('rpg:bp_pt_a');
 // Documented quirk (handoff item L adjacent): slice(0, CAP) keeps the

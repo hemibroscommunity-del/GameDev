@@ -20,7 +20,7 @@
  * bootstrap stay in index.js -- they belong to the join slice. */
 
 import { RPG_SCHEMA_VERSION, runRpgMigrations, healLifeSkills } from './migrations.js';
-import { GEAR_STASH_CAP } from './gearstash.js';
+import { gearStashCap } from './gearstash.js';
 import { cleanApOnce } from './inbox.js';   /* v2.3.3488: the once-a-character prize marks */
 import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012: a piece waiting in the bag goes out without its grade */
 
@@ -31,7 +31,7 @@ import { revealPublic, revealPublicList } from './revealbag.js';   /* v2.3.4012:
    every writer that could push past it (adoption, and M3's escrow
    return path) checks the same constant. */
 function capStash(v) {
-  return Array.isArray(v) ? v.slice(0, GEAR_STASH_CAP) : [];
+  return Array.isArray(v) ? v.slice(0, gearStashCap()) : [];
 }
 
 /* v2.3.2058: ps._buffs is otherwise a pure {name: endsAt} map -- _pruneBuffs
