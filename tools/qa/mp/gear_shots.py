@@ -22,7 +22,10 @@ def main(argv):
     n = 0
     for src in argv[2:]:
         im = Image.open(src).convert('RGB')
-        q = im.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+        # v2.3.4191: FASTOCTREE, not MEDIANCUT -- median cut merged the small
+        # green "+42.0" gains (and red losses) into the slate around them, so
+        # the pictures showed a grey change the game draws green
+        q = im.quantize(colors=256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
         colours = len(q.getcolors(256) or [])
         name = os.path.splitext(os.path.basename(src))[0] + '.webp'
         dst = os.path.join(out_dir, name)

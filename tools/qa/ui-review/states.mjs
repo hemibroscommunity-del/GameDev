@@ -146,7 +146,7 @@ async function gearReset(P) {
   await evalIn(P, () => {
     const g = window.__btGearTab;
     if (!g) return;
-    g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false); if (g.bus.showXp) g.bus.showXp(null);
+    g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false); if (g.bus.setMore) g.bus.setMore(false);
   });
 }
 async function openGear(P, view) {
@@ -852,26 +852,34 @@ export const STATES = [
   },
   {
     /* v2.3.4151: a bag tap no longer opens the card (the Gear tab shows the
-       item in its middle panel); the card is where Sell and Drop go on to */
+       item in its middle panel); the card is where Sell and Drop go on to.
+       v2.3.4191: the Gear tab has no Sell any more (the owner: "Just remove
+       the 'sell' option for now"), so the card's sell sheet is opened the
+       way the Gear tab's Drop opens its own sheet: itemDetailBus with a flow */
     id: 'item-card', group: 'Dashboard', title: 'An item card',
-    about: 'The item card, as the Gear tab\'s Sell opens it: the item\'s picture and name over the Auction House\'s price sheet (how many, your price, Put it up / Back).',
+    about: 'The item card on its sell sheet: the item\'s picture and name over the Auction House\'s price sheet (how many, your price, Put it up / Back). The Gear tab offers no Sell (v2.3.4191); the card keeps its own.',
     run: async ({ P, view }) => {
       const e0 = await openGear(P, view);
       if (e0) return e0;
-      const e = await tapSel(P, '[data-gear-bag] [data-bag-key]');
-      if (e) return e;
+      const ok = await evalIn(P, () => {
+        const S = window._gameState && window._gameState.current;
+        const inv = (S && S.rpg && S.rpg.inventory) || {};
+        const key = Object.keys(inv).find((k) => (inv[k] || 0) > 0);
+        if (!key || !window._itemDetailBus) return false;
+        window._itemDetailBus.open({ kind: 'inventory', key, count: inv[key], flow: 'sell' });
+        return true;
+      });
+      if (!ok) return 'no bag item to open the card on';
       await wait(P, 600);
-      if (!(await has(P, '[data-gear-act="sell"]'))) return 'no Sell for the first bag item (the store is off)';
-      const e2 = await tapSel(P, '[data-gear-act="sell"]');
-      if (e2) return e2;
-      await wait(P, 600);
+      if (!(await has(P, '[data-item-card]'))) return 'the item card did not open';
     },
+    after: async ({ P }) => { await evalIn(P, () => { if (window._itemDetailBus) window._itemDetailBus.close(); }); await gearReset(P); },
     after: async ({ P }) => { await gearReset(P); },
   },
   /* ═══ v2.3.4151: THE GEAR TAB (src/ui/mobile/dash/GearTab.jsx) ═══ */
   {
     id: 'gear-tab', group: 'Dashboard', title: 'The Gear tab',
-    about: 'The resting dashboard as the owner\'s second mockup and notes (v2.3.4151): the bag ("All Items" with a funnel and a chevron, the coins beside it -- the coin picture with the amount as a count badge, as on a bag slot -- three square slots a row and three rows in view, the rest by scrolling) | ONE card, no tabs or figure, which never scrolls: "<name> Lv N", the HP, MP and EN bars (stamina is the game\'s energy: one bar), then Melee, Bow and Magic as three tiles, each its big picture and "Lv N" (a tap turns a tile into its XP bar for 4 s) | "Equipped" over Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem, its cells the bag\'s squares\' size (the weapon in hand gold). Too narrow for three across (sideways) the bag and the gear sit side by side over the card; a computer adds the weapon bar (1 2 3) at the foot.',
+    about: 'The resting dashboard as the owner\'s second mockup and notes (v2.3.4151, A4 v2.3.4191): the bag ("All Items" with a funnel and a chevron, the coins beside it -- the coin picture with the amount as a count badge, as on a bag slot -- three square slots a row and three rows in view, the rest by scrolling) | ONE card, no tabs, which never scrolls: "<name> Lv N" on top, your bro full-body in the middle wearing what is equipped (the Character page\'s own figure, facing southwest), the HP, MP and EN bars below (stamina is the game\'s energy: one bar) -- no skill tiles (they are on the Bro page) and no headshot | "Equipped" over Sword, Bow, Staff / Chest, Legs, Cape / Shield, Amulet, Gem, its cells the bag\'s squares\' size (the weapon in hand gold). In the sideways one band the three sit in one short row (the figure at the card\'s left, the name and bars beside it); a computer switches weapons with its keys 1 2 3 (no weapon bar in the tab).',
     run: async ({ P, view, wsPort, myId }) => {
       await gearKit(P, wsPort, myId);
       const e = await openGear(P, view);
@@ -880,7 +888,7 @@ export const STATES = [
   },
   {
     id: 'gear-slot-selected', group: 'Dashboard', title: 'Gear tab: a slot tapped',
-    about: 'The Sword slot tapped: its blue ring, the bag filtered to swords (the pill reads "Swords" with an × beside it that clears it), and the card, wearing the same blue, showing the sword: its picture beside its name in its grade\'s colour, "Sword · Equipped", its numbers two to a row (DMG, DPS, SPD, RANGE, ELEM), and one button, Unequip, at the card\'s foot.',
+    about: 'The Sword slot tapped: its bright blue ring (3 px, a dark gap and a glow, unlike a rare piece\'s thin edge), the bag filtered to swords (the pill reads "Swords" with an × beside it that clears it), and the card, wearing the same blue, showing the sword: its framed picture beside its name in its grade\'s colour, the grade\'s stars under it (one white for normal, two blue rare, three orange elite, four gold godly), "Hardness N/5" as a number line of five marks, its numbers as four large pills two to a row (each its picture: DMG, DPS, SPD, RNG), and one gold button, Unequip, at the card\'s foot.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;
@@ -890,7 +898,7 @@ export const STATES = [
   },
   {
     id: 'gear-compare', group: 'Dashboard', title: 'Gear tab: a bag weapon compared',
-    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the card (wearing the same blue) showing it -- its picture, name and kind, then its numbers two to a row with the change against the sword in its slot inline in green (better) or red (worse), and ONE row of buttons at its foot: Equip (wider), Sell, and "⋯" for the item card\'s other actions. Tapping it again, or the bag\'s empty space, brings the overview back.',
+    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the card (wearing the same blue) showing it -- its framed picture, its name in its grade\'s colour, its stars and "Hardness N/5" (no "Copper · Greatsword" subtitle), then its numbers as large pills two to a row, each with the change against the sword in its slot inside it (a green ▲ +N, a red ▼ -N, or "--" for the same), ONE gold button at its foot (Equip) with a "⋯" beside it for the rest (Drop, Pin, Inspect where they apply); the name always whole (smaller rather than cut) -- no Sell in the Gear tab. Tapping it again, or the bag\'s empty space, brings the overview back.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;
@@ -898,6 +906,30 @@ export const STATES = [
       if (e1) return e1;
       await wait(P, 500);
       return tapSel(P, '[data-gear-bag] [data-bag-key^="stashWeapon-"]');
+    },
+    after: async ({ P }) => { await gearReset(P); },
+  },
+  /* v2.3.4191: the item card's "⋯" and a material's card */
+  {
+    id: 'gear-more', group: 'Dashboard', title: 'Gear tab: the card\'s "⋯" open',
+    about: 'A material in the bag picked, then the card\'s "⋯" (at its foot) tapped: a list over the card, never beside it, of what the piece can do besides its gold button -- Pin, Drop, Inspect where it has them, never Sell -- with a ✕ (Esc) that shuts it and keeps the pick.  A piece you can wear has no "⋯" (v2.3.4191, the owner): its gold Equip alone.',
+    run: async ({ P, view }) => {
+      const e = await openGear(P, view);
+      if (e) return e;
+      const e1 = await tapSel(P, '[data-gear-bag] [data-bag-key^="i-"]');
+      if (e1) return e1;
+      await wait(P, 500);
+      return tapSel(P, '[data-gear-pane="bro"] [data-gear-act="more"]');
+    },
+    after: async ({ P }) => { await gearReset(P); },
+  },
+  {
+    id: 'gear-material', group: 'Dashboard', title: 'Gear tab: a material picked',
+    about: 'A stack in the bag (an ore, a fish, a log) picked: the card shows its framed picture, its name, one white star, "Qty N", and at most two lines of what it is for ("Smelt 1 into a Copper Bar at the Blacksmith"); its main action gold at the foot where it has one (Light fire, Eat, Drink), and Drop and Pin behind "⋯".',
+    run: async ({ P, view }) => {
+      const e = await openGear(P, view);
+      if (e) return e;
+      return tapSel(P, '[data-gear-bag] [data-bag-key^="i-"]');
     },
     after: async ({ P }) => { await gearReset(P); },
   },

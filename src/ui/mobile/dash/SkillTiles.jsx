@@ -22,10 +22,10 @@ import { COL } from './common.js';
  *     same data-* hooks (mp-geartab, mp-gearshots and mp-xpfly read them).
  *     Lane A takes the tiles off the Gear tab in its own PR.
  * The XP flight (xpLanding: the number that jumps from a kill into its
- * skill) still lands on the Gear tab's tiles: only the Gear tab passes the
- * registerXpCard ref and the data-xpbar hooks (in `attrs`).  The Bro tiles
- * read the live XP, never xpLanding's held value (displayXp writes its
- * state as it reads; one reader is enough).
+ * skill) landed on the Gear tab's tiles until they left it (v2.3.4191); it
+ * lands on the Bro tiles now: BroCard publishes their places (registerXpCard)
+ * and passes the data-xpbar hooks and the held number (displayXp, the one
+ * reader) in `attrs`.  Off the Bro page it flies to the top bar's XP number.
  *
  * Inline styles, as the Gear tab draws everything; touch-action:
  * manipulation on every tile (TRAPS §229); a mouse clicks it the same. */

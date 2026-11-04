@@ -1,5 +1,5 @@
 import React from 'react';
-import { COL, getState, qualityInk, QUALITY_LABEL } from './common.js';
+import { COL, getState, qualityInk, QUALITY_LABEL, QUALITY_COLOR } from './common.js';
 import { getBagEntries } from './bagModel.js';
 import { BagTile, GEAR_SEL_RING, GEAR_SEL_BLUE, GEAR_SEL_TINT } from './InventoryPanel.jsx';
 import { GEAR_FILTER_GROUPS, GEAR_FILTERS, GEAR_CELLS, gearCell } from './itemCategory.js';
@@ -8,14 +8,12 @@ import { itemActionList, runItemAction, entryTarget } from './itemActions.js';
 import { resolveItemCard } from './ItemDetailPopup.jsx';
 import { itemDetailBus } from './itemDetailBus.js';
 import { weaponSlotFor, unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect } from './equipActions.js';
-import { weaponRows, shieldRows, armourRows, compareRows, charLevel } from './gearStats.js';
-import { combatSkillState, WEAPON_SKILLS } from './combatSkill.js';
-import { WeaponBar } from './WeaponBar.jsx';
-import { SkillTile, SkillXpWide } from './SkillTiles.jsx';   /* v2.3.4172: the tiles, shared with the Bro page */
+import { weaponRows, shieldRows, armourRows, gainRows, charLevel } from './gearStats.js';
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
+import { CharacterView } from '../sheet/CharacterView.jsx';   /* v2.3.4191: the overview's full-body bro */
+import { HERO_PILL_ICON } from '../sheet/heroStatPills.js';   /* v2.3.4191: the item card's stat pictures, the Points window's own */
 import { VitalBar, VITAL_ICONS, VITAL_LABEL } from '../sheet/VitalBar.jsx';   /* v2.3.4151: the overview's bars, the Character page's own */
 import { shopBus } from '../shopBus.js';
-import { registerXpCard, displayXp, xpCounting } from '../../xpLanding.js';
 import { getEquip } from '../../../rendering/gearCatalog.js';
 import { WEAPON_STASH_MAX, toDisplayHp } from '../../../data/gameSystems.js';
 import { gemCutKey, gemIcon, gemElementName } from '@/data/gems.js';
@@ -40,15 +38,18 @@ import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151:
  *           coin picture, the amount a count badge as on a bag slot), over a
  *           bag of THREE square slots a row, three rows in view, the rest by
  *           scrolling;
- *   MIDDLE  ONE card.  Nothing picked: "<name> Lv N", the HP, MP and EN bars
- *           (stamina IS the game's energy: VitalBar's "EN", one resource, one
- *           bar), then Melee, Bow and Magic as three tiles, each its big
- *           picture and "Lv N" ("each need just their large icons and levels
- *           ... If you tap on it it should turn into the xp bar").  Something
- *           picked: its picture beside its name, its grade and kind, two lines
- *           of what it is for, gear's numbers in a two-column grid with the
- *           change against what you wear inline (green / red), and ONE row of
- *           buttons at the foot;
+ *   MIDDLE  ONE card.  v2.3.4191 (A4): nothing picked, the full-body bro
+ *           wearing what is equipped (CharacterView), "<name> Lv N" above
+ *           him and the HP, MP and EN bars below (the owner's arrangement 1;
+ *           the three skill tiles moved to the Bro page).  Something picked:
+ *           its framed picture, its name in its grade's colour, the grade's
+ *           STARS under it (no "Copper · Greatsword" subtitle), "Hardness
+ *           N/5" for a weapon, "Qty N" for a stack; then up to four large stat
+ *           pills (each its picture, its word, its number and the change
+ *           against what you wear) or two lines of what it is for; ONE gold
+ *           button at the foot (Equip / Unequip / Use / Reveal...), and the
+ *           rest (Drop, Pin, Inspect) behind a "⋯" top-right.  No Sell here
+ *           (the item window keeps its own);
  *   RIGHT   "Equipped" over Sword Bow Staff / Chest Legs Cape / Shield Amulet
  *           Gem.
  * v2.3.4151, the owner: "Make equipped slots as big as the slots you're using
@@ -68,17 +69,17 @@ import { UnrevealedMark } from '@/ui/reveal/UnrevealedMark.jsx';   /* v2.3.4151:
  *
  * WHAT A TAP DOES (gearTabBus.js holds the state and the rules):
  *   a cell    blue ring; the bag filters to its kind ("Swords" and its ×);
- *             the card shows that item with ONE button, Unequip -- tapped
+ *             the card shows that item with ONE gold button, Unequip -- tapped
  *             again, both go;
  *   a bag piece  blue ring; the card shows it, its numbers against what is
- *             in its slot, then its buttons from the one action list
- *             (itemActions.js);
+ *             in its slot, its main action from the one action list
+ *             (itemActions.js) gold at the foot, the others behind "⋯";
  *   the bag's empty space, or the picked piece again: back to the overview;
  *   Equip / Unequip  the automatic filter goes back to "All Items".
  * The weapon in your hand wears GOLD (its edge and a glow); the cell you
  * tapped the BLUE ring outside it; both can show.  v2.3.4151: the weapon
- * cells are plain -- their level and XP live on the card's skill tiles.
- * Across a wide band the tab is at most GEAR_MAX_W and centred.
+ * cells are plain (their level and XP: the Bro page's skill tiles, v2.3.4191).
+ * Across a wide band it fills the band's centred assembly (840 px, PR #1424).
  *
  * This retires, for the bag, the notes "a Bag button", "Worn gear back on the
  * band" and "an item card that pushes the character or vitals around"
@@ -97,14 +98,13 @@ const WIDE_AT = 2 * (3 * SQ_MIN + 2 * G + 2 * PAD + 2) + MID_HARD + 2 * PAD + 2 
 const HDR_H = 34;      /* the bag's filter-and-coins row (its controls 32 px: the UI review's floor for a finger) */
 const EQ_HEAD = 18;    /* "Equipped" */
 const FONT_MIN = 11;   /* the owner's floor for anything in the card */
-/* v2.3.4151, the owner: "The stretched middle panel looks silly on computer"
-   -- across a wide band (a computer, Lane B's one band at 1280) the tab is at
-   most this wide and centred, so its three panels keep a phone's proportions
-   and the card is a tablet's width, not the window's.  The tab caps its OWN
-   width, so it looks right with or without the band's centring wrapper
-   (PR #1410).  Not the short band (the sideways phone, which the owner
-   likes as it is): its row of nines wants the width. */
-const GEAR_MAX_W = 560;
+/* v2.3.4151 capped the tab at 560 px across a wide band (the owner: "The
+   stretched middle panel looks silly on computer").  v2.3.4191: Lane B's one
+   centred dashboard assembly (PR #1424: sheetGeometry BAND_ASSEMBLY_MAX_W,
+   840 px on a computer or a tablet, the button row spanning it) holds every
+   tab now, so the Gear tab fills that block as the Bro tab does and has no
+   cap of its own.  (Against #1386's 1056 px box the card had stretched to
+   ~740 px: the 840 px block is what makes dropping the cap right.) */
 
 const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
 
@@ -220,34 +220,138 @@ const Chevron = ({ size, color, up }) => (
   </svg>
 );
 
-/* v2.3.4151: gear's numbers in the card -- short words, two to a row, the
-   change against what you wear inline (green better, red worse) */
-const STAT_WORD = { Damage: 'DMG', DPS: 'DPS', Speed: 'SPD', Range: 'RANGE', Block: 'BLOCK', Stamina: 'EN', Defence: 'DEF', 'Damage cut': 'CUT' };
-const StatGrid = ({ rows, cmp, line }) => (
-  /* `line`: the short band's card -- the first three in one row, each "WORD
-     value change" on one line */
-  <div data-gear-grid="" style={line
-    ? { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', columnGap: 4 }
-    : { display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 6, rowGap: 1 }}>
-    {(line ? rows.slice(0, 3) : rows).map((r) => (
-      <div key={r.k} {...(cmp ? { 'data-gear-cmp': r.k, 'data-tone': r.tone } : { 'data-gear-stat': r.key || r.k })}
-        title={cmp && r.old != null ? `${r.k}: ${r.old} → ${r.now}` : undefined}
-        style={{ minWidth: 0, display: 'flex', flexDirection: line ? 'row' : 'column', alignItems: line ? 'baseline' : undefined, gap: line ? 3 : 0, lineHeight: 1.08, overflow: 'hidden' }}>
-        <span style={{ fontSize: FONT_MIN, fontWeight: 800, color: COL.muted, letterSpacing: '.02em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{STAT_WORD[r.k] || r.k}</span>
-        <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, minWidth: 0, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: COL.text, overflow: 'hidden', textOverflow: 'ellipsis' }}>{cmp ? r.now : r.v}</span>
-          {cmp && r.diff && r.diff !== '=' && (
-            <span data-gear-diff="" style={{ fontSize: FONT_MIN, fontWeight: 800, color: r.tone > 0 ? COL.xp : r.tone < 0 ? COL.danger : COL.muted }}>{r.diff}</span>
-          )}
-        </span>
+/* ═══ v2.3.4191: THE ITEM CARD'S PILLS, STARS AND HARDNESS ═══
+ * The owner (2026-11-03): "I want the item selection menu to look more like
+ * this (larger pills) ... Remove the 'greatsword common' type subtitles ...
+ * a simple star system in the place of the item subtitles (one star - white
+ * for common), (two star, blue for rare, etc) ... a basic number line
+ * hardness 0/5 ... each large cell 'damage' 'DPS' was accompanied by icons.
+ * There should already be icons made for all of these stats."
+ *   PILLS  a stat a pill, two to a row: its picture (the Points window's and
+ *          the hero sheet's own files, HERO_PILL_ICON), its word, its number,
+ *          and -- when it would replace something you wear -- the change in
+ *          the pill: a green ▲ +N, a red ▼ -N, or "--" for the same;
+ *   STARS  the game's own grades (common.js QUALITY_COLOR / QUALITY_LABEL,
+ *          server QUALITY_GRADES): normal 1 white, rare 2 blue, elite 3
+ *          orange (the game's elite colour), godly 4 in the godly gold --
+ *          the name already wears the same colour;
+ *   HARDNESS  a weapon's hardness, 0 to 5 (gameSystems weaponEffBase; the
+ *          worker's hardening.js ladder), as "Hardness N/5". */
+const PILL_ICON = {
+  Damage: '/icons/ui/stat/dmg.png?v=2.3.2642', DPS: HERO_PILL_ICON.dps, Speed: HERO_PILL_ICON.aspd, Range: HERO_PILL_ICON.range,
+  Block: HERO_PILL_ICON.def, Stamina: HERO_PILL_ICON.stam, Defence: HERO_PILL_ICON.def, 'Damage cut': HERO_PILL_ICON.armor,
+};
+const PILL_WORD = { Damage: 'DAMAGE', DPS: 'DPS', Speed: 'SPEED', Range: 'RANGE', Block: 'BLOCK', Stamina: 'ENERGY', Defence: 'DEFENCE', 'Damage cut': 'ARMOR' };   /* v2.3.4191: the owner, of 'CUT': "ARMOR" (42% = you take 42% less damage) */
+/* a narrow pill (the 390 phone's ~58 px): three letters, the picture beside them says the rest */
+const PILL_SHORT = { Damage: 'DMG', DPS: 'DPS', Speed: 'SPD', Range: 'RNG', Block: 'BLK', Stamina: 'EN', Defence: 'DEF', 'Damage cut': 'ARMOR' };
+const STAR_COUNT = { normal: 1, rare: 2, elite: 3, godly: 4 };
+const GEAR_MORE_ONLY = { drop: 1, lock: 1, inspect: 1 };   /* never the gold button: always behind "⋯" */
+const HARDNESS_MAX = 5;   /* weapon.hardness is an int 0-5 (hardening.js) */
+const Stars = ({ q }) => {
+  const g = STAR_COUNT[q] ? q : 'normal';
+  const c = QUALITY_COLOR[g] || COL.text;
+  return (
+    <span data-gear-stars={STAR_COUNT[g]} data-grade={g} title={QUALITY_LABEL[g] || 'Normal'} aria-label={(QUALITY_LABEL[g] || 'Normal') + ', ' + STAR_COUNT[g] + ' star' + (STAR_COUNT[g] > 1 ? 's' : '')}
+      style={{ flex: 'none', fontSize: 12, lineHeight: 1, letterSpacing: 1, color: c, whiteSpace: 'nowrap' }}>{'★'.repeat(STAR_COUNT[g])}</span>
+  );
+};
+/* the stat pills: `rows` gearStats rows ({k, v}) or compareRows ({k, now,
+   diff, tone, old}); `cmp` true when the change is shown (a bag piece:
+   against what you wear, a missing stat or an empty slot as 0, v2.3.4191);
+   `w` the card's inner width, for the words */
+const StatPills = ({ rows, cmp, w, line }) => {
+  const pw = Math.floor(((w || 120) - 4) / 2);
+  const words = pw >= 78 ? PILL_WORD : PILL_SHORT;
+  if (line) {
+    /* the short band: the first three on one line, "WORD value change" */
+    return (
+      <div data-gear-grid="" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', columnGap: 4 }}>
+        {rows.slice(0, 3).map((r) => (
+          <div key={r.k} {...(cmp ? { 'data-gear-cmp': r.k, 'data-tone': r.tone } : { 'data-gear-stat': r.key || r.k })}
+            style={{ minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 3, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: FONT_MIN, fontWeight: 800, color: COL.muted }}>{PILL_SHORT[r.k] || r.k}</span>
+            <span style={{ fontSize: 12, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{r.now != null ? r.now : r.v}</span>
+          </div>
+        ))}
       </div>
-    ))}
-  </div>
-);
-/* a weapon's element, a row of the grid ('None' without a gem) */
-const elemRow = (wpn) => {
-  const els = wpn ? [wpn.element1, wpn.element2].filter((e) => typeof e === 'string' && e) : [];
-  return { k: 'ELEM', key: 'elem', v: els.length ? els.map(gemElementName).join(' + ') : 'None', now: els.length ? els.map(gemElementName).join(' + ') : 'None', diff: '', tone: 0 };
+    );
+  }
+  return (
+    <div data-gear-grid="" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+      {rows.slice(0, 4).map((r, i, all) => {
+        const up = cmp && r.tone > 0, down = cmp && r.tone < 0;
+        /* v2.3.4191, the owner: no "--" -- equal, or nothing to compare, shows nothing under the value */
+        const change = !cmp ? null : r.old == null || r.old === '—' ? null : (r.diff === '=' || !r.diff) ? null : (up ? '▲ ' : down ? '▼ ' : '') + r.diff;
+        return (
+          <div key={r.k} {...(cmp ? { 'data-gear-cmp': r.k, 'data-tone': r.tone } : { 'data-gear-stat': r.key || r.k })}
+            title={cmp && r.old != null ? `${r.k}: ${r.old} → ${r.now}` : r.k}
+            style={{
+              /* v2.3.4191: a lone pill (armour's one ARMOR) spans the row, so its word is whole */
+              ...(all.length === 1 ? { gridColumn: '1 / -1' } : null),
+              minWidth: 0, boxSizing: 'border-box', padding: '1px 5px', borderRadius: 8,
+              background: COL.wellSoft, border: `1px solid ${COL.border}`,
+              display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 1.1, overflow: 'hidden',
+            }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 3, minWidth: 0 }}>
+              {PILL_ICON[r.k] && <img src={PILL_ICON[r.k]} alt="" draggable={false} style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />}
+              <span style={{ fontSize: FONT_MIN, fontWeight: 800, color: COL.muted, letterSpacing: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{words[r.k] || r.k}</span>
+            </span>
+            {/* v2.3.4191: the number and its change side by side where they
+                fit, the change under the number where they do not -- never
+                "2.. ▲ +27" (a gain beside a number cut it short) */}
+            <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 3, rowGap: 0, minWidth: 0, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              <span data-gear-val="" style={{ flex: 'none', maxWidth: '100%', fontSize: 13, fontWeight: 800, color: COL.text, overflow: 'hidden' }}>{r.now != null ? r.now : r.v}</span>
+              {change && (
+                <span data-gear-diff={up ? 'up' : down ? 'down' : 'same'} style={{ flex: 'none', fontSize: FONT_MIN, fontWeight: 800, lineHeight: 1, color: up ? COL.xp : down ? COL.danger : COL.muted }}>{change}</span>
+              )}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/* v2.3.4191: THE NAME IS NEVER CUT.  The owner dropped the type subtitle
+   because "the type of sword is already in the name", so a name cut to
+   "Copper Grea..." loses the type.  It takes the head row's whole width (the
+   "⋯" moved to the foot, beside the gold button) and two lines (one in the
+   short band); a name that still needs more is set smaller, half a px at a
+   time, down to NAME_FLOOR (10 px -- the name alone; everything else keeps
+   the 11 px floor), before anything is clipped.  Words never break inside
+   (the longest in the game: "Worldbreaker Greatsword", "Black Steel
+   Greaves"; mp-geartab sets those on a real card and reads them whole). */
+const NAME_FLOOR = 10;
+const NAME_LH = 1.12;
+const FitName = ({ name, quality, size, lines }) => {
+  const ref = React.useRef(null);
+  const [fit, setFit] = React.useState({ fs: size, clamp: false });
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    /* measured as a plain block (a line clamp reports its own heights) */
+    const prev = el.style.cssText;
+    el.style.display = 'block'; el.style.webkitLineClamp = 'unset'; el.style.maxHeight = 'none';
+    let f = size, ok = false;
+    for (; f >= NAME_FLOOR; f -= 0.5) {
+      el.style.fontSize = f + 'px';
+      /* its lines by its own height (offsetHeight: a glyph's overhang does
+         not count), its widest word by scrollWidth */
+      if (el.offsetHeight - 2 <= lines * f * NAME_LH + 1 && el.scrollWidth <= el.clientWidth + 0.5) { ok = true; break; }
+    }
+    if (!ok) f = NAME_FLOOR;
+    el.style.cssText = prev;
+    if (f !== fit.fs || !ok !== fit.clamp) setFit({ fs: f, clamp: !ok });
+  });
+  /* a plain block that fits (1 px above and below: the bold face's
+     overhang inside its box, so nothing is clipped); only past the floor
+     (nothing in the game's data today) the line clamp's ellipsis */
+  return (
+    <div ref={ref} data-gear-name={name} data-fs={fit.fs} data-clamped={fit.clamp ? '1' : undefined} style={{
+      fontSize: fit.fs, fontWeight: 800, lineHeight: NAME_LH, padding: '1px 0', color: COL.text, ...(qualityInk(quality) || null), overflowWrap: 'normal', wordBreak: 'normal',
+      ...(fit.clamp ? { display: '-webkit-box', WebkitLineClamp: lines, WebkitBoxOrient: 'vertical' } : { display: 'block' }), overflow: 'hidden',
+    }}>{name}</div>
+  );
 };
 
 export const GearTab = ({ R: Rin, desk }) => {
@@ -257,14 +361,8 @@ export const GearTab = ({ R: Rin, desk }) => {
   React.useEffect(() => gearTabBus.subscribe(() => tick()), []);
   React.useEffect(() => shopBus.subscribe(() => tick()), []);   /* v2.3.2059: the bag is half the shop */
   React.useEffect(() => itemDetailBus.subscribe(() => tick()), []);
-  /* v2.3.1874's count-up, which the weapon cells' bars carry now: frames only
-     while xpLanding holds or counts a card */
-  React.useEffect(() => {
-    let raf = 0, alive = true;
-    const step = () => { if (!alive) return; if (xpCounting()) tick(); raf = requestAnimationFrame(step); };
-    raf = requestAnimationFrame(step);
-    return () => { alive = false; cancelAnimationFrame(raf); };
-  }, []);
+  /* v2.3.4191: no XP count-up here any more (the skills' tiles left for the
+     Bro page), so no frame loop either */
   const bro = React.useRef(null);
 
   const st = gearTabBus.state;
@@ -288,8 +386,12 @@ export const GearTab = ({ R: Rin, desk }) => {
   /* ── geometry: one square size `t` for both grids ── */
   const wide = box.w >= WIDE_AT;
   const W = Math.max(0, box.w), H = Math.max(0, box.h);
-  const footH = desk ? 48 + GAP : 0;   /* the computer's weapon bar, under the three */
+  /* v2.3.4191: the computer's weapon bar under the three is retired: since
+     #1405 the weapon pill at the foot of the world (keys 1 2 3) is the one
+     weapon switcher on every layout, the owner's choice */
+  const footH = 0;
   let t, sideH, broW, broH;
+  let padX = 0;   /* v2.3.4191: the two grid panels' extra side padding in a wide block (below) */
   /* v2.3.4151: SHORT -- a box too short for three rows of 34 px squares (the
      one band open on a sideways phone, Lane B's ~78 px row: PR #1410).  Both
      grids lie in ONE row of nine (the bag's nine in view, the nine cells in
@@ -322,6 +424,18 @@ export const GearTab = ({ R: Rin, desk }) => {
     t = Math.max(SQ_MIN, Math.min(tW, tH, 64));
     broW = inner - 2 * side(t);
     broH = sideH;
+    /* v2.3.4191: THREE EQUAL PANELS IN A WIDE BLOCK.  The squares are held by
+       the row's height (three rows: ~45 px in the band's 191 px), so in Lane
+       B's 840 px assembly (PR #1424) the card alone took the rest -- 530 px
+       beside two 149 px panels, the bro small in a long box, the bars long
+       strips.  Once the card would be more than twice a grid panel, the
+       three share the width equally (the Bro tab's own thirds, ~276 px each),
+       each grid centred in its panel at its own size; a phone (the card
+       ~134 px) is untouched. */
+    if (broW > 2 * side(t)) {
+      padX = Math.max(0, Math.floor((Math.floor(inner / 3) - side(t)) / 2));
+      broW = inner - 2 * (side(t) + 2 * padX);
+    }
   } else {
     /* the sideways column: the bag and the gear side by side on top, the
        card the full width under them */
@@ -331,7 +445,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     broW = inner;
     broH = H > 0 ? Math.max(120, H - 2 * rp - footH - sideH - rg) : 160;
   }
-  const sideW = side(t);
+  const sideW = side(t) + 2 * padX;
   const gridH = sideH - 2 * pp - 2 - hdr - gg;
   const rowsIn = Math.max(1, Math.min(rows, Math.floor((gridH + gg) / (t + gg))));
   const viewH = rowsIn * t + (rowsIn - 1) * gg;
@@ -345,11 +459,11 @@ export const GearTab = ({ R: Rin, desk }) => {
 
   /* ═════ INVENTORY ═════ */
   const filterWord = fid === 'all' ? 'All Items' : ((GEAR_FILTERS[fid] || {}).pill || 'Filter');
-  const hdrW = sideW - 2 * pp - 2;
+  const hdrW = side(t) - 2 * pp - 2;   /* the grid's own width: the head lines up with the squares */
   const coins = Number(R.coins || 0);
   const roomy = hdrW >= 128;   /* room for the chevron beside the coins */
   const inventory = (
-    <div data-gear-pane="inv" style={panel({ width: sideW, height: sideH, flex: 'none', padding: pp })}>
+    <div data-gear-pane="inv" style={panel({ width: sideW, height: sideH, flex: 'none', padding: `${pp}px ${pp + padX}px` })}>
       {/* the mockup's head -- "All Items" (or the filter on, with its ×) and
           the coins beside it */}
       <div style={{ height: hdr, flex: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -427,7 +541,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       {/* the menu: down over the bag panel only */}
       {st.menu && (
         <div data-gear-menu="" style={{
-          position: 'absolute', left: pp, right: pp, top: pp + hdr, bottom: pp, zIndex: 6,
+          position: 'absolute', left: pp + padX, right: pp + padX, top: pp + hdr, bottom: pp, zIndex: 6,
           background: COL.bg, border: `1px solid ${COL.borderStrong}`, borderRadius: 8,
           boxShadow: '0 8px 18px rgba(4,7,9,.45)', display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>
@@ -490,7 +604,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     const ring = [gold ? `inset 0 0 0 2px ${COL.focus}` : null, gold && !blue ? '0 0 9px rgba(234, 198, 117, 0.55)' : null, blue ? GEAR_SEL_RING : null].filter(Boolean).join(', ');
     /* v2.3.4151, the owner: "remove the points badges and thin xp lines from
        those" -- a weapon cell is its picture (and the hand's gold) only; the
-       level and the XP live on the card's skill tiles */
+       level and the XP live on the Bro page's skill tiles (v2.3.4191) */
     const pic = c.id === 'gem'
       ? null
       : (ct.icon || GHOST_SRC[c.id === 'sword' || c.id === 'bow' || c.id === 'staff' ? 'weapon' : c.id]);
@@ -524,7 +638,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     );
   };
   const equipment = (
-    <div data-gear-pane="equip" style={panel({ width: sideW, height: sideH, flex: 'none', padding: pp, alignItems: 'center', justifyContent: 'flex-start' })}>
+    <div data-gear-pane="equip" style={panel({ width: sideW, height: sideH, flex: 'none', padding: `${pp}px ${pp + padX}px`, alignItems: 'center', justifyContent: 'flex-start' })}>
       {/* the mockup's "Equipped" head */}
       <div data-gear-eqhead="" style={{ height: EQ_HEAD, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11.5, fontWeight: 800, color: COL.text, letterSpacing: '.02em' }}>Equipped</div>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, ${t}px)`, gridAutoRows: `${t}px`, gap: gg, marginTop: Math.max(0, Math.min(hdr + gg - EQ_HEAD, Math.floor((sideH - 2 * pp - 2 - EQ_HEAD - 3 * t - 2 * gg) / 2))) }}>
@@ -534,12 +648,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   );
 
   /* ═════ THE CARD ═════ */
-  const nameEl = (name, quality) => (
-    <div data-gear-name={name} style={{
-      fontSize: short ? 12 : 12.5, fontWeight: 800, lineHeight: 1.15, color: COL.text, ...(qualityInk(quality) || null), overflowWrap: 'anywhere',
-      display: '-webkit-box', WebkitLineClamp: short ? 1 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-    }}>{name}</div>
-  );
+  const nameEl = (name, quality) => <FitName name={name} quality={quality} size={short ? 12 : 13} lines={short ? 1 : 2} />;
   /* one or two lines of plain words, never more (the card never scrolls) */
   const sentence = (txt, color, lines) => txt ? (
     <div data-gear-info="" style={{
@@ -547,101 +656,115 @@ export const GearTab = ({ R: Rin, desk }) => {
       display: '-webkit-box', WebkitLineClamp: lines || 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
     }}>{txt}</div>
   ) : null;
-  const rule = short ? null : <div aria-hidden="true" style={{ height: 1, flex: 'none', background: `linear-gradient(90deg, transparent, ${COL.edgeWarm}, transparent)` }} />;
-  /* the pick's picture in a small frame beside its name */
+  /* the pick's picture in its frame */
+  /* v2.3.4191: 30 px on a narrow card (a 360 px phone's ~104 px inside),
+     so the name beside it keeps "Worldbreaker" on one line */
+  const iw = Math.max(60, broW - 2 * (short ? 2 : PAD) - 2 - (short ? 2 : 4));   /* the card's inner width */
+  const artPx = short ? 24 : (iw < 116 ? 30 : 38);
   const art = (thumb, glyph, hidden) => (
     <div data-gear-art="" style={{
-      width: short ? 24 : 32, height: short ? 24 : 32, flex: 'none', position: 'relative', boxSizing: 'border-box', borderRadius: 7,
+      width: artPx, height: artPx, flex: 'none', position: 'relative', boxSizing: 'border-box', borderRadius: 8,
       background: '#121B20', border: `1.5px solid ${COL.edgeWarm}`,
-      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: short ? 15 : 20,
     }}>
       {thumb
         ? <img src={thumb} alt="" draggable={false} style={{ width: '84%', height: '84%', objectFit: 'contain', pointerEvents: 'none', ...(hidden ? { filter: 'brightness(0) opacity(.55)' } : null) }} />
         : glyph ? <span aria-hidden="true">{glyph}</span> : null}
-      {hidden && <UnrevealedMark size={short ? 16 : 20} />}
+      {hidden && <UnrevealedMark size={short ? 16 : 22} />}
     </div>
   );
-  /* the head: the frame, the name, the kind (and the count of a stack) */
-  const head = (pic, name, quality, kindLine, qty) => (
-    <div style={{ display: 'flex', gap: 5, alignItems: 'flex-start', minWidth: 0, flex: 'none' }}>
-      {pic}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {nameEl(name, quality)}
-        {(kindLine || qty > 1) && (
-          <div data-gear-kind="" style={{ fontSize: FONT_MIN, fontWeight: 700, color: COL.muted, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {kindLine}{kindLine && qty > 1 ? ' · ' : ''}{qty > 1 && <span data-gear-qty={qty} style={{ color: COL.text }}>Qty {qty}</span>}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-  const gradeWord = (q) => (q && q !== 'normal' && QUALITY_LABEL[q] ? QUALITY_LABEL[q] : '');
-  /* the foot: ONE row -- the main button wider, then one more and "⋯" (the
-     item card, with every other action) when there are more */
-  const btnRow = (lead, rest, press, more) => {
-    const shown = rest.length > 1 && more ? rest.slice(0, 1) : rest.slice(0, 2);
-    const extra = rest.length > shown.length && more;
-    const small = { minHeight: short ? 22 : 30, fontSize: 11.5, padding: short ? '0 3px' : '2px 3px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+  /* v2.3.4191: the "⋯" -- at the card's foot beside the gold button (it
+     sat top-right and ate the name's room) -- the card's other actions (Drop, Pin,
+     Inspect...), never Sell (the owner: "Just remove the 'sell' option for
+     now. I don't think this is a good feature to have next to equip button") */
+  const moreBtn = (has) => (has ? (
+    <button type="button" data-gear-act="more" aria-label="More actions" aria-expanded={st.more}
+      onClick={(e) => { e.stopPropagation(); gearTabBus.setMore(!st.more); }}
+      style={{
+        flex: 'none', width: short ? 30 : 40, minHeight: short ? 22 : 32, padding: 0, borderRadius: 9,
+        border: `1px solid ${COL.borderStrong}`, background: st.more ? COL.raised : COL.wellSoft, color: COL.text,
+        fontFamily: 'inherit', fontSize: 16, fontWeight: 900, lineHeight: 1, cursor: 'pointer', touchAction: 'manipulation',
+      }}>{'⋯'}</button>
+  ) : null);
+  /* the head: the frame, the name in its grade's colour, and under it the
+     stars (or a "?" piece's "Rare or better"), "Hardness N/5" for a weapon,
+     the count of a stack -- no "Copper · Greatsword" subtitle */
+  const head = (pic, name, quality, opts) => {
+    const o = opts || {};
     return (
-      <div data-gear-row="" style={{ display: 'flex', gap: 3 }}>
-        {lead && (
-          <button type="button" data-gear-act={lead.id} {...(lead.attrs || {})}
-            onClick={(e) => { e.stopPropagation(); press(lead); }}
-            style={{ ...actBtn(lead.tone, false), ...small, width: 'auto', flex: '2 1 0', minWidth: 0 }}>{lead.label}</button>
-        )}
-        {shown.map((a) => (
-          <button type="button" key={a.id} data-gear-act={a.id} disabled={a.off} aria-disabled={a.off || undefined} {...(a.attrs || {})}
-            title={a.off && a.why ? a.why : undefined}
-            onClick={(e) => { e.stopPropagation(); press(a); }}
-            style={{ ...actBtn(a.tone, a.off), ...small, width: 'auto', flex: '1 1 0', minWidth: 0 }}>{a.label}</button>
-        ))}
-        {extra && (
-          <button type="button" data-gear-act="more" aria-label="More: the item's card"
-            onClick={(e) => { e.stopPropagation(); more(); }}
-            style={{ ...actBtn(undefined, false), ...small, width: 30, flex: 'none' }}>{'⋯'}</button>
-        )}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', minWidth: 0, flex: 'none' }}>
+        {pic}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {nameEl(name, quality)}
+          <div data-gear-kind="" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 1, minWidth: 0, whiteSpace: 'nowrap', fontSize: FONT_MIN, fontWeight: 700, color: COL.muted, lineHeight: 1.2 }}>
+            {/* v2.3.4191: it wraps, never clips -- "Qty 12" beside the star was cut to "Qty 1" in a 390 phone's card */}
+            {o.hidden ? <span style={{ color: o.infoColor || COL.text2 }}>{o.info}</span> : o.noStars ? null : <Stars q={quality} />}
+            {o.qty > 1 && <span data-gear-qty={o.qty} style={{ color: COL.text, flex: 'none' }}>Qty {o.qty}</span>}
+            {o.extra && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.extra}</span>}
+          </div>
+        </div>
       </div>
     );
   };
+  /* v2.3.4191: the owner's "basic number line hardness 0/5" -- the word,
+     five marks (the hardened ones gold) and "N/5", a row of its own under the
+     head (beside the stars it was cut to "Hard..." on a 390 phone); the
+     short band (one row, ~66 px) has no room for it */
+  const hardLine = (n) => (n == null ? null : (
+    <div data-gear-hardness={n} aria-label={`Hardness ${n} of ${HARDNESS_MAX}`}
+      style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, whiteSpace: 'nowrap', fontSize: FONT_MIN, fontWeight: 800, color: COL.muted, lineHeight: 1 }}>
+      <span>Hardness</span>
+      <span aria-hidden="true" style={{ flex: 1, minWidth: 20, display: 'flex', gap: 2 }}>
+        {Array.from({ length: HARDNESS_MAX }, (_, i) => (
+          <span key={i} style={{ flex: 1, height: 5, borderRadius: 3, background: i < n ? COL.accent : COL.border }} />
+        ))}
+      </span>
+      <span data-gear-hardness-num="" style={{ color: COL.text, fontVariantNumeric: 'tabular-nums' }}>{n}/{HARDNESS_MAX}</span>
+    </div>
+  ));
+  const hardOf = (w) => (w && typeof w === 'object' ? Math.max(0, Math.min(HARDNESS_MAX, Math.floor(Number(w.hardness) || 0))) : null);
+  /* the ONE main button, gold, at the card's foot */
+  const goldBtn = (id, label, onClick, attrs) => (
+    <button type="button" data-gear-act={id} {...(attrs || {})}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
+      style={{
+        flex: 1, minWidth: 0, minHeight: short ? 22 : 32, boxSizing: 'border-box', padding: short ? '0 6px' : '3px 6px', borderRadius: 9,
+        border: `1px solid ${COL.focus}`, background: `linear-gradient(180deg, ${COL.focus}, ${COL.accent})`, color: COL.onAccent,
+        fontFamily: 'inherit', fontSize: short ? 12 : 13.5, fontWeight: 900, letterSpacing: '.02em', cursor: 'pointer',
+        touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', boxShadow: '0 2px 6px rgba(0,0,0,.25)',
+      }}>{label}</button>
+  );
 
   let footer = null;
   let body;
+  let moreList = [];
+  let morePress = null;
   if (selCell) {
     const c = gearCell(selCell);
     const ct = cellContent(R, selCell, slots);
-    if (ct.item && ct.unequip) {
-      footer = (
-        <button type="button" data-gear-act="unequip"
-          onClick={(e) => { e.stopPropagation(); ct.unequip(); gearTabBus.afterChange(); }}
-          style={{ ...actBtn('danger', false), minHeight: short ? 22 : 30, fontSize: 11.5, ...(short ? { padding: '0 4px' } : null) }}>Unequip</button>
-      );
-    }
+    if (ct.item && ct.unequip) footer = goldBtn('unequip', 'Unequip', () => { ct.unequip(); gearTabBus.afterChange(); });
     const word = c.label.toLowerCase();
     const cellPic = selCell === 'gem'
       ? art(ct.els && ct.els.length ? gemIcon(gemCutKey(ct.els[0])) : null, ct.els && ct.els.length ? null : '💎', false)
       : art(ct.item ? ct.icon : null, null, false);
-    const rows = ct.item && c.field ? ct.rows.concat([elemRow(ct.item)]) : ct.rows;
     body = (
       <div data-gear-stats="cell" data-gear-stats-for={selCell} style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
         {selCell === 'gem' ? (
           <>
-            {head(cellPic, ct.els && ct.els.length ? ct.name : 'No gem yet', null, 'Gem', 0)}
-            {rule}
+            {head(cellPic, ct.els && ct.els.length ? ct.name : 'No gem yet', null, { noStars: true })}
             {sentence(ct.hand
-              ? (ct.els && ct.els.length ? 'Set in your ' + weaponDisplayName(ct.hand) + '.' : 'Your ' + weaponDisplayName(ct.hand) + ' has no gem in it.')
+              ? (ct.els && ct.els.length ? 'Set in your ' + weaponDisplayName(ct.hand) + '. Gems are set at the Gem Works.' : 'Your ' + weaponDisplayName(ct.hand) + ' has no gem in it. Gems are set at the Gem Works.')
               : 'Nothing in your hand.', null, short ? 1 : 2)}
-            {!short && <div data-gear-gemworks="" style={{ fontSize: FONT_MIN, fontWeight: 700, color: COL.muted, lineHeight: 1.3 }}>Gems are set at the Gem Works</div>}
           </>
         ) : ct.item ? (
           <>
-            {head(cellPic, ct.name, ct.quality, [gradeWord(ct.quality), c.label, 'Equipped'].filter(Boolean).join(' · '), 0)}
-            {rule}
-            {rows.length > 0 ? <StatGrid rows={rows} line={short} /> : sentence(SLOT_SENTENCE[selCell], null, short ? 1 : 2)}
+            {head(cellPic, ct.name, ct.quality)}
+            {!short && hardLine(c.field ? hardOf(ct.item) : null)}
+            {ct.rows.length > 0 ? <StatPills rows={ct.rows} w={iw} line={short} /> : sentence(SLOT_SENTENCE[selCell], null, short ? 1 : 2)}
           </>
         ) : (
           <>
-            {head(art(null, null, false), c.label, null, 'Empty', 0)}
-            {rule}
+            {head(art(null, null, false), c.label, null, { noStars: true, extra: 'Empty' })}
             {sentence(`No ${word} yet. Pick one from your bag.`, null, short ? 1 : 2)}
           </>
         )}
@@ -651,131 +774,169 @@ export const GearTab = ({ R: Rin, desk }) => {
     const target = entryTarget(selEntry);
     const card = (() => { try { return resolveItemCard(target); } catch (e) { return null; } })() || {};
     const o = selEntry.obj || null;
-    let cmp = null;
+    /* v2.3.4191: the change is always shown, against what you wear; a stat
+       the worn piece lacks, or an empty slot, reads as 0 -- a real gain, the
+       green "▲ +N" (gearStats gainRows); the same number stays "--" */
+    let rows = null;
     if (selEntry.kind === 'stashWeapon' && o) {
       const cur = R[weaponSlotFor(o.type)] || null;
-      cmp = compareRows(cur ? weaponRows(R, cur) : [], weaponRows(R, o)).concat([elemRow(o)]);
+      rows = gainRows(cur ? weaponRows(R, cur) : [], weaponRows(R, o));
     } else if (selEntry.kind === 'stashShield' && o) {
-      cmp = compareRows(shieldRows(R.shield), shieldRows(o));
+      rows = gainRows(shieldRows(R.shield), shieldRows(o));
     } else if ((selEntry.kind === 'stashArmor' || selEntry.kind === 'stashLegs') && o) {
       const slot = selEntry.kind === 'stashArmor' ? 'chest' : 'legs';
       const cur = slot === 'chest' ? R.armor : R.legsArmor;
-      cmp = compareRows(armourRows(cur, slot), armourRows(o, slot));
+      rows = gainRows(armourRows(cur, slot), armourRows(o, slot));
     }
     /* a "?" piece (v2.3.4012's mystery reveal) shows its card's name, "Rare
-       or better" and no comparison -- its numbers would give its grade away */
+       or better" and no numbers -- they would give its grade away */
     const hidden = !!card.unrevealed;
-    if (hidden) cmp = null;
+    if (hidden) rows = null;
+    if (rows) rows = rows.filter((r) => r.now !== '—');   /* a stat the new piece lacks is not its pill */
     const name = !hidden && selEntry.kind === 'stashWeapon' && o ? weaponDisplayName(o) : (card.name || '');
-    const list = itemActionList(target, card);
+    /* the one action list (itemActions.js), Sell left out here */
+    const list = itemActionList(target, card).filter((x) => x.id !== 'sell');
     const anchorOf = () => {
       try { const r = bro.current.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height }; } catch (e) { return null; }
     };
     const ui = {
       close: () => gearTabBus.deselect(),
-      sell: () => itemDetailBus.open({ ...target, anchor: anchorOf(), flow: 'sell' }),
-      drop: () => itemDetailBus.open({ ...target, anchor: anchorOf(), flow: 'drop' }),
+      sell: () => {},
+      drop: () => { gearTabBus.setMore(false); itemDetailBus.open({ ...target, anchor: anchorOf(), flow: 'drop' }); },
     };
-    const press = (a) => {
-      if (a.off) return;
-      const changes = a.id === 'equip' || a.id === 'unequip' || a.id === 'capeOn' || a.id === 'capeOff';
-      runItemAction(a.id, target, card, changes ? { ...ui, close: () => gearTabBus.afterChange() } : ui, { equip: { activate: false } });
+    const press = (x) => {
+      if (x.off) return;
+      const changes = x.id === 'equip' || x.id === 'unequip' || x.id === 'capeOn' || x.id === 'capeOff';
+      runItemAction(x.id, target, card, changes ? { ...ui, close: () => gearTabBus.afterChange() } : ui, { equip: { activate: false } });
     };
-    const lead = list.find((a) => !a.off && a.id !== 'sell' && a.id !== 'drop' && a.id !== 'lock') || null;
-    const rest = list.filter((a) => a !== lead);
-    footer = (lead || rest.length) ? btnRow(lead, rest, press, () => itemDetailBus.open({ ...target, anchor: anchorOf() })) : null;
+    /* the gold one: the list's own primary (Equip, Reveal, Drink, Eat,
+       Light fire...), else the first that is not Drop, Pin or Inspect -- those
+       three are the "⋯"'s (the owner's brief); a stack with nothing to do
+       (an ore) has no gold button, only its "⋯" */
+    const lead = list.find((x) => !x.off && x.tone === 'primary')
+      || list.find((x) => !x.off && !GEAR_MORE_ONLY[x.id]) || null;
+    moreList = list.filter((x) => x !== lead);
+    morePress = press;
+    /* the foot: the gold button and, beside it, "⋯" (alone when there is no
+       main action) */
+    /* v2.3.4191, the owner: a piece you can wear (a weapon, a shield, armour)
+       has NO "⋯" -- its gold Equip alone, the full width; "⋯" stays on what
+       has more to do (materials, potions...) and on a "?" piece, whose Equip
+       sits behind it beside the gold Reveal */
+    const wearable = /^stash(Weapon|Shield|Armor|Legs|Gear)$/.test(selEntry.kind) && !hidden;
+    if (wearable) moreList = [];
+    if (lead || moreList.length) footer = (<>{lead ? goldBtn(lead.id, lead.label, () => press(lead), lead.attrs) : <span style={{ flex: 1 }} />}{moreBtn(moreList.length > 0)}</>);
     const q = !hidden && o ? o.quality : null;
-    const kindLine = [gradeWord(q), card.desc].filter(Boolean).join(' · ');
     body = (
       <div data-gear-stats="bag" data-gear-stats-for={selEntry.kind === 'item' ? 'i-' + selEntry.key : selEntry.kind} style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
-        {head(art(card.thumb, card.glyph, hidden), name, q, kindLine, selEntry.kind === 'item' ? (selEntry.count || 0) : 0)}
-        {rule}
-        {cmp && cmp.length > 0
-          ? <StatGrid rows={cmp} cmp line={short} />
-          : sentence(card.info, card.infoColor, short ? 1 : 2)}
+        {head(art(card.thumb, card.glyph, hidden), name, q, {
+          hidden, info: card.info, infoColor: card.infoColor,
+          qty: selEntry.kind === 'item' ? (selEntry.count || 0) : 0,
+        })}
+        {!short && hardLine(!hidden && selEntry.kind === 'stashWeapon' ? hardOf(o) : null)}
+        {rows && rows.length > 0
+          ? <StatPills rows={rows} cmp w={iw} line={short} />
+          : hidden ? null : sentence(/^Quantity:/.test(card.info || '') ? null : card.info, card.infoColor, short ? 1 : 2)}
       </div>
     );
   } else {
-    /* the overview -- "<name> Lv N", the combat resource bars, then the three
-       combat skills.  The owner: "the gear tab just having the compact
-       version just combat resource bars ... the 3 primary combat skill pills
-       might sit well there too ... leveling up weapon is huge part", then
-       "Melee bow magic each need just their large icons and levels similar to
-       old bag layout with the 3 combat skills.  If you tap on it it should
-       turn into the xp bar".  HP on the display scale (the Character page's,
-       toDisplayHp); EN and MP as they are -- stamina IS the game's energy
-       (VitalBar's "EN"), one resource, one bar.  Spending points lives on the
-       Bro page. */
+    /* v2.3.4191: THE OVERVIEW IS YOUR BRO.  The owner (2026-11-03): "Move
+       the 3 primary combat skills out of the gear menu and put them into the
+       bro menu", then "I want the character preview in the middle panel by
+       default (actually showing what he's equipped) like how I had it in the
+       previous character layout ... Keep the profile picture in the bro tab.
+       This one just put the character preview in middle".  So the card at
+       rest is the full-body bro (CharacterView: the Character page's own
+       compositor, wearing exactly what is equipped, facing southwest as the
+       owner chose), his name and "Lv N", and the HP, MP and EN bars -- no
+       headshot.  Of three arrangements the owner picked the first: the name
+       and Lv above, the figure centred and as large as fits, the bars below.
+       The short band (the sideways one band, ~66 px) lays it sideways: the
+       figure at the left, the name and bars beside it.  HP on the
+       display scale (toDisplayHp); EN and MP as they are -- stamina IS the
+       game's energy (VitalBar's "EN"), one resource, one bar.  The skills'
+       tiles and their XP bars leave for the Bro page (Lane B, PR #1386); the
+       XP that flies in after a kill floats and fades while no card is on
+       screen (xpLanding xpCardPoint). */
     const S = getState();
     const who = (S && S.myName) || 'You';
     const lvl = charLevel(R);
-    const bar = (kind, cur, max) => (
-      <div key={kind} data-vital={kind} title={VITAL_LABEL[kind]} style={{ display: 'flex' }}>
-        <VitalBar kind={kind} cur={cur} max={max} thick={short ? 13 : 16}
-          inset={(
-            <div style={{
-              width: '100%', minWidth: 0, display: 'flex', alignItems: 'center', gap: 3, padding: '0 6px 0 3px', boxSizing: 'border-box',
-              color: '#FFFFFF', lineHeight: 1, textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.7)',
-            }}>
-              <img src={VITAL_ICONS[kind]} alt="" draggable={false} style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />
-              <span style={{ fontSize: FONT_MIN, fontWeight: 800, letterSpacing: '.02em' }}>{VITAL_LABEL[kind]}</span>
-              <span style={{ flex: 1 }} />
-              <span style={{ fontSize: FONT_MIN, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
-            </div>
-          )} />
-      </div>
-    );
-    const skills = WEAPON_SKILLS.map((s) => ({ s, k: combatSkillState(R, s) }));
-    const open = skills.find((x) => x.s.key === st.xp) || null;
-    /* a skill's tile: its big picture and "Lv N" (the XP that flies in
-       after a kill still lands here, xpLanding); a tap turns it into its XP
-       bar across the row -- "68 / 455 XP", the numbers the top bar's XP bar
-       reads (combatSkill.js) -- until a second tap or 4 s (gearTabBus.showXp) */
-    /* v2.3.4172: the tile and its open bar live in SkillTiles.jsx (the Bro
-       page draws the same tile); this is their v2.3.4151 use, unchanged --
-       the same elements, styles and hooks */
-    const tile = ({ s, k }) => (
-      <SkillTile key={s.key} s={s} k={k} short={short}
-        attrs={{
-          'data-gear-skill': k.p3cat || s.key, 'data-lvl': k.lvl,
-          /* v2.3.4151: the skill's XP numbers as data (nothing drawn), the
-             XP-fly's count-up readers' hook since the weapon cells went plain */
-          'data-xpbar': k.p3cat || undefined,
-          'data-xpprog': k.p3cat && k.xp ? Math.round(displayXp(k.p3cat, k.xp.prog)) : undefined,
-          'data-xpthresh': k.p3cat && k.xp ? Math.round(k.xp.thresh) : undefined,
-          'aria-label': `${s.label} level ${k.lvl}: show its XP`,
-          ref: k.p3cat ? ((el) => { if (el) registerXpCard(k.p3cat, el.getBoundingClientRect()); }) : undefined,
-        }}
-        onTap={() => gearTabBus.showXp(s.key)} />
-    );
-    const xpWide = ({ s, k }) => {
-      const prog = k.xp ? Math.round(displayXp(k.p3cat, k.xp.prog)) : 0;
-      const thresh = k.xp ? Math.round(k.xp.thresh) : 0;
+    const handWpn = R[HAND_FIELD[R.activeSlot || 'melee']] || null;
+    /* the card's inner box, the figure's room is measured from */
+    const cardPad = short ? 2 : PAD;
+    const cw = Math.max(40, broW - 2 * cardPad - 2 - (short ? 2 : 4));
+    const ch = Math.max(30, broH - 2 * cardPad - 2 - (short ? 0 : 5));
+    /* a bar: its picture and word where there is room, the numbers always */
+    const bar = (kind, cur, max, thick, w) => {
+      const roomy = w == null || w >= 96, wordy = w == null || w >= 74;
       return (
-        <SkillXpWide key={s.key} s={s} k={k} short={short} prog={prog} thresh={thresh}
-          attrs={{
-            'data-gear-skill': k.p3cat || s.key, 'data-lvl': k.lvl, 'data-gear-xpopen': '',
-            'aria-label': `${s.label} level ${k.lvl}: ${k.xp ? prog + ' of ' + thresh + ' XP' : 'fully levelled'}`,
-            ref: k.p3cat ? ((el) => { if (el) registerXpCard(k.p3cat, el.getBoundingClientRect()); }) : undefined,
-          }}
-          onTap={() => gearTabBus.showXp(null)} />
+        <div key={kind} data-vital={kind} title={VITAL_LABEL[kind]} style={{ display: 'flex' }}>
+          <VitalBar kind={kind} cur={cur} max={max} thick={thick}
+            inset={(
+              <div style={{
+                width: '100%', minWidth: 0, display: 'flex', alignItems: 'center', gap: 3, padding: '0 5px 0 3px', boxSizing: 'border-box',
+                color: '#FFFFFF', lineHeight: 1, textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.7)',
+              }}>
+                {roomy && <img src={VITAL_ICONS[kind]} alt="" draggable={false} style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />}
+                {wordy && <span style={{ fontSize: FONT_MIN, fontWeight: 800, letterSpacing: '.02em' }}>{VITAL_LABEL[kind]}</span>}
+                <span style={{ flex: 1 }} />
+                <span style={{ fontSize: FONT_MIN, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
+              </div>
+            )} />
+        </div>
       );
     };
+    const vitals = [
+      ['hp', toDisplayHp(R.hp || 0), toDisplayHp(R.maxHp || 100)],
+      ['mana', R.mana || 0, R.maxMana || 100],
+      ['stamina', R.stamina || 0, R.maxStamina || 100],
+    ];
+    const bars = (thick, w, gap) => (
+      <div data-gear-bars="" style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap }}>
+        {vitals.map(([k, c, m]) => bar(k, c, m, thick, w))}
+      </div>
+    );
+    const nameLine = (center) => (
+      <div data-gear-level={lvl} style={{ flex: 'none', display: 'flex', alignItems: 'baseline', justifyContent: center ? 'center' : 'flex-start', gap: 5, minWidth: 0 }}>
+        <span data-gear-who="" style={{ minWidth: 0, fontSize: 13, fontWeight: 800, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
+        <span style={{ flex: 'none', fontSize: 12, fontWeight: 800, color: COL.accent, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
+      </div>
+    );
+    /* the figure: CharacterView's compact crop (its window 52% of the size),
+       as large as `bw` x `bh` allows */
+    const figure = (bw, bh) => {
+      const size = Math.max(24, Math.floor(Math.min(bh, bw / 0.52)));
+      return (
+        <div data-gear-figure="" data-size={size} style={{ flex: 'none', width: bw, height: bh, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', overflow: 'hidden' }}>
+          <CharacterView size={size} weapon={handWpn} shield={R.shield} dir="southwest" crop />
+        </div>
+      );
+    };
+    let inner;
+    if (short) {
+      const fw = Math.max(28, Math.round(ch * 0.52) + 4);
+      inner = (
+        <div style={{ display: 'flex', gap: 6, height: '100%', alignItems: 'stretch' }}>
+          {figure(fw, ch)}
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
+            {nameLine(false)}
+            {bars(13, cw - fw - 6, 2)}
+          </div>
+        </div>
+      );
+    } else {
+      const nh = 16, bh = 3 * 16 + 2 * 3;
+      inner = (
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {nameLine(true)}
+          {figure(cw, ch - nh - bh - 6)}
+          {bars(16, cw, 3)}
+        </div>
+      );
+    }
     body = (
-      <div data-gear-stats="mine" style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 4, height: '100%', boxSizing: 'border-box' }}>
-        <div data-gear-level={lvl} style={{ flex: 'none', display: short ? 'none' : 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 5, minWidth: 0 }}>
-          <span data-gear-who="" style={{ minWidth: 0, fontSize: 13, fontWeight: 800, color: COL.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{who}</span>
-          <span style={{ flex: 'none', fontSize: 12, fontWeight: 800, color: COL.accent, fontVariantNumeric: 'tabular-nums' }}>Lv {lvl}</span>
-        </div>
-        {short ? null : rule}
-        <div data-gear-bars="" style={{ flex: 'none', display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
-          {bar('hp', toDisplayHp(R.hp || 0), toDisplayHp(R.maxHp || 100))}
-          {bar('mana', R.mana || 0, R.maxMana || 100)}
-          {bar('stamina', R.stamina || 0, R.maxStamina || 100)}
-        </div>
-        <div data-gear-skills="" style={{ flex: '1 1 0', minHeight: short ? 18 : 44, display: 'flex', gap: short ? 3 : 4 }}>
-          {open ? xpWide(open) : skills.map(tile)}
-        </div>
+      <div data-gear-stats="mine" data-gear-arrangement={short ? 'short' : 'centred'} style={{ height: '100%', boxSizing: 'border-box' }}>
+        {inner}
       </div>
     );
   }
@@ -791,14 +952,49 @@ export const GearTab = ({ R: Rin, desk }) => {
         width: broW, height: broH, flex: 'none', padding: short ? 2 : PAD,
         border: `1px solid ${linked ? GEAR_SEL_BLUE : COL.edgeWarm}`,
         background: COL.wellDeep,
-        ...(linked ? { backgroundImage: `linear-gradient(${GEAR_SEL_TINT}, ${GEAR_SEL_TINT})`, boxShadow: `inset 0 0 0 1px ${GEAR_SEL_BLUE}` } : null),
+        ...(linked ? { backgroundImage: `linear-gradient(${GEAR_SEL_TINT}, ${GEAR_SEL_TINT})`, boxShadow: `inset 0 0 0 1px ${GEAR_SEL_BLUE}, 0 0 12px 1px rgba(140, 196, 255, 0.45)` } : null),
       })}>
       {/* never scrolls: every state is laid out to fit (mp-geartab measures
           scrollHeight against clientHeight at 390 and 360 px) */}
-      <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '2px 2px 3px' }}>
+      <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '1px 2px 0' }}>
         {body}
       </div>
-      {footer && <div data-gear-foot="" style={{ flex: 'none', paddingTop: short ? 1 : 3 }}>{footer}</div>}
+      {footer && <div data-gear-foot="" style={{ flex: 'none', paddingTop: short ? 1 : 2, display: 'flex', gap: 4, alignItems: 'stretch' }}>{footer}</div>}
+      {/* v2.3.4191: the "⋯" list -- over the card, never beside it (the card
+          never scrolls and keeps its size); its ✕ is the window's (data-esc) */}
+      {st.more && moreList.length > 0 && morePress && (
+        <div data-gear-more-menu="" role="menu"
+          onPointerUp={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute', inset: 0, zIndex: 3, boxSizing: 'border-box', padding: short ? 3 : 6,
+            background: COL.wellDeep, borderRadius: 10, border: `1px solid ${GEAR_SEL_BLUE}`,
+            display: 'flex', flexDirection: short ? 'row' : 'column', alignItems: short ? 'center' : 'stretch', gap: short ? 4 : 5,
+          }}>
+          <div style={{ flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4, ...(short ? { order: 9 } : null) }}>
+            {!short && <span style={{ fontSize: FONT_MIN, fontWeight: 800, color: COL.muted, letterSpacing: '.04em' }}>MORE</span>}
+            <button type="button" data-esc="" data-gear-act="more-close" aria-label="Close"
+              onClick={(e) => { e.stopPropagation(); gearTabBus.setMore(false); }}
+              style={{
+                flex: 'none', width: short ? 24 : 28, height: short ? 22 : 26, padding: 0, borderRadius: 7,
+                border: `1px solid ${COL.borderStrong}`, background: COL.wellSoft, color: COL.text,
+                fontFamily: 'inherit', fontSize: 13, fontWeight: 900, lineHeight: 1, cursor: 'pointer', touchAction: 'manipulation',
+              }}>{'✕'}</button>
+          </div>
+          {moreList.map((a) => (
+            <button key={a.id} type="button" role="menuitem" data-gear-act={a.id} disabled={!!a.off} {...(a.attrs || {})}
+              title={a.off && a.why ? a.why : undefined}
+              onClick={(e) => { e.stopPropagation(); if (a.off) return; gearTabBus.setMore(false); morePress(a); }}
+              style={{
+                flex: short ? 1 : 'none', minWidth: 0, minHeight: short ? 22 : 30, boxSizing: 'border-box', padding: '0 8px', borderRadius: 8,
+                border: `1px solid ${a.tone === 'danger' ? COL.danger : COL.borderStrong}`, background: COL.wellSoft,
+                color: a.off ? COL.muted : a.tone === 'danger' ? COL.danger : COL.text, opacity: a.off ? 0.6 : 1,
+                fontFamily: 'inherit', fontSize: short ? 12 : 13, fontWeight: 800, textAlign: short ? 'center' : 'left',
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                cursor: a.off ? 'default' : 'pointer', touchAction: 'manipulation',
+              }}>{a.label}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 
@@ -807,7 +1003,6 @@ export const GearTab = ({ R: Rin, desk }) => {
       {...(desk ? { 'data-dash-desk': '' } : null)}
       style={{
         height: '100%', minHeight: 0, width: '100%', boxSizing: 'border-box', padding: rp,
-        ...(wide && !short ? { maxWidth: GEAR_MAX_W, marginLeft: 'auto', marginRight: 'auto' } : null),
         display: 'flex', flexDirection: 'column', gap: rg,
       }}>
       {box.w === 0 ? null : (
@@ -821,11 +1016,6 @@ export const GearTab = ({ R: Rin, desk }) => {
               <div style={{ flex: 'none', display: 'flex', gap: rg, justifyContent: 'center' }}>{inventory}{equipment}</div>
               {broPane}
             </>
-          )}
-          {desk && (
-            <div data-dash-desk-combat="" style={{ flex: 'none', marginTop: 'auto' }}>
-              <WeaponBar R={Rin} row />
-            </div>
           )}
         </>
       )}

@@ -49,6 +49,10 @@
 const CATS = ['sword', 'bow', 'staff'];
 
 const COUNT_MS = 420;      /* the count-up itself — "quick", per the ask */
+/* v2.3.4191: QA only -- `window.__btXpFlySlow` (XpFlyOverlay's factor)
+   stretches the count-up and the hold with the flight, so a slow box samples
+   them (mp-xpfly); 1 in play */
+const qaSlow = () => { const q = typeof window !== 'undefined' ? Number(window.__btXpFlySlow) : 0; return q > 1 ? q : 1; };
 
 /* Per-skill display state: { shown, from, to, t0, holding } */
 const _state = Object.create(null);
@@ -116,13 +120,13 @@ export function displayXp(cat, live) {
   if (st.holding > 0) {
     /* ...unless the hold has gone stale, in which case its label is never
        coming and the number is released rather than stranded. */
-    if (Date.now() - (st.heldAt || 0) < HOLD_MAX_MS) return st.shown;
+    if (Date.now() - (st.heldAt || 0) < HOLD_MAX_MS * qaSlow()) return st.shown;
     st.holding = 0;
     st.from = st.shown;
     st.t0 = Date.now();
   }
   if (!st.t0) { st.shown = v; return v; }        /* nothing in flight: track live */
-  const k = (Date.now() - st.t0) / COUNT_MS;
+  const k = (Date.now() - st.t0) / (COUNT_MS * qaSlow());
   if (k >= 1) { st.t0 = 0; st.shown = v; return v; }
   /* ease-out: fast off the mark, settling onto the final number */
   const e = 1 - (1 - k) * (1 - k);
@@ -134,6 +138,14 @@ export function displayXp(cat, live) {
  *  re-rendering while the number moves. */
 export function xpCounting() {
   for (const c of CATS) { const st = _state[c]; if (st && (st.t0 || st.holding)) return true; }
+  return false;
+}
+
+/** v2.3.4191: True only while a number is EASING (a label has landed and
+ *  the count runs) -- the Bro card redraws for this, not for a hold, when
+ *  nothing it shows can change. */
+export function xpEasing() {
+  for (const c of CATS) { const st = _state[c]; if (st && (st.t0 || (st.holding && Date.now() - (st.heldAt || 0) >= HOLD_MAX_MS * qaSlow()))) return true; }
   return false;
 }
 

@@ -7,6 +7,7 @@ import { profileFromSelf, compactCount } from '../../panels/playerProfile.js';
 import { portraitSrc } from './portraitStore.js';
 import { BRO_WEAPONS, broStartWeapon, broWeaponStats } from './broStats.js';
 import { SkillTile, SKILL_XP_HOLD_MS } from '../dash/SkillTiles.jsx';   /* v2.3.4172: the combat skills, moved here from Gear */
+import { registerXpCard, displayXp, xpEasing } from '../../xpLanding.js';   /* v2.3.4191 (Lane A): the XP flight lands on these tiles */
 import { combatSkillState, WEAPON_SKILLS } from '../dash/combatSkill.js';
 import { SKILL_ROSTER, hasUnseenLevelUps } from './skillsModel.js';
 import { prog3Live, prog3CharLevel } from '../../../data/prog3.js';
@@ -157,6 +158,27 @@ export const BroCard = ({ points, onPoints }) => {
     xpTimer.current = setTimeout(() => { xpTimer.current = 0; setXpCat(null); }, SKILL_XP_HOLD_MS);
   };
   useEffect(() => () => { if (xpTimer.current) clearTimeout(xpTimer.current); }, []);
+  /* ═══ v2.3.4191 (Lane A's hook-up): THE XP LANDS HERE ═══
+     The tiles left the Gear tab for this page, and with them the XP flight's
+     landing (xpLanding): while this card is on screen each tile publishes its
+     place (registerXpCard, every 100 ms -- a place older than 700 ms is not
+     a target) and its number is the HELD one (displayXp, data-xpprog), which
+     counts up when the label lands; the card redraws only while that count
+     runs (xpEasing: not for a hold, when nothing it shows changes).  Off this page the flight goes to the top bar's XP number
+     (XpFlyOverlay). */
+  const [, xpTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const root = box.current;
+      if (!root) return;
+      root.querySelectorAll('[data-bro-skill][data-xpbar]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0) registerXpCard(el.getAttribute('data-xpbar'), r);
+      });
+      if (xpEasing()) xpTick((v) => (v + 1) % 1000000);
+    }, 100);
+    return () => clearInterval(id);
+  }, []);
 
   /* the shape from the box (ResizeObserver: the band, the side column and the
      one band all resize it without a window resize) */
@@ -283,6 +305,10 @@ export const BroCard = ({ points, onPoints }) => {
             <SkillTile key={sk.key} s={sk} k={k} lvAbove selected={on} iconPx={cols === 1 ? 40 : 46} xp={xp}
               attrs={{
                 className: 'bt-bro2-skill', 'data-bro-skill': cat, 'data-lvl': k.lvl,
+                /* v2.3.4191: the XP flight's landing and its held number */
+                'data-xpbar': k.p3cat || undefined,
+                'data-xpprog': k.p3cat && k.xp ? Math.round(displayXp(k.p3cat, k.xp.prog)) : undefined,
+                'data-xpthresh': k.p3cat && k.xp ? Math.round(k.xp.thresh) : undefined,
                 'data-bro-xpopen': open ? '' : undefined,
                 'data-bro-xpnum': open && k.xp ? `${Math.round(k.xp.prog)}/${Math.round(k.xp.thresh)}` : undefined,
                 'aria-label': `${sk.label} level ${k.lvl}`

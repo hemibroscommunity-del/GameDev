@@ -117,8 +117,9 @@ Decided (owner-approved), and built:
    is the shape the Bro card's three panels were laid out on (three columns
    from 600 px: ~270 px each, the Melee / Bow / Magic tiles ~80 px), and it
    sits inside a 1280 x 720 laptop's 1056 px world with room either side.
-   The Gear tab keeps its own 560 px cap (GearTab `GEAR_MAX_W`), centred
-   inside the block, until Lane A drops it for this. A phone's row is as it
+   The Gear tab kept its own 560 px cap (GearTab `GEAR_MAX_W`), centred
+   inside the block, until Lane A dropped it for this (v2.3.4191: it fills
+   the block now). A phone's row is as it
    was (the buttons under the ceiling; a phone on its side is outside the
    rule).
 5. **Upright phones unchanged.** The Test panel's "Side column (old layout)"

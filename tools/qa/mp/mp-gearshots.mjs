@@ -2,20 +2,23 @@
  *
  * The owner's second mockup (2026-11-03): the bag (three by three, the coins
  * beside "All Items") | ONE card | "Equipped".  This scenario plays the real
- * tab in the Wheel's BroTown and saves the eight pictures
- * docs/UI-DESIGN-NOTES.md shows:
+ * tab in the Wheel's BroTown and saves the nine pictures
+ * docs/UI-DESIGN-NOTES.md shows (v2.3.4191, A4: the bro preview at rest, the
+ * new item card; the skill tiles' XP picture gone; v2.3.4191: the tab fills
+ * the band's 840 px assembly on a computer, PR #1424):
  *
- *   docs/shots/gear-tab-overview.webp  upright phone (390 x 844, touch), nothing picked
- *   docs/shots/gear-tab-xp.webp        ...a skill tile tapped (its XP bar)
- *   docs/shots/gear-tab-item.webp      ...a stack in the bag tapped (the ore)
+ *   docs/shots/gear-tab-overview.webp  upright phone (390 x 844, touch), nothing picked: the bro
+ *   docs/shots/gear-tab-item.webp      ...a material in the bag tapped (the ore)
  *   docs/shots/gear-tab-gear.webp      ...a bag weapon, compared against the one worn
+ *   docs/shots/gear-tab-armour.webp    ...a rare chest from the bag (two blue stars), compared
+ *   docs/shots/gear-tab-more.webp      a material's "⋯" open (Drop, Pin)
  *   docs/shots/gear-tab-slot.webp      ...the Sword slot tapped (the bag filtered)
- *   docs/shots/gear-tab-desk.webp      a computer playing wide (1280 x 800)
- *   docs/shots/gear-tab-oneband-desk.webp      the one band (?oneband=1), a computer, open
+ *   docs/shots/gear-tab-desk.webp      a computer (1280 x 800), the band open
+ *   docs/shots/gear-tab-oneband-desk.webp      the one band, a computer (1280 x 720), open
  *   docs/shots/gear-tab-oneband-sideways.webp  ...a sideways phone (844 x 390), opened
  *
  * The character is levelled through the worker's own XP path (the dev kit's
- * levels) so the skill tiles read a played character's levels.
+ * levels) so the overview's "Lv N" reads a played character's.
  *
  * Each phone picture is the band and a strip of world over it, cut to 256
  * colours and saved as lossless webp (the memory law's 256, and a picture in
@@ -41,6 +44,9 @@ async function seed(P, wsPort) {
   if (!hasSword) { await H.equipWeapon(P, 'greatsword', 'weapon', 'melee'); await P.page.waitForTimeout(1500); }
   await P.page.evaluate(() => { const S = window._gameState.current; S.channel.send({ type: 'set_active_slot', payload: { slot: 'melee' } }); S.rpg.activeSlot = 'melee'; S._userCycledSlot = true; });
   await H.devOp(wsPort, 'kit', id, { what: 'shield' }).catch(() => null);
+  /* v2.3.4191: rare armour into the bag (the kit's own pieces, in a grade:
+     devtools.js v2.3.3142) -- the item card's two blue stars */
+  await H.devOp(wsPort, 'kit', id, { what: 'armor', quality: 'rare' }).catch(() => null);
   for (const [invKey, count] of [['ore_iron_ore', 27], ['ore_copper_ore', 12], ['bar_iron', 5], ['wood_pine_log', 24], ['fish_minnow', 7], ['gem_fire', 1], ['manaShard', 3], ['whetstone', 2]]) {
     await H.grant(wsPort, id, 'item', { invKey, count }).catch(() => null);
   }
@@ -63,6 +69,7 @@ async function tapEl(P, sel) {
   const b = await P.page.evaluate((s) => {
     const e = document.querySelector(s);
     if (!e) return null;
+    e.scrollIntoView({ block: 'nearest' });   /* v2.3.4191: a bag piece past the nine in view (the ore, with the rare armour in) */
     const r = e.getBoundingClientRect();
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }, sel);
@@ -79,7 +86,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ══ the upright phone ══ */
   {
-    const P = await H.newPlayer(browser, { name: 'Geary', wsPort, webPort, touch: true, world: 'wheel', viewport: { width: 390, height: 844 } });
+    /* v2.3.4191: ?guidearrow=0 -- the one-time lesson arrow (the big yellow
+       one at the Bro button) spent, so the card is what the picture shows */
+    const P = await H.newPlayer(browser, { name: 'Geary', wsPort, webPort, touch: true, world: 'wheel', viewport: { width: 390, height: 844 }, query: 'guidearrow=0' });
     try {
       await H.enterWorld(P);
       await seed(P, wsPort);
@@ -104,20 +113,6 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await H.devOp(wsPort, 'kit', await H.readState(P, (S) => S.myId), { what: 'levels' }).catch(() => null);
       await P.page.waitForTimeout(2500);
       await shot('overview', 'overview', 'nothing picked');
-      /* a skill tile tapped: its XP bar (through the bus the tap calls: the
-         level-up's coach may lie over the band here; mp-geartab taps it) */
-      await P.page.evaluate(() => window.__btGearTab.bus.showXp('power'));
-      /* straight away: the bar holds 4 s, and a picture on this box can take
-         longer than that to come */
-      await P.page.waitForTimeout(250);
-      {
-        const f = `${OUT}/gear-tab-xp.png`;
-        const open = await P.page.evaluate(() => !!document.querySelector('[data-gear-xpopen]'));
-        await P.page.screenshot({ path: f, clip });
-        shots.push(f);
-        rec.ok('[390x844] the Melee tile tapped: its XP bar, pictured', open, open);
-      }
-      await P.page.evaluate(() => window.__btGearTab.bus.showXp(null));
       /* a stack in the bag: the ore */
       const ore = await P.page.evaluate(() => { const t = document.querySelector('[data-gear-bag] [data-bag-key^="i-ore_"]'); return t ? t.getAttribute('data-bag-key') : null; });
       if (ore) await tapEl(P, `[data-gear-bag] [data-bag-key="${ore}"]`);
@@ -136,6 +131,33 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
       await shot('gear', 'item', 'a bag greatsword compared');
       if (spare) await tapEl(P, `[data-gear-bag] [data-bag-key="${spare}"]`);
+      /* v2.3.4191: a rare chest from the bag, against what is worn; then its
+         "⋯" open */
+      const chest = await P.page.evaluate(() => {
+        const t = [...document.querySelectorAll('[data-gear-bag] [data-bag-key^="stashArmor-"]')].find((x) => !x.hasAttribute('data-unrevealed'));
+        return t ? t.getAttribute('data-bag-key') : null;
+      });
+      if (chest) {
+        await P.page.evaluate((k) => { const t = document.querySelector(`[data-gear-bag] [data-bag-key="${k}"]`); if (t) t.scrollIntoView({ block: 'nearest' }); }, chest);
+        await tapEl(P, `[data-gear-bag] [data-bag-key="${chest}"]`);
+      }
+      const stars = await P.page.evaluate(() => (document.querySelector('[data-gear-stars]') || { getAttribute: () => null }).getAttribute('data-gear-stars'));
+      await shot('armour', 'item', `a bag chest (${stars} stars) compared`);
+      /* v2.3.4191: a piece you can wear has no "⋯" (the owner), so the "⋯"
+         picture is a material's */
+      if (chest) await tapEl(P, `[data-gear-bag] [data-bag-key="${chest}"]`);
+      const mat = await P.page.evaluate(() => { const t = document.querySelector('[data-gear-bag] [data-bag-key^="i-"]'); return t ? t.getAttribute('data-bag-key') : null; });
+      if (mat) await tapEl(P, `[data-gear-bag] [data-bag-key="${mat}"]`);
+      await tapEl(P, '[data-gear-pane="bro"] [data-gear-act="more"]');
+      {
+        await P.page.waitForTimeout(500);
+        const open = await P.page.evaluate(() => !!document.querySelector('[data-gear-more-menu]'));
+        const f = `${OUT}/gear-tab-more.png`;
+        await P.page.screenshot({ path: f, clip });
+        shots.push(f);
+        rec.ok('[390x844] the card\'s "⋯" open, pictured', open, open);
+      }
+      await P.page.evaluate(() => window.__btGearTab.bus.afterChange());
       /* the Sword slot: the bag filtered to swords, the card the sword */
       await tapEl(P, '[data-gear-cell="sword"]');
       await shot('slot', 'item', 'the Sword slot tapped');
@@ -144,36 +166,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }
   }
 
-  /* ══ a computer playing wide ══ */
-  {
-    const P = await H.newPlayer(browser, { name: 'Deska', wsPort, webPort, world: 'wheel', wide: true, viewport: { width: 1280, height: 800 } });
-    try {
-      await H.enterWorld(P);
-      await seed(P, wsPort);
-      await P.page.evaluate(() => {
-        try { window.__broDashPanelBus.open('dashboard'); } catch (e) { /* no sheet */ }
-        const g = window.__btGearTab;
-        if (g) { g.bus.afterChange(); g.bus.clearFilter(); g.bus.setMenu(false); }
-      });
-      await P.page.waitForTimeout(1800);
-      const f = `${OUT}/gear-tab-desk.png`;
-      await P.page.screenshot({ path: f });
-      shots.push(f);
-      const layout = await P.page.evaluate(() => (document.querySelector('[data-gear-tab]') || {}).getAttribute?.('data-gear-layout'));
-      rec.ok('[computer] the Gear tab three across in the column, pictured', layout === 'wide', layout);
-    } finally {
-      await P.ctx.close().catch(() => {});
-    }
-  }
-
   /* ══ v2.3.4151: inside the one band (Lane B's PR #1410, here by its
-     ?oneband=1): a computer with the band open, and a sideways phone with
-     the band opened by a tap -- the short band, both grids one row of nine ══ */
+     ?oneband=1, the default since): a computer with the band open, and a
+     sideways phone with the band opened by a tap -- the short band, both
+     grids one row of nine ══ */
   for (const o of [
+    { name: 'desk', viewport: { width: 1280, height: 800 }, wide: true },
     { name: 'oneband-desk', viewport: { width: 1280, height: 720 }, wide: true },
     { name: 'oneband-sideways', viewport: { width: 844, height: 390 }, touch: true },
   ]) {
-    const P = await H.newPlayer(browser, { name: 'Oneg' + o.name.slice(8, 12), wsPort, webPort, world: 'wheel', viewport: o.viewport, touch: !!o.touch, wide: !!o.wide, query: 'oneband=1' });
+    const P = await H.newPlayer(browser, { name: 'Oneg' + o.name.slice(8, 12), wsPort, webPort, world: 'wheel', viewport: o.viewport, touch: !!o.touch, wide: !!o.wide, query: 'oneband=1&guidearrow=0' });
     try {
       await H.enterWorld(P);
       await seed(P, wsPort);
@@ -188,7 +190,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.screenshot({ path: f });
       shots.push(f);
       const inBand = await P.page.evaluate(() => !!document.querySelector('[data-one-band-cols] [data-gear-tab]'));
-      rec.ok(`[${o.name}] the Gear tab in the one band, pictured`, inBand, inBand);
+      /* v2.3.4191: what the picture shows, in numbers -- the tab's width, the
+         squares', the card's and the bro's (the brief asks the square size) */
+      const m = await P.page.evaluate(() => {
+        const w = (s) => { const e = document.querySelector(s); return e ? Math.round(e.getBoundingClientRect().width) : null; };
+        const f = document.querySelector('[data-gear-figure]');
+        return { tab: w('[data-gear-tab]'), box: w('[data-band-box="cols"]'), square: w('[data-gear-cell]'), bag: w('[data-gear-pane="inv"]'), card: w('[data-gear-pane="bro"]'), gear: w('[data-gear-pane="equip"]'), bro: f ? Number(f.getAttribute('data-size')) : null };
+      });
+      console.log(`[${o.name}] measured: ${JSON.stringify(m)}`);
+      rec.ok(`[${o.name}] the Gear tab in the one band, pictured (tab ${m.tab} px in a ${m.box} px block, squares ${m.square} px, card ${m.card} px)`, inBand, { inBand, m });
     } finally {
       await P.ctx.close().catch(() => {});
     }
@@ -198,8 +208,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   try {
     const out = execFileSync('python3', [`${H.REPO}/tools/qa/mp/gear_shots.py`, DOCS, ...shots], { encoding: 'utf8' });
     console.log(out.trim());
-    rec.ok('the eight pictures saved to docs/shots at 256 colours', /saved 8/.test(out), out.trim());
+    rec.ok('the nine pictures saved to docs/shots at 256 colours', /saved 9/.test(out), out.trim());
   } catch (e) {
-    rec.ok('the eight pictures saved to docs/shots at 256 colours', false, String(e).slice(0, 300));
+    rec.ok('the nine pictures saved to docs/shots at 256 colours', false, String(e).slice(0, 300));
   }
 }

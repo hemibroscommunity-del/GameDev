@@ -147,16 +147,16 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!cv && !!pages && !!col && cv.l >= pages.r - 2 && cv.r <= col.box.l + 2 && cv.w >= DESK.width - SHEET_W - KEYS_W - 4, { cv, pages: pages && pages.r, keys: col && col.box.l });
     /* the column's order, top to bottom */
     const dock = await box(P, '.bt-land-navdock');
-    const combat = await box(P, '[data-dash-desk-combat]');
     /* v2.3.4151: the Gear tab -- the five chips are one filter pill over the
-       bag (GearTab.jsx), the three weapons the weapon bar at the foot */
+       bag (GearTab.jsx).  v2.3.4191: the three weapons are the keys 1 2 3
+       (listed with the controls below); the tab's own weapon bar is retired */
     const filters = await box(P, '[data-dash-desk] [data-gear-filter]');
     const bag = await box(P, '[data-dash-desk] [data-gear-bag]');
-    rec.ok('down the pages: the dashboard\'s buttons the top row, then the Gear tab (the bag\'s filter pill, then the bag), and the three weapons at the foot',
-      !!dock && !!combat && !!filters && !!bag && dock.t <= 8 && dock.l <= 8
-        && filters.t >= dock.b - 1 && filters.t - dock.b <= 40 && bag.t >= filters.b - 1 && combat.t >= bag.b - 1
-        && combat.b <= DESK.height && DESK.height - combat.b <= 16,
-      { dock, combat, filters, bag });
+    const wbar = await box(P, '[data-dash-desk] [data-weapon-bar]');
+    rec.ok('down the pages: the dashboard\'s buttons the top row, then the Gear tab (the bag\'s filter pill, then the bag); no weapon bar in the tab (the keys 1 2 3 are the weapons)',
+      !!dock && !!filters && !!bag && !wbar && dock.t <= 8 && dock.l <= 8
+        && filters.t >= dock.b - 1 && filters.t - dock.b <= 40 && bag.t >= filters.b - 1 && bag.b <= DESK.height,
+      { dock, filters, bag, wbar });
     /* the buttons' pictures, and the chip's word */
     const nav = await P.page.evaluate(() => {
       const imgs = [...document.querySelectorAll('.bt-land-navdock .bt-navrail img')].map((n) => n.getBoundingClientRect());

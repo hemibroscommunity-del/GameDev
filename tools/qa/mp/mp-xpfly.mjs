@@ -1,5 +1,11 @@
 /* THE XP LEAVES THE CHARACTER AND LANDS ON ITS SKILL (v2.3.1874).
  *
+ * v2.3.4191: the skill tiles left the Gear tab for the Bro page, so the
+ * flight is tested in its two homes: with the Bro tab open it lands on that
+ * skill's Bro tile (1-4 below, unchanged), and with it closed (the band at
+ * rest on the Gear tab) it lands in the top bar's XP number (5) -- never
+ * floating and fading in place.
+ *
  * Owner: "When you kill a monster or complete a quest show the combat skill
  * xp over the character then have the xp jump down into whatever combat skill
  * earned the xp and increase the number in a quick count up."
@@ -62,6 +68,11 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   await H.enterWorld(P);
   await P.page.waitForTimeout(3500);
+  /* v2.3.4191: every flight and its count-up stretched x5 (XpFlyOverlay
+     flySlow, xpLanding qaSlow): this box draws a few frames a second, and
+     sampling a 0.9 s flight at 35 ms caught three frames of it -- the same
+     two checks failed on main (TRAPS §200: time by the page's own clock) */
+  await P.page.evaluate(() => { window.__btXpFlySlow = 5; });
   /* v2.3.3399: the dashboard opened.  A first join arrives with it folded
      (v2.3.2495), and a folded band draws no columns, so the three combat
      cards the XP flies to were not on screen at all (the sweep of
@@ -69,6 +80,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
   await H.unfoldBand(P);
   await P.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) {} });
   await P.page.waitForTimeout(600);
+  /* v2.3.4191: the Bro tab, where the three combat skills' tiles are */
+  await P.page.evaluate(() => { try { window.__btHeroSection.request('Card'); } catch (e) {} window.__broDashPanelBus.open('hero'); });
+  await P.page.waitForTimeout(1200);
 
   const base = await probe(P);
   rec.ok('the three combat cards are on screen (guard)', base.cards.length === 3, base.cards);
@@ -151,7 +165,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const t0 = Date.now();
     window.__btPushXp(S, { target: 'xpBar', text: '+37 XP', color: '#60a5fa', cat: 'sword' });
     const samples = [];
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 300 && Date.now() - t0 < 5600; i++) {
       const d = document.querySelector('[data-xpfly="sword"]');
       if (d) {
         const r = d.getBoundingClientRect();
@@ -188,7 +202,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   /* ── 3b. THE RIGHT card: a bow gain must not fly to melee ──
      The discriminating case: without it, every assertion above is satisfied
      by a flight that always goes to the same place. */
-  await P.page.waitForTimeout(1100);
+  await P.page.waitForTimeout(2500);
   const bowFlight = await P.page.evaluate(async () => {
     const S = window._gameState.current;
     const cardOf = (re) => {
@@ -200,7 +214,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     };
     window.__btPushXp(S, { target: 'xpBar', text: '+41 XP', color: '#60a5fa', cat: 'bow' });
     let last = null;
-    for (let i = 0; i < 40; i++) {
+    const tb = Date.now();
+    for (let i = 0; i < 300 && Date.now() - tb < 5600; i++) {
       const d = document.querySelector('[data-xpfly="bow"]');
       if (d) { const r = d.getBoundingClientRect(); last = { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
       await new Promise((r2) => setTimeout(r2, 35));
@@ -219,7 +234,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
      Drive the live number up by a large amount so the ease has something to
      travel, then sample: the displayed value must pass through a value
      between the old and the new rather than jumping. */
-  await P.page.waitForTimeout(900);
+  await P.page.waitForTimeout(2500);
+  /* v2.3.4191: the count-up stretched further (x12: a 5 s ease) -- on the
+     Bro page this box reads the tile about once a second */
+  await P.page.evaluate(() => { window.__btXpFlySlow = 12; });
   const seq = await P.page.evaluate(async () => {
     const S = window._gameState.current;
     const sk = S.rpg.prog3 && S.rpg.prog3.sk && S.rpg.prog3.sk.staff;
@@ -253,8 +271,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
     sk.xp = Math.floor(sk.xp || 0) + bump;
     const read = read0;
     const samples = [];
-    for (let i = 0; i < 26; i++) {
-      samples.push({ t: i * 60, v: read() });
+    const tc = Date.now();
+    for (let i = 0; i < 600 && Date.now() - tc < 22000; i++) {
+      samples.push({ t: Date.now() - tc, v: read() });
       await new Promise((r) => setTimeout(r, 60));
     }
     /* The live number as it stands at the END — the value the display must
@@ -265,7 +284,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     })();
     return { before, liveEnd, samples };
   });
-  console.log('  count-up', JSON.stringify(seq).slice(0, 600));
+  await P.page.evaluate(() => { window.__btXpFlySlow = 5; });
+  console.log('  count-up', JSON.stringify(seq).slice(0, 900));
   if (!seq.skipped) {
     const vals = seq.samples.map((s) => s.v).filter((v) => v != null);
     rec.ok('the Magic card reported a number throughout (guard)', vals.length > 10, { n: vals.length });
@@ -278,6 +298,54 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and it settles on the live value', vals[vals.length - 1] === seq.liveEnd,
       { last: vals[vals.length - 1], live: seq.liveEnd });
   }
+
+  /* ── 5. v2.3.4191: OFF THE BRO TAB IT LANDS IN THE TOP BAR'S XP NUMBER ──
+     The band back at rest (the Gear tab: no skill tiles), the top bar's XP
+     bar up (in play a gain's own player_state puts it up -- noteProg3Xp;
+     here its record is set as that would, and __btXpHold keeps it up for the
+     reading), then a gain: the label must end on the bar's number, not fade
+     where it was born. */
+  await P.page.evaluate(() => { try { window.__broDashPanelBus.toBar(); } catch (e) {} });
+  await P.page.waitForTimeout(900);
+  const toBar = await P.page.evaluate(async () => {
+    const S = window._gameState.current;
+    const tiles = document.querySelectorAll('[data-bro-skill]').length;
+    const now = Date.now();
+    S._xpBar = { cat: 'sword', level: 1, xp: 10, need: 100, frac: 0.1, gain: 0, gainAt: now - 60000, seq: 1, at: now, up: false, fromLevel: 1, fromFrac: 0.1, fromXp: 10, fromNeed: 100 };
+    window.__btXpHold = true;
+    let num = null;
+    for (let i = 0; i < 40 && !num; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+      const e = document.querySelector('[data-xp-bar][data-xp-shown="1"] [data-xp-num]');
+      if (e) { const r = e.getBoundingClientRect(); if (r.width > 0) num = { cx: r.left + r.width / 2, cy: r.top + r.height / 2 }; }
+    }
+    if (!num) return { tiles, num: null };
+    const t0 = Date.now();
+    window.__btPushXp(S, { target: 'xpBar', text: '+29 XP', color: '#60a5fa', cat: 'sword' });
+    const samples = [];
+    for (let i = 0; i < 300 && Date.now() - t0 < 5600; i++) {
+      const d = document.querySelector('[data-xpfly="sword"]');
+      if (d) { const r = d.getBoundingClientRect(); samples.push({ age: Date.now() - t0, x: r.left + r.width / 2, y: r.top + r.height / 2, o: +getComputedStyle(d).opacity, to: d.getAttribute('data-xpfly-to') }); }
+      await new Promise((r2) => setTimeout(r2, 35));
+    }
+    window.__btXpHold = false;
+    return { tiles, num, samples };
+  });
+  rec.ok('the band at rest has no skill tiles (guard: the Gear tab)', toBar.tiles === 0, toBar.tiles);
+  rec.ok('the top bar\'s XP number is up (guard)', !!toBar.num, toBar.num);
+  if (toBar.num && toBar.samples && toBar.samples.length > 3) {
+    const f0 = toBar.samples[0];
+    const d0 = Math.hypot(f0.x - toBar.num.cx, f0.y - toBar.num.cy);
+    const near = toBar.samples.reduce((m, s2) => Math.min(m, Math.hypot(s2.x - toBar.num.cx, s2.y - toBar.num.cy)), Infinity);
+    /* visible in transit: on its way, well past halfway, and still clearly
+       drawn (it dissolves into the number as it lands, as into a tile) */
+    const seenNear = toBar.samples.find((s2) => Math.hypot(s2.x - toBar.num.cx, s2.y - toBar.num.cy) < d0 * 0.6 && s2.o > 0.2);
+    const aim = toBar.samples.map((s2) => s2.to).find(Boolean);
+    const [ax, ay] = aim ? aim.split(',').map(Number) : [NaN, NaN];
+    rec.ok('off the Bro tab a gain flies INTO the top bar\'s XP number (aimed at it -- data-xpfly-to -- and seen well on its way there, past halfway and still drawn; this box samples it about twice a second) -- never fades in place',
+      Math.abs(ax - toBar.num.cx) <= 4 && Math.abs(ay - toBar.num.cy) <= 4 && near < d0 * 0.5 && !!seenNear && seenNear.o > 0.2,
+      { aim, startDist: +d0.toFixed(1), nearest: +near.toFixed(1), seenNear, n: toBar.samples.length });
+  } else rec.ok('the flight to the top bar was sampled (guard)', false, toBar);
 
   const threw = P.logs.filter((l) => /pageerror|Uncaught/.test(l));
   rec.ok('nothing threw', threw.length === 0, threw.slice(0, 4));
