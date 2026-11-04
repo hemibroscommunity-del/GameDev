@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7a7583db88002bfec0b4edfaf817b508cae4e65f",
+  "tree": "c7780dad0440512908ccd21af9f9303c77418aaa",
+  "committedAt": "2026-11-04T13:51:55-08:00",
+  "subject": "Merge pull request #1436 from hemibroscommunity-del/claude/bag-limits-140",
+  "files": 7647,
+  "bytes": 888092953,
+  "listingSha256": "d6f2171da0dc4addd0dd0c26f8f15672b3ab40c2bc46f39af78a49f1ea2cd21f",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
