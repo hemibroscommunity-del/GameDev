@@ -65,7 +65,7 @@ const WHITE = '#FFFFFF';
   check('1: everything a kill can drop, every kill\'s first and the rarest last',
     ids(all).join() === 'gold,remnant,shard,raregem,irontorso,irongreatsword,nugget', ids(all));
   check('1: ...each by its name: the shard by its key, the rest by the codex',
-    texts(all).join(' | ') === 'Coins x12 | Snowman Remains x1 | Frost Shard x1 | Rare Gem x1 | Iron Torso x1 | Iron Great Sword x1 | Gold Nugget x1', texts(all));
+    texts(all).join(' | ') === 'Coins x12 | Snowman Remains x1 | Ice Shard x1 | Rare Gem x1 | Iron Torso x1 | Iron Great Sword x1 | Gold Nugget x1', texts(all));
   check('1: ...and each its own picture: the shard its land\'s, the gem, the torso, the greatsword, the nugget',
     all.every((l) => typeof l.icon === 'string' && l.icon.startsWith('/icons/'))
       && /shard_frost\.webp/.test(row(all, 'shard').icon) && /cur-gem\.webp/.test(row(all, 'raregem').icon)

@@ -154,7 +154,7 @@ const tierLabel = (wpn) => weaponTierLabel(wpn);
    render and fetches the real chest-plate torso art (owner: "it's an emoji
    vest").  Lives in THREE files — keep them in lockstep or one surface serves
    stale thumbnails while its neighbour serves fresh ones. */
-const ITEMS_V = '?v=2.3.1774'; /* v2.3.1774: pine shield icon */
+const ITEMS_V = '?v=2.3.4222'; /* v2.3.1774: pine shield icon */
 function weaponThumb(wpn) {
   if (!wpn || !wpn.type) return null;
   if (wpn.type === 'bow')        return `/icons/items/bow.webp${ITEMS_V}`;
@@ -1697,7 +1697,7 @@ export const ItemDetailPopup = () => {
           }}>
             {thumb
               ? <img src={thumb} alt={name} draggable={false} className="bt-bag-art bt-card-art" data-life={cardLife || undefined}
-                  style={{ width: '85%', height: '85%', objectFit: 'contain', imageRendering: 'auto',
+                  style={{ width: '94%', height: '94%', objectFit: 'contain', imageRendering: 'auto', /* v2.3.4222: the new item art fills the slot */
                     /* v2.3.4012: a "?" is its silhouette, as in the reveal (RevealOverlay) */
                     ...(resolved.unrevealed ? { filter: 'brightness(0) opacity(.55)' } : null) }} />
               : <span className="bt-bag-art bt-card-art" data-life={cardLife || undefined} style={{ display: 'inline-block' }}>{glyph}</span>}

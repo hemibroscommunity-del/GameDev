@@ -36,7 +36,7 @@ import { OWNER_ICON } from '../data/ownerIcons.js';   /* v2.3.3481: the trade re
    v2.3.3281: the owner's box trap (tools/ui/cut-bag-icons.py), no longer the
    Trapping skill's icon -- the same picture in the bag, on the Woodworker's
    Traps tab and on the TRAP pop-up (docs/ART-WISHLIST.md "Box trap") */
-export const TRAP_ICON_URL = '/icons/items/trap-box.webp?v=2.3.3281';
+export const TRAP_ICON_URL = '/icons/items/trap-box.webp?v=2.3.4222';
 
 const _held = [];
 

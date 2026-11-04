@@ -33,6 +33,7 @@ import { GEAR_SELL_REASON, gearSellReasonText, gearSellCheck, gearSellGid } from
 import { GEAR_REFUSAL } from '../src/storegear.js';   /* v2.3.2551: ...and the table it mirrors */
 import { STORE } from '../src/store.js';   /* v2.3.2619: the sweep arithmetic reads the real constants */
 import { QUEST_REWARDS, MONSTER_ARMOR_DROPS } from '../src/data.js';   /* v2.3.2554: the REAL copper/iron entries, so S12o cannot drift from the catalog */
+import { gearStashCap } from '../src/gearstash.js';   /* v2.3.4224 */
 
 function makeState() {
   const store = new Map();
@@ -377,6 +378,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
   check('...and leaves no phantom order in the book', !room._mktOrderCounts.get(VICTIM),
     room._mktOrderCounts.get(VICTIM));
 
+  room.WEAPON_STASH_CAP = 8;   /* v2.3.4224: a FULL bag, which is 140 now */
   // Rule 3: an unwind into a FULL stash mails the weapon, never truncates it.
   vP.weaponStash = [wpn('u1'), wpn('u2'), wpn('u3'), wpn('u4'), wpn('u5'), wpn('u6'), wpn('u7'), wpn('u8'), wpn('Overflow Rescue')];
   failNextPut((k) => k.startsWith('mkt_order:'));
@@ -1651,7 +1653,7 @@ check('rebuild converges a refund-stamped leftover to a delete', !state._store.h
       SEL.legsStash = [];
       const postGid = mintInto(GSEL, 'legsArmor', 'legsStash', plate('Posted Greaves'));
       const taken = shop._gearProvTake(GSEL, 'legsArmor', postGid);
-      SEL.legsStash = new Array(32).fill(null).map((_, i) => plate('Filler ' + i));   // GEAR_STASH_CAP
+      SEL.legsStash = new Array(gearStashCap()).fill(null).map((_, i) => plate('Filler ' + i));   // GEAR_STASH_CAP
       await shop._creditPlayer(GSEL, {
         opId: 'test:post:1', source: 'market', kind: 'gear',
         payload: { field: 'legsStash', piece: taken.piece, row: taken.row }, note: 'in the post',

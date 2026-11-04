@@ -46,7 +46,7 @@ export const ACHV_MEDAL_SRC = achvBadgeSrc('achievements');
 
 /* v2.3.4036: the five fish of the ladder and their bag pictures (the bag's
    ITEMS_V, ui/mobile/dash/InventoryPanel.jsx), for the rare-fish rows */
-const FISH_PIC_V = '?v=2.3.1774';
+const FISH_PIC_V = '?v=2.3.4222';
 const FISH_ROWS = [
   ['minnow', 'Minnow', '/icons/items/fish-minnow.webp' + FISH_PIC_V],
   ['clownfish', 'Clownfish', '/icons/items/fish-clownfish.webp' + FISH_PIC_V],

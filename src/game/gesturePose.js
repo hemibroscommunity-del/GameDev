@@ -307,7 +307,7 @@ export const GESTURE_TOOL_URLS = {
  * window of it the button shows (the whole icon, or the pan's opaque box in
  * cell 0, measured: x 26..254, y 104..215).
  * Preloaded on the loading screen (gestureCuePreload.js) -- the LAW. */
-const ITEMS_V = '?v=2.3.1774';
+const ITEMS_V = '?v=2.3.4222';
 export const GESTURE_CUE_SPRITES = {
   mining:      { url: '/icons/items/mining-pickaxe.webp' + ITEMS_V, w: 192, h: 192, vb: '0 0 192 192' },
   woodcutting: { url: '/icons/items/woodcutting-axe.webp' + ITEMS_V, w: 192, h: 192, vb: '0 0 192 192' },
