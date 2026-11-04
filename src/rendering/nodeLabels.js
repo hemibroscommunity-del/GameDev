@@ -71,8 +71,8 @@ const SRC = {
   /* v2.3.3571: the owner's painted pickaxe (tools/ui/cut-owner-items.py, which
      records this box in tools/ui/owner-items.json; owner-icons §8 holds them
      together) */
-  oreVein:  { url: '/icons/items/mining-pickaxe.webp',  box: [1, 0, 127, 128] /* v2.3.4222: the new 128 px art's own box */ },
-  fishSpot: { url: '/icons/items/fishing-pole.webp',    box: [5, 0, 123, 128] /* v2.3.4222: the new 128 px art's own box */ },
+  oreVein:  { url: '/icons/items/mining-pickaxe.webp',  box: [1, 0, 126, 128] /* v2.3.4222: the new 128 px art's own box */ },
+  fishSpot: { url: '/icons/items/fishing-pole.webp',    box: [5, 0, 122, 128] /* v2.3.4222: the new 128 px art's own box */ },
 };
 const SIZE = 64;
 export const NODE_LABEL_ICONS = Object.create(null);

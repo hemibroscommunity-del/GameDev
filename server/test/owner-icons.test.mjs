@@ -233,10 +233,10 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   const sha = (u) => createHash('sha256').update(readFileSync(pub(u))).digest('hex');
   /* v2.3.4222: the owner's new item sheets (assets/icons-source/owner-2026-11-04/) replaced these four's art; the pins follow */
   const LEGS = {
-    '/icons/items/greaves.webp': '2091ec2b2d46098c7f207d66c3dd2a96a34f2ccd52c5cafb1992b1ea947a81bc',
-    '/icons/items/greaves-copper.webp': '79e3256fb14837e6535456aabb735c87dd38d698dbddd1dbb9e01f5e17869b03',
-    '/icons/items/greaves-iron.webp': 'ab6db997263f70aba0ee21d6fe3d22d258a44475e6054e58465150c706e90c95',
-    '/icons/items/greaves-blacksteel.webp': '7272b71acf6e3abb1308d80afb0649244137ba11a8078707ab49c0e818862d54',
+    '/icons/items/greaves.webp': '9117542aa4bacc27dc0f231f7b3099d0e75f9eb842fec0b8e659464f4e79a4e6',
+    '/icons/items/greaves-copper.webp': 'a0262d143ad776bdff23ae645f5911d297cc1e2010800c956afd52791c58f7ab',
+    '/icons/items/greaves-iron.webp': '991b22b64347899ee914eb78316fa5f7e2c4901d70828c0cf32c7611b7fc7cd8',
+    '/icons/items/greaves-blacksteel.webp': 'a396d7c11f8c0107c8c788ad789225a27485f67c15db2cd1775e46cb1a62fa43',
   };
   const legsOff = Object.keys(LEGS).filter((u) => !existsSync(pub(u)) || sha(u) !== LEGS[u]);
   check('6a2 the legs are the former four pictures again (v2.3.3608), byte for byte', legsOff.length === 0, legsOff);
@@ -378,7 +378,7 @@ const LANDS = ['frost', 'ember', 'sky', 'hollows', 'thunder', 'tidal', 'mist', '
   /* "revert the inventory art of the bow back to the original one (pine) ...
      I only wanted it to replace the menu art for the bow" */
   /* the pine bow as it was before v2.3.3526 (git show 923bd63f1^:public/icons/items/bow.webp) */
-  const PINE_BOW_SHA = '6666b924702369dac37d651847e816a0fc46077fc0685d8c31627c8b71f9e3d0' /* v2.3.4222: the new bow art */;
+  const PINE_BOW_SHA = '4153f04631f60231fa07306819d3a613bd1d747f7d9045e0c5b8ad41cf727b0d' /* v2.3.4222: the new bow art */;
   const bowSha = sha('public/icons/items/bow.webp');
   check('8f the bag\'s bow is the pine bow again (the file v2.3.3526 wrote over, back byte for byte), and the owner\'s card 11 bow is the menu\'s own file',
     bowSha === PINE_BOW_SHA && sha('public/icons/ui/equip-bow.webp') === '91ff0bd0d1746b4075e58e9d59421ef47f0153892792bd5480cf8defa057d877'
