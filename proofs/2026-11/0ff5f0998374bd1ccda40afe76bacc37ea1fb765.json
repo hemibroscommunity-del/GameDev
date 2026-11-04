@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0ff5f0998374bd1ccda40afe76bacc37ea1fb765",
+  "tree": "f6c7e62382f0b7abb7ca2c308b659eaa2e0d842b",
+  "committedAt": "2026-11-04T14:15:16-08:00",
+  "subject": "Merge pull request #1437 from hemibroscommunity-del/claude/nav-buttons-fill",
+  "files": 7651,
+  "bytes": 888152043,
+  "listingSha256": "a3256f69e2659d6f4306f2db52bb601038275a7ff7a9fa8d5891c45e4a5739f3",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
