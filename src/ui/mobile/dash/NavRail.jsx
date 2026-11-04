@@ -53,7 +53,7 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
    The key cap stays on a computer. */
 export const NAV_WORDS_BESIDE = 86;
 export const NAV_WORDS_STACK = 46;
-/* v2.3.4223: each picture's opaque box [x0, y0, x1, y1] in its 256 px file
+/* v2.3.4243: each picture's opaque box [x0, y0, x1, y1] in its 256 px file
    (alpha > 24), so the button can show the art alone, edge to edge */
 const NAV_TRIM = {
   'nav-dashboard.png': [28, 2, 234, 255], 'panel-self.webp': [37, 35, 219, 220],
@@ -302,7 +302,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
             {/* The Hero button is the player's own bust when it has
                 rendered — the v2.3.1294 rule, kept: nothing says "my
                 character" better than the character. */}
-            {/* v2.3.4223 (owner: "for all of the dashboard buttons I want those
+            {/* v2.3.4243 (owner: "for all of the dashboard buttons I want those
                 button images to be blown up to fill the full button space.
                 You can put the name labels on top of the picture similar to
                 the badge you have for counting quantities"): the picture is
@@ -317,7 +317,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
             }}>
               {d.id === 'hero' && profilePortrait ? (
                 <img src={profilePortrait} alt="" draggable={false}
-                  style={{ position: 'absolute', left: '50%', top: 0, height: '100%', aspectRatio: '1', transform: 'translateX(-50%)', maxWidth: 'none', objectFit: 'cover', imageRendering: 'pixelated' }} />
+                  style={{ position: 'absolute', left: '50%', top: 0, height: '100%', aspectRatio: '1', transform: 'translateX(-50%)', maxWidth: 'none', objectFit: 'contain', imageRendering: 'pixelated' }} />
               ) : (() => {
                 const k = navTrim(d.icon);
                 const bw = Math.max(8, (fill ? (realW || size.w) : size.w) - 6);

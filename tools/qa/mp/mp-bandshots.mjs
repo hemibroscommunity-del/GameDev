@@ -318,7 +318,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await deskEdges(D, 'desk', rec);
     for (const t of ['gear', 'hero', 'quests', 'more']) await assembly(D, 'desk', t, rec);
     const d = await both(D, 'desk', rec);
-    rec.ok(`desk: the one band (the default) and three panels side by side in its centred box`, d.oneBand && d.cols === 3, { oneBand: d.oneBand, cols: d.cols });
+    rec.ok(`desk: the one band (the default) and its panels side by side in its centred box (v2.3.4243: 480 px, a big phone's width, so Bro keeps two columns)`, d.oneBand && d.cols >= 2, { oneBand: d.oneBand, cols: d.cols });
     /* v2.3.4182: a 1440 x 900 window (the world fits: no bars) */
     await D.page.setViewportSize({ width: 1440, height: 900 });
     await D.page.waitForTimeout(2000);
