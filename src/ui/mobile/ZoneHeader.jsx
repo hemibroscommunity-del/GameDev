@@ -196,10 +196,11 @@ export const ZoneHeader = ({ onExit }) => {
           type="button"
           className="bt-chisel bt-chisel--chip bt-zone-header__logout"
           aria-label="Log out"
+          style={{ touchAction: 'manipulation' }}  /* v2.3.4221: a pill of words, as the dashboard's CLOSE */
           title="Log out"   /* v2.3.4123: always (the owner: "logout ... not switch character") */
           onClick={() => setConfirming(true)}
         >
-          <img src={`/icons/ui/logout-door-icon.svg${V}`} alt="" draggable={false} />
+          LOGOUT
         </button>
         {/* v2.3.3553-v2.3.4183: your AP and the owner's medal stood here; they
             are on the Bro card now, and a rise is a "+5 AP" word under the
