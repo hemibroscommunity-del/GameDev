@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "caa03d04b5ee82b826193ce4639eb800678b1380",
+  "tree": "84e8ff36cda40389de977d0c6d8e33075426a63b",
+  "committedAt": "2026-11-03T19:31:14-08:00",
+  "subject": "Merge pull request #1429 from hemibroscommunity-del/claude/slime-eruption-back",
+  "files": 7605,
+  "bytes": 866338988,
+  "listingSha256": "10cc392160d99ef5bd56e3e18ed9896e112615915f5d3ed1449c0db2c6998149",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
