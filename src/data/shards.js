@@ -17,15 +17,18 @@
    just saw on the loot pile.  Thunder reads gold (not the violet
    storm-zone palette) and sky reads seafoam (not the pale-blue wind
    palette) because the source PNGs were rendered that way. */
+/* v2.3.4222: the owner: shards are ELEMENT shards, named by element (Ice, Floral, Lightning, Water, Poison, Rock, Lava, Wind), not by land.
+   Only the words players read changed; the stored keys shard_<zone> are as they were.  Meadow AND verdant both read Floral and wear the
+   one green leaf; popup colours follow the new art. */
 export const ZONE_SHARDS = {
-  meadow:  { key: 'shard_meadow',  color: '#7ddc55', label: 'Verdant Shard'  },
-  ember:   { key: 'shard_ember',   color: '#ff7733', label: 'Ember Shard'    },
-  mist:    { key: 'shard_mist',    color: '#56d456', label: 'Mist Shard'     },
-  frost:   { key: 'shard_frost',   color: '#7ec8ff', label: 'Frost Shard'    },
-  thunder: { key: 'shard_thunder', color: '#f5c542', label: 'Thunder Shard'  },
-  hollows: { key: 'shard_hollows', color: '#b8946a', label: 'Stone Shard'    },
-  sky:     { key: 'shard_sky',     color: '#9be0c9', label: 'Wind Shard'     },
-  tidal:   { key: 'shard_tidal',   color: '#3a8acc', label: 'Tidal Shard'    },
+  meadow:  { key: 'shard_meadow',  color: '#7ddc55', label: 'Floral Shard'  },
+  ember:   { key: 'shard_ember',   color: '#ff7733', label: 'Lava Shard'    },
+  mist:    { key: 'shard_mist',    color: '#b46ad8', label: 'Poison Shard'     },
+  frost:   { key: 'shard_frost',   color: '#7ec8ff', label: 'Ice Shard'    },
+  thunder: { key: 'shard_thunder', color: '#f5c542', label: 'Lightning Shard'  },
+  hollows: { key: 'shard_hollows', color: '#b8946a', label: 'Rock Shard'    },
+  sky:     { key: 'shard_sky',     color: '#6fd6ea', label: 'Wind Shard'     },
+  tidal:   { key: 'shard_tidal',   color: '#3a8acc', label: 'Water Shard'    },
   /* v2.3.1571 (owner: "add it to the slime drop"): Verdant Wilds had NO
      entry here, but the server has always rolled 'shard_' + zoneId on a
      kill — so verdant slimes were already dropping a shard the client
@@ -33,7 +36,7 @@ export const ZONE_SHARDS = {
      Flora's shard.  NOTE the meadow shard is confusingly already labelled
      "Verdant Shard"; renaming it would change an item players already
      hold, so Flora's takes the Flora name and meadow's is left alone. */
-  verdant: { key: 'shard_verdant', color: '#2ECC71', label: 'Flora Shard'   },
+  verdant: { key: 'shard_verdant', color: '#7ddc55', label: 'Floral Shard'   },
 };
 
 const KEY_TO_DESC = Object.fromEntries(

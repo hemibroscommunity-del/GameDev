@@ -9,7 +9,7 @@
  *      chest OPENS (since v2.3.3566 the owner's chest, shut and then open; it
  *      was the daily chest's strip, frame 8);
  *   2. the card lists what it held, as the worker said: its gold (20 a level
- *      of the run), 3 Flora Shards, a Rare Gem when the roll gives one, and the
+ *      of the run), 3 Floral Shards, a Rare Gem when the roll gives one, and the
  *      clear's XP in the weapon in hand (the walker earned no fight XP here:
  *      the QA op `hurt` is a damage tick, which pays none);
  *   3. the bag and the purse hold it: the shards and the gold arrived on the
@@ -119,7 +119,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const lvl = chest ? chest.gold / BOSS_CHEST.GOLD_PER_LEVEL : NaN;
     const skill = rw && rw.skillXp ? Object.keys(rw.skillXp)[0] : null;
     const lines = card ? card.lines : [];
-    const want = [`+${chest && chest.gold} gold`, 'Flora Shard ×3', ...(chest && chest.items.some((i) => i.key === 'rare_gem') ? ['Rare Gem'] : [])];
+    const want = [`+${chest && chest.gold} gold`, 'Floral Shard ×3', ...(chest && chest.items.some((i) => i.key === 'rare_gem') ? ['Rare Gem'] : [])];
     rec.ok(`2: it lists what the worker said: ${lines.map((l) => l.text).join(', ')} (a level-${lvl} run; each line with its picture)`,
       !!chest && Number.isInteger(lvl) && lvl >= 1 && lines.slice(0, want.length).map((l) => l.text).join('|') === want.join('|')
         && !!skill && lines.some((l) => l.what === skill && /XP$/.test(l.text)) && lines.every((l) => l.img),
