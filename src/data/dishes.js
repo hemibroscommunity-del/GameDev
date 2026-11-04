@@ -15,7 +15,7 @@
  * described by their bottles (SHOP_ITEMS); they are not in this table.
  *
  * Dependency-free on purpose, like farmCrops.js: the bag imports it. */
-const DISH_ICON = (name) => '/icons/items/' + name + '.webp?v=2.3.3281';
+const DISH_ICON = (name) => '/icons/items/' + name + '.webp?v=2.3.4222';
 export const DISHES = {
   meal_herb_bread: {
     slot: 'meal', buff: 'rest', power: 2, duration: 1800,

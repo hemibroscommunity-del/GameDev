@@ -646,7 +646,7 @@ export const GearTab = ({ R: Rin, desk }) => {
             <span aria-hidden="true" style={{ fontSize: t * 0.46, lineHeight: 1, opacity: 0.25, filter: 'grayscale(1)', pointerEvents: 'none' }}>{'💎'}</span>
           )
         ) : (
-          <img src={pic} alt="" draggable={false} style={{ width: '78%', height: '78%', objectFit: 'contain', opacity: filled ? 1 : 0.3, pointerEvents: 'none' }} />
+          <img src={pic} alt="" draggable={false} style={{ width: filled ? '94%' : '78%', height: filled ? '94%' : '78%', objectFit: 'contain', opacity: filled ? 1 : 0.3, pointerEvents: 'none' }} />
         )}
       </div>
     );
@@ -682,7 +682,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: short ? 15 : 20,
     }}>
       {thumb
-        ? <img src={thumb} alt="" draggable={false} style={{ width: '84%', height: '84%', objectFit: 'contain', pointerEvents: 'none', ...(hidden ? { filter: 'brightness(0) opacity(.55)' } : null) }} />
+        ? <img src={thumb} alt="" draggable={false} style={{ width: '94%', height: '94%', objectFit: 'contain', pointerEvents: 'none', ...(hidden ? { filter: 'brightness(0) opacity(.55)' } : null) }} />
         : glyph ? <span aria-hidden="true">{glyph}</span> : null}
       {hidden && <UnrevealedMark size={short ? 16 : 22} />}
     </div>

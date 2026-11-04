@@ -148,7 +148,7 @@ export function codexGoldAt(level) {
 /* the pictures, at the addresses the bag and the loot piles load them from
    (InventoryPanel ITEMS_V, lootIcons.js ICON_V), so an open page is a cache
    hit for anything you have seen drop */
-const IV = '?v=2.3.1774';
+const IV = '?v=2.3.4222';
 const ICON = Object.freeze({
   gold: COIN_PILES[0].url,   /* v2.3.3734: the owner's one coin (the codex lists gold as a kind, not an amount) */
   nugget: '/icons/ui/cur-nugget.webp',

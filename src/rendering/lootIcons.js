@@ -22,7 +22,7 @@
  */
 import { Texture } from 'pixi.js';
 
-const ICON_V = '?v=2.3.1774';   /* InventoryPanel ITEMS_V: the same files, the same cache */
+const ICON_V = '?v=2.3.4222';   /* InventoryPanel ITEMS_V: the same files, the same cache */
 const SRC = {
   sword: '/icons/items/sword.webp',
   bow: '/icons/items/bow.webp',

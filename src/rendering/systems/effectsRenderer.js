@@ -1640,7 +1640,7 @@ Promise.all(POPUP_ICON_KEYS.map((k) => _loadPopupIcon(k, 0)));
    the overlay. */
 const SHARD_ICONS = {};
 Promise.all(Object.values(ZONE_SHARDS).map((s) =>
-  _fxLoad('/icons/shards/' + s.key + '.webp').then((tex) => { SHARD_ICONS[s.key] = tex; })
+  _fxLoad('/icons/shards/' + s.key + '.webp?v=2.3.4222').then((tex) => { SHARD_ICONS[s.key] = tex; })
 )).catch((err) => console.warn('[shard-icons] load failed', err));
 
 /* v2.3.1334: painted magic bolt (owner sheet) — the basic staff

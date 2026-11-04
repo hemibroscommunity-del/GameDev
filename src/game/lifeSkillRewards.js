@@ -671,8 +671,8 @@ function applyWoodReward(S, node, result, deps) {
     /* v2.3.3012: softwood and hardwood have their own logs (InventoryPanel
        WOOD_THUMBS, kept inline for the same reason as the fish's below) */
     var _woodIcon = ({
-      6: '/icons/items/wood-softwood.webp?v=2.3.1774',
-      11: '/icons/items/wood-hardwood.webp?v=2.3.1774',
+      6: '/icons/items/wood-softwood.webp?v=2.3.4222',
+      11: '/icons/items/wood-hardwood.webp?v=2.3.4222',
       16: '/icons/items/wood-cedar.webp?v=2.3.3094',   /* v2.3.3094 */
       21: '/icons/items/wood-maple.webp?v=2.3.3094',
     })[node.gatherLvl] || '/icons/items/wood-log.webp?v=2.3.1452';
@@ -768,8 +768,8 @@ function applyMiningReward(S, node, result, deps) {
        so every tier ships it until per-tier art exists.
        v2.3.3012: iron and black steel exist now (InventoryPanel ORE_THUMBS). */
     var _oreIcon = ({
-      6: '/icons/items/ore-iron.webp?v=2.3.1774',
-      11: '/icons/items/ore-black-steel.webp?v=2.3.1774',
+      6: '/icons/items/ore-iron.webp?v=2.3.4222',
+      11: '/icons/items/ore-black-steel.webp?v=2.3.4222',
       16: '/icons/items/ore-titanium.webp?v=2.3.3094',   /* v2.3.3094 */
       21: '/icons/items/ore-obsidian.webp?v=2.3.3094',
     })[node.gatherLvl] || '/icons/items/ore-copper.webp?v=2.3.1452';

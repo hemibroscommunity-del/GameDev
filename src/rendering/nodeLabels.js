@@ -62,17 +62,17 @@
 import { Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 import { gatherNeed } from '../data/lifeSkills.js';
 
-const ICON_V = '?v=2.3.1774';   /* InventoryPanel ITEMS_V: the same files, the same cache */
+const ICON_V = '?v=2.3.4222';   /* InventoryPanel ITEMS_V: the same files, the same cache */
 /* The bag's tool pictures, and each one's opaque box in its own pixels
    (measured off the webps' alpha): the rod is a thin line in a wide margin
    and read as a sliver until cropped to it. */
 const SRC = {
-  tree:     { url: '/icons/items/woodcutting-axe.webp', box: [40, 0, 111, 192] },
+  tree:     { url: '/icons/items/woodcutting-axe.webp', box: [7, 0, 120, 128] /* v2.3.4222: the new 128 px art's own box */ },
   /* v2.3.3571: the owner's painted pickaxe (tools/ui/cut-owner-items.py, which
      records this box in tools/ui/owner-items.json; owner-icons §8 holds them
      together) */
-  oreVein:  { url: '/icons/items/mining-pickaxe.webp',  box: [9, 1, 174, 190] },
-  fishSpot: { url: '/icons/items/fishing-pole.webp',    box: [42, 31, 172, 194] },
+  oreVein:  { url: '/icons/items/mining-pickaxe.webp',  box: [1, 0, 126, 128] /* v2.3.4222: the new 128 px art's own box */ },
+  fishSpot: { url: '/icons/items/fishing-pole.webp',    box: [5, 0, 122, 128] /* v2.3.4222: the new 128 px art's own box */ },
 };
 const SIZE = 64;
 export const NODE_LABEL_ICONS = Object.create(null);

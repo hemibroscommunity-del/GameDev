@@ -64,11 +64,7 @@
    "name": "icons/items/garden-stew",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.762
+    "tight": 128
    }
   },
   {
@@ -89,11 +85,7 @@
    "name": "icons/items/wood-log",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.781
+    "tight": 128
    }
   },
   {
@@ -114,11 +106,7 @@
    "name": "icons/items/bar-copper",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.895
+    "tight": 128
    }
   },
   {
@@ -139,11 +127,7 @@
    "name": "icons/items/fish-minnow",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.781
+    "tight": 128
    }
   },
   {
@@ -170,11 +154,7 @@
    "name": "icons/items/ore-titanium",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.781
+    "tight": 128
    }
   },
   {
@@ -195,11 +175,7 @@
    "name": "icons/items/bar-iron",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.895
+    "tight": 128
    }
   },
   {
@@ -220,11 +196,7 @@
    "name": "icons/items/bar-blacksteel",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.895
+    "tight": 128
    }
   },
   {
@@ -245,11 +217,7 @@
    "name": "icons/items/seed-wheat",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.762
+    "tight": 128
    }
   },
   {
@@ -270,11 +238,7 @@
    "name": "icons/items/seed-strawberry",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.762
+    "tight": 128
    }
   },
   {
@@ -295,11 +259,7 @@
    "name": "icons/items/wood-maple",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.781
+    "tight": 128
    }
   },
   {
@@ -320,11 +280,7 @@
    "name": "icons/items/wood-hardwood",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.781
+    "tight": 128
    }
   },
   {
@@ -345,11 +301,7 @@
    "name": "icons/items/wood-cedar",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.781
+    "tight": 128
    }
   },
   {
@@ -370,11 +322,7 @@
    "name": "icons/items/wood-softwood",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.781
+    "tight": 128
    }
   },
   {
@@ -395,11 +343,7 @@
    "name": "icons/items/cooked-minnow",
    "ext": "webp",
    "out": {
-    "frame": [
-     256,
-     256
-    ],
-    "fill": 0.777
+    "tight": 128
    }
   },
   {
@@ -428,11 +372,7 @@
    "name": "icons/items/woodcutting-axe",
    "ext": "webp",
    "out": {
-    "frame": [
-     192,
-     192
-    ],
-    "fill": 1.0
+    "tight": 128
    }
   },
   {

@@ -9,7 +9,7 @@
  * dishes have the owner's pictures now (their `icon`), and the ones eaten at
  * once -- the Garden Stew -- are quick-eat food. */
 import { DISHES } from './dishes.js';
-export const FOOD_ICON_V = '?v=2.3.1774';   /* the bag's ITEMS_V */
+export const FOOD_ICON_V = '?v=2.3.4222';   /* the bag's ITEMS_V */
 
 export const COOKED_FISH_ICONS = Object.freeze({
   cooked_fish_clownfish: '/icons/items/cooked-clownfish.webp' + FOOD_ICON_V,
