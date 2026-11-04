@@ -1,6 +1,7 @@
 import React from 'react';
 import { COL, getState, qualityInk, QUALITY_LABEL, QUALITY_COLOR } from './common.js';
 import { getBagEntries } from './bagModel.js';
+import { shownUnrevealed } from '@/game/revealBag.js';   /* v2.3.4233: a "?" piece never stacks */
 import { BagTile, GEAR_SEL_RING, GEAR_SEL_BLUE, GEAR_SEL_TINT } from './InventoryPanel.jsx';
 import { GEAR_FILTER_GROUPS, GEAR_FILTERS, GEAR_CELLS, gearCell } from './itemCategory.js';
 import { gearTabBus } from './gearTabBus.js';
@@ -105,6 +106,29 @@ const FONT_MIN = 11;   /* the owner's floor for anything in the card */
    tab now, so the Gear tab fills that block as the Bro tab does and has no
    cap of its own.  (Against #1386's 1056 px box the card had stretched to
    ~740 px: the 840 px block is what makes dropping the cap right.) */
+
+/* v2.3.4233, the owner: "Armor should be able to stack right? The only way it
+   comes different is if the rarity tier or the hardness tier is different."
+   Identical spare armour (same kind, material, quality, hardness, all
+   revealed) shows as ONE cell with its count, like ore.  Display only: the
+   server keeps every piece; the cell stands for the first of the group, so
+   Equip and Drop act on one piece.  Weapons never stack. */
+const PIECE_ID_KEY = /^(id|gid|uid|serial|stamp|seq|t|at|ts|time|created|acquired|slotIndex|index)/i;
+function groupSpare(entries) {
+  const seen = new Map();
+  const out = [];
+  for (const e of entries) {
+    if (!/^stash(Shield|Armor|Legs|Gear)$/.test(e.kind) || !e.obj || shownUnrevealed(e.kind, e.index, e.obj)) { out.push(e); continue; }
+    const sig = e.kind + '|' + Object.keys(e.obj).filter((k) => !PIECE_ID_KEY.test(k)).sort()
+      .map((k) => k + '=' + JSON.stringify(e.obj[k])).join('|');
+    const first = seen.get(sig);
+    if (first) { first.count = (first.count || 1) + 1; continue; }
+    const g = { ...e, count: 1 };
+    seen.set(sig, g);
+    out.push(g);
+  }
+  return out;
+}
 
 const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
 
@@ -382,7 +406,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   }, []);
 
   const st = gearTabBus.state;
-  const allEntries = getBagEntries(Rin);
+  const allEntries = groupSpare(getBagEntries(Rin));
   const fid = st.filter.id;
   const entries = fid === 'all' ? allEntries : allEntries.filter((e) => e.gcat === fid);
   const counts = Object.create(null);
@@ -883,7 +907,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       <div data-gear-stats="bag" data-gear-stats-for={selEntry.kind === 'item' ? 'i-' + selEntry.key : selEntry.kind} style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
         {head(art(card.thumb, card.glyph, hidden), name, q, {
           hidden, info: card.info, infoColor: card.infoColor,
-          qty: selEntry.kind === 'item' ? (selEntry.count || 0) : 0,
+          qty: selEntry.count || 0,
         })}
         {!short && hardLine(!hidden && selEntry.kind === 'stashWeapon' ? hardOf(o) : null)}
         {rows && rows.length > 0
@@ -1006,6 +1030,19 @@ export const GearTab = ({ R: Rin, desk }) => {
         background: COL.wellDeep,
         ...(linked ? { backgroundImage: `linear-gradient(${GEAR_SEL_TINT}, ${GEAR_SEL_TINT})`, boxShadow: `inset 0 0 0 1px ${GEAR_SEL_BLUE}, 0 0 12px 1px rgba(140, 196, 255, 0.45)` } : null),
       })}>
+      {/* v2.3.4233, the owner: "add an 'X' close button on the top right corner of
+          the detail view ... that removes the active tap of it": clears the pick
+          (the blue ring goes, the card is the bro again); Esc does the same on a
+          computer (data-esc); a 32 px finger-sized box over the card's corner */}
+      {linked && (
+        <button type="button" data-gear-card-close="" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the details"
+          onClick={(e) => { e.stopPropagation(); gearTabBus.deselect(); }}
+          style={{
+            position: 'absolute', top: 0, right: 0, zIndex: 3, width: 32, height: 32, background: 'transparent',
+            border: 'none', color: COL.text2, fontFamily: 'inherit', fontSize: 11, fontWeight: 900, lineHeight: 1, cursor: 'pointer', textShadow: '0 0 3px #0B1216, 0 0 3px #0B1216',
+            touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '3px 4px 0 0',
+          }}>{'✕'}</button>
+      )}
       {/* never scrolls: every state is laid out to fit (mp-geartab measures
           scrollHeight against clientHeight at 390 and 360 px) */}
       <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '1px 2px 0' }}>
