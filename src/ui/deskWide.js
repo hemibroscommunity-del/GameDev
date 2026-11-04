@@ -117,10 +117,35 @@ export function deskBigActive() {
   return deskWideActive() || deskBandActive();
 }
 
+/* v2.3.4220: THE DESKTOP FRAME (owner, 2026-11-04: "For desktop use the frame I
+   just put on GitHub as a background layer surrounding the game viewport, or an
+   overlay covering it depending on what looks better").  Two ways behind a URL
+   switch so the owner can compare: `?deskframe=around` (a bezel in the dead
+   space, the game shrunk to fit inside it, nothing covered) and `?deskframe=over`
+   (the frame lies over the viewport's edges, pointer-events none);
+   `?deskframe=0` is off for the tab.  The default is DESKFRAME_DEFAULT.  A
+   COMPUTER's wide layout only: a phone or tablet never gets the class. */
+export const DESKFRAME_DEFAULT = 'around';
+export function deskFrameMode(search) {
+  let v = null;
+  try { v = new URLSearchParams(search != null ? search : location.search).get('deskframe'); } catch (e) { /* default */ }
+  try {
+    if (v == null) v = sessionStorage.getItem('bt_deskframe');
+    else sessionStorage.setItem('bt_deskframe', v);   /* the tab's choice: the game's reloads drop the query */
+  } catch (e) { /* no storage: this load only */ }
+  if (v === '0' || v === 'off' || v === 'false') return null;
+  return v === 'over' ? 'over' : v === 'around' ? 'around' : DESKFRAME_DEFAULT;
+}
+
 export function applyDeskWide() {
   if (typeof document === 'undefined') return false;
   const on = deskWideWanted();
   try { document.documentElement.classList.toggle('bt-desk-wide', on); } catch (e) { /* no class: the column */ }
+  try {
+    const m = on ? deskFrameMode() : null;
+    document.documentElement.classList.toggle('bt-deskframe-around', m === 'around');
+    document.documentElement.classList.toggle('bt-deskframe-over', m === 'over');
+  } catch (e) { /* no frame */ }
   return on;
 }
 

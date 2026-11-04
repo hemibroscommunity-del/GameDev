@@ -8066,3 +8066,29 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
 .bt-skin-faceart::after{content:'';position:absolute;inset:0;border-radius:50%;background:rgba(4,6,8,.28);opacity:0;transition:opacity 90ms linear;pointer-events:none}
 [data-pressed="1"] .bt-skin .bt-skin-faceart::after{opacity:1}
 @media (prefers-reduced-motion: reduce){ .bt-skin-faceart::after{transition:none} }
+
+/* ═══ v2.3.4220: THE DESKTOP FRAME (src/ui/deskWide.js deskFrameMode) ═══
+   The owner's bezel (public/ui/deskframe.png: the picture he put on GitHub at
+   half size, 256 colours, used as a 9-slice so its corners never stretch).
+   Only a computer (the same media query as the wide layout) and only with the
+   class deskWide.js sets.  AROUND: the body is padded by the bezel's width and
+   #root (height:100%) shrinks into it, so nothing of the game is covered; the
+   bezel is painted on html::after, over the padding.  OVER: the same bezel
+   lies on the viewport's edges, over the game; pointer-events none, so every
+   click passes through.  z-index below the modal layers is not needed: the
+   bezel is a few px of dark slate at the window's rim. */
+@media (pointer:fine) and (min-width:1000px) {
+  html.bt-deskframe-around, html.bt-deskframe-over { --bt-frame-t: clamp(12px, 2.4vh, 26px); }
+  html.bt-deskframe-around body { box-sizing:border-box; padding:var(--bt-frame-t); }
+  html.bt-deskframe-around, html.bt-deskframe-over { background:#10181D; }
+  html.bt-deskframe-around::after, html.bt-deskframe-over::after {
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:2147483000;
+    border:var(--bt-frame-t) solid transparent;
+    border-image:url(/ui/deskframe.png) 24 fill;
+    border-image-slice:24;
+    border-image-width:var(--bt-frame-t);
+    border-image-repeat:stretch;
+    box-sizing:border-box;
+  }
+  html.bt-deskframe-around::after, html.bt-deskframe-over::after { border-image-slice:24; }
+}
