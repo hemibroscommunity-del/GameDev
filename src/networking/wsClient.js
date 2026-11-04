@@ -780,7 +780,7 @@ export function setupWebSocket(ctx) {
                server ledger, then the stored copy wins forever. */
             rpgGoldNuggets: (S.rpg && typeof S.rpg.goldNuggets === 'number') ? S.rpg.goldNuggets : 0,
             rpgGoldBars: (S.rpg && typeof S.rpg.goldBars === 'number') ? S.rpg.goldBars : 0,
-            rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash : [],
+            rpgWeaponStash: (S.rpg && Array.isArray(S.rpg.weaponStash)) ? S.rpg.weaponStash.slice(0, 8) : [],   /* v2.3.4224: the JOIN seed stays the first 8 (what the bag held before): the bag is 140 now (~37 KB) and the whole join frame is 16 KB (MAX_INBOUND_BYTES) -- a full bag would have been dropped silently.  The worker's stored copy wins at join anyway. */
             /* v2.3.2523 (gear stash): the four stashes that have only
                ever existed on this device -- armour, legs, shields and
                cosmetic gear -- are spread in here by _stashSeed above.
