@@ -53,6 +53,14 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
    The key cap stays on a computer. */
 export const NAV_WORDS_BESIDE = 86;
 export const NAV_WORDS_STACK = 46;
+/* v2.3.4223: each picture's opaque box [x0, y0, x1, y1] in its 256 px file
+   (alpha > 24), so the button can show the art alone, edge to edge */
+const NAV_TRIM = {
+  'nav-dashboard.png': [28, 2, 234, 255], 'panel-self.webp': [37, 35, 219, 220],
+  'panel-quests.webp': [47, 60, 208, 217], 'panel-encyclopedia.webp': [35, 44, 222, 211],
+  'nav-more.webp': [53, 62, 203, 218], 'nav-inventory.webp': [40, 32, 216, 217],
+};
+const navTrim = (src) => NAV_TRIM[String(src || '').split('?')[0].split('/').pop()] || [0, 0, 256, 256];
 export function navLabelMode(btnW) {
   if (!(btnW > 0)) return 'icon';
   return btnW >= NAV_WORDS_BESIDE ? 'beside' : btnW >= NAV_WORDS_STACK ? 'stack' : 'icon';
@@ -294,27 +302,43 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
             {/* The Hero button is the player's own bust when it has
                 rendered — the v2.3.1294 rule, kept: nothing says "my
                 character" better than the character. */}
-            {d.id === 'hero' && profilePortrait ? (
-              <img src={profilePortrait} alt="" draggable={false}
-                style={{
-                  width: icon, height: icon, objectFit: 'cover',
-                  imageRendering: 'pixelated', borderRadius: 5, pointerEvents: 'none',
-                }} />
-            ) : (
-              <img src={d.icon} alt="" draggable={false}
-                style={{
-                  width: icon, height: icon, objectFit: 'contain',
-                  opacity: on ? 1 : 0.82, pointerEvents: 'none',
-                }} />
-            )}
-            {/* v2.3.4172: the button's word (the owner's drawing), where it
-                fits (navLabelMode above); the open one's in gold */}
+            {/* v2.3.4223 (owner: "for all of the dashboard buttons I want those
+                button images to be blown up to fill the full button space.
+                You can put the name labels on top of the picture similar to
+                the badge you have for counting quantities"): the picture is
+                trimmed of its empty margins (NAV_TRIM, measured from the
+                256 px files' alpha) and scaled to the button's whole face
+                (contain, a 2 px rim); the name is a badge over it, the
+                bag's own .bt-item-qty look, bottom centre -- the key cap
+                (top-left) and the red count (top-right) stay clear of it. */}
+            <span aria-hidden="true" data-nav-art={d.id} style={{
+              position: 'absolute', inset: 1, overflow: 'hidden', borderRadius: 9, pointerEvents: 'none',
+              opacity: on ? 1 : 0.9,
+            }}>
+              {d.id === 'hero' && profilePortrait ? (
+                <img src={profilePortrait} alt="" draggable={false}
+                  style={{ position: 'absolute', left: '50%', top: 0, height: '100%', aspectRatio: '1', transform: 'translateX(-50%)', maxWidth: 'none', objectFit: 'cover', imageRendering: 'pixelated' }} />
+              ) : (() => {
+                const k = navTrim(d.icon);
+                const bw = Math.max(8, (fill ? (realW || size.w) : size.w) - 6);
+                const bh = Math.max(8, size.h - 6);
+                const sc = Math.min(bw / (k[2] - k[0]), bh / (k[3] - k[1]));
+                const cx = bw / 2 + 2, cy = bh / 2 + 2;
+                return (
+                  <img src={d.icon} alt="" draggable={false} style={{
+                    position: 'absolute', maxWidth: 'none', imageRendering: 'auto',
+                    width: 256 * sc, height: 256 * sc,
+                    left: cx - ((k[0] + k[2]) / 2) * sc, top: cy - ((k[1] + k[3]) / 2) * sc,
+                  }} />
+                );
+              })()}
+            </span>
             {words !== 'icon' ? (
-              <span className="bt-nav-word" data-nav-word={d.id} aria-hidden="true" style={{
-                display: 'block', minWidth: 0, maxWidth: '100%',
-                fontSize: words === 'beside' ? 13 : 11, lineHeight: 1.1, fontWeight: 700,
-                letterSpacing: '.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'clip',
-                color: on ? COL.accent : COL.text2, pointerEvents: 'none',
+              <span className="bt-item-qty bt-nav-word" data-nav-word={d.id} aria-hidden="true" style={{
+                right: 'auto', left: '50%', bottom: 2, transform: 'translateX(-50%)',
+                height: 15, maxWidth: 'calc(100% - 4px)', overflow: 'hidden', whiteSpace: 'nowrap',
+                color: on ? COL.accent : '#F2F3EF', borderColor: on ? COL.accent : undefined,
+                pointerEvents: 'none',
               }}>{d.label}</span>
             ) : null}
             {/* v2.3.1649 (owner: "on the active navigation button remove
