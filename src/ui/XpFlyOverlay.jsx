@@ -194,7 +194,7 @@ export const XpFlyOverlay = () => {
   const now = Date.now();
 
   for (let i = pops.length - 1; i >= 0; i--) {
-    if (now - pops[i].ts > ENTRY_LIFETIME_MS * (pops[i].toBar ? flySlow() : 1)) {
+    if (now - pops[i].ts > ENTRY_LIFETIME_MS * flySlow()) {
       /* v2.3.3893: pruned, perhaps never drawn: its hold goes with it */
       if (pops[i].toBar) _inbound.end(pops[i].hold, false);
       pops.splice(i, 1);
@@ -251,7 +251,9 @@ export const XpFlyOverlay = () => {
  * WHEN THERE IS NOWHERE TO LAND, IT DOES NOT INVENT A DESTINATION.  The card
  * can be off screen — the sheet expanded over it, a menu open — and
  * xpCardPoint returns null.  The label then simply floats and fades where it
- * was born.  The alternative (flying to a fixed screen point) would send it to
+ * was born.  (v2.3.4191: the top bar's XP number comes first -- the skill
+ * tiles live on the Bro page now, so off it the label flies there, the bar a
+ * kill's XP already lands in; only with neither on screen does it fade.)  The alternative (flying to a fixed screen point) would send it to
  * a place with nothing in it, which is exactly the "pointed at nothing" defect
  * v2.3.1638 was written to fix. */
 const XpFlyToCard = ({ pop }) => {
@@ -268,7 +270,7 @@ const XpFlyToCard = ({ pop }) => {
   useEffect(() => {
     const t = setTimeout(() => {
       if (!landedRef.current) { landedRef.current = true; landXp(cat); if (pop.toBar) _inbound.end(pop.hold, true); tick((v) => v + 1); }
-    }, (FLY_MS + LIFT_MS) * (pop.toBar ? flySlow() : 1));
+    }, (FLY_MS + LIFT_MS) * flySlow());
     return () => {
       clearTimeout(t);
       /* Unmounted mid-flight (the entry aged out, or the overlay went away):
@@ -277,10 +279,16 @@ const XpFlyToCard = ({ pop }) => {
     };
   }, [cat]);
 
-  const age = (Date.now() - pop.ts) / (pop.toBar ? flySlow() : 1);
+  const age = (Date.now() - pop.ts) / flySlow();
   const start = pop.from || null;
-  /* v2.3.3893: a kill's XP goes to the top bar's XP bar (topBarXpPoint) */
-  const dest = pop.toBar ? topBarXpPoint() : xpCardPoint(cat);
+  /* v2.3.3893: a kill's XP goes to the top bar's XP bar (topBarXpPoint).
+     v2.3.4191: any other gain lands on its skill's tile where one is on
+     screen -- the Bro tab's (the tiles left the Gear tab for it) -- and
+     otherwise in the top bar's XP number too, as a kill's does with the band
+     folded: never floating and fading in place (the orchestrator's call, on
+     the owner's "have the xp jump down into whatever combat skill earned
+     the xp") */
+  const dest = pop.toBar ? topBarXpPoint() : (xpCardPoint(cat) || topBarXpPoint());
 
   /* No start point means the popup was pushed with no world anchor (an older
      call site); fall back to the middle of the play area rather than 0,0. */
@@ -333,7 +341,7 @@ const XpFlyToCard = ({ pop }) => {
          elements. */
       data-xpfly={cat}
       data-xpfly-kill={pop.toBar ? '1' : undefined}
-      data-xpfly-to={pop.toBar && dest ? Math.round(dest.x) + ',' + Math.round(dest.y) : undefined}
+      data-xpfly-to={dest ? Math.round(dest.x) + ',' + Math.round(dest.y) : undefined}
       style={{
       position: 'fixed', left: 0, top: 0,
       transform: `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0) translate(-50%, -50%) scale(${scale.toFixed(3)})`,
@@ -622,7 +630,9 @@ const _inbound = killXpInbound({
   clearTimeout: (t) => clearTimeout(t),
 });
 /* QA only: `window.__btXpFlySlow` (a factor) stretches a kill's flight, so a
-   picture on a slow box catches it in the air (mp-killxp) */
+   picture on a slow box catches it in the air (mp-killxp); v2.3.4191: every
+   flight's, and the count-up after it (xpLanding), so mp-xpfly samples a
+   flight this box draws at a few frames a second (TRAPS §200) */
 function flySlow() {
   const q = typeof window !== 'undefined' ? Number(window.__btXpFlySlow) : 0;
   return q > 1 ? q : 1;

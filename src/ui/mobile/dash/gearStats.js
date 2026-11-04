@@ -99,6 +99,18 @@ export function rowsFor(R, t) {
  *  tone } where tone is 1 (better: the new one is higher), -1 (worse) or 0.
  *  Every stat here is better higher.  A stat only one side has compares
  *  against nothing ('—'). */
+/** v2.3.4191: the Gear tab's comparison -- compareRows, with a stat the worn
+ *  piece lacks (or an empty slot) read as 0, so a gain over nothing shows as
+ *  the gain it is ("+42.0", green), never as no change.  The orchestrator's
+ *  call (2026-11-04): "when the worn piece LACKS the stat, read it as 0 and
+ *  SHOW the green ▲ +42%"; equal stays "=" ("--" on the pill). */
+export function gainRows(oldRows, newRows) {
+  const have = Object.create(null);
+  for (const r of oldRows || []) have[r.k] = 1;
+  const zeros = (newRows || []).filter((r) => !have[r.k] && Number.isFinite(r.n)).map((r) => ({ k: r.k, v: '0', n: 0, d: r.d }));
+  return compareRows([...(oldRows || []), ...zeros], newRows);
+}
+
 export function compareRows(oldRows, newRows) {
   const by = Object.create(null);
   for (const r of oldRows || []) by[r.k] = r;

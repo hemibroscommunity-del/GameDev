@@ -86,7 +86,9 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
   /* ══ the upright phone ══ */
   {
-    const P = await H.newPlayer(browser, { name: 'Geary', wsPort, webPort, touch: true, world: 'wheel', viewport: { width: 390, height: 844 } });
+    /* v2.3.4191: ?guidearrow=0 -- the one-time lesson arrow (the big yellow
+       one at the Bro button) spent, so the card is what the picture shows */
+    const P = await H.newPlayer(browser, { name: 'Geary', wsPort, webPort, touch: true, world: 'wheel', viewport: { width: 390, height: 844 }, query: 'guidearrow=0' });
     try {
       await H.enterWorld(P);
       await seed(P, wsPort);
@@ -168,7 +170,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     { name: 'oneband-desk', viewport: { width: 1280, height: 720 }, wide: true },
     { name: 'oneband-sideways', viewport: { width: 844, height: 390 }, touch: true },
   ]) {
-    const P = await H.newPlayer(browser, { name: 'Oneg' + o.name.slice(8, 12), wsPort, webPort, world: 'wheel', viewport: o.viewport, touch: !!o.touch, wide: !!o.wide, query: 'oneband=1' });
+    const P = await H.newPlayer(browser, { name: 'Oneg' + o.name.slice(8, 12), wsPort, webPort, world: 'wheel', viewport: o.viewport, touch: !!o.touch, wide: !!o.wide, query: 'oneband=1&guidearrow=0' });
     try {
       await H.enterWorld(P);
       await seed(P, wsPort);

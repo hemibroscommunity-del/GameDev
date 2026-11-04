@@ -8,7 +8,7 @@ import { itemActionList, runItemAction, entryTarget } from './itemActions.js';
 import { resolveItemCard } from './ItemDetailPopup.jsx';
 import { itemDetailBus } from './itemDetailBus.js';
 import { weaponSlotFor, unequipWeaponSlot, unequipShieldDirect, unequipArmorDirect, unequipLegsDirect, unequipGearDirect } from './equipActions.js';
-import { weaponRows, shieldRows, armourRows, compareRows, charLevel } from './gearStats.js';
+import { weaponRows, shieldRows, armourRows, gainRows, charLevel } from './gearStats.js';
 import { getEquippedSlots, getEquipContribs, wpnIconSrc, weaponDisplayName, GHOST_SRC } from '../sheet/equipModel.js';
 import { CharacterView } from '../sheet/CharacterView.jsx';   /* v2.3.4191: the overview's full-body bro */
 import { HERO_PILL_ICON } from '../sheet/heroStatPills.js';   /* v2.3.4191: the item card's stat pictures, the Points window's own */
@@ -256,7 +256,8 @@ const Stars = ({ q }) => {
   );
 };
 /* the stat pills: `rows` gearStats rows ({k, v}) or compareRows ({k, now,
-   diff, tone, old}); `cmp` true when the change is shown (something worn);
+   diff, tone, old}); `cmp` true when the change is shown (a bag piece:
+   against what you wear, a missing stat or an empty slot as 0, v2.3.4191);
    `w` the card's inner width, for the words */
 const StatPills = ({ rows, cmp, w, line }) => {
   const pw = Math.floor(((w || 120) - 4) / 2);
@@ -284,7 +285,7 @@ const StatPills = ({ rows, cmp, w, line }) => {
           <div key={r.k} {...(cmp ? { 'data-gear-cmp': r.k, 'data-tone': r.tone } : { 'data-gear-stat': r.key || r.k })}
             title={cmp && r.old != null ? `${r.k}: ${r.old} → ${r.now}` : r.k}
             style={{
-              minWidth: 0, boxSizing: 'border-box', padding: '2px 5px', borderRadius: 8,
+              minWidth: 0, boxSizing: 'border-box', padding: '1px 5px', borderRadius: 8,
               background: COL.wellSoft, border: `1px solid ${COL.border}`,
               display: 'flex', flexDirection: 'column', gap: 0, lineHeight: 1.1, overflow: 'hidden',
             }}>
@@ -292,16 +293,61 @@ const StatPills = ({ rows, cmp, w, line }) => {
               {PILL_ICON[r.k] && <img src={PILL_ICON[r.k]} alt="" draggable={false} style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />}
               <span style={{ fontSize: FONT_MIN, fontWeight: 800, color: COL.muted, letterSpacing: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{words[r.k] || r.k}</span>
             </span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 3, minWidth: 0, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
-              <span style={{ fontSize: 13, fontWeight: 800, color: COL.text, overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{r.now != null ? r.now : r.v}</span>
+            {/* v2.3.4191: the number and its change side by side where they
+                fit, the change under the number where they do not -- never
+                "2.. ▲ +27" (a gain beside a number cut it short) */}
+            <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 3, rowGap: 0, minWidth: 0, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+              <span data-gear-val="" style={{ flex: 'none', maxWidth: '100%', fontSize: 13, fontWeight: 800, color: COL.text, overflow: 'hidden' }}>{r.now != null ? r.now : r.v}</span>
               {change && (
-                <span data-gear-diff={up ? 'up' : down ? 'down' : 'same'} style={{ flex: 'none', fontSize: FONT_MIN, fontWeight: 800, color: up ? COL.xp : down ? COL.danger : COL.muted }}>{change}</span>
+                <span data-gear-diff={up ? 'up' : down ? 'down' : 'same'} style={{ flex: 'none', fontSize: FONT_MIN, fontWeight: 800, lineHeight: 1, color: up ? COL.xp : down ? COL.danger : COL.muted }}>{change}</span>
               )}
             </span>
           </div>
         );
       })}
     </div>
+  );
+};
+
+/* v2.3.4191: THE NAME IS NEVER CUT.  The owner dropped the type subtitle
+   because "the type of sword is already in the name", so a name cut to
+   "Copper Grea..." loses the type.  It takes the head row's whole width (the
+   "⋯" moved to the foot, beside the gold button) and two lines (one in the
+   short band); a name that still needs more is set smaller, half a px at a
+   time, down to NAME_FLOOR (10 px -- the name alone; everything else keeps
+   the 11 px floor), before anything is clipped.  Words never break inside
+   (the longest in the game: "Worldbreaker Greatsword", "Black Steel
+   Greaves"; mp-geartab sets those on a real card and reads them whole). */
+const NAME_FLOOR = 10;
+const NAME_LH = 1.12;
+const FitName = ({ name, quality, size, lines }) => {
+  const ref = React.useRef(null);
+  const [fit, setFit] = React.useState({ fs: size, clamp: false });
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    /* measured as a plain block (a line clamp reports its own heights) */
+    const prev = el.style.cssText;
+    el.style.display = 'block'; el.style.webkitLineClamp = 'unset'; el.style.maxHeight = 'none';
+    let f = size, ok = false;
+    for (; f >= NAME_FLOOR; f -= 0.5) {
+      el.style.fontSize = f + 'px';
+      /* its lines by its own height (offsetHeight: a glyph's overhang does
+         not count), its widest word by scrollWidth */
+      if (el.offsetHeight - 2 <= lines * f * NAME_LH + 1 && el.scrollWidth <= el.clientWidth + 0.5) { ok = true; break; }
+    }
+    if (!ok) f = NAME_FLOOR;
+    el.style.cssText = prev;
+    if (f !== fit.fs || !ok !== fit.clamp) setFit({ fs: f, clamp: !ok });
+  });
+  /* a plain block that fits (1 px above and below: the bold face's
+     overhang inside its box, so nothing is clipped); only past the floor
+     (nothing in the game's data today) the line clamp's ellipsis */
+  return (
+    <div ref={ref} data-gear-name={name} data-fs={fit.fs} data-clamped={fit.clamp ? '1' : undefined} style={{
+      fontSize: fit.fs, fontWeight: 800, lineHeight: NAME_LH, padding: '1px 0', color: COL.text, ...(qualityInk(quality) || null), overflowWrap: 'normal', wordBreak: 'normal',
+      ...(fit.clamp ? { display: '-webkit-box', WebkitLineClamp: lines, WebkitBoxOrient: 'vertical' } : { display: 'block' }), overflow: 'hidden',
+    }}>{name}</div>
   );
 };
 
@@ -599,12 +645,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   );
 
   /* ═════ THE CARD ═════ */
-  const nameEl = (name, quality) => (
-    <div data-gear-name={name} style={{
-      fontSize: short ? 12 : 13, fontWeight: 800, lineHeight: 1.1, color: COL.text, ...(qualityInk(quality) || null), overflowWrap: 'anywhere',
-      display: '-webkit-box', WebkitLineClamp: short ? 1 : 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-    }}>{name}</div>
-  );
+  const nameEl = (name, quality) => <FitName name={name} quality={quality} size={short ? 12 : 13} lines={short ? 1 : 2} />;
   /* one or two lines of plain words, never more (the card never scrolls) */
   const sentence = (txt, color, lines) => txt ? (
     <div data-gear-info="" style={{
@@ -613,9 +654,13 @@ export const GearTab = ({ R: Rin, desk }) => {
     }}>{txt}</div>
   ) : null;
   /* the pick's picture in its frame */
+  /* v2.3.4191: 30 px on a narrow card (a 360 px phone's ~104 px inside),
+     so the name beside it keeps "Worldbreaker" on one line */
+  const iw = Math.max(60, broW - 2 * (short ? 2 : PAD) - 2 - (short ? 2 : 4));   /* the card's inner width */
+  const artPx = short ? 24 : (iw < 116 ? 30 : 38);
   const art = (thumb, glyph, hidden) => (
     <div data-gear-art="" style={{
-      width: short ? 24 : 38, height: short ? 24 : 38, flex: 'none', position: 'relative', boxSizing: 'border-box', borderRadius: 8,
+      width: artPx, height: artPx, flex: 'none', position: 'relative', boxSizing: 'border-box', borderRadius: 8,
       background: '#121B20', border: `1.5px solid ${COL.edgeWarm}`,
       boxShadow: 'inset 0 2px 4px rgba(0,0,0,.44)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: short ? 15 : 20,
     }}>
@@ -625,16 +670,17 @@ export const GearTab = ({ R: Rin, desk }) => {
       {hidden && <UnrevealedMark size={short ? 16 : 22} />}
     </div>
   );
-  /* v2.3.4191: the "⋯" top-right -- the card's other actions (Drop, Pin,
+  /* v2.3.4191: the "⋯" -- at the card's foot beside the gold button (it
+     sat top-right and ate the name's room) -- the card's other actions (Drop, Pin,
      Inspect...), never Sell (the owner: "Just remove the 'sell' option for
      now. I don't think this is a good feature to have next to equip button") */
   const moreBtn = (has) => (has ? (
     <button type="button" data-gear-act="more" aria-label="More actions" aria-expanded={st.more}
       onClick={(e) => { e.stopPropagation(); gearTabBus.setMore(!st.more); }}
       style={{
-        flex: 'none', width: short ? 24 : 28, height: short ? 22 : 26, padding: 0, borderRadius: 7,
+        flex: 'none', width: short ? 30 : 40, minHeight: short ? 22 : 32, padding: 0, borderRadius: 9,
         border: `1px solid ${COL.borderStrong}`, background: st.more ? COL.raised : COL.wellSoft, color: COL.text,
-        fontFamily: 'inherit', fontSize: 15, fontWeight: 900, lineHeight: 1, cursor: 'pointer', touchAction: 'manipulation',
+        fontFamily: 'inherit', fontSize: 16, fontWeight: 900, lineHeight: 1, cursor: 'pointer', touchAction: 'manipulation',
       }}>{'⋯'}</button>
   ) : null);
   /* the head: the frame, the name in its grade's colour, and under it the
@@ -654,7 +700,6 @@ export const GearTab = ({ R: Rin, desk }) => {
             {o.extra && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.extra}</span>}
           </div>
         </div>
-        {moreBtn(o.more)}
       </div>
     );
   };
@@ -680,13 +725,12 @@ export const GearTab = ({ R: Rin, desk }) => {
     <button type="button" data-gear-act={id} {...(attrs || {})}
       onClick={(e) => { e.stopPropagation(); onClick(); }}
       style={{
-        width: '100%', minHeight: short ? 22 : 32, boxSizing: 'border-box', padding: short ? '0 6px' : '3px 6px', borderRadius: 9,
+        flex: 1, minWidth: 0, minHeight: short ? 22 : 32, boxSizing: 'border-box', padding: short ? '0 6px' : '3px 6px', borderRadius: 9,
         border: `1px solid ${COL.focus}`, background: `linear-gradient(180deg, ${COL.focus}, ${COL.accent})`, color: COL.onAccent,
         fontFamily: 'inherit', fontSize: short ? 12 : 13.5, fontWeight: 900, letterSpacing: '.02em', cursor: 'pointer',
         touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', boxShadow: '0 2px 6px rgba(0,0,0,.25)',
       }}>{label}</button>
   );
-  const iw = Math.max(60, broW - 2 * (short ? 2 : PAD) - 2 - (short ? 2 : 4));   /* the card's inner width */
 
   let footer = null;
   let body;
@@ -727,19 +771,19 @@ export const GearTab = ({ R: Rin, desk }) => {
     const target = entryTarget(selEntry);
     const card = (() => { try { return resolveItemCard(target); } catch (e) { return null; } })() || {};
     const o = selEntry.obj || null;
-    let rows = null, worn = false;
+    /* v2.3.4191: the change is always shown, against what you wear; a stat
+       the worn piece lacks, or an empty slot, reads as 0 -- a real gain, the
+       green "▲ +N" (gearStats gainRows); the same number stays "--" */
+    let rows = null;
     if (selEntry.kind === 'stashWeapon' && o) {
       const cur = R[weaponSlotFor(o.type)] || null;
-      worn = !!cur;
-      rows = compareRows(cur ? weaponRows(R, cur) : [], weaponRows(R, o));
+      rows = gainRows(cur ? weaponRows(R, cur) : [], weaponRows(R, o));
     } else if (selEntry.kind === 'stashShield' && o) {
-      worn = !!R.shield;
-      rows = compareRows(shieldRows(R.shield), shieldRows(o));
+      rows = gainRows(shieldRows(R.shield), shieldRows(o));
     } else if ((selEntry.kind === 'stashArmor' || selEntry.kind === 'stashLegs') && o) {
       const slot = selEntry.kind === 'stashArmor' ? 'chest' : 'legs';
       const cur = slot === 'chest' ? R.armor : R.legsArmor;
-      worn = !!cur;
-      rows = compareRows(armourRows(cur, slot), armourRows(o, slot));
+      rows = gainRows(armourRows(cur, slot), armourRows(o, slot));
     }
     /* a "?" piece (v2.3.4012's mystery reveal) shows its card's name, "Rare
        or better" and no numbers -- they would give its grade away */
@@ -770,17 +814,19 @@ export const GearTab = ({ R: Rin, desk }) => {
       || list.find((x) => !x.off && !GEAR_MORE_ONLY[x.id]) || null;
     moreList = list.filter((x) => x !== lead);
     morePress = press;
-    if (lead) footer = goldBtn(lead.id, lead.label, () => press(lead), lead.attrs);
+    /* the foot: the gold button and, beside it, "⋯" (alone when there is no
+       main action) */
+    if (lead || moreList.length) footer = (<>{lead ? goldBtn(lead.id, lead.label, () => press(lead), lead.attrs) : <span style={{ flex: 1 }} />}{moreBtn(moreList.length > 0)}</>);
     const q = !hidden && o ? o.quality : null;
     body = (
       <div data-gear-stats="bag" data-gear-stats-for={selEntry.kind === 'item' ? 'i-' + selEntry.key : selEntry.kind} style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
         {head(art(card.thumb, card.glyph, hidden), name, q, {
           hidden, info: card.info, infoColor: card.infoColor,
-          qty: selEntry.kind === 'item' ? (selEntry.count || 0) : 0, more: moreList.length > 0,
+          qty: selEntry.kind === 'item' ? (selEntry.count || 0) : 0,
         })}
         {!short && hardLine(!hidden && selEntry.kind === 'stashWeapon' ? hardOf(o) : null)}
         {rows && rows.length > 0
-          ? <StatPills rows={rows} cmp={worn} w={iw} line={short} />
+          ? <StatPills rows={rows} cmp w={iw} line={short} />
           : hidden ? null : sentence(/^Quantity:/.test(card.info || '') ? null : card.info, card.infoColor, short ? 1 : 2)}
       </div>
     );
@@ -897,14 +943,14 @@ export const GearTab = ({ R: Rin, desk }) => {
         width: broW, height: broH, flex: 'none', padding: short ? 2 : PAD,
         border: `1px solid ${linked ? GEAR_SEL_BLUE : COL.edgeWarm}`,
         background: COL.wellDeep,
-        ...(linked ? { backgroundImage: `linear-gradient(${GEAR_SEL_TINT}, ${GEAR_SEL_TINT})`, boxShadow: `inset 0 0 0 1px ${GEAR_SEL_BLUE}` } : null),
+        ...(linked ? { backgroundImage: `linear-gradient(${GEAR_SEL_TINT}, ${GEAR_SEL_TINT})`, boxShadow: `inset 0 0 0 1px ${GEAR_SEL_BLUE}, 0 0 12px 1px rgba(140, 196, 255, 0.45)` } : null),
       })}>
       {/* never scrolls: every state is laid out to fit (mp-geartab measures
           scrollHeight against clientHeight at 390 and 360 px) */}
-      <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '2px 2px 3px' }}>
+      <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '1px 2px 0' }}>
         {body}
       </div>
-      {footer && <div data-gear-foot="" style={{ flex: 'none', paddingTop: short ? 1 : 3 }}>{footer}</div>}
+      {footer && <div data-gear-foot="" style={{ flex: 'none', paddingTop: short ? 1 : 2, display: 'flex', gap: 4, alignItems: 'stretch' }}>{footer}</div>}
       {/* v2.3.4191: the "⋯" list -- over the card, never beside it (the card
           never scrolls and keeps its size); its ✕ is the window's (data-esc) */}
       {st.more && moreList.length > 0 && morePress && (

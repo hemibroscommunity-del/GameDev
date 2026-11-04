@@ -1363,9 +1363,15 @@ export const BagTile = ({ entry, style, onSelect, selected }) => {
 /* v2.3.4151: its colour one constant, so the Gear tab's middle card wears the
    SAME blue while something is picked (the owner: "connect the middle panel
    ... to whatever the active attention item is (blue outline)") */
-export const GEAR_SEL_BLUE = '#4F8FDE';
-export const GEAR_SEL_TINT = 'rgba(79, 143, 222, 0.10)';
-export const GEAR_SEL_RING = `0 0 0 2px ${GEAR_SEL_BLUE}, 0 0 8px rgba(79,143,222,.55)`;
+/* v2.3.4191: the pick is UNMISTAKABLE beside a rare piece.  A rare edge is a
+   2 px #5B99DE border, and the pick was a 2 px #4F8FDE ring: the same family,
+   so in a bag of rare armour four squares looked picked.  Now the pick is a
+   brighter sky blue, three px wide, set off from the square's own edge by a
+   1 px dark gap, with the soft glow the card's outline wears; a rarity keeps
+   its thin border.  The card's linked outline is the same blue. */
+export const GEAR_SEL_BLUE = '#8CC4FF';
+export const GEAR_SEL_TINT = 'rgba(140, 196, 255, 0.10)';
+export const GEAR_SEL_RING = `0 0 0 1px rgba(8, 14, 18, 0.95), 0 0 0 4px ${GEAR_SEL_BLUE}, 0 0 12px 3px rgba(140, 196, 255, 0.6)`;
 
 /* Stash tile for an unequipped weapon or shield.  Opens the popup
    with the stashWeapon / stashShield kind so the Equip action wires

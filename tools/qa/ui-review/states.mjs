@@ -888,7 +888,7 @@ export const STATES = [
   },
   {
     id: 'gear-slot-selected', group: 'Dashboard', title: 'Gear tab: a slot tapped',
-    about: 'The Sword slot tapped: its blue ring, the bag filtered to swords (the pill reads "Swords" with an × beside it that clears it), and the card, wearing the same blue, showing the sword: its framed picture beside its name in its grade\'s colour, the grade\'s stars under it (one white for normal, two blue rare, three orange elite, four gold godly), "Hardness N/5" as a number line of five marks, its numbers as four large pills two to a row (each its picture: DMG, DPS, SPD, RNG), and one gold button, Unequip, at the card\'s foot.',
+    about: 'The Sword slot tapped: its bright blue ring (3 px, a dark gap and a glow, unlike a rare piece\'s thin edge), the bag filtered to swords (the pill reads "Swords" with an × beside it that clears it), and the card, wearing the same blue, showing the sword: its framed picture beside its name in its grade\'s colour, the grade\'s stars under it (one white for normal, two blue rare, three orange elite, four gold godly), "Hardness N/5" as a number line of five marks, its numbers as four large pills two to a row (each its picture: DMG, DPS, SPD, RNG), and one gold button, Unequip, at the card\'s foot.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;
@@ -898,7 +898,7 @@ export const STATES = [
   },
   {
     id: 'gear-compare', group: 'Dashboard', title: 'Gear tab: a bag weapon compared',
-    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the card (wearing the same blue) showing it -- its framed picture, its name in its grade\'s colour, its stars and "Hardness N/5" (no "Copper · Greatsword" subtitle), then its numbers as large pills two to a row, each with the change against the sword in its slot inside it (a green ▲ +N, a red ▼ -N, or "--" for the same), ONE gold button at its foot (Equip), and a "⋯" top-right for the rest (Drop, Pin, Inspect where they apply) -- no Sell in the Gear tab. Tapping it again, or the bag\'s empty space, brings the overview back.',
+    about: 'With the bag filtered to swords, a spare sword in the bag tapped: its blue ring, and the card (wearing the same blue) showing it -- its framed picture, its name in its grade\'s colour, its stars and "Hardness N/5" (no "Copper · Greatsword" subtitle), then its numbers as large pills two to a row, each with the change against the sword in its slot inside it (a green ▲ +N, a red ▼ -N, or "--" for the same), ONE gold button at its foot (Equip) with a "⋯" beside it for the rest (Drop, Pin, Inspect where they apply); the name always whole (smaller rather than cut) -- no Sell in the Gear tab. Tapping it again, or the bag\'s empty space, brings the overview back.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;
@@ -912,7 +912,7 @@ export const STATES = [
   /* v2.3.4191: the item card's "⋯" and a material's card */
   {
     id: 'gear-more', group: 'Dashboard', title: 'Gear tab: the card\'s "⋯" open',
-    about: 'A spare sword in the bag picked, then the card\'s "⋯" (top-right) tapped: a list over the card, never beside it, of the actions that are not the gold one -- Pin, and Drop or Inspect where the piece has them, never Sell -- with a ✕ (Esc) that shuts it and keeps the pick.',
+    about: 'A spare sword in the bag picked, then the card\'s "⋯" (at its foot, beside the gold button) tapped: a list over the card, never beside it, of the actions that are not the gold one -- Pin, and Drop or Inspect where the piece has them, never Sell -- with a ✕ (Esc) that shuts it and keeps the pick.',
     run: async ({ P, view }) => {
       const e = await openGear(P, view);
       if (e) return e;

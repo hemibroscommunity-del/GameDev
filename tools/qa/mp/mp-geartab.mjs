@@ -188,6 +188,9 @@ async function seed(P, wsPort, rec, tag) {
   await H.devOp(wsPort, 'kit', id, { what: 'shield' }).catch(() => null);
   await H.grant(wsPort, id, 'item', { invKey: 'fish_minnow', count: 2 }).catch(() => null);
   await H.grant(wsPort, id, 'item', { invKey: 'ore_copper_ore', count: 3 }).catch(() => null);   /* v2.3.4191: a material's card */
+  /* v2.3.4191: rare armour in the bag (the kit's pieces in a grade), for the
+     pick-ring-vs-rare-edge check and the longest armour name */
+  await H.devOp(wsPort, 'kit', id, { what: 'armor', quality: 'rare' }).catch(() => null);
   await P.page.waitForTimeout(2500);
   const r = await rpgOf(P);
   rec.ok(`[${tag}] seeded: a greatsword in hand, a bow and a staff on, a spare greatsword in the bag`,
@@ -197,13 +200,13 @@ async function seed(P, wsPort, rec, tag) {
 
 /* v2.3.4151: the owner's "without needing to do any scrolling" -- the card's
    fit, its 11 px floor, its blue link, the grids' one size, at one state */
-const BLUE = 'rgb(79, 143, 222)';   /* GEAR_SEL_BLUE */
+const BLUE = 'rgb(140, 196, 255)';   /* GEAR_SEL_BLUE (v2.3.4191: the brighter sky blue) */
 function fitOk(rec, tag, s, picked) {
   const f = s.fit || {};
   rec.ok(`${tag}: the card fits -- no scrolling (scrollHeight <= clientHeight + 1), nothing past its edge, nothing under 11 px`,
     f.over <= 1 && f.scOver <= 1 && f.outside === 0 && f.small && f.small.length === 0, f);
   rec.ok(`${tag}: ${picked ? 'the card wears the pick\'s blue (the ring\'s own colour)' : 'nothing picked: the card\'s own border, not the blue'}`,
-    picked ? (f.border === BLUE && f.linked && /rgb\(79, 143, 222\)/.test(s.ringOf || '')) : (f.border !== BLUE && !f.linked), { border: f.border, ring: s.ringOf });
+    picked ? (f.border === BLUE && f.linked && /rgb\(140, 196, 255\) 0px 0px 0px 4px/.test(s.ringOf || '')) : (f.border !== BLUE && !f.linked), { border: f.border, ring: s.ringOf });
 }
 /* `floor`: 34 px, except the sideways column (~222 px), where two grids of
    three side by side cannot both be 34 px and the brief's rule is "shrink both
@@ -212,6 +215,60 @@ function sameSize(rec, tag, s, floor) {
   const f = floor || 34;
   rec.ok(`${tag}: the Equipped cells are the bag's squares' size (within 1 px), ${f} px or more`,
     s.sizes && s.sizes.bag && s.sizes.cell && Math.abs(s.sizes.bag - s.sizes.cell) <= 1 && s.sizes.cell >= f, s.sizes);
+}
+
+/* v2.3.4191: the pick vs a rare edge -- the picked square's ring is 4 px
+   (a 1 px dark gap, then 3 px of the bright pick blue, and a glow), a rare
+   square only its own 2 px border with no ring */
+const ringVsRare = (P) => P.page.evaluate(() => {
+  const sel = document.querySelector('[data-gear-bag] [data-gear-sel="1"]');
+  const rare = [...document.querySelectorAll('[data-gear-bag] .ls-slot--rare')].find((e) => e.getAttribute('data-gear-sel') !== '1');
+  const read = (e) => { if (!e) return null; const c = getComputedStyle(e); return { shadow: c.boxShadow, border: parseFloat(c.borderTopWidth), color: c.borderTopColor }; };
+  return { sel: read(sel), rare: read(rare) };
+});
+/* v2.3.4191: the longest names in the game on a real card -- a bag weapon
+   turned (on this page only, for the reading) into the longest blacksmith
+   tier, "Worldbreaker Greatsword" (its tierMult 7.84 too, so its card carries
+   the biggest gains in the game), and a bag legs piece renamed "Black Steel
+   Greaves" (the longest armour, armorforge.js) -- each read whole: its text
+   the name, nothing wider or taller than its box, at least 10 px */
+async function longestNames(P, rec, tag, mouse) {
+  const cases = [
+    { want: 'Worldbreaker Greatsword', set: () => { const R = window._gameState.current.rpg; const i = (R.weaponStash || []).findIndex((w) => w && w.type === 'greatsword'); if (i < 0) return null; window.__qaNameWas = [R.weaponStash[i].gearBase, R.weaponStash[i].tierMult]; R.weaponStash[i].gearBase = 'worldbreaker'; R.weaponStash[i].tierMult = 7.84; return 'stashWeapon-' + i; },
+      undo: () => { const R = window._gameState.current.rpg; const w = (R.weaponStash || []).find((x) => x && x.gearBase === 'worldbreaker'); if (w) { w.gearBase = window.__qaNameWas[0]; w.tierMult = window.__qaNameWas[1]; } } },
+    { want: 'Black Steel Greaves', set: () => { const R = window._gameState.current.rpg; const L = R.legsStash || R.legsArmorStash || []; const i = L.findIndex((a) => a && !a.unrevealed); if (i < 0) return null; window.__qaNameWas = L[i].name; L[i].name = 'Black Steel Greaves'; return 'stashLegs-' + i; },
+      undo: () => { const R = window._gameState.current.rpg; const L = R.legsStash || R.legsArmorStash || []; const a = L.find((x) => x && x.name === 'Black Steel Greaves'); if (a) a.name = window.__qaNameWas; } },
+  ];
+  for (const c of cases) {
+    await P.page.evaluate(() => { const g = window.__btGearTab; if (g) { g.bus.afterChange(); g.bus.clearFilter(); } });
+    await P.page.waitForTimeout(300);
+    const key = await P.page.evaluate(c.set);
+    if (!key) { rec.ok(`${tag} the longest name "${c.want}": a piece to show it on (guard)`, false, key); continue; }
+    if (mouse) {
+      const b = await P.page.evaluate((k) => { const e = document.querySelector(`[data-gear-bag] [data-bag-key="${k}"]`); if (!e) return null; e.scrollIntoView({ block: 'nearest' }); const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, key);
+      if (b) await P.page.mouse.click(b.x, b.y);
+      await P.page.waitForTimeout(500);
+    } else await tapEl(P, `[data-gear-bag] [data-bag-key="${key}"]`);
+    const n = await P.page.evaluate(() => {
+      const e = document.querySelector('[data-gear-pane="bro"] [data-gear-name]');
+      if (!e) return null;
+      return { text: e.textContent, attr: e.getAttribute('data-gear-name'), fs: parseFloat(getComputedStyle(e).fontSize),
+        sw: e.scrollWidth, cw: e.clientWidth, sh: e.scrollHeight, ch: e.clientHeight, lh: parseFloat(getComputedStyle(e).lineHeight) };
+    });
+    await P.page.screenshot({ path: `${OUT}/name-${tag.replace(/\W+/g, '')}-${c.want.split(' ')[0]}.png` });
+    /* ...and the card still fits with the biggest gains in the game beside
+       it (a Worldbreaker against a copper sword): every number whole, its
+       change beside or under it, nothing clipped, no scrolling */
+    const vals = await P.page.evaluate(() => [...document.querySelectorAll('[data-gear-pane="bro"] [data-gear-val]')].map((e) => ({ t: e.textContent, sw: e.scrollWidth, cw: e.clientWidth })));
+    rec.ok(`${tag} "${c.want}"'s card: every stat number whole beside its change (no "2.." cut short)`,
+      vals.length >= 1 && vals.every((v) => v.sw <= v.cw + 0.5), vals);
+    fitOk(rec, `${tag} "${c.want}"'s card`, await look(P), true);
+    rec.ok(`${tag} the longest name "${c.want}" shown whole: its full text, not clipped (scrollWidth <= clientWidth, scrollHeight <= clientHeight), two lines at most, ${n ? n.fs : '?'} px (floor 10)`,
+      !!n && n.text === c.want && n.attr === c.want && n.sw <= n.cw + 0.5 && n.sh <= n.ch + 1 && n.ch - 2 <= 2 * n.lh + 1 && n.fs >= 10, n);   /* (its 1 px above and below) */
+    await P.page.evaluate(c.undo);
+    await P.page.evaluate(() => { const g = window.__btGearTab; if (g) { g.bus.afterChange(); g.bus.clearFilter(); } });
+    await P.page.waitForTimeout(300);
+  }
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {
@@ -307,8 +364,12 @@ export async function run({ browser, wsPort, webPort, rec }) {
         s3.pills.length >= 2 && s3.pills.length <= 4 && s3.pills.every((p) => p.img && p.box) && s3.pills[0].box.t === s3.pills[1].box.t
           && s3.pills.every((p) => ['up', 'down', 'same'].includes(p.diff)) && s3.pills.every((p) => p.diff !== 'up' || /^▲ \+/.test(p.dtext)) && s3.pills.every((p) => p.diff !== 'down' || /^▼ /.test(p.dtext)) && s3.pills.every((p) => p.diff !== 'same' || p.dtext === '--'),
         s3.pills);
-      rec.ok('[390x844] ...ONE gold button, Equip; "⋯" top-right; no Sell anywhere in the tab',
-        s3.foot.length === 1 && s3.foot[0].act === 'equip' && /gradient/.test(s3.foot[0].bg) && s3.more && !s3.sell, { foot: s3.foot, more: s3.more, sell: s3.sell });
+      rec.ok('[390x844] ...the same sword as the one worn: every change "--" (equal is never a gain)',
+        s3.pills.length >= 2 && s3.pills.every((p) => p.diff === 'same' && p.dtext === '--'), s3.pills);
+      rec.ok('[390x844] ...ONE gold button, Equip, and "⋯" beside it at the foot (not in the head, where it cut the name); no Sell anywhere in the tab',
+        s3.foot.length === 2 && s3.foot[0].act === 'equip' && /gradient/.test(s3.foot[0].bg) && s3.foot[1].act === 'more' && s3.more && !s3.sell, { foot: s3.foot, more: s3.more, sell: s3.sell });
+      rec.ok('[390x844] ...the name whole on one card row: "Copper Greatsword", not "Copper Grea..."',
+        s3.name === 'Copper Greatsword' && await P.page.evaluate(() => { const e = document.querySelector('[data-gear-pane="bro"] [data-gear-name]'); return !!e && e.scrollWidth <= e.clientWidth + 0.5 && e.scrollHeight <= e.clientHeight + 1; }), s3.name);
       await tapEl(P, '[data-gear-pane="bro"] [data-gear-act="more"]');
       const s3m = await look(P);
       await P.page.screenshot({ path: `${OUT}/phone-3b-more.png` });
@@ -386,6 +447,31 @@ export async function run({ browser, wsPort, webPort, rec }) {
         fitOk(rec, '[390x844] an ore', so, true);
         await tapEl(P, `[data-gear-bag] [data-bag-key="${oreKey0}"]`);
       } else rec.ok('[390x844] the ore granted (guard)', false, s8.bag);
+      /* v2.3.4191: a gain over nothing -- the bag's shield with no shield
+         worn: its Block a green "▲ +N", never "no change" */
+      const shKey = s8.bag.find((k) => /^stashShield-/.test(k));
+      if (shKey) {
+        await tapEl(P, `[data-gear-bag] [data-bag-key="${shKey}"]`);
+        const sg = await look(P);
+        await P.page.screenshot({ path: `${OUT}/phone-7c-shield-gain.png` });
+        const blk = sg.pills.find((p) => p.k === 'Block');
+        rec.ok('[390x844] the bag\'s shield, no shield worn: its Block a green "▲ +N" (a stat you lack reads as 0), never "--"',
+          !!blk && blk.diff === 'up' && /^▲ \+\d/.test(blk.dtext || ''), sg.pills);
+        await tapEl(P, `[data-gear-bag] [data-bag-key="${shKey}"]`);
+      } else rec.ok('[390x844] the kit\'s shield in the bag (guard)', false, s8.bag);
+      /* v2.3.4191: the pick unmistakable beside a rare piece */
+      const rareKey = await P.page.evaluate(() => { const t = document.querySelector('[data-gear-bag] .ls-slot--rare'); return t ? t.getAttribute('data-bag-key') : null; });
+      const otherKey = s8.bag.find((k) => k !== rareKey && /^stash(Armor|Legs)-/.test(k)) || s8.bag.find((k) => k !== rareKey);
+      if (rareKey && otherKey) {
+        await tapEl(P, `[data-gear-bag] [data-bag-key="${otherKey}"]`);
+        const rv = await ringVsRare(P);
+        await P.page.screenshot({ path: `${OUT}/phone-7d-pick-vs-rare.png` });
+        rec.ok('[390x844] the picked square is unmistakable beside a rare one: a 4 px bright ring with a glow (rgb(140,196,255)), the rare square only its thin 2 px edge, no ring',
+          !!rv.sel && !!rv.rare && /rgb\(140, 196, 255\) 0px 0px 0px 4px/.test(rv.sel.shadow) && /0px 0px 12px 3px/.test(rv.sel.shadow)
+            && rv.rare.border <= 2 && !/0px 0px 0px [3-9]px/.test(rv.rare.shadow || ''), rv);
+        await tapEl(P, `[data-gear-bag] [data-bag-key="${otherKey}"]`);
+      } else rec.ok('[390x844] a rare piece in the bag (guard)', false, { rareKey, otherKey, bag: s8.bag });
+      await longestNames(P, rec, '[390x844]');
       rec.ok('[390x844] the fish again: back to the overview', s10.view === 'overview' && s10.stats === 'mine' && s10.bagSel.length === 0, s10);
       await tapEl(P, `[data-gear-bag] [data-bag-key="${fishKey}"]`);
       await tapEl(P, '[data-gear-bag] [data-gear-slot-empty]');
@@ -411,6 +497,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       sameSize(rec, '[360x780]', n1);
       fitOk(rec, '[360x780] the overview', n1, false);
       rec.ok('[360x780] the bro drawn there too, centred', !!n1.fig && !!n1.fig.canvas && n1.fig.size >= 50 && n1.fig.centred, n1.fig);
+      await longestNames(P, rec, '[360x780]');
       const oreKey = n1.bag.find((k) => /^i-ore_/.test(k)) || n1.bag.find((k) => /^i-fish_/.test(k));
       await tapEl(P, `[data-gear-bag] [data-bag-key="${oreKey}"]`);
       fitOk(rec, '[360x780] a material', await look(P), true);
@@ -429,6 +516,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await tapEl(P, '[data-gear-pane="bro"] [data-gear-act="more"]');
       fitOk(rec, '[360x780] the "⋯" list open', await look(P), true);
       await P.page.evaluate(() => { const g = window.__btGearTab; if (g) { g.bus.afterChange(); g.bus.clearFilter(); } });
+      /* v2.3.4191: and at 375 (an iPhone's mini / SE width) */
+      await P.page.setViewportSize({ width: 375, height: 812 });
+      await P.page.waitForTimeout(1500);
+      await longestNames(P, rec, '[375x812]');
       await P.page.setViewportSize({ width: 390, height: 844 });
       await P.page.waitForTimeout(1200);
 
@@ -475,7 +566,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         const l3 = await look(P);
         rec.ok('[844x390] the bag\'s shield: its numbers (Block first; nothing worn, so no change shown) and Equip the gold button',
           l3.stats === 'bag' && l3.pills.length >= 1 && l3.pills[0].k === 'Block' && l3.pills.every((p) => !p.diff)
-            && l3.foot.length === 1 && l3.foot[0].act === 'equip', l3);
+            && l3.foot.length >= 1 && l3.foot[0].act === 'equip', l3);
         fitOk(rec, '[844x390] the bag\'s shield compared', l3, true);
         await tapEl(P, '[data-gear-act="equip"]');
         await P.page.waitForTimeout(1200);
@@ -505,6 +596,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         d1.layout === 'wide' && d1.bar.length === 0 && (d1.cells.find((c) => c.id === 'sword') || {}).on && !!d1.fig && !!d1.fig.canvas, { layout: d1.layout, bar: d1.bar, fig: d1.fig });
       sameSize(rec, '[computer]', d1);
       fitOk(rec, '[computer] the overview', d1, false);
+      await longestNames(P, rec, '[computer]', true);
       /* the keys: 2 the bow, 3 the staff, 1 the sword -- the page, the WORKER
          (its paced save: wait for it) and the gold ring each time */
       const srvSlotOf = async (want) => {

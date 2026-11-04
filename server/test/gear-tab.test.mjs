@@ -244,7 +244,7 @@ const TR = await import('../../src/data/trapping.js');
   /* v2.3.4151: the owner's 11-03 notes -- one size for both grids, the blue link */
   const inv = src('src/ui/mobile/dash/InventoryPanel.jsx');
   check('6e the card\'s blue is the pick ring\'s own colour, one constant (GEAR_SEL_BLUE) both read',
-    /export const GEAR_SEL_BLUE = '#4F8FDE'/.test(inv) && /GEAR_SEL_RING = `0 0 0 2px \$\{GEAR_SEL_BLUE\}/.test(inv)
+    /export const GEAR_SEL_BLUE = '#8CC4FF'/.test(inv) && /GEAR_SEL_RING = `0 0 0 1px [^`]*, 0 0 0 4px \$\{GEAR_SEL_BLUE\}, 0 0 12px/.test(inv)
       && /border: `1px solid \$\{linked \? GEAR_SEL_BLUE/.test(code));
   check('6f one square size `t` for the bag and the gear (the bag\'s grid and the gear\'s grid both `${t}px`)',
     (code.match(/repeat\(\$\{cols\}, \$\{t\}px\)/g) || []).length === 2 && /const cols = short \? 9 : BAG_COLS/.test(code));
@@ -264,12 +264,24 @@ const TR = await import('../../src/data/trapping.js');
     /const HARDNESS_MAX = 5;/.test(gt) && /<span>Hardness<\/span>/.test(code) && /\{n\}\/\{HARDNESS_MAX\}/.test(code) && /i < n \? COL\.accent/.test(code) && !/card\.desc|ct\.desc/.test(code));
   check('6l the stat pills: two to a row, each its picture (HERO_PILL_ICON) and the change inside (▲ / ▼ / --)',
     /gridTemplateColumns: '1fr 1fr'/.test(code) && /HERO_PILL_ICON\.dps/.test(code) && /data-gear-diff=/.test(code) && /'▲ '/.test(code) && /'▼ '/.test(code) && /'--'/.test(code));
-  check('6m ONE gold main button; the rest behind "⋯" (data-gear-act="more"), its list closed by a ✕ (data-esc)',
-    (code.match(/footer = goldBtn\(/g) || []).length === 2 && /data-gear-act="more"/.test(code) && /data-gear-more-menu/.test(code) && /data-esc=""/.test(code)
+  check('6m ONE gold main button; the rest behind "⋯" (data-gear-act="more") beside it at the foot (v2.3.4191: never in the head row), its list closed by a ✕ (data-esc)',
+    (code.match(/footer = goldBtn\(/g) || []).length === 1 && /goldBtn\(lead\.id, lead\.label[^\n]*\{moreBtn\(moreList\.length > 0\)\}/.test(code)
+      && !/\{moreBtn\(o\.more\)\}/.test(code) && /data-gear-act="more"/.test(code) && /data-gear-more-menu/.test(code) && /data-esc=""/.test(code)
       && /moreList = list\.filter\(\(x\) => x !== lead\)/.test(code));
   check('6n no Sell in the Gear tab (the item window keeps its own)',
     /itemActionList\(target, card\)\.filter\(\(x\) => x\.id !== 'sell'\)/.test(code)
       && /add\('sell'/.test(src('src/ui/mobile/dash/itemActions.js')));
+  /* v2.3.4191: a stat the worn piece lacks (or an empty slot) reads as 0 --
+     the green gain; the same number is "=" ("--" on the pill) */
+  const GS2 = await import('../../src/ui/mobile/dash/gearStats.js');
+  const iron = { mat: 'iron', tierMult: 2 };
+  const g1 = GS2.gainRows([], GS2.armourRows(iron, 'chest'))[0];
+  const g2 = GS2.gainRows([{ k: 'Block', v: '10%', n: 10 }], [{ k: 'Block', v: '10%', n: 10 }, { k: 'Damage cut', v: '42%', n: 42, d: 1 }]);
+  check('6o the comparison: a stat the worn piece lacks, or an empty slot, is a green gain over 0 ("+N", tone 1); an equal stat "="',
+    g1 && g1.old === '0' && g1.tone === 1 && /^\+\d/.test(g1.diff) && g2[0].diff === '=' && g2[0].tone === 0 && g2[1].tone === 1 && g2[1].diff === '+42.0'
+      && /gainRows\(/.test(code) && !/compareRows\(/.test(code) && /\(r\.diff === '=' \|\| !r\.diff\) \? '--'/.test(code), { g1, g2 });
+  check('6p the name is never cut: it takes the head row whole and shrinks (to NAME_FLOOR, 10 px) before any clamp; words never break inside',
+    /const NAME_FLOOR = 10;/.test(gt) && /overflowWrap: 'normal'/.test(code) && !/overflowWrap: 'anywhere'/.test(code.slice(code.indexOf('const FitName'), code.indexOf('export const GearTab'))));
   const { gearTabBus: B } = await import('../../src/ui/mobile/dash/gearTabBus.js');
   B.afterChange(); B.tapBag('i-ore_copper', null); B.setMore(true); const m1 = B.state.more;
   B.tapBag('i-ore_iron', null); const m2 = B.state.more;
