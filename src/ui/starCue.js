@@ -20,8 +20,8 @@
  */
 import { worldReady } from './loadingGate.js';   /* v2.3.4136 */
 const TARGET_PX = 96;          /* game px: a target that moves less is the same target */
-const SHRINK_MS = 1000;
-const BIG_PX = 64;             /* the minimap's star is 17 px */
+const SHRINK_BASE = 1000;
+const BIG_BASE = 64;             /* the minimap's star is 17 px */
 const END_PX = 17;
 const GOLD = '#F5CE3C';
 
@@ -61,7 +61,21 @@ export function starCue(target, at, box) {
   play(at, box);
 }
 
+/* v2.3.4196: the FIRST star of a character is a giant one in the middle of
+   the screen that holds a beat, then shrinks and flies onto the minimap (the
+   owner's playtest: "the first time a star lands on your minimap for accepting
+   the first quest I think it should be made more obvious like a big star that
+   shrinks and flies to the minimap").  Once per device, like guideArrow. */
+const FIRST_KEY = 'bt_starcue_first';
+const FIRST_PX = 170, FIRST_MS = 2000;
+function firstTime() {
+  try { if (localStorage.getItem(FIRST_KEY)) return false; localStorage.setItem(FIRST_KEY, '1'); } catch (e) { return false; }
+  return true;
+}
+
 function play(at, box) {
+  const first = firstTime();
+  const BIG_PX = first ? FIRST_PX : BIG_BASE, SHRINK_MS = first ? FIRST_MS : SHRINK_BASE;
   if (live) { try { live.remove(); } catch (e) { /* gone */ } live = null; }
   const el = document.createElement('div');
   el.setAttribute('data-star-cue', '');
@@ -78,7 +92,8 @@ function play(at, box) {
   qa.n++;
   qa.live = 1;
   /* it comes up over the middle of the box, a little above it, and flies onto the star */
-  const fromX = box.left + box.w / 2 - at.x, fromY = Math.max(BIG_PX / 2 + 4, box.top - 8) - at.y;
+  const fromX = first ? window.innerWidth / 2 - at.x : box.left + box.w / 2 - at.x;
+  const fromY = first ? window.innerHeight * 0.4 - at.y : Math.max(BIG_PX / 2 + 4, box.top - 8) - at.y;
   /* v2.3.3986: the minimap's star is K times bigger on a computer (box.k, ui/wheelMiniSize.js) */
   const k = (END_PX * (box.k > 0 ? box.k : 1)) / BIG_PX;
   qa.last = { from: { x: Math.round(at.x + fromX), y: Math.round(at.y + fromY) }, to: { x: Math.round(at.x), y: Math.round(at.y) }, at: Date.now(), calm: calm() };
@@ -93,7 +108,8 @@ function play(at, box) {
       ? el.animate([{ transform: `scale(${k})`, opacity: 1 }, { transform: `scale(${k})`, opacity: 0 }], { duration: SHRINK_MS, easing: 'linear' })
       : el.animate([
         { transform: `translate(${fromX}px, ${fromY}px) scale(0.6)`, opacity: 0 },
-        { transform: `translate(${fromX}px, ${fromY}px) scale(1)`, opacity: 1, offset: 0.18 },
+        { transform: `translate(${fromX}px, ${fromY}px) scale(1)`, opacity: 1, offset: first ? 0.3 : 0.18 },
+        ...(first ? [{ transform: `translate(${fromX}px, ${fromY}px) scale(1)`, opacity: 1, offset: 0.55 }] : []),
         { transform: `translate(${fromX * 0.15}px, ${fromY * 0.15}px) scale(${k * 1.6})`, opacity: 1, offset: 0.85 },
         { transform: `translate(0, 0) scale(${k})`, opacity: 0 },
       ], { duration: SHRINK_MS, easing: 'cubic-bezier(.4,0,.3,1)' });

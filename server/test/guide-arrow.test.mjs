@@ -54,8 +54,8 @@ check('4b the Points tab and Character have their own words', G.guideWords('poin
 
 /* 5 */
 check('5a a character that never took the first quest is owed the weapon lesson again', G.guideOwedAgain(fresh).includes('weapon'));
-check('5b ...and one with no points ever, the points lesson', G.guideOwedAgain({ _quests: { tut_1: 'active' }, prog3: { pool: 0, shared: 0, alloc: {} } }).filter((x) => x !== 'swap').join() === 'points');   /* v2.3.4130: and swap, the first quest not handed in */
-check('5c a character with points waiting or placed is owed nothing', G.guideOwedAgain(p3(2, 1)).filter((x) => x !== 'swap').length === 0 && G.guideOwedAgain(p3(0, 0, { hp: 1 })).filter((x) => x !== 'swap').length === 0);   /* v2.3.4130: swap is owed by the first quest alone */
+check('5b ...and one with no points ever, the points lesson', G.guideOwedAgain({ _quests: { tut_1: 'active' }, prog3: { pool: 0, shared: 0, alloc: {} } }).filter((x) => x !== 'swap' && x !== 'forge').join() === 'points');   /* v2.3.4130: and swap, the first quest not handed in */
+check('5c a character with points waiting or placed is owed nothing', G.guideOwedAgain(p3(2, 1)).filter((x) => x !== 'swap' && x !== 'forge').length === 0 && G.guideOwedAgain(p3(0, 0, { hp: 1 })).filter((x) => x !== 'swap' && x !== 'forge').length === 0);   /* v2.3.4130: swap is owed by the first quest alone */
 
 /* 7: v2.3.4130 -- the swap lesson, at the weapon pill, only after the first
    quest's hand-in and a second weapon in hand */
@@ -72,11 +72,14 @@ check('7f it points at the weapon pill', G.guideTargets('swap', twoAfter, () => 
 check('7g its words: a phone taps, a computer clicks or presses 1 2 3',
   G.guideWords('swap', '[data-weapon-pill]', false) === 'Tap a weapon to switch' && G.guideWords('swap', '[data-weapon-pill]', true) === 'Click a weapon or press 1 2 3');
 check('7h owed again while the first quest is not handed in, never after', G.guideOwedAgain(twoBefore).includes('swap') && !G.guideOwedAgain(twoAfter).includes('swap'));
-check('7i the swap lesson comes after the weapon lesson, before the points (the Mayor last, v2.3.4106)', /for \(const id of \['weapon', 'swap', 'points', 'mayor'\]\)/.test(readFileSync(new URL('../../src/ui/guideArrow.js', import.meta.url), 'utf8')));
+check('7i the swap lesson comes after the weapon lesson, before the points (the Mayor last, v2.3.4106)', /for \(const id of \['weapon', 'swap', 'forge', 'points', 'mayor'\]\)/.test(readFileSync(new URL('../../src/ui/guideArrow.js', import.meta.url), 'utf8')));
 
 /* 6 */
 const src = readFileSync(new URL('../../src/ui/guideArrow.js', import.meta.url), 'utf8');
 const coach = readFileSync(new URL('../../src/ui/mobile/QuestCoach.jsx', import.meta.url), 'utf8');
+/* v2.3.4196: the forge quest's tab */
+check('8a forge: wanted while smith_2 is active and unforged, not after', G.forgeWanted({ _quests: { smith_2: 'active' } }) === true && G.forgeWanted({ _quests: { smith_2: 'active' }, _questKills: { smith_2: 1 } }) === false && G.forgeWanted({ _quests: { smith_2: 'turnedIn' } }) === false);
+check('8b forge: points at the Forge tab, nothing when it is the open tab', G.guideTargets('forge', {}, () => false)[0] === '[data-smithy-tab="forge"]' && G.guideTargets('forge', {}, (s) => /data-on/.test(s)).length === 0);
 check('6a body-level, no pointer events, no CSS filter, ?guidearrow=0, the per-character key in try/catch',
   /document\.body\.appendChild\(el\)/.test(src) && /pointerEvents = 'none'/.test(src) && !/\.filter\s*=/.test(src)
     && /get\('guidearrow'\) === '0'/.test(src) && /'bt_guideArrow:'/.test(src) && /try \{ const v = JSON\.parse\(localStorage\.getItem/.test(src));

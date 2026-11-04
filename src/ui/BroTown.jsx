@@ -68,7 +68,7 @@ import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
 import { ShieldButton, EDGE_GUARD_PX } from './panels/ShieldButton.jsx'; /* v2.3.2242: the shield is a toggle button under Attack; v2.3.2563: ...and the edge guard's width, shared so the left cluster cannot drift into it */
 import { SpecialButton } from './panels/SpecialButton.jsx'; /* v2.3.2472: the special's second trigger; v2.3.2542 moved it to the attack disc's column */
 import { WeaponPill } from './panels/WeaponPill.jsx'; /* v2.3.4130: the weapon pill, centred at the foot of the world (it was v2.3.3921's triangle, v2.3.3005's chip) */
-import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
+import { GESTURE_CUE_SPRITES, gestureCueFace, gestureIdle, extractionMeter01, DESK_GESTURE_HINT, PHONE_GESTURE_HINT, FIRST_HINTS } from '@/game/gesturePose.js'; /* v2.3.2760: the mini-tool cue on the button (it replaced v2.3.2245's strip and v2.3.2384's finger); extractionMeter01 v2.3.2514 (shared with the node's HP bar since v2.3.2956, the bar above the head before); DESK_GESTURE_HINT v2.3.3407 (a computer's words over the button) */
 import { isTapLock, engagedStance } from '@/game/targeting.js'; /* v2.3.2251: the target is acquired automatically; a tap is the only deliberate pick.  v2.3.2260: autoAcquires dropped with the forced-live line it gated -- visibility is input-driven now, not weapon-driven */
 import { discHeld, discHoldProbe } from '@/game/controlVisibility.js'; /* v2.3.2246: the discs hide themselves unless onboarding is pointing at one */
 
@@ -6455,9 +6455,19 @@ export var BroTown = function BroTown(_ref0) {
             if (!_dh || _dh.parentNode !== _rw) _dh = _rw._btDeskHint = _rw.querySelector('.bt-rjoy-deskhint');
             if (_dh) {
               var _dhText = (_ex && _ex.status === 'ready' && !_ex.locked) ? (DESK_GESTURE_HINT[_ex.skill] || '') : '';
+              /* v2.3.4196: the first FIRST_HINTS harvests say "Now ..." on a phone too (a harvest counted once, as its window first opens) */
+              var _dhFirst = '0';
+              if (_dhText) {
+                if (_rw._btHintEx !== _ex) {
+                  _rw._btHintEx = _ex;
+                  try { var _hn = (Number(localStorage.getItem('bt_harvestHints')) || 0) + 1; localStorage.setItem('bt_harvestHints', String(_hn)); _rw._btHintN = _hn; } catch (e) { _rw._btHintN = 99; }
+                }
+                if (_rw._btHintN <= FIRST_HINTS) { _dhFirst = '1'; if (!(typeof window.matchMedia === 'function' && window.matchMedia('(pointer:fine)').matches)) _dhText = PHONE_GESTURE_HINT[_ex.skill] || _dhText; }
+              }
               if (_dh.textContent !== _dhText) _dh.textContent = _dhText;
               var _dhShow = _dhText ? '1' : '0';
               if (_dh.getAttribute('data-show') !== _dhShow) _dh.setAttribute('data-show', _dhShow);
+              if (_dh.getAttribute('data-first') !== _dhFirst) _dh.setAttribute('data-first', _dhFirst);
             }
           }
           var _rd = rJoyRef.current;

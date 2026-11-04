@@ -167,6 +167,11 @@ export function guideTargets(id, rpg, shown) {
     if (shown('[data-bro-popup="Build"]')) return [];
     return ['[data-section="Build"]', '[data-nav="hero"]', '[data-dash-fold="min"]', '[data-land-fold="min"]'];
   }
+  if (id === 'forge') {
+    /* v2.3.4196: only while the Smithy is open on another tab; on the Forge tab: nothing */
+    if (shown('[data-smithy-tab="forge"][data-on="1"]')) return [];
+    return ['[data-smithy-tab="forge"]'];
+  }
   if (id === 'swap') return ['[data-weapon-pill]'];   /* v2.3.4130: the pill */
   return [];
 }
@@ -176,7 +181,8 @@ export function guideWords(id, sel, computer) {
   /* v2.3.4130: the swap lesson names the keys on a computer */
   if (id === 'swap') return (computer === undefined ? onComputer() : !!computer) ? 'Click a weapon or press 1 2 3' : 'Tap a weapon to switch';
   let s = 'Tap here';
-  if (/data-dash-fold|data-land-fold/.test(sel)) s = 'Tap to open';
+  if (/data-smithy-tab/.test(sel)) s = 'Tap Forge';   /* v2.3.4196 */
+  else if (/data-dash-fold|data-land-fold/.test(sel)) s = 'Tap to open';
   else if (/data-nav="dashboard"/.test(sel)) s = 'Tap Gear';
   else if (/data-gear/.test(sel)) s = 'Tap to equip';
   else if (/data-nav="hero"/.test(sel)) s = 'Tap Bro: points to spend';
@@ -201,6 +207,23 @@ function mayorTalking() {
   try { const nm = document.querySelector('.bt-npcdlg-name'); return !!nm && /Mayor Bro/.test(nm.textContent || ''); } catch (e) { return false; }
 }
 
+/* ═══ v2.3.4196: THE FORGE QUEST'S TAB ═══
+   The owner, watching their kid: "the quest where you need to forge something
+   once you're in the menu put another one of the big arrows pointing you to
+   the right blacksmith tab".  smith_2 (forge a greatsword, chest plate or
+   greaves): the Smithy opens on Smelt, and the forge is the next tab over.
+   The arrow points at it while the quest is active and unforged, and is done
+   once the Forge tab has been opened (or after FORGE_MS), once a character. */
+export const FORGE_MS = 120000;
+export function forgeWanted(rpg) {
+  const q = rpg && rpg._quests && typeof rpg._quests === 'object' ? rpg._quests : {};
+  const k = rpg && rpg._questKills;
+  return q.smith_2 === 'active' && !((k && Number(k.smith_2)) >= 1);
+}
+function forgeTabOpen() {
+  try { return !!document.querySelector('[data-smithy-tab="forge"][data-on="1"]'); } catch (e) { return false; }
+}
+
 /** Is lesson `id` wanted now, and is it finished?  `seen` the ms it has shown;
  *  `from` (the swap lesson, v2.3.4130) the slot in hand when it first showed. */
 export function guideState(id, rpg, S, seen, now, from) {
@@ -214,6 +237,10 @@ export function guideState(id, rpg, S, seen, now, from) {
     const w = weaponWants(rpg);
     const want = w.melee || w.shield;
     return { want, done: seen > 0 && (!want || seen >= WEAPON_MS) };
+  }
+  if (id === 'forge') {
+    const want = forgeWanted(rpg);
+    return { want, done: seen > 0 && (!want || forgeTabOpen() || seen >= FORGE_MS) };
   }
   if (id === 'swap') {
     const swapped = seen > 0 && from != null && ((rpg && rpg.activeSlot) || 'melee') !== from;
@@ -235,7 +262,8 @@ export function guideOwedAgain(rpg) {
   if (!rpg) return out;
   const q = rpg._quests && typeof rpg._quests === 'object' ? rpg._quests : {};
   if (!q.tut_1) out.push('weapon', 'mayor');
-  if (q.tut_1 !== 'turnedIn') out.push('swap');   /* v2.3.4130 */
+  if (q.tut_1 !== 'turnedIn') out.push('swap');
+  if (q.smith_2 !== 'turnedIn') out.push('forge');   /* v2.3.4196 */   /* v2.3.4130 */
   const p3 = rpg.prog3;
   if (p3 && typeof p3 === 'object' && !pointsTipDone(rpg) && !(Number(p3.pool) > 0) && !(Number(p3.shared) > 0)) out.push('points');
   return out;
@@ -251,7 +279,7 @@ function saveDone(id, v) {
 
 /* ── the arrow ── */
 let _timer = null, _el = null, _bob = null, _label = null, _side = null;
-const _seen = { mayor: 0, weapon: 0, swap: 0, points: 0 };
+const _seen = { mayor: 0, weapon: 0, swap: 0, points: 0, forge: 0 };
 let _swapFrom = null;   /* v2.3.4130: the slot in hand when the swap lesson first showed */
 let _lastTick = 0, _who = null, _done = {};
 const qa = { lesson: null, sel: null, side: null, rect: null, target: null, n: 0, off: false, done: {} };
@@ -351,13 +379,13 @@ function tick(getS) {
   if (!S || !rpg || !S.__introLiftedAt || S._zoneLoading || !worldReady(now)) { hide(); return; }
   const who = S.myId || null;
   if (!who) { hide(); return; }
-  if (who !== _who) { _who = who; _done = loadDone(who); _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _swapFrom = null; }
+  if (who !== _who) { _who = who; _done = loadDone(who); _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _seen.forge = 0; _swapFrom = null; }
   for (const id of guideOwedAgain(rpg)) if (_done[id]) { delete _done[id]; _seen[id] = 0; saveDone(who, _done); }
   qa.done = Object.assign({}, _done);
   /* v2.3.4106: the Mayor's last -- a lesson that is wanted beats him (a
      character with points who never took his quest is shown the points).
      v2.3.4130: swap after the weapon lesson, before the points */
-  for (const id of ['weapon', 'swap', 'points', 'mayor']) {
+  for (const id of ['weapon', 'swap', 'forge', 'points', 'mayor']) {
     if (_done[id]) continue;
     const st = guideState(id, rpg, S, _seen[id], now, id === 'swap' ? _swapFrom : null);
     if (st.done) { _done[id] = 1; saveDone(who, _done); qa.done = Object.assign({}, _done); continue; }
@@ -404,7 +432,7 @@ export function stopGuideArrow() {
    shows and where, and a way to forget this character's lessons */
 try {
   if (typeof window !== 'undefined') {
-    qa.forget = () => { if (_who) saveDone(_who, {}); _done = {}; _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _swapFrom = null; };
+    qa.forget = () => { if (_who) saveDone(_who, {}); _done = {}; _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _seen.forge = 0; _swapFrom = null; };
     window.__btGuideArrow = qa;
   }
 } catch (e) { /* no page */ }

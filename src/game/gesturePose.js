@@ -163,6 +163,20 @@ export const DESK_GESTURE_HINT = {
   cooking:     'Flick ↕ or hold E',
 };
 
+/* v2.3.4196: the same line on a PHONE for the first few harvests.  The owner,
+ * watching their kid: "Another point of confusion is when to perform your
+ * first gesture after the 'hp bar' of the resource goes down."  The bar
+ * reads 0, the window opens, and nothing said "now".  The box over the
+ * button already shows words on a computer; for the first FIRST_HINTS
+ * harvests a phone gets them too, led by "Now". */
+export const FIRST_HINTS = 3;
+export const PHONE_GESTURE_HINT = {
+  mining:      'Now pump up and down!',
+  woodcutting: 'Now swipe side to side!',
+  fishing:     'Now circle your thumb!',
+  cooking:     'Now flick up and down!',
+};
+
 /* The keyboard's work, per frame while E is held (ExtractionSwipeLayer):
  *   tapMs  a fresh press works at least this long, so tapping E in a rhythm
  *          works as steadily as holding it;
