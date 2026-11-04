@@ -64,7 +64,7 @@ check('7a the arrow wants Mayor Bro before the first quest', G.guideState('mayor
 check('7b ...and is done once the first quest has a record', G.guideState('mayor', { _quests: { tut_1: 'active' } }, null, 500, 0).done === true);
 check('7c a character that started again is owed it again', G.guideOwedAgain(fresh).includes('mayor'));
 check('7d ...given up after MAYOR_MS (3 min) of showing, and last in the order (a wanted lesson beats it)',
-  G.MAYOR_MS === 180000 && G.guideState('mayor', fresh, null, G.MAYOR_MS, 0).done === true && /for \(const id of \['weapon', (?:'swap', )?'points', 'mayor'\]\)/.test(read('src/ui/guideArrow.js')));   /* v2.3.4130: the swap lesson (weapon pill) sits between weapon and points */
+  G.MAYOR_MS === 180000 && G.guideState('mayor', fresh, null, G.MAYOR_MS, 0).done === true && /for \(const id of \['weapon', (?:'swap', )?(?:'forge', )?'points', 'mayor'\]\)/.test(read('src/ui/guideArrow.js')));   /* v2.3.4130: the swap lesson (weapon pill) sits between weapon and points */
 
 if (failures) { console.log(failures + ' FAILED'); process.exit(1); }
 console.log('first-steps: all passed');

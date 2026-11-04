@@ -180,7 +180,7 @@ export function SmithyPanel({ rpgState, stateRef }) {
       {/* tabs */}
       <div style={{ display: 'flex', gap: 3, margin: '0 12px 10px', padding: 3, borderRadius: 10, background: C.well, flex: 'none' }}>
         {tabs.map((t) => (
-          <button key={t.id} data-smithy-tab={t.id} onClick={() => setTab(t.id)}
+          <button key={t.id} data-smithy-tab={t.id} data-on={tab === t.id ? '1' : '0'} onClick={() => setTab(t.id)}
             style={{ flex: 1, minHeight: 48, border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 1,
               background: tab === t.id ? C.raised : 'transparent', boxShadow: tab === t.id ? `inset 0 -2px 0 ${C.brass}` : 'none',

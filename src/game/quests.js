@@ -267,6 +267,15 @@ export function turnInQuest(S, questPanel, deps, xpCat, opts) {
      Only close when the lookup comes back empty — his chain is genuinely
      finished, and an empty screen is then the truth rather than a dead end. */
   var _nextFromGiver = getNpcQuest(R, questPanel.npc);
+  /* v2.3.4196: a hand-in whose last words send you to someone else ("Next, go
+     see Mayor Bro") is the LAST thing he says then.  The owner, watching
+     their kid: "the feed and seed guy immediately tells you the carrots are
+     ready in a subsequent message after completing the quest and telling you
+     mayor bro has a quest for you."  farm_2 (same giver, unlocked by farm_1
+     AND fish_1) opened straight on top of farm_1's hand-in.  So a different
+     quest of his, not this one's own `next`, waits for the next visit. */
+  if (_nextFromGiver && _nextFromGiver.quest.id !== questPanel.quest.next
+    && /\bnext, go see\b/i.test((questPanel.quest.dialogue && questPanel.quest.dialogue.complete) || '')) _nextFromGiver = null;
   var _nextPanel = _nextFromGiver
     ? _objectSpread(_objectSpread({}, questPanel), {}, {
       quest: _nextFromGiver.quest,
