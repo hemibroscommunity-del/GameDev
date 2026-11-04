@@ -97,7 +97,29 @@ function useDeskHave() {
 /* the floating strip's rows: the menus' letters are on their own buttons, and
    only the column has the height for them too */
 function useDeskKeys() {
-  return deskKeyRows(useDeskHave()).filter((r) => r[3] !== 'menus');
+  const more = useMoreKeys();
+  return deskKeyRows(useDeskHave(), more[0]).filter((r) => r[3] !== 'menus');
+}
+/* v2.3.4198: "More keys" -- the essentials by default, the full list when a
+   player asks, remembered per browser like the hide choice */
+function readMore() {
+  try { return localStorage.getItem('bt_kb_more') === '1'; } catch (_e) { return false; }
+}
+function useMoreKeys() {
+  const [more, setMore] = React.useState(readMore);
+  React.useEffect(() => {
+    const on = () => setMore(readMore());
+    window.addEventListener('bt-kb-more', on);
+    return () => window.removeEventListener('bt-kb-more', on);
+  }, []);
+  const flip = (e) => {
+    if (e) e.stopPropagation();
+    const next = !readMore();
+    try { localStorage.setItem('bt_kb_more', next ? '1' : '0'); } catch (_e) { /* not remembered */ }
+    setMore(next);
+    try { window.dispatchEvent(new CustomEvent('bt-kb-more')); } catch (_e) { /* one list only */ }
+  };
+  return [more, flip];
 }
 
 /* ═══ v2.3.3687: ON A COMPUTER PLAYING WIDE, THE CONTROLS HAVE THEIR OWN COLUMN ═══
@@ -120,7 +142,8 @@ function readHidden() {
   try { return localStorage.getItem('bt_kb_hints_off') === '1'; } catch (_e) { return false; }
 }
 export function DeskKeysList({ side = 'right' } = {}) {
-  const groups = deskKeyGroups(useDeskHave());
+  const [more, flipMore] = useMoreKeys();
+  const groups = deskKeyGroups(useDeskHave(), more);
   const [hidden, setHidden] = React.useState(readHidden);
   React.useEffect(() => {
     const on = () => setHidden(readHidden());
@@ -151,7 +174,10 @@ export function DeskKeysList({ side = 'right' } = {}) {
     groups.map((g) => React.createElement('div', { className: 'bt-desk-keys-group', key: g.id, 'data-desk-keys-group': g.id },
       React.createElement('div', { className: 'bt-desk-keys-group-head' }, g.label),
       g.rows.map(([k, label]) => React.createElement('div', { className: 'bt-desk-key', key: k + ' ' + label },   /* v2.3.4105: Click twice (Attack, Talk) */
-        React.createElement('kbd', null, k), React.createElement('span', null, label)))))));
+        React.createElement('kbd', null, k), React.createElement('span', null, label))))),
+    React.createElement('button', { type: 'button', key: 'more', className: 'bt-desk-keys-more', 'data-desk-keys-more': more ? '1' : '0', onClick: flipMore,
+      style: { gridColumn: '1 / -1', background: 'none', border: 0, color: 'inherit', font: 'inherit', opacity: 0.8, textDecoration: 'underline', cursor: 'pointer', padding: '4px 0' } },
+    more ? 'Fewer keys' : 'More keys')));
 }
 
 /* ═══ v2.3.3526: IN THE BLACK MARGIN, BESIDE THE GAME ═══
@@ -217,6 +243,7 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
   const room = useSideRoom();
   const place = room ? 'side' : 'column';
   const rows = useDeskKeys();   /* v2.3.3687: the keys that work now */
+  const [more, flipMore] = useMoreKeys();
   /* v2.3.3687: on a computer playing wide the list is a column of its own at
      the screen's far edge (DeskKeysList, BottomDashboard), with its own ⌨:
      neither the strip nor the chip here */
@@ -263,7 +290,11 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     'aria-label': 'Hide keyboard controls',
   }, rows.map(([k, label]) => React.createElement('span', {
     className: 'bt-kb-key', key: k + ' ' + label,   /* v2.3.4105: Click twice (Attack, Talk) */
-  }, React.createElement('kbd', null, k), ' ' + label)));
+  }, React.createElement('kbd', null, k), ' ' + label)).concat([React.createElement('span', {
+    className: 'bt-kb-key', key: 'more', role: 'button', 'data-kb-more': more ? '1' : '0',
+    style: { textDecoration: 'underline', cursor: 'pointer' },
+    onPointerDown: swallow, onClick: flipMore,
+  }, more ? 'Fewer keys' : 'More keys')]));
 
   /* v2.3.3526: in the margin, the ⌨ under the rows (game.css .bt-kb-side:
      column-reverse), so it stays where it is when the rows go */

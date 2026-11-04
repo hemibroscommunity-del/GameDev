@@ -117,17 +117,28 @@ export const DESK_KEY_ROWS = [
 /** The requirements a row may name, in the stamp's order. */
 const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food', 'ride'];   /* v2.3.3776: + ride, last so the earlier stamps read the same */
 
+/** v2.3.4198: the owner, of the Controls list: "I'm wondering if the menu
+    shortcuts are overwhelming and just the essential commands should stay
+    listed".  By default only these rows show (key + words); "More keys" opens
+    the rest.  Every key still works, and the menus' small letters stay on
+    their buttons. */
+export const DESK_KEY_ESSENTIAL = ['WASD Move', 'Shift Sprint', 'Space Jump', 'Click Attack', '1 Melee', '2 Bow', '3 Staff', 'E Use', 'M Map', 'Esc Close', 'H Hide this'];
+
 /** The rows to list for what you have: `have` maps each requirement to true
-    when it is met (an absent one is not met). */
-export function deskKeyRows(have) {
+    when it is met (an absent one is not met).  `full` false lists only the
+    essentials (default true: the whole list). */
+export function deskKeyRows(have, full) {
   var h = have || {};
-  return DESK_KEY_ROWS.filter(function (r) { return !r[2] || h[r[2]] === true; });
+  return DESK_KEY_ROWS.filter(function (r) {
+    if (r[2] && h[r[2]] !== true) return false;
+    return full === false ? DESK_KEY_ESSENTIAL.indexOf(r[0] + ' ' + r[1]) >= 0 : true;
+  });
 }
 
 /** The rows in their groups: [{id, label, rows}], a group with nothing to
     list left out. */
-export function deskKeyGroups(have) {
-  var rows = deskKeyRows(have);
+export function deskKeyGroups(have, full) {
+  var rows = deskKeyRows(have, full);
   return DESK_KEY_GROUPS.map(function (g) {
     return { id: g[0], label: g[1], rows: rows.filter(function (r) { return r[3] === g[0]; }) };
   }).filter(function (g) { return g.rows.length > 0; });
