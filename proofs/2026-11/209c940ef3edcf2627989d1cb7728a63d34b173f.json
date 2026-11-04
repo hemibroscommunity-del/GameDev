@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "209c940ef3edcf2627989d1cb7728a63d34b173f",
+  "tree": "a4a20c7ad8953a36b98326c3f7409996e416f455",
+  "committedAt": "2026-11-03T18:57:28-08:00",
+  "subject": "Merge pull request #1425 from hemibroscommunity-del/claude/top-bar-tidy",
+  "files": 7602,
+  "bytes": 864745077,
+  "listingSha256": "bfbd0da5370730feca17921d8bfeae3f718e1078158de68139aff5ed110cddba",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
