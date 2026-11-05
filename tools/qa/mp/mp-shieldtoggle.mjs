@@ -117,6 +117,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const r4 = await look(P, leftPt.x, leftPt.y);
     rec.ok(`4. the next right press lowers it (press: ${r4.press && r4.press.kind})`, !r4.up && r4.press && r4.press.kind === 'shield-down', r4);
 
+    /* ── 4b. v2.3.4313: and WHILE WALKING (a movement key held down), right click raises it, right click
+       lowers it: a true toggle at any time (the owner: it only worked standing still) ── */
+    /* raised standing still, then walking: the next right click must lower it (the owner's case) ... */
+    await rightClick(P);
+    await P.page.waitForTimeout(500);
+    const w0 = await look(P, leftPt.x, leftPt.y);
+    await P.page.keyboard.down('Shift');   /* sprinting: the owner walks with Shift held too */
+    await P.page.keyboard.down('s');
+    await P.page.waitForTimeout(900);
+    await rightClick(P);
+    await P.page.waitForTimeout(500);
+    const w1 = await look(P, leftPt.x, leftPt.y);
+    /* ... and raised while walking, lowered while walking */
+    await rightClick(P);
+    await P.page.waitForTimeout(500);
+    const w2 = await look(P, leftPt.x, leftPt.y);
+    await rightClick(P);
+    await P.page.waitForTimeout(500);
+    const w3 = await look(P, leftPt.x, leftPt.y);
+    await P.page.keyboard.up('s');
+    await P.page.keyboard.up('Shift');
+    rec.ok(`4b. up standing (${w0.up}), then walking: a right click lowers it (${w1.press && w1.press.kind}), raises it (${w2.press && w2.press.kind}), lowers it (${w3.press && w3.press.kind})`,
+      w0.up && !w1.up && w1.press && w1.press.kind === 'shield-down' && w2.up && !w3.up && w3.press && w3.press.kind === 'shield-down', { w0, w1, w2, w3 });
+
     /* ── 5. a roll lowers it, the next press raises it; a blur lowers it ── */
     await rightClick(P);
     await P.page.waitForTimeout(600);
@@ -138,12 +162,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 6. the controls list ── */
     /* v2.3.4152: under the band (the default) the list is the ⌨'s strip,
        folded until H opens it; the old layout's column is .bt-desk-keys */
-    const kbFolded = await P.page.evaluate(() => !document.querySelector('.bt-desk-keys') && !document.querySelector('.bt-kb-hints'));
+    /* v2.3.4313: and since v2.3.4263 a computer's list is the band's own (.bt-band-keys: its drawer holds R-Click) */
+    const kbFolded = await P.page.evaluate(() => !document.querySelector('.bt-desk-keys') && !document.querySelector('.bt-kb-hints') && !document.querySelector('.bt-band-keys'));
     if (kbFolded) { await P.page.keyboard.press('h'); await P.page.waitForTimeout(500); }
     const row = await P.page.evaluate(() => {
       const r = [...document.querySelectorAll('.bt-desk-keys .bt-desk-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'R-Click');
       const sp = r && r.querySelector('span');
       if (sp) return { w: sp.textContent, cut: sp.scrollWidth > sp.clientWidth + 1, sw: sp.scrollWidth, cw: sp.clientWidth };
+      const bk = [...document.querySelectorAll('.bt-band-keys .bt-band-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'R-Click');
+      if (bk) { const sp2 = bk.querySelector('span'); return { w: sp2.textContent, cut: sp2.scrollWidth > sp2.clientWidth + 1, sw: sp2.scrollWidth, cw: sp2.clientWidth, band: true }; }
       const k = [...document.querySelectorAll('.bt-kb-hints .bt-kb-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'R-Click');
       if (!k) return null;
       const kb = k.querySelector('kbd');
