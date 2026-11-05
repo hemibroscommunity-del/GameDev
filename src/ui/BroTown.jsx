@@ -2848,10 +2848,14 @@ export var BroTown = function BroTown(_ref0) {
          alone.  Every bro type now wears its name, above its picture as the
          Human's does (clear of the check painted in the tile's corner). */
       : cat === 'species'
-        ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', justifyContent: 'center' } },
+        ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 4 } },
+            /* v2.3.4323 (owner: "monkey and alien heads need to be the same size as the human heads on the buttons"):
+               the monkey's and alien's pictures are a small head and shoulders (head ~64 px of 128 wide; the Human's is
+               96), so they are drawn 1.5x about a point that puts the head's top and middle where the Human's are
+               (top at y 10 of 128, centred); the neck and shoulders go off the button's foot */
             /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async', draggable: false,
               onError: function (e) { _thumbFallback(e, cat, opt.id); },
-              style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }))   /* v2.3.4323 (owner: "remove the text labels for human, monkey, and alien on the buttons to make the icons fill the buttons") */
+              style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated', transform: 'scale(1.5)', transformOrigin: '47% 40.6%' } }))   /* v2.3.4323 (owner: "remove the text labels for human, monkey, and alien on the buttons to make the icons fill the buttons") */
       : cat === 'eyestyle'
         ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 } },
             /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
