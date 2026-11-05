@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "a8282817d45e55e80a147bdb084c7bb0d1c14d8d",
+  "tree": "edf038c30c05def7fc2b7e7d07af3cc50db6737f",
+  "committedAt": "2026-11-05T11:20:42-08:00",
+  "subject": "Merge pull request #1449 from hemibroscommunity-del/claude/splash-tagline",
+  "files": 7716,
+  "bytes": 907919590,
+  "listingSha256": "ecf5823eb6f2192cf1c744279d2453022a2d52ccd20ce06ba9f1743f1eb46bc6",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
