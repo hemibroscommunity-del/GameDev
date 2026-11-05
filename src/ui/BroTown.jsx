@@ -2786,7 +2786,7 @@ export var BroTown = function BroTown(_ref0) {
     var sz = size || 50;
     var sel = selId === opt.id;
     return /*#__PURE__*/React.createElement("button", {
-      key: 's_' + opt.id, type: 'button', title: opt.name,
+      key: 's_' + opt.id, type: 'button', title: opt.name, 'aria-label': opt.name,
       /* v2.3.3481: the 2026-10-19 UI review -- a tab with no colour row now
          gives its band to this grid (NameModal, .bt-cc-colors--yield), so the
          first pick of a hat, hair or beard brings the row in and the strip
@@ -2832,8 +2832,9 @@ export var BroTown = function BroTown(_ref0) {
              with the collection's Normal Eyes where None is the bro's own eyes
              (the Eyes strip's Normal, and no eyewear).  v2.3.3526's no-entry
              sign and the painted bald head step aside. */
-          /*#__PURE__*/React.createElement("img", { src: ((cat === 'eyestyle' || cat === 'eyewear') ? '/ui/welcome/cc/cc-none-eyes.png?v=' : '/ui/welcome/cc/cc-none-bro.png?v=') + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain', imageRendering: 'pixelated' } }),
-          /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3481: on the Eyes strip, Normal */
+          /*#__PURE__*/React.createElement("img", { src: ((cat === 'eyestyle' || cat === 'eyewear') ? '/ui/welcome/cc/cc-none-eyes.png?v=' : '/ui/welcome/cc/cc-none-bro.png?v=') + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: cat === 'species' ? '100%' : '68%', height: cat === 'species' ? '100%' : '68%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+          /* v2.3.4323 (owner): the bro-type buttons carry no words -- the picture fills the button (aria-label keeps the name) */
+          cat === 'species' ? null : /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3481: on the Eyes strip, Normal */
       /* v2.3.3481: the 2026-10-19 UI review -- the eye styles' tiles are
          whole heads and shoulders (make_eyestyle_thumbs.py), so the eyes, the
          one thing that differs, were a band ~6 CSS px tall and Sleepy read as
@@ -2850,8 +2851,7 @@ export var BroTown = function BroTown(_ref0) {
         ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', justifyContent: 'center' } },
             /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async', draggable: false,
               onError: function (e) { _thumbFallback(e, cat, opt.id); },
-              style: { width: '68%', height: '68%', objectFit: 'contain', imageRendering: 'pixelated' } }),
-            /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, opt.name))
+              style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated' } }))   /* v2.3.4323 (owner: "remove the text labels for human, monkey, and alien on the buttons to make the icons fill the buttons") */
       : cat === 'eyestyle'
         ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 } },
             /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',

@@ -18,6 +18,7 @@ import { getInk, getBrush, setInk, setBrush, onToolsChange } from './paintTools.
    the look from the one function that builds it, not a second copy. */
 import { portraitLook, categoryCrops } from '@/game/characterCreatorEffects.js';
 import { BUILD_INFO } from '../BuildBadge.jsx';
+import { BT_AUDIO } from '@/data/index.js';   /* v2.3.4323: the creator has the session music */
 import { joinBlockReason } from '@/data/joinGate.js';   /* v2.3.2388 */
 /* v2.3.1143: account login -- "Already have a character?" entry point
    for a player on a NEW device, who lands on this splash with a fresh
@@ -159,6 +160,14 @@ var _INK_SOURCES = {
 var _CARD_FOCUS = { shoes: { cy: 0.82, h: 0.38 } };
 
 export function NameModal(props) {
+  /* v2.3.4323, the owner: "no music played during character selection".  The session track starts on
+     the first gesture on the login screen (BT_AUDIO.unlock) and the watchdog keeps it; this makes sure
+     the creator -- reached with or without that splash -- asks for it too (idempotent: a track already
+     playing, starting, or a context not yet unlocked by a tap changes nothing; the first tap in the
+     creator unlocks and starts it).  It streams through the music deck, as ever. */
+  React.useEffect(function () {
+    try { if (BT_AUDIO && BT_AUDIO.ctx && BT_AUDIO.startGlobalMusic) BT_AUDIO.startGlobalMusic(); } catch (e) { /* sound only */ }
+  }, []);
   var onBack = props.onBack,          /* v2.3.2219 */
     _dragRotX = props._dragRotX,
     _swatchTile = props._swatchTile,

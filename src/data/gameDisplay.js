@@ -1662,12 +1662,18 @@ export const BT_AUDIO = _defineProperty(_defineProperty(_defineProperty(_defineP
      layer that plays UNDER the score, not a music track, and cutting it with
      the music would leave the ambience louder than the thing it sits beneath.
      Say the word and it follows. */
-  GLOBAL_MUSIC_VOL: 0.0275,
+  /* v2.3.4323 (owner: "music was hard to notice during my playtest I think it had been turned down to
+     50% at some point. You can raise it back to 100%"): the v2.3.2079 halving undone, both together
+     (the master Music slider already defaults to 100%, brotown_vol_music, so no stored value needs
+     bumping -- these two constants are the ceiling):
+       GLOBAL_MUSIC_VOL  0.0275   -> 0.055
+       ZONE_MUSIC_VOL    0.034375 -> 0.06875 */
+  GLOBAL_MUSIC_VOL: 0.055,
   /* v2.3.1590: was a bare `var TARGET_VOL` inside startZoneAmbient, which
      made the one number the owner actually tunes invisible next to its
      sibling above.  Promoted to a real constant; startZoneAmbient reads it.
      v2.3.2079: 0.06875 -> 0.034375, halved with its sibling. */
-  ZONE_MUSIC_VOL: 0.034375,
+  ZONE_MUSIC_VOL: 0.06875,
   /* v2.3.1738: the per-zone AMBIENCE layer (ZONE_AMBIENT below).  Sits just
      under the zone score, because it plays UNDERNEATH it rather than instead
      of it — wind you notice but do not listen to.
