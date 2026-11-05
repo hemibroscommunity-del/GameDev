@@ -984,7 +984,7 @@ export const GearTab = ({ R: Rin, desk }) => {
                 width: '100%', minWidth: 0, display: 'flex', alignItems: 'center', gap: 3, padding: '0 5px 0 3px', boxSizing: 'border-box',
                 color: '#FFFFFF', lineHeight: 1, textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.7)',
               }}>
-                {roomy && <img src={VITAL_ICONS[kind]} alt="" draggable={false} style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />}
+                {roomy && <img src={VITAL_ICONS[kind]} alt="" draggable={false} style={{ width: thick - 1, height: thick - 1, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />}   {/* v2.3.4293: as tall as its bar (was 12 px in a 16 px one) */}
                 {wordy && <span style={{ fontSize: FONT_MIN, fontWeight: 800, letterSpacing: '.02em' }}>{VITAL_LABEL[kind]}</span>}
                 <span style={{ flex: 1 }} />
                 <span style={{ fontSize: FONT_MIN, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
@@ -1027,17 +1027,20 @@ export const GearTab = ({ R: Rin, desk }) => {
           {figure(fw, ch)}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
             {nameLine(false)}
-            {bars(13, cw - fw - 6, 2)}
+            {bars(14, cw - fw - 6, 2)}
           </div>
         </div>
       );
     } else {
-      const nh = 16, bh = 3 * 16 + 2 * 3;
+      /* v2.3.4293, the owner: "middle panel resource bar icons ... larger in the bar so it's easier to see":
+         the bars are 20 px (were 16) and each icon as tall as its bar */
+      const BAR = 20;
+      const nh = 16, bh = 3 * BAR + 2 * 3;
       inner = (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {nameLine(true)}
           {figure(cw, ch - nh - bh - 6)}
-          {bars(16, cw, 3)}
+          {bars(BAR, cw, 3)}
         </div>
       );
     }
