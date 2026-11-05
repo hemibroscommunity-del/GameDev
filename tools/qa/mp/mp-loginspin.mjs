@@ -107,12 +107,12 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
     await A.page.waitForSelector('[data-login-spin-btn="spent"]', { timeout: 8000 }).catch(() => {});
     await A.page.click('[data-login-spin-btn="spent"]', { timeout: 4000, force: true }).catch(() => A.page.evaluate(() => document.querySelector('[data-login-spin-btn="spent"]').click()));
     await A.page.waitForTimeout(400);
-    await shot(A, 'topbar-spent');
     const note = await A.page.evaluate(() => {
       const b = document.querySelector('[data-login-spin-btn]'); const r = b && b.getBoundingClientRect();
       const top = r ? document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) : null;
       return { t: (document.querySelector('[data-login-spin-note]') || {}).textContent || '', win: !!document.querySelector('[data-login-spin]'), btn: b ? b.getAttribute('data-login-spin-btn') : null, top: top ? (top.tagName + '.' + String(top.className).slice(0, 40)) : null, st: window.__btLoginSpinBus ? JSON.stringify(window.__btLoginSpinBus.get()).slice(0, 200) : null };
     });
+    await shot(A, 'topbar-spent');
     rec.ok(tag('after the spin the bar\'s button is greyed out; a tap says "Next free spin in ..h ..m" and opens no window'), /^Next free spin in (\d+h )?\d+m$/.test(note.t) && !note.win, note);
     /* a second ask the same day: nothing to spin */
     await A.page.evaluate(() => { window._gameState.current.channel.send({ type: 'loginspin_ask', payload: {} }); });
