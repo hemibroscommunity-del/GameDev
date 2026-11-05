@@ -85,7 +85,7 @@ export function trapsHeld(S) {
   return Math.max(0, Math.floor((inv && Number(inv[TRAPPING.TRAP])) || 0));
 }
 
-function onSafeGround(x, y) {
+export function onSafeGround(x, y) {
   const z = ZONES && ZONES.wheel;
   if (!z || !z.safeR || typeof x !== 'number' || typeof y !== 'number') return false;
   const C = NML_CENTRES[wheelLong()] || NML_CENTRE, dx = x - C[0], dy = y - C[1];

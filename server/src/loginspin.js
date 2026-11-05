@@ -106,6 +106,13 @@ export const loginSpinMethods = {
     if (ws) { try { ws.send(JSON.stringify({ type, payload })); } catch (e) { /* the next ask tells */ } }
   },
 
+  /* v2.3.4285, the owner: "only allow the wheel to spin if you're in a safe
+     area".  Safe is the Wheel's safe ground (wheelzone.js _wheelSafeAt: the
+     commons and BroTown), the same ground the minimap plate calls safe; never
+     No man's land or a land.  Anywhere that is not the Wheel (a room, a test)
+     is not asked. */
+  _loginSpinSafe(ps) { return !ps || ps.z !== 'wheel' || !this._wheelSafeAt || this._wheelSafeAt(ps.x, ps.y); },
+
   /* the answer the client draws: always the whole truth about the pot */
   _loginSpinView(rec) {
     return {
@@ -172,6 +179,8 @@ export const loginSpinMethods = {
     const acct = this._loginSpinAcct(session);
     const rec = await this._loginSpinLoad(acct);
     const today = dayOf(this._loginSpinNow());
+    /* the owner: a spin only on safe ground (the client explains; this is the law) */
+    if (!this._loginSpinSafe(ps)) { this._loginSpinSend(session, 'loginspin_state', { avail: rec.day !== today, safe: false, day: today }); return; }
     /* ── the synchronous run: check, roll, stamp (no await) ── */
     if (rec.day === today) {
       /* the same character asking again mid-pot is told the pot, never given another spin */
@@ -206,6 +215,8 @@ export const loginSpinMethods = {
       this._loginSpinSend(session, 'loginspin_round', { ...this._loginSpinView(rec), win: rec.lastWin === true, collected: !rec.open && rec.pot > 0, lost: !rec.open && rec.pot === 0, replay: true });
       return;
     }
+    /* YES (a double) only on safe ground too; NO (collect) is always allowed: the gold is theirs */
+    if (!collect && rec.open && !this._loginSpinSafe(ps)) { this._loginSpinSend(session, 'loginspin_state', { avail: false, safe: false, held: true, day: dayOf(this._loginSpinNow()) }); return; }
     let win = null;
     if (!collect) {
       if (rec.pot * 2 > LOGIN_SPIN.POT_MAX) { this._loginSpinSend(session, 'loginspin_round', { ...this._loginSpinView(rec), replay: true }); return; }

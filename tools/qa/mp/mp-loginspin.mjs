@@ -39,7 +39,28 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(1500);
     const id = await H.readState(A, (S) => S.myId);
     const gold0 = (await H.adminPlayer(wsPort, id)).rpg.coins;
-    await A.page.evaluate(() => window.__btLoginSpinBus.open());
+    /* the top bar's button (the host asks once the world is up): it opens the window */
+    await A.page.waitForSelector('[data-login-spin-btn]', { timeout: 20000 }).catch(() => {});
+    await shot(A, 'topbar');
+    const rects = await A.page.evaluate(() => {
+      const r = (sel) => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect(); return b.width ? { l: b.left, r: b.right, t: b.top, b: b.bottom } : null; };
+      return { out: r('.bt-zone-header__logout'), logo: r('[data-topbar-logo]'), btn: r('[data-login-spin-btn]'), w: window.innerWidth };
+    });
+    const hit = (a, b) => !!a && !!b && a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+    rec.ok(tag('the top bar shows the FREE DAILY SPIN button, off LOGOUT and the logo, inside the screen'), !!rects.btn && !hit(rects.btn, rects.out) && !hit(rects.btn, rects.logo) && rects.btn.r <= rects.w, rects);
+    if (phone) {
+      await A.page.setViewportSize({ width: 320, height: 640 });
+      await A.page.waitForTimeout(500);
+      const r3 = await A.page.evaluate(() => {
+        const r = (sel) => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect(); return b.width ? { l: b.left, r: b.right, t: b.top, b: b.bottom } : null; };
+        return { out: r('.bt-zone-header__logout'), logo: r('[data-topbar-logo]'), btn: r('[data-login-spin-btn]'), w: window.innerWidth };
+      });
+      await shot(A, 'topbar-320');
+      rec.ok(tag('at 320 px the button overlaps neither LOGOUT nor the logo'), !!r3.btn && !hit(r3.btn, r3.out) && !hit(r3.btn, r3.logo) && r3.btn.r <= r3.w, r3);
+      await A.page.setViewportSize(PHONE);
+      await A.page.waitForTimeout(400);
+    }
+    await A.page.click('[data-login-spin-btn]').catch(() => A.page.evaluate(() => window.__btLoginSpinBus.open()));
     await A.page.waitForSelector('[data-login-spin="ready"]', { timeout: 10000 }).catch(() => {});
     await A.page.waitForTimeout(600);
     await shot(A, 'before');

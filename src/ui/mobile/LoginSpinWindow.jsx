@@ -4,12 +4,13 @@ import { useModalGuard } from './modalGuardBus.js';
 import { BT_AUDIO } from '@/data/index.js';
 import { deskWords } from '@/game/deskWords.js';
 import { flyPicture, questFlyTarget } from '@/game/questFly.js';
+import { onSafeGround } from '@/game/trapping.js';
 import { worldReady } from '@/ui/loadingGate.js';
 import { onboardingBusy, worldInMs } from '@/ui/onboardingPace.js';
 import { LOGIN_SPIN_URLS } from '@/rendering/loginSpinPreload.js';
 import {
   loginSpinBus, loginSpinTarget, loginSpinEase, LOGIN_SPIN_MS, LOGIN_SPIN_TURNS,
-  loginDoubleTarget, LOGIN_DOUBLE_MS, loginSpinSegAt, loginSpinParty,
+  LOGIN_SPIN_UNSAFE_WORDS, loginDoubleTarget, LOGIN_DOUBLE_MS, loginSpinSegAt, loginSpinParty,
   LOGIN_SPIN_WINDUP_MS, LOGIN_SPIN_WINDUP_DEG, LOGIN_SPIN_OVER_DEG, LOGIN_SPIN_SETTLE_MS,
 } from '@/game/loginSpinWheel.js';
 
@@ -104,6 +105,12 @@ function countUp(el, from, to, ms, fmtFn) {
   requestAnimationFrame(step);
 }
 
+/* the owner: "only allow the wheel to spin if you're in a safe area" -- the Wheel's safe ground (the worker enforces it too) */
+export const spinSafeNow = () => {
+  const S = getState();
+  if (!S || S.currentZone !== 'wheel' || !S.player) return true;
+  try { return onSafeGround(S.player.x, S.player.y); } catch (e) { return true; }
+};
 const send = (type, payload) => {
   const S = getState();
   try { if (S && S.channel) { S.channel.send({ type, payload: payload || {} }); return true; } } catch (e) { /* the timeout tells */ }
@@ -128,11 +135,15 @@ export const LoginSpinWindow = () => {
   const dPtrEl = useRef(null);
   const partyEl = useRef(null);
   const popEl = useRef(null);
+  const [, tickSafe] = useState(0);
   const [fx, setFx] = useState(null);   /* 'win' | 'lose' | null: the celebration's lights */
   const mDeg = useRef(0);   /* the big wheel's rest angle: it comes back after a double */
   const later = (fn, ms) => { const t = setTimeout(fn, ms); timers.current.push(t); return t; };
 
   useEffect(() => loginSpinBus.subscribe(setBus), []);
+  useEffect(() => { if (!bus.open) return undefined; const id = setInterval(() => tickSafe((n) => n + 1), 400); return () => clearInterval(id); }, [bus.open]);
+  /* the worker refused (not on safe ground): back to the button, explained by the words under it */
+  useEffect(() => { if (bus.refused) setStage((s) => (s === 'waiting' ? 'ready' : s === 'dwaiting' ? 'ask' : s)); }, [bus.refused]);
   useEffect(() => () => { timers.current.forEach(clearTimeout); cancelAnimationFrame(raf.current); }, []);
 
   /* the host: ask once the world is up, open when it is quiet */
@@ -143,7 +154,7 @@ export const LoginSpinWindow = () => {
       if (b.open || !S || !S.channel || !S._serverCaps || !S._serverCaps.loginspin) return;
       if (!worldReady() || worldInMs() < SETTLE_AFTER_WORLD_MS) return;
       if (!askedRef.current) { askedRef.current = send('loginspin_ask'); return; }
-      if (b.avail && !onboardingBusy()) loginSpinBus.open();
+      if (b.avail && !onboardingBusy() && spinSafeNow()) loginSpinBus.open();
     }, ASK_POLL_MS);
     return () => clearInterval(id);
   }, []);
@@ -161,7 +172,7 @@ export const LoginSpinWindow = () => {
   useModalGuard(React, !!bus.open);
 
   const spin = () => {
-    if (stage !== 'ready') return;
+    if (stage !== 'ready' || !spinSafeNow()) return;
     setStage('waiting');
     const S = getState();
     send('loginspin_go', { opId: 'loginspin:' + ((S && S.myId) || 'me') + ':' + Date.now() });
@@ -256,7 +267,7 @@ export const LoginSpinWindow = () => {
     later(() => setStage((s) => (s === 'dwaiting' ? 'error' : s)), ANSWER_TIMEOUT_MS);
   };
   const double = () => {
-    if (stage !== 'ask') return;
+    if (stage !== 'ask' || !spinSafeNow()) return;
     setStage('dwaiting');
     send('loginspin_double', { k: kNow });
     later(() => setStage((s) => (s === 'dwaiting' ? 'error' : s)), ANSWER_TIMEOUT_MS);
@@ -278,6 +289,7 @@ export const LoginSpinWindow = () => {
   const xClose = () => { if (stage === 'ask') { collect(); return; } if (stage === 'done' || stage === 'dlost' || stage === 'ready' || stage === 'error' || stage === 'loading') close(); };
 
   if (!bus.open) return null;
+  const safe = spinSafeNow();
   const dStage = stage === 'ask' || stage === 'ddrum' || stage === 'dwaiting' || stage === 'dspinning' || stage === 'dwon' || stage === 'dlost';
   const xOff = !(stage === 'ask' || stage === 'done' || stage === 'dlost' || stage === 'ready' || stage === 'error' || stage === 'loading');
   const btn = {
@@ -293,7 +305,7 @@ export const LoginSpinWindow = () => {
       padding: 'calc(env(safe-area-inset-top, 0px) + 8px) 10px calc(env(safe-area-inset-bottom, 0px) + 8px)', boxSizing: 'border-box',
     }}>
       <div style={{
-        position: 'relative', width: '100%', maxWidth: 380, maxHeight: '100%', display: 'flex', flexDirection: 'column',
+        position: 'relative', width: '100%', maxWidth: 'min(94vw, 560px)', maxHeight: '100%', display: 'flex', flexDirection: 'column',
         alignItems: 'center', gap: 6, fontFamily: 'Baloo 2, Source Sans 3, sans-serif',
       }}>
         <style>{KEYFRAMES}</style>
@@ -308,7 +320,7 @@ export const LoginSpinWindow = () => {
             background: '#23252f', border: '5px solid #e8b52a', borderRadius: 22, boxShadow: '0 0 0 2px #7a4d00, 0 10px 30px rgba(0,0,0,.6), inset 0 0 40px rgba(0,0,0,.45)',
           }}>
             <img src={LOGIN_SPIN_ART.dPlate} alt="Double or nothing?" draggable={false} style={{ width: '104%', marginTop: -26, display: 'block' }} />
-            <div ref={partyEl} style={{ position: 'relative', width: 'min(86%, 44vh, 300px)', aspectRatio: '1 / 1', marginTop: -10 }}>
+            <div ref={partyEl} style={{ position: 'relative', width: 'min(86%, 46vh, 400px)', aspectRatio: '1 / 1', marginTop: -10 }}>
               {/* the lit and plain wheels turn together; the lit one fades in and out over the plain one, so the lights dim and brighten */}
               <div ref={dWheelEl} data-login-double-wheel="1" style={{ position: 'absolute', inset: 0, willChange: 'transform', transform: 'rotate(' + dDeg.current + 'deg)', filter: stage === 'dwon' ? 'drop-shadow(0 0 16px #ffd23a)' : 'none' }}>
                 <img className="btls-plain" src={LOGIN_SPIN_ART.dWheelPlain} alt="" draggable={false} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }} />
@@ -327,12 +339,13 @@ export const LoginSpinWindow = () => {
                     <div>{'Win it for ' + fmt(pot * 2) + ', or lose it all. 50 / 50.'}</div>
                   </>)}
             </div>
+            {stage === 'ask' && !safe ? <div data-login-unsafe="1" style={{ color: '#ffb3a0', fontSize: 15, fontWeight: 800 }}>{LOGIN_SPIN_UNSAFE_WORDS + ' (NO still collects)'}</div> : null}
             <div data-login-fifty="1" style={{ color: '#ffd23a', fontSize: 14, fontWeight: 800, letterSpacing: '.04em', textShadow: '0 1px 0 #000' }}>Exactly 50/50 every spin</div>
             {stage === 'dlost' ? (
               <button type="button" data-enter="" data-key="Enter" data-key-at="inline" onClick={close} style={btn}>OK</button>
             ) : (
               <div style={{ display: 'flex', gap: 10, width: '92%', justifyContent: 'center' }}>
-                <button type="button" data-login-yes="1" data-enter="" data-key="Enter" data-key-at="inline" disabled={stage !== 'ask'} onClick={double}
+                <button type="button" data-login-yes="1" data-enter="" data-key="Enter" data-key-at="inline" disabled={stage !== 'ask' || !safe} onClick={double}
                   aria-label="Yes, double or nothing" style={{ flex: 1, minWidth: 0, padding: 0, border: 0, background: 'none', cursor: 'pointer', touchAction: 'manipulation', opacity: stage === 'ask' ? 1 : 0.55 }}>
                   <img src={LOGIN_SPIN_ART.dYes} alt="YES" draggable={false} style={{ width: '100%', display: 'block' }} />
                 </button>
@@ -345,8 +358,8 @@ export const LoginSpinWindow = () => {
           </div>
         ) : (
           <>
-            <img src={LOGIN_SPIN_ART.title} alt="Free daily spin" draggable={false} style={{ width: '88%', maxHeight: '16vh', objectFit: 'contain', display: 'block' }} />
-            <div ref={partyEl} style={{ position: 'relative', width: 'min(100%, 62vh, 340px)', aspectRatio: '1 / 1', flex: '0 1 auto' }}>
+            <img src={LOGIN_SPIN_ART.title} alt="Free daily spin" draggable={false} style={{ width: '88%', maxHeight: '14vh', objectFit: 'contain', display: 'block' }} />
+            <div ref={partyEl} style={{ position: 'relative', width: 'min(94%, 58vh, 520px)', aspectRatio: '1 / 1', flex: '0 1 auto' }}>
               {(stage === 'landed' || stage === 'done') && fx === 'win' && !reduced() ? <div aria-hidden="true" style={{ position: 'absolute', inset: '-22%', borderRadius: '50%', background: 'repeating-conic-gradient(rgba(255,226,120,.55) 0 7deg, transparent 7deg 22deg)', WebkitMaskImage: 'radial-gradient(circle, #000 25%, transparent 70%)', maskImage: 'radial-gradient(circle, #000 25%, transparent 70%)', animation: 'btlsRays 7s linear infinite', pointerEvents: 'none' }} /> : null}
               {/* the lit and plain wheels turn together; the lit one fades in and out over the plain one, so the lights dim and brighten */}
               <div ref={wheelEl} data-login-spin-wheel="1" style={{ position: 'absolute', inset: 0, willChange: 'transform', transform: 'rotate(' + mDeg.current + 'deg)', animation: stage === 'landed' ? 'btlsGlow .6s ease-in-out 3' : 'none' }}>
@@ -372,9 +385,9 @@ export const LoginSpinWindow = () => {
                 </>
               ) : (
                 <>
-                  <div style={{ color: '#ffe9b8', fontSize: 14, fontWeight: 700, textShadow: '0 1px 0 #000' }}>{stage === 'ready' ? deskWords('Tap SPIN: one free spin a day') : ' '}</div>
-                  <button type="button" data-enter="" data-key="Enter" data-key-at="inline" data-login-spin-go="1" disabled={stage !== 'ready'} onClick={spin}
-                    style={{ ...btn, opacity: stage === 'ready' ? 1 : 0.7 }}>
+                  <div style={{ color: '#ffe9b8', fontSize: 14, fontWeight: 700, textShadow: '0 1px 0 #000' }}>{stage === 'ready' ? (safe ? deskWords('Tap SPIN: one free spin a day') : <span data-login-unsafe="1" style={{ color: '#ffb3a0' }}>{LOGIN_SPIN_UNSAFE_WORDS}</span>) : ' '}</div>
+                  <button type="button" data-enter="" data-key="Enter" data-key-at="inline" data-login-spin-go="1" disabled={stage !== 'ready' || !safe} onClick={spin}
+                    style={{ ...btn, opacity: stage === 'ready' && safe ? 1 : 0.55 }}>
                     {stage === 'ready' ? 'SPIN' : stage === 'loading' ? '...' : 'SPINNING...'}
                   </button>
                 </>

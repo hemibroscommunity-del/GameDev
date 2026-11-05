@@ -63,13 +63,13 @@ export function loginDoubleWinAt(deg) {
 
 /* ── the window's bus ── */
 const listeners = new Set();
-let _st = { open: false, result: null, round: null, avail: false, seq: 0 };
+let _st = { open: false, result: null, round: null, avail: false, refused: 0, seq: 0 };
 const emit = () => { for (const fn of listeners) { try { fn(_st); } catch (e) { /* a dead listener must not eat the prize */ } } };
 export const loginSpinBus = {
   get() { return _st; },
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   /** loginspin_state: may the account spin today? */
-  state(p) { _st = { ..._st, avail: !!(p && p.avail) }; emit(); },
+  state(p) { _st = { ..._st, avail: !!(p && p.avail), refused: p && p.safe === false ? Date.now() : _st.refused }; emit(); },
   /** The window opens (the host decided it is time). */
   open() { if (_st.open) return; _st = { ..._st, open: true, result: null, round: null, seq: _st.seq + 1 }; emit(); },
   close() { _st = { ..._st, open: false, avail: false }; emit(); },
@@ -90,3 +90,6 @@ export const loginSpinBus = {
 };
 /* QA handle (states.mjs, mp-loginspin): the very call the host makes. */
 try { if (typeof window !== 'undefined') window.__btLoginSpinBus = loginSpinBus; } catch (e) { /* probe only */ }
+
+/** The words under a disabled SPIN / YES: the wheel only turns on safe ground. */
+export const LOGIN_SPIN_UNSAFE_WORDS = 'Spin in a safe area';

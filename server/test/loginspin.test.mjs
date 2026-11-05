@@ -145,6 +145,25 @@ const coinsOf = (id) => room.playerState[id].coins;
   check('...and the character that spins it is paid (10,000)', coinsOf('bp_ls_a2') === c0 + 10000, [c0, coinsOf('bp_ls_a2')]);
 }
 
+// 4b. safe areas only
+{
+  const f1 = await join('bp_ls_f1', 'devggg');
+  const ps = room.playerState.bp_ls_f1; ps.z = 'wheel';
+  room._wheelSafeAt = () => false;
+  const g = await ask(f1, 'loginspin_go');
+  const st = g.find((m) => m.type === 'loginspin_state')?.payload;
+  check('outside the safe ground a go is refused (safe:false), nothing spun', st?.safe === false && !g.some((m) => m.type === 'loginspin_result'), g);
+  room._wheelSafeAt = () => true;
+  room._loginSpinRand = () => 0.05;
+  await ask(f1, 'loginspin_go');
+  room._wheelSafeAt = () => false;
+  const y = await send(f1, 'loginspin_double', { k: 0 });
+  check('...and so is YES on a held pot (the pot stays held)', y.find((m) => m.type === 'loginspin_state')?.payload.safe === false && room.__lsCache.get('d:devggg').open === true, y);
+  const n = await send(f1, 'loginspin_collect', { k: 0 });
+  check('...but NO (collect) works anywhere: the gold is theirs', n.find((m) => m.type === 'loginspin_round')?.payload.collected === true);
+  delete room._wheelSafeAt;
+}
+
 // 5. kill switch, privileged events
 {
   room._liveFlags = { ...(room._liveFlags || {}), loginspin: false };

@@ -1887,6 +1887,7 @@ Screens: login-spin
 **Decisions, and why:**
 - It never opens over a loading screen or over a new character's first steps (the welcome, the five first steps, a plate or a coach card): the host waits for `worldReady` and for `onboardingBusy` to clear, and a brand-new character's spin waits for them.
 - Double or nothing is the owner's own call ("as many times as they want"): the worker rolls each 50/50, a double tap is never a second roll, and a player who simply leaves is paid what they held.
+- A FREE DAILY SPIN button (the green plate, scaled to the bar) sits at the top bar's right end while the account has today's spin: it opens the window anywhere; SPIN and YES turn only on safe ground (BroTown and its commons) and otherwise say "Spin in a safe area" (NO always collects). The wheel is large and centred in every layout.
 - Closing it without spinning keeps today's spin for the next login that day: nothing is written until the spin is pressed.
 - The wheel turns by CSS on one picture; the pointer is a separate fixed layer, and the wheel's picture has the pointer's place filled from the rim elsewhere so no hole turns past it.
 - The window is dark and full-screen over the world, not a card: the art is the screen. The sound is the whole spin (4 seconds) and ends with its last click as the wheel stops.
