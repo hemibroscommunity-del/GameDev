@@ -734,7 +734,7 @@ export const GearTab = ({ R: Rin, desk }) => {
      so it is a 28 px bevel there with 5 px of room -- a long name's end can sit under its corner */
   const cardXRoom = iw >= CARD_X_WIDE_AT;
   const cardX = cardXRoom ? 36 : 28;
-  const artPx = short ? 24 : (iw < 116 ? 30 : 38);
+  const artPx = short ? 24 : (iw < 116 ? (linked0 ? 26 : 30) : 38);   /* v2.3.4273: 4 px back for the ✕ on a narrow card */
   const art = (thumb, glyph, hidden) => (
     <div data-gear-art="" style={{
       width: artPx, height: artPx, flex: 'none', position: 'relative', boxSizing: 'border-box', borderRadius: 8,
