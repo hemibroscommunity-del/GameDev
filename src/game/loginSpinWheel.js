@@ -63,13 +63,13 @@ export function loginDoubleWinAt(deg) {
 
 /* ── the window's bus ── */
 const listeners = new Set();
-let _st = { open: false, result: null, round: null, avail: false, refused: 0, seq: 0 };
+let _st = { open: false, result: null, round: null, avail: false, known: false, refused: 0, seq: 0 };
 const emit = () => { for (const fn of listeners) { try { fn(_st); } catch (e) { /* a dead listener must not eat the prize */ } } };
 export const loginSpinBus = {
   get() { return _st; },
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
   /** loginspin_state: may the account spin today? */
-  state(p) { _st = { ..._st, avail: !!(p && p.avail), refused: p && p.safe === false ? Date.now() : _st.refused }; emit(); },
+  state(p) { _st = { ..._st, known: true, avail: !!(p && p.avail), refused: p && p.safe === false ? Date.now() : _st.refused }; emit(); },
   /** The window opens (the host decided it is time). */
   open() { if (_st.open) return; _st = { ..._st, open: true, result: null, round: null, seq: _st.seq + 1 }; emit(); },
   close() { _st = { ..._st, open: false, avail: false }; emit(); },
@@ -93,3 +93,12 @@ try { if (typeof window !== 'undefined') window.__btLoginSpinBus = loginSpinBus;
 
 /** The words under a disabled SPIN / YES: the wheel only turns on safe ground. */
 export const LOGIN_SPIN_UNSAFE_WORDS = 'Spin in a safe area';
+
+/** "Next free spin in 5h 12m": the time to the worker's day boundary (the UTC day, dailyrewards.js dayOf). */
+export function loginSpinNextWords(now) {
+  const DAY = 86400000, t = typeof now === 'number' ? now : Date.now();
+  const left = Math.max(60000, (Math.floor(t / DAY) + 1) * DAY - t);
+  const h = Math.floor(left / 3600000), m = Math.ceil((left % 3600000) / 60000);
+  const hh = m === 60 ? h + 1 : h, mm = m === 60 ? 0 : m;
+  return 'Next free spin in ' + (hh > 0 ? hh + 'h ' : '') + mm + 'm';
+}

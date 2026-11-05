@@ -2416,6 +2416,11 @@ html{--bt-hud-top:calc(56px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,0
 .bt-zone-header__balance .bt-zone-header__spin img{height:100%;width:auto;max-width:calc(86px * var(--zk));display:block;object-fit:contain;image-rendering:auto}
 @keyframes btZoneSpinGlow{0%,100%{transform:scale(1);opacity:.92}50%{transform:scale(1.06);opacity:1}}
 @media (prefers-reduced-motion: reduce){.bt-zone-header__spin{animation:none}}
+.bt-zone-header__spin.is-spent{animation:none;filter:grayscale(1) brightness(.7);opacity:.7}
+.bt-zone-header__balance{position:relative}
+.bt-zone-header__spinnote{position:absolute;right:0;top:100%;margin-top:4px;z-index:3;white-space:nowrap;pointer-events:none;
+  padding:5px 9px;border-radius:8px;background:#23252f;border:1px solid #7a4d00;color:#ffe9b8;
+  font:700 calc(12px * var(--zk))/1.1 'Source Sans 3',sans-serif;text-shadow:none}
 .bt-zone-header__balance img{width:calc(18px * var(--zk));height:calc(18px * var(--zk));display:block;
   image-rendering:pixelated;object-fit:contain}
 /* v2.3.1336: equipped-item marker — a simple green gradient dot (owner:

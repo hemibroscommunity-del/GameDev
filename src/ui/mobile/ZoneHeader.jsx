@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { loginSpinBus } from '@/game/loginSpinWheel.js'; /* v2.3.4285: the free daily spin's button */
+import { loginSpinBus, loginSpinNextWords } from '@/game/loginSpinWheel.js'; /* v2.3.4285: the free daily spin's button */
 import { LOGIN_SPIN_URLS } from '@/rendering/loginSpinPreload.js';
 import { COL, getState } from './dash/common.js';
 import { placeName } from './placeName.js'; /* v2.3.3974: the land you stand in, or BroTown (was the Wheel's name, v2.3.3009) */
@@ -83,6 +83,8 @@ export const ZoneHeader = ({ onExit }) => {
   const [confirming, setConfirming] = useState(false);
   const [spinSt, setSpinSt] = useState(loginSpinBus.get());   /* v2.3.4285 */
   useEffect(() => loginSpinBus.subscribe(setSpinSt), []);
+  const [spinNote, setSpinNote] = useState('');
+  useEffect(() => { if (!spinNote) return undefined; const t = setTimeout(() => setSpinNote(''), 3200); return () => clearTimeout(t); }, [spinNote]);
   /* ═══ v2.3.4123: THE DOOR ALWAYS LOGS OUT ═══
      The owner, 2026-11-03: "Change just the exit door icon on top left to
      "logout" (bring to splash screen) not switch character".  v2.3.2421 made
@@ -312,12 +314,15 @@ export const ZoneHeader = ({ onExit }) => {
             safe area" where it cannot turn.  Transform and opacity only (this
             rail is over the WebGL canvas, TRAPS section 42). */}
         <div className="bt-zone-header__balance">
-          {spinSt.avail && !spinSt.open ? (
-            <button type="button" className="bt-zone-header__spin" data-login-spin-btn="1" aria-label="Free daily spin"
-              style={{ touchAction: 'manipulation' }} onClick={() => loginSpinBus.open()}>
+          {spinSt.known && !spinSt.open && S._serverCaps && S._serverCaps.loginspin ? (
+            <button type="button" className={'bt-zone-header__spin' + (spinSt.avail ? '' : ' is-spent')} data-login-spin-btn={spinSt.avail ? 'ready' : 'spent'}
+              aria-label={spinSt.avail ? 'Free daily spin' : 'Free daily spin, already spun today'}
+              style={{ touchAction: 'manipulation' }}
+              onClick={() => { if (spinSt.avail) loginSpinBus.open(); else setSpinNote(loginSpinNextWords()); }}>
               <img src={LOGIN_SPIN_URLS[2]} alt="" draggable={false} />
             </button>
           ) : null}
+          {spinNote ? <span className="bt-zone-header__spinnote" data-login-spin-note="1" role="status">{spinNote}</span> : null}
         </div>
       </header>
 

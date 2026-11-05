@@ -40,7 +40,7 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
     const id = await H.readState(A, (S) => S.myId);
     const gold0 = (await H.adminPlayer(wsPort, id)).rpg.coins;
     /* the top bar's button (the host asks once the world is up): it opens the window */
-    await A.page.waitForSelector('[data-login-spin-btn]', { timeout: 20000 }).catch(() => {});
+    await A.page.waitForSelector('[data-login-spin-btn="ready"]', { timeout: 20000 }).catch(() => {});
     await shot(A, 'topbar');
     const rects = await A.page.evaluate(() => {
       const r = (sel) => { const e = document.querySelector(sel); if (!e) return null; const b = e.getBoundingClientRect(); return b.width ? { l: b.left, r: b.right, t: b.top, b: b.bottom } : null; };
@@ -103,6 +103,13 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
     await A.page.waitForTimeout(500);
     const closed = await A.page.evaluate(() => !document.querySelector('[data-login-spin]'));
     rec.ok(tag('the window closes'), closed, closed);
+    /* spun: the bar's button stays, greyed; a tap says when the next one is, and opens no window */
+    await A.page.waitForSelector('[data-login-spin-btn="spent"]', { timeout: 8000 }).catch(() => {});
+    await A.page.click('[data-login-spin-btn="spent"]').catch(() => {});
+    await A.page.waitForTimeout(400);
+    await shot(A, 'topbar-spent');
+    const note = await A.page.evaluate(() => ({ t: (document.querySelector('[data-login-spin-note]') || {}).textContent || '', win: !!document.querySelector('[data-login-spin]') }));
+    rec.ok(tag('after the spin the bar\'s button is greyed out; a tap says "Next free spin in ..h ..m" and opens no window'), /^Next free spin in (\d+h )?\d+m$/.test(note.t) && !note.win, note);
     /* a second ask the same day: nothing to spin */
     await A.page.evaluate(() => { window._gameState.current.channel.send({ type: 'loginspin_ask', payload: {} }); });
     await A.page.waitForTimeout(1200);
