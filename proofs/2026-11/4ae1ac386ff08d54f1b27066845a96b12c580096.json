@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4ae1ac386ff08d54f1b27066845a96b12c580096",
+  "tree": "b72b7e596772733a825c34e120c22de34b52923a",
+  "committedAt": "2026-11-04T16:58:51-08:00",
+  "subject": "Merge pull request #1441 from hemibroscommunity-del/claude/desk-hud-polish",
+  "files": 7659,
+  "bytes": 888998272,
+  "listingSha256": "117c8e3f5822a6b1ff28578900ab9ef3987d358526e21dfe9c879e6c5f92f880",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
