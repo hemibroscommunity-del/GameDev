@@ -1904,3 +1904,7 @@ Sources: CLAUDE.md, docs/specs/login-wheel.md, server/src/loginspin.js, src/game
 - **Feed & Seed:** "Visit Your Farm" is now the window's big top button (full width, brass edge, the farm picture beside the words). Under it a "Your plots" heading and the bed-status line, then the tabs **Buy** and **Deliver** (were Seeds / Orders; same ids), each under a short heading ("What you can buy", "What you can deliver for gold"). Nothing removed. Pictures: `docs/shots/feedseed-before.webp`, `feedseed-after.webp`.
 - **Key caps (computer):** the letter caps on the dashboard buttons and the band's Controls list are about 1.3x larger so they read at a glance.
 - **Farm exit:** the "Way out" word is not drawn on the farm; the exit, its arrow and the walk-out stay.
+
+## Bro tab portrait, 3x (v2.3.4323)
+
+The portrait on the Bro tab is 168 px square at most (was 56), narrower only if its panel is. The name and Lv sit on the picture's top edge on a soft dark fade, so they stay in view; the title, party and AP rows follow under it and the panel scrolls inside today's band height. Pictures: `docs/shots/brotab-portrait-phone.webp`, `brotab-portrait-desk.webp`.

@@ -2019,11 +2019,12 @@ button.bt-pin-drop{color:inherit;margin:0}
 .bt-bro2 img{pointer-events:none}
 /* LEFT: you */
 .bt-bro2-id{display:flex;flex-direction:column;gap:6px}
-.bt-bro2-head{display:flex;align-items:center;gap:8px;min-width:0}
-.bt-bro2-face{flex:none;width:56px;height:56px;box-sizing:border-box;border:2px solid #C9973F;border-radius:10px;overflow:hidden;
+.bt-bro2-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px;min-width:0}
+.bt-bro2-face{flex:none;width:min(168px,100%);aspect-ratio:1;/* v2.3.4323: 3x (was 56 px), the owner: the portrait should be about 3x larger; the name and Lv sit beside it when there is room, else under it */ box-sizing:border-box;border:2px solid #C9973F;border-radius:10px;overflow:hidden;
   background:#2A3E4C;box-shadow:0 0 0 1px #0B151B,inset 0 0 0 1px rgba(255,214,128,.15)}
-.bt-bro2-face img{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
-.bt-bro2-who{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.bt-bro2-face{position:relative}
+.bt-bro2-face>img{display:block;width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.bt-bro2-who{position:absolute;left:0;right:0;top:0;padding:4px 6px 12px;min-width:0;display:flex;flex-direction:column;gap:0;background:linear-gradient(180deg,rgba(11,21,27,.82),rgba(11,21,27,0))}
 .bt-bro2-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;font-weight:800;color:#FFFFFF}
 .bt-bro2-lv{font-size:15px;font-weight:800;color:#F2C45A;font-variant-numeric:tabular-nums}
 /* the title: a gold ribbon, its ends notched (two clipped layers: a border
