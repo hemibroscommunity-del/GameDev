@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "656b0cb749127a2cace78861b37c9b07b53eb9f2",
+  "tree": "3b263ec55bdacdabb817c9e540f8213d259b5754",
+  "committedAt": "2026-11-04T18:35:53-08:00",
+  "subject": "Merge pull request #1443 from hemibroscommunity-del/claude/splash-fixes",
+  "files": 7663,
+  "bytes": 889144819,
+  "listingSha256": "b3c586a965b3be33d28a701ea8558b945033206fe0071d1a365af70d5411bdd4",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
