@@ -8093,12 +8093,11 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
 @media (pointer:fine) and (min-width:1000px){
   html.bt-one-band:not(.bt-band-side) .bt-band-keys{
     display:flex;flex-direction:column;gap:3px;position:absolute;z-index:2;
-    top:12px;bottom:8px;right:12px;max-width:270px;
+    top:12px;bottom:auto;max-height:calc(100% - 20px);right:12px;max-width:270px;
     left:calc(50% + min(var(--band-max-w,480px), 100%) / 2 + 16px);
     padding:6px 8px;box-sizing:border-box;overflow:hidden auto;touch-action:pan-y;
     background:rgba(13,22,27,.55);border:1px solid rgba(238,242,235,.14);border-radius:10px;
     color:#CFD8D6;font:600 12px/1.2 'Source Sans 3',sans-serif}
-  .bt-band-keys[data-band-keys="folded"]{bottom:auto}
   .bt-band-keys-head{display:flex;align-items:center;gap:5px;flex:none;min-height:20px;padding:0;
     background:none;border:0;color:#8F9E9B;font:800 10.5px/1 'Source Sans 3',sans-serif;letter-spacing:.09em;
     text-transform:uppercase;cursor:pointer;touch-action:manipulation}
@@ -8110,6 +8109,14 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
     display:inline-flex;align-items:center;justify-content:center;
     border:1px solid rgba(238,242,235,.30);border-bottom-width:2px;border-radius:4px;
     background:rgba(13,22,27,.92);color:#F7F2E7;font:700 10px/1 'Source Sans 3',sans-serif;white-space:nowrap}
-  .bt-band-keys-more{flex:none;align-self:flex-start;margin-top:auto;padding:2px 0;background:none;border:0;
+  /* v2.3.4273: the accordion's drawer (the rest of the full list): shut it takes no
+     height, opened it grows to its size by a short animation */
+  .bt-band-keys-extra{display:grid;grid-template-rows:0fr;visibility:hidden;
+    transition:grid-template-rows 220ms ease,visibility 0s linear 220ms}
+  .bt-band-keys-extra[data-open="1"]{grid-template-rows:1fr;visibility:visible;transition-delay:0s}
+  .bt-band-keys-extra-in{min-height:0;overflow:hidden}
+  .bt-band-keys-extra-in .bt-band-keys-list{padding-top:3px}
+  @media (prefers-reduced-motion:reduce){ .bt-band-keys-extra{transition:none} }
+  .bt-band-keys-more{flex:none;align-self:flex-start;margin-top:2px;padding:2px 0;background:none;border:0;
     color:#8F9E9B;font:700 11px/1.2 'Source Sans 3',sans-serif;text-decoration:underline;cursor:pointer;touch-action:manipulation}
 }
