@@ -132,7 +132,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       !!enter && v1.open && v1.tab === 'seeds' && v1.tabs[0] === 'seeds' && v1.tabs.indexOf('beds') < 0 && v1.beds && v1.beds.length === 6 && v1.beds.every((b) => b === 'rough'), v1);
     rec.ok(`v2.3.3136: no beds and no tools in the window (${v1.drawnBeds} beds, ${v1.tools} tools) -- they are worked on your farm -- and "Visit Your Farm" above the tabs`,
       v1.drawnBeds === 0 && v1.tools === 0 && v1.visitFirst, v1);
-    rec.ok(`...with a line saying how your beds are doing: "${v1.summary}"`, v1.summary === 'Your farm: 6 beds to plant' && v1.ready === 0, v1.summary);
+    rec.ok(`...with a line saying how your beds are doing: "${v1.summary}"`, v1.summary === '6 beds to plant' && v1.ready === 0, v1.summary);
 
     /* ── 2. the Seeds tab ── */
     const b0 = await bag();
@@ -218,7 +218,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const b3 = await bag();
     await shot(A, 'growing');
     rec.ok(`three beds dug and sown with carrots by the worker (${v3.beds && v3.beds.join(' ')}), two seeds left (${b3.inv.seed_carrot}): "${v3.summary}"`,
-      v3.beds && v3.beds.slice(0, 3).every((b) => b === 'planted:carrot') && b3.inv.seed_carrot === 2 && v3.summary === 'Your farm: 3 growing · 3 beds to plant' && v3.ready === 0,
+      v3.beds && v3.beds.slice(0, 3).every((b) => b === 'planted:carrot') && b3.inv.seed_carrot === 2 && v3.summary === '3 growing · 3 beds to plant' && v3.ready === 0,
       { beds: v3.beds, summary: v3.summary, inv: b3.inv });
     const p0 = v3.plots[0];
     rec.ok(`a carrot takes 8 minutes dry, on the worker's clock (${Math.round((p0.readyAt - p0.plantedAt) / 60000)} min)`, p0.readyAt - p0.plantedAt === 8 * 60000, p0);
@@ -227,18 +227,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const v4 = await until((v) => v.ready === 3);
     await shot(A, 'ripe');
     rec.ok(`ripened by the dev op (${rip && rip.ripened}), the line reads "${v4.summary}", in green (${v4.summaryColor})`,
-      !!rip && rip.ripened === 3 && v4.summary === 'Your farm: 3 ready to harvest · 3 beds to plant' && v4.ready === 3 && v4.summaryColor === 'rgb(85, 185, 138)', { rip, v4 });
+      !!rip && rip.ripened === 3 && v4.summary === '3 ready to harvest · 3 beds to plant' && v4.ready === 3 && v4.summaryColor === 'rgb(85, 185, 138)', { rip, v4 });
 
     const f0 = (await bag()).farming || { level: 1, xp: 0 };
     await act('harvest', [0, 1, 2]);
-    const v5 = await until((v) => v.beds && v.beds.every((b) => b === 'rough') && v.summary === 'Your farm: 6 beds to plant');
+    const v5 = await until((v) => v.beds && v.beds.every((b) => b === 'rough') && v.summary === '6 beds to plant');
     let b5 = await bag();
     for (let i = 0; i < 20 && b5.inv.crop_carrot !== 6; i++) { await A.page.waitForTimeout(200); b5 = await bag(); }
     const srv = await H.adminPlayer(wsPort, id);
     const srvInv = (srv && srv.rpg && srv.rpg.inventory) || {};
     const xpGain = ((b5.farming && b5.farming.level) > (f0.level || 1)) ? 'levelled' : (b5.farming.xp - (f0.xp || 0));
     rec.ok(`harvested: 6 carrots (2 a bed, none fertilized) and ${xpGain} Farming XP, the worker's own copy of the bag says so (${srvInv.crop_carrot}), and the line is back to "${v5.summary}"`,
-      b5.inv.crop_carrot === 6 && srvInv.crop_carrot === 6 && (xpGain === 'levelled' || xpGain > 0) && v5.summary === 'Your farm: 6 beds to plant',
+      b5.inv.crop_carrot === 6 && srvInv.crop_carrot === 6 && (xpGain === 'levelled' || xpGain > 0) && v5.summary === '6 beds to plant',
       { inv: b5.inv, farming: b5.farming, srvInv, v5: v5.summary });
 
     /* ── 4. closed and opened again ── */
@@ -248,7 +248,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await A.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button.bt-interact-prompt')).find((q) => /Enter /.test(q.textContent || '')); if (b) b.click(); });
     const v7 = await until((v) => v.open && v.beds && v.beds.length === 6 && v.summary);
     rec.ok(`closed and opened again, the farm is the worker's (${v7.beds && v7.beds.join(' ')}): "${v7.summary}"`,
-      v7.beds && v7.beds.every((b) => b === 'rough') && v7.summary === 'Your farm: 6 beds to plant', v7);
+      v7.beds && v7.beds.every((b) => b === 'rough') && v7.summary === '6 beds to plant', v7);
 
     /* ── 9. v2.3.3127: the kill switch.  A tab that joins while `farm: false`
        is set gets the window CLOSED -- a card that asks the worker nothing --

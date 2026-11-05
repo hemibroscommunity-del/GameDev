@@ -1898,3 +1898,9 @@ Screens: login-spin
 - Whether a missed day should stack (the owner said one a day) and whether 10K at 2.5% is the right jackpot: the angles are the art's, the owner's call.
 
 Sources: CLAUDE.md, docs/specs/login-wheel.md, server/src/loginspin.js, src/game/loginSpinWheel.js, src/ui/mobile/LoginSpinWindow.jsx, src/rendering/loginSpinPreload.js, tools/qa/ui-review/states.mjs, tools/qa/mp/mp-loginspin.mjs
+
+## Feed & Seed layout, key caps, farm exit (v2.3.4323)
+
+- **Feed & Seed:** "Visit Your Farm" is now the window's big top button (full width, brass edge, the farm picture beside the words). Under it a "Your plots" heading and the bed-status line, then the tabs **Buy** and **Deliver** (were Seeds / Orders; same ids), each under a short heading ("What you can buy", "What you can deliver for gold"). Nothing removed. Pictures: `docs/shots/feedseed-before.webp`, `feedseed-after.webp`.
+- **Key caps (computer):** the letter caps on the dashboard buttons and the band's Controls list are about 1.3x larger so they read at a glance.
+- **Farm exit:** the "Way out" word is not drawn on the farm; the exit, its arrow and the walk-out stay.

@@ -603,6 +603,9 @@ export class TileRenderer {
         if (!row) continue;
         for (let c = 0; c < cols; c++) {
           if (row[c] !== 9) continue;
+          /* v2.3.4323 (owner: "'way out' label text doesn't need to display on farm exit"): the farm's gate is no
+             labelled marker -- the exit, its arrow and how it works stay; only the words go */
+          if (zoneId === 'farm_home') continue;
           let near = false;
           for (const p of placedAt) {
             if (Math.abs(p.c - c) <= CLUSTER && Math.abs(p.r - r) <= CLUSTER) { near = true; break; }

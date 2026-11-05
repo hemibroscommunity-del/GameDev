@@ -8123,7 +8123,7 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
   .bt-band-keys-list{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;align-content:start}
   .bt-band-key{display:flex;align-items:center;gap:5px;min-width:0}
   .bt-band-key span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .bt-band-keys kbd{flex:none;min-width:18px;height:17px;padding:0 4px;box-sizing:border-box;
+  .bt-band-keys kbd{flex:none;min-width:23px;height:22px;padding:0 5px;box-sizing:border-box;   /* v2.3.4323 (owner: "make shortcut key labels a bit larger to see"): 1.3x */
     display:inline-flex;align-items:center;justify-content:center;
     border:1px solid rgba(238,242,235,.30);border-bottom-width:2px;border-radius:4px;
     background:rgba(13,22,27,.92);color:#F7F2E7;font:700 10px/1 'Source Sans 3',sans-serif;white-space:nowrap}
@@ -8137,4 +8137,10 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
   @media (prefers-reduced-motion:reduce){ .bt-band-keys-extra{transition:none} }
   .bt-band-keys-more{flex:none;align-self:flex-start;margin-top:2px;padding:2px 0;background:none;border:0;
     color:#8F9E9B;font:700 11px/1.2 'Source Sans 3',sans-serif;text-decoration:underline;cursor:pointer;touch-action:manipulation}
+}
+
+/* v2.3.4323 (owner: "make shortcut key labels a bit larger to see"; the dashboard's: the nav buttons' letters, 1.3x):
+   the I P J K O caps on the five buttons -- the weapon pill's, the minimap's and the skateboard's stay */
+@media (pointer:fine) {
+  .bt-navrail [data-key]::after { min-width:21px; height:21px; padding:0 5px; font-size:13px; border-radius:5px; }
 }
