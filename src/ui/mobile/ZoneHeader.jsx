@@ -7,7 +7,7 @@ import { apRise } from '../../game/apChip.js';  /* v2.3.3553; v2.3.4183: a rise 
 import { pushHudPopup } from '../XpFlyOverlay.jsx';  /* v2.3.4183: "+12 gold" / "+5 AP" under the bar */
 import { onXpBar, xpBarShown, xpGainWords, xpToNextWords } from '../../game/xpBar.js'; /* v2.3.3695: the XP bar */
 import { XpTrack } from './XpTrack.jsx';                                  /* v2.3.3739: its white gain bar and "45 / 120" */
-import { XP_BAR_ICONS, XP_BAR_LABELS } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
+import { XP_BAR_ICONS, XP_BAR_LABELS, TOPBAR_LOGO } from './xpBarArt.js';           /* v2.3.3695: its skill pictures */
 
 /* ═══ v2.3.2892 -> v2.3.3974: THE HOUR'S ICON IS GONE ═══
    v2.3.2892 put a day/night icon beside the zone name (the owner: "Add a time
@@ -235,6 +235,16 @@ export const ZoneHeader = ({ onExit }) => {
           onContextMenu={(e) => e.preventDefault()}
           style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', userSelect: 'none' }}
         >{placeName(S) /* v2.3.3974: the land, or BroTown (v2.3.3039: never "The Wheel") */}</div>
+        {/* v2.3.4263, the owner: "Add the BroTown logo centered on the top bar".
+            In the world (where the name is drawn clear) the title screen's
+            lockup stands in the middle, over the invisible hold area (it takes
+            no touch: the 1.2 s hold still reaches the title under it); the XP
+            bar takes the centre while you earn and the logo fades back after
+            (game.css .bt-zone-header__logo).  Off the Wheel the zone's name
+            is drawn there, so no logo. */}
+        {S.currentZone === 'wheel' ? (
+          <img className="bt-zone-header__logo" data-topbar-logo="1" src={TOPBAR_LOGO} alt="" draggable={false} />
+        ) : null}
         {/* v2.3.3765-v2.3.3974: No man's land's pill, then the place chip
             (Safe / PvP / Outlaw), stood here; since v2.3.4113 the minimap's
             plate says it (game/plateSafety.js) and takes the tap

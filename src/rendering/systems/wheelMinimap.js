@@ -453,7 +453,7 @@ export class WheelMinimap {
      the computer's rule, or wider again. */
   _setK(K) {
     this._k = K;
-    this.win = K > 1 ? WHEEL_MINI_DESK_WINDOW : WHEEL_MINI_WINDOW;
+    this.win = K >= 2 ? WHEEL_MINI_DESK_WINDOW : WHEEL_MINI_WINDOW;   /* v2.3.4263: the band's 1.35 shows a phone's window */
     this.sc = WHEEL_BOX / this.win;
     this.root.scale.set(K);
     const res = this._tRes * K;

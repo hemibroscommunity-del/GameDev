@@ -47,7 +47,7 @@ import { COMBAT_SKILLS, unspentPointsTotal } from './sheet/heroModel.js'; /* v2.
    material rather than live code, and it says so at its top. */
 import { HeroExpanded } from './sheet/HeroExpanded.jsx';        /* v2.3.1286 */
 import { deskWideActive, DESK_SHEET_W } from '../deskWide.js';  /* v2.3.3687: a computer plays the sideways layout */
-import { DeskKeysList } from '../panels/KeyboardHintsPanel.jsx';   /* v2.3.3687: the controls at the screen's far edge */
+import { DeskKeysList, BandKeys } from '../panels/KeyboardHintsPanel.jsx';   /* v2.3.3687: the controls at the screen's far edge */
 import { InventoryPanel }              from './dash/InventoryPanel.jsx';
 import { ItemDetailPopup }             from './dash/ItemDetailPopup.jsx';
 import { itemDetailBus }               from './dash/itemDetailBus.js';
@@ -1508,6 +1508,8 @@ export const BottomDashboard = () => {
           Upright only: sideways the band is not drawn (the fold chip is in
           the dock), and a computer plays sideways. */}
       {!land ? <BandGrip min={dashMin} expanded={mode === 'expanded'} /> : null}
+      {/* v2.3.4263: the short key list in the band's empty right side, on a computer (CSS shows it only there) */}
+      {!land ? <BandKeys /> : null}
       {/* v2.3.1307/1311: the top-edge drag handle is gone — band-wide
           swipes are retired (owner: too ambiguous over interactive
           menus; a handle with no gesture behind it is a lie).  Resizing

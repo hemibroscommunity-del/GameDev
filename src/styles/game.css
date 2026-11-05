@@ -2215,7 +2215,7 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
 /* v2.3.3430: the owner's TEST MODE tag (ZoneHeader.jsx, server/src/testmode.js):
    small, amber, beside the title; it never takes a touch and never squeezes
    the title's box below its ellipsis.  A flat fill, no filters (TRAPS §42). */
-.bt-zone-header__test{flex:none;display:block;pointer-events:none;
+.bt-zone-header__test{flex:none;display:block;pointer-events:none;position:relative;z-index:1;
   padding:2px 5px 1px;border-radius:4px;background:#E5B45C;color:#1A1206;
   font:800 9.5px/1.15 'Source Sans 3',sans-serif;letter-spacing:.07em;
   white-space:nowrap}
@@ -2232,7 +2232,14 @@ html.bt-calm .bt-ap-gain{animation:none;opacity:0}
 .bt-zone-header__mid > .bt-zone-header__title,
 .bt-zone-header__mid > .bt-zone-header__test{transition:opacity 220ms linear}
 .bt-zone-header__mid--xp > .bt-zone-header__title,
-.bt-zone-header__mid--xp > .bt-zone-header__test{opacity:0}
+.bt-zone-header__mid--xp > .bt-zone-header__test,
+.bt-zone-header__mid--xp > .bt-zone-header__logo{opacity:0}
+/* v2.3.4263: the BroTown logo, centred in the bar's middle column (it shrinks
+   with it on a narrow phone: LOGOUT and the purse's column are outside), no
+   touches, no filter (TRAPS section 42) */
+.bt-zone-header__logo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:block;max-width:100%;
+  height:calc(36px * var(--zk));width:auto;object-fit:contain;
+  pointer-events:none;transition:opacity 220ms linear}
 /* ═══ v2.3.3765: NO MAN'S LAND'S PILL, RIGHT OF THE TITLE ═══
    (NmlBadge.jsx NmlPill) The owner: "just to the right of the Brotown name at
    the top (you can cut it away same as when earning xp in a weapon)".  It
@@ -8072,3 +8079,34 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
 .bt-skin-faceart::after{content:'';position:absolute;inset:0;border-radius:50%;background:rgba(4,6,8,.28);opacity:0;transition:opacity 90ms linear;pointer-events:none}
 [data-pressed="1"] .bt-skin .bt-skin-faceart::after{opacity:1}
 @media (prefers-reduced-motion: reduce){ .bt-skin-faceart::after{transition:none} }
+
+/* ═══ v2.3.4263: THE BAND'S SHORT KEY LIST (KeyboardHintsPanel BandKeys) ═══
+   The owner: "For desktop add the short list of shortcuts to the extra
+   dashboard area on the right".  Right of the centred 480 px assembly, inside
+   the band: slate key caps (the [data-key] recipe's colours) and words in two
+   columns, a quiet "Controls  H" heading, "More keys" at the foot.  Shown only
+   to a mouse under the one band, upright, and where the band has the room. */
+.bt-band-keys{display:none}
+@media (pointer:fine) and (min-width:1000px){
+  html.bt-one-band:not(.bt-band-side) .bt-band-keys{
+    display:flex;flex-direction:column;gap:3px;position:absolute;z-index:2;
+    top:12px;bottom:8px;right:12px;max-width:270px;
+    left:calc(50% + min(var(--band-max-w,480px), 100%) / 2 + 16px);
+    padding:6px 8px;box-sizing:border-box;overflow:hidden auto;touch-action:pan-y;
+    background:rgba(13,22,27,.55);border:1px solid rgba(238,242,235,.14);border-radius:10px;
+    color:#CFD8D6;font:600 12px/1.2 'Source Sans 3',sans-serif}
+  .bt-band-keys[data-band-keys="folded"]{bottom:auto}
+  .bt-band-keys-head{display:flex;align-items:center;gap:5px;flex:none;min-height:20px;padding:0;
+    background:none;border:0;color:#8F9E9B;font:800 10.5px/1 'Source Sans 3',sans-serif;letter-spacing:.09em;
+    text-transform:uppercase;cursor:pointer;touch-action:manipulation}
+  .bt-band-keys-head kbd{margin-left:auto}
+  .bt-band-keys-list{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;align-content:start}
+  .bt-band-key{display:flex;align-items:center;gap:5px;min-width:0}
+  .bt-band-key span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bt-band-keys kbd{flex:none;min-width:18px;height:17px;padding:0 4px;box-sizing:border-box;
+    display:inline-flex;align-items:center;justify-content:center;
+    border:1px solid rgba(238,242,235,.30);border-bottom-width:2px;border-radius:4px;
+    background:rgba(13,22,27,.92);color:#F7F2E7;font:700 10px/1 'Source Sans 3',sans-serif;white-space:nowrap}
+  .bt-band-keys-more{flex:none;align-self:flex-start;margin-top:auto;padding:2px 0;background:none;border:0;
+    color:#8F9E9B;font:700 11px/1.2 'Source Sans 3',sans-serif;text-decoration:underline;cursor:pointer;touch-action:manipulation}
+}
