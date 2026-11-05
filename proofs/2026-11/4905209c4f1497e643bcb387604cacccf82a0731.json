@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4905209c4f1497e643bcb387604cacccf82a0731",
+  "tree": "08fd6f83aadd53e079595ae8778e2aab0eb055d2",
+  "committedAt": "2026-11-04T16:48:48-08:00",
+  "subject": "Merge pull request #1440 from hemibroscommunity-del/claude/card-x-larger",
+  "files": 7655,
+  "bytes": 888418739,
+  "listingSha256": "f211ea1cec97b6bf97ab1656bf8c8c6d9f54acf1a4d24a8806d4e195e88159fd",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
