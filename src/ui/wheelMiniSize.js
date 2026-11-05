@@ -25,8 +25,14 @@
    of its height and lay over the skateboard's button (mp-oneband's picture).
    The owner's "double the size" is kept for the old layout, ?oneband=0. */
 import { deskWideActive } from './deskWide.js';
+import { oneBandActive } from './oneBand.js';
 
 export const WHEEL_MINI_PX = 132;              /* CSS px a side on a phone (the box's own units) */
+/* v2.3.4263 (owner: "Make the desktop version of the minimap somewhat larger"):
+   a computer under the one band (the default) draws it 1.35x -- 178 px, its
+   frame, plate and markers with it (the world shows the phone's 3,200 game px
+   across, so every mark is bigger too).  The old 2x is the side column's. */
+export const WHEEL_MINI_BAND_K = 1.35;
 export const WHEEL_MINI_DESK_K = 2;            /* ...times this on a computer */
 export const WHEEL_MINI_WINDOW = 3200;         /* game px across the box on a phone: about three zones */
 export const WHEEL_MINI_DESK_WINDOW = 4800;    /* ...and on a computer: 1.5 times the world */
@@ -40,7 +46,12 @@ export function wheelMiniK(now) {
     _at = t;
     let on = false;
     try { on = deskWideActive(); } catch (e) { on = false; }
-    _k = on ? WHEEL_MINI_DESK_K : 1;
+    let band = false;
+    try {
+      band = !on && oneBandActive() && !document.documentElement.classList.contains('bt-band-side')
+        && window.matchMedia('(pointer:fine)').matches;
+    } catch (e) { band = false; }
+    _k = on ? WHEEL_MINI_DESK_K : band ? WHEEL_MINI_BAND_K : 1;
   }
   return _k;
 }
@@ -49,4 +60,4 @@ export function wheelMiniK(now) {
 export function wheelMiniBox(now) { return WHEEL_MINI_PX * wheelMiniK(now); }
 
 /** Game px across the box. */
-export function wheelMiniWindow(now) { return wheelMiniK(now) > 1 ? WHEEL_MINI_DESK_WINDOW : WHEEL_MINI_WINDOW; }
+export function wheelMiniWindow(now) { return wheelMiniK(now) >= WHEEL_MINI_DESK_K ? WHEEL_MINI_DESK_WINDOW : WHEEL_MINI_WINDOW; }

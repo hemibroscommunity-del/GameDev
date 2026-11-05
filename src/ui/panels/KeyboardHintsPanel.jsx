@@ -10,6 +10,7 @@ import { sprintSupported } from '@/game/sprint.js';
 import { trappingOn, trapsHeld } from '@/game/trapping.js';
 import { rideButtonWanted } from '@/game/ride.js';   /* v2.3.3776: Z, the skateboard, in BroTown */
 import { rideGround } from '@/game/rideGround.js';
+import { oneBandActive } from '@/ui/oneBand.js';   /* v2.3.4263: the band's own key list */
 
 /* === KeyboardHintsPanel — the desktop keyboard-hints overlay === */
 /* v2.3.889: extracted verbatim from the bt-kb-hints JSX subtree in
@@ -235,6 +236,48 @@ function useSideRoom() {
   return room;
 }
 
+/* ═══ v2.3.4263: THE BAND'S OWN SHORT LIST, ON A COMPUTER ═══
+   The owner: "For desktop add the short list of shortcuts to the extra
+   dashboard area on the right (in whatever style would look best there)."  A
+   computer's band is the 480 px assembly in the middle (BAND_ASSEMBLY_MAX_W)
+   and the rest of it was empty: the essential keys stand in its right side,
+   key caps and words in two columns, with the "More keys" line (the same
+   choice the strip and the column keep) opening the full list.  H folds it to
+   its heading, as it hid the strip.  While it shows, the floating strip and
+   its chip are not needed (KeyboardHintsPanel below returns null).  Only a
+   mouse under the one band, upright (bandKeysActive). */
+export function bandKeysActive() {
+  try {
+    if (typeof window === 'undefined' || !window.matchMedia || !window.matchMedia('(pointer:fine)').matches) return false;
+    const cl = document.documentElement.classList;
+    return oneBandActive() && !cl.contains('bt-band-side');
+  } catch (_e) { return false; }
+}
+export function BandKeys() {
+  const [more, flipMore] = useMoreKeys();
+  const rows = deskKeyRows(useDeskHave(), more).filter((r) => r[3] !== 'menus');
+  const [hidden, setHidden] = React.useState(readHidden);
+  React.useEffect(() => {
+    const on = () => setHidden(readHidden());
+    window.addEventListener('bt-kb-hints', on);
+    return () => window.removeEventListener('bt-kb-hints', on);
+  }, []);
+  const toggle = (e) => {
+    e.stopPropagation();
+    try { window.dispatchEvent(new CustomEvent('bt-kb-hints-toggle')); } catch (_e) { /* H still works */ }
+  };
+  return React.createElement('div', { className: 'bt-band-keys bt-noselect', 'data-band-keys': hidden ? 'folded' : 'open', onPointerDown: (e) => e.stopPropagation() },
+    React.createElement('button', { type: 'button', className: 'bt-band-keys-head', onClick: toggle, 'aria-expanded': hidden ? 'false' : 'true',
+      title: hidden ? 'Show the keyboard controls (H)' : 'Hide the keyboard controls (H)' },
+    React.createElement('span', { 'aria-hidden': 'true' }, '\u2328'), React.createElement('span', null, 'Controls'),
+    React.createElement('kbd', null, 'H')),
+    hidden ? null : React.createElement('div', { className: 'bt-band-keys-list' },
+      rows.map(([k, label]) => React.createElement('div', { className: 'bt-band-key', key: k + ' ' + label },
+        React.createElement('kbd', null, k), React.createElement('span', null, label)))),
+    hidden ? null : React.createElement('button', { type: 'button', className: 'bt-band-keys-more', 'data-band-keys-more': more ? '1' : '0', onClick: flipMore },
+      more ? 'Fewer keys' : 'More keys'));
+}
+
 export function KeyboardHintsPanel({ hidden, onToggle }) {
   /* The tap must not reach the world underneath — the canvas takes clicks as
      attack/aim, so a bare onClick here would also swing the sword. */
@@ -254,7 +297,15 @@ export function KeyboardHintsPanel({ hidden, onToggle }) {
     read();
     return () => window.removeEventListener('resize', read);
   }, []);
-  if (desk) return null;
+  /* v2.3.4263: the band shows the short list on a computer: no strip, no chip (H still toggles it) */
+  const [inBand, setInBand] = React.useState(bandKeysActive);
+  React.useEffect(() => {
+    const read = () => setInBand(bandKeysActive());
+    window.addEventListener('resize', read);
+    read();
+    return () => window.removeEventListener('resize', read);
+  }, []);
+  if (desk || inBand) return null;
 
   /* ═══ v2.3.3470: THE ⌨ STAYS, BESIDE THE STRIP ═══
      The owner: "The computer keyboard icon is a nice touch for showing and
