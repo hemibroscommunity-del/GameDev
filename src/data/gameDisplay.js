@@ -3137,6 +3137,11 @@ BT_AUDIO.SFX_MANIFEST = {
      sting runs 1.49s and is done at ~0.65s; neither has any lead-in, so both
      start at offset 0 and the verdict lands on the first frame of sound. */
   'flip-win':      '/sfx/loot/flip-win.mp3',
+  /* v2.3.4285: the login wheel's full spin (the loudest of the owner's Freesound recording's spins, cut by `ffmpeg` to 4.15 s, mono 24 kHz; CREDITS.md) */
+  'daily-spin':    '/sfx/loot/daily-spin.mp3',
+  /* v2.3.4285: double or nothing: the slot machine's payout (a double) and the buzzer (nothing) -- the owner's two clips, 1.8 s and 3.7 s, mono 24 kHz */
+  'daily-double-win':  '/sfx/loot/daily-double-win.mp3',
+  'daily-double-lose': '/sfx/loot/daily-double-lose.mp3',
   'flip-lose':     '/sfx/loot/flip-lose.mp3',
   /* ═══ v2.3.2591: THE LEVEL-UP STING (owner art) ═══
      Owner: "a new level up notification ... the first is an audio that should

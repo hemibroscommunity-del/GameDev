@@ -32,6 +32,7 @@
  * A settle report lands on window.__btPreloadReport so rigs (and
  * anyone debugging a first-use hitch) can verify coverage. */
 
+import { preloadLoginSpin } from './loginSpinPreload.js'; /* v2.3.4285: the login wheel's art */
 import { preloadLootIcons } from './lootIcons.js'; /* v2.3.2771 */
 import { warmElemWindup } from './elemWindup.js'; /* v2.3.3619: the element wind-ups' picture */
 import { warmSootMarks } from './sootMarks.js'; /* v2.3.3679: a slime blast's soot */
@@ -514,6 +515,8 @@ export async function preloadWorldAnimations() {
     /* v2.3.2820: the daily chest strip + bag icon -- the claim window opens at
        login, right after the intro lifts (chestPreload.js). */
     dailyChest: preloadDailyChest(),
+    /* v2.3.4285: the login wheel's three pictures, into the HTTP cache only (loginSpinPreload.js) */
+    loginSpin: preloadLoginSpin(),
   };
 
   const names = Object.keys(groups);

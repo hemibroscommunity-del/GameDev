@@ -1876,3 +1876,24 @@ Screens: death-card
 - Whether a death should cost anything outside No man's land and a red skull is the owner's call; the card says only what the worker did.
 
 Sources: docs/specs/death-card.md, src/game/deathCard.js, src/ui/mobile/DeathCard.jsx, tools/qa/mp/mp-deathcard.mjs.
+
+## The login wheel (free daily spin)
+Screens: login-spin
+
+**What it is for:** One free spin a day for the whole ACCOUNT (the device, up to ten characters), offered when you log in. It is a gift, not a game: the gold amounts are printed on the wheel, one press of SPIN, a few seconds of anticipation, then "+N gold" and the coins fly to the Gear tab's gold.
+
+**What is on it:** The green "FREE DAILY SPIN" plate on top; the wheel (100 Gold is about half of it, then 200, 300, 500, 1,000 and a thin 10K sliver: the segments' angles ARE the odds); a pointer at the top that never turns; one big SPIN button (Enter on a computer; the words say "Click" there); a close X that is held while the wheel turns. After the spin lands the prize is only a POT the worker holds, and the window turns into the owner's DOUBLE OR NOTHING? panel (the plate, a 50/50 wheel with a skull half and a coins half, a green YES and a red NO), as many rounds as the player wants: a win doubles the pot and asks again (the slot machine pays out), the skull empties it (the buzzer) and says so; NO (or the X) collects. The pot is paid by itself past 100,000.
+
+**Decisions, and why:**
+- It never opens over a loading screen or over a new character's first steps (the welcome, the five first steps, a plate or a coach card): the host waits for `worldReady` and for `onboardingBusy` to clear, and a brand-new character's spin waits for them.
+- Double or nothing is the owner's own call ("as many times as they want"): the worker rolls each 50/50, a double tap is never a second roll, and a player who simply leaves is paid what they held.
+- Closing it without spinning keeps today's spin for the next login that day: nothing is written until the spin is pressed.
+- The wheel turns by CSS on one picture; the pointer is a separate fixed layer, and the wheel's picture has the pointer's place filled from the rim elsewhere so no hole turns past it.
+- The window is dark and full-screen over the world, not a card: the art is the screen. The sound is the whole spin (4 seconds) and ends with its last click as the wheel stops.
+- Each wheel is a lit picture over its plain-rim twin, turning together, the lit one slowly fading out and in (the lights dim and brighten); the spin has a wind-up, a long eased stop, a flicking pointer, a burst of coins sized to the prize, a pop and count-up of the gold; double or nothing has a drum-roll, a gold glow on a win, a red flash and shake on nothing, and "Exactly 50/50 every spin" always on it. All of it is transforms and short Web Animations, still under reduced motion.
+- The pictures are 256 colours, fetched into the cache behind the loading screen, decoded on opening and dropped on closing.
+
+**Still open:**
+- Whether a missed day should stack (the owner said one a day) and whether 10K at 2.5% is the right jackpot: the angles are the art's, the owner's call.
+
+Sources: CLAUDE.md, docs/specs/login-wheel.md, server/src/loginspin.js, src/game/loginSpinWheel.js, src/ui/mobile/LoginSpinWindow.jsx, src/rendering/loginSpinPreload.js, tools/qa/ui-review/states.mjs, tools/qa/mp/mp-loginspin.mjs

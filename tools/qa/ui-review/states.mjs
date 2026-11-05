@@ -1062,6 +1062,15 @@ export const STATES = [
       if (!ok) return 'no daily-rewards probe';
     },
   },
+  {
+    id: 'login-spin', group: 'Buildings (BroTown)', title: 'Free daily spin (login wheel)',
+    about: 'The login wheel: the green FREE DAILY SPIN plate, the wheel with its gold amounts (100 about half of it, a thin 10K), the fixed pointer at the top and one big SPIN button.  It opens by itself once the loading screen and a new character\'s first steps are over, once a day per account; this picture opens it by hand.',
+    settle: 1500,
+    run: async ({ P }) => {
+      const ok = await evalIn(P, () => { if (!window.__btLoginSpinBus) return false; window.__btLoginSpinBus.open(); return true; });
+      if (!ok) return 'no login-spin probe';
+    },
+  },
   /* v2.3.3460: no 'daily-season' -- the daily quests and the season were put
      away in v2.3.3400, the window has no Season tab, and the picture was the
      Today page again (found by the design notes' research) */
