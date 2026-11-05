@@ -14,3 +14,9 @@ export const XP_BAR_ICONS = Object.freeze({
 });
 /* the words a reader hears for each (the skill's own name, PROG3_SKILL_META) */
 export const XP_BAR_LABELS = Object.freeze({ sword: 'Melee', bow: 'Bow', staff: 'Magic' });
+
+/* v2.3.4263 (owner: "Add the BroTown logo centered on the top bar"): the title
+   screen's BroTown lockup (public/ui/welcome/title/brotown-lockup.png), cut to
+   the top bar's size on 256 colours (187 x 76, twice its height in CSS px).
+   Warmed with the XP bar's icons (rendering/xpBarPreload.js). */
+export const TOPBAR_LOGO = '/ui/topbar-logo.png?v=2.3.4263';
