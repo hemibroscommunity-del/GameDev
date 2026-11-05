@@ -111,7 +111,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   });
   const fig = await H.figureBox(P, { pad: 0 }).catch(() => null);
   const feet = fig ? Math.round(fig.y + fig.height) : null;
-  rec.ok('the panel\'s top stays below the smith\'s feet, so he is seen working', feet != null && geo.top >= feet - 4, { ...geo, feet });
+  /* v2.3.4303, the owner: the Blacksmith's window uses the room above the band (its bottom was cut off); no longer held below the smith's feet -- it stays under the top bar and inside the world */
+  rec.ok('the panel uses the room above the band: top below the top bar (56 px), bottom on the band, 230 px tall at least', geo.top >= 56 && geo.h >= 230, { ...geo, feet });
   for (const id of tabs) {
     await tab(P, id);
     const words = (await panelText(P)).replace(/[\d/×()+→·%◆.,:-]+/g, ' ').replace(/\s+/g, ' ').trim();

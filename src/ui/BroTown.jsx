@@ -209,8 +209,17 @@ function placeOverHead(stateRef) {
           if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) continue;
           if (Math.min(r.right, c.right) - Math.max(r.left, c.left) > 2 && Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top) > 2 && (!hit || c.top < hit.top)) hit = c;
         }
-        if (!hit || r.top - ((r.bottom - hit.top) + 6) < 56) break;
-        top -= (r.bottom - hit.top) + 6;
+        if (!hit) break;
+        /* the smallest move that clears it and stays on the screen: aside (the minimap is a column at the
+           right edge) or up (not above the top bar) */
+        var dxL = r.right - hit.left + 6, dxR = hit.right - r.left + 6, dyU = r.bottom - hit.top + 6;
+        var best = null;
+        if (r.left - dxL >= 8) best = { k: 'l', d: dxL };
+        if (r.right + dxR <= vw - 8 && (!best || dxR < best.d)) best = { k: 'r', d: dxR };
+        if (r.top - dyU >= 56 && (!best || dyU < best.d)) best = { k: 'u', d: dyU };
+        if (!best) break;
+        if (best.k === 'u') top -= best.d; else cx += best.k === 'l' ? -best.d : best.d;
+        el.style.left = Math.round(cx - ox) + 'px';
         el.style.top = Math.round(top) + 'px';
       }
     } catch (e) { /* the CSS place stands */ }
