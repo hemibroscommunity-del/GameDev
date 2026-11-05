@@ -423,6 +423,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   const selCell = st.sel && st.sel.cell ? st.sel.cell : null;
   const selGold = !!(st.sel && st.sel.gold) && !selCell && !selEntry;   /* v2.3.4233 */
   const view = selCell || selEntry || selGold ? 'item' : 'overview';
+  const linked0 = view === 'item';
 
   /* ── geometry: one square size `t` for both grids ── */
   const wide = box.w >= WIDE_AT;
@@ -725,7 +726,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   /* v2.3.4191: 30 px on a narrow card (a 360 px phone's ~104 px inside),
      so the name beside it keeps "Worldbreaker" on one line */
   const iw = Math.max(60, broW - 2 * (short ? 2 : PAD) - 2 - (short ? 2 : 4));   /* the card's inner width */
-  const artPx = short ? 24 : (iw < 116 ? 30 : 38);
+  const artPx = short ? 24 : (iw < 116 ? (linked0 ? 26 : 30) : 38);   /* v2.3.4253: 4 px back for the bigger ✕'s room */
   const art = (thumb, glyph, hidden) => (
     <div data-gear-art="" style={{
       width: artPx, height: artPx, flex: 'none', position: 'relative', boxSizing: 'border-box', borderRadius: 8,
@@ -1030,7 +1031,9 @@ export const GearTab = ({ R: Rin, desk }) => {
         background: COL.wellDeep,
         ...(linked ? { backgroundImage: `linear-gradient(${GEAR_SEL_TINT}, ${GEAR_SEL_TINT})`, boxShadow: `inset 0 0 0 1px ${GEAR_SEL_BLUE}, 0 0 12px 1px rgba(140, 196, 255, 0.45)` } : null),
       })}>
-      {/* v2.3.4233, the owner: "add an 'X' close button on the top right corner of
+      {/* v2.3.4253, the owner: "Make the x larger in the top right corner": 18 px
+          bold (was 11), a 40 px hit box, the head gives it 5 px of room (the picture 4 px smaller on a narrow card).
+          v2.3.4233, the owner: "add an 'X' close button on the top right corner of
           the detail view ... that removes the active tap of it": clears the pick
           (the blue ring goes, the card is the bro again); Esc does the same on a
           computer (data-esc); a 32 px finger-sized box over the card's corner */}
@@ -1038,14 +1041,14 @@ export const GearTab = ({ R: Rin, desk }) => {
         <button type="button" data-gear-card-close="" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the details"
           onClick={(e) => { e.stopPropagation(); gearTabBus.deselect(); }}
           style={{
-            position: 'absolute', top: 0, right: 0, zIndex: 3, width: 32, height: 32, background: 'transparent',
-            border: 'none', color: COL.text2, fontFamily: 'inherit', fontSize: 11, fontWeight: 900, lineHeight: 1, cursor: 'pointer', textShadow: '0 0 3px #0B1216, 0 0 3px #0B1216',
-            touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '3px 4px 0 0',
+            position: 'absolute', top: 0, right: 0, zIndex: 3, width: 40, height: 40, background: 'transparent',
+            border: 'none', fontFamily: 'inherit', fontSize: 18, fontWeight: 900, lineHeight: 1, cursor: 'pointer', textShadow: '0 0 3px #0B1216, 0 0 3px #0B1216',
+            touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '2px 3px 0 0', color: COL.text,
           }}>{'✕'}</button>
       )}
       {/* never scrolls: every state is laid out to fit (mp-geartab measures
           scrollHeight against clientHeight at 390 and 360 px) */}
-      <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '1px 2px 0' }}>
+      <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '1px 2px 0', ...(linked ? { paddingRight: 5 } : null) }}>
         {body}
       </div>
       {footer && <div data-gear-foot="" style={{ flex: 'none', paddingTop: short ? 1 : 2, display: 'flex', gap: 4, alignItems: 'stretch' }}>{footer}</div>}
