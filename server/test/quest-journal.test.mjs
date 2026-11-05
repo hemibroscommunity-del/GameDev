@@ -152,11 +152,11 @@ const after1 = { npc: 'Blacksmith Bro', title: QUEST_CHAINS.smith_1.title, meet:
   check('where: Frost Ridge (tut_2) names its land and its way', /^Frost Ridge, \w+ of BroTown$/.test(where('tut_2').text));
   const fire = J.whereLine(QUEST_CHAINS.fish_1, 'active', [{ label: 'a', done: true }, { label: 'b', done: false, current: true }], ctx);
   check('where: a step done anywhere (light a fire) says so and has no road', fire.text === 'Wherever you are' && fire.map === false);
-  const sm = J.journalPage({ quest: QUEST_CHAINS.smith_1, status: 'active', rpg: { inventory: { ore_copper_ore: 2 } },
-    steps: questSteps(QUEST_CHAINS.smith_1, { inventory: { ore_copper_ore: 2 } }, null), ap: 5, ctx });
+  const sm = J.journalPage({ quest: QUEST_CHAINS.smith_1, status: 'active', rpg: { inventory: { ore_copper_ore: 1 } },
+    steps: questSteps(QUEST_CHAINS.smith_1, { inventory: { ore_copper_ore: 1 } }, null), ap: 5, ctx });
   check('a quest with steps: NOW is the current step, the objective under it; WHO lists each step with its tick',
     sm.now.text === sm.who.steps.find((s) => s.current).label && sm.now.goal === QUEST_CHAINS.smith_1.desc
-      && sm.who.steps.length === 3 && sm.who.steps[0].done && !sm.who.steps[2].done && sm.now.count.text === '2/5 Copper Ore', sm);
+      && sm.who.steps.length === 3 && sm.who.steps[0].done && !sm.who.steps[2].done && sm.now.count.text === '1/2 Copper Ore', sm);
 }
 
 // ── 6. every quest a player can meet, in every state: plain words only ──

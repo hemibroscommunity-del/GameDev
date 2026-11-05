@@ -270,6 +270,12 @@ export class FarmWorld {
       const t = cropName ? tex('farm:' + cropName) : null;
       if (!t) {
         if (B.crop && !B.crop.destroyed) B.crop.visible = false;
+        /* v2.3.4303, the owner: "the carrots quest when the carrots were ready to harvest the plot was
+           just empty ... I just saw the near black compost dirt": a crop whose picture was not in YET was
+           remembered as drawn (B.cropName below), so it was never tried again and the ripe plot stayed
+           bare soil -- the soil above retries (it records its name only once drawn), the crop did not.
+           Not recorded now: the next frame asks again, and it appears the moment its picture is in. */
+        if (cropName) return;
       } else {
         if (!B.crop || B.crop.destroyed) {
           B.crop = new Sprite(t);
@@ -431,7 +437,12 @@ export class FarmWorld {
     const h = w.step !== 'harvest' && S && S._farmHands && now - S._farmHands.at < 250 ? S._farmHands : null;   /* a harvest's leaves fly from the crop */
     /* v2.3.3960: digging, the bed's middle -- where the hoe lands now
        (farmLayout.js farmDigSpot) */
-    const hx = h ? h.x : B.b.x + B.b.w / 2, hy = h ? h.y : B.b.y + (w.step === 'dig' ? B.b.h / 2 : 16);
+    /* v2.3.4303, the owner: "planting, watering, and fertilizing animations start at the edge of a dirt
+       plot instead of the center": the hands' point is where the farmer stands (the plot's edge), so
+       the dirt, the seeds, the water and the compost fly from the plot's MIDDLE for every step but a
+       harvest (whose leaves still fly from the crop) */
+    const mid = w.step === 'dig' || w.step === 'plant' || w.step === 'water' || w.step === 'feed';
+    const hx = mid ? B.b.x + B.b.w / 2 : (h ? h.x : B.b.x + B.b.w / 2), hy = mid ? B.b.y + B.b.h / 2 : (h ? h.y : B.b.y + 16);
     /* sized to be SEEN at the farm's zoom (~0.5 CSS px a game px): a clod
        is 2-4 CSS px, as a pixel of the bro's own art is */
     const KINDS = {

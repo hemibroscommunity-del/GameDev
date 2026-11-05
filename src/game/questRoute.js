@@ -542,6 +542,9 @@ function _nodeNear(want, rpg, S) {
   let best = null, bestD = Infinity;
   for (const n of ((S && S.gatherNodes) || [])) {
     if (!n || n.nodeType !== want || !n.alive) continue;
+    /* v2.3.4303 (owner): the mining quest's star and road lead to COPPER only (the lowest tier,
+       gatherLvl 1), never iron or the ores after it -- "bring copper ore" */
+    if (want === 'oreVein' && (n.gatherLvl || 1) > 1) continue;
     /* v2.3.3038: nor to one the player's level cannot harvest yet (black
        steel below Mining 5, clownfish below Fishing 5): the nearest fishing
        spot past the commons is a clownfish's, and the road would have led a

@@ -7136,18 +7136,19 @@ export const QUEST_CHAINS = {
       complete: "Three carrots, planted and watered. Thank you, friend! They take a few minutes to grow, so come back later and I'll show you what to make with them. Next, go see Mayor Bro at the Town Hall. He has a job for you.",
     },
   },
+  /* v2.3.4303 (owner): two copper ore, not five (server/src/data.js smith_1); the five bars stay, smith_2's forging costs five */
   smith_1: {
     id: 'smith_1', npc: 'Blacksmith Bro', title: 'Heavy Metal',
     after: 'tut_1', tour: true,
     anyZone: true,   /* the copper is out on the grass (questRoute.js leads to the nearest vein) */
-    desc: 'Bring 5 Copper Ore to Blacksmith Bro.',
-    check: function (rpg) { return ((rpg.inventory || {}).ore_copper_ore || 0) >= 5; },
-    need: { key: 'ore_copper_ore', n: 5 },
+    desc: 'Bring 2 Copper Ore to Blacksmith Bro.',
+    check: function (rpg) { return ((rpg.inventory || {}).ore_copper_ore || 0) >= 2; },
+    need: { key: 'ore_copper_ore', n: 2 },
     steps: [
       { label: 'Mine copper at the orange rocks outside town', node: 'oreVein',
         done: function (inv) { return (Number(inv.ore_copper_ore) || 0) >= 1; } },
-      { label: 'Mine 5 Copper Ore in all', node: 'oreVein',
-        done: function (inv) { return (Number(inv.ore_copper_ore) || 0) >= 5; } },
+      { label: 'Mine 2 Copper Ore in all', node: 'oreVein',
+        done: function (inv) { return (Number(inv.ore_copper_ore) || 0) >= 2; } },
       { label: 'Back to Blacksmith Bro at the forge',
         done: function () { return false; } },
     ],
@@ -7161,9 +7162,9 @@ export const QUEST_CHAINS = {
       /* v2.3.3575: the owner's satire pass replaces v2.3.3570's script; the Life Skills lines stay reworded (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.3570: the owner's rewrite -- each townsperson a sharper stereotype, every mechanic and number kept (docs/specs/npc-dialogue-v2.md) */
       /* v2.3.4025: said plainly -- tut_1's v2.3.4025 note; one ore a bar now (smelting.js) */
-      start: "Hey, I'm Blacksmith Bro! I love lifting weights almost as much as I love making armor. Here's a pickaxe. Mine 5 Copper Ore from the orange rocks outside town and bring it to me, and I'll turn it into 5 Copper Bars.",
-      progress: "I still need 5 Copper Ore. Mine the orange rocks outside town with your pickaxe, then bring the ore to me at the forge.",
-      complete: "Great work! Here are your 5 Copper Bars, one bar for each ore. Now let's make something with them at my forge.",
+      start: "Hey, I'm Blacksmith Bro! I love lifting weights almost as much as I love making armor. Here's a pickaxe. Mine 2 Copper Ore from the orange rocks outside town and bring it to me, and I'll turn it into 5 Copper Bars.",
+      progress: "I still need 2 Copper Ore. Mine the orange rocks outside town with your pickaxe, then bring the ore to me at the forge.",
+      complete: "Great work! Here are your 5 Copper Bars, a few extra for the forge. Now let's make something with them at my forge.",
     },
   },
   smith_2: {

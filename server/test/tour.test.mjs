@@ -265,12 +265,12 @@ const accept = (P, questId) => send(P.ws, 'quest_accept', { questId });
   check('smith_1: the pickaxe on accept', P.ps.inventory.mining_pickaxe === 1, P.ps.inventory);
   check('...and a second never: a player holding one keeps one',
     room._grantQuestItem(P.ps, { kind: 'inv', key: 'mining_pickaxe', n: 1, max: 1 }, 'bp_tour_smith') === false && P.ps.inventory.mining_pickaxe === 1, P.ps.inventory);
-  P.ps.inventory.ore_copper_ore = 4;
+  P.ps.inventory.ore_copper_ore = 1;
   await turnIn(P, 'smith_1');
-  check('smith_1: refused on four ore', P.ps._quests.smith_1 === 'active' && P.ps.inventory.ore_copper_ore === 4);
-  P.ps.inventory.ore_copper_ore = 6;
+  check('smith_1: refused on one ore (v2.3.4303: two are asked, not five)', P.ps._quests.smith_1 === 'active' && P.ps.inventory.ore_copper_ore === 1);
+  P.ps.inventory.ore_copper_ore = 3;
   await turnIn(P, 'smith_1');
-  check('smith_1: five copper ore for FIVE copper bars (one left over)',
+  check('smith_1: two copper ore for FIVE copper bars (one ore left over)',
     P.ps._quests.smith_1 === 'turnedIn' && P.ps.inventory.bar_copper === 5 && P.ps.inventory.ore_copper_ore === 1, P.ps.inventory);
 
   await accept(P, 'smith_2');

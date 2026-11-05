@@ -1076,7 +1076,7 @@ export const GearTab = ({ R: Rin, desk }) => {
           and the head leaves it its room (head(): the picture steps aside on a
           narrow card) so a name never runs under it. */}
       {linked && (
-        <button type="button" className="bt-chisel bt-chisel--chip bt-card-x" data-gear-card-close="" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the details"
+        <button type="button" className="bt-chisel bt-chisel--chip bt-card-x" data-gear-card-close="" data-esc="" aria-label="Close the details"   /* v2.3.4303: no data-key -- its Esc cap, drawn from ::after, collided with the touch area's ::after and showed as an EMPTY square left of the ✕ on a computer (the owner); Esc still presses it (data-esc) */
           onClick={(e) => { e.stopPropagation(); gearTabBus.deselect(); }}
           style={{
             position: 'absolute', top: 2, right: 2, zIndex: 3, width: cardX, height: cardX, padding: 0, minHeight: 0,

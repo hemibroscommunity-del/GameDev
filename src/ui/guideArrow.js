@@ -169,6 +169,14 @@ export function guideTargets(id, rpg, shown) {
   }
   if (id === 'forge') {
     /* v2.3.4196: only while the Smithy is open on another tab; on the Forge tab: nothing */
+    /* v2.3.4303 (owner: "during the forge quest make the arrow point at the armor menu instead of the
+       'forge' menu because your character already starts out with the copper sword"): the ARMOR tab
+       when the Smithy has one (it needs the worker's armorforge cap), gone once you are on it;
+       the Forge tab as before where there is none */
+    if (shown('[data-smithy-tab="armor"]')) {
+      if (shown('[data-smithy-tab="armor"][data-on="1"]')) return [];
+      return ['[data-smithy-tab="armor"]'];
+    }
     if (shown('[data-smithy-tab="forge"][data-on="1"]')) return [];
     return ['[data-smithy-tab="forge"]'];
   }
@@ -221,7 +229,8 @@ export function forgeWanted(rpg) {
   return q.smith_2 === 'active' && !((k && Number(k.smith_2)) >= 1);
 }
 function forgeTabOpen() {
-  try { return !!document.querySelector('[data-smithy-tab="forge"][data-on="1"]'); } catch (e) { return false; }
+  /* v2.3.4303: the Armor tab opened counts too (the arrow aims at it where the Smithy has one) */
+  try { return !!document.querySelector('[data-smithy-tab="forge"][data-on="1"], [data-smithy-tab="armor"][data-on="1"]'); } catch (e) { return false; }
 }
 
 /** Is lesson `id` wanted now, and is it finished?  `seen` the ms it has shown;
