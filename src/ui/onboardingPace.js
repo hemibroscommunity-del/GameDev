@@ -150,6 +150,18 @@ function installAfterMs() {
    install card waits for them all. */
 let _firstStepsOpen = false;
 export function noteFirstSteps(open) { _firstStepsOpen = !!open; }
+/** v2.3.4295: is a new character's first sequence still going (the welcome, the
+ *  five first steps, a plate)?  The login wheel waits for it to be over. */
+export function onboardingBusy(now = Date.now()) {
+  /* v2.3.4295: the whole tutorial quest line, not only its first steps (the Mayor's four quests): the
+     wheel's window opened over the questline and blocked the rest of it (mp-questline, `playable`
+     cancelled at its timeout).  Until QuestCoach has said (null) counts as busy too.  The top bar's
+     button still glows meanwhile. */
+  return !!(_inTutorial !== false || _firstStepsOpen || _welcomePending || plateUp(now) || _coachUp);
+}
+let _inTutorial = null;
+/** QuestCoach says every tick whether the character is still in the tutorial quest line. */
+export function noteInTutorial(on) { _inTutorial = !!on; }
 /** May the install card appear now? */
 export function installMayShow(now = Date.now()) {
   if (tutorialSkipped()) return false;   /* v2.3.2890 */

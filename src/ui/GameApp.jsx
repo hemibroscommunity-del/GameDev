@@ -37,6 +37,7 @@ import { InfoPopup } from './mobile/InfoPopup.jsx';
 import { ChestReveal } from './mobile/ChestReveal.jsx';   /* v2.3.2820 */
 import { QuestStepNudge } from './mobile/QuestStepNudge.jsx';   /* v2.3.2820 */
 import { DailyRewardsWindow } from './mobile/DailyRewardsWindow.jsx';   /* v2.3.3140: daily quests + the season */
+import { LoginSpinWindow } from './mobile/LoginSpinWindow.jsx';   /* v2.3.4295: the login wheel */
 /* v2.3.820: MasteryNotification removed from the render (owner request) --
    import dropped to avoid an unused symbol. */
 import { advanceMastery, earnCertification } from '../game/mastery.js';
@@ -774,6 +775,7 @@ export const GameApp = () => {
       <InfoPopup />
       <ChestReveal />{/* v2.3.2820: what came out of the daily chest */}
       <QuestStepNudge />{/* v2.3.2820: says a stepped quest's next step as a toast */}
+      <LoginSpinWindow />{/* v2.3.4295: the free wheel, once an account's day, after the loading screen and the first steps */}
       <DailyRewardsWindow />{/* v2.3.3140: the daily quests and the season -- opened from Quests and the Gambling Den, never by itself */}
       {/* v2.3.221: dev-tooling overlays gated on ?dev=1 URL param so
           the player-facing build doesn't show the D button, version

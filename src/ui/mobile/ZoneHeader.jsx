@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { loginSpinBus, loginSpinNextWords } from '@/game/loginSpinWheel.js'; /* v2.3.4295: the free daily spin's button */
+import { LOGIN_SPIN_URLS } from '@/rendering/loginSpinPreload.js';
 import { COL, getState } from './dash/common.js';
 import { placeName } from './placeName.js'; /* v2.3.3974: the land you stand in, or BroTown (was the Wheel's name, v2.3.3009) */
 import { testModeOn } from '../../game/testMode.js'; /* v2.3.3430: the owner's test mode tag */
@@ -79,6 +81,9 @@ const V = '?v=2.3.1333c'; /* v2.3.1333c: bigger logout glyph */
 export const ZoneHeader = ({ onExit }) => {
   const [, force] = useState(0);
   const [confirming, setConfirming] = useState(false);
+  const [spinSt, setSpinSt] = useState(loginSpinBus.get());   /* v2.3.4295 */
+  useEffect(() => loginSpinBus.subscribe(setSpinSt), []);
+  const spinNote = spinSt.note ? spinSt.note.text : '';
   /* ═══ v2.3.4123: THE DOOR ALWAYS LOGS OUT ═══
      The owner, 2026-11-03: "Change just the exit door icon on top left to
      "logout" (bring to splash screen) not switch character".  v2.3.2421 made
@@ -298,7 +303,26 @@ export const ZoneHeader = ({ onExit }) => {
             this column stays, empty, as wide as the door's, so the bar's
             centre (the XP bar, TEST MODE, the owner's hold) stays centred on
             the SCREEN -- what it was first made for (v2.3.1333) */}
-        <div className="bt-zone-header__balance" aria-hidden="true" />
+        {/* ═══ v2.3.4295: THE FREE DAILY SPIN, ON THE RIGHT OF THE BAR ═══
+            The owner: "Put free daily spin button on top bar ... only allow the
+            wheel to spin if you're in a safe area."  The title plate of the
+            wheel's window, scaled to the bar, glowing gently while today's spin
+            is unused; here only while the account has today's spin and the
+            window is closed (a spin taken, or a pot held, shows nothing).  It
+            opens the window anywhere; the SPIN button there says "Spin in a
+            safe area" where it cannot turn.  Transform and opacity only (this
+            rail is over the WebGL canvas, TRAPS section 42). */}
+        <div className="bt-zone-header__balance">
+          {spinSt.known && !spinSt.open && S._serverCaps && S._serverCaps.loginspin ? (
+            <button type="button" className={'bt-zone-header__spin' + (spinSt.avail ? '' : ' is-spent')} data-login-spin-btn={spinSt.avail ? 'ready' : 'spent'}
+              aria-label={spinSt.avail ? 'Free daily spin' : 'Free daily spin, already spun today'}
+              style={{ touchAction: 'manipulation' }}
+              onClick={() => { if (spinSt.avail) loginSpinBus.open(); else loginSpinBus.note(loginSpinNextWords()); }}>
+              <img src={LOGIN_SPIN_URLS[2]} alt="" draggable={false} />
+            </button>
+          ) : null}
+          {spinNote ? <span className="bt-zone-header__spinnote" data-login-spin-note="1" role="status">{spinNote}</span> : null}
+        </div>
       </header>
 
       {showDev && DevPanelC && <DevPanelC onClose={() => setShowDev(false)} />}
