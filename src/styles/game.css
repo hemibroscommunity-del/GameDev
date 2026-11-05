@@ -8072,3 +8072,7 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
 .bt-skin-faceart::after{content:'';position:absolute;inset:0;border-radius:50%;background:rgba(4,6,8,.28);opacity:0;transition:opacity 90ms linear;pointer-events:none}
 [data-pressed="1"] .bt-skin .bt-skin-faceart::after{opacity:1}
 @media (prefers-reduced-motion: reduce){ .bt-skin-faceart::after{transition:none} }
+
+/* v2.3.4273: the Gear card's ✕ on the raised chip bevel (GearTab); the touch area is 44 px */
+.bt-card-x{position:absolute;box-sizing:border-box;border-width:6px;border-image-width:6px}
+.bt-card-x::after{content:'';position:absolute;inset:-4px}

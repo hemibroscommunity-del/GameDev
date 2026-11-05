@@ -130,6 +130,10 @@ function groupSpare(entries) {
   return out;
 }
 
+/* v2.3.4273: the card's ✕ button, its side, and the card width under which the head's picture steps aside for it */
+const CARD_X = 36;
+const CARD_X_ART_MIN = 140;
+
 const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
 
 /* what each slot is, in one plain sentence */
@@ -726,7 +730,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   /* v2.3.4191: 30 px on a narrow card (a 360 px phone's ~104 px inside),
      so the name beside it keeps "Worldbreaker" on one line */
   const iw = Math.max(60, broW - 2 * (short ? 2 : PAD) - 2 - (short ? 2 : 4));   /* the card's inner width */
-  const artPx = short ? 24 : (iw < 116 ? (linked0 ? 26 : 30) : 38);   /* v2.3.4253: 4 px back for the bigger ✕'s room */
+  const artPx = short ? 24 : (iw < 116 ? 30 : 38);
   const art = (thumb, glyph, hidden) => (
     <div data-gear-art="" style={{
       width: artPx, height: artPx, flex: 'none', position: 'relative', boxSizing: 'border-box', borderRadius: 8,
@@ -758,8 +762,8 @@ export const GearTab = ({ R: Rin, desk }) => {
   const head = (pic, name, quality, opts) => {
     const o = opts || {};
     return (
-      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', minWidth: 0, flex: 'none' }}>
-        {pic}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', minWidth: 0, flex: 'none', ...(linked0 ? { paddingRight: CARD_X + 4 } : null) }}>
+        {linked0 && iw < CARD_X_ART_MIN ? null : pic}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {nameEl(name, quality)}
           <div data-gear-kind="" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 1, minWidth: 0, whiteSpace: 'nowrap', fontSize: FONT_MIN, fontWeight: 700, color: COL.muted, lineHeight: 1.2 }}>
@@ -1036,19 +1040,24 @@ export const GearTab = ({ R: Rin, desk }) => {
           v2.3.4233, the owner: "add an 'X' close button on the top right corner of
           the detail view ... that removes the active tap of it": clears the pick
           (the blue ring goes, the card is the bro again); Esc does the same on a
-          computer (data-esc); a 32 px finger-sized box over the card's corner */}
+          computer (data-esc); a 32 px finger-sized box over the card's corner.
+          v2.3.4273, the owner: "Make the x about twice as large and put it on top
+          of a beveled button": the game's raised chip bevel (bt-chisel, as CLOSE's),
+          a 22 px bold ✕ on it, 36 px with a 44 px touch area (game.css .bt-card-x),
+          and the head leaves it its room (head(): the picture steps aside on a
+          narrow card) so a name never runs under it. */}
       {linked && (
-        <button type="button" data-gear-card-close="" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the details"
+        <button type="button" className="bt-chisel bt-chisel--chip bt-card-x" data-gear-card-close="" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the details"
           onClick={(e) => { e.stopPropagation(); gearTabBus.deselect(); }}
           style={{
-            position: 'absolute', top: 0, right: 0, zIndex: 3, width: 40, height: 40, background: 'transparent',
-            border: 'none', fontFamily: 'inherit', fontSize: 18, fontWeight: 900, lineHeight: 1, cursor: 'pointer', textShadow: '0 0 3px #0B1216, 0 0 3px #0B1216',
-            touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '2px 3px 0 0', color: COL.text,
+            position: 'absolute', top: 2, right: 2, zIndex: 3, width: CARD_X, height: CARD_X, padding: 0, minHeight: 0,
+            fontFamily: 'inherit', fontSize: 22, fontWeight: 900, lineHeight: 1, color: COL.text, cursor: 'pointer',
+            touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>{'✕'}</button>
       )}
       {/* never scrolls: every state is laid out to fit (mp-geartab measures
           scrollHeight against clientHeight at 390 and 360 px) */}
-      <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '1px 2px 0', ...(linked ? { paddingRight: 5 } : null) }}>
+      <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '1px 2px 0' }}>
         {body}
       </div>
       {footer && <div data-gear-foot="" style={{ flex: 'none', paddingTop: short ? 1 : 2, display: 'flex', gap: 4, alignItems: 'stretch' }}>{footer}</div>}
