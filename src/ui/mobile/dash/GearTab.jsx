@@ -131,8 +131,7 @@ function groupSpare(entries) {
 }
 
 /* v2.3.4273: the card's ✕ button, its side, and the card width under which the head's picture steps aside for it */
-const CARD_X = 36;
-const CARD_X_ART_MIN = 140;
+const CARD_X_WIDE_AT = 150;   /* a card this wide (a computer, a tablet) has the room for the full 36 px button and its head room */
 
 const HAND_FIELD = { melee: 'weapon', ranged: 'rangedWeapon', staff: 'staffWeapon' };
 
@@ -730,6 +729,11 @@ export const GearTab = ({ R: Rin, desk }) => {
   /* v2.3.4191: 30 px on a narrow card (a 360 px phone's ~104 px inside),
      so the name beside it keeps "Worldbreaker" on one line */
   const iw = Math.max(60, broW - 2 * (short ? 2 : PAD) - 2 - (short ? 2 : 4));   /* the card's inner width */
+  /* v2.3.4273: the ✕'s button: 36 px with head room on a wide card; on a narrow phone's ~104 px card
+     there is no room for a name AND a 36 px button ("Worldbreaker" would drop under the 11 px floor),
+     so it is a 28 px bevel there with 5 px of room -- a long name's end can sit under its corner */
+  const cardXRoom = iw >= CARD_X_WIDE_AT;
+  const cardX = cardXRoom ? 36 : 28;
   const artPx = short ? 24 : (iw < 116 ? 30 : 38);
   const art = (thumb, glyph, hidden) => (
     <div data-gear-art="" style={{
@@ -762,8 +766,8 @@ export const GearTab = ({ R: Rin, desk }) => {
   const head = (pic, name, quality, opts) => {
     const o = opts || {};
     return (
-      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', minWidth: 0, flex: 'none', ...(linked0 ? { paddingRight: CARD_X + 4 } : null) }}>
-        {linked0 && iw < CARD_X_ART_MIN ? null : pic}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', minWidth: 0, flex: 'none', ...(linked0 ? { paddingRight: cardXRoom ? cardX + 4 : 5 } : null) }}>
+        {pic}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {nameEl(name, quality)}
           <div data-gear-kind="" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: 6, rowGap: 1, minWidth: 0, whiteSpace: 'nowrap', fontSize: FONT_MIN, fontWeight: 700, color: COL.muted, lineHeight: 1.2 }}>
@@ -1050,8 +1054,8 @@ export const GearTab = ({ R: Rin, desk }) => {
         <button type="button" className="bt-chisel bt-chisel--chip bt-card-x" data-gear-card-close="" data-esc="" data-key="Esc" data-key-at="hang" aria-label="Close the details"
           onClick={(e) => { e.stopPropagation(); gearTabBus.deselect(); }}
           style={{
-            position: 'absolute', top: 2, right: 2, zIndex: 3, width: CARD_X, height: CARD_X, padding: 0, minHeight: 0,
-            fontFamily: 'inherit', fontSize: 22, fontWeight: 900, lineHeight: 1, color: COL.text, cursor: 'pointer',
+            position: 'absolute', top: 2, right: 2, zIndex: 3, width: cardX, height: cardX, padding: 0, minHeight: 0,
+            fontFamily: 'inherit', fontSize: cardXRoom ? 22 : 17, fontWeight: 900, lineHeight: 1, color: COL.text, cursor: 'pointer',
             touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>{'✕'}</button>
       )}
