@@ -224,22 +224,29 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
           </div>
         </div>
       </div>
-      {/* v2.3.3136: your farm -- how its beds are doing, and the way there */}
+      {/* v2.3.4323, the owner: "don't like the feed and seed store menu. Layout is confusing. Visit farm button should be
+          larger and have a farm icon": the way to your farm is the window's big button at the top, its picture beside its
+          words; under it, your plots' status; then what you can buy and what you can deliver, each under its heading */}
       <div style={{ margin: '0 12px 10px' }}>
-        {!closed && summary && summary.text ? (
-          <div data-farm-summary={summary.ready} style={{ fontSize: 12, fontWeight: 700, color: summary.ready ? C.good : C.sub, marginBottom: 6 }}>
-            {'Your farm: ' + summary.text}
-          </div>
-        ) : null}
-        <button data-farm-visit="1" onClick={visit} style={{ ...btn(true), width: '100%', minHeight: 44,
-          border: `1.5px solid ${C.brass}`, color: C.text }}>
+        <button data-farm-visit="1" onClick={visit} style={{ ...btn(true), width: '100%', minHeight: 60,
+          border: `2px solid ${C.brass}`, color: C.text, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+          fontSize: 17, fontWeight: 900, letterSpacing: '.04em', textTransform: 'uppercase', touchAction: 'manipulation' }}>
+          <Icon src="/icons/ui/bldg-farm.webp" size={40} />
           Visit Your Farm
         </button>
+        {!closed && summary && summary.text ? (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute }}>Your plots</div>
+            <div data-farm-summary={summary.ready} style={{ fontSize: 12.5, fontWeight: 700, color: summary.ready ? C.good : C.sub, marginTop: 2 }}>
+              {summary.text}
+            </div>
+          </div>
+        ) : null}
       </div>
       {/* tabs */}
       {!closed && <div style={{ display: 'flex', gap: 3, margin: '0 12px 10px', padding: 3, borderRadius: 10, background: C.well }}>
-        {[{ id: 'seeds', label: 'Seeds', g: FARM_LOOK.seed }]
-          .concat(ordersOn ? [{ id: 'orders', label: 'Orders', g: '\uD83D\uDCDC' }] : []).map((t) => (
+        {[{ id: 'seeds', label: 'Buy', g: FARM_LOOK.seed }]
+          .concat(ordersOn ? [{ id: 'orders', label: 'Deliver', g: '\uD83D\uDCDC' }] : []).map((t) => (
           <button key={t.id} data-farm-tab={t.id} onClick={() => setTab(t.id)}
             style={{ flex: 1, minHeight: 44, border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -251,6 +258,11 @@ export function FeedSeedPanel({ rpgState, stateRef, setBuildingPanel, closed }) 
       </div>}
 
       <div style={{ padding: '0 12px 12px' }}>
+        {!closed && (
+          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: C.mute, margin: '0 0 6px' }}>
+            {tab === 'orders' ? 'What you can deliver for gold' : 'What you can buy'}
+          </div>
+        )}
         {closed && (
           <div data-farm-status="closed" style={{ padding: '24px 0 8px', textAlign: 'center' }}>
             <div style={{ color: C.text, fontSize: 14, fontWeight: 800 }}>{FARM_ERR_TEXT.off}</div>

@@ -518,8 +518,10 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await P.page.keyboard.press('q');
     await P.page.waitForTimeout(600);
     const q1 = await look(P);
-    rec.ok('8b. Q is the weapon\'s special (it fired, and was sent), and raises no shield',
-      q1.swipe > q0.swipe && q1.sent.slice(q0.sent.length).includes('ability_use') && !q1.up, { q0: q0.swipe, q1: q1.swipe, sent: q1.sent.slice(q0.sent.length), up: q1.up });
+    rec.ok('8b. Q fires no special (v2.3.4323: it is the shield\'s toggle; mp-shieldtoggle has it up and down)',
+      q1.swipe === q0.swipe && !q1.sent.slice(q0.sent.length).includes('ability_use'), { q0: q0.swipe, q1: q1.swipe, sent: q1.sent.slice(q0.sent.length), up: q1.up });
+    await P.page.keyboard.press('q');   /* ... and lowers it */
+    await P.page.waitForTimeout(500);
     await P.page.waitForTimeout(1700);   /* the special's 1.5 s cooldown */
     const f0 = await look(P);
     await P.page.keyboard.press('f');
@@ -543,7 +545,7 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await P.page.mouse.move(upPt.x, upPt.y);
     await P.page.waitForTimeout(500);
     const r0 = await look(P);
-    await P.page.mouse.down({ button: 'right' });
+    await P.page.keyboard.press('q');   /* v2.3.4323: Q toggles the shield now */
     await P.page.waitForTimeout(700);
     const r1 = await look(P);
     /* v2.3.3847: with a snowman near the guard faces it, not the pointer
@@ -567,13 +569,13 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
        that clock says nothing here */
     rec.ok(`8c. a left click while it is held is the shield bash (press: ${r2.press && r2.press.kind}; sent ${JSON.stringify(bashSent)}), not a swing`,
       r2.press && r2.press.kind === 'bash' && bashSent.includes('ability:bash'), { press: r2.press, bashSent });
-    await P.page.mouse.up({ button: 'right' });
+    /* (no release: a toggle) */
     await P.page.waitForTimeout(600);
     const r3 = await look(P);
     /* v2.3.3847: a toggle -- the release keeps it up, the next press lowers it */
-    await P.page.mouse.down({ button: 'right' });
+    await P.page.keyboard.press('q');   /* v2.3.4323: Q toggles the shield now */
     await P.page.waitForTimeout(150);
-    await P.page.mouse.up({ button: 'right' });
+    /* (no release: a toggle) */
     await P.page.waitForTimeout(600);
     const r3b = await look(P);
     rec.ok(`8c. letting the right button go keeps the shield up (a toggle, v2.3.3847); the next right press lowers it (press: ${r3b.press && r3b.press.kind})`,
@@ -583,12 +585,12 @@ async function runLayout({ browser, wsPort, webPort, rec }) {
     await P.page.evaluate(() => { const S = window._gameState.current; S.rpg.shield = null; S.rpg.mana = Math.max(S.rpg.mana || 0, 500); S._lastSwipe = 0; });
     await P.page.waitForTimeout(400);
     const n0 = await look(P);
-    await P.page.mouse.down({ button: 'right' });
+    await P.page.mouse.down({ button: 'right' });   /* v2.3.4323: the right button is the special, shield or none */
     await P.page.waitForTimeout(150);
     await P.page.mouse.up({ button: 'right' });
     await P.page.waitForTimeout(600);
     const n1 = await look(P);
-    rec.ok(`8d. with no shield the right button keeps its old use, the special (press: ${n1.press && n1.press.kind})`,
+    rec.ok(`8d. the right button is the special (press: ${n1.press && n1.press.kind})`,
       n1.press && n1.press.kind === 'special' && n1.swipe > n0.swipe && !n1.up, { n0: n0.swipe, n1 });
 
     /* ── 8e. A DIRECTION TAPPED TWICE ── */

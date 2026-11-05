@@ -242,10 +242,11 @@ export const BroCard = ({ points, onPoints }) => {
   const left = (
     <section className="bt-bro2-panel bt-bro2-id" data-bro-panel="id">
       <div className="bt-bro2-head">
-        <span className="bt-bro2-face"><img src={portraitSrc(S)} alt="" draggable={false} /></span>
-        <span className="bt-bro2-who">
-          <b className="bt-bro2-name" data-bro-name="">{name}</b>
-          <span className="bt-bro2-lv" data-bro-level={level}>Lv {level}</span>
+        <span className="bt-bro2-face"><img src={portraitSrc(S)} alt="" draggable={false} />
+          <span className="bt-bro2-who">
+            <b className="bt-bro2-name" data-bro-name="">{name}</b>
+            <span className="bt-bro2-lv" data-bro-level={level}>Lv {level}</span>
+          </span>
         </span>
       </div>
       {title ? (

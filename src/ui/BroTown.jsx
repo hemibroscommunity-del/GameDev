@@ -2786,7 +2786,7 @@ export var BroTown = function BroTown(_ref0) {
     var sz = size || 50;
     var sel = selId === opt.id;
     return /*#__PURE__*/React.createElement("button", {
-      key: 's_' + opt.id, type: 'button', title: opt.name,
+      key: 's_' + opt.id, type: 'button', title: opt.name, 'aria-label': opt.name,
       /* v2.3.3481: the 2026-10-19 UI review -- a tab with no colour row now
          gives its band to this grid (NameModal, .bt-cc-colors--yield), so the
          first pick of a hat, hair or beard brings the row in and the strip
@@ -2832,8 +2832,9 @@ export var BroTown = function BroTown(_ref0) {
              with the collection's Normal Eyes where None is the bro's own eyes
              (the Eyes strip's Normal, and no eyewear).  v2.3.3526's no-entry
              sign and the painted bald head step aside. */
-          /*#__PURE__*/React.createElement("img", { src: ((cat === 'eyestyle' || cat === 'eyewear') ? '/ui/welcome/cc/cc-none-eyes.png?v=' : '/ui/welcome/cc/cc-none-bro.png?v=') + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: '68%', height: '68%', objectFit: 'contain', imageRendering: 'pixelated' } }),
-          /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3481: on the Eyes strip, Normal */
+          /*#__PURE__*/React.createElement("img", { src: ((cat === 'eyestyle' || cat === 'eyewear') ? '/ui/welcome/cc/cc-none-eyes.png?v=' : '/ui/welcome/cc/cc-none-bro.png?v=') + BUILD_INFO.version, alt: 'None', draggable: false, style: { width: cat === 'species' ? '100%' : '68%', height: cat === 'species' ? '100%' : '68%', objectFit: 'contain', imageRendering: 'pixelated' } }),
+          /* v2.3.4323 (owner): the bro-type buttons carry no words -- the picture fills the button (aria-label keeps the name) */
+          cat === 'species' ? null : /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, (cat === 'species' || cat === 'eyestyle') ? opt.name : "None"))   /* v2.3.2682: on the species strip 'none' is the Human; v2.3.3481: on the Eyes strip, Normal */
       /* v2.3.3481: the 2026-10-19 UI review -- the eye styles' tiles are
          whole heads and shoulders (make_eyestyle_thumbs.py), so the eyes, the
          one thing that differs, were a band ~6 CSS px tall and Sleepy read as
@@ -2847,11 +2848,14 @@ export var BroTown = function BroTown(_ref0) {
          alone.  Every bro type now wears its name, above its picture as the
          Human's does (clear of the check painted in the tile's corner). */
       : cat === 'species'
-        ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', justifyContent: 'center' } },
+        ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column-reverse', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: 4 } },
+            /* v2.3.4323 (owner: "monkey and alien heads need to be the same size as the human heads on the buttons"):
+               the monkey's and alien's pictures are a small head and shoulders (head ~64 px of 128 wide; the Human's is
+               96), so they are drawn 1.5x about a point that puts the head's top and middle where the Human's are
+               (top at y 10 of 128, centred); the neck and shoulders go off the button's foot */
             /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async', draggable: false,
               onError: function (e) { _thumbFallback(e, cat, opt.id); },
-              style: { width: '68%', height: '68%', objectFit: 'contain', imageRendering: 'pixelated' } }),
-            /*#__PURE__*/React.createElement("span", { style: { fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: '#3a4450', lineHeight: 1 } }, opt.name))
+              style: { width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'pixelated', transform: 'scale(1.5)', transformOrigin: '47% 40.6%' } }))   /* v2.3.4323 (owner: "remove the text labels for human, monkey, and alien on the buttons to make the icons fill the buttons") */
       : cat === 'eyestyle'
         ? /*#__PURE__*/React.createElement("div", { style: { width: '100%', height: '100%', overflow: 'hidden', borderRadius: 4 } },
             /*#__PURE__*/React.createElement("img", { src: _thumbSrc(cat, opt.id), alt: opt.name, decoding: 'async',
@@ -8447,6 +8451,7 @@ export var BroTown = function BroTown(_ref0) {
          beside a keeper opened his building) left with E's talk */
       _desktopShieldOn: _desktopShieldOn,
       _desktopShieldOff: _desktopShieldOff,
+      _desktopShieldToggle: _desktopShieldToggle,   /* v2.3.4323: Q */
       _desktopCycleWeapon: _desktopCycleWeapon,
       _desktopSelectSlot: _desktopSelectSlot,
       _desktopSpecialAttack: _desktopSpecialAttack,
@@ -9922,6 +9927,33 @@ export var BroTown = function BroTown(_ref0) {
   var _desktopShieldOff = useCallback(function () {
     dropShield(stateRef.current, 'key');   /* v2.3.2242: shared drop path */
   }, []);
+  /* ═══ v2.3.4323: Q IS THE SHIELD'S TOGGLE, THE RIGHT CLICK THE SPECIAL ═══
+     The owner: "I think right click should be special attack instead. Block should be moved to something
+     else." (and a trackpad's right click is ignored while keys are held, so the shield on a click was
+     unreliable for them).  On a computer Q now raises the guard (aimed at the pointer, as the right
+     button's did) and Q again lowers it -- while standing or walking.  Everything raiseShieldToggle
+     refuses it still refuses (no shield: nothing happens but the refusal; the cooldown after a stamina
+     break, the water, a daze, mid-jump).  Returns what the press did, for the probe. */
+  var _desktopShieldToggle = useCallback(function () {
+    var S = stateRef.current;
+    if (!S || !S.rpg) return null;
+    var kind;
+    if (S._shieldUp) {
+      S._shieldMouse = false;
+      _desktopShieldOff();
+      kind = 'shield-down';
+    } else if (!S.rpg.shield) {
+      kind = 'no-shield';
+    } else {
+      if (typeof S._mouseAimAngle === 'number') S._shieldAngle = S._mouseAimAngle;
+      S._shieldKb = true;
+      S._shieldMouse = true;
+      _desktopShieldOn();
+      if (!S._shieldUp) { S._shieldKb = false; S._shieldMouse = false; kind = 'refused'; } else kind = 'shield';
+    }
+    if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: kind, key: 'q', ts: Date.now() };
+    return kind;
+  }, [_desktopShieldOn, _desktopShieldOff]);
   /* v2.3.3711: `dir` -1 steps BACK round the cycle (the mouse wheel turned up,
      the canvas's onWheel); anything else -- the Tab key, the swap button, the
      action bus, none of which pass -1 -- steps on, as it always did */
@@ -10777,20 +10809,9 @@ export var BroTown = function BroTown(_ref0) {
      dropShield clears `_shieldMouse`) is down, so the next press raises it
      again.  Leaving the window still lowers it (desktopControls.js onBlur). */
   var _deskRightPress = function (S) {
+    /* v2.3.4323 (owner): the right click is the weapon's SPECIAL again, always -- the shield is Q's now
+       (_desktopShieldToggle); its level gate and refusal words are doSpecialAttack's, as Q had them */
     if (!S || !S.rpg) return null;
-    if (S.rpg.shield && S._shieldUp) {
-      S._shieldMouse = false;
-      _desktopShieldOff();
-      return 'shield-down';
-    }
-    if (S.rpg.shield) {
-      if (typeof S._mouseAimAngle === 'number') S._shieldAngle = S._mouseAimAngle;
-      S._shieldKb = true;
-      S._shieldMouse = true;
-      _desktopShieldOn();
-      if (!S._shieldUp) { S._shieldKb = false; S._shieldMouse = false; return 'refused'; }
-      return 'shield';
-    }
     if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
     doSpecialAttack();
     return 'special';

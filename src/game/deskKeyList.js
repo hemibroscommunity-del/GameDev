@@ -77,9 +77,10 @@ export const DESK_KEY_ROWS = [
   ['Z', 'Board', 'ride', 'move'],   /* v2.3.3776: the skateboard, in BroTown */
   ['Click', 'Attack', null, 'fight'],
   ['2\u00d7Click', 'Lock on', null, 'fight'],   /* v2.3.3711: a double click on a monster */
-  ['Q', 'Special', null, 'fight'],   /* v2.3.3711: was F and the right click */
-  ['R-Click', 'Shield \u2195', 'shield', 'fight'],   /* v2.3.3711: held; was Q.  v2.3.3847: pressed up, pressed down -- the arrow up and down ("Shield (toggle)" is 97 px of the column's 73) */
+  /* v2.3.4323 (owner): swapped -- Q raises and lowers the shield (up and down), the right click is the special */
+  ['Q', 'Shield \u2195', 'shield', 'fight'],
   ['+Click', 'Bash', 'bash', 'fight'],   /* v2.3.3711: a click with it held; was Q+E */
+  ['R-Click', 'Special', null, 'fight'],   /* v2.3.4323: the weapon's special (was Q); the shield is Q's, up and down (v2.3.3847's toggle) */
   ['R', 'Whirl', 'whirl', 'fight'],
   ['F', 'Burst', 'burst', 'fight'],   /* v2.3.3711: was G */
   ['T', 'Trap', 'trap', 'fight'],

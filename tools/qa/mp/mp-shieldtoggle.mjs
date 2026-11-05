@@ -45,7 +45,13 @@ const look = (P, mx, my) => P.page.evaluate(([x, y]) => {
     why: S._shieldDroppedWhy || null, x: Math.round(S.player.x), y: Math.round(S.player.y),
     menus: (window.__stMenus || []).slice() };
 }, [mx, my]);
+/* v2.3.4323 (owner: "right click should be special attack instead. Block should be moved to something
+   else"): the shield is Q's toggle now -- this still calls it `rightClick` where the checks below were
+   written for the right button; the right button's own check is 7 (the special) */
 const rightClick = async (P) => {
+  await P.page.keyboard.press('q');
+};
+const realRightClick = async (P) => {
   await P.page.mouse.down({ button: 'right' });
   await P.page.waitForTimeout(120);
   await P.page.mouse.up({ button: 'right' });
@@ -86,7 +92,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const r1 = await look(P, upPt.x, upPt.y);
     rec.ok(`1. in BroTown (${near} monsters drawn), a right press and release raises the shield, still up 1 s later (press: ${r1.press && r1.press.kind})`,
       shieldOn && upPt.canvas && r1.up && r1.press && r1.press.kind === 'shield', { r1, upPt });
-    rec.ok(`1. ...and no browser menu (${JSON.stringify(r1.menus)})`, r1.menus.length >= 1 && r1.menus.every((p) => p === true), r1.menus);
+    /* (v2.3.4323: the no-browser-menu check moved to 5b, where the real right button is pressed) */
 
     /* ── 2. the mouse turns it ── */
     const rightPt = await pagePoint(P, here.x + 180, here.y - 20);
@@ -159,6 +165,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const r5d = await look(P, leftPt.x, leftPt.y);
     rec.ok('5. ...and leaving the window lowers it', !r5d.up && !r5d.mouse, r5d);
 
+    /* ── 5b. v2.3.4323: the right click is the special, shield or no shield, and raises no guard ── */
+    const sp0 = await look(P, leftPt.x, leftPt.y);
+    await realRightClick(P);
+    await P.page.waitForTimeout(500);
+    const sp1 = await look(P, leftPt.x, leftPt.y);
+    rec.ok(`5b. the right click is the weapon's special (press: ${sp1.press && sp1.press.kind}) and raises no guard (up: ${sp1.up})`,
+      !sp0.up && !sp1.up && sp1.press && sp1.press.kind === 'special', { sp0, sp1 });
+    rec.ok(`5b. ...and no browser menu over the game (${JSON.stringify(sp1.menus)})`, sp1.menus.length >= 1 && sp1.menus.every((p) => p === true), sp1.menus);
+
     /* ── 6. the controls list ── */
     /* v2.3.4152: under the band (the default) the list is the ⌨'s strip,
        folded until H opens it; the old layout's column is .bt-desk-keys */
@@ -166,18 +181,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const kbFolded = await P.page.evaluate(() => !document.querySelector('.bt-desk-keys') && !document.querySelector('.bt-kb-hints') && !document.querySelector('.bt-band-keys'));
     if (kbFolded) { await P.page.keyboard.press('h'); await P.page.waitForTimeout(500); }
     const row = await P.page.evaluate(() => {
-      const r = [...document.querySelectorAll('.bt-desk-keys .bt-desk-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'R-Click');
+      const r = [...document.querySelectorAll('.bt-desk-keys .bt-desk-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'Q');
       const sp = r && r.querySelector('span');
       if (sp) return { w: sp.textContent, cut: sp.scrollWidth > sp.clientWidth + 1, sw: sp.scrollWidth, cw: sp.clientWidth };
-      const bk = [...document.querySelectorAll('.bt-band-keys .bt-band-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'R-Click');
+      const bk = [...document.querySelectorAll('.bt-band-keys .bt-band-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'Q');
       if (bk) { const sp2 = bk.querySelector('span'); return { w: sp2.textContent, cut: sp2.scrollWidth > sp2.clientWidth + 1, sw: sp2.scrollWidth, cw: sp2.clientWidth, band: true }; }
-      const k = [...document.querySelectorAll('.bt-kb-hints .bt-kb-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'R-Click');
+      const k = [...document.querySelectorAll('.bt-kb-hints .bt-kb-key')].find((e) => ((e.querySelector('kbd') || {}).textContent || '').trim() === 'Q');
       if (!k) return null;
       const kb = k.querySelector('kbd');
       return { w: k.textContent.slice((kb.textContent || '').length).trim(), cut: k.scrollWidth > k.clientWidth + 1, sw: k.scrollWidth, cw: k.clientWidth, strip: true };
     });
     if (kbFolded) { await P.page.keyboard.press('h'); await P.page.waitForTimeout(300); }
-    rec.ok(`6. the controls list says R-Click "${row && row.w}", not cut short`, !!row && row.w === 'Shield \u2195' && !row.cut, row);
+    rec.ok(`6. the controls list says Q "${row && row.w}", not cut short`, !!row && row.w === 'Shield \u2195' && !row.cut, row);
 
     /* ── 7. a snowman near: the guard faces it ── */
     const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');

@@ -182,7 +182,7 @@ function shieldThumb(shield) {
    owner's layout: BroTown onMouseDown; Q is the special), so the card says so */
 function shieldBlockHint() {
   const fine = typeof matchMedia === 'function' && matchMedia('(pointer:fine)').matches;
-  return fine ? 'Hold right-click to block' : 'Tap Block in a fight to raise it';
+  return fine ? 'Press Q to block' : 'Tap Block in a fight to raise it';
 }
 
 /* Which weapon slot does a `type` belong in. */

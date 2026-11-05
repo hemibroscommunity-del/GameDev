@@ -53,6 +53,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const fresh = await np.waitForFunction(() => window.__btBootRoute || null, null, { timeout: 30000 })
       .then((h) => h.jsonValue()).catch(() => null);
     rec.ok(`3. a new key with "?create=1" still opens the creator (route "${fresh}")`, fresh === 'create-forced', { fresh });
+    /* v2.3.4323, the owner: the bro-type buttons (Human, Monkey, Alien) carry no words -- the picture fills the
+       button, the name kept as its aria-label */
+    await np.waitForTimeout(3000);
+    await np.evaluate(() => { const t = [...document.querySelectorAll('button, [role="tab"], div')].find((e) => /^Bro type$/i.test((e.textContent || '').trim()) && e.children.length < 3); if (t) t.click(); }).catch(() => null);
+    await np.waitForTimeout(1200);
+    const bt = await np.evaluate(() => ['Human', 'Monkey', 'Alien'].map((n) => { const b = document.querySelector('button[title="' + n + '"]'); const r = b && b.getBoundingClientRect(); const im = b && b.querySelector('img'); const ir = im && im.getBoundingClientRect(); return { n, has: !!b, text: b ? (b.textContent || '').trim() : null, aria: b ? b.getAttribute('aria-label') : null, fill: r && ir ? Math.round(100 * ir.width / r.width) : 0 }; }));
+    await np.screenshot({ path: `${H.REPO}/tools/qa/mp/out/creator-brotype.png` }).catch(() => {});
+    rec.ok('3b. the three bro-type buttons: no words, the name as aria-label, the picture filling the button inside its frame (' + bt.map((x) => x.n + ' ' + x.fill + '%').join(', ') + ')',
+      bt.every((x) => x.has && x.text === '' && x.aria === x.n && x.fill >= 65), bt);
     await N.close().catch(() => {});
     rec.ok('no page errors', errors.length === 0, errors.slice(0, 5));
   } finally {
