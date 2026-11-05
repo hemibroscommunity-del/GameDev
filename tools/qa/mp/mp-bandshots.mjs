@@ -265,6 +265,22 @@ async function both(P, tag, rec) {
   const g = await look(P);
   rec.ok(`${tag}: the band open at rest shows the Gear tab (its bag pane), not the old bag page`, g.gear && !g.oldBag, g);
   await shot(P, `band-gear-${tag}`);
+  /* v2.3.4273: the band's Controls panel is an accordion on a computer: short (ending at its
+     last short row, "More keys" under it), "More keys" opens it to the full list, "Fewer keys" folds it */
+  const ck = () => P.page.evaluate(() => { const e = document.querySelector('.bt-band-keys'); const x = document.querySelector('.bt-band-keys-extra'); if (!e || getComputedStyle(e).display === 'none') return null; return { h: Math.round(e.getBoundingClientRect().height), open: x ? x.getAttribute('data-open') : null, xh: x ? Math.round(x.getBoundingClientRect().height) : 0 }; });
+  const k0 = await ck();
+  if (k0) {
+    await P.page.evaluate(() => { const b = document.querySelector('.bt-band-keys-more'); if (b && b.textContent === 'Fewer keys') b.click(); });
+    await P.page.waitForTimeout(500);
+    const kShort = await ck();
+    await P.page.click('.bt-band-keys-more'); await P.page.waitForTimeout(700);
+    const kFull = await ck();
+    await shot(P, `band-gear-${tag}-keys`);
+    await P.page.click('.bt-band-keys-more'); await P.page.waitForTimeout(600);
+    const kBack = await ck();
+    rec.ok(`${tag}: the Controls panel is short by default, "More keys" opens it to the full list (taller), "Fewer keys" folds it back`,
+      !!kShort && !!kFull && kShort.xh === 0 && kFull.h > kShort.h + 20 && kFull.xh > 20 && kBack.xh === 0 && kBack.h === kShort.h, { kShort, kFull, kBack });
+  }
   /* Bro */
   await P.page.evaluate(() => { window.__btHeroSection.request('Card'); window.__broDashPanelBus.open('hero'); });
   await P.page.waitForTimeout(1600);

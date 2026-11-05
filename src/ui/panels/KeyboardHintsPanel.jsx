@@ -255,7 +255,15 @@ export function bandKeysActive() {
 }
 export function BandKeys() {
   const [more, flipMore] = useMoreKeys();
-  const rows = deskKeyRows(useDeskHave(), more).filter((r) => r[3] !== 'menus');
+  /* v2.3.4273, the owner: "Make the controls window shorter (stop near 'hide
+     this' and 'close') like an accordion style where it can expand to the size
+     you have it now if you click 'more keys'": the short list always, ending
+     at its last row with "More keys" under it; the rest of the full list sits
+     in a folded drawer that opens by a short height animation (game.css
+     .bt-band-keys-extra: grid rows 0fr -> 1fr) */
+  const have = useDeskHave();
+  const rows = deskKeyRows(have, false).filter((r) => r[3] !== 'menus');
+  const extra = deskKeyRows(have, true).filter((r) => r[3] !== 'menus' && !rows.some((e) => e[0] === r[0] && e[1] === r[1]));
   const [hidden, setHidden] = React.useState(readHidden);
   React.useEffect(() => {
     const on = () => setHidden(readHidden());
@@ -274,7 +282,12 @@ export function BandKeys() {
     hidden ? null : React.createElement('div', { className: 'bt-band-keys-list' },
       rows.map(([k, label]) => React.createElement('div', { className: 'bt-band-key', key: k + ' ' + label },
         React.createElement('kbd', null, k), React.createElement('span', null, label)))),
-    hidden ? null : React.createElement('button', { type: 'button', className: 'bt-band-keys-more', 'data-band-keys-more': more ? '1' : '0', onClick: flipMore },
+    hidden || !extra.length ? null : React.createElement('div', { className: 'bt-band-keys-extra', 'data-open': more ? '1' : '0', 'aria-hidden': more ? undefined : 'true' },
+      React.createElement('div', { className: 'bt-band-keys-extra-in' },
+        React.createElement('div', { className: 'bt-band-keys-list' },
+          extra.map(([k, label]) => React.createElement('div', { className: 'bt-band-key', key: k + ' ' + label },
+            React.createElement('kbd', null, k), React.createElement('span', null, label)))))),
+    hidden ? null : React.createElement('button', { type: 'button', className: 'bt-band-keys-more', 'aria-expanded': more ? 'true' : 'false', 'data-band-keys-more': more ? '1' : '0', onClick: flipMore },
       more ? 'Fewer keys' : 'More keys'));
 }
 

@@ -55,6 +55,10 @@ export const NAV_WORDS_BESIDE = 86;
 export const NAV_WORDS_STACK = 46;
 /* v2.3.4243: each picture's opaque box [x0, y0, x1, y1] in its 256 px file
    (alpha > 24), so the button can show the art alone, edge to edge */
+/* v2.3.4273, the owner: "'gear' font color is orange make it a bright yellow
+   instead and a border to match when any dashboard button selected": the
+   open button's name and its border are this bright yellow, not the brass */
+const NAV_YELLOW = '#FFE23A';
 const NAV_TRIM = {
   'nav-dashboard.png': [28, 2, 234, 255], 'panel-self.webp': [37, 35, 219, 220],
   'panel-quests.webp': [47, 60, 208, 217], 'panel-encyclopedia.webp': [35, 44, 222, 211],
@@ -100,6 +104,13 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
     return () => { try { if (ro) ro.disconnect(); } catch (e) { /* gone */ } };
   }, [items.length]);
   const words = navLabelMode(fill ? (realW || size.w) : size.w);
+  /* v2.3.4273, the owner: "Also make the button labels larger": the name badge is
+     as large as the button fits -- up to 15 px beside the picture's room (a
+     computer), 14 over it on a phone -- by the longest name ("Quests", "Codex"
+     six letters at ~0.6 em each, a 3 px rim), never under the old 11 px: "More"
+     and "Quests" stay whole at 320 px */
+  const btnPx = fill ? (realW || size.w) : size.w;
+  const badgePx = Math.max(11, Math.min(words === 'beside' ? 15 : 14, Math.floor((btnPx - 10) / 3.7)));
   /* stacked, the picture gives the word its line (the row's height is
      today's); beside, a little smaller than alone */
   const icon0 = iconPx || 24;
@@ -275,7 +286,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
               background: on
                 ? `linear-gradient(0deg, ${COL.accentFill}, ${COL.accentFill}), ${COL.wellSoft}`
                 : COL.wellSoft,
-              border: `1px solid ${on ? COL.accent : COL.tileBor}`,
+              border: `${on ? 2 : 1}px solid ${on ? NAV_YELLOW : COL.tileBor}`,
               /* ═══ v2.3.2321: ROUNDED RECTANGLES, NOT CIRCLES ═══
                  Owner: "I want to see what rectangular shaped buttons with
                  rounded edges looks like for the navigation buttons instead of
@@ -336,8 +347,8 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
             {words !== 'icon' ? (
               <span className="bt-item-qty bt-nav-word" data-nav-word={d.id} aria-hidden="true" style={{
                 right: 'auto', left: '50%', bottom: 2, transform: 'translateX(-50%)',
-                height: 15, maxWidth: 'calc(100% - 4px)', overflow: 'hidden', whiteSpace: 'nowrap',
-                color: on ? COL.accent : '#F2F3EF', borderColor: on ? COL.accent : undefined,
+                height: Math.round(badgePx * 1.3), padding: '0 3px', fontSize: badgePx, maxWidth: 'calc(100% - 4px)', overflow: 'hidden', whiteSpace: 'nowrap',
+                color: on ? NAV_YELLOW : '#F2F3EF', borderColor: on ? NAV_YELLOW : undefined,
                 pointerEvents: 'none',
               }}>{d.label}</span>
             ) : null}
