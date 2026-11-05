@@ -529,7 +529,9 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
      true` plays the whole window with the band at the bottom; the side
      column is the old layout, `query: 'oneband=0'`. */
   const _narrow = (!touch && !wide && !/(?:^|&)(?:narrow|deskwide=)/.test(query) && !/(?:^|&)(?:narrow|deskwide=)/.test(_env)) ? 'narrow' : '';
-  const _q = [guest ? 'guest=1' : '', query, _env, _world, _narrow].filter(Boolean).join('&');
+  /* v2.3.4295: the login wheel's window opens by itself after login; no scenario but mp-loginspin wants it */
+  const _noSpin = /(?:^|&)loginspin=/.test(query) ? '' : 'loginspin=0';
+  const _q = [guest ? 'guest=1' : '', query, _env, _world, _narrow, _noSpin].filter(Boolean).join('&');
   /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a
      page somewhere else (mp-originlock: a copy of the game on another site,
      its browser launched to find that name at 127.0.0.1) */

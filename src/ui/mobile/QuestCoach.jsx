@@ -1,5 +1,5 @@
 import { readSharedValue, writeSharedValue } from '@/networking/rosterCookie.js'; /* v2.3.2765 */
-import { coachMayShow, noteCoach, tutorialSkipped, plateUp, noteFirstSteps } from '@/ui/onboardingPace.js'; /* v2.3.2766; v2.3.2890 + the skip */
+import { coachMayShow, noteCoach, tutorialSkipped, plateUp, noteFirstSteps, noteInTutorial } from '@/ui/onboardingPace.js'; /* v2.3.2766; v2.3.2890 + the skip */
 import React from 'react';
 import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: how high the combat band reaches, from the same arithmetic the controls place themselves with */
 /* v2.3.1797: the special lesson has to know whether the ACTIVE slot holds a
@@ -1311,6 +1311,7 @@ export function QuestCoach(props) {
       const tut = !!rpg && (inTutorial(rpg) || preTutorial(rpg));
       /* v2.3.4106: the install card waits while a first step is still to come */
       noteFirstSteps(tut && !tutorialSkipped() && FIRST_STEPS.some(function (id) { return !done[id]; }));
+      if (rpg) noteInTutorial(tut && !tutorialSkipped());   /* v2.3.4295: the login wheel waits for the whole tutorial */
       let anyTimeWanted = false;
       if (rpg && !tut && !tutorialSkipped()) {
         const S0 = stateRef && stateRef.current;

@@ -56,6 +56,9 @@ const ASK_POLL_MS = 1000;
 const ANSWER_TIMEOUT_MS = 8000;
 const SETTLE_AFTER_WORLD_MS = 2500;
 const DRUM_MS = 750;
+/* v2.3.4295: ?loginspin=0 -- no AUTO-open on this phone (the top bar's button still opens it); the QA
+   harness passes it so a scenario that does not test the wheel is never covered by it */
+const autoOpenOff = () => { try { return /(?:^|[?&])loginspin=0(?:&|$)/.test(window.location.search); } catch (e) { return false; } };
 const reduced = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } };
 
 /* v2.3.4295: the owner: "Make sure the wheel spin is satisfying it's supposed to be a dopamine hit."
@@ -154,7 +157,7 @@ export const LoginSpinWindow = () => {
       if (b.open || !S || !S.channel || !S._serverCaps || !S._serverCaps.loginspin) return;
       if (!worldReady() || worldInMs() < SETTLE_AFTER_WORLD_MS) return;
       if (!askedRef.current) { askedRef.current = send('loginspin_ask'); return; }
-      if (b.avail && !onboardingBusy() && spinSafeNow()) loginSpinBus.open();
+      if (b.avail && !autoOpenOff() && !onboardingBusy() && spinSafeNow()) loginSpinBus.open();
     }, ASK_POLL_MS);
     return () => clearInterval(id);
   }, []);
