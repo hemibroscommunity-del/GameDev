@@ -2557,6 +2557,14 @@ html{--bt-hud-top:calc(56px + var(--bt-bar-grow,0px) + env(safe-area-inset-top,0
    own bg.webp background (which stays the fallback), so nothing else needs
    a z-index. */
 .bt-cc-bgvideo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;pointer-events:none}
+/* v2.3.4283: iOS Safari draws its own start-playback button over a muted autoplay video it
+   refused to play (Low Power Mode): never show it (LoginScreen falls back to the still frame) */
+.bt-cc-bgvideo::-webkit-media-controls,
+.bt-cc-bgvideo::-webkit-media-controls-start-playback-button,
+.bt-cc-bgvideo::-webkit-media-controls-overlay-play-button,
+.bt-cc-bgvideo::-webkit-media-controls-panel,
+.bt-cc-bgvideo::-webkit-media-controls-play-button{display:none!important;-webkit-appearance:none;opacity:0;pointer-events:none}
+.bt-cc-bgstill{background:center / cover no-repeat}
 /* v2.3.1251: restrained vignette/contrast veil over the vista (approved
    mockup) — keeps the world visible without competing with the UI.  Same
    negative z-index trick as the video (must sit under all content); the

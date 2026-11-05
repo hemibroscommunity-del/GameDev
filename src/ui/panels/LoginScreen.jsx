@@ -120,6 +120,22 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
   });
   /* v2.3.1923: the "this device is full" gate — see the Create button. */
   const [warnFull, setWarnFull] = React.useState(false);
+  /* v2.3.4283, the owner: "there's a 'play' button ... near the continue button
+     on the splash screen that wasn't there before": iOS Safari's own start-
+     playback button on the background <video> when it refuses to autoplay (Low
+     Power Mode).  game.css hides the native button; and when play() is refused
+     the still frame (the poster) stands in for the video, so nothing is left
+     to tap */
+  const bgVideo = React.useRef(null);
+  const [bgStill, setBgStill] = React.useState(false);
+  React.useEffect(() => {
+    const v = bgVideo.current;
+    if (!v || typeof v.play !== 'function') return undefined;
+    let p;
+    try { p = v.play(); } catch (e) { setBgStill(true); return undefined; }
+    if (p && typeof p.catch === 'function') p.catch(() => setBgStill(true));
+    return undefined;
+  }, []);
   /* No roster count is held here on purpose.  The picker owns the list while
      it is open and mutates it (delete); a second copy on this screen would
      only exist to go stale.  The one question this screen asks — is the
@@ -205,13 +221,19 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
           The owner asked to reuse the splash screen, and reusing the class
           rather than re-describing it is what keeps that true when the art
           or the gradient is next retouched. */}
-      <video
-        className="bt-cc-bgvideo"
-        src="/ui/welcome/bg-loop.mp4"
-        poster="/ui/welcome/bg.webp"
-        autoPlay muted playsInline loop preload="auto"
-        aria-hidden
-      />
+      {bgStill ? (
+        <div className="bt-cc-bgvideo bt-cc-bgstill" aria-hidden style={{ backgroundImage: 'url("/ui/welcome/bg.webp")' }} />
+      ) : (
+        <video
+          ref={bgVideo}
+          className="bt-cc-bgvideo"
+          src="/ui/welcome/bg-loop.mp4"
+          poster="/ui/welcome/bg.webp"
+          autoPlay muted playsInline loop preload="auto"
+          controls={false} disablePictureInPicture
+          aria-hidden
+        />
+      )}
       {/* v2.3.1823: gold motes drifting past the title.  Six empty <i>s
           because the animation is entirely CSS — this screen has no game
           loop, and a rAF here would compete with the portrait prewarm below
@@ -235,7 +257,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
               page (with the create a character and continue buttons) instead
               of what's there now?"
               It is the whole title in one picture -- HEMI BROS, BRO TOWN with
-              its sword, and the MULTIPLAYER AARPG rule -- so the two <img>s
+              its sword, and the MULTIPLAYER RPG rule (v2.3.4283: the picture and its mask had the AA of "AARPG" cut out by moving the letters, tools/ui/fit-title-lockups.mjs would bring it back from its source) -- so the two <img>s
               that used to be composed here (logo-plain + banner-plain, slices
               of the sheet by tools/gear/slice-splash-art.mjs) become one.
               THAT ALSO RETIRES A CLASS OF BUG: the pair had to be kept in
@@ -255,7 +277,7 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
           <span className="bt-login-logowrap">
             <img
               src={art('logo-full')}
-              alt="Hemi Bros — BroTown, multiplayer AARPG"
+              alt="Hemi Bros — BroTown, multiplayer RPG"
               draggable={false}
               className="bt-login-logo"
             />
