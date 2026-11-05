@@ -8451,6 +8451,7 @@ export var BroTown = function BroTown(_ref0) {
          beside a keeper opened his building) left with E's talk */
       _desktopShieldOn: _desktopShieldOn,
       _desktopShieldOff: _desktopShieldOff,
+      _desktopShieldToggle: _desktopShieldToggle,   /* v2.3.4323: Q */
       _desktopCycleWeapon: _desktopCycleWeapon,
       _desktopSelectSlot: _desktopSelectSlot,
       _desktopSpecialAttack: _desktopSpecialAttack,
@@ -9926,6 +9927,33 @@ export var BroTown = function BroTown(_ref0) {
   var _desktopShieldOff = useCallback(function () {
     dropShield(stateRef.current, 'key');   /* v2.3.2242: shared drop path */
   }, []);
+  /* ═══ v2.3.4323: Q IS THE SHIELD'S TOGGLE, THE RIGHT CLICK THE SPECIAL ═══
+     The owner: "I think right click should be special attack instead. Block should be moved to something
+     else." (and a trackpad's right click is ignored while keys are held, so the shield on a click was
+     unreliable for them).  On a computer Q now raises the guard (aimed at the pointer, as the right
+     button's did) and Q again lowers it -- while standing or walking.  Everything raiseShieldToggle
+     refuses it still refuses (no shield: nothing happens but the refusal; the cooldown after a stamina
+     break, the water, a daze, mid-jump).  Returns what the press did, for the probe. */
+  var _desktopShieldToggle = useCallback(function () {
+    var S = stateRef.current;
+    if (!S || !S.rpg) return null;
+    var kind;
+    if (S._shieldUp) {
+      S._shieldMouse = false;
+      _desktopShieldOff();
+      kind = 'shield-down';
+    } else if (!S.rpg.shield) {
+      kind = 'no-shield';
+    } else {
+      if (typeof S._mouseAimAngle === 'number') S._shieldAngle = S._mouseAimAngle;
+      S._shieldKb = true;
+      S._shieldMouse = true;
+      _desktopShieldOn();
+      if (!S._shieldUp) { S._shieldKb = false; S._shieldMouse = false; kind = 'refused'; } else kind = 'shield';
+    }
+    if (typeof window !== 'undefined' && window.__btProbe) window.__btDeskPress = { kind: kind, key: 'q', ts: Date.now() };
+    return kind;
+  }, [_desktopShieldOn, _desktopShieldOff]);
   /* v2.3.3711: `dir` -1 steps BACK round the cycle (the mouse wheel turned up,
      the canvas's onWheel); anything else -- the Tab key, the swap button, the
      action bus, none of which pass -1 -- steps on, as it always did */
@@ -10781,20 +10809,9 @@ export var BroTown = function BroTown(_ref0) {
      dropShield clears `_shieldMouse`) is down, so the next press raises it
      again.  Leaving the window still lowers it (desktopControls.js onBlur). */
   var _deskRightPress = function (S) {
+    /* v2.3.4323 (owner): the right click is the weapon's SPECIAL again, always -- the shield is Q's now
+       (_desktopShieldToggle); its level gate and refusal words are doSpecialAttack's, as Q had them */
     if (!S || !S.rpg) return null;
-    if (S.rpg.shield && S._shieldUp) {
-      S._shieldMouse = false;
-      _desktopShieldOff();
-      return 'shield-down';
-    }
-    if (S.rpg.shield) {
-      if (typeof S._mouseAimAngle === 'number') S._shieldAngle = S._mouseAimAngle;
-      S._shieldKb = true;
-      S._shieldMouse = true;
-      _desktopShieldOn();
-      if (!S._shieldUp) { S._shieldKb = false; S._shieldMouse = false; return 'refused'; }
-      return 'shield';
-    }
     if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
     doSpecialAttack();
     return 'special';

@@ -201,8 +201,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('...and every key cap\'s words fit their cap (v2.3.3711: 2\u00d7WASD, 2\u00d7Click, R-Click, +Click, Wheel)', allRows.length > 0 && allRows.every((r) => !r.kcut),
       allRows.filter((r) => r.kcut).map((r) => r.k));
     let dk = await P.page.evaluate(() => (window.__btDeskKeys ? window.__btDeskKeys() : null));
-    rec.ok('no shield worn: no R-Click (Shield) nor +Click (Bash); no sword in hand: no R (Whirl)',
-      !!dk && !dk.have.shield && !dk.have.whirl && !keysOf(col).includes('R-Click') && !keysOf(col).includes('+Click') && !keysOf(col).includes('R'), { dk, keys: keysOf(col) });
+    rec.ok('no shield worn: no Q (Shield) nor +Click (Bash); no sword in hand: no R (Whirl)',
+      !!dk && !dk.have.shield && !dk.have.whirl && !keysOf(col).includes('Q') && !keysOf(col).includes('+Click') && !keysOf(col).includes('R'), { dk, keys: keysOf(col) });
     /* the list reads the page's own copy (R.shield), as the shield's touch
        button does: a shield on the arm there is what is asked about */
     await P.page.evaluate(() => {
@@ -212,8 +212,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await P.page.waitForTimeout(1600);
     col = await keysCol(P);
     dk = await P.page.evaluate(() => (window.__btDeskKeys ? window.__btDeskKeys() : null));
-    rec.ok('a shield worn: R-Click (Shield) listed under Fight, within a second or two', !!dk && dk.have.shield
-      && !!col && (col.groups.find((g) => g.id === 'fight') || { rows: [] }).rows.some((r) => r.k === 'R-Click' && /shield/i.test(r.w)), { dk, keys: keysOf(col) });
+    rec.ok('a shield worn: Q (Shield) listed under Fight, within a second or two', !!dk && dk.have.shield
+      && !!col && (col.groups.find((g) => g.id === 'fight') || { rows: [] }).rows.some((r) => r.k === 'Q' && /shield/i.test(r.w)), { dk, keys: keysOf(col) });
 
     /* ── 3. H FOLDS THE CONTROLS, AND THE WORLD TAKES THE ROOM ── */
     const cv0 = await box(P, 'canvas');

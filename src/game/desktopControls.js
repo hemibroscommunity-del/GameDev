@@ -105,6 +105,7 @@ export function setupDesktopControls(S, deps) {
     _desktopCycleWeapon = deps._desktopCycleWeapon,
     _desktopSelectSlot = deps._desktopSelectSlot,
     _desktopSpecialAttack = deps._desktopSpecialAttack,
+    _desktopShieldToggle = deps._desktopShieldToggle,   /* v2.3.4323: Q */
     _desktopElementBurst = deps._desktopElementBurst,   /* v2.3.1734 */
     _desktopCloseAll = deps._desktopCloseAll,
     setShowPetHouse = deps.setShowPetHouse,
@@ -387,8 +388,10 @@ export function setupDesktopControls(S, deps) {
          BroTown's rAF loop, which _shieldKb still drives. */
       if (e.code === 'KeyQ' && !e.repeat) {
         e.preventDefault();
-        if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
-        _desktopSpecialAttack();
+        /* v2.3.4323 (owner: "right click should be special attack instead. Block should be moved to
+           something else"): Q is the SHIELD's toggle -- up, down, standing or walking -- and the right
+           click the special (BroTown _deskRightPress) */
+        if (_desktopShieldToggle) _desktopShieldToggle();
         return;
       }
 

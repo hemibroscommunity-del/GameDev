@@ -66,10 +66,12 @@ check('2a with nothing met, no row with a requirement', none.every((r) => r[2] =
 check('2b with everything met, every row', all.length === DESK_KEY_ROWS.length);
 check('2c the owner\'s case: R (Whirl) only with whirl met', !none.some((r) => r[0] === 'R') && deskKeyRows({ whirl: true }).some((r) => r[0] === 'R' && r[1] === 'Whirl'));
 /* v2.3.3711: the shield is the right button held, the bash a click with it up */
-check('2d R-Click (Shield) only with a shield, +Click (Bash) only with the bash', !deskKeyRows({ bash: true }).some((r) => r[0] === 'R-Click')
-  && deskKeyRows({ shield: true }).some((r) => r[0] === 'R-Click' && r[1] === 'Shield \u2195') && !deskKeyRows({ shield: true }).some((r) => r[0] === '+Click')
+/* v2.3.4323: swapped -- Q is the shield (needs one), the right click the special (always) */
+check('2d Q (Shield) only with a shield, +Click (Bash) only with the bash, R-Click (Special) always', !deskKeyRows({ bash: true }).some((r) => r[0] === 'Q')
+  && deskKeyRows({ shield: true }).some((r) => r[0] === 'Q' && r[1] === 'Shield \u2195') && !deskKeyRows({ shield: true }).some((r) => r[0] === '+Click')
+  && deskKeyRows({}).some((r) => r[0] === 'R-Click' && r[1] === 'Special')
   && deskKeyRows({ bash: true }).some((r) => r[0] === '+Click' && r[1] === 'Bash'));
-check('2e a requirement must be true, not just there', !deskKeyRows({ whirl: 1, shield: 'yes' }).some((r) => r[0] === 'R' || r[0] === 'R-Click'));
+check('2e a requirement must be true, not just there', !deskKeyRows({ whirl: 1, shield: 'yes' }).some((r) => r[0] === 'R' || r[0] === 'Q'));
 
 /* ── 3. groups ── */
 const g0 = deskKeyGroups({});
@@ -120,18 +122,19 @@ check('6a every key the list names is one the game binds', dead.length === 0, de
 
 /* ── 7. v2.3.3711: the owner's layout ── */
 const words = (k) => (DESK_KEY_ROWS.find((r) => r[0] === k) || [])[1];
-check('7a Q is the special, F the burst, the right button the shield, +Click the bash, the wheel a swap',
-  words('Q') === 'Special' && words('F') === 'Burst' && words('R-Click') === 'Shield \u2195' && words('+Click') === 'Bash' && words('Wheel') === 'Swap',
+check('7a Q is the shield, F the burst, the right button the special (v2.3.4323), +Click the bash, the wheel a swap',
+  words('Q') === 'Shield \u2195' && words('F') === 'Burst' && words('R-Click') === 'Special' && words('+Click') === 'Bash' && words('Wheel') === 'Swap',
   ['Q', 'F', 'R-Click', '+Click', 'Wheel'].map((k) => [k, words(k)]));
 check('7b ...no row says G or Q+E any more', !DESK_KEY_ROWS.some((r) => r[0] === 'G' || r[0] === 'Q+E'));
 check('7c ...the combos listed: a direction tapped twice dodges, a double click locks on',
   words('2\u00d7WASD') === 'Dodge' && words('2\u00d7Click') === 'Lock on');
-check('7d +Click sits right under R-Click (the pair reads as the combo)',
-  DESK_KEY_ROWS.findIndex((r) => r[0] === '+Click') === DESK_KEY_ROWS.findIndex((r) => r[0] === 'R-Click') + 1);
+check('7d +Click sits right under Q (Shield): the pair reads as the combo (v2.3.4323)',
+  DESK_KEY_ROWS.findIndex((r) => r[0] === '+Click') === DESK_KEY_ROWS.findIndex((r) => r[0] === 'Q') + 1);
 /* the keys themselves, in desktopControls.js: Q fires the special and raises
    no shield; F and G both fire the burst; Q's release lowers nothing */
 const qBlock = (/if \(e\.code === 'KeyQ' && !e\.repeat\) \{([\s\S]*?)\n {6}\}/.exec(ctl) || [])[1] || '';
-check('7e Q fires the special, and raises no shield', /_desktopSpecialAttack\(\)/.test(qBlock) && !/_desktopShieldOn|_shieldKb = true/.test(qBlock), qBlock.slice(0, 300));
+/* v2.3.4323: swapped -- Q is the shield's toggle (BroTown _desktopShieldToggle), fires no special */
+check('7e Q toggles the shield, and fires no special', /_desktopShieldToggle\(\)/.test(qBlock) && !/_desktopSpecialAttack/.test(qBlock), qBlock.slice(0, 300));
 check('7f F and G both fire the Element Burst', /e\.code === 'KeyF' \|\| e\.code === 'KeyG'\) && !e\.repeat\) \{\s*e\.preventDefault\(\);\s*_desktopElementBurst\(\)/.test(ctl));
 check('7g F no longer fires the special', !/e\.code === 'KeyF' && !e\.repeat\) \{[\s\S]{0,120}_desktopSpecialAttack/.test(ctl));
 /* v2.3.3847: the right button is a toggle -- its release lowers nothing; a blur still does */
@@ -139,10 +142,10 @@ check('7h the right button\'s release lowers nothing (a toggle); a blur lowers t
   !/addEventListener\('mouseup', onMouseUp\)/.test(ctl) && /onBlur[\s\S]{0,600}_shieldMouse = false; _desktopShieldOff\(\)/.test(ctl));
 check('7i no browser menu over the game on a computer (text fields and links keep theirs)',
   /addEventListener\('contextmenu', onContextMenu\)/.test(ctl) && /input, textarea/.test(ctl) && /onContextMenu: function onContextMenu\(e\) \{[\s\S]{0,900}?e\.preventDefault\(\);\s*\}/.test(bro));
-check('7j with no shield on the arm the right button keeps its old use, the special',
-  /if \(S\.rpg\.shield\) \{[\s\S]{0,400}return 'shield';\s*\}[\s\S]{0,200}doSpecialAttack\(\);\s*return 'special';/.test(bro));
-check('7k the item card names the right button, not Q', /Hold right-click to block/.test(src('src/ui/mobile/dash/ItemDetailPopup.jsx'))
-  && !/Hold Q to block/.test(src('src/ui/mobile/dash/ItemDetailPopup.jsx')));
+check('7j the right button is the special, shield or no shield (v2.3.4323)',
+  /var _deskRightPress = function \(S\) \{[\s\S]{0,500}doSpecialAttack\(\);\s*return 'special';/.test(bro) && !/var _deskRightPress = function \(S\) \{[\s\S]{0,500}_desktopShieldOn/.test(bro));
+check('7k the item card names Q for the block (v2.3.4323), not the right button', /Press Q to block/.test(src('src/ui/mobile/dash/ItemDetailPopup.jsx'))
+  && !/right-click to block/.test(src('src/ui/mobile/dash/ItemDetailPopup.jsx')));
 check('7l the Element Burst button wears F', /data-key="F"/.test(src('src/ui/mobile/ElementBurstButton.jsx')));
 
 /* ── 8. the combos' rules ── */
@@ -210,8 +213,8 @@ check('11c ...no angle with the pointer on the bro, or no pointer yet', deskPoin
 check('11d ?shieldaim=mouse: the pointer always; anything else the default',
   shieldFollowsPointerAlways('?shieldaim=mouse') && shieldFollowsPointerAlways('?a=1&shieldaim=mouse') && !shieldFollowsPointerAlways('?shieldaim=mousey')
   && !shieldFollowsPointerAlways('') && !shieldFollowsPointerAlways(null));
-check('11e a right press with the guard up lowers it (the toggle); dropShield clears the toggle so the next press raises it',
-  /if \(S\.rpg\.shield && S\._shieldUp\) \{\s*S\._shieldMouse = false;\s*_desktopShieldOff\(\);\s*return 'shield-down';/.test(bro)
+check('11e a Q press with the guard up lowers it (the toggle, v2.3.4323); dropShield clears the toggle so the next press raises it',
+  /if \(S\._shieldUp\) \{\s*S\._shieldMouse = false;\s*_desktopShieldOff\(\);\s*kind = 'shield-down';/.test(bro)
   && /S\._shieldMouse = false;/.test(src('src/game/shieldToggle.js')));
 check('11g the numbers say their weapons: 1 Melee, 2 Bow, 3 Staff, always listed, no 1-3 row',
   words('1') === 'Melee' && words('2') === 'Bow' && words('3') === 'Staff' && !DESK_KEY_ROWS.some((r) => r[0] === '1-3')
