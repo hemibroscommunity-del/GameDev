@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "0199f276c4ffa631b1963821b097cf0f3703a617",
+  "tree": "3f3dd20cf8eff9c59cbf8714e0eff1ccd0d60021",
+  "committedAt": "2026-11-04T18:27:59-08:00",
+  "subject": "Merge pull request #1442 from hemibroscommunity-del/claude/card-x-bevel",
+  "files": 7661,
+  "bytes": 889113322,
+  "listingSha256": "9b97261e9419ca3d63775288bae7239efd8957dc44afdea0857efc9bc0b2bb67",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
