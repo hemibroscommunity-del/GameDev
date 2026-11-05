@@ -173,7 +173,7 @@ export function guideTargets(id, rpg, shown) {
        'forge' menu because your character already starts out with the copper sword"): the ARMOR tab
        when the Smithy has one (it needs the worker's armorforge cap), gone once you are on it;
        the Forge tab as before where there is none */
-    if (document.querySelector('[data-smithy-tab="armor"]')) {
+    if (shown('[data-smithy-tab="armor"]')) {
       if (shown('[data-smithy-tab="armor"][data-on="1"]')) return [];
       return ['[data-smithy-tab="armor"]'];
     }
