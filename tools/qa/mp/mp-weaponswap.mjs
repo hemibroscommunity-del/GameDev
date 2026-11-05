@@ -215,7 +215,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await touch(P, c.x, c.y);
     await P.page.waitForTimeout(300);
     const no = await look(P);
-    rec.ok(`a tap on the empty bow well says "No bow yet" (${JSON.stringify(no.notes)}) and shakes it`, no.notes.includes('No bow yet') && no.wells.ranged.shaking, { notes: no.notes, shaking: no.wells.ranged.shaking });
+    rec.ok(`a tap on the empty bow well says "No bow equipped" (${JSON.stringify(no.notes)}) and shakes it`, no.notes.includes('No bow equipped') && no.wells.ranged.shaking, { notes: no.notes, shaking: no.wells.ranged.shaking });
     rec.ok('...and changes nothing', no.slot === 'melee' && no.pillSlot === 'melee', { slot: no.slot });
   }
 

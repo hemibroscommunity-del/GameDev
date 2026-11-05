@@ -139,6 +139,11 @@ export function WeaponPill(props) {
   /* { slot, n }: n re-keys the empty well so its shake restarts */
   var _n = React.useState(null);
   var nope = _n[0], setNope = _n[1];
+  /* v2.3.4303, the owner: pressing a slot whose weapon you do not have says "No bow equipped"
+     in a line you can read over the pill (2 s), not only a greyed icon and a small float */
+  var _t = React.useState('');
+  var noteText = _t[0], setNoteText = _t[1];
+  var noteTimer = React.useRef(0);
   var touchRef = React.useRef(null);
   var lastTouchEndRef = React.useRef(0);
 
@@ -192,11 +197,13 @@ export function WeaponPill(props) {
     var R = S.rpg;
     var cur = R.activeSlot || 'melee';
     if (ownedWeaponSlots(R).indexOf(slot) < 0) {
-      var note = 'No ' + SLOT_WORD[slot] + ' yet';
+      var note = 'No ' + SLOT_WORD[slot] + ' equipped';   /* v2.3.4303: said in full (was "yet"), and in a readable line over the pill (below) */
       qa.notes.push(note);
       if (qa.notes.length > 10) qa.notes.shift();
       try { if (S.player) pushDmgPopup(S, S.player.x, S.player.y - 30, note, NOTE_COLOR, { ts: Date.now() }); } catch (e) { /* words only */ }
-      setNope({ slot: slot, n: Date.now() });
+      setNope({ slot: slot, n: Date.now(), text: note });
+      try { clearTimeout(noteTimer.current); noteTimer.current = setTimeout(function () { setNoteText(''); }, 2000); } catch (e) { /* stays a moment longer */ }
+      setNoteText(note);
       return;
     }
     if (slot === cur) return;   /* already in hand */
@@ -255,7 +262,7 @@ export function WeaponPill(props) {
   var a = weaponPillAnchor(isLandscape);
   var W = a.well;   /* 40 px; less only on a phone narrower than 360 px (ShieldButton) */
 
-  return React.createElement('div', {
+  var pill = React.createElement('div', {
     className: 'bt-wpill',
     'data-weapon-pill': view.slot,
     role: 'group',
@@ -333,4 +340,16 @@ export function WeaponPill(props) {
       style: { display: 'block', width: a.icon, height: a.icon, objectFit: 'contain', pointerEvents: 'none' },
     }) : null);
   }));
+  var noteEl = noteText ? React.createElement('div', {
+    key: 'wpill-note', className: 'bt-wpill-note', role: 'status', 'data-wpill-note': noteText,
+    style: {
+      position: 'fixed', zIndex: 32, pointerEvents: 'none',
+      left: a.left != null ? a.left : 'calc(50% - ' + (a.w / 2) + 'px)', width: a.w, display: 'flex', justifyContent: 'center',
+      bottom: 'calc(' + ctlBottom(a.bottomPx) + ' + ' + a.h + 'px + 8px)',
+    },
+  }, React.createElement('span', { style: {
+    padding: '5px 12px', borderRadius: 999, background: 'rgba(13,22,27,.94)', border: '1px solid ' + NOTE_COLOR, color: NOTE_COLOR,
+    font: "800 14px/1.1 'Source Sans 3',sans-serif", whiteSpace: 'nowrap', boxShadow: '0 2px 8px rgba(0,0,0,.45)',
+  } }, noteText)) : null;
+  return React.createElement(React.Fragment, null, pill, noteEl);
 }

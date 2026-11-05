@@ -170,7 +170,29 @@ import { checkWitnesses, noteCheckActed, EMPTIED_NEED, CANVAS_CHECK_OFF } from '
 const OWED_REBUILD_OFF = (function () { try { return /[?&]owedrebuild=0\b/.test(window.location.search || ''); } catch (e) { return false; } })();
 import { markWorldIn, skipTutorial, worldInMs } from '@/ui/onboardingPace.js'; /* v2.3.2766: one onboarding voice at a time; v2.3.2890 + the welcome plate's Skip tutorial */
 import { BUILD_INFO } from './BuildBadge.jsx';
-import { pushHudPopup } from './XpFlyOverlay.jsx';
+import { pushHudPopup, playerScreenPoint } from './XpFlyOverlay.jsx';
+/* v2.3.4303, the owner: the prompt that appears when you walk near a building's door shows right
+   above your character (over the bro's head) so it cannot be missed, in every layout.  The
+   camera is on the player, so the head's screen point barely moves while you stand at the door;
+   the prompt (a position: fixed button) is placed there when it renders (its ref), measured from
+   where fixed 0,0 really is (a computer's #root contains it; a phone's is the window).  The
+   world's controls are at the band's edge: nothing over them.  No head point yet: the CSS place. */
+function placeOverHead(stateRef) {
+  return function (el) {
+    try {
+      if (!el) return;
+      var S = stateRef && stateRef.current;
+      var p = playerScreenPoint(S);
+      if (!p) return;
+      el.style.bottom = 'auto';
+      el.style.left = '0px'; el.style.top = '0px'; el.style.maxWidth = 'min(260px, 86%)';
+      var r0 = el.getBoundingClientRect();   /* promptPulse animates translateX(-50%) (+ a scale): so the centre is `left`, the bottom edge is top + its own height */
+      var ox = r0.left + el.offsetWidth / 2;   /* where fixed 0 is: the animation's translateX(-50%) shifted the box by half its width */
+      el.style.left = Math.round(p.x - ox) + 'px';
+      el.style.top = Math.round(p.y - r0.top - 6 - el.offsetHeight) + 'px';
+    } catch (e) { /* the CSS place stands */ }
+  };
+}
 
 /* v2.3.1745: how long the QUEST ACCEPTED! / QUEST COMPLETED! banner stays
    up.  Exported so the headless check reads the real number instead of
@@ -13521,7 +13543,7 @@ export var BroTown = function BroTown(_ref0) {
          the camera centres the player, so the card ends at the band and is
          (50vh - 72px - band) tall, i.e. its top sits at 50vh + 60px.  230px
          floor so a short phone still gets the header, the tabs and a row. */
-      maxHeight: buildingPanel === 'forge' ? 'max(230px, calc(50vh - 72px - var(--dash-h, 0px)))' : (buildingPanel === 'townhall' && deskBigActive()) ? '85%' /* v2.3.3802 */ : deskBigActive() ? '82%' : '100%',
+      maxHeight: buildingPanel === 'forge' ? (deskBigActive() ? '92%' : '100%') /* v2.3.4303: the Blacksmith's window uses the room above the band, phone and computer (it was 50vh - 72px - band, and its bottom was cut off); the window's own list scrolls inside it */ : (buildingPanel === 'townhall' && deskBigActive()) ? '85%' /* v2.3.3802 */ : deskBigActive() ? '82%' : '100%',
       overflowY: 'auto',
       /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
          as the destination sheets/leaderboard): at 390 the Woodworker's
@@ -14957,6 +14979,7 @@ export var BroTown = function BroTown(_ref0) {
        or a click on the person talks. */
     buildingPanel === null && (nearBuilding !== null && BUILDINGS[nearBuilding] || nearBuilding === null && nearHall && WHEEL_HALLS[nearHall]) && /*#__PURE__*/React.createElement("button", {
     className: "bt-interact-prompt",
+    ref: placeOverHead(stateRef),   /* v2.3.4303: over the bro's head */
     /* v2.3.3066: or a Wheel hall's door (the Guild Hall, the Post Office, the
        Sheriff's Office): the same button, its own picture and name */
     "data-enter-hall": nearBuilding === null ? nearHall : undefined,

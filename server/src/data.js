@@ -933,7 +933,8 @@ export const QUEST_REWARDS = {
          v2.3.3981: one ore makes one bar at the bench now, so it is a fair
          swap, as his line says. */
       smith_1: {gold:20,  xp:0, next:'smith_2', after:'tut_1',
-                objective:{type:'collect', invKey:'ore_copper_ore', count:5, consume:true},
+                /* v2.3.4303 (owner): TWO copper ore, not five; the reward stays the five bars smith_2's forging costs */
+                objective:{type:'collect', invKey:'ore_copper_ore', count:2, consume:true},
                 grantOnAccept:[{kind:'inv', key:'mining_pickaxe', n:1, max:1}],
                 item:{kind:'inv', key:'bar_copper', n:5}},
       /* "which you can make into your own weapon or armor - your choice":
