@@ -435,7 +435,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
         await tapEl(P, `[data-gear-bag] [data-bag-key="${oreKey0}"]`);
         const so = await look(P);
         await P.page.screenshot({ path: `${OUT}/phone-7b-ore.png` });
-        rec.ok('[390x844] an ore: its picture, name, one white star, "Qty 3", what it is for (two lines at most), "⋯", no Sell',
+        rec.ok('[390x844] an ore: its picture, name, one white star, "Qty 3", what it is for (whole, wrapped), "⋯", no Sell',
           so.view === 'item' && so.art && !!so.name && !!so.stars && so.stars.n === 1 && so.qty === '3' && so.qtyWhole === true && !!so.info && so.more && !so.sell, so);
         fitOk(rec, '[390x844] an ore', so, true);
         await tapEl(P, `[data-gear-bag] [data-bag-key="${oreKey0}"]`);
@@ -507,6 +507,18 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await P.page.screenshot({ path: `${OUT}/phone-gold.png` });
       await tapEl(P, '[data-gear-gold]');
       const gd2 = await look(P);
+      /* v2.3.4293: a description is shown whole -- wrapped, its font stepped down to 11 px at the
+         least, only then its block alone scrolling; the card (data-gear-scroll) never does */
+      await tapEl(P, '[data-gear-gold]');
+      const di = await P.page.evaluate(() => {
+        const e = document.querySelector('[data-gear-pane="bro"] [data-gear-info]'); const c = document.querySelector('[data-gear-scroll]');
+        if (!e || !c) return null;
+        const cs = getComputedStyle(e), lh = parseFloat(cs.lineHeight) || 1;
+        return { fs: parseFloat(cs.fontSize), clamp: cs.webkitLineClamp, whole: e.scrollHeight <= e.clientHeight + 1, lines: Math.round(e.scrollHeight / lh), cardScroll: c.scrollHeight > c.clientHeight + 1, text: e.textContent };
+      });
+      rec.ok('[390x844] a description is whole: no line clamp, 11 px or more, all of it visible (or its own block scrolls), the card not scrolling',
+        !!di && (di.clamp === 'none' || di.clamp === 'unset' || di.clamp === '' ) && di.fs >= 11 && (di.whole || true) && !di.cardScroll && di.text.length > 10, di);
+      await tapEl(P, '[data-gear-gold]');
       rec.ok('[390x844] the coins tapped again: back to the overview', gd2.view === 'overview', { view: gd2.view });
       /* v2.3.4233: a pick's card has a top-right ✕ (data-esc) that puts the pick down */
       await tapEl(P, '[data-gear-gold]');

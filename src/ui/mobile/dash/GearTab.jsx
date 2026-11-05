@@ -356,6 +356,33 @@ const StatPills = ({ rows, cmp, w, line }) => {
    Greaves"; mp-geartab sets those on a real card and reads them whole). */
 const NAME_FLOOR = 10;
 const NAME_LH = 1.12;
+/* v2.3.4293, the owner: "item descriptions need wrapped text. It gets cut off in
+   middle panel on phones": a description shows in FULL -- it wraps to as many
+   lines as it needs; if that overflows the card's room its font steps down
+   (12.5 px to the 11 px floor); only past that does the description block ALONE
+   scroll (the card never does).  The block takes the room the head and pills
+   leave (flex), so it is what gives. */
+const INFO_FS = 12.5;
+const FitInfo = ({ txt, color }) => {
+  const ref = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let f = INFO_FS;
+    for (; f >= FONT_MIN; f -= 0.5) {
+      el.style.fontSize = f + 'px';
+      if (el.scrollHeight <= el.clientHeight + 1) break;
+    }
+    if (f < FONT_MIN) el.style.fontSize = FONT_MIN + 'px';
+  });
+  return (
+    <div ref={ref} data-gear-info="" style={{
+      flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overflowX: 'hidden', touchAction: 'pan-y', overscrollBehavior: 'contain',
+      fontSize: INFO_FS, color: color || COL.text2, lineHeight: 1.3, overflowWrap: 'break-word',
+    }}>{txt}</div>
+  );
+};
+
 const FitName = ({ name, quality, size, lines }) => {
   const ref = React.useRef(null);
   const [fit, setFit] = React.useState({ fs: size, clamp: false });
@@ -719,12 +746,7 @@ export const GearTab = ({ R: Rin, desk }) => {
   /* ═════ THE CARD ═════ */
   const nameEl = (name, quality) => <FitName name={name} quality={quality} size={short ? 12 : 13} lines={short ? 1 : 2} />;
   /* one or two lines of plain words, never more (the card never scrolls) */
-  const sentence = (txt, color, lines) => txt ? (
-    <div data-gear-info="" style={{
-      fontSize: FONT_MIN, color: color || COL.text2, lineHeight: 1.3,
-      display: '-webkit-box', WebkitLineClamp: lines || 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-    }}>{txt}</div>
-  ) : null;
+  const sentence = (txt, color) => (txt ? <FitInfo txt={txt} color={color} /> : null);   /* v2.3.4293: whole, wrapped (the old line clamp cut it) */
   /* the pick's picture in its frame */
   /* v2.3.4191: 30 px on a narrow card (a 360 px phone's ~104 px inside),
      so the name beside it keeps "Worldbreaker" on one line */
@@ -822,7 +844,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       ? art(ct.els && ct.els.length ? gemIcon(gemCutKey(ct.els[0])) : null, ct.els && ct.els.length ? null : '💎', false)
       : art(ct.item ? ct.icon : null, null, false);
     body = (
-      <div data-gear-stats="cell" data-gear-stats-for={selCell} style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
+      <div data-gear-stats="cell" data-gear-stats-for={selCell} style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3, flex: 1, minHeight: 0 }}>
         {selCell === 'gem' ? (
           <>
             {head(cellPic, ct.els && ct.els.length ? ct.name : 'No gem yet', null, { noStars: true })}
@@ -850,7 +872,7 @@ export const GearTab = ({ R: Rin, desk }) => {
        be tapped on": the coin picture, the name, the amount, a line on what
        gold is for; no buttons */
     body = (
-      <div data-gear-stats="gold" data-gear-stats-for="gold" style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
+      <div data-gear-stats="gold" data-gear-stats-for="gold" style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3, flex: 1, minHeight: 0 }}>
         {head(art(coinArtFor(coins), null, false), 'Gold', null, { noStars: true, extra: coins.toLocaleString() })}
         {sentence('Gold buys gear and food at the shops.', null, short ? 1 : 2)}
       </div>
@@ -913,7 +935,7 @@ export const GearTab = ({ R: Rin, desk }) => {
     if (lead || moreList.length) footer = (<>{lead ? goldBtn(lead.id, lead.label, () => press(lead), lead.attrs) : <span style={{ flex: 1 }} />}{moreBtn(moreList.length > 0)}</>);
     const q = !hidden && o ? o.quality : null;
     body = (
-      <div data-gear-stats="bag" data-gear-stats-for={selEntry.kind === 'item' ? 'i-' + selEntry.key : selEntry.kind} style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3 }}>
+      <div data-gear-stats="bag" data-gear-stats-for={selEntry.kind === 'item' ? 'i-' + selEntry.key : selEntry.kind} style={{ display: 'flex', flexDirection: 'column', gap: short ? 2 : 3, flex: 1, minHeight: 0 }}>
         {head(art(card.thumb, card.glyph, hidden), name, q, {
           hidden, info: card.info, infoColor: card.infoColor,
           qty: selEntry.count || 0,
@@ -962,7 +984,7 @@ export const GearTab = ({ R: Rin, desk }) => {
                 width: '100%', minWidth: 0, display: 'flex', alignItems: 'center', gap: 3, padding: '0 5px 0 3px', boxSizing: 'border-box',
                 color: '#FFFFFF', lineHeight: 1, textShadow: '0 1px 2px rgba(0,0,0,.85), 0 0 3px rgba(0,0,0,.7)',
               }}>
-                {roomy && <img src={VITAL_ICONS[kind]} alt="" draggable={false} style={{ width: 12, height: 12, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />}
+                {roomy && <img src={VITAL_ICONS[kind]} alt="" draggable={false} style={{ width: thick - 1, height: thick - 1, objectFit: 'contain', flex: 'none', pointerEvents: 'none' }} />}   {/* v2.3.4293: as tall as its bar (was 12 px in a 16 px one) */}
                 {wordy && <span style={{ fontSize: FONT_MIN, fontWeight: 800, letterSpacing: '.02em' }}>{VITAL_LABEL[kind]}</span>}
                 <span style={{ flex: 1 }} />
                 <span style={{ fontSize: FONT_MIN, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>{Math.ceil(cur)}/{Math.ceil(max)}</span>
@@ -1005,17 +1027,20 @@ export const GearTab = ({ R: Rin, desk }) => {
           {figure(fw, ch)}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2 }}>
             {nameLine(false)}
-            {bars(13, cw - fw - 6, 2)}
+            {bars(14, cw - fw - 6, 2)}
           </div>
         </div>
       );
     } else {
-      const nh = 16, bh = 3 * 16 + 2 * 3;
+      /* v2.3.4293, the owner: "middle panel resource bar icons ... larger in the bar so it's easier to see":
+         the bars are 20 px (were 16) and each icon as tall as its bar */
+      const BAR = 20;
+      const nh = 16, bh = 3 * BAR + 2 * 3;
       inner = (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {nameLine(true)}
           {figure(cw, ch - nh - bh - 6)}
-          {bars(16, cw, 3)}
+          {bars(BAR, cw, 3)}
         </div>
       );
     }
@@ -1061,7 +1086,7 @@ export const GearTab = ({ R: Rin, desk }) => {
       )}
       {/* never scrolls: every state is laid out to fit (mp-geartab measures
           scrollHeight against clientHeight at 390 and 360 px) */}
-      <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', padding: short ? '0 1px' : '1px 2px 0' }}>
+      <div data-gear-scroll="" style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: short ? '0 1px' : '1px 2px 0' }}>
         {body}
       </div>
       {footer && <div data-gear-foot="" style={{ flex: 'none', paddingTop: short ? 1 : 2, display: 'flex', gap: 4, alignItems: 'stretch' }}>{footer}</div>}
