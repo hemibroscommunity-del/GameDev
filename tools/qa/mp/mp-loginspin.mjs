@@ -60,7 +60,7 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
       await A.page.setViewportSize(PHONE);
       await A.page.waitForTimeout(400);
     }
-    await A.page.click('[data-login-spin-btn]').catch(() => A.page.evaluate(() => window.__btLoginSpinBus.open()));
+    await A.page.click('[data-login-spin-btn="ready"]', { timeout: 4000, force: true }).catch(() => A.page.evaluate(() => document.querySelector('[data-login-spin-btn]').click()));
     await A.page.waitForSelector('[data-login-spin="ready"]', { timeout: 10000 }).catch(() => {});
     await A.page.waitForTimeout(600);
     await shot(A, 'before');
@@ -105,7 +105,7 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
     rec.ok(tag('the window closes'), closed, closed);
     /* spun: the bar's button stays, greyed; a tap says when the next one is, and opens no window */
     await A.page.waitForSelector('[data-login-spin-btn="spent"]', { timeout: 8000 }).catch(() => {});
-    await A.page.click('[data-login-spin-btn="spent"]').catch(() => {});
+    await A.page.click('[data-login-spin-btn="spent"]', { timeout: 4000, force: true }).catch(() => A.page.evaluate(() => document.querySelector('[data-login-spin-btn="spent"]').click()));
     await A.page.waitForTimeout(400);
     await shot(A, 'topbar-spent');
     const note = await A.page.evaluate(() => ({ t: (document.querySelector('[data-login-spin-note]') || {}).textContent || '', win: !!document.querySelector('[data-login-spin]') }));
