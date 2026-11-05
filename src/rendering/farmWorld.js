@@ -431,7 +431,12 @@ export class FarmWorld {
     const h = w.step !== 'harvest' && S && S._farmHands && now - S._farmHands.at < 250 ? S._farmHands : null;   /* a harvest's leaves fly from the crop */
     /* v2.3.3960: digging, the bed's middle -- where the hoe lands now
        (farmLayout.js farmDigSpot) */
-    const hx = h ? h.x : B.b.x + B.b.w / 2, hy = h ? h.y : B.b.y + (w.step === 'dig' ? B.b.h / 2 : 16);
+    /* v2.3.4303, the owner: "planting, watering, and fertilizing animations start at the edge of a dirt
+       plot instead of the center": the hands' point is where the farmer stands (the plot's edge), so
+       the dirt, the seeds, the water and the compost fly from the plot's MIDDLE for every step but a
+       harvest (whose leaves still fly from the crop) */
+    const mid = w.step === 'dig' || w.step === 'plant' || w.step === 'water' || w.step === 'feed';
+    const hx = mid ? B.b.x + B.b.w / 2 : (h ? h.x : B.b.x + B.b.w / 2), hy = mid ? B.b.y + B.b.h / 2 : (h ? h.y : B.b.y + 16);
     /* sized to be SEEN at the farm's zoom (~0.5 CSS px a game px): a clod
        is 2-4 CSS px, as a pixel of the bro's own art is */
     const KINDS = {

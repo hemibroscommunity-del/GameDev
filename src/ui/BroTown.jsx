@@ -188,8 +188,31 @@ function placeOverHead(stateRef) {
       el.style.left = '0px'; el.style.top = '0px'; el.style.maxWidth = 'min(260px, 86%)';
       var r0 = el.getBoundingClientRect();   /* promptPulse animates translateX(-50%) (+ a scale): so the centre is `left`, the bottom edge is top + its own height */
       var ox = r0.left + el.offsetWidth / 2;   /* where fixed 0 is: the animation's translateX(-50%) shifted the box by half its width */
-      el.style.left = Math.round(p.x - ox) + 'px';
-      el.style.top = Math.round(p.y - r0.top - 6 - el.offsetHeight) + 'px';
+      /* kept inside the screen (a door by the world's edge: the player is off-centre, the prompt is
+         wide) ... */
+      var half = el.offsetWidth / 2, vw = window.innerWidth || 0;
+      var cx = vw > 2 * (half + 8) ? Math.max(8 + half, Math.min(vw - 8 - half, p.x)) : p.x;
+      var top = p.y - r0.top - 6 - el.offsetHeight;
+      el.style.left = Math.round(cx - ox) + 'px';
+      el.style.top = Math.round(top) + 'px';
+      /* ... and never over another button (the skateboard's, the weapon pill, the bell): raised
+         clear of the highest one it lies over, not above the top bar */
+      for (var i = 0; i < 12; i++) {
+        var r = el.getBoundingClientRect(), hit = null;
+        var bs = document.querySelectorAll('button, [role="button"]');
+        for (var j = 0; j < bs.length; j++) {
+          var q = bs[j];
+          if (q === el || el.contains(q) || q.contains(el)) continue;
+          var c = q.getBoundingClientRect();
+          if (c.width < 4 || c.height < 4) continue;
+          var cs = getComputedStyle(q);
+          if (cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) continue;
+          if (Math.min(r.right, c.right) - Math.max(r.left, c.left) > 2 && Math.min(r.bottom, c.bottom) - Math.max(r.top, c.top) > 2 && (!hit || c.top < hit.top)) hit = c;
+        }
+        if (!hit || r.top - ((r.bottom - hit.top) + 6) < 56) break;
+        top -= (r.bottom - hit.top) + 6;
+        el.style.top = Math.round(top) + 'px';
+      }
     } catch (e) { /* the CSS place stands */ }
   };
 }
