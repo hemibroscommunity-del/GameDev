@@ -63,7 +63,7 @@ export function loginDoubleWinAt(deg) {
 
 /* ── the window's bus ── */
 const listeners = new Set();
-let _st = { open: false, result: null, round: null, avail: false, known: false, refused: 0, seq: 0 };
+let _st = { open: false, result: null, round: null, avail: false, known: false, note: null, refused: 0, seq: 0 };
 const emit = () => { for (const fn of listeners) { try { fn(_st); } catch (e) { /* a dead listener must not eat the prize */ } } };
 export const loginSpinBus = {
   get() { return _st; },
@@ -73,6 +73,13 @@ export const loginSpinBus = {
   /** The window opens (the host decided it is time). */
   open() { if (_st.open) return; _st = { ..._st, open: true, result: null, round: null, seq: _st.seq + 1 }; emit(); },
   close() { _st = { ..._st, open: false, avail: false }; emit(); },
+  /** A short note on the bar (the greyed button's "Next free spin in 5h 12m"): held HERE, not in a
+      component, so a re-mount of the bar cannot lose it; it clears itself. */
+  note(text, ms) {
+    const until = Date.now() + (ms || 3200);
+    _st = { ..._st, note: { text, until } }; emit();
+    setTimeout(() => { if (_st.note && _st.note.until <= Date.now() + 50) { _st = { ..._st, note: null }; emit(); } }, (ms || 3200) + 80);
+  },
   /** loginspin_result: the spin landed; the worker HOLDS `pot` (`base` the prize, `can` a double is offered). */
   result(p) {
     if (!p || typeof p.idx !== 'number') return;
