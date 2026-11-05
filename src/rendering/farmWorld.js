@@ -270,6 +270,12 @@ export class FarmWorld {
       const t = cropName ? tex('farm:' + cropName) : null;
       if (!t) {
         if (B.crop && !B.crop.destroyed) B.crop.visible = false;
+        /* v2.3.4303, the owner: "the carrots quest when the carrots were ready to harvest the plot was
+           just empty ... I just saw the near black compost dirt": a crop whose picture was not in YET was
+           remembered as drawn (B.cropName below), so it was never tried again and the ripe plot stayed
+           bare soil -- the soil above retries (it records its name only once drawn), the crop did not.
+           Not recorded now: the next frame asks again, and it appears the moment its picture is in. */
+        if (cropName) return;
       } else {
         if (!B.crop || B.crop.destroyed) {
           B.crop = new Sprite(t);
