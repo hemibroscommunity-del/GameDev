@@ -1,4 +1,4 @@
-/* The login wheel -- v2.3.4285 (docs/specs/login-wheel.md).
+/* The login wheel -- v2.3.4295 (docs/specs/login-wheel.md).
  *   1. The odds ARE the art: weights = the segment spans, 100 about half.
  *   2. One spin a day per ACCOUNT (the device, up to ten characters): a second
  *      character on the device sees nothing; another device spins.

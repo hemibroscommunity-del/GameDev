@@ -1,4 +1,4 @@
-/* ═══ THE LOGIN WHEEL, ON A PHONE AND A COMPUTER (v2.3.4285, docs/specs/login-wheel.md) ═══
+/* ═══ THE LOGIN WHEEL, ON A PHONE AND A COMPUTER (v2.3.4295, docs/specs/login-wheel.md) ═══
  *
  * One real player against a real worker, in the Wheel's BroTown, twice (a phone
  * upright 390 x 844 and a computer 1280 x 800):

@@ -1,4 +1,4 @@
-/* ═══ v2.3.4285: THE LOGIN WHEEL -- the client's half (server/src/loginspin.js) ═══
+/* ═══ v2.3.4295: THE LOGIN WHEEL -- the client's half (server/src/loginspin.js) ═══
  * No imports: node tests it.  The segments are the picture's own, measured
  * off assets/ui/daily-spin/wheel-bulbs.png (degrees clockwise from the top);
  * the worker rolls with exactly these spans and sends only the segment, the

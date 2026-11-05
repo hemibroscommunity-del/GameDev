@@ -1,4 +1,4 @@
-# The login wheel (v2.3.4285)
+# The login wheel (v2.3.4295)
 
 Owner, 2026-11-05: "I added a 'free daily spin' you can see the gold amounts on the wheel ... Take the sound effect that has the largest sound wave in the file to use for the full spin. This will be once you login to the game for the day. One per account (one account meaning one account that holds 10 characters - not each character)."
 

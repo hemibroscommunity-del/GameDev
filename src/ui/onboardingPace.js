@@ -150,7 +150,7 @@ function installAfterMs() {
    install card waits for them all. */
 let _firstStepsOpen = false;
 export function noteFirstSteps(open) { _firstStepsOpen = !!open; }
-/** v2.3.4285: is a new character's first sequence still going (the welcome, the
+/** v2.3.4295: is a new character's first sequence still going (the welcome, the
  *  five first steps, a plate)?  The login wheel waits for it to be over. */
 export function onboardingBusy(now = Date.now()) {
   return !!(_firstStepsOpen || _welcomePending || plateUp(now) || _coachUp);

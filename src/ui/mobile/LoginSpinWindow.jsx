@@ -14,7 +14,7 @@ import {
   LOGIN_SPIN_WINDUP_MS, LOGIN_SPIN_WINDUP_DEG, LOGIN_SPIN_OVER_DEG, LOGIN_SPIN_SETTLE_MS,
 } from '@/game/loginSpinWheel.js';
 
-/* ═══ v2.3.4285: THE LOGIN WHEEL'S WINDOW ═══
+/* ═══ v2.3.4295: THE LOGIN WHEEL'S WINDOW ═══
  *
  * Owner, 2026-11-05: "a 'free daily spin' you can see the gold amounts on the
  * wheel ... once you login to the game for the day.  One per account."  The
@@ -58,7 +58,7 @@ const SETTLE_AFTER_WORLD_MS = 2500;
 const DRUM_MS = 750;
 const reduced = () => { try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) { return false; } };
 
-/* v2.3.4285: the owner: "Make sure the wheel spin is satisfying it's supposed to be a dopamine hit."
+/* v2.3.4295: the owner: "Make sure the wheel spin is satisfying it's supposed to be a dopamine hit."
    Wind-up and launch, a long eased stop with the divider flicking the pointer, a little overshoot,
    a burst of coins that grows with the prize, a pop and count-up of the gold.  Transforms and Web
    Animations only; a capped number of coins, each removed when it ends; nothing outlives the window.

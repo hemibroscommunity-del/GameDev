@@ -1,4 +1,4 @@
-/* ═══ v2.3.4285: THE LOGIN WHEEL -- one free spin a day for the ACCOUNT ═══
+/* ═══ v2.3.4295: THE LOGIN WHEEL -- one free spin a day for the ACCOUNT ═══
  *
  * Owner, 2026-11-05: "I added a 'free daily spin' you can see the gold
  * amounts on the wheel ... This will be once you login to the game for the
@@ -106,7 +106,7 @@ export const loginSpinMethods = {
     if (ws) { try { ws.send(JSON.stringify({ type, payload })); } catch (e) { /* the next ask tells */ } }
   },
 
-  /* v2.3.4285, the owner: "only allow the wheel to spin if you're in a safe
+  /* v2.3.4295, the owner: "only allow the wheel to spin if you're in a safe
      area".  Safe is the Wheel's safe ground (wheelzone.js _wheelSafeAt: the
      commons and BroTown), the same ground the minimap plate calls safe; never
      No man's land or a land.  Anywhere that is not the Wheel (a room, a test)

@@ -17,7 +17,7 @@
    by showNameModal/showLogin — same as the original early return). */
 import { processGameEvent } from '@/networking/gameEvents.js';
 import { chestRevealBus } from '@/ui/mobile/ChestReveal.jsx'; /* v2.3.2820: the daily chest's reveal */
-import { loginSpinBus } from '@/game/loginSpinWheel.js'; /* v2.3.4285: the login wheel */
+import { loginSpinBus } from '@/game/loginSpinWheel.js'; /* v2.3.4295: the login wheel */
 import { applyRewardsState, applyDailyProgress } from '@/game/dailyRewards.js'; /* v2.3.3140: the free spin, daily quests, the season */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2822: a smelt can level Smithing */
 import { SMELT_RECIPES } from '@/data/items.js'; /* v2.3.2822: the bar's display name */
@@ -1958,7 +1958,7 @@ export function setupWebSocket(ctx) {
               try { applyRewardsState(S, msg.payload); } catch (_rw) { /* the next state carries it */ }
               break;
             }
-          /* v2.3.4285: the login wheel (server loginspin.js): may this account
+          /* v2.3.4295: the login wheel (server loginspin.js): may this account
              spin today, and the spin's result -- the worker has already paid. */
           case 'loginspin_state':
             { try { loginSpinBus.state(msg.payload); } catch (_ls) { /* the next ask tells */ } break; }
@@ -5601,7 +5601,7 @@ export function setupWebSocket(ctx) {
            dailyrewards.js.  TRAPS #18: a type this allowlist does not name never
            leaves the browser, and the Spin button would turn a wheel nothing
            answers. */
-        /* v2.3.4285: the login wheel's two asks (loginSpinWheel.js) -> loginspin.js */
+        /* v2.3.4295: the login wheel's two asks (loginSpinWheel.js) -> loginspin.js */
         if (msg.type === 'loginspin_ask' || msg.type === 'loginspin_go' || msg.type === 'loginspin_double' || msg.type === 'loginspin_collect') {
           wsOut(msg);
           return;

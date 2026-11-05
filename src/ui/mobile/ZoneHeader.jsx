@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { loginSpinBus, loginSpinNextWords } from '@/game/loginSpinWheel.js'; /* v2.3.4285: the free daily spin's button */
+import { loginSpinBus, loginSpinNextWords } from '@/game/loginSpinWheel.js'; /* v2.3.4295: the free daily spin's button */
 import { LOGIN_SPIN_URLS } from '@/rendering/loginSpinPreload.js';
 import { COL, getState } from './dash/common.js';
 import { placeName } from './placeName.js'; /* v2.3.3974: the land you stand in, or BroTown (was the Wheel's name, v2.3.3009) */
@@ -81,7 +81,7 @@ const V = '?v=2.3.1333c'; /* v2.3.1333c: bigger logout glyph */
 export const ZoneHeader = ({ onExit }) => {
   const [, force] = useState(0);
   const [confirming, setConfirming] = useState(false);
-  const [spinSt, setSpinSt] = useState(loginSpinBus.get());   /* v2.3.4285 */
+  const [spinSt, setSpinSt] = useState(loginSpinBus.get());   /* v2.3.4295 */
   useEffect(() => loginSpinBus.subscribe(setSpinSt), []);
   const spinNote = spinSt.note ? spinSt.note.text : '';
   /* ═══ v2.3.4123: THE DOOR ALWAYS LOGS OUT ═══
@@ -303,7 +303,7 @@ export const ZoneHeader = ({ onExit }) => {
             this column stays, empty, as wide as the door's, so the bar's
             centre (the XP bar, TEST MODE, the owner's hold) stays centred on
             the SCREEN -- what it was first made for (v2.3.1333) */}
-        {/* ═══ v2.3.4285: THE FREE DAILY SPIN, ON THE RIGHT OF THE BAR ═══
+        {/* ═══ v2.3.4295: THE FREE DAILY SPIN, ON THE RIGHT OF THE BAR ═══
             The owner: "Put free daily spin button on top bar ... only allow the
             wheel to spin if you're in a safe area."  The title plate of the
             wheel's window, scaled to the bar, glowing gently while today's spin

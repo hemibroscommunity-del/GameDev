@@ -67,7 +67,7 @@ import { monsterMoveMethods } from './monstermoves.js'; /* v2.3.4011: the tiers'
 import { relayMethods } from './relay.js'; /* v2.3.3304: the relay is an allowlist, in the sender's name */
 import { depthMethods } from './depth.js'; /* v2.3.2790: the dunes' north-south depth, on the monster AI */
 import { dailyChestMethods } from './dailychest.js'; /* v2.3.2820: the daily chest */
-import { loginSpinMethods } from './loginspin.js'; /* v2.3.4285: the login wheel */
+import { loginSpinMethods } from './loginspin.js'; /* v2.3.4295: the login wheel */
 import { dailyRewardsMethods } from './dailyrewards.js'; /* v2.3.3140: the free daily spin, daily quests, the season */
 import { smeltingMethods } from './smelting.js'; /* v2.3.2822: ore into bars */
 import { farmMethods } from './farm.js'; /* v2.3.3127: the farm, settled by the worker */
@@ -539,7 +539,7 @@ export const PRIVILEGED_EVENTS = new Set([
   /* v2.3.2820: the daily chest's result (dailychest.js) -- it names a prize,
      so a forged one would put a fake jackpot on another player's screen. */
   'chest_opened',
-  /* v2.3.4285: the login wheel (loginspin.js) -- its answer names a prize, so a
+  /* v2.3.4295: the login wheel (loginspin.js) -- its answer names a prize, so a
      forged one would paint a won 10K on another player's screen. */
   'loginspin_state', 'loginspin_result', 'loginspin_round',
   /* v2.3.3140: the daily rewards (dailyrewards.js) -- the spin's result, the
@@ -5547,7 +5547,7 @@ export class GameRoom {
       case 'loginspin_go':
       case 'loginspin_double':
       case 'loginspin_collect':
-        /* v2.3.4285: the login wheel (loginspin.js); awaited like every case */
+        /* v2.3.4295: the login wheel (loginspin.js); awaited like every case */
         if (session.id) {
           try {
             if (msg.type === 'loginspin_ask') await this._handleLoginSpinAsk(session);
@@ -6664,7 +6664,7 @@ Object.assign(GameRoom.prototype, monsterMoveMethods); /* v2.3.4011 */
 Object.assign(GameRoom.prototype, relayMethods); /* v2.3.3304 */
 Object.assign(GameRoom.prototype, depthMethods); /* v2.3.2790 */
 Object.assign(GameRoom.prototype, dailyChestMethods); /* v2.3.2820 */
-Object.assign(GameRoom.prototype, loginSpinMethods); /* v2.3.4285 */
+Object.assign(GameRoom.prototype, loginSpinMethods); /* v2.3.4295 */
 Object.assign(GameRoom.prototype, dailyRewardsMethods); /* v2.3.3140 */
 Object.assign(GameRoom.prototype, smeltingMethods); /* v2.3.2822 */
 Object.assign(GameRoom.prototype, farmMethods); /* v2.3.3127 */
