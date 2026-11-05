@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "502e0dbf05390b620d217d97f97eeab831f0755b",
+  "tree": "38635b0ca5c1f78bc717eae51cda2648ec3afc24",
+  "committedAt": "2026-11-04T23:32:47-08:00",
+  "subject": "Merge pull request #1447 from hemibroscommunity-del/claude/block-toggle-walk",
+  "files": 7710,
+  "bytes": 906119865,
+  "listingSha256": "cdae2cf22313c7901296e97adc0e6705210f3632478c9bb74e50cd5c6a2138fc",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
