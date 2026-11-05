@@ -1908,3 +1908,7 @@ Sources: CLAUDE.md, docs/specs/login-wheel.md, server/src/loginspin.js, src/game
 ## Bro tab portrait, 3x (v2.3.4323)
 
 The portrait on the Bro tab is 168 px square at most (was 56), narrower only if its panel is. The name and Lv sit on the picture's top edge on a soft dark fade, so they stay in view; the title, party and AP rows follow under it and the panel scrolls inside today's band height. Pictures: `docs/shots/brotab-portrait-phone.webp`, `brotab-portrait-desk.webp`.
+
+## Splash tagline (v2.3.4333)
+
+One small white line, "Any device • Any browser • No download • Free", sits centred just above the version line at the bottom of the splash (a touch larger than the version). It wraps balanced rather than clipping. On a phone on its side the buttons' gap and the note's top padding are tightened so the version line still fits. Picture: `docs/shots/splash-tagline-after.webp`.
