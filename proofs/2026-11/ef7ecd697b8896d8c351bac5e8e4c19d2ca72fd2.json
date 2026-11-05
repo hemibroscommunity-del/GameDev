@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "ef7ecd697b8896d8c351bac5e8e4c19d2ca72fd2",
+  "tree": "6d5f71ef141cb87b2808e4bef3a8c108f584f49c",
+  "committedAt": "2026-11-04T20:44:01-08:00",
+  "subject": "Merge pull request #1444 from hemibroscommunity-del/claude/daily-spin",
+  "files": 7709,
+  "bytes": 905717280,
+  "listingSha256": "9134078fca9fb59fdafb0f7855995099916e38a8ccc1d49b819e2674bbd5f575",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
