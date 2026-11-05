@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "3db6a7ecd7cb949a99c72655a02ced11e4910ac6",
+  "tree": "5836629744038a3b0017269ffd2da5abc0b53bb1",
+  "committedAt": "2026-11-05T05:03:46-08:00",
+  "subject": "Merge pull request #1448 from hemibroscommunity-del/claude/creator-music",
+  "files": 7715,
+  "bytes": 907571950,
+  "listingSha256": "43339db45787238d03d132d70066ab3adc2e648c708be5576e3553935ca2e925",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
