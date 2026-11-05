@@ -442,6 +442,10 @@ export const LoginScreen = ({ onCreateNew, onPlay, checking }) => {
             (BUILD_INFO.game, vite.config.js GAME_VERSION); it still read
             2.3.2324 on a v2.3.3439 build.  BUILD_INFO.version stays the art's
             `?v=` cache key, above. */}
+        {/* v2.3.4333: the owner's mockup, one small white line just above the
+            version: where the game runs and what it costs.  U+2022 dots as
+            escapes (the game's script stays ASCII). */}
+        <div className="bt-login-tag" data-login-tag="">{'Any device \u2022 Any browser \u2022 No download \u2022 Free'}</div>
         <div className="bt-login-ver" title={BUILD_INFO.time ? `Built ${BUILD_INFO.time}` : undefined}>
           v{BUILD_INFO.game} · {BUILD_INFO.sha}
         </div>
