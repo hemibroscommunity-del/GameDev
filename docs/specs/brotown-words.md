@@ -73,3 +73,7 @@ check painted in the picked tile's corner) (`BroTown.jsx`).
 - `mp-wheelhome` (19): the minimap's plate reads "BroTown · safe".
 - `mp-questroad` (22): the welcome card names BroTown.
 - test-world-core `--check` and `mp-wheelmap` (the map's words).
+
+
+## v2.3.4283: the tagline is "MULTIPLAYER RPG"
+The owner: "fix the 'AARPG' that should just be 'RPG'". `public/ui/welcome/title/logo-full.png` and `logo-full-mask.webp` (the shimmer) had the two A's cut out of the tagline by moving the existing letters (columns 452-519 removed, the two halves re-centred on the rule); the alt text says "multiplayer RPG". `tools/ui/fit-title-lockups.mjs` re-cuts logo-full from its source art and would bring AARPG back: fix the source first.
