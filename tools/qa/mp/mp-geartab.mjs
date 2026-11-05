@@ -513,8 +513,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const cl0 = await P.page.evaluate(() => { const b = document.querySelector('[data-gear-card-close]'); const r = b && b.getBoundingClientRect(); return { has: !!b, w: r ? Math.round(r.width) : 0, esc: b ? b.hasAttribute('data-esc') : false, ta: b ? getComputedStyle(b).touchAction : '' }; });
       await tapEl(P, '[data-gear-card-close]');
       const cl1 = await look(P);
-      rec.ok('[390x844] the pick\'s card has a top-right ✕ (32 px, data-esc, touch-action manipulation) that clears the pick back to the bro',
-        cl0.has && cl0.w >= 30 && cl0.esc && cl0.ta === 'manipulation' && cl1.view === 'overview', { cl0, view: cl1.view });
+      rec.ok('[390x844] the pick\'s card has a top-right ✕ (40 px, data-esc, touch-action manipulation) that clears the pick back to the bro',
+        cl0.has && cl0.w >= 40 && cl0.esc && cl0.ta === 'manipulation' && cl1.view === 'overview', { cl0, view: cl1.view });
       /* v2.3.4233: identical spare armour is ONE cell with its count (the weapons never stack) */
       const stk = await P.page.evaluate(async () => {
         const R = window._gameState.current.rpg; const L = R.legsStash || (R.legsStash = []);
