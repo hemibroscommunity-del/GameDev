@@ -10,6 +10,7 @@ import { combatBandTopPx } from '@/ui/panels/ShieldButton.jsx'; /* v2.3.2564: ho
    ranged/staff fallback to `weapon` and a copy here would drift. */
 import { getActiveWeapon } from '@/data/gameSystems.js';
 import { prog3FreshLevel } from '@/data/prog3.js'; /* v2.3.3538: a new character's level (1 under one level) */
+import { startDeskTeach } from '@/ui/deskTeach.js'; /* v2.3.4343: the first-time teaching a computer player missed */
 import { startGuideArrow } from '@/ui/guideArrow.js'; /* v2.3.3925: the big arrow, the first time */
 import { mayorScreenRect } from '@/ui/mayorScreen.js';
 import { worldReady } from '@/ui/loadingGate.js'; /* v2.3.4136: no card while a loading screen is up */ /* v2.3.4106: the first steps' step 2 rings him */
@@ -1069,6 +1070,9 @@ export function QuestCoach(props) {
 
   /* v2.3.3925: the big arrow, the first time a weapon is handed over and at
      the first points (ui/guideArrow.js): beside the coach it helps */
+  React.useEffect(function () {
+    return startDeskTeach(function () { const S = stateRef && stateRef.current; return S && S._rpgFromServer ? S : null; });
+  }, []);
   React.useEffect(function () {
     return startGuideArrow(function () { const S = stateRef && stateRef.current; return S && S._rpgFromServer ? S : null; },
       { plateUp: plateUp, skipped: tutorialSkipped });   /* v2.3.4106: the Mayor's arrow after the welcome, never past Skip tutorial */

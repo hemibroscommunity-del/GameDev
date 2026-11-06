@@ -1912,3 +1912,7 @@ The portrait on the Bro tab is 168 px square at most (was 56), narrower only if 
 ## Splash tagline (v2.3.4333)
 
 One small white line, "Any device • Any browser • No download • Free", sits centred just above the version line at the bottom of the splash (a touch larger than the version). It wraps balanced rather than clipping. On a phone on its side the buttons' gap and the note's top padding are tightened so the version line still fits. Picture: `docs/shots/splash-tagline-after.webp`.
+
+## First-time teaching on a computer (v2.3.4343)
+
+Spec: `docs/specs/desk-teaching.md`. New things on the screen, all small, gold-edged and never over a card: the big arrow at the band's CLOSE button; a 56 px E key with "Press E to collect!" over the character at a harvest's window (and the arrow at the pad); a toast under the top bar when the window is missed; pulsing rings on the wanted trees and an arrow on the screen's edge when they are off screen; "Click the monster to attack" over a near monster and a sword cursor; the COMBAT TIPS card under the top bar after the first kill. Pictures: `docs/shots/desk-teach-{close,harvest,resource,attack,tips}.webp`.

@@ -541,6 +541,7 @@ export function succeedExtraction(S, accuracy, deps) {
     else if (_ex.skill === 'fishing')      applyFishingReward(S, node, result, deps);
     else if (_ex.skill === 'woodcutting') applyWoodReward(S, node, result, deps);
     else if (_ex.skill === 'mining')      applyMiningReward(S, node, result, deps);
+    S._lastHarvestOkAt = Date.now();   /* v2.3.4343: the first-harvest teaching (ui/deskTeach.js) tells a done harvest from a missed window */
     S._extraction = null;
     return true;
 }

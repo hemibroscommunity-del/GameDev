@@ -42,6 +42,7 @@ import { pointsTipWanted, pointsTipDone } from '../game/pointsTips.js';
 import { deskWords, onComputer } from '../game/deskWords.js';
 import { ownedWeaponSlots } from '../game/weaponSlots.js';   /* v2.3.4130: the swap lesson */
 import { mayorScreenRect } from './mayorScreen.js';   /* v2.3.4106: the first steps' Mayor */
+import { harvestCoachWanted, gestureWanted, killedAny } from '../game/deskTeachState.js';   /* v2.3.4343 */
 import { worldReady } from './loadingGate.js';   /* v2.3.4136: nothing while a loading screen is up */
 /* v2.3.4106: the pacing referee's answers (onboardingPace.js: is a plate up,
    was the tutorial skipped) are handed in by the coach that starts this --
@@ -53,6 +54,8 @@ export const WEAPON_MS = 60000;
 export const POINTS_MS = 180000;
 export const SWAP_MS = 10000;
 export const MAYOR_MS = 180000;   /* v2.3.4106 */
+export const CLOSE_MS = 90000;    /* v2.3.4343: the CLOSE lesson */
+export const COMBAT_MS = 14000;   /* v2.3.4343: the phone's special / shield lesson */
 const SIZE = 56;                /* the arrow, CSS px */
 const GAP = 6;                  /* between its point and the target's edge */
 const GOLD = '#F5CE3C', EDGE = '#3A2606';
@@ -181,6 +184,10 @@ export function guideTargets(id, rpg, shown) {
     return ['[data-smithy-tab="forge"]'];
   }
   if (id === 'swap') return ['[data-weapon-pill]'];   /* v2.3.4130: the pill */
+  /* v2.3.4343: CLOSE (the open band's fold button) / the harvest's gesture pad / the phone's special and shield buttons */
+  if (id === 'close') return ['[data-dash-close="open"]', '[data-land-fold="open"]'];   /* the CLOSE word (BandGrip.jsx), not the grip's [data-dash-fold] bar over it */
+  if (id === 'harvest') return ['.bt-rjoy-base'];
+  if (id === 'combat') return ['[data-special]', '[data-shield]'];
   return [];
 }
 
@@ -188,6 +195,10 @@ export function guideTargets(id, rpg, shown) {
 export function guideWords(id, sel, computer) {
   /* v2.3.4130: the swap lesson names the keys on a computer */
   if (id === 'swap') return (computer === undefined ? onComputer() : !!computer) ? 'Click a weapon or press 1 2 3' : 'Tap a weapon to switch';
+  /* v2.3.4343 */
+  if (id === 'close') return deskWords('Tap CLOSE to see more of the world', computer);
+  if (id === 'harvest') return 'Press E to collect, or drag here';
+  if (id === 'combat') return /data-shield/.test(sel) ? deskWords('Tap to raise your shield', computer) : deskWords('Tap for a special attack', computer);
   let s = 'Tap here';
   if (/data-smithy-tab/.test(sel)) s = 'Tap Forge';   /* v2.3.4196 */
   else if (/data-dash-fold|data-land-fold/.test(sel)) s = 'Tap to open';
@@ -255,6 +266,24 @@ export function guideState(id, rpg, S, seen, now, from) {
     const swapped = seen > 0 && from != null && ((rpg && rpg.activeSlot) || 'melee') !== from;
     return { want: swapWanted(rpg), done: seen > 0 && (swapped || seen >= SWAP_MS) };
   }
+  /* v2.3.4343: the owner's computer player "played almost the whole time with the dashboard up": during the
+     first quest's steps in the world (taken, not handed in, the weapons on), the big arrow points at CLOSE */
+  if (id === 'close') {
+    const q = (rpg && rpg._quests) || {};
+    const w = weaponWants(rpg);
+    const want = q.tut_1 === 'active' && !(w.melee || w.shield);
+    return { want, done: seen > 0 && (!want || seen >= CLOSE_MS || q.tut_1 === 'turnedIn') };
+  }
+  /* the harvest's window is open on a computer: the arrow points at the gesture pad (the big E key by the
+     character is ui/deskTeach.js's); ends when three harvests are done */
+  if (id === 'harvest') {
+    const owed = harvestCoachWanted(S && S.myId);
+    return { want: onComputer() && owed && gestureWanted(S), done: seen > 0 && !owed };
+  }
+  /* after the first kill, a phone's big arrow at the special / shield buttons (a computer gets deskTeach's tips card) */
+  if (id === 'combat') {
+    return { want: !onComputer() && killedAny(rpg), done: seen > 0 && seen >= COMBAT_MS };
+  }
   if (id === 'points') {
     const placed = pointsTipDone(rpg);
     return { want: !placed && pointsTipWanted(rpg, S, now), done: seen > 0 && (placed || seen >= POINTS_MS) };
@@ -272,6 +301,7 @@ export function guideOwedAgain(rpg) {
   const q = rpg._quests && typeof rpg._quests === 'object' ? rpg._quests : {};
   if (!q.tut_1) out.push('weapon', 'mayor');
   if (q.tut_1 !== 'turnedIn') out.push('swap');
+  if (!killedAny(rpg)) out.push('combat');   /* v2.3.4343 */
   if (q.smith_2 !== 'turnedIn') out.push('forge');   /* v2.3.4196 */   /* v2.3.4130 */
   const p3 = rpg.prog3;
   if (p3 && typeof p3 === 'object' && !pointsTipDone(rpg) && !(Number(p3.pool) > 0) && !(Number(p3.shared) > 0)) out.push('points');
@@ -288,7 +318,7 @@ function saveDone(id, v) {
 
 /* ── the arrow ── */
 let _timer = null, _el = null, _bob = null, _label = null, _side = null;
-const _seen = { mayor: 0, weapon: 0, swap: 0, points: 0, forge: 0 };
+const _seen = { mayor: 0, weapon: 0, swap: 0, points: 0, forge: 0, close: 0, harvest: 0, combat: 0 };
 let _swapFrom = null;   /* v2.3.4130: the slot in hand when the swap lesson first showed */
 let _lastTick = 0, _who = null, _done = {};
 const qa = { lesson: null, sel: null, side: null, rect: null, target: null, n: 0, off: false, done: {} };
@@ -388,13 +418,13 @@ function tick(getS) {
   if (!S || !rpg || !S.__introLiftedAt || S._zoneLoading || !worldReady(now)) { hide(); return; }
   const who = S.myId || null;
   if (!who) { hide(); return; }
-  if (who !== _who) { _who = who; _done = loadDone(who); _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _seen.forge = 0; _swapFrom = null; }
+  if (who !== _who) { _who = who; _done = loadDone(who); _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _seen.forge = 0; _seen.close = 0; _seen.harvest = 0; _seen.combat = 0; _swapFrom = null; }
   for (const id of guideOwedAgain(rpg)) if (_done[id]) { delete _done[id]; _seen[id] = 0; saveDone(who, _done); }
   qa.done = Object.assign({}, _done);
   /* v2.3.4106: the Mayor's last -- a lesson that is wanted beats him (a
      character with points who never took his quest is shown the points).
      v2.3.4130: swap after the weapon lesson, before the points */
-  for (const id of ['weapon', 'swap', 'forge', 'points', 'mayor']) {
+  for (const id of ['harvest', 'weapon', 'swap', 'forge', 'points', 'combat', 'close', 'mayor']) {
     if (_done[id]) continue;
     const st = guideState(id, rpg, S, _seen[id], now, id === 'swap' ? _swapFrom : null);
     if (st.done) { _done[id] = 1; saveDone(who, _done); qa.done = Object.assign({}, _done); continue; }
@@ -441,7 +471,7 @@ export function stopGuideArrow() {
    shows and where, and a way to forget this character's lessons */
 try {
   if (typeof window !== 'undefined') {
-    qa.forget = () => { if (_who) saveDone(_who, {}); _done = {}; _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _seen.forge = 0; _swapFrom = null; };
+    qa.forget = () => { if (_who) saveDone(_who, {}); _done = {}; _seen.mayor = 0; _seen.weapon = 0; _seen.swap = 0; _seen.points = 0; _seen.forge = 0; _seen.close = 0; _seen.harvest = 0; _seen.combat = 0; _swapFrom = null; };
     window.__btGuideArrow = qa;
   }
 } catch (e) { /* no page */ }
