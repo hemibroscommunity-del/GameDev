@@ -26,6 +26,7 @@
  * mockup, and their localStorage key, are gone).
  */
 import { gearCell } from './itemCategory.js';
+import { dashMinBus } from '../dashMinBus.js';   /* v2.3.4353: the band folding resets this tab */
 
 const state = { sel: null, filter: { id: 'all', auto: false }, menu: false, more: false };
 /* v2.3.4191: `more` -- the item card's "⋯" open (its Drop, Pin, Inspect...);
@@ -82,6 +83,17 @@ export const gearTabBus = {
     state.menu = false;
     emit();
   },
+  /** v2.3.4353 (owner: "got stuck with the detail menu open on one item, so it was filtered every time he opened
+   *  and closed the dashboard"): the band closing puts everything back to the default -- no pick (the bro in the
+   *  middle), "All Items", no menus open.  */
+  reset() {
+    if (!state.sel && state.filter.id === 'all' && !state.filter.auto && !state.menu && !state.more) return;
+    state.sel = null;
+    state.more = false;
+    state.menu = false;
+    state.filter = { id: 'all', auto: false };
+    emit();
+  },
   pickFilter(id) {
     state.filter = { id: id || 'all', auto: false };
     state.menu = false;
@@ -105,6 +117,8 @@ export const gearTabBus = {
     emit();
   },
 };
+
+try { dashMinBus.subscribe((min) => { if (min) gearTabBus.reset(); }); } catch (_e) { /* no band bus: the tab keeps its pick */ }
 
 if (typeof window !== 'undefined') {
   window.__btGearTab = {

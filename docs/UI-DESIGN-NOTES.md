@@ -1912,3 +1912,7 @@ The portrait on the Bro tab is 168 px square at most (was 56), narrower only if 
 ## Splash tagline (v2.3.4333)
 
 One small white line, "Any device • Any browser • No download • Free", sits centred just above the version line at the bottom of the splash (a touch larger than the version). It wraps balanced rather than clipping. On a phone on its side the buttons' gap and the note's top padding are tightened so the version line still fits. Picture: `docs/shots/splash-tagline-after.webp`.
+
+## Gear tab: a pick is a menu (v2.3.4353)
+
+While something is picked, the rest of the Gear tab steps back: the other bag cells, the other equipment cells and the empty squares drop to 30% strength (no CSS blur: iOS); the picked cell and the card stay bright, every cell stays tappable (picking another switches), and a tap on the veiled space outside any cell, button or the card puts the pick down. The card's ✕ pulses three times as it appears, then keeps a soft blue glow (still, under reduced motion). The band closing (CLOSE, the grip, anything that folds it) resets the tab to its default: no pick (the bro in the middle) and "All Items". Pictures: `docs/shots/gear-veil-{phone,desk}.webp`.
