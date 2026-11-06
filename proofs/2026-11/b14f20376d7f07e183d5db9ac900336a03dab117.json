@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "b14f20376d7f07e183d5db9ac900336a03dab117",
+  "tree": "cc0c23fdeb5d60416a17727ffd3c9b28cd7dc9eb",
+  "committedAt": "2026-11-05T21:26:48-08:00",
+  "subject": "Merge pull request #1450 from hemibroscommunity-del/claude/spin-refusal-keeps",
+  "files": 7716,
+  "bytes": 907925293,
+  "listingSha256": "cf6440833e3d5f39bd5c24d9358f7aa59cf2fa1a1fc6c05c66d94d89e7c00da9",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
