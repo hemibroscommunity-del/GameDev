@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "4ed8be41a366770e9c852e272735cfb2bbdfd675",
+  "tree": "c09833e93d58328052acf33f5dcb8ef2eec8c63c",
+  "committedAt": "2026-11-05T22:09:36-08:00",
+  "subject": "Merge pull request #1452 from hemibroscommunity-del/claude/desk-menus-height",
+  "files": 7735,
+  "bytes": 911954799,
+  "listingSha256": "e5066f8b82ca50314959f6f7047101bb39cf730c0cce2e61e711e324a98d0752",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
