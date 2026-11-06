@@ -1,0 +1,13 @@
+# First-time teaching for a computer player (v2.3.4343)
+
+> The owner watched a new player on a computer (2026-11-05): the dashboard stayed up the whole time; the "press E" for a harvest was never seen (they waited until hp hit 0 and walked off, no message); the way to the other pine trees was not clear; clicking a monster to attack was not obvious; special attacks and the shield were never tried.
+
+Client only. Pure rules `src/game/deskTeachState.js` (node tests them), drawing `src/ui/deskTeach.js` (mounted by `QuestCoach.jsx` beside the big arrow), the arrow's new lessons in `src/ui/guideArrow.js`. Once per character (`bt_guideArrow:<id>`, `bt_deskTeach:<id>`, inside try/catch); `?guidearrow=0` turns all of it off for one tab; nothing shows behind a loading screen.
+
+1. **CLOSE.** While the first quest (tut_1) is taken and not handed in, the weapons are worn and the band is open, the big arrow points at the CLOSE button (`[data-dash-close="open"]`, not the grip bar): "Click CLOSE to see more of the world". Done once the band closes, 90 s, or the quest is handed in.
+2. **Harvest (computer).** When the window opens (`S._extraction.status === 'ready'`): a big pulsing E key and "Press E to collect!" over the character, and the big arrow at the gesture pad (`.bt-rjoy-base`: "Press E to collect, or drag here"). Counted per done harvest (`S._lastHarvestOkAt`, stamped by `succeedExtraction`); the first 3. If the window passes or the player walks off without it: a toast "Almost! Press E (or drag) when the bar empties to collect." (at most 6).
+3. **The resource a quest wants.** While a quest's road leads to a node (`questRoutePoint().way === 'node'`): a pulsing ring on every matching node on screen, an arrow on the screen's edge toward the nearest when none is, and that kind's minimap marks pulse larger (`S._teachNode`, read by `wheelMinimap.js`). Any layout.
+4. **Attack by click (computer).** A sword cursor over a monster; the first 3 times one comes within 280 game px, "Click the monster to attack" by it (7 s).
+5. **After the first kill.** A computer: a one-time card "Right-click: Special attack, Q: Shield up / down" with key caps (15 s, or on the first right-click / Q). A phone: the big arrow at the special (`[data-special]`) then shield (`[data-shield]`) button, 14 s.
+
+Tests: `server/test/desk-teach.test.mjs`, `server/test/guide-arrow.test.mjs`, phone scenario `deskteach` (computer: CLOSE, E key, toast, count, rings/edge, label + cursor, tips card). Pictures: `docs/shots/desk-teach-*.webp`. Not verified in a real fight: the sword cursor and the label were shown over a bare monster put in by the test, and the phone's combat arrow has no scenario.

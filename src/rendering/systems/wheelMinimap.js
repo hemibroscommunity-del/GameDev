@@ -824,7 +824,10 @@ export class WheelMinimap {
       if (Math.abs(n.x - P.x) > reach || Math.abs(n.y - P.y) > reach) continue;
       if (!hasGatherTool(S.rpg || null, n.nodeType)) continue;
       const lvl = n.gatherLvl || 1, tier = lvl >= 21 ? 21 : lvl >= 16 ? 16 : lvl >= 11 ? 11 : lvl >= 6 ? 6 : 1;   /* v2.3.3094: + 16, 21 */
-      this._mark(n.x, n.y, NODE_ICON[n.nodeType], C_NODE[n.nodeType][tier], NODE_PX);
+      /* v2.3.4343: the resource a quest wants pulses larger (ui/deskTeach.js sets S._teachNode): the owner's player
+         "couldn't identify where the other pine trees were (minimap marker not obvious enough)" */
+      const big = S._teachNode && S._teachNode === n.nodeType;
+      this._mark(n.x, n.y, NODE_ICON[n.nodeType], C_NODE[n.nodeType][tier], big ? NODE_PX * (1.7 + 0.4 * Math.sin(Date.now() / 250)) : NODE_PX);
       nodeMarks++;
     }
     /* other bros and monsters (v2.3.3243: each where they are now -- one

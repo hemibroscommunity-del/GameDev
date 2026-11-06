@@ -60,6 +60,13 @@ async function pass(view, { browser, wsPort, webPort, rec }) {
       await A.page.setViewportSize(PHONE);
       await A.page.waitForTimeout(400);
     }
+    /* v2.3.4345: opening the window and closing it WITHOUT a spin (what a refusal on unsafe ground leads to) leaves the button bright */
+    await A.page.evaluate(() => { window.__btLoginSpinBus.open(); });
+    await A.page.waitForSelector('[data-login-spin-close]', { timeout: 10000 }).catch(() => {});
+    await A.page.evaluate(() => { window.__btLoginSpinBus.close(); });
+    await A.page.waitForTimeout(400);
+    const stillReady = await A.page.evaluate(() => (document.querySelector('[data-login-spin-btn]') || {}).getAttribute?.('data-login-spin-btn'));
+    rec.ok(tag('opened and closed without a spin: the bar\'s button is still bright, not greyed'), stillReady === 'ready', stillReady);
     await A.page.click('[data-login-spin-btn="ready"]', { timeout: 4000, force: true }).catch(() => A.page.evaluate(() => document.querySelector('[data-login-spin-btn]').click()));
     await A.page.waitForSelector('[data-login-spin="ready"]', { timeout: 10000 }).catch(() => {});
     await A.page.waitForTimeout(600);
