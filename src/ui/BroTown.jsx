@@ -13596,7 +13596,7 @@ export var BroTown = function BroTown(_ref0) {
          the camera centres the player, so the card ends at the band and is
          (50vh - 72px - band) tall, i.e. its top sits at 50vh + 60px.  230px
          floor so a short phone still gets the header, the tabs and a row. */
-      maxHeight: buildingPanel === 'forge' ? (deskBigActive() ? '92%' : '100%') /* v2.3.4303: the Blacksmith's window uses the room above the band, phone and computer (it was 50vh - 72px - band, and its bottom was cut off); the window's own list scrolls inside it */ : (buildingPanel === 'townhall' && deskBigActive()) ? '85%' /* v2.3.3802 */ : deskBigActive() ? '82%' : '100%',
+      maxHeight: buildingPanel === 'forge' ? (deskBigActive() ? '92%' : '100%') /* v2.3.4303: the Blacksmith's window uses the room above the band, phone and computer (it was 50vh - 72px - band, and its bottom was cut off); the window's own list scrolls inside it */ : '100%' /* v2.3.4353 (owner: "some menus are still compact on desktop view and can't be seen unless you scroll on a tiny portion of the window"): every building's window, the Town Hall's board too, uses all the room above the band on a computer as the phone's does (v2.3.3769/3802 held them to 82% / 85%); a window shorter than that is as short as it is */,
       overflowY: 'auto',
       /* v2.3.1235: batch-3 QA — 18px bottom scroll-edge fade (same recipe
          as the destination sheets/leaderboard): at 390 the Woodworker's
