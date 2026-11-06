@@ -1130,6 +1130,12 @@ export const GearTab = ({ R: Rin, desk }) => {
 
   return (
     <div ref={rootRef} className="bt-dashcols" data-gear-tab="" data-gear-layout={wide ? 'wide' : 'stack'}
+      /* v2.3.4353 (owner: "make the detail menu more obvious that it's a menu setting opened because you have
+         something selected ... maybe blur everything else out until it's closed"): while a pick is open the rest
+         of the tab is veiled (game.css [data-gear-veil]: the other cells dim, the picked cell and the card stay
+         bright, still tappable), and a tap on the veiled space outside any cell, button or the card puts the pick down */
+      data-gear-veil={view === 'item' ? '1' : undefined}
+      onClick={view === 'item' ? (e) => { const t = e.target; if (!(t && t.closest && t.closest('[data-bag-key],[data-gear-cell],[data-gear-pane],button,[data-gear-menu]'))) gearTabBus.deselect(); } : undefined}
       {...(desk ? { 'data-dash-desk': '' } : null)}
       style={{
         height: '100%', minHeight: 0, width: '100%', boxSizing: 'border-box', padding: rp,

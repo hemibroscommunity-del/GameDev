@@ -437,3 +437,7 @@ fight simulator (18), then the "After the judges" list.
 9. **"Homestead Morning" on the farm.** I took it to be the farm's track you
    mentioned and put it there (#1158). Tell me if you meant it for somewhere
    else.
+
+## 9. Waiting for usage (added 2026-11-06)
+
+- **On a computer the map loads in pieces (many squares not drawn); phones are fine** (owner, 2026-11-05 playtest). Not looked into yet: needs a computer-sized look at how the world's squares load and draw.
