@@ -72,7 +72,11 @@ export const loginSpinBus = {
   state(p) { _st = { ..._st, known: true, avail: !!(p && p.avail), refused: p && p.safe === false ? Date.now() : _st.refused }; emit(); },
   /** The window opens (the host decided it is time). */
   open() { if (_st.open) return; _st = { ..._st, open: true, result: null, round: null, seq: _st.seq + 1 }; emit(); },
-  close() { _st = { ..._st, open: false, avail: false }; emit(); },
+  /* v2.3.4345: closing the window says NOTHING about today's spin.  It used to set avail:false, so a player
+     refused (not on safe ground) who closed the window saw the top bar's button grey out though the spin was
+     never taken (the owner's playtest).  `avail` goes false only on the worker's real answer: the result
+     (result() below) or a state that says the day is spent. */
+  close() { _st = { ..._st, open: false }; emit(); },
   /** A short note on the bar (the greyed button's "Next free spin in 5h 12m"): held HERE, not in a
       component, so a re-mount of the bar cannot lose it; it clears itself. */
   note(text, ms) {
