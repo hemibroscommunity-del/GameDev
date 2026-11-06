@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { GameRoom } from '../src/index.js';
 import { LOGIN_SPIN, loginSpinPick } from '../src/loginspin.js';
-import { LOGIN_SPIN_SEGS } from '../../src/game/loginSpinWheel.js';
+import { LOGIN_SPIN_SEGS, loginSpinBus } from '../../src/game/loginSpinWheel.js';
 
 function makeState() {
   const store = new Map();
@@ -153,6 +153,12 @@ const coinsOf = (id) => room.playerState[id].coins;
   const g = await ask(f1, 'loginspin_go');
   const st = g.find((m) => m.type === 'loginspin_state')?.payload;
   check('outside the safe ground a go is refused (safe:false), nothing spun', st?.safe === false && !g.some((m) => m.type === 'loginspin_result'), g);
+  check('...and a refused go stamps nothing: the day is still unspent', !room.__lsCache.get('d:devggg') || room.__lsCache.get('d:devggg').day === 0, room.__lsCache.get('d:devggg'));
+  const ag = await ask(f1, 'loginspin_ask');
+  check('...and the account still has its spin (avail:true) after the refusal', ag.find((m) => m.type === 'loginspin_state')?.payload.avail === true, ag);
+  /* the client: a refusal then closing the window must not grey the bar's button (v2.3.4345, the owner's playtest) */
+  loginSpinBus.state({ avail: true }); loginSpinBus.open(); loginSpinBus.state({ avail: true, safe: false }); loginSpinBus.close();
+  check('...and the client keeps the button bright after a refusal and a close (avail stays true)', loginSpinBus.get().avail === true, loginSpinBus.get());
   room._wheelSafeAt = () => true;
   room._loginSpinRand = () => 0.05;
   await ask(f1, 'loginspin_go');
