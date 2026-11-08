@@ -46,7 +46,8 @@
  * _applyDamage rather than inventing a second immunity mechanism.
  */
 import { QUEST_ZONE_GATE } from './movement.js';
-import { QUEST_TOUR } from './data.js'; /* v2.3.3525: the tour's steps */
+import { ACHV_KEY, achvAp } from './achievements.js'; /* v2.3.4354: /dev/apinfo */
+import { QUEST_TOUR, GUILD_QUESTS } from './data.js'; /* v2.3.3525: the tour's steps; v2.3.4354: + a guild rung's AP (/dev/apinfo) */
 import { GEM_ELEMENTS, gemGive, gemCount } from './gems.js'; /* v2.3.3516: the kit's gems, in the bag */
 import { SHARD_CRACK } from './shardcrack.js'; /* v2.3.3516: the kit's shards */
 import { LIFE_SKILL_KEYS } from './migrations.js'; /* v2.3.3229: the life skills a level can be set on */
@@ -666,6 +667,58 @@ export const devToolsMethods = {
     return out;
   },
 
+  /* v2.3.4354: /dev/apinfo?name= -- every character of that name (any case),
+     each with its AP split by source: quests (+5 a hand-in; no time is kept),
+     the guild rungs (no time kept), the achievements (each with the time it
+     was earned: achv.got), and the AP on each daily snapshot (rpgsnap:, the
+     last 7 days the player joined: how the total grew day by day).  A scan of
+     char: -- the owner's lever only, never on a player's path. */
+  async _apInfo(nameIn) {
+    const want = String(nameIn || '').trim().toLowerCase();
+    if (!want) return { ok: false, error: 'name required' };
+    const ids = [];
+    try {
+      const chars = await this.state.storage.list({ prefix: 'char:', limit: 20000 });
+      for (const [k, c] of chars) {
+        if (c && typeof c.name === 'string' && c.name.trim().toLowerCase() === want) ids.push([k.slice(5), c]);
+      }
+    } catch (e) { return { ok: false, error: 'could not read the characters' }; }
+    if (!ids.length) return { ok: false, error: 'no character named ' + nameIn };
+    const out = [];
+    for (const [id, c] of ids.slice(0, 10)) {
+      const rpg = (await this.state.storage.get('rpg:' + id)) || {};
+      const achv = (await this.state.storage.get(ACHV_KEY(id))) || {};
+      const claims = (await this.state.storage.get('guild_claims:' + id)) || {};
+      const snaps = await this.state.storage.list({ prefix: 'rpgsnap:' + id + ':' });
+      const q = rpg._quests || {};
+      const handed = Object.keys(q).filter((k) => q[k] === 'turnedIn');
+      const guild = [];
+      for (const sk of Object.keys(claims)) {
+        for (let i = 0; i < (claims[sk] | 0); i++) {
+          const g = GUILD_QUESTS[i];
+          if (g) guild.push({ skill: sk, level: g.checkLvl, ap: g.ap });
+        }
+      }
+      const got = (achv && achv.got) || {};
+      const achievements = Object.keys(got).map((a) => ({ id: a, ap: achvAp(a), at: got[a] || 0, times: (achv.n && achv.n[a]) || 1 }))
+        .sort((a, b) => a.at - b.at);
+      const ps = this.playerState[id];
+      const total = Math.floor(Number((ps && ps.achievementPoints) ?? rpg.achievementPoints) || 0);
+      const fromQuests = handed.length * (this.QUEST_AP_REWARD || 5);
+      const fromGuild = guild.reduce((n, g) => n + g.ap, 0);
+      const fromAchv = achievements.reduce((n, a) => n + (a.ap || 0), 0);
+      out.push({
+        id, name: c.name, createdAt: c.createdAt || null, online: !!ps,
+        total, fromQuests, fromGuild, fromAchievements: fromAchv,
+        unexplained: total - fromQuests - fromGuild - fromAchv,
+        quests: handed, guild, achievements,
+        playtime: (rpg && rpg.playtime) || null,
+        daily: [...snaps.entries()].map(([k, b]) => ({ day: k.slice(('rpgsnap:' + id + ':').length), ap: (b && b.achievementPoints) || 0 })),
+      });
+    }
+    return { ok: true, players: out };
+  },
+
   /* Routed from _adminFetch, so auth, the fail-closed 404 and the audit log
      are all inherited rather than re-implemented.  Returns null when the
      path is not ours, so the caller falls through to its own 404. */
@@ -693,6 +746,14 @@ export const devToolsMethods = {
     if (request.method === 'GET' && path === '/dev/testmodes') {
       const r = await this._testModeList();
       return json(r, r.ok ? 200 : 500);
+    }
+    /* v2.3.4354: WHERE A PLAYER'S ACHIEVEMENT POINTS CAME FROM, and when
+       (the owner, 2026-11-08: a judge, "puzzlesolver", top of the AP board
+       with 120 -- "which types total to the 120" and "one play session or
+       multiple").  Read-only; the Test panel's "Player AP" box. */
+    if (request.method === 'GET' && path === '/dev/apinfo') {
+      const r = await this._apInfo(new URL(request.url).searchParams.get('name'));
+      return json(r, r.ok ? 200 : 404);
     }
     if (request.method !== 'POST') return null;
 
