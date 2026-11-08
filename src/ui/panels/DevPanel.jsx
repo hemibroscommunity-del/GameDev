@@ -610,6 +610,15 @@ export const DevPanel = ({ onClose }) => {
      every flagged player (devtools.js /dev/botflags), newest flag first, each
      flag said in words.  On demand, like the live flags: most opens are not
      about bots.  A flag still changes nothing in the game. */
+  /* ═══ v2.3.4354: A PLAYER'S ACHIEVEMENT POINTS, BY SOURCE AND BY DAY ═══
+     (devtools.js /dev/apinfo; the owner asked about a judge's 120.)  On demand. */
+  const [apName, setApName] = useState('');
+  const [apInfo, setApInfo] = useState(null);
+  const loadApInfo = useCallback(async () => {
+    if (!apName.trim()) { setMsg('Type a player name first.'); return; }
+    const j = await call('/dev/apinfo?name=' + encodeURIComponent(apName.trim()));
+    if (j) { setApInfo(Array.isArray(j.players) ? j.players : []); setMsg(''); }
+  }, [call, apName]);
   const [botFlags, setBotFlags] = useState(null);
   const loadBotFlags = useCallback(async () => {
     const j = await call('/dev/botflags');
@@ -1435,6 +1444,33 @@ export const DevPanel = ({ onClose }) => {
               and key: the character's old keys and devices all stop working, and you send its player
               the new key, which works on any device.
             </div>
+
+            {/* ═══ v2.3.4354: PLAYER AP ═══  See the note by loadApInfo. */}
+            <div style={label}>Player AP</div>
+            <input data-apinfo-name="1" value={apName} onChange={(e) => setApName(e.target.value)}
+              placeholder="player name" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+              style={{ width: '100%', boxSizing: 'border-box', background: COL.well, color: COL.text,
+                border: '1px solid ' + COL.border, borderRadius: 8, padding: '11px 10px', marginBottom: 8, minHeight: 44, touchAction: 'manipulation' }} />
+            <button type="button" style={btn(false)} disabled={busy} onClick={loadApInfo}>
+              Show where their AP came from
+            </button>
+            {apInfo && apInfo.map((p) => {
+              const when = (t) => (t ? new Date(t).toLocaleString() : 'before times were kept');
+              return (
+                <div key={p.id} data-apinfo-player="1" style={{ color: COL.text2, fontSize: 12, marginBottom: 10, lineHeight: 1.5 }}>
+                  <div style={{ color: COL.text, fontWeight: 700 }}>{p.name}: {p.total} AP{p.online ? ' (online)' : ''}</div>
+                  <div>Character made: {when(p.createdAt)}</div>
+                  <div>Quests handed in: {p.quests.length} x 5 = {p.fromQuests} AP (no time is kept for these)</div>
+                  <div>Guild rungs: {p.fromGuild} AP{p.guild.length ? ' (' + p.guild.map((g) => g.skill + ' Lv' + g.level + ' +' + g.ap).join(', ') + ')' : ''}</div>
+                  <div>Achievements: {p.fromAchievements} AP</div>
+                  {p.achievements.map((a) => (
+                    <div key={a.id} style={{ paddingLeft: 10 }}>{a.id} +{a.ap}: {when(a.at)}</div>
+                  ))}
+                  {p.unexplained !== 0 && <div>Not matched to a source: {p.unexplained} AP</div>}
+                  {p.daily.length > 0 && <div>AP on each day they joined (last 7): {p.daily.map((d) => d.day + ': ' + d.ap).join(', ')}</div>}
+                </div>
+              );
+            })}
 
             {/* ═══ v2.3.3323: BOT FLAGS ═══  See the note by loadBotFlags. */}
             <div style={label}>Bot flags</div>
