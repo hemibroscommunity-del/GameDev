@@ -191,12 +191,18 @@ Caves' brute, on the wire and in every saved codex). Its pace is
 
 The look loads as you walk toward the Water Caves and is let go behind you,
 like every land's (`wheelMonsterArt.js`). It is 166 frames where the fishman
-was 4 pictures: about 1.6 MB of files, and cropped to the art about 13 MB on
-the graphics chip while you are there (the fire goblin's look, for
-comparison, is 120 frames). Every strip is on 256 colours, so the page keeps
-its colour numbers, not a second copy (`heldNumbers.js`). The memory check
-(`mp-membudget`) fights at the Flame Fields and reads none of it; no line
-moved.
+was 4 pictures: 1.6 MB of files and, cropped to the art, **21.9 MB on the
+graphics chip while you are near the Water Caves** (measured, `mp-waterfrog`
+section 1; uncropped it would be 41.5). The fishman was about 1 MB. That is
+about what the fire goblin costs at the Flame Fields, the other monster with
+strips for everything it does. Every strip is on 256 colours, so the page
+keeps its colour numbers, not a second copy (`heldNumbers.js`).
+
+The memory check (`mp-membudget`) fights at the Flame Fields and reads none
+of it, so no line moved. But it is 21 MB more at one land on a phone that
+dies at about 250, so it is the owner's call: fewer frames would bring it
+down (12 of attack for 15, 6 of breath for 8, 16 of death for 20 is about 4
+MB), at some cost to how smooth it is.
 
 ## Tests
 

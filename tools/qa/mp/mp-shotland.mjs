@@ -50,7 +50,8 @@ const MONS = [
   { key: 'mummy',    arch: 'fodder',  variant: 'mummy',       zone: 'sky',     core: [8, 11],  r: 40, torso: 74,  band: [60, 88] },
   /* v2.3.4355: the water frog (its key stays `fishman`): a squat, wide body, its middle 54 up */
   { key: 'fishman',  arch: 'brute',   variant: 'fishman',     zone: 'tidal',   core: [16, 13], r: 40, torso: 54,  band: [38, 70] },
-  { key: 'rock',     arch: 'brute',   variant: 'rockmonster', zone: 'hollows', core: [12, 14], r: 40, torso: 64,  band: [46, 84] },
+  /* v2.3.4358: the rock golem (its key stays `rockmonster`): a low wide heap, its middle 44 up */
+  { key: 'rock',     arch: 'brute',   variant: 'rockmonster', zone: 'hollows', core: [18, 13], r: 40, torso: 44,  band: [28, 60] },
 ];
 const WEAPONS = ['bolt', 'arrow'];
 const LAND_MAX_MS = 700;   /* projectiles.js: a safety cap on the landing flight */

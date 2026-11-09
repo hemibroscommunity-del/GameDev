@@ -25,8 +25,7 @@ own picture:
 | Mummy (killed before it sheds) | its head pops off, its red eyes pop out of the wrappings, its arms fall away, its middle comes down in a heap of wrappings, its legs give way | arms and middle thrown in linen ash, the legs topple over |
 | Water frog (the Water Caves' monster since v2.3.4355, key `fishman`) | no zones: its own animation on every kill, its water sac spinning up and bursting (`docs/specs/water-frog.md`). The fishman it replaced went over like a landed fish. | the same animation |
 | Rotcap and great rotcap (the Poison Forest's two since v2.3.4357, keys `mireWisp` and `bogLurker`) | no zones: their own animation on every kill, sagging and rotting down flat (`docs/specs/rotcap.md`). The bog lurker they replaced sank into a pool of its own mud. | the same animation |
-| Rock monster | it crumbles: five stones come down where they were, its two glowing eyes pop out, its dust stays | the stones are thrown in dust and pebbles |
-| Thorn shambler | it splinters: the same breaks, but wood and thorn, coming down | thrown, in leaves and splinters |
+| Rock golem and thorn shambler (since v2.3.4358, keys `rockmonster` and `thornShambler`) | no zones: the golem's own animation on every kill, its eyes going out as it cracks and falls to rubble (`docs/specs/rock-golem.md`). The one-pose rock monster they replaced crumbled into five stones cut from its picture. | the same animation |
 
 Every one opens on a short **beat** (~120 ms, `BEAT_MS`): the whole body
 squashed about its feet and flashed white. Then the parts separate, each

@@ -81,8 +81,7 @@ const LOOKS = [
   /* (v2.3.4355: no `fishman` -- the Water Caves' monster is the water frog,
      whose death is its own strip on every kill: mp-waterfrog) */
   /* (v2.3.4357: nor `boglurker` -- the great rotcap, its own strip too: mp-rotcap) */
-  { key: 'rock', arch: 'brute', variant: 'rockmonster', look: 'rockmonster', zk: 'rockmonster' },
-  { key: 'thorn', arch: 'brute', variant: 'thornShambler', look: 'thornShambler', zk: 'thornShambler' },
+  /* (v2.3.4358: nor `rock` and `thorn` -- the rock golem, its own strip: mp-rockgolem) */
   { key: 'snowman-east', arch: 'snowman', variant: null, look: 'snowman', zk: 'snowman', east: true },
   { key: 'skeleton-east', arch: 'fodder', variant: 'skeleton', look: 'skeleton', zk: 'skeleton', east: true },
 ];
@@ -362,7 +361,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 10. v2.3.3985: the blow -- big or ordinary, its eyes, which way ── */
     /* DZ_BLOW=snowman,rock: only those looks here (a quicker look) */
     const onlyB = (process.env.DZ_BLOW || '').split(',').filter(Boolean);
-    const SAMPLE = LOOKS.filter((x) => ['slime', 'snowman', 'goblin', 'skeleton', 'rock'].indexOf(x.key) >= 0
+    const SAMPLE = LOOKS.filter((x) => ['slime', 'snowman', 'goblin', 'skeleton'].indexOf(x.key) >= 0
       && (!onlyB.length || onlyB.indexOf(x.key) >= 0));
     const BSLOW = 6;
     const blowDeath = async (L, big, side) => {

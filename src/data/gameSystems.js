@@ -8575,7 +8575,7 @@ export function monsterBodyOffsetY(archOrType) {
    (its cell's row 124 at liveScalePx 72, plus its hover) */
 /* v2.3.4357: the rotcap, at its two sizes (the keys the Poison Forest's two
    had): a low wide cap, its middle 24 up at liveScalePx 66 and 44 at 104 */
-const MONSTER_TORSO_Y = { skeleton: 100, mummy: 74, fishman: 54, bogLurker: 44, mireWisp: 24, rockmonster: 64, thornShambler: 64, stormEye: 48 };
+const MONSTER_TORSO_Y = { skeleton: 100, mummy: 74, fishman: 54, bogLurker: 44, mireWisp: 24, rockmonster: 44 /* v2.3.4358: the rock golem, a low wide heap: its middle 44 up */, thornShambler: 44, stormEye: 48 };
 export function monsterTorsoY(archOrType) {
   const shape = hitShapeOf(archOrType);
   const t = MONSTER_TORSO_Y[shape];

@@ -143,15 +143,17 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Gilded Mummy', text: 'Deeper in the dunes walk the city\'s nobles, still wrapped in gold leaf. Their bones, when they lose the wrappings, are gilded too.' }),
   }),
   pebbling: Object.freeze({
-    name: 'Rock Monster', home: 'hollows', look: 'rockmonster', element: 'stone', type: 'Beast', dungeon: 'the Great Cave', dungeonLevels: Object.freeze([26, 30]),
-    what: 'A walking boulder: slow, tougher than most, and its hits land like a rockslide.',
+    /* v2.3.4358: the rock golem (the owner: "to replace the rock monster
+       that's there now"); the kind's id and its look's key stay */
+    name: 'Rock Golem', home: 'hollows', look: 'rockmonster', element: 'stone', type: 'Beast', dungeon: 'the Great Cave', dungeonLevels: Object.freeze([26, 30]),
+    what: 'A heap of boulders with a face: slow, tougher than most, and its hits land like a rockslide.',
     special: Object.freeze({
       name: 'Slam',
       text: 'It winds up for almost a second, then slams the ground: double damage to anyone in a ring around it. At most once every five seconds.',
       tip: 'When it winds up, step out of the ring, or face it with your shield raised.',
     }),
     story: [
-      'The rock monsters are the Stone Hollows themselves: bits of cave wall that got up one day to see what all the digging was about, and never sat back down.',
+      'The rock golems are the Stone Hollows themselves: bits of cave wall that got up one day to see what all the digging was about, and never sat back down.',
       'They are not angry, exactly. They are just very, very old, and you are standing where they were going to put their foot. The biggest of them live in the Great Cave and have not been outside in a thousand years. They did not like it then either.',
     ],
     elder: Object.freeze({ name: 'Amethyst Golem', text: 'Past the first pass the hollows run with amethyst, and so do the monsters. Collectors would pay well for one, if anyone had ever brought one home in one piece.' }),

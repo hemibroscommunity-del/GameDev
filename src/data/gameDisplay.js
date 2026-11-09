@@ -7208,7 +7208,7 @@ export const MONSTER_DISPLAY_NAMES = {
   fireGoblin: 'Fire Goblin',
   stormEye: 'Storm Eye',   /* v2.3.4356: the Electric Foundry's monster (the slime stood in for it) */
   fishman: 'Water Frog',   /* v2.3.4355: the Water Caves' monster is the water frog (its key stays) */
-  rockmonster: 'Rock Monster',
+  rockmonster: 'Rock Golem',   /* v2.3.4358: the Stone Hollows' monster is the rock golem (its key stays) */
   mossSlime: 'Moss Slime',
   blueSlime: 'Blue Slime',
   mireWisp: 'Rotcap',   /* v2.3.4357: the Poison Forest's two are the rotcap (their keys stay) */

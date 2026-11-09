@@ -47,7 +47,6 @@ BASES = [
     dict(name='snowman', front='snowman/snowman-s.png', ffw=128, side='snowman/snowman-e.png', sfw=128, faces='e'),
     dict(name='fireGoblin', front='fire-goblin/walk-s.png', ffw=256, side='fire-goblin/walk-e.png', sfw=256, faces='e'),
     dict(name='mummy', front='mummy/walk-s.png', ffw=256, side='mummy/walk-w.png', sfw=256, faces='w'),
-    dict(name='rockmonster', front='rockmonster/walk-south.png', ffw=256, side='rockmonster/walk-west.png', sfw=256, faces='w'),
     dict(name='blueSlime', front='slime-idle-v5.png', ffw=128, side=None, sfw=128, faces=None, pick=SLIME_BOUNCE, recolor=(58, 122, 208)),
     # v2.3.4355: the water frog (the Water Caves' monster since then).  ONE frame a side, sitting:
     # its own hop rises a frog's height and would shrink it to fit a cell, and
@@ -64,7 +63,9 @@ BASES = [
     # 0-3 of its walk strip) and side on, facing right (4-7).
     # The `fishman` and plain `slime` rows went with it: no pet wears them
     # any more (the Froglet, the Sparklet and these two took their places).
-    dict(name='rotcap', front='rotcap/walk.png', ffw=256, side='rotcap/walk.png', sfw=256, faces='e', pick=[0, 1, 2, 3], side_pick=[4, 5, 6, 7]),
+    dict(name='rotcap', front='rotcap/walk.png', ffw=256, side='rotcap/walk.png', sfw=256, faces='e', pick=[0, 1, 2, 3], side_pick=[4, 5, 6, 7]),    # v2.3.4358: the rock golem (the Stone Hollows' monster since; the
+    # Pebbling's row -- the old one-pose `rockmonster` row went with it).
+    dict(name='rockGolem', front='rock-golem/walk.png', ffw=256, side='rock-golem/walk.png', sfw=256, faces='e', pick=[0, 1, 2, 3], side_pick=[4, 5, 6, 7]),
 ]
 
 

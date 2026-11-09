@@ -354,13 +354,30 @@ export const MONSTER_VARIANTS = {
     deathMs: 900,
     noFodderRemnants: true,
   },
-  /* Rockmonster -- Deep Hollows brute skin.  A single still pose, no walk
-     cycle; the renderer dwells on the only frame while the entity
-     translates around the map. */
+  /* ═══ v2.3.4358: THE ROCK GOLEM -- the Stone Hollows' brute ═══
+     The owner: "Also this to replace the rock monster that's there now."
+     The key stays `rockmonster` (the worker's name for it, on the wire and
+     in every saved codex); what it is drawn from is the owner's golem
+     (rendering/rockGolemSprites.js, cut by tools/art/cut_rock_golem.py): four
+     frames of it grinding along a side, the same four standing still, and
+     its own death on every kill -- its eyes go out, it cracks and falls to
+     rubble (`deathStripOnly`).  To the worker it is exactly the monster it
+     was.  liveScalePx 108 puts it about 124 px across and 80 tall: a low
+     wide heap of boulders where the old one was a tall egg.
+     deathScalePx / deathOffsetY: the sheet draws the dying golem a little
+     bigger than the walking one (its first frame 212 px wide against 196):
+     these draw it at the living one's size, its base where it stood. */
   rockmonster: {
     baseArchetype: 'brute',
-    liveScalePx: 96,
+    liveScalePx: 108,
+    headTopPx: 66,
     spd: 0.5,
+    walkDistPerFrame: 4,
+    idleFrameMs: 280,
+    deathStripOnly: true,
+    deathMs: 1100,
+    deathScalePx: 100,
+    deathOffsetY: -1,
   },
   /* ═══ v2.3.1147: verdant + mist reskins (the L22-40 zones spawned
      NOTHING -- the mid-band content hole).  All four are TINTED reuses
@@ -440,13 +457,28 @@ export const MONSTER_VARIANTS = {
     projectileScalePx: 26,
     deathStripOnly: true,
     deathMs: 900,
+    /* v2.3.4358: the sheet draws the dying mushroom smaller than the walking
+       one (its first frame 156 px wide against 176): these draw it at the
+       living one's size, its base where it stood (as the frog's and the
+       golem's deaths are put back) */
+    deathScalePx: 74,
+    deathOffsetY: -1,
     noFodderRemnants: true,
   },
+  /* (v2.3.4358: the rock golem's pictures in moss green, as it was the old
+     rock monster's: the same size, shuffle and death) */
   thornShambler: {
     baseArchetype: 'brute',
-    liveScalePx: 96,
+    liveScalePx: 108,
+    headTopPx: 66,
     spd: 0.5,        /* mirrored in server _variantSpeed */
-    tint: 0x4f9a3f,  /* moss-covered rockmonster */
+    tint: 0x4f9a3f,  /* moss-covered rock golem */
+    walkDistPerFrame: 4,
+    idleFrameMs: 280,
+    deathStripOnly: true,
+    deathMs: 1100,
+    deathScalePx: 100,
+    deathOffsetY: -1,
   },
   /* the big dark one: it walks up and slams, as the bog lurker did.  104
      puts it about 107 px across, half again the ordinary one; its `tint`
@@ -461,6 +493,8 @@ export const MONSTER_VARIANTS = {
     idleFrameMs: 260,
     deathStripOnly: true,
     deathMs: 1100,
+    deathScalePx: 117,   /* v2.3.4358: as the ordinary one's, at its size */
+    deathOffsetY: -2,
   },
 };
 

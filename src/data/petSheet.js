@@ -9,7 +9,7 @@ export const PET_SHEET = Object.freeze({
   "cell": 64,
   "cols": 12,
   "rows": 8,
-  "bytes": 342574,
+  "bytes": 364997,
   "decodedBytes": 1572864,
   "bases": {
     "snowman": {
@@ -36,16 +36,8 @@ export const PET_SHEET = Object.freeze({
       "h": 30.0,
       "w": 28.4
     },
-    "rockmonster": {
-      "row": 3,
-      "front": 1,
-      "side": 1,
-      "sideFaces": "w",
-      "h": 30.0,
-      "w": 30.0
-    },
     "blueSlime": {
-      "row": 4,
+      "row": 3,
       "front": 8,
       "side": 0,
       "sideFaces": null,
@@ -53,7 +45,7 @@ export const PET_SHEET = Object.freeze({
       "w": 26.9
     },
     "waterFrog": {
-      "row": 5,
+      "row": 4,
       "front": 1,
       "side": 1,
       "sideFaces": "e",
@@ -61,7 +53,7 @@ export const PET_SHEET = Object.freeze({
       "w": 30.0
     },
     "stormEye": {
-      "row": 6,
+      "row": 5,
       "front": 1,
       "side": 1,
       "sideFaces": "e",
@@ -69,11 +61,19 @@ export const PET_SHEET = Object.freeze({
       "w": 22.3
     },
     "rotcap": {
-      "row": 7,
+      "row": 6,
       "front": 4,
       "side": 4,
       "sideFaces": "e",
       "h": 23.2,
+      "w": 30.0
+    },
+    "rockGolem": {
+      "row": 7,
+      "front": 4,
+      "side": 4,
+      "sideFaces": "e",
+      "h": 19.1,
       "w": 30.0
     }
   }

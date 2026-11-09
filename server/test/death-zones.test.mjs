@@ -74,8 +74,8 @@ const { MONSTER_VARIANTS } = await import('../../src/data/monsterVariants.js');
      never cut into zones */
   const stripOnly = looks.filter((k) => MONSTER_VARIANTS[k] && MONSTER_VARIANTS[k].deathStripOnly);
   const none = looks.filter((k) => !Z.deathZoneLook(k) && stripOnly.indexOf(k) < 0);
-  check('2a every monster variant, the snowman and the slime have zones (but the water frog, the storm eye and the two rotcaps: their own animations)',
-    none.length === 0 && stripOnly.join() === 'fishman,stormEye,mireWisp,bogLurker' && stripOnly.every((k) => !Z.deathZoneLook(k)), { none, stripOnly });
+  check('2a every monster variant, the snowman and the slime have zones (but the water frog, the storm eye, the two rotcaps, the rock golem and the thorn shambler: their own animations)',
+    none.length === 0 && stripOnly.join() === 'fishman,stormEye,rockmonster,mireWisp,thornShambler,bogLurker' && stripOnly.every((k) => !Z.deathZoneLook(k)), { none, stripOnly });
   check('2b the looks on the slime\'s sheets are cut as the slime (a blob)',
     ['fodder', 'mossSlime', 'blueSlime'].every((k) => Z.deathZoneLook(k) === Z.DEATH_ZONES.slime) && Z.DEATH_ZONES.slime.blob === true);
   check('2c a look without zones dies today\'s way (null)', Z.deathZoneLook('brute') === null && Z.deathZoneLook('__proto__') === null && Z.deathZoneLook(null) === null);
@@ -106,11 +106,9 @@ const { MONSTER_VARIANTS } = await import('../../src/data/monsterVariants.js');
     has('fireGoblin', (z) => z.part === 'prop' && z.mat === 'wood') && has('fireGoblin', (z) => z.mat === 'flame') && has('fireGoblin', (z) => z.part === 'core' && z.off === 'slump'));
   /* v2.3.4355: the Water Caves' monster (key `fishman`) is the water frog,
      whose death is its own strip on every kill: it has no zones */
-  check('2i a rock monster crumbles into stones; a skeleton\'s bones scatter; a thorn shambler splinters; the water frog has no zones (its own animation)',
-    zs('rockmonster').filter((z) => z.off === 'crumble' && z.mat === 'stone').length >= 4
-    && zs('skeleton').filter((z) => z.mat === 'bone' && z.off !== 'stays').length >= 6
-    && !Z.DEATH_ZONES.fishman && Z.deathZonesFor('fishman', 'south') == null
-    && zs('thornShambler').filter((z) => z.mat === 'wood' && Z.bigOff(z) === 'fly').length >= 3);
+  check('2i a skeleton\'s bones scatter; the water frog, the rotcaps, the rock golem and the thorn shambler have no zones (their own animations)',
+    zs('skeleton').filter((z) => z.mat === 'bone' && z.off !== 'stays').length >= 6
+    && ['fishman', 'rockmonster', 'thornShambler'].every((k) => !Z.DEATH_ZONES[k] && Z.deathZonesFor(k, 'south') == null));
 }
 
 /* ── 3. the cuts cut where the zones say ── */
@@ -168,8 +166,6 @@ function readPng(rel) {
     ['skeleton', 'south', 'public/sprites/monsters/skeleton/run-s.png', 256, 0],
     ['skeleton', 'west', 'public/sprites/monsters/skeleton/run-w.png', 256, 0],
     ['mummy', 'south', 'public/sprites/monsters/mummy/walk-s.png', 256, 0],
-    ['rockmonster', 'south', 'public/sprites/monsters/rockmonster/walk-south.png', 256, 0],
-    ['thornShambler', 'south', 'public/sprites/monsters/rockmonster/walk-south.png', 256, 0],
   ];
   const thin = [], read = [];
   for (const [look, facing, sheet, fw, fi] of FRAMES) {
@@ -221,12 +217,11 @@ function readPng(rel) {
 /* ── 6. the eyes ── */
 {
   const eyes = (k, f) => (Z.deathZonesFor(k, f) || []).filter((z) => z.part === 'eyes');
-  check('6a the eyes are where the picture shows them: the snowman two facing you and one side on, none from behind; the goblin and the mummy two facing you; the rock monster and the thorn shambler two, every way; the slime and the skeleton none',
+  check('6a the eyes are where the picture shows them: the snowman two facing you and one side on, none from behind; the goblin and the mummy two facing you; the slime and the skeleton none',
     eyes('snowman', 'south').length === 2 && eyes('snowman', 'southwest').length === 2 && eyes('snowman', 'north').length === 0
     && eyes('snowman', 'east').length === 1 && eyes('snowman', 'west').length === 1
     && eyes('fireGoblin', 'south').length === 2 && eyes('fireGoblin', 'east').length === 0
     && eyes('mummy', 'south').length === 2 && eyes('mummy', 'north').length === 0
-    && ['south', 'north', 'east', 'west'].every((f) => eyes('rockmonster', f).length === 2 && eyes('thornShambler', f).length === 2)
     && eyes('fodder', 'south').length === 0 && eyes('skeleton', 'south').length === 0);
   const bad = [];
   for (const k of Object.keys(Z.DEATH_ZONES)) for (const f of Z.DEATH_FACINGS) for (const z of eyes(k, f)) {
@@ -242,9 +237,15 @@ function readPng(rel) {
   const head = (zs) => zs.find((z) => z.id === 'head');
   check('6c where the eyes are not seen, the head takes their pixels back (no hole, no gap)',
     head(s).cut && head(s).cut.length === 2 && !head(n).cut && Z.zoneHas(head(n), 0.43, 0.23) && !Z.zoneHas(head(s), 0.43, 0.23) && Z.zoneHas(s.find((z) => z.id === 'eyeL'), 0.43, 0.23));
-  const byId = (k, f, id) => eyes(k, f).find((z) => z.id === id);
-  const fs = byId('rockmonster', 'south', 'eyeL'), fw = byId('rockmonster', 'west', 'eyeL');
-  check('6d a facing drawn from a mirrored file (the rock monster\'s walk-west) mirrors its zones: an eye moves to the other side',
+  /* (6d, a facing drawn from a mirrored file: no look is any more -- the
+     rock monster's walk-west was the last, v2.3.4358.  The mirroring itself
+     is held on a look made for the test.) */
+  Z.DEATH_ZONES.__qaFlip = { flip: ['west'], front: [
+    { id: 'body', part: 'core', rect: [0, 0, 1, 1], cut: ['eye'], mat: 'goo', off: 'slump', mass: 2, bounce: 0, roll: 0 },
+    { id: 'eye', part: 'eyes', rect: [0.2, 0.3, 0.3, 0.4], mat: 'goo', off: 'pop', mass: 0.2, bounce: 0.45, roll: 0.5 }] };
+  const fs = eyes('__qaFlip', 'south')[0], fw = eyes('__qaFlip', 'west')[0];
+  delete Z.DEATH_ZONES.__qaFlip;
+  check('6d a facing drawn from a mirrored file mirrors its zones: an eye moves to the other side',
     Math.abs(fw.rect[0] - (1 - fs.rect[2])) < 1e-9 && Math.abs(fw.rect[2] - (1 - fs.rect[0])) < 1e-9 && fw.rect[1] === fs.rect[1]);
 }
 

@@ -145,6 +145,10 @@ const strips = {};
     G.liveScalePx >= W.liveScalePx * 1.5 && typeof G.tint === 'number' && [16, 8, 0].every((s) => ((G.tint >> s) & 255) < 0xd0) && W.liveScalePx >= 56);
   check('2e both die their own death on every kill, play their shuffle standing still, and leave no green splat (the ordinary one)',
     W.deathStripOnly === true && G.deathStripOnly === true && W.deathMs >= 600 && G.deathMs >= W.deathMs && W.idleFrameMs > 0 && G.idleFrameMs > 0 && W.noFodderRemnants === true);
+  /* the sheet draws the dying mushroom smaller than the walking one */
+  const rd0 = cellBox(strips.death, 0), rw0 = cellBox(strips.walk, 0), ratio = (rw0[2] - rw0[0] + 1) / (rd0[2] - rd0[0] + 1);
+  check(`2e2 ...drawn at the living one's size, each (deathScalePx ${W.deathScalePx} and ${G.deathScalePx}: the pictures say ${(W.liveScalePx * ratio).toFixed(1)} and ${(G.liveScalePx * ratio).toFixed(1)})`,
+    Math.abs(W.deathScalePx - W.liveScalePx * ratio) <= 2 && Math.abs(G.deathScalePx - G.liveScalePx * ratio) <= 3 && Math.abs(W.deathOffsetY) <= 3 && Math.abs(G.deathOffsetY) <= 4, { ratio });
   const wisp = MV.applyZoneVariant({ id: 'wm-mist-1', archetype: 'fodder', type: 'fodder', arch: 'fodder', home: 'mist', level: 4 }, 'mist');
   const lurk = MV.applyZoneVariant({ id: 'wm-mist-2', archetype: 'brute', type: 'brute', arch: 'brute', home: 'mist', level: 4 }, 'mist');
   check('2f the Poison Forest\'s map is what it was (its keys are the worker\'s): its fodder the ordinary rotcap, its brute the great one',

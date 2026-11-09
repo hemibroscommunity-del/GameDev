@@ -94,8 +94,11 @@ flies.
 
 ## Left as it was, for the owner to decide
 
-- **What it drops is still "slime remnants"**, and the Foundry Dome's boss is
-  still a slime. Both are the server's (items and a dungeon), not a picture.
+- **What it drops is still "slime remnants"**: the server's item, not a
+  picture.
+- **The Foundry Dome's boss** is the land's own monster made big, so it is
+  drawn as a giant storm eye now. I did not play that dungeon (it needs a
+  level-26 character): untested.
 - **The server's names for its tier moves** are the slime's ("Goo Volley",
   "Belly Flop"); players do not read them.
 

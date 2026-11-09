@@ -85,13 +85,19 @@ import {
   deathFrameCount as wfDeathCount,
 } from './waterFrogSprites.js';
 
+/* v2.3.4358: the rock golem -- the Stone Hollows' monster (key
+   `rockmonster`; the thorn shambler's key wears it in moss green).  The old
+   one-pose rock monster's pictures and module went with it. */
 import {
-  loadRockmonsterSprites,
-  unloadRockmonsterSprites,
-  getFrame as rmWalkFrame,
-  hasFrames as rmHasWalk,
-  frameCount as rmWalkCount,
-} from './rockmonsterSprites.js';
+  loadRockGolemSprites,
+  unloadRockGolemSprites,
+  getFrame as rgFrame,
+  hasFrames as rgHas,
+  frameCount as rgCount,
+  getDeathFrame as rgDeathFrame,
+  hasDeathFrames as rgHasDeath,
+  deathFrameCount as rgDeathCount,
+} from './rockGolemSprites.js';
 
 /* v2.3.4356: the storm eye -- the Electric Foundry's monster */
 import {
@@ -174,12 +180,16 @@ export const VARIANT_SPRITES = {
     walk:  { get: seFrame,      has: seHas,      count: seCount      },
     death: { get: seDeathFrame, has: seHasDeath, count: seDeathCount },
   },
+  /* v2.3.4358: THE ROCK GOLEM (the owner: "Also this to replace the rock
+     monster that's there now").  The key stays `rockmonster`; the pictures
+     are the golem's: four frames of it grinding along a side, the same four
+     standing still (`idle`), and its own death. */
   rockmonster: {
-    load: loadRockmonsterSprites,
-    unload: unloadRockmonsterSprites,
-    /* A single still pose -- one frame per direction, no attack/hit/death
-       sheets, falls through to brute generic. */
-    walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
+    load: loadRockGolemSprites,
+    unload: unloadRockGolemSprites,
+    walk:  { get: rgFrame,      has: rgHas,      count: rgCount      },
+    idle:  { get: rgFrame,      has: rgHas,      count: rgCount      },
+    death: { get: rgDeathFrame, has: rgHasDeath, count: rgDeathCount },
   },
   /* v2.3.1147: verdant/mist brute reskins -- SAME loaders as their
      source variants (loaders cache internally, so the textures are
@@ -187,10 +197,13 @@ export const VARIANT_SPRITES = {
      MONSTER_VARIANTS[key].tint applied in entityRenderer).  The
      slime reskins (mossSlime, blueSlime) deliberately have NO entry
      here: useSlimeSheets routes them through the slime state branch. */
+  /* (v2.3.4358: so the thorn shambler is the rock golem in moss green) */
   thornShambler: {
-    load: loadRockmonsterSprites,
-    unload: unloadRockmonsterSprites,
-    walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
+    load: loadRockGolemSprites,
+    unload: unloadRockGolemSprites,
+    walk:  { get: rgFrame,      has: rgHas,      count: rgCount      },
+    idle:  { get: rgFrame,      has: rgHas,      count: rgCount      },
+    death: { get: rgDeathFrame, has: rgHasDeath, count: rgDeathCount },
   },
   /* ═══ v2.3.4357: THE ROTCAP, TWICE ═══
      The owner: "Also this for poison land" -- "Both".  The Poison Forest's

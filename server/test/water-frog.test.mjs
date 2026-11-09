@@ -261,9 +261,9 @@ const strips = {};
   check('3e the variant: a hop for its walk, the recovery frames the strips were cut with, its specials\' warnings on the attack strip, its death its own strip',
     V.baseArchetype === 'brute' && V.hopWalk === true && V.attackRecoverFrames === rec && rec === 3 && V.telegraphAttack === true && V.deathStripOnly === true
     && V.spd === 0.5 && V.walkDistPerFrame > 0 && V.idleFrameMs > 0 && V.deathMs >= 1200, V);
-  check('3f ...and none of it on the rock monster or the thorn shambler; no other look hops',
-    ['rockmonster', 'thornShambler'].every((k) => !MONSTER_VARIANTS[k].hopWalk && !MONSTER_VARIANTS[k].deathStripOnly && !MONSTER_VARIANTS[k].telegraphAttack && MONSTER_VARIANTS[k].liveScalePx === 96)
-    && Object.keys(MONSTER_VARIANTS).filter((k) => MONSTER_VARIANTS[k].hopWalk).join() === 'fishman');
+  check('3f ...and no other look hops, plays an attack strip or throws water',
+    Object.keys(MONSTER_VARIANTS).filter((k) => MONSTER_VARIANTS[k].hopWalk).join() === 'fishman'
+    && Object.keys(MONSTER_VARIANTS).filter((k) => MONSTER_VARIANTS[k].attackRecoverFrames).join() === 'fishman');
   /* the death's size and place follow from the pictures: its first frame is
      the frog at rest, at the death strip's own scale */
   const d0 = cellBox(strips.death, 0), l0 = cellBox(strips['idle-s'], 0);

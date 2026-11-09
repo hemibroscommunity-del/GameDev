@@ -10,8 +10,8 @@
  * what each part does when the monster dies: the snowman's head rolls, its
  * twig arms fly and its body bursts into snow; a slime splats; a fire goblin
  * drops its torch, crumples and its flame gutters out; a rock monster
- * crumbles; a skeleton's bones scatter; a thorn shambler splinters (the
- * water frog, the storm eye and the rotcaps have their own animations).  rendering/monsterDeathZonesFx.js
+ * crumples; a skeleton's bones scatter (the water frog, the storm eye, the
+ * rotcaps and the rock golem have their own animations).  rendering/monsterDeathZonesFx.js
  * plays them (docs/specs/monster-death-zones.md: the table explained, how the
  * zones were measured, how to add a monster).
  *
@@ -94,22 +94,6 @@ export const MAX_LIVE = 8;
 /* the opening beat: a hit-flash and a squash, then the zones part */
 export const BEAT_MS = 120;
 
-/* ── the rock monster's break (the thorn shambler wears the same frames) ──
-   Five stones off an egg of rock and the dust it stands in, the breaks
-   ragged so they read as a fracture and not a grid.  v2.3.3985 (the eyes):
-   the crack between the two middle stones runs down between the eyes and
-   the cap's break passes over them, so each glowing eye sits wholly inside
-   one stone (a zone's `cut` is a hole in it: never across its edge). */
-const ROCK_TOP = [[0, 0], [1, 0], [1, 0.3], [0.7, 0.25], [0.5, 0.21], [0.3, 0.25], [0, 0.3]];
-const ROCK_MID_L = [[0, 0.3], [0.3, 0.25], [0.5, 0.21], [0.49, 0.34], [0.47, 0.48], [0.52, 0.62], [0, 0.58]];
-const ROCK_MID_R = [[0.5, 0.21], [0.7, 0.25], [1, 0.3], [1, 0.6], [0.52, 0.62], [0.47, 0.48], [0.49, 0.34]];
-const ROCK_LOW_L = [[0, 0.58], [0.52, 0.62], [0.45, 0.86], [0, 0.84]];
-const ROCK_LOW_R = [[0.52, 0.62], [1, 0.6], [1, 0.85], [0.45, 0.86]];
-const ROCK_BASE = [[0, 0.84], [0.45, 0.86], [1, 0.85], [1, 1], [0, 1]];
-/* its glowing eyes (walk-south: a red glow round (0.38, 0.35) and (0.61, 0.35)) */
-const ROCK_EYE_L = [0.31, 0.27, 0.46, 0.42];
-const ROCK_EYE_R = [0.53, 0.27, 0.68, 0.42];
-
 /* ── the slime's tear: its crown in two gobs, the rest of it the splat ── */
 const SLIME_TOP_L = [[0, 0], [0.5, 0], [0.46, 0.12], [0.53, 0.22], [0.5, 0.31], [0.37, 0.36], [0.25, 0.29], [0.12, 0.35], [0, 0.3]];
 const SLIME_TOP_R = [[0.5, 0], [1, 0], [1, 0.32], [0.88, 0.35], [0.75, 0.3], [0.62, 0.37], [0.5, 0.31], [0.53, 0.22], [0.46, 0.12]];
@@ -118,11 +102,6 @@ const SLIME_BASE = [[0, 0.3], [0.12, 0.35], [0.25, 0.29], [0.37, 0.36], [0.5, 0.
 /* the facings a picture shows its face in (the eyes are labelled there) */
 const FACE_S = Object.freeze(['south']);
 const FACE_S3 = Object.freeze(['south', 'southwest', 'southeast']);
-/* the facings drawn from a file that is the front picture mirrored (the
-   rock monster's walk-west.png: WALK_MAP west, northwest
-   and southwest), where the renderer does no mirroring of its own */
-const WEST_FILE = Object.freeze(['west', 'northwest', 'southwest']);
-
 /* An eye: a little piece of its own that pops out and bounces (the owner:
    "premade sections like head, eyes, arms, torso, legs"). */
 const eye = (id, rect, mat, dir, more) => Object.assign({ id, part: 'eyes', rect, mat, off: 'pop', big: 'fly', mass: 0.2, bounce: 0.45, roll: 0.5, lift: 0.7, delay: 10 }, dir ? { dir } : null, more || null);
@@ -266,41 +245,12 @@ export const DEATH_ZONES = {
      and rots down flat: MONSTER_VARIANTS `deathStripOnly` -- and the old
      fishman picture this entry was cut for is gone.) */
 
-  /* The rock monster: it crumbles -- five stones off its egg of rock come
-     down where they were, the top one last, its two glowing eyes pop out,
-     and its dust stays.  On a big blow the stones are thrown. */
-  rockmonster: {
-    flip: WEST_FILE,
-    bigFx: ['stone'],
-    front: [
-      { id: 'cap', part: 'head', poly: ROCK_TOP, mat: 'stone', off: 'crumble', mass: 3, bounce: 0.15, roll: 0.2, delay: 90 },
-      { id: 'midL', part: 'torso', poly: ROCK_MID_L, cut: ['eyeL'], mat: 'stone', off: 'crumble', mass: 3, bounce: 0.15, roll: 0.2, dir: -1, delay: 40 },
-      { id: 'midR', part: 'torso', poly: ROCK_MID_R, cut: ['eyeR'], mat: 'stone', off: 'crumble', mass: 3, bounce: 0.15, roll: 0.2, dir: 1, delay: 40 },
-      eye('eyeL', ROCK_EYE_L, 'stone', -1, { fx: 'ember', mass: 0.3, bounce: 0.4, roll: 0.3 }),
-      eye('eyeR', ROCK_EYE_R, 'stone', 1, { fx: 'ember', mass: 0.3, bounce: 0.4, roll: 0.3 }),
-      { id: 'lowL', part: 'torso', poly: ROCK_LOW_L, mat: 'stone', off: 'crumble', mass: 4, bounce: 0.1, roll: 0.1, dir: -1 },
-      { id: 'lowR', part: 'torso', poly: ROCK_LOW_R, mat: 'stone', off: 'crumble', mass: 4, bounce: 0.1, roll: 0.1, dir: 1 },
-      { id: 'dust', part: 'base', poly: ROCK_BASE, mat: 'stone', off: 'stays', mass: 4, bounce: 0, roll: 0 },
-    ],
-  },
-
-  /* The thorn shambler (the rock monster's frames, mossed over): it
-     splinters -- the same breaks, but wood and thorn, its eyes popping,
-     thrown in leaves on a big blow. */
-  thornShambler: {
-    flip: WEST_FILE,
-    bigFx: ['leaf', 'wood'],
-    front: [
-      { id: 'crown', part: 'head', poly: ROCK_TOP, mat: 'wood', off: 'crumble', big: 'fly', mass: 1.2, bounce: 0.25, roll: 0.2, lift: 1.2, fx: 'leaf' },
-      { id: 'midL', part: 'torso', poly: ROCK_MID_L, cut: ['eyeL'], mat: 'wood', off: 'crumble', big: 'fly', mass: 1.2, bounce: 0.25, roll: 0.2, dir: -1, delay: 30 },
-      { id: 'midR', part: 'torso', poly: ROCK_MID_R, cut: ['eyeR'], mat: 'wood', off: 'crumble', big: 'fly', mass: 1.2, bounce: 0.25, roll: 0.2, dir: 1, delay: 30, fx: 'leaf' },
-      eye('eyeL', ROCK_EYE_L, 'wood', -1, { mass: 0.3, bounce: 0.4, roll: 0.3 }),
-      eye('eyeR', ROCK_EYE_R, 'wood', 1, { mass: 0.3, bounce: 0.4, roll: 0.3 }),
-      { id: 'lowL', part: 'legs', poly: ROCK_LOW_L, mat: 'wood', off: 'crumble', mass: 2, bounce: 0.2, roll: 0.15, dir: -1, delay: 60 },
-      { id: 'lowR', part: 'legs', poly: ROCK_LOW_R, mat: 'wood', off: 'crumble', mass: 2, bounce: 0.2, roll: 0.15, dir: 1, delay: 60 },
-      { id: 'roots', part: 'base', poly: ROCK_BASE, mat: 'wood', off: 'stays', mass: 4, bounce: 0, roll: 0 },
-    ],
-  },
+  /* (v2.3.4358: no `rockmonster` or `thornShambler` either.  The Stone
+     Hollows' monster is the rock golem, whose death is its own animation on
+     every kill -- its eyes go out, it cracks and falls to rubble:
+     MONSTER_VARIANTS `deathStripOnly` -- and the thorn shambler wears its
+     pictures.  The old rock monster crumbled into five stones cut from its
+     one picture; its breaks went with it.) */
 };
 
 /* the looks drawn from another's frames, and so cut by its zones */
