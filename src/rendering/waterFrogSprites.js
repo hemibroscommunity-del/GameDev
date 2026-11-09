@@ -13,19 +13,24 @@
  *
  * The strips (public/sprites/monsters/water-frog/, rows of 256 px cells on
  * 256 colours, cut by tools/art/cut_water_frog.py from the owner's videos):
- *   idle-{s|sw|e}.png      8 frames: one breath, looping
- *   hop-{s|sw|e}.png      12 frames: crouch, spring, the air, the landing
- *   attack-{s|sw|e}.png   15 frames: 12 of wind-up (the last is the blow),
- *                         then ATTACK_RECOVER of recovery
- *   death.png             20 frames, facing you: its water sac spins up and
- *                         bursts, and it is left flat in the puddle
- *   idle-, hop-, attack-{n|ne}.png   the two sides the videos do not show,
- *                         made from the still picture of each (1, 8 and 9
- *                         frames): replaced when their videos arrive
+ *   idle-{s|sw|e|ne}.png      8 frames: one breath, looping
+ *   hop-{s|sw|ne}.png        12 frames: crouch, spring, the air, the landing
+ *   attack-{s|sw|e|ne}.png   15 frames: 12 of wind-up (the last is the blow),
+ *                            then ATTACK_RECOVER of recovery
+ *   death.png                20 frames, facing you: its water sac spins up
+ *                            and bursts, and it is left flat in the puddle
+ *   idle-n, hop-n, attack-n.png   from behind, which no video shows: made
+ *                            from the still picture (1, 8 and 9 frames)
  *
- * Five sides are drawn (front, front-left, side facing right, back,
- * back-right); the other three are those mirrored.  Lookups give
- * { tex, mirror } or null until the strip has loaded.
+ * NO WATER LEAVES THE FROG IN A STRIP (the owner: "I intend for you to draw
+ * the water attacks in code actually. Don't use the water in the drawings"):
+ * what it spits is rendering/waterAttackFx.js's, drawn as the blow lands.
+ *
+ * Five sides are drawn (front, front-left, side facing right, back-right,
+ * back); the other three are those mirrored.  The side view has no hop of
+ * its own (its video left the frame), so a frog going east or west stands
+ * and attacks side on and hops on the back-right strip, the nearest view.
+ * Lookups give { tex, mirror } or null until the strip has loaded.
  */
 import { loadTrackedStrip, unloadBundle } from './zoneTextures.js';
 
@@ -36,12 +41,17 @@ const SPRITE_VERSION = '2.3.4355';
 const DIR = '/sprites/monsters/water-frog';
 const BUNDLE = 'waterFrog';
 
-export const WATER_FROG_DIRS = Object.freeze(['s', 'sw', 'e', 'n', 'ne']);
+/* the sides each kind of strip was cut for */
+export const WATER_FROG_STRIPS = Object.freeze({
+  idle: Object.freeze(['s', 'sw', 'e', 'ne', 'n']),
+  hop: Object.freeze(['s', 'sw', 'ne', 'n']),
+  attack: Object.freeze(['s', 'sw', 'e', 'ne', 'n']),
+});
 /* the frames at the END of every attack strip that play after the blow */
 export const ATTACK_RECOVER = 3;
 
-/* which strip a facing is drawn from, and whether mirrored (the side view
-   faces right, the front-left view left, the back-right view right) */
+/* which strip a facing is drawn from, and whether mirrored (the side and
+   back-right views face right, the front-left view left) */
 export const WATER_FROG_FACING = Object.freeze({
   south:     { src: 's',  mirror: false },
   southwest: { src: 'sw', mirror: false },
@@ -51,6 +61,12 @@ export const WATER_FROG_FACING = Object.freeze({
   northeast: { src: 'ne', mirror: false },
   east:      { src: 'e',  mirror: false },
   southeast: { src: 'sw', mirror: true },
+});
+/* ...and the hop's: east and west on the back-right strip (no side hop) */
+export const WATER_FROG_HOP_FACING = Object.freeze({
+  ...WATER_FROG_FACING,
+  west: { src: 'ne', mirror: true },
+  east: { src: 'ne', mirror: false },
 });
 
 const idleSheets = {};
@@ -69,11 +85,9 @@ async function loadStrip(name, into, key) {
 export function loadWaterFrogSprites() {
   if (loadPromise) return loadPromise;
   const tasks = [];
-  for (const d of WATER_FROG_DIRS) {
-    tasks.push(loadStrip(`idle-${d}`, idleSheets, d));
-    tasks.push(loadStrip(`hop-${d}`, hopSheets, d));
-    tasks.push(loadStrip(`attack-${d}`, attackSheets, d));
-  }
+  for (const d of WATER_FROG_STRIPS.idle) tasks.push(loadStrip(`idle-${d}`, idleSheets, d));
+  for (const d of WATER_FROG_STRIPS.hop) tasks.push(loadStrip(`hop-${d}`, hopSheets, d));
+  for (const d of WATER_FROG_STRIPS.attack) tasks.push(loadStrip(`attack-${d}`, attackSheets, d));
   tasks.push((async () => {
     try {
       const frames = await loadTrackedStrip(BUNDLE, `${DIR}/death.png?v=${SPRITE_VERSION}`, FRAME_W, FRAME_H);
@@ -87,7 +101,8 @@ export function loadWaterFrogSprites() {
 }
 
 function sheetFor(sheets, facing) {
-  const m = WATER_FROG_FACING[facing] || WATER_FROG_FACING.south;
+  const map = sheets === hopSheets ? WATER_FROG_HOP_FACING : WATER_FROG_FACING;
+  const m = map[facing] || map.south;
   const sheet = sheets[m.src];
   if (sheet && sheet.frames.length) return { sheet, mirror: m.mirror };
   /* not loaded (yet): the front strip, then any, so the frog is never the

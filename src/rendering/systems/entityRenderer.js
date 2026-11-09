@@ -63,6 +63,8 @@ import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount 
   getPhaseFrame as getSnowmanPhaseFrame, phaseFrameCount as snowmanPhaseFrameCount /* v2.3.2221 */
 } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
+import { queueWaterBlow } from '../waterAttackFx.js';   /* v2.3.4355: the water frog's attack, drawn in code */
+import { WATER_FX } from '@/data/waterAttack.js';
 import { attackStripFrame, attackRecoverMs, hopFinishPos, hopIsDown, hopInAir, idleStripFrame } from '@/game/monsterStrips.js';   /* v2.3.4355: the water frog's strips */
 import { wheelArtTick, wheelArtOn, wheelArtReady, wheelArtWaiting } from '../wheelMonsterArt.js'; /* v2.3.2989: the Wheel's monsters' looks, loaded as you walk toward them */
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
@@ -10557,6 +10559,18 @@ export class EntityRenderer {
         }
         const hitSprites = variantSprites.hit;
         const attackSprites = variantSprites.attack;
+        /* ═══ v2.3.4355: THE BLOW LANDS -- ITS WATER IS DRAWN IN CODE ═══
+           The owner: "I intend for you to draw the water attacks in code
+           actually. Don't use the water in the drawings."  A look that asks
+           (`blowFx: 'water'`: the water frog) throws its water the moment
+           its warning ends -- the blow -- once a warning, from where it
+           stands, the way it faces (rendering/waterAttackFx.js draws it;
+           gameEvents.js says which kind, `_blowKind`).  Only for a monster
+           drawn here, and not for a blow first seen long after it landed. */
+        if (variant.blowFx === 'water' && m._shootAnimEnd && now >= m._shootAnimEnd && m._wbFor !== m._shootAnimStart) {
+          m._wbFor = m._shootAnimStart;
+          if (now - m._shootAnimEnd < WATER_FX.LATE_MS) queueWaterBlow(S, m, facing, rx, ry, m._shootAnimEnd);
+        }
         const hitNow = !transformingNow && m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
         /* v2.3.4355: a strip with recovery frames at its end (variant
            attackRecoverFrames: the water frog's) plays them AFTER the blow,

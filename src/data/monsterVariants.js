@@ -275,6 +275,11 @@ export const MONSTER_VARIANTS = {
                           worker's warning (a swing's 600 ms, a slam's 900)
        telegraphAttack    its specials' warnings (the slam, the tier moves)
                           play the attack strip too, not only its swings
+       blowFx             'water': the water its blow throws is drawn in
+                          code as the warning ends (the owner: "I intend
+                          for you to draw the water attacks in code"; no
+                          strip shows water leaving it): a spray the way it
+                          faces, a ring for a slam (rendering/waterAttackFx.js)
        deathStripOnly     its death is its own animation on every kill: the
                           sac spins up and bursts (20 frames over deathMs)
        deathScalePx / deathOffsetY   the death strip is cut at its own scale
@@ -303,6 +308,7 @@ export const MONSTER_VARIANTS = {
     attackFrameMs: 70,
     attackRecoverFrames: 3,
     telegraphAttack: true,
+    blowFx: 'water',
     deathStripOnly: true,
     deathMs: 1700,
     deathScalePx: 138,

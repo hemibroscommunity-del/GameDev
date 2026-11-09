@@ -19,6 +19,7 @@ import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
 import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
+import { waterBlowKind } from '@/data/waterAttack.js';   /* v2.3.4355: which water a frog's blow throws */
 import { toDisplayDamage, toDisplayHitDamage, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1); v2.3.2730: + a peer's swing reach */
 import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is a legacy number under prog3 */
 /* v2.3.1734: Element Burst paints the element's status onto the local
@@ -1546,6 +1547,7 @@ export function processGameEvent(type, payload, S, deps) {
                      projectile ever followed it.  The renderer gates the
                      throw strip on this. */
                   _bwM._shootAnimKind = payload.ability;
+                  _bwM._blowKind = 'spray'; _bwM._blowR = 0;   /* v2.3.4355: an ordinary blow's water (rendering/waterAttackFx.js) */
                   /* v2.3.2217: a stale release from the PREVIOUS throw would
                      make the renderer think this one has already left his
                      hand, so it plays the follow-through over the wind-up. */
@@ -1597,6 +1599,10 @@ export function processGameEvent(type, payload, S, deps) {
                         _tgm._shootAnimStart = Date.now();
                         _tgm._shootAnimEnd = Date.now() + Math.max(80, Math.min(3000, Number(payload.ms) || 800));
                         _tgm._shootAnimKind = 'swing';
+                        /* ...and its water: a ring for a slam, at the
+                           worker's own radius (data/waterAttack.js) */
+                        _tgm._blowKind = waterBlowKind(payload.ability);
+                        _tgm._blowR = Number(payload.radius) > 0 ? Number(payload.radius) : 0;
                       }
                       break;
                     }

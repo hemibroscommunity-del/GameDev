@@ -7,7 +7,7 @@
  * man monster."  docs/specs/water-frog.md.
  *
  *   1. THE STRIPS (public/sprites/monsters/water-frog/, cut by
- *      tools/art/cut_water_frog.py): all sixteen there, palette PNGs on at
+ *      tools/art/cut_water_frog.py): all fifteen there, palette PNGs on at
  *      most 256 colours (the memory law), rows of 256 px cells, the frames
  *      the loader and the renderer count on; every cell drawn in; the frog
  *      the same size from every side, its feet on the same row;
@@ -24,6 +24,12 @@
  *      "Froglet"; the codex page drawn from the frog's strips, their cells
  *      counted and their ground rows measured; the pet's row on the pet
  *      sheet; a shot aimed at the middle of its body.
+ *
+ *   5. ITS WATER, DRAWN IN CODE (the owner: "I intend for you to draw the
+ *      water attacks in code actually. Don't use the water in the drawings"):
+ *      no strip shows water leaving the frog (1i, 1j); the spray and the ring
+ *      (data/waterAttack.js, game/waterAttack.js): their pieces, where they
+ *      go, that they end; the wiring.
  *
  * In the world: tools/qa/mp/mp-waterfrog.mjs.
  */
@@ -81,7 +87,7 @@ function cellBox(png, i) {
 }
 
 /* the frames of each strip: tools/art/cut_water_frog.py's picks */
-const WANT = { idle: { s: 8, sw: 8, e: 8, n: 1, ne: 1 }, hop: { s: 12, sw: 12, e: 12, n: 8, ne: 8 }, attack: { s: 15, sw: 15, e: 15, n: 9, ne: 9 } };
+const WANT = { idle: { s: 8, sw: 8, e: 8, ne: 8, n: 1 }, hop: { s: 12, sw: 12, ne: 12, n: 8 }, attack: { s: 15, sw: 15, e: 15, ne: 15, n: 9 } };
 const strips = {};
 
 /* ── 1. the strips ── */
@@ -89,7 +95,7 @@ const strips = {};
   const names = ['death'];
   for (const k of Object.keys(WANT)) for (const d of Object.keys(WANT[k])) names.push(`${k}-${d}`);
   const missing = names.filter((n) => !existsSync(new URL(DIR + n + '.png', root)));
-  check('1a all sixteen strips are there: an idle, a hop and an attack for five sides, and the death', names.length === 16 && missing.length === 0, missing);
+  check('1a all fifteen strips are there: an idle and an attack for five sides, a hop for four (none side on: its video left the frame), and the death', names.length === 15 && missing.length === 0, missing);
   const bad = [];
   for (const n of names) {
     if (missing.indexOf(n) >= 0) continue;
@@ -104,7 +110,7 @@ const strips = {};
     const png = strips[`${k}-${d}`];
     if (!png || png.w / 256 !== WANT[k][d]) counts.push(`${k}-${d}: ${png ? png.w / 256 : 'missing'} (want ${WANT[k][d]})`);
   }
-  check('1c the frames the game counts on: 8 of breath, 12 of hop, 15 of attack from the three filmed sides; 1, 8 and 9 from the two made from the still; 20 of death',
+  check('1c the frames the game counts on: 8 of breath, 12 of hop, 15 of attack from the filmed sides; 1, 8 and 9 from behind, made from the still; 20 of death',
     counts.length === 0 && strips.death && strips.death.w / 256 === 20, counts);
   const empty = [];
   for (const n of names) {
@@ -118,10 +124,10 @@ const strips = {};
      feet on one row; and never against a cell's side (a frame cut off) */
   const rest = {};
   for (const d of Object.keys(WANT.idle)) { const b = cellBox(strips[`idle-${d}`], 0); rest[d] = { h: b[3] - b[1] + 1, feet: b[3], w: b[2] - b[0] + 1, mid: (b[0] + b[2]) / 2 }; }
-  check('1e at rest the frog is the same size from the three filmed sides (140 rows, within 5), its feet on one row (231, within 3), in the middle of its cell',
-    ['s', 'sw', 'e'].every((d) => Math.abs(rest[d].h - 140) <= 5 && Math.abs(rest[d].feet - 231) <= 3 && Math.abs(rest[d].mid - 128) <= 6), rest);
-  check('1f ...and the two sides made from the still stand on the same row, within a sixth of that size',
-    ['n', 'ne'].every((d) => Math.abs(rest[d].feet - 231) <= 3 && Math.abs(rest[d].h - 140) <= 24 && Math.abs(rest[d].mid - 128) <= 6), rest);
+  check('1e at rest the frog is the same size from the four filmed sides (140 rows, within 5), its feet on one row (231, within 3), in the middle of its cell',
+    ['s', 'sw', 'e', 'ne'].every((d) => Math.abs(rest[d].h - 140) <= 5 && Math.abs(rest[d].feet - 231) <= 3 && Math.abs(rest[d].mid - 128) <= 6), rest);
+  check('1f ...and the side made from the still stands on the same row, within a sixth of that size',
+    ['n'].every((d) => Math.abs(rest[d].feet - 231) <= 3 && Math.abs(rest[d].h - 140) <= 24 && Math.abs(rest[d].mid - 128) <= 6), rest);
   const cut = [];
   for (const k of Object.keys(WANT)) for (const d of Object.keys(WANT[k])) {
     const png = strips[`${k}-${d}`];
@@ -129,13 +135,55 @@ const strips = {};
   }
   check('1g no living frame is cut off by the top or a side of its cell (the hop\'s rise fits)', cut.length === 0, cut);
   /* a hop rises: somewhere in it the frog's head is well above where it rests */
-  const rises = ['s', 'sw', 'e', 'n', 'ne'].map((d) => {
+  const rises = ['s', 'sw', 'ne', 'n'].map((d) => {
     const png = strips[`hop-${d}`];
     let top = 256;
     for (let i = 0; i < png.w / 256; i++) top = Math.min(top, cellBox(png, i)[1]);
     return [d, cellBox(strips[`idle-${d}`], 0)[1] - top];
   });
   check('1h a hop rises: its highest frame at least 30 rows above the resting frog, every side', rises.every((r) => r[1] >= 30), rises);
+  /* NO WATER LEAVES THE FROG (the owner: "Don't use the water in the
+     drawings"): every living cell is ONE joined-up piece -- the frog -- with
+     no drop, ripple or splash beside it.  (Water still joined to it, a
+     stream out of its mouth, cannot be told from the frog this way: those
+     frames are left out by hand, the cutting tool's notes say which.) */
+  const loose = [];
+  for (const k of Object.keys(WANT)) for (const d of Object.keys(WANT[k])) {
+    const png = strips[`${k}-${d}`];
+    for (let i = 0; i < png.w / 256; i++) {
+      const on = new Uint8Array(256 * 256);
+      let total = 0;
+      for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) if (png.alpha(i * 256 + x, y) > 0) { on[y * 256 + x] = 1; total++; }
+      let best = 0;
+      const stack = [];
+      for (let p0 = 0; p0 < on.length; p0++) {
+        if (on[p0] !== 1) continue;
+        let size = 0;
+        on[p0] = 2; stack.push(p0);
+        while (stack.length) {
+          const p = stack.pop(), x = p & 255, y = p >> 8;
+          size++;
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx > 255 || ny > 255) continue;
+            const q = ny * 256 + nx;
+            if (on[q] === 1) { on[q] = 2; stack.push(q); }
+          }
+        }
+        if (size > best) best = size;
+      }
+      if (best !== total) loose.push(`${k}-${d}[${i}]: ${total - best} px loose`);
+    }
+  }
+  check('1i no water leaves the frog in a living strip: every cell is one joined-up piece, nothing loose beside it', loose.length === 0, loose.slice(0, 8));
+  /* ...and a strip never grows much past the frog: the widest a hop or an
+     attack gets is the frog and its legs, not a splash twice its width */
+  const wide = [];
+  for (const k of ['hop', 'attack']) for (const d of Object.keys(WANT[k])) {
+    const png = strips[`${k}-${d}`], w0 = (() => { const b = cellBox(strips[`idle-${d}`], 0); return b[2] - b[0] + 1; })();
+    for (let i = 0; i < png.w / 256; i++) { const b = cellBox(png, i); if (b[2] - b[0] + 1 > w0 * 1.35) wide.push(`${k}-${d}[${i}]: ${b[2] - b[0] + 1} wide (at rest ${w0})`); }
+  }
+  check('1j ...and no frame is a splash wider than the frog (within a third of its resting width)', wide.length === 0, wide);
 }
 
 /* ── 2. the playing of them ── */
@@ -191,12 +239,22 @@ const strips = {};
   check('3b ...and the bog lurker still the old fishman pictures, a module of its own now',
     /bogLurker: \{\s*load: loadFishmanSprites,\s*unload: unloadFishmanSprites,/.test(vs) && existsSync(new URL('public/sprites/monsters/fishman/walk-south.png', root)));
   /* eight facings from five drawn sides */
-  const face = {};
-  for (const m of wf.matchAll(/^\s*(south|southwest|west|northwest|north|northeast|east|southeast):\s*\{ src: '(\w+)',\s*mirror: (true|false) \}/gm)) face[m[1]] = [m[2], m[3] === 'true'];
-  check('3c eight facings from five drawn sides: the side view faces east and the front-left west, so west, north-west and south-east are mirrors',
+  const tableOf = (name) => {
+    const body = (new RegExp('export const ' + name + ' = Object\\.freeze\\(\\{([\\s\\S]*?)\\}\\);').exec(wf) || [])[1] || '';
+    const out = {};
+    for (const m of body.matchAll(/(south|southwest|west|northwest|north|northeast|east|southeast):\s*\{ src: '(\w+)',\s*mirror: (true|false) \}/g)) out[m[1]] = [m[2], m[3] === 'true'];
+    return out;
+  };
+  const face = tableOf('WATER_FROG_FACING'), hopOver = tableOf('WATER_FROG_HOP_FACING');
+  check('3c eight facings from five drawn sides: the side and back-right views face east and the front-left west, so west, north-west and south-east are mirrors',
     JSON.stringify(face) === JSON.stringify({ south: ['s', false], southwest: ['sw', false], west: ['e', true], northwest: ['ne', true], north: ['n', false], northeast: ['ne', false], east: ['e', false], southeast: ['sw', true] }), face);
+  check('3c2 ...and the hop the same, but east and west on the back-right strip (no side hop was filmed whole): every strip a facing names exists',
+    /\.\.\.WATER_FROG_FACING,/.test(wf) && JSON.stringify(hopOver) === JSON.stringify({ west: ['ne', true], east: ['ne', false] })
+    && Object.values(face).every((f) => strips[`idle-${f[0]}`] && strips[`attack-${f[0]}`])
+    && Object.values(Object.assign({}, face, hopOver)).every((f) => strips[`hop-${f[0]}`]) && !existsSync(new URL(DIR + 'hop-e.png', root))
+    && /const map = sheets === hopSheets \? WATER_FROG_HOP_FACING : WATER_FROG_FACING;/.test(wf), hopOver);
   check('3d the strips load under one bundle of their own, cropped (loadTrackedStrip), and are let go with it',
-    /const BUNDLE = 'waterFrog';/.test(wf) && (wf.match(/loadTrackedStrip\(BUNDLE,/g) || []).length === 2 && /return unloadBundle\(BUNDLE\);/.test(wf) && /loadPromise = null;/.test(wf));
+    /const BUNDLE = 'waterFrog';/.test(wf) && (wf.match(/loadTrackedStrip\(BUNDLE,/g) || []).length === 2 && (wf.match(/tasks\.push\(loadStrip\(/g) || []).length === 3 && /return unloadBundle\(BUNDLE\);/.test(wf) && /loadPromise = null;/.test(wf));
   const rec = +(/export const ATTACK_RECOVER = (\d+);/.exec(wf) || [])[1];
   check('3e the variant: a hop for its walk, the recovery frames the strips were cut with, its specials\' warnings on the attack strip, its death its own strip',
     V.baseArchetype === 'brute' && V.hopWalk === true && V.attackRecoverFrames === rec && rec === 3 && V.telegraphAttack === true && V.deathStripOnly === true
@@ -266,6 +324,84 @@ const strips = {};
   check(`4f a shot is aimed at the middle of its body (torso ${monsterTorsoY('fishman')} px up; the body at rest is ${bodyH.toFixed(0)} tall), inside its hit circle (${monsterBodyOffsetY('fishman')} +/- 40)`,
     monsterTorsoY('fishman') > bodyH * 0.35 && monsterTorsoY('fishman') < bodyH * 0.75 && Math.abs(monsterTorsoY('fishman') - monsterBodyOffsetY('fishman')) < 40
     && monsterTorsoY('bogLurker') === 66, { torso: monsterTorsoY('fishman'), bo: monsterBodyOffsetY('fishman'), bodyH });
+}
+
+/* ── 5. its water, drawn in code ── */
+{
+  const WD = await import('../../src/data/waterAttack.js');
+  const WA = await import('../../src/game/waterAttack.js');
+  const WS = await import('../../src/rendering/waterAttackShapes.js');
+  const { WATER_BLOWS, WATER_SHAPES, WATER_FX } = WD;
+  const kinds = Object.keys(WATER_BLOWS);
+  check('5a two blows, a spray and a ring; every piece a shape of the one picture, every shape drawn; a full screen of blows fits the pool',
+    kinds.join() === 'spray,ring' && kinds.every((k) => WATER_BLOWS[k].pieces.every((p) => WATER_SHAPES.indexOf(p[0]) >= 0 && p[1] > 0) && WATER_BLOWS[k].ms >= 300 && WATER_BLOWS[k].ms <= 800)
+    && WATER_SHAPES.every((n) => typeof WS.WATER_SHAPE_DRAW[n] === 'function') && Object.keys(WS.WATER_SHAPE_DRAW).length === WATER_SHAPES.length
+    && Math.max(...kinds.map((k) => WD.waterPieceCount(WATER_BLOWS[k]))) * WATER_FX.MAX_BLOWS <= WATER_FX.POOL,
+    kinds.map((k) => [k, WD.waterPieceCount(WATER_BLOWS[k])]));
+  check('5b a slam, a quake and a stomp throw a ring; a swing, a combo, a charge and anything unknown a spray',
+    ['slam', 'quake', 'stomp'].every((a) => WD.waterBlowKind(a) === 'ring') && ['swing', 'combo', 'charge', 'volley', '', undefined, '__proto__', 'constructor'].every((a) => WD.waterBlowKind(a) === 'spray'));
+  /* every shape draws: a stand-in canvas that counts what was painted */
+  const painted = WATER_SHAPES.map((n) => {
+    let fills = 0, strokes = 0;
+    const g = new Proxy({}, { get: (t, k) => (k === 'fill' ? () => { fills++; } : k === 'stroke' ? () => { strokes++; } : (k in t ? t[k] : () => {})), set: (t, k, v) => { t[k] = v; return true; } });
+    WS.WATER_SHAPE_DRAW[n](g, 48);
+    return [n, fills, strokes];
+  });
+  check('5c every shape paints something, and has its dark edge (a stroke)', painted.every((p) => p[1] + p[2] >= 2 && p[2] >= 1), painted);
+  /* the frog's blow, as the renderer hands it over: facing east */
+  const G = (dx, dy, reach) => ({ dx, dy, R: 48, H: 62, k: 1, reach });
+  const at = (kind, g, age, seed = 77) => WA.waterPieceList(kind, g, age, seed);
+  const sprayN = WD.waterPieceCount(WATER_BLOWS.spray), ringN = WD.waterPieceCount(WATER_BLOWS.ring);
+  const steps = [];
+  for (let a = 0; a < WATER_BLOWS.spray.ms; a += 20) steps.push(a);
+  check('5d a spray is its whole count of pieces from the blow to its end, and nothing after (or before)',
+    steps.every((a) => at('spray', G(1, 0, 84), a).length === sprayN) && at('spray', G(1, 0, 84), WATER_BLOWS.spray.ms).length === 0
+    && at('spray', G(1, 0, 84), -5).length === 0 && at('nope', G(1, 0, 84), 100).length === 0 && WA.waterBlowOver('spray', 480) && !WA.waterBlowOver('spray', 479));
+  const vis = (list) => list.filter((p) => p.a > 0.05);
+  const allAhead = steps.every((a) => vis(at('spray', G(1, 0, 84), a)).every((p) => p.dx > 0 && p.dx < 48 * 0.55 + 84 * 1.25 && Math.abs(p.dy) < 110));
+  check('5e ...out of its mouth the way it faces: facing east, every piece on screen is ahead of it, none past its reach', allAhead);
+  const first = at('spray', G(1, 0, 84), 0), mid = vis(at('spray', G(1, 0, 84), 240)), last = at('spray', G(1, 0, 84), 470);
+  check('5f ...at the blow it is at the mouth (up its body), halfway it has travelled and the splash has started, at the end it has faded',
+    vis(first).length >= 1 && vis(first).every((p) => p.dy < -30 && p.dx < 70) && mid.some((p) => p.shape === 'ripple') && mid.filter((p) => p.shape === 'drop' || p.shape === 'blob').every((p) => p.dx > 40)
+    && Math.max(...last.map((p) => p.a)) < 0.25, { first: vis(first).length, mid: mid.length, lastMax: Math.max(...last.map((p) => p.a)) });
+  /* the same blow facing west is the east one mirrored: one frog, one splash */
+  const e = at('spray', G(1, 0, 84), 200), w = at('spray', G(-1, 0, 84), 200);
+  /* (the foam's little scatter is its own, either way) */
+  const mir = e.every((p, i) => p.shape === w[i].shape && Math.abs(p.a - w[i].a) < 1e-9 && (p.shape === 'foam' || Math.abs(p.dx + w[i].dx) < 1e-6));
+  check('5g ...the same every time for one frog and one blow (no randomness), another frog\'s different; facing west it goes west',
+    JSON.stringify(at('spray', G(1, 0, 84), 200)) === JSON.stringify(e) && JSON.stringify(at('spray', G(1, 0, 84), 200, 78)) !== JSON.stringify(e)
+    && mir && vis(w).every((p) => p.dx < 0), null);
+  /* facing south the splash lands below its feet, facing north above */
+  const land = (dx, dy) => at('spray', G(dx, dy, 84), 330).find((p) => p.shape === 'ripple');
+  check('5h ...and its splash comes down on the ground ahead of it: below its feet facing south, above facing north, level facing east',
+    land(0, 1).dy > 60 && land(0, -1).dy < -60 && Math.abs(land(1, 0).dy) < 1 && land(1, 0).dx > 90);
+  /* the ring */
+  const rsteps = [];
+  for (let a = 0; a < WATER_BLOWS.ring.ms; a += 20) rsteps.push(a);
+  const radius = (a) => { const cs = at('ring', G(0, 1, 88), a).filter((p) => p.shape === 'crest'); return cs.map((p) => Math.hypot(p.dx, p.dy + 6)); };
+  const grows = rsteps.every((a, i) => i === 0 || Math.max(...radius(a)) >= Math.max(...radius(rsteps[i - 1])) - 5);
+  check('5i a ring is its whole count too; its wave runs out from under it to the worker\'s own radius (88) and never past it',
+    rsteps.every((a) => at('ring', G(0, 1, 88), a).length === ringN) && at('ring', G(0, 1, 88), WATER_BLOWS.ring.ms).length === 0 && grows
+    && radius(0).every((r) => r < 40) && radius(500).every((r) => r > 80 && r < 96) && rsteps.every((a) => radius(a).every((r) => r < 96)),
+    { r0: Math.round(Math.max(...radius(0))), r500: Math.round(Math.max(...radius(500))) });
+  check('5j ...all the way round it (its crests in every quarter), and gone by its end',
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].every(([sx, sy]) => at('ring', G(0, 1, 88), 300).some((p) => p.shape === 'crest' && p.dx * sx > 0 && (p.dy + 6) * sy > 0))
+    && Math.max(...at('ring', G(0, 1, 88), 610).map((p) => p.a)) < 0.1);
+  check('5k a bigger monster\'s water is bigger, by its reach (a ring at 150: a quake\'s)', radius(0).length === 10 && Math.max(...at('ring', G(0, 1, 150), 500).filter((p) => p.shape === 'crest').map((p) => Math.hypot(p.dx, p.dy + 6))) > 140);
+  /* the wiring */
+  const er = src('src/rendering/systems/entityRenderer.js'), ge = src('src/networking/gameEvents.js'), fx = src('src/rendering/systems/effectsRenderer.js');
+  const wfx = src('src/rendering/waterAttackFx.js'), pre = src('src/rendering/preloadAnimations.js');
+  check('5l the frog asks for it (blowFx: water) and nobody else; the blow is queued once a warning, as it ends, for a monster drawn, never long after',
+    MONSTER_VARIANTS.fishman.blowFx === 'water' && Object.keys(MONSTER_VARIANTS).filter((k) => MONSTER_VARIANTS[k].blowFx).join() === 'fishman'
+    && /if \(variant\.blowFx === 'water' && m\._shootAnimEnd && now >= m\._shootAnimEnd && m\._wbFor !== m\._shootAnimStart\) \{\s*m\._wbFor = m\._shootAnimStart;\s*if \(now - m\._shootAnimEnd < WATER_FX\.LATE_MS\) queueWaterBlow\(S, m, facing, rx, ry, m\._shootAnimEnd\);/.test(er));
+  check('5m a swing\'s warning says spray, a special\'s its own kind and the worker\'s radius',
+    /_bwM\._blowKind = 'spray'; _bwM\._blowR = 0;/.test(ge) && /_tgm\._blowKind = waterBlowKind\(payload\.ability\);\s*_tgm\._blowR = Number\(payload\.radius\) > 0 \? Number\(payload\.radius\) : 0;/.test(ge));
+  check('5n drawn as the wind-ups are: one pool made once with the renderer, updated every frame, parked on a zone change; its picture made on the loading screen and kept as an image; ?nowaterfx leaves it out',
+    /this\._waterAttack = new WaterAttackFx\(this\.projectileLayer\);/.test(fx) && /this\._waterAttack\.update\(S, now\)/.test(fx) && /this\._waterAttack\.clear\(\)/.test(fx)
+    && /waterAttack: Promise\.resolve\(warmWaterAttack\(\)\)/.test(pre) && /keepAsImage\(base\.source, Cache\)/.test(wfx) && /has\('nowaterfx'\)/.test(wfx)
+    && /for \(let i = 0; i < WATER_FX\.POOL; i\+\+\)/.test(wfx) && !/removeChild|\.visible = /.test(wfx));
+  check('5o the list of blows cannot grow (the oldest goes at 12), and a finished one is dropped whether drawn or not',
+    /if \(list\.length >= 12\) list\.shift\(\);/.test(wfx) && /if \(waterBlowOver\(list\[i\]\.kind, now - list\[i\]\.at\)\) list\.splice\(i, 1\);/.test(wfx));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

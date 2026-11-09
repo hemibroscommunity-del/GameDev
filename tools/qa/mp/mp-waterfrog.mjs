@@ -16,13 +16,15 @@
  *      cells, cropped), not the old fishman's one still;
  *   2. standing still it breathes: the 8 frames of its idle strip, looping;
  *   3. walked each of the eight ways it faces that way -- five drawn sides,
- *      three mirrored -- on the 12 frames of its hop (the two sides with no
- *      video, north and north-east / -west: their 8);
+ *      three mirrored -- on the 12 frames of its hop (from behind, the side
+ *      with no video: its 8);
  *   4. a hop that is interrupted is played out to its landing, never held in
  *      the air, and then it breathes;
  *   5. a swing's wind-up (the worker's monster_ability) plays the 12 wind-up
  *      frames over the warning, the blow on its last frame, then the 3 of
- *      recovery; a special's warning (the slam) plays it too;
+ *      recovery; a special's warning (the slam) plays it too; and as each
+ *      warning ends its water is drawn in code -- a spray the way it faces,
+ *      a ring for the slam -- once, and gone again;
  *   6. killed, it plays its own death -- all 20 frames, facing you, unmirrored
  *      -- on every kill, a big blow included, never a cut one, and is gone;
  *   7. its feet stay where they were when the death starts (deathOffsetY);
@@ -142,6 +144,21 @@ export async function run({ browser, wsPort, webPort, rec }) {
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopAlive = H.keepAlive(P, 20000);
   const shot = async (id, name) => { const b = await boxOf(P, id); if (b) await P.page.screenshot({ path: `${OUT}/${name}.png`, clip: b }).catch(() => {}); };
+  /* its water in flight: wait (by the page's own frames) until this frog's
+     blow is being drawn and a little way out, then the picture, wider */
+  const waterShot = async (id, name) => {
+    await P.page.evaluate((mid) => new Promise((resolve) => {
+      let n = 0;
+      const step = () => {
+        const w = window.__btWaterAttack ? window.__btWaterAttack() : null;
+        const b = w && w.live.find((x) => x.id === mid);
+        if ((b && b.age >= 140) || ++n > 1200) resolve(true); else requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }), id);
+    const b = await boxOf(P, id);
+    if (b) await P.page.screenshot({ path: `${OUT}/${name}.png`, clip: { x: Math.max(0, b.x - 40), y: Math.max(0, b.y - 20), width: 340, height: 300 } }).catch(() => {});
+  };
   try {
     await H.enterWorld(P);
     await H.waitFor(P, (S) => (S._zoneLoading ? null : S.currentZone), (z) => z === 'wheel', { timeout: 60000, label: 'in the world' });
@@ -163,9 +180,14 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const first = await drawn(P, id);
     const strips = await P.page.evaluate(() => (window.__btStripTrim ? window.__btStripTrim().filter((s) => s.bundle === 'waterFrog').map((s) => s.url.replace(/\?.*$/, '').split('/').pop()) : null));
     rec.ok('1. the Water Caves\' monster is drawn, its look loaded as a monster of the world\'s is (guard)', !!(first && first.visible && first.texAlive), first);
-    rec.ok('1. ...from the frog\'s 16 strips: an idle, a hop and an attack for five sides, and the death',
-      !!(strips && strips.length === 16 && ['idle', 'hop', 'attack'].every((k) => ['s', 'sw', 'e', 'n', 'ne'].every((d) => strips.indexOf(`${k}-${d}.png`) >= 0)) && strips.indexOf('death.png') >= 0), strips);
+    rec.ok('1. ...from the frog\'s 15 strips: an idle and an attack for five sides, a hop for four, and the death',
+      !!(strips && strips.length === 15 && ['idle', 'attack'].every((k) => ['s', 'sw', 'e', 'n', 'ne'].every((d) => strips.indexOf(`${k}-${d}.png`) >= 0))
+        && ['s', 'sw', 'n', 'ne'].every((d) => strips.indexOf(`hop-${d}.png`) >= 0) && strips.indexOf('death.png') >= 0), strips);
     rec.ok('1. ...256 px cells, cropped to the art', !!(first && first.texW === 256 && first.trimmed), first && { texW: first.texW, trimmed: first.trimmed });
+    /* what the look costs while you are near it (zoneTextures' own count of
+       each packed strip): held to 20 MB, where it would be 41.5 uncropped */
+    const mem = await P.page.evaluate(() => { const st = window.__btStripTrim().filter((x) => x.bundle === 'waterFrog'); return { packed: st.reduce((a, x) => a + x.packedBytes, 0), full: st.reduce((a, x) => a + x.fullBytes, 0) }; });
+    rec.ok(`1. ...${(mem.packed / 1048576).toFixed(1)} MB of pictures once cropped (${(mem.full / 1048576).toFixed(1)} MB uncropped): under 20 MB`, mem.packed > 0 && mem.packed < 20 * 1048576, mem);
     await P.page.waitForTimeout(900);
 
     /* ── 2. the breath ── */
@@ -176,8 +198,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 3. the eight ways ── */
     const WAYS = [
-      ['south', 0, 1, 12, false], ['southwest', -1, 1, 12, false], ['west', -1, 0, 12, true], ['northwest', -1, -1, 8, true],
-      ['north', 0, -1, 8, false], ['northeast', 1, -1, 8, false], ['east', 1, 0, 12, false], ['southeast', 1, 1, 12, true],
+      ['south', 0, 1, 12, false], ['southwest', -1, 1, 12, false], ['west', -1, 0, 12, true], ['northwest', -1, -1, 12, true],
+      ['north', 0, -1, 8, false], ['northeast', 1, -1, 12, false], ['east', 1, 0, 12, false], ['southeast', 1, 1, 12, true],
     ];
     for (const [facing, ux, uy, n, mirror] of WAYS) {
       const k = Math.hypot(ux, uy);
@@ -206,7 +228,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
 
     /* ── 5. the wind-up, the blow, the recovery ── */
     for (const [label, payload, ms] of [['a swing', { ability: 'swing', phase: 'windup', ms: 2400 }, 2400], ['the slam', { ability: 'slam', phase: 'telegraph', ms: 2400, radius: 88 }, 2400]]) {
-      const t0 = await P.page.evaluate(() => Date.now());
+      const blows0 = await P.page.evaluate((mid) => (window.__btWaterAttack ? window.__btWaterAttack().recent.filter((r) => r.id === mid).length : -1), id);
       const fr = await P.page.evaluate(([mid, payload, ms]) => new Promise((resolve) => {
         const S = window._gameState.current;
         const out = [];
@@ -231,12 +253,24 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`5. ...the blow's frames on screen as the warning ends (frame ${last && last.ix} at ${last && last.t} of ${ms} ms)`, !!last && last.ix >= 7, last);
       rec.ok(`5. ...then only the recovery (frames 12-14), and back to its breath`,
         rec3.every((f) => f.ix >= 12) && fr[fr.length - 1].n === 8, { rec: rec3.map((f) => [f.t, f.ix]), last: fr[fr.length - 1] });
+      /* its water, drawn in code as the warning ends (the owner: "I intend
+         for you to draw the water attacks in code actually") */
+      const wa = await P.page.evaluate((mid) => { const w = window.__btWaterAttack ? window.__btWaterAttack() : null; return w ? { on: w.on, made: w.made, pool: w.pool, mine: w.recent.filter((r) => r.id === mid) } : null; }, id);
+      const mine = wa && wa.mine[wa.mine.length - 1];
+      const want = label === 'a swing' ? 'spray' : 'ring';
+      rec.ok(`5. ...and as it ends its water is drawn in code: ${label === 'a swing' ? 'a spray the way it faces (south)' : 'a ring at the worker\'s radius (88)'}, once`,
+        !!wa && wa.on && wa.made && wa.pool === 96 && wa.mine.length === blows0 + 1 && !!mine && mine.kind === want
+        && (want === 'ring' ? mine.reach === 88 : (mine.dir[0] === 0 && mine.dir[1] === 1)), wa);
       if (label === 'a swing') {
         await watch(P, id, 300, { kind: 'ability', payload: { ability: 'swing', phase: 'windup', ms: 3000 } }, 's.n === 15 && s.ix >= 9');
         await shot(id, '3-attack-south');
-        await P.page.waitForTimeout(3600);
+        await waterShot(id, '3-attack-south-water');
+        await P.page.waitForTimeout(1500);
+      } else {
+        await watch(P, id, 300, { kind: 'ability', payload: { ability: 'slam', phase: 'telegraph', ms: 2000, radius: 88, x: 0, y: 0 } }, 's.n === 15 && s.ix >= 9');
+        await waterShot(id, '3-slam-water');
+        await P.page.waitForTimeout(1500);
       }
-      void t0;
     }
     /* ...and from the side and the front-left (pictures) */
     for (const [facing, ux, uy] of [['east', 1, 0], ['southwest', -1, 1]]) {
@@ -245,7 +279,13 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await shot(id, `1-idle-${facing}`);
       await watch(P, id, 300, { kind: 'ability', payload: { ability: 'swing', phase: 'windup', ms: 3000 } }, 's.n === 15 && s.ix >= 10');
       await shot(id, `3-attack-${facing}`);
-      await P.page.waitForTimeout(3600);
+      await waterShot(id, `3-attack-${facing}-water`);
+      await P.page.waitForTimeout(1500);
+    }
+    /* no water was drawn anywhere but at a blow: nothing lit now */
+    {
+      const wa = await P.page.evaluate(() => window.__btWaterAttack());
+      rec.ok('5. ...and between blows no water is left on screen', wa.lit === 0 && wa.live.length === 0, { lit: wa.lit });
     }
 
     /* ── 6-7. the death ── */

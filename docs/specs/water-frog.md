@@ -5,13 +5,21 @@ included videos of 5 directions: idle, attack, movement, and death animation
 (only South). Can you cut it into the right amount of frames to make it look
 smooth and wire it into the game? I want to replace the fish man monster."*
 
+And the same day: *"the northeast attack is slightly messed up (the face
+turns southeast during the 2nd half of the attack). Thats just AI drift ... I
+intend for you to draw the water attacks in code actually. Don't use the
+water in the drawings. (Either cover over it or remove)"*.
+
 ## What players get
 
 - The Water Caves' monster is the **Water Frog** (past level 20 the **Coral
   Frog**): a fat toad with a sac of cave water under its chin.
 - It **breathes** standing still, **hops** to move, **winds up** before every
-  blow (and before its slam and its other moves), and when it dies its sac
-  spins up and **bursts**, leaving it flat in the puddle.
+  blow (its sac swells, its mouth opens), and as the blow lands **its water is
+  drawn in code**: a jet out of its mouth the way it faces and the splash
+  where it comes down, or, for its slam, a wave thrown out from under it to
+  the ring it hits in. When it dies its sac spins up and **bursts**, leaving
+  it flat in the puddle.
 - It fights exactly as the fishman did. Nothing on the server changed: the
   same health, damage, slam, soak, drops and experience.
 - Its pet is the **Froglet** (the Finling before), drawn as a small frog.
@@ -27,41 +35,89 @@ frames a second on flat magenta.
 | File | What it shows | Used for |
 |---|---|---|
 | `frog-s-idle-hop.mp4` | facing you: it breathes, then one hop | idle and hop, south |
-| `frog-s-attack.mp4` | facing you: it leaps mouth open and lands in a splash | attack, south |
+| `frog-s-attack.mp4` | facing you: it leaps, mouth open | attack, south |
 | `frog-s-death.mp4` | facing you: the sac spins up and bursts | the death |
 | `frog-sw-hop.mp4` | front-left: one hop | idle and hop, south-west (mirrored: south-east) |
-| `frog-sw-attack.mp4` | front-left: the sac swells, it spits the water out | attack, south-west (and south-east) |
-| `frog-e-hop.mp4` | side on: one hop | idle and hop, east (mirrored: west) |
-| `frog-e-attack.mp4` | side on: the sac swells, it roars | attack, east (and west) |
-| `frog-e-attack-take2.mp4` | a second take of the side attack | not used (kept) |
-| `frog-e-hop-closeup.mp4` | the side hop filmed too close (the frog leaves the frame) | not used (kept) |
-| `frog-views.png` | the frog from five sides, still | north and north-east (below) |
+| `frog-sw-attack.mp4` | front-left: the sac swells, its mouth opens | attack, south-west (and south-east) |
+| `frog-ne-hop.mp4` | back-right: one hop | idle and hop, north-east (mirrored: north-west); **and the hop east and west** |
+| `frog-ne-attack.mp4` | back-right: the sac swells, then its face turns to the front (the drift) | attack, north-east (and north-west): **the swell only**, where it still faces away |
+| `frog-e-attack.mp4` | side on: the sac swells, it rears, its mouth opens | idle and attack, east (mirrored: west) |
+| `frog-e-hop-closeup.mp4` | side on, a hop, filmed so close the frog leaves the frame while the camera pulls back and in | not used (kept) |
+| `frog-views.png` | the frog from five sides, still | north (below) |
 
-One file had been uploaded twice (byte for byte the second take of the side
-attack); the copy was removed.
+One file had been uploaded twice (byte for byte the side attack); the copy
+was removed.
 
-**The videos cover three of the five sides.** There is no video from behind
-or from back-right. Those two sides (and north-west, the mirror) are made
-from the still picture: the same frog squashed, stretched and lifted through
-a hop, and leaning into its attack. It reads as a frog hopping away from you,
-but it does not move its legs. When the two videos arrive, they go in
-`SOURCES` and `STRIPS` in the cutting tool and the two `SYNTH` tables go.
+**What is missing.**
+
+- **From behind (north): no video.** That side is made from the still
+  picture: the same frog squashed, stretched and lifted through a hop, and
+  swelling into its attack. It reads as a frog hopping away from you, but it
+  does not move its legs.
+- **Side on (east and west): no usable hop.** A frog going east or west
+  stands and attacks side on and hops on the back-right strip, the nearest
+  view. It turns a little as it sets off.
+- **Back-right: the attack drifts.** Only its first half is used, so its
+  mouth never opens from that side: the sac swells to its fullest, the water
+  is thrown (in code), and the sac is let down.
+
+A video of any of these drops straight in: `SOURCES` and `STRIPS` in the
+cutting tool, and the facing table in `waterFrogSprites.js`.
+
+## No water leaves the frog in a picture
+
+The videos draw their own water: the stream it pours out, the splash it lands
+in, the drops thrown off a landing. None of that is in the strips.
+
+- The frames where water is joined to the frog are **not picked**. The
+  cutting tool's notes say which: a hop's landing splash (south 134-152,
+  south-west 132-152, back-right 111-123), the south attack's splash
+  (132-144), the stream the front-left attack pours out (120-138), the side
+  attack's drips (120-132).
+- Anything loose in a picked frame, a stray drop or a ripple, is **taken
+  out**: each cell keeps only its biggest joined-up piece, the frog
+  (`largest_part`). The unit suite checks every living cell is one piece.
+- The **sac** under its chin is the frog and stays, swelling and sloshing as
+  it winds up. The **death** is not an attack and keeps its burst.
+
+## Its water, drawn in code
+
+`data/waterAttack.js` (what each blow is made of), `game/waterAttack.js`
+(where every piece is, from the time alone: no randomness, the same on every
+phone), `rendering/waterAttackFx.js` and `waterAttackShapes.js` (drawing it).
+Built the way the element wind-ups are (`docs/specs/elem-windup.md`), which
+already draw the droplets swirling in as the frog winds up.
+
+| Blow | When | What is drawn | For how long |
+|---|---|---|---|
+| **spray** | its swing, and any move that is not a ring | three lengths of jet out of its mouth the way it faces, nine drops thrown ahead in arcs, two rings spreading where they land and three puffs of foam: 17 pieces, reaching 84 px | 480 ms |
+| **ring** | its slam (and a quake or a stomp) | ten wave crests running out from under it to the worker's own radius (88 px for the slam), ten drops leaping off them, foam at its feet: 24 pieces | 620 ms |
+
+- **When:** the moment the worker's warning ends, which is the blow. The
+  entity renderer queues it once a warning for a frog it drew
+  (`MONSTER_VARIANTS.fishman.blowFx: 'water'`); nothing new is on the wire.
+- **Cheaply:** 96 sprites made once with the renderer in one container, every
+  one a cell of one 144 x 96 px picture drawn in code on the loading screen.
+  A frame only moves, turns, sizes and fades them: nothing is added, removed
+  or hidden, so no draw list is rebuilt (TRAPS §218). At most 4 blows at
+  once, the nearest first.
+- **Off:** `?nowaterfx` for one phone. The probe is `window.__btWaterAttack()`.
 
 ## See it
 
-Each as the game plays it (front, front-left, side):
+Each as the game plays it (front, front-left, side, back-right):
 
 ![its breath](img/water-frog/idle.gif)
-![its hop](img/water-frog/hop.gif)
+![its hop: front, front-left, back-right](img/water-frog/hop.gif)
 ![its attack: the wind-up over the warning, the blow, the recovery](img/water-frog/attack.gif)
 ![its death](img/water-frog/death.gif)
 
-The two sides made from the still picture (back, back-right, back-left):
+From behind, made from the still picture (the hop, the attack):
 
-![the hop made from the still](img/water-frog/hop-from-still.gif)
+![from behind](img/water-frog/from-behind.gif)
 
-In the world: `tools/qa/mp/out/waterfrog/` after `node tools/qa/mp/run.mjs
-waterfrog`.
+In the world, with its water: `tools/qa/mp/out/waterfrog/` after `node
+tools/qa/mp/run.mjs waterfrog`.
 
 ## The frames
 
@@ -70,23 +126,24 @@ writes `docs/art/water-frog-strips.png` (every strip, to look at).
 
 | Strip | Frames | Why that many |
 |---|---|---|
-| idle (3 sides) | 8 | one breath; the video's breath is 32 frames, so every fourth: 170 ms a frame in the game is the video's own pace |
-| hop (3 sides) | 12 | crouch 3, spring 2, the air 3, the landing 2, the settle 2. The video's hop is over 100 frames; these are the ones where the pose changes |
-| attack (3 sides) | 15 | 12 of wind-up, the last of them the blow, then 3 of recovery |
+| idle (4 sides) | 8 | one breath; the video's breath is 32 frames, so every fourth: 170 ms a frame in the game is the video's own pace |
+| hop (3 sides) | 12 | crouch 3, spring 2, the air 4, the landing 3. The video's hop is over 100 frames; these are the ones where the pose changes |
+| attack (4 sides) | 15 | 12 of wind-up, the last of them the blow, then 3 of recovery |
 | death | 20 | at rest, the startle (3), the sac spinning (4), the burst (8, the fastest part, taken closest together), lying in the puddle (4) |
-| north and north-east | 1 + 8 + 9 | made from the still |
+| from behind | 1 + 8 + 9 | made from the still |
 
 Each frame is keyed by the magenta's **hue** (so the shadow some videos drew
 under the frog goes too, and its dark mouth does not), loses one pixel of
 edge (the video's compression smears magenta into the outline), is scaled by
 **its own video's frog at rest** so the frog is one size from every side (140
-rows of a 256 px cell, feet on row 231), and is written on at most **256
-colours** with the game's own quantiser (`tools/art/strip256.mjs`). The side
-hop's frames 86 to 92 leave the top of the video and are skipped.
+rows of a 256 px cell, feet on row 231), keeps only the frog (above), and is
+written on at most **256 colours** with the game's own quantiser
+(`tools/art/strip256.mjs`). The back-right hop's frames 86 to 92 leave the
+top of the video and are skipped.
 
 ## How the game plays them
 
-`src/rendering/waterFrogSprites.js` loads the sixteen strips, cropped, as one
+`src/rendering/waterFrogSprites.js` loads the fifteen strips, cropped, as one
 bundle; the variant key stays `fishman` (the worker's name for the Water
 Caves' brute, on the wire and in every saved codex). Its pace is
 `MONSTER_VARIANTS.fishman`; the three rules are plain arithmetic in
@@ -132,7 +189,7 @@ Caves' brute, on the wire and in every saved codex). Its pace is
 ## Memory
 
 The look loads as you walk toward the Water Caves and is let go behind you,
-like every land's (`wheelMonsterArt.js`). It is 162 frames where the fishman
+like every land's (`wheelMonsterArt.js`). It is 166 frames where the fishman
 was 4 pictures: about 1.6 MB of files, and cropped to the art about 13 MB on
 the graphics chip while you are there (the fire goblin's look, for
 comparison, is 120 frames). Every strip is on 256 colours, so the page keeps
@@ -143,9 +200,13 @@ moved.
 ## Tests
 
 - `server/test/water-frog.test.mjs`: the strips (there, 256 colours, their
-  frame counts, one size from every side, nothing cut off), the three rules,
-  the wiring, the names, the codex stage's numbers measured off the pictures.
+  frame counts, one size from every side, nothing cut off, **every cell one
+  joined-up piece**), the three rules, the wiring, the names, the codex
+  stage's numbers measured off the pictures; the water (its pieces, where
+  they go, that a spray goes the way it faces and a ring to its radius, that
+  both end).
 - `node tools/qa/mp/run.mjs waterfrog` (`mp-waterfrog.mjs`): a phone in the
   world; the frog's breath, the eight ways, a stopped hop, a swing's and a
-  slam's warning, three deaths, the bog lurker; then out to the Water Caves
+  slam's warning and the water drawn as each ends, three deaths, the bog
+  lurker; then out to the Water Caves
   for the server's own frogs. Pictures in `tools/qa/mp/out/waterfrog/`.

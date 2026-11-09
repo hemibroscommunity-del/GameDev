@@ -1,0 +1,220 @@
+/* ═══ v2.3.4355: THE WATER FROG'S ATTACK, DRAWN IN CODE ═══
+ *
+ * The owner, 2026-11-09: "I intend for you to draw the water attacks in code
+ * actually. Don't use the water in the drawings. (Either cover over it or
+ * remove)".
+ *
+ * WHEN: the moment a blow lands -- the end of the worker's own warning, which
+ * the phone already keeps on the monster as `_shootAnimStart`/`_shootAnimEnd`
+ * (gameEvents.js monster_ability: a swing's wind-up, and for the frog every
+ * special's).  The entity renderer, drawing a monster whose look asks
+ * (MONSTER_VARIANTS `blowFx: 'water'`), sees the warning end and queues the
+ * blow once (queueWaterBlow): where it stood, which way it faced, what kind.
+ * Nothing new on the wire; the worker decides nothing more.
+ *
+ * WHAT: a row of data/waterAttack.js -- a `spray` out of its mouth the way it
+ * faces for an ordinary blow, a `ring` thrown out from under it for a slam --
+ * its pieces placed each frame by game/waterAttack.js from the time alone.
+ * A blow is drawn where it was thrown, whatever the frog does next.
+ *
+ * WHERE and HOW: as the element wind-ups are (elemWindup.js, whose shape this
+ * is): on the projectiles layer, over everything that stands; POOL sprites
+ * made once in one Container added once, every one cut from ONE picture drawn
+ * in code (waterAttackShapes.js).  A frame only moves pieces, turns them,
+ * sizes them and sets their alpha (0 for the ones not used) and their cell of
+ * that one picture: nothing is ever added, removed, hidden or re-blended, so
+ * the layer's draw list is never rebuilt for it (TRAPS §218).  At most
+ * MAX_BLOWS at once, the nearest to you first.
+ *
+ * The picture is made on the loading screen (warmWaterAttack, in
+ * preloadWorldAnimations: the law), 144 x 96 px, ~55 KB, kept for the page as
+ * an image of itself (keepAsImage: nothing draws into it again).
+ *
+ * `?nowaterfx` leaves it out (the frog's body alone); `window.
+ * __btWaterAttack()` is the QA probe.
+ */
+import { Container, Sprite, Texture, Rectangle, Cache } from 'pixi.js';
+import { keepAsImage } from './keepAsImage.js';
+import { WATER_BLOWS, WATER_SHAPES, WATER_FX, FACING_DIR } from '@/data/waterAttack.js';
+import { waterPieces, waterBlowOver } from '@/game/waterAttack.js';
+import { seedOfId, windupSizeK } from '@/game/elemWindup.js';
+import { WATER_SHAPE_DRAW } from './waterAttackShapes.js';
+import { monsterTorsoY, monsterBodyOffsetY } from '@/data/gameSystems.js';
+import { monsterDrawScale } from '@/game/combatHelpers.js';
+
+const COLS = 3;
+let _cells = null;      /* shape -> Texture, cut from one source */
+
+/** The one picture every piece is cut from.  On the loading screen; made
+ *  here on first use only if that never ran (a test page). */
+export function warmWaterAttack() {
+  if (_cells || typeof document === 'undefined') return;
+  try {
+    const C = WATER_FX.CELL;
+    const rows = Math.ceil(WATER_SHAPES.length / COLS);
+    const cv = document.createElement('canvas');
+    cv.width = C * COLS; cv.height = C * rows;
+    const g = cv.getContext('2d');
+    WATER_SHAPES.forEach((name, i) => {
+      g.save();
+      g.translate((i % COLS) * C, Math.floor(i / COLS) * C);
+      g.beginPath(); g.rect(0, 0, C, C); g.clip();
+      try { WATER_SHAPE_DRAW[name](g, C); } catch (e) { /* a shape that cannot draw is an empty cell */ }
+      g.restore();
+    });
+    const base = Texture.from(cv);
+    /* made once and never drawn into again: kept as an image of itself
+       (keepAsImage.js, TRAPS §253), so a rebuilt renderer has it back */
+    if (base && base.source) keepAsImage(base.source, Cache);
+    const cells = Object.create(null);
+    WATER_SHAPES.forEach((name, i) => {
+      cells[name] = new Texture({ source: base.source, frame: new Rectangle((i % COLS) * C, Math.floor(i / COLS) * C, C, C) });
+    });
+    _cells = cells;
+  } catch (e) { _cells = null; }
+}
+
+function waterOn() {
+  try { return !(typeof location !== 'undefined' && new URLSearchParams(location.search).has('nowaterfx')); }
+  catch (e) { return true; }
+}
+
+/** A blow has landed: remember it for the frames it is drawn over.  Called by
+ *  the entity renderer, once a blow, for a monster it drew.  `kind` is the
+ *  monster's `_blowKind` ('spray' unless its warning was a ring's), `reach`
+ *  a ring's radius (world px; 0: the table's). */
+export function queueWaterBlow(S, m, facing, x, y, at) {
+  if (!S || !m) return false;
+  const kind = WATER_BLOWS[m._blowKind] ? m._blowKind : 'spray';
+  const d = FACING_DIR[facing] || FACING_DIR.south;
+  const shape = m.archetype || m.type;
+  const ds = monsterDrawScale(m, S.currentZone) || 1;
+  const k = windupSizeK(ds);
+  const list = S._waterBlows || (S._waterBlows = []);
+  /* (never grows: the oldest goes -- a blow lasts about half a second) */
+  if (list.length >= 12) list.shift();
+  list.push({
+    id: m.id, kind, at, x, y, dx: d[0], dy: d[1], k,
+    /* its body, from the numbers its hits already use: about as far to its
+       front as its hit circle's centre is high (the frog: 48 of its ~55), its
+       mouth a little above the middle a shot is aimed at (62 of its 98 px) */
+    R: Math.max(22, (monsterBodyOffsetY(shape) || 30) * 0.8) * ds,
+    H: Math.max(18, (monsterTorsoY(shape) || 30) * 1.15) * ds,
+    reach: kind === 'ring' && m._blowR > 0 ? m._blowR : WATER_BLOWS[kind].reach * k,
+    seed: seedOfId(m.id) ^ (at | 0),
+  });
+  return true;
+}
+
+export class WaterAttackFx {
+  constructor(layer) {
+    this.on = waterOn();
+    this.layer = layer;
+    this.box = null;
+    this.pool = [];
+    this._lit = 0;
+    this._buf = [];
+    this._live = [];     /* the probe's: what was drawn this frame */
+    this._drawn = Object.create(null);   /* the probe's: frames drawn, by kind */
+    this._recent = [];   /* the probe's: the last blows drawn, one a blow */
+    /* the pool now, with the renderer (on the loading screen), never on the
+       frame of the first blow */
+    this._make();
+    if (typeof window !== 'undefined') {
+      const self = this;
+      window.__btWaterAttack = () => ({
+        on: self.on, made: !!_cells, pool: self.pool.length, lit: self._lit,
+        live: self._live.slice(), drawn: Object.assign({}, self._drawn), recent: self._recent.slice(),
+      });
+    }
+  }
+
+  _make() {
+    if (this.box || !this.layer) return !!this.box;
+    warmWaterAttack();
+    if (!_cells) return false;
+    const box = new Container();
+    box.label = 'water-attack';
+    box.eventMode = 'none';
+    const first = _cells[WATER_SHAPES[0]];
+    for (let i = 0; i < WATER_FX.POOL; i++) {
+      const sp = new Sprite(first);
+      sp.anchor.set(0.5, 0.5);
+      sp.alpha = 0;
+      box.addChild(sp);
+      this.pool.push(sp);
+    }
+    this.layer.addChild(box);
+    this.box = box;
+    return true;
+  }
+
+  update(S, now) {
+    const list = S && S._waterBlows;
+    if (!list || !list.length) { this._park(0); return; }
+    /* the ones that are over go, whether drawn or not */
+    for (let i = list.length - 1; i >= 0; i--) if (waterBlowOver(list[i].kind, now - list[i].at)) list.splice(i, 1);
+    if (!this.on || !S.player || !list.length) { this._park(0); return; }
+    if (!this._make()) return;
+    const view = (S.camera && S._viewW > 0)
+      ? { x0: S.camera.x - WATER_FX.VIEW_PAD, y0: S.camera.y - WATER_FX.VIEW_PAD,
+          x1: S.camera.x + S._viewW + WATER_FX.VIEW_PAD, y1: S.camera.y + (S._viewH || S._viewW) + WATER_FX.VIEW_PAD }
+      : null;
+    let cand = list;
+    if (view || list.length > WATER_FX.MAX_BLOWS) {
+      const px = S.player.x, py = S.player.y;
+      cand = [];
+      for (const b of list) {
+        if (view && (b.x < view.x0 || b.x > view.x1 || b.y < view.y0 || b.y > view.y1)) continue;
+        b._d2 = (b.x - px) * (b.x - px) + (b.y - py) * (b.y - py);
+        cand.push(b);
+      }
+      if (cand.length > WATER_FX.MAX_BLOWS) { cand.sort((a, b) => a._d2 - b._d2); cand.length = WATER_FX.MAX_BLOWS; }
+    }
+    const probe = typeof window !== 'undefined' && window.__btProbe;
+    if (probe) this._live.length = 0;
+    let used = 0;
+    for (const b of cand) {
+      const blow = WATER_BLOWS[b.kind];
+      const age = now - b.at;
+      const n = waterPieces(b.kind, b, age, b.seed, this._buf);
+      const px = blow.size * b.k / WATER_FX.CELL;
+      const first = used;
+      let aMax = 0;
+      for (let q = 0; q < n && used < this.pool.length; q++) {
+        const p = this._buf[q];
+        const sp = this.pool[used++];
+        const tex = _cells[p.shape];
+        if (tex && sp.texture !== tex) sp.texture = tex;
+        sp.x = b.x + p.dx;
+        sp.y = b.y + p.dy;
+        sp.rotation = p.r;
+        sp.scale.set(px * p.s);
+        sp.alpha = p.a;
+        if (p.a > aMax) aMax = p.a;
+      }
+      if (probe) {
+        this._live.push({ id: b.id, kind: b.kind, pieces: used - first, alphaMax: Math.round(aMax * 100) / 100,
+          x: Math.round(b.x), y: Math.round(b.y), age: Math.round(age), dir: [b.dx, b.dy], reach: Math.round(b.reach),
+          at: this.pool.slice(first, used).filter((s) => s.alpha > 0.05).map((s) => [Math.round(s.x), Math.round(s.y)]) });
+        this._drawn[b.kind] = (this._drawn[b.kind] || 0) + 1;
+        if (!this._recent.some((r) => r.id === b.id && r.at === b.at)) {
+          this._recent.push({ id: b.id, kind: b.kind, at: b.at, dir: [b.dx, b.dy], reach: Math.round(b.reach) });
+          if (this._recent.length > 24) this._recent.shift();
+        }
+      }
+    }
+    this._park(used);
+  }
+
+  /* every piece past `from` see-through: never hidden or removed */
+  _park(from) {
+    for (let i = from; i < this._lit; i++) this.pool[i].alpha = 0;
+    this._lit = from;
+    if (from === 0 && this._live.length) this._live.length = 0;
+  }
+
+  /* a zone change: nothing left drawn at the last zone's places (a blow
+     queued there is over, by its own clock, before the next zone is drawn) */
+  clear() { this._park(0); }
+}
