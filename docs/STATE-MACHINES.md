@@ -47,12 +47,42 @@ player never loses items, gold or a fight to a phase that stuck.
     2.4 MB in 7 s, the town still starts in plain colours for some seconds
     (no chequer) and sharpens as its pictures come.
 
+- [ ] **A2. How a computer DRAWS the game.** OPEN: next, ahead of B, by the
+  owner's word of 2026-11-09: "It's just unoptimized for desktop. Can you fix
+  how the game gets processed when used on desktop? It's all been focused on
+  mobile performance."
+  - **What is already known** (item A's measuring): the game's own work a
+    frame on a computer's view is small and the same at every window size
+    (4 to 6 ms on the test box), because every screen sees the same area of
+    world (`docs/specs/view-cap.md`). So the code is not what a computer
+    waits for. What is left is the drawing, and that was only ever tuned on
+    phones:
+    1. **no pixel budget.** The canvas is drawn at the screen's own pixels
+       (`src/game/renderRes.js`): 1.9 million at 1920 x 1080, but about 6
+       million on a 4K screen at 150% and 11 million on a 5K one, against the
+       2.9 million of the iPhone the frame-rate work was measured on. The art
+       has 2 px a game px, which a canvas past about 4.5 million px is finer
+       than: pixels the chip pays for in every pass and nobody can see;
+    2. **the passes** (shadows, metal shine, moving water) were each kept or
+       cut by what they cost a phone's chip, never a laptop's built-in one
+       that is also encoding a stream;
+    3. Windows and a Mac draw every look the old way
+       (`src/game/lookPaletteChoice.js`).
+  - **None of it can be measured on the test box**, which draws in software.
+    So first a capture from a real computer: the Test panel's Speed test and
+    a screenshot of its card, with the computer (Windows or Mac), the browser
+    and the screen. The Speed test has no lower-resolution step for a screen
+    at 2x or under (`speedTest.js` LOW_RES): add one, so the card can say
+    whether the pixels are the cost. Then fix what the card shows; a pixel
+    budget for big screens is the likely first fix and needs no capture to be
+    safe for phones (they are under it).
+
 ## B. Cheap closes against a modified client
 
 From PLAN.md, "the cheap closes for modified phones".
 
 - [ ] **B1. The `dead` gate.** Target gates ask `ps.dying`; a phone that
-  never says it is dead cannot be hit ("god mode"). OPEN: next.
+  never says it is dead cannot be hit ("god mode"). OPEN: first of B.
 - [ ] **B2. Minted `dungeon:` ids** grow the room's memory (about 100 MB an
   hour against a 128 MB room). OPEN.
 - [ ] **B3. A points-reset loop** can write about 131,000 rows a day, past
