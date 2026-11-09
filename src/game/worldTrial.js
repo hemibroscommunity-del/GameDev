@@ -375,6 +375,14 @@ export async function preloadWorldTrial() {
   worldTrialStats.bytes += (m.meanChunkBytes || 0) * (urls.length - 1);
 }
 
+/* v2.3.4355: how far the Wheel's way in has got, as one number that changes
+   each time something of it comes -- the worker's plan, a piece of ground
+   laid, a sheet of objects loaded.  The zone gate reads it to tell a slow
+   load from a hung one (zoneGate.js gateCap). */
+export function wheelEntryProgress() {
+  return (wheelStats.planMs != null ? 1 : 0) + (wheelStats.loads || 0) + (wheelObjectStats.loads || 0) + (_ready ? 1 : 0);
+}
+
 /* v2.3.2943: the Wheel's way in -- the worker builds the plan (about a
    second), then lays the first screen round the town square, all behind the
    ordinary zone loading overlay.  A browser that cannot run the worker walks

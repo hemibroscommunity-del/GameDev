@@ -8709,3 +8709,41 @@ look on the full-set figure is split at the jog frame's waist in its shader
 **Receipt:** mp-armorgrade's eight-facing jog (plain over elite, rare over
 elite; main drew no grade on six facings); docs/specs/armor-grade-look.md
 "A soft glow outside the armour, on every facing".
+
+## 262. "The test box loads it in a blink, so nobody waits for it" (v2.3.4355)
+
+**The move.** Judge a load by how it behaves here: the test page server reads
+`dist/` off its own disk and answers in a millisecond, so every picture is
+"there" the frame it is asked for. Ship a rule that is only right when that is
+true: draw a placeholder for anything not here yet, give a download a flat
+time limit, race a loading screen against a flat number of seconds.
+
+**Why it is wrong.** At the expo of 2026-11-05 the judges played on computers
+that had never opened the game, on the venue's one line, while live-streaming.
+The owner saw "patches of texture like a checker pattern" round the edge of
+the view and a map that "loads in pieces". Three rules, each fine on this box:
+
+- a ground picture not here yet was drawn as the Ground Studio's "not made
+  yet" **chequer**: a mark meant for the owner's own unmade swatches;
+- a download had **15 s from start to last byte**: on a thin line each was cut
+  near its end and begun again from nothing (14 cut at 60 KB a second);
+- the zone gate was raced against a **flat 15 s**: a way in that was slow but
+  still arriving (17.8 s with the page slowed x4) was let go like one that had
+  hung, with the last rows of its ground not laid.
+
+A phone never showed it: the owner's own phone reads those pictures from its
+cache. "Phones are fine" was a cache, not a screen size.
+
+**The rule.**
+- A thing that is merely LATE is not a thing that is MISSING: it gets a quiet
+  stand-in (the plan's plain colour), never a debugging mark.
+- A time limit on a download counts the silence, not the whole trip
+  (`DL_STALL_MS`), so slow is never mistaken for hung.
+- A loading screen's cap reads whether its load is still arriving
+  (`src/game/zoneGate.js gateCap`), and what it lays, it lays nearest first.
+- Prove a load on a thin line and a slowed page before calling it done:
+  `BT_QA_SLOW=/world/ground/:150:200` or `H.slowLine(...)`, and
+  `BT_QA_CPU_THROTTLE=4`.
+
+**Receipt:** `mp-desksmooth`; the `ground-late` and `zone-gate` suites;
+docs/specs/slow-line-ground.md.
