@@ -26,7 +26,9 @@
  *   words   what it is, for the spec, the probe and a test's message
  */
 export const WATER_BLOWS = Object.freeze({
-  spray: Object.freeze({ ms: 480, reach: 84, size: 22,
+  /* (size 28: at 22 its drops were specks beside a frog 120 px across,
+     mp-waterfrog's first pictures) */
+  spray: Object.freeze({ ms: 480, reach: 84, size: 28,
     pieces: [['streak', 3, 1.5], ['drop', 5, 1], ['blob', 4, 0.8], ['ripple', 2, 1.6], ['foam', 3, 0.9]],
     words: 'a jet of water out of its mouth, and the splash where it lands' }),
   ring: Object.freeze({ ms: 620, reach: 88, size: 24,

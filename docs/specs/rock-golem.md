@@ -70,8 +70,10 @@ breaks are the picture), and two of its rows are only two lines apart.
 
 The two strips are 33 cells, loaded once for the golem (and the thorn
 shambler) as you walk toward the Stone Hollows and let go behind you. The old
-rock monster was four still pictures, about 1 MB. The figure is measured by
-`mp-rockgolem` section 1 and recorded here when it has run.
+rock monster was four still pictures, about 1 MB; the golem is 4.0 MB on the
+graphics chip once cropped (measured, `mp-rockgolem` section 1), so about 3
+MB more in the Stone Hollows. No memory-check line moved: `mp-membudget`
+fights at the Flame Fields and reads none of it.
 
 ## Tests
 
