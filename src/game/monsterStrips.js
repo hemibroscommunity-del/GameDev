@@ -74,3 +74,15 @@ export function idleStripFrame(now, count, frameMs, offset) {
   if (n <= 1) return 0;
   return ((Math.floor(now / (frameMs > 0 ? frameMs : 150)) + (offset | 0)) % n + n) % n;
 }
+
+/* ═══ v2.3.4356: A LOOK THAT FLOATS (the storm eye) ═══ */
+/** How far a hovering look's sprite is lifted off the ground at `now` (ms),
+ *  in its own sprite's measure (liveScalePx's): `hover.px` up, bobbing
+ *  `hover.bob` either way every `hover.ms`, each monster from its own start
+ *  (its spawn place: the same on every phone).  0 with no `hover`. */
+export function hoverLift(hover, now, m) {
+  if (!hover || !(hover.px >= 0)) return 0;
+  const ms = hover.ms > 0 ? hover.ms : 1600;
+  const start = (((m && m.spawnX) || 0) | 0) * 37 + (((m && m.spawnY) || 0) | 0) * 91;
+  return hover.px + (hover.bob || 0) * Math.sin(((now + start) / ms) * Math.PI * 2);
+}

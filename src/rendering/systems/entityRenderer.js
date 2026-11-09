@@ -63,9 +63,10 @@ import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount 
   getPhaseFrame as getSnowmanPhaseFrame, phaseFrameCount as snowmanPhaseFrameCount /* v2.3.2221 */
 } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
+import { queueStormZap } from '../stormSparksFx.js';   /* v2.3.4356: the storm eye's lightning, drawn in code */
 import { queueWaterBlow } from '../waterAttackFx.js';   /* v2.3.4355: the water frog's attack, drawn in code */
 import { WATER_FX } from '@/data/waterAttack.js';
-import { attackStripFrame, attackRecoverMs, hopFinishPos, hopIsDown, hopInAir, idleStripFrame } from '@/game/monsterStrips.js';   /* v2.3.4355: the water frog's strips */
+import { attackStripFrame, attackRecoverMs, hopFinishPos, hopIsDown, hopInAir, idleStripFrame, hoverLift } from '@/game/monsterStrips.js';   /* v2.3.4355: the water frog's strips */
 import { wheelArtTick, wheelArtOn, wheelArtReady, wheelArtWaiting } from '../wheelMonsterArt.js'; /* v2.3.2989: the Wheel's monsters' looks, loaded as you walk toward them */
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
@@ -10567,9 +10568,14 @@ export class EntityRenderer {
            stands, the way it faces (rendering/waterAttackFx.js draws it;
            gameEvents.js says which kind, `_blowKind`).  Only for a monster
            drawn here, and not for a blow first seen long after it landed. */
-        if (variant.blowFx === 'water' && m._shootAnimEnd && now >= m._shootAnimEnd && m._wbFor !== m._shootAnimStart) {
+        /* v2.3.4356: ...and the storm eye's is lightning (`blowFx: 'storm'`,
+           rendering/stormSparksFx.js), thrown off it where it floats. */
+        if (variant.blowFx && m._shootAnimEnd && now >= m._shootAnimEnd && m._wbFor !== m._shootAnimStart) {
           m._wbFor = m._shootAnimStart;
-          if (now - m._shootAnimEnd < WATER_FX.LATE_MS) queueWaterBlow(S, m, facing, rx, ry, m._shootAnimEnd);
+          if (now - m._shootAnimEnd < WATER_FX.LATE_MS) {
+            if (variant.blowFx === 'water') queueWaterBlow(S, m, facing, rx, ry, m._shootAnimEnd);
+            else if (variant.blowFx === 'storm') queueStormZap(S, m, rx, ry, m._shootAnimEnd, hoverLift(variant.hover, now, m) * MONSTER_SIZE_MULT);
+          }
         }
         const hitNow = !transformingNow && m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
         /* v2.3.4355: a strip with recovery frames at its end (variant
@@ -10670,7 +10676,17 @@ export class EntityRenderer {
           if (spriteBody.scale.x !== sx) spriteBody.scale.x = sx;
           if (spriteBody.scale.y !== sy) spriteBody.scale.y = sy;
           spriteBody._btSquash = (sqx !== 1 || sqy !== 1) ? [sqx, sqy] : null;   /* v2.3.3499: a death's pieces take it back out */
-          if (spriteBody.y !== size) spriteBody.y = size;
+          /* ═══ v2.3.4356: A LOOK THAT FLOATS ═══
+             The storm eye is one still picture a side: it has no walk and no
+             idle to play, and it is an eye on tentacles -- so it hovers
+             (MONSTER_VARIANTS `hover`): lifted off the ground and bobbing,
+             each from its own start (game/monsterStrips.js hoverLift).  Only
+             the sprite moves: the monster's own place, its hit circle and
+             its shadow stay where the worker has it.  `_ssSeen` tells
+             stormSparksFx it was drawn this frame, and how high. */
+          const _hov = variant.hover ? hoverLift(variant.hover, now, m) : 0;
+          if (spriteBody.y !== size - _hov) spriteBody.y = size - _hov;
+          if (variant.sparks) { m._ssSeen = now; m._ssLift = _hov * MONSTER_SIZE_MULT; }
           /* v2.3.1147: per-variant tint (reskins recolor shared sheets).
              v2.3.2200: hit-flash finally RENDERS — gameEvents has stamped
              m._hitFlash on every monster_hit since v2.3.248 and nothing

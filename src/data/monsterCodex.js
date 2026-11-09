@@ -157,18 +157,21 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Amethyst Golem', text: 'Past the first pass the hollows run with amethyst, and so do the monsters. Collectors would pay well for one, if anyone had ever brought one home in one piece.' }),
   }),
   sparklet: Object.freeze({
-    name: 'Slime', home: 'thunder', look: 'fodder', element: 'storm', type: 'Ooze', dungeon: 'the Foundry Dome', dungeonLevels: Object.freeze([26, 30]),
-    what: 'Bouncy and quick to anger. From a distance it spits globs of itself at you; up close it throws its whole self.',
+    /* v2.3.4356: the storm eye (the owner: "add this electric eyeball monster
+       instead of the stand-in electric slime"); the kind's id and its look's
+       key are the worker's, and stay -- to the worker it is the same monster */
+    name: 'Storm Eye', home: 'thunder', look: 'fodder', element: 'storm', type: 'Winged', dungeon: 'the Foundry Dome', dungeonLevels: Object.freeze([26, 30]),
+    what: 'An eye the size of your head, floating on its tentacles and crackling. From a distance it spits balls of lightning at you; up close it throws its whole self.',
     special: Object.freeze({
       name: 'The Lunge',
-      text: 'Every so often it winds up for over a second, then lunges at you. Between lunges, a glob flies whenever you are a few steps away.',
+      text: 'Every so often it winds up for over a second, then lunges at you. Between lunges, a ball of lightning flies whenever you are a few steps away.',
       tip: 'Watch for the wind-up: shield up, or step aside.',
     }),
     story: [
-      'The Electric Foundry was built to bottle lightning. The bottles leaked. What leaked out pooled on the floor, sat there humming for a while, and one morning got up and wobbled off on its own.',
-      'The slimes hum when they are happy and crackle when they are not, and they are almost never happy. Foundry workers learned to keep their boots rubber-soled and their friends at arm\'s length, which is good advice anywhere near one.',
+      'The Electric Foundry was built to bottle lightning. The bottles leaked. Something had to keep an eye on the leaks, and nobody would take the job, so after a while the leaks grew eyes of their own.',
+      'They hang in the air on a fistful of tentacles, watching, and they never blink, because every blink is a spark and they have learned what that does in a foundry. Workers keep their boots rubber-soled and their friends at arm\'s length, which is good advice anywhere near one.',
     ],
-    elder: Object.freeze({ name: 'Storm Slime', text: 'Deeper in the foundry the slimes have soaked up so much charge they glow storm-blue. Stand close to a friend near one and you will both find out why.' }),
+    elder: Object.freeze({ name: 'Tempest Eye', text: 'Deeper in the foundry the eyes have soaked up so much charge they have gone storm-blue all through. Stand close to a friend near one and you will both find out why.' }),
   }),
   finling: Object.freeze({
     /* v2.3.4355: the water frog (the owner: "I want to replace the fish man

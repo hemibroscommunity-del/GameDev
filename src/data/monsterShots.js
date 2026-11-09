@@ -63,6 +63,9 @@ export function shotStyleOf(arch, kind) {
  *  and so does the goo. */
 export function gooColorOf(arch, recolorReady) {
   const v = variantOf(arch);
+  /* v2.3.4356: a look that is not a slime but throws the slime's glob says
+     its colour itself (`shotColor`: the storm eye's ball of lightning) */
+  if (v && typeof v.shotColor === 'number') return v.shotColor;
   if (v && v.useSlimeSheets) {
     const rc = v.recolor;
     if (recolorReady !== false && Array.isArray(rc) && rc.length === 3) {

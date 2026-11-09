@@ -295,10 +295,10 @@ const strips = {};
     /name: 'Water Frog', home: 'tidal', look: 'fishman'/.test(cx) && /elder: Object\.freeze\(\{ name: 'Coral Frog'/.test(cx) && !/name: '[^']*Fishman/.test(cx), MONSTER_CODEX && null);
   check('4c its pet is a Froglet (the kind\'s id is the worker\'s, unchanged), drawn from the frog\'s row on the pet sheet; the Lurkling keeps the old row',
     PET_KINDS.finling.name === 'Froglet' && PET_KINDS.finling.name2 === 'Coral Froglet' && PET_KINDS.finling.look === 'fishman' && PET_KINDS.finling.home === 'tidal'
-    && PET_ART.finling.base === 'waterFrog' && !!PET_SHEET.bases.waterFrog && PET_SHEET.bases.waterFrog.row === PET_SHEET.rows - 1
+    && PET_ART.finling.base === 'waterFrog' && !!PET_SHEET.bases.waterFrog && PET_SHEET.bases.waterFrog.row === 7
     && PET_ART.lurkling.base === 'fishman' && !!PET_SHEET.bases.fishman, { art: PET_ART.finling, sheet: PET_SHEET.bases.waterFrog });
   const before = ['snowman', 'fireGoblin', 'mummy', 'rockmonster', 'fishman', 'slime', 'blueSlime'];
-  check('4d ...added as the sheet\'s last row, no earlier row moved', before.every((k, i) => PET_SHEET.bases[k].row === i) && PET_SHEET.rows === 8);
+  check('4d ...added after the sheet\'s seven rows, none of them moved', before.every((k, i) => PET_SHEET.bases[k].row === i) && PET_SHEET.rows >= 8);
   /* the codex stage */
   const L = CS.CODEX_LOOKS.waterFrog, bad = [];
   for (const [k, s] of Object.entries((L && L.strips) || {})) {
@@ -391,9 +391,9 @@ const strips = {};
   /* the wiring */
   const er = src('src/rendering/systems/entityRenderer.js'), ge = src('src/networking/gameEvents.js'), fx = src('src/rendering/systems/effectsRenderer.js');
   const wfx = src('src/rendering/waterAttackFx.js'), pre = src('src/rendering/preloadAnimations.js');
-  check('5l the frog asks for it (blowFx: water) and nobody else; the blow is queued once a warning, as it ends, for a monster drawn, never long after',
-    MONSTER_VARIANTS.fishman.blowFx === 'water' && Object.keys(MONSTER_VARIANTS).filter((k) => MONSTER_VARIANTS[k].blowFx).join() === 'fishman'
-    && /if \(variant\.blowFx === 'water' && m\._shootAnimEnd && now >= m\._shootAnimEnd && m\._wbFor !== m\._shootAnimStart\) \{\s*m\._wbFor = m\._shootAnimStart;\s*if \(now - m\._shootAnimEnd < WATER_FX\.LATE_MS\) queueWaterBlow\(S, m, facing, rx, ry, m\._shootAnimEnd\);/.test(er));
+  check('5l the frog asks for water (blowFx) and nobody else does; the blow is queued once a warning, as it ends, for a monster drawn, never long after',
+    MONSTER_VARIANTS.fishman.blowFx === 'water' && Object.keys(MONSTER_VARIANTS).filter((k) => MONSTER_VARIANTS[k].blowFx === 'water').join() === 'fishman'
+    && /if \(variant\.blowFx && m\._shootAnimEnd && now >= m\._shootAnimEnd && m\._wbFor !== m\._shootAnimStart\) \{\s*m\._wbFor = m\._shootAnimStart;\s*if \(now - m\._shootAnimEnd < WATER_FX\.LATE_MS\) \{\s*if \(variant\.blowFx === 'water'\) queueWaterBlow\(S, m, facing, rx, ry, m\._shootAnimEnd\);/.test(er));
   check('5m a swing\'s warning says spray, a special\'s its own kind and the worker\'s radius',
     /_bwM\._blowKind = 'spray'; _bwM\._blowR = 0;/.test(ge) && /_tgm\._blowKind = waterBlowKind\(payload\.ability\);\s*_tgm\._blowR = Number\(payload\.radius\) > 0 \? Number\(payload\.radius\) : 0;/.test(ge));
   check('5n drawn as the wind-ups are: one pool made once with the renderer, updated every frame, parked on a zone change; its picture made on the loading screen and kept as an image; ?nowaterfx leaves it out',
@@ -401,7 +401,7 @@ const strips = {};
     && /waterAttack: Promise\.resolve\(warmWaterAttack\(\)\)/.test(pre) && /keepAsImage\(base\.source, Cache\)/.test(wfx) && /has\('nowaterfx'\)/.test(wfx)
     && /for \(let i = 0; i < WATER_FX\.POOL; i\+\+\)/.test(wfx) && !/removeChild|\.visible = /.test(wfx));
   check('5o the list of blows cannot grow (the oldest goes at 12), and a finished one is dropped whether drawn or not',
-    /if \(list\.length >= 12\) list\.shift\(\);/.test(wfx) && /if \(waterBlowOver\(list\[i\]\.kind, now - list\[i\]\.at\)\) list\.splice\(i, 1\);/.test(wfx));
+    /if \(list\.length >= 12\) list\.shift\(\);/.test(wfx) && /if \(waterBlowOver\(list\[i\]\.kind, \(now - list\[i\]\.at\) \* rate\)\) list\.splice\(i, 1\);/.test(wfx));
 }
 
 console.log('\n' + passed + ' passed, ' + failed + ' failed');

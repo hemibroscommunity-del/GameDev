@@ -306,7 +306,7 @@ function _projCapsule(a) {
    than visibly steering: a few degrees for a bolt, fewer for an arrow, whose
    shaft is drawn at its flight angle when it sticks. */
 var LAND_CORE = { fodder: [10, 7], fireGoblin: [8, 12], snowman: [10, 9], mummy: [8, 11], skeleton: [8, 11],
-  fishman: [16, 13] /* v2.3.4355: the water frog, a wide body (its half-width ~55) */, bogLurker: [8, 12], rockmonster: [12, 14], thornShambler: [12, 14] };   /* v2.3.2845: + the tall figures' torsos */
+  stormEye: [10, 10] /* v2.3.4356: the storm eye's ball */, fishman: [16, 13] /* v2.3.4355: the water frog, a wide body (its half-width ~55) */, bogLurker: [8, 12], rockmonster: [12, 14], thornShambler: [12, 14] };   /* v2.3.2845: + the tall figures' torsos */
 var LAND_TURN_BOLT = 0.25;    /* tan(14 deg) */
 var LAND_TURN_ARROW = 0.14;   /* tan(8 deg) */
 var LAND_MAX_MS = 700;        /* a safety cap, not a pace: at 60 fps the longest landing (a skeleton, ~60 px) takes ~200 ms */

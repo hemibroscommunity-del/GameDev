@@ -419,7 +419,7 @@ the first pass and its camp at 20, out to the camp at 40.
   | the Flame Fields | fire goblin | Cinder Goblin | charred `#8c8c9c` |
   | the Wind Dunes | mummy (and its skeleton) | Gilded Mummy / Skeleton | gold `#ffd27a` |
   | the Stone Hollows | rock monster | Amethyst Golem | amethyst `#c8a0ff` |
-  | the Electric Foundry | slime | Storm Slime | teal `#60c0ff` |
+  | the Electric Foundry | storm eye (the phone's look over the worker's `fodder`; v2.3.4356. The slime stood in before) | Tempest Eye | teal `#60c0ff` |
   | the Water Caves | water frog (key `fishman`; v2.3.4355) | Coral Frog | coral `#ffb070` |
   | the Poison Forest | mire wisp, bog lurker | Spectral Wisp, Shade Lurker | cyan `#70e8ff`, violet `#c090ff` |
   | the Verdant Wilds | blue slime | Jade Slime | jade `#9cffb0` |

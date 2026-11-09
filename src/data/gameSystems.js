@@ -8571,7 +8571,9 @@ export function monsterBodyOffsetY(archOrType) {
    the fishman's figure and its 66): a squat body from its feet to ~98 px up
    (140 of its cell's rows at liveScalePx 120 under the container's 1.5), its
    middle 54 above m.y -- the hit circle's centre is 60 (liveScalePx / 2). */
-const MONSTER_TORSO_Y = { skeleton: 100, mummy: 74, fishman: 54, bogLurker: 66, rockmonster: 64, thornShambler: 64 };
+/* v2.3.4356: the storm eye floats: the middle of its ball is 48 above m.y
+   (its cell's row 124 at liveScalePx 72, plus its hover) */
+const MONSTER_TORSO_Y = { skeleton: 100, mummy: 74, fishman: 54, bogLurker: 66, rockmonster: 64, thornShambler: 64, stormEye: 48 };
 export function monsterTorsoY(archOrType) {
   const shape = hitShapeOf(archOrType);
   const t = MONSTER_TORSO_Y[shape];

@@ -4206,7 +4206,9 @@ BT_AUDIO.monsterNoise = function (clip, k) {
    bone crunch on top of it -- two death sounds at once for every Blue Slime
    and Mire Wisp.  Only plain 'fodder' was skipped. */
 BT_AUDIO.SLIME_SHEET_DEATHS = { blueSlime: 1, mireWisp: 1, mossSlime: 1 };
-BT_AUDIO.DEATH_CUES = { fireGoblin: 'dieGoblin', rockmonster: 'dieRock', thornShambler: 'dieRock', fishman: 'dieFish', bogLurker: 'dieLurker' };
+/* v2.3.4356: the storm eye cracks like a shell and breaks up (its own death
+   strip): the stone's crack and rubble, until it has a recording of its own */
+BT_AUDIO.DEATH_CUES = { fireGoblin: 'dieGoblin', rockmonster: 'dieRock', thornShambler: 'dieRock', fishman: 'dieFish', bogLurker: 'dieLurker', stormEye: 'dieRock' };
 BT_AUDIO.monsterDeath = function (arch, opts, k) {
   /* No-op for slimes (fodder).  The splat SFX is owned by the render-
      loop death-detection in BroTown.jsx — playing the bony-death wav
@@ -7202,6 +7204,7 @@ export const MONSTER_DISPLAY_NAMES = {
   mummy: 'Mummy',
   skeleton: 'Skeleton',
   fireGoblin: 'Fire Goblin',
+  stormEye: 'Storm Eye',   /* v2.3.4356: the Electric Foundry's monster (the slime stood in for it) */
   fishman: 'Water Frog',   /* v2.3.4355: the Water Caves' monster is the water frog (its key stays) */
   rockmonster: 'Rock Monster',
   mossSlime: 'Moss Slime',

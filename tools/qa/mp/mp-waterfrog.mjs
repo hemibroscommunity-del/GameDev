@@ -144,20 +144,28 @@ export async function run({ browser, wsPort, webPort, rec }) {
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stopAlive = H.keepAlive(P, 20000);
   const shot = async (id, name) => { const b = await boxOf(P, id); if (b) await P.page.screenshot({ path: `${OUT}/${name}.png`, clip: b }).catch(() => {}); };
-  /* its water in flight: wait (by the page's own frames) until this frog's
-     blow is being drawn and a little way out, then the picture, wider */
-  const waterShot = async (id, name) => {
-    await P.page.evaluate((mid) => new Promise((resolve) => {
+  /* its water in flight.  A blow is over in half a second and a picture
+     takes this box longer than that to take, so: slow motion (the client's
+     own QA switch, window.__btBlowFxRate), a short warning of its own, wait
+     by the page's frames until this frog's water is a third of the way out,
+     the picture, and the clock put back */
+  const waterShot = async (id, name, payload) => {
+    await P.page.evaluate(([mid, payload]) => new Promise((resolve) => {
+      const S = window._gameState.current;
+      window.__btBlowFxRate = 0.06;
+      window.__btDispatch({ type: 'monster_ability', payload: Object.assign({ monsterId: mid, zone: S.currentZone, x: S.player.x, y: S.player.y, ax: S.player.x, ay: S.player.y }, payload) });
       let n = 0;
       const step = () => {
         const w = window.__btWaterAttack ? window.__btWaterAttack() : null;
         const b = w && w.live.find((x) => x.id === mid);
-        if ((b && b.age >= 140) || ++n > 1200) resolve(true); else requestAnimationFrame(step);
+        if ((b && b.age >= 170) || ++n > 900) resolve(!!b); else requestAnimationFrame(step);
       };
       requestAnimationFrame(step);
-    }), id);
+    }), [id, payload]);
     const b = await boxOf(P, id);
     if (b) await P.page.screenshot({ path: `${OUT}/${name}.png`, clip: { x: Math.max(0, b.x - 40), y: Math.max(0, b.y - 20), width: 340, height: 300 } }).catch(() => {});
+    await P.page.evaluate(() => { window.__btBlowFxRate = 1; });
+    await P.page.waitForTimeout(900);
   };
   try {
     await H.enterWorld(P);
@@ -264,12 +272,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
       if (label === 'a swing') {
         await watch(P, id, 300, { kind: 'ability', payload: { ability: 'swing', phase: 'windup', ms: 3000 } }, 's.n === 15 && s.ix >= 9');
         await shot(id, '3-attack-south');
-        await waterShot(id, '3-attack-south-water');
-        await P.page.waitForTimeout(1500);
+        await P.page.waitForTimeout(1400);
+        await waterShot(id, '3-attack-south-water', { ability: 'swing', phase: 'windup', ms: 500 });
       } else {
-        await watch(P, id, 300, { kind: 'ability', payload: { ability: 'slam', phase: 'telegraph', ms: 2000, radius: 88, x: 0, y: 0 } }, 's.n === 15 && s.ix >= 9');
-        await waterShot(id, '3-slam-water');
-        await P.page.waitForTimeout(1500);
+        await waterShot(id, '3-slam-water', { ability: 'slam', phase: 'telegraph', ms: 500, radius: 88 });
       }
     }
     /* ...and from the side and the front-left (pictures) */
@@ -279,8 +285,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       await shot(id, `1-idle-${facing}`);
       await watch(P, id, 300, { kind: 'ability', payload: { ability: 'swing', phase: 'windup', ms: 3000 } }, 's.n === 15 && s.ix >= 10');
       await shot(id, `3-attack-${facing}`);
-      await waterShot(id, `3-attack-${facing}-water`);
-      await P.page.waitForTimeout(1500);
+      await P.page.waitForTimeout(1400);
+      await waterShot(id, `3-attack-${facing}-water`, { ability: 'swing', phase: 'windup', ms: 500 });
     }
     /* no water was drawn anywhere but at a blow: nothing lit now */
     {

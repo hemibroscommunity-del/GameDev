@@ -152,8 +152,12 @@ export class WaterAttackFx {
   update(S, now) {
     const list = S && S._waterBlows;
     if (!list || !list.length) { this._park(0); return; }
+    /* QA's slow motion (window.__btBlowFxRate, 1 otherwise): a blow is over in
+       half a second, and a test's picture of it takes longer than that to
+       take (as monsterShotFx's __btShotFxRate is for its films) */
+    const rate = (typeof window !== 'undefined' && window.__btBlowFxRate > 0) ? window.__btBlowFxRate : 1;
     /* the ones that are over go, whether drawn or not */
-    for (let i = list.length - 1; i >= 0; i--) if (waterBlowOver(list[i].kind, now - list[i].at)) list.splice(i, 1);
+    for (let i = list.length - 1; i >= 0; i--) if (waterBlowOver(list[i].kind, (now - list[i].at) * rate)) list.splice(i, 1);
     if (!this.on || !S.player || !list.length) { this._park(0); return; }
     if (!this._make()) return;
     const view = (S.camera && S._viewW > 0)
@@ -176,7 +180,7 @@ export class WaterAttackFx {
     let used = 0;
     for (const b of cand) {
       const blow = WATER_BLOWS[b.kind];
-      const age = now - b.at;
+      const age = (now - b.at) * rate;
       const n = waterPieces(b.kind, b, age, b.seed, this._buf);
       const px = blow.size * b.k / WATER_FX.CELL;
       const first = used;

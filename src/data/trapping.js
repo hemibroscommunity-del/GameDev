@@ -175,7 +175,7 @@ export const PET_ART = Object.freeze({
   gobling: Object.freeze({ base: 'fireGoblin', tint: 0xffffff }),
   mumling: Object.freeze({ base: 'mummy', tint: 0xffffff }),
   pebbling: Object.freeze({ base: 'rockmonster', tint: 0xffffff }),
-  sparklet: Object.freeze({ base: 'slime', tint: 0xffffff }),
+  sparklet: Object.freeze({ base: 'stormEye', tint: 0xffffff }),   /* v2.3.4356: the storm eye's row */
   finling: Object.freeze({ base: 'waterFrog', tint: 0xffffff }),   /* v2.3.4355: the water frog's row */
   wisplet: Object.freeze({ base: 'slime', tint: 0x7a5fa8 }),
   lurkling: Object.freeze({ base: 'fishman', tint: 0x5f7a5a }),

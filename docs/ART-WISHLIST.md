@@ -13,7 +13,7 @@ What the game could use from the owner next, each with a prompt ready to paste.
 Each of these is drawn in code, borrowed from somewhere else, or missing today. Each is one chat; the reference pictures to attach are in `docs/art/` (and the banners' in `docs/triage-2026-09-17/assets/`). The same prompts are on a page with a Copy button each, built from this file: https://claude.ai/artifact/9wqSAqMoa4DXfWRvYcVk1L (the owner's).
 
 1. ~~**The keepers**~~: not needed from ChatGPT any more. Since v2.3.3580 every townsperson is a bro from the character creator, your "NPCs should look like normal bro characters" (docs/specs/npc-creator-looks.md). A new keeper is a look written in `tools/qa/npc-looks.mjs` and photographed by the game; no picture to make.
-2. **The monsters** (4 chats): the Foundry Slime and the Mire Wisp, the Bog Lurker, and a real walk for the rock monster. (The fishman is done another way: since v2.3.4355 the Water Caves' monster is your water frog, cut from your videos, `docs/specs/water-frog.md`. Still wanted for it: a video from behind (idle and hop, and attack), and a side-on hop filmed whole. A back-right attack that does not turn its face would be a bonus.) Then, if you like them, a slam, hurt and death sheet for each walking one (up to 3 more).
+2. **The monsters** (3 chats): the Mire Wisp, the Bog Lurker, and a real walk for the rock monster. (The Foundry's monster is done: since v2.3.4356 it is your storm eye, `docs/specs/storm-eye.md`.) (The fishman is done another way: since v2.3.4355 the Water Caves' monster is your water frog, cut from your videos, `docs/specs/water-frog.md`. Still wanted for it: a video from behind (idle and hop, and attack), and a side-on hop filmed whole. A back-right attack that does not turn its face would be a bonus.) Then, if you like them, a slam, hurt and death sheet for each walking one (up to 3 more).
 3. **The four land banners** (4 chats): Stone Hollows, Electric Foundry, Water Caves, Poison Forest.
 4. **The four dungeons** (13 chats): each mouth, its arena's walls and the things inside it, and the boss's chest. Their prompts are in `docs/art/DUNGEON-ART-PROMPTS.md`; the Goo Grotto and the chest first (4 chats), as a new player reaches the Grotto in the first half hour.
 5. **The Farmhouse and the Dungeon Workshop** (2 chats): their prompts are in `docs/art/FARM-ART-PROMPTS.md`.
@@ -631,7 +631,7 @@ The Verdant Wilds keeps your blue slimes (your call, v2.3.1675), the Wind Dunes 
 - **Be ready for a retry or two.** ChatGPT keeps a single picture steadier than a run of animation frames. If a frame is off, ask for the whole sheet again with that frame fixed; a session can also drop a bad frame and play the good ones.
 - **Memory:** a monster made this way holds about 4 MB when it is near you, 8 with the optional sheet (the fire goblin's full set holds about 30), loaded as you walk toward it and let go behind you, like every Wheel monster.
 
-### The Foundry Slime (Electric Foundry)
+### The Foundry Slime (Electric Foundry) (NOT NEEDED since v2.3.4356: the storm eye)
 
 - **In the game:** the Electric Foundry's monsters at levels 1-20, and the Foundry Dome's. It keeps the slime's moves: it bobs, spits globs and lunges.
 - **Attach:** `docs/art/monster-style-key.png`.

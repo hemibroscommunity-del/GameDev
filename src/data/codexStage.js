@@ -26,7 +26,7 @@
  * `walk-sw` file and its west attack `attack-sw` (fireGoblinSprites.js), the
  * snowman's south-west strips face left unmirrored (snowmanSprites.js). */
 
-const SN = '?v=2.1.14', FG = '?v=2.3.26', MU = '?v=2.3.58', SK = '?v=2.3.63', FI = '?v=2.3.135', RM = '?v=2.3.137', WF = '?v=2.3.4355';
+const SN = '?v=2.1.14', FG = '?v=2.3.26', MU = '?v=2.3.58', SK = '?v=2.3.63', FI = '?v=2.3.135', RM = '?v=2.3.137', WF = '?v=2.3.4355', SE = '?v=2.3.4356';
 
 export const CODEX_LOOKS = Object.freeze({
   slime: Object.freeze({
@@ -83,6 +83,19 @@ export const CODEX_LOOKS = Object.freeze({
     cell: 256, x0: 7, x1: 249, artRows: 247, artH: 96,
     strips: Object.freeze({ idle: { url: '/sprites/monsters/fishman/walk-west.png' + FI, n: 1, ms: 0, ground: 252 } }),
   }),
+  /* v2.3.4356: the storm eye, the Electric Foundry's monster
+     (stormEyeSprites.js): one still picture, its front-left view (cell 2 of
+     views.png, which faces your character) cut out as a strip of its own for
+     the stage, which plays whole strips; and its death.  It throws a ball of
+     its lightning's pale blue. */
+  stormEye: Object.freeze({
+    cell: 256, x0: 60, x1: 191, artRows: 176, artH: 70,
+    strips: Object.freeze({
+      idle: { url: '/sprites/monsters/storm-eye/codex-idle.png' + SE, n: 1, ms: 0, ground: 232 },
+      death: { url: '/sprites/monsters/storm-eye/death.png' + SE, n: 12, ms: 900, ground: 229 },
+    }),
+    shot: { color: '#9fe3ff', px: 15 },
+  }),
   /* v2.3.4355: the water frog, the Water Caves' monster (waterFrogSprites.js)
      -- its front-left strips, which face your character unmirrored: its
      breath, its hop for the walk in and back, its wind-up for the swing.
@@ -113,7 +126,7 @@ export const CODEX_STAGE = Object.freeze({
   gobling: Object.freeze({ look: 'fireGoblin', elderTint: 0x8c8c9c, hit: 'throw', special: 'lunge' }),
   mumling: Object.freeze({ look: 'mummy', elderTint: 0xffd27a, hit: 'swing', special: 'unwrap' }),
   pebbling: Object.freeze({ look: 'rockmonster', elderTint: 0xc8a0ff, hit: 'swing', special: 'slam' }),
-  sparklet: Object.freeze({ look: 'slime', elderTint: 0x60c0ff, hit: 'throw', special: 'lunge' }),
+  sparklet: Object.freeze({ look: 'stormEye', elderTint: 0x60c0ff, hit: 'throw', special: 'lunge', shotColor: '#9fe3ff' }),   /* v2.3.4356: the storm eye */
   finling: Object.freeze({ look: 'waterFrog', elderTint: 0xffb070, hit: 'swing', special: 'slam' }),   /* v2.3.4355: the water frog */
   wisplet: Object.freeze({ look: 'slime', tint: 0x7a5fa8, elderTint: 0x70e8ff, hit: 'throw', special: 'lunge', shotColor: '#2c3f32' }),
   lurkling: Object.freeze({ look: 'fishman', tint: 0x5f7a5a, elderTint: 0xc090ff, hit: 'swing', special: 'slam' }),

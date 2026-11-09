@@ -70,11 +70,12 @@ const { MONSTER_VARIANTS } = await import('../../src/data/monsterVariants.js');
 {
   const looks = [...Object.keys(MONSTER_VARIANTS), 'snowman', 'fodder'];
   /* v2.3.4355: but for a look whose death is its own strip on every kill
-     (`deathStripOnly`: the water frog), which is never cut into zones */
+     (`deathStripOnly`: the water frog; v2.3.4356: the storm eye), which is
+     never cut into zones */
   const stripOnly = looks.filter((k) => MONSTER_VARIANTS[k] && MONSTER_VARIANTS[k].deathStripOnly);
   const none = looks.filter((k) => !Z.deathZoneLook(k) && stripOnly.indexOf(k) < 0);
-  check('2a every monster variant, the snowman and the slime have zones (but the water frog: its own animation)',
-    none.length === 0 && stripOnly.join() === 'fishman' && stripOnly.every((k) => !Z.deathZoneLook(k)), { none, stripOnly });
+  check('2a every monster variant, the snowman and the slime have zones (but the water frog and the storm eye: their own animations)',
+    none.length === 0 && stripOnly.join() === 'fishman,stormEye' && stripOnly.every((k) => !Z.deathZoneLook(k)), { none, stripOnly });
   check('2b the looks on the slime\'s sheets are cut as the slime (a blob)',
     ['fodder', 'mossSlime', 'blueSlime', 'mireWisp'].every((k) => Z.deathZoneLook(k) === Z.DEATH_ZONES.slime) && Z.DEATH_ZONES.slime.blob === true);
   check('2c a look without zones dies today\'s way (null)', Z.deathZoneLook('brute') === null && Z.deathZoneLook('__proto__') === null && Z.deathZoneLook(null) === null);

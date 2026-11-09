@@ -314,6 +314,46 @@ export const MONSTER_VARIANTS = {
     deathScalePx: 138,
     deathOffsetY: 20,
   },
+  /* ═══ v2.3.4356: THE STORM EYE -- the Electric Foundry's monster ═══
+     The owner: "Also add this electric eyeball monster instead of the
+     stand-in electric slime. You'll use code to make the electric effects".
+     The Foundry's monsters were the plain green slime, standing in.  This is
+     their look now: the same monster to the worker in every way (a `fodder`
+     of the storm element: its health, its spit, its lunge, its drops -- the
+     map below is the phone's alone, as the Water Caves' and the Stone
+     Hollows' are), drawn as an eye on tentacles (rendering/stormEyeSprites.js,
+     cut from the owner's sheet by tools/art/cut_storm_eye.py): one still
+     picture a side and its own death.
+       hover          it floats: its sprite lifted `px` and bobbing `bob`
+                      every `ms` (in liveScalePx's measure; only the picture
+                      moves, never where the worker has it)
+       sparks         arcs jump over its body, and round its shots, drawn in
+                      code (rendering/stormSparksFx.js)
+       blowFx         'storm': lightning is thrown off it as a blow of its
+                      lands (the end of the worker's warning)
+       telegraphAttack  ...its lunge's and its tier moves' warnings too
+       shotColor      its spit is the slime's glob in the pale blue of its
+                      lightning: with the arcs round it, a ball of it
+       deathStripOnly its death is its own 12 frames on every kill: it
+                      cracks, tips over and breaks up
+       noFodderRemnants  no green splat under what it drops
+     liveScalePx 72 puts the ball of it about 50 px across and the whole of
+     it, tentacles and all, about 75 tall: bigger than the slime it replaces,
+     under a bro.  No `spd`: it moves at the slime's pace, the worker's. */
+  stormEye: {
+    baseArchetype: 'fodder',
+    liveScalePx: 72,
+    headTopPx: 60,
+    hover: { px: 5, bob: 2.5, ms: 1700 },
+    sparks: true,
+    blowFx: 'storm',
+    telegraphAttack: true,
+    shotColor: 0x9fe3ff,
+    projectileScalePx: 26,
+    deathStripOnly: true,
+    deathMs: 900,
+    noFodderRemnants: true,
+  },
   /* Rockmonster -- Deep Hollows brute skin.  A single still pose, no walk
      cycle; the renderer dwells on the only frame while the entity
      translates around the map. */
@@ -403,6 +443,10 @@ export const MONSTER_VARIANTS = {
 export const ZONE_VARIANT_MAP = {
   ember: { fodder: 'fireGoblin' },
   tidal: { brute: 'fishman' },
+  /* v2.3.4356: the Electric Foundry's slimes are the storm eye.  The phone's
+     alone, as tidal's and hollows' are: the worker has no entry (its remains
+     and kill keys are the slime's), and mirror-audit §9 holds that. */
+  thunder: { fodder: 'stormEye' },
   hollows: { brute: 'rockmonster' },
   /* v2.3.1147: keep in sync with server _variantForArchInZone. */
   /* v2.3.1675 (owner: "make the slimes in verdant wilds blue"): the zone-wide
@@ -536,6 +580,7 @@ const HIT_MATERIALS = {
   mireWisp:      { kind: 'goo',   tint: 0x7fd0c9, decal: '#3d6f6a' },
   bogLurker:     { kind: 'goo',   sound: 'mud', tint: 0x5e7a52, decal: '#37482f' },   /* v2.3.3001: a bog's mud */
   fishman:       { kind: 'goo',   sound: 'wet', tint: 0x62b8c7, decal: '#2f6570' },   /* v2.3.3001: a wet slap */
+  stormEye:      { kind: 'goo',   sound: 'wet', tint: 0xd9c8e8, decal: '#6f5a86' },   /* v2.3.4356: an eye: wet, in its own pale lilac */
   swarm:         { kind: 'goo',   tint: 0x8a6dc0, decal: '#4c3a70' },
   volatile:      { kind: 'ember', tint: 0xf59e0b, decal: '#78350f' },
   stalker:       { kind: 'goo',   tint: 0x94a3b8, decal: '#475569' },

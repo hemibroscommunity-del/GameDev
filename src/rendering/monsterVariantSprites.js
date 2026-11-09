@@ -87,6 +87,18 @@ import {
   frameCount as rmWalkCount,
 } from './rockmonsterSprites.js';
 
+/* v2.3.4356: the storm eye -- the Electric Foundry's monster */
+import {
+  loadStormEyeSprites,
+  unloadStormEyeSprites,
+  getFrame as seFrame,
+  hasFrames as seHas,
+  frameCount as seCount,
+  getDeathFrame as seDeathFrame,
+  hasDeathFrames as seHasDeath,
+  deathFrameCount as seDeathCount,
+} from './stormEyeSprites.js';
+
 export const VARIANT_SPRITES = {
   fireGoblin: {
     load: loadFireGoblinSprites,
@@ -144,6 +156,17 @@ export const VARIANT_SPRITES = {
     idle:   { get: wfIdleFrame,   has: wfHasIdle,   count: wfIdleCount   },
     attack: { get: wfAttackFrame, has: wfHasAttack, count: wfAttackCount },
     death:  { get: wfDeathFrame,  has: wfHasDeath,  count: wfDeathCount  },
+  },
+  /* v2.3.4356: THE STORM EYE (the owner: "add this electric eyeball monster
+     instead of the stand-in electric slime").  One still picture a side
+     (`walk`: the renderer hovers it, MONSTER_VARIANTS.stormEye) and its own
+     death; no attack, hit or idle strips -- its electricity is drawn in
+     code (stormSparksFx.js). */
+  stormEye: {
+    load: loadStormEyeSprites,
+    unload: unloadStormEyeSprites,
+    walk:  { get: seFrame,      has: seHas,      count: seCount      },
+    death: { get: seDeathFrame, has: seHasDeath, count: seDeathCount },
   },
   rockmonster: {
     load: loadRockmonsterSprites,

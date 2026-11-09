@@ -57,6 +57,11 @@ BASES = [
     # a one-pose pet is carried by the renderer's own little hop -- a frog's.
     # Last, so no earlier row moves.
     dict(name='waterFrog', front='water-frog/idle-s.png', ffw=256, side='water-frog/idle-e.png', sfw=256, faces='e', pick=[0]),
+    # v2.3.4356: the storm eye (the Electric Foundry's monster since; the
+    # Sparklet's row -- the `slime` row above is the Wisplet's alone).  Its
+    # one still picture a side: cells 0 (facing you) and 1 (side on, facing
+    # right) of its views strip.  A one-pose pet: carried by the renderer's hop.
+    dict(name='stormEye', front='storm-eye/views.png', ffw=256, side='storm-eye/views.png', sfw=256, faces='e', pick=[0], side_pick=[1]),
 ]
 
 
@@ -133,7 +138,7 @@ def main():
     for b in BASES:
         name, faces, recolor = b['name'], b['faces'], b.get('recolor')
         front = frames_of(load_rgba(b['front']), b['ffw'], FRAMES, b.get('pick'))
-        side = frames_of(load_rgba(b['side']), b['sfw'], FRAMES, b.get('pick')) if b['side'] else []
+        side = frames_of(load_rgba(b['side']), b['sfw'], FRAMES, b.get('side_pick') or b.get('pick')) if b['side'] else []
         if recolor:
             both = retint(front + side, recolor)
             front, side = both[:len(front)], both[len(front):]

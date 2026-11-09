@@ -34,6 +34,7 @@
 
 import { preloadLoginSpin } from './loginSpinPreload.js'; /* v2.3.4295: the login wheel's art */
 import { preloadLootIcons } from './lootIcons.js'; /* v2.3.2771 */
+import { warmStormSparks } from './stormSparksFx.js'; /* v2.3.4356: the storm eye's lightning's picture */
 import { warmWaterAttack } from './waterAttackFx.js'; /* v2.3.4355: the water attack's picture */
 import { warmElemWindup } from './elemWindup.js'; /* v2.3.3619: the element wind-ups' picture */
 import { warmSootMarks } from './sootMarks.js'; /* v2.3.3679: a slime blast's soot */
@@ -511,6 +512,7 @@ export async function preloadWorldAnimations() {
     /* v2.3.4355: ...and the one the water frog's attack is cut from
        (waterAttackFx.js), drawn in code too */
     waterAttack: Promise.resolve(warmWaterAttack()),
+    stormSparks: Promise.resolve(warmStormSparks()),   /* v2.3.4356: ...and the storm eye's lightning */
     soot: Promise.resolve(warmSootMarks()),   /* v2.3.3679: a slime blast's soot, drawn once */
     /* v2.3.3040: the tool pictures in the label over every resource
        (nodeLabels.js) -- the bag's hatchet, pickaxe and rod, shrunk to 64 px:
