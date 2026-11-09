@@ -78,6 +78,7 @@ export const wheelStats = {
   calm: null,          /* v2.3.3021: { n, ms }, water pictures calmed (ground.js CALM WATER) */
   diet: null,          /* v2.3.3717: decodes, redecodes, keepMax... (ground-worker.js DIET, `?groundlean`) */
   dl: null,            /* v2.3.4355: cuts, far, gateWaitMs (ground-worker.js A SLOW LINE) */
+  dlBytes: 0,          /* v2.3.4355: bytes of ground pictures downloaded this visit, said as they come ('dl') */
   unreadable: 0,       /* swatch pictures this browser could not unpack (drawn in plan colour) */
   /* v2.3.2959: the downloads (ground-worker.js, DOWNLOADS THAT CANNOT STOP THE
      GROUND) -- pictures on their way now, tries that failed and will be made
@@ -371,6 +372,10 @@ function onMessage(m, resolveInit, rejectInit) {
     if (m.q != null) _here = { q: m.q, x: m.id.x, y: m.id.y, region: m.reg || null, tier: m.tier || 0, words: m.words || null };
     return;
   }
+  /* v2.3.4355: the ground's pictures are still arriving (the bytes so far):
+     what lets the zone gate tell a slow way in from a hung one (worldTrial.js
+     wheelEntryProgress; ground-worker.js THE WAY IN WAITS) */
+  if (m.type === 'dl') { wheelStats.dlBytes = m.bytes || 0; return; }
   /* v2.3.2959: a picture some piece went without has come ('id|version') */
   if (m.type === 'got') {
     for (const fn of _gotFns) { try { fn(m.k); } catch (e) { /* one listener's trouble */ } }

@@ -70,10 +70,10 @@ const TRIP_VEIL_MS = 30000;
 export function wheelTripVeiled(S) {
   if (!(S && S._spawnToWheel && S.currentZone === 'town')) return false;
   /* v2.3.4355: ...and for as long as the stairs' gate into the world is up.
-     The gate may now wait up to 24 s for a way in that is still arriving
-     (zoneGate.js gateCap; it was a flat 15), and this veil's 30 s run from an
-     earlier moment (the worker's first word): on a phone drawing a frame
-     every few seconds the veil could run out with the gate still up, and
+     The gate may now wait up to 45 s for a way in that is still arriving
+     (zoneGate.js gateCap; it was a flat 15), longer than this veil's 30 s,
+     which also run from an earlier moment (the worker's first word): the
+     veil would run out with the gate still up, and
      today's town's art (46 MB) would be loaded for a stop nobody sees
      (zoneTransitions.js syncTownScenery; v2.3.3729's black screens).  While
      the gate is up the trip IS under way, whatever the clock says. */

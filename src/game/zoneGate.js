@@ -34,16 +34,17 @@
  *                       short, what is missing is the far edge, for a moment,
  *                       never the ground you stand on.
  *
- * GATE_CAP_MAX_MS stays under the two clocks that watch the gate from
- * outside: the stuck-gate failsafe (zoneTransitions.js, GATE_STALE_MS) and
- * the trip's veil (wheelHome.js TRIP_VEIL_MS, 30 s from the worker's first
- * word: past it today's town's art would be loaded for a stop nobody sees).
+ * GATE_CAP_MAX_MS stays under the stuck-gate failsafe (zoneTransitions.js,
+ * GATE_STALE_MS).  The trip's veil (wheelHome.js TRIP_VEIL_MS, 30 s from the
+ * worker's first word) no longer bounds it: the veil holds for as long as
+ * the gate into the world is up (wheelTripVeiled), so today's town's art is
+ * never loaded for a stop nobody sees, however long the gate waits.
  */
 
 export const GATE_CAP_MS = 15000;       /* a load that says nothing is given this long, as before */
-export const GATE_QUIET_MS = 8000;      /* past that: until this long goes by with nothing new (the ground's pieces wait up to 7 s for their pictures: ground-worker.js GATE_WAIT_MS) */
-export const GATE_CAP_MAX_MS = 24000;   /* ...and never longer than this */
-export const GATE_STALE_MS = 30000;     /* the failsafe's age for a gate nothing consumed (zoneTransitions.js; it was 20 s against the flat 15) */
+export const GATE_QUIET_MS = 8000;      /* past that: until this long goes by with nothing new (the ground's worker stops waiting for a picture after 3 s without a byte: ground-worker.js GATE_STALL_MS) */
+export const GATE_CAP_MAX_MS = 45000;   /* ...and never longer than this (the owner's "Go recommended", 2026-11-09: a slow first visit waits behind the loading screen for the town's pictures -- 2.4 MB, 16 s at 150 KB a second -- and arrives drawn) */
+export const GATE_STALE_MS = 50000;     /* the failsafe's age for a gate nothing consumed (zoneTransitions.js; it was 20 s against the flat 15) */
 const GATE_TICK_MS = 250;
 
 /** Resolves when the gate should stop waiting for its load.  `progress`: a

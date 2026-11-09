@@ -48,25 +48,35 @@ LINE"):
   pictures against the first screen's 8; on the way out of town about 16 more.
 - **The line belongs to the waiting piece.** A quiet download never starts
   beside one a piece is waiting for, and at most `DL_QUIET` (2) run at once.
-- **The way in's pieces share one wait** for their pictures: `GATE_WAIT_MS`
-  (7 s) from the first of them that had to wait, where each new picture used
-  to cost its own 4 s in turn. Past it they are laid with what has come.
+- **The way in waits for its pictures while they are still coming.** The
+  owner, 2026-11-09, asked whether the loading screen should wait longer on a
+  slow first visit so the town arrives drawn: "Go recommended". The gate's
+  pieces share one wait (`gateWait`): for as long as bytes of any ground
+  picture are still arriving, up to `GATE_WAIT_MS` (30 s) in all, and no
+  longer once the line has gone `GATE_STALL_MS` (3 s) without a byte. A slow
+  line waits and lays the town drawn; a dead one lays it plain in 3 s. Each
+  new picture used to cost its own 4 s in turn. The worker tells the game
+  the downloads are alive every 0.4 s (`'dl'`), which is how the zone gate
+  tells this wait from a hung load.
 
 **The zone gate** (`src/game/zoneGate.js`, read by `zoneTransitions.js` and
 `wheelTrial.js`):
 
 - **`gateCap(progress)`**: the world's way in is given longer while it is
-  still arriving. Past 15 s the gate keeps waiting while a piece of ground or
-  a sheet of objects keeps coming (`worldTrial.js wheelEntryProgress`), lets go
-  once nothing has come for `GATE_QUIET_MS` (8 s), and never waits past
-  `GATE_CAP_MAX_MS` (24 s). A load that hung still frees the player at 15 s.
-  Every other zone keeps the flat 15 s.
+  still arriving. Past 15 s the gate keeps waiting while a piece of ground,
+  a sheet of objects or more bytes of a ground picture keep coming
+  (`worldTrial.js wheelEntryProgress`), lets go once nothing has come for
+  `GATE_QUIET_MS` (8 s), and never waits past `GATE_CAP_MAX_MS` (45 s). A
+  load that hung still frees the player at 15 s. Every other zone keeps the
+  flat 15 s.
 - **`fillOrder`**: the gate's pieces are asked for nearest the arrival first.
   Whatever cuts the wait short, what is missing is the far edge for a moment,
   never the ground you stand on.
-- The stuck-gate failsafe's age went from 20 s to `GATE_STALE_MS` (30 s), to
+- The stuck-gate failsafe's age went from 20 s to `GATE_STALE_MS` (50 s), to
   stay above the gate's longest wait. The trip's veil (`wheelHome.js
-  TRIP_VEIL_MS`, 30 s) is untouched and still above it (`zone-gate` §5).
+  TRIP_VEIL_MS`, 30 s) is now shorter than that wait, so it no longer bounds
+  it: the veil holds for as long as the gate into the world is up
+  (`zone-gate` §5a).
 
 Nothing is kept in memory that was not: pictures fetched ahead are held like
 the others (`FILES_KEEP`, 8) and otherwise by the browser's own cache.
@@ -96,24 +106,28 @@ the others (`FILES_KEEP`, 8) and otherwise by the browser's own cache.
 
 | | Before | After |
 |---|---|---|
-| Thin line, 150 KB a second: pieces chequered at the lift | 50 of 50 | 0 (38 plain, mending) |
-| ...the town whole | 12.5 s after the lift | 13.8 s (the line's own limit: 2.4 MB) |
+| Thin line, 150 KB a second: pieces chequered at the lift | 50 of 50 | 0 |
+| ...pieces in plain colour at the lift | (chequered) | 0: the town arrives drawn |
+| ...the loading screen held | 14 s | 22 s |
+| ...the town whole | 12.5 s after the lift | at the lift |
 | ...pieces laid short on the walk out of town | 25 | 0 |
 | Thin line, 60 KB a second: downloads cut and restarted | 14 | 0 |
-| ...the town whole | 85 s | 40 s |
+| ...the town whole | 85 s after the lift | about 40 s after the way in began |
 | Page slowed x4: pieces missing at the lift | 14 of 50 (11 on the outer ring) | 0 |
 | ...the gate held | 15.2 s | 17.6 s |
-| Page slowed x4 AND 250 KB a second: pieces still plain a minute after the lift | 8 of 50 | 0 (whole 9.7 s after it) |
+| Page slowed x4 AND a line silent for 6 s: pieces still plain a minute after the lift | 8 of 50 (at 250 KB a second) | 0 (laid plain after 4 s of waiting, all whole after the lift) |
 | Quiet box: missing at the lift, late on a walk | 0, 0 | 0, 0 |
 
 ## What it does not do
 
-- On a line too slow for the first screen's 2.4 MB in 7 s, the town still
-  starts in plain colours for a few seconds and sharpens as its pictures
-  come. Waiting longer behind the loading screen would fix that for a first
-  visit and is the owner's call.
-- A processor so busy that the way in takes more than 24 s still lifts on
+- On a line too slow for the first screen's 2.4 MB in 30 s (under about
+  80 KB a second), or one that goes silent for 3 s, the town still starts in
+  plain colours and sharpens as its pictures come.
+- A processor so busy that the way in takes more than 45 s still lifts on
   ground being laid (now nearest first, so the far edge).
+- The loading screen is longer on a slow first visit: that is the trade the
+  owner chose. A returning player, whose pictures are saved, waits no longer
+  than before.
 - Nothing here measures a real graphics chip. See "Measuring" below.
 
 ## Measuring
@@ -126,10 +140,11 @@ the others (`FILES_KEEP`, 8) and otherwise by the browser's own cache.
   - a walk across the town: no piece or object late on screen;
   - the game's work a frame (`perfTracker` `workMs`) under its line;
   - 1920 x 1080 with the page slowed x4: the same, the gate holding;
-  - 1920 x 1080 slowed AND on a thin line: ground laid plain behind the
-    loading screen is whole within 30 s of the lift;
-  - 1920 x 1080 on a thin line: no download cut, the town whole in 30 s, the
-    walk's pictures fetched ahead.
+  - 1920 x 1080 slowed AND on a line silent for 6 s: the way in does not
+    wait for it, and ground laid plain behind the loading screen is whole
+    within 30 s of the lift;
+  - 1920 x 1080 on a thin line: the loading screen waits and lifts on ground
+    wholly drawn, no download cut, the walk's pictures fetched ahead.
 
   Measured, work a frame in ms on this box (middle frame / 19 in 20):
 

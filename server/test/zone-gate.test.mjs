@@ -9,7 +9,8 @@
  *   1. gateCap with no progress to read: 15 s, exactly as before;
  *   2. a load that says nothing (hung): still 15 s;
  *   3. a load still arriving past 15 s: the gate waits for it, and lets go
- *      GATE_QUIET_MS after its last sign of life;
+ *      GATE_QUIET_MS after its last sign of life; one still arriving at 30 s
+ *      (a slow first visit's pictures: the owner's "Go recommended") is held;
  *   4. a load that never stops arriving: never past GATE_CAP_MAX_MS;
  *   5. the clocks outside the gate stay longer than its longest wait (the
  *      failsafe's age, and wheelHome.js's trip veil);
@@ -81,15 +82,18 @@ async function liftAt(progressAt, horizon = 60000) {
   const lastSign = 17800;
   const at = await liftAt((t) => Math.floor(Math.min(t, lastSign) / 400));
   check('3. a load still arriving at 15 s is waited for: the gate is still held at 17.8 s', at !== null && at > lastSign, at);
-  check('3b. ...and (its quiet would end past the longest wait) is let go at GATE_CAP_MAX_MS', at !== null && at >= GATE_CAP_MAX_MS && at < GATE_CAP_MAX_MS + 500 && lastSign + GATE_QUIET_MS > GATE_CAP_MAX_MS, at);
+  check('3b. ...and lets go GATE_QUIET_MS after its last sign of life', at !== null && at >= lastSign - 400 + GATE_QUIET_MS && at <= lastSign + GATE_QUIET_MS + 500 && at < GATE_CAP_MAX_MS, at);
+  /* the owner's "Go recommended" (2026-11-09): a slow first visit's pictures still arriving at 30 s are waited for */
+  const slow = await liftAt((t) => Math.floor(Math.min(t, 30000) / 400), 90000);
+  check('3d. a way in still arriving at 30 s (a slow first visit\'s pictures) is still held then', slow !== null && slow > 30000 && slow <= 30000 + GATE_QUIET_MS + 500, slow);
   /* arriving until 15.5 s: quiet for 8 s at 23.5 s */
   const b = await liftAt((t) => Math.floor(Math.min(t, 15500) / 250));
   check('3c. one that stops at 15.5 s is let go about 8 s later, not at once', b !== null && b >= 15250 + GATE_QUIET_MS && b <= 15500 + GATE_QUIET_MS + 500, b);
 }
 /* 4 */
 {
-  const at = await liftAt((t) => t);
-  check('4. a load that never stops arriving is let go at GATE_CAP_MAX_MS', at !== null && at >= GATE_CAP_MAX_MS && at < GATE_CAP_MAX_MS + 500, at);
+  const at = await liftAt((t) => t, 120000);
+  check('4. a load that never stops arriving is let go at GATE_CAP_MAX_MS (45 s)', at !== null && at >= GATE_CAP_MAX_MS && at < GATE_CAP_MAX_MS + 500 && GATE_CAP_MAX_MS === 45000, at);
   const boom = await liftAt(() => { throw new Error('reader broke'); });
   check('4b. a reader that throws is a load that says nothing: 15 s', boom !== null && boom >= GATE_CAP_MS && boom < GATE_CAP_MS + 500, boom);
 }
@@ -98,18 +102,25 @@ async function liftAt(progressAt, horizon = 60000) {
   const home = readFileSync(join(ROOT, 'src/game/wheelHome.js'), 'utf8');
   const m = /const TRIP_VEIL_MS = (\d+);/.exec(home);
   const veil = m ? Number(m[1]) : 0;
-  check('5. the longest wait is under the failsafe\'s age and the trip veil, with room', GATE_CAP_MAX_MS + 5000 <= GATE_STALE_MS && GATE_CAP_MAX_MS + 5000 <= veil && GATE_QUIET_MS < GATE_CAP_MAX_MS - GATE_CAP_MS + 1,
+  check('5. the longest wait is under the failsafe\'s age, with room', GATE_CAP_MAX_MS + 5000 <= GATE_STALE_MS && GATE_QUIET_MS < GATE_CAP_MAX_MS - GATE_CAP_MS + 1 && veil > 0,
     { GATE_CAP_MAX_MS, GATE_STALE_MS, veil });
-  /* ...and the veil does not lean on that room: while the stairs' gate into the world is up, the trip is veiled whatever
-     the clock says (on a phone drawing a frame every few seconds the 30 s could run out first, and today's town's 46 MB
-     of art would load for a stop nobody sees: zoneTransitions.js syncTownScenery) */
+  /* ...and the trip's veil (30 s) is SHORTER than the gate's longest wait now, so it must not be what bounds it: while the
+     stairs' gate into the world is up, the trip is veiled whatever the clock says (else today's town's 46 MB of art
+     would load for a stop nobody sees: zoneTransitions.js syncTownScenery) */
   const veiled = home.slice(home.indexOf('export function wheelTripVeiled'), home.indexOf('/** Has the way in arrived'));
   check('5a. the trip\'s veil holds while the gate into the world is up, before it reads its own clock',
     /if \(S\._zoneLoading && isWorldViewZone\(S\._zoneLoading\.toZone\)\) return true;\s*return Date\.now\(\) - \(S\._spawnAskedAt \|\| 0\) < TRIP_VEIL_MS;/.test(veiled));
-  /* the ground's pieces wait up to GATE_WAIT_MS for their pictures with nothing laid: that must not read as a hung load */
+  /* the ground's pieces wait for their pictures with nothing laid: that must not read as a hung load.  The worker tells
+     the game the downloads are arriving every DL_SAY_MS, and stops waiting GATE_STALL_MS after the last byte: both well
+     inside the gate's quiet, and the whole wait inside the gate's longest */
   const gw = readFileSync(join(ROOT, 'public/tools/world/core/ground-worker.js'), 'utf8');
-  const g = /const GATE_WAIT_MS = (\d+);/.exec(gw);
-  check('5b. the gate\'s quiet is longer than the ground\'s wait for its pictures', !!g && Number(g[1]) < GATE_QUIET_MS, g && g[1]);
+  const n = (name) => { const m = new RegExp('const ' + name + ' = (\\d+);').exec(gw); return m ? Number(m[1]) : null; };
+  check('5b. the ground\'s worker stops waiting, and says it is alive, well inside the gate\'s quiet', n('GATE_STALL_MS') > 0 && n('GATE_STALL_MS') * 2 <= GATE_QUIET_MS && n('DL_SAY_MS') > 0 && n('DL_SAY_MS') * 4 <= GATE_QUIET_MS,
+    { GATE_STALL_MS: n('GATE_STALL_MS'), DL_SAY_MS: n('DL_SAY_MS'), GATE_QUIET_MS });
+  check('5c. ...its whole wait for pictures fits inside the gate\'s longest, with room to lay the ground after', n('GATE_WAIT_MS') + 10000 <= GATE_CAP_MAX_MS, { GATE_WAIT_MS: n('GATE_WAIT_MS'), GATE_CAP_MAX_MS });
+  const wtl = readFileSync(join(ROOT, 'src/game/worldTrial.js'), 'utf8');
+  const prog = wtl.slice(wtl.indexOf('export function wheelEntryProgress'), wtl.indexOf('export function wheelEntryProgress') + 400);
+  check('5d. ...and the gate counts bytes still arriving as a sign of life', /wheelStats\.dlBytes/.test(prog) && /if \(m\.type === 'dl'\) \{ wheelStats\.dlBytes = m\.bytes \|\| 0; return; \}/.test(readFileSync(join(ROOT, 'src/game/wheelTrial.js'), 'utf8')));
 }
 /* 6 */
 {

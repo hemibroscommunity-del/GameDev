@@ -377,10 +377,10 @@ export async function preloadWorldTrial() {
 
 /* v2.3.4355: how far the Wheel's way in has got, as one number that changes
    each time something of it comes -- the worker's plan, a piece of ground
-   laid, a sheet of objects loaded.  The zone gate reads it to tell a slow
-   load from a hung one (zoneGate.js gateCap). */
+   laid, a sheet of objects loaded, more bytes of a ground picture.  The zone
+   gate reads it to tell a slow load from a hung one (zoneGate.js gateCap). */
 export function wheelEntryProgress() {
-  return (wheelStats.planMs != null ? 1 : 0) + (wheelStats.loads || 0) + (wheelObjectStats.loads || 0) + (_ready ? 1 : 0);
+  return (wheelStats.planMs != null ? 1 : 0) + (wheelStats.loads || 0) + (wheelObjectStats.loads || 0) + (_ready ? 1 : 0) + (wheelStats.dlBytes || 0);
 }
 
 /* v2.3.2943: the Wheel's way in -- the worker builds the plan (about a

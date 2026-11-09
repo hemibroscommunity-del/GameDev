@@ -37,15 +37,17 @@
  *      own throttle: the stand-in for a stream's encoder): the same, the
  *      frame's line scaled; the gate must hold until the ground is laid.
  *   3. 1920 x 1080 on a thin line (H.slowLine: the ground's pictures down one
- *      shared 150 KB a second, a first visit): no download is cut or failed,
- *      the town is whole within WHOLE_MS of the lift, and the walk after it
- *      lays no piece short (the pictures were fetched ahead).
- *
- *   4. 1920 x 1080 slowed AND on a thin line (250 KB a second): the
- *      pictures come while the loading screen is still up, after their ground
- *      was laid without them -- that ground is laid again once the screen
- *      lifts, whole within WHOLE_MS (found by the review of this change: 8 of
- *      50 pieces stayed plain a minute after the lift).
+ *      shared 150 KB a second, a first visit): the loading screen waits for
+ *      the town's pictures while they are still coming and lifts on ground
+ *      wholly drawn (the owner's "Go recommended", 2026-11-09), no download
+ *      is cut or failed, and the walk after it lays no piece short (the
+ *      pictures were fetched ahead).
+ *   4. 1920 x 1080 slowed AND on a line that says nothing for 6 s: the way in
+ *      does not wait for a line gone quiet (3 s without a byte) and lays the
+ *      town plain; the pictures then come while the loading screen is still
+ *      up -- that ground is laid again once the screen lifts, whole within
+ *      WHOLE_MS (found by the review of this change: 8 of 50 pieces stayed
+ *      plain a minute after the lift).
  *
  * READ THE FRAME'S NUMBERS AS A LINE, NOT AS A COMPUTER'S.  This box draws in
  * software, a few frames a second (TRAPS §200), so nothing here is a frame
@@ -85,7 +87,7 @@ const THROTTLE = 4;
 const LINES = {
   UNDER_MAX: 0.05,        /* of a walk's frames, the overview showing under a missing piece (quiet: 0 measured) */
   UNDER_MAX_SLOWED: 0.15, /* ...with the page slowed (0 measured) */
-  WHOLE_MS: 30000,        /* thin line: the town whole this long after the lift (2.4 MB at 150 KB a second is 16 s; 13.8 s measured) */
+  WHOLE_MS: 30000,        /* the town whole this long after the lift (thin line: it lifts whole, 0.2 s measured; the quiet line: 10 s) */
   P95_TIMES: 3,           /* 19 frames in 20 within this many times the middle frame's line (2.0 to 2.1 times measured) */
 };
 /* per window: [standing, walking] the middle frame's work, ms, quiet.
@@ -193,6 +195,10 @@ async function device(browser, wsPort, webPort, rec, vp, G, how) {
       const w = await untilWhole(P, 60000);
       const s0 = await stats(P);
       console.log(`      at the lift ${first.short} short of ${first.inView}; whole ${w.ms} ms after it; ${s0.partial} laid short on the way in, ${s0.relaid} laid again, ${s0.mended} whole; cut ${s0.dl && s0.dl.cuts}, failed ${s0.dlFails}; the gate's pieces waited ${s0.dl && s0.dl.gateWaitMs} ms`);
+      /* the line says nothing for 6 s: the worker stops waiting after 3 s without a byte and lays the town plain, as
+         it must on a dead line -- then the pictures come, with the loading screen still up */
+      rec.ok(`${label}: on a line gone quiet the way in does not wait for it -- ${s0.partial} pieces laid in plain colour behind the loading screen, after ${s0.dl && s0.dl.gateWaitMs} ms of waiting (3 s without a byte, and half a second a late picture: at most 9 s) (guard)`,
+        s0.partial > 0 && !!s0.dl && s0.dl.gateWaitMs >= 2500 && s0.dl.gateWaitMs <= 9000, { partial: s0.partial, dl: s0.dl });
       rec.ok(`${label}: ground laid without a picture behind the loading screen is laid again once the screen lifts -- ${first.short} short at the lift, whole ${w.ms} ms after it (at most ${LINES.WHOLE_MS}; `
         + `before, a picture that came while the screen was still up was never heard of again, and its ground stayed plain until you walked away)`,
         first.missing === 0 && w.ms != null && w.ms <= LINES.WHOLE_MS, { first, ms: w.ms, last: w.g, partial: s0.partial, relaid: s0.relaid });
@@ -200,8 +206,10 @@ async function device(browser, wsPort, webPort, rec, vp, G, how) {
     }
     if (how.slow) {
       /* ── part 3: a first visit on a thin line ── */
-      rec.ok(`${label}: the loading screen lifts with every piece in view laid -- ${first.missing} missing of ${first.inView} (a piece short of a picture is laid in its plain colour, never held back)`,
-        first.missing === 0 && first.done, first);
+      /* the owner's "Go recommended" (2026-11-09): the loading screen waits for the town's pictures while they are
+         still coming, so a slow first visit arrives in a town already drawn (how.plainOk: a line too thin for that) */
+      rec.ok(`${label}: the loading screen waits for the town's pictures and lifts on ground wholly drawn -- ${first.missing} missing, ${first.short} short of a picture, of ${first.inView} (the gate held ${first.gateMs} ms; `
+        + `before, it lifted at 12 s on 38 to 50 pieces in plain colour)`, first.missing === 0 && first.done && (how.plainOk || first.short === 0), first);
       const w = await untilWhole(P, 120000);
       const s0 = await stats(P);
       console.log(`      whole ${w.ms} ms after the lift; ${s0.partial} pieces laid short on the way in, ${s0.relaid} laid again, ${s0.mended} whole; downloads cut ${s0.dl && s0.dl.cuts}, failed ${s0.dlFails}; the gate's pieces waited ${s0.dl && s0.dl.gateWaitMs} ms for pictures`);
@@ -209,8 +217,8 @@ async function device(browser, wsPort, webPort, rec, vp, G, how) {
         w.ms != null && w.ms <= LINES.WHOLE_MS, { ms: w.ms, last: w.g });
       rec.ok(`${label}: no download was cut off or failed (cut ${s0.dl && s0.dl.cuts}, failed ${s0.dlFails}; main cut 14 at 60 KB a second and began each again from nothing)`,
         !!s0.dl && s0.dl.cuts === 0 && s0.dlFails === 0, { dl: s0.dl, dlFails: s0.dlFails });
-      rec.ok(`${label}: the gate's pieces shared one wait for their pictures (${s0.dl && s0.dl.gateWaitMs} ms: 7 s, and half a second more for each picture only wanted after it, at most 10 s; they waited 4 s for each new picture in turn)`,
-        !!s0.dl && s0.dl.gateWaitMs > 0 && s0.dl.gateWaitMs <= 10000, s0.dl);
+      rec.ok(`${label}: the gate's pieces shared one wait for their pictures, while they were still coming (${s0.dl && s0.dl.gateWaitMs} ms, at most 30 s and half a second a late picture; ${s0.dl && Math.round(s0.dl.bytes / 1024)} KB came)`,
+        !!s0.dl && s0.dl.gateWaitMs > 0 && s0.dl.gateWaitMs <= 34000 && s0.dl.bytes > 0, s0.dl);
       /* the walk out of town: its pictures were fetched ahead while you stood */
       const me = await H.readState(P, (S) => S.myId);
       await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
@@ -261,15 +269,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const out = [];
   if (PARTS.includes('quiet')) for (const vp of SIZES) out.push(await device(browser, wsPort, webPort, rec, vp, G, {}));
   if (PARTS.includes('throttle')) for (const vp of FULL ? SIZES : [mid]) out.push(await device(browser, wsPort, webPort, rec, vp, G, { throttle: THROTTLE }));
-  /* part 4: the page slowed and the line thin together (BT_DS_BOTH_LINE: the line's width, for looking for the moment) */
-  if (PARTS.includes('both')) out.push(await device(browser, wsPort, webPort, rec, mid, G, { throttle: THROTTLE, slow: process.env.BT_DS_BOTH_LINE || '/world/ground/:250:200' }));
+  /* part 4: the page slowed, and a line that says nothing for 6 s and then is quick (BT_DS_BOTH_LINE: another line) */
+  if (PARTS.includes('both')) out.push(await device(browser, wsPort, webPort, rec, mid, G, { throttle: THROTTLE, slow: process.env.BT_DS_BOTH_LINE || '/world/ground/:600:6000' }));
   if (PARTS.includes('slowline')) {
     out.push(await device(browser, wsPort, webPort, rec, mid, G, { slow: '/world/ground/:150:200' }));
     if (FULL) {
       /* a thinner line: only that nothing is cut and it ends whole (2.4 MB at 60 KB a second is 41 s) */
       const keep = LINES.WHOLE_MS;
       LINES.WHOLE_MS = 60000;
-      try { out.push(await device(browser, wsPort, webPort, rec, mid, G, { slow: '/world/ground/:60:200', settle: 45000 })); } finally { LINES.WHOLE_MS = keep; }
+      try { out.push(await device(browser, wsPort, webPort, rec, mid, G, { slow: '/world/ground/:60:200', settle: 45000, plainOk: true })); } finally { LINES.WHOLE_MS = keep; }
     }
   }
   console.log('\n    the table (work a frame in ms, this box):');

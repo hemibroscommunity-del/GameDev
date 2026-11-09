@@ -43,9 +43,11 @@ player never loses items, gold or a fight to a phase that stuck.
     shows, and a real frame rate (the box draws in software). The evidence
     did not point there. To capture it on a computer: the Test panel's
     **Speed test**, and a screenshot of its card.
-  - **Left as it is, on purpose**: on a line too slow for the first screen's
-    2.4 MB in 7 s, the town still starts in plain colours for some seconds
-    (no chequer) and sharpens as its pictures come.
+  - **The owner's call, 2026-11-09 ("Go recommended")**: on a slow first
+    visit the loading screen waits for the town's pictures while they are
+    still coming (up to 30 s; the gate up to 45), so the town arrives drawn.
+    Only a line under about 80 KB a second, or one gone silent, still starts
+    in plain colours.
 
 - [ ] **A2. How a computer DRAWS the game.** OPEN: next, ahead of B, by the
   owner's word of 2026-11-09: "It's just unoptimized for desktop. Can you fix

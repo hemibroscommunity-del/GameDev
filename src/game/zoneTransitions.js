@@ -580,7 +580,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
            inside the hub block where bestExit is known. */
         if (S._zoneLoading) {
           var _zlStale = S.currentZone !== 'town' && !isWorldViewZone(S.currentZone);
-          if (!_zlStale && S._zoneLoading.t && Date.now() - S._zoneLoading.t > GATE_STALE_MS) _zlStale = true;   /* v2.3.4355: 30 s, was 20 (the arm's cap can now reach 24: zoneGate.js) */
+          if (!_zlStale && S._zoneLoading.t && Date.now() - S._zoneLoading.t > GATE_STALE_MS) _zlStale = true;   /* v2.3.4355: 50 s, was 20 (the arm's cap can now reach 45: zoneGate.js) */
           if (_zlStale) { S._zoneLoading = null; hideZoneLoadingOverlay(); }
         }
         /* v2.3.387: town exits are PROXIMITY zones on the painted

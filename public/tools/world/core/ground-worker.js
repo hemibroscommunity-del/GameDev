@@ -174,11 +174,26 @@ const failed = new Set();             /* 'id|ver' that could not be unpacked: dr
      for, DL_QUIET at a time, so the line is the waiting piece's.
    - THE WAY IN waited PIECE_WAIT_MS for each new picture in turn, piece after
      piece -- the loading screen lifted on short pieces, or (the gate's own
-     15 s over) on none.  The gate's pieces now share ONE wait, GATE_WAIT_MS
-     from the first of them that waited, long enough for the first screen's
-     2.4 MB on any ordinary line; past it they are laid with what has come.
+     15 s over) on none.  The gate's pieces now share ONE wait (THE WAY IN
+     WAITS, below); past it they are laid with what has come.
    Nothing is kept that was not: the pictures fetched ahead are held as the
-   others are (FILES_KEEP) and otherwise by the browser's own cache. */
+   others are (FILES_KEEP) and otherwise by the browser's own cache.
+
+   ═══ THE WAY IN WAITS FOR ITS PICTURES WHILE THEY ARE STILL COMING ═══
+   The owner, 2026-11-09, asked whether the loading screen should wait longer
+   on a slow first visit so the town arrives drawn, at the price of a longer
+   loading screen: "Go recommended".  (PRELOADING IS LAW: the loading screen
+   is where a wait belongs.)  The gate's pieces first shared 7 s, and on a
+   150 KB a second line the first screen's 2.4 MB takes 16: the screen lifted
+   on a town in plain colours.  Now a gate piece waits for its pictures for
+   as long as bytes of ANY ground picture are still arriving -- until
+   GATE_WAIT_MS in all, from the first of the fill's pieces that waited --
+   and stops as soon as the line has gone GATE_STALL_MS without a byte: a
+   dead line lays the town plain in 3 s (it was 7), a slow one waits and
+   lays it drawn.  The game is told the downloads are alive every DL_SAY_MS
+   ('dl', the bytes so far), which is what lets the zone gate tell this wait
+   from a hung load (src/game/zoneGate.js gateCap, worldTrial.js
+   wheelEntryProgress): GATE_STALL_MS is well under its quiet. */
 const DL_PARALLEL = 4;
 const DL_QUIET = 2;         /* v2.3.4355: quiet downloads (fetched ahead) at a time, and none beside a waiting piece's */
 const DL_STALL_MS = 15000;  /* v2.3.4355: this long with no byte and a download is cut (it was 15 s in all, however fast the bytes came) */
@@ -186,8 +201,10 @@ const DL_MAX_MS = 180000;   /* v2.3.4355: ...and this long in all, whatever is s
 const DL_RETRY_MS = 3000;
 const DL_RETRY_MAX_MS = 30000;
 const PIECE_WAIT_MS = 4000;
-const GATE_WAIT_MS = 7000;  /* v2.3.4355: the way in's pieces wait this long, between them, for their pictures */
-const GATE_GRACE_MS = 500;  /* v2.3.4355: ...and past it, this long for a picture only now wanted (tileOf) */
+const GATE_WAIT_MS = 30000; /* v2.3.4355: the way in's pieces wait at most this long, between them, for their pictures (THE WAY IN WAITS, below) */
+const GATE_STALL_MS = 3000; /* v2.3.4355: ...and stop waiting once no byte of any picture has come for this long */
+const GATE_GRACE_MS = 500;  /* v2.3.4355: ...and past either, this long for a picture only now wanted (tileOf) */
+const DL_SAY_MS = 400;      /* v2.3.4355: how often the game is told the downloads are still arriving ('dl') */
 const PREFETCH = 2;
 const FAR_REACH = 1536;     /* v2.3.4355: game px round you whose pictures are asked for while the worker is idle (8 pieces) */
 const FAR_STEP = 384;       /* ...again once you have moved this far (2 pieces) */
@@ -302,13 +319,14 @@ async function fetchFile(k) {
     const r = await fetch(src.url, ac ? { signal: ac.signal } : undefined);
     if (!r.ok) return null;
     const rd = r.body && typeof r.body.getReader === 'function' ? r.body.getReader() : null;
-    if (!rd) { clearTimeout(stall); return await r.blob(); }
+    if (!rd) { clearTimeout(stall); const whole = await r.blob(); sayArriving(whole ? whole.size : 0); return whole; }
     const parts = [];
     for (;;) {
       const { value, done } = await rd.read();
       if (done) break;
       parts.push(value);
       alive();
+      sayArriving(value ? value.length : 0);
     }
     return new Blob(parts, { type: r.headers.get('content-type') || 'image/png' });
   })().catch(() => null);
@@ -318,8 +336,38 @@ async function fetchFile(k) {
    wheelStats.dl: mp-desksmooth reads them) -- downloads cut for stalling,
    pictures asked for ahead of any piece (farPrefetch), and how long the way
    in's pieces waited for theirs */
-const dlStats = { cuts: 0, far: 0, farRuns: 0, gateWaitMs: 0 };
+const dlStats = { cuts: 0, far: 0, farRuns: 0, gateWaitMs: 0, bytes: 0 };
 let gateFill = 0, gateUntil = 0;      /* v2.3.4355: the way in's fill being laid, and until when its pieces wait for pictures (tileOf) */
+let gateSince = 0;                    /* ...when the first of them began to wait */
+let dlByteAt = 0, dlSaidAt = 0;       /* when the last byte of any picture came, and when the game was last told */
+/* a part of a download has come: the line is alive (tileOf's gate wait reads
+   dlByteAt), and the game is told so, DL_SAY_MS apart at most */
+function sayArriving(n) {
+  const now = performance.now();
+  dlStats.bytes += n;
+  dlByteAt = now;
+  if (now - dlSaidAt < DL_SAY_MS) return;
+  dlSaidAt = now;
+  post({ type: 'dl', bytes: dlStats.bytes });
+}
+/* A gate piece's wait for one picture (THE WAY IN WAITS, above): the file, or
+   null when the fill's wait is over (GATE_WAIT_MS in all), the line has gone
+   quiet (GATE_STALL_MS without a byte), and this picture has had its
+   GATE_GRACE_MS.  Once it is over it is over for the fill's later pieces. */
+async function gateWait(p, job) {
+  let done = false, got = null;
+  p.then((b) => { done = true; got = b; });
+  for (;;) {
+    if (done) return got;
+    const now = performance.now();
+    if (!gateSince) { gateSince = now; gateUntil = now + GATE_WAIT_MS; }
+    const quiet = now - Math.max(dlByteAt, gateSince) >= GATE_STALL_MS;
+    if (quiet && gateUntil > now) gateUntil = now;          /* the line stopped: no later piece waits on it either */
+    const until = Math.max(gateUntil, job.urgentAt + GATE_GRACE_MS);
+    if (now >= until) return done ? got : null;
+    await Promise.race([p, new Promise((res) => setTimeout(res, Math.min(150, until - now)))]);
+  }
+}
 /* the pictures under the pieces round (i, j), downloading quietly */
 function prefetchRound(i, j) {
   const rect = { x: W.F.x0 + (i - PREFETCH) * CHUNK, y: W.F.y0 + (j - PREFETCH) * CHUNK, w: (2 * PREFETCH + 1) * CHUNK, h: (2 * PREFETCH + 1) * CHUNK };
@@ -960,28 +1008,24 @@ async function tileOf(id, ver, wait) {
   if (!blob) {
     const p = want(k, true), job = dlJobs.get(k);
     /* v2.3.4355: `wait` 'gate' -- a piece of the way in: every such piece
-       shares ONE wait, GATE_WAIT_MS from the first of them that had to wait
-       (A SLOW LINE, above); any other piece waits PIECE_WAIT_MS from when a
-       piece first waited for this picture, as before */
-    let left = 0;
-    if (wait && job) {
-      if (wait === 'gate') {
-        if (!gateUntil) gateUntil = performance.now() + GATE_WAIT_MS;
-        /* ...but never NO wait for a picture only now wanted: past the shared
-           wait (a slowed computer's fill runs longer than it) a picture first
-           met in an outer piece, or one read back from the browser's own
-           cache, is a few ms away, and laying its piece short for that put a
-           plain square on the screen for nothing.  GATE_GRACE_MS from when a
-           piece first waited for it; one already waited for gets no more. */
-        left = Math.max(gateUntil, job.urgentAt + GATE_GRACE_MS) - performance.now();
-      } else left = job.urgentAt + PIECE_WAIT_MS - performance.now();
-    }
-    if (left > 0) {
-      let timer = null;
+       shares ONE wait (gateWait: THE WAY IN WAITS, above); any other piece
+       waits PIECE_WAIT_MS from when a piece first waited for this picture,
+       as before */
+    const left = wait === 'piece' && job ? job.urgentAt + PIECE_WAIT_MS - performance.now() : 0;
+    if (wait === 'gate' && job) {
+      /* while its pictures are still coming, and never NO wait for a picture
+         only now wanted: past the fill's wait (a slowed computer's fill runs
+         longer than it) a picture first met in an outer piece, or one read
+         back from the browser's own cache, is a few ms away, and laying its
+         piece short for that put a plain square on the screen for nothing
+         (GATE_GRACE_MS from when a piece first waited for it) */
       const tw = performance.now();
+      blob = await gateWait(p, job);
+      dlStats.gateWaitMs += Math.round(performance.now() - tw);
+    } else if (left > 0) {
+      let timer = null;
       blob = await Promise.race([p, new Promise((res) => { timer = setTimeout(() => res(null), left); })]);
       clearTimeout(timer);
-      if (wait === 'gate') dlStats.gateWaitMs += Math.round(performance.now() - tw);
     } else if (!job) {
       blob = await p;          /* here after all, or in its wait to be tried again (null) */
     }
@@ -1099,7 +1143,7 @@ async function chunk(m) {
      it takes what has come since, and the rest is still on its way.
      v2.3.4355: a piece of the way in (`gate`, which fill it is: wheelTrial.js
      wheelWarm) shares its fill's one wait (tileOf) */
-  if (m.gate && m.gate !== gateFill) { gateFill = m.gate; gateUntil = 0; }
+  if (m.gate && m.gate !== gateFill) { gateFill = m.gate; gateUntil = 0; gateSince = 0; }
   const wait = m.relay ? false : m.gate ? 'gate' : 'piece';
   lacking.clear();
   for (const id of ids) {
