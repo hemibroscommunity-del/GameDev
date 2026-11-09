@@ -4205,10 +4205,12 @@ BT_AUDIO.monsterNoise = function (clip, k) {
    splat for every slime-sheet variant since v2.3.1147, and this played the
    bone crunch on top of it -- two death sounds at once for every Blue Slime
    and Mire Wisp.  Only plain 'fodder' was skipped. */
-BT_AUDIO.SLIME_SHEET_DEATHS = { blueSlime: 1, mireWisp: 1, mossSlime: 1 };
+/* v2.3.4357: the mire wisp's key is the rotcap now, off the slime's sheets:
+   it has a death of its own below, the bog's deep squelch, as its big one has */
+BT_AUDIO.SLIME_SHEET_DEATHS = { blueSlime: 1, mossSlime: 1 };
 /* v2.3.4356: the storm eye cracks like a shell and breaks up (its own death
    strip): the stone's crack and rubble, until it has a recording of its own */
-BT_AUDIO.DEATH_CUES = { fireGoblin: 'dieGoblin', rockmonster: 'dieRock', thornShambler: 'dieRock', fishman: 'dieFish', bogLurker: 'dieLurker', stormEye: 'dieRock' };
+BT_AUDIO.DEATH_CUES = { fireGoblin: 'dieGoblin', rockmonster: 'dieRock', thornShambler: 'dieRock', fishman: 'dieFish', bogLurker: 'dieLurker', mireWisp: 'dieLurker', stormEye: 'dieRock' };
 BT_AUDIO.monsterDeath = function (arch, opts, k) {
   /* No-op for slimes (fodder).  The splat SFX is owned by the render-
      loop death-detection in BroTown.jsx — playing the bony-death wav
@@ -7209,9 +7211,9 @@ export const MONSTER_DISPLAY_NAMES = {
   rockmonster: 'Rock Monster',
   mossSlime: 'Moss Slime',
   blueSlime: 'Blue Slime',
-  mireWisp: 'Mire Wisp',
+  mireWisp: 'Rotcap',   /* v2.3.4357: the Poison Forest's two are the rotcap (their keys stay) */
   thornShambler: 'Thorn Shambler',
-  bogLurker: 'Bog Lurker',
+  bogLurker: 'Great Rotcap',
 };
 
 /* The name to put on the plate.  Falls back to a title-cased version of the

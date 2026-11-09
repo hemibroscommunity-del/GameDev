@@ -28,7 +28,7 @@
  *   6. killed, it plays its own death -- all 20 frames, facing you, unmirrored
  *      -- on every kill, a big blow included, never a cut one, and is gone;
  *   7. its feet stay where they were when the death starts (deathOffsetY);
- *   8. the bog lurker still wears the old fishman's still picture;
+ *   8. (the bog lurker, which kept the old picture, is mp-rotcap's now);
  *   9. leaving nothing behind: no page error;
  *  10. and out in the Water Caves themselves the worker's own monsters are
  *      the frog, named "Water Frog", their look loaded on the walk there;
@@ -57,7 +57,10 @@ const hold = (P, specs) => P.page.evaluate((specs) => {
     const m = F.createMonster(sp.id, 'brute', 2, S.player.x + sp.dx, S.player.y + sp.dy, null);
     if (!m) return { err: 'no monster' };
     m.archetype = sp.variant; m.type = sp.variant;
-    m.alive = true; m.curHp = m.maxHp = 1e6; m._frozenUntil = 0; m.spd = 0; m.speed = 0; m._atkCd = 1e12;
+    m.alive = true; m.curHp = m.maxHp = 1e6; m._frozenUntil = 0; m.spd = 0; m.speed = 0;
+    /* (its own little brain on this page kept quiet: a swing or a spit of its
+       own would be a blow this test did not ask for) */
+    m._atkCd = Date.now() + 1e11;
     m.renderX = m.x; m.renderY = m.y; m.vx = 0; m.vy = 0;
     q.list.push(m);
     out.push(m.id);
@@ -69,7 +72,7 @@ const hold = (P, specs) => P.page.evaluate((specs) => {
       if (!q.loop) return;
       S._serverMonsters = false;
       if (S.monsters.length !== q.list.length || q.list.some((m, i) => S.monsters[i] !== m)) S.monsters = q.list.slice();
-      for (const m of q.list) { m.vx = 0; m.vy = 0; }
+      for (const m of q.list) { m.vx = 0; m.vy = 0; if (m.alive) m._atkCd = Date.now() + 1e11; }
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -96,7 +99,6 @@ const watch = (P, id, frames, act, until) => P.page.evaluate(([mid, frames, act,
   const S = window._gameState.current;
   const out = [];
   let n = 0;
-  /* eslint-disable-next-line no-new-func */
   const stop = until ? new Function('s', 'm', 'out', `return (${until});`) : null;
   if (act && act.kind === 'ability') window.__btDispatch({ type: 'monster_ability', payload: Object.assign({ monsterId: mid, zone: S.currentZone }, act.payload) });
   if (act && act.kind === 'kill') {
@@ -338,16 +340,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       }
     }
 
-    /* ── 8. the bog lurker keeps the old picture ── */
-    await release(P);
-    await P.page.waitForTimeout(300);
-    const lurk = await spawn('bogLurker');
-    const ls = await drawn(P, lurk);
-    await P.page.waitForTimeout(600);
-    const lfr = live(await watch(P, lurk, 40, { kind: 'walk', steps: 40, dx: 1.2, dy: 0 }));
-    rec.ok('8. the bog lurker still wears the old fishman\'s one still picture a side (its own now)',
-      !!(ls && ls.visible) && lfr.length > 0 && lfr.every((f) => f.n === 1), { n: uniq(lfr.map((f) => f.n)), first: ls && { visible: ls.visible, tint: ls.tint } });
-    await shot(lurk, '5-bog-lurker');
+    /* (8. the bog lurker kept the old fishman picture until v2.3.4357: it is
+       the great rotcap now -- mp-rotcap) */
     await release(P);
     }
 

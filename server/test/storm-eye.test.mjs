@@ -264,12 +264,12 @@ const strips = {};
   }
   check('4f the codex stage plays the eye\'s own strips, their cells counted and their boxes measured, and it throws its lightning\'s blue',
     !!L && L.cell === 256 && !!L.strips.idle && !!L.strips.death && bad.length === 0 && CS.CODEX_STAGE.sparklet.look === 'stormEye' && CS.CODEX_STAGE.sparklet.hit === 'throw'
-    && CS.CODEX_STAGE.sparklet.shotColor === '#9fe3ff' && CS.CODEX_STAGE.wisplet.look === 'slime', bad);
+    && CS.CODEX_STAGE.sparklet.shotColor === '#9fe3ff', bad);
   const { PET_KINDS, PET_ART } = await import('../../src/data/trapping.js');
   const { PET_SHEET } = await import('../../src/data/petSheet.js');
-  check('4g its pet is still the Sparklet (the kind and its name the worker\'s and the phone\'s, unchanged), drawn from the eye\'s row on the pet sheet, added last',
+  check('4g its pet is still the Sparklet (the kind and its name the worker\'s and the phone\'s, unchanged), drawn from the eye\'s row on the pet sheet',
     PET_KINDS.sparklet.name === 'Sparklet' && PET_KINDS.sparklet.look === 'fodder' && PET_ART.sparklet.base === 'stormEye' && !!PET_SHEET.bases.stormEye
-    && PET_SHEET.bases.stormEye.row === PET_SHEET.rows - 1 && PET_SHEET.bases.stormEye.front === 1 && PET_SHEET.bases.stormEye.side === 1 && PET_ART.wisplet.base === 'slime',
+    && PET_SHEET.bases.stormEye.front === 1 && PET_SHEET.bases.stormEye.side === 1 && PET_SHEET.bases.stormEye.sideFaces === 'e',
     PET_SHEET.bases.stormEye);
   const { monsterTorsoY, monsterBodyOffsetY } = await import('../../src/data/gameSystems.js');
   check('4h a shot is aimed at the middle of its ball, inside its hit circle; it dies with a crack',

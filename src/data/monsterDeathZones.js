@@ -10,8 +10,8 @@
  * what each part does when the monster dies: the snowman's head rolls, its
  * twig arms fly and its body bursts into snow; a slime splats; a fire goblin
  * drops its torch, crumples and its flame gutters out; a rock monster
- * crumbles; a skeleton's bones scatter; a thorn shambler splinters; a bog
- * lurker sinks into a puddle (the water frog has its own animation).  rendering/monsterDeathZonesFx.js
+ * crumbles; a skeleton's bones scatter; a thorn shambler splinters (the
+ * water frog, the storm eye and the rotcaps have their own animations).  rendering/monsterDeathZonesFx.js
  * plays them (docs/specs/monster-death-zones.md: the table explained, how the
  * zones were measured, how to add a monster).
  *
@@ -119,7 +119,7 @@ const SLIME_BASE = [[0, 0.3], [0.12, 0.35], [0.25, 0.29], [0.37, 0.36], [0.5, 0.
 const FACE_S = Object.freeze(['south']);
 const FACE_S3 = Object.freeze(['south', 'southwest', 'southeast']);
 /* the facings drawn from a file that is the front picture mirrored (the
-   bog lurker's and the rock monster's walk-west.png: WALK_MAP west, northwest
+   rock monster's walk-west.png: WALK_MAP west, northwest
    and southwest), where the renderer does no mirroring of its own */
 const WEST_FILE = Object.freeze(['west', 'northwest', 'southwest']);
 
@@ -261,17 +261,10 @@ export const DEATH_ZONES = {
      0.30-0.37 across and 0.16-0.24 down walk-south, is the bog lurker's
      below, whose west file is the same picture mirrored, `flip`.) */
 
-  /* The bog lurker (the old fishman's frames, in the bog's colour): it sinks
-     into a spreading pool of its own mud, its eye popping free. */
-  bogLurker: {
-    puddle: true,
-    flip: WEST_FILE,
-    bigFx: ['goo'],
-    front: [
-      { id: 'body', part: 'core', rect: [0, 0, 1, 1], cut: ['eye'], mat: 'goo', off: 'slump', big: 'slump', mass: 2, bounce: 0, roll: 0, squash: 0.35, sink: 0.9 },
-      eye('eye', [0.295, 0.16, 0.37, 0.24], 'goo', 0, { lift: 0.9 }),
-    ],
-  },
+  /* (v2.3.4357: no `bogLurker` either.  The Poison Forest's two are the
+     rotcap, whose death is its own animation on every kill -- it sags, folds
+     and rots down flat: MONSTER_VARIANTS `deathStripOnly` -- and the old
+     fishman picture this entry was cut for is gone.) */
 
   /* The rock monster: it crumbles -- five stones off its egg of rock come
      down where they were, the top one last, its two glowing eyes pop out,
@@ -312,7 +305,7 @@ export const DEATH_ZONES = {
 
 /* the looks drawn from another's frames, and so cut by its zones */
 export const DEATH_ZONE_ALIAS = Object.freeze({
-  fodder: 'slime', mossSlime: 'slime', blueSlime: 'slime', mireWisp: 'slime',
+  fodder: 'slime', mossSlime: 'slime', blueSlime: 'slime',   /* v2.3.4357: not the mire wisp: the rotcap now, with its own death */
 });
 
 /** The zone table of a look (a variant key, the snowman, or a slime's

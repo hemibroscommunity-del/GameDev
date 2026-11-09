@@ -189,33 +189,35 @@ export const CODEX_ENTRIES = Object.freeze({
     ],
     elder: Object.freeze({ name: 'Coral Frog', text: 'The frogs of the deep caves have gone as dark as kelp, with bellies and eyes the orange of the coral they sit on all day. The water they carry has been in there a very long time.' }),
   }),
+  /* v2.3.4357: the rotcap (the owner: "Also this for poison land" -- "Both");
+     the two kinds' ids and their looks' keys are the worker's, and stay */
   wisplet: Object.freeze({
-    name: 'Mire Wisp', home: 'mist', look: 'mireWisp', element: 'venom', type: 'Ooze',
-    what: 'A drifting blob of poisoned light. It spits venom from a distance and flings itself at you up close.',
+    name: 'Rotcap', home: 'mist', look: 'mireWisp', element: 'venom', type: 'Beast',
+    what: 'A toadstool with eyes, shuffling about on its roots. It spits venom from a distance and flings itself at you up close.',
     special: Object.freeze({
       name: 'The Lunge',
       text: 'Every so often it winds up for over a second, then lunges at you. Between lunges it spits a glob whenever you are a few steps away.',
       tip: 'Keep moving sideways: a glob aims where you were.',
     }),
     story: [
-      'Travellers lost in the Poison Forest used to follow the little lights between the trees, hoping they were lanterns. They were not lanterns.',
-      'Nobody knows what the wisps were first. The forest\'s oldest trees say they are the forest\'s own bad dreams, which would explain the smell.',
+      'Travellers lost in the Poison Forest used to sit down on the big purple toadstools to rest. The toadstools did not like it, and after a few hundred years of being sat on they grew eyes to see it coming.',
+      'A rotcap does not chase you far. It does not need to. Everything it spits takes root, and the forest has all the time in the world.',
     ],
-    elder: Object.freeze({ name: 'Spectral Wisp', text: 'Deeper in the forest the wisps burn a pale, see-through cyan, like ghosts of themselves. Their venom is just as real.' }),
+    elder: Object.freeze({ name: 'Spectral Rotcap', text: 'Deeper in the forest the rotcaps glow a pale, see-through cyan, like ghosts of themselves. Their venom is just as real.' }),
   }),
   lurkling: Object.freeze({
-    name: 'Bog Lurker', home: 'mist', look: 'bogLurker', element: 'venom', type: 'Aquatic',
-    what: 'A fishman that stayed far too long in the poisoned bog. Slow and tough, and it hits hard.',
+    name: 'Great Rotcap', home: 'mist', look: 'bogLurker', element: 'venom', type: 'Beast',
+    what: 'A rotcap that was never picked: old, dark and the size of a cart. Slow and tough, and it hits hard.',
     special: Object.freeze({
       name: 'Slam',
       text: 'It winds up for almost a second, then slams down: double damage to anyone in a ring around it. At most once every five seconds.',
       tip: 'When it winds up, step back out of reach, or block facing it.',
     }),
     story: [
-      'A lurker was a fishman once, out of the Water Caves and looking for wetter ground. It found the Poison Forest\'s bog, which was wet enough, and stayed until the bog moved in.',
-      'They do not move much. They lie under the green water with only their eyes showing, waiting for someone to stop for a rest. If you have ever rested in the Poison Forest, there was one watching.',
+      'Leave a rotcap alone in the bog for long enough and it stops spitting and starts growing. The great ones have been sitting in the same puddle since before the forest went bad, and some say they are why it did.',
+      'They do not move much. They sit among the ordinary toadstools and wait for someone to stop for a rest. If you have ever rested in the Poison Forest, one was watching.',
     ],
-    elder: Object.freeze({ name: 'Shade Lurker', text: 'The lurkers of the deep bog have gone violet and shadowy, hard to see even when you know where to look. Look anyway.' }),
+    elder: Object.freeze({ name: 'Shade Rotcap', text: 'The great rotcaps of the deep bog have gone violet and shadowy, hard to see even when you know where to look. Look anyway.' }),
   }),
   dewdrop: Object.freeze({
     name: 'Blue Slime', home: 'verdant', look: 'blueSlime', element: 'flora', type: 'Ooze', dungeon: 'the Goo Grotto', dungeonLevels: Object.freeze([1, 5]),   /* v2.3.3540: the starter dungeon */

@@ -49,7 +49,10 @@ const hold = (P, specs) => P.page.evaluate((specs) => {
     const m = F.createMonster(sp.id, 'fodder', 2, S.player.x + sp.dx, S.player.y + sp.dy, null);
     if (!m) return { err: 'no monster' };
     m.archetype = 'stormEye'; m.type = 'stormEye'; m.element = 'storm';
-    m.alive = true; m.curHp = m.maxHp = 1e6; m._frozenUntil = 0; m.spd = 0; m.speed = 0; m._atkCd = 1e12;
+    m.alive = true; m.curHp = m.maxHp = 1e6; m._frozenUntil = 0; m.spd = 0; m.speed = 0;
+    /* (its own little brain on this page kept quiet: a swing or a spit of its
+       own would be a blow this test did not ask for) */
+    m._atkCd = Date.now() + 1e11;
     m.renderX = m.x; m.renderY = m.y; m.vx = 0; m.vy = 0;
     q.list.push(m);
     out.push(m.id);
@@ -61,7 +64,7 @@ const hold = (P, specs) => P.page.evaluate((specs) => {
       if (!q.loop) return;
       S._serverMonsters = false;
       if (S.monsters.length !== q.list.length || q.list.some((m, i) => S.monsters[i] !== m)) S.monsters = q.list.slice();
-      for (const m of q.list) { m.vx = 0; m.vy = 0; }
+      for (const m of q.list) { m.vx = 0; m.vy = 0; if (m.alive) m._atkCd = Date.now() + 1e11; }
       requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
@@ -87,7 +90,6 @@ const watch = (P, id, frames, act, until) => P.page.evaluate(([mid, frames, act,
   const m = window.__qaSE.list.find((x) => x.id === mid);
   const out = [];
   let n = 0;
-  /* eslint-disable-next-line no-new-func */
   const stop = until ? new Function('s', 'm', 'out', `return (${until});`) : null;
   const step = () => {
     if (act && act.kind === 'walk' && n < act.steps) { m.x += act.dx; m.y += act.dy; m.renderX = m.x; m.renderY = m.y; }

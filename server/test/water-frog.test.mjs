@@ -236,8 +236,10 @@ const strips = {};
   const V = MONSTER_VARIANTS.fishman;
   check('3a the Water Caves\' variant key draws the frog -- its hop the walk, its breath, its attack, its death',
     /fishman: \{\s*load: loadWaterFrogSprites,\s*unload: unloadWaterFrogSprites,\s*walk:[^\n]*wfHopFrame[^\n]*\n\s*idle:[^\n]*wfIdleFrame[^\n]*\n\s*attack:[^\n]*wfAttackFrame[^\n]*\n\s*death:[^\n]*wfDeathFrame/.test(vs));
-  check('3b ...and the bog lurker still the old fishman pictures, a module of its own now',
-    /bogLurker: \{\s*load: loadFishmanSprites,\s*unload: unloadFishmanSprites,/.test(vs) && existsSync(new URL('public/sprites/monsters/fishman/walk-south.png', root)));
+  /* v2.3.4357: the bog lurker, the last to wear the old fishman pictures, is
+     the great rotcap: the pictures and their module are gone */
+  check('3b ...and nothing draws the old fishman pictures any more: they and their module are gone',
+    !/fishmanSprites|loadFishmanSprites/.test(vs) && !existsSync(new URL('public/sprites/monsters/fishman/walk-south.png', root)) && !existsSync(new URL('src/rendering/fishmanSprites.js', root)));
   /* eight facings from five drawn sides */
   const tableOf = (name) => {
     const body = (new RegExp('export const ' + name + ' = Object\\.freeze\\(\\{([\\s\\S]*?)\\}\\);').exec(wf) || [])[1] || '';
@@ -259,8 +261,9 @@ const strips = {};
   check('3e the variant: a hop for its walk, the recovery frames the strips were cut with, its specials\' warnings on the attack strip, its death its own strip',
     V.baseArchetype === 'brute' && V.hopWalk === true && V.attackRecoverFrames === rec && rec === 3 && V.telegraphAttack === true && V.deathStripOnly === true
     && V.spd === 0.5 && V.walkDistPerFrame > 0 && V.idleFrameMs > 0 && V.deathMs >= 1200, V);
-  check('3f ...and none of it on the bog lurker or the rock monster',
-    ['bogLurker', 'rockmonster', 'thornShambler'].every((k) => !MONSTER_VARIANTS[k].hopWalk && !MONSTER_VARIANTS[k].deathStripOnly && !MONSTER_VARIANTS[k].telegraphAttack && MONSTER_VARIANTS[k].liveScalePx === 96));
+  check('3f ...and none of it on the rock monster or the thorn shambler; no other look hops',
+    ['rockmonster', 'thornShambler'].every((k) => !MONSTER_VARIANTS[k].hopWalk && !MONSTER_VARIANTS[k].deathStripOnly && !MONSTER_VARIANTS[k].telegraphAttack && MONSTER_VARIANTS[k].liveScalePx === 96)
+    && Object.keys(MONSTER_VARIANTS).filter((k) => MONSTER_VARIANTS[k].hopWalk).join() === 'fishman');
   /* the death's size and place follow from the pictures: its first frame is
      the frog at rest, at the death strip's own scale */
   const d0 = cellBox(strips.death, 0), l0 = cellBox(strips['idle-s'], 0);
@@ -288,17 +291,22 @@ const strips = {};
   const { PET_SHEET } = await import('../../src/data/petSheet.js');
   const { MONSTER_CODEX } = await import('../../src/data/monsterCodex.js').then((m) => ({ MONSTER_CODEX: m.MONSTER_CODEX || m.CODEX || m.default || m }));
   const CS = await import('../../src/data/codexStage.js');
-  check('4a its name is "Water Frog", past level 20 "Coral Frog"; the bog lurker keeps its own',
-    /fishman: 'Water Frog',/.test(gd) && /bogLurker: 'Bog Lurker',/.test(gd) && WHEEL_STAGE_LOOKS[2].fishman.name === 'Coral Frog' && WHEEL_STAGE_LOOKS[2].bogLurker.name === 'Shade Lurker');
+  check('4a its name is "Water Frog", past level 20 "Coral Frog"',
+    /fishman: 'Water Frog',/.test(gd) && WHEEL_STAGE_LOOKS[2].fishman.name === 'Coral Frog' && WHEEL_STAGE_LOOKS[2].fishman.tint === 0xffb070);
   const cx = src('src/data/monsterCodex.js');
   check('4b its codex page is the frog\'s, and no page a player reads says "Fishman" of the Water Caves',
     /name: 'Water Frog', home: 'tidal', look: 'fishman'/.test(cx) && /elder: Object\.freeze\(\{ name: 'Coral Frog'/.test(cx) && !/name: '[^']*Fishman/.test(cx), MONSTER_CODEX && null);
-  check('4c its pet is a Froglet (the kind\'s id is the worker\'s, unchanged), drawn from the frog\'s row on the pet sheet; the Lurkling keeps the old row',
+  check('4c its pet is a Froglet (the kind\'s id is the worker\'s, unchanged), drawn from the frog\'s row on the pet sheet',
     PET_KINDS.finling.name === 'Froglet' && PET_KINDS.finling.name2 === 'Coral Froglet' && PET_KINDS.finling.look === 'fishman' && PET_KINDS.finling.home === 'tidal'
-    && PET_ART.finling.base === 'waterFrog' && !!PET_SHEET.bases.waterFrog && PET_SHEET.bases.waterFrog.row === 7
-    && PET_ART.lurkling.base === 'fishman' && !!PET_SHEET.bases.fishman, { art: PET_ART.finling, sheet: PET_SHEET.bases.waterFrog });
-  const before = ['snowman', 'fireGoblin', 'mummy', 'rockmonster', 'fishman', 'slime', 'blueSlime'];
-  check('4d ...added after the sheet\'s seven rows, none of them moved', before.every((k, i) => PET_SHEET.bases[k].row === i) && PET_SHEET.rows >= 8);
+    && PET_ART.finling.base === 'waterFrog' && !!PET_SHEET.bases.waterFrog && PET_SHEET.bases.waterFrog.front === 1 && PET_SHEET.bases.waterFrog.side === 1
+    && PET_SHEET.bases.waterFrog.sideFaces === 'e', { art: PET_ART.finling, sheet: PET_SHEET.bases.waterFrog });
+  /* v2.3.4357: the old fishman's row and the plain slime's went when the
+     last pets wearing them changed: every pet's base has a row, and every
+     row a pet */
+  const used = new Set(Object.values(PET_ART).map((a) => a.base));
+  check('4d every pet is drawn from a row of the sheet, and the sheet has no row no pet wears',
+    [...used].every((b) => !!PET_SHEET.bases[b]) && Object.keys(PET_SHEET.bases).every((b) => used.has(b)) && PET_SHEET.rows === Object.keys(PET_SHEET.bases).length
+    && !PET_SHEET.bases.fishman, { used: [...used], rows: Object.keys(PET_SHEET.bases) });
   /* the codex stage */
   const L = CS.CODEX_LOOKS.waterFrog, bad = [];
   for (const [k, s] of Object.entries((L && L.strips) || {})) {
@@ -315,7 +323,7 @@ const strips = {};
   }
   check('4e the codex stage plays the frog\'s own strips: an idle, a walk and an attack, their cells counted and their ground rows measured, the hop inside the stage\'s box',
     !!L && L.cell === 256 && ['idle', 'walk', 'attack'].every((k) => !!L.strips[k]) && bad.length === 0 && CS.CODEX_STAGE.finling.look === 'waterFrog'
-    && CS.CODEX_STAGE.lurkling.look === 'fishman' && !!CS.CODEX_LOOKS.fishman, bad);
+    && !CS.CODEX_LOOKS.fishman && Object.values(CS.CODEX_STAGE).every((st) => !!CS.CODEX_LOOKS[st.look]), bad);
   /* a shot */
   const { monsterTorsoY, monsterBodyOffsetY } = await import('../../src/data/gameSystems.js');
   const l0 = cellBox(strips['idle-s'], 0);
@@ -323,7 +331,7 @@ const strips = {};
   const bodyH = (l0[3] - l0[1] + 1) * k;
   check(`4f a shot is aimed at the middle of its body (torso ${monsterTorsoY('fishman')} px up; the body at rest is ${bodyH.toFixed(0)} tall), inside its hit circle (${monsterBodyOffsetY('fishman')} +/- 40)`,
     monsterTorsoY('fishman') > bodyH * 0.35 && monsterTorsoY('fishman') < bodyH * 0.75 && Math.abs(monsterTorsoY('fishman') - monsterBodyOffsetY('fishman')) < 40
-    && monsterTorsoY('bogLurker') === 66, { torso: monsterTorsoY('fishman'), bo: monsterBodyOffsetY('fishman'), bodyH });
+, { torso: monsterTorsoY('fishman'), bo: monsterBodyOffsetY('fishman'), bodyH });
 }
 
 /* ── 5. its water, drawn in code ── */

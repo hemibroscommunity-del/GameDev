@@ -418,10 +418,29 @@ export const MONSTER_VARIANTS = {
        have least time to read. */
     projectileScalePx: 32,
   },
+  /* ═══ v2.3.4357: THE ROTCAP -- the Poison Forest's two monsters ═══
+     The owner: "Also this for poison land", and which of the land's two
+     stand-ins it replaces: "Both".  The keys stay (`mireWisp`, `bogLurker`:
+     the worker's names for the land's fodder and brute, on the wire, in every
+     saved codex and pet); what they are drawn from is the owner's mushroom
+     (rendering/rotcapSprites.js, cut by tools/art/cut_rotcap.py), at two
+     sizes.  Both shuffle (a 4-frame walk, the same four standing still),
+     and die their own death on every kill (`deathStripOnly`).
+     To the worker each is exactly the monster it was. */
+  /* the ordinary one: it spits, as the violet slime did, in the sick green
+     of its own spots (`shotColor`: no longer a slime, so it says).  66 puts
+     it about 68 px across: a little bigger than the slime it replaces. */
   mireWisp: {
     baseArchetype: 'fodder',
-    useSlimeSheets: true,
-    tint: 0x7a5fa8, /* toxic violet (mist = venom zone) */
+    liveScalePx: 66,
+    headTopPx: 44,
+    walkDistPerFrame: 3.2,
+    idleFrameMs: 230,
+    shotColor: 0x9bd43f,
+    projectileScalePx: 26,
+    deathStripOnly: true,
+    deathMs: 900,
+    noFodderRemnants: true,
   },
   thornShambler: {
     baseArchetype: 'brute',
@@ -429,11 +448,19 @@ export const MONSTER_VARIANTS = {
     spd: 0.5,        /* mirrored in server _variantSpeed */
     tint: 0x4f9a3f,  /* moss-covered rockmonster */
   },
+  /* the big dark one: it walks up and slams, as the bog lurker did.  104
+     puts it about 107 px across, half again the ordinary one; its `tint`
+     takes it down to the colour of old rot. */
   bogLurker: {
     baseArchetype: 'brute',
-    liveScalePx: 96,
+    liveScalePx: 104,
+    headTopPx: 68,
     spd: 0.5,        /* mirrored in server _variantSpeed */
-    tint: 0x5f7a5a,  /* the old fishman pictures, murky (fishmanSprites.js: its alone since v2.3.4355) */
+    tint: 0x8f86a8,
+    walkDistPerFrame: 3.6,
+    idleFrameMs: 260,
+    deathStripOnly: true,
+    deathMs: 1100,
   },
 };
 
@@ -577,8 +604,8 @@ const HIT_MATERIALS = {
   fodder:        { kind: 'goo',   tint: 0x3dd497, fxTint: 0x5ca84c /* v2.3.2843: the slime sheet's own green, sampled */, decal: '#1f7a55' },
   mossSlime:     { kind: 'goo',   tint: 0x4cbf6b, decal: '#2a6e3e' },
   blueSlime:     { kind: 'goo',   tint: 0x4c9fdc, decal: '#28567e' },
-  mireWisp:      { kind: 'goo',   tint: 0x7fd0c9, decal: '#3d6f6a' },
-  bogLurker:     { kind: 'goo',   sound: 'mud', tint: 0x5e7a52, decal: '#37482f' },   /* v2.3.3001: a bog's mud */
+  mireWisp:      { kind: 'goo',   tint: 0x7d4a9c, decal: '#3f2a52' },   /* v2.3.4357: the rotcap: soft and wet, in its cap's purple */
+  bogLurker:     { kind: 'goo',   sound: 'mud', tint: 0x5b4470, decal: '#2f2440' },   /* v2.3.3001: a bog's mud; v2.3.4357: the great rotcap's dark purple */
   fishman:       { kind: 'goo',   sound: 'wet', tint: 0x62b8c7, decal: '#2f6570' },   /* v2.3.3001: a wet slap */
   stormEye:      { kind: 'goo',   sound: 'wet', tint: 0xd9c8e8, decal: '#6f5a86' },   /* v2.3.4356: an eye: wet, in its own pale lilac */
   swarm:         { kind: 'goo',   tint: 0x8a6dc0, decal: '#4c3a70' },

@@ -80,7 +80,7 @@ const LOOKS = [
   { key: 'mummy', arch: 'fodder', variant: 'mummy', look: 'mummy', zk: 'mummy', noTransform: true },
   /* (v2.3.4355: no `fishman` -- the Water Caves' monster is the water frog,
      whose death is its own strip on every kill: mp-waterfrog) */
-  { key: 'boglurker', arch: 'brute', variant: 'bogLurker', look: 'bogLurker', zk: 'bogLurker' },
+  /* (v2.3.4357: nor `boglurker` -- the great rotcap, its own strip too: mp-rotcap) */
   { key: 'rock', arch: 'brute', variant: 'rockmonster', look: 'rockmonster', zk: 'rockmonster' },
   { key: 'thorn', arch: 'brute', variant: 'thornShambler', look: 'thornShambler', zk: 'thornShambler' },
   { key: 'snowman-east', arch: 'snowman', variant: null, look: 'snowman', zk: 'snowman', east: true },

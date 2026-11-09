@@ -13,7 +13,7 @@ What the game could use from the owner next, each with a prompt ready to paste.
 Each of these is drawn in code, borrowed from somewhere else, or missing today. Each is one chat; the reference pictures to attach are in `docs/art/` (and the banners' in `docs/triage-2026-09-17/assets/`). The same prompts are on a page with a Copy button each, built from this file: https://claude.ai/artifact/9wqSAqMoa4DXfWRvYcVk1L (the owner's).
 
 1. ~~**The keepers**~~: not needed from ChatGPT any more. Since v2.3.3580 every townsperson is a bro from the character creator, your "NPCs should look like normal bro characters" (docs/specs/npc-creator-looks.md). A new keeper is a look written in `tools/qa/npc-looks.mjs` and photographed by the game; no picture to make.
-2. **The monsters** (3 chats): the Mire Wisp, the Bog Lurker, and a real walk for the rock monster. (The Foundry's monster is done: since v2.3.4356 it is your storm eye, `docs/specs/storm-eye.md`.) (The fishman is done another way: since v2.3.4355 the Water Caves' monster is your water frog, cut from your videos, `docs/specs/water-frog.md`. Still wanted for it: a video from behind (idle and hop, and attack), and a side-on hop filmed whole. A back-right attack that does not turn its face would be a bonus.) Then, if you like them, a slam, hurt and death sheet for each walking one (up to 3 more).
+2. **The monsters** (1 chat): a real walk for the rock monster. (The Poison Forest's two are done: since v2.3.4357 they are your rotcap, `docs/specs/rotcap.md`.) (The Foundry's monster is done: since v2.3.4356 it is your storm eye, `docs/specs/storm-eye.md`.) (The fishman is done another way: since v2.3.4355 the Water Caves' monster is your water frog, cut from your videos, `docs/specs/water-frog.md`. Still wanted for it: a video from behind (idle and hop, and attack), and a side-on hop filmed whole. A back-right attack that does not turn its face would be a bonus.) Then, if you like them, a slam, hurt and death sheet for each walking one (up to 3 more).
 3. **The four land banners** (4 chats): Stone Hollows, Electric Foundry, Water Caves, Poison Forest.
 4. **The four dungeons** (13 chats): each mouth, its arena's walls and the things inside it, and the boss's chest. Their prompts are in `docs/art/DUNGEON-ART-PROMPTS.md`; the Goo Grotto and the chest first (4 chats), as a new player reaches the Grotto in the first half hour.
 5. **The Farmhouse and the Dungeon Workshop** (2 chats): their prompts are in `docs/art/FARM-ART-PROMPTS.md`.
@@ -651,7 +651,7 @@ Style: exactly the attached monsters: chunky, bold pixel art with a dark outline
 No text, cell lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the monster is magenta or pink.
 ```
 
-### The Mire Wisp (Poison Forest)
+### The Mire Wisp (Poison Forest) (NOT NEEDED since v2.3.4357: the rotcap)
 
 - **In the game:** the Poison Forest's wisps at levels 1-20. It keeps the slime's moves: it bobs, spits globs and lunges.
 - **Attach:** `docs/art/monster-style-key.png`.
@@ -671,7 +671,7 @@ Style: exactly the attached monsters: chunky, bold pixel art with a dark outline
 No text, cell lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the monster is magenta or pink (its violet is a deep blue-violet, not pink).
 ```
 
-### The Bog Lurker (Poison Forest)
+### The Bog Lurker (Poison Forest) (NOT NEEDED since v2.3.4357: the great rotcap)
 
 - **In the game:** the Poison Forest's lurkers at levels 1-20. It keeps the fishman's moves: it walks up to you and slams.
 - **Attach:** `docs/art/monster-style-key.png`.

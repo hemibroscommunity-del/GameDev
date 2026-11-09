@@ -41,8 +41,8 @@ export const WHEEL_STAGE_LOOKS = Object.freeze({
     fodder: Object.freeze({ tint: 0x60c0ff, name: 'Storm Slime' }),            /* the Electric Foundry: teal (the slime that stood in until v2.3.4356) */
     stormEye: Object.freeze({ tint: 0x60c0ff, name: 'Tempest Eye' }),          /* ...its monster since: the storm eye, the same teal */
     fishman: Object.freeze({ tint: 0xffb070, name: 'Coral Frog' }),            /* the Water Caves: coral (v2.3.4355: the water frog -- kelp-dark, its belly and eyes coral) */
-    mireWisp: Object.freeze({ tint: 0x70e8ff, name: 'Spectral Wisp' }),        /* the Poison Forest: cyan */
-    bogLurker: Object.freeze({ tint: 0xc090ff, name: 'Shade Lurker' }),        /* ...violet */
+    mireWisp: Object.freeze({ tint: 0x70e8ff, name: 'Spectral Rotcap' }),      /* the Poison Forest: cyan (v2.3.4357: the rotcap) */
+    bogLurker: Object.freeze({ tint: 0xc090ff, name: 'Shade Rotcap' }),        /* ...violet (the great rotcap) */
     blueSlime: Object.freeze({ tint: 0x9cffb0, name: 'Jade Slime' }),          /* the Verdant Wilds: its blue, jade */
     thornShambler: Object.freeze({ tint: 0xd0ff60, name: 'Bramble Shambler' }),/* ...yellow-green */
     mossSlime: Object.freeze({ tint: 0xffd040, name: 'Pollen Slime' }),        /* ...gold-green */

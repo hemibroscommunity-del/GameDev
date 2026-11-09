@@ -8,9 +8,9 @@ export const PET_SHEET = Object.freeze({
   "url": "/sprites/pets/pet-sheet.png",
   "cell": 64,
   "cols": 12,
-  "rows": 9,
-  "bytes": 347358,
-  "decodedBytes": 1769472,
+  "rows": 8,
+  "bytes": 342574,
+  "decodedBytes": 1572864,
   "bases": {
     "snowman": {
       "row": 0,
@@ -44,24 +44,8 @@ export const PET_SHEET = Object.freeze({
       "h": 30.0,
       "w": 30.0
     },
-    "fishman": {
-      "row": 4,
-      "front": 1,
-      "side": 1,
-      "sideFaces": "w",
-      "h": 30.0,
-      "w": 29.4
-    },
-    "slime": {
-      "row": 5,
-      "front": 8,
-      "side": 0,
-      "sideFaces": null,
-      "h": 30.0,
-      "w": 26.9
-    },
     "blueSlime": {
-      "row": 6,
+      "row": 4,
       "front": 8,
       "side": 0,
       "sideFaces": null,
@@ -69,7 +53,7 @@ export const PET_SHEET = Object.freeze({
       "w": 26.9
     },
     "waterFrog": {
-      "row": 7,
+      "row": 5,
       "front": 1,
       "side": 1,
       "sideFaces": "e",
@@ -77,12 +61,20 @@ export const PET_SHEET = Object.freeze({
       "w": 30.0
     },
     "stormEye": {
-      "row": 8,
+      "row": 6,
       "front": 1,
       "side": 1,
       "sideFaces": "e",
       "h": 30.0,
       "w": 22.3
+    },
+    "rotcap": {
+      "row": 7,
+      "front": 4,
+      "side": 4,
+      "sideFaces": "e",
+      "h": 23.2,
+      "w": 30.0
     }
   }
 });

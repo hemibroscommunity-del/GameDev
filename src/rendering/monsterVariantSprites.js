@@ -53,13 +53,19 @@ import {
   getRemnantsTexture as skRemnants,
 } from './skeletonSprites.js';
 
+/* v2.3.4357: the rotcap -- the Poison Forest's two monsters (keys `mireWisp`
+   and `bogLurker`).  The old fishman pictures the bog lurker wore, and their
+   module, went with it: nothing draws them any more. */
 import {
-  loadFishmanSprites,
-  unloadFishmanSprites,
-  getFrame as fhWalkFrame,
-  hasFrames as fhHasWalk,
-  frameCount as fhWalkCount,
-} from './fishmanSprites.js';
+  loadRotcapSprites,
+  unloadRotcapSprites,
+  getFrame as rcFrame,
+  hasFrames as rcHas,
+  frameCount as rcCount,
+  getDeathFrame as rcDeathFrame,
+  hasDeathFrames as rcHasDeath,
+  deathFrameCount as rcDeathCount,
+} from './rotcapSprites.js';
 
 /* v2.3.4355: the water frog -- the Water Caves' monster (key `fishman`) */
 import {
@@ -178,21 +184,36 @@ export const VARIANT_SPRITES = {
   /* v2.3.1147: verdant/mist brute reskins -- SAME loaders as their
      source variants (loaders cache internally, so the textures are
      shared; the recolor is a per-sprite Pixi tint from
-     MONSTER_VARIANTS[key].tint applied in entityRenderer).  The two
-     fodder reskins (mossSlime/mireWisp) deliberately have NO entry
+     MONSTER_VARIANTS[key].tint applied in entityRenderer).  The
+     slime reskins (mossSlime, blueSlime) deliberately have NO entry
      here: useSlimeSheets routes them through the slime state branch. */
   thornShambler: {
     load: loadRockmonsterSprites,
     unload: unloadRockmonsterSprites,
     walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
   },
-  /* v2.3.4355: the bog lurker keeps the old fishman pictures (a single
-     still pose a direction), now its alone: the Water Caves' own monster
-     is the water frog above. */
+  /* ═══ v2.3.4357: THE ROTCAP, TWICE ═══
+     The owner: "Also this for poison land" -- "Both".  The Poison Forest's
+     two monsters are one mushroom at two sizes: the mire wisp's key is the
+     ordinary one that spits (it was the slime's sheets in violet, with no
+     entry here), the bog lurker's the big dark one that slams (it was the
+     old fishman pictures).  ONE module for both keys, as the rock monster
+     and the thorn shambler share theirs: the walk is its shuffle, standing
+     still plays the same four frames by the clock (`idle`), and the death is
+     its own. */
+  mireWisp: {
+    load: loadRotcapSprites,
+    unload: unloadRotcapSprites,
+    walk:  { get: rcFrame,      has: rcHas,      count: rcCount      },
+    idle:  { get: rcFrame,      has: rcHas,      count: rcCount      },
+    death: { get: rcDeathFrame, has: rcHasDeath, count: rcDeathCount },
+  },
   bogLurker: {
-    load: loadFishmanSprites,
-    unload: unloadFishmanSprites,
-    walk: { get: fhWalkFrame, has: fhHasWalk, count: fhWalkCount },
+    load: loadRotcapSprites,
+    unload: unloadRotcapSprites,
+    walk:  { get: rcFrame,      has: rcHas,      count: rcCount      },
+    idle:  { get: rcFrame,      has: rcHas,      count: rcCount      },
+    death: { get: rcDeathFrame, has: rcHasDeath, count: rcDeathCount },
   },
 };
 

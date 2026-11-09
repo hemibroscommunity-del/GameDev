@@ -26,7 +26,7 @@
  * `walk-sw` file and its west attack `attack-sw` (fireGoblinSprites.js), the
  * snowman's south-west strips face left unmirrored (snowmanSprites.js). */
 
-const SN = '?v=2.1.14', FG = '?v=2.3.26', MU = '?v=2.3.58', SK = '?v=2.3.63', FI = '?v=2.3.135', RM = '?v=2.3.137', WF = '?v=2.3.4355', SE = '?v=2.3.4356';
+const SN = '?v=2.1.14', FG = '?v=2.3.26', MU = '?v=2.3.58', SK = '?v=2.3.63', FI = '?v=2.3.135', RM = '?v=2.3.137', WF = '?v=2.3.4355', SE = '?v=2.3.4356', RC = '?v=2.3.4357';
 
 export const CODEX_LOOKS = Object.freeze({
   slime: Object.freeze({
@@ -79,9 +79,19 @@ export const CODEX_LOOKS = Object.freeze({
     cell: 256, x0: 4, x1: 251, artRows: 247, artH: 96,
     strips: Object.freeze({ idle: { url: '/sprites/monsters/rockmonster/walk-west.png' + RM, n: 1, ms: 0, ground: 248 } }),
   }),
-  fishman: Object.freeze({
-    cell: 256, x0: 7, x1: 249, artRows: 247, artH: 96,
-    strips: Object.freeze({ idle: { url: '/sprites/monsters/fishman/walk-west.png' + FI, n: 1, ms: 0, ground: 252 } }),
+  /* v2.3.4357: the rotcap, the Poison Forest's two (rotcapSprites.js): its
+     front-left row, which faces your character, as a strip of its own -- its
+     shuffle standing and walking -- and its death.  The great one is the
+     same picture in its dark tint (CODEX_STAGE lurkling).
+     (The old fishman's look went with its picture.) */
+  rotcap: Object.freeze({
+    cell: 256, x0: 44, x1: 210, artRows: 127, artH: 54,
+    strips: Object.freeze({
+      idle: { url: '/sprites/monsters/rotcap/codex-walk.png' + RC, n: 4, ms: 920, ground: 231 },
+      walk: { url: '/sprites/monsters/rotcap/codex-walk.png' + RC, n: 4, ms: 560, ground: 231 },
+      death: { url: '/sprites/monsters/rotcap/death.png' + RC, n: 12, ms: 900, ground: 230 },
+    }),
+    shot: { color: '#9bd43f', px: 15 },
   }),
   /* v2.3.4356: the storm eye, the Electric Foundry's monster
      (stormEyeSprites.js): one still picture, its front-left view (cell 2 of
@@ -128,8 +138,8 @@ export const CODEX_STAGE = Object.freeze({
   pebbling: Object.freeze({ look: 'rockmonster', elderTint: 0xc8a0ff, hit: 'swing', special: 'slam' }),
   sparklet: Object.freeze({ look: 'stormEye', elderTint: 0x60c0ff, hit: 'throw', special: 'lunge', shotColor: '#9fe3ff' }),   /* v2.3.4356: the storm eye */
   finling: Object.freeze({ look: 'waterFrog', elderTint: 0xffb070, hit: 'swing', special: 'slam' }),   /* v2.3.4355: the water frog */
-  wisplet: Object.freeze({ look: 'slime', tint: 0x7a5fa8, elderTint: 0x70e8ff, hit: 'throw', special: 'lunge', shotColor: '#2c3f32' }),
-  lurkling: Object.freeze({ look: 'fishman', tint: 0x5f7a5a, elderTint: 0xc090ff, hit: 'swing', special: 'slam' }),
+  wisplet: Object.freeze({ look: 'rotcap', elderTint: 0x70e8ff, hit: 'throw', special: 'lunge', shotColor: '#9bd43f' }),   /* v2.3.4357: the rotcap */
+  lurkling: Object.freeze({ look: 'rotcap', tint: 0x8f86a8, elderTint: 0xc090ff, hit: 'swing', special: 'slam' }),   /* v2.3.4357: the great rotcap */
   dewdrop: Object.freeze({ look: 'slime', recolor: [58, 122, 208], elderTint: 0x9cffb0, hit: 'throw', special: 'burst', shotColor: '#3a7ad0' }),
 });
 

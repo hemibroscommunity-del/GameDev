@@ -23,8 +23,9 @@ water in the drawings. (Either cover over it or remove)"*.
 - It fights exactly as the fishman did. Nothing on the server changed: the
   same health, damage, slam, soak, drops and experience.
 - Its pet is the **Froglet** (the Finling before), drawn as a small frog.
-- The **Bog Lurker** is untouched. It still wears the old fishman picture in
-  the bog's colour, with its own death, and its pet the Lurkling too.
+- The **Bog Lurker**, which went on wearing the old fishman picture in the
+  bog's colour, became the Great Rotcap one version later (v2.3.4357,
+  `docs/specs/rotcap.md`): the fishman picture is gone from the game.
 
 ## What was uploaded, and what was made of it
 
