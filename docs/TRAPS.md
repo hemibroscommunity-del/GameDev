@@ -8747,3 +8747,34 @@ cache. "Phones are fine" was a cache, not a screen size.
 
 **Receipt:** `mp-desksmooth`; the `ground-late` and `zone-gate` suites;
 docs/specs/slow-line-ground.md.
+
+## 263. "The meter says 60 frames a second, so the motion is smooth" (v2.3.4355)
+
+**The move.** Chase a "gritty" or "not smooth" report as a frame-rate problem:
+profile the frame, cut pixels, cut passes, pool textures. Or the reverse: read
+60 on the meter and tell the owner it is smooth.
+
+**Why it is wrong.** A frame rate counts frames. Smoothness is what each frame
+SHOWS. The owner's iPhone 14 Pro Max on the skateboard read 60 frames a
+second, the game's work 3.4 ms of each 16.7, and looked "like it was 30fps or
+worse" at full resolution, at a lower one, and with no buildings. The game
+moved you by `speed x this frame's measured length`, measured when its own
+code began to run. The screen shows every frame for exactly 16.7 ms; the
+measured length wobbled between 11 and 24. So you moved a third too far on one
+frame and a third too little on the next: sixty uneven steps a second.
+
+**The rule.**
+- A step is made from the steady frame, never from one frame's own measured
+  length: `src/game/frameClock.js` (the mean of the last ten; a frame past
+  the 3-frame cap is a break and is taken as it is). The loop has one writer
+  of `S._dtScale` (`frame-clock` §8).
+- Before treating "not smooth" as a frame-rate problem, get the meter from
+  the device (`?perf=1`): if it reads the screen's own rate with the game's
+  work small, the fault is in the motion, not the chip. Then compare with a
+  third of the pixels (`&res=2`): if nothing changes, stop looking at the
+  chip.
+- This box draws a few frames a second and can never show 60. Play the
+  device's clock to the game instead (`mp-steadystep`: the page's
+  `performance.now` and animation frame replaced by scripted lengths).
+
+**Receipt:** `mp-steadystep`, the `frame-clock` suite, docs/specs/steady-step.md.

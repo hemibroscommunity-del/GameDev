@@ -79,28 +79,23 @@ player never loses items, gold or a fight to a phase that stuck.
     budget for big screens is the likely first fix and needs no capture to be
     safe for phones (they are under it).
 
-- [ ] **A3. The skateboard on an iPhone.** OPEN. The owner, 2026-11-09, on an
-  iPhone 14 Pro Max in Safari: "gritty framerate while on skateboard riding
-  through town. Can that be improved to a buttery smooth FPS?"
-  - **Measured** on a phone-sized page
-    (`BT_PF_SCENES=townwalk,townride node tools/qa/mp/run.mjs phoneframe`,
-    its new `townride` scene): the game's own work a frame is nearly the same
-    riding as walking (the middle frame 6.9 ms against 6.6 on the test box,
-    19 frames in 20 within 12 ms against 9.1). The one large difference: a
-    ride lays about 13 new pieces of ground a second, each a new picture
-    handed to the graphics chip (about 2 MB a second, and as many let go
-    behind you), where a short walk lays none.
-  - **So the suspect is the graphics chip's side**: making, filling and
-    dropping about 13 pictures a second. The test box cannot time a phone's
-    chip.
-  - **Capture first, on the phone** (a minute): the game's address with
-    `?perf=1` on the end shows a strip at the top (frames a second, the
-    game's own work, the time outside it). Ride through town and screenshot
-    it; then the same with `&res=2`, and with `&noobjects`.
-  - **Likely fix if the capture agrees**: reuse the pictures of the pieces
-    let go for the pieces being laid, instead of making and destroying one
-    each time (a small pool with a cap: the memory law), in
-    `src/rendering/wheelGround.js`.
+- [x] **A3. The skateboard on an iPhone: "gritty framerate ... riding through
+  town".** DONE, v2.3.4355 (the owner to confirm by eye on the phone).
+  - **The cause**: not the frame rate. The owner's captures (`?perf=1`,
+    2026-11-09) read 60 frames a second with the game's work 3.4 to 4.1 ms
+    of each, and the ride was as gritty at a lower resolution and with no
+    buildings. The game moved you by each frame's own measured length, which
+    wobbles a few ms round the screen's steady 16.7: a third too far on one
+    frame, a third too little on the next.
+  - **The fix**: the step is the mean of the last ten frames' lengths
+    (`src/game/frameClock.js`; `?dtsmooth=0` is the old way).
+    `docs/specs/steady-step.md`; `node tools/qa/mp/run.mjs steadystep` plays
+    the phone's wobble to the real game: 36% out a frame before, 3.6% now.
+  - **REFUTED on the way**: this page's first guess, that the graphics chip
+    was the wait (13 new pieces of ground a second). A third of the pixels
+    made no difference and the meter shows the chip keeping up.
+  - The same uneven step is on computers too, so this is part of A2's "not
+    smooth". A2 stays open for what a computer's graphics chip costs.
 
 ## B. Cheap closes against a modified client
 
