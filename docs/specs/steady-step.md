@@ -77,6 +77,23 @@ frames' measured lengths**.
   frames a second, a change between them, the off-ramp, and that the game
   loop has no other writer of the step.
 
+## The owner's verdict, and what is left
+
+"I think it looks a little smoother but it's still gritty looking"
+(2026-11-09, the strip reading "fps ~59 frame avg 16.8 p95 17.0 max 38.0").
+So the uneven step was part of it, not all of it. With steady input the step,
+the camera's slide (within 3.8%) and your place on the screen (within 0.06
+game px) are all steady now (`mp-steadystep`). What is left, and how the
+phone's strip (`?perf=1`) tells them apart since this change:
+
+- **late frames**: the count over ten seconds, the worst one's split into
+  the game's work and the time outside it, and the slowest message handled
+  between frames;
+- **the 60 ceiling**: that phone's screen is 120 Hz and Safari gives a web
+  page 60; the strip's `fps` line says which the page is getting;
+- **the thumb**: the stick is analog, and the strip's `stick` line shows
+  whether it sat at the rim (1.00 to 1.00) or wavered short of it.
+
 ## What it does not do
 
 - It cannot be SEEN here: only the owner's phone shows whether the ride now

@@ -77,15 +77,21 @@ async function ride(browser, wsPort, webPort, rec, label, query, seq) {
       window.requestAnimationFrame = (cb) => raf((t) => { if (t !== seen) { seen = t; fake += lens[i++ % lens.length]; } cb(fake); });
       window.__btStepLog = [];
     }, seq);
-    const got = await H.waitFor(P, () => (window.__btStepLog ? window.__btStepLog.length / 4 : 0), (n) => n >= SKIP + FRAMES + 2, { timeout: 180000, label: 'the frames' }).then(() => true).catch(() => false);
+    const N = 6;   /* the log's numbers a frame: the measured length, the step's, your place (x, y), the camera's (x, y) */
+    const got = await H.waitFor(P, () => (window.__btStepLog ? window.__btStepLog.length / 6 : 0), (n) => n >= SKIP + FRAMES + 2, { timeout: 180000, label: 'the frames' }).then(() => true).catch(() => false);
     const log = await P.page.evaluate(() => window.__btStepLog.slice());
+    const view = await P.page.evaluate(() => { const S = window._gameState.current; return { sx: S._worldScaleX || 0, dpr: window.devicePixelRatio || 1 }; });
     await P.page.keyboard.up('d');
-    rec.ok(`${label}: ${SKIP + FRAMES} frames ridden on the scripted clock (guard)`, got, { frames: log.length / 4 });
+    rec.ok(`${label}: ${SKIP + FRAMES} frames ridden on the scripted clock (guard)`, got, { frames: log.length / N });
     if (!got) return null;
     const rows = [];
-    for (let k = 4 * (SKIP + 1); k + 3 < log.length && rows.length < FRAMES; k += 4) {
-      rows.push({ raw: log[k], step: log[k + 1], d: Math.hypot(log[k + 2] - log[k - 2], log[k + 3] - log[k - 1]) });
+    for (let k = N * (SKIP + 1); k + N - 1 < log.length && rows.length < FRAMES; k += N) {
+      rows.push({ raw: log[k], step: log[k + 1], d: Math.hypot(log[k + 2] - log[k + 2 - N], log[k + 3] - log[k + 3 - N]),
+        cam: Math.hypot(log[k + 4] - log[k + 4 - N], log[k + 5] - log[k + 5 - N]),
+        /* where you stand on the screen: your place less the camera's, in game px */
+        onX: log[k + 2] - log[k + 4] });
     }
+    rows.view = view;
     return rows;
   } finally {
     await P.ctx.close().catch(() => {});
@@ -98,7 +104,10 @@ function read(rows) {
   for (let i = 1; i < d.length; i++) hop = Math.max(hop, Math.abs(d[i] - d[i - 1]));
   return { frames: rows.length, mid: +mid.toFixed(3), worst: +Math.max(...d.map((v) => Math.abs(v - mid) / mid)).toFixed(3), hop: +(hop / mid).toFixed(3),
     mean: +(d.reduce((a, b) => a + b, 0) / d.length).toFixed(3), rawP95: +q(rows.map((r) => r.raw), 0.95).toFixed(1), rawMax: +Math.max(...rows.map((r) => r.raw)).toFixed(1),
-    rawAvg: +(rows.reduce((a, r) => a + r.raw, 0) / rows.length).toFixed(2), moving: d.filter((v) => v > 0.5).length };
+    rawAvg: +(rows.reduce((a, r) => a + r.raw, 0) / rows.length).toFixed(2), moving: d.filter((v) => v > 0.5).length,
+    /* the world's slide a frame (the camera's), and how far you wander on the screen while it chases you */
+    camMid: +q(rows.map((r) => r.cam), 0.5).toFixed(3), camWorst: +Math.max(...rows.map((r) => Math.abs(r.cam - mid) / mid)).toFixed(3),
+    onScreen: +(Math.max(...rows.map((r) => r.onX)) - Math.min(...rows.map((r) => r.onX))).toFixed(2) };
 }
 
 export async function run({ browser, wsPort, webPort, rec }) {

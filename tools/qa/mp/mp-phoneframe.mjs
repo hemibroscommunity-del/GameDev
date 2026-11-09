@@ -531,6 +531,10 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
         render: { p50: q(col('renderMs'), 0.5), mean: mean(col('renderMs')) },
         tile: mean(col('tileMs')), entity: mean(col('entityMs')), effects: mean(col('effectsMs')), app: mean(col('appMs')),
         interval: { p50: q(col('totalMs'), 0.5), p95: q(col('totalMs'), 0.95) },
+        /* v2.3.4355: the worst frames and where each went -- a hitch hides in the averages (the owner's iPhone: 60 frames a
+           second on the meter, the worst frame of each two seconds 22 to 38 ms) */
+        worst: [...s].sort((a, b) => (b.workMs || 0) - (a.workMs || 0)).slice(0, 5).map((x) => ({ work: +(x.workMs || 0).toFixed(1), sim: +(x.simMs || 0).toFixed(1),
+          tile: +(x.tileMs || 0).toFixed(1), entity: +(x.entityMs || 0).toFixed(1), effects: +(x.effectsMs || 0).toFixed(1), pixi: +(x.appMs || 0).toFixed(1) })),
         mainPerSec: {
           task: +(((m1.TaskDuration - m0.TaskDuration) / secs) * 1000).toFixed(0),
           script: +(((m1.ScriptDuration - m0.ScriptDuration) / secs) * 1000).toFixed(0),
@@ -546,6 +550,7 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
       console.log(`\n  ── ${label}: ${row.frames} frames (${row.fps}/s), work p50 ${row.work.p50} p95 ${row.work.p95} mean ${row.work.mean} ms`
         + ` | sim ${row.sim.mean} render ${row.render.mean} (tile ${row.tile} entity ${row.entity} effects ${row.effects} pixi ${row.app})`
         + ` | main thread a second: task ${row.mainPerSec.task} script ${row.mainPerSec.script} layout ${row.mainPerSec.layout} style ${row.mainPerSec.style} ms`);
+      console.log(`     the five worst frames (work = sim + tile + entity + effects + pixi + the rest): ${row.worst.map((w) => `${w.work} (sim ${w.sim} tile ${w.tile} ent ${w.entity} fx ${w.effects} pixi ${w.pixi})`).join(' | ')}`);
       if (gl) {
         const draws = (gl.drawElements || 0) + (gl.drawArrays || 0) + (gl.drawElementsInstanced || 0) + (gl.drawArraysInstanced || 0);
         const sync = SYNC.reduce((a, k) => a + (gl[k] || 0), 0);

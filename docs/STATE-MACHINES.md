@@ -79,8 +79,21 @@ player never loses items, gold or a fight to a phase that stuck.
     budget for big screens is the likely first fix and needs no capture to be
     safe for phones (they are under it).
 
-- [x] **A3. The skateboard on an iPhone: "gritty framerate ... riding through
-  town".** DONE, v2.3.4355 (the owner to confirm by eye on the phone).
+- [ ] **A3. The skateboard on an iPhone: "gritty framerate ... riding through
+  town".** PART DONE, v2.3.4355; still OPEN. The owner, on the fix below:
+  "I think it looks a little smoother but it's still gritty looking."
+  - **What is left to tell apart** (the phone's strip, `?perf=1`, now says
+    each): (1) real late frames: the strip read "p95 17.0 max 38.0", one
+    frame in each two seconds two refreshes late, and nothing on the test box
+    shows where it goes (the game's own worst frame on a ride is 10 ms); the
+    strip's new lines give the count in ten seconds and the worst one's
+    split; (2) the ceiling: an iPhone 14 Pro Max's screen is 120 Hz and
+    Safari gives a web page 60 (its feature flag "Prefer Page Rendering
+    Updates near 60fps"), so 60 may itself be what reads as gritty beside the
+    rest of the phone; (3) the stick is analog: a thumb short of the rim
+    moves you at a speed that wavers with it (the strip's `stick` line).
+  - **Proved steady with steady input** (`mp-steadystep`): your step, the
+    camera's slide and your place on the screen, frame to frame.
   - **The cause**: not the frame rate. The owner's captures (`?perf=1`,
     2026-11-09) read 60 frames a second with the game's work 3.4 to 4.1 ms
     of each, and the ride was as gritty at a lower resolution and with no

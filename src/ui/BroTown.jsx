@@ -4892,7 +4892,7 @@ export var BroTown = function BroTown(_ref0) {
            own, as before. */
         S._frameMs = _stepMs > 0 ? _stepMs : 16.667;
         /* QA (mp-steadystep): the frame's measured length and the one moved by */
-        if (typeof window !== 'undefined' && window.__btStepLog) window.__btStepLog.push(_perfDelta, _stepMs, S.player ? S.player.x : 0, S.player ? S.player.y : 0);
+        if (typeof window !== 'undefined' && window.__btStepLog) window.__btStepLog.push(_perfDelta, _stepMs, S.player ? S.player.x : 0, S.player ? S.player.y : 0, S.camera ? S.camera.x : 0, S.camera ? S.camera.y : 0);
         if (_perfDelta > 20) {
           S._perf.totalSlow++;
           if (_perfDelta > S._perf.worstMs) {
