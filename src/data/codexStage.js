@@ -26,7 +26,7 @@
  * `walk-sw` file and its west attack `attack-sw` (fireGoblinSprites.js), the
  * snowman's south-west strips face left unmirrored (snowmanSprites.js). */
 
-const SN = '?v=2.1.14', FG = '?v=2.3.26', MU = '?v=2.3.58', SK = '?v=2.3.63', FI = '?v=2.3.135', RM = '?v=2.3.137';
+const SN = '?v=2.1.14', FG = '?v=2.3.26', MU = '?v=2.3.58', SK = '?v=2.3.63', FI = '?v=2.3.135', RM = '?v=2.3.137', WF = '?v=2.3.4355';
 
 export const CODEX_LOOKS = Object.freeze({
   slime: Object.freeze({
@@ -83,6 +83,19 @@ export const CODEX_LOOKS = Object.freeze({
     cell: 256, x0: 7, x1: 249, artRows: 247, artH: 96,
     strips: Object.freeze({ idle: { url: '/sprites/monsters/fishman/walk-west.png' + FI, n: 1, ms: 0, ground: 252 } }),
   }),
+  /* v2.3.4355: the water frog, the Water Caves' monster (waterFrogSprites.js)
+     -- its front-left strips, which face your character unmirrored: its
+     breath, its hop for the walk in and back, its wind-up for the swing.
+     artRows is from the top of its hop (row 44) to its feet (231); at rest it
+     is 140 of them, 64 px on the stage: a squat toad beside the golem's 96. */
+  waterFrog: Object.freeze({
+    cell: 256, x0: 48, x1: 208, artRows: 188, artH: 86,
+    strips: Object.freeze({
+      idle: { url: '/sprites/monsters/water-frog/idle-sw.png' + WF, n: 8, ms: 1360, ground: 231 },
+      walk: { url: '/sprites/monsters/water-frog/hop-sw.png' + WF, n: 12, ms: 700, ground: 231 },
+      attack: { url: '/sprites/monsters/water-frog/attack-sw.png' + WF, n: 15, ms: 260, ground: 232 },
+    }),
+  }),
 });
 
 /* ═══ EACH KIND ON THE STAGE ═══
@@ -101,7 +114,7 @@ export const CODEX_STAGE = Object.freeze({
   mumling: Object.freeze({ look: 'mummy', elderTint: 0xffd27a, hit: 'swing', special: 'unwrap' }),
   pebbling: Object.freeze({ look: 'rockmonster', elderTint: 0xc8a0ff, hit: 'swing', special: 'slam' }),
   sparklet: Object.freeze({ look: 'slime', elderTint: 0x60c0ff, hit: 'throw', special: 'lunge' }),
-  finling: Object.freeze({ look: 'fishman', elderTint: 0xffb070, hit: 'swing', special: 'slam' }),
+  finling: Object.freeze({ look: 'waterFrog', elderTint: 0xffb070, hit: 'swing', special: 'slam' }),   /* v2.3.4355: the water frog */
   wisplet: Object.freeze({ look: 'slime', tint: 0x7a5fa8, elderTint: 0x70e8ff, hit: 'throw', special: 'lunge', shotColor: '#2c3f32' }),
   lurkling: Object.freeze({ look: 'fishman', tint: 0x5f7a5a, elderTint: 0xc090ff, hit: 'swing', special: 'slam' }),
   dewdrop: Object.freeze({ look: 'slime', recolor: [58, 122, 208], elderTint: 0x9cffb0, hit: 'throw', special: 'burst', shotColor: '#3a7ad0' }),

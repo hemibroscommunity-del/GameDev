@@ -33,7 +33,7 @@
  * sheet that is loaded is a sheet that can be freed, by construction.
  *
  * Bundles, not variant keys: thornShambler and rockmonster share one loader
- * (as do bogLurker and fishman), so freeing by key would tear the art out from
+ * (v2.3.4355: bogLurker and fishman did until the water frog), so freeing by key would tear the art out from
  * under a variant that is still in the zone you just walked into.
  *
  * ── THIS DOES NOT WEAKEN THE PRELOADING LAW ──

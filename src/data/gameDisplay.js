@@ -7202,7 +7202,7 @@ export const MONSTER_DISPLAY_NAMES = {
   mummy: 'Mummy',
   skeleton: 'Skeleton',
   fireGoblin: 'Fire Goblin',
-  fishman: 'Fishman',
+  fishman: 'Water Frog',   /* v2.3.4355: the Water Caves' monster is the water frog (its key stays) */
   rockmonster: 'Rock Monster',
   mossSlime: 'Moss Slime',
   blueSlime: 'Blue Slime',

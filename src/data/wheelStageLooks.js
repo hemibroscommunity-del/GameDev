@@ -39,7 +39,7 @@ export const WHEEL_STAGE_LOOKS = Object.freeze({
     skeleton: Object.freeze({ tint: 0xffd27a, name: 'Gilded Skeleton' }),      /* ...a mummy's bones */
     rockmonster: Object.freeze({ tint: 0xc8a0ff, name: 'Amethyst Golem' }),    /* the Stone Hollows: amethyst */
     fodder: Object.freeze({ tint: 0x60c0ff, name: 'Storm Slime' }),            /* the Electric Foundry: teal */
-    fishman: Object.freeze({ tint: 0xffb070, name: 'Coral Fishman' }),         /* the Water Caves: coral */
+    fishman: Object.freeze({ tint: 0xffb070, name: 'Coral Frog' }),            /* the Water Caves: coral (v2.3.4355: the water frog -- kelp-dark, its belly and eyes coral) */
     mireWisp: Object.freeze({ tint: 0x70e8ff, name: 'Spectral Wisp' }),        /* the Poison Forest: cyan */
     bogLurker: Object.freeze({ tint: 0xc090ff, name: 'Shade Lurker' }),        /* ...violet */
     blueSlime: Object.freeze({ tint: 0x9cffb0, name: 'Jade Slime' }),          /* the Verdant Wilds: its blue, jade */

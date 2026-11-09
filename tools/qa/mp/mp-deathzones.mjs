@@ -10,7 +10,7 @@
  * aside for the while (as mp-silhouette does) and a monster of the page's
  * own put beside you, of every look with zones -- the slime and the blue one
  * (its recoloured sheets), the snowman, the fire goblin, the skeleton, the
- * mummy, the fishman, the bog lurker, the rock monster and the thorn
+ * mummy, the bog lurker, the rock monster and the thorn
  * shambler -- and the snowman and the skeleton again walking east (their
  * side views).  Each is killed with its own death forced
  * (window.__btDeathKind = 'own', the QA override of the roll), in 5x slow
@@ -34,7 +34,7 @@
  *  10. v2.3.3985, THE OWNER'S REFINEMENTS ("premade sections like head,
  *      eyes, arms, torso, legs, etc. that can separate and simulate physics
  *      based on the direction they're hit in"), on a sample of looks (the
- *      snowman, the fire goblin, the skeleton, the rock monster, the fishman
+ *      snowman, the fire goblin, the skeleton, the rock monster
  *      and the slime), each killed by a REAL monster_hit from you through
  *      the game's own handler (window.__btDispatch: game/deathBlow.js writes
  *      the blow down), the monster on your right:
@@ -78,7 +78,8 @@ const LOOKS = [
   { key: 'goblin', arch: 'fodder', variant: 'fireGoblin', look: 'fireGoblin', zk: 'fireGoblin' },
   { key: 'skeleton', arch: 'fodder', variant: 'skeleton', look: 'skeleton', zk: 'skeleton' },
   { key: 'mummy', arch: 'fodder', variant: 'mummy', look: 'mummy', zk: 'mummy', noTransform: true },
-  { key: 'fishman', arch: 'brute', variant: 'fishman', look: 'fishman', zk: 'fishman' },
+  /* (v2.3.4355: no `fishman` -- the Water Caves' monster is the water frog,
+     whose death is its own strip on every kill: mp-waterfrog) */
   { key: 'boglurker', arch: 'brute', variant: 'bogLurker', look: 'bogLurker', zk: 'bogLurker' },
   { key: 'rock', arch: 'brute', variant: 'rockmonster', look: 'rockmonster', zk: 'rockmonster' },
   { key: 'thorn', arch: 'brute', variant: 'thornShambler', look: 'thornShambler', zk: 'thornShambler' },
@@ -361,7 +362,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 10. v2.3.3985: the blow -- big or ordinary, its eyes, which way ── */
     /* DZ_BLOW=snowman,rock: only those looks here (a quicker look) */
     const onlyB = (process.env.DZ_BLOW || '').split(',').filter(Boolean);
-    const SAMPLE = LOOKS.filter((x) => ['slime', 'snowman', 'goblin', 'skeleton', 'rock', 'fishman'].indexOf(x.key) >= 0
+    const SAMPLE = LOOKS.filter((x) => ['slime', 'snowman', 'goblin', 'skeleton', 'rock'].indexOf(x.key) >= 0
       && (!onlyB.length || onlyB.indexOf(x.key) >= 0));
     const BSLOW = 6;
     const blowDeath = async (L, big, side) => {
@@ -406,7 +407,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       rec.ok(`10. ${L.key}: a plain hit from you is the ordinary death, a crit the big one (the blow written down by the real monster_hit, from your side)`,
         !!(c && b && calm.first.kind === 'own' && big.first.kind === 'own' && c.big === false && b.big === true
           && c.blow && b.blow && c.blow.dx > 0.9 && b.blow.dx > 0.9), { calm: c && { big: c.big, blow: c.blow }, big: b && { big: b.big, blow: b.blow }, err: calm.err || big.err });
-      const one = L.key === 'fishman';
+      const one = L.key === 'boglurker';   /* one body and an eye (v2.3.4355: was the fishman, the same picture) */
       rec.ok(`10. ${L.key}: ...the big one throws ${one ? 'no fewer' : 'more'} pieces than the ordinary (${c && c.thrown} -> ${b && b.thrown})`,
         !!(c && b && (one ? b.thrown >= c.thrown : b.thrown > c.thrown)), { calm: c && c.offs, big: b && b.offs });
       rec.ok(`10. ${L.key}: ...its eyes are pieces of their own (${eyesWant})`, !!(c && b && c.eyes === eyesWant && b.eyes === eyesWant), { calm: c && c.eyes, big: b && b.eyes, zones: c && c.zones });

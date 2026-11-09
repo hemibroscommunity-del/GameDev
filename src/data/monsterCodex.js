@@ -171,18 +171,20 @@ export const CODEX_ENTRIES = Object.freeze({
     elder: Object.freeze({ name: 'Storm Slime', text: 'Deeper in the foundry the slimes have soaked up so much charge they glow storm-blue. Stand close to a friend near one and you will both find out why.' }),
   }),
   finling: Object.freeze({
-    name: 'Fishman', home: 'tidal', look: 'fishman', element: 'water', type: 'Aquatic',
-    what: 'Slow out of the water, but tough and heavy-handed. It walks right up to you and hits hard.',
+    /* v2.3.4355: the water frog (the owner: "I want to replace the fish man
+       monster"); the kind's id and its look's key are the worker's, and stay */
+    name: 'Water Frog', home: 'tidal', look: 'fishman', element: 'water', type: 'Aquatic',
+    what: 'A fat toad with a sac of cave water under its chin. Slow and tough: it hops right up to you and hits hard.',
     special: Object.freeze({
       name: 'Slam',
       text: 'It winds up for almost a second, then slams down: double damage to anyone in a ring around it. At most once every five seconds.',
       tip: 'When it winds up, step back out of reach, or block facing it.',
     }),
     story: [
-      'Fishmen came up out of the Water Caves\' deepest pools looking for the surface, found it, and were deeply unimpressed. Too dry. Too bright. Nothing to eat but you.',
-      'They stayed anyway, mostly out of spite, and they have been trying to flood the caves back to how they like them ever since. Every one of them carries a bucket somewhere. Nobody has found where.',
+      'The frogs of the Water Caves found out long ago that the best pools dry up, and decided never to be caught without one again. Each carries its own under its chin, a sac of cave water it tops up at every puddle.',
+      'They are in no hurry and they do not share. Come too close and one will hop over, slowly, with the whole pool sloshing, and land on you. Kill one and stand back: the pool comes out all at once.',
     ],
-    elder: Object.freeze({ name: 'Coral Fishman', text: 'The fishmen of the deep caves are crusted over with coral, orange and spiny. It is armour, it is fashion, and it is very hard to get off your boots.' }),
+    elder: Object.freeze({ name: 'Coral Frog', text: 'The frogs of the deep caves have gone as dark as kelp, with bellies and eyes the orange of the coral they sit on all day. The water they carry has been in there a very long time.' }),
   }),
   wisplet: Object.freeze({
     name: 'Mire Wisp', home: 'mist', look: 'mireWisp', element: 'venom', type: 'Ooze',

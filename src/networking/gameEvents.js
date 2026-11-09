@@ -1588,6 +1588,16 @@ export function processGameEvent(type, payload, S, deps) {
                     if (_tgm && _tgm.id === payload.monsterId) {
                       _tgm._tgFrom = Date.now();
                       _tgm._tgUntil = Date.now() + (payload.ms || 800);
+                      /* v2.3.4355: a look whose attack strip is its specials'
+                         wind-up too (the water frog: MONSTER_VARIANTS
+                         `telegraphAttack`) plays it over this warning, as a
+                         swing's wind-up does above */
+                      var _tgV = MONSTER_VARIANTS[_tgm.archetype || _tgm.type];
+                      if (_tgV && _tgV.telegraphAttack) {
+                        _tgm._shootAnimStart = Date.now();
+                        _tgm._shootAnimEnd = Date.now() + Math.max(80, Math.min(3000, Number(payload.ms) || 800));
+                        _tgm._shootAnimKind = 'swing';
+                      }
                       break;
                     }
                   }

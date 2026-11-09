@@ -8,9 +8,9 @@ export const PET_SHEET = Object.freeze({
   "url": "/sprites/pets/pet-sheet.png",
   "cell": 64,
   "cols": 12,
-  "rows": 7,
-  "bytes": 318650,
-  "decodedBytes": 1376256,
+  "rows": 8,
+  "bytes": 334690,
+  "decodedBytes": 1572864,
   "bases": {
     "snowman": {
       "row": 0,
@@ -67,6 +67,14 @@ export const PET_SHEET = Object.freeze({
       "sideFaces": null,
       "h": 30.0,
       "w": 26.9
+    },
+    "waterFrog": {
+      "row": 7,
+      "front": 1,
+      "side": 1,
+      "sideFaces": "e",
+      "h": 27.1,
+      "w": 30.0
     }
   }
 });

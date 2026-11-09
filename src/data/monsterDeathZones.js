@@ -10,8 +10,8 @@
  * what each part does when the monster dies: the snowman's head rolls, its
  * twig arms fly and its body bursts into snow; a slime splats; a fire goblin
  * drops its torch, crumples and its flame gutters out; a rock monster
- * crumbles; a skeleton's bones scatter; a fishman flops; a thorn shambler
- * splinters; a bog lurker sinks into a puddle.  rendering/monsterDeathZonesFx.js
+ * crumbles; a skeleton's bones scatter; a thorn shambler splinters; a bog
+ * lurker sinks into a puddle (the water frog has its own animation).  rendering/monsterDeathZonesFx.js
  * plays them (docs/specs/monster-death-zones.md: the table explained, how the
  * zones were measured, how to add a monster).
  *
@@ -119,7 +119,7 @@ const SLIME_BASE = [[0, 0.3], [0.12, 0.35], [0.25, 0.29], [0.37, 0.36], [0.5, 0.
 const FACE_S = Object.freeze(['south']);
 const FACE_S3 = Object.freeze(['south', 'southwest', 'southeast']);
 /* the facings drawn from a file that is the front picture mirrored (the
-   fishman's and the rock monster's walk-west.png: WALK_MAP west, northwest
+   bog lurker's and the rock monster's walk-west.png: WALK_MAP west, northwest
    and southwest), where the renderer does no mirroring of its own */
 const WEST_FILE = Object.freeze(['west', 'northwest', 'southwest']);
 
@@ -254,20 +254,14 @@ export const DEATH_ZONES = {
     ],
   },
 
-  /* The fishman: one still pose, so one body -- he goes over like a landed
-     fish and flops on the ground, wet, and his red eye pops out (walk-south:
-     0.30-0.37 across, 0.16-0.24 down; his west file is the same picture
-     mirrored, `flip`).  A big blow throws him over harder, in a splash. */
-  fishman: {
-    flip: WEST_FILE,
-    bigFx: ['goo'],
-    front: [
-      { id: 'body', part: 'core', rect: [0, 0, 1, 1], cut: ['eye'], mat: 'flesh', off: 'hinge', mass: 2, bounce: 0, roll: 0, flop: 3, fx: 'goo' },
-      eye('eye', [0.295, 0.16, 0.37, 0.24], 'flesh', 0, { lift: 0.9 }),
-    ],
-  },
+  /* (v2.3.4355: no `fishman` here.  The Water Caves' monster is the water
+     frog, whose death is its own animation on every kill -- its sac spins up
+     and bursts: MONSTER_VARIANTS.fishman `deathStripOnly` -- so it is never
+     cut into zones.  The old fishman's flop went with his picture; his eye,
+     0.30-0.37 across and 0.16-0.24 down walk-south, is the bog lurker's
+     below, whose west file is the same picture mirrored, `flip`.) */
 
-  /* The bog lurker (the fishman's frames, in the bog's colour): it sinks
+  /* The bog lurker (the old fishman's frames, in the bog's colour): it sinks
      into a spreading pool of its own mud, its eye popping free. */
   bogLurker: {
     puddle: true,

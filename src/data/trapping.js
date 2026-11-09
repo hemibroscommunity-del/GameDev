@@ -98,7 +98,9 @@ export const PET_KINDS = Object.freeze({
   mumling: Object.freeze({ home: 'sky', look: 'mummy', el: 'wind', name: 'Mumling', name2: 'Gilded Mumling' }),
   pebbling: Object.freeze({ home: 'hollows', look: 'rockmonster', el: 'stone', name: 'Pebbling', name2: 'Amethyst Pebbling' }),
   sparklet: Object.freeze({ home: 'thunder', look: 'fodder', el: 'storm', name: 'Sparklet', name2: 'Storm Sparklet' }),
-  finling: Object.freeze({ home: 'tidal', look: 'fishman', el: 'water', name: 'Finling', name2: 'Coral Finling' }),
+  /* v2.3.4355: the Water Caves' monster is the water frog, so its pet is a
+     froglet (the kind's id, `finling`, is the worker's and every saved pet's) */
+  finling: Object.freeze({ home: 'tidal', look: 'fishman', el: 'water', name: 'Froglet', name2: 'Coral Froglet' }),
   wisplet: Object.freeze({ home: 'mist', look: 'mireWisp', el: 'venom', name: 'Wisplet', name2: 'Spectral Wisplet' }),
   lurkling: Object.freeze({ home: 'mist', look: 'bogLurker', el: 'venom', name: 'Lurkling', name2: 'Shade Lurkling' }),
   dewdrop: Object.freeze({ home: 'verdant', look: 'blueSlime', el: 'flora', name: 'Dewdrop', name2: 'Jade Dewdrop' }),
@@ -174,7 +176,7 @@ export const PET_ART = Object.freeze({
   mumling: Object.freeze({ base: 'mummy', tint: 0xffffff }),
   pebbling: Object.freeze({ base: 'rockmonster', tint: 0xffffff }),
   sparklet: Object.freeze({ base: 'slime', tint: 0xffffff }),
-  finling: Object.freeze({ base: 'fishman', tint: 0xffffff }),
+  finling: Object.freeze({ base: 'waterFrog', tint: 0xffffff }),   /* v2.3.4355: the water frog's row */
   wisplet: Object.freeze({ base: 'slime', tint: 0x7a5fa8 }),
   lurkling: Object.freeze({ base: 'fishman', tint: 0x5f7a5a }),
   dewdrop: Object.freeze({ base: 'blueSlime', tint: 0xffffff }),

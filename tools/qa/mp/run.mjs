@@ -616,6 +616,7 @@ const SCENARIOS = {
   backshield: () => import('./mp-backshield.mjs'), /* v2.3.1782: the slung shield, and the z-order that killed it */
   slimewave: () => import('./mp-slimewave.mjs'), /* v2.3.2912: the slime burst draws a shockwave at its real radius, and shakes only the players inside it */
   deathcut: () => import('./mp-deathcut.mjs'), /* v2.3.2913: monsters die sliced, beheaded, legless or the normal way -- pieces fall and settle, then go */
+  waterfrog: () => import('./mp-waterfrog.mjs'), /* v2.3.4355: the water frog, the Water Caves' monster (the owner's videos, cut): drawn from its 16 strips; its breath; the eight ways on its hop, three mirrored; a stopped hop played out to its landing; a swing's and a slam's warning on the 12 wind-up frames, the blow last, then the recovery; its own 20-frame death on every kill, a big blow too, its feet where they were; the bog lurker still the old still picture */
   deathzones: () => import('./mp-deathzones.mjs'), /* v2.3.3985: every look with labelled zones dies its own way -- a piece a zone, the beat first, its own colour, down and still, then gone and let go; the cap of 8, the same death every phone, ?deathkind=own and ?deathzones=0 */
   swordcarry: () => import('./mp-swordcarry.mjs'), /* v2.3.1786: the carried blade points up and forward */
   bladesoft: () => import('./mp-bladesoft.mjs'), /* v2.3.2927: the held blade at the body's resolution -- soft bake by default, ?bladesoft=0 sharp; pictures of both */

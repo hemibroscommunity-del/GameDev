@@ -22,7 +22,7 @@
  * (gameSystems monsterTorsoY, combatHelpers lockShotPoint) and lands round it;
  * the circle the shot has to touch is centred where it was aimed, the same
  * size, so it has exactly the room to hit it had before.  So this also shoots a
- * mummy, a fishman and a rock monster, checks each flight line passes through
+ * mummy, a water frog and a rock monster, checks each flight line passes through
  * the torso, and moves a skeleton while an arrow flies at it.  For every shot it records where the shot was on the frame the hit
  * REGISTERED and where and when the hit is DRAWN.  Plus a bow special, injected
  * the way mp-stuckarrow does, which must fly the rest of the way in rather than
@@ -48,7 +48,8 @@ const MONS = [
   { key: 'goblin',   arch: 'fodder',  variant: 'fireGoblin',  zone: 'ember',   core: [8, 12],  r: 26, torso: 28 },
   { key: 'skeleton', arch: 'fodder',  variant: 'skeleton',    zone: 'sky',     core: [8, 11],  r: 50, torso: 100, band: [88, 114] },
   { key: 'mummy',    arch: 'fodder',  variant: 'mummy',       zone: 'sky',     core: [8, 11],  r: 40, torso: 74,  band: [60, 88] },
-  { key: 'fishman',  arch: 'brute',   variant: 'fishman',     zone: 'tidal',   core: [8, 12],  r: 40, torso: 66,  band: [50, 88] },
+  /* v2.3.4355: the water frog (its key stays `fishman`): a squat, wide body, its middle 54 up */
+  { key: 'fishman',  arch: 'brute',   variant: 'fishman',     zone: 'tidal',   core: [16, 13], r: 40, torso: 54,  band: [38, 70] },
   { key: 'rock',     arch: 'brute',   variant: 'rockmonster', zone: 'hollows', core: [12, 14], r: 40, torso: 64,  band: [46, 84] },
 ];
 const WEAPONS = ['bolt', 'arrow'];

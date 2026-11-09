@@ -13,7 +13,7 @@ What the game could use from the owner next, each with a prompt ready to paste.
 Each of these is drawn in code, borrowed from somewhere else, or missing today. Each is one chat; the reference pictures to attach are in `docs/art/` (and the banners' in `docs/triage-2026-09-17/assets/`). The same prompts are on a page with a Copy button each, built from this file: https://claude.ai/artifact/9wqSAqMoa4DXfWRvYcVk1L (the owner's).
 
 1. ~~**The keepers**~~: not needed from ChatGPT any more. Since v2.3.3580 every townsperson is a bro from the character creator, your "NPCs should look like normal bro characters" (docs/specs/npc-creator-looks.md). A new keeper is a look written in `tools/qa/npc-looks.mjs` and photographed by the game; no picture to make.
-2. **The monsters** (5 chats): the Foundry Slime and the Mire Wisp, the Bog Lurker, and real walks for the rock monster and the fishman. Then, if you like them, a slam, hurt and death sheet for each walking one (up to 3 more).
+2. **The monsters** (4 chats): the Foundry Slime and the Mire Wisp, the Bog Lurker, and a real walk for the rock monster. (The fishman is done another way: since v2.3.4355 the Water Caves' monster is your water frog, cut from your videos, `docs/specs/water-frog.md`. Two short videos of it are still wanted: from behind, and from back-right.) Then, if you like them, a slam, hurt and death sheet for each walking one (up to 3 more).
 3. **The four land banners** (4 chats): Stone Hollows, Electric Foundry, Water Caves, Poison Forest.
 4. **The four dungeons** (13 chats): each mouth, its arena's walls and the things inside it, and the boss's chest. Their prompts are in `docs/art/DUNGEON-ART-PROMPTS.md`; the Goo Grotto and the chest first (4 chats), as a new player reaches the Grotto in the first half hour.
 5. **The Farmhouse and the Dungeon Workshop** (2 chats): their prompts are in `docs/art/FARM-ART-PROMPTS.md`.
@@ -709,9 +709,9 @@ Row 4: hopping to the left.
 Style: exactly the attached picture: the same pixel art, outline, colours and lighting. No text, cell lines, ground or shadows. Background: one flat magenta (#FF00FF) everywhere, no gradient or texture. Nothing in the monster is magenta or pink.
 ```
 
-### The fishman: a walk in four directions (Water Caves)
+### The fishman: a walk in four directions (NOT NEEDED since v2.3.4355)
 
-- **In the game:** the Water Caves' monsters. Today one picture faces every way and slides.
+- **In the game:** nothing any more: the Water Caves' monster is the water frog (`docs/specs/water-frog.md`). The fishman's picture is only the Bog Lurker's now, which has its own prompt above. Kept for the record.
 - **Attach:** `docs/art/fishman-key.png` (its picture).
 
 ```text

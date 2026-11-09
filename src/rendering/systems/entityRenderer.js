@@ -63,6 +63,7 @@ import { getFrame as getSnowmanFrame, hasFrames as hasSnowmanFrames, frameCount 
   getPhaseFrame as getSnowmanPhaseFrame, phaseFrameCount as snowmanPhaseFrameCount /* v2.3.2221 */
 } from '../snowmanSprites.js';
 import { variantSpritesFor } from '../monsterVariantSprites.js';
+import { attackStripFrame, attackRecoverMs, hopFinishPos, hopIsDown, hopInAir, idleStripFrame } from '@/game/monsterStrips.js';   /* v2.3.4355: the water frog's strips */
 import { wheelArtTick, wheelArtOn, wheelArtReady, wheelArtWaiting } from '../wheelMonsterArt.js'; /* v2.3.2989: the Wheel's monsters' looks, loaded as you walk toward them */
 import { MONSTER_VARIANTS, maybeTransformMonster } from '../../data/monsterVariants.js';
 import { getDeathFrame as getPlayerDeathFrame, hasDeathSprites as hasPlayerDeathSprites, frameForElapsed as playerDeathFrameForElapsed } from '../playerDeathSprites.js';
@@ -9837,6 +9838,17 @@ export class EntityRenderer {
             visible: !!d._spriteBody.visible,
             drewDeathAt: d._deathDrewAt || 0,
             texW: _t ? (_t.orig ? _t.orig.width : (_t.frame ? _t.frame.width : _t.width)) : 0,   /* v2.3.2870: the cell, cropped or not */
+            /* v2.3.4355: which frame of how many (zoneTextures' __btIx / __btN),
+               how tall it is drawn, where the sprite hangs, and the pose the
+               renderer says it holds -- mp-waterfrog reads the frog's breath,
+               hop, wind-up and death off these */
+            ix: _t && _t.__btIx != null ? _t.__btIx : null,
+            n: _t && _t.__btN != null ? _t.__btN : null,
+            sy: +d._spriteBody.scale.y.toFixed(3),
+            y: +Number(d._spriteBody.y).toFixed(2),
+            size: d._size,
+            facing: d._lastFacing || null,
+            idlePose: !!d._idlePose,
             trimmed: !!(_t && _t.trim),   /* v2.3.2870: drawn from a cropped strip (zoneTextures.loadTrackedStrip) */
             srcW: _src ? (_src.width || 0) : 0,
             texAlive: !!(_src && !_src.destroyed && _src.width > 0),
@@ -9894,7 +9906,13 @@ export class EntityRenderer {
            animation and is still, as far as the player is concerned, alive). */
         const _dfxKey = m._slimeDeathStart != null ? m._slimeDeathStart : m._snowmanDeathStart;
         /* v2.3.4147: a slime's burst ends in its splat too (slimeSplat.js) */
-        if (_dfxKey != null && ((!m._burstPeakFrom && !m._burstFrom) || (isFodder && slimeSplatOn()))
+        /* v2.3.4355: ...and a look whose death strip IS its death (the water
+           frog: the owner's own animation of it, its sac bursting) plays the
+           strip on every kill, never a cut or a zone death in its place
+           (MONSTER_VARIANTS `deathStripOnly`). */
+        const _dfxStripOnly = !!(variant && variant.deathStripOnly
+          && variantSprites && variantSprites.death && variantSprites.death.has());
+        if (_dfxKey != null && !_dfxStripOnly && ((!m._burstPeakFrom && !m._burstFrom) || (isFodder && slimeSplatOn()))
             && !(m._transformStart && now - m._transformStart < 5000)) {
           const _dfxD = this.monsterDisplays.get(m.id);
           /* v2.3.3499: a look with no death strip of its own never plays the
@@ -9995,7 +10013,10 @@ export class EntityRenderer {
             const baseScale = (deathPx / 256) * _peakK;
             sb.scale.x = baseScale;
             sb.scale.y = baseScale;
-            sb.y = display._size;
+            /* v2.3.4355: + deathOffsetY -- a death strip cut at its own scale
+               (the frog's burst is three frogs wide) has its ground on another
+               row of the cell: this puts its feet where the living one's were */
+            sb.y = display._size + (variant.deathOffsetY || 0);
             sb.tint = wheelStageTint(m, (variant && variant.tint) || 0xffffff); /* v2.3.1147; v2.3.3093: the stage's colour */
             sb.visible = true;
             display.x = m.x;
@@ -10477,7 +10498,37 @@ export class EntityRenderer {
            refresh stalls, and after IDLE_AFTER_MS the idle pose
            kicks in. */
         const IDLE_AFTER_MS = 600;
-        const isIdle = (now - (display._lastDistGrowAt || 0)) > IDLE_AFTER_MS;
+        let isIdle = (now - (display._lastDistGrowAt || 0)) > IDLE_AFTER_MS;
+        /* ═══ v2.3.4355: A HOP IS FINISHED, NEVER FROZEN IN THE AIR ═══
+           The walk loop below is driven by distance: a monster that stops,
+           stops on whatever frame it was on, and stands on it for
+           IDLE_AFTER_MS.  For a stride that is a foot forward; for the water
+           frog's hop (MONSTER_VARIANTS `hopWalk`) it is a frog hung in the
+           air.  So a hopper that has stopped moving plays the rest of its hop
+           by the clock (hopFinishFrameMs a frame) until it is down on frame
+           0, and is idle from that moment, not 600 ms later.  Only once it
+           has left the ground (hopAirFrom): stopped in its crouch it waits,
+           so a frog creeping along at a wander gathers itself over a few
+           steps and springs once, and does not leap on the spot for every
+           pixel it is moved. */
+        if (variant.hopWalk) {
+          const _hfc = variantSprites.walk.count(facing);
+          const _hDpf = variant.walkDistPerFrame || 1.5;
+          const _hOff = ((m.spawnX || 0) | 0) % (_hfc * 100);
+          const _hStalled = (now - (display._lastDistGrowAt || 0)) > 90;
+          const _hDt = Math.min(100, Math.max(0, now - (display._hopTickAt || now)));
+          display._hopTickAt = now;
+          if (_hfc > 1 && _hStalled) {
+            const _hPos = ((display._walkDist || 0) + _hOff) / _hDpf;
+            if (hopInAir(_hPos, _hfc, variant.hopAirFrom)) {
+              /* (+ a hair, so the division back cannot land a frame short of 0) */
+              display._walkDist = (hopFinishPos(_hPos, _hfc, _hDt, variant.hopFinishFrameMs, variant.hopAirFrom) + 1e-6) * _hDpf - _hOff;
+              isIdle = false;
+            } else if (hopIsDown(_hPos, _hfc)) isIdle = true;
+            /* (in its crouch, on the ground: it waits there, and breathes
+               after IDLE_AFTER_MS as any stopped monster does) */
+          }
+        }
         /* v2.3.2814: published for worldLife, which breathes a monster holding
            its one idle frame (set false below whenever a strip plays). */
         display._idlePose = false;
@@ -10507,7 +10558,12 @@ export class EntityRenderer {
         const hitSprites = variantSprites.hit;
         const attackSprites = variantSprites.attack;
         const hitNow = !transformingNow && m._hitAnimEnd && now < m._hitAnimEnd && hitSprites && hitSprites.has();
-        const attackNow = !transformingNow && !hitNow && m._shootAnimEnd && now < m._shootAnimEnd
+        /* v2.3.4355: a strip with recovery frames at its end (variant
+           attackRecoverFrames: the water frog's) plays them AFTER the blow,
+           past the wind-up's window, so it does not snap back to standing */
+        const _atkRec = attackSprites ? Math.max(0, variant.attackRecoverFrames | 0) : 0;
+        const attackNow = !transformingNow && !hitNow && m._shootAnimEnd
+          && now < m._shootAnimEnd + attackRecoverMs(_atkRec, variant.attackFrameMs)
           && attackSprites && attackSprites.has();
         let frame;
         if (transformingNow && transformSprites) {
@@ -10536,15 +10592,30 @@ export class EntityRenderer {
           const afc = attackSprites.count(facing);
           const stepMs = variant.attackFrameMs || 70;
           const elapsed = now - m._shootAnimStart;
-          const aIdx = afc > 0 ? Math.max(0, Math.min(afc - 1, Math.floor(elapsed / stepMs))) : 0;
+          /* v2.3.4355: with recovery frames, the wind-up frames are spread
+             over the worker's warning, however long it is (a swing's 600 ms,
+             a slam's 900), so the last of them -- the blow -- is on screen
+             as the blow lands; then the recovery, a frame every stepMs
+             (game/monsterStrips.js; with none, exactly the old rule) */
+          const aIdx = attackStripFrame(elapsed, m._shootAnimEnd - m._shootAnimStart, afc, _atkRec, stepMs);
           frame = attackSprites.get(facing, aIdx);
         } else if (isIdle) {
-          /* Hold a single frame -- we don't ship a dedicated idle
-             sheet so use the closest-to-neutral walk frame.  Frame
-             0 is the first contact pose, which reads as standing
-             still better than mid-stride frames. */
-          frame = variantSprites.walk.get(facing, 0);
-          display._idlePose = true;
+          /* v2.3.4355: a look with an idle strip (the water frog's breath)
+             loops it by the clock, each monster from its own start; a facing
+             with one idle frame, or a look with no idle strip, holds the one
+             frame as before (worldLife breathes it: `_idlePose`). */
+          const idleSprites = variantSprites.idle;
+          const ifc = (idleSprites && idleSprites.has()) ? idleSprites.count(facing) : 0;
+          if (ifc > 1) {
+            frame = idleSprites.get(facing, idleStripFrame(now, ifc, variant.idleFrameMs, (m.spawnX || 0) | 0));
+          } else {
+            /* Hold a single frame -- with no dedicated idle sheet, the
+               closest-to-neutral walk frame.  Frame 0 is the first contact
+               pose, which reads as standing still better than mid-stride
+               frames. */
+            frame = ifc === 1 ? idleSprites.get(facing, 0) : variantSprites.walk.get(facing, 0);
+            display._idlePose = true;
+          }
         } else {
           /* Walk loop frame index is driven by ACCUMULATED VISUAL
              displacement rather than wall-clock time.  This guarantees
@@ -10966,7 +11037,10 @@ export class EntityRenderer {
         let visualTopY;
         if (display._variantKey && spriteVisible) {
           const variantCfg = MONSTER_VARIANTS[display._variantKey];
-          visualTopY = display._size - ((variantCfg && variantCfg.liveScalePx) || 64);
+          /* v2.3.4355: + headTopPx -- a look that leaves room above its head
+             in its cell (the water frog: for its hop) says where its head
+             is, or its bar and name float a head above it */
+          visualTopY = display._size - ((variantCfg && (variantCfg.headTopPx || variantCfg.liveScalePx)) || 64);
         } else if (display._isSnowman && spriteVisible) {
           visualTopY = display._size - 64;
         } else if (display._isFodder && spriteVisible) {

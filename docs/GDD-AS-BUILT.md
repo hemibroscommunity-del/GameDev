@@ -113,7 +113,7 @@ The whole game is one seamless map, **the Wheel** (zone id `wheel`, shown to pla
 | Wind Dunes | wind | NE | Mummy/Skeleton → Gilded | the Buried City (Lv 41–45) | desert.mp3 |
 | Stone Hollows | stone | E | Rock Monster → Amethyst Golem | the Great Cave (Lv 26–30) | the theme (no track yet) |
 | Electric Foundry | storm | SE | Slime → Storm Slime | the Foundry Dome (Lv 26–30) | the theme |
-| Water Caves | water | S | Fishman → Coral Fishman | — | the theme |
+| Water Caves | water | S | Water Frog → Coral Frog | — | the theme |
 | Poison Forest | venom | SW | Mire Wisp, Bog Lurker → Spectral, Shade | — | the theme |
 | Earth Forest | flora | W | Blue Slime → Jade Slime | the Goo Grotto (Lv 16, for 2–3 players, v2.3.3573; Lv 1–5 since v2.3.3540) | forest.mp3 |
 
@@ -602,7 +602,7 @@ Every monster is an **archetype** (the stat template the AI runs against) dresse
 | Mummy → Skeleton | Wind Dunes (wind) | fodder, stalker (0.7/1.2/1.3), hexer (0.9/0.8/1.0), volatile (0.8/1.0/1.0) | — | 18 → 79 as a skeleton | Humanoid | Gilded Mummy |
 | Rock Monster | Stone Hollows (stone) | brute | 1.5 / 1.3 / 0.7 | 16 | Beast | Amethyst Golem |
 | Slime | Electric Foundry (storm) | fodder | 0.6 / 0.8 / 1.0 | 22 | Ooze | Storm Slime |
-| Fishman | Water Caves (water) | brute | 1.5 / 1.3 / 0.7 | 16 | Aquatic | Coral Fishman |
+| Water Frog (v2.3.4355; the fishman before it) | Water Caves (water) | brute | 1.5 / 1.3 / 0.7 | 16 | Aquatic | Coral Frog |
 | Mire Wisp | Poison Forest (venom) | fodder | 0.6 / 0.8 / 1.0 | 22 | Ooze | Spectral Wisp |
 | Bog Lurker | Poison Forest (venom) | brute | 1.5 / 1.3 / 0.7 | 16 | Aquatic | Shade Lurker |
 | Blue Slime | Earth Forest (flora) | fodder, HP × 0.55 | 0.33 / 0.8 / 1.0 | 52 | Ooze | Jade Slime |

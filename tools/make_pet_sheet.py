@@ -51,6 +51,12 @@ BASES = [
     dict(name='fishman', front='fishman/walk-south.png', ffw=256, side='fishman/walk-west.png', sfw=256, faces='w'),
     dict(name='slime', front='slime-idle-v5.png', ffw=128, side=None, sfw=128, faces=None, pick=SLIME_BOUNCE),
     dict(name='blueSlime', front='slime-idle-v5.png', ffw=128, side=None, sfw=128, faces=None, pick=SLIME_BOUNCE, recolor=(58, 122, 208)),
+    # v2.3.4355: the water frog (the Water Caves' monster since then; the
+    # `fishman` row above is the Lurkling's alone).  ONE frame a side, sitting:
+    # its own hop rises a frog's height and would shrink it to fit a cell, and
+    # a one-pose pet is carried by the renderer's own little hop -- a frog's.
+    # Last, so no earlier row moves.
+    dict(name='waterFrog', front='water-frog/idle-s.png', ffw=256, side='water-frog/idle-e.png', sfw=256, faces='e', pick=[0]),
 ]
 
 

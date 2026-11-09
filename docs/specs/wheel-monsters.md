@@ -420,7 +420,7 @@ the first pass and its camp at 20, out to the camp at 40.
   | the Wind Dunes | mummy (and its skeleton) | Gilded Mummy / Skeleton | gold `#ffd27a` |
   | the Stone Hollows | rock monster | Amethyst Golem | amethyst `#c8a0ff` |
   | the Electric Foundry | slime | Storm Slime | teal `#60c0ff` |
-  | the Water Caves | fishman | Coral Fishman | coral `#ffb070` |
+  | the Water Caves | water frog (key `fishman`; v2.3.4355) | Coral Frog | coral `#ffb070` |
   | the Poison Forest | mire wisp, bog lurker | Spectral Wisp, Shade Lurker | cyan `#70e8ff`, violet `#c090ff` |
   | the Verdant Wilds | blue slime | Jade Slime | jade `#9cffb0` |
 

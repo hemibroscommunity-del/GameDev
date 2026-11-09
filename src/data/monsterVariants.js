@@ -257,16 +257,60 @@ export const MONSTER_VARIANTS = {
        receipt because goblins take 3-4 hits vs slimes' 1 hit. */
     xpMult: 2,
   },
-  /* Fishman -- Tidal Caves brute skin.  Single still pose, no walk
-     cycle; the renderer dwells on the only frame while the entity
-     translates around the map. */
+  /* ═══ v2.3.4355: THE WATER FROG -- the Water Caves' brute ═══
+     The owner: "I added new monster (water frog) ... I want to replace the
+     fish man monster."  The key stays `fishman` (the worker's name for this
+     monster, on the wire and in every saved codex); what it is drawn from is
+     the frog (rendering/waterFrogSprites.js, cut from the owner's videos by
+     tools/art/cut_water_frog.py), the first brute with strips for all it does:
+       hopWalk            its walk is a hop: one that is interrupted is played
+                          out to its landing, never held in the air
+       hopAirFrom         the first hop frame it is off the ground on (0-2
+                          are its crouch: stopped there, it waits)
+       walkDistPerFrame   12 frames a hop, 2.4 px of travel a frame: a hop
+                          every ~29 px, a little under a second at its pace
+       idleFrameMs        8 frames of breath, ~1.4 s a breath (the video's)
+       attackRecoverFrames  the last 3 frames of an attack strip play after
+                          the blow; the 12 before them are spread over the
+                          worker's warning (a swing's 600 ms, a slam's 900)
+       telegraphAttack    its specials' warnings (the slam, the tier moves)
+                          play the attack strip too, not only its swings
+       deathStripOnly     its death is its own animation on every kill: the
+                          sac spins up and bursts (20 frames over deathMs)
+       deathScalePx / deathOffsetY   the death strip is cut at its own scale
+                          (the burst is three frogs wide): these draw it at
+                          the living frog's size, its feet where they were
+                          (the numbers the cutting tool prints)
+       liveScalePx        120, as the skeleton's: a heavy toad about a bro
+                          tall and half again as wide (at the brutes' 96 it
+                          read smaller than the townsfolk)
+       headTopPx          where its head is at rest, in liveScalePx's measure
+                          up from the cell's bottom: its cell has room above
+                          it for the hop, and its bar and name sit on its
+                          head, not on the top of that room
+     Client-visual only: nothing on the server or the wire reads these (`spd`
+     is the mirrored one, and it is untouched). */
   fishman: {
     baseArchetype: 'brute',
-    liveScalePx: 96,
+    liveScalePx: 120,
+    headTopPx: 80,
     spd: 0.5,
+    hopWalk: true,
+    walkDistPerFrame: 2.4,
+    hopFinishFrameMs: 55,
+    hopAirFrom: 3,
+    idleFrameMs: 170,
+    attackFrameMs: 70,
+    attackRecoverFrames: 3,
+    telegraphAttack: true,
+    deathStripOnly: true,
+    deathMs: 1700,
+    deathScalePx: 138,
+    deathOffsetY: 20,
   },
-  /* Rockmonster -- Deep Hollows brute skin.  Same still-pose pattern
-     as fishman. */
+  /* Rockmonster -- Deep Hollows brute skin.  A single still pose, no walk
+     cycle; the renderer dwells on the only frame while the entity
+     translates around the map. */
   rockmonster: {
     baseArchetype: 'brute',
     liveScalePx: 96,
@@ -343,7 +387,7 @@ export const MONSTER_VARIANTS = {
     baseArchetype: 'brute',
     liveScalePx: 96,
     spd: 0.5,        /* mirrored in server _variantSpeed */
-    tint: 0x5f7a5a,  /* murky fishman */
+    tint: 0x5f7a5a,  /* the old fishman pictures, murky (fishmanSprites.js: its alone since v2.3.4355) */
   },
 };
 

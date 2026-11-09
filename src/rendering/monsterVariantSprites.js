@@ -61,6 +61,24 @@ import {
   frameCount as fhWalkCount,
 } from './fishmanSprites.js';
 
+/* v2.3.4355: the water frog -- the Water Caves' monster (key `fishman`) */
+import {
+  loadWaterFrogSprites,
+  unloadWaterFrogSprites,
+  getFrame as wfHopFrame,
+  hasFrames as wfHasHop,
+  frameCount as wfHopCount,
+  getIdleFrame as wfIdleFrame,
+  hasIdleFrames as wfHasIdle,
+  idleFrameCount as wfIdleCount,
+  getAttackFrame as wfAttackFrame,
+  hasAttackFrames as wfHasAttack,
+  attackFrameCount as wfAttackCount,
+  getDeathFrame as wfDeathFrame,
+  hasDeathFrames as wfHasDeath,
+  deathFrameCount as wfDeathCount,
+} from './waterFrogSprites.js';
+
 import {
   loadRockmonsterSprites,
   unloadRockmonsterSprites,
@@ -112,19 +130,26 @@ export const VARIANT_SPRITES = {
        through to the slime splat. */
     remnants: { get: skRemnants },
   },
+  /* v2.3.4355: THE WATER FROG (the owner: "I want to replace the fish man
+     monster").  The key stays `fishman` -- the worker's and every saved
+     codex's name for the Water Caves' brute -- and the pictures are the
+     frog's: a hop for its walk, a breath for standing still (`idle`, the
+     first variant with one), a wind-up and recovery for its blows, and its
+     own death (waterFrogSprites.js; MONSTER_VARIANTS.fishman has the pace
+     of each). */
   fishman: {
-    load: loadFishmanSprites,
-    unload: unloadFishmanSprites,
-    /* Single still pose; renderer dwells on the only frame while the
-       entity translates around the map.  No attack/hit/death sheets --
-       falls through to the brute generic paths. */
-    walk: { get: fhWalkFrame, has: fhHasWalk, count: fhWalkCount },
+    load: loadWaterFrogSprites,
+    unload: unloadWaterFrogSprites,
+    walk:   { get: wfHopFrame,    has: wfHasHop,    count: wfHopCount    },
+    idle:   { get: wfIdleFrame,   has: wfHasIdle,   count: wfIdleCount   },
+    attack: { get: wfAttackFrame, has: wfHasAttack, count: wfAttackCount },
+    death:  { get: wfDeathFrame,  has: wfHasDeath,  count: wfDeathCount  },
   },
   rockmonster: {
     load: loadRockmonsterSprites,
     unload: unloadRockmonsterSprites,
-    /* Same still-pose pattern as fishman -- one frame per direction,
-       no attack/hit/death sheets, falls through to brute generic. */
+    /* A single still pose -- one frame per direction, no attack/hit/death
+       sheets, falls through to brute generic. */
     walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
   },
   /* v2.3.1147: verdant/mist brute reskins -- SAME loaders as their
@@ -138,6 +163,9 @@ export const VARIANT_SPRITES = {
     unload: unloadRockmonsterSprites,
     walk: { get: rmWalkFrame, has: rmHasWalk, count: rmWalkCount },
   },
+  /* v2.3.4355: the bog lurker keeps the old fishman pictures (a single
+     still pose a direction), now its alone: the Water Caves' own monster
+     is the water frog above. */
   bogLurker: {
     load: loadFishmanSprites,
     unload: unloadFishmanSprites,
@@ -191,8 +219,8 @@ export function variantSpritesFor(variantKey) {
  *
  * DEDUPED BY LOADER, NOT BY KEY, and that is the whole reason this helper
  * exists rather than a loop at the call site.  thornShambler and rockmonster
- * are two variant keys over ONE sprite module (as are bogLurker and fishman --
- * v2.3.1147's reskins share their source's sheets), so freeing by key would
+ * are two variant keys over ONE sprite module (v2.3.1147's reskins share
+ * their source's sheets), so freeing by key would
  * tear the art out from under a variant that is still in the zone being walked
  * into, and would try to free the same module twice.
  *
