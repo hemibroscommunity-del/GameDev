@@ -52,11 +52,12 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
              the picture alone, the word its aria-label and title.
    The key cap stays on a computer. */
 export const NAV_WORDS_BESIDE = 86;
-/* v2.3.4355: 46 -> 44 with the sixth button: a 375 px iPhone's buttons are 45
-   px, and "Quests", the longest word, is ~38 px in the 11 px badge (measured
-   by mp-boards: no word is cut) -- so the words stay on every iPhone and on
-   a 360 px phone (44); a 320 one shows the pictures alone, as it always has */
-export const NAV_WORDS_STACK = 44;
+/* v2.3.4355: 46 -> 45 with the sixth button: a 375 px iPhone's buttons are 45
+   px, and "Quests", the longest word, is ~41 px in the 11 px badge -- whole
+   in a 45 px button's 41, cut by a pixel in a 44 px one (measured by
+   mp-boards).  So the words stay on every iPhone; a 360 px phone (44 px
+   buttons) shows the pictures alone, as a 320 one always has */
+export const NAV_WORDS_STACK = 45;
 /* v2.3.4243: each picture's opaque box [x0, y0, x1, y1] in its 256 px file
    (alpha > 24), so the button can show the art alone, edge to edge */
 /* v2.3.4273, the owner: "'gear' font color is orange make it a bright yellow

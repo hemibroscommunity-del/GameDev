@@ -445,8 +445,8 @@ export function identityRowHeight(vw, vh) {
    58), 55 at 430, 45 at 375, 44 at 360, 38 at 320 -- the one screen where six
    cannot be 44 wide (6 x 44 and their gaps are 292 of its 312), and no iPhone
    since 2016 is that narrow.  Their words stay under their pictures down to
-   44 px (NavRail NAV_WORDS_STACK, lowered from 46 for a 375 px iPhone's 45);
-   a 320 px phone shows the pictures alone, as it always has. */
+   45 px (NavRail NAV_WORDS_STACK, lowered from 46 for a 375 px iPhone's 45);
+   a 360 px phone shows the pictures alone, as a 320 one always has. */
 export const RAIL_COUNT = 6; /* v2.3.1651: Quests; v2.3.1655: Life Skills; v2.3.3215: Codex; v2.3.4172: Life Skills into Bro; v2.3.4355: the Leaderboards */
 const NAV_GAP = 4;
 /* v2.3.4182: the nav buttons' ceiling (navButtonSize), named for navRowFills */

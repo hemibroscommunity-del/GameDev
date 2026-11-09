@@ -11,8 +11,11 @@ import { peerCosmeticsFromWire } from '@/networking/peerCosmetics.js';
  * Every board on the Leaderboards page (the ranks, the daily spin, Ace's
  * flips, the biggest fish) draws this row:
  *
- *   #1  [face]  Name [12]                 12,800 gold
- *               a line about the record
+ *   [cup]  [face]  Name [12]              12,800 gold
+ *                  a line about the record
+ *
+ * (the owner's trophy for the first five places, "#6" from there down:
+ * RankMark, below)
  *
  * THE FACE IS A LOOK, NOT AN IMAGE (server boards.js; the Ace board's rule):
  * the row carries the short cosmetic ids the worker stamped when the record
@@ -71,6 +74,71 @@ export function useBoardFaces(rows) {
 
 const FACE_PX = 40;
 
+/* ═══ v2.3.4355: THE FIRST FIVE PLACES WEAR THE OWNER'S TROPHIES ═══
+ * The owner, of the first pictures of this page: "This is looking good.  Add
+ * these trophies to the left of the ranks.  Add a cool code based effect for
+ * shine or slight sparkling."  His sheet: a crowned gold cup (1), a silver
+ * cup (2), a bronze cup (3), a yellow rosette (4), a pink rosette (5), each
+ * with its number on it (tools/ui/cut-rank-trophies.py -> /icons/ui/
+ * rank-<n>.webp, 120 px, 256 colours).
+ *
+ * IN THE RANK'S PLACE, at the row's left edge: the trophy carries its number,
+ * so "#1" beside it would say it twice, and a phone's row has no 40 px to
+ * spare (the name beside "10,000 gold" would be four letters).  From sixth
+ * place down the column is the "#6" it was, the same width, so the faces
+ * stay in one line.
+ *
+ * THE SHINE AND THE SPARKLE ARE CODE (game.css .bt-rank-*), nothing drawn or
+ * loaded: a band of light crosses the picture every few seconds, cut to the
+ * trophy's own shape (the picture is its own CSS mask), and small four-point
+ * stars wink on its rim -- three on the gold cup, two on the silver and the
+ * bronze, one on each rosette, each in its metal's light.  Transforms and
+ * opacity only; each place starts a beat after the one above, so a board's
+ * top five glint down the column in turn rather than all at once.  Still
+ * under `prefers-reduced-motion`, and on a deleted character's row, whose
+ * trophy is grey like the rest of it. */
+const RANK_ART = (n) => '/icons/ui/rank-' + n + '.webp?v=2.3.4355';
+export const RANK_TROPHIES = 5;
+/* where each place's stars sit on its picture (percent of the 40 px box), and
+   how big: on the cup's lip and handles, the rosette's upper petals */
+const SPARKS = {
+  1: [[22, 16, 9], [78, 34, 7], [50, 4, 6]],
+  2: [[24, 22, 8], [76, 40, 6]],
+  3: [[70, 24, 8], [28, 44, 6]],
+  4: [[72, 18, 8]],
+  5: [[28, 18, 8]],
+};
+/* the page's five pictures asked for as its script loads (this file is in the
+   Leaderboards' own chunk), so the first board's rows do not pop them in */
+try {
+  if (typeof Image !== 'undefined') for (let n = 1; n <= RANK_TROPHIES; n++) { const im = new Image(); im.decoding = 'async'; im.src = RANK_ART(n); }
+} catch (_e) { /* a row's own <img> loads it */ }
+
+/** The rank column: the trophy for the first five places, "#N" below. */
+export function RankMark({ rank, gone }) {
+  if (!(rank >= 1 && rank <= RANK_TROPHIES)) {
+    return (
+      <span data-rank-mark="number" style={{
+        width: 40, flex: 'none', textAlign: 'center', fontSize: 15, fontWeight: 800,
+        color: gone ? COL.disabled : COL.muted, fontVariantNumeric: 'tabular-nums',
+      }}>#{rank}</span>
+    );
+  }
+  const art = RANK_ART(rank);
+  return (
+    <span className={'bt-rank-trophy bt-rank-' + rank + (gone ? ' bt-rank-gone' : '')} data-rank-mark="trophy" data-rank-trophy={rank}
+      role="img" aria-label={'Rank ' + rank}
+      style={{ '--rank-art': 'url(' + art + ')', '--rank-delay': ((rank - 1) * 0.35).toFixed(2) + 's' }}>
+      <img src={art} alt="" draggable={false} />
+      {gone ? null : <span className="bt-rank-shine" aria-hidden="true" />}
+      {gone ? null : SPARKS[rank].map((s, i) => (
+        <span key={i} className="bt-rank-spark" aria-hidden="true"
+          style={{ left: s[0] + '%', top: s[1] + '%', width: s[2], height: s[2], animationDelay: ((rank - 1) * 0.35 + 0.9 + i * 1.1).toFixed(2) + 's' }} />
+      ))}
+    </span>
+  );
+}
+
 /** The picture tile: the bust, or the name's initial; grey with DELETED
  *  across it for a deleted character. */
 export function BoardFace({ src, name, gone }) {
@@ -126,10 +194,7 @@ export function BoardRow({ rank, row, face, line, value, unit, mine, hook }) {
            it; without this you scan every name. */
         background: mine ? COL.accentFill : 'transparent',
       }}>
-      <span style={{
-        width: 30, flex: 'none', textAlign: 'right', fontSize: 15, fontWeight: 800,
-        color: gone ? COL.disabled : rank <= 3 ? COL.accent : COL.muted, fontVariantNumeric: 'tabular-nums',
-      }}>#{rank}</span>
+      <RankMark rank={rank} gone={gone} />
       <BoardFace src={face} name={name} gone={gone} />
       <span style={{ flex: 1, minWidth: 0, display: 'block' }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>

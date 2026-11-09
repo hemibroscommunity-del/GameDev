@@ -22,7 +22,9 @@
  *   3. the page: a list of boards down the left (Ranks, Records, Skills),
  *      the board beside it, each scrolling by itself;
  *   4. the Level board: every row a face, the phone's own row lit, Ghost's
- *      row grey with DELETED across its face;
+ *      row grey with DELETED across its face; the first places wear the
+ *      owner's trophies where the rank was, each shining and sparkling (a
+ *      deleted character's grey and still);
  *   5. Daily spin: Biggest wins has Winnie (the gold the worker paid, her
  *      level pill) and Ghost's stand-in; Biggest losses has Lou;
  *   6. a board nobody is on says so; the list scrolls to the last skill;
@@ -30,7 +32,7 @@
  *      board, the board showing among them, all inside the screen; at 375
  *      px the six buttons still wear their words;
  *   8. no page errors.
- * Pictures: tools/qa/mp/out/leaderboards-{row,row-375,level,spin-wins,spin-losses,sideways}.png
+ * Pictures: tools/qa/mp/out/leaderboards-{row,row-375,level,trophies,spin-wins,spin-losses,sideways}.png
  * (docs/shots/leaderboards-*.webp are four of them, kept with the PR).
  */
 import * as H from './harness.mjs';
@@ -240,6 +242,44 @@ export async function run({ browser, wsPort, webPort, rec }) {
     });
     rec.ok('4d ...really greyed (desaturated and dimmed)', !!grey && /grayscale\(1\)/.test(grey.filter) && Number(grey.opacity) < 0.8, grey);
 
+    /* ── 4e-4g ── the owner's trophies, in the rank's place, shining */
+    const cups = await H.waitFor(A, () => [...document.querySelectorAll('[data-lb-board] [data-board-row]')].map((el) => {
+      const t = el.querySelector('[data-rank-trophy]');
+      const img = t && t.querySelector('img');
+      const face = el.querySelector('[data-board-face]');
+      const b = t ? t.getBoundingClientRect() : null, f = face ? face.getBoundingClientRect() : null;
+      const shine = t && t.querySelector('.bt-rank-shine');
+      const anims = t ? t.getAnimations({ subtree: true }) : [];
+      return {
+        rank: +el.dataset.boardRow, trophy: t ? +t.dataset.rankTrophy : 0, label: t ? t.getAttribute('aria-label') : null,
+        loaded: !!img && img.complete && img.naturalWidth === 120, src: img ? img.getAttribute('src') : null,
+        w: b ? Math.round(b.width) : 0, h: b ? Math.round(b.height) : 0, leftOfFace: !!b && !!f && b.right <= f.left + 1 && b.left >= 0,
+        shine: !!shine && getComputedStyle(shine).display !== 'none', mask: shine ? (getComputedStyle(shine).webkitMaskImage || getComputedStyle(shine).maskImage || '') : '',
+        sparks: t ? t.querySelectorAll('.bt-rank-spark').length : 0, running: anims.filter((a) => a.playState === 'running').length,
+        gone: el.dataset.boardGone === '1', grey: img ? getComputedStyle(img).filter : '',
+        number: ((el.querySelector('[data-rank-mark="number"]') || {}).textContent || '').trim(),
+      };
+    }), (v) => v.length >= 4 && v.slice(0, 4).every((r) => r.loaded), { timeout: 15000, label: 'the trophies loaded' }).catch(() => null);
+    rec.ok('4e the first places wear the owner\'s trophies where the rank was: the gold cup on #1, silver #2, bronze #3, the rosette #4, each left of its face',
+      !!cups && cups.slice(0, 4).every((r, i) => r.trophy === i + 1 && r.label === 'Rank ' + (i + 1) && r.loaded && r.w === 40 && r.h === 40 && r.leftOfFace && !r.number
+        && new RegExp('/icons/ui/rank-' + (i + 1) + '\\.webp').test(r.src)), cups);
+    const live = (cups || []).filter((r) => !r.gone && r.trophy);
+    rec.ok(`4f ...shining: a band of light cut to the trophy's own shape, and its stars (${live.map((r) => r.sparks).join(', ')}), all running`,
+      live.length >= 3 && live.every((r) => r.shine && /rank-\d\.webp/.test(r.mask) && r.sparks === ({ 1: 3, 2: 2, 3: 2, 4: 1, 5: 1 })[r.trophy] && r.running === r.sparks + 1), live);
+    const dead = (cups || []).find((r) => r.gone);
+    rec.ok('4g a deleted character\'s trophy is grey and still', !!dead && dead.trophy >= 1 && /grayscale\(1\)/.test(dead.grey) && !dead.shine && dead.sparks === 0 && dead.running === 0, dead);
+    /* a still of the shine mid-pass and the stars lit, for the picture */
+    await A.page.evaluate(() => {
+      for (const t of document.querySelectorAll('[data-rank-trophy]')) for (const a of t.getAnimations({ subtree: true })) {
+        const name = a.animationName || '';
+        a.pause();
+        a.currentTime = name === 'bt-rank-shine' ? 4200 * 0.79 + (parseFloat(getComputedStyle(t).getPropertyValue('--rank-delay')) || 0) * 1000 : 3300 * 0.74 + (parseFloat(getComputedStyle(a.effect.target).animationDelay) || 0) * 1000;
+      }
+    });
+    await A.page.waitForTimeout(250);
+    await shot(A, 'trophies');
+    await A.page.evaluate(() => { for (const t of document.querySelectorAll('[data-rank-trophy]')) for (const a of t.getAnimations({ subtree: true })) a.play(); });
+
     /* ── 5 ── the daily spin */
     await tap(A, '[data-lb-rail] [data-lb-cat="spin"]');
     await A.page.waitForSelector('[data-winloss-board="spin"] [data-board-row]', { timeout: 15000 }).catch(() => {});
@@ -304,7 +344,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
       return { id: on.dataset.lbCat, shown: b.left >= a.left - 1 && b.right <= a.right + 1 };
     });
     rec.ok('7b ...opened on the board you last looked at, its chip scrolled into sight', !!chipOn && chipOn.id === 'trapping' && chipOn.shown, chipOn);
-    /* the narrower iPhones: 375 keeps the words, the row stays inside the screen down to 320 */
+    /* the narrower phones: a 375 px iPhone keeps the words, 360 and 320 show
+       the pictures alone, and the row stays inside the screen down to 320 */
     for (const w of [375, 360, 320]) {
       await A.page.setViewportSize({ width: w, height: 667 });
       await A.page.waitForTimeout(1200);
@@ -315,7 +356,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
       });
       if (w === 375) await shot(A, 'row-375');
       rec.ok(`7c at ${w} px the six buttons are inside the screen, none over another (${n.bs[0] && n.bs[0].w} px each${n.mode === 'stack' ? ', words on' : ', pictures alone'})`,
-        n.bs.length === 6 && n.bs.every((b, i) => b.l >= 0 && b.r <= n.vw && (i === 0 || b.l >= n.bs[i - 1].r)) && n.cut.length === 0 && (w !== 375 || n.mode === 'stack'), n);
+        n.bs.length === 6 && n.bs.every((b, i) => b.l >= 0 && b.r <= n.vw && (i === 0 || b.l >= n.bs[i - 1].r)) && n.cut.length === 0 && n.mode === (w === 375 ? 'stack' : 'icon'), n);
     }
     await A.page.setViewportSize(PHONE);
     await A.page.waitForTimeout(800);

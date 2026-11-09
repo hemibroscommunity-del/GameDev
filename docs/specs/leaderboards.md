@@ -27,6 +27,12 @@
 - **Every row**: the rank, the character's **face** (a Hemi Bro bust), the
   name, the **level** in a small pill beside it, a short line about the
   record, and the record. Your own row is lit.
+- **The first five places wear the owner's trophies** where the rank was: a
+  crowned gold cup, a silver cup, a bronze cup, a yellow rosette and a pink
+  one, each with its number on it. From sixth place down the column says
+  "#6". Each trophy **shines and sparkles**: a band of light crosses it every
+  few seconds and small stars wink on its rim, the top five glinting down the
+  column in turn. A deleted character's trophy is grey and still.
 - **Daily spin** has two buttons, **Biggest wins** and **Biggest losses**:
   - a win is a pot paid from the daily spin: taken, kept for you at the day's
     end, or paid at the house limit (100,000);
@@ -129,11 +135,18 @@
   (`preloadAnimations.js` `hemiBust`), so nothing loads on first use. The
   busts are data URLs of about 1 KB kept by look in a map capped at 120,
   oldest out (MEMORY IS BUDGETED: a cache has a cap).
+- The trophies: `BoardRow.jsx` `RankMark`; the pictures
+  `public/icons/ui/rank-1..5.webp` (120 px, 256 colours, about 5 KB each), cut
+  from the owner's sheet (`assets/icons-source/rank-trophies-2026-11-09/`) by
+  `tools/ui/cut-rank-trophies.py`. The shine and the stars are CSS
+  (`game.css` `.bt-rank-shine`, `.bt-rank-spark`): the picture is its own
+  mask for the band of light, the stars are a `clip-path`; transforms and
+  opacity only, nothing under `prefers-reduced-motion`, nothing loaded.
 - `src/game/spinBoard.js`: the ask, the answer kept on `S._spinBoard`
   (`window.__btSpinBoard` for QA), the rows' words.
 - The row: `BottomDashboard.jsx` `DESTINATIONS` / `RAIL_ORDER`,
   `sheetGeometry.js` `RAIL_COUNT` 6, `bandCloseW`, `LAND_NAV_BTN_W` 26,
-  `NavRail.jsx` `NAV_WORDS_STACK` 44 and the button's `title`,
+  `NavRail.jsx` `NAV_WORDS_STACK` 45 and the button's `title`,
   `deskKeys.js` `NAV_KEYS.leaderboard` U, `dashboardPanelBus.js` `OWN_PAGES`.
 
 ## Costs

@@ -8171,3 +8171,34 @@ html[data-orient="landscape"] .bt-fish-card{top:calc(env(safe-area-inset-top,0px
 @media (prefers-reduced-motion:no-preference){
   .bt-card-x[data-gear-card-close]{animation:btCardXPulse .5s ease-in-out 3,btCardXGlow 2.2s ease-in-out 1.5s infinite}
 }
+
+/* ═══ v2.3.4355: THE LEADERBOARDS' TROPHIES SHINE AND SPARKLE ═══
+   The owner, of the first five places' trophies (BoardRow.jsx RankMark): "Add a cool code based effect for
+   shine or slight sparkling."  Nothing is drawn or loaded for it:
+     .bt-rank-shine   a slanted band of light that crosses the picture, cut to the trophy's own shape (the
+                      picture is its own mask, --rank-art), then rests: one pass every 4.2 s;
+     .bt-rank-spark   a four-point star (a clip-path) that winks on the rim: it grows, turns an eighth and
+                      goes, every 3.3 s, each star and each place on its own beat (--rank-delay, inline).
+   Transforms and opacity only, on five 40 px pictures, and only while the Leaderboards are open.  No CSS
+   filter on the live ones (a deleted character's is grey: .bt-rank-gone, as its face is).  Under
+   prefers-reduced-motion nothing moves and nothing is shown over the picture. */
+.bt-rank-trophy{position:relative;display:block;flex:none;width:40px;height:40px}
+.bt-rank-trophy > img{display:block;width:100%;height:100%;object-fit:contain}
+.bt-rank-gone > img{filter:grayscale(1);opacity:.5}
+.bt-rank-shine,.bt-rank-spark{display:none}
+@media (prefers-reduced-motion:no-preference){
+  .bt-rank-shine{display:block;position:absolute;inset:0;overflow:hidden;pointer-events:none;
+    -webkit-mask:var(--rank-art) center / contain no-repeat;mask:var(--rank-art) center / contain no-repeat}
+  .bt-rank-shine::before{content:'';position:absolute;top:-25%;bottom:-25%;left:0;width:46%;
+    background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.2) 30%,rgba(255,255,255,.85) 50%,rgba(255,255,255,.2) 70%,rgba(255,255,255,0) 100%);
+    transform:translateX(-160%) skewX(-20deg);
+    animation:bt-rank-shine 4.2s ease-in-out infinite;animation-delay:var(--rank-delay,0s)}
+  .bt-rank-spark{display:block;position:absolute;margin:-4px 0 0 -4px;pointer-events:none;opacity:0;
+    background:#FFFBE0;clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%);
+    transform:scale(0) rotate(0deg);animation:bt-rank-spark 3.3s ease-in-out infinite}
+  .bt-rank-2 .bt-rank-spark{background:#F2FAFF}
+  .bt-rank-3 .bt-rank-spark{background:#FFE6CC}
+  .bt-rank-5 .bt-rank-spark{background:#FFE9F3}
+}
+@keyframes bt-rank-shine{0%,58%{transform:translateX(-160%) skewX(-20deg)}100%{transform:translateX(360%) skewX(-20deg)}}
+@keyframes bt-rank-spark{0%,62%,100%{opacity:0;transform:scale(0) rotate(0deg)}74%{opacity:1;transform:scale(1.25) rotate(25deg)}86%{opacity:0;transform:scale(.3) rotate(45deg)}}
