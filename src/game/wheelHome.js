@@ -68,8 +68,17 @@ export function wantWheelSpawn(S) {
 const TRIP_VEIL_MS = 30000;
 /** Is the trip to the Wheel's Brotown wanted, from today's town, now? */
 export function wheelTripVeiled(S) {
-  return !!(S && S._spawnToWheel && S.currentZone === 'town'
-    && Date.now() - (S._spawnAskedAt || 0) < TRIP_VEIL_MS);
+  if (!(S && S._spawnToWheel && S.currentZone === 'town')) return false;
+  /* v2.3.4355: ...and for as long as the stairs' gate into the world is up.
+     The gate may now wait up to 24 s for a way in that is still arriving
+     (zoneGate.js gateCap; it was a flat 15), and this veil's 30 s run from an
+     earlier moment (the worker's first word): on a phone drawing a frame
+     every few seconds the veil could run out with the gate still up, and
+     today's town's art (46 MB) would be loaded for a stop nobody sees
+     (zoneTransitions.js syncTownScenery; v2.3.3729's black screens).  While
+     the gate is up the trip IS under way, whatever the clock says. */
+  if (S._zoneLoading && isWorldViewZone(S._zoneLoading.toZone)) return true;
+  return Date.now() - (S._spawnAskedAt || 0) < TRIP_VEIL_MS;
 }
 /** Has the way in arrived where it was going (or is there no trip)? */
 export function wheelArrived(S) {

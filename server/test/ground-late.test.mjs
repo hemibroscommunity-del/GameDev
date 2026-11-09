@@ -20,7 +20,11 @@
  *      download is cut for stalling, never for its whole time; a quiet one
  *      never starts beside a waiting piece's; the pictures further out are
  *      asked for while it is idle, within the blocks already built; the way
- *      in's pieces share one wait, shorter than the zone gate's quiet.
+ *      in's pieces share one wait, shorter than the zone gate's quiet;
+ *   6. what the review of this change found: a retry of a picture the screen
+ *      is short of is never a quiet download, and a piece the gate laid short
+ *      is laid again once the ground takes it (played by mp-desksmooth's
+ *      slowed-and-thin part, which failed first).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -134,8 +138,19 @@ const fn = (name) => { const a = gw.indexOf('function ' + name + '('); if (a < 0
   const far = fn('farPrefetch');
   check('5f. ...quietly (never as a waiting piece\'s), and never one already fetched this visit', /want\(k, false\)/.test(far) && !/want\(k, true\)/.test(far) && /everFetched\.has\(k\)/.test(far));
   const tileOf = fn('tileOf');
-  check('5g. the way in\'s pieces share one wait for their pictures', /if \(wait === 'gate'\) \{\s*if \(!gateUntil\) gateUntil = performance\.now\(\) \+ GATE_WAIT_MS;\s*left = gateUntil - performance\.now\(\);/.test(tileOf));
+  check('5g. the way in\'s pieces share one wait for their pictures', /if \(wait === 'gate'\) \{\s*if \(!gateUntil\) gateUntil = performance\.now\(\) \+ GATE_WAIT_MS;/.test(tileOf) && /left = Math\.max\(gateUntil, job\.urgentAt \+ GATE_GRACE_MS\) - performance\.now\(\);/.test(tileOf));
+  /* past the shared wait a picture only now wanted still gets a moment (the review of v2.3.4355: it got none, and a
+     picture a few ms away in the browser's cache put a plain square on the screen) -- short, so a dead line costs little */
+  check('5g2. ...and past it a picture only now wanted still gets a short grace, never no wait', num('GATE_GRACE_MS') >= 200 && num('GATE_GRACE_MS') <= 1000, num('GATE_GRACE_MS'));
   check('5h. ...shorter than the zone gate\'s quiet, so the wait is never taken for a hung load', num('GATE_WAIT_MS') > num('PIECE_WAIT_MS') && num('GATE_WAIT_MS') < GATE_QUIET_MS, { GATE_WAIT_MS: num('GATE_WAIT_MS'), GATE_QUIET_MS });
+  /* 6: found by the review of v2.3.4355, each reproduced or traced before it was fixed */
+  const chase = fn('chase');
+  check('6. the next try of a picture the screen is short of is a waiting piece\'s, never a quiet one (it would stand aside for every picture fetched ahead)',
+    /want\(k, true\);\s*\}\s*$/.test(chase) && !/want\(k, false\)/.test(chase));
+  const wg = readFileSync(join(ROOT, 'src/rendering/wheelGround.js'), 'utf8');
+  const load = wg.slice(wg.indexOf('  _load(i, j, info, onScreen) {'), wg.indexOf('  /* the sprite of a piece the worker laid'));
+  check('6b. a piece the gate laid ahead that came short is laid again once the ground takes it (its pictures may have come, unheard, behind the loading screen)',
+    /this\._short\(rec, m\);[\s\S]*if \(warm && rec\.lacking\) rec\.due = true;/.test(load));
   const wt = readFileSync(join(ROOT, 'src/game/wheelTrial.js'), 'utf8');
   check('5i. the game marks the gate\'s pieces as its fill\'s', /wheelChunk\(i, j, false, fill\)/.test(wt) && /gate: gate \|\| 0/.test(wt));
 }

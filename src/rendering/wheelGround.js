@@ -362,6 +362,16 @@ export class WheelGround {
       rec.ready = true;
       if (this.water) this.water.set(key, i, j, m.wf, info, rec.sprite.texture, rec.sprite);
       this._short(rec, m);
+      /* ═══ v2.3.4355: LAID SHORT BEHIND THE LOADING SCREEN, LAID AGAIN ONCE ═══
+         A piece the zone gate laid ahead (`warm`) was laid before this ground
+         existed, so any picture it went without that came while the loading
+         screen was still up said so ('got') to nobody: its ground stayed
+         plain until you walked away and back (mp-desksmooth, the page slowed
+         and the line thin together: 8 of the view's 50 pieces still plain a
+         minute after the lift).  So such a piece is due once, now: laid
+         again with whatever has come since, and from here on this ground
+         hears of the rest (wheelOnGot, the constructor). */
+      if (warm && rec.lacking) rec.due = true;
     }).catch(() => {
       if (!warm) this.inFlight--;
       if (this.pieces.get(key) === rec) this.pieces.delete(key);

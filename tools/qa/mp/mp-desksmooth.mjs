@@ -41,6 +41,12 @@
  *      the town is whole within WHOLE_MS of the lift, and the walk after it
  *      lays no piece short (the pictures were fetched ahead).
  *
+ *   4. 1920 x 1080 slowed AND on a thin line (250 KB a second): the
+ *      pictures come while the loading screen is still up, after their ground
+ *      was laid without them -- that ground is laid again once the screen
+ *      lifts, whole within WHOLE_MS (found by the review of this change: 8 of
+ *      50 pieces stayed plain a minute after the lift).
+ *
  * READ THE FRAME'S NUMBERS AS A LINE, NOT AS A COMPUTER'S.  This box draws in
  * software, a few frames a second (TRAPS §200), so nothing here is a frame
  * rate.  What carries over is what the main thread does a frame, and that is
@@ -49,13 +55,13 @@
  * this box at all: the Test panel's Speed test, run on the computer, is how
  * those are captured (docs/STATE-MACHINES.md, item A).
  *
- * THE SAMPLE, AND THE FULL RUN (CLAUDE.md §6).  This is the sample: about 12
+ * THE SAMPLE, AND THE FULL RUN (CLAUDE.md §6).  This is the sample: about 7
  * minutes.  BT_DS_FULL=1 adds the throttle at the other two sizes and a
  * thinner line (60 KB a second): about 30 minutes.
  *
  *   node tools/qa/mp/run.mjs desksmooth
  *   BT_DS_SIZES=1920x1080 ...     # only these windows
- *   BT_DS_PARTS=quiet,slowline    # only these parts (quiet, throttle, slowline)
+ *   BT_DS_PARTS=quiet,slowline    # only these parts (quiet, throttle, both, slowline)
  *   BT_DS_SHOTS=1                 # pictures into tools/qa/mp/out/
  */
 import * as H from './harness.mjs';
@@ -66,7 +72,7 @@ const ALL = [{ width: 1366, height: 657, name: 'short laptop' }, { width: 1920, 
 const SIZES = process.env.BT_DS_SIZES
   ? process.env.BT_DS_SIZES.split(',').map((s) => { const [w, h] = s.split('x').map(Number); return ALL.find((a) => a.width === w && a.height === h) || { width: w, height: h, name: s }; })
   : ALL;
-const PARTS = (process.env.BT_DS_PARTS || 'quiet,throttle,slowline').split(',').map((s) => s.trim());
+const PARTS = (process.env.BT_DS_PARTS || 'quiet,throttle,both,slowline').split(',').map((s) => s.trim());
 const FULL = process.env.BT_DS_FULL === '1';
 const SHOTS = process.env.BT_DS_SHOTS === '1';
 const THROTTLE = 4;
@@ -181,6 +187,17 @@ async function device(browser, wsPort, webPort, rec, vp, G, how) {
     console.log(`    ${label}: the view ${first.view[0]} x ${first.view[1]} game px, ${first.cols} x ${first.rows} = ${first.inView} pieces; at the lift ${first.missing} missing (${first.far} on the outer ring), `
       + `${first.short} short of a picture; the gate held ${first.gateMs} ms, the way in ${first.done ? 'finished' : 'NOT finished'} (${first.loads} pieces laid by then)`);
 
+    if (how.slow && how.throttle) {
+      /* ── part 4: slowed AND on a thin line -- the pictures come while the
+         loading screen is still up, after their ground was laid without them ── */
+      const w = await untilWhole(P, 60000);
+      const s0 = await stats(P);
+      console.log(`      at the lift ${first.short} short of ${first.inView}; whole ${w.ms} ms after it; ${s0.partial} laid short on the way in, ${s0.relaid} laid again, ${s0.mended} whole; cut ${s0.dl && s0.dl.cuts}, failed ${s0.dlFails}; the gate's pieces waited ${s0.dl && s0.dl.gateWaitMs} ms`);
+      rec.ok(`${label}: ground laid without a picture behind the loading screen is laid again once the screen lifts -- ${first.short} short at the lift, whole ${w.ms} ms after it (at most ${LINES.WHOLE_MS}; `
+        + `before, a picture that came while the screen was still up was never heard of again, and its ground stayed plain until you walked away)`,
+        first.missing === 0 && w.ms != null && w.ms <= LINES.WHOLE_MS, { first, ms: w.ms, last: w.g, partial: s0.partial, relaid: s0.relaid });
+      return { label, first, wholeMs: w.ms };
+    }
     if (how.slow) {
       /* ── part 3: a first visit on a thin line ── */
       rec.ok(`${label}: the loading screen lifts with every piece in view laid -- ${first.missing} missing of ${first.inView} (a piece short of a picture is laid in its plain colour, never held back)`,
@@ -192,8 +209,8 @@ async function device(browser, wsPort, webPort, rec, vp, G, how) {
         w.ms != null && w.ms <= LINES.WHOLE_MS, { ms: w.ms, last: w.g });
       rec.ok(`${label}: no download was cut off or failed (cut ${s0.dl && s0.dl.cuts}, failed ${s0.dlFails}; main cut 14 at 60 KB a second and began each again from nothing)`,
         !!s0.dl && s0.dl.cuts === 0 && s0.dlFails === 0, { dl: s0.dl, dlFails: s0.dlFails });
-      rec.ok(`${label}: the gate's pieces shared one wait for their pictures (${s0.dl && s0.dl.gateWaitMs} ms, at most 7.5 s; they waited 4 s for each new picture in turn)`,
-        !!s0.dl && s0.dl.gateWaitMs > 0 && s0.dl.gateWaitMs <= 7500, s0.dl);
+      rec.ok(`${label}: the gate's pieces shared one wait for their pictures (${s0.dl && s0.dl.gateWaitMs} ms: 7 s, and half a second more for each picture only wanted after it, at most 10 s; they waited 4 s for each new picture in turn)`,
+        !!s0.dl && s0.dl.gateWaitMs > 0 && s0.dl.gateWaitMs <= 10000, s0.dl);
       /* the walk out of town: its pictures were fetched ahead while you stood */
       const me = await H.readState(P, (S) => S.myId);
       await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
@@ -244,6 +261,8 @@ export async function run({ browser, wsPort, webPort, rec }) {
   const out = [];
   if (PARTS.includes('quiet')) for (const vp of SIZES) out.push(await device(browser, wsPort, webPort, rec, vp, G, {}));
   if (PARTS.includes('throttle')) for (const vp of FULL ? SIZES : [mid]) out.push(await device(browser, wsPort, webPort, rec, vp, G, { throttle: THROTTLE }));
+  /* part 4: the page slowed and the line thin together (BT_DS_BOTH_LINE: the line's width, for looking for the moment) */
+  if (PARTS.includes('both')) out.push(await device(browser, wsPort, webPort, rec, mid, G, { throttle: THROTTLE, slow: process.env.BT_DS_BOTH_LINE || '/world/ground/:250:200' }));
   if (PARTS.includes('slowline')) {
     out.push(await device(browser, wsPort, webPort, rec, mid, G, { slow: '/world/ground/:150:200' }));
     if (FULL) {

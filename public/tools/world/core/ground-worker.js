@@ -187,6 +187,7 @@ const DL_RETRY_MS = 3000;
 const DL_RETRY_MAX_MS = 30000;
 const PIECE_WAIT_MS = 4000;
 const GATE_WAIT_MS = 7000;  /* v2.3.4355: the way in's pieces wait this long, between them, for their pictures */
+const GATE_GRACE_MS = 500;  /* v2.3.4355: ...and past it, this long for a picture only now wanted (tileOf) */
 const PREFETCH = 2;
 const FAR_REACH = 1536;     /* v2.3.4355: game px round you whose pictures are asked for while the worker is idle (8 pieces) */
 const FAR_STEP = 384;       /* ...again once you have moved this far (2 pieces) */
@@ -274,7 +275,11 @@ function chase(k) {
   if (files.has(k)) { owed.delete(k); post({ type: 'got', k }); return; }
   const r = dlRetry.get(k), left = r ? r.at - performance.now() : 0;
   if (left > 0) { chasing.add(k); setTimeout(() => { chasing.delete(k); chase(k); }, left + 20); return; }
-  want(k, false);
+  /* v2.3.4355: as a waiting piece's (it was `false`, a quiet one): a piece on
+     screen is short of this picture, and since quiet downloads stand aside
+     for waited ones (pump) its next try would have queued behind every
+     picture fetched ahead, and behind any slow download still arriving */
+  want(k, true);
 }
 /* one download; null on any failure (a phone's connection drops, a server's
    error, a hang).  v2.3.4355: cut when no byte has come for DL_STALL_MS (and
@@ -962,7 +967,13 @@ async function tileOf(id, ver, wait) {
     if (wait && job) {
       if (wait === 'gate') {
         if (!gateUntil) gateUntil = performance.now() + GATE_WAIT_MS;
-        left = gateUntil - performance.now();
+        /* ...but never NO wait for a picture only now wanted: past the shared
+           wait (a slowed computer's fill runs longer than it) a picture first
+           met in an outer piece, or one read back from the browser's own
+           cache, is a few ms away, and laying its piece short for that put a
+           plain square on the screen for nothing.  GATE_GRACE_MS from when a
+           piece first waited for it; one already waited for gets no more. */
+        left = Math.max(gateUntil, job.urgentAt + GATE_GRACE_MS) - performance.now();
       } else left = job.urgentAt + PIECE_WAIT_MS - performance.now();
     }
     if (left > 0) {

@@ -71,6 +71,27 @@ LINE"):
 Nothing is kept in memory that was not: pictures fetched ahead are held like
 the others (`FILES_KEEP`, 8) and otherwise by the browser's own cache.
 
+**Found by the independent review of this change, and fixed in it:**
+
+- **Ground laid plain behind the loading screen could stay plain.** A piece
+  the gate laid without a picture is told when that picture comes, but the
+  thing that listens (the ground itself) does not exist until the loading
+  screen lifts, so a picture arriving in between was heard by nobody.
+  Reproduced with the page slowed and the line thin together: 8 of 50 pieces
+  still plain a minute after the lift. Such a piece is now laid again once,
+  as the ground takes it (`wheelGround.js _load`). Older than this change,
+  but the longer gate made the gap wider.
+- **Past the shared 7 s a gate piece waited no time at all** for a picture
+  only then wanted, even one a few ms away in the browser's cache. It now
+  gets `GATE_GRACE_MS` (0.5 s).
+- **The next try of a picture the screen is short of was a quiet download**,
+  so under the new rule it stood aside for every picture fetched ahead. It
+  is a waiting piece's now (`chase`).
+- **The trip's veil could run out with the longer gate still up** on a phone
+  drawing a frame every few seconds, which would load today's town's 46 MB
+  of art for a stop nobody sees. The veil now holds for as long as the gate
+  into the world is up (`wheelHome.js wheelTripVeiled`).
+
 ## The numbers (the test box, 1920 x 1080, `lookpalette=0`)
 
 | | Before | After |
@@ -82,6 +103,7 @@ the others (`FILES_KEEP`, 8) and otherwise by the browser's own cache.
 | ...the town whole | 85 s | 40 s |
 | Page slowed x4: pieces missing at the lift | 14 of 50 (11 on the outer ring) | 0 |
 | ...the gate held | 15.2 s | 17.6 s |
+| Page slowed x4 AND 250 KB a second: pieces still plain a minute after the lift | 8 of 50 | 0 (whole 9.7 s after it) |
 | Quiet box: missing at the lift, late on a walk | 0, 0 | 0, 0 |
 
 ## What it does not do
@@ -96,7 +118,7 @@ the others (`FILES_KEEP`, 8) and otherwise by the browser's own cache.
 
 ## Measuring
 
-- **`node tools/qa/mp/run.mjs desksmooth`** (about 5 minutes; the full run,
+- **`node tools/qa/mp/run.mjs desksmooth`** (about 7 minutes; the full run,
   `BT_DS_FULL=1`, adds the throttle at the other two sizes and a 60 KB line):
   a short laptop (1366 x 657), 1920 x 1080 and a large monitor (2560 x 1440),
   each `wide: true` and `lookpalette=0`:
@@ -104,6 +126,8 @@ the others (`FILES_KEEP`, 8) and otherwise by the browser's own cache.
   - a walk across the town: no piece or object late on screen;
   - the game's work a frame (`perfTracker` `workMs`) under its line;
   - 1920 x 1080 with the page slowed x4: the same, the gate holding;
+  - 1920 x 1080 slowed AND on a thin line: ground laid plain behind the
+    loading screen is whole within 30 s of the lift;
   - 1920 x 1080 on a thin line: no download cut, the town whole in 30 s, the
     walk's pictures fetched ahead.
 

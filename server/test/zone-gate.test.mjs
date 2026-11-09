@@ -100,6 +100,12 @@ async function liftAt(progressAt, horizon = 60000) {
   const veil = m ? Number(m[1]) : 0;
   check('5. the longest wait is under the failsafe\'s age and the trip veil, with room', GATE_CAP_MAX_MS + 5000 <= GATE_STALE_MS && GATE_CAP_MAX_MS + 5000 <= veil && GATE_QUIET_MS < GATE_CAP_MAX_MS - GATE_CAP_MS + 1,
     { GATE_CAP_MAX_MS, GATE_STALE_MS, veil });
+  /* ...and the veil does not lean on that room: while the stairs' gate into the world is up, the trip is veiled whatever
+     the clock says (on a phone drawing a frame every few seconds the 30 s could run out first, and today's town's 46 MB
+     of art would load for a stop nobody sees: zoneTransitions.js syncTownScenery) */
+  const veiled = home.slice(home.indexOf('export function wheelTripVeiled'), home.indexOf('/** Has the way in arrived'));
+  check('5a. the trip\'s veil holds while the gate into the world is up, before it reads its own clock',
+    /if \(S\._zoneLoading && isWorldViewZone\(S\._zoneLoading\.toZone\)\) return true;\s*return Date\.now\(\) - \(S\._spawnAskedAt \|\| 0\) < TRIP_VEIL_MS;/.test(veiled));
   /* the ground's pieces wait up to GATE_WAIT_MS for their pictures with nothing laid: that must not read as a hung load */
   const gw = readFileSync(join(ROOT, 'public/tools/world/core/ground-worker.js'), 'utf8');
   const g = /const GATE_WAIT_MS = (\d+);/.exec(gw);
