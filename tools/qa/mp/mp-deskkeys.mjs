@@ -59,7 +59,7 @@ const PHONE = { width: 390, height: 844 };
 /* v2.3.4172: five buttons (Gear, Bro, Quests, Codex, More); L opens the
    Life Skills page under Bro, and the Bro card's Life Skills row wears it
    (checked in step 2) */
-const NAV = { dashboard: 'I', hero: 'P', quests: 'J', encyclopedia: 'K', more: 'O' };
+const NAV = { dashboard: 'I', hero: 'P', quests: 'J', leaderboard: 'U', encyclopedia: 'K', more: 'O' };   /* v2.3.4355: U, the Leaderboards */
 
 /** The key cap a control wears: its ::after (or ::before) as computed. */
 const capOf = (P, sel, pseudo = '::after') => P.page.evaluate(([s, ps]) => {
@@ -106,7 +106,7 @@ async function runKeys({ browser, wsPort, webPort, rec }) {
     /* ── 1. THE LETTERS ── */
     const caps = {};
     for (const id of Object.keys(NAV)) caps[id] = await capOf(P, `[data-nav="${id}"]`);
-    rec.ok('the dashboard\'s five buttons wear I P J K O (v2.3.4172)',
+    rec.ok('the dashboard\'s buttons wear I P J U K O (v2.3.4172; v2.3.4355: U, the Leaderboards)',
       Object.keys(NAV).every((id) => shown(caps[id]) && caps[id].key === NAV[id]), caps);
     const mapCap = await capOf(P, '[data-world-map-open]');
     const mark = await P.page.evaluate(() => (window.__btWheelMini && window.__btWheelMini.mark) || null);

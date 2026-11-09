@@ -766,7 +766,23 @@ export const STATES = [
       if (!ok) return 'no monster card to open';
     },
   },
-  dash('more', 'More', 'The More page: twelve tiles (map, social, party, guild, pets, journey, leaderboards, settings, account, notifications with its unread count, feedback, about).'),
+  dash('more', 'More', 'The More page: eleven tiles (map, social, party, guild, pets, journey, settings, account, notifications with its unread count, feedback, about).'),
+  /* v2.3.4355: the Leaderboards have a button of their own on the row
+     ("Ranks"): the list of boards down the left (Ranks, Records, Skills), the
+     board beside it, a face and a level on each row */
+  dash('leaderboard', 'Leaderboards', 'The Leaderboards, from the Ranks button on the row: the list of boards down the left (Ranks: Level, Melee, Bow, Magic, Kills, AP; Records: Daily spin, Coin flip, Biggest fish; Skills: the ten life skills), the board beside it. Each row: the rank, the character\'s face, the name, the record ("Lv 1"). Your own row is lit.'),
+  {
+    id: 'leaderboard-spin', group: 'Dashboard', title: 'Leaderboards: Daily spin',
+    about: 'Leaderboards, Records, Daily spin: Biggest wins / Biggest losses on the board\'s first line, then the ten biggest pots taken from the daily spin (or lost to double or nothing), one row a player: face, name, the level pill, how many doubles, the gold. A deleted character\'s record stays as a grey row with DELETED across its face.',
+    run: async ({ P }) => {
+      const e = await bus(P, 'open', 'leaderboard');
+      if (e) return e;
+      await wait(P, 500);
+      const e2 = await tapSel(P, '[data-lb-cat="spin"]');
+      if (e2) return 'no Daily spin board (' + e2 + ')';
+      await wait(P, 900);
+    },
+  },
   /* v2.3.3736: a rare window whose script cannot come (src/ui/lazyPanel.js):
      a tab left open across a deploy is answered with the page itself.  The
      Settings page's script answered so here; its own state, next, opens it
@@ -791,7 +807,6 @@ export const STATES = [
   },
   more('settings', 'Settings', 'Settings: sound, graphics, controls and the rest.'),
   more('pets', 'Pets', 'Your pets: the ones you caught, the one out with you, the journal of kinds.'),
-  more('leaderboard', 'Leaderboards', 'The leaderboards.'),
   more('social', 'Social', 'Social: your friends list and messages.'),
   /* v2.3.3527: Journey's tile is Achievements while the server grants them
      (the review's own worker does); the Journey page stays the fallback.
@@ -984,13 +999,12 @@ export const STATES = [
     },
   },
   {
-    id: 'fish-board', group: 'Dashboard: More', title: 'Ranks: Biggest fish',
-    about: 'More, Ranks, the Biggest fish tab: the ten heaviest of each kind of fish weighed, one row a player, the name and the kilos (an albino or a large one says so).',
+    id: 'fish-board', group: 'Dashboard', title: 'Leaderboards: Biggest fish',
+    about: 'Leaderboards, Records, Biggest fish: the ten heaviest of each kind of fish weighed, one row a player, the face, the name and level, and the kilos (an albino or a large one says so).',
     run: async ({ P }) => {
-      const e = await bus(P, 'open', 'more');
+      /* v2.3.4355: the Leaderboards' own button on the row, no drill under More */
+      const e = await bus(P, 'open', 'leaderboard');
       if (e) return e;
-      await wait(P, 300);
-      await bus(P, 'push', 'leaderboard');
       await wait(P, 500);
       const e2 = await tapSel(P, '[data-lb-cat="fish"]');
       if (e2) return 'no Biggest fish chip (' + e2 + ')';

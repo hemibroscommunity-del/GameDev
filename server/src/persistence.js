@@ -557,6 +557,11 @@ export const persistenceMethods = {
     if (this._placeForget) this._placeForget(pid);
     delete this.stateHistory[pid];
     this.dirtyPlayers.delete(pid);
+    /* v2.3.4355: and its rows on the boards are RETIRED, not removed
+       (boards.js _boardsGone): the owner's "stand-in (deleted character)
+       rows", grey with their face and level.  After the state is gone and
+       before the socket, so nothing of the old life is reported after it. */
+    try { if (this._boardsGone) await this._boardsGone(pid); } catch (e) { /* best-effort, as above */ }
     const ws = this._wsBySessionId(pid);
     if (ws) {
       try { ws.send(JSON.stringify({ type: 'character_reset_done' })); } catch (e) {}

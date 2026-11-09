@@ -13635,7 +13635,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.3539: the Hotel's rest, asked of the worker (game/rest.js); its answer is said over your bro */
     onRest: function onRest() { setBuildingPanel(null); requestRest(stateRef.current, 'hotel'); },
     /* v2.3.3258: the Town Hall's rows -- the dashboard's Ranks page (More -> Leaderboard, as its tile opens it), and the Wheel's world map */
-    onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('more'); dashboardPanelBus.push('leaderboard'); },
+    onLeaderboard: function onLeaderboard() { setBuildingPanel(null); dashboardPanelBus.open('leaderboard'); },   /* v2.3.4355: its own button on the row, no longer a drill under More */
     onMap: function onMap() { setBuildingPanel(null); openWorldMap(); },
     /* v2.3.3801: the board's shortcuts -- a dashboard page (Quests, the Codex, More -> Journey) -- and closing it (the skateboard's "Ride now") */
     onDash: function onDash(id, sub) { setBuildingPanel(null); dashboardPanelBus.open(id); if (sub) dashboardPanelBus.push(sub); },

@@ -1,5 +1,14 @@
 # Five dashboard buttons: Gear, Bro, Quests, Codex, More (v2.3.4172)
 
+> **v2.3.4355: six.** The owner, 2026-11-09: "make room for a new
+> 'leaderboards' button on the dashboard (I think this is already in the
+> 'more' button)."  Ranks (id `leaderboard`, key U) stands between Quests and
+> the Codex; More has eleven tiles.  `RAIL_COUNT` 6: 48 px at 390, 45 at 375,
+> 44 at 360 (CLOSE 48 px under 375: `bandCloseW`), 38 at 320; words under the
+> pictures from 44 px (`NAV_WORDS_STACK`); the sideways dock's buttons 26 px
+> (the same 214 px dock).  `dashboardPanelBus` `OWN_PAGES`: a `push` of
+> `leaderboard` opens the one page.  The page: `docs/specs/leaderboards.md`.
+
 The owner, 2026-11-02: "I want to consolidate the dashboard area as much as
 possible (limit lots of buttons to switch between different context) I have
 the bag, character, quest, lifeskills, bestiary, and more (the ellipses

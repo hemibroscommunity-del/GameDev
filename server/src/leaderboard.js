@@ -6,6 +6,11 @@
 // ═══════════════════════════════════════
 //  LEADERBOARD — Global persistent rankings
 // ═══════════════════════════════════════
+import { boardFace, goneId } from './boards.js';   /* v2.3.4355: a face on each row, and the deleted stand-ins */
+
+/* a player not seen for this long is off the boards (and a deleted
+   character's stand-in, counted from the day it was deleted) */
+const STALE_MS = 7 * 86400000;
 
 export class Leaderboard {
   constructor(state, env) { this.state = state; this.env = env; }
@@ -20,6 +25,14 @@ export class Leaderboard {
         const body = await request.json();
         await this.updatePlayer(body);
         return new Response(JSON.stringify({ ok: true }), { headers: H });
+      }
+
+      /* v2.3.4355: a character deleted for good (boards.js _boardsGone, over
+         the object binding only: the public route is read-only, index.js) */
+      if (request.method === 'POST' && path.startsWith('/gone')) {
+        const body = await request.json();
+        const gone = await this.markGone(body);
+        return new Response(JSON.stringify({ ok: true, gone }), { headers: H });
       }
 
       if (request.method === 'GET' && path.startsWith('/top')) {
@@ -38,7 +51,11 @@ export class Leaderboard {
   async updatePlayer(data) {
     const { playerId, name, color, level, rpgData, ts, series } = data;
     if (!playerId) return;
+    /* v2.3.4355: the face, as a look (boards.js FACE_KEYS: short ids, never
+       an image) -- left off a row whose report carried none */
+    const look = boardFace(data.look);
     await this.state.storage.put('player:' + playerId, JSON.stringify({
+      ...(look ? { look } : {}),
       id: playerId, name: name || 'Anon', color: color || '#5b52ff', level: level || 1,
       lifeTotal: rpgData?.lifeTotal || 0, ap: rpgData?.ap || 0, kills: rpgData?.kills || 0,
       dungeons: rpgData?.dungeons || 0, goldEarned: rpgData?.goldEarned || 0, playtime: rpgData?.playtime || 0,
@@ -51,6 +68,48 @@ export class Leaderboard {
          columns so a new skill needs no schema change here either. */
       series: (series && typeof series === 'object') ? series : {},
     }));
+  }
+
+  /* ═══ v2.3.4355: A DELETED CHARACTER'S STAND-IN ═══
+     The owner: "is it possible to have stand-in (deleted character) rows if
+     the record was made by a deleted character?  Maybe still include their
+     profile pic and level but just grayed out with the deleted label over
+     it."  A restart keeps the player id (the Login Key IS the character), so
+     the old life's row would simply be overwritten by the new one's first
+     report.  Instead it MOVES: `player:<pid>` becomes `gone:<pid>:<when>`
+     with `gone` set and an id nothing else has, the new life writes a fresh
+     `player:<pid>`, and getTop lists both.  A stand-in ages off the boards
+     STALE_MS after the delete, as a player who stopped playing does, and is
+     pruned from storage then (the sweep below: the stand-ins are the one set
+     of rows here that can never be written again).  Put before delete: a
+     crash between leaves both, and the old row ages out as it always did. */
+  async markGone(data) {
+    const playerId = data && data.playerId;
+    if (!playerId || typeof playerId !== 'string') return false;
+    const at = Math.floor(Number(data.ts) || Date.now());
+    let moved = false;
+    const raw = await this.state.storage.get('player:' + playerId);
+    if (raw) {
+      let p = null;
+      try { p = JSON.parse(raw); } catch { p = null; }
+      if (p && typeof p === 'object') {
+        p.id = goneId(playerId, at);
+        p.gone = at;
+        p.lastSeen = at;
+        await this.state.storage.put('gone:' + playerId + ':' + at, JSON.stringify(p));
+        moved = true;
+      }
+      await this.state.storage.delete('player:' + playerId);
+    }
+    try {
+      const old = await this.state.storage.list({ prefix: 'gone:' });
+      for (const [k, v] of old) {
+        let g = 0;
+        try { g = JSON.parse(v).gone || 0; } catch { g = 0; }
+        if (at - g >= STALE_MS) await this.state.storage.delete(k);
+      }
+    } catch { /* the sweep is hygiene: the next delete tries again */ }
+    return moved;
   }
 
   /* v2.3.1671: categories that read from `series` are SERVER-AUTHORITATIVE.
@@ -83,8 +142,23 @@ export class Leaderboard {
 
   async getTop(category, limit) {
     const entries = await this.state.storage.list({ prefix: 'player:' });
-    const players = []; const now = Date.now(); const STALE = 7 * 86400000;
-    for (const [, raw] of entries) { try { const p = JSON.parse(raw); if (now - (p.lastSeen || 0) < STALE) players.push(p); } catch {} }
+    const players = []; const now = Date.now(); const STALE = STALE_MS;
+    /* v2.3.4355: `lv`, the level on the name plate -- the highest of the
+       three combat levels (seriesValue's 'combat'), the stored level for a
+       row from before the series -- so every board can print it beside the
+       face, whatever it ranks */
+    const withLv = (p) => { p.lv = Leaderboard.seriesValue(p, 'combat') || Math.max(1, Math.floor(Number(p.level) || 1)); return p; };
+    for (const [, raw] of entries) { try { const p = JSON.parse(raw); if (now - (p.lastSeen || 0) < STALE) players.push(withLv(p)); } catch {} }
+    /* v2.3.4355: and the deleted characters' stand-ins (markGone) -- on the
+       boards the Leaderboards page shows (the series and AP) only.  The
+       legacy columns keep to live characters: `level` is what the contest
+       draw reads its entrants from (public/tools/draw.html), and a deleted
+       character must never be drawn. */
+    const standIns = category === 'ap' || Object.prototype.hasOwnProperty.call(Leaderboard.SERIES_CATEGORIES, category);
+    if (standIns) try {
+      const gone = await this.state.storage.list({ prefix: 'gone:' });
+      for (const [, raw] of gone) { try { const p = JSON.parse(raw); if (p && p.gone && now - (p.lastSeen || 0) < STALE) players.push(withLv(p)); } catch {} }
+    } catch { /* a board without its stand-ins is still a board */ }
 
     if (Object.prototype.hasOwnProperty.call(Leaderboard.SERIES_CATEGORIES, category)) {
       const val = (p) => Leaderboard.seriesValue(p, category);

@@ -112,6 +112,7 @@ export const DESK_KEY_ROWS = [
   ['L', 'Skills', null, 'menus'],
   ['K', 'Codex', null, 'menus'],
   ['O', 'More', null, 'menus'],
+  ['U', 'Ranks', null, 'menus'],       /* v2.3.4355: the Leaderboards' button */
   ['M', 'Map', null, 'menus'],
 ];
 

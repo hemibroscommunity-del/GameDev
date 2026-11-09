@@ -52,7 +52,11 @@ import { NAV_KEYS } from '@/game/deskKeys.js'; /* v2.3.3407: each button's key, 
              the picture alone, the word its aria-label and title.
    The key cap stays on a computer. */
 export const NAV_WORDS_BESIDE = 86;
-export const NAV_WORDS_STACK = 46;
+/* v2.3.4355: 46 -> 44 with the sixth button: a 375 px iPhone's buttons are 45
+   px, and "Quests", the longest word, is ~38 px in the 11 px badge (measured
+   by mp-boards: no word is cut) -- so the words stay on every iPhone and on
+   a 360 px phone (44); a 320 one shows the pictures alone, as it always has */
+export const NAV_WORDS_STACK = 44;
 /* v2.3.4243: each picture's opaque box [x0, y0, x1, y1] in its 256 px file
    (alpha > 24), so the button can show the art alone, edge to edge */
 /* v2.3.4273, the owner: "'gear' font color is orange make it a bright yellow
@@ -63,6 +67,7 @@ const NAV_TRIM = {
   'nav-dashboard.png': [28, 2, 234, 255], 'panel-self.webp': [37, 35, 219, 220],
   'panel-quests.webp': [47, 60, 208, 217], 'panel-encyclopedia.webp': [35, 44, 222, 211],
   'nav-more.webp': [53, 62, 203, 218], 'nav-inventory.webp': [40, 32, 216, 217],
+  'panel-leaderboard.webp': [31, 35, 225, 220],   /* v2.3.4355: the Leaderboards' button */
 };
 const navTrim = (src) => NAV_TRIM[String(src || '').split('?')[0].split('/').pop()] || [0, 0, 256, 256];
 export function navLabelMode(btnW) {
@@ -170,7 +175,9 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                finding anything and quietly asserts nothing.  That is TRAPS §29,
                and mp-hudface is the fifth scenario it killed. */
             data-nav={d.id}
-            role="button" aria-label={d.label} aria-pressed={on}
+            /* v2.3.4355: a button whose word is short for its page ("Ranks")
+               is named in full where there is room for it (`title`) */
+            role="button" aria-label={d.title || d.label} aria-pressed={on}
             /* ═══ v2.3.3407: ITS KEY IN THE CORNER, ON A COMPUTER ═══
                The owner: "For computer usage if there's a key that makes
                sense to use for a certain action just put the letter next to
@@ -179,7 +186,7 @@ export const NavRail = ({ items, litId, atRest, vw, vh, dots, profilePortrait, b
                under a mouse, as generated content, never a text node; the
                hover's tooltip says it too. */
             data-key={NAV_KEYS[d.id] || undefined}
-            title={NAV_KEYS[d.id] ? d.label + ' (' + NAV_KEYS[d.id] + ')' : d.label}
+            title={NAV_KEYS[d.id] ? (d.title || d.label) + ' (' + NAV_KEYS[d.id] + ')' : (d.title || d.label)}
             onPointerUp={(e) => {
               e.stopPropagation();
               /* ═══ v2.3.2639: THE TAB TAP, WHERE THE TAP ACTUALLY IS ═══

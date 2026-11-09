@@ -559,6 +559,13 @@ const DESTINATIONS = [
      button?"): More's own Codex picture, so what you tapped there and what you
      tap here are the same thing. */
   { id: 'encyclopedia', label: 'Codex', icon: '/icons/ui/panel-encyclopedia.webp?v=2.3.1224' },
+  /* v2.3.4355 (owner: "make room for a new 'leaderboards' button on the
+     dashboard (I think this is already in the 'more' button)"): More's own
+     Leaderboards picture.  "Ranks" on the button: "Leaderboards" is twelve
+     letters and a phone's button holds six ("Quests", NavRail's badge); the
+     page, the button's tooltip and its spoken name say Leaderboards
+     (`title`). */
+  { id: 'leaderboard', label: 'Ranks', title: 'Leaderboards', icon: '/icons/ui/panel-leaderboard.webp?v=2.3.1224' },
   { id: 'more',   label: 'More',    icon: '/icons/ui/nav-more.webp?v=2.3.1224' },
 ];
 
@@ -638,7 +645,16 @@ const DESTINATIONS = [
    door; the bus puts 'skills' there, and L opens it).  The ids stay what they were -- 'dashboard' is Gear, 'hero' is
    Bro -- because tests, the coach and the guide arrow key on them; only the
    words changed (aria-label and title: the buttons stay icon-only). */
-const RAIL_ORDER = ['hero', 'quests', 'encyclopedia', 'more'];
+/* ═══ v2.3.4355: SIX -- GEAR, BRO, QUESTS, RANKS, CODEX, MORE ═══
+   The owner, 2026-11-09: "I want to reorganize the 'quests' section and make
+   room for a new 'leaderboards' button on the dashboard (I think this is
+   already in the 'more' button)."  The Leaderboards leave More for a button
+   of their own, between Quests and the Codex -- the two things you do, then
+   the two things you look up -- with More still last (v2.3.1651: the
+   overflow stays on the end).  The room comes out of the five: 48 px each at
+   390 where they were 58 (sheetGeometry RAIL_COUNT; six were 44 at 390 from
+   v2.3.3215 to v2.3.4172), the words still under the pictures. */
+const RAIL_ORDER = ['hero', 'quests', 'leaderboard', 'encyclopedia', 'more'];
 const RAIL_ITEMS = [
   { id: 'dashboard', label: 'Gear', icon: '/icons/ui/nav-dashboard.png?v=2.3.3784' },   /* v2.3.3784: the bag and its three fights; v2.3.4172: "Gear" */
   ...RAIL_ORDER.map(id => DESTINATIONS.find(d => d.id === id)).filter(Boolean),
