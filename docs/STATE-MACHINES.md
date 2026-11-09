@@ -77,6 +77,29 @@ player never loses items, gold or a fight to a phase that stuck.
     budget for big screens is the likely first fix and needs no capture to be
     safe for phones (they are under it).
 
+- [ ] **A3. The skateboard on an iPhone.** OPEN. The owner, 2026-11-09, on an
+  iPhone 14 Pro Max in Safari: "gritty framerate while on skateboard riding
+  through town. Can that be improved to a buttery smooth FPS?"
+  - **Measured** on a phone-sized page
+    (`BT_PF_SCENES=townwalk,townride node tools/qa/mp/run.mjs phoneframe`,
+    its new `townride` scene): the game's own work a frame is nearly the same
+    riding as walking (the middle frame 6.9 ms against 6.6 on the test box,
+    19 frames in 20 within 12 ms against 9.1). The one large difference: a
+    ride lays about 13 new pieces of ground a second, each a new picture
+    handed to the graphics chip (about 2 MB a second, and as many let go
+    behind you), where a short walk lays none.
+  - **So the suspect is the graphics chip's side**: making, filling and
+    dropping about 13 pictures a second. The test box cannot time a phone's
+    chip.
+  - **Capture first, on the phone** (a minute): the game's address with
+    `?perf=1` on the end shows a strip at the top (frames a second, the
+    game's own work, the time outside it). Ride through town and screenshot
+    it; then the same with `&res=2`, and with `&noobjects`.
+  - **Likely fix if the capture agrees**: reuse the pictures of the pieces
+    let go for the pieces being laid, instead of making and destroying one
+    each time (a small pool with a cap: the memory law), in
+    `src/rendering/wheelGround.js`.
+
 ## B. Cheap closes against a modified client
 
 From PLAN.md, "the cheap closes for modified phones".

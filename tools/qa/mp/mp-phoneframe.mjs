@@ -29,7 +29,7 @@
  *
  *   QA_DIST=dist-prof node tools/qa/mp/run.mjs phoneframe
  *   BT_PF_QUERY='nopalette' ...    # extra address switches for the page
- *   BT_PF_SCENES=town,fight ...    # only these scenes
+ *   BT_PF_SCENES=town,fight ...    # only these scenes (town, townwalk, townride, fight, landwalk; townride, the skateboard, only when named)
  *   BT_QA_CPU_THROTTLE=4 ...       # a slower phone
  *
  * Writes tools/qa/mp/out/phoneframe.json (every number and the profiles' top
@@ -377,6 +377,22 @@ const drivers = {
       for (const k of keys) await P.page.keyboard.up(k).catch(() => {});
     }
   },
+  /* v2.3.4355: the skateboard through the town -- the owner, 2026-11-09, on an
+     iPhone 14 Pro Max: "gritty framerate while on skateboard riding through
+     town".  Longer legs than the walk's (3 s at the board's 300 game px a
+     second is 900 px: new ground, trees and townsfolk come on screen the
+     whole way), inside the safe ground the board rolls on.  The scene steps
+     on the board first and off after (BT_PF_SCENES=townride). */
+  ride: async (P, stop) => {
+    const legs = [['d'], ['s'], ['a'], ['w']];
+    let i = 0;
+    while (!stop()) {
+      const keys = legs[i++ % legs.length];
+      for (const k of keys) await P.page.keyboard.down(k).catch(() => {});
+      for (let t = 0; t < 3000 && !stop(); t += 100) await P.page.waitForTimeout(100).catch(() => {});
+      for (const k of keys) await P.page.keyboard.up(k).catch(() => {});
+    }
+  },
   fight: async (P, stop) => {
     while (!stop()) {
       const s = await near(P).catch(() => null);
@@ -557,6 +573,15 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
 
     if (WANT.includes('town')) await scene('BroTown, standing', drivers.stand);
     if (WANT.includes('townwalk')) await scene('BroTown, walking', drivers.walk);
+    if (WANT.includes('townride')) {
+      /* v2.3.4355: on the board (Z, the game's own key; the worker says yes) */
+      await P.page.keyboard.press('z');
+      const on = await H.waitFor(P, () => window.__btRideBtn && window.__btRideBtn(), (v) => v && v.on === true, { timeout: 8000, label: 'on the board' }).then(() => true).catch(() => false);
+      rec.ok('on the skateboard for the ride (guard)', on, await P.page.evaluate(() => window.__btRideBtn && window.__btRideBtn()).catch(() => null));
+      if (on) await scene('BroTown, riding the skateboard', drivers.ride);
+      await P.page.keyboard.press('z').catch(() => {});
+      await P.page.waitForTimeout(600);
+    }
     if (WANT.includes('fight') || WANT.includes('landwalk')) {
       const geom = await H.wheelGeom().catch(() => null);
       const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');
