@@ -24,6 +24,11 @@
   One tap changes board; the list and the board scroll by themselves. On a
   page too narrow or too short for both (a phone on its side) the list is a
   row of chips over the board.
+- **Each board is a pill-shaped button with its own picture**: the level-up
+  star, the sword, the bow, the staff, the sword and skull (Kills), the
+  achievements' medal (AP), the prize wheel (Daily spin), a gold coin (Coin
+  flip), a trout (Biggest fish), and each life skill's own icon. The fish
+  board's kinds (Minnow, Clownfish, ...) wear their fish too.
 - **Every row**: the rank, the character's **face** (a Hemi Bro bust), the
   name, the **level** in a small pill beside it, a short line about the
   record, and the record. Your own row is lit.
@@ -135,6 +140,10 @@
   (`preloadAnimations.js` `hemiBust`), so nothing loads on first use. The
   busts are data URLs of about 1 KB kept by look in a map capped at 120,
   oldest out (MEMORY IS BUDGETED: a cache has a cap).
+- The pills: `LeaderboardPanel.jsx` `CatIcon` and each board's `icon` (a
+  picture the game already uses, scaled by its opaque box to fill 20 px:
+  nothing new is drawn or loaded). "Smithing" is the Life Skills page's own
+  word for Blacksmithing; thirteen letters do not fit a pill.
 - The trophies: `BoardRow.jsx` `RankMark`; the pictures
   `public/icons/ui/rank-1..5.webp` (120 px, 256 colours, about 5 KB each), cut
   from the owner's sheet (`assets/icons-source/rank-trophies-2026-11-09/`) by

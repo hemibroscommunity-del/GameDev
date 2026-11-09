@@ -20,7 +20,8 @@
  *      words showing; Ranks opens the Leaderboards and is lit; More has no
  *      Leaderboards tile any more;
  *   3. the page: a list of boards down the left (Ranks, Records, Skills),
- *      the board beside it, each scrolling by itself;
+ *      the board beside it, each scrolling by itself; each board a
+ *      pill-shaped button with its own picture and its word whole;
  *   4. the Level board: every row a face, the phone's own row lit, Ghost's
  *      row grey with DELETED across its face; the first places wear the
  *      owner's trophies where the rank was, each shining and sparkling (a
@@ -223,6 +224,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok('3b every board in the list is a 44 px target; the list and the board stand side by side inside the screen',
       page.hits.every((h) => h >= 44) && page.rail.l >= 0 && page.rail.r <= page.board.l + 1 && page.board.r <= page.vw && page.pg.b <= page.vh, page);
     rec.ok('3c the list scrolls by itself; the page does not', page.railScrolls && !page.pageScrolls && page.openCat === 'combat', page);
+    /* each board a pill with its own picture */
+    const pills = await H.waitFor(A, () => [...document.querySelectorAll('[data-lb-rail] [data-lb-cat]')].map((b) => {
+      const pill = b.querySelector('[data-lb-pill]'), img = b.querySelector('[data-lb-icon] img'), word = pill && pill.lastElementChild;
+      const cs = pill ? getComputedStyle(pill) : null;
+      const ib = b.querySelector('[data-lb-icon]') ? b.querySelector('[data-lb-icon]').getBoundingClientRect() : null;
+      return {
+        id: b.dataset.lbCat, radius: cs ? parseFloat(cs.borderTopLeftRadius) : 0, h: pill ? Math.round(pill.getBoundingClientRect().height) : 0,
+        rim: cs ? cs.borderTopColor : '', on: b.getAttribute('aria-selected') === 'true',
+        icon: !!img && img.complete && img.naturalWidth > 0, src: img ? img.getAttribute('src').split('?')[0] : null, iw: ib ? Math.round(ib.width) : 0,
+        word: word ? word.textContent : '', cut: !!word && word.scrollWidth > word.clientWidth + 1,
+      };
+    }), (v) => v.length >= 15 && v.every((p) => p.icon), { timeout: 15000, label: 'the boards\' pictures loaded' }).catch(() => null);
+    rec.ok(`3d each board is a pill-shaped button (36 px tall, fully rounded) with its word whole: ${(pills || []).map((p) => p.word).join(', ')}`,
+      !!pills && pills.length >= 15 && pills.every((p) => p.h === 36 && p.radius >= 18 && p.word && !p.cut), pills);
+    rec.ok('3e ...each with its own picture, loaded, no two alike; the one showing has the brass rim',
+      !!pills && pills.every((p) => p.icon && p.iw === 20) && new Set(pills.map((p) => p.src)).size === pills.length
+      && pills.filter((p) => p.on).length === 1 && pills.find((p) => p.on).id === 'combat' && pills.find((p) => p.on).rim !== pills.find((p) => !p.on).rim, pills);
 
     /* ── 4 ── the Level board */
     const lvl = await H.waitFor(A, () => [...document.querySelectorAll('[data-lb-board] [data-board-row]')].map((el) => ({
@@ -311,6 +329,15 @@ export async function run({ browser, wsPort, webPort, rec }) {
     }));
     rec.ok('6 the list scrolls to its last board; a skill nobody trained says so and lists no one',
       empty.text === 'Nobody has trained this yet.' && empty.rows === 0 && empty.lit === 'true', empty);
+    /* the biggest fish: each kind's pill wears its fish */
+    await tap(A, '[data-lb-rail] [data-lb-cat="fish"]');
+    const kinds = await H.waitFor(A, () => [...document.querySelectorAll('[data-fish-board] [data-fish-board-sp]')].map((b) => {
+      const img = b.querySelector('img');
+      return { sp: b.dataset.fishBoardSp, icon: !!img && img.complete && img.naturalWidth > 0, src: img ? img.getAttribute('src') : null };
+    }), (v) => v.length === 5 && v.every((k) => k.icon), { timeout: 12000, label: 'the fish kinds\' pictures' }).catch(() => null);
+    rec.ok('6b Biggest fish: five kinds, each pill with its own fish', !!kinds && kinds.length === 5 && kinds.every((k) => k.icon && k.src === '/icons/items/fish-' + k.sp + '.webp'), kinds);
+    await tap(A, '[data-lb-rail] [data-lb-cat="trapping"]');
+    await A.page.waitForTimeout(600);
 
     /* More has no Leaderboards tile now */
     await tap(A, '.bt-navrail [data-nav="more"]');

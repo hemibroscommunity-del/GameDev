@@ -42,7 +42,8 @@ import { aceFlipBus } from '../aceFlipBus.js';
    headings -- Ranks (your level, the three weapons, kills, achievement
    points), Records (the daily spin, Ace's coin flip, the biggest fish) and
    Skills (the ten life skills) -- scrolled with a thumb like any list, one
-   tap to change board, the one showing lit.  The board fills the rest and
+   tap to change board, the one showing lit.  Each is a pill with its own
+   picture (below).  The board fills the rest and
    scrolls by itself, so the list never leaves the screen.  Where the page is
    too narrow or too short for the two side by side (the old side column's
    ~214 px; a phone on its side, whose band is ~80 px tall) the list is the
@@ -56,32 +57,63 @@ import { aceFlipBus } from '../aceFlipBus.js';
    AP (v2.3.3527) is the worker's own number against a worker that says
    caps.achievements; its rows carry `ap`, not `value`, and a 0 is left off,
    as the per-skill boards leave off a skill nobody trained. */
+/* ═══ v2.3.4355: EVERY BOARD A PILL WITH ITS OWN PICTURE ═══
+   The owner: "Also make each record category a pill shaped button and add
+   icons that represent each category on them."  Each board in the list is a
+   pill (the dashboard's own button: a quiet well, a brass rim and brass word
+   when it is the one showing) with a picture the game already uses for that
+   thing, so nothing new is drawn or loaded: the level-up star, the three
+   weapons' own icons (the combat cards'), the sword and skull of the kills
+   record, the achievements' medal, the owner's prize wheel, a gold coin, a
+   trout, and each life skill's own icon (the Life Skills page's).
+   `icon`: [src, the file's width, then its opaque box x0 y0 x1 y1] -- the
+   pictures are drawn with a wide empty margin, so each is scaled by its
+   opaque box to fill its 20 px (NavRail's NAV_TRIM way).
+   "Smithing", not "Blacksmithing": the Life Skills page's own word for the
+   skill (skillsModel META), and thirteen letters do not fit a pill. */
+const U = '/icons/ui/';
 const RANKS = [
   /* 'combat' is the level on the name plate: the highest of the three
      weapons (leaderboard.js seriesValue, v2.3.3538's one level) */
-  { id: 'combat',       label: 'Level' },
-  { id: 'melee',        label: 'Melee' },
-  { id: 'bow',          label: 'Bow' },
-  { id: 'magic',        label: 'Magic' },
-  { id: 'kills',        label: 'Kills' },
+  { id: 'combat',       label: 'Level',  icon: [U + 'hero/rec-xp.webp', 256, 30, 40, 226, 215] },
+  { id: 'melee',        label: 'Melee',  icon: [U + 'hero/melee.webp?v=2.3.1311', 256, 33, 30, 223, 226] },
+  { id: 'bow',          label: 'Bow',    icon: [U + 'hero/bow.webp?v=2.3.1311', 256, 38, 29, 218, 225] },
+  { id: 'magic',        label: 'Magic',  icon: [U + 'hero/magic.webp?v=2.3.1311', 256, 43, 29, 212, 225] },
+  { id: 'kills',        label: 'Kills',  icon: [U + 'hero/rec-kills.webp', 256, 0, 9, 256, 246] },
 ];
-const AP_CAT = { id: 'ap', label: 'AP', full: 'Achievement points' };
+const AP_CAT = { id: 'ap', label: 'AP', full: 'Achievement points', icon: ['/icons/achievements/achievements.webp', 150, 37, 21, 113, 129] };
 const SKILLS = [
-  { id: 'woodcutting',  label: 'Woodcutting' },
-  { id: 'fishing',      label: 'Fishing' },
-  { id: 'mining',       label: 'Mining' },
-  { id: 'farming',      label: 'Farming' },
-  { id: 'cooking',      label: 'Cooking' },
-  { id: 'blacksmithing', label: 'Blacksmithing' },
-  { id: 'woodworking',  label: 'Woodworking' },
-  { id: 'gemCutting',   label: 'Gem Cutting' },
-  { id: 'enchanting',   label: 'Enchanting' },
-  { id: 'trapping',     label: 'Trapping' },
+  { id: 'woodcutting',  label: 'Woodcutting', icon: [U + 'skill-woodcutting.webp?v=2.3.1224', 256, 52, 32, 204, 221] },
+  { id: 'fishing',      label: 'Fishing',     icon: [U + 'skill-fishing.webp?v=2.3.1224', 256, 55, 40, 200, 216] },
+  { id: 'mining',       label: 'Mining',      icon: [U + 'skill-mining.webp?v=2.3.1224', 256, 48, 52, 208, 223] },
+  { id: 'farming',      label: 'Farming',     icon: [U + 'skill-farming.webp?v=2.3.1224', 256, 65, 73, 190, 223] },
+  { id: 'cooking',      label: 'Cooking',     icon: [U + 'skill-cooking.webp?v=2.3.1224', 256, 41, 39, 215, 215] },
+  { id: 'blacksmithing', label: 'Smithing', full: 'Blacksmithing', icon: [U + 'skill-blacksmithing.webp?v=2.3.1224', 256, 37, 33, 215, 221] },
+  { id: 'woodworking',  label: 'Woodworking', icon: [U + 'skill-woodworking.webp?v=2.3.1224', 256, 33, 66, 223, 222] },
+  { id: 'gemCutting',   label: 'Gem Cutting', icon: [U + 'skill-gemcutting.webp?v=2.3.1224', 256, 48, 57, 207, 209] },
+  { id: 'enchanting',   label: 'Enchanting',  icon: [U + 'skill-enchanting.webp?v=2.3.1224', 256, 55, 42, 201, 204] },
+  { id: 'trapping',     label: 'Trapping',    icon: [U + 'skill-trapping.webp?v=2.3.3331', 256, 43, 64, 213, 215] },
 ];
 /* the records: each asked of the room, not this page's fetch */
-const SPIN_CAT = { id: 'spin', label: 'Daily spin', kind: 'spin' };
-const FLIP_CAT = { id: 'flip', label: 'Coin flip', kind: 'flip' };
-const FISH_CAT = { id: 'fish', label: 'Biggest fish', kind: 'fish' };
+const SPIN_CAT = { id: 'spin', label: 'Daily spin', kind: 'spin', icon: [U + 'prize-wheel.webp?v=2.3.3481', 102, 0, 0, 102, 110] };
+const FLIP_CAT = { id: 'flip', label: 'Coin flip', kind: 'flip', icon: [U + 'cur-gold.webp', 256, 34, 32, 221, 223] };
+const FISH_CAT = { id: 'fish', label: 'Biggest fish', kind: 'fish', icon: ['/icons/items/fish-trout.webp', 128, 1, 25, 127, 102] };
+
+/** A board's picture in a `px` box: the file scaled so its opaque box fills
+ *  the box, centred. */
+export function CatIcon({ icon, px, dim }) {
+  if (!icon) return null;
+  const [src, size, x0, y0, x1, y1] = icon;
+  const k = px / Math.max(x1 - x0, y1 - y0);
+  return (
+    <span data-lb-icon="" aria-hidden="true" style={{ position: 'relative', flex: 'none', width: px, height: px, overflow: 'hidden', display: 'block', opacity: dim ? 0.92 : 1 }}>
+      <img src={src} alt="" draggable={false} style={{
+        position: 'absolute', maxWidth: 'none', width: size * k, height: 'auto',
+        left: px / 2 - ((x0 + x1) / 2) * k, top: px / 2 - ((y0 + y1) / 2) * k,
+      }} />
+    </span>
+  );
+}
 
 /** The list: `[{sec}, {id, label, kind?}, ...]`, by what this worker says it
  *  keeps (each cap read directly: caps-audit). */
@@ -113,19 +145,20 @@ const chipHit = {
   display: 'inline-flex', alignItems: 'center', cursor: 'pointer', touchAction: 'manipulation',
 };
 const chip = (active) => ({
-  display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 12px',
+  display: 'inline-flex', alignItems: 'center', gap: 5, height: 32, padding: '0 12px',
   background: active ? COL.accentFill : 'transparent',
   color: active ? COL.accent : COL.text2,
   border: `1px solid ${active ? COL.accent : COL.border}`,
   borderRadius: 999, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap',
 });
 
-/* the side list's width, and the smallest page it stands beside the board
-   on: 118 + a board of ~220 wide (rank, face, a name of ten letters, the
+/* the side list's width (122: "Woodworking", the longest word, whole in its
+   pill beside a 20 px picture), and the smallest page it stands beside the
+   board on: that + a board of ~220 wide (rank, face, a name of ten letters, the
    record), and tall enough to show three boards of the list at once -- a
    phone on its side has a band ~80 px tall, where a list would be one row
    and a half and the chips show five */
-const RAIL_W = 118;
+const RAIL_W = 122;
 const SIDE_BY_SIDE = 330;
 const LIST_MIN_H = 140;
 
@@ -309,8 +342,8 @@ export const LeaderboardPanel = () => {
           {list.map((b) => (b.sec ? (
             <span key={'s:' + b.sec} aria-hidden="true" style={{ flex: 'none', fontSize: 11, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.muted, padding: '0 2px 0 6px' }}>{b.sec}</span>
           ) : (
-            <button key={b.id} type="button" data-lb-cat={b.id} aria-pressed={b.id === cat} onClick={() => setCat(b.id)} style={chipHit}>
-              <span style={chip(b.id === cat)}>{b.label}</span>
+            <button key={b.id} type="button" data-lb-cat={b.id} aria-pressed={b.id === cat} title={b.full || b.label} onClick={() => setCat(b.id)} style={chipHit}>
+              <span style={{ ...chip(b.id === cat), padding: '0 12px 0 8px' }}><CatIcon icon={b.icon} px={18} dim={b.id !== cat} />{b.label}</span>
             </button>
           )))}
         </div>
@@ -336,16 +369,26 @@ export const LeaderboardPanel = () => {
             padding: '8px 6px 2px', fontSize: 11, fontWeight: 800, letterSpacing: '.10em', textTransform: 'uppercase', color: COL.muted,
           }}>{b.sec}</div>
         ) : (
+          /* the button is the 44 px target; the pill inside it is what is seen
+             (the chips' rule, v2.3.1235) */
           <button key={b.id} type="button" role="tab" aria-selected={b.id === cat} data-lb-cat={b.id}
             title={b.full || b.label} onClick={() => setCat(b.id)}
             style={{
-              display: 'flex', alignItems: 'center', width: '100%', minHeight: 44, margin: 0, padding: '0 6px 0 8px', boxSizing: 'border-box',
-              background: b.id === cat ? COL.accentFill : 'transparent',
-              border: 'none', borderLeft: `3px solid ${b.id === cat ? COL.accent : 'transparent'}`, borderRadius: 6,
-              color: b.id === cat ? COL.accent : COL.text, fontFamily: 'inherit', fontSize: 14, fontWeight: 700, textAlign: 'left',
-              cursor: 'pointer', touchAction: 'manipulation',
-              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            }}>{b.label}</button>
+              display: 'flex', alignItems: 'center', width: '100%', minHeight: 44, margin: 0, padding: 0,
+              background: 'transparent', border: 'none', fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation',
+            }}>
+            <span data-lb-pill="" style={{
+              display: 'flex', alignItems: 'center', gap: 5, width: '100%', height: 36, padding: '0 7px 0 6px', boxSizing: 'border-box',
+              borderRadius: 999,
+              /* a lit pill is a tint over the same well, never a hole (NavRail, v2.3.2176) */
+              background: b.id === cat ? `linear-gradient(0deg, ${COL.accentFill}, ${COL.accentFill}), ${COL.wellSoft}` : COL.wellSoft,
+              border: `1px solid ${b.id === cat ? COL.accent : COL.tileBor}`,
+              color: b.id === cat ? COL.accent : COL.text, fontSize: 12.5, fontWeight: 700, textAlign: 'left',
+            }}>
+              <CatIcon icon={b.icon} px={20} dim={b.id !== cat} />
+              <span style={{ minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.label}</span>
+            </span>
+          </button>
         )))}
       </div>
       <div data-lb-board={cat} role="tabpanel" aria-label={cur.full || cur.label} style={{

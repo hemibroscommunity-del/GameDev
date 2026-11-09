@@ -45,7 +45,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
   rec.ok('the board offers a ranking per combat type',
     ['Melee', 'Bow', 'Magic'].every((c) => chips.includes(c)), chips.slice(0, 24));
   rec.ok('the board offers a ranking for every life skill',
-    ['Woodcutting', 'Fishing', 'Mining', 'Farming', 'Cooking', 'Blacksmithing',
+    ['Woodcutting', 'Fishing', 'Mining', 'Farming', 'Cooking', 'Smithing',
       'Woodworking', 'Gem Cutting', 'Enchanting', 'Trapping'].every((c) => chips.includes(c)),
     chips.slice(0, 24));
 

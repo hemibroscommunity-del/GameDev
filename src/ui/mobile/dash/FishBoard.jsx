@@ -47,7 +47,11 @@ export function FishBoard({ initial }) {
       <div style={{ display: 'flex', gap: 6, marginBottom: 4, overflowX: 'auto', padding: '0 0 2px' }}>
         {FISH_SPECIES.map((f) => (
           <button key={f.id} type="button" data-fish-board-sp={f.id} onClick={() => setSp(f.id)} style={chipHit}>
-            <span style={chip(f.id === sp)}>{f.name}</span>
+            {/* v2.3.4355: each kind's own picture on its pill (the bag's fish) */}
+            <span style={{ ...chip(f.id === sp), gap: 5, padding: '0 11px 0 7px' }}>
+              <img src={'/icons/items/fish-' + f.id + '.webp'} alt="" draggable={false} style={{ width: 20, height: 20, objectFit: 'contain', flex: 'none' }} />
+              {f.name}
+            </span>
           </button>
         ))}
       </div>
