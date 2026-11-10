@@ -327,6 +327,7 @@ const CAP_GATES = [
   'achievements' /* v2.3.3527: the worker grants achievements and pays their AP (server/src/achievements.js): the Achievements page in More, a big one's banner, the arena's 500 AP on the first win, the AP board -- lower case, a kill switch */,
   'nostatcap' /* v2.3.3578: no cap on how many points a stat holds (server/src/statcap.js): the Points window's [+] stops greying at your level -- lower case, a kill switch */,
   'freeSwing' /* v2.3.4520: the free-swing trial (server/src/freeswing.js): a phone with `?manual=3` swings its sword as often as it likes, each swing its share of a full one -- off with `freeswing: false` */,
+  'perfectStrike' /* v2.3.4550: the trial's perfect strike (server/src/freeswing.js): an attack timed to the full cycle is judged by the worker; the phone draws its timing bar (TimingBar.jsx) only with it -- off with `freeswing: false` */,
 ];
 /* v2.3.3732: caps that are OFF by default on purpose -- an opt-in, not a job
    the worker claims -- so "This worker" does not warn the owner about them.

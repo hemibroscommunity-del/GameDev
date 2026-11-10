@@ -59,7 +59,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, f
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
-import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval, mcFreeSwing, mcHitVol } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
+import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval, mcFreeSwing, mcHitVol, mcHitPitch } from '@/game/manualCombat.js'; /* v2.3.4395: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
@@ -2562,7 +2562,7 @@ export function updateMonsterCombat(S, deps) {
                    stone takes the pickaxe -- the snowman included, his
                    snowball thud the body of his ('snow'), so he is no longer
                    the one monster skipped here. */
-                monsterHitSfx(m, 0.55 * mcHitVol(S), 'melee');   /* v2.3.4520: lighter for a light free swing */
+                monsterHitSfx(m, 0.55 * mcHitVol(S), 'melee', undefined, mcHitPitch(S, Date.now()));   /* v2.3.4520: lighter for a light free swing; v2.3.4550: higher for a quick one (the trial) */
 
                 /* §19.1 Quest tracking — combat flags */
                 if (!_R6._questFlags) _R6._questFlags = {};

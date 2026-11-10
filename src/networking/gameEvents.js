@@ -2980,6 +2980,10 @@ export function processGameEvent(type, payload, S, deps) {
                          trip after the contact sound.  v2.3.4520: not a light
                          free swing's (a crit's extras are a full swing's) */
                       if (payload.isCrit && !mcLightHit(payload.pw)) cue('crit');
+                      /* v2.3.4550: a PERFECT STRIKE (the worker's `pf`,
+                         freeswing.js): a small bright accent over the hit --
+                         the drop roll's glint, quiet (an existing cue) */
+                      if (payload.pf === 1) cue('rollWin', 0.45);
                     }
                   } else if (payload.thorns) {
                     /* v2.3.1137: Thorns reflect is SERVER-rolled with no
