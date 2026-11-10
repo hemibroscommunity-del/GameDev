@@ -1,5 +1,6 @@
 /* ═══ GAME EVENTS — the server/peer event dispatcher (40+ message types) ═══ */
 import { lockOntoDuelOpponent } from '@/game/duelLock.js'; /* v2.3.2145 */
+import { settleOwnAccept, declineDropsDuel } from '@/game/duelPending.js'; /* v2.3.4361: the phantom duel */
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2212: one crit colour, every door */
 /* v2.3.783: _processGameEvent moved verbatim from the inline WS client in
    src/ui/BroTown.jsx (REBUILD-PLAN Phase 4, behavior-frozen). It handles
@@ -4710,6 +4711,9 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'duel_accept':
             {
+              /* v2.3.4361: this phone's OWN accept, echoed settled: the duel
+                 the Accept tap showed at once is real (duelPending.js) */
+              if (settleOwnAccept(S, payload)) break;
               if (payload.target === S.myId) {
                 S._activeDuel = {
                   partnerId: payload.from,
@@ -4780,7 +4784,13 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'duel_decline':
             {
-              if (payload.target === S.myId) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel declined', '#888');
+              /* v2.3.4361: the worker's declineBoth to the accepter of a
+                 refused accept (a challenger gone, dying, in another zone)
+                 ends the duel its Accept tap showed, not only a popup */
+              if (payload.target === S.myId) {
+                declineDropsDuel(S, payload);
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel declined', '#888');
+              }
               break;
             }
           case 'pvp_threat':

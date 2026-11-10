@@ -168,6 +168,37 @@ in `duel.test.mjs` §15-§16:
   them as before. Arena matches ride the duel machine, so an arena kill is
   excluded too, as both hooks always intended.
 
+## v2.3.4361: the phantom duel (phone side)
+
+Found by the state-machine sweep (2026-11-03, V6). Tapping Accept marked the
+accepter's phone "in a duel" before the worker agreed, and only `duel_end`
+ever cleared it. A refused accept (the worker's silent drop for a stale or
+busy challenge, or its declineBoth) left the phone in a duel that did not
+exist until a reload, and in No man's land every melee swing of it was an
+untargeted player attack: a bystander hit, a red skull.
+
+- **A duel's melee swing names its foe** as `target` on `player_attack`
+  (`monsterCombat.js`, `duelPending.js duelSwingTarget`), as the bow and staff
+  already did, so the worker lands it on that player only. Outside a duel a
+  swing keeps its cone, as before.
+- **The accepter's duel is pending until its own settled echo.** The tap still
+  shows "DUEL!" and the lock at once (`enterPendingDuel`); the worker's settled
+  `duel_accept` reaches every phone, the accepter's included, on v1 and v2
+  (`duel-pending.test` §1), and settles it (`settleOwnAccept`). Unsettled after
+  `DUEL_PENDING.SETTLE_MS` (8 s), the frame update (`targeting.js`) drops it and
+  its lock and says "Duel did not start". A duel live when a second card was
+  accepted is put back.
+- **A `duel_decline` from that challenger** (declineBoth) drops a pending duel
+  at once. A settled duel is never ended by a decline.
+
+Not changed (the worker; left for later): the silent drops in `duel.js` still
+answer nothing (the phone's clock covers them), and a duel that ENDS while the
+phone is away or a deploy wipes the worker's duels is still kept by the phone
+until a reload: clearing a settled duel at state_sync must ship with the
+worker re-sending a live duel, or every network blip would lose one. The
+melee `target` above defangs that phantom (no bystander is hit) but does not
+end it. Tests: `server/test/duel-pending.test.mjs`.
+
 ## Tests
 
 `server/test/duel.test.mjs` (in `npm test`): handshake +
