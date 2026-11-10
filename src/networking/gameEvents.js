@@ -79,6 +79,7 @@ import { _objectSpread, _slicedToArray, _toConsumableArray } from '@/lib/babelHe
 import { storeChatBus } from '@/ui/mobile/storeChatBus.js';   /* v2.3.2621 */
 import { petMailWords } from '@/data/trapping.js';   /* v2.3.3122: a pet in the mail */
 import { achvMailPhrase } from '@/game/achievements.js';   /* v2.3.3527: an achievement in the mail (the arena's crown) */
+import { markStakePlaced, dropRefusedStake } from '@/game/arenaStakes.js';   /* v2.3.4421: a refused arena bet leaves the screen, a placed one never */
 import { noteWard } from '@/game/trapping.js';   /* v2.3.3123: a hit the pet out with you softened */
 import { sparkLine } from '@/game/shockSpark.js';   /* v2.3.3518: a shock's spark, drawn */
 import { moveGeometry } from '@/game/monsterMoves.js';   /* v2.3.4011: the moves' warnings' shapes */
@@ -1829,6 +1830,9 @@ export function processGameEvent(type, payload, S, deps) {
                  echo shows it).  Private ack -- just the confirm UI. */
               if (!payload) break;
               pushDmgPopup(S, S.player.x, S.player.y - 30, 'Staked ' + (payload.amount || 0) + 'G on ' + (payload.targetName || 'a gladiator'), '#f5c542');
+              /* v2.3.4421: the bet drawn at the tap is real now: an error
+                 for a later bet never takes it off (arenaStakes.js) */
+              if (setArenaBets) setArenaBets(function (prev) { return markStakePlaced(prev, payload); });
               cue('betIn');   /* v2.3.3434: coins put down (it was silent) */
               break;
             }
@@ -1855,6 +1859,10 @@ export function processGameEvent(type, payload, S, deps) {
           case 'arena_stake_error':
             {
               pushDmgPopup(S, S.player.x, S.player.y - 30, (payload && payload.message) || 'Stake rejected', '#ff5e6c');
+              /* v2.3.4421: the refused bet leaves the screen, and the form
+                 comes back (it read "Bet placed" all round); only a still-
+                 pending bet, never a placed one (arenaStakes.js) */
+              if (setArenaBets && payload) setArenaBets(function (prev) { return dropRefusedStake(prev, payload); });
               cue('denied');   /* v2.3.3462: the owner's "denied" tick (a beep(), silent since v2.3.1103) */
               break;
             }

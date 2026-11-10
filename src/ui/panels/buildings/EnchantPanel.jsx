@@ -6,6 +6,7 @@ import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: a gem set, heard */
 import { celebrateLifeSkillLevel } from '@/game/levelCelebration.js'; /* v2.3.2591: a crafting level gets the same celebration as a gathering one */
 import { askShieldGem, shieldGemBus, shieldGemOnServer, shieldGemReasonText, SHIELD_GEM_WAIT_MS } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
+import { amuletGemSettable } from '@/game/amuletGem.js'; /* v2.3.4421: the amulet's pill has a gate */
 import { askWeaponGem, askWeaponGemOut, monsterHoldOn, weaponGemBus, weaponGemOnServer, weaponGemReasonText, WEAPON_GEM_WAIT_MS } from '@/game/weaponGem.js'; /* v2.3.3513: the weapon's gem, put in by the worker */
 import { FUSION_BASES, SECOND_SLOT_LVL, isVolatilePair, isWeaponGem, weaponGemEffect, weaponGemEdge, weaponGemSlots } from '@/data/weaponGems.js'; /* v2.3.3513; v2.3.3518: + the matchup */
 import { gemExtractCost } from '@/data/items.js'; /* v2.3.3513: Take out's price, the Blacksmith's own */
@@ -456,8 +457,12 @@ export function EnchantPanel(props) {
         if (!gemStat) return null;
         var tierData = AMULET_TIERS[rpgState.amulet.tier];
         var previewVal = Math.round((gemStat.base + gemStat.perPower * ((tierData === null || tierData === void 0 ? void 0 : tierData.basePower) || 1)) * 10) / 10;
+        /* v2.3.4421: the gem already set is not settable again (a second tap
+           spent a gem for nothing: amuletGem.js) */
+        var gemSet = !amuletGemSettable(rpgState.amulet, elem);
         return /*#__PURE__*/React.createElement("button", {
           key: elem,
+          disabled: gemSet,
           style: {
             padding: '6px 10px',
             minHeight: 32,
@@ -468,11 +473,15 @@ export function EnchantPanel(props) {
             fontSize: 11.5,
             fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
-            cursor: 'pointer'
+            cursor: gemSet ? 'default' : 'pointer',
+            opacity: gemSet ? 0.45 : 1
           },
           onClick: function onClick() {
             var _AMULET_TIERS$R$amule;
             var R = stateRef.current.rpg;
+            /* v2.3.4421: read live, so the second tap of a double tap (drawn
+               before the redraw) is refused too */
+            if (!R || !amuletGemSettable(R.amulet, elem)) return;
             var sk = R.lifeSkills;
             if (!sk.gems) sk.gems = {};
             /* v2.3.3516: a gem in the bag counts (it was the pouch alone, so

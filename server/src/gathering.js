@@ -1505,8 +1505,13 @@ export const gatheringMethods = {
     });
     if (!bot.grant) {
       this._strikeRefused(session, 'antibot-cap', { accuracy: bot.accuracy || null });
+      /* v2.3.4421: RE-SENT, not echoed.  The phone added the harvest's XP
+         when it swung; nothing changed here, so the v2 delta echo above sent
+         nothing and the phone kept XP the worker never gave (the state-
+         machine sweep, V9a S7-8).  The bag needs no re-send: with server
+         nodes the phone predicts no bag write. */
       const wsCap = this._wsBySessionId(session.id);
-      if (wsCap) this._sendPlayerState(wsCap, session.id);
+      if (wsCap) this._resendPlayerState(wsCap, session.id, ['lifeSkills']);
       return;
     }
 

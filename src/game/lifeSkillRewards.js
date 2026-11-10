@@ -836,6 +836,12 @@ function applyMiningReward(S, node, result, deps) {
     try { localStorage.setItem('bt_rpg', JSON.stringify(R)); } catch (e) {}
 }
 
+/* v2.3.4421: ONE number for a cooked dish's XP: the popup read "+40" while
+   the worker (cooking.js _handleCookRequest) and the fallback below pay 200
+   (the state-machine sweep, V9a G4-10).  Exported for silent-refusals.test,
+   which holds it to the worker's. */
+export var COOK_XP = 200;
+
 export function applyCookingResult(S, fishKey, kind, taps, deps) {
   var setRpgState = deps.setRpgState;
     var R = S && S.rpg;
@@ -846,7 +852,7 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
        fallback to local apply otherwise (SP / disconnected). */
     if (kind === 'cooked') {
       pushDmgPopup(S, S.player.x, S.player.y - 30, 'Cooked!', '#f5c542');
-      pushDmgPopup(S, S.player.x, S.player.y - 46, '+40 Cooking XP', '#00d4b8');   /* v2.3.1435: x5 (server lockstep) */
+      pushDmgPopup(S, S.player.x, S.player.y - 46, '+' + COOK_XP + ' Cooking XP', '#00d4b8');   /* v2.3.1435: x5 (server lockstep); v2.3.4421: the fallback's own number */
       /* v2.3.1429 (owner): success sizzle sting — distinct from the
          pan-sizzle loop, which the extraction clear silences this tick. */
       try { BT_AUDIO.play('cook-success', { vol: 0.6 }); } catch (e) {}
@@ -903,7 +909,7 @@ export function applyCookingResult(S, fishKey, kind, taps, deps) {
          x5 again -> 25x.  Server mirror: cooking.js _handleCookRequest —
          keep in lockstep, the worker is authoritative and a drift here just
          means the client's number is taken back by the next player_state. */
-      addLifeSkillXp(R.lifeSkills, 'cooking', 200);
+      addLifeSkillXp(R.lifeSkills, 'cooking', COOK_XP);
     } else {
       R.inventory.burnt_dust = (R.inventory.burnt_dust || 0) + 1;
     }
