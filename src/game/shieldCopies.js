@@ -1,4 +1,4 @@
-/* ═══ v2.3.4393: THE PHONE'S TWO SHIELD RULES THAT DRIFTED FROM THE WORKER'S ═══
+/* ═══ v2.3.4405: THE PHONE'S TWO SHIELD RULES THAT DRIFTED FROM THE WORKER'S ═══
  * (the state-machine sweep, V10: the guard is kept three times -- your
  * phone's copy, the worker's, and every watcher's copy of yours -- and the
  * copies drifted)  No imports, so node tests them (server/test/shield-guard).

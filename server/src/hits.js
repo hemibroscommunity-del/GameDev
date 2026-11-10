@@ -335,7 +335,7 @@ export const hitMethods = {
       : 0;
     if (cost > 0 && typeof ps.stamina === 'number') {
       ps.stamina = Math.max(0, ps.stamina - cost);
-      /* ═══ v2.3.4393: ...AND AT ZERO THE GUARD BREAKS, AS A PLAYER'S BLOW BREAKS IT ═══
+      /* ═══ v2.3.4405: ...AND AT ZERO THE GUARD BREAKS, AS A PLAYER'S BLOW BREAKS IT ═══
          A monster's blocked blow clamped the bar at 0 and left the shield
          up, so every blow until the next regen tick (up to ~670 ms) was
          still stopped for free, while a player's blocked blow at 0 breaks
@@ -365,7 +365,7 @@ export const hitMethods = {
     return 0;
   },
 
-  /* v2.3.4393: the kill switch of the break above, in `rollwindow`'s style
+  /* v2.3.4405: the kill switch of the break above, in `rollwindow`'s style
      (movement.js _rollWindowOff): only an explicit `false` turns it off. */
   _monsterGuardBreakOff() {
     const f = this._liveFlags;

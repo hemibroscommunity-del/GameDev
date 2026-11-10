@@ -1,4 +1,4 @@
-/* v2.3.4393: the shield guard's copies agree (the state-machine sweep, V10 and
+/* v2.3.4405: the shield guard's copies agree (the state-machine sweep, V10 and
  * V1 S1-10).  Three things, each failing before this version:
  *
  *   1. SERVER: at 0 stamina a monster's blocked blow breaks the guard as a
