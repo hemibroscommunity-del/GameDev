@@ -975,8 +975,11 @@ export function processGameEvent(type, payload, S, deps) {
                   new Promise(function (r) { setTimeout(r, 8000); }),
                 ]).then(function () {
                   _dFloorLate = true;
-                  hideZoneLoadingOverlay();
+                  /* v2.3.4366: the screen lifts only for the opening that is
+                     still this one (the sweep, V11 N2-10): one a newer opening
+                     replaced lifted the newer one's screen while it loaded. */
                   if (S._wheelDungeonOpening !== payload.zone) { freeDungeonFloor(_dFloor); freeDungeonArt(_dArt); return; }
+                  hideZoneLoadingOverlay();
                   S._wheelDungeonOpening = null;
                   /* died, or somewhere else, while it loaded: the worker
                      sweeps the instance nobody entered */

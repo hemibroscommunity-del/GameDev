@@ -191,7 +191,12 @@ export function wheelDoorAt(S) {
     is one request. */
 export function enterWheelDungeon(S, id) {
   if (!S || !S.channel || !wheelDungeonOpen(S, id)) return false;   /* v2.3.3540: one this worker opens */
-  if (S._serverDungeon || S._dying) return false;
+  /* v2.3.4366: ...and not during the opening either (the sweep, V11 G3-9): up
+     to 8 s behind its loading screen with S._serverDungeon still empty, a
+     computer's E pressed again past the 1 s throttle asked for a new run; the
+     worker ended the first and opened a second, and the first's late finish
+     unloaded the floor picture the second had taken. */
+  if (S._serverDungeon || S._wheelDungeonOpening || S._dying) return false;
   const now = Date.now();
   if (S._wheelDoorAskedAt && now - S._wheelDoorAskedAt < 1000) return false;
   S._wheelDoorAskedAt = now;

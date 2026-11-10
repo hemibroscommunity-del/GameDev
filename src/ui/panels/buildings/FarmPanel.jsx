@@ -1,11 +1,9 @@
 import React from 'react';
-import { BT_AUDIO, RESOURCE_TIERS, ZONE_RESOURCES, addLifeSkillXp, generateZoneMap, updateZoneDimensions } from '@/data/index.js';
+import { BT_AUDIO, RESOURCE_TIERS, ZONE_RESOURCES, addLifeSkillXp } from '@/data/index.js';
 import { _objectSpread, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
-import { rememberFarmTrip } from '@/game/wheelTownDoors.js'; /* v2.3.3032: from the Wheel, the farm's gate leads back out where you stood */
-import { FARM_ARRIVE } from '@/data/farmLayout.js';   /* v2.3.3136 */
-import { holdFarmUntilReady } from '@/game/farmTrip.js';
+import { warpToFarm } from '@/game/farmTrip.js';
 import { FeedSeedPanel } from './FeedSeedPanel.jsx'; /* v2.3.3127: the farm the worker settles */
 /* === FarmPanel — buildingPanel === 'farm' sub-panel === */
 /* v2.3.877: extracted verbatim from the buildingPanel === 'farm'
@@ -124,25 +122,8 @@ function LegacyFarmPanel(props) {
         onClick: function onClick() {
           var S2 = stateRef.current,
             P2 = S2.player;
-          rememberFarmTrip(S2);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood */
-          S2.currentZone = 'farm_home';
-          updateZoneDimensions('farm_home');
-          S2.map = generateZoneMap('farm_home');
-          S2.monsters = [];
-          S2.gatherNodes = [];
-          S2.npcs = null;
-          /* v2.3.3136: in at the farm's gate, held under its loading screen
-             until it is all there (game/farmTrip.js -- v2.3.1406's un-awaited
-             kick let the ground come in a beat after you) */
-          P2.x = FARM_ARRIVE.x;
-          P2.y = FARM_ARRIVE.y;
-          holdFarmUntilReady(S2);
-          S2.groundLoot = [];
-          S2.hitParticles = [];
-          S2.deathExplosions = [];
-          S2.arrows = [];
-          S2._ambientParticles = [];
-          S2._zoneWipe = Date.now();
+          /* v2.3.4366: the buildings' one way onto the farm (game/farmTrip.js) */
+          warpToFarm(S2);
           pushDmgPopup(S2, P2.x, P2.y - 40, 'Your Farm', '#59BF91');
           BT_AUDIO.beep(500, 0.08, 0.1, 'sine');
           setBuildingPanel(null);

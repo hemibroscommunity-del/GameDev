@@ -8709,3 +8709,28 @@ look on the full-set figure is split at the jog frame's waist in its shader
 **Receipt:** mp-armorgrade's eight-facing jog (plain over elite, rare over
 elite; main drew no grade on six facings); docs/specs/armor-grade-look.md
 "A soft glow outside the armour, on every facing".
+
+## 262. "The dungeon's loading screen is up, so hold the player still behind it" (v2.3.4366)
+
+**The move.** A Wheel dungeon's opening (gameEvents.js `dungeon_started`)
+puts its loading screen up for as long as 8 s while the arena's pictures
+load, and the player can walk about blind behind it. Other zone screens hold
+your feet (`S._zoneLoading`, `S._townArtHold`, `S._farmArtHold`), so
+"obviously" `S._wheelDungeonOpening` belongs in BroTown's movement freeze too.
+
+**Why it is wrong.** During the opening the worker still has you in the
+Wheel, and nothing shields you there: monsters at the mouth keep hitting, and
+a death there is a Wheel death, which drops your bag at the mouth
+(server/src/dungeon.js, index.js). The other holds are safe because the
+worker has already moved you somewhere quiet. Held still and blind, you are a
+still target; walking, you can at least step away. All three reviews of the
+2026-11-03 state-machine sweep (V11 G3-9) turned it down for this reason.
+
+**The rule.** No hold during the opening without a worker-side "entering"
+grace (the owner's decision: shield the player while entering, or enter first
+and load behind a screen inside the arena). What the opening DOES refuse is a
+second Enter (wheelDungeons.js `enterWheelDungeon`), and its late finish lifts
+the screen only while the opening is still its own.
+
+**Receipt:** server/test/zone-entry.test.mjs §1-2; the sweep's V11 and its
+reviews (storage branch `claude/state-machine-sweep`, never merged).

@@ -746,7 +746,7 @@ for (const p of files) {
   const hold = FT.slice(FT.indexOf('export function holdFarmUntilReady(S)'), FT.indexOf('const seq = ++_seq;', FT.indexOf('export function holdFarmUntilReady(S)')));
   check('13f3 ...asked for by every way onto the farm (farmTrip.js holdFarmUntilReady, before its loading screen holds you)',
     /if \(S\.currentZone === 'farm_home'\) \{\s*try \{ BT_AUDIO\.startZoneAmbient\('farm_home'\); \}/.test(hold)
-      && /import \{ BT_AUDIO \} from '@\/data\/index\.js';/.test(FT));
+      && /import \{[^}]*\bBT_AUDIO\b[^}]*\} from '@\/data\/index\.js';/.test(FT));   /* v2.3.4366: the import names warpToFarm's helpers too */
   const sa = GD.slice(GD.indexOf('"startZoneAmbient", function startZoneAmbient(zoneId)'));
   check('13g every dungeon is filed under `dungeon` where every zone\'s music is asked for',
     /if \(typeof zoneId === 'string' && zoneId\.indexOf\('dungeon:'\) === 0\) zoneId = 'dungeon';/.test(sa.slice(0, 3000)));

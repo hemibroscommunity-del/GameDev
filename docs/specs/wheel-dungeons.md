@@ -130,6 +130,13 @@ is not ready is not drawn). The Wheel's own looks that the arena does not use
 are let go (`releaseLeftZoneArt`). The worker holds the first wave until
 someone stands in it.
 
+While the opening loads (`S._wheelDungeonOpening`, at most 8 s) a second Enter
+does nothing (v2.3.4366: a computer's E pressed again started a second run,
+whose floor the first run's late finish unloaded), and the loading screen is
+lifted only by the opening that is still the current one. You are NOT held
+still during it: the worker still has you in the Wheel, unshielded (TRAPS
+§262).
+
 **The way back out** (`game/wheelDungeons.js leaveWheelDungeon`), on the clear
 or at the door, goes through today's town and down its stairs. That is the
 trip a death takes (`wheelHome.js`): the stairs are the Wheel's one way in,

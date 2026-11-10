@@ -589,7 +589,11 @@ const inBox = (x, y, half) => blockers.find((b) => x + half > b.x0 && x - half <
   const sites = ['src/ui/panels/buildings/FeedSeedPanel.jsx', 'src/ui/panels/buildings/FarmPanel.jsx', 'src/ui/BroTown.jsx',
     'src/networking/gameEvents.js', 'src/game/dungeonWaves.js', 'src/game/zoneTransitions.js'];
   const old = sites.filter((f) => /\(_?fz\.h - 4\) \* TILE|fz\.h \* TILE \/ 2/.test(src(f)));
-  const holds = sites.filter((f) => /holdFarmUntilReady\(/.test(src(f)));
+  /* v2.3.4366: the three buildings' trips are one, farmTrip.js warpToFarm,
+     which holds (zone-entry.test §3) */
+  const ft = src('src/game/farmTrip.js');
+  const warpHolds = /export function warpToFarm\(S\) \{[\s\S]*?holdFarmUntilReady\(S\);[\s\S]*?\n\}/.test(ft);
+  const holds = sites.filter((f) => /holdFarmUntilReady\(/.test(src(f)) || (warpHolds && /\bwarpToFarm\(/.test(src(f))));
   check('no way onto the farm puts you where the old cave farm did', old.length === 0, old);
   check(`...each holds you under the farm's loading screen until it is all there (${holds.length} of ${sites.length})`, holds.length === sites.length, sites.filter((f) => !holds.includes(f)));
 }
