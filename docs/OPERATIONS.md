@@ -510,6 +510,26 @@ curl -X POST -H "Authorization: Bearer YOUR_KEY" \
   -d '{"name":"giftclosed","value":false}' "https://WORKER/api/admin/flags"
 ```
 
+**The fight lock in No man's land** (v2.3.4510). A player in a fight with
+another player out in No man's land cannot spend, wager or give away what a
+death there would hand the killer: no forging, gem setting, amulet crafting,
+jackpot, gambling, duels, arena stakes or entry, auction-house offers, trade
+staging, capes or Pet House rooms; no dungeon mouth; no spare weapon put
+on, nor a shield report that would hide the spare shields. Ten seconds after
+the last hit it all opens again, and on the safe ground (the town and the
+commons) it never applies. The list is one file, `server/src/fightlock.js`.
+Four switches, each written `false`:
+- `fightlocktable` opens the counters in town (only a modified phone
+  reaches them mid-fight), duels and trade staging, back to the six roads
+  guarded before v2.3.4510;
+- `fightlockdoor` lets a fighting player through a dungeon mouth again;
+- `fightlockequip` lets a fighting player put on a spare weapon again;
+- `fightlock` (the old one) opens everything, the six old roads too.
+```
+curl -X POST -H "Authorization: Bearer YOUR_KEY" \
+  -d '{"name":"fightlockdoor","value":false}' "https://WORKER/api/admin/flags"
+```
+
 **A private room** for a playtest: the game only makes the rooms it is told
 to. Add the name to `ROOMS` in `server/wrangler.toml` (comma separated,
 `"brotown-1, playtest-2"`), merge, and `?room=playtest-2` on the game's

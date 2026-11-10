@@ -193,6 +193,13 @@ export const duelMethods = {
      * not -- only a disconnect started one.  A zone change does now:
      * _duelZoneMoved below.) */
     if (psA.z !== psB.z) return declineBoth();
+    /* v2.3.4510: not while either of you is in a fight with a player in No
+       man's land (fightlock.js, `fightlocktable`): the stake escrowed here is
+       paid to the partner on ANY death, and a duel kill skips that loss
+       altogether (_handlePlayerDeath), so a friend's duel took a losing
+       fight's gold, or the whole bag, away from the killer.  Declined to
+       both, before any escrow moves, as every refusal here. */
+    if (this._fightLockHolds && (this._fightLockHolds(a, 'fightlocktable') || this._fightLockHolds(b, 'fightlocktable'))) return declineBoth();
     // The accepter's client echoes back the wager it was shown; the
     // CHALLENGE's number is authoritative (an edited accept can't
     // inflate the opponent's stake).

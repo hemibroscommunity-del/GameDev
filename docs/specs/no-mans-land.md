@@ -836,6 +836,48 @@ says "Not while fighting a player" on the farm and "Not while one of you is
 fighting a player. Try again in a few seconds." in the trade window. Kill
 switch: the live flag `fightlock: false`. Tests: `nomansland` suite §10.
 
+### One table (v2.3.4510)
+
+The line above about forging was written before a loss took the gold
+(v2.3.3316), and six roads were never all of them: the state-machine sweep
+(2026-11-03, V21) found forging, the amulet forge, the jackpot, a duel's
+stake, arena stakes, the gambles and a dungeon mouth still open. Every
+message (and HTTP road) that moves gold or bag goods out of what the loss
+takes -- into worn gear, a ticket, an escrow, a friend, a cape, a Pet House
+room -- or wagers them, now has a row in **`server/src/fightlock.js`**
+naming its gate; every other message the router takes is listed there with
+the reason it moves nothing the loss would take. `fight-lock.test` fails a
+new router case or relayed type that is in neither list.
+
+- **The gate**: the lock above (a duel, or a player hit in the last 10 s) AND
+  standing in No man's land, where the loss applies. On the safe ground (the
+  Bank's door is there), in a town duel or the Arena, the new rows are open.
+- **The answer**: each handler's OWN refusal, no new message: `harden_result
+  not-now`, `weapon_gem_result` / `shield_gem_result` `locked`,
+  `shard_crack_result` / `gem_combine_result` and `arena_stake_error` with
+  `fight`, `store_offer_error` and the arena join with the six roads' words,
+  `pets_state not-now`, `dungeon_error not-now`, the duel's decline to both;
+  where a handler refused in silence (forging, the amulet forge, the gem cut,
+  the jackpot, the gambles, the cape, the trade staging, the weapon equip),
+  silence and the fields the phone may have drawn sent again.
+- **Rows** (`fightlocktable`): forge_armor, forge_weapon, harden_weapon, the
+  amulet forge's craft and gem, weapon_gem, shield_gem, gem_cut_request,
+  shard_crack, gem_combine, cape_redeem, pet_house_buy, jackpot_deposit, the
+  three gambles, arena_sponsor, `/api/arena/join`, store_offer,
+  trade2_stage_weapon, duel_accept (any stake: a duel kill skips this loss);
+  (`fightlockdoor`) dungeon_start, and a leader's party pull leaves a
+  fighting member at the mouth; (`fightlockequip`) equip_request, and a
+  shield_wear naming a shield the worker does not hold no longer clears the
+  arm mid-fight (which took no spare shield at all).
+- **Not gated, and why**: cooking, smelting, salvage and the shop's buying
+  rearrange the bag; eating is the fight; armour and legs are put on through
+  `stats_update`, whose armour list the worker learns only at the join (a
+  piece swapped this session escapes the loss already); a held spare shield
+  put on the arm, because the phone owns which shield is worn and would keep
+  showing a refused swap; `character_reset`
+  wipes the loser's own character, the Bank too (its HTTP twin is
+  account.js).
+
 ## Wire, storage and switches
 
 - **Client → worker:** attacks are the existing `player_attack`;
