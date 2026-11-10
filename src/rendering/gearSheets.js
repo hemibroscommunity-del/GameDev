@@ -23,6 +23,7 @@ import { gearArt, gearArtSafe } from './gearVariants.js'; /* v2.3.1757: recolour
 import { releaseCanvasSource } from './releaseCanvasTexture.js';   /* v2.3.3074 */
 import { witnessCanvas } from './canvasWitness.js';   /* v2.3.3574: a picture Safari threw away is noticed */
 import { p256Address, packedTwinAsNumbers } from './p256.js';   /* v2.3.3728: the effects from their 256-colour twins */
+import { trimScanCell, trimCellOf, trimLayout } from './trimRules.js';   /* v2.3.4400: the packer's rules, apart from its canvases */
 import { keepAsImage } from './keepAsImage.js';   /* v2.3.3702: every strip packed here, kept as an image of itself */
 import { KEEP_GPU_COPIES } from './gpuOnly.js';
 
@@ -203,9 +204,7 @@ const _gearRound = Object.create(null);   /* sheet key -> the later round it is 
    sliceCropped), so the figure joins them. */
 const TRIM_SLOTS = new Set(['chest', 'legs', 'shirt', 'belt', 'fullset']);
 const TRIM_POSES = new Set(['stand', 'jog', 'hit', 'mine', 'dodge', 'pickup', 'fish']);
-const TRIM_PAD = 4;
-const TRIM_ALIGN = 8;
-const TRIM_GAP = 8;
+/* v2.3.4400: the pad, the snap and the gap, with the packer's rules: trimRules.js */
 /* QA probe: what cropping has saved so far, in decoded bytes (mips excluded).
    A drawn-shirt re-bake counts again -- it is a real second upload. */
 const _trimStats = { sheets: 0, uncropped: 0, fullBytes: 0, packedBytes: 0 };
@@ -250,78 +249,19 @@ export function packTrimmed(img, fw, fh, n) {
     if (rd) { rd.width = 0; rd.height = 0; }
     return null;
   }
-  const snapDn = (v) => Math.max(0, Math.floor(v / TRIM_ALIGN) * TRIM_ALIGN);
   const cells = [];
   /* v2.3.3574: the first solid pixel the scan meets (alpha 128 and up), the
      picture's witness once packed (canvasWitness.js) */
   let wi = -1, wx = 0, wy = 0;
   for (let i = 0; i < n; i++) {
-    const ox = i * fw;
-    let x0 = fw, y0 = fh, x1 = -1, y1 = -1;
-    for (let y = 0; y < fh; y++) {
-      const row = y * W;
-      for (let x = 0; x < fw; x++) {
-        const a = data[(row + ox + x) * 4 + 3];
-        if (a !== 0) {
-          if (x < x0) x0 = x; if (x > x1) x1 = x;
-          if (y < y0) y0 = y; if (y > y1) y1 = y;
-          if (wi < 0 && a >= 128) { wi = i; wx = x; wy = y; }
-        }
-      }
-    }
-    let tx, ty, w, h;
-    if (x1 < 0) {
-      /* an empty frame still needs a texture: one blank ALIGN cell */
-      tx = 0; ty = 0; w = TRIM_ALIGN; h = TRIM_ALIGN;
-    } else {
-      tx = snapDn(x0 - TRIM_PAD); ty = snapDn(y0 - TRIM_PAD);
-      w = Math.min(fw, Math.ceil((x1 + 1 + TRIM_PAD) / TRIM_ALIGN) * TRIM_ALIGN) - tx;
-      h = Math.min(fh, Math.ceil((y1 + 1 + TRIM_PAD) / TRIM_ALIGN) * TRIM_ALIGN) - ty;
-    }
-    cells.push({ ax: 0, ay: 0, tx, ty, w, h, blank: x1 < 0 });
+    const b = trimScanCell(data, W, i * fw, fw, fh);
+    if (wi < 0 && b.sx >= 0) { wi = i; wx = b.sx; wy = b.sy; }
+    cells.push(trimCellOf(b, fw, fh));
   }
-  /* v2.3.2775: ONE ROW OR SHELVES, whichever is smaller.  A single row is as
-     tall as the tallest crop, so a strip whose crops differ a lot in height
-     wastes the band above every short one; shelves (tallest-first rows about
-     as wide as the packed area is square, each as tall as its own tallest
-     crop) waste the ragged ends of their rows instead.  Measured on the gear
-     and stand-in sheets neither wins everywhere, so both are laid out and the
-     smaller canvas is kept.  Positions stay multiples of ALIGN (every w and h
-     is, for the mipmapped 128/256 sheets) with GAP between crops and between
-     rows, so the mip-alignment argument above still holds.  Shelves are capped
-     at 4096 wide; a single row is never wider than the strip it came from. */
-  const layRow = () => {
-    let x = 0, hh = TRIM_ALIGN;
-    const pos = cells.map((c) => { const p = [x, 0]; x += c.w + TRIM_GAP; if (c.h > hh) hh = c.h; return p; });
-    return { pos, W: Math.max(TRIM_ALIGN, x - TRIM_GAP), H: hh };
-  };
-  const layShelves = () => {
-    let area = 0, widest = TRIM_ALIGN;
-    for (const c of cells) { area += (c.w + TRIM_GAP) * (c.h + TRIM_GAP); if (c.w > widest) widest = c.w; }
-    const rowW = Math.min(4096, Math.max(widest, Math.ceil(Math.sqrt(area) / TRIM_ALIGN) * TRIM_ALIGN));
-    const order = cells.map((c, i) => i).sort((a, b) => cells[b].h - cells[a].h || a - b);
-    const pos = new Array(cells.length);
-    let cx = 0, cy = 0, shelfH = 0, usedW = TRIM_ALIGN;
-    for (const i of order) {
-      const c = cells[i];
-      if (cx > 0 && cx + c.w > rowW) { cy += shelfH + TRIM_GAP; cx = 0; shelfH = 0; }
-      pos[i] = [cx, cy];
-      cx += c.w + TRIM_GAP;
-      if (c.h > shelfH) shelfH = c.h;
-      if (pos[i][0] + c.w > usedW) usedW = pos[i][0] + c.w;
-    }
-    return { pos, W: usedW, H: Math.max(TRIM_ALIGN, cy + shelfH) };
-  };
-  const rowL = layRow(), shelfL = layShelves();
-  const L = (shelfL.W * shelfL.H < rowL.W * rowL.H) ? shelfL : rowL;
-  cells.forEach((c, i) => { c.ax = L.pos[i][0]; c.ay = L.pos[i][1]; });
-  const usedW = L.W, packedH = L.H;
-  /* Not worth it: a sheet whose art genuinely fills its frames (the cook and
-     fire stand-ins, measured 99-101%) would come back no smaller, plus the
-     cost of the scan.  The caller keeps the plain strip. */
-  if (usedW * packedH > 0.9 * n * fw * fh) { rd.width = 0; rd.height = 0; return null; }
+  const L = trimLayout(cells, fw, fh, n);
+  if (!L) { rd.width = 0; rd.height = 0; return null; }
   const cv = document.createElement('canvas');
-  cv.width = usedW; cv.height = packedH;
+  cv.width = L.W; cv.height = L.H;
   const ctx = cv.getContext('2d');
   ctx.imageSmoothingEnabled = false;   /* 1:1 copies; never resample */
   for (let i = 0; i < n; i++) {
@@ -333,6 +273,61 @@ export function packTrimmed(img, fw, fh, n) {
   rd.width = 0; rd.height = 0;
   /* v2.3.3574: if Safari empties this canvas while the tab is parked, the
      return's check reads this pixel back empty (canvasWitness.js) */
+  if (wi >= 0) { const c = cells[wi]; witnessCanvas(cv, c.ax + wx - c.tx, c.ay + wy - c.ty); }
+  return { canvas: cv, cells };
+}
+
+/* ═══ v2.3.4400: THE SAME PACK, A FEW MS AT A TIME ═══
+   The owner's iPhone: "It noticeably slowed when I rode by the blacksmith
+   hammering."  Not the hammer: the Blacksmith stands on the Flame Fields'
+   side of the town, and riding up to him is where the fire goblin's look
+   starts to load (wheelMonsterArt.js: a monster's look loads as you walk
+   toward it) -- fourteen strips, each packed HERE in one go as its file
+   arrives, 13 to 39 ms a strip on the test box, 300 ms of the page held in
+   about a second.  packTrimmedSliced is packTrimmed by the same rules (the
+   three functions above), but reading the strip a cell at a time and asking
+   `turn()` between cells: the caller's turn waits for the next frame once
+   its few ms are spent (zoneTextures.js stripTurn).  The same canvas and the
+   same cells, to the byte (mp-stripgentle compares them). */
+export async function packTrimmedSliced(img, fw, fh, n, turn) {
+  const W = img.width | 0, H = img.height | 0;
+  if (!n) n = Math.max(1, Math.floor(W / fw));
+  if (!W || !H || H < fh || fw !== Math.round(fw) || fh !== Math.round(fh) || n * fw > W) return null;
+  let rd = null, rctx = null;
+  try {
+    rd = document.createElement('canvas'); rd.width = W; rd.height = fh;
+    rctx = rd.getContext('2d', { willReadFrequently: true });
+    rctx.drawImage(img, 0, 0);
+  } catch (e) {
+    if (rd) { rd.width = 0; rd.height = 0; }
+    return null;
+  }
+  const cells = [];
+  let wi = -1, wx = 0, wy = 0;
+  try {
+    for (let i = 0; i < n; i++) {
+      await turn();
+      const b = trimScanCell(rctx.getImageData(i * fw, 0, fw, fh).data, fw, 0, fw, fh);
+      if (wi < 0 && b.sx >= 0) { wi = i; wx = b.sx; wy = b.sy; }
+      cells.push(trimCellOf(b, fw, fh));
+    }
+  } catch (e) {
+    rd.width = 0; rd.height = 0;
+    return null;
+  }
+  const L = trimLayout(cells, fw, fh, n);
+  if (!L) { rd.width = 0; rd.height = 0; return null; }
+  const cv = document.createElement('canvas');
+  cv.width = L.W; cv.height = L.H;
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  for (let i = 0; i < n; i++) {
+    const c = cells[i];
+    if (c.blank) continue;
+    await turn();
+    ctx.drawImage(rd, i * fw + c.tx, c.ty, c.w, c.h, c.ax, c.ay, c.w, c.h);
+  }
+  rd.width = 0; rd.height = 0;
   if (wi >= 0) { const c = cells[wi]; witnessCanvas(cv, c.ax + wx - c.tx, c.ay + wy - c.ty); }
   return { canvas: cv, cells };
 }

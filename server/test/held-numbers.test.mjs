@@ -189,7 +189,9 @@ const N = await import('../../src/rendering/heldNumbers.js');
   check('5: the monster strips are held once drawn (zoneTextures loadTrackedStrip)', /if \(packed && !numSrc\) holdOnceDrawn\(src\)/.test(zt)
     /* (v2.3.4359: `let` -- a strip the packer leaves whole is read into its
        numbers too, the lines after; monster-palettes.test holds that) */
-    && /let numSrc = packed \? stripAsNumbers\(bundle, packed\.canvas, url\) : null;/.test(zt));
+    /* (v2.3.4400: + `read`, the numbers already read a band at a time when the strip is unpacked in play;
+       undefined, read whole as before: strip-slices.test) */
+    && /let numSrc = packed \? stripAsNumbers\(bundle, packed\.canvas, url, read\) : null;/.test(zt));
   check('5: ...and forgotten when their zone lets go (_releaseCrops)', /forgetHeld\(src\)/.test(zt));
   const fx = readFileSync(new URL('../../src/rendering/systems/effectsRenderer.js', import.meta.url), 'utf8');
   check('5: the effects renderer looks every GPU_WAIT_MS', /emptyHeldOnceDrawn\(this\._captureRenderer\)/.test(fx));

@@ -33,6 +33,7 @@ const WORKER_URL = '/tools/world/core/ground-worker.js';
 import { landLook, hexRgb } from '../data/wheelLands.js';   /* v2.3.3024: each land's flat colour */
 import { wheelLong, noteWheelBuilt } from './wheelSize.js';   /* v2.3.3315: which Wheel the room plays */
 import { clientOffAtLoad } from './clientOff.js';   /* v2.3.3755: the Test panel's Memory savers */
+import { fillOrder } from './zoneGate.js';   /* v2.3.4400: the gate's pieces, nearest the arrival first */
 
 const ROW_KEEP = 160;          /* walk-grid rows kept made, a byte a cell (v2.3.3315: 1.8 KB today, 7 KB on the long Wheel; a JS array was ~14 KB and would be ~58) */
 /* v2.3.3298: the Wheel's walls come a block at a time (the worker's 'block':
@@ -76,6 +77,8 @@ export const wheelStats = {
   unpacked: 0,         /* swatch pictures unpacked in the worker now */
   calm: null,          /* v2.3.3021: { n, ms }, water pictures calmed (ground.js CALM WATER) */
   diet: null,          /* v2.3.3717: decodes, redecodes, keepMax... (ground-worker.js DIET, `?groundlean`) */
+  dl: null,            /* v2.3.4400: cuts, far, gateWaitMs (ground-worker.js A SLOW LINE) */
+  dlBytes: 0,          /* v2.3.4400: bytes of ground pictures downloaded this visit, said as they come ('dl') */
   unreadable: 0,       /* swatch pictures this browser could not unpack (drawn in plan colour) */
   /* v2.3.2959: the downloads (ground-worker.js, DOWNLOADS THAT CANNOT STOP THE
      GROUND) -- pictures on their way now, tries that failed and will be made
@@ -404,6 +407,10 @@ function onMessage(m, resolveInit, rejectInit) {
     if (m.q != null) _here = { q: m.q, x: m.id.x, y: m.id.y, region: m.reg || null, tier: m.tier || 0, words: m.words || null };
     return;
   }
+  /* v2.3.4400: the ground's pictures are still arriving (the bytes so far):
+     what lets the zone gate tell a slow way in from a hung one (worldTrial.js
+     wheelEntryProgress; ground-worker.js THE WAY IN WAITS) */
+  if (m.type === 'dl') { wheelStats.dlBytes = m.bytes || 0; return; }
   /* v2.3.2959: a picture some piece went without has come ('id|version') */
   if (m.type === 'got') {
     for (const fn of _gotFns) { try { fn(m.k); } catch (e) { /* one listener's trouble */ } }
@@ -425,7 +432,7 @@ export function wheelOnGot(fn) {
   _gotFns.add(fn);
   return () => { _gotFns.delete(fn); };
 }
-export function wheelChunk(i, j, relay) {
+export function wheelChunk(i, j, relay, gate) {   /* v2.3.4400: + gate, the way in's fill this piece is of (wheelWarm) */
   const warm = relay ? null : _warm.get(i + ',' + j);
   if (warm) { _warm.delete(i + ',' + j); return Promise.resolve(warm); }
   /* v2.3.4094: one the zone gate is still laying is taken as it is -- the
@@ -436,7 +443,7 @@ export function wheelChunk(i, j, relay) {
   const id = ++_seq;
   return new Promise((resolve, reject) => {
     _pending.set(id, { resolve, reject });
-    _w.postMessage({ type: 'chunk', id, i, j, relay: !!relay });
+    _w.postMessage({ type: 'chunk', id, i, j, relay: !!relay, gate: gate || 0 });
   }).then((m) => {
     /* v2.3.2967: what the feet are on there (a piece laid again replaces it:
        a picture that came may move where one ground gives way to another) */
@@ -461,6 +468,8 @@ export function wheelChunk(i, j, relay) {
     if (m.calm) wheelStats.calm = m.calm;
     /* v2.3.3717: what the walk asked of the worker (ground-worker.js DIET) */
     if (m.diet) wheelStats.diet = m.diet;
+    /* v2.3.4400: and the downloads' numbers (ground-worker.js A SLOW LINE) */
+    if (m.dl) wheelStats.dl = m.dl;
     /* ...and with `?groundsum` (QA), each piece's checksum, whole pieces only:
        the lean ground's proof (mp-groundlean) */
     if (m.sum != null && !m.partial) (wheelStats.sums || (wheelStats.sums = Object.create(null)))[i + ',' + j] = m.sum;
@@ -493,10 +502,16 @@ export async function wheelWarm(x, y, rx, ry) {
      THAT job (wheelChunk), counts it laid ahead, and the overlay, which
      waits on this whole fill, still covers it until it is there. */
   const jobs = [];
-  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+  /* v2.3.4400: this fill's pieces share one wait for their pictures, behind
+     the loading screen (ground-worker.js GATE_WAIT_MS) */
+  const fill = ++_fills;
+  /* v2.3.4400: nearest the arrival first (zoneGate.js fillOrder).  They were
+     asked for row by row from the top, so when the gate's wait ran out on a
+     slowed computer the rows not laid yet were whole strips of the view. */
+  for (const [i, j] of fillOrder(i0, i1, j0, j1, x, y, cs)) {
     const k = i + ',' + j;
     if (_warm.has(k) || _filling.has(k)) continue;
-    const p = wheelChunk(i, j);
+    const p = wheelChunk(i, j, false, fill);
     _filling.set(k, p);
     /* taken while being laid: the ground holds it now, not _warm */
     jobs.push(p.then((m) => { if (_filling.get(k) === p) { _filling.delete(k); _warm.set(k, m); } },
@@ -510,6 +525,7 @@ export async function wheelWarm(x, y, rx, ry) {
    pieces ahead while the same ground lived kept the ones it never took, for
    good (mp-heapdiff: about 14 pieces, 1.1 MB, a trip to a fight and back). */
 let _warmGen = 0;
+let _fills = 0;   /* v2.3.4400: the zone gate's fills, numbered (wheelWarm) */
 export function wheelWarmGen() { return _warmGen; }
 export function wheelIsWarm(i, j) { const k = i + ',' + j; return _warm.has(k) || _filling.has(k); }   /* v2.3.4094: + still being laid */
 /* The readout's counts start again on each way in: they describe this visit. */

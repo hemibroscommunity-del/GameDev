@@ -28,7 +28,8 @@ import { _typeof } from '@/lib/babelHelpers.js';
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { onZoneEntered } from '@/networking/nodeSync.js'; /* v2.3.1301: gather-node self-heal */
 import { preloadZoneAssets, freeZoneAssets } from '@/rendering/preloadAnimations.js'; /* v2.3.1405: per-zone asset gate; v2.3.2272: and its exit half */
-import { syncWorldTrial, trialZoneFor, takeWheelArrival, setWheelArrival, wheelIsHome } from '@/game/worldTrial.js'; /* v2.3.2932: the world trial; v2.3.2978: + the Wheel's own zone; v2.3.3016: + the arrival at a dungeon's mouth */
+import { gateCap, GATE_STALE_MS } from '@/game/zoneGate.js'; /* v2.3.4400: the gate waits for a load that is still arriving */
+import { syncWorldTrial, trialZoneFor, takeWheelArrival, setWheelArrival, wheelIsHome, wheelEntryProgress, isWheelTrialZone } from '@/game/worldTrial.js'; /* v2.3.2932: the world trial; v2.3.2978: + the Wheel's own zone; v2.3.3016: + the arrival at a dungeon's mouth */
 import { leaveWheelDungeon } from '@/game/wheelDungeons.js'; /* v2.3.3016: a Wheel dungeon's door leads back to its mouth */
 import { wheelSpawnTick, wheelSpawnPass, wheelCommonsGate, wheelTripVeiled, wantWheelSpawn } from '@/game/wheelHome.js'; /* v2.3.2990: you start in the Wheel's Brotown; v2.3.3025: under one veil */
 import { isWorldViewZone } from '@/data/zones.js'; /* v2.3.2978: 'worldview', or the Wheel's 'wheel' */
@@ -599,7 +600,7 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
            inside the hub block where bestExit is known. */
         if (S._zoneLoading) {
           var _zlStale = S.currentZone !== 'town' && !isWorldViewZone(S.currentZone);
-          if (!_zlStale && S._zoneLoading.t && Date.now() - S._zoneLoading.t > 20000) _zlStale = true;
+          if (!_zlStale && S._zoneLoading.t && Date.now() - S._zoneLoading.t > GATE_STALE_MS) _zlStale = true;   /* v2.3.4400: 50 s, was 20 (the arm's cap can now reach 45: zoneGate.js) */
           if (_zlStale) { S._zoneLoading = null; hideZoneLoadingOverlay(); }
         }
         /* v2.3.387: town exits are PROXIMITY zones on the painted
@@ -861,10 +862,14 @@ export function handleZoneTransitions(S, ptx, pty, _zone, W, H) {
                 showZoneLoadingOverlay(_tzName);
                 /* race a 15s cap so a hung network fetch can never freeze
                    the player forever — the map self-heals on cache-miss
-                   (tileRenderer) if it wasn't ready. */
+                   (tileRenderer) if it wasn't ready.
+                   v2.3.4400: the world's way in is given longer WHILE IT IS
+                   STILL ARRIVING (zoneGate.js gateCap: a slowed computer's
+                   took 17.8 s, and the flat 15 lifted the screen on ground
+                   not laid yet); every other zone keeps the flat 15 s. */
                 Promise.race([
                   Promise.resolve(preloadZoneAssets(_tz)).catch(function () {}),
-                  new Promise(function (r) { setTimeout(r, 15000); }),
+                  gateCap(isWheelTrialZone(_tz) ? wheelEntryProgress : null),
                 ]).then(function () { _zlObj.done = true; });
                 return; /* hold this frame; enter once _zlObj.done flips */
               }
