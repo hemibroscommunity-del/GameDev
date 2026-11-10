@@ -40,6 +40,7 @@
 import { gearFlashWants, gearFlashSelectors } from './mobile/gearFlash.js';
 import { pointsTipWanted, pointsTipDone } from '../game/pointsTips.js';
 import { deskWords, onComputer } from '../game/deskWords.js';
+import { mcSwipes } from '../game/manualCombat.js';   /* v2.3.4396: a sword's or a bow's special is armed, then made */
 import { ownedWeaponSlots } from '../game/weaponSlots.js';   /* v2.3.4130: the swap lesson */
 import { mayorScreenRect } from './mayorScreen.js';   /* v2.3.4106: the first steps' Mayor */
 import { harvestCoachWanted, gestureWanted, killedAny } from '../game/deskTeachState.js';   /* v2.3.4343 */
@@ -193,13 +194,18 @@ export function guideTargets(id, rpg, shown) {
 }
 
 /** The words beside the arrow, for what it points at (said "click" on a computer). */
+/* v2.3.4396: with the game's swipe combat a sword's or a bow's special button ARMS the next attack; a
+   staff's (and the old combat's) fires it */
+function _armsSpecial() {
+  try { return mcSwipes(typeof window !== 'undefined' && window._gameState ? window._gameState.current : null); } catch (e) { return false; }
+}
 export function guideWords(id, sel, computer) {
   /* v2.3.4130: the swap lesson names the keys on a computer */
   if (id === 'swap') return (computer === undefined ? onComputer() : !!computer) ? 'Click a weapon or press 1 2 3' : 'Tap a weapon to switch';
   /* v2.3.4343 */
   if (id === 'close') return deskWords('Tap CLOSE to see more of the world', computer);
   if (id === 'harvest') return 'Press E to collect, or drag here';
-  if (id === 'combat') return /data-shield/.test(sel) ? deskWords('Tap to raise your shield', computer) : deskWords('Tap for a special attack', computer);
+  if (id === 'combat') return /data-shield/.test(sel) ? deskWords('Tap to raise your shield', computer) : deskWords(_armsSpecial() ? 'Tap, then attack: your special' : 'Tap for a special attack', computer);
   let s = 'Tap here';
   if (/data-smithy-tab/.test(sel)) s = 'Tap Forge';   /* v2.3.4196 */
   else if (/data-dash-fold|data-land-fold/.test(sel)) s = 'Tap to open';

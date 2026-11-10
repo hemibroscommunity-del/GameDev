@@ -142,8 +142,8 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     await installTouch(P);
 
     /* ── 1 ── */
-    const on = await P.page.evaluate(() => ({ on: !!(window.__btManual && window.__btManual.on()), stored: localStorage.getItem('bt_manual'), gauge: !!document.querySelector('[data-manual-gauge]') }));
-    rec.ok('1 `?manual=1` turns manual combat on and remembers it; nothing is drawn for it (no gauge)', on.on && on.stored === '1' && !on.gauge, on);
+    const on = await P.page.evaluate(() => ({ on: !!(window.__btManual && window.__btManual.on()), sling: window.__btManual.sling(), stored: localStorage.getItem('bt_manual'), gauge: !!document.querySelector('[data-manual-gauge]') }));
+    rec.ok('1 `?manual=1` is the game\'s own combat (nothing to remember); nothing is drawn for it (no gauge)', on.on && !on.sling && on.stored === null && !on.gauge, on);
 
     const armed = await arm(P, 'ranged');
     const hall = await standUnderHall(P, rec, 'phone ');
@@ -343,7 +343,8 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
 }
 
 async function desk({ browser, wsPort, webPort, rec, OUT }) {
-  const P = await H.newPlayer(browser, { name: 'Drawdesk', wsPort, webPort, viewport: WIDE, wide: true, world: 'wheel', query: `manual=1&repairms=${REPAIR_MS}` });
+  /* v2.3.4396: `manual=default` names no combat, so this page plays what the game gives a new player */
+  const P = await H.newPlayer(browser, { name: 'Drawdesk', wsPort, webPort, viewport: WIDE, wide: true, world: 'wheel', query: `manual=default&repairms=${REPAIR_MS}` });
   const errors = [];
   P.page.on('pageerror', (e) => errors.push(String((e && e.message) || e).slice(0, 200)));
   const stop = H.keepAlive(P);
@@ -355,6 +356,8 @@ async function desk({ browser, wsPort, webPort, rec, OUT }) {
     await wait(P, 2000);
     await P.page.addStyleTag({ content: '.bt-quest-banner, .bt-quest-plate, [data-coach-card], [data-coach-ring], *:has(> [data-coach-dismiss]) { visibility: hidden !important; }' }).catch(() => {});
     await installTouch(P);   /* its helpers (__ready): no touch is made here */
+    const dOn = await P.page.evaluate(() => ({ on: window.__btManual.on(), sling: window.__btManual.sling(), stored: localStorage.getItem('bt_manual'), search: location.search }));
+    rec.ok('10z a computer with no combat named in its address plays the new combat: it is the DEFAULT (v2.3.4396)', dOn.on === true && dOn.sling === false && dOn.stored === null && !/manual=[012]/.test(dOn.search), dOn);
     await arm(P, 'ranged');
     const hall = await standUnderHall(P, rec, 'computer ');
     if (!hall) return;

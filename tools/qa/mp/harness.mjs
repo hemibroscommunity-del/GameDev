@@ -531,7 +531,13 @@ export async function newPlayer(browser, { name, wsPort, webPort, guest = false,
   const _narrow = (!touch && !wide && !/(?:^|&)(?:narrow|deskwide=)/.test(query) && !/(?:^|&)(?:narrow|deskwide=)/.test(_env)) ? 'narrow' : '';
   /* v2.3.4295: the login wheel's window opens by itself after login; no scenario but mp-loginspin wants it */
   const _noSpin = /(?:^|&)loginspin=/.test(query) ? '' : 'loginspin=0';
-  const _q = [guest ? 'guest=1' : '', query, _env, _world, _narrow, _noSpin].filter(Boolean).join('&');
+  /* v2.3.4396: the game's combat is swipes now (src/game/manualCombat.js), and the scenarios written
+     before it drive the held attack and the tap lock directly (S.autoAttack, S.lockedTarget, a press of
+     the disc: about 120 files).  Those are still in the game behind `?manual=0`, so that is what a
+     scenario plays unless it names `manual=` itself: `manual=1` the swipes, `manual=2` the slingshot
+     bow, `manual=default` whatever the game gives a new player (mp-manualcombat plays all three). */
+  const _oldCombat = (/(?:^|&)manual=/.test(query) || /(?:^|&)manual=/.test(_env)) ? '' : 'manual=0';
+  const _q = [guest ? 'guest=1' : '', query, _env, _world, _narrow, _noSpin, _oldCombat].filter(Boolean).join('&');
   /* v2.3.3312: `host` -- the page's own address, for a scenario that needs a
      page somewhere else (mp-originlock: a copy of the game on another site,
      its browser launched to find that name at 127.0.0.1) */

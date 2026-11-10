@@ -76,7 +76,7 @@ export const DESK_KEY_ROWS = [
   ['2\u00d7WASD', 'Dodge', null, 'move'],   /* v2.3.3711: a direction tapped twice */
   ['Z', 'Board', 'ride', 'move'],   /* v2.3.3776: the skateboard, in BroTown */
   ['Click', 'Attack', null, 'fight'],
-  ['2\u00d7Click', 'Lock on', null, 'fight'],   /* v2.3.3711: a double click on a monster */
+  ['2\u00d7Click', 'Lock on', 'lock', 'fight'],   /* v2.3.3711: a double click on a monster; v2.3.4396: only in the old combat (`?manual=0`) -- the game's own keeps no chosen lock */
   /* v2.3.4323 (owner): swapped -- Q raises and lowers the shield (up and down), the right click is the special */
   ['Q', 'Shield \u2195', 'shield', 'fight'],
   ['+Click', 'Bash', 'bash', 'fight'],   /* v2.3.3711: a click with it held; was Q+E */
@@ -117,7 +117,7 @@ export const DESK_KEY_ROWS = [
 ];
 
 /** The requirements a row may name, in the stamp's order. */
-const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food', 'ride'];   /* v2.3.3776: + ride, last so the earlier stamps read the same */
+const NEEDS = ['sprint', 'shield', 'bash', 'whirl', 'burst', 'trap', 'food', 'ride', 'lock'];   /* v2.3.3776: + ride, last so the earlier stamps read the same; v2.3.4396: + lock, last for the same reason */
 
 /** v2.3.4198: the owner, of the Controls list: "I'm wondering if the menu
     shortcuts are overwhelming and just the essential commands should stay
