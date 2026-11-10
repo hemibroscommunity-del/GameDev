@@ -482,6 +482,8 @@ export const gatheringMethods = {
   _ensureZoneNodes(zoneId) {
     if (zoneId === 'town' || zoneId === 'farm_home') return [];
     if (!this.nodes[zoneId]) {
+      /* v2.3.4423: a dungeon nobody opened keeps no list (dungeon.js _dungeonIdDead) */
+      if (this._dungeonIdDead(zoneId)) return [];
       this.nodes[zoneId] = this._spawnZoneNodes(zoneId);
       for (const n of this.nodes[zoneId]) this._markNodeDirty(zoneId, n.id);
     }

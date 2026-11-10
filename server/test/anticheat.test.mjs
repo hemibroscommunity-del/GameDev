@@ -1121,7 +1121,12 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
      needs the key to BE '__proto__', which the prefix makes impossible. */
   check('zone: a prefixed proto-looking dungeon id is harmless',
     room._validZone('dungeon:__proto__') === true);
+  /* v2.3.4423: a dead dungeon id keeps no list at all now (dungeon.js
+     _dungeonIdDead), so this one is opened first, to see the key it makes */
+  if (!room._dungeons) room._dungeons = new Map();
+  room._dungeons.set('__proto__', { id: '__proto__', zone: 'dungeon:__proto__', cfg: {} });
   room._ensureZoneMonsters('dungeon:__proto__');
+  room._dungeons.delete('__proto__');
   check('zone: ...and it creates a normal own key, not a prototype write',
     Object.prototype.hasOwnProperty.call(room.monsters, 'dungeon:__proto__')
     && Object.getPrototypeOf(room.monsters) === null
@@ -1180,11 +1185,24 @@ room._recomputeMaxes(psA); room._recomputeMaxes(psB);
   check('move: a rejected zone id does not pin the player',
     psJ.x === 660 && psJ.y === 410 && psJ.z === 'town', { x: psJ.x, y: psJ.y, z: psJ.z });
   /* And the post-deploy dungeon case that started all this: the
-     instance is gone from memory, the client still claims it. */
-  psJ.z = 'town'; psJ.x = 100; psJ.y = 100; psJ.lastMoveAt = Date.now() - 50;
+     instance is gone from memory, the client still claims it.
+     v2.3.4423: the join puts a returning phone in the zone it names, so
+     after a deploy the worker has it IN the dead id, and its moves there
+     are no change: they move it (dungeon-live.test §4).  A CHANGE into a
+     dead id from elsewhere is refused (dungeon.js _dungeonIdDead): the
+     player stays in the zone the worker has them in, as for 'nowhere'
+     above, and the next move in that zone is taken. */
+  psJ.z = 'dungeon:abcd1234'; psJ.x = 100; psJ.y = 100; psJ.lastMoveAt = Date.now() - 50;
   await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 220, y: 100, z: 'dungeon:abcd1234' }));
   check('move: a player whose dungeon died in a deploy is not frozen',
     psJ.z === 'dungeon:abcd1234' && psJ.x === 220, { x: psJ.x, z: psJ.z });
+  psJ.z = 'town'; psJ.x = 100; psJ.y = 100; psJ.lastMoveAt = Date.now() - 50;
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 220, y: 100, z: 'dungeon:abcd1235' }));
+  check('move: a change into a dungeon nobody opened is refused (v2.3.4423)',
+    psJ.z === 'town' && psJ.x === 100, { x: psJ.x, z: psJ.z });
+  await room.webSocketMessage(wsJ, JSON.stringify({ type: 'move', x: 110, y: 100, z: 'town' }));
+  check('move: ...and the next move in town is taken (not pinned)',
+    psJ.z === 'town' && psJ.x === 110, { x: psJ.x, z: psJ.z });
 }
 
 {

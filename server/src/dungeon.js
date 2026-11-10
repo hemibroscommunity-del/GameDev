@@ -200,6 +200,34 @@ export const dungeonMethods = {
     return !!(ps && typeof ps.z === 'string' && ps.z.startsWith('dungeon:'));
   },
 
+  /* ═══ v2.3.4423: A DUNGEON NOBODY OPENED IS NOT A PLACE ═══
+     True for a `dungeon:` id with no live run in this._dungeons: one a page
+     made up, or a run already swept.  The live run IS the record of a real
+     entry -- dungeon_start puts it in this._dungeons before it sends
+     dungeon_started (to the owner and each party member it pulls), and the
+     sweep takes it out -- so no second list of who may enter is kept:
+     whoever stands in a live run fights in it, the documented design
+     (docs/specs/dungeons.md, "Membership = zone presence").
+     Asked by the move's zone gate (movement.js): a CHANGE into a dead id is
+     refused like an unknown zone, so two moves (in and straight back) no
+     longer buy the zone entry's half second of zero damage, over and over
+     (state-machine sweep S3-15).  And where the two lists are made
+     (_ensureZoneMonsters, _ensureZoneNodes): a dead id gets an empty list
+     that is NOT kept, so an invented id leaves no keys behind (S3-15's leak,
+     S5-13).  A phone already IN a dead id -- a run wiped by a deploy, or one
+     swept with its player still inside -- keeps moving: its moves name the
+     zone it is in, which is no change (the v2.3.1631 freeze, movement.js
+     _validZone).  Not test mode's to skip: it protects other players.  KILL
+     SWITCH (lower case): `dungeonlive: false` in the live flags takes any
+     `dungeon:` id on its shape again, as before
+     (server/test/dungeon-live.test.mjs). */
+  _dungeonIdDead(z) {
+    if (typeof z !== 'string' || !z.startsWith('dungeon:')) return false;
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'dungeonlive') && !f.dungeonlive) return false;
+    return !(this._dungeons && this._dungeons.has(z.slice('dungeon:'.length)));
+  },
+
   // Alive, connected players standing in the instance zone.  Zone
   // presence is the membership model: whoever walks in fights, whoever
   // is inside at the final kill gets paid.

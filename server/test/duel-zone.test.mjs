@@ -60,6 +60,15 @@ async function moveTo(ws, z, x = 0, y = 0) {
   await room.webSocketMessage(ws, JSON.stringify({ type: 'move', x, y, z, d: 'down' }));
 }
 const A = 'bp_dz_a', B = 'bp_dz_b';
+/* v2.3.4423: a move goes into a dungeon only while its run is open
+   (dungeon.js _dungeonIdDead), so the runs this suite walks into are open:
+   ones the room's dungeon sweep never takes (a finished run that lingers
+   forever), as the duel's clock is all this suite is about */
+if (!room._dungeons) room._dungeons = new Map();
+for (let i = 1; i <= 8; i++) {
+  room._dungeons.set('dz' + i, { id: 'dz' + i, zone: 'dungeon:dz' + i, ownerId: 'bp_dz_x', cfg: { width: 30, height: 20, waves: 1 },
+    wave: 1, state: 'done', bossSpawned: false, createdAt: Date.now(), emptySince: 0, doneAt: Infinity });
+}
 const wsA = fakeWs('a'), wsB = fakeWs('b');
 await join(wsA, A);
 await join(wsB, B);

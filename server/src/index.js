@@ -1891,6 +1891,8 @@ export class GameRoom {
   // Ensure monsters exist for a zone (lazy spawn)
   _ensureZoneMonsters(zoneId) {
     if (!this.monsters[zoneId]) {
+      /* v2.3.4423: a dungeon nobody opened keeps no list (dungeon.js _dungeonIdDead) */
+      if (this._dungeonIdDead(zoneId)) return [];
       this.monsters[zoneId] = this._spawnZoneMonsters(zoneId);
       for (const m of this.monsters[zoneId]) this._markMonsterDirty(zoneId, m.id);
     }
