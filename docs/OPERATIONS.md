@@ -567,12 +567,14 @@ staging, capes or Pet House rooms; no dungeon mouth; no spare weapon put
 on, nor a shield report that would hide the spare shields. Ten seconds after
 the last hit it all opens again, and on the safe ground (the town and the
 commons) it never applies. The list is one file, `server/src/fightlock.js`.
-Four switches, each written `false`:
+Five switches, each written `false`:
 - `fightlocktable` opens the counters in town (only a modified phone
   reaches them mid-fight), duels and trade staging, back to the six roads
   guarded before v2.3.4510;
 - `fightlockdoor` lets a fighting player through a dungeon mouth again;
 - `fightlockequip` lets a fighting player put on a spare weapon again;
+- `fightlockreset` (v2.3.4581) lets a fighting player restart their
+  character again (Settings and the character picker);
 - `fightlock` (the old one) opens everything, the six old roads too.
 ```
 curl -X POST -H "Authorization: Bearer YOUR_KEY" \

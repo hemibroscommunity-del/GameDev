@@ -874,9 +874,15 @@ new router case or relayed type that is in neither list.
   `stats_update`, whose armour list the worker learns only at the join (a
   piece swapped this session escapes the loss already); a held spare shield
   put on the arm, because the phone owns which shield is worn and would keep
-  showing a refused swap; `character_reset`
-  wipes the loser's own character, the Bank too (its HTTP twin is
-  account.js).
+  showing a refused swap.
+- **v2.3.4581, `fightlockreset`**: `character_reset` (Settings) and its HTTP
+  twin `/api/account/reset` (the character picker, `account.js
+  _accountReset`) are rows now. A restart wiped the loser's whole character,
+  the state dropped before the socket closed, so neither the lingering body
+  nor the loss found anything: the killer got nothing, out of spite. Refused
+  in the fight: Settings is told `character_reset_refused { reason: 'fight',
+  message }` (new, in `PRIVILEGED_EVENTS`) and says so instead of reloading;
+  the picker is answered `reason: 'fight'`. `fight-lock.test` §8.
 
 ## Wire, storage and switches
 

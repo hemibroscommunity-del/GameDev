@@ -1575,6 +1575,18 @@ export function setupWebSocket(ctx) {
               } catch (e) {}
               break;
             }
+          case 'character_reset_refused':
+            {
+              /* v2.3.4581: the restart refused during a fight with a player in No
+                 man's land (server persistence.js, fightlock.js `fightlockreset`):
+                 nothing was wiped.  The Settings screen says so and cancels its
+                 8 s reload (SettingsPanel.jsx). */
+              const _rr = msg.payload || {};
+              const _rw = typeof _rr.message === 'string' && _rr.message.length <= 120 ? _rr.message : 'Not while you are fighting a player';
+              S._resetRefused = { at: Date.now(), reason: typeof _rr.reason === 'string' ? _rr.reason : 'fight' };
+              try { window.dispatchEvent(new CustomEvent('bt-reset-refused', { detail: { message: _rw } })); } catch (e) {}
+              break;
+            }
           case 'character_reset_done':
             {
               /* v2.3.1347: the server snapshotted + deleted our rpg blob

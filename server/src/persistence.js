@@ -419,6 +419,15 @@ export const persistenceMethods = {
     const pid = session && session.id;
     if (!pid) return;
     if (!payload || payload.confirm !== true) return; // accidental sends are no-ops
+    /* v2.3.4581: not during a fight with a player in No man's land (fightlock.js
+       `fightlockreset`): the wipe would leave the killer nothing.  The restart had
+       no refusal, so it has its own message now; a phone that does not know it
+       reloads after its 8 s, on a character that is still there. */
+    if (this._fightLockHolds && this._fightLockHolds(pid, 'fightlockreset')) {
+      const ws = this._wsBySessionId(pid);
+      if (ws) { try { ws.send(JSON.stringify({ type: 'character_reset_refused', payload: { reason: 'fight', message: 'Not while you are fighting a player' } })); } catch (e) { /* nothing was wiped */ } }
+      return;
+    }
     await this._resetCharacterData(pid);
   },
 

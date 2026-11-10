@@ -189,8 +189,9 @@ so nothing waits on them any more.
   worker learns the armour stash only at join, so a lock would not close
   it. The fix is keeping the armour stash on the worker. A red skull's
   `unequip_request` on armour also drops the piece from the worker's view;
-- `character_reset` mid-fight (and its web twin, `_accountReset`) wipes the
-  loser's own character: spite, the killer gets nothing (#1523);
+- ~~`character_reset` mid-fight (and its web twin, `_accountReset`) wipes the
+  loser's own character: spite, the killer gets nothing (#1523)~~: refused in
+  the fight on both roads (v2.3.4581, `fightlockreset`, `fight-lock.test` §8);
 - a red skull killed by a monster has no fight lock (V21 Q3, #1523);
 - the Auction House's settlement legs, releases and bids still heal from
   their 48-hour stamps only: a restart followed by 48 hours with nobody

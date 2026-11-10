@@ -104,6 +104,10 @@ export const accountMethods = {
        (devicelock.js) -- a restart is the one thing the picker does with a key
        that a join could not undo */
     if (auth.device === 'unknown') return { ok: false, settled: true, reason: 'device', id: auth.id };
+    /* v2.3.4581: not while that bro is in a fight with a player in No man's land,
+       played on another device (fightlock.js `fightlockreset`): the wipe would
+       leave the killer nothing.  The picker says so (CharacterPicker.jsx). */
+    if (this._fightLockHolds && this._fightLockHolds(auth.id, 'fightlockreset')) return { ok: false, settled: true, reason: 'fight', id: auth.id };
     await this._resetCharacterData(auth.id);
     return { ok: true, settled: true, reset: true, id: auth.id };
   },

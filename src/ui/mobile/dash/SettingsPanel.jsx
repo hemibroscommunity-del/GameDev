@@ -146,6 +146,24 @@ export const SettingsPanel = () => {
     if (retryTimerRef.current) { clearInterval(retryTimerRef.current); retryTimerRef.current = null; }
   };
   useEffect(() => clearRetry, []);
+  /* v2.3.4581: the restart can be REFUSED now -- not during a fight with a player in
+     No man's land, where the wipe would leave the killer nothing (server
+     fightlock.js `fightlockreset`; wsClient's `character_reset_refused`).  The
+     8 s fallback reload is cancelled and the screen says why. */
+  const reloadTimerRef = useRef(null);
+  const [refusedWords, setRefusedWords] = useState('');
+  useEffect(() => {
+    const onRefused = (e) => {
+      if (reloadTimerRef.current) { clearTimeout(reloadTimerRef.current); reloadTimerRef.current = null; }
+      setRefusedWords((e && e.detail && e.detail.message) || 'Not while you are fighting a player');
+      setResetStage('refused');
+    };
+    window.addEventListener('bt-reset-refused', onRefused);
+    return () => {
+      window.removeEventListener('bt-reset-refused', onRefused);
+      if (reloadTimerRef.current) { clearTimeout(reloadTimerRef.current); reloadTimerRef.current = null; }
+    };
+  }, []);
 
   const toggleAudio = () => {
     const next = !audio;
@@ -197,7 +215,7 @@ export const SettingsPanel = () => {
          dropped socket mid-flight -- reload anyway after 8s.  Whether the
          server processed the reset decides what the rejoin loads; the
          player is never left staring at a dead "Restarting…" screen. */
-      setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 8000);
+      reloadTimerRef.current = setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 8000);
     };
     if (isLive()) { sendReset(); return; }
     setResetStage('connecting');
@@ -217,7 +235,7 @@ export const SettingsPanel = () => {
     }, 400);
   };
 
-  if (resetStage === 'confirm' || resetStage === 'sending' || resetStage === 'connecting' || resetStage === 'offline') {
+  if (resetStage === 'confirm' || resetStage === 'sending' || resetStage === 'connecting' || resetStage === 'offline' || resetStage === 'refused') {
     return (
       <div style={{ ...panelStyle, display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 12px' }}>
         <div style={{ fontSize: 16, fontWeight: 700, color: COL.danger }}>Restart Character?</div>
@@ -225,6 +243,10 @@ export const SettingsPanel = () => {
           <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>Restarting…</div>
         ) : resetStage === 'connecting' ? (
           <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>Connecting to the game server…</div>
+        ) : resetStage === 'refused' ? (
+          <div data-qa="reset-refused" style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
+            {refusedWords}. Nothing was changed: try again once the fight is over.
+          </div>
         ) : resetStage === 'offline' ? (
           <div style={{ fontSize: 13.5, color: COL.text, lineHeight: 1.5 }}>
             Can&apos;t restart right now — no connection to the game server. Try again in a moment.
@@ -247,7 +269,7 @@ export const SettingsPanel = () => {
             }}
           >Keep playing</button>
           <button
-            onPointerUp={(e) => { e.stopPropagation(); if (resetStage === 'confirm') confirmReset(); }}
+            onPointerUp={(e) => { e.stopPropagation(); if (resetStage === 'confirm') confirmReset(); else if (resetStage === 'refused') setResetStage('confirm'); }}
             style={{
               flex: 1, minHeight: 44, borderRadius: 8, cursor: 'pointer',
               background: resetStage === 'confirm' ? COL.danger : COL.raised,

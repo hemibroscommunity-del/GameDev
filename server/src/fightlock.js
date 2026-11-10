@@ -33,6 +33,8 @@
  *             fightlockequip  putting on a spare weapon, which an honest
  *                             player can meet too (and a forged shield
  *                             report).
+ *             fightlockreset  (v2.3.4581) restarting the character, from
+ *                             Settings or from the character picker.
  *   refuse  the router answers the message with its HANDLER'S OWN refusal --
  *           the same type and shape (no new message), or, where the handler
  *           refuses in silence, silence plus a re-send of what the phone may
@@ -198,6 +200,19 @@ export const FIGHT_LOCK = Object.freeze({
      which shield is on the arm (wsClient.js), so a held spare put on is not
      refused -- the phone could not be told to take it off */
   shield_wear: { sw: 'fightlockequip', at: 'shieldwear.js _handleShieldWear' },
+
+  /* ── v2.3.4581: the character wiped (STATE-MACHINES.md "what is left", from #1523) ── */
+  /* A restart deletes the whole character -- the bag, the gold, the stashes --
+     and the state goes BEFORE the socket closes (persistence.js
+     _resetCharacterData), so the body that would linger and the loss that
+     would follow find nothing: a losing player could take it all from the
+     killer, out of spite.  Refused while the lock holds, on both roads: the
+     Settings button over the socket (its own refusal, `character_reset_refused`,
+     a new message: the restart had no refusal before), and the picker's HTTP
+     restart (account.js: `reason: 'fight'`), which reaches a bro being played
+     on another device. */
+  character_reset: { sw: 'fightlockreset', at: 'persistence.js _handleCharacterReset' },
+  'http:/api/account/reset': { sw: 'fightlockreset', at: 'account.js _accountReset' },
 });
 
 /* What the router may refuse itself: the rows with a `refuse` */
@@ -245,9 +260,6 @@ const OPEN_GROUPS = [
   ['sound by place', ['bank_deposit']],
   /* DIEGO_SHELF is empty; clans are parties (clanparty.js) */
   ['dormant', ['shop_purchase', 'clan_create']],
-  /* a wipe of the whole character, the Bank too: the loser keeps nothing
-     either, and its HTTP twin (account.js) is the same act -- reported */
-  ['a self-wipe', ['character_reset']],
   /* relay.js RELAY.TYPES: drawn by the other phones only, or a handshake
      whose accept is the row (duel_accept; the gift's trade_offer/accept) */
   ['a relay', [

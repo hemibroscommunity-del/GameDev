@@ -89,6 +89,15 @@ skills, quests, codex/bestiary caches) resets.
   intact — never half).
 - Old worker (deploy-order window): the message relays harmlessly and
   no ack arrives → fallback reload, character intact.
+- **In a fight with a player in No man's land** (v2.3.4581, `fightlock.js`
+  `fightlockreset`): refused on both roads, because the wipe left the
+  killer nothing. Settings is answered `character_reset_refused { reason:
+  'fight', message }` (server-sent only, in `PRIVILEGED_EVENTS`): the screen
+  cancels its 8 s reload and says "Not while you are fighting a player.
+  Nothing was changed". The picker's HTTP restart answers `reason: 'fight'`
+  and says the bro is in a fight. A phone older than this message waits out
+  its 8 s and reloads, its character intact. Ten seconds after the last hit
+  the restart works again. `fight-lock.test` §8.
 
 ## Tests
 

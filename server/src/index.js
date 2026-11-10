@@ -745,6 +745,9 @@ export const PRIVILEGED_EVENTS = new Set([
   // another player's local caches (their server blob would survive,
   // but the grief is real).  Server-emitted only.
   'character_reset_done',
+  // v2.3.4581: ...and its refusal during a player fight in No man's land
+  // (persistence.js, fightlock.js `fightlockreset`)
+  'character_reset_refused',
   // v2.3.1198: gem-cut outcomes are server-rolled + private (amulet.js
   // _handleGemCut); forging one is fake-popup grief surface.
   'gem_cut_result',
