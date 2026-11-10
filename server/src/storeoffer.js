@@ -149,6 +149,8 @@ export const storeOfferMethods = {
     if (!had && Object.keys(offers).length >= STORE_OFFER.MAX_PER_LISTING) {
       return { ok: false, settled: true, error: 'This listing already has as many offers as it can hold' };
     }
+    /* v2.3.4500: the offer (and a raise) in ONE write -- _soPlaceOneWrite */
+    if (this._ahOneWrite()) return this._soPlaceOneWrite(rec, buyerId, gold, had);
 
     /* Replacing your own offer refunds the old one FIRST. Doing it the other
        way round would need the buyer to hold both amounts at once, which is
@@ -193,11 +195,81 @@ export const storeOfferMethods = {
     await this.state.storage.put('store_listing:' + rec.id, rec);
   },
 
+  /* ═══ v2.3.4500: AN OFFER, AND A RAISE, IN ONE WRITE ═══
+     The raise above hands the old offer back FIRST and writes the listing
+     after: a restart between (every merge touching server/ restarts the room)
+     left the old offer on the listing with no gold behind it, and the
+     seller's Yes then paid it out -- the buyer had their gold back AND the
+     goods, the seller gold nobody paid (the state-machine sweep's V8a S6-6;
+     the owner: fixed now).  A new offer was three writes: the pending mark,
+     the debit, the live offer.
+     The buyer is in the room (it is their own message), so their purse is
+     settled in memory -- the old offer back, the new one taken -- and the
+     purse, both stamps and the listing holding the new offer go out in ONE
+     synchronous run (handoff rules 5 and 7, TRAPS §184): a restart leaves the
+     old offer or the new one, never a mix, and nothing pending for the wake
+     to finish.  A refund stamp already on file is the proof the old offer
+     went home (a leftover of the old order): nothing is given back twice.
+     As before, a raise the purse and the old offer together cannot pay hands
+     the old offer back and stops.  Kill switch: `ahonewrite: false` in the
+     live flags (store.js _ahOneWrite) puts back the old order above. */
+  async _soPlaceOneWrite(rec, buyerId, gold, had) {
+    const ps = this.playerState[buyerId];
+    if (!ps) return { ok: false, settled: true, error: 'Not in game' };
+    const label = this._stLabel(rec);
+    const refOp = had ? 'store:' + rec.id + ':offerref:' + had.seq : null;
+    const back = had && !(await this._opSeen(refOp)) ? had.gold : 0;
+    if ((ps.coins || 0) + back < gold) {
+      if (had) await this._soRefundOne(rec, buyerId, 'offer replaced on ' + label);
+      return { ok: false, settled: true, error: 'Not enough gold' };
+    }
+    const seq = (rec.offerSeq || 0) + 1;
+    const offers = this._soOffers(rec);
+    offers[buyerId] = { seq, gold, at: Date.now(), name: this._stNameOf(buyerId) || ps.name || 'Someone', reply: null };
+    rec.offers = { ...offers };
+    rec.offerSeq = seq;
+    rec.pendOffer = null;
+    ps.coins = (ps.coins || 0) + back - gold;
+    const writes = [
+      this._saveRpg(buyerId, ps),
+      this._opStamp('store:' + rec.id + ':offer:' + seq),
+      this.state.storage.put('store_listing:' + rec.id, rec),
+    ];
+    const refund = back ? { opId: refOp, source: 'market', kind: 'gold', payload: { amount: back }, note: 'offer replaced on ' + label } : null;
+    if (refund) writes.push(this._opStamp(refOp));
+    this._queuePlayerStateFlush(buyerId);
+    if (refund) this._sendInboxDelivered(buyerId, [refund], 0);
+    await Promise.all(writes);
+    this._soNotify(rec, rec.sellerId);
+    return { ok: true, settled: true, offered: gold, offers: this._soPublic(rec) };
+  },
+
   /* ── WITHDRAW (the buyer) and DECLINE (the seller) are one refund ── */
   async _soRefundOne(rec, buyerId, why) {
     const offers = this._soOffers(rec);
     const o = offers[buyerId];
     if (!o) return false;
+    /* ═══ v2.3.4500: THE LISTING WITHOUT THE OFFER, AND ITS GOLD, IN ONE WRITE ═══
+       Below, the listing is written without the offer, awaited, and the gold
+       paid after: a restart between lost the buyer's gold, with only the
+       debit's stamp left, which nothing reads once the offer was live (the
+       state-machine sweep's V8a S6-6).  Turning it round (pay, then write) is
+       the raise's order, which MINTS (TRAPS §184).  So both go out in one run
+       (inbox.js _creditWith), the buyer online or away.  A withdraw, a "No",
+       an expiry, a failed raise and the leftover's clean-up all come here.
+       Kill switch: `ahonewrite: false` (store.js _ahOneWrite). */
+    if (this._ahOneWrite()) {
+      await this._creditWith(buyerId, {
+        opId: 'store:' + rec.id + ':offerref:' + o.seq, source: 'market', kind: 'gold',
+        payload: { amount: o.gold }, note: why,
+      }, () => {
+        const left = this._soOffers(rec);
+        delete left[buyerId];
+        rec.offers = { ...left };
+        return [this.state.storage.put('store_listing:' + rec.id, rec)];
+      });
+      return true;
+    }
     delete offers[buyerId];
     rec.offers = { ...offers };
     await this.state.storage.put('store_listing:' + rec.id, rec);
@@ -248,6 +320,17 @@ export const storeOfferMethods = {
       if (!this._paceTake || this._paceTake('think', sellerId, PACE.THINK)) await this.state.storage.put('store_listing:' + rec.id, rec);
       this._soNotify(rec, buyerId);
       return { ok: true, settled: true, replied: 'think', offers: this._soPublic(rec) };
+    }
+
+    /* v2.3.4500: an offer whose refund is already stamped holds no gold: the
+       old raise's leftover (it handed the old offer back, and a restart took
+       the listing's write).  Yes to it paid the seller gold nobody paid, and
+       the buyer the goods for nothing.  It is dropped (the refund answers
+       'dup': nothing is paid twice) and the seller told there is no offer. */
+    if (this._ahOneWrite() && await this._opSeen('store:' + rec.id + ':offerref:' + o.seq)) {
+      await this._soRefundOne(rec, buyerId, 'offer returned on ' + this._stLabel(rec));
+      this._soNotify(rec, buyerId);
+      return { ok: false, settled: true, error: 'No offer to answer' };
     }
 
     /* YES: the gold is already escrowed, so this is the accept-bid shape --

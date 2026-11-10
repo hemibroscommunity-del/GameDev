@@ -117,6 +117,12 @@ export const arenaMethods = {
         if (!this._httpAuthCheck(body && body.playerId, request)) {
           return new Response(JSON.stringify({ ok: false, settled: true, error: 'Not authorized' }), { status: 403, headers: H });
         }
+        /* v2.3.4510: not in a fight with a player in No man's land (fightlock.js,
+           `fightlocktable`): the 100 g fee sits in an escrow the loss cannot
+           take and a leave refunds it -- refused as the join refuses */
+        if (this._fightLockHolds && this._fightLockHolds(body && body.playerId, 'fightlocktable')) {
+          return new Response(JSON.stringify({ ok: false, settled: true, error: 'Not while you are fighting a player' }), { headers: H });
+        }
         const result = await this._arenaJoin(body && body.playerId, body && (body.playerName || body.name));
         return new Response(JSON.stringify(result), { headers: H });
       }

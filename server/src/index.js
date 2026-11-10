@@ -259,6 +259,7 @@ import { originAllowed, refuseOrigin } from './origin.js'; /* v2.3.3312: only th
 import { verifyMethods } from './verify.js'; /* v2.3.3275: the account check -- a new character proves a person is there */
 import { attackBlocked, slideMove } from './props.js'; /* v2.3.2652: a rock stops a monster's hit; v2.3.2653: and its feet */
 import { staminaRegenMethods } from './staminaregen.js'; /* v2.3.3536: stamina regen worked out by the worker */
+import { fightLockMethods, FIGHT_GATED } from './fightlock.js'; /* v2.3.4510: one fight-lock table */
 /* v2.3.3130: the Herb Bread's out-of-combat healing multiplier, read once
    from its dish (data.js DISHES) -- 2, "twice as fast". */
 const HERB_REGEN_MULT = (DISHES.meal_herb_bread && Number(DISHES.meal_herb_bread.power) > 1) ? Number(DISHES.meal_herb_bread.power) : 2;
@@ -5199,6 +5200,13 @@ export class GameRoom {
        handler, so the fight is judged on foot */
     if (session.id && RIDE_ENDS_ON.has(msg.type)) this._rideOnInput(session.id, msg.type);
 
+    /* v2.3.4510: THE FIGHT LOCK'S ONE TABLE (fightlock.js) -- a message that
+       would move gold or bag goods out of what a No man's land loss takes,
+       sent in a fight with a player there, is answered with its handler's
+       own refusal and goes no further.  One Set lookup; synchronous, so a
+       bundle's parts still finish in order (TRAPS §182). */
+    if (session.id && FIGHT_GATED.has(msg.type) && this._fightLockGate(session, msg)) return;
+
     switch (msg.type) {
       case 'join':
         /* v2.3.3274: ONE JOIN A SOCKET.  A second one under another id left
@@ -6895,3 +6903,4 @@ Object.assign(GameRoom.prototype, oneFormulaMethods); /* v2.3.3260: one formula 
 Object.assign(GameRoom.prototype, pvpExtrasMethods); /* v2.3.3264: the monster-only extras on players */
 Object.assign(GameRoom.prototype, sparMethods); /* v2.3.3265: sparring clones (spar.js) */
 Object.assign(GameRoom.prototype, staminaRegenMethods); /* v2.3.3536: stamina regen from the worker's own amulet (staminaregen.js) */
+Object.assign(GameRoom.prototype, fightLockMethods); /* v2.3.4510: one fight-lock table (fightlock.js) */

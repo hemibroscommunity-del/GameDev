@@ -106,3 +106,62 @@ its name.
   React and fetch (6 of its 14 checks fail on the v2.3.4354 panel).
 - **The trap**: never key a sale by a stash place across an await, and never
   leave a pick lit past its answer: the bag under it moves.
+
+## A crossing's sale note: a restart never takes half a trade (v2.3.4505)
+
+The state-machine sweep (2026-11-03, V8a S6-3 and S6-4). When a new order
+met a resting one, the worker saved the taker's escrow, then paid the weapon,
+the gold and the price-improvement refund one await at a time, and deleted the
+maker's order last. Every server merge restarts the room, and a restart there:
+
+- before the weapon leg, took the taker's gold or weapon (nothing named it)
+  and put the maker's order back on sale;
+- after it, left a record the next wake deleted on ANY stamp, so the seller
+  was never paid; a price improvement was lost the same way;
+- and a leftover was looked at only by the first shop request after a wake,
+  while the stamps that say which legs were paid are pruned after 48 h: a
+  leftover found later went back on sale with its weapon already delivered
+  (the weapon twice).
+
+What it does now (`server/src/market.js`):
+
+- **The note.** The maker's `mkt_order:` record is rewritten with a `settle`
+  note -- `v` 1, the taker, their bid, the price, and every leg: `item` (the
+  weapon, to the buyer), `gold` (the price, to the seller), `diff` (a taker
+  buy above the ask, back to the buyer) -- in the SAME synchronous run as the
+  taker's escrow save, before any credit. Both commit, or neither.
+- **The legs** are paid by `_creditPlayer` under the same opIds as before
+  (`settle:<makerId>:item|gold|diff`), each stamp written with its payment;
+  the record is deleted only when every leg is stamped (`_mktSettleRun`).
+- **Finishing a note** (`_mktSettleHeal`): every leg without its stamp is
+  paid, then the record is deleted -- never re-listed, never deleted on any
+  stamp. It runs from the book's rebuild, from a wake scan, from a cancel of
+  an order mid-sale (answered "Not found", as a sold order always was) and
+  from the expiry sweep. If the maker's escrow was refunded meanwhile (an
+  older worker re-listed the note and then refunded it), the legs are not
+  paid: the taker's escrow goes home instead (`settle:<id>:back`).
+- **The prune waits.** The tick's housekeeping slot asks `_mktSettleWait()`
+  before the oplog prune: a fresh worker first scans the book (one page of
+  `MARKET.SCAN_PAGE` per slot, nothing written when nothing is noted; nothing
+  read at all if the shop's rebuild already read it), and a sale a fault
+  stopped inside one worker's life is owed and retried every slot. No prune
+  comes between a restart and its heal.
+- **What it costs.** A crossing writes one row more (the note) and reads
+  nothing more. A wake reads the book once (the rebuild did that already on
+  the first shop request).
+- **Kill switch**: `mktsettle: false` in the live flags puts back the old
+  order (no note, the old stamp check at the rebuild, no wait on the prune).
+- **Rollback** (an older worker, or the switch off, reading a note): it
+  ignores the field. A note with any leg stamped is deleted (the unpaid legs
+  lost, as before this fix); a note with none is re-listed as the maker's
+  resting order (the taker's escrow lost, as before). Never a second payment:
+  the opIds are the old ones. Rolled forward, a re-listed note is finished.
+- Test: `server/test/market-settle.test.mjs` (three crossings cut at every
+  write, the heal cut at every write, a leftover found 49 h on through the
+  real tick, the switch and the old rule, a fault inside one worker's life,
+  the costs, the shapes). On v2.3.4492 it fails 27 of its 37 checks: a restart
+  at the first write leaves the taker 120 gold short, at the second the
+  seller unpaid, and the leftover found 49 h on doubles the weapon.
+- **The trap**: a sale's "paid" lives in its stamps only while they live
+  (TRAPS §146). Write what is owed with the escrow that pays for it, and
+  finish it before anything prunes the stamps.

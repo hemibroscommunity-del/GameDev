@@ -189,3 +189,26 @@ one synchronous run commit as one batch and the room dies before batch k:
 On main all seven fail: 500 gold lost, a mailbox keeping 1 of 5, a payment
 made twice, 50 gold gone in a gift trade, gold gone in a window, a weapon
 returned twice.
+
+## v2.3.4500: a credit and the record it settles, in one write
+
+`_creditPlayer` pays and stamps in one run, but a caller holding an escrow
+record wrote that record in a run of its own. The Auction House's offer refund
+wrote the listing without the offer, then paid: a restart between lost the
+gold. Its raise paid, then wrote: a restart between left an offer with no gold
+behind it, which the seller's Yes paid out (the state-machine sweep's V8a
+S6-6).
+
+- **`_creditWith(playerId, entry, also)`** (new, at the end of `inboxMethods`):
+  the same credit with the caller's own writes in its run. It reads first (the
+  stamp; an absent player's mailbox, in its turn), then calls `also()`, which
+  changes the caller's record and returns its write(s), and issues them with
+  the payment and its stamp in ONE synchronous run. A stamp already on file
+  proves the payment landed: only `also()` is written, and nothing is paid
+  twice. Gold and stackable items only; any other kind answers `null` and
+  does nothing.
+- `_inboxAppend` takes an optional fourth argument, `also`, written in the same
+  run as the box and the stamp. Its other callers pass none and are unchanged.
+
+Used by the Auction House's offers (`storeoffer.js` `_soRefundOne`); see
+`store-offers.md` "One write". Suite: `server/test/store-onewrite.test.mjs`.

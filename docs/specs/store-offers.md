@@ -134,3 +134,33 @@ Every branch the brief listed, plus two properties:
   →listing-expiry. The suite declares every coin it injects itself, including a
   freshly joined character's 25g starting purse, so the final assertion is exact
   rather than approximately right.
+
+## One write (v2.3.4500)
+
+Every step that moves an offer's gold writes the listing in the SAME
+synchronous run (handoff rules 5 and 7, TRAPS §184), so a restart (every merge
+touching `server/` restarts the room) leaves the step done or not done, never
+half:
+
+- **Withdraw, "No", expiry** (`_soRefundOne`): the listing without the offer,
+  the gold and its `offerref` stamp, through `inbox.js` `_creditWith`, the
+  buyer online or away. Before, the listing went first and the gold after: a
+  restart between lost the gold (the state-machine sweep's V8a S6-6). The other
+  way round is the raise's old order, which mints.
+- **An offer, and a raise** (`_soPlaceOneWrite`): the buyer is in the room, so
+  the purse is settled in memory (the old offer back, the new one taken) and
+  the purse, both stamps and the listing holding the new offer go out
+  together. No `pendOffer` is written; the wake still converges one an older
+  worker left. Before, a raise paid the old offer back, then wrote the
+  listing: a restart between left an offer with no gold behind it, and the
+  seller's Yes paid it out (gold minted). As before, a raise the purse and the
+  old offer cannot pay hands the old offer back and is refused.
+- **A leftover of the old order** (an offer whose `offerref` stamp is on
+  file): the seller's Yes drops it and answers "No offer to answer"; a
+  withdraw, a "No", an expiry or a raise finds the stamp and pays nothing
+  twice.
+
+Kill switch: `ahonewrite: false` in the live flags (`store.js` `_ahOneWrite`)
+puts back the old order, holes and all. Suite:
+`server/test/store-onewrite.test.mjs`, a restart before every batch of every
+path, on storage that commits a run's writes as one batch.
