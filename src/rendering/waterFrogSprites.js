@@ -33,7 +33,7 @@
  * Lookups give { tex, mirror } or null until the strip has loaded.
  */
 import { loadTrackedStrip, unloadBundle } from './zoneTextures.js';
-import { wantWaterAttack } from './waterAttackFx.js';   /* v2.3.4361: its water's sprites come and go with its look */
+import { wantWaterAttack } from './waterAttackFx.js';   /* v2.3.4381: its water's sprites come and go with its look */
 
 const FRAME_W = 256;
 const FRAME_H = 256;

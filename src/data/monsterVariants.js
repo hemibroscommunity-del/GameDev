@@ -268,7 +268,7 @@ export const MONSTER_VARIANTS = {
        hopAirFrom         the first hop frame it is off the ground on (0-2
                           are its crouch: stopped there, it waits)
        walkDistPerFrame   12 frames a hop, 1.2 px of travel a frame: a hop
-                          every ~14 px (v2.3.4362, below: it was 2.4)
+                          every ~14 px (v2.3.4382, below: it was 2.4)
        idleFrameMs        8 frames of breath, ~0.7 s a breath (it was the
                           video's 1.4 s)
        attackRecoverFrames  the last 3 frames of an attack strip play after
@@ -278,7 +278,7 @@ export const MONSTER_VARIANTS = {
        attackWindShare    0.5: the wind-up is played over the last half of
                           the warning, the blow still as the blow lands; it
                           breathes through the first half
-       v2.3.4362, the owner, having played it: "The frog animation frames
+       v2.3.4382, the owner, having played it: "The frog animation frames
        play too slowly. It needs to be sped up by 2x . And maybe 3x for
        death animation".  So every strip of it goes by twice as fast --
        the breath (170 -> 85 ms a frame), the hop (2.4 -> 1.2 px a frame,

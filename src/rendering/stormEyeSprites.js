@@ -17,7 +17,7 @@
  * until the strip has loaded.
  */
 import { loadTrackedStrip, unloadBundle } from './zoneTextures.js';
-import { wantStormSparks } from './stormSparksFx.js';   /* v2.3.4361: its lightning's sprites come and go with its look */
+import { wantStormSparks } from './stormSparksFx.js';   /* v2.3.4381: its lightning's sprites come and go with its look */
 
 const FRAME_W = 256;
 const FRAME_H = 256;

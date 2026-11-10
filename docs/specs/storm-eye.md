@@ -77,7 +77,7 @@ flies.
   lit or out, never faded smoothly.
 - **Cheaply:** 112 sprites in one container, made when the eye's look is
   loaded (as you walk toward the Foundry) and destroyed when it is let go
-  (v2.3.4361: they were held in every land; `docs/specs/water-frog.md`,
+  (v2.3.4381: they were held in every land; `docs/specs/water-frog.md`,
   Memory, has the measurement), every
   one a cell of one 86 x 19 px picture written pixel by pixel on the loading
   screen (7 KB). A frame only places, flips and lights them: nothing is

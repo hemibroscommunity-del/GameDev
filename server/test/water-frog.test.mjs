@@ -201,7 +201,7 @@ const strips = {};
   check('2d ...then the recovery, a frame every 70 ms, held on the last',
     A(600, 600, 15, 3, 70) === 12 && A(670, 600, 15, 3, 70) === 13 && A(740, 600, 15, 3, 70) === 14 && A(5000, 600, 15, 3, 70) === 14);
   check('2e ...and it plays 3 x 70 ms past the warning', MS.attackRecoverMs(3, 70) === 210 && MS.attackRecoverMs(0, 70) === 0);
-  /* v2.3.4362, the owner: "The frog animation frames play too slowly. It
+  /* v2.3.4382, the owner: "The frog animation frames play too slowly. It
      needs to be sped up by 2x".  THE WIND-UP OVER THE LAST HALF OF THE
      WARNING: it begins half way in (until then the frog breathes), its 12
      frames go by twice as fast, and the blow is still the frame on screen
@@ -277,7 +277,7 @@ const strips = {};
   check('3e the variant: a hop for its walk, the recovery frames the strips were cut with, its specials\' warnings on the attack strip, its death its own strip',
     V.baseArchetype === 'brute' && V.hopWalk === true && V.attackRecoverFrames === rec && rec === 3 && V.telegraphAttack === true && V.deathStripOnly === true
     && V.spd === 0.5 && V.walkDistPerFrame > 0 && V.idleFrameMs > 0 && V.deathMs > 0, V);
-  /* v2.3.4362, the owner, having played it: "The frog animation frames play
+  /* v2.3.4382, the owner, having played it: "The frog animation frames play
      too slowly. It needs to be sped up by 2x . And maybe 3x for death
      animation".  Each of its paces is half what it was first cut at (the
      videos': 170 ms a breath frame, 2.4 px a hop frame and 55 ms finishing
@@ -482,7 +482,7 @@ const strips = {};
     /this\._waterAttack = new WaterAttackFx\(this\.projectileLayer\);/.test(fx) && /this\._waterAttack\.update\(S, now\)/.test(fx) && /this\._waterAttack\.clear\(\)/.test(fx)
     && /waterAttack: Promise\.resolve\(warmWaterAttack\(\)\)/.test(pre) && /keepAsImage\(base\.source, Cache\)/.test(wfx) && /has\('nowaterfx'\)/.test(wfx)
     && /for \(let i = 0; i < WATER_FX\.POOL; i\+\+\)/.test(wfx) && !/removeChild|\.visible = /.test(wfx));
-  /* v2.3.4361: THE POOL IS THE FROG'S (the memory check's heap line: 128
+  /* v2.3.4381: THE POOL IS THE FROG'S (the memory check's heap line: 128
      sprites were held in BroTown and every land for a monster of one) --
      made when its look is loaded, as you walk toward it, destroyed whole
      when the look is let go; never made with the renderer */

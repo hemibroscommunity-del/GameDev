@@ -90,7 +90,7 @@ export function warmWaterAttack() {
   } catch (e) { _cells = null; }
 }
 
-/* ═══ v2.3.4361: THE POOL IS THE FROG'S -- MADE WITH ITS LOOK, LET GO WITH IT ═══
+/* ═══ v2.3.4381: THE POOL IS THE FROG'S -- MADE WITH ITS LOOK, LET GO WITH IT ═══
  *
  * The memory check read the page's JavaScript objects at 37.7 and 38.0 MB at
  * its Flame Fields fight on this branch, over a 37.5 line (it fights fire
@@ -153,7 +153,7 @@ export class WaterAttackFx {
     this._live = [];     /* the probe's: what was drawn this frame */
     this._drawn = Object.create(null);   /* the probe's: frames drawn, by kind */
     this._recent = [];   /* the probe's: the last blows drawn, one a blow */
-    /* (v2.3.4361: no pool yet -- it comes with the frog's look, update()) */
+    /* (v2.3.4381: no pool yet -- it comes with the frog's look, update()) */
     if (typeof window !== 'undefined') {
       const self = this;
       window.__btWaterAttack = () => ({
@@ -186,7 +186,7 @@ export class WaterAttackFx {
   update(S, now) {
     const list = S && S._waterBlows;
     if (!list || !list.length) {
-      /* v2.3.4361: nothing to draw -- the pool made if the frog's look has
+      /* v2.3.4381: nothing to draw -- the pool made if the frog's look has
          come, let go if it has gone */
       if (this.box) { this._park(0); if (!_wanted) this._drop(); }
       else if (_wanted && this.on) this._make();
@@ -260,7 +260,7 @@ export class WaterAttackFx {
     if (from === 0 && this._live.length) this._live.length = 0;
   }
 
-  /* v2.3.4361: the frog's look has gone -- the pool with it, whole (its box
+  /* v2.3.4381: the frog's look has gone -- the pool with it, whole (its box
      and every sprite destroyed; the picture they were cut from stays, it is
      the loading screen's).  Once, as the land is left: never on a frame of
      play. */

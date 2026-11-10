@@ -90,7 +90,7 @@ export function warmStormSparks() {
   } catch (e) { _cells = null; }
 }
 
-/* v2.3.4361: THE POOL IS THE EYE'S -- made when its look is loaded (as you
+/* v2.3.4381: THE POOL IS THE EYE'S -- made when its look is loaded (as you
    walk toward the Foundry: stormEyeSprites.js), destroyed when the look is
    let go; it was made with the renderer and held in every land (112 sprites;
    waterAttackFx.js has the measurement and the why) */
@@ -135,7 +135,7 @@ export class StormSparksFx {
     this._live = { eyes: 0, zaps: 0, shots: 0, lit: 0 };   /* the probe's: what was drawn this frame */
     this._drawn = { aura: 0, zap: 0, ball: 0 };            /* the probe's: frames each was drawn */
     this._recent = [];                                     /* the probe's: the last zaps drawn, one a zap */
-    /* (v2.3.4361: no pool yet -- it comes with the eye's look, update()) */
+    /* (v2.3.4381: no pool yet -- it comes with the eye's look, update()) */
     if (typeof window !== 'undefined') {
       const self = this;
       window.__btStormSparks = () => ({
@@ -195,7 +195,7 @@ export class StormSparksFx {
     /* the zaps that are over go, whether drawn or not */
     if (zaps) for (let i = zaps.length - 1; i >= 0; i--) if (zapOver((now - zaps[i].at) * rate)) zaps.splice(i, 1);
     if (!this.on || !S || !S.player) { this._park(0); return; }
-    /* v2.3.4361: no eye's look loaded and no zap left to draw -- no pool, and
+    /* v2.3.4381: no eye's look loaded and no zap left to draw -- no pool, and
        the land's monsters and shots are not walked for eyes there are none of */
     if (!_wanted && !(zaps && zaps.length)) { if (this.box) { this._park(0); this._drop(); } return; }
     if (!this.box) this._make();
@@ -273,7 +273,7 @@ export class StormSparksFx {
     this._park(used);
   }
 
-  /* v2.3.4361: the eye's look has gone -- the pool with it, whole (its box
+  /* v2.3.4381: the eye's look has gone -- the pool with it, whole (its box
      and every sprite destroyed; the picture they were cut from stays, it is
      the loading screen's).  Once, as the land is left: never on a frame of
      play. */
