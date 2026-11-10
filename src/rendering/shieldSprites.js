@@ -9,7 +9,7 @@
  */
 
 import { Assets } from 'pixi.js';
-import { loadSetLater } from './loadSetLater.js';   /* v2.3.4431: a shield view that failed once is asked for again */
+import { loadSetLater } from './loadSetLater.js';   /* v2.3.4452: a shield view that failed once is asked for again */
 
 const SPRITE_VERSION = '2.3.1875'; /* v2.3.1875: halo peel — bumped so a cached
    shield with the grey rim is not served over the cleaned art (see BlockRing).
@@ -23,7 +23,7 @@ const SHEETS = {
 
 let loadPromise = null;
 
-/* v2.3.4431: each view was one Assets.load behind a promise kept for the
+/* v2.3.4452: each view was one Assets.load behind a promise kept for the
    page, so one failed or stalled request drew the procedural arc for the
    visit (state-machine sweep VC-1, R8-5).  Now a loadSetLater set: a time
    limit, then retryLooks.js's rounds (ten at most), asked only while a shield
@@ -61,7 +61,7 @@ export function getShieldArt(angle) {
 }
 
 export function getShieldFrame(angle) {
-  if (_set) _set.ensure();   /* v2.3.4431 */
+  if (_set) _set.ensure();   /* v2.3.4452 */
   const front = SHEETS.front.tex;
   if (!front) return null;
   const TAU = Math.PI * 2;

@@ -23,7 +23,7 @@
  *   `?barretry=0` (or the shared `?retrylooks=0`) is the game as it was: the
  *   first load and nothing more.
  *
- * v2.3.4431: the same rule for the pictures loaded behind the loading screen
+ * v2.3.4452: the same rule for the pictures loaded behind the loading screen
  * and only LOOKED UP after (capes, weapons, shields, the plate icons): `start()`
  * is the loading screen's promise -- every file's FIRST load settled (in,
  * failed, or past its time limit), so a failure never holds the gate -- and
@@ -84,7 +84,7 @@ export function loadSetLater(o) {
     return firstDone;
   }
   return {
-    /** v2.3.4431: the loading screen's wait: every first load settled. */
+    /** v2.3.4452: the loading screen's wait: every first load settled. */
     start,
     /** Where the set is drawn: the first call starts every load; later calls
      *  ask again for a missing one whose round has come. */

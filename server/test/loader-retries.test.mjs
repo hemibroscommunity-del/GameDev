@@ -1,4 +1,4 @@
-/* ═══ v2.3.4431: A PICTURE THAT FAILED ONCE IS ASKED FOR AGAIN, AND ONE LEFT
+/* ═══ v2.3.4452: A PICTURE THAT FAILED ONCE IS ASKED FOR AGAIN, AND ONE LEFT
  *     BEHIND IS LET GO OF ═══
  *
  * The state-machine sweep (2026-11-03, cluster VC) found phone art loaders
@@ -331,13 +331,48 @@ await section(6, async () => {
   fetches.find((f) => /body-tops/.test(f.url)).res({ ok: true, json: () => ({ tops: 1 }) });
   await clock.advance(15000 + 2000 + 15000 + 6000 + 15000);
   check('6b a stalled anchors request is a failure, into its two retries, and the round settles', done === 'settled' && !b.has(), { done, n: fetches.length });
-  /* every later round fails: ten of them at most */
+  /* a long outage: every later round fails for 30 minutes -- and the rounds
+     go on (left without an end on purpose: nothing is placed without them) */
   for (let i = 0; i < 30; i++) {
     for (const f of fetches.splice(0)) f.rej(new Error('down'));
     await clock.advance(60000);
     b._ensureBodyData();
   }
-  check('6c later rounds stop after ten (retry-looks.md\'s limit)', b.rounds() === 11, b.rounds());
+  const roundsInOutage = b.rounds();
+  /* the line is back: the next round's answers come */
+  for (let i = 0; i < 4 && !b.has(); i++) {
+    for (const f of fetches.splice(0)) f.res({ ok: true, json: () => ({ anchors: 1 }) });
+    await clock.advance(60000);
+    b._ensureBodyData();
+    await flush();
+  }
+  check('6c the later rounds keep going through a long outage, and the tables come back after it (no cap: v2.3.3689\'s recovery kept)', roundsInOutage > 11 && b.has(), { roundsInOutage, has: b.has() });
+});
+
+/* ── 6d. the Bro badge's loading report still sees a failure ── */
+await section(13, async () => {
+  const ER = src('src/rendering/systems/entityRenderer.js');
+  const pre = cut(ER, 'preloadBroBadge'), look = cut(ER, '_broBadgeTexture');
+  const setLine = /const _iconSet = [\s\S]*?switchName: 'iconretry' \}\);/.exec(ER);
+  check('6d the Bro badge\'s loader and its set are found', !!pre && !!look && !!setLine);
+  if (!pre || !setLine) return;
+  const clock = fakeClock();
+  const L = handLoads();
+  const ctx = context(clock, '', { Assets: { load: L.load, unload: () => Promise.resolve(), cache: { has: () => false } }, Texture: { EMPTY: 'EMPTY' } });
+  vm.runInContext(RETRY + '\n' + LSL + "\nconst BRO_BADGE_URL = '/icons/ui/verified-bro-small.webp';\nlet _broBadgeTex = null;\n" + setLine[0]
+    + '\nlet _broBadgeSet = null;\nconst _broBadgeGot = Object.create(null);\n' + pre + '\n' + look + '\n;globalThis.__bb = { preloadBroBadge, _broBadgeTexture };', ctx);
+  let out = 'waiting';
+  ctx.__bb.preloadBroBadge().then(() => { out = 'resolved'; }, () => { out = 'rejected'; });
+  await flush();
+  L.asked[0].rej(new Error('offline'));
+  await flush();
+  check('6e a badge that failed: the gate settles at once, and REJECTS (the loading report says so)', out === 'rejected', out);
+  await clock.advance(5000);
+  ctx.__bb._broBadgeTexture();   /* looked up and missing: its round */
+  const again = L.asked.filter((a) => /g=1/.test(a.url));
+  check('6f ...and its later round still runs', again.length === 1, L.asked.map((a) => a.url));
+  if (again.length) { again[0].res('BADGE'); await flush(); }
+  check('6g once in, it is drawn', ctx.__bb._broBadgeTexture() === 'BADGE');
 });
 
 /* ── 7. picsOnce: a blank copy's restore is asked for again ── */

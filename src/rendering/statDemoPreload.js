@@ -53,7 +53,7 @@ const _held = [];
    first-use hitch the preloading law names.  Two strips (idle for the swell,
    death for the burst), encoded once and kept for the session; a failure
    leaves the scene on the green sheets and never fails the gate. */
-/* ═══ v2.3.4431: ONCE A PAGE, NOT ONCE A JOIN ═══
+/* ═══ v2.3.4452: ONCE A PAGE, NOT ONCE A JOIN ═══
    Back to the menu and joining again runs the loading screen again, and this
    baked the two strips again under new blob URLs (the old ones never
    revoked) and held another set of warmed <img>s: about 2.4 MB a rejoin,
@@ -84,7 +84,7 @@ function bakeBlueSlime() {
   _blueBaking = Promise.all([one('idle'), one('death')]).then(([idle, death]) => {
     _blueBaking = null;
     if (!idle || !death) {
-      /* v2.3.4431: half a bake is let go of (it is made again next time) */
+      /* v2.3.4452: half a bake is let go of (it is made again next time) */
       for (const u of [idle, death]) if (u) { try { URL.revokeObjectURL(u); } catch (e) { /* gone */ } }
       return null;
     }
@@ -92,7 +92,7 @@ function bakeBlueSlime() {
     /* ...and decoded and held like every other scene asset, so the first
        swell paints a bitmap that is already there */
     const p = Promise.all([warm(idle), warm(death)]);
-    _blueBaked = p;   /* v2.3.4431: kept for the page (above) */
+    _blueBaked = p;   /* v2.3.4452: kept for the page (above) */
     return p;
   });
   return _blueBaking;
@@ -100,7 +100,7 @@ function bakeBlueSlime() {
 
 function warm(url) {
   if (typeof Image === 'undefined') return Promise.resolve(null);
-  if (_warm.has(url)) return _warm.get(url);   /* v2.3.4431: warmed already */
+  if (_warm.has(url)) return _warm.get(url);   /* v2.3.4452: warmed already */
   const p = new Promise((resolve) => {
     const img = new Image();
     img.decoding = 'async';

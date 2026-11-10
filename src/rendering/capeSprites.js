@@ -22,7 +22,7 @@
  * sighting.
  */
 import { Assets, Texture } from 'pixi.js';
-import { loadSetLater } from './loadSetLater.js';   /* v2.3.4431: a cape that failed once is asked for again */
+import { loadSetLater } from './loadSetLater.js';   /* v2.3.4452: a cape that failed once is asked for again */
 
 /* The five the art ships; west / northwest / southeast are the same textures
    drawn mirrored, which is the body's own rule (resolveDirection,
@@ -39,7 +39,7 @@ export const CAPE_IDS = ['crimson'];
 const _tex = Object.create(null);      /* `${id}|${baseDir}` -> Texture */
 const _hood = Object.create(null);     /* `${id}|${baseDir}` -> Texture (hood only) */
 const _hoodMask = Object.create(null); /* `${id}|${baseDir}` -> Texture (hood silhouette, opening filled) */
-/* v2.3.4431: one loadSetLater per list of capes preloaded (one today) */
+/* v2.3.4452: one loadSetLater per list of capes preloaded (one today) */
 const _sets = new Map();
 const _got = Object.create(null);
 
@@ -51,7 +51,7 @@ const SPLIT_DIRS = ['south', 'southwest', 'east'];
 
 export function capeBaseDir(dir) { return BASE_DIR[dir] || 'south'; }
 
-/* ═══ v2.3.4431: A CAPE THAT FAILED ONCE IS ASKED FOR AGAIN ═══
+/* ═══ v2.3.4452: A CAPE THAT FAILED ONCE IS ASKED FOR AGAIN ═══
    Each still was one Assets.load behind a latch kept after a failure: one
    failed or stalled request and that facing of the cape (or its hood, or the
    hood's hair clip) was missing for the visit (state-machine sweep VC-1,

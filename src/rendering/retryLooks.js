@@ -18,7 +18,7 @@
 export const RETRY_LATER_MS = [5000, 10000, 20000, 40000, 60000];
 export const RETRY_ROUNDS = 10;
 
-/* v2.3.4431: a load with a TIME LIMIT (TRAPS §257): `p` as it is, but one that
+/* v2.3.4452: a load with a TIME LIMIT (TRAPS §257): `p` as it is, but one that
    has not answered in `ms` rejects ('time limit'), so a stalled request comes
    to its loader's retries like an error.  An answer after that goes to
    `late(value)` (keep it if the slot is still empty, or let it go), never

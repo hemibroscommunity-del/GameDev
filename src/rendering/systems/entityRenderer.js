@@ -135,7 +135,7 @@ import { recordCrash } from '../../debug/crashTrap.js'; /* v2.3.1305: trait-shee
 import { keepAsImage } from '../keepAsImage.js';   /* v2.3.3606: a head piece kept as an image of itself */
 import { TRAIT_LOAD_TIMEOUT_MS } from '../traits/traitImg.js';   /* v2.3.3689: a stalled head piece is asked for again */
 import { loadSetLater } from '../loadSetLater.js';   /* v2.3.4415: the bars over heads asked for again until in */
-import { timeLimit, RETRY_ROUNDS } from '../retryLooks.js';   /* v2.3.4431: a stalled hair mask or placement table counts as failed */
+import { timeLimit } from '../retryLooks.js';   /* v2.3.4452: a stalled hair mask or placement table counts as failed */
 import { gesturePose01 } from '../../game/gesturePose.js'; /* v2.3.2245: harvest frames follow the hand */
 import { activePet } from '../../game/petBook.js'; /* v2.3.3120: the pet out with you is the record's */
 import { petFrames, petSideFaces, petArtHeight } from '../petSprites.js'; /* v2.3.3120: the pet sheet */
@@ -1309,8 +1309,8 @@ let _bodyAnchors = null;
 let _bodyTops = null;
 let _bodyDataPromise = null;
 let _bodyDataRounds = 0;   /* v2.3.3689: rounds asked (the later ones busted) */
-const BODY_DATA_TIMEOUT_MS = 15000;   /* v2.3.4431: as the head pieces' meta.json */
-/* v2.3.4431: fetch(url), given up (aborted, a rejection) after `ms`; 0: no limit */
+const BODY_DATA_TIMEOUT_MS = 15000;   /* v2.3.4452: as the head pieces' meta.json */
+/* v2.3.4452: fetch(url), given up (aborted, a rejection) after `ms`; 0: no limit */
 function _fetchLimited(url, ms) {
   let ac = null, timer = 0;
   if (ms > 0) {
@@ -1327,7 +1327,7 @@ function _ensureBodyData() {
      v2.3.1398: the retries CHAIN into a returned promise and preloadTraits
      awaits it, so the loading screen holds until the placement schemas are
      really in (owner: hats/beards missing right after a deploy). */
-  /* v2.3.4431: and a TIME LIMIT (TRAPS §257): a request that never answered
+  /* v2.3.4452: and a TIME LIMIT (TRAPS §257): a request that never answered
      held this promise for the page, its retries waiting on a failure that
      never came (state-machine sweep VC-1, R1-2).  Aborted after 15 s, as
      the head pieces' meta.json is, into the same retries; `?traitretry=0` or
@@ -1361,9 +1361,11 @@ function _ensureBodyData() {
   ]).then((r) => {
     if (!_bodyAnchors || !_bodyTops) {
       try { recordCrash('sheet', `body data missing after round ${round} (anchors ${!!_bodyAnchors}, tops ${!!_bodyTops})`); } catch (e) { /* telemetry */ }
-      /* v2.3.4431: ten later rounds at most (retry-looks.md's limit), then
-         the page keeps what it has */
-      if (_bodyDataRounds <= RETRY_ROUNDS) setTimeout(() => { if (_bodyDataPromise === p) _bodyDataPromise = null; }, 20000);
+      /* v2.3.4452: left WITHOUT an end, as since v2.3.3689 (retry-looks.md's
+         ten-round limit is for new loaders): two small files, 20 s apart,
+         asked only while a head piece wants them, and nothing on any head is
+         placed without them -- a phone through a long outage heals by itself */
+      setTimeout(() => { if (_bodyDataPromise === p) _bodyDataPromise = null; }, 20000);
     }
     return r;
   });
@@ -5113,7 +5115,7 @@ function _ensureHairMaskLoaded(hatId) {
     for (const dir of Object.keys(e.retryAt)) {
       if (now < e.retryAt[dir]) continue;
       delete e.retryAt[dir];
-      if (e.tex[dir]) continue;   /* v2.3.4431: a late answer came meanwhile */
+      if (e.tex[dir]) continue;   /* v2.3.4452: a late answer came meanwhile */
       _loadHairMaskDir(e, hatId, dir, (e.rounds[dir] || 0) + 1);
     }
   }
@@ -5134,7 +5136,7 @@ function _ensureHairMaskLoaded(hatId) {
    Pixi's cache of the failed load (`&g=`).  `?traitretry=0` or
    `?retrylooks=0` (P1's switch, shared) is the game as it was. */
 const HAIR_MASK_ROUNDS = 10;
-/* v2.3.4431: and a TIME LIMIT (TRAPS §257): a request that never answered
+/* v2.3.4452: and a TIME LIMIT (TRAPS §257): a request that never answered
    was never retried (only a rejection was), and held the loading screen to
    its cap (state-machine sweep VC-1, R1-9).  Past TRAIT_LOAD_TIMEOUT_MS it
    counts as failed, into the same rounds; a late answer is kept if the facing
@@ -7442,7 +7444,7 @@ function _attachNamePill(container, nameSize, sizeMult, host) {
    so the first build already carries the art. */
 const BRO_BADGE_URL = '/icons/ui/verified-bro-small.webp';
 let _broBadgeTex = null;
-/* ═══ v2.3.4431: THE PLATE ICONS ARE ASKED FOR AGAIN ═══
+/* ═══ v2.3.4452: THE PLATE ICONS ARE ASKED FOR AGAIN ═══
    The Bro badge, the small icons and the quest pins were each one
    Assets.load behind the loading screen, looked up after: one failed or
    stalled request (Pixi asks once: its own retries are off by default) and
@@ -7459,11 +7461,17 @@ let _broBadgeSet = null;
 const _broBadgeGot = Object.create(null);
 export function preloadBroBadge() {
   if (!_broBadgeSet) _broBadgeSet = _iconSet({ bro: BRO_BADGE_URL }, _broBadgeGot, (k, t) => { _broBadgeTex = t; });
-  return _broBadgeSet.start().then(() => _broBadgeTex);
+  /* the gate waits for the first load to SETTLE, never for success; a badge
+     not in then rejects, so the loading report (`__btPreloadReport.broBadge`,
+     mp-brobadge) still says so, as before -- its later rounds still run */
+  return _broBadgeSet.start().then(() => {
+    if (!_broBadgeTex) throw new Error('bro badge: not loaded');
+    return _broBadgeTex;
+  });
 }
 function _broBadgeTexture() {
   if (_broBadgeTex) return _broBadgeTex;
-  if (_broBadgeSet) _broBadgeSet.ensure();   /* v2.3.4431 */
+  if (_broBadgeSet) _broBadgeSet.ensure();   /* v2.3.4452 */
   if (!Assets.cache.has(BRO_BADGE_URL)) return Texture.EMPTY;
   _broBadgeTex = Texture.from(BRO_BADGE_URL) || null;
   return _broBadgeTex || Texture.EMPTY;
@@ -7476,7 +7484,7 @@ function _broBadgeTexture() {
    the loading screen as the Bro badge is (preloadAnimations.js) and only
    LOOKED UP here -- never a first-use load (the v2.3.2345 note above). */
 const _smallTexHeld = Object.create(null);
-let _smallSet = null;   /* v2.3.4431: asked again (above) */
+let _smallSet = null;   /* v2.3.4452: asked again (above) */
 export function preloadSmallIconTextures() {
   if (!_smallSet) _smallSet = _iconSet({ ...SMALL_TEX }, _smallTexHeld);
   return _smallSet.start();
@@ -7484,7 +7492,7 @@ export function preloadSmallIconTextures() {
 function _smallTex(k) {
   const held = _smallTexHeld[k];
   if (held && !held.destroyed) return held;
-  if (_smallSet) _smallSet.ensure();   /* v2.3.4431 */
+  if (_smallSet) _smallSet.ensure();   /* v2.3.4452 */
   const url = SMALL_TEX[k];
   if (!url || !Assets.cache.has(url)) return Texture.EMPTY;
   const t = Texture.from(url);
@@ -7512,7 +7520,7 @@ function _bindSmallTex(spr, k) {
    questPins) and only LOOKED UP here, as the small icons above; the drawn
    disc stays as the fallback while a pin's picture is not in. */
 const _pinTexHeld = Object.create(null);
-let _pinSet = null;   /* v2.3.4431: asked again (above) */
+let _pinSet = null;   /* v2.3.4452: asked again (above) */
 export function preloadQuestPinTextures() {
   if (!_pinSet) _pinSet = _iconSet({ ...QUEST_PIN }, _pinTexHeld);
   return _pinSet.start();
@@ -7520,7 +7528,7 @@ export function preloadQuestPinTextures() {
 function _questPinTex(k) {
   const held = _pinTexHeld[k];
   if (held && !held.destroyed) return held;
-  if (_pinSet) _pinSet.ensure();   /* v2.3.4431 */
+  if (_pinSet) _pinSet.ensure();   /* v2.3.4452 */
   const url = QUEST_PIN[k];
   if (!url || !Assets.cache.has(url)) return Texture.EMPTY;
   const t = Texture.from(url);

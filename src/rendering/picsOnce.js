@@ -40,7 +40,7 @@
  * every copy.  QA: window.__btPicsOnce(). */
 import { clientOffAtLoad } from '../game/clientOff.js';   /* v2.3.3755; v2.3.3770: relative, so node's checks can load it (check-hairmask-parity imports the renderer) */
 import { Cache, Texture } from 'pixi.js';
-import { laterRounds, RETRY_LATER_MS, RETRY_ROUNDS } from './retryLooks.js';   /* v2.3.4431: a blank chip copy's restore asked for again */
+import { laterRounds, RETRY_LATER_MS, RETRY_ROUNDS } from './retryLooks.js';   /* v2.3.4452: a blank chip copy's restore asked for again */
 
 const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
 /* v2.3.3715: on by default (the owner, 2026-10-28: "I think including the new
@@ -169,7 +169,7 @@ function release(src) {
 /** The page copy of `src` again, from its file: a promise of true once the
  *  source holds its <img>.  The chip's copy is the same pixels, so it is not
  *  sent again -- unless a chip was given an empty one meanwhile (`blank`). */
-/* ═══ v2.3.4431: A BLANK COPY'S RESTORE IS ASKED FOR AGAIN ═══
+/* ═══ v2.3.4452: A BLANK COPY'S RESTORE IS ASKED FOR AGAIN ═══
    A restore that failed (an error, or a request that never answered) after
    the chip was given an empty copy (`blank`) left that picture blank on the
    chip for the visit: nothing sends it again (state-machine sweep VC-1,
@@ -181,7 +181,7 @@ function release(src) {
    is the game as it was. */
 const RESTORE_TIMEOUT_MS = 20000;
 const _restoreRounds = laterRounds('picsretry');
-/** v2.3.4431: after a failed restore, when to ask again (ms), or -1: not. */
+/** v2.3.4452: after a failed restore, when to ask again (ms), or -1: not. */
 export function restoreAgainIn(blank, rounds, on) {
   if (!blank || !on || rounds >= RETRY_ROUNDS) return -1;
   return RETRY_LATER_MS[Math.min(rounds, RETRY_LATER_MS.length - 1)];

@@ -126,7 +126,7 @@ export function preloadFarmArt() {
   const jobs = [];
   for (const n of farmNames()) {
     jobs.push(Assets.load(farmArtUrl(n)).then((t) => {
-      /* v2.3.4431: landed after you left: let go of now, not at the next
+      /* v2.3.4452: landed after you left: let go of now, not at the next
          visit's free (up to ~9 MB held off the farm; state-machine sweep
          VC-2, R11-9) -- unless a new visit is loading it (Pixi hands both
          the one texture, and that visit frees it) */

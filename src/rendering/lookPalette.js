@@ -53,7 +53,7 @@
  */
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource } from 'pixi.js';
 import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf } from './paletteTex.js';
-import { timeLimit } from './retryLooks.js';   /* v2.3.4431: a set's file that never answers has failed */
+import { timeLimit } from './retryLooks.js';   /* v2.3.4452: a set's file that never answers has failed */
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
 import { lookPaletteChoice } from '../game/lookPaletteChoice.js';   /* v2.3.3838: not built on Windows */
 
@@ -233,7 +233,7 @@ function buildSheet(set, name, m, img, roles) {
   _stats.sheets++;
   _stats.sheetBytes += data.length;
 }
-/* ═══ v2.3.4431: A SET'S FILES HAVE A TIME LIMIT ═══
+/* ═══ v2.3.4452: A SET'S FILES HAVE A TIME LIMIT ═══
    A manifest or sheet that never answered left the set 'loading' for the
    page (the loading screen held to its cap), and a sheet that landed after
    another had failed was still built into a set already thrown out: half a
@@ -250,7 +250,7 @@ const SET_FILE_TIMEOUT_MS = (() => {
 async function loadSet(name) {
   const s = _sets.get(name);
   if (!s || s.loading) return s ? s.loading : false;
-  let dead = false;   /* v2.3.4431: failed -- a sheet that lands after is not built */
+  let dead = false;   /* v2.3.4452: failed -- a sheet that lands after is not built */
   s.loading = (async () => {
     try {
       const v = 'v2.3.3737';

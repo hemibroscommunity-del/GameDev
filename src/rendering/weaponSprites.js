@@ -10,7 +10,7 @@
  */
 
 import { Assets, Texture } from 'pixi.js';
-import { loadSetLater } from './loadSetLater.js';   /* v2.3.4431: a weapon picture that failed once is asked for again */
+import { loadSetLater } from './loadSetLater.js';   /* v2.3.4452: a weapon picture that failed once is asked for again */
 
 /* Bump on every weapon-art change so URL-keyed browser/CDN caches
    refetch instead of serving the previous PNG. */
@@ -172,7 +172,7 @@ function softenBlades() {
 
 let loadPromise = null;
 
-/* ═══ v2.3.4431: A WEAPON PICTURE THAT FAILED ONCE IS ASKED FOR AGAIN ═══
+/* ═══ v2.3.4452: A WEAPON PICTURE THAT FAILED ONCE IS ASKED FOR AGAIN ═══
    Each sheet was one Assets.load behind a promise kept for the page: one
    failed or stalled request and that weapon drew its procedural stand-in for
    the visit (state-machine sweep VC-1, R8-5).  Now the sheets (one load a
@@ -208,7 +208,7 @@ export function loadWeaponSprites() {
  *  is registered (e.g. sword:wood -> Bamboo); otherwise falls back to
  *  the bare-type entry. */
 export function getWeaponTexture(type, gearBase, dir) {
-  if (_set) _set.ensure();   /* v2.3.4431: a sheet that failed, asked again when its round comes */
+  if (_set) _set.ensure();   /* v2.3.4452: a sheet that failed, asked again when its round comes */
   /* v2.3.942/944: per-facing held art keyed `${type}-${dir}` (greatsword, bow). */
   if (dir && SHEETS[`${type}-${dir}`] && SHEETS[`${type}-${dir}`].tex) {
     return SHEETS[`${type}-${dir}`].tex;
