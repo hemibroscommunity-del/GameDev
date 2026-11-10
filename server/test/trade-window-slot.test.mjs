@@ -103,14 +103,30 @@ if (['t2LinkUp', 't2Leave', 't2LeaveDrop', 't2IgnoreBusy', 't2OnStateSync', 't2H
       && T.t2IgnoreBusy({ _t2Live: 't1' }, { state: 'cancelled', reason: 'disconnected' }) === false);
   }
   {
-    const c = clock(); let slot = { state: 'open', id: 't1' }; let ivCleared = null;
-    const S = { _realtimeStatus: 'connected', _t2Live: 't1', _t2DoneWatch: 77 };
-    T.t2Leave(S, () => {}, () => {}, c);
-    T.t2OnStateSync(S, (v) => { slot = v; }, c.clearTimer, (id) => { ivCleared = id; });
-    check('1n a fresh join clears the window (the bug: it stayed up for good)', slot === null, slot);
-    check('1o ...and its receipt watcher, its live mark and the pending leave',
-      ivCleared === 77 && S._t2DoneWatch === null && S._t2Live === null && !S._t2Leave && c.pending() === 0,
-      { ivCleared, S });
+    /* the ordinary reconnect: the worker evicts the old socket without
+       webSocketClose and keeps the trade (join.js), so the window stays */
+    const c = clock(); const live = { state: 'open', id: 't1' }; let slot = live;
+    const S = { _realtimeStatus: 'connected', _t2Live: 't1' };
+    T.t2OnStateSync(S, (v) => { slot = v; }, () => {});
+    check('1n a join while the window shows an open trade leaves it up (the worker may still hold it)',
+      slot === live && S._t2Live === 't1', { slot, live: S._t2Live });
+    let ended = 0;
+    T.t2Leave(S, () => {}, () => { ended++; slot = null; }, c);
+    c.advance(3100);
+    check('1o ...and it is still closable: a leave with no answer closes it in 3 s', ended === 1 && slot === null, { ended });
+  }
+  {
+    let slot = { state: 'done', receipt: {} }; let ivCleared = null;
+    const S = { _t2Live: null, _t2DoneWatch: 77, _t2QuietUntil: 5 };
+    T.t2OnStateSync(S, (v) => { slot = v; }, (id) => { ivCleared = id; });
+    check('1p a join clears what no worker re-sends (a receipt, an invite card, a waiting drawer) and the receipt watcher',
+      slot === null && ivCleared === 77 && S._t2DoneWatch === null && !S._t2QuietUntil, { slot, ivCleared });
+    const c = clock(); let ended = 0;
+    const S2 = { _realtimeStatus: 'connected', _t2Live: 't2' };
+    T.t2Leave(S2, () => {}, () => ended++, c);
+    T.t2OnStateSync(S2, () => {}, () => {});
+    c.advance(3100);
+    check('1q a leave asked for before the join still closes the window if nothing answers', ended === 1, { ended });
   }
 }
 
@@ -198,7 +214,7 @@ check('3d ...and the worker still answers nothing to a cancel with no trade on f
 /* ── 4. the wiring ── */
 const ws = src('src/networking/wsClient.js');
 const sync = ws.indexOf("setParty(null); S._party = null;");
-check('4a wsClient\'s state_sync clears the trade window beside the party',
+check('4a wsClient\'s state_sync runs the trade window\'s join rule beside the party',
   sync > 0 && /t2OnStateSync\(S, setTrade2\)/.test(ws.slice(sync, sync + 1200)));
 check('4b ...t2OnStateSync imported from game/tradeSlot.js', /import \{[^}]*\bt2OnStateSync\b[^}]*\} from '@\/game\/tradeSlot\.js';/.test(ws));
 check('4c wsClient gives the panel its local end, through the real handler',

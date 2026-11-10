@@ -10,15 +10,16 @@
  *
  * Three rules, here with no imports so node can test them
  * (server/test/trade-window-slot.test.mjs):
- *   1. t2OnStateSync -- a fresh join clears the window, its receipt watcher
- *      and any pending leave, the way the party is cleared there
- *      (wsClient.js, v2.3.1185).  Safe against the worker: a socket the worker
- *      sees close cancels the trade (index.js webSocketClose ->
- *      _trade2OnDisconnect), and a deploy wipes it with the room's memory.
- *      The one trade that survives is a second login's (join.js evicts the
- *      old socket without webSocketClose); every _t2Broadcast sends the full
- *      state to both, so the partner's next action draws the window again,
- *      and the trade ends by itself at the 5-minute idle.
+ *   1. t2OnStateSync -- a fresh join clears what the old socket left that
+ *      no worker re-sends: an invite card, a waiting drawer, a receipt and its
+ *      watcher.  A window showing an OPEN trade stays up.  The ordinary phone
+ *      reconnect (an app switch, a signal blip) replaces a socket the worker
+ *      still holds without webSocketClose (join.js, "superseded by
+ *      reconnect"), so that trade lives on and the window keeps working on the
+ *      new socket, as it always did.  When the worker did see the close (the
+ *      trade cancelled) or updated (the trade wiped), the window is dead, and
+ *      rule 2 makes it closable within 3 s.  Clearing it here waits on the
+ *      worker re-sending a live trade after state_sync (the server batch).
  *   2. t2Leave -- ✕, Cancel and Leave Trade send trade2_cancel as ever, and
  *      when no answer comes within T2_LEAVE_WAIT_MS, or the socket is down,
  *      the window closes on the phone ("The trade was cancelled").  Any
@@ -82,15 +83,15 @@ export function t2IgnoreBusy(S, payload) {
   return !!(S && S._t2Live && payload && payload.state === 'cancelled' && payload.reason === 'busy');
 }
 
-/* a fresh join (state_sync): nothing of the old socket's trade stays up */
-export function t2OnStateSync(S, setTrade2, clearTimer, clearIv) {
-  if (!S) return;
-  t2LeaveDrop(S, clearTimer);
+/* a fresh join (state_sync): what the old socket left is cleared, except a
+   window showing an open trade (rule 1 above), and a leave already asked for,
+   which still closes the window if nothing answers */
+export function t2OnStateSync(S, setTrade2, clearIv) {
+  if (!S || S._t2Live) return;
   if (S._t2DoneWatch) {
     try { (clearIv || clearInterval)(S._t2DoneWatch); } catch (e) { /* gone already */ }
     S._t2DoneWatch = null;
   }
-  S._t2Live = null;
   S._t2QuietUntil = 0;
   if (setTrade2) setTrade2(null);
 }

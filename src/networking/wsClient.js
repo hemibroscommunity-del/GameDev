@@ -1649,14 +1649,14 @@ export function setupWebSocket(ctx) {
                  party_state right after state_sync when the roster
                  survived, so a real party pops straight back. */
               try { if (setParty) setParty(null); S._party = null; } catch (e) {}
-              /* v2.3.4362: and the trade window, its receipt watcher and any
-                 leave waiting on an answer, the same way (game/tradeSlot.js).
-                 A socket the worker saw close cancelled the trade
-                 (webSocketClose -> _trade2OnDisconnect), a deploy wiped it;
-                 the one that lives on, a second login's, is drawn again by the
-                 partner's next action (_t2Broadcast sends both the full state).
-                 Before this a window from the old socket stayed up for good:
-                 its buttons waited on a worker with no trade on file (V8b). */
+              /* v2.3.4362: and what the old socket's trade left that no worker
+                 re-sends -- an invite card, a waiting drawer, a receipt and its
+                 watcher (game/tradeSlot.js).  NOT a window showing an open
+                 trade: the ordinary reconnect replaces a socket the worker
+                 still holds (join.js, "superseded by reconnect"), the trade
+                 lives on and the window keeps working.  A dead one closes
+                 within 3 s of its leave (t2Leave) -- before this its buttons
+                 waited forever on a worker with no trade on file (V8b). */
               try { t2OnStateSync(S, setTrade2); } catch (e) {}
               /* v2.3.1154: HP/Endurance grid deploy-order gate.  The
                  pool multipliers only apply while THIS worker claims
