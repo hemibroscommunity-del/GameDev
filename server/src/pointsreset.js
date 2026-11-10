@@ -34,11 +34,32 @@
  * KILL SWITCH (lower case, TRAPS §117): `pointsreset: false` in the live
  * flags -- every reset refused ('off'), and caps.pointsreset false at the next
  * join, so the button is not shown.
+ *
+ * v2.3.4372: THE MINUTE SURVIVES A REJOIN (the state-machine sweep, V9c
+ * M3-14).  The minute was `ps._pointsResetAt` alone, and every join rebuilds
+ * `ps` (join.js, `this.playerState[msg.id] = {...}`), so a rejoin forgot it:
+ * a script's reset, respend, rejoin loop wrote 1 + 6(L-1) rows a minute for a
+ * level-L character (the reset's one row, then one `_saveRpg` a point
+ * respent) -- about 131,000 a day at level 16, past the free plan's 100,000
+ * writes a day for the whole game.  Now the stamp is ALSO kept in a room Map
+ * keyed by player id (`_pointsResetAts`, memory only, never saved: a worker
+ * restart forgets it, as it forgets the sockets), read with the socket's own;
+ * the later of the two is the minute.  Bounded: each reset drops the stamps a
+ * minute old from the front (the Map is in time order: delete then set), and
+ * never more than RESET_MAX are held.
+ *   KILL SWITCH (lower case): `pointsresetroom: false` -- the room's Map is
+ * neither read nor written, and the minute is the socket's alone, as before.
+ *   Test mode keeps the minute: it is a cost guard (a row a reset), and test
+ * mode leaves "every save and payment rule" on (testmode.js); the owner's
+ * test lever (/dev/combat deal: true) deals points without it.
  */
 import { prog3RespecPoints, PROG3 } from './prog3.js';
 
 export const POINTS_RESET = Object.freeze({
   GAP_MS: 60000,
+  /* v2.3.4372: the most stamps the room holds (a player id each, a minute
+     each) -- far above the resets a room sees in a minute */
+  RESET_MAX: 2048,
 });
 
 const own = (o, k) => !!o && typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
@@ -65,6 +86,33 @@ export const pointsResetMethods = {
     return !!(f && typeof f === 'object' && own(f, 'pointsreset') && !f.pointsreset);
   },
 
+  /* v2.3.4372: the room keeps the minute across a rejoin unless switched off */
+  _pointsResetRoomOn() {
+    const f = this._liveFlags;
+    return !(f && typeof f === 'object' && own(f, 'pointsresetroom') && !f.pointsresetroom);
+  },
+
+  /* v2.3.4372: when this player id last reset, by the room's Map (0: none
+     within the minute, or the switch off) */
+  _pointsResetRoomAt(pid, now) {
+    if (!this._pointsResetRoomOn()) return 0;
+    const m = this._pointsResetAts;
+    const at = m ? Number(m.get(pid)) || 0 : 0;
+    return at > 0 && now - at < POINTS_RESET.GAP_MS ? at : 0;
+  },
+
+  _pointsResetRoomStamp(pid, now) {
+    if (!this._pointsResetRoomOn()) return;
+    const m = this._pointsResetAts || (this._pointsResetAts = new Map());
+    m.delete(pid);   /* re-inserted last: the Map stays in time order */
+    m.set(pid, now);
+    for (const [k, at] of m) {
+      if (now - at < POINTS_RESET.GAP_MS) break;
+      m.delete(k);
+    }
+    while (m.size > POINTS_RESET.RESET_MAX) m.delete(m.keys().next().value);
+  },
+
   _pointsResetSend(pid, payload) {
     const ws = this._wsBySessionId(pid);
     if (!ws) return;
@@ -82,7 +130,9 @@ export const pointsResetMethods = {
       this._pointsResetSend(pid, { ok: false, err: 'fight' });
       return;
     }
-    const last = Number(ps._pointsResetAt) || 0;
+    /* v2.3.4372: the later of the socket's stamp and the room's (a rejoin
+       rebuilds the first, never the second) */
+    const last = Math.max(Number(ps._pointsResetAt) || 0, this._pointsResetRoomAt(pid, now));
     if (last > 0 && now - last < POINTS_RESET.GAP_MS) {
       this._pointsResetSend(pid, { ok: false, err: 'soon', wait: POINTS_RESET.GAP_MS - (now - last) });
       return;
@@ -91,6 +141,7 @@ export const pointsResetMethods = {
     const sumRule = typeof this._oneLevelOn === 'function' ? !this._oneLevelOn() : false;
     prog3RespecPoints(ps.prog3, sumRule);
     ps._pointsResetAt = now;
+    this._pointsResetRoomStamp(pid, now);
     this._prog3Recompute(ps);
     this._saveRpg(pid, ps);
     const p3 = ps.prog3;
