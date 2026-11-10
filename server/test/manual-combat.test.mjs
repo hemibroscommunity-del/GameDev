@@ -5,7 +5,7 @@
  * every attack is a swipe.
  *
  *   1. THE SWITCH: off unless `?manual=1`; remembered; `?manual=0` forgets.
- *   2. A BOW'S OR A STAFF'S FLICK: thumb down, moved 24 px or more, lifted =
+ *   2. A BOW'S FLICK (a staff is left as it was: 11): thumb down, moved 24 px or more, lifted =
  *      one shot; a tap, a nudge: none; back to the centre: cancelled.
  *   3. NO FASTER THAN THE WEAPON: a flick too soon shoots nothing and costs
  *      nothing; one a moment too soon is kept.
@@ -16,12 +16,14 @@
  *   7. A SPECIAL is armed and taken once.
  *   8. NO CHOSEN LOCK: only the automatic one is allowed.
  *   9. A weapon changed, a shot nobody took; a quick flick's help.
+ *  11. THE OWNER'S DECISION: a staff swipes nothing (it fires while held,
+ *      as before); a flicked bow is a quarter sooner.
  *  10. THE WIRING: the loop, the handlers, targeting and the special's
  *      button read this file; without the switch the loop's gate is what it
  *      was; this file never writes the aim (a staff bolt's steering). */
 import fs from 'node:fs';
 import {
-  MANUAL, manualCombatWanted, manualMode, manualSling, mcBowSling, mcShotAngle, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAbort, mcAskShot,
+  MANUAL, manualCombatWanted, manualMode, manualSling, mcBowSling, mcShotAngle, mcSwipes, mcBowInterval, setManualCombat, manualOn, mcFrame, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAbort, mcAskShot,
   mcFireWaiting, mcFireDone, mcReady, mcReadyIn, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcAssist, mcArmToggle, mcArmed, mcTakeArmed, mcLockAllowed, mcShoots,
 } from '../../src/game/manualCombat.js';
 
@@ -61,7 +63,7 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
 {
   const S = bow(); const t = 100000;   /* swingTimer 0: long ready */
   mcFrame(S, t, 500, 600);
-  check('2a a bow and a staff shoot; a sword does not', mcShoots(S) && mcShoots({ rpg: { activeSlot: 'staff' } }) && !mcShoots(sword()) && !mcShoots({ rpg: {} }));
+  check('2a a bow shoots by a flick; a staff and a sword do not', mcShoots(S) && !mcShoots({ rpg: { activeSlot: 'staff' } }) && !mcShoots(sword()) && !mcShoots({ rpg: {} }));
   mcSwipeStart(S, t, 100, 100);
   check('2b the press shoots nothing, and neither does moving', !mcFireWaiting(S, t) && mcSwipeMove(S, t + 20, 100, 60) === 'none' && !mcFireWaiting(S, t + 20));
   check('2c lifted 24 px or more from where it touched: one shot', mcSwipeEnd(S, t + 40, 100, 60) === 'fire' && mcFireWaiting(S, t + 40) && S._mc.n === 1);
@@ -165,9 +167,9 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   S.rpg.activeSlot = 'melee';
   mcFrame(S, t + 10, 500, 600);
   check('9a another weapon in hand: the shot asked of the last one is gone', !mcFireWaiting(S, t + 10) && S._mc.fireAt === 0);
-  S.rpg.activeSlot = 'staff';
+  S.rpg.activeSlot = 'ranged';
   mcFrame(S, t + 20, 800, 600);
-  check('9b a staff\'s interval is the staff\'s', (S.swingTimer = t + 20, mcReadyIn(S, t + 320) === 500) && !mcReady(S, t + 819) && mcReady(S, t + 820));
+  check('9b the interval is whatever the loop last said for the weapon in hand', (S.swingTimer = t + 20, mcReadyIn(S, t + 320) === 500) && !mcReady(S, t + 819) && mcReady(S, t + 820));
   mcAskShot(S, t + 900);
   mcFrame(S, t + 901 + MANUAL.FIRE_HOLD_MS, 800, 600);
   check('9c a shot the loop could not take (dazed, in the air) is let go, not kept for later', !mcFireWaiting(S, t + 901 + MANUAL.FIRE_HOLD_MS) && S._mc.fireAt === 0);
@@ -178,6 +180,22 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('9f nothing within 12 degrees: the flick is left as it was', mcAssist(deg(-40), 0, 0, pts, 0) === deg(-40) && mcAssist(1, 0, 0, [], 0) === 1 && mcAssist(1, 0, 0, null, 0) === 1);
   check('9g a monster out of the bow\'s reach is not turned to', mcAssist(0, 0, 0, pts, 90) === 0 && Math.abs(mcAssist(0, 0, 0, pts, 150) - Math.atan2(-10, 100)) < 1e-9);
   check('9h across the +-180 seam', Math.abs(mcAssist(deg(178), 0, 0, [{ x: -100, y: -5 }], 0) - Math.atan2(-5, -100)) < 1e-9);
+}
+
+// ── 11. the owner's decision: the staff as it was, the bow a quarter sooner ──
+{
+  const t = 100000;
+  const St = { rpg: { activeSlot: 'staff' }, swingTimer: 0 };
+  mcFrame(St, t, 800, 600);
+  setManualCombat(true);
+  check('11a with the switch a sword and a bow swipe; a staff does not', mcSwipes(sword()) && mcSwipes(bow()) && !mcSwipes(St) && mcSwipes(null));
+  setManualCombat(false);
+  check('11b without the switch nothing swipes', !mcSwipes(sword()) && !mcSwipes(bow()) && !mcSwipes(St));
+  mcSwipeStart(St, t, 100, 100);
+  check('11c a staff\'s moving thumb is no stroke, its lift no flick, and it asks for no shot and no swing',
+    mcSwipeMove(St, t + 10, 160, 100) === 'none' && mcSwipeEnd(St, t + 20, 160, 100) === 'none' && mcAskShot(St, t + 30) === 'none' && mcMeleeAsk(St, t + 40) === 'no' && !mcFireWaiting(St, t + 40) && !mcSwingWaiting(St, t + 40));
+  check('11d a flicked bow\'s next shot comes a quarter sooner than the held bow\'s', mcBowInterval(495) === 371 && mcBowInterval(600) === 450 && MANUAL.BOW_FASTER === 0.75);
+  check('11e ...and never sooner than the worker will take a hit on the same monster (210 ms)', mcBowInterval(247) === MANUAL.BOW_MIN_MS && mcBowInterval(200) === MANUAL.BOW_MIN_MS && MANUAL.BOW_MIN_MS > 210);
 }
 
 // ── 10. the wiring ──
@@ -199,16 +217,19 @@ const sword = (t) => ({ rpg: { activeSlot: 'melee' }, swingTimer: t || 0 });
   check('10g the handlers: a press starts a swipe on the stick and on the disc, a move may be a sword\'s stroke, the lift is judged before the release tidies, a forced end attacks nothing',
     (bro.match(/mcSwipeStart\(stateRef\.current, /g) || []).length === 2 && (bro.match(/=== 'swing'\) mcMeleeSwipe\(\);/g) || []).length === 2
     && (bro.match(/mcFlickEnd\(t\.clientX, t\.clientY\)/g) || []).length === 2 && /if \(manualOn\(\)\) mcAbort\(S\);/.test(bro));
-  check('10h no special is flicked, the right click arms, a tap attacks nothing', /if \(_rFlick && !manualOn\(\)\)/.test(bro) && /if \(manualOn\(\)\) \{ mcArmToggle\(S\); return 'armed'; \}/.test(bro) && /if \(!manualOn\(\)\) requestTapAttack\(_tjS, endT\);/.test(bro));
+  check('10h a sword and a bow: no special is flicked, the right click arms, a tap attacks nothing -- and each asks mcSwipes, so a staff keeps its flick special, its right click and its tap', /if \(_rFlick && !mcSwipes\(stateRef\.current\)\)/.test(bro) && /if \(mcSwipes\(S\)\) \{ mcArmToggle\(S\); return 'armed'; \}/.test(bro) && /if \(!mcSwipes\(_tjS\)\) requestTapAttack\(_tjS, endT\);/.test(bro));
   check('10i a sword\'s stroke: asked first (too soon: nothing), then the lunge, the armed special, or a swing; the press itself never lunges',
     /var ask = mcMeleeAsk\(S, now\);\s*\n\s*if \(ask === 'yes'\) return mcMeleeGo\(S\);/.test(bro) && /if \(_mcP\) return false;\s*\n\s*try \{ return maybeSwordDash\(S\); \}/.test(bro));
-  check('10j a computer: each click is one attack (a shot asked at the cursor, or a stroke)', /if \(mcShoots\(S\)\) \{[\s\S]{0,220}mcAskShot\(S, Date\.now\(\)\);\s*\n\s*\} else mcMeleeSwipe\(\);/.test(bro));
+  check('10j a computer: each click is one attack (a shot asked at the cursor, or a stroke); a staff is left to the lines below', /if \(mcSwipes\(S\)\) \{\s*\n\s*if \(mcShoots\(S\)\) \{[\s\S]{0,220}mcAskShot\(S, Date\.now\(\)\);\s*\n\s*\} else mcMeleeSwipe\(\);/.test(bro));
   const tg = read('../../src/game/targeting.js');
   check('10k targeting keeps no chosen lock, and no duel lock, with the switch', /if \(manualOn\(\)\) \{\s*\n\s*if \(S\.lockedTarget && !mcLockAllowed\(S\.lockedTarget\)\) S\.lockedTarget = null;\s*\n\s*\} else keepDuelLock\(S\);/.test(tg));
   const btn = read('../../src/ui/panels/SpecialButton.jsx');
-  check('10l the special\'s button arms (and shows it), and is there whenever a weapon is in hand', /mcArmToggle\(Sm\)/.test(btn) && /if \(manualOn\(\)\) return true;/.test(btn) && /armed \? 'armed'/.test(btn));
+  check('10l the special\'s button arms (and shows it), and is there whenever a weapon is in hand', /mcArmToggle\(Sm\)/.test(btn) && /if \(mcSwipes\(S\)\) return true;/.test(btn) && /armed \? 'armed'/.test(btn) && !/manualOn/.test(btn));
   check('10o the slingshot bow: the stick\'s drag, the disc\'s pull and the lift all turn the shot round through the one rule (mcShotAngle)',
     /if \(manualOn\(\)\) angle = mcShotAngle\(S, angle\);/.test(bro) && /var ang = mcShotAngle\(S, Math\.atan2\(y - oy, x - ox\)\);/.test(bro) && /mcBowSling\(stateRef\.current\) && !bSwipe\.toShield/.test(bro));
+  check('10p the loop: a staff is not manual at all, and a flicked bow\'s interval is mcBowInterval of the held bow\'s',
+    /var _mcOn = manualOn\(\) && _aSlot !== 'staff';\s*\n\s*var _mcDraws = _mcOn && _aSlot === 'ranged';\s*\n\s*if \(_mcDraws\) effectiveSwingCd = mcBowInterval\(effectiveSwingCd\);/.test(loop)
+    && /if \(mcSwipes\(stateRef\.current\)\) \{ if \(stateRef\.current\) mcSwipeStart/.test(bro));
   check('10m nothing is drawn for it: the three indicators are gone', !fs.existsSync(new URL('../../src/ui/panels/ManualGauge.jsx', import.meta.url)) && !/ManualGauge/.test(bro) && !/bt-mc-/.test(read('../../src/styles/game.css')));
   const srv = read('../src/combat.js');
   check('10n the worker\'s own floors are untouched by this change (nothing here attacks faster than the held attack did)', /if \(nowTs - cad\.n < 210\) return;/.test(srv));

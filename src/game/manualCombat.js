@@ -24,6 +24,25 @@
  *
  *   EVERY ATTACK IS A SWIPE.  Nothing to wait on, nothing to watch.
  *
+ * AND THE OWNER'S DECISION, 2026-11-10, having tried both links: "Ok I think
+ * I've decided.  Keep tap to lock on monster off.  Keep the staff the old way
+ * (prior to any of these changes) where it keeps auto-attacking as long at
+ * the finger is held in whatever direction and you can steer the projectile.
+ * For bow keep this new flick mechanism but make attack speed 25% faster (in
+ * terms of when the next shot can fire again).  Also for sword keep the new
+ * flick mechanism."  So:
+ *
+ *   A SWORD   a stroke each swing (below);
+ *   A BOW     a flick each shot (below), and its interval is BOW_FASTER of
+ *             what the held bow's was -- three quarters: a shot a quarter
+ *             sooner -- never under BOW_MIN_MS (the worker's own floor is
+ *             210 ms a monster: combat.js);
+ *   A STAFF   NONE OF THIS: it fires by itself while the thumb is held, its
+ *             tap is a bolt, its flick and its button are its special, as
+ *             before any of it (mcSwipes says which weapon swipes).  Its
+ *             bolt is steered by the held thumb, as ever;
+ *   NO LOCK a player chose, for all three.
+ *
  * BEHIND A SWITCH while it is new: `?manual=1` in the address turns it on for
  * this phone or computer (and it stays on: localStorage `bt_manual`);
  * `?manual=0` turns it off again.  Without it combat is exactly as it was.
@@ -38,7 +57,7 @@
  *     still faces the nearest monster by itself.  Back and forth without
  *     lifting is a swing each stroke.  A tap swings nothing.
  *
- *   A BOW, A STAFF -- a FLICK: thumb down, moved, lifted SWIPE_PX or more
+ *   A BOW -- a FLICK: thumb down, moved, lifted SWIPE_PX or more
  *     from where it touched = one shot, the way it moved.  A slow drag is the
  *     same gesture made carefully: the sight turns with the thumb, and the
  *     lift is the shot.  Back to where the thumb started (inside CENTRE_PX),
@@ -46,9 +65,9 @@
  *     is helped a little: its shot turns to a monster within ASSIST_DEG of
  *     the way it pointed (mcAssist) -- a thumb is not a mouse.  A drag that
  *     took its time is left exactly as aimed.
- *     A staff bolt in flight is steered by the held thumb exactly as before
- *     (projectiles.js reads S._aiming / S._aimAngle, which this file never
- *     writes): flick to launch, touch and hold to steer.
+ *     (For one evening a staff flicked too.  It does not now: see above.
+ *     projectiles.js reads S._aiming / S._aimAngle to steer its bolt, and
+ *     this file never writes either.)
  *
  *   NO FASTER THAN THE WEAPON.  Each weapon keeps its own interval (the same
  *     number the held attack fired on: the loop says it each frame, mcFrame).
@@ -99,6 +118,12 @@ export var MANUAL = {
   /* a shot asked for is the loop's to take on its next frame; one it could
      not take (dazed, in the air, the shield up) is let go after this */
   FIRE_HOLD_MS: 250,
+  /* a flicked bow's interval is this much of the held bow's (the owner: "make
+     attack speed 25% faster (in terms of when the next shot can fire
+     again)"), and never under BOW_MIN_MS: the worker drops a hit sooner than
+     210 ms after the last on the same monster (combat.js) */
+  BOW_FASTER: 0.75,
+  BOW_MIN_MS: 215,
   /* the interval when the loop has not said yet (the first frame of a session) */
   NEED_DEFAULT_MS: 600,
   KEY: 'bt_manual',
@@ -147,8 +172,17 @@ export function mcBowSling(S) { return manualSling() && slotOf(S) === 'ranged'; 
 /** The way a shot leaves for a thumb that went `ang` from where it touched:
  *  that way -- or, for the slingshot bow, the opposite. */
 export function mcShotAngle(S, ang) { return mcBowSling(S) ? Math.atan2(-Math.sin(ang), -Math.cos(ang)) : ang; }
-/** Does this weapon shoot (the bow, the staff)?  A sword does not. */
-export function mcShoots(S) { var s = slotOf(S); return s === 'ranged' || s === 'staff'; }
+/** Does this weapon shoot by a FLICK (the bow)?  A sword strokes; a staff
+ *  does neither (it fires while held, as it always has). */
+export function mcShoots(S) { return slotOf(S) === 'ranged'; }
+/** Does this weapon swing by a STROKE (a sword, or bare hands)? */
+function strokes(S) { var s = slotOf(S); return s !== 'ranged' && s !== 'staff'; }
+/** Is this weapon's attack a SWIPE at all in manual combat (a sword, a bow)?
+ *  False for a staff -- and false without the switch.  The handlers ask this
+ *  where a staff must be left exactly as it was. */
+export function mcSwipes(S) { return manualOn() && slotOf(S) !== 'staff'; }
+/** A flicked bow's interval, from the held bow's. */
+export function mcBowInterval(heldMs) { return Math.max(MANUAL.BOW_MIN_MS, Math.floor(heldMs * MANUAL.BOW_FASTER)); }
 
 /** The loop says, each frame, how long this weapon's interval is (a bow's or
  *  a staff's, and a sword's); and what time it is (a shot nobody took, a
@@ -184,10 +218,10 @@ export function mcSwipeStart(S, now, x, y) {
 /** The thumb moved to (x, y).  A SWORD: 'swing' each time it has gone
  *  SWIPE_PX from where its last stroke ended, inside SWIPE_MS (the caller
  *  asks mcMeleeMay and swings); a thumb that drifts is followed, not
- *  counted.  A bow or a staff: 'none' -- theirs is the lift. */
+ *  counted.  A bow: 'none' -- its shot is the lift.  A staff: 'none'. */
 export function mcSwipeMove(S, now, x, y) {
   var m = st(S);
-  if (!m || !m.down || mcShoots(S)) return 'none';
+  if (!m || !m.down || !strokes(S)) return 'none';
   if (now - m.at > MANUAL.SWIPE_MS) { m.ax = x; m.ay = y; m.at = now; return 'none'; }
   var dx = x - m.ax, dy = y - m.ay;
   if (dx * dx + dy * dy < MANUAL.SWIPE_PX * MANUAL.SWIPE_PX) return 'none';
@@ -195,11 +229,11 @@ export function mcSwipeMove(S, now, x, y) {
   return 'swing';
 }
 
-/** The thumb lifted at (x, y).  A BOW or a STAFF: 'fire' when it is
+/** The thumb lifted at (x, y).  A BOW: 'fire' when it is
  *  SWIPE_PX or more from where it touched and the weapon is ready (or will
  *  be inside EARLY_MS: the loop takes the shot then); 'early' when the
  *  weapon is not; 'cancel' when it came back to the centre having left it;
- *  'none' for a tap.  A sword: 'none'.  `quick` in the answer's second word
+ *  'none' for a tap.  A sword, a staff: 'none'.  `quick` in the answer's second word
  *  is the caller's to ask (mcWasQuick). */
 export function mcSwipeEnd(S, now, x, y) {
   var m = st(S);
@@ -240,7 +274,7 @@ export function mcFireDone(S) { var m = S && S._mc; if (m) { m.fireAt = 0; m.fir
 /** A sword's stroke: may it swing now?  'yes'; 'soon' (inside EARLY_MS of
  *  ready: kept, mcSwingWaiting says when); 'no'. */
 export function mcMeleeAsk(S, now) {
-  if (!S || mcShoots(S)) return 'no';
+  if (!S || !strokes(S)) return 'no';
   var m = st(S);
   var wait = mcReadyIn(S, now);
   if (wait === 0) return 'yes';
@@ -251,7 +285,7 @@ export function mcMeleeAsk(S, now) {
 /** A sword's stroke that came a moment early: is it due now? */
 export function mcSwingWaiting(S, now) {
   var m = S && S._mc;
-  return !!m && !!m.swingUntil && now <= m.swingUntil && !mcShoots(S) && mcReadyIn(S, now) === 0;
+  return !!m && !!m.swingUntil && now <= m.swingUntil && strokes(S) && mcReadyIn(S, now) === 0;
 }
 export function mcSwingDone(S) { var m = S && S._mc; if (m) m.swingUntil = 0; }
 

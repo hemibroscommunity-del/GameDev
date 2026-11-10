@@ -460,7 +460,7 @@ import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the s
 import { climbBegin, climbSteer, climbSpeed, climbTick, riseSolidAt } from '@/game/climbActions.js';   /* v2.3.3994: the lagoon's climb and its faces (`?climb=1`) */
 import { tickJump, landJump } from '@/game/jumpActions.js';   /* v2.3.3017: jumping (X on a keyboard; v2.3.3105: a tap on the right stick -- v2.3.3712: no longer, so triggerJump is the button's alone) */
 import { rightTapBusy, tapFreeMaxMs, tapActIcon, attackingNow, tapPending, settleTapPress, requestTapAttack } from '@/game/tapJump.js';   /* v2.3.3105: a tap jumps only when nothing else wants it; v2.3.3145: and is not an attack until it is one; v2.3.3712: it attacks once now, never jumps */
-import { manualOn, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4383: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
+import { manualOn, mcSwipes, mcBowSling, mcShotAngle, mcSwipeStart, mcSwipeMove, mcSwipeEnd, mcWasQuick, mcAssist, mcAskShot, mcAbort, mcMeleeAsk, mcSwingWaiting, mcSwingDone, mcReadyIn, mcTakeArmed, mcArmToggle, mcArmed, mcShoots } from '@/game/manualCombat.js';   /* v2.3.4383: manual combat (`?manual=1`): every attack is a swipe, no chosen lock */
 import { BOW_RANGE_PX as MC_BOW_RANGE_PX, bowRangeMult as mcBowRangeMult } from '@/data/gameSystems.js';   /* v2.3.4383: how far a quick flick's help reaches */
 import { lockShotPoint as mcShotPoint } from '@/game/combatHelpers.js';
 import { interactKind } from '@/game/desktopControls.js';   /* v2.3.3105: what E (and now a tap on the right stick) does here; v2.3.4105: talkBeforeDoor retired (E never talks) */
@@ -10919,7 +10919,7 @@ export var BroTown = function BroTown(_ref0) {
     /* v2.3.4323 (owner): the right click is the weapon's SPECIAL again, always -- the shield is Q's now
        (_desktopShieldToggle); its level gate and refusal words are doSpecialAttack's, as Q had them */
     if (!S || !S.rpg) return null;
-    if (manualOn()) { mcArmToggle(S); return 'armed'; }   /* v2.3.4383: manual combat ARMS it (again: disarms) */
+    if (mcSwipes(S)) { mcArmToggle(S); return 'armed'; }   /* v2.3.4383: manual combat ARMS it (again: disarms) */
     if (S._mouseAimAngle != null) S._aimAngle = S._mouseAimAngle;
     doSpecialAttack();
     return 'special';
@@ -11519,7 +11519,7 @@ export var BroTown = function BroTown(_ref0) {
           || (_rtDist / Math.max(_rtDur, 1) > 0.2 && _rtDist > 15 && _rtDur < 500);
         /* v2.3.4383: manual combat -- a special is ARMED by its button, never
            flicked: a quick lift after aiming is the shot's own gesture */
-        if (_rFlick && !manualOn()) { doSpecialAttack(); return; }
+        if (_rFlick && !mcSwipes(stateRef.current)) { doSpecialAttack(); return; }   /* a staff's flick is still its special */
       }
       /* v2.3.1287: self-tap on the aim side opens chat -- no lock-on click.
          Its own 400ms ceiling (SELF_TAP_MAX_MS): opening chat is not a
@@ -11603,7 +11603,7 @@ export var BroTown = function BroTown(_ref0) {
                loop as a press of the disc is (game/tapJump.js
                requestTapAttack); the JUMP button and Space jump (X until v2.3.3844). */
             /* v2.3.4383: manual combat -- a tap attacks nothing: a swipe does */
-            try { if (!manualOn()) requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }
+            try { if (!mcSwipes(_tjS)) requestTapAttack(_tjS, endT); } catch (err) { /* an attack is never worth a broken tap */ }
           }
         }
       }
@@ -11700,7 +11700,7 @@ export var BroTown = function BroTown(_ref0) {
       if (handleRBtnPress() === true) return;
       /* v2.3.4383: manual combat -- the disc's press attacks nothing: a
          stroke across it swings a sword (bM), a flick off it shoots (bE) */
-      if (manualOn()) { if (stateRef.current) mcSwipeStart(stateRef.current, bSwipe.st, t.clientX, t.clientY); return; }
+      if (mcSwipes(stateRef.current)) { if (stateRef.current) mcSwipeStart(stateRef.current, bSwipe.st, t.clientX, t.clientY); return; }   /* a staff: the press attacks, as it did */
       doSwing();
     };
     var bM = function bM(e) {
@@ -11851,7 +11851,7 @@ export var BroTown = function BroTown(_ref0) {
       /* v2.3.4383: manual combat -- a flick off the disc is a bow's or a
          staff's shot, the way it went (mcFlickEnd writes the aim: the disc
          does not), and no special is flicked */
-      if (manualOn() && stateRef.current) { mcFlickEnd(t.clientX, t.clientY); isFlick = false; }
+      if (stateRef.current && mcSwipes(stateRef.current)) { mcFlickEnd(t.clientX, t.clientY); isFlick = false; }
       if (isFlick) {
         var Sfk = stateRef.current;
         Sfk._hasUsedSwipe = true;
@@ -13254,10 +13254,10 @@ export var BroTown = function BroTown(_ref0) {
         /* ═══ v2.3.4383: MANUAL COMBAT ON A COMPUTER (`?manual=1`) ═══
            Each CLICK is one attack, at the cursor (the owner: "Yes for
            computer controls"): a sword's stroke (a lunge or a swing if it is
-           ready), a bow's or a staff's one shot.  Holding the button down
-           attacks once; held, it steers a staff's bolt as it always has
-           (S._aiming above).  No lock is taken. */
-        if (manualOn()) {
+           ready), a bow's one shot.  Holding the button down attacks once.
+           A STAFF is left as it was (it fires while the button is held:
+           the lines below).  No lock is taken. */
+        if (mcSwipes(S)) {
           if (mcShoots(S)) {
             if (S._mouseAimAngle != null) { S._aimAngle = S._mouseAimAngle; S._lastAimAngle = S._mouseAimAngle; }
             mcAskShot(S, Date.now());

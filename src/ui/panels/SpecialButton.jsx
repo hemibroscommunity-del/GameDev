@@ -1,7 +1,7 @@
 import React from 'react';
 import { TARGET_PERIMETER_PX, getActiveWeapon, specialManaCost } from '@/data/index.js';
 import { specialAttack } from '@/game/playerActions.js';
-import { manualOn, mcArmToggle, mcArmed } from '@/game/manualCombat.js'; /* v2.3.4383: manual combat -- this button ARMS the special for the next attack */
+import { mcSwipes, mcArmToggle, mcArmed } from '@/game/manualCombat.js'; /* v2.3.4383: manual combat -- this button ARMS the special for the next attack */
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no special in the water */
 import { fightOn } from '@/game/sparTargets.js'; /* v2.3.3267: a spar is a fight, for every weapon; v2.3.3268: and one with a real player in No man's land */
 import { BOW_SPECIAL_QUEUE_MS } from '@/game/combatHelpers.js'; /* v2.3.2543: the queued special's own expiry, so the button and the fire site cannot disagree about how long a request stands */
@@ -156,7 +156,7 @@ export function specialButtonLive(S, perimeterPx) {
   /* v2.3.4383: manual combat (`?manual=1`) -- the button is how a special is
      made at all (it is armed here, before or during the build-up), so it is
      there whenever a weapon is in hand, not only once a fight has found you */
-  if (manualOn()) return true;
+  if (mcSwipes(S)) return true;   /* a staff's button is as it was */
   if (S.lockedTarget && S.lockedTarget.ref) return true;
   if (S.lastDamageTaken && Date.now() - S.lastDamageTaken < 5000) return true;
   /* v2.3.3267: while one of your sparring clones is near, the shield button's
@@ -228,7 +228,7 @@ export function SpecialButton(props) {
   var queued = specialQueued(S);
   /* v2.3.4383: armed for the next attack (manual combat): the button's own
      "Ready / Charged" look, the one a held bow special wears */
-  var armed = manualOn() && mcArmed(S);
+  var armed = mcSwipes(S) && mcArmed(S);
 
   var press = function (e) {
     /* Both, and in this order -- see the header.  preventDefault stops iOS
@@ -246,7 +246,7 @@ export function SpecialButton(props) {
        midway").  A second press disarms.  Not with too little mana: the
        button is grey then, and arming what cannot fire would only eat the
        attack's moment. */
-    if (manualOn()) {
+    if (mcSwipes(stateRef.current)) {
       var Sm = stateRef.current;
       if (Sm && (mcArmed(Sm) || (Sm.rpg && (Sm.rpg.mana || 0) >= specialManaCost(Sm.rpg)))) mcArmToggle(Sm);
       setTick(function (v) { return v + 1; });

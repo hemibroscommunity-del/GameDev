@@ -30,6 +30,22 @@ three places were tried and turned down:
 Offered three ways on (swipes for every weapon; the old held attack without
 the lock; a slingshot pull), the owner, 2026-11-10: ***"Try version a."***
 
+## The decision (2026-11-10)
+
+Having tried both links, the owner: *"Ok I think I've decided. Keep tap to
+lock on monster off. Keep the staff the old way (prior to any of these
+changes) where it keeps auto-attacking as long at the finger is held in
+whatever direction and you can steer the projectile. For bow keep this new
+flick mechanism but make attack speed 25% faster (in terms of when the next
+shot can fire again). Also for sword keep the new flick mechanism."*
+
+| weapon | with the switch |
+|---|---|
+| sword | a swipe each swing |
+| bow | a flick each shot, and the next shot a quarter sooner |
+| staff | **as it was before any of this**: it fires by itself while the thumb is held, and the bolt is steered |
+| all three | no lock a player chose |
+
 ## The switch
 
 **It is OFF unless you turn it on.** Add `?manual=1` to the game's address:
@@ -57,7 +73,7 @@ swipes and `?manual=0` turns either off.
 - The opening lunge (the sword dash) is made by the first stroke, as it was
   by the first press.
 
-### A bow, a staff: flick to shoot
+### A bow: flick to shoot
 
 - **Flick**: thumb down, moved, lifted 24 px or more from where it touched.
   One shot, the way the thumb went.
@@ -69,14 +85,33 @@ swipes and `?manual=0` turns either off.
 - **A quick flick is helped a little** (a bow only): one over in 350 ms is
   turned to a monster within 12 degrees of its line and inside the bow's reach
   (`mcAssist`). A thumb is not a mouse. A drag that took longer was aimed and
-  is left exactly as it points. A staff needs none: its bolts find their way.
+  is left exactly as it points.
 - **A flick is always an arrow.** The held bow waited for its sight to be on
   something (`docs/specs/bow-sight-gate.md`); a flick cannot wait, and "I
   flicked and nothing happened" is worse than a miss. Without the switch the
   held bow's rule is unchanged.
-- **The staff's bolt is still steered by your thumb** once it is launched,
-  exactly as before: `projectiles.js` reads `S._aiming` / `S._aimAngle`, and
-  the rules file writes neither. Flick to launch, touch and hold to steer.
+- **A quarter sooner.** A flicked bow's next shot may leave after three
+  quarters of the held bow's interval (`MANUAL.BOW_FASTER` 0.75,
+  `mcBowInterval`): 495 ms becomes 371 ms on a new character. Never under
+  215 ms (`BOW_MIN_MS`): the worker drops a hit that comes sooner than 210 ms
+  after the last on the same monster. Damage a shot is unchanged, so a flicked
+  bow does about a third more damage a second than a held one if every flick
+  is made on time and lands. The item card's damage-a-second still shows the
+  held bow's.
+
+### A staff: as it was
+
+- **Hold the stick in a direction and it fires by itself**, at its own
+  interval, for as long as the thumb is down. The bolt in flight is steered by
+  the held thumb (`projectiles.js` reads `S._aiming` / `S._aimAngle`; the
+  rules file writes neither).
+- Its tap is one bolt, its flick is its special, its special's button is the
+  special itself (it arms nothing), and on a computer it fires while the
+  mouse button is held. All as before.
+- What is NOT as before: it keeps no lock a player chose, like the others.
+- How: every manual branch of the handlers asks `mcSwipes(S)` (true for a
+  sword and a bow with the switch, false for a staff), and the loop's
+  `_mcOn` is false for a staff, so each line it reaches is the old one.
 
 ### The slingshot bow, a variation to try (`?manual=2`)
 
@@ -96,15 +131,15 @@ swipes and `?manual=0` turns either off.
 - **How far you pull changes nothing yet**: any pull past 24 px is the same
   arrow. Range or speed by pull length would be a balance change, and the
   worker's.
-- **A staff is still a flick, a sword still a stroke.**
+- A sword is still a stroke, and a staff is as it was.
 - A computer is unchanged: a click is a shot at the cursor.
 - One rule turns the shot round: `mcShotAngle` (the stick's drag in
   `rJoyAim`, the disc's pull in `bM`, the lift in `mcFlickEnd`).
 
 ### No faster than the weapon
 
-- Each weapon keeps its own interval: the same number the held attack fired
-  on (a staff's includes its 300 ms).
+- A sword keeps its own interval, the number the held attack swung on; a
+  flicked bow's is three quarters of the held bow's (above).
 - **A swipe that comes sooner attacks nothing and costs nothing.** The weapon
   is ready when it would have been.
 - A swipe within 180 ms of ready (`EARLY_MS`) is kept for that moment, so a
@@ -118,6 +153,7 @@ swipes and `?manual=0` turns either off.
 - The special's button **arms** the special for the next attack. Press it
   again to disarm. It wants enough mana to arm, and reads **ON** while armed.
 - The next attack made (a stroke, a flick, a click) **is** the special.
+- A sword and a bow only. A staff's special is as it was.
 - A bow's special needs a line on something. A flick with no line is an
   ordinary arrow and the special stays armed for one that has.
 - The button is always there in manual combat (it used to hide out of combat).
@@ -125,8 +161,9 @@ swipes and `?manual=0` turns either off.
 
 ### A computer
 
-- **Each click is one attack**, at the cursor. Holding the button attacks
-  once (held, it still steers a staff's bolt).
+- A sword, a bow: **each click is one attack**, at the cursor. Holding the
+  button attacks once.
+- A staff fires while the button is held, as it did.
 - The right click arms and disarms the special.
 
 ### No tap to target
@@ -145,7 +182,7 @@ button reading ON while armed.
 
 | file | what |
 |---|---|
-| `src/game/manualCombat.js` | The rules, with no imports so node tests them: the switch (`manualMode`: 0, 1, 2); `mcBowSling` / `mcShotAngle` (the slingshot bow); `mcSwipeStart` / `mcSwipeMove` (a sword's stroke) / `mcSwipeEnd` (a flick's lift); `mcAskShot`, `mcFireWaiting` / `mcFireDone`; `mcMeleeAsk`, `mcSwingWaiting` / `mcSwingDone`; `mcReadyIn`; `mcAssist`; `mcFrame` (the loop's word each frame: this weapon's interval); `mcArmToggle` / `mcTakeArmed`; `mcLockAllowed`. State on `S._mc`. |
+| `src/game/manualCombat.js` | The rules, with no imports so node tests them: the switch (`manualMode`: 0, 1, 2); `mcSwipes` (a sword and a bow swipe; a staff does not); `mcBowInterval`; `mcBowSling` / `mcShotAngle` (the slingshot bow); `mcSwipeStart` / `mcSwipeMove` (a sword's stroke) / `mcSwipeEnd` (a flick's lift); `mcAskShot`, `mcFireWaiting` / `mcFireDone`; `mcMeleeAsk`, `mcSwingWaiting` / `mcSwingDone`; `mcReadyIn`; `mcAssist`; `mcFrame` (the loop's word each frame: this weapon's interval); `mcArmToggle` / `mcTakeArmed`; `mcLockAllowed`. State on `S._mc`. |
 | `src/game/monsterCombat.js` | The attack gate: in manual combat the loop shoots only when a flick asked (`mcFireWaiting`), never because the stick is held, and no sooner than the weapon's interval; a flick looses with or without a line; the armed special is taken there. |
 | `src/game/targeting.js` | Chosen locks dropped each frame; the duel lock not kept. |
 | `src/ui/BroTown.jsx` | `mcMeleeSwipe` (a stroke: the lunge, the armed special, or a swing), `mcFlickEnd` (a flick: writes the aim, asks the shot); the stick (`rS` / `rM` / `rE`), the disc (`bS` / `bM` / `bE`) and the mouse call them; no lock on a tap, a click or a double click. |
@@ -180,14 +217,16 @@ address.
   quick flick's help (the angle, the reach, the seam); and that each caller
   is wired and nothing is drawn.
 - `node tools/qa/mp/run.mjs manualcombat` (`mp-manualcombat.mjs`), a phone and
-  a computer in the Wheel, then a second phone with `?manual=2`, 38 checks: holding fires nothing; the lift is one
+  a computer in the Wheel, then a second phone with `?manual=2`, 42 checks: holding fires nothing; the lift is one
   arrow the way the thumb pointed; a quick flick; a tap and a nudge; the
   cancel; a flick too soon and one kept; the special arms and is the next
   attack; a chosen lock does not last; a sword's tap, stroke, stroke back,
   stroke once ready, drift, and a stroke off the disc; a computer's click,
   held button, second click, right click, and a sword's click; the slingshot
   bow pulled and held (nothing shot, the aim already the other way),
-  released, pulled off the disc, cancelled, and a sword still a stroke. The times that
+  released, pulled off the disc, cancelled, and a sword still a stroke; the
+  flicked bow's interval (371 ms); a staff held (it fires by itself), lifted
+  (it stops), and its button (arms nothing). The times that
   matter are held by the clock in one task: this box's timers run late.
 - Not reached by the phone test: a flick with no line at all (in the town the
   bow's sight is always on something), so "a flick is always an arrow" and

@@ -58,7 +58,7 @@ import { cue } from '@/game/eventSounds.js'; /* v2.3.3343: the missing sounds, f
 import { isWheelSwimming } from '@/game/wheelSwim.js'; /* v2.3.3003: no fighting while you swim */
 import { jumpAirborne } from '@/game/jump.js'; /* v2.3.3017: nor in the air */
 import { tapAttackWaiting, tapAttackDone, tapSwingAim } from '@/game/tapJump.js'; /* v2.3.3712: a tap on the right stick asks for one attack */
-import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed } from '@/game/manualCombat.js'; /* v2.3.4383: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
+import { manualOn, mcFrame, mcFireWaiting, mcFireDone, mcTakeArmed, mcBowInterval } from '@/game/manualCombat.js'; /* v2.3.4383: manual combat (`?manual=1`) -- a bow or a staff shoots once for each flick, never because the stick is held */
 import { isDazed } from '@/game/elemHits.js'; /* v2.3.3014: nor while a rock monster has you dazed */
 import { dropShield } from '@/game/shieldToggle.js'; /* v2.3.2248: attacking breaks the shield hold */
 import { engagedStance } from '@/game/targeting.js'; /* v2.3.2251 */
@@ -1352,8 +1352,17 @@ export function updateMonsterCombat(S, deps) {
              swing has always been held to (playerActions swingAttack's gate,
              which reads no amulet).  mcFrame also lets go of a shot nobody
              could take. */
-          var _mcOn = manualOn();
-          var _mcDraws = _mcOn && (_aSlot === 'ranged' || _aSlot === 'staff');
+          /* The owner's decision, 2026-11-10: "Keep the staff the old way (prior to
+             any of these changes) where it keeps auto-attacking as long at the
+             finger is held in whatever direction and you can steer the
+             projectile.  For bow keep this new flick mechanism but make attack
+             speed 25% faster (in terms of when the next shot can fire again)."
+             So a STAFF is not manual here at all (_mcOn false: every line below
+             is what it was), and a flicked BOW's interval is three quarters of
+             the held bow's (mcBowInterval; never under the worker's own floor). */
+          var _mcOn = manualOn() && _aSlot !== 'staff';
+          var _mcDraws = _mcOn && _aSlot === 'ranged';
+          if (_mcDraws) effectiveSwingCd = mcBowInterval(effectiveSwingCd);
           if (_mcOn) mcFrame(S, Date.now(), effectiveSwingCd + _staffCdExtra, Math.ceil(SWING_COOLDOWN * swingCooldownMult(S.rpg) * weaponSwingMult(_aSlot)));
           var _eqWpn = !S.rpg ? null
                      : _aSlot === 'ranged' ? S.rpg.rangedWeapon
@@ -1622,7 +1631,7 @@ export function updateMonsterCombat(S, deps) {
           /* ═══ v2.3.4383: MANUAL COMBAT -- THE LOOP FIRES ONLY WHAT A HAND ASKED FOR ═══
              With `?manual=1` a held thumb fires nothing by itself (it still
              aims, and steers a staff's bolt):
-               a bow or a staff   one shot for each FLICK (mcFireWaiting: the
+               a bow              one shot for each FLICK (mcFireWaiting: the
                                   lift asked, this frame takes it), through
                                   every refusal below and no sooner than the
                                   weapon's own interval -- a flick a moment
@@ -1630,7 +1639,8 @@ export function updateMonsterCombat(S, deps) {
                a sword            never from here: its stroke goes to
                                   swingAttack (BroTown mcMeleeSwipe); the
                                   engagement's own swing (_engSwing, no button
-                                  held) is off, as is the tap channel.
+                                  held) is off, as is the tap channel;
+               a staff            as without the switch: it fires while held.
              Without the switch the line is exactly what it was. */
           var _mcFire = _mcDraws && mcFireWaiting(S, Date.now());
           var _wantAtk = _mcOn ? _mcFire : (S.autoAttack || _engSwing || _tapAtkNow);

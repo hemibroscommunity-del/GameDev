@@ -24,7 +24,10 @@
  *      stroke back, straight after, swings nothing (and costs nothing); once
  *      ready, a stroke swings again; a thumb that drifts is not a stroke; a
  *      stroke on the right side of the screen swings too;
- *   9. a lock a player chose does not last a frame.
+ *   9. a lock a player chose does not last a frame;
+ *  13. a STAFF is as it was: held, it fires by itself; lifted, it stops; its
+ *      button arms nothing; and the flicked bow's interval is three quarters
+ *      of the held bow's (the owner's decision, 2026-11-10).
  * A second phone with the SLINGSHOT BOW (`?manual=2`):
  *  12. the bow pulled back and held shoots nothing and aims the other way;
  *      released, one arrow opposite the pull; off the disc too; the cancel;
@@ -63,6 +66,7 @@ const arm = (P, slot) => P.page.evaluate((slot) => {
   const S = window._gameState.current, R = S.rpg, F = window._gameFns || {};
   const t = ((F.WOODWORKING_TIERS || {}).pine) || { tierMult: 1 };
   if (slot === 'ranged') R.rangedWeapon = { type: 'bow', tierMult: t.tierMult, gearBase: 'pine', name: 'Pine Bow', tier: 'common' };
+  else if (slot === 'staff') R.staffWeapon = { type: 'staff', tierMult: t.tierMult, gearBase: 'pine', name: 'Pine Staff', tier: 'common' };
   else if (!R.weapon) R.weapon = { type: 'greatsword', tierMult: 1, gearBase: 'copper', name: 'Copper Great Sword', tier: 'common' };
   R.activeSlot = slot;
   S.lockedTarget = null; S.autoAttack = false; S._aiming = false;
@@ -73,7 +77,7 @@ const arm = (P, slot) => P.page.evaluate((slot) => {
     ch.send = (m) => { try { if (m && m.event === 'player_projectile') window.__qaShots++; } catch (e) { /* counting only */ } return send(m); };
     ch.__qaCounted = true;
   }
-  return { slot: R.activeSlot, wpn: slot === 'ranged' ? R.rangedWeapon.type : R.weapon.type };
+  return { slot: R.activeSlot, wpn: slot === 'ranged' ? R.rangedWeapon.type : slot === 'staff' ? R.staffWeapon.type : R.weapon.type };
 }, slot);
 
 /* real touches (mp-bowgate's shim): the handlers are the page's own */
@@ -157,6 +161,8 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     const after2 = await mc(P);
     rec.ok(`2a holding the stick fires nothing (${held.shots} arrows in 1.8 s, the bow's interval ${Math.round((held.st && held.st.need) || 0)} ms)`,
       armed.wpn === 'bow' && held.shots === 0 && !!held.st && held.st.need < 1500, { st: held.st, shots: held.shots });
+    rec.ok(`2z the flicked bow's interval is three quarters of the held bow's: ${Math.round((held.st && held.st.need) || 0)} ms (the owner: "make attack speed 25% faster")`,
+      !!held.st && held.st.need >= 215 && held.st.need <= 380, held.st);
     rec.ok(`2b its lift is exactly ONE arrow (${n2}), straight up the screen as the thumb pointed`, n2 === 1 && near(after2.aim, -Math.PI / 2) < 0.05, { n2, aim: after2.aim });
 
     /* ── 3 ── a quick flick */
@@ -233,6 +239,32 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
       : `7b the flick had no line: an ordinary arrow (${n7}), the special still armed`,
       after7.sight ? (n7 >= 1 && after7.armed === false && after7.lastSwipe > before7.lastSwipe) : (n7 === 1 && after7.armed === true && !after7.queued && after7.lastSwipe === before7.lastSwipe), after7);
     await wait(P, 800);
+
+    /* ── 13 ── a STAFF is as it was before any of this (the owner: "Keep the staff the old way ... it
+       keeps auto-attacking as long at the finger is held in whatever direction and you can steer the
+       projectile"): held, it fires by itself; lifted, it stops; its button arms nothing */
+    const stf = await arm(P, 'staff');
+    await wait(P, 1500);
+    await resetShots(P);
+    const st0 = await mc(P);
+    await down(P, X, Y);
+    await wait(P, 3200);
+    const stHeld = await P.page.evaluate(() => { const S = window._gameState.current; return { shots: window.__qaShots, aiming: !!S._aiming, auto: !!S.autoAttack }; });
+    await up(P, X, Y - 60);
+    await wait(P, 1200);
+    const stUp = await shotsNow(P);
+    await wait(P, 1800);
+    const stLater = await shotsNow(P);
+    const st1 = await mc(P);
+    const stBtn = await P.page.evaluate(() => {
+      const b = document.querySelector('[data-special]');
+      if (b) { const q = b.getBoundingClientRect(); window.__touch(b, 'touchstart', q.left + q.width / 2, q.top + q.height / 2, 61); window.__touch(b, 'touchend', q.left + q.width / 2, q.top + q.height / 2, 61); }
+      return { btn: !!b, armed: window.__btManual.state().armed, attr: b ? b.getAttribute('data-special') : null };
+    });
+    rec.ok(`13a a staff held in a direction fires by itself (${stHeld.shots} bolts in 3.2 s), the thumb steering`, stf.wpn === 'staff' && stHeld.shots >= 2 && stHeld.aiming, { stf, stHeld });
+    rec.ok(`13b lifted, it stops (${stUp} then ${stLater}), and none of it was a flick's shot`, stLater === stUp && st1.st.shots === st0.st.shots, { stUp, stLater, flicks0: st0.st.shots, flicks1: st1.st.shots });
+    rec.ok('13c a staff\'s special button arms nothing (it is the special itself, as it was)', stBtn.armed === false && stBtn.attr !== 'armed', stBtn);
+    await wait(P, 600);
 
     /* ── 9 ── a lock a player chose does not last */
     const lock = await P.page.evaluate(() => new Promise((res) => {
