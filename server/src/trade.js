@@ -37,7 +37,33 @@
 
 export const TRADE_OFFER_TTL = 120000; // 2 min to accept
 
+const own = (o, k) => !!o && Object.prototype.hasOwnProperty.call(o, k);   /* v2.3.4375 */
+
 export const tradeMethods = {
+  /* ═══ v2.3.4375: THE OLD GIFT IS CLOSED WHILE THE TRADE WINDOW IS ON ═══
+   * The owner (2026-11-10): "The old one-way gift trade, which no current
+   * phone uses, is switched off."  Every phone trades through the two-sided
+   * window (trade2.js); a phone sends a gift only when state_sync.caps says
+   * `trade2` is off (InspectPlayerPanel's openTrade).  But the worker still
+   * settled a gift whatever the caps said, and the gift never asked the
+   * fight lock (nomansland.js _bagLockedByFight) -- so a modified phone
+   * losing a fight to a player gifted its bag and gold to a friend, and the
+   * killer's pile was empty (state-machine sweep V8b, S6-1).
+   *
+   * So the gift is now only the fallback it always was: it is open while
+   * the trade window is switched off (the live flag `trade2` written false,
+   * which un-advertises the window, so phones fall back to the gift -- one
+   * switch must never leave players with no way to trade), and then it asks
+   * the fight lock like every other way out of the bag.  Kill switch:
+   * `giftclosed: false` in the live flags opens the gift again beside the
+   * window, as before this change (the fight lock still holds; its own
+   * switch is `fightlock: false`). */
+  _giftClosed() {
+    const f = this._liveFlags;
+    if (f && typeof f === 'object' && own(f, 'giftclosed') && !f.giftclosed) return false;
+    return !(f && typeof f === 'object' && own(f, 'trade2') && !f.trade2);
+  },
+
   /* ═══ v2.3.1971: AN INVENTORY KEY OFF Object.prototype IS NOT AN ITEM ═══
    *
    * The offer key is client-supplied and both lanes settle it with the
@@ -113,9 +139,25 @@ export const tradeMethods = {
     if (target.length > 64) return null;
     if (!this._pendingTradeOffers) this._pendingTradeOffers = new Map(); // 'sender>recipient' -> {offer, fromName, ts, id}
 
+    /* v2.3.4375: a decline voids the offer it answers.  It was a plain
+       relay that left the offer in place, so Decline and then Accept inside
+       the two minutes still settled (sweep V8b, S6-1).  `fromId` is the
+       decliner, so it can only ever void an offer made TO it. */
+    if (msg.type === 'trade_reject') {
+      this._pendingTradeOffers.delete(target + '>' + fromId);
+      return msg;
+    }
+
     if (msg.type === 'trade_offer') {
       const offer = this._sanitizeTradeOffer(payload.offer);
       if (!offer) return null;
+      /* v2.3.4375: closed (see _giftClosed), or the sender is in a fight
+         with a player: refused to its SENDER with the refusal this lane
+         already speaks ("Trade declined"); nothing relayed, nothing kept */
+      if (this._giftClosed() || (this._bagLockedByFight && this._bagLockedByFight(fromId))) {
+        this.eventBuffer.push({ type: 'trade_reject', from: target, payload: { from: target, target: fromId } });
+        return null;
+      }
       this._pendingTradeOffers.set(fromId + '>' + target, {
         offer, fromName: typeof payload.fromName === 'string' ? payload.fromName.slice(0, 24) : 'Someone',
         ts: Date.now(), id: crypto.randomUUID(),
@@ -133,6 +175,11 @@ export const tradeMethods = {
       return null;
     };
     if (!pending || Date.now() - pending.ts > TRADE_OFFER_TTL) return null; // forged/replayed/expired: drop silently
+    /* v2.3.4375: an offer recorded while the gift was open is not settled
+       once it has closed, nor while its sender is in a fight with a player:
+       the offer may well be older than the fight (handoff rule 14: what is
+       checked is the sender as the worker knows them now) */
+    if (this._giftClosed() || (this._bagLockedByFight && this._bagLockedByFight(target))) return rejectAccepter();
     const senderPs = this.playerState[target];
     if (!senderPs) return rejectAccepter(); // sender left before the accept
     const offer = pending.offer;

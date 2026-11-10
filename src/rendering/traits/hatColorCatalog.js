@@ -207,13 +207,22 @@ function build(hatId, colorId) {
   _building[key] = Promise.all(DIRS.map(dir =>
     loadImg(`/sprites/traits/headwear/${hatId}/${dir}.png?v=${TRAIT_VER}`).then(img => ({ dir, img })).catch(() => ({ dir, img: null }))
   )).then(loaded => {
-    const prof = _refCache[hatId] || (_refCache[hatId] = _pooledProfile(loaded.map(l => l.img), hatId));
+    /* v2.3.4368: the shared reference in a try too (a throw here sank every
+       facing); without one each facing is recoloured on its own, as hair is */
+    let prof;
+    try { prof = _refCache[hatId] || (_refCache[hatId] = _pooledProfile(loaded.map(l => l.img), hatId)); } catch (e) { prof = undefined; }
     for (const { dir, img } of loaded) {
       if (!img) continue; /* dir missing -> renderer falls back */
-      const cv = recolorHairToCanvas(img, target, prof);
-      const t = Texture.from(cv);
-      if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source, Cache); }   /* v2.3.3606: kept as an image of itself (keepAsImage.js) */
-      tex[dir] = t;
+      /* v2.3.4368: a try per facing, as hair and beard have: one facing that
+         throws (iOS refusing a canvas) left the key 'loading' for the visit,
+         never rebuilt or evicted, every facing in its native colour (sweep
+         V18 R8-11) */
+      try {
+        const cv = recolorHairToCanvas(img, target, prof);
+        const t = Texture.from(cv);
+        if (t && t.source) { t.source.scaleMode = 'linear'; t.source.autoGenerateMipmaps = true; keepAsImage(t.source, Cache); }   /* v2.3.3606: kept as an image of itself (keepAsImage.js) */
+        tex[dir] = t;
+      } catch (e) { /* that facing falls back to native art */ }
     }
     _cache[key] = tex;
     _capCache();

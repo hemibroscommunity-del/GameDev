@@ -1,5 +1,6 @@
 /* ═══ GAME EVENTS — the server/peer event dispatcher (40+ message types) ═══ */
 import { lockOntoDuelOpponent } from '@/game/duelLock.js'; /* v2.3.2145 */
+import { settleOwnAccept, declineDropsDuel } from '@/game/duelPending.js'; /* v2.3.4361: the phantom duel */
 import { DMG_CRIT_COLOR } from '@/rendering/systems/effectsRenderer.js'; /* v2.3.2212: one crit colour, every door */
 /* v2.3.783: _processGameEvent moved verbatim from the inline WS client in
    src/ui/BroTown.jsx (REBUILD-PLAN Phase 4, behavior-frozen). It handles
@@ -17,7 +18,7 @@ import { shopBus } from '../ui/mobile/shopBus.js';   /* v2.3.2050 */
 import { aceFlipBus } from '@/ui/mobile/aceFlipBus.js'; /* v2.3.2618 */
 import { capeStatusBus } from '../ui/mobile/capeStatusBus.js'; /* v2.3.2118 */
 import { storeToastBus } from '../ui/mobile/storeToastBus.js'; /* v2.3.2476 */
-import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, DEATH_GOLD_PENALTY, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
+import { BT_AUDIO, ZONES, TILE, ARENA_CHAMPION_REWARD, ARENA_WIN_REWARD, CLAN_WAR_REWARDS, createDefaultCompStats, recalcDerived, PVP_THREAT_CONSENT_MS, updateZoneDimensions, generateZoneMap, trainDefense, getGuildRank, SKILL_GUILDS } from '@/data/index.js';
 import { MONSTER_VARIANTS, maybeTransformMonster, isRemnantSkull, xpMultFor } from '@/data/monsterVariants.js';
 import { waterBlowKind } from '@/data/waterAttack.js';   /* v2.3.4355: which water a frog's blow throws */
 import { toDisplayDamage, toDisplayHitDamage, GS_OUTER_RADIUS, GS_FORWARD_ARC } from '@/data/gameSystems.js'; /* v2.3.2520: the display damage scale (§5.8 D1); v2.3.2730: + a peer's swing reach */
@@ -26,6 +27,8 @@ import { prog3Live } from '@/data/prog3.js'; /* v2.3.1727: the kill-XP popup is 
    monster objects (the server owns statuses and never syncs them) — see
    the element_nova case. */
 import { ELEMENTS } from '@/data/elements.js';
+import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.4363: the one stand-up */
+import { refillPools } from '@/game/phoneDeath.js'; /* v2.3.4363 */
 import { STATUS_DEFS, applyStatus, STAFF_LIFE /* v2.3.2387 */, COLLISION_TABLE /* v2.3.3264: a collision on a player, by its name */ } from '@/data/gameSystems.js';
 import { rollMonsterShard } from '@/data/shards.js';
 import { shotStyleOf } from '@/data/monsterShots.js'; /* v2.3.3343: a monster's throw sounds like its ball */
@@ -68,6 +71,7 @@ import { enqueuePeerDamage, peerDmgKey, distributeKillXpToBuild, applyMeleeLifes
 import { dropShield, noteShieldThreat } from '@/game/shieldToggle.js'; /* v2.3.2242: a landed block lowers the shield; v2.3.3260: and faces who hit you */
 import { handleChatEvent, handleEmoteEvent, handlePartyChatEvent, handleAreaChatEvent, handleWhisperEvent, handleWhisperErrorEvent, handleDiceEvent } from '@/game/chat.js'; /* v2.3.2136: the @area / @user lanes; v2.3.3393: + a /roll or /flip */
 import { applyServerMuteList, isBlockedId } from '@/game/chatMute.js'; /* v2.3.1981; v2.3.3526: a block stops requests */
+import { dropAsBlocked, withoutBlockedRows } from '@/game/blockedAsks.js'; /* v2.3.4365: one block check, one table */
 import { pushAbilityRings, BASH_POSE_MS } from '@/game/abilities.js'; /* v2.3.1735: a peer's bash draws the caster's own shockwave; v2.3.2920 + its pose window */
 import { depthK } from '@/data/zones.js'; /* v2.3.2824: a peer's whirlwind is as wide as its (depth-scaled) hit */
 import { friendsSrv } from '@/ui/mobile/sheet/friendsSync.js'; /* v2.3.1324 */
@@ -196,6 +200,7 @@ import { allyMomentText } from '@/game/alliance.js'; /* v2.3.3313: the alliance'
 import { monsterShed } from '@/game/monsterNoises.js'; /* v2.3.3340: the mummy's bones rattle as it sheds */
 import { noteLootDrop, notePileShine } from '@/game/dropLines.js'; /* v2.3.3627: a kill's drops, a line of words each over the monster */
 import { noteHitBlow } from '@/game/deathBlow.js'; /* v2.3.3985: the killing blow's direction and size, for the monster's own death */
+import { t2LeaveDrop, t2IgnoreBusy, t2Hushed } from '@/game/tradeSlot.js'; /* v2.3.4362: the trade window never outlives its server */
 
 /* v2.3.1107: angle -> 8-way compass, same SECTORS convention as
    entityRenderer (atan2(dy,dx) -> 'east' when dx>0).  Used to reconcile a
@@ -280,6 +285,13 @@ export function processGameEvent(type, payload, S, deps) {
     setArenaBets = deps.setArenaBets,
     setClanData = deps.setClanData, /* v2.3.1611 */
     _buildServerPile = deps._buildServerPile;
+        /* v2.3.4365: a blocked player's chat, emotes and requests stop HERE,
+           once, for every social type in one table (src/game/blockedAsks.js),
+           not handler by handler: the per-handler checks missed the game's
+           own Duel button (duel_wager_request) and the friend request's
+           chime (the state-machine sweep, V6 N2-18, V12 M4-9). */
+        if (dropAsBlocked(type, payload, isBlockedId)) return;
+        payload = withoutBlockedRows(type, payload, isBlockedId);   /* the DM backlog: a blocked player's rows */
         switch (type) {
           case 'loot_drop':
             {
@@ -976,8 +988,11 @@ export function processGameEvent(type, payload, S, deps) {
                   new Promise(function (r) { setTimeout(r, 8000); }),
                 ]).then(function () {
                   _dFloorLate = true;
-                  hideZoneLoadingOverlay();
+                  /* v2.3.4366: the screen lifts only for the opening that is
+                     still this one (the sweep, V11 N2-10): one a newer opening
+                     replaced lifted the newer one's screen while it loaded. */
                   if (S._wheelDungeonOpening !== payload.zone) { freeDungeonFloor(_dFloor); freeDungeonArt(_dArt); return; }
+                  hideZoneLoadingOverlay();
                   S._wheelDungeonOpening = null;
                   /* died, or somewhere else, while it loaded: the worker
                      sweeps the instance nobody entered */
@@ -3712,9 +3727,8 @@ export function processGameEvent(type, payload, S, deps) {
                    dead pose at our last position. */
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
                 if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: S.player.x, y: S.player.y } });
-                /* Gold penalty */
-                var goldLost2 = Math.floor(R2.coins * DEATH_GOLD_PENALTY);
-                R2.coins = Math.max(0, R2.coins - goldLost2);
+                /* v2.3.4363: no gold taken -- it was 10% off the gold SHOWN; the
+                   worker never takes it (the 2026-11-03 sweep, V2 U1-2) */
                 /* Death particles */
                 for (var dp2 = 0; dp2 < 25; dp2++) {
                   var dpA2 = dp2 / 25 * Math.PI * 2;
@@ -3727,31 +3741,24 @@ export function processGameEvent(type, payload, S, deps) {
                 }
                 S.screenShake = 10;
                 pushDmgPopup(S, S.player.x, S.player.y - 40, 'YOU DIED', '#ff5e6c');
-                if (goldLost2 > 0) pushDmgPopup(S, S.player.x, S.player.y - 55, '-' + goldLost2 + 'G', '#fbbf24');
                 BT_AUDIO.deathBoom();
                 /* Respawn in town after delay */
                 var respawnDelay = 5000;
                 setTimeout(function() {
-                  R2.hp = R2.maxHp;
-                  R2.stamina = R2.maxStamina;
-                  R2.mana = R2.maxMana;
-                  S.currentZone = 'town';
-                  updateZoneDimensions('town');
-                  BT_AUDIO.startZoneAmbient('town');
-                  S.map = generateZoneMap('town');
-                  S.monsters = []; /* Town has no monsters */
-                  S.gatherNodes = []; /* and no harvestable resources -- clear stale entries from the previous zone */
-                  S.player.x = 24 * TILE;
-                  S.player.y = 24 * TILE;
-                  S.respawnTimer = Date.now() + 3000;
-                  S._deathStart = 0;
-                  S._dying = false;
-                  /* Server learns dead=false + new zone via this move;
-                     other clients clear our _isDead via the broadcast. */
-                  if (S.channel) S.channel.send({ type: 'broadcast', event: 'move', payload: { x: S.player.x, y: S.player.y, z: S.currentZone, vx: 0, vy: 0 } });
-                  if (S.channel) S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } });
+                  /* v2.3.4363: a stand-up already done (the worker's, the
+                     watchdog's) is never done twice */
+                  if (!S._dying) return;
+                  refillPools(R2);
+                  /* v2.3.4363: the ONE stand-up (game/respawn.js).  This copy
+                     skipped the zone's art, the npc list, the dungeon flags,
+                     the lock, the trip to the Wheel's BroTown, the cue and the
+                     chat line, and landed on today's town's tile 24,24.  Its
+                     reach (the sweep, V2): a blow still in flight as you walk
+                     out of a Wheel dungeon's door, after _serverMonsters went
+                     off.  It sends the move and player_respawned, and saves
+                     bt_rpg. */
+                  applyLocalRespawn(S, 'town');
                   setRpgState(_objectSpread({}, R2));
-                  try { localStorage.setItem('bt_rpg', JSON.stringify(R2)); } catch(e) {}
                 }, respawnDelay);
               }
               setRpgState(_objectSpread({}, R2));
@@ -4718,8 +4725,9 @@ export function processGameEvent(type, payload, S, deps) {
                  card's own clock; trade: trade2.js's invite TTL; party:
                  PARTY.INVITE_TTL), so nothing tells them they are blocked.
                  The block list is this device's (bt_blocked), as it always
-                 was; Mute is the one the worker keeps. */
-              if (isBlockedId(payload.from)) break;
+                 was; Mute is the one the worker keeps.
+                 v2.3.4365: the check moved to the top of this switch, one
+                 table for every social type (src/game/blockedAsks.js). */
               if (payload.target === S.myId) {
                 setDuelRequest({
                   fromId: payload.from,
@@ -4732,6 +4740,9 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'duel_accept':
             {
+              /* v2.3.4361: this phone's OWN accept, echoed settled: the duel
+                 the Accept tap showed at once is real (duelPending.js) */
+              if (settleOwnAccept(S, payload)) break;
               if (payload.target === S.myId) {
                 S._activeDuel = {
                   partnerId: payload.from,
@@ -4802,7 +4813,13 @@ export function processGameEvent(type, payload, S, deps) {
             }
           case 'duel_decline':
             {
-              if (payload.target === S.myId) pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel declined', '#888');
+              /* v2.3.4361: the worker's declineBoth to the accepter of a
+                 refused accept (a challenger gone, dying, in another zone)
+                 ends the duel its Accept tap showed, not only a popup */
+              if (payload.target === S.myId) {
+                declineDropsDuel(S, payload);
+                pushDmgPopup(S, S.player.x, S.player.y - 30, 'Duel declined', '#888');
+              }
               break;
             }
           case 'pvp_threat':
@@ -4929,6 +4946,10 @@ export function processGameEvent(type, payload, S, deps) {
                  which completes the mutual open server-side). */
               if (!payload || !payload.from) break;
               if (isBlockedId(payload.from)) break;   /* v2.3.3526: a blocked player's request never reaches you (duel_request) */
+              /* v2.3.4362: the worker spoke -- a leave waiting on it stops
+                 (game/tradeSlot.js), and the window now shows the invite */
+              t2LeaveDrop(S);
+              S._t2Live = null;
               if (setTrade2) setTrade2({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', ts: Date.now() });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🤝 ' + (payload.fromName || 'Someone') + ' wants to trade!', '#3dd497');
               cue('tradeAsk');   /* v2.3.3434: two coins' clink (a beep(), silent) */
@@ -4941,6 +4962,14 @@ export function processGameEvent(type, payload, S, deps) {
                  goods from a settled swap arrive via the authoritative
                  player_state echo (coins + inventory adopted). */
               if (!payload || !setTrade2) break;
+              /* v2.3.4362: the worker answered, so a leave waiting on it
+                 stops (game/tradeSlot.js t2Leave closes the window itself
+                 only when nothing comes).  And a 'busy' refusal -- a second
+                 "Open trade" tap, or Trade on another card mid-trade -- is
+                 about the NEW ask: the window showing your own live trade
+                 stays up, and nothing is said (V8b P2-1). */
+              t2LeaveDrop(S);
+              if (t2IgnoreBusy(S, payload)) break;
               /* v2.3.1235: trade-completion receipt — any newer session
                  snapshot supersedes a pending done-reveal watcher (guards
                  a hyper-fast re-open racing the ≤1.5s echo wait below). */
@@ -4950,7 +4979,9 @@ export function processGameEvent(type, payload, S, deps) {
               }
               if (payload.state === 'open' || payload.state === 'invited') {
                 setTrade2(payload);
+                S._t2Live = payload.state === 'open' ? (payload.id || true) : null;   /* v2.3.4362 */
               } else if (payload.state === 'done') {
+                S._t2Live = null;   /* v2.3.4362 */
                 /* v2.3.1235: trade-completion receipt — HOLD the window
                    open and drop the old floating "Trade complete!" world
                    popup (it rendered before the wallet echo and the modal
@@ -5030,6 +5061,11 @@ export function processGameEvent(type, payload, S, deps) {
                    session surviving a failed commit) — out of scope.
                    Every other cancel reason keeps the legacy
                    clear-window + world-popup behavior. */
+                S._t2Live = null;   /* v2.3.4362 */
+                /* v2.3.4362: the worker's late 'declined' to a leave this phone
+                   already closed by itself: the window is gone and the words
+                   were said once (game/tradeSlot.js t2Hushed) */
+                if (t2Hushed(S, payload)) { setTrade2(null); break; }
                 var _t2SettleFail = !!(payload.reason && /^(insufficient|pet-gone|pets-full)/.test(String(payload.reason)));   /* v2.3.3122: + the pet lane's */
                 cue('tradeOff');   /* v2.3.3343: a trade called off or failed is heard closing (it was silent) */
                 if (_t2SettleFail) {
@@ -5040,6 +5076,9 @@ export function processGameEvent(type, payload, S, deps) {
                     'declined': 'Trade declined', 'disconnected': 'They disconnected',
                     'expired': 'Trade expired', 'busy': 'They are already trading',
                     'target-gone': 'Player unavailable', 'party-gone': 'Player unavailable',
+                    /* v2.3.4362: closed on this phone -- the worker never
+                       answered the leave, or the socket was down */
+                    'gone': 'The trade was cancelled',
                   }[payload.reason] || 'Trade cancelled';
                   /* ═══ v2.3.2497: SAY IT IN THE CHAT LANE TOO ═══
                      The popup below is a floating world label over your own
@@ -5075,7 +5114,7 @@ export function processGameEvent(type, payload, S, deps) {
                  (accepting sends party_accept, validated against the
                  inviter's own recorded invite server-side). */
               if (!payload || !payload.from) break;
-              if (isBlockedId(payload.from)) break;   /* v2.3.3526: a blocked player's request never reaches you (duel_request) */
+              /* v2.3.3526: a blocked player's request never reaches you; v2.3.4365: checked at the top of this switch (blockedAsks.js) */
               var _piTs = Date.now();
               if (setParty) setParty({ invite: true, from: payload.from, fromName: payload.fromName || 'Someone', partySize: payload.partySize || 1, ts: _piTs });
               pushDmgPopup(S, S.player.x, S.player.y - 40, '🎪 ' + (payload.fromName || 'Someone') + ' invites you to a party!', '#fbbf24');

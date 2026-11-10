@@ -14,7 +14,10 @@
  *      Morning", Your farm);
  *   4. out through the farm's gate: back in the world, the town's track again
  *      and the farm's let go;
- *   5. no page errors.
+ *   5. no page errors;
+ *   6. (v2.3.4366) through the Land Office's "Travel to Farm" too: the farm's
+ *      own track, not the town's (the sweep, V11 P1-9: that door asked for the
+ *      town's music after the farm's, so the farm played BroTown's track).
  */
 import * as H from './harness.mjs';
 import { FARM_GATE } from '../../../src/data/farmLayout.js';
@@ -134,6 +137,23 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const d3 = await until(() => deck(P), (v) => v.el && /village\.mp3/.test(v.el.src || ''), 10000);
     rec.ok(`4. ...the town's track again (${back && back.url}), the farm's let go (the deck plays ${d3 && d3.el && d3.el.src})`,
       !!back && /village\.mp3/.test(back.url || '') && !!d3 && !/farm\.mp3/.test((d3.el && d3.el.src) || '') && !/farm\.mp3/.test(d3.zone || ''), { lm: back && { playing: back.playing, url: back.url }, deck: d3 && { el: d3.el, zone: d3.zone } });
+
+    /* ── 6. the Land Office's door (v2.3.4366) ── */
+    await P.page.evaluate(() => { try { window._uiPanels.building('farmhome'); } catch (e) { /* the check says */ } });
+    const travel = await until(() => P.page.evaluate(() => { const b = Array.from(document.querySelectorAll('button')).find((q) => /Travel to Farm/.test(q.textContent || '')); if (!b) return null; const r = b.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; }), (v) => !!v, 8000);
+    if (travel) await P.page.touchscreen.tap(travel.x, travel.y);
+    const onFarm2 = await until(() => H.readState(P, (S) => ({ zone: S.currentZone, hold: !!S._farmArtHold, veil: !!document.querySelector('.bt-zone-loading') })),
+      (v) => v.zone === 'farm_home' && !v.hold && !v.veil, 45000);
+    rec.ok('onto the farm through the Land Office\'s "Travel to Farm" (guard)', !!onFarm2 && onFarm2.zone === 'farm_home', { onFarm2, travel });
+    if (onFarm2 && onFarm2.zone === 'farm_home') {
+      /* a beat for a late ask (the bug's 'town' came right after the farm's) */
+      await P.page.waitForTimeout(1500);
+      const fm2 = await until(() => lm(P), (v) => v.playing === 'farm_home' && v.source && v.url === FARM_URL, 20000);
+      const d4 = await until(() => deck(P), (v) => v.el && v.el.src === FARM_URL && !v.el.paused, 20000);
+      rec.ok(`6. through the Land Office the farm's own track plays (${fm2 && fm2.url}; the deck: ${d4 && d4.el && d4.el.src}), not the town's`,
+        !!fm2 && fm2.playing === 'farm_home' && fm2.url === FARM_URL && !!d4 && d4.el.src === FARM_URL,
+        { lm: fm2 && { playing: fm2.playing, url: fm2.url }, deck: d4 && { el: d4.el, zone: d4.zone } });
+    }
 
     rec.ok('5. no page errors', errors.length === 0, errors.slice(0, 3));
   } finally {

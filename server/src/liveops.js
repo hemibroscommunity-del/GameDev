@@ -35,8 +35,9 @@
  * Caching: `this._liveFlags` is a lazy read-through cache; admin writes
  * are write-through, so it never goes stale within a DO lifetime, and a
  * deploy (memory wipe) simply re-reads.  `_flagOn`/`_flagNum` are
- * SYNCHRONOUS — hot paths never touch storage; the join handler warms
- * the cache before any gated code can run.
+ * SYNCHRONOUS — hot paths never touch storage.  v2.3.4376: GameRoom.fetch
+ * warms the cache at its top, before any web route or socket (a cold room's
+ * login door used to read every thrown switch as not thrown).
  *
  * STORAGE KEYS (registered in ARCHITECTURE-HANDOFF rule 2):
  *   liveflags            {name: boolean|number}
@@ -132,9 +133,11 @@ export const liveopsMethods = {
     setGearStashCap(old ? GEAR_STASH_CAP_LEGACY : GEAR_STASH_CAP);
   },
 
-  // Synchronous by design (hot paths).  Fail-open before the first
-  // cache load is acceptable: every gated path requires a joined
-  // player, and the join handler awaits _liveFlagsEnsure first.
+  // Synchronous by design (hot paths).  v2.3.4376: the cache is loaded
+  // at the top of GameRoom.fetch, so every request reads it loaded; only a
+  // failed storage read leaves it cold (fail-open, as before).  The old
+  // "every gated path requires a joined player" was untrue for the web
+  // routes (docs/specs/liveops.md "Loaded before any request").
   _flagOn(name) {
     return !!(this._liveFlags && this._liveFlags[name]);
   },

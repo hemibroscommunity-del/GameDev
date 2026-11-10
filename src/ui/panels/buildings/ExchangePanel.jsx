@@ -6,6 +6,7 @@ import { storeEnabled } from '@/ui/storeApi.js';   /* v2.3.2476 */
 import { _asyncToGenerator, _objectSpread, _regenerator, _slicedToArray } from '@/lib/babelHelpers.js';
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
+import { claimPlace, releasePlace } from '@/game/storeSellTap.js';   /* v2.3.4369: one Place tap at a time */
 import { cue } from '@/game/eventSounds.js';   /* v2.3.3434: the market's moments heard, as the auction house's are */
 /* === ExchangePanel — buildingPanel === 'exchange' sub-panel === */
 /* v2.3.876: extracted verbatim from the buildingPanel === 'exchange'
@@ -59,6 +60,16 @@ export function ExchangePanel(props) {
     _React$useState2 = _slicedToArray(_React$useState, 2),
     mktFiltersOpen = _React$useState2[0],
     setMktFiltersOpen = _React$useState2[1];
+  /* v2.3.4369: the sweep's V8a P1-7 (an old pick).  The weapon to sell is
+     remembered by its PLACE in the stash (BroTown's mktSellItem), and that
+     state outlives the window: closed and reopened, the old chip was still
+     lit over a bag that had changed under it, and "List for Sale" listed the
+     weapon now at that place under the old one's name.  So opening the
+     window starts with nothing picked.  (Interim, review R2: until the worker
+     names a sold weapon by its id; game/storeSellTap.js.) */
+  React.useEffect(function () {
+    setMktSellItem(null);
+  }, []);
   /* v2.3.1235: summary strings for the collapsed Filters row, built from
      the live mktTier / mktElement1 / mktElement2 props (same tier-label
      fallback chain the order-book heading uses). */
@@ -615,7 +626,25 @@ export function ExchangePanel(props) {
       fontStyle: 'italic'
     }
   }, "No items in stash to sell"))), /*#__PURE__*/React.createElement("button", {
-    onClick: /*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee0() {
+    /* v2.3.4369: the sweep's V8a P1-7.  ONE tap at a time (claimPlace: a
+       second tap while the first is unanswered does nothing, as the item
+       card's sellInFlight has done since v2.3.2507), and a sell's pick is
+       cleared on EVERY answer -- a refusal and a "Server error!" kept it lit
+       before, so the next tap listed whatever weapon had slid into that place
+       under the old one's name.  Interim patches until the worker names a
+       sold weapon by its id (review R2); no timeout here on purpose
+       (game/storeSellTap.js says why).  The handler below is unchanged. */
+    onClick: (function (placeTap) {
+      return function onClick() {
+        var S = stateRef.current;
+        if (!claimPlace(S)) return;
+        var wasSell = mktMode === 'sell';
+        placeTap().then(function () {}, function () {}).then(function () {
+          releasePlace(S);
+          if (wasSell) setMktSellItem(null);
+        });
+      };
+    })(/*#__PURE__*/_asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee0() {
       var S, R, _R$weaponStash, sellItem, _BLACKSMITH_TIERS$mkt, _WOODWORKING_TIERS$mk, tierLabel, res, data, execPrice, _data$matchedOrder, refund, ob, obd, _t9, _t0;
       return _regenerator().w(function (_context0) {
         while (1) switch (_context0.p = _context0.n) {
@@ -766,7 +795,7 @@ export function ExchangePanel(props) {
             return _context0.a(2);
         }
       }, _callee0, null, [[9, 12], [5, 14]]);
-    })),
+    }))),
     /* v2.3.1235: THE filled-gold primary of the surface — gradient
        brass on #172126 ink, #EAC675 edge, radius 10 (exact committed
        tokens, design correction §7); label emoji dropped. */

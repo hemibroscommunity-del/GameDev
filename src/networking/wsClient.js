@@ -112,6 +112,7 @@ import { showLingerWait, hideLingerWait } from '@/ui/LingerScreen.js';   /* v2.3
 import { showOriginScreen } from '@/ui/OriginScreen.js';   /* v2.3.3312: a copy on another site is sent to the real game */
 import { showDeviceScreen } from '@/ui/DeviceScreen.js';   /* v2.3.3344: a character's key on a device it was never played on */
 import { markServerReady, resetServerReady, serverReadyReason } from '@/networking/serverReady.js'; /* v2.3.2439: the world waits for the server */
+import { retireSocket } from '@/game/socketLine.js'; /* v2.3.4367: one line at a time */
 
 import { pushDmgPopup } from '@/game/combatHelpers.js';
 import { noteEatRefused, pvpHealWaitText } from '@/game/fightFood.js'; /* v2.3.3133: the worker's word on a bite it held back */
@@ -196,6 +197,8 @@ import { wheelStageName } from '@/data/wheelStageLooks.js'; /* v2.3.3817: ...wit
 import { nmlJoinFromBys } from '@/game/nmlAsk.js'; /* v2.3.3530: one who chose to attack you joins a fight you chose */
 import { applySalvageResult, applyEssenceResult } from '@/game/salvage.js'; /* v2.3.3141: salvage and essences */
 import { applyItemDropResult } from '@/game/itemDrop.js'; /* v2.3.3473: Drop's answer */
+import { workerClock, rebasePiles } from '@/game/workerClock.js';   /* v2.3.4364: a pile's times on the worker's clock */
+import { notRecipientRetry } from '@/game/lootAsk.js';   /* v2.3.4364: an early 'not-recipient' on a death pile, asked once more */
 import { applyItemReveal, afterReveal } from '@/game/revealBag.js'; /* v2.3.4012: a mystery piece opened in the bag */
 import { onPointsResetResult } from '@/game/pointsReset.js'; /* v2.3.3541: the free points reset's answer */
 import { applyShieldGemResult, adoptShieldGem } from '@/game/shieldGem.js'; /* v2.3.3187: the shield's gem, put in by the worker */
@@ -206,6 +209,7 @@ import { deathVol } from '@/game/hitSounds.js'; /* v2.3.3248: a far monster's de
 import { applyOnlineList, onlineListFresh, parkMissing, presence2On } from '@/game/presence2.js'; /* v2.3.3250: presence v2, the online list, far copies parked */
 import { saveRpgSoon, cancelRpgSave } from '@/game/rpgSave.js'; /* v2.3.2330: the player_state echo goes through the debouncer; v2.3.2336: and the wipes cancel it */
 import { noteMoveCaps } from '@/game/monsterMoves.js';   /* v2.3.4011 */
+import { t2OnStateSync } from '@/game/tradeSlot.js';   /* v2.3.4362: the trade window never outlives its server */
 /* v2.3.3689: what your head wears and its colours, as one string -- the
    state_sync record apply tells BroTown when it changed (the 'bt-own-look'
    event: the new pieces prepared, the veil waiting for them) */
@@ -495,14 +499,28 @@ export function setupWebSocket(ctx) {
         });
         return;
       }
+      /* ═══ v2.3.4367: ONE LINE AT A TIME ═══
+         Every road that connects comes through here (the room-full timer and
+         its Try now, the linger and lockout waits, the key door-ask, the
+         account check's token, a tab return, the backoff), and only some
+         retired the old line first: Try now during the automatic try's
+         handshake left a stray that later knocked the live line off (the
+         sweep's V4 N1-2).  So connect() retires the line it replaces itself
+         (handlers off, then closed: game/socketLine.js), and each handler
+         below acts only while its own socket is still the current one. */
+      var _prevWs = ws;
+      ws = null;
+      retireSocket(_prevWs, 1000, 'replaced');
+      var sock;
       try {
-        ws = new WebSocket(WS_URL);
+        sock = ws = new WebSocket(WS_URL);
         _connectAt = Date.now();   /* v2.3.3496: a connect that never finishes is retried (_aliveTimer) */
       } catch (e) {
         scheduleReconnect();
         return;
       }
       ws.onopen = function () {
+        if (sock !== ws) return;   /* v2.3.4367: a line that has been replaced does nothing */
         var _S$rpg, _S$rpg2, _S$rpg3, _S$rpgC, _S$rpgI, _S$rpgL, _S$rpgLV, _S$rpgXP, _S$rpgUT;
         /* v2.3.1982: a refused joiner now gets a REAL upgraded socket that
            the worker closes a beat later (join.js _roomFullRefusal), so
@@ -839,6 +857,7 @@ export function setupWebSocket(ctx) {
         setChatLog(_toConsumableArray(S.chatLog));
       };
       ws.onmessage = function (evt) {
+        if (sock !== ws) return;   /* v2.3.4367: a replaced line's frames are not this world's */
         /* v2.3.3034: any frame at all says the pipe is alive (_aliveTimer) */
         _lastInboundAt = Date.now();
         _settleSentAt = 0;
@@ -1579,6 +1598,11 @@ export function setupWebSocket(ctx) {
               /* v2.3.3260: ...and so is "your bro is still in that fight" */
               _lgPending = null;
               hideLingerWait();
+              /* v2.3.4367: ...and the line is connected.  onopen was the one
+                 'connected' write, so a 'superseded' a stray line stamped over
+                 a live one stuck until the next open: the dot red, Friends
+                 "Reconnecting...", the dead-pipe watch off (V4 N1-2 stuck). */
+              S._realtimeStatus = 'connected';
               /* v2.3.3034: we are in again -- an idle or superseded banner is
                  no longer true, and a strike that had no socket to carry it
                  goes now (_holdForRejoin).  Only into a world the game will
@@ -1648,6 +1672,15 @@ export function setupWebSocket(ctx) {
                  party_state right after state_sync when the roster
                  survived, so a real party pops straight back. */
               try { if (setParty) setParty(null); S._party = null; } catch (e) {}
+              /* v2.3.4362: and what the old socket's trade left that no worker
+                 re-sends -- an invite card, a waiting drawer, a receipt and its
+                 watcher (game/tradeSlot.js).  NOT a window showing an open
+                 trade: the ordinary reconnect replaces a socket the worker
+                 still holds (join.js, "superseded by reconnect"), the trade
+                 lives on and the window keeps working.  A dead one closes
+                 within 3 s of its leave (t2Leave) -- before this its buttons
+                 waited forever on a worker with no trade on file (V8b). */
+              try { t2OnStateSync(S, setTrade2); } catch (e) {}
               /* v2.3.1154: HP/Endurance grid deploy-order gate.  The
                  pool multipliers only apply while THIS worker claims
                  caps.hpEndGrids — otherwise its player_state echo would
@@ -2452,6 +2485,12 @@ export function setupWebSocket(ctx) {
                 for (var _rjI = 0; _rjI < S.groundLoot.length; _rjI++) {
                   var _rjPile = S.groundLoot[_rjI];
                   if (_rjPile.lootId !== msg.payload.lootId) continue;
+                  /* v2.3.4364: a death pile's 'not-recipient' only ever means
+                     "too early" (its minute had not ended on the worker's
+                     clock): ONE more ask just after the minute, the pile
+                     kept on screen meanwhile; a second no drops it as before
+                     (game/lootAsk.js; review R1 W1.8: never a loop) */
+                  if (msg.payload.reason === 'not-recipient' && !_rjPile._collected && notRecipientRetry(_rjPile, Date.now())) break;
                   if (_rjPermanent) {
                     /* A pile already credited to us is mid-despawn (the
                        0.75 s pickup animation).  A losing race -- our pet's
@@ -3904,6 +3943,11 @@ export function setupWebSocket(ctx) {
           case 'ping':
             {
               // §16.12 — Respond to server ping for RTT estimation
+              /* v2.3.4364: the ping's ts is the worker's clock: read the
+                 difference from it (game/workerClock.js), and move any pile
+                 built before the first ping (a join's state_sync comes
+                 first) onto it */
+              if (workerClock.sample(msg.ts, Date.now()) && S && S.groundLoot) rebasePiles(S.groundLoot, workerClock);
               /* v2.3.3254: the quiet phone answers on the next frame it sends
                  anyway, saying how long it waited (game/quietPhone.js) */
               if (_quietNow()) {
@@ -3946,6 +3990,15 @@ export function setupWebSocket(ctx) {
         return isFinite(left) && left >= 0 ? Date.now() + left : null;
       }
       function _buildServerPile(p, myId) {
+        /* v2.3.4364: THE WORKER'S TIMES, PUT ON THIS PHONE'S CLOCK ONCE, HERE.
+           `ts`, a death pile's `ownerOnlyUntil` and `expiry` are the worker's
+           own clock; every reader (the pickup, the pet, the renderer's 30 s
+           and its pulse) compares them with Date.now().  A phone clock a
+           little fast asked for a death pile before its minute ended and hid
+           it on the 'not-recipient'; two minutes fast, it cut its own bag on
+           its first frame (sweep 2026-11-03, V22).  `_wOff` is the estimate
+           used, so a better one later moves the pile (rebasePiles). */
+        var _wT = function (t) { return workerClock.toPhone(t); };
         var myShare = (p.shares && typeof p.shares[myId] === 'number') ? p.shares[myId] : 0;
         var isDeath = !!p.isDeathDrop;
         return {
@@ -3966,7 +4019,8 @@ export function setupWebSocket(ctx) {
              so null lets anyone walk over and trigger pickup. */
           recipients: p.recipients == null ? null : p.recipients,
           killerName: p.killerName || 'Player',
-          ts: p.ts || Date.now(),
+          ts: _wT(p.ts) || Date.now(),
+          _wOff: p.ts ? workerClock.offset() : undefined,
           inventoryClaimed: !!p.inventoryClaimed,
           /* v2.3.1141: server-minted weapon drop riding the pile.
              Presence + tier + name only -- quality is withheld until
@@ -4001,8 +4055,8 @@ export function setupWebSocket(ctx) {
              to free-for-all (anyone in zone can grab) until expiry. */
           isDeathDrop: isDeath,
           deathItems: isDeath ? (p.deathItems || []) : null,
-          expiry: isDeath ? (_dropAt(p, 'left') || p.expiry || null) : null,
-          ownerOnlyUntil: isDeath ? (_dropAt(p, 'openLeft') || p.ownerOnlyUntil || null) : null,
+          expiry: isDeath ? (_dropAt(p, 'left') || _wT(p.expiry) || null) : null,
+          ownerOnlyUntil: isDeath ? (_dropAt(p, 'openLeft') || _wT(p.ownerOnlyUntil) || null) : null,
           /* v2.3.3473: a dropped item (server itemdrop.js): drawn as the item,
              not as a bag of your things; your own left alone until you step
              off it (game/itemDrop.js); flashing from flashAt.  Its clocks
@@ -4448,6 +4502,13 @@ export function setupWebSocket(ctx) {
         _buildServerPile: _buildServerPile
       };
       try { window.__btDispatch = function (e) { processGameEvent(e.type, e.payload, S, _gameEventDeps); }; } catch (e) {}
+      /* v2.3.4362: the trade window's own way out when the worker never
+         answers a leave (game/tradeSlot.js t2Leave): the worker's cancel,
+         played here through the real handler, so the window closes with
+         the same sound and chat line as any other ended trade. */
+      S._t2LocalEnd = function (reason) {
+        processGameEvent('trade2_state', { state: 'cancelled', reason: reason || 'gone' }, S, _gameEventDeps);
+      };
       /* v2.3.1924: the same QA/debug seam for the private loot credit, which
          is NOT a game event — it arrives on the socket and is handled in this
          file's own switch, so __btDispatch above cannot reach it.  It is the
@@ -4491,6 +4552,7 @@ export function setupWebSocket(ctx) {
 
 
       ws.onclose = function (event) {
+        if (sock !== ws) return;   /* v2.3.4367: a replaced line's close re-arms nothing */
         S._realtimeStatus = 'disconnected';
         /* v2.3.771: close-reason evidence.
            v2.3.2615: the note that used to sit here said "src/networking/
@@ -4684,6 +4746,7 @@ export function setupWebSocket(ctx) {
         scheduleReconnect();
       };
       ws.onerror = function () {
+        if (sock !== ws) return;   /* v2.3.4367 */
         S._realtimeStatus = 'disconnected';
       };
     }
@@ -6242,11 +6305,11 @@ export function setupWebSocket(ctx) {
       clearInterval(_aliveTimer); /* v2.3.778 resync heartbeat */
       clearInterval(_riderTimer); /* v2.3.3254: the quiet phone's riders */
       _disarmComeBack();   /* v2.3.3034 */
-      if (ws) {
-        try {
-          ws.close();
-        } catch (e) {}
-      }
+      /* v2.3.4367: handlers off before the close, as connect() does: a closed
+         effect's socket must not run the ordinary drop and reconnect */
+      var _lastWs = ws;
+      ws = null;
+      retireSocket(_lastWs, 1000, 'teardown');
       S.channel = null;
       S._realtimeStatus = 'disconnected';
     };

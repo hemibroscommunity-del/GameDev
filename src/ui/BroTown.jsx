@@ -392,6 +392,7 @@ import { releasePeerDamage, addBuildProg, pushDmgPopup, monsterPopupY } from '@/
 import { isInstantHeal, pvpHealWaitMs, pvpHealWaitText, noteInstantHeal } from '@/game/fightFood.js'; /* v2.3.3133: one bite at a time in a fight with a player (v2.3.3260: in any fight) */
 import { FARM_ITEM_NAMES, farmCropOfItem } from '@/data/farmCrops.js'; /* v2.3.3537: "Ate Carrot" -- every crop is food */
 import { applyLocalRespawn } from '@/game/respawn.js'; /* v2.3.1822: stuck-dead watchdog */
+import { warmStartHp, catchAllDies, refillPools } from '@/game/phoneDeath.js'; /* v2.3.4363: the phone never dies on its own word; one stand-up */
 /* v2.3.2330: the SFX manifest loads once the loading gate has what it was
    waiting for -- see BT_AUDIO.unlock for why it no longer loads at the login
    door.  Called at EVERY site that arms the gate: the first cut hung it off the
@@ -420,7 +421,7 @@ function holdZoneMusicAtGate(gate) {
 }
 /* v2.3.767: chat send + chat/emote handlers extracted behavior-frozen (REBUILD-PLAN Phase 2). */
 import { sendChatMessage, setChatMoveSender } from '@/game/chat.js';   /* v2.3.3392: + /wave, /sit, /dance are moves */
-import { subscribeMutes } from '@/game/chatMute.js'; /* v2.3.1981 */
+import { subscribeMutes, subscribeBlocks } from '@/game/chatMute.js'; /* v2.3.1981; v2.3.4365: + subscribeBlocks */
 /* v2.3.787: zone transitions (town exits, tile-9 return, dungeon entrance/exit)
    extracted behavior-frozen (REBUILD-PLAN Phase 6). */
 import { handleZoneTransitions } from '@/game/zoneTransitions.js';
@@ -564,7 +565,7 @@ const {
   DIVE_MAX_AIR, DIVE_AIR_DRAIN, DIVE_AIR_REFILL, DIVE_DAMAGE_RATE,
   SPEED, ANIM_LERP, SAFE_ZONE_RADIUS, RESPAWN_INVULN,
   RESPAWN_BASE, RESPAWN_ESCALATE, RESPAWN_ESCALATE_WINDOW, RESPAWN_MAX,
-  DEATH_SCATTER_RECOVERY, DEATH_GOLD_PENALTY, WEAPON_STASH_MAX,
+  DEATH_SCATTER_RECOVERY, WEAPON_STASH_MAX,
   FARM_PLOT_MAX, WELL_RESTED_DURATION, WELL_RESTED_XP_MULT, HOUSE_SLEEP_MS,
   STATUS_DEFS, ARCHETYPES, COLLISION_TABLE,
   SWING_COOLDOWN, SWING_RANGE, SWING_ARC, SPECIAL_ATK_MULT,
@@ -588,16 +589,17 @@ import { resolveDashSide, screenAngle } from '../game/dashSidePref.js'; /* v2.3.
 import { dashMinBus } from './mobile/dashMinBus.js'; /* v2.3.2119: folded band = identity row only */
 import { stampSheetH } from './mobile/sheetStamp.js'; /* v2.3.2197: --sheet-h joins --dash-h under resize() + the watchdog */
 import { recolorEnabled } from '@/rendering/traits/recolorOptions.js';
+import { mayAsk } from '@/game/lootAsk.js';   /* v2.3.4364: the hand's "may I ask", the pet's too */
 import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1778: building doors; v2.3.2748: + the footprints your feet stop at */
 import { isWheelTrialZone, footstepSurface, setWheelArrival } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown; v2.3.3574: + the spot a recovery reload puts you back on */
 import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
 import { wheelObjectsInfo, wheelWaterAt } from '@/game/wheelTrial.js';
 import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch */
-import { wheelTownDoorAt, wheelTownDoors, rememberFarmTrip } from '@/game/wheelTownDoors.js';
+import { wheelTownDoorAt, wheelTownDoors } from '@/game/wheelTownDoors.js';
 import { noticeboardAt, noticeboardAtCss } from '@/game/wheelNoticeboard.js';   /* v2.3.3899: the town board is on the square's noticeboard */
 import { mayorSaysNext } from '@/game/mayorTalk.js';   /* v2.3.3899: Mayor Bro always talks */
-import { FARM_ARRIVE, FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
-import { holdFarmUntilReady } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it */
+import { FARM_BEDS, FARM_BED_REACH } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
+import { warpToFarm } from '@/game/farmTrip.js';   /* v2.3.3136: the way onto it waits for it; v2.3.4366: the buildings' one warp, which holds */
 import { tickFarmWalk, startFarmStep } from '@/game/farmWalk.js';   /* v2.3.3136: a bed worked where it lies */
 import { bedAt, farmExCode } from '@/game/farmWork.js';
 import { FarmBedPrompt } from '@/ui/mobile/FarmBedPrompt.jsx';   /* v2.3.3136 */
@@ -2185,6 +2187,13 @@ export var BroTown = function BroTown(_ref0) {
      point of moving it off the device. */
   useEffect(function () {
     return subscribeMutes(function (list) { setMutedList(list); });
+  }, []);
+  /* v2.3.4365: and the block list, for the same reason: every Block and
+     Unblock (the Friends page, the player card) goes through chatMute.js
+     setBlockedId, and this copy follows the stored list (the sweep's V12
+     P2-19: the card used to write this load-time copy back over it). */
+  useEffect(function () {
+    return subscribeBlocks(function (list) { setBlockedList(list); });
   }, []);
   var _useState169 = useState(false),
     _useState170 = _slicedToArray(_useState169, 2),
@@ -4332,6 +4341,9 @@ export var BroTown = function BroTown(_ref0) {
           delete S.rpg.inventory.snow;
         }
         recalcDerived(S.rpg);
+        /* v2.3.4363: a page closed while dying left hp 0 in the cache; this
+           start is not a death (game/phoneDeath.js warmStartHp) */
+        warmStartHp(S.rpg);
       } else {
         /* Either no save or old system — create fresh with new system */
         S.rpg = createDefaultRpg();
@@ -4965,7 +4977,12 @@ export var BroTown = function BroTown(_ref0) {
            then race the canonical handler -- ending up with two
            respawn timers (3.5s here vs. server's player_respawned)
            and a clobbered post-respawn hp via _defRpg.hp = maxHp. */
-        if (!S._serverMonsters && S.rpg && S.rpg.hp <= 0 && !S._dying) {
+        /* v2.3.4363: asked of game/phoneDeath.js catchAllDies, which also
+           waits for the worker's first player_state (S._rpgFromServer): a
+           fresh page warmed from a cache holding hp 0 ran this on its first
+           frame, and the worker's real death was then skipped as "already
+           dying" (the 2026-11-03 sweep, V2 U1-2) */
+        if (catchAllDies(S)) {
           S._dying = true;
           if (!S.rpg._compStats) S.rpg._compStats = createDefaultCompStats();
           S.rpg._compStats.deaths++;
@@ -4980,12 +4997,11 @@ export var BroTown = function BroTown(_ref0) {
             try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
             try { S.channel.send({ type: 'broadcast', event: 'player_died_to_monster', payload: { id: S.myId, x: P.x, y: P.y } }); } catch (e) {}
           }
-          /* Gold penalty — same rate as the rich handlers. */
-          var _defGoldLost = Math.floor((S.rpg.coins || 0) * DEATH_GOLD_PENALTY);
-          S.rpg.coins = Math.max(0, (S.rpg.coins || 0) - _defGoldLost);
+          /* v2.3.4363: no gold taken.  It was 10% off the gold SHOWN (and
+             cached); the worker never takes it, and a v2 delta never re-sends
+             unchanged coins, so the low number stayed until the next change. */
           /* Popup (skip if a rich handler already pushed one this tick). */
           pushDmgPopup(S, P.x, P.y - 50, 'YOU DIED', '#D95C54');
-          if (_defGoldLost > 0) pushDmgPopup(S, P.x, P.y - 35, '-' + _defGoldLost + 'G', '#D95C54');
           S.screenShake = Math.max(S.screenShake || 0, 10);
           S._deathFlash = Date.now();
           try { BT_AUDIO.playerDeath ? BT_AUDIO.playerDeath() : BT_AUDIO.beep(80, 0.3, 0.4, 'sawtooth'); } catch (e) {}
@@ -4994,32 +5010,25 @@ export var BroTown = function BroTown(_ref0) {
              the current state object even if React reassigns the ref. */
           var _defRpg = S.rpg;
           setTimeout(function () {
-            _defRpg.hp = _defRpg.maxHp;
-            _defRpg.stamina = _defRpg.maxStamina;
-            _defRpg.mana = _defRpg.maxMana;
-            S.currentZone = 'town';
-            try { updateZoneDimensions('town'); } catch (e) {}
-            try { BT_AUDIO.startZoneAmbient('town'); } catch (e) {}
-            try { S.map = generateZoneMap('town'); } catch (e) {}
-            S.monsters = [];
-            S.gatherNodes = []; /* Town is safe -- no harvestable resources; clear stale entries from the previous zone */
-            P.x = TOWN_SPAWN.x;   /* v2.3.1777 */
-            P.y = TOWN_SPAWN.y;
-            P.vx = 0; P.vy = 0;
-            S.respawnTimer = Date.now() + 3000;
-            S._dying = false;
-            S._deathStart = 0;
+            /* v2.3.4363: the worker's own stand-up (or the watchdog) may have
+               come first: one stand-up, never two */
+            if (!S._dying) return;
+            refillPools(_defRpg);
+            /* in-flight shots and the old zone's leftovers, which the one
+               stand-up below does not clear */
             S.groundLoot = []; if (window._pixiRenderer && window._pixiRenderer.flushAllLoot) window._pixiRenderer.flushAllLoot();
             S.hitParticles = [];
             S.arrows = [];
             S.slimeProjectiles = []; /* v2.3.1181: slime orbs kept flying across zone loads (absolute coords, no zone check) and could hit the player in the new zone */ S.snowballBursts = []; /* v2.3.2217: and an undrained burst would pop in the new zone at old coords */ S.arrowBlasts = []; /* v2.3.2279: same, for the bow blast */
             S._ambientParticles = [];
-            if (S.channel) {
-              try { S.channel.send({ type: 'broadcast', event: 'move', payload: { x: P.x, y: P.y, z: S.currentZone, vx: 0, vy: 0 } }); } catch (e) {}
-              try { S.channel.send({ type: 'broadcast', event: 'player_respawned', payload: { id: S.myId } }); } catch (e) {}
-            }
+            P.vx = 0; P.vy = 0;
+            /* v2.3.4363: the ONE stand-up (game/respawn.js).  This copy skipped
+               freeing the zone's art, the npc list, the dungeon flags, the
+               lock, the trip to the Wheel's BroTown, the cue and the chat
+               line, and landed on the old plaza.  It sends the move, the
+               player_respawned and saves bt_rpg itself. */
+            applyLocalRespawn(S, 'town');
             setRpgState(_objectSpread({}, _defRpg));
-            try { localStorage.setItem('bt_rpg', JSON.stringify(_defRpg)); } catch (e) {}
           }, 3500);
         }
 
@@ -7235,12 +7244,14 @@ export var BroTown = function BroTown(_ref0) {
                      against one the legacy self-credit path below
                      stays (harmless — stomped, as ever). */
                   if (loot._serverLoot && loot.lootId && S._serverCaps && S._serverCaps.petLoot) {
-                    if (loot._collected) return true; /* credit landed; despawn timer runs */
-                    /* Recipient gate mirrors groundLoot.js — don't spam
-                       the worker with not-recipient rejections for
-                       piles the pet could never claim. */
-                    var _petFFA = loot.isDeathDrop && loot.ownerOnlyUntil && Date.now() > loot.ownerOnlyUntil;
-                    if (!_petFFA && loot.recipients && !loot.recipients.includes(S.myId)) return true;
+                    /* v2.3.4364: THE HAND'S RULE, NOT A COPY OF IT
+                       (game/lootAsk.js mayAsk): collected (the credit landed;
+                       the despawn timer runs), not mine, before an early
+                       refusal's one retry, or -- what the copy lacked -- while
+                       I am dying: it asked for my own death pile at my feet,
+                       was refused 'dead' and asked again every round trip for
+                       the five seconds (sweep 2026-11-03, V22 G4-15). */
+                    if (!mayAsk(loot, S.myId, Date.now(), { dying: !!S._dying })) return true;
                     /* v2.3.3473: never your own drop (game/itemDrop.js) -- you
                        put it down; the pet at your heels would hand it straight
                        back.  Walking onto it still takes it back. */
@@ -12214,6 +12225,10 @@ export var BroTown = function BroTown(_ref0) {
     if (!S.rpg.lifeSkills) S.rpg.lifeSkills = createDefaultLifeSkills();
     S.rpg.lifeSkills = migrateLifeSkills(S.rpg.lifeSkills);
     recalcDerived(S.rpg);
+    /* v2.3.4363: the 2026-11-03 sweep (V2, U1-2): bt_rpg holds hp 0 through
+       the dying window, and warming from it showed "YOU DIED" on the first
+       frame, before the worker had said anything (game/phoneDeath.js) */
+    warmStartHp(S.rpg);
     setRpgState(_objectSpread({}, S.rpg));
     /* Persist */
     try {
@@ -13651,27 +13666,10 @@ export var BroTown = function BroTown(_ref0) {
     onCancel: function onCancel() { return setBuildingPanel(null); },
     onTravel: function onTravel() {
       var S2 = stateRef.current;
-      rememberFarmTrip(S2);   /* v2.3.3032: from the Wheel, the gate leads back out where you stood */
-      S2.currentZone = 'farm_home';
-      updateZoneDimensions('farm_home');   /* v2.3.3136: the farm's own size (this warp never set it) */
-      S2.map = generateZoneMap('farm_home');
-      /* v2.3.3136: in at the farm's gate, held under its loading screen until
-         it is all there (game/farmTrip.js) */
-      S2.player.x = FARM_ARRIVE.x;
-      S2.player.y = FARM_ARRIVE.y;
-      holdFarmUntilReady(S2);
-      S2.monsters = [];
-      S2.gatherNodes = [];
-      S2.npcs = null;
-      S2.groundLoot = [];
-      S2.hitParticles = [];
-      S2.deathExplosions = [];
-      S2.arrows = [];
-      S2._currentDepth = 'shallow';
-      S2._ambientParticles = [];
-      S2._zoneWipe = Date.now();
+      /* v2.3.4366: the buildings' one way onto the farm (game/farmTrip.js);
+         it asked for the town's music here after the farm's, every time */
+      warpToFarm(S2);
       setBuildingPanel(null);
-      BT_AUDIO.startZoneAmbient('town');
       BT_AUDIO.beep(500, 0.08, 0.12, 'sine');
     }
   }))), ((_stateRef$current18 = stateRef.current) === null || _stateRef$current18 === void 0 ? void 0 : _stateRef$current18.currentZone) === 'farm_home' && /*#__PURE__*/React.createElement("div", {

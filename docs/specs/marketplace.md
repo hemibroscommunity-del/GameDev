@@ -75,3 +75,34 @@ escrow + forged-blob immunity, gold escrow + insufficient/offline
 rejects, both settlement legs + price improvement, offline-counterparty
 inbox payment, idempotent cancel/expiry refunds, expiry-refunds-not-
 deletes, self-order skip, price history, order cap.
+
+## The phone's Place tap: one at a time, no old pick (v2.3.4369)
+
+The state-machine sweep (2026-11-03, V8a P1-7). The General Store's "List for
+Sale" / "Place Buy Order" button (`ExchangePanel.jsx`) had no 'busy' lock, and
+the weapon to sell is remembered by its PLACE in the stash (BroTown's
+`mktSellItem`, sent as `stashIndex`). A double tap posted twice: the worker
+escrowed the picked weapon, then whatever slid into that place, and filed both
+under the first weapon's type and tier, sold at once if a resting buy fit (a
+buy's double tap escrowed the gold twice). The pick was cleared only on an
+"ok", so after a refusal, a "Server error!" or a close and reopen the old chip
+was still lit over a changed bag, and the next tap listed another weapon under
+its name.
+
+- **One tap at a time**: `src/game/storeSellTap.js` `claimPlace(S)` /
+  `releasePlace(S)`. The lock is on the game state, not the panel, so a close
+  and reopen while the answer is out does not open a second door. It is
+  released on every answer, the fetch's own error included.
+- **No old pick**: a sell's pick is cleared on every answer (ok, refusal,
+  error), and the window clears it when it opens.
+- **No timeout, on purpose.** A timeout read as a refusal makes players list
+  twice (the v2.3.2507 double listing). A later change adds one that ends in
+  "not sure, check My orders" with the button still locked, and a guard so a
+  late answer touches only the card it was sent from.
+- **Interim** (review R2): both are phone patches until the worker names a
+  sold weapon by its id, not its place. A modified page still can (the known
+  open hole).
+- Test: `server/test/store-sell-tap.test.mjs` runs the real panel with a stub
+  React and fetch (6 of its 14 checks fail on the v2.3.4354 panel).
+- **The trap**: never key a sale by a stash place across an await, and never
+  leave a pick lit past its answer: the bag under it moves.

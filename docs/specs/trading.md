@@ -76,7 +76,7 @@ reject, expiry, sanitization clamps, sender-disconnect reject.
 
 # Addendum: Two-Sided Trade Window — v2.3.1132 (handoff item H)
 
-The gift flow above is unchanged (old clients keep working). The real
+The gift flow above is unchanged (old clients keep working; since v2.3.4375 it is closed while this window is on, see the end of this file). The real
 trade window is a PARALLEL explicit command surface — deliberately not
 an extension of the gift handshake — implemented in
 `server/src/trade2.js` (session machine) + `TradeWindowPanel.jsx`
@@ -152,6 +152,20 @@ are opaque blobs at REST in the stage, so they use **escrow-at-stage**
 - Item/gold sessions are memory-only (nothing escrowed; a deploy voids
   them harmlessly). Only the **weapon** stage is storage-backed, because
   it holds escrowed value (rule 11).
+- v2.3.4362: "harmlessly" was true of the goods only: the phone's window
+  stayed up after a deploy or a dropped socket, and its buttons waited on a
+  worker with no trade on file (sweep V8b P2-1). Now a leave (✕, Cancel,
+  Leave Trade) closes the window with "The trade was cancelled" when no
+  answer comes in 3 s or the socket is down, and a 'busy' refusal keeps a
+  window showing your own live trade. A `state_sync` clears an invite card,
+  a waiting drawer and a receipt, but NOT a window showing an open trade:
+  the ordinary reconnect replaces a socket the worker still holds without
+  webSocketClose (join.js, "superseded by reconnect"), so that trade lives
+  on and the window keeps working (`src/game/tradeSlot.js`;
+  `server/test/trade-window-slot.test.mjs`). Left for the server batch:
+  the worker re-sending a live trade after `state_sync` (then the phone may
+  clear the window there, as the party does) and answering `trade2_cancel`
+  for a missing trade.
 - The atomicity argument: both debits run synchronously inside one
   input-gated event BEFORE any credit; credits are opId-idempotent.
 
@@ -198,3 +212,59 @@ bottom (current) is more confusing."*
 Tests: `mp-desktrade` step 6 (two computers: side by side, yours left, the
 same width, on both), `mp-tradeside` (two upright phones: stacked by default,
 side by side with `?tradeside=1`), `mp-trade` (a 375 px phone stacks).
+
+## v2.3.4375: the gift is closed while the trade window is on
+
+The owner (2026-11-10): *"The old one-way gift trade, which no current
+phone uses, is switched off."*
+
+**The hole.** The worker settled a gift whatever `state_sync.caps` said,
+and the gift never asked the fight lock (`nomansland.js`
+`_bagLockedByFight`), unlike every other way out of the bag (the store, the
+shop, the market, the farm, an item drop, the trade window). A modified
+phone losing a fight to a player could gift its whole bag and gold to a
+friend, whose ordinary phone showed the gift card and accepted it, and the
+killer's pile was empty (state-machine sweep V8b, S6-1). Also: a decline
+was a plain relay that left the offer in place, so Decline and then Accept
+inside the two minutes still settled.
+
+**Now** (`trade.js` `_giftClosed`, `_interceptTrade`):
+
+- While the trade window is on (the normal case: the live flag `trade2` is
+  not written false), a `trade_offer` is refused to its SENDER with the
+  lane's own `trade_reject` ("Trade declined"); nothing is relayed to the
+  target, nothing is kept. An accept finds no offer and is dropped, never
+  relayed (handoff rule 15).
+- While the window is switched off (`trade2: false` in the live flags, which
+  also tells phones `caps.trade2: false`, so they fall back to the gift),
+  the gift works as before, except that an offer from a player in a fight
+  with a player is refused to its sender, and an accept is refused to the
+  accepter while the SENDER is in one (the offer may be older than the
+  fight). An offer kept while the gift was open is refused at its accept
+  once the gift has closed.
+- A `trade_reject` from the target voids the offer it answers (keyed
+  `sender>decliner`, so a phone can only void an offer made to itself), and
+  is still relayed.
+- Kill switch: `giftclosed: false` opens the gift again beside the window,
+  as before. The fight lock still holds there (`fightlock: false` is its own
+  switch).
+
+**What a phone is told.** No new cap. The phone offers the gift only when
+`caps.trade2` is not true (`InspectPlayerPanel.jsx` `openTrade`), and the
+worker opens the gift exactly when it says `trade2: false`, so an honest
+phone on either protocol (the caps are the same in v1 and v2) is never
+shown a way to trade the worker refuses. The one gap is a phone that has
+not had its `state_sync` yet (`_serverCaps` unset), which shows the gift
+and would read "Trade declined": that is phone code, left for later.
+
+**The lesson.** A legacy lane kept as a fallback must close when what
+replaced it is on, and must ask every check the replacement asks: a rule
+added to "every road out of the bag" (v2.3.3183) missed the one road no
+honest phone used any more, and that is exactly the road a modified phone
+takes.
+
+**Tests.** `server/test/trade.test.mjs` §10, on the real socket path, v1 and
+v2: the gift with the window on moves nothing and is refused to its sender;
+with the window off it settles; in a fight it is refused at the offer and
+at the accept; a decline voids the offer; the kill switch; an offer kept
+across the switch. §1-9 run as the fallback (`trade2: false`).

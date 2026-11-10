@@ -406,6 +406,7 @@ check('second drain reports queued === 0', inbD3.length === 1 && inbD3[0].payloa
   {
     const A = 'bp_once_ta', B = 'bp_once_tb';
     const store = await world([A, B], 200);
+    store.set('liveflags', { trade2: false });   /* v2.3.4375: the gift is the trade window's fallback only (trade.js _giftClosed) */
     const before = async (r) => {
       await joinOn(r, fakeWs('a'), A);
       await joinOn(r, fakeWs('b'), B);

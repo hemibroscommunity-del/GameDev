@@ -2,6 +2,7 @@ import { coinArtFor, COIN_ONE } from '@/game/coinArt.js';   /* v2.3.3734: the ow
 import React, { useState, useEffect, useRef } from 'react';
 import { tradeBagBus } from '../mobile/tradeBagBus.js'; /* v2.3.2149 */
 import { guardPush } from '../mobile/modalGuardBus.js'; /* v2.3.2145 */
+import { t2Leave } from '@/game/tradeSlot.js'; /* v2.3.4362: a leave never waits forever */
 /* v2.3.1235: batch-4 state-correction — RARITY_TIERS for staged-weapon
    row rarity (existing data; plain inventory items carry no rarity). */
 import { RARITY_TIERS } from '@/data/index.js';
@@ -716,6 +717,17 @@ export function TradeWindowPanel(props) {
   const send = (event, payload) => {
     try { S.channel.send({ type: 'broadcast', event, payload: payload || {} }); } catch (e) {}
   };
+  /* ═══ v2.3.4362: LEAVING A TRADE NEVER WAITS FOREVER ═══
+     ✕, Cancel and Leave Trade sent trade2_cancel and waited for the worker's
+     answer to close the window.  After a dropped socket or a server update the
+     worker has no trade on file and answers nothing, so the window could not be
+     closed until a reload (V8b P2-1).  Now, with no answer in 3 s or the
+     socket down, the window closes here with "The trade was cancelled"
+     (game/tradeSlot.js t2Leave), through gameEvents' own cancel. */
+  const leave = () => t2Leave(S, send, () => {
+    if (typeof S._t2LocalEnd === 'function') S._t2LocalEnd('gone');
+    else setTrade2(null);
+  });
 
   // A fresh session (or a session id change) resets the local staging
   // mirror to the server's copy of MY side.
@@ -1243,7 +1255,7 @@ export function TradeWindowPanel(props) {
   const guardLeave = !bothEmpty || iConfirmed || theyConfirmed;
   const requestLeave = () => {
     if (guardLeave) setLeaveAsk(true);
-    else send('trade2_cancel');
+    else leave();   /* v2.3.4362 */
   };
 
   /* v2.3.1232: weapon chip style — magic violet from the semantic set
@@ -1440,7 +1452,7 @@ export function TradeWindowPanel(props) {
                 >Keep Trading</button>
                 <button
                   style={{ flex: 1, padding: '6px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', cursor: 'pointer' }}
-                  onClick={() => send('trade2_cancel')}
+                  onClick={leave /* v2.3.4362: was send('trade2_cancel') alone */}
                 >Leave Trade</button>
               </div>
             </div>
@@ -1875,7 +1887,7 @@ export function TradeWindowPanel(props) {
               >Keep Trading</button>
               <button
                 style={{ flex: 1, padding: '6px 0', minHeight: 44, borderRadius: 10, fontSize: 13, fontWeight: 700, border: '1px solid #D8635D', background: 'transparent', color: '#D8635D', cursor: 'pointer' }}
-                onClick={() => send('trade2_cancel')}
+                onClick={leave /* v2.3.4362: was send('trade2_cancel') alone */}
               >Leave Trade</button>
             </div>
           </div>
