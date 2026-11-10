@@ -593,7 +593,7 @@ import { buildingPropNear, zoneBlockers } from '@/data/worldProps.js'; /* v2.3.1
 import { isWheelTrialZone, footstepSurface, setWheelArrival } from '@/game/worldTrial.js';   /* v2.3.2975: Mayor Bro in the Wheel's Brotown; v2.3.3574: + the spot a recovery reload puts you back on */
 import { wheelDoorAt, enterWheelDungeon, wheelDungeonDoorLine } from '@/game/wheelDungeons.js';   /* v2.3.3016: the Wheel's dungeons, at its landmarks; v2.3.3573: + a party dungeon's line */
 import { wheelObjectsInfo, wheelWaterAt } from '@/game/wheelTrial.js';
-import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch */
+import { PET_FETCH, petFetchStep, petFetchState, petFetchHolds, petPlaceBad } from '@/game/petFetch.js';   /* v2.3.3806: the pet's fetch; v2.3.4388: petPlaceBad */
 import { wheelTownDoorAt, wheelTownDoors } from '@/game/wheelTownDoors.js';
 import { noticeboardAt, noticeboardAtCss } from '@/game/wheelNoticeboard.js';   /* v2.3.3899: the town board is on the square's noticeboard */
 import { mayorSaysNext } from '@/game/mayorTalk.js';   /* v2.3.3899: Mayor Bro always talks */
@@ -7147,7 +7147,9 @@ export var BroTown = function BroTown(_ref0) {
                zone change or a respawn: it walked back from where it was at
                2 px a frame, which across the Wheel took minutes (the plan's
                "things found in the code", 9). */
-            if (!S._petX || Math.abs(S._petX - P.x) + Math.abs(S._petY - P.y) > 900) {
+            /* v2.3.4388: ...and when its place is not a number (petPlaceBad):
+               `!S._petX` caught a NaN x but never a NaN y alone */
+            if (!S._petX || petPlaceBad(S._petX, S._petY) || Math.abs(S._petX - P.x) + Math.abs(S._petY - P.y) > 900) {
               S._petX = P.x - 30;
               S._petY = P.y + 20;
             }
@@ -7163,6 +7165,14 @@ export var BroTown = function BroTown(_ref0) {
                every screen, and slows with the walk only where the game itself
                does (under 20 fps, the scale's x3 clamp). */
             var _petDt = S._dtScale || 1;
+            /* v2.3.4388: THE PET'S OWN CLOCK.  This block read the frame's
+               `now`, but `var now = performance.now()` is set further down
+               the loop (the broadcast), so here it was always undefined: the
+               fetch's give-up, way back and skip timers never fired, and the
+               playful and curious pets' idle sway (sin(now / 300)) made
+               their place NaN every frame, a pet never drawn (sweep
+               2026-11-03, VA U1-1; server/test/pet-clock.test.mjs). */
+            var _petNow = performance.now();
             /* ═══ v2.3.3806: THE FETCH (game/petFetch.js) ═══
                The owner: "make pets run towards loot drops and pick them up
                for you".  A monster pile of yours within PET_FETCH.RADIUS: the
@@ -7184,7 +7194,7 @@ export var BroTown = function BroTown(_ref0) {
             var _pf = null;
             if (_pfOn) {
               _pf = petFetchStep(S._petFetch, {
-                now: now, zone: S.currentZone, me: S.myId, piles: S.groundLoot,
+                now: _petNow, zone: S.currentZone, me: S.myId, piles: S.groundLoot,
                 px: P.x, py: P.y, petX: S._petX, petY: S._petY,
                 stepPx: _pfRun * PET_FETCH.SPEED_K * _petDt, pace: _pfRun * PET_FETCH.SPEED_K, blockedAt: _petBlockedAt, waterAt: _petWaterAt
               });
@@ -7214,16 +7224,19 @@ export var BroTown = function BroTown(_ref0) {
             if (_pf) {
               /* no idle wander on a run */
             } else if (pet.personality === 'playful') {
-              S._petX += Math.sin(now / 300) * 0.3 * _petDt;
-              S._petY += Math.cos(now / 400) * 0.2 * _petDt;
+              S._petX += Math.sin(_petNow / 300) * 0.3 * _petDt;
+              S._petY += Math.cos(_petNow / 400) * 0.2 * _petDt;
             }
             if (!_pf && pet.personality === 'curious') {
-              S._petX += Math.sin(now / 500 + 1) * 0.5 * _petDt;
+              S._petX += Math.sin(_petNow / 500 + 1) * 0.5 * _petDt;
             }
             if (!_pf && pet.personality === 'anxious') {
               S._petX += (Math.random() - 0.5) * 0.4 * _petDt;
               S._petY += (Math.random() - 0.5) * 0.4 * _petDt;
             }
+            /* v2.3.4388: never drawn, never vacuumed with a place that is not
+               a number: whatever made it, the pet is back beside you */
+            if (petPlaceBad(S._petX, S._petY)) { S._petX = P.x - 30; S._petY = P.y + 20; }
 
             /* AUTO-LOOT — pet collects nearby ground loot */
             if (S.groundLoot) {

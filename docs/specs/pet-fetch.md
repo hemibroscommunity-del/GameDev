@@ -71,6 +71,17 @@ same kills, because a fighter's piles land at its feet.
   pickup a pile; and the phone's rules (the nearest pile, skips, a run out
   and home, the leash, water, a bush gone round, a wall by the pile).
 - `server/test/pets.test.mjs`: the vacuum's old reach check moved past 600.
+- `server/test/pet-clock.test.mjs` (v2.3.4388): the pet block cut from
+  BroTown.jsx's game loop, run in node with the real petFetch.js on a clock
+  the test passes in (12 and 60 frames a second).  Until v2.3.4388 that block
+  read the loop's `now` before the loop set it (undefined), so no timer here
+  ever fired and the playful and curious pets' place went NaN (sweep
+  2026-11-03, VA U1-1); the pet now has its own clock (`_petNow`), a step
+  with no time starts no run, and a place that is not a number
+  (`petPlaceBad`) is put back beside you.  Each of the five personalities:
+  never NaN idle or on a run; a walled-in pile given up at GIVE_UP_MS, home
+  within BACK_MS, tried again after SKIP_MS; a pile never asked for given up
+  at GIVE_UP_MS.
 - `node tools/qa/mp/run.mjs petfetch`: a phone upright and a computer, each
   with a pet, a snowman ~300-400 px away killed for them: the pet runs (3.75
   px a 60 Hz frame, the follow is 2), the pile lands in the bag by the pet,
