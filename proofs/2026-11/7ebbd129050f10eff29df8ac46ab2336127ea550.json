@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "7ebbd129050f10eff29df8ac46ab2336127ea550",
+  "tree": "101054594c22b09b45953a9cdeeb59ddd3130fe5",
+  "committedAt": "2026-11-10T06:18:16-08:00",
+  "subject": "Merge pull request #1493 from hemibroscommunity-del/claude/sm-small-slips",
+  "files": 7917,
+  "bytes": 966209316,
+  "listingSha256": "ba63ea704eb0551188b0cc780aa853e5a1065f244c2e3775674943f4d5861465",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
