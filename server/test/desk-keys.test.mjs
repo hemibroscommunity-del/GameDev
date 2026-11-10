@@ -94,8 +94,9 @@ const nav = /NAV_KEYS = Object\.freeze\(\{([^}]*)\}\)/.exec(deskKeys);
 const navLetters = nav ? [...nav[1].matchAll(/:\s*'([A-Z])'/g)].map((m) => m[1]) : [];
 const mapKey = (/MAP_KEY = '([A-Z])'/.exec(deskKeys) || [])[1];
 const menus = DESK_KEY_ROWS.filter((r) => r[3] === 'menus').map((r) => r[0]);
-check('5a the menus group is the dashboard\'s six letters and the map\'s, in deskKeys.js\'s order',
-  navLetters.length === 6 && !!mapKey && menus.join() === navLetters.concat([mapKey]).join(), { menus, navLetters, mapKey });
+/* v2.3.4393: seven -- U, the Leaderboards */
+check('5a the menus group is the dashboard\'s seven letters and the map\'s, in deskKeys.js\'s order',
+  navLetters.length === 7 && !!mapKey && menus.join() === navLetters.concat([mapKey]).join(), { menus, navLetters, mapKey });
 
 /* ── 6. every key the list names is bound ── */
 const ctl = src('src/game/desktopControls.js');

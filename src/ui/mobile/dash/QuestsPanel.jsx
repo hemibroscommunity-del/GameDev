@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
-import { questDetailBus } from '../sheet/questDetailBus.js';
 import { deskWords } from '@/game/deskWords.js';   /* v2.3.3615: "tap" reads "click" on a computer */
-import { dashboardPanelBus } from '../dashboardPanelBus.js';
 import { TRAIL_STYLES, isTrailOff, getShownTrailStyle, setTrailShown, GROUND_PATH } from '@/game/questTrailStyle.js'; /* v2.3.2896; v2.3.2992 GROUND_PATH */
 import { useScrollTap } from '../sheet/scrollTap.js'; /* v2.3.2896: the switch sits in a scroller */
 import { DailyRewardsCard } from './DailyRewardsCard.jsx'; /* v2.3.3140: the way into the daily quests and the season */
 import { trackedQuestId, setTrackedQuest } from '@/game/trackedQuest.js';
 import { questJournalList, questJournalPage, journalCtx } from '../sheet/questJournalModel.js';   /* v2.3.3944: the journal */
 import { apTotalText } from '@/game/questJournal.js';
-import { QuestJournalPage, useBoxWidth, useJournalTap } from './QuestJournalPage.jsx';
+import { QuestJournalPage, useJournalTap, npcPortrait } from './QuestJournalPage.jsx';
+import { useBoxSize, sideBySide, FOOT_FADE, railHeading } from './railKit.js';   /* v2.3.4394: a list beside what it opens */
+import { QUEST_PIN, OWNER_ICON } from '@/data/ownerIcons.js';   /* v2.3.4394: the givers' own pins, on the list's pills; the prize wheel on Daily */
+import { dailyRewardsBus, questsLive, spinLive } from '@/game/dailyRewards.js';
 
 /* v2.3.1265: Quests — read-only quest log (accepting/turning-in stays
    with the NPCs; server-authoritative flow untouched).
@@ -35,10 +36,42 @@ import { QuestJournalPage, useBoxWidth, useJournalTap } from './QuestJournalPage
    opens that quest's own page (QuestDetailPanel), as before.
    The words are game/questJournal.js's (docs/specs/quest-journal.md). */
 
-const openDetail = (qid) => {
-  questDetailBus.select(qid);
-  dashboardPanelBus.push('questDetail');
-};
+/* ═══ v2.3.4394: A MENU, NOT A SCROLL ═══
+   The owner, 2026-11-09: "The quests page actually needs to be reorganized as
+   a useful menu interface.  Right now everything scrolls too long and it's
+   not a good quest management system.  It needs to be able to help you
+   navigate active quests, next steps, locations, etc easily on a mobile
+   device."
+
+   v2.3.3944's journal answered every question, but as ONE column: the points,
+   a whole quest's six parts (about 700 px of them), the daily card, then the
+   Active, Available and Done lists -- in a band about 190 px tall.  To reach
+   your second quest you scrolled past all of the first.
+
+   NOW it is the Leaderboards' shape (v2.3.4393, the owner: "This is looking
+   good"): YOUR QUESTS ARE A LIST of pills down the left, and the one that is
+   lit is OPEN beside it.
+     the list   Active (the giver's grey "?" pin, his gold ring and tick once
+                it is ready to hand in, a brass star on the one you track),
+                Available (the gold "!"), then More: Done with its count, and
+                Daily rewards.  It scrolls by itself, each pill a 44 px
+                target.
+     the quest  QuestJournalPage `brief`: the title and status with MAP and
+                TRACK beside them, then what to do NOW with its count and
+                bar, then WHERE -- all on screen at once on a phone -- and
+                WHO, the steps, GIVEN TO YOU, REWARD and NEXT a scroll below.
+     Done       the points your quests have paid, then each one handed in
+                with its +5 AP; a tap opens it, "Done quests" comes back.
+     Daily      the daily rewards card (its window opens from it).
+   It opens on the quest you are on (the tracked one, else the newest in
+   hand, else the first on offer), as it did; a quest you pick stays open
+   until it changes hands (taken, handed in), when the page goes back to the
+   one you are on.  Where the page is too narrow or too short for the two
+   side by side, the list is one row of pills over the quest (railKit.js).
+   A pill is a quest's whole title where it fits and its start where it does
+   not: the full title heads the page beside it.
+   QuestDetailPanel (a quest opened from the pinned card in the world) is as
+   it was. */
 
 /* ═══ v2.3.2896: THE QUEST PATH SWITCH, WHERE THE QUESTS ARE ═══
    Owner: "Allow an option to switch off the footprints from the quest
@@ -107,36 +140,71 @@ const PathSwitch = () => {
   );
 };
 
-const SectionHead = ({ children, n }) => (
-  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '16px 4px 6px', borderBottom: `1px solid ${COL.borderStrong}` }}>
-    <span style={{ fontSize: 14, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: COL.accent }}>{children}</span>
-    <span style={{ fontSize: 14, fontWeight: 700, color: COL.text2 }}>{n}</span>
-  </div>
-);
-
 const EmptyLine = ({ text }) => (
   <div style={{ padding: '12px 6px', color: COL.text2, fontSize: 15, lineHeight: 1.45 }}>{text}</div>
 );
 
-const rowBtn = {
-  display: 'block', flex: 1, minWidth: 0,
-  minHeight: 56,
-  padding: '8px 4px',
-  background: 'transparent',
-  border: 'none',
-  color: COL.text,
-  fontFamily: 'inherit',
-  textAlign: 'left',
-  cursor: 'pointer',
-  touchAction: 'manipulation',
+/* the list's width (140: a title of about thirteen letters whole beside its
+   giver's face), the least page it stands beside the quest on, and the least
+   height (three pills at once) */
+const RAIL_W = 140;
+const SIDE_MIN_W = 340;
+const SIDE_MIN_H = 140;
+
+/* what is open while the game is: { id, group } of a quest picked by hand
+   (dropped when the quest changes hands), or '@done' / '@daily' */
+let lastPick = null;
+
+/* a pill's picture: the giver's pin for a quest (ownerIcons QUEST_PIN, the
+   ones over heads and on the maps, behind the loading screen already), a
+   brass star on the one you track, a green tick for Done, the prize wheel
+   for the daily rewards */
+/* ═══ v2.3.4394: THE GIVER'S FACE ON HIS QUEST ═══
+   The owner: "it would be a nice touch to display the profile picture of each
+   NPC beside the quest."  A quest's pill wears its giver's portrait (the head
+   the dialogue and the journal's WHO already show: QuestJournalPage
+   npcPortrait), with the quest's state as a small mark on its corner -- the
+   pin he wears in the world, or the brass star of the quest you track -- so
+   one glance says whose quest it is and how it stands.  A giver with no
+   portrait keeps the pin alone. */
+const FaceIcon = ({ npc, kind }) => {
+  const face = npc ? npcPortrait(npc) : null;
+  if (!face) return <PinIcon kind={kind} px={18} />;
+  return (
+    <span data-quest-pill-face={npc} style={{ position: 'relative', flex: 'none', width: 26, height: 26, display: 'block' }}>
+      <img src={face} alt="" draggable={false} style={{
+        width: 26, height: 26, display: 'block', objectFit: 'contain', imageRendering: 'pixelated',
+        borderRadius: 13, background: COL.well, border: `1px solid ${COL.borderStrong}`, boxSizing: 'border-box',
+      }} />
+      <span style={{ position: 'absolute', right: -5, bottom: -4, display: 'flex' }}><PinIcon kind={kind} px={14} /></span>
+    </span>
+  );
 };
-const rowWrap = { display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COL.divider}` };
-const rowTitle = { display: 'block', fontSize: 16, fontWeight: 700, color: COL.text, lineHeight: 1.3 };
-const rowLine = { display: 'block', fontSize: 15, color: COL.text2, marginTop: 2, lineHeight: 1.35 };
+
+const PinIcon = ({ kind, px }) => {
+  if (kind === 'tracked') return <span aria-hidden="true" data-quest-pill-icon="tracked" style={{ flex: 'none', width: px, textAlign: 'center', fontSize: Math.max(13, px), lineHeight: 1, color: COL.accent, textShadow: '0 0 2px #0B161B, 0 0 2px #0B161B' }}>★</span>;
+  if (kind === 'done') return <span aria-hidden="true" data-quest-pill-icon="done" style={{ flex: 'none', width: px, textAlign: 'center', fontSize: px - 2, lineHeight: 1, fontWeight: 800, color: '#7FD6AC' }}>✓</span>;
+  /* the daily rewards wear the owner's prize wheel (the Daily Rewards window's own), never a second star */
+  const src = kind === 'daily' ? OWNER_ICON.prizeWheel.src : kind === 'ready' ? QUEST_PIN.ready : kind === 'offer' ? QUEST_PIN.offer : QUEST_PIN.waiting;
+  return <img data-quest-pill-icon={kind} src={src} alt="" draggable={false} style={{ flex: 'none', width: px, height: px, objectFit: 'contain' }} />;
+};
+
+const pillStyle = (on, warm) => ({
+  display: 'flex', alignItems: 'center', gap: 7, width: '100%', height: 36, padding: '0 8px 0 4px', boxSizing: 'border-box',
+  borderRadius: 999,
+  /* a lit pill is a tint over the same well, never a hole (NavRail, v2.3.2176) */
+  background: on ? `linear-gradient(0deg, ${COL.accentFill}, ${COL.accentFill}), ${COL.wellSoft}` : COL.wellSoft,
+  border: `1px solid ${on ? COL.accent : warm ? COL.edgeWarm : COL.tileBor}`,
+  color: on ? COL.accent : COL.text, fontSize: 13, fontWeight: 700, textAlign: 'left',
+});
+const pillHit = (row) => ({
+  display: 'flex', alignItems: 'center', minHeight: 44, margin: 0, padding: 0, flex: row ? '0 0 auto' : undefined, width: row ? undefined : '100%',
+  background: 'transparent', border: 'none', fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation',
+});
 
 export const QuestsPanel = () => {
   const [, force] = useState(0);
-  const [boxRef, boxW] = useBoxWidth();
+  const [boxRef, boxW, boxH] = useBoxSize();
   const tap = useJournalTap();
   useEffect(() => {
     const id = setInterval(() => force(v => v + 1), 1000);
@@ -146,99 +214,158 @@ export const QuestsPanel = () => {
   const S = getState();
   const ctx = journalCtx(S);
   const L = questJournalList(S, ctx);
-  const focus = L.focusId ? questJournalPage(S, L.focusId, ctx) : null;
-  /* the box, measured: the page and the log side by side once there is room
-     for both (a wide band), one column otherwise */
-  const wide = boxW >= 760;
+  const groupOf = (id) => (L.active.some((r) => r.id === id) ? 'active' : L.available.some((r) => r.id === id) ? 'available' : L.done.some((r) => r.id === id) ? 'done' : null);
+  /* the daily rewards card draws only against a worker with them (its own rule) */
+  const dailyOn = !!dailyRewardsBus.get() && (questsLive() || spinLive());
+
+  /* ── what is open ── */
+  const [pick, setPickRaw] = useState(() => lastPick);
+  const setPick = (p) => { lastPick = p; setPickRaw(p); };
+  let open = pick;
+  if (open === '@daily' && !dailyOn) open = null;
+  if (open && typeof open === 'object' && groupOf(open.id) !== open.group) open = null;   /* it changed hands: back to the quest you are on */
+  if (!open) open = L.focusId ? { id: L.focusId, group: groupOf(L.focusId) } : (L.done.length ? '@done' : null);
+  const openId = open && typeof open === 'object' ? open.id : null;
+  const page = openId ? questJournalPage(S, openId, ctx) : null;
+  const lit = open === '@done' || (open && open.group === 'done') ? '@done' : open === '@daily' ? '@daily' : openId;
+  const pickQuest = (id) => setPick({ id, group: groupOf(id) });
+
+  const side = sideBySide(boxW, boxH, SIDE_MIN_W, SIDE_MIN_H);
+  /* the pill of what is open is on screen in the list: the page opens on the
+     quest you are on, which may be far down it */
+  const navRef = useRef(null);
+  useEffect(() => {
+    const nav = navRef.current;
+    const on = nav && nav.querySelector('[data-quest-lit="1"]');
+    try { if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_e) { /* an old browser: the list is still a list */ }
+  }, [lit, side]);
 
   const toggleTrack = (qid) => { setTrackedQuest(trackedQuestId() === qid ? null : qid); force((v) => v + 1); };
 
-  const focusCard = focus ? (
-    <div data-journal-focus={focus.id} style={{
-      margin: '8px 0 4px', padding: '2px 12px 4px', borderRadius: 12,
-      background: COL.raised, border: `1px solid ${COL.edgeWarm}`,
-    }}>
-      <QuestJournalPage page={focus} kicker={focus.status === 'available' ? 'Your next quest' : 'Your quest'} />
-    </div>
-  ) : (
-    <EmptyLine text="No quest right now. Look for a gold ! over someone's head in BroTown." />
+  /* ── the list ──  (`pill` and `sec` are plain functions, never components
+     made in this render: the page redraws every second, and a button that
+     was a new component each time would be taken away from under a finger
+     between its press and its lift) */
+  const pill = ({ id, hook, icon, npc, label, title, count, warm }) => (
+    <button key={id} type="button" role="tab" aria-selected={lit === id} data-quest-lit={lit === id ? '1' : undefined} title={title || label}
+      {...hook} {...tap(() => (id === '@done' || id === '@daily' ? setPick(id) : pickQuest(id)))} style={pillHit(!side)}>
+      <span data-quest-pill="" style={{ ...pillStyle(lit === id, warm), width: side ? '100%' : 'auto', maxWidth: side ? undefined : 220 }}>
+        {npc ? <FaceIcon npc={npc} kind={icon} /> : <PinIcon kind={icon} px={18} />}
+        <span style={{ minWidth: 0, flex: side ? 1 : undefined, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+        {count != null ? <span style={{ flex: 'none', fontSize: 13, fontWeight: 800, color: lit === id ? COL.accent : COL.text2, fontVariantNumeric: 'tabular-nums' }}>{count}</span> : null}
+      </span>
+    </button>
   );
+  /* a heading headlines its section (railKit railHeading: brass, with a rule) */
+  let secN = 0;
+  const sec = (word) => <div key={'s:' + word} data-quest-sec={word} aria-hidden={side ? undefined : 'true'} style={railHeading(!side, secN++ === 0)}>{word}</div>;
+  const list = [
+    L.active.length ? sec('Active') : null,
+    ...L.active.map((r) => pill({
+      id: r.id, npc: r.npc, label: r.title, title: r.title + ': ' + deskWords(r.line),
+      icon: r.tracked ? 'tracked' : r.ready ? 'ready' : 'waiting', warm: r.ready,
+      hook: { 'data-quest-row': r.id /* v2.3.3522: mp-trackquest */, 'data-quest-row-ready': r.ready ? '1' : '0', 'data-quest-row-track': r.tracked ? 'on' : 'off' },
+    })),
+    L.available.length ? sec('Available') : null,
+    ...L.available.map((r) => pill({ id: r.id, npc: r.npc, label: r.title, title: r.title + ': ' + r.where, icon: 'offer', hook: { 'data-quest-offer-row': r.id } })),
+    (L.done.length || dailyOn) ? sec('More') : null,
+    L.done.length ? pill({ id: '@done', label: 'Done', count: L.done.length, icon: 'done', hook: { 'data-quest-nav': 'done' } }) : null,
+    dailyOn ? pill({ id: '@daily', label: 'Daily', title: 'Daily rewards', icon: 'daily', hook: { 'data-quest-nav': 'daily' } }) : null,
+  ];
 
-  const log = (
-    <div>
-      <SectionHead n={L.active.length}>Active</SectionHead>
-      {L.active.length === 0 ? <EmptyLine text="Nothing in hand. Take a quest from someone below." /> : L.active.map((r) => (
-        <div key={r.id} style={rowWrap}>
-          <button type="button" style={rowBtn} data-quest-row={r.id /* v2.3.3522: mp-trackquest */} {...tap(() => openDetail(r.id))}>
-            <span style={rowTitle}>{r.title}</span>
-            <span style={{ ...rowLine, color: r.ready ? COL.accent : COL.text2, fontWeight: r.ready ? 700 : 400 }}>{deskWords(r.line)}</span>
-          </button>
-          {/* v2.3.3944: Track from the list, a 44 px star */}
-          <button type="button" data-quest-row-track={r.tracked ? 'on' : 'off'} aria-pressed={r.tracked}
-            aria-label={(r.tracked ? 'Stop tracking ' : 'Track ') + r.title}
-            {...tap(() => toggleTrack(r.id))}
-            style={{
-              flex: 'none', width: 48, height: 48, borderRadius: 10,
-              background: r.tracked ? COL.accentFill : 'transparent',
-              border: `1px solid ${r.tracked ? COL.accent : COL.border}`,
-              color: r.tracked ? COL.accent : COL.text2, fontSize: 22, lineHeight: 1,
-              fontFamily: 'inherit', cursor: 'pointer', touchAction: 'manipulation',
-            }}>{r.tracked ? '★' : '☆'}</button>
-        </div>
-      ))}
-
-      <SectionHead n={L.available.length}>Available</SectionHead>
-      {L.available.length === 0 ? <EmptyLine text="No one has a new quest for you right now." /> : L.available.map((r) => (
-        <div key={r.id} style={rowWrap}>
-          <button type="button" style={rowBtn} data-quest-offer-row={r.id} {...tap(() => openDetail(r.id))}>
-            <span style={rowTitle}>{r.title}</span>
-            <span style={rowLine}>{r.where}</span>
-          </button>
-          <span aria-hidden="true" style={{ flex: 'none', fontSize: 20, color: COL.text2, padding: '0 8px' }}>›</span>
-        </div>
-      ))}
-
-      <SectionHead n={L.done.length}>Done</SectionHead>
-      {L.done.length === 0 ? <EmptyLine text="Quests you hand in are listed here, with the points they paid." /> : L.done.map((r) => (
-        <div key={r.id} style={rowWrap}>
-          <button type="button" style={{ ...rowBtn, minHeight: 48 }} data-quest-done-row={r.id} {...tap(() => openDetail(r.id))}>
-            <span style={{ ...rowTitle, fontWeight: 600, color: COL.text2 }}><span style={{ color: '#7FD6AC' }}>✓</span> {r.title}</span>
-          </button>
-          <span data-quest-done-ap={r.ap} style={{ flex: 'none', fontSize: 15, fontWeight: 800, color: COL.text, padding: '0 8px' }}>+{r.ap} AP</span>
-        </div>
-      ))}
+  /* ── what the lit pill opens ── */
+  const apLine = (
+    /* v2.3.3944: the points every hand-in pays (server quests.js
+       QUEST_AP_REWARD), added up */
+    <div data-journal-ap={L.apTotal} style={{ padding: '4px 2px 6px', fontSize: 15, fontWeight: 800, color: COL.text }}>
+      <span style={{ color: COL.accent }}>★</span> {apTotalText(L.apTotal)}
     </div>
   );
-
-  return (
-    <div ref={boxRef} style={{ ...panelStyle, overflowY: 'auto' }}>
-      {/* v2.3.3944: the points every hand-in pays (server quests.js
-          QUEST_AP_REWARD), added up -- shown nowhere before */}
-      <div data-journal-ap={L.apTotal} style={{ padding: '8px 4px 2px', fontSize: 16, fontWeight: 800, color: COL.text }}>
-        <span style={{ color: COL.accent }}>★</span> {apTotalText(L.apTotal)}
+  let pane;
+  if (open === '@daily') {
+    pane = (
+      <div data-quest-pane="daily">
+        <div style={{ padding: '4px 2px 8px', fontSize: 15, lineHeight: 1.4, color: COL.text2 }}>{deskWords('Your free spin and the day\'s rewards. Tap to open them.')}</div>
+        {/* v2.3.3140: the daily quests and the season, one line */}
+        <DailyRewardsCard />
       </div>
-      {/* v2.3.2992: the road on the ground is put away -- the way is on
-          the minimap (questTrailStyle.js GROUND_PATH) -- so its switch
-          goes with it, back with `?questpath` */}
-      {GROUND_PATH && <PathSwitch />}
-      {wide ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', columnGap: 20, alignItems: 'start', paddingBottom: 26 }}>
-          <div style={{ minWidth: 0 }}>{focusCard}</div>
-          <div style={{ minWidth: 0 }}>
-          {/* v2.3.3140: the daily quests and the season, one line -- renders
-          nothing against a worker without them.  v2.3.3944: under the quest
-          page, above the list, so the page opens on the quest you're on */}
-          <DailyRewardsCard />
-          {log}</div>
+    );
+  } else if (open === '@done') {
+    pane = (
+      <div data-quest-pane="done">
+        {apLine}
+        {L.done.map((r) => (
+          <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${COL.divider}` }}>
+            <button type="button" data-quest-done-row={r.id} {...tap(() => pickQuest(r.id))} style={{
+              display: 'block', flex: 1, minWidth: 0, minHeight: 44, padding: '6px 2px', background: 'transparent', border: 'none',
+              color: COL.text, fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer', touchAction: 'manipulation',
+            }}>
+              <span style={{ display: 'block', fontSize: 15, fontWeight: 600, color: COL.text2, lineHeight: 1.3 }}><span style={{ color: '#7FD6AC' }}>✓</span> {r.title}</span>
+            </button>
+            <span data-quest-done-ap={r.ap} style={{ flex: 'none', fontSize: 14, fontWeight: 800, color: COL.text, padding: '0 4px' }}>+{r.ap} AP</span>
+          </div>
+        ))}
+        {/* v2.3.2992: the road on the ground is put away -- the way is on the
+            minimap (questTrailStyle.js GROUND_PATH) -- so its switch goes
+            with it, back with `?questpath` */}
+        {GROUND_PATH && <PathSwitch />}
+      </div>
+    );
+  } else if (page) {
+    pane = (
+      <div data-journal-focus={page.id} data-quest-pane="quest">
+        {open.group === 'done' ? (
+          <button type="button" data-quest-back="done" {...tap(() => setPick('@done'))} style={{
+            display: 'flex', alignItems: 'center', gap: 4, minHeight: 44, margin: 0, padding: '0 10px 0 2px', background: 'transparent', border: 'none',
+            color: COL.accent, fontFamily: 'inherit', fontSize: 14, fontWeight: 800, cursor: 'pointer', touchAction: 'manipulation',
+          }}><span aria-hidden="true">◂</span> Done quests</button>
+        ) : null}
+        <QuestJournalPage page={page} brief track={{ onToggle: toggleTrack }} />
+      </div>
+    );
+  } else {
+    pane = (
+      <div data-quest-pane="none">
+        <EmptyLine text="No quest right now. Look for a gold ! over someone's head in BroTown." />
+        {dailyOn ? <DailyRewardsCard /> : null}
+        {GROUND_PATH && L.done.length === 0 ? <PathSwitch /> : null}
+      </div>
+    );
+  }
+
+  if (!side) {
+    /* the narrow or short page: the list is one row of pills over the quest */
+    return (
+      <div ref={boxRef} data-quests-page="chips" data-quest-open={lit || ''} style={{ ...panelStyle, overflowY: 'auto' }}>
+        <div ref={navRef} data-quest-chips="" role="tablist" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2, overflowX: 'auto', padding: '2px 0' }}>
+          {list}
         </div>
-      ) : (
-        <div style={{ paddingBottom: 26 }}>{focusCard}
-          {/* v2.3.3140: the daily quests and the season, one line -- renders
-          nothing against a worker without them.  v2.3.3944: under the quest
-          page, above the list, so the page opens on the quest you're on */}
-          <DailyRewardsCard />
-          {log}</div>
-      )}
+        <div style={{ paddingBottom: 26 }}>{pane}</div>
+      </div>
+    );
+  }
+  return (
+    <div ref={boxRef} data-quests-page="list" data-quest-open={lit || ''} style={{
+      ...panelStyle, overflow: 'hidden', display: 'flex', padding: '2px 4px 0',
+      /* each side fades at its own foot: the page itself does not scroll */
+      WebkitMaskImage: 'none', maskImage: 'none',
+    }}>
+      <div ref={navRef} data-quest-rail="" role="tablist" aria-label="Your quests" aria-orientation="vertical" style={{
+        flex: 'none', width: RAIL_W, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y',
+        padding: '0 4px 18px 0', boxSizing: 'border-box', borderRight: `1px solid ${COL.divider}`,
+        WebkitMaskImage: FOOT_FADE, maskImage: FOOT_FADE,
+      }}>
+        {list}
+      </div>
+      <div data-quest-detail="" role="tabpanel" style={{
+        flex: 1, minWidth: 0, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y',
+        /* a short fade (8 px, not the list's 18): the WHERE card ends at the
+           pane's foot on a phone, and must not be read through a fade */
+        padding: '2px 2px 12px 6px', boxSizing: 'border-box',   /* 2 px on top: the Track button overhangs its head row by that */
+        WebkitMaskImage: 'linear-gradient(180deg, #000 calc(100% - 8px), transparent)', maskImage: 'linear-gradient(180deg, #000 calc(100% - 8px), transparent)',
+      }}>
+        {pane}
+      </div>
     </div>
   );
 };

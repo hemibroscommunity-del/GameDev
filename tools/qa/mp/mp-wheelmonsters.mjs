@@ -35,7 +35,7 @@ const PHONE = { width: 390, height: 844 };
 /* v2.3.2978: the Wheel is its own zone, 'wheel', against a worker that runs
    its monsters (server/src/wheelzone.js) */
 const SKIN = { frost: ['snowman'], ember: ['fireGoblin'], sky: ['mummy', 'skeleton'], hollows: ['rockmonster'],
-  thunder: ['fodder'], tidal: ['fishman'], mist: ['mireWisp', 'bogLurker'], verdant: ['blueSlime'] };
+  thunder: ['stormEye'] /* v2.3.4356: the storm eye, where the slime stood in */, tidal: ['fishman'], mist: ['mireWisp', 'bogLurker'], verdant: ['blueSlime'] };
 /* v2.3.3013: the first stretch's (ids wm-<home>-<k>; the deeper ones' are
    wm-<home>-t<tier>-<k>) */
 const isFirst = (m) => !/-t\d+-\d+$/.test(m.id);

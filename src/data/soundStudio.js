@@ -100,7 +100,7 @@ export const CUE_PLACES = {
   emerge: ['monsters', 'A snowman bursting out of its snow pile'],
   dieGoblin: ['monsters', 'A fire goblin dying'],
   dieRock: ['monsters', 'A rock monster or a thorn shambler dying'],
-  dieFish: ['monsters', 'A fishman dying'],
+  dieFish: ['monsters', 'A water frog dying'],
   dieLurker: ['monsters', 'A bog lurker dying'],
   respawnSlime: ['monsters', 'A slime coming back to life'],
   respawnOther: ['monsters', 'Any other monster coming back to life'],
@@ -232,7 +232,7 @@ export const HIT_VOICE_PLACES = {
   stone: 'Your hit on a rock monster or a thorn shambler (stone)',
   snow: 'Your hit on a snowman (snow)',
   mud: 'Your hit on a bog lurker (mud)',
-  wet: 'Your hit on a fishman (wet)',
+  wet: 'Your hit on a water frog (wet)',
 };
 
 /* BT_AUDIO.PROP_SOUNDS: hitting and breaking the Wheel's objects, by what
@@ -278,7 +278,7 @@ export const ELEM_PLACES = {
   daze: 'Dazed by a rock monster\'s hit',
   shock: 'Shocked by a storm slime\'s hit',
   shockTick: 'The shock arcing on to a player near you',
-  soak: 'Soaked by a fishman (stamina refills slower)',
+  soak: 'Soaked by a water frog (stamina refills slower)',
   poison: 'Poisoned by a wisp or a lurker',
   poisonTick: 'Each tick of poison on you',
   slow: 'Slowed (a gem\'s frost, between players)',

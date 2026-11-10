@@ -189,8 +189,9 @@ const popup = (P) => P.page.evaluate(() => {
 });
 
 const ORDER = ['damage', 'dps', 'aspd', 'range', 'crit', 'critDmg', 'special', 'elem', 'def', 'armor', 'dodge', 'eres', 'move'];
-const FIVE = ['dashboard', 'hero', 'quests', 'encyclopedia', 'more'];
-const WORDS = { dashboard: 'Gear', hero: 'Bro', quests: 'Quests', encyclopedia: 'Codex', more: 'More' };
+/* v2.3.4393: six -- the Leaderboards' button ("Ranks") between Quests and the Codex */
+const FIVE = ['dashboard', 'hero', 'quests', 'leaderboard', 'encyclopedia', 'more'];
+const WORDS = { dashboard: 'Gear', hero: 'Bro', quests: 'Quests', leaderboard: 'Ranks', encyclopedia: 'Codex', more: 'More' };
 
 export async function run({ browser, wsPort, webPort, rec }) {
   const P = await H.newPlayer(browser, { name: 'Cardbro', wsPort, webPort, viewport: { width: 390, height: 844 }, touch: true, dpr: 2, world: 'wheel' });
@@ -210,7 +211,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* ── 1. the row ── */
     const r1 = await row(P);
     rec.ok(`the row: CLOSE at its left ("${r1.close && r1.close.text}"), then the five`,
-      !!r1.close && r1.close.text === 'CLOSE' && r1.btns.length === 5 && r1.btns.map((b) => b.id).join() === FIVE.join() && r1.close.r <= r1.btns[0].l, r1);
+      !!r1.close && r1.close.text === 'CLOSE' && r1.btns.length === 6 && r1.btns.map((b) => b.id).join() === FIVE.join() && r1.close.r <= r1.btns[0].l, r1);
     rec.ok(`...each with its word, none cut, at 11 px or more (mode ${r1.words}: ${r1.btns.map((b) => b.word).join(' ')})`,
       r1.words !== 'icon' && r1.btns.every((b) => b.word === WORDS[b.id] && !b.cut && b.wordPx >= 11), r1.btns);
     rec.ok(`...every button at least 44 x 44 (${r1.btns.map((b) => b.w + 'x' + b.h).join(' ')}; CLOSE ${r1.close && r1.close.w}x${r1.close && r1.close.h}), touch-action: manipulation`,
@@ -385,7 +386,10 @@ export async function run({ browser, wsPort, webPort, rec }) {
     rec.ok(`a 320 x 640 phone: the pictures alone (${r320.words}), each button ${r320.btns.map((b) => b.w + 'x' + b.h).join(' ')}, CLOSE ${r320.close && r320.close.w}`,
       /* 40 tall on a screen 720 or shorter: identityRowHeight's own rule
          (sheetGeometry, "HEIGHT IS NOT 44 EVERYWHERE"), not this change's */
-      r320.words === 'icon' && r320.btns.length === 5 && r320.btns.every((b) => b.h >= 40 && b.w >= 44 && b.r <= r320.vw) && !!r320.close && r320.close.h >= 40 && r320.close.r <= r320.btns[0].l, r320);
+      /* v2.3.4393: six buttons are 38 px wide here -- the one screen where
+         six cannot be 44 (sheetGeometry RAIL_COUNT's note); no iPhone since
+         2016 is 320 wide */
+      r320.words === 'icon' && r320.btns.length === 6 && r320.btns.every((b) => b.h >= 40 && b.w >= 38 && b.r <= r320.vw) && !!r320.close && r320.close.h >= 40 && r320.close.r <= r320.btns[0].l, r320);
 
     await P.page.setViewportSize({ width: 820, height: 1180 });
     await P.page.waitForTimeout(1500);
@@ -410,7 +414,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     const rSide = await row(P);
     rec.ok(`a phone on its side: the card in the band (${side.w} px, ${side.cols} columns from its width), no word cut, nothing past its edge`,
       side.there && side.cols === (side.w >= 600 ? 3 : side.w >= 340 ? 2 : 1) && side.cut.length === 0 && side.past === 0, { cols: side.cols, w: side.w, cut: side.cut, past: side.past });
-    rec.ok(`...and CLOSE first in its row ("${rSide.close && rSide.close.text}")`, !!rSide.close && rSide.close.text === 'CLOSE' && rSide.btns.length === 5 && rSide.close.r <= rSide.btns[0].l, rSide);
+    rec.ok(`...and CLOSE first in its row ("${rSide.close && rSide.close.text}")`, !!rSide.close && rSide.close.text === 'CLOSE' && rSide.btns.length === 6 && rSide.close.r <= rSide.btns[0].l, rSide);
   } finally {
     rec.ok(`no page errors (${errs.length})`, errs.length === 0, errs.slice(0, 5));
     stopP();
@@ -435,7 +439,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     /* v2.3.4172: CLOSE in the row (the one band), or the old column's chip */
     const chipD = (rd.close && rd.close.text) || await D.page.evaluate(() => { const c = document.querySelector('[data-land-fold]'); return c ? (c.textContent || '').trim() : null; });
     rec.ok(`...the row: CLOSE (${chipD}), the five with their words (${rd.words}: ${rd.btns.map((b) => b.word).join(' ')})`,
-      chipD === 'CLOSE' && rd.words !== 'icon' && rd.btns.length === 5 && rd.btns.every((b) => b.word === WORDS[b.id] && !b.cut), rd.btns);
+      chipD === 'CLOSE' && rd.words !== 'icon' && rd.btns.length === 6 && rd.btns.every((b) => b.word === WORDS[b.id] && !b.cut), rd.btns);
     const myId = await H.readState(D, (S) => S.myId);
     await H.devOp(wsPort, 'kit', myId, { what: 'levels' }).catch(() => null);
     await D.page.waitForTimeout(6000);
