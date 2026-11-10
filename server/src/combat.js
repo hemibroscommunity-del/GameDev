@@ -1502,6 +1502,9 @@ export const combatMethods = {
     // negative on overkill -- otherwise the broadcast hpPct goes < 0
     // and any subsequent code reading m.hp sees a nonsensical value.
     m.hp -= actualDmg;
+    /* v2.3.4545: an accepted hit, once a shot, for the player's accuracy (accuracy.js): `sn` is the shot's number
+       on the phone; a special, a stuck arrow's chip and an older phone carry none */
+    this._accHit(session.id, _effSlot, isSpecial, payload.sn);
 
     /* v2.3.2481: where the bolt actually landed, read BEFORE the knockback
        below moves the monster — the splash must go off at the impact point,
@@ -2590,6 +2593,8 @@ export const combatMethods = {
          the same event the page stamps its own copy from, so the two agree.
          On the room's clock, not on playerState (a rejoin rebuilds that). */
       if (this._notePvpExchange) this._notePvpExchange(attackerId, targetId, Date.now());
+      /* v2.3.4545: ...and a hit on a player is a hit, once a shot (accuracy.js), as on a monster */
+      this._accHit(attackerId, kind, _special, payload.sn);
 
       // Build hit event — server-authoritative hp now mirrors via
       // player_state below, but dmgTaken in the payload drives the

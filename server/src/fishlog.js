@@ -398,6 +398,25 @@ export const fishlogMethods = {
     return n;
   },
 
+  /* v2.3.4545: a row entered before a row carried a face (v2.3.4393) gets its own from the character's record
+     (boards.js _boardsFaceFill, once a worker's life) -- a record stands until it is beaten, so without this an
+     old one would show an initial for good.  A deleted character's row keeps what it had. */
+  async _fishBoardFaces(book) {
+    if (!book || book.locked || !book.boards) return 0;
+    let n = 0;
+    for (const sp of SPECIES) {
+      for (const row of book.boards[sp] || []) {
+        if (!row || row.look || row.gone || typeof row.pid !== 'string' || row.pid.indexOf('#') >= 0) continue;
+        let ch = null;
+        try { ch = await this.state.storage.get('char:' + row.pid); } catch (e) { ch = null; }
+        const look = boardFace(ch && ch.look);
+        if (look) { row.look = look; n++; }
+      }
+    }
+    if (n) { try { this.state.storage.put(FISHLOG.BOARD_KEY, { v: FISHLOG.BOARD_V, b: plainBoards(book.boards) }); } catch (e) { /* fire-and-forget */ } }
+    return n;
+  },
+
   /* ═══ fish_inspect {key} (index.js's router) ═══ */
   async _handleFishInspect(session, payload) {
     const pid = session && session.id;

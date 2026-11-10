@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { COL, panelStyle, getState } from './common.js';
 import { playIsLandscape } from '../playViewport.js';   /* v2.3.2171: the sideways pane stacks */
 import { deskWords } from '@/game/deskWords.js';        /* v2.3.3773: "Tap" reads "Click" on a computer */
+import { ACC_SLOTS, ACC_NAMES, accLive, accPct, askAccuracy, subscribeAccuracy } from '@/game/accuracy.js';   /* v2.3.4545: how many of your shots hit */
 
 /* ═══ v2.3.3773: JOURNEY IS ITS OWN PAGE, UNDER MORE ═══
    The owner: "I also think I want 'journey' to be put as its own icon in the
@@ -35,6 +36,26 @@ export const JourneyPanel = () => {
   const R = (S && S.rpg) || {};
   const cs = R._compStats || {};
   const landPane = playIsLandscape();
+
+  /* ═══ v2.3.4545: ACCURACY ═══
+     The owner: "I want somewhere that stats keep track of 'accuracy' (maybe
+     for all 3 weapon types) like the amount of times the projectile hit on
+     target."  Here, with the rest of a character's record (the page players
+     open: More, Journey).  The numbers are the worker's (game/accuracy.js,
+     server accuracy.js): asked for as this page opens and every 15 s it
+     stays open, drawn only against a worker that counts them. */
+  const accOn = accLive(S);
+  useEffect(() => {
+    if (!accOn) return undefined;
+    askAccuracy(getState());
+    const id = setInterval(() => askAccuracy(getState()), 15000);
+    const un = subscribeAccuracy(() => force(v => v + 1));
+    return () => { clearInterval(id); un(); };
+  }, [accOn]);
+  const acc = accOn && S && S._accState && !S._accState.off ? S._accState.w : null;
+  /* "your last 200" beside the whole record, once there is more behind you than those */
+  const accRecent = acc ? ACC_SLOTS.filter((k) => acc[k].s > acc[k].rs && acc[k].rs > 0)
+    .map((k) => ACC_NAMES[k] + ' ' + accPct(acc[k].rs, acc[k].rh)).join(' \u00b7 ') : '';
 
   return (
     <div style={{ ...panelStyle, overflowY: 'auto' }} data-journey-page="">
@@ -131,6 +152,32 @@ export const JourneyPanel = () => {
             </div>
           );})}
         </div>
+        {/* v2.3.4545: accuracy, a weapon -- three cells in the record cards' own dress (no icon: the number
+            is the picture), one column sideways as the cards are */}
+        {acc && (
+          <div data-journey-acc="" style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: COL.muted, margin: '0 2px 4px' }}>Accuracy</div>
+            <div style={{ display: 'grid', gridTemplateColumns: landPane ? '1fr' : 'repeat(3, 1fr)', gap: 5 }}>
+              {ACC_SLOTS.map((slot) => {
+                const a = acc[slot];
+                const shots = a.s > 0 ? a.s.toLocaleString() + (a.s === 1 ? ' shot' : ' shots') : 'no shots yet';
+                return (
+                  <div key={slot} data-journey-acc-cell={slot} style={{
+                    background: COL.wellSoft, border: `1px solid ${COL.tileBor}`, borderRadius: 7, padding: '5px 7px 6px', minWidth: 0,
+                    display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap',
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase', color: COL.muted, whiteSpace: 'nowrap' }}>{ACC_NAMES[slot]}</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: COL.text, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{accPct(a.s, a.h)}</div>
+                    <div style={{ flexBasis: '100%', fontSize: 10.5, color: COL.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{shots}</div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, lineHeight: 1.4, color: COL.muted, margin: '5px 2px 0' }}>
+              Basic attacks that hit an enemy. Specials are not counted.{accRecent ? ' Your last 200: ' + accRecent + '.' : ''}
+            </div>
+          </div>
+        )}
         {/* v2.3.1664: the on-chain receipt.  Appears only once a milestone
             has actually been written to Hemi, so it is never a promise the
             game hasn't kept — and it is a real link, because a claim of
