@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "5518431c0debe06024fe7968a08f6a04aa9c4efa",
+  "tree": "2d563835c25813ee09c7270f1b65d298bbac758a",
+  "committedAt": "2026-11-10T14:20:17-08:00",
+  "subject": "Merge pull request #1525 from hemibroscommunity-del/claude/sword-freeswing-trial",
+  "files": 7980,
+  "bytes": 966507873,
+  "listingSha256": "8fcdf93b12ea3a70d316477152f470aed4c88de6af2844857913ade9111dd38d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
