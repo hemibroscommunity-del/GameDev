@@ -309,6 +309,8 @@ area goes and what its prize is: "Go recommended."
   ledge: boulder cliffs under a grass cap, side walls, round back corners) and
   its vines are a RAMP you walk up (`ramp`, a new kind of cell). The spec has
   it (`docs/specs/rise-chest.md` "Drawn as a grass ledge").
+- v2.3.4494: its cliffs end on whole boulders (a jagged bottom) and its shade
+  is the world's own (the sun's angle, a smooth veil). Same section.
 
 ### The next PRs
 
