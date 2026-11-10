@@ -283,6 +283,19 @@ size?): **YES**. "Dead" is the server's word since v2.3.4373 (above).
     of a freeze like it will say.
   - **Why the phone slowed is not proved**: its own work went from 2.7 to
     6.8 ms a frame with fewer monsters loaded, which reads as heat.
+  - **"It noticeably slowed when I rode by the blacksmith hammering"** (the
+    owner, on the pacer's build). Not the hammer: the Blacksmith stands on
+    the Flame Fields' side of the town, where the fire goblin's look starts
+    to load as you come, and each of its 14 strips was unpacked on the page
+    in one go as its file arrived (13 to 39 ms a strip on the test box, 180
+    to 300 ms inside a second). In play a strip is now unpacked a few ms a
+    frame, one at a time (`docs/specs/strip-gentle.md`; `?stripgentle=0`
+    the old way); behind a loading screen, flat out as ever. `mp-stripgentle`
+    rides up to him: 14 jobs of up to 31 ms before, none now (slices of at
+    most 11 ms at a phone's 4 ms a frame), the look the same to the byte.
+    This is also the likeliest answer to the unexplained 378 ms freeze above
+    (a look loading: each strip's job is now named on the strip, "between
+    frames: strip ..."). Waits on the owner's eye.
   - **Still to do, for A2**: another PLAYER with an eye style or a drawing
     is baked on the page when first met, the same freeze, in any crowd.
   - **The cause**: not the frame rate. The owner's captures (`?perf=1`,

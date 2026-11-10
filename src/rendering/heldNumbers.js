@@ -84,34 +84,75 @@ export function numbersOf(cv) {
 export function numbersOfPixels(d, w, h) {
   const n = w * h;
   if (!d || d.length < n * 4) return null;
-  const px = new Uint32Array(d.buffer, d.byteOffset, n);
+  const b = numbersBuilder(w, h);
+  return b.add(d, n) ? b.done() : null;
+}
+
+/* ═══ v2.3.4400: THE SAME NUMBERS, A BAND OF ROWS AT A TIME ═══
+   numbersOfPixels read a whole strip in one go (3 to 6 ms a monster's strip,
+   fourteen strips as a look loads: zoneTextures.js, "the blacksmith").  The
+   builder is its loop with its tables kept between calls: add() takes the
+   next `count` pixels' RGBA bytes (in reading order) and is false once there
+   are more than 256 colours; done() is what numbersOfPixels gave.  A colour
+   gets its place the first time it is met in reading order, so bands give
+   the very numbers the whole picture does (strip-slices.test). */
+export function numbersBuilder(w, h) {
+  const n = w * h;
   const idx = new Uint8Array(n);
   /* a small open table: a colour -> its place + 1 (0 = empty slot) */
   const keys = new Uint32Array(1024);
   const vals = new Uint16Array(1024);
   const pal = new Uint32Array(MAX_COLOURS);
   let count = 1;   /* place 0 is see-through: every pixel of alpha 0 reads back 0,0,0,0 */
-  let lastK = 0, lastI = 0;
-  for (let i = 0; i < n; i++) {
-    const k = px[i];
-    if (k === lastK) { idx[i] = lastI; continue; }
-    let ci = 0;
-    if (k !== 0) {
-      let s = Math.imul(k, 0x9E3779B1) >>> 22;
-      for (;;) {
-        const v = vals[s];
-        if (v === 0) {
-          if (count >= MAX_COLOURS) return null;
-          pal[count] = k; keys[s] = k; vals[s] = count + 1; ci = count++;
-          break;
+  let lastK = 0, lastI = 0, at = 0, many = false;
+  return {
+    add(d, pixels) {
+      if (many) return false;
+      const m = Math.min(pixels, n - at);
+      /* (a view needs its bytes on a 4-byte boundary: getImageData's are) */
+      const px = new Uint32Array(d.buffer, d.byteOffset, m);
+      for (let j = 0; j < m; j++) {
+        const k = px[j];
+        if (k === lastK) { idx[at + j] = lastI; continue; }
+        let ci = 0;
+        if (k !== 0) {
+          let s = Math.imul(k, 0x9E3779B1) >>> 22;
+          for (;;) {
+            const v = vals[s];
+            if (v === 0) {
+              if (count >= MAX_COLOURS) { many = true; return false; }
+              pal[count] = k; keys[s] = k; vals[s] = count + 1; ci = count++;
+              break;
+            }
+            if (keys[s] === k) { ci = v - 1; break; }
+            s = (s + 1) & 1023;
+          }
         }
-        if (keys[s] === k) { ci = v - 1; break; }
-        s = (s + 1) & 1023;
+        idx[at + j] = ci; lastK = k; lastI = ci;
       }
-    }
-    idx[i] = ci; lastK = k; lastI = ci;
+      at += m;
+      return true;
+    },
+    done() { return many ? null : { w, h, idx, pal: pal.slice(0, count) }; },
+  };
+}
+
+/** A canvas's numbers (numbersOf), read `rows` rows at a time with `turn()`
+ *  asked between bands. */
+export async function numbersOfSliced(cv, turn, rows = 32) {
+  const w = (cv && cv.width) | 0, h = (cv && cv.height) | 0;
+  if (!w || !h) return null;
+  let ctx;
+  try { ctx = cv.getContext('2d'); } catch (e) { return null; }
+  const b = numbersBuilder(w, h);
+  for (let y = 0; y < h; y += rows) {
+    await turn();
+    const r = Math.min(rows, h - y);
+    let d;
+    try { d = ctx.getImageData(0, y, w, r).data; } catch (e) { return null; }
+    if (!b.add(d, w * r)) return null;
   }
-  return { w, h, idx, pal: pal.slice(0, count) };
+  return b.done();
 }
 
 /** RGBA bytes of a rectangle of the numbers (clamped to them), as the canvas

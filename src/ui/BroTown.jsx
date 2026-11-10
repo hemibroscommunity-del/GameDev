@@ -458,6 +458,7 @@ import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: 
 import { makeFrameClock, frameSmoothOn } from '@/game/frameClock.js';   /* v2.3.4400: a steady step on a steady screen */
 import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
 import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
+import { setStripPlay } from '@/rendering/zoneTextures.js';   /* v2.3.4400: a look that loads as you walk is unpacked between frames */
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
@@ -4869,6 +4870,15 @@ export var BroTown = function BroTown(_ref0) {
     try { if (framePaceOn(window.location.search || '')) _framePacer = makeFramePacer(); } catch (e) { _framePacer = null; }
     /* the frame meter's line and QA (mp-steadypace): the screen's rate, and every how many refreshes a frame is drawn */
     if (typeof window !== 'undefined') window.__btPace = function () { return _framePacer ? _framePacer.read() : null; };
+    /* v2.3.4400: a monster's look that loads as you walk is unpacked a few ms a frame (zoneTextures.js): this frame's
+       length while the world is in play; 0 behind any loading screen, where art loads flat out as ever */
+    try {
+      setStripPlay(function () {
+        if (!S.__introLiftedAt || S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold || S._wheelDungeonOpening) return 0;
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return 0;
+        return S._frameMs > 0 ? S._frameMs : 16.667;
+      });
+    } catch (e) { /* unpacked at once, as before */ }
     var _gameLoop = function gameLoop(_rafT) {
       frameRef.current = requestAnimationFrame(_gameLoop);
       /* not this refresh (nothing counted, moved or drawn); never judged behind a loading screen */

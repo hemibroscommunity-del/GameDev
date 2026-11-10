@@ -9197,3 +9197,33 @@ uneven 51, and is less work.
 
 **Receipt:** `frame-pacer` suite, `mp-steadypace`, `mp-peerarrive`,
 docs/specs/frame-pacer.md.
+
+## 283. "It slows by the blacksmith, so it is the blacksmith" (v2.3.4400)
+
+**The move.** A player reports a slowdown at a place or beside a character
+("when I rode by the blacksmith hammering") and you profile that character:
+his pose, his hammer, his clothes.
+
+**Why it is wrong.** A townsperson at work costs under a millisecond a frame.
+What the place had was a LOAD: the Blacksmith stands on the Flame Fields'
+side of the town, where the fire goblin's look starts loading as you come,
+and each of its fourteen strips was unpacked on the page in one go as its
+file arrived (13 to 39 ms a strip, 300 ms inside a second). The preloading
+law's two exceptions (a zone's art behind its overlay; the Wheel's monsters
+as you walk) say WHERE a load may happen, not that it is free there.
+
+**The rule.**
+- Profile the PLACE, not the suspect: every job that holds the page names
+  itself (`debug/madeLog.js noteMade`, `window.__btMade`), so ride there and
+  read the names (`mp-stripgentle`).
+- A load that happens while the world is in play is done a few ms a frame,
+  one thing at a time (`zoneTextures.js stripTurn`); behind a loading screen
+  it runs flat out. A job that cannot be split says its name and its time.
+- Two versions of one job (all at once, and a piece at a time) share their
+  rules in one module with no canvas in it (`trimRules.js`,
+  `heldNumbers.js numbersBuilder`), so they cannot drift and node can test
+  that the pieces give what the whole gave.
+- A check that is red before your change is not yours: run it on the code
+  before the change before you chase it (`mp-geartrim`, 15 of 40 on `main`).
+
+**Receipt:** `strip-slices` suite, `mp-stripgentle`, docs/specs/strip-gentle.md.
