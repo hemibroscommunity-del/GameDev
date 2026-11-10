@@ -2055,7 +2055,7 @@ export class GameRoom {
                spawn 6-19 s later, half a hit and a 130 px shove.  Found by the
                review of v2.3.3621.  The cooldown stays, as the burrow's. */
             m._tgPhase = null; m._tgUntil = 0; m._tgAim = null; m._tgTarget = null; m._tgRadius = 0;
-            /* v2.3.4391: and a ball still in the air (telegraph.js throw),
+            /* v2.3.4403: and a ball still in the air (telegraph.js throw),
                for the _bwUntil reason above -- a slime or snowman killed
                with its ball up came back with _projImpactAt long past, so
                the first tick of its new life landed the old ball on

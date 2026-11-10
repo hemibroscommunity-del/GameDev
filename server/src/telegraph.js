@@ -393,7 +393,7 @@ export const telegraphMethods = {
       return false;
     }
     if (!kit || m._tgPhase !== 'telegraph') return false;
-    /* v2.3.4391: a body with no life left in it casts nothing -- the move
+    /* v2.3.4403: a body with no life left in it casts nothing -- the move
        resolver's own guard (monstermoves.js).  A blue slime killed during
        its 1.2 s lunge wind-up swells for 1.6 s, and this resolver runs
        ahead of the swell's, so the corpse landed its lunge; the Goo

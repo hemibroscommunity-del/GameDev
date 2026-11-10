@@ -333,7 +333,7 @@ for (const src of ALL) {
   check('1. ' + src + ': lands for its number (' + want + ')', r.hpLost === want && want > 0 && r.ev && r.ev.dmg === want && r.ev.dmgTaken === want, { hpLost: r.hpLost, want, ev: r.ev });
   check('1. ' + src + ': its event says who and where from, and the HP after', !!r.ev && r.ev.monsterId === M.id && r.ev.dodged === false && r.ev.hp === MAX_HP - want && !r.ev.blocked && r.ev.staminaDrain === undefined, r.ev);
   check('1. ' + src + ': its tag ' + JSON.stringify(TAG[src]), !!r.ev && (r.ev.ability || undefined) === TAG[src].ability && (r.ev.elem || undefined) === TAG[src].elem, r.ev);
-  /* v2.3.4391: ...but the blast IS the slime's death, and a kill ends every
+  /* v2.3.4403: ...but the blast IS the slime's death, and a kill ends every
      player's ledger for that monster (combat.js): nothing of it is left */
   check('1. ' + src + ': the damage counts toward a melee kill\'s lifesteal', r.tracked === (src === 'burst' ? 0 : want), r.tracked);
   check('1. ' + src + ': the coalesced vitals save, never the whole character', r.saves.vitals >= 1 && r.saves.full === 0, r.saves);

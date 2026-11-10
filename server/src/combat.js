@@ -2007,7 +2007,7 @@ export const combatMethods = {
       } else {
         ({ refund, reason } = this._applyMeleeLifesteal(killerPs, m.id, slot));
       }
-      /* v2.3.4391: this life is over, so is what it dealt.  The ledger is
+      /* v2.3.4403: this life is over, so is what it dealt.  The ledger is
          keyed by monster id, and a Wheel monster keeps its id for ever: a
          bow kill, or a friend's, left the entry for a sword kill of its NEXT
          life to pay back (the sweep's V7; lifesteal-server.md: a monster

@@ -1355,7 +1355,7 @@ export function setupWebSocket(ctx) {
                         localM._lootDropped = false;
                         localM._deathSfxPlayed = false;
                         localM._killMine = false;   /* v2.3.3248: hitSounds.deathVol */
-                        /* v2.3.4391: and a swell whose blast this phone never
+                        /* v2.3.4403: and a swell whose blast this phone never
                            heard (out of reach, or a gap): a slime that came
                            back still holding it was drawn huge and could not
                            be hit (monsterCarry.js endSwell; the sweep's V7) */

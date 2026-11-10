@@ -601,7 +601,7 @@ export function isIntangible(m, now) {
      agreeing that there is nothing to hit is what the two should have
      matched on from the start.  A monster mid-death-throes is not a target. */
   if (m._burPhase === 'pile') return true;
-  /* v2.3.4391: ...on its own clock.  It read `_burstUntil` for being SET, and
+  /* v2.3.4403: ...on its own clock.  It read `_burstUntil` for being SET, and
      only the blast's event zeroes it, so a phone that missed the blast held
      the slime's next life untouchable (the sweep's V7).  The fuse is 1.6 s;
      the grace covers the blast's event arriving a little after this phone's

@@ -1,4 +1,4 @@
-/* A WORLD MONSTER'S LIFE ENDS WITH IT -- v2.3.4391 (the state-machine sweep's
+/* A WORLD MONSTER'S LIFE ENDS WITH IT -- v2.3.4403 (the state-machine sweep's
  * V7: server/src/index.js the respawn reset, telegraph.js
  * _resolveMonsterTelegraph, combat.js _resolveMonsterKill; the phone's
  * src/game/monsterCarry.js endSwell and src/data/monsterVariants.js
