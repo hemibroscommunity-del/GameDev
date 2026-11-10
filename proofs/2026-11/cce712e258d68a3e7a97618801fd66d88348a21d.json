@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cce712e258d68a3e7a97618801fd66d88348a21d",
+  "tree": "4d3c3a42728bc6a3ddb22a0f29d995ebb4cc22ef",
+  "committedAt": "2026-11-10T06:17:27-08:00",
+  "subject": "Merge pull request #1485 from hemibroscommunity-del/claude/sm-mute-kept",
+  "files": 7910,
+  "bytes": 966158281,
+  "listingSha256": "41774868005c49c61d4afc9ca54b070e6a1878404ac2f56af45b7ad9f3dc9a21",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
