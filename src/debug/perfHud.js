@@ -122,6 +122,29 @@ const tick = () => {
     })() + hitchLines(all);
 };
 
+/* v2.3.4355: WHAT IS DRAWING IT -- so one screenshot from any computer says
+   which machine it was: the graphics chip as the browser names it, the
+   canvas's own pixels, and whether characters' looks are drawn from the
+   shared colour numbers (`palette`) or baked one by one (`baked`, and why:
+   Windows and a Mac bake, game/lookPaletteChoice.js).  Asked once. */
+let _machine = null;
+const machineLine = () => {
+  if (_machine != null) return _machine;
+  try {
+    const R = window._pixiRenderer && window._pixiRenderer.app && window._pixiRenderer.app.renderer;
+    const gl = R && R.gl;
+    if (!gl) return '';
+    let chip = '';
+    try { const e = gl.getExtension('WEBGL_debug_renderer_info'); chip = String((e && gl.getParameter(e.UNMASKED_RENDERER_WEBGL)) || gl.getParameter(gl.RENDERER) || ''); } catch (e2) { chip = ''; }
+    chip = chip.replace(/^ANGLE \(/, '').replace(/\)$/, '').replace(/Direct3D11 vs_\S+ ps_\S+,?\s*/, 'D3D11 ').slice(0, 58);
+    const cv = gl.canvas;
+    const lp = window.__btLookPalette ? window.__btLookPalette() : null;
+    const looks = lp ? (lp.on ? 'palette' : 'baked' + (lp.why ? ' (' + lp.why + ')' : '')) : '?';
+    _machine = `\n${chip}\ncanvas ${cv.width}x${cv.height} at ${window.devicePixelRatio || 1}x  looks ${looks}`;
+  } catch (e) { return ''; }
+  return _machine;
+};
+
 /* v2.3.4355: see THE HITCHES THE AVERAGES HIDE, above.  Short lines: a phone
    shows about sixty characters. */
 const hitchLines = (all) => {
@@ -146,6 +169,7 @@ const hitchLines = (all) => {
     if (slow) out += `\nbetween frames: ${slow.name} ${f1(slow.ms)} ms`;
     if (_stickOn) out += `\nstick ${_stickLo.toFixed(2)} to ${_stickHi.toFixed(2)}`;
     _stickLo = 1; _stickHi = 0; _stickOn = false;
+    out += machineLine();
   } catch (e) { /* the strip's first lines stand */ }
   return out;
 };

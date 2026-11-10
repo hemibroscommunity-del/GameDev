@@ -30,9 +30,10 @@
 import * as H from './harness.mjs';
 
 const PHONE = { width: 430, height: 932 };
-/* this box, a phone page at dpr 1: measured 20 ms the longest job (a page's bases) and 248 ms in all as it ships;
-   246 ms the longest and 890 in all before */
-const HOLD_MAX_MS = 40;
+/* this box, a phone page at dpr 1: measured 18 to 43 ms the longest job (one read of a page's bases, which cannot be
+   split; the 43 with another test running beside it) and 248 to 267 ms in all as it ships; 213 to 258 ms the longest
+   and 712 to 890 in all before */
+const HOLD_MAX_MS = 70;
 const SUM_MAX_MS = 520;
 const OLD_HOLD_MS = 50;
 

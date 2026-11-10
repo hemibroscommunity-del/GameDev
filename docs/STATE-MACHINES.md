@@ -70,6 +70,28 @@ player never loses items, gold or a fight to a phase that stuck.
        that is also encoding a stream;
     3. Windows and a Mac draw every look the old way
        (`src/game/lookPaletteChoice.js`).
+  - **Prepared without a computer** (v2.3.4355), all of which reach a
+    computer too:
+    - the steady step (A3): the same uneven movement was on every screen;
+    - the townsfolk's bakes and the object pages' reads moved off the ride;
+    - a look's bake keeps its canvas on the page's side
+      (`playerSkins.js bakeReadCtx`, `?bakeread=0` the old way): on a real
+      chip the bake read every pixel back FROM the chip. Windows and a Mac
+      bake every look they meet, so this is their cost most of all. Not
+      measurable on the test box (it draws every canvas in software);
+    - the strip (`?perf=1`) names the machine (the chip, the canvas's
+      pixels, looks `palette` or `baked` and why), counts late frames,
+      splits the worst and names the job between frames, so ONE screenshot
+      from any computer and browser says where its frames go.
+  - **The biggest thing still open for a computer**: Windows and a Mac do
+    not build the look palette (`lookPaletteChoice.js`), so every other
+    player's look is baked on the page, per pose and direction, the first
+    time it is met: the freeze A3 removed for the townsfolk, in any crowd
+    (the expo). Two ways out, each needing one check on a real computer:
+    a Mac probably can build the palette (an iPhone's Safari uses the same
+    Metal path and builds it in under a second: try `?lookpalette=1&perf=1`
+    there); on Windows the program must shrink (TRAPS §259) or the bake move
+    to a worker.
   - **None of it can be measured on the test box**, which draws in software.
     So first a capture from a real computer: the Test panel's Speed test and
     a screenshot of its card, with the computer (Windows or Mac), the browser
