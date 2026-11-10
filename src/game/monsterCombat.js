@@ -46,6 +46,7 @@ import { addBuildUse, applyMeleeLifesteal, clearSwingHitFlags, distributeKillXpT
 import { updateTargeting } from '@/game/targeting.js'; /* v2.3.2243 */
 import { firstSightHit, shotLowAim, lowAimAlong, arrowSureReachPast, shotAimAt, nmlSightAsk } from '@/game/projectiles.js'; /* v2.3.2473: the bow's on-target gate reads the hit test's own radii; v2.3.3206: + the low thing a shot is aimed at; v2.3.3528: + No man's land's ask on an empty line */
 import { shotTargetId } from '@/game/peerShots.js'; /* v2.3.3266: the player a shot is aimed at, for the others' screens */
+import { isStaggered } from '@/game/elemHits.js'; /* v2.3.4387: nor a held attack while a parry has you staggered */
 import { specialAttack } from '@/game/playerActions.js'; /* v2.3.2473: a queued bow special fires from the fire site */
 import { earnCertification as masteryEarnCert } from '@/game/mastery.js';
 import { celebrateLevelUps } from '@/game/levelCelebration.js';
@@ -1614,7 +1615,12 @@ export function updateMonsterCombat(S, deps) {
             var _lootSwingBlock = S._lootFreezeUntil && Date.now() < S._lootFreezeUntil;
             /* v2.3.1473: ...and the auto-attack loop stops on death, the
                path that actually kept firing during the skeleton anim. */
-            if (!_lootSwingBlock && !isPlayerDead(S) && !(S._playerStunUntil && Date.now() < S._playerStunUntil)) {
+            /* v2.3.4387: nor while a parry has you staggered: the press asks
+               (playerActions staggerRefused), the held loop never did, so a
+               staggered holder kept swinging and shooting, each sent and
+               refused by the worker (VB-1 G1-4).  Silent, like the daze test
+               above: the press already says why. */
+            if (!_lootSwingBlock && !isPlayerDead(S) && !(S._playerStunUntil && Date.now() < S._playerStunUntil) && !isStaggered(S, Date.now())) {
               var _S$rpg0, _S$rpg1;
               if (((_S$rpg0 = S.rpg) === null || _S$rpg0 === void 0 ? void 0 : _S$rpg0.activeSlot) === 'ranged' || ((_S$rpg1 = S.rpg) === null || _S$rpg1 === void 0 ? void 0 : _S$rpg1.activeSlot) === 'staff') {
                 var _S$rpg10;

@@ -5069,7 +5069,12 @@ export function resolveCollision(target, triggerElement, source, rpg, now) {
   /* §3.5 Mana restore.  v2.3.1155: restoration mult deleted with the
      stat (×1.0 for every live player; server mirror deleted in lockstep). */
   var manaRestored = 0;
-  if (rpg && now - (source._lastCollisionMana || 0) >= 3000) {
+  /* v2.3.4387: ...on a RESONATING collision only, as the worker pays it
+     (server/src/combat.js _collisionResonance).  Paid on every collision
+     here, the phone floated "+N MP" the worker never paid (its next mana
+     update took it back) and stamped the 3 s throttle with it, so a
+     resonating one right after showed nothing (VB-1 D1-1). */
+  if (rpg && resonating && now - (source._lastCollisionMana || 0) >= 3000) {
     source._lastCollisionMana = now;
     var baseRestore = 0.04 * rpg.maxMana;
     manaRestored = Math.round(baseRestore * streakMult);
