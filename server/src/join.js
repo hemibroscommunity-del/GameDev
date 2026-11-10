@@ -766,6 +766,27 @@ export const joinMethods = {
              up to 30 s of strikes, and one every ~29 s kept the 2,400-an-hour
              caps from ever binding (botfp.test §9b). */
           try { this._botfpFlush(oldS); } catch (e) { /* evidence is best-effort; the join goes on */ }
+          /* v2.3.4377: ...and the record's unsaved part, as a close does
+             (webSocketClose's `_regenDirty` flush).  The join below reads
+             rpg: back from storage over the live state, so damage taken above
+             25% health (coalesced, persistence.js _saveRpgVitals), a paced
+             tap past the burst (flood.js _saveRpgPaced) and up to
+             REGEN_SAVE_MS of regen were given back: a script could reconnect
+             to heal (state-machine sweep V3, S2-13).  The other closes'
+             saves need nothing here: the daily quests, the pets, codex and
+             catches keep their live copy across a join, and the paced lanes
+             are keyed by player, not socket.  Only the SAVE: the linger,
+             the duel's away clock and the trade's cancel are not run on a
+             takeover (an owner's decision; a trade must survive a phone's
+             reconnect).  Awaited, as the close awaits it, so the read below
+             finds it; writes nothing when nothing is dirty (cost-guard).
+             `takeoversave: false` in the live flags skips it (liveops). */
+          const _tf = this._liveFlags;
+          const _tsOff = !!(_tf && typeof _tf === 'object' && Object.prototype.hasOwnProperty.call(_tf, 'takeoversave') && !_tf.takeoversave);
+          const _oldPs = this.playerState[msg.id];
+          if (!_tsOff && _oldPs && _oldPs._regenDirty) {
+            try { await this._saveRpg(msg.id, _oldPs); } catch (e) { /* the join goes on, as before */ }
+          }
           this.sessions.delete(oldWs);
           try { oldWs.close(1000, 'superseded by reconnect'); } catch {}
         }
