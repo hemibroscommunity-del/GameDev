@@ -93,8 +93,9 @@ export const shieldWearMethods = {
   },
 
   /* shield_wear: which shield is on the arm.  Returns 'worn' | 'none' |
-     'same' | 'unknown' | null (refused outright) -- for the tests; the game
-     is answered by the player_state echo, as for armour. */
+     'same' | 'unknown' | 'fight' (v2.3.4510, the fight lock) | null (refused
+     outright) -- for the tests; the game is answered by the player_state
+     echo, as for armour. */
   _handleShieldWear(session, payload) {
     if (this._shieldWearOff() || !session || !session.id) return null;
     const ps = this.playerState[session.id];
@@ -129,6 +130,15 @@ export const shieldWearMethods = {
     /* by id, a piece the ledger says is yours though no list holds it */
     else if (gid && this._gearProvPieceByRef) piece = this._gearProvPieceByRef(session.id, 'shield', gid);
     if (!piece) {
+      /* v2.3.4510: ...but not in a fight with a player in No man's land
+         (fightlock.js, `fightlockequip`): a report naming a shield the worker
+         does not hold, sent then, was a modified phone's way to keep every
+         spare shield from the killer.  The arm stays as the worker knew it;
+         nothing moves either way, so the phone has nothing to put back.
+         (Putting a held spare ON is not refused: which shield is on the arm
+         is still the phone's to say -- wsClient.js never takes the worker's
+         -- so a refusal would leave its screen showing the swap.) */
+      if (this._fightLockHolds && this._fightLockHolds(session.id, 'fightlockequip')) return 'fight';
       /* a shield the worker does not hold for you: nothing moves, and the
          arm is unknown -- No man's land takes no shield this session */
       ps._shieldKnown = false;

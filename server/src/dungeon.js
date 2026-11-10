@@ -405,6 +405,10 @@ export const dungeonMethods = {
       const mps = this.playerState[pid];
       if (!mps || mps.dead || mps.dying || mps.disconnected) continue;
       if (mps.z !== fromZone) continue;
+      /* v2.3.4510: a member in a fight with a player in No man's land stays
+         at the mouth, as their own tap would (fightlock.js `fightlockdoor`):
+         the run is a way out of that fight with the bag */
+      if (this._fightLockHolds && this._fightLockHolds(pid, 'fightlockdoor')) continue;
       const d = Math.hypot((mps.x || 0) - (ownerPs.x || 0), (mps.y || 0) - (ownerPs.y || 0));
       /* v2.3.3016: the Wheel is one zone across 43,008 px -- a member there
          comes in only from beside the mouth */
