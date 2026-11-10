@@ -25,6 +25,13 @@ import { ELEMENT_STATUS } from './elemental.js'; /* v2.3.3513: a weapon's gems a
 import { isVolatilePair } from './weapongem.js'; /* v2.3.3513 */
 
 export const gearMethods = {
+  /* v2.3.4386: `gearresend: false` in the live flags is the way back to the
+     level gate's silent refusal (_handleEquipRequest; gear-resend.test). */
+  _gearResendOff() {
+    const f = this._liveFlags;
+    return !!(f && typeof f === 'object' && Object.prototype.hasOwnProperty.call(f, 'gearresend') && !f.gearresend);
+  },
+
   // ═══ Equipment store (opaque blobs + equip_request) ═══
   //
   // Slots tracked on playerState:
@@ -744,7 +751,14 @@ export const gearMethods = {
     // v2.3.1661 (prog3): the tier gate, server-enforced at last —
     // see _prog3EquipOk above.  Silent reject (the stat_allocate
     // posture); the client's own gate shows the requirement.
-    if (!this._prog3EquipOk(ps, slot, stashItem)) return;
+    /* v2.3.4386: ...which only the old town panel asked: the card's and the
+       picker's Equip put a weapon above your trained level in your hand and
+       this refusal left it there until the next join, while the worker swung
+       the old one (the state-machine sweep, V9b S7-12).  Answered now with
+       the weapon fields, as the mismatch above is; the phone asks the same
+       gate first since this version, so this is for an older phone.
+       `gearresend: false` brings back the silent refusal (gear-resend.test). */
+    if (!this._prog3EquipOk(ps, slot, stashItem)) return this._gearResendOff() ? undefined : refuseWeapons();
     /* v2.3.4012: a blade still a "?" is opened as it goes on, with its
        ceremony (revealbag.js): a wielded grade is in every hit's numbers */
     this._revealBagOnWear(session.id, ps, slot, stashItem);
