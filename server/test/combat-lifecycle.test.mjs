@@ -1147,7 +1147,12 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
 }
 
 /* ── v2.3.1562: stuck-at-zero death recovery (owner: "I just died and it
-   didn't return me to town — stuck at 0 HP, could still mine") ── */
+   didn't return me to town — stuck at 0 HP, could still mine") ──
+   v2.3.4374: the sweep's "a state restored from storage mid-death" road is
+   closed by the owner (2026-11-10: "A player who closes the game in the 5
+   seconds after dying comes back standing in BroTown at full health, and
+   nothing is taken twice"): a JOIN at 0 health stands up instead of dying
+   again (join-stands-up.test.mjs).  These in-memory states still sweep. */
 {
   const ws = fakeWs('stuck');
   room._wsBySessionId = (id) => (id === 'stuck1' || id === 'stuck2' ? ws : null);
@@ -1196,10 +1201,12 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
      stuck there.  I had to wait for a monster to attack me again and die
      again while it was my active screen to respawn in town."
 
-     A backgrounded tab's socket is suspended, so the respawn runs with no ws
-     and `player_respawned` — the ONLY thing that clears the client's death
-     state — is dropped.  The respawn still HAPPENED server-side, so the debt
-     has to be remembered and replayed on the next join. */
+     A backgrounded tab's socket is suspended, so the respawn runs with no ws.
+     It still HAPPENS server-side.  v2.3.4374: the `_respawnOwed` debt it used
+     to leave for the next join is gone -- every join builds a fresh state, so
+     it was never read (state-machine sweep S2-2); a rejoin's player_state
+     (hp > 0) stands the phone up through its watchdog, and a join inside the
+     dying window stands the player up itself (join-stands-up.test.mjs). */
   {
     room._wsBySessionId = () => null;                     // the tab is gone
     const away = { hp: 0, maxHp: 100, z: 'frost', dying: true, respawnAt: Date.now() - 1, inventory: {} };
@@ -1208,12 +1215,9 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     check('background death: the respawn still runs with nobody listening',
       away.dying === false && away.z === 'town' && away.hp === away.maxHp,
       { dying: away.dying, z: away.z, hp: away.hp });
-    check('background death: the undelivered respawn is remembered',
-      away._respawnOwed === true, { owed: away._respawnOwed });
+    check('background death: no debt is left on the state (v2.3.4374)',
+      !('_respawnOwed' in away), Object.keys(away));
 
-    /* GUARD: a respawn that WAS delivered owes nothing — otherwise the flag
-       would be set on every respawn and the assertion above would pass for
-       the wrong reason. */
     const liveWs = fakeWs('live');
     room._wsBySessionId = () => liveWs;
     const here = { hp: 0, maxHp: 100, z: 'frost', dying: true, respawnAt: Date.now() - 1, inventory: {} };
@@ -1221,19 +1225,16 @@ for (const m of meadowMonsters) m._wanderPausedUntil = Date.now() + 600000;
     room._tickPlayerRespawn();
     check('foreground death: player_respawned is sent',
       msgsOfType(liveWs, 'player_respawned').length === 1, liveWs.sent.map((m) => m.type));
-    check('foreground death: nothing is owed',
-      here._respawnOwed === undefined, { owed: here._respawnOwed });
 
-    /* A send that THREW did not arrive either — the bare swallow this
-       replaced is exactly how the failure stayed invisible. */
+    /* A send that throws does not stop the respawn itself. */
     const deadWs = fakeWs('dead');
     deadWs.send = () => { throw new Error('socket closed'); };
     room._wsBySessionId = () => deadWs;
     const threw = { hp: 0, maxHp: 100, z: 'frost', dying: true, respawnAt: Date.now() - 1, inventory: {} };
     room.playerState['threw1'] = threw;
     room._tickPlayerRespawn();
-    check('a respawn whose send threw is owed too',
-      threw._respawnOwed === true, { owed: threw._respawnOwed });
+    check('a respawn whose send threw still stands the player up',
+      threw.dying === false && threw.hp === threw.maxHp && threw.z === 'town', { dying: threw.dying, hp: threw.hp });
 
     delete room.playerState['away1'];
     delete room.playerState['here1'];
