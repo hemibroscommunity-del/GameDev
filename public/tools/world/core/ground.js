@@ -807,7 +807,8 @@ function builtLookup(bp, mm) {
 /* The ground of `rect` (art px, frame coordinates).
    `tiles[id]` = { A: tile, B?: tile }: the swatch pictures, square, seamless
    and already on the palette; a swatch not made yet is drawn in its plan
-   colour, chequered, so the gap shows.  A tile is {w, h, data} (RGBA) or,
+   colour, chequered, so the gap shows (v2.3.4400: plain for the ids in
+   `opts.late`, a picture made and only not here yet).  A tile is {w, h, data} (RGBA) or,
    since v2.3.2943, {w, h, idx, pal}: one palette index a pixel and the
    palette as r,g,b triples -- a quarter of the memory, which is what lets
    the phone keep a dozen swatches unpacked (ground-worker.js).  Returns
@@ -905,8 +906,9 @@ export function composeGround(plan, bp, mm, rect, tiles, opts = {}) {
           putTexel(data, o, tile, v * T + u);
           continue;
         }
-        /* not made yet: the plan's colour, chequered every 16 art px */
-        c = ((ax >> 4) + (ay >> 4)) & 1 ? e.color : shade(e.color, 0.86);
+        /* not made yet: the plan's colour, chequered every 16 art px --
+           v2.3.4400: plain when it is made and only not here yet (opts.late) */
+        c = (opts.late && opts.late[e.id]) || ((ax >> 4) + (ay >> 4)) & 1 ? e.color : shade(e.color, 0.86);
       }
       data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
     }
@@ -1632,9 +1634,15 @@ function composeFine(plan, bp, mm, rect, tiles, opts, K) {
   const data = new Uint8ClampedArray(OW * OH * 4);
   const mat = opts.withMaterials === false ? null : new Uint8Array(OW * OH);
   const look = new Array(256);
+  /* v2.3.4400: `opts.late` -- { id: true } for each swatch whose picture is
+     made and has not come yet (the game's worker, on a slow line): its plan
+     colour PLAIN, both squares of the chequer the same, so only a swatch
+     nobody has made shows the gap */
+  const late = opts.late || null;
   const lookOf = (q) => {
     const e = cat[q], t = tiles && e && tiles[e.id];
-    return (look[q] = { A: t && t.A ? t.A : null, B: t && t.A && t.B ? t.B : null, E: t && t.E ? t.E : null, c1: e ? e.color : [0, 0, 0], c2: e ? shade(e.color, 0.86) : [0, 0, 0],
+    return (look[q] = { A: t && t.A ? t.A : null, B: t && t.A && t.B ? t.B : null, E: t && t.E ? t.E : null, c1: e ? e.color : [0, 0, 0],
+      c2: e ? (late && late[e.id] ? e.color : shade(e.color, 0.86)) : [0, 0, 0],
       planks: !!(e && e.laid === 'planks') });
   };
   /* v2.3.2951: each BLEND's picture, laid like a swatch's -- anchored to the

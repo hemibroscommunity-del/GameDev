@@ -45,9 +45,10 @@
  * "everywhere you have been".
  */
 import { Assets, Cache, Rectangle, Texture } from 'pixi.js';
-import { packTrimmed } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped */
-import { holdOnceDrawn, forgetHeld } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
+import { packTrimmed, packTrimmedSliced } from './gearSheets.js';   /* v2.3.2870: monster strips load cropped; v2.3.4400: a few ms at a time in play */
+import { holdOnceDrawn, forgetHeld, numbersOfSliced } from './heldNumbers.js';   /* v2.3.3699: held once drawn, as colour numbers */
 import { stripAsNumbers, releaseBundleNumbers, picNumbersOn } from './picsNumbers.js';   /* v2.3.3715: ?picnumbers, colour numbers on the chip */
+import { noteMade } from '../debug/madeLog.js';   /* v2.3.4400: a strip packed on the page says its name and its time */
 
 /* bundle name -> the set of URLs loaded under it.  A Set, so a re-entered zone
    re-registering the same sheet costs one entry rather than a growing list. */
@@ -100,14 +101,124 @@ export function loadTrackedStrip(bundle, url, fw, fh) {
     im.onload = () => res(im); im.onerror = rej; im.src = url;
   }).then((img) => {
     if ((_gen.get(bundle) || 0) !== gen) return [];   /* its zone was left while it decoded */
-    const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+    /* v2.3.4400: in play, a few ms a frame and one strip at a time (below);
+       behind a loading screen, all at once, as ever */
+    if (stripFrameMs() > 0) return _inLine(() => _stripGently(bundle, url, fw, fh, gen, img));
+    const _madeT0 = performance.now();   /* v2.3.4400: how long this strip's packing holds the page (debug/madeLog.js) */
+    const W = img.naturalWidth || img.width;
     const n = Math.max(1, Math.floor(W / fw));
     const packed = packTrimmed(img, fw, fh, n);
+    const frames = _stripFrames(bundle, url, fw, fh, img, n, packed, undefined);
+    noteMade('strip ' + _stripName(url), performance.now() - _madeT0, 'strip ' + url);
+    return frames;
+  }).catch(() => []);
+}
+
+/* ═══ v2.3.4400: A LOOK THAT LOADS AS YOU WALK IS UNPACKED BETWEEN FRAMES ═══
+   The owner's iPhone: "It noticeably slowed when I rode by the blacksmith
+   hammering."  The Blacksmith stands on the Flame Fields' side of the town,
+   where the fire goblin's look starts to load as you come (wheelMonsterArt.js)
+   -- fourteen strips, each packed and read into its colour numbers on the
+   page in one go as its file arrived: 13 to 39 ms a strip on the test box,
+   300 ms of the page held inside a second (mp-stripgentle).
+   So IN PLAY (BroTown.jsx tells this module the frame's length; 0 behind any
+   loading screen) a strip is unpacked a cell and a band of rows at a time
+   (gearSheets.js packTrimmedSliced, heldNumbers.js numbersOfSliced), ONE
+   strip at a time, a slice a frame: a quarter of the frame's length, never
+   under SLICE_MIN_MS (a 60-a-second phone: 4 ms a frame; this box, whose
+   frames are 200 ms: a strip a turn, as before).  The pixels, the cells and
+   the numbers are the same to the byte.  Behind a loading screen nothing
+   waits: a zone's art loads flat out, as it always did.
+   `?stripgentle=0`: the old way for one tab.  `?stripslice=4`: a fixed slice
+   in ms (QA, to play a phone's on a slow box). */
+const SLICE_MIN_MS = 3, SLICE_MAX_MS = 50, SLICE_SHARE = 0.25, SLICE_WAIT_MS = 120;
+const _search = (() => { try { return window.location.search || ''; } catch (e) { return ''; } })();
+const _gentleOff = /(^|[?&])stripgentle=(0|off|false)(&|$)/.test(_search);
+const _sliceFixed = (() => { const m = /(^|[?&])stripslice=(\d+)(&|$)/.exec(_search); return m ? Math.max(1, +m[2]) : 0; })();
+let _play = null;
+/** BroTown.jsx: `fn()` is the frame's length in ms while the world is in
+ *  play, 0 behind a loading screen (or the tab hidden). */
+export function setStripPlay(fn) { _play = typeof fn === 'function' ? fn : null; }
+function stripFrameMs() {
+  if (_gentleOff || !_play) return 0;
+  try { const v = +_play(); return v > 0 ? v : 0; } catch (e) { return 0; }
+}
+const _stripName = (url) => String(url).replace(/^.*\//, '').replace(/[?#].*$/, '').slice(0, 28);
+/* one strip at a time, and one clock for the slice across them */
+let _line = Promise.resolve(), _waiting = 0, _sliceT0 = 0;
+const _slices = { strips: 0, slices: 0, longest: 0 };
+function _inLine(job) {
+  if (_waiting++ === 0) _sliceT0 = performance.now();
+  const p = _line.then(job, job);
+  _line = p.then(() => { _waiting--; }, () => { _waiting--; });
+  return p;
+}
+const _afterFrame = () => new Promise((res) => {
+  let done = false;
+  const go = () => { if (!done) { done = true; res(); } };
+  /* after the next frame has been drawn (a task behind its callbacks); or SLICE_WAIT_MS, with no frame coming */
+  try { requestAnimationFrame(() => setTimeout(go, 0)); } catch (e) { /* the timer below */ }
+  setTimeout(go, SLICE_WAIT_MS);
+});
+/* asked between two small pieces of work: this slice's ms spent -> the next frame first */
+async function stripTurn() {
+  const frameMs = stripFrameMs();
+  if (!frameMs) return;                       /* a loading screen came up: no more waiting */
+  const budget = _sliceFixed || Math.max(SLICE_MIN_MS, Math.min(SLICE_MAX_MS, frameMs * SLICE_SHARE));
+  const spent = performance.now() - _sliceT0;
+  if (spent < budget) return;
+  _slices.slices++;
+  if (spent > _slices.longest) _slices.longest = spent;
+  noteMade('strip slice', spent);
+  await _afterFrame();
+  _sliceT0 = performance.now();
+}
+async function _stripGently(bundle, url, fw, fh, gen, img) {
+  /* the file unpacked off the page's thread where the browser can (else the first draw unpacks it, in one go) */
+  try { if (typeof img.decode === 'function') await img.decode(); } catch (e) { /* drawn as it is */ }
+  /* (the page was free while the browser unpacked the file: this slice's ms start now) */
+  _sliceT0 = performance.now();
+  const W = img.naturalWidth || img.width;
+  const n = Math.max(1, Math.floor(W / fw));
+  const packed = await packTrimmedSliced(img, fw, fh, n, stripTurn);
+  let read;
+  if (packed && picNumbersOn()) read = (await numbersOfSliced(packed.canvas, stripTurn)) || false;
+  let whole = null;
+  if (!packed && picNumbersOn()) {
+    /* a strip the packer leaves whole (v2.3.4359, below): drawn here, read in bands */
+    try {
+      whole = document.createElement('canvas');
+      whole.width = n * fw; whole.height = fh;
+      const wctx = whole.getContext('2d', { willReadFrequently: true });
+      wctx.imageSmoothingEnabled = false;
+      wctx.drawImage(img, 0, 0);
+      await stripTurn();
+      read = (await numbersOfSliced(whole, stripTurn)) || false;
+    } catch (e) { read = false; }
+  }
+  /* (the last step is one piece of work -- the numbers put on the bundle's row of colours, the texture made -- so it
+     starts a slice of its own) */
+  await stripTurn();
+  /* its zone was left while it was unpacked: nothing is kept (from here to the end nothing waits, so a bundle let go
+     now is let go of this strip too) */
+  if ((_gen.get(bundle) || 0) !== gen) {
+    try { if (packed) { packed.canvas.width = 0; packed.canvas.height = 0; } if (whole) { whole.width = 0; whole.height = 0; } } catch (e) { /* gone */ }
+    return [];
+  }
+  _slices.strips++;
+  return _stripFrames(bundle, url, fw, fh, img, n, packed, read, whole);
+}
+if (typeof window !== 'undefined') window.__btStripSlices = () => ({ ..._slices, on: !_gentleOff, fixed: _sliceFixed, frameMs: stripFrameMs() });
+
+/* the strip's texture and frames from its packed canvas (or the image whole): `read` its colour numbers when they
+   were read already (gently: the packed canvas's, or the whole canvas `whole`'s; false: more than 256 colours) */
+function _stripFrames(bundle, url, fw, fh, img, n, packed, read, wholeCv) {
+    const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
     /* v2.3.3715: ?picnumbers -- the packed strip read into its colour numbers
        now and uploaded as them, its canvas let go of (picsNumbers.js); a strip
        that cannot be is the canvas, as before */
     const packedBytes = packed ? packed.canvas.width * packed.canvas.height * 4 : W * H * 4;
-    let numSrc = packed ? stripAsNumbers(bundle, packed.canvas, url) : null;
+    let numSrc = packed ? stripAsNumbers(bundle, packed.canvas, url, read) : null;
     /* v2.3.4359: ...AND A STRIP THE PACKER LEAVES WHOLE.  The owner, of the
        new monsters: "you're converting the pictures into the 256 color
        framework right?  That should be happening as part of the process."
@@ -120,14 +231,16 @@ export function loadTrackedStrip(bundle, url, fw, fh) {
        the canvas; on a refusal it is emptied here and the image goes up, as
        before).  Its frames are the plain slices below, on the numbers. */
     if (!packed && picNumbersOn()) {
-      let whole = null;
+      let whole = wholeCv || null;
       try {
-        whole = document.createElement('canvas');
-        whole.width = n * fw; whole.height = fh;
-        const wctx = whole.getContext('2d', { willReadFrequently: true });
-        wctx.imageSmoothingEnabled = false;
-        wctx.drawImage(img, 0, 0);
-        numSrc = stripAsNumbers(bundle, whole, url);
+        if (!whole) {
+          whole = document.createElement('canvas');
+          whole.width = n * fw; whole.height = fh;
+          const wctx = whole.getContext('2d', { willReadFrequently: true });
+          wctx.imageSmoothingEnabled = false;
+          wctx.drawImage(img, 0, 0);
+        }
+        numSrc = stripAsNumbers(bundle, whole, url, wholeCv ? read : undefined);
       } catch (e) { numSrc = null; }
       if (!numSrc && whole) { try { whole.width = 0; whole.height = 0; } catch (e) { /* gone */ } }
     }
@@ -155,7 +268,6 @@ export function loadTrackedStrip(bundle, url, fw, fh) {
     }
     if (_verify) _verify.set(url, { frames, fw, fh });
     return frames;
-  }).catch(() => []);
 }
 const _stripStats = [];
 /* QA only: mp-monstertrim sets __btTrimVerify before load and compares every

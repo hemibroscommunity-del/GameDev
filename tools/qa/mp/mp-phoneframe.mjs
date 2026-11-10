@@ -29,7 +29,7 @@
  *
  *   QA_DIST=dist-prof node tools/qa/mp/run.mjs phoneframe
  *   BT_PF_QUERY='nopalette' ...    # extra address switches for the page
- *   BT_PF_SCENES=town,fight ...    # only these scenes
+ *   BT_PF_SCENES=town,fight ...    # only these scenes (town, townwalk, townride, townacross, fight, landwalk; the two skateboard scenes only when named)
  *   BT_QA_CPU_THROTTLE=4 ...       # a slower phone
  *
  * Writes tools/qa/mp/out/phoneframe.json (every number and the profiles' top
@@ -377,6 +377,36 @@ const drivers = {
       for (const k of keys) await P.page.keyboard.up(k).catch(() => {});
     }
   },
+  /* v2.3.4400: the skateboard through the town -- the owner, 2026-11-09, on an
+     iPhone 14 Pro Max: "gritty framerate while on skateboard riding through
+     town".  Longer legs than the walk's (3 s at the board's 300 game px a
+     second is 900 px: new ground, trees and townsfolk come on screen the
+     whole way), inside the safe ground the board rolls on.  The scene steps
+     on the board first and off after (BT_PF_SCENES=townride). */
+  ride: async (P, stop) => {
+    const legs = [['d'], ['s'], ['a'], ['w']];
+    let i = 0;
+    while (!stop()) {
+      const keys = legs[i++ % legs.length];
+      for (const k of keys) await P.page.keyboard.down(k).catch(() => {});
+      for (let t = 0; t < 3000 && !stop(); t += 100) await P.page.waitForTimeout(100).catch(() => {});
+      for (const k of keys) await P.page.keyboard.up(k).catch(() => {});
+    }
+  },
+  /* v2.3.4400: right across the town and back on the board, at its 300 game px a second -- new buildings, trees and
+     townsfolk come on screen the whole way (the owner's iPhone: 10 frames late in 10 s, the worst 170 ms).  Glided,
+     as mp-ridelay's leg is: the same ground laid and the same pictures first drawn, with no wall to stop it. */
+  across: async (P, stop) => {
+    const G = await H.wheelGeom();
+    let east = true;
+    while (!stop()) {
+      const to = { x: G.cx + (east ? 1700 : -1700), y: G.arrival.y };
+      const going = H.glideTo(P, to.x, to.y, { speed: 300, timeoutMs: 60000 }).catch(() => {});
+      for (let t = 0; t < 11500 && !stop(); t += 100) await P.page.waitForTimeout(100).catch(() => {});
+      await going;
+      east = !east;
+    }
+  },
   fight: async (P, stop) => {
     while (!stop()) {
       const s = await near(P).catch(() => null);
@@ -515,6 +545,10 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
         render: { p50: q(col('renderMs'), 0.5), mean: mean(col('renderMs')) },
         tile: mean(col('tileMs')), entity: mean(col('entityMs')), effects: mean(col('effectsMs')), app: mean(col('appMs')),
         interval: { p50: q(col('totalMs'), 0.5), p95: q(col('totalMs'), 0.95) },
+        /* v2.3.4400: the worst frames and where each went -- a hitch hides in the averages (the owner's iPhone: 60 frames a
+           second on the meter, the worst frame of each two seconds 22 to 38 ms) */
+        worst: [...s].sort((a, b) => (b.workMs || 0) - (a.workMs || 0)).slice(0, 5).map((x) => ({ work: +(x.workMs || 0).toFixed(1), sim: +(x.simMs || 0).toFixed(1),
+          tile: +(x.tileMs || 0).toFixed(1), entity: +(x.entityMs || 0).toFixed(1), effects: +(x.effectsMs || 0).toFixed(1), pixi: +(x.appMs || 0).toFixed(1) })),
         mainPerSec: {
           task: +(((m1.TaskDuration - m0.TaskDuration) / secs) * 1000).toFixed(0),
           script: +(((m1.ScriptDuration - m0.ScriptDuration) / secs) * 1000).toFixed(0),
@@ -530,6 +564,7 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
       console.log(`\n  ── ${label}: ${row.frames} frames (${row.fps}/s), work p50 ${row.work.p50} p95 ${row.work.p95} mean ${row.work.mean} ms`
         + ` | sim ${row.sim.mean} render ${row.render.mean} (tile ${row.tile} entity ${row.entity} effects ${row.effects} pixi ${row.app})`
         + ` | main thread a second: task ${row.mainPerSec.task} script ${row.mainPerSec.script} layout ${row.mainPerSec.layout} style ${row.mainPerSec.style} ms`);
+      console.log(`     the five worst frames (work = sim + tile + entity + effects + pixi + the rest): ${row.worst.map((w) => `${w.work} (sim ${w.sim} tile ${w.tile} ent ${w.entity} fx ${w.effects} pixi ${w.pixi})`).join(' | ')}`);
       if (gl) {
         const draws = (gl.drawElements || 0) + (gl.drawArrays || 0) + (gl.drawElementsInstanced || 0) + (gl.drawArraysInstanced || 0);
         const sync = SYNC.reduce((a, k) => a + (gl[k] || 0), 0);
@@ -557,6 +592,26 @@ async function measure({ browser, wsPort, webPort, rec, maps, query: q0 }) {
 
     if (WANT.includes('town')) await scene('BroTown, standing', drivers.stand);
     if (WANT.includes('townwalk')) await scene('BroTown, walking', drivers.walk);
+    if (WANT.includes('townride')) {
+      /* v2.3.4400: on the board (Z, the game's own key; the worker says yes) */
+      await P.page.keyboard.press('z');
+      const on = await H.waitFor(P, () => window.__btRideBtn && window.__btRideBtn(), (v) => v && v.on === true, { timeout: 8000, label: 'on the board' }).then(() => true).catch(() => false);
+      rec.ok('on the skateboard for the ride (guard)', on, await P.page.evaluate(() => window.__btRideBtn && window.__btRideBtn()).catch(() => null));
+      if (on) await scene('BroTown, riding the skateboard', drivers.ride);
+      await P.page.keyboard.press('z').catch(() => {});
+      await P.page.waitForTimeout(600);
+    }
+    if (WANT.includes('townacross')) {
+      /* v2.3.4400: from the town's west edge, on the board, right across and back */
+      const G0 = await H.wheelGeom();
+      await H.glideTo(P, G0.cx - 1700, G0.arrival.y, { speed: 4000, timeoutMs: 30000 });
+      await P.page.waitForTimeout(4000);
+      await P.page.keyboard.press('z');
+      await H.waitFor(P, () => window.__btRideBtn && window.__btRideBtn(), (v) => v && v.on === true, { timeout: 8000, label: 'on the board' }).catch(() => null);
+      await scene('BroTown, riding right across the town', drivers.across);
+      await P.page.keyboard.press('z').catch(() => {});
+      await P.page.waitForTimeout(600);
+    }
     if (WANT.includes('fight') || WANT.includes('landwalk')) {
       const geom = await H.wheelGeom().catch(() => null);
       const { WHEEL_SPAWNS } = await import(H.REPO + '/server/src/wheelspawns.js');

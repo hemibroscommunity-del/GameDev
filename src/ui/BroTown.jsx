@@ -455,6 +455,10 @@ import { updateWheelSwim, isWheelSwimming, wheelSwimMult, swimGlide, swimNote, S
 import { quietOn, keepaliveDue } from '@/game/quietPhone.js';   /* v2.3.3254: the quiet phone -- keepalives and the harvest heartbeat only when needed */
 import { updateSprint, sprintMult, sprintHoldsRegen, sprintDust, sprintOutBreathTurn, stopSprint } from '@/game/sprint.js';
 import { rideMult, rideCheck, isRiding } from '@/game/ride.js';   /* v2.3.3776: the skateboard (server/src/ride.js) */
+import { makeFrameClock, frameSmoothOn } from '@/game/frameClock.js';   /* v2.3.4400: a steady step on a steady screen */
+import { framePaceOn, makeFramePacer, noteDrawn, whenDrawn } from '@/game/framePacer.js';   /* v2.3.4400: a steady rate on a screen the game cannot keep up with */
+import { noteMade } from '@/debug/madeLog.js';   /* v2.3.4400: a job between frames says its name and its time */
+import { setStripPlay } from '@/rendering/zoneTextures.js';   /* v2.3.4400: a look that loads as you walk is unpacked between frames */
 import { rideGround } from '@/game/rideGround.js';   /* v2.3.3776: where a board rolls */   /* v2.3.3006: the sprint (button right of the movement stick, Shift on a keyboard); v2.3.3015: + its push-off dust; v2.3.3475: + the run-out's grunt/breath turn */
 import { updateMonsterNoises } from '@/game/monsterNoises.js';   /* v2.3.3340: the monsters chasing you call now and then */
 import { renderDpr } from '@/game/renderRes.js';   /* v2.3.3339: ?res= and the speed test */
@@ -4150,7 +4154,8 @@ export var BroTown = function BroTown(_ref0) {
           setTimeout(function () {
             if (canvasRef.current !== canvas) return; /* superseded by a newer rebuild */
             try {
-              requestAnimationFrame(function () {
+              /* v2.3.4400: in a refresh the world was drawn in (framePacer.js whenDrawn) */
+              whenDrawn(function () {
                 try {
                   var _c2 = document.createElement('canvas');
                   _c2.width = 32; _c2.height = 18;
@@ -4851,11 +4856,40 @@ export var BroTown = function BroTown(_ref0) {
       return { phase: F ? F.phase : null, lootId: F ? F.lootId : null, runs: F ? F.runs : 0, got: F ? F.got : 0, credited: F && F.credited ? F.credited.slice() : [], closest: F && F.closest < 1e9 ? F.closest : null, goSteps: F ? F.goSteps || 0 : 0, pace: F ? F.pace || 0 : 0, skip: F ? Array.from(F.skip.keys()) : [], why: F ? F.why : null, on: !!(S._serverCaps && S._serverCaps.petfetch && S._serverCaps.petLoot), dt: S._dtScale || 1,
         x: S._petX, y: S._petY, px: S.player ? S.player.x : null, py: S.player ? S.player.y : null };
     };
-    var _gameLoop = function gameLoop() {
+    /* v2.3.4400: the steady step (game/frameClock.js); none with `?dtsmooth=0` */
+    var _frameClock = null;
+    try { if (frameSmoothOn(window.location.search || '')) _frameClock = makeFrameClock(); } catch (e) { _frameClock = null; }
+    /* ═══ v2.3.4400: A STEADY RATE ON A FAST SCREEN (game/framePacer.js) ═══
+       The owner's iPhone, Safari offering it the screen's own 120 a second,
+       twenty-four minutes in: "Still performance issues", "fps ~51  frame
+       avg 19.6 p95 26.0 max 32.0" -- frames on the glass for two refreshes,
+       then three, then four.  On a screen faster than about 70 a second the
+       game draws on a whole number of refreshes it can keep to; every other
+       screen is every refresh, as ever.  `?pace=0`: the old way. */
+    var _framePacer = null, _paceEvery = 1;
+    try { if (framePaceOn(window.location.search || '')) _framePacer = makeFramePacer(); } catch (e) { _framePacer = null; }
+    /* the frame meter's line and QA (mp-steadypace): the screen's rate, and every how many refreshes a frame is drawn */
+    if (typeof window !== 'undefined') window.__btPace = function () { return _framePacer ? _framePacer.read() : null; };
+    /* v2.3.4400: a monster's look that loads as you walk is unpacked a few ms a frame (zoneTextures.js): this frame's
+       length while the world is in play; 0 behind any loading screen, where art loads flat out as ever */
+    try {
+      setStripPlay(function () {
+        if (!S.__introLiftedAt || S._zoneLoading || S._netHold || S._townArtHold || S._farmArtHold || S._wheelDungeonOpening) return 0;
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return 0;
+        return S._frameMs > 0 ? S._frameMs : 16.667;
+      });
+    } catch (e) { /* unpacked at once, as before */ }
+    var _gameLoop = function gameLoop(_rafT) {
       frameRef.current = requestAnimationFrame(_gameLoop);
+      /* not this refresh (nothing counted, moved or drawn); never judged behind a loading screen */
+      if (_framePacer && !_framePacer.take(typeof _rafT === 'number' ? _rafT : performance.now(), !S._zoneLoading && !!S.__introLiftedAt)) return;
+      /* this refresh is one the world is drawn in: whoever reads the canvas asks for one (framePacer.js whenDrawn) */
+      noteDrawn(_rafT);
       try {
         if (!S._frameCount) S._frameCount = 0;
         S._frameCount++;
+        /* the rate changed: the steady step's mean is of the old rate's frames, so it starts again */
+        if (_framePacer) { var _pe = _framePacer.read().every; if (_pe !== _paceEvery) { _paceEvery = _pe; if (_frameClock) _frameClock.reset(); } }
 
         /* ── Slow-frame diagnostic ── flags any frame whose delta from
            the previous one exceeds the 60-fps budget by a meaningful
@@ -4885,11 +4919,26 @@ export var BroTown = function BroTown(_ref0) {
            collision is tested per step, so an unbounded step tunnels — and it
            keeps the step inside the worker's move cap.  The floor stops a zero
            or negative delta (first frame, clock skew) from freezing movement. */
-        S._dtScale = Math.max(0.2, Math.min(3, (_perfDelta || 16.667) / 16.667));
+        /* ═══ v2.3.4400: A STEADY STEP ON A STEADY SCREEN (game/frameClock.js) ═══
+           The owner's iPhone, on the skateboard: "it was saying 60fps but the
+           screen looked gritty like it was 30fps or worse".  The step was this
+           frame's own measured length, which wobbles a few ms round the
+           screen's steady 16.7 (its meter: "avg 16.7 p95 19.0 max 24.0"), so
+           you moved a third too far on one frame and a third too little on the
+           next.  It is now the mean of the last ten frames' lengths; a frame
+           past the 3-frame cap is a break and is taken as it is, as before.
+           `?dtsmooth=0`: the old way. */
+        var _stepMs = _frameClock ? _frameClock.step(_perfDelta) : _perfDelta;
+        S._dtScale = Math.max(0.2, Math.min(3, (_stepMs || 16.667) / 16.667));
         /* v2.3.3017: and how long the frame really was -- past the 3-frame cap a
            step covers less ground than the clock moved, and a jump's crossing
-           rule must count what it covers (propFeetBlocked) */
-        S._frameMs = _perfDelta > 0 ? _perfDelta : 16.667;
+           rule must count what it covers (propFeetBlocked).
+           v2.3.4400: up to the cap, the length the step was made from (the
+           mean), so a step is still 0.06 px a ms of it; past it, the frame's
+           own, as before. */
+        S._frameMs = _stepMs > 0 ? _stepMs : 16.667;
+        /* QA (mp-steadystep): the frame's measured length and the one moved by */
+        if (typeof window !== 'undefined' && window.__btStepLog) window.__btStepLog.push(_perfDelta, _stepMs, S.player ? S.player.x : 0, S.player ? S.player.y : 0, S.camera ? S.camera.x : 0, S.camera ? S.camera.y : 0);
         if (_perfDelta > 20) {
           S._perf.totalSlow++;
           if (_perfDelta > S._perf.worstMs) {
@@ -8751,7 +8800,9 @@ export var BroTown = function BroTown(_ref0) {
       } catch (eWd) { /* fall through to the pixel sample */ }
       var oldWay = function () {
         var p = -1;
+        var _tO = performance.now();
         try { p = _litPct(_wdThumbImage(cv)); } catch (eI) { p = -1; }
+        noteMade('screen check (copy)', performance.now() - _tO);   /* v2.3.4400 */
         done(p);
       };
       var job = null;
@@ -8760,11 +8811,16 @@ export var BroTown = function BroTown(_ref0) {
       var frames = 0;
       var poll = function () {
         var px = null;
+        /* v2.3.4400: the read waits for the graphics side to work through what the page has sent it (162 ms on the
+           QA box with a second page open, mp-peerarrive): it says so to the frame meter (debug/madeLog.js) */
+        var _tC = performance.now();
         try { px = _wdThumbCollect(job); } catch (eC) { px = false; _wdOffGl = job.T.gl; }
+        noteMade('screen check', performance.now() - _tC);
         if (px) { done(_litPct(px)); return; }
         /* failed, or not done in time: this frame, the old way (in an
            animation frame after the world's, as it always was) */
-        if (px === false || ++frames > WD_FENCE_FRAMES) { if (px !== false) _wdThumbDrop(job); oldWay(); return; }
+        /* v2.3.4400: ...one the world was drawn in (whenDrawn): frames have gone by since the ask */
+        if (px === false || ++frames > WD_FENCE_FRAMES) { if (px !== false) _wdThumbDrop(job); whenDrawn(oldWay); return; }
         requestAnimationFrame(poll);
       };
       requestAnimationFrame(poll);
@@ -8775,7 +8831,7 @@ export var BroTown = function BroTown(_ref0) {
        own work; the GPU's way is then collected as the watchdog collects it. */
     window.__btWdSample = function () {
       return new Promise(function (res) {
-        requestAnimationFrame(function () {
+        whenDrawn(function () {   /* v2.3.4400: as the watchdog takes it, in a refresh the world was drawn in */
           var cv = canvasRef.current;
           if (!cv) { res(null); return; }
           var tw = performance.now();
@@ -8968,7 +9024,9 @@ export var BroTown = function BroTown(_ref0) {
           } catch (e) {}
         }
         if (document.visibilityState === 'visible') {
-          requestAnimationFrame(function () {
+          /* v2.3.4400: in a refresh the world was DRAWN in -- on one the pacer
+             passes the canvas reads as empty, a false strike (whenDrawn) */
+          whenDrawn(function () {
             /* v2.3.3017: no judging where the canvas's own colour is MEANT to
                show -- under the loading screen, or behind a zone's veil or the
                wait for the server (both .bt-zone-loading), while what is next

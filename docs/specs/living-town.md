@@ -143,6 +143,55 @@ screen. So `tools/qa/mp/memory-budget.mjs` raises `gpu` 105 -> 115 and `heap`
 36 -> 38, said there. mp-wheelfolk: no photograph fetched or held (0 MB), as
 before.
 
+## The looks the numbers refuse: baked behind the loading screen (v2.3.4400)
+
+> The owner's iPhone 14 Pro Max on the skateboard through the town, its frame
+> meter (`?perf=1`) reading "late frames 10 in 10s", "worst 170.0 = game 40.0
+> + outside 130.0": "still gritty looking".
+
+"Memory: nothing new" above was true of the POSES and not of every LOOK. The
+shared colour numbers refuse a look with an **eye style** (the body's own
+eyes are blanked for it) or a **pattern on the trousers or boots** (stamped
+on the body): `playerSkins.js getLookBodyFrame` returns nothing, and the old
+path bakes a copy of the body sheet for that look, on the page, the first
+time he is seen in each pose and each direction. Four of the twenty-one have
+such a look (Blacksmith Bro's striped sweatpants; Farmer Bro's, Beastmaster
+Bro's and Old Man Reel's eyes). On a ride through the town that was five
+bakes of 80 to 250 ms each on the test box, each a frozen frame.
+
+What a townsperson can be drawn in is known before he takes a step
+(`game/townsfolkWalk.js folkDayPoses`, `folkBakeJobs`): standing and walking
+in **all eight facings**, and each job of his day facing south. The renderer
+asks for exactly those sheets, with the very call that draws him, only where
+the numbers refuse his look, and waits for the bakes
+(`entityRenderer.js prewarmFolkBodies`), behind the world's loading screen
+(`worldTrial.js preloadWheel`; PRELOADING IS LAW). 34 sheets, 2.5 s on the
+test box. Never held past 8 s (`FOLK_BAKE_WAIT_MS`); `?folkbake=0` is the old
+way. They keep walking and working, and their looks are untouched.
+
+**All eight, not only his route's.** The first cut baked the jog along each
+leg of his route and the stand at each stop (23 sheets), and the owner's next
+ride read "way better with just a few occasional hiccups", the meter naming
+one: "between frames: body jog-east 101.0 ms". He does not keep to his legs.
+He stops and turns to YOU (`townsfolkDay.js`, attend: any facing), and after
+any wait (you, the walkers' cap, a bump) he walks STRAIGHT to where his route
+has him now, across its corners (`folkStep`: any facing). The Blacksmith's
+route runs on the diagonals only, so his walk east or west was never baked:
+91 ms on the test box, the owner's 101.
+
+The same memory, sooner: these are the sheets a walk round the town baked one
+by one before. What the memory check reads of them is in the PR's body.
+
+Another PLAYER with an eye style or a drawing is still baked when first met,
+as every pose of a peer's is (the preload law's named exception): in a crowd
+that is the same freeze, and is `docs/STATE-MACHINES.md` A2's to fix.
+
+Checked by the `folk-bakes` suite and `mp-townride`: a ride right through
+the town (5 moving sheets baked on the page before, the longest 258 ms; none
+now, the longest job 21 ms), and each of the four set down off his route in
+each of the eight directions to walk straight back (7 sheets baked on the
+page with the first cut, 45 to 91 ms each; none now).
+
 ## Where it is off
 
 - **On a computer** (Windows, a Mac) the look palette is not built

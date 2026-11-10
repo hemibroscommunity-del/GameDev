@@ -375,6 +375,14 @@ export async function preloadWorldTrial() {
   worldTrialStats.bytes += (m.meanChunkBytes || 0) * (urls.length - 1);
 }
 
+/* v2.3.4400: how far the Wheel's way in has got, as one number that changes
+   each time something of it comes -- the worker's plan, a piece of ground
+   laid, a sheet of objects loaded, more bytes of a ground picture.  The zone
+   gate reads it to tell a slow load from a hung one (zoneGate.js gateCap). */
+export function wheelEntryProgress() {
+  return (wheelStats.planMs != null ? 1 : 0) + (wheelStats.loads || 0) + (wheelObjectStats.loads || 0) + (_ready ? 1 : 0) + (wheelStats.dlBytes || 0);
+}
+
 /* v2.3.2943: the Wheel's way in -- the worker builds the plan (about a
    second), then lays the first screen round the town square, all behind the
    ordinary zone loading overlay.  A browser that cannot run the worker walks
@@ -440,6 +448,28 @@ async function preloadWheel() {
       const ns = await import('../rendering/npcSprites.js');
       await Promise.all([wheelObjectsOn() ? wo.wheelObjectsWarm(at.x, at.y, objX, objY) : null, ns.loadWheelNpcArt()]);
     } catch (e) { /* no objects: the ground alone, as before */ }
+    /* ═══ v2.3.4400: AND THE TOWNSFOLK'S BODIES THAT HAVE TO BE BAKED ═══
+       Four of the townsfolk have a look the shared colour numbers refuse (an
+       eye style, patterned trousers), and each pose and direction of theirs
+       was baked on the page the first time you met it -- 80 to 250 ms, a
+       frozen frame, about one a second on a skateboard through the town (the
+       owner's iPhone: "late frames 10 in 10s").  Every pose one can be drawn
+       in is known now (townsfolkWalk.js folkBakeJobs: all eight facings,
+       he leaves his route to turn to you and to walk back): baked here,
+       behind this loading screen.  Never held up by it past
+       FOLK_BAKE_WAIT_MS: what is not baked by then bakes as before. */
+    try {
+      const day = await import('./townsfolkDay.js');
+      /* `?folkbake=0`: baked when first met, as before (mp-townride's comparison) */
+      const ahead = !/(^|[?&])folkbake=0(&|$)/.test((typeof location !== 'undefined' && location.search) || '');
+      if (day.folkWalkWanted() && ahead) {
+        const er = await import('../rendering/systems/entityRenderer.js');
+        const tw = await import('./townsfolkWalk.js');
+        const t1 = performance.now();
+        const baked = er.prewarmFolkBodies(tw.folkBakeJobs()).then((n) => { wheelStats.folkBakes = { n, ms: Math.round(performance.now() - t1) }; });
+        await Promise.race([baked, new Promise((r) => setTimeout(r, FOLK_BAKE_WAIT_MS))]);
+      }
+    } catch (e) { /* baked when first met, as before */ }
     /* v2.3.3019: and the moving water's program, built here, behind the
        overlay, not in the frame the first water comes on screen (a program
        is compiled the first time it is drawn: rendering/wheelWater.js) */
@@ -462,9 +492,11 @@ async function preloadWheel() {
    one dirt step until the owner says otherwise.  Over water or ground not
    laid yet, the last sound heard. */
 const STEPS_WAIT_MS = 5000;
+const FOLK_BAKE_WAIT_MS = 8000;   /* v2.3.4400: the townsfolk's bakes hold the loading screen this long at most (preloadWheel) */
 /* v2.3.4370: how long into the way in a failed ground worker is still
    started again behind the loading screen (preloadWheel) -- the screen's
-   cap is 15 s (zoneTransitions.js), and a start takes a second or two */
+   cap is 15 s at the least (zoneGate.js gateCap, v2.3.4400: longer only
+   while the world is still arriving), and a start takes a second or two */
 const START_TRIES_MS = 10000;
 /* v2.3.2975: how far round the arrival (game px either way, and up from
    below for tall pictures) the objects' sheets are loaded before the

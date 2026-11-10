@@ -9046,3 +9046,184 @@ server re-sending what is still live. The party is the pattern: the phone
 clears, and the join re-sends the roster right after `state_sync` (join.js,
 v2.3.1185). Until a live duel and trade are re-sent (v2.3.4382, in flight on
 2026-11-10), a reconnect keeps the phone's window.
+
+## 279. "The test box loads it in a blink, so nobody waits for it" (v2.3.4400)
+
+**The move.** Judge a load by how it behaves here: the test page server reads
+`dist/` off its own disk and answers in a millisecond, so every picture is
+"there" the frame it is asked for. Ship a rule that is only right when that is
+true: draw a placeholder for anything not here yet, give a download a flat
+time limit, race a loading screen against a flat number of seconds.
+
+**Why it is wrong.** At the expo of 2026-11-05 the judges played on computers
+that had never opened the game, on the venue's one line, while live-streaming.
+The owner saw "patches of texture like a checker pattern" round the edge of
+the view and a map that "loads in pieces". Three rules, each fine on this box:
+
+- a ground picture not here yet was drawn as the Ground Studio's "not made
+  yet" **chequer**: a mark meant for the owner's own unmade swatches;
+- a download had **15 s from start to last byte**: on a thin line each was cut
+  near its end and begun again from nothing (14 cut at 60 KB a second);
+- the zone gate was raced against a **flat 15 s**: a way in that was slow but
+  still arriving (17.8 s with the page slowed x4) was let go like one that had
+  hung, with the last rows of its ground not laid.
+
+A phone never showed it: the owner's own phone reads those pictures from its
+cache. "Phones are fine" was a cache, not a screen size.
+
+**The rule.**
+- A thing that is merely LATE is not a thing that is MISSING: it gets a quiet
+  stand-in (the plan's plain colour), never a debugging mark.
+- A time limit on a download counts the silence, not the whole trip
+  (`DL_STALL_MS`), so slow is never mistaken for hung.
+- A loading screen's cap reads whether its load is still arriving
+  (`src/game/zoneGate.js gateCap`), and what it lays, it lays nearest first.
+- Prove a load on a thin line and a slowed page before calling it done:
+  `BT_QA_SLOW=/world/ground/:150:200` or `H.slowLine(...)`, and
+  `BT_QA_CPU_THROTTLE=4`.
+
+**Receipt:** `mp-desksmooth`; the `ground-late` and `zone-gate` suites;
+docs/specs/slow-line-ground.md.
+
+## 280. "The meter says 60 frames a second, so the motion is smooth" (v2.3.4400)
+
+**The move.** Chase a "gritty" or "not smooth" report as a frame-rate problem:
+profile the frame, cut pixels, cut passes, pool textures. Or the reverse: read
+60 on the meter and tell the owner it is smooth.
+
+**Why it is wrong.** A frame rate counts frames. Smoothness is what each frame
+SHOWS. The owner's iPhone 14 Pro Max on the skateboard read 60 frames a
+second, the game's work 3.4 ms of each 16.7, and looked "like it was 30fps or
+worse" at full resolution, at a lower one, and with no buildings. The game
+moved you by `speed x this frame's measured length`, measured when its own
+code began to run. The screen shows every frame for exactly 16.7 ms; the
+measured length wobbled between 11 and 24. So you moved a third too far on one
+frame and a third too little on the next: sixty uneven steps a second.
+
+**The rule.**
+- A step is made from the steady frame, never from one frame's own measured
+  length: `src/game/frameClock.js` (the mean of the last ten; a frame past
+  the 3-frame cap is a break and is taken as it is). The loop has one writer
+  of `S._dtScale` (`frame-clock` §8).
+- Before treating "not smooth" as a frame-rate problem, get the meter from
+  the device (`?perf=1`): if it reads the screen's own rate with the game's
+  work small, the fault is in the motion, not the chip. Then compare with a
+  third of the pixels (`&res=2`): if nothing changes, stop looking at the
+  chip.
+- This box draws a few frames a second and can never show 60. Play the
+  device's clock to the game instead (`mp-steadystep`: the page's
+  `performance.now` and animation frame replaced by scripted lengths).
+
+**Receipt:** `mp-steadystep`, the `frame-clock` suite, docs/specs/steady-step.md.
+
+## 281. "He is drawn from the shared numbers, so nothing is baked" (v2.3.4400)
+
+**The move.** Put a character on screen in a pose the look palette holds as
+colour numbers and call it free: no bake, no new memory, no work on first
+sight. The living town was built on exactly that (folkPose.js: "otherwise the
+old path would bake a copy of the sheet for his look ... so he stands
+instead").
+
+**Why it is wrong.** The numbers can refuse the LOOK as well as the pose.
+`getLookBodyFrame` returns nothing for a look with an eye style or a drawing
+on the body (patterned trousers, a tattoo), and `getBodyFrame` then bakes a
+copy of the whole sheet for that look, on the page, the first time it is
+asked for in each pose and each direction, handing back the plain frame
+meanwhile. Nothing fails and nothing looks wrong. Four of the twenty-one
+townsfolk have such a look: riding through the town froze a frame for 80 to
+250 ms about once a second, and the owner's iPhone read "fps ~59" the whole
+time.
+
+**The rule.**
+- Before drawing a fixed cast live, ask `lookBodyRefused(pose, dir, art,
+  eyeStyle)` for every pose its script can show, and bake those behind a
+  loading screen (`prewarmFolkBodies`; `awaitBodyBuilds` waits for them).
+- "Every pose its script can show" is NOT the script's own list. The first
+  cut baked the facings of each townsperson's route and nothing else, and the
+  owner's next ride read "a few occasional hiccups", "between frames: body
+  jog-east 101.0 ms": a townsperson who stops for you turns to face you, and
+  one who has waited (for you, the walkers' cap, a bump) walks STRAIGHT back
+  to where his route has him now, across its corners. Count what the code
+  that moves him can do (`townsfolkDay.js`: any facing), not what his table
+  says (`folkDayPoses`: all eight, standing and walking).
+- A job that runs on the page the first time something is seen says its name
+  and its time (`debug/madeLog.js noteMade`): the phone's strip (`?perf=1`)
+  then names it under "between frames", and `window.__btMade` lists them for
+  a test. An average frame time hides a freeze; the count of late frames and
+  the worst one's split do not.
+- A burst of small reads when a file arrives is a few ms at a time, never
+  the whole file in one go (`readPageBottoms`).
+
+**Receipt:** `mp-townride`, the `folk-bakes` suite, docs/specs/living-town.md.
+
+## 282. "It is running at 51 frames a second" (v2.3.4400)
+
+**The move.** Read an average frame rate between two of the screen's whole
+rates (51 on a 120 screen, 45 on a 60 one) as a rate, and go looking for the
+few ms that would lift it.
+
+**Why it is wrong.** A screen shows a frame for a whole number of its
+refreshes. "51 a second" on a 120 screen is frames held for two refreshes,
+then three, then four (16.7, 25, 33 ms) in a mix: the owner's hot iPhone,
+"Still performance issues", read "fps ~51  frame avg 19.6 p95 26.0". The
+step is steady (frameClock.js), so each frame moves you the same distance,
+and shown for unequal times that is an unequal speed on the glass: 33% out
+for one frame in ten (`mp-steadypace`). A steady 40 is smoother than that
+uneven 51, and is less work.
+
+**The rule.**
+- On a screen faster than about 70 a second the game draws on a whole number
+  of refreshes it can keep to (`game/framePacer.js`; `?pace=0` the old way).
+  A 60 screen is never paced: its only step down is 30.
+- Read the meter's `frames` line (the share at each whole refresh), not its
+  `fps`. Read `outside` by its split: BUSY is code to find; WAITING is the
+  chip or the phone, and no code hunt will shorten it.
+- A line the meter asks ONCE must be asked after its subject exists. "looks
+  baked (default)" was asked as the strip first drew, before the palette's
+  sheets had loaded, and said so all session on a phone drawing from the
+  palette.
+- **A refresh the game does not draw in leaves the canvas EMPTY to read.** A
+  WebGL canvas keeps its picture only until it is shown. Anything that reads
+  it "in an animation frame" (the black-screen watchdog, a screenshot, a
+  probe) must ask for one the game drew in (`framePacer.js whenDrawn`), or
+  it reads a black screen that is not there: the first cut of the pacer made
+  the watchdog rebuild the renderer every few seconds on exactly the phones
+  it was meant to help, and only `mp-steadypace` run straight after another
+  scenario showed it.
+- A new player arriving bakes nothing on the watcher's page when the palette
+  draws them (`mp-peerarrive`: Chrome's profiler, the longest stretch outside
+  the frame 9 ms apart from the watchdog's screen check). Do not assume a
+  freeze beside a new player is their look.
+
+**Receipt:** `frame-pacer` suite, `mp-steadypace`, `mp-peerarrive`,
+docs/specs/frame-pacer.md.
+
+## 283. "It slows by the blacksmith, so it is the blacksmith" (v2.3.4400)
+
+**The move.** A player reports a slowdown at a place or beside a character
+("when I rode by the blacksmith hammering") and you profile that character:
+his pose, his hammer, his clothes.
+
+**Why it is wrong.** A townsperson at work costs under a millisecond a frame.
+What the place had was a LOAD: the Blacksmith stands on the Flame Fields'
+side of the town, where the fire goblin's look starts loading as you come,
+and each of its fourteen strips was unpacked on the page in one go as its
+file arrived (13 to 39 ms a strip, 300 ms inside a second). The preloading
+law's two exceptions (a zone's art behind its overlay; the Wheel's monsters
+as you walk) say WHERE a load may happen, not that it is free there.
+
+**The rule.**
+- Profile the PLACE, not the suspect: every job that holds the page names
+  itself (`debug/madeLog.js noteMade`, `window.__btMade`), so ride there and
+  read the names (`mp-stripgentle`).
+- A load that happens while the world is in play is done a few ms a frame,
+  one thing at a time (`zoneTextures.js stripTurn`); behind a loading screen
+  it runs flat out. A job that cannot be split says its name and its time.
+- Two versions of one job (all at once, and a piece at a time) share their
+  rules in one module with no canvas in it (`trimRules.js`,
+  `heldNumbers.js numbersBuilder`), so they cannot drift and node can test
+  that the pieces give what the whole gave.
+- A check that is red before your change is not yours: run it on the code
+  before the change before you chase it (`mp-geartrim`, 15 of 40 on `main`).
+
+**Receipt:** `strip-slices` suite, `mp-stripgentle`, docs/specs/strip-gentle.md.

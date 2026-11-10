@@ -126,8 +126,9 @@ const failed = new Set();             /* 'id|ver' that could not be unpacked: dr
    on a slow connection stopped every piece behind it for good, and one that
    failed was never tried again.  Now:
    - DOWNLOADS run apart from the laying, DL_PARALLEL at a time, each given
-     DL_TIMEOUT_MS; one that fails or runs out of time is tried again after a
-     wait that grows from DL_RETRY_MS to DL_RETRY_MAX_MS;
+     a time limit (v2.3.4400: DL_STALL_MS without a byte, no longer 15 s in
+     all: A SLOW LINE, below); one that fails or runs out of time is tried
+     again after a wait that grows from DL_RETRY_MS to DL_RETRY_MAX_MS;
    - a piece waits for its pictures at most PIECE_WAIT_MS -- counted from
      when a piece FIRST waited for that download, so one stuck download holds
      up one piece, not each piece after it in turn; a picture that has not
@@ -143,12 +144,71 @@ const failed = new Set();             /* 'id|ver' that could not be unpacked: dr
    - the game's pictures are asked for at ?v=<their manifest's date>, which
      public/_headers lets the phone keep: a second visit reads them from the
      phone, with no trip to the server at all. */
+/* ═══ v2.3.4400: A SLOW LINE, AND A VISITOR WHO HAS NEVER BEEN ═══
+   The owner, at the expo of 2026-11-05, where the judges played on computers
+   while live-streaming: "patches of texture like a checker pattern showed all
+   round the outer ring of the view, away from my character", and of the same
+   day "on a computer the map loads in pieces (many squares not drawn); phones
+   are fine".  Not the computer's size or its graphics chip: a computer that
+   had never opened the game, on the venue's one line.  A returning phone
+   reads every ground picture from its own cache (the ?v= address above); a
+   first visit downloads each one, 0.35 MB on average, the moment a piece
+   first needs it.  Reproduced on the test box with its page server made slow
+   for /world/ground/ (BT_QA_SLOW, mp-desksmooth): at 150 KB a second all 70
+   pieces of the arrival were laid short and the screen lifted on a chequered
+   town, whole 12 s later; at 60 KB a second 85 s later, 14 downloads cut off
+   and started again from nothing on the way.  Four causes, each fixed here:
+   - THE CHEQUER was the Ground Studio's mark for a swatch NOT MADE YET
+     (ground.js composeGround), drawn for a picture merely not HERE yet.  A
+     picture that is made and has not come is now laid in its plan colour,
+     plain (`late`, below): the land's shapes are right and only its texture
+     is still to come.  A swatch nobody has made keeps the chequer.
+   - A DOWNLOAD WAS GIVEN 15 s FROM START TO LAST BYTE, four at a time: on a
+     thin line none could finish, and each was cut and begun again from its
+     first byte.  It is now cut only when NO BYTE has come for DL_STALL_MS
+     (or DL_MAX_MS in all): a slow download that is still arriving is kept.
+   - THE PICTURES ROUND YOU WERE ASKED FOR TWO PIECES OUT (PREFETCH: 384 game
+     px past the piece being laid, 2.5 s of walking).  While nothing is asked
+     of the worker it now also asks, quietly, for every picture within
+     FAR_REACH of where you stand (farPrefetch): about 16 s of walking, 8 on
+     the board.  Quiet downloads never start beside one a piece is waiting
+     for, DL_QUIET at a time, so the line is the waiting piece's.
+   - THE WAY IN waited PIECE_WAIT_MS for each new picture in turn, piece after
+     piece -- the loading screen lifted on short pieces, or (the gate's own
+     15 s over) on none.  The gate's pieces now share ONE wait (THE WAY IN
+     WAITS, below); past it they are laid with what has come.
+   Nothing is kept that was not: the pictures fetched ahead are held as the
+   others are (FILES_KEEP) and otherwise by the browser's own cache.
+
+   ═══ THE WAY IN WAITS FOR ITS PICTURES WHILE THEY ARE STILL COMING ═══
+   The owner, 2026-11-09, asked whether the loading screen should wait longer
+   on a slow first visit so the town arrives drawn, at the price of a longer
+   loading screen: "Go recommended".  (PRELOADING IS LAW: the loading screen
+   is where a wait belongs.)  The gate's pieces first shared 7 s, and on a
+   150 KB a second line the first screen's 2.4 MB takes 16: the screen lifted
+   on a town in plain colours.  Now a gate piece waits for its pictures for
+   as long as bytes of ANY ground picture are still arriving -- until
+   GATE_WAIT_MS in all, from the first of the fill's pieces that waited --
+   and stops as soon as the line has gone GATE_STALL_MS without a byte: a
+   dead line lays the town plain in 3 s (it was 7), a slow one waits and
+   lays it drawn.  The game is told the downloads are alive every DL_SAY_MS
+   ('dl', the bytes so far), which is what lets the zone gate tell this wait
+   from a hung load (src/game/zoneGate.js gateCap, worldTrial.js
+   wheelEntryProgress): GATE_STALL_MS is well under its quiet. */
 const DL_PARALLEL = 4;
-const DL_TIMEOUT_MS = 15000;
+const DL_QUIET = 2;         /* v2.3.4400: quiet downloads (fetched ahead) at a time, and none beside a waiting piece's */
+const DL_STALL_MS = 15000;  /* v2.3.4400: this long with no byte and a download is cut (it was 15 s in all, however fast the bytes came) */
+const DL_MAX_MS = 180000;   /* v2.3.4400: ...and this long in all, whatever is still trickling in */
 const DL_RETRY_MS = 3000;
 const DL_RETRY_MAX_MS = 30000;
 const PIECE_WAIT_MS = 4000;
+const GATE_WAIT_MS = 30000; /* v2.3.4400: the way in's pieces wait at most this long, between them, for their pictures (THE WAY IN WAITS, below) */
+const GATE_STALL_MS = 3000; /* v2.3.4400: ...and stop waiting once no byte of any picture has come for this long */
+const GATE_GRACE_MS = 500;  /* v2.3.4400: ...and past either, this long for a picture only now wanted (tileOf) */
+const DL_SAY_MS = 400;      /* v2.3.4400: how often the game is told the downloads are still arriving ('dl') */
 const PREFETCH = 2;
+const FAR_REACH = 1536;     /* v2.3.4400: game px round you whose pictures are asked for while the worker is idle (8 pieces) */
+const FAR_STEP = 384;       /* ...again once you have moved this far (2 pieces) */
 /* downloaded pictures kept as their files (about 0.25 MB each) -- the phone's
    own cache holds the rest, and this many cover a walk's next few screens */
 let FILES_KEEP = 32;        /* v2.3.3717: `let`, as `?groundlean` sets it (LEAN below) */
@@ -157,6 +217,7 @@ const dlJobs = new Map();             /* 'id|ver' -> { k, p, resolve, urgentAt }
 const dlLine = [];                    /* the waiting ones, most wanted first */
 const dlRetry = new Map();            /* 'id|ver' -> { at, wait } after a failed try */
 let dlActive = 0, dlFails = 0;
+const dlNow = new Set();              /* v2.3.4400: the jobs downloading now (pump: is one of them a waiting piece's?) */
 const lacking = new Set();            /* pictures the piece being laid went without */
 const owed = new Set();               /* every picture some piece went without: tried until it comes, then 'got' */
 const chasing = new Set();            /* owed pictures with a try already set for when their wait is over */
@@ -174,7 +235,9 @@ function want(k, urgent) {
       if (n > 0) { dlLine.splice(n, 1); dlLine.unshift(job); }
       /* v2.3.4370: and started now if a line is free -- moved to the front
          and not pumped, it waited for a prefetch to finish (sweep V11 T1-9:
-         asked at 0 ms, started at 1502 ms with a line free) */
+         asked at 0 ms, started at 1502 ms with a line free).  v2.3.4400
+         found the same from the expo's slow line: a quiet one a piece now
+         waits for may start at once (pump holds back only quiet ones) */
       pump();
     }
     return job.p;
@@ -191,12 +254,22 @@ function want(k, urgent) {
 }
 function pump() {
   while (dlActive < DL_PARALLEL && dlLine.length) {
-    /* the wanted-now ones are at the front; the rest leave a line free */
-    if (dlLine[0].urgentAt == null && dlActive >= DL_PARALLEL - 1) break;
+    /* the wanted-now ones are at the front.  v2.3.4400: a quiet one (fetched
+       ahead) starts only DL_QUIET at a time and never beside one a piece is
+       waiting for -- on a thin line three quiet downloads took three quarters
+       of it from the picture the screen was short of */
+    if (dlLine[0].urgentAt == null) {
+      if (dlActive >= DL_QUIET) break;
+      let waited = false;
+      for (const j of dlNow) if (j.urgentAt != null) { waited = true; break; }
+      if (waited) break;
+    }
     const job = dlLine.shift();
     dlActive++;
+    dlNow.add(job);
     fetchFile(job.k).then((blob) => {
       dlActive--;
+      dlNow.delete(job);
       dlJobs.delete(job.k);
       if (blob) {
         dlRetry.delete(job.k);
@@ -222,22 +295,81 @@ function chase(k) {
   if (files.has(k)) { owed.delete(k); post({ type: 'got', k }); return; }
   const r = dlRetry.get(k), left = r ? r.at - performance.now() : 0;
   if (left > 0) { chasing.add(k); setTimeout(() => { chasing.delete(k); chase(k); }, left + 20); return; }
-  want(k, false);
+  /* v2.3.4400: as a waiting piece's (it was `false`, a quiet one): a piece on
+     screen is short of this picture, and since quiet downloads stand aside
+     for waited ones (pump) its next try would have queued behind every
+     picture fetched ahead, and behind any slow download still arriving */
+  want(k, true);
 }
-/* one download, given DL_TIMEOUT_MS from start to the last byte; null on
-   any failure (a phone's connection drops, a server's error, a hang) */
+/* one download; null on any failure (a phone's connection drops, a server's
+   error, a hang).  v2.3.4400: cut when no byte has come for DL_STALL_MS (and
+   at DL_MAX_MS in all), never for being slow: it was given 15 s from start
+   to last byte, and on a thin line every picture was cut near its end and
+   begun again from its first byte (A SLOW LINE, above).  Read a part at a
+   time so each part that comes pushes the cut back; a browser whose answer
+   has no stream to read is given the old whole-file read, DL_MAX_MS for it. */
 async function fetchFile(k) {
   const cut = k.lastIndexOf('|'), s = swatches[k.slice(0, cut)], src = s && s.vers[k.slice(cut + 1)];
   if (!src) return null;
   if (src.blob) return src.blob;      /* the Ground Studio's: already on the phone */
   const ac = typeof AbortController === 'function' ? new AbortController() : null;
-  let timer = null;
-  const late = new Promise((res) => { timer = setTimeout(() => { if (ac) ac.abort(); res(null); }, DL_TIMEOUT_MS); });
+  let stall = null, giveUp = null;
+  const late = new Promise((res) => { giveUp = () => { if (ac) { try { ac.abort(); } catch (e) { /* gone */ } } dlStats.cuts++; res(null); }; });
+  const alive = () => { clearTimeout(stall); stall = setTimeout(giveUp, DL_STALL_MS); };
+  const hard = setTimeout(giveUp, DL_MAX_MS);
+  alive();
   const get = (async () => {
     const r = await fetch(src.url, ac ? { signal: ac.signal } : undefined);
-    return r.ok ? await r.blob() : null;
+    if (!r.ok) return null;
+    const rd = r.body && typeof r.body.getReader === 'function' ? r.body.getReader() : null;
+    if (!rd) { clearTimeout(stall); const whole = await r.blob(); sayArriving(whole ? whole.size : 0); return whole; }
+    const parts = [];
+    for (;;) {
+      const { value, done } = await rd.read();
+      if (done) break;
+      parts.push(value);
+      alive();
+      sayArriving(value ? value.length : 0);
+    }
+    return new Blob(parts, { type: r.headers.get('content-type') || 'image/png' });
   })().catch(() => null);
-  try { return await Promise.race([get, late]); } finally { clearTimeout(timer); }
+  try { return await Promise.race([get, late]); } finally { clearTimeout(stall); clearTimeout(hard); }
+}
+/* v2.3.4400: the downloads' own numbers, sent with every piece (`dl`,
+   wheelStats.dl: mp-desksmooth reads them) -- downloads cut for stalling,
+   pictures asked for ahead of any piece (farPrefetch), and how long the way
+   in's pieces waited for theirs */
+const dlStats = { cuts: 0, far: 0, farRuns: 0, gateWaitMs: 0, bytes: 0 };
+let gateFill = 0, gateUntil = 0;      /* v2.3.4400: the way in's fill being laid, and until when its pieces wait for pictures (tileOf) */
+let gateSince = 0;                    /* ...when the first of them began to wait */
+let dlByteAt = 0, dlSaidAt = 0;       /* when the last byte of any picture came, and when the game was last told */
+/* a part of a download has come: the line is alive (tileOf's gate wait reads
+   dlByteAt), and the game is told so, DL_SAY_MS apart at most */
+function sayArriving(n) {
+  const now = performance.now();
+  dlStats.bytes += n;
+  dlByteAt = now;
+  if (now - dlSaidAt < DL_SAY_MS) return;
+  dlSaidAt = now;
+  post({ type: 'dl', bytes: dlStats.bytes });
+}
+/* A gate piece's wait for one picture (THE WAY IN WAITS, above): the file, or
+   null when the fill's wait is over (GATE_WAIT_MS in all), the line has gone
+   quiet (GATE_STALL_MS without a byte), and this picture has had its
+   GATE_GRACE_MS.  Once it is over it is over for the fill's later pieces. */
+async function gateWait(p, job) {
+  let done = false, got = null;
+  p.then((b) => { done = true; got = b; });
+  for (;;) {
+    if (done) return got;
+    const now = performance.now();
+    if (!gateSince) { gateSince = now; gateUntil = now + GATE_WAIT_MS; }
+    const quiet = now - Math.max(dlByteAt, gateSince) >= GATE_STALL_MS;
+    if (quiet && gateUntil > now) gateUntil = now;          /* the line stopped: no later piece waits on it either */
+    const until = Math.max(gateUntil, job.urgentAt + GATE_GRACE_MS);
+    if (now >= until) return done ? got : null;
+    await Promise.race([p, new Promise((res) => setTimeout(res, Math.min(150, until - now)))]);
+  }
 }
 /* the pictures under the pieces round (i, j), downloading quietly */
 function prefetchRound(i, j) {
@@ -250,6 +382,38 @@ function prefetchRound(i, j) {
        pieces' own asks skip -- each copy pushed a useful file out (V11 T1-9) */
     for (const v of ['A', 'B', 'E']) if (s.vers[v] && !decoded.has(`${id}|${v}`) && !failed.has(`${id}|${v}`) && !isCold(`${id}|${v}`)) want(`${id}|${v}`, false);
   }
+}
+
+/* ═══ v2.3.4400: THE PICTURES FURTHER OUT, WHILE NOTHING IS ASKED ═══
+   Every picture of the ground within FAR_REACH game px of where you stand
+   (the last 'where'), asked for quietly -- from idleBlock, once the blocks
+   round you are built, so it is never in a piece's way and builds no block
+   of its own (FAR_REACH is half a block: all of it lies in the 3 x 3 the
+   idle builder has just built) -- and again when you have moved FAR_STEP.
+   At the town square that is 10 pictures against the first screen's 8; on
+   the road out of town the commons' and the first land's are on their way
+   about 2,400 game px before their ground is laid (A SLOW LINE, above).
+   false when there was nothing to do. */
+let hereAt = null;                    /* where you stand, game px (whereIs) */
+let farAt = null;                     /* where the last far prefetch was made */
+function farPrefetch() {
+  if (!hereAt || (farAt && Math.abs(hereAt.x - farAt.x) < FAR_STEP && Math.abs(hereAt.y - farAt.y) < FAR_STEP)) return false;
+  farAt = { x: hereAt.x, y: hereAt.y };
+  const R = FAR_REACH / WPA;          /* art px */
+  const rect = { x: W.F.x0 + hereAt.x / WPA - R, y: W.F.y0 + hereAt.y / WPA - R, w: 2 * R, h: 2 * R };
+  const { bp, mm } = windowFor(rect, 6);
+  dlStats.farRuns++;
+  for (const id of swatchesUnder(bp, mm, rect)) {
+    const s = swatches[id];
+    if (!s) continue;
+    for (const v of ['A', 'B', 'E']) {
+      const k = `${id}|${v}`;
+      if (!s.vers[v] || decoded.has(k) || isCold(k) || failed.has(k) || files.has(k) || dlJobs.has(k) || everFetched.has(k)) continue;
+      dlStats.far++;
+      want(k, false);
+    }
+  }
+  return true;
 }
 
 const post = (msg, transfer) => self.postMessage(msg, transfer || []);
@@ -425,7 +589,8 @@ function idleBlock() {
   if (squeezingNow.size) return;
   if (lean && squeezeNext()) return;
   const next = W.blocks.missingNear(1);
-  if (!next) return;
+  /* v2.3.4400: the blocks round you all built: the pictures further out */
+  if (!next) { farPrefetch(); return; }
   W.blocks.ground(next[0], next[1]);
   idleSoon();
 }
@@ -720,6 +885,7 @@ function whereIs(x, y) {
   if (!(bx >= 0 && by >= 0 && bx < W.F.bw && by < W.F.bh)) return { q: null };
   const I = Math.floor(bx / BLOCK), J = Math.floor(by / BLOCK);
   W.blocks.near(I, J);
+  hereAt = { x, y };   /* v2.3.4400: farPrefetch */
   const b = W.blocks.ground(I, J);
   const c = (by - b.y) * b.w + (bx - b.x), region = W.regionIds[b.reg[c]] || null, tier = b.tier[c];
   return { q: b.mat[c], reg: region, tier, words: whereWords(W.map, region, tier) };
@@ -854,8 +1020,22 @@ async function tileOf(id, ver, wait) {
   let blob = files.get(k) || src.blob || null;     /* the studio's are on the phone already */
   if (!blob) {
     const p = want(k, true), job = dlJobs.get(k);
-    const left = wait && job ? job.urgentAt + PIECE_WAIT_MS - performance.now() : 0;
-    if (left > 0) {
+    /* v2.3.4400: `wait` 'gate' -- a piece of the way in: every such piece
+       shares ONE wait (gateWait: THE WAY IN WAITS, above); any other piece
+       waits PIECE_WAIT_MS from when a piece first waited for this picture,
+       as before */
+    const left = wait === 'piece' && job ? job.urgentAt + PIECE_WAIT_MS - performance.now() : 0;
+    if (wait === 'gate' && job) {
+      /* while its pictures are still coming, and never NO wait for a picture
+         only now wanted: past the fill's wait (a slowed computer's fill runs
+         longer than it) a picture first met in an outer piece, or one read
+         back from the browser's own cache, is a few ms away, and laying its
+         piece short for that put a plain square on the screen for nothing
+         (GATE_GRACE_MS from when a piece first waited for it) */
+      const tw = performance.now();
+      blob = await gateWait(p, job);
+      dlStats.gateWaitMs += Math.round(performance.now() - tw);
+    } else if (left > 0) {
       let timer = null;
       blob = await Promise.race([p, new Promise((res) => { timer = setTimeout(() => res(null), left); })]);
       clearTimeout(timer);
@@ -973,8 +1153,11 @@ async function chunk(m) {
   }
   prefetchRound(m.i, m.j);
   /* a piece laid again (`relay`, it went back partial) waits for nothing:
-     it takes what has come since, and the rest is still on its way */
-  const wait = !m.relay;
+     it takes what has come since, and the rest is still on its way.
+     v2.3.4400: a piece of the way in (`gate`, which fill it is: wheelTrial.js
+     wheelWarm) shares its fill's one wait (tileOf) */
+  if (m.gate && m.gate !== gateFill) { gateFill = m.gate; gateUntil = 0; gateSince = 0; }
+  const wait = m.relay ? false : m.gate ? 'gate' : 'piece';
   lacking.clear();
   for (const id of ids) {
     const s = swatches[id];
@@ -993,8 +1176,14 @@ async function chunk(m) {
     const t = await tileOf(k, 'M', wait);
     if (t) blends[k] = t;
   }
+  /* v2.3.4400: the swatches whose picture is MADE and has not come (still
+     downloading, or one this browser could not unpack): laid in their plan
+     colour, plain -- the chequer is the Ground Studio's mark for a swatch
+     nobody has made, and stays for those (A SLOW LINE, above) */
+  let late = null;
+  for (const id of ids) if (swatches[id] && !tiles[id]) (late || (late = Object.create(null)))[id] = true;
   /* v2.3.3019: and the piece's water field, for the water's motion */
-  const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, blends, waterField: W.waves ? { rivers: W.rivers } : null });
+  const out = composeGround(PLAN, bp, mm, rect, tiles, { scale: K, blends, late, waterField: W.waves ? { rivers: W.rivers } : null });
   /* v2.3.3994: the rises painted over it (`?climb=1`: core/rises.js) */
   if (W.climb) risePaint(PLAN, out.data, out.w, out.h, Math.round(rect.x), Math.round(rect.y), K);
   const under = underOf(out.mat, out.w);
@@ -1017,6 +1206,7 @@ async function chunk(m) {
     /* v2.3.2959: laid without some of its pictures (lay it again later), and
        how the downloads stand */
     partial: lacking.size > 0, lacking: [...lacking], downloading: dlJobs.size, dlFails,
+    dl: { ...dlStats },   /* v2.3.4400 */
     /* v2.3.3021: the water pictures calmed (ground.js CALM WATER) */
     calm: W.calm ? { n: calmStats.n, ms: calmStats.ms } : null,
     /* v2.3.3717: what the walk has asked of the worker (DIET) */

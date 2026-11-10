@@ -107,7 +107,10 @@ check('6: ?canvascheck=0 -- the switch reads as off, and nothing is witnessed', 
 const gear = readFileSync(new URL('../../src/rendering/gearSheets.js', import.meta.url), 'utf8');
 const pack = gear.slice(gear.indexOf('export function packTrimmed('), gear.indexOf('export function drawGearFrame('));
 check('7: packTrimmed witnesses the picture it packs, at a pixel its own scan found solid (alpha 128 and up)',
-  /import \{ witnessCanvas \} from '\.\/canvasWitness\.js'/.test(gear) && /a >= 128/.test(pack) && /witnessCanvas\(cv, c\.ax \+ wx - c\.tx, c\.ay \+ wy - c\.ty\)/.test(pack));
+  /* v2.3.4400: the scan's rule lives in trimRules.js (trimScanCell), which both packers call: the one in one go and
+     the one a cell at a time (packTrimmedSliced) */
+  /import \{ witnessCanvas \} from '\.\/canvasWitness\.js'/.test(gear) && /sx < 0 && a >= 128/.test(readFileSync(new URL('../../src/rendering/trimRules.js', import.meta.url), 'utf8'))
+  && /if \(wi < 0 && b\.sx >= 0\) \{ wi = i; wx = b\.sx; wy = b\.sy; \}/.test(pack) && (pack.match(/witnessCanvas\(cv, c\.ax \+ wx - c\.tx, c\.ay \+ wy - c\.ty\)/g) || []).length === 2);
 const ws = readFileSync(new URL('../../src/networking/wsClient.js', import.meta.url), 'utf8');
 const rr = ws.slice(ws.indexOf('function _resumeRecover('), ws.indexOf('function _resumeRecover(') + 6000);
 const iCheck = rr.indexOf('checkWitnesses()'), iSock = rr.indexOf('_hiddenAt ? (Date.now() - _hiddenAt)');
