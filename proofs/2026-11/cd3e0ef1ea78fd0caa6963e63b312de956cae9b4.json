@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "cd3e0ef1ea78fd0caa6963e63b312de956cae9b4",
+  "tree": "8f477bf9296dff3fe4e18d48e71aaf8b39387707",
+  "committedAt": "2026-11-10T13:00:30-08:00",
+  "subject": "Merge pull request #1516 from hemibroscommunity-del/claude/fix-stale-tests",
+  "files": 7971,
+  "bytes": 966177965,
+  "listingSha256": "1a9c87687fc9ca1d3858255e8bda4b326d4be55c71681625af5ceb993e62ecc0",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
