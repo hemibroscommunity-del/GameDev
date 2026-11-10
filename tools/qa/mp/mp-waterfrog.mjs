@@ -470,6 +470,30 @@ export async function run({ browser, wsPort, webPort, rec }) {
       const art = await P.page.evaluate(() => (window.__btWheelArt ? window.__btWheelArt() : null));
       rec.ok('10. ...its look loaded as you walked to it, as every land\'s is (the preloading law)', !!art && art.looks.fishman === 'ready', art);
       await P.page.screenshot({ path: `${OUT}/6-water-caves.png` }).catch(() => {});
+      /* v2.3.4493: ITS SHADOW HANGS FROM ITS FEET.  The owner: "the water frogs currently have floating
+         shadows."  The frog's feet are on row 231 of its 256 px cell and the body is anchored at the
+         cell's bottom, 24 rows lower; the shadow hung from that bottom, 17 px under the frog.  The
+         shadow pass's own list says where each frog's shadow hangs (py); the frog's sprite says where
+         its cell's bottom is drawn and how big a row is. */
+      {
+        const sh = await P.page.evaluate(() => {
+          const S = window._gameState.current, p = window.__btLightFx ? window.__btLightFx.probe() : null;
+          if (!p || !p.shadows) return null;
+          const out = [];
+          for (const c of p.shadows.list || []) {
+            if (String(c.key).slice(0, 2) !== 'm:') continue;
+            const m = (S.monsters || []).find((x) => String(x.id) === String(c.key).slice(2));
+            const sp = m && window.__btMonsterSprite ? window.__btMonsterSprite(m.id) : null;
+            if (!m || !sp || (m.archetype || m.type) !== 'fishman' || !sp.visible) continue;
+            const my = m.renderY != null ? m.renderY : m.y;
+            /* a monster's figure is drawn 1.5 times its own measure (entityRenderer MONSTER_SIZE_MULT) */
+            out.push({ id: m.id, lift: +((my + sp.y * 1.5) - c.py).toFixed(1), want: +(24 * Math.abs(sp.sy) * 1.5).toFixed(1) });
+          }
+          return { on: p.on, list: out };
+        });
+        rec.ok(`10. ...its shadow hangs from its feet: ${sh && sh.list.length ? sh.list[0].lift : '?'} px above the bottom of its picture's cell (the 24 empty rows under its feet are ${sh && sh.list.length ? sh.list[0].want : '?'} px), not from the cell's bottom`,
+          !!sh && sh.on && sh.list.length >= 1 && sh.list.filter((f) => Math.abs(f.lift - f.want) <= 4).length >= Math.ceil(sh.list.length * 0.7) && sh.list.every((f) => f.want > 12), sh);
+      }
       /* stand among them: one comes for you and swings (you are untouchable) */
       if (seen[0]) {
         const m0 = await P.page.evaluate((id) => { const m = (window._gameState.current.monsters || []).find((x) => x.id === id); return m ? { x: m.x, y: m.y } : null; }, seen[0].id);
