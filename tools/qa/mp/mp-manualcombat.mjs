@@ -139,8 +139,8 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     await resetShots(P);
     await wait(P, 300);
     const rest = await mc(P);
-    rec.ok('2z at rest the bow\'s badge is on the button and the ring is not drawn',
-      !!rest.gauge && rest.gauge.vis === true && rest.gauge.ring === false && rest.gauge.kind === 'bow', rest.gauge);
+    rec.ok('2z at rest nothing is drawn (the gauge is there only while something builds)',
+      !rest.gauge || rest.gauge.vis === false, rest.gauge);
     await down(P, X, Y);
     await wait(P, 400);
     const mid = await mc(P);
@@ -151,16 +151,26 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
       armed.wpn === 'bow' && held.shots === 0 && !!held.st && held.st.drawAt > 0 && held.st.ready === true, { mid: mid.st, held: held.st, shots: held.shots });
     rec.ok('2b the build-up shows on the button: the ring fills, then lights up at full, the bow\'s badge on it',
       !!held.gauge && held.gauge.vis === true && held.gauge.full === true && held.gauge.kind === 'bow' && !!full && full.ready === true
-      && held.gauge.ring === true && !!mid.gauge && mid.gauge.vis === true && mid.gauge.frac > 0 && mid.gauge.frac <= 1, { mid: mid.gauge, held: held.gauge });
+      && !!mid.gauge && mid.gauge.vis === true && mid.gauge.frac > 0 && mid.gauge.frac <= 1, { mid: mid.gauge, held: held.gauge });
+    /* v2.3.4357 (the owner: "The thumb covers the indicator and the indicator itself is too subtle"): the
+       gauge is ROUND THE BRO, big, and nowhere near the disc a thumb sits on */
     const ring = await P.page.evaluate(() => {
       const g = document.querySelector('[data-manual-gauge]'), d = document.querySelector('.bt-rjoy-base');
       const a = g.getBoundingClientRect(), b = d ? d.getBoundingClientRect() : null;
+      const S = window._gameState.current, cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas'), c = cv.getBoundingClientRect();
+      const px = c.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), py = c.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1);
+      const band = g.querySelectorAll('svg circle')[2], bw = band ? parseFloat(getComputedStyle(band).strokeWidth) * a.width / 100 : 0;
+      const gx = a.left + a.width / 2, gy = a.top + a.height / 2;
       return { full: g.getAttribute('data-mc-full'), kind: g.getAttribute('data-mc-kind'), pe: getComputedStyle(g).pointerEvents,
         g: [Math.round(a.left), Math.round(a.top), Math.round(a.width), Math.round(a.height)], d: b ? [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)] : null,
-        round: !!b && Math.abs((a.left + a.width / 2) - (b.left + b.width / 2)) <= 3 && Math.abs((a.top + a.height / 2) - (b.top + b.height / 2)) <= 3 && a.width >= b.width,
+        bro: [Math.round(px), Math.round(py)], bw: Math.round(bw * 10) / 10,
+        round: Math.abs(gx - px) <= 4 && Math.abs(gy - py) <= 12 && a.width >= 100,
+        clear: !b || a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom,
+        lit: (() => { const h = g.querySelector('.bt-mc-halo'); return !!h && h.classList.contains('bt-mc-lit') && parseFloat(getComputedStyle(h).opacity) > 0.2; })(),
         inside: a.left >= -8 && a.right <= innerWidth + 8 && a.bottom <= innerHeight + 8 };
     });
-    rec.ok('2c ...round the attack disc, inside the screen, taking no touch', ring.full === '1' && ring.kind === 'bow' && ring.pe === 'none' && ring.round && ring.inside, ring);
+    rec.ok(`2c ...round the bro (a ${ring.g[2]} px ring, its band ${ring.bw} px thick, lit at full), clear of the attack disc a thumb sits on, taking no touch`,
+      ring.full === '1' && ring.kind === 'bow' && ring.pe === 'none' && ring.round && ring.clear && ring.lit && ring.bw >= 7 && ring.inside, ring);
 
     /* ── 3 ── the lift at full looses one */
     await up(P, X, Y - 60);
@@ -274,17 +284,22 @@ async function phone({ browser, wsPort, webPort, rec, OUT }) {
     const sP = await P.page.evaluate(() => { const S = window._gameState.current, d = window.__disc(); const r = d.getBoundingClientRect(); window.__touch(d, 'touchstart', r.left + r.width / 2, r.top + r.height / 2, 23); return S.swingTimer; });
     await wait(P, 2200);
     const s3 = await mc(P);
-    await shot('3-sword-ready');
     await P.page.evaluate(() => { const d = window.__disc(); const r = d.getBoundingClientRect(); window.__touch(d, 'touchend', r.left + r.width / 2, r.top + r.height / 2, 23); });
     await wait(P, 200);
     await tapDisc();                 /* ready again by now */
     await wait(P, 60);
     const s4 = await mc(P);
+    /* the picture only: this box takes seconds over a screenshot, longer than the ring stays, so the
+       sword is held part-built for it (every check above is already read) */
+    await P.page.evaluate(() => { window.__mcHold = setInterval(() => { window._gameState.current.swingTimer = Date.now() - 380; }, 30); });
+    await wait(P, 200);
+    await shot('3-sword-building');
+    await P.page.evaluate(() => { clearInterval(window.__mcHold); });
     rec.ok('8a a sword\'s tap on the disc swings (it was ready)', sw.wpn === 'greatsword' && s0.st.ready === true && s1.swingTimer > s0.swingTimer, { s0: s0.swingTimer, s1: s1.swingTimer, st: s0.st });
     rec.ok('8b a tap straight after it does nothing ("Tapping early does nothing")', s2.swingTimer === s1.swingTimer && s2.early === s1.early + 1 && s2.st.ready === false, { s1: s1.swingTimer, s2: s2.swingTimer, early: s2.early, st: s2.st });
     rec.ok('8c a held thumb is one tap and no more: its press swung once (the early tap before it was not kept), and 2 s of holding swung nothing else',
       sP > s1.swingTimer && s3.swingTimer === sP && s3.st.ready === true, { s1: s1.swingTimer, sP, s3: s3.swingTimer, st: s3.st });
-    rec.ok('8e the sword\'s badge shows on the button while it builds', !!g1.gauge && g1.gauge.vis === true && g1.gauge.kind === 'sword', g1.gauge);
+    rec.ok('8e the sword\'s ring and badge show round the bro while it builds', !!g1.gauge && g1.gauge.vis === true && g1.gauge.kind === 'sword', g1.gauge);
     rec.ok('8d once ready, a tap swings again', s4.swingTimer > sP, { sP, s4: s4.swingTimer });
 
     rec.ok('11a phone: no page errors', errors.length === 0, errors);
@@ -322,12 +337,19 @@ async function desk({ browser, wsPort, webPort, rec, OUT }) {
     await P.page.mouse.down();
     await waitFull(P, 900);
     const held = await mc(P);
+    const dRing = await P.page.evaluate(() => {
+      const g = document.querySelector('[data-manual-gauge]'), a = g.getBoundingClientRect();
+      const S = window._gameState.current, cv = document.querySelector('canvas.brotown-canvas') || document.querySelector('canvas'), c = cv.getBoundingClientRect();
+      const px = c.left + (S.player.x - S.camera.x) * (S._worldScaleX || 1), py = c.top + (S.player.y - S.camera.y) * (S._worldScaleY || 1);
+      return { g: [Math.round(a.left + a.width / 2), Math.round(a.top + a.height / 2), Math.round(a.width)], bro: [Math.round(px), Math.round(py)], canvas: [Math.round(c.left), Math.round(c.top)] };
+    });
     await P.page.screenshot({ path: join(OUT, 'manualcombat-4-computer-full.png') }).catch(() => {});
     await P.page.mouse.up();
     const n = await settleShots(P, 1);
-    rec.ok(`10a a computer: holding the mouse button fires nothing (${held.shots}), the gauge fills by itself over the band`,
+    rec.ok(`10a a computer: holding the mouse button fires nothing (${held.shots}), the gauge fills round the bro`,
       at.desk && held.shots === 0 && !!held.st && held.st.ready === true && !!held.gauge && held.gauge.vis && held.gauge.full, { at, st: held.st, gauge: held.gauge });
     rec.ok(`10b ...and its release at full looses one arrow (${n})`, n === 1, { n });
+    rec.ok('10d ...and the ring is round the bro on a computer too (its window is not the game\'s box)', Math.abs(dRing.g[0] - dRing.bro[0]) <= 4 && Math.abs(dRing.g[1] - dRing.bro[1]) <= 12 && dRing.g[2] >= 100, dRing);
     await wait(P, 600);
     await P.page.mouse.click(at.x, at.y, { button: 'right' });
     await wait(P, 300);

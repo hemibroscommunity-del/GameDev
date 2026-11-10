@@ -90,21 +90,40 @@ It is the phone's side only. The worker is not changed (see "The server").
 
 ## The build-up you can see (`src/ui/panels/ManualGauge.jsx`)
 
-- **A badge on the attack disc's shoulder**, there whenever you can attack:
+> The owner, on the first cut (the gauge on the attack button): *"Needs
+> improvement. The thumb covers the indicator and the indicator itself is too
+> subtle. Same for bow and staff."*
+
+It is **round the character**, not on the button. A thumb is on the button for
+the whole of a draw, so nothing on or near it can be the cue, and the eyes are
+on the bro and what he is fighting.
+
+- **A ring round the bro**, 112 px across, fills clockwise with the build-up:
+  a thick cream band on a wider dark one while it builds (it reads on sand,
+  grass and snow).
+- **At full it lights up**: the band turns bright yellow, a wide soft band
+  breathes behind it, and one ring bursts outward at the moment it fills.
+- **A badge under his feet**, 44 px, the weapon in hand:
   - the **bow**, whose string is pulled back as the draw fills, an arrow on it;
   - the **staff's orb**, which swells;
   - the **sword**, which fills from its hilt to its point.
-- **A ring round the disc** that fills with the build-up: brass while it
-  builds, bright gold with a soft second ring once it is full. It is drawn
-  only while there is something to say (a draw under way, a sword not yet
-  ready and for 0.9 s after it is, a special armed). At rest only the badge
-  stays, its rim gold when a tap would swing.
-- **A small star** on the ring's other shoulder while a special is armed.
-- On a computer (no disc) the badge and ring stand just over the band, right
-  of the weapon pill.
+
+  It grows a little and takes a gold rim at full.
+- **A small star** beside the badge while a special is armed.
+- It is drawn only while there is something to say: a draw under way, a sword
+  not yet ready and for 1.5 s after it is, a special armed. At rest nothing is
+  drawn.
+- The same on a phone and on a computer.
+- A phone that can buzz (Android) ticks once at full. An iPhone cannot: Safari
+  has no vibration.
 - It is one SVG drawn in code: no picture loaded, no memory kept. It takes no
-  touch. Its own animation frame writes an attribute only when the value
-  changes; no React render after the first, no CSS filter.
+  touch. Its own animation frame writes one transform on its own box and an
+  attribute only when a value changes; no React render after the first, no CSS
+  filter. The breathing band and the burst are opacity and transform
+  (`game.css` `.bt-mc-halo`, `.bt-mc-pop`), still under
+  `prefers-reduced-motion`.
+- It sits in its own `position: fixed; inset: 0` layer and is placed with
+  `fixedBox(layer)`: on a computer the game's box is not the window's.
 
 ## How it is built
 
@@ -115,7 +134,7 @@ It is the phone's side only. The worker is not changed (see "The server").
 | `src/game/targeting.js` | Chosen locks dropped each frame; the duel lock not kept. |
 | `src/ui/BroTown.jsx` | The right stick, the disc and the mouse call the rules; `mcMeleeTap` (the sword's tap); no lock on a tap, a click or a double click. |
 | `src/ui/panels/SpecialButton.jsx` | Arms and disarms; "ON". |
-| `src/ui/panels/ManualGauge.jsx` | The badge, the ring, the star. |
+| `src/ui/panels/ManualGauge.jsx` | The ring round the bro, the badge, the star. |
 
 ## The server
 
@@ -131,6 +150,8 @@ switch: the switch is the address.
   identify bots"*). That is a worker change of its own.
 - **Making it the default.** Today's combat stays until the owner says.
 - A cancel on the disc or on a computer.
+- A sound at full draw. It would be the strongest cue of all (the eyes are
+  on the monster), and needs a new sound and its Sound Studio label.
 - A teaching card for the new controls; the combat tips still describe the
   old ones.
 - No monster was changed (the owner: *"Don't do any monster adjustments"*).
@@ -144,9 +165,11 @@ switch: the switch is the address.
   cancel; hold as long as you like; a weapon change mid-draw; the sword's
   early tap; arming; `mcLockAllowed`; and that each caller is wired.
 - `node tools/qa/mp/run.mjs manualcombat` (`mp-manualcombat.mjs`), a phone and
-  a computer in the Wheel, 26 checks: holding fires nothing; the badge at
-  rest; the ring fills and lights round the disc; one arrow on the lift at
+  a computer in the Wheel, 27 checks: holding fires nothing; nothing drawn at
+  rest; the ring fills and lights round the bro, 100 px or more across, its
+  band 7 px or more thick, clear of the attack disc; one arrow on the lift at
   full; none on an early lift; the slip; cancel; the special arms and is the
   next shot; a chosen lock does not last; the sword's ready tap, early tap,
-  held thumb; the mouse held and released; the right click arms.
+  held thumb; the mouse held and released; the ring round the bro on a
+  computer; the right click arms.
 - Pictures: `docs/shots/manual-combat-{full-draw,armed,sword,computer}.webp`.

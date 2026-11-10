@@ -62,7 +62,7 @@ import { startBuildWatch } from '@/game/buildWatch.js';
 import { onTrackedQuest } from '@/game/trackedQuest.js';   /* v2.3.3522: the pinned quest card shows the quest you track (v2.3.3918: QuestCard.jsx reads it) */
 import { treeGeom, treeTrunkEllipse, treeReachBox } from '@/game/tierTrees.js';   /* v2.3.3345: each wood its own tree -- its box, its trunk and where you chop it from */
 import { oreGeom, oreBlockEllipse } from '@/game/tierOre.js';   /* v2.3.3345: each metal its own rock -- its box and its body */
-import { ManualGauge } from './panels/ManualGauge.jsx';   /* v2.3.4357: manual combat's build-up, on the right button (`?manual=1`) */
+import { ManualGauge } from './panels/ManualGauge.jsx';   /* v2.3.4357: manual combat's build-up, round the bro (`?manual=1`) */
 import { TouchControls, RKNOB_TRAVEL } from './panels/TouchControls.jsx'; /* v2.3.2264: the disc's resting vs combat wash; v2.3.3018: the wash went with the sprite (game.css data-rstate), and the knob carries the picture */
 import { weaponDiscIcon } from './panels/controlSkin.jsx'; /* v2.3.3105: the attack disc wears the weapon in your hand */
 import { AbilityButtons } from './panels/AbilityButtons.jsx'; /* v2.3.1733 */
