@@ -53,6 +53,7 @@
  */
 import { BatcherPipe, DefaultBatcher, ExtensionType, extensions, BufferImageSource, Texture, Rectangle, Sprite, Container, GlProgram, Shader, UniformGroup, SpritePipe, glUploadBufferImageResource } from 'pixi.js';
 import { paletteAtlasSource, takePaletteRow, givePaletteRow, paletteRendererOf } from './paletteTex.js';
+import { timeLimit } from './retryLooks.js';   /* v2.3.4431: a set's file that never answers has failed */
 import { clientOff } from '../game/clientOff.js';   /* v2.3.3716: the Test panel's live off switch (lane D's clientOff.js) */
 import { lookPaletteChoice } from '../game/lookPaletteChoice.js';   /* v2.3.3838: not built on Windows */
 
@@ -232,22 +233,38 @@ function buildSheet(set, name, m, img, roles) {
   _stats.sheets++;
   _stats.sheetBytes += data.length;
 }
+/* ═══ v2.3.4431: A SET'S FILES HAVE A TIME LIMIT ═══
+   A manifest or sheet that never answered left the set 'loading' for the
+   page (the loading screen held to its cap), and a sheet that landed after
+   another had failed was still built into a set already thrown out: half a
+   set's sheets held for nothing (state-machine sweep VC-1, R7-6).  Now each
+   file fails after SET_FILE_TIMEOUT_MS, and a set that failed takes no sheet
+   after.  A failed set is drawn the old way, as before (the copies); asking
+   for it again later is the owner's call (the PR's question), not done here.
+   60 s: far past a slow line's download, so only a dead request fails.
+   `?retrylooks=0` is the game as it was. */
+const SET_FILE_TIMEOUT_MS = (() => {
+  try { if (typeof location !== 'undefined' && /[?&]retrylooks=0\b/.test(location.search || '')) return 0; } catch (e) { /* on */ }
+  return 60000;
+})();
 async function loadSet(name) {
   const s = _sets.get(name);
   if (!s || s.loading) return s ? s.loading : false;
+  let dead = false;   /* v2.3.4431: failed -- a sheet that lands after is not built */
   s.loading = (async () => {
     try {
       const v = 'v2.3.3737';
-      const res = await fetch(s.url + '?v=' + v);
+      const res = await timeLimit(fetch(s.url + '?v=' + v), SET_FILE_TIMEOUT_MS);
       if (!res.ok) throw new Error(s.url + ' ' + res.status);
-      const m = await res.json();
+      const m = await timeLimit(res.json(), SET_FILE_TIMEOUT_MS);
       const roles = m.roleDefs || (name === 'body' ? BODY_ROLES : []);   /* (a manifest's `roles` is its roles' names) */
       /* the row is law: a set's roles stay inside its kind's entries */
       const range = m.kind && LOOK_ROW_RANGES[m.kind];
       if (range && roles.some((ro) => ro.entry < range[0] || ro.entry > range[1])) { _stats.rangeErrors++; throw new Error(name + ': a role outside the ' + m.kind + ' entries ' + range.join('-')); }
       await Promise.all(Object.keys(m.sheets).map(async (sheet) => {
         const e = m.sheets[sheet];
-        const img = await loadPng(s.base + sheet + '.png?v=' + v + '.' + (e.art || ''));
+        const img = await timeLimit(loadPng(s.base + sheet + '.png?v=' + v + '.' + (e.art || '')), SET_FILE_TIMEOUT_MS);
+        if (dead) return;
         buildSheet(name, sheet, { bits: m.bits, fw: m.fw, fh: m.fh, refScale: m.refScale, kind: m.kind, mip: m.mip, ...e }, img, e.roleDefs || roles);
       }));
       s.manifest = m;
@@ -256,6 +273,7 @@ async function loadSet(name) {
       uploadSheets();
       return true;
     } catch (e) {
+      dead = true;
       _stats.loadError = String((e && e.message) || e);
       for (const k of Object.keys(_sheets)) {
         if (k.slice(0, name.length + 1) !== name + '/') continue;

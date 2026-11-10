@@ -347,6 +347,7 @@ import { STANDIN_GARB_K, localGarb, peerGarb, garbKey, onGarbChange } from '../s
 import { composeShirt } from '../playerDecal.js';   /* v2.3.3146: the walking shirt's own dressing, on the stand-ins' strips */   /* v2.3.2429; v2.3.2431 the symmetry gate */
 import { getGearFrame, packTrimmed, registerGearSource, unregisterGearSource, subTexture, loadCroppedStrip } from '../gearSheets.js';   /* v2.3.2774: + the cropper and the upload hook for the combat strips; v2.3.3074: + its release */
 import { peerEntSprites } from '../artHolds.js';   /* v2.3.4416: every sprite of a peer who left, the gear too */
+import { laterRounds } from '../retryLooks.js';   /* v2.3.4431: a stand-in's gear strip that failed is asked for again */
 import { releaseCanvasSource } from '../releaseCanvasTexture.js';   /* v2.3.3074: a canvas-made texture let go of for good (TRAPS §139) */
 import { gearTint, gearArt, gearArtSafe } from '../gearVariants.js'; /* v2.3.1764: the swing wears the same metal; v2.3.1772: ...and finds its sheets */
 import { materialTint, weaponTint } from '../traits/materialTints.js';
@@ -1025,6 +1026,7 @@ const PEER_FIG_IDLE_MS = 15000;
 const PEER_FIG_LOAD_MS = 15000;
 const PEER_FIG_RETRY_MS = 15000;
 const PEER_GREAVES_WAIT_MS = 3000;
+const GEAR_STRIP_TIMEOUT_MS = 20000;   /* v2.3.4431: a stand-in's gear strip that has not answered has failed (TRAPS §257) */
 /** The colours a gathering figure is baked in, as one key: the skin (the
  *  'default' pick is the explicit tan, as every stand-in bake has it), the
  *  trousers and the boots ('-': the art's own). */
@@ -4168,6 +4170,8 @@ export class EffectsRenderer {
     this._swordBodyFrames = {};
     this._swordTorsoFrames = {};   // v2.3.1088: leg-erased torso strips for the sword jog-legs composite
     this._gearStrips = {};   // 'slot/item/pose/dir' -> [Texture] | 'loading' | []
+    this._gearStripLater = laterRounds('gearretry');   /* v2.3.4431: a failed strip's later rounds (_gearStripFrame) */
+    this._gearStripRound = Object.create(null);         /* v2.3.4431: key -> the round its next load is (its `&g=`) */
     /* v2.3.916: cache-buster for the sword sheets.  Their URLs are otherwise
        constant, so a browser / edge cache (esp. on the stable branch-preview
        host) keeps serving a stale sheet after the art changes -- that's what
@@ -12221,7 +12225,11 @@ export class EffectsRenderer {
     /* v2.3.3016: the Wheel's dungeon mouths at its landmarks (wheelDoors.js)
        -- and, anywhere else or against a worker that opens none, none */
     const _doors = (S.currentZone === 'wheel' && wheelDungeonsSupported(S)) ? wheelDungeonDoorsOpen(S) : null;   /* v2.3.3540: the mouths this worker opens */
-    if (_doors || (this._wheelDoors && (this._wheelDoors.size || wheelDoorPicturesHeld()))) {   /* v2.3.3566: + a picture to let go */
+    /* v2.3.4431: a picture held is swept whether or not this renderer made
+       the doors: one rebuilt in a dungeon or on the farm has none, and the
+       mouth's picture (module-held) stayed until you were back in the Wheel
+       (state-machine sweep VC-2, R11-6) */
+    if (_doors || (this._wheelDoors && this._wheelDoors.size) || wheelDoorPicturesHeld()) {   /* v2.3.3566: + a picture to let go */
       if (!this._wheelDoors) this._wheelDoors = new WheelDoors(this.lootLayer, this.entityLayer);   /* v2.3.3566: + where a mouth's picture stands */
       this._wheelDoors.update(_doors || [], S, now);
     }
@@ -14882,13 +14890,41 @@ export class EffectsRenderer {
          sizes it from texture.width / .height, which a cropped Texture reports
          from `orig` -- so the frame box, and where the armour lands, are the
          ones the uncropped strip had.  mp-geartrim holds that. */
-      const _url = '/sprites/gear/' + slot + '/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER;
-      const _p = new Promise((res, rej) => {
+      /* ═══ v2.3.4431: A STRIP THAT FAILED IS ASKED FOR AGAIN ═══
+         One failed request stored `[]` and nothing asked again, and one that
+         never answered stayed 'loading': the swing, bow, chop, cook or fire
+         drew without that armour for the visit (state-machine sweep VC-1,
+         R4-18).  Now the picture has a TIME LIMIT (TRAPS §257) and a failure
+         is asked for again on retryLooks.js's rounds (5 s, 10, 20, 40, every
+         minute, ten at most) while the pose is drawn, each past the cache
+         (`&g=`); `[]` meanwhile, as before.  `?gearretry=0` (or
+         `?retrylooks=0`) is the game as it was. */
+      const _later = this._gearStripLater;
+      const _round = (this._gearStripRound && this._gearStripRound[key]) || 0;
+      const _url = '/sprites/gear/' + slot + '/' + item + '/' + _file + '.png?v=' + GEARLAYER_VER + (_round ? '&g=' + _round : '');
+      const _gaveUp = () => {
+        if (this._gearStrips[key] !== 'loading') return;
+        this._gearStrips[key] = [];
+        if (_later && !this._destroyed) _later.gaveUp(key, (r) => {
+          const now = this._gearStrips[key];
+          if (Array.isArray(now) && !now.length) { delete this._gearStrips[key]; this._gearStripRound[key] = r; }
+        });
+      };
+      const _img = new Promise((res, rej) => {
         const im = new Image();
         im.onload = () => res(im); im.onerror = rej; im.src = _url;
-      }).then((img) => {
+      });
+      /* past the limit it counts as failed, but its download goes on: one
+         that lands late (a slow line, not a dead one) is still taken below
+         while the strip is missing */
+      if (_later && _later.on()) {
+        const _tm = setTimeout(_gaveUp, GEAR_STRIP_TIMEOUT_MS);
+        _img.then(() => clearTimeout(_tm), () => clearTimeout(_tm));
+      }
+      const _p = _img.then((img) => {
         if (this._destroyed) return;   /* v2.3.3074: a rebuild let this renderer go while it loaded */
-        if (this._gearStrips[key] !== 'loading') return;   /* v2.3.3439: let go of while it loaded (_dropGearStrip) */
+        const _st = this._gearStrips[key];
+        if (_st !== 'loading' && !(Array.isArray(_st) && !_st.length)) return;   /* v2.3.3439: let go of while it loaded (_dropGearStrip); v2.3.4431: or late, its slot still empty */
         const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
         /* v2.3.3640: the greaves' shape, for the sword and bow bodies under
            them (_noteGreavesShape) -- read here, while the picture is still
@@ -14933,14 +14969,15 @@ export class EffectsRenderer {
            the loading screen for the ones loaded then).  13.9 MB of canvases
            for a new player's shirt in the Wheel. */
         keepOnGpuOnly(this._captureRenderer, src);
-      }).catch(() => { if (this._gearStrips[key] === 'loading') this._gearStrips[key] = []; });
+      }).catch(_gaveUp);   /* v2.3.4431: its next round, when its time comes (above) */
       _fxPreload.push(_p);
       /* v2.3.3439: kept, so a pose made behind a loading screen can wait for
          its own layers (_makeFarm) */
       (this._gearStripP || (this._gearStripP = Object.create(null)))[key] = _p;
       return null;
     }
-    if (e === 'loading' || !e.length) return null;
+    if (e === 'loading') return null;
+    if (!e.length) { if (this._gearStripLater) this._gearStripLater.due(key); return null; }   /* v2.3.4431: failed: its next round, if due */
     return e[Math.min(fi, e.length - 1)];
   }
 

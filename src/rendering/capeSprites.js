@@ -22,6 +22,7 @@
  * sighting.
  */
 import { Assets, Texture } from 'pixi.js';
+import { loadSetLater } from './loadSetLater.js';   /* v2.3.4431: a cape that failed once is asked for again */
 
 /* The five the art ships; west / northwest / southeast are the same textures
    drawn mirrored, which is the body's own rule (resolveDirection,
@@ -38,7 +39,9 @@ export const CAPE_IDS = ['crimson'];
 const _tex = Object.create(null);      /* `${id}|${baseDir}` -> Texture */
 const _hood = Object.create(null);     /* `${id}|${baseDir}` -> Texture (hood only) */
 const _hoodMask = Object.create(null); /* `${id}|${baseDir}` -> Texture (hood silhouette, opening filled) */
-const _loading = Object.create(null);
+/* v2.3.4431: one loadSetLater per list of capes preloaded (one today) */
+const _sets = new Map();
+const _got = Object.create(null);
 
 /* v2.3.2186: the facings that HAVE a hood cut, i.e. the ones where the cape is
    split across the body. north/northeast are the back view -- there the cape is
@@ -48,11 +51,24 @@ const SPLIT_DIRS = ['south', 'southwest', 'east'];
 
 export function capeBaseDir(dir) { return BASE_DIR[dir] || 'south'; }
 
+/* ═══ v2.3.4431: A CAPE THAT FAILED ONCE IS ASKED FOR AGAIN ═══
+   Each still was one Assets.load behind a latch kept after a failure: one
+   failed or stalled request and that facing of the cape (or its hood, or the
+   hood's hair clip) was missing for the visit (state-machine sweep VC-1,
+   R8-5).  Now the stills are a loadSetLater set: a time limit, then
+   retryLooks.js's rounds (5 s, 10, 20, 40, every minute, ten at most), asked
+   only while a cape is drawn (the getters below), each round past the cache.
+   The loading screen still waits for every first load and never past its
+   failure.  `?caperetry=0` (or `?retrylooks=0`) is the game as it was. */
+function _ensureCapes() { for (const set of _sets.values()) set.ensure(); }
+
 /** The texture for this cape and facing, or null if it is not resident yet.
- *  Never kicks a load: an unawaited Assets.load on first sighting is the
- *  hitch the preloading law exists to prevent. */
+ *  Never kicks a first load: an unawaited Assets.load on first sighting is the
+ *  hitch the preloading law exists to prevent (a failed preload's later
+ *  round is the retry rule, docs/specs/retry-looks.md). */
 export function getCapeTexture(id, dir) {
   if (!id || id === 'none') return null;
+  _ensureCapes();
   return _tex[`${id}|${capeBaseDir(dir)}`] || null;
 }
 
@@ -75,51 +91,36 @@ export function getCapeHoodMaskTexture(id, dir) {
   return _hoodMask[`${id}|${capeBaseDir(dir)}`] || null;
 }
 
+/* where each kind of still goes once it is in (`kind` is the key's third part) */
+function _tookCape(k, t) {
+  /* Pixel art: never let the GPU smooth these. */
+  try { t.source.scaleMode = 'nearest'; } catch (e) { /* older pixi shape */ }
+  const [id, d, kind] = k.split('|');
+  const into = kind === 'hood' ? _hood : kind === 'hoodmask' ? _hoodMask : _tex;
+  into[`${id}|${d}`] = t;
+}
+
 /** Load every frame of every cape.  Awaited by preloadWorldAnimations(). */
 export async function preloadCapes(ids = CAPE_IDS) {
-  const jobs = [];
-  for (const id of ids) {
-    for (const d of ['south', 'southwest', 'east', 'northeast', 'north']) {
-      const key = `${id}|${d}`;
-      if (_tex[key] || _loading[key]) continue;
-      const url = `/sprites/traits/cape/${id}/${d}.png`;
-      _loading[key] = Assets.load(url).then((t) => {
-        if (t) {
-          /* Pixel art: never let the GPU smooth these. */
-          try { t.source.scaleMode = 'nearest'; } catch (e) { /* older pixi shape */ }
-          _tex[key] = t;
-        }
-      }).catch(() => { /* a missing cape must not fail the whole preload */ });
-      jobs.push(_loading[key]);
+  const sk = ids.join(',');
+  let set = _sets.get(sk);
+  if (!set) {
+    const files = Object.create(null);
+    for (const id of ids) {
+      for (const d of ['south', 'southwest', 'east', 'northeast', 'north']) files[`${id}|${d}`] = `/sprites/traits/cape/${id}/${d}.png`;
+      /* PRELOADING IS LAW (CLAUDE.md): the hood halves go up with the capes,
+         in the same awaited pass. A hood that loaded on first sighting would
+         pop in over a character already wearing the back half. */
+      for (const d of SPLIT_DIRS) {
+        files[`${id}|${d}|hood`] = `/sprites/traits/cape/${id}/hood/${d}.png`;
+        files[`${id}|${d}|hoodmask`] = `/sprites/traits/cape/${id}/hood/hairmask-${d}.png`;
+      }
     }
-    /* PRELOADING IS LAW (CLAUDE.md): the hood halves go up with the capes, in
-       the same awaited pass. A hood that loaded on first sighting would pop in
-       over a character already wearing the back half. */
-    for (const d of SPLIT_DIRS) {
-      const hkey = `${id}|${d}|hood`;
-      if (_hood[`${id}|${d}`] || _loading[hkey]) continue;
-      const hurl = `/sprites/traits/cape/${id}/hood/${d}.png`;
-      _loading[hkey] = Assets.load(hurl).then((t) => {
-        if (t) {
-          try { t.source.scaleMode = 'nearest'; } catch (e) { /* older pixi shape */ }
-          _hood[`${id}|${d}`] = t;
-        }
-      }).catch(() => { /* no hood frame -> that facing simply stays un-split */ });
-      jobs.push(_loading[hkey]);
-
-      const mkey = `${id}|${d}|hoodmask`;
-      if (_hoodMask[`${id}|${d}`] || _loading[mkey]) continue;
-      const murl = `/sprites/traits/cape/${id}/hood/hairmask-${d}.png`;
-      _loading[mkey] = Assets.load(murl).then((t) => {
-        if (t) {
-          try { t.source.scaleMode = 'nearest'; } catch (e) { /* older pixi shape */ }
-          _hoodMask[`${id}|${d}`] = t;
-        }
-      }).catch(() => { /* no mask -> hair simply is not clipped for that facing */ });
-      jobs.push(_loading[mkey]);
-    }
+    set = loadSetLater({ files, into: _got, load: (u) => Assets.load(u), unload: (u) => Assets.unload(u),
+      took: _tookCape, switchName: 'caperetry' });
+    _sets.set(sk, set);
   }
-  await Promise.all(jobs);
+  await set.start();
   return Object.keys(_tex).length;
 }
 

@@ -23,8 +23,15 @@
  *   `?barretry=0` (or the shared `?retrylooks=0`) is the game as it was: the
  *   first load and nothing more.
  *
+ * v2.3.4431: the same rule for the pictures loaded behind the loading screen
+ * and only LOOKED UP after (capes, weapons, shields, the plate icons): `start()`
+ * is the loading screen's promise -- every file's FIRST load settled (in,
+ * failed, or past its time limit), so a failure never holds the gate -- and
+ * `took(key, value)` runs when a value is taken into its slot (a pixel-art
+ * filter, a twin that shares the file), never for a copy let go.
+ *
  * Imports only retryLooks.js (no imports), so node runs it in
- * server/test/renderer-life.test.mjs. */
+ * server/test/renderer-life.test.mjs and server/test/loader-retries.test.mjs. */
 import { laterRounds } from './retryLooks.js';
 
 export const LOAD_SET_TIMEOUT_MS = 20000;
@@ -47,10 +54,15 @@ export function loadSetLater(o) {
   const clrT = o.clearTimer || ((h) => clearTimeout(h));
   const keys = Object.keys(files);
   let started = false, allIn = false;
+  let firstLeft = keys.length, firstRes = null;
+  const firstDone = new Promise((r) => { firstRes = r; });
+  if (!firstLeft) firstRes();
   function one(k, round) {
     const url = roundUrl(files[k], round);
-    let over = false;
+    let over = false, counted = round > 0;
+    const settled = () => { if (counted) return; counted = true; if (--firstLeft <= 0) firstRes(); };
     const fail = () => {
+      settled();
       if (over) return;
       over = true;
       later.gaveUp(k, (r) => one(k, r));
@@ -62,16 +74,23 @@ export function loadSetLater(o) {
       clrT(h);
       if (!v) { fail(); return; }
       over = true;
-      if (!into[k]) into[k] = v;
+      settled();
+      if (!into[k]) { into[k] = v; if (o.took) { try { o.took(k, v); } catch (e) { /* its own */ } } }
       else if (v !== into[k] && o.unload) { try { Promise.resolve(o.unload(url)).catch(() => {}); } catch (e) { /* gone */ } }
     }, () => { clrT(h); fail(); });
   }
+  function start() {
+    if (!started) { started = true; for (const k of keys) one(k, 0); }
+    return firstDone;
+  }
   return {
+    /** v2.3.4431: the loading screen's wait: every first load settled. */
+    start,
     /** Where the set is drawn: the first call starts every load; later calls
      *  ask again for a missing one whose round has come. */
     ensure() {
       if (allIn) return;
-      if (!started) { started = true; for (const k of keys) one(k, 0); return; }
+      if (!started) { start(); return; }
       let missing = 0;
       for (const k of keys) if (!into[k]) { missing++; later.due(k); }
       if (!missing) allIn = true;

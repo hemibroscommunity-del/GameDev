@@ -40,6 +40,7 @@
  * every copy.  QA: window.__btPicsOnce(). */
 import { clientOffAtLoad } from '../game/clientOff.js';   /* v2.3.3755; v2.3.3770: relative, so node's checks can load it (check-hairmask-parity imports the renderer) */
 import { Cache, Texture } from 'pixi.js';
+import { laterRounds, RETRY_LATER_MS, RETRY_ROUNDS } from './retryLooks.js';   /* v2.3.4431: a blank chip copy's restore asked for again */
 
 const _q = (() => { try { return typeof location !== 'undefined' ? (location.search || '') : ''; } catch (e) { return ''; } })();
 /* v2.3.3715: on by default (the owner, 2026-10-28: "I think including the new
@@ -52,7 +53,7 @@ export function picsOnceOn() { return ON && !(typeof window !== 'undefined' && w
 
 const SWEEP_MS = 1000;
 const SWEEP_BUDGET_MS = 4;
-const _stats = { bitmapsSwapped: 0, bitmapsSwappedMB: 0, bitmapsReleased: 0, released: 0, releasedMB: 0, restored: 0, restoreFailed: 0, blankUploads: 0, unloads: 0, lostRestores: 0, kept: 0, sweeps: 0 };
+const _stats = { bitmapsSwapped: 0, bitmapsSwappedMB: 0, bitmapsReleased: 0, released: 0, releasedMB: 0, restored: 0, restoreFailed: 0, restoreRetries: 0, blankUploads: 0, unloads: 0, lostRestores: 0, kept: 0, sweeps: 0 };
 const _released = new Set();   /* sources whose page copy is let go of */
 const _loading = new Map();    /* source -> the promise of its <img> again */
 
@@ -168,6 +169,23 @@ function release(src) {
 /** The page copy of `src` again, from its file: a promise of true once the
  *  source holds its <img>.  The chip's copy is the same pixels, so it is not
  *  sent again -- unless a chip was given an empty one meanwhile (`blank`). */
+/* ═══ v2.3.4431: A BLANK COPY'S RESTORE IS ASKED FOR AGAIN ═══
+   A restore that failed (an error, or a request that never answered) after
+   the chip was given an empty copy (`blank`) left that picture blank on the
+   chip for the visit: nothing sends it again (state-machine sweep VC-1,
+   R6-16).  Now a restore has a TIME LIMIT, and a failed one while the copy
+   is blank is asked for again on retryLooks.js's times (5 s, 10, 20, 40,
+   every minute; ten rounds at most), each past the cache (`g=`), until it is
+   in, let go of or destroyed.  A failure with no blank copy is left as it
+   was (its next draw or unload asks).  `?picsretry=0` (or `?retrylooks=0`)
+   is the game as it was. */
+const RESTORE_TIMEOUT_MS = 20000;
+const _restoreRounds = laterRounds('picsretry');
+/** v2.3.4431: after a failed restore, when to ask again (ms), or -1: not. */
+export function restoreAgainIn(blank, rounds, on) {
+  if (!blank || !on || rounds >= RETRY_ROUNDS) return -1;
+  return RETRY_LATER_MS[Math.min(rounds, RETRY_LATER_MS.length - 1)];
+}
 export function restore(src) {
   if (!isReleased(src) || src.destroyed) return Promise.resolve(!src.destroyed);
   if (_loading.has(src)) return _loading.get(src);
@@ -175,7 +193,25 @@ export function restore(src) {
   const p = new Promise((resolve) => {
     const img = new Image();
     if (st.cross) img.crossOrigin = st.cross;
+    let done = false, tm = 0;
+    const failed = () => {
+      if (done) return;
+      done = true;
+      if (tm) clearTimeout(tm);
+      _loading.delete(src);
+      _stats.restoreFailed++;
+      resolve(false);
+      const ms = restoreAgainIn(st.blank && !src.destroyed && isReleased(src), st.rounds || 0, _restoreRounds.on());
+      if (ms < 0) return;
+      st.rounds = (st.rounds || 0) + 1;
+      _stats.restoreRetries++;
+      setTimeout(() => { if (st.blank && !src.destroyed && isReleased(src)) restore(src); }, ms);
+    };
+    if (_restoreRounds.on()) tm = setTimeout(() => { try { img.onload = null; img.onerror = null; img.src = ''; } catch (e) { /* gone */ } failed(); }, RESTORE_TIMEOUT_MS);
     img.onload = () => {
+      if (done) return;
+      done = true;
+      if (tm) clearTimeout(tm);
       _loading.delete(src);
       if (src.destroyed || !isReleased(src)) { resolve(false); return; }
       if (img.naturalWidth !== st.w || img.naturalHeight !== st.h) { _stats.restoreFailed++; resolve(false); return; }
@@ -188,12 +224,8 @@ export function restore(src) {
       }
       resolve(true);
     };
-    img.onerror = () => {
-      _loading.delete(src);
-      _stats.restoreFailed++;
-      resolve(false);
-    };
-    img.src = st.url;
+    img.onerror = failed;
+    img.src = st.rounds ? st.url + (st.url.indexOf('?') >= 0 ? '&' : '?') + 'g=' + st.rounds : st.url;
   });
   _loading.set(src, p);
   return p;
