@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "d48b539111a0639b543264d2f66fb370489fe707",
+  "tree": "7e750f5d09675dfbcf5b060586d960e67f8c92ea",
+  "committedAt": "2026-11-10T13:54:12-08:00",
+  "subject": "Merge pull request #1523 from hemibroscommunity-del/claude/sm-fight-lock",
+  "files": 7977,
+  "bytes": 966443649,
+  "listingSha256": "3a17e31422a82e134da013ec548967e48c39dbf6dd8e252ee9c3a211c6c08c6d",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
