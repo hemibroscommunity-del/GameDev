@@ -425,6 +425,26 @@ export function clearZoneLocalFx(S) {
   S._fxBursts = [];
 }
 
+/* ═══ v2.3.4414: THE FLIP AND ITS WIPE, IN ONE CALL ═══
+   The contract above ("called from every clear block") was written down and
+   still five of nine ways of changing place skipped it (the 2026-11-03 sweep,
+   V11 G3-6): a fire lit in a cleared Workshop arena stayed a working Cook
+   spot on the farm for its 45 s, the v2.3.1748 bug back through a way that
+   never called the list.  Pasting the call into more sites is how they
+   drifted (review R2), so a way that moves you calls THIS: the zone flips and
+   the leftovers go in the same breath, the lock with them (the monsters it
+   named stay in the place you left).  On it so far: the respawn
+   (respawn.js), a dungeon's arena entry and its Workshop clear (gameEvents
+   dungeon_started / dungeon_cleared) and the buildings' farm trip
+   (farmTrip.js warpToFarm).  The other `currentZone =` writers keep their
+   own wipe blocks for now (a later lane).  zone-leftovers.test §1-2. */
+export function changeZone(S, to) {
+  if (!S) return;
+  S.currentZone = to;
+  clearZoneLocalFx(S);
+  S.lockedTarget = null;
+}
+
 /* ═══ v2.3.2308: THE TEST PANEL'S ZONE TELEPORT, FROM WHEREVER YOU ARE ═══
  *
  * Owner (backlog): an admin mode with zone teleport.

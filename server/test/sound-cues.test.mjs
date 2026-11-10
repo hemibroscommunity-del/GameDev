@@ -756,7 +756,7 @@ for (const p of files) {
   const GE = src('src/networking/gameEvents.js');
   const ds = GE.slice(GE.indexOf("case 'dungeon_started':"), GE.indexOf("case 'dungeon_started':") + 9000);
   check('13g2 ...and entering a dungeon asks for it (gameEvents.js dungeon_started), after the zone is the dungeon\'s',
-    /S\.currentZone = payload\.zone;[\s\S]{0,800}BT_AUDIO\.startZoneAmbient\(payload\.zone\)/.test(ds));
+    /(S\.currentZone = payload\.zone|changeZone\(S, payload\.zone\));[\s\S]{0,800}BT_AUDIO\.startZoneAmbient\(payload\.zone\)/.test(ds));   /* v2.3.4414: the flip is changeZone's */
   const WM = await import('../../src/game/wheelMusic.js');
   check('13h Lil Bro\'s race asks for the race music while it counts down and runs, and no longer once it is done',
     WM.RACE_MUSIC === 'minigame' && WM.raceMusicOn({ _race: { phase: 'count' } }) && WM.raceMusicOn({ _race: { phase: 'run' } })

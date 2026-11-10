@@ -59,7 +59,7 @@ import { loadDungeonArt, freeDungeonArt } from '@/game/dungeonArt.js'; /* v2.3.3
 import { startDungeonClear, setDungeonClearReward } from '@/game/dungeonClear.js'; /* v2.3.3556: 30 s to pick up the loot after a clear; v2.3.3565: and what the boss's chest held */
 import { loadLandLooks } from '@/rendering/wheelMonsterArt.js'; /* v2.3.3016: a Wheel dungeon's monsters' looks, loaded before you step in */
 import { campfireAtlas } from '@/rendering/campfireFx.js'; /* v2.3.3567: its torches burn with the campfire's flames, made before you step in */
-import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen */
+import { showZoneLoadingOverlay, hideZoneLoadingOverlay, releaseLeftZoneArt, changeZone } from '@/game/zoneTransitions.js'; /* v2.3.3016: ...behind the zone's loading screen; v2.3.4414: + the flip and its wipe */
 import { FARM_FROM_WORKSHOP } from '@/data/farmLayout.js';   /* v2.3.3136: the farm you walk */
 import { hardenMaterialWord } from '@/data/hardenCosts.js';   /* v2.3.3139: "-2 Hardened Pine Wood" on a failed attempt */
 import { holdFarmUntilReady } from '@/game/farmTrip.js';
@@ -941,7 +941,10 @@ export function processGameEvent(type, payload, S, deps) {
                   if (_fl.edge != null) ZONES[payload.zone].edgeColor = _fl.edge;
                 }
                 S._dungeonZone = S.currentZone; /* return zone for the tile-9 exit */
-                S.currentZone = payload.zone;
+                /* v2.3.4414: the flip, and the world's leftovers with it -- a
+                   fire, a lunge at a monster left outside, the lock on one
+                   (sweep V11 G3-6: this way skipped the list) */
+                changeZone(S, payload.zone);
                 S._serverDungeon = payload.zone;
                 S._dungeonEnteredAt = Date.now();   /* v2.3.3016: its door is deaf a moment (zoneTransitions.js) */
                 /* v2.3.3610: the dungeon's music, the owner's Swift Skirmish
@@ -1008,11 +1011,20 @@ export function processGameEvent(type, payload, S, deps) {
                      still this one (the sweep, V11 N2-10): one a newer opening
                      replaced lifted the newer one's screen while it loaded. */
                   if (S._wheelDungeonOpening !== payload.zone) { freeDungeonFloor(_dFloor); freeDungeonArt(_dArt); return; }
-                  hideZoneLoadingOverlay();
                   S._wheelDungeonOpening = null;
                   /* died, or somewhere else, while it loaded: the worker
-                     sweeps the instance nobody entered */
-                  if (S.currentZone !== _dFrom || S._dying || !S.player) { S._dungeonBack = null; freeDungeonFloor(_dFloor); freeDungeonArt(_dArt); return; }
+                     sweeps the instance nobody entered.
+                     v2.3.4414: and the screen is lifted below this check,
+                     not above it, and here only if no other way took it over
+                     meanwhile: a death behind it hands it to the respawn's
+                     trip (veilWheelTrip renames it, S._wheelTripVeil), and
+                     lifting it showed today's town with the trip still
+                     marked veiled, so nothing put it back (sweep V11 G3-2) */
+                  if (S.currentZone !== _dFrom || S._dying || !S.player) {
+                    if (!S._wheelTripVeil && !S._zoneLoading && !S._townArtHold && !S._farmArtHold) hideZoneLoadingOverlay();
+                    S._dungeonBack = null; freeDungeonFloor(_dFloor); freeDungeonArt(_dArt); return;
+                  }
+                  hideZoneLoadingOverlay();
                   _enterArena();
                   try { releaseLeftZoneArt(_dFrom, payload.zone); } catch (e) { /* a leak, not a crash */ }
                 });
@@ -1093,7 +1105,10 @@ export function processGameEvent(type, payload, S, deps) {
                 S._inCustomDungeon = false;
                 S._customDungeonConfig = null;
                 S._serverMonsters = false;
-                S.currentZone = 'farm_home';
+                /* v2.3.4414: and the arena's leftovers go with it: a fire lit
+                   in the cleared arena was a working Cook spot on the farm for
+                   its 45 s (sweep V11 G3-6, the v2.3.1748 bug come back) */
+                changeZone(S, 'farm_home');
                 updateZoneDimensions('farm_home');
                 S.map = generateZoneMap('farm_home');
                 var _fz = ZONES.farm_home;
