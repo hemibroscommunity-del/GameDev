@@ -1,0 +1,12 @@
+{
+  "format": "brotown-provenance/1",
+  "repo": "hemibroscommunity-del/GameDev",
+  "commit": "8768aa9e83ce2c12da76914318c9079176a6aeba",
+  "tree": "54f8a9939ffcaf374df4888cba8bc48dd4c77de4",
+  "committedAt": "2026-11-09T20:58:28-08:00",
+  "subject": "Merge pull request #1460 from hemibroscommunity-del/claude/sm-loot-clock",
+  "files": 7755,
+  "bytes": 951888275,
+  "listingSha256": "6b7b5ae5ee7540475af68e0dd281c6c67cbaccd58451dbfb78f4fb9be4067f16",
+  "howToCheck": "docs/specs/provenance.md -- node tools/provenance/listing.mjs --verify <this file>"
+}
