@@ -10617,7 +10617,7 @@ export class EntityRenderer {
            attackRecoverFrames: the water frog's) plays them AFTER the blow,
            past the wind-up's window, so it does not snap back to standing */
         const _atkRec = attackSprites ? Math.max(0, variant.attackRecoverFrames | 0) : 0;
-        /* v2.3.4382: ...and a strip whose wind-up is played over only the
+        /* v2.3.4390: ...and a strip whose wind-up is played over only the
            last part of the warning (variant attackWindShare: the frog's, half
            -- the owner: "the frog animation frames play too slowly. It needs
            to be sped up by 2x") begins that much into it; until then the

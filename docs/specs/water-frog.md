@@ -113,7 +113,7 @@ already draw the droplets swirling in as the frog winds up.
   A frame only places and fades them: nothing is added, removed or hidden,
   so no draw list is rebuilt (TRAPS §218). At most 4 blows at once, the
   nearest first.
-- **The sprites are the frog's (v2.3.4381).** They are made when its look is
+- **The sprites are the frog's (v2.3.4389).** They are made when its look is
   loaded, as you walk toward the Water Caves, and destroyed when the look is
   let go behind you: never on the frame of the first blow, and never held in
   a land with no frog (below, Memory).
@@ -174,7 +174,7 @@ Caves' brute, on the wire and in every saved codex). Its pace is
 `MONSTER_VARIANTS.fishman`; the three rules are plain arithmetic in
 `src/game/monsterStrips.js`:
 
-- **Its pace (v2.3.4382).** The owner, having played it: *"The frog
+- **Its pace (v2.3.4390).** The owner, having played it: *"The frog
   animation frames play too slowly. It needs to be sped up by 2x . And maybe
   3x for death animation"*. Every strip plays the same frames, none dropped,
   faster:
@@ -267,7 +267,7 @@ old way, for one phone).
 The memory check (`mp-membudget`) fights at the Flame Fields and reads none
 of the pictures, so no line moved.
 
-**What it did read, and v2.3.4381 took back out.** The check's `heap` line
+**What it did read, and v2.3.4389 took back out.** The check's `heap` line
 (the page's JavaScript objects, 37.5 MB) failed twice on this branch on
 GitHub's runner, at 37.7 and 38.0, and passed twice. One run each on one
 machine (this box, 2026-11-10), the heap at each stop:

@@ -140,7 +140,7 @@ export async function run({ browser, wsPort, webPort, rec }) {
     await H.devOp(wsPort, 'vitals', me, { heal: true, god: true, godMinutes: 30 }).catch(() => {});
     await P.page.evaluate(() => { for (const el of document.querySelectorAll('button[aria-label="Close"], button[aria-label="Dismiss"]')) try { el.click(); } catch (e) {} });
     await P.page.waitForTimeout(600);
-    /* v2.3.4381: THE LIGHTNING'S SPRITES ARE THE EYE'S.  In BroTown with no
+    /* v2.3.4389: THE LIGHTNING'S SPRITES ARE THE EYE'S.  In BroTown with no
        eye near, none are held (112 of them were, in every land: the memory
        check's heap line); they come with its look and go with it. */
     {
