@@ -8,6 +8,33 @@ server `_recomputeMaxes`).  Still pending: dedicated HP/Endurance skills
 with their own 5-category grids (Phases 2/4 below).  Prototype — no live
 players, so there is no save migration or backwards-compat layer.
 
+## v2.3.4380 — under prog3 the legacy skill tracks are frozen, and a rise is no heal
+
+The v2.3.1414 rule ("restore on level up of any combat skill") full-restores
+hp, stamina and mana when `stats_update` reports a weapon or defence skill
+level above the stored one (`server/src/grids.js` `_handleStatsUpdate`).
+Since v2.3.1660 the honest page never trains these tracks on a prog3
+character (every live one: `awardWeaponXp` / `awardDefenseXp` return early,
+the worker awards prog3 XP itself), so every rise it reports is forged, and
+it bought a free full heal at a moment of the page's choosing (about 400 a
+character, mid-duel or in No man's land; the state-machine sweep's S3-24).
+
+- Under prog3 the handler ignores a reported `weaponSkills` and
+  `defenseSkill` outright: no restore, and the level is not stored ("frozen
+  for rollback", as the T1 stats since v2.3.1659), because a rolled-back
+  worker reads these tracks as power and `prog3FromLegacy` mints from them.
+- A non-prog3 blob (a fail-open migration) keeps the v1414 restore and the
+  v2.3.2373 floor; `grids.test.mjs` pins both, each on its own fixture.
+- Not a test-mode check: a heal mid-duel hurts other players.
+- Kill switch: `skillfreeze: false` in the live flags stores the reports and
+  restores on a rise, as before.
+
+**The lesson**: a server rule keyed on a client-trained value outlives the
+day the client stops training it.  When a system moves to the server (prog3),
+grep the worker for every rule that still LISTENS to the old client track,
+not only the readers that compute from it: a test fixture that "joined on
+prog3" can pin the old reward as if it were still meant.
+
 ## v2.3.1342 — LEVEL IS BUILD (supersedes the level formula below)
 
 Owner directive 2026-07-16 ("I want each level up to feel powerful…

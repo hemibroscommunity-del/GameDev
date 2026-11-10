@@ -486,6 +486,12 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
   const wsM = fakeWs('mono');
   await join(wsM, 'bp_gr_mono');
   const psM = room.playerState['bp_gr_mono'];
+  /* v2.3.4380: this block pins the LEGACY track (store, floor, restore on a
+     rise), so its fixture opts out of prog3 as the suite's first one does.
+     It joined on prog3 until now, which is how "a genuine INCREASE still
+     full-restores" came to pin the very heal a prog3 character must not get
+     (the sweep's S3-24).  The prog3 case is the block below. */
+  delete psM.prog3;
   const sessM = [...room.sessions.values()].find((x) => x.id === 'bp_gr_mono');
   /* A real bar to drain: the restore is only observable if the pools are not
      already full. */
@@ -540,6 +546,58 @@ const session = [...room.sessions.values()].find((s) => s.id === 'bp_gr_a');
      track at its last pre-cap value. */
   check('monotonic: xp still falls freely -- only `level` is floored',
     psM.weaponSkills.sword.xp === 0, psM.weaponSkills.sword);
+}
+
+/* ── v2.3.4380: UNDER PROG3 THE SKILL TRACKS ARE FROZEN AND A RISE IS NO HEAL ──
+ * The honest page never trains weaponSkills / defenseSkill under prog3
+ * (awardWeaponXp, awardDefenseXp return early), so every rise a prog3
+ * character reports is forged; it used to fill hp, stamina and mana at once,
+ * up to about 400 times a character, mid-duel included.  Pinned: no restore
+ * and no stored rise, out of a fight and in one; and `skillfreeze: false`
+ * brings back the old store-and-restore. */
+{
+  const wsP = fakeWs('p3sk');
+  await join(wsP, 'bp_gr_p3sk');
+  const psP = room.playerState['bp_gr_p3sk'];
+  const sessP = [...room.sessions.values()].find((x) => x.id === 'bp_gr_p3sk');
+  check('prog3 freeze: the fixture is a prog3 character (as every live one is)', !!psP.prog3, Object.keys(psP));
+  const swordAt = (psP.weaponSkills && psP.weaponSkills.sword && psP.weaponSkills.sword.level) || 0;
+  const defAt = (psP.defenseSkill && psP.defenseSkill.level) || 0;
+  const drain = () => { psP.hp = 1; psP.stamina = 1; psP.mana = 1; };
+  const drained = () => psP.hp === 1 && psP.stamina === 1 && psP.mana === 1;
+  const report = (n) => room._handleStatsUpdate(sessP, {
+    weaponSkills: { sword: { level: swordAt + n, xp: 0 }, bow: { level: n, xp: 0 }, staff: { level: n, xp: 0 } },
+    defenseSkill: { level: defAt + n, xp: 0 } });
+
+  drain(); report(1);
+  check('prog3 freeze: a reported weapon and defence level one higher does NOT restore the pools',
+    drained(), { hp: psP.hp, stam: psP.stamina, mana: psP.mana, max: [psP.maxHp, psP.maxStamina, psP.maxMana] });
+  check('prog3 freeze: ...and the reported level is not stored (frozen for rollback, as the T1 stats)',
+    (((psP.weaponSkills && psP.weaponSkills.sword && psP.weaponSkills.sword.level) || 0) === swordAt)
+      && (((psP.defenseSkill && psP.defenseSkill.level) || 0) === defAt),
+    { ws: psP.weaponSkills, ds: psP.defenseSkill });
+
+  /* In a fight with a player: the window the heal was worst in. */
+  room._pvpHealClocks = room._pvpHealClocks || new Map();
+  room._pvpHealClocks.set('bp_gr_p3sk', { pvpAt: Date.now() });
+  check('prog3 freeze: the fixture now reads as in a fight with a player',
+    !!room._farmOrderInFight('bp_gr_p3sk', Date.now()));
+  drain(); report(2);
+  check('prog3 freeze: ...and in that fight a reported rise still restores nothing',
+    drained(), { hp: psP.hp, stam: psP.stamina, mana: psP.mana });
+  room._pvpHealClocks.delete('bp_gr_p3sk');
+
+  /* The kill switch: today's behaviour back, store and full restore. */
+  room._liveFlags = Object.assign({}, room._liveFlags || {}, { skillfreeze: false });
+  drain(); report(3);
+  check('prog3 freeze: `skillfreeze: false` stores the rise and full-restores, as before',
+    psP.weaponSkills.sword.level === swordAt + 3 && psP.hp === psP.maxHp
+      && psP.stamina === psP.maxStamina && psP.mana === psP.maxMana,
+    { ws: psP.weaponSkills.sword, hp: psP.hp, stam: psP.stamina, mana: psP.mana });
+  delete room._liveFlags.skillfreeze;
+  drain(); report(4);
+  check('prog3 freeze: with the switch gone again, the freeze is back',
+    drained() && psP.weaponSkills.sword.level === swordAt + 3, { ws: psP.weaponSkills.sword, hp: psP.hp });
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
