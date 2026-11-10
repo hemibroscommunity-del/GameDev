@@ -457,16 +457,26 @@ export const arenaMethods = {
    * storage, so the winner-check at the top can't go stale mid-way
    * (input gates). */
   async _handleArenaSponsor(session, payload) {
+    /* v2.3.4421: the refusal names WHICH bet it refuses -- the gladiator
+       asked for and, once found, the match (additive: an old phone reads
+       code and message only).  The phone draws a bet the moment it is sent;
+       with only {code, message} it could not tell the refused one from a
+       real, escrowed bet, so it kept every refused bet on screen (the state-
+       machine sweep, V9b P1-13).  src/game/arenaStakes.js drops it. */
+    let m;
     const err = (code, message) => {
       const ws = this._wsBySessionId(session.id);
-      if (ws) { try { ws.send(JSON.stringify({ type: 'arena_stake_error', payload: { code, message } })); } catch (e) {} }
+      const out = { code, message };
+      const tgt = payload && payload.targetId;
+      if (typeof tgt === 'string' && tgt.length <= 64) out.targetId = tgt;
+      if (m && typeof m.id === 'string') out.matchId = m.id;
+      if (ws) { try { ws.send(JSON.stringify({ type: 'arena_stake_error', payload: out })); } catch (e) {} }
     };
     const t = this._arena;
     if (!t || t.status !== 'running') return err('no-tournament', 'No tournament running');
     const targetId = payload && payload.targetId;
     // matchId optional: the round-bet UI picks a PLAYER, so resolve
     // the open current-round match containing them when it's omitted.
-    let m;
     if (payload && payload.matchId) {
       m = t.matches.find((x) => x.id === payload.matchId);
     } else {
